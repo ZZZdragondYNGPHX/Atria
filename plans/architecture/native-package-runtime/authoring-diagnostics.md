@@ -56,4 +56,4 @@ Runtime Design 新增 Package Runtime 契约编辑和保存修订的 Processing 
 
 Runtime Diagnostics 的 Package Runtime evidence 复用当前精确 Session snapshot：Revision / PackageVersion、固定 Processor、Task invocation / production anchor / lifecycleCause、Workflow / outbox 的 cause 与 Scope epoch、Lifecycle Receipts、Action Receipts 和 Turn Processing provenance。上下文处理资源与输入/输出 hash 随原 RequestContextPlan provenance，输出证据随正式 Turn record；没有新增诊断事实库或私有读取。
 
-生成/预览 Processing failure 的 HTTP 错误携带安全 resourceId（Processor ID）和 field（stage），不输出脚本异常文本、执行输入或结果；客户端提供诊断入口。呈现失败明确显示原消息且继续提供控制项。S6 的完整新 Package 场景、浏览器视觉、最终集成和清理仍未完成。
+生成/预览 Processing failure 的 HTTP 错误携带安全 resourceId（Processor ID）和 field（stage），不输出脚本异常文本、执行输入或结果；客户端提供诊断入口。呈现失败明确显示原消息且继续提供控制项。S6 的新 Package 集成场景、main 集成和清理已完成；真实浏览器视觉和设备检查未执行，实际证据与限制见同一 Record 的 S6。

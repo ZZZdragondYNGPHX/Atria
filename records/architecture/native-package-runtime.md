@@ -2,9 +2,9 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`。
-- Status: Active — S1–S5 已完成并推送，CP2 完成；等待用户续接 S6。
+- Status: Complete — S0–S6 / CP3 完成，产品已合入并推送 main，任务分支和 live HANDOFF 已清理。
 - Plan：[唯一入口](../../plans/architecture/native-package-runtime/index.md)。
-- 实时恢复：[HANDOFF](../../HANDOFF.md)。
+- 最终 main HEAD：`ed1fd90521a63363e29856601abbf5e908c99d10`；live HANDOFF 已删除。
 
 ## 概要
 
@@ -49,7 +49,7 @@ S1–S6 按 [阶段路由](../../plans/architecture/native-package-runtime/index
 
 ## 最终状态
 
-整体任务尚未完成。后续源码实施、验证、main 集成与短期分支清理完成后再补最终状态并删除 live HANDOFF。
+S0–S6 全部完成，已按用户要求停在 CP3。产品 main 已快进至 `ed1fd90521a63363e29856601abbf5e908c99d10` 并推送；本地/远端 `feat/native-package-runtime` 已删除。Plan 状态更新、永久 Record 和 live HANDOFF 删除属于本次最终 docs 提交，不自引用 docs hash；发布以真实远端 ref 为准。
 
 ## S1 — 技术契约冻结
 
@@ -134,3 +134,34 @@ Studio 在 Runtime Design 使用现有结构化/Source draft，支持 Processor 
 S4 / S5 完成，产品/docs 已推送。沿用分支，不合并 main、不删除活跃分支，按用户要求停在 CP2。S6 才实施最终原生 Package 场景、针对性集成、main 验证与清理；不自动继续。
 
 处理上限和 Scope 见 Plan：输出只接 Turn narrator 正文；上下文接 recent_raw，Information 替代历史不会隐式补读；呈现只接数据式文本派生，复杂呈现仍走已有 Controller/组件。旧 Regex 主链兼容；未声称所有 Processing/设备/外部数据库/跨 Realm 矩阵通过。私有候选/单 Session CAS/Task uses/Knowledge adoption 边界保持。
+
+## S6 — 原生集成与最终完成（CP3）
+
+- 日期：2026-10-06。Start HEAD：`8f86a4e9f8450dc27b3c3d0818adcbd7a1ce4fb3`；End / Tested / main HEAD：`ed1fd90521a63363e29856601abbf5e908c99d10`。
+- docs 起点：`0776f01153ee669231bcde93ad1cde64928257d9`。用户授权“继续 S6，到 CP3 停止”。沿用产品分支完成场景后推送、快进 main、最小复验并推送 main，随后删除本地/远端任务分支。
+
+### 原生场景与完成内容
+
+新增 `tests/native/package-runtime-cp3.test.js`，仅使用测试 Package 定义交易玩法，没有产品硬编码游戏或新的 Authority / scheduler / 事实缓存。
+
+- 在 Fs / SQLite 各自的独立临时账户存储中 Build / Install 新 Native Trading Package；原账户以 ready 产生 durable NPC outbox，`.atriasave` 导出/导入到新存储。重新创建 Service / Host 后经原 scheduler 调用本机 HTTP fixture，Task 保留真实 production、固定 Package Prompt / Generation 和 lifecycleCause；再次执行 outbox 不重发请求。原账户的待执行意图不受目标执行影响。
+- 无关新 Revision 后，固定规则消费真实 NPC 提案，复用模块 import、排序/reduce 计算和候选后检查，将 wallet / shop / bag 从 20/5/0 原子结算为 14/3/2，Task once 消费、Knowledge adoption、正式正文和 Action Receipt 一起发布，只调用一次 Session CAS。
+- 动态 Knowledge 的 20000 字符展开经真实 Provider tokenizer / Context 主链预算选用 compact “NPC wants 2”；preview 不请求模型、不写状态。私有 notes 不进入有效模型请求；Information 取代 raw history 时，context Processor 不额外读取/改写历史。
+- 输出依序 trim / 固定 transform 形成 canonical 正文，presentation 只派生 displayContent。处理脚本失败时正式状态和 Timeline 不变；Narrator 在途期间由并发 clock CAS 推进 Revision，迟到交易被拒绝且无领域/消费/Knowledge 残留；在新基准上重算后成功。原 invocation 重试只读，重复 once 消费在 Authority 准备阶段拒绝且不发请求。
+- 新版本安装后原 Session / Save 保持原 packageVersionId；新账户仅有新 Package 时导入旧 Save 明确缺少精确版本，安装原版后恢复状态、正文、呈现和诊断依据相同。Task production / outbox cause / 规则 resourceHash / Artifact usage / applicationRevision / Processing provenance 均来自原 durable 数据。
+- 第二个真实 Native Package 场景在 Fs / SQLite Build / Install，固定 context Script 在读取原历史后、计数和 HTTP 请求前转换；preview 与实际请求准备一致、预览零请求，最终请求消费转换后的历史与处理 hash，正式 Timeline / Revision 保持不变。
+
+### 实际最小本地验证
+
+- 阶段回归：**8 个不同 suites / 58 个不同用例全部通过**。CP3 新场景 4、CP1 2、CP2 Experience 1、CP2 Processing 11、Task artifact consumption 13、Package computation 16、Package context computation 6、Knowledge selection 5；重复运行不累加，前阶段数量仍独立保留。
+- 实际命令：`ATRIA_DISABLE_MYSQL_TESTS=1 ATRIA_DISABLE_POSTGRES_TESTS=1 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand`，随后传入上述 8 个 `tests/native` suite 路径。完整路径分别为 `package-runtime-cp3.test.js`、`package-runtime-cp1.test.js`、`package-experience-cp2.test.js`、`package-processing-cp2.test.js`、`task-artifact-consumption.test.js`、`package-computation.test.js`、`package-context-computation.test.js`、`knowledge-selection.test.js`。
+- main 快进集成后只复跑 `tests/native/package-runtime-cp3.test.js`，Fs / SQLite 共 4 用例通过；与已验证产品提交完全同 HEAD，没有重复扩大测试范围。
+- 新测试 ESLint、产品/staged whitespace、docs UTF-8/相对链接和 staged whitespace 检查通过。fixture 调试修正：去除复用夹具的无关派生发布声明，避免直接写派生 Authority；公开错误按安全 code 断言；Context 按已存 hash/Processor 证据断言；Save 恢复到新的账户存储，保持现有同 Session import conflict，未放宽任何产品校验。
+
+### 最终交付与限制
+
+产品任务提交 `ed1fd9052` 已先推送，再快进 main 并完成上述本地最小复验，main 已推送至同 HEAD。本地/远端 `feat/native-package-runtime` 已删除；Plan 完成状态、同一 Record 和 live HANDOFF 删除随最终 docs 发布。docs 没有接收 main merge，原产品 AGENTS.md 及原 docs README / WEB-PERSISTENT-PROMPT / templates 四项 dirty changes 的字节保持不变，未纳入提交。package / plugin / skills / reference 未读取或修改；未启动子 Agent。
+
+未运行全库测试、产品构建、真正浏览器视觉、Android / 真机 / WebView、外部 MySQL / PostgreSQL、远端模型或远端 CI。HTTP 仅为本机测试模型，不冒充远端模型验收；Service / Host 重新实例化与跨存储导入证明 durable 恢复，没有声称宿主进程崩溃注入。原子证明保持单 Session CAS；跨 Session / Realm / 外部事务与完整设备矩阵仍不在本次验证范围。此前 CP2 的 UI 证据仍为 jsdom，本阶段未新增或声称浏览器 UI 证据。
+
+CP3 已完成，任务结束并停止，没有下一实现阶段或接手任务；后续独立工作从本永久 Record 与完成 Plan 读取，不恢复已删除的 live HANDOFF。
