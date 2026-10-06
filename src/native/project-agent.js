@@ -1018,7 +1018,17 @@ export class ProjectAgentService {
         await this._persist(handle, task);
         let result;
         try {
-            result = await this._studio.executeWorkspace(handle, task.workspace, { changeSetId: task.commitIntent.changeSetId });
+            result = await this._studio.executeWorkspace(handle, task.workspace, { changeSetId: task.commitIntent.changeSetId,
+                beforeCommit: receipt => {
+                    const candidate = clone(task);
+                    // Git SHA-1 IDs have the same length; this placeholder is never stored or consumed.
+                    this._completeCommit(candidate, { ...receipt, resultingRevision: task.baseRevision });
+                    this._finishAttempt(candidate, candidate.attempts.find(item => item.attemptId === attempt.attemptId), 'completed');
+                    assertProjectTask({ ...candidate, sequence: candidate.sequence + 1 });
+                    candidate.recovery = { status: 'recovered', code: 'formal_receipt_reconciled' };
+                    this._event(candidate, 'recovery', candidate.recovery);
+                    assertProjectTask({ ...candidate, sequence: candidate.sequence + 1 });
+                } });
         } catch (error) {
             // The intent remains durable. Reconcile against Studio before exposing any retry.
             await this._recover(handle, task);

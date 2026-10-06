@@ -103,6 +103,21 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         expect(await studio.inspectWorkspaceReceipt(h.handle, stored.workspace, stored.commitIntent.changeSetId)).toEqual(done.changeSets[0]);
     });
 
+    test('final receipt capacity is checked before the formal write and restores the dry-run source', async () => {
+        await tool({ name: 'atri_agent_source_write', args: { path: 'large.txt', content: 'x'.repeat(64 * 1024), stepId: 'rename' } });
+        task = await agent.prepareReview(h.handle, projectId, task.taskId);
+        expect(task.status).toBe('review');
+        const previous = await repository.get(h.handle, projectId, task.taskId);
+        const nearCapacity = { ...previous, sequence: previous.sequence + 1 };
+        nearCapacity.intent += 'x'.repeat(2 * 1024 * 1024 - 8 * 1024 - Buffer.byteLength(JSON.stringify(nearCapacity)));
+        await repository.save(h.handle, nearCapacity, hashNativeDocument(previous));
+        await expect(agent.commit(h.handle, projectId, task.taskId)).rejects.toThrow('byte limit');
+        expect((await studio.getRevision(h.handle, projectId)).revision).toBe(task.baseRevision);
+        await expect(studio.readSource(h.handle, projectId, 'large.txt')).rejects.toMatchObject({ name: 'NotFoundError' });
+        expect((await agent.getTask(h.handle, projectId, task.taskId)).status).toBe('review');
+        expect((await studio.history(h.handle, projectId)).filter(item => item.message.startsWith('Atria Studio ChangeSet'))).toHaveLength(0);
+    });
+
     test('a human edit after the formal Git write cannot replace its resultingRevision', async () => {
         await review(); const commit = studio._git.commitIfChanged.bind(studio._git);
         jest.spyOn(studio._git, 'commitIfChanged').mockImplementation(async (...args) => {

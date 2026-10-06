@@ -191,6 +191,8 @@ The persisted task keeps exact proposals / Workspace, validation / Review,
 bounded attempts / timeline, complete public conversation rounds and commit
 intent. Limits are 2 MiB JSON, 128 attempts / messages and 1024 timeline events;
 invalid versions, integrity/CAS conflicts or overflow fail explicitly.
+Before the formal Git write, the task checks capacity for the complete receipt
+and its recovery events; overflow restores the dry-run source and keeps Review.
 
 Studio's formal Git commit carries the exact Workspace hash, base and validation
 receipt. Task storage failure or response loss after that commit reconciles the

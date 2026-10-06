@@ -817,9 +817,10 @@ export class StudioService {
         });
     }
 
-    async executeWorkspace(handle, workspaceValue, { changeSetId = opaqueId('changeset', this._idFactory) } = {}) {
+    async executeWorkspace(handle, workspaceValue, { changeSetId = opaqueId('changeset', this._idFactory), beforeCommit = null } = {}) {
         const workspace = assertAuthoringWorkspace(workspaceValue);
         if (!/^changeset_[a-z0-9]+$/.test(changeSetId)) throw new TypeError('Invalid Studio changeset identity');
+        if (beforeCommit !== null && typeof beforeCommit !== 'function') throw new TypeError('Invalid Studio commit guard');
         if (!workspace.operations.length) throw new TypeError('Authoring workspace must contain at least one operation');
         for (const operation of workspace.operations) {
             if (!sameOrigin(operation.origin, workspace.origin)) {
@@ -863,6 +864,9 @@ export class StudioService {
                     ? ` · Task ${workspace.origin.id}`
                     : '';
                 const marker = { schemaVersion: 1, changeSetId, workspaceHash: hashNativeDocument(workspace), baseRevision: base.revision, validation };
+                // Host-owned consumers may prove receipt capacity before the formal Git write.
+                await beforeCommit?.(assertAuthoringChangeSet({ changeSetId, workspaceId: workspace.workspaceId, projectId: workspace.projectId,
+                    baseRevision: base.revision, operations: workspace.operations, validation, resultingRevision: null }));
                 commitStarted = true;
                 await this._git.commitIfChanged(
                     directory,
