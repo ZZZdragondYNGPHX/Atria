@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createGitClient } from '../../src/git/client.js';
-import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo, createNativeId } from '../../src/native/index.js';
+import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo } from '../../src/native/index.js';
 import { runMainAgentLoop } from '../../public/scripts/agents/orchestrator/director-runtime.js';
 import { createMessageEditorHandle } from '../../public/scripts/message-takeover.js';
 import { clearCurrentRun, getCurrentRun, startRun } from '../../public/scripts/agents/orchestrator/run-state/store.js';
@@ -10,17 +10,26 @@ import { getRuntimeEvidence, rememberRuntimeEvidence } from '../../public/script
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 import { deferred } from '../agent-runtime/fakes.js';
 import { hash, canonical } from './cases.js';
+import { skillEntryKey } from '../../public/shared/extension-contract.js';
+import { projectFixtureSource as projectSource } from './evaluation-settings.js';
 
 const response = (payload, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => payload });
 const call = (id, name, args = {}) => ({ id, name, args });
 const completion = toolCalls => ({ assistantText: '', toolCalls, usage: null });
+function verifyOwnedRoot(dataRoot, root, marker, token) {
+    if (fs.realpathSync(dataRoot) !== root || fs.readFileSync(marker, 'utf8') !== token) throw new Error('Fixture cleanup ownership mismatch');
+}
 
-export async function runRp(entry, fixture, capture) {
+export async function runRp(entry, fixture, capture, evaluation = null) {
     const player = { mes: fixture.input, is_user: true };
     const playerBefore = hash(player);
     const chat = [player, { mes: '', extra: { reasoning: '' }, is_user: false }];
     const profile = { mode: 'director', director: { mainAgent: { systemPrompt: 'Express only the NPC response. Preserve the player choice and use the revised visible promise.' }, subAgents: [], maxRounds: 6,
         tools: { message: { write_message: true, apply_message_patches: true } } } };
+    if (evaluation) {
+        profile.director.mainAgent.systemPrompt = evaluation.settings.rpPrompt;
+        profile.director.maxRounds = evaluation.settings.roundLimit;
+    }
     const payload = { messages: [{ role: 'system', content: canonical(fixture.memory.visible) }, { role: 'user', content: fixture.input }] };
     const requestTexts = [];
     const run = async (variantId, generate, controller = new AbortController()) => {
@@ -35,10 +44,17 @@ export async function runRp(entry, fixture, capture) {
             chat, runId, getContentPayload: () => payload, contextForNotes: {},
             generateTaskStreamForMainAgent: async request => {
                 if (capture.refs.requestIds.length >= entry.limits.maxRequests) throw Object.assign(new Error('Script request budget'), { code: 'script_request_budget' });
-                const requestId = `${capture.trialId}:script-request-${capture.refs.requestIds.length + 1}`;
+                const requestId = `${capture.trialId}:${evaluation?.bridge ? 'model' : 'script'}-request-${capture.refs.requestIds.length + 1}`;
+                evaluation?.beforeSend(requestId);
                 capture.refs.requestIds.push(requestId); variant.requestIds.push(requestId);
                 requestTexts.push(canonical(request.taskMessages));
                 capture.prompts.push(request.taskMessages);
+                if (evaluation?.bridge) {
+                    const result = await evaluation.bridge.rp({ requestId, trialId: capture.trialId, fixtureHash: entry.fixtureHash,
+                        messages: request.taskMessages, tools: request.tools, signal: request.abortSignal,
+                        onSend: () => { if (entry.caseId.startsWith('rp_variant') && variantId === 'v1') generate(request); } });
+                    return result.response;
+                }
                 return generate(request);
             },
         } }).finally(() => {
@@ -51,18 +67,20 @@ export async function runRp(entry, fixture, capture) {
         if (entry.caseId.startsWith('rp_variant')) {
             const entered = deferred(); const late = deferred(); const controller = new AbortController();
             const old = await run('v1', () => { entered.resolve(); return late.promise; }, controller);
-            await entered.promise;
+            // A rejected send must also release this waiter (e.g. a shared budget).
+            await Promise.race([entered.promise, old.promise]);
             controller.abort();
             // Observe terminal abort before regeneration; transport result arrives late.
-            try { await old.promise; } catch (error) { if (error.name !== 'AbortError') throw error; }
+            try { await old.promise; } catch (error) { if (error.name !== 'AbortError' && !(evaluation?.bridge && error.code === 'generation_cancelled')) throw error; }
             const next = await run('v2', () => completion([call('write-new', 'write_message', { text: fixture.reply, mode: 'replace' }), call('final-new', 'finalize')]));
             await next.promise;
+            const committedText = evaluation?.bridge ? chat[1].mes : fixture.reply;
             late.resolve(completion([call('late-write', 'write_message', { text: 'STALE COMPLETION', mode: 'replace' }), call('late-final', 'finalize')]));
             await Promise.resolve();
             let rejected = false;
             try { old.handle.setText('STALE EDIT'); } catch (error) { rejected = error.code === 'editor_aborted'; }
-            capture.observe('stale_completion', { rejected, text: chat[1].mes, oldStatus: (await old.handle.complete).status }, { rejected: true, text: fixture.reply, oldStatus: 'aborted' });
-            capture.observe('variant_identity', { runs: new Set(capture.refs.runIds).size, requests: new Set(capture.refs.requestIds).size, newStatus: (await next.handle.complete).status }, { runs: 2, requests: 2, newStatus: 'committed' });
+            capture.observe('stale_completion', { rejected, text: chat[1].mes, oldStatus: (await old.handle.complete).status }, { rejected: true, text: committedText, oldStatus: 'aborted' });
+            capture.observe('variant_identity', { runs: new Set(capture.refs.runIds).size, requestsDistinct: new Set(capture.refs.requestIds).size === capture.refs.requestIds.length, newStatus: (await next.handle.complete).status }, { runs: 2, requestsDistinct: true, newStatus: 'committed' });
         } else {
             const main = await run('v1', () => completion([
                 call('write', 'write_message', { text: fixture.reply, mode: 'replace', messageId: 0, owner: 'player' }), call('final', 'finalize'),
@@ -70,7 +88,8 @@ export async function runRp(entry, fixture, capture) {
             await main.promise;
             const outcome = await main.handle.complete;
             if (entry.caseId.startsWith('rp_agency')) {
-                capture.observe('player_ownership', { player: hash(player), npc: chat[1].mes }, { player: playerBefore, npc: fixture.reply });
+                if (evaluation?.bridge) capture.observe('player_ownership', hash(player), playerBefore);
+                else capture.observe('player_ownership', { player: hash(player), npc: chat[1].mes }, { player: playerBefore, npc: fixture.reply });
                 capture.observe('single_completion', outcome.status, 'committed');
             } else {
                 capture.observe('request_exposure', { visible: requestTexts.every(text => fixture.memory.visible.every(item => text.includes(item.text))), private: requestTexts.some(text => text.includes(fixture.memory.private.text)) }, { visible: true, private: false });
@@ -78,21 +97,16 @@ export async function runRp(entry, fixture, capture) {
                 capture.completeness.push('production_memory_resolution', 'memory_behavior_application');
             }
         }
-        capture.finalTextStatus = 'passed';
+        capture.finalTextStatus = chat[1].mes ? 'passed' : 'unavailable';
         capture.reviewStatus = 'not_run';
         capture.observe('isolation', hash(player), playerBefore);
         capture.completeness.push('skill_preset_exact_pinning', 'durable_trace');
+        if (evaluation) capture.artifact = { domain: 'rp_chat', output: chat[1].mes, status: 'observed',
+            sourceHash: hash(fixture), outcomeHash: hash(chat[1]), requestHashes: capture.prompts.map(hash),
+            targetConsumed: capture.prompts.every(messages => canonical(messages).includes(JSON.stringify(evaluation.settings.rpPrompt).slice(1, -1))) };
     } finally { clearCurrentRun(); }
 }
 
-function projectSource(name) {
-    return {
-        format: 'atria-project-source', schemaVersion: 1,
-        project: { projectId: createNativeId('project'), packageId: createNativeId('package'), displayName: name, createdAt: 10, updatedAt: 10 },
-        package: { name: 'Synthetic S01 Work', version: '1.0.0', actors: [], entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }], capabilities: ['narrative'], permissions: [] },
-        worlds: [], knowledge: [], knowledgeBindings: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [] }, assetFiles: [],
-    };
-}
 function treeHash(root) {
     const files = [];
     function walk(dir, prefix = '') {
@@ -106,7 +120,7 @@ function treeHash(root) {
     walk(root); return hash(files);
 }
 
-export async function runProject(entry, fixture, capture) {
+export async function runProject(entry, fixture, capture, evaluation = null) {
     const h = await makeTempFsEngine();
     const root = fs.realpathSync(h.dataRoot);
     const marker = path.join(root, '.s01-owned');
@@ -122,7 +136,7 @@ export async function runProject(entry, fixture, capture) {
     const agent = new ProjectAgentService({ studio, maxRepairRounds: 2 });
     let task; let canaryRoot; let before; let source; let originalRevision; let conflictRevision;
     try {
-        source = projectSource(fixture.projectName);
+        source = projectSource(fixture.projectName, evaluation ? entry.fixtureHash : null);
         const created = await studio.createProject(h.handle, source);
         originalRevision = created.revision.revision;
         const canary = projectSource('Unrelated synthetic Project');
@@ -144,23 +158,38 @@ export async function runProject(entry, fixture, capture) {
             ? [[plan, save(invalid), review], [call('reset', 'atri_agent_reset_operations'), save(fixture.assumptions.repair === 'recover_after_one_error' ? proposed : invalid), review]]
             : [[plan], [save(proposed)], [review]];
         const validations = [];
+        if (evaluation?.bridge && repairing) {
+            for (const tool of [plan, save(invalid), review]) {
+                const taskId = task.taskId;
+                await agent.executeTool(h.handle, source.project.projectId, taskId, { name: tool.name, args: tool.args });
+                task = await agent.getTask(h.handle, source.project.projectId, taskId); capture.toolCalls++;
+            }
+            validations.push({ status: task.status, round: task.repairRound, validation: task.validation.status });
+        }
+        const skill = { name: 'evaluation-fixture', scope: { kind: 'project', projectId: source.project.projectId }, metadata: {} };
         globalThis.Atria = { getContext: () => ({ getRequestHeaders: () => ({}) }) };
         globalThis.fetch = async (url, options = {}) => {
             const route = String(url); const body = options.body ? JSON.parse(options.body) : null;
-            if (route === '/api/skills?scope=all') return response([]);
-            if (route === '/api/native/extensions/settings') return response({ value: { skills: {} } });
+            const method = options.method || 'GET';
+            if (method === 'GET' && route === '/api/skills?scope=all') return response(evaluation ? [skill] : []);
+            if (method === 'GET' && route === '/api/native/extensions/settings') return response({ value: { skills: evaluation ? { [skillEntryKey(skill)]: { paths: { studio: 'always' } } } : {} } });
+            if (evaluation && method === 'GET' && route === `/api/skills/${encodeURIComponent('project/' + source.project.projectId)}/${skill.name}/file?path=SKILL.md`) return response({ content: evaluation.settings.projectSkill });
             const base = `/api/native/studio/projects/${source.project.projectId}`;
             const taskPath = `${base}/agent/tasks/${task.taskId}`;
-            if (route === `${taskPath}/context`) return response(await agent.getContext(h.handle, source.project.projectId, task.taskId));
-            if (route === `${taskPath}/resume`) return response(await agent.resumeTask(h.handle, source.project.projectId, task.taskId));
-            if (route === `${taskPath}/generation/begin`) return response(await agent.beginGeneration(h.handle, source.project.projectId, task.taskId, body));
-            if (route === `${taskPath}/generation/finish`) return response(await agent.finishGeneration(h.handle, source.project.projectId, task.taskId, body));
-            if (route === taskPath) return response(await agent.getTask(h.handle, source.project.projectId, task.taskId));
-            if (route === `${base}/preflight`) return response(await studio.preflightProject(h.handle, source.project.projectId, body));
-            if (route === '/api/native/generation/execute') {
+            if (method === 'GET' && route === `${taskPath}/context`) return response(await agent.getContext(h.handle, source.project.projectId, task.taskId));
+            if (method === 'POST' && route === `${taskPath}/resume`) return response(await agent.resumeTask(h.handle, source.project.projectId, task.taskId));
+            if (method === 'POST' && route === `${taskPath}/generation/begin`) return response(await agent.beginGeneration(h.handle, source.project.projectId, task.taskId, body));
+            if (method === 'POST' && route === `${taskPath}/generation/finish`) return response(await agent.finishGeneration(h.handle, source.project.projectId, task.taskId, body));
+            if (method === 'GET' && route === taskPath) return response(await agent.getTask(h.handle, source.project.projectId, task.taskId));
+            if (method === 'POST' && route === `${base}/preflight`) return response(await studio.preflightProject(h.handle, source.project.projectId, body));
+            if (method === 'POST' && route === '/api/native/generation/execute') {
                 if (body.projectId !== source.project.projectId || body.taskId !== task.taskId || body.revision !== originalRevision) throw new Error('Project request identity drift');
                 if (capture.refs.requestIds.length >= entry.limits.maxRequests) throw Object.assign(new Error('Script request budget'), { code: 'script_request_budget' });
+                evaluation?.beforeSend(body.requestId);
                 capture.refs.requestIds.push(body.requestId); capture.prompts.push(body.messages);
+                if (evaluation?.bridge) {
+                    return response(await evaluation.bridge.project({ studio, agent, input: body, trialId: capture.trialId, signal: options.signal }));
+                }
                 const next = script.shift(); if (!next) throw new Error('Script exhausted');
                 return response({ response: completion(next), snapshot: null });
             }
@@ -172,35 +201,42 @@ export async function runProject(entry, fixture, capture) {
                     conflictRevision = saved.changeSet.resultingRevision;
                 }
                 try {
-                    task = await agent.executeTool(h.handle, source.project.projectId, task.taskId, body);
+                    const taskId = task.taskId;
+                    const toolResult = await agent.executeTool(h.handle, source.project.projectId, taskId, body);
+                    // Read tools return Project/resource data, not the task authority.
+                    task = await agent.getTask(h.handle, source.project.projectId, taskId);
                     if (body.name === 'atri_agent_prepare_review') validations.push({ status: task.status, round: task.repairRound, validation: task.validation.status });
-                    return response(task);
+                    return response(toolResult);
                 } catch (error) {
                     return response({ error: error.code, details: error.details }, error.name === 'ConflictError' ? 409 : 400);
                 }
             }
             // No fallback to the process's real fetch, including commit.
-            throw new Error('Unrecognized isolated fixture request');
+            throw Object.assign(new Error('isolated_route_denied'), { code: 'isolated_route_denied' });
         };
         let modelError = null;
         try {
-            await runNativeStudioAgentTask({ projectId: source.project.projectId, taskId: task.taskId, messages: [{ role: 'user', content: fixture.input }], maxModelRounds: 6 });
+            await evaluation?.probe?.({ projectId: source.project.projectId, taskId: task.taskId });
+            await runNativeStudioAgentTask({ projectId: source.project.projectId, taskId: task.taskId, messages: [{ role: 'user', content: fixture.input }], maxModelRounds: evaluation?.settings.roundLimit ?? 6 });
         } catch (error) { modelError = error; }
+        if (capture.budgetBlocked) throw modelError || new Error('comparison_budget_blocked');
         task = await agent.getTask(h.handle, source.project.projectId, task.taskId);
         const beforeReviewRevision = (await studio.getRevision(h.handle, source.project.projectId)).revision;
         const modelChangesets = task.changeSets.length;
         if (conflict) {
-            capture.observe('human_revision', { revision: beforeReviewRevision, name: (await studio.getProject(h.handle, source.project.projectId)).source.project.displayName }, { revision: conflictRevision, name: 'Fixture human revision' });
-            capture.observe('no_silent_rebase', { status: task.status, baseRevision: task.baseRevision, writes: modelChangesets, error: modelError?.code || null }, { status: 'conflict', baseRevision: originalRevision, writes: 0, error: 'project_revision_conflict' });
+            capture.observe('human_revision', { revision: beforeReviewRevision, name: (await studio.getProject(h.handle, source.project.projectId)).source.project.displayName }, { revision: conflictRevision ?? null, name: 'Fixture human revision' });
+            capture.observe('no_silent_rebase', { status: task.status, baseRevision: task.baseRevision, writes: modelChangesets, error: modelError?.code || null }, { status: 'conflict', baseRevision: originalRevision, writes: 0, error: evaluation?.bridge ? modelError?.code || null : 'project_revision_conflict' });
             capture.reviewStatus = 'unavailable'; capture.completeness.push('review');
         } else {
             if (modelError) throw modelError;
-            capture.observe('review_gate', { revision: beforeReviewRevision, modelWrites: modelChangesets, status: task.status, validation: task.validation?.status }, { revision: originalRevision, modelWrites: 0, validation: repairing && fixture.assumptions.repair === 'block_after_two_errors' ? 'failed' : 'passed', status: repairing && fixture.assumptions.repair === 'block_after_two_errors' ? 'blocked' : 'review' });
+            const shouldBlock = repairing && !evaluation?.bridge && fixture.assumptions.repair === 'block_after_two_errors';
+            capture.observe('review_gate', { revision: beforeReviewRevision, modelWrites: modelChangesets, status: task.status, validation: task.validation?.status ?? null }, { revision: originalRevision, modelWrites: 0, validation: shouldBlock ? 'failed' : 'passed', status: shouldBlock ? 'blocked' : 'review' });
             if (repairing) {
                 capture.observe('validation_error', validations[0], { status: 'repair', round: 1, validation: 'failed' });
-                capture.observe('repair_bound', { statuses: validations.map(item => item.status), round: task.repairRound },
+                if (evaluation?.bridge) capture.observe('repair_bound', task.repairRound <= 2, true);
+                else capture.observe('repair_bound', { statuses: validations.map(item => item.status), round: task.repairRound },
                     { statuses: ['repair', fixture.assumptions.repair === 'block_after_two_errors' ? 'blocked' : 'review'], round: fixture.assumptions.repair === 'block_after_two_errors' ? 2 : 1 });
-                if (task.status === 'blocked') {
+                if (task.status === 'blocked' && !evaluation?.bridge) {
                     let closed = false;
                     try { await agent.executeTool(h.handle, source.project.projectId, task.taskId, { name: 'atri_agent_validate_current' }); } catch (error) { closed = error.code === 'project_agent_repair_limit'; }
                     capture.observe('repair_bound', { ...capture.evidence.find(item => item.evidenceId.endsWith(':repair_bound')).value.observed, closed, writes: task.changeSets.length },
@@ -214,7 +250,7 @@ export async function runProject(entry, fixture, capture) {
                 const replayed = await agent.commit(h.handle, source.project.projectId, task.taskId);
                 const receiptReplayed = replayed.changeSets.length === 1 && replayed.changeSets[0].changeSetId === task.changeSets[0].changeSetId;
                 if (!repairing) capture.observe('single_changeset', { count: task.changeSets.length, receiptReplayed, name: (await studio.getProject(h.handle, source.project.projectId)).source.project.displayName }, { count: 1, receiptReplayed: true, name: fixture.proposedName });
-                if (repairing) {
+                if (repairing && !evaluation?.bridge) {
                     const item = capture.evidence.find(item => item.evidenceId.endsWith(':repair_bound')).value;
                     capture.observe('repair_bound', { ...item.observed, formalWrites: task.changeSets.length, receiptReplayed }, { ...item.expected, formalWrites: 1, receiptReplayed: true });
                 }
@@ -225,12 +261,18 @@ export async function runProject(entry, fixture, capture) {
         capture.finalTextStatus = 'not_run';
         capture.completeness.push('final_text', 'durable_task', 'exact_generation_config');
         capture.observe('isolation', treeHash(canaryRoot), before);
+        if (evaluation) {
+            const current = (await studio.getProject(h.handle, source.project.projectId)).source;
+            capture.artifact = { domain: 'project', output: canonical(current), status: task.status, sourceHash: hash(source),
+                outcomeHash: hash(current), requestHashes: capture.prompts.map(hash),
+                targetConsumed: capture.prompts.every(messages => canonical(messages).includes(JSON.stringify(evaluation.settings.projectSkill).slice(1, -1))) };
+        }
     } finally {
         globalThis.fetch = oldFetch;
         if (oldAtria === undefined) delete globalThis.Atria; else globalThis.Atria = oldAtria;
         rememberRuntimeEvidence(oldEvidence);
         if (task?.preview?.previewId) studio.closePreview(h.handle, task.preview.previewId);
-        if (fs.realpathSync(h.dataRoot) !== root || fs.readFileSync(marker, 'utf8') !== capture.trialId) throw new Error('Fixture cleanup ownership mismatch');
+        verifyOwnedRoot(h.dataRoot, root, marker, capture.trialId);
         h.cleanup();
     }
 }

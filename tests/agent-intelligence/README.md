@@ -1,4 +1,4 @@
-# S01 Agent Intelligence baseline
+# Agent Intelligence local evaluation
 
 Test-only, synthetic cases and report v1. Nothing is registered in production;
 there is no migration or improvement publication. Run serially in an isolated
@@ -80,9 +80,9 @@ The model command retains all six development pilot slots (RP agency and Project
 authoring, three trials each). Without finite config it records `budget_blocked`.
 `--pilot <file>` validates finite `maxRequests` (≤36, or ≤42 with `modelJudge=true`)
 and `maxTotalTokens`; limits alone record `configured_generation_bridge_unavailable`.
-S01 has no configured standalone live bridge, does not choose a paid route, and
-never silently substitutes scripted trials. Its model command is a readiness
-report, not a live-model executor.
+The original baseline CLI remains a readiness consumer without a supplied bridge.
+The explicit S06 live CLI below uses the original Native resolver/compiler/provider
+and Studio Generation Host; it never silently substitutes scripted trials.
 
 `PilotBudget` is a tested, test-only reservation ledger for the future existing-
 generation bridge: input preview/count plus reserved output before each send,
@@ -279,3 +279,71 @@ checks use a synthetic snapshot port, while existing source / recovery suites
 retain their original real authority fixtures. MySQL / PostgreSQL assertions
 cover generic kind / key registration only. No UI, external database, model,
 build, device, or remote CI result is claimed.
+
+
+## S06 paired comparison and explicit live connection
+
+The comparison consumer accepts exactly one synthetic evaluator target:
+`rpPrompt`, `projectSkill`, or `roundLimit` (1–6, changed from the baseline).
+Prompt and Skill content reaches the existing Director / Studio request builders;
+round limits reach the original loops. These are fixture settings, not published
+versions or installed production bindings. Each arm gets a fresh chat / Project /
+Workspace / task. The separate Native Session export/import check proves exact
+save-copy isolation; RP generation currently runs the original Director with a
+synthetic task context, not a production Session generation replay.
+
+```sh
+node tests/agent-intelligence/comparison.mjs --candidate /tmp/candidate.json --split development --repetitions 1 --output /tmp/comparison.json
+node tests/agent-intelligence/comparison.mjs --validate /tmp/comparison.json
+node tests/agent-intelligence/live.mjs --connection /private/test-connection.json --ledger /tmp/evaluation-ledger.json --phase pilot --trial-suffix :run1 --output /tmp/model-pilot.json
+node tests/agent-intelligence/live.mjs --connection /private/test-connection.json --ledger /tmp/evaluation-ledger.json --phase comparison --candidate /tmp/candidate.json --split promotion --repetitions 1 --baseline /tmp/independent-baseline.json --output /tmp/model-comparison.json
+node tests/agent-intelligence/live.mjs --connection /private/test-connection.json --ledger /tmp/evaluation-ledger.json --phase judge --comparison /tmp/model-comparison.json --output /tmp/model-judgments.json
+```
+
+The private connection file contains `apiKey`, exact `endpoint` (complete chat
+completions URL), `model`, `tokenizer` (`cl100k_base` or `o200k_base`),
+`contextTokens`, `maxOutputTokens`, `maxRequests`, `maxTotalTokens`, and
+`timeoutMs`. The tokenizer is an explicit local estimate, not a verified gateway
+model tokenizer. No key, header, provider response body, or local credential path
+enters the report. Keep this file and all generated artifacts outside Git.
+The live CLI enforces paths outside this worktree; output targets are exclusive.
+
+Use the same ledger throughout pilot, comparison and retries. Reservations are
+atomically persisted before send and settled after directly reported usage.
+Transport cancellation / failure / missing counters retain the reserved upper
+bound. Unknown gateway retries, upstream identity, price and TTFT remain unknown.
+Provider usage above the local estimate records actual usage and blocks further
+sends. A process crash retains unsettled reservations; it cannot silently reset
+spend. The ledger has exclusive writer ownership; inspect an abandoned `.lock`
+after checking its process before removing it. New pilot attempts require a new
+explicit trial suffix. Comparison execution IDs are unique per invocation; all charges still share the
+same cumulative ledger.
+
+Live comparisons finish and persist every independent baseline slot before
+starting candidates. Freeze the candidate first; do not adapt it using promotion
+answers. Scripted comparisons counterbalance arm order across repetitions.
+Case / fixture / input / rubric, actual evaluator source bytes, tested HEAD,
+resource settings, request hashes, source / outcome, attempts and charges are
+validated together. Budget exhaustion preserves every planned failed / blocked
+slot. The progress JSONL and baseline sidecar permit inspection if collection
+fails; incomplete output is not a successful report.
+
+`blindPair` produces an evaluator-only pair for explicit human observations.
+`recordJudgment` binds votes to both artifacts and envelopes; disagreement requires
+review. This does not fabricate unrun behavior scores. The optional model judge makes one fresh, blind request per pair with both outputs,
+using the same explicit connection and cumulative grader budget. Missing outputs
+remain unavailable; malformed scores are retained without repair calls. Its strict
+report binds the full comparison, rule, public inputs, confidence, 0–4 dimension
+scores and actual usage. Failed authority remains visible. A single same-model
+judge is a model observation; human preference and judge disagreement remain
+unobserved until separately reviewed. It cannot authorize publication or fill the
+original S01 ungraded behavior slots. Quality / cost promotion thresholds and
+equivalent body / cognition / critic ablations are not yet implemented. Director scripted graph observation is available; unsupported
+ablations stay unavailable. Comparison reports remain `empiricalReady=false` and
+`publicationStatus=ineligible`, including when deterministic checks pass.
+
+Minimal local verification:
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/comparison.test.js tests/agent-intelligence/baseline.test.js tests/agent-intelligence/live-bridge.test.js tests/agent-intelligence/runner-failure.test.js tests/agent-intelligence/judge.test.js
+```

@@ -35,3 +35,55 @@ export class PilotBudget {
         return { requests: this.reservations.size, tokens: [...this.reservations.values()].reduce((sum, item) => sum + item.tokens, 0), entries: Object.fromEntries(this.reservations) };
     }
 }
+
+// Shared S06 ledger for explicitly configured evaluation, including baseline,
+// candidate, retries and judges. Separate from S01's six-trial pilot limit.
+export class EvaluationBudget {
+    constructor({ maxRequests, maxTotalTokens }, { snapshot = null, onChange = () => {} } = {}) {
+        if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || maxRequests > 252
+            || !Number.isSafeInteger(maxTotalTokens) || maxTotalTokens < 1) throw new Error('Finite evaluation budget required');
+        Object.assign(this, { maxRequests, maxTotalTokens, onChange }); this.entries = new Map(); this.breached = false;
+        if (snapshot) {
+            if (!snapshot || Object.keys(snapshot).sort().join(',') !== 'breached,entries,requests,tokens' || typeof snapshot.breached !== 'boolean'
+                || !snapshot.entries || typeof snapshot.entries !== 'object' || Array.isArray(snapshot.entries)) throw new Error('Invalid evaluation budget restore');
+            for (const [id, value] of Object.entries(snapshot.entries)) {
+                if (!id || !value || Object.keys(value).sort().join(',') !== 'kind,settled,tokens,trialId,upperBound,usageStatus'
+                    || typeof value.trialId !== 'string' || !value.trialId || !['model', 'retry', 'fallback', 'grader'].includes(value.kind)
+                    || !['provider_reported', 'reserved_upper_bound'].includes(value.usageStatus) || typeof value.settled !== 'boolean'
+                    || !Number.isSafeInteger(value.tokens) || value.tokens < 0 || !Number.isSafeInteger(value.upperBound) || value.upperBound < 1
+                    || value.usageStatus === 'reserved_upper_bound' && value.tokens !== value.upperBound) throw new Error('Corrupt evaluation charge');
+                this.entries.set(id, { ...value });
+            }
+            this.breached = snapshot.breached;
+            const restored = this.snapshot();
+            if (restored.requests !== snapshot.requests || restored.tokens !== snapshot.tokens || restored.requests > maxRequests
+                || (restored.tokens > maxTotalTokens || [...this.entries.values()].some(entry => entry.tokens > entry.upperBound)) && !restored.breached
+                || [...new Set([...this.entries.values()].map(entry => entry.trialId))].some(trialId => [...this.entries.values()].filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length > 6)) throw new Error('Evaluation budget restore mismatch');
+        }
+    }
+    reserve({ requestId, trialId, inputTokens, reservedOutput, kind = 'model' }) {
+        if (!requestId || !trialId || this.entries.has(requestId) || !['model', 'retry', 'fallback', 'grader'].includes(kind)
+            || ![inputTokens, reservedOutput].every(value => Number.isSafeInteger(value) && value >= 0) || reservedOutput < 1) throw new Error('Invalid evaluation reservation');
+        const entries = [...this.entries.values()];
+        if (this.breached || entries.length >= this.maxRequests || entries.filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length >= 6
+            || entries.reduce((total, entry) => total + entry.tokens, 0) + inputTokens + reservedOutput > this.maxTotalTokens) return { status: 'budget_blocked' };
+        this.entries.set(requestId, { trialId, kind, tokens: inputTokens + reservedOutput, upperBound: inputTokens + reservedOutput,
+            usageStatus: 'reserved_upper_bound', settled: false });
+        this.onChange(this.snapshot()); // Durable explicit evaluator port, before send.
+        return { status: 'passed' };
+    }
+    settle(requestId, totalTokens = null) {
+        const entry = this.entries.get(requestId);
+        if (!entry || entry.settled || totalTokens !== null && (!Number.isSafeInteger(totalTokens) || totalTokens < 0)) throw new Error('Invalid evaluation settlement');
+        if (totalTokens !== null) {
+            entry.tokens = totalTokens; entry.usageStatus = 'provider_reported';
+            if (totalTokens > entry.upperBound) this.breached = true;
+        }
+        entry.settled = true;
+        this.onChange(this.snapshot());
+    }
+    snapshot() {
+        return { requests: this.entries.size, tokens: [...this.entries.values()].reduce((total, entry) => total + entry.tokens, 0),
+            breached: this.breached, entries: Object.fromEntries([...this.entries].map(([id, entry]) => [id, { ...entry }])) };
+    }
+}
