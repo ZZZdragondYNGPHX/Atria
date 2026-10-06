@@ -58,6 +58,7 @@ export const nativeStudioClient = Object.freeze({
     listSources: projectId => request(`projects/${encode(projectId)}/sources`),
     inspectFrontend: (projectId, body = {}) => request(`projects/${encode(projectId)}/frontend/inspect`, { method: 'POST', body }),
     evaluateFrontend: (projectId, workspace, entryPointId) => request(`projects/${encode(projectId)}/frontend/evaluate`, { method: 'POST', body: { workspace, entryPointId } }),
+    previewProcessing: (projectId, body) => request(`projects/${encode(projectId)}/processing/preview`, { method: 'POST', body }),
     readSource: (projectId, path) => request(`projects/${encode(projectId)}/source${query({ path })}`),
 
     getPackageLibraryResource: ref => request('resources/package-original', { method: 'POST', body: { ref } }),

@@ -78,6 +78,14 @@ function appFor(studio, { authenticated = true } = {}) {
 }
 
 describe('A1 Native Studio HTTP boundary', () => {
+    test('Processing preview binds authenticated owner, saved revision and private response caching', async () => {
+        const studio = makeStudio(); studio.previewProcessing = jest.fn(async () => ({ text: 'formatted', preview: true }));
+        const body = { baseRevision: 'exact', stage: 'output', text: 'sample' };
+        await request(appFor(studio, { authenticated: false })).post('/projects/project_test/processing/preview').send(body).expect(401);
+        const result = await request(appFor(studio)).post('/projects/project_test/processing/preview').send(body).expect(200);
+        expect(studio.previewProcessing).toHaveBeenCalledWith('u', 'project_test', body);
+        expect(result.headers['cache-control']).toBe('private, no-store');
+    });
     test('Frontend inspection/evaluation use authenticated owner and reject cross-project workspaces', async () => {
         const studio = makeStudio();
         studio.inspectFrontend = jest.fn(async () => ({ status: 'passed', entries: [], diagnostics: [] }));

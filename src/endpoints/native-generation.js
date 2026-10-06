@@ -395,9 +395,10 @@ export function createNativeGenerationRouter(getHost = services) {
                 if (streaming) { emit({ result }); response.end(); } else response.json(result);
             }
         } catch (error) {
-            const code = /^(native_generation_|generation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_generation_failed';
+            const code = error.code === 'native_processing_failed' || /^(native_generation_|generation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_generation_failed';
+            const details = code === 'native_processing_failed' ? { resourceId: error.processorId, field: error.stage } : undefined;
             if (!controller.signal.aborted) {
-                if (response.headersSent) { emit({ error: code }); response.end(); } else response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
+                if (response.headersSent) { emit({ error: code, ...(details ? { details } : {}) }); response.end(); } else response.status(code.includes('conflict') ? 409 : 400).json({ error: code, ...(details ? { details } : {}) });
             }
         } finally { response.off('close', abort); }
     });

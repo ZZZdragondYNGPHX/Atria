@@ -1,4 +1,5 @@
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
+import { mountStudioRuntimeEditor } from './studio-runtime-editor.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { referenceRemediation, confirmLibraryAction } from './library-ui.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
@@ -419,6 +420,12 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
 }
 
 export async function mountStudioPromptTools({ document: doc, body, state, stageProject, host, runtimeDesign = false }) {
+    if (runtimeDesign) mountStudioRuntimeEditor({ document: doc, root: body, value: state.source.package.runtime?.experienceContract,
+        onPreview: input => nativeStudioClient.previewProcessing(state.projectId, { ...input, baseRevision: state.revision.revision }),
+        onReview: async value => {
+            const source = clone(state.source); source.package.runtime ||= {}; source.package.runtime.experienceContract = value;
+            if (!await stageProject(source, 'Update Package Runtime')) throw new Error('ChangeSet could not be prepared. Check Problems / Changes; edits remain here.');
+        } });
     element(doc, 'h3', runtimeDesign ? 'Runtime Design' : 'Prompt Authoring', body);
     element(doc, 'p', 'Project edits enter an A1 ChangeSet. Review and Apply Changes to commit; exact references never follow latest.', body);
     const loading = element(doc, 'p', 'Loading exact resources…', body);

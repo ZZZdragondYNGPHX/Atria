@@ -2,6 +2,7 @@ import { translateShellText as tl } from '../atria-shell/localization.js';
 import { sanitizeProductDetails } from './product-error-details.js';
 
 const messages = {
+    native_processing_failed: 'A declared Processor failed. Open Diagnostics to inspect its stage and fixed source. No candidate was adopted.',
     native_product_invalid_request: 'Check the required fields and file format, then try again.',
     native_product_not_found: 'This item is no longer available. Refresh the list and select an existing item.',
     native_product_conflict: 'This item conflicts with existing data. Refresh and review the current revision before retrying.',

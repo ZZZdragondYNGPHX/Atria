@@ -30,7 +30,7 @@ function pinnedArtifact(installed, source) {
 }
 
 export async function runPackageComputation(installed, source, method, input) {
-    if (!['precondition', 'compute', 'invariant', 'derive'].includes(method)) throw new TypeError('Invalid computation stage');
+    if (!['precondition', 'compute', 'invariant', 'derive', 'transform'].includes(method)) throw new TypeError('Invalid computation stage');
     const artifact = pinnedArtifact(installed, source);
     const safe = assertJsonDeclaration(input, 'Computation input', SCRIPT_LIMITS.messageBytes);
     const engine = await getQuickJS();

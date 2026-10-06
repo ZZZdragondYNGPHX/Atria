@@ -24,6 +24,7 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_processing_failed: ['A declared Processor failed. Open Diagnostics to inspect its stage and fixed source. No candidate was adopted.', 'diagnostics'],
         generation_provider_endpoint_not_found: ['The generation endpoint returned HTTP 404. For OpenAI-compatible messages, use the full /chat/completions URL.', 'connections'],
         generation_provider_request_rejected: ['The provider rejected the request (HTTP 400/422). Check model and tool/output schema compatibility.', 'connections'],
         generation_provider_authentication_failed: ['The provider rejected the stored Secret (HTTP 401/403). Check the Secret selected by this connection.', 'connections'],

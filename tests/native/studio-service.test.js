@@ -74,6 +74,25 @@ function makeService(h, options = {}) {
 }
 
 describe('A1 Native StudioService authoring boundary', () => {
+    test('Processing preview uses the exact saved project source, is read-only and rejects draft/anchor injection', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { service, projectStore } = makeService(h);
+            const source = projectSource();
+            source.package.runtime = { experienceContract: { schemaVersion: 1, capabilities: [{ id: 'processing', version: 1, required: true }], dataResources: [],
+                processingRuntime: { schemaVersion: 1, processors: [{ id: 'format', stage: 'output', kind: 'script', source: 'format.ts' }] } } };
+            const created = await service.createProject(h.handle, source, { files: new Map([['format.ts', Buffer.from('export default {transform({text}) {return text.toUpperCase();}}')]]) });
+            const input = { baseRevision: created.revision.revision, stage: 'output', text: 'sample' };
+            const result = await service.previewProcessing(h.handle, source.project.projectId, input);
+            expect(result).toMatchObject({ text: 'SAMPLE', preview: true, revision: input.baseRevision });
+            expect(result.evidence[0].execution).toMatchObject({ source: 'format.ts', stage: 'transform' });
+            expect((await service.getRevision(h.handle, source.project.projectId)).revision).toBe(input.baseRevision);
+            await expect(service.previewProcessing(h.handle, source.project.projectId, { ...input, source: 'other.ts' })).rejects.toThrow('unknown field');
+            await expect(service.previewProcessing(h.handle, source.project.projectId, { ...input, stage: 'write' })).rejects.toThrow('revision/stage');
+            await projectStore.writeFile(h.handle, source.project.projectId, 'format.ts', Buffer.from('export default {transform(){return "changed";}}'));
+            await expect(service.previewProcessing(h.handle, source.project.projectId, input)).rejects.toThrow();
+        } finally { await h.cleanup(); }
+    });
     test('P9 preview retains immutable authored UI after source edits and only its owner can read it', async () => {
         const h = await makeTempFsEngine();
         try {

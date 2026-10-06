@@ -5,7 +5,7 @@ import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execu
 
 // Host bridge to the existing Native selection authority. No Timeline/Knowledge scan here.
 export function createNativeSessionContextAdapter({ readSnapshot, options = {} }) {
-    const { countTokens, tokenizerFor, deriveContext, providers = [], ...settings } = options;
+    const { countTokens, tokenizerFor, deriveContext, processContext, providers = [], ...settings } = options;
     const config = immutable(settings);
     const contextPorts = [...providers];
     return createNativeSessionContextProvider(async (request, resolved) => {
@@ -13,7 +13,7 @@ export function createNativeSessionContextAdapter({ readSnapshot, options = {} }
         const stages = flattenPromptProgram(resolved).stages;
         const consumer = stages.some(stage => stage.contextConsumers?.includes('player_persona') && (!request.prompt?.stageIds || request.prompt.stageIds.includes(stage.stageId)));
         const plan = await compileNativeContextPlan(immutable(snapshot), {
-            ...config, countTokens, tokenizerFor, deriveContext, providers: contextPorts,
+            ...config, countTokens, tokenizerFor, deriveContext, processContext, providers: contextPorts,
             playerPersona: { enabled: config.personaAllowed === true && consumer, blockedReason: config.personaBlockedReason },
             memoryEvidence: config.memoryEvidence ?? [],
             modelContextLimit: resolved.model.limits.contextTokens,

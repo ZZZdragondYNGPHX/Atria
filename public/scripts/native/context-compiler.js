@@ -13,6 +13,7 @@ import {
     normalizeContextSourceRefs,
 } from './context-derived.js';
 import { informationContext } from '../../shared/native-information-runtime.js';
+import { PROCESSING_LIMITS } from '../../shared/native-processing-contract.js';
 
 export const CONTEXT_PLAN_SCHEMA_VERSION = 1;
 
@@ -931,6 +932,19 @@ export class SessionContextCompiler {
         });
 
         const countTokens = typeof options.countTokens === 'function' ? options.countTokens : defaultCountTokens;
+        if (snapshot.manifest?.runtime?.experienceContract?.processingRuntime?.processors.some(item => item.stage === 'context')) {
+            if (typeof options.processContext !== 'function') throw new TypeError('Context Processing host unavailable');
+            let processingCharacters = 0;
+            for (const [index, item] of candidates.entries()) {
+                // Visibility filtering precedes processing; private projections,
+                // Persona and current facts never become Processor inputs.
+                if (item.lane !== CONTEXT_LANES.recentRaw) continue;
+                const processed = await options.processContext(item.content, item.contextItemId);
+                processingCharacters += item.content.length + processed.text.length;
+                if (processingCharacters > PROCESSING_LIMITS.total) throw new TypeError('Context Processing cumulative limit');
+                candidates[index] = { ...item, content: processed.text, tokenEstimate: null, metadata: { ...item.metadata, processing: processed.evidence } };
+            }
+        }
         const tokenized = await tokenizeItems(candidates, countTokens, diagnostics);
         const groups = groupCandidates(tokenized).sort((a, b) =>
             Number(b.required) - Number(a.required)

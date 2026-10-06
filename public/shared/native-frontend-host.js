@@ -1,12 +1,14 @@
 import { CHRONICLE_QUERY, CHRONICLE_PAGE, WORLD_QUERY, INTERVAL_QUERY, INTERVAL_RESULT } from './native-chronicle-host.js';
 import { fields } from './native-frontend-contract.js';
 import { assertMessageProjection } from './native-message-contract.js';
+import { presentationText } from './native-processing-contract.js';
 
 const string = maxLength => ({ type: 'string', maxLength });
 export const hostObject = (properties = {}, required = Object.keys(properties)) => ({ type: 'object', properties, required, additionalProperties: false });
 export const HOST_EMPTY = hostObject();
 const id = string(128), text = string(65536), number = { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER };
 export const MESSAGE_SCHEMA = hostObject({ messageId: id, sequence: number, role: string(16), content: text, actorId: id, predecessorId: id, branchId: id, revisionId: id });
+export const MESSAGE_PRESENTATION_SCHEMA = hostObject({ ...MESSAGE_SCHEMA.properties, displayContent: text });
 export const SESSION_SCHEMA = hostObject({ sessionId: id, branchId: id, revisionId: id, tailMessageId: id });
 export const GENERATION_SCHEMA = hostObject({ state: { ...string(16), enum: ['idle', 'preparing', 'streaming', 'finalizing', 'cancelling', 'failed'] }, text, error: string(128) });
 export const MEDIA_REF_SCHEMA = hostObject({ kind: { ...string(16), enum: ['exact', 'declared', 'host'] }, id: string(64) });
@@ -29,6 +31,7 @@ const targets = {
     'host.presentation.setLocale': action(hostObject({ locale: string(64) }), true, localeSchema),
     'host.presentation.announce': action(hostObject({ text: string(4096) }), true),
     'host.conversation.messages': read(MESSAGE_SCHEMA, false, true),
+    'host.conversation.presentation': read(MESSAGE_PRESENTATION_SCHEMA, false, true),
     'host.conversation.recent': { ...read({ type: 'array', items: MESSAGE_SCHEMA, maxItems: 32 }), inputSchema: hostObject({ beforeSequence: number }, []) },
     'host.conversation.status': read(SESSION_SCHEMA),
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),
@@ -73,6 +76,10 @@ export function projectConversation(snapshot) {
     return (snapshot.timeline ?? []).map((entry, sequence, all) => ({ messageId: entry.messageId, sequence, role: entry.role,
         content: entry.content, actorId: entry.actorId ?? '', predecessorId: all[sequence - 1]?.messageId ?? '',
         branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }));
+}
+export function projectPresentation(snapshot) {
+    const processing = snapshot.manifest.runtime?.experienceContract?.processingRuntime;
+    return projectConversation(snapshot).map(entry => ({ ...entry, displayContent: presentationText(processing, entry.content) }));
 }
 export function projectSession(snapshot) {
     return { sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, tailMessageId: snapshot.timeline.at(-1)?.messageId ?? '' };

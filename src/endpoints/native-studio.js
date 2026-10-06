@@ -209,6 +209,9 @@ export function createNativeStudioRouter(getServices = services) {
     router.post('/projects/:projectId/frontend/inspect', route(async (req, res, { studio }, handle) => {
         res.json(await studio.inspectFrontend(handle, req.params.projectId, req.body || {}));
     }));
+    router.post('/projects/:projectId/processing/preview', route(async (req, res, { studio }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await studio.previewProcessing(handle, req.params.projectId, req.body));
+    }));
 
     router.post('/projects/:projectId/frontend/evaluate', route(async (req, res, { studio }, handle) => {
         if (req.body?.workspace?.projectId !== req.params.projectId) throw new TypeError('Workspace project mismatch');

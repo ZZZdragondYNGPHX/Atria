@@ -25,6 +25,9 @@ import { ResourceBundleService, bundleRef } from '../resource-bundle.js';
 import { createCoreBundleAdapters } from '../resource-bundle-adapters.js';
 import { ResourceGraph } from './resource-graph.js';
 import { frontendOwners, inspectFrontend, planFrontendPatch } from '../frontend/authoring.js';
+import { fields } from '../../../public/shared/native-values.js';
+import { processingText } from '../../../public/shared/native-processing-contract.js';
+import { processPackageText } from '../processing-runtime.js';
 
 export const STUDIO_SOURCE_OPERATION_TYPES = Object.freeze({
     write: 'source.write',
@@ -761,6 +764,19 @@ export class StudioService {
                 snapshot.files.set(draft.path, Buffer.from(draft.content));
             }
             return inspectFrontend({ ...snapshot, ownerId });
+        });
+    }
+
+    async previewProcessing(handle, projectId, input) {
+        try { fields(input, ['baseRevision', 'stage', 'text'], 'Processing preview'); } catch (error) { throw new TypeError(error.message); }
+        if (!input.baseRevision || !['output', 'context', 'presentation'].includes(input.stage)) throw new TypeError('Processing preview requires exact revision/stage');
+        processingText(input.text);
+        return this._queue(projectId, async () => {
+            await this._assertBaseRevision(handle, projectId, input.baseRevision);
+            const snapshot = await this._snapshot(handle, projectId);
+            const runtime = snapshot.source.package.runtime?.experienceContract?.processingRuntime;
+            const result = await processPackageText({ sourceFiles: snapshot.files }, runtime, input.stage, input.text, input.baseRevision);
+            return { ...result, projectId, revision: input.baseRevision, preview: true };
         });
     }
 

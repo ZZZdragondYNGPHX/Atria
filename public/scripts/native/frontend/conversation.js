@@ -1,4 +1,4 @@
-import { projectConversation, projectSession, projectMessageBlocks } from '../../../shared/native-frontend-host.js';
+import { projectConversation, projectPresentation, projectSession, projectMessageBlocks } from '../../../shared/native-frontend-host.js';
 import { bridgeFailure } from '../../../shared/native-frontend-bridge.js';
 
 // Host adapter over the one existing Session runtime and generation entrypoint.
@@ -18,6 +18,7 @@ export function createHeadlessConversation({ runtime, composer, generate, stop, 
             return { sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry, state: snapshot.illustrations };
         },
         messages: () => current()?.snapshot ? projectConversation(current().snapshot) : [],
+        presentationMessages: () => current()?.snapshot ? projectPresentation(current().snapshot) : [],
         blocks: type => current()?.snapshot ? projectMessageBlocks(current().snapshot, type) : [],
         generation: () => ({ ...(current()?.generationProjection ?? { state: 'idle', text: '', error: '' }) }),
         async invoke(target, input, revision) {

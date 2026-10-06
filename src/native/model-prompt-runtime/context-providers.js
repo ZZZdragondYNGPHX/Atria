@@ -42,6 +42,10 @@ export function createNativeSessionContextProvider(readSelectedContext) {
                 provenance: [
                     { source: 'native.context', ref: item.contextItemId },
                     ...(item.sourceRefs || []).map(ref => ({ source: 'native.context-source', ref: JSON.stringify(ref) })),
+                    ...(item.metadata?.processing ?? []).map(ref => ({ source: 'native.processing', ref: JSON.stringify({
+                        processorId: ref.processorId, stage: ref.stage, inputHash: ref.inputHash, outputHash: ref.outputHash,
+                        ...(ref.execution ? { resourceHash: ref.execution.resourceHash } : {}),
+                    }) })),
                 ],
             })),
             personaEvidence: plan.personaEvidence,

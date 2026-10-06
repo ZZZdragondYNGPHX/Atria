@@ -556,6 +556,21 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function diagnostics() {
         root.replaceChildren(); heading('Diagnostics', 'Compile the exact route against a pinned Native context. Preview never sends, resolves a Secret, or writes Session state.');
         const latest = getRuntimeEvidence(); if (latest?.snapshot) evidence(latest, node('div'));
+        const session = nativeSessionRuntime.snapshot;
+        if (session) {
+            const trace = node('details'); node('summary', 'Package Runtime evidence', trace);
+            const tasks = session.states.atri_task_results?.records ?? [];
+            node('pre', JSON.stringify({ revision: session.revision, packageVersionId: session.session.packageVersionId,
+                processors: session.manifest.runtime?.experienceContract?.processingRuntime,
+                tasks: tasks.map(item => ({ invocationId: item.invocationId, taskId: item.taskId, status: item.status,
+                    lifecycleCause: item.lifecycleCause, production: item.production && { anchor: item.production.anchor, definitionHash: item.production.definitionHash },
+                    provenance: item.provenance, authorityReceipt: item.authorityReceipt })),
+                lifecycle: { workflows: session.states.atri_lifecycle?.workflows,
+                    pending: session.states.atri_lifecycle?.outbox.map(item => ({ invocationId: item.invocationId, taskId: item.taskId, cause: item.cause, scopeId: item.scopeId, scopeEpoch: item.scopeEpoch, status: item.status })),
+                    receipts: session.states.atri_lifecycle?.receipts },
+                actions: session.states.atri_action_receipts?.receipts,
+            }, null, 2), trace);
+        }
         const form = node('form'); form.className = 'atri-runtime-form';
         const routing = group(form, 'Preview route');
         const routeSelect = field(routing, 'Route to preview', '', options(data.routes, ids.routes)); routeSelect.required = true;

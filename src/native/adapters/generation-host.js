@@ -1,4 +1,5 @@
 import { createPackageContextDerivation } from '../context-computation.js';
+import { processPackageText } from '../processing-runtime.js';
 import { prepareKnowledgeAdoption } from '../knowledge-authority.js';
 import { captureTaskProduction } from '../task-artifact-authority.js';
 import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache } from '../authority-turn.js';
@@ -331,6 +332,15 @@ export class NativeGenerationHost {
             knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, base, narration.snapshot.contextPlan?.nativeSelection);
             draft = { schemaVersion: 1, narrative: narration.response.text, outcomes: [], diagnostics: [] };
         }
+        const processing = base.manifest.runtime.experienceContract.processingRuntime;
+        if (processing?.processors.some(item => item.stage === 'output')) {
+            const installed = await this.sessionCore._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            const processed = await processPackageText(installed, processing, 'output', draft.narrative, input.invocationId);
+            // Existing authored projection is tied to the original canonical body.
+            // Reject incompatible output instead of silently discarding its Blocks.
+            draft = assertTurnEnvelope({ ...draft, narrative: processed.text });
+            provenance.push({ processing: processed.evidence });
+        }
         const narrative = draft.narrative;
         if (typeof narrative !== 'string' || !narrative.trim()) fail('native_turn_empty_narrative');
         const outcomes = [];
@@ -646,12 +656,13 @@ export class NativeGenerationHost {
         if (snapshot && !illustrationPlan) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
         const authorityContext = lanePlan?.authorityContext;
         if (!authorityContext && informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
-        const contextPackage = snapshot?.manifest.runtime?.experienceContract?.contextRuntime
+        const contextPackage = snapshot && (snapshot.manifest.runtime?.experienceContract?.contextRuntime || snapshot.manifest.runtime?.experienceContract?.processingRuntime)
             ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
         const nativeContext = snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
             options: {
                 tokenizerFor: resolved => resolver.provider(resolved.connection.providerAdapter).contextTokenizer?.(resolved),
                 deriveContext: contextPackage ? createPackageContextDerivation(snapshot, contextPackage) : undefined,
+                processContext: contextPackage ? (text, sourceId) => processPackageText(contextPackage, snapshot.manifest.runtime.experienceContract.processingRuntime, 'context', text, sourceId) : undefined,
                 personaBlockedReason: snapshot.manifest.runtime?.experienceContract?.sharedRuntime ? 'shared_scope_unsupported' : undefined,
                 personaAllowed: !snapshot.manifest.runtime?.experienceContract?.sharedRuntime && (taskPlan
                     ? taskPlan.task.context.includes('player_persona') && !['background', 'maintenance'].includes(taskPlan.task.executionClass)

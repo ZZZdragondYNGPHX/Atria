@@ -93,6 +93,32 @@ describe('A6 Atria-native Play product', () => {
         product.dispose();
     });
 
+    test('presentation Processing renders inert derived prose and preserves canonical Timeline on rerender', () => {
+        runtime.snapshot.manifest.runtime = { experienceContract: { processingRuntime: { schemaVersion: 1, processors: [
+            { id: 'display', stage: 'presentation', kind: 'replace', find: 'Welcome.', replacement: '<script>reward()</script> Displayed.' },
+        ] } } };
+        const before = JSON.stringify(runtime.snapshot.timeline);
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        expect(product.conversation.textContent).toContain('Displayed.');
+        expect(product.conversation.querySelector('script')).toBeNull();
+        product.refresh(); expect(JSON.stringify(runtime.snapshot.timeline)).toBe(before); product.dispose();
+    });
+    test('presentation budget failure explains the stage while original messages and controls remain available', () => {
+        runtime.snapshot.manifest.runtime = { experienceContract: { processingRuntime: { processors: [
+            { id: 'oversized', stage: 'presentation', kind: 'replace', find: 'Welcome', replacement: 'x'.repeat(65536) },
+        ] } } };
+        const before = JSON.stringify(runtime.snapshot.timeline);
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        expect(product.conversation.textContent).toContain('Welcome.');
+        expect(product.root.querySelector('[role="alert"]').textContent).toContain('Presentation Processing failed');
+        expect(product.textarea.disabled).toBe(false);
+        expect(JSON.stringify(runtime.snapshot.timeline)).toBe(before); product.dispose();
+    });
+
     test('Composer bridges to the existing generation entrypoint without owning a second chat state', async () => {
         const root = document.getElementById('host');
         const sendButton = document.getElementById('send_but');

@@ -150,6 +150,9 @@ export function compileProjectFrontends(packageSource, inputFiles) {
     }
     // Shared pure modules may also belong to Authority's exact source closure.
     const retained = new Set();
+    for (const processor of result.runtime?.experienceContract?.processingRuntime?.processors ?? []) {
+        if (processor.kind === 'script') compilePackageComputation(processor.source, inputFiles).modules.forEach(module => retained.add(module.id));
+    }
     for (const derivation of result.runtime?.experienceContract?.contextRuntime?.derivations ?? []) {
         compilePackageComputation(derivation.source, inputFiles).modules.forEach(module => retained.add(module.id));
     }

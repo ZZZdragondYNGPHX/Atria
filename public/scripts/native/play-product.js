@@ -259,7 +259,12 @@ export function mountAtriaPlayProduct({
         }
         // Reconcile projection nodes; streaming must not replace committed prose,
         // disrupt a text selection, or drag a reader away from an earlier turn.
-        const entries = headless.messages(), messageBlocks = headless.blocks();
+        let entries;
+        try { entries = headless.presentationMessages(); } catch {
+            entries = headless.messages();
+            showRuntimeError({ detail: { message: tl('Presentation Processing failed. Showing the original message.'), target: 'diagnostics' } });
+        }
+        const messageBlocks = headless.blocks();
         const committedEntries = new Map(snapshot.timeline.map(entry => [entry.messageId, entry]));
         const generation = headless.generation();
         const provisional = generation.text || draftText;
@@ -271,7 +276,8 @@ export function mountAtriaPlayProduct({
             const node = existing.get(id) || messageNode(documentRef, snapshot, entry);
             existing.delete(id);
             const body = node.querySelector('.atria-play-message__body');
-            if (body.dataset.canonicalText !== text(entry.content)) { renderSafeProse(body, text(entry.content), { openExternal: openHostExternal }); body.dataset.canonicalText = text(entry.content); }
+            const displayContent = entry.displayContent ?? entry.content;
+            if (body.dataset.canonicalText !== text(displayContent)) { renderSafeProse(body, text(displayContent), { openExternal: openHostExternal }); body.dataset.canonicalText = text(displayContent); }
             updateIllustrationSurface(body, { sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry: committedEntries.get(entry.messageId), state: snapshot.illustrations, controlsTop: () => composerComponent.getBoundingClientRect().top });
             if (!node.querySelector('[data-atria-message-blocks]')) {
                 const blocks = messageBlocks.filter(block => block.messageId === entry.messageId);
