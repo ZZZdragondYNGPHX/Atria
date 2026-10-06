@@ -14,7 +14,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 let lock = null; let fixture = null; const descriptors = [];
 try {
     const args = process.argv.slice(2), options = {};
-    const allowed = new Set(['--connection', '--ledger', '--output', '--phase', '--candidate', '--split', '--repetitions', '--baseline', '--trial-suffix', '--comparison']);
+    const allowed = new Set(['--connection', '--ledger', '--output', '--phase', '--candidate', '--split', '--repetitions', '--baseline', '--trial-suffix', '--comparison', '--budget']);
     for (let index = 0; index < args.length; index += 2) {
         const key = args[index], value = args[index + 1];
         if (!allowed.has(key) || !value || value.startsWith('--') || Object.hasOwn(options, key)) throw new Error('invalid_arguments');
@@ -26,7 +26,7 @@ try {
         || !comparison && ['--candidate', '--split', '--repetitions', '--baseline'].some(key => options[key])) throw new Error('invalid_phase_arguments');
     if (judging !== Boolean(options['--comparison'])) throw new Error('explicit_judge_comparison_required');
     if (options['--trial-suffix'] && !/^:[a-zA-Z0-9_-]{1,64}$/.test(options['--trial-suffix'])) throw new Error('invalid_trial_suffix');
-    for (const key of ['--connection', '--ledger', '--output', '--baseline']) {
+    for (const key of ['--connection', '--ledger', '--output', '--baseline', '--budget']) {
         if (!options[key]) continue;
         const target = path.resolve(options[key]);
         const parent = fs.realpathSync(path.dirname(target));
@@ -43,12 +43,37 @@ try {
     const progressFd = fs.openSync(options['--output'] + '.progress.jsonl', 'wx', 0o600); descriptors.push(progressFd);
     const baselineFd = comparison ? fs.openSync(options['--baseline'], 'wx', 0o600) : null;
     if (baselineFd !== null) descriptors.push(baselineFd);
-    const budget = new EvaluationBudget(config, { snapshot: fs.existsSync(ledgerPath) ? JSON.parse(fs.readFileSync(ledgerPath, 'utf8')) : null,
-        onChange: snapshot => writeFileAtomic.sync(ledgerPath, JSON.stringify(snapshot, null, 2) + '\n', { mode: 0o600 }) });
+    const limits = options['--budget'] ? JSON.parse(fs.readFileSync(options['--budget'], 'utf8')) : { maxRequests: config.maxRequests, maxTotalTokens: config.maxTotalTokens };
+    if (!limits || Object.keys(limits).sort().join(',') !== 'maxRequests,maxTotalTokens') throw new Error('invalid_evaluation_limits');
+    const restored = fs.existsSync(ledgerPath) ? JSON.parse(fs.readFileSync(ledgerPath, 'utf8')) : null;
+    let admitted = restored?.requests || 0;
+    const ratePath = ledgerPath + '.rate.json';
+    let lastAdmissionAt = fs.existsSync(ratePath) ? JSON.parse(fs.readFileSync(ratePath, 'utf8')).lastAdmissionAt : Date.now();
+    if (!Number.isSafeInteger(lastAdmissionAt) || lastAdmissionAt < 0 || lastAdmissionAt > Date.now() + 60000) throw new Error('invalid_rate_checkpoint');
+    lastAdmissionAt = Math.max(lastAdmissionAt, Date.now());
+    const rateWait = new Int32Array(new globalThis.SharedArrayBuffer(4));
+    const budget = new EvaluationBudget(limits, { snapshot: restored, onChange: snapshot => {
+        if (snapshot.requests > admitted) {
+            // CLI-only serial admission: >=3.15 seconds between sends, including
+            // across phases. At most 20 admissions in any 60-second window.
+            const delay = Math.max(0, lastAdmissionAt + 3150 - Date.now());
+            if (delay > 60000) throw new Error('rate_clock_changed');
+            if (delay) globalThis.Atomics.wait(rateWait, 0, 0, delay);
+            lastAdmissionAt = Date.now(); admitted = snapshot.requests;
+            writeFileAtomic.sync(ratePath, JSON.stringify({ lastAdmissionAt }) + '\n', { mode: 0o600 });
+        }
+        writeFileAtomic.sync(ledgerPath, JSON.stringify(snapshot, null, 2) + '\n', { mode: 0o600 });
+    } });
     const candidate = comparison ? JSON.parse(fs.readFileSync(options['--candidate'], 'utf8')) : null;
     fixture = await makeTempFsEngine();
+    const nativeFetch = globalThis.fetch;
     const bridge = await createLiveBridge({ engine: fixture.engine, handle: fixture.handle, config, budget,
-        secretPort: { resolveSecret: async () => apiKey }, fetchImpl: globalThis.fetch });
+        secretPort: { resolveSecret: async () => apiKey }, fetchImpl: (url, options) => {
+            const request = nativeFetch(url, options);
+            lastAdmissionAt = Date.now();
+            writeFileAtomic.sync(ratePath, JSON.stringify({ lastAdmissionAt }) + '\n', { mode: 0o600 });
+            return request;
+        } });
     const onTrial = trial => {
         fs.writeSync(progressFd, JSON.stringify({ trial, observations: bridge.observations().filter(item => item.trialId === trial.trialId) }) + '\n');
         fs.fsyncSync(progressFd);
@@ -58,7 +83,7 @@ try {
         fs.writeSync(progressFd, JSON.stringify({ pair: item, observations: bridge.observations().filter(event => event.trialId === item.trialId) }) + '\n'); fs.fsyncSync(progressFd);
         console.log(JSON.stringify({ pair: item.pairId, judge: item.status }));
     } }) : comparison ? await runComparison({ candidate, split: options['--split'], repetitions: Number(options['--repetitions'] || 1), mode: 'model',
-        maxRequests: Math.min(216, config.maxRequests), bridge, onTrial,
+        maxRequests: Math.min(216, limits.maxRequests), bridge, onTrial,
         onBaseline: value => { fs.writeFileSync(baselineFd, JSON.stringify(value, null, 2) + '\n'); fs.fsyncSync(baselineFd); } })
         : (await runBaseline({ mode: 'model', bridge, onTrial, trialSuffix: options['--trial-suffix'] || '' })).report;
     fs.writeFileSync(outputFd, JSON.stringify(report, null, 2) + '\n'); fs.fsyncSync(outputFd);

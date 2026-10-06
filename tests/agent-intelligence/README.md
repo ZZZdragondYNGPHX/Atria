@@ -308,7 +308,14 @@ model tokenizer. No key, header, provider response body, or local credential pat
 enters the report. Keep this file and all generated artifacts outside Git.
 The live CLI enforces paths outside this worktree; output targets are exclusive.
 
-Use the same ledger throughout pilot, comparison and retries. Reservations are
+Use the same ledger throughout pilot, comparison and retries. An explicit
+`--budget <file>` containing only `maxRequests` / `maxTotalTokens` can change the
+evaluation allowance while preserving the exact connection and model identity.
+It restores all earlier charges; it never starts a new allowance implicitly.
+The CLI enforces at least 3.15 seconds between admissions, with a durable
+rate checkpoint shared across phases (at most 20 admissions per rolling minute).
+Its finite cumulative ceiling (at most 252 requests) also bounds this evaluation
+well below the test API's 2000 requests per day. Reservations are
 atomically persisted before send and settled after directly reported usage.
 Transport cancellation / failure / missing counters retain the reserved upper
 bound. Unknown gateway retries, upstream identity, price and TTFT remain unknown.
