@@ -10,7 +10,7 @@
 
 用户要求根据远端 Frontier Agent RP 研究重新核对最新 main，按全面调研、讨论、确定方案、正式执行的顺序长期推进。
 本轮完成架构调研与分阶段讨论稿。用户确认 RP 与 Project Agent 并重，首批先完成双入口成长闭环，并包含有预算与回滚约束的局部自动启用。
-尚未改动产品源码，尚未创建产品实现分支；详细设计与实施范围继续在 D1 讨论。
+尚未改动产品源码，尚未创建产品实现分支。D1 已完成 M1 产品边界与架构执行约束冻结，S01 执行设计就绪。
 
 ## D0 — 最新 main 核对与架构调研
 
@@ -56,13 +56,21 @@ D1：沿已确认的 M1 范围与局部自动启用设计，收敛 scope / 权�
 
 ## D1 — 讨论与首批方案冻结
 
-- Status: **In discussion**。
+- Start docs HEAD: `1676b21e19a0bbf97ff57caeb5f520801cf8eb00`。
+- End / inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`；本轮 fetch 后仍与 origin/main 一致。
+- End docs HEAD: 包含本阶段记录的提交。
+- Status: **Complete — M1 boundary frozen / S01 Ready**。
 - Confirmed: RP 与 Project Agent 并重；首批 Skill / Prompt / 编排参数成长闭环包含有预算 / 回滚约束的局部自动启用；M1 完整交付后合并 main，再从最新 main 推进下一组，各正式阶段仍停止。
-- Prepared: [M1 具体讨论稿](../../plans/architecture/agent-intelligence-runtime/m1-evolution.md)，包含双 source 路径、bounded job、评价隔离、精确读取、发布 / 恢复 / 撤回和存储模式边界。
-- Pending: 自动模式默认值和具体门槛、适用 scope / 权限、首批真实案例、预算、详细 schema / 迁移及首阶段执行设计。
+- Latest user choice: 按角色 / Project 单独开启局部自动，并设置统一预算；新建对象默认审阅。来自本轮“按你推荐的来”，不重复询问。
+- Frozen: [M1 设计](../../plans/architecture/agent-intelligence-runtime/m1-evolution.md) 的 scope、预算必需性、精确版本生效、publish / recovery / rollback 约束；[S01 执行设计](../../plans/architecture/agent-intelligence-runtime/s01-baseline.md) 的 12 个案例蓝图、报告、有限 pilot、验证与退出条件。
+- Engineering detail: 默认值以外的 case / report 字段为本轮工程细化；没有声称用户逐字段批准。
+- Deferred: S02 资源 / source 契约，S05 retention，S06 / S10 的真实费用和晋升门槛在对应阶段前定稿。缺少参数或证据时不允许自动发布。
 - Decision authority: [decisions.md](../../plans/architecture/agent-intelligence-runtime/decisions.md)。
-- Implementation: 尚未开始。此节不宣布总体设计 Approved。
+- Validation: 复核 RP Director、Project model loop / authority、测试临时存储入口及当前 lockfile；本阶段仅修改 docs，未执行新的产品测试或真实模型请求。文档结构检查通过：10 文件、24 个内部链接、34 阶段连续、12 个唯一 S01 case ID 且六个 promotion；无机器专属路径、围栏配对。`git diff --cached --check` 通过。
+- Compatibility: S01 是 test-only cases / report / runner，无产品数据迁移；保护已有未提交 Experience 草稿。
+- Next checkpoint: **S01**。重新核对 main，创建本组短期产品分支，执行 s01-baseline；阶段结束更新同一 Record / live HANDOFF 并停止，不合并 main。
+- Implementation: 尚未开始；本阶段不表示 S02–S34 的所有技术细则 Approved。
 
 ## Final state
 
-长期任务仍在进行；本轮交付为研究与讨论材料，产品状态保持在上述已核对 main。
+长期任务仍在进行；D0 / D1 完成，S01 Ready，产品状态保持在上述已核对 main。

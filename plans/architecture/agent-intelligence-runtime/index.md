@@ -2,7 +2,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **Draft / Discussion**；本入口尚未批准产品实现。
+- Status: **M1 boundary frozen / S01 Ready**；远期路线及尚未引入的技术契约保持 Draft。
 - Updated: 2026-10-06
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)
@@ -24,8 +24,8 @@
 
 已确认：先调研、讨论、定案、执行；RP 与 Project Agent 并重；首批 Skill / Prompt / 编排参数成长闭环包含有预算与回滚约束的局部自动启用；M1 完整交付后集成，再从最新 main 继续。
 
-以下仍是工程建议：首批交付范围、自动化程度、作用域、认知更新权限、预算、具体 schema、模块路径与验收阈值。
-原研究和本 Bundle 都不能被当作自动开始实现的授权。决策状态只由 [decisions.md](decisions.md) 管理。
+本轮确认逐角色 / Project 开启局部自动，新建对象默认审阅，共用 owner 级有限预算。M1 产品边界与架构执行约束已冻结，S01 设计就绪。
+后续物理 schema、具体预算 / 阈值、迁移和 M2 以后认知权限按对应阶段深化；决策状态只由 [decisions.md](decisions.md) 管理。原研究仍为非约束性材料。
 
 ## 模块图与阅读路由
 
@@ -37,8 +37,9 @@
 | [delivery.md](delivery.md) | 34 个候选实施阶段、依赖、实际交付与验收 | architecture、research |
 | [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
 | [m1-evolution.md](m1-evolution.md) | 首批双入口成长、局部自动启用与恢复的具体讨论设计 | architecture、decisions |
+| [s01-baseline.md](s01-baseline.md) | S01 的具体案例、报告契约、预算、验证和退出条件 | decisions、当前代码入口 |
 
-当前 D0 / D1 读本入口、decisions 和 delivery；收敛首批时读 m1-evolution。需要核对事实时读 baseline；讨论对应技术时按 research 的资料分组阅读。
+当前 S01 读本入口 → decisions → s01-baseline → Record；按问题读取 m1-evolution / baseline。D0 / D1 已完成，无需重新进行全量调研。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -63,8 +64,9 @@ flowchart LR
 | Checkpoint | 状态 | 产物 |
 | --- | --- | --- |
 | D0 — 重新调研 | 已完成本轮架构覆盖；进入讨论 | 代码审计、一手资料复核、34 阶段讨论稿 |
-| D1 — 确定方案 | 首批范围与集成策略已确认；技术细则待收敛 | 固定权限、双场景验收、预算和首阶段执行设计 |
-| S01–S34 | 未开始；均为候选 | 不将研究性接口或预留字段计为能力落地 |
+| D1 — 确定方案 | 已完成本轮冻结 | 默认模式、scope / budget / publication 约束、S01 执行设计 |
+| S01 | Ready；尚未实现 | 12 cases、双入口 baseline runner、报告与费用状态 |
+| S02–S34 | 未开始；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
 本轮没有改动产品源码。实施分支尚未创建；候选名称为 `feat/agent-intelligence-runtime`。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
@@ -80,8 +82,6 @@ flowchart LR
 
 ## 进入正式实施的条件
 
-1. 讨论 decisions 中的产品边界，记录用户确认或调整。
-2. 明确首批阶段、双场景验收案例、基线、资源预算和主线集成点。
-3. 补齐首个实施阶段需要的具体契约、迁移、权限和失败处理，并将对应设计标为 Approved。
-4. 重新 fetch / 核对 main；只复核受变化影响的代码与模块。
-5. 以确认后的有限范围创建产品分支；不因远期阶段已列出而跨越正式阶段边界。
+产品范围与 S01 设计已就绪；下一轮重新核对 main 后创建本组产品分支，仅执行 S01。只复核变化影响的代码，不重新询问已确认的范围与默认方式。
+S01 不新增产品存储契约，迁移为无；S02 等后续阶段引入资源前必须补齐其详细校验 / 迁移 / 失败处理。
+每个正式阶段完成后按治理停止；不能因远期路线已列出而自动跨越阶段边界。

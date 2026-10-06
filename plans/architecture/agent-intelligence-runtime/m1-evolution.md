@@ -1,7 +1,8 @@
-# M1：双入口成长与局部自动启用的具体讨论稿
+# M1：双入口成长与局部自动启用设计
 
-> Draft / Discussion。用户已确认首批双入口、Skill / Prompt / 编排参数三类成长闭环、有预算 / 回滚约束的局部自动启用，以及 M1 完成后集成 main。
-> 本模块提出可审阅的责任、数据和发布流程；具体 schema、默认值及实施范围还需 D1 冻结。
+> D1 产品边界与架构执行约束已冻结；S01 详细设计见 [s01-baseline.md](s01-baseline.md)。
+> 用户已确认双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
+> 后续物理 schema / 数值校准按对应阶段细化；逻辑资源表不表示全部 API 已冻结。
 > 长期方向读 architecture；代码事实读 baseline；用户确认的唯一权威是 decisions。
 
 ## 1. 完整产品闭环
@@ -29,10 +30,12 @@ Project 示例：Agent 在重复 authoring 中多次错误选择修改入口。�
 Native Session 的 branch / revision 不强加给普通 chat；普通 chat 必须有自身 chat identity、message identity、variant / 内容指纹和来源有效性。
 安装的 Package 保持精确不可变资源；候选通过作者副本、用户自有 Preset 或已支持的显式 binding 生效。
 
-### 局部模式的产品设置（建议）
+### 局部模式的产品设置（已确认默认方式）
 
-用户在指定角色 / 会话 / Project 上选择自动模式，并配置允许的目标与预算。未选择局部模式的范围继续审阅。
-“首批支持局部自动启用”是已确认能力；是否在新建 scope 默认打开、首次校准如何完成仍待讨论。
+新建角色 / Project 默认审阅；用户逐 scope 开启局部自动模式。角色配置下更细的会话 / Preset 范围不得自动扩大。
+自动范围使用 authenticated owner + 稳定 subject ID + 目标 / 配置指纹，并配置 allowed fields；不能以显示名称或 client 声明的 owner 代替。
+所有 scope 共享 owner 级有限 request / token 预算，局部预算不能突破该总额。未设置有限总预算时，自动模型 job 为 budget_blocked；没有通过发布门槛时仍可审阅候选。
+自动发布只影响指定 scope 的下一 run；当前 run 继续精确版本。首次校准与数值门槛在 S06 / S10 定稿。
 关闭模式阻止新 job 与新发布；取消 pending work；已生效版本可以保留或通过明确操作回到上一版本。
 
 ## 3. 数据模型：只实现 M1 的消费者需要的内容
@@ -156,10 +159,11 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 优先验证 FS 与 SQLite 的持久与恢复；触及公用资源 registry 或跨模式格式时，补相应 targeted contract checks，真实外部 DB 证据按阶段记录。
 项目删除、用户删除、read-only mode 与 scope 关闭均有明确处理；保留期限及容量在 S02 / S05 定稿。
 
-## 10. D1 剩余收敛项
+## 10. 已冻结范围与后续深化
 
 第一批三类候选均纳入、分阶段发布，以及 M1 完成后集成 main 再推进下一组，已由用户确认。
-建议先使用仓库可复现 RP / Native authoring fixture 建代表案例，再在已配置的真实模型上验证；用户指定案例可替换对应 case revision。
+首批使用仓库可复现 RP / Native authoring fixture 建代表案例，再在已配置的真实模型上验证；用户指定案例可替换对应 case revision。
 
-待确定：局部模式默认值、目标 allowlist、保留 / 删除策略、实际模型与费用预算、改善 / 回归门槛、S01 具体任务与有限交付集成策略。
-D1 确认后，为 S01 / S02 补精确字段、错误码、迁移和 test cases，再进入正式实现。
+S01 cases / report / 运行界限见 s01-baseline。产品 scope、版本生效、共享预算、发布 / 恢复 / 回滚流程作为本组执行约束。
+S02 前定稿 source adapter / storage key / error contract；S05 前定稿 retention / 删除细则；S06 / S10 前用真实基线定稿费用和晋升 / 回归门槛。
+参数缺失、证据不足、旧版本不可取回或配置冲突时不能自动发布；后续不得用预留接口代替 M1 必需的局部自动能力。

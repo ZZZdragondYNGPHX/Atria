@@ -1,7 +1,7 @@
 # 34 个候选阶段：交付、依赖与验收
 
-> Draft / Discussion。阶段数服务于可独立审阅与验证，不是为了拆碎改动。
-> D1 冻结首个有限交付单元及对应设计；远期阶段按当时 main / provider / 评测证据继续深化。
+> M1 范围已冻结，S01 Ready；后续具体契约与远期阶段按最新 main / provider / 评测证据继续深化。
+> 阶段数服务于可独立审阅与验证，不是为了拆碎改动。
 
 ## 1. 建议的交付组
 
@@ -31,15 +31,15 @@ M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；�
 ### D1 — 冻结首批方案
 
 首批双入口、三类候选、局部自动启用与 M1 完成交付后集成的安排已由用户确认。
-继续收敛具体作用域 / 权限、自动模式默认值、两种验收用例、预算和兼容设计。
-补齐首批详细契约和数据迁移；其余路线仍为候选。
-冻结后才能创建产品分支开始 S01。不能仅通过选择某个产品优先级将整个 Bundle 自动标为 Approved。
+逐角色 / Project 开启局部自动、新建默认审阅、共享 owner 有限预算已确认；scope / publication / 恢复约束与 [S01 执行设计](s01-baseline.md) 本轮冻结。
+S01 使用 test-only cases / report / runner，无产品数据迁移；S02–S10 的资源契约在引入能力前细化，其余路线仍为候选。
+D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整个 Bundle 自动标为 Approved。
 
 ## 3. M1 — 证据、评价与经验成长
 
 | 阶段 | 依赖 | 实际交付 | 针对性验收 |
 | --- | --- | --- | --- |
-| S01 — 双场景基线与 Eval cases | D1 | 固定 RP 与 Project 案例、结果指标、质量底线和资源记录；复用现有测试 / generation 路径 | deterministic fixture 与真实模型 trial 分开；能区分 final text、正式 state 和 review status |
+| S01 — 双场景基线与 Eval cases | D1；s01-baseline | 固定 12 个 RP / Project 案例、报告、baseline runner 与资源记录；复用现有测试 / generation 路径 | scripted / model 分开；区分 final text、正式 state、Review；模型缺失明确标记，晋升前必须补齐 |
 | S02 — 来源 / 引用 / 有效性最小契约 | S01 | 两种 source adapter 和首批 EvidenceSet / Evaluation consumer，复用现有 result / artifact | 伪来源、错误 owner / branch / hash、删除或失效源均不可当成当前证据；展开有预算 |
 | S03 — RP 可靠轨迹与持久证据 | S02 | 连接 run / child / effect / request / message variant 与 Native outcome；补 Director bridge 的 trace 关联 | 当前投影不变成全文日志；捕获缺失显式显示；取消、重生成、重试不交叉关联 |
 | S04 — Project 持久任务与轨迹 | S02、S03 的公共持久层 | 为现有 ProjectAgentService 增加持久任务 / attempts / timeline，并关联 Studio validation / Review / changeset | Host / 浏览器重启后恢复；commit receipt 幂等；过期 baseRevision 进入 conflict，不重复写入 |
@@ -51,7 +51,7 @@ M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；�
 | S10 — 评测晋升、撤回与双入口产品闭环 | S07、S08、S09 | 审阅差异、评测报告、精确启用；有预算约束的局部自动启用、停用 / 回滚 | 三类目标分别归因；组合回归；RP 与 Project 都从反馈走到下一次行为改变；自动模式的冲突、重启、预算耗尽与撤回可验收 |
 
 第一批不能止于日志、规则列表或“AI reflection”。发布改变必须由相同权威读取入口真正消费，并在独立案例评价。
-如果三类候选范围过大，D1 可以先冻结其中一类并保留其他阶段；必须显式改变第一批验收，而不是阶段结束时悄悄缩水。
+三类候选是已确认的 M1 范围；若出现实质范围变化，明确记录调整，不在阶段结束时悄悄缩水。
 
 ## 4. M2 — 持续目标与有界自主性
 
@@ -128,6 +128,7 @@ S28 / S29 / S34 需要在各自阶段设计时落实真实 provider、预算和�
 | 阶段 | 必读 | 按需 |
 | --- | --- | --- |
 | D0 / D1 | index、decisions、delivery；首批收敛时读 m1-evolution | baseline；research 对应资料组 |
+| S01 | index、decisions、s01-baseline、Record | 仅对应代码 / test helpers；baseline / m1-evolution 的有关段落 |
 | S01–S06 | index、decisions、m1-evolution、architecture §2–4、baseline §1–3 / §7、当前阶段详细设计 | research §1 的评价 / memory 应用 |
 | S07–S10 | index、m1-evolution、architecture §4、baseline §5、当前阶段详细设计 | research 的 GEPA / ACE / MUSE |
 | S11–S14 | index、architecture §5、baseline §2–4、当前阶段详细设计 | Goal 官方资料 |
