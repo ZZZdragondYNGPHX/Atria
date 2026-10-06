@@ -8,9 +8,8 @@
 
 ## Summary
 
-用户要求根据远端 Frontier Agent RP 研究重新核对最新 main，按全面调研、讨论、确定方案、正式执行的顺序长期推进。
-本轮完成架构调研与分阶段讨论稿。用户确认 RP 与 Project Agent 并重，首批先完成双入口成长闭环，并包含有预算与回滚约束的局部自动启用。
-D1 已冻结 M1 产品边界；D2 综合三份新增研究，D3 整合 Reasoning Continuity，D4 整合 Execution Reuse / Cache Locality / Adaptive Invocation。S01 已完成 test-only 双入口基线，S02 已完成生产只读来源 consumer，S03 已完成可靠 RP metadata 捕获与公共持久层。产品工作分支为 `feat/agent-intelligence-runtime@78acfb65da6b1afa1dee1c2f35482af215832c74`，已 push，main 未变化。D4 仅企划更新；无真实模型效果结论，下一正式阶段仍为 S04，尚未执行。
+长期 Agent Intelligence Runtime 任务沿同一产品分支实施；D0–D4 / S01–S05 已完成。用户本轮仅续接 S06，并明确提供专用测试模型连接、允许私有配置留在本地，先接受建议 120 requests / 250000 tokens / 每次输出最多 1024，后明确建议非硬限制，API 每日 2000 requests / 20 RPM；站点首字较慢，单次等待扩展为 5 分钟。
+本轮完成 S06 双入口隔离 comparison、Native Session save-copy 检查、原 generation live bridge 与可恢复预算；六槽真实开发基线和六对独立比较均 execution / authority passed，五个有效 model observations / 一个无效响应。候选晋升仍拒绝，不声明稳定质量 / 成本收益。产品 HEAD `54c79cb8eea7d6ca5c7e5e4ff262fe0ca6666a64`，main 保持 `ed1fd90521a63363e29856601abbf5e908c99d10`；S06 阶段完成后停止，下一 checkpoint S07，详细实测和限制见本 Record 的 S06。
 
 ## D0 — 最新 main 核对与架构调研
 
@@ -371,6 +370,74 @@ API / Schema / key、容量 / TTL、完整依赖覆盖、semantic threshold、�
 - 下一正式阶段仅 **S06**：真实 Git → HANDOFF → index / decisions → s01-baseline / m1-evolution / s02-sources / s03-capture / s04-project-recovery / s05-feedback / delivery S06 / baseline 隔离与相关 authority → 本 Record；冻结双入口隔离执行 / 比较 envelope、独立 split、原 Workspace / Session 副本与确定性 outcome / usage 缺失路径。真实有限 pilot configuration / bridge 尚缺，不发现 Secret、不选择付费 route、不用 scripted 替代实测门槛。
 - 本轮到 S05 commit / push、同一 Record / live HANDOFF 后停止；不开始 S06，不合并 main 或删除本组分支。
 
+## S06 — 双入口隔离比较与有限真实模型接线
+
+- Start product HEAD: `caf662842941d3261dc1840242278f5529db10af`。
+- Start docs HEAD: `a6a40f62cf3ca7a9875674d48aeafa404ab4f2c2`。
+- End / local tested implementation HEAD: `54c79cb8eea7d6ca5c7e5e4ff262fe0ca6666a64`；同一 `feat/agent-intelligence-runtime`，未合并 main。
+- Actual tested HEAD: 最终六槽 pilot 为 `7d7708c1486c5b48b430eb2210e89768f4aabfb0`，完整 promotion comparison 为 `b5df610bdffd05d60ef3bc9bd6e62e7d9a164aa3`；grader 执行于 `7d7708c1486c5b48b430eb2210e89768f4aabfb0` 的实现，JudgeReport另 pin 实际源码 byte hash而无HEAD字段。初轮 dirty 实现报告分别 pin当时 HEAD / source bytes，不将未提交代码或后来HEAD混称实测身份。最终HEAD仅新增CLI / URL接线和相应本地回归。
+- Status: **Complete — 隔离 evaluator / 真实基线与独立比较 checkpoint；候选晋升仍拒绝**。
+- Plan: [S06](../../plans/architecture/agent-intelligence-runtime/s06-comparison.md)；Task ID / Primary Workspace 保持。
+
+### Implementation / decisions
+
+- `comparison.mjs` 是 test-only 本地 evaluator：原 12 cases / split，显式 split / 1–3 repeats，单一 synthetic RP Prompt / Project Skill / roundLimit target；baseline / candidate 各自私有 chat / Studio Workspace / Project task，不发布配置。原 per-run message editor、Director / Studio model loop、ProjectAgentService / StudioService / Git receipt 完整复用。
+- Comparison v1 严格容量 / schema / coverage / refs / fixture / input / rubric / settings / source / request / outcome / summary 校验；pin 实际源码字节与 HEAD。每次 invocation / trial / request ID 独立，不共享可变状态；模型比较先持久化完整独立 baseline，随后跑 candidate。预算 / 执行失败保留所有槽位与缺失。
+- Project 工具仅经 exact Project / task 的有限 GET / POST 接线；Commit / publication / foreign Project / DELETE / 网络和未知路径拒绝。fixture reviewer 只在模型 Review 后向临时副本 Commit / replay；无关 Project canary 前后 hash 相同。模型不获正式生产写入权。
+- NativeSaveSystem exportSession、原已安装 Package exact archive、importSave 与 SessionCore 校验同 revision 的两个独立副本，candidate append / stale CAS 与来源 / baseline 不变。这是副本隔离验证，未接生产 Session generation replay。RP 生成使用原 Director 与 synthetic task context，fixture 可见历史不是 Memory resolver。
+- 原 Native Prompt persistence / immutable library / resolver / compiler / HTTP provider 接用户明确测试 connection；Project 接原 NativeGenerationHost 与隔离 Studio task。RP 多轮去除 Director presentation / reasoning metadata，保留 public tool pairing；单条 tool 与完整 Studio loop 的原 Host 接线有本地回归。真实 Project 读取结果被误当 task、repair seed 使用错误 tool 字段、显式分段 Skill read 被过窄路由拒绝先暴露失败；修复后 read / bounded Skill read / write / reset / Review 完整原 Host 测试通过。
+- `live.mjs` 明确读取 Git 外的私有 connection，输出 / progress / 独立 baseline 新文件；ledger exclusive writer lock 与原子持久化在 send 前生效。`EvaluationBudget` 全流程累计 model / retry / fallback / grader、每 trial 最多六次普通 sends；未知 / 取消 / failed usage 保留预留，restore 不重置、过量实报记账并封锁后续发送。
+- 初始建议 120 / 250000 / output 1024，后用户明确 API hard cap 每日2000 / 20 RPM。显式 budget override 保留旧账、当前 finite guard 252 / 1000000、output1024；持久 rate checkpoint / 3.15秒 admission 间隔不超过20RPM。初轮 timeout 60 秒，获知首字慢后改为 300 秒，不重置已发送计数。不提交凭证、headers、原始 provider body、报告或本地配置；私有 key 仅 send boundary 读取。local tokenizer / context guard 不宣称 Gemini 精确能力。
+- Blind pair human observation 有 exact artifact / envelope binding 与每 pair ≤3 judges；分歧 awaiting_review。未运行行为评分不填零或通过；单次 blind model judge 已实现严格 typed observation / confidence / score / 实际共享 grader charge；不改写原 S01 behavior slots，human preference / 多 judge 分歧仍未观测，promotion thresholds 未定稿，不赋予 publication eligibility。可用原 Director scripted graph，仅此；其它等价 ablations unavailable。
+
+### Minimal local validation
+
+- 当前累计最小相关验证：comparison 34、baseline 51、live-bridge 11、runner-failure 1、judge 4，共 **5 relevant suites / 101 distinct tests passed**；97-test 组合通过后，partial counter 修补只定向复核 live-bridge / judge 13 passed，不累加重复。用户纠正 URL 后增加 `/v1` / `/v1/` 两个参数化用例，最终仅定向 live-bridge / judge **15 passed**；首条校验命令使用不存在的 .js config未启动测试，随后使用原 .json config通过。新增 live tests 用 injected HTTP response 经过真实 compiler / provider / Host，不称真实模型质量通过。
+- strict mutation / mixed source / same-arm refs / outcome / usage / summary / publication、低 roundLimit 真实失败、有限共享预算所有槽位、取消 / 迟到 completion、Session copy revision / CAS、Studio publication / Commit / foreign / method / network 拒绝、恢复 pending reservation / breach不能复位、真实 Host 完整 Studio loop 至 Review / fixture Commit。
+- 初始 comparison 故障暴露取消等待卡住、undefined observation 与重复构建 Package archive hash 不同；修复取消 wait race、显式 null 和 exact installed archive 后仅做相关复核。真实 RP 第二轮暴露 Director metadata 被传入 Native renderer；public-message lowering 后已有真实多轮完成。
+- scripted CLI 生成 / strict validate / model missing-config 保留槽位 / exclusive overwrite 拒绝；最终 live pilot / paired comparison / JudgeReport strict validate。触及 JS / mjs ESLint、product diff 通过；docs链接 / fence / 40阶段依赖 / 前序 Record / dirty hash 与 staged paths 在收尾检查。
+- 没有生产 source / UI / schema / lockfile 变更，未执行 build、全量测试、browser、Android / 真机、远程 CI 或外部 DB。仅已授权测试 endpoint 有实际模型请求；未读写 reference 或其它 Experience 草稿。
+
+### Real observations
+
+测试模型为用户明确提供的 OpenAI-compatible `gemini-3.8-flash`；初期与完成运行使用完整 generation endpoint。后用户纠正为 `/v1` base，最后一个提交只补 evaluator 的一次拼接与两种 base 变体回归；历史模型报告不改写。Gemini final pilot / 完整比较 / judge 在最终实现上重新 strict validate通过，以下 hashes 为完整报告 canonical hashes，不是文件字节 hash。
+
+| 保留报告（Git外 artifacts目录） | 实際 sends | tokens / 知识边界 | 执行观察 |
+| --- | --- | --- | --- |
+| `pilot.json` | 6 | 17650，预留上界 | 初轮60秒timeout / 接线失败，六槽失败，不补通过 |
+| `pilot-slow-endpoint.json` | 8 | 18664，含未知预留 | 300秒等待，仅一个RP槽通过；其它接线 / transport失败 |
+| `promotion-comparison.json` | 11 | 21285，partial / unknown保留 | 首轮比较暴露Project接线错误，全部12槽保留；不作候选合格证据 |
+| `pilot-read-tools-fixed.json` | 16 | 44109，provider reported | RP三个 / Project一个通过，另两个Project受bounded Skill read接线限制；修复后重建明确运行 |
+| `promotion-comparison-fixed.json` | 42 | 133569，reserved upper bound | 六对共12 trials execution / authority全部 passed，44 tools / 44 deterministic checks passed；取消旧variant仍保留usage预留 |
+| `model-judgments.json` | 6 | 5629，provider reported | 5 observed / 1 invalid_response（rp_variant），不补分或重发 |
+| `pilot-final-code.json` | 18 | 57167，provider reported | development六槽全部 execution / authority passed，18 tools / 21 deterministic checks passed，S01 empiricalReady=true |
+| `supplementary-haiku-probe.json` | 1 | 1169预留，usage unknown | connect timeout，10547 ms，未收到响应 |
+| `supplementary-haiku-probe-connect30.json` | 1 | 53，provider reported | HTTP200，4063 ms，有效编程文本响应；未执行代码 |
+| `supplementary-haiku-probe-base.json` | 1 | 1169预留，usage unknown | `/v1` base经原provider发出正确生成路径，HTTP524 / 126139 ms；不再重试 |
+
+全部实际发送 / grader / 取消 / 失败合计 **110 requests / 300464 tokens**，durable ledger `breached=false`；其中unknown按本地预留上界计入，不能把累计数称真实计费或精确provider总量。没有清账或退款。当前252 requests / 1000000 tokens有限guard内剩余142次 / 699536记账tokens；这不是新一轮可自动花费额度或网关实际每日剩余额度。测试回归的fake HTTP与scripted structural输出没有外部调用。
+
+| 完整报告 canonical hash | 实际 source / tested identity |
+| --- | --- |
+| pilot `c03cf7eae138bb770f79830350f3a2e5e238e255e41ba44d1c9938c11fae3577` | tested HEAD `7d7708c1486c5b48b430eb2210e89768f4aabfb0`；adapterRevision `3ee05e084125bb418602fa92900a7ee71c6bb7b4f944f20285988375ec0f97af` |
+| comparison `caee10f7ff16c957ff8e3da85fe155042544eed27ad653e19b8886546b5e33dd` | tested HEAD `b5df610bdffd05d60ef3bc9bd6e62e7d9a164aa3`；evaluatorRevision `2cb0f2081886f2bedeac029ddf2b5a5b1cb97aa765ccb2b6b2fe6e07c8ced855` |
+| judge `98bb43a7765b4114cfba895a1f7c6d71abb91ce05f034777b2b66901d559c1a9` | evaluatorRevision `57707d2808fc1b42a28e02cde89ef0ead188c1b1fb8e84026e7abfd52c16efc7`；报告无HEAD字段，不凭source hash补造 |
+
+`independent-baseline-fixed.json`与comparison baselineHash绑定；真实baseline先于任何candidate完成并独立保存。唯一候选在读取promotion输出前冻结于 `candidate.json`，target=rpPrompt，内容为仅用可见更新facts的简短NPC回复、保留玩家决定、write_message后finalize；Project配置不变，仍独立运行完整六对。每个promotion输入 / side / actualrequest / tools / outcome / usage可追溯，不用development输出代替promotion结果。只做一次repetition，不声称统计稳定性。
+
+Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory candidate（.8，promise 4 vs 3）；rp_variant invalid_response，无分数；Project三个tie（confidence 1，intent 4/4、conflict 3/3、repair 4/4）。这是五次model observations；无人类labels、无独立多judge分歧证据，malformed响应需审阅，不能证明稳定改善。原S01 behavior保留not_run；Comparison empiricalReady=false、JudgeReport promotion=ineligible，价格 / costDelta / latencyBenefit不可知。S06完成隔离执行与报告消费，不表示候选晋升、M1整体或自动启用完成。
+
+第二个 `claude-haiku-4-5` 连接由用户明确补充，未知RPM采用单请求串行至少10秒间隔、独立配置与receipt，三个探针不混进Gemini trials / scores。连接曾成功，最终base配置请求为524；不承诺站点稳定性或模型工具能力。首个失败保留，第二次用原已安装undici的30秒connect timeout，未安装依赖或改变lockfile；第三次只核对用户纠正的base接线，停止附加重试。
+
+本地Git config `atria.s06.connection` / `ledger` / `artifacts` / `limits` / `secondaryconnection`仅存Git外位置，不把值写入文档。两份private config mode600，Secret仅本地保留；公开报告不含credentials、headers、原始provider response body，所有输出新文件、共享writer lock已释放，rate checkpoint与账本保留。最终docs检查覆盖本任务七文件、82个内部links / 两个锚点、40阶段依赖与D0–S05原Record文本不变、五份既有dirty hashes不变；product / docs staged diff与两条实际key扫描通过。
+
+### Remaining / next checkpoint
+
+- **S06 完成；下一 checkpoint S07，本轮未开始。** 六槽真实基线 / 独立六对执行与 authority通过满足 S06 原入口 evaluator checkpoint；缺评分 / human labels / price保持不可知，Comparison 与 JudgeReport publication / promotion仍 ineligible，不把一次偏好解释为稳定改善。
+- S07 沿原 Skill repository 冻结 candidate版本、exact读取pin、发布冲突与历史，再实施局部消费者 / 兼容 / 失败检查；不提前实现 S08–S10，不进 G / Local。本组 M1未完成，不合并 main或删除产品分支。
+- 以后真实补测仍恢复同一 durable累计ledger / rate checkpoint，明确budget override；当前私有连接按用户纠正保存 `/v1` base，原 evaluator拼接一次endpoint。配置identity与早先完整URL报告不同，历史实测/hash不得改写或覆盖。
+- 本轮产品五个提交已push；docs阶段记录 / Plan / live HANDOFF只提交本任务七文件。docs完成HEAD以包含本段的提交及origin实际refs为准；既有dirty不暂存，前序Record / 40阶段依赖 / protectedhash按收尾检查保持。
+
 ## Final state
 
-长期任务仍在进行；D0–D4 / S01–S05 完成。本轮仅 S05 实现、最小本地验证、commit / push 与同一 Record / live HANDOFF 后停止；产品 HEAD 为 `caf662842941d3261dc1840242278f5529db10af`，main 未变化。下一正式阶段 S06 未开始。M1、S01 真实模型基线、通用 reuse / cache / invocation 与 G / Local 阶段未计作完成。
+长期任务仍进行；D0–D4 / S01–S06 完成。S06已交付原 authority隔离比较、explicit live bridge、恢复共享预算、真实六槽基线与独立六对执行；101 distinct local tests passed，typed grader五个有效观察 / 一个无效响应。产品HEAD `54c79cb8eea7d6ca5c7e5e4ff262fe0ca6666a64`，main未变化；下一checkpoint S07，本轮未开始。S01六槽live empiricalReady=true；M1整体、稳定行为 / 成本收益、candidate publication与自动晋升均未计作完成。

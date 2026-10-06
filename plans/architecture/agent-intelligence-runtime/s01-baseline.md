@@ -1,6 +1,7 @@
 # S01 — 双入口基线与 Eval cases 执行设计
 
-- Status: **Structural / scripted complete；empiricalReady=false**；实际实施与验证见 [Record 的 S01](../../../records/refactor/agent-intelligence-runtime.md#s01--双入口基线与-eval-cases)。
+- Status: **原 S01 阶段 Structural / scripted complete；当时 empiricalReady=false**；实际实施与验证见 [Record 的 S01](../../../records/refactor/agent-intelligence-runtime.md#s01--双入口基线与-eval-cases)。
+- Live checkpoint: [S06](s06-comparison.md) 已补原 generation bridge / 可恢复有限预算，最终六个 development trials execution / authority全部 passed，18 sends / 57167 provider-reported tokens，S01 live report empiricalReady=true；独立 promotion六对与保守 model judge另见 S06 / Record。S01 原结构历史保持；未评分行为与候选晋升仍不可知 / 不合格。
 - Task ID: `agent-intelligence-runtime`
 - Product baseline: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Basis: 用户已确认 M1 范围、三类候选、局部自动启用、逐 scope 开启和分组集成；本模块是该已授权任务的首阶段工程细化。

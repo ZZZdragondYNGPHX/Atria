@@ -175,5 +175,5 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 首批使用仓库可复现 RP / Native authoring fixture 建代表案例，再在已配置的真实模型上验证；用户指定案例可替换对应 case revision。
 
 S01 cases / report / 运行界限见 s01-baseline。产品 scope、版本生效、共享预算、发布 / 恢复 / 回滚流程作为本组执行约束。
-S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 新 key / 校验 / 迁移已由 s03-capture 定稿；S04 Project task 持久 / 恢复已由 s04-project-recovery 定稿并交付；S05 已定稿并交付 feedback / diagnosis 作用域、retention / 纠正 / 删除 / 导出，下一阶段 S06；S06 / S10 前用真实基线定稿费用和晋升 / 回归门槛。
+S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 新 key / 校验 / 迁移已由 s03-capture 定稿；S04 Project task 持久 / 恢复已由 s04-project-recovery 定稿并交付；S05 已定稿并交付 feedback / diagnosis 作用域、retention / 纠正 / 删除 / 导出，[S06](s06-comparison.md) 已交付显式 live bridge / 共享预算、真实六槽基线与六对独立比较；原 authority 检查通过、judge五个有效观察 / 一个无效响应。S06 evaluator checkpoint完成，候选晋升仍拒绝；费用 / 稳定行为收益、人工偏好与晋升 / 回归阈值未合格，后续 S10 必须据真实证据校准并验证，不能因可执行比较而自动批准。
 参数缺失、证据不足、旧版本不可取回或配置冲突时不能自动发布；后续不得用预留接口代替 M1 必需的局部自动能力。
