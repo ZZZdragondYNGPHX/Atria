@@ -438,6 +438,46 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - 以后真实补测仍恢复同一 durable累计ledger / rate checkpoint，明确budget override；当前私有连接按用户纠正保存 `/v1` base，原 evaluator拼接一次endpoint。配置identity与早先完整URL报告不同，历史实测/hash不得改写或覆盖。
 - 本轮产品五个提交已push；docs阶段记录 / Plan / live HANDOFF只提交本任务七文件。docs完成HEAD以包含本段的提交及origin实际refs为准；既有dirty不暂存，前序Record / 40阶段依赖 / protectedhash按收尾检查保持。
 
+## S07 — 原 Skill 候选与完整版本、真实运行读取 pin
+
+- Start product HEAD: `54c79cb8eea7d6ca5c7e5e4ff262fe0ca6666a64`。
+- Start docs HEAD: `6adb6902df6671af12b26d4280ec07e7798125b7`。
+- End / tested product HEAD: `57f4e814af373b4659ba247f9891edd80652c356`；同一 `feat/agent-intelligence-runtime`，commit / push 完成，main 未合并。
+- Initial implementation commit: `375a917c8237cfb393a681db18c17e355fc3bc8e`；最终 `57f4e814af373b4659ba247f9891edd80652c356` 仅补内部 staging 路径 guard 与同一测试的拒绝覆盖。
+- Status: **Complete — S07 only**；详细契约先冻结于 [s07-skills](../../plans/architecture/agent-intelligence-runtime/s07-skills.md)。未加载 repository-agent Skills、未读写 reference / 其它 Experience 草稿。
+
+### Implementation / decisions
+
+- 原 Skill repository 继续以用户 Skill 文件目录为有效配置 authority；新增`skills/.history/<scope>/<name>`的完整 immutable v1 snapshots 与 candidate v1 metadata，不新增 StorageEngine kind 或独立配置读取器。version 复用完整 installedHash 算法，内容 / path / file hash / aggregate hash 每次读取重验；历史不宣称时间顺序或 revision counter。
+- scope 解析和 visible / deny / invocation settings 先行；accepted pin 核对 actual 完整 hash。RP Director / child Agent、Spec nodes、Agenda workers 共享 run 弱引用 pin，Loop 保持单 Agentaccepted 版本；Native narrative 与 Project Studio 保持同一 generation / loop 的 version。always / read / files / search 都消费同一完整 snapshot，下一 preparation 新读 inventory；取消旧五秒全局 cache。缺 version / snapshot、corruption、删除与 identity 变更不 fallback 到 latest。
+- Native supporting-file list 仅返回 metadata，不序列化完整 Buffer；available Skill / always 与 read 结果可观察 exact version。Project 显式 Continue 是新 preparation，未声称 task 整个生命周期固守一个 Skill。旧管理 / editor / embed 入口不传 version 继续读取当前文件；malformed / name-mismatch 旧 manifest 不伪造有效 snapshot，也不阻断修复。
+- 每 Skill 最多 64snapshots / 64MiB rawsnapshot bytes、64candidates（每份序列化 metadata≤2MiB）；容量不足拒绝新 pin / 写入，不淘汰已接受版本。binary 支持文件完整保存，文本 read 拒绝 binary；重复 / 非 canonicalpayloadpaths 和 symlinks 拒绝。history / candidates 与原 Skill 目录一起走原 sync / 用户目录生命周期，embed / memory inventory 不包含历史。
+- Skill 正文 candidate 保持整个 frontmatter 及所有支持文件，保存 base / desired、完整 diff 与确定性 candidateId。check 除 schema / hash / scope / diff 外重验支持文件与声明不变，即使 sync 导入 hash-valid 扩权 candidate 也拒绝。候选本身不切当前配置、不宣称关联 S05 诊断或 Evaluationeligibility；S10 仍需 provenance / policy / source-deletion dependency、完整 Review 和自动晋升 consumer。
+- `POST /api/skills/:scope/:name/pin`需要 expectedHash；history / candidates / check / explicitapply 沿现有 authenticated per-user repository。file / files / search 追加 versionquery；响应 no-store；候选 save / explicitapply 分别是原用户编辑权限，没有 model job、后台 loop、新 UI 或自动 publication。PackageHTTP 写仍 403，repository 也拒绝 edit / candidate / 不同内容替换；原首次安装与 same-content 幂等安装保留。
+- repository 所有读写与不同 instance 共用 dataRoot 单进程排序；install 可选 expectedInstalledHash，candidate apply 必需 expectedBaseVersion 并重验完整当前内容。apply 原子切换 SKILL.md；desired 仍为 current 时重复显式 apply 返回 alreadyApplied，响应丢失后不重复写。整个内容相同视为同一 version，不能声称检测 ABA；多 Host / 外部 editor 没有共享队列。
+- 原 file write / edit 清临时文件，crash 遗留 UUID staging 不会混入 installedHash。正常 directory replace 切换失败恢复旧目录；move / scope rename / copy 先复制 history，history copy 失败不先迁移 source。delete / scope 删除清 history / candidate 并撤销 pin，损坏 history 不阻断删除；新同名 install 清未完成删除留下的 orphan history。name rename 改变声明 identity，清旧 history / 新名称新建；scope copy / move 保留 version 但原 candidate scope identity 不可复用。
+- 原 global read-only guard 适用于全部 Skill mutations；已有 snapshot 可 pin / read、candidate check 不持久写，缺 snapshot 不能创建，HTTP503。没有 SQL 独立 candidate 迁移；SQL 产品部署仍依托原 Skill FS 目录，不能声称 StorageEngine dump 单独包含 Skillhistory。
+- S06 隔离 Projectfixture 改为通过真实 Skill repositoryinstall / pin / exactread，保留原 limitedbridge 路径限制；header+fixture 正文随实际请求绑定，不改写历史模型报告 / 哈希或 S06 promotion 状态。
+
+### Minimal local validation
+
+- **13 relevant suites / 247 distinct tests passed**：versions23、run-pins4、repository72、api-rest46、browser api16、embed14、native invocation10、RP tools14、resolver23、precedence8、Native / multi-visible3、runtime plumbing3、live-bridge 11。重复不累加。
+- 12-suite 组合 174 passed；最后增加 malformed legacy repair，并定向 versions / repository / api-rest **3 suites / 141 passed**。最终 staging 路径 guard 仅定向 versions / repository **2 suites / 95 passed**，不重复累计。命令沿原 `node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand <对应 tests>`；README 提供 S07 最小两套入口。首轮定位 Package 首次安装误阻断与缺 pin 旧 fixture、S06 restricted fixture 未接新 version、Native always 预期缺 version；修复后相关定向通过，没有降低 production pin 要求。
+- 真实临时 FS restart、全 Skill 旧版本 / 支持文件 / binary、并发两 repositoryCAS、一文件或 full-install 冲突、candidateimmutable / declaration 与 support 限制、未知 schema / hash corruption / history 容量、write / snapshot / directory rename 失败、delete / 同名重装 / rename / copy / move、read-only / 503、malformed 旧 manifest 修复。
+- 实际 RP Director 主 Agent 与派发 Agent 跨原 runtime / tools / repository 执行：model stub 在 accepted 之后修改 liveSKILL.md 及 reference，两个 Agent 仍 read 同一旧 version 与旧正文，正式 fixturemessage 完成；另测 always / search / next-run fresh。原 NativeprepareNarrativeSkills 验证 always / read / metadata files / deletion，无新真实模型。
+- 实际 HTTProuter / injected per-owner roots、body 伪 owner / scope 不改变 authority、pin409 / missing404 / no-store、candidate / explicitapply / idempotentreconcile、exact file / files / search。Browsertransport 验证 versionquery 与 pinCSRF。原 sync snapshot / reconcile round-trip 恢复 history 及 candidate，历史不混入 embeddedfiles；hash-valid 同步候选夹带支持文件改动被拒绝。
+- 原 Stage S06 live-bridge 11 通过，含真实 Studio / GenerationHost / limitedfixturebridge 的 read / boundedSkillread / write / reset / Review 与 fixtureCommit；provider 是注入 HTTP response，**不是新增真实 model 质量证据**。runtime plumbing 覆盖 Loop / Spec / Agenda 现有调用接线。
+- 触及 22 个 JS 文件 ESLint、product / staged diff 检查通过；文档 links / fences / stage 依赖 / 前序 Record 与五个 dirtyhash 按收尾检查保持。复用已安装依赖，不改 lockfile、不读取连接 / Secret / ledger、不发模型请求。
+- 未执行全量测试、build、browser / UI、Android / 真机、外部 DB、远程 CI。没有生产用户 Skill、Package 或其它对象写入；所有运行 / HTTP / sync 样例为临时 fixture。S06 预算 / 私有配置与报告不读写，已知累计仍 110requests / 300464 记账 tokens，不把它当本轮实测。
+
+### Limitations / next checkpoint
+
+- 单 Host writer 支持；外部文件修改在 acceptance 时 hash 不符则 conflict，不提供跨进程锁或 revision counter。所有 Skill 读写共用一个 root 队列；历史容量检查有有限文件 IO，不声称零开销。
+- Snapshot / candidate 是原 FS 资源；正常失败路径与 repository reopen 已验证，不宣称 physical fsync 或跨资源事务。进程恰好退出于原 directory replace 交换窗口时可能 temporarily unavailable，backup 保留，未引入自动 crash replay；candidate 单文件 apply 与 desired-currentreconcile 已实现，完整 PromotionIntent / scheduler / publishreceipt 归 S10。
+- 删除撤销后续 pin 读取；已装入请求的 always 文本不热改。没有自动依照反馈撤回生效版本；futureS10 必须关联同一 S05exact source / withdrawal / retention 依赖和 S06evaluation。
+- **下一 checkpoint 仅 S08**：真实 Git → HANDOFF → index / decisions → m1-evolution / deliveryS08 / s07-skills / s06-comparison → 同一 Record；按需 baseline 的 Prompt / resource / Presetauthority。先冻结可演化正文区块、candidate exactref / diff、有效 binding、Package 兼容 / missing-version / conflict，然后实施最小消费者。
+- 本轮 S07 commit / push、同一 Record / live HANDOFF 后停止；S08–S10 / G / Local 未开始，M1 未完整，不合并 main、不删除任务分支。S06candidate 仍 ineligible；若未来确需模型，沿旧 durable ledger / rate checkpoint 且不覆盖报告。
+
 ## Final state
 
-长期任务仍进行；D0–D4 / S01–S06 完成。S06已交付原 authority隔离比较、explicit live bridge、恢复共享预算、真实六槽基线与独立六对执行；101 distinct local tests passed，typed grader五个有效观察 / 一个无效响应。产品HEAD `54c79cb8eea7d6ca5c7e5e4ff262fe0ca6666a64`，main未变化；下一checkpoint S07，本轮未开始。S01六槽live empiricalReady=true；M1整体、稳定行为 / 成本收益、candidate publication与自动晋升均未计作完成。
+长期任务仍进行；D0–D4 / S01–S07 完成。S07 已交付原 Skill repository 完整版本、正文 candidate / base CAS 与 RP / Native / Studio 的真实读取 pin；13 suites / 247 distinct local tests 通过。产品 HEAD `57f4e814af373b4659ba247f9891edd80652c356` 已 push，main 未变化。下一 checkpoint S08，本轮未开始。S06 真实执行与保守 promotion 状态保留；M1 整体、candidate 自动晋升 / publication 和稳定质量 / 成本收益均未计作完成。

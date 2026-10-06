@@ -3,6 +3,7 @@
 > D1 产品边界与架构执行约束已冻结；S01 详细设计见 [s01-baseline.md](s01-baseline.md)。
 > S02 最小来源契约与只读 consumer 已完成，详细权威为 [s02-sources.md](s02-sources.md)；S03 可靠 RP 捕获 / 公共持久层已完成，详细权威为 [s03-capture.md](s03-capture.md)；S04 Project task 持久恢复已完成，详细权威为 [s04-project-recovery.md](s04-project-recovery.md)。
 > S05 feedback / diagnosis 的分层、scope / 生命周期与 reflection gate 已交付，详细权威为 [s05-feedback.md](s05-feedback.md)。
+> S07 完整 Skill versions / candidates / base CAS / run pin 已交付，详细权威为 [s07-skills.md](s07-skills.md)。
 > 用户已确认双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
 > 后续物理 schema / 数值校准按对应阶段细化；逻辑资源表不表示全部 API 已冻结。
 > 长期方向读 architecture；代码事实读 baseline；用户确认的唯一权威是 decisions。
@@ -133,7 +134,7 @@ RP / Project 的局部改进不会自动扩散到其他角色、会话或项目�
 
 ## 7. 精确版本与真实读取
 
-Skill：候选和历史版本由现有 Skill authority 管理；全部实际调用入口读取 accepted version / content hash。安装目录、文件编辑与版本指针必须一起接入，不能只有 Evolution worker 使用新规则。
+Skill（S07已交付，详细契约见 [s07-skills.md](s07-skills.md)）：候选和历史版本由现有 Skill authority 管理；全部实际调用入口读取 accepted version / content hash。安装目录、文件编辑与版本指针必须一起接入，不能只有 Evolution worker 使用新规则。
 Prompt：Native 使用现有 immutable resource revision 和 exact binding；普通 RP 的 Prompt 若属于 Preset 配置，则在原 Preset authority 版本化、编译并固定 run 内容，不要求整个入口迁入 Native generation。
 策略：修改用户自有 Preset / Project 配置的 allowed fields；沿原 compiler 校验并重新准备 plan。正在运行的 graph / policy state 不热改。
 
@@ -176,4 +177,5 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 
 S01 cases / report / 运行界限见 s01-baseline。产品 scope、版本生效、共享预算、发布 / 恢复 / 回滚流程作为本组执行约束。
 S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 新 key / 校验 / 迁移已由 s03-capture 定稿；S04 Project task 持久 / 恢复已由 s04-project-recovery 定稿并交付；S05 已定稿并交付 feedback / diagnosis 作用域、retention / 纠正 / 删除 / 导出，[S06](s06-comparison.md) 已交付显式 live bridge / 共享预算、真实六槽基线与六对独立比较；原 authority 检查通过、judge五个有效观察 / 一个无效响应。S06 evaluator checkpoint完成，候选晋升仍拒绝；费用 / 稳定行为收益、人工偏好与晋升 / 回归阈值未合格，后续 S10 必须据真实证据校准并验证，不能因可执行比较而自动批准。
+S07已交付原Skillrepository完整快照与真实读取pin，手动candidate/apply不产生Evaluationeligibility；下一S08，仅沿原Promptauthority深化，S10仍负责完整审阅 / provenance / policy / 自动发布闭环。
 参数缺失、证据不足、旧版本不可取回或配置冲突时不能自动发布；后续不得用预留接口代替 M1 必需的局部自动能力。
