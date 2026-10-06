@@ -16,6 +16,7 @@ const registerCapabilityApi = __ctx.registerCapabilityApi;
 import { buildLastUserAnchor, compactStageOutputs, normalizeNodeOutputForSnapshot } from './anchors.js';
 import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import { createWorkspaceHostRefresh } from './workspace/host-refresh.js';
 import { createRpEvidenceCapture } from './evidence-capture.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
@@ -494,6 +495,7 @@ async function onWorldInfoFinalized(payload) {
     // outputs from earlier in the same run are unaffected — filter changes
     // take effect from the next turn.
     let preFilterProfile = null;
+    await refreshHostWorkspace();
     try {
         preFilterProfile = getEffectiveProfile(context);
         const preFilter = preFilterProfile?.lorebookFilter;
@@ -595,6 +597,7 @@ async function onWorldInfoFinalized(payload) {
     try {
         await loadOrchestratorChatState(context);
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
+        await refreshHostWorkspace();
         const profile = getEffectiveProfile(context);
         if (!agendaGate && profile?.mode === ORCH_EXECUTION_MODE_AGENDA) {
             agendaGate = payload.generationBlocked = { source: MODULE_NAME, status: 'pending' };
@@ -796,6 +799,16 @@ function notifyError(message) {
     }
 }
 
+let hostWorkspaceRefresh = null;
+function initializeHostWorkspaceRefresh() {
+    hostWorkspaceRefresh ||= createWorkspaceHostRefresh(getSettings(), async () => {
+        const response = await fetch('/api/native/generation/evolution/workspace', { method: 'POST', headers: getContext().getRequestHeaders(), body: '{}' });
+        if (!response.ok) throw new Error('Workspace authority could not be refreshed');
+        return response.json();
+    });
+    return hostWorkspaceRefresh;
+}
+async function refreshHostWorkspace() { return initializeHostWorkspaceRefresh()(); }
 function getSettings() {
     const settings = capabilitySettings[MODULE_NAME];
     return nativePromptUiActive() ? clearNativePresetNames(settings) : settings;
@@ -980,9 +993,15 @@ jQuery(() => {
         },
     });
     initRunPanel();
-    configureEvidenceCapture(runId => createRpEvidenceCapture(getContext(), runId));
+    configureEvidenceCapture(runId => {
+        const capture = createRpEvidenceCapture(getContext(), runId), profile = getEffectiveProfile(getContext());
+        for (const kind of ['prompt', 'strategy']) if (profile?.[kind + 'VersionId']) capture.append({ type: 'version.consumed', eventId: runId + '/workspace/' + kind, runId,
+            targetKind: 'workspace-' + kind, presetId: profile.presetId, versionId: profile[kind + 'VersionId'] });
+        return capture;
+    });
     ensureSettings();
     getWorkspaceLibrary(getSettings());
+    initializeHostWorkspaceRefresh();
     saveSettingsDebounced();
     ensureDirectorPureSyntheticPreset(context);
     void rehydrateBridgedSillyTavernTools(capabilitySettings[MODULE_NAME]);
@@ -1151,6 +1170,7 @@ jQuery(() => {
 
                 if (!capabilitySettings[MODULE_NAME]?.enabled) return;
 
+                await refreshHostWorkspace();
                 const profile = getEffectiveProfile(context);
                 if (!profile) return;
                 // Bail early when the active profile is not director —

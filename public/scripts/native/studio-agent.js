@@ -1,3 +1,4 @@
+import { mountAgentEvolution } from './agent-evolution-panel.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { resolveSkillInvocation, pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
@@ -137,7 +138,7 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = []) 
         String(task.baseRevision || ''),
         '',
         'Current authoritative Task state (resume from these proposals; never repeat saved operations from conversation):',
-        JSON.stringify({ status: task.status, plan: task.plan, operations: task.operations, validation: task.validation, repairRound: task.repairRound }),
+        JSON.stringify({ status: task.status, plan: task.plan, operations: task.operations, validation: task.validation, repairRound: task.repairRound, maxRepairRounds: task.maxRepairRounds, strategyVersionId: task.strategyVersionId }),
         '',
         'Current Project summary:',
         JSON.stringify({
@@ -377,6 +378,8 @@ export function mountNativeStudioAgent({
     onLog = () => {},
 }) {
     let disposed = false;
+    let disposeEvolution = null;
+    let prepareOnly = false;
     let activeTask = null;
     let tasks = [];
     let messages = [];
@@ -408,6 +411,7 @@ export function mountNativeStudioAgent({
             target?.focus({ preventScroll: true });
             if (selection && target?.tagName === 'TEXTAREA') target.setSelectionRange(...selection);
         };
+        disposeEvolution?.(); disposeEvolution = null;
         slot.replaceChildren();
         slot.setAttribute('aria-busy', String(running));
         slot.dataset.atriaDraftDirty = String(Boolean(!activeTask && intentDraft || activeTask?.status === 'review' || running || takingOver));
@@ -476,7 +480,7 @@ export function mountNativeStudioAgent({
                     notifyTask();
                     onLog('agent', 'Created Project Task', activeTask);
                     running = false;
-                    await continueTask();
+                    if (!prepareOnly) await continueTask();
                 } catch (error) {
                     showError(error);
                 } finally {
@@ -484,7 +488,10 @@ export function mountNativeStudioAgent({
                     render();
                 }
             }, { primary: true, disabled: running });
-            form.append(input, create);
+            const prepareLabel = node(documentRef, 'label'); prepareLabel.textContent = t('Prepare without running');
+            const prepareCheckbox = node(documentRef, 'input'); prepareCheckbox.type = 'checkbox'; prepareCheckbox.checked = prepareOnly;
+            prepareCheckbox.addEventListener('change', () => { prepareOnly = prepareCheckbox.checked; }); prepareLabel.prepend(prepareCheckbox);
+            form.append(input, prepareLabel, create);
             const note = node(documentRef, 'p');
             note.textContent = t('AI is optional. Human Studio editing remains fully available when Project Agent is unused or unavailable.');
             form.append(note);
@@ -604,6 +611,7 @@ export function mountNativeStudioAgent({
             slot.querySelector('textarea')?.focus();
         }, { disabled: running || takingOver }));
         slot.append(actions);
+        disposeEvolution = mountAgentEvolution({ slot, scope: { domain: 'project', projectId }, sourceKind: 'project_task', sourceId: activeTask.taskId });
         restoreFocus();
     };
 
@@ -670,6 +678,7 @@ export function mountNativeStudioAgent({
         },
         dispose() {
             disposed = true;
+            disposeEvolution?.();
             controller?.abort();
         },
     };

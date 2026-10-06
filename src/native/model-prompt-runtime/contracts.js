@@ -613,6 +613,7 @@ export function assertRuntimeRoute(value) {
         'promptProgramRef',
         'fallbackRouteRefs',
         'promptParameters',
+        'projectPromptBindings',
         'policy',
         'requirements',
     ], 'RuntimeRoute');
@@ -632,6 +633,19 @@ export function assertRuntimeRoute(value) {
     );
     if (fallbacks.some(item => item.runtimeRouteId === runtimeRouteId)) {
         throw new TypeError('RuntimeRoute must not fall back to itself');
+    }
+    let projectPromptBindings;
+    if (value.projectPromptBindings !== undefined) {
+        if (value.scope !== 'player' || value.role !== 'role.studio' || !Array.isArray(value.projectPromptBindings) || value.projectPromptBindings.length > 32) throw new TypeError('Invalid Project Prompt bindings');
+        const projects = new Set();
+        projectPromptBindings = freezeArray(value.projectPromptBindings.map(binding => {
+            object(binding, 'Project Prompt binding'); only(binding, ['projectId', 'promptProgramRef', 'candidateId'], 'Project Prompt binding');
+            const projectId = assertNativeId(binding.projectId, 'project');
+            if (projects.has(projectId)) throw new TypeError('Duplicate Project Prompt binding'); projects.add(projectId);
+            const promptProgramRef = assertExactResourceRef(binding.promptProgramRef, 'core.prompt-program');
+            if (promptProgramRef.scope !== 'library') throw new TypeError('Project Prompt binding requires an exact user copy');
+            return Object.freeze({ projectId, promptProgramRef, candidateId: text(binding.candidateId, 'Candidate ID', 128) });
+        }));
     }
     return Object.freeze({
         schemaVersion: 1,
@@ -664,6 +678,7 @@ export function assertRuntimeRoute(value) {
         ),
         fallbackRouteRefs: freezeArray(fallbacks),
         ...(value.promptParameters === undefined ? {} : { promptParameters: clone(object(value.promptParameters, 'RuntimeRoute.promptParameters'), 'RuntimeRoute.promptParameters') }),
+        ...(projectPromptBindings ? { projectPromptBindings } : {}),
         policy: Object.freeze({
             timeoutMs: integer(value.policy.timeoutMs, 'RuntimeRoute.policy.timeoutMs', { min: 1 }),
             maxRetries: integer(value.policy.maxRetries, 'RuntimeRoute.policy.maxRetries', { min: 0, max: 20 }),

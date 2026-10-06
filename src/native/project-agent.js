@@ -432,22 +432,30 @@ export class ProjectAgentService {
         return this._operate(handle, projectId, id, () => this._getContext(handle, projectId, id), { write: false });
     }
 
-    async strategyCandidates(handle, projectId, id, action) {
-        fields(action, ['type', 'expectedSequence', 'allowedFields', 'field', 'value', 'candidateId'], 'Project strategy request');
+    async strategyCandidates(handle, projectId, id, action, { beforeCommit = async () => {} } = {}) {
+        fields(action, ['type', 'expectedSequence', 'allowedFields', 'field', 'value', 'candidateId', 'rollback'], 'Project strategy request');
         const reading = ['inspect', 'check'].includes(action.type);
         return this._operate(handle, projectId, id, async task => {
             if (action.type === 'inspect') {
                 fields(action, ['type'], 'Project strategy inspect');
                 return clone(task.strategyVersions || { schemaVersion: 1, declaration: null, candidates: [], activeVersionId: null });
             }
+            if (action.type === 'discard') {
+                fields(action, ['type', 'candidateId'], 'Project strategy discard');
+                if (task.strategyVersions?.activeVersionId === action.candidateId) throw new ConflictError('project_strategy_active');
+                if (task.strategyVersions) task.strategyVersions.candidates = task.strategyVersions.candidates.filter(c => c.candidateId !== action.candidateId);
+                return task;
+            }
             const revision = await this._studio.getRevision(handle, projectId);
             if (revision.revision !== task.baseRevision) throw new ConflictError('project_strategy_conflict');
             if (action.type === 'check') {
-                fields(action, ['type', 'candidateId'], 'Project strategy check');
+                fields(action, ['type', 'candidateId', 'rollback'], 'Project strategy check');
+                if (action.rollback !== undefined && typeof action.rollback !== 'boolean') throw new TypeError('Invalid rollback check');
                 if (!task.strategyVersions) throw new NotFoundError('Project strategy candidate');
-                return checkProjectStrategyCandidate(task, action.candidateId, this._maxRepairRounds);
+                return checkProjectStrategyCandidate(task, action.candidateId, this._maxRepairRounds, action.rollback === true);
             }
             const next = updateProjectStrategy(task, action, this._maxRepairRounds);
+            if (['apply', 'rollback'].includes(action.type)) await beforeCommit();
             Object.assign(task, next);
             return task;
         }, { write: !reading });

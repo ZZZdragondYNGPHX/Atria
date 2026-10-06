@@ -1,5 +1,5 @@
 import { normalizeWorkspacePreset, validatePresetLibrary } from './presets.js';
-import { sha256 } from '../../../lib.js';
+import { contentSha256 as sha256 } from '../../../shared/content-sha256.js';
 
 const clone = value => structuredClone(value);
 const canonical = value => value === null || typeof value !== 'object' ? JSON.stringify(value)
@@ -60,18 +60,18 @@ export function resolveWorkspacePromptVersion(library, binding) {
     return clone(candidate.desired);
 }
 
-export function checkWorkspacePromptCandidate(library, candidateId) {
+export function checkWorkspacePromptCandidate(library, candidateId, { rollback = false } = {}) {
     const current = validatePresetLibrary(library);
     const candidate = current.promptVersions?.candidates.find(c => c.candidateId === candidateId);
     if (!candidate) throw new Error('Workspace Prompt candidate missing');
     const declaration = current.promptVersions.declarations.find(d => d.declarationId === candidate.declarationId);
     const base = current.presets.find(p => p.id === candidate.presetId);
-    if (!declaration || !declaration.agentIds.includes(candidate.agentId) || !same(declaration.base, candidate.base) || !same(base, candidate.base)) conflict();
+    if (!same(base, candidate.base) || !rollback && (!declaration || !declaration.agentIds.includes(candidate.agentId) || !same(declaration.base, candidate.base))) conflict();
     const desiredBindings = clone(candidate.baseBindings);
     desiredBindings.entries.find(b => b.scope === candidate.scope && b.subjectId === candidate.subjectId).promptVersionId = candidateId;
     const alreadyApplied = same(current.bindings, desiredBindings);
     if (!alreadyApplied && !same(current.bindings, candidate.baseBindings)) conflict();
-    return { candidate: clone(candidate), desiredBindings, alreadyApplied };
+    return { candidate: clone(candidate), desiredBindings, alreadyApplied, alreadyRolledBack: same(current.bindings, candidate.baseBindings) };
 }
 
 export function updateWorkspacePromptVersions(library, action) {
@@ -101,9 +101,10 @@ export function updateWorkspacePromptVersions(library, action) {
         const { candidateId: _temporaryId, ...identity } = candidate;
         candidate.candidateId = sha256(canonical(identity));
         versions.candidates.push(candidate);
-    } else if (action.type === 'apply') {
+    } else if (['apply', 'rollback'].includes(action.type)) {
         fields(action, ['type', 'candidateId']);
-        next.bindings = checkWorkspacePromptCandidate(next, action.candidateId).desiredBindings;
+        const checked = checkWorkspacePromptCandidate(next, action.candidateId, { rollback: action.type === 'rollback' });
+        next.bindings = action.type === 'rollback' ? checked.candidate.baseBindings : checked.desiredBindings;
     } else throw new Error('Unknown Workspace Prompt operation');
     return validatePresetLibrary(next);
 }

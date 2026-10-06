@@ -3,6 +3,7 @@ import { assertWritable } from '../../storage/read-only-mode.js';
 import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument, putMutable, withNativeResourceWrite } from '../repositories/common.js';
 import { assertEvidenceScope, assertEvidenceSet, fields, text } from './contracts.js';
+import { AgentEvolutionRepository } from './evolution-repository.js';
 
 export const DAY = 86400000;
 export const experienceIdentity = (scope, subject) => hashNativeDocument({ scope: assertEvidenceScope(scope), subject: text(subject, 'Subject') });
@@ -52,7 +53,7 @@ export function assertExperience(value) {
     for (const item of doc.diagnoses) {
         fields(item, ['id', 'batchHash', 'feedbackRefs', 'origin', 'status', 'rationale', 'conditions', 'counterexamples', 'direction', 'createdAt', 'expiresAt'], 'Diagnosis');
         text(item.id, 'Diagnosis identity'); digest(item.batchHash); publicNote(item.rationale);
-        if (diagnoses.has(item.id) || item.origin !== 'user_hypothesis' || !['active', 'stale'].includes(item.status)
+        if (diagnoses.has(item.id) || !['user_hypothesis', 'model_hypothesis'].includes(item.origin) || !['active', 'stale'].includes(item.status)
             || !['skill', 'prompt', 'orchestration', 'undetermined'].includes(item.direction)) throw new TypeError('Invalid diagnosis');
         diagnoses.add(item.id);
         for (const list of [item.conditions, item.counterexamples]) {
@@ -105,6 +106,11 @@ export class AgentExperienceRepository {
             if (previous && hashNativeDocument(doc) === hashNativeDocument(previous)) return previous;
             doc.sequence = previous ? previous.sequence + 1 : 0;
             assertExperience(doc);
+            if (previous && (previous.feedback.some(old => {
+                const next = doc.feedback.find(item => item.id === old.id); return !next || hashNativeDocument(next) !== hashNativeDocument(old);
+            }) || previous.diagnoses.some(old => {
+                const next = doc.diagnoses.find(item => item.id === old.id); return !next || hashNativeDocument(next) !== hashNativeDocument(old);
+            }))) await new AgentEvolutionRepository({ engine: this.engine }).invalidate(handle, scope, subject, 'experience_changed');
             return this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, scopeId), doc, { expectedIntegrity: previous ? hashNativeDocument(previous) : null }));
         });
     }
@@ -119,6 +125,7 @@ export class AgentExperienceRepository {
             assertWritable();
             const doc = await this.get(handle, scope, subject);
             if (expectedSequence !== (doc?.sequence ?? null)) throw new ConflictError('agent_experience_sequence_conflict');
+            await new AgentEvolutionRepository({ engine: this.engine }).invalidate(handle, scope, subject, 'experience_deleted');
             return this.engine.withTransaction(handle, tx => tx.deleteResource(key(handle, scopeId)));
         });
     }

@@ -176,7 +176,19 @@ export function createSkillVersions(skillsRoot, readCurrentFiles) {
         const currentVersion = filesHash(currentFiles);
         return { ...candidate, candidateId, currentVersion, conflict: currentVersion !== candidate.baseVersion };
     }
-    return { pin, history, readVersion, prepareCandidate, checkCandidate,
+    async function discardCandidate({ scope, name, candidateId }) {
+        assertWritable();
+        const candidate = await checkCandidate({ scope, name, candidateId });
+        if (candidate.currentVersion === candidate.version) fail('Active Skill version cannot be discarded', 409);
+        const dir = join(directory(scope, name), 'candidates');
+        const remaining = (await fs.readdir(dir)).filter(file => /^[a-f0-9]{64}\.json$/.test(file) && file !== candidateId + '.json');
+        const referenced = (await Promise.all(remaining.map(file => fs.readFile(join(dir, file), 'utf8').then(JSON.parse))))
+            .some(c => c.baseVersion === candidate.version || c.version === candidate.version);
+        await fs.rm(join(dir, candidateId + '.json'), { force: true });
+        if (!referenced) await fs.rm(join(directory(scope, name), candidate.version + '.json'), { force: true });
+        return { discarded: true };
+    }
+    return { pin, history, readVersion, prepareCandidate, checkCandidate, discardCandidate,
         async remove(scope, name) { await fs.rm(name ? directory(scope, name) : join(historyRoot, encodeScopePath(scope)), { recursive: true, force: true }); },
         async copy(fromScope, toScope, fromName, toName = fromName) {
             const from = fromName ? directory(fromScope, fromName) : join(historyRoot, encodeScopePath(fromScope));

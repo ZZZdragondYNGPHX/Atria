@@ -449,6 +449,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     // agent and every sub-agent. Layer-2 tools use this for run-scoped state
     // such as Web Evidence Cache and activated-entry bookkeeping.
     const sharedToolRunState = {
+        __atriRunId: deps?.runId,
         lorebookFilter: director?.lorebookFilter || { bookPattern: '', entryPattern: '' },
         activatedEntryKeys: new Set(),
         wiFinalizedPayload: null,

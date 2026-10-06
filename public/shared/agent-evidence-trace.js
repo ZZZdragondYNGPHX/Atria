@@ -1,6 +1,6 @@
 // Metadata-only capture, independent of presentation projections and checkpoints.
 const STRINGS = ['type', 'eventId', 'runId', 'parentRunId', 'stepId', 'effectId', 'agentId', 'nodeId',
-    'requestId', 'hostRequestId', 'attemptId', 'status', 'lane', 'runtimeRouteId', 'usageStatus', 'attemptScope', 'parentInvocationId'];
+    'requestId', 'hostRequestId', 'attemptId', 'status', 'lane', 'runtimeRouteId', 'usageStatus', 'attemptScope', 'parentInvocationId', 'targetKind', 'versionId', 'presetId', 'skillName', 'skillScopeKind', 'characterFile', 'projectId'];
 const NUMBERS = ['generation', 'version', 'attempt', 'inputTokens', 'outputTokens', 'totalTokens'];
 export const EVIDENCE_TRACE_LIMIT = 512;
 export const EVIDENCE_TRACE_BYTES = 262144;

@@ -729,7 +729,8 @@ export function createSkillRepository(dataRoot) {
             return result;
         };
     }
-    operations.applyCandidate = async ({ scope, name, candidateId, expectedBaseVersion }) => {
+    operations.discardCandidate = args => versions.discardCandidate(args);
+    operations.applyCandidate = async ({ scope, name, candidateId, expectedBaseVersion, beforeCommit = async () => {} }) => {
         assertWritable();
         if (scope.kind === 'package') { const error = new Error('Package Skill originals are read-only'); error.status = 403; throw error; }
         const candidate = await versions.checkCandidate({ scope, name, candidateId });
@@ -737,8 +738,20 @@ export function createSkillRepository(dataRoot) {
             const error = new Error('Skill version conflict'); error.status = 409; throw error;
         }
         if (candidate.currentVersion === candidate.version) return { name, previousVersion: candidate.baseVersion, version: candidate.version, alreadyApplied: true };
+        await beforeCommit();
         await writeFile({ scope, name, path: SKILL_MD, content: candidate.diff.after });
         return { name, previousVersion: candidate.baseVersion, version: candidate.version };
+    };
+    operations.rollbackCandidate = async ({ scope, name, candidateId, expectedVersion, beforeCommit = async () => {} }) => {
+        assertWritable();
+        if (scope.kind === 'package') { const error = new Error('Package Skill originals are read-only'); error.status = 403; throw error; }
+        // checkCandidate validates both complete snapshots and supporting files.
+        const candidate = await versions.checkCandidate({ scope, name, candidateId });
+        if (candidate.version !== expectedVersion || ![candidate.version, candidate.baseVersion].includes(candidate.currentVersion)) {
+            const error = new Error('Skill version conflict'); error.status = 409; throw error;
+        }
+        if (candidate.currentVersion !== candidate.baseVersion) { await beforeCommit(); await writeFile({ scope, name, path: SKILL_MD, content: candidate.diff.before }); }
+        return { name, version: candidate.baseVersion, alreadyRolledBack: candidate.currentVersion === candidate.baseVersion };
     };
     return Object.fromEntries(Object.entries(operations).map(([method, operation]) =>
         [method, (...args) => orderSkillOperation(dataRoot, () => operation(...args))]));

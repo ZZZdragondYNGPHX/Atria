@@ -77,6 +77,20 @@ export class PromptCandidateStore {
             return structuredClone(root.promptEvolution || { declaration: null, candidates: [] });
         });
     }
+    async discard(handle, id, candidateId) {
+        return withRuntimeWrite(handle, async () => {
+            assertWritable();
+            const { root } = await this._read(handle, id), candidate = root.promptEvolution?.candidates.find(c => c.candidateId === candidateId);
+            if (!candidate) return { discarded: true };
+            const routes = await this.persistence.listRuntimeRoutes(handle);
+            if (routes.some(r => [r.promptProgramRef, ...(r.projectPromptBindings || []).map(b => b.promptProgramRef)].some(ref => candidate.changedRefs.some(c => same(c, ref))))) conflict();
+            await this.engine.withTransaction(handle, async tx => {
+                for (const ref of candidate.changedRefs) await tx.deleteResource(key(handle, ref));
+                await putMutable(tx, key(handle, rootRef(id)), { ...root, promptEvolution: { ...root.promptEvolution, candidates: root.promptEvolution.candidates.filter(c => c.candidateId !== candidateId) } });
+            });
+            return { discarded: true };
+        });
+    }
 
     async prepare(handle, id, input) {
         fields(input, ['runtimeRouteId', 'expectedRouteFingerprint', 'moduleRef', 'body']);
@@ -125,17 +139,17 @@ export class PromptCandidateStore {
         return { ...preset, refs, entries };
     }
 
-    async _check(handle, id, candidate) {
+    async _check(handle, id, candidate, { projectId = null, rollback = false } = {}) {
         fields(candidate, ['schemaVersion', 'presetId', 'basePresetFingerprint', 'declarationFingerprint', 'baseRoute', 'moduleRef', 'diff', 'candidateId', 'changedRefs']);
         const { preset, root, fingerprint } = await this._read(handle, id);
         const declaration = root.promptEvolution?.declaration;
-        if (candidate.schemaVersion !== 1 || candidate.presetId !== id || fingerprint !== candidate.basePresetFingerprint || declaration?.schemaVersion !== 1 || hashNativeDocument(declaration) !== candidate.declarationFingerprint) conflict();
+        if (candidate.schemaVersion !== 1 || candidate.presetId !== id || fingerprint !== candidate.basePresetFingerprint || !rollback && (declaration?.schemaVersion !== 1 || hashNativeDocument(declaration) !== candidate.declarationFingerprint)) conflict();
         const { candidateId, changedRefs, ...seed } = candidate;
         if (candidateId !== hashNativeDocument(seed)) throw new TypeError('Prompt candidate identity mismatch');
         fields(candidate.diff, ['field', 'before', 'after']);
         body(candidate.diff.before); body(candidate.diff.after);
         const moduleRef = assertExactResourceRef(candidate.moduleRef, MODULE);
-        if (candidate.diff.field !== 'body' || !declaration.moduleRefs.some(r => same(r, moduleRef)) || !preset.refs.some(r => same(r, moduleRef))) throw new TypeError('Invalid Prompt body declaration');
+        if (candidate.diff.field !== 'body' || !rollback && !declaration.moduleRefs.some(r => same(r, moduleRef)) || !preset.refs.some(r => same(r, moduleRef))) throw new TypeError('Invalid Prompt body declaration');
         const source = preset.entries.find(e => e.resource.promptModuleId === moduleRef.resourceId);
         if (candidate.diff.before !== source.resource.body || candidate.diff.after === source.resource.body) throw new TypeError('Invalid Prompt diff');
         const required = preset.refs.filter(r => r.resourceType === PROGRAM || same(r, moduleRef));
@@ -154,11 +168,14 @@ export class PromptCandidateStore {
             if (!same(actual, e.resource)) throw new TypeError('Candidate exact Prompt content mismatch');
         }
         validateBodyBindings(desired, moduleRef.resourceId);
-        const desiredRoute = assertRuntimeRoute({ ...route, promptProgramRef: desired.refs.find(r => r.resourceId === id) });
+        if (projectId && route.projectPromptBindings?.some(b => b.projectId === projectId)) throw new TypeError('Choose an unevolved Project Prompt binding');
+        const desiredRoute = assertRuntimeRoute(projectId ? { ...route, projectPromptBindings: [...(route.projectPromptBindings || []), {
+            projectId, candidateId, promptProgramRef: desired.refs.find(r => r.resourceId === id),
+        }] } : { ...route, promptProgramRef: desired.refs.find(r => r.resourceId === id) });
         const current = await this.persistence.getRuntimeRoute(handle, route.runtimeRouteId);
         const alreadyApplied = same(current, desiredRoute);
         if (!alreadyApplied && !same(current, route)) conflict();
-        return { candidate: structuredClone(candidate), desiredRoute, alreadyApplied };
+        return { candidate: structuredClone(candidate), desiredRoute, alreadyApplied, alreadyRolledBack: same(current, route) };
     }
 
     async check(handle, id, candidateId) {
@@ -181,6 +198,26 @@ export class PromptCandidateStore {
                 assertWritable();
                 await putMutable(tx, { kind: K.runtimeRoute, handle, runtimeRouteId: result.desiredRoute.runtimeRouteId }, result.desiredRoute, { expectedIntegrity: hashNativeDocument(candidate.baseRoute) });
             });
+            return result;
+        });
+    }
+
+    async project(handle, id, candidateId, projectId, action = 'check', { beforeCommit = async () => {} } = {}) {
+        if (!['check', 'checkRollback', 'apply', 'rollback'].includes(action)) throw new TypeError('Invalid Project Prompt action');
+        return withRuntimeWrite(handle, async () => {
+            if (['apply', 'rollback'].includes(action)) assertWritable();
+            const { root } = await this._read(handle, id);
+            const candidate = root.promptEvolution?.candidates.find(c => c.candidateId === candidateId);
+            if (!candidate) throw new NotFoundError('Prompt candidate');
+            const result = await this._check(handle, id, candidate, { projectId, rollback: ['rollback', 'checkRollback'].includes(action) });
+            const rollback = action === 'rollback';
+            if (['apply', 'rollback'].includes(action) && !(rollback ? result.alreadyRolledBack : result.alreadyApplied)) {
+                await beforeCommit();
+                await this.engine.withTransaction(handle, tx => putMutable(tx,
+                    { kind: K.runtimeRoute, handle, runtimeRouteId: candidate.baseRoute.runtimeRouteId },
+                    rollback ? candidate.baseRoute : result.desiredRoute,
+                    { expectedIntegrity: hashNativeDocument(rollback ? result.desiredRoute : candidate.baseRoute) }));
+            }
             return result;
         });
     }

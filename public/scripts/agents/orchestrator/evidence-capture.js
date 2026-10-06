@@ -22,7 +22,7 @@ export function createRpEvidenceCapture(context, rootRunId, post = async (action
     let count = 0, outputReady = false;
     let queue = Promise.resolve().then(() => post('begin', { scope, rootRunId, selectors })).then(value => { receipt = value; }).catch(() => { failure = true; });
     const view = () => ({ status: failure ? 'failed' : receipt ? status : 'pending', evidenceId: receipt?.evidenceId ?? null,
-        missing: trace.snapshot().missing, usage: null, outputBound: Boolean(output) });
+        scope: structuredClone(scope), missing: trace.snapshot().missing, usage: null, outputBound: Boolean(output) });
     const capture = {
         append(event) {
             trace.append(event);

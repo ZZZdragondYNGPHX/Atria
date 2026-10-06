@@ -1,3 +1,4 @@
+import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPackageContextDerivation } from '../context-computation.js';
 import { randomUUID } from 'node:crypto';
 import { processPackageText } from '../processing-runtime.js';
@@ -624,6 +625,7 @@ export class NativeGenerationHost {
 
     async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null } = {}) {
         const input = immutable(value);
+        await prepareEvolutionProject(this, handle, input.projectId);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
         if (input.role === 'illustration_prompt' && !illustrationPlan) fail('native_generation_context_required');
         // The HTTP host currently owns player routes only. Never reinterpret an
@@ -710,6 +712,14 @@ export class NativeGenerationHost {
             persistence.getRuntimeRoute = async (_owner, id) => lanePlan.routes[id] ?? null;
             persistence.getConnectionProfile = async (_owner, id) => lanePlan.connections[id] ?? null;
             persistence.getModelProfile = async (_owner, id) => lanePlan.models[id] ?? null;
+        }
+        if (project && !taskPlan) {
+            const resolveProject = original => {
+                const binding = original?.projectPromptBindings?.find(b => b.projectId === input.projectId);
+                return binding ? { ...original, promptProgramRef: binding.promptProgramRef } : original;
+            };
+            route = resolveProject(route);
+            persistence.getRuntimeRoute = async (owner, id) => resolveProject(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id));
         }
         if (taskPlan) {
             const compose = lane => ({ ...lane, role, promptParameters: {},
@@ -854,6 +864,7 @@ export class NativeGenerationHost {
                 projectTaskCapture = { status: 'captured' };
             } catch { projectTaskCapture = { status: 'failed' }; }
         }
+        if (!preview && input.projectId) { try { await observeEvolutionProject(this, handle, input, result); } catch { /* Observation failure does not change an accepted generation. */ } }
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts,
             ...(projectTaskCapture ? { projectTaskCapture } : {}) } });
     }

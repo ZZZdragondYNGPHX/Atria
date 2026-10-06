@@ -1,5 +1,5 @@
 import { normalizeWorkspacePreset, validatePresetLibrary } from './presets.js';
-import { sha256 } from '../../../lib.js';
+import { contentSha256 as sha256 } from '../../../shared/content-sha256.js';
 
 const clone = value => structuredClone(value);
 const canonical = value => value === null || typeof value !== 'object' ? JSON.stringify(value)

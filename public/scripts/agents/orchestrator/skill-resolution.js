@@ -1,3 +1,4 @@
+import { boundEvidenceCapture } from './run-state/store.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
 import { resolveSkillInvocation, pinSkillEntries, loadAlwaysSkills, skillInstructions } from '../../../shared/skill-invocation.js';
 
@@ -123,10 +124,14 @@ export async function resolveAgentVisibleSkills({ modeProfile, agentConfig, runt
     const inventoryRaw = Array.isArray(inventory) ? inventory : [];
 
     ensureSkillsFieldShape(modeProfile);
-    return loadAlwaysSkills(await pinSkillEntries(resolveSkillInvocation(inventoryRaw, {
+    const entries = await loadAlwaysSkills(await pinSkillEntries(resolveSkillInvocation(inventoryRaw, {
         context: runtimeContext, legacy: true, path: 'agents', modeProfile, agentConfig,
         settings: await skillsApi.invocationSettings?.(),
     }), opts => skillsApi.pin(opts), pinsForRun(run)), opts => skillsApi.readFile(opts));
+    const runId = typeof run === 'string' ? run : run?.runId || run?.__atriRunId;
+    if (runId) for (const entry of entries.filter(e => e.invocationMode === 'always')) boundEvidenceCapture(runId)?.append({ type: 'version.consumed', eventId: runId + '/skill/' + entry.version, runId,
+        targetKind: 'skill', versionId: entry.version, skillName: entry.name, skillScopeKind: entry.scope.kind, characterFile: entry.scope.characterFile });
+    return entries;
 }
 
 

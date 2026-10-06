@@ -186,7 +186,7 @@ export class AgentExperienceService {
             batchHash, feedbackRefs: dependencies, modelCalls: 0 };
     }
     async reflection(handle, input) { return this._batch(await this.inspect(handle, input)); }
-    async diagnose(handle, input) {
+    async diagnose(handle, input, { origin = 'user_hypothesis' } = {}) {
         fields(input, ['scope', 'subject', 'expectedSequence', 'batchHash', 'rationale', 'conditions', 'counterexamples', 'direction'], 'Diagnosis submit');
         sequence(input.expectedSequence); assertWritable();
         const view = await this.inspect(handle, { scope: input.scope, subject: input.subject });
@@ -197,7 +197,7 @@ export class AgentExperienceService {
         const now = this.now();
         return this.repository.mutate(handle, input.scope, input.subject, input.expectedSequence, doc => {
             doc.diagnoses.push({ id: 'diagnosis_' + randomUUID(), batchHash: batch.batchHash, feedbackRefs: batch.feedbackRefs,
-                origin: 'user_hypothesis', status: 'active', rationale: input.rationale, conditions: input.conditions, counterexamples: input.counterexamples, direction: input.direction,
+                origin, status: 'active', rationale: input.rationale, conditions: input.conditions, counterexamples: input.counterexamples, direction: input.direction,
                 createdAt: now, expiresAt: Math.min(now + doc.retentionDays * DAY, ...evidence.map(item => item.expiresAt)) });
         });
     }
