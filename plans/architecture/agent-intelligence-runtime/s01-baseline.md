@@ -97,7 +97,14 @@ targeted suites 先覆盖新增契约 / runner，再覆盖上述 RP / Project �
 fixture 运行必须对隔离产物做前后校验，确认生产对象未发生修改；临时数据清理只操作该 runner 创建并核对的根目录。
 采集 / 序列化失败必须产生明确失败或 incomplete 记录；绝不沿用 trace exporter 的静默丢弃策略。
 
-## 7. S01 结束条件
+## 7. D2 补充测量边界
+
+保留本模块 12 cases、Case / Trial / Report v1 和有限 pilot 上限，不增加生产 schema 或提前实现 G01–G06。已有真实入口能提供的 target、adapter、已观察 upstream、root / child / attempt、foreground / background、TTFT、input / cached / output / reasoning 等计数作为报告测量依据；拿不到就记录既有 completeness / unavailable。
+新增可选测量在 test-only 版本化 sidecar 中关联 trialId；消费端未知 schema 明确拒绝，不把额外字段强塞进严格 v1。S02 / G01 注册新产品契约前单独细化。
+
+先记录当前 Director / Project 调用图；一次正文是后续 ablation 的对照目标，不因测量而删除 Package 必需 resolver、工具 / authority guard 或改变测试期望。S06 / G06 再运行可用对照。价格、上游 snapshot 与 usage 可知程度分别注明；scripted 零外部调用不能当真实模型低成本证据。
+
+## 8. S01 结束条件
 
 必须交付：12 cases、可执行双入口 scripted runner、报告 consumer / validator、缺失和预算状态、针对性 tests、实际 baseline 记录。
 当前模型 / route 可用并有有限 pilot 配置时运行真实模型基线；不可用时明确 `empiricalReady=false`、原因与补测入口。

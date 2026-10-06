@@ -1,6 +1,6 @@
-# 候选架构：连接现有权威与认知闭环
+# 正式架构方向：连接权威、语义、计算与成长闭环
 
-> Draft。这里描述职责和待验证的边界，尚未冻结 API、字段清单、存储种类或代码目录。
+> D2 已更新职责、依赖与架构约束；API、字段清单、存储种类和代码目录仍按阶段冻结。
 > 代码事实由 baseline 管理；用户选择和冻结状态由 decisions 管理。
 
 ## 1. 保持责任清楚，避免平行系统
@@ -15,6 +15,28 @@
 - Interop：provider / 外部协议 / 训练的 adapter。
 
 不先搬迁现有源码。Authority 写入仍经过 SessionCore / Studio；调度仍由 NativeTaskScheduler 与既有 lifecycle durable intent 承担；Memory 仍由现有 Memory OS / Graph 承担。
+
+### 统一请求链路
+
+```mermaid
+flowchart LR
+  A[现有 Authority / Memory / Cognition] --> B[Task 与获准 Evidence]
+  B --> C[Compute 准入与 Routing 需求]
+  C --> D[Target 求解与 Context / Behavior 编译]
+  D --> E[精确 Request Snapshot]
+  E --> F[Provider / Gateway / Local]
+  F --> G[Execution Observation / Authority Receipt]
+  G --> H[Experience / Eval / Candidate]
+  H --> B
+```
+
+Target 限制与 Context 精确编译有有界复核，不是无限循环。正常选择、FailurePolicy 与候选晋升分别拥有契约。六个 Plane 共享下列三个领域模块，不另加同名 authority：
+
+- [behavior-context](behavior-context.md)：语义与编译、身份 / cognition / expression / narration 分离。
+- [compute-policy](compute-policy.md)：稀疏调用、预算准入、非阻塞维护与收益。
+- [model-routing](model-routing.md)：boundary / deployment / identity、动态证据与真实执行观察。
+
+这些模块是相应细则的唯一来源；本文件继续管理跨 Plane 的连接。
 
 ## 2. 最小公共证据与 artifact 语义
 
@@ -46,7 +68,7 @@ Artifact Bus 不是新的 World authority，也不默认是分布式消息中间
 Experience 使用既有 Host StorageEngine 的明确资源契约，不能把全部模型 chunk 写为 Session revision，也不能依赖 IndexedDB recovery 的 24 小时 prune。
 两个入口各自捕获，然后输出公共 evidence envelope；它不是新的执行配置读取权威。
 
-捕获先解决 parent / child、request / retry、effect、message variant、正式 outcome 的关联和幂等写入。
+捕获先解决 parent / child、request / retry、effect、message variant、正式 outcome 的关联和幂等写入。执行快照与响应观察分开，沿原 request identity 关联 target、observable model、usage 完整性与预算 charge；具体语义由 model-routing / compute-policy 管理。
 无法取得 provider usage、正文或旧来源时显式记录 missing / unavailable；不能伪造完整性。
 默认只保存获准的必要内容；Secret、transport header、模型不可见的私有 reasoning 不进入共享轨迹。
 删除来源、角色 / 项目或关闭采集后如何保留、清除与失效，在首批设计中明确。
@@ -94,6 +116,8 @@ Actor identity / stable traits / expression style 属于作者定义或明确选
 `可见 Event → Appraisal proposal → 受控采纳的 Belief / Emotion / Relationship / Intention 更新 → 后续行为`
 
 每项更新绑定 actor、source refs、base revision、model / profile revision；保留旧值和撤回依据。
+动态更新事件驱动；默认读取已有 state，必要时一个获准 cognition pass 共享相关派生输出，各 authority 分别采纳。M3 消费 G01–G06 的预算、Context、路由与证据，不每新增一种心理概念就固定增加一次模型调用。
+
 “Actor A 怀疑 B 背叛”与“B 已背叛”必须分域。关于 B 的心理推断留在 A 的 ToM，不作为 B 的私有真实状态。
 稳定性格变更与短期情绪变化不能使用相同默认节奏或权限。
 
@@ -116,14 +140,14 @@ Memory 继续回答发生过什么；cognition 决定本轮如何解释与使用
 deterministic dry-run 与语言 / 视觉 World Model 是不同 provider 能力。
 只选中的 action proposal 进入原 authority；所有 rollout 禁止自动 publication、生产工具副作用和真实记忆提取。
 
-先以固定 branch / step / token 预算证明选行动的收益，再加入 adaptive controller。
+调用准入、稀疏事件 gate 与全量费用记录提前由 M1 / G05 提供；不等到 S26 才限制新认知层开销。先以固定 branch / step / token 预算证明选行动的收益，再加入 adaptive controller。
 controller 先调 optional scout、retrieval depth、candidate count、critic rounds 和已授权模型 route；必要权限 / authority / knowledge guard 保留。
 规则 controller 是基线；只有数据证明小模型 / 主模型 controller 有收益时才启用。
 fast / slow 除开销外也有时序：异步 slow result 必须核对 revision，不能覆盖新回合的 state。
 
 ## 9. Expression、protocol 与 training
 
-ExpressionPlan 先由现有 prose consumer 实际使用，再按 provider 支持增加 prosody、timing、gesture 等内容。
+Identity / Cognition / Character Expression / Narration 的职责先由 behavior-context 固定；ExpressionPlan 先由现有 prose consumer 实际使用，再按 provider 支持增加 prosody、timing、gesture 等内容。
 多模态 task 继续复用取消、预算、task artifact 与 provider capability；拒绝不支持能力时保留可用文字输出。
 
 MCP / A2A / AG-UI / A2UI / MCP Apps adapter 固定支持版本、认证来源、scope、cancel 与结果映射。
@@ -138,5 +162,6 @@ latent / opaque representation 只有在 provider 真实暴露并通过兼容测
 - 同一项目 Agent 重启后知道剩余目标、精确配置和已提交产物，不重复提交旧操作。
 - 同一角色跨回合保留自己的误会、承诺与关系变化；另一角色没有自动获得其秘密。
 - 某次纠正产生可审阅规则，独立案例证明有帮助后进入后续 run，且能够停用 / 撤回。
-- 高影响行动可以比较有限未来；低影响 turn 保持低延迟，质量底线不因预算策略下降。
+- 高影响行动可以比较有限未来；普通 RP 以一次主要 generation 为目标，功能数量不变成固定调用数量，质量底线不因预算策略下降。
+- 相同创作意图可由不同 target 编译；gateway 上游未知时如实报告，全部可观察重试、后台及 controller 开销能归因。
 - 换模型、加入语音或远程 Agent 时，身份、世界、证据与用户控制仍由现有 Atria 路径承载。

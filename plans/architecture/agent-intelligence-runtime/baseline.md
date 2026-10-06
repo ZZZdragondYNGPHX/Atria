@@ -3,7 +3,7 @@
 - Inspected: 2026-10-06
 - Product: `origin/main@ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: `origin/docs@2e57f83b19d2321260be93f98dbbf5321f4b0b84`
-- 本轮 fetch 后本地 main 与远端一致，产品工作树干净。原研究与最新 main 使用同一基线。
+- D0 核对时本地 main 与远端一致、工作树干净。D2 再次 fetch / pull 后产品 HEAD 不变；main 的 AGENTS.md 与 docs 治理 / 模板已有未提交修改，隔离保留。三份新增研究使用同一产品基线。
 
 以下代码路径均相对于该产品 HEAD；可用 `git show <HEAD>:<path>` 复核。研究建议不能反向改写为代码现状。
 
@@ -116,3 +116,22 @@ Expression 应接入这些真实输出路径。语音、Avatar 与远程 Agent �
 已有 docs worktree 中存在未提交的 `plans/feat/agent-experience-evolution/`，本轮只读取 index 以及当前调研需要的 baseline / decisions，未修改、暂存或提交。
 其入口提到的自动模式 / 三类候选选择不能替代本对话中的批准证据。它可作为 S01–S10 的设计输入，D1 决定整合方式后再处理。
 本 Bundle 在从最新 origin/docs 创建的独立短期文档分支准备，避免覆盖该草稿。
+
+## 9. D2：Generation / Routing / Sparse 接入复核
+
+- Rechecked product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`；Source docs HEAD: `40ce08a32`。本节是本轮读取代码的事实，不是新实现或测试结果。
+
+| 代码接入 | 当前事实 | 正式企划要补的部分 |
+| --- | --- | --- |
+| `model-prompt-runtime/route-resolver.js` | Route 固定 Model / Connection / exact Generation / Prompt；校验 owner 域、角色与 origin；capability 合并有 provenance / unknown override | 有限候选 + policy 求解；boundary-specific freshness；adapter 可 render 与 gateway 真支持分开 |
+| `model-prompt-runtime/generation-service.js` | Context / Prompt IR、token admission、immutable snapshot；fallback 保持工具 / 输出 authority；Secret 仅 send frame | 执行决策 / attempt snapshots 和 response observations、完整费用；不替换已有 generation authority |
+| `model-prompt-runtime/{contracts,context-providers}.js` | Prompt IR 与 Generation 分层，Capability 三态与可选 observedAt；Context Plan 有预算 / provenance；严格 schema | 语义 Creative / overlay、evidence scope / expiry、类型化迁移；不是任意添字段即兼容 |
+| `adapters/provider-discovery.js` | 显式连接的非生成 discovery；OpenAI-compatible 列表不提供完整 capability，Anthropic / Gemini 读取部分声明 | 发现不成为 capability authority；有限主动 probe 和 observed rejection 分层 |
+| `adapters/{http-generation-provider,native-messages-provider}.js` | 各自原生 reasoning / tools / schema lowering；stream 汇总 text / tools；当前 normalizeResponse 不返回完整 usage / reported identity | stream usage / cost / gateway 路径要补 adapter 观察；现有 metadata 不能当完整经济证据 |
+| `adapters/generation-host.js`、`run-control.js` | Host 在每次 provider.send 前 charge；含 role retries / fallback attempts；Native RunControl 有 turn / lane / background windows 与 highWaterTurn，恢复不凭 save 重建 allowance | 在既有计数与 identity 上补 tokens / economics / 跨入口 reservation，不能说当前没有实际发送预算 |
+| `task-scheduler.js` | class 优先级 / aging、公平 resource permits；scheduler retry；cancel 后 worker 未 settle 继续持 permit | 跨 owner / task 的预算及 durable intent adapter；不另建常驻队列 |
+| `public/scripts/lib/agent-runtime/context-compiler.js` | 无隐藏模型调用；纯编译、tokenizer、有限预算、memory / tools；legacyMessages 不静默截断 | 有版本 / freshness 的按需展开与语义 lanes，明确迁移 |
+| `public/scripts/request-inspector.js` | 现有请求详情显示 timing、prompt / completion / total 和 cache-read / write，支持 wire request export | 不能据此声称 Native 所有请求已带同等 usage；接入新 target / unknown / attempts / charge 观察 |
+
+相关最小验证入口：`tests/native/{provider-discovery,native-provider-matrix,generation-budget-p2,prompt-presets,model-prompt-runtime-persistence}.test.js` 与既有双入口 harness。D2 只读相关实现 / 契约 / 测试内容，未运行这些测试。
+没有为本轮改动当前 Prompt / Route / 预算运行逻辑、注册产品资源、配置 gateway 或发送模型请求。

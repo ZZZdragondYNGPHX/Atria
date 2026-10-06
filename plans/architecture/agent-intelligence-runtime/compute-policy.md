@@ -1,0 +1,84 @@
+# Sparse Compute：调用准入、预算与收益
+
+> D2 正式架构约束；策略阈值、档位名称与 SLO 保持待实测。M1 的有限预算已冻结，完整跨入口 substrate 在 G05 交付，S26 再深化自适应策略。
+> 输入研究：[Sparse AI 报告](../sparse-ai-invocation-adaptive-compute-research.md)。实际目标解析见 [model-routing](model-routing.md)。
+
+## 1. 默认路径与适用范围
+
+`0-call first → 1 main generation for ordinary RP → evidence-driven escalation`
+
+“0-call”指不新增生成模型调用，不代表 embedding、索引、CPU / GPU 或检索没有成本。已有状态、authority、图遍历、规则和确定性编译优先；正常 RP 以一次主要正文生成作为架构目标。
+这不是已测 SLO，也不要求 Project 的多步工具任务只运行一次模型。用户明确选择的 Director、Package 必需 resolver 或高影响任务可有更多调用，但须标明依赖、预算和收益；必要 authority / knowledge / output guard 始终保留。
+M1 的当前基线如实记录，不为了达成 one-call 指标改写既有 execution contract。
+
+| 路径 | 触发 | 额外工作 |
+| --- | --- | --- |
+| 普通 RP | 现有证据足够、无必需重判断 | 编译与检索后正文；不固定 Planner / Critic / Reflection |
+| Utility | 确定性证据不足，且轻量 classifier 已有验证 | 有界本地 / 低成本窄任务，再正文；classifier 开销计入 |
+| Selective cognition | 重要事件、知识冲突、未解承诺或多角色依赖 | 一个共享事件 pass；按受控采纳分别消费派生结果 |
+| Deep / Director | 显式模式、高影响行动或独立 specialist 需求 | 有界 critique、rollout、并行工作；硬预算及退出条件 |
+| Background / Maintenance | 事件 / 阈值、完整 outcome / feedback 或用户请求 | Memory consolidation、Experience、eval / optimization 批处理 |
+
+Fast / Standard / Deep / Director 只是候选产品档位，不是固定调用次数或已批准模型表。
+明显难例允许生成前直接进入合适目标，不强制 cheap → medium → strong 完整生成 cascade。Router 默认纯规则，只有可测收益才增加 classifier；不每轮调用大模型决定要不要调用大模型。
+
+## 2. 共享认知与稀疏更新
+
+一次获准事件的 cognition pass 可产出 significance、belief proposal、emotion appraisal、relationship implication、intention、ToM / memory candidates 与有限公开 rationale。
+各项带各自 source refs、actor、base revision 和 applicability；不同 source exposure / 私有权限不能为了共享 pass 合并。
+采纳仍经过原 authority；部分失败逐项说明，不以生成了 JSON 宣称状态全部更新。
+仅当权限、输入域、模型或独立评价需要不同 specialist 时拆分，并证明增益。
+
+多数回合读取已有 cognition；规则可处理已冻结的 decay / transition。事件 gate 的详细数值在 M3 前定稿。
+Memory 写入与 Experience reflection 积累必要 evidence 后触发；普通低信息 turn 不默认执行 extraction。保留待处理 source anchors，让 consolidation 延迟不会丢证据或越过 actor 可见边界。
+后台结果必须重验 source / revision / scope，不能覆盖新回合；失败显示 pending / stale，不伪装成已学会。
+
+## 3. 一个预算 substrate，沿原 authority 准入
+
+沿 Native RunControl、Host provider send boundary、TaskScheduler 与 RP / Project 捕获 adapter 扩展，禁止另建可绕过它们的模型执行器。
+M1 Evolution owner 预算与前台运行预算是不同用途的额度，共用 reservation / charge 语义；是否设置账户总额由显式 policy 决定。不能把已批准成长预算直接用于前台、也不能自动扣用前台剩余额度。
+一次收费事件有单一 identity，由指定 authority 记一次账；多层限制共享该记录做准入，不重复累计为多笔费用。
+
+支持 owner / scope、session / task、turn / job 与 background 子额度。子项不能突破父项；并行申请必须先 reservation，不能各看同一剩余额度。
+约束可包含 paid / local requests、input / output / reasoning token、工具 / media、金额、deadline、critic / rollout / subagent 上限和并发。
+reasoning / cache-read 常是 total usage 的子集；按 provider usage 语义归一化，不能将 output 与其 reasoning 子项再相加。只存有限 usage 元数据，不保存私有思维链。
+
+`prepared → reserved → send-attempt charged → settled | unknown → reconcile`
+
+请求前固定 estimated upper bound，发送前扣准入额度；失败、超时、取消、retry、fallback、judge、subagent 与后台工作都保留 attempt。
+未发送可释放 reservation；已发送但 usage 不明，按上界占用并标 unknown，不能当零收费。崩溃恢复按 durable identity reconcile，不重新生成 allowance；save restore / fork 不倒退已发生消费。
+StorageEngine 的 SQL / FS 差异沿 M1 commit-last 与单 Host writer 边界设计；不声称文件、binding、预算和审计跨域原子。
+
+模型 token 上限不等于金额硬上限。没有可信价格 / gateway charge cap 时只能保障可执行的请求 / token 额度，金额标 estimated；要求金额硬上限的 policy 无法获得保守上界就不准入。
+本地模型也计调用、延迟、内存 / 设备负载与可取得的功耗证据；没有能力或设备就使用允许的替代路径或报告 unavailable，不自动下载模型。
+
+## 4. Scheduler 与故障边界
+
+继续使用 `turn_blocking / interactive / background / maintenance`；共享 owner resource permits 与公平调度。
+只有当前回复正确性依赖的工作才进入 blocking path；批量 reflection / consolidation / eval 不加入正文等待链。
+Host durable intent 保存 job，TaskScheduler 执行；取消且 worker 尚未结束时继续占用 permit，防止表面取消后超并发。首批不新增应用关闭期间系统级唤醒。
+
+升级、重试、模型降级与工具执行权限分别检查。预算不足先删 optional work；必需证据 / guard 不能完成时停止、等待或进入已有审阅路径，不能用低成本成功状态掩盖失败。
+昂贵计划前检查 deadline 与剩余额度；每个新增调用带 trigger、预期收益、选择层级与退出原因。
+Gateway 内部重试未知时，外层只能限制自己可控 attempts，并记录 unknown amplification；不得宣称限制了不可观测上游总调用，详细处理见 model-routing。
+
+## 5. 评价与观测
+
+共用 M1 Evidence / Eval，记录 root / child / attempt、foreground / background、paid / local、input / cached input / output / reasoning、cache-write、tool / media cost、TTFT、总延迟、retry / fallback 与 charge 来源。
+UI 只显示正文模型不能代表总消费；owner 可查看与本次 turn / task 相关的维护份额，分配算法有来源，不伪装为精确归因。
+
+同一场景做 paired ablation：当前路径、允许的一次正文基线、utility + writer、shared cognition + writer、加 critic / rollout 与 Director。case split / 配置与模型观测固定；不支持的路径明确 unavailable。
+按 ordinary / hard / high-impact / long-session 分层比较，避免普通短回合省钱掩盖难例回归；盲评避免偏好更长输出。
+质量看行为、continuity、知识边界、authority outcome、偏好；成本看每 accepted turn / successful Project task 和边际计算收益。弱 regenerate / edit 信号不自行成为 accepted / rejected 标签。
+报告质量—成本 / 延迟 Pareto 与失败分母、缺失 usage、controller 自身开销；相同硬底线下选最小必要计算。
+
+## 6. 阶段归属与退出
+
+- S01：保持 12 cases / v1，测现有 path 与缺失状态，不预先实现 sparse controller。
+- S03–S05：可靠捕获与非阻塞批处理，保留现有 budget identity。
+- S06 / S09：可用配置的隔离 ablation 与有界 optional-work 候选，M1 不自动晋升 routing / connection policy。
+- G05 / G06：双入口统一准入、send 记账、恢复、事件 / 批处理策略和真实对照；退出需并发、取消、预算耗尽、restore 与难例底线证据。
+- S18 / S19 / S24：共享 pass、有界 ToM / rollout 是 substrate 消费者。
+- S25 / S26：以已有规则基线深化异步 fast / slow 与适应性分配，learnt router 需独立收益和撤回验证。
+
+报告中的平均约 1.x 调用、候选频率、节省百分比均不作为冻结 SLO。实际数值在真实模型与有限预算可用时定稿；本轮未发起模型调用。

@@ -12,6 +12,8 @@
 RP 示例：纠正角色“替玩家作决定”的输出。提炼局部候选，在独立场景检查行动边界与表达质量；启用后同一角色下一次 run 使用新版本，其他角色保持自己的配置。
 Project 示例：Agent 在重复 authoring 中多次错误选择修改入口。结合实际 validation / Review / change set 找到原因，在新 Project 副本验证候选减少同类失败；恢复后不重做已提交操作。
 
+D2 的生成基础方向见 behavior-context / compute-policy / model-routing；M1 只补必要测量与准入语义，不等待 G01–G06，不自动扩张到模型 / routing / connection 自改。
+
 首批已确认接 Skill、Prompt、已有可配置编排策略三类目标；每类走同一晋升语义，使用自身权威的版本 / binding。
 每阶段的具体实现和验收仍按 delivery 中 S01–S10 逐项完成并停止。
 
@@ -67,6 +69,8 @@ Native Session 的 branch / revision 不强加给普通 chat；普通 chat 必�
 显式分支：`rejected / awaiting_review / budget_blocked / stale / failed / cancelled / paused / rolled_back`。
 界面区分“生成成功”“评价合格”“binding 已提交”“下一 run 已消费”，不能只显示笼统 success。
 
+采集由确定性 adapter 完成；reflection / consolidation / eval 按证据聚合、事件或显式请求触发，尽量 background / maintenance，不在每条正文后固定增加一轮模型调用。具体 gate / retention 在 S05 冻结。
+
 触发来源限于：显式纠正 / preference、允许的技术失败、完成 run 后聚合的观察。弱观察只触发诊断，不单独证明改进方向。
 同一 scope / feedback batch / base version 去重与 debounce；评测和发布不会递归触发新的提炼 job。
 Job 在 Host 保存 bounded intent，再交给已有 scheduler；恢复时重验 source、policy、base version、budget 和 pending effects。
@@ -86,7 +90,9 @@ Cases 分为 development、独立 promotion、后续 regression；提炼只访�
 后续从真实失败创建新 case 时记录来源和 split 变化，旧 report 仍绑定旧 case revision。
 
 Baseline 与 candidate 使用同一输入、route / model / tools / resources / rubric；记录随机性并做 paired trials。
-换模型、改变输入结构或同时更改多个目标时，需要新的 evaluation envelope，不能沿用旧合格状态。
+换模型、改变输入结构或同时更改多个目标时，需要新的 evaluation envelope，不能沿用旧合格状态。记录 observable target、alias / gateway 透明度、adapter / overlay 与 usage 缺失；无法证明同一上游条件时不能宣称严格同模型对照，按时段与来源标记、补验证或转审阅。
+
+S06 对现有可配置路径做一次正文、shared cognition、critic / Director 的可用 ablation；不支持则明确 unavailable。费用按全部 root / child / retry / judge / background 汇总，包含 controller 开销；报告质量—成本 / 延迟，不以更长回答奖励更贵路径。完整实验与新资源交付在 G06。
 
 | 维度 | RP | Project |
 | --- | --- | --- |
@@ -119,7 +125,7 @@ RP / Project 的局部改进不会自动扩散到其他角色、会话或项目�
 - 每轮与每 owner 都必须有有限的 request / token 总预算；包括 baseline、candidate、judge、retry 和提炼开销，不通过新增 scope 逃避总预算。
 - 先在 S01 测代表案例的实际开销，再冻结 token 上限和改善 / 回归容忍阈值。预算不足就停止并报告，不偷偷缩小验收集。
 
-上述频率和数量仍是建议；没有把它们当成本对话已批准值。取消 / 未知 usage 的请求按已预留上界记账或暂停自动模式，不能计零成本。
+上述频率和数量仍是建议；没有把它们当成本对话已批准值。取消 / 未知 usage 的请求按已预留上界记账或暂停自动模式，不能计零成本。reasoning / cached input 的 provider 子项不与 total token 重复相加；estimated user cost 与 settled charge 分开。Gateway 内部重试不可观测时不能承诺真实上游调用硬上限。
 
 ## 7. 精确版本与真实读取
 

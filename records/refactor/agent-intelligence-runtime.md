@@ -3,14 +3,14 @@
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Status: **Active**
-- Plan: [讨论与阶段入口](../../plans/architecture/agent-intelligence-runtime/index.md)
+- Plan: [正式架构与阶段入口](../../plans/architecture/agent-intelligence-runtime/index.md)
 - Updated: 2026-10-06
 
 ## Summary
 
 用户要求根据远端 Frontier Agent RP 研究重新核对最新 main，按全面调研、讨论、确定方案、正式执行的顺序长期推进。
 本轮完成架构调研与分阶段讨论稿。用户确认 RP 与 Project Agent 并重，首批先完成双入口成长闭环，并包含有预算与回滚约束的局部自动启用。
-尚未改动产品源码，尚未创建产品实现分支。D1 已完成 M1 产品边界与架构执行约束冻结，S01 执行设计就绪。
+尚未改动产品源码，尚未创建产品实现分支。D1 已冻结 M1 产品边界，S01 执行设计就绪；D2 综合三份新增研究，更新正式语义 / 计算 / 路由架构及后续依赖，当前仍只准备执行 S01。
 
 ## D0 — 最新 main 核对与架构调研
 
@@ -71,6 +71,42 @@ D1：沿已确认的 M1 范围与局部自动启用设计，收敛 scope / 权�
 - Next checkpoint: **S01**。重新核对 main，创建本组短期产品分支，执行 s01-baseline；阶段结束更新同一 Record / live HANDOFF 并停止，不合并 main。
 - Implementation: 尚未开始；本阶段不表示 S02–S34 的所有技术细则 Approved。
 
+## D2 — 三份研究综合更新正式企划
+
+- Request: 先拉取远端 → 读现有 Agent Intelligence Runtime Plan → 读三份研究 → 综合更新正式架构企划；每阶段 / 完成只在本地执行最小相关验证。
+- Start / source docs HEAD: `40ce08a32`；本轮 docs 工作树 fast-forward 8 提交。main pull 显示已是最新。
+- End / inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`；没有产品修改。
+- Auxiliary branch: `feat/agent-intelligence-architecture-update`，从最新 origin/docs 创建独立 worktree，文档集成目标为 docs，绝不将 docs 合入 main。
+- End docs HEAD: 包含本阶段记录的实际提交；与集成后的 origin/docs 对齐。
+- Status: **Complete — D2 architecture revised / S01 Ready**。
+
+### Completed / decisions
+
+- 按顺序读取 live HANDOFF、现有 Plan / Record、三份完整研究报告；原研究和 D0 结论按既有模块引用，不重复全量调研。
+- 增加 behavior-context、compute-policy、model-routing，分别作为语义 / 编译、稀疏计算 / 预算、部署目标 / 路由 / gateway 的详细权威。
+- 普通 RP 以一次主要正文调用为目标；额外 cognition / critic / rollout / specialist 有证据与预算。一次共享事件 pass 分别受控采纳，Memory / Experience 尽量事件 / 批处理。
+- 保留现有 Native 实际 send 计数事实，沿 RunControl / Host / Scheduler 补跨入口费用与 reservation，不另建执行 / authority。
+- Target 与 Model Identity 分开，价格 / capability / health 是有来源与 freshness 的 evidence；policy 请求时求解，独立 FailurePolicy，exact request 与 response observation 分开。
+- New API / Sub2API / OpenRouter / LiteLLM / opaque / local 为正式场景；上游身份、费用与内部 retry 未知时不猜测。别名 / 网关的 audit 可重复性不冒充响应逐字重放。
+- 保留 S01–S34 身份，增加 M8 G01–G06，共 40 个候选实施阶段；M1 不依赖新组，M3 前交付共享基础，S25 / S26 普通路径不强制依赖 World Model。
+- M1 已确认范围 / 默认 / 集成方式不变；S01 仍为 12 cases / v1 / test-only，测量补充不注册产品资源。
+- 明确 U9 授权的企划更新与新增工程判断，不伪装新增 schema、阈值、价格、自动 routing / shadow 权限为用户批准。
+
+### Evidence / validation
+
+- 只读核对相关 Generation / Route / Context / Capability / provider / discovery / Native Host / RunControl / TaskScheduler / request inspector；事实见 baseline §9。
+- 在线复核必要的一手 Provider / Gateway / routing 资料，仅作设计证据；层级与局限见 research §5。没有 provider probe、论文复现或网关服务执行。
+- 本地文档结构检查通过：13 个任务文档、45 个内部链接；围栏配对、表格列数一致、无机器专属路径；40 个唯一阶段且依赖无环，M1 不依赖新增 G 阶段，保留 12 个 S01 case / 6 个 promotion。`git diff --check` 通过；提交前再检查 staged diff。
+- 集成后在 docs 对相同受影响文档执行同一最小检查；不扩大至产品测试，不以未运行检查宣称能力通过。
+- 无产品测试、构建、浏览器、Android / 真机或 CI；无实际模型调用。
+
+### Protection / limitations / next checkpoint
+
+- main 的 AGENTS.md 与原 docs 工作树 README / WEB Adapter / 两模板既有 dirty changes 原样保留，未暂存 / 提交；未修改任何 reference 或其它资产工作空间。
+- 不覆盖其它工作树的 Experience 草稿，不建立第二份 Record / live HANDOFF。D0 / D1 历史保持。
+- 新架构仍需各阶段 schema / 迁移 / provider 支持矩阵与真实质量—成本数据；研究中的统计数字不形成 Atria SLO。
+- 本轮文档持久化并集成 / push docs 后停止；下一正式阶段仅 **S01**。实施、局部验证、push、更新同一 Record / HANDOFF 后停止，不合并 main。
+
 ## Final state
 
-长期任务仍在进行；D0 / D1 完成，S01 Ready，产品状态保持在上述已核对 main。
+长期任务仍在进行；D0 / D1 / D2 完成，S01 Ready，产品状态保持在上述已核对 main。

@@ -14,6 +14,7 @@
 | U6 | 首批纳入 Skill、Prompt、编排参数三类改进对象 | 本对话首批候选面问题的用户回复 |
 | U7 | M1 完整交付后合并 main，再从最新 main 推进下一组；每个正式阶段仍记录后停止 | 本对话主线集成安排问题的用户回复 |
 | U8 | 按角色 / Project 单独开启局部自动模式，并设置统一预算；新建对象默认审阅 | 2026-10-06 对上一轮默认方式推荐回复“按你推荐的来” |
+| U9 | 拉取远端，先读现有 Plan，再读三份研究并综合更新正式架构企划 | 2026-10-06 本轮明确请求；授权企划更新，不授权提前实施后续阶段 |
 
 M1 产品范围、自动模式默认方式与分组集成已确认。S01 工程设计本轮冻结；S02–S10 技术契约在进入对应阶段前细化，M2 以后的认知权限仍待设计。
 
@@ -81,3 +82,23 @@ M1 产品范围、自动模式默认方式与分组集成已确认。S01 工程�
 用户确认记录为 U1–U8；case / report 字段与有限 pilot 规则是 Agent 在已授权范围内作出的工程选择，不伪装成用户逐字段确认。
 下一正式阶段仅执行 s01-baseline；S02–S10 的物理资源契约、迁移、保留期限和晋升阈值按实测逐阶段细化，不自动将整个 34 阶段 Bundle 标为 Approved。
 原有未提交草稿提到的历史选择不自动移入本节。
+
+## 5. D2 — 本轮综合更新的架构约束
+
+下列为 U9 授权范围内的工程设计更新，区别于 U1–U8 的直接用户产品选择；不声称用户逐字段批准。
+
+| ID | 纳入正式企划的约束 | 详细权威 |
+| --- | --- | --- |
+| A1 | Behavior / Creative、Context、Generation、Tool / Output 与 model lowering 分层；Prompt 只控制获准模型行为 | behavior-context |
+| A2 | Identity / Cognition / Character Expression / Narration / Scene 分开；确定性编译与候选优化分开 | behavior-context |
+| A3 | sparse 默认、ordinary RP 以一次主要 generation 为目标；新 AI 调用有事件 / 依赖与预算，维护离开正文等待链 | compute-policy |
+| A4 | 共享获准事件 cognition pass、有限 specialist；所有子调用 / 重试 / 后台 / controller 都计入成本，unknown 不为零 | compute-policy |
+| A5 | Connection / Callable Target / Model Identity 分域；Capability / Economics / Health 是有来源与有效性的 evidence | model-routing |
+| A6 | 持久 RoutingPolicy + 请求时解析 + exact snapshot；质量选择和 FailurePolicy 分开，恢复保留硬约束 | model-routing |
+| A7 | New API / Sub2API / OpenRouter / LiteLLM / opaque / local 是正式场景；只记录可观察路径，不猜上游、收费或重试次数 | model-routing |
+| A8 | 新增 M8 的 G01–G06，M1 不依赖它；M3 前交付共享基础，S26 专注数据驱动自适应；保留原 S01–S34 身份 | delivery |
+| A9 | 保留数据 / exact binding / Package 兼容，显式迁移；ST 历史 UI / preset 结构不约束新设计 | behavior-context、model-routing |
+
+D2 保留 M1 三类候选、局部自动默认、预算与 M1 后集成选择；S01 仍 Ready，未实施。
+未冻结：40 阶段整套实现 API、档位名称、数字 SLO、价格表、provider 能力矩阵、自动路由晋升 / shadow 数据发送权限、local model 安装或 learned router。
+M8 的详细设计与独立集成点在进入该交付组前定稿，逐阶段停止规则持续有效。

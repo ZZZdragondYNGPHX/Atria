@@ -72,3 +72,25 @@
 
 在这两个场景中先证明执行与版本闭环，再逐步扩展到长期目标、动态心理、未来预测和多模态。
 确定性 fixture 验证权限 / 恢复 / 兼容；真实模型 trial 验证行为收益；两者不互相替代。
+
+## 5. D2：三份研究综合与一手来源复核
+
+本轮先读正式 Plan，再全文读取 [Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)，源 docs HEAD 为 `40ce08a32`。前三节的 D0 复核记录保留，不将它当本轮新验证。
+
+| 本轮一手资料 / 阅读层级 | 核对得到的有限结论 | 企划处理 |
+| --- | --- | --- |
+| [Anthropic Context Engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)，工程正文 | selection / compaction / 按需上下文属于工程职责 | behavior-context：Context 与方法分离，压缩有来源及后续行为 eval |
+| [OpenAI Reasoning](https://developers.openai.com/api/docs/guides/reasoning)，成本 / usage 部分 | reasoning 消耗预算；可能耗费输出额度却无可见正文 | compute-policy：计数含 reasoning，usage 子项不重复计费 |
+| [OpenAI Prompt Caching](https://developers.openai.com/api/docs/guides/prompt-caching)，prefix / setting / 限制部分 | 缓存取决于 rendered prefix 与模型 / 设置，不能只看文本相同 | behavior-context：按 adapter / target 验证 cache layout，不冻结通用命中规则 |
+| [OpenAI Batch](https://developers.openai.com/api/docs/guides/batch)，异步与成本部分 | 部分非交互工作可批处理，具体能力与价格依 provider | maintenance 策略可选；本轮不冻结折扣数字或额外购买 |
+| [Claude Thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking)、[Gemini Thinking](https://ai.google.dev/gemini-api/docs/thinking)，参数 / 迁移部分 | thinking mode / effort / budget 依模型和协议而变 | 不用一个通用 effort 字符串伪装全部支持；G04 固定支持矩阵 |
+| [OpenRouter Provider Routing](https://openrouter.ai/docs/guides/routing/provider-selection)，参数支持 / 数据策略部分 | 默认路由可能忽略不支持参数；数据策略筛选有声明边界 | G03 / G04 明确透传证据与 hard constraints；不把兼容接口当原生能力 |
+| [New API Channels](https://docs.newapi.pro/en/docs/guide/feature-guide/admin/channel)、[Ratios](https://docs.newapi.pro/en/docs/guide/console/settings/rate-settings)，官方功能正文 | model mapping、参数覆盖及 group / user 计费可改变执行 / 用户费用 | target 与 identity 分域；官方参考价格不代替用户费用 |
+| [Sub2API](https://github.com/hopol/sub2api)，项目 README 功能说明；[LiteLLM Router](https://docs.litellm.ai/docs/routing)，部署 / 策略部分 | 账号 sticky / 并发与 deployment pool / cooldown 是实际网关职责 | nested routing、affinity 与可观察边界；未运行服务，不宣称内部协议全审计 |
+| [RouteLLM](https://arxiv.org/abs/2406.18665)、[Is Escalation Worth It?](https://arxiv.org/abs/2605.06350)，摘要 | 作者研究支持在评价 / 预算条件下比较路由与 cascade | 只支持研究方向，不能将 benchmark 数字当 Atria RP 收益；G06 做本地 ablation |
+
+以上来源复核日期为 2026-10-06；服务能力 / 价格 / 协议在实际 G 阶段重新核对。未发送 provider probe、复现论文、运行网关或购买模型。
+未逐篇重新核对三份报告的全部论文与统计数字，相关未经复核论断继续标为研究输入；正式设计不依赖那些数字。
+
+综合推论是：稳定语义回答“做什么 / 看什么”，ComputePolicy 回答“允许做多少”，RoutingPolicy 回答“这些计算由什么可调用边界执行”，RequestSnapshot + Observation + Receipt 连接后续 Eval / Evolution。
+因此生成基础在社会认知前补齐；M1 先采集必要测量，不将其扩大成提前重写全部模型配置。这个顺序是本轮工程设计，不是论文给出的产品路线或新增用户逐项批准。
