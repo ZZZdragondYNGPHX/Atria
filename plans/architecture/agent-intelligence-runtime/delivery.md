@@ -18,7 +18,7 @@
 | M8 — 生成与计算基础 | G01–G06 | 创作 / Behavior 与 Context 分层、按预算解析模型 / 网关、稀疏调用与全部费用可检查 | 双入口真实请求消费；迁移与撤回；可用 gateway integration 与质量—成本对照 |
 
 用户已确认先完成 M1，并在首批包含有预算与回滚约束的局部自动启用；首批详细设计见 [m1-evolution.md](m1-evolution.md)。
-建议先保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation，允许在交付组设计时调整先后；M3 开始前要求 G06 完成。M1 不等待 M8；S04 已完成并停止，下一正式阶段为 S05。
+建议先保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation，允许在交付组设计时调整先后；M3 开始前要求 G06 完成。M1 不等待 M8；S05 已完成并停止，下一正式阶段为 S06。
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
@@ -61,7 +61,7 @@ D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整�
 | S02 — 来源 / 引用 / 有效性最小契约 | S01 | 两种 source adapter 和首批 EvidenceSet / Evaluation consumer，复用现有 result / artifact | 伪来源、错误 owner / branch / hash、删除或失效源均不可当成当前证据；展开有预算 |
 | [S03 — RP 可靠轨迹与持久证据](s03-capture.md) | S02 | 连接 run / child / effect / request / message variant 与 Native outcome；补 Director bridge 的 trace 关联 | 当前投影不变成全文日志；捕获缺失显式显示；root / child / attempt / 后台可归因；取消、重生成、重试不交叉关联 |
 | [S04 — Project 持久任务与轨迹](s04-project-recovery.md) | S02、S03 的公共持久层 | 为现有 ProjectAgentService 增加持久任务 / attempts / timeline，并关联 Studio validation / Review / changeset | Host / 浏览器重启后恢复；commit receipt 幂等；过期 baseRevision 进入 conflict，不重复写入 |
-| S05 — 反馈与经验的作用域 / 生命周期 | S03、S04 | 显式反馈、弱观察、技术 outcome、诊断分层；保留 / 删除 / 导出和来源失效路径 | regenerate 不自动成为负偏好；角色 / 项目 / 用户隔离；纠正和删除可撤回相关 lesson；reflection 按事件 / 聚合批处理，无固定每轮调用 |
+| [S05 — 反馈与经验的作用域 / 生命周期](s05-feedback.md) | S03、S04 | 显式反馈、弱观察、技术 outcome、诊断分层；保留 / 删除 / 导出和来源失效路径 | 已交付 exact source / Host subject / CAS、纠正 / 撤回 / 删除 / 导出 / retention；regenerate 保持弱观察，reflection 仅事件 / 聚合 batch，无固定每轮模型调用；5 suites / 137 tests |
 | S06 — 两条入口的隔离执行与比较 | S01、S05 | 在 Workspace / Session 副本重跑 baseline 与 candidate；固定输入、版本、工具模拟和 judge | evaluation 无生产副作用；case / trial / rubric 可追溯；独立案例未用于提炼；现有可用 1-call / cognition / critic / Director ablation 报告质量—成本与缺失 |
 | S07 — Skill 候选与版本固定 | S06 | 在现有 Skill repository 上补精确候选版本、读取 pin、发布冲突检查与历史 | 所有真实使用入口消费同一固定内容；运行中编辑不改变已接受版本；旧版本可取回 |
 | S08 — Prompt 候选与精确引用生效 | S06 | 复用现有 immutable Prompt 资源，声明可演化区块、候选 diff 与有效 binding | 不靠 latest fallback；Package 原版保留；候选启用在下一 run 的 exact request snapshot 可见 |

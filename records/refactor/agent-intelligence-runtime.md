@@ -331,6 +331,46 @@ API / Schema / key、容量 / TTL、完整依赖覆盖、semantic threshold、�
 - main AGENTS 与 docs README / WEB Adapter / 两模板既有 dirty 未暂存 / 提交，hash 保持。未合并 main，不删除本组 task branch，不提前实施 S05 / G 阶段、reuse / cache / invocation 或 Local backend。
 - 下一正式阶段仅 **S05**：真实 Git → HANDOFF → index / decisions → m1-evolution / s02-sources / s03-capture / s04-project-recovery / delivery S05 / baseline storage 与相关 source authority → 本 Record；沿同一分支先细化 feedback 分层、作用域、纠正 / 删除 / 导出、retention 与 source invalidation，再实现。本轮到 S04 文档持久化 / push 停止。
 
+## S05 — 反馈、诊断与作用域生命周期
+
+- Request: 读取 `docs:HANDOFF.md`，仅续接 S05；每阶段及完成只执行本地最小相关验证。
+- Start product HEAD: `172a0c281334c36c56273a24d19922ad4d5e5c35`，同一 `feat/agent-intelligence-runtime` worktree 干净。
+- Start docs HEAD: `a2cf80b1d418d895e2c0ee9565128ab661dba65a`；按当前 HANDOFF / index / decisions / M1 / S02–S04 / delivery S05 / baseline 相关 authority 与本 Record 续接，治理以 docs 已提交 README 为准。
+- Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，本地 / origin 保持；main AGENTS 与 docs 四个治理 / 模板 dirty 保留。
+- Product commit / End / Tested HEAD: `caf662842941d3261dc1840242278f5529db10af`，已 push，origin 同 HEAD，产品 worktree 干净。
+- End docs HEAD: 以包含本 S05 Record / live HANDOFF 的实际 docs 提交为准；仅暂存本任务九个文档。
+- Status: **Complete — S05 scoped feedback / diagnosis lifecycle**；下一正式阶段 S06 未开始，不合并 main。
+
+### Completed / engineering decisions
+
+- 新增 [s05-feedback.md](../../plans/architecture/agent-intelligence-runtime/s05-feedback.md) 冻结 schema / key、subject / provenance、兼容、容量、reflection gate、retention / failure / delete / export；同步现有入口和 S02–S04 生命周期引用。这里的数值与 API 是本阶段工程细化，不伪称用户逐字段选择。
+- 原 StorageEngine additive `atri_agent_experience`，key 为 authenticated handle + SHA-256(scope, Host subject)；v1 ledger、sequence / integrity CAS、同 Host 资源锁。每 ledger 512 KiB / 256 feedback / 64 diagnoses，超限明确拒绝；无 DDL、存储版本升级或 backfill。
+- Host `target` consumer 直接从原 EvidenceRecord / Project task 返回 exact hash、subject 与 current observation，提交后继续重验；不复制正文、trace、公开 conversation、Workspace、private reasoning 或 provider state。单角色 chat 使用 charDir；group 用 exact message identity，不能凭显示名聚合角色；Native 从仍有效的 timeline actor / receipt entryPoint 解析，过期 Native 来源拒绝新建；Project 绑定 Project identity。
+- 显式 correction / prefer / avoid 标为 user；regenerate / edit / abandon / accept / review_reject 标为 client_observation，empty note、不推断偏好；technical 只允许 Host 从保存的 validation / changeset / Native outcome 解析，unknown 明确保留，相同 exact source 去重。没有客户端提交 Host 结论的入口。
+- diagnosis 是有限公开 user_hypothesis，保存 rationale / conditions / counterexamples / direction 与 exact feedback revision / hash。显式或 failure 事件可就绪；弱观察至少三个不同 execution source 才聚合，仍不证明独立质量样本、弱观察单独不能定向改进。同 batch diagnosis 去重，无模型请求 / 后台循环；未来调度与预算仍归现有 scheduler / authority。
+- authenticated `/api/native/generation/experience/*` 是 RP / Project 共用实际 HTTP consumer，no-store。所有 mutation 需 expectedSequence；correct 固定 source、递增 feedback revision，相关 diagnosis stale；withdraw 停止消费；delete 物理清除相关 diagnosis 内容。diagnosis 也可独立撤回 / 删除，export 仅返回有限公开 note / metadata / applicability。
+- inspect / export / reflection / diagnose 每次重验原 source。来源不存在时物理清除反馈与诊断；hash / variant / branch / revision / owner 变化时标 stale，writable 保存后即使恢复旧内容也不会复活。暂时 unavailable 阻止消费但不永久推断来源失效；read-only 用过滤 view、不持久写入。未被观察到的瞬时 source 变化不能从 metadata 推断出来。
+- feedback / diagnosis 默认 30 天，可选 1–365 天；缩短收紧既有期限，延长不复活，writable reconcile / purge 清理、read-only 立即过滤。显式 `purgeSources` 按 scope / 1–365 天 / 每批 1–128 项清理旧 evidence 与 terminal completed / cancelled / taken_over tasks；expectedIntegrity 防止并发 source 更新被删除；active / Review / pending commit、Project source / 正式 Git receipt 保留。
+- evidence / task 原删除路径先清 feedback / diagnosis；Project task 清理删除该 Project ledger。FS 无跨资源整体事务，清理失败阻止 evidence / task 删除；Project HTTP 原 authority 删除先完成，后续清理失败由 missing-source 消费收敛。没有 app-closed timer，source retention 是显式 sweep；native kind 列表 IO 不声称被删除 batch limit 限制。
+
+### Minimal local validation
+
+- **5 relevant suites / 137 个不同 tests passed**：新增 feedback **33**，capture **24**，project-recovery **33**，sources **43**，project-agent-http **4**；重复执行不累加。
+- 相关命令：`node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/feedback.test.js tests/agent-intelligence/capture.test.js tests/agent-intelligence/project-recovery.test.js tests/agent-intelligence/sources.test.js tests/native/project-agent-http.test.js`。组合首轮的后四套通过，feedback 新增 source-retention fixture 两例因 Studio 规范化字段断言失败；改为比较真实清理前 / 后快照，之后只定向复核 feedback 最终 **33 passed**。初版测试误用不存在的 storage injection exports 在执行案例前失败，改用既有 initStorage；不计作通过。
+- 真实临时 FS / SQLite physical close / reopen、CAS / 并发 mutation、corruption / unknown schema / capacity、read-only / expiry、纠正 / 撤回 / 删除 / 独立 diagnosis 撤回、source deletion cleanup failure、variant / 内容 edit 后不可复活、dump / restore、FS→SQLite→FS generic roundtrip 与 MySQL / Pg kind / key 注册；没有连接外部 DB。
+- 双入口实际 HTTP target / submit / export、认证、owner 字段拒绝、no-store / 409 / read-only 503；Project 用实际 Studio / ProjectAgentService / Git，验证原 validation outcome、task 删除 / Project 清理、人类 revision 失效、terminal task 清理不改 Project source，Review 被保留。Native actor / branch / failure feedback 使用 synthetic snapshot port 验证 source adapter 与 Host consumer，不能当完整真实 Session 端到端；复核的既有 sources / recovery suites 保留其真实 authority fixtures。
+- Source sweep 注入新 evidence update 后旧 integrity 删除被拒绝并报告 conflict；后续显式 sweep 才清理。Reflection 单 regenerate、同 source 重复、不同 execution source 聚合、弱证据 direction 拒绝与 exact batch 去重均通过，modelCalls=0。
+- 7 个触及生产 JS 与新测试的本地 ESLint、product diff / staged diff check 通过；README 补实际 API / targeted run / 证据界限。复用已安装依赖，无安装 / lockfile / 用户数据 / Secret 读取。
+- 文档最小检查通过：九个任务文档 / 82 个本地链接 / 8 个 anchors，围栏 / 表格、40 阶段原依赖、S05 HEAD / S06 路由、前序 Record 逐字保留、五个 dirty hash 与 diff / staged paths。首版 anchor checker 未去除中文标点，修正 checker 后既有链接通过，未改写原章节。没有重读远期研究或 reference。
+- 无 UI 代码变化，未执行 browser / 全应用 / build / Android / 真机 / 远程 CI / 真实模型 / judge / probe。S01 empiricalReady=false；这些结构 / 生命周期结果不证明模型收益、费用收益或 candidate publication。
+
+### Limitations / next checkpoint
+
+- FS 资源锁仅单 Host writer；未引入跨资源原子事务。原 authority / 存储列表可能全量 IO；retention 不在应用关闭时定时运行。新反馈 UI、AI diagnosis、隔离比较、候选 / report / promotion / 自动 mode 控制未提前交付；未来必须消费同一精确依赖与撤回规则。
+- 删除 source / feedback 后未来消费者不得沿缓存 current 继续晋升；当前不存在 future lesson / candidate / report kinds，不预注册空资源。group subject 保守绑定单消息，Native stale source 不重新推断历史 actor；跨账户 restore 的 sources.owner 必须重新捕获。
+- 下一正式阶段仅 **S06**：真实 Git → HANDOFF → index / decisions → s01-baseline / m1-evolution / s02-sources / s03-capture / s04-project-recovery / s05-feedback / delivery S06 / baseline 隔离与相关 authority → 本 Record；冻结双入口隔离执行 / 比较 envelope、独立 split、原 Workspace / Session 副本与确定性 outcome / usage 缺失路径。真实有限 pilot configuration / bridge 尚缺，不发现 Secret、不选择付费 route、不用 scripted 替代实测门槛。
+- 本轮到 S05 commit / push、同一 Record / live HANDOFF 后停止；不开始 S06，不合并 main 或删除本组分支。
+
 ## Final state
 
-长期任务仍在进行；D0 / D1 / D2 / D3 / D4 / S01 / S02 / S03 / S04 完成。本轮仅 S04 实现、最小本地验证、commit / push 与同一 Record / live HANDOFF 后停止；产品 HEAD 为 `172a0c281334c36c56273a24d19922ad4d5e5c35`，main 未变化。下一正式阶段 S05 未开始。M1、S01 真实模型基线、通用 reuse / cache / invocation 与远期 G / Local 阶段未计作完成。
+长期任务仍在进行；D0–D4 / S01–S05 完成。本轮仅 S05 实现、最小本地验证、commit / push 与同一 Record / live HANDOFF 后停止；产品 HEAD 为 `caf662842941d3261dc1840242278f5529db10af`，main 未变化。下一正式阶段 S06 未开始。M1、S01 真实模型基线、通用 reuse / cache / invocation 与 G / Local 阶段未计作完成。

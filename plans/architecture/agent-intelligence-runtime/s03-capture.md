@@ -1,6 +1,6 @@
 # S03：可靠 RP 捕获与公共持久层
 
-本阶段沿 S02 来源 authority 增加 metadata-only EvidenceRecord v1，不捕获 Prompt、工具参数、结果全文或 credentials。后续 S04 的 Project task 持久恢复已交付，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)；反馈、容量与 retention 产品策略在 S05。
+本阶段沿 S02 来源 authority 增加 metadata-only EvidenceRecord v1，不捕获 Prompt、工具参数、结果全文或 credentials。后续 S04 的 Project task 持久恢复已交付，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)；反馈 / diagnosis、容量与 retention 产品策略已由 [s05-feedback.md](s05-feedback.md) 定稿并交付。
 
 ## 持久契约
 
@@ -24,7 +24,7 @@ Director bridge 返回同一次 loop 的 metadata trace，并绑定传入 turn a
 
 ## 兼容、迁移、删除与验证
 
-Additive kind，无历史 backfill、无 SQL DDL / 存储版本升级。原 native kind 遍历覆盖 list / migration / backup dump / restore；删除记录走原 transaction deleteResource，用户删除保持原 engine/user-directory 语义。来源删除使消费失效，S05 再交付级联 lesson / feedback 与 retention。撤回新增 subscriber / kind consumer 即可，旧运行继续原路径。
+Additive kind，无历史 backfill、无 SQL DDL / 存储版本升级。原 native kind 遍历覆盖 list / migration / backup dump / restore；删除记录走原 transaction deleteResource，用户删除保持原 engine/user-directory 语义。来源删除使消费失效，S05 已交付 feedback / diagnosis 级联与显式 bounded source retention，详见 [s05-feedback.md](s05-feedback.md)。撤回新增 subscriber / kind consumer 即可，旧运行继续原路径。
 
 最小本地验证覆盖 FS / SQLite durable reopen / CAS / corrupt / unknown schema / read-only / roundtrip，以及 registry key 与 MySQL/Postgres generic handler contract；无外部 DB 服务。RP 实际 Runtime / Director root-child / 取消 / late events / bridge；Native 使用现有 isolated generation / Session fixtures，验证 request retry 与正式 receipt 分开、保存失败不重做 effect。没有真实模型或行为收益验收。
 

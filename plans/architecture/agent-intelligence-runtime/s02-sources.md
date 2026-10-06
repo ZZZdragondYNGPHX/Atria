@@ -28,7 +28,7 @@ Evaluation v1 返回 evidenceSetHash、current / incomplete、每个源的 curre
 
 调用方必须提供有限 maxSources（1–32）、maxBytes（1–131072 UTF-8 JSON bytes）和 maxScanMessages（1–8192，包含重验）。无静默截断、无 token / price 推断。scan / expansion 预算不足明确失败或 incomplete。
 既有 authority 自身加载完整 chat / Session 的 IO 不宣称已变成流式或受该正文展开预算限制；预算限制下游选择、扫描和正文释放。后续可靠捕获独立细化。
-本阶段 EvidenceSet / Evaluation 为调用返回值，**没有持久 key、新 registry kind 或数据迁移**。持久 EvidenceRecord 共用层在 S03，Project task 在 S04，retention / 删除策略在 S05；不得把这些能力提前计为完成。
+本阶段 EvidenceSet / Evaluation 为调用返回值，**没有持久 key、新 registry kind 或数据迁移**。持久 EvidenceRecord 共用层在 S03，Project task 在 S04，S05 retention / 删除策略已由 [s05-feedback.md](s05-feedback.md) 独立交付；这些仍非 S02 当时能力。
 删除原 chat / Session / Project、消息、artifact 或 task 后，每次消费沿原 authority 失效；unknown schema / representation 拒绝。旧运行与原存储布局继续可用；撤回本阶段只需移除调用 / exports，无数据转换。
 仅使用原 ChatRepo、SessionCore 与 Studio / ProjectAgentService；不写 World、Project source、原 task 或配置，不创建另一套有效配置读取器。Studio 的既有 getRevision 可同步外部 human edit 到自身历史，该行为沿原 authority 保持。
 

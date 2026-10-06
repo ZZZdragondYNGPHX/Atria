@@ -1,6 +1,6 @@
 # S04：Project 持久任务、轨迹与恢复
 
-本阶段只扩展现有 ProjectAgentService / StudioService，不新增执行或 Project authority，不提前实现 S05。下列是已授权范围内的工程细化。
+本阶段只扩展现有 ProjectAgentService / StudioService，不新增执行或 Project authority，S05 的反馈与 retention 能力由 [s05-feedback.md](s05-feedback.md) 独立管理。下列是已授权范围内的工程细化。
 
 ## 持久 schema 与 key
 

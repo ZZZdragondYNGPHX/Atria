@@ -2,6 +2,7 @@
 
 > D1 产品边界与架构执行约束已冻结；S01 详细设计见 [s01-baseline.md](s01-baseline.md)。
 > S02 最小来源契约与只读 consumer 已完成，详细权威为 [s02-sources.md](s02-sources.md)；S03 可靠 RP 捕获 / 公共持久层已完成，详细权威为 [s03-capture.md](s03-capture.md)；S04 Project task 持久恢复已完成，详细权威为 [s04-project-recovery.md](s04-project-recovery.md)。
+> S05 feedback / diagnosis 的分层、scope / 生命周期与 reflection gate 已交付，详细权威为 [s05-feedback.md](s05-feedback.md)。
 > 用户已确认双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
 > 后续物理 schema / 数值校准按对应阶段细化；逻辑资源表不表示全部 API 已冻结。
 > 长期方向读 architecture；代码事实读 baseline；用户确认的唯一权威是 decisions。
@@ -43,7 +44,7 @@ Native Session 的 branch / revision 不强加给普通 chat；普通 chat 必�
 
 ## 3. 数据模型：只实现 M1 的消费者需要的内容
 
-以下是逻辑资源，允许共享 repository / 表。S02 冻结既有来源的 key / anchor 与无持久化的 EvidenceSet / Evaluation v1；EvidenceRecord v1 的 kind / key / 校验 / 迁移与失败处理已由 [s03-capture.md](s03-capture.md) 冻结并交付；原 Project task 的 durable v1 / attempts / receipt / recovery 已由 [s04-project-recovery.md](s04-project-recovery.md) 冻结并交付；其它新资源仍按各阶段冻结，不提前注册整张表。
+以下是逻辑资源，允许共享 repository / 表。S02 冻结既有来源的 key / anchor 与无持久化的 EvidenceSet / Evaluation v1；EvidenceRecord v1 的 kind / key / 校验 / 迁移与失败处理已由 [s03-capture.md](s03-capture.md) 冻结并交付；原 Project task 的 durable v1 / attempts / receipt / recovery 已由 [s04-project-recovery.md](s04-project-recovery.md) 冻结并交付；S05 feedback / diagnosis ledger 的物理契约由 [s05-feedback.md](s05-feedback.md) 管理；其它新资源仍按各阶段冻结，不提前注册整张表。
 
 | 资源 | 必要内容 | 不承担的职责 |
 | --- | --- | --- |
@@ -70,7 +71,7 @@ Native Session 的 branch / revision 不强加给普通 chat；普通 chat 必�
 显式分支：`rejected / awaiting_review / budget_blocked / stale / failed / cancelled / paused / rolled_back`。
 界面区分“生成成功”“评价合格”“binding 已提交”“下一 run 已消费”，不能只显示笼统 success。
 
-采集由确定性 adapter 完成；reflection / consolidation / eval 按证据聚合、事件或显式请求触发，尽量 background / maintenance，不在每条正文后固定增加一轮模型调用。具体 gate / retention 在 S05 冻结。
+采集由确定性 adapter 完成；reflection / consolidation / eval 按证据聚合、事件或显式请求触发，尽量 background / maintenance，不在每条正文后固定增加一轮模型调用。gate / retention 已由 [s05-feedback.md](s05-feedback.md) 冻结，consumer 不增加模型调用；job 调度与预算仍在后续正式阶段接入。
 
 触发来源限于：显式纠正 / preference、允许的技术失败、完成 run 后聚合的观察。弱观察只触发诊断，不单独证明改进方向。
 同一 scope / feedback batch / base version 去重与 debounce；评测和发布不会递归触发新的提炼 job。
@@ -84,7 +85,7 @@ Job 在 Host 保存 bounded intent，再交给已有 scheduler；恢复时重验
 一次操作提交成功但 task 更新失败时，通过 origin / operation / changeset 证据 reconcile；无法唯一判定就显示 conflict / awaiting_review。
 历史未持久化任务不能被“迁移恢复”凭空找回；来源不完整时明确提示重新建立任务。
 
-上述 Project 边界已由 S04 实施：原 Studio Git 正式 commit 保存 exact Workspace / base / validation receipt，task 容量在正式写入前检查；唯一 receipt 可恢复 completed，缺失回 Review 或 conflict，不自动重放。公开 transcript 按完整 round 保存，Host request / send / usage 与 client observation 分开；旧 opaque provider state 不入库，显式 Continue 读取当前 task authority。S05 retention / feedback / lesson 生命周期仍待细化。
+上述 Project 边界已由 S04 实施：原 Studio Git 正式 commit 保存 exact Workspace / base / validation receipt，task 容量在正式写入前检查；唯一 receipt 可恢复 completed，缺失回 Review 或 conflict，不自动重放。公开 transcript 按完整 round 保存，Host request / send / usage 与 client observation 分开；旧 opaque provider state 不入库，显式 Continue 读取当前 task authority。S05 retention / feedback / diagnosis 生命周期已交付，详见 [s05-feedback.md](s05-feedback.md)。
 
 ## 5. 评价与适用性
 
@@ -166,7 +167,7 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 
 新增资源纳入既有 FS / SQLite / MySQL / Postgres key / list / dump / restore / deleteUser、迁移与备份路径；不能只证明一份本地 JSON 能写入。
 优先验证 FS 与 SQLite 的持久与恢复；触及公用资源 registry 或跨模式格式时，补相应 targeted contract checks，真实外部 DB 证据按阶段记录。
-项目删除、用户删除、read-only mode 与 scope 关闭均有明确处理；S02 展开预算、S03 trace 与 S04 task 的技术容量已有边界，产品保留期限 / 级联删除在 S05 定稿。
+项目删除、用户删除、read-only mode 与 scope 关闭均有明确处理；S02 展开预算、S03 trace 与 S04 task 的技术容量已有边界，S05 产品保留期限 / 级联删除已定稿并交付；未来 candidate / report / promotion 消费同一 exact dependency，尚未注册未来资源。
 
 ## 10. 已冻结范围与后续深化
 
@@ -174,5 +175,5 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 首批使用仓库可复现 RP / Native authoring fixture 建代表案例，再在已配置的真实模型上验证；用户指定案例可替换对应 case revision。
 
 S01 cases / report / 运行界限见 s01-baseline。产品 scope、版本生效、共享预算、发布 / 恢复 / 回滚流程作为本组执行约束。
-S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 新 key / 校验 / 迁移已由 s03-capture 定稿；S04 Project task 持久 / 恢复已由 s04-project-recovery 定稿并交付；下一 S05 先定稿 feedback / lesson 作用域、retention / 纠正 / 删除 / 导出细则；S06 / S10 前用真实基线定稿费用和晋升 / 回归门槛。
+S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 新 key / 校验 / 迁移已由 s03-capture 定稿；S04 Project task 持久 / 恢复已由 s04-project-recovery 定稿并交付；S05 已定稿并交付 feedback / diagnosis 作用域、retention / 纠正 / 删除 / 导出，下一阶段 S06；S06 / S10 前用真实基线定稿费用和晋升 / 回归门槛。
 参数缺失、证据不足、旧版本不可取回或配置冲突时不能自动发布；后续不得用预留接口代替 M1 必需的局部自动能力。
