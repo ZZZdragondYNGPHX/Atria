@@ -97,6 +97,12 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         return body;
     };
     return Object.freeze({
+        contextTokenizer(resolved) {
+            const encoding = resolved.model.tokenizer?.encoding;
+            if (!['cl100k_base', 'o200k_base'].includes(encoding)) throw new GenerationError('generation_adapter_control_unsupported');
+            const encoder = getEncoding(encoding);
+            return text => encoder.encode(String(text)).length;
+        },
         resolveCapabilities: async () => supported.map(capability => ({ capability, state: 'supported', provenance: [{ kind: 'adapter-metadata', source: `native.${format}` }] })),
         countTokens({ resolved, promptIr, contextPlan }) {
             // Tokenizer is explicitly configured. Do not infer it from active host settings.

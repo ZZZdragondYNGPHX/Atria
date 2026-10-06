@@ -133,6 +133,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
         return { endpoint: endpoint.href, body, binding: binding(resolved) };
     };
     return Object.freeze({
+        contextTokenizer() { return text => Buffer.byteLength(String(text), 'utf8'); },
         resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache'].map(capability => ({ capability, state: capability === 'generation.cache' && !anthropic ? 'unsupported' : 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.' + format }] })),
         countTokens({ resolved, promptIr, contextPlan }) {
             const request = render({ resolved, promptIr, reserve: contextPlan.budget.reservedOutputTokens });

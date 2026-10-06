@@ -251,7 +251,7 @@ describe('P3 Context Provider and protocol ports', () => {
         const options = { countTokens: text => Math.ceil(text.length / 4), safetyMarginTokens: 10, hardReserveTokens: 50 };
         const host = createNativeSessionContextAdapter({ readSnapshot: async () => ({ source: sessionSource, snapshot }), options });
         options.safetyMarginTokens = 900;
-        const plan = await host.buildRequestContextPlan({ requestId: 'req-1' }, resolved);
+        const plan = await host.buildRequestContextPlan({ requestId: 'req-1' }, { ...resolved, ...args().resolved });
         const original = await compileNativeContextPlan(snapshot, { ...options, safetyMarginTokens: 10, modelContextLimit: 1000, responseReserve: 100 });
         expect(plan.items.map(item => item.content)).toEqual(original.included.map(item => item.content));
         expect(plan.source).toEqual(sessionSource);

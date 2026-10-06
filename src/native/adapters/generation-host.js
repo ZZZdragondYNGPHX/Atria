@@ -1,3 +1,6 @@
+import { createPackageContextDerivation } from '../context-computation.js';
+import { prepareKnowledgeAdoption } from '../knowledge-authority.js';
+import { captureTaskProduction } from '../task-artifact-authority.js';
 import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache } from '../authority-turn.js';
 import { buildAuthorityObservation } from '../authority-transaction.js';
 import { createNativeId, isNativeId } from '../identity.js';
@@ -310,9 +313,10 @@ export class NativeGenerationHost {
             stages.push(stage.record.payload);
         }
         checkCancellation(signal);
-        let draft;
+        let draft, knowledgeProof;
         if (runtime.turn.narratorTaskId) {
             const result = await invoke(runtime.turn.narratorTaskId, { stages }, 'narrator');
+            knowledgeProof = result.knowledgeProof;
             draft = typeof result.record.payload === 'string'
                 ? { schemaVersion: 1, narrative: result.record.payload, outcomes: [], diagnostics: [] } : result.record.payload;
             draft = assertTurnEnvelope(draft);
@@ -324,6 +328,7 @@ export class NativeGenerationHost {
                 messages: stages.length ? [{ role: 'user', content: JSON.stringify({ provisionalTurnContext: authorityTurn ? authorityValue(stages) : stages }) }] : [] }, signal, onChunk, { scheduled: true, lanePlan });
             provenance.push({ taskId: 'narrator', requestSnapshotHash: hashNativeDocument(narration.snapshot),
                 deliveryReceipt: { kind: 'model_delivery', invocationId: input.invocationId, delivered: true } });
+            knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, base, narration.snapshot.contextPlan?.nativeSelection);
             draft = { schemaVersion: 1, narrative: narration.response.text, outcomes: [], diagnostics: [] };
         }
         const narrative = draft.narrative;
@@ -335,7 +340,7 @@ export class NativeGenerationHost {
             outcomes.push({ requestId: task.interpretation.id, interpretation: interpreted.record.payload });
         }
         checkCancellation(signal);
-        return { invocationId: input.invocationId, provenance, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
+        return { invocationId: input.invocationId, provenance, knowledgeProof, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
     }
 
     async preflightTurnRoutes(handle, opened, snapshot) {
@@ -480,6 +485,7 @@ export class NativeGenerationHost {
         if (!route) fail('native_task_binding_missing');
         const slot = snapshot.manifest.runtime.experienceContract.taskRuntime.slots.find(item => item.id === task.bindingSlotId);
         const taskPlan = { task, variant, slot, payload };
+        const production = captureTaskProduction(snapshot, task, payload);
         const anchor = { sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: input.revisionId };
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(input.invocationId)) fail('native_task_invocation_required');
         const fingerprint = hashNativeDocument({ task, variant, payload, anchor, routeRef, fallbackMode: input.fallbackMode ?? 'disabled' });
@@ -517,14 +523,15 @@ export class NativeGenerationHost {
                 outputContract: { name: 'atria_task', schema: variant.outputSchema } }, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured }),
             finalize: async (result, deliveryReceipt) => {
                 const payload = assertTaskValue(result.response.jsonData ?? result.response.json ?? JSON.parse(result.response.text), variant.outputSchema);
-                const record = { invocationId: input.invocationId, taskId: task.id, variantId: variant.id, fingerprint, payload,
+                const record = { ...(production ? { production } : {}), invocationId: input.invocationId, taskId: task.id, variantId: variant.id, fingerprint, payload,
                     definitionHash: hashNativeDocument(task), contextHash: hashNativeDocument(result.snapshot.contextPlan),
                     requestSnapshotHash: hashNativeDocument(result.snapshot), rawResultHash: hashNativeDocument(result.response),
                     execution: result.snapshot.diagnostics?.effectiveConfig ?? null,
                     normalizedResultHash: hashNativeDocument(payload), promptProgramRef: result.snapshot.promptProgramRef,
                     generationProfileRef: result.snapshot.generationProfileRef, runtimeRouteId: result.snapshot.runtimeRouteId, deliveryReceipt };
-                if (task.resultPolicy.sink === 'turn' || transient) return immutable({ record });
-                const committed = await this.sessionCore.recordTaskResult(handle, input.sessionId, record, { expectedRevisionId: input.revisionId });
+                const knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, snapshot, result.snapshot.contextPlan?.nativeSelection);
+                if (task.resultPolicy.sink === 'turn' || transient) return { record: immutable(record), knowledgeProof };
+                const committed = await this.sessionCore.recordTaskResult(handle, input.sessionId, record, { expectedRevisionId: input.revisionId, knowledgeProof });
                 return immutable({ record: committed.states.atri_task_results.records.at(-1), snapshot: committed });
             } };
         if (scheduled) {
@@ -639,8 +646,12 @@ export class NativeGenerationHost {
         if (snapshot && !illustrationPlan) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
         const authorityContext = lanePlan?.authorityContext;
         if (!authorityContext && informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
+        const contextPackage = snapshot?.manifest.runtime?.experienceContract?.contextRuntime
+            ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
         const nativeContext = snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
             options: {
+                tokenizerFor: resolved => resolver.provider(resolved.connection.providerAdapter).contextTokenizer?.(resolved),
+                deriveContext: contextPackage ? createPackageContextDerivation(snapshot, contextPackage) : undefined,
                 personaBlockedReason: snapshot.manifest.runtime?.experienceContract?.sharedRuntime ? 'shared_scope_unsupported' : undefined,
                 personaAllowed: !snapshot.manifest.runtime?.experienceContract?.sharedRuntime && (taskPlan
                     ? taskPlan.task.context.includes('player_persona') && !['background', 'maintenance'].includes(taskPlan.task.executionClass)
@@ -691,7 +702,12 @@ export class NativeGenerationHost {
             items.push(...(skills?.items ?? []));
             for (const [index, message] of skillTranscript.entries()) items.push({ kind: 'context.history', id: 'skill-message-' + index,
                 content: message, provenance: [{ source: 'host.skills' }] });
-            return { ...selected, items };
+            const nativeSelection = selected.nativeSelection && { ...selected.nativeSelection,
+                pendingState: { schemaVersion: 1, effects: Object.fromEntries(Object.entries(selected.nativeSelection.pendingState.effects)
+                    .filter(([identity]) => items.some(item => item.id === 'knowledge:' + identity) || Object.hasOwn(snapshot.states.atri_knowledge_runtime?.targets?.[selected.nativeSelection.targetKey]?.effects ?? {}, identity))) },
+                selectedKnowledgeIdentities: selected.nativeSelection.selectedKnowledgeIdentities.filter(identity => items.some(item => item.id === 'knowledge:' + identity)),
+            };
+            return { ...selected, items, ...(nativeSelection ? { nativeSelection } : {}) };
         } };
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
         const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',

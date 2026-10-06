@@ -105,7 +105,7 @@ export function compileTransactionDeclarations(raw, options) {
     // Count the entire hook, not just each publication in isolation.
     budget(publications.reduce((sum, item) => sum + item.reads.length, 0), publications.flatMap(item => item.effects), authority);
     const transactions = list(raw.transactions, LIMITS.transactions, transaction => {
-        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation'], 'Transaction');
+        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation', 'artifacts'], 'Transaction');
         taskId(transaction.id); taskId(transaction.verb);
         if (transaction.origin !== undefined && (transaction.origin !== 'simulation' || !contract.simulationRuntime)) throw new TypeError('Unknown or undeclared Transaction origin');
         if (transaction.origin === 'simulation' && transaction.intent?.expose !== false) throw new TypeError('Simulation Transaction cannot be player-exposed');
@@ -113,7 +113,18 @@ export function compileTransactionDeclarations(raw, options) {
         fields(transaction.intent, ['expose', 'description'], 'Transaction intent');
         if (typeof transaction.intent.expose !== 'boolean' || !text(transaction.intent.description, 1024)) throw new TypeError('Invalid Transaction intent metadata');
         const grants = reads(transaction.reads, lifecycle, input);
-        const before = { args: input, reads: readContext(grants) };
+        const artifactProperties = {};
+        if (transaction.artifacts !== undefined) list(transaction.artifacts, 16, grant => {
+            fields(grant, ['id', 'taskId', 'variantId', 'usageId', 'invocationId'], 'Transaction artifact');
+            taskId(grant.id); taskId(grant.taskId); taskId(grant.variantId); taskId(grant.usageId);
+            const task = contract.taskRuntime?.tasks.find(item => item.id === grant.taskId);
+            const variant = task?.variants.find(item => item.id === grant.variantId);
+            if (!variant || !task.resultPolicy.uses?.some(use => use.id === grant.usageId && ['rule_input', 'operation_proposal'].includes(use.purpose))) throw new TypeError('Undeclared Transaction artifact use');
+            template(grant.invocationId, { type: 'string', maxLength: 128 }, { args: input });
+            artifactProperties[grant.id] = variant.outputSchema;
+            return grant;
+        }, 'Transaction artifacts');
+        const before = { args: input, reads: readContext(grants), artifacts: { ...emptySchema(), properties: artifactProperties } };
         validators(transaction.validators, before);
         let computed = {};
         if (transaction.computation !== undefined) {

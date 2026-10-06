@@ -150,6 +150,9 @@ export function compileProjectFrontends(packageSource, inputFiles) {
     }
     // Shared pure modules may also belong to Authority's exact source closure.
     const retained = new Set();
+    for (const derivation of result.runtime?.experienceContract?.contextRuntime?.derivations ?? []) {
+        compilePackageComputation(derivation.source, inputFiles).modules.forEach(module => retained.add(module.id));
+    }
     for (const { value } of owners) {
         const logicPath = value.runtime?.game?.logic ?? result.runtime?.game?.logic;
         const bytes = logicPath && inputFiles.get(logicPath);

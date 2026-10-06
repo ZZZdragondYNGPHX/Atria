@@ -1,3 +1,5 @@
+import { evaluateNativeKnowledge, KNOWLEDGE_RUNTIME_NAMESPACE } from './knowledge-selection.js';
+import { createDeterministicRng } from './experience/logic/rng.js';
 import { playerPersonaContext } from '../../shared/native-persona-context.js';
 import {
     KNOWLEDGE_AUTHORITY,
@@ -354,8 +356,10 @@ function currentStateItems(snapshot) {
     return result;
 }
 
-function knowledgeItems(snapshot, target, memoryEvidence) {
-    const plan = compileNativeKnowledgePlan(snapshot, { target, memoryEvidence });
+async function knowledgeItems(snapshot, target, memoryEvidence, options) {
+    const eligible = options.eligiblePlan ?? compileNativeKnowledgePlan(snapshot, { target, memoryEvidence });
+    const selection = await evaluateNativeKnowledge(eligible, options);
+    const plan = { ...eligible, included: selection.entries, rejected: selection.rejected };
     const parent = new Map(plan.included.map(item => [item.identity, item.identity]));
     const find = key => {
         let cursor = key;
@@ -389,7 +393,7 @@ function knowledgeItems(snapshot, target, memoryEvidence) {
         authority: item.authority,
         authorityRank: item.authorityRank,
         priority: item.priority,
-        content: String(item.entry?.content ?? ''),
+        content: String(item.content ?? item.entry?.content ?? ''),
         atomicGroup: 'knowledge-component:' + find(item.identity),
         sourceRefs: [{
             kind: 'knowledge',
@@ -404,7 +408,7 @@ function knowledgeItems(snapshot, target, memoryEvidence) {
             knowledgeIdentity: item.identity,
             knowledgeBindingId: item.knowledgeBindingId,
             knowledgeEntryId: item.knowledgeEntryId,
-            selectionReason: item.selectionReason,
+            selectionReason: item.activationReason ?? item.selectionReason, variant: item.variant,
         },
     }));
     const rejected = plan.rejected.map(item => ({
@@ -431,7 +435,7 @@ function knowledgeItems(snapshot, target, memoryEvidence) {
             metadata: clone(item),
         });
     }
-    return { plan, items, rejected };
+    return { plan, items, rejected, selection };
 }
 
 function currentBranchScope(snapshot) {
@@ -796,7 +800,47 @@ export class SessionContextCompiler {
             includeRollups: false, onScan: count => { informationScans += count; if (informationScans > 4096) throw new TypeError('Authority context scan limit'); },
         } : {});
         const knowledgeTarget = information?.actorId ? { kind: 'actor', id: information.actorId } : target;
-        const knowledge = knowledgeItems(snapshot, knowledgeTarget, options.memoryEvidence);
+        const knowledgeTargetKey = JSON.stringify(options.informationTaskId ? ['task', options.informationTaskId] : [knowledgeTarget.kind, knowledgeTarget.id ?? '']);
+        const derivations = snapshot.manifest.runtime?.experienceContract?.contextRuntime?.derivations ?? [];
+        const dynamicKnowledge = new Map(), dynamicItems = [], derivationEvidence = [];
+        const initialKnowledge = compileNativeKnowledgePlan(snapshot, { target: knowledgeTarget, memoryEvidence: options.memoryEvidence });
+        const eligibleKnowledge = information && !information.knowledge ? { ...initialKnowledge, included: [], rejected: [] } : initialKnowledge;
+        const eligibleKnowledgeIds = new Set(eligibleKnowledge.included.map(item => item.knowledgeEntryId));
+        let derivationBytes = 0;
+        for (const declaration of derivations) {
+            // Exact view chosen for this consumer: display and other audiences
+            // cannot silently acquire context execution/read permissions.
+            if (declaration.viewId !== information?.projection?.viewId || (declaration.target.kind === 'knowledge' && !eligibleKnowledgeIds.has(declaration.target.knowledgeEntryId))) continue;
+            if (typeof options.deriveContext !== 'function') throw new TypeError('Context derivation host unavailable');
+            const result = await options.deriveContext(declaration);
+            derivationBytes += new TextEncoder().encode(JSON.stringify(result.value)).length;
+            if (derivationBytes > 262144) throw new TypeError('Context derivation total budget');
+            derivationEvidence.push(result.evidence);
+            if (declaration.target.kind === 'knowledge') dynamicKnowledge.set(declaration.target.knowledgeEntryId, result.value);
+            else if (result.value.eligible !== false) dynamicItems.push(normalizeContextItem({ contextItemId: 'projection:derived:' + declaration.id,
+                lane: CONTEXT_LANES.currentState, authority: 'derived', authorityRank: 10, priority: result.value.priority ?? declaration.target.priority,
+                content: result.value.text, sourceRefs: [{ kind: 'state', revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId }],
+                metadata: { derivationId: declaration.id, execution: result.evidence },
+            }));
+        }
+        const evaluatedKnowledge = { ...eligibleKnowledge, included: eligibleKnowledge.included.map(item => {
+            const computed = dynamicKnowledge.get(item.knowledgeEntryId);
+            return computed ? { ...item, priority: computed.priority ?? item.priority,
+                entry: { ...item.entry, ...(computed.eligible === false ? { enabled: false } : {}) } } : item;
+        }) };
+        const knowledge = await knowledgeItems(snapshot, knowledgeTarget, options.memoryEvidence, {
+            eligiblePlan: evaluatedKnowledge,
+            messages: information ? information.items.map(item => item.content) : snapshot.timeline.map(entry => options.promptContentByMessageId?.[entry.messageId] ?? entry.content ?? ''),
+            turn: snapshot.timeline.filter(entry => entry.role === 'assistant').length,
+            state: snapshot.states[KNOWLEDGE_RUNTIME_NAMESPACE]?.targets?.[knowledgeTargetKey] ?? snapshot.states[KNOWLEDGE_RUNTIME_NAMESPACE],
+            budget: Math.min(promptBudget, Number.isFinite(caps[CONTEXT_LANES.knowledge]) ? caps[CONTEXT_LANES.knowledge] : promptBudget),
+            countTokens: typeof options.countTokens === 'function' ? options.countTokens : defaultCountTokens,
+            random: createDeterministicRng((snapshot.session?.sessionId ?? '') + ':' + snapshot.revision.branchId + ':' + snapshot.revision.revisionId).float,
+            render: (text, item, variant) => {
+                const value = dynamicKnowledge.get(item.knowledgeEntryId);
+                return value ? (variant === 'compact' && value.compact !== undefined ? value.compact : value.text) : text;
+            },
+        });
         const branchScope = currentBranchScope(snapshot);
         const narrative = narrativeItems(derivedState, branchScope);
         const commitments = commitmentItems(derivedState, target, branchScope);
@@ -872,7 +916,7 @@ export class SessionContextCompiler {
             }) : [];
             candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds)];
         }
-        candidates.push(...persona.items.map(normalizeContextItem));
+        candidates.push(...dynamicItems, ...persona.items.map(normalizeContextItem));
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
             if (visibleTo(item, target)) return true;
@@ -1020,7 +1064,8 @@ export class SessionContextCompiler {
                 selectedKnowledgeIdentities,
             },
             coverage,
-            diagnostics,
+            diagnostics, derivationEvidence,
+            knowledgeSelection: { ...knowledge.selection, targetKey: knowledgeTargetKey, pendingState: { schemaVersion: 1, effects: Object.fromEntries(Object.entries(knowledge.selection.pendingState.effects).filter(([identity]) => selectedKnowledgeIdentities.includes(identity) || Object.hasOwn(snapshot.states[KNOWLEDGE_RUNTIME_NAMESPACE]?.targets?.[knowledgeTargetKey]?.effects ?? snapshot.states[KNOWLEDGE_RUNTIME_NAMESPACE]?.effects ?? {}, identity))) } },
             personaEvidence: { ...persona.evidence, reason: persona.items.length ? (included.some(item => item.contextItemId === persona.evidence.contextItemId) ? 'selected' : rejected.find(item => item.contextItemId === persona.evidence.contextItemId)?.reason ?? 'budget') : persona.evidence.reason,
                 tokenCount: included.find(item => item.contextItemId === persona.evidence.contextItemId)?.tokenCount ?? rejected.find(item => item.contextItemId === persona.evidence.contextItemId)?.tokenCount ?? 0 },
             knowledgePlan: {

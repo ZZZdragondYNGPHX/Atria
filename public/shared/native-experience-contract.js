@@ -1,3 +1,4 @@
+import { assertContextRuntime } from './native-context-contract.js';
 import { assertStoryStart, assertRunPolicy, assertGenerationBudget } from './native-run-contract.js';
 import { assertSimulationRuntime } from './native-simulation-contract.js';
 import { assertAuthorityRuntime } from './native-authority-contract.js';
@@ -20,6 +21,7 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['composer', [1], [1]],
     ['action', [2], [2]],
     ['authority-transaction', [1], [1]],
+    ['context-derivation', [1], [1]],
     ['world-simulation', [1], [1]],
     ['story-start', [1], [1]],
     ['generation-budget', [1], [1]],
@@ -75,7 +77,7 @@ function list(value, label, validate, key) {
 // presentation is native@3 Core, not a legacy Component Model capability.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime', 'authorityRuntime', 'simulationRuntime', 'storyStart', 'generationBudget', 'runPolicy'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime', 'authorityRuntime', 'simulationRuntime', 'storyStart', 'generationBudget', 'runPolicy', 'contextRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -104,6 +106,13 @@ export function assertNativeExperienceContract(value) {
     const taskRuntime = value.taskRuntime === undefined ? undefined : assertTaskRuntime(value.taskRuntime);
     const lifecycleRuntime = value.lifecycleRuntime === undefined ? undefined : assertLifecycleRuntime(value.lifecycleRuntime, taskRuntime);
     if (!lifecycleRuntime && taskRuntime?.tasks.some(task => task.resultPolicy.sink === 'app_command')) throw new TypeError('Declared App Command requires Lifecycle runtime');
+    for (const task of taskRuntime?.tasks ?? []) for (const use of task.resultPolicy.uses ?? []) {
+        if (use.viewIds.some(id => !value.informationRuntime?.views.some(view => view.id === id))
+            || use.scopeIds.some(id => !lifecycleRuntime?.scopes.some(scope => scope.id === id))) throw new TypeError('Unknown Task artifact dependency');
+    }
+    const contextCapability = capabilities.find(item => item.id === 'context-derivation');
+    if (Boolean(contextCapability) !== (value.contextRuntime !== undefined) || (contextCapability && !contextCapability.required)) throw new TypeError('Context derivation requires its declared capability');
+    const contextRuntime = value.contextRuntime === undefined ? undefined : assertContextRuntime(value.contextRuntime, value.informationRuntime, taskRuntime);
     const authorityCapability = capabilities.some(item => item.id === 'authority-transaction');
     if (authorityCapability !== (value.authorityRuntime !== undefined)) throw new TypeError('authority-transaction capability and authorityRuntime must be declared together');
     const authorityRuntime = value.authorityRuntime === undefined ? undefined : assertAuthorityRuntime(value.authorityRuntime,
@@ -128,6 +137,7 @@ export function assertNativeExperienceContract(value) {
         ...(simulationRuntime === undefined ? {} : { simulationRuntime }),
         ...(authorityRuntime === undefined ? {} : { authorityRuntime }),
         ...(taskRuntime === undefined ? {} : { taskRuntime }),
+        ...(contextRuntime === undefined ? {} : { contextRuntime }),
         ...(lifecycleRuntime === undefined ? {} : { lifecycleRuntime }),
         ...(value.sharedRuntime === undefined ? {} : { sharedRuntime: assertSharedRuntime(value.sharedRuntime, lifecycleRuntime, value.informationRuntime === undefined ? undefined : assertInformationRuntime(value.informationRuntime, lifecycleRuntime, taskRuntime), value.continuityRuntime) }),
         ...(value.contentRuntime === undefined ? {} : { contentRuntime: assertContentRuntime(value.contentRuntime) }),

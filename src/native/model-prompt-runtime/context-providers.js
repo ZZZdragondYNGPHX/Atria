@@ -14,7 +14,7 @@ function createContextProvider(kind, readContext) {
             const maxTokens = Math.min(value.budget?.maxTokens ?? Infinity, resolved.model.limits.contextTokens - reservedOutputTokens);
             return immutable(assertRequestContextPlan({
                 schemaVersion: 1, requestId: request.requestId, source: value.source,
-                items: value.items, ...(value.personaEvidence ? { personaEvidence: value.personaEvidence } : {}), provenance: value.provenance || [], budget: { maxTokens, reservedOutputTokens },
+                items: value.items, ...(value.nativeSelection ? { nativeSelection: value.nativeSelection } : {}), ...(value.personaEvidence ? { personaEvidence: value.personaEvidence } : {}), provenance: value.provenance || [], budget: { maxTokens, reservedOutputTokens },
             }));
         },
     });
@@ -45,6 +45,12 @@ export function createNativeSessionContextProvider(readSelectedContext) {
                 ],
             })),
             personaEvidence: plan.personaEvidence,
+            ...(plan.knowledgeSelection ? { nativeSelection: { revisionId: plan.revisionId, branchId: plan.branchId,
+                pendingState: plan.knowledgeSelection.pendingState, targetKey: plan.knowledgeSelection.targetKey,
+                selectedKnowledgeIdentities: plan.sourceSelection.selectedKnowledgeIdentities,
+                rejected: plan.knowledgeSelection.rejected.map(item => ({ identity: item.identity, reason: item.reason })),
+                derivations: plan.derivationEvidence ?? [],
+            } } : {}),
             budget: {
                 maxTokens: plan.budget.promptCeiling - plan.budget.safetyMargin,
                 reservedOutputTokens: plan.budget.responseReserve,

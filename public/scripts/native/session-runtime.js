@@ -861,6 +861,7 @@ export class NativeSessionRuntime {
     }
 
     async commitKnowledge(evaluation) {
+        if (this.snapshot?.manifest.runtime?.experienceContract?.taskRuntime) return { committed: false, reason: 'authority_owned' };
         if (evaluation?.committed) return { committed: false, reason: 'already_committed' };
         if (!evaluation || !this.active || evaluation.sessionId !== this.snapshot.session.sessionId
             || evaluation.revisionId !== this.snapshot.revision.revisionId

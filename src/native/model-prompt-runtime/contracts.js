@@ -715,7 +715,7 @@ function assertProvenance(value, field) {
 
 export function assertRequestContextPlan(value) {
     object(value, 'RequestContextPlan');
-    only(value, ['schemaVersion', 'requestId', 'source', 'items', 'budget', 'provenance', 'personaEvidence'], 'RequestContextPlan');
+    only(value, ['schemaVersion', 'requestId', 'source', 'items', 'budget', 'provenance', 'personaEvidence', 'nativeSelection'], 'RequestContextPlan');
     if (value.schemaVersion !== 1) throw new TypeError('RequestContextPlan.schemaVersion must be 1');
     if (!Array.isArray(value.items)) throw new TypeError('RequestContextPlan.items must be an array');
     object(value.budget, 'RequestContextPlan.budget');
@@ -734,6 +734,7 @@ export function assertRequestContextPlan(value) {
     return Object.freeze({
         schemaVersion: 1,
         ...(value.personaEvidence === undefined ? {} : { personaEvidence: clone(value.personaEvidence, 'RequestContextPlan.personaEvidence') }),
+        ...(value.nativeSelection === undefined ? {} : { nativeSelection: clone(value.nativeSelection, 'RequestContextPlan.nativeSelection') }),
         requestId: token(value.requestId, 'RequestContextPlan.requestId'),
         source: assertContextSource(value.source),
         items: freezeArray(items),

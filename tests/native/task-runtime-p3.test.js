@@ -293,7 +293,7 @@ describe('P3 Model Execution Lane', () => {
             ];
             const snapshot = { session: { sessionId: createNativeId('session'), packageId, packageVersionId }, revision: { revisionId: createNativeId('revision'), branchId: createNativeId('branch') },
                 timeline: [], variants: [], states: {}, knowledge: { bindings: [], snapshots: [] }, manifest: { actors: [], runtime: { experienceContract: { taskRuntime: assertTaskRuntime(raw) } } } };
-            const sessionCore = { load: async () => snapshot, recordTaskResult: async (_h, _s, record) => ({ ...snapshot, states: { atri_task_results: { records: [record] } } }) };
+            const sessionCore = { runs: { assert: async () => null }, load: async () => snapshot, recordTaskResult: async (_h, _s, record) => ({ ...snapshot, states: { atri_task_results: { records: [record] } } }) };
             const host = new NativeGenerationHost({ ...seeded, sessionCore, packageInstaller: { open: async () => ({ manifest: { resources } }) },
                 providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
             const result = await host.executeTask(h.handle, { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId,

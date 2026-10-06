@@ -71,7 +71,7 @@ export async function evaluateNativeKnowledge(plan, {
                 const additions = [];
                 for (const candidate of bundle.values()) {
                     const compact = candidate.entry.metadata?.compactContent;
-                    const content = String(await render(variant === 'compact' && compact ? compact : candidate.entry.content, candidate));
+                    const content = String(await render(variant === 'compact' && compact ? compact : candidate.entry.content, candidate, variant));
                     additions.push({ ...candidate, content, variant,
                         activationReason: candidate !== item ? 'required_dependency'
                             : sticky(item) ? 'sticky' : direct ? 'direct' : related.has(item.identity) ? 'related' : 'discovery' });

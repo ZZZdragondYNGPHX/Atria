@@ -1,3 +1,4 @@
+import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-authority.js';
 import { runPackageComputation } from './package-computation.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
@@ -208,11 +209,17 @@ export async function prepareAuthorityPublications(base, installed, authority = 
 async function executeTransaction(candidate, installed, contract, logic, world, transaction, input, budget, identity) {
     const args = budget.typed(input, transaction.inputSchema);
     const reads = privateReads(candidate, contract, transaction.reads, args, budget);
-    for (const validator of transaction.validators) if (!predicate(validator.formula, { args, reads })) throw new TypeError('Transaction validator rejected');
+    const consumed = (transaction.artifacts ?? []).map(grant => {
+        const use = contract.taskRuntime.tasks.find(task => task.id === grant.taskId).resultPolicy.uses.find(use => use.id === grant.usageId);
+        const invocationId = template(grant.invocationId, { args });
+        return { id: grant.id, ...readTaskArtifact(candidate, grant, invocationId, use.purpose) };
+    });
+    const artifacts = freeze(Object.fromEntries(consumed.map(item => [item.id, item.value])));
+    for (const validator of transaction.validators) if (!predicate(validator.formula, { args, reads, artifacts })) throw new TypeError('Transaction validator rejected');
     let computed; const execution = [];
     if (transaction.computation) {
         budget.step();
-        const input = { args, reads, artifacts: {}, seed: identity };
+        const input = { args, reads, artifacts, seed: identity };
         const checked = await runPackageComputation(installed, transaction.computation.source, 'precondition', input);
         if (checked.value !== true) throw new TypeError('Domain precondition rejected');
         execution.push(checked.evidence);
@@ -223,9 +230,9 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
     const rng = createDeterministicRng(identity);
     const resolution = transaction.resolution.kind === 'bounded_fortune' ? { roll: rng.int(1, transaction.resolution.sides) } : {};
     // Cases see only the public die, not a partially assigned outcome.
-    const selected = transaction.resolution.cases.find(item => predicate(item.when, { args, reads, resolution, ...(computed === undefined ? {} : { computed }) }));
+    const selected = transaction.resolution.cases.find(item => predicate(item.when, { args, reads, artifacts, resolution, ...(computed === undefined ? {} : { computed }) }));
     resolution.outcome = selected?.outcome ?? transaction.resolution.fallback;
-    const context = freeze({ args, reads, resolution, ...(computed === undefined ? {} : { computed }) });
+    const context = freeze({ args, reads, artifacts, resolution, ...(computed === undefined ? {} : { computed }) });
     const rules = createRulesEngine(logic.rules, { onEvaluation: () => budget.rule() });
     for (const effect of transaction.effects) {
         if (effect.when !== undefined && !predicate(effect.when, context)) continue;
@@ -245,9 +252,10 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
         }
     }
 
-    const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts: {} } : null;
+    const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts } : null;
     await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
-    return { resolution, computationState, execution };
+    for (const item of consumed) markTaskArtifactConsumption(candidate, item, identity);
+    return { resolution, computationState, execution, artifacts: consumed.map(item => item.evidence) };
 }
 
 async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence) {
@@ -324,7 +332,8 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         const projection = budget.typed(template(transaction.receipt.projection, { args, resolution }), transaction.receipt.schema);
         const receipt = bounded({ schemaVersion: 1, authorityId: identity, transactionId: transaction.id, verb: transaction.verb,
             anchor: request.anchor, playerMessageId: player.messageId, result: projection,
-            ...(executed.execution.length ? { execution: executed.execution } : {}) }, transaction.receipt.maxBytes);
+            ...(executed.execution.length ? { execution: executed.execution } : {}),
+            ...(executed.artifacts.length ? { artifacts: executed.artifacts } : {}) }, transaction.receipt.maxBytes);
         return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, work: { ...budget.counts } });
     } catch (error) { throw failure('transaction preparation', authorityPublicRefusal(error)); }
 }

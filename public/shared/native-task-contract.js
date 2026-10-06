@@ -52,12 +52,23 @@ export function assertTaskRuntime(value) {
         choice(item.executionClass, EXECUTION_CLASSES);
         const inputSchema = compileDataSchema(item.inputSchema);
         const context = list(item.context, 6, v => choice(v, ['input', 'history', 'world', 'knowledge', 'projection', 'player_persona']));
-        fields(item.resultPolicy, ['resultClass', 'sink', 'applyCommand'], 'Task result policy');
+        fields(item.resultPolicy, ['resultClass', 'sink', 'applyCommand', 'uses'], 'Task result policy');
         const policies = { advisory: 'proposal', turn_context: 'turn', presentation: 'artifact', world_outcome_proposal: 'proposal', declared_app_command: 'app_command' };
         if (!Object.hasOwn(policies, item.resultPolicy.resultClass) || policies[item.resultPolicy.resultClass] !== item.resultPolicy.sink) throw new TypeError('Result authority/sink mismatch');
         if (item.resultPolicy.applyCommand !== undefined) {
             taskId(item.resultPolicy.applyCommand);
             if (item.resultPolicy.resultClass !== 'advisory') throw new TypeError('Only advisory proposals may declare Apply Command');
+        }
+        if (item.resultPolicy.uses !== undefined) {
+            if (item.resultPolicy.sink === 'turn' || item.resultPolicy.sink === 'app_command' || item.resultPolicy.applyCommand !== undefined || item.interpretation !== undefined) throw new TypeError('Task uses require a durable unadopted artifact');
+            list(item.resultPolicy.uses, 16, use => {
+                fields(use, ['id', 'purpose', 'reuse', 'cardinality', 'viewIds', 'scopeIds'], 'Task artifact use');
+                taskId(use.id); choice(use.purpose, ['rule_input', 'operation_proposal', 'context']);
+                choice(use.reuse, ['same_revision', 'same_branch']); choice(use.cardinality, ['once', 'reusable']);
+                if (use.purpose === 'context' && use.cardinality !== 'reusable') throw new TypeError('Read-only context cannot consume once artifacts');
+                list(use.viewIds, 16, taskId); list(use.scopeIds, 16, taskId);
+                return use;
+            });
         }
         const queuePolicy = choice(item.queuePolicy ?? 'fifo', ['fifo', 'latest']);
         const bridge = item.resultPolicy.resultClass === 'declared_app_command';

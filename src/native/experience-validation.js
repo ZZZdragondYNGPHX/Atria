@@ -47,6 +47,10 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
         if (!manifest.actors.some(actor => actor.actorId === voice.actorId)) throw new TypeError('Actor Voice must belong to Package');
     }
     const contract = manifest.runtime?.experienceContract;
+    for (const derivation of contract?.contextRuntime?.derivations ?? []) {
+        compilePackageComputation(derivation.source, files);
+        if (derivation.target.kind === 'knowledge' && !manifest.knowledge?.some(snapshot => snapshot.entries?.some(entry => entry.knowledgeEntryId === derivation.target.knowledgeEntryId))) throw new TypeError('Context derivation requires a fixed Knowledge entry');
+    }
     const logicPaths = new Set();
     for (const entry of manifest.entryPoints) {
         const logic = entry.runtime?.game?.logic ?? manifest.runtime?.game?.logic;

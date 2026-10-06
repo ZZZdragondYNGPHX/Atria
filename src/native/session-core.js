@@ -1,3 +1,5 @@
+import { captureTaskProduction } from './task-artifact-authority.js';
+import { adoptKnowledge } from './knowledge-authority.js';
 import { PERSONA_NAMESPACE, assertPersonaState, personaIdentity, personaFailure } from './persona-contract.js';
 import { RunControl, runFailure, runPublicationProof } from './run-control.js';
 import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-contract.js';
@@ -453,6 +455,11 @@ export class SessionCore {
         if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {
             if (turn.expectedRevisionId === null || turn.expectedRevisionId === base.revision?.revisionId) turn.expectedRevisionId = revisionId;
         }
+        if (states[TASK_STATE_NAMESPACE]) states = { ...states, [TASK_STATE_NAMESPACE]: {
+            ...states[TASK_STATE_NAMESPACE], records: states[TASK_STATE_NAMESPACE].records.map(record => ({ ...record,
+                ...(record.consumptions ? { consumptions: record.consumptions.map(item => item.applicationRevisionId !== null ? item : { ...item, applicationRevisionId: revisionId }) } : {}),
+            })),
+        } };
         if (taskRecord) {
             if (lifecycleDefinition(base)) {
                 states = cloneNativeDocument(states);
@@ -637,7 +644,7 @@ export class SessionCore {
         return prepareAuthorityTurn(this, handle, base, installed, selection, player);
     }
 
-    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null }, { expectedRevisionId } = {}) {
+    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null, knowledgeProof = null }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Turn anchor and invocation required');
         const base = await this.load(handle, sessionId);
         let envelope = assertTurnEnvelope(raw);
@@ -665,7 +672,7 @@ export class SessionCore {
             const { prepared, player, selection } = authorityTurnProof(this, handle, base, authorityProof);
             const request = authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player);
             if (actionReceipts(base).some(item => item.authorityId === prepared.identity || item.idempotencyKey === request.idempotencyKey)) throw authorityFailure('native_authority_invocation_conflict');
-            let candidate = prepared.candidate;
+            let candidate = { ...prepared.candidate, states: adoptKnowledge(this, handle, base, prepared.candidate.states, knowledgeProof) };
             const runPolicy = base.manifest.runtime.experienceContract.runPolicy;
             if (candidate.states[RUN_NAMESPACE] && runPolicy?.deathTransactions.includes(selection.transactionId)
                 && prepared.outcome === runPolicy.deathOutcome) {
@@ -682,12 +689,12 @@ export class SessionCore {
         const patch = envelope.outcomes.some(item => item.interpretation.decision !== 'no_change')
             ? await prepareTaskAuthority(base, installed, { outcomes: envelope.outcomes }) : {};
         const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope }, base.timeline.length, true);
-        return this._publish(handle, base, { states: { ...base.states, ...patch }, timeline: [...base.timeline, entry], entries: [entry], variants: [variant],
+        return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, { ...base.states, ...patch }, knowledgeProof), timeline: [...base.timeline, entry], entries: [entry], variants: [variant],
             taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
                 outcomes: envelope.outcomes, status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId } } });
     }
 
-    async recordTaskResult(handle, sessionId, record, { expectedRevisionId } = {}) {
+    async recordTaskResult(handle, sessionId, record, { expectedRevisionId, knowledgeProof = null } = {}) {
         if (!expectedRevisionId || typeof record.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(record.invocationId)) throw new TypeError('Task requires an invocation and revision anchor');
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const queued = base.states.atri_lifecycle?.outbox.find(item => item.invocationId === record.invocationId);
@@ -699,6 +706,12 @@ export class SessionCore {
         const variant = task?.variants.find(item => item.id === record.variantId);
         if (!variant || task.resultPolicy.resultClass === 'turn_context') throw new TypeError('Task result is not durable');
         const payload = assertTaskValue(record.payload, variant.outputSchema);
+        if (task.resultPolicy.uses?.length && (!record.production
+            || record.definitionHash !== hashNativeDocument(task) || record.normalizedResultHash !== hashNativeDocument(payload)
+            || hashNativeDocument(record.production) !== hashNativeDocument(captureTaskProduction(base, task, assertTaskValue(record.production.input, task.inputSchema)))
+            || record.promptProgramRef?.resourceId !== variant.prompt.resourceId || record.promptProgramRef?.revision !== variant.prompt.revision
+            || record.generationProfileRef?.resourceId !== variant.generation.resourceId || record.generationProfileRef?.revision !== variant.generation.revision
+            || record.deliveryReceipt?.kind !== 'model_delivery')) throw new TypeError('Task production provenance required');
         if (task.interpretation) assertSemanticOutcome({ requestId: task.interpretation.id, interpretation: payload }, task.interpretation);
         if (base.states[TASK_STATE_NAMESPACE]?.records.some(item => item.invocationId === record.invocationId)) throw new TypeError('Duplicate Task invocation');
         if (task.resultPolicy.sink === 'app_command') {
@@ -715,13 +728,13 @@ export class SessionCore {
                 const clockId = base.manifest.runtime.experienceContract.simulationRuntime.clockId;
                 prepared.states = (await prepareWorldSimulation(candidate, installed, candidate.states.atri_lifecycle.clocks[clockId], authorityBudget, { admit: false })).states;
             }
-            return this._publish(handle, base, { states: prepared.states, authorityBudget, taskResolution: record.invocationId,
+            return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, prepared.states, knowledgeProof), authorityBudget, taskResolution: record.invocationId,
                 taskRecord: { ...record, payload, kind: 'task', status: 'applied', resultClass: task.resultPolicy.resultClass,
                     anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId, authorityReceipt: prepared.authorityReceipt } });
         }
         const draft = activityNarrative(base, queued, record, payload);
         const narrative = draft ? this._newEntry(base, draft, base.timeline.length) : null;
-        return this._publish(handle, base, { ...(narrative ? { timeline: [...base.timeline, narrative.entry], entries: [narrative.entry], variants: [narrative.variant] } : {}),
+        return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, base.states, knowledgeProof), ...(narrative ? { timeline: [...base.timeline, narrative.entry], entries: [narrative.entry], variants: [narrative.variant] } : {}),
             taskRecord: { ...record, payload, kind: 'task', ...(narrative ? { authorityReceipt: { kind: 'authority', messageId: narrative.entry.messageId, activityInstanceId: queued.activityInstanceId } } : {}), status: task.resultPolicy.sink === 'proposal' ? 'draft' : 'completed',
                 resultClass: task.resultPolicy.resultClass, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId } });
     }
@@ -751,7 +764,8 @@ export class SessionCore {
             else throw new TypeError('Proposal has no typed Apply action');
         }
         const states = { ...base.states, ...patch, [TASK_STATE_NAMESPACE]: { schemaVersion: 1, records: records.map(item => item !== record ? item : {
-            ...record, payload: nextPayload, status: decision === 'apply' ? 'applied' : 'rejected',
+            ...record, payload: nextPayload,
+            ...(hashNativeDocument(nextPayload) !== hashNativeDocument(record.payload) ? { derivedResult: { sourceHash: record.normalizedResultHash ?? hashNativeDocument(record.payload), resultHash: hashNativeDocument(nextPayload) } } : {}), status: decision === 'apply' ? 'applied' : 'rejected',
             authorityReceipt: decision === 'apply' ? { kind: 'authority', baseRevisionId: expectedRevisionId } : null,
         }) } };
         return this._publish(handle, base, { states, taskResolution: decision === 'apply' ? invocationId : null });
@@ -785,6 +799,9 @@ export class SessionCore {
         const { values, deletes } = validateRuntimeStateChanges(handle, sessionId, statePatch, deleteNamespaces);
         if (base.manifest.runtime?.experienceContract?.informationRuntime && (Object.hasOwn(values, 'atri_context_derived') || deletes.includes('atri_context_derived'))) {
             throw new TypeError('Information derived state requires typed lifecycle publication');
+        }
+        if (base.manifest.runtime?.experienceContract?.taskRuntime && (Object.hasOwn(values, 'atri_knowledge_runtime') || deletes.includes('atri_knowledge_runtime'))) {
+            throw new TypeError('Knowledge selection requires result adoption');
         }
         if (hasAuthorityTransactions(base) && (request || ['atri_world_state', 'atri_game_runtime'].some(namespace => Object.hasOwn(values, namespace) || deletes.includes(namespace)))) {
             throw authorityFailure('native_authority_typed_publication_required');
