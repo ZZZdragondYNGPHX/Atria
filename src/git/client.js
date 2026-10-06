@@ -73,7 +73,8 @@ function normalizeCloneOptions(options = {}) {
  * @property {(dir: string) => Promise<void>} init
  * @property {(dir: string, key: string, value: string) => Promise<void>} setConfig
  * @property {(dir: string) => Promise<void>} addAll
- * @property {(dir: string, message: string, author?: {name: string, email: string}) => Promise<boolean>} commitIfChanged
+ * @property {(dir: string, message: string, author?: {name: string, email: string}, options?: {allowEmpty?: boolean}) => Promise<boolean>} commitIfChanged
+ * @property {(dir: string, hash: string) => Promise<{fullHash: string, parents: string[], message: string}>} readCommit
  * @property {(dir: string, maxCount?: number) => Promise<GitCommitInfo[]>} log
  * @property {(dir: string, hash: string) => Promise<void>} resetHard
  * @property {(dir: string, hash: string) => Promise<string>} diff
@@ -190,13 +191,19 @@ class SimpleGitClient {
      * @param {string} message
      * @returns {Promise<boolean>} Whether a commit was made
      */
-    async commitIfChanged(dir, message) {
+    async commitIfChanged(dir, message, _author = DEFAULT_AUTHOR, { allowEmpty = false } = {}) {
         const sg = simpleGit({ baseDir: dir });
         await this.addAll(dir);
         const status = await sg.status();
-        if (status.files.length === 0) return false;
-        await sg.commit(message);
+        if (status.files.length === 0 && !allowEmpty) return false;
+        await sg.commit(message, allowEmpty ? { '--allow-empty': null } : {});
         return true;
+    }
+
+    async readCommit(dir, hash) {
+        const result = await simpleGit({ baseDir: dir }).raw(['show', '-s', '--format=%H%n%P%n%B', hash]);
+        const [fullHash, parents, ...message] = result.split('\n');
+        return { fullHash, parents: parents.split(' ').filter(Boolean), message: message.join('\n').trim() };
     }
 
     /**
@@ -294,7 +301,7 @@ class IsomorphicGitClient {
      * @param {{ name: string, email: string }} [author]
      * @returns {Promise<boolean>}
      */
-    async commitIfChanged(dir, message, author = DEFAULT_AUTHOR) {
+    async commitIfChanged(dir, message, author = DEFAULT_AUTHOR, { allowEmpty = false } = {}) {
         await this.addAll(dir);
 
         // statusMatrix is unreliable for change detection (see addAll above) so
@@ -310,7 +317,7 @@ class IsomorphicGitClient {
 
         const newOid = await git.commit({ fs, dir, message, author });
         const newCommit = await git.readCommit({ fs, dir, oid: newOid });
-        if (previousTreeOid !== null && newCommit.commit.tree === previousTreeOid) {
+        if (!allowEmpty && previousTreeOid !== null && newCommit.commit.tree === previousTreeOid) {
             const branch = await git.currentBranch({ fs, dir, fullname: true });
             if (branch && previousHeadOid) {
                 await git.writeRef({ fs, dir, ref: branch, value: previousHeadOid, force: true });
@@ -319,6 +326,11 @@ class IsomorphicGitClient {
         }
 
         return true;
+    }
+
+    async readCommit(dir, hash) {
+        const result = await git.readCommit({ fs, dir, oid: hash });
+        return { fullHash: result.oid, parents: result.commit.parent, message: result.commit.message.trim() };
     }
 
     /**

@@ -131,7 +131,7 @@ export async function runProject(entry, fixture, capture) {
         task = await agent.createTask(h.handle, source.project.projectId, { intent: fixture.input, baseRevision: originalRevision });
         capture.refs.taskIds.push(task.taskId);
         let foreignRejected = false;
-        try { agent.getTask('foreign_owner', source.project.projectId, task.taskId); } catch (error) { foreignRejected = error.name === 'NotFoundError'; }
+        try { await agent.getTask('foreign_owner', source.project.projectId, task.taskId); } catch (error) { foreignRejected = error.name === 'NotFoundError' || error.message === 'Foreign fixture owner'; }
         capture.observe('ownership', foreignRejected, true);
         const proposed = structuredClone(source); proposed.project.displayName = fixture.proposedName; proposed.project.updatedAt = 20;
         const invalid = structuredClone(proposed); invalid.project.projectId = 'invalid-project-id';
@@ -152,7 +152,10 @@ export async function runProject(entry, fixture, capture) {
             const base = `/api/native/studio/projects/${source.project.projectId}`;
             const taskPath = `${base}/agent/tasks/${task.taskId}`;
             if (route === `${taskPath}/context`) return response(await agent.getContext(h.handle, source.project.projectId, task.taskId));
-            if (route === taskPath) return response(agent.getTask(h.handle, source.project.projectId, task.taskId));
+            if (route === `${taskPath}/resume`) return response(await agent.resumeTask(h.handle, source.project.projectId, task.taskId));
+            if (route === `${taskPath}/generation/begin`) return response(await agent.beginGeneration(h.handle, source.project.projectId, task.taskId, body));
+            if (route === `${taskPath}/generation/finish`) return response(await agent.finishGeneration(h.handle, source.project.projectId, task.taskId, body));
+            if (route === taskPath) return response(await agent.getTask(h.handle, source.project.projectId, task.taskId));
             if (route === `${base}/preflight`) return response(await studio.preflightProject(h.handle, source.project.projectId, body));
             if (route === '/api/native/generation/execute') {
                 if (body.projectId !== source.project.projectId || body.taskId !== task.taskId || body.revision !== originalRevision) throw new Error('Project request identity drift');
@@ -183,7 +186,7 @@ export async function runProject(entry, fixture, capture) {
         try {
             await runNativeStudioAgentTask({ projectId: source.project.projectId, taskId: task.taskId, messages: [{ role: 'user', content: fixture.input }], maxModelRounds: 6 });
         } catch (error) { modelError = error; }
-        task = agent.getTask(h.handle, source.project.projectId, task.taskId);
+        task = await agent.getTask(h.handle, source.project.projectId, task.taskId);
         const beforeReviewRevision = (await studio.getRevision(h.handle, source.project.projectId)).revision;
         const modelChangesets = task.changeSets.length;
         if (conflict) {
@@ -208,12 +211,12 @@ export async function runProject(entry, fixture, capture) {
                 // Explicit fixture reviewer, after the model loop has stopped.
                 task = await agent.commit(h.handle, source.project.projectId, task.taskId);
                 capture.refs.effectIds.push(...task.changeSets.map(item => item.changeSetId));
-                let duplicateRejected = false;
-                try { await agent.commit(h.handle, source.project.projectId, task.taskId); } catch (error) { duplicateRejected = error.code === 'project_agent_task_closed'; }
-                if (!repairing) capture.observe('single_changeset', { count: task.changeSets.length, duplicateRejected, name: (await studio.getProject(h.handle, source.project.projectId)).source.project.displayName }, { count: 1, duplicateRejected: true, name: fixture.proposedName });
+                const replayed = await agent.commit(h.handle, source.project.projectId, task.taskId);
+                const receiptReplayed = replayed.changeSets.length === 1 && replayed.changeSets[0].changeSetId === task.changeSets[0].changeSetId;
+                if (!repairing) capture.observe('single_changeset', { count: task.changeSets.length, receiptReplayed, name: (await studio.getProject(h.handle, source.project.projectId)).source.project.displayName }, { count: 1, receiptReplayed: true, name: fixture.proposedName });
                 if (repairing) {
                     const item = capture.evidence.find(item => item.evidenceId.endsWith(':repair_bound')).value;
-                    capture.observe('repair_bound', { ...item.observed, formalWrites: task.changeSets.length, duplicateRejected }, { ...item.expected, formalWrites: 1, duplicateRejected: true });
+                    capture.observe('repair_bound', { ...item.observed, formalWrites: task.changeSets.length, receiptReplayed }, { ...item.expected, formalWrites: 1, receiptReplayed: true });
                 }
                 capture.reviewStatus = 'passed';
             } else { capture.reviewStatus = 'unavailable'; capture.completeness.push('review'); }

@@ -188,7 +188,7 @@ describe('Project evidence through real Studio / ProjectAgentService', () => {
         source = projectSource(); const created = await studio.createProject(h.handle, source);
         scope = { domain: 'project', projectId: source.project.projectId };
         task = await agent.createTask(h.handle, scope.projectId, { intent: 'Rename fictional Project', baseRevision: created.revision.revision });
-        task = agent.setPlan(h.handle, scope.projectId, task.taskId, { summary: 'Rename', steps: [{ id: 'rename', title: 'Rename', impact: 'low' }] });
+        task = await agent.setPlan(h.handle, scope.projectId, task.taskId, { summary: 'Rename', steps: [{ id: 'rename', title: 'Rename', impact: 'low' }] });
         selected = { kind: 'task', taskId: task.taskId };
     });
     afterEach(async () => { jest.restoreAllMocks(); await h.cleanup(); });
@@ -206,25 +206,25 @@ describe('Project evidence through real Studio / ProjectAgentService', () => {
         const commitSet = await capture(); const result = await evaluate(commitSet);
         expect(result.content[0]).toMatchObject({ status: 'completed', receipts: [{ resultingRevision: committed.changeSets[0].resultingRevision }] });
         expect(commitSet.references[0].anchor.revision).toBe(committed.changeSets[0].resultingRevision);
-        expect(agent.getTask(h.handle, scope.projectId, task.taskId)).toEqual(committed);
+        expect(await agent.getTask(h.handle, scope.projectId, task.taskId)).toEqual(committed);
     });
 
-    test('human revision makes the pinned task stale without rewriting its state', async () => {
-        const set = await capture(); const before = agent.getTask(h.handle, scope.projectId, task.taskId);
+    test('human revision makes the pinned task stale and persists conflict', async () => {
+        const set = await capture(); const before = await agent.getTask(h.handle, scope.projectId, task.taskId);
         const next = structuredClone(source); next.project.displayName = 'Human edit';
         await studio.saveProjectSource(h.handle, scope.projectId, { source: next, baseRevision: task.baseRevision, origin: { kind: 'human', id: 'source-test' } });
-        expect((await evaluate(set)).checks[0]).toMatchObject({ status: 'stale', code: 'project_revision_changed' });
-        expect(agent.getTask(h.handle, scope.projectId, task.taskId)).toEqual(before);
+        expect((await evaluate(set)).checks[0].status).toBe('stale');
+        expect(await agent.getTask(h.handle, scope.projectId, task.taskId)).toMatchObject({ status: 'conflict', baseRevision: before.baseRevision });
     });
 
-    test('task update, takeover and restart all invalidate old references', async () => {
+    test('task update and takeover invalidate references; restart retains the inactive task', async () => {
         const set = await capture();
-        agent.setPlan(h.handle, scope.projectId, task.taskId, { summary: 'Human changed plan', steps: [{ id: 'rename', title: 'Rename', impact: 'low' }] });
+        await agent.setPlan(h.handle, scope.projectId, task.taskId, { summary: 'Human changed plan', steps: [{ id: 'rename', title: 'Rename', impact: 'low' }] });
         expect((await evaluate(set)).status).toBe('incomplete');
-        const updated = await capture(); agent.takeOver(h.handle, scope.projectId, task.taskId);
+        const updated = await capture(); await agent.takeOver(h.handle, scope.projectId, task.taskId);
         expect((await evaluate(updated)).checks[0].status).toBe('stale');
         service = new AgentEvidenceService({ studio, agent: new ProjectAgentService({ studio }) });
-        expect((await evaluate(updated)).checks[0].status).toBe('missing');
+        expect((await evaluate(updated)).checks[0].status).toBe('stale');
     });
 
     test('wrong project task identity and project deletion cannot supply current evidence', async () => {
@@ -237,11 +237,15 @@ describe('Project evidence through real Studio / ProjectAgentService', () => {
     test('multiple tasks share one coherent revision read; a task edited during an await releases no body', async () => {
         const second = await agent.createTask(h.handle, scope.projectId, { intent: 'Other task', baseRevision: task.baseRevision });
         const set = await service.capture(h.handle, scope, [selected, { kind: 'task', taskId: second.taskId }], budget);
-        const realRevision = studio.getRevision.bind(studio); let reads = 0;
-        jest.spyOn(studio, 'getRevision').mockImplementation(async (...args) => {
-            const revision = await realRevision(...args);
-            if (++reads === 2) agent.setPlan(h.handle, scope.projectId, task.taskId, { summary: 'Changed during read', steps: [{ id: 'rename', title: 'Rename', impact: 'low' }] });
-            return revision;
+        const realTask = agent.getTask.bind(agent); let changed = false;
+        const writer = new ProjectAgentService({ studio });
+        jest.spyOn(agent, 'getTask').mockImplementation(async (...args) => {
+            const snapshot = await realTask(...args);
+            if (args[2] === task.taskId && !changed) {
+                changed = true;
+                await writer.setPlan(h.handle, scope.projectId, task.taskId, { summary: 'Changed during read', steps: [{ id: 'rename', title: 'Rename', impact: 'low' }] });
+            }
+            return snapshot;
         });
         const result = await evaluate(set);
         expect(result.checks).toHaveLength(2);

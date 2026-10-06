@@ -46,8 +46,10 @@ Project hashed before/after. Services receive only fixture directories; no
 production owner/project is loaded. Foreign task ownership is checked. Cleanup
 verifies the runner-owned root and marker. RP hashes the player message before/
 after and uses distinct run/request/variant anchors. Globals and presentation
-runtime evidence are restored; Runtime checkpoint and Task persistence are not
-claimed. The existing util API cannot unset a previously unset config path, so
+runtime evidence are restored. S01 itself made no persistence claim; its Project
+adapter now consumes the S04 async durable task and idempotent receipt APIs while
+retaining the same cases and observed model/tool counts. The existing util API
+cannot unset a previously unset config path, so
 this dedicated process retains the repository default when it began without
 config. No user config or Secret discovery is performed by the runner.
 
@@ -177,5 +179,50 @@ Minimal local capture checks (FS/SQLite; excludes unavailable external DB suites
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/capture.test.js tests/native/task-runtime-p3.test.js --testNamePattern='^(?!.*(?:MysqlEngine|PgEngine)).*$'
 ```
 
-S04 Project task recovery and S05 retention/feedback are not implemented here.
+S03 leaves Project recovery to S04 and retention/feedback to S05.
 S03 does not persist opaque continuation state or claim empirical model benefits.
+
+## S04 durable Project recovery
+
+`ProjectAgentService` uses `ProjectTaskRepository` on the existing StorageEngine
+and `atri_project_agent_task` keyed by authenticated handle / projectId / taskId.
+Its public APIs are async, including task reads, plan updates and takeover.
+The persisted task keeps exact proposals / Workspace, validation / Review,
+bounded attempts / timeline, complete public conversation rounds and commit
+intent. Limits are 2 MiB JSON, 128 attempts / messages and 1024 timeline events;
+invalid versions, integrity/CAS conflicts or overflow fail explicitly.
+
+Studio's formal Git commit carries the exact Workspace hash, base and validation
+receipt. Task storage failure or response loss after that commit reconciles the
+same receipt; repeated Commit returns it without applying operations again.
+Recovery reads at most 200 history entries. Missing receipt with unchanged base
+returns to Review; changed base or unverifiable receipt becomes conflict.
+No recovery automatically sends a model request, rebases or commits. Historical
+Preview handles are observations, not reopened Preview sessions.
+
+The browser restores its conversation from the task API. Provider-private state
+is excluded from persistence; resumed model context uses public tool observations
+and current task authority. The live loop preserves its existing provider state.
+Generation Host binds new-client attempt IDs to actual requests, visible sends,
+snapshot hashes and directly reported usage; missing counters remain null.
+Legacy requests lack this binding, and observation-save failure returns separate
+failed capture metadata without repeating the generation. Neither conversation
+nor model text grants a formal-write permission.
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/project-recovery.test.js tests/native/project-agent.test.js tests/native/project-agent-http.test.js tests/agent-intelligence/sources.test.js
+node tests/frontend/project-agent-recovery.smoke.mjs
+```
+
+The recovery suite physically reopens temporary FS/SQLite engines, exercises real
+builtin/system Git and Studio commit boundaries, injects persistence/response
+failures, and uses synthetic provider responses with the actual Host. External
+MySQL/PostgreSQL coverage is a generic kind/key contract only. The Chromium smoke
+uses an isolated SQLite/Git/HTTP fixture and the real panel for reload, restored
+Review/conversation, commit-save failure recovery, completed and conflict states.
+It makes zero model requests; it is not a full application/device check.
+
+The new kind is additive, without DDL or legacy-task backfill. Task and Project
+HTTP deletion clean up through the existing resource API; missing Projects cannot
+release task evidence. FS ordering is limited to one Host writer. Retention,
+feedback and lesson cascades remain S05.

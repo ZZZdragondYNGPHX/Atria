@@ -36,7 +36,7 @@ describe('S01 real entrypoint scripted baseline', () => {
         const blocked = baseline.report.trials.find(item => item.caseId === 'project_repair_d1');
         const repaired = baseline.report.trials.find(item => item.caseId === 'project_repair_p1');
         expect(blocked.evidence.find(item => item.evidenceId.endsWith(':repair_bound')).value.observed).toEqual({ statuses: ['repair', 'blocked'], round: 2, closed: true, writes: 0 });
-        expect(repaired.evidence.find(item => item.evidenceId.endsWith(':repair_bound')).value.observed).toEqual({ statuses: ['repair', 'review'], round: 1, formalWrites: 1, duplicateRejected: true });
+        expect(repaired.evidence.find(item => item.evidenceId.endsWith(':repair_bound')).value.observed).toEqual({ statuses: ['repair', 'review'], round: 1, formalWrites: 1, receiptReplayed: true });
         expect(repaired.refs.effectIds).toHaveLength(1);
     });
     test('fixtures have distinct promotion inputs and revision drift is rejected', () => {

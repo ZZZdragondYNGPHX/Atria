@@ -95,14 +95,16 @@ export class ProjectEvidenceSourceAdapter {
     async readMany(handle, scope, selectors) {
         if (!this.studio || !this.agent) fail('unavailable', 'project_authority_unavailable');
         const before = await this.studio.getRevision(handle, scope.projectId);
-        const tasks = selectSources(selectors, selector => this.agent.getTask(handle, scope.projectId, selector.taskId));
+        const tasks = await Promise.all(selectors.map(async selector => {
+            try { return { source: await this.agent.getTask(handle, scope.projectId, selector.taskId) }; } catch (error) { return { error }; }
+        }));
         const after = await this.studio.getRevision(handle, scope.projectId);
         if (after.revision !== before.revision) fail('stale', 'project_source_changed_during_read');
         return tasks.map((item, index) => {
             if (item.error) return item;
             try {
                 const selector = selectors[index];
-                if (hashNativeDocument(item.source) !== hashNativeDocument(this.agent.getTask(handle, scope.projectId, selector.taskId))) fail('stale', 'project_source_changed_during_read');
+                if (hashNativeDocument(item.source) !== hashNativeDocument(this.agent.peekTask(handle, scope.projectId, selector.taskId))) fail('stale', 'project_source_changed_during_read');
                 return { source: this._taskSource(before, item.source, selector) };
             } catch (error) { return { error }; }
         });

@@ -648,6 +648,7 @@ export class NativeGenerationHost {
             if (input.taskId) {
                 const context = await this.agent.getContext(handle, input.projectId, input.taskId);
                 if (context.task.baseRevision !== input.revision || ['review', 'blocked', 'conflict', 'taken_over', 'completed'].includes(context.task.status)) fail('native_generation_task_stopped');
+                if (!preview && input.projectAttemptId) await this.agent.recordGenerationRequest(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId);
                 const allowed = new Set(context.tools.map(tool => tool.function.name).concat(['atri_agent_list_skills', 'atri_agent_read_skill', 'atri_agent_skill_files']));
                 if ((input.tools || []).some(tool => !allowed.has(tool.function?.name))) fail('native_generation_tool_denied');
             }
@@ -845,6 +846,15 @@ export class NativeGenerationHost {
             inputTokens: result.response.usage?.inputTokens ?? result.response.usage?.prompt_tokens,
             outputTokens: result.response.usage?.outputTokens ?? result.response.usage?.completion_tokens,
             totalTokens: result.response.usage?.totalTokens ?? result.response.usage?.total_tokens });
-        return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts } });
+        let projectTaskCapture;
+        if (!preview && input.projectId && input.taskId && input.projectAttemptId) {
+            try {
+                await this.agent.recordGenerationObservation(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId,
+                    { snapshot: result.snapshot, attempts, usage: result.response.usage });
+                projectTaskCapture = { status: 'captured' };
+            } catch { projectTaskCapture = { status: 'failed' }; }
+        }
+        return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts,
+            ...(projectTaskCapture ? { projectTaskCapture } : {}) } });
     }
 }

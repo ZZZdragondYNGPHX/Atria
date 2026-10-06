@@ -4,6 +4,8 @@ import { describe, expect, jest, test } from '@jest/globals';
 
 import { createNativeStudioRouter } from '../../src/endpoints/native-studio.js';
 import { ConflictError } from '../../src/storage/errors.js';
+import { projectSource, services } from '../agent-intelligence/project-fixture.js';
+import { makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 
 function appFor(agent) {
     const app = express();
@@ -134,4 +136,35 @@ describe('A8 Project Agent HTTP boundary', () => {
             },
         });
     });
+});
+
+test('authenticated HTTP recovers durable tasks and conversation after Host restart', async () => {
+    const h = await makeTempSqliteEngineHarness();
+    try {
+        let current = services(h); const source = projectSource(), projectId = source.project.projectId;
+        const created = await current.studio.createProject(h.handle, source);
+        const app = express(); app.use(express.json({ limit: '4mb' }));
+        app.use((req, _res, next) => { req.user = { profile: { handle: h.handle } }; next(); });
+        app.use(createNativeStudioRouter(() => current));
+        const base = '/projects/' + projectId + '/agent/tasks';
+        const spoofed = await request(app).post(base).send({ owner: 'foreign', intent: 'No', baseRevision: created.revision.revision });
+        expect(spoofed.status).toBe(400);
+        const task = (await request(app).post(base).send({ intent: 'HTTP recovery', baseRevision: created.revision.revision })).body;
+        const path = base + '/' + task.taskId;
+        const begun = await request(app).post(path + '/generation/begin').send({ expectedSequence: task.sequence });
+        expect(begun.status).toBe(200);
+        const attemptId = begun.body.attempts.at(-1).attemptId;
+        const finish = await request(app).post(path + '/generation/finish').send({ attemptId, status: 'completed', conversation: [...task.conversation, { role: 'assistant', content: 'Saved public conversation' }] });
+        expect(finish.status).toBe(200);
+        current = services(h);
+        const restored = await request(app).get(path);
+        expect(restored.status).toBe(200); expect(restored.headers['cache-control']).toBe('no-store');
+        expect(restored.body.conversation.at(-1).content).toBe('Saved public conversation');
+        const list = await request(app).get(base); expect(list.body).toHaveLength(1);
+        const corrupt = await request(app).post(path + '/generation/finish').send({ attemptId, status: 'completed', conversation: finish.body.conversation, origin: 'host' });
+        expect(corrupt.status).toBe(400);
+        expect((await request(app).delete('/projects/' + projectId).send({ baseRevision: task.baseRevision })).body.deleted).toBe(true);
+        expect((await request(app).get(path)).status).toBe(404);
+        expect(await current.repository.list(h.handle, projectId)).toEqual([]);
+    } finally { await h.cleanup(); }
 });

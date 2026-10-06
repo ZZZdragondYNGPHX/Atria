@@ -30,7 +30,7 @@ function services() {
                 engine: getStorageEngine(),
             }),
         });
-        projectAgentService = new ProjectAgentService({ studio: studioService });
+        projectAgentService = new ProjectAgentService({ studio: studioService, engine: getStorageEngine() });
     }
     return { studio: studioService, agent: projectAgentService };
 }
@@ -79,6 +79,7 @@ export function createNativeStudioRouter(getServices = services) {
 
     const route = operation => async (request, response) => {
         try {
+            if (request.path.includes('/agent/tasks')) response.set('Cache-Control', 'no-store');
             await operation(
                 request,
                 response,
@@ -188,13 +189,11 @@ export function createNativeStudioRouter(getServices = services) {
         res.json(await studio.getProject(handle, req.params.projectId));
     }));
 
-    router.delete('/projects/:projectId', route(async (req, res, { studio }, handle) => {
+    router.delete('/projects/:projectId', route(async (req, res, { studio, agent }, handle) => {
+        const deleted = await studio.deleteProject(handle, req.params.projectId, req.body?.baseRevision);
+        if (deleted) await agent.deleteProjectTasks(handle, req.params.projectId);
         res.json({
-            deleted: await studio.deleteProject(
-                handle,
-                req.params.projectId,
-                req.body?.baseRevision,
-            ),
+            deleted,
         });
     }));
 
@@ -252,7 +251,8 @@ export function createNativeStudioRouter(getServices = services) {
     }));
 
     router.get('/projects/:projectId/agent/tasks', route(async (req, res, { agent }, handle) => {
-        res.json(agent.listTasks(handle, req.params.projectId));
+        res.set('Cache-Control', 'no-store');
+        res.json(await agent.listTasks(handle, req.params.projectId));
     }));
 
     router.post('/projects/:projectId/agent/tasks', route(async (req, res, { agent }, handle) => {
@@ -260,7 +260,8 @@ export function createNativeStudioRouter(getServices = services) {
     }));
 
     router.get('/projects/:projectId/agent/tasks/:taskId', route(async (req, res, { agent }, handle) => {
-        res.json(agent.getTask(handle, req.params.projectId, req.params.taskId));
+        res.set('Cache-Control', 'no-store');
+        res.json(await agent.getTask(handle, req.params.projectId, req.params.taskId));
     }));
 
     router.get('/projects/:projectId/agent/tasks/:taskId/context', route(async (req, res, { agent }, handle) => {
@@ -281,7 +282,23 @@ export function createNativeStudioRouter(getServices = services) {
     }));
 
     router.post('/projects/:projectId/agent/tasks/:taskId/takeover', route(async (req, res, { agent }, handle) => {
-        res.json(agent.takeOver(handle, req.params.projectId, req.params.taskId));
+        res.json(await agent.takeOver(handle, req.params.projectId, req.params.taskId));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks/:taskId/resume', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.resumeTask(handle, req.params.projectId, req.params.taskId));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks/:taskId/generation/begin', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.beginGeneration(handle, req.params.projectId, req.params.taskId, req.body || {}));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks/:taskId/generation/finish', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.finishGeneration(handle, req.params.projectId, req.params.taskId, req.body || {}));
+    }));
+
+    router.delete('/projects/:projectId/agent/tasks/:taskId', route(async (req, res, { agent }, handle) => {
+        res.json({ deleted: await agent.deleteTask(handle, req.params.projectId, req.params.taskId) });
     }));
 
     router.get('/projects/:projectId/resources/closure', route(async (req, res, { studio }, handle) => {

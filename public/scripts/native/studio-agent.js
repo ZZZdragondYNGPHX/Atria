@@ -4,10 +4,10 @@ import { formatShellText as formatProductText } from '../atria-shell/localizatio
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
 import { nativeStudioClient } from './studio-client.js';
+import { projectAgentConversation, completeProjectAgentConversation, projectAgentResumeMessages } from '../../shared/project-agent-conversation.js';
 
 const MAX_MODEL_ROUNDS = 12;
-const STOP_STATES = new Set(['review', 'blocked', 'conflict', 'taken_over', 'completed']);
-const SKILL_TOOL_NAMES = new Set(['atri_agent_list_skills', 'atri_agent_read_skill', 'atri_agent_skill_files']);
+const STOP_STATES = new Set(['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled']);
 
 function clone(value) {
     return value == null ? value : structuredClone(value);
@@ -127,6 +127,9 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = []) 
         'Pinned baseRevision:',
         String(task.baseRevision || ''),
         '',
+        'Current authoritative Task state (resume from these proposals; never repeat saved operations from conversation):',
+        JSON.stringify({ status: task.status, plan: task.plan, operations: task.operations, validation: task.validation, repairRound: task.repairRound }),
+        '',
         'Current Project summary:',
         JSON.stringify({
             project: project?.source?.project || null,
@@ -174,6 +177,10 @@ function assistantToolMessage(text, calls, providerState) {
 }
 
 function toolResultMessage(call, result) {
+    if (result?.taskId) {
+        const { conversation: _conversation, attempts: _attempts, timeline: _timeline, ...task } = result;
+        result = task;
+    }
     return {
         role: 'tool',
         tool_call_id: call.id,
@@ -182,7 +189,7 @@ function toolResultMessage(call, result) {
     };
 }
 
-async function executeModelTool(projectId, taskId, call, skillEntries) {
+async function executeModelTool(projectId, taskId, call, skillEntries, attemptId) {
     if (call.name === 'atri_agent_list_skills') {
         return { skills: summarizeSkills(skillEntries) };
     }
@@ -193,6 +200,8 @@ async function executeModelTool(projectId, taskId, call, skillEntries) {
     return nativeStudioClient.executeAgentTool(projectId, taskId, {
         name: call.name,
         args: call.args || {},
+        attemptId,
+        callId: call.id,
     });
 }
 
@@ -205,6 +214,8 @@ export async function runNativeStudioAgentTask({
     maxModelRounds = MAX_MODEL_ROUNDS,
 }) {
     let context = await nativeStudioClient.getAgentContext(projectId, taskId);
+    if (STOP_STATES.has(context.task.status)) return { task: context.task, messages: context.task.conversation || messages };
+    await nativeStudioClient.resumeAgentTask(projectId, taskId);
     const preflight = await nativeStudioClient.preflight(
         projectId,
         context.task.baseRevision,
@@ -216,8 +227,9 @@ export async function runNativeStudioAgentTask({
         }
         : null;
     const skillEntries = await listNativeSkills(projectId, packageRef);
-    const transcript = [...messages];
+    const transcript = [...(context.task.conversation || messages)];
     if (!transcript.length) transcript.push({ role: 'user', content: context.task.intent });
+    const modelTranscript = projectAgentResumeMessages(transcript);
 
     for (let round = 0; round < maxModelRounds; round += 1) {
         if (abortSignal?.aborted) throw new Error('Project Agent request aborted');
@@ -229,37 +241,58 @@ export async function runNativeStudioAgentTask({
 
         const tools = [...(context.tools || []), ...skillTools()];
         const allowed = new Set(tools.map(item => item.function.name));
-        const result = await executeNativeGeneration({
-            role: 'studio',
-            source: { projectId, taskId, revision: context.task.baseRevision },
-            messages: [
-                { role: 'system', content: buildNativeProjectAgentSystemPrompt(context, skillEntries) },
-                ...transcript,
-            ],
-            tools,
-            abortSignal,
-        });
-
-        const text = result?.providerState ? String(result.assistantText || '') : String(result?.assistantText || '').trim();
-        const calls = normalizeToolCalls(result).filter(call => allowed.has(call.name));
-        if (!calls.length) {
-            if (text) transcript.push({ role: 'assistant', content: text });
-            onUpdate({ task: context.task, messages: transcript });
-            return { task: context.task, messages: transcript };
-        }
-
-        transcript.push(assistantToolMessage(text, calls, result.providerState));
-        for (const call of calls) {
-            if (abortSignal?.aborted) throw new Error('Project Agent request aborted');
-            const toolResult = await executeModelTool(projectId, taskId, call, skillEntries);
-            transcript.push(toolResultMessage(call, toolResult));
-            if (!SKILL_TOOL_NAMES.has(call.name)) {
-                const task = toolResult?.taskId ? toolResult : await nativeStudioClient.getAgentTask(projectId, taskId);
-                onUpdate({ task, messages: transcript, toolCall: call, toolResult });
-                if (STOP_STATES.has(task.status)) return { task, messages: transcript };
+        const started = await nativeStudioClient.beginAgentGeneration(projectId, taskId, { expectedSequence: context.task.sequence });
+        const attemptId = started.attempts.at(-1).attemptId;
+        const savedLength = transcript.length;
+        let stopped = false;
+        try {
+            const result = await executeNativeGeneration({
+                role: 'studio',
+                source: { projectId, taskId, revision: context.task.baseRevision, projectAttemptId: attemptId },
+                messages: [
+                    { role: 'system', content: buildNativeProjectAgentSystemPrompt(context, skillEntries) },
+                    ...modelTranscript,
+                ],
+                tools,
+                abortSignal,
+            });
+            const text = result?.providerState ? String(result.assistantText || '') : String(result?.assistantText || '').trim();
+            const calls = normalizeToolCalls(result).filter(call => allowed.has(call.name));
+            if (!calls.length) {
+                if (text) { const message = { role: 'assistant', content: text }; transcript.push(message); modelTranscript.push(message); }
+                stopped = true;
             } else {
-                onUpdate({ task: context.task, messages: transcript, toolCall: call, toolResult });
+                const assistant = assistantToolMessage(text, calls, result.providerState);
+                transcript.push(assistant); modelTranscript.push(assistant);
+                for (const call of calls) {
+                    if (abortSignal?.aborted) throw new Error('Project Agent request aborted');
+                    if (stopped) {
+                        const message = toolResultMessage(call, { skipped: true, reason: 'task_stopped' });
+                        transcript.push(message); modelTranscript.push(message);
+                        continue;
+                    }
+                    const toolResult = await executeModelTool(projectId, taskId, call, skillEntries, attemptId);
+                    const message = toolResultMessage(call, toolResult);
+                    transcript.push(message); modelTranscript.push(message);
+                    const task = toolResult?.taskId ? toolResult : await nativeStudioClient.getAgentTask(projectId, taskId);
+                    onUpdate({ task, messages: transcript, toolCall: call, toolResult });
+                    stopped = STOP_STATES.has(task.status);
+                }
             }
+            const task = await nativeStudioClient.finishAgentGeneration(projectId, taskId, {
+                attemptId, status: 'completed', conversation: projectAgentConversation(transcript),
+            });
+            onUpdate({ task, messages: transcript });
+            if (stopped) return { task, messages: transcript };
+        } catch (error) {
+            // Keep the last complete conversation; authority may already contain successful tool calls.
+            transcript.splice(savedLength);
+            try {
+                await nativeStudioClient.finishAgentGeneration(projectId, taskId, {
+                    attemptId, status: 'failed', conversation: projectAgentConversation(completeProjectAgentConversation(transcript)),
+                });
+            } catch (captureError) { error.captureError = captureError; }
+            throw error;
         }
     }
 
@@ -398,7 +431,7 @@ export function mountNativeStudioAgent({
             running = true; errorMessage = ''; taskSelect.disabled = true;
             try {
                 activeTask = await nativeStudioClient.getAgentTask(projectId, taskSelect.value);
-                messages = [{ role: 'user', content: activeTask.intent }];
+                messages = clone(activeTask.conversation || [{ role: 'user', content: activeTask.intent }]);
                 notifyTask();
             } catch (error) { showError(error); } finally { running = false; render(); slot.querySelector('select')?.focus(); }
         });
@@ -454,6 +487,18 @@ export function mountNativeStudioAgent({
         slot.append(renderPlan(documentRef, activeTask));
         const intent = node(documentRef, 'p'); intent.textContent = activeTask.intent; slot.append(intent);
 
+        if (activeTask.recovery) {
+            const notice = node(documentRef, 'p'); notice.setAttribute('role', 'status');
+            notice.textContent = t(activeTask.recovery.status === 'conflict'
+                ? 'The Project changed or its Commit could not be verified. Start a new Task from the current revision.'
+                : activeTask.recovery.status === 'awaiting_review'
+                    ? 'The previous Commit was interrupted. Review the saved changes before committing again.'
+                    : activeTask.recovery.status === 'interrupted'
+                        ? 'Validation was interrupted. Continue to check the saved proposals.'
+                        : 'The committed changes were recovered. This Task is complete.');
+            slot.append(notice);
+        }
+
         const progress = node(documentRef, 'section', 'atria-project-agent-progress');
         const progressTitle = node(documentRef, 'h4');
         progressTitle.textContent = t('Progress');
@@ -470,6 +515,8 @@ export function mountNativeStudioAgent({
             } : null,
             simulation: activeTask.simulation || null,
             review: activeTask.review || null,
+            recovery: activeTask.recovery || null,
+            attempts: (activeTask.attempts || []).map(({ attemptId, kind, status, origin }) => ({ attemptId, kind, status, origin })),
             history: (activeTask.timeline || []).slice(-8).map(item => ({
                 type: item.type,
                 at: item.at,
@@ -503,9 +550,11 @@ export function mountNativeStudioAgent({
                 if (running || takingOver || !beforeCommit()) return;
                 running = true; errorMessage = '';
                 render();
+                let acknowledged = false;
                 try {
                     activeTask = await nativeStudioClient.commitAgentTask(projectId, activeTask.taskId);
                     if (disposed) return;
+                    acknowledged = true;
                     notifyTask();
                     onLog('agent', 'Committed Project Agent ChangeSet', activeTask.changeSets?.at(-1));
                     await onProjectCommitted(activeTask);
@@ -513,6 +562,11 @@ export function mountNativeStudioAgent({
                 } catch (error) {
                     showError(error);
                     activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId).catch(() => activeTask);
+                    notifyTask();
+                    if (!disposed && !acknowledged && activeTask.status === 'completed') {
+                        try { await onProjectCommitted(activeTask); } catch (refreshError) { showError(refreshError); }
+                        tasks = await nativeStudioClient.listAgentTasks(projectId).catch(() => tasks);
+                    }
                 } finally {
                     running = false;
                     render();
@@ -600,6 +654,7 @@ export function mountNativeStudioAgent({
             tasks = await nativeStudioClient.listAgentTasks(projectId);
             if (activeTask) {
                 activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId);
+                messages = clone(activeTask.conversation || messages);
                 notifyTask();
             }
             render();

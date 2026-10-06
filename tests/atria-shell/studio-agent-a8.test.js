@@ -26,6 +26,9 @@ const taskId = 'agenttask_11111111111111111111111111111111';
 
 function task(status = 'planned') {
     return {
+        sequence: 0,
+        attempts: [],
+        conversation: [{ role: 'user', content: 'Rename the project safely' }],
         taskId,
         projectId,
         intent: 'Rename the project safely',
@@ -144,6 +147,9 @@ describe('A8 Native Studio Project Agent client', () => {
                 return response({ response: result, snapshot: { runtimeRouteId: 'route_fixture' } });
             }
 
+            if (path.endsWith('/resume')) return response(task());
+            if (path.endsWith('/generation/begin')) return response({ ...task(), attempts: [{ attemptId: 'attempt_fixture' }] });
+            if (path.endsWith('/generation/finish')) return response({ ...task(calls.some(item => item.body?.name === 'atri_agent_prepare_review') ? 'review' : 'planned'), conversation: body.conversation });
             if (path.endsWith(`/projects/${projectId}/preflight`) && method === 'POST') {
                 return response({
                     projectId,
@@ -319,6 +325,26 @@ describe('A8 Native Studio Project Agent client', () => {
         expect(commit).toHaveBeenCalledTimes(1); expect(projectCommitted).toHaveBeenCalledTimes(1);
         expect(notify.mock.calls.at(-1)[0].status).toBe('completed'); expect(button()).toBeUndefined();
         expect(slot.querySelector('[role="alert"]')).not.toBeNull(); controller.dispose();
+    });
+
+    test('failed Commit response reconciles completion and refreshes the Project once', async () => {
+        let committed = false; const commit = jest.fn();
+        const refresh = jest.fn(async () => { throw new Error('Refresh unavailable'); });
+        globalThis.fetch = jest.fn(async url => {
+            if (String(url).endsWith('/commit')) { committed = true; commit(); return response({ error: 'native_studio_failed' }, 500); }
+            if (String(url).endsWith('/agent/tasks')) return response([task(committed ? 'completed' : 'review')]);
+            if (String(url).endsWith('/' + taskId)) return response(task(committed ? 'completed' : 'review'));
+            throw new Error('Unexpected request');
+        });
+        document.body.innerHTML = '<aside id="ai"></aside>'; const slot = document.getElementById('ai');
+        const controller = mountNativeStudioAgent({ document, slot, projectId, getRevision: () => ({ revision: baseRevision }), onProjectCommitted: refresh });
+        const flush = () => new Promise(resolve => setTimeout(resolve, 0)); await flush();
+        const select = slot.querySelector('select'); select.value = taskId; select.dispatchEvent(new Event('change')); await flush();
+        [...slot.querySelectorAll('button')].find(node => node.textContent === 'Review & Commit').click(); await flush();
+        expect(commit).toHaveBeenCalledTimes(1); expect(refresh).toHaveBeenCalledTimes(1);
+        expect(slot.textContent).toContain('completed'); expect(slot.querySelector('[role="alert"]').textContent).toBe('Refresh unavailable');
+        expect([...slot.querySelectorAll('button')].some(node => node.textContent === 'Review & Commit')).toBe(false);
+        controller.dispose();
     });
 
 });
