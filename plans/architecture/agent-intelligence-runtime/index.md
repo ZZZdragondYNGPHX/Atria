@@ -2,8 +2,9 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **D2 architecture revised / M1 boundary frozen / S01 Ready**；新增生成基础组与远期技术契约按阶段细化。
+- Status: **D2 architecture revised / M1 boundary frozen / S01 structural complete / S02 next**；新增生成基础组与远期技术契约按阶段细化。
 - Updated: 2026-10-06
+- S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
@@ -45,7 +46,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [compute-policy.md](compute-policy.md) | sparse 默认路径、共享 cognition、硬预算、后台分流与计算收益评价 | TaskScheduler / RunControl、M1 Eval |
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察 | 既有 resolver / provider ports、前两模块 |
 
-当前 S01 读本入口 → decisions → s01-baseline → Record；按问题读取 m1-evolution / baseline。D0 / D1 / D2 已完成；S01 补充测量说明不扩张其 12 cases 与 test-only 范围。无需重新进行全量调研。
+已完成 S01 的读取路由为本入口 → decisions → s01-baseline → Record；下一 S02 读取 decisions / m1-evolution / delivery S02 / baseline 相关接入 → Record；按问题读取 m1-evolution / baseline。D0 / D1 / D2 已完成；S01 补充测量说明不扩张其 12 cases 与 test-only 范围。无需重新进行全量调研。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -76,10 +77,10 @@ flowchart LR
 | D0 — 重新调研 | 已完成本轮架构覆盖；进入讨论 | 代码审计、一手资料复核、34 阶段讨论稿 |
 | D1 — 确定方案 | 已完成本轮冻结 | 默认模式、scope / budget / publication 约束、S01 执行设计 |
 | D2 — 三份研究综合更新 | 本轮完成 | 三个权威模块、六个基础阶段、依赖与评价 / 测量补充 |
-| S01 | Ready；尚未实现 | 12 cases、双入口 baseline runner、报告与费用状态 |
+| S01 | Structural / scripted complete；empiricalReady=false | 12 cases、双入口 runner、strict v1 consumer / sidecar、有限预算与缺失状态；实际验证见 Record |
 | S02–S34 / G01–G06 | 未开始；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
-本轮没有改动产品源码。实施分支尚未创建；候选名称为 `feat/agent-intelligence-runtime`。
+S01 只新增 test-only 文件；`feat/agent-intelligence-runtime` 已实现 / push，main 未变化。当前阶段结束停止，下一正式阶段 S02；没有执行真实模型或后续阶段。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
 
 ## 验证与交付原则
@@ -93,6 +94,6 @@ flowchart LR
 
 ## 进入正式实施的条件
 
-产品范围与 S01 设计已就绪；下一轮重新核对 main 后创建本组产品分支，仅执行 S01。只复核变化影响的代码，不重新询问已确认的范围与默认方式。
+产品范围与 S01 结构交付已就绪；下一轮复核真实 Git，继续同一本组产品分支，仅执行 S02。先按 m1-evolution / delivery / baseline 细化来源与有效性最小契约；只复核变化影响的代码，不重新询问已确认的范围与默认方式。
 S01 不新增产品存储契约，迁移为无；S02 等后续阶段引入资源前必须补齐其详细校验 / 迁移 / 失败处理。
 每个正式阶段完成后按治理停止；不能因远期路线已列出而自动跨越阶段边界。

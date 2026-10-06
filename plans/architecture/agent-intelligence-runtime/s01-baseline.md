@@ -1,6 +1,6 @@
 # S01 — 双入口基线与 Eval cases 执行设计
 
-- Status: **Ready / Frozen for S01**
+- Status: **Structural / scripted complete；empiricalReady=false**；实际实施与验证见 [Record 的 S01](../../../records/refactor/agent-intelligence-runtime.md#s01--双入口基线与-eval-cases)。
 - Task ID: `agent-intelligence-runtime`
 - Product baseline: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Basis: 用户已确认 M1 范围、三类候选、局部自动启用、逐 scope 开启和分组集成；本模块是该已授权任务的首阶段工程细化。
@@ -12,7 +12,7 @@
 先读 index → decisions → 本模块 → Record；只在对应问题出现时读 m1-evolution 或 baseline 的相关段落。
 后续 schema / 资源路径在引入对应能力的阶段细化，不把全部 34 阶段字段先冻结。
 
-S01 沿用 M1 产品分支 `feat/agent-intelligence-runtime`，从重新核对的最新 main 开始；当前尚未创建。
+S01 沿用 M1 产品分支 `feat/agent-intelligence-runtime`，从重新核对的最新 main 开始；S01 已在该分支完成 test-only 交付并 push，尚未合并 main。
 案例只能使用版本化的虚构数据和隔离 Project / Session，报告不含用户聊天、Secret 或机器目录。
 
 ## 2. 可复用的入口

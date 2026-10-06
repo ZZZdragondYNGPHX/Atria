@@ -3,60 +3,61 @@
 ## Task
 
 - Task ID: `agent-intelligence-runtime`
-- Primary Workspace: `main`
-- Current product branch / HEAD: `main@ed1fd90521a63363e29856601abbf5e908c99d10`，本轮 fetch / pull 后与 `origin/main` 一致。
-- Auxiliary documentation: `docs`；D2 由 `feat/agent-intelligence-architecture-update` 隔离准备并集成 docs，文档 HEAD 以包含本文件的实际提交为准。
-- D2 source docs HEAD: `40ce08a32`；D0 原研究 HEAD: `2e57f83b19d2321260be93f98dbbf5321f4b0b84`。
-- Current stage: **D0 / D1 / D2 完成；下一正式阶段 S01 Ready**。
-- Plan entrypoint: [plans/architecture/agent-intelligence-runtime/index.md](plans/architecture/agent-intelligence-runtime/index.md)
-- S01-required modules: index → [decisions](plans/architecture/agent-intelligence-runtime/decisions.md) → [s01-baseline](plans/architecture/agent-intelligence-runtime/s01-baseline.md) → Record；按问题读取 m1-evolution / baseline §9。
-- Record: [records/refactor/agent-intelligence-runtime.md](records/refactor/agent-intelligence-runtime.md)
+- Primary Workspace: `main`。
+- Current product branch / HEAD: `feat/agent-intelligence-runtime@0a41023ef6689b8b80ca64ffdd5cda72838897fe`；已 push，与 origin 同 HEAD；工作树干净。
+- Stable main / baseline: `main@ed1fd90521a63363e29856601abbf5e908c99d10`；本轮 fetch 后与 origin/main 一致，没有合并本任务。
+- Auxiliary documentation: `docs`；S01 start docs HEAD `924ca4369dd3cb8405664eaa51e4574638987a4c`；当前 docs HEAD 以包含本 HANDOFF / Record 的实际提交为准。
+- Current stage: **D0 / D1 / D2 / S01 完成；本轮停止；下一正式阶段 S02 尚未执行**。
+- Plan entrypoint: [plans/architecture/agent-intelligence-runtime/index.md](plans/architecture/agent-intelligence-runtime/index.md)。
+- S02-required modules: index → [decisions](plans/architecture/agent-intelligence-runtime/decisions.md) → [m1-evolution](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery 的 S02](plans/architecture/agent-intelligence-runtime/delivery.md) → [baseline](plans/architecture/agent-intelligence-runtime/baseline.md) 的来源 / authority 接入 → Record；先细化最小来源契约，只复核相关代码。
+- S01 contract / consumer reference: [s01-baseline](plans/architecture/agent-intelligence-runtime/s01-baseline.md)；产品分支 `tests/agent-intelligence/{cases,report,runner,adapters,budget}.js` 和 README。
+- Record: [records/refactor/agent-intelligence-runtime.md](records/refactor/agent-intelligence-runtime.md)。
 
 ## Completed
 
-- D0 / D1 已完成代码调研、双入口成长闭环、局部自动默认方式与首批执行设计。
-- D2 先拉取远端、读取现有 Plan，再全文读取三份研究；复核同一 main 的 Generation / Context / Scheduler / RunControl / discovery / provider / inspector 接入及一手来源。
-- 更新正式架构；新增 behavior-context、compute-policy、model-routing 三个详细模块，职责、计算准入、target / identity / gateway 与恢复规则有唯一权威。
-- 保留 S01–S34，新增 M8 的 G01–G06：M1 不等待它，社会认知前交付生成与预算基础，S26 深化自适应。
-- S01 仍为 12 cases / v1 / test-only；补现有调用图 / usage 缺失的测量说明，不提前实现动态路由、cognition 或新增产品资源。
-- 保留已确认 RP / Project 并重、三类候选、逐角色 / Project 局部自动、新建默认审阅、统一成长预算与 M1 完成后集成 main。
+- D0 / D1 / D2 的调研、双入口成长边界、局部自动默认与语义 / 计算 / routing 设计保持；未重新做全量研究。
+- S01 新增九个 test-only 文件：12 个虚构固定 cases、开发 / 独立晋升 split、fixture / input / rubric hash 与 revision、可执行双入口 scripted runner、strict Trial / Report v1 consumer、预算 / 缺失状态、独立 measurement sidecar v1、52 项新增 tests 和运行说明。
+- RP 实际调用 Director Engine / Runtime / takeover；检查玩家 ownership、实际 request 的 fixture 可见承诺修订、取消 / stale completion / variant 关联。生产 Memory resolver 与自由文本应用未验证，明确 completeness / not_run。
+- Project 实际调用 Studio Agent model loop、既有 generation / tool clients、隔离 bridge 与 ProjectAgentService / StudioService authority；真实 validation / Review、明确 fixture reviewer commit、重复 commit 拒绝、human revision conflict 与 repair 上限 / 修复成功。
+- 隔离临时目录 / 相邻无关虚构 Project 前后 hash、foreign ownership、cleanup 根目录 / marker、拒绝模型 commit 与外部网络；采集失败保留全部 trials / incomplete，报告不静默丢弃。
+- product commit / push 完成；main 未变化，M1 完整交付后再集成。
 
 ## Pending
 
-- 下一轮只执行 S01：cases、双入口 runner、报告 consumer / validator、预算 / 缺失状态和针对性验证。
-- 真实模型基线只有在既有 generation 入口与明确有限 pilot 可用时执行；否则 `empiricalReady=false`。S06 / S10 前补齐真实证据。
-- S02–S10 具体资源、迁移、retention、费用与晋升阈值按对应阶段细化。
-- M8 未开始：进入前细化 schema / 支持矩阵、实际 gateway 证据与有限目标 / 集成 checkpoint；不把研究数字或名称当已冻结要求。
-- 重新核对最新 main，再创建 `feat/agent-intelligence-runtime`；当前无本任务产品实现分支。
+- 下一轮仅 **S02**：来源 / 引用 / 有效性最小契约、双域 source adapter 与首批 EvidenceSet / Evaluation consumer，复用现有 result / artifact / storage authority；进入前局部细化实际 schema / 生命周期，不能把整套远期字段提前注册。
+- S01 真实模型基线仍缺明确有限 pilot / exact generation 配置与 standalone existing-generation bridge。model command 保留六 trial slots；无有限参数为 budget_blocked，有预算但无 bridge 为 unavailable；`empiricalReady=false`。
+- 补测位置是当前产品分支 `tests/agent-intelligence/README.md` 的 Model pilot and budget。沿现有 RP / Studio 请求 preview/count + reservation + response observation 接线，再跑 RP agency / Project authoring 各三次 development trials；独立 promotion 基线 S06 比较前补齐。不得用 scripted success 绕过 S06 / S10 实证门槛。
+- S03 / S04 补可靠捕获 / durable task；S05 retention、S06 / S10 费用与晋升阈值按阶段细化。S02–S34 / G01–G06 均未实施。
 
 ## Key decisions
 
-用户确认与 D2 工程设计来源由 decisions 分开记录；研究仍非约束性，未实测效果不能宣布已有能力。
-六 Plane 是职责，语义层不是固定调用层；ordinary RP 一次主要 generation 是方向，不是已测 SLO。新 cognition / rollout / specialist 共享有触发证据的准入、路由和费用。
-当前 Native 已在实际 send 前计数；新增预算沿原 RunControl / Host authority 演进，不另建模型执行器。gateway 上游 / 内部 retry 不可知时如实标 unknown，不承诺无法控制的硬上限。
-长期 Task ID / Record 持续；每个正式阶段停止，M1 后集成不宣布全任务完成。
+RP / Project 并重；三类候选；逐角色 / Project 开启局部自动，新建默认审阅；共享 owner 有限预算；M1 完成交付后集成 main。用户已确认，勿重问。
+S01 是 test-only，不新增生产资源、迁移、模型执行器、RunControl authority、自动发布或 cognition。PilotBudget 为验证过的测试 reservation ledger，未安装生产 policy。
+报告区分结构 / authority / Review / final text、行为 grader、usage 与缺失；未知不能当零值，scripted 零外部调用不能当真实模型低成本证据。测量 callIndex 不是 upstream attempt。
+D2 六 Plane / Context / Compute / Routing 的唯一详细权威保持；研究数字、alias / gateway 字符串不成为实测能力。
 
 ## Validation
 
-- D2 仅本地文档结构、链接、阶段依赖 / 身份与差异检查；具体结果见 Record。
-- D0 Node headless probe 通过的历史范围保持；D2 没有重跑，不作为新阶段产品效果证据。
-- 本轮未执行产品测试、构建、浏览器、Android / 真机或 CI；未发起模型调用 / gateway probe。
-- 真实提交 / 集成 / push 状态由 Record 与 Git 核对。
+- 本地新增 2 suites / **52 tests passed**；既有 8 related suites / **79 tests passed**，分组执行，共 131 tests；实际命令 / 文件见 Record。
+- Committed baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`。CLI scripted runner → report JSON → strict consumer / sidecar 校验成功：**12 executed trials、24 scripted generation calls、36 tool calls、44 deterministic checks passed / 0 failed**。
+- 14 behavior dimensions 均 not_run；12 usage missing；external provider calls=0；empiricalReady=false。model readiness CLI → consumer 通过：6 slots 全 budget_blocked / 0 executed / 0 external calls。
+- 产品 staged diff check 通过；生成报告仅本地临时产物，未提交。docs 只做最小结构 / 链接 / diff 与记录一致性检查；本阶段所有验证均本地执行。
+- 未执行构建、浏览器、Android / 真机、真实模型 / model judge、gateway probe；未手工发起远程 CI，不把任何未执行检查称为通过。
+- main AGENTS 与 docs README / WEB Adapter / 两模板已有 dirty diff 保留；其它工作树 Experience 草稿未读写。具体 push 与 docs 最终 HEAD 核对真实 Git。
 
 ## Next target / Read first
 
-先检查实际 Git 状态，再读本 HANDOFF → Plan index → decisions / s01-baseline → Record。
-下一轮只执行 S01，按本地最小相关验证；阶段结束持久化 / push、更新同一 Record / live HANDOFF、给出接手提示词并停止，不合并 main、不进入 S02。
+核对实际 Git（main、工作分支、docs、dirty）→ 本 HANDOFF → Plan index → decisions / m1-evolution / delivery S02 / baseline 相关部分 → 同一 Record。
+沿用 `feat/agent-intelligence-runtime`，不重新从 main 建重复分支。只执行 S02，完成本地最小验证、commit / push、同一 Record / live HANDOFF 后停止；不自动进入 S03，不合并 main。
 
 ## Do not repeat
 
-- 不重新全文加载全部研究 / Bundle；D2 三份研究综合已完成，新信息仅复核受影响模块。
-- 不读取或更新未授权 reference；不加载未要求的 repository-agent Skills。
-- 不覆盖本地未提交 AGENTS / docs 治理与模板修改，或其它工作树的 Experience 草稿；不维护第二套 Record / live HANDOFF。
-- 不重新询问已确认 M1 范围、局部默认方式和集成安排。
-- 不把 field reservation、fixture / mock、模型字符串或论文结果当真实能力 / 上游身份。
-- 不把 U9 的企划更新扩展为实施 G 阶段、production shadow、自动改 connection / privacy 或安装 local model 的权限。
+- 不重做全量研究或 D2；不扫描全部 Plans / Records / Skills；不读写未授权 reference。
+- 不覆盖 main AGENTS、docs 治理 / 模板 dirty、其它工作树 Experience 草稿；不创建第二份 Record / live HANDOFF。
+- 不重复执行 S01 scripted 并当成新阶段模型效果；consumer / cases 可直接作为后续来源契约的测试基础。
+- 不把 fixture privacy 过滤、mock generation、field reservation、预算 ledger 或 readiness report 当真实 production 能力。
+- 不因局部预算参数存在而默认发现 Secret、选择付费 route、调用模型、改 connection / privacy、production shadow 或安装 local model。
 
 ## New-chat bootstrap prompt
 
-执行 Atria `agent-intelligence-runtime` 的 S01。先核对实际 Git，再读 `docs:HANDOFF.md` → `plans/architecture/agent-intelligence-runtime/index.md` → decisions / s01-baseline → `records/refactor/agent-intelligence-runtime.md`。D0 / D1 / D2 完成，M1 范围已冻结；D2 已吸收 Prompt / Context、Sparse AI 与 Model / Provider / Routing 三研究，保留 S01–S34 并新增后续 G01–G06，不要重做全量研究或提前实施生成基础组。产品仍为 `main@ed1fd90521a63363e29856601abbf5e908c99d10`，尚无本任务实现分支。重新核对最新 main 后创建 `feat/agent-intelligence-runtime`，只实现 S01 的 12 cases、双入口 baseline runner、v1 报告和 test-only 可选测量、费用 / 缺失状态与最小相关验证。复用 Director、Studio Agent / Project authority 与现有 harness；真实模型只有既有入口与有限 pilot 配置可用时运行，缺失标 `empiricalReady=false`。保留用户已有 dirty changes 与 Experience 草稿；阶段结束 push、更新同一 Record / live HANDOFF 并停止，不合并 main、不自动进入 S02。
+执行 Atria `agent-intelligence-runtime` 的 S02。先核对真实 Git，再读 `docs:HANDOFF.md` → Plan index → decisions / m1-evolution / delivery S02 / baseline 来源与 authority 相关部分 → 同一 Record。D0 / D1 / D2 / S01 完成；工作分支 `feat/agent-intelligence-runtime@0a41023ef6689b8b80ca64ffdd5cda72838897fe` 已 push，main 保持 `ed1fd90521a63363e29856601abbf5e908c99d10`，不要重建分支。S01 test-only 已交付 12 cases、双入口 runner、strict v1 consumer / sidecar、有限预算与缺失状态；52 新增 / 79 既有 tests 通过，44 deterministic checks passed。真实模型与行为评分未执行，empiricalReady=false，S06 / S10 前补齐真实证据。沿用现有 result / artifact / storage / authority，先局部细化最小 source / reference / validity 契约，仅实施 S02；保护既有 dirty 与 Experience 草稿，不提前做 S03 或 G 阶段。阶段结束仅本地最小相关验证、push、更新同一 Record / HANDOFF 后停止，不合并 main。
