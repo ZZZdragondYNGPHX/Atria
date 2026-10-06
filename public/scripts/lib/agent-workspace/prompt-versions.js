@@ -46,7 +46,7 @@ export function normalizeWorkspacePromptVersions(value) {
         if (!same(normalizeWorkspacePreset(expected), c.desired)) throw new Error('Workspace Prompt candidate changes protected fields');
         const { candidateId, ...identity } = c;
         if (candidateId !== sha256(canonical(identity))) throw new Error('Workspace Prompt candidate content identity mismatch');
-        if (!c.baseBindings?.entries?.some(b => b.scope === c.scope && b.subjectId === c.subjectId && b.presetId === c.presetId && !b.promptVersionId)) throw new Error('Invalid Workspace Prompt base binding');
+        if (!c.baseBindings?.entries?.some(b => b.scope === c.scope && b.subjectId === c.subjectId && b.presetId === c.presetId && !b.promptVersionId && !b.strategyVersionId)) throw new Error('Invalid Workspace Prompt base binding');
         candidates.add(c.candidateId);
     }
     return result;

@@ -14,6 +14,7 @@ import { hashNativeDocument, withNativeResourceWrite } from './repositories/comm
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
 import { fields as allowedFields } from '../../public/shared/native-values.js';
+import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
 
@@ -431,6 +432,27 @@ export class ProjectAgentService {
         return this._operate(handle, projectId, id, () => this._getContext(handle, projectId, id), { write: false });
     }
 
+    async strategyCandidates(handle, projectId, id, action) {
+        fields(action, ['type', 'expectedSequence', 'allowedFields', 'field', 'value', 'candidateId'], 'Project strategy request');
+        const reading = ['inspect', 'check'].includes(action.type);
+        return this._operate(handle, projectId, id, async task => {
+            if (action.type === 'inspect') {
+                fields(action, ['type'], 'Project strategy inspect');
+                return clone(task.strategyVersions || { schemaVersion: 1, declaration: null, candidates: [], activeVersionId: null });
+            }
+            const revision = await this._studio.getRevision(handle, projectId);
+            if (revision.revision !== task.baseRevision) throw new ConflictError('project_strategy_conflict');
+            if (action.type === 'check') {
+                fields(action, ['type', 'candidateId'], 'Project strategy check');
+                if (!task.strategyVersions) throw new NotFoundError('Project strategy candidate');
+                return checkProjectStrategyCandidate(task, action.candidateId, this._maxRepairRounds);
+            }
+            const next = updateProjectStrategy(task, action, this._maxRepairRounds);
+            Object.assign(task, next);
+            return task;
+        }, { write: !reading });
+    }
+
     setPlan(handle, projectId, id, value) {
         return this._operate(handle, projectId, id, () => this._setPlan(handle, projectId, id, value));
     }
@@ -586,6 +608,7 @@ export class ProjectAgentService {
             simulation: task.simulation,
             repairRound: task.repairRound,
             maxRepairRounds: task.maxRepairRounds,
+            ...(task.strategyVersions?.activeVersionId ? { strategyVersionId: task.strategyVersions.activeVersionId } : {}),
             review: task.review,
             changeSets: task.changeSets,
             timeline: task.timeline,
@@ -746,6 +769,7 @@ export class ProjectAgentService {
                 humanReviewRequired: true,
                 silentRebase: false,
                 maxRepairRounds: task.maxRepairRounds,
+                ...(task.strategyVersions?.activeVersionId ? { strategyVersionId: task.strategyVersions.activeVersionId } : {}),
             }),
         });
     }

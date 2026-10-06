@@ -329,3 +329,67 @@ Small local checks (no external model):
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/native/prompt-candidates.test.js tests/agent-runtime/workspace-prompt-versions.test.js
 ```
+
+# S09 orchestration strategy candidates
+
+Ordinary RP retains the Workspace settings authority. The orchestrator API exposes
+`inspectStrategyVersions()`, `checkStrategyCandidate(candidateId)` and
+`updateStrategyVersions(action)`. Explicit declarations select existing bounded
+integer fields on user copies: `budgets.maxSteps` for Loop/Director (1–64),
+`budgets.maxConcurrency` for Spec/Director/Agenda (1–16), or Agenda
+`scheduler.maxPlannerRounds` (1–32) / `scheduler.maxTotalRuns` (1–64).
+
+```js
+{ type: 'declare', presetId, expectedPreset, allowedFields: ['budgets.maxSteps'] }
+{ type: 'prepare', presetId, field: 'budgets.maxSteps', value: 4,
+  scope: 'conversation', subjectId: chatId, expectedBindings }
+{ type: 'apply', candidateId }
+{ type: 'rollback', candidateId }
+```
+
+One candidate changes one field. Its SHA-256 identity binds complete base/desired
+definitions, the declaration, diff and original binding table. The scoped binding
+selects `strategyVersionId`; the next original compiler/profile/Plan consumes the
+exact definition. Current runs keep their accepted clone. Prompt and strategy pins
+cannot be combined without a new evaluation; prepare requires an unpinned local
+binding. All other fields, capabilities, output contracts and guards remain fixed.
+Rollback compares the complete desired/base bindings and the unchanged Preset;
+it remains available after declaration revocation, but rejects later user edits.
+Preset deletion clears metadata/pins; ordinary binding selection clears either pin.
+There are at most 64 declarations / 16 candidates, total metadata ≤2 MiB. Existing
+single-client/debounced settings persistence applies; this is explicit editing.
+
+Project uses the original durable Task parameter `maxRepairRounds`, within the
+current server cap. `POST /api/native/studio/projects/:projectId/agent/tasks/:taskId/strategy-candidates`
+accepts these actions:
+
+```js
+{ type: 'inspect' }
+{ type: 'declare', expectedSequence, allowedFields: ['maxRepairRounds'] }
+{ type: 'prepare', expectedSequence, field: 'maxRepairRounds', value: 1 }
+{ type: 'check', candidateId }
+{ type: 'apply', candidateId }
+{ type: 'rollback', candidateId }
+```
+
+Use the current Task sequence returned by the original Task API. A Task must still
+be planning, with no plan, generation attempt, proposal or Workspace. Complete task
+base (excluding only repository sequence and candidate metadata), Project revision,
+server cap and selected identity are checked. Candidate/active value commit in the
+same original Task document with integrity CAS. Old Tasks without metadata remain
+valid. At most 16 candidates / 1 MiB strategy metadata, within the original 2 MiB
+Task limit. Context policy and Task snapshot expose `strategyVersionId` after apply;
+the original server repair policy consumes `maxRepairRounds`. Once execution starts,
+apply/rollback is refused. Other Tasks retain their own creation parameters; there
+is no Project-wide default or automatic inheritance. An empty declaration revokes
+pending apply; pristine-task rollback still restores the frozen base. Task deletion
+and StorageEngine user backup/restore include the metadata. Read-only inspect/check
+are available; writes return 503. No candidate tools are exposed to the Agent model.
+
+Manual apply does not confer evaluation eligibility. S10 still owns feedback/policy
+dependencies, shared budgets, Review, automatic promotion and runtime monitoring.
+These targeted checks use provider stubs and local storage, without model requests:
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-runtime/workspace-strategy-versions.test.js tests/agent-intelligence/project-strategy.test.js
+```

@@ -7,6 +7,7 @@ import { cloneNativeDocument, hashNativeDocument, putMutable, withNativeResource
 import { AgentExperienceRepository } from './experience-repository.js';
 import { fields, text } from './contracts.js';
 import { assertProjectAgentConversation } from '../../../public/shared/project-agent-conversation.js';
+import { assertProjectStrategyVersions } from './project-strategy.js';
 
 const key = (handle, projectId, taskId) => ({ kind: NATIVE_RESOURCE_KINDS.projectAgentTask, handle, projectId, taskId });
 const STATES = new Set(['planning', 'planned', 'working', 'evaluating', 'repair', 'blocked', 'review', 'committing', 'completed', 'conflict', 'taken_over', 'cancelled']);
@@ -14,7 +15,7 @@ const TASK_FIELDS = ['schemaVersion', 'sequence', 'taskId', 'projectId', 'intent
 
 export function assertProjectTask(value) {
     const task = cloneNativeDocument(value);
-    fields(task, TASK_FIELDS, 'Project Agent task');
+    fields(task, [...TASK_FIELDS, ...(Object.hasOwn(task, 'strategyVersions') ? ['strategyVersions'] : [])], 'Project Agent task');
     if (TASK_FIELDS.some(field => task[field] === undefined) || task.schemaVersion !== 1 || !STATES.has(task.status)) throw new TypeError('Invalid Project Agent task schema');
     if (!/^agenttask_[a-z0-9]+$/.test(task.taskId)) throw new TypeError('Invalid Project Agent task identity');
     assertNativeId(task.projectId, 'project');
@@ -116,6 +117,14 @@ export function assertProjectTask(value) {
         text(task.recovery.code, 'Recovery reason');
     }
     assertProjectAgentConversation(task.conversation);
+    if (task.strategyVersions !== undefined) {
+        const versions = assertProjectStrategyVersions(task);
+        const bases = [...versions.candidates.flatMap(c => [c.base, c.desired]), ...(versions.declaration ? [versions.declaration.base] : [])];
+        for (const base of bases) {
+            if (Object.hasOwn(base, 'strategyVersions') || Object.hasOwn(base, 'sequence')) throw new TypeError('Invalid Project strategy base');
+            assertProjectTask({ ...base, sequence: 0 });
+        }
+    }
     if (Buffer.byteLength(JSON.stringify(task)) > 2 * 1024 * 1024) throw new TypeError('Project Agent task byte limit');
     return task;
 }

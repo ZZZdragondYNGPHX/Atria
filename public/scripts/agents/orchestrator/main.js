@@ -62,6 +62,7 @@ import { createPresetAuthoring } from './workspace/authoring.js';
 import { createMemoryWorkspace } from './workspace/memory.js';
 import { updatePresetLibrary } from '../../lib/agent-workspace/presets.js';
 import { checkWorkspacePromptCandidate, updateWorkspacePromptVersions } from '../../lib/agent-workspace/prompt-versions.js';
+import { checkWorkspaceStrategyCandidate, updateWorkspaceStrategyVersions } from '../../lib/agent-workspace/strategy-versions.js';
 
 import { canReuseLatestOrchestrationSnapshot, clearCacheForChatChange, getActiveSnapshot, getChatKey, getCurrentAvatar, getLatestOrchestrationEntry, loadOrchestratorChatState, refreshActiveSnapshotFromCache, refreshOrchestratorStateAfterStructuralEvent, storeCompletedOrchestrationSnapshot } from './snapshot-cache.js';
 import { sanitizeConnectionProfileName } from './agent-resolution.js';
@@ -171,6 +172,14 @@ registerCapabilityApi(MODULE_NAME, {
         saveSettingsDebounced(); return true;
     },
     inspectPromptVersions: () => structuredClone(getWorkspaceLibrary(getSettings()).promptVersions || { schemaVersion: 1, declarations: [], candidates: [] }),
+    inspectStrategyVersions: () => structuredClone(getWorkspaceLibrary(getSettings()).strategyVersions || { schemaVersion: 1, declarations: [], candidates: [] }),
+    checkStrategyCandidate: candidateId => checkWorkspaceStrategyCandidate(getWorkspaceLibrary(getSettings()), candidateId),
+    updateStrategyVersions: action => {
+        const settings = getSettings();
+        settings.agentWorkspace = updateWorkspaceStrategyVersions(getWorkspaceLibrary(settings), action);
+        saveSettingsDebounced();
+        return structuredClone(settings.agentWorkspace.strategyVersions);
+    },
     checkPromptCandidate: candidateId => checkWorkspacePromptCandidate(getWorkspaceLibrary(getSettings()), candidateId),
     updatePromptVersions: action => {
         const settings = getSettings();

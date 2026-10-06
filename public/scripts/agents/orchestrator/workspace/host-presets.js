@@ -6,6 +6,7 @@ import { compileWorkspacePreset, validatePresetLibrary, emptyPresetLibrary, norm
 import { AGENDA_BUILTIN_REVISION } from '../agenda-defaults.js';
 import { applyNativePresetPrompts } from './native-preset-prompts.js';
 import { resolveWorkspacePromptVersion } from '../../../lib/agent-workspace/prompt-versions.js';
+import { resolveWorkspaceStrategyVersion } from '../../../lib/agent-workspace/strategy-versions.js';
 
 const WEB_TOOL_NAMES = Object.freeze(['search_search', 'search_visit']);
 export const NATIVE_WORKSPACE_MODES = Object.freeze(['spec', 'loop', 'agenda', 'director']);
@@ -140,14 +141,16 @@ export function getWorkspaceLibrary(settings) {
 }
 
 /** Transient host transport shape. Never persist this return value as a preset. */
-export function workspaceHostProfile(preset, selectionSource = 'default', promptVersionId = null) {
+export function workspaceHostProfile(preset, selectionSource = 'default', promptVersionId = null, strategyVersionId = null) {
     const plan = structuredClone(compileWorkspacePreset(preset));
     if (promptVersionId) plan.metadata = { ...plan.metadata, promptVersionId };
+    if (strategyVersionId) plan.metadata = { ...plan.metadata, strategyVersionId };
     const config = agent => ({ ...structuredClone(agent?.metadata?.hostAdapters?.atria || {}),
         systemPrompt: agent?.instructions || '', ...agent?.modelProfile, ...configuredNativeRoute(agent?.modelProfile) });
     const forNode = id => config(plan.agents.find(agent => agent.id === plan.nodes.find(node => node.nodeId === id)?.agentId));
     const options = structuredClone(plan.metadata?.hostAdapters?.atria || {});
-    const common = { source: selectionSource, key: preset.id, presetId: preset.id, name: preset.name, mode: preset.mode, orchestrationPlan: plan, ...(promptVersionId ? { promptVersionId } : {}) };
+    const common = { source: selectionSource, key: preset.id, presetId: preset.id, name: preset.name, mode: preset.mode, orchestrationPlan: plan,
+        ...(promptVersionId ? { promptVersionId } : {}), ...(strategyVersionId ? { strategyVersionId } : {}) };
     if (preset.mode !== 'spec' && plan.arbitration.kind !== 'pass-through') {
         throw new Error('This host supports multi-result arbitration in Spec graphs; other modes submit their owner result.');
     }
@@ -199,7 +202,7 @@ export function workspaceHostProfile(preset, selectionSource = 'default', prompt
 export function resolveWorkspaceProfile(settings, scope) {
     const library = getWorkspaceLibrary(settings);
     const binding = resolvePresetBinding(library, scope);
-    const preset = resolveWorkspacePromptVersion(library, binding);
+    const preset = binding.strategyVersionId ? resolveWorkspaceStrategyVersion(library, binding) : resolveWorkspacePromptVersion(library, binding);
     if (!preset) throw new Error('Select a default orchestration preset in Workspace');
-    return workspaceHostProfile(preset, binding.selectionSource, binding.promptVersionId);
+    return workspaceHostProfile(preset, binding.selectionSource, binding.promptVersionId, binding.strategyVersionId);
 }

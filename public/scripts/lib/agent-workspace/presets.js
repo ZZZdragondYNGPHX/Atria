@@ -1,6 +1,7 @@
 import { validateGraph } from '../orchestration-engine/graph.js';
 import { normalizeNativeAgentPlan } from '../../native/agent-settings.js';
 import { normalizeWorkspacePromptVersions } from './prompt-versions.js';
+import { normalizeWorkspaceStrategyVersions } from './strategy-versions.js';
 
 const clone = value => structuredClone(value);
 const id = value => typeof value === 'string' && value.trim().length > 0;
@@ -37,13 +38,17 @@ export function validatePresetLibrary(input) {
         || !Array.isArray(input.bindings.entries)) throw new Error('Invalid preset library');
     const result = { schemaVersion: 1, presets: input.presets.map(normalizeWorkspacePreset), bindings: clone(input.bindings) };
     if (input.promptVersions !== undefined) result.promptVersions = normalizeWorkspacePromptVersions(input.promptVersions);
+    if (input.strategyVersions !== undefined) result.strategyVersions = normalizeWorkspaceStrategyVersions(input.strategyVersions);
     const ids = new Set(result.presets.map(preset => preset.id));
     if (ids.size !== result.presets.length) throw new Error('Duplicate preset ID');
     if (result.bindings.defaultPresetId !== null && !ids.has(result.bindings.defaultPresetId)) throw new Error('Unknown default preset');
     const keys = new Set();
     for (const binding of result.bindings.entries) {
         if (!scopes.has(binding.scope) || !id(binding.subjectId) || !ids.has(binding.presetId)
-            || Object.keys(binding).some(key => !['scope', 'subjectId', 'presetId', 'promptVersionId'].includes(key))) throw new Error('Invalid preset binding');
+            || Object.keys(binding).some(key => !['scope', 'subjectId', 'presetId', 'promptVersionId', 'strategyVersionId'].includes(key))) throw new Error('Invalid preset binding');
+        if (binding.promptVersionId && binding.strategyVersionId) throw new Error('Combined Workspace versions require new evaluation');
+        if (binding.strategyVersionId !== undefined && !result.strategyVersions?.candidates.some(c => c.candidateId === binding.strategyVersionId && c.presetId === binding.presetId
+            && c.scope === binding.scope && c.subjectId === binding.subjectId)) throw new Error('Workspace exact strategy version missing');
         if (binding.promptVersionId !== undefined && !result.promptVersions?.candidates.some(c => c.candidateId === binding.promptVersionId && c.presetId === binding.presetId
             && c.scope === binding.scope && c.subjectId === binding.subjectId)) throw new Error('Workspace exact Prompt version missing');
         const key = JSON.stringify([binding.scope, binding.subjectId]);
@@ -56,7 +61,8 @@ export function validatePresetLibrary(input) {
 export function resolvePresetBinding(library, { character = '', conversation = '' } = {}) {
     for (const [scope, subjectId] of [['conversation', conversation], ['character', character]]) {
         const binding = subjectId && library.bindings.entries.find(entry => entry.scope === scope && entry.subjectId === subjectId);
-        if (binding) return { presetId: binding.presetId, selectionSource: scope, ...(binding.promptVersionId ? { promptVersionId: binding.promptVersionId } : {}) };
+        if (binding) return { presetId: binding.presetId, selectionSource: scope, ...(binding.promptVersionId ? { promptVersionId: binding.promptVersionId } : {}),
+            ...(binding.strategyVersionId ? { strategyVersionId: binding.strategyVersionId } : {}) };
     }
     return { presetId: library.bindings.defaultPresetId, selectionSource: 'default' };
 }
@@ -90,6 +96,10 @@ export function updatePresetLibrary(library, action) {
         if (next.promptVersions) {
             next.promptVersions.declarations = next.promptVersions.declarations.filter(d => d.presetId !== action.id);
             next.promptVersions.candidates = next.promptVersions.candidates.filter(c => c.presetId !== action.id);
+        }
+        if (next.strategyVersions) {
+            next.strategyVersions.declarations = next.strategyVersions.declarations.filter(d => d.presetId !== action.id);
+            next.strategyVersions.candidates = next.strategyVersions.candidates.filter(c => c.presetId !== action.id);
         }
     } else throw new Error('Unknown preset operation');
     return validatePresetLibrary(next);

@@ -94,9 +94,11 @@ export function createNativeStudioRouter(getServices = services) {
                 ? 409
                 : error?.name === 'NotFoundError'
                     ? 404
-                    : error instanceof TypeError
-                        ? 400
-                        : 500;
+                    : error?.code === 'storage_read_only'
+                        ? 503
+                        : error instanceof TypeError
+                            ? 400
+                            : 500;
             response.status(status).json({
                 error: error?.code || (
                     status === 400 ? 'native_studio_invalid_request'
@@ -266,6 +268,10 @@ export function createNativeStudioRouter(getServices = services) {
 
     router.get('/projects/:projectId/agent/tasks/:taskId/context', route(async (req, res, { agent }, handle) => {
         res.json(await agent.getContext(handle, req.params.projectId, req.params.taskId));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks/:taskId/strategy-candidates', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.strategyCandidates(handle, req.params.projectId, req.params.taskId, req.body));
     }));
 
     router.post('/projects/:projectId/agent/tasks/:taskId/tool', route(async (req, res, { agent }, handle) => {
