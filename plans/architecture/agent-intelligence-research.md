@@ -1,10 +1,11 @@
-# Atria 智能体能力深化调研
+# Atria 智能体能力深化与 Frontier Agent RP 架构调研
 
 > **Status:** Research / Non-binding  
 > **Date:** 2026-10-06  
+> **Research update:** Frontier Agent RP architecture pass II  
 > **Code baseline:** `main@ed1fd90521a63363e29856601abbf5e908c99d10`  
 > **Primary workspace:** `docs`  
-> **Purpose:** 为后续逐项深化 Atria 智能体能力提供研究背景、现状基线、候选方向与优先级依据。  
+> **Purpose:** 为后续逐项深化 Atria 智能体能力，并将 Atria 演进为可持续吸收未来 Agent / RP / World Model / Multimodal / Learning 技术的前沿运行平台，提供研究背景、现状基线、候选方向与架构兼容性依据。  
 > **Not a Plan:** 本文不是实施指导书，不冻结模块划分、API、数据结构、文件路径、阶段验收项或具体技术方案。后续任一方向正式进入开发前，应结合当时 `main` 真实状态单独形成实现 Plan。
 
 ## 1. 调研问题
@@ -868,18 +869,36 @@ Metacognitive Controller 决定每一段值得投入多少计算资源。
 
 ## 12. 研究优先级（非实施阶段）
 
-以下顺序只表示“当前最值得先研究/验证什么”，不是正式开发阶段划分。
+如果目标只是逐项增加高级 Agent 功能，原有的研究顺序仍然成立：
+
+`Experience → Persistent Goal → Cognitive Graph / ToM → Counterfactual → Metacognition → Typed Blackboard`
+
+但如果目标升级为“让 Atria 成为走在前沿、并能持续吸收未来 Agent RP 技术的平台”，则应该增加一个更高层的 **platform-first** 视角。
+
+### 12.1 Feature research order
 
 | 顺序 | 方向 | 当前判断 |
 |---|---|---|
 | **1** | Agent Experience / Evolution | 最基础。后续所有“更聪明”都需要 eval 和经验闭环证明有效 |
 | **2** | Persistent Goal Contract | 与 Commitment / Task / Artifact / Lifecycle 高度契合，能把 run-level Agent 提升为持续 Agent |
-| **3** | Cognitive Graph / BDI / ToM | Atria RP/NPC 最有差异化潜力，且已有 epistemic substrate |
+| **3** | Social Cognitive World Model / BDI / ToM | Atria RP/NPC 最有差异化潜力，且已有 epistemic substrate |
 | **4** | Counterfactual World Model | 建立行动前的未来预测；应复用 revision / simulation 边界 |
 | **5** | Metacognitive Controller | 依赖前面的 eval 数据判断何时值得增加计算 |
 | **6** | Typed Cognitive Blackboard | 长期价值很高；实际实现时若前几个方向需要 shared artifact，可被提前抽取 |
 
-这里特意把 Blackboard 保留为“可提前抽取”的横向基础，而不是强行规定一定最后实现。
+### 12.2 Platform-first frontier order
+
+| 优先级 | 研究层 | 当前判断 |
+|---|---|---|
+| **P0** | Unified Cognitive Artifact + Unified Agent Trajectory + Cognitive/Authority boundary | 这是未来兼容底座。先让新技术有稳定的输入输出、证据、revision 与 authority 边界 |
+| **P1** | Experience + Eval | 形成可重复的质量闭环，并开始积累未来 prompt/skill/RL/post-training 可消费的 trajectory |
+| **P2** | Social Cognitive World Model | 建立 Belief / Goal / Emotion / Relationship / ToM / causal trajectory，形成 RP 核心差异 |
+| **P3** | Persistent Goal + Fast/Slow Cognition | 让 Agent 跨回合持续存在，并按任务价值选择轻重认知路径 |
+| **P4** | Counterfactual + World Model Provider | 先支持结构化/文本预测；未来可以适配专用语言或视觉 world model |
+| **P5** | Expression / Multimodal | 把 cognition 与文字、语音、prosody、Avatar、动画分离 |
+| **P6** | Interop + Training adapters | 通过协议与训练接口适配 MCP/A2A/AG-UI/A2UI、RL、latent communication 等后续生态 |
+
+这里的 P0–P6 仍然只是**研究路线**，不是正式开发阶段。某个共用 substrate 如果成为前序方向的实际依赖，可以提前抽取；反之，不应为了“架构完整”而提前实现没有真实消费者的抽象层。
 
 ---
 
@@ -1161,3 +1180,1035 @@ Counterfactual、Metacognition 和 Typed Blackboard 则分别补上：
 
 - Anthropic — How we built our multi-agent research system  
   https://www.anthropic.com/engineering/multi-agent-research-system
+
+
+---
+
+## 20. Frontier Agent RP：新的长期定位
+
+第二轮前沿调研后，本文建议把 Atria 的长期目标从“高级文字 RP + 多 Agent 编排器”继续提升为：
+
+> **一个面向角色、世界与长期关系的 Agent RP Runtime。模型可以换、记忆算法可以换、训练方法可以换、World Model 可以换，但角色的连续存在、世界权威、社会认知、经验演化与表达接口由 Atria 持续承载。**
+
+这个定位意味着 Atria 不应该押注某个特定模型、某个 Prompt 技巧或某种 2026 年流行 Agent 框架，而应该把未来技术吸收到稳定的运行层与数据边界中。
+
+前沿研究正在从“让模型更会模仿角色语气”转向：
+
+- psychology-grounded cognition；
+- social world model；
+- causal character evolution；
+- lifelong interaction；
+- memory cognition；
+- character knowledge boundary；
+- self-improving agent harness；
+- fast/slow cognition；
+- multimodal embodiment；
+- world models；
+- latent collaboration；
+- open agent protocols。
+
+Atria 当前的 Authority / Revision / Memory / Task / Artifact / Simulation / Orchestration 基础，使它很适合承接这些方向。
+
+---
+
+## 21. Character 不应长期等价于 Persona Prompt
+
+### 21.1 前沿变化
+
+Psy-CoT 不再把角色扮演简单理解为表面模仿，而是把响应前认知拆成：
+
+1. Interaction Perception；
+2. Psychological Empathy；
+3. Logical Construction。
+
+PersonaForge 则进一步使用心理学约束和 selective dual-process cognition，并把角色表示拆为稳定 traits、说话风格和 dynamic state。其长对话实验显示，完整 cognitive workspace 能明显降低 personality drift；Selective Think-then-Speak 又表明不需要每轮都执行完整重思考。
+
+研究启示是：
+
+> **Character Profile 应逐渐成为可投影的结构化角色模型，而不是永远停留在一段自然语言提示词。**
+
+### 21.2 对 Atria 的未来边界
+
+长期概念上可以区分：
+
+```text
+Character
+├─ Identity
+├─ Stable Disposition
+├─ Speaking / Expression Style
+├─ Current Cognitive State
+├─ Beliefs
+├─ Desires
+├─ Intentions
+├─ Appraisals / Affect
+├─ Relationships
+├─ Episodic History
+├─ Current Goals
+└─ Models of Others
+```
+
+Prompt 只是这些状态的一种**运行时投影**。
+
+这意味着核心 schema 不应绑定某一套心理学理论。Big Five、Defense Mechanisms、ABC、BDI、未来新的角色认知模型都应能以 schema/profile/adapter 方式接入，而不是被写成 Atria 的永久世界真理。
+
+### 21.3 参考
+
+- Psy-CoT / RAPO — *Improving General Role-Playing Agents via Psychology-Grounded Reasoning and Role-Aware Policy Optimization*  
+  https://arxiv.org/abs/2606.27025
+- PersonaForge — *Psychology-Grounded Dual-Process Architecture for Personality-Consistent Role-Playing Agents*  
+  https://aclanthology.org/2026.findings-acl.386/
+
+---
+
+## 22. Social Cognitive World Model 应成为 RP 核心研究层
+
+### 22.1 为什么只做 Memory / Persona 不够
+
+Social World Models 使用受 POMDP 启发的结构化社会状态来描述：
+
+- state；
+- observation；
+- action；
+- hidden mental state；
+- evolving social dynamics。
+
+该工作证明，显式表示隐藏心理状态不仅能提高 Theory of Mind reasoning，还能用于预测后续社会状态，并改善多轮社会 Agent 决策。
+
+这对 RP 的意义很强：
+
+> RP 的主要“环境”不只是物理世界，而是**社会世界**。
+
+### 22.2 Social Cognitive World Model
+
+未来可以把现有 Cognitive Graph 研究提升为更广义的：
+
+**Social Cognitive World Model**
+
+它回答：
+
+> 每个 Actor 当前如何理解世界、别人以及自己与别人的关系？
+
+概念上允许：
+
+```text
+World Truth: X
+
+Actor A:
+  believes X
+  wants Y
+  intends Z
+  predicts B will do Q
+  believes B thinks A does not know X
+
+Actor B:
+  suspects not-X
+  wants R
+  believes A is lying
+```
+
+这里最关键的是：
+
+- 同一事实允许多个 Actor 持有不同认知；
+- 错误 belief 合法；
+- uncertainty 合法；
+- second-order ToM 合法但必须 bounded；
+- 所有 cognition 都不能污染 World Truth。
+
+### 22.3 参考
+
+- *Social World Models*  
+  https://arxiv.org/abs/2509.00559
+
+---
+
+## 23. Causal Character Trajectory：从“记得事件”升级成“经历导致改变”
+
+### 23.1 DREAM 的启示
+
+DREAM 使用 Event-Aware Memory Graph，把角色经历组织为具有时间顺序和因果关系的事件图，并基于这些经历形成：
+
+- 稳定人格；
+- 事件驱动的动态行为/人格状态。
+
+其核心启示不是再增加一种 graph database，而是：
+
+> **角色现在为什么这样想、这样行动，应当能追溯到过去事件如何改变了它。**
+
+### 23.2 Atria 可研究的因果链
+
+```text
+Event
+  ↓
+Appraisal
+  ↓
+Belief Update
+  ↓
+Emotion / Relationship Update
+  ↓
+Goal / Intention Update
+  ↓
+Action
+  ↓
+New Event
+```
+
+这条链可暂称：
+
+**Causal Character Trajectory**
+
+现有 Memory Event 可以继续保存“发生了什么”；Cognitive Layer 则保存“这些事件如何改变 Actor”。
+
+两者不应该合并成同一个事实表。
+
+### 23.3 为什么这比静态人格更适合长期 RP
+
+它允许：
+
+- 创伤产生长期警觉；
+- 背叛降低信任但不必永久改变所有 personality trait；
+- 一次承诺成为新目标；
+- 长期互动逐渐改变 relationship；
+- 角色经历真正影响后续 action selection。
+
+这样“人物成长”不再是 LLM 每轮自由发挥，而是有来源、有历史、有可解释因果链。
+
+### 23.4 参考
+
+- DREAM — *LLM-based Dynamic Role-playing via Event-Aware Memory Graph*  
+  https://arxiv.org/abs/2608.05170
+
+---
+
+## 24. Epistemic Firewall：知识边界应从 Prompt 提示升级为运行约束
+
+### 24.1 CHARM 的关键结果
+
+CHARM 把 Character Hallucination 区分成：
+
+- **Boundary Awareness**：模型知不知道“角色不应该知道这个”；
+- **Boundary Compliance**：模型在知道边界后，能不能真的不回答。
+
+研究发现大量错误来自 Compliance failure：模型会先承认角色不该知道，但仍然调用自己的 parametric knowledge 给出事实答案。
+
+这对 Atria 当前已有 `epistemic_scout` 是非常重要的提醒：
+
+> **检测到“角色不知道”不等于已经保护了知识边界。**
+
+### 24.2 Epistemic Firewall
+
+长期值得研究从“scout advice”升级成执行级：
+
+```text
+Candidate Claim / Action
+        ↓
+Actor Knowledge Projection
+        ↓
+Knowledge Boundary Check
+      /       \
+   allowed    denied/uncertain
+      │             │
+      │      suppress / hedge /
+      │      reframe / seek evidence
+      ▼             ▼
+Generation / Action
+```
+
+它不要求马上实现句子级 symbolic checker，但架构上应为：
+
+- claim provenance；
+- actor knowledge projection；
+- parametric override detection；
+- post-generation boundary audit；
+
+留下位置。
+
+### 24.3 Model Knowledge 与 Character Knowledge 必须分开
+
+长期必须坚持：
+
+```text
+Model knows X
+!=
+Character knows X
+```
+
+这对历史角色、同人角色、跨宇宙角色和秘密剧情尤其重要。
+
+### 24.4 参考
+
+- CHARM — *Character Hallucination for Multicultural Role Play Benchmark*  
+  https://arxiv.org/abs/2609.01352
+
+---
+
+## 25. Memory 应从 Store/Retrieval 继续走向 Memory Cognition
+
+### 25.1 MREval 的四阶段记忆使用
+
+Memory-Driven Role-Playing / MREval 将 Persona Memory 的正确使用拆为：
+
+1. **Anchoring**：识别本轮与哪段角色记忆相关；
+2. **Selecting**：选出真正需要的记忆；
+3. **Bounding**：理解哪些知识不应该被使用；
+4. **Enacting**：把记忆真正转化成角色行为。
+
+这说明 Retrieval Accuracy 只是中间环节。
+
+Atria Memory 长期应关注：
+
+```text
+Experience
+  ↓
+Encoding
+  ↓
+Consolidation
+  ↓
+Temporal / Causal Linking
+  ↓
+Retrieval
+  ↓
+Applicability Judgment
+  ↓
+Reconstruction
+  ↓
+Behavior
+```
+
+其中 **Applicability Judgment** 很重要：旧经验被检索到，不代表当前情况应该机械照搬。
+
+### 25.2 历史更多不代表社会智能更强
+
+LIFELONG-SOTOPIA 在长期多 episode 社交中发现：
+
+- 随交互持续，模型的 goal achievement 与 believability 均下降；
+- advanced memory 可以改善，但仍明显低于人类；
+- 完整历史并没有自动解决长期社会智能。
+
+这进一步说明：
+
+> **Context ≠ Cognition；History ≠ Character Development。**
+
+Atria 应追求把历史转化为更好的 state、causal trajectory、relationship 与 experience，而不是简单扩大 prompt。
+
+### 25.3 参考
+
+- MREval / Memory-Driven Role-Playing  
+  https://aclanthology.org/2026.findings-acl.1175/
+- LIFELONG-SOTOPIA  
+  https://arxiv.org/abs/2506.12666
+
+---
+
+## 26. Emotion 与 Relationship 应成为独立持续状态
+
+### 26.1 Long-lived companion 的评测趋势
+
+LifeSide 将长期 companion 评测组织为 **Memory–Emotion–Environment loop**，并指出即使模型在传统 Memory benchmark 上表现很强，也仍可能无法在多 session 中持续理解用户、适应隐私边界并维持真实陪伴。
+
+CompanionBench 又显示：
+
+> **Role-play immersion 并不等价于 relationship competence。**
+
+它把 emotional companion 拆成更细能力，例如 holding ambiguity、positive resonance、calibrated challenge 等；其结果显示很多 role-play agent 在关系能力上仍然很弱。
+
+### 26.2 对 Atria 的研究含义
+
+未来应明确区分：
+
+```text
+Character Personality
+!=
+Emotion
+!=
+Relationship
+!=
+Social Goal
+```
+
+Relationship 可以是独立的长期 state，而不是 Persona 文本或“好感度”单值。
+
+研究维度例如：
+
+```text
+RelationshipState
+├─ familiarity
+├─ trust
+├─ attachment
+├─ respect
+├─ fear
+├─ resentment
+├─ dependency
+├─ obligation
+├─ attraction
+├─ perceived_reciprocity
+└─ unresolved_tensions
+```
+
+这些只是可研究维度，不意味着未来必须使用固定数值表。
+
+核心原则是：
+
+- relationship 是 Actor-scoped cognition；
+- relationship 变化应有事件/互动证据；
+- relationship state 用于驱动 perception/appraisal/intention；
+- 不应直接等价为面向玩家公开的“数值系统”。
+
+### 26.3 参考
+
+- LifeSide — *Benchmarking Agents as Lifelong Digital Companions*  
+  https://arxiv.org/abs/2606.04660
+- CompanionBench — *A Theory-Anchored, Real-World-Grounded Benchmark for AI Emotional Companionship*  
+  https://arxiv.org/abs/2608.02046
+
+---
+
+## 27. Fast / Slow Cognition：未来不应假定“一次请求 = 一次完整认知”
+
+PersonaForge 的 selective dual-process 结果提示：
+
+- 完整认知工作区可以提高长期角色一致性；
+- 但并不是每个 turn 都必须付出完整计算成本；
+- 在关键 turn 才进入重认知路径可以保留大部分效果。
+
+这与本文的 Metacognitive Controller 高度一致。
+
+长期可以把 Agent cognition 区分为两类时间尺度。
+
+### Fast cognition
+
+用于：
+
+- 环境感知；
+- 微小情绪反应；
+- 简单 social response；
+- action selection；
+- 高频 NPC 行为；
+- local/on-device model。
+
+### Slow cognition
+
+用于：
+
+- reflection；
+- planning；
+- relationship reappraisal；
+- goal update；
+- memory consolidation；
+- counterfactual rollout；
+- experience learning；
+- high-impact decisions。
+
+概念关系：
+
+```text
+                Slow Loop
+        ┌────────────────────┐
+        │ reflect / plan     │
+        │ learn / consolidate│
+        └─────────┬──────────┘
+                  │
+Fast Loop ◄───────┘
+perceive → appraise → act
+   ▲                 │
+   └─────────────────┘
+```
+
+这也为未来的本地小模型 + 云端强模型、甚至 specialized cognition models 留下自然入口。
+
+---
+
+## 28. Expression / Embodiment：心理状态与最终输出媒介应解耦
+
+VoxRole 指出，speech-based RP 的角色身份不仅存在于词句，还存在于：
+
+- intonation；
+- prosody；
+- rhythm；
+- speech persona；
+- long-term vocal consistency。
+
+因此长期不应把：
+
+```text
+LLM text → TTS
+```
+
+视为最终架构。
+
+更适合的抽象是：
+
+```text
+Cognitive State
+      ↓
+Communicative Intent
+      ↓
+Expression Plan
+├─ semantic content
+├─ wording/style
+├─ emotion
+├─ intensity
+├─ pacing
+├─ pauses
+├─ prosody
+├─ gesture
+├─ gaze
+└─ facial expression
+      ↓
+Renderer / Provider
+├─ Text
+├─ TTS
+├─ Avatar
+├─ Animation
+└─ Visual scene
+```
+
+Atria 今天即使只消费 text，也值得避免把所有角色表现都永久压缩为一个字符串，因为未来桌宠、语音 Agent、Live2D、3D NPC 都需要更丰富的 Expression representation。
+
+参考：
+
+- VoxRole — *A Comprehensive Benchmark for Evaluating Speech-Based Role-Playing Agents*  
+  https://arxiv.org/abs/2509.03940
+
+---
+
+## 29. Training-ready Agent Harness：现在就为未来可训练留下 Trajectory
+
+### 29.1 Agent Lightning 的启示
+
+Agent Lightning 的关键思想是把 Agent 执行与 Agent 训练解耦：
+
+- 保留现有 agent workflow；
+- 把真实执行步骤转成可用于 RL / optimization 的数据；
+- 允许模型 fine-tuning、prompt tuning、model selection 等优化方式独立演进。
+
+这与 Atria 很契合，因为 Atria 已有 Runtime、Task、Artifact、Trace 与 Authority Receipt。
+
+### 29.2 Unified Agent Trajectory
+
+未来 Atria 的完整 run 最好能够标准化导出：
+
+```text
+Trajectory
+├─ observation
+├─ context refs
+├─ cognitive artifact refs
+├─ model/provider/revision
+├─ decision
+├─ tool/action
+├─ effect/result
+├─ authority receipt
+├─ feedback
+├─ eval/reward signals
+├─ cost/latency
+└─ final outcome
+```
+
+这不表示今天就训练模型。
+
+它的价值是让未来：
+
+- GEPA；
+- ACE；
+- prompt evolution；
+- Skill evolution；
+- DPO / GRPO / RAPO；
+- Agent Lightning；
+- 自定义 RL；
+- 专用 RP post-training；
+
+都可以消费同一种 Experience 数据，而不用重写 Runtime。
+
+### 29.3 参考
+
+- Microsoft Research — Agent Lightning  
+  https://www.microsoft.com/en-us/research/project/agent-lightning/microsoft-research-blog/
+
+---
+
+## 30. Agent 通信不要写死为 Text：为 Typed 与 Latent Communication 留接口
+
+### 30.1 前沿变化
+
+LatentMAS 在 ICML 2026 研究多 Agent 直接通过连续 latent working memory 协作，而不是完全依赖文本转述。
+
+StateBridge 又进一步研究跨模型 hidden-state alignment，说明“Agent 间通信 = text”并不是长期安全假设。
+
+这类技术目前仍然过早，不建议 Atria 现在实现。
+
+但 Atria 可以避免写死：
+
+```text
+agentOutput: string
+```
+
+### 30.2 Representation-neutral Agent Message
+
+研究层可考虑：
+
+```text
+AgentMessage / ArtifactRef
+├─ contentType
+├─ representation
+├─ payload or opaque ref
+├─ schema
+├─ provenance
+├─ producer/model identity
+└─ validity
+```
+
+今天可以是：
+
+- `text/plain`
+- `application/json`
+- `application/atria-artifact`
+
+未来才可能出现：
+
+- embedding/latent representation；
+- KV/cache-like opaque state；
+- provider-owned model-state reference。
+
+关键是**Orchestrator 核心不应依赖所有 Agent 结果必然可解释成 text**。
+
+### 30.3 参考
+
+- LatentMAS — *Latent Collaboration in Multi-Agent Systems*  
+  https://proceedings.mlr.press/v306/zou26k.html
+- StateBridge — *Training-free Hidden-state Alignment for Latent Communication in LLM Multi-Agent Systems*  
+  https://arxiv.org/abs/2608.13317
+
+---
+
+## 31. World Model 应成为 Provider，而不是新的 Authority
+
+Qwen-AgentWorld 明确把 world model 定义为：
+
+> 根据 observation + action 预测环境 dynamics。
+
+其用途不仅是 Agent planning，还包括作为 decoupled simulator 生成训练环境。
+
+游戏方向则已经出现 Genie 3、Microsoft WHAM/Muse 这类可交互 visual world model。
+
+这意味着 Atria 长期不应绑定某一种“未来模拟算法”，而应该允许一个可替换的 World Model Provider。
+
+概念接口可研究为：
+
+```text
+WorldModelProvider
+├─ predict()
+├─ rollout()
+├─ compare()
+├─ branch()
+├─ render()
+└─ evaluate()
+```
+
+但必须保持硬边界：
+
+> **World Model Prediction 永远不是 World Authority。**
+
+World Model 只能生成：
+
+```text
+HypotheticalArtifact
+├─ baseRevision
+├─ provider/modelRevision
+├─ assumptions
+├─ predictedDelta
+├─ uncertainty/confidence
+└─ supporting refs
+```
+
+真正世界变化仍然只能由现有 Authority 路径提交。
+
+参考：
+
+- Qwen-AgentWorld  
+  https://arxiv.org/abs/2606.24597
+- Google DeepMind — Genie 3  
+  https://deepmind.google/blog/genie-3-a-new-frontier-for-world-models/
+- Microsoft Research — WHAM / Muse  
+  https://www.microsoft.com/en-us/research/project/wham/
+
+---
+
+## 32. 外部生态应优先使用协议 Adapter，而不是 Atria 私有远程协议
+
+2026 年 Agent 协议边界已经逐渐清晰：
+
+- **MCP**：Agent ↔ Tool / Data；
+- **A2A**：Agent ↔ Agent；
+- **AG-UI**：Agent Backend ↔ Frontend event stream；
+- **A2UI**：Agent → declarative native UI；
+- **MCP Apps**：Tool / MCP server → interactive UI resource。
+
+这些协议仍在快速演化，因此 Atria 不应把核心对象直接写成某个外部协议的数据结构。
+
+更稳健的关系是：
+
+```text
+Atria Core Contracts
+        │
+        ├─ MCP Adapter
+        ├─ A2A Adapter
+        ├─ AG-UI Adapter
+        ├─ A2UI Adapter
+        └─ future protocol adapters
+```
+
+这样内部可以继续保持更严格的 Authority / Revision / Artifact 语义，而外部生态通过 adapter 接入。
+
+参考：
+
+- Google Developers — *Developer's Guide to AI Agent Protocols*  
+  https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/
+- Google Developers — *Introducing A2UI*  
+  https://developers.googleblog.com/introducing-a2ui-an-open-project-for-agent-driven-interfaces/
+
+---
+
+## 33. RP Eval 应成为 Experience / Evolution 的核心基础设施
+
+当前 RP benchmark 已经不再只有“像不像角色”一个分数。
+
+### Memory-driven role fidelity
+
+MREval：
+
+- Anchoring；
+- Selecting；
+- Bounding；
+- Enacting。
+
+### Character knowledge safety
+
+CHARM：
+
+- Boundary Awareness；
+- Boundary Compliance。
+
+### General role-playing quality
+
+RPEval：
+
+- emotional understanding；
+- decision-making；
+- moral alignment；
+- in-character consistency。
+
+### Lifelong companion
+
+LifeSide：
+
+- memory；
+- user understanding；
+- privacy；
+- emotion；
+- lifelong interaction。
+
+CompanionBench：
+
+- relational/emotional capabilities；
+- holding ambiguity；
+- calibrated challenge；
+- deeper disclosure 等长期关系指标。
+
+### Speech RP
+
+VoxRole：
+
+- speech persona；
+- prosody；
+- long-term vocal consistency。
+
+### Judge reliability
+
+PersonaEval 的结果又提醒：LLM judge 自己可能连角色身份判断都不够可靠，其实验中最佳 LLM role identification 约 69%，而人类约 90.8%。
+
+因此 Atria Eval 长期不应该等价为：
+
+```text
+single LLM judge -> score
+```
+
+更适合：
+
+```text
+Deterministic invariants
+      +
+Epistemic / Authority checks
+      +
+State transition checks
+      +
+Contrastive character eval
+      +
+Multiple independent judges
+      +
+Behavioral signals
+      +
+Human feedback
+      +
+Trajectory cost / efficiency
+```
+
+这会成为 Experience / Evolution 的真正地基。
+
+参考：
+
+- RPEval  
+  https://arxiv.org/abs/2505.13157
+- PersonaEval  
+  https://arxiv.org/abs/2508.10014
+
+---
+
+## 34. 推荐的六个长期 Plane
+
+为了让未来技术有稳定归属，Atria 可以长期用“Plane”而不是“Feature 列表”理解架构。
+
+### 34.1 Authority Plane
+
+回答：
+
+> **世界实际上是什么？**
+
+包括：
+
+- World；
+- Truth；
+- Lifecycle；
+- Task Result；
+- Revision；
+- Continuity；
+- deterministic Simulation；
+- committed Action Receipt。
+
+核心原则：
+
+> 模型可以提出变化，但不能直接创造正式世界真相。
+
+### 34.2 Cognitive Plane
+
+回答：
+
+> **每个 Actor 如何理解世界？**
+
+包括：
+
+- Belief；
+- Desire；
+- Intention；
+- Emotion；
+- Appraisal；
+- Relationship；
+- Expectation；
+- Hypothesis；
+- Theory of Mind；
+- Goal。
+
+这里允许错误、矛盾、不确定、误会，但必须 Actor scoped，并与 Authority Truth 分离。
+
+### 34.3 Deliberation Plane
+
+回答：
+
+> **现在应该怎么办？**
+
+包括：
+
+- planning；
+- reflection；
+- Spec / Agenda / Loop / Director；
+- counterfactual；
+- world-model rollout；
+- fast/slow cognition；
+- arbitration；
+- metacognitive budget allocation。
+
+### 34.4 Experience / Learning Plane
+
+回答：
+
+> **以前怎样做过？结果怎样？以后应该怎样改变？**
+
+包括：
+
+- trajectory；
+- feedback；
+- eval；
+- reward；
+- lesson；
+- Skill；
+- policy；
+- scaffold revision；
+- training dataset；
+- promotion / rollback。
+
+### 34.5 Expression / Embodiment Plane
+
+回答：
+
+> **内部认知最终如何表现？**
+
+包括：
+
+- text；
+- speech；
+- prosody；
+- gesture；
+- gaze；
+- facial expression；
+- Avatar；
+- animation；
+- image / scene rendering。
+
+### 34.6 Interop Plane
+
+回答：
+
+> **Atria 如何连接不断变化的外部 Agent 技术？**
+
+包括：
+
+- model providers；
+- memory providers；
+- world-model providers；
+- MCP；
+- A2A；
+- AG-UI；
+- A2UI；
+- training backends；
+- remote agents；
+- latent/opaque representation adapters。
+
+---
+
+## 35. Cognitive Artifact Bus：横跨所有 Plane 的未来兼容核心
+
+前一轮的 Typed Cognitive Blackboard 在本轮调研后可以进一步抽象为：
+
+**Cognitive Artifact Bus**
+
+它不是新的 Authority database，而是各 Plane 之间传递 derived cognition 的统一语义。
+
+第一批候选 artifact 类型可能包括：
+
+```text
+EvidenceSet
+BeliefUpdate
+EmotionAppraisal
+RelationshipUpdate
+Goal
+Hypothesis
+Prediction
+Plan
+Critique
+Simulation
+MemoryEpisode
+Experience
+Evaluation
+RewardSignal
+ExpressionPlan
+```
+
+每个 Artifact 至少应该能够表达：
+
+```text
+type
+schemaVersion
+producer
+baseRevision
+scope
+sourceRefs
+dependencies
+representation
+confidence/uncertainty (when meaningful)
+validity
+content or opaqueRef
+```
+
+这里没有要求所有字段都进入同一个永久 schema。
+
+真正需要保持的是几个语义：
+
+- provenance；
+- revision binding；
+- scope；
+- derived vs authority；
+- representation neutrality；
+- invalidation；
+- lazy expansion；
+- typed consumption。
+
+如果这一层成立，那么未来的新技术只需要：
+
+> **消费某类 Artifact → 产生另一类 Artifact**
+
+就可以接入现有 Atria，而不需要改写整个运行时。
+
+---
+
+## 36. 为未来技术避免写死的十条约束
+
+第二轮调研后，以下十点值得作为长期研究警戒线。
+
+1. **不要把 Character 写死成自然语言字符串。**  
+   Character 应逐渐成为可投影的数据模型，Prompt 是 projection。
+
+2. **不要把 Agent 间通信写死成 text。**  
+   今天是 text/JSON，未来可能是 typed artifact 或 opaque latent representation。
+
+3. **不要把 cognition 写进 World Truth。**  
+   Belief / Emotion / Hypothesis / Prediction 必须与 Authority 分离。
+
+4. **不要把某套心理学理论写死进核心 schema。**  
+   心理学模型应可插拔。
+
+5. **不要把 TTS 当字符串 renderer。**  
+   预留 Expression Plan。
+
+6. **不要把 Memory 写死成 vector store。**  
+   Vector search 只是 Memory read policy 之一。
+
+7. **不要把 self-improvement 写死成 prompt optimizer。**  
+   未来可能优化 Prompt、Skill、routing、tool policy、scaffold、model weights。
+
+8. **不要把 World Model 当 Authority。**  
+   Prediction 与 Reality 必须可区分。
+
+9. **不要把模型厂商或单一 protocol 写死进 Agent Definition。**  
+   使用 capability/provider/adapter 边界。
+
+10. **不要把 Eval 绑定到单一 LLM Judge。**  
+    结果、轨迹、状态、成本、行为和人工反馈都应可成为证据。
+
+---
+
+## 37. Frontier Agent RP 的长期判断
+
+如果上述方向逐渐成立，Atria 的“角色”将不再只是一个被 prompt 临时扮演的文本身份，而更接近一个持续存在的 Agent：
+
+- 有自己的记忆；
+- 有自己相信的世界；
+- 有别人不知道的秘密；
+- 会误解；
+- 会猜测；
+- 会形成新的看法；
+- 会因为经历改变；
+- 有长期目标；
+- 会预测其他角色；
+- 能比较多个未来；
+- 会从失败中学习；
+- 能在简单事件上快速反应、在重大事件上深度思考；
+- 能通过文字、语音、表情、动作等不同媒介表达同一内部状态；
+- 即使底层模型、Memory 技术或 World Model 被替换，仍保持同一持续身份与世界关系。
+
+因此 Atria 真正值得追求的终局不是：
+
+> “比传统 RP 前端多几个 Agent 功能。”
+
+而是：
+
+> **成为角色连续性、社会认知、世界权威、Agent 学习与多模态表达的统一 Runtime。**
+
+这也是为什么本文把未来工作的重心放在 stable contracts / Plane / Artifact / Trajectory / Authority boundary，而不是押注某一个当前最强模型或某一种 Agent 框架。
