@@ -14,15 +14,16 @@ const config = { endpoint: 'https://example.invalid/v1/chat/completions', model:
 const json = value => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
 const response = { choices: [{ message: { content: 'Observed model output' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
 
-test('RP bridge uses original resolver/compiler/provider, counts before send and captures reported usage without credentials', async () => {
+test.each(['https://example.invalid/v1', 'https://example.invalid/v1/', config.endpoint])('RP bridge resolves %s once and captures original provider usage without credentials', async endpoint => {
     const h = await makeTempFsEngine(); const requests = [];
     try {
-        const bridge = await createLiveBridge({ engine: h.engine, handle: h.handle, config: { ...config, maxRequests: 1 },
+        const bridge = await createLiveBridge({ engine: h.engine, handle: h.handle, config: { ...config, endpoint, maxRequests: 1 },
             secretPort: { resolveSecret: async () => 'synthetic-private-key' }, fetchImpl: async (url, options) => { requests.push({ url, body: JSON.parse(options.body) }); return json(response); } });
         const input = { requestId: 'rp-live-1', trialId: 'trial', fixtureHash: 'fixture-r1', messages: [{ role: 'user', content: 'React briefly.' }], tools: [] };
         const result = await bridge.rp(input);
         expect(result.response.assistantText).toBe('Observed model output');
         expect(result.snapshot.diagnostics.inputTokens).toBeGreaterThan(0);
+        expect(requests[0].url).toBe(config.endpoint);
         expect(requests[0].body).toMatchObject({ model: config.model, max_tokens: 1024, stream: false });
         expect(bridge.budget.snapshot()).toMatchObject({ requests: 1, tokens: 15 });
         expect(bridge.observations()).toMatchObject([{ status: 'completed', usage: { totalTokens: 15 } }]);

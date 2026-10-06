@@ -300,12 +300,16 @@ node tests/agent-intelligence/live.mjs --connection /private/test-connection.jso
 node tests/agent-intelligence/live.mjs --connection /private/test-connection.json --ledger /tmp/evaluation-ledger.json --phase judge --comparison /tmp/model-comparison.json --output /tmp/model-judgments.json
 ```
 
-The private connection file contains `apiKey`, exact `endpoint` (complete chat
-completions URL), `model`, `tokenizer` (`cl100k_base` or `o200k_base`),
+The private connection file contains `apiKey`, explicit `endpoint` (the `/v1`
+base URL, optionally with a trailing slash, or the complete chat completions
+URL), `model`, `tokenizer` (`cl100k_base` or `o200k_base`),
 `contextTokens`, `maxOutputTokens`, `maxRequests`, `maxTotalTokens`, and
 `timeoutMs`. The tokenizer is an explicit local estimate, not a verified gateway
 model tokenizer. No key, header, provider response body, or local credential path
 enters the report. Keep this file and all generated artifacts outside Git.
+The evaluator expands a `/v1` base URL once when creating the original Native
+connection profile; an already complete endpoint is preserved. Changing this
+configuration creates a new identity; earlier paid reports remain unchanged.
 The live CLI enforces paths outside this worktree; output targets are exclusive.
 
 Use the same ledger throughout pilot, comparison and retries. An explicit

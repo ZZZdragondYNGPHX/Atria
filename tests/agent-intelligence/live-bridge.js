@@ -19,6 +19,13 @@ function publicDirectorMessages(messages) {
             function: { name: call.function.name, arguments: call.function.arguments } })) } : {}) }));
 }
 
+function generationEndpoint(endpoint) {
+    const url = new URL(endpoint);
+    if (!/\/v1\/?$/.test(url.pathname)) return endpoint;
+    url.pathname = url.pathname.replace(/\/$/, '') + '/chat/completions';
+    return url.toString();
+}
+
 /** Explicit test connection only, original compiler/resolver/provider and Host.
  * Secret is an injected send-boundary port and never part of the returned identity.
  */
@@ -38,7 +45,7 @@ export async function createLiveBridge({ engine, handle, config, secretPort, fet
         output: { maxTokens: config.maxOutputTokens }, streaming: { enabled: false } };
     for (const [type, resource] of [['core.prompt-module', module], ['core.prompt-program', prompt], ['core.generation-profile', generation]]) await library.commit(handle, type, resource);
     const connection = { schemaVersion: 1, connectionProfileId: id('connectionProfile'), scope: 'player', displayName: 'Explicit evaluation connection',
-        endpoint: config.endpoint, providerAdapter: 'provider.openai-compatible', transport: 'transport.http', secretRef: { secretId: 's06-test-key', scope: 'player' } };
+        endpoint: generationEndpoint(config.endpoint), providerAdapter: 'provider.openai-compatible', transport: 'transport.http', secretRef: { secretId: 's06-test-key', scope: 'player' } };
     await persistence.saveConnectionProfile(handle, connection);
     const model = { schemaVersion: 1, modelProfileId: id('modelProfile'), scope: 'player', displayName: 'Explicit evaluation model',
         connectionProfileRef: { scope: 'player', connectionProfileId: connection.connectionProfileId }, remoteModelId: config.model,
