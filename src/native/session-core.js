@@ -487,6 +487,11 @@ export class SessionCore {
         }
         if (states.atri_lifecycle) {
             states = cloneNativeDocument(states);
+            for (const item of states.atri_lifecycle.outbox) {
+                if (!base.states.atri_lifecycle?.outbox.some(previous => previous.invocationId === item.invocationId)) {
+                    item.cause = { revisionId, branchId, invocationId: lifecycleReceipt?.invocationId ?? actionRequest?.idempotencyKey ?? taskRecord?.invocationId ?? null };
+                }
+            }
             states.atri_lifecycle.logicalTime++;
             if (lifecycleReceipt) states.atri_lifecycle.receipts.push({ ...lifecycleReceipt, kind: 'authority',
                 committedRevisionId: revisionId, branchId });
@@ -698,6 +703,9 @@ export class SessionCore {
         if (!expectedRevisionId || typeof record.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(record.invocationId)) throw new TypeError('Task requires an invocation and revision anchor');
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const queued = base.states.atri_lifecycle?.outbox.find(item => item.invocationId === record.invocationId);
+        // Derive causality from durable authority data, never supplied model JSON.
+        const { lifecycleCause: _untrustedCause, ...taskData } = record;
+        record = { ...taskData, ...(queued ? { lifecycleCause: { ...queued.cause, scopeId: queued.scopeId, scopeEpoch: queued.scopeEpoch, workflowId: queued.workflowId } } : {}) };
         if (record.invocationId.startsWith('lc:') && !queued) throw new TypeError('Scheduled interaction no longer exists');
         if (queued && (queued.status !== 'pending' || base.states.atri_lifecycle.scopes[queued.scopeId].status !== 'active'
             || base.states.atri_lifecycle.scopes[queued.scopeId].epoch !== queued.scopeEpoch || queued.taskId !== record.taskId || queued.variantId !== record.variantId)) throw new TypeError('Scheduled interaction is stale or cancelled');

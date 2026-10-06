@@ -169,7 +169,8 @@ export class FrontendBridgeService {
         }
         if (binding.kind === 'action' && request.method === 'action.invoke') {
             const snapshot = await services.core.applyLifecycleCommand(state.owner, state.sessionId, { type: 'lifecycle', invocationId,
-                action: { kind: 'app.command', domainId: binding.target.domainId, commandId: binding.target.commandId, recordId: binding.target.recordId ?? binding.target.domainId, args: mapped } },
+                action: binding.target.lifecycle ? { ...binding.target.lifecycle, ...mapped }
+                    : { kind: 'app.command', domainId: binding.target.domainId, commandId: binding.target.commandId, recordId: binding.target.recordId ?? binding.target.domainId, args: mapped } },
             { expectedRevisionId: request.revision });
             await this.current(services, state);
             return receipt({ revision: snapshot.revision.revisionId, data: {} });

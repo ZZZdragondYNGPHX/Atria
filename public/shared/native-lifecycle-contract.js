@@ -7,6 +7,31 @@ import { assertTaskRuntime, assertTaskValue, taskId } from './native-task-contra
 
 export const LIFECYCLE_STATE_NAMESPACE = 'atri_lifecycle';
 
+// Fixed author targets; callers supply only the typed data, never routing IDs.
+export function lifecycleBridgeTarget(target, runtime) {
+    if (!runtime) throw new TypeError('Lifecycle Bridge requires runtime');
+    const empty = { type: 'object', properties: {}, additionalProperties: false };
+    const action = target;
+    let inputSchema = empty, definition;
+    if (action.kind === 'workflow.transition') {
+        fields(action, ['kind', 'workflowId', 'transitionId'], 'Workflow Bridge target');
+        definition = reference(runtime.workflows, action.workflowId, 'workflow');
+        reference(definition.transitions, action.transitionId, 'transition');
+    } else if (action.kind === 'workflow.cancel') {
+        fields(action, ['kind', 'workflowId'], 'Workflow Bridge target');
+        definition = reference(runtime.workflows, action.workflowId, 'workflow');
+    } else if (action.kind === 'clock.advance') {
+        fields(action, ['kind', 'commandId'], 'Clock Bridge target');
+        definition = reference(runtime.advances, action.commandId, 'advance');
+        inputSchema = { type: 'object', properties: { ticks: { type: 'integer', minimum: 1, maximum: definition.maxTicks } }, required: ['ticks'], additionalProperties: false };
+    } else if (action.kind === 'interaction.schedule') {
+        fields(action, ['kind', 'interactionId'], 'Interaction Bridge target');
+        definition = reference(runtime.interactions, action.interactionId, 'interaction');
+        inputSchema = { type: 'object', properties: { proposalId: { type: 'string', minLength: 1, maxLength: 128 } }, required: ['proposalId'], additionalProperties: false };
+    } else throw new TypeError('Unsupported Lifecycle Bridge target');
+    return { action, inputSchema, definition };
+}
+
 const MAX_BYTES = 1048576;
 const NODE_KINDS = ['user_gate', 'model_task', 'wait_until', 'action', 'automation_gate', 'projection', 'terminal'];
 

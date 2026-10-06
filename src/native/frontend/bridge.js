@@ -1,6 +1,7 @@
 import { fixedHostTarget } from '../../../public/shared/native-frontend-host.js';
 import { canonicalBridgeJson as canonicalJson } from '../../../public/shared/native-frontend-bridge.js';
 import { taskId } from '../../../public/shared/native-task-contract.js';
+import { lifecycleBridgeTarget } from '../../../public/shared/native-lifecycle-contract.js';
 import { createHash } from 'node:crypto';
 import { fields, identifier, list } from '../../../public/shared/native-frontend-contract.js';
 import { compileDataSchema } from '../../../public/shared/native-data-schema.js';
@@ -73,6 +74,11 @@ export function compileBridge(source = { version: 1, bindings: [] }, experienceC
             if (!experienceContract.authorityRuntime || experienceContract.taskRuntime?.turn?.policy !== 'authority-first') throw new TypeError('Transaction Turn authority required');
             targetContract = transactionCatalogue().find(item => item.id === binding.target.transactionId);
             targetInput = targetContract?.inputSchema;
+            outputSchema = EMPTY;
+        } else if (binding.kind === 'action' && binding.target.lifecycle) {
+            fields(binding.target, ['lifecycle'], 'Lifecycle target');
+            targetContract = lifecycleBridgeTarget(binding.target.lifecycle, experienceContract.lifecycleRuntime);
+            targetInput = targetContract.inputSchema;
             outputSchema = EMPTY;
         } else if (binding.kind === 'action') {
             fields(binding.target, ['domainId', 'commandId', 'recordId'], 'Action target');
