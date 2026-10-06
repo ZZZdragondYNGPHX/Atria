@@ -54,7 +54,7 @@ export class PromptPresetStore {
             for (const type of [PROGRAM, MODULE, GENERATION]) {
                 for (const owned of await listNativeDocuments(tx, { kind: K.versionedJsonResource, handle, resourceType: type })) {
                     if (owned.presetOwner !== id) continue;
-                    const { preset: _preset, presetOwner: _owner, ...retained } = owned;
+                    const { preset: _preset, presetOwner: _owner, promptEvolution: _evolution, ...retained } = owned;
                     await putMutable(tx, key(handle, type, owned.resourceId), { ...retained, archived: true });
                 }
             }

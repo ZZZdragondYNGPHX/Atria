@@ -4,6 +4,7 @@ import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURC
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import { readPromptControls, validatePromptOverrides } from '../native/model-prompt-runtime/prompt-controls.js';
 import { PromptPresetStore } from '../native/model-prompt-runtime/presets.js';
+import { PromptCandidateStore } from '../native/model-prompt-runtime/prompt-candidates.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
@@ -159,6 +160,18 @@ export function createNativeGenerationRouter(getHost = services) {
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
+    for (const action of ['inspect', 'declare', 'prepare', 'check', 'apply']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const store = new PromptCandidateStore({ engine: getHost().library._engine });
+            const input = ['check', 'apply'].includes(action) ? req.body.candidateId : req.body;
+            res.json(await store[action](handle, req.params.id, input));
+        } catch (error) {
+            res.status(error.name === 'ConflictError' ? 409 : error.name === 'NotFoundError' ? 404 : error.code === 'storage_read_only' ? 503 : 400).json({ error: 'native_prompt_candidate_unavailable' });
+        }
+    });
     router.get(['/regex-scopes', '/prompt-scope'], async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

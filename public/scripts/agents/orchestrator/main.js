@@ -61,6 +61,7 @@ import { resolveWorkspaceProfile, getWorkspaceLibrary } from './workspace/host-p
 import { createPresetAuthoring } from './workspace/authoring.js';
 import { createMemoryWorkspace } from './workspace/memory.js';
 import { updatePresetLibrary } from '../../lib/agent-workspace/presets.js';
+import { checkWorkspacePromptCandidate, updateWorkspacePromptVersions } from '../../lib/agent-workspace/prompt-versions.js';
 
 import { canReuseLatestOrchestrationSnapshot, clearCacheForChatChange, getActiveSnapshot, getChatKey, getCurrentAvatar, getLatestOrchestrationEntry, loadOrchestratorChatState, refreshActiveSnapshotFromCache, refreshOrchestratorStateAfterStructuralEvent, storeCompletedOrchestrationSnapshot } from './snapshot-cache.js';
 import { sanitizeConnectionProfileName } from './agent-resolution.js';
@@ -168,6 +169,14 @@ registerCapabilityApi(MODULE_NAME, {
         const settings = getSettings();
         settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), { type: 'bind', scope, subjectId, presetId });
         saveSettingsDebounced(); return true;
+    },
+    inspectPromptVersions: () => structuredClone(getWorkspaceLibrary(getSettings()).promptVersions || { schemaVersion: 1, declarations: [], candidates: [] }),
+    checkPromptCandidate: candidateId => checkWorkspacePromptCandidate(getWorkspaceLibrary(getSettings()), candidateId),
+    updatePromptVersions: action => {
+        const settings = getSettings();
+        settings.agentWorkspace = updateWorkspacePromptVersions(getWorkspaceLibrary(settings), action);
+        saveSettingsDebounced();
+        return structuredClone(settings.agentWorkspace.promptVersions);
     },
     // Skill-export bridge: walks a portable orchestrator payload's agent
     // surface and returns the union of skills any agent in the preset

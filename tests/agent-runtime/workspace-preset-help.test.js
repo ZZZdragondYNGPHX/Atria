@@ -1,4 +1,7 @@
-/** @jest-environment jsdom */
+/**
+ * @jest-environment jsdom
+ * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
+ */
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { serialize, deserialize } from 'node:v8';
