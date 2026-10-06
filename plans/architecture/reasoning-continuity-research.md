@@ -997,7 +997,8 @@ reasoning: true / false
 
 ```text
 none
-active_executiontask
+active_execution
+task
 adaptive
 ```
 
