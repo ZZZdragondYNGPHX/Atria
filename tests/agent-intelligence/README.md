@@ -94,3 +94,45 @@ pilot and exact generation configuration, connect observation/reservation at the
 existing RP and Studio generation boundaries, then run the six real development
 trials and the independent promotion baseline. Capture real usage and any gateway
 uncertainty. Current scripted reports do not satisfy that empirical checkpoint.
+
+## S02 source contract and consumers
+
+The production `AgentEvidenceService` export from `src/native/index.js` accepts
+Host-owned `chatRepo`, `sessionCore`, `studio` and `agent` services. RP sources use
+the existing ChatRepo (ordinary chat) or current SessionCore / Task Artifact
+authority (Native); Project sources use Studio revisions and ProjectAgentService.
+It provides callable read-only consumers for subsequent capture stages:
+
+```js
+const service = new AgentEvidenceService({ chatRepo, sessionCore, studio, agent });
+const budget = { maxSources: 8, maxBytes: 32768, maxScanMessages: 128 };
+const scope = { domain: 'rp_chat', charDir: 'Actor', name: 'chat', isGroup: false, groupId: '' };
+const set = await service.capture(authenticatedHandle, scope,
+    [{ kind: 'message', messageId: persistedMessageId, floor: 0 }], budget);
+const evaluation = await service.evaluate(authenticatedHandle, scope, set, budget, { expand: true });
+```
+
+The handle and expected scope come from the consuming Host boundary, independently
+of the submitted EvidenceSet. Sets contain only exact references and hashes;
+caller JSON cannot assert trusted/current status or supply an authoritative body.
+Evaluation v1 reports source validity, with per-reference missing/stale/denied/
+unavailable/budget_blocked states. Expanded content is returned only when every
+source passes a coherent scope read and final recheck. This result is a reading
+observation; future use revalidates it. It is not a behavior grade or promotion.
+
+`maxBytes` counts UTF-8 JSON bytes prepared for expansion, including prepared
+content later withheld on failure. `maxScanMessages` counts the message batches
+read for lookup and recheck. Neither budget claims to limit the original authority's
+full storage IO, provider tokens, or Task Artifact's separate dependency scanner.
+S02 adds no automatic runtime subscriber, persistent evidence resource, HTTP/UI
+surface or migration. Durable RP capture and Project recovery remain S03/S04.
+
+Run the minimal source/authority checks locally:
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/sources.test.js tests/native/task-artifact-consumption.test.js tests/native/project-agent.test.js
+```
+
+The source suite uses isolated FS/SQLite chats and Native Sessions, real Studio
+Review/commit on fictional Projects, and an explicit in-memory Native Artifact
+authority fixture. It performs no network/model calls or production-user reads.
