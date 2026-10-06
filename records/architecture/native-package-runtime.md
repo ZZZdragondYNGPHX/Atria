@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`。
-- Status: Active — S1 / S2 / S3 已完成，CP1 核心闭环已推送；等待用户续接 S4 → S5。
+- Status: Active — S1–S5 已完成并推送，CP2 完成；等待用户续接 S6。
 - Plan：[唯一入口](../../plans/architecture/native-package-runtime/index.md)。
 - 实时恢复：[HANDOFF](../../HANDOFF.md)。
 
@@ -108,3 +108,29 @@ S1–S6 按 [阶段路由](../../plans/architecture/native-package-runtime/index
 - 本地验证：新增 CP2 Experience 1 例，既有 Frontend Bridge 16 例、Lifecycle scheduler 6 例、Lifecycle runtime Fs/SQLite 108 例、Authority Turn Fs/SQLite 24 例通过，共 155 例；触及 JS ESLint、diff whitespace 通过。新 fixture 的冻结对象与表达式格式错误已修正并复验。
 - 未运行远端 CI、整库 tests、构建、浏览器或设备测试。每阶段只做本地相关验证。
 - S4 已完成，按用户授权继续 S5，CP2 才停止；不合并 main。
+
+## S5 — Processing / 作者工作流（CP2）
+
+- Start HEAD：`bffd30f3d`；End / Tested HEAD：`8f86a4e9f8450dc27b3c3d0818adcbd7a1ce4fb3`，产品分支 feat/native-package-runtime 已提交并推送，main 未合并。
+- S4 docs：`e14041ce4`；本阶段 docs HEAD 以真实远端 refs 为准。
+
+### 完成与边界
+
+新增 required processing 契约、固定顺序 trim / literal replace / JS/TS transform，复用原 Package computation 闭包 / QuickJS；正文输出在正式 Turn finalize 前处理，Context 仅在获准 recent_raw 候选的计数前处理，Presentation 保留 canonical content 并派生 displayContent。模型/模板字符串无执行权；Task artifact payload 不被自动转换，MessageProjection 与正文不一致拒绝采用，Knowledge 仍复用 S3。旧消息 Bridge schema 保持，新增 presentation 读取和原生 Play 消费。
+
+Studio 在 Runtime Design 使用现有结构化/Source draft，支持 Processor 增删排序与实现字段，经原 Review/ChangeSet 保存。精确已保存 Revision 的 sample preview 通过 StudioService 原项目队列只读执行，拒绝调用者指定 Source 与过期基准。Runtime Diagnostics 使用原快照/Task/Receipt/outbox 的真实原因和 Processing hash / 固定资源证据；HTTP 失败定位阶段/Processor，不暴露执行输入或异常消息。新界面文案 zh-cn/English 检查通过。
+
+### 实际本地验证
+
+- 新 Processing suite 11 例、Studio Runtime jsdom 4 例、Native Play jsdom 15 例（含 2 个新呈现场景）通过；本机 HTTP fixture → 固定 Transaction 私有候选 → output transform → 一次 CAS，重试只读、脚本失败整次无残留、真实 context script / sourceRefs / provenance / 展开预算、呈现无执行、超预算恢复原文已验证。
+- StudioService 与 Studio HTTP 只运行 Processing preview 的 2 例；验证保存修订、源码读取、只读、过期拒绝、owner 与 cache。没有把其它 14 个 skipped cases 计为通过。
+- 相关回归：ContextCompiler 14、Prompt P3 46、Package computation 16、Frontend Conversation 7、Prompt Authoring jsdom 14、Product errors 3、Localization coverage 5 例通过。本阶段共 **137 个不同用例**，重复复验不累加。S4 的 155 例独立保留，不与 CP1 历史混算。
+- 命令使用本机 `node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand` 和上述 suite 路径；Studio preview 用 `-t 'Processing preview'`。所有触及 JS ESLint、locale JSON、git diff/staged whitespace 通过。
+- 调试修正：Processor 入口 process 被现有禁止标识检查拒绝，改用 transform 并允许用途阶段；jsdom TextEncoder 与 Native IDs fixture 补齐；失败重试 fixture 去掉一次性 workflow gate；Presentation 预算边界 fixture、Play refresh 接口和 alert 所在组件修正。最后复验均通过，没有放宽 Authority/Schema。
+- 未执行远端 CI、全库 tests、产品 build、真正浏览器/视觉/Android/设备检查。新增 UI 证据仅为本地 jsdom，不称作浏览器通过。
+
+### CP2 停止与下一目标
+
+S4 / S5 完成，产品/docs 已推送。沿用分支，不合并 main、不删除活跃分支，按用户要求停在 CP2。S6 才实施最终原生 Package 场景、针对性集成、main 验证与清理；不自动继续。
+
+处理上限和 Scope 见 Plan：输出只接 Turn narrator 正文；上下文接 recent_raw，Information 替代历史不会隐式补读；呈现只接数据式文本派生，复杂呈现仍走已有 Controller/组件。旧 Regex 主链兼容；未声称所有 Processing/设备/外部数据库/跨 Realm 矩阵通过。私有候选/单 Session CAS/Task uses/Knowledge adoption 边界保持。

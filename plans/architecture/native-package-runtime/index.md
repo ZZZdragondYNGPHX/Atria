@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`；`docs` 承载本任务的 Plan、Record 与实时交接。
-- Status: Active — S1 / S2 / S3 已完成并推送；CP1 核心闭环完成，S4 完成，继续 S5 到 CP2。
+- Status: Active — S1–S5 已完成并推送；CP2 体验与作者闭环完成，停在 S6 前。
 - 创建日期：2026-10-06。
 - 产品起点：远端 `main`，`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；开始后续阶段时重新核对实际远端 HEAD。
 - Record：[永久阶段记录](../../../records/architecture/native-package-runtime.md)。
@@ -64,7 +64,7 @@
 | S5 Processing 与作者工作流 | 统一输出/上下文/呈现处理和类型化交互，完成相关 Studio 声明、预览、错误与跨域诊断 | decisions；experience-processing；authoring-diagnostics；按变更读取 context-generation |
 | S6 原生集成与完成 | 新 Native Package 场景贯通，完成针对性回归、记录、main 集成与短期分支清理；整体完成后删除 live HANDOFF | decisions；当前 Record；实际涉及模块 |
 
-S1 是下一设备的起点，按 S1 → S2 → S3 连续推进至 CP1。S1 仍只完成技术设计；契约回写、验证和推送后再进入 S2，实现阶段按 Governance 使用产品短期分支。若阶段依赖或交付划分实质变化，同时更新本 index。
+S1–S3 已完成 CP1，S4–S5 已完成 CP2。当前停止，下一设备只从 S6 开始；沿用 feat/native-package-runtime，最终集成和清理只在 CP3 执行。若阶段依赖或交付划分实质变化，同时更新本 index。
 
 ## 执行检查点
 
@@ -76,7 +76,7 @@ S1 是下一设备的起点，按 S1 → S2 → S3 连续推进至 CP1。S1 仍�
 | CP2 体验与作者闭环 | S4 → S5 | Experience / Lifecycle 编排、Processing、原生交互、Studio 与 Diagnostics 接入正式链路；相关验证通过，全部阶段已推送 | S6 |
 | CP3 最终完成 | S6 | 原生场景与针对性回归通过，完成 main 集成、永久记录、分支清理和 live HANDOFF 删除；结果已推送 | 任务结束 |
 
-S0 当时只发布文档；本轮已经按授权连续完成 S1 → S3 并到达 CP1。现在停止，下一段由用户续接 S4 → S5 到 CP2。每阶段保留可恢复状态，不因为普通阶段结束提前退出；检查点汇报聚焦完成内容、实际验证、关键风险和下一段目标。
+S0 当时只发布文档；随后 S1 → S3 完成 CP1，本轮 S4 → S5 完成 CP2。现在停止，下一段由用户续接 S6 到 CP3。每阶段保留可恢复状态，不因为普通阶段结束提前退出；检查点汇报聚焦完成内容、实际验证、关键风险和下一段目标。
 
 ## 设计状态
 
@@ -98,3 +98,5 @@ S1 已冻结：Game Logic v3 可选 computation、复用固定模块编译与 Qu
 - 2026-10-06：按用户要求将停止汇报边界改为 CP1（S3 后）、CP2（S5 后）和 CP3（S6 最终完成）；各阶段继续验证、记录和推送，当前轮只完成 S0。
 
 - 2026-10-06：S1 契约冻结，S2 固定领域计算，S3 动态上下文 / Knowledge / 真实 Task 消费已实施并完成 CP1 本地验证；停在 CP1，S4 尚未开始。
+
+- 2026-10-06：S4 固定 Lifecycle Bridge 与 durable cause、S5 三阶段 Processing / Studio 编辑与只读预览 / 运行诊断完成；产品与 docs 推送，停在 CP2，S6 尚未开始。

@@ -49,3 +49,11 @@ S1 为契约设计确定必要证据；S2 起每个 Runtime 增量提供对应�
 S2 的 Action Receipt 保存固定 computation source / resourceHash / stage；S3 增加 artifact invocation / producer Task / variant / usage / production Revision / resultHash。正式 record 保留 production 与消费的 base/application Revision。
 
 ContextPlan 和有效请求快照的 nativeSelection 保存匹配 view 的 derivation 资源、产物引用、Knowledge 纳入/拒绝、pending lifecycle 与 targetKey；预览使用同一编译器和预算。证据不默认保存私有 reads / computed，也不建立新的诊断事实库。当前可经既有 Source / 有效请求诊断查看原生数据；专用 Studio 表单、视觉诊断和交互工作流仍由 S5 实施，未执行新增 UI 验证。
+
+## CP2 作者与运行诊断接点
+
+Runtime Design 新增 Package Runtime 契约编辑和保存修订的 Processing preview；沿用原 value editor / draft leave guard / project.save / Review / ChangeSet。基础 Processor 增删排序和类型字段可直接编辑，完整 Task / Lifecycle / Domain / Context 声明通过同一结构化字段或 Source 保留，Build/Install 继续检查真实资源闭包。新文案提供 English / zh-cn；实际验证为 jsdom 行为检查，没有冒充浏览器视觉或设备验收。
+
+Runtime Diagnostics 的 Package Runtime evidence 复用当前精确 Session snapshot：Revision / PackageVersion、固定 Processor、Task invocation / production anchor / lifecycleCause、Workflow / outbox 的 cause 与 Scope epoch、Lifecycle Receipts、Action Receipts 和 Turn Processing provenance。上下文处理资源与输入/输出 hash 随原 RequestContextPlan provenance，输出证据随正式 Turn record；没有新增诊断事实库或私有读取。
+
+生成/预览 Processing failure 的 HTTP 错误携带安全 resourceId（Processor ID）和 field（stage），不输出脚本异常文本、执行输入或结果；客户端提供诊断入口。呈现失败明确显示原消息且继续提供控制项。S6 的完整新 Package 场景、浏览器视觉、最终集成和清理仍未完成。

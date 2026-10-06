@@ -2,49 +2,37 @@
 
 ## 当前真实状态
 
-- Task ID：`ARCH-NATIVE-PACKAGE-RUNTIME`；Primary Workspace：`main` 产品，文档属于独立长期 `docs`。
-- 阶段：S0–S4 完成；S4 固定 Experience 编排已本地验证，继续 S5 到 CP2。
-- 产品开发分支：`feat/native-package-runtime`；HEAD `bffd30f3d`。
-- main 基线：`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；未合并本任务。
-- S2 产品提交：`664616b83`；S3 产品提交：`10b003f9a`。
-- S1 docs：`ac1cea354`；S2 docs：`b6216a882`；S3 文档 HEAD 以实际远端 `docs` ref 为准。
-- Plan 唯一入口：[index.md](plans/architecture/native-package-runtime/index.md)。
-- Record：[native-package-runtime.md](records/architecture/native-package-runtime.md)。
+- Task ID：`ARCH-NATIVE-PACKAGE-RUNTIME`；Primary Workspace：main 产品，docs 为独立文档空间。
+- S0–S5 完成；**CP2 体验与作者闭环完成，按用户要求停止，S6 尚未开始。**
+- 产品分支：`feat/native-package-runtime`；HEAD `8f86a4e9f8450dc27b3c3d0818adcbd7a1ce4fb3`，已提交并推送。
+- S4 产品：`bffd30f3d`；S5 产品：`8f86a4e9f`；S4 docs：`e14041ce4`，CP2 docs HEAD 以实际远端 ref 为准。
+- main 仍为 `4ac8affbf01bfb5fb576834bb7eedbeefd03c007`，本任务未合并。
+- Plan：[index](plans/architecture/native-package-runtime/index.md)；Record：[native-package-runtime](records/architecture/native-package-runtime.md)。
 
-## 已完成
+## 已完成与保留
 
-S1 冻结固定 computation、获准读取、typed computed + 固定 Effect、前后检查、单 Session CAS、Task uses / production 契约。S2 复用编译闭包 / QuickJS，Domain precondition / compute / invariant 强制在私有候选执行，固定效果和 publications 后检查，Receipt 保留安全资源依据。
+CP1 的固定 Domain computation、Task uses / production / once 消费、动态 Context / Knowledge 与单 Session CAS 已保持，不重做 S1–S3。
 
-S3 贯通正式 Task 生产/消费、跨 Revision 依赖与 Scope、once 原子采用；获准动态 Context / Knowledge 进入原 Compiler / PromptIR，完整 Knowledge selector 处理展开文本、依赖、full / compact、资格、优先级和预算。现代 Task/Turn 的知识选择状态随正式结果 CAS 采用，按受众 targets 隔离；preview / compile 保持只读。
+S4 的固定 Lifecycle Bridge 声明工作流推进/取消、Clock advance、proposal schedule，进入原 SessionCore/CAS；Task/Tool/Controller 沿原 Authority/scheduler。outbox cause 记录真实触发 Revision / Branch / invocation，Task lifecycleCause 从 durable 数据派生，不采信外来同名 JSON。
 
-CP1 本机 HTTP fixture 场景贯通真实 Task → 无关 Revision → 购买规则 → Narrator → 单次 CAS，付款/库存/物品/once 一起成立，重复请求不重复扣款。相关行为与回归验证详情在 Record。
+S5 新 required Processing：固定 trim / 字面 replace / JS/TS transform（纯同步 QuickJS）。输出候选在 Turn finalize 前处理；获准 recent_raw 历史在预算前处理；呈现保留 canonical content，displayContent 通过新读取与原生 Play 消费。旧 message Schema、Task payload / uses、MessageProjection、Knowledge 主链和 Regex 保持兼容。处理不取得 State/Task/Bridge/I/O/提交句柄。
 
-## 当前决策与限制
+Runtime Design 的同一契约草稿/Source 支持 Processor 增删排序，经原 Review/ChangeSet 保存；已保存项目精确 Revision 的 sample preview 只读，不发送模型请求或写正式状态。Diagnostics 连接现有快照、固定资源/hash、Task/Receipt 和 outbox 原因；错误提供安全阶段/Processor，呈现失败保留原文与控制项。
 
-- Package 定义玩法，Authority 强制平台和固定领域规则；脚本没有正式提交句柄。
-- 新的 Task uses 只接受 durable 未采用 artifact，不能并用旧 applyCommand / interpretation；原局部 Prompt JSON artifacts 不是正式 Task 身份。
-- 不引入插件兼容、平行 State / Authority / 调度 / 事实缓存。没有读取 reference。
-- QuickJS deadline 不是整个宿主进程 wall-time SLA；原子边界只到单 Session，跨 Realm / 外部系统未证明。
-- 细致 Experience / Lifecycle、Processing、Studio 表单/视觉 Diagnostics 和最终集成留到 S4–S6。
+## 实际验证与限制
 
-## 实际验证
+S4 155 个不同相关用例（Fs/SQLite、Bridge/Controller、Lifecycle/scheduler、Authority Turn）；S5 137 个不同相关用例（Processing、Studio saved preview、Context/Prompt/computation、Conversation、作者/Play jsdom、错误/本地化），具体命令和修正见同一 Record。触及 JS ESLint、JSON、whitespace 和文档编码/链接通过。仅本地最小相关验证，重复不累计，不主动发起远端 CI。
 
-新增 S3 21 例、S2 领域计算和提交场景，以及对应 Context / Knowledge / Task / Prompt / Session / Authority 回归已本地通过；最后 tokenizer 增量的 CP1 + Prompt 48 例通过。触及产品文件 ESLint、diff whitespace、文档 UTF-8 / 相对链接通过。没有执行远端 CI、全库测试、构建、浏览器 UI、Android / 真机。MySQL / PostgreSQL 本机没有启动，未算通过。
+没有运行全库测试、产品构建、真正浏览器视觉、Android/设备、外部 MySQL/Postgres 或远端模型。S5 UI 为 jsdom；本机 HTTP fixture 不代表远端模型。原子保证只到单 Session。Processing output 只接 Turn narrator 正文；context 只接获准 recent_raw，不额外读取 Information 私有内容/Persona/当前事实；presentation 只用数据式转换，其他组件/Controller 能力仍为原路径。未声称整套设备/领域矩阵验收。
 
-## 本地工作树保护
+## 工作树保护
 
-本轮保留了产品工作树 `AGENTS.md` 的原有未提交变更，以及既有 docs 工作树 README / WEB-PERSISTENT-PROMPT / templates 的原有 dirty 调整；这些未进入任务提交。任务文档使用以最新 origin/docs 为起点的独立工作树，未将 main merge 到 docs。其它 worktree 与旧任务分支未改动。换设备时以远端 refs 为准；此设备继续时先检查 dirty changes，不覆盖上述调整。
+产品 AGENTS.md，以及原 docs 工作树 README / WEB-PERSISTENT-PROMPT / templates 的既有 dirty changes 保持未提交。任务文档继续使用独立 docs detached 工作树并推送 HEAD:docs；没有 main merge 到 docs。package/plugin/skills/reference 未修改或读取，未启动子 Agent。
 
-## 下一目标：S4 → S5 到 CP2
+## 下一目标：S6 → CP3
 
-用户任务约定优先于默认逐阶段停止：每阶段执行本地最小相关验证，更新 Plan / 同一 Record / 本 HANDOFF 并推送，连续到 CP2（S5 后）才停止；之后续接 S6 到 CP3。不主动跑远端 CI。
-
-开始前必读顺序：真实 Git / 远端状态与当前工作区规则 → docs Governance → 本 HANDOFF → [Plan index](plans/architecture/native-package-runtime/index.md) → [decisions](plans/architecture/native-package-runtime/decisions.md) → S4 的 [experience-processing](plans/architecture/native-package-runtime/experience-processing.md) 编排部分、[context-generation](plans/architecture/native-package-runtime/context-generation.md)、[authoring-diagnostics](plans/architecture/native-package-runtime/authoring-diagnostics.md) → 当前 [Record](records/architecture/native-package-runtime.md)。S5 到达时再按 index 读对应部分。
-
-不要重做定向研究、S1 技术冻结、S2 / S3 实现，不扫描全部 Plans / Skills / reference。沿用同一产品分支，仅读当前编排依赖的 Authority / Generation / Lifecycle / Experience 路径，保护现有资源与配置兼容性。main 集成和分支清理留到 S6。
+用户本轮只授权到 CP2，当前停止。续接时：真实 Git/远端与 dirty changes → docs Governance → 本 HANDOFF → Plan index / decisions → Record 的 CP1、S4、S5 → 仅按实际集成变更读取权威模块与代码。S6 完成原生场景/相关回归后再执行 main 集成、最小 main 验证、永久记录、分支清理和删除 live HANDOFF。
 
 ## 新对话接手提示词
 
-> 继续 ARCH-NATIVE-PACKAGE-RUNTIME，从 CP1 后的 S4 Experience / Lifecycle 编排连续推进 S5 Processing / 作者工作流，到 CP2 后停止。先核对真实 main / docs / feat/native-package-runtime 和 dirty changes，按 docs:HANDOFF.md → Plan index → S4 指定模块 → 同一 Record 读取。CP1 产品 HEAD 为 bffd30f3d，main 基线仍为 4ac8affbf01bfb5fb576834bb7eedbeefd03c007。S1–S3 已实现验证并推送，不重做；复用固定 Package computation、Task uses / production、Knowledge 选择与 result-adoption proof、现有 SessionCore CAS。每阶段仅执行本地最小相关验证，更新 Plan / Record / HANDOFF 并推送，不主动运行远端 CI；只到 CP2 停下。用户只把控范围、职责边界和关键取舍，技术细节自行推导。不要提前合并 main，S6 才最终集成和清理。
-
-S4 增量与 155 例最小相关验证见同一 Record；下一阶段仅读 experience-processing / authoring-diagnostics 与直接相关代码。
+> 继续 ARCH-NATIVE-PACKAGE-RUNTIME，从 CP2 后的 S6 推进到 CP3。先核对真实 main / docs / feat/native-package-runtime 和 dirty changes，按 docs:HANDOFF.md → Plan index / decisions → 同一 Record 的 CP1、S4、S5读取。产品 HEAD `8f86a4e9f8450dc27b3c3d0818adcbd7a1ce4fb3` 已 push，main 仍为 4ac8affbf。S1–S5 已完成，不重做；复用固定 Domain Logic、Task uses/production、Knowledge adoption、Lifecycle outbox/cause、Processing 与 Studio saved-revision preview。每阶段只执行本地最小相关验证，不主动运行远端 CI。S6 才做最终原生 Package 场景、main 集成与验证、任务分支和 live HANDOFF 清理。保护全部既有 dirty changes；不读 reference，不建立平行 State/Authority/scheduler/事实缓存；用户只把控范围、职责边界和关键取舍。

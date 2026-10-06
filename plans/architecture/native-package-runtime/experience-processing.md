@@ -62,3 +62,15 @@ S4 先贯通 Experience 的领域请求、Task / Tool 调度与 Lifecycle；S5 �
 新增 outbox 项在发布时保存 cause 的真实 Revision / Branch / invocation；Task 保存从 durable outbox 派生 lifecycleCause / Scope epoch / Workflow，忽略外来同名数据。旧 outbox 无 cause 仍可恢复；不建立事件事实缓存。工作流推进保持显式 gate，不把 Task 通知当作业务事实，取消与迟到采用继续由原 anchor / Scope 检查拒绝。
 
 S4 没有新增任意事件订阅、跨 Session 事务或自动重放 Controller 写入。既有 ready / clocks / logical.interval / workflows / durable Task intents 承载编排，Processing 与作者工作流在 S5 完成。
+
+## S5 实施：有界 Processing（2026-10-06）
+
+ExperienceContract 新增 required `processing@1` 与 `processingRuntime: { schemaVersion: 1, processors }`，必须同时声明。按列表顺序执行，每项固定 id / stage / kind；最多 32 项，声明最多 256 KiB。kind 为 trim、字面 replace（非空 find / replacement），或固定 JS/TS script source。Script 沿用 Package 闭包编译与 QuickJS 的同步 `default.transform({ text, stage, source, seed })`；只返回文本，不获得 State、Task、Bridge、I/O 或提交句柄。Presentation 只接受数据式 trim / replace。单文本最多 65536 字符、每 pipeline 累计最多 262144 字符；上下文编译另限制历史输入和输出总量。VM 既有 128 KiB 消息、CPU / heap 限制继续生效。失败拒绝候选，保留安全 Processor / stage 定位。
+
+- output：原 Native Turn narrator 的候选正文，在 Interpreter / 正式 finalize 前处理；正式消息与领域效果仍由原 Authority / SessionCore 同次 CAS 采用。结构化 Task artifact 保持真实生产身份，不暗中改写 payload 或赋予 uses。已有 MessageProjection 的 prose 必须仍等于新正文；不匹配就拒绝，不能静默丢弃 Blocks。流式片段仍是 provisional。
+- context：现有 ContextCompiler 已通过 visibility 的 recent_raw TurnGroups 在计数/选择前处理，清除旧 tokenEstimate，保留 sourceRefs 和处理证据；实际展开文本进入同一预算与 Provider 最终请求检查。Information 视图替代 raw history 时，不为了执行 Processor 重新读取 Timeline；Persona / 当前事实与私有 projections 不进入这个文本处理接点。Knowledge 仍走 S3 的固定 derive / selector。
+- presentation：临时 `displayContent` 来自正式正文，原 `content` 和 MessageProjection / Timeline 保持不变。新增 host.conversation.presentation 读取与原生 Play 消费共享派生；旧 messages 的 Schema / digests 不变。字符串仍由 safe prose 渲染，不取得执行能力；超预算显示明确错误并保留原消息和控制项。
+
+既有 Regex lane / package regex 编辑继续兼容，没有把未验证的其它处理层声称为新的正式 Authority。处理证据保存阶段、Processor ID、输入/输出 hash、固定 Script source / resourceHash；不保存另一份私有输入事实库。
+
+Studio Runtime Design 可编辑同一 ExperienceContract，校验后经原 Review / ChangeSet 保存；Processor 可添加、移除、排序和选择类型。Source 与结构化草稿共享，非法 Source / 冲突留在本地。saved revision 的 Processing preview 使用当前精确项目源码、显式 sample text 与 stage，不读取正式 State、不发送模型请求、不提交或采用结果；拒绝过期 Revision 和调用者指定源码。
