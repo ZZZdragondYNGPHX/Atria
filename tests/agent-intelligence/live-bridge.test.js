@@ -90,6 +90,19 @@ test('restored budget retains crash reservations and persists before the first s
     expect(() => new EvaluationBudget(limits, { snapshot: forged })).toThrow('restore mismatch');
 });
 
+test('partial provider counters remain observed with a reserved total rather than failing collection or inferring a sum', async () => {
+    const h = await makeTempFsEngine();
+    try {
+        const bridge = await createLiveBridge({ engine: h.engine, handle: h.handle, config: { ...config, maxRequests: 1 },
+            secretPort: { resolveSecret: async () => 'synthetic-private-key' }, fetchImpl: async () => json({ choices: response.choices, usage: { prompt_tokens: 10, completion_tokens: 5 } }) });
+        const report = await runComparison({ candidate: { target: 'roundLimit', value: 5 }, split: 'development', mode: 'model', bridge });
+        expect(report.observations[0].usage).toEqual({ inputTokens: 10, outputTokens: 5 });
+        expect(report.pairs[0].baseline.trial.usage.status).toBe('reserved_upper_bound');
+        const forged = structuredClone(report); forged.observations[0].usage.unexpected = 1;
+        expect(() => validateComparison(forged)).toThrow('counters');
+    } finally { h.cleanup(); }
+}, 30000);
+
 test('live comparison captures independent baseline before candidates and binds sends, usage, resources and failed slots', async () => {
     const h = await makeTempFsEngine(); const order = []; let baseline;
     try {

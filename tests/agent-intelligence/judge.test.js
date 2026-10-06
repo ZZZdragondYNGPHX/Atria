@@ -63,6 +63,14 @@ test('malformed model ratings retain every pair and charge actual usage without 
     expect(report.pairs.every(pair => pair.grade === null && pair.gradeHash === null)).toBe(true);
 });
 
+test('partial grader counters retain the reserved total and reject unknown counter fields', async () => {
+    const report = await judge(async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"preference":"left"}' } }], usage: { prompt_tokens: 10 } }), { headers: { 'content-type': 'application/json' } }));
+    expect(report.summary).toMatchObject({ invalid_response: 6, requests: 6, usageStatus: 'reserved_upper_bound' });
+    expect(report.summary.tokens).toBeGreaterThan(60);
+    const forged = structuredClone(report); forged.observations[0].usage.unexpected = 1;
+    expect(() => validateJudgeReport(forged, comparison)).toThrow('counters');
+});
+
 test('exhausted shared budget blocks every grader before fetch and retains all pair slots', async () => {
     const report = await judge(async () => { throw new Error('Must not send'); }, budget => {
         for (let index = 0; index < config.maxRequests; index++) {

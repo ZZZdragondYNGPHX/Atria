@@ -111,7 +111,9 @@ export function validateJudgeReport(report, comparison) {
             const charge = report.ledger.entries[event.attemptId];
             requireValue(event.requestId === item.requestId && charge?.kind === 'grader' && charge.trialId === item.trialId
                 && !attempts.has(event.attemptId) && event.attemptId === item.requestId + ':send:1', 'judge_charge_unbound');
-            requireValue(event.usage === null ? charge.usageStatus === 'reserved_upper_bound'
+            if (event.usage !== null) requireValue(Object.keys(event.usage).length > 0
+                && Object.entries(event.usage).every(([key, value]) => ['inputTokens', 'outputTokens', 'totalTokens'].includes(key) && Number.isSafeInteger(value) && value >= 0), 'judge_counters_invalid');
+            requireValue(event.usage?.totalTokens === undefined ? charge.usageStatus === 'reserved_upper_bound'
                 : charge.usageStatus === 'provider_reported' && charge.tokens === event.usage.totalTokens, 'judge_usage_drift');
             attempts.add(event.attemptId);
         }

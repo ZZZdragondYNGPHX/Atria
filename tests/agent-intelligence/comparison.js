@@ -222,8 +222,9 @@ export function validateComparison(report) {
             && charge?.trialId === item.trialId && item.attemptId.startsWith(item.requestId + ':send:')
             && Number.isSafeInteger(item.inputTokens) && item.inputTokens >= 0 && Number.isSafeInteger(item.durationMs) && item.durationMs >= 0 && digest(item.snapshotHash) && digest(item.configurationHash)
             && ['started', 'sent', 'completed', 'invalid_response', 'cancelled', 'failed'].includes(item.status), 'Unbound live observation');
-        if (item.usage !== null) requireValue(Number.isSafeInteger(item.usage.totalTokens) && item.usage.totalTokens >= 0
-            && charge.tokens === item.usage.totalTokens && charge.usageStatus === 'provider_reported', 'Provider usage binding drift');
+        if (item.usage !== null) requireValue(Object.keys(item.usage).length > 0
+            && Object.entries(item.usage).every(([key, value]) => ['inputTokens', 'outputTokens', 'totalTokens'].includes(key) && Number.isSafeInteger(value) && value >= 0), 'Invalid provider counters');
+        if (item.usage?.totalTokens !== undefined) requireValue(charge.tokens === item.usage.totalTokens && charge.usageStatus === 'provider_reported', 'Provider usage binding drift');
         else requireValue(charge.usageStatus === 'reserved_upper_bound', 'Unknown usage refunded');
         if (Object.hasOwn(item, 'httpStatus')) requireValue(Number.isSafeInteger(item.httpStatus) && item.httpStatus >= 100 && item.httpStatus <= 599 && typeof item.contentType === 'string', 'Invalid HTTP observation');
         if (Object.hasOwn(item, 'failureCode')) requireValue(['UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'aborted', 'transport_error'].includes(item.failureCode), 'Invalid transport observation');
