@@ -18,7 +18,7 @@
 | M8 — 生成与计算基础 | G01–G06 | 创作 / Behavior 与 Context 分层、按预算解析模型 / 网关、稀疏调用与全部费用可检查 | 双入口真实请求消费；迁移与撤回；可用 gateway integration 与质量—成本对照 |
 
 用户已确认先完成 M1，并在首批包含有预算与回滚约束的局部自动启用；首批详细设计见 [m1-evolution.md](m1-evolution.md)。
-建议先保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation，允许在交付组设计时调整先后；M3 开始前要求 G06 完成。M1 不等待 M8；S03 已完成并停止，下一正式阶段为 S04。
+建议先保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation，允许在交付组设计时调整先后；M3 开始前要求 G06 完成。M1 不等待 M8；S04 已完成并停止，下一正式阶段为 S05。
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
@@ -60,7 +60,7 @@ D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整�
 | S01 — 双场景基线与 Eval cases | D1；s01-baseline | 固定 12 个 RP / Project 案例、报告、baseline runner 与资源记录；复用现有测试 / generation 路径 | scripted / model 分开；区分 final text、正式 state、Review；模型缺失明确标记，晋升前必须补齐 |
 | S02 — 来源 / 引用 / 有效性最小契约 | S01 | 两种 source adapter 和首批 EvidenceSet / Evaluation consumer，复用现有 result / artifact | 伪来源、错误 owner / branch / hash、删除或失效源均不可当成当前证据；展开有预算 |
 | [S03 — RP 可靠轨迹与持久证据](s03-capture.md) | S02 | 连接 run / child / effect / request / message variant 与 Native outcome；补 Director bridge 的 trace 关联 | 当前投影不变成全文日志；捕获缺失显式显示；root / child / attempt / 后台可归因；取消、重生成、重试不交叉关联 |
-| S04 — Project 持久任务与轨迹 | S02、S03 的公共持久层 | 为现有 ProjectAgentService 增加持久任务 / attempts / timeline，并关联 Studio validation / Review / changeset | Host / 浏览器重启后恢复；commit receipt 幂等；过期 baseRevision 进入 conflict，不重复写入 |
+| [S04 — Project 持久任务与轨迹](s04-project-recovery.md) | S02、S03 的公共持久层 | 为现有 ProjectAgentService 增加持久任务 / attempts / timeline，并关联 Studio validation / Review / changeset | Host / 浏览器重启后恢复；commit receipt 幂等；过期 baseRevision 进入 conflict，不重复写入 |
 | S05 — 反馈与经验的作用域 / 生命周期 | S03、S04 | 显式反馈、弱观察、技术 outcome、诊断分层；保留 / 删除 / 导出和来源失效路径 | regenerate 不自动成为负偏好；角色 / 项目 / 用户隔离；纠正和删除可撤回相关 lesson；reflection 按事件 / 聚合批处理，无固定每轮调用 |
 | S06 — 两条入口的隔离执行与比较 | S01、S05 | 在 Workspace / Session 副本重跑 baseline 与 candidate；固定输入、版本、工具模拟和 judge | evaluation 无生产副作用；case / trial / rubric 可追溯；独立案例未用于提炼；现有可用 1-call / cognition / critic / Director ablation 报告质量—成本与缺失 |
 | S07 — Skill 候选与版本固定 | S06 | 在现有 Skill repository 上补精确候选版本、读取 pin、发布冲突检查与历史 | 所有真实使用入口消费同一固定内容；运行中编辑不改变已接受版本；旧版本可取回 |
@@ -68,7 +68,7 @@ D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整�
 | S09 — 编排策略候选 | S06 | 对用户 Preset / Project 参数的已允许配置生成候选，沿用 compiler / policy | capability、output owner、必要 guard 不随候选改变；新预算 / optional work 有回归证据；不扩张至连接 / 隐私 / 路由自动发布 |
 | S10 — 评测晋升、撤回与双入口产品闭环 | S07、S08、S09 | 审阅差异、评测报告、精确启用；有预算约束的局部自动启用、停用 / 回滚 | 三类目标分别归因；组合回归；RP 与 Project 都从反馈走到下一次行为改变；自动模式的冲突、重启、预算耗尽与撤回可验收 |
 
-S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.md)：两个域 adapter，RP 内保留 chat / Native 分域；EvidenceSet / Evaluation 是可调用消费者的返回值，无新持久 kind / migration。S03 可靠 RP metadata 捕获与公共持久层已完成，契约 / 不完整输出边界见 [s03-capture.md](s03-capture.md)。Project task 持久恢复仍待 S04；本轮在 S03 验证 / 记录后停止。
+S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.md)：两个域 adapter，RP 内保留 chat / Native 分域；EvidenceSet / Evaluation 是可调用消费者的返回值，无新持久 kind / migration。S03 可靠 RP metadata 捕获与公共持久层已完成，契约 / 不完整输出边界见 [s03-capture.md](s03-capture.md)。S04 Project task 持久恢复、公开对话、正式 receipt 幂等与 conflict 已完成，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)；本轮在 S04 验证 / 记录后停止，S05 尚未开始。
 
 第一批不能止于日志、规则列表或“AI reflection”。发布改变必须由相同权威读取入口真正消费，并在独立案例评价。
 三类候选是已确认的 M1 范围；若出现实质范围变化，明确记录调整，不在阶段结束时悄悄缩水。

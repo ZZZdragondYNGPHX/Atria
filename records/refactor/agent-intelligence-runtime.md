@@ -290,6 +290,47 @@ D1：沿已确认的 M1 范围与局部自动启用设计，收敛 scope / 权�
 API / Schema / key、容量 / TTL、完整依赖覆盖、semantic threshold、有限工具 / 模板 / Provider 矩阵、prewarm 默认与数字 SLO 待相应阶段细化。Cloud 字段与 Local backend / 算法需要精确路径 / 兼容 / 质量 / Trust Domain 验证；论文数字与 cache hit 不等于 Atria 收益，S01 empiricalReady=false 保持。
 下一产品 checkpoint 仍为 **S04**：读取 HANDOFF → index / decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project / storage → 本 Record，继续同一产品分支，细化 Project task / attempts / timeline / recovery 与 Studio receipt 幂等。D4 / G / Local 能力不提前实施；仅下一轮明确续接后开始 S04，本轮文档持久化 / push 后停止，不合并 main。
 
+## S04 — Project 持久任务与轨迹
+
+- Request: 读取 `docs:HANDOFF.md`，仅续接 S04；每阶段及完成只执行本地最小相关验证，更新同一 Record / live HANDOFF 后停止。
+- Start product HEAD: `78acfb65da6b1afa1dee1c2f35482af215832c74`；沿用 `feat/agent-intelligence-runtime`，初始 worktree 干净。
+- Stable main HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`；本地 / origin 未变化，未合并本任务。
+- Start docs HEAD: `119f5a720a69a1a86a46605cc6497d1221619aeb`；读取当前 HANDOFF / 相关 Plan / 同一 Record / 完整治理，保留 D0–D4 / S01–S03 历史与既有 dirty。
+- Product commits: `ca0769e530decbdaf71227d3aca7573e4f4d5ea8` 持久任务 / receipt recovery；`172a0c281334c36c56273a24d19922ad4d5e5c35` 正式提交前的 receipt 容量检查。
+- Product branch / End / Tested HEAD: `feat/agent-intelligence-runtime@172a0c281334c36c56273a24d19922ad4d5e5c35`；已 commit / push，origin 同 HEAD，产品 worktree 干净。
+- End docs HEAD: 包含本 S04 Record / live HANDOFF 的实际提交；仅暂存本任务八个文档并 push docs。
+- Status: **Complete — S04 durable Project task / attempts / conversation / receipt recovery**；停止。下一正式阶段 S05，未开始。
+
+### Completed / implementation
+
+- [s04-project-recovery.md](../../plans/architecture/agent-intelligence-runtime/s04-project-recovery.md) 定稿 schema / key / CAS、公开对话、Host attempts、容量、receipt / recovery / conflict、删除与兼容；同步 index / delivery / m1-evolution / s02-sources / s03-capture 路由。
+- 原 ProjectAgentService 通过 ProjectTaskRepository 将 v1 task 写入新 additive `atri_project_agent_task`，key 为 authenticated handle + projectId + taskId。保存 plan / proposals / Workspace / inspection / validation / Preview / simulation / Review / changesets / timeline / attempts / conversation / commit intent；未知 schema、额外字段、identity / origin / Workspace mismatch、corruption 与旧 sequence / integrity CAS 拒绝。
+- 读取 / mutation / context API 改为异步并沿同一资源锁排序，HTTP / generation context / S02 adapter 一并适配。跨 service 实例的内存快照只作末次同步 freshness 核验，持久 task 是 authority；原 Studio / Git 保持唯一 Project source 写入 authority。
+- evaluation / commit 在执行前持久 started marker。新客户端 generation attempt 标为 client_observation；实际 Generation Host 内部关联 requestId、最终 snapshot hash、可见 provider send / retry 和直接报告 usage，无客户端伪造 Host observation 入口。missing usage 为 null，不推断缺失 total / 费用；observation 保存失败返回独立 capture failed，不重发 generation。
+- generation 的完整公开 conversation 按前缀保存；system / providerState / opaque state / 未知私有字段拒绝。reload 使用公开 tool observation 文本与当前 task plan / proposals / validation 恢复模型上下文，live loop 保留原 providerState。unfinished round 保留完整旧前缀与已保存 proposals；tool call identity + args hash 防止重复 mutation，Continue 必须显式触发。
+- commit intent 固定 exact Workspace hash 与 Host 生成 changeSetId；Studio 正式 Git commit message 同时保存 base / validation / Workspace hash receipt，no-op 也保留正式 commit。builtin / system Git 可读取完整 commit / parents；resultingRevision 固定正式 receipt OID，不被紧随其后的 human edit 替换。
+- receipt 查询最多 200 条原 Studio 历史，唯一匹配 / Workspace / base / parent / validation 校验后才 reconcile completed。正式写入后 task 保存失败或响应丢失、并发 / 重复 Commit 都返回同一正式结果，无第二次 apply；Git 已提交后异常不 restore 旧 source。缺 receipt 且 base 未变回 Review，base 变化或证据不明确转 conflict，不自动 rebase / replay。
+- 单 task 限 2 MiB JSON、1024 events、128 attempts / messages；超限明确失败。收尾发现 receipt 增大后的容量边界，补 Studio 正式 Git 写入前的完整 completed / recovery record 校验；容量不足恢复 dry-run source，保留 Review，没有正式 receipt。中断 evaluation 转 repair / blocked，失效 Preview 不当作重开的会话。
+- 原 panel 恢复 conversation / Review / recovery 说明；Commit 响应或 task 保存失败后重读 authority，completed 时刷新 Project 一次，回调错误不重复 Commit。task HTTP 路由 no-store；显式 task 删除、Project HTTP 删除及原 deleteUser / dump / restore 路径保持 owner / scope 隔离。read-only 禁止 mutation / recovery 写入，允许只读检查恢复状态。
+
+### Minimal local validation
+
+- 累计 **9 relevant suites / 165 个不同 tests passed**；分组计数为 recovery **33**、sources **43**、Project authority **4**、Project HTTP **4**、panel **7**、Studio **8**、Git **8**、bundled authoring skills **7**、baseline **51**。重复执行不累加，不是全量测试。
+- 九个 suite：`tests/agent-intelligence/{project-recovery,sources,baseline}.test.js`、`tests/native/{project-agent,project-agent-http,studio-service,bundled-authoring-skills}.test.js`、`tests/atria-shell/studio-agent-a8.test.js`、`tests/git-client.test.js`。执行入口沿 README 的本地 Jest 命令；最后容量修改只复核 recovery / Studio / Project 三套 **45 passed**：`node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/project-recovery.test.js tests/native/studio-service.test.js tests/native/project-agent.test.js`。
+- 真实临时 FS / SQLite 物理 close / reopen，Review / completed / attempts / conversation、CAS / unknown schema / corruption、owner / Project 隔离、read-only、删除、backup / restore 与 FS→SQLite→FS generic roundtrip；MySQL / PostgreSQL 只验证 generic kind / key 注册，没有连接外部 DB。
+- 使用实际 Studio 与 builtin / system Git，覆盖 no-op receipt、过期 base、并发 Commit、marker 写失败、正式写入后 task 保存 / response 故障、人类后续修改、不可验证 receipt、提交前容量拒绝与 source 恢复。实际 Generation Host 使用本地 synthetic provider response，核验 send / retry / 直接 usage；capture failure 不重发。HTTP 与浏览器 runner 均为本地隔离 fixture。
+- 实际 Chromium 命令 `node tests/frontend/project-agent-recovery.smoke.mjs` 通过，最后容量修改后再次通过：隔离 SQLite / Git / HTTP fixture 加真实 panel，桌面 reload 恢复 conversation / Review；注入 completed save failure 后恢复 receipt 并刷新 Project 一次；移动端 completed / conflict 状态无溢出、无 page error。**1 Commit / 0 generations**。这是相关 panel 验收，没有全应用 / Android / 真机结论；截图只留临时目录。
+- 触及的 11 个生产 JS 本地 ESLint 通过；最后两处服务修改再做 ESLint、product diff / staged diff check。首轮相关测试暴露 async fixture / 输入字段、persist 后 attempt 引用、旧 conflict / baseline fixture 兼容问题，均修正并定向复核；容量用例先定位到过早越界的 fixture，改为有效的 near-capacity Review 后通过。复用已安装依赖，无 install / lockfile 变更。
+- docs 本任务八个文档 / 70 个本地链接、1 个触及文档 anchor 检查通过，7 个未变的其它模块 anchors 保留；围栏 / 表格、40 个正式阶段与原依赖、HEAD / 当前状态、前序 Record 逐字保留、五个既有 dirty hash、diff / staged paths 检查通过。未为验证重读远期模块或研究，未扫描全部 Plans / Records / Skills，未读写 reference 或其它 Experience 草稿。
+- 未执行 build、全量测试、Android / 真机、真实模型 / judge / provider probe 或远程 CI。S01 scripted baseline 继续 12 trials / 24 generation calls / 36 tool calls / 44 deterministic checks，empiricalReady=false；本阶段不证明模型质量、真实费用收益或 publication 能力。
+
+### Compatibility / limitations / next checkpoint
+
+- Additive kind，无 SQL DDL / storage version 升级、无历史 task backfill。旧 Map task 无法凭空恢复，legacy generation 请求没有 Host attempt 关联；旧 opaque continuation 不持久化。task / conversation 只支持技术容量边界，S05 再交付 retention / feedback / lesson 撤回与级联。
+- FS 排序只覆盖单 Host writer；Project Git 与 task storage 不声称整体事务。receipt 恢复受当前 Git 历史 200 条与唯一完整 proof 限制；缺证据保守 Review / conflict。completed 历史可检查，human edit 后 S02 currentness 继续失效；missing Project 不释放 task evidence。
+- main AGENTS 与 docs README / WEB Adapter / 两模板既有 dirty 未暂存 / 提交，hash 保持。未合并 main，不删除本组 task branch，不提前实施 S05 / G 阶段、reuse / cache / invocation 或 Local backend。
+- 下一正式阶段仅 **S05**：真实 Git → HANDOFF → index / decisions → m1-evolution / s02-sources / s03-capture / s04-project-recovery / delivery S05 / baseline storage 与相关 source authority → 本 Record；沿同一分支先细化 feedback 分层、作用域、纠正 / 删除 / 导出、retention 与 source invalidation，再实现。本轮到 S04 文档持久化 / push 停止。
+
 ## Final state
 
-长期任务仍在进行；D0 / D1 / D2 / D3 / D4 / S01 / S02 / S03 完成。D4 仅完成企划、研究索引、同一 Record / live HANDOFF 与本地文档验证 / 持久化后停止；S03 产品 HEAD 与 main 未变化，下一正式阶段 S04 未开始。M1、S01 真实模型基线、通用 reuse / cache / invocation 与远期 G / Local 阶段未计作完成。
+长期任务仍在进行；D0 / D1 / D2 / D3 / D4 / S01 / S02 / S03 / S04 完成。本轮仅 S04 实现、最小本地验证、commit / push 与同一 Record / live HANDOFF 后停止；产品 HEAD 为 `172a0c281334c36c56273a24d19922ad4d5e5c35`，main 未变化。下一正式阶段 S05 未开始。M1、S01 真实模型基线、通用 reuse / cache / invocation 与远期 G / Local 阶段未计作完成。

@@ -14,7 +14,7 @@
 
 普通 chat 的内容身份复用 Memory source-provenance；重复 ID、floor 移动、variant 更换、正文编辑都不能复用旧证据。镜像 Native 消息只能通过 Session 读取。
 Native 历史 revision 不作为 current 的替代。Artifact 仅沿 readTaskArtifact 的 reusable context grant 读取，保留其 task definition、dependency、scope epoch、branch 与 hash 检查；operation / rule grant 不被转换为读取权限，不标记 consumption。
-Project Review 只证明真实 Review 状态；completed 使用原 service 的 changeset resultingRevision。human edit、任务变更、takeover / cancel / conflict 或任务 Map 在重启后缺失均不能当 current。持久恢复由 S04 交付。
+Project Review 只证明真实 Review 状态；completed 使用原 service 的 changeset resultingRevision。human edit、任务变更、takeover / cancel / conflict 或任务来源缺失均不能当 current。S04 后 adapter 异步读取持久 task authority，末次同步核验只使用已加载快照；持久恢复与 legacy missing 边界见 [s04-project-recovery.md](s04-project-recovery.md)。
 
 ## 最小 schema 与消费
 
@@ -35,4 +35,4 @@ Evaluation v1 返回 evidenceSetHash、current / incomplete、每个源的 curre
 ## 验收
 
 本地最小测试覆盖 FS / SQLite 的真实 chat 与 Native Session、原 Task Artifact authority 的 grant / dependency 失效、真实 Studio Review / commit / human revision conflict，以及伪造正文 / owner / scope / anchor / hash、删除、重复身份、读中变更、预算和 unknown schema。ProjectStore 原本使用 FS / Git，不宣称 Project 已具备 SQL task 持久化。
-S02 验证未使用生产用户数据、Secret、网络、真实模型或 UI 改动；当时 S03 / S04 尚未执行。后续 S03 已交付 additive EvidenceRecord / bounded runtime capture，详细契约见 [s03-capture.md](s03-capture.md)；S04 Project task 持久恢复仍未实施。
+S02 验证未使用生产用户数据、Secret、网络、真实模型或 UI 改动；当时 S03 / S04 尚未执行。后续 S03 已交付 additive EvidenceRecord / bounded runtime capture，详细契约见 [s03-capture.md](s03-capture.md)；S04 已交付持久 Project task / receipt recovery，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)。前述无持久资源 / SQL task 的验收描述仅指 S02 当时。

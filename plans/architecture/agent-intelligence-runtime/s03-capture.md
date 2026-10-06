@@ -1,6 +1,6 @@
 # S03：可靠 RP 捕获与公共持久层
 
-本阶段沿 S02 来源 authority 增加 metadata-only EvidenceRecord v1，不捕获 Prompt、工具参数、结果全文或 credentials。Project task 持久恢复仍在 S04；反馈、容量与 retention 产品策略在 S05。
+本阶段沿 S02 来源 authority 增加 metadata-only EvidenceRecord v1，不捕获 Prompt、工具参数、结果全文或 credentials。后续 S04 的 Project task 持久恢复已交付，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)；反馈、容量与 retention 产品策略在 S05。
 
 ## 持久契约
 

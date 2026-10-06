@@ -2,11 +2,12 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 next**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
+- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 next**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
 - Updated: 2026-10-06
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
 - S03 implementation / Tested HEAD: `78acfb65da6b1afa1dee1c2f35482af215832c74`；沿用同一任务分支，已 push，main 未变化。
+- S04 implementation / Tested HEAD: `172a0c281334c36c56273a24d19922ad4d5e5c35`；沿用同一任务分支，已 push，main 未变化。
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
@@ -51,12 +52,13 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [s01-baseline.md](s01-baseline.md) | S01 的具体案例、报告契约、预算、验证和退出条件 | decisions、当前代码入口 |
 | [s02-sources.md](s02-sources.md) | S02 最小 source / reference / validity、预算与无迁移边界 | m1-evolution、当前 authority |
 | [s03-capture.md](s03-capture.md) | S03 bounded RP trace / EvidenceRecord、key / CAS、outcome / output binding、迁移与缺失边界 | s02-sources、原 StorageEngine / authority |
+| [s04-project-recovery.md](s04-project-recovery.md) | S04 持久 Project task / attempts / public conversation、正式 Git receipt、容量 / restart / conflict / delete | s02-sources、s03-capture、原 Studio / StorageEngine |
 | [behavior-context.md](behavior-context.md) | Behavior / Creative / Context / Generation 分层、语义编译、overlay、压缩与迁移 | 当前 Prompt / Context substrate |
 | [compute-policy.md](compute-policy.md) | sparse 默认路径、共享 cognition、硬预算、后台分流与计算收益评价 | TaskScheduler / RunControl、M1 Eval |
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-已完成 S01 / S02 / S03；来源契约由 s02-sources 管理，可靠 RP 捕获与公共持久层由 s03-capture 管理。下一 S04 读取本入口 → decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project 与存储接入 → Record。D0 / D1 / D2 / D3 / D4 已完成；D4 模块按 G 阶段路由，不成为 S04 新依赖。S01 补充测量说明不扩张其 12 cases 与 test-only 范围。无需重新进行全量调研。
+已完成 S01 / S02 / S03 / S04；来源契约由 s02-sources 管理，可靠 RP 捕获与公共持久层由 s03-capture 管理，Project 持久恢复由 s04-project-recovery 管理。下一 S05 读取本入口 → decisions → m1-evolution / s02-sources / s03-capture / s04-project-recovery / delivery S05 / baseline storage 与相关 source authority → Record，先细化反馈分层、作用域、纠正 / 删除 / 导出和 retention。D0 / D1 / D2 / D3 / D4 已完成；D4 模块按 G 阶段路由，不成为 S05 新依赖。S01 补充测量说明不扩张其 12 cases 与 test-only 范围。无需重新进行全量调研。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -93,9 +95,10 @@ D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Wo
 | S01 | Structural / scripted complete；empiricalReady=false | 12 cases、双入口 runner、strict v1 consumer / sidecar、有限预算与缺失状态；实际验证见 Record |
 | S02 | Complete；只读来源契约与 consumer | 双域 adapter、EvidenceSet / Evaluation v1；43 新增 / 17 既有 tests 通过；无持久资源或迁移 |
 | S03 | Complete；可靠 RP 捕获与公共持久层 | bounded metadata、run / request / attempt / variant、Native receipt、FS / SQLite durable CAS 与 authenticated consumer；验证见 Record |
-| S04–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
+| S04 | Complete；Project 持久任务与恢复 | FS / SQLite task / attempts / conversation、正式 Studio Git receipt、保存失败恢复 / stale conflict；9 suites / 165 distinct tests 与本地 Chromium fixture 通过 |
+| S05–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
-S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。本轮 D4 企划整合完成后停止，下一产品 checkpoint 仍为 S04；未实现 Project task 持久恢复、retention、G 阶段 opaque checkpoint 或新 reuse / cache 功能。D3 决策与历史保留。
+S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。本轮仅 S04 实施 / 验证 / 记录后停止，下一产品 checkpoint 为 S05；retention、G 阶段 opaque checkpoint 或新 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
 
 ## 验证与交付原则
@@ -109,6 +112,6 @@ S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runti
 
 ## 进入正式实施的条件
 
-产品范围与 S01 / S02 / S03 交付已就绪；下一轮复核真实 Git，继续同一本组产品分支，仅执行 S04。先按 s02-sources / s03-capture / m1-evolution / delivery / baseline 细化 Project task 持久与恢复；只复核变化影响的代码，不重新询问已确认的范围与默认方式。
-S01 / S02 无新持久资源；S03 的 additive kind、无 backfill / DDL、CAS / missing / 撤回路径已由 s03-capture 定稿。S04 及后续阶段引入资源前仍需补齐对应校验 / 迁移 / 失败处理。
+产品范围与 S01 / S02 / S03 / S04 交付已就绪；下一轮复核真实 Git，继续同一本组产品分支，仅执行 S05。先按 m1-evolution / s02-sources / s03-capture / s04-project-recovery / delivery / baseline 细化反馈与经验的作用域 / 生命周期；只复核变化影响的代码，不重新询问已确认的范围与默认方式。
+S01 / S02 无新持久资源；S03 与 S04 的 additive kind、无 backfill / DDL、CAS / missing / 撤回路径分别由 s03-capture / s04-project-recovery 定稿。S05 及后续阶段引入资源前仍需补齐对应校验 / 迁移 / 失败处理。
 每个正式阶段完成后按治理停止；不能因远期路线已列出而自动跨越阶段边界。
