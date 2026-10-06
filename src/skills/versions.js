@@ -40,7 +40,7 @@ function validateFiles(files, name) {
     let total = 0;
     for (const file of files) {
         if (typeof file.path !== 'string' || !/^[A-Za-z0-9._\-/]+$/.test(file.path)
-            || file.path.includes('..') || file.path.split('/').some(part => !part || part === '.') || paths.has(file.path)) fail('invalid Skill version path');
+            || file.path.includes('..') || /\.staging-[a-f0-9-]{36}(?:\/|$)/.test(file.path) || file.path.split('/').some(part => !part || part === '.') || paths.has(file.path)) fail('invalid Skill version path');
         paths.add(file.path);
         if (!Buffer.isBuffer(file.buffer) || file.buffer.length > 4 * 1024 * 1024) fail('Skill version file size exceeded');
         total += file.buffer.length;

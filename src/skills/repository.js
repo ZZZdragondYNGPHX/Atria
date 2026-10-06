@@ -23,7 +23,7 @@ function assertSafeSkillName(n) {
 }
 
 function assertSafeFilePath(p) {
-    if (typeof p !== 'string' || !/^[A-Za-z0-9._\-/]+$/.test(p) || p.includes('..') || p.startsWith('/')) {
+    if (typeof p !== 'string' || !/^[A-Za-z0-9._\-/]+$/.test(p) || p.includes('..') || p.startsWith('/') || /\.staging-[a-f0-9-]{36}(?:\/|$)/.test(p)) {
         throw new Error(`illegal file path: ${p}`);
     }
 }
@@ -209,7 +209,7 @@ export function createSkillRepository(dataRoot) {
         for (const f of files) {
             if (!/^[A-Za-z0-9._\-/]+$/.test(f.path)) throw new Error(`illegal file path: ${f.path}`);
             if (f.path.includes('..') || f.path.startsWith('/')) throw new Error(`path traversal: ${f.path}`);
-            if (paths.has(f.path) || f.path.split('/').some(part => !part || part === '.')) throw new Error('invalid duplicate or noncanonical file path');
+            if (paths.has(f.path) || f.path.split('/').some(part => !part || part === '.') || /\.staging-[a-f0-9-]{36}(?:\/|$)/.test(f.path)) throw new Error('invalid duplicate or noncanonical file path');
             paths.add(f.path);
             const buf = fileBufferFromPayload(f);
             if (buf.length > LIMITS.perFile) throw new Error(`file size limit exceeded for ${f.path}`);

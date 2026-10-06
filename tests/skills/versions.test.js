@@ -201,7 +201,7 @@ test('snapshot refuses symlinks and duplicate/canonical alias payload paths', as
     await fs.symlink(join(root, 'skills/global/guide/SKILL.md'), join(root, 'skills/global/guide/alias'));
     await expect(repo.pin({ scope, name })).rejects.toThrow('symlink');
     await fs.unlink(join(root, 'skills/global/guide/alias'));
-    for (const paths of [['SKILL.md', 'SKILL.md'], ['SKILL.md', 'references//alias']]) {
+    for (const paths of [['SKILL.md', 'SKILL.md'], ['SKILL.md', 'references//alias'], ['SKILL.md', 'references/file.staging-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa']]) {
         await expect(repo.install({ scope, payload: { files: paths.map(path => ({ path, content: md('bad') })) }, conflictStrategy: 'replace' })).rejects.toThrow(/duplicate|noncanonical/);
     }
 });
