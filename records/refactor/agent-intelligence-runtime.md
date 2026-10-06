@@ -8,8 +8,8 @@
 
 ## Summary
 
-长期 Agent Intelligence Runtime 任务沿同一产品分支实施；D0–D4 / S01–S05 已完成。用户本轮仅续接 S06，并明确提供专用测试模型连接、允许私有配置留在本地，先接受建议 120 requests / 250000 tokens / 每次输出最多 1024，后明确建议非硬限制，API 每日 2000 requests / 20 RPM；站点首字较慢，单次等待扩展为 5 分钟。
-本轮完成 S06 双入口隔离 comparison、Native Session save-copy 检查、原 generation live bridge 与可恢复预算；六槽真实开发基线和六对独立比较均 execution / authority passed，五个有效 model observations / 一个无效响应。候选晋升仍拒绝，不声明稳定质量 / 成本收益。产品 HEAD `54c79cb8eea7d6ca5c7e5e4ff262fe0ca6666a64`，main 保持 `ed1fd90521a63363e29856601abbf5e908c99d10`；S06 阶段完成后停止，下一 checkpoint S07，详细实测和限制见本 Record 的 S06。
+长期任务沿同一产品分支实施；D0–D4 / S01–S09已完成。S09交付原Workspace有限单字段编排参数候选 / exact binding / explicit rollback，以及原Project pristine Task的maxRepairRounds候选 / integrity CAS。8 relevant suites / 105 distinct local tests通过；产品HEAD `f740e65238d6c46575c1f9972735a1166ca1ec71` 已commit / push，main仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
+S06真实执行与model observations保留在本Record，候选晋升仍ineligible。S07–S09manual apply不是evaluation资格；M1与S10完整自动publication未完成。本轮只续接S09，下一checkpoint仅S10。
 
 ## D0 — 最新 main 核对与架构调研
 
@@ -516,6 +516,43 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - **下一 checkpoint 仅 S09**：核对真实 Git → HANDOFF → index / decisions → m1-evolution / delivery S09 / s08-prompts / s07-skills / s06-comparison → 同一 Record；按需原 Preset / Project 参数与compiler / policy。先冻结有限 allowed fields / whole base / exact binding / conflict，不改变capability / output owner / guards / connection / 隐私或自动Routing。
 - 本轮 S08 产品 / 文档 commit / push 后停止；S09–S10 / G / Local 未开始，M1 未完整，不合并 main、不删除产品分支。S06 若未来补模型测试仍恢复同一 durable ledger / rate checkpoint且不覆盖报告。
 
+## S09 — 原编排参数候选、局部精确版本与撤回
+
+- Start product HEAD: `9b5cb5740e2af7cab8b83b9675576ea01c4f4527`。
+- Start docs HEAD: `25e1e6ceb8705b07c825e4c47fb3a8c6bb5a2355`。
+- End / tested product HEAD: `f740e65238d6c46575c1f9972735a1166ca1ec71`；同一 `feat/agent-intelligence-runtime` 已commit / push，main未变化 / 未合并。
+- Status: **Complete — S09 only**；先冻结 [s09-strategies](../../plans/architecture/agent-intelligence-runtime/s09-strategies.md)。未加载Skill、未读取 / 更新reference或其它Experience草稿；未读取S06私有config / ledger / reports。
+
+### Implementation / decisions
+
+- ordinary RP复用原Workspace settings library、Plan compiler和host profiles。显式声明仅开放有真实consumer的有限整数：Loop / Director budgets.maxSteps 1–64；Spec / Director / Agenda budgets.maxConcurrency 1–16；Agenda scheduler.maxPlannerRounds 1–32 / maxTotalRuns 1–64。原任意其它预算 / policy / capability / tools / output owner / guard / topology / Prompt / model / Connection / privacy字段固定。
+- 新增optional strategyVersions v1：完整base / desired、单字段diff、声明UUID、完整base binding table、local subject和SHA-256candidate identity。原character / conversation binding选择strategyVersionId，profile / Plan metadata显示same version；下一preparation原compiler读取exact definition，当前run保持accepted clone。≤64declarations / ≤16candidates / metadata≤2MiB；unknown / missing / content tampering / capacity拒绝，不fallback。
+- 单目标候选：已选Prompt / strategy pin上的组合prepare拒绝，binding同时有双pin拒绝。原bind清双方pin；Preset save保留已选完整snapshot但whole base变化阻止pending apply / rollback；delete清本identity候选 / declarations / pins。显式rollback在complete desired或base仍匹配时恢复冻结base，可在声明撤销后执行；用户binding / Preset改动冲突，不覆盖。
+- 原orchestrator capability API增加inspectStrategyVersions / checkStrategyCandidate / updateStrategyVersions，仍为原单browser client与debounced settings save；无cross-tab / Host CAS、durable publication intent、新UI或后台job。
+- Project authority核对发现maxRepairRounds是原Task creation参数，并无现有Project-wide Agent默认配置。选择最小兼容接入：authenticated owner + Project +尚未执行的单一Task，候选metadata追加到原durable task document；有效配置仍是原task.maxRepairRounds。完整task base仅排除repository sequence与本metadata，冻结project baseRevision、当前server cap与声明；不创建第二套Project配置服务 / 新StorageEngine kind。
+- Project只允许planning、无plan / generation attempt / proposal / Workspace的Task declare / prepare / apply / rollback；运行开始后拒绝参数改动，原repair policy / Studio loop消费accepted value。其它Task沿自己的原creation参数，不自动继承；Project revision / Task任意内容 / server cap / declaration漂移拒绝。≤16candidates / metadata≤1MiB，仍受原task≤2MiB约束。
+- 原Project task queue / integrity CAS将candidate与active参数写入同一document；重复desired / base匹配reconcile，不重复sequence写入。原Task snapshot / context policy显示active strategyVersionId；原Task无metadata继续兼容。删除 / user backup沿原kind；check / inspect在read-only可用，writes拒绝。原Studio router缺失storage_read_only状态映射，本轮修为HTTP503；不新增模型可调用candidate工具。
+
+### Minimal local validation
+
+- **8 relevant suites / 105 distinct tests passed**：Workspace strategy21、Project strategy16、Project recovery33、Project authority4、Project HTTP4、Workspace Prompt14、Workspace Presets4、Native orchestration prompts9。新增37tests；既有相关68tests。初始Workspace19后补实际Agenda两项，最终仅定向Workspace21；Project两次失败后的修复只定向相关7suite84，重复不累加。
+- 新增Workspace tests证明四mode有效host / Plan字段、original Preset不改、scope隔离 / current clone、whole base / binding / declaration冲突、capability / output / guard完整保护、unknown schema / rewritten same-ID / missing / capacity、default / builtin / ignored fields / Prompt组合拒绝、declare撤销后rollback与user edit conflict、delete / original bind。
+- 实际Director stub在candidate maxRounds=1时只发一轮，send中rollback仅影响下一preparation，已接受profile保持1。实际Agenda Engine分别在plannerMaxRounds=1 / maxTotalRuns=1后只执行一次planner、一次worker和必要finalizer，budgetReason与exact plan fingerprint可核对。原Engine policy实际将concurrency限为1，并在step budget耗尽时不再admit work。
+- 新增Project tests使用真实临时FS / SQLite、原ProjectStore / Studio builtin Git / ProjectAgentService / TaskRepository。原context tools / humanReviewRequired / silentRebase固定；candidate limit=1在首轮invalid source后进入blocked，Commit与in-flight rollback拒绝，Project revision未变。原Studio loop provider stub读取exact task strategy，generation开始后rollback拒绝。
+- 原FS / SQLite SettingsRepo reload、Task repository reopen / service重新实例化；SQLite原dump→删除task resource→restore恢复完整candidate / selected参数。该测试不声称Project FS source包含在SQLdump或deleteUser仅close就purge所有files；原Project source / 用户清理由既有authority负责。
+- 两repository调用与声明supersede的whole task CAS / queue、wrong owner / Task deletion、project human edit / cap / plan / attempt / takeover漂移、save前失败与已commit响应丢失→原authority reload / once reconcile、候选容量与server cap / expectedSequence、schema / protected / content identity / missing version拒绝。
+- 首次Project新增测试定位optional字段被原strict fields误要求为必填；修为只有存在strategyVersions时才进入optional schema，旧Task保留必填集合。另修async方法的synchronous rejection与原HTTP readonly500映射；未放宽guard。HTTP真实401 / foreign404 / spoof字段400 / no-store / read-only check200与writes503。
+- **11触及JS ESLint、product / staged diff通过**；无全量tests / build / browserUI / Android / 真机 / externalDB / CI或real model。无依赖 / lockfile变动，model请求为stub，不计S06真实预算。docs本地检查：6份任务文档 / 105个local links / fences通过，40个stage身份与依赖不变，D0–S08 Record内容及五个既有dirty hash保持。
+- main AGENTS与docs README / WEB Adapter / 两模板既有dirty未暂存 / 提交。五hash与开轮一致：AGENTS `8f01833fdba7d46bd6dfa33e259585e2486ddf11a3076997a0830cde331d265f`；README `8d1fe754dd5f5a8255375b8ae8aed29a9196b764a54c65970c7a188ba93416b1`；WEB `a9ea6de6d9bbc3f5a5a50e508231fb9286f0ef6e798268b2901cbe38db7a4686`；HANDOFF模板 `22c8d9aead58bced3b96a265a0cf7f0b18f13e9346e5d118194b7558f5d66c06`；Record模板 `adf27c43f4318970782387069b3beb88d21cf6a7b97217702ed6b9b170e06c77`。
+
+### Limits / next checkpoint
+
+- 数值范围是本阶段finite工程边界，不是自动晋升阈值或provider token / price证据；可增加有限工作量，但complete guarded config不变。确定性停止 / 隔离tests不证明模型收益。S06仍promotion ineligible；manual apply不绑定feedback / diagnosis / evaluation，不产生自动发布资格。
+- Workspace原单client / debounce，不具cross-tab / Host原子publication。Project沿原单Host队列 / task CAS，不声称跨进程锁 / physical fsync；完整Task candidate只适用pristine Task，已运行Task不可rollback policy，其他新Task不自动继承。这是S09有限现有参数authority接入，S10若需要Project-wide配置必须先设计原authority兼容路径，不偷偷将candidate metadata当有效默认配置。
+- explicit rollback只在冻结whole base / desired匹配时恢复配置，不撤销既有Project / World effects；来源withdrawal / retention / policy删除的传播、运行后监测和自动rollback仍归S10。
+- **下一checkpoint仅S10**：真实Git → HANDOFF → index / decisions → m1-evolution / deliveryS10 / s09-strategies / s08-prompts / s07-skills / s06-comparison / s05-feedback → 同一Record。先冻结source / diagnosis / feedback / policy依赖、owner共享finite预算、原scheduler bounded job、Review / publication intent / receipt / crash恢复与各target写入部署边界，再实施双入口完整消费者。
+- 本轮产品 / docs commit / push后停止；不进入S10、不合并main、不删除分支。若确需模型验证，恢复同一S06ledger / rate checkpoint，不读取未知Secret、不清零预算 / 覆盖报告。
+
 ## Final state
 
-长期任务仍进行；D0–D4 / S01–S08 完成。S08 已交付 Native immutable Prompt正文候选 / whole Route CAS 与 ordinary RP Workspace 精确版本 binding；7 suites / 68 distinct local tests 通过。产品 HEAD `9b5cb5740e2af7cab8b83b9675576ea01c4f4527` 已 push，main 未变化。下一 checkpoint 仅 S09，本轮未开始。S06 promotion 仍 ineligible；M1 整体、自动 publication和稳定质量 / 费用收益均未计作完成。
+长期任务仍进行；D0–D4 / S01–S09完成。S09交付原Workspace策略版本 / rollback与Project pristine Task repair参数候选 / CAS，8 suites / 105 distinct本地tests通过。产品HEAD `f740e65238d6c46575c1f9972735a1166ca1ec71` 已push，main未变化。下一checkpoint仅S10，本轮未开始。S06仍ineligible；M1与自动publication未计作完成。

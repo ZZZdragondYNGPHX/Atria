@@ -3,13 +3,15 @@
 ## Task / current state
 
 - Task ID: `agent-intelligence-runtime`；Primary Workspace: `main`。
-- Product branch / HEAD: `feat/agent-intelligence-runtime@9b5cb5740e2af7cab8b83b9675576ea01c4f4527`；已 commit / push，origin 同 HEAD，产品 worktree 干净。
+- Product branch / HEAD: `feat/agent-intelligence-runtime@f740e65238d6c46575c1f9972735a1166ca1ec71`；已 commit / push，origin 同 HEAD，产品 worktree 干净。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`；未合并本任务。
-- Auxiliary docs: `docs`；S08 start HEAD `63aa429f409a843c13d6afeedb8f048dcdb99177`；仅本任务文档提交，保护治理 / 模板既有 dirty。当前 docs HEAD 以包含本 Record / HANDOFF 的提交为准。
-- Current stage: **D0–D4 / S01–S08 完成；S08 Native immutable Prompt 候选 / Route CAS 与 ordinary RP Workspace exact version binding 已交付；下一 checkpoint S09，本轮停止**。
+- Auxiliary docs: `docs`；S09 start HEAD `25e1e6ceb8705b07c825e4c47fb3a8c6bb5a2355`；仅本任务文档提交，保护治理 / 模板既有 dirty。当前 docs HEAD 以包含本 Record / HANDOFF 的提交为准。
+- Current stage: **D0–D4 / S01–S09 完成；S09 原Workspace有限编排参数exact binding / rollback与Project pristine Task repair候选 / CAS已交付；下一checkpoint S10，本轮停止**。
 - Plan entrypoint: [index](plans/architecture/agent-intelligence-runtime/index.md) → [decisions](plans/architecture/agent-intelligence-runtime/decisions.md)。
+- S09 stage evidence: [s09-strategies](plans/architecture/agent-intelligence-runtime/s09-strategies.md) / [delivery S09](plans/architecture/agent-intelligence-runtime/delivery.md) → 同一 [Record](records/refactor/agent-intelligence-runtime.md)。
 - S08 stage evidence: [s08-prompts](plans/architecture/agent-intelligence-runtime/s08-prompts.md) / [delivery S08](plans/architecture/agent-intelligence-runtime/delivery.md) → 同一 [Record](records/refactor/agent-intelligence-runtime.md)。
 - Stage evidence: [s07-skills](plans/architecture/agent-intelligence-runtime/s07-skills.md) / [delivery S07](plans/architecture/agent-intelligence-runtime/delivery.md) → 同一 [Record](records/refactor/agent-intelligence-runtime.md)；前序： [s06-comparison](plans/architecture/agent-intelligence-runtime/s06-comparison.md) / [s01-baseline](plans/architecture/agent-intelligence-runtime/s01-baseline.md) / [m1-evolution](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery S06](plans/architecture/agent-intelligence-runtime/delivery.md) → 同一 [Record](records/refactor/agent-intelligence-runtime.md)。来源 / authority 问题按需读取 [S02](plans/architecture/agent-intelligence-runtime/s02-sources.md) / [S03](plans/architecture/agent-intelligence-runtime/s03-capture.md) / [S04](plans/architecture/agent-intelligence-runtime/s04-project-recovery.md) / [S05](plans/architecture/agent-intelligence-runtime/s05-feedback.md) / baseline 相关段落。
+- S09 code entry: `public/scripts/lib/agent-workspace/strategy-versions.js` / 原Workspace Presets / host profiles / capability API；`src/native/agent-intelligence/project-strategy.js` / 原ProjectAgentService / TaskRepository / Studio router；`tests/agent-runtime/workspace-strategy-versions.test.js` / `tests/agent-intelligence/project-strategy.test.js`。model-prompt-runtime README有explicit调用。
 - S08 code entry: `src/native/model-prompt-runtime/prompt-candidates.js` / 原 Native generation router；`public/scripts/lib/agent-workspace/prompt-versions.js` / 原 Preset library / host profiles / orchestrator capability API；`tests/native/prompt-candidates.test.js` / `tests/agent-runtime/workspace-prompt-versions.test.js`。产品 model-prompt-runtime README 给出手动调用。
 - S07 code entry: `src/skills/{repository,versions}.js` / `src/endpoints/skills.js` → shared `skill-invocation.js` / RP resolver + tools / Native narrative / Studio Agent；`tests/skills/{versions,run-pins,api}.test.js`，原 README 给出调用。
 - S06 code entry: `tests/agent-intelligence/{comparison,live}.mjs` → `comparison.js` / `adapters.js` / `live-bridge.js` / `budget.js` / `judge.js` / `session-copy.js`；README 给出完整本地调用。
@@ -39,6 +41,9 @@
 - S08：Native 原 Preset root 保存有限声明 / candidate metadata，正文与 ancestry 使用原 immutable resource revisions。单模块 body 变化，完整 Preset / declaration / Route 与 exact closure 校验；原队列 + storage expectedIntegrity 原子切单一 player Route 的 Program ref，重复 desired match reconcile。Package 先显式导入用户 Library 副本；缺 revision / corruption 不 fallback。body ≤64 KiB、每 Preset ≤16 candidates / metadata≤2 MiB；静态插值沿原 parser，实际参数仍由原 request compiler 校验。
 - S08 ordinary RP：原 Workspace settings 保存完整 base / desired snapshots 与 SHA-256 candidate identity，显式 Agent instructions 声明；只切角色 / 会话 binding 的 promptVersionId，禁止 global / default / builtin。profile / Plan 携带版本，四 mode 下一 preparation 读 exact definition，当前 run 保持 clone。whole base / bindings / declaration 冲突、same-ID body 改写 / unknown / missing 均拒绝；原 bind 清 pin、Preset delete 清对应版本，已选历史版本在原 save 后保留。原 capability API inspect / check / update 沿 settings debounce；仅单 browser client，无 cross-tab / Host CAS 或 durable publication intent，不授权自动模式。
 
+- S09：Workspace原用户Preset显式声明有限integer fields、完整base / desired / single diff、SHA-256content identity和whole binding table，单一character / conversation binding选择strategyVersionId；四mode下一preparation沿原compiler / host消费，current run不热改。Prompt组合 / default / builtin / ignored fields / schema / missing / corruption / capacity拒绝；explicit rollback在whole base / desired匹配时恢复，revocation不阻止rollback，user编辑冲突。
+- S09 Project：原maxRepairRounds是Task creation参数，无既有Project-wide默认authority；候选只作用于owner + Project + pristine planning Task，完整Task base（排除repository sequence与本metadata）、project revision / server cap / declaration固定。候选与effective参数同一Task document / queue / integrity CAS；snapshot / context policy显示strategyVersionId。开始plan / generation / proposal / Workspace后禁止apply / rollback，其它Task不继承。原repair / Review / Commit guards不变；原Studio readonly错误映射修为503。无新kind / model / UI / job或自动权限。
+
 ## Real observations / budget
 
 - Gemini final development pilot：6 / 6 execution 与 authority passed，18 sends / 18 tool calls，21 deterministic checks passed，57167 provider-reported tokens；S01 report `empiricalReady=true`。测试 HEAD `7d7708c1486c5b48b430eb2210e89768f4aabfb0`。
@@ -55,12 +60,14 @@
 
 ## Pending / limits
 
-- 下一 checkpoint **S09**：沿原 Preset / Project 参数与 compiler / policy 冻结有限 allowed fields、candidate diff / complete base、局部 exact binding / conflict / 撤回。S08 已交付正文候选与 Native / ordinary RP exact consumers；本轮未开始 S09；S06 候选仍 publicationStatus=ineligible，price / 人工偏好 / 无效评分与自动晋升门槛未补齐，不将单次 model observation 当发布批准。
+- 下一checkpoint **S10**：先冻结feedback / diagnosis / source-deletion / policy依赖、owner有限共享预算、原scheduler bounded job、Review / publication intent / receipt / 恢复 / rollback、各target受支持写入部署边界，再实施双入口完整consumer。S06仍ineligible；manual apply不作晋升批准。S09Workspace仅单client / debounce，Project仅pristine单Task，不已有Project-wide默认配置。
 - price、真实 upstream / opaque gateway retries 不可知；显式 local tokenizer / context guard 不是 Gemini 精确能力证明。HTTP header 等待时长非 TTFT，不能声称质量 / 费用 / 延迟收益。其它等价 body / cognition / critic ablations unavailable，Director 仅 scripted graph 观测。
-- 只允许 synthetic evaluator target，S07 已交付 Skill 生产 exact pin 与显式手动 edit；S08 已交付显式手动 Prompt body binding，未交付 S09 策略候选或 S10 自动晋升、S10 自动 publication，不新增 storage kind / HTTP / UI / 后台循环。S04 recovery 不重做 generation / rebase / Commit；S05 feedback / diagnosis 不是配置 authority。
-- M1 尚不完整，S09–S34 / G01–G06 未实施；本组分支不删除，main 不合并。D3 / D4 只企划，不重做研究或读取未来 G / Local。
+- 只允许 synthetic evaluator target，S07 已交付 Skill 生产 exact pin 与显式手动 edit；S08 已交付显式手动 Prompt body binding，S09已交付有限策略候选 / explicit rollback；S10自动晋升 / publication仍未交付。S09仅增加原Studio authenticated candidate HTTP consumer，不新增storage kind / UI / 后台循环。S04 recovery 不重做 generation / rebase / Commit；S05 feedback / diagnosis 不是配置 authority。
+- M1 尚不完整，S10–S34 / G01–G06 未实施；本组分支不删除，main 不合并。D3 / D4 只企划，不重做研究或读取未来 G / Local。
 
 ## Validation / preservation
+
+- **S09：8 relevant suites / 105 distinct tests passed**：Workspace strategy21、Project strategy16、原Project recovery33、Project authority4、Project HTTP4、Workspace Prompt14、Workspace Presets4、Native orchestration prompts9；新增37 / 原相关68，重复不累加。实际Director一轮限制、Agenda planner / worker上限与必要finalizer、原Engine concurrency / step停止、Project server首轮invalid repair blocked、Studio loopexact参数 / in-flight rollback拒绝、FS / SQLite原settings / task reopen与SQLite原task dump / restore、before / aftercommit save failure / response loss、schema / whole base / scope / guards / cap / capacity / delete / HTTP401 / foreign404 / spoof400 / no-store / readonly503。11JS ESLint / product diff通过；无真实model / build / browserUI / Android / 真机 / 外部DB / CI。未读取S06private配置 / ledger / reports。
 
 - **S08：7 relevant suites / 68 distinct tests passed**：native candidates19、Workspace candidates14、原PromptPreset5、runtimepersistence7、WorkspacePreset4、Native orchestration prompts9、Workspace authoringhelp10。新增两套最终33 tests；原相关5套35 tests，重复不累加。最后只定向新增继承闭包 / 内容哈希 / jsdom package conditions 接线；10触及JS ESLint / diff通过。
 - S08实际证据：FS / SQLite reopen与原SettingsRepo reload；SQLite dump / 原user close+directory removal / restore；metadata失败 / committed response lost、并发RouteCAS、wholebase / declaration / binding冲突、unknown / missing / corrupt / 容量 / 删除 / read-only、Package exactenvelope导入隔离copy。真实RPDirector stub多轮保持候选；原ProjectGenerationHost / scheduler / compiler / providerstub发送candidate，narrator / studio原GenerationService snapshot显示新body和旧preview保持。无完整NativeSessionproductionturn重放、真实model / 全量test / build / browser / Android / 真机 / external DB / CI。未读取或改写S06私有配置 / ledger / 报告。
@@ -75,10 +82,12 @@
 
 ## Next target / bootstrap
 
-读取 `docs:HANDOFF.md`，仅续接 S09。核对真实 Git → HANDOFF → index / decisions → m1-evolution / delivery S09 / s08-prompts / s07-skills / s06-comparison → 同一 Record；按需原 Preset / Project 参数与 compiler / policy authority。沿用 `feat/agent-intelligence-runtime@9b5cb5740e2af7cab8b83b9675576ea01c4f4527`；D0–D4 / S01–S08 完成，产品 commit / push、工作树干净，main 未合并。
+读取 `docs:HANDOFF.md`，仅续接S10。核对真实Git → HANDOFF → index / decisions → m1-evolution / deliveryS10 / s09-strategies / s08-prompts / s07-skills / s06-comparison / s05-feedback → 同一Record；按需原scheduler / Review / candidate / storage authority。沿用 `feat/agent-intelligence-runtime@f740e65238d6c46575c1f9972735a1166ca1ec71`；D0–D4 / S01–S09完成，产品已commit / push、worktree干净，main未合并。
 
-S08 Native 复用 Library immutable Prompt closure 与 Preset root 保存声明 / 正文候选，whole Preset / declaration / Route 校验，expectedIntegrity 原子切单一 Route 的 exact Program binding；ordinary RP 沿原 Workspace settings / 角色与会话 binding 固定完整候选，SHA-256 version identity / diff、四 mode exact profile / Plan metadata，当前 run 保持 accepted clone。7 relevant suites / 68 distinct local tests，无新真实模型。Native 单 Host write queue；Workspace 原单 browser client / debounce，不声称跨 tab / Host CAS 或 durable publication intent。S09 先冻结有限 allowed fields / 单目标 candidate / whole base / effective scope binding / conflict / rollback，再接原 compiler / policy / 下一 run消费者；不更改 capability、output owner、必要 guard、Connection / Secret / Privacy 或 Routing 自动发布权限。
+S07原Skill完整history / pin、S08Native immutable body / Route CAS与ordinary RPexact prompt binding、S09Workspace策略exact versions / explicit rollback与Project pristine Task参数candidate / integrity CAS已交付。S09没有Project-wide默认authority；其它Task沿creation参数，不自动继承。Workspace只有原单browser client / debounce，无cross-tab / Host CAS；Project一旦开始plan / generation就不能apply / rollback policy。S10先定各target受支持写入 / 生命周期边界，不能用手动路径假装自动publication可靠。
 
-S06 Comparison / JudgeReport 仍 ineligible，不用一次模型偏好批准晋升；S10 仍需 feedback / diagnosis / policy / Evaluation / source-deletion dependency、有限共享预算、完整 Review / publication / recovery / rollback。S07 / S08 的 explicit manual apply 沿原编辑权限，不是评测晋升。Package 原版保留；禁止 latest fallback。若确需模型请求，只使用 local Git config 的已授权位置，恢复同一累计 ledger / rate checkpoint 与显式 budget override，不重置 / 覆盖报告，不扫描 Secret。
+S10必须接同一S05feedback / diagnosis / withdrawal / retention / source deletion依赖、S06独立evaluation、owner共享finite预算和原NativeTaskScheduler bounded job；实现完整Review / publication intent / expected base / desired exact binding / receipt / crash恢复 / activation观察 / stop / rollback。只演化已允许的文本 / 参数，不改变capability、output owner、必要guard、connection / Secret / privacy / Routing权限。source缺失、预算不足、judge分歧或price不可核对时保守awaiting_review / ineligible，不凭一次model preference降低门槛。
 
-不得读取或更新 reference / 其它 Experience 草稿；仅 S09，阶段完成 commit / push、同一 Record / live HANDOFF 后停止，不进入 S10、不合并 main。保护 main AGENTS 与 docs README / WEB Adapter / 两模板的既有 dirty；本轮五个 hash保持，见 Record / 前序交接证据。
+如确需模型请求，只用local Git config的已授权位置，恢复同一累计ledger / rate checkpoint与明确budget override；不清零 / 覆盖报告、不扫描Secret。S09无新真实请求，S06最后累计仍110requests / 300464tokens（含未知保留预留），不是精确实际tokens。
+
+不得读取 / 更新reference或其它Experience草稿；仅S10，阶段完成product commit / push、同一Record / live HANDOFF后停止，M1完整交付前不合并main。保护main AGENTS与docs README / WEB Adapter / 两模板既有dirty，五hash在S09Record可核对。
