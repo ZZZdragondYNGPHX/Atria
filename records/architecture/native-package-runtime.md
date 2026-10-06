@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`。
-- Status: Active — S2 已完成；继续 S3 至 CP1。
+- Status: Active — S1 / S2 / S3 已完成，CP1 核心闭环已推送；等待用户续接 S4 → S5。
 - Plan：[唯一入口](../../plans/architecture/native-package-runtime/index.md)。
 - 实时恢复：[HANDOFF](../../HANDOFF.md)。
 
@@ -69,3 +69,33 @@ S1–S6 按 [阶段路由](../../plans/architecture/native-package-runtime/index
 - MySQL / PostgreSQL 首次连接失败（本机服务未启动）；后续使用现有 disable 开关，仅验证本机 Fs / SQLite。未执行远端 CI、整库测试、构建、UI 或设备验证。
 - 限制：40 ms 是 VM 中断 deadline，WASM 初始化及内存耗尽清理有额外耗时，不构成宿主进程 wall-time SLA；S3 接入 Task 真产物和上下文消费，S4–S5 负责编排/作者界面。
 - 下一目标 S3，然后到 CP1 停止。
+
+## S3 — 动态上下文、Knowledge 与 Task 消费（CP1）
+
+- 日期：2026-10-06。Start HEAD：`664616b83`；End / Tested HEAD：`10b003f9a2001145b14ae4a40cc731d443ac04d1`。产品分支 `feat/native-package-runtime` 已推送；main 未合并。
+- S1 docs 提交：`ac1cea354`；S2 docs 提交：`b6216a882`；本次 S3 docs 以实际远端 ref 为准。
+
+### 完成内容和关键决定
+
+- Task uses / production 保存原输入、生产锚点、定义 hash、视图依赖和 Scope epoch，沿用实际请求/结果/resource refs；保存和消费均检查，typed JSON 不能替代正式 record 引用。
+- same_branch 跨 Revision 保留依赖检查，固定领域规则在当前应用基准重算；once 消费与领域效果一起提交，真实 applicationRevisionId 在 SessionCore CAS 发布时填写。保留旧 Task 契约，新的 uses 不获得旧 applyCommand / interpretation 平行写权。
+- required context-derivation 与固定 JS/TS 派生进入现有 ContextCompiler / PromptIR，匹配 context-purpose Information audience；派生输出可表达 eligibility / priority / full / compact，固定产物用途受宿主校验。
+- 完整 Knowledge selector 接入 Context 主链，展开内容、递归依赖、预算、发现和生命周期参与真实选择；Context 使用现有 Provider tokenizer，最终 wire request 仍有 GenerationService 预算。
+- Knowledge pendingState 按既有 targets 分离受众；现代 Task/Turn 只凭内部 result-adoption proof 在正式 CAS 采用，preview 不写入。旧无 taskRuntime Draft 路径保留兼容。
+- 复用 Action Receipt / Task record / 有效请求快照承载固定资源、阶段和产物依据；不新增平行 State、事实缓存或调度。
+
+### 本地最小验证
+
+- 新增 S3 行为：Task 产物消费 13 例、Package Context 派生 6 例、CP1 Fs / SQLite 集成各 1 例，共 21 例通过。CP1 使用本机 HTTP fixture 模型输出，验证正式 Task production → 无关 Revision → 固定购买计算 → Narrator → 一次 CAS；动态 Knowledge 进入真实请求，preview 不发送/写入，once/retry/伪造/错用途/依赖变化得到明确拒绝。
+- 随触及面执行并通过既有 ContextCompiler 14 例、Knowledge selection 5 例、Task P3 36 例、Prompt P3 46 例、Session projection 49 例、Authority Turn 24 例；S2 测试证据保留在上节。
+- 最后 Provider tokenizer 增量后再次执行 CP1 2 例 + Prompt P3 46 例，48 例通过。全部触及产品 JS 文件 ESLint、git diff / staged whitespace 检查通过。
+- 调试中修正新 fixture 的 artifact 参数和 context envelope；两份现有 P3 fixture 缺少已存在的 exact resource closure / runs port，补齐真实宿主输入后通过，没有放宽产品校验。
+- 全程本地、最小相关验证；未执行远端 CI、全库测试、产品构建、浏览器 UI、Android 或真机。MySQL / PostgreSQL 本机没有运行服务，未算通过。
+
+### CP1 状态、限制和下一目标
+
+核心闭环完成且产品/docs 推送，按任务约定停止。S4–S6 未开始；没有提前合并 main 或删除开发分支。
+
+宿主 QuickJS 的 40 ms 是 VM 中断 deadline，初始化/内存清理另有耗时。原子承诺仅限单 Session Revision；跨 Session / Realm / 外部系统不属于本次原子证明。复杂计算当前接收既有 Lifecycle grants / 真实 Task 结果，World 的写与 Reducer 保持原路径。细致跨域编排、Processing、作者表单和视觉诊断属于 CP2 / CP3。
+
+下一段从 S4 Experience / Lifecycle 编排连续推进 S5 Processing / 作者工作流到 CP2；按 index 仅读指定模块，不重做 S1–S3。

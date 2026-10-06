@@ -75,7 +75,7 @@
 
 `src/native/authority-transaction.js` → `task-authority.js` → `session-core.js` 的相应准备/提交函数；`public/scripts/native/experience/logic/package.js`、`transactions.js`、`runtime.js` 及相应 Validator / Reducer / World 候选路径。输入视图从 `public/shared/native-information-runtime.js` 按需追踪。
 
-锁定证据和分类见 [research.md](research.md)。本模块在 S1 结束时补上技术契约，当前不声称已确定 Schema 或执行载体。
+锁定证据和分类见 [research.md](research.md)。S1 冻结契约见下文，S2 已实现；Task 消费的 S3 落地详见 context-generation。
 
 ## S1 冻结技术契约（2026-10-06）
 
@@ -109,3 +109,5 @@ Transaction 可选 `artifacts`，每个 grant 声明本地 id、固定 taskId / 
 | 私有读取 | 不进入默认 Receipt / 模型 / 呈现 |
 
 静态证据：`authority-transaction.js` 已通过 privateReads / budget / candidate 准备，`task-authority.js` 已精确装载 sourceFiles，SessionCore 负责唯一发布；`frontend/script-compiler.js` 已提供纯模块编译闭包，`frontend/script-vm.js` 提供可复用 QuickJS 限制与动态 constructor 封堵。S2 只扩展这些路径。
+
+S3 增补：`artifacts` 成为 validator / Resolution / Effect 的类型化根；固定 computation 只获得已校验的真实 payload。消费证据进入安全 Action Receipt，once 标记在所属 Task record 和领域效果一起提交，applicationRevisionId 为实际发布 Revision。

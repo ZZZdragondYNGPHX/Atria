@@ -43,3 +43,9 @@ S1 为契约设计确定必要证据；S2 起每个 Runtime 增量提供对应�
 ## 起读代码
 
 `public/scripts/native/runtime-workspace.js` 的有效请求和 Diagnostics；相应原生资源/Source Draft 与预览入口；受限 Script VM 的错误定位和预算；各 Runtime 已有选择证据、结果身份和 Receipt。只沿当前阶段功能继续读取。
+
+## CP1 已接入的证据
+
+S2 的 Action Receipt 保存固定 computation source / resourceHash / stage；S3 增加 artifact invocation / producer Task / variant / usage / production Revision / resultHash。正式 record 保留 production 与消费的 base/application Revision。
+
+ContextPlan 和有效请求快照的 nativeSelection 保存匹配 view 的 derivation 资源、产物引用、Knowledge 纳入/拒绝、pending lifecycle 与 targetKey；预览使用同一编译器和预算。证据不默认保存私有 reads / computed，也不建立新的诊断事实库。当前可经既有 Source / 有效请求诊断查看原生数据；专用 Studio 表单、视觉诊断和交互工作流仍由 S5 实施，未执行新增 UI 验证。

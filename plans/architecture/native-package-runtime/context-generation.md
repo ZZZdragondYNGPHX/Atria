@@ -75,3 +75,29 @@ S1 先落实领域契约需要的真实 Task 引用与消费接点；S3 完成�
 once 的消费身份写入同一候选 Task record，和领域效果一起 CAS 发布；失败不会消耗。请求幂等继续由 Authority identity / existing receipt 决定，与重复消费独立。编辑后 payload 与原 normalizedResultHash 不符，不再具备原产物身份；旧 Task 无 production / uses 可沿用既有显示和 proposal API，但不能自动取得新的消费权。
 
 S3 将在现有 SessionContextCompiler 中接入完整 Native Knowledge selector；固定 Package 上下文派生只接收匹配当前受众且获 context exposure 的 Information view 和 context-purpose Task references。动态 Knowledge 文本先展开，再执行 full / compact 和依赖预算，最终请求仍由 GenerationService 计数。pending sticky / cooldown 只在相应正式结果采用时随 Session CAS 提交，preview / compile 不写入。
+
+## S3 实施技术契约（2026-10-06）
+
+### 作者派生与 Prompt 主链
+
+ExperienceContract 新增 required `context-derivation@1` 与 `contextRuntime: { schemaVersion: 1, derivations }`，两者必须一起声明。每条 derivation 固定 `id / source / viewId / target / artifacts`。source 是既有 Package source JS/TS 闭包，沿用 S2 的编译和 QuickJS 计算宿主；default `derive` 只接收获 context exposure 的 Information projection、获 context-purpose Task 产物和显式 seed。只执行当前消费者精确匹配的 view；不存在匹配视图时不执行，声明命中但缺宿主/产物则明确拒绝。
+
+`target` 为 `{ kind: context, priority }` 或 `{ kind: knowledge, knowledgeEntryId }`；Knowledge 目标必须是固定 Package entries 中的精确 ID，且对应 view 授予 knowledge。返回 `{ text, compact?, eligible?, priority? }`：文本上限各 32768 字符，priority 为 -10000..10000，eligible 为 boolean，单次编译派生累计 256 KiB。纯派生支持聚合、排序、资格与内容选择；它不能发起模型任务或提交领域变化。基础 Prompt 条件 / 局部参数 / stage artifacts 继续由原 Compiler 处理，派生上下文进入原 ContextPlan → PromptIR → 最终请求，不建立平行 Prompt authority。原局部 Prompt artifact JSON 不是正式 Task 引用。
+
+### Knowledge 选择及采用
+
+SessionContextCompiler 接入 `evaluateNativeKnowledge` 完整主链，保留发现、生命周期、递归依赖、预算 tier 与 full / compact。先展开实际文本，再按依赖 bundle 计数；动态 eligible 和 priority 进入同一选择器。最终 Context 分配仍保持依赖原子组，并只为实际纳入的条目建立新的 sticky / cooldown。preview / send 共用准备路径，概率使用当前固定快照的 deterministic seed。
+
+已有 HTTP Provider 提供对应 Model 的 contextTokenizer；OpenAI-compatible 使用配置的编码，Native messages 沿用 UTF-8 byte 上界，最后仍由 GenerationService 对完整 wire request（含工具、schema 和预留输出）计数。没有 text tokenizer 的自定义 port 继续既有估算，最终 Provider budget 强制仍存在。
+
+持久状态沿用 `atri_knowledge_runtime.targets[targetKey]`，Narrator、Actor 和具体 Task 的 target 分离。有效请求快照的 `contextPlan.nativeSelection` 保存派生资源依据、选择/拒绝、pendingState 和实际纳入 identity；它本身不是正式写权限。GenerationHost 在相应结果采用时产生宿主内存中的 proof，SessionCore 验证 core / owner / Session / Branch / Revision 后，与正式 Task / Turn 在同次 CAS 采用选择状态。现代 taskRuntime 的 generic state patch 和旧浏览器 commitKnowledge 均不能代写该 namespace；无 Task runtime 的既有产品路径保留原来的 Draft 采用行为。
+
+### 正式 Task 消费
+
+`resultPolicy.uses` 只用于 durable 未采用 artifact，不能与 turn、app_command sink、applyCommand 或 interpretation 并用。每条 use 定义 S1 冻结的用途、复用、基数、viewIds 和 scopeIds；不存在的依赖 Build 校验失败。GenerationHost 捕获 production；SessionCore 保存前复核定义 hash、输入、依赖、exact prompt/generation ref、规范输出 hash 和 delivery 类型。
+
+Transaction 的 `artifacts` grant 从 args 的 invocationId 解析真实 record；固定源、variant、usage、payload hash、Session / PackageVersion / Branch、Scope epoch、依赖 fingerprint 和 once 历史全部校验。规则输入在私有候选中按固定契约重算，操作提案只能参与其固定 Transaction。Context derivation 的 artifacts grant 为固定 task / variant / usage 加 `selector: latest`，选择最新正式 record 后进行同样校验，不隐式退回过期的旧结果。
+
+once 标记在私有候选产生，SessionCore 发布时填写真实 applicationRevisionId；失败不消耗，重试仍由原 invocation / receipt 幂等。编辑旧 proposal 时保存 derivedResult 的源/结果 hash，不能再冒充原生产 payload。安全产物身份随既有 Action Receipt 持久化；没有复制另一个 Task/事实缓存。
+
+CP1 本地场景已覆盖真实 HTTP fixture 生成 → durable Task → 无关 Revision → 领域计算 → 私有候选 Narrator → 一次 CAS，另有动态 Knowledge 依赖预算、只读 preview、伪造/编辑/错用途/过期和重复消费验证。正式范围仍为单 Session 提交；S4–S6 处理后续编排、作者工作流和最终集成。

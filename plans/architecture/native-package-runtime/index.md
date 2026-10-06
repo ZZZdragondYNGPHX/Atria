@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`；`docs` 承载本任务的 Plan、Record 与实时交接。
-- Status: Active — S2 已实施并验证；下一阶段 S3 核心上下文与产物消费。
+- Status: Active — S1 / S2 / S3 已完成并推送；CP1 核心闭环完成，等待续接 S4 → S5。
 - 创建日期：2026-10-06。
 - 产品起点：远端 `main`，`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；开始后续阶段时重新核对实际远端 HEAD。
 - Record：[永久阶段记录](../../../records/architecture/native-package-runtime.md)。
@@ -76,13 +76,13 @@ S1 是下一设备的起点，按 S1 → S2 → S3 连续推进至 CP1。S1 仍�
 | CP2 体验与作者闭环 | S4 → S5 | Experience / Lifecycle 编排、Processing、原生交互、Studio 与 Diagnostics 接入正式链路；相关验证通过，全部阶段已推送 | S6 |
 | CP3 最终完成 | S6 | 原生场景与针对性回归通过，完成 main 集成、永久记录、分支清理和 live HANDOFF 删除；结果已推送 | 任务结束 |
 
-本轮交付边界仍为 S0 文档发布与换设备交接，不启动 S1 或产品实现。后续在每阶段推送时保留可恢复状态，无需仅因阶段结束退出工作轮。检查点汇报聚焦完成内容、实际验证、关键风险和下一段目标。
+S0 当时只发布文档；本轮已经按授权连续完成 S1 → S3 并到达 CP1。现在停止，下一段由用户续接 S4 → S5 到 CP2。每阶段保留可恢复状态，不因为普通阶段结束提前退出；检查点汇报聚焦完成内容、实际验证、关键风险和下一段目标。
 
 ## 设计状态
 
 已冻结：目标、职责、Authority 边界、脚本用途、读权限原则、Task 消费原则及 Processing 分工。
 
-S1 已冻结：Game Logic v3 可选 computation、复用固定模块编译与 QuickJS 受限计算、typed computed + 固定 Effect 模板、候选后 invariant、单 Session CAS 和 Task uses / production 引用。详见 authority-script / context-generation 的 S1 契约；S3 作者表达按该边界细化。
+S1 已冻结：Game Logic v3 可选 computation、复用固定模块编译与 QuickJS 受限计算、typed computed + 固定 Effect 模板、候选后 invariant、单 Session CAS 和 Task uses / production 引用。详见 authority-script / context-generation 的 S1 契约；S3 已完成 contextRuntime 派生、完整 Knowledge 选择和正式 Task 产物用途消费；详细 Schema / API 与采用边界见 context-generation 的 S3 契约。
 
 ## 验证策略
 
@@ -96,3 +96,5 @@ S1 已冻结：Game Logic v3 可选 computation、复用固定模块编译与 Qu
 
 - 2026-10-06：根据定向研究和用户确认方向建立正式 Plan Bundle；技术细节转入阶段设计，结束逐项方向确认。
 - 2026-10-06：按用户要求将停止汇报边界改为 CP1（S3 后）、CP2（S5 后）和 CP3（S6 最终完成）；各阶段继续验证、记录和推送，当前轮只完成 S0。
+
+- 2026-10-06：S1 契约冻结，S2 固定领域计算，S3 动态上下文 / Knowledge / 真实 Task 消费已实施并完成 CP1 本地验证；停在 CP1，S4 尚未开始。
