@@ -16,6 +16,7 @@ const registerCapabilityApi = __ctx.registerCapabilityApi;
 import { buildLastUserAnchor, compactStageOutputs, normalizeNodeOutputForSnapshot } from './anchors.js';
 import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import { createRpEvidenceCapture } from './evidence-capture.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
     onNativeSessionLifecycle,
@@ -51,6 +52,8 @@ import {
     getCurrentRun,
     startRun,
     recordMemoryRecall,
+    configureEvidenceCapture,
+    flushEvidenceOutput,
 } from './run-state/store.js';
 import { openWorkspace, configureWorkspace, destroyWorkspace, initWorkspace as initRunPanel } from './workspace/panel.js';
 import { workspaceRunView } from '../../lib/agent-workspace/projection.js';
@@ -959,6 +962,7 @@ jQuery(() => {
         },
     });
     initRunPanel();
+    configureEvidenceCapture(runId => createRpEvidenceCapture(getContext(), runId));
     ensureSettings();
     getWorkspaceLibrary(getSettings());
     saveSettingsDebounced();
@@ -1088,6 +1092,8 @@ jQuery(() => {
     if (context.eventTypes.GENERATION_ENDED) {
         context.eventSource.on(context.eventTypes.GENERATION_ENDED, () => {
             try { restoreDirectorPresetSwap(getContext()); } catch (_) { /* best-effort */ }
+            const run = getCurrentRun();
+            if (run?.chatKey === getChatKey(getContext()) && !['aborted', 'cancelled', 'error', 'failed'].includes(run.status)) void flushEvidenceOutput(run.runId);
         });
     }
     if (context.eventTypes.GENERATION_STOPPED) {

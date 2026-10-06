@@ -75,7 +75,7 @@ export async function runDirectorWorker({ runId, parentRunId, agentId, nodeId, t
                     return { intent: { type: 'model' }, policyState: state };
                 } },
                 model: { request: effect => invokePort(requestRound(runtime.getState(branch.runId).policyState.round), 'model', intent =>
-                    intent.send(withRuntimeContext(guardRequestCallbacks({ ...intent.request, taskMessages: effect.messages, abortSignal: effect.signal }, effect.signal), context, assertFresh))) },
+                    intent.send(withRuntimeContext(guardRequestCallbacks({ ...intent.request, taskMessages: effect.messages, abortSignal: effect.signal }, effect.signal), context, assertFresh, effect))) },
                 tool: { async execute(effect) {
                     assertFresh(); throwIfAborted(effect.signal);
                     if (!names.includes(effect.toolName)) throw new Error('Worker capability denied');

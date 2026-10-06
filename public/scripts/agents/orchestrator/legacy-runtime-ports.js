@@ -9,9 +9,10 @@ import { normalizeWorkerReply } from './legacy-worker-protocol.js';
  */
 export function createLegacyExecutionPorts({ send, getRequest, worker, toolResults, onError, hostContext = {}, registerMemoryGuard, getMemoryGuard = () => null }) {
     return {
-        model: { async request({ messages, signal, effectId, step }) {
+        model: { async request(effect) {
+            const { messages, signal, effectId, step } = effect;
             try {
-                const detailed = await send(withRuntimeContext(guardRequestCallbacks({ ...getRequest(), taskMessages: messages, abortSignal: signal }, signal), hostContext, getMemoryGuard()));
+                const detailed = await send(withRuntimeContext(guardRequestCallbacks({ ...getRequest(), taskMessages: messages, abortSignal: signal }, signal), hostContext, getMemoryGuard(), effect));
                 throwIfAborted(signal, 'Orchestration aborted.');
                 if (!worker) return { type: 'complete', output: detailed };
                 const { decision, traceTurn } = normalizeWorkerReply(detailed, { ...worker, effectId });

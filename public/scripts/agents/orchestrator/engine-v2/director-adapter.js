@@ -114,7 +114,7 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
                 const round = runtime.getState(runId).policyState.round;
                 const result = await invokePort(requestRound(round), 'model', intent => intent.send(withRuntimeContext(guardRequestCallbacks({
                     ...intent.request, taskMessages: effect.messages, abortSignal: effect.signal,
-                }, effect.signal), context, assertFresh)));
+                }, effect.signal), context, assertFresh, effect)));
                 return copy(result);
             } },
             tool: { async execute(effect) {

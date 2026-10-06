@@ -1,4 +1,5 @@
 import { createPackageContextDerivation } from '../context-computation.js';
+import { randomUUID } from 'node:crypto';
 import { processPackageText } from '../processing-runtime.js';
 import { prepareKnowledgeAdoption } from '../knowledge-authority.js';
 import { captureTaskProduction } from '../task-artifact-authority.js';
@@ -19,6 +20,9 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { createTaskWorld } from '../task-authority.js';
 import { createGameLlmRuntime } from '../../../public/scripts/native/experience/llm/runtime.js';
 import { assertTurnEnvelope } from '../../../public/shared/native-message-contract.js';
+import { AgentEvidenceRepository } from '../agent-intelligence/evidence-repository.js';
+import { AgentEvidenceService } from '../agent-intelligence/evidence-service.js';
+import { beginHostCapture } from '../agent-intelligence/host-capture.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 
@@ -137,6 +141,35 @@ export class NativeGenerationHost {
     }
 
     async executeTurn(handle, input, signal, onChunk, { transaction = null } = {}) {
+        if (!this.persistence._engine) return this._executeTurn(handle, input, signal, onChunk, { transaction });
+        const identity = hashNativeDocument({ handle, kind: 'turn', input, transaction: transaction ? authorityValue(transaction) : null });
+        this.evidenceOperations ??= new Map();
+        // Share the observer for an exact concurrent scheduler request. Scheduling,
+        // cancellation and finalization remain owned by NativeTaskScheduler.
+        if (this.evidenceOperations.has(identity)) return this.evidenceOperations.get(identity);
+        const pending = Promise.resolve().then(() => this._captureTurn(handle, input, signal, onChunk, { transaction }));
+        this.evidenceOperations.set(identity, pending);
+        try { return await pending; } finally { this.evidenceOperations.delete(identity); }
+    }
+
+    async _captureTurn(handle, input, signal, onChunk, { transaction = null } = {}) {
+        const engine = this.persistence._engine;
+        // Authenticate and validate the original Session authority before saving a marker.
+        const base = await this.sessionCore.load(handle, input.sessionId);
+        const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId);
+        if (previous) return this._executeTurn(handle, input, signal, onChunk, { transaction });
+        if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)) fail('native_turn_request_invalid');
+        const capture = await beginHostCapture(new AgentEvidenceRepository({ engine }), handle,
+            { domain: 'rp_session', sessionId: input.sessionId }, 'turn:' + input.invocationId + ':' + randomUUID(), input.invocationId);
+        let result;
+        try { result = await this._executeTurn(handle, input, signal, onChunk, { transaction, evidenceCapture: capture }); } catch (error) { await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error; }
+        // Formal result already exists. Capture failure must never cause its replay.
+        let evidenceCapture;
+        try { evidenceCapture = await capture.finish(result, new AgentEvidenceService({ sessionCore: this.sessionCore })); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
+        return { ...result, evidenceCapture };
+    }
+
+    async _executeTurn(handle, input, signal, onChunk, { transaction = null, evidenceCapture = null } = {}) {
         input = immutable(input);
         transaction = transaction ? immutable(authorityValue(transaction)) : null;
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)
@@ -169,7 +202,7 @@ export class NativeGenerationHost {
             if (!lane) fail('native_task_binding_missing');
             lanes.push(lane);
         }
-        const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction };
+        const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction, evidenceCapture };
         const resources = (await Promise.all(lanes.map(lane => this.executionResources(handle, lane, input.sessionId, lanePlan)))).flat();
         let expectedRevisionId = input.revisionId;
         const operation = nativeTaskScheduler.submit({ owner: handle, kind: 'turn',
@@ -181,6 +214,7 @@ export class NativeGenerationHost {
             run: boundary => this.prepareTurn(handle, input, boundary.signal, boundary.onChunk, revisionId => { expectedRevisionId = revisionId; }, lanePlan),
             finalize: prepared => this.sessionCore.finalizeTurn(handle, input.sessionId, { ...prepared, requestHash }, { expectedRevisionId }),
         });
+        evidenceCapture?.append({ type: 'operation.queued', eventId: operation.operationId + '/queued', effectId: operation.operationId, status: 'queued' });
         try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
         const result = await operation.result;
         if (authority) this.authoritySelections.delete(handle + ':' + base.session.sessionId + ':' + base.revision.branchId + ':' + base.revision.revisionId);
@@ -480,6 +514,37 @@ export class NativeGenerationHost {
     }
 
     async executeTask(handle, input, signal, onChunk, { transient = false, scheduled = false, lanePlan = null, lifecycleInvocation = false } = {}) {
+        const options = { transient, scheduled, lanePlan, lifecycleInvocation };
+        const engine = this.persistence._engine;
+        if (!engine || transient || scheduled || lanePlan?.evidenceCapture) return this._executeTask(handle, input, signal, onChunk, options);
+        const identity = hashNativeDocument({ handle, kind: 'task', input, lifecycleInvocation });
+        this.evidenceOperations ??= new Map();
+        if (this.evidenceOperations.has(identity)) return this.evidenceOperations.get(identity);
+        const pending = Promise.resolve().then(() => this._captureTask(handle, input, signal, onChunk, options));
+        this.evidenceOperations.set(identity, pending);
+        try { return await pending; } finally { this.evidenceOperations.delete(identity); }
+    }
+
+    async _captureTask(handle, input, signal, onChunk, options) {
+        const engine = this.persistence._engine;
+        const base = await this.sessionCore.load(handle, input.sessionId);
+        if (base.states.atri_task_results?.records.some(item => item.invocationId === input.invocationId)) return this._executeTask(handle, input, signal, onChunk, options);
+        if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(input.invocationId)) fail('native_task_invocation_required');
+        const executionClass = base.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(task => task.id === input.taskId)?.executionClass;
+        const parentInvocationId = base.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId)?.cause?.invocationId ?? null;
+        const capture = await beginHostCapture(new AgentEvidenceRepository({ engine }), handle,
+            { domain: 'rp_session', sessionId: input.sessionId }, 'task:' + input.invocationId + ':' + randomUUID(), input.invocationId,
+            ['background', 'maintenance'].includes(executionClass) ? executionClass : 'foreground', parentInvocationId);
+        let result;
+        try { result = await this._executeTask(handle, input, signal, onChunk, { ...options, evidenceCapture: capture }); } catch (error) {
+            await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error;
+        }
+        let evidenceCapture;
+        try { evidenceCapture = await capture.finishTask(result); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
+        return { ...result, evidenceCapture };
+    }
+
+    async _executeTask(handle, input, signal, onChunk, { transient = false, scheduled = false, lanePlan = null, lifecycleInvocation = false, evidenceCapture = null } = {}) {
         input = immutable(input);
         if (input.invocationId?.startsWith('lc:') && !lifecycleInvocation) fail('native_task_reserved_invocation');
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'taskId', 'variantId', 'input', 'slotBindings', 'invocationId', 'requestId', 'fallbackMode'].includes(key))) fail('native_task_request_invalid');
@@ -514,6 +579,7 @@ export class NativeGenerationHost {
                 || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_task_lifecycle_intent_required');
         }
         const captured = lanePlan ?? {};
+        if (evidenceCapture) captured.evidenceCapture = evidenceCapture;
         if (lifecycleInvocation && snapshot.manifest.runtime.experienceContract.generationBudget) {
             const intent = snapshot.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
             if (!intent?.simulation || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
@@ -551,6 +617,7 @@ export class NativeGenerationHost {
             return work.finalize(result, { kind: 'model_delivery', invocationId: input.invocationId, delivered: true });
         }
         const operation = nativeTaskScheduler.submit(work);
+        evidenceCapture?.append({ type: 'operation.queued', eventId: operation.operationId + '/queued', effectId: operation.operationId, status: 'queued' });
         try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
         return operation.result;
     }
@@ -735,6 +802,9 @@ export class NativeGenerationHost {
                         checkCancellation(boundary.signal);
                         const attempt = { runtimeRouteId: resolved.route.runtimeRouteId, retry, status: 'pending' };
                         attempts.push(attempt);
+                        const capture = lanePlan?.evidenceCapture;
+                        const observedAttempt = capture?.nextAttempt(input.requestId) ?? attempts.length;
+                        const attemptId = input.requestId + ':' + observedAttempt;
                         try {
                             if (budget) {
                                 const context = lanePlan.budgetContext;
@@ -743,11 +813,16 @@ export class NativeGenerationHost {
                                     throw error;
                                 }
                             }
+                            await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
+                                requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
+                                agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
                             const response = await provider.send(rendered, boundary);
                             attempt.status = 'success';
+                            capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
                             return response;
                         } catch (error) {
                             attempt.status = 'failed';
+                            capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
                             if (!(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                         }
                     }
@@ -765,6 +840,11 @@ export class NativeGenerationHost {
             },
         }) : await service.execute(request, { preview });
         if (authorityContext?.mode === 'narrator' && (result.response.toolCalls?.length || result.response.tool_calls?.length)) fail('native_narrator_outcome_denied');
+        lanePlan?.evidenceCapture?.append({ type: 'request.completed', eventId: input.requestId + '/parsed/' + attempts.length,
+            requestId: input.requestId, usageStatus: result.response.usage ? 'observed' : 'missing',
+            inputTokens: result.response.usage?.inputTokens ?? result.response.usage?.prompt_tokens,
+            outputTokens: result.response.usage?.outputTokens ?? result.response.usage?.completion_tokens,
+            totalTokens: result.response.usage?.totalTokens ?? result.response.usage?.total_tokens });
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts } });
     }
 }

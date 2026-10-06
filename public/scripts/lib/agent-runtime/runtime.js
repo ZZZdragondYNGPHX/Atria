@@ -27,6 +27,7 @@ export class AgentRuntime {
         this.events.emit({ schemaVersion: 1, type, runId: state.runId, stepId: state.stepId,
             eventId: `${state.runId}/${state.generation}/${state.checkpointVersion}/${type}/${effectId || '-'}`,
             generation: state.generation, status: state.status, agentId: state.currentAgentId,
+            parentRunId: state.parentRunId ?? null,
             version: state.checkpointVersion, effectId, toolName: state.pendingEffect?.toolName, ...details });
     }
 
@@ -232,7 +233,17 @@ export class AgentRuntime {
         this.publish(state, 'context.compiled', { tokens: compiled.tokens, diagnostics: compiled.diagnostics, tokenCounting: contextInput?.tokenCounting || 'injected', budgetScope: contextInput?.budgetScope || 'compiled-context', modelProfile: contextInput?.modelProfile || agent.modelProfile || {} });
         recalled.assertCurrent();
         if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
-        const result = await this.ports.model.request({ ...request, messages: compiled.messages, tools: agent.tools });
+        const requestId = `${state.runId}/request/${state.generation}/${effect.effectId}`;
+        this.publish(state, 'request.started', { requestId, effectId: effect.effectId });
+        let attempt = 0;
+        const observeRequest = (type, details = {}) => {
+            if (type === 'request.attempt.started') attempt++;
+            this.publish(state, type, { ...details, requestId, attempt, attemptId: `${requestId}:${attempt}`,
+                eventId: `${requestId}:${attempt}/${type}`, effectId: effect.effectId, usageStatus: details.usageStatus || 'missing',
+                attemptScope: 'host_facade', lane: 'foreground' });
+        };
+        const result = await this.ports.model.request({ ...request, requestId, observeRequest, messages: compiled.messages, tools: agent.tools });
+        this.publish(state, 'request.completed', { requestId, effectId: effect.effectId });
         recalled.assertCurrent();
         return { ...(state.legacyPolicy || state.controlMode === 'policy' ? copy(result) : validateDecision(result, agent, this.registry)), memoryRefs: copy(recalled.references || []) };
     }

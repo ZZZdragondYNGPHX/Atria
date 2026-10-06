@@ -136,3 +136,46 @@ node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config test
 The source suite uses isolated FS/SQLite chats and Native Sessions, real Studio
 Review/commit on fictional Projects, and an explicit in-memory Native Artifact
 authority fixture. It performs no network/model calls or production-user reads.
+
+## S03 durable RP capture
+
+`atri_agent_evidence` is an additive Native storage resource keyed by authenticated
+handle and a SHA-256 scope/run identity. It uses the existing FS/SQL resource
+handlers, CAS, backup and migration paths. An unfinished `capturing` marker is
+incomplete after restart; it never resumes a model call or authority effect.
+
+The RP observer records a bounded metadata prefix (512 events / 256 KiB), with
+explicit missing markers. Prompt, tool arguments/results, reasoning payloads and
+credentials are excluded. Browser records are `client_observation`. Director
+output binding waits for the original generation save, then the server re-reads
+its exact message/variant/content hash. Capsule-only runs and unsaved/cancelled
+outputs remain incomplete when no output binding exists. Missing legacy message
+IDs or transport failures are exposed through `getCurrentRun().evidenceCapture`.
+
+The production Native Host captures Turn and standalone Task requests, send
+attempts and lanes, followed by formal Session receipts. A capture write failure
+after finalization returns a separate failed capture status and preserves the
+committed result. Task receipt inspection reads metadata without expanding an
+operation artifact. Directly reported usage survives provider normalization;
+absent counters and settled cost remain unknown. `host_facade` observations do
+not claim to count opaque provider/gateway retries.
+
+The authenticated `/api/native/generation/evidence/{begin,update,inspect,delete}`
+POST endpoints are metadata consumers. Client input cannot select `host` origin,
+set owner or submit a formal outcome. For a trusted Host consumer:
+
+```js
+const repository = new AgentEvidenceRepository({ engine });
+const result = await repository.inspect(authenticatedHandle, evidenceId, service,
+    { maxSources: 8, maxBytes: 32768, maxScanMessages: 128 });
+// result.captureStatus and result.validity are separate from model quality.
+```
+
+Minimal local capture checks (FS/SQLite; excludes unavailable external DB suites):
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/capture.test.js tests/native/task-runtime-p3.test.js --testNamePattern='^(?!.*(?:MysqlEngine|PgEngine)).*$'
+```
+
+S04 Project task recovery and S05 retention/feedback are not implemented here.
+S03 does not persist opaque continuation state or claim empirical model benefits.

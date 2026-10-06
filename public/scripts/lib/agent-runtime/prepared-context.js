@@ -2,8 +2,10 @@ import { compileContextAsync } from './context-compiler.js';
 import { createHostTokenCounter } from './host-ports.js';
 
 /** Opt in only at orchestration ModelPorts; ordinary plugin/editor APIs stay unchanged. */
-export function withRuntimeContext(request, context, assertMemoryCurrent = null) {
-    return typeof context?.generateTask === 'function' ? { ...request, runtimeContext: assertMemoryCurrent ? { assertMemoryCurrent } : true } : request;
+export function withRuntimeContext(request, context, assertMemoryCurrent = null, effect = null) {
+    return typeof context?.generateTask === 'function' ? { ...request, runtimeContext: {
+        ...(assertMemoryCurrent ? { assertMemoryCurrent } : {}), ...(effect?.observeRequest ? { observeRequest: effect.observeRequest } : {}),
+    } } : request;
 }
 
 /** Read the same named-preset limits used by the existing sender. Never change the preset. */

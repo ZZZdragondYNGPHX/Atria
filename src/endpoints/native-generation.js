@@ -21,6 +21,10 @@ import { prepareProviderDiscovery, discoverProviderModels } from '../native/adap
 import { nativeTaskScheduler } from '../native/task-scheduler.js';
 import { IllustrationPromptService } from '../native/illustration-prompt-service.js';
 import { IllustrationImageService } from '../native/illustration-image-service.js';
+import { AgentEvidenceRepository } from '../native/agent-intelligence/evidence-repository.js';
+import { AgentEvidenceService } from '../native/agent-intelligence/evidence-service.js';
+import { getChatRepo } from '../storage/index.js';
+import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
@@ -50,6 +54,20 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    for (const action of ['begin', 'update', 'inspect', 'delete']) router.post('/evidence/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const host = getHost();
+            const repository = new AgentEvidenceRepository({ engine: host.persistence._engine });
+            const service = new AgentEvidenceService({ chatRepo: getChatRepo(), sessionCore: host.sessionCore });
+            const capture = new RpEvidenceCaptureService({ repository, service });
+            return res.json(await capture[action](handle, req.body));
+        } catch (error) {
+            res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });
+        }
+    });
     router.get('/illustration-images', (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

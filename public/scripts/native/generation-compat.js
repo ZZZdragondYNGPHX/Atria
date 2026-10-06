@@ -3,15 +3,32 @@ import { executeNativeGeneration, nativeGenerationActive } from './generation-cl
 // Explicit compatibility island for non-Native chats. Native callers never enter
 // the old generation facade, preset resolver or world-info/macro assembly path.
 export async function executeFirstPartyGeneration(context, role, options = {}) {
-    if (!nativePromptUiActive() && !options.nativeSource) return context.generateTask(options);
-    const result = await executeNativeGeneration({
-        role, source: options.nativeSource, messages: options.taskMessages || [], tools: options.tools || [],
-        outputContract: options.jsonSchema || null, abortSignal: options.abortSignal,
-        routeRef: options.nativeRouteRef, prompt: options.nativePrompt,
-        fallbackMode: options.nativeFallbackMode || 'disabled',
-        onChunk: options.onChunk,
-    });
-    return result;
+    const observe = options.runtimeContext?.observeRequest;
+    observe?.('request.attempt.started');
+    try {
+        if (!nativePromptUiActive() && !options.nativeSource) {
+            const result = await context.generateTask(options);
+            observeGenerationResult(observe, result);
+            return result;
+        }
+        const result = await executeNativeGeneration({
+            role, source: options.nativeSource, messages: options.taskMessages || [], tools: options.tools || [],
+            outputContract: options.jsonSchema || null, abortSignal: options.abortSignal,
+            routeRef: options.nativeRouteRef, prompt: options.nativePrompt,
+            fallbackMode: options.nativeFallbackMode || 'disabled',
+            onChunk: options.onChunk,
+        });
+        observeGenerationResult(observe, result);
+        return result;
+    } catch (error) { observe?.('request.attempt.failed'); throw error; }
+}
+
+function observeGenerationResult(observe, result) {
+    const usage = result?.usage;
+    observe?.('request.attempt.completed', { usageStatus: usage ? 'observed' : 'missing',
+        hostRequestId: result?.snapshot?.requestId ?? result?.requestInfo?.requestId,
+        inputTokens: usage?.inputTokens ?? usage?.prompt_tokens, outputTokens: usage?.outputTokens ?? usage?.completion_tokens,
+        totalTokens: usage?.totalTokens ?? usage?.total_tokens });
 }
 
 export function firstPartyGenerationAvailable(context) {
@@ -29,7 +46,18 @@ export function firstPartyStreamingEnabled(context, presetName) {
 }
 
 export function streamFirstPartyGeneration(context, role, options = {}) {
-    if (!nativePromptUiActive() && !options.nativeSource) return context.generateTaskStream(options);
+    if (!nativePromptUiActive() && !options.nativeSource) {
+        const observe = options.runtimeContext?.observeRequest;
+        observe?.('request.attempt.started');
+        try {
+            const delivery = context.generateTaskStream(options);
+            const result = Promise.resolve(delivery.result).then(value => { observeGenerationResult(observe, value); return value; }, error => {
+                observe?.('request.attempt.failed'); throw error;
+            });
+            void result.catch(() => {});
+            return { ...delivery, result };
+        } catch (error) { observe?.('request.attempt.failed'); throw error; }
+    }
     const queue = []; let wake; let done = false;
     const result = executeFirstPartyGeneration(context, role, { ...options, onChunk: chunk => {
         queue.push(chunk); wake?.();

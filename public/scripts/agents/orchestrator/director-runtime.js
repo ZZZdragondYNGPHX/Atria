@@ -59,7 +59,7 @@ import { resolveToolSource } from './loop-tools.js';
 import { resolveCardFirstPresetName } from './agent-preset-resolver.js';
 import {
     appendRound, appendToSection, ensureSection,
-    finishRun, setRoundStatus, setSectionStatus, addTokenUsage,
+    finishRun, setRoundStatus, setSectionStatus, addTokenUsage, bindEvidenceMessage,
 } from './run-state/store.js';
 import { i18n, i18nFormat } from './i18n.js';
 
@@ -310,6 +310,7 @@ export async function handleDirectorDispatch(eventData, deps) {
                 } catch (_) { /* trace is best-effort */ }
             }
             if (deps?.runId) {
+                if (resolvedStatus === 'committed' && chat?.[messageId]) bindEvidenceMessage(deps.runId, chat[messageId], messageId);
                 try {
                     finishRun({
                         runId: deps.runId,
