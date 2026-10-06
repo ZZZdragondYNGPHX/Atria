@@ -15,6 +15,7 @@
 | U7 | M1 完整交付后合并 main，再从最新 main 推进下一组；每个正式阶段仍记录后停止 | 本对话主线集成安排问题的用户回复 |
 | U8 | 按角色 / Project 单独开启局部自动模式，并设置统一预算；新建对象默认审阅 | 2026-10-06 对上一轮默认方式推荐回复“按你推荐的来” |
 | U9 | 拉取远端，先读现有 Plan，再读三份研究并综合更新正式架构企划 | 2026-10-06 本轮明确请求；授权企划更新，不授权提前实施后续阶段 |
+| U10 | 读取 Reasoning Continuity 研究，将已确认架构结论融入当前企划，沿既有正式术语消除重复概念 | 2026-10-06 本轮明确请求；仅授权企划整合 |
 
 M1 产品范围、自动模式默认方式与分组集成已确认。S01 工程设计本轮冻结；S02–S10 技术契约在进入对应阶段前细化，M2 以后的认知权限仍待设计。
 
@@ -102,3 +103,19 @@ M1 产品范围、自动模式默认方式与分组集成已确认。S01 工程�
 D2 保留 M1 三类候选、局部自动默认、预算与 M1 后集成选择；S01 仍 Ready，未实施。
 未冻结：40 阶段整套实现 API、档位名称、数字 SLO、价格表、provider 能力矩阵、自动路由晋升 / shadow 数据发送权限、local model 安装或 learned router。
 M8 的详细设计与独立集成点在进入该交付组前定稿，逐阶段停止规则持续有效。
+
+## 6. D3 — Reasoning Continuity 纳入既有架构
+
+U10 确认将研究的架构结论纳入正式企划；以下为该范围内的工程归并，不把示例字段、厂商支持表或产品默认逐项写成用户批准。详细规则统一由 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) 管理。
+
+| ID | 已纳入的架构边界 | 详细权威 |
+| --- | --- | --- |
+| A10 | Reasoning Continuity 是现有 Runtime 可选执行能力；adapter 原样承载 opaque state，canonical message / public evidence 分离，不依赖 raw CoT | model-routing §7.1–2 / §7.4 |
+| A11 | 用既有 Capability Evidence 判断 exact execution path 与方向性兼容；native-first、gateway-verified，unknown 不能满足连续性硬要求 | model-routing §7.2 |
+| A12 | Task / branch / revision / variant lineage 管理 continue / fork / reset / discard；edit / restore / regenerate / goal shift / fallback 都有重验与 loss 证据 | model-routing §7.3–4 |
+| A13 | opaque checkpoint 与 Memory / Cognition / Task Artifact / Domain State 生命周期分开；持久成果走显式 artifact 原授权，默认不导出私有状态 | model-routing §7.4；architecture §3 |
+| A14 | Planner 目标连续、Narrator 短 horizon、Critic 独立 lineage；Context binding 与 compaction 不绕过 freshness / exposure | model-routing §7.3 / §7.5；behavior-context §2–3 |
+| A15 | Runtime contracts → OpenAI Responses → Anthropic native → Gemini native → gateway probes → adaptive / eval 映射既有 G01–G06，不新增正式阶段 | delivery §8 |
+
+D3 仅完成文档整合；M1 范围、三类候选、局部自动默认、预算和集成方式保持。S03 相关未提交实现 / 草稿不在本轮审阅或验收，不能把它们算作完成阶段。
+未冻结：具体 API / schema / 资源 key、TTL / 容量、支持模型版本与路径矩阵、默认跨 turn 启用、adaptive 阈值、实际质量—成本收益与运行 checkpoint 导出。M8 进入前局部深化；本次不授权付费请求、probe、隐私 / connection 改动或自动路由晋升。

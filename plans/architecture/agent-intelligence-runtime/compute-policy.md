@@ -41,6 +41,7 @@ M1 Evolution owner 预算与前台运行预算是不同用途的额度，共用 
 
 支持 owner / scope、session / task、turn / job 与 background 子额度。子项不能突破父项；并行申请必须先 reservation，不能各看同一剩余额度。
 约束可包含 paid / local requests、input / output / reasoning token、工具 / media、金额、deadline、critic / rollout / subagent 上限和并发。
+Continuation 与 prompt / context cache、Task Artifact reuse 是不同优化，沿 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) 重验；保留状态不保证调用数、token 或费用下降。恢复、重置、probe、compaction / summary、fallback 与 adaptive controller 的新增发送仍经过同一 reservation / charge。
 reasoning / cache-read 常是 total usage 的子集；按 provider usage 语义归一化，不能将 output 与其 reasoning 子项再相加。只存有限 usage 元数据，不保存私有思维链。
 
 `prepared → reserved → send-attempt charged → settled | unknown → reconcile`
@@ -68,6 +69,7 @@ Gateway 内部重试未知时，外层只能限制自己可控 attempts，并记
 UI 只显示正文模型不能代表总消费；owner 可查看与本次 turn / task 相关的维护份额，分配算法有来源，不伪装为精确归因。
 
 同一场景做 paired ablation：当前路径、允许的一次正文基线、utility + writer、shared cognition + writer、加 critic / rollout 与 Director。case split / 配置与模型观测固定；不支持的路径明确 unavailable。
+G06 追加协议合法的 none / active_execution / task / adaptive 对照，按 model-routing §7 验工具收益与 RP 新鲜度、锚定风险及 loss；不新增平行 Eval 或用 opaque payload 作评分输入。
 按 ordinary / hard / high-impact / long-session 分层比较，避免普通短回合省钱掩盖难例回归；盲评避免偏好更长输出。
 质量看行为、continuity、知识边界、authority outcome、偏好；成本看每 accepted turn / successful Project task 和边际计算收益。弱 regenerate / edit 信号不自行成为 accepted / rejected 标签。
 报告质量—成本 / 延迟 Pareto 与失败分母、缺失 usage、controller 自身开销；相同硬底线下选最小必要计算。

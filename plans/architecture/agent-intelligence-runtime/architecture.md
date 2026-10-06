@@ -34,9 +34,9 @@ Target 限制与 Context 精确编译有有界复核，不是无限循环。正�
 
 - [behavior-context](behavior-context.md)：语义与编译、身份 / cognition / expression / narration 分离。
 - [compute-policy](compute-policy.md)：稀疏调用、预算准入、非阻塞维护与收益。
-- [model-routing](model-routing.md)：boundary / deployment / identity、动态证据与真实执行观察。
+- [model-routing](model-routing.md)：boundary / deployment / identity、动态证据、真实执行观察与 Reasoning Continuity 生命周期。
 
-这些模块是相应细则的唯一来源；本文件继续管理跨 Plane 的连接。
+这些模块是相应细则的唯一来源；本文件继续管理跨 Plane 的连接。Reasoning Continuity 是 Deliberation 经 Interop 的 Provider Adapter 使用的可选执行能力，沿现有 Runtime / request authority 管理，不新增 Plane；详细术语与规则见 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期)。
 
 ## 2. 最小公共证据与 artifact 语义
 
@@ -59,19 +59,19 @@ Artifact Bus 不是新的 World authority，也不默认是分布式消息中间
 
 ## 3. 轨迹与长期经验分离
 
-需要区分三种现有 / 新增用途：
+需要区分三种现有 / 新增用途；不透明 continuation 属于第一种，不是可展开的公共 evidence / Task Artifact：
 
 1. Runtime checkpoint：保证 pending effect、版本和取消能恢复。
 2. UI projection：受限的当前运行状态，适合显示与调试。
 3. Experience evidence：在有限保留期限内保存可归因的 inputs / observations / actions / outputs / receipts / feedback / cost。
 
 Experience 使用既有 Host StorageEngine 的明确资源契约，不能把全部模型 chunk 写为 Session revision，也不能依赖 IndexedDB recovery 的 24 小时 prune。
-两个入口各自捕获，然后输出公共 evidence envelope；它不是新的执行配置读取权威。
+两个入口各自捕获，然后输出公共 evidence envelope；它不是新的执行配置读取权威。Provider 原生 execution envelope 由 adapter 保留协议状态，与此公共证据及可见 chat message 分开；checkpoint 可持久化并不使 opaque reasoning 成为 Memory / Cognition 或 World Truth。
 
 捕获先解决 parent / child、request / retry、effect、message variant、正式 outcome 的关联和幂等写入。执行快照与响应观察分开，沿原 request identity 关联 target、observable model、usage 完整性与预算 charge；具体语义由 model-routing / compute-policy 管理。
 无法取得 provider usage、正文或旧来源时显式记录 missing / unavailable；不能伪造完整性。
 默认只保存获准的必要内容；Secret、transport header、模型不可见的私有 reasoning 不进入共享轨迹。
-删除来源、角色 / 项目或关闭采集后如何保留、清除与失效，在首批设计中明确。
+删除来源、角色 / 项目或关闭采集后如何保留、清除与失效，在首批设计中明确。M1 仍只捕获当前可取得的执行证据，不为保存轨迹而提前实现 M8 continuation；后续共享轨迹只消费其获准决定 / loss 元数据。
 
 ## 4. Experience → Evolution
 

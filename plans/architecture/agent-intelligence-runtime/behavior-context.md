@@ -31,7 +31,7 @@ Behavior 可以声明信息需求，实际选择哪些 Memory / Knowledge 由 Co
 
 Creative Profile 先表达用户可理解的意图，例如慢节奏、第三人称、偏对白；最终名称与控件在 G02 / G06 定稿。玩家行动归属属于硬底线，不能当可优化的文风参数。
 至少有“换旁白风格而 Actor identity / cognition 不变”和“不同角色口癖不污染旁白 / 他人”的独立案例。
-Project 复用 Behavior、Context、Generation 层；不强加娱乐文风或 NPC 情绪配置。
+Project 复用 Behavior、Context、Generation 层；不强加娱乐文风或 NPC 情绪配置。Planner 的目标连续与 Narrator 的表达新鲜分别评价：后者使用显式 narrative / actor state 和短 reasoning horizon，具体执行范围沿 model-routing §7，不把角色稳定性寄托于永久 hidden reasoning。
 
 ## 3. Context 选择、展开与压缩
 
@@ -45,7 +45,9 @@ Context lanes 按来源与用途组织：固定方法 / 合约、身份核心、
 通过同一输入的后续 continuation 评价压缩是否保留承诺、秘密边界与工具参数依据；摘要更短或检索命中更高不能单独证明有用。
 
 稳定 prefix / 动态 suffix 是可选 adapter 优化。缓存身份绑定 owner、获准 scope、target、工具 / 合约、overlay、compiler 与内容指纹；不跨 scope 复用私有内容。
-缓存失效不能绕过 source freshness；为命中缓存额外塞入无关内容必须通过质量—成本对照。Provider-side context handle 仅在真实能力和生命周期可验证时接入，不能成为隐藏 Memory authority。
+缓存失效不能绕过 source freshness；为命中缓存额外塞入无关内容必须通过质量—成本对照。Provider-side context handle 仅在真实能力和生命周期可验证时接入，不能成为隐藏 Memory authority。Reasoning Continuity 的 handle、兼容和失效由 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) 唯一管理；Context cache 不复用其生命周期。
+
+Context 编译 / 压缩必须把最终 system、tools、原生 history 结构与 prefix 指纹提供给 Runtime 复核 continuation binding。Append-only 是特定协议的约束，不能阻止旧来源失效、权限收回或必要内容重编译；绑定不再满足时按执行 policy reset / discard，保留显式 task state。Provider-native compaction 与普通摘要分开验证；可见 summary 不恢复 opaque state。
 
 ## 4. 确定性编译与优化分离
 
