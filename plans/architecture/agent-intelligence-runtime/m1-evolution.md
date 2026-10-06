@@ -1,6 +1,7 @@
 # M1：双入口成长与局部自动启用设计
 
 > D1 产品边界与架构执行约束已冻结；S01 详细设计见 [s01-baseline.md](s01-baseline.md)。
+> S02 最小来源契约与只读 consumer 已完成，详细权威为 [s02-sources.md](s02-sources.md)；持久层仍按 S03 / S04 交付。
 > 用户已确认双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
 > 后续物理 schema / 数值校准按对应阶段细化；逻辑资源表不表示全部 API 已冻结。
 > 长期方向读 architecture；代码事实读 baseline；用户确认的唯一权威是 decisions。
@@ -42,7 +43,7 @@ Native Session 的 branch / revision 不强加给普通 chat；普通 chat 必�
 
 ## 3. 数据模型：只实现 M1 的消费者需要的内容
 
-以下是逻辑资源，允许共享 repository / 表；最终 kind / path 在 S02 详细契约中冻结。
+以下是逻辑资源，允许共享 repository / 表。S02 冻结既有来源的 key / anchor 与无持久化的 EvidenceSet / Evaluation v1；EvidenceRecord 等新资源的 kind / path 在 S03 引入公共持久层时冻结，不提前注册整张表。
 
 | 资源 | 必要内容 | 不承担的职责 |
 | --- | --- | --- |
@@ -171,5 +172,5 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 首批使用仓库可复现 RP / Native authoring fixture 建代表案例，再在已配置的真实模型上验证；用户指定案例可替换对应 case revision。
 
 S01 cases / report / 运行界限见 s01-baseline。产品 scope、版本生效、共享预算、发布 / 恢复 / 回滚流程作为本组执行约束。
-S02 前定稿 source adapter / storage key / error contract；S05 前定稿 retention / 删除细则；S06 / S10 前用真实基线定稿费用和晋升 / 回归门槛。
+S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 引入持久证据前定稿新 key / 校验 / 迁移；S05 前定稿 retention / 删除细则；S06 / S10 前用真实基线定稿费用和晋升 / 回归门槛。
 参数缺失、证据不足、旧版本不可取回或配置冲突时不能自动发布；后续不得用预留接口代替 M1 必需的局部自动能力。
