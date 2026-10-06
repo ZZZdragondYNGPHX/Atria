@@ -24,6 +24,7 @@ import { IllustrationImageService } from '../native/illustration-image-service.j
 import { AgentEvidenceRepository } from '../native/agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../native/agent-intelligence/evidence-service.js';
 import { getChatRepo } from '../storage/index.js';
+import { AgentExperienceService } from '../native/agent-intelligence/experience-service.js';
 import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
 
 function services() {
@@ -66,6 +67,18 @@ export function createNativeGenerationRouter(getHost = services) {
             return res.json(await capture[action](handle, req.body));
         } catch (error) {
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });
+        }
+    });
+    for (const action of ['target', 'submit', 'outcome', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const host = getHost();
+            const service = new AgentExperienceService({ engine: host.persistence._engine, chatRepo: getChatRepo(), sessionCore: host.sessionCore, studio: host.studio, agent: host.agent });
+            return res.json(await service[action](handle, req.body));
+        } catch (error) {
+            return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_experience_unavailable' });
         }
     });
     router.get('/illustration-images', (req, res) => {

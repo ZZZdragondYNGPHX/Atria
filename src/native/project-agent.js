@@ -8,6 +8,7 @@ import {
 } from './authoring-contracts.js';
 import { STUDIO_RESOURCE_OPERATION_TYPES } from './authoring/library-authoring.js';
 import { STUDIO_SOURCE_OPERATION_TYPES } from './authoring/studio-service.js';
+import { AgentExperienceRepository } from './agent-intelligence/experience-repository.js';
 import { ProjectTaskRepository, assertProjectTask } from './agent-intelligence/project-task-repository.js';
 import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
@@ -536,15 +537,16 @@ export class ProjectAgentService {
         });
     }
 
-    deleteTask(handle, projectId, id) {
+    deleteTask(handle, projectId, id, expectedIntegrity = undefined) {
         return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
-            const result = await this._repository.delete(handle, projectId, id);
+            const result = await this._repository.delete(handle, projectId, id, expectedIntegrity);
             this._tasks.delete(this._key(handle, projectId, id)); this._integrities.delete(this._key(handle, projectId, id));
             return result;
         });
     }
 
     async deleteProjectTasks(handle, projectId) {
+        await new AgentExperienceRepository({ engine: this._repository.engine }).purgeProject(handle, projectId);
         const tasks = await this._repository.list(handle, projectId);
         for (const task of tasks) await this.deleteTask(handle, projectId, task.taskId);
     }

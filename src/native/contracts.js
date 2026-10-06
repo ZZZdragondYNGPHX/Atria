@@ -60,6 +60,7 @@ export const ATRIA_PACKAGE_PERMISSIONS = Object.freeze([
 
 export const NATIVE_STORE_SCHEMA_VERSION = 1;
 export const NATIVE_RESOURCE_KINDS = Object.freeze({
+    agentExperience: 'atri_agent_experience',
     agentEvidence: 'atri_agent_evidence',
     projectAgentTask: 'atri_project_agent_task',
     persona: 'atri_persona',
@@ -1004,6 +1005,7 @@ export function validateAtriaSave(value) {
 }
 
 const RESOURCE_KEY_SPECS = Object.freeze({
+    [NATIVE_RESOURCE_KINDS.agentExperience]: [['handle', 'handle'], ['scopeId', 'hash']],
     [NATIVE_RESOURCE_KINDS.agentEvidence]: [['handle', 'handle'], ['evidenceId', 'hash']],
     [NATIVE_RESOURCE_KINDS.projectAgentTask]: [['handle', 'handle'], ['projectId', 'project'], ['taskId', 'token']],
     [NATIVE_RESOURCE_KINDS.persona]: [['handle', 'handle'], ['personaId', 'persona']],

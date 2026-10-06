@@ -4,6 +4,7 @@ import { assertAuthoringChangeSet, assertAuthoringOperation, assertAuthoringWork
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument, putMutable, withNativeResourceWrite } from '../repositories/common.js';
+import { AgentExperienceRepository } from './experience-repository.js';
 import { fields, text } from './contracts.js';
 import { assertProjectAgentConversation } from '../../../public/shared/project-agent-conversation.js';
 
@@ -156,8 +157,15 @@ export class ProjectTaskRepository {
         }));
     }
 
-    async delete(handle, projectId, taskId) {
+    async delete(handle, projectId, taskId, expectedIntegrity = undefined) {
         assertWritable();
-        return this.engine.withTransaction(handle, tx => tx.deleteResource(key(handle, projectId, taskId)));
+        return withNativeResourceWrite(handle, 'project-task-store:' + projectId + ':' + taskId, async () => {
+            if (expectedIntegrity !== undefined) {
+                const current = await this.get(handle, projectId, taskId);
+                if (!current || hashNativeDocument(current) !== expectedIntegrity) throw new ConflictError('project_task_retention_conflict');
+            }
+            await new AgentExperienceRepository({ engine: this.engine }).purgeSource(handle, 'project_task', taskId, { domain: 'project', projectId });
+            return this.engine.withTransaction(handle, tx => tx.deleteResource(key(handle, projectId, taskId)));
+        });
     }
 }

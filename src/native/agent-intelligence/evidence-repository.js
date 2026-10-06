@@ -4,6 +4,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrite } from '../repositories/common.js';
 import { assertEvidenceScope, assertEvidenceSet, fields, text } from './contracts.js';
 import { assertEvidenceTrace } from '../../../public/shared/agent-evidence-trace.js';
+import { AgentExperienceRepository } from './experience-repository.js';
 import { assertNativeId } from '../identity.js';
 
 const key = (handle, evidenceId) => ({ kind: NATIVE_RESOURCE_KINDS.agentEvidence, handle, evidenceId });
@@ -86,8 +87,15 @@ export class AgentEvidenceRepository {
         return { record, captureStatus: record.status === 'capturing' || record.trace.missing || !validity || validity.status !== 'current'
             || (record.origin === 'client_observation' ? !record.outputRef : !record.outcome) ? 'incomplete' : 'captured', validity };
     }
-    async delete(handle, evidenceId) {
+    async delete(handle, evidenceId, expectedIntegrity = undefined) {
         text(handle, 'Authenticated owner'); hash(evidenceId); assertWritable();
-        return withNativeResourceWrite(handle, 'evidence:' + evidenceId, () => this.engine.withTransaction(handle, tx => tx.deleteResource(key(handle, evidenceId))));
+        return withNativeResourceWrite(handle, 'evidence:' + evidenceId, async () => {
+            if (expectedIntegrity !== undefined) {
+                const current = await this.get(handle, evidenceId);
+                if (!current || hashNativeDocument(current) !== expectedIntegrity) throw new ConflictError('agent_evidence_retention_conflict');
+            }
+            await new AgentExperienceRepository({ engine: this.engine }).purgeSource(handle, 'evidence', evidenceId);
+            return this.engine.withTransaction(handle, tx => tx.deleteResource(key(handle, evidenceId)));
+        });
     }
 }

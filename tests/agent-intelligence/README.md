@@ -228,3 +228,54 @@ The new kind is additive, without DDL or legacy-task backfill. Task and Project
 HTTP deletion clean up through the existing resource API; missing Projects cannot
 release task evidence. FS ordering is limited to one Host writer. Retention,
 feedback and lesson cascades remain S05.
+
+## S05 feedback and diagnosis lifecycle
+
+`AgentExperienceService` is the authenticated, shared RP / Project consumer at
+`POST /api/native/generation/experience/<action>`. Start with `target` and
+`{kind: 'evidence'|'project_task', id, scope}`; it returns the Host-derived
+exact target hash and subject without expanding content. `inspect` accepts
+`{scope, subject}`. `submit` accepts `{target, feedback, expectedSequence}`;
+use null for a new scope and the returned ledger sequence for subsequent writes.
+The feedback shape is `{kind, signal, dimension, note}`. Explicit correction /
+prefer / avoid is separate from observation regenerate / edit / abandon /
+accept / review_reject (empty note). `outcome` accepts only target and sequence;
+the Host derives validation / committed / failure / unknown from the source.
+
+`reflection` returns an event or aggregate batch, exact feedback refs and hash,
+with zero model calls. `diagnose` requires that batch hash, scope / subject,
+expectedSequence, public rationale, conditions, counterexamples and direction.
+The diagnosis is a user hypothesis. Weak observations alone can only yield an
+undetermined direction; repeated observations of one source cannot fabricate
+an aggregate. Exact sources are revalidated before every consumption.
+
+`correct`, `withdraw`, and `delete` take scope / subject / feedback id and
+expectedSequence (correct also takes new explicit feedback). Correction and
+withdrawal revoke related diagnoses; deletion physically removes them.
+`withdrawDiagnosis` / `deleteDiagnosis` independently revoke / remove a
+hypothesis. `export` returns bounded public notes and metadata only.
+
+`retention` sets 1–365 days (default 30), immediately tightening existing expiry;
+extending never revives expired data. `purge` explicitly reconciles expiry and
+source deletion; ordinary writable inspection also reconciles. Read-only
+inspection filters expiry without persisting. `deleteScope` removes the ledger.
+`purgeSources` takes `{scope, days, limit}` (1–365 days, 1–128 items), explicitly
+cleans old evidence and terminal completed / cancelled / taken_over Project
+tasks, and preserves active / Review tasks and Project source. CAS protects
+source changes during cleanup. No app-closed timer or automatic model work is
+registered; StorageEngine may load a full resource list before the bounded
+selection. New feedback UI and candidate publication are later-stage work.
+
+Run only the affected local cases:
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/feedback.test.js tests/agent-intelligence/capture.test.js tests/agent-intelligence/project-recovery.test.js tests/agent-intelligence/sources.test.js tests/native/project-agent-http.test.js
+```
+
+The feedback suite uses real temporary FS / SQLite, physical reopen, dump /
+restore and a generic FS → SQLite → FS resource roundtrip. RP / Project HTTP
+requests use the real consumer and isolated sources; Native actor / branch
+checks use a synthetic snapshot port, while existing source / recovery suites
+retain their original real authority fixtures. MySQL / PostgreSQL assertions
+cover generic kind / key registration only. No UI, external database, model,
+build, device, or remote CI result is claimed.
