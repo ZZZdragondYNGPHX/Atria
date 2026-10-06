@@ -1,6 +1,6 @@
 # 40 个候选阶段：交付、依赖与验收
 
-> M1 范围已冻结，S01–S08 已完成，S06 已补真实基线与独立比较；候选晋升仍拒绝；后续具体契约与远期阶段按最新 main / provider / 评测证据继续深化。
+> M1 范围已冻结；S01–S09 与 S10 工程交付完成。S06 真实比较仍 ineligible；M1 的独立真实案例改善与集成前置条件待验收。后续阶段未进入。
 > D2 保留 S01–S34，新增 M8 的 G01–G06；不重编号已有阶段。阶段数服务于可独立审阅与验证。
 > D4 将 Execution Reuse / Cache Locality / Adaptive Invocation 的 A–F 逻辑顺序映射既有阶段与后续研究池，不新增正式阶段或扩张 M1。
 
@@ -18,7 +18,7 @@
 | M8 — 生成与计算基础 | G01–G06 | 创作 / Behavior 与 Context 分层、按预算解析模型 / 网关、稀疏调用与全部费用可检查 | 双入口真实请求消费；迁移与撤回；可用 gateway integration 与质量—成本对照 |
 
 用户已确认先完成 M1，并在首批包含有预算与回滚约束的局部自动启用；首批详细设计见 [m1-evolution.md](m1-evolution.md)。
-建议先保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation，允许在交付组设计时调整先后；M3 开始前要求 G06 完成。M1 不等待 M8；S01–S09 已完成；真实六槽基线与六对独立比较已执行，单一模型 judge 有一个无效响应、候选晋升仍拒绝。S07已补原Skillauthority的候选 / 完整版本 / run读取pin；S08已交付Native与ordinary RP的正文候选 / exact binding；S09已交付原Workspace参数exact binding / rollback与Project pristine Task repair候选；下一checkpoint S10，本轮停止。
+建议保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation；M3 开始前要求 G06 完成。M1 不等待 M8。S01–S10 工程链路已交付，S10 的原局部 authority / 有限预算 / 隔离评测 / publication / rollback / 双入口 UI 见 s10-evolution。真实六槽基线与六对比较保留，候选仍 ineligible；本轮假 provider 不证明实际质量 / 成本收益。下一只复核 M1 验收与集成前置条件，阶段收尾停止；不合并 main、不进入 S11 / G。
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
@@ -66,9 +66,9 @@ D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整�
 | [S07 — Skill 候选与版本固定](s07-skills.md) | S06 | 已交付原 Skill repository 完整 immutable snapshots、正文 candidate / base CAS、RP shared run / Native / Studio exact read pin与历史 | 13 suites / 247 distinct local tests；运行中编辑保留旧pin、旧版本可取回，删除 / corruption不fallback；自动晋升未实施 |
 | [S08 — Prompt 候选与精确引用生效](s08-prompts.md) | S06 | 复用现有 immutable Prompt 资源，声明可演化区块、候选 diff 与有效 binding | 不靠 latest fallback；Package 原版保留；候选启用在下一 run 的 exact request snapshot 可见 |
 | [S09 — 编排策略候选](s09-strategies.md) | S06 | 已交付原Workspace有限单字段预算候选 / exact binding / rollback，原Project pristine Task maxRepairRounds候选 / task CAS | 8 suites / 105 tests；capability、output owner、必要guard固定；原Director / Agenda预算停止、Project repair上限 / in-flight拒绝；不改连接 / 隐私 / 自动路由 |
-| S10 — 评测晋升、撤回与双入口产品闭环 | S07、S08、S09 | 审阅差异、评测报告、精确启用；有预算约束的局部自动启用、停用 / 回滚 | 三类目标分别归因；组合回归；RP 与 Project 都从反馈走到下一次行为改变；自动模式的冲突、重启、预算耗尽与撤回可验收 |
+| [S10 — 评测晋升、撤回与双入口产品闭环](s10-evolution.md) | S07、S08、S09 | 工程交付完成：原 target diff / 审阅、共享有限预算、隔离评测、局部自动 publication / receipt / next-run evidence、暂停 / rollback | 12 suites / 233 local tests + 共享 pane browser fixture；单一 target / 不叠加独立报告；实际模型改善仍待 M1 验收 |
 
-S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.md)：两个域 adapter，RP 内保留 chat / Native 分域；EvidenceSet / Evaluation 是可调用消费者的返回值，无新持久 kind / migration。S03 可靠 RP metadata 捕获与公共持久层已完成，契约 / 不完整输出边界见 [s03-capture.md](s03-capture.md)。S04 Project task 持久恢复、公开对话、正式 receipt 幂等与 conflict 已完成，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)。S05–S09 的实际完成范围见各详细模块；S08 见 [s08-prompts.md](s08-prompts.md)，S09 见 [s09-strategies.md](s09-strategies.md)，本轮在S09验证 / 记录后停止，S10未开始。
+S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.md)：两个域 adapter，RP 内保留 chat / Native 分域；EvidenceSet / Evaluation 是可调用消费者的返回值，无新持久 kind / migration。S03 可靠 RP metadata 捕获与公共持久层已完成，契约 / 不完整输出边界见 [s03-capture.md](s03-capture.md)。S04 Project task 持久恢复、公开对话、正式 receipt 幂等与 conflict 已完成，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)。S05–S10 的实际完成范围见各详细模块；S10 的支持矩阵、保守门槛、原 authority / 下一 run、source invalidation、预算与恢复见 [s10-evolution.md](s10-evolution.md)。本轮 S10 工程交付后停止；M1 实际改善未验收，不以结构 / scripted 检查满足独立模型收益门槛。
 
 第一批不能止于日志、规则列表或“AI reflection”。发布改变必须由相同权威读取入口真正消费，并在独立案例评价。
 三类候选是已确认的 M1 范围；若出现实质范围变化，明确记录调整，不在阶段结束时悄悄缩水。

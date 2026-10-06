@@ -6,6 +6,7 @@
 > S07 完整 Skill versions / candidates / base CAS / run pin 已交付，详细权威为 [s07-skills.md](s07-skills.md)。
 > S08 原 Prompt / Preset body candidates / exact binding 已交付，详细权威为 [s08-prompts.md](s08-prompts.md)。
 > S09 原Workspace / pristine Project Task参数候选、exact binding / CAS / rollback已交付，详细权威为 [s09-strategies.md](s09-strategies.md)。
+> S10 工程链路已交付，部署边界与保守 gate 的唯一详细权威为 [s10-evolution.md](s10-evolution.md)；实际模型改善与 M1 集成前置条件待验收。
 > 用户已确认双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
 > 后续物理 schema / 数值校准按对应阶段细化；逻辑资源表不表示全部 API 已冻结。
 > 长期方向读 architecture；代码事实读 baseline；用户确认的唯一权威是 decisions。
@@ -178,6 +179,17 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 首批使用仓库可复现 RP / Native authoring fixture 建代表案例，再在已配置的真实模型上验证；用户指定案例可替换对应 case revision。
 
 S01 cases / report / 运行界限见 s01-baseline。产品 scope、版本生效、共享预算、发布 / 恢复 / 回滚流程作为本组执行约束。
-S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 新 key / 校验 / 迁移已由 s03-capture 定稿；S04 Project task 持久 / 恢复已由 s04-project-recovery 定稿并交付；S05 已定稿并交付 feedback / diagnosis 作用域、retention / 纠正 / 删除 / 导出，[S06](s06-comparison.md) 已交付显式 live bridge / 共享预算、真实六槽基线与六对独立比较；原 authority 检查通过、judge五个有效观察 / 一个无效响应。S06 evaluator checkpoint完成，候选晋升仍拒绝；费用 / 稳定行为收益、人工偏好与晋升 / 回归阈值未合格，后续 S10 必须据真实证据校准并验证，不能因可执行比较而自动批准。
-S07已交付原Skillrepository完整快照与真实读取pin，手动candidate/apply不产生Evaluationeligibility；S08已交付原Promptauthority正文候选与Native / ordinary RP精确binding；S09已交付原Workspace参数exact versions / rollback与Project pristine Task repair参数候选 / CAS；下一仅S10负责完整审阅 / provenance / policy / 自动发布闭环。
+S02 source adapter / 既有来源 storage key / error contract 已由 s02-sources 定稿；S03 新 key / 校验 / 迁移已由 s03-capture 定稿；S04 Project task 持久 / 恢复已由 s04-project-recovery 定稿并交付；S05 已定稿并交付 feedback / diagnosis 作用域、retention / 纠正 / 删除 / 导出，[S06](s06-comparison.md) 已交付显式 live bridge / 共享预算、真实六槽基线与六对独立比较；原 authority 检查通过、judge五个有效观察 / 一个无效响应。S06 evaluator checkpoint完成，候选晋升仍拒绝；费用 / 稳定行为收益与人工偏好未合格。S10 已冻结并实现保守准入门槛；实际独立案例改善仍需 M1 验收，不能因可执行比较而自动批准。
+S07已交付原Skillrepository完整快照与真实读取pin，手动candidate/apply不产生Evaluationeligibility；S08已交付原Promptauthority正文候选与Native / ordinary RP精确binding；S09已交付原Workspace参数exact versions / rollback与Project pristine Task repair参数候选 / CAS；S10 已交付审阅 / provenance / 有限 policy / 原局部自动发布 / 恢复 / 撤回 / 共享 UI。下一只复核 M1 验收与集成前置条件，不进入 S11 / G。
 参数缺失、证据不足、旧版本不可取回或配置冲突时不能自动发布；后续不得用预留接口代替 M1 必需的局部自动能力。
+
+
+## 11. S10 工程交付与 M1 退出状态
+
+S10 支持 ordinary RP exact character 下的 bounded single-owner Director、原局部 Skill / Workspace Prompt / maxSteps，以及 Project 原局部 Skill / user style module / pristine Task repair。原 Role / Tool / Review / Commit guards 与 Connection / Secret 权限固定。单次一个目标；已生效同一物理 authority 先撤回，不叠加独立报告。完整范围与不支持场景以 s10-evolution 为准，早期逻辑方案不扩大实际支持矩阵。
+
+原 SettingsRepo Host CAS / browser epoch 与下一 preparation 刷新已补齐；Project Prompt 新增原 Route 的有界 project binding。有限原 scheduler job、owner send-before-reserve ledger、固定隔离 worker、九对 blind model observation + 九项独立 authenticated human label、original publication intent / finalizing / receipt / next-run evidence、来源失效传播与当前 binding 观察均已交付。实际 provider 沿原 compiler / resolver / generation service，自动模式须满足完整 source / policy / report / 配置 / 费用绑定；缺证据仍审阅。
+
+12 suites / 233 distinct local tests 与共享 pane 的真实 Chromium fixture 通过，两个固定 worker 使用 fake provider 验证原 RP / Studio 消费者与隔离；这不能替代实际模型收益。S06 的已有真实候选仍 ineligible，本轮未追加真实请求、未读写私有账本 / 报告。
+
+**M1 工程阶段 S01–S10 已交付；M1 完整产品退出条件仍待验收。** 独立真实案例质量 / 成本改善尚未证明，包含提炼 / judge 的净收益也未证明。下一仅复核有限实测与人工观察所需条件、预算和集成前置检查；若条件不足，记录明确待验收事项。main 未合并，S11 / G 未开始。

@@ -8,8 +8,8 @@
 
 ## Summary
 
-长期任务沿同一产品分支实施；D0–D4 / S01–S09已完成。S09交付原Workspace有限单字段编排参数候选 / exact binding / explicit rollback，以及原Project pristine Task的maxRepairRounds候选 / integrity CAS。8 relevant suites / 105 distinct local tests通过；产品HEAD `f740e65238d6c46575c1f9972735a1166ca1ec71` 已commit / push，main仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
-S06真实执行与model observations保留在本Record，候选晋升仍ineligible。S07–S09manual apply不是evaluation资格；M1与S10完整自动publication未完成。本轮只续接S09，下一checkpoint仅S10。
+长期任务沿同一产品分支实施；D0–D4 / S01–S09 与 S10 工程交付完成。S10 将 S05 feedback / diagnosis、原六类局部 target、共享 finite budget、原 scheduler、隔离 evaluator、publication / recovery / rollback / next-run evidence 与双入口共享面板接为可用消费者。12 relevant suites / 233 distinct local tests 与真实 Chromium shared-pane fixture 通过。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
+S06 真实执行与 model observations 保留，候选仍 ineligible；本轮无新真实模型请求。S10 的结构 / 假 provider 证据不证明稳定质量 / 成本收益；M1 的真实改善与集成前置条件待验收。本轮只续接 S10，下一只复核 M1 验收，不进入 S11 / G。
 
 ## D0 — 最新 main 核对与架构调研
 
@@ -553,6 +553,61 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - **下一checkpoint仅S10**：真实Git → HANDOFF → index / decisions → m1-evolution / deliveryS10 / s09-strategies / s08-prompts / s07-skills / s06-comparison / s05-feedback → 同一Record。先冻结source / diagnosis / feedback / policy依赖、owner共享finite预算、原scheduler bounded job、Review / publication intent / receipt / crash恢复与各target写入部署边界，再实施双入口完整消费者。
 - 本轮产品 / docs commit / push后停止；不进入S10、不合并main、不删除分支。若确需模型验证，恢复同一S06ledger / rate checkpoint，不读取未知Secret、不清零预算 / 覆盖报告。
 
+## S10 — 有限评测、原局部发布、恢复与双入口消费者
+
+- Start product HEAD: `f740e65238d6c46575c1f9972735a1166ca1ec71`。
+- Start docs HEAD: `a5a27f2d8d4c472dcbb1e9da0342759d219c7a2b`。
+- End / tested product HEAD: `ed00f4f0cea53be360ed8dfa082bbd0afeec5398`；同一 `feat/agent-intelligence-runtime` 已 commit / push，产品 worktree 干净。main 未变化 / 未合并。
+- Status: **S10 engineering complete — S10 only；M1 empirical acceptance pending**。先冻结 [s10-evolution](../../plans/architecture/agent-intelligence-runtime/s10-evolution.md)，保守实现 finite policy / target / budget / promotion / publication / rollback；没有默认扩大三类目标或运行权限。
+- 未加载 Skill、未委派子 agent、未读取 / 更新 reference 或其它 Experience 草稿；未读取 S06 私有 config / ledger / reports。
+
+### 原 authority / 部署边界
+
+- `AgentEvolutionRepository` 新增 registry kinds `atri_agent_evolution_owner` [handle] 与 `atri_agent_evolution` [handle, scopeId hash]，只保存有限预算、policy、job、report、intent / receipt。原 Skill files / history、Workspace Preset library / binding、Native immutable Program / Preset、Project Task 仍是有效配置权威；没有并行 active config。
+- 原 Experience explicit feedback / Host outcome / user hypothesis 分层保持；提炼在原诊断层追加 internal `model_hypothesis` 来源，HTTP 不能伪造此 origin。启动前冻结原 declaration / full base / environment targetPin 与 source refs；配置后用户修改 base 即拒绝，不能让旧授权覆盖新配置。
+- RP 仅 ordinary non-group rp_chat、exact subject + `.png` character binding，原用户单 owner bounded Director maxSteps≤6；不支持 Native Session、builtin / global / Package、conversation 强覆盖或其它独立 Skill / Prompt / strategy 叠加。Skill 仅原 visible + always 的唯一局部 Skill body，不改 frontmatter / 支持文件或 invocation 选择。
+- 三类目标分别沿双域原 authority：character / project Skill SKILL.md body；Workspace Agent instructions / Project 原用户 Preset system.style；Workspace budgets.maxSteps / 原 pristine planning Task maxRepairRounds。其它 Task 保留原 creation 参数，开始 plan / generation / proposal / Workspace 后不热改。Project Prompt 使用原 role.studio player Route 的 ≤32 项 `projectPromptBindings`，只覆盖指定 Project，保留完整原 Route 的其他 bindings。
+- SettingsRepo save / patch / Host update 共用原 queue；Host whole library CAS + `agentWorkspaceRevision`，browser patch 携带 epoch，stale 草稿拒绝。原 RP 下一 preparation 先 Host reconcile / refresh 再接受 profile；当前 run 保留 clone。单 Host writer 支持，不承诺跨进程锁、physical fsync、任意 raw writer 或普通 browser 编辑通用协作合并。
+- 同一 owner 的所有 scope 比较物理 authority：已生效 Skill、character binding、Project Prompt 或 Task publication 必须先 rollback，不能在另一 chat 把仍生效派生版本当独立 base 或叠加独立 reports。其它 Task 的不同 physical target 保持独立。
+
+### 有限评测、费用与门槛
+
+- owner ledger ≤2048 attempts / 1 MiB，request 1–2048、tokens 1–10000000、admission 间隔 1000–60000 ms；scope ≤8 jobs / 16 publications / 4 MiB。实际每轮一个候选（schema 上限两个），同 scope 最短 24 小时间隔，一 job 至多一个 publication；容量满拒绝，不删除账本腾额度。
+- 原 NativeTaskScheduler background auxiliary task，timeout 一小时、job ≤120 sends / 1000000 tokens、每非 judge trial ≤6 sends。每 actual provider send 之前持久 reservation；提炼 / baseline / candidate / judge / retry / cancel 全记同一 owner，unknown / missing usage 保留 upper bound，reported overage sticky breach。重启不重发 pending model work、不清累计账本。
+- production parent 使用原 resolver / compiler / GenerationService / OpenAI-compatible provider 和 owner 选定 exact Library Route，非 streaming、output≤1024；固定子 worker 无 Secret / 用户 stores，私有临时 FS / Studio Git / canary，执行原 Director / Studio。固定 loader 补原 browser library 的 Node import，严格 RPC 只允许 parent model send；没有模型代码执行入口。
+- promotion 三个独立场景 ×三次重复 ×两 arms；九次一次性 blind model judge 和九项独立 authenticated human label。提炼只见 feedback / diagnosis / declared base，report pin 固定 case / 场景 / configs / source revision / actual request / snapshot / usage / charge。production 不接受上传 report；S06 report 不能取得 S10 自动资格。
+- gate 要求全部 original authority / isolation / target_consumed 检查通过，九个人工 observation 非负且无分歧，至少六对 candidate 胜、其余 candidate / tie，行为维度非负，paired candidate token / 可核对费用≤baseline；每个 judge / trial charge 与 durable ledger 精确对应。unknown price / usage、缺人工观察、同模型 judge 单独偏好、未消耗 target 或超额均 ineligible。
+- 价格是 owner 显式确认并绑定 exact Route / model / connection 的有限 metadata，不推断 provider 定价或隐藏 retries。controller 提炼 / judge 单独报告、全计 job / owner；trial 相比不证明包含学习成本的净收益。初始门槛是保守准入规则，尚未以真实独立改善校准。
+
+### Publication / recovery / lifecycle / UI
+
+- 先保存 original candidate，再评价；失败保留 unavailable / review-only report 与费用 refs。policy / source / target / config / report / budget 全重验后写 durable intent，original target queue 内接受 finalizing gate，执行 original CAS，另写 receipt；没有 Evolution lock 等待 target queue 的锁反转。
+- commit 前后 response loss / restart 用 actual base / desired / third-state 分别重验、补 receipt、conflict。重复 publish 请求恢复同一 pending intent，scope queue 内拒绝第二个 publication；任务启动也按 frozen batch / policy / target 去重。pause / disable 取消未接受 pending 工作，finalizing 接受的有限 CAS 可完成，不重复付费发送。
+- rollback 校验 previous exact 版本与 complete original actual binding，用户改 binding、运行过 Task 或 missing authority 保持冲突；不 force overwrite、不撤销已提交 Project / World effects。Project original Host snapshot 记录 next-run exact ref / version；RP completed typed trace + saved exact output 记录 client_observation。receipt 历史与 current binding 分开展示，manual binding drift 暂停 automatic policy。
+- 原 source / feedback / diagnosis correction、withdraw / delete / retention 先 durable invalidation / pause，再取消 scheduler、异步 rollback、清 report / derived diff / hypothesis 和未选原 candidate history。仍由用户选择的版本或缺原 authority 明确 garbage / conflict，清理仅留 hash receipts 与预算。Workspace refresh 与 Project generation 前沿同一 Experience freshness reconcile；read-only inspect 不持久写。
+- 原 Workspace Run / Studio Task 挂同一共享面板，提供反馈与诊断来源、删除 / retention / export、有限预算、target declaration、默认 review / 显式 local auto、candidate diff、盲测场景与九对人工标签、成本 / 状态、exact report review / publish、pause / disable / rollback、current vs historical receipt。Studio 提供 Prepare without running；原默认流程仍立即执行。无无限 polling。
+
+### Minimal local validation / failures accounted
+
+- **12 relevant suites / 233 distinct local tests passed**。新 S10 三套 48：`evolution.test.js` 41、`evolution-consumers.test.js` 6、`evolution-http.test.js` 1；既有九套 185：Native Prompt candidates19、Workspace Prompt14、Workspace strategy21、Experience feedback33、capture24、Project strategy16、Skill versions23、Skill resolution23、SettingsRepo FS / SQLite12。重复运行不累加。
+- 新三套组合先 44 passed；最后增加请求重试恢复并修复 pending intent / queue 幂等性，仅定向 service / repository suite **41 passed**（其余 consumer6 / HTTP1 无相关改动，保留已通过证据）。发布 / 测试代码以最终上述 product HEAD 归档；最终 host-profile 仅删除 EOF 空白，不改变逻辑。
+- 主要命令：`NODE_OPTIONS=--experimental-vm-modules npx --no-install jest --config tests/jest.config.json --runInBand tests/agent-intelligence/evolution.test.js tests/agent-intelligence/evolution-http.test.js tests/agent-intelligence/evolution-consumers.test.js`；原九套用相同 runner。最后 SettingsRepo 加 `--testNamePattern='FsEngine|SqliteEngine'`。
+- FS / SQLite 六类 target feedback → hypothesis → candidate → comparison → nine labels → auto original CAS → rollback；共享 scope budget / unknown / restore / breach、pause / cancel、before / after target commit 故障、restart / repeated request once recovery、stale settings、manual drift、跨 chat stacking 拒绝、source withdrawal / retention、inactive original history cleanup、generic SQL dump / restore / deleteUser 与 FS directory backup / restore / deleteUser、HTTP auth / foreign / spoof / no-store / read-only。
+- 两个真实固定 fork worker 用 fake provider，分别运行 RP Skill / Project Prompt 的原 Director / Studio / compiler / resolver / GenerationService，28 个 fake sends / 27 paired + judge charges，target_consumed / 隔离 guards 可核对；同模型 tie 仍 ineligible。fixture stores / source / canary 隔离，未写 production Project。原下一 Project Prompt Host snapshot、其它 Project default、下一 Task Studio prompt 参数 / version / activation、RP completed trace、browser stale draft 与 fresh profile 分别直接验证。
+- 首轮原九套 183 passed / 14 failed：12 项是未启动的本地 MySQL / Postgres；2 项是 feedback HTTP fixture 缺 library engine 的兼容接线，修为原 persistence engine fallback 后 feedback **33 passed**。SettingsRepo 最后 FS / SQLite **12 passed / 外部 12 skipped**；其它七套无变化，未重复。计数排除未通过外部 12 项。
+- `node tests/frontend/agent-evolution-ui.smoke.mjs`：真实 Chromium 390px / 共享 production pane，原 RP / Studio 两个 mount 入口；fixture API 的 feedback、有限 budget、默认 review、start / pause / delete、escaping / dispose 通过。不是完整 app E2E，也未验证真实 app 的整个配置或网络工作流。
+- `node --experimental-loader ./src/native/agent-intelligence/evaluation/loader.js src/native/agent-intelligence/evaluation/worker.js --check` 加载原模块通过。当前 Node 24 本地验证；Node 20 未实测，固定 loader 不用仅新 Node 才有的 registerHooks。
+- **44 个其它触及 JS / mjs 的 ESLint 通过**；`src/endpoints/settings.js` 在只禁用 `atria/no-raw-fs-in-endpoint` 后通过。该 rule 的四处原 raw FS 错误（138 / 399 / 430 / 468）在 `git show HEAD:src/endpoints/settings.js` 的 S09 baseline 中也存在，不以未通过全规则 lint 冒充通过，不改无关 FS 治理。最终 product / staged diff 检查通过。
+- 无新增真实模型请求；不读写 S06 private configuration / ledger / reports，旧累计仍 **110 requests / 300464 记账 tokens，breached=false**（含 unknown 保留预留，不是精确实际总量）。没有 full tests / build / full app UI / Android / 真机 / 外部 DB / remote CI 验证。
+- 本阶段 docs 仅 index / delivery / m1-evolution / 新 s10-evolution / 同一 Record / live HANDOFF 六文件；本地六文档 / 89 local links / fences 通过，40 stages 身份与依赖、D0–S09 Record 正文与五个既有 dirty hashes保持。未改依赖 / lockfile / governance / 长期分支结构。
+
+### Preservation / M1 acceptance checkpoint
+
+- main AGENTS 与 docs README / WEB Adapter / 两模板既有 dirty 未暂存 / 提交，hash 保持：AGENTS `8f01833fdba7d46bd6dfa33e259585e2486ddf11a3076997a0830cde331d265f`；README `8d1fe754dd5f5a8255375b8ae8aed29a9196b764a54c65970c7a188ba93416b1`；WEB `a9ea6de6d9bbc3f5a5a50e508231fb9286f0ef6e798268b2901cbe38db7a4686`；HANDOFF 模板 `22c8d9aead58bced3b96a265a0cf7f0b18f13e9346e5d118194b7558f5d66c06`；Record 模板 `adf27c43f4318970782387069b3beb88d21cf6a7b97217702ed6b9b170e06c77`。
+- S10 工程消费者已交付，**M1 独立真实质量 / 成本改善仍待验收**。S06 原 ineligible 未重解释，fake report positive-flow 只测试 authority gate；manual review 可明确提交所审版本，不将它计作 automatic eligibility。
+- 下一只复核 M1 验收与集成前置条件，先核对真实 Git → HANDOFF → index / s10-evolution → m1-evolution / delivery M1 → 同一 Record。需要真实验证则先冻结双入口有限范围、人工观察与累计预算；恢复已授权的同一 S06 ledger / rate checkpoint，不清零 / 覆盖，不扫描 Secret。
+- 本轮 S10 product / docs commit / push、同一 Record / live HANDOFF后停止。不合并 main、不删除任务分支、不进入 S11 / G / Local；不因 S01–S10 工程完成自动宣称完整 M1 验收通过。
+
 ## Final state
 
-长期任务仍进行；D0–D4 / S01–S09完成。S09交付原Workspace策略版本 / rollback与Project pristine Task repair参数候选 / CAS，8 suites / 105 distinct本地tests通过。产品HEAD `f740e65238d6c46575c1f9972735a1166ca1ec71` 已push，main未变化。下一checkpoint仅S10，本轮未开始。S06仍ineligible；M1与自动publication未计作完成。
+长期任务仍进行；D0–D4 / S01–S09 与 S10 工程交付完成。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 push，233 distinct 相关本地 tests 与 shared-pane Chromium fixture 通过，main 未变化。M1 真实改善 / 集成前置条件待验收；S06 原候选仍 ineligible。下一 checkpoint 只复核 M1 验收，本轮停止，不进入 S11 / G。
