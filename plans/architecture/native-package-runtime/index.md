@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`；`docs` 承载本任务的 Plan、Record 与实时交接。
-- Status: Approved — 能力方向与职责边界已确认；技术契约待 S1 冻结，实施尚未开始。
+- Status: Active — S1 技术契约已冻结；下一阶段 S2 实施。
 - 创建日期：2026-10-06。
 - 产品起点：远端 `main`，`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；开始后续阶段时重新核对实际远端 HEAD。
 - Record：[永久阶段记录](../../../records/architecture/native-package-runtime.md)。
@@ -82,7 +82,7 @@ S1 是下一设备的起点，按 S1 → S2 → S3 连续推进至 CP1。S1 仍�
 
 已冻结：目标、职责、Authority 边界、脚本用途、读权限原则、Task 消费原则及 Processing 分工。
 
-待 S1 推导：逻辑资源与执行适配、Effect 表达、规则检查位置、单次提交范围、读取/产物引用形式、具体 Schema 和 API。后续模块也保留其技术细节，不能把调研中的示例当成已冻结接口。
+S1 已冻结：Game Logic v3 可选 computation、复用固定模块编译与 QuickJS 受限计算、typed computed + 固定 Effect 模板、候选后 invariant、单 Session CAS 和 Task uses / production 引用。详见 authority-script / context-generation 的 S1 契约；S3 作者表达按该边界细化。
 
 ## 验证策略
 

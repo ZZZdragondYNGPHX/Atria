@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`。
-- Status: Active — S0 已完成并推送；下一段 S1 → S3 至 CP1，尚未开始。
+- Status: Active — S1 已完成；继续 S2 → S3 至 CP1。
 - Plan：[唯一入口](../../plans/architecture/native-package-runtime/index.md)。
 - 实时恢复：[HANDOFF](../../HANDOFF.md)。
 
@@ -50,3 +50,11 @@ S1–S6 按 [阶段路由](../../plans/architecture/native-package-runtime/index
 ## 最终状态
 
 整体任务尚未完成。后续源码实施、验证、main 集成与短期分支清理完成后再补最终状态并删除 live HANDOFF。
+
+## S1 — 技术契约冻结
+
+- 日期：2026-10-06；Start / End 产品 HEAD：`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`。
+- 仅静态追读 Authority / Task / SessionCore、Script 编译与 VM、Context / Knowledge / Generation 接点；无产品修改、无产品开发分支。
+- 冻结 computation 模块闭包、用途受限同步计算、固定 typed Effects、候选后 invariant、Receipt 隐私、Task uses / production / 跨 Revision 和 once 消费契约；行为矩阵已写入对应模块。
+- 实际本地验证：文档相对链接、UTF-8 与 diff whitespace 检查；没有运行产品测试/构建。
+- 下一段：S2 固定领域脚本和 Authority 集成，随后 S3；到 CP1 停止。

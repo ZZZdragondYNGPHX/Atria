@@ -4,10 +4,10 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`。
 - Primary Workspace: `main`；Plan / Record / HANDOFF 在长期 `docs`。
-- 当前阶段：S0 已完成，正式企划已推送；下一段从 S1 技术契约冻结连续推进至 S3，抵达 CP1 后停止汇报，尚未开始。
+- 当前阶段：S1 技术契约已冻结；继续 S2 → S3，抵达 CP1 后停止汇报。
 - 产品基线：远端 `main`，`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`。
 - 文档发布目标：远端 `docs`；本轮使用以 `origin/docs` 为起点的独立工作树。起点 `5104ee5ef78f65a75194f2894d8b4ac935744c89`，发布后的文档 HEAD 以实际远端 `docs` ref 为准。
-- 产品开发分支：未创建；本轮没有实现代码。
+- 产品开发分支：S1 尚未创建；S2 使用 feat/native-package-runtime。
 - Plan 唯一入口：[index.md](plans/architecture/native-package-runtime/index.md)。
 - Record：[native-package-runtime.md](records/architecture/native-package-runtime.md)。
 
@@ -25,7 +25,7 @@ Package 定义玩法，Atria 强制固定领域规则和平台合法性。脚本
 - 发布前已重新 fetch main / docs，main 基线未变化；正式企划提交 `03e52f7eaa2727ae1fc8c4b094a6be76b1432272` 已经远端 `docs` ref 核验，远端 main 仍为上述基线。
 - 文档发布检查已通过：9 份文档、33 个相对链接、27 个 main 代码入口及 UTF-8 编码；`git diff --cached --check` 通过。远端 refs 为事实依据。
 
-## 下一目标：S1 → S3，至 CP1 停止
+## 下一目标：S2 → S3，至 CP1 停止
 
 首先在 S1 基于最新 main 冻结固定 Package Domain Authority 的可实施技术契约：规则资源绑定、读授权、受限执行、Precondition / Logic / Effect / Invariant、候选范围、提交及必要 Task 产物引用，并给出行为验证矩阵。S1 只读相关源码并更新设计文档，不实现产品、不创建产品开发分支。
 
@@ -58,3 +58,7 @@ S1 验证和推送后继续 S2，按 Governance 建立产品短期分支，实�
 ## 新设备接手提示词
 
 > 在 ZZZdragondYNGPHX/Atria 继续 `ARCH-NATIVE-PACKAGE-RUNTIME`，从 S1 技术契约冻结连续推进至 S3，完成 CP1 核心运行闭环后停下汇报。先检查实际远端 main / docs 和本地状态，再按 docs:HANDOFF.md → plans/architecture/native-package-runtime/index.md → 当前阶段指定模块 → records/architecture/native-package-runtime.md 读取。main 起点为 4ac8affbf01bfb5fb576834bb7eedbeefd03c007，产品工作分支尚未创建；若远端已变化，只核对当前阶段相关代码。研究与大方向已完成，用户只把控范围、职责边界和关键取舍，技术细节自行推导。S1 仅设计，冻结并推送契约后进入 S2 实施，再进入 S3；复用既有 Native Authority 与 Runtime。每阶段执行对应验证，更新 Plan、同一 Record 与 HANDOFF，推送后继续，只到 CP1 停止；该用户授权优先于 Governance 的逐阶段停止规则。不要重新全面研究插件或加载所有模块。
+
+## S1 接手补充
+
+S1 契约已写入 authority-script / context-generation，产品 main 已本地 fast-forward 到基线。无关 AGENTS.md 和旧 docs 工作树 dirty 调整保留；任务 docs 从最新 origin/docs 独立工作树提交。不要重做 S1，进入 S2；仅运行最小相关本地验证，不主动运行远端 CI。

@@ -76,3 +76,36 @@
 `src/native/authority-transaction.js` → `task-authority.js` → `session-core.js` 的相应准备/提交函数；`public/scripts/native/experience/logic/package.js`、`transactions.js`、`runtime.js` 及相应 Validator / Reducer / World 候选路径。输入视图从 `public/shared/native-information-runtime.js` 按需追踪。
 
 锁定证据和分类见 [research.md](research.md)。本模块在 S1 结束时补上技术契约，当前不声称已确定 Schema 或执行载体。
+
+## S1 冻结技术契约（2026-10-06）
+
+### 固定资源和执行
+
+保留 Game Logic v3 JSON 声明入口；Transaction 可选 `computation: { source, outputSchema }`。`source` 是 Package source 中精确 JS/TS 路径，静态相对 import 的闭包在 Build / Install 校验，运行只使用已安装 PackageVersion 的 bytes。复用 `compileController` 的语法限制、TS 转译、闭包和 sourceHash；Authority 使用独立 QuickJS 计算宿主，不复用 UI Controller bridge 权限。每次执行新 VM，沿用 8 MiB heap、256 KiB stack、40 ms 中断和模块/输入输出字节上限；无网络、模型、调度、文件、提交句柄、Date 或环境随机。固定输入包含可追踪 seed，Package 可实现自己的纯确定性算法。
+
+模块 default 对象必须提供同步 `precondition(context)`、`compute(context)`、`invariant(context)`。检查严格返回 boolean，compute 严格返回 outputSchema 内的 JSON；Promise、非 JSON、超预算和异常拒绝。输入深冻结，算法可创建私有可变副本。precondition / compute 读取 `{ args, reads, artifacts, seed }`；invariant 读取同一 grant 的候选后视图，另带 `beforeReads`、`computed`、`resolution`。不向模块提供整个 State。
+
+### 固定效果及提交
+
+`computed` 成为固定 Resolution / Effect 模板的额外类型化根；模块不能返回任意 Patch、目标或宿主调用。复杂算法输出中间值，固定模板选择与调用现有 typed World Event / App Command / clock / workflow。声明式 validators 继续执行前检查。所有效果及其 Rule / Reducer 扩展在私有候选执行，invariant 在相关效果后及正式准备结束前执行，平台 Lifecycle / Schema / Scope / retention 检查继续有效。
+
+原子边界为一次 Session Revision，复用 SessionCore 发布锁和 CAS。无变化也是成功操作，可随 narrative / receipt 发布一个 Revision；失败不发布。旧 identity / inputHash / ordinal 和 provider retry 语义保持；任何规则依赖变化会改变固定 resource fingerprint，Receipt 增加不含私有输入的规则/资源依据与阶段证据。Receipt projection 仍只允许 args / public resolution，不默认暴露 computed 或 reads。
+
+### Task 引用接点
+
+Transaction 可选 `artifacts`，每个 grant 声明本地 id、固定 taskId / variantId / usageId，以及由类型化 args 得到的 invocationId。Task resultPolicy 的 `uses` 定义 purpose（rule_input / operation_proposal / context）、reuse（same_revision / same_branch）、cardinality（once / reusable）、Information 依赖 viewIds 和 Lifecycle scopeIds。缺声明不能消费。实现细节及产物身份的唯一权威见 context-generation 的 S1 契约。
+
+### 最小行为矩阵
+
+| 场景 | 必须观察到的行为 |
+| --- | --- |
+| 购买、批量排序/定价 | 固定脚本计算，钱/库存/交付同次候选及提交 |
+| Schema 合法但余额不足 | precondition 拒绝，原状态无残留 |
+| 最后 invariant 不成立 | 前面的候选效果全部丢弃 |
+| 未授权字段、caller validator / source | 不提供字段或拒绝请求，不能扩大读写范围 |
+| 无限循环、内存、Promise、坏输出 | 有界拒绝且不发布，错误不泄漏输入 |
+| 重试、换 Branch / Revision、并发 | 同锚点 deterministic，冲突保持现有 CAS 语义 |
+| Task 伪造 / 编辑 / 错用途 / 重复消费 | 按正式来源和 uses 拒绝 |
+| 私有读取 | 不进入默认 Receipt / 模型 / 呈现 |
+
+静态证据：`authority-transaction.js` 已通过 privateReads / budget / candidate 准备，`task-authority.js` 已精确装载 sourceFiles，SessionCore 负责唯一发布；`frontend/script-compiler.js` 已提供纯模块编译闭包，`frontend/script-vm.js` 提供可复用 QuickJS 限制与动态 constructor 封堵。S2 只扩展这些路径。

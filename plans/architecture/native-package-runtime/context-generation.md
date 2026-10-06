@@ -65,3 +65,13 @@ S1 先落实领域契约需要的真实 Task 引用与消费接点；S3 完成�
 `src/native/model-prompt-runtime/prompt-compiler.js`、`prompt-values.js`、`generation-service.js`；`public/scripts/native/knowledge-runtime.js`、`knowledge-selection.js`、`context-compiler.js`；`src/native/adapters/generation-host.js`；`public/shared/native-task-contract.js`；`src/native/task-scheduler.js`；`session-core.js` 的 Task 保存与 proposal 应用。
 
 模型与资源解析说明先按需读 `src/native/model-prompt-runtime/README.md`。锁定证据见 [research.md](research.md)。
+
+## S1 冻结：产物身份与消费
+
+正式 durable Task record 继续保存在 `atri_task_results`，由现有 GenerationHost → SessionCore 路径保存。新增 production 依据：Session / PackageVersion / Branch / 生产 Revision、原始输入、Task 定义 hash、有效请求/结果 hash、uses 所需 Information 投影 fingerprint 和 Scope epoch。记录不把模型结论直接变成游戏事实。
+
+消费者只给 invocationId；宿主从正式 record 解析并核对固定 task / variant / definition、normalizedResultHash、production 身份、declared usage、scope active + epoch、依赖 fingerprint。投影 fingerprint 排除顶层当前锚点但保留真实来源身份和值，允许不影响依赖的 Revision 变化；Branch / Package / Session 不允许跨越。same_revision 要求消费发生在保存该产物的 Revision；same_branch 仍强制依赖和当前规则重算。
+
+once 的消费身份写入同一候选 Task record，和领域效果一起 CAS 发布；失败不会消耗。请求幂等继续由 Authority identity / existing receipt 决定，与重复消费独立。编辑后 payload 与原 normalizedResultHash 不符，不再具备原产物身份；旧 Task 无 production / uses 可沿用既有显示和 proposal API，但不能自动取得新的消费权。
+
+S3 将在现有 SessionContextCompiler 中接入完整 Native Knowledge selector；固定 Package 上下文派生只接收匹配当前受众且获 context exposure 的 Information view 和 context-purpose Task references。动态 Knowledge 文本先展开，再执行 full / compact 和依赖预算，最终请求仍由 GenerationService 计数。pending sticky / cooldown 只在相应正式结果采用时随 Session CAS 提交，preview / compile 不写入。
