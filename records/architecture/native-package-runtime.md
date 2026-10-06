@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`。
-- Status: Active — S1 已完成；继续 S2 → S3 至 CP1。
+- Status: Active — S2 已完成；继续 S3 至 CP1。
 - Plan：[唯一入口](../../plans/architecture/native-package-runtime/index.md)。
 - 实时恢复：[HANDOFF](../../HANDOFF.md)。
 
@@ -58,3 +58,14 @@ S1–S6 按 [阶段路由](../../plans/architecture/native-package-runtime/index
 - 冻结 computation 模块闭包、用途受限同步计算、固定 typed Effects、候选后 invariant、Receipt 隐私、Task uses / production / 跨 Revision 和 once 消费契约；行为矩阵已写入对应模块。
 - 实际本地验证：文档相对链接、UTF-8 与 diff whitespace 检查；没有运行产品测试/构建。
 - 下一段：S2 固定领域脚本和 Authority 集成，随后 S3；到 CP1 停止。
+
+## S2 — 固定领域计算与 Authority
+
+- Start HEAD：`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；End / Tested HEAD：`664616b83`；产品分支：`feat/native-package-runtime`，已推送。
+- 复用固定 JS/TS 编译闭包和 QuickJS 限制，新增无 Bridge 的同步计算宿主；禁止环境时钟/随机，保留显式 seed。
+- Game Logic v3 可选 computation，typed computed 仅进入固定 Resolution / Effect 模板；固定 precondition / compute / invariant，效果后和全部 publications 后双重 invariant。
+- Build/Install 强制闭包；Frontend 消耗资源时保留同时属于领域计算的模块。安全 execution 依据随现有 Action Receipt 持久化。
+- 本地验证通过：package-computation 16 例、既有 authority-candidate-c2 34 例、authority-resources-c1 14 例，真实 FsEngine / SqliteEngine Session CAS 2 例；触及产品文件 ESLint 和 diff check 通过。首次 integration run 因测试 envelope 缺字段失败，已修正并重新通过。
+- MySQL / PostgreSQL 首次连接失败（本机服务未启动）；后续使用现有 disable 开关，仅验证本机 Fs / SQLite。未执行远端 CI、整库测试、构建、UI 或设备验证。
+- 限制：40 ms 是 VM 中断 deadline，WASM 初始化及内存耗尽清理有额外耗时，不构成宿主进程 wall-time SLA；S3 接入 Task 真产物和上下文消费，S4–S5 负责编排/作者界面。
+- 下一目标 S3，然后到 CP1 停止。

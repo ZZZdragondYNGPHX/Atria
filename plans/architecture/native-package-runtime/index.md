@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`；`docs` 承载本任务的 Plan、Record 与实时交接。
-- Status: Active — S1 技术契约已冻结；下一阶段 S2 实施。
+- Status: Active — S2 已实施并验证；下一阶段 S3 核心上下文与产物消费。
 - 创建日期：2026-10-06。
 - 产品起点：远端 `main`，`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；开始后续阶段时重新核对实际远端 HEAD。
 - Record：[永久阶段记录](../../../records/architecture/native-package-runtime.md)。
