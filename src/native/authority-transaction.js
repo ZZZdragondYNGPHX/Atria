@@ -1,3 +1,4 @@
+import { runPackageComputation } from './package-computation.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
 import { prepareHistory, historySources, validateHistory } from './history-authority.js';
@@ -208,12 +209,23 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
     const args = budget.typed(input, transaction.inputSchema);
     const reads = privateReads(candidate, contract, transaction.reads, args, budget);
     for (const validator of transaction.validators) if (!predicate(validator.formula, { args, reads })) throw new TypeError('Transaction validator rejected');
+    let computed; const execution = [];
+    if (transaction.computation) {
+        budget.step();
+        const input = { args, reads, artifacts: {}, seed: identity };
+        const checked = await runPackageComputation(installed, transaction.computation.source, 'precondition', input);
+        if (checked.value !== true) throw new TypeError('Domain precondition rejected');
+        execution.push(checked.evidence);
+        const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input);
+        computed = budget.typed(prepared.value, transaction.computation.outputSchema);
+        execution.push(prepared.evidence);
+    }
     const rng = createDeterministicRng(identity);
     const resolution = transaction.resolution.kind === 'bounded_fortune' ? { roll: rng.int(1, transaction.resolution.sides) } : {};
     // Cases see only the public die, not a partially assigned outcome.
-    const selected = transaction.resolution.cases.find(item => predicate(item.when, { args, reads, resolution }));
+    const selected = transaction.resolution.cases.find(item => predicate(item.when, { args, reads, resolution, ...(computed === undefined ? {} : { computed }) }));
     resolution.outcome = selected?.outcome ?? transaction.resolution.fallback;
-    const context = freeze({ args, reads, resolution });
+    const context = freeze({ args, reads, resolution, ...(computed === undefined ? {} : { computed }) });
     const rules = createRulesEngine(logic.rules, { onEvaluation: () => budget.rule() });
     for (const effect of transaction.effects) {
         if (effect.when !== undefined && !predicate(effect.when, context)) continue;
@@ -233,7 +245,18 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
         }
     }
 
-    return resolution;
+    const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts: {} } : null;
+    await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
+    return { resolution, computationState, execution };
+}
+
+async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence) {
+    if (!state) return;
+    budget.step();
+    const reads = privateReads(candidate, contract, transaction.reads, state.args, budget);
+    const checked = await runPackageComputation(installed, transaction.computation.source, 'invariant', { ...state, reads });
+    if (checked.value !== true) throw new TypeError('Domain invariant rejected');
+    evidence.push(checked.evidence);
 }
 
 export async function prepareAuthorityTransaction(base, installed, rawRequest) {
@@ -272,7 +295,8 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
             if (person && person.status.kind !== 'active' && effect.args?.alive !== false) throw new TypeError('Historical actor cannot resume active role');
         }
         const args = request.input;
-        const resolution = await executeTransaction(candidate, installed, contract, logic, world, transaction, args, budget, identity);
+        const executed = await executeTransaction(candidate, installed, contract, logic, world, transaction, args, budget, identity);
+        const { resolution } = executed;
         // Existing clock validation does not pump. Drain bounded due work privately
         // before projections; never dispatch queued Model Tasks in preparation.
         if (candidate.states.atri_lifecycle?.ready) await applyLifecycle(candidate, installed, { kind: 'pump' }, budget);
@@ -295,10 +319,12 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
             budget.counts.historyLogicalBytes = bytes(candidate.states.atri_lifecycle.history);
         }
         await publications(candidate, installed, contract, logic, budget);
+        await checkComputation(candidate, installed, contract, transaction, budget, executed.computationState, executed.execution);
         validateCandidate(candidate, contract);
         const projection = budget.typed(template(transaction.receipt.projection, { args, resolution }), transaction.receipt.schema);
         const receipt = bounded({ schemaVersion: 1, authorityId: identity, transactionId: transaction.id, verb: transaction.verb,
-            anchor: request.anchor, playerMessageId: player.messageId, result: projection }, transaction.receipt.maxBytes);
+            anchor: request.anchor, playerMessageId: player.messageId, result: projection,
+            ...(executed.execution.length ? { execution: executed.execution } : {}) }, transaction.receipt.maxBytes);
         return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, work: { ...budget.counts } });
     } catch (error) { throw failure('transaction preparation', authorityPublicRefusal(error)); }
 }

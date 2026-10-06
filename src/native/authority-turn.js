@@ -76,6 +76,7 @@ export function authorityTurnProof(core, owner, base, proof) {
 export function authorityActionRequest(prepared, selection, invocationId, revisionId, player) {
     const request = { actionId: selection.transactionId, commandId: selection.transactionId, args: {}, expectedRevisionId: revisionId,
         idempotencyKey: 'authority:' + invocationId, compensation: null, compensates: null,
-        authorityId: prepared.identity, inputHash: prepared.inputHash, playerMessageId: prepared.receipt.playerMessageId, source: player ? 'frontend' : 'intent' };
+        authorityId: prepared.identity, inputHash: prepared.inputHash,
+        ...(prepared.receipt.execution ? { execution: prepared.receipt.execution } : {}), playerMessageId: prepared.receipt.playerMessageId, source: player ? 'frontend' : 'intent' };
     return { ...request, fingerprint: hashNativeDocument(request) };
 }

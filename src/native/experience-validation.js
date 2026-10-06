@@ -1,3 +1,4 @@
+import { compilePackageComputation } from './package-computation.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
 import { json } from '../../public/shared/native-values.js';
@@ -64,6 +65,9 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
         if (raw.schemaVersion !== 2 && raw.schemaVersion !== 3 && raw.transactions === undefined && raw.derivedPublications === undefined && !hasAppMapping) continue;
         const lowered = raw.schemaVersion === 2 ? lowerDeclarativeMutations(raw) : raw;
         compileDeclarativeLogic(lowered, { data: {}, experienceContract: contract });
+        for (const transaction of lowered.transactions ?? []) {
+            if (transaction.computation) compilePackageComputation(transaction.computation.source, files);
+        }
         for (const mapping of lowered.interpretations ?? []) {
             if (!mapping.appCommand) continue;
             const { domainId, commandId } = mapping.appCommand;

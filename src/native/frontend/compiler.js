@@ -1,3 +1,4 @@
+import { compilePackageComputation } from '../package-computation.js';
 import { frontendTransactions } from './authority.js';
 import { assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
@@ -147,6 +148,18 @@ export function compileProjectFrontends(packageSource, inputFiles) {
         compiled.consumed.forEach(path => consumed.add(path));
         value.runtime.experience = { ...experience, frontend: { kind: 'native', version: 3, entry: compiled.entry } };
     }
-    consumed.forEach(path => files.delete(path));
+    // Shared pure modules may also belong to Authority's exact source closure.
+    const retained = new Set();
+    for (const { value } of owners) {
+        const logicPath = value.runtime?.game?.logic ?? result.runtime?.game?.logic;
+        const bytes = logicPath && inputFiles.get(logicPath);
+        if (!bytes) continue;
+        const logic = JSON.parse(bytes.toString('utf8'));
+        for (const transaction of logic.transactions ?? []) if (transaction.computation) {
+            const artifact = compilePackageComputation(transaction.computation.source, inputFiles);
+            artifact.modules.forEach(module => retained.add(module.id));
+        }
+    }
+    consumed.forEach(path => { if (!retained.has(path)) files.delete(path); });
     return { packageSource: result, files };
 }

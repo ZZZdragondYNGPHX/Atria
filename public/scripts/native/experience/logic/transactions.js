@@ -1,3 +1,4 @@
+import { resourcePath } from '../../../../shared/native-frontend-contract.js';
 import { assertRunTransactions } from '../../../../shared/native-run-contract.js';
 import { LIFETIME_OPERATIONS } from '../../../../shared/native-lifetime-contract.js';
 import { HISTORY_OPERATIONS } from '../../../../shared/native-history-contract.js';
@@ -104,7 +105,7 @@ export function compileTransactionDeclarations(raw, options) {
     // Count the entire hook, not just each publication in isolation.
     budget(publications.reduce((sum, item) => sum + item.reads.length, 0), publications.flatMap(item => item.effects), authority);
     const transactions = list(raw.transactions, LIMITS.transactions, transaction => {
-        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes'], 'Transaction');
+        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation'], 'Transaction');
         taskId(transaction.id); taskId(transaction.verb);
         if (transaction.origin !== undefined && (transaction.origin !== 'simulation' || !contract.simulationRuntime)) throw new TypeError('Unknown or undeclared Transaction origin');
         if (transaction.origin === 'simulation' && transaction.intent?.expose !== false) throw new TypeError('Simulation Transaction cannot be player-exposed');
@@ -114,8 +115,15 @@ export function compileTransactionDeclarations(raw, options) {
         const grants = reads(transaction.reads, lifecycle, input);
         const before = { args: input, reads: readContext(grants) };
         validators(transaction.validators, before);
-        const result = resolution(transaction.resolution, before);
-        const context = { ...before, resolution: result };
+        let computed = {};
+        if (transaction.computation !== undefined) {
+            fields(transaction.computation, ['source', 'outputSchema'], 'Transaction computation');
+            resourcePath(transaction.computation.source);
+            if (!/\.(js|ts)$/.test(transaction.computation.source)) throw new TypeError('Computation requires exact JS/TS source');
+            computed = { computed: objectSchema(transaction.computation.outputSchema) };
+        }
+        const result = resolution(transaction.resolution, { ...before, ...computed });
+        const context = { ...before, ...computed, resolution: result };
         if (transaction.history !== undefined) {
             if (!Array.isArray(transaction.history) || transaction.history.length > 8) throw new TypeError('History commands');
             for (const h of transaction.history) {
@@ -144,7 +152,7 @@ export function compileTransactionDeclarations(raw, options) {
         if (publications.some(item => item.reads.some(read => changed.includes(read.domainId)) && !selected.includes(item))) throw new TypeError('Transaction omits an affected derived publication');
         // Reserve for the whole hook: ordinary Lifecycle effects can also trigger
         // it. C2 must enforce these same ceilings on actual expanded execution.
-        budget(grants.length + publications.reduce((sum, item) => sum + item.reads.length, 0),
+        budget(grants.length * (transaction.computation ? 3 : 1) + publications.reduce((sum, item) => sum + item.reads.length, 0),
             [...transaction.effects, ...publications.flatMap(item => item.effects)], authority);
         fields(transaction.receipt, ['schema', 'projection', 'maxBytes'], 'Transaction safe receipt');
         const schema = objectSchema(transaction.receipt.schema);
