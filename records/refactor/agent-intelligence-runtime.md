@@ -10,7 +10,7 @@
 
 用户要求根据远端 Frontier Agent RP 研究重新核对最新 main，按全面调研、讨论、确定方案、正式执行的顺序长期推进。
 本轮完成架构调研与分阶段讨论稿。用户确认 RP 与 Project Agent 并重，首批先完成双入口成长闭环，并包含有预算与回滚约束的局部自动启用。
-D1 已冻结 M1 产品边界；D2 综合三份新增研究。S01 已完成 test-only 双入口基线；S02 已完成生产只读来源 adapter / EvidenceSet / Evaluation consumer 与本地最小验证。产品工作分支为 `feat/agent-intelligence-runtime@072a15d8d5b51117d0c5442e48e345475a274b66`，已 push，main 未变化。无真实模型效果结论，下一正式阶段为 S03，尚未执行。
+D1 已冻结 M1 产品边界；D2 综合三份新增研究，D3 整合 Reasoning Continuity，D4 整合 Execution Reuse / Cache Locality / Adaptive Invocation。S01 已完成 test-only 双入口基线，S02 已完成生产只读来源 consumer，S03 已完成可靠 RP metadata 捕获与公共持久层。产品工作分支为 `feat/agent-intelligence-runtime@78acfb65da6b1afa1dee1c2f35482af215832c74`，已 push，main 未变化。D4 仅企划更新；无真实模型效果结论，下一正式阶段仍为 S04，尚未执行。
 
 ## D0 — 最新 main 核对与架构调研
 
@@ -256,6 +256,40 @@ D1：沿已确认的 M1 范围与局部自动启用设计，收敛 scope / 权�
 - main AGENTS 与 docs README / WEB Adapter / 两模板既有 dirty 未暂存 / 提交；整理记录前后文件 hash 一致。其它工作树 Experience 草稿 / reference 未读写；无第二份 Record / HANDOFF。并发 D3 与前序 Record 逐字保留。
 - 下一正式阶段仅 **S04**：Git → HANDOFF → index / decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project 与存储 → 本 Record；沿同一分支细化 Project task / attempts / timeline / recovery，复用 Studio authority / receipt。仅下一阶段用户明确续接后开始；本轮到 S03 记录 / push 停止。
 
+## D4 — Execution Reuse / Cache Locality / Adaptive Invocation 企划整合
+
+- Request: 读取指定 Execution Reuse 研究，整合已确认架构结论；参考 Reasoning Continuity，避免重复定义。每阶段及完成仅本地最小相关验证。
+- Start docs HEAD: `1c2502dae8ac1bcb7a0bb1dfb1e18d9f01b984b8`；本轮开始时并发研究上传 / S03 文档整合使 refs 更新，按真实 Git 读取最新研究与 S03 状态，没有回退旧 HANDOFF。
+- Source research commit: `aa4d2d2fe`；[Execution Reuse 报告](../../plans/architecture/execution-reuse-cache-locality-adaptive-invocation-research.md) 全文读取，[Reasoning Continuity 报告](../../plans/architecture/reasoning-continuity-research.md) 参考 cache / artifact / freshness 与归并边界；两份正文保留。
+- Observed product HEAD: `feat/agent-intelligence-runtime@78acfb65da6b1afa1dee1c2f35482af215832c74`；stable main `ed1fd90521a63363e29856601abbf5e908c99d10`。本轮无产品代码修改。
+- Auxiliary docs branch: `feat/execution-reuse-plan`；从上述 docs HEAD 建独立工作树，集成目标为 docs，保护原 docs 治理 / 模板 dirty；不将 main merge 进 docs。
+- End docs HEAD: 包含本阶段记录 / live HANDOFF 的实际提交；commit / 集成 / push 后以真实 refs 为准。
+- Status: **Complete — D4 plan integration only**；不是 S04 或 G 阶段实施完成。
+
+### Completed / decisions
+
+- 新增 [execution-reuse](../../plans/architecture/agent-intelligence-runtime/execution-reuse.md) 权威模块：Runtime 一级复用、storage 分离，Exact / Structural / Semantic 候选与 validity proof 分开；复用原 source / artifact / authority / grant / provenance，不建立平行状态系统。
+- 契约对齐依赖、源域版本 / anchor、时间、权限 / Authority、purity / side effects、必要路径绑定与 Trust Domain；targeted invalidation 保留无关对象，缺可核验细粒度依赖时保守拒绝相关 revision 变化。
+- Tool / Artifact 保留 once / operation 与 effect / receipt 幂等；Plan / Workflow 复用结构模板并重绑定当前参数 / preconditions，Narrative Intent 是前置可选 artifact 职责，Final RP Prose 默认 fresh generation。
+- behavior-context §3.1 / §4 管理稳定 Segment / Resource identity、canonical serialization、受语义与权限约束的 cache-aware layout / schema 按需加载；不为命中添加无关 padding 或保留 stale Context。
+- compute-policy §1.1 管理规则 Adaptive Invocation 阶梯，按未满足需求选择 reuse / tool / retrieval / target / effort / fresh narration；lookup / validation / classifier / cache / 获准 prewarm 与进度 hints 沿原 budget / scheduler。
+- model-routing §8 管理 Application / Provider / Inference 三层 capability、exact-path cache evidence、hard constraints 后的 locality / 有效成本，以及 Snapshot 的请求决定与 Observation 的实际 hit / usage；estimated savings / unknown 有来源，不猜 gateway upstream。
+- model-routing §7 Reasoning Continuity 详细规则原样保留；其它模块只引用 Execution Continuation 边界，未重复定义普通 cache handle / lineage。
+- A–F 依次映射 G01 semantics、G02 context、G03 Tool / Artifact → Plan / Workflow、G04 原生路径验证、G05 / G06 invocation / eval，F Local KV / decode 在后续有限 PoC。40 个正式阶段及原依赖保留，M1 / 下一 S04 不增加新研究依赖。
+- U11 / A16–A25 与研究覆盖 / 读取路由、同一 Record / live HANDOFF 已更新；研究字段、支持表 / benchmark、阈值与新增自动权限不当作逐项批准。
+
+### Minimal local validation / protection
+
+- 本地文档检查通过：11 个触及文档、108 个本地链接 / 29 个章节锚点、围栏 / 表格 / 无机器路径；40 个正式阶段及原依赖保持，D3 model-routing §7 与前序 D0–S03 Record 内容保留，两份研究逐字节保留，5 个原 docs / main dirty 文件 hash 一致。`git diff --check` / staged diff check 通过；验证记录与审阅修订仅复核受影响文档。
+- 检查中修正一处章节链接锚点；阶段计数限定交付表，排除阅读集合中的阶段范围，确认没有新增 / 重编号正式阶段。
+- 无产品 tests、build、browser / UI、Android / 真机、远程 CI、真实模型 / judge / probe / prewarm 或 Secret 读取；未重新浏览一手来源或复现论文。本轮无存储 kind / registry / migration，实现 / 效果状态不因文档更新提升。
+- main AGENTS 与原 docs README / WEB Adapter / 两模板的既有 dirty 未暂存 / 提交；其它 Experience 草稿 / reference 未读写。只使用同一长期 Task ID / Record / live HANDOFF。
+
+### Limitations / next checkpoint
+
+API / Schema / key、容量 / TTL、完整依赖覆盖、semantic threshold、有限工具 / 模板 / Provider 矩阵、prewarm 默认与数字 SLO 待相应阶段细化。Cloud 字段与 Local backend / 算法需要精确路径 / 兼容 / 质量 / Trust Domain 验证；论文数字与 cache hit 不等于 Atria 收益，S01 empiricalReady=false 保持。
+下一产品 checkpoint 仍为 **S04**：读取 HANDOFF → index / decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project / storage → 本 Record，继续同一产品分支，细化 Project task / attempts / timeline / recovery 与 Studio receipt 幂等。D4 / G / Local 能力不提前实施；仅下一轮明确续接后开始 S04，本轮文档持久化 / push 后停止，不合并 main。
+
 ## Final state
 
-长期任务仍在进行；D0 / D1 / D2 / D3 / S01 / S02 / S03 完成。S03 实现与本地最小相关验证、产品 / docs 持久化、同一 Record / live HANDOFF 已完成后停止。main 未变化，下一正式阶段 S04 未开始；M1、S01 真实模型基线与远期 G 阶段未计作完成。
+长期任务仍在进行；D0 / D1 / D2 / D3 / D4 / S01 / S02 / S03 完成。D4 仅完成企划、研究索引、同一 Record / live HANDOFF 与本地文档验证 / 持久化后停止；S03 产品 HEAD 与 main 未变化，下一正式阶段 S04 未开始。M1、S01 真实模型基线、通用 reuse / cache / invocation 与远期 G / Local 阶段未计作完成。

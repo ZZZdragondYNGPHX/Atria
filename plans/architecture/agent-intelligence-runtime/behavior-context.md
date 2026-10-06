@@ -1,7 +1,7 @@
 # Behavior / Context / Generation：语义到请求
 
-> D2 纳入正式架构方向；本模块是职责与验收的权威来源。资源名、Schema、迁移 API 在 G01 / G02 前细化，不表示已有实现。
-> 输入研究：[Prompt / Context 报告](../model-prompt-context-frontier-research.md)。当前代码事实见 [baseline](baseline.md)，计算与路由分别见 [compute-policy](compute-policy.md)、[model-routing](model-routing.md)。
+> D2 / D4 纳入正式架构方向；本模块唯一管理语义选择与 Context 编译。资源名、Schema、迁移 API 在 G01 / G02 前细化，不表示已有实现。
+> 输入研究：[Prompt / Context 报告](../model-prompt-context-frontier-research.md)、[Execution Reuse 报告](../execution-reuse-cache-locality-adaptive-invocation-research.md)。当前代码事实见 [baseline](baseline.md)，计算与路由分别见 [compute-policy](compute-policy.md)、[model-routing](model-routing.md)，产物复用见 [execution-reuse](execution-reuse.md)。
 
 ## 1. 明确分层及修改权
 
@@ -44,16 +44,29 @@ Context lanes 按来源与用途组织：固定方法 / 合约、身份核心、
 压缩不是覆盖源历史：派生产物带 policy / producer revision、source refs / hash、覆盖与遗漏说明；旧来源修订后失效。不同 lane 可用不同策略。
 通过同一输入的后续 continuation 评价压缩是否保留承诺、秘密边界与工具参数依据；摘要更短或检索命中更高不能单独证明有用。
 
-稳定 prefix / 动态 suffix 是可选 adapter 优化。缓存身份绑定 owner、获准 scope、target、工具 / 合约、overlay、compiler 与内容指纹；不跨 scope 复用私有内容。
-缓存失效不能绕过 source freshness；为命中缓存额外塞入无关内容必须通过质量—成本对照。Provider-side context handle 仅在真实能力和生命周期可验证时接入，不能成为隐藏 Memory authority。Reasoning Continuity 的 handle、兼容和失效由 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) 唯一管理；Context cache 不复用其生命周期。
+Context 派生产物的有效性、依赖失效与隔离沿 [execution-reuse §2–3 / §6](execution-reuse.md#2-reuse-contract-与候选--证明分离)，Provider-side context handle 的能力沿 model-routing §8 验证；不能成为隐藏 Memory authority。Reasoning Continuity 的 handle、兼容和失效由 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) 唯一管理；Context cache 不复用其生命周期。
 
 Context 编译 / 压缩必须把最终 system、tools、原生 history 结构与 prefix 指纹提供给 Runtime 复核 continuation binding。Append-only 是特定协议的约束，不能阻止旧来源失效、权限收回或必要内容重编译；绑定不再满足时按执行 policy reset / discard，保留显式 task state。Provider-native compaction 与普通摘要分开验证；可见 summary 不恢复 opaque state。
+
+### 3.1 稳定 Context Segment 与 Cache-aware Compiler
+
+沿现有 Context item / lane / Prompt IR 保留 Segment 的稳定身份、源版本 / content hash、依赖、scope / exposure、volatility、敏感性与 cacheability；这是语义要求，具体字段与资源类型未冻结。身份与最终 Prompt 位置解耦，Package / Agent 不读取 Provider cache key 或 KV 对象。
+Character / Lore / Memory / Tool / Skill / output schema 复用原精确资源身份；派生 segment 带 source refs 与 compiler / canonical version。资源身份稳定不保证 rendered prefix 稳定，更不代替 source currentness。
+编译产物的缓存绑定继续包含 owner / 获准 scope、target、工具 / 输出合约、exact overlay、compiler / canonical / layout 版本与最终内容指纹；稳定 Segment identity 不替代这些绑定。
+
+在 role 优先级、history / tool 顺序与输出合约允许的范围内，Compiler 按稳定程度组织：Provider 协议 / tools → Atria system / runtime 合约 → Package / Character 静态资源 → Session 慢变 summary / scene → revision-sensitive state → retrieval / tool results → 当前 turn 输入。
+这是 cache locality 的逻辑分层，具体 Provider 布局由 adapter 决定；不能为了排序改变 instruction priority、原生 tool call / result 配对或用户语义。稳定前缀后放变化内容，不保留旧 world projection 来追求命中。
+
+Tool Registry / capability discovery 与 Loaded Tool Schema Set 分开：先看获准有限 descriptors，再按需加载 exact schema；Discovery 候选的可复用性见 execution-reuse §4。延后加载改变 prefix 时如实重编译，不能因此绕过 allowlist。
+语义效用先于 cacheable length：不添加无关 few-shot、填充文本或多余 lore 来达到缓存长度；确有新内容价值时才在相同质量—成本对照中评价。来源 freshness、actor exposure、必要 guard 优先于 prefix 稳定。
 
 ## 4. 确定性编译与优化分离
 
 `固定 Task / semantic profiles / Context Plan / contracts → Semantic Request → 精确 model overlay → provider lowering → request snapshot`
 
 固定输入与 compiler / adapter 版本应得到同一编译产物；provider role、XML、ChatML、prefill 或 parts 只在 lowering 阶段出现。
+工具 / output schema、system contract 与 Segment rendering 使用确定性 canonical serialization，固定允许的 key / tool ordering、可选字段与空白规则，并记录 canonical / layout 版本。语义要求的数组与原生 history 顺序保持；同一受控输入得到相同 bytes，只有在 target tokenizer / protocol 固定时才声称 token 等价。
+时间戳、随机 ID、request / debug marker、volatile counter 优先留在 transport metadata；模型确实需要的动态值放相应动态 segment，不为了稳定而删去有效输入。Canonicalization 不重写原 opaque / signed blocks；breakpoints、cache-control、cache object / TTL / prewarm 等具体字段只由 model-routing §8 的 adapter capability 映射。
 确定性检查包括类型、scope、互斥配置、已声明冲突、token admission、工具 / 输出支持与 provenance；不能声称纯代码能理解全部自然语言矛盾。
 LLM rewrite、few-shot selection、GEPA / DSPy 风格搜索产生新的候选 revision，进入隔离 eval / promotion，不能藏在每次编译里。
 
@@ -74,5 +87,6 @@ LoRA、vector prefix、learned control 留在 S34 / 研究池；只有可用 bac
 ## 6. 可交付验收
 
 G02 必须由 RP 正文与 Project 真实请求消费同一语义边界：确定性编译、权限过滤、预算不足、source stale、工具按需展开及 overlay 不匹配都有实际结果。
+稳定资源 / toolset 相同而 turn 输入变化时，检查稳定渲染；schema / description / tool order / effort / history rewrite / compaction 变化时，检查 layout 与 binding 重验。Segment hash 或本地相同字节不算 Provider hit，实际 cache usage / unknown 由 G04 观察、G06 对照。
 G06 比较当前配置与分层配置的质量、token、cache、延迟及用户偏好；模型 / compiler / Context / Creative 变化分别归因。
 压缩与 progressive disclosure 有后续行为案例；旧资源读取、save / export / restore、关闭新路径与撤回均可验证。

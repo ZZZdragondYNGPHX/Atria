@@ -94,3 +94,19 @@
 
 综合推论是：稳定语义回答“做什么 / 看什么”，ComputePolicy 回答“允许做多少”，RoutingPolicy 回答“这些计算由什么可调用边界执行”，RequestSnapshot + Observation + Receipt 连接后续 Eval / Evolution。
 因此生成基础在社会认知前补齐；M1 先采集必要测量，不将其扩大成提前重写全部模型配置。这个顺序是本轮工程设计，不是论文给出的产品路线或新增用户逐项批准。
+
+## 6. D4：Execution Reuse 来源索引与证据边界
+
+本轮全文读取 [Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)，来源提交 `aa4d2d2fe`，整合起点 docs `1c2502dae8ac1bcb7a0bb1dfb1e18d9f01b984b8`；参考 [Reasoning Continuity](../reasoning-continuity-research.md) 的 cache / artifact / compaction / freshness 边界，并核对 D3 model-routing §7 的正式定义。两份原研究完整保留。
+这次是指定研究的企划归并，没有重新浏览一手网站、复现论文、运行 Provider / gateway probe 或测模型；不把报告的支持表 / 日期 / 性能数字当本轮新复核事实。
+
+| 研究输入 / 章节 | 采纳的有限架构结论 | 唯一详细权威 / 阶段路由 |
+| --- | --- | --- |
+| §12–20、37–40、57–66、86–92：Tool / Artifact / Plan / validity | 候选匹配不等于有效；复用原依赖 / 权限 / grant、targeted invalidation；模板结构与动态事实分开 | [execution-reuse](execution-reuse.md)；G01 / G03 / G06 |
+| §7–10、21–24、56、68–71：Segment / compiler / Provider cache | 稳定身份 / canonical bytes 与语义优先的 layout；Provider 字段由 adapter 映射，gateway exact path 保留 unknown | [behavior-context §3–4](behavior-context.md#3-context-选择展开与压缩)、[model-routing §8](model-routing.md#8-cache-capability与cache-locality)；G02 / G04 |
+| §41–44、60–63：continuation 与 narrative freshness | 已完成工作和执行接续分域；Final Prose 默认 fresh，前置 facts / plan / intent 重验后可用 | execution-reuse §1 / §5；Reasoning Continuity 仅 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) |
+| §45–47、50–55、72–81：invocation / locality / eval | 规则按需选择工作，质量 / 硬预算先行；真实 cache observation 与 savings estimate 分开，false reuse 优先 | [compute-policy §1.1](compute-policy.md#11-adaptive-invocation-决策阶梯)、model-routing §8；G03–G06 |
+| §25–36、48–49、84–87：Local / HijackKV / hints | 上层信号对接成熟 backend；KV trust isolation、兼容 / 质量 / recompute 需实证；不自建 GPU serving | execution-reuse §6、model-routing §8；[delivery §8.1 / §9](delivery.md#81-execution-reuse实施顺序与既有阶段映射) 后续研究池 |
+
+G04 实施前再核对所选 Provider 的具体 cache / continuation 协议、模型版本、支持路径、计费与 TTL；论文作者数字不写作 Atria SLO。应用依赖复用需源 authority 实际证明，不能把研究中的细粒度版本视为当前代码已有。
+保留 D3 / 原研究各自的 A–F 语义；D4 A–F 只作 delivery §8.1 的映射，不复制新正式阶段。研究的 schema 示意、cache mode 名称、Narrative Intent 字段、算法或跨域共享建议仍在正式阶段局部深化。

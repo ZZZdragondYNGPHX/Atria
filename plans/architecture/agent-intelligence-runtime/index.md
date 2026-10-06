@@ -2,14 +2,15 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 next**；D3 Reasoning Continuity 架构整合完成；生成基础组与远期技术契约按阶段细化。
+- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 next**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
 - Updated: 2026-10-06
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
 - S03 implementation / Tested HEAD: `78acfb65da6b1afa1dee1c2f35482af215832c74`；沿用同一任务分支，已 push，main 未变化。
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
-- Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)
+- Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
+- D4 source docs HEAD: `1c2502dae8ac1bcb7a0bb1dfb1e18d9f01b984b8`；研究源提交 `aa4d2d2fe`，S03 产品 HEAD 与 main 未变化。
 - Record: [阶段记录](../../../records/refactor/agent-intelligence-runtime.md)
 
 ## 目标与当前结论
@@ -25,6 +26,8 @@ D2 将三份研究纳入同一正式架构：稳定 Behavior / Creative 语义�
 
 D3 将 Reasoning Continuity 纳入现有 Runtime 的可选执行能力，沿 Provider Adapter、Capability Evidence、Effective Execution Plan / Snapshot 与 ExecutionObservation 管理，详细规则唯一归属 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期)。它保留兼容路径的不透明状态；长期成果走显式 artifact 原契约，Planner 与 Narrator 分别评价目标连续和表达新鲜。
 
+D4 将已完成工作的有效复用、稳定 Context 与缓存局部性接入同一链路：[execution-reuse](execution-reuse.md) 唯一管理 Reuse Contract / validity proof / dependency invalidation 与 Tool / Plan 消费；[behavior-context §3.1 / §4](behavior-context.md#31-稳定-context-segment-与-cache-aware-compiler) 管理 Segment identity / canonical compiler；[compute-policy §1.1](compute-policy.md#11-adaptive-invocation-决策阶梯) 管理按需执行；[model-routing §8](model-routing.md#8-cache-capability与cache-locality) 管理三层 cache capability / locality 与可观察执行。相似度只找候选，原 authority 证明当前适用；RP 复用前置 facts / plan / intent 并 fresh-generate 正文。Execution Continuation 引用 D3，详细定义不重复。
+
 主线不是缺一种编排模式。当前最重要的缺口是跨运行的可信证据与评价、持久目标、可追溯的角色认知，以及它们与既有 authority 的连接。
 建议先完成两条入口都能实际使用的 Experience / Eval / Evolution 交付，再进入目标和社会认知。模型 / 网关 / 计算基础以新增有限交付组 M8（G01–G06）补齐，之后社会认知与预测消费共享 substrate；前沿技术通过有消费者的 adapter 接入。
 
@@ -33,7 +36,7 @@ D3 将 Reasoning Continuity 纳入现有 Runtime 的可选执行能力，沿 Pro
 已确认：先调研、讨论、定案、执行；RP 与 Project Agent 并重；首批 Skill / Prompt / 编排参数成长闭环包含有预算与回滚约束的局部自动启用；M1 完整交付后集成，再从最新 main 继续。
 
 D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，共用 owner 级有限预算。M1 产品边界与架构执行约束已冻结，S01 设计就绪。
-后续物理 schema、具体预算 / 阈值、迁移和 M2 以后认知权限按对应阶段深化；决策状态只由 [decisions.md](decisions.md) 管理。五份研究是来源材料；被正式采纳的架构约束由 decisions / 对应模块管理，其余研究建议不构成实施批准。D2 / D3 只授权企划更新，不把研究中的统计数字、示例 schema、候选名称、Provider 支持或新自动化权限当作用户批准；G01–G06 未实施。
+后续物理 schema、具体预算 / 阈值、迁移和 M2 以后认知权限按对应阶段深化；决策状态只由 [decisions.md](decisions.md) 管理。六份研究是来源材料；被正式采纳的架构约束由 decisions / 对应模块管理，其余研究建议不构成实施批准。D2 / D3 / D4 只授权企划更新，不把研究中的统计数字、示例 schema、候选名称、Provider 支持或新自动化权限当作用户批准；G01–G06 未实施。
 
 ## 模块图与阅读路由
 
@@ -41,7 +44,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | --- | --- | --- |
 | [baseline.md](baseline.md) | main 的代码事实、接入点、现有测试与缺口 | inspected HEAD |
 | [research.md](research.md) | 一手资料复核、证据边界、原研究需要收窄的推论 | 原研究、baseline |
-| [architecture.md](architecture.md) | 六 Plane 与语义 / 计算 / 路由连接、证据与认知边界 | baseline、decisions |
+| [architecture.md](architecture.md) | 六 Plane 与语义 / 复用 / 计算 / 路由连接、证据与认知边界 | baseline、decisions |
 | [delivery.md](delivery.md) | 40 个候选实施阶段、依赖、实际交付与验收 | architecture、research |
 | [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
 | [m1-evolution.md](m1-evolution.md) | 首批双入口成长、局部自动启用与恢复的具体讨论设计 | architecture、decisions |
@@ -50,9 +53,10 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [s03-capture.md](s03-capture.md) | S03 bounded RP trace / EvidenceRecord、key / CAS、outcome / output binding、迁移与缺失边界 | s02-sources、原 StorageEngine / authority |
 | [behavior-context.md](behavior-context.md) | Behavior / Creative / Context / Generation 分层、语义编译、overlay、压缩与迁移 | 当前 Prompt / Context substrate |
 | [compute-policy.md](compute-policy.md) | sparse 默认路径、共享 cognition、硬预算、后台分流与计算收益评价 | TaskScheduler / RunControl、M1 Eval |
-| [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity 兼容与生命周期 | 既有 resolver / provider ports、前两模块 |
+| [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
+| [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-已完成 S01 / S02 / S03；来源契约由 s02-sources 管理，可靠 RP 捕获与公共持久层由 s03-capture 管理。下一 S04 读取本入口 → decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project 与存储接入 → Record。D0 / D1 / D2 / D3 已完成；S01 补充测量说明不扩张其 12 cases 与 test-only 范围。无需重新进行全量调研。
+已完成 S01 / S02 / S03；来源契约由 s02-sources 管理，可靠 RP 捕获与公共持久层由 s03-capture 管理。下一 S04 读取本入口 → decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project 与存储接入 → Record。D0 / D1 / D2 / D3 / D4 已完成；D4 模块按 G 阶段路由，不成为 S04 新依赖。S01 补充测量说明不扩张其 12 cases 与 test-only 范围。无需重新进行全量调研。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -75,6 +79,7 @@ flowchart LR
 图中是建议的产品演进路线，不是已冻结的执行次序。精确依赖见 delivery；M5、M6、M7 可以在满足自身依赖后调整顺序。
 保留 S01–S34 身份，新增 G01–G06 共 40 个候选实施阶段。建议 M1 → M2 → M8 → M3 → M4；M8 与 M2 没有必然先后依赖，可在本组设计时调整，M3 前必须有已验收生成基础。M1 不等待 M8，也不在 S01 中实现动态路由。
 远期技术成熟度不构成第一批产品交付的隐含依赖。
+D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Workflow → Adaptive Invocation → Local optimization 映射见 [delivery §8.1](delivery.md#81-execution-reuse实施顺序与既有阶段映射)；前五项沿 G01–G06，Local KV / decode 在后续研究池，保持 40 个正式阶段身份。
 
 ## 当前状态
 
@@ -84,12 +89,13 @@ flowchart LR
 | D1 — 确定方案 | 已完成本轮冻结 | 默认模式、scope / budget / publication 约束、S01 执行设计 |
 | D2 — 三份研究综合更新 | 本轮完成 | 三个权威模块、六个基础阶段、依赖与评价 / 测量补充 |
 | D3 — Reasoning Continuity 架构整合 | 本轮完成 | 既有术语归并、opaque execution / lineage / loss、G01–G06 实施映射与评价边界 |
+| D4 — Execution Reuse / Cache Locality / Adaptive Invocation 整合 | Complete；本轮仅企划 | 复用契约、Segment / canonical compiler、按需调用、路径 cache evidence 与 A–F 映射；continuation 沿 model-routing §7 |
 | S01 | Structural / scripted complete；empiricalReady=false | 12 cases、双入口 runner、strict v1 consumer / sidecar、有限预算与缺失状态；实际验证见 Record |
 | S02 | Complete；只读来源契约与 consumer | 双域 adapter、EvidenceSet / Evaluation v1；43 新增 / 17 既有 tests 通过；无持久资源或迁移 |
 | S03 | Complete；可靠 RP 捕获与公共持久层 | bounded metadata、run / request / attempt / variant、Native receipt、FS / SQLite durable CAS 与 authenticated consumer；验证见 Record |
 | S04–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
-S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。本轮仅 S03 完成后停止，下一产品 checkpoint 为 S04；未实现 Project task 持久恢复、retention 或 G 阶段 opaque checkpoint。D3 决策与历史保留。
+S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。本轮 D4 企划整合完成后停止，下一产品 checkpoint 仍为 S04；未实现 Project task 持久恢复、retention、G 阶段 opaque checkpoint 或新 reuse / cache 功能。D3 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
 
 ## 验证与交付原则

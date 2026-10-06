@@ -16,6 +16,7 @@
 | U8 | 按角色 / Project 单独开启局部自动模式，并设置统一预算；新建对象默认审阅 | 2026-10-06 对上一轮默认方式推荐回复“按你推荐的来” |
 | U9 | 拉取远端，先读现有 Plan，再读三份研究并综合更新正式架构企划 | 2026-10-06 本轮明确请求；授权企划更新，不授权提前实施后续阶段 |
 | U10 | 读取 Reasoning Continuity 研究，将已确认架构结论融入当前企划，沿既有正式术语消除重复概念 | 2026-10-06 本轮明确请求；仅授权企划整合 |
+| U11 | 读取 Execution Reuse / Cache Locality / Adaptive Invocation 研究，将已确认架构结论整合进当前企划，并参考 Reasoning Continuity 避免重复定义 | 2026-10-06 本轮明确请求；仅授权企划整合与必要 Record / HANDOFF |
 
 M1 产品范围、自动模式默认方式与分组集成已确认。S01 工程设计本轮冻结；S02–S10 技术契约在进入对应阶段前细化，M2 以后的认知权限仍待设计。
 
@@ -119,3 +120,23 @@ U10 确认将研究的架构结论纳入正式企划；以下为该范围内的�
 
 D3 仅完成文档整合；M1 范围、三类候选、局部自动默认、预算和集成方式保持。S03 相关未提交实现 / 草稿不在本轮审阅或验收，不能把它们算作完成阶段。
 未冻结：具体 API / schema / 资源 key、TTL / 容量、支持模型版本与路径矩阵、默认跨 turn 启用、adaptive 阈值、实际质量—成本收益与运行 checkpoint 导出。M8 进入前局部深化；本次不授权付费请求、probe、隐私 / connection 改动或自动路由晋升。
+
+## 7. D4 — Execution Reuse / Cache Locality / Adaptive Invocation
+
+U11 授权将新研究的架构结论纳入正式企划；下列是该范围内的工程归并，不把示例字段、论文数字、Provider 能力或产品默认逐项标为用户批准。
+
+| ID | 已纳入的架构边界 | 详细权威 |
+| --- | --- | --- |
+| A16 | Execution Reuse 是既有 Runtime 一级能力，与 cache storage 分离；Reuse Contract 对齐原 artifact / source / authority / provenance，不建立平行任务或依赖系统 | execution-reuse §1–2 |
+| A17 | Exact / Structural / Semantic 找候选与 validity proof 分开；相似度 / hash 不代替当前依赖、版本、时间、权限、Authority 与必要路径证明 | execution-reuse §2 |
+| A18 | 依赖级 targeted invalidation；branch / restore / edit / variant 隔离，缺可核验细粒度依赖时保守绑定精确源 anchor | execution-reuse §3 |
+| A19 | Tool Value 感知 purity / side effects / time / permission；mutation 幂等仍核对原 effect identity / receipt，once / operation grant 不变为 reusable context | execution-reuse §4 |
+| A20 | Context Segment / Tool / Skill 使用稳定身份 / version / dependency / volatility，canonical compiler 在语义与权限允许的范围组织稳定 prefix；不加无关 padding 或保留 stale state | behavior-context §3.1 / §4 |
+| A21 | Plan / Workflow 优先复用结构化模板并重绑定参数、重验 preconditions；RP 前置 facts / intent 可复用，Final Prose 默认 fresh generation | execution-reuse §5 |
+| A22 | Application / Provider Prompt Cache / Inference Backend 能力分层；精确路径 evidence 和 locality 参与既有 Routing 可行项成本，不能覆盖 hard constraints | model-routing §8.1–2 |
+| A23 | Adaptive Invocation 依既有 ComputePolicy 选择必要工作 / retrieval / target / effort；规则基线先行，查找 / 校验 / classifier / cache / prewarm 开销沿原预算 | compute-policy §1.1 / §3–4 |
+| A24 | ReuseDecision / requested cache 固定在 task / Snapshot，实际 hit / usage 留在 Observation；valid hit / false reuse / saved work 与 cold / warm TTFT / E2E 有来源，unknown 不为零 | execution-reuse §7；model-routing §8.3；compute-policy §5 |
+| A25 | Local KV / decode 走成熟 backend capability；Trust Domain 优先，默认禁止不受控 cross-user / cross-package position-independent KV。Reasoning Continuity 只引用 §7；A–F 映射 G 阶段与后续研究池 | execution-reuse §1 / §6；model-routing §7–8；delivery §8.1 |
+
+D4 仅完成文档整合，D3 §7 详细规则保持原样；M1 范围、三类候选、局部自动默认、预算与完整 M1 后集成保持。S01–S03 状态不变，下一产品阶段仍 S04，不因新研究提前实施 G 阶段。
+未冻结：物理 API / Schema / key、容量 / TTL、细粒度依赖覆盖、工具 / 模板 / 模型支持矩阵、semantic 阈值、prewarm 默认、数字 SLO、真实收益和 Local backend / 算法选择。进入对应阶段前明确有限 consumer、兼容 / 迁移 / 删除 / 撤回及实际验证。本轮不授权付费请求、probe、prewarm、connection / privacy 改动、GPU engine 或 learned routing 自动发布。

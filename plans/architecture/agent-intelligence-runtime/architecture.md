@@ -1,6 +1,6 @@
 # 正式架构方向：连接权威、语义、计算与成长闭环
 
-> D2 已更新职责、依赖与架构约束；API、字段清单、存储种类和代码目录仍按阶段冻结。
+> D2 / D3 / D4 已更新职责、依赖与架构约束；API、字段清单、存储种类和代码目录仍按阶段冻结。
 > 代码事实由 baseline 管理；用户选择和冻结状态由 decisions 管理。
 
 ## 1. 保持责任清楚，避免平行系统
@@ -21,22 +21,25 @@
 ```mermaid
 flowchart LR
   A[现有 Authority / Memory / Cognition] --> B[Task 与获准 Evidence]
-  B --> C[Compute 准入与 Routing 需求]
+  B --> C[确定性 / Reuse 校验与 Compute 准入]
   C --> D[Target 求解与 Context / Behavior 编译]
   D --> E[精确 Request Snapshot]
   E --> F[Provider / Gateway / Local]
-  F --> G[Execution Observation / Authority Receipt]
+  F --> G[受控结果消费 / Observation / Authority Receipt]
+  C -->|有效产物减少相应工作| G
   G --> H[Experience / Eval / Candidate]
   H --> B
 ```
 
-Target 限制与 Context 精确编译有有界复核，不是无限循环。正常选择、FailurePolicy 与候选晋升分别拥有契约。六个 Plane 共享下列三个领域模块，不另加同名 authority：
+Target 限制与 Context 精确编译有有界复核；依赖最终路径 / 编译绑定的复用仍在消费前重验。命中仅减少对应步骤，正式 mutation 仍经过原 authority / receipt；需要正文时继续 fresh generation。正常选择、FailurePolicy 与候选晋升分别拥有契约。六个 Plane 共享下列领域模块，不另加同名 authority：
 
 - [behavior-context](behavior-context.md)：语义与编译、身份 / cognition / expression / narration 分离。
 - [compute-policy](compute-policy.md)：稀疏调用、预算准入、非阻塞维护与收益。
 - [model-routing](model-routing.md)：boundary / deployment / identity、动态证据、真实执行观察与 Reasoning Continuity 生命周期。
+- [execution-reuse](execution-reuse.md)：Runtime 一级复用能力、候选 / 有效性证明、共享依赖失效、Tool / Artifact / Plan 消费与隔离；cache storage 实现分离。
 
 这些模块是相应细则的唯一来源；本文件继续管理跨 Plane 的连接。Reasoning Continuity 是 Deliberation 经 Interop 的 Provider Adapter 使用的可选执行能力，沿现有 Runtime / request authority 管理，不新增 Plane；详细术语与规则见 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期)。
+Execution Reuse 消费已完成且仍适用的工作；Adaptive Invocation 沿 [compute-policy §1.1](compute-policy.md#11-adaptive-invocation-决策阶梯) 选择尚需执行的工作；必须发送时 Routing 再选择获准路径并考虑 [Cache Locality](model-routing.md#82-cache-locality-与有效成本)。Execution Continuation 继续引用 §7，不重复定义为普通 cache。
 
 ## 2. 最小公共证据与 artifact 语义
 
@@ -56,6 +59,7 @@ Target 限制与 Context 精确编译有有界复核，不是无限循环。正�
 首批只实现证据集合、评测结果和真实 candidate consumer 需要的类型。
 保留 engine result / Task Artifact 的原有契约；先做 adapter，再按确实重复的语义抽取共用纯校验器。
 Artifact Bus 不是新的 World authority，也不默认是分布式消息中间件。
+可复用产物继续使用这些 source / scope / dependency / provenance 与原 consumption grant；详细 proof / invalidation 由 execution-reuse 管理。S02 / S03 的来源 / metadata 捕获是接入基础，不证明已交付一般 Tool / Plan cache。
 
 ## 3. 轨迹与长期经验分离
 
@@ -164,4 +168,5 @@ latent / opaque representation 只有在 provider 真实暴露并通过兼容测
 - 某次纠正产生可审阅规则，独立案例证明有帮助后进入后续 run，且能够停用 / 撤回。
 - 高影响行动可以比较有限未来；普通 RP 以一次主要 generation 为目标，功能数量不变成固定调用数量，质量底线不因预算策略下降。
 - 相同创作意图可由不同 target 编译；gateway 上游未知时如实报告，全部可观察重试、后台及 controller 开销能归因。
+- 相同有效读取或 workflow 结构可缩减重复工作，相关状态 / 权限变化会拒绝旧产物；重生成可重用获准前置 intent 并产生新正文，命中与省下的工作均有证据。
 - 换模型、加入语音或远程 Agent 时，身份、世界、证据与用户控制仍由现有 Atria 路径承载。

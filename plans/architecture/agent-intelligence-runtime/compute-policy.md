@@ -1,7 +1,7 @@
 # Sparse Compute：调用准入、预算与收益
 
-> D2 正式架构约束；策略阈值、档位名称与 SLO 保持待实测。M1 的有限预算已冻结，完整跨入口 substrate 在 G05 交付，S26 再深化自适应策略。
-> 输入研究：[Sparse AI 报告](../sparse-ai-invocation-adaptive-compute-research.md)。实际目标解析见 [model-routing](model-routing.md)。
+> D2 / D4 正式架构约束；本模块唯一管理 Sparse / Adaptive Invocation 准入、预算与收益。策略阈值、档位名称与 SLO 保持待实测。M1 的有限预算已冻结，完整跨入口 substrate 在 G05 交付，S26 再深化自适应策略。
+> 输入研究：[Sparse AI 报告](../sparse-ai-invocation-adaptive-compute-research.md)、[Execution Reuse 报告](../execution-reuse-cache-locality-adaptive-invocation-research.md)。复用证明见 [execution-reuse](execution-reuse.md)，实际目标解析见 [model-routing](model-routing.md)。
 
 ## 1. 默认路径与适用范围
 
@@ -21,6 +21,20 @@ M1 的当前基线如实记录，不为了达成 one-call 指标改写既有 exe
 
 Fast / Standard / Deep / Director 只是候选产品档位，不是固定调用次数或已批准模型表。
 明显难例允许生成前直接进入合适目标，不强制 cheap → medium → strong 完整生成 cascade。Router 默认纯规则，只有可测收益才增加 classifier；不每轮调用大模型决定要不要调用大模型。
+
+### 1.1 Adaptive Invocation 决策阶梯
+
+Adaptive Invocation 是现有 ComputePolicy / policy controller 对“是否执行、执行哪些必要工作、采用多少计算”的请求时选择；结果仍经原 Runtime / Tool / Generation authority 消费，目标选择继续由 RoutingPolicy 求解。
+默认纯规则、先复用可证有效工作；不是每个 turn 额外运行一个 AI controller。建议顺序是按 task 的未满足需求选择：
+
+1. 确定性 Runtime / 已有获准 state 能回答时直接使用。
+2. 依 [execution-reuse](execution-reuse.md) 重验可用 Task Artifact、Tool Value，或实例化结构化 Plan / Workflow；局部命中只减少相应步骤。
+3. 尚有信息缺口时优先获准廉价确定性 tool；retrieval 按需要选择不检索、单步或有限多步，不能因工具存在就默认每轮调用。
+4. 仍有生成 / 推理需求时，按任务 quality floor 选择可证明足够的 small / fast 或 strong target 与 reasoning controls；明显复杂任务直接进入合适路径，避免生成 cascade 浪费。
+5. 需要正文表达时 fresh-generate Narrator；前置复用不将旧 Final Prose 作为普通 Semantic Cache 返回。
+
+该阶梯按 task 的未满足需求选择相应工作；Plan 命中不意味着工具 / 正式 effect 已执行，必要 guard / 当前证据继续满足。Continuation 的使用 / 重置决定引用 model-routing §7，不重新定义为 cache hit。
+每个决定带 trigger、仍未满足的需求、复用 / 缺失证据、预算与退出原因，记录 no-call / partial-reuse / tool / retrieval / model / narration 等实际动作。具体名称、阈值及允许模型矩阵按 G05 / G06 冻结；缺必要证明就走获准重算或原阻断路径。
 
 ## 2. 共享认知与稀疏更新
 
@@ -42,6 +56,7 @@ M1 Evolution owner 预算与前台运行预算是不同用途的额度，共用 
 支持 owner / scope、session / task、turn / job 与 background 子额度。子项不能突破父项；并行申请必须先 reservation，不能各看同一剩余额度。
 约束可包含 paid / local requests、input / output / reasoning token、工具 / media、金额、deadline、critic / rollout / subagent 上限和并发。
 Continuation 与 prompt / context cache、Task Artifact reuse 是不同优化，沿 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期) 重验；保留状态不保证调用数、token 或费用下降。恢复、重置、probe、compaction / summary、fallback 与 adaptive controller 的新增发送仍经过同一 reservation / charge。
+Reuse 查找 / 校验、embedding / intent classifier、retrieval、模板实例化、cache read / write / storage 与 prewarm / prefetch 的可观察开销全部纳入原预算和成本证据。未发出的模型调用不记 send charge，也不虚构零-cost Provider usage；重新执行和预热仍按真实 attempt 准入，预热不保证后续命中或回本。
 reasoning / cache-read 常是 total usage 的子集；按 provider usage 语义归一化，不能将 output 与其 reasoning 子项再相加。只存有限 usage 元数据，不保存私有思维链。
 
 `prepared → reserved → send-attempt charged → settled | unknown → reconcile`
@@ -63,6 +78,9 @@ Host durable intent 保存 job，TaskScheduler 执行；取消且 worker 尚未�
 昂贵计划前检查 deadline 与剩余额度；每个新增调用带 trigger、预期收益、选择层级与退出原因。
 Gateway 内部重试未知时，外层只能限制自己可控 attempts，并记录 unknown amplification；不得宣称限制了不可观测上游总调用，详细处理见 model-routing。
 
+Task graph / 当前 stage / possible next stages 与 Tool progress 可经原 scheduler 向支持的 backend 提供获准 locality / near-completion hints，指导 retention / offload / prefetch；它们是建议，不是已完成 receipt 或新的执行授权。缺 progress 保留 unknown；backend 不支持时忽略 hint 并保持原语义。Workflow-aware eviction、transition learning 与 speculative decode 留在 model-routing §8 的后续能力。
+Prewarm / prefetch 仅在已有显式 policy、发送许可、有限预算和近期复用依据下准入，沿 background / maintenance 路径支持取消与 stale-source 重验；不放大正文等待链或占用必要工作额度。本轮未启用这些策略。
+
 ## 5. 评价与观测
 
 共用 M1 Evidence / Eval，记录 root / child / attempt、foreground / background、paid / local、input / cached input / output / reasoning、cache-write、tool / media cost、TTFT、总延迟、retry / fallback 与 charge 来源。
@@ -70,6 +88,7 @@ UI 只显示正文模型不能代表总消费；owner 可查看与本次 turn / 
 
 同一场景做 paired ablation：当前路径、允许的一次正文基线、utility + writer、shared cognition + writer、加 critic / rollout 与 Director。case split / 配置与模型观测固定；不支持的路径明确 unavailable。
 G06 追加协议合法的 none / active_execution / task / adaptive 对照，按 model-routing §7 验工具收益与 RP 新鲜度、锚定风险及 loss；不新增平行 Eval 或用 opaque payload 作评分输入。
+另做完整重算、有效产物 / prefix 复用与规则 Adaptive Invocation 的 paired ablation，控制 task / 输入、有限预算、模型 / compiler / policy 版本和 cold / warm 状态。使用 execution-reuse §7 的正确性 / false reuse 分母及 model-routing §8.3 的观测来源；分别归因少执行的工作、Provider cached tokens、实际 usage / charge 与 estimated savings，不能用 hit rate 替代质量。
 按 ordinary / hard / high-impact / long-session 分层比较，避免普通短回合省钱掩盖难例回归；盲评避免偏好更长输出。
 质量看行为、continuity、知识边界、authority outcome、偏好；成本看每 accepted turn / successful Project task 和边际计算收益。弱 regenerate / edit 信号不自行成为 accepted / rejected 标签。
 报告质量—成本 / 延迟 Pareto 与失败分母、缺失 usage、controller 自身开销；相同硬底线下选最小必要计算。
@@ -79,7 +98,7 @@ G06 追加协议合法的 none / active_execution / task / adaptive 对照，按
 - S01：保持 12 cases / v1，测现有 path 与缺失状态，不预先实现 sparse controller。
 - S03–S05：可靠捕获与非阻塞批处理，保留现有 budget identity。
 - S06 / S09：可用配置的隔离 ablation 与有界 optional-work 候选，M1 不自动晋升 routing / connection policy。
-- G05 / G06：双入口统一准入、send 记账、恢复、事件 / 批处理策略和真实对照；退出需并发、取消、预算耗尽、restore 与难例底线证据。
+- G05 / G06：双入口统一准入、send 记账、恢复、事件 / 批处理策略，实际消费 §1.1 阶梯和有预算的复用 / retrieval 决定；退出需并发、取消、预算耗尽、restore 与难例底线、失效复用拒绝和 RP 新鲜度对照。
 - S18 / S19 / S24：共享 pass、有界 ToM / rollout 是 substrate 消费者。
 - S25 / S26：以已有规则基线深化异步 fast / slow 与适应性分配，learnt router 需独立收益和撤回验证。
 

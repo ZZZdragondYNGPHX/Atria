@@ -1,7 +1,7 @@
 # Model / Deployment / Routing：请求时解析与可观察执行
 
-> D2 / D3 正式架构方向；G01–G06 是有限交付设计，具体对象名、Schema、provider 版本和迁移在对应阶段冻结。
-> 输入研究：[Model / Provider / Routing 报告](../model-provider-routing-frontier-research.md)、[Reasoning Continuity 报告](../reasoning-continuity-research.md)；行为和预算分别由 [behavior-context](behavior-context.md)、[compute-policy](compute-policy.md) 管理。
+> D2 / D3 / D4 正式架构方向；G01–G06 是有限交付设计，具体对象名、Schema、provider 版本和迁移在对应阶段冻结。
+> 输入研究：[Model / Provider / Routing 报告](../model-provider-routing-frontier-research.md)、[Reasoning Continuity 报告](../reasoning-continuity-research.md)、[Execution Reuse 报告](../execution-reuse-cache-locality-adaptive-invocation-research.md)；行为、预算和产物复用分别由 [behavior-context](behavior-context.md)、[compute-policy](compute-policy.md)、[execution-reuse](execution-reuse.md) 管理。
 
 ## 1. 对象职责
 
@@ -22,7 +22,7 @@ RuntimeRoute 先以“固定候选 + 既有 exact behavior / generation”适配
 
 ## 2. Evidence 与不确定性
 
-Reasoning Continuity 复用下列 Capability Evidence 与精确路径契约，其详细生命周期见 [§7](#7-reasoning-continuity执行状态与生命周期)。
+Reasoning Continuity 与 Provider / Inference cache capability 复用下列 Capability Evidence 与精确路径契约，详细生命周期与能力分别见 [§7](#7-reasoning-continuity执行状态与生命周期)、[§8](#8-cache-capability与cache-locality)。
 
 Capability 的 supported / unsupported / unknown 保留，补精确 connection / target / adapter / protocol 指纹、observedAt、失效规则与证据用途。
 adapter 支持构造某个字段，只证明 client 实现能力；不能据此认为任意兼容 gateway 透传、执行或校验该字段。
@@ -37,10 +37,10 @@ Discovery、官方 metadata、gateway 声明、主动 probe、成功 / 拒绝观
 
 1. 从 task / role、output / tool contract、必需证据与用户模式得到需求；ComputePolicy 给出可用额度与计算动作，RoutingPolicy 给出允许资源。
 2. 从获准 Connection / Target 形成有限候选；过滤权限、隐私 / 地区、必需能力、最小 context、禁用 / health 与预算不可能项。
-3. 按 task-specific quality evidence、预计用户成本、延迟、affinity 与 cache 对可行项排名；score 不是全局“模型智力值”。初期固定规则，不默认 learned router。
+3. 按 task-specific quality evidence、预计用户成本、延迟、affinity 与 §8.2 的 Cache Locality 对可行项排名；score 不是全局“模型智力值”。初期固定规则，不默认 learned router，unknown cache 不推断为命中或零成本。
 4. 在选中 target 的限制与 tokenizer 下构造 / 校验 Context Plan、精确 Behavior overlay 和 Generation controls；复核 exposure 与工具 / 输出契约。
 5. 编译后精确 token admission；若必要内容装不下，有限次数重选候选并重新编译，记录排除原因。不得无限在 Context / Router 间循环、删必要证据或静默换文风。
-6. 按 §7 重验 continuation 的路径、任务 lineage 与编译后 prefix / tools / history 绑定，固定决定与 evidence；再固定 snapshot、reserve、send，响应追加 observation。一次 task 可有多个 attempt snapshots，但 accepted semantic task / authority 始终固定。
+6. 按 §7 重验 continuation 的路径、任务 lineage 与编译后 prefix / tools / history 绑定；按 execution-reuse 重验依赖最终 target / 编译产物的复用条件，由 §8 的 adapter 映射获准 cache controls。固定决定与 evidence，再固定 snapshot、reserve、send，响应追加 observation。一次 task 可有多个 attempt snapshots，但 accepted semantic task / authority 始终固定。
 
 动态策略本身有 exact policy revision；实时 evidence 集合也固定指纹 / 时间以便审计。请求接受后修改 policy 或配置不会热改该请求；后续新 attempt 按已接受 FailurePolicy 重验 source 和约束。
 重建编译与决策可在记录条件下测试；无法控制上游 alias / 随机响应时明确 replay fidelity，不承诺逐字确定性。
@@ -145,3 +145,38 @@ Planner / Project Agent 的多步任务优先评价 task continuity；工具编�
 G01–G06 的实施映射见 [delivery §8](delivery.md#8-m8--生成与计算基础新增有限交付组)。先契约，再 OpenAI Responses reference、Anthropic native、Gemini native、gateway probes，最后有证据的 adaptive policy / eval；这是 adapter 验证顺序，不是另建 A–F 六个正式阶段，也不保证未测模型版本的支持。
 
 复用 M1 Eval / ComputePolicy，在相同有限预算、task / 输入与可观察配置下比较不延续、active_execution、task 与 adaptive；协议必需回传保持，无法形成合法对照的组合标 unavailable。验收覆盖工具正确性 / 冗余查询、goal shift、stale-plan contamination、branch independence、regenerate、fallback loss、stream 完整性和 restore / edit 失效；RP 加角色一致性、重复 / 多样性、文体机械化与叙事新鲜度。分别报告成功率、可见 / reasoning / cache usage、调用数、延迟与缺失分母，不把研究 benchmark 或协议 round-trip 当 Atria 行为收益。Probe 仍需显式启用、无私密 fixture、有限预算与 cooldown；本轮企划整合不发起请求。
+
+## 8. Cache Capability与Cache Locality
+
+### 8.1 三层能力与 Adapter 边界
+
+| 层 | 能力与职责 | 不能推断的事实 |
+| --- | --- | --- |
+| Application Reuse | 原 Runtime / artifact / tool / Context consumer 证明有效并缩减工作；规则见 [execution-reuse](execution-reuse.md) | 存储命中、相似度或 metadata current 不自动授予复用 / 写入 |
+| Provider Prompt Cache | 原 Provider Adapter 映射隐式 prefix、显式 breakpoint / cache object、key / TTL / invalidation、prewarm 与 usage telemetry 的实际支持 | 能发字段不等于该 exact gateway path 支持，稳定 prefix 不等于实际命中 |
+| Inference Backend | Local / self-hosted adapter 声明 Prefix / Segment / non-prefix / hierarchical KV、retention / prefetch / offload / compression 与 decode acceleration | Cloud API 不暴露 GPU KV 控制；文本相同不证明非 prefix KV 等价或安全 |
+
+不合成一个 cacheSupported boolean。每个维度沿原 supported / unsupported / unknown 与 exact connection / target / adapter / protocol、account / affinity、freshness 和用途 evidence 管理；带来源、可观察 cache scope、兼容 / invalidation 限制。当前支持矩阵、最小长度、TTL、计费、具体字段与模型版本在 G04 进入前核对，不从研究示例冻结为通用 Schema。
+OpenAI、Anthropic、Gemini 的原生协议分别由各 adapter 编译；上层只表达获准 Segment / prefix layout 与 cache 意图，不依赖厂商字段。Gateway 可能重写参数、tool order、upstream、affinity 或 usage，必须以精确路径的 evidence / 有限 integration 判断，OpenAI-compatible 不证明透传。
+
+Provider API 路径可协调 layout / controls / telemetry，底层 KV 仍归 Provider；Local 路径对接成熟 backend，不自行实现 CUDA / Attention / GPU cache engine。Speculative / multi-head decode 等能力额外声明 sampling / model 兼容、lossless / approximate 证据与 quality mode / recompute policy，未验证不透明拼接 Segment KV。
+vLLM / SGLang 与 EAGLE / Medusa、KVFlow / CacheScout 等是后续 backend / 算法候选，按有限真实 PoC 定稿；算法名不进入 Package / Narrator 的必需契约。获准 workflow / tool progress hints 由 compute-policy §4 提供，Trust Domain 沿 execution-reuse §6，默认不放开跨用户 / Package KV。
+
+### 8.2 Cache Locality 与有效成本
+
+**Cache Locality 表示在当前获准执行路径与隔离域中，可用 prefix / resource / backend 状态的邻近性及有来源的可复用预期。** 它是现有 RoutingPolicy 可行候选的成本 / 延迟因素，不能证明应用结果有效或降低 hard constraints。
+先满足 authority / 权限、隐私 / 地区、output / tools、quality floor、必要 Context、continuation 硬要求和预算，再考虑 locality。不能为了 sticky cache 选不支持任务的 target、把私有内容发送给新边界，或牺牲 Narrator 新鲜度。
+
+有效成本分别考虑未缓存 input、cache read / write / storage、output / reasoning 及 tools / media、prewarm、可控 retry、network / tool locality、延迟与 continuation loss。Usage 子项依 provider 语义计数，不能重复相加；loss 未校准时仅作明确 policy penalty / 拒绝原因，不伪装成货币费用。
+第一版使用已有可信价格 / 直接观测和有限规则，不实现精确 hit 概率预测或 learned cache router。Expected cache hit / cost 标 estimated 与来源 / 有效期；unknown 不按免费或 guaranteed hit 排序，硬金额准入仍要满足 compute-policy 的保守上界。
+Fallback / model / boundary / affinity / prefix 变化重验 cache 能力与路径绑定、记录 cache loss / miss 或 unknown；Reasoning loss 单独沿 §7 记录，不能合并成一个 hit 标志。路由 locality 决定不代替消费前 validity proof。
+
+### 8.3 Snapshot、Observation 与可检查的结果
+
+发送前 Snapshot 固定 Context Segment / Resource refs、compiler / canonical / layout 版本与指纹、requested / selected cache mode 与 controls、prewarm 请求 / 已有 evidence、获准 ReuseDecision、Routing locality 依据 / 估算和拒绝原因。不保存 credentials、私有正文或 KV payload 到公共 evidence；原 request identity 保持。
+响应 Observation 才追加 provider / gateway 报告的 cached / cache-write tokens、实际可见 cache mode / hit / loss、prewarm / backend 结果与 usage / charge / TTFT；先前 prewarm 观测可作为新请求的 evidence，但不能把未来 hit 事后写成发出前事实。
+
+Provider-reported、gateway-reported、locally-verified 是来源 / 核对方式，复用原 declared / observed / verified / unknown evidence 层级；estimated savings 与 unknown 单独标记。只记录可见层的报告；gateway 返回 cached_tokens 不证明哪个 upstream 命中、TTL 或重试全貌。未报告 cache usage 保留 missing / unknown，不写零，不用 API success 或低延迟猜命中。
+未发送的纯应用复用只有 task decision 与原产物 provenance，不能伪造 request attempt / token usage。Saved model / tool / plan calls、tokens / 延迟按 execution-reuse §7 与 ComputePolicy 的对照 / 估算归因，分别报告实际支付与反事实节省。
+
+G06 的已有请求检查 / 运行投影呈现有效复用、对象 / source、why miss、selected cache mode / target、可见 usage / unknown 和必要的版本 / 隔离诊断；普通用户只看到帮助理解结果与消费的摘要，不暴露 KV、opaque reasoning 或敏感 Context。指标 / paired eval 沿 [execution-reuse §7](execution-reuse.md#7-reusedecision评价与阶段路由) 与 compute-policy §5，不另建 Eval / cache authority。

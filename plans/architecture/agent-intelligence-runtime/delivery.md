@@ -2,6 +2,7 @@
 
 > M1 范围已冻结，S01 结构 / scripted 已完成、真实基线待补；后续具体契约与远期阶段按最新 main / provider / 评测证据继续深化。
 > D2 保留 S01–S34，新增 M8 的 G01–G06；不重编号已有阶段。阶段数服务于可独立审阅与验证。
+> D4 将 Execution Reuse / Cache Locality / Adaptive Invocation 的 A–F 逻辑顺序映射既有阶段与后续研究池，不新增正式阶段或扩张 M1。
 
 ## 1. 建议的交付组
 
@@ -47,6 +48,10 @@ D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整�
 ### D3 — Reasoning Continuity 架构整合
 
 读取指定研究，把可选执行能力、opaque 状态、精确路径 evidence、adapter 分工、lineage / invalidation 与 loss 观测纳入现有模块；用 model-routing §7 管理详细规则，不复制研究的示例 schema 或另建 Runtime / Eval。实施顺序映射 M8，保持 40 个阶段身份与 M1 范围。只更新企划和同一 Record / HANDOFF，结束后停止；不实施产品代码。
+
+### D4 — Execution Reuse / Cache Locality / Adaptive Invocation 整合
+
+读取新研究并参考 Reasoning Continuity 边界；execution-reuse 管理有效性 / 依赖 / 产物消费，behavior-context 管理 Segment / canonical compiler，compute-policy 管理调用阶梯与预算，model-routing §8 管理 cache capability / locality / observations。保持 §7 唯一 continuation 定义；A–F 映射见 §8.1。本轮仅企划整合、同一 Record / HANDOFF 和本地文档验证，下一产品 checkpoint 仍是 S04。
 
 ## 3. M1 — 证据、评价与经验成长
 
@@ -123,25 +128,40 @@ S28 / S29 / S34 需要在各自阶段设计时落实真实 provider、预算和�
 
 ## 8. M8 — 生成与计算基础（新增有限交付组）
 
-详细职责分别见 behavior-context、compute-policy、model-routing；Reasoning Continuity 的唯一详细规则见 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期)。本表只管理顺序与交付；不把原研究 A–F 增列为正式阶段。
+详细职责分别见 behavior-context、compute-policy、model-routing 与 [execution-reuse](execution-reuse.md)；Reasoning Continuity 的唯一详细规则见 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期)。本表只管理顺序与交付；两份研究的 A–F 都是映射，不增列正式阶段，也不混成同一能力生命周期。
 
 | 阶段 | 依赖 | 实际交付 | 针对性验收 |
 | --- | --- | --- | --- |
-| G01 — 语义 / Target / Evidence 契约与迁移设计 | M1；本组设计冻结 | 沿现有资源管理注册必要 profile / policy / evidence 契约，旧 Route 固定策略 adapter；request preparation 实际消费新 evidence | Schema / owner / freshness、旧 exact 读取、未知版本、FS / SQL registry 与 dump / restore / 删除；consumer 无调用即能诊断不可行需求；包含 continuation capability / handle / lineage 与 checkpoint 边界的严格校验 / 删除 / 恢复设计 |
-| G02 — Behavior / Creative 与 Context 编译 | G01 | RP writer / Project 接入语义控制、受限 context lanes、progressive disclosure、精确 overlay 与确定性 lowering；压缩有来源，adapter 原生 envelope 与可见 message 分离，向 Runtime 提交最终 binding 指纹 | 身份 / 旁白 / 角色表达互不污染、工具许可与 source current、预算不足；固定输入可重建，压缩 continuation；绑定改变后重验 / reset；原生 item / signature / tool 顺序不丢失；无隐藏优化调用 |
-| G03 — Policy Resolver 与 FailurePolicy | G01、G02 | 有限候选、hard filter / task-specific score / freeze；价格 / health evidence consumer、固定模型模式、独立恢复计划；continuation scope 与 continue / fork / reset / discard 决策实际被消费 | unknown capability / price 不伪装可用或免费；隐私 / 地区 / 合约 / 预算不随 fallback 降低；Context 重编译有界；修改 policy 不热改请求；目标转向、编辑 / regenerate / variant / branch / restore、路径切换均验 lineage 与 loss 决定 |
-| G04 — Gateway / Local 执行观察 | G03 | Direct、gateway pool / alias / mapping / opaque 与 local 的真实 adapter 接入，attempt snapshot / observation，nested retry 与 affinity；按冻结矩阵依次验证 OpenAI Responses reference → Anthropic native → Gemini native → gateway continuation probes | 本地 HTTP 矩阵与至少可用真实 gateway 的有限 integration，其他品牌未测注明；stream usage 缺失、reported identity、取消 / retry amplification 不造事实；native cursor / opaque replay / signed blocks、prefix / 方向性兼容、stream 完整性与 fallback loss 有 round-trip 证据 |
-| G05 — Sparse 准入与共享预算 | G03、G04；M1 持久 job | RP / Project 共用沿 RunControl / send boundary 的 reservation / charge；纯规则 pre-route、事件 gate 与 background / maintenance | 并发不可重复花额度；retry / child / judge / background 全量计入；恢复 / save restore 不重置；普通低信息 turn 无固定额外生成，必要 guard 保留；续接、重置、compaction / summary、probe 与 fallback 成本计入相同额度，unknown 不为零 |
-| G06 — 双入口产品闭环与计算收益 | G02–G05 | 可检查创作意图、selected target、unknown upstream、升级原因与费用；有限模型 / 路径 ablation、旧 Route / binding 迁移与撤回；显示 continuation 决定 / loss，完成合法的 none / active_execution / task / adaptive 对照 | RP / Project 实际消费 exact request，普通 / 难例 / 高影响 / 长 session 分层质量—成本 / 延迟对照；费用缺失不冒充达标，真实浏览器只验所改状态；Planner 工具收益、Narrator 新鲜度 / 标签锚定 / 机械化分开评价，raw CoT 不作为输入 |
+| G01 — 语义 / Target / Evidence 契约与迁移设计 | M1；本组设计冻结 | 沿现有资源管理注册必要 profile / policy / evidence 契约，旧 Route 固定策略 adapter；request preparation 实际消费新 evidence；对齐 Reuse Contract、identity / scope / provenance / dependency / purity 与三层 cache capability | Schema / owner / freshness、旧 exact 读取、未知版本、FS / SQL registry 与 dump / restore / 删除；consumer 无调用即能诊断不可行需求与无效 reuse candidate；包含 continuation capability / handle / lineage 与 checkpoint 边界的严格校验 / 删除 / 恢复设计；不新增平行 dependency authority |
+| G02 — Behavior / Creative 与 Context 编译 | G01 | RP writer / Project 接入语义控制、受限 context lanes、progressive disclosure、精确 overlay 与确定性 lowering；稳定 Segment / Resource identity、canonical serialization 与 cache-aware layout；压缩有来源，adapter 原生 envelope 与可见 message 分离，向 Runtime 提交最终 binding 指纹 | 身份 / 旁白 / 角色表达互不污染、工具许可与 source current、预算不足；固定输入可重建，压缩 continuation；动态输入不污染稳定渲染，schema / tool order / effort / history 变化会重验 binding；原生 item / signature / tool 顺序不丢失；无隐藏优化调用或无关 padding |
+| G03 — Policy Resolver 与 FailurePolicy | G01、G02 | 有限候选、hard filter / task-specific score / freeze；价格 / health / locality evidence consumer、固定模型模式、独立恢复计划；先 Tool / Artifact proof consumer，再结构化 Plan / Workflow 重绑定与 Narrative Intent 前置复用；continuation scope 与 continue / fork / reset / discard 决策实际被消费 | unknown capability / price / cache 不伪装可用或免费；隐私 / 地区 / 合约 / 预算不随 fallback 降低；Context 重编译有界，policy 不热改请求；依赖 / 时间 / 实体 / 权限变化、mutation receipt、branch / restore / edit / regenerate、路径切换均验有效性与 loss；旧正文不当 semantic hit |
+| G04 — Gateway / Local 执行观察 | G03 | Direct、gateway pool / alias / mapping / opaque 与 local 的真实 adapter 接入，attempt snapshot / observation，nested retry 与 affinity；按冻结矩阵依次验证 OpenAI Responses reference → Anthropic native → Gemini native → gateway continuation probes；同路径验证 Provider cache controls / telemetry 与 cold / warm observations | 本地 HTTP 矩阵与至少可用真实 gateway 的有限 integration，其他品牌未测注明；stream usage 缺失、reported identity、取消 / retry amplification 不造事实；native cursor / opaque replay / signed blocks、prefix / 方向性兼容、stream 完整性与 fallback loss 有 round-trip 证据；区分请求 cache mode、实际 reported hit 与 unknown，不宣称 Local KV / decode 已落地 |
+| G05 — Sparse 准入与共享预算 | G03、G04；M1 持久 job | RP / Project 共用沿 RunControl / send boundary 的 reservation / charge；纯规则 Adaptive Invocation 阶梯、按需 retrieval、事件 gate 与 background / maintenance，支持获准 reuse / progress hints | 并发不可重复花额度；retry / child / judge / background 全量计入；恢复 / save restore 不重置；普通低信息 turn 无固定额外生成，必要 guard 保留；续接、重置、compaction / summary、probe、reuse lookup / validation / classifier、cache 开销、获准 prewarm 与 fallback 同额度，unknown 不为零；no-call 不伪造 send |
+| G06 — 双入口产品闭环与计算收益 | G02–G05 | 可检查创作意图、selected target、unknown upstream、升级原因与费用；why reuse / miss、cache observation / estimated savings；有限模型 / 路径 ablation、旧 Route / binding 迁移与撤回；显示 continuation 决定 / loss，完成合法的 none / active_execution / task / adaptive 与 recompute / reuse / invocation 对照 | RP / Project 实际消费 exact request，普通 / 难例 / 高影响 / 长 session 分层质量—成本 / 延迟对照；cold / warm / hit / miss 的 TTFT / E2E 分布、valid hit / false reuse 与 saved work 有来源；费用缺失不冒充达标，真实浏览器只验所改状态；Planner 工具收益、Narrator fresh generation / 重复 / 标签锚定 / 机械化分开评价，raw CoT 不作为输入 |
 
 本组以用户可使用的生成 / 路由 / 预算工作流为完整交付单位；开始前细化有限支持矩阵、实测目标、schema / 迁移与集成 checkpoint。不默认要求接入所有品牌或学习型路由。Native adapter 顺序是本组验证路线，具体模型版本 / transport / gateway 路径进入前冻结；缺实际协议 / 有限预算的项目明确未测 / unavailable，不计作实现。G06 在已验证固定策略上评价 adaptive lifecycle；跨模型 learned routing 仍不由此获授权。
 每个 G 阶段按治理验证、持久化、记录并停止；本组实现分支与完整交付后的集成安排在进入 M8 时明确，不能沿用 M1 分支假称已开始。
+
+### 8.1 Execution Reuse实施顺序与既有阶段映射
+
+| 逻辑顺序 | 现有阶段 / 范围 | 消费者与退出证据 |
+| --- | --- | --- |
+| A — Reuse semantics | G01 | 既有 request / artifact consumer 校验 identity、scope、dependency、validity、purity、provenance 与 ReuseDecision；无证明不能复用 |
+| B — Cache-aware context | G02；原生协议 / telemetry 在 G04 验证 | RP / Project 实际消费稳定 Segment、canonical serializer、受控 layout；Provider cache capability 在精确路径成立，不用渲染相同证明 hit |
+| C — Tool / Artifact reuse | G03 先完成 C；observations 由 G04 关联 | 原 Tool / Artifact grant consumer 证明依赖级命中 / 失效、time / permission / Authority、branch isolation 与 side-effect receipt；关闭复用仍有原执行路径 |
+| D — Plan / Workflow reuse | G03 在 C 之后 | 结构化模板、当前参数重绑定、preconditions / tools / 权限重验；RP 前置 Narrative Intent 可复用，Narrator 正文仍 fresh |
+| E — Adaptive invocation | G05；G06 验收，S25 / S26 后续深化 | 规则阶梯实际选择必要工作、retrieval 与 target / effort；共享预算 / hints、false reuse 与质量—成本对照成立才深化策略 |
+| F — Local inference optimization | 后续研究池，具备 backend / 预算后另定有限 PoC | 成熟 backend 的 Prefix / Segment / 非 prefix KV、workflow retention / prefetch / offload / compression、decode acceleration；验证兼容 / 质量 / Trust Domain 后才接入 |
+
+A → B → C → D → E → F 是能力依赖与建议演进顺序，不是六个新增正式阶段。B 的上层结构先交付，其具体 Provider cache 支持在 G04 延续验证；C / D 的应用产物复用不依赖 Local KV。G04 是普通 local target / 可观测能力接入，不能算 F 或把所有品牌 / 算法列为 M8 必做。
+进入 M8 前冻结有限对象 / 工具 / 模板 allowlist、支持路径、物理 schema / migration、实际 consumer 与退出阈值；当前只采纳架构顺序，未授权 prewarm、付费 probe、connection / privacy 改动或 learned routing 发布。
 
 ## 9. 后续研究池
 
 - society-scale autonomous NPC：在单 Actor、Goal、cognition 和成本成立后再定义规模、运行频率与玩家控制。
 - visual world model：选定可用 observation / action 空间后对接，不替代 World authority。
 - latent / KV / hidden-state communication：只有模型后端暴露且允许这些表示时才开展 PoC；近期不承诺通用闭源 API 可用。
+- Local inference reuse / decode：对接成熟 serving backend，Prefix / Segment / non-prefix KV、workflow-aware eviction / progress hints、speculative / multi-head decoding 与安全重算分别证明能力；不自建 GPU engine，不默认开放 cross-user / cross-package KV。
 
 这些方向没有被静默删除，但当前证据不足以冻结为必做产品阶段。
 
@@ -165,8 +185,8 @@ S28 / S29 / S34 需要在各自阶段设计时落实真实 provider、预算和�
 | S11–S14 | index、architecture §5、baseline §2–4、当前阶段详细设计 | Goal 官方资料 |
 | S15–S21 | index、architecture §6–7、behavior-context §2、compute-policy §2、baseline §4、当前阶段详细设计 | 对应 ToM / relationship / memory / RP eval 资料 |
 | S22–S26 | index、architecture §8、compute-policy、model-routing §3–4、baseline §1 / §3、当前阶段详细设计 | World Model / dual-process 资料 |
-| G01–G04 | index、decisions、behavior-context、model-routing（含 §7）、baseline §9、当前阶段详细设计 | research §5；Reasoning Continuity 报告对应 adapter / probe 章节；仅对应 provider / gateway 资料 |
-| G05–G06 | index、compute-policy、model-routing、当前阶段详细设计 | behavior-context 对应消费者；research §5 |
+| G01–G04 | index、decisions、execution-reuse、behavior-context、model-routing（含 §7 / §8）、baseline §9、当前阶段详细设计 | research §5 / §6；两份研究对应 validity / adapter / probe 章节；仅对应 provider / gateway 资料 |
+| G05–G06 | index、compute-policy、execution-reuse §7、model-routing、当前阶段详细设计 | behavior-context / execution-reuse 对应消费者；research §5 / §6 |
 | S27–S34 | index、architecture §9、当前阶段详细设计 | 仅对应 provider / protocol / training 的官方资料 |
 
 当前阶段详细设计在进入交付组之前补齐；远期模块未冻结时不虚构“实施指南已经完整”。
@@ -202,5 +222,9 @@ S28 / S29 / S34 需要在各自阶段设计时落实真实 provider、预算和�
 | Model / Provider §34 shadow、Prompt §21 vector / LoRA、Sparse §21 learned router | 各模块实验边界；后续研究池 | 非默认 M1 / M8 自动权限；满足 backend / 数据许可 / 预算后再立有限实验 |
 | Reasoning Continuity §10–22、28–33 | model-routing §7 唯一管理；architecture / behavior-context / compute-policy 引用 | G01 契约、G02 envelope / binding、G03 生命周期 / loss；不提前扩张 M1 |
 | Reasoning Continuity §23–27、34–36 | model-routing §7、delivery §8 | G04 按 native reference → Anthropic → Gemini → gateway 顺序验证，G05 同预算，G06 adaptive / 双入口对照；provider 资料只作输入 |
+| Execution Reuse §12–20、37–44、57–66、86–92 | execution-reuse；Reasoning Continuity 仅引用 model-routing §7 | G01 契约；G03 Tool / Artifact proof、dependency invalidation、Plan / Workflow / Narrative Intent；G06 false reuse / fresh prose 对照 |
+| Execution Reuse §7–10、21–24、56、68–71 | behavior-context §3–4、model-routing §8 | G02 Segment / Resource identity、canonical compiler / layout；G04 exact-path cache capability / controls / telemetry；不冻结研究示例字段 |
+| Execution Reuse §45–47、50–55、72–81、85 | compute-policy §1.1 / §3–5、model-routing §8、delivery §8.1 | G03 locality / cost evidence；G05 规则 invocation / retrieval / budget，G06 hit / miss / TTFT / E2E / savings 对照；S26 后续策略 |
+| Execution Reuse §25–36、48–49、84–87 | execution-reuse §6、model-routing §8、后续研究池 | Provider / Local 分层、Trust Domain / HijackKV 与 workflow / progress hints；Local KV / speculative decode 为 F，需另定有限 PoC |
 
 报告中的资料索引与后续读取提示用于来源核对，不重复建立功能阶段。
