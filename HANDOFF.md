@@ -3,8 +3,8 @@
 ## 当前真实状态
 
 - Task ID：`ARCH-NATIVE-PACKAGE-RUNTIME`；Primary Workspace：`main` 产品，文档属于独立长期 `docs`。
-- 阶段：S0–S3 完成；CP1 核心运行闭环已验证并推送，当前停止，S4 尚未开始。
-- 产品开发分支：`feat/native-package-runtime`；HEAD `10b003f9a2001145b14ae4a40cc731d443ac04d1`。
+- 阶段：S0–S4 完成；S4 固定 Experience 编排已本地验证，继续 S5 到 CP2。
+- 产品开发分支：`feat/native-package-runtime`；HEAD `bffd30f3d`。
 - main 基线：`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；未合并本任务。
 - S2 产品提交：`664616b83`；S3 产品提交：`10b003f9a`。
 - S1 docs：`ac1cea354`；S2 docs：`b6216a882`；S3 文档 HEAD 以实际远端 `docs` ref 为准。
@@ -45,4 +45,6 @@ CP1 本机 HTTP fixture 场景贯通真实 Task → 无关 Revision → 购买�
 
 ## 新对话接手提示词
 
-> 继续 ARCH-NATIVE-PACKAGE-RUNTIME，从 CP1 后的 S4 Experience / Lifecycle 编排连续推进 S5 Processing / 作者工作流，到 CP2 后停止。先核对真实 main / docs / feat/native-package-runtime 和 dirty changes，按 docs:HANDOFF.md → Plan index → S4 指定模块 → 同一 Record 读取。CP1 产品 HEAD 为 10b003f9a2001145b14ae4a40cc731d443ac04d1，main 基线仍为 4ac8affbf01bfb5fb576834bb7eedbeefd03c007。S1–S3 已实现验证并推送，不重做；复用固定 Package computation、Task uses / production、Knowledge 选择与 result-adoption proof、现有 SessionCore CAS。每阶段仅执行本地最小相关验证，更新 Plan / Record / HANDOFF 并推送，不主动运行远端 CI；只到 CP2 停下。用户只把控范围、职责边界和关键取舍，技术细节自行推导。不要提前合并 main，S6 才最终集成和清理。
+> 继续 ARCH-NATIVE-PACKAGE-RUNTIME，从 CP1 后的 S4 Experience / Lifecycle 编排连续推进 S5 Processing / 作者工作流，到 CP2 后停止。先核对真实 main / docs / feat/native-package-runtime 和 dirty changes，按 docs:HANDOFF.md → Plan index → S4 指定模块 → 同一 Record 读取。CP1 产品 HEAD 为 bffd30f3d，main 基线仍为 4ac8affbf01bfb5fb576834bb7eedbeefd03c007。S1–S3 已实现验证并推送，不重做；复用固定 Package computation、Task uses / production、Knowledge 选择与 result-adoption proof、现有 SessionCore CAS。每阶段仅执行本地最小相关验证，更新 Plan / Record / HANDOFF 并推送，不主动运行远端 CI；只到 CP2 停下。用户只把控范围、职责边界和关键取舍，技术细节自行推导。不要提前合并 main，S6 才最终集成和清理。
+
+S4 增量与 155 例最小相关验证见同一 Record；下一阶段仅读 experience-processing / authoring-diagnostics 与直接相关代码。

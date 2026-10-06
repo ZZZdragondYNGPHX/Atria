@@ -99,3 +99,12 @@ S1–S6 按 [阶段路由](../../plans/architecture/native-package-runtime/index
 宿主 QuickJS 的 40 ms 是 VM 中断 deadline，初始化/内存清理另有耗时。原子承诺仅限单 Session Revision；跨 Session / Realm / 外部系统不属于本次原子证明。复杂计算当前接收既有 Lifecycle grants / 真实 Task 结果，World 的写与 Reducer 保持原路径。细致跨域编排、Processing、作者表单和视觉诊断属于 CP2 / CP3。
 
 下一段从 S4 Experience / Lifecycle 编排连续推进 S5 Processing / 作者工作流到 CP2；按 index 仅读指定模块，不重做 S1–S3。
+
+## S4 — Experience / Lifecycle 编排
+
+- Start HEAD：`10b003f9a`；End / Tested HEAD：`bffd30f3d`，产品分支沿用 feat/native-package-runtime。
+- 固定 Lifecycle Bridge 支持工作流推进/取消、时钟和 proposal 接受；复用原 action、Controller、Task scheduler、Scope、CAS 与 Authority-first Tool 路径。
+- outbox 保存真实触发 Revision / Branch / invocation，Task 保存宿主派生的生命周期原因；外来 cause 不得冒充，旧记录仍兼容。
+- 本地验证：新增 CP2 Experience 1 例，既有 Frontend Bridge 16 例、Lifecycle scheduler 6 例、Lifecycle runtime Fs/SQLite 108 例、Authority Turn Fs/SQLite 24 例通过，共 155 例；触及 JS ESLint、diff whitespace 通过。新 fixture 的冻结对象与表达式格式错误已修正并复验。
+- 未运行远端 CI、整库 tests、构建、浏览器或设备测试。每阶段只做本地相关验证。
+- S4 已完成，按用户授权继续 S5，CP2 才停止；不合并 main。

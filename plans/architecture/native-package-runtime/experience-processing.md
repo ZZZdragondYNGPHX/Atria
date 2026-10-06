@@ -54,3 +54,11 @@ S4 先贯通 Experience 的领域请求、Task / Tool 调度与 Lifecycle；S5 �
 ## 起读代码
 
 `src/native/lifecycle-authority.js`、`session-core.js` 的 Lifecycle 与 Task 提交；`public/shared/native-lifecycle-contract.js`、`native-task-contract.js`；`src/native/task-scheduler.js`；`src/native/frontend/bridge.js`；`public/scripts/native/frontend/script.js`、`runtime.js`、`conversation.js`；`public/scripts/extensions/regex/engine.js`；`public/shared/native-message-contract.js`、`native-frontend-host.js`。
+
+## S4 实施：固定编排接点（2026-10-06）
+
+沿用 Frontend Bridge action / operation、Controller 和 Authority-first Turn。新增固定 `target.lifecycle`，仅接受 workflow.transition（固定 workflowId / transitionId）、workflow.cancel（固定 workflowId）、clock.advance（固定 commandId，输入 ticks 1..maxTicks）与 interaction.schedule（固定 interactionId，输入 proposalId）。编译时解析真实声明并固定 digest，调用者不能提供路由字段、StatePatch 或规则。所有动作进入原 SessionCore Lifecycle CAS；模型 Tool 继续原固定 Transaction catalog / resolver / Authority 路径，Task 继续原 scheduler。
+
+新增 outbox 项在发布时保存 cause 的真实 Revision / Branch / invocation；Task 保存从 durable outbox 派生 lifecycleCause / Scope epoch / Workflow，忽略外来同名数据。旧 outbox 无 cause 仍可恢复；不建立事件事实缓存。工作流推进保持显式 gate，不把 Task 通知当作业务事实，取消与迟到采用继续由原 anchor / Scope 检查拒绝。
+
+S4 没有新增任意事件订阅、跨 Session 事务或自动重放 Controller 写入。既有 ready / clocks / logical.interval / workflows / durable Task intents 承载编排，Processing 与作者工作流在 S5 完成。

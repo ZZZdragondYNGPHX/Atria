@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`；`docs` 承载本任务的 Plan、Record 与实时交接。
-- Status: Active — S1 / S2 / S3 已完成并推送；CP1 核心闭环完成，等待续接 S4 → S5。
+- Status: Active — S1 / S2 / S3 已完成并推送；CP1 核心闭环完成，S4 完成，继续 S5 到 CP2。
 - 创建日期：2026-10-06。
 - 产品起点：远端 `main`，`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`；开始后续阶段时重新核对实际远端 HEAD。
 - Record：[永久阶段记录](../../../records/architecture/native-package-runtime.md)。
