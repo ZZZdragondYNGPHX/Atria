@@ -316,3 +316,21 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
         expect(caught.message).toMatch(/source scope not found/);
     });
 });
+
+test('Skill browser transport carries exact version through file/list/search and accepts pin with CSRF', async () => {
+    const originalFetch = global.fetch;
+    const calls = [];
+    global.fetch = async (url, options) => { calls.push({ url, options }); return { ok: true, json: async () => ({}) }; };
+    try {
+        const { skillsApi } = await import('../../public/scripts/skills/api.js');
+        const scope = { kind: 'character', characterFile: 'owner.png' }, name = 'guide', version = 'a'.repeat(64);
+        await skillsApi.pin({ scope, name, expectedHash: version });
+        await skillsApi.readFile({ scope, name, version, path: 'references/read.md' });
+        await skillsApi.listFiles({ scope, name, version });
+        await skillsApi.search({ scope, name, version, query: 'text' });
+        expect(calls[0].url).toBe('/api/skills/character%2Fowner.png/guide/pin');
+        expect(calls[0].options.headers['X-CSRF-Token']).toBe('test-token-123');
+        expect(JSON.parse(calls[0].options.body)).toEqual({ expectedHash: version });
+        for (const call of calls.slice(1)) expect(new URL(call.url, 'https://fixture.invalid').searchParams.get('version')).toBe(version);
+    } finally { global.fetch = originalFetch; }
+});

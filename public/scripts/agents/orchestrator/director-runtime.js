@@ -547,6 +547,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     try {
         const skillRes = await loadSkillResolution();
         visibleSkillsForMain = await skillRes.resolveAgentVisibleSkills({
+            run: sharedToolRunState,
             modeProfile: director,
             agentConfig: director.mainAgent || null,
             runtimeContext: skillRes.buildSkillRuntimeContext(

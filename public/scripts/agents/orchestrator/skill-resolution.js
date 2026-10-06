@@ -1,5 +1,5 @@
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
-import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions } from '../../../shared/skill-invocation.js';
+import { resolveSkillInvocation, pinSkillEntries, loadAlwaysSkills, skillInstructions } from '../../../shared/skill-invocation.js';
 
 /**
  * Skill-resolution helpers for orchestrator runtimes.
@@ -19,8 +19,8 @@ import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions } from '../
  *     so the resolver knows to "inherit mode default"; normalizes a partial
  *     shape if present.
  *
- *   - `resolveAgentVisibleSkills({ modeProfile, agentConfig, runtimeContext })`
- *     — load the inventory (with brief in-memory cache), merge the four
+ *   - `resolveAgentVisibleSkills({ modeProfile, agentConfig, runtimeContext, run })`
+ *     — load fresh inventory and pin accepted contents per run, merge the four
  *     scope layers (global → oai-preset → orch-preset → character,
  *     last-wins), then filter by the effective visible/deny lists. Agent-
  *     level visible starting with `"+"` inherits the mode default and
@@ -31,21 +31,21 @@ import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions } from '../
  *     `<available_skills>` system-message block injected into agent task
  *     messages so the model knows which skills exist + their descriptions.
  *
- *   - `invalidateSkillInventory()` — drop the cache. Called on mode switch
+ *   - `invalidateSkillInventory()` — retained compatibility hook for mode switch
  *     and after any skill mutation that arrives from outside this module.
  *
- * The cache is module-global and short-lived (TTL ~5s) — long enough to amortize
- * the four resolver calls a single director turn typically makes (main agent +
- * up to N sub-agents dispatched in the same round) but short enough that user-
- * driven changes (install / delete via UI) become visible without a manual
- * refresh.
+ * Each preparation loads fresh inventory. A caller-provided run object shares
+ * accepted versions among workers; WeakMap entries expire with that run.
  */
 
 const skillsApi = Atria.getContext().skills;
 
-let cachedInventory = null;
-let cacheStamp = 0;
-const CACHE_TTL_MS = 5000;
+const runPins = new WeakMap();
+function pinsForRun(run) {
+    if (!run) return new Map();
+    if (!runPins.has(run)) runPins.set(run, new Map());
+    return runPins.get(run);
+}
 
 /**
  * Normalize the `skills` field on a mode profile or per-agent config in place.
@@ -83,7 +83,7 @@ export function ensureSkillsFieldShape(obj, { isAgent = false } = {}) {
  * Resolve the list of skills visible to an agent.
  *
  * Pipeline:
- *   1. Load (and briefly cache) the full inventory via `skillsApi.list({ scope: 'all' })`.
+ *   1. Load the fresh full inventory via `skillsApi.list({ scope: 'all' })`.
  *      Network/transport failure collapses to an empty inventory so the
  *      orchestrator never fails closed for a transient REST error — the agent
  *      sees no skills, not a crash.
@@ -105,32 +105,28 @@ export function ensureSkillsFieldShape(obj, { isAgent = false } = {}) {
  * @param {object} args.runtimeContext - { presetName, characterFile, orchPreset }
  * @returns {Promise<Array>} visible skills (SkillIndexEntry shape)
  */
-export async function resolveAgentVisibleSkills({ modeProfile, agentConfig, runtimeContext }) {
+export async function resolveAgentVisibleSkills({ modeProfile, agentConfig, runtimeContext, run }) {
     if (nativeSessionRuntime.active) {
         const snapshot = nativeSessionRuntime.snapshot;
-        return resolveNativeAgentVisibleSkills({ modeProfile, agentConfig, nativeContext: {
+        return resolveNativeAgentVisibleSkills({ modeProfile, agentConfig, run, nativeContext: {
             packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId,
             skillIds: snapshot.manifest.skills?.map(item => typeof item === 'string' ? item : item.skillId ?? item.id),
         } });
     }
-    const now = Date.now();
-    if (!cachedInventory || (now - cacheStamp) > CACHE_TTL_MS) {
-        try {
-            cachedInventory = await skillsApi.list({ scope: 'all' });
-            cacheStamp = now;
-        } catch (e) {
-            console.warn('[skill-resolution] failed to load skill inventory:', e?.message || e);
-            cachedInventory = [];
-            cacheStamp = now;
-        }
+    let inventory;
+    try {
+        inventory = await skillsApi.list({ scope: 'all' });
+    } catch (e) {
+        console.warn('[skill-resolution] failed to load skill inventory:', e?.message || e);
+        inventory = [];
     }
-    const inventoryRaw = Array.isArray(cachedInventory) ? cachedInventory : [];
+    const inventoryRaw = Array.isArray(inventory) ? inventory : [];
 
     ensureSkillsFieldShape(modeProfile);
-    return loadAlwaysSkills(resolveSkillInvocation(inventoryRaw, {
+    return loadAlwaysSkills(await pinSkillEntries(resolveSkillInvocation(inventoryRaw, {
         context: runtimeContext, legacy: true, path: 'agents', modeProfile, agentConfig,
         settings: await skillsApi.invocationSettings?.(),
-    }), opts => skillsApi.readFile(opts));
+    }), opts => skillsApi.pin(opts), pinsForRun(run)), opts => skillsApi.readFile(opts));
 }
 
 
@@ -146,24 +142,20 @@ export async function resolveAgentVisibleSkills({ modeProfile, agentConfig, runt
  * @param {{projectId?:string, packageId?:string, packageVersionId?:string, skillIds?:string[]}} args.nativeContext
  * @returns {Promise<Array>}
  */
-export async function resolveNativeAgentVisibleSkills({ modeProfile, agentConfig, nativeContext = {} }) {
-    const now = Date.now();
-    if (!cachedInventory || (now - cacheStamp) > CACHE_TTL_MS) {
-        try {
-            cachedInventory = await skillsApi.list({ scope: 'all' });
-            cacheStamp = now;
-        } catch (e) {
-            console.warn('[skill-resolution] failed to load Native skill inventory:', e?.message || e);
-            cachedInventory = [];
-            cacheStamp = now;
-        }
+export async function resolveNativeAgentVisibleSkills({ modeProfile, agentConfig, nativeContext = {}, run }) {
+    let inventory;
+    try {
+        inventory = await skillsApi.list({ scope: 'all' });
+    } catch (e) {
+        console.warn('[skill-resolution] failed to load Native skill inventory:', e?.message || e);
+        inventory = [];
     }
-    const raw = Array.isArray(cachedInventory) ? cachedInventory : [];
+    const raw = Array.isArray(inventory) ? inventory : [];
     ensureSkillsFieldShape(modeProfile);
-    return loadAlwaysSkills(resolveSkillInvocation(raw, {
+    return loadAlwaysSkills(await pinSkillEntries(resolveSkillInvocation(raw, {
         context: nativeContext, path: 'agents', modeProfile, agentConfig,
         settings: await skillsApi.invocationSettings?.(),
-    }), opts => skillsApi.readFile(opts));
+    }), opts => skillsApi.pin(opts), pinsForRun(run)), opts => skillsApi.readFile(opts));
 }
 
 /**
@@ -194,12 +186,11 @@ export function buildAvailableSkillsBlock(visibleSkills) {
 }
 
 /**
- * Drop the inventory cache. Call on mode switch and after any skill mutation
- * (install / delete / rename / move) that the resolver did not initiate.
+ * Compatibility hook for callers that used inventory caching. Fresh preparation
+ * now observes changes directly; invalidation never changes an accepted run pin.
  */
 export function invalidateSkillInventory() {
-    cachedInventory = null;
-    cacheStamp = 0;
+    // Each preparation reads fresh inventory; accepted per-run pins live in a WeakMap.
 }
 
 /**

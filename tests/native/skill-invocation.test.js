@@ -3,8 +3,8 @@ import { skillEntryKey } from '../../public/shared/extension-contract.js';
 import { resolveSkillInvocation, loadAlwaysSkills, boundedSkillReadOptions, boundSkillFile } from '../../public/shared/skill-invocation.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, isNarrativeSkillInvocation } from '../../src/native/skill-invocation.js';
 
-const global = { name: 'guide', scope: { kind: 'global' }, installedHash: 'one' };
-const work = { ...global, scope: { kind: 'package', packageId: 'work', packageVersionId: 'exact' }, installedHash: 'two' };
+const global = { name: 'guide', scope: { kind: 'global' }, installedHash: '1'.repeat(64) };
+const work = { ...global, scope: { kind: 'package', packageId: 'work', packageVersionId: 'exact' }, installedHash: '2'.repeat(64) };
 const context = { packageId: 'work', packageVersionId: 'exact' };
 const settingsFor = (entry, paths) => ({ skills: { [skillEntryKey(entry)]: { paths } } });
 
@@ -12,7 +12,7 @@ describe('shared Skill invocation', () => {
     test.each(['narrative', 'studio', 'agents'])('%s honors exact scope before off, without global resurrection', path => {
         const entries = [global, work, { ...work, scope: { ...work.scope, packageVersionId: 'foreign' } }];
         expect(resolveSkillInvocation(entries, { context, path, settings: settingsFor(work, { [path]: 'off' }) })).toEqual([]);
-        expect(resolveSkillInvocation(entries, { context, path })[0].installedHash).toBe('two');
+        expect(resolveSkillInvocation(entries, { context, path })[0].installedHash).toBe('2'.repeat(64));
     });
     test('per-path choices, metadata defaults and folders do not alter identity or scope', () => {
         const settings = settingsFor(work, { narrative: 'always', studio: 'on-demand' });
@@ -55,18 +55,19 @@ describe('narrative read-only loop', () => {
         } } })).toBe(true);
     });
     function repo() {
-        return { list: async () => [global, work], get: async () => work,
+        return { list: async () => [global, work], get: async () => work, pin: async opts => ({ version: opts.expectedHash }),
             readFile: jest.fn(async () => ({ content: 'reference', totalLines: 250 })), listFiles: async () => ({ files: [{ path: 'ref.md' }] }) };
     }
     test('supporting reads enforce pinned scope/hash and bounded pagination', async () => {
         const repository = repo();
         const skills = await prepareNarrativeSkills({ repository, context });
         await skills.read({ name: 'atri_skill_read', args: { name: 'guide', path: 'ref.md', offset: 201, limit: 50 } });
-        expect(repository.readFile).toHaveBeenCalledWith({ scope: work.scope, name: 'guide', path: 'ref.md', offset: 201, limit: 50 });
+        expect(repository.readFile).toHaveBeenCalledWith({ scope: work.scope, name: 'guide', path: 'ref.md', offset: 201, limit: 50, version: work.installedHash });
         await expect(skills.read({ name: 'atri_skill_read', args: { name: 'other' } })).rejects.toThrow('unavailable');
         await expect(skills.read({ name: 'write', args: { name: 'guide' } })).rejects.toThrow('denied');
         repository.get = async () => ({ ...work, installedHash: 'changed' });
-        await expect(skills.read({ name: 'atri_skill_files', args: { name: 'guide' } })).rejects.toThrow('changed');
+        await skills.read({ name: 'atri_skill_read', args: { name: 'guide' } });
+        expect(repository.readFile.mock.calls.at(-1)[0].version).toBe(work.installedHash);
     });
     test('only final prose is published; provider state and every budgeted request remain in evidence', async () => {
         const skills = await prepareNarrativeSkills({ repository: repo(), context });

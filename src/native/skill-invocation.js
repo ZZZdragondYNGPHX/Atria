@@ -1,4 +1,4 @@
-import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile, SKILL_TOTAL_LIMIT } from '../../public/shared/skill-invocation.js';
+import { resolveSkillInvocation, pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile, SKILL_TOTAL_LIMIT } from '../../public/shared/skill-invocation.js';
 import { checkCancellation } from './model-prompt-runtime/execution-utils.js';
 
 export function isNarrativeSkillInvocation(role, taskPlan, runtime) {
@@ -10,10 +10,10 @@ export function isNarrativeSkillInvocation(role, taskPlan, runtime) {
 }
 
 export async function prepareNarrativeSkills({ repository, settings, context }) {
-    const entries = await loadAlwaysSkills(resolveSkillInvocation(await repository.list({ scope: 'all' }), {
+    const entries = await loadAlwaysSkills(await pinSkillEntries(resolveSkillInvocation(await repository.list({ scope: 'all' }), {
         context, settings, path: 'narrative',
-    }), opts => repository.readFile(opts));
-    const inventory = entries.map(({ name, scope, description, invocationMode, installedHash }) => ({ name, scope, description, invocationMode, installedHash }));
+    }), opts => repository.pin(opts)), opts => repository.readFile(opts));
+    const inventory = entries.map(({ name, scope, description, invocationMode, installedHash, version }) => ({ name, scope, description, invocationMode, installedHash, version }));
     const tools = entries.length ? [
         { type: 'function', function: { name: 'atri_skill_read', description: 'Read a scoped Skill instruction or supporting file. Offset is one-based; limit is at most 200 lines.',
             parameters: { type: 'object', properties: { name: { type: 'string' }, path: { type: 'string' }, offset: { type: 'integer', minimum: 1 }, limit: { type: 'integer', minimum: 1, maximum: 200 } }, required: ['name'], additionalProperties: false } } },
@@ -32,11 +32,9 @@ export async function prepareNarrativeSkills({ repository, settings, context }) 
             const entry = entries.find(entry => entry.name === call.args?.name);
             if (!entry) throw new Error('native_skill_unavailable');
             // Inventory identity remains pinned throughout this generation.
-            const current = await repository.get(entry.name, entry.scope);
-            if (current?.installedHash !== entry.installedHash) throw new Error('native_skill_changed');
             const result = call.name === 'atri_skill_files'
-                ? await repository.listFiles({ scope: entry.scope, name: entry.name })
-                : boundSkillFile(await repository.readFile({ ...boundedSkillReadOptions(call.args), scope: entry.scope, name: entry.name }));
+                ? { files: (await repository.listFiles({ scope: entry.scope, name: entry.name, ...skillReadPin(entry) })).map(file => ({ path: file.path, size: file.buffer.length, isBinary: file.isBinary })) }
+                : boundSkillFile(await repository.readFile({ ...boundedSkillReadOptions(call.args), scope: entry.scope, name: entry.name, ...skillReadPin(entry) }));
             characters += JSON.stringify(result).length;
             if (characters > SKILL_TOTAL_LIMIT) throw new Error('skill_content_budget_exceeded');
             return result;

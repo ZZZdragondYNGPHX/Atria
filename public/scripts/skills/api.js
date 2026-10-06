@@ -117,6 +117,12 @@ export const skillsApi = {
         return list.find((e) => e.name === name) || null;
     },
 
+    pin(opts) {
+        return jsonFetch(`/api/skills/${encodeURIComponent(scopeToUrl(opts.scope))}/${encodeURIComponent(opts.name)}/pin`, {
+            method: 'POST', body: JSON.stringify({ expectedHash: opts.expectedHash }),
+        });
+    },
+
     // ==================== Read content ====================
 
     /**
@@ -126,6 +132,7 @@ export const skillsApi = {
     readFile(opts) {
         const params = new URLSearchParams();
         if (opts.path) params.set('path', opts.path);
+        if (opts.version !== undefined) params.set('version', opts.version);
         if (Number.isInteger(opts.offset)) params.set('offset', String(opts.offset));
         if (Number.isInteger(opts.limit)) params.set('limit', String(opts.limit));
         const qs = params.toString();
@@ -142,7 +149,7 @@ export const skillsApi = {
      */
     listFiles(opts) {
         return jsonFetch(
-            `/api/skills/${encodeURIComponent(scopeToUrl(opts.scope))}/${encodeURIComponent(opts.name)}/files`,
+            `/api/skills/${encodeURIComponent(scopeToUrl(opts.scope))}/${encodeURIComponent(opts.name)}/files${opts.version !== undefined ? '?version=' + encodeURIComponent(opts.version) : ''}`,
         );
     },
 
@@ -153,6 +160,7 @@ export const skillsApi = {
     search(opts) {
         const params = new URLSearchParams({ q: opts.query });
         if (opts.path) params.set('path', opts.path);
+        if (opts.version !== undefined) params.set('version', opts.version);
         if (Number.isInteger(opts.limit)) params.set('limit', String(opts.limit));
         if (Number.isInteger(opts.contextLines)) params.set('context_lines', String(opts.contextLines));
         return jsonFetch(
@@ -222,7 +230,7 @@ export const skillsApi = {
     install(opts) {
         return jsonFetch(`/api/skills/${encodeURIComponent(scopeToUrl(opts.scope))}`, {
             method: 'POST',
-            body: JSON.stringify({ payload: opts.payload, conflictStrategy: opts.conflictStrategy }),
+            body: JSON.stringify({ payload: opts.payload, conflictStrategy: opts.conflictStrategy, expectedInstalledHash: opts.expectedInstalledHash }),
         });
     },
 

@@ -7,7 +7,7 @@ import { describe, test, expect, beforeEach, jest } from '@jest/globals';
  * a jest spy we can rewire between tests. This replaces the jest.setup.js
  * default stub for this suite only.
  */
-const skillsApi = { list: jest.fn() };
+const skillsApi = { list: jest.fn(), pin: async opts => ({ version: opts.expectedHash }) };
 const stub = {
     getContext: () => ({
         skills: skillsApi,
@@ -68,10 +68,10 @@ describe('resolveAgentVisibleSkills', () => {
         invalidateSkillInventory();
         skillsApi.list.mockReset();
         skillsApi.list.mockResolvedValue([
-            { name: 'global-a', description: 'g a', scope: { kind: 'global' } },
-            { name: 'global-b', description: 'g b', scope: { kind: 'global' } },
-            { name: 'preset-x', description: 'p x', scope: { kind: 'preset', name: 'rp' } },
-            { name: 'char-y', description: 'c y', scope: { kind: 'character', characterFile: 'alice.png' } },
+            { name: 'global-a', description: 'g a', installedHash: 'a'.repeat(64), scope: { kind: 'global' } },
+            { name: 'global-b', description: 'g b', installedHash: 'a'.repeat(64), scope: { kind: 'global' } },
+            { name: 'preset-x', description: 'p x', installedHash: 'a'.repeat(64), scope: { kind: 'preset', name: 'rp' } },
+            { name: 'char-y', description: 'c y', installedHash: 'a'.repeat(64), scope: { kind: 'character', characterFile: 'alice.png' } },
         ]);
     });
 
@@ -167,9 +167,9 @@ describe('resolveAgentVisibleSkills', () => {
     test('character-scope skill overrides same-name preset/global skill (last-wins merge)', async () => {
         invalidateSkillInventory();
         skillsApi.list.mockResolvedValueOnce([
-            { name: 'shared', description: 'global version', scope: { kind: 'global' } },
-            { name: 'shared', description: 'preset version', scope: { kind: 'preset', name: 'rp' } },
-            { name: 'shared', description: 'character version', scope: { kind: 'character', characterFile: 'alice.png' } },
+            { name: 'shared', description: 'global version', installedHash: 'a'.repeat(64), scope: { kind: 'global' } },
+            { name: 'shared', description: 'preset version', installedHash: 'a'.repeat(64), scope: { kind: 'preset', name: 'rp' } },
+            { name: 'shared', description: 'character version', installedHash: 'a'.repeat(64), scope: { kind: 'character', characterFile: 'alice.png' } },
         ]);
         const result = await resolveAgentVisibleSkills({
             modeProfile: { skills: { visible: ['*'], deny: [] } },
@@ -180,25 +180,25 @@ describe('resolveAgentVisibleSkills', () => {
         expect(result[0].description).toBe('character version');
     });
 
-    test('inventory cache amortizes repeat calls within TTL', async () => {
+    test('each preparation reads fresh inventory', async () => {
         await resolveAgentVisibleSkills({
             modeProfile: { skills: { visible: ['*'], deny: [] } },
             agentConfig: null,
             runtimeContext: {},
         });
-        await resolveAgentVisibleSkills({
-            modeProfile: { skills: { visible: ['*'], deny: [] } },
-            agentConfig: null,
-            runtimeContext: {},
-        });
-        expect(skillsApi.list).toHaveBeenCalledTimes(1);
-        invalidateSkillInventory();
         await resolveAgentVisibleSkills({
             modeProfile: { skills: { visible: ['*'], deny: [] } },
             agentConfig: null,
             runtimeContext: {},
         });
         expect(skillsApi.list).toHaveBeenCalledTimes(2);
+        invalidateSkillInventory();
+        await resolveAgentVisibleSkills({
+            modeProfile: { skills: { visible: ['*'], deny: [] } },
+            agentConfig: null,
+            runtimeContext: {},
+        });
+        expect(skillsApi.list).toHaveBeenCalledTimes(3);
     });
 
     test('falls back to empty array when inventory load fails', async () => {

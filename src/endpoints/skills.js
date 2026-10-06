@@ -60,12 +60,13 @@ import { importFromUrl } from '../skills/url-import.js';
 // substitute fixed-root fakes via supertest.
 export function createSkillsRouter({ getRepository, getMemoryIndex }) {
     const router = express.Router();
+    router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
     // Installed PackageVersion originals are immutable at every public write
     // entry point, including import destinations and cross-scope moves.
     router.use((req, res, next) => {
         if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-        if (['/pack-for-embed', '/extract-embed/preview'].includes(req.path)) return next();
+        if (['/pack-for-embed', '/extract-embed/preview'].includes(req.path) || req.path.endsWith('/pin')) return next();
         const scopes = ['scope', 'targetScope', 'fromScope', 'toScope'].map(key => req.body?.[key]);
         let routeScope = '';
         try { routeScope = decodeURIComponent(req.path.split('/')[1] || ''); } catch { /* normal route validation follows */ }
@@ -90,6 +91,8 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
     // ("rename collision: target xxx exists" matches both 404-flavored
     // wording and 409-flavored "exists/collision" — collision wins).
     function httpStatusForError(err) {
+        if (err?.name === 'StorageReadOnlyError') return 503;
+        if ([400, 403, 404, 409, 413].includes(err?.status)) return err.status;
         const msg = String(err && err.message || '');
 
         // 413 Payload Too Large: explicit size/count violations.
@@ -274,6 +277,39 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
 
     // ─────────────────────── scoped operations ────────────────────────
 
+    router.post('/:scope/:name/pin', async (req, res) => {
+        try {
+            if (!/^[a-f0-9]{64}$/.test(req.body?.expectedHash)) return res.status(400).json({ error: 'expectedHash required' });
+            const result = await getRepository(req).pin({ scope: parseScope(req.params.scope), name: req.params.name, expectedHash: req.body?.expectedHash });
+            res.set('Cache-Control', 'no-store').json(result);
+        } catch (e) { handleError(e, res); }
+    });
+    router.get('/:scope/:name/history', async (req, res) => {
+        try { res.set('Cache-Control', 'no-store').json(await getRepository(req).history({ scope: parseScope(req.params.scope), name: req.params.name })); } catch (e) { handleError(e, res); }
+    });
+    router.post('/:scope/:name/candidates', async (req, res) => {
+        try {
+            res.set('Cache-Control', 'no-store').json(await getRepository(req).prepareCandidate({
+                scope: parseScope(req.params.scope), name: req.params.name, baseVersion: req.body?.baseVersion, content: req.body?.content,
+            }));
+        } catch (e) { handleError(e, res); }
+    });
+    router.get('/:scope/:name/candidates/:candidateId', async (req, res) => {
+        try {
+            res.set('Cache-Control', 'no-store').json(await getRepository(req).checkCandidate({
+                scope: parseScope(req.params.scope), name: req.params.name, candidateId: req.params.candidateId,
+            }));
+        } catch (e) { handleError(e, res); }
+    });
+    router.post('/:scope/:name/candidates/:candidateId/apply', async (req, res) => {
+        try {
+            const result = await getRepository(req).applyCandidate({ scope: parseScope(req.params.scope), name: req.params.name,
+                candidateId: req.params.candidateId, expectedBaseVersion: req.body?.expectedBaseVersion });
+            await invalidateIndex(req);
+            res.set('Cache-Control', 'no-store').json(result);
+        } catch (e) { handleError(e, res); }
+    });
+
     router.get('/:scope/:name/file', async (req, res) => {
         try {
             const repo = getRepository(req);
@@ -283,6 +319,7 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
                 scope,
                 name: req.params.name,
                 path: filePath || 'SKILL.md',
+                version: req.query.version,
                 offset: offset !== undefined ? Number(offset) : undefined,
                 limit: limit !== undefined ? Number(limit) : undefined,
             });
@@ -300,7 +337,7 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
         try {
             const repo = getRepository(req);
             const scope = parseScope(req.params.scope);
-            const entries = await repo.listFiles({ scope, name: req.params.name });
+            const entries = await repo.listFiles({ scope, name: req.params.name, version: req.query.version });
             const files = entries.map(e => ({
                 path: e.path,
                 size: e.buffer ? e.buffer.length : 0,
@@ -311,7 +348,7 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
                 if (b.path === 'SKILL.md') return 1;
                 return a.path.localeCompare(b.path);
             });
-            res.json({ files });
+            res.json({ files, ...(req.query.version !== undefined ? { version: req.query.version } : {}) });
         } catch (e) { handleError(e, res); }
     });
 
@@ -353,6 +390,7 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
                 scope,
                 name: req.params.name,
                 query: String(req.query.q || ''),
+                version: req.query.version,
                 path: req.query.path,
                 limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
                 contextLines: req.query.context_lines !== undefined ? Number(req.query.context_lines) : undefined,
@@ -428,8 +466,8 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
         try {
             const repo = getRepository(req);
             const scope = parseScope(req.params.scope);
-            const { payload, conflictStrategy } = req.body || {};
-            const result = await repo.install({ scope, payload, conflictStrategy });
+            const { payload, conflictStrategy, expectedInstalledHash } = req.body || {};
+            const result = await repo.install({ scope, payload, conflictStrategy, expectedInstalledHash });
             await invalidateIndex(req);
             res.json(result);
         } catch (e) { handleError(e, res); }

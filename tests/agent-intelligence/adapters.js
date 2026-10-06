@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createSkillRepository } from '../../src/skills/repository.js';
 import { createGitClient } from '../../src/git/client.js';
 import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo } from '../../src/native/index.js';
 import { runMainAgentLoop } from '../../public/scripts/agents/orchestrator/director-runtime.js';
@@ -167,7 +168,11 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
             }
             validations.push({ status: task.status, round: task.repairRound, validation: task.validation.status });
         }
-        const skill = { name: 'evaluation-fixture', scope: { kind: 'project', projectId: source.project.projectId }, metadata: {} };
+        const skillRepo = createSkillRepository(root);
+        const skillScope = { kind: 'project', projectId: source.project.projectId };
+        if (evaluation) await skillRepo.install({ scope: skillScope, payload: { files: [{ path: 'SKILL.md', content:
+            '---\nname: evaluation-fixture\ndescription: Isolated evaluation instructions\n---\n' + evaluation.settings.projectSkill }] } });
+        const skill = evaluation ? await skillRepo.get('evaluation-fixture', skillScope) : { name: 'evaluation-fixture', scope: skillScope };
         globalThis.Atria = { getContext: () => ({ getRequestHeaders: () => ({}) }) };
         globalThis.fetch = async (url, options = {}) => {
             const route = String(url); const body = options.body ? JSON.parse(options.body) : null;
@@ -175,16 +180,21 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
             if (method === 'GET' && route === '/api/skills?scope=all') return response(evaluation ? [skill] : []);
             if (method === 'GET' && route === '/api/native/extensions/settings') return response({ value: { skills: evaluation ? { [skillEntryKey(skill)]: { paths: { studio: 'always' } } } : {} } });
             const skillBase = `/api/skills/${encodeURIComponent('project/' + source.project.projectId)}/${skill.name}`;
-            if (evaluation && method === 'GET' && route === skillBase + '/files') return response({ files: [{ path: 'SKILL.md', size: Buffer.byteLength(evaluation.settings.projectSkill), isDirectory: false }] });
+            if (evaluation && method === 'POST' && route === skillBase + '/pin') return response(await skillRepo.pin({ scope: skillScope, name: skill.name, expectedHash: body?.expectedHash }));
+            if (evaluation && method === 'GET' && route.startsWith(skillBase + '/files?')) {
+                const query = new URLSearchParams(route.slice((skillBase + '/files?').length));
+                if ([...query.keys()].some(key => key !== 'version')) throw new Error('skill_read_invalid');
+                const files = await skillRepo.listFiles({ scope: skillScope, name: skill.name, version: query.get('version') });
+                return response({ files: files.map(file => ({ path: file.path, size: file.buffer.length, isBinary: file.isBinary })) });
+            }
             if (evaluation && method === 'GET' && route.startsWith(skillBase + '/file?')) {
                 const query = new URLSearchParams(route.slice((skillBase + '/file?').length));
-                if ([...query.keys()].some(key => !['path', 'offset', 'limit'].includes(key)) || [...query.keys()].length !== new Set(query.keys()).size) throw new Error('skill_read_invalid');
+                if ([...query.keys()].some(key => !['path', 'offset', 'limit', 'version'].includes(key)) || [...query.keys()].length !== new Set(query.keys()).size) throw new Error('skill_read_invalid');
                 const options = boundedSkillReadOptions({ path: query.get('path') ?? 'SKILL.md', offset: query.has('offset') ? Number(query.get('offset')) : 1,
                     limit: query.has('limit') ? Number(query.get('limit')) : 200 });
                 if (options.path !== 'SKILL.md') throw new Error('skill_read_invalid');
-                const lines = evaluation.settings.projectSkill.split('\n');
-                return response({ content: query.has('offset') || query.has('limit') ? lines.slice(options.offset - 1, options.offset - 1 + options.limit).join('\n') : evaluation.settings.projectSkill,
-                    totalLines: lines.length, offset: options.offset, limit: options.limit });
+                return response(await skillRepo.readFile({ scope: skillScope, name: skill.name, version: query.get('version'), path: options.path,
+                    ...(query.has('offset') || query.has('limit') ? { offset: options.offset, limit: options.limit } : {}) }));
             }
             const base = `/api/native/studio/projects/${source.project.projectId}`;
             const taskPath = `${base}/agent/tasks/${task.taskId}`;

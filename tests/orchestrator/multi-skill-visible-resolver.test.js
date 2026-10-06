@@ -39,7 +39,8 @@ let fileReads = [];
 globalThis.Atria = {
     getContext: () => ({
         skills: {
-            list: async (...args) => currentSkillsList(...args),
+            list: async (...args) => (await currentSkillsList(...args)).map(entry => ({ installedHash: 'a'.repeat(64), ...entry })),
+            pin: async opts => ({ version: opts.expectedHash }),
             invocationSettings: async () => invocationSettings,
             readFile: async opts => { fileReads.push(opts); return { content: 'ALWAYS BODY' }; },
         },
@@ -177,7 +178,7 @@ test('Native Agents select exact Package skills, apply path settings and retain 
             agentConfig: { skills: { visible: ['+'], deny: [] } }, runtimeContext: { characterFile: 'a.png' } });
         expect(visible.map(item => item.name)).toEqual(['native-guide']);
         expect(buildAvailableSkillsBlock(visible)).toContain('ALWAYS BODY');
-        expect(fileReads).toEqual([{ scope: guide.scope, name: guide.name, path: 'SKILL.md' }]);
+        expect(fileReads).toEqual([{ scope: guide.scope, name: guide.name, path: 'SKILL.md', version: 'a'.repeat(64) }]);
         invocationSettings.skills[skillEntryKey(guide)].paths.agents = 'off';
         expect(await resolveAgentVisibleSkills({ modeProfile: { skills: { visible: ['*'], deny: ['blocked'] } } })).toEqual([]);
     } finally { nativeSessionRuntime.snapshot = null; }

@@ -358,3 +358,37 @@ Minimal local verification:
 ```sh
 node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/comparison.test.js tests/agent-intelligence/baseline.test.js tests/agent-intelligence/live-bridge.test.js tests/agent-intelligence/runner-failure.test.js tests/agent-intelligence/judge.test.js
 ```
+
+S07 uses the original Skill repository for immutable full-file versions under
+`skills/.history`, accepted by complete `installedHash`. RP Agent, Native narrative
+and Studio preparation carry the exact version through always instructions,
+on-demand reads, file listings and search. Accepted RP workers share versions in
+one run; a new preparation sees current files. Missing or corrupt history fails
+closed. Deletion revokes pins; name rename starts a new declared identity.
+
+The scoped Skill API adds `POST /:scope/:name/pin` (`expectedHash`),
+`GET /:scope/:name/history`, `POST /:scope/:name/candidates`
+(`baseVersion`, `content`), `GET /:scope/:name/candidates/:candidateId` and explicit
+`POST /:scope/:name/candidates/:candidateId/apply` (`expectedBaseVersion`). The
+original `file`, `files` and `search` GETs accept `version`; management reads may
+omit it. Candidates preserve the entire frontmatter and supporting files, and
+apply checks the complete base version. This manual edit authority does not grant
+Evaluation eligibility or automatic promotion. Original Package content remains
+read-only; internal first installation is preserved.
+
+Snapshot history is bounded to 64 versions / 64 MiB raw file bytes per Skill and
+64 candidates (each at most 2 MiB serialized metadata). Existing pins remain
+readable in read-only mode; new snapshots and all mutations require writable
+storage. Serialization supports one Host writer per user root. Multiple Hosts or
+out-of-band editors do not share the queue; content identity does not detect ABA.
+
+S07 targeted verification:
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/skills/versions.test.js tests/skills/run-pins.test.js
+```
+
+The S06 Project evaluator fixture now installs its instructions through the real
+Skill repository and reads the same pinned version through its restricted bridge.
+Historical model reports retain their original source identities. S07 makes no
+new model requests and does not change their ineligible promotion state.

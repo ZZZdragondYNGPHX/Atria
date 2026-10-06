@@ -1,5 +1,5 @@
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
-import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
+import { resolveSkillInvocation, pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
@@ -33,7 +33,14 @@ async function listNativeSkills(projectId, packageRef = null) {
     if (!settingsResponse.ok) throw new Error('Skill settings unavailable');
     const settings = (await settingsResponse.json()).value;
     const resolved = resolveSkillInvocation(entries, { context: { projectId, ...packageRef }, settings, path: 'studio' });
-    return loadAlwaysSkills(resolved, opts => readNativeSkill(resolved, opts.name, { ...opts, full: true }));
+    const pinned = await pinSkillEntries(resolved, async opts => {
+        const response = await fetch(`/api/skills/${encodeURIComponent(scopePath(opts.scope))}/${encodeURIComponent(opts.name)}/pin`, {
+            method: 'POST', headers: { ...requestHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedHash: opts.expectedHash }),
+        });
+        if (!response.ok) throw new Error('Native Skill pin failed (' + response.status + ')');
+        return response.json();
+    });
+    return loadAlwaysSkills(pinned, opts => readNativeSkill(pinned, opts.name, { ...opts, full: true }));
 }
 
 async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false, full = false } = {}) {
@@ -42,8 +49,9 @@ async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, l
     if (!entry) throw new Error('Native Skill is not available in the current project scope: ' + name);
     const encodedScope = scopePath(entry.scope);
     if (!encodedScope) throw new Error('Native Skill does not use an A5 Native scope');
+    const versionQuery = skillReadPin(entry);
     const response = await fetch(
-        `/api/skills/${encodeURIComponent(encodedScope)}/${encodeURIComponent(entry.name)}/${list ? 'files' : 'file?' + new URLSearchParams(full ? { path } : { path, offset, limit })}`,
+        `/api/skills/${encodeURIComponent(encodedScope)}/${encodeURIComponent(entry.name)}/${list ? 'files?' + new URLSearchParams(versionQuery) : 'file?' + new URLSearchParams(full ? { path, ...versionQuery } : { path, offset, limit, ...versionQuery })}`,
         { headers: requestHeaders() },
     );
     if (!response.ok) throw new Error('Native Skill read failed (' + response.status + ')');
@@ -82,6 +90,7 @@ function summarizeSkills(entries) {
     return entries.map(entry => ({
         name: entry.name,
         scope: entry.scope,
+        version: entry.version,
         description: entry.description || entry.frontmatter?.description || '',
     }));
 }

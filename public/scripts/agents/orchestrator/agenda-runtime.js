@@ -838,6 +838,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
     try {
         const skillRes = await loadSkillResolution();
         visibleSkillsForAgent = await skillRes.resolveAgentVisibleSkills({
+            run: payload?.__atriaSkillRun,
             modeProfile: profile || {},
             agentConfig: preset,
             runtimeContext: skillRes.buildSkillRuntimeContext(
@@ -1161,6 +1162,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
 }
 
 export async function runAgendaOrchestration(context, payload, messages, profile, deps = {}) {
+    payload = { ...payload, __atriaSkillRun: {} };
     // Skill/default resolution may fill fields; operate on a run-local preset snapshot.
     profile = structuredClone(profile);
     const settings = capabilitySettings[MODULE_NAME];

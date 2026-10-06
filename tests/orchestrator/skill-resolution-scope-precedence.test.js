@@ -26,7 +26,8 @@ let currentSkillsList = async () => [];
 globalThis.Atria = {
     getContext: () => ({
         skills: {
-            list: async (...args) => currentSkillsList(...args),
+            list: async (...args) => (await currentSkillsList(...args)).map(entry => ({ installedHash: 'a'.repeat(64), ...entry })),
+            pin: async opts => ({ version: opts.expectedHash }),
         },
         translate: (s) => String(s ?? ''),
         addLocaleData: () => {},
