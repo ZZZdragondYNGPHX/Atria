@@ -2,11 +2,11 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Updated: 2026-10-06
-- Current checkpoint: **M1 验收与集成前置条件已复核，仍待验收；S10 工程完成，未新增模型证据**。
+- Updated: 2026-10-07
+- Current checkpoint: **2026-10-07 再次复核：M1 仍待验收 / 不集成；S10 工程完成，未新增模型证据**。
 - Product branch: `feat/agent-intelligence-runtime@ed00f4f0cea53be360ed8dfa082bbd0afeec5398`，已 commit / push，product worktree 干净。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
-- Docs: `origin/docs`，本文件与同一 Record 在本轮 M1 复核 docs commit；复核起点 `ee2d530003f6c378e97f10d936a13a7edf5fd455`。本地 `docs` 落后，接手先 fetch / 核对 actual refs，不从历史路径恢复实时状态。
+- Docs: `docs`，本文件与同一 Record 在本轮 M1 再次复核 docs commit；起点 `c4fb8ddeee96bae11b3f6091c4e7b6dbb4fd03a8`，本地原落后一个提交，已 fast-forward。接手核对 actual refs，不从历史路径恢复实时状态。
 - Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [M1](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery](plans/architecture/agent-intelligence-runtime/delivery.md)。
 - Record: [同一阶段记录](records/refactor/agent-intelligence-runtime.md)。
 
@@ -49,14 +49,14 @@ S06 原 Gemini development 六槽与 promotion 六对已真实执行，原 autho
 
 ## Pending / next checkpoint
 
-### 2026-10-06 M1 验收复核
+### 2026-10-07 M1 验收再次复核
 
 - 结论：**M1 pending / 不集成**。S06 真实比较仅一次 repetition，五项同模型观察 / 一项 invalid response，无独立人工 labels、可核对价格或稳定改善；不能取得 S10 eligibility。S10 的 233 tests / fake worker / browser fixture 仍仅为原工程证据，本轮未重跑。
 - 实测前置：先冻结两条支持入口各一个单目标、exact base / policy / Route / model / connection / evaluator source、development 与 promotion split；每入口三个独立场景 × 三次 paired trial、九项独立 authenticated human labels。三类目标 × 两入口的工程覆盖继续保留，不把两个实测目标自动外推为全部目标的质量收益。
 - 按原 gate 检查九项人工与模型观察无分歧、至少六胜、重要维度非负、authority / isolation / target_consumed / source / exact config 全通过、trial token 与费用不高于 baseline；提炼 / judge / retry 另报且全计总额。达到准入仍不等于学习成本后的净收益。
 - 预算尚未重新核实：Record 的 110 / 300464 对原 guard 留出142 requests / 699536记账tokens，仅为历史差额。本轮未读 private ledger / config / reports。恢复前核对原进程 / lock / rate checkpoint / actual ledger；S10 owner ledger 与 S06 CLI ledger 没有自动共享总额的证明，不得用另一个 ledger 重新获得预算。冻结包含多轮 / retry / unknown 的有限总 send / token 上界；不足则停止，不缩减九对门槛。
-- Git 前置已核对：远端 product / main 与上方 pins 一致；`origin/main...origin/feat/agent-intelligence-runtime` 为 `0 / 16`，main 是任务分支祖先，`git diff --check` 通过；依赖 / lockfile / workflows / AGENTS / CLAUDE 无本组差异。main 工作树干净。未执行 merge，不把祖先关系当作合并后验证。
-- CI 前置仍待取得：`gh run list --branch feat/agent-intelligence-runtime --limit 10` 与 `gh pr list --head feat/agent-intelligence-runtime --state all` 均返回空。PR Checks 只在 PR 触发，不能将已 push 称作 CI 通过；集成前取得 exact product HEAD / PR 的必要检查证据，区分原 lint baseline 与新增失败。Node >=20 为产品声明、S10 只有 Node24 证据；Node20 兼容性未核实。完整 app 配置 / 网络闭环与局部 publication / next-run / rollback 的真实证据仍未取得，外部 DB 限制保持。
+- Git 前置已核对：远端 product / main 与上方 pins 一致；`origin/main...origin/feat/agent-intelligence-runtime` 为 `0 / 16`，main 是任务分支祖先，`git diff --check` 通过；依赖 / lockfile / workflows / AGENTS / CLAUDE 无本组差异。product 工作树干净；main AGENTS.md 与 docs 四份治理 / 模板有既有 dirty，五个 hashes 与 S10 记录一致并保留。未执行 merge，不把祖先关系当作合并后验证。
+- 本地集成验证仍待取得：按用户当前要求，每阶段与结束只执行本地最小相关验证，不沿用前轮远程 CI 待取得项作为当前门槛，不查询 / 触发 CI，不要求 full test / build。Node >=20 为产品声明、S10 只有 Node24 证据；最低版本兼容性尚未核实。两入口原 binding publication / 下一 run exact 消费 / guarded rollback 的真实闭环证据仍缺；external DB / full app UI 未实测不计通过。达到 M1 验收后，集成前后仅做与触及面相称的本地验证。
 - 本轮仅更新同一 Record / live HANDOFF；无产品改动、模型请求、private读取、tests / build / browser / DB实测或 workflow dispatch。不合并 main、不删除任务分支、不进入 S11 / G / Local。
 
 **M1 实际改善与集成前置条件待验收**。S01–S10 工程完成不证明独立真实质量 / 成本收益，不以 fake positive report、手动 review 或单一 model judge 偏好完成 M1 退出条件。下一只复核支持矩阵中的双入口有限模型比较、独立人工观察、成本 / 回归证据与集成前置检查；条件不足明确待验收，不默默下调门槛。

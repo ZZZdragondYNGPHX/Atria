@@ -637,6 +637,17 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - 本轮未读取 S06 private config / ledger / reports、未发模型请求、未重跑任何已通过tests。full test / build / full app UI / Android / 真机 / external DB 与 Node20 均未新增证据；没有产品改动或新依赖。
 - 仅提交 / push同一 Record与live HANDOFF。下一 checkpoint仍为M1验收：先冻结有限双入口实测、人工观察、价格与累计预算，再取得合格真实闭环 / 改善和必要集成验证；条件不足明确pending。保留产品分支与main，不进入S11 / G。
 
+## M1 — 验收与集成前置条件再次复核（2026-10-07）
+
+- Scope：仅复核已有 M1 验收与集成前置条件；不执行真实模型补测、产品修改或集成，不进入 S11 / G / Local。
+- Actual refs：远端 `docs` 已为 `c4fb8ddeee96bae11b3f6091c4e7b6dbb4fd03a8`，比本地 `ee2d530003f6c378e97f10d936a13a7edf5fd455` 多一个 M1 复核提交；定向 fetch 后读取最新 HANDOFF / Record。docs 工作树 fast-forward，既有四份治理 / 模板 dirty 保留。产品 / main 的本地与远端 HEAD 仍分别为 `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` / `ed1fd90521a63363e29856601abbf5e908c99d10`。
+- **结论维持 M1 pending / 不集成。** S06 一次 repetition、五项同模型观察 / 一项 invalid_response、无人类 labels / 可核对价格仍不满足 S10 gate；原 reports pin 较早 source，不能替代最终 S10 实测。S10 的 233 tests / fake worker / shared-pane fixture 只保留为历史工程证据，本轮没有重跑或新增模型证据。
+- 补测前置不变：冻结两入口支持矩阵内单目标及 exact base / policy / Route / model / connection / evaluator source、独立 split；每入口三个场景各三次 paired trial、九项独立 authenticated human labels，至少六胜、全部 nonregression / 行为维度非负、judge 无分歧；source / authority / isolation / target_consumed / exact config 全通过，trial tokens 与可核对费用不高于 baseline。提炼 / judge / retry 全记账并单列，不把 trial 达标称作净收益；原 binding publication / 下一 run exact 消费 / guarded rollback 的真实闭环仍待证据。
+- 预算没有实时复核：110 requests / 300464 记账 tokens 与历史差额142 / 699536仅来自原 Record。未读取 private config / ledger / reports；执行前仍须核对原进程 / lock / rate checkpoint / actual ledger，并证明 S10 owner 与 S06 CLI 两种账本沿同一累计额度执行，不通过新账本重获额度。两入口最低54 evaluation sends不含提炼 / 多轮 / retry，不证明额度足够；有限上界不足就停止，不缩减验收门槛。
+- 最小本地 Git 检查：product worktree 干净；main...product 为 `0 / 16`，merge-base 正是当前 main，具备快进拓扑；product 相对 main 的 `git diff --check` 通过，package / lockfile / AGENTS / CLAUDE / workflows 无差异。未合并，未声称集成后验证通过。当前 main 的 AGENTS.md 为既有 dirty，其 hash 与 S10 保护值一致；2026-10-06 的 main 干净观察不代表本轮状态。
+- 按用户当前要求，每阶段与结束只做本地最小相关验证；不将前轮远程 CI 待取得项继续作为本轮门槛，不查询 / 触发 CI，不要求 full test / build。未来集成前仍需与触及面相称的本地检查、声明 Node >=20 对应的最低版本兼容证据，以及上述双入口真实闭环；已有 Node24 / FS / SQLite 证据保留，Node20 / external DB / full app UI 未实测不计通过。集成后只在 main 做最小相关验证。
+- 本轮仅刷新同一 Record / live HANDOFF，执行两文档链接 / fences、前序 Record 保留、五个 protected hashes、diff / staged paths 的本地检查后 commit / push docs。没有读取 reference 或其它草稿、没有产品 / Plan 改动。main 与产品分支保留；下一 checkpoint仍只限 M1 验收，条件不足保持 pending。
+
 ## Final state
 
 长期任务仍进行；D0–D4 / S01–S09 与 S10 工程交付完成。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 push，233 distinct 相关本地 tests 与 shared-pane Chromium fixture 通过，main 未变化。M1 真实改善 / 集成前置条件待验收；S06 原候选仍 ineligible。下一 checkpoint 只复核 M1 验收，本轮停止，不进入 S11 / G。
