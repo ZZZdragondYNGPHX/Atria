@@ -3,11 +3,11 @@
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Updated: 2026-10-07
-- Current checkpoint: **M1自动本地验证已代劳：Node20.20.2相关48项通过；原S06账本 / reports缺失，真实补测未启动，M1仍待验收 / 不集成**。
-- Product branch: `feat/agent-intelligence-runtime@ed00f4f0cea53be360ed8dfa082bbd0afeec5398`，已 commit / push，product worktree 干净。
+- Current checkpoint: **用户批准M1自动化工程验收 / 丢失账本保守结转；本轮有限执行准备中，恢复账本已持久初始化，测试source已commit / push；实际模型结果尚未取得。生产human gate保持。**
+- Product branch: `feat/agent-intelligence-runtime@2c5499bb6`，已 commit / push，product worktree 干净。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 - Docs: `docs`，本文件、S10验证补充与同一 Record 在本轮 M1 自动验证 docs commit；起点 `f7fc8e23023d96903afda350f99971f21976a6dc`。接手核对 actual refs，不从历史路径恢复实时状态。
-- Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [M1](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery](plans/architecture/agent-intelligence-runtime/delivery.md)。
+- Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [自动化验收](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [M1](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery](plans/architecture/agent-intelligence-runtime/delivery.md)。
 - Record: [同一阶段记录](records/refactor/agent-intelligence-runtime.md)。
 
 ## Current scope / completed
@@ -65,3 +65,11 @@ S06最后已记录累计 **110 requests / 300464 记账 tokens，breached=false*
 先核对真实 Git → HANDOFF → index / s10-evolution → m1-evolution / delivery M1 → 同一 Record；只按需读取原 S05–S09 authority。不重做 D3 / D4，不进入 S11–S34 / G01–G06 / Local；main 不合并，任务分支保留。
 
 接手提示词：**读取 docs:HANDOFF.md，继续代劳 M1 自动验证；先核对原 S06 账本 / reports 缺失与有限预算，不能新建账本清零。仅 M1，不进入 S11 或 G 阶段。**
+
+## 本轮已批准调整与执行准备
+
+用户对上一轮调整方案回复“统一”，按上下文作为同意处理。仅M1工程验收改按m1-acceptance自动检查 / 双模型盲评；human未观测，生产automatic gate不变。保守结转旧guard252requests /1000000tokens，不伪造逐次entries；新增最多260sends /699536tokens，累计上限512 /1699536，至少3150ms串行send /原20RPM与2000每日cap /output1024 /整体两小时。具体恢复schema、支持对象、次数与判定按新模块执行；不清零旧消耗。
+
+当前测试接线与Plan已准备，实际结果待执行。Document持久保存API / recovered ledger / reports且排除Git；source先commit再实测。结束更新同一Record / HANDOFF后停止，不进入S11 / G。
+
+本轮恢复已初始化：Document中保存两个mode600 API配置 / recovery说明 / ledger / limits / reports；local Git五个keys已迁移，原文件不覆盖。ledger初始252requests /1000000tokens为保守carry，零新entries；新allowance260 /699536，含carry累计512 /1699536。旧breach未知，新period当前breached=false。source HEAD `2c5499bb6`，最小本地五套61 distinct tests / 六文件lint / diff通过；真实执行下一步开始，先前private缺失的段落为历史观察，本轮恢复不伪造旧记录。

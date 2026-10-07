@@ -74,3 +74,7 @@ S10 工程链路已交付，**M1 独立案例的真实质量 / 成本改善尚�
 用户授权agent代劳验证；固定loader / worker及相关三套48项已在Node20.20.2通过。首次16项SQLite失败为共享Node24二进制ABI不匹配，在临时目录安装同版本Node20依赖后仅重跑这16项全部通过，未修改产品源码 / 共享依赖。其余32项已通过，不重复累计；fake provider与合成人工标签仍仅为工程证据。
 
 按已有local Git keys核对发现原S06 ledger / limits / artifacts目录与lock / rate checkpoint缺失，用户答复“无迁移”；connection仍存在。未新建或重置账本，未发真实模型请求。历史累计无法实时核对，真实改善 / 独立human labels与两入口真实闭环仍待验收，M1不集成。后续先明确原累计账目恢复处理与可核对有限验证预算；只在本地执行最小相关验证，不进入S11 / G。
+
+### 当前M1工程验收与生产gate
+
+2026-10-07用户批准M1工程验收调整，见 [m1-acceptance](m1-acceptance.md)。本模块的九对独立human labels / price等准入仍是production automatic publication要求；工程评测采用独立模型observation并保持human未观测，不输入human字段，不改本模块生产授权。账本丢失不伪造旧entries，沿已批准保守结转与新有限额度执行。

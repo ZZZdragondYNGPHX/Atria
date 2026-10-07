@@ -193,3 +193,7 @@ S10 支持 ordinary RP exact character 下的 bounded single-owner Director、�
 12 suites / 233 distinct local tests 与共享 pane 的真实 Chromium fixture 通过，两个固定 worker 使用 fake provider 验证原 RP / Studio 消费者与隔离；这不能替代实际模型收益。S06 的已有真实候选仍 ineligible，本轮未追加真实请求、未读写私有账本 / 报告。
 
 **M1 工程阶段 S01–S10 已交付；M1 完整产品退出条件仍待验收。** 独立真实案例质量 / 成本改善尚未证明，包含提炼 / judge 的净收益也未证明。下一仅复核有限实测与人工观察所需条件、预算和集成前置检查；若条件不足，记录明确待验收事项。main 未合并，S11 / G 未开始。
+
+## 12. 2026-10-07 自动化工程验收调整
+
+用户批准agent代劳与保守结转 / 新有限验证预算。当前M1工程验收使用 [m1-acceptance](m1-acceptance.md) 的确定性检查 / 双模型盲评与真实局部review闭环，不要求用户本人提供human标签；缺失human仍真实标记not_observed。生产automatic promotion继续严格执行S10原human / price gate，工程通过不取得自动发布权限。完整退出门槛与恢复预算由该模块唯一管理，早期M1人工验收条款不再约束工程交付验收。

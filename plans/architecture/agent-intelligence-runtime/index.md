@@ -3,7 +3,7 @@
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete / S09 complete / S10 engineering complete; M1 empirical acceptance pending**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
-- Updated: 2026-10-06
+- Updated: 2026-10-07
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
 - S03 implementation / Tested HEAD: `78acfb65da6b1afa1dee1c2f35482af215832c74`；沿用同一任务分支，已 push，main 未变化。
@@ -54,6 +54,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [architecture.md](architecture.md) | 六 Plane 与语义 / 复用 / 计算 / 路由连接、证据与认知边界 | baseline、decisions |
 | [delivery.md](delivery.md) | 40 个候选实施阶段、依赖、实际交付与验收 | architecture、research |
 | [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
+| [m1-acceptance.md](m1-acceptance.md) | 已批准的M1自动化工程验收、模型盲评与丢失账本保守结转；生产human gate不变 | m1-evolution、s10-evolution、用户本轮确认 |
 | [m1-evolution.md](m1-evolution.md) | 首批双入口成长、局部自动启用与恢复的具体讨论设计 | architecture、decisions |
 | [s01-baseline.md](s01-baseline.md) | S01 的具体案例、报告契约、预算、验证和退出条件 | decisions、当前代码入口 |
 | [s02-sources.md](s02-sources.md) | S02 最小 source / reference / validity、预算与无迁移边界 | m1-evolution、当前 authority |
@@ -133,3 +134,9 @@ S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runti
 S01–S10 工程链路沿同一分支完成，下一轮核对真实 Git，只复核 M1 验收与集成前置条件。读取 s10-evolution → m1-evolution / delivery M1 → 同一 Record。保留 ordinary RP bounded Director / 原 character Skill 和 Workspace binding、Project 原局部 Skill / style binding / pristine Task repair 的部署边界；不以独立报告叠加不同改进。
 S06 仍 promotion ineligible；本轮 fake provider / 浏览器 fixture 仅证明工程闭环，独立真实案例改善尚未证明。需要真实补测时先冻结有限范围与人工观察，恢复同一累计 ledger / rate checkpoint、不覆盖报告。
 S10 阶段结束即停止；M1 退出条件未验收，不合并 main，不进入 S11 / G。
+
+## 2026-10-07 M1 验收调整
+
+用户批准由agent代劳自动化工程验收与旧预算保守结转，详细退出门槛 / 有限预算唯一归属 [m1-acceptance](m1-acceptance.md)。生产automatic promotion仍沿S10原human / price gate；工程报告不伪造人工标签、不证明净收益。当前只执行M1，实际结果待取得，不进入S11 / G。恢复先核对actual refs / HANDOFF，再读本模块 / S10和同一Record。
+
+M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；本地五套61 distinct tests通过，生产S10门槛源码不变。实际模型结果待执行，不能将接线完成计作改善通过。

@@ -675,6 +675,16 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - 仅更新 S10 的runtime验证状态、同一Record与live HANDOFF，做三文档本地链接 / fences、前序Record保留、protected hashes与diff / staged paths检查后commit / push docs。S10支持矩阵、M1改善门槛与单Host部署边界不变。
 - **M1自动本地验证已由agent执行；真实模型补测因原累计账本缺失未启动，M1仍pending / 不集成。** 下一checkpoint仍仅M1：先处理账本 / reports可核对来源及有限预算，再代劳真实比较；不要求用户运行tests，不进入S11 / G / Local，main与产品分支保留。
 
+## M1 — 已批准自动化验收 / 保守预算恢复（2026-10-07，执行准备）
+
+- 用户不愿自己验证并授权agent继续，对上一轮具体调整方向回复“统一”，按上下文同意处理。Plan新增m1-acceptance，更新index / decisions / m1-evolution / delivery / S10入口；工程验收改为自动authority / 双model盲评，生产human / price gate保持原样，不伪造标签、不以工程通过取得automatic eligibility。
+- Start product `ed00f4f0cea53be360ed8dfa082bbd0afeec5398`；本轮test-only source `2c5499bb6`已commit / push。沿同一产品分支，main不变。六个test-only files接入原EvaluationBudget / EvolutionService / fixed worker / 原targets，不修改production Runtime权限或有效配置authority。
+- 恢复设计按旧guard整段252requests /1000000tokens保守结转，`historicalCarry`绑定旧Record hash；旧entries / reports缺失与历史breach不可核实保持明确。新增allowance最多260sends /699536tokens，含carry累计512 /1699536；3150ms串行 /20RPM /2000dailycap /output1024 /单send300秒 /overall两小时；旧snapshot兼容。原job120发送 /一小时保持，额外independent / activation只分job标签，仍共享同一累计账本，不重获预算。
+- 用户指定Document中的API两个mode600文件由旧连接复制，local Git connection / secondaryconnection / ledger / limits / artifacts五个keys已迁移；migration说明保存旧映射与evidenceHash，旧文件不覆盖。ledger独占初始化为carry +零新entries，未知 / pending保留upper，rate持久；用户root Document保持700并排除Git。未输出credential / endpoint / 私有路径到Git，未扫描用户目录。
+- 自动工程验收仍各入口三个独立promotion cases×三次paired trials、至少六对两模型一致candidate胜、全部非回归 / source / exact config / target_consumed /实际usage通过，trial tokens不高于baseline；货币费用未确认则unavailable，只作token资源评价、不宣称净收益。人类偏好not_observed。私有fixture内委托review / 下一原Director或Project实际请求 / guarded rollback，不改生产对象。
+- **五套61 distinct local tests通过**：recovery-budget4、m1-acceptance4、evolution41、live-bridge11、runner-failure1。初始相关三套16passed（含recovery4），最终三套49passed（含同四项），重复不累加。六文件ESLint / node syntax / product diff通过；新增验证aggregate不能减少 / oldsnapshot兼容 / durable pending / sticky breach、独立模型 / shuffle / usage拒绝与human gate保持、显式connection / review seed不发送。未执行full tests / build / browser / external DB / CI；Node24本轮，上一轮Node20.20.2证据仍为对应原source。
+- 本段为正式有限执行前冻结，不代表实际模型改善。下一在已commit的source上运行m1-live，原固定worker / provider真实比较与第二模型盲评全部纳入此账本；partial / failed报告新文件保存，不覆盖历史、不追试至通过。实际结果将在同一Record后续追加，结束刷新HANDOFF后停止，仅M1，不进入S11 / G。
+
 ## Final state
 
 长期任务仍进行；D0–D4 / S01–S09 与 S10 工程交付完成。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 保持，main 未变化。本轮新增Node20.20.2固定worker加载与48项相关工程验证；原S10 233项与shared-pane fixture保持历史证据。原S06 ledger / limits / reports当前缺失，真实补测未启动，M1真实改善与独立人工观察仍待验收。下一checkpoint仍仅M1，不进入S11 / G。
