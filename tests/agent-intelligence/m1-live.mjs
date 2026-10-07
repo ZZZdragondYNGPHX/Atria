@@ -16,7 +16,7 @@ const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
 const emptySkills = { list: async () => [], invocationSettings: async () => ({ skills: {} }) };
 const skillPort = new Proxy({}, { get(_target, key) { const current = globalThis.Atria?.getContext?.()?.skills; const api = !current || current === skillPort ? emptySkills : current; return typeof api[key] === 'function' ? api[key].bind(api) : api[key]; } });
-const emptyContext = () => ({ constants: { promptRoles: { SYSTEM: 0, USER: 1, ASSISTANT: 2 } }, skills: skillPort });
+const emptyContext = () => ({ constants: { promptRoles: { SYSTEM: 0, USER: 1, ASSISTANT: 2 }, wiPosition: { before: 0, after: 1 } }, skills: skillPort });
 globalThis.Atria = { getContext: emptyContext };
 const option = process.argv.slice(2);
 let lock, descriptor, dispatcher, scratch;
@@ -24,7 +24,8 @@ const overall = new AbortController();
 const deadline = setTimeout(() => overall.abort(), 2 * 3600000);
 const safeReason = error => /^[a-z_0-9]{1,100}$/.test(error?.code || error?.message || '') ? error.code || error.message : 'inspect_private_report';
 try {
-    if (option.length !== 2 || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    const prepareOnly = option.length === 3 && option[2] === '--prepare';
+    if (!(option.length === 2 || prepareOnly) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     if ((fs.statSync(directory).mode & 0o777) !== 0o700) throw new Error('private_directory_permissions_required');
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -139,6 +140,7 @@ try {
             const compare = f.evaluator.compare.bind(f.evaluator);
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
                 async pair => { store(kind + '-partial-pairs.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); });
+            if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             entry.status = 'evaluating'; store('summary.json', summary);
             const result = await runEvolution(f), { job, candidate } = result;
             entry.jobId = job.id; entry.status = job.status;
@@ -221,7 +223,7 @@ try {
         }
         if (fatal.size && !entry.acceptance) break;
     }
-    if (!summary.accepted) process.exitCode = 1;
+    if (!prepareOnly && !summary.accepted) process.exitCode = 1;
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));
 } catch (error) { console.error('M1 live acceptance:', safeReason(error)); process.exitCode = 1; }
 finally {
