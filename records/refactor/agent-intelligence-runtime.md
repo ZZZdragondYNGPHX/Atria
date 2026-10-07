@@ -648,6 +648,33 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - 按用户当前要求，每阶段与结束只做本地最小相关验证；不将前轮远程 CI 待取得项继续作为本轮门槛，不查询 / 触发 CI，不要求 full test / build。未来集成前仍需与触及面相称的本地检查、声明 Node >=20 对应的最低版本兼容证据，以及上述双入口真实闭环；已有 Node24 / FS / SQLite 证据保留，Node20 / external DB / full app UI 未实测不计通过。集成后只在 main 做最小相关验证。
 - 本轮仅刷新同一 Record / live HANDOFF，执行两文档链接 / fences、前序 Record 保留、五个 protected hashes、diff / staged paths 的本地检查后 commit / push docs。没有读取 reference 或其它草稿、没有产品 / Plan 改动。main 与产品分支保留；下一 checkpoint仍只限 M1 验收，条件不足保持 pending。
 
+## M1 — 代劳自动验证与原账本缺失检查（2026-10-07）
+
+- 用户授权继续代劳 M1 验证，不要求用户本人执行测试；仍限 M1，不进入 S11 / G / Local，不放宽独立人工观察或 automatic promotion gate。Start / tested product HEAD 保持 `ed00f4f0cea53be360ed8dfa082bbd0afeec5398`，main 保持 `ed1fd90521a63363e29856601abbf5e908c99d10`，docs 起点 `f7fc8e23023d96903afda350f99971f21976a6dc`。
+
+### 已完成的最小本地验证
+
+- 补齐 **Node v20.20.2** 的相关工程证据：固定 evaluator loader / worker `--check` 通过；S10 核心三套共 **48 distinct tests 最终全部有通过证据**（repository / service41、consumers6、HTTP1）。这是本轮对新 runtime 的验证，不加到原 S10 233 项计数中。
+- 首轮原三套为 **32 passed / 16 failed**；16 项均在 SQLite 初始化处失败，原共享 `better-sqlite3@12.10.0` 二进制为 Node24 ABI137，Node20 要求 ABI115。FS 六类原 target publication / guarded rollback、隔离消费者 / 原 compiler / fake provider、下一 run exact snapshots、stale browser draft、owner auth / read-only 等32项已通过。
+- 在 repository 外临时目录安装 **相同版本 better-sqlite3@12.10.0 的 Node20 依赖**；实际 Node20 memory DB 可打开，SQLite `3.53.1`。临时 Jest config 完整保留原 mapper / setup / tests，仅将 better-sqlite3 指向该临时依赖；不修改共享 Node24 binary、package / lockfile 或源码。
+- 只重跑失败的 SQLite 分组 / generic dump-restore：**16 passed / 25 skipped**；25项为上一轮已通过的核心用例，没有重复跑。加上已通过consumer6 / HTTP1，三套48项均已在 Node20.20.2 实际验证。未宣称任意 Node20 patch 或全产品最低版本兼容通过。
+- 实际命令：`npm exec --yes --package=node@20 -- node --experimental-loader ./src/native/agent-intelligence/evaluation/loader.js src/native/agent-intelligence/evaluation/worker.js --check`；`npm exec --yes --package=node@20 -- node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/evolution.test.js tests/agent-intelligence/evolution-consumers.test.js tests/agent-intelligence/evolution-http.test.js`。修正环境后，仅以临时等效config重跑 `tests/agent-intelligence/evolution.test.js --testNamePattern=SQLite`。
+- 两个 production fork worker 仍使用 fake HTTP provider；原自动 publication 用例中的human labels仍为合成fixture。它们证明工程行为与兼容，不是实际模型改善或独立人工验收。没有 full test / build / 新browser / full app / external DB / Android / 真机 / CI。
+
+### 真实比较的实际阻碍
+
+- 仅按已有 local Git keys 定位原 S06 private files；主 / 次 connection 存在、mode600、凭证存在，仅检查结构及有限配置，不输出Secret / endpoint / 路径。**原 ledger、limits 与 artifacts目录均不存在**；均位于临时存储，ledger / limits父目录也不存在。原 `.lock` / `.rate.json` 同样不存在，检查时无匹配live evaluator进程。未扫描用户目录或任意其它位置。
+- 用户答复 **“无迁移”**。这确认没有用户提供的新位置；不据此声称已查明删除原因或无法从其它备份恢复。
+- Record 的110 requests / 300464记账tokens / breached=false仍仅是历史观察；原逐次entries / pending reservation / rate checkpoint与reports现在无法核对。连接文件自身120 requests / 250000 tokens低于历史累计tokens，不能当作旧252 / 1000000 guard的恢复替代。
+- 因缺原账本 / 限额与reports，**未发起任何真实模型请求**，未改Git私有keys、未新建 / 重置预算、未用S10 owner ledger绕过原累计额度；没有伪造旧逐次charges或从历史总数还原账本。需要先明确原累计账目恢复处理与可核对有限验证预算；再冻结双入口单目标、配置 / case split / 价格 / sends / tokens。独立人工labels、真实改善与真实publication / next-run / rollback仍待验收，用户不愿自行验证不等于允许模型冒充human。
+
+### 收尾 / next checkpoint
+
+- product worktree 干净；main...product仍 `0 / 16`，product diff check通过。main AGENTS及docs四份治理 / 模板的五个hash与S10保护值一致，既有dirty未暂存 / 提交；没有产品 / 依赖 / Plan边界改动。
+- 用户询问后续API存储并指定主目录Document；已创建本地私有 `Document/`（目录700、说明文档600），通过 local Git exclude排除整个目录，检查有效。已有两份connection无需重发，未复制 / 替换凭证或更改私有keys；后续用户提供的API信息保存为该目录的600私有文档。目录用于持久保存后续资料，创建本身不恢复旧账目或重置预算。
+- 仅更新 S10 的runtime验证状态、同一Record与live HANDOFF，做三文档本地链接 / fences、前序Record保留、protected hashes与diff / staged paths检查后commit / push docs。S10支持矩阵、M1改善门槛与单Host部署边界不变。
+- **M1自动本地验证已由agent执行；真实模型补测因原累计账本缺失未启动，M1仍pending / 不集成。** 下一checkpoint仍仅M1：先处理账本 / reports可核对来源及有限预算，再代劳真实比较；不要求用户运行tests，不进入S11 / G / Local，main与产品分支保留。
+
 ## Final state
 
-长期任务仍进行；D0–D4 / S01–S09 与 S10 工程交付完成。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 push，233 distinct 相关本地 tests 与 shared-pane Chromium fixture 通过，main 未变化。M1 真实改善 / 集成前置条件待验收；S06 原候选仍 ineligible。下一 checkpoint 只复核 M1 验收，本轮停止，不进入 S11 / G。
+长期任务仍进行；D0–D4 / S01–S09 与 S10 工程交付完成。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 保持，main 未变化。本轮新增Node20.20.2固定worker加载与48项相关工程验证；原S10 233项与shared-pane fixture保持历史证据。原S06 ledger / limits / reports当前缺失，真实补测未启动，M1真实改善与独立人工观察仍待验收。下一checkpoint仍仅M1，不进入S11 / G。
