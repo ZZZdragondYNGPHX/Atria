@@ -41,10 +41,10 @@ export function syntheticReport(job, configs, settings) {
         domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price, pairs, charges: pairs.flatMap(p => [...p.baseline.charges, ...p.candidate.charges]), createdAt: 1000,
         configurations: { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: { baseline: hash(settings.baseline), candidate: hash(settings.candidate) } };
 }
-export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl } = {}) {
+export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl, connectionConfig = testConfig, policyMode = 'auto', confirmedPrice = price } = {}) {
     const h = await make();
     const { studio, agent } = services(h), persistence = new NativeModelPromptPersistence({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
-    await createLiveBridge({ engine: h.engine, handle: h.handle, config: testConfig, secretPort: { resolveSecret: async () => 'not-used' }, fetchImpl: async () => { throw new Error('Unused seed bridge'); } });
+    await createLiveBridge({ engine: h.engine, handle: h.handle, config: connectionConfig, secretPort: { resolveSecret: async () => 'not-used' }, fetchImpl: async () => { throw new Error('Unused seed bridge'); } });
     const source = projectSource(); const created = await studio.createProject(h.handle, source);
     const previousTask = await agent.createTask(h.handle, source.project.projectId, { intent: 'Source feedback', baseRevision: created.revision.revision });
     const nextTask = await agent.createTask(h.handle, source.project.projectId, { intent: 'Next task', baseRevision: created.revision.revision });
@@ -146,7 +146,7 @@ export async function evolutionFixture(make, targetKind = 'project-strategy', { 
         await repo.save(h.handle, settings);
     }
     await service.budget(h.handle, { limits: { maxRequests: 120, maxTokens: 1000000, minIntervalMs: 1000 }, expectedSequence: 0 });
-    await service.configure(h.handle, { scope, subject, target, mode: 'auto', routeId: route.runtimeRouteId, price, expectedSequence: 0 });
+    await service.configure(h.handle, { scope, subject, target, mode: policyMode, routeId: route.runtimeRouteId, price: confirmedPrice, expectedSequence: 0 });
     return { h, host, service, repository, evaluator, scope, subject, target, previousTask, nextTask, route, source, setValue: value => { extractionValue = value; } };
 }
 export async function runEvolution(f) {

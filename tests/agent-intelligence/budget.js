@@ -40,11 +40,14 @@ export class PilotBudget {
 // candidate, retries and judges. Separate from S01's six-trial pilot limit.
 export class EvaluationBudget {
     constructor({ maxRequests, maxTotalTokens }, { snapshot = null, onChange = () => {} } = {}) {
-        if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || maxRequests > 252
+        const carry = snapshot?.historicalCarry || null;
+        if (carry && (Object.keys(carry).sort().join(',') !== 'evidenceHash,origin,requests,tokens' || carry.origin !== 'lost_s06_upper_bound'
+            || carry.requests !== 252 || carry.tokens !== 1000000 || !/^[a-f0-9]{64}$/.test(carry.evidenceHash))) throw new Error('Invalid historical carry');
+        if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || maxRequests > (carry ? 2048 : 252)
             || !Number.isSafeInteger(maxTotalTokens) || maxTotalTokens < 1) throw new Error('Finite evaluation budget required');
-        Object.assign(this, { maxRequests, maxTotalTokens, onChange }); this.entries = new Map(); this.breached = false;
+        Object.assign(this, { maxRequests, maxTotalTokens, onChange }); this.historicalCarry = carry && Object.freeze({ ...carry }); this.entries = new Map(); this.breached = false;
         if (snapshot) {
-            if (!snapshot || Object.keys(snapshot).sort().join(',') !== 'breached,entries,requests,tokens' || typeof snapshot.breached !== 'boolean'
+            if (!snapshot || Object.keys(snapshot).sort().join(',') !== (carry ? 'breached,entries,historicalCarry,requests,tokens' : 'breached,entries,requests,tokens') || typeof snapshot.breached !== 'boolean'
                 || !snapshot.entries || typeof snapshot.entries !== 'object' || Array.isArray(snapshot.entries)) throw new Error('Invalid evaluation budget restore');
             for (const [id, value] of Object.entries(snapshot.entries)) {
                 if (!id || !value || Object.keys(value).sort().join(',') !== 'kind,settled,tokens,trialId,upperBound,usageStatus'
@@ -65,8 +68,8 @@ export class EvaluationBudget {
         if (!requestId || !trialId || this.entries.has(requestId) || !['model', 'retry', 'fallback', 'grader'].includes(kind)
             || ![inputTokens, reservedOutput].every(value => Number.isSafeInteger(value) && value >= 0) || reservedOutput < 1) throw new Error('Invalid evaluation reservation');
         const entries = [...this.entries.values()];
-        if (this.breached || entries.length >= this.maxRequests || entries.filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length >= 6
-            || entries.reduce((total, entry) => total + entry.tokens, 0) + inputTokens + reservedOutput > this.maxTotalTokens) return { status: 'budget_blocked' };
+        if (this.breached || this.snapshot().requests >= this.maxRequests || entries.filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length >= 6
+            || this.snapshot().tokens + inputTokens + reservedOutput > this.maxTotalTokens) return { status: 'budget_blocked' };
         this.entries.set(requestId, { trialId, kind, tokens: inputTokens + reservedOutput, upperBound: inputTokens + reservedOutput,
             usageStatus: 'reserved_upper_bound', settled: false });
         this.onChange(this.snapshot()); // Durable explicit evaluator port, before send.
@@ -83,7 +86,8 @@ export class EvaluationBudget {
         this.onChange(this.snapshot());
     }
     snapshot() {
-        return { requests: this.entries.size, tokens: [...this.entries.values()].reduce((total, entry) => total + entry.tokens, 0),
+        return { requests: (this.historicalCarry?.requests || 0) + this.entries.size, tokens: (this.historicalCarry?.tokens || 0) + [...this.entries.values()].reduce((total, entry) => total + entry.tokens, 0),
+            ...(this.historicalCarry ? { historicalCarry: { ...this.historicalCarry } } : {}),
             breached: this.breached, entries: Object.fromEntries([...this.entries].map(([id, entry]) => [id, { ...entry }])) };
     }
 }
