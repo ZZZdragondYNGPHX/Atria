@@ -139,7 +139,7 @@ try {
             };
             const compare = f.evaluator.compare.bind(f.evaluator);
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
-                async pair => { store(kind + '-partial-pairs.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); });
+                async pair => { store(kind + '-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); });
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             entry.status = 'evaluating'; store('summary.json', summary);
             const result = await runEvolution(f), { job, candidate } = result;
