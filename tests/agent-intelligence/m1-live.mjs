@@ -256,6 +256,11 @@ try {
                 const current = await f.service.experience.inspect(f.h.handle, { scope: f.scope, subject: f.subject });
                 await f.service.experience.diagnose(f.h.handle, { scope: f.scope, subject: f.subject, expectedSequence: current.sequence, batchHash: batch.batchHash,
                     rationale: note.rationale, conditions: note.conditions, counterexamples: note.counterexamples, direction: kind === 'rp-skill' ? 'skill' : 'prompt' });
+                // Feedback correction intentionally pauses its original policy.
+                // Revalidate the same private target through the original API.
+                const policy = await f.repository.get(f.h.handle, f.scope, f.subject);
+                await f.service.configure(f.h.handle, { scope: f.scope, subject: f.subject, target: f.target, mode: 'review', routeId: f.route.runtimeRouteId,
+                    price: null, expectedSequence: policy.sequence });
                 entry.feedbackHash = hash(note);
             }
             if (!gradeSource && kind === 'rp-skill' && frozenRp) {
