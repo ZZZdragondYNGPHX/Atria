@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
 - Updated: 2026-10-08
-- Status: 用户明确测试API仅每日2000次 /20RPM硬限；token与其它预算改为建议，超出立即报告并继续。M1继续执行，实际完整结果待取得。
+- Status: 用户明确测试API仅每日2000次 /20RPM硬限；token与其它预算改为建议，超出立即报告并继续。真实九对 /两入口闭环已取得，但行为改善未达标且第二模型连续HTTP500停止，M1 pending。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
 
@@ -36,7 +36,7 @@ API唯一硬限为每日2000次 /20RPM。为避免未知日重置时区，CLI采
 
 共享EvaluationBudget增加仅显式test CLI使用的advisory模式；默认legacy strict保持。原Product repository不变；仅私有fixture使用test-only subclass沿原mutateOwner /校验 /存储保存reserve与settle，实际tokens照录，不将token建议超额设为新hard breach。旧累计breach保留为历史观察，旧private owner不改写。所有token未知 /超建议分别报告，不以较小分项和覆盖provider total；生产promotionDecision仍使用严格原repo与gate。
 
-固定case /Director步骤 /输出配置 /请求timeout继续管理一次有界实验，不进行无限重试或追试至通过。HTTP5xx /transport每请求最多追加两次，至少10秒；连续三次或最近20次六失败停止该连接，认证 /配置 /取消立即停止，满足用户先前“偶发继续、频繁停止”要求。每次retry都有独立durable charge，失败上界保留。锁与rate /quota checkpoint持久，残留lock不绕过。
+固定case /Director步骤 /输出配置 /请求timeout继续管理一次有界实验，不进行无限重试或追试至通过。HTTP5xx /transport或不完整响应每请求最多追加两次，至少10秒；连续三次或最近20次六失败停止该连接，认证 /配置 /取消立即停止，满足用户先前“偶发继续、频繁停止”要求。每次retry都有独立durable charge，失败上界保留。不完整响应只指缺必需tool output、JSON /tool arguments无法完整解析；raw /fee保存，不修复输出，不对有效不利 /tie /uncertain评分追试。body不完整替换header成功观察，同一实际send不重复计失败次数。锁与rate /quota checkpoint持久，残留lock不绕过。
 
 RP继续使用先前实际付费提炼、已冻结且尚未发布的同一候选；source proposal /charge /base /target与原公开feedback身份核对，不把旧promotion输出送入学习。重新完整执行3场景×3次paired trial，不导入旧八对取得资格、不虚构新提炼费用；Project仍在原feedback /base上提炼一次候选。新结果独立报告，旧partial原样保留。
 
@@ -52,4 +52,4 @@ RP继续使用先前实际付费提炼、已冻结且尚未发布的同一候选
 
 按用户最新明确授权，历史token超报不会阻止本轮测试。保留原账与overrun记录，仅改变预算执行模式，不解锁生产对象的预算或自动权限。超过任何建议预算立即通知用户并继续；真正达到API daily /rate硬限或原频繁错误阈值时按实际原因停止 /等待，完整工程行为门槛仍保持。
 
-旧partial的主模型回归事实继续保留；token增加成为统计。完整九对 /双模型 /两入口真实review、next-run与rollback仍需实际取得，不能因为token规则改变直接宣称M1通过。
+旧partial的主模型回归事实继续保留；token增加成为统计。cf实测两入口各完整九对、36arm原检查全部通过，RP主模型3candidate /4baseline /1tie /1uncertain、Project9tie。RP cf与Project c0恢复均已完成私有review /实际next-run消费 /guarded rollback；没有重跑比较拼资格。第二模型三连续HTTP500停止、没有成功独立评分；行为改善与双模型观察仍不达标，不能因token规则改变宣称M1通过。实际来源 /费用 /hash见同一Record与live HANDOFF。

@@ -717,6 +717,48 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - Test-only EvaluationBudget显式advisory模式保留默认strict行为；私有fixture subclass沿原owner queue /schema /storage做真实reserve /settle，不建立新production authority。原repo源码不改，旧私有owner不清breach；新测试owner按新无token硬限语义记录费用。shared CLI quota覆盖两连接与全部sends、最少3150ms，滚动一分钟20与滚动24小时2000硬限、request IDs /timestamps持久；初始化单一332 aggregate carry，不伪造旧timestamps。
 - RP复用原source6c真实付费、冻结proposal：核对original value /rationale /target /base与原公开feedback，报告原source charge provenance，不新增提炼费，不输入promotion输出。重新完整九对，不导入前轮八对拼资格；Project仍独立原feedback提炼。四套19tests passed（quota4 /recovery4 /engineering5 /retry6）、七文件lint /diff通过；source `c997086bd49c2f8a9c875cded65e6ad529f93442`已commit /push。两个入口零send prepare通过、原332 /1305716与breached保持、quota持久初始化；随后沿同一账本继续真实执行，超建议只通知、不停止。
 
+### advisory实测与不完整响应重试
+
+- sourcec997实测新增26sends /110784记账tokens，累计358 /1416500；RP前两对主模型一baseline /一candidate，第三对candidate遇没有正文 /tool_calls的provider响应，原Director拒绝；Project提炼返回finish_reason=length的截断JSON。没有token预算停止。shared账中一次偶发transport failure保留5217unknown，追加发送实际成功；原HTTP524的5389也保持，不以重试抹账。
+- 两次实际单笔超建议分别5669>5573（+96）与6133>5572（+561），收到即通知用户，继续发送；所有原reported totals照录。两个连接共用API quota与至少3150ms，未突破daily /RPM，旧breached保持历史标记。
+- 为继续偶发响应失败，sourcecf新增test-only completeness filter：raw response原样保存，空tool响应 /不完整JSON /不完整tool arguments允许最多两追加funded sends；不修内容、不重试有效baseline /tie /uncertain评分。一次response只计一个失败观察，header成功再改为body不完整，不重复统计；已确认最后两不完整响应重新分类为失败，持久最近20三失败 /连续2，原charges与quota不变，保留migration说明。
+- 九项相关本地tests通过（retry7 /response2），五文件lint /diff通过；source `cf28cc3de`已commit /push，继续同一冻结RP proposal与原累计账本。native evaluator /case /生产预算gate不改；历史失败报告保留，新的完整结果仍待取得。
+
+
+### 完整比较、连接失败与闭环补证（2026-10-08，最终实测）
+
+- 完整comparison Tested HEAD `cf28cc3de0e8e11a57441f100d1f5e5034af72f8`；native evaluator revision仍为 `f8548173b8ffb754052ade6e5bef06dad046d76a01dce3af8c74c06a0c7d752c`。新增170sends /647103记账tokens，累计528 /2063603。两入口各三个原promotion场景×三次，九对 /18arm完整；共36arm的原authority /isolation /target_consumed checks全部通过，不导入旧partial拼资格。
+- RP主模型：3candidate /4baseline /1tie /1uncertain；Project主模型：9tie。两入口均没有达到至少六对双模型一致candidate改善的工程门槛，RP明确存在回归 /不确定；没有为有效不利评分重试、缩减场景、改输出或将promotion输出输入候选学习。RP继续原付费冻结proposal，Project本轮独立提炼966tokens。
+- 第二模型在RP独立盲评第一次槽位连续三次HTTP500，三笔unknown各1661 /共4983保留；按原频繁错误规则持久停止该连接。两入口均无成功独立评分，Project尝试与后续恢复在reserve前拒绝，没有隐藏发送 /洗掉stopped状态。主模型Project一次偶发transport失败保留4953unknown，追加funded send成功，后续完成全部九对；本轮其它主模型没有新失败。
+- 超原累计1699536token建议时已即时通知用户并继续；累计513超过512次建议时也即时通知继续。含旧carry /未完成请求预留的首次token提示为1700347，后续按实际provider usage结算；不将该提示当作精确实际总量。API硬限没有触发，token建议没有阻止发送。
+- RP已在cf实际完成私有fixture委托review publication /原下一Director四次真实send /exact target消费 /guarded rollback，`nextRunConsumed=true`、`baseRestored=true`；RP activation provenance保持client_observation。Project同source已完成review publication，但原下一Host请求未指定Route，而夹具同时保存两个模型的Studio Routes，报`native_generation_route_ambiguous`，当时没有activation send /rollback；这是本地执行配置缺口，不计作provider不稳定。
+- test-only恢复入口只重开保存的Project夹具：原report /candidate /current publication核对，比较源与恢复源分pin，旧summary /charges /reports不修改，不重跑提炼、trials或primary grading，不重新发布。显式选择原Route；publication会增加Project binding metadata，因此核对exact已消费Prompt、model /connection /generation /resources与冻结trial配置，并用原publicationCurrent保护真实binding。模型 /Prompt漂移拒绝，不以忽略binding绕过authority。
+- 7bb恢复先在配置检查处零send停止；57与4c恢复同为零send，私有边界诊断确认原GenerationService冻结secretPort后测试wrapper试图改写resolveSecret。最终c0使用稳定port与闭包选择已配置模型凭证，不改原生产Secret /gate。原三个失败恢复报告保留，累计528 /2063603未变；没有API错误频率重分类或额外付费比较。
+- 最终Project lifecycle Tested HEAD `c0f8ce6b010677ba7c66e58aa7bede5816ee74af`，原cf comparison provenance独立保存；只新增1个实际Host activation request /204reported tokens。原Host记录exact snapshot /Prompt program和host activation，`nextConfigurationMatchesCandidate=true`、`nextRunConsumed=true`，guarded rollback后baseline settings hash复原。两入口真实私有闭环补齐，生产对象未修改，`automaticPromotion=false`，humanPreference仍not_observed /price unavailable。
+
+| 本轮实际付费项 | requests | 记账tokens | 说明 |
+| --- | ---: | ---: | --- |
+| RP baseline trials | 34 | 153578 | 九对全部原多步发送 |
+| RP candidate trials | 30 | 136067 | 九对全部原多步发送 |
+| RP primary judge | 9 | 7101 | 有效不利 /uncertain照录 |
+| RP secondary judge | 3 | 4983 | 三个HTTP500 unknown上界 |
+| RP next Director | 4 | 18403 | 原真实消费 |
+| Project extraction | 1 | 966 | 新冻结候选 |
+| Project baseline trials | 40 | 159396 | 原完整九对 |
+| Project candidate trials与一次失败重试 | 40 | 158421 | 成功report153468，另失败unknown4953；失败与追加均有独立charge |
+| Project primary judge | 9 | 8188 | 九个tie |
+| Project next Host补证 | 1 | 204 | c0恢复，原cf trials不重跑 |
+| 合计 | 171 | 647307 | cf170 /647103，加c0 lifecycle1 /204；不宣称货币或净收益 |
+
+### 最终预算、最小本地检查与集成结论
+
+- 最终累计 **529requests /2063807记账tokens**，包含丢失旧guard historicalCarry252 /1000000；恢复期277sends，其中271provider_reported、6unknown共20542上界，pending0，旧breached=true历史标记保持。前轮HTTP524 unknown5389与c997 transport unknown5217未覆盖。用户最新授权期从332开始新增197sends /758091，超建议仅通知继续。
+- shared quota aggregate carry332 +197实际admissions=529，所有新request IDs与同一账本一一对应；最短admission间隔3151ms、滚动一分钟峰值10、滚动24小时含保守carry峰值529，均满足2000 /20硬限。carry不是伪造旧timestamps或精确当天实际调用统计。两个owner所有attempts与共享账本id /tokens一致、无reserved；独占lock已释放。
+- 私有comparison summary SHA256 `9df6bf648b7775e5c9a7ca2c9a417d168128d6cca7972c7c73bf4365ddcbb3e2`；最终Project lifecycle summary `25b2e01281521719dc3879f6c4954a742bf16eea36f9fc9e928eb07ce9d57b39`；累计ledger `50ee44cbde864fc03cf5e556f98018d2e6c048086c7803ed9d06fef271fbdab1`；quota `837f31d47ba55dea281c81badbbaded4328e78132c7c7f4e2afdb31d49f1a1c6`。详细audit私有保存，不提交connection /endpoint /credential /私有路径。
+- 恢复相关最终 **2 distinct local tests passed**：冻结Secret port选模型 /unknown拒绝；保存Project重开、report tamper拒绝、双Route歧义零send、原funded evaluator /Host真实fake send、exact Prompt /model漂移拒绝、Host activation与rollback。最初funded fake测试遇fixture集中reserve的未来timestamps /10秒timeout，测试仅推进mock时钟后通过；实际账本 /rate时间未改。此前九项retry /response与19项budget /quota等证据保持各自source，不重复累加。全部本次触及文件ESLint /diff通过；没有full tests /build /新UI /Android /真机 /external DB /CI，不读reference。
+- Product最终c0已commit /push，main `ed1fd90521a63363e29856601abbf5e908c99d10`未合并；集成仅核对本地actual refs /拓扑 /diff与identity files，产品完整包含main。Node20历史48tests /原worker loader对应原source，不能外推本次所有CLI helpers已Node20测试。五个protected dirty hashes与前序Record保留，未提交无关治理 /模板。
+- **M1 pending /不集成。** 剩余是实际行为改善与可用独立第二模型观察；token超建议、用户不手测、闭环执行缺口均不再是本轮停止理由。不能通过重复有效负面 /tie评分取得资格，也不能把manual fixture publication计作automatic eligibility。下一仍仅M1，先复核候选设计与development /promotion隔离，以及第二模型连续500的连接问题；本阶段更新同一Record /live HANDOFF并停止，不进入S11 /G。
+
 ## Final state
 
-长期任务仍进行，S01–S10工程交付保持；M1按用户最新仅2000每日调用 /20RPM硬限继续，token与其它预算只提示。Product c997已commit /push，main未合并；原332 /1305716 /unknown5389 /breached记录保留，quota聚合carry已初始化。RP使用原冻结paid proposal完整重跑，Project与两模型真实闭环继续。原八对partial的主模型一baseline回归保留，不因新token规则宣布通过；实际新结果待取得，仅M1，不进入S11 /G。
+S01–S10工程交付保持；M1本轮两入口各完整九对与真实私有publication /next-run消费 /rollback已执行，行为改善未达标、第二模型连续500停止，验收仍pending。Product c0已commit /push，main未合并。最终累计529 /2063807，建议超出均已通知继续，daily /RPM硬限审计通过，未知与旧breach保留，pending0 /lock释放。用户无需本人测试；下一仅M1候选与独立评分缺口，不进入S11 /G。
