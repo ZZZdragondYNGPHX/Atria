@@ -269,8 +269,10 @@ try {
                         outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens, requestHash: hash(rendered), snapshotHash: hash(input.snapshot) };
                     return rendered;
                 }, async send(_rendered, boundary) {
-                    const paid = await f.evaluator.send(f.h.handle, activationJob, nextConfig, prepared, boundary.signal, current);
-                    return { headers: { get: () => 'application/json' }, json: async () => paid.raw };
+                    try {
+                        const paid = await f.evaluator.send(f.h.handle, activationJob, nextConfig, prepared, boundary.signal, current);
+                        return { headers: { get: () => 'application/json' }, json: async () => paid.raw };
+                    } catch (error) { store(kind + '-activation-error.json', { name: error.name, message: error.message, stack: error.stack }); throw error; }
                 } };
                 const host = new NativeGenerationHost({ ...f.host, providers: { ...f.host.providers, 'provider.openai-compatible': provider } });
                 const project = await f.host.studio.getProject(f.h.handle, f.subject);

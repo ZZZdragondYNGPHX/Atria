@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from '@jest/globals';
+import { afterEach, expect, jest, test } from '@jest/globals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,7 +10,7 @@ import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolu
 import { projectActivationMatches } from './m1-resume.js';
 
 const cleanup = [];
-afterEach(() => { for (const fn of cleanup.splice(0)) fn(); });
+afterEach(() => { jest.restoreAllMocks(); for (const fn of cleanup.splice(0)) fn(); });
 
 test('saved Project publication resumes on its exact Route with two models and rolls back without rerunning comparison', async () => {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review' }); cleanup.push(f.h.cleanup);
@@ -28,15 +28,33 @@ test('saved Project publication resumes on its exact Route with two models and r
         sends++; return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: 'Synthetic activation' } }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
     } }); cleanup.push(restored.h.cleanup);
     restored.host.secretPort.resolveSecret = async () => 'fixture_secret';
+    // Synthetic comparison reserved without waiting; advance its fixture clock
+    // beyond those queued timestamps before exercising the actual funded send.
+    jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 60000);
     const settings = await restored.service.targets.evaluationSettings(restored.h.handle, restored.scope, restored.subject, restored.target);
     const config = await restored.evaluator.configuration(restored.h.handle, restored.route.runtimeRouteId, settings.projectPromptRef);
     expect(projectActivationMatches(config, settings, restored.publication, result.candidate)).toBe(true);
     expect(projectActivationMatches({ ...config, model: { ...config.model, remoteModelId: 'changed' } }, settings, restored.publication, result.candidate)).toBe(false);
     expect(projectActivationMatches(config, { ...settings, projectPromptRef: restored.publication.previous.promptProgramRef }, restored.publication, result.candidate)).toBe(false);
-    const host = new NativeGenerationHost(restored.host), project = await restored.host.studio.getProject(restored.h.handle, restored.subject);
+    let prepared, boundaryFailure;
+    const base = restored.host.providers['provider.openai-compatible'];
+    const provider = { ...base, renderRequest(input) {
+        const rendered = base.renderRequest(input);
+        prepared = { arm: 'candidate', trialId: result.job.id + ':activation', rendered, inputTokens: input.snapshot.diagnostics.inputTokens,
+            outputTokens: input.snapshot.contextPlan.budget.reservedOutputTokens, requestHash: hash(rendered), snapshotHash: hash(input.snapshot) };
+        return rendered;
+    }, async send(_rendered, boundary) {
+        try {
+            const paid = await restored.evaluator.send(restored.h.handle, { ...result.job, id: result.job.id + ':activation', scopeId: result.doc.scopeId, price: null }, config, prepared, boundary.signal, async () => {});
+            return { headers: { get: () => 'application/json' }, json: async () => paid.raw };
+        } catch (error) { boundaryFailure = error; throw error; }
+    } };
+    const host = new NativeGenerationHost({ ...restored.host, providers: { ...restored.host.providers, 'provider.openai-compatible': provider } }), project = await restored.host.studio.getProject(restored.h.handle, restored.subject);
     const input = { role: 'studio', projectId: restored.subject, revision: project.revision.revision, requestId: 'resumed-project-activation', messages: [{ role: 'user', content: 'Acknowledge readiness' }], tools: [] };
     await expect(host.execute(restored.h.handle, input)).rejects.toMatchObject({ code: 'native_generation_route_ambiguous' }); expect(sends).toBe(0);
-    const next = await host.execute(restored.h.handle, { ...input, routeRef: { scope: 'player', runtimeRouteId: restored.route.runtimeRouteId } });
+    let next;
+    try { next = await host.execute(restored.h.handle, { ...input, routeRef: { scope: 'player', runtimeRouteId: restored.route.runtimeRouteId } }); }
+    catch (error) { throw boundaryFailure || error; }
     expect(sends).toBe(1); expect(next.snapshot.promptIr.directives).toContain(result.candidate.diff.after);
     const doc = await restored.repository.get(restored.h.handle, restored.scope, restored.subject);
     expect(doc.publications[0].activation).toMatchObject({ origin: 'host', requestId: input.requestId });
