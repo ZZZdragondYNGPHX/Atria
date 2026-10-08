@@ -77,3 +77,9 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 用户随后明确将截断响应的输出上限提高至8000。仅补尚未取得完整候选的Project提炼；test-only原compiler/provider提炼快照固定8000并增加持久extraction-output fingerprint，旧1024三截断窗口、Step404窗口和费用全部保留。同一8000配置重启复用窗口，不得再增加epoch。原primary comparison /production1024边界保持；不重跑已有效RP development或旧评分，Step404不因输出变更取得重试授权。取得完整提案后仍须development检查；当前连接stopped时提案只保存为未验证，不冻结、不运行promotion或发布，不视为M1通过。本轮仍到此有限收尾，不进入S11/G。
 
 本周期最终结果：本轮92次/356805记账tokens，累计647/2483896。新RP主模型2candidate/1baseline，variant重要维度continuity=-1且偏好/维度不一致原样保留；新Step零有效/HTTP404。Project8000仅一次提炼成功，未完成development；新候选均未冻结取得资格，v2九对与新闭环未执行。旧完整比较/18独立观察/闭环保持独立来源。完整failed/partial/unknown和新提案来源固定在同一Record；当前comparison旧1024 stop和Step404 stop保留，8000提炼窗口成功，不清账或自动新增epoch。本轮停止，不合并main，不进入S11/G。后续新请求最大8000，旧8192仅保留历史；若另行获准修改比较envelope，先冻结同一Plan/source/configuration再执行有限验证。
+
+## 7. 2026-10-09 有限续接
+
+用户在前轮停止后明确“继续”。从实际647/2483896 checkpoint沿同一账本/quota/rate/windows续接，只做当前M1缺口，不进入S11/G。先执行一次独立funded Step诊断，保存错误body/request ID，max_tokens≤8000，无retry、不清原404 stop，也不当独立评分；原8192配置只保留历史，新生成快照将grader输出截到8000，production/native1024不改。诊断入口沿原compiler/resolver/provider、owner/shared reserve/settle，无其它接口/区域/模型探测。
+
+若真实body确认本地可修配置错误，按actual变更固定source/configuration后再有限续接未完成材料；若认证/channel配置需用户或provider处理，保留stop与所有费用，只完成可独立的候选base保持/诊断修复及最小本地验证，再Record/HANDOFF收尾。不能自动增加epoch、以降低输出限解除404、把成功diagnostic当评分，或重跑已有有效不利/tie/uncertain。新Project8000提案尚未验证，原base保持失败不得称最小修复通过；v1 development已经指导修改，仍不冒充独立v2验收。任何新实验envelope在实际付费比较前固定本模块，原每入口九对/双模型六胜/其它一致tie/重要维度非负及authority/消费/闭环门槛不变。此续接至多一次具体候选修复与development→冻结验收，不无限优化。
