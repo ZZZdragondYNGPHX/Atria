@@ -274,7 +274,10 @@ try {
                 finally { bridge.cleanup(); store(kind + '-independent.json', entry.independent); }
             }
             entry.acceptance = automatedAcceptance(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id, { tokensAdvisory: true });
-            if (gradeSource) { entry.status = 'independently_graded'; entry.lifecycle = { origin: 'previously_verified_separate_lifecycle', performedThisRun: false }; continue; }
+            if (gradeSource) {
+                entry.status = entry.independent.length === 9 && entry.independent.every(o => o.chargeId && o.preference) ? 'independently_graded' : 'independent_grading_incomplete';
+                entry.lifecycle = { origin: 'previously_verified_separate_lifecycle', performedThisRun: false }; continue;
+            }
             // Explicit delegated review is confined to this private fixture. No
             // human labels or automatic publication eligibility are invented.
             const published = resumed ? resumed.lifecycle.receipt : await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: job.id, candidateId: candidate.candidateId,
