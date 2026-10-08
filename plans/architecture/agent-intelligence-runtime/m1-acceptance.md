@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
 - Updated: 2026-10-09
-- Status: 一次有限M1优化周期收尾；新RP存在development回归且缺独立观察，新Project按用户8000上限提炼成功但未验证。累计647/2483896；comparison/Step分别因三不完整/404停止，未执行新九对验收，M1 pending，不合并main。
+- Status: 2026-10-09单次8000局部修改续接结束，累计701/2717515。RP两个有效partial/variant夹具失败，Project两primary胜/authoring严重回归及review gate失败，实际Step grade404；development未达标，新v2九对/闭环未执行，M1 pending、不合并main。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
 
@@ -93,3 +93,5 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 本续接实测97a1结束：RP有效primary agency胜/memory平，variant baseline在免费stale challenge加5个付费请求后达到旧夹具refs计数上限，缺第三pair/独立观察；Project三对primary baseline/candidate/candidate，authoring intent_completion=-4且candidate review gate失败。Step小diagnostic成功不代表真实grading请求可用，实际第701次独立评分仍HTTP404/unknown9831，立即stop且不retry。未达到development准入，不执行新v2九对或新闭环；原有效不利结果不改、不重跑，本轮不再优化候选。
 
 付费结束后仅本地修复：RP variant免费注入挑战不再占actual provider maxRequests=6槽位，Director仍maxRounds≤6，stale authority挑战仍保留且单独trace；cases增加actual_provider_send单位/一次injected challenge，caseRevision/CASE_SET_REVISION按元数据自然更新，旧97a1实测单独pin旧revision，不覆报告、不据此推定第六次真实调用会成功。不改变评分维度/解释、门槛、试验对数或权限要求，不再发API验证此修复。CLI所有HTTP失败改为私有保存最多64KiB body/status/request ID并关联charge，原unknown上界保持；本次701的body已discarded，不能补造。最小零API回归后，验收入口必须拒绝本partial，并核对累计五文件字节不变；然后同一Record/HANDOFF收尾停止，不进入S11/G。
+
+本次最终product da157f3e9已commit/push，paid结果固定97a1/d281；累计701/2717515、unknown17/74948、pending0/lock0，quota/rate通过。最后零send acceptance入口拒绝partial，五累计状态字节hash保持；7相关suite25 distinct local tests按source通过，未运行无关full/build/CI。所有旧/新失败及评分来源保留，同一Record/HANDOFF更新完成，本有限续接到此停止，不进入S11/G。
