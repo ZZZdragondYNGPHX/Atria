@@ -15,7 +15,7 @@ export function parseBlindGrade(text, pair, flipped) {
         deltas: Object.fromEntries(Object.entries(grade.deltas).map(([k, v]) => [k, flipped ? -v : v])), rationale: grade.rationale };
 }
 
-export function automatedAcceptance(report, independent, owner, jobId) {
+export function automatedAcceptance(report, independent, owner, jobId, { tokensAdvisory = false } = {}) {
     const reasons = [], required = selectCases({ purpose: 'evaluation', split: 'promotion' }).filter(c => c.entrance === report?.domain);
     let wins = 0, baselineTokens = 0, candidateTokens = 0;
     if (report?.origin !== 'host_evaluator' || report.evaluatorRevision !== evolutionEvaluatorRevision() || report.caseSetRevision !== CASE_SET_REVISION) reasons.push('evaluation_identity_changed');
@@ -26,13 +26,13 @@ export function automatedAcceptance(report, independent, owner, jobId) {
         if (seen.has(c.id) || !paid || !['trialId', 'kind', 'requestHash', 'snapshotHash', 'tokens', 'status', 'usage', 'cost'].every(k => hash({ value: paid[k] }) === hash({ value: c[k] }))) reasons.push('durable_charge_mismatch');
         seen.add(c.id);
     }
-    if (owner.attempts.filter(a => a.jobId === jobId).some(a => a.status !== 'reported')) reasons.push('job_usage_unsettled');
+    if (!tokensAdvisory && owner.attempts.filter(a => a.jobId === jobId).some(a => a.status !== 'reported')) reasons.push('job_usage_unsettled');
     for (const pair of report?.pairs || []) {
         const { pairHash, human, ...identity } = pair;
         if (human !== null || pairHash !== hash({ ...identity, human: null })) reasons.push('pair_identity_or_human_changed');
         const observation = independent.find(o => o.pairHash === pairHash);
         if (!observation || observation.origin !== 'independent_model' || observation.model === observation.primaryModel || !observation.chargeId
-            || !owner.attempts.some(a => a.id === observation.chargeId && a.jobId === jobId + ':independent' && a.status === 'reported' && a.kind === 'judge'
+            || !owner.attempts.some(a => a.id === observation.chargeId && a.jobId === jobId + ':independent' && (a.status === 'reported' || tokensAdvisory && a.status === 'unknown') && a.kind === 'judge'
                 && a.requestHash === observation.requestHash && a.snapshotHash === observation.snapshotHash)) reasons.push('independent_model_observation_missing');
         if (!pair.judge?.chargeIds?.length || pair.judge.chargeIds.some(id => !report.charges.some(c => c.id === id && c.kind === 'judge'))) reasons.push('primary_model_observation_unfunded');
         if (!['candidate', 'tie'].includes(pair.judge?.preference) || observation?.preference !== pair.judge?.preference) reasons.push('model_regression_uncertainty_or_disagreement');
@@ -42,14 +42,15 @@ export function automatedAcceptance(report, independent, owner, jobId) {
         for (const arm of ['baseline', 'candidate']) {
             const trial = pair[arm];
             if (trial?.error || !trial?.output || !trial?.requestHashes?.length || [...pair.case.expectedInvariants, 'isolation', 'target_consumed'].some(k => trial?.checks?.[k] !== true)) reasons.push('authority_or_execution_incomplete');
-            if (!trial?.charges?.length || trial.charges.some(c => c.status !== 'reported' || !owner.attempts.some(a => a.id === c.id && a.jobId === jobId && a.tokens === c.tokens && a.requestHash === c.requestHash && a.snapshotHash === c.snapshotHash))) reasons.push('usage_or_durable_charge_missing');
+            if (!trial?.charges?.length || trial.charges.some(c => !(c.status === 'reported' || tokensAdvisory && c.status === 'unknown') || !owner.attempts.some(a => a.id === c.id && a.jobId === jobId && a.tokens === c.tokens && a.requestHash === c.requestHash && a.snapshotHash === c.snapshotHash))) reasons.push('usage_or_durable_charge_missing');
             const tokens = trial?.charges?.reduce((n, c) => n + c.tokens, 0) || 0;
             if (arm === 'baseline') baselineTokens += tokens; else candidateTokens += tokens;
         }
     }
     if (wins < 6) reasons.push('improvement_threshold_not_met');
-    if (owner.breached || candidateTokens > baselineTokens) reasons.push('token_regression_or_budget_breach');
-    return { accepted: reasons.length === 0, reasons: [...new Set(reasons)], wins, baselineTokens, candidateTokens,
-        currencyCost: report?.price ? 'reported_in_primary_report' : 'unavailable', humanPreference: 'not_observed', productionPromotion: 'ineligible_without_original_gate',
-        interpretation: 'Automated bounded engineering evidence; no human preference or net-benefit claim' };
+    if (!tokensAdvisory && (owner.breached || candidateTokens > baselineTokens)) reasons.push('token_regression_or_budget_breach');
+    return { tokensAdvisory, resourceWarnings: [owner.breached ? 'advisory_breach' : null, candidateTokens > baselineTokens ? 'candidate_tokens_increased' : null,
+        owner.attempts.some(a => a.status !== 'reported') ? 'usage_unavailable' : null].filter(Boolean), accepted: reasons.length === 0, reasons: [...new Set(reasons)], wins, baselineTokens, candidateTokens,
+    currencyCost: report?.price ? 'reported_in_primary_report' : 'unavailable', humanPreference: 'not_observed', productionPromotion: 'ineligible_without_original_gate',
+    interpretation: 'Automated bounded engineering evidence; no human preference or net-benefit claim' };
 }

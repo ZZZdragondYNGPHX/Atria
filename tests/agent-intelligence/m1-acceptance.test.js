@@ -49,6 +49,16 @@ test('blind label direction follows the shuffle and malformed grades stay ungrad
     expect(parseBlindGrade(JSON.stringify({ preference: 'right', deltas, rationale: 'Observed' }), pair, true).preference).toBe('baseline');
     expect(() => parseBlindGrade(JSON.stringify({ preference: 'candidate', deltas, rationale: 'Invalid' }), pair, false)).toThrow('invalid_blind_grade');
 });
+test('explicit advisory acceptance reports resource overages while preserving funding and quality gates', () => {
+    const f = fundedReport(); f.owner.breached = true;
+    const charge = f.report.pairs[0].candidate.charges[0], paid = f.owner.attempts.find(a => a.id === charge.id);
+    charge.tokens = paid.tokens = 20; charge.usage.totalTokens = paid.usage.totalTokens = 20;
+    const p = f.report.pairs[0], { pairHash: _old, ...identity } = p; p.pairHash = hash(identity); f.independent[0].pairHash = p.pairHash;
+    expect(automatedAcceptance(f.report, f.independent, f.owner, 'm1', { tokensAdvisory: true })).toMatchObject({ accepted: true,
+        resourceWarnings: ['advisory_breach', 'candidate_tokens_increased'], productionPromotion: 'ineligible_without_original_gate' });
+    f.independent[0].preference = 'baseline';
+    expect(automatedAcceptance(f.report, f.independent, f.owner, 'm1', { tokensAdvisory: true }).accepted).toBe(false);
+});
 
 test('an explicit live connection seeds only its own fixture Route and review mode without sending', async () => {
     let calls = 0;

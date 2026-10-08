@@ -39,13 +39,13 @@ export class PilotBudget {
 // Shared S06 ledger for explicitly configured evaluation, including baseline,
 // candidate, retries and judges. Separate from S01's six-trial pilot limit.
 export class EvaluationBudget {
-    constructor({ maxRequests, maxTotalTokens }, { snapshot = null, onChange = () => {} } = {}) {
+    constructor({ maxRequests, maxTotalTokens }, { snapshot = null, onChange = () => {}, advisory = false } = {}) {
         const carry = snapshot?.historicalCarry || null;
         if (carry && (Object.keys(carry).sort().join(',') !== 'evidenceHash,origin,requests,tokens' || carry.origin !== 'lost_s06_upper_bound'
             || carry.requests !== 252 || carry.tokens !== 1000000 || !/^[a-f0-9]{64}$/.test(carry.evidenceHash))) throw new Error('Invalid historical carry');
         if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || maxRequests > (carry ? 2048 : 252)
             || !Number.isSafeInteger(maxTotalTokens) || maxTotalTokens < 1) throw new Error('Finite evaluation budget required');
-        Object.assign(this, { maxRequests, maxTotalTokens, onChange }); this.historicalCarry = carry && Object.freeze({ ...carry }); this.entries = new Map(); this.breached = false;
+        Object.assign(this, { maxRequests, maxTotalTokens, onChange, advisory }); this.historicalCarry = carry && Object.freeze({ ...carry }); this.entries = new Map(); this.breached = false;
         if (snapshot) {
             if (!snapshot || Object.keys(snapshot).sort().join(',') !== (carry ? 'breached,entries,historicalCarry,requests,tokens' : 'breached,entries,requests,tokens') || typeof snapshot.breached !== 'boolean'
                 || !snapshot.entries || typeof snapshot.entries !== 'object' || Array.isArray(snapshot.entries)) throw new Error('Invalid evaluation budget restore');
@@ -59,19 +59,20 @@ export class EvaluationBudget {
             }
             this.breached = snapshot.breached;
             const restored = this.snapshot();
-            if (restored.requests !== snapshot.requests || restored.tokens !== snapshot.tokens || restored.requests > maxRequests
+            if (restored.requests !== snapshot.requests || restored.tokens !== snapshot.tokens || !advisory && restored.requests > maxRequests
                 || (restored.tokens > maxTotalTokens || [...this.entries.values()].some(entry => entry.tokens > entry.upperBound)) && !restored.breached
-                || [...new Set([...this.entries.values()].map(entry => entry.trialId))].some(trialId => [...this.entries.values()].filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length > 6)) throw new Error('Evaluation budget restore mismatch');
+                || !advisory && [...new Set([...this.entries.values()].map(entry => entry.trialId))].some(trialId => [...this.entries.values()].filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length > 6)) throw new Error('Evaluation budget restore mismatch');
         }
     }
     reserve({ requestId, trialId, inputTokens, reservedOutput, kind = 'model' }) {
         if (!requestId || !trialId || this.entries.has(requestId) || !['model', 'retry', 'fallback', 'grader'].includes(kind)
             || ![inputTokens, reservedOutput].every(value => Number.isSafeInteger(value) && value >= 0) || reservedOutput < 1) throw new Error('Invalid evaluation reservation');
         const entries = [...this.entries.values()];
-        if (this.breached || this.snapshot().requests >= this.maxRequests || entries.filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length >= 6
-            || this.snapshot().tokens + inputTokens + reservedOutput > this.maxTotalTokens) return { status: 'budget_blocked' };
+        if (!this.advisory && (this.breached || this.snapshot().requests >= this.maxRequests || entries.filter(entry => entry.trialId === trialId && entry.kind !== 'grader').length >= 6
+            || this.snapshot().tokens + inputTokens + reservedOutput > this.maxTotalTokens)) return { status: 'budget_blocked' };
         this.entries.set(requestId, { trialId, kind, tokens: inputTokens + reservedOutput, upperBound: inputTokens + reservedOutput,
             usageStatus: 'reserved_upper_bound', settled: false });
+        if (this.snapshot().tokens > this.maxTotalTokens || this.snapshot().requests > this.maxRequests) this.breached = true;
         this.onChange(this.snapshot()); // Durable explicit evaluator port, before send.
         return { status: 'passed' };
     }

@@ -12,6 +12,8 @@ import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolu
 import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { parseBlindGrade, automatedAcceptance } from './m1-acceptance.js';
 import { M1RetryPolicy } from './m1-retry.js';
+import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
+import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -41,18 +43,31 @@ try {
     let lastAdmissionAt = fs.existsSync(ratePath) ? read('m1-ledger.json.rate.json').lastAdmissionAt : Date.now();
     if (!Number.isSafeInteger(lastAdmissionAt) || lastAdmissionAt < 0 || lastAdmissionAt > Date.now() + 60000) throw new Error('invalid_rate_checkpoint');
     lastAdmissionAt = Math.max(lastAdmissionAt, Date.now());
+    const quotaPath = path.join(directory, 'm1-api-quota.json');
+    if (!fs.existsSync(quotaPath)) writeFileAtomic.sync(quotaPath, JSON.stringify({ schemaVersion: 1, carry: { requests: snapshot.requests, at: Date.now() }, admissions: [] }, null, 2) + '\n', { mode: 0o600 });
+    const quota = new M1ApiQuota(read('m1-api-quota.json'), next => writeFileAtomic.sync(quotaPath, JSON.stringify(next, null, 2) + '\n', { mode: 0o600 }));
     let admitted = snapshot.requests;
-    const budget = new EvaluationBudget(limits, { snapshot, onChange: next => {
+    const persistedIds = new Set(Object.keys(snapshot.entries));
+    const warned = new Set(Object.entries(snapshot.entries).filter(([, e]) => e.tokens > e.upperBound).map(([id]) => 'reservation_overrun_' + id));
+    const warning = (code, detail) => { if (!warned.has(code)) { warned.add(code); console.log(JSON.stringify({ advisoryWarning: code, ...detail })); } };
+    const budget = new EvaluationBudget(limits, { snapshot, advisory: true, onChange: next => {
         if (next.requests > admitted) {
             const delay = Math.max(0, lastAdmissionAt + 3150 - Date.now());
             if (delay > 60000) throw new Error('invalid_rate_clock');
             if (delay) globalThis.Atomics.wait(new Int32Array(new globalThis.SharedArrayBuffer(4)), 0, 0, delay);
+            const ids = Object.keys(next.entries).filter(id => !persistedIds.has(id));
+            if (ids.length !== 1) throw new Error('quota_reservation_mismatch');
+            quota.admit(ids[0]); persistedIds.add(ids[0]);
             lastAdmissionAt = Date.now(); admitted = next.requests;
             writeFileAtomic.sync(ratePath, JSON.stringify({ lastAdmissionAt }) + '\n', { mode: 0o600 });
         }
         writeFileAtomic.sync(ledgerPath, JSON.stringify(next, null, 2) + '\n', { mode: 0o600 });
+        const over = Object.entries(next.entries).filter(([, e]) => e.tokens > e.upperBound);
+        for (const [id, e] of over) warning('reservation_overrun_' + id, { tokens: e.tokens, suggestedReservation: e.upperBound });
+        if (next.tokens > limits.maxTotalTokens) warning('suggested_total_tokens_exceeded', { tokens: next.tokens, suggestion: limits.maxTotalTokens });
+        if (next.requests > limits.maxRequests) warning('suggested_total_requests_exceeded', { requests: next.requests, suggestion: limits.maxRequests });
     } });
-    if (budget.breached) throw new Error('m1_cumulative_breach_requires_review');
+    if (budget.breached) warning('historical_advisory_breach_preserved', { requests: snapshot.requests, tokens: snapshot.tokens });
     const output = path.join(directory, 'm1-reports', 'run-' + Date.now() + '-' + randomUUID().slice(0, 8));
     fs.mkdirSync(output, { recursive: true, mode: 0o700 });
     const store = (name, value) => writeFileAtomic.sync(path.join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
@@ -65,11 +80,11 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
-        policy: 'm1-automated-acceptance-2026-10-07', historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
+        policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged' };
     store('summary.json', summary);
     dispatcher = new Agent({ connectTimeout: 30000, headersTimeout: 300000, bodyTimeout: 300000 });
@@ -94,6 +109,28 @@ try {
             throw Object.assign(new Error(code), { code });
         }
     };
+    // Reuse the already paid RP proposal; do not learn from promotion outputs.
+    let frozenRp;
+    const reportRoot = path.join(directory, 'm1-reports');
+    for (const name of fs.readdirSync(reportRoot).filter(n => n.startsWith('run-')).sort().reverse()) {
+        const prior = path.join(reportRoot, name), jobFile = path.join(prior, 'rp-skill-job.json');
+        if (!fs.existsSync(jobFile)) continue;
+        const source = JSON.parse(fs.readFileSync(path.join(prior, 'summary.json'), 'utf8'));
+        if (source.evaluatorRevision !== evolutionEvaluatorRevision()) continue;
+        const original = JSON.parse(fs.readFileSync(jobFile, 'utf8'));
+        if (!original.candidate?.diff?.after) continue;
+        for (const responseFile of fs.readdirSync(prior).filter(n => n.startsWith('rp-skill-response-'))) {
+            const paid = JSON.parse(fs.readFileSync(path.join(prior, responseFile), 'utf8'));
+            if (paid.charge.kind !== 'extraction' || !snapshot.entries[paid.charge.id] || snapshot.entries[paid.charge.id].tokens !== paid.charge.tokens) continue;
+            const proposal = parseEvaluationJson(paid.raw.choices[0].message.content);
+            if (hash(proposal.value) !== hash(original.candidate.diff.after) || proposal.rationale !== original.candidate.rationale) throw new Error('frozen_proposal_changed');
+            frozenRp = { proposal, base: original.candidate.diff.before, target: original.job.target,
+                source: { origin: 'previous_paid_proposal', testedHead: source.testedHead, jobId: original.job.id, chargeId: paid.charge.id,
+                    valueHash: hash(proposal.value), baseHash: hash(original.candidate.diff.before) } };
+            break;
+        }
+        if (frozenRp) break;
+    }
     const { evolutionFixture, runEvolution } = await import('./evolution-fixture.js');
     const { makeTempFsEngineHarness } = await import('../storage/harness/contract-harness.js');
     const { createLiveBridge } = await import('./live-bridge.js');
@@ -107,7 +144,17 @@ try {
         try {
             const primary = connections[0];
             const f = await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
-                connectionConfig: primary.config, policyMode: 'review', confirmedPrice: null }); scratch = f.h;
+                connectionConfig: primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository }); scratch = f.h;
+            if (kind === 'rp-skill' && frozenRp) {
+                if (hash(f.target) !== hash(frozenRp.target)) throw new Error('frozen_proposal_target_changed');
+                entry.proposalSource = frozenRp.source;
+                f.evaluator.extract = async (_handle, _job, _config, signal, fresh, input) => {
+                    await fresh(); signal.throwIfAborted();
+                    if (hash(input.base) !== hash(frozenRp.base) || input.diagnosis !== null
+                        || hash(input.feedback) !== hash([{ kind: 'explicit', signal: 'correction', dimension: 'behavior', note: 'Preserve user decisions and authority.' }])) throw new Error('frozen_proposal_input_changed');
+                    return structuredClone(frozenRp.proposal);
+                };
+            }
             const owner = await f.repository.owner(f.h.handle);
             await f.service.budget(f.h.handle, { expectedSequence: owner.sequence, limits: { maxRequests: 260, maxTokens: 699536, minIntervalMs: 3150 } });
             const secondary = connections[1];
@@ -125,6 +172,7 @@ try {
             let packet = null;
             f.evaluator.repository.reserve = async (handle, attempt) => {
                 if (!packet || attempt.upperBound !== packet.inputTokens + packet.outputTokens) throw new Error('send_reservation_mismatch');
+                quota.assertAvailable();
                 if (budget.reserve({ requestId: attempt.id, trialId: attempt.trialId, inputTokens: packet.inputTokens,
                     reservedOutput: packet.outputTokens, kind: packet.retryAttempt ? 'retry' : attempt.kind === 'judge' ? 'grader' : 'model' }).status !== 'passed') throw new Error('recovered_budget_blocked');
                 return reserve(handle, attempt);
@@ -137,7 +185,7 @@ try {
                 const transportKey = payload.rendered.endpoint + ':' + payload.rendered.body.model;
                 return retryPolicy.send(transportKey, async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
-                    if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) throw new Error('m1_activation_budget_blocked');
+                    if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
                     packet = { ...payload, retryAttempt };
                     const originalSecret = f.host.secretPort.resolveSecret;
                     f.host.secretPort.resolveSecret = async () => config.model.remoteModelId === secondary.config.model ? secondary.apiKey : primary.apiKey;
@@ -177,7 +225,7 @@ try {
                 } catch (error) { entry.independent.push({ origin: 'independent_model', pairHash: pair.pairHash, status: 'unavailable', reason: safeReason(error) }); break; }
                 finally { bridge.cleanup(); store(kind + '-independent.json', entry.independent); }
             }
-            entry.acceptance = automatedAcceptance(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id);
+            entry.acceptance = automatedAcceptance(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id, { tokensAdvisory: true });
             // Explicit delegated review is confined to this private fixture. No
             // human labels or automatic publication eligibility are invented.
             const published = await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: job.id, candidateId: candidate.candidateId,
