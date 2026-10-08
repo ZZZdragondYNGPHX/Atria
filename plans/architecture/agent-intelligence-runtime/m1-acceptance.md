@@ -1,6 +1,6 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
-- Updated: 2026-10-07
+- Updated: 2026-10-08
 - Status: 用户批准调整方向，有限执行 envelope 已冻结；实际结果待取得。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
@@ -32,7 +32,7 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 本轮新增最多260次actual sends /699536记账tokens；累计guard含保守结转为512requests /1699536tokens。260由两入口各18trial arms×最多6sends、原18judges、18额外独立judges、2提炼与最多6次activation合计最坏260确定；不是无限重试额度。每个原job仍保持120sends /1000000tokens /一小时，independent与activation另记有界job但共享同一恢复账本 / 本轮总额，不重获额度。
 
-原每日报用户cap2000、20RPM继续约束。串行send间隔至少3150ms，output最多1024，单请求最多300秒，整个本地runner最多两小时；HTTP / transport失败保留upper reservation、同connection / model停止重发，不自动fallback、retry或dispatch。
+原每日报用户cap2000、20RPM继续约束。串行send间隔至少3150ms，output最多1024，单请求最多300秒，整个本地runner最多两小时；用户2026-10-08要求retry，并明确偶发错误继续、频繁错误停止。HTTP 5xx / transport失败最多追加两次重试，间隔至少10秒，单connection / model连续三次失败或最近20次发送中六次失败即停止；认证、配置、额度与取消错误直接停止，不自动fallback。每次重试重新走原durable reserve / send / settle，未知usage保留upper reservation，不清账、不扩大上述累计envelope；原trial六发送与activation上限仍约束重试。连接失败频率 / 停止状态也持久化，restart不清除。偶发错误可继续采集证据，不等于未知usage取得验收资格。
 
 每次send在Secret lookup / provider之前先durable reserve，新usage未知或取消保留upper；超报sticky breach，restart保留pending并计账，不删历史、换suffix、scope或文件清零。恢复文件有exclusive writer lock，残留lock不绕过；rate checkpoint持久。文件初始化只允许ledger目标不存在，一旦存在必须restore。
 

@@ -685,6 +685,19 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - **五套61 distinct local tests通过**：recovery-budget4、m1-acceptance4、evolution41、live-bridge11、runner-failure1。初始相关三套16passed（含recovery4），最终三套49passed（含同四项），重复不累加。六文件ESLint / node syntax / product diff通过；新增验证aggregate不能减少 / oldsnapshot兼容 / durable pending / sticky breach、独立模型 / shuffle / usage拒绝与human gate保持、显式connection / review seed不发送。未执行full tests / build / browser / external DB / CI；Node24本轮，上一轮Node20.20.2证据仍为对应原source。
 - 本段为正式有限执行前冻结，不代表实际模型改善。下一在已commit的source上运行m1-live，原固定worker / provider真实比较与第二模型盲评全部纳入此账本；partial / failed报告新文件保存，不覆盖历史、不追试至通过。实际结果将在同一Record后续追加，结束刷新HANDOFF后停止，仅M1，不进入S11 / G。
 
+## M1 — 首次真实执行与有限 retry（2026-10-08，继续执行）
+
+- 实际首轮source `1a1deb9f5`：补齐CLI stub的wiPosition与零send prepare，两个入口已准备；原compare每对结果单独保存。首次真实RP提炼与baseline成功，candidate请求HTTP524使固定worker停止；没有完整pair / judge / publication，Project未执行。不将两次成功请求推断成完整authority或收益证据。
+- 首轮新增3sends /9498记账tokens：provider报告499与3610，HTTP524未知usage保留5389上界。累计255requests /1009498tokens（含旧carry252 /1000000），当前period breached=false、无pending，不清零 / 覆盖第一次报告。旧breach未知保持。
+- 用户答复“继续尝试，除非报错频繁，否则可以认为是偶发情况”，随后明确“retry”。有限retry按m1-acceptance更新：HTTP5xx / transport最多追加两次，至少10秒；连续三次或最近20次六失败停止该连接，认证 / 配置 / 额度 / 取消不重试。每次调用原send并重新durable reserve，两种账本保留unknown，不增加512 /1699536累计guard。
+- 原固定worker新增只读trial事件，原evaluator可选onTrial默认空操作，CLI保存每个完成 / 失败arm，避免后一arm失败丢失前一arm检查；不改runtime promotion gate。source `26f203f60`已commit / push；原consumers6 / partial worker1与retry5共12项通过，六文件lint / fixed-loader check / diff通过。重试状态持久checkpoint保留停止 / 频率，预算不变；沿同一账本继续实际执行。新提炼仍只见原feedback / diagnosis / base，未把promotion输出送入候选学习；前一失败候选与新候选分报告保留，不拼接source。
+
+### retry途中发现并定位的解析问题
+
+- `26f203f60`实测两个提炼请求HTTP成功但后续抛异常，新增2sends /1267reported tokens；累计257 /1010765，无transport失败。本轮当时未保存raw / stack，不把未知程序失败冒称API不稳定或合格候选。
+- `d67a43c38`补私有raw response / charge与error诊断，lint / diff通过并commit / push；沿同一预算再取得两个响应，新增2sends /1711reported tokens，累计259 /1012476。私有证据确认两次皆SyntaxError：返回完整单一json代码块，内含正确value / rationale字段，原JSON.parse拒绝Markdown围栏。没有进入promotion，不把提炼失败计作真实行为回归或收益。
+- 针对已确认根因增加evaluation内共享严格JSON parser：仅完整JSON或单一完整json / 未标语言代码块，仍由原字段 / target / grade checks审核；说明文字、多个blocks、其它语言与截断JSON拒绝。原extract、固定worker judge与test-only independent parser共用；source hash纳入parser，不修改promotion门槛或伪造旧证据。已有partial / failed报告保持各自原HEAD。source `6c99da07f`已commit / push，三套定向7passed /5skipped（两个原worker RP fenced / Project plain、parser2、工程判定3），七触及文件lint / diff与Node20.20.2固定worker加载通过；未重跑其余已通过consumer / guard，也未称全部Node20新代码通过。另修CLI independent callback局部变量遮蔽：scopeId继续取原job doc，不引用尚未初始化的响应变量。随后沿259 /1012476累计继续实际执行。
+
 ## Final state
 
-长期任务仍进行；D0–D4 / S01–S09 与 S10 工程交付完成。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 保持，main 未变化。本轮新增Node20.20.2固定worker加载与48项相关工程验证；原S10 233项与shared-pane fixture保持历史证据。原S06 ledger / limits / reports当前缺失，真实补测未启动，M1真实改善与独立人工观察仍待验收。下一checkpoint仍仅M1，不进入S11 / G。
+长期任务仍进行；D0–D4 / S01–S09与S10工程交付保持。当前product `6c99da07f`、main `ed1fd90521a63363e29856601abbf5e908c99d10`未集成。M1工程验收按批准的自动authority / 双模型盲评执行，生产human / price gate不变。原账本丢失已按整段guard保守carry，不伪造历史；累计guard512 /1699536。首轮真实3sends遇HTTP524，记录与unknown上界保留；有限retry继续执行，实际M1改善 / 两入口真实闭环仍pending。下一只限M1，不进入S11 / G。

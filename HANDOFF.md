@@ -2,9 +2,9 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Updated: 2026-10-07
-- Current checkpoint: **用户批准M1自动化工程验收 / 丢失账本保守结转；本轮有限执行准备中，恢复账本已持久初始化，测试source已commit / push；实际模型结果尚未取得。生产human gate保持。**
-- Product branch: `feat/agent-intelligence-runtime@2c5499bb6`，已 commit / push，product worktree 干净。
+- Updated: 2026-10-08
+- Current checkpoint: **M1有限retry实际执行中；首轮HTTP524已计账保留。工程自动验收与生产human gate区分，M1仍pending。**
+- Product branch: `feat/agent-intelligence-runtime@6c99da07f`，已commit / push，product worktree干净。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 - Docs: `docs`，本文件、S10验证补充与同一 Record 在本轮 M1 自动验证 docs commit；起点 `f7fc8e23023d96903afda350f99971f21976a6dc`。接手核对 actual refs，不从历史路径恢复实时状态。
 - Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [自动化验收](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [M1](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery](plans/architecture/agent-intelligence-runtime/delivery.md)。
@@ -37,7 +37,7 @@ D0–D4、S01–S09 已交付，历史依据留在 Record，不重读全量研�
 - 真实 Chromium 390px 检查两个入口的 shared production pane，fixture API；覆盖 feedback / budget / review default / start / pause / delete / escaping。不是完整 app E2E。
 - 44 个其它触及 JS / mjs ESLint 通过，settings.js 的四项既有 no-raw-fs-in-endpoint 错误与基线一致；只屏蔽该 rule 的复核通过。diff / staged diff / fixed-loader worker check 通过，原S10为Node24本地验证；本轮Node20.20.2固定worker加载及核心三套48项已通过，SQLite使用临时同版本Node20依赖；完整命令 / 首次ABI失败与定向复核见Record。
 - 原 SettingsRepo 外部 MySQL / Postgres 12 项首次因 DB 不可用失败，最终 FS / SQLite12 passed / 外部12 skipped。没有计其通过。
-- 本轮无新真实模型请求、full test / build / full app UI / Android / 真机 / external DB / CI；S10原交付轮未读写S06 private config / ledger / reports，本轮只读connection并检查到原ledger / limits / reports缺失，详见下文。main AGENTS 与 docs README / WEB Adapter / 两模板 dirty 未暂存 / 提交，五 hashes见 Record；reference / 其它草稿未读写。
+- 本轮真实请求与恢复预算见下文；未执行full test / build / full app UI / Android / 真机 / external DB / CI。S10原交付轮未读写S06 private config / ledger / reports；本轮按用户授权迁移connection并保守恢复累计账本。main AGENTS 与 docs README / WEB Adapter / 两模板 dirty 未暂存 / 提交，五 hashes见 Record；reference / 其它草稿未读写。
 
 ## Real observations / budget preserved
 
@@ -49,27 +49,17 @@ S06最后已记录累计 **110 requests / 300464 记账 tokens，breached=false*
 
 ## Pending / next checkpoint
 
-### 2026-10-07 M1 自动验证
+当前只做M1自动化工程验收，按[m1-acceptance](plans/architecture/agent-intelligence-runtime/m1-acceptance.md)执行；用户授权agent代劳，不需要用户运行测试。生产automatic human / price gate保持，humanPreference=not_observed。
 
-- 用户授权agent代劳，不要求用户本人执行测试；范围仍仅M1，不进入S11 / G。Node20.20.2固定loader / worker通过；核心三套48项最终都有本地通过证据。首轮32 passed /16 failed全因Node24 SQLite ABI，安装临时同版本better-sqlite3@12.10.0 Node20依赖后只重跑16项、全部通过；共享依赖 / 源码未修改。fake provider / 合成人工标签只用于工程验证，不算真实收益或human observations。
-- **实际阻碍：原S06 ledger / limits / artifacts目录当前不存在**，原lock / rate checkpoint也缺失，均按已有Git keys定位在临时存储。用户答复“无迁移”；不推断删除原因。两个connection仍存在，mode600；未输出Secret / endpoint / 路径，未扫描其它目录，未变更私有keys或配置。
-- 用户指定的主目录 `Document/` 已创建（700），本地说明文档600，整个目录通过 local Git exclude排除Git；已有两份connection尚可读取，无需重发API。未复制 / 改写现有凭证或keys；用户后续发来的API信息保存为该目录的600私有文档，后续账本 / 报告使用持久位置。创建目录不恢复旧账目、不清零预算。
-- 历史110 requests /300464记账tokens / breached=false与142 /699536差额无法按当前原ledger核实；connection自身120 /250000配置不等于原252 /1000000有限guard。不能从历史总数伪造逐次账目，不能改用S10新owner账本重获额度。**本轮零真实模型请求**；先明确原累计账目恢复处理与可核对有限验证预算，再恢复 / 冻结双入口比较。
-- M1验收仍缺：最终S10 exact evaluator / supported target的两入口单目标真实比较；每入口三个独立promotion场景各三次paired trial、九项独立authenticated human labels；至少六胜、重要维度非负、无分歧、原source / authority / isolation / target_consumed / exact config全通过，trial token与可核对费用不高于baseline；controller / judge / retry全计总额，不把trial达标称作净收益。真人标签缺失时保持ineligible，不以agent评分替代。
-- 两入口原binding publication / 下一run exact消费 / guarded rollback的真实闭环仍待证据；RP provenance保持client_observation。三类目标×双入口工程覆盖保留，不外推未实测目标收益，不叠加独立报告。
-- Git pins保持；main...product为0 /16，product worktree干净，diff check通过。main AGENTS与docs四份治理 / 模板既有dirty的五个hash与S10一致并保留。按用户要求只做最小本地验证；不查询 / 触发CI，不要求full test / build。Node20.20.2证据不外推任意Node20 patch或full app / external DB支持。
-- 本轮只更新S10验证状态、同一Record / live HANDOFF并commit / push docs；没有产品变更 / 真实模型 / 新browser / full app / external DB / Android / 真机 / CI。**M1仍pending，不合并main、不删除产品分支。**
+- 原S06ledger / limits / reports缺失且用户确认无迁移；旧逐次entries与breach无法核实。已按旧guard252requests /1000000tokens保守carry，不伪造旧记录；Document持久保存两个API / recovery / 新累计ledger / rate / reports，700目录、600文件、local Git exclude，五个Git private keys已迁移，旧文件不覆盖。
+- 新增allowance最多260sends /699536tokens，含carry累计guard512 /1699536；3150ms串行、output1024、单请求300秒、overall两小时、原job120sends /一小时保持。两入口各三场景×三次paired trial、两个模型九对独立盲评，原authority / target / isolation / config / usage与token资源门槛维持。不达标如实pending。
+- 首次真实执行source `1a1deb9f5`：RP提炼与baseline成功，candidate HTTP524。3sends /9498记账tokens含未知5389预留；累计255 /1009498、currentPeriodBreached=false、pending0。无完整pair / quality / publication证据，Project未执行；私有报告保留，不拼接进新report。
+- 用户明确“继续尝试，除非报错频繁，否则可以认为是偶发情况”与“retry”。source `26f203f60`增加显式CLI有限重试，HTTP5xx / transport每请求最多追加两次、至少10秒；连接连续三失败或最近20次六失败停止，认证 / 配置 / 额度 / 取消不重试。每次走原send / durable双账本，unknown保留，额度不增加。重试频率checkpoint持久化，不通过重启洗掉已停止状态。
+- 固定worker新增trial事件，evaluator的onTrial可选默认空操作；CLI分别保存完成 / 失败arm，后续失败仍保留前一arm原checks。最小本地原consumers6 / partial worker1 / retry5共12tests passed，六文件lint / fixed-loader check / diff passed，source commit / push后继续同一账本实际执行。准备轮五套61tests与原Node20.20.2的48项仍各对应其source，不重复累计 / 外推。
+- 本轮没有full tests / build / browser / external DB / Android / 真机 / CI，不读reference，不暂存五个既有dirty。当前main未合并，source任务分支保留；M1真实结果仍在取得中，不进入S11 / G。
 
-下一checkpoint仅M1：处理原账本 / reports的可核对来源与有限预算后，由agent继续自动比较；条件不足明确记录，不降低门槛、不要求用户手工执行tests。
+- retry中source26与diagnostic source d67各两个成功提炼请求，均因完整json代码块被原parser拒绝，无promotion。累计259 /1012476，无新transport失败。`6c99da07f`支持完整单一JSON围栏，原字段 / target / blind grade门槛不变，source hash含parser；定向7tests / lint / diff / Node20固定worker加载通过，source commit / push后继续。私有raw / error保留，未将旧失败报告重新标为有效。
 
-先核对真实 Git → HANDOFF → index / s10-evolution → m1-evolution / delivery M1 → 同一 Record；只按需读取原 S05–S09 authority。不重做 D3 / D4，不进入 S11–S34 / G01–G06 / Local；main 不合并，任务分支保留。
+结束时更新同一Record / live HANDOFF并停止。只有两入口实际全部达标才按既定U7集成、做最小本地检查；当前pending不能合并main。
 
-接手提示词：**读取 docs:HANDOFF.md，继续代劳 M1 自动验证；先核对原 S06 账本 / reports 缺失与有限预算，不能新建账本清零。仅 M1，不进入 S11 或 G 阶段。**
-
-## 本轮已批准调整与执行准备
-
-用户对上一轮调整方案回复“统一”，按上下文作为同意处理。仅M1工程验收改按m1-acceptance自动检查 / 双模型盲评；human未观测，生产automatic gate不变。保守结转旧guard252requests /1000000tokens，不伪造逐次entries；新增最多260sends /699536tokens，累计上限512 /1699536，至少3150ms串行send /原20RPM与2000每日cap /output1024 /整体两小时。具体恢复schema、支持对象、次数与判定按新模块执行；不清零旧消耗。
-
-当前测试接线与Plan已准备，实际结果待执行。Document持久保存API / recovered ledger / reports且排除Git；source先commit再实测。结束更新同一Record / HANDOFF后停止，不进入S11 / G。
-
-本轮恢复已初始化：Document中保存两个mode600 API配置 / recovery说明 / ledger / limits / reports；local Git五个keys已迁移，原文件不覆盖。ledger初始252requests /1000000tokens为保守carry，零新entries；新allowance260 /699536，含carry累计512 /1699536。旧breach未知，新period当前breached=false。source HEAD `2c5499bb6`，最小本地五套61 distinct tests / 六文件lint / diff通过；真实执行下一步开始，先前private缺失的段落为历史观察，本轮恢复不伪造旧记录。
+接手提示词：**读取 docs:HANDOFF.md，继续代劳M1有限自动验收；先核对进程 / lock与Document中同一累计账本和重试checkpoint，不重置额度。仅M1，不进入S11或G。**
