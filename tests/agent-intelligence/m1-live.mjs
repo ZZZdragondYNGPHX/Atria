@@ -38,7 +38,9 @@ try {
     const prepareOnly = option.length === 3 && option[2] === '--prepare';
     const resumeName = option.length === 3 && option[2].startsWith('--resume-project=') ? option[2].slice('--resume-project='.length) : null;
     const gradeName = option.length === 3 && option[2].startsWith('--grade-only=') ? option[2].slice('--grade-only='.length) : null;
-    const diagnoseOnly = option.length === 3 && option[2] === '--diagnose-secondary';
+    const diagnosticSource = option.length === 3 && option[2].startsWith('--diagnose-secondary=') ? option[2].slice('--diagnose-secondary='.length) : null;
+    const diagnoseOnly = option.length === 3 && (option[2] === '--diagnose-secondary' || Boolean(diagnosticSource));
+    if (diagnosticSource && !/^run-[0-9]+-[a-f0-9]{8}$/.test(diagnosticSource)) throw new Error('invalid_diagnostic_source');
     const cycleBaselineProject = option.length === 3 && option[2].startsWith('--cycle-baseline-project=') ? option[2].slice('--cycle-baseline-project='.length) : null;
     const cycleBaseline = option.length === 3 && option[2] === '--cycle-baseline' || Boolean(cycleBaselineProject);
     const cycleOptimize = option.length === 3 && option[2].startsWith('--cycle-optimize=') ? option[2].slice('--cycle-optimize='.length) : null;
@@ -409,12 +411,27 @@ try {
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';
+                let messages = [{ role: 'user', content: 'Return JSON only: {"ok":true}' }];
+                let fixtureHash = hash('one_request_secondary_diagnostic');
+                if (diagnosticSource) {
+                    const previous = path.join(directory, 'm1-reports', diagnosticSource);
+                    const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
+                    const { pair } = JSON.parse(fs.readFileSync(path.join(previous, 'project-prompt-pair-project_authoring_d1-1.json'), 'utf8'));
+                    const observation = source.entries.find(e => e.kind === 'project-prompt')?.independent?.find(o => o.pairHash === pair.pairHash);
+                    if (observation?.status !== 'unavailable' || observation.reason !== 'm1_http_404') throw new Error('diagnostic_failed_grade_required');
+                    const flipped = parseInt(hash(['independent', pair.pairHash]).slice(0, 2), 16) % 2 === 1;
+                    messages = [{ role: 'system', content: 'Blindly compare the two outputs against the task and dimensions. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"concise public explanation"}. Delta means right minus left. Do not guess missing evidence.' },
+                        { role: 'user', content: JSON.stringify({ ...pair.scenario, dimensions: pair.case.behaviorDimensions, left: pair[flipped ? 'candidate' : 'baseline'].output, right: pair[flipped ? 'baseline' : 'candidate'].output }) }];
+                    fixtureHash = pair.case.fixtureHash;
+                    summary.diagnosticSource = { summaryHash: hash(source), pairHash: pair.pairHash, messagesHash: hash(messages), testedHead: source.testedHead, gradingEligible: false };
+                    store('summary.json', summary);
+                }
                 const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'm1-secondary-diagnostic-' + randomUUID() + ':diagnostic', scopeId: doc.scopeId, price: null };
                 const bridge = await createFrozenEvaluationBridge(secondaryConfig, async payload => (await f.evaluator.send(f.h.handle, job, secondaryConfig,
                     { ...payload, arm: 'judge' }, overall.signal, async () => {})).raw);
                 try {
-                    const result = await bridge.rp({ requestId: randomUUID(), trialId: job.id, fixtureHash: hash('one_request_secondary_diagnostic'),
-                        messages: [{ role: 'user', content: 'Return JSON only: {"ok":true}' }], tools: [], kind: 'grader' });
+                    const result = await bridge.rp({ requestId: randomUUID(), trialId: job.id, fixtureHash,
+                        messages, tools: [], kind: 'grader' });
                     store('secondary-diagnostic-response.json', result); entry.status = 'diagnostic_response_received';
                 } finally { bridge.cleanup(); }
                 continue;
