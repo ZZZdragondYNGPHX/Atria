@@ -95,3 +95,7 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 付费结束后仅本地修复：RP variant免费注入挑战不再占actual provider maxRequests=6槽位，Director仍maxRounds≤6，stale authority挑战仍保留且单独trace；cases增加actual_provider_send单位/一次injected challenge，caseRevision/CASE_SET_REVISION按元数据自然更新，旧97a1实测单独pin旧revision，不覆报告、不据此推定第六次真实调用会成功。不改变评分维度/解释、门槛、试验对数或权限要求，不再发API验证此修复。CLI所有HTTP失败改为私有保存最多64KiB body/status/request ID并关联charge，原unknown上界保持；本次701的body已discarded，不能补造。最小零API回归后，验收入口必须拒绝本partial，并核对累计五文件字节不变；然后同一Record/HANDOFF收尾停止，不进入S11/G。
 
 本次最终product da157f3e9已commit/push，paid结果固定97a1/d281；累计701/2717515、unknown17/74948、pending0/lock0，quota/rate通过。最后零send acceptance入口拒绝partial，五累计状态字节hash保持；7相关suite25 distinct local tests按source通过，未运行无关full/build/CI。所有旧/新失败及评分来源保留，同一Record/HANDOFF更新完成，本有限续接到此停止，不进入S11/G。
+
+## 8. 2026-10-09 第二模型可用性检查
+
+用户明确要求检查第二模型，不能调用则暂时放弃该API。沿实际701/2717515及同一ledger/quota/rate/失败窗口，只允许一次Step原失败Project authoring独立grade形态的funded诊断，固定原pair/shuffle/messages来源与输出8000，无retry；该请求不计评分、不替换任何旧结果、不重跑trials或提炼。不清stop或另开epoch，不探测其它区域/模型。HTTP错误保存原body/status/request ID并关联charge；若失败，当前Step API暂时停用，缺第二模型时M1双模型验收仍pending，不降门槛或合并main。仅最小本地验证，更新同一Record/live HANDOFF后停止，不进入S11/G。
