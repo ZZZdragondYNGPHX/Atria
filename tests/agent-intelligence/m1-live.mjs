@@ -11,6 +11,7 @@ import { EvaluationBudget } from './budget.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { parseBlindGrade, automatedAcceptance } from './m1-acceptance.js';
+import { M1RetryPolicy } from './m1-retry.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -63,7 +64,7 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
@@ -71,19 +72,25 @@ try {
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged' };
     store('summary.json', summary);
     dispatcher = new Agent({ connectTimeout: 30000, headersTimeout: 300000, bodyTimeout: 300000 });
-    const fatal = new Map();
+    const transportCheckpoint = path.join(directory, 'm1-transport-state.json');
+    const retryPolicy = new M1RetryPolicy({ snapshot: fs.existsSync(transportCheckpoint) ? read('m1-transport-state.json') : {},
+        onChange: state => writeFileAtomic.sync(transportCheckpoint, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 }) });
     const transport = async (url, options) => {
         const model = JSON.parse(options.body).model, key = url + ':' + model;
-        if (fatal.has(key)) throw new Error(fatal.get(key));
+        retryPolicy.assertAvailable(key);
         try {
             const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(300000)]) });
             if (!response.ok) {
-                const code = 'm1_http_' + response.status; fatal.set(key, code); await response.body?.cancel(); throw new Error(code);
+                const code = 'm1_http_' + response.status;
+                await response.body?.cancel();
+                throw Object.assign(new Error(code), { code });
             }
+            retryPolicy.observe(key);
             return response;
         } catch (error) {
-            if (!fatal.has(key)) fatal.set(key, options.signal.aborted ? 'm1_cancelled' : 'm1_transport_failed');
-            throw error;
+            const code = error.code?.startsWith('m1_http_') ? error.code : options.signal.aborted || overall.signal.aborted ? 'm1_cancelled' : 'm1_transport_failed';
+            retryPolicy.observe(key, code);
+            throw Object.assign(new Error(code), { code });
         }
     };
     const { evolutionFixture, runEvolution } = await import('./evolution-fixture.js');
@@ -118,7 +125,7 @@ try {
             f.evaluator.repository.reserve = async (handle, attempt) => {
                 if (!packet || attempt.upperBound !== packet.inputTokens + packet.outputTokens) throw new Error('send_reservation_mismatch');
                 if (budget.reserve({ requestId: attempt.id, trialId: attempt.trialId, inputTokens: packet.inputTokens,
-                    reservedOutput: packet.outputTokens, kind: attempt.kind === 'judge' ? 'grader' : 'model' }).status !== 'passed') throw new Error('recovered_budget_blocked');
+                    reservedOutput: packet.outputTokens, kind: packet.retryAttempt ? 'retry' : attempt.kind === 'judge' ? 'grader' : 'model' }).status !== 'passed') throw new Error('recovered_budget_blocked');
                 return reserve(handle, attempt);
             };
             f.evaluator.repository.settle = async (handle, id, tokens, metadata) => {
@@ -126,20 +133,22 @@ try {
             };
             const send = f.evaluator.send.bind(f.evaluator);
             f.evaluator.send = async (handle, job, config, payload, signal, fresh) => {
-                if (overall.signal.aborted) throw new Error('m1_duration_blocked');
-                if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) throw new Error('m1_activation_budget_blocked');
                 const transportKey = payload.rendered.endpoint + ':' + payload.rendered.body.model;
-                if (fatal.has(transportKey)) throw new Error(fatal.get(transportKey));
-                packet = payload;
-                const originalSecret = f.host.secretPort.resolveSecret;
-                f.host.secretPort.resolveSecret = async () => config.model.remoteModelId === secondary.config.model ? secondary.apiKey : primary.apiKey;
-                try { return await send(handle, job, config, payload, signal, fresh); }
-                finally { f.host.secretPort.resolveSecret = originalSecret; packet = null;
-                    const s = budget.snapshot(); console.log(JSON.stringify({ kind, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
+                return retryPolicy.send(transportKey, async retryAttempt => {
+                    if (overall.signal.aborted) throw new Error('m1_duration_blocked');
+                    if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) throw new Error('m1_activation_budget_blocked');
+                    packet = { ...payload, retryAttempt };
+                    const originalSecret = f.host.secretPort.resolveSecret;
+                    f.host.secretPort.resolveSecret = async () => config.model.remoteModelId === secondary.config.model ? secondary.apiKey : primary.apiKey;
+                    try { return await send(handle, job, config, payload, signal, fresh); }
+                    finally { f.host.secretPort.resolveSecret = originalSecret; packet = null;
+                        const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
+                }, AbortSignal.any([signal, overall.signal]));
             };
             const compare = f.evaluator.compare.bind(f.evaluator);
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
-                async pair => { store(kind + '-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); });
+                async pair => { store(kind + '-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); },
+                async trial => { store(kind + '-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial); });
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             entry.status = 'evaluating'; store('summary.json', summary);
             const result = await runEvolution(f), { job, candidate } = result;
@@ -215,13 +224,14 @@ try {
         } catch (error) { entry.status = 'unavailable'; entry.reason = safeReason(error); process.exitCode = 1; }
         finally {
             if (scratch) { fs.cpSync(scratch.dataRoot, path.join(output, kind + '-private-fixture'), { recursive: true }); scratch.cleanup(); scratch = null; }
-            summary.transportFailures = [...new Set(fatal.values())];
+            summary.transportFailures = [...new Set([...retryPolicy.connections.values()].map(s => s.stopped).filter(Boolean))];
+            summary.transportObservations = [...retryPolicy.connections.values()].map(s => ({ consecutiveFailures: s.consecutive, recentSends: s.recent.length, recentFailures: s.recent.filter(Boolean).length, stopped: s.stopped }));
             summary.finalAccounting = { requests: budget.snapshot().requests, tokens: budget.snapshot().tokens, currentPeriodBreached: budget.snapshot().breached };
             summary.accepted = summary.entries.length === 2 && summary.entries.every(e => e.acceptance?.accepted && e.lifecycle?.nextRunConsumed && e.lifecycle?.baseRestored);
             store('summary.json', summary);
             console.log(JSON.stringify({ kind, status: entry.status, reason: entry.reason || null, acceptance: entry.acceptance || null }));
         }
-        if (fatal.size && !entry.acceptance) break;
+        if ([...retryPolicy.connections.values()].some(s => s.stopped) && !entry.acceptance) break;
     }
     if (!prepareOnly && !summary.accepted) process.exitCode = 1;
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));

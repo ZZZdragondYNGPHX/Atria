@@ -48,6 +48,7 @@ process.on('message', async message => {
                 try { await (message.domain === 'rp' ? runRp : runProject)(entry, loadFixture(entry, { purpose: 'evaluation' }), capture, { bridge, settings, beforeSend: () => {} }); } catch (e) { error = /^[a-z_]{1,100}$/.test(e.code || '') ? e.code : 'evaluation_runtime_failed'; } finally { bridge.cleanup(); globalThis.Atria = { getContext: emptyContext }; }
                 pair[arm] = { trialId: capture.trialId, configurationHash: hash(config), settingsHash: hash(message.settings[arm]), output: capture.artifact?.output || '',
                     checks: { ...capture.checks, target_consumed: capture.artifact?.targetConsumed === true }, refs: capture.refs, evidence: capture.evidence, error, repairCount: capture.repairCount, requestHashes: capture.prompts.map(hash) };
+                process.send({ type: 'trial', caseId: entry.caseId, repetition, arm, trial: pair[arm] });
                 if (error) throw Object.assign(new Error(error), { code: error });
             }
             const flipped = parseInt(hash([entry.caseRevision, repetition]).slice(0, 2), 16) % 2 === 1;

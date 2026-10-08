@@ -158,7 +158,7 @@ export class EvolutionEvaluator {
         fields(parsed, ['value', 'rationale']); text(parsed.rationale, 1024);
         return parsed;
     }
-    async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}) {
+    async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}) {
         const charges = [], evaluatorRevision = evolutionEvaluatorRevision();
         const child = fork(fileURLToPath(new URL('./evaluation/worker.js', import.meta.url)), [], {
             execArgv: ['--experimental-loader', fileURLToPath(new URL('./evaluation/loader.js', import.meta.url))], env: { PATH: process.env.PATH || '', NODE_ENV: 'production' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], serialization: 'advanced',
@@ -179,7 +179,8 @@ export class EvolutionEvaluator {
                                 const result = await this.send(handle, job, config, message.payload, signal, fresh); charges.push(result.charge);
                                 if (child.connected) child.send({ type: 'response', id: message.id, raw: result.raw });
                             } catch (error) { if (child.connected) child.send({ type: 'response', id: message.id, error: error.code || 'evaluation_send_failed' }); } finally { sending = false; }
-                        } else if (message.type === 'pair') await onPair(message.pair);
+                        } else if (message.type === 'trial') await onTrial(message);
+                        else if (message.type === 'pair') await onPair(message.pair);
                         else if (message.type === 'complete') { await fresh(); settled = true; resolve(message.pairs); } else if (message.type === 'failed') { settled = true; reject(new Error(message.code)); }
                     } catch (error) { settled = true; reject(error); child.kill(); }
                 });
