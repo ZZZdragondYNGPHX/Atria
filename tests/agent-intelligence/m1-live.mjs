@@ -314,7 +314,7 @@ try {
             }
             if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
             const secondaryRoute = secondaryRoutes[0];
-            const extendedGrader = (gradeSource || cycle) && secondary.config.maxOutputTokens > 1024;
+            const extendedGrader = (gradeSource || cycle || prepareOnly) && secondary.config.maxOutputTokens > 1024;
             const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId)
                 : await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
             entry.secondaryConfigurationHash = hash(secondaryConfig);
@@ -419,7 +419,10 @@ try {
                 finally { bridge.cleanup(); store(kind + '-independent.json', entry.independent); }
             }
             entry.acceptance = automatedAcceptance(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id, { tokensAdvisory: true });
-            if (development) { entry.status = 'development_observed'; entry.lifecycle = { performedThisRun: false }; continue; }
+            if (development) {
+                entry.status = entry.independent.length === observedPairs.length && entry.independent.every(o => o.chargeId && o.preference) ? 'development_observed' : 'development_incomplete';
+                entry.lifecycle = { performedThisRun: false }; continue;
+            }
             if (gradeSource) {
                 entry.status = entry.independent.length === 9 && entry.independent.every(o => o.chargeId && o.preference) ? 'independently_graded' : 'independent_grading_incomplete';
                 entry.lifecycle = { origin: 'previously_verified_separate_lifecycle', performedThisRun: false }; continue;
