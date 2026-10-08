@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { setConfigFilePath } from '../../../util.js';
+import { parseEvaluationJson } from './json.js';
 
 // This fixed executable accepts data, never model-generated code. Browser
 // globals used by the original consumers exist only in this separate process.
@@ -58,7 +59,7 @@ process.on('message', async message => {
                     messages: [{ role: 'system', content: 'Compare the two public outputs against the task and all behavior dimensions. Output JSON only: {"preference":"left|right|tie|uncertain","deltas": {dimension: integer from -4 to 4},"rationale":"public concise explanation"}. Delta is right minus left; uncertainty must remain uncertain.' },
                         { role: 'user', content: canonical({ ...publicCaseScenario(entry), dimensions: entry.behaviorDimensions,
                             left: pair[flipped ? 'candidate' : 'baseline'].output, right: pair[flipped ? 'baseline' : 'candidate'].output }) }], tools: [], kind: 'grader' });
-                const grade = JSON.parse(result.response.assistantText || result.response.text);
+                const grade = parseEvaluationJson(result.response.assistantText || result.response.text);
                 if (!['left', 'right', 'tie', 'uncertain'].includes(grade.preference) || typeof grade.rationale !== 'string' || grade.rationale.length > 512
                     || !grade.deltas || canonical(Object.keys(grade.deltas).sort()) !== canonical([...entry.behaviorDimensions].sort())
                     || Object.values(grade.deltas).some(v => !Number.isInteger(v) || v < -4 || v > 4)) throw new Error('invalid_grade');

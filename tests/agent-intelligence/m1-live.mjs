@@ -163,8 +163,8 @@ try {
                 const flipped = parseInt(hash(['independent', pair.pairHash]).slice(0, 2), 16) % 2 === 1;
                 let charge;
                 const bridge = await createFrozenEvaluationBridge(secondaryConfig, async payload => {
-                    const result = await f.evaluator.send(f.h.handle, { ...job, id: job.id + ':independent', scopeId: result.doc.scopeId, price: null }, secondaryConfig,
-                        { ...payload, arm: 'judge' }, new AbortController().signal, async () => {}); charge = result.charge; return result.raw;
+                    const paid = await f.evaluator.send(f.h.handle, { ...job, id: job.id + ':independent', scopeId: result.doc.scopeId, price: null }, secondaryConfig,
+                        { ...payload, arm: 'judge' }, new AbortController().signal, async () => {}); charge = paid.charge; return paid.raw;
                 });
                 try {
                     const response = await bridge.rp({ requestId: randomUUID(), trialId: job.id + ':independent:' + pair.pairHash, fixtureHash: pair.case.fixtureHash,

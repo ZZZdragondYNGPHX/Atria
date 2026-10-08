@@ -1,11 +1,12 @@
 import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { CASE_SET_REVISION, selectCases } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 
 // This is the approved M1 engineering acceptance, never production eligibility.
 // Model observations stay separate from report.pairs[].human.
 export function parseBlindGrade(text, pair, flipped) {
-    const grade = JSON.parse(text);
+    const grade = parseEvaluationJson(text);
     const dimensions = pair.case.behaviorDimensions;
     if (!['left', 'right', 'tie', 'uncertain'].includes(grade.preference) || typeof grade.rationale !== 'string' || grade.rationale.length > 512
         || !grade.deltas || Object.keys(grade.deltas).sort().join(',') !== [...dimensions].sort().join(',')

@@ -30,6 +30,7 @@ function syntheticProvider(kind, sends) {
             const source = projectFixtureSource('Tidal Archive', entry.fixtureHash); source.project.displayName = 'Sea Lantern'; source.project.updatedAt = 20;
             message = { content: '', tool_calls: [wireCall('atri_agent_reset_operations', {}, 1), wireCall('atri_agent_set_plan', { summary: 'Synthetic rename', steps: [{ id: 'metadata', title: 'Rename metadata', impact: 'low' }] }, 2), wireCall('atri_agent_project_save', { source, stepId: 'metadata' }, 3), wireCall('atri_agent_prepare_review', {}, 4)] };
         }
+        if (kind === 'rp-skill' && message.content) message.content = '```json\n' + message.content + '\n```';
         return json({ choices: [{ message }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } });
     };
 }

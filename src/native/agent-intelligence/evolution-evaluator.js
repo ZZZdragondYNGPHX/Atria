@@ -7,11 +7,12 @@ import { GenerationService } from '../model-prompt-runtime/generation-service.js
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { observedGenerationUsage } from '../adapters/generation-usage.js';
 import { CASE_SET_REVISION, selectCases, publicCaseScenario } from './evaluation/cases.js';
+import { parseEvaluationJson } from './evaluation/json.js';
 import { EVOLUTION_RULE, evolutionFields as fields, evolutionHash as hash, evolutionInteger as integer, evolutionText as text, sameEvolutionValue as same } from './evolution-repository.js';
 import { createNativeId } from '../identity.js';
 
 export function evolutionEvaluatorRevision() {
-    return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
+    return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
         'evaluation/libraries.js', 'evaluation/loader.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
         '../adapters/generation-host.js', '../adapters/http-generation-provider.js', '../project-agent.js',
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js',
@@ -154,7 +155,7 @@ export class EvolutionEvaluator {
             secretPort: { resolveSecret: async () => 'parent-port' }, providerFor: () => wrapped });
         const result = await service.execute({ requestId: job.id, handle, role: config.route.role, routeRef: { scope: 'player', runtimeRouteId: config.route.runtimeRouteId },
             tools: [], prompt: {}, fallbackMode: 'disabled', signal });
-        const parsed = JSON.parse(result.response.assistantText || result.response.text);
+        const parsed = parseEvaluationJson(result.response.assistantText || result.response.text);
         fields(parsed, ['value', 'rationale']); text(parsed.rationale, 1024);
         return parsed;
     }
