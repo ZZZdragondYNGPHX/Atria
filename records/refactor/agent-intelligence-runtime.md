@@ -759,6 +759,30 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - Product最终c0已commit /push，main `ed1fd90521a63363e29856601abbf5e908c99d10`未合并；集成仅核对本地actual refs /拓扑 /diff与identity files，产品完整包含main。Node20历史48tests /原worker loader对应原source，不能外推本次所有CLI helpers已Node20测试。五个protected dirty hashes与前序Record保留，未提交无关治理 /模板。
 - **M1 pending /不集成。** 剩余是实际行为改善与可用独立第二模型观察；token超建议、用户不手测、闭环执行缺口均不再是本轮停止理由。不能通过重复有效负面 /tie评分取得资格，也不能把manual fixture publication计作automatic eligibility。下一仍仅M1，先复核候选设计与development /promotion隔离，以及第二模型连续500的连接问题；本阶段更新同一Record /live HANDOFF并停止，不进入S11 /G。
 
+
+### 第二模型配置、诊断与临时候补补测（2026-10-08）
+
+- 用户先将第二模型改为 `step-5-preview`，原URL /Key保留。test-only grade-only恢复原cf九对，只补独立评分；4项本地恢复tests通过，source `16b00c23167b032ee15ceb2eec1bbf418c35d69a` 新增三次HTTP503，每次unknown1656，共4968，累计532 /2068775。旧报告当时status误标independently_graded，实际零有效独立观察；后续 `ccfd4bbc1` 修正status判定，旧summary保留并在此更正解释，不能计为成功。
+- 用户提供完整生成URL；核对旧 `/v1` 配置经原normalizer生成的actual endpoint已经一致，没有填错地址或重复path。私有配置保存显式完整URL，原model /Key不变。source `dcde7fdb4c0aa3f2e20bc7899c1a70093de9381f` 按用户请求执行一次独立funded diagnostic，无retry，不清stopped；HTTP503 body error code `model_not_found` 明确为Key所在group没有该model可用channel，不是由状态码猜原因。私有body /request ID保留，group /URL /Key不入Git；unknown1147保留，累计533 /2069922。旧Step连接四次503仍stopped。
+- 用户更改server group并授权重试。source `119dfc32e82e9d2fecd024e6a19d8351c58626d5` 使用持久user-reported配置epoch，新窗口单独记录，旧Haiku500与Step503窗口保留；2项相关本地tests通过。新增三次均HTTP200，却finish_reason=length、content为空；provider每次报告prompt491 /completion1024 /total1515且reasoning_tokens1024。合计4545，累计536 /2074467；三次不完整正文停止该窗口，Project在reserve前拒绝。HTTP503问题已随实际group变化消失，独立grade仍未取得；未知费用没有改为零。
+- source `907cf1e877e86988bdd1941f955e0741b89af769` 仅扩展私有independent grader为有限8192输出，沿原owner reserve /settle、compiler /resolver /provider与同一CLI累计账本 /quota，native evaluator /primary comparison /生产1024边界不变。付费报告pin新runner source，旧cf native revision保持。新增本地2个grader cases覆盖8192实际wire、发送前durable reservation、reported /unknown结算、非法arm /篡改max_tokens零send拒绝、原native仍拒绝8192；原epoch两项加output-fingerprint一项，共2 suites /5 distinct tests passed。首次fake response遗漏ok字段致成功case失败，补全fake HTTP contract后定向复核通过；5个触及文件ESLint /diff /staged diff通过，没有full test /build /CI。
+- 用户提供MiniMax订阅Key，并明确只能作为临时候补，不可用就继续原第二模型。Key与独立临时配置仅私有600保存，默认Step URL /Key /model未被替换；CLI显式temporary-secondary只可配合grade-only。依据[MiniMax官方OpenAI文档](https://platform.minimax.io/docs/api-reference/text-openai-api)选择订阅模型 `MiniMax-M3.1-Flash-Preview` 与官方国际OpenAI兼容接口，不将厂商建议上下文 /tokenizer等冒称已验证。原配置context /tokenizer仍为显式有限测试设置。
+- 临时MiniMax只发送一次实际独立judge；HTTP401 body `invalid api key (2049)`，认证立即停止且不重试，Project在reserve前拒绝该连接，无有效grade。仅证实此次国际接口认证失败，不推断Key在所有区域无效。unknown8830完整预留，累计537 /2083297；私有原报告与错误body保留。按用户指令立即回到Step，不自动探测其它区域或更换永久第二模型。
+- Step沿原同一URL /Key /model，仅将独立grader output1024改8192，私有旧配置备份；actual配置window追加output fingerprint且持久化，旧三个reasoning截断失败不清除。同一新配置restart复用同一window。只补原cf各九对独立评分，原有效primary不利 /tie /uncertain未重试，未再发布或生成候选。
+
+
+
+### 独立评分完成与本轮最终结论（2026-10-08）
+
+- `907cf1e877e86988bdd1941f955e0741b89af769` 的Step补测新增18次send /43794reported tokens：RP九项27058、Project九项16736，全部HTTP200 /完整评分，无新retry或接口错误。RP第二模型4candidate /3baseline /2tie，与冻结primary一致candidate仅3对；Project第二模型9tie，与primary9tie一致但candidate胜0对。两入口均independently_graded，独立观察缺口已补齐；RP仍回归 /dimension负值或分歧，Project仅平局，M1行为门槛仍未通过。
+- 最近529→555累计新增26次 /63284tokens：四个Step503 unknown6115、三个reasoning截断4545reported、一个临时MiniMax401 unknown8830、18个有效Step grade43794reported。原HTTP500 /其它旧失败未知费用均保留，不用成功report覆盖失败，建议超额提示已通知并按授权继续，没有模型货币成本或净收益声明。
+- 最终累计 **555requests /2127091记账tokens**，含historicalCarry252 /1000000；恢复期303实际sends，其中292provider_reported、11unknown共35487预留上界，pending0，历史breached=true保留。quota carry332+223admissions=555，所有id与共享ledger一一对应；minimum3151ms、rolling一分钟峰值10、保守rolling24h峰值555，满足2000 /20硬限。实际两owner的独立grade chargeId /requestHash /snapshotHash /tokens均与共享账一致，无reserved，独占lock释放。
+- 最终Step summary SHA256 `268a887448ad67d4fca54a30d809222659a67050920d0b90adc9dfaf666386c1`；临时MiniMax summary `5a0f74e4c1f670e56d6553457f45d1ba81033b54ccbe9bbf03fb3a1b33a2166b`；group更改后1024截断summary `df0d240fdf45b6243c80e05bedef8dd2c65291fc71749157071ff8b5578ebb84`；此前Step503 summary `ad22e8e29329ea035759cb8d625943fbd75b25cbc1d6a395d5276c5ba3352731`与单请求诊断 `6c134ac1e5b63e960334488477d10d18466278bdb90bbb76cc38e287f6c2132a`保持。
+- 最终ledger SHA256 `1d383c311e34c0b10186cc311d6c9107e3cdf55887bbd32fc540d558307e9c70`；quota `67804494ee460c3f0e4cdf071a5e6679bad9ca49b6bf27ea05dee87c839b757e`。原cf summary `9df6bf648b7775e5c9a7ca2c9a417d168128d6cca7972c7c73bf4365ddcbb3e2`、两个candidate.report exact hash与native evaluator revision均不变，没有human字段或原primary observation改写。私有累计audit与历史audit分别保存，旧529 /532 /533记录不覆盖。
+- Product `907cf1e87` 已commit /push且clean。本地核对main `ed1fd90521a63363e29856601abbf5e908c99d10`为产品祖先，main...product为0 /35；没有集成，因为M1行为门槛失败。阶段最小检查为上述5tests /触及lint /diff，以及既有grade-only恢复4tests；不将历史suite的通过外推新CLI完整覆盖。文档只更新同一Record /Plan /live HANDOFF，五个protected dirty SHA256与前序完全一致，未读写reference，未运行full test /build /CI /UI /Android /真机。
+- **M1 pending，仅余行为改善门槛；不合并main、不进入S11 /G。** 第二模型已可用且完整独立评分，不再把API故障或用户不手测列作当前阻塞。后续若继续，只在既定development /feedback范围复核候选设计、保留promotion隔离，不重复当前有效不利 /tie评分追分；任何新候选按正式M1比较计划另行冻结和记账。本轮到此停止。
+
+
 ## Final state
 
-S01–S10工程交付保持；M1本轮两入口各完整九对与真实私有publication /next-run消费 /rollback已执行，行为改善未达标、第二模型连续500停止，验收仍pending。Product c0已commit /push，main未合并。最终累计529 /2063807，建议超出均已通知继续，daily /RPM硬限审计通过，未知与旧breach保留，pending0 /lock释放。用户无需本人测试；下一仅M1候选与独立评分缺口，不进入S11 /G。
+S01–S10工程交付保持；M1两入口各九对 /36arm检查、私有publication /实际next-run消费 /rollback保持，原比较source为cf、Project恢复c0。Step修复评分输出截断后完成18项独立观察；RP两模型一致candidate仅3对，Project9tie，行为改善未达标，验收仍pending。MiniMax只作临时候补，本次国际接口401后已继续默认Step；所有旧失败 /配置窗口 /费用保留。Product907cf已commit /push，main未合并。最终累计555 /2127091，unknown11 /35487，pending0 /lock释放，API硬限审计通过。用户无需本人测试；同一Record /Plan /live HANDOFF更新完成，下一仅M1候选设计复核，不进入S11 /G。

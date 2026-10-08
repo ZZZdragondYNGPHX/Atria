@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
 - Updated: 2026-10-08
-- Status: 用户明确测试API仅每日2000次 /20RPM硬限；token与其它预算改为建议，超出立即报告并继续。真实九对 /两入口闭环已取得，但行为改善未达标且第二模型连续HTTP500停止，M1 pending。
+- Status: 用户明确测试API仅每日2000次 /20RPM硬限；token与其它预算改为建议，超出立即报告并继续。真实九对 /两入口闭环已取得，行为改善未达标；Step已补齐18项独立评分，M1仍pending，实际结果见同一Record。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
 
@@ -46,10 +46,14 @@ RP继续使用先前实际付费提炼、已冻结且尚未发布的同一候选
 
 读取HANDOFF → index → 本模块 / S10 → Record；实际执行入口 `tests/agent-intelligence/m1-live.mjs`，沿原EvolutionService / evaluator与原repository写入；test-only接受判断不能被production endpoint导入。
 
+独立评分补测使用 `--grade-only`，只重开原私有fixture，核对原report /九对 /charges与native evaluator revision，不重跑提炼、trials、primary judge或publication。用户授权无token硬限后，独立grader允许显式有限8192输出以容纳reasoning；test-only `m1-grader.js` 仍使用原RouteResolver、固定worker bridge的compiler /snapshot /render、原provider和同一owner reserve /settle，再由CLI共享账本 /quota包裹。仅允许judge arm与independent job，核对request hash /exact endpoint /model /max_tokens /context，失败unknown保留完整input+output预留。原native evaluator与生产1024限制不修改，原比较revision /报告不覆盖，补评分source另pin。
+
+用户提供MiniMax订阅Key并限定其只作临时候补；默认第二模型保持 `step-5-preview`。仅显式 `--temporary-secondary` 可选私有候补配置且只允许grade-only，凭证600 /Git exclude。候补不可用立即按原认证 /频繁错误规则停止该连接，继续原第二模型，历史失败窗口和费用不清除。用户报告server group更改后用持久显式epoch区分实际配置；后续将grader output从1024改8192时追加output fingerprint，同一配置restart不新建窗口，旧HTTP503 /不完整响应stop原样保留。
+
 每阶段及结束只做本地最小相关验证，不触发CI或full test / build。相关tests / lint / fixed-loader checks先通过，source commit后再发送真实请求，报告pin该HEAD与实际source hashes；最终更新同一Record / live HANDOFF，停止。
 
 ## 5. 继续执行规则
 
 按用户最新明确授权，历史token超报不会阻止本轮测试。保留原账与overrun记录，仅改变预算执行模式，不解锁生产对象的预算或自动权限。超过任何建议预算立即通知用户并继续；真正达到API daily /rate硬限或原频繁错误阈值时按实际原因停止 /等待，完整工程行为门槛仍保持。
 
-旧partial的主模型回归事实继续保留；token增加成为统计。cf实测两入口各完整九对、36arm原检查全部通过，RP主模型3candidate /4baseline /1tie /1uncertain、Project9tie。RP cf与Project c0恢复均已完成私有review /实际next-run消费 /guarded rollback；没有重跑比较拼资格。第二模型三连续HTTP500停止、没有成功独立评分；行为改善与双模型观察仍不达标，不能因token规则改变宣称M1通过。实际来源 /费用 /hash见同一Record与live HANDOFF。
+旧partial的主模型回归事实继续保留；token增加成为统计。cf实测两入口各完整九对、36arm原检查全部通过，RP主模型3candidate /4baseline /1tie /1uncertain、Project9tie。RP cf与Project c0恢复均已完成私有review /实际next-run消费 /guarded rollback；没有重跑比较拼资格。旧第二模型三连续HTTP500及Step旧503 /截断失败均保留；MiniMax临时国际接口401后按用户要求回到Step，8192有限输出取得RP4candidate /3baseline /2tie与Project9tie，两模型一致candidate分别3 /0；补测只增加独立观察。行为改善门槛仍不达标，不能因连接修复或token规则改变宣称M1通过。实际来源 /费用 /hash见同一Record与live HANDOFF。

@@ -3,11 +3,11 @@
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Updated: 2026-10-08
-- Current checkpoint: **M1真实验证已完成：两入口各九对 /36arm与私有发布消费回滚；行为改善未达标，第二模型三连续500停止，pending /不集成。**
-- Product branch: `feat/agent-intelligence-runtime@c0f8ce6b0`，已commit /push，product worktree干净。
+- Current checkpoint: **M1两入口九对 /36arm与闭环保持；Step完成18项独立评分，行为改善未达标，pending /不集成。**
+- Product branch: `feat/agent-intelligence-runtime@907cf1e87`，已commit /push，product worktree干净。
 - 完整comparison Tested HEAD: `cf28cc3de`；Project lifecycle补证 `c0f8ce6b0`，只追加一实际send，旧comparison /partial各自pin。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
-- Docs: `docs`；本轮前置记录commit `e09d7c812`，结果已更新同一Record / live HANDOFF；接手核对actual refs。
+- Docs: `docs`；本轮结果基于 `b1ca54852` 续更同一Record / Plan / live HANDOFF；接手核对actual refs。
 - Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [自动化验收](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [M1](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery](plans/architecture/agent-intelligence-runtime/delivery.md)。
 - Record: [同一阶段记录](records/refactor/agent-intelligence-runtime.md)。
 
@@ -50,20 +50,20 @@ S06最后已记录累计 **110 requests / 300464 记账 tokens，breached=false*
 
 ## Current M1 result / budget
 
-用户授权agent代劳，不要求本人tests /human labels；按[m1-acceptance](plans/architecture/agent-intelligence-runtime/m1-acceptance.md)复核工程结果，生产automatic human /price /原预算gate保持。用户最新明确测试API仅每日2000次 /20RPM硬限，token及其它预算只建议，超出立即报告并继续；原建议512 /1699536数值与所有charges /unknown /breached历史保留。
+用户授权agent代劳，不要求本人tests /human labels；生产automatic human /price /原预算gate保持。测试API只有每日2000次 /20RPM硬限，token与其它预算只建议，超出通知继续；建议512 /1699536与所有charges /unknown /breached历史保留。
 
-- cf完整comparison：RP /Project各三promotion场景×三次paired trial，九对 /18arm；共36arm原authority /isolation /target_consumed checks全部通过。RP使用原source6c付费冻结proposal，Project独立原公开feedback提炼；旧partial与有效不利评分保留，不混source拼资格、不训练promotion输出。
-- 主模型RP：3candidate /4baseline /1tie /1uncertain；Project：9tie。没有达到每入口至少六对两模型一致candidate胜 /全部非回归门槛。第二模型RP独立盲评连续三次HTTP500，三笔unknown1661各自保留，持久stopped=m1_http_500；没有成功第二模型评分，Project /恢复在reserve前拒绝同连接，不重置失败窗口。
-- cf新增170sends /647103tokens。主模型Project一次transport失败保留4953unknown，追加funded retry成功；其它新primary无失败。累计token与request建议分别超过后即时通知继续；日调用 /RPM没有触发停止。
-- RP cf已完成私有委托review publication /原下一Director真实四send /exact消费 /rollback，client_observation provenance保持。Project cf先publication成功，下一Host因两个Studio Routes未指定Route而报歧义；本地test-only修复并恢复原保存夹具，保留report /current publication身份、原comparison pin，不重跑trials /grading /提炼、不重新发布。
-- Project恢复另外定位发布binding metadata导致whole config hash不同，以及原GenerationService冻结secretPort与wrapper改写冲突；前三次恢复均零API send /原528账不变、报告保留。最终c0使用原明确Route与稳定secretPort，核对实际Prompt /transport /resources及原publicationCurrent，追加1个真实Host request /204tokens，Host activation、exact snapshot /program与rollback均核对，nextRunConsumed /baseRestored=true。两入口闭环齐备，production objects未修改 /automaticPromotion=false /humanPreference=not_observed /currencyCost=unavailable。
-- 最终累计 **529requests /2063807记账tokens**，含旧丢失guard carry252 /1000000；恢复期277实际sends、271reported /6unknown20542、pending0、breached=true仅历史annotation。旧5389 /5217 unknown未覆盖。Project成功trial reportcandidate153468，实际candidate40sends记158421含unknown4953，失败费用不隐藏；全部细分见Record。
-- API shared quota carry332 +197新admissions =529，id与累计账一一对应，最短3151ms、rolling一分钟峰值10、rolling24小时含保守carry峰值529。不是精确当天历史调用统计；不伪造旧timestamps。owner与共享账charges一致、无pending，lock已释放；Document700 /credentials600 /local Git exclude，连接仅由原五local Git keys指向，值不入Git。
-- comparison summary SHA256 `9df6bf648b7775e5c9a7ca2c9a417d168128d6cca7972c7c73bf4365ddcbb3e2`；Project lifecycle summary `25b2e01281521719dc3879f6c4954a742bf16eea36f9fc9e928eb07ce9d57b39`；ledger `50ee44cbde864fc03cf5e556f98018d2e6c048086c7803ed9d06fef271fbdab1`；quota `837f31d47ba55dea281c81badbbaded4328e78132c7c7f4e2afdb31d49f1a1c6`。native evaluator revision仍`f8548173b8ffb754052ade6e5bef06dad046d76a01dce3af8c74c06a0c7d752c`。
-- 最终恢复2distinct本地tests /触及lint /diff通过；此前cf retry7 /response2、c997 quota4 /recovery4 /engineering5 /retry6保持原source，不重复累加。未执行full tests /build /CI /新browser /external DB /Android /真机；五protected dirty hashes与旧Record保持，reference未读写。
+- 原cf完整comparison：RP /Project各三个promotion场景×三次paired trial，九对 /18arm，共36arm原authority /isolation /target_consumed全部通过。RP frozen proposal、Project原公开feedback提炼、primary不利评分原样保留，没有重跑有效比较或学习promotion输出。
+- primary：RP3candidate /4baseline /1tie /1uncertain，Project9tie。原RP cf与Project c0已完成私有委托review /原下一Director或Host实际消费 /guarded rollback；RP provenance保持client_observation，Project为host。production objects未修改、automaticPromotion=false、humanPreference=not_observed、currencyCost=unavailable。
+- 用户把第二模型改为Step后，三503停止；显式完整URL与旧normalizer实际URL一致，单请求诊断另503，body model_not_found说明Key所在group无可用channel。用户改group后新持久配置epoch三次均HTTP200，但1024全用于reasoning，content空 /length，按不完整响应停止。旧Haiku三500 /Step四503 /三截断历史窗口与费用保持。
+- 用户提供MiniMax并明确只作临时候补；Key /独立临时配置600保存、Git exclude，默认Step URL /Key /model保留。MiniMax官方国际OpenAI接口一次401 /invalid api key (2049)，unknown8830保留并认证停止；仅证实本次接口认证失败，随后按用户指令继续原Step，不探测其它区域。
+- source907cf只允许test-only independent grader有限8192输出；原resolver /compiler /provider、owner reserve /settle与CLI同一ledger /quota继续计账，judge-only /context /request hash /exact model /max_tokens校验。native evaluator与原cf revision /生产1024限制不变。Step原配置备份，output变化另追加持久fingerprint，同一配置restart不洗窗口。grade-only只补冻结九对，不再提炼、trial、primary grade、发布或消费。
+- Step8192本轮18次全部成功，43794reported tokens（RP27058 /Project16736），无新retry或接口错误。RP独立4candidate /3baseline /2tie，两模型一致candidate仅3对；Project独立9tie，candidate胜0。独立评分缺口已补齐，两个入口仍未达到至少六对一致candidate胜与全部非回归门槛。
+- 最终累计 **555requests /2127091记账tokens**，含旧carry252 /1000000；恢复期303sends、292reported /11unknown35487、pending0，breached=true仅历史annotation。quota carry332+223admissions=555，id对应原账，minimum3151ms、rolling一分钟峰值10、保守rolling24h峰值555，满足2000 /20。原owner与共享独立charge hashes /tokens一致，无reserved /lock已释放。
+- Step summary SHA256 `268a887448ad67d4fca54a30d809222659a67050920d0b90adc9dfaf666386c1`；ledger `1d383c311e34c0b10186cc311d6c9107e3cdf55887bbd32fc540d558307e9c70`；quota `67804494ee460c3f0e4cdf071a5e6679bad9ca49b6bf27ea05dee87c839b757e`。原cf summary `9df6bf648b7775e5c9a7ca2c9a417d168128d6cca7972c7c73bf4365ddcbb3e2`与两个report exact hash保持；native evaluator revision `f8548173b8ffb754052ade6e5bef06dad046d76a01dce3af8c74c06a0c7d752c`不变。其它历史summaries /audit见同一Record，私有原报告均保留。
+- 最小本地验证：grade-only恢复4tests、epoch历史2tests与最新2suites /5tests按各source保存，不重复累加；触及lint /diff通过。没有full tests /build /CI /新browser /external DB /Android /真机。五protected dirty hashes保持，reference未读写。Product907cf已commit /push /clean，main为祖先、0 /35，未合并。
 
 ## Next checkpoint
 
-**M1 pending /不合并main。** token建议与用户不手测均不是阻塞；剩余是行为改善与可用第二模型独立评分。先在已有development /feedback范围复核候选设计、保持promotion隔离，再处理第二模型连续500的连接问题；已有有效baseline /tie /uncertain不盲目重跑追分。旧失败 /partial /未知费用与持久stopped保持，生产原门槛不改。相关任务完成后只做最小本地验证，更新同一Record /HANDOFF并停止；不进入S11 /G。
+**M1 pending /不合并main，仅余行为改善门槛。** 第二模型已可用，九对独立观察齐备；token建议、用户不手测、闭环与API连接不再是当前阻塞。后续仅在既定development /feedback范围复核候选设计、保持promotion隔离；不重复当前有效不利 /tie评分追分。新候选如需验证须另行冻结并沿原累计账本执行。阶段结束仅最小本地验证，更新同一Record /HANDOFF并停止；不进入S11 /G。
 
-接手提示词：**读取 docs:HANDOFF.md，仅续接M1验收缺口：核对Git /同一账本与quota /stopped连接，查看两入口完整九对与已完成闭环；按原development范围复核候选及第二模型500问题，不重复有效负面比较、不清账，token超建议即时告知继续，不要求用户手测，不进入S11或G。**
+接手提示词：**读取 docs:HANDOFF.md，仅续接M1行为改善缺口：核对Git /同一账本与quota，查看原cf九对、已完成闭环和Step18项独立评分；只在development /feedback范围复核候选设计，不重复有效负面比较、不清账。MiniMax仅临时候补，默认第二模型仍Step。token超建议即时告知继续，不要求用户手测，不进入S11或G。**
