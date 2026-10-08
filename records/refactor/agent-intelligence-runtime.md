@@ -711,6 +711,12 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - **M1 pending / 不集成。** 已有主模型一对回归与partial token增加，且完整九对 / 两模型 / Project与真实publication闭环尚缺。用户无需自行验证 / 重发API来解释本轮中断；恢复前先核对provider usage / output limit与保守reservation口径，保留所有charges及sticky，需明确预算复核规则，不能自动清除保护继续付费。生产human / price gate不变，human未观测。
 - 本轮只做相关本地checks：原consumers6 /partial1、retry最终6、parser2及相关工程helper定向；Node20.20.2固定worker加载与触及lint /diff。无full tests /build /新browser /external DB /Android /真机 /CI，不读reference。五个protected dirty hashes保持，未暂存治理 /模板；本轮更新同一Record /live HANDOFF与m1-acceptance状态、最小文档检查后commit /push docs并停止，不进入S11 /G。
 
+## M1 — 用户明确仅API调用硬限 /继续验证（2026-10-08）
+
+- 用户明确无token要求，真实测试API仅每日2000次 /20RPM硬限，其它建议预算超出立即通知且继续。此授权覆盖前轮sticky token超报的停止规则，保留332 /1305716所有旧entries /carry /breached与5389unknown，不清账、不下调报告用量；token增加不再作为M1工程验收失败条件，行为 /authority /双模型门槛保持，生产原预算 /human /price gate不改。
+- Test-only EvaluationBudget显式advisory模式保留默认strict行为；私有fixture subclass沿原owner queue /schema /storage做真实reserve /settle，不建立新production authority。原repo源码不改，旧私有owner不清breach；新测试owner按新无token硬限语义记录费用。shared CLI quota覆盖两连接与全部sends、最少3150ms，滚动一分钟20与滚动24小时2000硬限、request IDs /timestamps持久；初始化单一332 aggregate carry，不伪造旧timestamps。
+- RP复用原source6c真实付费、冻结proposal：核对original value /rationale /target /base与原公开feedback，报告原source charge provenance，不新增提炼费，不输入promotion输出。重新完整九对，不导入前轮八对拼资格；Project仍独立原feedback提炼。四套19tests passed（quota4 /recovery4 /engineering5 /retry6）、七文件lint /diff通过；source `c997086bd49c2f8a9c875cded65e6ad529f93442`已commit /push。两个入口零send prepare通过、原332 /1305716与breached保持、quota持久初始化；随后沿同一账本继续真实执行，超建议只通知、不停止。
+
 ## Final state
 
-长期任务仍进行；D0–D4 /S01–S09与S10工程交付保持。Product `8223cd70309661c4639d08e323177b56e4fa265a`已commit /push，main `ed1fd90521a63363e29856601abbf5e908c99d10`未集成。M1本轮真实source6c取得八对RP partial，主模型七candidate /一baseline，partial trial tokens增加；单笔usage超upper36触发sticky breach。累计332 /1305716，unknown5389保留、pending0、当前breached=true；保护未关闭，后续付费停止。M1仍pending，生产human /price gate保持；完整比较 /第二模型 /Project /真实发布闭环尚缺。下一仅M1用量与预留阻碍复核，不发送 /清账 /自动解锁，不进入S11 /G。
+长期任务仍进行，S01–S10工程交付保持；M1按用户最新仅2000每日调用 /20RPM硬限继续，token与其它预算只提示。Product c997已commit /push，main未合并；原332 /1305716 /unknown5389 /breached记录保留，quota聚合carry已初始化。RP使用原冻结paid proposal完整重跑，Project与两模型真实闭环继续。原八对partial的主模型一baseline回归保留，不因新token规则宣布通过；实际新结果待取得，仅M1，不进入S11 /G。

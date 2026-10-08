@@ -19,6 +19,8 @@
 | U11 | 读取 Execution Reuse / Cache Locality / Adaptive Invocation 研究，将已确认架构结论整合进当前企划，并参考 Reasoning Continuity 避免重复定义 | 2026-10-06 本轮明确请求；仅授权企划整合与必要 Record / HANDOFF |
 
 2026-10-07新增U12：用户不愿本人验证，授权agent代劳，并对保守结转旧预算 / 新有限额度 / 自动检查与模型盲评的确认提问回复“统一”（按上下文同意处理）。M1工程验收改按 [m1-acceptance](m1-acceptance.md)；生产human gate、有限scope / guards与默认review保持。具体数值与恢复schema为该方向内的工程冻结，不冒称用户逐字段批准。
+2026-10-08用户明确测试API仅每日2000次调用 /20RPM为硬限，无token要求，其它预算为建议、超出立即报告且继续；覆盖U12早期测试budget /token验收语义。详细执行与保守quota见m1-acceptance，不修改生产自动权限。
+
 
 M1 产品范围、自动模式默认方式与分组集成已确认。S01 工程设计本轮冻结；S02–S10 技术契约在进入对应阶段前细化，M2 以后的认知权限仍待设计。
 

@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
 - Updated: 2026-10-08
-- Status: 已取得真实partial证据，M1仍pending；共享累计账本单笔超报触发sticky breach，后续发送停止。
+- Status: 用户明确测试API仅每日2000次 /20RPM硬限；token与其它预算改为建议，超出立即报告并继续。M1继续执行，实际完整结果待取得。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
 
@@ -17,8 +17,8 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 - 两入口各九对完整独立comparison，无重复槽位 / 混source；evaluator / runner source、actual request / snapshot / usage / charge、originaltarget version与配置固定。
 - 两种model observation每对一致且为candidate或tie；每入口至少六对一致candidate胜，其余只能tie；全部重要行为维度非负。invalid / uncertain / 缺失 / disagreement不能补分、伪造、强行通过。
-- 原authority / isolation / target_consumed / source与exact配置检查全部通过；实际usage均可核对到持久账本，无当前budget breach。
-- trial candidate总tokens不高于baseline；提炼 / 两种judge / retry / activation全计本轮预算并单列。价格未确认时currencyCost=unavailable，工程验收只说明可核对token资源与行为表现，不声称货币费用改善或含学习成本后的净收益。若价格取得则另行报告金额，不推断provider价目或隐藏retry。
+- 原authority / isolation / target_consumed / source与exact配置检查全部通过；所有send均可核对到持久账本；usage未知或超建议如实报告，API每日 /速率硬限保持。
+- 用户明确无token要求，trial candidate /baseline tokens仅报告、不作工程通过条件；提炼 / 两种judge / retry / activation全计本轮预算并单列。价格未确认时currencyCost=unavailable，工程验收说明行为表现并单列token资源统计，不声称货币费用改善或含学习成本后的净收益。若价格取得则另行报告金额，不推断provider价目或隐藏retry。
 - 在私有fixture里通过本次用户委托执行明确review publication，保存原intent / receipt；原下一Director / Project request实际消费已选版本并核对exact snapshot / target；再guarded rollback回原base。工程review不是human preference，也不计automatic eligibility；生产用户对象不修改。
 - 原production promotionDecision继续拒绝缺human labels / confirmed price等证据的候选。模型盲评工程通过不触发生产自动发布，也不改默认review / 单目标 / scope / guards。
 
@@ -30,11 +30,15 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 新schema沿原test-only `EvaluationBudget`恢复端口增加显式 `historicalCarry`，旧snapshot格式保持兼容。结转 `origin=lost_s06_upper_bound`，requests=252、tokens=1000000，evidenceHash绑定原Record源码；这是整段旧finite guard上界，不是假造252条旧请求。旧history breach状态仍不可核实，当前period breach单独记录；此恢复仅服务已批准的有限工程测试，不取得生产eligibility。
 
-本轮新增最多260次actual sends /699536记账tokens；累计guard含保守结转为512requests /1699536tokens。260由两入口各18trial arms×最多6sends、原18judges、18额外独立judges、2提炼与最多6次activation合计最坏260确定；不是无限重试额度。每个原job仍保持120sends /1000000tokens /一小时，independent与activation另记有界job但共享同一恢复账本 / 本轮总额，不重获额度。
+2026-10-08用户明确：“无token要求，测试API的硬上限仅为每日2000次调用，20RPM，其他仅为建议，如果超出建议预算只需告诉我即刻，无需停下”。此指令覆盖早期260新sends /699536tokens、含carry512 /1699536及单笔upper的硬预算语义：原数值保留为建议与历史记录，达到 /超过时立即通知并继续，不清除旧breached、entries或unknown。M1工程token非回归 /usage可得性同样仅作统计与提示，原请求资金 /charge关联、实际执行与评分证据仍须完整；生产预算 /human /price gate不改变。
 
-原每日报用户cap2000、20RPM继续约束。串行send间隔至少3150ms，output最多1024，单请求最多300秒，整个本地runner最多两小时；用户2026-10-08要求retry，并明确偶发错误继续、频繁错误停止。HTTP 5xx / transport失败最多追加两次重试，间隔至少10秒，单connection / model连续三次失败或最近20次发送中六次失败即停止；认证、配置、额度与取消错误直接停止，不自动fallback。每次重试重新走原durable reserve / send / settle，未知usage保留upper reservation，不清账、不扩大上述累计envelope；原trial六发送与activation上限仍约束重试。连接失败频率 / 停止状态也持久化，restart不清除。偶发错误可继续采集证据，不等于未知usage取得验收资格。
+API唯一硬限为每日2000次 /20RPM。为避免未知日重置时区，CLI采用保守滚动24小时2000次上限，两个连接与所有retry /judge /activation共用持久quota；迁移时以现有累计332作为单一aggregate carry、从当前时间保守计24小时，不伪造旧逐次timestamps。新admission保存实际requestId /timestamp，先持久计quota与累计账本，再Secret lookup /provider。串行至少3150ms、额外滚动一分钟检查，restart保持quota /rate，不清账。
 
-每次send在Secret lookup / provider之前先durable reserve，新usage未知或取消保留upper；超报sticky breach，restart保留pending并计账，不删历史、换suffix、scope或文件清零。恢复文件有exclusive writer lock，残留lock不绕过；rate checkpoint持久。文件初始化只允许ledger目标不存在，一旦存在必须restore。
+共享EvaluationBudget增加仅显式test CLI使用的advisory模式；默认legacy strict保持。原Product repository不变；仅私有fixture使用test-only subclass沿原mutateOwner /校验 /存储保存reserve与settle，实际tokens照录，不将token建议超额设为新hard breach。旧累计breach保留为历史观察，旧private owner不改写。所有token未知 /超建议分别报告，不以较小分项和覆盖provider total；生产promotionDecision仍使用严格原repo与gate。
+
+固定case /Director步骤 /输出配置 /请求timeout继续管理一次有界实验，不进行无限重试或追试至通过。HTTP5xx /transport每请求最多追加两次，至少10秒；连续三次或最近20次六失败停止该连接，认证 /配置 /取消立即停止，满足用户先前“偶发继续、频繁停止”要求。每次retry都有独立durable charge，失败上界保留。锁与rate /quota checkpoint持久，残留lock不绕过。
+
+RP继续使用先前实际付费提炼、已冻结且尚未发布的同一候选；source proposal /charge /base /target与原公开feedback身份核对，不把旧promotion输出送入学习。重新完整执行3场景×3次paired trial，不导入旧八对取得资格、不虚构新提炼费用；Project仍在原feedback /base上提炼一次候选。新结果独立报告，旧partial原样保留。
 
 ## 4. 本地持久位置与执行
 
@@ -44,8 +48,8 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 每阶段及结束只做本地最小相关验证，不触发CI或full test / build。相关tests / lint / fixed-loader checks先通过，source commit后再发送真实请求，报告pin该HEAD与实际source hashes；最终更新同一Record / live HANDOFF，停止。
 
-## 5. 当前恢复前置
+## 5. 继续执行规则
 
-共享累计账本存在sticky breach时，runner在模型准备前明确拒绝，不能因累计未耗尽就继续send。先核对provider实际usage口径与output上限、保守input / output reservation设计和所有既有charges；未核实的total不以较小分项和替换。模型 / tokenizer / suffix或账本换新不解除原保护；预算恢复规则需明确复核，不能自动清除breach或扩大冻结额度。
+按用户最新明确授权，历史token超报不会阻止本轮测试。保留原账与overrun记录，仅改变预算执行模式，不解锁生产对象的预算或自动权限。超过任何建议预算立即通知用户并继续；真正达到API daily /rate硬限或原频繁错误阈值时按实际原因停止 /等待，完整工程行为门槛仍保持。
 
-恢复发送资格不等于工程验收通过；已有partial模型回归 / token增加保留，完整九对 / 双模型 / 两入口真实闭环仍按本模块原门槛。实际计数、source与失败证据见同一Record / live HANDOFF，不在Plan复制第二份账本。
+旧partial的主模型回归事实继续保留；token增加成为统计。完整九对 /双模型 /两入口真实review、next-run与rollback仍需实际取得，不能因为token规则改变直接宣称M1通过。

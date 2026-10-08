@@ -3,9 +3,9 @@
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Updated: 2026-10-08
-- Current checkpoint: **M1 retry已实际执行并停止；RP八对partial / 主模型七candidate一baseline；单笔用量超预留36tokens触发sticky breach。M1未通过、不集成。**
-- Product branch: `feat/agent-intelligence-runtime@8223cd703`，已commit / push，product worktree干净。
-- Actual paid-run Tested HEAD: `6c99da07f6b6f17a901ecdccd06f2cbc41b746df`；其后仅CLI retry / early preflight修改，本轮报告不冒称tested822。
+- Current checkpoint: **用户明确测试仅每日2000调用 /20RPM硬限，token建议超出即报告继续；M1新规则真实执行中。原八对partial /超报保留。**
+- Product branch: `feat/agent-intelligence-runtime@c997086bd`，已commit /push，product worktree干净。
+- 当前paid-run Tested HEAD: `c997086bd49c2f8a9c875cded65e6ad529f93442`；前轮原source6c八对partial与旧费用保持各自pin。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 - Docs: `docs`；本轮前置记录commit `c56b086e0`，结果已更新同一Record / live HANDOFF；接手核对actual refs。
 - Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [自动化验收](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [M1](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery](plans/architecture/agent-intelligence-runtime/delivery.md)。
@@ -60,13 +60,15 @@ S06最后已记录累计 **110 requests / 300464 记账 tokens，breached=false*
 - 最终累计 **332requests /1305716记账tokens，currentPeriodBreached=true，pending0、unknown1（5389）**；本恢复期80sends /305716tokens，含旧carry。总额仍低于512 /1699536，但单笔超报保护已触发；不能将账面剩余180 /393820当作可发送资格，不清账 / 关breach / 换session绕过。
 - 私有实际summary SHA256 `109b1bed3af688ee3d2278fadd0233bb1d202a86c043ef7034465ea3bbeb9633`；累计ledger SHA256 `d81f350ad12de02a0a6c68b9d99fc100fba1c80efbacd85d300ae3ab91ecf963`。native evaluator revision `f8548173b8ffb754052ade6e5bef06dad046d76a01dce3af8c74c06a0c7d752c`与最终product相同；runner Tested HEAD仍6c，后续CLI修复不冒称付费验证过。
 
-## Local checks / next checkpoint
+## 当前授权与执行 / next checkpoint
 
-- 本轮原consumers6 / partial worker1 / retry先5后新增adapter包装用例，共6retry全部通过；parser2与原固定worker RP fenced / Project plain及工程helper3定向7passed /5skipped（重复worker不累加）。触及文件lint / diff、Node20.20.2固定worker加载通过；原S10 Node20核心48与准备轮61各保留对应source证据。
-- source9e修CLI对原provider包装transport异常的识别，必须本连接已观测失败才retry，认证 / 未观测失败拒绝；原adapter + fake transport验证两次分别预留、首笔unknown保留。source822增加early sticky preflight；在实际breached账本上最小验证exit1 /明确reason /零新send、ledger与rate字节不变、lock释放。两个source均commit / push，实际运行不热替换模块。
-- 无full tests / build / 新browser / external DB / Android / 真机 / CI，不读reference。main AGENTS与docs四份治理 / 模板既有dirty保留；main未合并，source分支保留，main...product为0 /24。
-- **M1仍pending**：完整九对 / secondary / 两入口真实闭环缺失，已有一对主模型回归与partial token增加。API无需用户重发以解释本次中断；恢复前先核对provider用量口径、输出上限与保守reservation设计，保留所有真实charges及sticky breach，不自动解锁 / 重开预算。不降低比较门槛，不训练promotion输出追试至通过。
+- 用户最新明确：“无token要求，测试API的硬上限仅为每日2000次调用，20RPM，其他仅为建议，如果超出建议预算只需告诉我即刻，无需停下”。覆盖前轮token sticky停止与工程token非回归条款，生产原预算 /human /price gate不改变。完整行为 /authority /双模型与两入口闭环仍需取得，不能凭新规则宣布通过。
+- c997仅test-only：EvaluationBudget显式advisory restore保留历史breached /entries /unknown；原product repository默认strict不变。私有fixture subclass沿原owner queue /schema /storage保存真实reserve /settle，token建议超额仅提示，不设新hard violation，不清旧private owner。shared API quota两连接通用、滚动24小时2000 /滚动一分钟20、至少3150ms串行，全部retry /judge /activation先持久admit；迁移carry以现有累计332聚合保守计24小时，不伪造252旧逐次timestamps。
+- 超过原建议累计512 /1699536或单笔预留就即时报告并继续。原数字只是建议；actualtotal照记，未知保留upper，不推断多1528token来源。频繁错误仍按连接三连续 /最近20六失败停止，偶发最多两追加retry /10秒；不追试至通过，不自动fallback。
+- RP复用source6c已付费冻结proposal，核对value /rationale /target /base及原公开feedback，报告原job /charge provenance，不新提炼、不训练promotion输出；完整重跑九对，不导入旧八对混资格。Project独立提炼 /比较 /第二模型 /review /next-run /rollback按原m1-acceptance执行。
+- 本轮四套19tests passed：quota4 /recovery4 /engineering5 /retry6；七文件lint /diff passed，source commit /push。零send prepare两入口通过，累计332 /1305716与breached=true保持，quota已持久初始化，source c997开始真实执行。原验证与partial evidence各保持source，不重复累加。
+- 当前执行进程 /exclusive lock存在期间不要并发启动runner。阶段结束核对实际ledger /quota /rate /report与预算提示，更新同一Record /HANDOFF并停止，不要求用户手测。无full tests /build /CI /新browser /external DB /Android /真机，不读reference、五个既有dirty保持。
 
-本轮Record / live HANDOFF与Plan状态更新、最小本地文档验证后停止；不集成main、不进入S11 / G。
+下一仅M1：继续当前原账本 /API配额上的实际固定比较与两入口闭环；超建议告知并继续，日调用 /RPM硬限保留。行为未达标如实pending，不合并main、不进入S11 /G。
 
-接手提示词：**读取 docs:HANDOFF.md，仅继续M1验收阻碍复核：332 /1305716累计账本已sticky breach，先核对用量与预留口径，不发送请求、不清账或自动解锁。保留八对partial及主模型回归 / token增加事实，不要求用户手测，不进入S11或G。**
+接手提示词：**读取 docs:HANDOFF.md，继续M1按用户最新仅2000每日 /20RPM硬限验证；先核对运行进程 /lock /同一累计账本与quota，不并发或清账，token超建议立即告知继续。保留原冻结候选与旧partial，不要求用户手测，不进入S11或G。**
