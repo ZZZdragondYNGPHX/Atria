@@ -67,3 +67,5 @@ Project 原评审只接收最终 source JSON，遗漏计划、公开说明及修
 新 promotion 使用 synthetic:v2，与旧 v1/本轮 development 分离：同六类场景、不同输入/名称/时间修订与公开行为要求。候选提炼只读取 development/公开反馈/原 base/诊断；不向提炼提供 v2 promotion fixture 或输出。新候选必须在实测前保存 exact value、来源 development report hash、原反馈/诊断与 configuration pin。每入口仍三场景×三次/九对、至少六对双模型一致胜、其它一致tie、重要维度无回归，全部原 authority/isolation/消费及私有 publication/下一run/rollback 门槛保持。
 
 沿同一555次累计 ledger/quota/rate/失败窗口，不覆盖旧文件；默认Step8192 independent grader。最多一次 baseline development、一次优化 development、一次冻结候选验收，不增加下一轮。若 development 未显示可信改善仍可取得一次冻结候选的失败验收证据，不追分、不合并main。生产human/price/预算gate保持；完成同一Record/HANDOFF并停止，不进入S11/G。
+
+首次 development 的 RP 三对及双模型评分完整；Project 尚无有效 pair 时一次 HTTP header-success/body-timeout 被原300秒Route中断。保留原 partial/全部 charges，只允许单次 Project-only continuation 补完其三对，RP 不重跑/重评分；组合 development 来源分别 pin 原始 summary/hash/HEAD。CLI 每次 transport/body 的时限缩至原Route的四分之一（最多80秒），使三次 funded attempts 与原10秒 backoff 能在原300秒Route内完成，不改原Route配置。header成功后body失败重新分类为一次失败，保存旧窗口备份/归因，保留全部历史失败、最近窗口与费用，不清账或另开epoch；真正取消/认证/频繁错误仍停止。
