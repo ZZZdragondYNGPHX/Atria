@@ -416,16 +416,19 @@ try {
                 if (diagnosticSource) {
                     const previous = path.join(directory, 'm1-reports', diagnosticSource);
                     const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
-                    const { pair } = JSON.parse(fs.readFileSync(path.join(previous, 'project-prompt-pair-project_authoring_d1-1.json'), 'utf8'));
-                    const observation = source.entries.find(e => e.kind === 'project-prompt')?.independent?.find(o => o.pairHash === pair.pairHash);
+                    const report = JSON.parse(fs.readFileSync(path.join(previous, 'project-prompt-job.json'), 'utf8')).candidate.report;
+                    const observation = source.entries.find(e => e.kind === 'project-prompt')?.independent?.find(o => o.status === 'unavailable');
+                    // Independent grading consumes finalized report pairs,
+                    // whose identity differs from the earlier onPair capture.
+                    const pair = report.pairs.find(p => p.pairHash === observation?.pairHash);
                     // The provider wraps HTTP failures; the original summary
                     // retains their exact status in its transport checkpoint.
-                    if (observation?.status !== 'unavailable' || !source.transportFailures?.includes('m1_http_404')) throw new Error('diagnostic_failed_grade_required');
+                    if (!pair || pair.case.caseId !== 'project_authoring_d1' || observation?.status !== 'unavailable' || !source.transportFailures?.includes('m1_http_404')) throw new Error('diagnostic_failed_grade_required');
                     const flipped = parseInt(hash(['independent', pair.pairHash]).slice(0, 2), 16) % 2 === 1;
                     messages = [{ role: 'system', content: 'Blindly compare the two outputs against the task and dimensions. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"concise public explanation"}. Delta means right minus left. Do not guess missing evidence.' },
                         { role: 'user', content: JSON.stringify({ ...pair.scenario, dimensions: pair.case.behaviorDimensions, left: pair[flipped ? 'candidate' : 'baseline'].output, right: pair[flipped ? 'baseline' : 'candidate'].output }) }];
                     fixtureHash = pair.case.fixtureHash;
-                    summary.diagnosticSource = { summaryHash: hash(source), pairHash: pair.pairHash, messagesHash: hash(messages), testedHead: source.testedHead, gradingEligible: false };
+                    summary.diagnosticSource = { summaryHash: hash(source), reportHash: hash(report), pairHash: pair.pairHash, messagesHash: hash(messages), testedHead: source.testedHead, gradingEligible: false };
                     store('summary.json', summary);
                 }
                 const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'm1-secondary-diagnostic-' + randomUUID() + ':diagnostic', scopeId: doc.scopeId, price: null };
