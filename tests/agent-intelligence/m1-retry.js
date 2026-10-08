@@ -34,7 +34,10 @@ export class M1RetryPolicy {
             signal.throwIfAborted();
             try { return await operation(attempt); }
             catch (error) {
-                if (!this.transient(error.code) || this.state(key).stopped || attempt === 2 || signal.aborted) throw error;
+                // The original HTTP adapter deliberately wraps fetch errors.
+                // Retry that wrapper only after this transport observed a fail.
+                const retryable = this.transient(error.code) || error.kind === 'transport' && this.state(key).consecutive > 0;
+                if (!retryable || this.state(key).stopped || attempt === 2 || signal.aborted) throw error;
                 await this.wait(signal);
             }
         }

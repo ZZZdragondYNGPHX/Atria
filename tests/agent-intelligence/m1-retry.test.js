@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { M1RetryPolicy } from './m1-retry.js';
 import { EvaluationBudget } from './budget.js';
+import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
 
 const failure = code => Object.assign(new Error(code), { code });
 test('a transient retry funds every send and retains unknown usage', async () => {
@@ -46,4 +47,23 @@ test('restart retains a stopped connection and rejects malformed checkpoints', (
     for (let i = 0; i < 3; i++) policy.observe('primary', 'm1_http_524');
     expect(() => new M1RetryPolicy({ snapshot }).assertAvailable('primary')).toThrow('m1_http_524');
     expect(() => new M1RetryPolicy({ snapshot: { primary: { ...snapshot.primary, recent: ['false'] } } })).toThrow('invalid_transport_checkpoint');
+});
+test('the original HTTP adapter wrapping a transient failure still permits a funded retry', async () => {
+    const policy = new M1RetryPolicy({ wait: async () => {} });
+    const budget = new EvaluationBudget({ maxRequests: 3, maxTotalTokens: 300 }); let sends = 0;
+    const response = { ok: true };
+    const provider = createHttpGenerationProvider({ fetchImpl: async () => {
+        sends++;
+        if (sends === 1) { policy.observe('primary', 'm1_http_524'); throw failure('m1_http_524'); }
+        policy.observe('primary'); return response;
+    } });
+    const result = await policy.send('primary', async attempt => {
+        const id = 'wrapped-' + attempt;
+        expect(budget.reserve({ requestId: id, trialId: 'wrapped', inputTokens: 50, reservedOutput: 50, kind: attempt ? 'retry' : 'model' }).status).toBe('passed');
+        let usage = null;
+        try { const raw = await provider.send({ endpoint: 'https://fixture.invalid', body: {} }, { secret: 'fixture-only', signal: new AbortController().signal }); usage = 20; return raw; }
+        finally { budget.settle(id, usage); }
+    }, new AbortController().signal);
+    expect(result).toBe(response); expect(sends).toBe(2);
+    expect(budget.snapshot()).toMatchObject({ requests: 2, tokens: 120 });
 });
