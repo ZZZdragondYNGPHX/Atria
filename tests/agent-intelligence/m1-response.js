@@ -1,5 +1,9 @@
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 
+export function m1TransportFailureCode(error, cancelled) {
+    return typeof error.code === 'string' && error.code.startsWith('m1_http_') ? error.code : cancelled ? 'm1_cancelled' : 'm1_transport_failed';
+}
+
 export function m1BodyFailure(error) {
     return error instanceof SyntaxError || ['AbortError', 'TimeoutError'].includes(error.name)
         || ['AbortError', 'TimeoutError'].includes(error.cause?.name)

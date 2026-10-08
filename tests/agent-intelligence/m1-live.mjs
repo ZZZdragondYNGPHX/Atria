@@ -14,7 +14,7 @@ import { parseBlindGrade, automatedAcceptance } from './m1-acceptance.js';
 import { M1RetryPolicy } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
-import { completeM1Response, m1BodyFailure } from './m1-response.js';
+import { completeM1Response, m1BodyFailure, m1TransportFailureCode } from './m1-response.js';
 import { projectActivationMatches } from './m1-resume.js';
 import { createM1SecretPort } from './m1-secrets.js';
 import { m1TransportKey } from './m1-transport-key.js';
@@ -43,10 +43,11 @@ try {
     const cycleBaseline = option.length === 3 && option[2] === '--cycle-baseline' || Boolean(cycleBaselineProject);
     const cycleOptimize = option.length === 3 && option[2].startsWith('--cycle-optimize=') ? option[2].slice('--cycle-optimize='.length) : null;
     const cycleAcceptance = option.length === 3 && option[2].startsWith('--cycle-acceptance=') ? option[2].slice('--cycle-acceptance='.length) : null;
-    const cycle = cycleBaseline || cycleOptimize || cycleAcceptance;
-    const development = cycleBaseline || Boolean(cycleOptimize);
+    const cycleFinish = option.length === 3 && option[2].startsWith('--cycle-finish-development=') ? option[2].slice('--cycle-finish-development='.length) : null;
+    const cycle = cycleBaseline || cycleOptimize || cycleAcceptance || cycleFinish;
+    const development = cycleBaseline || Boolean(cycleOptimize || cycleFinish);
     if (temporarySecondary && !gradeName) throw new Error('temporary_secondary_grading_only');
-    if (!(option.length === 2 || prepareOnly || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    if (!(option.length === 2 || prepareOnly || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     assertM1PrivateAccess(directory, 0o700);
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -116,8 +117,25 @@ try {
         summary.entries.push({ ...rp, performedThisRun: false, sourceTestedHead: source.testedHead });
         for (const file of ['rp-skill-job.json', 'rp-skill-independent.json', 'development-feedback.json']) fs.copyFileSync(path.join(previous, file), path.join(output, file));
     }
-    let cycleSource;
-    if (cycleOptimize || cycleAcceptance) {
+    let cycleSource, finishSource;
+    if (cycleFinish) {
+        const previous = path.join(directory, 'm1-reports', cycleFinish);
+        const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
+        const manifest = JSON.parse(fs.readFileSync(path.join(previous, 'development-continuation.json'), 'utf8'));
+        const original = JSON.parse(fs.readFileSync(path.join(previous, 'rp-skill-job.json'), 'utf8'));
+        if (source.mode !== 'cycle_optimized_development' || source.entries.length !== 1 || source.entries[0].reason !== 'evaluation_runtime_failed'
+            || source.entries[0].independent.length || hash(source) !== manifest.sourceSummaryHash || hash(original.candidate.diff.after) !== manifest.frozenRpValueHash
+            || !/^run-[0-9]+-[a-f0-9]{8}$/.test(manifest.baselineRunId)) throw new Error('development_continuation_invalid');
+        const pairs = ['rp_agency_d1', 'rp_memory_d1'].map(id => {
+            const observed = JSON.parse(fs.readFileSync(path.join(previous, 'rp-skill-pair-' + id + '-1.json'), 'utf8'));
+            if (hash(observed) !== manifest.pairSources[id] || observed.pair.case.split !== 'development' || observed.pair.case.caseId !== id) throw new Error('development_pair_changed');
+            return observed.pair;
+        });
+        finishSource = { original, pairs, source, manifest };
+        cycleSource = { previous: path.join(directory, 'm1-reports', manifest.baselineRunId) };
+        summary.mode = 'cycle_optimized_development';
+        summary.continuationSource = { summaryHash: hash(source), manifestHash: hash(manifest), testedHead: source.testedHead, completedPairsRetried: false };
+    } else if (cycleOptimize || cycleAcceptance) {
         const previous = path.join(directory, 'm1-reports', cycleOptimize || cycleAcceptance);
         const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
         const diagnosedPartial = cycleOptimize && source.continuationSource && source.entries.find(e => e.kind === 'rp-skill')?.independent.length === 3
@@ -165,6 +183,7 @@ try {
     summary.transportEpochs = transportEpochs;
     const retryPolicy = new M1RetryPolicy({ snapshot: fs.existsSync(transportCheckpoint) ? read('m1-transport-state.json') : {},
         onChange: state => writeFileAtomic.sync(transportCheckpoint, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 }) });
+    const activeTransportKeys = new Set();
     const transport = async (url, options) => {
         const model = JSON.parse(options.body).model, key = m1TransportKey(url, model, transportEpochs);
         if (!diagnoseOnly) retryPolicy.assertAvailable(key);
@@ -186,7 +205,7 @@ try {
             retryPolicy.observe(key);
             return response;
         } catch (error) {
-            const code = error.code?.startsWith('m1_http_') ? error.code : options.signal.aborted || overall.signal.aborted ? 'm1_cancelled' : 'm1_transport_failed';
+            const code = m1TransportFailureCode(error, options.signal.aborted || overall.signal.aborted);
             retryPolicy.observe(key, code);
             throw Object.assign(new Error(code), { code });
         }
@@ -245,7 +264,16 @@ try {
                     return { value, rationale: original.candidate.rationale };
                 };
             }
-            if (cycleOptimize) {
+            if (cycleFinish && kind === 'rp-skill') {
+                const original = finishSource.original;
+                f.evaluator.extract = async (_handle, _job, _config, signal, fresh, input) => {
+                    await fresh(); signal.throwIfAborted();
+                    if (hash(input.base) !== hash(original.candidate.diff.before)) throw new Error('cycle_frozen_base_changed');
+                    return { value: original.candidate.diff.after, rationale: original.candidate.rationale };
+                };
+                entry.proposalSource = { origin: 'unchanged_partial_development_candidate', valueHash: hash(original.candidate.diff.after), testedHead: finishSource.source.testedHead };
+            }
+            if (cycleOptimize || cycleFinish) {
                 const notes = JSON.parse(fs.readFileSync(path.join(cycleSource.previous, 'development-feedback.json'), 'utf8'));
                 const note = notes[kind];
                 if (!note?.rationale || !note.note) throw new Error('cycle_feedback_required');
@@ -308,6 +336,7 @@ try {
             const send = f.evaluator.send.bind(f.evaluator);
             f.evaluator.send = async (handle, job, config, payload, signal, fresh) => {
                 const transportKey = m1TransportKey(payload.rendered.endpoint, payload.rendered.body.model, transportEpochs);
+                activeTransportKeys.add(transportKey);
                 const fundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
@@ -342,7 +371,7 @@ try {
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
                 async pair => { store(kind + '-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); },
                 async trial => { store(kind + '-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial); },
-                development ? { split: 'development', repetitions: 1 } : { split: 'promotion', repetitions: 3 });
+                development ? { split: 'development', repetitions: 1, ...(cycleFinish && kind === 'rp-skill' ? { caseIds: ['rp_variant_d1'] } : {}) } : { split: 'promotion', repetitions: 3 });
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';
@@ -367,7 +396,11 @@ try {
                 if (check.reasons.some(r => ['evaluation_identity_changed', 'independent_cases_incomplete', 'durable_charge_mismatch', 'pair_identity_or_human_changed',
                     'primary_model_observation_unfunded', 'authority_or_execution_incomplete', 'usage_or_durable_charge_missing'].includes(r))) throw new Error('grading_source_evidence_invalid');
             }
-            for (const pair of candidate.report.pairs) {
+            const observedPairs = cycleFinish && kind === 'rp-skill' ? [...finishSource.pairs, ...candidate.report.pairs] : candidate.report.pairs;
+            if (development) entry.developmentComparisons = observedPairs.map(pair => ({ caseId: pair.case.caseId, caseRevision: pair.case.caseRevision, pairHash: pair.pairHash,
+                sourceTestedHead: finishSource?.pairs.includes(pair) ? finishSource.source.testedHead : testedHead, judge: pair.judge,
+                checks: { baseline: pair.baseline.checks, candidate: pair.candidate.checks } }));
+            for (const pair of observedPairs) {
                 const flipped = parseInt(hash(['independent', pair.pairHash]).slice(0, 2), 16) % 2 === 1;
                 let charge;
                 const bridge = await createFrozenEvaluationBridge(secondaryConfig, async payload => {
@@ -457,7 +490,7 @@ try {
             store('summary.json', summary);
             console.log(JSON.stringify({ kind, status: entry.status, reason: entry.reason || null, acceptance: entry.acceptance || null }));
         }
-        if ([...retryPolicy.connections.values()].some(s => s.stopped) && !entry.acceptance) break;
+        if ([...activeTransportKeys].some(key => retryPolicy.state(key).stopped) && !entry.acceptance) break;
     }
     if (!prepareOnly && !summary.accepted) process.exitCode = 1;
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));

@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { createServer } from 'node:http';
 import { fetch } from 'undici';
-import { m1BodyFailure } from './m1-response.js';
+import { m1BodyFailure, m1TransportFailureCode } from './m1-response.js';
 import { M1RetryPolicy } from './m1-retry.js';
 
 test('HTTP success followed by a stalled body is a single failed response, preserving the failure window', async () => {
@@ -18,6 +18,8 @@ test('HTTP success followed by a stalled body is a single failed response, prese
         expect(policy.state('fixture')).toEqual({ consecutive: 1, recent: [true], stopped: null });
         expect(m1BodyFailure(new Error('agent_evolution_base_changed'))).toBe(false);
         expect(m1BodyFailure(new TypeError('terminated', { cause: new DOMException('request timeout', 'TimeoutError') }))).toBe(true);
+        expect(m1TransportFailureCode(new DOMException('request timeout', 'TimeoutError'), false)).toBe('m1_transport_failed');
+        expect(m1TransportFailureCode(new DOMException('cancelled', 'AbortError'), true)).toBe('m1_cancelled');
     } finally {
         server.closeAllConnections();
         await new Promise(resolve => server.close(resolve));

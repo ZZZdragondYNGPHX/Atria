@@ -161,6 +161,8 @@ export class EvolutionEvaluator {
     }
     async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}, selection = { split: 'promotion', repetitions: 3 }) {
         if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new TypeError('Invalid finite evaluation selection');
+        if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
+            || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !selectCases({ purpose: 'evaluation', split: 'development' }).some(c => c.caseId === id && c.entrance === job.domain)))) throw new TypeError('Invalid development case selection');
         const charges = [], evaluatorRevision = evolutionEvaluatorRevision();
         const child = fork(fileURLToPath(new URL('./evaluation/worker.js', import.meta.url)), [], {
             execArgv: ['--experimental-loader', new URL('./evaluation/loader.js', import.meta.url).href], env: { PATH: process.env.PATH || '', NODE_ENV: 'production' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], serialization: 'advanced',

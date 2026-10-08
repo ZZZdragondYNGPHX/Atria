@@ -36,7 +36,10 @@ process.on('message', async message => {
         const { createFrozenEvaluationBridge } = await import('./worker-bridge.js');
         const selection = message.selection || { split: 'promotion', repetitions: 3 };
         if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new Error('invalid_evaluation_selection');
-        const entries = selectCases({ purpose: 'evaluation', split: selection.split }).filter(c => c.entrance === message.domain);
+        const available = selectCases({ purpose: 'evaluation', split: selection.split }).filter(c => c.entrance === message.domain);
+        if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
+            || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !available.some(c => c.caseId === id)))) throw new Error('invalid_development_selection');
+        const entries = selection.caseIds ? available.filter(c => selection.caseIds.includes(c.caseId)) : available;
         const pairs = [];
         for (const entry of entries) for (let repetition = 1; repetition <= selection.repetitions; repetition++) {
             const pair = { case: entry, scenario: publicCaseScenario(entry), repetition, baseline: null, candidate: null, judge: null, human: null };
