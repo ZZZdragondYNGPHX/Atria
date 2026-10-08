@@ -1,12 +1,37 @@
 import { afterEach, expect, test } from '@jest/globals';
 import { evolutionFixture, testConfig } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { m1GraderConfiguration, sendM1Grader } from './m1-grader.js';
+import { m1GraderConfiguration, sendM1Grader, m1ExtractionConfiguration, sendM1Extraction } from './m1-grader.js';
+import { m1TransportKey } from './m1-transport-key.js';
+import { M1RetryPolicy } from './m1-retry.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 
 const cleanup = [];
 afterEach(async () => { for (const fn of cleanup.splice(0)) await fn(); });
+
+test('authorized extraction uses 8000 on the original compiler/provider with a separate persistent output window', async () => {
+    let sends = 0;
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { realEvaluator: true, fetchImpl: async (_url, options) => {
+        sends++;
+        expect(JSON.parse(options.body).max_tokens).toBe(8000);
+        expect((await f.repository.owner(f.h.handle)).attempts.at(-1)).toMatchObject({ kind: 'extraction', status: 'reserved' });
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '{"value":"Original style. Explain the actual review state.","rationale":"Address the diagnosed missing review explanation."}' } }], usage: { prompt_tokens: 644, completion_tokens: 2000, total_tokens: 2644 } }) };
+    } });
+    cleanup.push(f.h.cleanup);
+    const original = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), before = hash(original);
+    const config = m1ExtractionConfiguration(original);
+    const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'fixture-extraction', scopeId: doc.scopeId, price: null };
+    f.evaluator.send = (handle, request, resolved, packet, signal, fresh) => sendM1Extraction(f.evaluator, handle, request, resolved, packet, signal, fresh);
+    const result = await f.evaluator.extract(f.h.handle, job, config, new AbortController().signal, async () => {}, { base: 'Original style.', feedback: [] });
+    expect(result.value).toContain('actual review state'); expect(sends).toBe(1); expect(hash(original)).toBe(before);
+    expect((await f.repository.owner(f.h.handle)).attempts[0]).toMatchObject({ kind: 'extraction', status: 'reported', tokens: 2644 });
+    const old = m1TransportKey('fixture-url', 'fixture-model'), revised = m1TransportKey('fixture-url', 'fixture-model', {}, 8000);
+    const policy = new M1RetryPolicy({ snapshot: { [old]: { consecutive: 3, recent: [true, true, true], stopped: 'm1_response_incomplete' } } });
+    expect(() => policy.assertAvailable(old)).toThrow('m1_response_incomplete'); policy.assertAvailable(revised);
+    policy.observe(revised); const restarted = new M1RetryPolicy({ snapshot: Object.fromEntries(policy.connections) });
+    expect(restarted.state(old).stopped).toBe('m1_response_incomplete'); expect(restarted.state(revised).recent).toEqual([false]);
+});
 
 test.each([false, true])('extended independent grader funds the original provider and settles failure=%s without changing native limits', async failure => {
     let sends = 0, reserved;

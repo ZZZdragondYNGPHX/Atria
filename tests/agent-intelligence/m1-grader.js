@@ -17,15 +17,38 @@ export async function m1GraderConfiguration(host, handle, routeId) {
 }
 
 export async function sendM1Grader(evaluator, handle, job, config, payload, signal, fresh) {
+    return sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, false);
+}
+
+export function m1ExtractionConfiguration(original) {
+    const config = structuredClone(original);
+    if (config.connection.providerAdapter !== 'provider.openai-compatible' || config.generation.streaming.enabled) throw new Error('unsupported_m1_extraction_configuration');
+    integer(config.model.limits.contextTokens, 8001, Number.MAX_SAFE_INTEGER);
+    config.model.limits.outputTokens = 8000;
+    config.generation.output.maxTokens = 8000;
+    const generation = config.resources.find(r => r.ref.resourceType === 'core.generation-profile');
+    if (!generation) throw new Error('m1_extraction_generation_missing');
+    generation.resource.output.maxTokens = 8000;
+    generation.resource.revision = generation.ref.revision = config.route.generationProfileRef.revision = 'm1-extraction-8000-v1';
+    config.generation.revision = generation.resource.revision;
+    return config;
+}
+
+export async function sendM1Extraction(evaluator, handle, job, config, payload, signal, fresh) {
+    return sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, true);
+}
+
+async function sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, extraction) {
     await fresh(); signal.throwIfAborted();
-    if (payload.arm !== 'judge' || !job.id.endsWith(':independent') || job.price !== null) throw new Error('independent_m1_grader_only');
-    integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, 8192);
+    if (extraction ? payload.arm !== 'extraction' || payload.trialId !== job.id + ':extract' || job.price !== null
+        : payload.arm !== 'judge' || !job.id.endsWith(':independent') || job.price !== null) throw new Error(extraction ? 'm1_extraction_only' : 'independent_m1_grader_only');
+    integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, extraction ? 8000 : 8192);
     if (payload.rendered.endpoint !== config.connection.endpoint || payload.rendered.body.model !== config.model.remoteModelId
         || payload.rendered.body.max_tokens !== payload.outputTokens || payload.outputTokens !== config.generation.output.maxTokens
         || payload.outputTokens > config.model.limits.outputTokens || hash(payload.rendered) !== payload.requestHash) throw new Error('m1_grader_transport_changed');
     if (payload.inputTokens + payload.outputTokens > config.model.limits.contextTokens) throw new Error('m1_grader_context_exceeded');
     const id = randomUUID();
-    const reservation = await evaluator.repository.reserve(handle, { id, scopeId: job.scopeId, jobId: job.id, kind: 'judge', upperBound: payload.inputTokens + payload.outputTokens,
+    const reservation = await evaluator.repository.reserve(handle, { id, scopeId: job.scopeId, jobId: job.id, kind: extraction ? 'extraction' : 'judge', upperBound: payload.inputTokens + payload.outputTokens,
         trialId: payload.trialId, requestHash: payload.requestHash, snapshotHash: payload.snapshotHash });
     let usage = null;
     try {
@@ -36,7 +59,7 @@ export async function sendM1Grader(evaluator, handle, job, config, payload, sign
         const response = await provider.send(payload.rendered, { secret, signal });
         const raw = await provider.parseStream(response);
         usage = observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' });
-        return { raw, charge: { id, trialId: payload.trialId, kind: 'judge', requestHash: payload.requestHash, snapshotHash: payload.snapshotHash,
+        return { raw, charge: { id, trialId: payload.trialId, kind: extraction ? 'extraction' : 'judge', requestHash: payload.requestHash, snapshotHash: payload.snapshotHash,
             status: usage?.totalTokens !== undefined ? 'reported' : 'unknown', tokens: usage?.totalTokens ?? reservation.upperBound, usage, cost: null } };
     } finally { await evaluator.repository.settle(handle, id, usage?.totalTokens ?? null, { usage, cost: null }); }
 }
