@@ -69,3 +69,5 @@ Project 原评审只接收最终 source JSON，遗漏计划、公开说明及修
 沿同一555次累计 ledger/quota/rate/失败窗口，不覆盖旧文件；默认Step8192 independent grader。最多一次 baseline development、一次优化 development、一次冻结候选验收，不增加下一轮。若 development 未显示可信改善仍可取得一次冻结候选的失败验收证据，不追分、不合并main。生产human/price/预算gate保持；完成同一Record/HANDOFF并停止，不进入S11/G。
 
 首次 development 的 RP 三对及双模型评分完整；Project 尚无有效 pair 时一次 HTTP header-success/body-timeout 被原300秒Route中断。保留原 partial/全部 charges，只允许单次 Project-only continuation 补完其三对，RP 不重跑/重评分；组合 development 来源分别 pin 原始 summary/hash/HEAD。CLI 每次 transport/body 的时限缩至原Route的四分之一（最多80秒），使三次 funded attempts 与原10秒 backoff 能在原300秒Route内完成，不改原Route配置。header成功后body失败重新分类为一次失败，保存旧窗口备份/归因，保留全部历史失败、最近窗口与费用，不清账或另开epoch；真正取消/认证/频繁错误仍停止。
+
+Project-only continuation 已取得 authoring/conflict 两项有效 development pair（primary 均baseline）；repair baseline 正文失败后 error-wrapper 对 numeric DOMException.code 的缺陷中断，未取得repair pair或Project independent观察。该partial只作诊断材料，显式保留缺失，不计完整baseline，更不计验收；不再复跑旧候选。修复wrapper并记入失败窗口后，基于上述两个development pair及完整RP development一次提炼新候选；新候选仍执行每入口三项完整development与双模型，再冻结一次九对独立验收。此调整收窄探索范围，不改变工程通过门槛、评分解释或独立验收材料。
