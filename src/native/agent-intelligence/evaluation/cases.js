@@ -41,6 +41,7 @@ export function makeCase(family, split) {
         rubricRevision: hash({ invariants: spec.invariants, dimensions: spec.dimensions, grading: 'ungraded scripted baseline v1' }),
         requiredCapabilities: [...spec.capabilities], limits: { maxRequests: 6, maxRepairRounds: 2 },
         expectedInvariants: [...spec.invariants], behaviorDimensions: [...spec.dimensions],
+        ...(family === 'rp_variant' ? { requestLimitUnit: 'actual_provider_send', injectedChallenges: 1 } : {}),
     };
     return { ...entry, caseRevision: hash(entry) };
 }

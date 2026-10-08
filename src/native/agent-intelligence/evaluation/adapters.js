@@ -45,6 +45,7 @@ export async function runRp(entry, fixture, capture, evaluation = null) {
     }
     const payload = { messages: [{ role: 'system', content: canonical(fixture.memory.visible) }, { role: 'user', content: fixture.input }] };
     const requestTexts = [];
+    let modelRequests = 0;
     const run = async (variantId, generate, controller = new AbortController()) => {
         clearCurrentRun();
         const runId = startRun({ mode: 'director', chatKey: entry.caseId });
@@ -56,7 +57,9 @@ export async function runRp(entry, fixture, capture, evaluation = null) {
         const promise = runMainAgentLoop({ handle, profile, eventData: { abortSignal: controller.signal, placeholderMessageId: 1 }, deps: {
             chat, runId, getContentPayload: () => payload, contextForNotes: {},
             generateTaskStreamForMainAgent: async request => {
-                if (capture.refs.requestIds.length >= entry.limits.maxRequests) throw Object.assign(new Error('Script request budget'), { code: 'script_request_budget' });
+                const injectedStaleChallenge = evaluation?.bridge && entry.caseId.startsWith('rp_variant') && variantId === 'v1';
+                if (!injectedStaleChallenge && modelRequests >= entry.limits.maxRequests) throw Object.assign(new Error('Script request budget'), { code: 'script_request_budget' });
+                if (!injectedStaleChallenge) modelRequests++;
                 const requestId = `${capture.trialId}:${evaluation?.bridge ? 'model' : 'script'}-request-${capture.refs.requestIds.length + 1}`;
                 evaluation?.beforeSend(requestId);
                 capture.refs.requestIds.push(requestId); variant.requestIds.push(requestId);
@@ -66,7 +69,7 @@ export async function runRp(entry, fixture, capture, evaluation = null) {
                     // Stale delivery is an injected authority challenge. Its
                     // pending value never sends a paid request; v2 behavior
                     // still uses the original model loop and provider.
-                    if (entry.caseId.startsWith('rp_variant') && variantId === 'v1') return generate(request);
+                    if (injectedStaleChallenge) return generate(request);
                     const result = await evaluation.bridge.rp({ requestId, trialId: capture.trialId, fixtureHash: entry.fixtureHash,
                         messages: request.taskMessages, tools: request.tools, signal: request.abortSignal,
                         onSend: () => { if (entry.caseId.startsWith('rp_variant') && variantId === 'v1') generate(request); } });

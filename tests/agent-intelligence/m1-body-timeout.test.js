@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { createServer } from 'node:http';
 import { fetch } from 'undici';
-import { m1BodyFailure, m1TransportFailureCode } from './m1-response.js';
+import { m1BodyFailure, m1TransportFailureCode, captureM1HttpError } from './m1-response.js';
 import { M1RetryPolicy } from './m1-retry.js';
 
 test('HTTP success followed by a stalled body is a single failed response, preserving the failure window', async () => {
@@ -24,4 +24,18 @@ test('HTTP success followed by a stalled body is a single failed response, prese
         server.closeAllConnections();
         await new Promise(resolve => server.close(resolve));
     }
+});
+
+test('all HTTP error paths retain bounded body/status evidence without retaining request headers', async () => {
+    const server = createServer((req, res) => { res.writeHead(404, { 'content-type': 'application/json', 'x-request-id': 'fixture-request' });
+        res.end(req.url === '/large' ? 'x'.repeat(70000) : '{"error":{"code":"model_not_found"}}'); });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+        const root = 'http://127.0.0.1:' + server.address().port;
+        const error = await captureM1HttpError(await fetch(root, { headers: { authorization: 'fixture-secret' } }), 'fixture-model');
+        expect(error).toMatchObject({ status: 404, bodyComplete: true, bodyTruncated: false, requestId: 'fixture-request' });
+        expect(JSON.parse(error.body).error.code).toBe('model_not_found'); expect(JSON.stringify(error)).not.toContain('fixture-secret');
+        const large = await captureM1HttpError(await fetch(root + '/large'), 'fixture-model');
+        expect(large.body.length).toBe(65536); expect(large.bodyTruncated).toBe(true);
+    } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 });

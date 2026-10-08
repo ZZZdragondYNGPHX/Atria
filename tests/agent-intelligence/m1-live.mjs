@@ -14,7 +14,7 @@ import { parseBlindGrade, automatedAcceptance, developmentReadiness } from './m1
 import { M1RetryPolicy } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
-import { completeM1Response, m1BodyFailure, m1TransportFailureCode } from './m1-response.js';
+import { completeM1Response, m1BodyFailure, m1TransportFailureCode, captureM1HttpError } from './m1-response.js';
 import { projectActivationMatches } from './m1-resume.js';
 import { createM1SecretPort } from './m1-secrets.js';
 import { m1TransportKey } from './m1-transport-key.js';
@@ -222,11 +222,9 @@ try {
             const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(attemptTimeout)]) });
             if (!response.ok) {
                 const code = 'm1_http_' + response.status;
-                if (diagnoseOnly || temporarySecondary) {
-                    let body;
-                    try { body = await response.text(); } catch { body = 'error_body_unavailable'; }
-                    store('secondary-http-error.json', { status: response.status, body, model, requestId: response.headers.get('x-request-id'), server: response.headers.get('server') });
-                } else await response.body?.cancel();
+                const evidence = await captureM1HttpError(response, model);
+                store('http-error-' + budget.snapshot().requests + '.json', { ...evidence, chargeId: [...budget.entries.keys()].at(-1) });
+                if (diagnoseOnly || temporarySecondary) store('secondary-http-error.json', evidence);
                 throw Object.assign(new Error(code), { code });
             }
             retryPolicy.observe(key);

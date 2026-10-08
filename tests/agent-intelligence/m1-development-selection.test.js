@@ -43,3 +43,33 @@ test.each([false, true])('the original worker completes only a missing developme
         expect(sends).toBe(4);
     } finally { f.h.cleanup(); }
 }, 30000);
+
+test('an injected stale challenge leaves all six paid Director rounds available and keeps authority checks', async () => {
+    let activeArm, calls = 0;
+    const rounds = { baseline: 0, candidate: 0 };
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async (_url, options) => {
+        calls++;
+        const body = JSON.parse(options.body), content = body.messages.at(-1).content;
+        let message;
+        if (activeArm === 'extraction') message = { content: JSON.stringify({ edits: [{ before: '', after: '\nScoped candidate' }], rationale: 'Synthetic wiring' }) };
+        else if (activeArm === 'judge') { const input = JSON.parse(content); message = { content: JSON.stringify({ preference: 'tie', deltas: Object.fromEntries(input.dimensions.map(d => [d, 0])), rationale: 'Synthetic tie' }) }; }
+        else {
+            const round = ++rounds[activeArm], name = round < 5 ? 'get_draft' : round === 5 ? 'write_message' : 'finalize';
+            message = { content: '', tool_calls: [{ id: 'round-' + round, type: 'function', function: { name, arguments: JSON.stringify(name === 'write_message' ? { text: 'NPC waits.', mode: 'replace' } : {}) } }] };
+        }
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message }], usage: { total_tokens: 10 } }) };
+    } });
+    try {
+        const send = f.evaluator.send.bind(f.evaluator);
+        f.evaluator.send = (...args) => { activeArm = args[3].arm; return send(...args); };
+        const compare = f.evaluator.compare.bind(f.evaluator);
+        f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh, undefined, undefined,
+            { split: 'development', repetitions: 1, caseIds: ['rp_variant_d1'] });
+        const { candidate } = await runEvolution(f), pair = candidate.report.pairs[0];
+        expect(rounds).toEqual({ baseline: 6, candidate: 6 }); expect(calls).toBe(14);
+        expect(pair.case.limits.maxRequests).toBe(6); expect(pair.case.requestLimitUnit).toBe('actual_provider_send');
+        expect(pair.baseline.refs.requestIds).toHaveLength(7); expect(pair.candidate.refs.requestIds).toHaveLength(7);
+        expect(pair.baseline.checks.stale_completion).toBe(true); expect(pair.candidate.checks.variant_identity).toBe(true);
+        expect((await f.repository.owner(f.h.handle)).attempts).toHaveLength(14);
+    } finally { f.h.cleanup(); }
+}, 30000);
