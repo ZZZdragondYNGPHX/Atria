@@ -16,6 +16,7 @@ import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { completeM1Response } from './m1-response.js';
 import { projectActivationMatches } from './m1-resume.js';
+import { createM1SecretPort } from './m1-secrets.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -83,7 +84,7 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
@@ -180,10 +181,8 @@ try {
             const secondaryRoute = routes.find(r => r.role === 'role.orchestrator' && r.runtimeRouteId !== f.route.runtimeRouteId
                 && r.modelProfileRef.modelProfileId !== f.route.modelProfileRef.modelProfileId);
             const secondaryConfig = await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
-            f.host.secretPort.resolveSecret = async ref => {
-                if (ref.secretId !== 's06-test-key') throw new Error('unknown_secret_reference');
-                return primary.apiKey;
-            };
+            const secrets = createM1SecretPort(primary, secondary);
+            f.host.secretPort = secrets.port;
             const reserve = f.evaluator.repository.reserve.bind(f.evaluator.repository), settle = f.evaluator.repository.settle.bind(f.evaluator.repository);
             let packet = null;
             f.evaluator.repository.reserve = async (handle, attempt) => {
@@ -203,8 +202,7 @@ try {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
                     packet = { ...payload, retryAttempt };
-                    const originalSecret = f.host.secretPort.resolveSecret;
-                    f.host.secretPort.resolveSecret = async () => config.model.remoteModelId === secondary.config.model ? secondary.apiKey : primary.apiKey;
+                    const restoreSecret = secrets.select(config.model.remoteModelId);
                     try {
                         const result = await send(handle, job, config, payload, signal, fresh);
                         store(kind + '-response-' + result.charge.id + '.json', result);
@@ -215,7 +213,7 @@ try {
                         }
                         return result;
                     }
-                    finally { f.host.secretPort.resolveSecret = originalSecret; packet = null;
+                    finally { restoreSecret(); packet = null;
                         const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
                 }, AbortSignal.any([signal, overall.signal]));
             };

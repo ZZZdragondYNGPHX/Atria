@@ -8,9 +8,20 @@ import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js'
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { projectActivationMatches } from './m1-resume.js';
+import { createM1SecretPort } from './m1-secrets.js';
 
 const cleanup = [];
 afterEach(() => { jest.restoreAllMocks(); for (const fn of cleanup.splice(0)) fn(); });
+
+test('model selection works through a frozen secret port and rejects unknown references', async () => {
+    const secrets = createM1SecretPort({ config: { model: 'primary' }, apiKey: 'fixture-primary' }, { config: { model: 'secondary' }, apiKey: 'fixture-secondary' });
+    Object.freeze(secrets.port);
+    const restore = secrets.select('secondary');
+    expect(await secrets.port.resolveSecret({ secretId: 's06-test-key' })).toBe('fixture-secondary');
+    restore(); expect(await secrets.port.resolveSecret({ secretId: 's06-test-key' })).toBe('fixture-primary');
+    await expect(secrets.port.resolveSecret({ secretId: 'unknown' })).rejects.toThrow('unknown_secret_reference');
+    expect(() => secrets.select('unknown')).toThrow('unknown_test_model');
+});
 
 test('saved Project publication resumes on its exact Route with two models and rolls back without rerunning comparison', async () => {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review' }); cleanup.push(f.h.cleanup);
