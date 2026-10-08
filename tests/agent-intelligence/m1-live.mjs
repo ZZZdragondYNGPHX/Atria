@@ -52,6 +52,7 @@ try {
         }
         writeFileAtomic.sync(ledgerPath, JSON.stringify(next, null, 2) + '\n', { mode: 0o600 });
     } });
+    if (budget.breached) throw new Error('m1_cumulative_breach_requires_review');
     const output = path.join(directory, 'm1-reports', 'run-' + Date.now() + '-' + randomUUID().slice(0, 8));
     fs.mkdirSync(output, { recursive: true, mode: 0o700 });
     const store = (name, value) => writeFileAtomic.sync(path.join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
