@@ -418,7 +418,9 @@ try {
                     const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
                     const { pair } = JSON.parse(fs.readFileSync(path.join(previous, 'project-prompt-pair-project_authoring_d1-1.json'), 'utf8'));
                     const observation = source.entries.find(e => e.kind === 'project-prompt')?.independent?.find(o => o.pairHash === pair.pairHash);
-                    if (observation?.status !== 'unavailable' || observation.reason !== 'm1_http_404') throw new Error('diagnostic_failed_grade_required');
+                    // The provider wraps HTTP failures; the original summary
+                    // retains their exact status in its transport checkpoint.
+                    if (observation?.status !== 'unavailable' || !source.transportFailures?.includes('m1_http_404')) throw new Error('diagnostic_failed_grade_required');
                     const flipped = parseInt(hash(['independent', pair.pairHash]).slice(0, 2), 16) % 2 === 1;
                     messages = [{ role: 'system', content: 'Blindly compare the two outputs against the task and dimensions. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"concise public explanation"}. Delta means right minus left. Do not guess missing evidence.' },
                         { role: 'user', content: JSON.stringify({ ...pair.scenario, dimensions: pair.case.behaviorDimensions, left: pair[flipped ? 'candidate' : 'baseline'].output, right: pair[flipped ? 'baseline' : 'candidate'].output }) }];
