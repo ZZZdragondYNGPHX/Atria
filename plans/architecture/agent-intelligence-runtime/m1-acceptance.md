@@ -99,3 +99,5 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 ## 8. 2026-10-09 第二模型可用性检查
 
 用户明确要求检查第二模型，不能调用则暂时放弃该API。沿实际701/2717515及同一ledger/quota/rate/失败窗口，只允许一次Step原失败Project authoring独立grade形态的funded诊断，固定原pair/shuffle/messages来源与输出8000，无retry；该请求不计评分、不替换任何旧结果、不重跑trials或提炼。不清stop或另开epoch，不探测其它区域/模型。HTTP错误保存原body/status/request ID并关联charge；若失败，当前Step API暂时停用，缺第二模型时M1双模型验收仍pending，不降门槛或合并main。仅最小本地验证，更新同一Record/live HANDOFF后停止，不进入S11/G。
+
+结果：product source63dc0fd44，单次实际请求成功返回step-5-preview完整preference/deltas/rationale JSON、finish_reason=stop，reported3601（input1426/output2175，其中reasoning2085），累计702/2721116，无retry。保留该API；这只证明当前该形态可调用，不证明持续稳定或解释旧404，不清原stop、不计独立评分。原final report pair/shuffle/messages固定；诊断新建隔离fixture，configuration hash与旧不同，不能声称整份旧snapshot复用。两次前置校验因provider wrapper/中间onPair身份与final report身份差异拒绝，均零发送，修正后才进行唯一真实诊断。未修改候选或重新执行验收，M1仍pending、不进入S11/G。

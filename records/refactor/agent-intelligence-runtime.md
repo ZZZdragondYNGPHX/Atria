@@ -861,4 +861,14 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 
 ## Final state
 
-本次有限续接结束，M1仍pending、不集成。局部文本patch确定性保留base已实现并真实提炼两新候选；Project真实3pairs显示两primary胜/一严重回归(-4、review gate失败)，RP一胜一平及variant夹具失败，无新有效双模型完整观察。Step小诊断200后实际grade仍404，unknown9831保留、当前8000窗口stop，根因未明。夹具免费challenge计数与所有HTTP错误body采集已本地修复且未再付费；失败报告、候选、来源和费用不覆盖。新v2九对/新candidate闭环未执行，原完整九对/Step18/cf-c0闭环仅保留历史。最终701/2717515、unknown17/74948、pending0/lock0，API硬限审计通过；product da157已push、main未合并、用户不用手测，同一Record/Plan/live HANDOFF更新后停止，不进入S11/G。
+### 2026-10-09 第二模型单次可用性检查
+
+用户要求检查第二模型，不能调用则暂时放弃该API；同一Plan §8在请求前固定一次真实评分形态诊断、无retry、不计评分、不清stop或新增epoch。从701/2717515续接；source `63dc0fd44` 已commit/push。CLI增加显式failed-report来源，沿原compiler/resolver/provider与owner/shared资金记录，复用97a1最终Project authoring pair、原shuffle/messages，输出8000。先前两次前置校验均零发送：HTTP代码被provider包装为generation_provider_failed，且onPair中间捕获的hash与final report身份不同；改为读取原transport状态及实际独立评分所消费的final report pair后才发唯一请求。私有零send报告仍保留，不将它们算API失败。
+
+实际run `run-1791478981173-3c395953`：成功返回 `step-5-preview`，finish_reason=stop，完整JSON含preference/deltas/rationale，无截断；provider usage input1426/output2175/total3601，其中reasoning2085。charge `28356b4d-fcc9-4b0e-8fc1-a45f62dae930`，request hash `97b928e35d6ae493fec2712a9dcb71a8ba91f90c204d95db1441be242acbb260`；原pair hash `980ed007cba27f563c5bc2b357c58c7316733269a25799513b8383a2e37e7284`，messages hash `1a90d1b35747052e67404ba26785d60e640acc13fd69c523f88ab783605192a7`，summary byte SHA256 `002ee7cc00de1a51a8e65a6b098a63b01f1d3d71a619bd95043a8a284d02f6e0`。新隔离fixture配置identity不同，完整configuration hash不相同；只称原评分内容/形态复现，不称整份旧快照复用。CLI exit1来自M1 accepted=false，不代表此次HTTP调用失败。
+
+本次+1request/+3601，累计 **702 requests /2721116记账tokens**；carry与sticky breach保持，450恢复实际sends，433reported/17unknown74948；pending0/lock0，quota carry332+370admissions=702且新ID对应原ledger。原404及其它stopped窗口全部保留，无retry/换epoch/其它模型探测。保留当前API，单次成功不证明持续稳定、不解释历史404，也不自动解除评分stop或补旧独立观察。本次不读取响应偏好来指导修改或取得晋升资格，不重跑案例、提炼、发布或验收。
+
+最小node syntax、触及ESLint及限定文件git diff check通过，无新full/tests/build/CI。五无关dirty docs保持，main不合并。接手先沿702/2721116及同一windows读取HANDOFF/Plan/Record；Step当前可调用，若正式恢复评分须另行固定有限范围与窗口处理，不能把本diagnostic冒充独立grade，也不能重试有效不利/tie/uncertain追分；本轮到此停止，不进入S11/G。
+
+当前M1仍pending、不集成。局部文本patch确定性保留base已实现并真实提炼两新候选；Project真实3pairs显示两primary胜/一严重回归(-4、review gate失败)，RP一胜一平及variant夹具失败，无新有效双模型完整观察。Step本次实际评分形态诊断可调用，旧404/unknown9831/stop保留，根因未明；此诊断不计评分。新v2九对/新candidate闭环未执行，原完整九对/Step18/cf-c0闭环仅保留历史。最新702/2721116、unknown17/74948、pending0/lock0；product63dc0fd44已push、main未合并、用户不用手测，同一Record/Plan/live HANDOFF更新后停止，不进入S11/G。
