@@ -67,3 +67,11 @@ test('the original HTTP adapter wrapping a transient failure still permits a fun
     expect(result).toBe(response); expect(sends).toBe(2);
     expect(budget.snapshot()).toMatchObject({ requests: 2, tokens: 120 });
 });
+test('incomplete response replaces the header success and three such sends stop', async () => {
+    const policy = new M1RetryPolicy({ wait: async () => {} }); let calls = 0;
+    await expect(policy.send('primary', async () => {
+        calls++; policy.observe('primary'); policy.incomplete('primary'); throw failure('m1_response_incomplete');
+    }, new AbortController().signal)).rejects.toThrow('m1_response_incomplete');
+    expect(calls).toBe(3);
+    expect(policy.state('primary')).toMatchObject({ consecutive: 3, recent: [true, true, true], stopped: 'm1_response_incomplete' });
+});

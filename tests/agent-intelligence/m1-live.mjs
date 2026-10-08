@@ -14,6 +14,7 @@ import { parseBlindGrade, automatedAcceptance } from './m1-acceptance.js';
 import { M1RetryPolicy } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
+import { completeM1Response } from './m1-response.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -80,7 +81,7 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
@@ -192,6 +193,11 @@ try {
                     try {
                         const result = await send(handle, job, config, payload, signal, fresh);
                         store(kind + '-response-' + result.charge.id + '.json', result);
+                        if (!completeM1Response(result.raw, payload)) {
+                            retryPolicy.incomplete(transportKey);
+                            console.log(JSON.stringify({ kind, incompleteResponse: true, retryAttempt }));
+                            throw Object.assign(new Error('m1_response_incomplete'), { code: 'm1_response_incomplete' });
+                        }
                         return result;
                     }
                     finally { f.host.secretPort.resolveSecret = originalSecret; packet = null;

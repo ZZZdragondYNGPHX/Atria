@@ -16,7 +16,14 @@ export class M1RetryPolicy {
         if (!this.connections.has(key)) this.connections.set(key, { consecutive: 0, recent: [], stopped: null });
         return this.connections.get(key);
     }
-    transient(code) { return /^m1_http_5\d\d$/.test(code) || code === 'm1_transport_failed'; }
+    transient(code) { return /^m1_http_5\d\d$/.test(code) || code === 'm1_transport_failed' || code === 'm1_response_incomplete'; }
+    incomplete(key) {
+        const state = this.state(key);
+        if (state.recent.at(-1) !== false) throw new Error('invalid_response_observation');
+        state.recent.pop(); state.consecutive = 0;
+        for (let i = state.recent.length - 1; i >= 0 && state.recent[i]; i--) state.consecutive++;
+        this.observe(key, 'm1_response_incomplete');
+    }
     observe(key, code = null) {
         const state = this.state(key);
         state.recent.push(Boolean(code)); state.recent = state.recent.slice(-20);
