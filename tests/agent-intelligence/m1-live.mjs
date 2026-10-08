@@ -17,6 +17,7 @@ import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluat
 import { completeM1Response } from './m1-response.js';
 import { projectActivationMatches } from './m1-resume.js';
 import { createM1SecretPort } from './m1-secrets.js';
+import { m1TransportKey } from './m1-transport-key.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -86,7 +87,7 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
@@ -122,10 +123,12 @@ try {
     }
     dispatcher = new Agent({ connectTimeout: 30000, headersTimeout: 300000, bodyTimeout: 300000 });
     const transportCheckpoint = path.join(directory, 'm1-transport-state.json');
+    const transportEpochs = fs.existsSync(path.join(directory, 'm1-transport-epochs.json')) ? read('m1-transport-epochs.json') : {};
+    summary.transportEpochs = transportEpochs;
     const retryPolicy = new M1RetryPolicy({ snapshot: fs.existsSync(transportCheckpoint) ? read('m1-transport-state.json') : {},
         onChange: state => writeFileAtomic.sync(transportCheckpoint, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 }) });
     const transport = async (url, options) => {
-        const model = JSON.parse(options.body).model, key = url + ':' + model;
+        const model = JSON.parse(options.body).model, key = m1TransportKey(url, model, transportEpochs);
         if (!diagnoseOnly) retryPolicy.assertAvailable(key);
         try {
             const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(300000)]) });
@@ -226,7 +229,7 @@ try {
             };
             const send = f.evaluator.send.bind(f.evaluator);
             f.evaluator.send = async (handle, job, config, payload, signal, fresh) => {
-                const transportKey = payload.rendered.endpoint + ':' + payload.rendered.body.model;
+                const transportKey = m1TransportKey(payload.rendered.endpoint, payload.rendered.body.model, transportEpochs);
                 const fundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
