@@ -120,8 +120,15 @@ try {
     if (cycleOptimize || cycleAcceptance) {
         const previous = path.join(directory, 'm1-reports', cycleOptimize || cycleAcceptance);
         const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
+        const diagnosedPartial = cycleOptimize && source.continuationSource && source.entries.find(e => e.kind === 'rp-skill')?.independent.length === 3
+            && source.entries.find(e => e.kind === 'project-prompt')?.reason === 'generation_execution_failed'
+            && ['project_authoring_d1', 'project_conflict_d1'].every(id => {
+                const observed = JSON.parse(fs.readFileSync(path.join(previous, 'project-prompt-pair-' + id + '-1.json'), 'utf8'));
+                return observed.pair.case.split === 'development' && observed.pair.case.caseId === id;
+            });
         if (source.mode !== (cycleOptimize ? 'cycle_baseline_development' : 'cycle_optimized_development') || source.entries.length !== 2
-            || source.entries.some(e => e.independent.length !== 3 || !e.candidateValueHash)) throw new Error('cycle_development_incomplete');
+            || source.entries.some(e => !e.candidateValueHash || !diagnosedPartial && (e.independent.length !== 3 || e.independent.some(o => !o.chargeId || !o.preference)))) throw new Error('cycle_development_incomplete');
+        summary.baselineDevelopmentPartial = Boolean(diagnosedPartial);
         cycleSource = { previous, source };
         summary.developmentSource = { summaryHash: hash(source), testedHead: source.testedHead };
     }

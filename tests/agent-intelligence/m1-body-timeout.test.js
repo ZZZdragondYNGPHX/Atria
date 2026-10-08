@@ -17,6 +17,7 @@ test('HTTP success followed by a stalled body is a single failed response, prese
         policy.incomplete('fixture');
         expect(policy.state('fixture')).toEqual({ consecutive: 1, recent: [true], stopped: null });
         expect(m1BodyFailure(new Error('agent_evolution_base_changed'))).toBe(false);
+        expect(m1BodyFailure(new TypeError('terminated', { cause: new DOMException('request timeout', 'TimeoutError') }))).toBe(true);
     } finally {
         server.closeAllConnections();
         await new Promise(resolve => server.close(resolve));

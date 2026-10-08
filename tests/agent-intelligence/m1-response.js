@@ -2,7 +2,8 @@ import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluat
 
 export function m1BodyFailure(error) {
     return error instanceof SyntaxError || ['AbortError', 'TimeoutError'].includes(error.name)
-        || Boolean(error.code?.startsWith('UND_ERR_') || error.cause?.code?.startsWith('UND_ERR_'));
+        || ['AbortError', 'TimeoutError'].includes(error.cause?.name)
+        || [error.code, error.cause?.code].some(code => typeof code === 'string' && code.startsWith('UND_ERR_'));
 }
 
 // Completeness only: do not retry substantive grades, repair JSON or edit tools.
