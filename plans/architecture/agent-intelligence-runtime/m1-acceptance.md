@@ -57,3 +57,13 @@ RP继续使用先前实际付费提炼、已冻结且尚未发布的同一候选
 按用户最新明确授权，历史token超报不会阻止本轮测试。保留原账与overrun记录，仅改变预算执行模式，不解锁生产对象的预算或自动权限。超过任何建议预算立即通知用户并继续；真正达到API daily /rate硬限或原频繁错误阈值时按实际原因停止 /等待，完整工程行为门槛仍保持。
 
 旧partial的主模型回归事实继续保留；token增加成为统计。cf实测两入口各完整九对、36arm原检查全部通过，RP主模型3candidate /4baseline /1tie /1uncertain、Project9tie。RP cf与Project c0恢复均已完成私有review /实际next-run消费 /guarded rollback；没有重跑比较拼资格。旧第二模型三连续HTTP500及Step旧503 /截断失败均保留；MiniMax临时国际接口401后按用户要求回到Step，8192有限输出取得RP4candidate /3baseline /2tie与Project9tie，两模型一致candidate分别3 /0；补测只增加独立观察。行为改善门槛仍不达标，不能因连接修复或token规则改变宣称M1通过。实际来源 /费用 /hash见同一Record与live HANDOFF。
+
+## 6. 2026-10-08 有限优化周期
+
+本轮仅一次优化：旧候选 development 诊断 → 原 Experience 公开反馈/诊断 → 单目标新候选 → development 收益和回归检查 → 冻结 → 一次新独立验收。两个 development 检查各为每入口三场景各一次 paired trial，双模型观察；不重试有效不利、tie、uncertain。development 输出允许指导修改，永不计入独立验收。
+
+Project 原评审只接收最终 source JSON，遗漏计划、公开说明及修复/冲突轨迹。补充这些原消费者可观察行为，继续使用原 intent_completion / conflict_handling / repair_quality 维度与原解释，不降低门槛。旧报告及其 source/revision/hash 原样保留，新报告 pin 新 evaluator 与 case revision。
+
+新 promotion 使用 synthetic:v2，与旧 v1/本轮 development 分离：同六类场景、不同输入/名称/时间修订与公开行为要求。候选提炼只读取 development/公开反馈/原 base/诊断；不向提炼提供 v2 promotion fixture 或输出。新候选必须在实测前保存 exact value、来源 development report hash、原反馈/诊断与 configuration pin。每入口仍三场景×三次/九对、至少六对双模型一致胜、其它一致tie、重要维度无回归，全部原 authority/isolation/消费及私有 publication/下一run/rollback 门槛保持。
+
+沿同一555次累计 ledger/quota/rate/失败窗口，不覆盖旧文件；默认Step8192 independent grader。最多一次 baseline development、一次优化 development、一次冻结候选验收，不增加下一轮。若 development 未显示可信改善仍可取得一次冻结候选的失败验收证据，不追分、不合并main。生产human/price/预算gate保持；完成同一Record/HANDOFF并停止，不进入S11/G。
