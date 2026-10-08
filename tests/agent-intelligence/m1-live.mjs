@@ -29,7 +29,8 @@ const deadline = setTimeout(() => overall.abort(), 2 * 3600000);
 const safeReason = error => /^[a-z_0-9]{1,100}$/.test(error?.code || error?.message || '') ? error.code || error.message : 'inspect_private_report';
 try {
     const prepareOnly = option.length === 3 && option[2] === '--prepare';
-    if (!(option.length === 2 || prepareOnly) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    const resumeName = option.length === 3 && option[2].startsWith('--resume-project=') ? option[2].slice('--resume-project='.length) : null;
+    if (!(option.length === 2 || prepareOnly || resumeName && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     if ((fs.statSync(directory).mode & 0o777) !== 0o700) throw new Error('private_directory_permissions_required');
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -88,6 +89,17 @@ try {
         policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged' };
     store('summary.json', summary);
+    let resumed;
+    if (resumeName) {
+        const previous = path.join(directory, 'm1-reports', resumeName);
+        const priorSummary = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
+        const priorEntry = priorSummary.entries.find(e => e.kind === 'project-prompt');
+        const result = JSON.parse(fs.readFileSync(path.join(previous, 'project-prompt-job.json'), 'utf8'));
+        if (priorSummary.evaluatorRevision !== summary.evaluatorRevision || priorEntry?.reason !== 'native_generation_route_ambiguous'
+            || !priorEntry.lifecycle?.current || result.candidate.report.pairs.length !== 9) throw new Error('resume_comparison_unavailable');
+        resumed = { result, previous, lifecycle: priorEntry.lifecycle };
+        summary.comparisonSource = { testedHead: priorSummary.testedHead, runnerRevision: priorSummary.runnerRevision, summaryHash: hash(priorSummary), reportHash: hash(result.candidate.report) };
+    }
     dispatcher = new Agent({ connectTimeout: 30000, headersTimeout: 300000, bodyTimeout: 300000 });
     const transportCheckpoint = path.join(directory, 'm1-transport-state.json');
     const retryPolicy = new M1RetryPolicy({ snapshot: fs.existsSync(transportCheckpoint) ? read('m1-transport-state.json') : {},
@@ -132,7 +144,7 @@ try {
         }
         if (frozenRp) break;
     }
-    const { evolutionFixture, runEvolution } = await import('./evolution-fixture.js');
+    const { evolutionFixture, runEvolution, restoreEvolutionFixture } = await import('./evolution-fixture.js');
     const { makeTempFsEngineHarness } = await import('../storage/harness/contract-harness.js');
     const { createLiveBridge } = await import('./live-bridge.js');
     const { createFrozenEvaluationBridge } = await import('../../src/native/agent-intelligence/evaluation/worker-bridge.js');
@@ -140,11 +152,13 @@ try {
     const { runRp } = await import('../../src/native/agent-intelligence/evaluation/adapters.js');
     const { selectCases, loadFixture, canonical } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
     for (const [index, kind] of ['rp-skill', 'project-prompt'].entries()) {
+        if (resumed && index === 0) continue;
         const entry = { kind, status: 'preparing', independent: [], lifecycle: null };
         summary.entries.push(entry); store('summary.json', summary);
         try {
             const primary = connections[0];
-            const f = await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
+            const f = resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
+                { fetchImpl: transport, repositoryClass: M1AdvisoryRepository }) : await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
                 connectionConfig: primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository }); scratch = f.h;
             if (kind === 'rp-skill' && frozenRp) {
                 if (hash(f.target) !== hash(frozenRp.target)) throw new Error('frozen_proposal_target_changed');
@@ -159,7 +173,7 @@ try {
             const owner = await f.repository.owner(f.h.handle);
             await f.service.budget(f.h.handle, { expectedSequence: owner.sequence, limits: { maxRequests: 260, maxTokens: 699536, minIntervalMs: 3150 } });
             const secondary = connections[1];
-            await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: secondary.config,
+            if (!resumed) await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: secondary.config,
                 secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } });
             const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
             const secondaryRoute = routes.find(r => r.role === 'role.orchestrator' && r.runtimeRouteId !== f.route.runtimeRouteId
@@ -210,7 +224,7 @@ try {
                 async trial => { store(kind + '-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial); });
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             entry.status = 'evaluating'; store('summary.json', summary);
-            const result = await runEvolution(f), { job, candidate } = result;
+            const result = resumed ? resumed.result : await runEvolution(f), { job, candidate } = result;
             entry.jobId = job.id; entry.status = job.status;
             store(kind + '-job.json', result);
             if (!candidate?.report?.pairs?.length) throw new Error(candidate?.report?.reason || job.reason || 'comparison_unavailable');
@@ -234,12 +248,13 @@ try {
             entry.acceptance = automatedAcceptance(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id, { tokensAdvisory: true });
             // Explicit delegated review is confined to this private fixture. No
             // human labels or automatic publication eligibility are invented.
-            const published = await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: job.id, candidateId: candidate.candidateId,
+            const published = resumed ? resumed.lifecycle.receipt : await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: job.id, candidateId: candidate.candidateId,
                 expectedReportHash: hash(candidate.report), review: true });
-            const doc = await f.repository.get(f.h.handle, f.scope, f.subject), publication = doc.publications[0];
+            const doc = await f.repository.get(f.h.handle, f.scope, f.subject), publication = resumed ? f.publication : doc.publications[0];
             entry.lifecycle = { delegatedFixtureReview: true, automaticPromotion: false, receipt: published, current: await f.service.targets.publicationCurrent(f.h.handle, f.scope, f.subject, publication) };
             const nextSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
             const nextConfig = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, nextSettings.projectPromptRef || null);
+            if (hash(nextConfig) !== candidate.report.configurations.candidate || hash(nextSettings) !== candidate.report.settings.candidate) throw new Error('activation_configuration_changed');
             const activationJob = { ...job, id: job.id + ':activation', scopeId: result.doc.scopeId, price: null };
             const current = async () => { if (!await f.service.targets.publicationCurrent(f.h.handle, f.scope, f.subject, publication)) throw new Error('activation_binding_changed'); };
             if (index === 1) {
@@ -256,7 +271,7 @@ try {
                 } };
                 const host = new NativeGenerationHost({ ...f.host, providers: { ...f.host.providers, 'provider.openai-compatible': provider } });
                 const project = await f.host.studio.getProject(f.h.handle, f.subject);
-                const next = await host.execute(f.h.handle, { role: 'studio', projectId: f.subject, revision: project.revision.revision,
+                const next = await host.execute(f.h.handle, { role: 'studio', routeRef: { scope: 'player', runtimeRouteId: f.route.runtimeRouteId }, projectId: f.subject, revision: project.revision.revision,
                     requestId: randomUUID(), messages: [{ role: 'user', content: 'Briefly acknowledge that this Project is ready for review. Do not perform any operation.' }], tools: [] });
                 entry.lifecycle.nextSnapshotHash = hash(next.snapshot);
                 entry.lifecycle.nextExactProgram = next.snapshot.promptProgramRef;

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import fs from 'node:fs';
 import { AgentEvolutionService } from '../../src/native/agent-intelligence/evolution-service.js';
 import { AgentEvolutionRepository, EVOLUTION_RULE, evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { EvolutionEvaluator, evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
@@ -155,6 +156,26 @@ export async function runEvolution(f) {
     await f.service.wait(f.h.handle, start.jobId);
     const next = await f.repository.get(f.h.handle, f.scope, f.subject), job = next.jobs.find(j => j.id === start.jobId);
     return { doc: next, job, candidate: job.candidates[0] };
+}
+// Reopen a saved private fixture for lifecycle evidence only; never rerun trials.
+export async function restoreEvolutionFixture(make, directory, result, { fetchImpl, repositoryClass = AgentEvolutionRepository } = {}) {
+    const h = await make();
+    try {
+        fs.cpSync(directory, h.dataRoot, { recursive: true });
+        const { studio, agent } = services(h);
+        const host = { persistence: new NativeModelPromptPersistence({ engine: h.engine }), library: new VersionedJsonResourceHandler({ engine: h.engine }), studio, agent,
+            providers: { 'provider.openai-compatible': createHttpGenerationProvider({ fetchImpl }) },
+            secretPort: { resolveSecret: async () => { throw new Error('restore_secret_not_configured'); } }, sessionCore: null };
+        const repository = new repositoryClass({ engine: h.engine }), evaluator = new EvolutionEvaluator({ host, repository });
+        const service = new AgentEvolutionService({ host, chatRepo: new ChatRepo({ engine: h.engine }), evaluator, scheduler: new NativeTaskScheduler({ concurrency: 1, retries: 0 }) });
+        const { scope, subject } = result.doc, target = result.job.target;
+        const doc = await repository.get(h.handle, scope, subject);
+        const publication = doc.publications.find(p => p.jobId === result.job.id && p.candidateId === result.candidate.candidateId);
+        const saved = doc.jobs.find(j => j.id === result.job.id)?.candidates.find(c => c.candidateId === result.candidate.candidateId);
+        if (!publication || !saved || hash(saved.report) !== hash(result.candidate.report) || !await service.targets.publicationCurrent(h.handle, scope, subject, publication)) throw new Error('resume_publication_changed');
+        const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId);
+        return { h, host, service, repository, evaluator, scope, subject, target, route, publication };
+    } catch (error) { h.cleanup(); throw error; }
 }
 export async function labelAll(f, job, candidate) {
     let result;
