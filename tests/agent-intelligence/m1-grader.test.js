@@ -72,3 +72,29 @@ test.each([false, true])('extended independent grader funds the original provide
     expect(owner.attempts[0]).toMatchObject({ id: reserved.id, jobId: job.id, kind: 'judge', status: failure ? 'unknown' : 'reported', tokens: failure ? reserved.upperBound : 2100, cost: null });
     expect(paid?.charge.tokens).toBe(failure ? undefined : 2100);
 });
+
+test('single explicit diagnostic caps a legacy 8192 route at 8000 before reserving the original provider send', async () => {
+    let sends = 0;
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-strategy', { fetchImpl: async (_url, options) => {
+        sends++; expect(JSON.parse(options.body).max_tokens).toBe(8000);
+        expect((await f.repository.owner(f.h.handle)).attempts.at(-1).status).toBe('reserved');
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { role: 'assistant', content: '{"ok":true}' } }], usage: { total_tokens: 17 } }) };
+    } });
+    cleanup.push(f.h.cleanup);
+    const { createLiveBridge } = await import('./live-bridge.js');
+    await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: { ...testConfig, model: 'diagnostic', maxOutputTokens: 8192, contextTokens: 32000 }, secretPort: f.host.secretPort });
+    const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
+    const route = routes.find(r => r.role === 'role.orchestrator' && r.runtimeRouteId !== f.route.runtimeRouteId);
+    const original = await m1GraderConfiguration(f.host, f.h.handle, route.runtimeRouteId);
+    const config = await m1GraderConfiguration(f.host, f.h.handle, route.runtimeRouteId, 8000);
+    expect(original.generation.output.maxTokens).toBe(8192); expect(config.generation.output.maxTokens).toBe(8000);
+    const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'm1-secondary-diagnostic-fixture:diagnostic', scopeId: doc.scopeId, price: null };
+    const bridge = await createFrozenEvaluationBridge(config, async payload => {
+        const packet = { ...payload, arm: 'judge' };
+        await expect(sendM1Grader(f.evaluator, f.h.handle, { ...job, id: 'arbitrary:diagnostic' }, config, packet, new AbortController().signal, async () => {})).rejects.toThrow('independent_m1_grader_only');
+        return (await sendM1Grader(f.evaluator, f.h.handle, job, config, packet, new AbortController().signal, async () => {})).raw;
+    });
+    cleanup.push(bridge.cleanup);
+    await bridge.rp({ requestId: job.id, trialId: job.id, fixtureHash: hash('diagnostic'), messages: [{ role: 'user', content: 'Return JSON only: {"ok":true}' }], tools: [], kind: 'grader' });
+    expect(sends).toBe(1); expect((await f.repository.owner(f.h.handle)).attempts[0]).toMatchObject({ kind: 'judge', status: 'reported', tokens: 17 });
+});

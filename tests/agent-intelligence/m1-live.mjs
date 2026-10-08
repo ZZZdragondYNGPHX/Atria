@@ -326,8 +326,8 @@ try {
             }
             if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
             const secondaryRoute = secondaryRoutes[0];
-            const extendedGrader = (gradeSource || cycle || prepareOnly) && secondary.config.maxOutputTokens > 1024;
-            const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId)
+            const extendedGrader = (gradeSource || cycle || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
+            const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId, 8000)
                 : await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
             entry.secondaryConfigurationHash = hash(secondaryConfig);
             entry.secondaryOutputTokens = secondaryConfig.generation.output.maxTokens;
@@ -358,7 +358,7 @@ try {
                     try {
                         const result = cycleProjectExtract && payload.arm === 'extraction'
                             ? await sendM1Extraction(f.evaluator, handle, job, config, payload, signal, fresh)
-                            : extendedGrader && job.id.endsWith(':independent') && config.model.remoteModelId === secondary.config.model
+                            : extendedGrader && (job.id.endsWith(':independent') || diagnoseOnly && job.id.endsWith(':diagnostic')) && config.model.remoteModelId === secondary.config.model
                                 ? await sendM1Grader(f.evaluator, handle, job, config, payload, signal, fresh) : await send(handle, job, config, payload, signal, fresh);
                         store(kind + '-response-' + result.charge.id + '.json', result);
                         if (!diagnoseOnly && !completeM1Response(result.raw, payload)) {
@@ -390,7 +390,7 @@ try {
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';
-                const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'm1-secondary-diagnostic-' + randomUUID(), scopeId: doc.scopeId, price: null };
+                const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'm1-secondary-diagnostic-' + randomUUID() + ':diagnostic', scopeId: doc.scopeId, price: null };
                 const bridge = await createFrozenEvaluationBridge(secondaryConfig, async payload => (await f.evaluator.send(f.h.handle, job, secondaryConfig,
                     { ...payload, arm: 'judge' }, overall.signal, async () => {})).raw);
                 try {
