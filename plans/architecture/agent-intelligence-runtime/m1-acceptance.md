@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
 - Updated: 2026-10-08
-- Status: 用户批准调整方向，有限执行 envelope 已冻结；实际结果待取得。
+- Status: 已取得真实partial证据，M1仍pending；共享累计账本单笔超报触发sticky breach，后续发送停止。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
 
@@ -43,3 +43,9 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 读取HANDOFF → index → 本模块 / S10 → Record；实际执行入口 `tests/agent-intelligence/m1-live.mjs`，沿原EvolutionService / evaluator与原repository写入；test-only接受判断不能被production endpoint导入。
 
 每阶段及结束只做本地最小相关验证，不触发CI或full test / build。相关tests / lint / fixed-loader checks先通过，source commit后再发送真实请求，报告pin该HEAD与实际source hashes；最终更新同一Record / live HANDOFF，停止。
+
+## 5. 当前恢复前置
+
+共享累计账本存在sticky breach时，runner在模型准备前明确拒绝，不能因累计未耗尽就继续send。先核对provider实际usage口径与output上限、保守input / output reservation设计和所有既有charges；未核实的total不以较小分项和替换。模型 / tokenizer / suffix或账本换新不解除原保护；预算恢复规则需明确复核，不能自动清除breach或扩大冻结额度。
+
+恢复发送资格不等于工程验收通过；已有partial模型回归 / token增加保留，完整九对 / 双模型 / 两入口真实闭环仍按本模块原门槛。实际计数、source与失败证据见同一Record / live HANDOFF，不在Plan复制第二份账本。
