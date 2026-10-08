@@ -7,7 +7,7 @@ import { GenerationService } from '../model-prompt-runtime/generation-service.js
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { observedGenerationUsage } from '../adapters/generation-usage.js';
 import { CASE_SET_REVISION, selectCases, publicCaseScenario } from './evaluation/cases.js';
-import { parseEvaluationJson } from './evaluation/json.js';
+import { parseEvaluationJson, applyEvolutionProposal } from './evaluation/json.js';
 import { EVOLUTION_RULE, evolutionFields as fields, evolutionHash as hash, evolutionInteger as integer, evolutionText as text, sameEvolutionValue as same } from './evolution-repository.js';
 import { createNativeId } from '../identity.js';
 
@@ -155,7 +155,7 @@ export class EvolutionEvaluator {
             secretPort: { resolveSecret: async () => 'parent-port' }, providerFor: () => wrapped });
         const result = await service.execute({ requestId: job.id, handle, role: config.route.role, routeRef: { scope: 'player', runtimeRouteId: config.route.runtimeRouteId },
             tools: [], prompt: {}, fallbackMode: 'disabled', signal });
-        const parsed = parseEvaluationJson(result.response.assistantText || result.response.text);
+        const parsed = applyEvolutionProposal(parseEvaluationJson(result.response.assistantText || result.response.text), publicInput.base);
         fields(parsed, ['value', 'rationale']); text(parsed.rationale, 1024);
         return parsed;
     }

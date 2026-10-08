@@ -16,10 +16,18 @@ export function parseBlindGrade(text, pair, flipped) {
 }
 
 export function automatedAcceptance(report, independent, owner, jobId, { tokensAdvisory = false } = {}) {
-    const reasons = [], required = selectCases({ purpose: 'evaluation', split: 'promotion' }).filter(c => c.entrance === report?.domain);
+    return evaluateAcceptance(report, independent, owner, jobId, tokensAdvisory, false);
+}
+
+export function developmentReadiness(report, independent, owner, jobId) {
+    return evaluateAcceptance(report, independent, owner, jobId, true, true);
+}
+
+function evaluateAcceptance(report, independent, owner, jobId, tokensAdvisory, development) {
+    const reasons = [], required = selectCases({ purpose: 'evaluation', split: development ? 'development' : 'promotion' }).filter(c => c.entrance === report?.domain);
     let wins = 0, baselineTokens = 0, candidateTokens = 0;
     if (report?.origin !== 'host_evaluator' || report.evaluatorRevision !== evolutionEvaluatorRevision() || report.caseSetRevision !== CASE_SET_REVISION) reasons.push('evaluation_identity_changed');
-    if (report?.pairs?.length !== 9 || required.some(c => [1, 2, 3].some(r => report?.pairs?.filter(p => p.case.caseId === c.caseId && p.repetition === r).length !== 1))) reasons.push('independent_cases_incomplete');
+    if (report?.pairs?.length !== (development ? 3 : 9) || required.some(c => (development ? [1] : [1, 2, 3]).some(r => report?.pairs?.filter(p => p.case.caseId === c.caseId && p.repetition === r).length !== 1))) reasons.push('independent_cases_incomplete');
     const seen = new Set();
     for (const c of report?.charges || []) {
         const paid = owner.attempts.find(a => a.id === c.id && a.jobId === jobId);
@@ -47,7 +55,7 @@ export function automatedAcceptance(report, independent, owner, jobId, { tokensA
             if (arm === 'baseline') baselineTokens += tokens; else candidateTokens += tokens;
         }
     }
-    if (wins < 6) reasons.push('improvement_threshold_not_met');
+    if (wins < (development ? 2 : 6)) reasons.push('improvement_threshold_not_met');
     if (!tokensAdvisory && (owner.breached || candidateTokens > baselineTokens)) reasons.push('token_regression_or_budget_breach');
     return { tokensAdvisory, resourceWarnings: [owner.breached ? 'advisory_breach' : null, candidateTokens > baselineTokens ? 'candidate_tokens_increased' : null,
         owner.attempts.some(a => a.status !== 'reported') ? 'usage_unavailable' : null].filter(Boolean), accepted: reasons.length === 0, reasons: [...new Set(reasons)], wins, baselineTokens, candidateTokens,

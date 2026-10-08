@@ -10,7 +10,7 @@ import { setConfigFilePath } from '../../src/util.js';
 import { EvaluationBudget } from './budget.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
-import { parseBlindGrade, automatedAcceptance } from './m1-acceptance.js';
+import { parseBlindGrade, automatedAcceptance, developmentReadiness } from './m1-acceptance.js';
 import { M1RetryPolicy } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
@@ -18,7 +18,7 @@ import { completeM1Response, m1BodyFailure, m1TransportFailureCode } from './m1-
 import { projectActivationMatches } from './m1-resume.js';
 import { createM1SecretPort } from './m1-secrets.js';
 import { m1TransportKey } from './m1-transport-key.js';
-import { m1GraderConfiguration, sendM1Grader, m1ExtractionConfiguration, sendM1Extraction } from './m1-grader.js';
+import { m1GraderConfiguration, sendM1Grader, m1ExtractionConfiguration, sendM1Extraction, m1EvaluationConfiguration, sendM1Evaluation } from './m1-grader.js';
 import { assertM1PrivateAccess } from './m1-private-access.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
@@ -42,13 +42,16 @@ try {
     const cycleBaselineProject = option.length === 3 && option[2].startsWith('--cycle-baseline-project=') ? option[2].slice('--cycle-baseline-project='.length) : null;
     const cycleBaseline = option.length === 3 && option[2] === '--cycle-baseline' || Boolean(cycleBaselineProject);
     const cycleOptimize = option.length === 3 && option[2].startsWith('--cycle-optimize=') ? option[2].slice('--cycle-optimize='.length) : null;
-    const cycleAcceptance = option.length === 3 && option[2].startsWith('--cycle-acceptance=') ? option[2].slice('--cycle-acceptance='.length) : null;
+    const cycleBoundedOptimize = option.length === 3 && option[2].startsWith('--cycle-bounded-optimize=') ? option[2].slice('--cycle-bounded-optimize='.length) : null;
+    const cycleBoundedAcceptance = option.length === 3 && option[2].startsWith('--cycle-bounded-acceptance=') ? option[2].slice('--cycle-bounded-acceptance='.length) : null;
+    const cycleAcceptance = option.length === 3 && option[2].startsWith('--cycle-acceptance=') ? option[2].slice('--cycle-acceptance='.length) : cycleBoundedAcceptance;
     const cycleFinish = option.length === 3 && option[2].startsWith('--cycle-finish-development=') ? option[2].slice('--cycle-finish-development='.length) : null;
     const cycleProjectExtract = option.length === 3 && option[2].startsWith('--cycle-project-extract=') ? option[2].slice('--cycle-project-extract='.length) : null;
-    const cycle = cycleBaseline || cycleOptimize || cycleAcceptance || cycleFinish || cycleProjectExtract;
-    const development = cycleBaseline || Boolean(cycleOptimize || cycleFinish);
+    const boundedCycle = Boolean(cycleBoundedOptimize || cycleBoundedAcceptance);
+    const cycle = cycleBaseline || cycleOptimize || cycleAcceptance || cycleFinish || cycleProjectExtract || boundedCycle;
+    const development = cycleBaseline || Boolean(cycleOptimize || cycleFinish || cycleBoundedOptimize);
     if (temporarySecondary && !gradeName) throw new Error('temporary_secondary_grading_only');
-    if (!(option.length === 2 || prepareOnly || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    if (!(option.length === 2 || prepareOnly || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     assertM1PrivateAccess(directory, 0o700);
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -108,6 +111,7 @@ try {
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged', temporarySecondary };
     store('summary.json', summary);
     if (cycle) summary.mode = development ? cycleBaseline ? 'cycle_baseline_development' : 'cycle_optimized_development' : 'cycle_frozen_acceptance';
+    if (boundedCycle) summary.envelope = 'cycle-output-8000-v1';
     if (cycleBaselineProject) {
         const previous = path.join(directory, 'm1-reports', cycleBaselineProject);
         const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
@@ -119,7 +123,17 @@ try {
         for (const file of ['rp-skill-job.json', 'rp-skill-independent.json', 'development-feedback.json']) fs.copyFileSync(path.join(previous, file), path.join(output, file));
     }
     let cycleSource, finishSource;
-    if (cycleProjectExtract) {
+    if (cycleBoundedOptimize) {
+        const previous = path.join(directory, 'm1-reports', cycleBoundedOptimize);
+        const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
+        const diagnostic = JSON.parse(fs.readFileSync(path.join(previous, 'secondary-diagnostic-response.json'), 'utf8'));
+        const manifest = JSON.parse(fs.readFileSync(path.join(previous, 'bounded-cycle-continuation.json'), 'utf8'));
+        if (source.mode !== 'one_request_secondary_diagnostic' || hash(source) !== manifest.sourceSummaryHash || hash(diagnostic) !== manifest.diagnosticHash
+            || parseEvaluationJson(diagnostic.response?.assistantText).ok !== true || manifest.outputTokens !== 8000
+            || hash(JSON.parse(fs.readFileSync(path.join(previous, 'development-feedback.json'), 'utf8'))) !== manifest.feedbackHash) throw new Error('bounded_cycle_source_invalid');
+        cycleSource = { previous, source };
+        summary.developmentSource = { summaryHash: hash(source), manifestHash: hash(manifest), diagnosticHash: hash(diagnostic), outputTokens: 8000 };
+    } else if (cycleProjectExtract) {
         const previous = path.join(directory, 'm1-reports', cycleProjectExtract);
         const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
         const manifest = JSON.parse(fs.readFileSync(path.join(previous, 'project-extraction-continuation.json'), 'utf8'));
@@ -156,6 +170,7 @@ try {
             });
         if (source.mode !== (cycleOptimize ? 'cycle_baseline_development' : 'cycle_optimized_development') || source.entries.length !== 2
             || source.entries.some(e => !e.candidateValueHash || !diagnosedPartial && (e.independent.length !== 3 || e.independent.some(o => !o.chargeId || !o.preference)))) throw new Error('cycle_development_incomplete');
+        if (cycleBoundedAcceptance && (source.envelope !== 'cycle-output-8000-v1' || source.entries.some(e => e.developmentReadiness?.accepted !== true))) throw new Error('cycle_development_gate_failed');
         summary.baselineDevelopmentPartial = Boolean(diagnosedPartial);
         cycleSource = { previous, source };
         summary.developmentSource = { summaryHash: hash(source), testedHead: source.testedHead };
@@ -196,7 +211,8 @@ try {
     const activeTransportKeys = new Set();
     const transport = async (url, options) => {
         const body = JSON.parse(options.body), model = body.model, key = m1TransportKey(url, model, transportEpochs,
-            cycleProjectExtract && model === connections[0].config.model && body.max_tokens === 8000 ? 8000 : null);
+            (cycleProjectExtract || boundedCycle) && model === connections[0].config.model && body.max_tokens === 8000 ? 8000 : null,
+            boundedCycle ? 'evaluation' : 'extraction');
         if (!diagnoseOnly) retryPolicy.assertAvailable(key);
         try {
             // Three funded attempts plus backoff must fit inside the original
@@ -262,7 +278,9 @@ try {
             const f = gradeSource ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(gradeSource.previous, kind + '-private-fixture'), gradeSource.results[kind],
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, requireCurrentPublication: false }) : resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository }) : await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
-                connectionConfig: primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository }); scratch = f.h;
+                connectionConfig: boundedCycle ? { ...primary.config, maxOutputTokens: 8000 } : primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository,
+                configureEvaluator: boundedCycle ? evaluator => { evaluator.configuration = (handle, routeId, promptRef = null) => m1EvaluationConfiguration(evaluator.host, handle, routeId, promptRef); } : undefined }); scratch = f.h;
+            if (boundedCycle) f.evaluator.configuration = (handle, routeId, promptRef = null) => m1EvaluationConfiguration(f.host, handle, routeId, promptRef);
             if (cycleBaseline || cycleAcceptance) {
                 const previous = cycleBaseline ? path.join(reportRoot, 'run-1791467157643-006f217f') : cycleSource.previous;
                 // Read only immutable proposals here, never old promotion outputs.
@@ -285,7 +303,7 @@ try {
                 };
                 entry.proposalSource = { origin: 'unchanged_partial_development_candidate', valueHash: hash(original.candidate.diff.after), testedHead: finishSource.source.testedHead };
             }
-            if (cycleOptimize || cycleFinish || cycleProjectExtract) {
+            if (cycleOptimize || cycleFinish || cycleProjectExtract || cycleBoundedOptimize) {
                 const notes = JSON.parse(fs.readFileSync(path.join(cycleSource.previous, 'development-feedback.json'), 'utf8'));
                 const note = notes[kind];
                 if (!note?.rationale || !note.note) throw new Error('cycle_feedback_required');
@@ -316,7 +334,7 @@ try {
             const owner = await f.repository.owner(f.h.handle);
             await f.service.budget(f.h.handle, { expectedSequence: owner.sequence, limits: { maxRequests: 260, maxTokens: 699536, minIntervalMs: 3150 } });
             const secondary = connections[1];
-            if (!resumed) await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: secondary.config,
+            if (!resumed) await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: boundedCycle ? { ...secondary.config, maxOutputTokens: Math.min(8000, secondary.config.maxOutputTokens) } : secondary.config,
                 secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } });
             const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
             const secondaryRoutes = [];
@@ -348,7 +366,8 @@ try {
             const send = f.evaluator.send.bind(f.evaluator);
             f.evaluator.send = async (handle, job, config, payload, signal, fresh) => {
                 const transportKey = m1TransportKey(payload.rendered.endpoint, payload.rendered.body.model, transportEpochs,
-                    cycleProjectExtract && payload.arm === 'extraction' && payload.outputTokens === 8000 ? 8000 : null);
+                    (cycleProjectExtract || boundedCycle) && config.model.remoteModelId === primary.config.model && payload.outputTokens === 8000 ? 8000 : null,
+                    boundedCycle ? 'evaluation' : 'extraction');
                 activeTransportKeys.add(transportKey);
                 const fundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
@@ -356,10 +375,12 @@ try {
                     packet = { ...payload, retryAttempt };
                     const restoreSecret = secrets.select(config.model.remoteModelId);
                     try {
-                        const result = cycleProjectExtract && payload.arm === 'extraction'
-                            ? await sendM1Extraction(f.evaluator, handle, job, config, payload, signal, fresh)
-                            : extendedGrader && (job.id.endsWith(':independent') || diagnoseOnly && job.id.endsWith(':diagnostic')) && config.model.remoteModelId === secondary.config.model
-                                ? await sendM1Grader(f.evaluator, handle, job, config, payload, signal, fresh) : await send(handle, job, config, payload, signal, fresh);
+                        const result = boundedCycle && config.model.remoteModelId === primary.config.model
+                            ? await sendM1Evaluation(f.evaluator, handle, { ...job, m1Envelope: 'cycle-output-8000-v1' }, config, payload, signal, fresh)
+                            : cycleProjectExtract && payload.arm === 'extraction'
+                                ? await sendM1Extraction(f.evaluator, handle, job, config, payload, signal, fresh)
+                                : extendedGrader && (job.id.endsWith(':independent') || diagnoseOnly && job.id.endsWith(':diagnostic')) && config.model.remoteModelId === secondary.config.model
+                                    ? await sendM1Grader(f.evaluator, handle, job, config, payload, signal, fresh) : await send(handle, job, config, payload, signal, fresh);
                         store(kind + '-response-' + result.charge.id + '.json', result);
                         if (!diagnoseOnly && !completeM1Response(result.raw, payload)) {
                             retryPolicy.incomplete(transportKey);
@@ -450,6 +471,7 @@ try {
             entry.acceptance = automatedAcceptance(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id, { tokensAdvisory: true });
             if (development) {
                 entry.status = entry.independent.length === observedPairs.length && entry.independent.every(o => o.chargeId && o.preference) ? 'development_observed' : 'development_incomplete';
+                if (boundedCycle) entry.developmentReadiness = developmentReadiness(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id);
                 entry.lifecycle = { performedThisRun: false }; continue;
             }
             if (gradeSource) {

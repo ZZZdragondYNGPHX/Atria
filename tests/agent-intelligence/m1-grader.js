@@ -44,17 +44,37 @@ export async function sendM1Extraction(evaluator, handle, job, config, payload, 
     return sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, true);
 }
 
-async function sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, extraction) {
+export async function m1EvaluationConfiguration(host, handle, routeId, projectPromptRef = null) {
+    const original = await host.persistence.getRuntimeRoute(handle, routeId);
+    const route = projectPromptRef ? { ...original, promptProgramRef: projectPromptRef } : original;
+    const persistence = Object.create(host.persistence);
+    persistence.getRuntimeRoute = async (owner, id) => id === routeId ? route : host.persistence.getRuntimeRoute(owner, id);
+    const resolver = new RouteResolver({ persistence, library: host.library, providers: host.providers });
+    const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role: route.role, requirements: ['generation.tools'] });
+    if (resolved.connection.providerAdapter !== 'provider.openai-compatible' || resolved.resources.some(r => r.ref.scope !== 'library')
+        || resolved.generation.streaming.enabled) throw new Error('unsupported_m1_evaluation_configuration');
+    integer(resolved.generation.output.maxTokens, 1, 8000);
+    return structuredClone({ route: resolved.route, connection: resolved.connection, model: resolved.model, generation: resolved.generation,
+        resources: resolved.resources.map(({ ref, resource }) => ({ ref, resource })) });
+}
+
+export async function sendM1Evaluation(evaluator, handle, job, config, payload, signal, fresh) {
+    return sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, false, true);
+}
+
+async function sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, extraction, evaluation = false) {
     await fresh(); signal.throwIfAborted();
-    if (extraction ? payload.arm !== 'extraction' || payload.trialId !== job.id + ':extract' || job.price !== null
-        : payload.arm !== 'judge' || !(job.id.endsWith(':independent') || job.id.startsWith('m1-secondary-diagnostic-') && job.id.endsWith(':diagnostic')) || job.price !== null) throw new Error(extraction ? 'm1_extraction_only' : 'independent_m1_grader_only');
-    integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, extraction ? 8000 : 8192);
+    if (evaluation ? job.m1Envelope !== 'cycle-output-8000-v1' || !['baseline', 'candidate', 'judge', 'extraction'].includes(payload.arm) || job.price !== null
+        : extraction ? payload.arm !== 'extraction' || payload.trialId !== job.id + ':extract' || job.price !== null
+            : payload.arm !== 'judge' || !(job.id.endsWith(':independent') || job.id.startsWith('m1-secondary-diagnostic-') && job.id.endsWith(':diagnostic')) || job.price !== null) throw new Error(extraction ? 'm1_extraction_only' : 'independent_m1_grader_only');
+    integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, extraction || evaluation ? 8000 : 8192);
     if (payload.rendered.endpoint !== config.connection.endpoint || payload.rendered.body.model !== config.model.remoteModelId
         || payload.rendered.body.max_tokens !== payload.outputTokens || payload.outputTokens !== config.generation.output.maxTokens
         || payload.outputTokens > config.model.limits.outputTokens || hash(payload.rendered) !== payload.requestHash) throw new Error('m1_grader_transport_changed');
     if (payload.inputTokens + payload.outputTokens > config.model.limits.contextTokens) throw new Error('m1_grader_context_exceeded');
     const id = randomUUID();
-    const reservation = await evaluator.repository.reserve(handle, { id, scopeId: job.scopeId, jobId: job.id, kind: extraction ? 'extraction' : 'judge', upperBound: payload.inputTokens + payload.outputTokens,
+    const kind = evaluation ? payload.arm : extraction ? 'extraction' : 'judge';
+    const reservation = await evaluator.repository.reserve(handle, { id, scopeId: job.scopeId, jobId: job.id, kind, upperBound: payload.inputTokens + payload.outputTokens,
         trialId: payload.trialId, requestHash: payload.requestHash, snapshotHash: payload.snapshotHash });
     let usage = null;
     try {
@@ -65,7 +85,7 @@ async function sendM1Bounded(evaluator, handle, job, config, payload, signal, fr
         const response = await provider.send(payload.rendered, { secret, signal });
         const raw = await provider.parseStream(response);
         usage = observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' });
-        return { raw, charge: { id, trialId: payload.trialId, kind: extraction ? 'extraction' : 'judge', requestHash: payload.requestHash, snapshotHash: payload.snapshotHash,
+        return { raw, charge: { id, trialId: payload.trialId, kind, requestHash: payload.requestHash, snapshotHash: payload.snapshotHash,
             status: usage?.totalTokens !== undefined ? 'reported' : 'unknown', tokens: usage?.totalTokens ?? reservation.upperBound, usage, cost: null } };
     } finally { await evaluator.repository.settle(handle, id, usage?.totalTokens ?? null, { usage, cost: null }); }
 }

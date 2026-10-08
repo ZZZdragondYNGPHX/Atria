@@ -16,7 +16,7 @@ test('authorized extraction uses 8000 on the original compiler/provider with a s
         sends++;
         expect(JSON.parse(options.body).max_tokens).toBe(8000);
         expect((await f.repository.owner(f.h.handle)).attempts.at(-1)).toMatchObject({ kind: 'extraction', status: 'reserved' });
-        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '{"value":"Original style. Explain the actual review state.","rationale":"Address the diagnosed missing review explanation."}' } }], usage: { prompt_tokens: 644, completion_tokens: 2000, total_tokens: 2644 } }) };
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '{"edits":[{"before":"","after":" Explain the actual review state."}],"rationale":"Address the diagnosed missing review explanation."}' } }], usage: { prompt_tokens: 644, completion_tokens: 2000, total_tokens: 2644 } }) };
     } });
     cleanup.push(f.h.cleanup);
     const original = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), before = hash(original);

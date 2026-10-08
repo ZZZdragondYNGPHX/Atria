@@ -42,7 +42,7 @@ export function syntheticReport(job, configs, settings) {
         domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price, pairs, charges: pairs.flatMap(p => [...p.baseline.charges, ...p.candidate.charges]), createdAt: 1000,
         configurations: { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: { baseline: hash(settings.baseline), candidate: hash(settings.candidate) } };
 }
-export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl, connectionConfig = testConfig, policyMode = 'auto', confirmedPrice = price, repositoryClass = AgentEvolutionRepository } = {}) {
+export async function evolutionFixture(make, targetKind = 'project-strategy', { realEvaluator = false, fetchImpl, connectionConfig = testConfig, policyMode = 'auto', confirmedPrice = price, repositoryClass = AgentEvolutionRepository, configureEvaluator = () => {} } = {}) {
     const h = await make();
     const { studio, agent } = services(h), persistence = new NativeModelPromptPersistence({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
     await createLiveBridge({ engine: h.engine, handle: h.handle, config: connectionConfig, secretPort: { resolveSecret: async () => 'not-used' }, fetchImpl: async () => { throw new Error('Unused seed bridge'); } });
@@ -53,6 +53,7 @@ export async function evolutionFixture(make, targetKind = 'project-strategy', { 
     const host = { persistence, library, studio, agent, providers: { 'provider.openai-compatible': createHttpGenerationProvider({ fetchImpl: fetchImpl || (async () => { throw new Error('Paid requests forbidden in fixture'); }) }) },
         secretPort: { resolveSecret: async () => 'fixture-secret-never-in-report' }, skillRepository: () => createSkillRepository(h.dirs.root), sessionCore: null };
     const repository = new repositoryClass({ engine: h.engine }), evaluator = new EvolutionEvaluator({ host, repository });
+    configureEvaluator(evaluator);
     let extractionValue = targetKind.endsWith('strategy') ? 1 : 'Candidate guidance';
     if (!realEvaluator) {
         evaluator.extract = async (_handle, job) => {

@@ -32,3 +32,15 @@ test('explicit grading output change keeps previous failures and remains stable 
     expect(key).toBe(m1TransportKey('fixture', 'secondary', JSON.parse(JSON.stringify(epochs))));
     expect(() => m1TransportKey('fixture', 'secondary', { secondary: { ...old, graderOutputTokens: 8193 } })).toThrow('invalid_transport_epoch');
 });
+
+test('8000 comparison output has a fixed purpose fingerprint without changing prior stopped windows', () => {
+    const old = m1TransportKey('fixture', 'primary'), extraction = m1TransportKey('fixture', 'primary', {}, 8000);
+    const comparison = m1TransportKey('fixture', 'primary', {}, 8000, 'evaluation');
+    expect(comparison).not.toBe(extraction); expect(comparison).not.toBe(old);
+    const policy = new M1RetryPolicy({ snapshot: { [old]: { consecutive: 3, recent: [true, true, true], stopped: 'm1_response_incomplete' } } });
+    policy.observe(comparison);
+    const restarted = new M1RetryPolicy({ snapshot: JSON.parse(JSON.stringify(Object.fromEntries(policy.connections))) });
+    expect(restarted.state(old).stopped).toBe('m1_response_incomplete');
+    expect(restarted.state(m1TransportKey('fixture', 'primary', {}, 8000, 'evaluation')).recent).toEqual([false]);
+    expect(() => m1TransportKey('fixture', 'primary', {}, 8001, 'evaluation')).toThrow();
+});

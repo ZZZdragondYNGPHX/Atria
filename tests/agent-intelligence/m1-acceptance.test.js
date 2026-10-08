@@ -1,7 +1,8 @@
 import { expect, test } from '@jest/globals';
 import { evolutionFixture, syntheticReport } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { parseBlindGrade, automatedAcceptance } from './m1-acceptance.js';
+import { parseBlindGrade, automatedAcceptance, developmentReadiness } from './m1-acceptance.js';
+import { selectCases } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 
@@ -25,6 +26,23 @@ function fundedReport() {
     }
     return { report, independent, owner };
 }
+
+test('three funded development pairs can qualify only for freezing and any negative dimension blocks it', () => {
+    const f = fundedReport(), cases = selectCases({ purpose: 'evaluation', split: 'development' }).filter(c => c.entrance === 'rp');
+    f.report.pairs = f.report.pairs.filter(p => p.repetition === 1);
+    f.independent = f.report.pairs.map((p, i) => {
+        const observation = f.independent.find(o => o.pairHash === p.pairHash);
+        p.case = cases[i]; const { pairHash: _old, ...identity } = p; p.pairHash = hash(identity);
+        return { ...observation, pairHash: p.pairHash };
+    });
+    const used = new Set(f.report.pairs.flatMap(p => [...p.baseline.charges, ...p.candidate.charges].map(c => c.id).concat(p.judge.chargeIds)));
+    f.report.charges = f.report.charges.filter(c => used.has(c.id));
+    expect(developmentReadiness(f.report, f.independent, f.owner, 'm1')).toMatchObject({ accepted: true, wins: 3 });
+    expect(automatedAcceptance(f.report, f.independent, f.owner, 'm1', { tokensAdvisory: true }).accepted).toBe(false);
+    const pair = f.report.pairs[0]; pair.judge.deltas[pair.case.behaviorDimensions[0]] = -1;
+    const { pairHash: _old, ...identity } = pair; pair.pairHash = hash(identity); f.independent[0].pairHash = pair.pairHash;
+    expect(developmentReadiness(f.report, f.independent, f.owner, 'm1').reasons).toContain('behavior_regression_or_ungraded');
+});
 
 test('automated engineering acceptance never fills human labels or grants production promotion', () => {
     const f = fundedReport(), before = JSON.stringify(f.report);

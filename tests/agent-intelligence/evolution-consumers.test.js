@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from '@jest/globals';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { evolutionFixture, runEvolution, labelAll, skillMd } from './evolution-fixture.js';
+import { evolutionFixture, runEvolution, labelAll } from './evolution-fixture.js';
 import { selectCases, loadFixture } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { projectFixtureSource } from '../../src/native/agent-intelligence/evaluation/fixture-source.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
@@ -18,7 +18,7 @@ function syntheticProvider(kind, sends) {
         const body = JSON.parse(options.body); sends.push(body);
         const content = body.messages.at(-1)?.content;
         let message;
-        if (content?.includes('allowedDeclaration')) message = { content: JSON.stringify({ value: kind === 'rp-skill' ? skillMd('Candidate guidance') : 'Candidate style', rationale: 'Synthetic wiring check only' }) };
+        if (content?.includes('allowedDeclaration')) message = { content: JSON.stringify({ edits: [{ before: '', after: kind === 'rp-skill' ? '\nCandidate guidance' : '\nCandidate style' }], rationale: 'Synthetic wiring check only' }) };
         else if (!body.tools?.length) {
             const input = JSON.parse(content);
             message = { content: JSON.stringify({ preference: 'tie', deltas: Object.fromEntries(input.dimensions.map(d => [d, 0])), rationale: 'Synthetic tie, no quality claim' }) };
