@@ -33,7 +33,8 @@ try {
     const prepareOnly = option.length === 3 && option[2] === '--prepare';
     const resumeName = option.length === 3 && option[2].startsWith('--resume-project=') ? option[2].slice('--resume-project='.length) : null;
     const gradeName = option.length === 3 && option[2].startsWith('--grade-only=') ? option[2].slice('--grade-only='.length) : null;
-    if (!(option.length === 2 || prepareOnly || (resumeName || gradeName) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    const diagnoseOnly = option.length === 3 && option[2] === '--diagnose-secondary';
+    if (!(option.length === 2 || prepareOnly || diagnoseOnly || (resumeName || gradeName) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     if ((fs.statSync(directory).mode & 0o777) !== 0o700) throw new Error('private_directory_permissions_required');
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -125,12 +126,16 @@ try {
         onChange: state => writeFileAtomic.sync(transportCheckpoint, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 }) });
     const transport = async (url, options) => {
         const model = JSON.parse(options.body).model, key = url + ':' + model;
-        retryPolicy.assertAvailable(key);
+        if (!diagnoseOnly) retryPolicy.assertAvailable(key);
         try {
             const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(300000)]) });
             if (!response.ok) {
                 const code = 'm1_http_' + response.status;
-                await response.body?.cancel();
+                if (diagnoseOnly) {
+                    let body;
+                    try { body = await response.text(); } catch { body = 'error_body_unavailable'; }
+                    store('secondary-http-error.json', { status: response.status, body, model, requestId: response.headers.get('x-request-id'), server: response.headers.get('server') });
+                } else await response.body?.cancel();
                 throw Object.assign(new Error(code), { code });
             }
             retryPolicy.observe(key);
@@ -171,6 +176,7 @@ try {
     const { runRp } = await import('../../src/native/agent-intelligence/evaluation/adapters.js');
     const { selectCases, loadFixture, canonical } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
     for (const [index, kind] of ['rp-skill', 'project-prompt'].entries()) {
+        if (diagnoseOnly && index !== 0) continue;
         if (resumed && index === 0) continue;
         const entry = { kind, status: 'preparing', independent: [], lifecycle: null };
         summary.entries.push(entry); store('summary.json', summary);
@@ -221,7 +227,7 @@ try {
             const send = f.evaluator.send.bind(f.evaluator);
             f.evaluator.send = async (handle, job, config, payload, signal, fresh) => {
                 const transportKey = payload.rendered.endpoint + ':' + payload.rendered.body.model;
-                return retryPolicy.send(transportKey, async retryAttempt => {
+                const fundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
                     packet = { ...payload, retryAttempt };
@@ -229,7 +235,7 @@ try {
                     try {
                         const result = await send(handle, job, config, payload, signal, fresh);
                         store(kind + '-response-' + result.charge.id + '.json', result);
-                        if (!completeM1Response(result.raw, payload)) {
+                        if (!diagnoseOnly && !completeM1Response(result.raw, payload)) {
                             retryPolicy.incomplete(transportKey);
                             console.log(JSON.stringify({ kind, incompleteResponse: true, retryAttempt }));
                             throw Object.assign(new Error('m1_response_incomplete'), { code: 'm1_response_incomplete' });
@@ -238,13 +244,26 @@ try {
                     }
                     finally { restoreSecret(); packet = null;
                         const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
-                }, AbortSignal.any([signal, overall.signal]));
+                };
+                return diagnoseOnly ? fundedAttempt(0) : retryPolicy.send(transportKey, fundedAttempt, AbortSignal.any([signal, overall.signal]));
             };
             const compare = f.evaluator.compare.bind(f.evaluator);
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
                 async pair => { store(kind + '-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); },
                 async trial => { store(kind + '-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial); });
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
+            if (diagnoseOnly) {
+                summary.mode = 'one_request_secondary_diagnostic';
+                const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'm1-secondary-diagnostic-' + randomUUID(), scopeId: doc.scopeId, price: null };
+                const bridge = await createFrozenEvaluationBridge(secondaryConfig, async payload => (await f.evaluator.send(f.h.handle, job, secondaryConfig,
+                    { ...payload, arm: 'judge' }, overall.signal, async () => {})).raw);
+                try {
+                    const result = await bridge.rp({ requestId: randomUUID(), trialId: job.id, fixtureHash: hash('one_request_secondary_diagnostic'),
+                        messages: [{ role: 'user', content: 'Return JSON only: {"ok":true}' }], tools: [], kind: 'grader' });
+                    store('secondary-diagnostic-response.json', result); entry.status = 'diagnostic_response_received';
+                } finally { bridge.cleanup(); }
+                continue;
+            }
             entry.status = 'evaluating'; store('summary.json', summary);
             const result = gradeSource ? gradeSource.results[kind] : resumed ? resumed.result : await runEvolution(f), { job, candidate } = result;
             entry.jobId = job.id; entry.status = job.status;
