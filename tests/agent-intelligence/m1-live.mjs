@@ -18,6 +18,7 @@ import { completeM1Response } from './m1-response.js';
 import { projectActivationMatches } from './m1-resume.js';
 import { createM1SecretPort } from './m1-secrets.js';
 import { m1TransportKey } from './m1-transport-key.js';
+import { m1GraderConfiguration, sendM1Grader } from './m1-grader.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -31,10 +32,13 @@ const overall = new AbortController();
 const deadline = setTimeout(() => overall.abort(), 2 * 3600000);
 const safeReason = error => /^[a-z_0-9]{1,100}$/.test(error?.code || error?.message || '') ? error.code || error.message : 'inspect_private_report';
 try {
+    const temporarySecondary = option.length === 4 && option[3] === '--temporary-secondary';
+    if (temporarySecondary) option.pop();
     const prepareOnly = option.length === 3 && option[2] === '--prepare';
     const resumeName = option.length === 3 && option[2].startsWith('--resume-project=') ? option[2].slice('--resume-project='.length) : null;
     const gradeName = option.length === 3 && option[2].startsWith('--grade-only=') ? option[2].slice('--grade-only='.length) : null;
     const diagnoseOnly = option.length === 3 && option[2] === '--diagnose-secondary';
+    if (temporarySecondary && !gradeName) throw new Error('temporary_secondary_grading_only');
     if (!(option.length === 2 || prepareOnly || diagnoseOnly || (resumeName || gradeName) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     if ((fs.statSync(directory).mode & 0o777) !== 0o700) throw new Error('private_directory_permissions_required');
@@ -78,7 +82,7 @@ try {
     const output = path.join(directory, 'm1-reports', 'run-' + Date.now() + '-' + randomUUID().slice(0, 8));
     fs.mkdirSync(output, { recursive: true, mode: 0o700 });
     const store = (name, value) => writeFileAtomic.sync(path.join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
-    const connections = ['api-primary.json', 'api-secondary.json'].map(name => {
+    const connections = ['api-primary.json', temporarySecondary ? 'api-minimax-temporary.json' : 'api-secondary.json'].map(name => {
         const file = path.join(directory, name);
         if ((fs.statSync(file).mode & 0o777) !== 0o600) throw new Error('private_connection_permissions_required');
         const { apiKey, ...config } = read(name);
@@ -87,12 +91,12 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'm1-grader.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
         policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
-        initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged' };
+        initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged', temporarySecondary };
     store('summary.json', summary);
     let gradeSource;
     if (gradeName) {
@@ -134,7 +138,7 @@ try {
             const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(300000)]) });
             if (!response.ok) {
                 const code = 'm1_http_' + response.status;
-                if (diagnoseOnly) {
+                if (diagnoseOnly || temporarySecondary) {
                     let body;
                     try { body = await response.text(); } catch { body = 'error_body_unavailable'; }
                     store('secondary-http-error.json', { status: response.status, body, model, requestId: response.headers.get('x-request-id'), server: response.headers.get('server') });
@@ -212,7 +216,11 @@ try {
             }
             if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
             const secondaryRoute = secondaryRoutes[0];
-            const secondaryConfig = await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
+            const extendedGrader = gradeSource && secondary.config.maxOutputTokens > 1024;
+            const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId)
+                : await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
+            entry.secondaryConfigurationHash = hash(secondaryConfig);
+            entry.secondaryOutputTokens = secondaryConfig.generation.output.maxTokens;
             const secrets = createM1SecretPort(primary, secondary);
             f.host.secretPort = secrets.port;
             const reserve = f.evaluator.repository.reserve.bind(f.evaluator.repository), settle = f.evaluator.repository.settle.bind(f.evaluator.repository);
@@ -236,7 +244,8 @@ try {
                     packet = { ...payload, retryAttempt };
                     const restoreSecret = secrets.select(config.model.remoteModelId);
                     try {
-                        const result = await send(handle, job, config, payload, signal, fresh);
+                        const result = extendedGrader && job.id.endsWith(':independent') && config.model.remoteModelId === secondary.config.model
+                            ? await sendM1Grader(f.evaluator, handle, job, config, payload, signal, fresh) : await send(handle, job, config, payload, signal, fresh);
                         store(kind + '-response-' + result.charge.id + '.json', result);
                         if (!diagnoseOnly && !completeM1Response(result.raw, payload)) {
                             retryPolicy.incomplete(transportKey);

@@ -23,3 +23,12 @@ test('explicit server group change preserves stopped history and persists the ne
 test('a malformed server-change authorization does not create a new failure window', () => {
     expect(() => m1TransportKey('https://fixture.invalid', 'secondary', { secondary: { revision: 'restart', reason: 'user_reported_server_group_change', authorizedAt: 1000 } })).toThrow('invalid_transport_epoch');
 });
+
+test('explicit grading output change keeps previous failures and remains stable on restart', () => {
+    const old = { revision: 'e8b5cf99-0a16-4c83-b070-6e138107ac6c', reason: 'user_reported_server_group_change', authorizedAt: 1000 };
+    const epochs = { secondary: { ...old, graderOutputTokens: 8192 } };
+    const key = m1TransportKey('fixture', 'secondary', epochs);
+    expect(key).not.toBe(m1TransportKey('fixture', 'secondary', { secondary: old }));
+    expect(key).toBe(m1TransportKey('fixture', 'secondary', JSON.parse(JSON.stringify(epochs))));
+    expect(() => m1TransportKey('fixture', 'secondary', { secondary: { ...old, graderOutputTokens: 8193 } })).toThrow('invalid_transport_epoch');
+});
