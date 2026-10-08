@@ -14,7 +14,7 @@ import { parseBlindGrade, automatedAcceptance } from './m1-acceptance.js';
 import { M1RetryPolicy } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
-import { completeM1Response } from './m1-response.js';
+import { completeM1Response, m1BodyFailure } from './m1-response.js';
 import { projectActivationMatches } from './m1-resume.js';
 import { createM1SecretPort } from './m1-secrets.js';
 import { m1TransportKey } from './m1-transport-key.js';
@@ -39,13 +39,14 @@ try {
     const resumeName = option.length === 3 && option[2].startsWith('--resume-project=') ? option[2].slice('--resume-project='.length) : null;
     const gradeName = option.length === 3 && option[2].startsWith('--grade-only=') ? option[2].slice('--grade-only='.length) : null;
     const diagnoseOnly = option.length === 3 && option[2] === '--diagnose-secondary';
-    const cycleBaseline = option.length === 3 && option[2] === '--cycle-baseline';
+    const cycleBaselineProject = option.length === 3 && option[2].startsWith('--cycle-baseline-project=') ? option[2].slice('--cycle-baseline-project='.length) : null;
+    const cycleBaseline = option.length === 3 && option[2] === '--cycle-baseline' || Boolean(cycleBaselineProject);
     const cycleOptimize = option.length === 3 && option[2].startsWith('--cycle-optimize=') ? option[2].slice('--cycle-optimize='.length) : null;
     const cycleAcceptance = option.length === 3 && option[2].startsWith('--cycle-acceptance=') ? option[2].slice('--cycle-acceptance='.length) : null;
     const cycle = cycleBaseline || cycleOptimize || cycleAcceptance;
     const development = cycleBaseline || Boolean(cycleOptimize);
     if (temporarySecondary && !gradeName) throw new Error('temporary_secondary_grading_only');
-    if (!(option.length === 2 || prepareOnly || diagnoseOnly || cycleBaseline || (resumeName || gradeName || cycleOptimize || cycleAcceptance) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    if (!(option.length === 2 || prepareOnly || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     assertM1PrivateAccess(directory, 0o700);
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -105,6 +106,16 @@ try {
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged', temporarySecondary };
     store('summary.json', summary);
     if (cycle) summary.mode = development ? cycleBaseline ? 'cycle_baseline_development' : 'cycle_optimized_development' : 'cycle_frozen_acceptance';
+    if (cycleBaselineProject) {
+        const previous = path.join(directory, 'm1-reports', cycleBaselineProject);
+        const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
+        const rp = source.entries.find(e => e.kind === 'rp-skill'), project = source.entries.find(e => e.kind === 'project-prompt');
+        if (source.mode !== 'cycle_baseline_development' || rp?.status !== 'development_observed' || rp.independent.length !== 3
+            || project?.reason !== 'generation_provider_timeout' || project.acceptance) throw new Error('cycle_continuation_invalid');
+        summary.continuationSource = { summaryHash: hash(source), testedHead: source.testedHead, reason: project.reason };
+        summary.entries.push({ ...rp, performedThisRun: false, sourceTestedHead: source.testedHead });
+        for (const file of ['rp-skill-job.json', 'rp-skill-independent.json', 'development-feedback.json']) fs.copyFileSync(path.join(previous, file), path.join(output, file));
+    }
     let cycleSource;
     if (cycleOptimize || cycleAcceptance) {
         const previous = path.join(directory, 'm1-reports', cycleOptimize || cycleAcceptance);
@@ -151,7 +162,11 @@ try {
         const model = JSON.parse(options.body).model, key = m1TransportKey(url, model, transportEpochs);
         if (!diagnoseOnly) retryPolicy.assertAvailable(key);
         try {
-            const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(300000)]) });
+            // Three funded attempts plus backoff must fit inside the original
+            // Route deadline. This signal also bounds response body consumption.
+            const connection = connections.find(c => c.config.model === model);
+            const attemptTimeout = Math.min(80000, Math.max(1000, Math.floor(connection.config.timeoutMs / 4)));
+            const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(attemptTimeout)]) });
             if (!response.ok) {
                 const code = 'm1_http_' + response.status;
                 if (diagnoseOnly || temporarySecondary) {
@@ -199,6 +214,7 @@ try {
     const { runRp } = await import('../../src/native/agent-intelligence/evaluation/adapters.js');
     const { selectCases, loadFixture, canonical } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
     for (const [index, kind] of ['rp-skill', 'project-prompt'].entries()) {
+        if (cycleBaselineProject && index === 0) continue;
         if (diagnoseOnly && index !== 0) continue;
         if (resumed && index === 0) continue;
         const entry = { kind, status: 'preparing', independent: [], lifecycle: null };
@@ -216,7 +232,11 @@ try {
                 const value = original.candidate.diff.after;
                 if (cycleAcceptance && hash(value) !== cycleSource.source.entries.find(e => e.kind === kind).candidateValueHash) throw new Error('cycle_frozen_candidate_changed');
                 entry.proposalSource = { reportFileHash: hash(original), valueHash: hash(value), origin: cycleBaseline ? 'historical_candidate' : 'frozen_development_candidate' };
-                f.evaluator.extract = async (_handle, _job, _config, signal, fresh) => { await fresh(); signal.throwIfAborted(); return { value, rationale: original.candidate.rationale }; };
+                f.evaluator.extract = async (_handle, _job, _config, signal, fresh, input) => {
+                    await fresh(); signal.throwIfAborted();
+                    if (hash(input.base) !== hash(original.candidate.diff.before)) throw new Error('cycle_frozen_base_changed');
+                    return { value, rationale: original.candidate.rationale };
+                };
             }
             if (cycleOptimize) {
                 const notes = JSON.parse(fs.readFileSync(path.join(cycleSource.previous, 'development-feedback.json'), 'utf8'));
@@ -291,6 +311,15 @@ try {
                             throw Object.assign(new Error('m1_response_incomplete'), { code: 'm1_response_incomplete' });
                         }
                         return result;
+                    }
+                    catch (error) {
+                        // A successful header is not a complete response. Count
+                        // body transport/JSON failure once, preserving its charge.
+                        if (m1BodyFailure(error) && !signal.aborted && !overall.signal.aborted && retryPolicy.state(transportKey).recent.at(-1) === false) {
+                            retryPolicy.incomplete(transportKey);
+                            throw Object.assign(new Error('m1_response_incomplete'), { code: 'm1_response_incomplete' });
+                        }
+                        throw error;
                     }
                     finally { restoreSecret(); packet = null;
                         const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
