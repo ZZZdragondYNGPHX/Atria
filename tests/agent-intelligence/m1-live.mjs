@@ -140,7 +140,11 @@ try {
                     packet = { ...payload, retryAttempt };
                     const originalSecret = f.host.secretPort.resolveSecret;
                     f.host.secretPort.resolveSecret = async () => config.model.remoteModelId === secondary.config.model ? secondary.apiKey : primary.apiKey;
-                    try { return await send(handle, job, config, payload, signal, fresh); }
+                    try {
+                        const result = await send(handle, job, config, payload, signal, fresh);
+                        store(kind + '-response-' + result.charge.id + '.json', result);
+                        return result;
+                    }
                     finally { f.host.secretPort.resolveSecret = originalSecret; packet = null;
                         const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
                 }, AbortSignal.any([signal, overall.signal]));
@@ -221,7 +225,10 @@ try {
             await f.service.rollback(f.h.handle, { scope: f.scope, subject: f.subject, publicationId: publication.id });
             entry.lifecycle.baseRestored = hash(await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target)) === candidate.report.settings.baseline;
             entry.status = 'observed';
-        } catch (error) { entry.status = 'unavailable'; entry.reason = safeReason(error); process.exitCode = 1; }
+        } catch (error) {
+            store(kind + '-error.json', { name: error.name, message: error.message, stack: error.stack });
+            entry.status = 'unavailable'; entry.reason = safeReason(error); process.exitCode = 1;
+        }
         finally {
             if (scratch) { fs.cpSync(scratch.dataRoot, path.join(output, kind + '-private-fixture'), { recursive: true }); scratch.cleanup(); scratch = null; }
             summary.transportFailures = [...new Set([...retryPolicy.connections.values()].map(s => s.stopped).filter(Boolean))];
