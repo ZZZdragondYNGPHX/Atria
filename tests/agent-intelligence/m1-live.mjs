@@ -32,7 +32,8 @@ const safeReason = error => /^[a-z_0-9]{1,100}$/.test(error?.code || error?.mess
 try {
     const prepareOnly = option.length === 3 && option[2] === '--prepare';
     const resumeName = option.length === 3 && option[2].startsWith('--resume-project=') ? option[2].slice('--resume-project='.length) : null;
-    if (!(option.length === 2 || prepareOnly || resumeName && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    const gradeName = option.length === 3 && option[2].startsWith('--grade-only=') ? option[2].slice('--grade-only='.length) : null;
+    if (!(option.length === 2 || prepareOnly || (resumeName || gradeName) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     if ((fs.statSync(directory).mode & 0o777) !== 0o700) throw new Error('private_directory_permissions_required');
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -91,6 +92,22 @@ try {
         policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged' };
     store('summary.json', summary);
+    let gradeSource;
+    if (gradeName) {
+        const previous = path.join(directory, 'm1-reports', gradeName);
+        const priorSummary = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
+        if (priorSummary.evaluatorRevision !== summary.evaluatorRevision) throw new Error('grading_evaluator_changed');
+        const results = {};
+        for (const kind of ['rp-skill', 'project-prompt']) {
+            const result = JSON.parse(fs.readFileSync(path.join(previous, kind + '-job.json'), 'utf8'));
+            if (result.candidate?.report?.pairs?.length !== 9) throw new Error('grading_comparison_incomplete');
+            results[kind] = result;
+        }
+        gradeSource = { previous, results };
+        summary.mode = 'independent_grading_only';
+        summary.comparisonSource = { testedHead: priorSummary.testedHead, runnerRevision: priorSummary.runnerRevision, summaryHash: hash(priorSummary),
+            reportHashes: Object.fromEntries(Object.entries(results).map(([kind, r]) => [kind, hash(r.candidate.report)])) };
+    }
     let resumed;
     if (resumeName) {
         const previous = path.join(directory, 'm1-reports', resumeName);
@@ -159,10 +176,11 @@ try {
         summary.entries.push(entry); store('summary.json', summary);
         try {
             const primary = connections[0];
-            const f = resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
+            const f = gradeSource ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(gradeSource.previous, kind + '-private-fixture'), gradeSource.results[kind],
+                { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, requireCurrentPublication: false }) : resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository }) : await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
                 connectionConfig: primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository }); scratch = f.h;
-            if (kind === 'rp-skill' && frozenRp) {
+            if (!gradeSource && kind === 'rp-skill' && frozenRp) {
                 if (hash(f.target) !== hash(frozenRp.target)) throw new Error('frozen_proposal_target_changed');
                 entry.proposalSource = frozenRp.source;
                 f.evaluator.extract = async (_handle, _job, _config, signal, fresh, input) => {
@@ -178,8 +196,13 @@ try {
             if (!resumed) await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: secondary.config,
                 secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } });
             const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
-            const secondaryRoute = routes.find(r => r.role === 'role.orchestrator' && r.runtimeRouteId !== f.route.runtimeRouteId
-                && r.modelProfileRef.modelProfileId !== f.route.modelProfileRef.modelProfileId);
+            const secondaryRoutes = [];
+            for (const route of routes.filter(r => r.role === 'role.orchestrator')) {
+                const model = await f.host.persistence.getModelProfile(f.h.handle, route.modelProfileRef.modelProfileId);
+                if (model.remoteModelId === secondary.config.model) secondaryRoutes.push(route);
+            }
+            if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
+            const secondaryRoute = secondaryRoutes[0];
             const secondaryConfig = await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
             const secrets = createM1SecretPort(primary, secondary);
             f.host.secretPort = secrets.port;
@@ -223,10 +246,15 @@ try {
                 async trial => { store(kind + '-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial); });
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
             entry.status = 'evaluating'; store('summary.json', summary);
-            const result = resumed ? resumed.result : await runEvolution(f), { job, candidate } = result;
+            const result = gradeSource ? gradeSource.results[kind] : resumed ? resumed.result : await runEvolution(f), { job, candidate } = result;
             entry.jobId = job.id; entry.status = job.status;
             store(kind + '-job.json', result);
             if (!candidate?.report?.pairs?.length) throw new Error(candidate?.report?.reason || job.reason || 'comparison_unavailable');
+            if (gradeSource) {
+                const check = automatedAcceptance(candidate.report, [], await f.repository.owner(f.h.handle), job.id, { tokensAdvisory: true });
+                if (check.reasons.some(r => ['evaluation_identity_changed', 'independent_cases_incomplete', 'durable_charge_mismatch', 'pair_identity_or_human_changed',
+                    'primary_model_observation_unfunded', 'authority_or_execution_incomplete', 'usage_or_durable_charge_missing'].includes(r))) throw new Error('grading_source_evidence_invalid');
+            }
             for (const pair of candidate.report.pairs) {
                 const flipped = parseInt(hash(['independent', pair.pairHash]).slice(0, 2), 16) % 2 === 1;
                 let charge;
@@ -241,10 +269,12 @@ try {
                     entry.independent.push({ origin: 'independent_model', pairHash: pair.pairHash, model: secondary.config.model, primaryModel: primary.config.model,
                         configurationHash: hash(secondaryConfig), chargeId: charge.id, requestHash: charge.requestHash, snapshotHash: charge.snapshotHash,
                         ...parseBlindGrade(response.response.assistantText || response.response.text, pair, flipped) });
+                    console.log(JSON.stringify({ kind, independentObservation: entry.independent.length, preference: entry.independent.at(-1).preference }));
                 } catch (error) { entry.independent.push({ origin: 'independent_model', pairHash: pair.pairHash, status: 'unavailable', reason: safeReason(error) }); break; }
                 finally { bridge.cleanup(); store(kind + '-independent.json', entry.independent); }
             }
             entry.acceptance = automatedAcceptance(candidate.report, entry.independent, await f.repository.owner(f.h.handle), job.id, { tokensAdvisory: true });
+            if (gradeSource) { entry.status = 'independently_graded'; entry.lifecycle = { origin: 'previously_verified_separate_lifecycle', performedThisRun: false }; continue; }
             // Explicit delegated review is confined to this private fixture. No
             // human labels or automatic publication eligibility are invented.
             const published = resumed ? resumed.lifecycle.receipt : await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: job.id, candidateId: candidate.candidateId,

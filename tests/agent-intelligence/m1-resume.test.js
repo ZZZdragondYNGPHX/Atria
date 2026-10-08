@@ -23,6 +23,24 @@ test('model selection works through a frozen secret port and rejects unknown ref
     expect(() => secrets.select('unknown')).toThrow('unknown_test_model');
 });
 
+test.each(['rp-skill', 'project-prompt'])('grading-only restore preserves %s comparison after rollback', async kind => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, kind, { policyMode: 'review' }); cleanup.push(f.h.cleanup);
+    const result = await runEvolution(f);
+    await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: result.job.id, candidateId: result.candidate.candidateId,
+        expectedReportHash: hash(result.candidate.report), review: true });
+    const published = await f.repository.get(f.h.handle, f.scope, f.subject);
+    await f.service.rollback(f.h.handle, { scope: f.scope, subject: f.subject, publicationId: published.publications[0].id });
+    const saved = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-m1-grading-')); cleanup.push(() => fs.rmSync(saved, { recursive: true, force: true }));
+    fs.cpSync(f.h.dataRoot, saved, { recursive: true });
+    await expect(restoreEvolutionFixture(makeTempFsEngineHarness, saved, result)).rejects.toThrow('resume_publication_changed');
+    const restored = await restoreEvolutionFixture(makeTempFsEngineHarness, saved, result, { requireCurrentPublication: false }); cleanup.push(restored.h.cleanup);
+    const doc = await restored.repository.get(restored.h.handle, restored.scope, restored.subject);
+    expect(doc.jobs[0].candidates[0].report).toEqual(result.candidate.report);
+    expect(doc.publications[0].status).toBe('rolled_back');
+    expect(restored.route.runtimeRouteId).toBe(result.doc.policy.routeId);
+    expect(await restored.repository.owner(restored.h.handle)).toEqual(await f.repository.owner(f.h.handle));
+});
+
 test('saved Project publication resumes on its exact Route with two models and rolls back without rerunning comparison', async () => {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review' }); cleanup.push(f.h.cleanup);
     await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: { ...testConfig, model: 'secondary-fixture-model' },
