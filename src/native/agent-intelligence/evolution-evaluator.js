@@ -159,10 +159,11 @@ export class EvolutionEvaluator {
         fields(parsed, ['value', 'rationale']); text(parsed.rationale, 1024);
         return parsed;
     }
-    async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}) {
+    async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}, selection = { split: 'promotion', repetitions: 3 }) {
+        if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new TypeError('Invalid finite evaluation selection');
         const charges = [], evaluatorRevision = evolutionEvaluatorRevision();
         const child = fork(fileURLToPath(new URL('./evaluation/worker.js', import.meta.url)), [], {
-            execArgv: ['--experimental-loader', fileURLToPath(new URL('./evaluation/loader.js', import.meta.url))], env: { PATH: process.env.PATH || '', NODE_ENV: 'production' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], serialization: 'advanced',
+            execArgv: ['--experimental-loader', new URL('./evaluation/loader.js', import.meta.url).href], env: { PATH: process.env.PATH || '', NODE_ENV: 'production' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], serialization: 'advanced',
         });
         let settled = false, sending = false;
         const abort = () => child.kill();
@@ -185,7 +186,7 @@ export class EvolutionEvaluator {
                         else if (message.type === 'complete') { await fresh(); settled = true; resolve(message.pairs); } else if (message.type === 'failed') { settled = true; reject(new Error(message.code)); }
                     } catch (error) { settled = true; reject(error); child.kill(); }
                 });
-                child.send({ type: 'run', jobId: job.id, domain: job.domain, configs, settings });
+                child.send({ type: 'run', jobId: job.id, domain: job.domain, configs, settings, selection });
             });
             for (const pair of pairs) {
                 for (const arm of ['baseline', 'candidate']) pair[arm].charges = charges.filter(c => c.trialId === pair[arm].trialId);

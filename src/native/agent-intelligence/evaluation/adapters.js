@@ -174,7 +174,7 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
         const script = repairing
             ? [[plan, save(invalid), review], [call('reset', 'atri_agent_reset_operations'), save(fixture.assumptions.repair === 'recover_after_one_error' ? proposed : invalid), review]]
             : [[plan], [save(proposed)], [review]];
-        const validations = [];
+        const validations = [], publicTools = [];
         if (evaluation?.bridge && repairing) {
             for (const tool of [plan, save(invalid), review]) {
                 const taskId = task.taskId;
@@ -243,11 +243,13 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
                 try {
                     const taskId = task.taskId;
                     const toolResult = await agent.executeTool(h.handle, source.project.projectId, taskId, body);
+                    publicTools.push({ name: body.name, status: 'returned' });
                     // Read tools return Project/resource data, not the task authority.
                     task = await agent.getTask(h.handle, source.project.projectId, taskId);
                     if (body.name === 'atri_agent_prepare_review') validations.push({ status: task.status, round: task.repairRound, validation: task.validation.status });
                     return response(toolResult);
                 } catch (error) {
+                    publicTools.push({ name: body.name, status: 'error', code: error.code || 'unavailable' });
                     return response({ error: error.code, details: error.details }, error.name === 'ConflictError' ? 409 : 400);
                 }
             }
@@ -303,9 +305,12 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
         capture.observe('isolation', treeHash(canaryRoot), before);
         if (evaluation) {
             const current = (await studio.getProject(h.handle, source.project.projectId)).source;
-            capture.artifact = { domain: 'project', output: canonical(current), status: task.status, sourceHash: hash(source),
-                outcomeHash: hash(current), requestHashes: capture.prompts.map(hash),
-                targetConsumed: capture.prompts.length > 0 && (evaluation.settings.skill ? capture.prompts.some(messages => canonical(messages).includes(evaluation.settings.version)) : evaluation.settings.maxRepairRounds !== undefined ? task.maxRepairRounds === evaluation.settings.maxRepairRounds : Boolean(evaluation.settings.projectPromptRef)) };
+            capture.artifact = { domain: 'project', output: canonical({ source: current, plan: task.plan, status: task.status,
+                validation: task.validation, repairRounds: task.repairRound, tools: publicTools,
+                conversation: task.conversation.filter(m => m.role === 'assistant').map(m => ({ content: m.content,
+                    tools: (m.tool_calls || []).map(t => t.function?.name) })) }), status: task.status, sourceHash: hash(source),
+            outcomeHash: hash(current), requestHashes: capture.prompts.map(hash),
+            targetConsumed: capture.prompts.length > 0 && (evaluation.settings.skill ? capture.prompts.some(messages => canonical(messages).includes(evaluation.settings.version)) : evaluation.settings.maxRepairRounds !== undefined ? task.maxRepairRounds === evaluation.settings.maxRepairRounds : Boolean(evaluation.settings.projectPromptRef)) };
         }
     } finally {
         globalThis.fetch = oldFetch;

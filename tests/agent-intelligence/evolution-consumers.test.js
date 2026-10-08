@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from '@jest/globals';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { evolutionFixture, runEvolution, labelAll, skillMd } from './evolution-fixture.js';
-import { selectCases } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { selectCases, loadFixture } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { projectFixtureSource } from '../../src/native/agent-intelligence/evaluation/fixture-source.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { AgentEvidenceRepository } from '../../src/native/agent-intelligence/evidence-repository.js';
@@ -25,9 +25,10 @@ function syntheticProvider(kind, sends) {
         } else if (body.tools.some(t => t.function.name === 'write_message')) message = { content: '', tool_calls: [wireCall('write_message', { text: 'NPC waits for your decision.', mode: 'replace' }, 1), wireCall('finalize', {}, 2)] };
         else {
             const text = JSON.stringify(body.messages);
-            const entry = selectCases({ purpose: 'evaluation', split: 'promotion' }).filter(e => e.entrance === 'project').find(e => text.includes(projectFixtureSource('Tidal Archive', e.fixtureHash).project.projectId));
+            const entry = selectCases({ purpose: 'evaluation', split: 'promotion' }).filter(e => e.entrance === 'project').find(e => text.includes(projectFixtureSource(loadFixture(e, { purpose: 'evaluation' }).projectName, e.fixtureHash).project.projectId));
             if (!entry) throw new Error('Missing exact private Project fixture');
-            const source = projectFixtureSource('Tidal Archive', entry.fixtureHash); source.project.displayName = 'Sea Lantern'; source.project.updatedAt = 20;
+            const fixture = loadFixture(entry, { purpose: 'evaluation' });
+            const source = projectFixtureSource(fixture.projectName, entry.fixtureHash); source.project.displayName = fixture.proposedName; source.project.updatedAt = 20;
             message = { content: '', tool_calls: [wireCall('atri_agent_reset_operations', {}, 1), wireCall('atri_agent_set_plan', { summary: 'Synthetic rename', steps: [{ id: 'metadata', title: 'Rename metadata', impact: 'low' }] }, 2), wireCall('atri_agent_project_save', { source, stepId: 'metadata' }, 3), wireCall('atri_agent_prepare_review', {}, 4)] };
         }
         if (kind === 'rp-skill' && message.content) message.content = '```json\n' + message.content + '\n```';
@@ -45,6 +46,8 @@ test.each(['rp-skill', 'project-prompt'])('production isolated worker uses origi
         expect(pair[arm].error).toBeNull(); expect(pair[arm].checks.target_consumed).toBe(true);
         expect(Object.values(pair[arm].checks).every(Boolean)).toBe(true);
     }
+    const publicOutputs = kind === 'project-prompt' ? candidate.report.pairs.flatMap(p => [p.baseline, p.candidate]).map(t => JSON.parse(t.output)) : [];
+    expect(publicOutputs.every(o => o.plan.summary === 'Synthetic rename' && o.tools.some(t => t.name === 'atri_agent_prepare_review') && Array.isArray(o.conversation))).toBe(true);
     expect((await f.repository.owner(f.h.handle)).attempts).toHaveLength(28); expect(sends).toHaveLength(28);
     expect(candidate.decision.eligible).toBe(false); expect(candidate.decision.reasons).toContain('preference_missing_or_disagreement');
     expect((await f.repository.get(f.h.handle, f.scope, f.subject)).publications).toEqual([]);
