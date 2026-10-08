@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
-- Updated: 2026-10-08
-- Status: 用户明确测试API仅每日2000次 /20RPM硬限；token与其它预算改为建议，超出立即报告并继续。真实九对 /两入口闭环已取得，行为改善未达标；Step已补齐18项独立评分，M1仍pending，实际结果见同一Record。
+- Updated: 2026-10-09
+- Status: 一次有限M1优化周期收尾；新RP存在development回归且缺独立观察，新Project按用户8000上限提炼成功但未验证。累计647/2483896；comparison/Step分别因三不完整/404停止，未执行新九对验收，M1 pending，不合并main。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
 
@@ -75,3 +75,5 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 新RP候选仅一次提炼；agency/memory 已取得有效primary观察（candidate/baseline），variant未完成请求因transport分支同一numeric-code缺陷中断。保留两个有效pair/评分及失败费用，只续接缺失的variant和未开始的新Project development；原RP候选正文/来源hash固定，不再提炼，不重复有效pair。旧两项与新variant分别pin来源，不拼成伪造的单源host report；development summary逐case列出来源/结果，独立观察各只取得一次。最终九对promotion仍完整同源、新鲜执行，禁止过滤promotion cases。失败窗口从原555 checkpoint逐条重放本轮实际ledger/raw-response（并保存此前修正备份），精确补录超时/不完整响应，原stopped窗口/费用不变；只停止当前实际连接，历史候补stopped不误挡默认Step/primary。
 
 用户随后明确将截断响应的输出上限提高至8000。仅补尚未取得完整候选的Project提炼；test-only原compiler/provider提炼快照固定8000并增加持久extraction-output fingerprint，旧1024三截断窗口、Step404窗口和费用全部保留。同一8000配置重启复用窗口，不得再增加epoch。原primary comparison /production1024边界保持；不重跑已有效RP development或旧评分，Step404不因输出变更取得重试授权。取得完整提案后仍须development检查；当前连接stopped时提案只保存为未验证，不冻结、不运行promotion或发布，不视为M1通过。本轮仍到此有限收尾，不进入S11/G。
+
+本周期最终结果：本轮92次/356805记账tokens，累计647/2483896。新RP主模型2candidate/1baseline，variant重要维度continuity=-1且偏好/维度不一致原样保留；新Step零有效/HTTP404。Project8000仅一次提炼成功，未完成development；新候选均未冻结取得资格，v2九对与新闭环未执行。旧完整比较/18独立观察/闭环保持独立来源。完整failed/partial/unknown和新提案来源固定在同一Record；当前comparison旧1024 stop和Step404 stop保留，8000提炼窗口成功，不清账或自动新增epoch。本轮停止，不合并main，不进入S11/G。后续新请求最大8000，旧8192仅保留历史；若另行获准修改比较envelope，先冻结同一Plan/source/configuration再执行有限验证。

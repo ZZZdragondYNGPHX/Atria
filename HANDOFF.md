@@ -2,68 +2,39 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Updated: 2026-10-08
-- Current checkpoint: **M1两入口九对 /36arm与闭环保持；Step完成18项独立评分，行为改善未达标，pending /不集成。**
-- Product branch: `feat/agent-intelligence-runtime@907cf1e87`，已commit /push，product worktree干净。
-- 完整comparison Tested HEAD: `cf28cc3de`；Project lifecycle补证 `c0f8ce6b0`，只追加一实际send，旧comparison /partial各自pin。
-- Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
-- Docs: `docs`；本轮结果基于 `b1ca54852` 续更同一Record / Plan / live HANDOFF；接手核对actual refs。
-- Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [自动化验收](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [M1](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery](plans/architecture/agent-intelligence-runtime/delivery.md)。
-- Record: [同一阶段记录](records/refactor/agent-intelligence-runtime.md)。
+- Updated: 2026-10-09
+- Checkpoint: 一次有限M1优化周期结束；新Project8000提炼成功但未验证，新RP有development回归且缺独立观察，M1 pending，不集成。
+- Product: `feat/agent-intelligence-runtime@f6ac0ff7e79c55674e3fe226d8a122c4af9acad4`，commit/push完成；接手核对actual refs。
+- Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。不进入S11/G。
+- Docs: `docs`，本轮沿同一Plan/Record更新；执行前核对actual docs HEAD。
+- Plan: [index](plans/architecture/agent-intelligence-runtime/index.md) → [M1 acceptance](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md)。
+- Record: [同一阶段记录](records/refactor/agent-intelligence-runtime.md)，阅读本轮2026-10-08—09段与Final state，不重复扫描旧结果。
 
-## Current scope / completed
+## Current evidence
 
-D0–D4、S01–S09 已交付，历史依据留在 Record，不重读全量研究。S10 已连接原 Experience feedback / diagnosis、有限 owner budget / 原 scheduler、固定隔离 evaluator、原六类局部 target、自动 publication / receipt / recovery / rollback、下一 run 消费证据和双入口共享面板。
+S01–S10工程交付保持；原Experience、owner budget/scheduler、原六类target、固定worker、原CAS/intent/receipt/recovery/rollback和共享面板仍为authority。单目标/支持矩阵/production human/price/budget gate保持，model observation不冒充humanPreference，currencyCost仍unavailable。原完整比较cf28、Project消费恢复c0f8、Step18观察907cf分别固定来源：RP双模型一致候选胜3/9，Project9tie，行为门槛未通过。原36arm检查及私有发布→实际下一run消费→rollback已完成，不能借给新候选。
 
-- 普通 RP：非 group rp_chat、exact character `.png` binding、原用户单 owner bounded Director maxSteps≤6。局部 Skill 必须已 visible + always 且为唯一目标；Prompt 为原 Workspace Agent instructions；strategy 为原 maxSteps。无 global / builtin / Package / Native Session / conversation override 自动权限。
-- Project：原局部 Skill、原用户 Preset system.style、原 pristine planning Task maxRepairRounds。原 player role.studio Route 的有界 projectPromptBindings 只覆盖指定 Project；其它 Task 不继承参数，开始运行后不热改。
-- 每轮一个 target，已生效同一物理 authority 必须先 rollback，跨 RP chat 也不叠加独立 report。SettingsRepo 原 save / patch / Host queue 与 whole library CAS / epoch、防 stale browser draft 和下一 preparation Host refresh 已实现；current run 保留 accepted clone。仅单 Host writer 支持。
-- owner budget 显式有限 request / tokens / rate，所有提炼 / trials / judge / retry send 前 durable reserve，unknown 保留 upper bound，sticky breach / restart 不清账。job 有限一小时 / 120 sends / 1000000 tokens，每 scope 24 小时一次；重启不重发 uncertain model job。
-- 三个独立 promotion cases ×三次 repeated paired trials；九次 blind model observation + 九项独立 authenticated human label。至少六胜、全部 nonregression、dimension 非负、原 checks / target_consumed / isolation / exact config / fees / source 全通过才 automatic publish。缺 price / human / usage、judge 分歧仍 ineligible。controller 额外成本全计入，trial 达标不称净收益。
-- durable intent → 原 target queue finalizing gate → 原 CAS → receipt；response loss / repeated request / restart 用 actual base / desired / third-state 恢复一次。来源 correction / withdrawal / delete / retention 先 pause / invalidate / cancel，再 guarded rollback 与清派生内容；用户继续选择或缺 original authority 保留明确 conflict / garbage。
-- receipt 与当前原 binding 区分；manual binding drift 暂停。Project original Host snapshot 和 RP completed exact-output typed trace 记录 next-run 消费；RP provenance 仍为 client_observation。
-- 原 Workspace Run / Studio Task 共用 pane，支持 feedback / hypotheses、预算、默认 review / 显式 auto、declare、job / diff / 盲测 human observations / fees、review / pause / rollback、delete / retention / export；Studio 可 Prepare without running。无无限 polling。
+本轮最小修复反馈→诊断→提炼指令，Project评分补原计划/状态/公开说明/工具/修复冲突轨迹，维度/解释/门槛不变。旧development证实RP臆测时钟/玩家心理，Project候选不有效且conflict回归；不是仅凭全平局调整解释。原Experience correction会pause，通过原configure重验同一target后提炼，未绕gate。
 
-## Code / evidence entry
+新RP只一次提炼，保留base后补时间/修订及玩家pause中立，body hash `e9ad8939cf49737ccd0c23ff7b4585bb45e02221a424fa033ee0f57757698fe1`。三development primary为candidate/baseline/candidate，variant continuity=-1，与偏好不一致照录；前两pair37e/第三9f分来源，6arm checks全部true，不拼同源host报告。Step新观察零有效，一次404。9f旧summary status误development_observed，实际incomplete，已在Record更正，原报告不覆盖。
 
-- `src/native/agent-intelligence/evolution-{repository,targets,evaluator,service,observer}.js` 与 `evaluation/` 固定 worker；原 Experience / Native Generation router / Host。
-- 原 SettingsRepo、Skill repository / versions、Workspace prompt / strategy versions、Native PromptCandidateStore、Project Task / Studio loop 继续保存与消费有效版本。
-- `public/scripts/native/agent-evolution-panel.js`、原 Workspace panel / Studio Task、`workspace/host-refresh.js` / orchestrator main。
-- `tests/agent-intelligence/evolution{,-consumers,-http}.test.js`、`tests/frontend/agent-evolution-ui.smoke.mjs`；具体命令 / cases / 故障归因见 S10 Record。
+新Project1024三次JSON截断按原频繁错误规则停止。用户明确提高输出最大8000后，Plan追加仅unfinished extraction补测；原compiler/provider/owner/shared账，持久8000输出窗口只针对实际配置变更，同配置restart不另开epoch。f6ac一次成功，finish_reason=stop，reported total1673，无retry。提案value hash `40744a932718465fbb10cb3f81625771c78ca4faa2aabb36e156d47b029924aa`，仅proposed/not_validated，base原文本未完整保留须进一步检查。当前comparison1024窗口与Step404仍stopped，没有新Project development/独立观察、没有新九对v2验收或新候选发布/消费/rollback，不冻结合格候选。
 
-## Validation / limits
+同一Plan已经正式隔离synthetic:v2 promotion与v1 development，同六场景家族/每入口三×三九对、至少六一致胜/其余一致tie/重要维度非负及原全部checks/闭环。已指导修改的development材料不能再当未见验收；v2本轮未发送，不降低门槛、不删失败案例、不追试有效负面/tie/uncertain。
 
-- S10历史验证：**12 relevant suites / 233 distinct local tests passed**：S10 新三套48、原相关九套185；最终仅定向 repository / service 41，重复不累加。
-- 真实固定 worker 各一组 RP Skill / Project Prompt，运行原 Director / Studio / compiler / resolver / provider **fake HTTP**；没有 production effect。原下一 Project Prompt / Task exact snapshot、其它 Project 隔离、RP trace、browser draft / refresh 另直接验证。
-- 真实 Chromium 390px 检查两个入口的 shared production pane，fixture API；覆盖 feedback / budget / review default / start / pause / delete / escaping。不是完整 app E2E。
-- 44 个其它触及 JS / mjs ESLint 通过，settings.js 的四项既有 no-raw-fs-in-endpoint 错误与基线一致；只屏蔽该 rule 的复核通过。diff / staged diff / fixed-loader worker check 通过，原S10为Node24本地验证；本轮Node20.20.2固定worker加载及核心三套48项已通过，SQLite使用临时同版本Node20依赖；完整命令 / 首次ABI失败与定向复核见Record。
-- 原 SettingsRepo 外部 MySQL / Postgres 12 项首次因 DB 不可用失败，最终 FS / SQLite12 passed / 外部12 skipped。没有计其通过。
-- 本轮真实请求与恢复预算见下文；未执行full test / build / full app UI / Android / 真机 / external DB / CI。S10原交付轮未读写S06 private config / ledger / reports；本轮按用户授权迁移connection并保守恢复累计账本。main AGENTS 与 docs README / WEB Adapter / 两模板 dirty 未暂存 / 提交，五 hashes见 Record；reference / 其它草稿未读写。
+## Accounting / execution
 
-## Real observations / budget preserved
+- 最新同一累计账：**647 requests /2483896记账tokens**，本轮新增92/356805；carry252/1000000与sticky breached历史保留。395 actual恢复sends，379reported/16unknown65117，pending0；失败与未知usage照实计账。
+- Quota carry332+315admissions=647，minimum3151ms、一分钟峰值10、保守rolling24h647，2000/20硬限通过；92个本轮owner attempts与shared id/tokens一致，无reserved/lock0。建议预算超过已通知并继续。
+- 当前primary comparison窗口连续3不完整/最近20中4失败stop；Step当前窗口一次404立即配置stop。旧Haiku500、Step503/1024截断、MiniMax国际401窗口全部保留。默认第二模型仍step-5-preview，MiniMax仅临时候补。不得清账/清窗口/自动换epoch或重试404追分。
+- 私有migration目录已拉取并恢复当前Document，2700项内容hash核对。凭证/private state仅Git排除目录与当前用户ACL，local Git key指向现实际位置；无密钥、endpoint或私有机器路径入公共Git。完整restore/分支verify不冒称通过；详细audit/source/report在private Document，不覆旧文件。不读写reference。
+- 提炼raw length意味着达到请求输出上限，HTTP200仍可能内容不完整；本次1024失败无完整reasoning breakdown，不推断内部usage分项。Step404未保存body，只确定HTTP404，未确定具体model/channel/gateway原因。
+- test CLI `tests/agent-intelligence/m1-live.mjs`；本轮partial/来源manifest与未验证Project提案均独立保存。后续请求遵守用户最大8000，旧8192独立评分只作历史。production/native comparison1024未扩大；新envelope须先正式Plan冻结配置/source，不借输出变更解锁404。
 
-S06 原 Gemini development 六槽与 promotion 六对已真实执行，原 authority passed；单一 blind grader 五项有效 / 一项 invalid_response，无合格人工观察 / 稳定行为改善，候选仍 **promotion ineligible**。额外 Haiku 仅连接探针，不评分。详情、exact report hashes / tested source 与失败费用在 Record。
+## Validation / next checkpoint
 
-S06最后已记录累计 **110 requests / 300464 记账 tokens，breached=false**，包括未知 usage 保留预留，不称精确实际总量。原 finite guard 252 requests / 1000000 tokens，至少 3.15 秒 admission；用户 hard cap 每日2000 / 20 RPM。只在确需并冻结有限验证后恢复原账本，不能换 session / split / retry / suffix 清零。
+最小相关本地7suite64 distinct tests按source通过，包含原consumer/acceptance/evolution/retry、body timeout、unfinished development selection与8000原provider资金结算/窗口保持。触及lint/syntax/diff通过；6c零send prepare仅证明快照准备合法，四累计文件hash不变。不运行full tests/build/CI、新UI/Android/真机，不让用户手测。五项无关dirty文档hash保持，不提交无关修改。
 
-私有位置仅由 local Git keys `atria.s06.connection` / `atria.s06.ledger` / `atria.s06.artifacts` / `atria.s06.limits` / `atria.s06.secondaryconnection` 指示；不写值 / Secret 到 Git、不扫描用户目录、不覆盖旧 reports、不绕残留 lock。补测前核对进程 / actual ledger / remaining budget。S10 的 owner product ledger 与此实测 CLI ledger 属各自真实 authority，fake test 不消耗或重置 S06 预算。
+本轮停止，M1未达标不合并main，不进入S11/G。下一需在新明确有限周期处理Step404真实诊断与comparison停止配置，保留已有效不利development评分；核对两个提案的base保留及可信收益/回归后才冻结新候选，再完整每入口九对/双模型/闭环。不重复旧结果取得资格。
 
-## Current M1 result / budget
-
-用户授权agent代劳，不要求本人tests /human labels；生产automatic human /price /原预算gate保持。测试API只有每日2000次 /20RPM硬限，token与其它预算只建议，超出通知继续；建议512 /1699536与所有charges /unknown /breached历史保留。
-
-- 原cf完整comparison：RP /Project各三个promotion场景×三次paired trial，九对 /18arm，共36arm原authority /isolation /target_consumed全部通过。RP frozen proposal、Project原公开feedback提炼、primary不利评分原样保留，没有重跑有效比较或学习promotion输出。
-- primary：RP3candidate /4baseline /1tie /1uncertain，Project9tie。原RP cf与Project c0已完成私有委托review /原下一Director或Host实际消费 /guarded rollback；RP provenance保持client_observation，Project为host。production objects未修改、automaticPromotion=false、humanPreference=not_observed、currencyCost=unavailable。
-- 用户把第二模型改为Step后，三503停止；显式完整URL与旧normalizer实际URL一致，单请求诊断另503，body model_not_found说明Key所在group无可用channel。用户改group后新持久配置epoch三次均HTTP200，但1024全用于reasoning，content空 /length，按不完整响应停止。旧Haiku三500 /Step四503 /三截断历史窗口与费用保持。
-- 用户提供MiniMax并明确只作临时候补；Key /独立临时配置600保存、Git exclude，默认Step URL /Key /model保留。MiniMax官方国际OpenAI接口一次401 /invalid api key (2049)，unknown8830保留并认证停止；仅证实本次接口认证失败，随后按用户指令继续原Step，不探测其它区域。
-- source907cf只允许test-only independent grader有限8192输出；原resolver /compiler /provider、owner reserve /settle与CLI同一ledger /quota继续计账，judge-only /context /request hash /exact model /max_tokens校验。native evaluator与原cf revision /生产1024限制不变。Step原配置备份，output变化另追加持久fingerprint，同一配置restart不洗窗口。grade-only只补冻结九对，不再提炼、trial、primary grade、发布或消费。
-- Step8192本轮18次全部成功，43794reported tokens（RP27058 /Project16736），无新retry或接口错误。RP独立4candidate /3baseline /2tie，两模型一致candidate仅3对；Project独立9tie，candidate胜0。独立评分缺口已补齐，两个入口仍未达到至少六对一致candidate胜与全部非回归门槛。
-- 最终累计 **555requests /2127091记账tokens**，含旧carry252 /1000000；恢复期303sends、292reported /11unknown35487、pending0，breached=true仅历史annotation。quota carry332+223admissions=555，id对应原账，minimum3151ms、rolling一分钟峰值10、保守rolling24h峰值555，满足2000 /20。原owner与共享独立charge hashes /tokens一致，无reserved /lock已释放。
-- Step summary SHA256 `268a887448ad67d4fca54a30d809222659a67050920d0b90adc9dfaf666386c1`；ledger `1d383c311e34c0b10186cc311d6c9107e3cdf55887bbd32fc540d558307e9c70`；quota `67804494ee460c3f0e4cdf071a5e6679bad9ca49b6bf27ea05dee87c839b757e`。原cf summary `9df6bf648b7775e5c9a7ca2c9a417d168128d6cca7972c7c73bf4365ddcbb3e2`与两个report exact hash保持；native evaluator revision `f8548173b8ffb754052ade6e5bef06dad046d76a01dce3af8c74c06a0c7d752c`不变。其它历史summaries /audit见同一Record，私有原报告均保留。
-- 最小本地验证：grade-only恢复4tests、epoch历史2tests与最新2suites /5tests按各source保存，不重复累加；触及lint /diff通过。没有full tests /build /CI /新browser /external DB /Android /真机。五protected dirty hashes保持，reference未读写。Product907cf已commit /push /clean，main为祖先、0 /35，未合并。
-
-## Next checkpoint
-
-**M1 pending /不合并main，仅余行为改善门槛。** 第二模型已可用，九对独立观察齐备；token建议、用户不手测、闭环与API连接不再是当前阻塞。后续仅在既定development /feedback范围复核候选设计、保持promotion隔离；不重复当前有效不利 /tie评分追分。新候选如需验证须另行冻结并沿原累计账本执行。阶段结束仅最小本地验证，更新同一Record /HANDOFF并停止；不进入S11 /G。
-
-接手提示词：**读取 docs:HANDOFF.md，仅续接M1行为改善缺口：核对Git /同一账本与quota，查看原cf九对、已完成闭环和Step18项独立评分；只在development /feedback范围复核候选设计，不重复有效负面比较、不清账。MiniMax仅临时候补，默认第二模型仍Step。token超建议即时告知继续，不要求用户手测，不进入S11或G。**
+接手提示词：**先核对Git，再读docs:HANDOFF→同一M1 acceptance/S10→同一Record最新周期；沿647/2483896累计账、quota/rate/失败窗口。保留新RP一次候选及有效development评分、新Project8000未验证提案和全部失败来源；先定位Step404实际配置/错误body及comparison停止问题，不清窗口、不自动换epoch、不追分。新请求最大8000；若改实验envelope先正式更新同一Plan，development与新独立九对严格隔离，原权限/消费/发布/回滚与行为门槛不变。只做最小相关本地验证，不要求用户手测，不进入S11/G。**

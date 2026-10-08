@@ -783,6 +783,44 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - **M1 pending，仅余行为改善门槛；不合并main、不进入S11 /G。** 第二模型已可用且完整独立评分，不再把API故障或用户不手测列作当前阻塞。后续若继续，只在既定development /feedback范围复核候选设计、保留promotion隔离，不重复当前有效不利 /tie评分追分；任何新候选按正式M1比较计划另行冻结和记账。本轮到此停止。
 
 
+### 有限 M1 优化周期与授权8000提炼补测（2026-10-08—09）
+
+本轮只执行一次优化周期，M1未通过；不合并main、不进入S11/G。初始actual product907cf /docs994cd与555/2127091相符。原九对/36arm、Step18项观察、cf/c0私有发布→实际消费→rollback保持历史来源，不借给新候选。本轮实测仅development与一次尚未完成的Project提炼补测，没有新的九对独立验收或新候选闭环。
+
+- 用户指定的新私有目录已拉取`Atria-Dev`的`migration/private-state`，只恢复当前任务需要的Document内容；42顶层与2658展开文件逐项hash验证，共2700文件。未执行会创建其它长期工作空间的完整restore；分支verify脚本曾遇本地权限/读错误，不称完整verify通过。原排除Git的凭证、报告与累计账本映射到本地private目录，Windows ACL限制当前用户并正确继承；不输出/提交密钥，不读写reference。产品沿原feat/agent-intelligence-runtime，docs沿原计划工作树，五项无关dirty文档保持字节hash，稳定main未改。
+- 根因材料来自development和公开feedback：旧RP候选把承诺时间当现时、在未建立时钟时声称midnight并与before midnight矛盾，把玩家pause解释为心理犹豫。旧Project候选只重述authority，authoring计划缺明确human-review说明；conflict候选多次catalog/api_read后仍planning，没有完成原revision冲突路径。反馈过于概括，诊断此前不能给出具体触发/行为修正；本轮通过原Experience correction→reflection→diagnose，再经原configure重验同一target（correction会原样pause）送入提炼，未建立平行authority。
+- 最小产品修复：提炼指令要求具体失败/触发/最小修正、保留无关base、反例和收益依据，不把反馈或私有事实当authority。Project原评分仅看最终source JSON，过程改善空间被遗漏；现在同时暴露原task计划、状态、验证、repairRounds及公开assistant/tool/error轨迹，维度仍为intent_completion/conflict_handling/repair_quality、解释与门槛保持。development实测显示旧候选确实无效且有回归，不能把全部旧平局单一归因于评分缺少空间。
+- 同一Plan正式冻结synthetic:v2 promotion，六场景家族/三场景×三次/每入口九对、双模型至少六一致候选胜、其余一致tie、重要维度无回归及所有authority/消费/闭环门槛不变。development保持v1，并永不计未见验收；尚未发送v2。旧报告source/revision/hash完整保留。
+- 新RP只付费提炼一次，原base保留，仅补承诺时间与现时区分/最新可见修订、玩家pause中立与不臆测心理两段，exact body hash `e9ad8939cf49737ccd0c23ff7b4585bb45e02221a424fa033ee0f57757698fe1`。新development agency主模型candidate，memory主模型baseline；variant主模型candidate但continuity delta=-1，偏好与维度不一致照录、不修解释、不追试。三项6arm原checks全部true，配置各arm跨来源相同；只有前两pair在37e、variant在9f，分别列case来源，不伪造同源完整host report。新RP没有有效Step观察，不能称可信双模型改善或冻结合格。
+- 第一次baseline RP三对双模型完整，但一致候选胜仅1/3，memory第二模型判baseline/-2 knowledge boundary。Project-only续接只补尚无有效pair的Project：authoring/conflict两对主模型均baseline，conflict原checks也失败；repair无有效pair，Project无有效第二模型观察。两partial只用于诊断，不计完整baseline/验收，不重跑旧候选或已有效评分。
+- bounded恢复修复Windows loader file URL、HTTP200 header后body timeout的单次失败归因、DOMException numeric code包装，以及只续接unfinished development slots。每attempt仍原Route四分之一/最多80秒、最多两追加funded sends/10秒backoff；原300秒Route不改。transport checkpoint从555原始私有snapshot按79实际ledger/raw responses精确重放，替代两次此前无request-ID的歧义手动重分类，旧state/手动备份/重放audit全部另存。失败、unknown、费用和历史stopped窗口不清除；当前连接停止检查不被旧临时候补窗口误挡。
+- 9f的新Project提炼连续三次HTTP200但`finish_reason=length`且JSON截断，均请求1024，provider每次prompt644/completion39—41/total1664。每次完整记账1664，不用小分项覆盖total，不修复或接受截断value；差值1024吻合输出限，但本次无reasoning breakdown，不能断言隐藏部分确切组成。三次不完整按原规则停止primary。Step一次HTTP404，unknown8741保留，配置错误立即停止；未保存error body，只能确认404，不能把旧group诊断套用于此次，也不能声称已验证model/channel根因。
+- 用户随后明确将截断响应输出上限提高至8000；同一Plan追加单次Project extraction-only补测。test-only沿原compiler/resolver/provider与原owner reserve/settle，冻结提炼快照和wire max_tokens=8000；新持久extraction-output:8000窗口只代表实际输出配置变化，旧1024 stop和Step404窗口保留，同配置restart不换窗口。production/native comparison1024边界不改，没有重试旧有效评分或Step404。该补测f6ac一次成功，finish_reason=stop、JSON完整，usage prompt641/completion139/total1673，按total照录，无retry。
+- 新Project提案针对直接使用已提供contract、明确review状态、只stage请求变更、revision conflict即停且不silent rebase，包含缺contract/schema错误时允许targeted lookup的反例。value hash `40744a932718465fbb10cb3f81625771c78ca4faa2aabb36e156d47b029924aa`。目前只保存为proposed/not_validated；提案没有原`Original style.`文本，必须在下一明确有限周期检查base保留与development回归，不能冒称最小局部修复已验证。原comparison窗口和Step仍stopped，本轮不送新trials或promotion、不借旧闭环给新提案；该summary unavailable/evaluation_unavailable表示未完成比较，不表示这次提炼失败。
+- 9f immutable summary的RP status误为development_observed，实际Step观察unavailable；在此更正为development_incomplete，旧summary不覆盖。最终helper6c以后按有效charge/preference判断status。零send prepare在6c两入口prepared，仅说明准备快照合法，ledger/quota/rate/transport四文件字节hash前后不变，不表示API可用。
+
+| 本轮来源 | 实际requests | 记账tokens | 范围 |
+| --- | ---: | ---: | --- |
+| 2b59d768c | 34 | 133958 | baseline RP与Project未完成起始 |
+| 77e0ea388 | 26 | 104961 | 仅Project旧候选development partial |
+| 37e068fcd | 19 | 72622 | 一次RP提炼及两项有效development |
+| 9f3d8d097 | 12 | 43591 | 仅缺失RP variant、Step404、Project三截断 |
+| f6ac0ff7e | 1 | 1673 | 授权8000，Project提炼成功、未验证 |
+| 合计 | 92 | 356805 | 所有失败/retry/unknown原样入账 |
+
+最终同一账本 **647 requests /2483896记账tokens**，旧carry252/1000000与breached=true保持；395恢复实际sends，379reported/16unknown65117，pending0。新增unknown五笔29630（567/589/615/634/643），旧unknown35487保留。quota carry332+315admissions=647，IDs一一对应，minimum3151ms、rolling一分钟峰值10、保守rolling24h峰值647，满足2000/20硬限；本轮92个owner attempts与共享ledger id/tokens全部一致，无reserved，lock0。建议超额已即时告知并继续，未拿建议预算当停止理由。货币费用仍unavailable，未声称净收益，humanPreference=not_observed，production human/price/budget gates保持。
+
+本轮各immutable summary SHA256依次：
+
+- 2b59 `4a986c2632e487568f6948f0519faaba759fb11653d5374fa4744e2e3eb66fe8`；77e `959c335793f8da9f30112e096a8ce6f49edfe0869d13b5f64628672e373605f3`。
+- 37e `b38d18e4be444769bc692e67f3709e5306be795f1870bb06a0910ee39db2b8b1`；9f `5a0c71de6673c7146fe8556fea553bb80b508b241b85e199c74a07862523b900`。
+- f6ac `c85f96dfdcb3be674a79d323f8cf01aa74b49f2db2c92b93259f41f3fbd4d235`。最后ledger `39015979c99867b47c953d2afeb0429d91327938916e865a186ec11cf4a80c96`；quota `342996d457fab361eb2d81f43bc7068a055ef7766a5b75ff9fd2c775da3d800a`；transport `7adbd28e2cc72b46ca79d385a417095e828df1bf042cc6d1ede7b2a54192bbcd`。详细92-send owner/quota/rate及全部source audit私有另存。
+- 原cf `9df6bf648b7775e5c9a7ca2c9a417d168128d6cca7972c7c73bf4365ddcbb3e2`与Step18 `268a887448ad67d4fca54a30d809222659a67050920d0b90adc9dfaf666386c1`summary hash保持，旧report/source与replay备份不覆盖。
+
+最小本地验证按source：consumer6项、acceptance5项、evolution41项（FS25/SQLite16）、retry7项、body-timeout1项、development selection1项，共前六suite61 distinct tests通过；本次输出改动grader suite3项通过（原2项资金结算、新1项原提炼wire8000/旧stopped保留/配置不变），本周期共7suite64 distinct tests。首次缺SQLite native binding、Windows loader错误、fake fixture旧名称及DOM wrapper问题均保留失败经过，必要局部修复/实际rebuild后只重跑相关部分，不称初次全通过。触及ESLint、node syntax、diff/staged diff通过。没有full tests/build/CI、新浏览器UI、Android/真机或外部DB验收。产品最终`f6ac0ff7e79c55674e3fe226d8a122c4af9acad4`已commit/push，main仍`ed1fd90521a63363e29856601abbf5e908c99d10`；保持任务分支，不集成。
+
+本轮到此停止。下一接手先核对actual refs、同一647/2483896 ledger/quota/windows与新提案来源；当前primary comparison1024三截断stop、Step404需要真实配置/诊断证据，不能清window、自动换epoch或靠output变更重试404。输出最大8000的用户约束适用于后续新请求，旧8192评分仍保留历史source；如后续改变比较envelope，先正式更新同一Plan并重固定source/configuration，保留已有效不利development评分，不冒充新验收或追分。仍仅M1，不进入S11/G。
+
 ## Final state
 
-S01–S10工程交付保持；M1两入口各九对 /36arm检查、私有publication /实际next-run消费 /rollback保持，原比较source为cf、Project恢复c0。Step修复评分输出截断后完成18项独立观察；RP两模型一致candidate仅3对，Project9tie，行为改善未达标，验收仍pending。MiniMax只作临时候补，本次国际接口401后已继续默认Step；所有旧失败 /配置窗口 /费用保留。Product907cf已commit /push，main未合并。最终累计555 /2127091，unknown11 /35487，pending0 /lock释放，API硬限审计通过。用户无需本人测试；同一Record /Plan /live HANDOFF更新完成，下一仅M1候选设计复核，不进入S11 /G。
+一次有限优化周期收尾，M1仍pending。具体development失败已定位，原反馈→诊断→候选链路与Project公开过程评分面最小修复已推送；新RP有主模型回归/评分不一致且独立观察缺失，新Project8000提炼成功但未验证。没有新的完整九对验收、冻结合格候选或新闭环。原九对/36arm/双模型和cf/c0闭环保持其独立历史来源；原M1行为门槛未通过，main未合并。累计647/2483896、unknown16/65117、pending0、lock0，原API硬限audit通过；用户无需手测。最终product f6ac，同一Record/Plan/live HANDOFF更新，保留两实际停止连接和一成功8000提炼窗口，下一仍仅M1。
