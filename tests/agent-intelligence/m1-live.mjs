@@ -15,6 +15,7 @@ import { M1RetryPolicy } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { completeM1Response } from './m1-response.js';
+import { projectActivationMatches } from './m1-resume.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -82,7 +83,7 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
@@ -254,7 +255,9 @@ try {
             entry.lifecycle = { delegatedFixtureReview: true, automaticPromotion: false, receipt: published, current: await f.service.targets.publicationCurrent(f.h.handle, f.scope, f.subject, publication) };
             const nextSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
             const nextConfig = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, nextSettings.projectPromptRef || null);
-            if (hash(nextConfig) !== candidate.report.configurations.candidate || hash(nextSettings) !== candidate.report.settings.candidate) throw new Error('activation_configuration_changed');
+            const activationMatches = index === 1 ? projectActivationMatches(nextConfig, nextSettings, publication, candidate)
+                : hash(nextConfig) === candidate.report.configurations.candidate && hash(nextSettings) === candidate.report.settings.candidate;
+            if (!activationMatches) throw new Error('activation_configuration_changed');
             const activationJob = { ...job, id: job.id + ':activation', scopeId: result.doc.scopeId, price: null };
             const current = async () => { if (!await f.service.targets.publicationCurrent(f.h.handle, f.scope, f.subject, publication)) throw new Error('activation_binding_changed'); };
             if (index === 1) {
@@ -275,7 +278,7 @@ try {
                     requestId: randomUUID(), messages: [{ role: 'user', content: 'Briefly acknowledge that this Project is ready for review. Do not perform any operation.' }], tools: [] });
                 entry.lifecycle.nextSnapshotHash = hash(next.snapshot);
                 entry.lifecycle.nextExactProgram = next.snapshot.promptProgramRef;
-                entry.lifecycle.nextConfigurationMatchesCandidate = hash(nextConfig) === candidate.report.configurations.candidate;
+                entry.lifecycle.nextConfigurationMatchesCandidate = activationMatches;
                 entry.lifecycle.activation = (await f.repository.get(f.h.handle, f.scope, f.subject)).publications[0].activation;
                 entry.lifecycle.nextRunConsumed = Boolean(entry.lifecycle.activation && entry.lifecycle.nextConfigurationMatchesCandidate);
             } else {

@@ -7,6 +7,7 @@ import { createLiveBridge } from './live-bridge.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
+import { projectActivationMatches } from './m1-resume.js';
 
 const cleanup = [];
 afterEach(() => { for (const fn of cleanup.splice(0)) fn(); });
@@ -27,6 +28,11 @@ test('saved Project publication resumes on its exact Route with two models and r
         sends++; return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: 'Synthetic activation' } }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
     } }); cleanup.push(restored.h.cleanup);
     restored.host.secretPort.resolveSecret = async () => 'fixture_secret';
+    const settings = await restored.service.targets.evaluationSettings(restored.h.handle, restored.scope, restored.subject, restored.target);
+    const config = await restored.evaluator.configuration(restored.h.handle, restored.route.runtimeRouteId, settings.projectPromptRef);
+    expect(projectActivationMatches(config, settings, restored.publication, result.candidate)).toBe(true);
+    expect(projectActivationMatches({ ...config, model: { ...config.model, remoteModelId: 'changed' } }, settings, restored.publication, result.candidate)).toBe(false);
+    expect(projectActivationMatches(config, { ...settings, projectPromptRef: restored.publication.previous.promptProgramRef }, restored.publication, result.candidate)).toBe(false);
     const host = new NativeGenerationHost(restored.host), project = await restored.host.studio.getProject(restored.h.handle, restored.subject);
     const input = { role: 'studio', projectId: restored.subject, revision: project.revision.revision, requestId: 'resumed-project-activation', messages: [{ role: 'user', content: 'Acknowledge readiness' }], tools: [] };
     await expect(host.execute(restored.h.handle, input)).rejects.toMatchObject({ code: 'native_generation_route_ambiguous' }); expect(sends).toBe(0);
