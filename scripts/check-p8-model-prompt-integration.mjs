@@ -41,7 +41,5 @@ const service = read('src/native/model-prompt-runtime/generation-service.js');
 assert.ok(service.indexOf('if (preview) return') < service.indexOf('await this._send'));
 assert.match(service, /generation_output_authority_changed/);
 assert.match(read('src/native/package-composition.js'), /freezePackagePromptPrograms\(mappedModelPromptResources/);
-assert.match(read('.github/workflows/model-prompt-runtime.yml'), /pull_request:[\s\S]*main/);
-assert.match(read('.github/workflows/model-prompt-runtime.yml'), /npm rebuild better-sqlite3 --ignore-scripts=false/);
 for (const poison of ['saveRuntimeRoute(', 'writeFileSync(', 'localStorage.setItem(']) assert.ok(noWrites.test(poison));
 console.log('P8 integration freeze passed: P0-P7, A0-A9, N9/N10, exact reads, no dual-write and no Native hidden fallback.');

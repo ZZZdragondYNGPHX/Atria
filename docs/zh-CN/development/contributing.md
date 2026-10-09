@@ -1,43 +1,36 @@
 # 贡献指南
 
+默认在本地开发、验证、提交、合并与清理；远端仅保存已提交结果。GitHub Actions 全部停用，包括手动运行、APK/Docker 构建和自动分支清理。
+
+仓库治理统一位于 `docs:README.md`（本地用 `git show docs:README.md` 读取）。本指南说明贡献步骤；当前用户指令与治理定义实际任务边界。企划、实施记录和实时交接统一维护在独立 `docs` 分支，`main:docs/` 只维护产品使用与开发说明。
+
 感谢你对 Atria 项目的关注！本文档介绍如何为 Atria 贡献代码、文档和其他改进。
 
 ## 开发环境准备
 
-1. **Fork 仓库**：在 GitHub 上 fork Atria 仓库到你的账户下。
-
-2. **克隆到本地**：
+1. 克隆仓库到本地，或使用现有工作区：
 
 ```bash
-git clone https://github.com/<your-username>/Atria.git
+git clone https://github.com/ZZZdragondYNGPHX/Atria.git
 cd Atria
 ```
 
-3. **安装依赖**：
+2. 使用 `npm install` 安装依赖。
+3. 使用 `node server.js` 启动开发服务器。
 
-```bash
-npm install
-```
-
-4. **启动开发服务器**：
-
-```bash
-node server.js
-```
-
-默认监听 `http://localhost:8000`。可通过命令行参数或 `config.yaml` 修改端口。
+默认地址为 `http://localhost:8000`；端口可通过命令行参数或 `config.yaml` 配置。外部贡献者可按需要使用 fork。
 
 ## 分支策略
 
-- **`release`** — 稳定分支，始终保持可发布状态。所有 PR 应以 `release` 为目标分支
-- 功能开发请从 `release` 创建特性分支
+- **`main`** — 稳定分支，始终保持可发布状态。完成的产品任务在本地集成到 `main`；可选 PR 以 `main` 为目标
+- 功能开发请从 `main` 创建特性分支
 
 ```bash
-git checkout -b feat/my-new-feature release
+git checkout -b feat/my-new-feature main
 ```
 
 > [!IMPORTANT]
-Atria 的稳定分支是 `release`。
+Atria 的稳定分支是 `main`。
 
 分支命名建议：
 
@@ -84,23 +77,16 @@ fix(search-tools): handle empty query in web search
 docs(extension-api): add examples for registerExtensionApi
 ```
 
-## Pull Request 流程
+## 本地开发流程
 
-1. **确保代码质量**：提交前检查代码风格和基本功能。
+1. 检查 Git 状态，保护无关修改，建立或沿用对应任务分支。
+2. 实现改动，运行最小充分的相关本地检查。
+3. 本地提交，在独立 `docs` 分支写入或更新同一 Record。
+4. 完成的产品任务在本地合并 `main` 并核对集成结果，不重复未受影响的检查。
+5. 推送已提交结果用于存储，清理已完成的本地及远端任务分支。
+6. 多阶段任务更新 Record/HANDOFF，在正式阶段边界停止。
 
-2. **推送分支**：
-
-```bash
-git push origin feat/my-new-feature
-```
-
-3. **创建 PR**：在 GitHub 上创建 Pull Request，目标分支为 `release`。
-
-4. **PR 描述**：清晰描述改动内容、动机和影响。如果关联了 Issue，请引用。
-
-5. **代码审查**：维护者会审查代码并提供反馈。请及时响应审查意见。
-
-6. **合并**：审查通过后，维护者会合并 PR。
+明确需要审阅时可使用 PR；PR 和已停用的远端 CI 不作为默认合并门槛。
 
 ## 代码风格
 
@@ -161,10 +147,11 @@ Atria/
 
 ## 测试
 
-- 新功能应包含基本的功能验证
-- Bug 修复应说明复现步骤和修复方案
-- 确保改动不会破坏现有功能
-- 测试多种浏览器和设备（如适用）
+- 根据改动行为与风险选择最小充分检查，不默认全量 lint/test/build。
+- 优先单元/集成测试、浏览器自动化和模拟器。
+- 只有关键验收无法由自动化替代时，说明具体缺口与最小人工实机需求。
+- 只有相关新变化或未解决失败才重复已通过检查。
+- 仅报告实际执行的检查，保留缺失证据。
 
 ## 文档贡献
 
@@ -174,7 +161,7 @@ Atria/
 - 简体中文文档：`docs/zh-CN/`
 - 繁体中文文档：`docs/zh-TW/`
 
-文档贡献同样遵循上述 PR 流程。编写文档时请注意：
+文档贡献遵循上述本地流程；Plan、Record 和 HANDOFF 归独立 `docs` 分支。编写文档时请注意：
 
 - 使用准确的技术术语
 - 代码和 API 名称保留英文
@@ -199,4 +186,4 @@ Atria/
 
 - [前端插件开发](/zh-CN/development/frontend-plugin) — 第三方插件开发入门
 - [扩展 API 参考](/zh-CN/development/extension-api/) — 完整的 API 文档
-- [角色卡开发](/zh-CN/development/card-developers) — 角色卡扩展功能
+- [角色卡定制教程](/zh-CN/recipes/card-customization-walkthrough) — 使用 Studio 定制角色卡

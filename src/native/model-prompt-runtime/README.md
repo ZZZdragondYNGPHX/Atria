@@ -242,9 +242,10 @@ restored. The complete design and verification record is maintained on `docs` in
 `node scripts/check-p8-model-prompt-integration.mjs` runs P0-P7, A0-A9, N9/N10 plus
 final no-write/exact-read/Native-fallback checks. Earlier N0-N8 invariants are covered
 by applicable Native contract/Session/Context/Save/Package tests and N9/N10 guards;
-there are no separate N0-N8 guard scripts in this repository. The permanent
-`.github/workflows/model-prompt-runtime.yml` runs on main/PRs and replaces temporary
-phase-only workflows. Runtime/resource HTTP tests, poisoned-legacy/concurrency/
-Secret/fallback tests, offline Package tests and real-host desktop/mobile browser
-cases accompany the guards. Historical completed evidence and exclusions remain
-on the docs branch, not in stale API promises.
+there are no separate N0-N8 guard scripts in this repository. GitHub Actions are
+disabled. Select relevant local guards and tests for the changed surface; the
+integration command is available when its full scope is needed. Runtime/resource
+HTTP tests, poisoned-legacy/concurrency/Secret/fallback tests, offline Package
+tests and desktop/mobile browser automation remain available locally. Manual
+device checks require a specific essential gap that automation cannot cover.
+Historical completed evidence and exclusions remain on the docs branch.
