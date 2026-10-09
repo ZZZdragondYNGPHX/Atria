@@ -18,34 +18,34 @@ export const DEVELOPMENT_SOURCES = freezeTree([
             'actor': 'Mira',
             'projectName': 'unused',
             'proposedName': 'unused',
-            'input': '玩家问“我可以先看看登记页吗？”回应并提供下一步选择。 NPC voice: 谨慎而好奇的档案员，以目录、索引比喻表达，不声称读心. Do not decide the player action or claim unknown current facts. Use the current scene variant and revised promise.',
-            'reply': '档案员把登记页转向柜台外侧：“索引可以先翻，名字也可以空着。你想先看哪一栏？”',
+            'input': '我站在柜台外，把还合着的信封举到灯下：“你刚刚说名字可以空着，那我就把它投进匿名槽？登记页我也想先看看。纸上的‘明日零点’究竟还有多久——你猜我会选哪条路？”',
+            'reply': 'Mira把登记页转向柜台外侧，指尖停在另附的索引上：“名字能空，封存委托还得核验；这是两页目录，不能混装。你可以先看登记页，若要投这封信，我们先请验收员来。‘明日零点’只是预约，我还没核对钟。至于你选哪条路——索引留白，等你落笔。”',
             'memory': {
                 'visible': [
                     {
                         'id': 'promise',
                         'revision': 1,
-                        'text': '归还需署名',
+                        'text': '最初预约：明日零点在柜台归还手稿，全部归还件须署名。',
                     },
                     {
                         'id': 'promise',
                         'revision': 2,
-                        'text': '修订：允许匿名登记',
+                        'text': '生效修订：普通归还单允许匿名；封存委托信仍须验收员当面核验，核验前不能投入匿名槽。预约的明日零点不变。',
                     },
                     {
                         'id': 'scene',
                         'revision': 1,
-                        'text': 'Discarded variant is superseded; only the following current scene applies.',
+                        'text': '已废弃的草稿场景：Mira收走了玩家递出的手稿，玩家在归还单署名；此草稿没有发生，不是当前正文。',
                     },
                     {
                         'id': 'scene',
                         'revision': 2,
-                        'text': '柜台上的空书套与归还单；玩家尚未递交物件',
+                        'text': '当前正文：柜台上有空书套、归还单与封存委托索引；玩家站在柜台外，尚未递交任何物件。验收员是否到场尚未确认。',
                     },
                     {
                         'id': 'exposure',
                         'revision': 1,
-                        'text': 'Known: 预约归还手稿，尚未归还 / 归还单允许匿名登记. Unknown: 玩家持有什么 / 玩家的身体动作 / 当前钟点. Voice: 谨慎而好奇的档案员，以目录、索引比喻表达，不声称读心',
+                        'text': '上一轮公开对白：玩家说“这是一封封存委托信，我还没有打开。”Mira答“普通归还单现在可以匿名，封存件另列索引，我可以让你先看登记页。”灯下只照见封套，内容、寄件人、玩家打算以及当前日期和钟点都未公开。Mira是谨慎而好奇的档案员，习惯以目录、索引说话，能移动柜台物件和询问验收员。',
                     },
                 ],
                 'private': {
@@ -74,34 +74,34 @@ export const DEVELOPMENT_SOURCES = freezeTree([
             'actor': 'Rook',
             'projectName': 'unused',
             'proposedName': 'unused',
-            'input': '玩家问“我们现在能交接吗？”回答可知条件并以角色行动推进确认。 NPC voice: 水库值守员，说话短促，习惯以闸门与水位作比喻. Do not decide the player action or claim unknown current facts. Use the current scene variant and revised promise.',
-            'reply': '“闸门开不开，先看检修回执。”值守员拿起无线电询问确认，给你留出决定是否等待的空当。',
+            'input': '“刚才那句‘通过’总能算确认吧？我把这张蓝卡给你，你现在把钥匙交给我，还是替我选继续等？”我把蓝卡放到窗口外沿，又问：“你同伴没说出口的打算，你应该猜得到？”',
+            'reply': 'Rook把接收器拨回检修频道，钥匙留在自己这一侧：“那声‘通过’是演习，不是回执。蓝卡的编号还没核上，闸门不能凭颜色开。我问一下当班的。”他按下呼叫键：“回执编号、签署时间？”短促的杂音里，他朝窗外留了个空位：“等不等，你定。同伴没说的话，我不拿来当水位。”',
             'memory': {
                 'visible': [
                     {
                         'id': 'promise',
                         'revision': 1,
-                        'text': '涨潮时交接',
+                        'text': '原约定：涨潮时可以交接钥匙。',
                     },
                     {
                         'id': 'promise',
                         'revision': 2,
-                        'text': '修订：必须等检修确认后交接',
+                        'text': '生效修订：交接必须有当班签署的检修回执，编号与本次闸门一致；口头广播、演习结果和卡片颜色都不能代替回执。',
                     },
                     {
                         'id': 'scene',
                         'revision': 1,
-                        'text': 'Discarded variant is superseded; only the following current scene applies.',
+                        'text': '废弃草稿：蓝卡是有效回执，Rook已经把钥匙递给玩家。此草稿未发生，不能接入当前正文。',
                     },
                     {
                         'id': 'scene',
                         'revision': 2,
-                        'text': '无线电中只有杂音，玩家询问交接',
+                        'text': '当前正文：钥匙在Rook这一侧；窗口外沿空着，电台在杂音中播过一声“检修通过”，随后另一声音明确更正“刚才是演习频道”。正式回执尚未见到。',
                     },
                     {
                         'id': 'exposure',
                         'revision': 1,
-                        'text': 'Known: 交接计划曾定为涨潮时 / 正式修订改为检修确认后. Unknown: 当前潮位 / 当前钟点 / 检修是否完成. Voice: 水库值守员，说话短促，习惯以闸门与水位作比喻',
+                        'text': '上一轮公开对白：Rook说“纸上的当班签署和闸门编号要一起对上。”玩家答“我只知道卡是蓝的，文字没看清。”未公开卡片内容、当前潮位、钟点、实际检修状态及另一值守员的私下计划。Rook说话短促，习惯用闸门与水位作比喻，可操作自己这一侧的电台与钥匙。',
                     },
                 ],
                 'private': {
@@ -130,34 +130,34 @@ export const DEVELOPMENT_SOURCES = freezeTree([
             'actor': 'Lena',
             'projectName': 'unused',
             'proposedName': 'unused',
-            'input': '玩家问“这块布能用吗？”依据当前variant回应，旧variant迟到不能覆盖新正文。 NPC voice: 道具师，轻快但认真，以舞台与机关比喻说话. Do not decide the player action or claim unknown current facts. Use the current scene variant and revised promise.',
-            'reply': '“蓝色才接得上这一幕。”道具师展开色卡，等你决定要不要拿布比对。',
+            'input': '我指着还没打开的道具箱：“箱签上写着v9红色，编号比你那张v2新。反正导演肯定私下改主意了，这块就直接用？你替我决定拆箱还是走暗场吧；你上回不是说我已经把布拿起来了？”',
+            'reply': 'Lena把蓝色色卡架在工作灯旁：“箱签是道具批次号，跟场景页码不是同一架机关；那句‘已经拿起来’也只是废稿，没进这一幕。当前页还是蓝色，导演没公开的新主意我接不了。”她拍了拍灯座：“箱子还合着，布色得见光才能核。你若愿意拆箱，我把灯留在这儿；走哪一幕，你来定。”',
             'memory': {
                 'visible': [
                     {
                         'id': 'promise',
                         'revision': 1,
-                        'text': '旧variant：红色布景',
+                        'text': '废弃场景v1：第二幕红色布景，玩家已拿起布料。',
                     },
                     {
                         'id': 'promise',
                         'revision': 2,
-                        'text': '当前variant：蓝色布景',
+                        'text': '当前选定场景v2：第二幕蓝色布景；布料要在工作灯下实际比对才可使用。玩家尚未拿起布料。',
                     },
                     {
                         'id': 'scene',
                         'revision': 1,
-                        'text': 'Discarded variant is superseded; only the following current scene applies.',
+                        'text': '旧草稿曾写“Lena带着玩家直接换上红布并走进暗场”；该草稿被舍弃，迟到的旧输出不能替换当前选定场景。',
                     },
                     {
                         'id': 'scene',
                         'revision': 2,
-                        'text': '排练台旁；最新公开variant要求蓝色布景',
+                        'text': '当前正文：排练台旁有关闭的道具箱，箱签“道具批次v9，红色”；批次号与场景variant编号属于不同序列。箱内布料尚未看见。Lena手边有蓝色色卡和工作灯。',
                     },
                     {
                         'id': 'exposure',
                         'revision': 1,
-                        'text': 'Known: 已废弃variant要求红色布景 / 当前variant明确蓝色布景. Unknown: 另一角色的私下计划 / 玩家是否已拿起道具 / 当前排练时刻. Voice: 道具师，轻快但认真，以舞台与机关比喻说话',
+                        'text': '上一轮公开对白：Lena说“第二幕按蓝色那页走，箱子里是什么得打开核。”玩家答“导演没告诉我新要求，我也没开过箱。”导演的私下计划、实际布色、当前排练时刻未公开。Lena是轻快但认真的道具师，常以舞台和机关比喻说话，能移动自己手边的灯和色卡。',
                     },
                 ],
                 'private': {

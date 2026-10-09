@@ -34,14 +34,19 @@ export function f2CalibrationMessages(control) {
     return [...messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.' }];
 }
 
-export function reusableF2Calibration(row, control, label, config) {
+export function reusableF2Calibration(row, control, label, config, judgeOutputTokens = null) {
     return row.passed === true && row.group === control.group && row.flipped === control.flipped && row.label === label
-        && row.configurationHash === hash(config) && row.messagesHash === hash(f2CalibrationMessages(control));
+        && row.configurationHash === hash(config) && row.messagesHash === hash(f2CalibrationMessages(control))
+        && (judgeOutputTokens === null || row.transportConfigurationHash === hash(f2JudgeTransport(config, judgeOutputTokens)));
 }
 
-export function f2JudgeTransport(config) {
+export function f2JudgeTransport(config, judgeOutputTokens = null) {
     const transport = structuredClone(config);
     transport.connection.options = { ...transport.connection.options, responseMode: 'stream' };
+    if (judgeOutputTokens !== null) {
+        if (!Number.isSafeInteger(judgeOutputTokens) || judgeOutputTokens <= 0) throw new Error('invalid_f2_judge_output');
+        transport.generation.output.maxTokens = judgeOutputTokens;
+    }
     return transport;
 }
 
@@ -62,6 +67,21 @@ export function parseF2SourceAssessment(text, entry, evidence) {
 
 function projectSourceProjection(value) {
     const output = structuredClone(value);
+    // Keep actual public tool inputs and resource results. Task responses
+    // repeat the full conversation/source history already retained in raw.
+    if (output.tools) output.tools = output.tools.map(row => {
+        const item = structuredClone(row);
+        if (item.args?.source) { item.sourceInputHash = hash(item.args.source); delete item.args.source; }
+        if (item.result?.taskId) {
+            const result = item.result;
+            item.result = Object.fromEntries(['taskId', 'baseRevision', 'status', 'validation', 'repairRound', 'maxRepairRounds', 'plan', 'review', 'changeSets']
+                .filter(key => Object.hasOwn(result, key)).map(key => [key, result[key]]));
+            item.resultHash = hash(result);
+        } else if (item.name === 'atri_agent_get_project' && item.result?.source) {
+            item.result = { source: item.result.source, sourceHash: hash(item.result.source) };
+        }
+        return item;
+    });
     // The raw report retains the complete old Task. Its nested source copies
     // do not add evidence about the current baseline's requested correction.
     if (output.priorConflictTask) {
@@ -108,10 +128,10 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             || !PILOT_CASES.some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
     const domainControls = controls.controls.filter(c => c.domain === domain);
     entry.calibration = (resume?.calibration || []).filter(row => domainControls.some(control =>
-        reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig)));
+        reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig, scope.judgeOutputTokens ?? null)));
     for (const control of domainControls) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
-        if (entry.calibration.some(row => reusableF2Calibration(row, control, label, config))) continue;
-        const transportConfig = f2JudgeTransport(config);
+        if (entry.calibration.some(row => reusableF2Calibration(row, control, label, config, scope.judgeOutputTokens ?? null))) continue;
+        const transportConfig = f2JudgeTransport(config, scope.judgeOutputTokens ?? null);
         const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
         const bridge = await createFrozenEvaluationBridge(transportConfig, async payload => (await f.evaluator.send(f.h.handle, gradeJob, transportConfig,
             { ...payload, arm: 'judge' }, signal, async () => {})).raw);
@@ -152,7 +172,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                     if (prior.evidenceHash !== hash(priorEvidence)) throw new Error('f2_resume_changed');
                     parseF2SourceAssessment(JSON.stringify(prior), pair.case, priorEvidence); observations.push(prior); continue; }
                 const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
-                const transportConfig = f2JudgeTransport(config);
+                const transportConfig = f2JudgeTransport(config, scope.judgeOutputTokens ?? null);
                 const bridge = await createFrozenEvaluationBridge(transportConfig, async payload => (await f.evaluator.send(f.h.handle, gradeJob, transportConfig,
                     { ...payload, arm: 'judge' }, signal, async () => {})).raw);
                 try {

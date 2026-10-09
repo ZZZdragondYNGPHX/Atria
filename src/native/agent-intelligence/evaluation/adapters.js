@@ -307,7 +307,7 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
                 try {
                     const taskId = task.taskId;
                     const toolResult = await agent.executeTool(h.handle, source.project.projectId, taskId, body);
-                    publicTools.push({ name: body.name, status: 'returned' });
+                    publicTools.push({ name: body.name, status: 'returned', ...(fixture.pilot ? { args: structuredClone(body.args || {}), result: structuredClone(toolResult) } : {}) });
                     // Read tools return Project/resource data, not the task authority.
                     task = await agent.getTask(h.handle, source.project.projectId, taskId);
                     if (body.name === 'atri_agent_prepare_review') validations.push({ status: task.status, round: task.repairRound, validation: task.validation.status });
@@ -317,7 +317,7 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
                     return response(toolResult);
                 } catch (error) {
                     if (fixture.pilot && !evaluation?.bridge) throw error;
-                    publicTools.push({ name: body.name, status: 'error', code: error.code || 'unavailable' });
+                    publicTools.push({ name: body.name, status: 'error', code: error.code || 'unavailable', ...(fixture.pilot ? { args: structuredClone(body.args || {}), details: structuredClone(error.details ?? null) } : {}) });
                     return response({ error: error.code, details: error.details }, error.name === 'ConflictError' ? 409 : 400);
                 }
             }
@@ -327,7 +327,10 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
         let modelError = null;
         try {
             await evaluation?.probe?.({ projectId: source.project.projectId, taskId: task.taskId });
-            await runNativeStudioAgentTask({ projectId: source.project.projectId, taskId: task.taskId, messages: [{ role: 'user', content: input }], maxModelRounds: evaluation?.settings.roundLimit ?? 6 });
+            // The pilot's declared source window must reach the original loop.
+            // Production settings and legacy evaluation windows stay exact.
+            await runNativeStudioAgentTask({ projectId: source.project.projectId, taskId: task.taskId, messages: [{ role: 'user', content: input }],
+                maxModelRounds: fixture.pilot ? entry.limits.maxRequests : evaluation?.settings.roundLimit ?? 6 });
         } catch (error) { modelError = error; }
         if (capture.budgetBlocked) throw modelError || new Error('comparison_budget_blocked');
         task = await agent.getTask(h.handle, source.project.projectId, task.taskId);

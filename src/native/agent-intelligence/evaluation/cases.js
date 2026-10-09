@@ -65,7 +65,7 @@ const pilotCase = source => {
         entrance: source.domain, split: source.split, profileId, sourceId: source.sourceId,
         fixtureRef: 'synthetic:f2:' + source.sourceId, fixtureHash: source.fixtureHash || hash(source.fixture), inputHash: source.inputHash || hash(source.fixture.input),
         rubricRevision: hash(PILOT_RUBRIC), requiredCapabilities: source.domain === 'rp' ? ['director', 'takeover', 'abort'] : ['studio_agent', 'project_authority'],
-        limits: { maxRequests: 6, maxRepairRounds: 2 }, behaviorDimensions: [...QUALITY_PROFILES[profileId].criticalDimensions],
+        limits: { maxRequests: source.domain === 'project' ? 12 : 6, maxRepairRounds: 2 }, behaviorDimensions: [...QUALITY_PROFILES[profileId].criticalDimensions],
         expectedInvariants: source.domain === 'rp' ? ['player_ownership', 'single_completion', 'request_exposure', 'revision_reference', 'stale_completion', 'variant_identity']
             : ['ownership', 'review_gate', 'validation_error', 'repair_bound', 'human_revision', 'no_silent_rebase', 'related_proposal', 'preservation'],
         provenance: { origin: source.origin, groupId: source.rootGroup, templateGroup: source.templateGroup, derivedFrom: [...source.derivedFrom], independence: 'isolated_synthetic' },

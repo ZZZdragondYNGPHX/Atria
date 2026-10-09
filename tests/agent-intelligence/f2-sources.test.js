@@ -12,6 +12,8 @@ test('F2 judge streaming changes transport only and leaves the baseline configur
     const config = { connection: { options: { toolSchemaMode: 'string-enums' } }, generation: { output: { maxTokens: 16384 } } };
     expect(f2JudgeTransport(config)).toEqual({ ...config, connection: { options: { toolSchemaMode: 'string-enums', responseMode: 'stream' } } });
     expect(config.connection.options).toEqual({ toolSchemaMode: 'string-enums' });
+    expect(f2JudgeTransport(config, 20000).generation.output.maxTokens).toBe(20000);
+    expect(config.generation.output.maxTokens).toBe(16384);
 });
 
 test('calibration reuse requires the actual judge configuration and exact control messages', () => {
@@ -22,6 +24,10 @@ test('calibration reuse requires the actual judge configuration and exact contro
     expect(reusableF2Calibration(row, control, 'secondary', { outputTokens: 16384 })).toBe(false);
     expect(reusableF2Calibration(row, { ...control, flipped: true }, 'secondary', config)).toBe(false);
     expect(reusableF2Calibration({ ...row, passed: false }, control, 'secondary', config)).toBe(false);
+    const fullConfig = { connection: {}, generation: { output: { maxTokens: 8000 } } };
+    const pinned = { ...row, configurationHash: hash(fullConfig), transportConfigurationHash: hash(f2JudgeTransport(fullConfig, 16384)) };
+    expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 16384)).toBe(true);
+    expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 20000)).toBe(false);
 });
 
 const captureFor = entry => ({ trialId: 'f2:' + entry.caseId, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
@@ -50,7 +56,7 @@ test('reviewed pilot sources retain the legacy catalogue and isolate original ro
         expect(entry.provenance).toMatchObject({ origin: 'agent_authored_synthetic', derivedFrom: [], independence: 'isolated_synthetic' });
         expect(entry.behaviorDimensions).toHaveLength(6);
         expect(entry.behaviorDimensions.every(d => typeof PILOT_RUBRIC[d] === 'string')).toBe(true);
-        expect(entry.limits).toEqual({ maxRequests: 6, maxRepairRounds: 2 });
+        expect(entry.limits).toEqual({ maxRequests: entry.entrance === 'project' ? 12 : 6, maxRepairRounds: 2 });
     }
 });
 
@@ -146,7 +152,38 @@ test.each(PILOT_CASES.filter(c => c.split === 'development' && c.entrance === 'p
     expect(capture.refs.requestIds).toHaveLength(2);
     expect(capture.finalTextStatus).toBe('not_run');
     expect(output.source.project.displayName).toContain('(human revision)');
+    expect(output.tools.some(t => t.args && t.result)).toBe(true);
     expect(capture.refs.requestIds.length).toBeLessThanOrEqual(6);
+});
+
+test('Project pilot reaches Review beyond the legacy six-round setting using its declared source window', async () => {
+    const entry = PILOT_CASES.find(c => c.entrance === 'project' && c.split === 'development');
+    const fixture = loadFixture(entry, { purpose: 'evaluation' }), capture = captureFor(entry);
+    let rounds = 0, readSource;
+    const bridge = { project: async ({ input }) => {
+        rounds++;
+        for (const message of input.messages.filter(m => m.role === 'tool')) {
+            const result = JSON.parse(message.content);
+            if (result.source?.package) readSource = result.source;
+        }
+        const calls = rounds <= 7 ? [{ id: 'read-' + rounds, name: 'atri_agent_get_project', args: {} }] : (() => {
+            const source = structuredClone(readSource), point = source.package.entryPoints[1], worldId = source.dependencies.worlds[1].worldId;
+            point.worldIds = [worldId]; point.primaryWorldId = worldId;
+            return [
+                { id: 'reset', name: 'atri_agent_reset_operations', args: {} },
+                { id: 'plan', name: 'atri_agent_set_plan', args: { summary: fixture.input, steps: [{ id: 'fix', title: 'Correct dependency', impact: 'low' }] } },
+                { id: 'save', name: 'atri_agent_project_save', args: { source, stepId: 'fix' } },
+                { id: 'review', name: 'atri_agent_prepare_review', args: {} },
+            ];
+        })();
+        return { response: { assistantText: '', toolCalls: calls, usage: null } };
+    } };
+    await withIsolatedRuntime(() => runProject(entry, fixture, capture, { settings: { projectSkill: 'Preserve authority.', roundLimit: 6 }, beforeSend: () => {}, bridge }));
+    expect(rounds).toBe(8);
+    expect(capture.refs.requestIds).toHaveLength(8);
+    expect(JSON.parse(capture.artifact.output).status).toBe('review');
+    expect(capture.checks.review_gate).toBe(true);
+    expect(capture.checks.related_proposal).toBe(true);
 });
 
 test('the original funded worker executes only baseline and returns a non-promotable source-probe report', async () => {
