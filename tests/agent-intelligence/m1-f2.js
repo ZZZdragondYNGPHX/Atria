@@ -52,7 +52,8 @@ export function f2SourceEvidence(pair) {
         output.priorConflictTask = state;
     }
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
-    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output: canonical(output), checks, evidence, error, repairCount, completeness } });
+    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output: canonical(output), checks: checks ?? {}, evidence: evidence ?? [],
+        error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
 }
 
 export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal, resume = null }) {
