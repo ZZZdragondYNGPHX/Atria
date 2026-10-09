@@ -156,12 +156,12 @@ export function f3GradeMessages(pair, flipped) {
             ...arms }) }];
 }
 
-export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal }) {
-    const domain = kind === 'rp-skill' ? 'rp' : 'project', profileId = profileFor(domain);
-    const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
-    validateF3Baseline(source.report, domain, primaryConfig, baselineSettings, ledger());
-    validateF3Calibration(source, scope, controls, kind, primaryConfig, secondaryConfig);
-    if (hash(source.report) !== scope.baselineHashes[kind] || hash(source.assessments) !== scope.assessmentHashes[kind]) throw new Error('f3_source_changed');
+export async function prepareF3Investigation(f, targetPin) {
+    const capture = await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target);
+    const original = await f.repository.get(f.h.handle, f.scope, f.subject);
+    if (hash(capture) !== targetPin || !original?.policy || original.jobs.length || original.publications.length
+        || original.policy.targetPin !== targetPin || !equal(original.policy.target, f.target)
+        || original.policy.routeId !== f.route.runtimeRouteId || original.policy.price !== null) throw new Error('f3_investigation_policy_changed');
     // Remove the legacy fixture proxy correction. Model observations are
     // carried only by the explicit investigation envelope below.
     const view = await f.service.experience.inspect(f.h.handle, { scope: f.scope, subject: f.subject });
@@ -169,11 +169,23 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
         const current = await f.service.experience.inspect(f.h.handle, { scope: f.scope, subject: f.subject });
         await f.service.experience.withdraw(f.h.handle, { scope: f.scope, subject: f.subject, id: item.id, expectedSequence: current.sequence });
     }
-    const paused = await f.repository.get(f.h.handle, f.scope, f.subject);
-    await f.service.configure(f.h.handle, { scope: f.scope, subject: f.subject, target: f.target, mode: 'review', routeId: f.route.runtimeRouteId,
-        price: null, expectedSequence: paused.sequence });
+    // The delegated test cannot pass production configure/start without real
+    // feedback. Reuse the exact existing private policy, marking only its
+    // test execution mode; never grant production source/diagnosis eligibility.
+    await f.repository.mutate(f.h.handle, f.scope, f.subject, doc => {
+        doc.policy.mode = 'review'; doc.policy.reason = 'm1_private_investigation';
+    });
+    return capture;
+}
+
+export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal }) {
+    const domain = kind === 'rp-skill' ? 'rp' : 'project', profileId = profileFor(domain);
+    const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+    validateF3Baseline(source.report, domain, primaryConfig, baselineSettings, ledger());
+    validateF3Calibration(source, scope, controls, kind, primaryConfig, secondaryConfig);
+    if (hash(source.report) !== scope.baselineHashes[kind] || hash(source.assessments) !== scope.assessmentHashes[kind]) throw new Error('f3_source_changed');
+    const capture = await prepareF3Investigation(f, scope.configurations[kind].targetPin);
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
-    const capture = await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target);
     if (hash(capture) !== scope.configurations[kind].targetPin) throw new Error('f3_target_changed');
     const job = { id: 'm1-f3-' + randomUUID(), batchHash: hash(source.assessments), diagnosisId: null,
         dependencies: { feedbackRefs: [], diagnosis: null }, policyFingerprint: doc.policy.fingerprint, target: f.target, targetPin: hash(capture),

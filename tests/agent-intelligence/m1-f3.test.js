@@ -2,7 +2,9 @@ import { expect, test } from '@jest/globals';
 import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
-import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence } from './m1-f3.js';
+import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation } from './m1-f3.js';
+import { evolutionFixture } from './evolution-fixture.js';
+import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 
 function example(domain = 'rp') {
     const config = { identity: 'original' }, settings = { identity: 'baseline' }, candidateConfig = { identity: 'candidate' }, candidateSettings = { identity: 'candidate-settings' };
@@ -38,6 +40,29 @@ function example(domain = 'rp') {
 }
 const readiness = f => pilotDevelopmentReadiness(f.report, f.independent, f.owner, 'job', f.baseline, f.ledger);
 const rehash = pair => { delete pair.pairHash; pair.pairHash = hash(pair); };
+
+test.each(['rp-skill', 'project-prompt'])('F3 %s private investigation withdraws proxy feedback while production start stays rejected', async kind => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, kind, { policyMode: 'review', confirmedPrice: null });
+    try {
+        const capture = await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target);
+        const before = await f.repository.get(f.h.handle, f.scope, f.subject);
+        await expect(prepareF3Investigation(f, '0'.repeat(64))).rejects.toThrow('f3_investigation_policy_changed');
+        expect(await f.repository.get(f.h.handle, f.scope, f.subject)).toEqual(before);
+        await prepareF3Investigation(f, hash(capture));
+        const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
+        expect(doc.policy.fingerprint).toBe(before.policy.fingerprint);
+        expect(doc.policy.reason).toBe('m1_private_investigation');
+        const view = await f.service.experience.inspect(f.h.handle, { scope: f.scope, subject: f.subject });
+        expect(view.feedback.some(row => row.kind === 'explicit' && row.status === 'active')).toBe(false);
+        await expect(f.service.configure(f.h.handle, { scope: f.scope, subject: f.subject, target: f.target, mode: 'review',
+            routeId: f.route.runtimeRouteId, price: null, expectedSequence: doc.sequence }))
+            .rejects.toMatchObject({ code: 'agent_evolution_source_required' });
+        await expect(f.service.start(f.h.handle, { scope: f.scope, subject: f.subject, expectedSequence: doc.sequence }))
+            .rejects.toMatchObject({ code: 'agent_evolution_reflection_not_ready' });
+        expect((await f.repository.get(f.h.handle, f.scope, f.subject)).jobs).toHaveLength(0);
+        expect((await f.repository.owner(f.h.handle)).attempts).toHaveLength(0);
+    } finally { await f.h.cleanup(); }
+});
 
 test('F3 source gate rejects primary-only observations and missing calibration controls', () => {
     const config = { model: { remoteModelId: 'primary' } }, secondary = { model: { remoteModelId: 'secondary' } };
