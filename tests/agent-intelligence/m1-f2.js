@@ -26,6 +26,11 @@ export function f2CalibrationMessages(control) {
     return [...control.messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.' }];
 }
 
+export function reusableF2Calibration(row, control, label, config) {
+    return row.passed === true && row.group === control.group && row.flipped === control.flipped && row.label === label
+        && row.configurationHash === hash(config) && row.messagesHash === hash(f2CalibrationMessages(control));
+}
+
 export function parseF2SourceAssessment(text, entry, evidence) {
     const value = parseEvaluationJson(text);
     const excerpts = [evidence];
@@ -44,15 +49,20 @@ export function parseF2SourceAssessment(text, entry, evidence) {
 export function f2SourceEvidence(pair) {
     if (pair.case.entrance !== 'project') return canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
     const output = JSON.parse(pair.baseline.output);
-    // The old Task's duplicated inspection/workspace/timeline is retained in
-    // the raw report. The grader needs its actual conflict state and operations.
+    // The raw report retains the complete old Task. Its nested source copies
+    // do not add evidence about the current baseline's requested correction.
     if (output.priorConflictTask) {
-        const { timeline, inspection, workspace, ...state } = output.priorConflictTask;
-        void timeline; void inspection; void workspace;
-        output.priorConflictTask = state;
+        const prior = output.priorConflictTask;
+        output.priorConflictTask = Object.fromEntries(['taskId', 'projectId', 'baseRevision', 'status', 'recovery', 'validation', 'review', 'repairRound', 'changeSets']
+            .filter(key => Object.hasOwn(prior, key)).map(key => [key, prior[key]]));
+        output.priorConflictTask.operations = (prior.operations || []).map(row => {
+            const { input, ...operation } = row.operation || {};
+            return { ...Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'operation')), operation,
+                inputHash: input ? hash(input) : null };
+        });
     }
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
-    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output: canonical(output), checks: checks ?? {}, evidence: evidence ?? [],
+    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output, checks: checks ?? {}, evidence: evidence ?? [],
         error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
 }
 
@@ -68,8 +78,11 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
         || resume.report.configurations.baseline !== hash(primaryConfig) || resume.report.settings.baseline !== hash(settings)
         || resume.report.pairs.length !== 3 || resume.report.pairs.some(p => p.candidate !== null || p.judge !== null || p.human !== null
             || !PILOT_CASES.some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
-    entry.calibration = resume ? resume.calibration : [];
-    for (const control of resume ? [] : controls.controls.filter(c => c.domain === domain)) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+    const domainControls = controls.controls.filter(c => c.domain === domain);
+    entry.calibration = (resume?.calibration || []).filter(row => domainControls.some(control =>
+        reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig)));
+    for (const control of domainControls) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+        if (entry.calibration.some(row => reusableF2Calibration(row, control, label, config))) continue;
         const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
         const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
             { ...payload, arm: 'judge' }, signal, async () => {})).raw);
@@ -86,7 +99,8 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                 && typeof raw.rationale === 'string' && raw.rationale.length <= 512
                 : raw.preference === control.expected && normalized?.preference === 'candidate'
                     && Object.values(normalized.deltas).every(v => v >= 0) && Object.values(normalized.deltas).some(v => v > 0);
-            entry.calibration.push({ group: control.group, flipped: control.flipped, label, passed, preference: raw.preference, messagesHash: hash(messages) });
+            entry.calibration.push({ group: control.group, flipped: control.flipped, label, passed, preference: raw.preference,
+                configurationHash: hash(config), messagesHash: hash(messages) });
             store(kind + '-f2-calibration.json', entry.calibration);
             if (!passed) throw new Error('f2_calibration_failed');
         } finally { bridge.cleanup(); }
