@@ -115,6 +115,6 @@ F2两域controls和六来源的实际双模型观察已补齐，保留原正确�
 
 ## 14. 2026-10-09 当前主模型准入
 
-用户明确要求取消双模型准入，当前development和promotion按§1/§2主模型盲评执行。每域同协议六个主模型controls（正确/错误/unknown、反事实及左右翻转）须有效且绑定原费用身份；只复用exact消息/配置/费用一致的已付费结果。原三development、九对独立promotion、六胜、非负维度、source/authority/隔离、候选冻结和review→下一消费→rollback均保留。旧双模型要求仅记录历史，不形成当前执行限制；生产automatic human/price gate仍归S10。
+用户明确要求取消双模型准入，当前development和promotion按§1/§2主模型盲评执行。每域同协议八个主模型controls（正确/错误/unknown、反事实、实际缺陷对应的focused source及左右翻转）须有效且绑定原费用身份；只复用exact消息/配置/费用一致的已付费结果。原三development、九对独立promotion、六胜、非负维度、source/authority/隔离、候选冻结和review→下一消费→rollback均保留。旧双模型要求仅记录历史，不形成当前执行限制；生产automatic human/price gate仍归S10。
 
 双模型规则最早进入Git为 `aabdf8c75`（2026-10-07 21:06:53 +08:00，Git author `ZZZdragondYNGPHX`）。该提交将不同model identifier第二连接shuffle盲评写入验收；同版本决策说明详细门槛属于工程冻结，并非用户逐条指定。Git author仅是提交署名，不能证明用户亲自制定该规则；历史泛化确认不覆盖本次明确取消。

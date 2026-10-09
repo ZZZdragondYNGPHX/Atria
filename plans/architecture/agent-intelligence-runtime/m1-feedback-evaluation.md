@@ -132,11 +132,11 @@ API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)
 | --- | ---: | --- |
 | 来源/headroom 探测 | 6 场景 ×6 send =36 | 保存正式输出；不能冒充后续独立 paired baseline |
 | 有限缺陷分析 | 6 来源 ×1 =6 | 能用固定 checks 时无需这些调用；不得无限逐轮 critic |
-| judge controls | 2域 ×3组 ×2顺序 ×1judge =12 | 正确/错误/unknown，构造素材不另调用生成 |
+| judge controls | 2域 ×4组 ×2顺序 ×1judge =16 | 正确/错误/unknown，构造素材不另调用生成 |
 | 候选与 development | 2提炼 +12 arms ×6 +6 grades =80；缓存正确基线不计新调用 | 各一候选/三pair，准入唯一见m1-acceptance §2 |
 | 独立 promotion | 36 arms ×6 +18 grades =234 | 达development才各九对；退出门槛唯一见m1-acceptance §2 |
 | 下一 run 消费 | 2域 ×6 =12 | 仅达标后在私有 fixture review；原 rollback 零模型 |
-| 合计 | 380，另列实际必要的 retry/诊断 | 无 retry 的形态上界；不是实际必需调用数或承诺费用 |
+| 合计 | 384，另列实际必要的 retry/诊断 | 无 retry 的形态上界；不是实际必需调用数或承诺费用 |
 
 source/case/input/rubric/calibration/worker/request identity 随实际版本与结果记录。现金价格未知仍 unavailable，不声称节约或回本。
 
