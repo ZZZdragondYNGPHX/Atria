@@ -124,15 +124,24 @@ try {
         summary.entries.push({ ...rp, performedThisRun: false, sourceTestedHead: source.testedHead });
         for (const file of ['rp-skill-job.json', 'rp-skill-independent.json', 'development-feedback.json']) fs.copyFileSync(path.join(previous, file), path.join(output, file));
     }
-    let cycleSource, finishSource;
+    let cycleSource, finishSource, stepContinuation;
     if (cycleBoundedOptimize) {
         const previous = path.join(directory, 'm1-reports', cycleBoundedOptimize);
         const source = JSON.parse(fs.readFileSync(path.join(previous, 'summary.json'), 'utf8'));
         const diagnostic = JSON.parse(fs.readFileSync(path.join(previous, 'secondary-diagnostic-response.json'), 'utf8'));
         const manifest = JSON.parse(fs.readFileSync(path.join(previous, 'bounded-cycle-continuation.json'), 'utf8'));
+        const parsedDiagnostic = parseEvaluationJson(diagnostic.response?.assistantText);
+        const explicitContinuation = manifest.authorization === 'user_continued_after_failed_grade_shape_success';
         if (source.mode !== 'one_request_secondary_diagnostic' || hash(source) !== manifest.sourceSummaryHash || hash(diagnostic) !== manifest.diagnosticHash
-            || parseEvaluationJson(diagnostic.response?.assistantText).ok !== true || manifest.outputTokens !== 8000
+            || !(parsedDiagnostic.ok === true || explicitContinuation && ['left', 'right', 'tie', 'uncertain'].includes(parsedDiagnostic.preference) && parsedDiagnostic.deltas && parsedDiagnostic.rationale)
+            || manifest.outputTokens !== 8000
             || hash(JSON.parse(fs.readFileSync(path.join(previous, 'development-feedback.json'), 'utf8'))) !== manifest.feedbackHash) throw new Error('bounded_cycle_source_invalid');
+        if (explicitContinuation) {
+            const paid = snapshot.entries[manifest.diagnosticChargeId];
+            if (!source.diagnosticSource || !paid?.settled || paid.usageStatus !== 'provider_reported' || paid.tokens !== 3601
+                || source.finalAccounting.requests !== 702 || manifest.maxIndependentSends !== 24) throw new Error('step_continuation_evidence_invalid');
+            stepContinuation = { diagnosticRun: cycleBoundedOptimize, evidenceHash: hash(diagnostic), phase: 'development' };
+        }
         cycleSource = { previous, source };
         summary.developmentSource = { summaryHash: hash(source), manifestHash: hash(manifest), diagnosticHash: hash(diagnostic), outputTokens: 8000 };
     } else if (cycleProjectExtract) {
@@ -176,6 +185,8 @@ try {
         summary.baselineDevelopmentPartial = Boolean(diagnosedPartial);
         cycleSource = { previous, source };
         summary.developmentSource = { summaryHash: hash(source), testedHead: source.testedHead };
+        if (cycleBoundedAcceptance && source.stepContinuation) stepContinuation = { diagnosticRun: source.stepContinuation.diagnosticRun,
+            evidenceHash: source.stepContinuation.evidenceHash, phase: 'acceptance' };
     }
     let gradeSource;
     if (gradeName) {
@@ -210,12 +221,31 @@ try {
     summary.transportEpochs = transportEpochs;
     const retryPolicy = new M1RetryPolicy({ snapshot: fs.existsSync(transportCheckpoint) ? read('m1-transport-state.json') : {},
         onChange: state => writeFileAtomic.sync(transportCheckpoint, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 }) });
+    let continuationRecord, continuationPath;
+    const persistContinuation = () => {
+        writeFileAtomic.sync(continuationPath, JSON.stringify(continuationRecord, null, 2) + '\n', { mode: 0o600 });
+        summary.stepContinuation = { ...stepContinuation, sends: continuationRecord.sends, failed: continuationRecord.failed };
+        store('summary.json', summary);
+    };
+    if (stepContinuation) {
+        if (!/^run-[0-9]+-[a-f0-9]{8}$/.test(stepContinuation.diagnosticRun)) throw new Error('invalid_step_continuation_source');
+        continuationPath = path.join(directory, 'm1-step-continuation-' + stepContinuation.diagnosticRun + '.json');
+        continuationRecord = fs.existsSync(continuationPath) ? JSON.parse(fs.readFileSync(continuationPath, 'utf8'))
+            : { evidenceHash: stepContinuation.evidenceHash, development: null, acceptance: null, sends: 0, failed: null };
+        if (continuationRecord.evidenceHash !== stepContinuation.evidenceHash || continuationRecord.failed || continuationRecord[stepContinuation.phase]
+            || stepContinuation.phase === 'acceptance' && !continuationRecord.development || continuationRecord.sends >= 24) throw new Error('step_continuation_already_used_or_failed');
+        continuationRecord[stepContinuation.phase] = path.basename(output);
+        persistContinuation();
+    }
     const activeTransportKeys = new Set();
     const transport = async (url, options) => {
         const body = JSON.parse(options.body), model = body.model, key = m1TransportKey(url, model, transportEpochs,
             (cycleProjectExtract || boundedCycle) && model === connections[0].config.model && body.max_tokens === 8000 ? 8000 : null,
             boundedCycle ? 'evaluation' : 'extraction');
-        if (!diagnoseOnly) retryPolicy.assertAvailable(key);
+        if (!diagnoseOnly) {
+            retryPolicy.beginSend(key);
+            if (retryPolicy.continuations.has(key)) { continuationRecord.sends++; persistContinuation(); }
+        }
         try {
             // Three funded attempts plus backoff must fit inside the original
             // Route deadline. This signal also bounds response body consumption.
@@ -234,6 +264,7 @@ try {
         } catch (error) {
             const code = m1TransportFailureCode(error, options.signal.aborted || overall.signal.aborted);
             retryPolicy.observe(key, code);
+            if (retryPolicy.continuations.has(key)) { continuationRecord.failed = code; persistContinuation(); }
             throw Object.assign(new Error(code), { code });
         }
     };
@@ -320,6 +351,16 @@ try {
                 await f.service.configure(f.h.handle, { scope: f.scope, subject: f.subject, target: f.target, mode: 'review', routeId: f.route.runtimeRouteId,
                     price: null, expectedSequence: policy.sequence });
                 entry.feedbackHash = hash(note);
+                if (stepContinuation?.phase === 'development') {
+                    const extract = f.evaluator.extract.bind(f.evaluator);
+                    f.evaluator.extract = async (...args) => {
+                        const proposal = await extract(...args);
+                        store(kind + '-proposed-candidate.json', { proposal, inputHash: hash(args[5]), sourceManifestHash: summary.developmentSource.manifestHash });
+                        const manifest = JSON.parse(fs.readFileSync(path.join(cycleSource.previous, 'bounded-cycle-continuation.json'), 'utf8'));
+                        if (hash(proposal.value) === manifest.previousCandidateHashes[kind] || hash(proposal.value) === hash(args[5].base)) throw new Error('unchanged_candidate_not_retested');
+                        return proposal;
+                    };
+                }
             }
             if (!gradeSource && kind === 'rp-skill' && frozenRp) {
                 if (hash(f.target) !== hash(frozenRp.target)) throw new Error('frozen_proposal_target_changed');
@@ -369,6 +410,8 @@ try {
                     (cycleProjectExtract || boundedCycle) && config.model.remoteModelId === primary.config.model && payload.outputTokens === 8000 ? 8000 : null,
                     boundedCycle ? 'evaluation' : 'extraction');
                 activeTransportKeys.add(transportKey);
+                if (stepContinuation && config.model.remoteModelId === secondary.config.model && !retryPolicy.continuations.has(transportKey))
+                    retryPolicy.authorizeContinuation(transportKey, stepContinuation.evidenceHash, 24 - continuationRecord.sends);
                 const fundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
@@ -384,6 +427,7 @@ try {
                         store(kind + '-response-' + result.charge.id + '.json', result);
                         if (!diagnoseOnly && !completeM1Response(result.raw, payload)) {
                             retryPolicy.incomplete(transportKey);
+                            if (retryPolicy.continuations.has(transportKey)) { continuationRecord.failed = 'm1_response_incomplete'; persistContinuation(); }
                             console.log(JSON.stringify({ kind, incompleteResponse: true, retryAttempt }));
                             throw Object.assign(new Error('m1_response_incomplete'), { code: 'm1_response_incomplete' });
                         }
@@ -394,6 +438,7 @@ try {
                         // body transport/JSON failure once, preserving its charge.
                         if (m1BodyFailure(error) && !signal.aborted && !overall.signal.aborted && retryPolicy.state(transportKey).recent.at(-1) === false) {
                             retryPolicy.incomplete(transportKey);
+                            if (retryPolicy.continuations.has(transportKey)) { continuationRecord.failed = 'm1_response_incomplete'; persistContinuation(); }
                             throw Object.assign(new Error('m1_response_incomplete'), { code: 'm1_response_incomplete' });
                         }
                         throw error;
@@ -564,7 +609,7 @@ try {
             store('summary.json', summary);
             console.log(JSON.stringify({ kind, status: entry.status, reason: entry.reason || null, acceptance: entry.acceptance || null }));
         }
-        if ([...activeTransportKeys].some(key => retryPolicy.state(key).stopped) && !entry.acceptance) break;
+        if ([...activeTransportKeys].some(key => retryPolicy.isStopped(key)) && !entry.acceptance) break;
     }
     if (!prepareOnly && !summary.accepted) process.exitCode = 1;
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));

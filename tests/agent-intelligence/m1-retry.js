@@ -11,6 +11,7 @@ export class M1RetryPolicy {
             return [key, structuredClone(state)];
         }));
         this.onChange = onChange;
+        this.continuations = new Map();
     }
     state(key) {
         if (!this.connections.has(key)) this.connections.set(key, { consecutive: 0, recent: [], stopped: null });
@@ -26,6 +27,7 @@ export class M1RetryPolicy {
     }
     observe(key, code = null) {
         const state = this.state(key);
+        if (code && this.continuations.has(key)) this.continuations.get(key).revoked = true;
         state.recent.push(Boolean(code)); state.recent = state.recent.slice(-20);
         state.consecutive = code ? state.consecutive + 1 : 0;
         if (code && (!this.transient(code) || state.consecutive >= 3 || state.recent.filter(Boolean).length >= 6)) state.stopped = code;
@@ -33,7 +35,23 @@ export class M1RetryPolicy {
     }
     assertAvailable(key) {
         const reason = this.state(key).stopped;
-        if (reason) throw Object.assign(new Error(reason), { code: reason });
+        const permit = this.continuations.get(key);
+        if (reason && !(permit && !permit.revoked && permit.remaining > 0)) throw Object.assign(new Error(reason), { code: reason });
+    }
+    authorizeContinuation(key, evidenceHash, remaining) {
+        const state = this.state(key);
+        if (state.stopped !== 'm1_http_404' || state.consecutive !== 0 || state.recent.at(-1) !== false
+            || !/^[a-f0-9]{64}$/.test(evidenceHash) || !Number.isInteger(remaining) || remaining < 1 || remaining > 24
+            || this.continuations.has(key)) throw new Error('invalid_step_continuation');
+        this.continuations.set(key, { evidenceHash, remaining, revoked: false });
+    }
+    beginSend(key) {
+        this.assertAvailable(key);
+        const permit = this.continuations.get(key);
+        if (permit) permit.remaining--;
+    }
+    isStopped(key) {
+        try { this.assertAvailable(key); return false; } catch { return true; }
     }
     async send(key, operation, signal) {
         for (let attempt = 0; attempt < 3; attempt++) {

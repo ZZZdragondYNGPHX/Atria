@@ -75,3 +75,32 @@ test('incomplete response replaces the header success and three such sends stop'
     expect(calls).toBe(3);
     expect(policy.state('primary')).toMatchObject({ consecutive: 3, recent: [true, true, true], stopped: 'm1_response_incomplete' });
 });
+
+test('an explicit diagnostic continuation preserves the stopped window and exhausts its finite sends', () => {
+    const policy = new M1RetryPolicy();
+    policy.observe('step', 'm1_http_404');
+    expect(() => policy.authorizeContinuation('step', 'a'.repeat(64), 2)).toThrow('invalid_step_continuation');
+    policy.observe('step');
+    const history = structuredClone(policy.state('step'));
+    policy.authorizeContinuation('step', 'a'.repeat(64), 2);
+    expect(policy.state('step')).toEqual(history);
+    policy.beginSend('step'); policy.observe('step');
+    policy.beginSend('step'); policy.observe('step');
+    expect(policy.state('step').stopped).toBe('m1_http_404');
+    expect(policy.isStopped('step')).toBe(true);
+    expect(() => policy.beginSend('step')).toThrow('m1_http_404');
+    const restored = new M1RetryPolicy({ snapshot: Object.fromEntries(policy.connections) });
+    expect(() => restored.beginSend('step')).toThrow('m1_http_404');
+});
+
+test.each(['m1_http_404', 'm1_http_503', 'm1_response_incomplete'])('any new Step failure revokes its explicit continuation without retry: %s', async code => {
+    const policy = new M1RetryPolicy({ wait: async () => { throw new Error('unexpected_retry'); } });
+    policy.observe('step', 'm1_http_404'); policy.observe('step');
+    policy.authorizeContinuation('step', 'b'.repeat(64), 24);
+    let sends = 0;
+    await expect(policy.send('step', async () => { policy.beginSend('step'); sends++; policy.observe('step', code); throw failure(code); },
+        new AbortController().signal)).rejects.toThrow(code);
+    expect(sends).toBe(1);
+    expect(policy.isStopped('step')).toBe(true);
+    expect(() => policy.beginSend('step')).toThrow();
+});
