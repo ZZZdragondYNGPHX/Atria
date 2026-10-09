@@ -1264,3 +1264,20 @@ Project正式developmentReadiness=false，wins0；前两条有有效分歧/重�
 原 evaluator 的新提炼输入携带已核对原执行槽位及六维保护要求；不给模型新的工具/写入权限、不把代理分析伪造 explicit/diagnosis，不手写或评分后修订候选。RP仍需公开知识边界、玩家选择与可推进角色行动共同满足；Project必须在原公开槽位解释有界提案、fresh/prior conflict区别及未提交 Review 边界。必要修复复测以新协议/提炼输入版本各一新候选进行，旧候选、全部判断、账目和密封来源不覆盖，门槛不缩减。
 
 最小本地验证：F3 suite23/23、触及 JS ESLint/diff通过。二十四个 F3 exact control messages 的原 compiler/provider免费 sizing确认完整 user证据未裁剪，output16384不变；Project controls input696–6054，RP676–1575，全部原context可容纳。没有重复原不变retry/F2 suites，没有 full suite/build/CI/UI/Android验证。新 scope `e13f6b6ce109da97eb270724f34f316103d7a3f671736facd9559e4b77ad4ad7`固定 testedHEAD d1c793b3、原 F2完整sourceRun以及旧F3报告hash/修复理由；实际校准/新候选观察正在执行，结果在本节续记。
+
+
+## 2026-10-09 用户明确暂停并再次换设备 — M1 未完成
+
+用户要求“停下手中任务，我打算换设备进行了，你顺便将隐私文件进行打包”。已停止实施、真实模型验证和正在执行的免费 mock 接线检查；本次刷新唯一 live HANDOFF 是用户请求中断。M1 未验收，main 未集成，后续不自动运行付费 CLI。
+
+此前新协议 run `run-1791552826778-8fccb497` / testedHEAD `d1c793b38f4caf0eeddc9bb64c2fc00b86c3cfd8` 已结束：每域仅取得一个有效主模型 F3 比较控制，第二连接返回 HTTP530（Cloudflare Tunnel error），主连接多次 HTTP524，原 funded retry 保留。新增11请求/187157记账tokens，没有提炼新候选、没有执行新 development/promotion。summary SHA256 `a0190fd490f62b26f37fae7d4a1e6bae535192cc81544ef6ac6b4f009c9de9b8`，f3Completed/promotionReady/accepted均false。两份通过的控制和原 owner/shared receipts 保存，只有 exact messages/transport/费用身份一致才可复用。
+
+本地已提交但未推送产品 `4fc2871f8b7cc9971efc064dc8bb94cc3c175377`，将原 worker 的独立来源读取和 paired observation 接入显式工程端口：只有固定 worker 按 pin/SHA读取三条密封来源，双臂各三次独立执行，公开场景由 worker 提供；生产 compare/source_unready 与自动 promotion gate保持。原 sealed reader checks4、F2 source checks28、evolution consumers6 共38项最小本地检查通过，免费 worker `--check-sealed` 六个 source pins/hash通过。密封正文不输入提炼器、不作候选开发参考。临时 `fix/m1-promotion-worker@6eb9cdfe` 的同等提交已 cherry-pick到当前任务分支，临时工作树没有必要恢复运行。
+
+产品另有四个 tracked 修改和两个 untracked 文件，均保持未提交，随私有包以原字节 patch/untracked保存：m1-f2.js、m1-f3.js、m1-f3.test.js、m1-live.mjs，以及新 m1-f3-promotion.js/.test.js。内容为失败校准的 exact 有费控制恢复、worker场景评分、九对新独立执行/双模型盲评、工程验收后原私有 review publication、实际下一请求消费与守卫 rollback。只有开发门槛通过才进入独立验收；保持六维非负/双模型一致/九对至少六胜、完整费用和原 authority gate，不伪造 human/price。尚未真实跑到这些步骤，不能声称完整 M1 或发布/消费/回滚已验证。下一设备先审阅这些未完成改动，再完成对应实现与最小验证并提交，重新冻结 scope/runner/HEAD，不能直接重跑旧已冻结 scope。
+
+最近实际本地验证为 F3 25、promotion门槛11、F2 source28，共64项通过；其中F2此前重复执行不累加为新的 distinct checks。触及 JS ESLint、m1-live syntax、git diff --check通过。随后实际原 worker/mock transport的免费 sealed paired 接线 smoke先因 mock sender配置失败，修正私有 mock helper后被用户中断，没有最终成功结果；不能将单元门槛正例或 hash检查称为真实语义验收。没有新增模型请求，也没有 full suite/build/CI/UI/Android验证。
+
+暂停时累计1124 requests /6422466 accounted tokens：818provider_reported +54reserved_upper_bound +252carry，unknown上界829478；pending0/lock0，本任务进程已停止。旧 breached 位/配额/transport epochs/全部不完整响应和不利评分保持，当前硬限仍以 Governance §13.1为准。原F2完整双模型 sourceRun `run-1791549210360-d320b572`、六正确基线和旧F3候选/评分完整保存；旧两个候选一致胜均0、缺独立验收/发布/消费/回滚的事实保持。
+
+换机包沿既有离线 bundle/manifest/restore 契约，保存最新本地提交、原七工作树及当前未提交 patch/untracked、Document配置/所有报告/原native fixtures/账本与密封材料；不携带依赖或生成构建产物，不推送私有文件。恢复只作本地文件/哈希/Git操作，没有模型调用。新 HANDOFF 给出真实当前HEAD、未完成面和接手提示词，恢复后从正式Plan/同一Record继续M1。
