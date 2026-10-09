@@ -148,7 +148,7 @@ source/case/input/rubric/calibration/worker/request identity 随实际版本与�
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
 | F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
-| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费 controls/独立性和可完成路径先检查；必要模型探测、诊断与修复复测沿当前规则自动执行，保存实际 source/config/result pins | 本次授权探测以f2_calibration_failed停止；RP校准12/12、3基线完成，Project第4校准输出契约无效，headroom未建立；见§12 |
+| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费 controls/独立性和可完成路径先检查；必要模型探测、诊断与修复复测沿当前规则自动执行，保存实际 source/config/result pins | 主模型范围完成：20/20有效controls、六真实基线及独立密封metadata已核对；两域primary_observed_gap成立。双模型复核暂缓，F3未授权；见§14/同一Record |
 | F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 未开始 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 的 source_unready、calibration_failed、unsupported_locus 或 baseline_saturated 如实记录；可修复工程问题处理后继续，真实不适用或缺改善空间不伪造失败/人类标签来凑闭环。
@@ -199,3 +199,14 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 
 并行工程补充（product dd80d8583）：quote 原文中的换行在 serialized JSON 中被转义，已改为核对完整证据及 decoded 文本的确切原文；不模糊匹配、不改语义结论。复用已完成的 RP 校准/基线/首份有效 primary 观察，避免重复调用。实际结果见 acceptance §10.6 / Record；后续执行仍归 §7，不恢复旧封包许可。
+
+
+## 14. F2新来源与有限范围固定：主模型测试结论
+
+本次按用户授权保留 RP / Project 六个必需维度、六个 development 与六个独立密封来源。旧 catalogue 保持；Project 新工作负载具备原工具可完成的关联字段修复、真实 conflict / fresh Task / human revision / Review 轨迹，不再把短窗口未完成等同不可完成。免费控制与真实模型来源分开，完整有效基线按 exact 输入/配置复用，独立作者的内容不暴露给开发。
+
+校准补充覆盖复合句新增规则与完整窗口说明遗漏。RP 在原不可变 quote catalogue 中细分子句并逐项核对支持，不能用前半句支持覆盖后半句处罚，或用职业惯例冒充 exposed facts。Project 区分 model conversation / submitted plan 与 Host 状态事实；未观察字段保持 unknown，完整窗口遗漏明确要求的说明与缺证据区分，正确提案不因说明遗漏被降为失败。实际消费者与当前测试版本见同一 Record。
+
+主模型有效控制为每域六个比较/顺序控制与四个单样本控制；全部返回六个维度，positive / known violation / missing evidence 保留，另有 RP unsupported_rule 和 Project communication_omission。六条真实基线原硬检查通过；主模型只在 RP archive knowledge_boundary 与三个 Project status_accuracy 观察 gap，其它结果保留。
+
+本次临时 `primary_only` 是用户授权的 F2 测试范围，标签仅 `primary_observed_gap`，不构成两个评委的共同结论。第二连接复核暂缓，M1 原门槛不改，F3 未授权、未开始；不得把本节完成的来源准备测试写成 M1 或双域试点成功。版本、实际费用/失败/重用与 metadata commitments 见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节；不生成阶段 HANDOFF。

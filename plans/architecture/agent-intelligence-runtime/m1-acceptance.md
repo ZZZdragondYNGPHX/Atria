@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与 API 测试执行
 
 - Updated: 2026-10-09
-- Status: F1 工程已完成；F2 评价/source 仍待验收，F3 未开始，M1 pending。测试限制按当前 §0 执行；后文旧封包与配额仅为历史。
+- Status: F1 工程已完成；F2 主模型范围测试完成，双模型复核暂缓；F3 未开始，M1 pending。测试限制按当前 §0 执行；后文旧封包与配额仅为历史。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 
 ## 0. 当前 API 测试规则（覆盖全部历史封包）
@@ -92,3 +92,12 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 
 最新并行产品 0479f5bd3e924c6031b09eaa4103e28684bc086a 修复 F2 retry0 误用 timeout/4（75 秒）的问题，改用原 Route 300000ms 完整单次 deadline。一次 transport_failed 未取得 usage，保留 11631 上界；最新记录累计 805 / 3154587、unknown18/86579、pending0，复用原 21 个已完成请求证据。必要修复复测按当前规则继续，旧 claim/首失败撤销不增加次数许可或停测条件。
+
+
+## 11. F2主模型范围完成与双模型暂缓
+
+用户明确允许第二连接不可用时仅测主模型。本次仅 F2 使用显式 `primary_only` 测试模式，不修改 §1/§2 的 M1 两模型验收、盲评、独立场景、原 gate 或生产权限。来源/配置/rubric/全部必需维度仍固定，单模型结果标 `primary_observed_gap`，`sharedGaps` 为空；第二连接旧观察不能补充为新协议通过。
+
+六条 development 真实基线、六条独立密封来源 metadata、免费原工具可完成路径、主模型 20/20 有效 controls 和两域可改善缺口已核对。RP 缺口为档案场景新增无来源支持的处罚/权限；Project 三场景提案正确，但遗漏明确请求的未提交 Review 状态说明。正例、缺证据及两个没有观察到 gap 的 RP 场景保持原结果，不用 hard checks 替代语义质量。失败、费用、旧判断与不确定性保留。
+
+原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。当前结果不是 F2 双模型通过，也不是 M1 完成；F3 未授权、未执行。后续第二连接可用时仍仅复核 F2 exact 条件，不自动提炼或启动双域试点。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。

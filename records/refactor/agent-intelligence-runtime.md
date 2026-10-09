@@ -10,7 +10,7 @@
 
 ## Summary
 
-最新checkpoint：2026-10-09 F2授权有限探测以f2_calibration_failed停止：RP校准12/12和3基线完成，Project第4校准解释552>512无效；新增22请求/140750 tokens，累计783/3080332全部结算。paid/Tested product `eb1664138458ebae073d86792e5a5295ce27dfda`，headroom未建立、F2未验收、F3未开始/main未合并。实际结果见末节/live HANDOFF。
+最新结果：2026-10-09 F2 在用户授权的主模型测试范围内完成来源、隔离、校准与有限范围固定。产品/Tested HEAD `f495267023ca4475d15ba1c61b66702624c4938e` 已 push；12 个比较控制与 8 个单样本控制全部有效，六个真实 development 基线的原硬检查通过。主模型观察到 RP 档案场景的知识边界缺口，以及三个 Project 场景的状态说明遗漏；均标 `primary_observed_gap`，不是双模型共同结论。第二模型复核暂缓，F3 未开始，M1 pending，未合并 main。实际结果与 pins 见本 Record 最新节；没有因阶段结束生成 HANDOFF。
 
 长期任务沿同一产品分支实施；D0–D4 / S01–S09 与 S10 工程交付完成。S10 将 S05 feedback / diagnosis、原六类局部 target、共享 finite budget、原 scheduler、隔离 evaluator、publication / recovery / rollback / next-run evidence 与双入口共享面板接为可用消费者。12 relevant suites / 233 distinct local tests 与真实 Chromium shared-pane fixture 通过。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 S06 真实执行与 model observations 保留，候选仍 ineligible；本轮无新真实模型请求。S10 的结构 / 假 provider 证据不证明稳定质量 / 成本收益；M1 的真实改善与集成前置条件待验收。本轮只续接 S10，下一只复核 M1 验收，不进入 S11 / G。
@@ -1097,3 +1097,62 @@ Governance §13.1 成为唯一测试限制权威。清理当前 M1 acceptance �
 本轮追加 `main:docs/` 路由清理（用户明确要求检查 docs 文件夹）：发现 English/简体/繁体贡献指南仍将 release 写成稳定分支，与当前 main 冲突；三份改为 main 并引用 docs:README 唯一治理入口。main AGENTS 补充当前 API 测试规则路由与历史文档不得恢复为执行指令；保留的十份旧 Plan 和一份 Phase1 HANDOFF 增加历史快照说明，原正文/结果保持，不迁移资产或建立新规则系统。产品说明中的 context/工具 budget 保留其产品语义，不充当 agent 测试配额。
 
 辅助 main 文档提交 `94cf032b5`（15 files，45 additions / 15 deletions）经短期 fix/docs-execution-routing commit/push 后 fast-forward 集成 main。实际验证：三语言贡献指南无旧 release 指令；11 历史快照移除新增说明后与原正文逐字相同；15 文件代码围栏保持、git diff/check 与暂存检查通过。未运行代码 tests/build/CI/API，未把并行 F2 的模型执行或测试当成本轮验证。main 仅 AGENTS/文档变化，M1 产品分支尚未集成；同一 Record/live HANDOFF 保留当前 M1/F2 状态。
+
+
+## 2026-10-09 F2 新来源、隔离与校准 — 主模型范围完成
+
+用户要求仅推进 F2，失败应继续诊断、检索、修复与复测，不进入 F3；API 硬限仍唯一归 Governance §13.1。用户明确允许备用 MiniMax，不可用时暂缓第二连接、只测主模型。本轮 fetch 核对产品分支与远端一致，保护 main、旧任务 docs 的五份无关 dirty 文件及正式 docs 草稿。结果从 docs@8a274e090 的隔离结果工作树更新，不以旧 HANDOFF 的失败 checkpoint 恢复停止条件。
+
+完成声明限于主模型测试范围：`judgeMode=primary_only`、`secondModelValidation=deferred_by_user`，每域六个比较控制、四个单样本控制及三个真实来源观察均完成。全部 `sharedGaps=[]`，单模型观察只写 `primaryGaps/primary_observed_gap`。原 M1 两 model identifiers、盲评、development/promotion 准入与生产权限不变；F2 的双模型结论仍待复核，不宣布 M1 通过，也不启动 F3/S11/G。
+
+### 来源与实际结果
+
+六个 development 来源为 agent-authored synthetic，保留独立原始 root/template groups，旧十二 case catalogue 不改。RP 使用自然多轮 episode、修订承诺与未知当前事实；Project 使用关联字段修改、真实旧 Task conflict、人工修订上的 fresh Task 与具体缺失 binding diagnostic。免费原工具控制先证明可完成性；Project 的 test-only 窗口固定为 12 个逻辑模型 rounds / 2 repair rounds，RP 保持原声明窗口，生产默认六 rounds 不改。
+
+六个独立 promotion 来源仍由获授权独立作者生成和密封，开发仅读取 metadata。独立作者核对 root/template groups、schema、canonical parity、固定范围及 sentinel 隔离；Project 只更新技术窗口，目标、原 source、操作、答案与 RP bytes 保持。未读取密封正文/控制答案，未把 development 输出回流独立作者。
+
+| Development case | 实际原执行 | 主模型六维观察 |
+| --- | --- | --- |
+| RP archive return | 2 请求；原硬检查及 target consumed 通过 | knowledge_boundary gap：新增处罚/权限缺少 exposed support；其他五维 met |
+| RP reservoir signal | 2 请求；原硬检查及 target consumed 通过 | 六维 met；保留正确结果 |
+| RP theatre variant | 2 请求；原硬检查及 target consumed 通过 | 六维 met；保留正确结果 |
+| Project entrypoint dependencies | 8 成功请求；Review / validation passed；全部原硬检查通过 | status_accuracy gap：缺少明确未提交 Review 说明；其他五维 met |
+| Project binding repair | 10 成功请求；Review / validation passed；全部原硬检查通过 | status_accuracy gap；其他五维 met |
+| Project dependency conflict | 7 成功请求；Review / validation passed；全部原硬检查通过 | status_accuracy gap；其他五维 met |
+
+RP 真实基线 producer `22d32db191def2760884a1771f57ee9670bc3bbc` / `run-1791531237544-ac19ca9b`，共 6 请求；Project producer `ef8ddd9e208c682434b5cfe938d39691d8dbc6c7` / `run-1791538547140-1fc60cd9`，共 27 实际请求，其中 25 成功、2 次 524 后 retry。原 source-probe 的 charges 列表保留 25 个成功响应，两个 retry 前失败的 request/snapshot/上界费用另由原共享账目、prefunded packets、HTTP 原错误与 final audit funding manifest 保留；不能用该 report.charges 长度冒充全部发送数。后续只复用 exact 配置/输入/来源的完整基线，不重新付费生成正确基线，不把缓存称新独立 trial。
+
+### 失败诊断、检索与原消费者修复
+
+原免费/实际控制分开。每域保留 known violation、counterfactual、missing evidence 和左右顺序反转；单样本控制保留 positive/known violation/missing evidence，并新增 RP `unsupported_rule` 和 Project `communication_omission`。最终主模型有效控制 20/20（12 比较 + 8 单样本），包括精确复用的既有结果，不是 20 个新请求；固定 case/rubric/六个必需维度不删减。
+
+Project 空输出曾被表示成“validated proposal absent”，把未知误当实际缺失；改为按字段是否实际观察区分 unknown/absent，零 writes 同样不能由缺字段推断。两评委随后都曾引用 Host Task status，把正确 Host 状态当模型已完成说明；该旧结果完整保留。现在从实际 public conversation 与 model-submitted plan args 提取 `modelStatements`，Host/seed plan/intent copies 只作核对事实；status met 的 literal quote 必须来自模型声明。完整窗口遗漏明确请求的说明与根本缺证据分开，正确提案不因此被判失败。新增 omission 控制证明五个提案维度 met、说明 gap 的区分有效。
+
+RP 逐句审核曾因复合句前半段有支持，把新增处罚也判 supported，原 all-met 判断保留。原 quote catalogue 进一步按子句分割，完整原文与位置不改；每个输出片段必须核对，已支持前提不授权新增处罚/条件，普通职业惯例不是 exposed support。新增同类控制先通过，真实档案输出再观察到知识边界 gap；水库/剧场仍 met。方法参考 [FActScore](https://aclanthology.org/2023.emnlp-main.741/) 的细粒度事实核对；Project 的状态/必要沟通分开参考 [τ²-bench 官方评价契约](https://github.com/sierra-research/tau2-bench/blob/main/docs/evaluation.md)。这些研究用于评价方法，不充当 RP 世界事实。
+
+同时沿原 M1 funded sender 修复 streamed quote refs/decoded literal 表示、Project 重复历史投影、grader output profile 与 primary low reasoning 的实际生成身份、RP right-minus-left 符号说明，以及当前 hard 401/404 不因历史 transient 被 wrapper 重试。原账目、旧 stop/epoch/不利判断保留，不修改历史费用或分数；原 Provider/Director/Studio/target authority 继续使用。未运行提炼、candidate、promotion 或 publication。
+
+第二连接在用户报告恢复后确实完成 Project 响应，但 `run-1791538547140-1fc60cd9` 第 982 请求又返回 nginx 404；按用户授权试现有 MiniMax，第 983 请求返回 401 invalid api key。没有重复询问密钥或把 secret 写入聊天。按已授权 fallback 完成主模型测试；旧第二模型观察不冒充新协议的双模型通过。
+
+### 最终身份与验证
+
+| Pin | Value |
+| --- | --- |
+| Product / local Tested HEAD | `f495267023ca4475d15ba1c61b66702624c4938e` |
+| Evaluator revision | `912ff32a31111f9d162f337239758ce81470ad841ba23c3a2651765321fe162a` |
+| Runner revision | `66627d924f5e65fedcdbf084aeb317e991fb1290a93ea965a26c1dbe49f2af0d` |
+| Legacy case set | `49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b` |
+| Pilot case set | `2212e661628b18b68046d79f27076bd999ff76783d346d5945407ad00d5c094c` |
+| Rubric | `408f084132df98292863dcf2e1413b0c02803574aa913ad86e2e9603c78c248a` |
+| Final scope hash | `7ece78b205daadf78b108297e4a6e19e4935487e42d83351bf7082a3503b6ac0` |
+| Final controls hash | `85dbd8cf2e407ae6dacee18be0445a5067a366e50ce2de1371271452de3ee96c` |
+| Sealed metadata SHA-256 | `7c47b310b6639ed8cfc58adfdc810f101454ffa2463c977a6776a88f5cf5aa38` |
+| RP source report / assessment | `581af5511f0b92d8398caa7828adb601b1ddee1a1e10d8a62c6aff9cc736711e` / `8b3931b0ca96243a288360ab513f71e64ad3a3cff74da795bb9a55fa84ff547b` |
+| Project source report / assessment | `0ca186080a13e5b3cf867bde92cf5219b0a819035665c7641531a78f14747333` / `e000a9ae4e3325577b86ade0db0b6c8efb8a54cda004ec62174749b30553e47f` |
+| Final audit SHA-256 | `17924e78b5d53b3872f2a1c2b146d381116bd93e66d933295410475c5087a550` |
+
+主模型 identifier `gemini-3.8-flash`；upstream identity/现金价格 unavailable，humanPreference not_observed。原 RP baseline configuration/settings 为 `fcade8bd7a7691f94d14869f6fbed691304515f2289e788b8200f0b358cc55a9` / `f443071578c6207ffecafd71cdc53a8cde1631e077d30d1425b8735e2ad6682c`；Project 为 `d63aeaab1f7e670012db264dafc313034ba826245ac306d41d92b68df07fa7fd` / `55a6b7d12e929cb3c696040f2769099783f1ccee736b63336fb8384a3db6e438`。grader 16,384 output / primary low reasoning 的 transport hashes 分别为 RP `1278029f42acb854b04d34b1334aeecb574ae46d7752759f63287973c760c61f`、Project `9af1c059699fc82d9acccb0e6e12aaf080abdeacca1776c2f9c11d8304e9297b`；不把这些 grader 条件冒充 baseline 条件。
+
+最终 run `run-1791541743682-aa0a9d56` 新增 8 请求 / 47,686 tokens，全部已结算；复用比较控制、Project 控制/观察和六条完整基线。累计 1008 请求 / 5,132,946 记账 tokens，715 reported + 41 unknown + 252 历史 carry；unknown 共 558,397 tokens 按原上界保守结算，不是现金费用或模型真实 usage。pending0 / lock0；最新 8 个 actual request/snapshot 包、response charge、共享账目 trial/tokens/reservation 一致，原 RP 6 / Project 27 基线发送另行完整核对。原 source/私有 raw/凭证不提交，sealed 正文未读。
+
+实际本地验证：当前 HEAD 完整 `f2-sources` 28/28 通过，覆盖原 Task/worker 路径、保护/修复、超过旧六轮的可完成窗口、source drift/密封拒绝、quote/source 表示、dual vs primary-only 实际资金路径与单模型不得声称 shared gap；触及 JS ESLint、diff 检查通过。当前测试消费者沿用已执行的 `m1-retry` 15/15 与相关 grader transport checks，未因没有新改动重复测试；真实语义控制与上述 mock 工程 tests 分开。没有运行 full product suite/build/CI/UI/Android/外部 DB。文档更新同一 Record 和当前 Plan 状态，未生成阶段 HANDOFF；M1 和第二模型正式结论保持待验收。
