@@ -19,10 +19,10 @@ Workspace复用单 browser client settings / debounce；不声称 cross-tab / Ho
 
 不新增UI、后台job、模型请求或StorageEngine kind。S06 promotion仍ineligible；本阶段手动apply不是Evaluation资格。S10负责来源 / feedback / policy / 共享预算、Review / 自动发布 / publication intent及运行后监测撤回；本阶段参数候选的确定性回归不代表模型收益。
 
-## 最小本地验收与停止
+## 最小本地验收
 
 验证original compiler / host / policy消费者、有限预算停止、完整base / scope / protected字段、Prompt组合拒绝、内容identity / missing / capacity、apply / rollback冲突、原FS / SQLite task/settings恢复和失败点、HTTP owner / read-only；只执行触及面相关本地验证。
 
-实现与验证 → product commit / push → 同一 [Record](../../../records/refactor/agent-intelligence-runtime.md) / live HANDOFF → docs commit / push → 停止。仅交接S10，不实施S10、不合并main。
+S09 完成后进入 S10；通用执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 
 产品 / tested HEAD `f740e65238d6c46575c1f9972735a1166ca1ec71` 已commit / push。最小本地验收8 suites / 105 distinct tests：Workspace策略21、Project策略16、原Project recovery33、Project authority4、Project HTTP4、Workspace Prompt14、Workspace Presets4、Native orchestration prompts9；重复不累加。11触及JS ESLint / product diff通过；实际Director / Agenda Engine / Studio loop、原server repair / Review / Commit guard、FS / SQLite settings / task reload与SQLite task dump / restore均有本地stub / authority证据。无新model / UI / 全量测试 / build / Android / 真机 / 外部DB / CI。下一仅S10。

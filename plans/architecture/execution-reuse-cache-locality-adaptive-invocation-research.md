@@ -3355,7 +3355,7 @@ Context Runtime
     F. Local inference optimization
 17. 如果现有企划已有相近术语，以现有正式术语为准，消除重复概念。
 18. 不要把本报告中的概念字段示例误写成已冻结 TypeScript Schema。
-19. 本轮只更新企划、Research 索引及必要 Record/HANDOFF，不实施产品代码。
+19. 本轮只更新企划、Research 索引及同一 Record，不实施产品代码。
 ```
 
 ---

@@ -39,7 +39,7 @@ Scripted 的原六次 request / 两次 repair 是产品行为契约；早期 1�
 
 `tests/agent-intelligence/live.mjs` 是明确配置的本地 live consumer：私有连接文件含 apiKey、endpoint、model、tokenizer / context guard、按任务配置的 output 和 timeout。按用户纠正，endpoint 可为 `/v1` / `/v1/` base，由 evaluator 创建原 Native connection 时拼接一次 `/chat/completions`；既有完整 endpoint 不再拼接。base 配置有新的 identity，早先完整 endpoint 的报告不改写。只接用户明确提供的测试连接，不发现其它 Secret / route。RP 沿原 GenerationService / PromptCompiler / RouteResolver / HTTP provider，Project 沿原 NativeGenerationHost 与真实 isolated Studio task；RP 多轮只传 public role / content / tool pairing，过滤 Director presentation metadata 与 private reasoning。显式模型 route 无 fallback / transport retry；原 Host scheduler 的可见 retry 仍记账。
 
-专用测试连接已获用户授权。现行 API 测试唯一硬限为每日 2000 次 / 20 RPM，详见 [Governance §13.1](../../../README.md#131-api-测试执行规则) 与 [M1 acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)。早期 120/252 requests、250000/1000000 tokens、output 1024 和 reservation 超报停止均为历史实现，不能用于当前测试停工或要求新许可。沿现有私有账本记录实际请求与 usage；发送端自动共享日额度与频率，失败/unknown 结果保存，不为每轮重新审计全量账目。旧实现仍有 guard 时按新规则清理原测试消费者。
+工程 API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)；本模块只管理试验设计与产品行为契约。
 
 请求保留 snapshot / configuration / request / attempt hash、有限公开 tool name、HTTP status / transport 分类与 response-header 等待时长；这些不包含 Secret / header / 原始 response body。该时长不是流式 TTFT 或总端到端时长。tokenizer 是明确本地估计，并非该 gateway 模型 tokenizer 的事实证明；upstream、price、opaque gateway retry 仍 unavailable，不能据此宣称费用或严格同上游质量收益。
 
@@ -53,4 +53,4 @@ Scripted 的原六次 request / 两次 repair 是产品行为契约；早期 1�
 
 本阶段验收的是原入口隔离执行、可追溯独立比较及 evaluator 对实际结果 / 缺失 / 预算的保守消费。历史有限请求 / token guard 与 deterministic authority 检查当时已验证；现行测试限制以 Governance §13.1 为准；晋升门槛保持拒绝：comparison empiricalReady=false / publicationStatus=ineligible，原 S01 behavior slots not_run，人工偏好与多 judge 分歧未观测、价格不可知、一个评分需审阅。一次 candidate 偏好不证明稳定质量提升，不能自动批准候选。后续 M1 晋升 / S10 仍须真实行为与回归证据和费用门槛；不把这些缺失写成已通过。Native Session copy 仅隔离验证，production Session generation 未重放；不可用 ablations 均显式 unavailable。
 
-S06 evaluator 与真实执行 checkpoint 完成，下一 checkpoint S07；本轮在 S06 commit / push、更新同一 [Record](../../../records/refactor/agent-intelligence-runtime.md) 与 live HANDOFF 后停止，未开始 S07，main 不合并。本阶段没有 candidate publication 或新自动权限。
+S06 evaluator 与真实执行 checkpoint 完成，下一 checkpoint S07；S06 实际结果见同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。本阶段没有 candidate publication 或新自动权限。

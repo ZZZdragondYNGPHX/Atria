@@ -134,4 +134,4 @@ Actor 没有独立 mode discriminator。真正的条件是集合空/非空、当
 
 上述 G01–G04 是映射时基线。展示已补 G01 集合 Source 和 G04 草稿复制/明确放弃重载；G02/G03 在 Actors Review 前拒绝顶层 unknown/legacy/duplicate ID/悬空 EntryPoint 引用。后端 assertActor 归一化、Project duplicate ID 与有限 graph 未重写；UI 防护不覆盖直接 API、其它原全项目 editor 或 Agent，无法恢复读路径已剔除的字段。信息/声音引用仍交原 Validate/Build 校验，不将有限 Used By 当完整闭包。
 
-Actors 展示 checkpoint 已实现、最小本地验证并持久化；本轮更新同一 Record/HANDOFF 后停止。下一 checkpoint 为 EntryPoints，先字段/动作/状态/authority 映射。EntryPoints/Worlds/Knowledge/B2/F 保持未开始。
+Actors 展示 checkpoint 已实现、最小本地验证并持久化；实际结果见同一 Record。下一 checkpoint 为 EntryPoints，先字段/动作/状态/authority 映射。EntryPoints/Worlds/Knowledge/B2/F 保持未开始。

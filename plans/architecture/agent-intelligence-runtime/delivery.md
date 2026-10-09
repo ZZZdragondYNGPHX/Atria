@@ -18,11 +18,11 @@
 | M8 — 生成与计算基础 | G01–G06 | 创作 / Behavior 与 Context 分层、按预算解析模型 / 网关、稀疏调用与全部费用可检查 | 双入口真实请求消费；迁移与撤回；可用 gateway integration 与质量—成本对照 |
 
 用户已确认先完成 M1，并在首批包含有预算与回滚约束的局部自动启用；首批详细设计见 [m1-evolution.md](m1-evolution.md)。
-建议保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation；M3 开始前要求 G06 完成。M1 不等待 M8。S01–S10 工程链路已交付，S10 的原局部 authority / 有限预算 / 隔离评测 / publication / rollback / 双入口 UI 见 s10-evolution。真实六槽基线与六对比较保留，候选仍 ineligible；本轮假 provider 不证明实际质量 / 成本收益。下一只复核 M1 验收与集成前置条件，阶段收尾停止；不合并 main、不进入 S11 / G。
+建议保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation；M3 开始前要求 G06 完成。M1 不等待 M8。S01–S10 工程链路已交付，S10 的原局部 authority / 有限预算 / 隔离评测 / publication / rollback / 双入口 UI 见 s10-evolution。真实六槽基线与六对比较保留，候选仍 ineligible；本轮假 provider 不证明实际质量 / 成本收益。下一工作补齐 M1 验收证据与集成前置条件；不合并 main、不进入 S11 / G。
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
 
-2026-10-09 U13确认M1先补原反馈/评价契约，再各一个RP/Project试点。补充工作包F0–F3及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点门槛归 m1-acceptance §1/§2，测试执行归 §0，不以历史 §10 封包申请次数许可；不新增正式S/G阶段，不降低M1退出条件。F0设计及F1最小消费者完成，下一仅 F2 来源/校准与必要工程诊断、修复、复测，包末更新同一Record/HANDOFF并停止。
+2026-10-09 U13确认M1先补原反馈/评价契约，再各一个RP/Project试点。补充工作包F0–F3及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点门槛归 m1-acceptance §1/§2，测试执行归 §0，不以历史 §10 封包申请次数许可；不新增正式S/G阶段，不降低M1退出条件。F0设计及F1最小消费者完成，下一仅 F2 来源/校准与必要工程诊断、修复、复测，验收通过后进入 F3。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
 
 ## 2. D0 / D1
@@ -32,24 +32,24 @@ M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；�
 - 已核对原研究、最新远端 main、完整治理和当前状态。
 - 已审计执行、Native authority、信息投影、memory、两个 Agent 入口、Skill / Prompt / Preset 与扩展路径。
 - 已复核研究与协议，明确哪些是代码事实、论文结果或工程推论。
-- 交付本 Bundle，保护已有 Experience 草稿，更新 Record / HANDOFF 后进入讨论。
+- 交付本 Bundle，保护已有 Experience 草稿，更新同一 Record 后进入讨论。
 
 ### D1 — 冻结首批方案
 
 首批双入口、三类候选、局部自动启用与 M1 完成交付后集成的安排已由用户确认。
 逐角色 / Project 开启局部自动、新建默认审阅、共享 owner 有限预算已确认；scope / publication / 恢复约束与 [S01 执行设计](s01-baseline.md) 本轮冻结。
 S01 使用 test-only cases / report / runner，无产品数据迁移；S02–S10 的资源契约在引入能力前细化，其余路线仍为候选。
-D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整个 Bundle 自动标为 Approved。
+D1 完成后按依赖从 S01 推进 M1；不把整个 Bundle 自动标为 Approved。
 
 ### D2 — 三份研究综合更新
 
 先读现有 Bundle，再全文读取 Prompt / Context、Sparse AI 与 Model / Provider / Routing 三报告；复核同一最新 main 的相关接入点及一手 provider / gateway 文档。
 交付 behavior-context、compute-policy、model-routing 三个详细模块，更新现有依赖、测量与验收；保留研究证据、工程推论与用户批准的区别。
-本轮只修改 docs，更新同一 Record / HANDOFF 后停止；不执行 S01 或新增 G 阶段。
+本轮设计更新只涉及 docs；不执行 S01 或新增 G 阶段。
 
 ### D3 — Reasoning Continuity 架构整合
 
-读取指定研究，把可选执行能力、opaque 状态、精确路径 evidence、adapter 分工、lineage / invalidation 与 loss 观测纳入现有模块；用 model-routing §7 管理详细规则，不复制研究的示例 schema 或另建 Runtime / Eval。实施顺序映射 M8，保持 40 个阶段身份与 M1 范围。只更新企划和同一 Record / HANDOFF，结束后停止；不实施产品代码。
+读取指定研究，把可选执行能力、opaque 状态、精确路径 evidence、adapter 分工、lineage / invalidation 与 loss 观测纳入现有模块；用 model-routing §7 管理详细规则，不复制研究的示例 schema 或另建 Runtime / Eval。实施顺序映射 M8，保持 40 个阶段身份与 M1 范围。此次设计更新只涉及企划与同一 Record；不实施产品代码。
 
 ### D4 — Execution Reuse / Cache Locality / Adaptive Invocation 整合
 
@@ -70,7 +70,7 @@ D1 完成后按阶段要求停止，下一正式阶段仅执行 S01；不把整�
 | [S09 — 编排策略候选](s09-strategies.md) | S06 | 已交付原Workspace有限单字段预算候选 / exact binding / rollback，原Project pristine Task maxRepairRounds候选 / task CAS | 8 suites / 105 tests；capability、output owner、必要guard固定；原Director / Agenda预算停止、Project repair上限 / in-flight拒绝；不改连接 / 隐私 / 自动路由 |
 | [S10 — 评测晋升、撤回与双入口产品闭环](s10-evolution.md) | S07、S08、S09 | 工程交付完成：原 target diff / 审阅、共享有限预算、隔离评测、局部自动 publication / receipt / next-run evidence、暂停 / rollback | 12 suites / 233 local tests + 共享 pane browser fixture；单一 target / 不叠加独立报告；实际模型改善仍待 M1 验收 |
 
-S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.md)：两个域 adapter，RP 内保留 chat / Native 分域；EvidenceSet / Evaluation 是可调用消费者的返回值，无新持久 kind / migration。S03 可靠 RP metadata 捕获与公共持久层已完成，契约 / 不完整输出边界见 [s03-capture.md](s03-capture.md)。S04 Project task 持久恢复、公开对话、正式 receipt 幂等与 conflict 已完成，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)。S05–S10 的实际完成范围见各详细模块；S10 的支持矩阵、保守门槛、原 authority / 下一 run、source invalidation、预算与恢复见 [s10-evolution.md](s10-evolution.md)。本轮 S10 工程交付后停止；M1 实际改善未验收，不以结构 / scripted 检查满足独立模型收益门槛。
+S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.md)：两个域 adapter，RP 内保留 chat / Native 分域；EvidenceSet / Evaluation 是可调用消费者的返回值，无新持久 kind / migration。S03 可靠 RP metadata 捕获与公共持久层已完成，契约 / 不完整输出边界见 [s03-capture.md](s03-capture.md)。S04 Project task 持久恢复、公开对话、正式 receipt 幂等与 conflict 已完成，详细契约见 [s04-project-recovery.md](s04-project-recovery.md)。S05–S10 的实际完成范围见各详细模块；S10 的支持矩阵、保守门槛、原 authority / 下一 run、source invalidation、预算与恢复见 [s10-evolution.md](s10-evolution.md)。S10 工程交付已完成；M1 实际改善未验收，不以结构 / scripted 检查满足独立模型收益门槛。
 
 第一批不能止于日志、规则列表或“AI reflection”。发布改变必须由相同权威读取入口真正消费，并在独立案例评价。
 三类候选是已确认的 M1 范围；若出现实质范围变化，明确记录调整，不在阶段结束时悄悄缩水。
@@ -142,7 +142,7 @@ S28 / S29 / S34 需要在各自阶段设计时落实真实 provider、预算和�
 | G06 — 双入口产品闭环与计算收益 | G02–G05 | 可检查创作意图、selected target、unknown upstream、升级原因与费用；why reuse / miss、cache observation / estimated savings；有限模型 / 路径 ablation、旧 Route / binding 迁移与撤回；显示 continuation 决定 / loss，完成合法的 none / active_execution / task / adaptive 与 recompute / reuse / invocation 对照 | RP / Project 实际消费 exact request，普通 / 难例 / 高影响 / 长 session 分层质量—成本 / 延迟对照；cold / warm / hit / miss 的 TTFT / E2E 分布、valid hit / false reuse 与 saved work 有来源；费用缺失不冒充达标，真实浏览器只验所改状态；Planner 工具收益、Narrator fresh generation / 重复 / 标签锚定 / 机械化分开评价，raw CoT 不作为输入 |
 
 本组以用户可使用的生成 / 路由 / 预算工作流为完整交付单位；开始前细化有限支持矩阵、实测目标、schema / 迁移与集成 checkpoint。不默认要求接入所有品牌或学习型路由。Native adapter 顺序是本组验证路线，具体模型版本 / transport / gateway 路径进入前冻结；缺实际协议 / 有限预算的项目明确未测 / unavailable，不计作实现。G06 在已验证固定策略上评价 adaptive lifecycle；跨模型 learned routing 仍不由此获授权。
-每个 G 阶段按治理验证、持久化、记录并停止；本组实现分支与完整交付后的集成安排在进入 M8 时明确，不能沿用 M1 分支假称已开始。
+G 阶段按依赖与验收推进；本组实现分支与完整交付后的集成安排在进入 M8 时明确，不能沿用 M1 分支假称已开始。
 
 ### 8.1 Execution Reuse实施顺序与既有阶段映射
 
@@ -172,7 +172,7 @@ A → B → C → D → E → F 是能力依赖与建议演进顺序，不是六
 阶段必须同时交付：实际消费者、针对性验证、兼容 / 删除 / 失效 / 撤回、当前用户可检查的结果，以及实际运行证据。
 只检查受影响模块；已通过且没有新变化的检查不重复运行。
 
-按治理：持久化 / push → 必要的 Plan 更新 → 同一 Record → live HANDOFF → 接手提示词 → 停止。
+通用执行与交付流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 按用户明确确认，M1 全部阶段完成后集成 / 验证 main 并清理该组产品分支，再从最新 main 推进下一组；这是本任务对治理默认最终统一集成的明确安排。
 同一长期 Task ID / Record 持续，live HANDOFF 在任务活跃期间保持，不能因 M1 集成而把远期阶段标为完成。
 

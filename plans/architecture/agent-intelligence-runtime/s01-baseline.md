@@ -82,7 +82,7 @@ Scripted 模式：全部 12 cases 各执行一次，实际调用 Runtime / Direc
 Model 模式：先取一个 RP 和一个 Project development 案例，各三次 trial；复用当前已配置的 generation 入口。原调用路径不支持某能力时标 unavailable。
 promotion 场景的完整 baseline 在进入 S06 比较前补齐，不能用这六个 development trials 代替独立晋升案例。
 
-已授权测试连接上的 Model 验证遵循 [Governance §13.1](../../../README.md#131-api-测试执行规则)，硬限只有每日 2000 次 / 20 RPM。早期 36/42 次、maxRequests/maxTotalTokens 和 input+output reservation 属于历史 pilot 配置，不作为当前测试额度或 budget_blocked 条件。
+工程 API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)；本模块只管理试验设计与产品行为契约。
 
 每 trial 的调用结构按待验证产品行为设计；必要诊断与修复复测自主执行，retry/fallback/grader 实际调用全计当日。输出配置适配任务与 Provider，usage 缺失保存估计并注明；不默认寻找其它 Secret 或选择未授权连接。
 
@@ -110,4 +110,4 @@ fixture 运行必须对隔离产物做前后校验，确认生产对象未发生
 允许在结构交付完成后进入 S02，因为来源契约不依赖某模型表现；在 S06 比较和 S10 自动启用前，真实模型证据必须补齐。M1 未满足完整行为验证时不能完成。
 不把 future capture、Goal、BDI、Skill immutable history 或自动发布纳入本阶段实现。
 
-按治理在 S01 实现 / 验证 / push 后更新同一 Record、live HANDOFF、给出接手提示词并停止；此时不合并 main。
+S01 完成后进入后续 M1 阶段；交付组完整验收前不集成 main。

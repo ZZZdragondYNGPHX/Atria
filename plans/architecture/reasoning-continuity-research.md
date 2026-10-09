@@ -1841,7 +1841,7 @@ Atria 第一阶段不应：
    D. Gemini native
    E. Gateway probes
    F. Adaptive policy / eval
-8. 更新同一份正式 Record；如果这是多阶段任务当前阶段的一部分，同时刷新 HANDOFF。
+8. 将实际结果保存到同一正式 Record；交接条件见 [Governance §7](../../README.md#7-handoff)。
 9. 不要实施代码，本轮只更新企划与必要的研究/记录文档。
 ```
 

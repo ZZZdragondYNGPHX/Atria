@@ -1,6 +1,6 @@
-# 实施阶段与停止边界
+# 实施阶段与验收
 
-全任务共用 index指定的 Task ID、Primary Workspace、任务分支及唯一 Record。阶段结束更新真实 HEAD、实际验证、Record和 live HANDOFF并停止；用户明确继续才进入下一正式阶段。不能因开发环境仍可用就自动跨阶段。
+全任务共用 index指定的 Task ID、Primary Workspace、任务分支及唯一 Record。通用执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 
 ## Phase 0 企划与换设备交接
 
@@ -10,13 +10,13 @@
 
 按 index路由核对当前事实，选择最小可玩纵向闭环，给出输入 → 意图 → 权威判定 → 叙述 → 保存的实际映射。逐项标记现有支持、Package即可改、需要Core及暂缓；明确普通／铁人终局、动态内容安全性和AI预算。
 
-已完成的设计产出为runtime-contracts的源码映射和A/B/C缺口、player-experience的五题组合与起点、world-supernatural的机构/非法路径，以及下列检查和完成定义。只有真实缺口才计划Core变更，避免万能动作引擎或全城市模拟。技术无法按原提案实现时解决普通工程方案；只有涉及冻结产品方向变化才请求用户判断。本阶段不实现产品，完成设计记录后停止。
+已完成的设计产出为runtime-contracts的源码映射和A/B/C缺口、player-experience的五题组合与起点、world-supernatural的机构/非法路径，以及下列检查和完成定义。只有真实缺口才计划Core变更，避免万能动作引擎或全城市模拟。技术无法按原提案实现时解决普通工程方案；只有涉及冻结产品方向变化才请求用户判断。本阶段只形成设计产出。
 
 ## Phase 2 Core最小支持
 
 只实现Phase 1确认的Core缺口，独立main派生辅助分支。复用权威与持久化，验证请求重复、失败和终局相关风险。记录同一Record。
 
-若无Core缺口，记录“无代码适用”而不是虚构支持或跑无关全仓库检查。本阶段完成后停止；Core如何集成由实际改动与治理确定，未经验证不合并main。
+若无Core缺口，记录“无代码适用”而不是虚构支持或跑无关全仓库检查。Core集成由实际改动与治理确定，未经验证不合并main。
 
 ## Phase 3 Package体验与内容
 
@@ -28,7 +28,7 @@
 
 按用户视觉护栏重构入口、问答、叙事流、草稿建议与辅助抽屉，接入已确定真实运行状态与保存服务。重构允许调整模板、CSS和展示控制器，不只换色，不创建平行聊天authority。
 
-浏览器验证正式流程与响应式。不能以静态HTML或合成模型演示冒充运行证据。完成后停止。
+浏览器验证正式流程与响应式。不能以静态HTML或合成模型演示冒充运行证据。验收通过后进入后续阶段。
 
 ## Phase 5 集成、版本化与收尾
 
@@ -59,14 +59,14 @@ Core测试在main的 `tests/package.json` / Jest配置中运行，例：`npm --p
 
 现有 `package.mjs validate` 默认进完整旧开局/长期链，并不等价新目标的局部检查；Phase 3须新增明确新profile入口并保留历史选择，避免为新游戏通过而删除旧断言，也避免默认跑所有century/regional soak。浏览器harness现用tests的Playwright及默认msedge频道，需要实际浏览器安装；其selectAction、accept-check、6-step和旧导航断言要随新流程调整。
 
-Phase 2是正式单阶段：A/B/C全部实现并通过对应风险检查，更新同一Record/HANDOFF、提交推送后停止；不提前写游戏/前端。只有实际通过适当兼容验证才按治理集成辅助Core main，记录精确集成HEAD；若保持待集成分支，HANDOFF写清原因和可复现实验HEAD，不伪称main已支持。Phase 3使用明确testedCore，不混用未集成环境。辅助分支不新增Record或HANDOFF。
+Phase 2是正式单阶段：A/B/C全部实现并通过对应风险检查，验收完成后推进后续游戏/前端阶段。只有实际通过适当兼容验证才按治理集成辅助Core main，记录精确集成HEAD；若保持待集成分支，Record写清原因和可复现实验HEAD，不伪称main已支持。Phase 3使用明确testedCore，不混用未集成环境。辅助分支不新增Record或HANDOFF。
 
 
 ## Phase 2 完成与 Phase 3 入口
 
 A/B/C 已在 `refactor/open-roleplay-core` 实施，精确 tested HEAD 见唯一 Record / HANDOFF。实际新增检查为 `tests/native/run-contract-p2.test.js`、`run-policy-p2.test.js`、`generation-budget-p2.test.js`；配合上表相关的旧 authority、simulation、Session、保存、HTTP、Native bridge 和存储检查，23 个套件 / 390 项通过，所有变更 JavaScript 的 ESLint 与 diff 空白检查通过。验证使用隔离 FS / SQLite 和回环合成 HTTP provider，包含真实 Node 子进程重开；未启动 MySQL/PostgreSQL 服务，未运行远端 CI、生产模型或浏览器/设备。
 
-辅助 Core 保持独立待集成，main 仍为原审计基线；本阶段按分阶段交付保留辅助分支，主线集成留在后续阶段；额外数据库检查按实际风险在本地决定，不默认追加 CI 或更广验证。Phase 3 使用 HANDOFF 的精确 tested Core checkout，先核对 refs，按玩家体验/世界超凡与已实施 A/B/C 编写游戏默认 compiler、声明和内容，并执行该阶段的编译与局部闭环。Phase 2 本轮到此停止，不做 Phase 3/4 或新版本发布。
+辅助 Core 保持独立待集成，main 仍为原审计基线；本阶段按分阶段交付保留辅助分支，主线集成留在后续阶段；额外数据库检查按实际风险在本地决定，不默认追加 CI 或更广验证。Phase 3 使用 Record 的精确 tested Core checkout，先核对 refs，按玩家体验/世界超凡与已实施 A/B/C 编写游戏默认 compiler、声明和内容，并执行该阶段的编译与局部闭环。Phase 2 验收后推进 Phase 3/4；新版本发布依赖完整验收。
 
 
 ## Phase 3 完成与 Phase 4 入口
@@ -75,13 +75,13 @@ A/B/C 已在 `refactor/open-roleplay-core` 实施，精确 tested HEAD 见唯一
 
 本地检查为 `content-check.mjs`、默认 profile 的 `package.mjs validate --core <tested-Core>` 及显式 `--fixture`；九组真实 FS/Native/回环 HTTP 内容闭环通过，旧 fixture 既有条件/typed bridge/有限模拟回归通过，未跑历史 century/regional soak、远端 CI 或页面。静态槽推广聚合设计和实际绑定入口见 runtime-contracts Phase 3 / 游戏 `runtime/ROLEPLAY.md`，精确报告在唯一 Record。
 
-下一次只执行 Phase 4。先读 HANDOFF → index → frontend/player-experience/已实施 runtime-contracts → verification UI 部分；按已归档 HTML/TXT 与冻结视觉护栏接入新默认 compiler/profile，不把 placeholder 或旧 Inquiry 页面当新 UI。继续原游戏任务分支/唯一 Record/HANDOFF，完成 Phase 4 最小相关本地验证后提交推送并停止，不提前推进 Phase 5。
+下一次只执行 Phase 4。先读 HANDOFF → index → frontend/player-experience/已实施 runtime-contracts → verification UI 部分；按已归档 HTML/TXT 与冻结视觉护栏接入新默认 compiler/profile，不把 placeholder 或旧 Inquiry 页面当新 UI。沿用原游戏任务分支与同一 Record，Phase 4 验收后推进 Phase 5。
 
 ## Phase 4 完成与 Phase 5 入口
 
 实际 Native 问卷、单列故事、草稿建议、右缘资料/保存抽屉、普通/铁人终局显示完成，默认 compiler 已替换 neutral shell。真实接入中的两个必要 Host 读口缺口在原 Core 辅助分支修复：有界 recent-message read 与清理后受限终局图重开。精确游戏/Core HEAD、本地浏览器九组检查与相关 Core 三套件/64 项证据见唯一 Record/HANDOFF；前期记录保留。旧发布/参考未改，无新 `.atria`。
 
-下一次用户明确继续时仅执行 P5：先读 HANDOFF → index → staging/verification，按实际风险补对应接口与前端模块。核对待集成 refs 与 protected dirty，在独立 Core 工作树完成必要兼容检查和辅助分支集成；游戏任务资产按治理集成 package，验证精确最终组合后创建全新版本输出，保留旧版本。只做本地最小相关验证，不启动/等待远端 CI，不把 main merge 到 package/docs。尚未执行这些集成、生产模型或发行检查；P4 到此停止。
+下一阶段 P5：先读 index → staging/verification，按实际风险补对应接口与前端模块。核对待集成 refs 与 protected dirty，在独立 Core 工作树完成必要兼容检查和辅助分支集成；游戏任务资产按治理集成 package，验证精确最终组合后创建全新版本输出，保留旧版本。只做本地最小相关验证，不启动/等待远端 CI，不把 main merge 到 package/docs。尚未执行这些集成、生产模型或发行检查。
 
 
 ## Phase 5 完成

@@ -459,13 +459,7 @@ Phase 1 验证至少覆盖：
 - legacy source-tool migration相关测试；
 - Plugin 自身 lint/test/type/schema checks（按仓库实际提供的脚本执行）。
 
-Phase 1 完成后：
-- commit/push plugin；
-- 更新同一份 docs Record；
-- 更新本任务 live HANDOFF；
-- 记录 plugin HEAD、main baseline、实际验证/CI；
-- 给出 Phase 2 接手提示词；
-- 停止，不自动开始 Phase 2。
+Phase 1 验收通过后进入 Phase 2；执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 
 不要声称未实际执行的测试、构建、CI、浏览器或 UI 验证通过。
 ```

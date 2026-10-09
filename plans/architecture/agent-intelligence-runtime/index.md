@@ -1,8 +1,6 @@
 # Atria Agent Intelligence Runtime — 正式架构与阶段入口
 
-> 执行方式按 [Governance §12](../../../README.md#12-execution-adapters)：本地主导、远端仅存储，Actions 全部停用；只做最小相关本地验证，优先自动化，不默认人工实机验收。本文产品验收目标、生产权限与正式阶段边界保持。
-
-> API 测试现行规则：仅每日 2000 次调用 / 20 RPM，唯一权威为 [Governance §13.1](../../../README.md#131-api-测试执行规则)，当前 M1 执行见 [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)。旧累计/封包/Step/token 限额、逐轮许可及人工额度审计全部撤销；旧阶段结果仍保留。
+> 执行规则统一见 [Governance](../../../README.md)。本 Bundle 管理设计、依赖和验收。
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
@@ -79,7 +77,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §7/§9 → 当前相关消费者 → 同一 Record 最新节；F1最小实现完成，包末停止，F2当前有限探测以f2_calibration_failed停止（feedback§12/acceptance§10.4），累计783/3080332、headroom未建立；下一仅 F2；历史封包的首失败停止与重新许可不是当前继续规则，工程问题修复后必要复测。F2 阶段完成后按 Governance 停止，不直接发 F3 试点请求。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
+S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §7/§9 → 当前相关消费者 → 同一 Record 最新节；F1最小实现完成，F2当前有限探测以f2_calibration_failed停止（feedback§12/acceptance§10.4），累计783/3080332、headroom未建立；下一仅 F2；历史封包的首失败停止与重新许可不是当前继续规则，工程问题修复后必要复测。F2 验收通过后进入 F3。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -126,7 +124,7 @@ D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Wo
 | M1反馈/评价补充 F0–F2 | F0/F1完成；F2准备核对source_unready，独立来源/实际语义校准未完成；F3未开始 | 原profile全部critical维度保持；六development规格/工程controls与原Project路径核对；零真实发送 |
 | S11–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
-S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一 checkpoint 只复核 M1 验收与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
+S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一工作补齐 M1 验收证据与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
 
 ## 验证与交付原则
@@ -135,14 +133,14 @@ S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runti
 - 确定性结构检查、真实 outcome、行为轨迹、成本、人工偏好分别记录；单一 judge 分数不能宣布所有维度通过。
 - 两条路径的运行方式不同，必须各自走端到端闭环；共享一个 schema 不等于已经集成。
 - 每阶段包含可用消费者、针对性测试、兼容与撤回路径；涉及 UI 时在真实浏览器检查相关状态。
-- 按 Repository Governance，在正式阶段结束时持久化、更新同一 Record / live HANDOFF、给出接手提示词并停止；按用户确认在完整交付组后集成 main，长期记录持续。
+- 完整交付组验收通过后集成 main；长期 Task ID / Record 保持。
 - D1 必须冻结一个有限交付范围及其集成点；后续路线按证据扩展，避免无限研究目标使稳定产品一直无法交付。
 
 ## 进入正式实施的条件
 
 S01–S10 工程链路沿同一分支完成，下一轮核对真实 Git，只复核 M1 验收与集成前置条件。读取 s10-evolution → m1-evolution / delivery M1 → 同一 Record。保留 ordinary RP bounded Director / 原 character Skill 和 Workspace binding、Project 原局部 Skill / style binding / pristine Task repair 的部署边界；不以独立报告叠加不同改进。
 S06 仍 promotion ineligible；本轮 fake provider / 浏览器 fixture 仅证明工程闭环，独立真实案例改善尚未证明。需要真实补测时按 acceptance §0 自主执行必要验证，保存实际版本与结果、不覆盖历史报告。
-S10 阶段结束即停止；M1 退出条件未验收，不合并 main，不进入 S11 / G。
+S10 工程完成；M1 退出条件仍待验收，集成与后续交付组依赖 M1 验收通过。
 
 ## 2026-10-07 M1 验收调整
 
@@ -152,8 +150,8 @@ M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；�
 
 ## 2026-10-09 原链路契约先行
 
-用户U13确认先明确原反馈与评价契约，再用各一个RP/Project试点验证。详细新契约唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点/调用范围归m1-acceptance，研究不再作为直接实施依据。F0设计及F1最小实现完成并停止；product实现HEAD见上，paid source仍a61b249ef、M1未达标、累计761/2939582，main未合并。后续F2→F3各包结束保存同一Record/HANDOFF并停止，不新增S/G阶段，不降低原门槛。
+用户U13确认先明确原反馈与评价契约，再用各一个RP/Project试点验证。详细新契约唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点/调用范围归m1-acceptance，研究不再作为直接实施依据。F0设计及F1最小实现完成；product实现HEAD见上，paid source仍a61b249ef、M1未达标、累计761/2939582，main未合并。后续F2→F3按依赖推进，不新增S/G阶段，不降低原门槛。
 
 2026-10-09 F2本轮准备核对详见 [反馈/评价模块§10](m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态)：新工作负载规格不等于正式source，promotion仅预留元数据不计独立来源；六critical dimensions实际证据覆盖未解决，原consumer发送前source_unready。下一仍F2，F3未开始。
 
-当前 F2 恢复以 acceptance §0 / feedback §7 / HANDOFF 为准。已记录 paid 结果及工程问题见 feedback §12，产品 ac0344879 的输出提示与证据核对见 feedback §13；旧累计 1000、72/Step18 和逐轮许可全部撤销，必要诊断、修复及真实复测继续。F2 完成后按正式阶段边界更新记录并停止，F3 未开始。
+当前 F2 恢复以 acceptance §0 / feedback §7 / HANDOFF 为准。已记录 paid 结果及工程问题见 feedback §12，产品 ac0344879 的输出提示与证据核对见 feedback §13；旧累计 1000、72/Step18 和逐轮许可全部撤销，必要诊断、修复及真实复测继续。F2 验收通过后进入 F3；F3 当前尚未开始。

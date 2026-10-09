@@ -112,4 +112,4 @@ G01–G06 是本轮发现和确认的现状，**尚未修复**。未知 World �
 | N07 | 原 Attach/Fork/Update/Detach/Used By 的 exact authority/缺版本/闭包/来源不变；只读 installed World 无 Edit；history Fork 与 bundle Fork 差异明确，有限 graph 不冒充完整图 |
 | N08 | 真实项目文件/HTTP/.atria canonical World 往返；旧 installed Session/Save 不推进、baseline 与当前 state 分离；原 committed Preview/Simulation/Build 与 world-less/单/多 World；English/简体中文、窄屏/键盘/大字按触及面最小本地验收 |
 
-下一轮恢复顺序：live HANDOFF → index → 本模块 → 对应 delivery/coverage S12/S07/states/validation → 同一 Record B1 Worlds mapping。只实施 Worlds 展示与局部防护；完成其独立 checkpoint 再停止，不自动进入 Knowledge/B2/F，不合并 main、不恢复共享描述。
+下一轮恢复顺序：live HANDOFF → index → 本模块 → 对应 delivery/coverage S12/S07/states/validation → 同一 Record B1 Worlds mapping。只实施 Worlds 展示与局部防护；后续依赖按 delivery 推进，不合并 main、不恢复共享描述。

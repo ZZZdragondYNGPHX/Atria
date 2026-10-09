@@ -15,7 +15,7 @@
 - 最新交接：`docs:handoff/latest-handoff.md`
 - 当前能力主表：**32 项**
 - 旧空分支 `feat/component-form-composer-submit` 不承载本任务实现，也不作为方案依据。
-- 本任务属于大型多阶段开发：整个任务沿用同一工作分支；每完成一个阶段即提交、推送、更新必要文档与 handoff，然后停止，等待下一阶段接手。
+- 执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 
 ## 〇、实施规范基线（Implementation Baseline v1.0）
 
@@ -367,30 +367,7 @@ P8 实施决策（2026-09-27）：
 
 ### 0.7 阶段执行与验证规则
 
-这是大型多阶段任务。
-
-每个阶段：
-
-1. 从当前工作分支最新远端 HEAD 继续，不新建阶段分支；
-2. 先读本规范区、当前 handoff 和阶段涉及的现有代码；
-3. 只实现当前阶段，不提前吞后续阶段；
-4. 完成代码与必要测试；
-5. 提交并推送工作分支；
-6. 有实质方案变化时更新本正式方案；无变化不要机械改文档；
-7. 更新 `docs:handoff/latest-handoff.md`；
-8. 记录当前分支/HEAD、完成项、未完成项、关键决策、验证状态、下一阶段目标；
-9. 停止继续开发并给出下一阶段接手提示词。
-
-验证遵循“修改哪块验证哪块”：
-
-- 必做：targeted unit / contract / regression tests；
-- 必做：changed-area lint / syntax / relevant guard；
-- 需要时：adjacent integration tests；
-- 不默认：每阶段完整全仓测试、Android、Docker、真实模型调用；
-- P9 最终集成再做与本任务范围相称的 broad regression；
-- 若 GitHub CI 进入明显耗时阶段，不持续轮询；汇报 HEAD / CI 状态后停止；
-- 普通代码、测试、workflow 失败自行修复，不交给用户处理；
-- 只有真机日志、真实 UI 截图、权限/Secret/账号授权等必须依赖用户时才暂停。
+本任务验收覆盖 targeted unit / contract / regression、changed-area lint / syntax / guard，必要时增加相邻集成检查；P9 覆盖与最终集成范围相称的回归。通用验证与执行方式见 [Governance §12](../../../README.md#12-execution-adapters)。
 
 ### 0.8 明确非目标
 

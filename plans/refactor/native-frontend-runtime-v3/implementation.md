@@ -10,13 +10,7 @@
 
 不为每个 Phase 重复开分支。
 
-每个 Phase 完成后必须：
-
-1. 更新 `docs:records/refactor/native-frontend-runtime-v3.md`；
-2. 更新唯一 `docs:HANDOFF.md`；
-3. 记录 task branch HEAD、main baseline、验证结果、未完成项；
-4. 生成下一阶段可直接复制的新对话提示词；
-5. 主动停止，不提前进入下一 Phase，等待用户继续。
+执行与记录流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 
 ### Phase 1 — Contract Reset / Compiler Skeleton
 
@@ -247,15 +241,7 @@
 4. 创建 Implementation Record；
 5. 以本 Baseline 为权威，不重新发散架构。
 
-普通代码问题、测试失败、可自行解决的CI问题由执行者自行处理，不中断等待用户。
-
-只在以下情况暂停：
-
-- 一个 Phase 完成，需要正式 checkpoint；
-- CI 进入明显耗时验证且下一步必须依赖结果；
-- 必须依赖 Android/Termux 真机日志；
-- 必须依赖真实 UI 截图；
-- 需要用户本人权限/Secret/账号授权。
+执行与真实阻塞分别见 [Governance §8](../../../README.md#8-task-lifecycle) / [§13](../../../README.md#13-stop-conditions)。
 
 ---
 

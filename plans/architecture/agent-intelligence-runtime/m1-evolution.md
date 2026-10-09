@@ -1,6 +1,6 @@
 # M1：双入口成长与局部自动启用设计
 
-> 本模块的 request/token/自动 job 预算管理生产局部自动模式，不能套作 agent 测试 API 配额。工程测试遵循 [Governance §13.1](../../../README.md#131-api-测试执行规则) / [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)，仅每日 2000 次 / 20 RPM，无逐轮次数许可或人工额度审计。
+> 本模块管理生产局部自动模式；工程 API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)。
 
 > D1 产品边界与架构执行约束已冻结；S01 详细设计见 [s01-baseline.md](s01-baseline.md)。
 > S02 最小来源契约与只读 consumer 已完成，详细权威为 [s02-sources.md](s02-sources.md)；S03 可靠 RP 捕获 / 公共持久层已完成，详细权威为 [s03-capture.md](s03-capture.md)；S04 Project task 持久恢复已完成，详细权威为 [s04-project-recovery.md](s04-project-recovery.md)。
@@ -23,7 +23,7 @@ Project 示例：Agent 在重复 authoring 中多次错误选择修改入口。�
 D2 的生成基础方向见 behavior-context / compute-policy / model-routing；M1 只补必要测量与准入语义，不等待 G01–G06，不自动扩张到模型 / routing / connection 自改。
 
 首批已确认接 Skill、Prompt、已有可配置编排策略三类目标；每类走同一晋升语义，使用自身权威的版本 / binding。
-每阶段的具体实现和验收仍按 delivery 中 S01–S10 逐项完成并停止。
+每阶段的具体实现和验收由 delivery 中 S01–S10 管理。
 
 ## 2. 首批范围与责任
 
@@ -202,4 +202,4 @@ S10 支持 ordinary RP exact character 下的 bounded single-owner Director、�
 
 ## 13. 原链路反馈与评价补充
 
-2026-10-09 U13确认先契约、后各一个RP/Project试点。新反馈来源、诊断根因/干预分离、QualityProfile/case provenance/report版本及有限工作包唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)。F0设计及F1最小消费者完成；原S05生命周期、S10部署/发布、m1-acceptance退出门槛保持。包末停止，下一仅F2来源/校准与有限范围固定，不能把研究能力全部加进M1或直接重跑旧case；不进入S11/G。
+2026-10-09 U13确认先契约、后各一个RP/Project试点。新反馈来源、诊断根因/干预分离、QualityProfile/case provenance/report版本及有限工作包唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)。F0设计及F1最小消费者完成；原S05生命周期、S10部署/发布、m1-acceptance退出门槛保持。下一是F2来源/校准与有限范围固定，不能把研究能力全部加进M1或直接重跑旧case；不进入S11/G。

@@ -28,4 +28,4 @@ S1 → S2 → S3 → S4。内核公开稳定服务，插件只通过这些服务
 
 每阶段只执行本地最小相关验证，记录实际运行的证据，不运行远程 CI 或声称未执行的 UI/真机检查通过。呈现部分使用本地 `ui-ux-pro-max` Skill 指导替代文字、加载和布局稳定性；S2 交互验证需要本地浏览器工具时加载 `playwright-cli`。不要求代理并行工作。
 
-每阶段提交/push 产品与 docs，更新同一 Record 与唯一 live HANDOFF，给出接手提示词后停止。S4 全部完成才合并 main、验证并清理分支/HANDOFF。保护原工作树与 docs 工作树的无关 dirty changes。
+S4 全部验收通过后集成 main；通用执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。

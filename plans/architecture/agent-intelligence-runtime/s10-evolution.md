@@ -1,6 +1,6 @@
 # S10 — 评测、局部发布与恢复
 
-> 本模块的 owner/job/token/breach 限制管理生产 Evolution，不能套作 agent 工程测试 API 配额。现行测试遵循 [Governance §13.1](../../../README.md#131-api-测试执行规则) / [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)，仅每日 2000 次 / 20 RPM，不逐轮申请许可或人工额度审计。
+> 本模块管理生产局部自动模式；工程 API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)。
 
 状态：**S10 工程交付完成；M1 实际模型改善与集成前置条件待验收**。依赖 S05–S09；仅本阶段，不进入 M2 / G。产品 / 本地验证 HEAD：`ed00f4f0cea53be360ed8dfa082bbd0afeec5398`。
 
@@ -69,7 +69,7 @@ Experience correction / withdrawal / diagnosis delete / source delete / retentio
 - 原 SettingsRepo MySQL / Postgres 的 12 项首次尝试因外部本地数据库不可用失败，最后限定 FS / SQLite 12 passed、外部 12 skipped。没有启动外部 DB，也不计其通过。
 - 无新真实模型请求；未读取或更新 S06 私有 config / ledger / artifacts，原 110 requests / 300464 记账 tokens 与 ineligible 结论保持。无 full test / build / Android / 真机 / CI。
 
-S10 工程链路已交付，**M1 独立案例的真实质量 / 成本改善尚未满足退出门槛**。下一 checkpoint 只复核 M1 验收与集成前置条件；如需补真实比较，沿既定双入口与实际 source/config 记录必要范围，按现行测试规则自主执行；不能以 fake provider 代替真实结果。main 未合并，不进入 S11 / G。
+S10 工程链路已交付，**M1 独立案例的真实质量 / 成本改善尚未满足退出门槛**。下一工作补齐 M1 验收证据与集成前置条件；如需补真实比较，沿既定双入口与实际 source/config 记录必要范围，按现行测试规则自主执行；不能以 fake provider 代替真实结果。main 未合并，不进入 S11 / G。
 
 ### 2026-10-07 M1 自动验证补充
 
@@ -79,8 +79,8 @@ S10 工程链路已交付，**M1 独立案例的真实质量 / 成本改善尚�
 
 ### 当前M1工程验收与生产gate
 
-2026-10-07用户批准M1工程验收调整，见 [m1-acceptance](m1-acceptance.md)。本模块的九对独立human labels / price等准入仍是production automatic publication要求；工程评测采用独立模型observation并保持human未观测，不输入human字段，不改本模块生产授权。账本丢失不伪造旧entries，沿已批准保守结转与新有限额度执行。
+M1 工程验收见 [m1-acceptance](m1-acceptance.md)。本模块的九对独立human labels / price等准入仍是production automatic publication要求；工程评测采用独立模型observation并保持human未观测，不输入human字段，不改本模块生产授权。账本恢复事实见 Record；不伪造旧 entries。
 
 ### 原 evaluator 的领域契约补充（F1最小实现）
 
-2026-10-09 U13确认先明确原反馈/评价契约，再各一个双域试点。新QualityProfile、case provenance/lineage、diagnosis路由与versioned consumer唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，不建立第二evaluator/targets。原固定worker和secret边界、原局部writer、publication/消费/rollback和production human/price/owner gates保持；新profile不会自动使旧报告合格。F1最小registry、Report v2及原gate/worker消费者已实现并做本地验证，旧case明确historical_synthetic/not_established且不获新资格。F2来源/校准和F3真实试验未开始，实际结果见同一Record。
+反馈/评价契约先于双域试点。新QualityProfile、case provenance/lineage、diagnosis路由与versioned consumer唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，不建立第二evaluator/targets。原固定worker和secret边界、原局部writer、publication/消费/rollback和production human/price/owner gates保持；新profile不会自动使旧报告合格。F1最小registry、Report v2及原gate/worker消费者已实现并做本地验证，旧case明确historical_synthetic/not_established且不获新资格。F2来源/校准和F3真实试验未开始，实际结果见同一Record。

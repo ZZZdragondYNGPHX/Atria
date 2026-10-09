@@ -98,13 +98,7 @@ N0–N10、A0–A9 的**语义不变量**继续保留。
 
 ## 开发节奏
 
-这是多阶段任务。每个 P 阶段完成后：
-
-1. 运行对应 focused checks 与适用的 frozen guards；
-2. 更新 docs 进度与最新 handoff；
-3. 记录分支 HEAD、已完成、未完成、关键决策和验证；
-4. 停止继续实施；
-5. 给出下一阶段可直接复制的新对话提示词。
+P 阶段验收覆盖对应 focused checks 与适用 frozen guards。通用执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 
 Android / Docker 保持 opt-in。
 

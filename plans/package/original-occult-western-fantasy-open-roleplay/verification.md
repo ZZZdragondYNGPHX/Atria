@@ -18,7 +18,7 @@
 
 审阅设计：问答确认无AI、角色/资源/开篇单源；机构及非法路径不依赖固定案件；动态提案只在模板许可内发布；所有静态分支及实际展开工作都计预算；有限轮次与真实发送额度/失败/stale不重置；铁人封住service/repository/HTTP/bridge/import/export/旧branch全部回退口；终局中断先挡续玩再清理，保护其它局。A/B/C和Package/暂缓归属不可混淆。
 
-验证文档内部相对链接、路由模块和引用代码/测试路径存在；新Markdown空白检查；保持唯一Record且Phase 0正文不改写，唯一live HANDOFF更新到Phase 2；只允许本Plan六个修改模块、同Record/HANDOFF的diff，decisions及frontend冻结内容不改。push后核对精确docs HEAD及实施refs未变。
+验证文档内部相对链接、路由模块和引用代码/测试路径存在；新Markdown空白检查；保持唯一Record且Phase 0正文不改写，当前进度记录于同一 Record；只允许本Plan六个修改模块、同Record的diff，decisions及frontend冻结内容不改。push后核对精确docs HEAD及实施refs未变。
 
 后续测试入口/环境已经按源码定位于implementation-staging。本环境初次核对没有Node，也没有Core/tests node_modules，故Phase 1不声称任何Node/Jest/Package/模型/浏览器检查通过。无需为设计阶段安装整套运行环境；执行Phase 2时准备与其风险测试有关的实际环境。
 

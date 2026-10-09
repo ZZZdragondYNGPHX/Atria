@@ -142,7 +142,7 @@ EntryPoint **没有独立 mode discriminator**。`runtime.mode` 不是 assertEnt
 | N07 | 原 human inspect/execute/revision/origin、取消/失败/409/rollback/receipt only-read、提交禁写；Agent 独立；入口↔集合/view/owner/Back 离开取消保留；冲突复制原文/明确放弃重载 |
 | N08 | 真实项目→新表面→FS/HTTP canonical→.atria Build；显示 Preview/Experience/UI 第一入口与 scenario exact/default 的实际目标，排序影响可评估；已安装 exact Session/Save 不推进；Shared 描述仍 unsupported；English/中文、320 最大字号/Tab/focus 选择最小本地场景，不冒充真机 |
 
-本轮停在 replacement gate 前。下一独立 checkpoint 只实施 B1 EntryPoints 展示与映射对应的局部防护，复用原 controller/persistence；实现/最小本地验证/commit/push 后更新同一 Record/live HANDOFF 并停止。不自动进入 Worlds/Knowledge/B2/F、不合并 main。
+本轮停在 replacement gate 前。下一独立 checkpoint 只实施 B1 EntryPoints 展示与映射对应的局部防护，复用原 controller/persistence；后续工作按 delivery 的依赖推进，最终 F 完成集成。
 
 ## Display checkpoint result
 

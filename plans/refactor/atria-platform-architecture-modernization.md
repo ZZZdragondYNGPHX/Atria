@@ -549,16 +549,7 @@ R8A 完成后新增或更新：
 
 ## 14. Astra 执行纪律
 
-普通代码问题自行分析、修改、测试、提交、推送并继续。
-
-只有以下情况主动暂停：
-
-1. GitHub CI 进入明显耗时验证；
-2. 必须依赖 Android / Termux 真机日志；
-3. 必须依赖真实 UI 截图；
-4. 必须由用户完成权限、Secret、账号授权。
-
-进入耗时 CI 后报告 HEAD / workflow / 已完成验证并停止轮询。
+执行与真实阻塞分别见 [Governance §8](../../README.md#8-task-lifecycle) / [§13](../../README.md#13-stop-conditions)。
 
 优先保持小步、可验证的架构切片，禁止一次跨越多个 ownership boundary 的大爆炸提交。
 

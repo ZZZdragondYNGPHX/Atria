@@ -3,15 +3,10 @@
 - Updated: 2026-10-09
 - Status: F1 工程已完成；F2 评价/source 仍待验收，F3 未开始，M1 pending。测试限制按当前 §0 执行；后文旧封包与配额仅为历史。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
-- 用户授权 agent 完成验证。2026-10-09 最新指令取消额外测试配额、逐轮额度审计与重新许可；生产 automatic promotion 门槛不变。
 
 ## 0. 当前 API 测试规则（覆盖全部历史封包）
 
-唯一权威为 [Repository Governance §13.1](../../../README.md#131-api-测试执行规则)：硬限制仅每日 2000 次调用、20 RPM，由发送端统一自动执行。历史累计不是终身额度；token、输出长度、旧预算 breach、每包发送数、Step claim 和旧 stop 不增加调用限制，不要求每轮人工审计或新许可。
-
-在已授权 M1 当前阶段内自主完成必要探测、诊断、修复和复测，保存实际结果后推进。参数/来源版本按实际变化记录，不能将每次记录变成发送前文档审批。工程错误修复后继续；真实验收不达标仍如实报告，production human/price/authority gate 及正式阶段边界保持。
-
-§6–§10.5 仅保留历史结果摘要与稳定链接；旧封包详细事实归 Record，旧执行指令已移除。现行恢复入口为本节与 live HANDOFF。
+API 测试唯一规则见 [Governance §13.1](../../../README.md#131-api-测试执行规则)。本模块只定义 M1 验收契约；历史结果见后文及同一 Record。
 
 ## 1. 验收语义
 
@@ -26,33 +21,29 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 - 两入口各九对完整独立comparison，无重复槽位 / 混source；evaluator / runner source、actual request / snapshot / usage / charge、originaltarget version与配置固定。
 - 两种model observation每对一致且为candidate或tie；每入口至少六对一致candidate胜，其余只能tie；全部重要行为维度非负。invalid / uncertain / 缺失 / disagreement不能补分、伪造、强行通过。
 - 原authority / isolation / target_consumed / source与exact配置检查全部通过；所有send均可核对到持久账本；usage 未知如实报告；API 每日 / 速率硬限由发送端执行。
-- 用户明确无token要求，trial candidate /baseline tokens仅报告、不作工程通过条件；提炼 / 两种judge / retry / activation 的实际调用全部计入每日调用数并单列统计。价格未确认时currencyCost=unavailable，工程验收说明行为表现并单列token资源统计，不声称货币费用改善或含学习成本后的净收益。若价格取得则另行报告金额，不推断provider价目或隐藏retry。
-- 在私有fixture里通过本次用户委托执行明确review publication，保存原intent / receipt；原下一Director / Project request实际消费已选版本并核对exact snapshot / target；再guarded rollback回原base。工程review不是human preference，也不计automatic eligibility；生产用户对象不修改。
+- trial candidate /baseline tokens仅报告、不作工程通过条件；提炼 / 两种judge / retry / activation 的实际调用全部计入每日调用数并单列统计。价格未确认时currencyCost=unavailable，工程验收说明行为表现并单列token资源统计，不声称货币费用改善或含学习成本后的净收益。若价格取得则另行报告金额，不推断provider价目或隐藏retry。
+- 在私有fixture里执行明确review publication，保存原intent / receipt；原下一Director / Project request实际消费已选版本并核对exact snapshot / target；再guarded rollback回原base。工程review不是human preference，也不计automatic eligibility；生产用户对象不修改。
 - 原production promotionDecision继续拒绝缺human labels / confirmed price等证据的候选。模型盲评工程通过不触发生产自动发布，也不改默认review / 单目标 / scope / guards。
 
-不达标则记录具体failure与partial证据；不缩减cases / repetitions、训练promotion输出、偷偷更换case或追试至通过。M1工程验收达标后才按既定U7集成与最小本地验证；本轮不进入S11 / G，阶段结束停止。远期任务不标完成。
+不达标则记录具体failure与partial证据；不缩减cases / repetitions、训练promotion输出、偷偷更换case或追试至通过。M1 工程验收达标后集成；S11 / G 仍依赖其产品设计与前置条件，不把远期任务标为完成。
 
 ## 3. 历史账目与自动计数
 
-原 S06 账本丢失后采用 historicalCarry 的恢复事实保留在 Record；不伪造逐次旧记录，不删除 settled/unknown。历史 carry、累计 tokens 和旧 breached 字段只作统计，不转为新的 API 硬额度。只有当前日窗口内的实际使用计入每日 2000 次；20 RPM 在发送端统一排队。
+原 S06 账本丢失后采用 historicalCarry 的恢复事实保留在 Record；不伪造逐次旧记录，不删除 settled/unknown。历史 carry、累计 tokens 和旧 breached 字段只作统计，不转为新的 API 硬额度。日窗口与速率计数见 Governance §13.1。
 
 沿现有 EvaluationBudget / test-only advisory repository、私有 ledger/quota/rate 持久化端口计数和保存结果，不新增一套账目 authority。unknown usage 可保存估计并明确标注，不因估计或 token 超报停止测试。生产 repository / promotionDecision 继续沿原产品规则。
 
 ## 4. 本地持久位置与执行
 
-用户指定 `Document/` 是私有持久目录，凭证、连接、ledger 和报告均由 local Git exclude 排除，不写入公共 Git。保留现有连接与历史结果，不为了继续测试重置账目或覆盖旧报告。
+`Document/` 是私有持久目录，凭证、连接、ledger 和报告均由 local Git exclude 排除，不写入公共 Git。保留现有连接与历史结果，不为了继续测试重置账目或覆盖旧报告。
 
-实际入口仍为 `tests/agent-intelligence/m1-live.mjs`，沿原 EvolutionService / evaluator / repository。按当前阶段读取 HANDOFF → index → 本模块 §0 与相关评价契约 → Record 最新状态；历史封包只在定位具体问题时读取。两模型使用已授权测试连接；输出长度、timeout 和必要 retry 依据 Provider 能力及当前问题配置，不以旧 1024/8000/8192 数值作为新增 API 配额。
+实际入口仍为 `tests/agent-intelligence/m1-live.mjs`，沿原 EvolutionService / evaluator / repository。按当前阶段读取 index → 本模块与相关评价契约 → Record 最新状态；历史封包只在定位具体问题时读取。两模型使用现有测试连接；输出长度、timeout 和必要 retry 依据 Provider 能力及当前问题配置。
 
 测试实现如仍要求 maxSends、maxSecondarySends、stepPermission、旧 breach/stop 或 token guard，应沿原测试消费者清理，不能把旧字段当成用户重新审批的理由。source/case/configuration 的实际版本随结果保存；不要求每次请求前提交一份许可文档。
 
 ## 5. 继续执行与验证
 
-执行方式统一按 [Governance §12](../../../README.md#12-execution-adapters)：本地开发、验证、提交与清理，远端仅保存提交；Actions 全部停用，不等待 CI。只做最小充分的相关本地检查，优先自动化，不重复未受新变化影响的已通过检查；人工实机仅用于关键且无法自动化替代的明确证据缺口，不是 M1 默认验收门槛。
-
-已授权当前阶段内持续推进必要工程工作。频率不足排队，日额度用尽等待恢复；普通测试/校准失败先修复后复测，临时网络错误按实际情况重试，实际调用统一计数。旧连接失败不形成永久封禁或 Step 次数许可；当前持续不可用时处理真实依赖。
-
-只做触及面相关的本地检查。使用真实结果判断工程与模型验收，不重写有效不利评分、训练独立验收输出或降低门槛；开发诊断后的必要复测保留前后证据。每个正式阶段结束按 Governance 更新同一 Record / HANDOFF 并停止；不把每次调用小批次视为新阶段。M1 未验收仍不集成 main、不进入 S11/G，用户无需手测。
+失败处理与阶段推进见 [Governance §8](../../../README.md#8-task-lifecycle)，通用验证见 [§12](../../../README.md#12-execution-adapters)。本任务的具体验收以 §1 / §2 为准；独立验收输出不回流开发，有效不利评分保留。
 
 ## 6. 2026-10-08 有限优化周期
 

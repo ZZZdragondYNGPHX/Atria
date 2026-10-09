@@ -37,6 +37,6 @@ Package 原版保留，只允许先沿现有 Preset import 创建 Library 用户
 
 手动 apply 不产生 Evaluation eligibility；S06 candidate 仍 ineligible。S10 才接 feedback / diagnosis / source-deletion dependency、预算、Review / promotion / rollback / durable job intent；本阶段不创建模型调用。
 
-完成实现 / 最小验证 → commit / push → 同一 [Record](../../../records/refactor/agent-intelligence-runtime.md) / live HANDOFF → 停止。下一 checkpoint 仅 S09；M1 未完整，不合并 main。
+S08 实际结果见同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)，下一阶段 S09；M1 完整验收前不集成 main。
 
 产品 / tested HEAD `9b5cb5740e2af7cab8b83b9675576ea01c4f4527` 已 commit / push；main 保持未合并。

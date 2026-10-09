@@ -32,7 +32,7 @@ Primary Workspace 为 package，因为目标是这个游戏。用户明确要求
 | [world-supernatural.md](world-supernatural.md) | 超凡路线、机构、成长、有限世界演化与扩展 | decisions、player-experience |
 | [runtime-contracts.md](runtime-contracts.md) | 契约审计、意图解析、权威结果、状态与保存模式 | player-experience、world-supernatural |
 | [frontend.md](frontend.md) | 用户视觉护栏、入口、抽屉、输入与前端状态 | player-experience、runtime-contracts |
-| [implementation-staging.md](implementation-staging.md) | 阶段顺序、产出与停止点 | 各领域模块 |
+| [implementation-staging.md](implementation-staging.md) | 阶段顺序、产出与验收 | 各领域模块 |
 | [verification.md](verification.md) | 按风险分层的实际验证及证据边界 | staging、runtime-contracts、frontend |
 
 依赖路径：用户方向 → 玩家体验／世界规则 → 运行契约 → 游戏内容与前端 → 集成验证。UI 与规则设计可以在阶段内配合，不为演示先造另一套运行时。

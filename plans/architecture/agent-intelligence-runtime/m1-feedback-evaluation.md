@@ -2,7 +2,7 @@
 
 - Updated：2026-10-09；Task ID：`agent-intelligence-runtime`。
 - 状态：**方向、设计边界及F1物理契约冻结；F1最小消费者已实现，验收记录见同一Record；F2准备核对以source_unready停止，独立来源/实际语义校准尚未完成；F3未开始，M1仍pending。**
-- 用户确认 U13：先明确原链路反馈与评价契约，再用各一个 RP、Project 试点验证。以下分类、兼容方案和工作包是该方向内的工程细化，不声称用户逐字段确认。
+- 设计顺序：原链路反馈与评价契约 → 各一个 RP、Project 试点；具体工程契约如下。
 - 来源：[领域扩展研究](../agent-intelligence-m1-domain-evolution-research.md)、[S05](s05-feedback.md)、[S10](s10-evolution.md)、[M1 acceptance](m1-acceptance.md)。核对产品 `a61b249ef71f108d279ec7bd883fb5eeae97a463`；这些设计不计入已有实证。
 - 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程退出门槛与实际发送范围由 m1-acceptance 管理。
 
@@ -124,7 +124,7 @@ Project development 的三个任务类型：真正有关联依赖的 authoring�
 
 ## 7. 成本、调用范围与失败处理
 
-API 测试按 [Governance §13.1](../../../README.md#131-api-测试执行规则) / [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包) 执行：仅每日 2000 次、20 RPM；发送端统一计数/等待。token、输出长度、旧累计、Step claim 和封包估算不阻止必要测试；结果与 usage 沿现有私有账目保存，生产 gate 保持。
+API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)；本节保留试点工作量估算。
 
 以下只是**一次双域试点的形态估算**，不是调用上限或需要逐轮申请的许可：
 
@@ -138,13 +138,11 @@ API 测试按 [Governance §13.1](../../../README.md#131-api-测试执行规则)
 | 下一 run 消费 | 2域 ×6 =12 | 仅达标后在私有 fixture review；原 rollback 零模型 |
 | 合计 | 416，另列实际必要的 retry/诊断 | 无 retry 的形态上界；不是实际必需调用数或承诺费用 |
 
-source/case/input/rubric/calibration/worker/request identity 随实际版本与结果记录。已授权当前阶段内的必要诊断、修复和复测自主进行，不另建 Step 次数许可，不以旧 stop/epoch 记录要求审批；实际配置变化按真实内容标识，不抹除旧结果。
-
-普通校准、输出格式和 source 工程问题先修复再验证，不以首个失败结束交接。真实来源不适用或基线无改善空间时如实记录并判断工作方向，不伪造资格。现金价格未知仍 unavailable，不声称节约或回本。
+source/case/input/rubric/calibration/worker/request identity 随实际版本与结果记录。现金价格未知仍 unavailable，不声称节约或回本。
 
 ## 8. 有限工作顺序与每包退出
 
-这是当前 M1 的补充工作包，不新增正式 S/G 阶段，不将全领域研究变成 M1无限退出要求。每包结束按 Governance 保存同一 Record/HANDOFF 并停止。
+这是当前 M1 的补充工作包，不新增正式 S/G 阶段，不将全领域研究变成 M1无限退出要求。工作包退出条件是后续包的前置依赖。
 
 | 工作包 | 范围 | 最小验证 / 退出 | 本轮状态 |
 | --- | --- | --- | --- |
@@ -155,7 +153,7 @@ source/case/input/rubric/calibration/worker/request identity 随实际版本与�
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 的 source_unready、calibration_failed、unsupported_locus 或 baseline_saturated 如实记录；可修复工程问题处理后继续，真实不适用或缺改善空间不伪造失败/人类标签来凑闭环。
 
-M1 成功只能按原验收宣布；F0 文档冻结、F1本地通过或F3单一维度提升都不等于M1达标。未达标不合并main、不进入S11/G。后续是否扩展第二类领域问题依据真实证据另议，本轮不自动推进。
+M1 成功只能按原验收宣布；F0 文档冻结、F1本地通过或F3单一维度提升都不等于M1达标。未达标不合并main、不进入S11/G。扩展第二类领域问题属于范围变化，依据真实证据另议。
 
 ## 9. F1 物理契约与支持边界
 

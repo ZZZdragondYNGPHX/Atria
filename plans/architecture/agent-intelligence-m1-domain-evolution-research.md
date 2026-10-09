@@ -241,7 +241,7 @@ H：保护的对象包括策略、用户偏好、角色状态、测试来源和r
 
 H：先用无模型的source/authority检查，再按问题价值与不确定性投入有限额外评测。不给每回合固定加critic/reflector；普通RP一次主要正文调用目标保持。选定事件/有限聚合/显式请求触发后，沿原scheduler background与owner ledger，source过期或paused则停止。
 
-测试API唯一硬调用限仍 `2000/day`、`20RPM`；每次输出最多8000（是每次输出限制，不是一天token上限）。滚动24小时保守quota、共享两连接、失败窗口/许可均沿原文件；所有失败/retry/unknown都计入，不用换scope、连接、session或cache命名重置。token与历史测试额度为建议，超出即通知并按授权继续；失败频率/取消/有限实验结束仍是停止条件。生产原owner/job硬预算与human/price gates不改变，test-only advisory不可偷渡为生产策略。
+测试执行见 [Governance §13.1](../../README.md#131-api-测试执行规则)。研究中的实验估算与 runner 停止条件不定义 Agent 任务的暂停边界。
 
 一轮预估应包含：
 
