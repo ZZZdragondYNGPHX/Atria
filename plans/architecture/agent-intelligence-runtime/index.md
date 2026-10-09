@@ -3,7 +3,7 @@
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete / S09 complete / S10 engineering complete; M1 empirical acceptance pending**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
-- Updated: 2026-10-07
+- Updated: 2026-10-09
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
 - S03 implementation / Tested HEAD: `78acfb65da6b1afa1dee1c2f35482af215832c74`；沿用同一任务分支，已 push，main 未变化。
@@ -55,6 +55,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [delivery.md](delivery.md) | 40 个候选实施阶段、依赖、实际交付与验收 | architecture、research |
 | [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
 | [m1-acceptance.md](m1-acceptance.md) | 已批准的M1自动化工程验收、模型盲评与丢失账本保守结转；生产human gate不变 | m1-evolution、s10-evolution、用户本轮确认 |
+| [m1-feedback-evaluation.md](m1-feedback-evaluation.md) | U13确认的原链路反馈来源、根因/干预分离、质量/案例/评价版本契约及先契约后双域试点工作包；尚未实现 | S05、S10、m1-acceptance、领域扩展研究 |
 | [m1-evolution.md](m1-evolution.md) | 首批双入口成长、局部自动启用与恢复的具体讨论设计 | architecture、decisions |
 | [s01-baseline.md](s01-baseline.md) | S01 的具体案例、报告契约、预算、验证和退出条件 | decisions、当前代码入口 |
 | [s02-sources.md](s02-sources.md) | S02 最小 source / reference / validity、预算与无迁移边界 | m1-evolution、当前 authority |
@@ -71,7 +72,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。下一只复核 M1 验收与集成前置条件：本入口 → s10-evolution → m1-evolution / delivery M1 → 同一 Record；需要追溯原 authority 时再读 S05–S09。D0–D4 保持，D4 模块不成为 M1 新依赖；不重读全量研究、不进入 S11 / G。
+S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §9/§10 → s10-evolution → m1-feedback-evaluation → S05 → 同一Record；本次F0契约完成，下一工作包仅F1原链路最小实现，不直接发试点请求。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -115,6 +116,7 @@ D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Wo
 | S08 | Complete；原 Prompt / Preset authority body candidate / exact binding | Native immutable closure / Route CAS、ordinary RP Workspace pin、下一 request / run 消费；7 suites / 68 tests |
 | S09 | Complete；原 Workspace 参数 exact binding / rollback、Project pristine Task repair candidate / CAS | 8 suites / 105 tests；单字段 / whole base / conflicts；运行开始后 Project 不热改，手动 apply 无晋升资格 |
 | S10 | 工程交付完成；实际模型改善待验收 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
+| M1反馈/评价补充 F0 | 契约设计完成，F1–F3尚未实施 | U13：先原链路契约，后各一个RP/Project试点；原门槛/authority保持，无新模型请求 |
 | S11–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
 S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一 checkpoint 只复核 M1 验收与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
@@ -140,3 +142,7 @@ S10 阶段结束即停止；M1 退出条件未验收，不合并 main，不进�
 用户批准由agent代劳自动化工程验收与旧预算保守结转，详细退出门槛 / 有限预算唯一归属 [m1-acceptance](m1-acceptance.md)。生产automatic promotion仍沿S10原human / price gate；工程报告不伪造人工标签、不证明净收益。当前只执行M1，实际结果待取得，不进入S11 / G。恢复先核对actual refs / HANDOFF，再读本模块 / S10和同一Record。
 
 M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；本地五套61 distinct tests通过，生产S10门槛源码不变。实际模型结果待执行，不能将接线完成计作改善通过。
+
+## 2026-10-09 原链路契约先行
+
+用户U13确认先明确原反馈与评价契约，再用各一个RP/Project试点验证。详细新契约唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点/调用范围归m1-acceptance，研究不再作为直接实施依据。本轮只冻结F0设计并停止；product仍a61b249ef、M1未达标、累计761/2939582，main未合并。后续F1→F2→F3各包结束保存同一Record/HANDOFF并停止，不新增S/G阶段，不降低原门槛。

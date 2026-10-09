@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与丢失账本保守结转
 
 - Updated: 2026-10-09
-- Status: 2026-10-09单次8000局部修改续接结束，累计701/2717515。RP两个有效partial/variant夹具失败，Project两primary胜/authoring严重回归及review gate失败，实际Step grade404；development未达标，新v2九对/闭环未执行，M1 pending、不合并main。
+- Status: 2026-10-09来源读取修复有限周期已结束，实际累计761/2939582。RP一致胜1/3且两分歧/continuity负差，Project三一致tie；development未达标，新promotion/闭环未执行。领域研究后U13确认契约先行，F0设计完成，F1–F3未实施；M1 pending、不合并main、不进入S11/G。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 - 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
 
@@ -111,3 +111,13 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 本轮development固定当前case set49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b，每入口三个v1场景各一次新candidate/baseline比较及双模型单次评分，免费stale challenge不占actual六次send的已修正revision保持。已有旧评分与候选不覆盖、不改解释；本轮无第二次修复或重提炼。完整双模型≥2一致candidate/其它tie/重要维度非负/原checks与funding全通过后，才冻结候选并执行一次v2每入口九对/六一致胜及原publication/next-run/rollback。若development失败则不发promotion。v1已用于诊断，不冒充未见材料；v2未作为提炼输入，来源隔离及revision沿§6/7，合成案例只证明有限工程效果，不能称真实用户反馈泛化或持续自迭代已验收。原生产human/price/budget gate保持；只最小相关验证，提交推送同一Record/live HANDOFF后停止，不合格不合并main、不进入S11/G。
 
 本周期结束：paid source a61b249ef，run-1791509036919-99e55d4c，每入口三个development pair与双模型观察完整，12 arms全部原checks通过。RP primary candidate/tie/candidate、Step tie/candidate/candidate，仅一项一致胜且primary continuity=-1，准入失败；Project两模型三项均tie/各维度0，准入失败。authoring candidate恢复get_project→plan/save/review，原review/single_changeset通过；conflict两arm保留human revision冲突，repair两arm一轮修复并review，证明当前基线在这三个简单任务已满足原目标，未显示行为改善空间，不改旧九tie解释或降低门槛。Step六次有效评分均成功，旧七stopped窗口/epoch与账目保持，有限许可消耗6/24且development一次claim已固定。未执行新promotion/发布/消费/回滚，不冻结资格。本轮59/218466，累计761/2939582、492reported/17unknown74948、pending0/lock0；24相关本地tests/触及lint/syntax通过，零发送acceptance和重复development均被拒绝，五累计文件hash不变。保持M1 pending并停止，不进入S11/G。后续若扩大行为案例，须先正式固定真实来源、case revision和独立隔离，不能继续用已指导修改的v1充当未见验收。
+
+## 10. 2026-10-09 原链路反馈与评价契约先行
+
+U13确认先明确原链路契约，后各一个RP/Project试点。详细设计及F0–F3工作包见 [m1-feedback-evaluation](m1-feedback-evaluation.md)，部署/生产准入仍归S10。本轮F0只更新Plan/Record/HANDOFF，不发模型请求、不改产品。下一F1实现与最小本地验证完成后停止；再F2取得来源/可完成路径与case/profile/calibration revisions，最后F3一次有限试点。
+
+原§2工程退出门槛与§9 development准入保持。每域一个pilot不表示减少正式场景/对数：仍三个development pair、双模型至少2一致胜/其它tie/重要维度非负才冻结；promotion仍每域三个独立场景×三次、九对至少六一致胜/其它一致tie与重要维度非负，再原私有review→下一run消费→rollback。旧已指导修改的v1与仅换名v2不作为新资格材料，历史reports不改。
+
+F2任何真实source probe/calibration之前须先记录该阶段的exact来源、head/config/request身份、有限发送范围和当前失败窗口处理；F3付费之前须再固定完整case/input/source/lineage/profile/rubric/calibration/evaluator pins、候选/提炼来源、逐步范围和报告位置。本模块届时保存具体实验范围，不将设计估算416send当本轮许可或追加API硬限，不因U13自动复用旧Step许可剩余额度、清stop或新epoch。若source不就绪/基线饱和/校准不可判别，报告并结束该包，不拿旧合成材料凑数。
+
+所有失败/unknown/额外发现/校准/提炼/judge/消费按原761/2939582 ledger/quota/rate累计；API仅2000/day、20RPM硬限、每次输出最多8000、token建议超额通知后继续，原有限失败停止规则保持。工程humanPreference=not_observed/价格未知保持，production自动发布不绕human/price/budget gate。未达标不合并main，阶段结束停止，不进入S11/G，用户无需手测。

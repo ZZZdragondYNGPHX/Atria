@@ -21,6 +21,8 @@
 建议保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation；M3 开始前要求 G06 完成。M1 不等待 M8。S01–S10 工程链路已交付，S10 的原局部 authority / 有限预算 / 隔离评测 / publication / rollback / 双入口 UI 见 s10-evolution。真实六槽基线与六对比较保留，候选仍 ineligible；本轮假 provider 不证明实际质量 / 成本收益。下一只复核 M1 验收与集成前置条件，阶段收尾停止；不合并 main、不进入 S11 / G。
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
+
+2026-10-09 U13确认M1先补原反馈/评价契约，再各一个RP/Project试点。补充工作包F0–F3及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点门槛/有限发送范围归m1-acceptance §10；不新增正式S/G阶段，不降低M1退出条件。本轮F0设计完成，下一仅F1最小消费者实现，包末更新同一Record/HANDOFF并停止。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
 
 ## 2. D0 / D1

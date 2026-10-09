@@ -954,3 +954,19 @@ Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229
 本轮无模型API发送、无新增人工标签、无真实用户聊天扫描/导出、无新候选或评分，仍 **761 requests /2939582记账tokens**、17unknown/74948、pending0/lock0；失败stop/epoch和6/24历史许可不变。最小验证：研究/最新Record/HANDOFF的14处本地链接及锚点、表格列数和代码围栏检查通过，产品源码链接对应文件存在，文档diff检查通过；五dirty文件加五累计状态文件10/10字节SHA保持，product clean且HEAD/main符合固定值，已批准Plan模块未变。未执行产品tests/build/CI/UI/Android/外部DB，main未合并。研究稿与同一Record/live HANDOFF仅提交docs相关文件，五无关dirty草稿不提交。
 
 下一checkpoint是与用户讨论并决定真实来源/用途、首个领域pilot/时间尺度与关键维度、M1契约/后续实现分工、新case/rubric/calibration revision及有限验证范围；确认后才正式冻结Plan与实施。用户无需手测，不能反复重跑已指导修改的合成v1追分或把模型反馈伪装真人，M1仍pending，不进入S11/G。
+
+### 2026-10-09 原链路反馈与评价契约 F0（设计完成）
+
+用户明确选择“先明确原链路的反馈与评价契约，再用各一个 RP、Project 试点验证”，已记U13；批准先后方向，具体逻辑字段/工作包是授权范围内工程细化，不冒称逐字段用户确认。Start docs `56151bfb8c0eff40e00b4234add851b4bbd82afa`；product `a61b249ef71f108d279ec7bd883fb5eeae97a463` clean，main `ed1fd90521a63363e29856601abbf5e908c99d10`，五无关dirty保护。本轮按actual Git→HANDOFF→index→acceptance §9/S10→同一Record及S05/直接源码核对，没有重新全量调研或读取reference。
+
+正式补充设计保存于原Bundle的 [m1-feedback-evaluation](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md)，并在index/decisions/M1/S05/S10/delivery/acceptance中路由，详细新规则只保留该模块一份，原生命周期/部署/生产gate/工程门槛仍由原模块管理。修正acceptance页首过期701状态为实际761/2939582，历史§7–§9报告不改。
+
+本阶段完成四组契约：原Experience中独立assessment provenance与零模型反馈供给；diagnosis根因及intervention路由；原固定evaluator的QualityProfile/case lineage/envelope/report；调用与失败/cost用途。自动分析不写explicit=user，RP client完成观察不升级Host正式outcome；语义片段核验不证明原因，弱信号与模型怀疑不取得确定方向。确定性质量proof只覆盖固定predicate；RP无法取得这种proof时仍unknown/undetermined，有限私有engineering调查也须明确test-only且复用原提炼/targets，不放开production gate。校准/promotion内容不回流开发feedback，发布/评测事件不递归优化。
+
+新Experience v2与case/report版本是设计，尚未产品实现；建议原资源内CAS迁移、read-only不写、旧项不洗来源、unknown拒绝、旧依赖失效、generic dump/restore/deleteUser及容量/retention兼容。未注册新资源、不运行真实迁移。F1必须让这些字段被实际consumer使用，不是仅存schema。RP试点收窄为信息边界内叙事回应/character Skill body；Project为关联修改与可核查完成/user style body。每试点保留三开发/三独立场景及原重复门槛，原重要维度/guards保留，新增领域收益要进入实际评价；不声明全领域或长程能力。
+
+工作包F0契约→F1最小原链路实现→F2来源/校准及实际有限范围→F3一次双域试点，各包保存同一Record/HANDOFF后停止，不新增S/G阶段。缺真实获准来源可用有实际产品用途的agent隔离工作负载但明确synthetic，无headroom或calibration不可判别则停止，不伪造失败/人类标签。416send仅无retry的结构估算，不是本轮许可或新增API硬限；F2任何付费探测前与F3试验前各固定actual pins/范围及原Step窗口处理，不恢复旧6/24许可或清stop。
+
+原账目结构重新核对：历史carry252/1000000 +509 entries=761/2939582；492reported、17unknown计74948，全settled。quota carry332+429 unique admissions，所有IDs在原ledger，minimum3151ms、滚动一分钟峰值11；九窗口/七stop保持，lock0。首次审计脚本误按list读取dict entries产生KeyError，改用dict.values后核对通过；未改任何账目。文档补丁首次有错误delivery上下文校验失败，原子拒绝后修正上下文再应用，无部分Plan写入。没有模型请求/人工标签、产品测试/build/CI/UI/Android/外部DB或产品修改。
+
+最小验证完成：10份相关文档100处本地链接/锚点、28个表格结构和代码围栏有效；工作包/模块路由核对通过；原acceptance §2退出门槛与§9最新paid周期逐字保持，S05/S10/Record仅追加，416send估算加总正确；普通及staged diff检查通过。五草稿/五累计状态文件10/10 SHA保持，product clean且HEAD/main固定。仅提交本轮10份相关docs，未提交无关dirty草稿或私有数据。下一仅F1，直接落实最小消费者而不重开已确认方向讨论，不进入F2/F3。M1仍pending、不合并main、不进入S11/G，用户无需手测。

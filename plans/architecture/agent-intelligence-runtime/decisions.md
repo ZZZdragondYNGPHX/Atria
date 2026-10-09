@@ -17,6 +17,7 @@
 | U9 | 拉取远端，先读现有 Plan，再读三份研究并综合更新正式架构企划 | 2026-10-06 本轮明确请求；授权企划更新，不授权提前实施后续阶段 |
 | U10 | 读取 Reasoning Continuity 研究，将已确认架构结论融入当前企划，沿既有正式术语消除重复概念 | 2026-10-06 本轮明确请求；仅授权企划整合 |
 | U11 | 读取 Execution Reuse / Cache Locality / Adaptive Invocation 研究，将已确认架构结论整合进当前企划，并参考 Reasoning Continuity 避免重复定义 | 2026-10-06 本轮明确请求；仅授权企划整合与必要 Record / HANDOFF |
+| U13 | 先明确原链路的反馈与评价契约，再用各一个 RP、Project 试点验证 | 2026-10-09 用户明确选择契约先行；不把研究全范围或具体字段冒充逐项批准 |
 
 2026-10-07新增U12：用户不愿本人验证，授权agent代劳，并对保守结转旧预算 / 新有限额度 / 自动检查与模型盲评的确认提问回复“统一”（按上下文同意处理）。M1工程验收改按 [m1-acceptance](m1-acceptance.md)；生产human gate、有限scope / guards与默认review保持。具体数值与恢复schema为该方向内的工程冻结，不冒称用户逐字段批准。
 2026-10-08用户明确测试API仅每日2000次调用 /20RPM为硬限，无token要求，其它预算为建议、超出立即报告且继续；覆盖U12早期测试budget /token验收语义。详细执行与保守quota见m1-acceptance，不修改生产自动权限。
@@ -144,3 +145,11 @@ U11 授权将新研究的架构结论纳入正式企划；下列是该范围内�
 
 D4 仅完成文档整合，D3 §7 详细规则保持原样；M1 范围、三类候选、局部自动默认、预算与完整 M1 后集成保持。S01–S03 状态不变，下一产品阶段仍 S04，不因新研究提前实施 G 阶段。
 未冻结：物理 API / Schema / key、容量 / TTL、细粒度依赖覆盖、工具 / 模板 / 模型支持矩阵、semantic 阈值、prewarm 默认、数字 SLO、真实收益和 Local backend / 算法选择。进入对应阶段前明确有限 consumer、兼容 / 迁移 / 删除 / 撤回及实际验证。本轮不授权付费请求、probe、prewarm、connection / privacy 改动、GPU engine 或 learned routing 自动发布。
+
+## 8. M1 反馈与评价契约先行（U13）
+
+U13批准先后顺序。原链路补充设计唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)；F0本轮完成，后续F1原消费者实现、F2来源/有限范围固定、F3一次双域试点各包结束停止。这些是当前M1工作包，不增加S/G正式阶段或新authority。
+
+已纳入的工程边界：自动质量分析独立于user explicit、client observation与Host正式outcome；根因与intervention分开，非局部writer问题转工程；versioned quality/profile/case lineage接原固定evaluator，原开发/独立验收与发布门槛保持；每域一个pilot/单target/一次候选周期。新逻辑字段/兼容策略不是已实施schema，具体validator和请求identity在相应工作包、模型发送前固定。
+
+现有761/2939582与失败窗口保持，不恢复旧6/24许可、不重跑合成v1追分，不伪造human。未授权扩大writer、自动改rubric/连接/模型路由、长期状态或跨任务知识库；本轮无付费调用。M1未达标，不合并main、不进入S11/G。

@@ -2,20 +2,28 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Updated: 2026-10-09
-- Checkpoint: 必要来源读取修复的有限周期保持结束；RP / Project 全领域扩展研究与差距分析完成，等待用户讨论确认方向，未冻结新Plan或开始优化。M1 pending，不集成，不进入S11/G。
+- Checkpoint: U13已确认先原链路反馈/评价契约、后各一个RP/Project试点；F0契约设计已冻结，产品尚未实现，下一仅F1最小消费者实现。旧有限优化周期结束，M1 pending，不集成，不进入S11/G。
 - Product: `feat/agent-intelligence-runtime@a61b249ef71f108d279ec7bd883fb5eeae97a463`，实现及paid source已commit/push。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 - Docs: 沿同一Plan/Record，执行前核对actual HEAD；五无关dirty docs保持，不提交它们。
-- Read: 实际Git → [index](plans/architecture/agent-intelligence-runtime/index.md) → [M1 acceptance §9](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [同一Record最新周期/Final state](records/refactor/agent-intelligence-runtime.md)。不读写reference。
+- Read: 实际Git → [index](plans/architecture/agent-intelligence-runtime/index.md) → [M1 acceptance §9/§10](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [新反馈/评价契约](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md) / [S05](plans/architecture/agent-intelligence-runtime/s05-feedback.md) → [同一Record最新周期/Final state](records/refactor/agent-intelligence-runtime.md)。不读写reference。
 - 讨论材料：[RP / Project 领域扩展研究](plans/architecture/agent-intelligence-m1-domain-evolution-research.md)。该文是研究建议，不是新增authority或批准后的Plan模块。
 
-## 当前研究 checkpoint
+## 当前契约 checkpoint（F0完成）
+
+用户回复“先明确原链路的反馈与评价契约，再用各一个 RP、Project 试点验证”，已在decisions记录U13。正式设计详细权威为 [m1-feedback-evaluation](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md)：在原Experience内以版本化类型区分自动分析与user/client/Host正式outcome；零模型完成/结果采集不升级RP client trace来源；诊断根因与可写target分离；固定QualityProfile/case lineage/envelope/report消费者接原evaluator，弱信号/语义未知不取得确定方向，生产发布gate保持。
+
+工作顺序F0契约→F1原链路最小实现→F2来源/校准/实际有限范围→F3一次双域试点，每包结束更新同一Record/HANDOFF并停止。各域试点：RP信息边界内的叙事回应（原character Skill body），Project关联修改与可核查完成（原user Preset system.style body）；每pilot仍三个development场景、三个独立promotion场景及原重复/准入。真实来源优先已明确获准refs；缺材料可用agent隔离工作负载但标synthetic。source_unready/baseline_saturated/calibration_failed应停止，不能伪造失败/人工标签或改旧评分。
+
+本轮仅F0，起始docs56151bfb8，product仍a61b249ef clean、main ed1fd905未合并；761/2939582、pending0/lock0、九窗口七stop与6/24旧claim保持，零模型请求。费用/shape估算不是发送许可，F2探测前和F3实测前各固定实际pins/范围及Step窗口处理；不直接复用旧剩余额度。最小验证通过：10文档100本地链接/锚点、28表格、围栏/路由及diff；原acceptance §2/§9逐字保持；原账目结构与五草稿/五累计文件10/10 SHA保持。下一无需重开方向讨论，按F1落实schema/兼容/采集/根因路由及固定consumer，暂不发试点请求；实际实现和测试还未完成。
+
+## 前序研究 checkpoint
 
 2026-10-09 领域扩展研究沿product a61b249ef、起始docs 6f1c18056完成。核对M1/S10/acceptance §9、S05及直接相关源码，再阅读GEPA/DSPy、RP-Bench、PHASE-Tree、NCP-Bench、Narrative State Tracking Agent、Novel Benchmark、judge偏差/校准与agent eval一手资料。报告包含已实现/计划/缺失矩阵、RP十三维与Project十一类质量、通用控制/领域模块职责、交叉冲突与回归、真实问题发现、根因路由、隔离与版本契约、成本/缓存方案；每项区分源码事实、Atria有限实测、论文实证、作者报告和待验证架构建议，并注明研究设置边界。
 
 建议讨论方向：复用原Experience/evaluator/targets与authority；系统策略、角色成长、用户偏好与正式事实分别管理；先确认真实outcome/feedback供给、问题来源与评价可判别性，再决定领域pilot。Prompt/Context/state/runtime/evaluator根因与可写target分开，无M1 writer的修复转工程任务。GEPA搜索集合/Pareto成绩不能授予独立验收资格；新case按原episode/Project/派生任务分组隔离，不靠换名恢复盲性。文学、连续性与实际运行必须各有证据，不能用单轮文风/模型一致证明长期体验。
 
-九项契约是供正式Plan讨论的预留建议，不已实施，也不自动扩大M1退出范围；M2/M3/G、训练/自由多目标搜索与额外writer延后。待用户确认真实来源及用途、首个pilot的时间尺度/关键维度、M1最小契约与后续分工、新case/rubric/calibration revision及有限发送范围，才正式开工。本轮零模型发送，761/2939582与原窗口保持，产品和批准后的Plan均未修改；文档最小检查及受保护字节核对见同一Record最新节。用户无需手测。
+研究中的九项契约为待取舍建议，未实施；M2/M3/G、训练/自由多目标搜索与额外writer延后。后续U13已选择契约先行，正式收窄方案以上方F0 checkpoint及新模块为准，其余研究不自动取得实施批准。该研究轮零模型发送，761/2939582与原窗口保持，未修改产品或正式Plan；其文档最小检查见同一Record历史节。用户无需手测。
 
 ## 本周期实际结果
 
@@ -44,8 +52,8 @@ Summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229c707e
 
 4 relevant suites/24 distinct tests通过：retry/有限续接11、局部edits4、原worker development选择/免费challenge3、development/engineering gates6；触及syntax/ESLint/diff通过。结束零send acceptance拒绝cycle_development_gate_failed，重复development拒绝step_continuation_already_used_or_failed，五累计文件byte SHA不变、lock0。五无关dirty docs hashes保持，无full/build/CI/UI/Android/外部DB。
 
-用户准备在另一台设备先调整方向、让AI调研再优化。下一先界定真实任务/反馈和行为失败，再正式固定新的代表性case revision、development/独立验收隔离与有限范围；不要反复重跑已用synthetic:v1，不降原门槛，不伪造人工观察。M1仍pending，main不合并，不进入S11/G，用户无需手测。
+来源/案例与领域扩展调研已完成，用户U13已选契约先行。本轮F0完成后下一仅F1最小实现；F2再固定新的代表性case revision、development/独立验收隔离与有限范围。不要反复重跑已用synthetic:v1，不降原门槛、不伪造人工观察。M1仍pending，main不合并，不进入S11/G，用户无需手测。
 
 私有迁移包已逐文件SHA核验并包含3914个当前Document文件、五dirty docs原件和Atria-Dev完整Git历史bundle；bundle旧Document不能代替当前761账目，恢复时以包内最新Document覆盖旧Git快照的Document，新设备重绑local Git keys/ACL。用户明确指定的GitHub ZZZdragondYNGPHX/Atria-Dev已在账户授权后删除（delete exit0/同账号GET404），产品仓库Atria仍可访问，本机私有副本和包保留；详见同一Record/包内PORTABLE-HANDOFF。无新增模型请求。
 
-接手提示词：**先核对actual Git与迁移后的私有Document/账本，再读docs:HANDOFF→M1 acceptance §9/S10→同一Record及链接的领域扩展研究，沿761/2939582 ledger/quota/rate/windows。产品a61b249ef，main未合并。RP一致胜1/3且分歧/continuity负差，Project三一致tie但原目标/guards完整，Step六真实grade成功，旧stop保留；本有限周期已结束。RP/Project全领域研究已完成，先与用户讨论来源、首个pilot/根因路由、M1契约与后续分工、新case/独立隔离及有限范围，确认后再正式更新Plan和开工；不要重复调研或自动实施研究建议，不把合成v1当真实用户或未见验收。保持原Experience/evaluator/targets与authority、每入口九对六一致胜/其它tie/重要维度非负及原消费/发布/回滚门槛，最大输出8000，API仅2000/day和20RPM硬限，所有失败/未知usage照记；token建议超额通知后继续，只最小相关本地验证，不要求用户手测、不进入S11/G。**
+接手提示词：**先核对actual Git与迁移后的私有Document/账本，再读docs:HANDOFF→index→M1 acceptance §9/§10/S10→m1-feedback-evaluation/S05→同一Record，沿761/2939582 ledger/quota/rate/windows。产品a61b249ef，main未合并，M1未达标；旧有限周期已结束，Step六真实grade成功仍保留旧stop和6/24已用claim，不复用剩余额度。U13已确认先原链路契约、后各一个RP/Project试点，F0设计完成；本轮仅F1最小消费者实现与相关本地验证，完成同一Record/HANDOFF后停止，不自动进入F2/F3。复用原Experience/evaluator/targets与authority，自动分析不能伪装user/Host outcome，根因和intervention分离，新schema需兼容/失效/删除及用途隔离；固定profile/case/report接原consumer。试点方向RP信息边界内叙事回应、Project关联修改与可核查完成；新实际来源/独立case revision及有限发送范围在F2再固定，不重跑合成v1追分。原每入口九对六一致胜/其它tie/重要维度非负及消费/发布/rollback门槛保持，最大输出8000，API仅2000/day/20RPM硬限，所有失败/unknown usage照记，token建议超额通知后继续；用户无需手测、不合并main、不进入S11/G。**
