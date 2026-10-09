@@ -6,7 +6,7 @@ import { runRp, runProject } from '../../src/native/agent-intelligence/evaluatio
 import { withIsolatedRuntime } from './runner.js';
 import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
+import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence, f2SourceMessages, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
 
 const judgeConfig = () => ({ connection: { providerAdapter: 'provider.openai-compatible' }, model: { limits: { contextTokens: 32000, outputTokens: 8000 } },
     generation: { output: { maxTokens: 8000 }, streaming: { enabled: false } }, route: { generationProfileRef: { revision: 'old' } },
@@ -118,6 +118,10 @@ test('source readiness assessments require all dimensions and literal evidence, 
     value.dimensions[entry.behaviorDimensions[0]] = { status: 'gap', quote: 'Invented evidence', rationale: 'Claim.' };
     expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
     expect(f2CalibrationMessages({ messages: [] })[0].content).toContain('512 characters');
+    const pair = { case: entry, baseline: { output: quote } };
+    const messages = f2SourceMessages(pair);
+    expect(messages[0].content).toContain('invented mandatory procedures');
+    expect(hash(messages)).not.toBe(hash([{ ...messages[0], content: 'Different assessor contract' }, messages[1]]));
 });
 
 test('Project source evidence removes duplicated old history while retaining conflict, operations and human source', () => {

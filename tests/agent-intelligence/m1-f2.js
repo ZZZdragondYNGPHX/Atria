@@ -111,6 +111,13 @@ export function f2SourceEvidence(pair) {
         error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
 }
 
+export function f2SourceMessages(pair, evidence = f2SourceEvidence(pair)) {
+    return [
+        { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. In RP, invented mandatory procedures, permissions, eligibility conditions or penalties asserted as established world rules require exposed support; do not treat these binding claims as ordinary atmospheric description or infer support from fluency. Creative NPC gestures and diction do not authorize new binding rules. Prefer copying a complete baseline.facts line verbatim as the quote; do not reconstruct partial JSON objects or omit fields inside a quoted object. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
+        { role: 'user', content: evidence },
+    ];
+}
+
 export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal, resume = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
     if (hash(primaryConfig) !== scope.configurations[kind].primary || hash(secondaryConfig) !== scope.configurations[kind].secondary) throw new Error('f2_configuration_changed');
@@ -120,7 +127,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     const job = { id: 'm1-f2-' + randomUUID(), scopeId: doc.scopeId, domain, price: null, targetPin: doc.policy.targetPin };
     if (resume && (!Array.isArray(resume.calibration) || resume.calibration.length > 12 || resume.calibration.some(g => !g.passed)
         || new Set(resume.calibration.map(g => g.group + ':' + g.flipped + ':' + g.label)).size !== resume.calibration.length)) throw new Error('f2_resume_changed');
-    if (resume?.report && (resume.report.domain !== domain || resume.calibration.length !== 12
+    if (resume?.report && (resume.report.domain !== domain
         || resume.report.origin !== 'host_source_probe' || resume.report.caseSetRevision !== PILOT_CASE_SET_REVISION
         || resume.report.configurations.baseline !== hash(primaryConfig) || resume.report.settings.baseline !== hash(settings)
         || resume.report.pairs.length !== 3 || resume.report.pairs.some(p => p.candidate !== null || p.judge !== null || p.human !== null
@@ -146,7 +153,8 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             const passed = control.expected === 'uncertain' ? raw.preference === 'uncertain' && raw.deltas && !Object.keys(raw.deltas).length
                 && typeof raw.rationale === 'string' && raw.rationale.length <= 512
                 : raw.preference === control.expected && normalized?.preference === 'candidate'
-                    && Object.values(normalized.deltas).every(v => v >= 0) && Object.values(normalized.deltas).some(v => v > 0);
+                    && Object.values(normalized.deltas).every(v => v >= 0) && Object.values(normalized.deltas).some(v => v > 0)
+                    && (control.requiredPositiveDimensions || []).every(d => normalized.deltas[d] > 0);
             entry.calibration.push({ group: control.group, flipped: control.flipped, label, passed, preference: raw.preference,
                 configurationHash: hash(config), transportConfigurationHash: hash(transportConfig), messagesHash: hash(messages) });
             store(kind + '-f2-calibration.json', entry.calibration);
@@ -165,9 +173,10 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
         const assessments = [];
         for (const pair of report.pairs) {
             const evidence = f2SourceEvidence(pair);
+            const messages = f2SourceMessages(pair, evidence);
             const observations = [];
             for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
-                const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label);
+                const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label && o.messagesHash === hash(messages));
                 if (prior) { const priorEvidence = prior.evidenceVariant === 'full_v1' ? canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline }) : evidence;
                     if (prior.evidenceHash !== hash(priorEvidence)) throw new Error('f2_resume_changed');
                     parseF2SourceAssessment(JSON.stringify(prior), pair.case, priorEvidence); observations.push(prior); continue; }
@@ -177,11 +186,9 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                     { ...payload, arm: 'judge' }, signal, async () => {})).raw);
                 try {
                     const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':source-assessment:' + pair.case.caseId,
-                        fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages: [
-                            { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Prefer copying a complete baseline.facts line verbatim as the quote; do not reconstruct partial JSON objects or omit fields inside a quoted object. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
-                            { role: 'user', content: evidence },
-                        ] });
+                        fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages });
                     observations.push({ label, origin: 'model_source_assessment', configurationHash: hash(config), transportConfigurationHash: hash(transportConfig), evidenceHash: hash(evidence),
+                        messagesHash: hash(messages),
                         ...parseF2SourceAssessment(response.response.assistantText || response.response.text, pair.case, evidence) });
                 } finally { bridge.cleanup(); }
             }
