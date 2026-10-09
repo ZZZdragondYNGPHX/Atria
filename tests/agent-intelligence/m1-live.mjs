@@ -365,13 +365,13 @@ try {
             const owner = await f.repository.owner(f.h.handle);
             await f.service.budget(f.h.handle, { expectedSequence: owner.sequence, limits: { maxRequests: 260, maxTokens: 699536, minIntervalMs: 3150 } });
             const secondary = connections[1];
-            if (!resumed) await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: boundedCycle ? { ...secondary.config, maxOutputTokens: Math.min(8000, secondary.config.maxOutputTokens) } : secondary.config,
-                secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } });
+            const seededSecondary = !resumed ? await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: boundedCycle ? { ...secondary.config, maxOutputTokens: Math.min(8000, secondary.config.maxOutputTokens) } : secondary.config,
+                secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } }) : null;
             const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
             const secondaryRoutes = [];
             for (const route of routes.filter(r => r.role === 'role.orchestrator')) {
                 const model = await f.host.persistence.getModelProfile(f.h.handle, route.modelProfileRef.modelProfileId);
-                if (model.remoteModelId === secondary.config.model) secondaryRoutes.push(route);
+                if (model.remoteModelId === secondary.config.model && (!seededSecondary || route.runtimeRouteId === seededSecondary.routes.orchestrator.runtimeRouteId)) secondaryRoutes.push(route);
             }
             if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
             const secondaryRoute = secondaryRoutes[0];

@@ -111,7 +111,7 @@ export async function createLiveBridge({ engine, handle, config, secretPort, fet
         routesHash: hash(routes), modelHash: hash(model), providerAdapter: 'provider.openai-compatible',
         model: config.model, tokenizer: config.tokenizer, upstreamStatus: 'unavailable', priceStatus: 'unavailable' };
     return {
-        identity, budget, timeoutMs: config.timeoutMs,
+        identity, budget, timeoutMs: config.timeoutMs, routes: structuredClone(routes),
         observations: () => structuredClone(attempts),
         async rp({ requestId, trialId, fixtureHash, messages, tools, signal, onSend, kind = 'model' }) {
             if (active) throw new Error('Live evaluation requires serial transport');
