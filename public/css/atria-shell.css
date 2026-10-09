@@ -4,7 +4,7 @@
  * Layout authority for the Atria frame (sidebar / toolbar / content /
  * inspector / tab bar / transient layers) plus the host-level rules that keep
  * legacy compatibility DOM and the Native Play generation ABI in place.
- * Visual language: docs/plans/atria-product-frontend-redesign-design.md.
+ * Visual language: docs:plans/refactor/atria-product-frontend-redesign/DESIGN.md.
  */
 
 :root[data-atria-appearance] {

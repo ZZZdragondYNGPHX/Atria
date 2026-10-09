@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Repository governance is maintained in `docs:README.md` (read locally with `git show docs:README.md`). This guide describes contribution steps; current user instructions and governance define the active task boundaries. Historical plans and handoffs under `main:docs/` are snapshots, not current execution instructions.
+Repository governance is maintained in `docs:README.md` (read locally with `git show docs:README.md`). This guide describes contribution steps; current user instructions and governance define the active task boundaries. Plans, implementation records and the live handoff are maintained only in the independent `docs` branch; `main:docs/` contains product and development documentation.
 
 Thank you for your interest in the Atria project! This document explains how to contribute code, documentation, and other improvements to Atria.
 

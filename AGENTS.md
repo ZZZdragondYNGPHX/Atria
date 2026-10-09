@@ -26,7 +26,7 @@
 只读取当前任务真正需要的上下文：
 
 - 新普通任务：本文件 + 直接相关代码/测试。
-- `main:docs/` 中产品说明用于理解功能；保留的 `docs/plans/**` / `docs/handoff/**` 是历史快照，不作为当前任务限制或实时恢复入口。当前企划、实际结果与实时路由分别归 `docs:plans/**`、`docs:records/**`、`docs:HANDOFF.md`，避免多处重复执行指令。
+- `main:docs/` 维护产品使用与开发说明，不再保存 Plan / Record / HANDOFF 副本。企划、实际结果与实时路由统一归独立 `docs` 分支的 `plans/**`、`records/**`、`HANDOFF.md`，避免多处重复执行指令。
 - 续接/多阶段任务：核对真实 Git 状态，再读 `docs:HANDOFF.md` → 对应 Plan → 对应 Record。
 - Skill：只有用户或正式 Plan 明确要求时才加载；本地/CLI 优先直接使用环境中已安装的 Skill。不要为了模仿 Web 流程而绕读 `skills` 分支；仅在本地缺失、用户明确要求仓库副本，或 Plan 明确锁定仓库版本时读取 `skills:SKILLS.md`。
 - Reference：只读用户明确授权的 `reference/<project>`。
