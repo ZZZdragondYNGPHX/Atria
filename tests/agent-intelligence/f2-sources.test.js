@@ -113,6 +113,8 @@ test('Project source evidence removes duplicated old history while retaining con
         priorConflictTask: { taskId: 'old-task', baseRevision: 'old-base', status: 'conflict', operations: [{ toolName: 'atri_agent_project_save', operation: { operationId: 'old-operation', operationType: 'project.save', input: { source } } }], changeSets: [], timeline: ['duplicate'], inspection: source, workspace: source } };
     const pair = { case: entry, baseline: { output: canonical(original), checks: { review_gate: false, human_revision: true }, evidence: [], repairCount: 0 } };
     const projected = JSON.parse(f2SourceEvidence(pair)).baseline.output;
+    expect(JSON.parse(f2SourceEvidence(pair)).baseline.facts).toContain('Current source equals the recorded protected original source: true');
+    expect(JSON.parse(f2SourceEvidence(pair)).baseline.facts).toContain('Validated proposal: absent');
     expect(projected.source).toEqual(source); expect(projected.originalSource).toEqual(source);
     expect(projected.priorConflictTask).toEqual({ taskId: 'old-task', baseRevision: 'old-base', status: 'conflict', operations: [{ toolName: 'atri_agent_project_save', operation: { operationId: 'old-operation', operationType: 'project.save' }, inputHash: hash({ source }) }], changeSets: [] });
     expect(pair.baseline.output).toBe(canonical(original));

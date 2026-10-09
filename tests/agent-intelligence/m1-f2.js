@@ -81,7 +81,16 @@ export function f2SourceEvidence(pair) {
     if (pair.case.entrance !== 'project') return canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
     const output = projectSourceProjection(JSON.parse(pair.baseline.output));
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
-    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output, checks: checks ?? {}, evidence: evidence ?? [],
+    const facts = ['Fresh Task status: ' + output.status,
+        'Fresh Task validation: ' + (output.validation?.status ?? 'not available'),
+        'Validated proposal: ' + (output.validatedProposal ? 'present' : 'absent'),
+        'Current source equals the recorded protected original source: ' + (hash(output.source) === hash(output.originalSource)),
+        'Prior Task status: ' + output.priorConflictTask?.status,
+        'Prior Task writes: ' + (output.priorConflictTask?.changeSets?.length ?? 0),
+        ...['source', 'originalSource', 'validatedProposal'].flatMap(label => (output[label]?.package?.entryPoints || []).flatMap(point =>
+            ['worldIds', 'primaryWorldId', 'knowledgeBindingIds'].map(field => label + '.' + point.displayName + '.' + field + ': ' + canonical(point[field])))),
+        ...(output.validationHistory || []).map(row => 'Validation history: ' + canonical(row))];
+    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output, facts, checks: checks ?? {}, evidence: evidence ?? [],
         error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
 }
 
@@ -149,7 +158,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                 try {
                     const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':source-assessment:' + pair.case.caseId,
                         fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages: [
-                            { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
+                            { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Prefer copying a complete baseline.facts line verbatim as the quote; do not reconstruct partial JSON objects or omit fields inside a quoted object. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
                             { role: 'user', content: evidence },
                         ] });
                     observations.push({ label, origin: 'model_source_assessment', configurationHash: hash(config), transportConfigurationHash: hash(transportConfig), evidenceHash: hash(evidence),
