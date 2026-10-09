@@ -1322,3 +1322,12 @@ ZIP内10291个文件逐项SHA-256校验一致；密封metadata仍为 `7c47b310b6
 有依据修复 `81c201d9ef77e89a0371eb45f592bb980a0d29d8` 已push：明确empty-before追加只能包含新增文字、不能锚定完整base，after/rationale边界也向模型明确；维持原whole-base拒绝保护。每域增加两个focused source翻转控制，从既有冻结F2正例与unsupported_rule/communication_omission素材生成，验证真实缺陷对应的比较能力，不用另一source协议资格替代blind comparison。主模型八控制仍使用同一grade协议；旧六个exact已付费可复用，新增两个必须实测。未修改原F2 source controls、已判分结果或promotion sources。提炼反馈纳入此前公开development实际两arm，仍固定原report/candidate哈希并禁止复制case答案；要求具体执行前审查而不只笼统禁止，保留NPC动作/语气及玩家所有权。F3 34/promotion13检查通过（promotion fixture最初仍为旧六控制导致五个正例失败，更新合成fixture后13/13复测通过）；ESLint/diff通过。
 
 继续focused scope `fcdabed72608e5eeee754b181a812d88a06ac12f385a2014fe584e693b786cc8` 固定81c201d9e；私有calibration_snapshot `run-1791559978540-3819ab26` 保持原base fixture并逐字节携带最近真实owner fees，原attempt子集校验通过。再次基于实际根因推进，不对同一候选无变化复试；M1待当前实测结果及独立生命周期证据。
+
+
+focused run `run-1791559992820-9deff358` 新增3请求/14889 reported tokens，累计1173/6708747；RP遗漏处罚条款并给knowledge_boundary=0，Project正序focused通过但翻转漏报四必需维度，未提炼新候选。实际失败证明此前宽泛比较控制不足；不删除费用、不改分、不将未校准评委用于准入。
+
+逐维度协议修复 `8f442509772b48146e17f48a15ce2242321d8c0d` 要求两arm每必需维度met/gap/unknown、原文引用和有限理由再给差值；拒绝漏维、gap/met对比方向不一致、原文不存在的quote和winning-margin符号错误，记录时左右翻转恢复baseline/candidate标记。F3 35/promotion13检查通过，literal quote修改后F3 35复测通过；ESLint/diff通过。assessment scope `70a2e213cd182c7e738010d37f98ea8ef7b2fd51f209e581bcd439d40b15bc10` 的实际run `run-1791560307861-e0bc819d` 新增8请求/21515 reported tokens，累计1181/6730262，869reported/60unknown/252carry、pending0/lock0。RP原六宽控制有效，focused依然漏处罚；Project因引用真实JSON结构字段却被只检查字符串值的Host validator拒绝，属于校验器缺陷而非新模型负面质量证据。没有新候选或promotion。
+
+修复 `25e1aef0f2ed6e209520a9883fb9527c0bff24cf` 已push：quote校验接受实际完整展开的arm中literal JSON结构片段，仍拒绝不存在字段/值；明确合规单句不能抵消后半句无依据规则/处罚。为证据表明low思考遗漏知识边界，新增F3 comparison/extraction单独reasoning pin，用同一个主模型high，原F2 source low已付费资格及generation trial配置不变；新comparison transport/协议须完整重校准，不复用low控制。F3 36/promotion13检查通过、ESLint/diff通过。
+
+当前high scope `ed38e054ba959e762afb8d2c9efaccf59989daa45c174a3d7ee1f1085859700a` 固定25e1aef0f；私有owner-history snapshot `run-1791560546546-c05b199d` 逐字节保留最近真实owner费用。当前实际run `run-1791560552323-d562d77e` 正在校准；不调用第二模型、不宣称M1完成或恢复暂停。所有此前sealed/本地生命周期正例仅工程接线证据，不替代当前实际独立验收。
