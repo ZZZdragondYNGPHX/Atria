@@ -72,8 +72,10 @@ async function sendM1Bounded(evaluator, handle, job, config, payload, signal, fr
         : extraction ? payload.arm !== 'extraction' || payload.trialId !== job.id + ':extract' || job.price !== null
             : payload.arm !== 'judge' || !(job.id.endsWith(':independent') || job.id.startsWith('m1-secondary-diagnostic-') && job.id.endsWith(':diagnostic')) || job.price !== null) throw new Error(extraction ? 'm1_extraction_only' : 'independent_m1_grader_only');
     integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, config.model.limits.outputTokens);
-    if (payload.rendered.endpoint !== config.connection.endpoint || payload.rendered.body.model !== config.model.remoteModelId
-        || payload.rendered.body.max_tokens !== payload.outputTokens || payload.outputTokens !== config.generation.output.maxTokens
+    const body = payload.rendered.body;
+    const outputKeys = ['max_tokens', 'max_completion_tokens'].filter(key => Object.hasOwn(body, key));
+    if (payload.rendered.endpoint !== config.connection.endpoint || body.model !== config.model.remoteModelId
+        || outputKeys.length !== 1 || body[outputKeys[0]] !== payload.outputTokens || payload.outputTokens !== config.generation.output.maxTokens
         || payload.outputTokens > config.model.limits.outputTokens || hash(payload.rendered) !== payload.requestHash) throw new Error('m1_grader_transport_changed');
     if (payload.inputTokens + payload.outputTokens > config.model.limits.contextTokens) throw new Error('m1_grader_context_exceeded');
     const id = randomUUID();

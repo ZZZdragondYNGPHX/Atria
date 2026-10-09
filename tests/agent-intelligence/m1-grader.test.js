@@ -5,6 +5,7 @@ import { m1GraderConfiguration, sendM1Grader, m1ExtractionConfiguration, sendM1E
 import { m1TransportKey } from './m1-transport-key.js';
 import { M1RetryPolicy } from './m1-retry.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
+import { f2JudgeTransport } from './m1-f2.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 
 const cleanup = [];
@@ -33,11 +34,13 @@ test('authorized extraction uses 8000 on the original compiler/provider with a s
     expect(restarted.state(old).stopped).toBe('m1_response_incomplete'); expect(restarted.state(revised).recent).toEqual([false]);
 });
 
-test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { failure: false, output: 16384 }])('extended independent grader funds the original provider: failure=$failure output=$output', async ({ failure, output }) => {
+test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { failure: false, output: 16384 }, { failure: false, output: 16384, effort: 'low' }])('extended independent grader funds the original provider: failure=$failure output=$output effort=$effort', async ({ failure, output, effort }) => {
     let sends = 0, reserved;
     const f = await evolutionFixture(makeTempFsEngineHarness, 'project-strategy', { fetchImpl: async (_url, options) => {
         sends++;
-        expect(JSON.parse(options.body).max_tokens).toBe(output);
+        const body = JSON.parse(options.body);
+        expect(body[effort ? 'max_completion_tokens' : 'max_tokens']).toBe(output);
+        expect(body.reasoning_effort).toBe(effort);
         reserved = (await f.repository.owner(f.h.handle)).attempts.at(-1);
         expect(reserved.status).toBe('reserved');
         if (failure) throw new Error('fixture_transport_failure');
@@ -48,7 +51,8 @@ test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { 
     await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: { ...testConfig, model: 'independent', maxOutputTokens: output, contextTokens: 32000 }, secretPort: f.host.secretPort });
     const route = (await f.host.persistence.listRuntimeRoutes(f.h.handle)).find(r => r.role === 'role.orchestrator' && r.runtimeRouteId !== f.route.runtimeRouteId
         && r.modelProfileRef.modelProfileId !== f.route.modelProfileRef.modelProfileId);
-    const config = await m1GraderConfiguration(f.host, f.h.handle, route.runtimeRouteId);
+    const resolved = await m1GraderConfiguration(f.host, f.h.handle, route.runtimeRouteId);
+    const config = effort ? f2JudgeTransport(resolved, output, effort) : resolved;
     await expect(f.evaluator.configuration(f.h.handle, route.runtimeRouteId)).rejects.toThrow('supported exact bounded');
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = { id: 'fixture:independent', scopeId: doc.scopeId, price: null };
     let paid;

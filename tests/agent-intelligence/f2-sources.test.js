@@ -22,6 +22,12 @@ test('F2 judge streaming changes transport only and leaves the baseline configur
     expect(extended.resources[0].resource.output.maxTokens).toBe(16384);
     expect(extended.route.generationProfileRef.revision).toBe(extended.resources[0].ref.revision);
     expect(original.generation.output.maxTokens).toBe(8000);
+    const low = f2JudgeTransport(original, 16384, 'low');
+    expect(low.generation.reasoning).toEqual({ effort: 'low' });
+    expect(low.resources[0].resource.reasoning).toEqual(low.generation.reasoning);
+    expect(low.route.generationProfileRef.revision).toBe(low.resources[0].ref.revision);
+    expect(hash(low)).not.toBe(hash(extended));
+    expect(original.generation.reasoning).toBeUndefined();
 });
 
 test('calibration reuse requires the actual judge configuration and exact control messages', () => {
@@ -36,6 +42,7 @@ test('calibration reuse requires the actual judge configuration and exact contro
     const pinned = { ...row, configurationHash: hash(fullConfig), transportConfigurationHash: hash(f2JudgeTransport(fullConfig, 16384)) };
     expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 16384)).toBe(true);
     expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 20000)).toBe(false);
+    expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 16384, 'low')).toBe(false);
 });
 
 const captureFor = entry => ({ trialId: 'f2:' + entry.caseId, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },

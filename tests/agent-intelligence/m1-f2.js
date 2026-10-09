@@ -8,6 +8,8 @@ import { m1JudgeOutputConfiguration } from './m1-grader.js';
 export function validateF2Scope(scope, controls, identity, prepareOnly) {
     if (scope?.domainOrder && (!Array.isArray(scope.domainOrder) || scope.domainOrder.length !== 2
         || new Set(scope.domainOrder).size !== 2 || scope.domainOrder.some(kind => !['rp-skill', 'project-prompt'].includes(kind)))) throw new Error('f2_scope_changed');
+    if (scope?.judgeReasoningEffort && Object.entries(scope.judgeReasoningEffort).some(([label, effort]) =>
+        !['primary', 'secondary'].includes(label) || !['low', 'medium', 'high'].includes(effort))) throw new Error('f2_scope_changed');
     const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
     if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || scope.pilotCaseSetRevision !== PILOT_CASE_SET_REVISION
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12
@@ -48,14 +50,24 @@ export function f2CalibrationMessages(control) {
     return [...messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.' }];
 }
 
-export function reusableF2Calibration(row, control, label, config, judgeOutputTokens = null) {
+export function reusableF2Calibration(row, control, label, config, judgeOutputTokens = null, reasoningEffort = null) {
     return row.passed === true && row.group === control.group && row.flipped === control.flipped && row.label === label
         && row.configurationHash === hash(config) && row.messagesHash === hash(f2CalibrationMessages(control))
-        && (judgeOutputTokens === null || row.transportConfigurationHash === hash(f2JudgeTransport(config, judgeOutputTokens)));
+        && (judgeOutputTokens === null && reasoningEffort === null || row.transportConfigurationHash === hash(f2JudgeTransport(config, judgeOutputTokens, reasoningEffort)));
 }
 
-export function f2JudgeTransport(config, judgeOutputTokens = null) {
+export function f2JudgeTransport(config, judgeOutputTokens = null, reasoningEffort = null) {
     const transport = judgeOutputTokens === null ? structuredClone(config) : m1JudgeOutputConfiguration(config, judgeOutputTokens);
+    if (reasoningEffort !== null) {
+        if (!['low', 'medium', 'high'].includes(reasoningEffort)) throw new Error('f2_scope_changed');
+        const profile = transport.resources.find(row => row.ref.resourceType === 'core.generation-profile');
+        if (!profile) throw new Error('m1_extraction_generation_missing');
+        profile.resource.reasoning = { ...profile.resource.reasoning, effort: reasoningEffort };
+        const revision = profile.resource.revision + '-reasoning-' + reasoningEffort;
+        profile.resource.revision = profile.ref.revision = transport.route.generationProfileRef.revision = revision;
+        transport.generation.reasoning = structuredClone(profile.resource.reasoning);
+        transport.generation.revision = revision;
+    }
     transport.connection.options = { ...transport.connection.options, responseMode: 'stream' };
     return transport;
 }
@@ -178,6 +190,7 @@ export function f2SourceMessages(pair, evidence = f2SourceEvidence(pair)) {
 
 export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal, resume = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
+    const transportFor = (label, config) => f2JudgeTransport(config, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[label] ?? null);
     if (hash(primaryConfig) !== scope.configurations[kind].primary || hash(secondaryConfig) !== scope.configurations[kind].secondary) throw new Error('f2_configuration_changed');
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
@@ -192,10 +205,10 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             || !PILOT_CASES.some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
     const domainControls = controls.controls.filter(c => c.domain === domain);
     entry.calibration = (resume?.calibration || []).filter(row => domainControls.some(control =>
-        reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig, scope.judgeOutputTokens ?? null)));
+        reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[row.label] ?? null)));
     for (const control of domainControls) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
-        if (entry.calibration.some(row => reusableF2Calibration(row, control, label, config, scope.judgeOutputTokens ?? null))) continue;
-        const transportConfig = f2JudgeTransport(config, scope.judgeOutputTokens ?? null);
+        if (entry.calibration.some(row => reusableF2Calibration(row, control, label, config, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[label] ?? null))) continue;
+        const transportConfig = transportFor(label, config);
         const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
         const bridge = await createFrozenEvaluationBridge(transportConfig, async payload => (await f.evaluator.send(f.h.handle, gradeJob, transportConfig,
             { ...payload, arm: 'judge' }, signal, async () => {})).raw);
@@ -223,7 +236,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     for (const control of controls.sourceControls?.filter(c => c.pair.case.entrance === domain) || []) {
         const messages = f2SourceMessages(control.pair);
         for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
-            const transportConfig = f2JudgeTransport(config, scope.judgeOutputTokens ?? null);
+            const transportConfig = transportFor(label, config);
             const prior = resume?.sourceCalibration?.find(row => row.group === control.group && row.label === label && row.passed
                 && row.configurationHash === hash(config) && row.transportConfigurationHash === hash(transportConfig) && row.messagesHash === hash(messages));
             if (prior) { entry.sourceCalibration.push(prior); continue; }
@@ -260,12 +273,12 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             const observations = [];
             for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
                 const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label && o.messagesHash === hash(messages)
-                    && o.configurationHash === hash(config) && o.transportConfigurationHash === hash(f2JudgeTransport(config, scope.judgeOutputTokens ?? null)));
+                    && o.configurationHash === hash(config) && o.transportConfigurationHash === hash(transportFor(label, config)));
                 if (prior) { const priorEvidence = prior.evidenceVariant === 'full_v1' ? canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline }) : evidence;
                     if (prior.evidenceHash !== hash(priorEvidence)) throw new Error('f2_resume_changed');
                     parseF2SourceAssessment(JSON.stringify(prior), pair.case, priorEvidence); observations.push(prior); continue; }
                 const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
-                const transportConfig = f2JudgeTransport(config, scope.judgeOutputTokens ?? null);
+                const transportConfig = transportFor(label, config);
                 const bridge = await createFrozenEvaluationBridge(transportConfig, async payload => (await f.evaluator.send(f.h.handle, gradeJob, transportConfig,
                     { ...payload, arm: 'judge' }, signal, async () => {})).raw);
                 try {
