@@ -11,7 +11,7 @@
 > S10 工程链路已交付，部署边界与保守 gate 的唯一详细权威为 [s10-evolution.md](s10-evolution.md)；实际模型改善与 M1 集成前置条件待验收。
 > 用户已确认双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
 > 后续物理 schema / 数值校准按对应阶段细化；逻辑资源表不表示全部 API 已冻结。
-> 长期方向读 architecture；代码事实读 baseline；用户确认的唯一权威是 decisions。
+> 长期方向读 architecture；代码事实读 baseline；产品选择读 decisions。
 
 ## 1. 完整产品闭环
 
@@ -202,4 +202,4 @@ S10 支持 ordinary RP exact character 下的 bounded single-owner Director、�
 
 ## 13. 原链路反馈与评价补充
 
-2026-10-09 U13确认先契约、后各一个RP/Project试点。新反馈来源、诊断根因/干预分离、QualityProfile/case provenance/report版本及有限工作包唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)。F0设计及F1最小消费者完成；原S05生命周期、S10部署/发布、m1-acceptance退出门槛保持。下一是F2来源/校准与有限范围固定，不能把研究能力全部加进M1或直接重跑旧case；不进入S11/G。
+工作顺序为契约、各一个RP/Project试点。新反馈来源、诊断根因/干预分离、QualityProfile/case provenance/report版本及有限工作包唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)。F0设计及F1最小消费者完成；原S05生命周期、S10部署/发布、m1-acceptance退出门槛保持。下一是F2来源/校准与有限范围固定，不能把研究能力全部加进M1或直接重跑旧case；S11/G的前置依赖见delivery。
