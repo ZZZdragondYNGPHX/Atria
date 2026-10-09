@@ -19,6 +19,17 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
                 || c.expected !== (c.group === 'missing_evidence' ? 'uncertain' : c.flipped ? 'left' : 'right')
                 || !PILOT_CASES.some(entry => entry.split === 'development' && entry.entrance === domain && entry.caseId === c.caseId && entry.fixtureHash === c.fixtureHash))) throw new Error('f2_control_changed');
     }
+    if (controls.sourceControls) {
+        if (controls.sourceControls.length !== 6) throw new Error('f2_control_changed');
+        for (const domain of ['rp', 'project']) {
+            const rows = controls.sourceControls.filter(c => c.pair?.case?.entrance === domain);
+            if (rows.length !== 3 || new Set(rows.map(c => c.group)).size !== 3 || rows.some(c =>
+                !['positive', 'known_violation', 'missing_evidence'].includes(c.group) || c.pair.baseline?.origin !== 'engineering_control'
+                || !PILOT_CASES.some(entry => entry.split === 'development' && canonical(entry) === canonical(c.pair.case))
+                || !c.expected || !Object.keys(c.expected).length || Object.entries(c.expected).some(([d, status]) =>
+                    !c.pair.case.behaviorDimensions.includes(d) || !['met', 'gap', 'unknown'].includes(status)))) throw new Error('f2_control_changed');
+        }
+    }
     void prepareOnly; // Configuration preparation does not create a times-permission gate.
     return scope;
 }
@@ -101,7 +112,7 @@ export function f2SourceEvidence(pair) {
     const facts = ['Fresh Task status: ' + output.status,
         'Fresh Task validation: ' + (output.validation?.status ?? 'not available'),
         'Validated proposal: ' + (output.validatedProposal ? 'present' : 'absent'),
-        'Current source equals the recorded protected original source: ' + (hash(output.source) === hash(output.originalSource)),
+        'Current source equals the recorded protected original source: ' + (output.source && output.originalSource ? hash(output.source) === hash(output.originalSource) : 'unknown'),
         'Prior Task status: ' + output.priorConflictTask?.status,
         'Prior Task writes: ' + (output.priorConflictTask?.changeSets?.length ?? 0),
         ...['source', 'originalSource', 'validatedProposal'].flatMap(label => (output[label]?.package?.entryPoints || []).flatMap(point =>
@@ -113,7 +124,7 @@ export function f2SourceEvidence(pair) {
 
 export function f2SourceMessages(pair, evidence = f2SourceEvidence(pair)) {
     return [
-        { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. In RP, invented mandatory procedures, permissions, eligibility conditions or penalties asserted as established world rules require exposed support; do not treat these binding claims as ordinary atmospheric description or infer support from fluency. Creative NPC gestures and diction do not authorize new binding rules. Prefer copying a complete baseline.facts line verbatim as the quote; do not reconstruct partial JSON objects or omit fields inside a quoted object. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
+        { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Scan the entire baseline for each dimension before choosing a quote: one compliant passage cannot cancel a concrete contradiction elsewhere in that same dimension. met requires the complete observed response to satisfy the criterion; it is not a majority-of-sentences judgment. Copy one contiguous quote span without joining passages or stripping internal quotation marks. In RP, invented mandatory procedures, permissions, eligibility conditions or penalties asserted as established world rules require exposed support; do not treat these binding claims as ordinary atmospheric description or infer support from fluency. Creative NPC gestures and diction do not authorize new binding rules. Prefer copying a complete baseline.facts line verbatim as the quote; do not reconstruct partial JSON objects or omit fields inside a quoted object. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
         { role: 'user', content: evidence },
     ];
 }
@@ -161,6 +172,31 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             if (!passed) throw new Error('f2_calibration_failed');
         } finally { bridge.cleanup(); }
     }
+    entry.sourceCalibration = [];
+    for (const control of controls.sourceControls?.filter(c => c.pair.case.entrance === domain) || []) {
+        const messages = f2SourceMessages(control.pair);
+        for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+            const transportConfig = f2JudgeTransport(config, scope.judgeOutputTokens ?? null);
+            const prior = resume?.sourceCalibration?.find(row => row.group === control.group && row.label === label && row.passed
+                && row.configurationHash === hash(config) && row.transportConfigurationHash === hash(transportConfig) && row.messagesHash === hash(messages));
+            if (prior) { entry.sourceCalibration.push(prior); continue; }
+            const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
+            const bridge = await createFrozenEvaluationBridge(transportConfig, async payload => (await f.evaluator.send(f.h.handle, gradeJob, transportConfig,
+                { ...payload, arm: 'judge' }, signal, async () => {})).raw);
+            try {
+                const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':source-calibration:' + control.group,
+                    fixtureHash: control.pair.case.fixtureHash, tools: [], kind: 'grader', messages });
+                const assessment = parseF2SourceAssessment(response.response.assistantText || response.response.text, control.pair.case, messages[1].content);
+                const passed = Object.entries(control.expected).every(([dimension, status]) => assessment.dimensions[dimension].status === status);
+                entry.sourceCalibration.push({ group: control.group, label, passed, configurationHash: hash(config),
+                    transportConfigurationHash: hash(transportConfig), messagesHash: hash(messages),
+                    statuses: Object.fromEntries(Object.entries(assessment.dimensions).map(([d, row]) => [d, row.status])) });
+                store(kind + '-f2-source-calibration.json', entry.sourceCalibration);
+                if (!passed) throw new Error('f2_source_calibration_failed');
+            } finally { bridge.cleanup(); }
+        }
+    }
+    if (entry.sourceCalibration.length) store(kind + '-f2-source-calibration.json', entry.sourceCalibration);
     const report = resume?.report || await f.evaluator.probe(f.h.handle, job, primaryConfig, settings, signal, async () => {},
         async pair => store(kind + '-source-' + pair.case.caseId + '.json', pair), async trial => store(kind + '-source-trial-' + trial.caseId + '.json', trial),
         { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', split: 'development', repetitions: 1, mode: 'source_probe' });
@@ -176,7 +212,8 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             const messages = f2SourceMessages(pair, evidence);
             const observations = [];
             for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
-                const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label && o.messagesHash === hash(messages));
+                const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label && o.messagesHash === hash(messages)
+                    && o.configurationHash === hash(config) && o.transportConfigurationHash === hash(f2JudgeTransport(config, scope.judgeOutputTokens ?? null)));
                 if (prior) { const priorEvidence = prior.evidenceVariant === 'full_v1' ? canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline }) : evidence;
                     if (prior.evidenceHash !== hash(priorEvidence)) throw new Error('f2_resume_changed');
                     parseF2SourceAssessment(JSON.stringify(prior), pair.case, priorEvidence); observations.push(prior); continue; }

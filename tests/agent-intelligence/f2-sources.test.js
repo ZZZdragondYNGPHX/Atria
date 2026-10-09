@@ -273,3 +273,31 @@ test('the original restore preserves exact prepared Project baseline pins withou
         await expect(restoreEvolutionFixture(makeTempFsEngineHarness, f.h.dataRoot, { ...result, target: { ...f.target, presetId: 'forged' } }, { baselineOnly: true })).rejects.toThrow('f2_baseline_restore_changed');
     } finally { await restored?.h.cleanup(); await f.h.cleanup(); }
 }, 30000);
+
+test('pointwise calibration rejects an uninformative assessor before using a saved source probe', async () => {
+    const source = PILOT_CASES.find(c => c.entrance === 'rp' && c.split === 'development');
+    let calls = 0;
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async () => {
+        calls++;
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: JSON.stringify({ dimensions:
+            Object.fromEntries(source.behaviorDimensions.map(d => [d, { status: 'unknown', quote: '', rationale: 'No observation.' }])) }) }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
+    } });
+    try {
+        const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId);
+        const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+        const control = { domain: 'rp', group: 'known_violation', flipped: false, expected: 'right', caseId: source.caseId,
+            fixtureHash: source.fixtureHash, messages: [{ role: 'user', content: 'Compare controls.' }] };
+        const resume = { calibration: ['primary', 'secondary'].map(label => ({ passed: true, label, group: control.group, flipped: false,
+            configurationHash: hash(config), messagesHash: hash(f2CalibrationMessages(control)) })) };
+        const entry = {}, controls = { controls: [control], sourceControls: [{ group: 'positive',
+            pair: { case: source, baseline: { origin: 'engineering_control', output: loadFixture(source, { purpose: 'evaluation' }).reply } },
+            expected: Object.fromEntries(source.behaviorDimensions.map(d => [d, 'met'])) }] };
+        const scope = { configurations: { 'rp-skill': { primary: hash(config), secondary: hash(config), settings: hash(settings) } } };
+        await expect(runF2Domain({ f, kind: 'rp-skill', primaryConfig: config, secondaryConfig: config, controls, scope, entry,
+            store: () => {}, signal: new AbortController().signal, resume })).rejects.toThrow('f2_source_calibration_failed');
+        expect(calls).toBe(1); expect(entry.sourceCalibration[0].passed).toBe(false);
+        expect((await f.repository.owner(f.h.handle)).attempts[0]).toMatchObject({ kind: 'judge', status: 'reported', tokens: 10 });
+        expect((await f.repository.get(f.h.handle, f.scope, f.subject)).jobs).toEqual([]);
+    } finally { await f.h.cleanup(); }
+}, 30000);

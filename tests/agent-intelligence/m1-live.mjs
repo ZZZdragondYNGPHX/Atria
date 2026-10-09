@@ -56,7 +56,7 @@ try {
     const boundedCycle = Boolean(cycleBoundedOptimize || cycleBoundedAcceptance);
     const cycle = cycleBaseline || cycleOptimize || cycleAcceptance || cycleFinish || cycleProjectExtract || boundedCycle;
     const development = cycleBaseline || Boolean(cycleOptimize || cycleFinish || cycleBoundedOptimize);
-    if (temporarySecondary && !gradeName) throw new Error('temporary_secondary_grading_only');
+    if (temporarySecondary && !(gradeName || f2Name)) throw new Error('temporary_secondary_grading_only');
     if (!(option.length === 2 || prepareOnly || f2Name || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     assertM1PrivateAccess(directory, 0o700);
