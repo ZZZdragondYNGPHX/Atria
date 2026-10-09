@@ -917,3 +917,26 @@ Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229
 用户准备在另一台设备调整方向，先让AI调研再优化，并明确确认删除对象是GitHub私有仓库 `ZZZdragondYNGPHX/Atria-Dev`，不是产品仓库Atria或本机工作区。已备份3914个当前Document文件、五个无关dirty docs原始字节及私有仓库Git bundle；全部包内文件逐项SHA256验证，bundle在空仓库verify确认为complete history，取得全部九个远端heads及两个tags（bundle也保存本地/remote/HEAD refs）。本机包目录仅当前用户访问，凭证只在私有包/Document，不提交Git。接手说明明确bundle中旧Git快照不能替代当前Document/761账目，恢复时用包内最新Document覆盖克隆所得旧Document，local keys/ACL按新设备重绑定，报告/账目/窗口不清零；五dirty草稿保持单独来源。
 
 首次删除因现有GitHub凭证缺delete_repo scope返回403。启动当前账号授权流程，用户明确回复已授权，认证完成后权限生效；再次删除exit0，同账号GET该精确repo返回404，产品 `ZZZdragondYNGPHX/Atria` 仍可访问，删除完成。本机私有仓库/迁移包和产品工作区保留。没有额外模型请求，M1仍761/2939582，不合并main、不进入S11/G；下一设备先调研真实反馈/案例来源及方向，再正式更新同一Plan与有限验证范围，不重复旧合成测试追分。
+
+### 2026-10-09 本机来源、行为失败与案例隔离调研（待讨论）
+
+用户要求先调研、讨论确认方案后正式开工。本轮只核对状态、阅读相关代码/报告和一手评测资料，不修改产品或冻结Plan，不发模型请求、不重跑已指导修改的v1，不进入S11/G。
+
+用户说明手动删除本地Document并粘贴另一设备Document。初始本地product907cf1e87/docs994cd6e92落后，Git不存在a61b对象；实际私有账本已为761/2939582。只读远端refs确认product a61b249ef71f108d279ec7bd883fb5eeae97a463、docs eec940273c78db6db2557fb7bc798a71f422fc06和main ed1fd90521a63363e29856601abbf5e908c99d10；fetch后读取最新HANDOFF→index→acceptance §9/S10→同一Record，再将两个任务工作树仅fast-forward，main保持。远端docs只变更HANDOFF、acceptance、Record，未触及四份dirty草稿；五个本地dirty文件建立字节保护基线。
+
+实际Document核对：509新entries tokens合计1939582，加历史carry252/1000000为761/2939582；492 provider_reported、17 reserved_upper_bound计74948，全部settled。quota carry332+429 unique admissions=761，所有admission IDs存在原ledger，最小间隔3151ms、滚动一分钟峰值11；保守历史24h峰值761见原审计。rate checkpoint比最后quota admission晚2ms，两个值均与原审计hash一致，不要求二者时间严格相等或改写。ledger/quota/rate/transport/epochs五SHA与source-read-cycle-final-audit逐项一致；lock0、未发现运行中M1 CLI。九个窗口中七个旧stop保持；当前Step8000仍保留404 stop与历史recent，上一有限许可已消耗6/24且development claim固定，不能沿剩余额度自动发新轮。建议token超额历史保持，本轮零新增费用。
+
+实证与改善空间：
+
+- 本轮报告/反馈来自synthetic development，未发现其中有真实用户任务/偏好证据。原Experience outcome只接受原source正式状态，explicit映射origin=user、observation为client_observation，diagnosis可标model_hypothesis；CLI代理在fixture中correct explicit的技术分析有历史说明，不能将它当真实用户意见。原reflection允许explicit/technical失败事件或至少三个弱来源触发，但弱观测不能建立确定改进方向。相关Experience API会wake原Evolution；定向搜索src/public未找到常规RP/Project结束直接提交Experience outcome的调用。需讨论是否优先补齐原authority上的反馈供给，而非继续只调提炼文本。
+- Project authoring/conflict/repair本轮两arm均满足目标、版本冲突与repair/review；baseline在当前简单任务已有充分表现，省token不能成为行为胜。97a1跳过必要来源→review失败/-4是具体负例，a61修复消除此回归，尚未证明优于原base。新任务可讨论有真实依赖/保留字段的创作修改、明确诊断的修复及冲突后的可执行说明，但尚未观察这些新失败，不伪称已有用户案例。
+- RP已保存输出存在具体可检查问题：输入只给约定午夜、未给当前钟点，正文却生成dusk、midnight damp或“before midnight”等时间；candidate也出现玩家手搭门闩等未给定身体行为。这比泛泛“更自然”更能定义触发与纠正。variant primary偏好candidate却continuity=-1，Step+2，保持全部旧评分，不倒推更正；新rubric应明确当前时间/约定时间、观察/推测/代写行为的区别，缺证据可unknown。
+- 三个RP family共享相同场景及visibleMemory，v2主要替换姓名/地点/约定时刻及一两句指令；Project仍是同类rename+注入conflict/invalid proposal。文件hash不同和不同judge identifier不等于独立任务来源，也不能证明厂商独立或真实泛化。memory exposure仍为fixture直接注入，production memory resolver不在已证明范围。
+
+一手资料：[Anthropic评测实践](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)区分能力提升与回归套件，要求结合transcript/outcome审查评分和任务歧义，强调简单case饱和后需要更新任务；[τ-bench论文](https://arxiv.org/abs/2406.12045)以最终authority状态验证目标并用重复试验衡量一致性，其用户为模型模拟，不能冒称真人观察。本轮只采用方法论，不导入外部benchmark或新评测平台。
+
+待讨论建议（非批准/冻结）：优先从原保存RP episode、Studio Task/正式receipt、有效Experience反馈与validation/repair记录选择任务；如无合格真实材料，由agent在隔离副本执行用户确认的代表性工作负载，明确标注agent-authored/synthetic。按原始episode、Project、任务模板/派生关系分组划分development/独立验收，禁止同一失败换名进两集，禁止独立验收输出回流本轮提炼。旧v1转为历史回归证据，不再作为收益目标；新case/input/source/rubric revision在候选与付费前固定，并用免费正/负/unknown controls证明可判别且可完成。每入口一个局部target、一次候选提炼与一次development；达标才原三场景×三重复/九对六一致胜、其它一致tie、重要维度非负及原publication/消费/rollback。API8000输出、2000/day/20RPM、全部失败/unknown记账、token建议通知后继续保持；具体send envelope在用户确认后再正式固定，不追加本轮实验。
+
+迁移权限核对发现本机Document目录755、连接配置/ledger644，与原私有700/600不符。只恢复目录700/普通文件600，符号链接不跟随；文件内容及五累计状态SHA保持，原Git exclude有效、Document无tracked文件。首次exclude核对误在docs工作树对外部绝对路径执行git ls-files导致只读命令报错，改在Document所属core工作树核对后通过；未读写reference或产品配置内容。
+
+最小验证仅文档diff、refs/字节hash、账目与quota结构及迁移权限/exclude核对；未运行产品tests/build/CI/UI/Android/外部DB，没有人工观察。更新同一Record/live HANDOFF后等待用户讨论，Plan不变，M1仍pending、不合并main。

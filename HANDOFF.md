@@ -2,13 +2,17 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Updated: 2026-10-09
-- Checkpoint: 本次必要来源读取修复的有限周期结束；双入口development未达标，M1 pending，不集成，不进入S11/G。
+- Checkpoint: 必要来源读取修复的有限周期保持结束；新一轮来源/案例调研完成，等待用户讨论确认方向，未冻结新Plan或开始优化。M1 pending，不集成，不进入S11/G。
 - Product: `feat/agent-intelligence-runtime@a61b249ef71f108d279ec7bd883fb5eeae97a463`，实现及paid source已commit/push。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 - Docs: 沿同一Plan/Record，执行前核对actual HEAD；五无关dirty docs保持，不提交它们。
 - Read: 实际Git → [index](plans/architecture/agent-intelligence-runtime/index.md) → [M1 acceptance §9](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [同一Record最新周期/Final state](records/refactor/agent-intelligence-runtime.md)。不读写reference。
 
 ## 本周期实际结果
+
+本机续接调研（2026-10-09）：用户说明手动以另一设备Document替换本地Document。初始本地product907cf/docs994c落后，远端只读核对为product a61b249ef/docs eec940273；fetch后仅fast-forward这两个任务工作树，未合并main。五无关dirty文件字节保护；迁移账本/quota/rate/transport/epoch均与最新private audit的SHA一致，761/2939582、492reported/17unknown74948、pending0/lock0保持。复制后目录755/配置644已仅恢复700/600，原Git exclude有效、无tracked私有文件、内容hash不变。本轮零模型请求。
+
+调研待讨论：现有三个RP family使用相同场景/可见记忆，synthetic v2主要换姓名/场所/时间及少量指令，不足以支持新的真实任务泛化结论。Project简单rename/conflict/repair基线已成功；旧避读回归修复不等于优于基线。RP候选仍出现未给定当前时间/玩家身体细节；continuity偏好与delta冲突原样保留。Experience已有host outcome入口、feedback/diagnosis唤醒及弱观测方向约束；定向代码检索未找到常规运行结束自动提交Experience outcome的调用，需讨论真实反馈供给的范围，不能将fixture代理写入的explicit反馈外推真人意见。建议先固定任务来源/可观察失败，按原始episode/Project分组隔离development与未见验收，沿原Experience/evaluator/targets；具体范围、case revision和预算等待用户确认。研究依据及讨论选项见同一Record末节；旧v1不重跑追分，原门槛保持。
 
 原Experience、owner/scheduler、evaluator/targets、compiler/resolver/provider、CAS/intent/receipt及原消费/rollback仍为authority，无新有效配置authority。提炼继续局部edits，明确tool schema不等于已取得完整authoritative source，不能压掉必要来源读取。公开technical反馈/诊断由agent依据已保存的synthetic development生成，不冒充真实用户反馈或human preference。
 
