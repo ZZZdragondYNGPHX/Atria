@@ -1,43 +1,36 @@
 # 貢獻指南
 
+預設在本機開發、驗證、提交、合併與清理；遠端僅保存已提交結果。GitHub Actions 全部停用，包括手動執行、APK/Docker 建置及自動分支清理。
+
+倉庫治理統一位於 `docs:README.md`（本機以 `git show docs:README.md` 讀取）。本指南說明貢獻步驟；目前使用者指令與治理定義實際任務邊界。企劃、實作記錄和即時交接統一維護在獨立 `docs` 分支，`main:docs/` 只維護產品使用與開發說明。
+
 感謝你對 Atria 專案的關注！本文件介紹如何為 Atria 貢獻程式碼、文件和其他改進。
 
 ## 開發環境準備
 
-1. **Fork 倉庫**：在 GitHub 上 fork Atria 倉庫到你的帳戶下。
-
-2. **複製到本機**：
+1. 複製倉庫到本機，或使用現有工作區：
 
 ```bash
-git clone https://github.com/<your-username>/Atria.git
+git clone https://github.com/ZZZdragondYNGPHX/Atria.git
 cd Atria
 ```
 
-3. **安裝依賴**：
+2. 使用 `npm install` 安裝相依套件。
+3. 使用 `node server.js` 啟動開發伺服器。
 
-```bash
-npm install
-```
-
-4. **啟動開發伺服器**：
-
-```bash
-node server.js
-```
-
-預設監聽 `http://localhost:8000`。可透過命令列參數或 `config.yaml` 修改連接埠。
+預設網址為 `http://localhost:8000`；連接埠可透過命令列參數或 `config.yaml` 設定。外部貢獻者可依需要使用 fork。
 
 ## 分支策略
 
-- **`release`** — 穩定分支，始終保持可發布狀態。所有 PR 應以 `release` 為目標分支
-- 功能開發請從 `release` 建立特性分支
+- **`main`** — 穩定分支，始終保持可發布狀態。完成的產品任務在本機整合到 `main`；可選 PR 以 `main` 為目標
+- 功能開發請從 `main` 建立特性分支
 
 ```bash
-git checkout -b feat/my-new-feature release
+git checkout -b feat/my-new-feature main
 ```
 
 > [!IMPORTANT]
-Atria 的穩定分支是 `release`。
+Atria 的穩定分支是 `main`。
 
 分支命名建議：
 
@@ -84,23 +77,16 @@ fix(search-tools): handle empty query in web search
 docs(extension-api): add examples for registerExtensionApi
 ```
 
-## Pull Request 流程
+## 本機開發流程
 
-1. **確保程式碼品質**：提交前檢查程式碼風格和基本功能。
+1. 檢查 Git 狀態，保護無關修改，建立或沿用對應任務分支。
+2. 實作變更，執行最小充分的相關本機檢查。
+3. 本機提交，在獨立 `docs` 分支寫入或更新同一 Record。
+4. 完成的產品任務在本機合併 `main` 並核對整合結果，不重複未受影響的檢查。
+5. 推送已提交結果作為儲存，清理已完成的本機及遠端任務分支。
+6. 多階段任務更新 Record/HANDOFF，在正式階段邊界停止。
 
-2. **推送分支**：
-
-```bash
-git push origin feat/my-new-feature
-```
-
-3. **建立 PR**：在 GitHub 上建立 Pull Request，目標分支為 `release`。
-
-4. **PR 描述**：清晰描述改動內容、動機和影響。如果關聯了 Issue，請引用。
-
-5. **程式碼審查**：維護者會審查程式碼並提供回饋。請及時回應審查意見。
-
-6. **合併**：審查通過後，維護者會合併 PR。
+明確需要審閱時可使用 PR；PR 與已停用的遠端 CI 不作為預設合併門檻。
 
 ## 程式碼風格
 
@@ -161,10 +147,11 @@ Atria/
 
 ## 測試
 
-- 新功能應包含基本的功能驗證
-- Bug 修復應說明重現步驟和修復方案
-- 確保改動不會破壞現有功能
-- 測試多種瀏覽器和裝置（如適用）
+- 依變更行為與風險選擇最小充分檢查，不預設全量 lint/test/build。
+- 優先單元/整合測試、瀏覽器自動化與模擬器。
+- 只有關鍵驗收無法由自動化替代時，說明具體缺口與最小人工實機需求。
+- 只有相關新變更或未解決失敗才重複已通過檢查。
+- 僅報告實際執行的檢查，保留缺失證據。
 
 ## 文件貢獻
 
@@ -174,7 +161,7 @@ Atria/
 - 簡體中文文件：`docs/zh-CN/`
 - 繁體中文文件：`docs/zh-TW/`
 
-文件貢獻同樣遵循上述 PR 流程。撰寫文件時請注意：
+文件貢獻遵循上述本機流程；Plan、Record 和 HANDOFF 歸獨立 `docs` 分支。撰寫文件時請注意：
 
 - 使用準確的技術術語
 - 程式碼和 API 名稱保留英文
@@ -199,4 +186,4 @@ Atria/
 
 - [前端外掛開發](/zh-TW/development/frontend-plugin) — 第三方外掛開發入門
 - [擴充 API 參考](/zh-TW/development/extension-api/) — 完整的 API 文件
-- [角色卡開發](/zh-TW/development/card-developers) — 角色卡擴充功能
+- [角色卡定製教學](/zh-TW/recipes/card-customization-walkthrough) — 使用 Studio 定製角色卡

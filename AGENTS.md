@@ -16,8 +16,11 @@
 ## Local fast path
 
 - 优先使用本地 Git、文件系统、搜索、测试、构建和 worktree；不要为了模仿 Web 流程绕远程 API。
+- 本地负责开发、验证、提交、合并与清理；远端仅存储已提交结果。GitHub Actions 全部停用，不要求远端 CI/PR；APK、Docker 和分支清理按需要在本地执行。
+- 辅助工作树集中到同级 `Atria-worktrees/{docs,package,plugin,tasks/<task>/{source,docs}}`，按需建立；阶段不进入目录名。机器绝对路径只保存在本地配置。迁移核对 HEAD、dirty/草稿和依赖链接。
 - 修改前检查工作树状态，保护与当前任务无关的 dirty changes；必要时使用独立 worktree。
 - 只运行与触及面相称的验证；不得把未执行的测试、构建、Android/真机或 UI 检查称为通过。
+- 默认最小充分的相关本地检查，不全量测试/构建、不重复未受新变化影响的已通过检查；优先自动化与模拟器，只有关键验收无法替代时说明最小人工实机需求。
 - 普通代码错误、测试失败、merge conflict 与常规工程选择自行处理。
 
 ## Context routing
@@ -34,7 +37,7 @@
 
 ## Task lifecycle
 
-小任务默认一次性闭环：分析 → 建短期分支 → 修改 → 验证 → commit/push → 必要 CI → Record → 合并 `main` → 验证 `main` → 删除任务分支。
+小任务默认一次性闭环：分析 → 建短期分支 → 修改 → 最小相关本地验证 → 本地 commit → Record → 本地合并 `main` 并核对集成结果 → push 存储 → 本地及远端清理已完成分支。没有相关新变化不重复验证。
 
 多阶段任务默认沿用同一工作分支。每个正式阶段完成实现与验证后，更新同一 Record 和 live HANDOFF，给出接手提示词并停止，不自动进入下一阶段。
 
