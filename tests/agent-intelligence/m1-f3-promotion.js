@@ -56,7 +56,7 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
         humanPreference: 'not_observed', currencyCost: 'unavailable', productionPromotion: 'original_gate_unchanged' };
 }
 
-async function publishConsumeRollback({ f, kind, job, candidate, report, entry, store, signal, fresh }) {
+export async function publishConsumeRollback({ f, kind, job, candidate, report, entry, store, signal, fresh }) {
     // Exact configuration/target checks precede the original delegated review.
     for (const arm of ['baseline', 'candidate']) {
         const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target, arm === 'candidate' ? candidate.candidateId : undefined);
