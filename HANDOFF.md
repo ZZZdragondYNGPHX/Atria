@@ -2,7 +2,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Updated: 2026-10-09
-- Checkpoint: **F2授权有限探测以f2_calibration_failed停止；RP校准12/12和3基线完成，Project第4校准解释552>512无效。全部费用结算；headroom未建立、F2未验收，F3未开始，M1 pending。**
+- Previous closed checkpoint: **F2授权有限探测以f2_calibration_failed停止；RP校准12/12和3基线完成，Project第4校准解释552>512无效。全部费用结算；headroom未建立、F2未验收，F3未开始，M1 pending。**
 - Product / latest paid / local Tested: `feat/agent-intelligence-runtime@eb1664138458ebae073d86792e5a5295ce27dfda` 已push且clean，本轮无源码改动。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 - Docs: 从origin/docs102d54335隔离detached worktree续接，发送前许可已push42567be30；实际结果在同一Plan/Record更新并push docs，以actual Git为准。旧本机docs工作树五份纯CRLF dirty字节保留。
@@ -25,3 +25,5 @@ RP水库文本可能存在未知检修状态的措辞歧义，仅开发证据初
 上包6 relevant suites/44 distinct tests与lint/syntax是代码历史验证；本轮源码未变，只执行授权原CLI与费用/状态审计，未重跑Jest/build/CI/UI/Android/外部DB。用户无需手测。
 
 接手提示词：**先fetch核对product eb1664138、origin/docs与main ed1fd905；保护旧docs五dirty，不从其旧HEAD恢复状态。HANDOFF→index→feedback§12/acceptance§10.4→Record末节，核对私有783/3080332、pending0和关闭的8/12新claim。只续F2评价/source工程准备，密封promotion只读metadata；RP硬检查通过不等于六维/饱和，Project552>512是严格输出契约失败。保留原账本/频率/硬API限额/unknown/旧窗口/旧claim/epoch，不用任何余量。新范围与许可先固定再请求；不追分、不F3、不合并main，不进入S11/G。**
+
+当前发送前状态：用户已明确授权继续，累计1000调用/20RPM硬限，起始783/3080332；产品ac03448795232949a485b88f93305460c1476621已push，3 suites/26 tests通过。新范围最多72/Step18，许可与scope见acceptance§10.5/feedback§13，旧claim关闭保持。下一原CLI只执行F2校准/基线/证据核对并保存实际结果，不F3；本段为最新状态。

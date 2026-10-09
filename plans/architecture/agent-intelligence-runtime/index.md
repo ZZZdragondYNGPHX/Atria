@@ -152,3 +152,5 @@ M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；�
 2026-10-09 F2本轮准备核对详见 [反馈/评价模块§10](m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态)：新工作负载规格不等于正式source，promotion仅预留元数据不计独立来源；六critical dimensions实际证据覆盖未解决，原consumer发送前source_unready。下一仍F2，F3未开始。
 
 2026-10-09最新实际执行结果以 [feedback§12](m1-feedback-evaluation.md#12-f2有限探测结果校准契约失败停止) / [acceptance§10.4](m1-acceptance.md#104-f2授权范围实际结果与关闭) 为准；上述零send/待许可段落属于各历史checkpoint，不覆盖本次已关闭封包。下一仅F2工程准备，不自动重新发送或进入F3。
+
+当前F2续接已获用户累计1000调用/20RPM授权，采用 [acceptance§10.5](m1-acceptance.md#105-f2继续授权累计1000调用与20rpm发送前) / [feedback§13](m1-feedback-evaluation.md#13-f2继续输出契约对齐与基线缺口证据评估) 的新最多72send/Step18封包；旧结果保留，F3未开始。

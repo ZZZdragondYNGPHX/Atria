@@ -180,3 +180,14 @@ Project执行4个calibration sends，前三通过；第4个secondary known_viola
 新增22请求/140750 tokens，累计783请求/3080332 tokens；514 reported/17 unknown（unknown 74948 tokens保持），pending0/lock0、quota783。22份实际请求包、response、owner funding与原shared ledger/quota逐ID/request/snapshot/token/status核对一致；RP owner18次/48133 tokens、Project owner4次/92617 tokens，各jobs/publications0。从当前ledger/quota移除本次22记录并恢复起始总数可逐字重建原文件，历史记录/carry/breach保持。最小新准入间隔3154ms，滚动分钟峰值7，原20RPM/2000/day硬限保持。
 
 新Step claim使用8/12后标failed=f2_calibration_failed关闭；剩余4次不可继续使用。旧6of24 claim/epochs字节不变，九transport窗口/七旧stop保持，无新transport/incomplete失败、retry0、提炼/pair/promotion/publication0。scope文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`授权后保持；raw summary SHA `f3e02e4bd5352a6f7d5af225df1b071b112277bfe9cbd60f376164df368fdc46`，私有paid audit SHA `c3c2ccce8b38459640622d2753e154a4a2f75a64a137080295132088683a9bc0`。现金价格unavailable、人类偏好not_observed。下一仅F2评价/source工程准备与重新固定范围；本scope终止，不自动新请求/F3/main集成。
+
+
+### 10.5 F2继续授权：累计1000调用与20RPM（发送前）
+
+2026-10-09用户明确“继续,硬限制为1000次调用和20RPM,其他限制可适当调整以通过”。本轮将1000解释为包含历史carry/unknown的累计实际调用，起始783/3080332，剩余最多217；20RPM为滚动分钟硬上限，不能换epoch/清旧账扩大额度。当前仅F2，F3仍未授权。用户本次指令优先于旧封包固定次数与不得自动重跑的历史限制，旧封包8/12保持关闭、旧6of24保持，不复用余量。
+
+新schema2封包最多72send=24校准+36baseline上界+12基线证据评估；Step新最多18，retry0，提炼/pair/promotion/publication0。用户允许调整其它限制，本次采用必要的范围扩展和新judge输出提示，保持原parseBlindGrade512字符/六维/符号/缺证据unknown契约与生产gate。原control/schema/source/config/pins沿用，新实际提示显式告知512总字符上限；新runner版本而非裁剪旧失败响应。所有旧观察保留，新baseline按相同固定配置一次重新观察以绑定当前证据核对。
+
+基线证据评估为每case两judge各一次，全部六维status met/gap/unknown，met/gap需≤512字符的实际证据原文quote及解释；unknown必须空quote。逐字核对quote，不能由hard checks推断语义通过。只有两个独立模型在同case同维度都报告具体gap，才标observed_gap；否则headroom not_established，不伪造评分或人类标签。此为model_source_assessment来源就绪证据，不是candidate比较/promotion准入或稳定质量证明。无模型间共同缺口也可作为有效停止结论，不强迫“通过”。
+
+产品/Tested ac03448795232949a485b88f93305460c1476621；runner cbf8add7499185a0030945366d7825a935c8714e1bd8daaff24482a10db296db，evaluator/cases/rubric/config不变。许可evidence `028047f0889e8ee9c3a38e78bee12d8a9273b8ebfde77ccad367ce5973aa1f06`，新scope SHA `efddeb30b509bb4c9be2930f5429ec2eaf3436ed4bb88a879f05e4cc87d826ba`。原CLI免费prepare零send且configuration/settings复核；原ledger/quota/owner/transport与实际funding前请求包保持，累计1000准入（包括过期carry）与20RPM强制执行。首个无效评估/不可判别control/transport/incomplete/source/pin/quota失败停，不追分；新claim结束自动closed。结果另记§10.6，同一Record/HANDOFF，包末停，不F3/main/S11/G。

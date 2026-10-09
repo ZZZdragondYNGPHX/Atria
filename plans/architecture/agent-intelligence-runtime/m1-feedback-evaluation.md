@@ -274,3 +274,10 @@ RP baseline六维semantic scores未运行，headroom未建立；没有开发pair
 本次新增Step claim8/12并已关闭，原旧claim/epoch/stop保留；全部22费用settle，累计783/3080332、pending0，逐请求包/owner/共享账目一致。完整raw与metadata audit只在私有Document，密封promotion正文/答案没有被开发侧读取。具体hash/费用与权限归acceptance§10.4；本次不改生产gate、cases/rubric/parser/source pins。
 
 下一仅做F2工程准备：核对原评价prompt是否明确≤512字符契约，并检查控制公开轨迹是否存在可去除的重复上下文；如有修正，必须经原evaluator/source消费、版本与必要验证重新固定，不能把问题交给local Prompt writer、放宽原判定或重跑同一封包追分。Project实际baseline可完成性/全维证据、RP语义headroom和其余双judge控制仍未建立。新付费范围须另行固定与取得明确许可；本轮封包结束，F3/main集成/S11/G不启动。
+
+
+## 13. F2继续：输出契约对齐与基线缺口证据评估
+
+用户允许调整其它限制并以累计1000调用/20RPM为硬上限，实际新范围与许可归 [acceptance§10.5](m1-acceptance.md#105-f2继续授权累计1000调用与20rpm发送前)。根因是原校准prompt仅要求concise而未说明parser512字符；本次沿原funded bridge追加明确输出契约，不改变原严格grade。新schema2最多72send/Step18包含两judge对六基线的有限证据核对；仅model_source_assessment，不写human反馈/候选/正式quality score，不grant promotion。
+
+六维status met/gap/unknown的quote须为当前所给原文的确切substring，met/gap无可引用证据则无效；quote/rationale各≤512。两judge同case同维度共同gap才为observed_gap，其余headroom not_established。共同met只说明这个短窗口，不声称全领域饱和；unknown不补零/NA。首无效停止；全部真实请求及旧失败保留。独立promotion payload仍密封只读metadata，case/rubric/生产gate不变，F3不开始。

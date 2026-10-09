@@ -1059,3 +1059,10 @@ Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 e
 RP文本的“检修没落定”与未见确认后的保守说明存在可能knowledge_boundary歧义，仅developer证据初阅，不冒充正式模型/人类反馈或headroom成立。密封promotion正文/答案未读。下一仅F2评价/source准备，检查原judge prompt的≤512契约及控制轨迹重复材料，再经原消费者/新版本固定必要范围；不修local Prompt writer、不降parser/准入、不自动新付费发送。本封包停止，M1 pending、main ed1fd905未合并、不进入F3/S11/G。
 
 本轮验证是上述原CLI有界真实执行和只读22请求/累计状态审计；审计初次因缺globalAtria导入失败，改空上下文/禁网络后通过，无额外send。沿用上一包6相关suites/44 distinct tests作为代码历史证据，本轮源码未变，没有重跑Jest/lint/build/CI/UI/Android/外部DB。五份docs本地链接/锚点/围栏、原acceptance§2/§9逐字保护与diff检查在提交前核对；同一Record/HANDOFF更新后停止，用户无需手测。
+
+
+## 2026-10-09 F2新硬上限与证据核对 — 发送前
+
+用户明确继续并允许调整其它限制；按累计1000/20RPM解释，起始783/3080332。fetch未发现其它设备push，main ed1fd905及五旧dirty保持，docs起始5dd4ac299。产品原分支commit/push ac03448795232949a485b88f93305460c1476621：原M1 quota可配置累计cap并计入过期carry，CLI强制1000且20RPM不变；校准消息明确≤512，新增有界双模型基线literal-evidence核对、schema2范围72/Step18；新claim成功/失败均自动closed，旧8/12不动。不是放宽quality/human/promotion或读密封payload。
+
+3相关suites/26 distinct tests（f2-sources14、m1-quota5、m1-acceptance7）通过，触及5文件ESLint、CLI syntax/diff通过。首次Jest使用根node_modules路径不存在，改原tests依赖路径后通过；patch一次context不匹配未写入，修正后完成。免费原CLI prepare零send，配置/settings pins沿旧准备副本精确复核。新授权evidence 028047f0889e8ee9c3a38e78bee12d8a9273b8ebfde77ccad367ce5973aa1f06，scope SHA efddeb30b509bb4c9be2930f5429ec2eaf3436ed4bb88a879f05e4cc87d826ba，详见acceptance§10.5/feedback§13；发送前先push docs，随后执行原封包。retry0/提炼/pair/promotion/publication0；本轮仍仅F2，不F3/main/S11/G，实际结果另追加。
