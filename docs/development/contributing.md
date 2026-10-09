@@ -1,37 +1,28 @@
 # Contributing Guide
 
+Local development, validation, commits and integration are the default. The remote stores committed results; GitHub Actions are disabled, including manual runs, APK/Docker builds and branch cleanup.
+
 Repository governance is maintained in `docs:README.md` (read locally with `git show docs:README.md`). This guide describes contribution steps; current user instructions and governance define the active task boundaries. Plans, implementation records and the live handoff are maintained only in the independent `docs` branch; `main:docs/` contains product and development documentation.
 
 Thank you for your interest in the Atria project! This document explains how to contribute code, documentation, and other improvements to Atria.
 
 ## Setting Up the Development Environment
 
-1. **Fork the repository**: Fork the Atria repository to your own GitHub account.
-
-2. **Clone locally**:
+1. Clone the repository locally (or use your existing checkout):
 
 ```bash
-git clone https://github.com/<your-username>/Atria.git
+git clone https://github.com/ZZZdragondYNGPHX/Atria.git
 cd Atria
 ```
 
-3. **Install dependencies**:
+2. Install dependencies with `npm install`.
+3. Start the development server with `node server.js`.
 
-```bash
-npm install
-```
-
-4. **Start the development server**:
-
-```bash
-node server.js
-```
-
-By default it listens on `http://localhost:8000`. You can change the port via command-line arguments or `config.yaml`.
+By default it listens on `http://localhost:8000`; configure the port through command-line arguments or `config.yaml`. A fork is optional for external contributions.
 
 ## Branching Strategy
 
-- **`main`** — The stable branch, always kept in a releasable state. All PRs should target `main`.
+- **`main`** — The stable branch, always kept in a releasable state. Completed product tasks integrate into local `main`; optional PRs target `main`.
 - Create feature branches from `main` for new development.
 
 ```bash
@@ -86,23 +77,16 @@ fix(search-tools): handle empty query in web search
 docs(extension-api): add examples for registerExtensionApi
 ```
 
-## Pull Request Workflow
+## Local Development Workflow
 
-1. **Ensure code quality**: Check code style and basic functionality before submitting.
+1. Check Git status, protect unrelated work and create/use the appropriate task branch.
+2. Implement the change and run the smallest sufficient local checks.
+3. Commit locally and write/update the task Record in the independent `docs` branch.
+4. Integrate completed product work into local `main`; verify the integration without repeating unaffected checks.
+5. Push committed results for storage and clean up completed local/remote task branches.
+6. For a multi-stage task, update its Record/HANDOFF and stop at the approved stage boundary.
 
-2. **Push your branch**:
-
-```bash
-git push origin feat/my-new-feature
-```
-
-3. **Create a PR**: Open a Pull Request on GitHub targeting the `main` branch.
-
-4. **PR description**: Clearly describe the changes, motivation, and impact. Reference any related Issues.
-
-5. **Code review**: Maintainers will review the code and provide feedback. Please respond to review comments promptly.
-
-6. **Merge**: Once the review is approved, maintainers will merge the PR.
+A pull request may be used when explicit review is needed; it is not the default merge gate. Do not wait for disabled remote CI.
 
 ## Code Style
 
@@ -163,10 +147,11 @@ Atria/
 
 ## Testing
 
-- New features should include basic functional verification
-- Bug fixes should describe reproduction steps and the fix approach
-- Ensure changes do not break existing functionality
-- Test across multiple browsers and devices (where applicable)
+- Select the smallest sufficient checks for the changed behavior and risk; do not default to full lint/test/build.
+- Prefer unit/integration tests, browser automation and simulators.
+- Request manual device evidence only for a specific essential gap automation cannot cover.
+- Repeat passed checks only after a relevant new change or unresolved failure.
+- Report the checks actually executed and preserve missing evidence.
 
 ## Documentation Contributions
 
@@ -176,7 +161,7 @@ Documentation is located in the `docs/` directory and uses Markdown format:
 - Simplified Chinese documentation: `docs/zh-CN/`
 - Traditional Chinese documentation: `docs/zh-TW/`
 
-Documentation contributions follow the same PR workflow described above. When writing documentation, please note:
+Documentation contributions follow the local workflow above. Plans, Records and HANDOFF belong to the independent `docs` branch. When writing documentation, please note:
 
 - Use accurate technical terminology
 - Keep code and API names in English
