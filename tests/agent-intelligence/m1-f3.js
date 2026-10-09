@@ -5,6 +5,7 @@ import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseBlindGrade } from './m1-acceptance.js';
+import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { f2SourceEvidence, f2SourceMessages, parseF2SourceAssessment, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
 
 const profileFor = domain => domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
@@ -84,6 +85,12 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
         || report.configurations.baseline !== baseline.configurations.baseline || report.settings.baseline !== baseline.settings.baseline
         || !equal(report.quality, qualityEnvelope(report.domain, required, 'development'))) reasons.push('evaluation_identity_changed');
     if (report.pairs.length !== 3 || required.some(c => report.pairs.filter(p => equal(p.case, c) && p.repetition === 1).length !== 1)) reasons.push('development_cases_incomplete');
+    const calibration = report.comparisonCalibration;
+    if (report.gradeProtocolHash !== hash(F3_GRADE_INSTRUCTION) || !Array.isArray(calibration) || calibration.length !== 12
+        || new Set(calibration?.map(c => [c.group, c.flipped, c.label].join(':'))).size !== 12
+        || ['known_violation', 'counterfactual', 'missing_evidence'].some(group => [false, true].some(flipped => ['primary', 'secondary'].some(label =>
+            !calibration?.some(c => c.group === group && c.flipped === flipped && c.label === label && c.passed === true
+                && paidMatches(c.charge, owner.attempts.find(a => a.id === c.charge?.id && a.jobId === c.jobId))))))) reasons.push('comparison_protocol_uncalibrated');
     const seen = new Set();
     for (const charge of report.charges) {
         if (seen.has(charge.id) || !paidMatches(charge, owner.attempts.find(a => a.id === charge.id && a.jobId === jobId))) reasons.push('durable_charge_mismatch');
@@ -148,12 +155,79 @@ export function f3SharedEvidence(left, right) {
     return { ...arms, sharedEvidence };
 }
 
+const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Use one brief sentence for the rationale. Every delta is right minus left, independent of preference. For missing source or required evidence return uncertain with empty deltas; never invent zeros or ties. Inspect the complete response of each arm against each dimension before choosing preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.';
+
+function f3EvidenceMessages(scenario, dimensions, left, right) {
+    return [{ role: 'system', content: F3_GRADE_INSTRUCTION },
+        { role: 'user', content: canonical({ ...scenario, dimensions, ...f3SharedEvidence(left, right) }) }];
+}
+
 export function f3GradeMessages(pair, flipped) {
     const evidence = trial => JSON.parse(f2SourceEvidence({ case: pair.case, baseline: trial })).baseline;
-    const arms = f3SharedEvidence(evidence(pair[flipped ? 'candidate' : 'baseline']), evidence(pair[flipped ? 'baseline' : 'candidate']));
-    return [{ role: 'system', content: 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Every delta is right minus left, independent of preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.' },
-        { role: 'user', content: canonical({ ...pair.scenario, dimensions: pair.case.behaviorDimensions,
-            ...arms }) }];
+    return f3EvidenceMessages(pair.scenario, pair.case.behaviorDimensions,
+        evidence(pair[flipped ? 'candidate' : 'baseline']), evidence(pair[flipped ? 'baseline' : 'candidate']));
+}
+
+export function f3CalibrationMessages(control, entry) {
+    const { left, right, dimensions, ...scenario } = parseEvaluationJson(control.messages.find(m => m.role === 'user').content);
+    if (entry.caseId !== control.caseId || !equal(dimensions, entry.behaviorDimensions)) throw new Error('f3_control_changed');
+    const evidence = output => entry.entrance === 'project' && !String(output).trim().startsWith('{')
+        ? { output, modelStatements: null }
+        : JSON.parse(f2SourceEvidence({ case: entry, baseline: { origin: 'engineering_control', output } })).baseline;
+    return f3EvidenceMessages(scenario, dimensions, evidence(left), evidence(right));
+}
+
+export function validF3Control(text, control, entry) {
+    try {
+        const raw = parseEvaluationJson(text);
+        if (control.expected === 'uncertain') return raw.preference === 'uncertain' && raw.deltas
+            && !Object.keys(raw.deltas).length && typeof raw.rationale === 'string' && raw.rationale.length <= 512;
+        const grade = parseBlindGrade(text, { case: entry }, control.flipped);
+        return raw.preference === control.expected && grade.preference === 'candidate'
+            && Object.values(grade.deltas).every(v => v >= 0) && Object.values(grade.deltas).some(v => v > 0)
+            && (control.requiredPositiveDimensions || []).every(d => grade.deltas[d] > 0);
+    } catch { return false; }
+}
+
+async function calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, controls, entry, store, signal) {
+    const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
+    const domain = kind === 'rp-skill' ? 'rp' : 'project';
+    const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(domain) });
+    entry.comparisonCalibration = [];
+    for (const control of controls.controls.filter(c => c.domain === domain)) {
+        const actual = cases.find(c => c.caseId === control.caseId);
+        const messages = f3CalibrationMessages(control, actual);
+        for (const [label, original] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+            const transport = f2JudgeTransport(original, scope.judgeOutputTokens, scope.judgeReasoningEffort?.[label] ?? null);
+            const job = { id: 'm1-f3-calibration-' + randomUUID() + (label === 'secondary' ? ':independent' : ''), scopeId: doc.scopeId, domain, price: null };
+            let charge;
+            const bridge = await createFrozenEvaluationBridge(transport, async payload => {
+                const paid = await f.evaluator.send(f.h.handle, job, transport, { ...payload, arm: 'judge' }, signal, async () => {});
+                charge = paid.charge; return paid.raw;
+            });
+            try {
+                const response = await bridge.rp({ requestId: randomUUID(), trialId: job.id, fixtureHash: actual.fixtureHash,
+                    tools: [], kind: 'grader', messages });
+                const text = response.response.assistantText || response.response.text;
+                const row = { group: control.group, flipped: control.flipped, label, jobId: job.id,
+                    passed: validF3Control(text, control, actual), messagesHash: hash(messages), configurationHash: hash(transport), charge };
+                entry.comparisonCalibration.push(row);
+                store(kind + '-f3-comparison-calibration.json', entry.comparisonCalibration);
+                if (!row.passed) throw new Error('f3_comparison_calibration_failed');
+            } finally { bridge.cleanup(); }
+        }
+    }
+}
+
+export function f3ExtractionInput(capture, domain, investigation) {
+    return { instruction: 'Return JSON only: {"edits":[{"before":"exact unique original fragment, or empty string to append","after":"minimal corrected fragment or appended instruction"}],"rationale":"public hypothesis at most 1024 bytes"}. Use one to four edits against base, never a full replacement. This is a delegated private engineering investigation, not user feedback or a proven root cause. Generalize the observed development deficiency without case names, answers or private facts. Preserve other base instructions and Skill frontmatter. Change only the declared field, no tools, identity, authority, connection, guards or output owner. Address the supplied execution affordances: an instruction must identify an available action and its timing, not a phase the runtime never reaches. Protect all required dimensions while correcting the deficiency. State expected benefit and a counterexample. Independent promotion fixtures are unavailable.',
+        feedback: [], diagnosis: null, investigation, field: capture.field, base: capture.body, allowedDeclaration: capture.declaration,
+        requiredBehavior: domain === 'rp'
+            ? 'Preserve player choice, latest exposed promise and scene revisions, unknown current/private facts, distinct NPC voice and actionable in-world continuation. Never infer present time, physical conditions or private intentions from a schedule, metaphor, role or unobserved object. NPC actions and offers can advance the scene while leaving player action undecided. A supported prerequisite never authorizes extra penalties, restrictions or required choices.'
+            : 'Read authoritative sources and diagnostics, reset invalid staged operations, preserve unrelated data and human revisions, distinguish prior conflicted Tasks from fresh Tasks, and accurately explain proposed changes and the pending human Review/Commit boundary.',
+        executionAffordances: domain === 'rp'
+            ? 'The declared character Skill is read by the original Director before writing the public NPC response. Its instruction must preserve expressive NPC actions without authoring player action or turning unobserved circumstances into established facts.'
+            : 'The original Studio loop ends immediately after prepare_review returns a stopped Task. There is no post-Review model-summary round. Model-authored public text is available as assistant content alongside a tool call and as set_plan summary/step descriptions before prepare_review. State current facts and the planned uncommitted Review boundary there; do not claim validation passed or Review was reached before the tool confirms it. A future summary instruction alone has no executable post-Review slot.' };
 }
 
 export async function prepareF3Investigation(f, targetPin) {
@@ -184,6 +258,9 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
     validateF3Baseline(source.report, domain, primaryConfig, baselineSettings, ledger());
     validateF3Calibration(source, scope, controls, kind, primaryConfig, secondaryConfig);
     if (hash(source.report) !== scope.baselineHashes[kind] || hash(source.assessments) !== scope.assessmentHashes[kind]) throw new Error('f3_source_changed');
+    // F2 controls qualify F2 source observations, not a different comparison
+    // prompt or evidence codec. Qualify the exact F3 protocol before extraction.
+    await calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, controls, entry, store, signal);
     const capture = await prepareF3Investigation(f, scope.configurations[kind].targetPin);
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     if (hash(capture) !== scope.configurations[kind].targetPin) throw new Error('f3_target_changed');
@@ -201,8 +278,7 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
             observations: row.observations.map(o => ({ origin: o.origin, label: o.label, dimensions: o.dimensions })) })) };
     entry.investigation = investigation; entry.jobId = job.id;
     const extractionConfig = f2JudgeTransport(primaryConfig, 8000, 'low');
-    const input = { instruction: 'Return JSON only: {"edits":[{"before":"exact unique original fragment, or empty string to append","after":"minimal corrected fragment or appended instruction"}],"rationale":"public hypothesis at most 1024 bytes"}. Use one to four edits against base, never a full replacement. Prefer a short append. This is a delegated private engineering investigation, not user feedback or a proven root cause. Generalize the observed development deficiency without case names, answers or private facts. Preserve other base instructions and Skill frontmatter. Change only the declared field, no tools, identity, authority, connection, guards or output owner. Keep player choices and uncertainty while offering expressive in-world NPC action. For Project preserve actual source reads, dependencies and uncommitted Review; accurately explain actual outcomes in public model text. State expected benefit and a counterexample. Independent promotion fixtures are unavailable.',
-        feedback: [], diagnosis: null, investigation, field: capture.field, base: capture.body, allowedDeclaration: capture.declaration };
+    const input = f3ExtractionInput(capture, domain, investigation);
     const proposal = await f.evaluator.extract(f.h.handle, paidJob, extractionConfig, signal, fresh, input);
     store(kind + '-f3-extraction.json', { proposal, inputHash: hash(input), configurationHash: hash(extractionConfig) });
     const candidate = await f.service.targets.prepare(f.h.handle, f.scope, f.subject, f.target, capture, proposal.value);
@@ -231,6 +307,7 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
     const report = { schemaVersion: 2, origin: 'm1_f3_development', evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision: PILOT_CASE_SET_REVISION,
         domain, quality: probe.quality, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: null,
         configurations: { baseline: hash(primaryConfig), candidate: hash(config) }, settings: { baseline: hash(baselineSettings), candidate: hash(settings) },
+        gradeProtocolHash: hash(F3_GRADE_INSTRUCTION), comparisonCalibration: entry.comparisonCalibration,
         baselineReuse: { reportHash: hash(source.report), evaluatorRevision: source.report.evaluatorRevision, origin: 'cached_F2_development_observation' },
         pairs: probe.pairs.map(pair => ({ case: pair.case, scenario: pair.scenario, repetition: 1,
             baseline: structuredClone(source.report.pairs.find(old => old.case.caseId === pair.case.caseId).baseline), candidate: pair.baseline, judge: null, human: null })),

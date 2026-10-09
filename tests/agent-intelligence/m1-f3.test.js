@@ -2,7 +2,8 @@ import { expect, test } from '@jest/globals';
 import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
-import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation } from './m1-f3.js';
+import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
+    f3CalibrationMessages, validF3Control, f3ExtractionInput } from './m1-f3.js';
 import { evolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 
@@ -20,7 +21,8 @@ function example(domain = 'rp') {
     for (const [i, entry] of cases.entries()) {
         const oldCharge = charge('old-' + i, 'old-trial-' + i, 'baseline');
         baseline.charges.push(oldCharge); ledger.entries[oldCharge.id] = { trialId: oldCharge.trialId, tokens: 100, settled: true };
-        const trial = { trialId: oldCharge.trialId, configurationHash: hash(config), settingsHash: hash(settings), output: 'Actual bounded output', error: null,
+        const trial = { trialId: oldCharge.trialId, configurationHash: hash(config), settingsHash: hash(settings),
+            output: domain === 'project' ? JSON.stringify({ status: 'review', conversation: [], tools: [] }) : 'Actual bounded output', error: null,
             checks: Object.fromEntries([...entry.expectedInvariants, 'isolation', 'target_consumed'].map(k => [k, true])), requestHashes: [oldCharge.requestHash], charges: [oldCharge] };
         const oldPair = { case: entry, scenario: publicCaseScenario(entry), repetition: 1, baseline: trial, candidate: null, judge: null, human: null };
         oldPair.pairHash = hash(oldPair); baseline.pairs.push(oldPair);
@@ -36,6 +38,12 @@ function example(domain = 'rp') {
             chargeId: second.id, requestHash: second.requestHash, snapshotHash: second.snapshotHash });
     }
     report.baselineReuse = { reportHash: hash(baseline), origin: 'cached_F2_development_observation' };
+    report.gradeProtocolHash = hash(f3GradeMessages(report.pairs[0], false)[0].content);
+    report.comparisonCalibration = ['known_violation', 'counterfactual', 'missing_evidence'].flatMap(group => [false, true].flatMap(flipped => ['primary', 'secondary'].map(label => {
+        const id = [group, flipped, label].join(':'), receipt = charge(id, 'calibration:' + id, 'judge');
+        owner.attempts.push({ ...receipt, jobId: 'calibration' });
+        return { group, flipped, label, passed: true, jobId: 'calibration', charge: receipt };
+    })));
     return { baseline, report, ledger, owner, independent, config, settings };
 }
 const readiness = f => pilotDevelopmentReadiness(f.report, f.independent, f.owner, 'job', f.baseline, f.ledger);
@@ -147,4 +155,60 @@ test('F3 shared Project evidence reconstructs both complete different arms witho
 
 test('F3 evidence aliases cannot reinterpret a model-authored reference marker', () => {
     expect(() => f3SharedEvidence({ output: { $f3ref: 'untrusted' } }, {})).toThrow('f3_evidence_reference_conflict');
+});
+
+test('F2 qualification cannot substitute for the exact F3 protocol calibration', () => {
+    const f = example(); delete f.report.comparisonCalibration;
+    expect(readiness(f).reasons).toContain('comparison_protocol_uncalibrated');
+    const other = example(); other.report.gradeProtocolHash = hash('F2 prompt');
+    expect(readiness(other).reasons).toContain('comparison_protocol_uncalibrated');
+    other.report.gradeProtocolHash = hash(f3GradeMessages(other.report.pairs[0], false)[0].content);
+    other.report.comparisonCalibration[0].charge.snapshotHash = hash('unfunded');
+    expect(readiness(other).reasons).toContain('comparison_protocol_uncalibrated');
+});
+
+test.each(['rp', 'project'])('F3 %s controls use the actual grading prompt and preserve counterfactual evidence', domain => {
+    const f = example(domain), pair = f.report.pairs[0];
+    const left = domain === 'rp' ? 'NPC retains uncertainty.' : JSON.stringify({ status: 'review', conversation: [{ content: 'Uncommitted, awaiting human Review.' }] });
+    const right = domain === 'rp' ? 'NPC invents a penalty.' : JSON.stringify({ status: 'review', conversation: [] });
+    const scenario = { ...pair.scenario, input: 'Counterfactual input', rubric: { knowledge_boundary: 'Counterfactual exposed requirement' } };
+    const control = { caseId: pair.case.caseId, messages: [{ role: 'user', content: JSON.stringify({ ...scenario, dimensions: pair.case.behaviorDimensions, left, right }) }] };
+    const msgs = f3CalibrationMessages(control, pair.case), actual = f3GradeMessages(pair, false);
+    expect(msgs[0]).toEqual(actual[0]);
+    const content = JSON.parse(msgs[1].content);
+    expect(content.input).toBe('Counterfactual input'); expect(content.rubric).toEqual(scenario.rubric);
+    const expand = v => v && typeof v === 'object' && v.$f3ref ? expand(content.sharedEvidence[v.$f3ref])
+        : Array.isArray(v) ? v.map(expand) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, expand(x)])) : v;
+    const observed = domain === 'rp' ? [expand(content.left).output, expand(content.right).output]
+        : [expand(content.left).modelStatements, expand(content.right).modelStatements];
+    const expected = domain === 'rp' ? [left, right] : [[{ origin: 'conversation.0.content', text: 'Uncommitted, awaiting human Review.' }], []];
+    expect(observed).toEqual(expected);
+});
+
+test('F3 control contract retains unknown and rejects swapped delta signs or overlong rationale', () => {
+    const entry = example().report.pairs[0].case;
+    const grade = { preference: 'right', deltas: Object.fromEntries(entry.behaviorDimensions.map(d => [d, 1])), rationale: 'Observed.' };
+    const control = { expected: 'right', flipped: false, requiredPositiveDimensions: ['knowledge_boundary'] };
+    expect(validF3Control(JSON.stringify(grade), control, entry)).toBe(true);
+    grade.deltas.knowledge_boundary = -1;
+    expect(validF3Control(JSON.stringify(grade), control, entry)).toBe(false);
+    expect(validF3Control(JSON.stringify({ preference: 'uncertain', deltas: {}, rationale: 'Evidence unavailable.' }), { expected: 'uncertain' }, entry)).toBe(true);
+    expect(validF3Control(JSON.stringify({ ...grade, rationale: 'x'.repeat(513) }), control, entry)).toBe(false);
+});
+
+test('Project missing evidence remains unavailable under the F3 codec', () => {
+    const entry = example('project').report.pairs[0].case;
+    const messages = f3CalibrationMessages({ caseId: entry.caseId, messages: [{ role: 'user', content: JSON.stringify({ dimensions: entry.behaviorDimensions, left: 'Complete.', right: 'Done.' }) }] }, entry);
+    const arms = JSON.parse(messages[1].content);
+    expect(arms.left.modelStatements).toBeNull(); expect(arms.right.modelStatements).toBeNull();
+});
+
+test('extraction receives available communication slots without inventing feedback or publishing rights', () => {
+    const capture = { field: 'body', body: 'Original style', declaration: { allowedFields: ['body'] } };
+    const input = f3ExtractionInput(capture, 'project', { origin: 'test_only_investigation' });
+    expect(input.feedback).toEqual([]); expect(input.diagnosis).toBeNull(); expect(input.base).toBe(capture.body);
+    expect(input.executionAffordances).toContain('no post-Review');
+    expect(input.executionAffordances).toContain('set_plan');
+    expect(input.executionAffordances).toContain('do not claim validation passed');
+    expect(f3ExtractionInput(capture, 'rp', {}).requiredBehavior).toContain('unknown current/private facts');
 });
