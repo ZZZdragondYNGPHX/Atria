@@ -22,7 +22,7 @@ function fixture(domain = 'rp') {
             status: 'reported', usage: { totalTokens: 10 }, cost: null };
         owner.attempts.push({ ...c, jobId }); return c;
     };
-    for (const group of ['known_violation', 'counterfactual', 'missing_evidence']) for (const flipped of [false, true]) for (const label of ['primary', 'secondary']) {
+    for (const group of ['known_violation', 'counterfactual', 'missing_evidence', 'focused_source']) for (const flipped of [false, true]) for (const label of ['primary', 'secondary']) {
         const id = group + flipped + label;
         report.comparisonCalibration.push({ group, flipped, label, jobId: 'control', passed: true, charge: receipt(id, 'control:' + id, 'judge', 'control') });
     }

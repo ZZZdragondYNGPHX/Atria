@@ -4,7 +4,7 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
     f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
-    parseF3Grade, f3DevelopmentFeedback } from './m1-f3.js';
+    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls } from './m1-f3.js';
 import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
@@ -41,7 +41,7 @@ function example(domain = 'rp') {
     }
     report.baselineReuse = { reportHash: hash(baseline), origin: 'cached_F2_development_observation' };
     report.gradeProtocolHash = hash(f3GradeMessages(report.pairs[0], false)[0].content);
-    report.comparisonCalibration = ['known_violation', 'counterfactual', 'missing_evidence'].flatMap(group => [false, true].flatMap(flipped => ['primary', 'secondary'].map(label => {
+    report.comparisonCalibration = ['known_violation', 'counterfactual', 'missing_evidence', 'focused_source'].flatMap(group => [false, true].flatMap(flipped => ['primary', 'secondary'].map(label => {
         const id = [group, flipped, label].join(':'), receipt = charge(id, 'calibration:' + id, 'judge');
         owner.attempts.push({ ...receipt, jobId: 'calibration' });
         return { group, flipped, label, passed: true, jobId: 'calibration', charge: receipt };
@@ -275,7 +275,24 @@ test('extraction receives available communication slots without inventing feedba
     expect(input.executionAffordances).toContain('no post-Review');
     expect(input.executionAffordances).toContain('set_plan');
     expect(input.executionAffordances).toContain('do not claim validation passed');
+    expect(input.instruction).toContain('before must be empty');
+    expect(input.instruction).toContain('Never set before equal to the complete base');
     expect(f3ExtractionInput(capture, 'rp', {}).requiredBehavior).toContain('unknown current/private facts');
+});
+
+test.each(['rp', 'project'])('F3 %s calibration must detect a focused source violation in either arm', domain => {
+    const entry = example(domain).report.pairs[0].case;
+    const dimension = domain === 'rp' ? 'knowledge_boundary' : 'status_accuracy';
+    const sourceControls = ['positive', domain === 'rp' ? 'unsupported_rule' : 'communication_omission'].map((group, index) => ({
+        group, pair: { case: entry, baseline: { output: index ? 'Focused violation.' : 'Supported behavior.' } },
+        expected: { [dimension]: index ? 'gap' : 'met' },
+    }));
+    const controls = f3ComparisonControls({ controls: [], sourceControls }, domain);
+    expect(controls.map(c => c.expected)).toEqual(['right', 'left']);
+    expect(controls.every(c => c.requiredPositiveDimensions.includes(dimension))).toBe(true);
+    const report = example(domain).report;
+    report.comparisonCalibration = report.comparisonCalibration.filter(c => c.group !== 'focused_source');
+    expect(readiness({ ...example(domain), report }).reasons).toContain('comparison_protocol_uncalibrated');
 });
 
 test('exact F3 calibration reuse requires unchanged messages, transport and original settled receipts', () => {

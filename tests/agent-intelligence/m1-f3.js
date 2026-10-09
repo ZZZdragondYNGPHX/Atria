@@ -165,10 +165,10 @@ const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses a
 
 export function comparisonCalibrationReady(report, owner) {
     const rows = report.comparisonCalibration;
-    const labels = f3JudgeLabels(report.judgeMode), count = labels.length * 6;
+    const labels = f3JudgeLabels(report.judgeMode), count = labels.length * 8;
     return report.gradeProtocolHash === hash(F3_GRADE_INSTRUCTION) && Array.isArray(rows) && rows.length === count
         && new Set(rows.map(c => [c.group, c.flipped, c.label].join(':'))).size === count
-        && ['known_violation', 'counterfactual', 'missing_evidence'].every(group => [false, true].every(flipped => labels.every(label =>
+        && ['known_violation', 'counterfactual', 'missing_evidence', 'focused_source'].every(group => [false, true].every(flipped => labels.every(label =>
             rows.some(c => c.group === group && c.flipped === flipped && c.label === label && c.passed === true
                 && paidMatches(c.charge, owner.attempts.find(a => a.id === c.charge?.id && a.jobId === c.jobId))))));
 }
@@ -218,6 +218,7 @@ export function f3DevelopmentFeedback(prior, expected) {
         || prior.candidate.valueHash !== expected.valueHash || prior.report.pairs.some(p => p.human !== null)) throw new Error('f3_development_feedback_changed');
     return { origin: 'prior_failed_development', reportHash: expected.reportHash, candidate: prior.candidate.candidate.diff,
         observations: prior.report.pairs.map(p => ({ caseId: p.case.caseId, judge: p.judge,
+            publicDevelopment: { scenario: p.scenario, baseline: p.baseline.output, candidate: p.candidate.output },
             interpretation: p.judge?.preference === 'candidate' && Object.values(p.judge.deltas).some(v => v < 0)
                 ? 'contains_regression_or_contradictory_grading; not established improvement' : 'retained_model_observation' })),
         instruction: 'Use these retained development observations to address regressions as well as original gaps. Contradictory grades are not corrected or accepted. Preserve expressive voice, concrete NPC action and explicit player ownership while removing unsupported assertions. Generate a new minimal edit against the original base; do not copy a case answer.' };
@@ -243,12 +244,26 @@ export function reusableF3Calibration(row, control, actual, label, transport, ow
         && paidMatches(row.charge, owner.attempts.find(a => a.id === row.charge.id && a.jobId === row.jobId));
 }
 
+export function f3ComparisonControls(controls, domain) {
+    const positive = controls.sourceControls.find(c => c.pair.case.entrance === domain && c.group === 'positive');
+    const negative = controls.sourceControls.find(c => c.pair.case.entrance === domain
+        && c.group === (domain === 'rp' ? 'unsupported_rule' : 'communication_omission'));
+    if (!positive || !negative || !equal(positive.pair.case, negative.pair.case)) throw new Error('f3_focused_control_changed');
+    const entry = positive.pair.case;
+    const requiredPositiveDimensions = entry.behaviorDimensions.filter(d => positive.expected[d] === 'met' && negative.expected[d] === 'gap');
+    if (!requiredPositiveDimensions.length) throw new Error('f3_focused_control_changed');
+    return [...controls.controls.filter(c => c.domain === domain), ...[false, true].map(flipped => ({ domain, group: 'focused_source', flipped,
+        expected: flipped ? 'left' : 'right', caseId: entry.caseId, fixtureHash: entry.fixtureHash, requiredPositiveDimensions,
+        messages: [{ role: 'user', content: canonical({ ...publicCaseScenario(entry), dimensions: entry.behaviorDimensions,
+            left: (flipped ? positive : negative).pair.baseline.output, right: (flipped ? negative : positive).pair.baseline.output }) }] }))];
+}
+
 async function calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, controls, entry, store, signal, ledger, resume, owner) {
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
     const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(domain) });
     entry.comparisonCalibration = [];
-    for (const control of controls.controls.filter(c => c.domain === domain)) {
+    for (const control of f3ComparisonControls(controls, domain)) {
         const actual = cases.find(c => c.caseId === control.caseId);
         const messages = f3CalibrationMessages(control, actual);
         for (const label of f3JudgeLabels(scope.judgeMode)) {
@@ -281,13 +296,13 @@ async function calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, contr
 }
 
 export function f3ExtractionInput(capture, domain, investigation) {
-    return { instruction: 'Return JSON only: {"edits":[{"before":"exact unique original fragment, or empty string to append","after":"minimal corrected fragment or appended instruction"}],"rationale":"public hypothesis at most 1024 bytes"}. Use one to four edits against base, never a full replacement. This is a delegated private engineering investigation, not user feedback or a proven root cause. Generalize the observed development deficiency without case names, answers or private facts. Preserve other base instructions and Skill frontmatter. Change only the declared field, no tools, identity, authority, connection, guards or output owner. Address the supplied execution affordances: an instruction must identify an available action and its timing, not a phase the runtime never reaches. Protect all required dimensions while correcting the deficiency. State expected benefit and a counterexample. Independent promotion fixtures are unavailable.',
+    return { instruction: 'Return JSON only: {"edits":[{"before":"exact unique original fragment, or empty string to append","after":"minimal corrected fragment or appended instruction"}],"rationale":"public hypothesis at most 1024 bytes"}. Use one to four edits against base, never a full replacement. For an append, before must be empty and after must contain ONLY the new addition prefixed by a newline, never the base again. Never set before equal to the complete base, even if after preserves it. Each after is at most 4096 characters. Rationale must be a single sentence of at most 512 bytes containing expected benefit and a counterexample. This is a delegated private engineering investigation, not user feedback or a proven root cause. Generalize the observed development deficiency without case names, answers or private facts. Preserve other base instructions and Skill frontmatter. Change only the declared field, no tools, identity, authority, connection, guards or output owner. Address the supplied execution affordances: an instruction must identify an available action and its timing, not a phase the runtime never reaches. Protect all required dimensions while correcting the deficiency. State expected benefit and a counterexample. Independent promotion fixtures are unavailable.',
         feedback: [], diagnosis: null, investigation, field: capture.field, base: capture.body, allowedDeclaration: capture.declaration,
         requiredBehavior: domain === 'rp'
             ? 'Preserve player choice, latest exposed promise and scene revisions, unknown current/private facts, distinct NPC voice and actionable in-world continuation. Never infer present time, physical conditions or private intentions from a schedule, metaphor, role or unobserved object. NPC actions and offers can advance the scene while leaving player action undecided. A supported prerequisite never authorizes extra penalties, restrictions or required choices.'
             : 'Read authoritative sources and diagnostics, reset invalid staged operations, preserve unrelated data and human revisions, distinguish prior conflicted Tasks from fresh Tasks, and accurately explain proposed changes and the pending human Review/Commit boundary.',
         executionAffordances: domain === 'rp'
-            ? 'The declared character Skill is read by the original Director before writing the public NPC response. Its instruction must preserve expressive NPC actions without authoring player action or turning unobserved circumstances into established facts.'
+            ? 'The declared character Skill is read by the original Director before writing the public NPC response. Its instruction must preserve expressive NPC actions without authoring player action or turning unobserved circumstances into established facts. Use a concrete pre-response audit against exposed prerequisites and the player-owned action boundary; a broad prohibition alone is insufficient. Preserve vivid NPC gestures and dialogue. Ordinary atmosphere does not establish binding rules or private knowledge.'
             : 'The original Studio loop ends immediately after prepare_review returns a stopped Task. There is no post-Review model-summary round. Model-authored public text is available as assistant content alongside a tool call and as set_plan summary/step descriptions before prepare_review. State current facts and the planned uncommitted Review boundary there; do not claim validation passed or Review was reached before the tool confirms it. A future summary instruction alone has no executable post-Review slot.' };
 }
 
