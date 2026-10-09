@@ -22,6 +22,18 @@ const captureFor = entry => ({ trialId: 'f2:' + entry.caseId, refs: { runIds: []
     prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
     observe(name, observed, expected) { this.checks[name] = canonical(observed) === canonical(expected); this.evidence.push({ name, observed, expected }); } });
 
+test('Project calibration projection preserves opposite outcomes and authoritative sources', () => {
+    const priorConflictTask = { taskId: 'old', status: 'conflict', timeline: ['duplicate'], operations: [], changeSets: [] };
+    const content = { left: canonical({ status: 'repair', source: { binding: 'wrong' }, priorConflictTask }),
+        right: canonical({ status: 'review', source: { binding: 'correct' }, priorConflictTask }) };
+    const control = { domain: 'project', messages: [{ role: 'user', content: canonical(content) }] };
+    const projected = JSON.parse(f2CalibrationMessages(control)[0].content);
+    expect(projected.left).toMatchObject({ status: 'repair', source: { binding: 'wrong' }, priorConflictTask: { status: 'conflict' } });
+    expect(projected.right).toMatchObject({ status: 'review', source: { binding: 'correct' }, priorConflictTask: { status: 'conflict' } });
+    expect(projected.left.priorConflictTask.timeline).toBeUndefined();
+    expect(JSON.parse(control.messages[0].content)).toEqual(content);
+});
+
 test('reviewed pilot sources retain the legacy catalogue and isolate original roots and template groups', () => {
     expect(CASES).toHaveLength(12);
     expect(CASE_SET_REVISION).toBe('49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b');

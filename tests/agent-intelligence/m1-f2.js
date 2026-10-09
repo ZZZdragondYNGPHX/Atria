@@ -23,7 +23,15 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
 }
 
 export function f2CalibrationMessages(control) {
-    return [...control.messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.' }];
+    const messages = control.messages.map(message => {
+        if (control.domain !== 'project' || message.role !== 'user') return message;
+        const content = parseEvaluationJson(message.content);
+        for (const side of ['left', 'right']) if (typeof content[side] === 'string' && content[side].trim().startsWith('{')) {
+            content[side] = projectSourceProjection(parseEvaluationJson(content[side]));
+        }
+        return { ...message, content: canonical(content) };
+    });
+    return [...messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.' }];
 }
 
 export function reusableF2Calibration(row, control, label, config) {
@@ -46,9 +54,8 @@ export function parseF2SourceAssessment(text, entry, evidence) {
     return { dimensions };
 }
 
-export function f2SourceEvidence(pair) {
-    if (pair.case.entrance !== 'project') return canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
-    const output = JSON.parse(pair.baseline.output);
+function projectSourceProjection(value) {
+    const output = structuredClone(value);
     // The raw report retains the complete old Task. Its nested source copies
     // do not add evidence about the current baseline's requested correction.
     if (output.priorConflictTask) {
@@ -61,6 +68,12 @@ export function f2SourceEvidence(pair) {
                 inputHash: input ? hash(input) : null };
         });
     }
+    return output;
+}
+
+export function f2SourceEvidence(pair) {
+    if (pair.case.entrance !== 'project') return canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
+    const output = projectSourceProjection(JSON.parse(pair.baseline.output));
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
     return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output, checks: checks ?? {}, evidence: evidence ?? [],
         error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
