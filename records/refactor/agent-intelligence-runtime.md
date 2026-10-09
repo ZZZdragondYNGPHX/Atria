@@ -8,7 +8,7 @@
 
 ## Summary
 
-最新checkpoint：2026-10-09 F2准备核对以source_unready停止；六development synthetic规格、draft rubric/结构controls及原Project工具路径已保存，独立promotion来源/headroom/实际语义校准未完成，F3未开始。product57520d43d与main ed1fd905保持；本轮零真实send，761/2939582、旧窗口/6of24 claim不变。下一仍补齐F2，详见末节/live HANDOFF。
+最新checkpoint：2026-10-09 F2固定来源/独立密封/原adapter与构造路径/有限scope已准备；实际语义校准/headroom等待新Step最多12次许可，F3未开始。product `eb1664138458ebae073d86792e5a5295ce27dfda` 已push；main/paid source与761/2939582保持。本包6 relevant suites/44 distinct tests、零真实send，详见末节/live HANDOFF。
 
 长期任务沿同一产品分支实施；D0–D4 / S01–S09 与 S10 工程交付完成。S10 将 S05 feedback / diagnosis、原六类局部 target、共享 finite budget、原 scheduler、隔离 evaluator、publication / recovery / rollback / next-run evidence 与双入口共享面板接为可用消费者。12 relevant suites / 233 distinct local tests 与真实 Chromium shared-pane fixture 通过。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 S06 真实执行与 model observations 保留，候选仍 ineligible；本轮无新真实模型请求。S10 的结构 / 假 provider 证据不证明稳定质量 / 成本收益；M1 的真实改善与集成前置条件待验收。本轮只续接 S10，下一只复核 M1 验收，不进入 S11 / G。
@@ -1020,3 +1020,24 @@ Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 e
 五累计文件逐项匹配旧source-read-cycle-final-audit SHA：761requests/2939582tokens，509entries含492reported/17unknown74948，pending0；quota761、lock0，九windows/七stop，旧permit6/24保持。本轮末再核对五dirty文档加五累计文件10/10 byte SHA、product/main refs保持。无产品修改或新私有Experience迁移。文档仅同一feedback模块/acceptance/index/Record/live HANDOFF，原acceptance§2/§9逐字不改；五相关文档51处本地链接/锚点、12表格与围栏通过；原acceptance§2/§9文本逐字一致。首次文档diff因Windows默认CRLF将整份文本报为whitespace，五个本轮文件改回原LF后普通/staged diff通过，原dirty工作树字节不改。
 
 本轮阶段停止，M1 pending、main未合并、不进入S11/G。接手仍是F2，不直接F3；用户无需手测。读取原HANDOFF/index→feedback§10及acceptance§10.1→本节，核对private readiness/source packet与原账目，先补齐已列缺口，再任何请求之前固定新actual范围与窗口处理。
+
+
+## 2026-10-09 F2续接 — 独立密封与原窗口、有限scope准备完成，等待新Step许可
+
+用户继续原F2范围并明确回复允许专职子代理生成密封来源。开始product57520d43d、docs a91f45e40；fetch未发现其它设备新push。沿同一工作分支commit/push f8f6c0d7a→最终/Tested `eb1664138458ebae073d86792e5a5295ce27dfda`，main ed1fd905不变、paid source仍a61b249ef；没有F3提炼/paired development/promotion/publication。原五无关CRLF dirty文档仍在旧本机docs工作树，全部字节保护，文档通过同一临时detached docs worktree更新。
+
+独立作者单独生成3RP/3Project synthetic，接收通用schema/家族排除/公开窗口，未读取development内容、未调用付费模型或写Git。开发侧只读metadata（SHA f7858cc57c9b5aa5eeaa1a2102174c83bca7f7eddf0e07330d6ffbeeeaf14505），未读密封fixture/control/答案。作者完成schema/ranges、Node canonical parity与语义家族排除；RP字节和ProjectSetup/Edits在窗口修订中保持。固定promotion只导入元数据pins，不能自动升级为实际独立验收胜/真人偏好。
+
+六development synthetic现进入原fixed catalogue/validator；原legacy12内容/revision不变。RP保留全部owner/agency/exposure/revision/variant guards。Project最初尝试在Review后再次prepare被原review锁拒绝；同时新增fixture误读Task snapshot.proposals，修正为operations。没有改原Task状态机或重放授权。核对原STOP_STATES后，最终窗口前置真实旧review→human metadata修改→原commit前base拒绝（无intent/write），显式创建新base上的fresh Task并曝光旧conflict原ref/status；fresh Task已有真实missing-binding诊断，原public loop读/reset/save/review修复。免费构造六case各2round，Project各8tool calls、failed→passed、旧conflict不rebase/新Review未提交、human source与其它字段/resources/permissions及隔离canary保持。hard checks只是工程证据，不填六维语义零/tie/人类分数。
+
+原evaluator内部baseline-only probe只选新development/一次，复用原worker/compiler/provider/owner reserve/settle；host_source_probe报告保留completeness且candidate/judge/human为空，promotionDecision拒绝。原pilot compare仍source_unready，生产准入不变。原M1 CLI的F2模式只读取固定scope/controls，最多36baseline+24calibration、Step12、retry/extraction/promotion/publication皆0，首个校准或transport失败即停；实际request/snapshot/hash在funding前私有记录，没有并行runner或新账本。
+
+12份校准材料是known violation/counterfactual/missing evidence×两顺序×两域，拟双judge24次；原parser本包8映射、4缺证据拒绝，实际模型语义校准未运行。控制positive说明是明确的engineering_control，不是baseline观察或human标签。新funded-path fake test证明一个校准失败保留原settle记录且停止、不启动baseline/candidate；unknown不强制零/正式grade。
+
+真实CLI prepare两域0send，但重复新建Project随机Preset引用使configuration/settings/target pins不稳定。新增原restore的baseline-only分支要求exact doc/target/实际pin、jobs/publications空；保持原publication restore默认行为。最终准备run run-1791522724983-ea572224 与restore复核 run-1791522727921-9bfaefe3 的四类pins全部一致；付费模式缺新许可时在ledger lock前f2_step_permission_required。五累计状态及五dirty文档10/10字节保持。当前stepPermission=null，新claim未建立，原九窗口七stop、旧6of24及epoch完全保持。
+
+验证：5 suites/39 distinct tests（f2-sources12、m1-development-selection3、m1-acceptance7、live-bridge11、evolution-consumers6）；随后因新restore变更增加F2 restore1以及完整m1-resume4，合计6 relevant suites/44 distinct tests。相关变更后重跑scope/失败settle2项通过；触及10个JS/MJS ESLint、M1 CLI syntax与diff通过。fake providers/原funded worker与工具控制不是实际模型校准、配对质量胜或CI；未运行full/build/UI/Android/外部DB。准备Python一处GBK读取和一处按分号截JSON失败均在本地修正，没有账目/模型写入；新增测试一处误读owner.charges修正为原attempts，最终通过。
+
+新source scope SHA 355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d；calibration 9081a5246dfa4c753a146a6b89cf09282da921a09b48fb9dcf8851e0748f3018；constructive evidence 71e631cc33f9381548893aa7b59d640b19e716da60b9fb7485c123f7c094e646；free readiness 12c3ddd111a6bb8dff751b67eaf7f69bf0621ec20057ebbd0303b6f59ae13c23；case/rubric/evaluator/Quality pins归feedback§11。私有scope/配置/正文与原raw reports不提交，公开仅metadata与受审构造fixtures；restricted ACL保持。原ledger761/2939582、492reported/17unknown74948、pending0/lock0、quota761不变。文档修改同一feedback/acceptance/index/Record/HANDOFF，原acceptance§2/§9逐字保护。
+
+停止边界：不是source已完整验收，也不把双域试点提前启动。原feedback§7/acceptance§10禁止复用旧Step余量/清stop；当前只独立作者授权，没有新有限次数许可。所有可审阅源码/来源/范围已准备并push后请求用户确认：仅此次F2最多60send（Step新12次），新故障即撤销，无retry；确认后先追加具体许可hash，沿准备副本执行并保存实际校准/headroom/全部费用，包末停止。若不授许可就保持免费准备状态。M1 pending，不合并main，不进入S11/G，用户无需手测。

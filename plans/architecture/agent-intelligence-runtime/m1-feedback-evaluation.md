@@ -150,7 +150,7 @@ Project development 的三个任务类型：真正有关联依赖的 authoring�
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
 | F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
-| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费controls/独立性和可完成路径先通过；有模型探测须先冻结其有限范围；最终请求前保存新acceptance范围 | 准备核对完成，以source_unready停止；独立来源/headroom/实际语义校准未完成，见§10 |
+| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费controls/独立性和可完成路径先通过；有模型探测须先冻结其有限范围；最终请求前保存新acceptance范围 | 固定来源/独立密封/构造路径与有限范围已准备；实际headroom/语义校准待新Step许可，见§11 |
 | F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 未开始 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 中source_unready、calibration_failed、unsupported_locus或baseline_saturated是有效停止结果，不伪造失败/人类标签来凑闭环。
@@ -174,7 +174,7 @@ M1 成功只能按原验收宣布；F0 文档冻结、F1本地通过或F3单一�
 | fixed QualityProfile | 原evaluator目录内固定8个profile：六legacy与两个pilot；identity包含domain/unit、全部critical dimensions、unknown/N/A规则及内容revision | 两个pilot的六维均critical，无可事后N/A的必需维度；这是受审类型registry，不是已校准的文学rubric/独立案例。后者只在F2固定 |
 | report consumer | 原compare输出Report v2的`quality` envelope，固定registry revision/domain/split、case/profile revision及provenance派生组；原逐pair、charge、人类字段、原gate保留 | critical dimension漏评、case/split/profile变化或伪改来源资格拒绝；现有case只标historical_synthetic/not_established，新报告source_unready。旧v1历史仍可只读识别且受原revision/gate约束，不回填旧评分 |
 
-两个pilot profile ID是`rp.m1.information`与`project.m1.related`，维度分别对应§6。当前没有给它们注册新source/fixture/adapter或promotion答案；原compare收到该profile请求会在worker/provider前返回source_unready。F1本地fake worker只核验工程report消费，不能自动取得F2材料或F3资格。原fixed catalogue的旧case内容/revision不改，也不继续用它们追分。
+两个pilot profile ID是`rp.m1.information`与`project.m1.related`，维度分别对应§6。F1封包时没有给它们注册新source/fixture/adapter或promotion答案；F2续接现状见§11。原compare收到该profile请求会在worker/provider前返回source_unready。F1本地fake worker只核验工程report消费，不能自动取得F2材料或F3资格。原fixed catalogue的旧case内容/revision不改，也不继续用它们追分。
 
 v1 writable mutation沿原CAS升v2，即使旧feedback hash未变也先失效旧Evolution job/report并暂停policy；read-only inspect/export不写。旧feedback id/revision/origin/source/期限和累计账目保留；新诊断须显式根因/干预，旧有向diagnose请求不兼容时拒绝，而非猜测归因。FS/SQLite依旧走generic reopen/dump/restore/deleteUser；回退旧二进制时必须暂停新功能，旧validator不能写v2。旧试验CLI的fixture代理explicit历史入口不改写为真人来源，也不作为新试点执行入口；F2只适配已冻结的新来源和内部分析port。
 
@@ -236,3 +236,30 @@ v1 writable mutation沿原CAS升v2，即使旧feedback hash未变也先失效旧
 私有来源包SHA256 `b7a46ff1b0550f3ee074f45a3819b037777fc4efdc1ff1df0c84e57f3be2a8f9`；draft rubric `4ec9760ce4b4906d6928558c8d2e2d410a077018714562c1c54442a380bcc8b8`；原工具路径报告 `ed82408c425e4dc7d40a497adea9d40c1bd89a3d45391f29abda8823f54c3476`；最终readiness `34e42c7b74714af224e9216940ae42dcb8a96e3aeedcc659c1fc9614f61da481`。来源包内逐规格保存input/control/specification hashes及profile exact refs；原Quality registry revision `2a3313cdec0280729bae2cf2401090c131682bc50d8bb33707a4d50b1320e370`，evaluator revision `8f4b4fbfd402a3825d714e76d8a84c3d0c4ad67b6b6ac5053d3cd483bc892180`。当前primary/secondary无key配置hash仅留私有报告，未产生实际request pins，不把规格hash冒充已发送快照。
 
 本轮零真实发送、零提炼/paired trial/发布；累计761/2939582及五状态SHA、九窗口七stop、6of24旧claim保持。M1 pending、main未合并；包末保存同一Record/HANDOFF后停止。下一如获继续仍是补齐F2，不直接进入F3。
+
+
+## 11. F2续接：独立密封来源、原窗口与有限范围已准备
+
+2026-10-09用户继续F2，并明确允许专职独立作者生成密封来源。本包product/Tested HEAD `eb1664138458ebae073d86792e5a5295ce27dfda`，从docs `a91f45e40e638b4f813d298250d2a4b393b10f57` 续接。新source/原adapter、免费构造路径、控制材料和付费前范围已固定；**实际headroom与双judge语义校准未运行，等待新Step有限许可**。F2未全部验收，F3未启动；原§10记录保留为上包历史。实际范围归 [acceptance §10.2](m1-acceptance.md#102-f2续接已固定的有限范围与新许可边界)。
+
+### 来源与原消费者
+
+原六个development用途现已成为受审fixed synthetic fixtures，保留明确origin/purpose、不同episode/Project root与template家族和空derivedFrom。开发内容属于构造产品工作负载，不是已经发生的真实baseline失败。原12个legacy catalogue及其revision `49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b` 逐字不变；新12项（6 development、6 promotion metadata pins）另有固定case revision。没有任意上传case自动取得资格的入口。
+
+独立作者在未读取development正文/controls的条件下生成每域3个不同来源家族；仅收到通用schema、排除家族与公共窗口约束。开发侧只读取metadata，不读取密封内容/答案；固定目录只import promotion metadata/hash，不import payload。作者完成schema/ranges、Node canonical parity与家族语义排除核对；private ACL保持。metadata SHA `f7858cc57c9b5aa5eeaa1a2102174c83bca7f7eddf0e07330d6ffbeeeaf14505`。这些是独立agent-authored synthetic，不是自然用户来源、人类标签或已经运行的独立promotion。
+
+RP窗口同时保留当前可见承诺/scene修订、unknown当前事实与角色声音；原owner/player/exposure/revision/variant/stale completion checks全部使用原消费者。Project原public loop在Review/conflict即停止，不能在工具返回后补造模型冲突说明。因此最终固定为一个有界公开窗口内的两个真实原Task：旧有效待审Task经过human metadata修改，原commit前base检查真实拒绝，未建commit intent/写入；旧Task继续保留conflict/旧base。Host随后显式在human revision创建fresh Task，并暴露旧Task的实际公开ref/status/validation及新Task具体缺失binding诊断。模型只读最新source/diagnostic、reset错误staging、修正关联依赖并到Review；不commit、不rebase旧Task。这样模型在生成时能看到实际冲突并说明fresh Task与未提交状态，原停止规则不变。
+
+六个免费scripted构造路径各在两次原public generation rounds内通过；Project每个8个tool calls（含预置诊断，工具批次不等于round），原validation failed→passed、旧conflict保持/fresh Review、human source/无关字段/resources/permissions保持，model effects 0，隔离canary保持。只证明可完成路径和实际证据曝光，不证明真实模型能力、headroom或六维语义得分。preservation只恢复授权修改的具体字段再比较整份source，不能以整条entry恢复掩盖未授权字段变化。
+
+### 校准、probe与有限封包
+
+两个profile全部六critical dimensions保持，逐维rubric要求实际公开证据，缺证据unknown，不能补零/tie或事后N/A。控制材料共12份：2域×known violation/counterfactual/missing evidence×两顺序，拟供两judge共24次。构造positive/negative与说明均标engineering_control/humanPreference=not_observed；不是观察到的baseline缺陷。原parser本包验证8次方向/符号映射、4次缺证据empty deltas拒绝；这不证明两个模型会正确判别。有效控制要求顺序一致、重要维度非负且至少一个正delta；unknown必须uncertain/empty deltas，不可取得正式grade资格。首个无效/不可判别结果即结束，不追分。
+
+原EvolutionEvaluator新增内部baseline-only source probe，沿同一fixed worker/compiler/provider与owner reserve/settle；每域仅development、一次、每case最多6 sends。报告origin=host_source_probe，candidate/judge/human为空，保留原checks、正式输出、completeness、request/snapshot与charge身份，不能成为comparison或promotion资格。原compare两个pilot仍source_unready，production gate没有放开。原M1 local CLI增加F2显式scope模式，复用原ledger/quota/rate/transport，不调用runEvolution/提炼/发布；每次实际请求的rendered/hash/snapshot在funding前写私有记录，未知usage仍按原上界settle。
+
+Project prepare首次创建的Preset引用不稳定，已通过原restore的baseline-only检查恢复准备副本，要求精确doc/target/pin、jobs/publications皆空；两次原CLI prepare证明primary/secondary/settings/target pins稳定。准备run `run-1791522724983-ea572224` 与restore复核 `run-1791522727921-9bfaefe3` 均0 send。未授权paid模式实际在ledger lock/provider之前f2_step_permission_required；没有新Step claim/清stop/epoch。
+
+固定物理pins：Quality registry `2a3313cdec0280729bae2cf2401090c131682bc50d8bb33707a4d50b1320e370`；pilot case set `ff7409f24c7c7b5bb030a5f0052144ad3946c6459af1894ddbb225ed6b1211c3`；rubric `408f084132df98292863dcf2e1413b0c02803574aa913ad86e2e9603c78c248a`；evaluator `c5d6d2daf812a881955fc79c296b7174cfcef13f5a95f5a10a31c04cd76bd433`。私有scope文件SHA `355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d`；calibration `9081a5246dfa4c753a146a6b89cf09282da921a09b48fb9dcf8851e0748f3018`；constructive evidence `71e631cc33f9381548893aa7b59d640b19e716da60b9fb7485c123f7c094e646`；free readiness `12c3ddd111a6bb8dff751b67eaf7f69bf0621ec20057ebbd0303b6f59ae13c23`。逐source/input/case/provenance和无key configuration/settings/runner hashes在scope/metadata中固定；尚无实际发送snapshot，不能用规格hash代替。
+
+本包6 relevant suites /44 distinct local tests、触及JS/MJS ESLint和syntax/diff通过；fake funded failure一次settle后停止、baseline worker无candidate、restore原publication路径等见Record。真实账目仍761/2939582，五累计状态与五无关dirty文档字节10/10一致；九窗口/七stop和旧6/24 claim保持，真实send0。main未合并、M1 pending。下一只执行经新许可的F2有限校准/基线探测并核对headroom，成功也须包末保存Record/HANDOFF停止，不自动F3。

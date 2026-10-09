@@ -142,3 +142,23 @@ F1实现/本地Tested HEAD `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关s
 若后续继续F2，须先解决六critical dimensions证据覆盖/原fixed catalogue与adapter、独立来源、baseline可完成性和实际配置/request pins，再在本节另记真实probe/calibration的具体范围与原窗口处理；原36source-probe/24judge-control估算只作设计参考，不是当前发送许可。F3仍须单独在其启动前固定完整范围，并沿原development/九对准入，不能由本轮准备自动开始。
 
 账目761requests/2939582tokens、17unknown/74948、pending0/lock0保持；原2000/day/20RPM硬限、8000输出和token建议语义不变。结构controls与直接工具执行不计独立质量胜、模型校准成功或人类偏好。F2实际来源/语义校准未完成，M1 pending，不合并main、不进入S11/G。
+
+
+### 10.2 F2续接已固定的有限范围与新许可边界
+
+用户仅授权继续F2与独立作者；尚未取得针对旧Step stop的新次数许可。产品源码 `eb1664138458ebae073d86792e5a5295ce27dfda` 已push；來源/原窗口/构造路径/pins见 [反馈/评价§11](m1-feedback-evaluation.md#11-f2续接独立密封来源原窗口与有限范围已准备)。原§2/§9工程退出/准入条件逐字保持。以下是已准备且可审阅的**拟执行有限范围**，当前allowedActualSends仍0。
+
+| 工作 | 固定范围 / 上界 | 发送前条件 |
+| --- | --- | --- |
+| 双judge语义校准 | 2域×3组engineering controls×两顺序×2judge=24，其中primary12/Step12 | 同一scope/controls/config/runner/product pins；新Step最多12次有限许可；首个无效、顺序不一致、负维度或无判别力即停 |
+| baseline/headroom探测 | 每域3个新development来源、baseline only、各一次/最多6 sends=36 | 该域校准先通过；原worker/owner funded path；保存实际不足/成功/unknown后核对，不将硬check伪作语义分数 |
+| 合计 | 最多60实际sends：primary最多48/Step最多12；不是必须消耗量 | 原2000 rolling day/20RPM、8000 output；attempt最多80秒/整体2小时；retry0、发现/额外诊断0 |
+| 提炼、development pair、promotion、消费/发布 | 全部0 | F3未授权；来源probe不能取得资格，也不读密封promotion正文 |
+
+拟用原primary与secondary route/provider，模型身份及无key配置hash保留私有。冻结原baseline配置/Skill与Preset body，从原准备副本restore，不重新造随机Preset refs，不改变production1024/owner硬预算/human/price gate。实际request compiler/rendered/requestHash/snapshotHash及对应charge在每次funding前私有记录；空缺/partial/unknown和失败全部沿原累计账目，不把提示预算当删除旧账目理由。现金价格仍unavailable。
+
+新Step许可如用户明确同意，仅依当前有限scope与历史诊断/最新成功观察设最多12次、一份新claim、一次使用；原404 stop/recent/consecutive/epoch不清除，旧6of24记录与余量不使用。任何新的transport/incomplete失败立即撤销并停止，无retry或换窗口。来源/pins变更、source_unready、baseline_saturated、calibration_failed、unsupported_locus、时限/取消/API硬限都结束本包。没有授权时，实际CLI已验证f2_step_permission_required且未获取ledger lock/发请求。
+
+私有`m1-f2-scope-20261009.json` SHA `355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d` 固定product/evaluator/runner/case/rubric、controls、每域primary/secondary/settings/target pins、准备副本run与initialAccounting761/2939582；stepPermission=null。密封metadata SHA `f7858cc57c9b5aa5eeaa1a2102174c83bca7f7eddf0e07330d6ffbeeeaf14505`，开发侧未读其正文。填入新许可会形成新的scope/claim hash，执行前须追加该许可记录及hash，而不是把这份未授权scope冒称已经执行。
+
+本包真实send0、无新独立质量胜/human label；两次原prepare免费完成且pins一致，五累计状态/五dirty文档字节保持。实际headroom、双judge语义校准、真实模型六round表现仍not_observed/not_run，F2未全部验收。即使有限探测通过，也只更新同一Record/live HANDOFF并停止；不直接进入F3、合并main或S11/G。
