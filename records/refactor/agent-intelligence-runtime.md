@@ -940,3 +940,17 @@ Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229
 迁移权限核对发现本机Document目录755、连接配置/ledger644，与原私有700/600不符。只恢复目录700/普通文件600，符号链接不跟随；文件内容及五累计状态SHA保持，原Git exclude有效、Document无tracked文件。首次exclude核对误在docs工作树对外部绝对路径执行git ls-files导致只读命令报错，改在Document所属core工作树核对后通过；未读写reference或产品配置内容。
 
 最小验证仅文档diff、refs/字节hash、账目与quota结构及迁移权限/exclude核对；未运行产品tests/build/CI/UI/Android/外部DB，没有人工观察。更新同一Record/live HANDOFF后等待用户讨论，Plan不变，M1仍pending、不合并main。
+
+### 2026-10-09 RP / Project 领域能力扩展研究（待讨论）
+
+用户扩大调研范围，要求通用持续问题发现、评估和改善的设计差距分析，覆盖RP文学/认知/成长/自主性/记忆/偏好，以及Project规划/架构/测试/可靠性/安全/长期复用；本轮仅研究，不改产品。Start docs `6f1c18056d4f461df41e78e5d259c0c19bf55a15`，product `a61b249ef71f108d279ec7bd883fb5eeae97a463`、main `ed1fd90521a63363e29856601abbf5e908c99d10`；actual Git/迁移账目沿上节核对，五无关dirty文件与五累计状态文件设字节保护。
+
+已保存[领域扩展研究](../../plans/architecture/agent-intelligence-m1-domain-evolution-research.md)，不是批准后的Plan或第二份authority。阅读M1/S10/acceptance §9/S05及直接相关Experience、Evolution、case/adapter、evaluator/targets、repository、测试账目契约；仅定向阅读后续delivery/execution-reuse的边界，不扫描所有Plan或reference。公开一手资料含GEPA论文摘要和DSPy作者方法文档、明确到具体社区项目的RP-Bench、PHASE-Tree、NCP-Bench、NstAgent、ACL Novel Benchmark、judge偏差/人类校准及τ-bench/agent eval实践。GEPA全文网页/下载未取得可读全文，故具体实现解释以作者DSPy文档为依据，不声称已复现或逐页审计该论文；其余长论文按本任务相关方法/实验/限制定向阅读。论文版本、DSPy/RP-Bench正文commit与产品source固定在报告中；外部仓库未安装，benchmark未运行。
+
+八项产出全部覆盖：通用能力已实现/计划/缺口矩阵；RP十三维和Project十一类覆盖/证据/非Prompt依赖；原控制引擎与受审领域模块的职责；十组质量冲突与四层回归设计；来源分级、去重/抽样和新问题发现流程；Prompt/Context/state/runtime/evaluator根因与intervention分离；策略污染、评委偏差/漂移、来源泄漏与rubric不可优化约束；九项版本/来源/兼容契约与延后能力；完整额外调用/缓存/持续优化成本。源码事实、Atria实测、论文实证、作者报告和架构假设分别标C/A/E/R/H，未将外部任务效果外推Atria或真实用户。
+
+待讨论建议：保留M1有界控制闭环，先确认真实outcome/feedback供给及评价可判别性，再扩展有版本的领域质量和因果诊断。系统策略与故事角色成长分开，用户偏好与正式事实分开；Context/state/runtime无现有writer的修复转原authority工程任务，不能都靠Prompt。GEPA搜索valset及互补frontier属于开发证据，独立promotion另留；case按episode/Project/派生关系隔离。角色状态/长期记忆/跨任务复用属于后续路线，不静默扩大M1。测试两judge形态与生产human/price/owner gate分开，全部额外发现/校准/ablation请求都需进入原ledger/envelope；成本算式是形态上界，不是授权额度。
+
+本轮无模型API发送、无新增人工标签、无真实用户聊天扫描/导出、无新候选或评分，仍 **761 requests /2939582记账tokens**、17unknown/74948、pending0/lock0；失败stop/epoch和6/24历史许可不变。最小验证：研究/最新Record/HANDOFF的14处本地链接及锚点、表格列数和代码围栏检查通过，产品源码链接对应文件存在，文档diff检查通过；五dirty文件加五累计状态文件10/10字节SHA保持，product clean且HEAD/main符合固定值，已批准Plan模块未变。未执行产品tests/build/CI/UI/Android/外部DB，main未合并。研究稿与同一Record/live HANDOFF仅提交docs相关文件，五无关dirty草稿不提交。
+
+下一checkpoint是与用户讨论并决定真实来源/用途、首个领域pilot/时间尺度与关键维度、M1契约/后续实现分工、新case/rubric/calibration revision及有限验证范围；确认后才正式冻结Plan与实施。用户无需手测，不能反复重跑已指导修改的合成v1追分或把模型反馈伪装真人，M1仍pending，不进入S11/G。
