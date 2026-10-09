@@ -1,6 +1,6 @@
 # Atria Repository Governance
 
-**Governance version: 1.2**
+**Governance version: 1.3**
 
 本文件是 `ZZZdragondYNGPHX/Atria` 的完整 Repository Governance 权威入口。它规定最终仓库状态与任务生命周期，不绑定 Web、CLI、桌面 Agent 或人工开发者的具体执行工具。
 
@@ -17,12 +17,14 @@
 
 “仓库实际上是什么状态”的优先级：
 
-1. 真实 Git / 远端 refs；
+1. 真实本地 Git 状态；远端 refs 只证明已同步的存储状态；
 2. `HANDOFF.md`；
 3. Record；
 4. Plan。
 
 文档与真实仓库冲突时，以真实状态为准并修正文档，不为迎合旧文档而回退实现。
+
+2026-10-09 用户确认：本地是开发、验证、提交、合并与清理的主力；远端仅保存已提交的源码、资产、文档与历史。GitHub Actions 全部停用，包括自动/手动测试、APK/Docker 构建、发布与分支清理；不以远端 CI、PR 或自动合并作为日常任务的前置条件。
 
 Plan 保存产品设计与当前验收目标，Record 保存实际结果，HANDOFF 只路由当前进度；不要在各处复制另一套执行限制或次数许可。历史 Record、已关闭实验封包和旧 HANDOFF 不是当前执行指令，不得据此恢复旧配额、重复申请授权或阻断正常修复。当前用户指令覆盖旧文档时，清理冲突并继续工程工作，避免让不同文档反复要求 agent 互相否决。
 
@@ -32,7 +34,7 @@ Plan 保存产品设计与当前验收目标，Record 保存实际结果，HANDO
 
 正式、稳定的 Atria 产品源码主线。普通产品开发使用短期语义分支，例如 `feat/*`、`fix/*`、`refactor/*`；需要其它前缀时必须有清晰任务语义。
 
-任务完成后应验证、记录、合并 `main`、再次验证并删除短期分支。
+任务完成后应做最小相关本地验证、记录、在本地合并 `main` 并核对集成结果，再同步远端、删除已完成短期分支。没有相关新变化或未解决风险，不重复已通过的测试。
 
 ### `docs`
 
@@ -43,7 +45,7 @@ Plan 保存产品设计与当前验收目标，Record 保存实际结果，HANDO
 - `records/**`：实际上做成了什么的永久历史；
 - `templates/**`：Plan / Record / HANDOFF 模板；
 - `HANDOFF.md`：仅在确有活跃交接任务时存在；
-- `WEB-PERSISTENT-PROMPT.md`：Web 执行适配层。
+- `WEB-PERSISTENT-PROMPT.md`：停用状态说明；只有用户另行明确授权远端执行时才适用。
 
 不得放置产品实现、Package 资产、独立工具或 AI Skill 资产。
 
@@ -93,6 +95,29 @@ Atria Runtime Skills（例如 `main:default/skills/**`）属于产品资产，�
 
 跨工作空间需要内容时，应只迁移真正属于目标工作空间的资产，并保留清晰来源与验证证据。
 
+### 3.1 Local workspace layout
+
+本地主源码目录保留 `Atria/`，辅助 Git 工作树集中到同级 `Atria-worktrees/`：
+
+```text
+Atria/                         # 稳定 main
+Atria-worktrees/
+├─ docs/                       # 长期治理与项目文档
+├─ package/                    # 长期 Package 资产，按需建立
+├─ plugin/                     # 长期独立工具，按需建立
+└─ tasks/
+   └─ <task>/
+      ├─ source/               # 任务实现
+      └─ docs/                 # 需要隔离修改文档时才建立
+```
+
+- 目录表达职责与稳定任务归属；阶段只写入 Plan / Record / HANDOFF，不随阶段反复改目录名。
+- 只按实际任务需要建立工作树；迁移使用 `git worktree move`，核对 HEAD、未提交文件、草稿、忽略内容及相关路径/依赖链接。
+- 机器绝对路径与本地映射只存在于本地配置，不提交到共享治理或资产中。
+- 本地分支与远端同名存储分支对应；未提交内容仍只在本地，不能声称已备份。
+- 清理工作树/分支前确认任务已完成且提交已集成；未合并、活跃或用途不明的保留。对 detached 工作树，须确认提交已包含在目标历史，且没有未提交、未跟踪或忽略内容。
+- 不强推覆盖历史，不因目录整理读取或更新未经授权的 reference。
+
 ## 4. Task identity and Primary Workspace
 
 一个实质任务应有稳定 Task ID，并且只能有一个 Primary Workspace。辅助工作空间只提供实现、验证或资产证据，不为同一任务建立重复 Record。
@@ -101,7 +126,7 @@ Atria Runtime Skills（例如 `main:default/skills/**`）属于产品资产，�
 
 `Task ID + 稳定文档路径 + 实现/资产 HEAD`。
 
-docs 可以记录实现、Package、Plugin、Skill、CI HEAD；实现工作空间不要求反向记录当前 docs commit。
+docs 可以记录实现、Package、Plugin、Skill 与实际本地验证 HEAD；实现工作空间不要求反向记录当前 docs commit。历史 CI 证据可保留，不构成新的执行要求。
 
 ## 5. Plans
 
@@ -165,7 +190,7 @@ plans/package/example-project/
 
 Record 是永久实施历史。小任务可以在完成时一次写入；多阶段任务必须从第一阶段起持续更新同一份 Record，保留前序阶段。
 
-阶段记录通常包含：Stage、Start HEAD、End/Tested HEAD、状态、完成内容、关键决策、实际验证/CI、已知限制与下一 checkpoint。
+阶段记录通常包含：Stage、Start HEAD、End/Tested HEAD、状态、完成内容、关键决策、实际本地验证、已知限制与下一 checkpoint。
 
 不得等最终阶段结束后再凭记忆补写早期阶段。
 
@@ -175,7 +200,7 @@ Record 是永久实施历史。小任务可以在完成时一次写入；多阶�
 
 多阶段、跨对话/Agent、外部依赖中断或用户明确要求交接时建立；一次连续闭环的小任务无需形式化创建。
 
-一旦存在，每个实际工作轮结束必须刷新，至少记录 Task ID、Primary Workspace、当前分支/HEAD、阶段、Plan entrypoint、当前阶段所需 Plan modules、Record、已完成、未完成、关键决策、验证/CI、下一目标、开始前必读内容、不要重复的工作和新对话接手提示词。
+一旦存在，每个实际工作轮结束必须刷新，至少记录 Task ID、Primary Workspace、当前分支/HEAD、阶段、Plan entrypoint、当前阶段所需 Plan modules、Record、已完成、未完成、关键决策、实际本地验证、下一目标、开始前必读内容、不要重复的工作和新对话接手提示词。
 
 任务完成后删除 HANDOFF。历史 handoff 的有价值事实应进入对应 Record，而不是继续作为多个“实时交接”存在。
 
@@ -183,7 +208,7 @@ Record 是永久实施历史。小任务可以在完成时一次写入；多阶�
 
 ### Small task
 
-分析 → 建立适当短期分支 → 修改 → 验证 → commit/push → 必要 CI → Record → 合并 `main` → 验证 `main` → 删除短期分支 → 删除曾创建的 HANDOFF。
+分析 → 建立适当短期分支 → 修改 → 最小相关本地验证 → 本地 commit → Record → 本地合并 `main` → 核对集成结果（仅相关变化需要补测）→ push 已提交结果 → 本地删除已完成任务分支并同步远端删除 → 删除本任务曾创建的 HANDOFF。
 
 普通技术问题自行处理，不把测试、提交、合并等常规步骤反复交回用户确认。
 
@@ -191,7 +216,7 @@ Record 是永久实施历史。小任务可以在完成时一次写入；多阶�
 
 整个任务默认沿用同一 Primary Workspace / 工作分支。
 
-每个阶段：实现本阶段 → 验证 → 持久化/push → 方案实质变化时更新 Plan → 更新同一 Record → 更新 HANDOFF → 给出接手提示词 → **停止**。
+每个阶段：实现本阶段 → 最小相关本地验证 → 本地提交并 push 存储 → 方案实质变化时更新 Plan → 更新同一 Record → 更新 HANDOFF → 给出接手提示词 → **停止**。不等待已停用的远端 CI。
 
 不得因为还有能力继续就跨越正式阶段边界。全部阶段完成并验证后，才执行最终集成与清理。
 
@@ -236,15 +261,23 @@ Skill 可以指导技术方法，但不能扩大任务范围，也不能覆盖�
 
 Governance 定义结果，不规定客户端实现。
 
-### Web / remote
+### Web / remote (inactive)
 
-使用 `WEB-PERSISTENT-PROMPT.md`。以远端 refs 为事实，使用实际可用的远程能力；Repository-agent Skill 需要时从 `skills` 工作空间加载；没有运行过的本地测试、构建、真机或 UI 验证不得声称通过。
+当前远端仅承担存储，不主动使用 Web / remote Agent、Actions 或远端自动整理。`WEB-PERSISTENT-PROMPT.md` 明示该状态；只有用户另行明确授权远端执行时才使用实际可用能力。不得把远端存储成功当作本地验证通过，也不得自动恢复 Actions。
 
 ### Local / CLI
 
-使用当前工作区 `AGENTS.md`。优先本地 Git、文件系统、搜索、测试、构建、独立 worktree以及本地已安装 Skill；保护已有 dirty changes，不为模仿 Web 流程而绕远程 API 或 `skills` 分支。
+使用当前工作区 `AGENTS.md`。开发、验证、提交、合并与清理由本地 Git、文件系统、搜索、项目脚本和独立 worktree完成；GitHub API 只在存储管理/配置核查确有必要时使用。保护已有 dirty changes，不为模仿 Web 流程而绕远程 API 或 `skills` 分支。
 
 `CLAUDE.md` 只作为 Claude Code 薄入口，不复制第二套 Governance。
+
+### Minimal relevant validation
+
+- 根据实际改动与风险选择最小充分的本地检查；优先针对性静态检查、单元/集成测试、浏览器自动化或模拟器。不默认全量 lint/test/build，不默认 APK/Docker 构建或跨设备矩阵。
+- 已通过且未受后续相关变化影响的检查不重复；本地合并仅引入已验证相同内容时核对 Git/差异即可，冲突解决或新变化才补相关验证。
+- 尽可能避免人工实机验证。只有关键验收确实依赖自动化与当前本地环境无法取得的真实设备证据时，说明具体缺口、已尝试的替代方式与最小人工动作；不将人工实机设为常规阶段门槛。
+- 文档/治理/目录整理只验证对应内容、链接/路径、Git 注册和同步状态，不因此运行产品全量测试或实机验证。
+- 仅报告实际执行的检查；自动化替代不能伪造设备证据，也不能删除明确的产品质量、生产权限或数据保护要求。
 
 ## 13. Stop conditions
 
@@ -254,7 +287,7 @@ Governance 定义结果，不规定客户端实现。
 
 ### Environment Stop
 
-仅当下一步确实依赖当前环境无法取得的设备/UI 证据、用户专属 Secret/权限/登录，或远程 CI 已进入明显耗时且成为唯一剩余依赖时暂停。
+仅当下一步确实依赖自动化与当前环境无法取得的关键设备/UI 证据，或用户专属 Secret/权限/登录时暂停。先完成可独立推进的工程工作；不因已停用的 CI 或惯例人工实机检查暂停。
 
 普通代码错误、测试失败、workflow 问题、merge conflict 或常规实现选择应自行处理。
 
@@ -270,7 +303,7 @@ Governance 定义结果，不规定客户端实现。
 
 ## 14. Completion criteria
 
-产品短期任务完成：实现、适当验证、远端状态、Record、必要 Plan 更新、合并并验证 `main`、删除临时分支与 live HANDOFF。
+产品短期任务完成：实现、最小相关本地验证、Record、必要 Plan 更新、本地合并并核对 `main`、远端同步已提交结果、删除已完成临时分支与本任务 live HANDOFF；不删除其它活跃任务的 HANDOFF。
 
 Package / Plugin / Skill 任务分别以其长期工作空间的已验证资产、对应 Record、必要发布/索引状态与 live HANDOFF 清理为准。
 

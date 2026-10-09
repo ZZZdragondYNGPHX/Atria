@@ -41,4 +41,6 @@ Required reading:
 
 ## Validation strategy
 
+按阶段实际触及面安排最小充分的本地检查；优先自动化，不默认全量测试/构建、远端 CI 或人工实机验证。没有相关新变化不重复已通过检查。
+
 ## Material routing/design changes
