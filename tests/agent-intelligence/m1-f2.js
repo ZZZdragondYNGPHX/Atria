@@ -3,6 +3,7 @@ import { hash, canonical, publicCaseScenario, PILOT_CASE_SET_REVISION, PILOT_CAS
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { parseBlindGrade } from './m1-acceptance.js';
+import { m1JudgeOutputConfiguration } from './m1-grader.js';
 
 export function validateF2Scope(scope, controls, identity, prepareOnly) {
     const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
@@ -41,12 +42,8 @@ export function reusableF2Calibration(row, control, label, config, judgeOutputTo
 }
 
 export function f2JudgeTransport(config, judgeOutputTokens = null) {
-    const transport = structuredClone(config);
+    const transport = judgeOutputTokens === null ? structuredClone(config) : m1JudgeOutputConfiguration(config, judgeOutputTokens);
     transport.connection.options = { ...transport.connection.options, responseMode: 'stream' };
-    if (judgeOutputTokens !== null) {
-        if (!Number.isSafeInteger(judgeOutputTokens) || judgeOutputTokens <= 0) throw new Error('invalid_f2_judge_output');
-        transport.generation.output.maxTokens = judgeOutputTokens;
-    }
     return transport;
 }
 

@@ -26,6 +26,10 @@ export function m1ExtractionConfiguration(original) {
     return boundedOutputConfiguration(original, 8000, 'm1-extraction-8000-v1');
 }
 
+export function m1JudgeOutputConfiguration(original, outputTokens) {
+    return boundedOutputConfiguration(original, outputTokens, 'm1-judge-output-' + outputTokens + '-v1');
+}
+
 function boundedOutputConfiguration(original, outputTokens, revision) {
     const config = structuredClone(original);
     if (config.connection.providerAdapter !== 'provider.openai-compatible' || config.generation.streaming.enabled) throw new Error('unsupported_m1_extraction_configuration');

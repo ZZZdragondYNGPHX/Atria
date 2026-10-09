@@ -8,12 +8,20 @@ import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.j
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
 
+const judgeConfig = () => ({ connection: { providerAdapter: 'provider.openai-compatible' }, model: { limits: { contextTokens: 32000, outputTokens: 8000 } },
+    generation: { output: { maxTokens: 8000 }, streaming: { enabled: false } }, route: { generationProfileRef: { revision: 'old' } },
+    resources: [{ ref: { resourceType: 'core.generation-profile', revision: 'old' }, resource: { output: { maxTokens: 8000 }, revision: 'old' } }] });
+
 test('F2 judge streaming changes transport only and leaves the baseline configuration intact', () => {
     const config = { connection: { options: { toolSchemaMode: 'string-enums' } }, generation: { output: { maxTokens: 16384 } } };
     expect(f2JudgeTransport(config)).toEqual({ ...config, connection: { options: { toolSchemaMode: 'string-enums', responseMode: 'stream' } } });
     expect(config.connection.options).toEqual({ toolSchemaMode: 'string-enums' });
-    expect(f2JudgeTransport(config, 20000).generation.output.maxTokens).toBe(20000);
-    expect(config.generation.output.maxTokens).toBe(16384);
+    const original = judgeConfig(), extended = f2JudgeTransport(original, 16384);
+    expect(extended.generation.output.maxTokens).toBe(16384);
+    expect(extended.model.limits.outputTokens).toBe(16384);
+    expect(extended.resources[0].resource.output.maxTokens).toBe(16384);
+    expect(extended.route.generationProfileRef.revision).toBe(extended.resources[0].ref.revision);
+    expect(original.generation.output.maxTokens).toBe(8000);
 });
 
 test('calibration reuse requires the actual judge configuration and exact control messages', () => {
@@ -24,7 +32,7 @@ test('calibration reuse requires the actual judge configuration and exact contro
     expect(reusableF2Calibration(row, control, 'secondary', { outputTokens: 16384 })).toBe(false);
     expect(reusableF2Calibration(row, { ...control, flipped: true }, 'secondary', config)).toBe(false);
     expect(reusableF2Calibration({ ...row, passed: false }, control, 'secondary', config)).toBe(false);
-    const fullConfig = { connection: {}, generation: { output: { maxTokens: 8000 } } };
+    const fullConfig = judgeConfig();
     const pinned = { ...row, configurationHash: hash(fullConfig), transportConfigurationHash: hash(f2JudgeTransport(fullConfig, 16384)) };
     expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 16384)).toBe(true);
     expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 20000)).toBe(false);
