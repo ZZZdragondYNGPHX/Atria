@@ -123,12 +123,27 @@ test('source readiness assessments require all dimensions and literal evidence, 
     expect(messages[0].content).toContain('invented mandatory procedures');
     expect(hash(messages)).not.toBe(hash([{ ...messages[0], content: 'Different assessor contract' }, messages[1]]));
     const citedEvidence = f2SourceEvidence(pair), catalogue = JSON.parse(citedEvidence).quoteCatalogue;
-    const cited = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quoteRef: catalogue[0].ref, rationale: 'Observed.' }])) };
-    expect(parseF2SourceAssessment(JSON.stringify(cited), entry, citedEvidence).dimensions[entry.behaviorDimensions[0]].quote).toBe(quote);
+    const cited = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quoteRef: catalogue[0].ref, rationale: 'Observed.' }])),
+        knowledgeReview: catalogue.map(item => ({ quoteRef: item.ref, status: 'supported', rationale: 'Exposed fixture support.' })) };
+    expect(parseF2SourceAssessment(JSON.stringify(cited), entry, citedEvidence).dimensions[entry.behaviorDimensions[0]].quote).toBe(catalogue[0].quote);
     const forged = JSON.parse(citedEvidence); forged.quoteCatalogue[0].quote = 'Invented catalogue evidence';
     expect(() => parseF2SourceAssessment(JSON.stringify(cited), entry, canonical(forged))).toThrow('invalid_f2_source_assessment');
     cited.dimensions[entry.behaviorDimensions[0]].quoteRef = 'q9999';
     expect(() => parseF2SourceAssessment(JSON.stringify(cited), entry, citedEvidence)).toThrow('invalid_f2_source_assessment');
+});
+
+test('RP knowledge assessment covers each output span and rejects a summary hiding an unsupported assertion', () => {
+    const entry = PILOT_CASES.find(c => c.entrance === 'rp' && c.split === 'development');
+    const evidence = f2SourceEvidence({ case: entry, baseline: { output: 'NPC offers a choice.\nNPC asserts an unsupported penalty.' } });
+    const catalogue = JSON.parse(evidence).quoteCatalogue;
+    expect(catalogue.map(item => item.quote).join('')).toBe('NPC offers a choice.NPC asserts an unsupported penalty.');
+    const value = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quoteRef: catalogue[0].ref, rationale: 'Observed.' }])),
+        knowledgeReview: catalogue.map((item, i) => ({ quoteRef: item.ref, status: i ? 'unsupported' : 'nonbinding', rationale: i ? 'Penalty has no exposed support.' : 'A choice remains open.' })) };
+    expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
+    value.dimensions.knowledge_boundary = { status: 'gap', quoteRef: catalogue[1].ref, rationale: 'Unexposed penalty.' };
+    expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence).knowledgeReview).toEqual(value.knowledgeReview);
+    value.knowledgeReview.pop();
+    expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
 });
 
 test('Project source evidence removes duplicated old history while retaining conflict, operations and human source', () => {
@@ -283,11 +298,13 @@ test('the original restore preserves exact prepared Project baseline pins withou
 
 test('pointwise calibration rejects an uninformative assessor before using a saved source probe', async () => {
     const source = PILOT_CASES.find(c => c.entrance === 'rp' && c.split === 'development');
+    const catalogue = JSON.parse(f2SourceEvidence({ case: source, baseline: { output: loadFixture(source, { purpose: 'evaluation' }).reply } })).quoteCatalogue;
     let calls = 0;
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async () => {
         calls++;
         return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: JSON.stringify({ dimensions:
-            Object.fromEntries(source.behaviorDimensions.map(d => [d, { status: 'unknown', quote: '', rationale: 'No observation.' }])) }) }, finish_reason: 'stop' }],
+            Object.fromEntries(source.behaviorDimensions.map(d => [d, { status: 'unknown', quote: '', rationale: 'No observation.' }])),
+        knowledgeReview: catalogue.map(item => ({ quoteRef: item.ref, status: 'unresolved', rationale: 'No observation.' })) }) }, finish_reason: 'stop' }],
         usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
     } });
     try {

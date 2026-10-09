@@ -77,6 +77,18 @@ export function parseF2SourceAssessment(text, entry, evidence) {
             || typeof row.rationale !== 'string' || row.rationale.length > 512
             || (row.status === 'unknown' ? row.quote !== '' : !row.quote || !excerpts.some(s => s.includes(row.quote)))) throw new Error('invalid_f2_source_assessment');
     }
+    if (entry.entrance === 'rp' && Object.hasOwn(JSON.parse(evidence), 'quoteCatalogue')) {
+        const refs = catalogue.filter(item => item.origin === 'baseline.output').map(item => item.ref);
+        const review = value.knowledgeReview;
+        if (!Array.isArray(review) || review.length !== refs.length || new Set(review.map(row => row.quoteRef)).size !== refs.length
+            || review.some(row => !refs.includes(row.quoteRef) || !['supported', 'nonbinding', 'unsupported', 'unresolved'].includes(row.status)
+                || typeof row.rationale !== 'string' || !row.rationale.trim() || row.rationale.length > 512)) throw new Error('invalid_f2_source_assessment');
+        const status = review.some(row => row.status === 'unsupported') ? 'gap'
+            : !review.length || review.some(row => row.status === 'unresolved') ? 'unknown' : 'met';
+        if (dimensions.knowledge_boundary.status !== status || status === 'gap'
+            && !review.some(row => row.status === 'unsupported' && row.quoteRef === dimensions.knowledge_boundary.quoteRef)) throw new Error('invalid_f2_source_assessment');
+        return { dimensions, knowledgeReview: review };
+    }
     return { dimensions };
 }
 
@@ -86,6 +98,10 @@ function withF2QuoteCatalogue(data) {
         if (typeof value === 'string') {
             for (let start = 0; start < value.length;) {
                 let end = Math.min(start + 480, value.length);
+                if (origin === 'baseline.output') {
+                    const boundary = value.slice(start, end).search(/[\n。！？.!?]/u);
+                    if (boundary >= 0) end = start + boundary + 1;
+                }
                 if (end < value.length) {
                     const span = value.slice(start, end), boundary = Math.max(...['\n', '。', '！', '？', '.', '!', '?'].map(mark => span.lastIndexOf(mark)));
                     if (boundary >= 120) end = start + boundary + 1;
@@ -153,6 +169,7 @@ export function f2SourceMessages(pair, evidence = f2SourceEvidence(pair)) {
     return [
         { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quoteRef":"q0001 or null","rationale":"brief reason"}}}. Each rationale is at most 512 characters. Select quoteRef from the supplied immutable quoteCatalogue; Host resolves it to the exact original quote. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quoteRef must be null). Never infer semantic success from hard checks alone. Scan the entire baseline for each dimension before choosing a quote: one compliant passage cannot cancel a concrete contradiction elsewhere in that same dimension. met requires the complete observed response to satisfy the criterion; it is not a majority-of-sentences judgment. Use only a supplied quoteRef; do not rewrite, concatenate or invent quoted text. In RP, invented mandatory procedures, permissions, eligibility conditions or penalties asserted as established world rules require exposed support; do not treat these binding claims as ordinary atmospheric description or infer support from fluency. Creative NPC gestures and diction do not authorize new binding rules. Prefer a quoteCatalogue item from baseline.facts when it directly supports the status; otherwise select an actual output span. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. The resolved quote must occur literally in the original evidence, independent of the catalogue. A correct quotation alone is not proof that the semantic status is correct. Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
         { role: 'user', content: evidence },
+        ...(pair.case.entrance === 'rp' ? [{ role: 'system', content: 'Before deciding dimensions, review EVERY quoteCatalogue item whose origin is baseline.output, including the final sentence. Include knowledgeReview:[{quoteRef,status:"supported|nonbinding|unsupported|unresolved",rationale}] in the same JSON, exactly one row per output item. supported: all asserted binding rules and unknown/private/current facts in this span follow from exposed scenario facts; name the specific exposed support in rationale. nonbinding: only creative NPC gestures, voice, questions, conditionals or explicitly retained uncertainty, without adding binding rules or known facts. unsupported: at least one asserted binding rule, permission, eligibility restriction, penalty or private/current fact lacks exposed support; identify it. unresolved: evidence cannot determine the classification. An NPC claiming a rule is not itself exposed authority for that rule. Mixed spans containing any unsupported assertion are unsupported even if other clauses are supported. knowledge_boundary must be gap if any row is unsupported, citing one such row; otherwise unknown for no output or any unresolved row; otherwise met. Do not treat silence about a rule as support or a compliant earlier sentence as cancellation of a later violation. All other rubric dimensions still require their own semantic assessment.' }] : []),
     ];
 }
 
