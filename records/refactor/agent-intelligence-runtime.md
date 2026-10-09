@@ -1165,3 +1165,5 @@ RP 逐句审核曾因复合句前半段有支持，把新增处罚也判 support
 本地私有换机包复用既有 manifest/restore 机制，更新 API 私有配置、账本/quota/rate/transport 历史、全部 raw reports/原 native fixtures、development 材料、独立密封来源、最终配置/controls/resume/audit，并携带最新产品/docs/main 与原独立资产工作空间的 Git bundle。原密封字节只复制/哈希，不作语义读取；不将隐私包或凭证提交公开 Git。保留原私有快照的无关工作树备份，更新工作树移除的旧 patch 另存历史副本；本机无关 dirty/untracked 不变。
 
 累计仍为1008 requests /5132946 accounted tokens，pending0/lock0；原时间戳和旧错误不重置。新设备恢复不发送模型请求，重新指向当地 Document 路径；历史机器路径与原报告身份保留，旧辅助脚本不得未经迁移直接调用。具体本地包文件位置、SHA256 和恢复命令交付用户，公开文档不记录机器绝对路径。
+
+实际迁移验证：在隔离本地目录成功执行 verify-only 与完整 restore，七个工作树 HEAD、五个本地私有路径均符合 manifest；8988个 Document 文件逐项核对原 SHA256 一致，所有报告含嵌套 Git 原字节保留。修复恢复器的 Windows ACL 继承处理，私有包根目录仅当前用户访问；新 bundle 包含源码与文档完整历史。五份变更文档的89个本地链接/锚点与围栏、git diff --check 通过。没有新增模型请求或重复产品测试；后续网络连接与双模型验收不属于本次换机恢复验证。
