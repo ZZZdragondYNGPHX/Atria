@@ -1,5 +1,7 @@
 # Atria Agent Intelligence Runtime — 正式架构与阶段入口
 
+> API 测试现行规则：仅每日 2000 次调用 / 20 RPM，唯一权威为 [Governance §13.1](../../../README.md#131-api-测试执行规则)，当前 M1 执行见 [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)。旧累计/封包/Step/token 限额、逐轮许可及人工额度审计全部撤销；旧阶段结果仍保留。
+
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete / S09 complete / S10 engineering complete; M1 empirical acceptance pending**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
@@ -15,7 +17,8 @@
 - S09 implementation / local Tested HEAD: `f740e65238d6c46575c1f9972735a1166ca1ec71`；Workspace 编排参数 exact versions / rollback 与 Project pristine Task repair 参数候选 / 原 CAS；8 relevant suites / 105 distinct local tests，无新真实模型。
 - S10 implementation / local Tested HEAD: `ed00f4f0cea53be360ed8dfa082bbd0afeec5398`；有限 Evolution / owner budget / 隔离 evaluator / 原局部 publication / 恢复 / shared UI；12 suites / 233 distinct local tests，实际模型改善待验收。
 - F1 implementation / local Tested HEAD: `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；原Experience v2、零模型采集、归因路由、固定quality/Report消费者；5相关suites / 101 distinct local tests及共享pane Chromium fixture通过。paid source仍a61b249ef，F2准备核对source_unready，独立来源/实际语义校准未完成；F3未开始，M1 pending。
-- F2 latest paid / local Tested HEAD: `eb1664138458ebae073d86792e5a5295ce27dfda`；独立来源密封保持；授权探测新增22请求/140750 tokens，RP校准12/12与3基线完成，Project第4校准因解释552>512无效，首失败停止。累计783/3080332，headroom未建立、F2未验收、F3未开始；详见feedback§12/acceptance§10.4。
+- F2 previous paid / local Tested HEAD: `eb1664138458ebae073d86792e5a5295ce27dfda`；独立来源密封保持；授权探测新增22请求/140750 tokens，RP校准12/12与3基线完成，Project第4校准因解释552>512无效，首失败停止。累计783/3080332，headroom未建立、F2未验收、F3未开始；详见feedback§12/acceptance§10.4。
+- F2 latest product / local Tested HEAD: `0479f5bd3e924c6031b09eaa4103e28684bc086a`；quote 表示层/证据 resume 和单次 deadline 修复；最新记录累计 805 / 3154587、unknown18/86579、pending0，RP controls/baseline 完成，F2 仍待完整证据。详见 acceptance §10.6 / 同一 Record。
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
@@ -56,7 +59,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [architecture.md](architecture.md) | 六 Plane 与语义 / 复用 / 计算 / 路由连接、证据与认知边界 | baseline、decisions |
 | [delivery.md](delivery.md) | 40 个候选实施阶段、依赖、实际交付与验收 | architecture、research |
 | [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
-| [m1-acceptance.md](m1-acceptance.md) | 已批准的M1自动化工程验收、模型盲评与丢失账本保守结转；生产human gate不变 | m1-evolution、s10-evolution、用户本轮确认 |
+| [m1-acceptance.md](m1-acceptance.md) | M1 当前测试执行、自动化工程验收与历史结果；生产 human gate 不变 | m1-evolution、s10-evolution、用户本轮确认 |
 | [m1-feedback-evaluation.md](m1-feedback-evaluation.md) | U13确认的原链路反馈来源、根因/干预分离、质量/案例/评价版本契约及双域试点工作包；F1最小实现完成；F2有限探测因校准输出契约失败停止，headroom未建立、F3未开始 | S05、S10、m1-acceptance、领域扩展研究 |
 | [m1-evolution.md](m1-evolution.md) | 首批双入口成长、局部自动启用与恢复的具体讨论设计 | architecture、decisions |
 | [s01-baseline.md](s01-baseline.md) | S01 的具体案例、报告契约、预算、验证和退出条件 | decisions、当前代码入口 |
@@ -74,7 +77,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §9/§10 → s10-evolution → m1-feedback-evaluation（含§9物理契约）→ S05 → 同一Record；F1最小实现完成，包末停止，F2当前有限探测以f2_calibration_failed停止（feedback§12/acceptance§10.4），累计783/3080332、headroom未建立；下一仅F2，不直接发F3试点请求。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
+S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §7/§9 → 当前相关消费者 → 同一 Record 最新节；F1最小实现完成，包末停止，F2当前有限探测以f2_calibration_failed停止（feedback§12/acceptance§10.4），累计783/3080332、headroom未建立；下一仅 F2；历史封包的首失败停止与重新许可不是当前继续规则，工程问题修复后必要复测。F2 阶段完成后按 Governance 停止，不直接发 F3 试点请求。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -136,12 +139,12 @@ S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runti
 ## 进入正式实施的条件
 
 S01–S10 工程链路沿同一分支完成，下一轮核对真实 Git，只复核 M1 验收与集成前置条件。读取 s10-evolution → m1-evolution / delivery M1 → 同一 Record。保留 ordinary RP bounded Director / 原 character Skill 和 Workspace binding、Project 原局部 Skill / style binding / pristine Task repair 的部署边界；不以独立报告叠加不同改进。
-S06 仍 promotion ineligible；本轮 fake provider / 浏览器 fixture 仅证明工程闭环，独立真实案例改善尚未证明。需要真实补测时先冻结有限范围与人工观察，恢复同一累计 ledger / rate checkpoint、不覆盖报告。
+S06 仍 promotion ineligible；本轮 fake provider / 浏览器 fixture 仅证明工程闭环，独立真实案例改善尚未证明。需要真实补测时按 acceptance §0 自主执行必要验证，保存实际版本与结果、不覆盖历史报告。
 S10 阶段结束即停止；M1 退出条件未验收，不合并 main，不进入 S11 / G。
 
 ## 2026-10-07 M1 验收调整
 
-用户批准由agent代劳自动化工程验收与旧预算保守结转，详细退出门槛 / 有限预算唯一归属 [m1-acceptance](m1-acceptance.md)。生产automatic promotion仍沿S10原human / price gate；工程报告不伪造人工标签、不证明净收益。当前只执行M1，实际结果待取得，不进入S11 / G。恢复先核对actual refs / HANDOFF，再读本模块 / S10和同一Record。
+用户批准由agent代劳自动化工程验收与旧预算保守结转，详细退出门槛与当前测试执行唯一归属 [m1-acceptance](m1-acceptance.md)。生产automatic promotion仍沿S10原human / price gate；工程报告不伪造人工标签、不证明净收益。当前只执行M1，实际结果待取得，不进入S11 / G。恢复先核对actual refs / HANDOFF，再读本模块 / S10和同一Record。
 
 M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；本地五套61 distinct tests通过，生产S10门槛源码不变。实际模型结果待执行，不能将接线完成计作改善通过。
 
@@ -151,8 +154,4 @@ M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；�
 
 2026-10-09 F2本轮准备核对详见 [反馈/评价模块§10](m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态)：新工作负载规格不等于正式source，promotion仅预留元数据不计独立来源；六critical dimensions实际证据覆盖未解决，原consumer发送前source_unready。下一仍F2，F3未开始。
 
-2026-10-09最新实际执行结果以 [feedback§12](m1-feedback-evaluation.md#12-f2有限探测结果校准契约失败停止) / [acceptance§10.4](m1-acceptance.md#104-f2授权范围实际结果与关闭) 为准；上述零send/待许可段落属于各历史checkpoint，不覆盖本次已关闭封包。下一仅F2工程准备，不自动重新发送或进入F3。
-
-当前F2续接已获用户累计1000调用/20RPM授权，采用 [acceptance§10.5](m1-acceptance.md#105-f2继续授权累计1000调用与20rpm发送前) / [feedback§13](m1-feedback-evaluation.md#13-f2继续输出契约对齐与基线缺口证据评估) 的新最多72send/Step18封包；旧结果保留，F3未开始。
-
-最新用户硬限已纠正为每天2000调用/20RPM，累计1000取消。当前product dd80d8583，RP已完成证据复用、只补后续核对；实时范围唯一见acceptance§10.6，F3未开始。
+当前 F2 恢复以 acceptance §0 / feedback §7 / HANDOFF 为准。已记录 paid 结果及工程问题见 feedback §12，产品 ac0344879 的输出提示与证据核对见 feedback §13；旧累计 1000、72/Step18 和逐轮许可全部撤销，必要诊断、修复及真实复测继续。F2 完成后按正式阶段边界更新记录并停止，F3 未开始。

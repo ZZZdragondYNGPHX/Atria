@@ -1,9 +1,17 @@
-# M1 — 自动化工程验收与丢失账本保守结转
+# M1 — 自动化工程验收与 API 测试执行
 
 - Updated: 2026-10-09
-- Status: 2026-10-09来源读取修复有限周期已结束，实际累计761/2939582。RP一致胜1/3且两分歧/continuity负差，Project三一致tie；development未达标，新promotion/闭环未执行。领域研究后U13确认契约先行，F0设计完成，F1–F3未实施；M1 pending、不合并main、不进入S11/G。
+- Status: F1 工程已完成；F2 评价/source 仍待验收，F3 未开始，M1 pending。测试限制按当前 §0 执行；后文旧封包与配额仅为历史。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
-- 用户明确不愿自己验证，授权agent代劳；对“保守结转旧预算 + 新有限额度 + 自动检查 / 模型盲评，生产自动发布保留原门槛”的确认提问回复“统一”，按上下文作为同意处理。具体数值是已授权方向内的工程冻结，不冒称用户逐项指定。
+- 用户授权 agent 完成验证。2026-10-09 最新指令取消额外测试配额、逐轮额度审计与重新许可；生产 automatic promotion 门槛不变。
+
+## 0. 当前 API 测试规则（覆盖全部历史封包）
+
+唯一权威为 [Repository Governance §13.1](../../../README.md#131-api-测试执行规则)：硬限制仅每日 2000 次调用、20 RPM，由发送端统一自动执行。历史累计不是终身额度；token、输出长度、旧预算 breach、每包发送数、Step claim 和旧 stop 不增加调用限制，不要求每轮人工审计或新许可。
+
+在已授权 M1 当前阶段内自主完成必要探测、诊断、修复和复测，保存实际结果后推进。参数/来源版本按实际变化记录，不能将每次记录变成发送前文档审批。工程错误修复后继续；真实验收不达标仍如实报告，production human/price/authority gate 及正式阶段边界保持。
+
+§6–§10.5 仅保留历史结果摘要与稳定链接；旧封包详细事实归 Record，旧执行指令已移除。现行恢复入口为本节与 live HANDOFF。
 
 ## 1. 验收语义
 
@@ -17,191 +25,77 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 - 两入口各九对完整独立comparison，无重复槽位 / 混source；evaluator / runner source、actual request / snapshot / usage / charge、originaltarget version与配置固定。
 - 两种model observation每对一致且为candidate或tie；每入口至少六对一致candidate胜，其余只能tie；全部重要行为维度非负。invalid / uncertain / 缺失 / disagreement不能补分、伪造、强行通过。
-- 原authority / isolation / target_consumed / source与exact配置检查全部通过；所有send均可核对到持久账本；usage未知或超建议如实报告，API每日 /速率硬限保持。
-- 用户明确无token要求，trial candidate /baseline tokens仅报告、不作工程通过条件；提炼 / 两种judge / retry / activation全计本轮预算并单列。价格未确认时currencyCost=unavailable，工程验收说明行为表现并单列token资源统计，不声称货币费用改善或含学习成本后的净收益。若价格取得则另行报告金额，不推断provider价目或隐藏retry。
+- 原authority / isolation / target_consumed / source与exact配置检查全部通过；所有send均可核对到持久账本；usage 未知如实报告；API 每日 / 速率硬限由发送端执行。
+- 用户明确无token要求，trial candidate /baseline tokens仅报告、不作工程通过条件；提炼 / 两种judge / retry / activation 的实际调用全部计入每日调用数并单列统计。价格未确认时currencyCost=unavailable，工程验收说明行为表现并单列token资源统计，不声称货币费用改善或含学习成本后的净收益。若价格取得则另行报告金额，不推断provider价目或隐藏retry。
 - 在私有fixture里通过本次用户委托执行明确review publication，保存原intent / receipt；原下一Director / Project request实际消费已选版本并核对exact snapshot / target；再guarded rollback回原base。工程review不是human preference，也不计automatic eligibility；生产用户对象不修改。
 - 原production promotionDecision继续拒绝缺human labels / confirmed price等证据的候选。模型盲评工程通过不触发生产自动发布，也不改默认review / 单目标 / scope / guards。
 
 不达标则记录具体failure与partial证据；不缩减cases / repetitions、训练promotion输出、偷偷更换case或追试至通过。M1工程验收达标后才按既定U7集成与最小本地验证；本轮不进入S11 / G，阶段结束停止。远期任务不标完成。
 
-## 3. 丢失账本恢复设计
+## 3. 历史账目与自动计数
 
-原S06ledger / limits / reports在临时目录缺失，用户确认无迁移；不能恢复逐次entries / settled usage或rate checkpoint。历史Record最后110requests /300464记账tokens仍是历史观察，不作为当前精确总量。
+原 S06 账本丢失后采用 historicalCarry 的恢复事实保留在 Record；不伪造逐次旧记录，不删除 settled/unknown。历史 carry、累计 tokens 和旧 breached 字段只作统计，不转为新的 API 硬额度。只有当前日窗口内的实际使用计入每日 2000 次；20 RPM 在发送端统一排队。
 
-新schema沿原test-only `EvaluationBudget`恢复端口增加显式 `historicalCarry`，旧snapshot格式保持兼容。结转 `origin=lost_s06_upper_bound`，requests=252、tokens=1000000，evidenceHash绑定原Record源码；这是整段旧finite guard上界，不是假造252条旧请求。旧history breach状态仍不可核实，当前period breach单独记录；此恢复仅服务已批准的有限工程测试，不取得生产eligibility。
-
-2026-10-08用户明确：“无token要求，测试API的硬上限仅为每日2000次调用，20RPM，其他仅为建议，如果超出建议预算只需告诉我即刻，无需停下”。此指令覆盖早期260新sends /699536tokens、含carry512 /1699536及单笔upper的硬预算语义：原数值保留为建议与历史记录，达到 /超过时立即通知并继续，不清除旧breached、entries或unknown。M1工程token非回归 /usage可得性同样仅作统计与提示，原请求资金 /charge关联、实际执行与评分证据仍须完整；生产预算 /human /price gate不改变。
-
-API唯一硬限为每日2000次 /20RPM。为避免未知日重置时区，CLI采用保守滚动24小时2000次上限，两个连接与所有retry /judge /activation共用持久quota；迁移时以现有累计332作为单一aggregate carry、从当前时间保守计24小时，不伪造旧逐次timestamps。新admission保存实际requestId /timestamp，先持久计quota与累计账本，再Secret lookup /provider。串行至少3150ms、额外滚动一分钟检查，restart保持quota /rate，不清账。
-
-共享EvaluationBudget增加仅显式test CLI使用的advisory模式；默认legacy strict保持。原Product repository不变；仅私有fixture使用test-only subclass沿原mutateOwner /校验 /存储保存reserve与settle，实际tokens照录，不将token建议超额设为新hard breach。旧累计breach保留为历史观察，旧private owner不改写。所有token未知 /超建议分别报告，不以较小分项和覆盖provider total；生产promotionDecision仍使用严格原repo与gate。
-
-固定case /Director步骤 /输出配置 /请求timeout继续管理一次有界实验，不进行无限重试或追试至通过。HTTP5xx /transport或不完整响应每请求最多追加两次，至少10秒；连续三次或最近20次六失败停止该连接，认证 /配置 /取消立即停止，满足用户先前“偶发继续、频繁停止”要求。每次retry都有独立durable charge，失败上界保留。不完整响应只指缺必需tool output、JSON /tool arguments无法完整解析；raw /fee保存，不修复输出，不对有效不利 /tie /uncertain评分追试。body不完整替换header成功观察，同一实际send不重复计失败次数。锁与rate /quota checkpoint持久，残留lock不绕过。
-
-RP继续使用先前实际付费提炼、已冻结且尚未发布的同一候选；source proposal /charge /base /target与原公开feedback身份核对，不把旧promotion输出送入学习。重新完整执行3场景×3次paired trial，不导入旧八对取得资格、不虚构新提炼费用；Project仍在原feedback /base上提炼一次候选。新结果独立报告，旧partial原样保留。
+沿现有 EvaluationBudget / test-only advisory repository、私有 ledger/quota/rate 持久化端口计数和保存结果，不新增一套账目 authority。unknown usage 可保存估计并明确标注，不因估计或 token 超报停止测试。生产 repository / promotionDecision 继续沿原产品规则。
 
 ## 4. 本地持久位置与执行
 
-用户指定的主目录 `Document/` 是私有持久目录，权限700、凭证 / ledger / report文件600，整个目录由local Git exclude排除。已有两个connection复制到该目录，更新local Git keys引用；不输出Secret / endpoint / 本地路径到Git。migration说明保留old key映射与evidenceHash，旧文件不覆盖；保守结转与本轮实际entries分别可检查。
+用户指定 `Document/` 是私有持久目录，凭证、连接、ledger 和报告均由 local Git exclude 排除，不写入公共 Git。保留现有连接与历史结果，不为了继续测试重置账目或覆盖旧报告。
 
-读取HANDOFF → index → 本模块 / S10 → Record；实际执行入口 `tests/agent-intelligence/m1-live.mjs`，沿原EvolutionService / evaluator与原repository写入；test-only接受判断不能被production endpoint导入。
+实际入口仍为 `tests/agent-intelligence/m1-live.mjs`，沿原 EvolutionService / evaluator / repository。按当前阶段读取 HANDOFF → index → 本模块 §0 与相关评价契约 → Record 最新状态；历史封包只在定位具体问题时读取。两模型使用已授权测试连接；输出长度、timeout 和必要 retry 依据 Provider 能力及当前问题配置，不以旧 1024/8000/8192 数值作为新增 API 配额。
 
-独立评分补测使用 `--grade-only`，只重开原私有fixture，核对原report /九对 /charges与native evaluator revision，不重跑提炼、trials、primary judge或publication。用户授权无token硬限后，独立grader允许显式有限8192输出以容纳reasoning；test-only `m1-grader.js` 仍使用原RouteResolver、固定worker bridge的compiler /snapshot /render、原provider和同一owner reserve /settle，再由CLI共享账本 /quota包裹。仅允许judge arm与independent job，核对request hash /exact endpoint /model /max_tokens /context，失败unknown保留完整input+output预留。原native evaluator与生产1024限制不修改，原比较revision /报告不覆盖，补评分source另pin。
+测试实现如仍要求 maxSends、maxSecondarySends、stepPermission、旧 breach/stop 或 token guard，应沿原测试消费者清理，不能把旧字段当成用户重新审批的理由。source/case/configuration 的实际版本随结果保存；不要求每次请求前提交一份许可文档。
 
-用户提供MiniMax订阅Key并限定其只作临时候补；默认第二模型保持 `step-5-preview`。仅显式 `--temporary-secondary` 可选私有候补配置且只允许grade-only，凭证600 /Git exclude。候补不可用立即按原认证 /频繁错误规则停止该连接，继续原第二模型，历史失败窗口和费用不清除。用户报告server group更改后用持久显式epoch区分实际配置；后续将grader output从1024改8192时追加output fingerprint，同一配置restart不新建窗口，旧HTTP503 /不完整响应stop原样保留。
+## 5. 继续执行与验证
 
-每阶段及结束只做本地最小相关验证，不触发CI或full test / build。相关tests / lint / fixed-loader checks先通过，source commit后再发送真实请求，报告pin该HEAD与实际source hashes；最终更新同一Record / live HANDOFF，停止。
+已授权当前阶段内持续推进必要工程工作。频率不足排队，日额度用尽等待恢复；普通测试/校准失败先修复后复测，临时网络错误按实际情况重试，实际调用统一计数。旧连接失败不形成永久封禁或 Step 次数许可；当前持续不可用时处理真实依赖。
 
-## 5. 继续执行规则
-
-按用户最新明确授权，历史token超报不会阻止本轮测试。保留原账与overrun记录，仅改变预算执行模式，不解锁生产对象的预算或自动权限。超过任何建议预算立即通知用户并继续；真正达到API daily /rate硬限或原频繁错误阈值时按实际原因停止 /等待，完整工程行为门槛仍保持。
-
-旧partial的主模型回归事实继续保留；token增加成为统计。cf实测两入口各完整九对、36arm原检查全部通过，RP主模型3candidate /4baseline /1tie /1uncertain、Project9tie。RP cf与Project c0恢复均已完成私有review /实际next-run消费 /guarded rollback；没有重跑比较拼资格。旧第二模型三连续HTTP500及Step旧503 /截断失败均保留；MiniMax临时国际接口401后按用户要求回到Step，8192有限输出取得RP4candidate /3baseline /2tie与Project9tie，两模型一致candidate分别3 /0；补测只增加独立观察。行为改善门槛仍不达标，不能因连接修复或token规则改变宣称M1通过。实际来源 /费用 /hash见同一Record与live HANDOFF。
+只做触及面相关的本地检查。使用真实结果判断工程与模型验收，不重写有效不利评分、训练独立验收输出或降低门槛；开发诊断后的必要复测保留前后证据。每个正式阶段结束按 Governance 更新同一 Record / HANDOFF 并停止；不把每次调用小批次视为新阶段。M1 未验收仍不集成 main、不进入 S11/G，用户无需手测。
 
 ## 6. 2026-10-08 有限优化周期
 
-本轮仅一次优化：旧候选 development 诊断 → 原 Experience 公开反馈/诊断 → 单目标新候选 → development 收益和回归检查 → 冻结 → 一次新独立验收。两个 development 检查各为每入口三场景各一次 paired trial，双模型观察；不重试有效不利、tie、uncertain。development 输出允许指导修改，永不计入独立验收。
-
-Project 原评审只接收最终 source JSON，遗漏计划、公开说明及修复/冲突轨迹。补充这些原消费者可观察行为，继续使用原 intent_completion / conflict_handling / repair_quality 维度与原解释，不降低门槛。旧报告及其 source/revision/hash 原样保留，新报告 pin 新 evaluator 与 case revision。
-
-新 promotion 使用 synthetic:v2，与旧 v1/本轮 development 分离：同六类场景、不同输入/名称/时间修订与公开行为要求。候选提炼只读取 development/公开反馈/原 base/诊断；不向提炼提供 v2 promotion fixture 或输出。新候选必须在实测前保存 exact value、来源 development report hash、原反馈/诊断与 configuration pin。每入口仍三场景×三次/九对、至少六对双模型一致胜、其它一致tie、重要维度无回归，全部原 authority/isolation/消费及私有 publication/下一run/rollback 门槛保持。
-
-沿同一555次累计 ledger/quota/rate/失败窗口，不覆盖旧文件；默认Step8192 independent grader。最多一次 baseline development、一次优化 development、一次冻结候选验收，不增加下一轮。若 development 未显示可信改善仍可取得一次冻结候选的失败验收证据，不追分、不合并main。生产human/price/预算gate保持；完成同一Record/HANDOFF并停止，不进入S11/G。
-
-首次 development 的 RP 三对及双模型评分完整；Project 尚无有效 pair 时一次 HTTP header-success/body-timeout 被原300秒Route中断。保留原 partial/全部 charges，只允许单次 Project-only continuation 补完其三对，RP 不重跑/重评分；组合 development 来源分别 pin 原始 summary/hash/HEAD。CLI 每次 transport/body 的时限缩至原Route的四分之一（最多80秒），使三次 funded attempts 与原10秒 backoff 能在原300秒Route内完成，不改原Route配置。header成功后body失败重新分类为一次失败，保存旧窗口备份/归因，保留全部历史失败、最近窗口与费用，不清账或另开epoch；真正取消/认证/频繁错误仍停止。
-
-Project-only continuation 已取得 authoring/conflict 两项有效 development pair（primary 均baseline）；repair baseline 正文失败后 error-wrapper 对 numeric DOMException.code 的缺陷中断，未取得repair pair或Project independent观察。该partial只作诊断材料，显式保留缺失，不计完整baseline，更不计验收；不再复跑旧候选。修复wrapper并记入失败窗口后，基于上述两个development pair及完整RP development一次提炼新候选；新候选仍执行每入口三项完整development与双模型，再冻结一次九对独立验收。此调整收窄探索范围，不改变工程通过门槛、评分解释或独立验收材料。
-
-新RP候选仅一次提炼；agency/memory 已取得有效primary观察（candidate/baseline），variant未完成请求因transport分支同一numeric-code缺陷中断。保留两个有效pair/评分及失败费用，只续接缺失的variant和未开始的新Project development；原RP候选正文/来源hash固定，不再提炼，不重复有效pair。旧两项与新variant分别pin来源，不拼成伪造的单源host report；development summary逐case列出来源/结果，独立观察各只取得一次。最终九对promotion仍完整同源、新鲜执行，禁止过滤promotion cases。失败窗口从原555 checkpoint逐条重放本轮实际ledger/raw-response（并保存此前修正备份），精确补录超时/不完整响应，原stopped窗口/费用不变；只停止当前实际连接，历史候补stopped不误挡默认Step/primary。
-
-用户随后明确将截断响应的输出上限提高至8000。仅补尚未取得完整候选的Project提炼；test-only原compiler/provider提炼快照固定8000并增加持久extraction-output fingerprint，旧1024三截断窗口、Step404窗口和费用全部保留。同一8000配置重启复用窗口，不得再增加epoch。原primary comparison /production1024边界保持；不重跑已有效RP development或旧评分，Step404不因输出变更取得重试授权。取得完整提案后仍须development检查；当前连接stopped时提案只保存为未验证，不冻结、不运行promotion或发布，不视为M1通过。本轮仍到此有限收尾，不进入S11/G。
-
-本周期最终结果：本轮92次/356805记账tokens，累计647/2483896。新RP主模型2candidate/1baseline，variant重要维度continuity=-1且偏好/维度不一致原样保留；新Step零有效/HTTP404。Project8000仅一次提炼成功，未完成development；新候选均未冻结取得资格，v2九对与新闭环未执行。旧完整比较/18独立观察/闭环保持独立来源。完整failed/partial/unknown和新提案来源固定在同一Record；当前comparison旧1024 stop和Step404 stop保留，8000提炼窗口成功，不清账或自动新增epoch。本轮停止，不合并main，不进入S11/G。后续新请求最大8000，旧8192仅保留历史；若另行获准修改比较envelope，先冻结同一Plan/source/configuration再执行有限验证。
+历史优化周期累计 647 请求 / 2483896 tokens；development 未满足准入，新 promotion 未执行。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ## 7. 2026-10-09 有限续接
 
-用户在前轮停止后明确“继续”。从实际647/2483896 checkpoint沿同一账本/quota/rate/windows续接，只做当前M1缺口，不进入S11/G。先执行一次独立funded Step诊断，保存错误body/request ID，max_tokens≤8000，无retry、不清原404 stop，也不当独立评分；原8192配置只保留历史，新生成快照将grader输出截到8000，production/native1024不改。诊断入口沿原compiler/resolver/provider、owner/shared reserve/settle，无其它接口/区域/模型探测。
-
-若真实body确认本地可修配置错误，按actual变更固定source/configuration后再有限续接未完成材料；若认证/channel配置需用户或provider处理，保留stop与所有费用，只完成可独立的候选base保持/诊断修复及最小本地验证，再Record/HANDOFF收尾。不能自动增加epoch、以降低输出限解除404、把成功diagnostic当评分，或重跑已有有效不利/tie/uncertain。新Project8000提案尚未验证，原base保持失败不得称最小修复通过；v1 development已经指导修改，仍不冒充独立v2验收。任何新实验envelope在实际付费比较前固定本模块，原每入口九对/双模型六胜/其它一致tie/重要维度非负及authority/消费/闭环门槛不变。此续接至多一次具体候选修复与development→冻结验收，不无限优化。
-
-单次Step诊断d281实际HTTP200、完整{"ok":true}、reported77，累计648/2483973；旧404根因仍未知，历史stop不清。用户指定最大8000落实为本续接两arm/提炼/primary judge/独立grader统一输出8000，test-only沿原RouteResolver、原持久私有generation profile与原compiler/worker/provider；production evaluator1024边界不改。primary固定evaluation-output:8000，Step沿同一server epoch仅追加actual graderOutputTokens8000 fingerprint，旧8192/404完整保留；这同时绑定实际配置变化与成功诊断证据，不用随机epoch或单纯改输出解锁404，同一配置restart复用窗口，后续错误仍原规则停止。上一1024提炼stop与8000 extraction-only成功窗口分别保持。
-
-本续接只生成每入口一个新候选：文本提炼采用最多4项原文唯一anchor局部edits（或空anchor单次append），原evaluator确定性应用并保留未触及base，拒绝整段value替换、whole-base替换、missing/ambiguous/overlap/重复append，数值目标原value契约不变；仍原target prepare/check/CAS，无新有效配置authority。feedback/diagnosis只来自前轮development及公开输出，RP补具体记忆表达/场景连续回归，Project补原base保持/明确review/避免planning绕行与conflict失败；不送v2 promotion材料。旧候选/不利评分不覆盖。
-
-一次新development：每入口v1三场景各一paired trial，双模型各单次评分，source/configuration同源固定；全量已有旧development仅作修改来源。若缺真实收益、重要维度回归/分歧或接口stop，不进入新promotion，保留完整failed/partial证据并停止，不再修改/重提炼本轮候选。只有development全部完整且双模型至少2/3一致candidate、其它一致tie、重要维度非负及原checks通过，才冻结exact新候选并执行一次未使用synthetic:v2每入口九对验收与原私有publication→下一run消费→rollback。此development准入不降低正式九对六胜门槛；验收有效不利/tie/uncertain均不重试，未达标不合并main。工程humanPreference=not_observed/price unavailable保持，不伪造人工证据。有限续接完成后提交推送同一Record/Plan/HANDOFF并停止，不进入S11/G。
-
-本续接实测97a1结束：RP有效primary agency胜/memory平，variant baseline在免费stale challenge加5个付费请求后达到旧夹具refs计数上限，缺第三pair/独立观察；Project三对primary baseline/candidate/candidate，authoring intent_completion=-4且candidate review gate失败。Step小diagnostic成功不代表真实grading请求可用，实际第701次独立评分仍HTTP404/unknown9831，立即stop且不retry。未达到development准入，不执行新v2九对或新闭环；原有效不利结果不改、不重跑，本轮不再优化候选。
-
-付费结束后仅本地修复：RP variant免费注入挑战不再占actual provider maxRequests=6槽位，Director仍maxRounds≤6，stale authority挑战仍保留且单独trace；cases增加actual_provider_send单位/一次injected challenge，caseRevision/CASE_SET_REVISION按元数据自然更新，旧97a1实测单独pin旧revision，不覆报告、不据此推定第六次真实调用会成功。不改变评分维度/解释、门槛、试验对数或权限要求，不再发API验证此修复。CLI所有HTTP失败改为私有保存最多64KiB body/status/request ID并关联charge，原unknown上界保持；本次701的body已discarded，不能补造。最小零API回归后，验收入口必须拒绝本partial，并核对累计五文件字节不变；然后同一Record/HANDOFF收尾停止，不进入S11/G。
-
-本次最终product da157f3e9已commit/push，paid结果固定97a1/d281；累计701/2717515、unknown17/74948、pending0/lock0，quota/rate通过。最后零send acceptance入口拒绝partial，五累计状态字节hash保持；7相关suite25 distinct local tests按source通过，未运行无关full/build/CI。所有旧/新失败及评分来源保留，同一Record/HANDOFF更新完成，本有限续接到此停止，不进入S11/G。
+历史续接累计 701 / 2717515；旧 partial 及候选结果保留，M1 未验收。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ## 8. 2026-10-09 第二模型可用性检查
 
-用户明确要求检查第二模型，不能调用则暂时放弃该API。沿实际701/2717515及同一ledger/quota/rate/失败窗口，只允许一次Step原失败Project authoring独立grade形态的funded诊断，固定原pair/shuffle/messages来源与输出8000，无retry；该请求不计评分、不替换任何旧结果、不重跑trials或提炼。不清stop或另开epoch，不探测其它区域/模型。HTTP错误保存原body/status/request ID并关联charge；若失败，当前Step API暂时停用，缺第二模型时M1双模型验收仍pending，不降门槛或合并main。仅最小本地验证，更新同一Record/live HANDOFF后停止，不进入S11/G。
-
-结果：product source63dc0fd44，单次实际请求成功返回step-5-preview完整preference/deltas/rationale JSON、finish_reason=stop，reported3601（input1426/output2175，其中reasoning2085），累计702/2721116，无retry。保留该API；这只证明当前该形态可调用，不证明持续稳定或解释旧404，不清原stop、不计独立评分。原final report pair/shuffle/messages固定；诊断新建隔离fixture，configuration hash与旧不同，不能声称整份旧snapshot复用。两次前置校验因provider wrapper/中间onPair身份与final report身份差异拒绝，均零发送，修正后才进行唯一真实诊断。未修改候选或重新执行验收，M1仍pending、不进入S11/G。
+原 Step 评分形态诊断成功，累计 702 / 2721116；这不是独立质量评分。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ## 9. 2026-10-09 来源读取修复的有限周期
 
-用户再次明确“继续任务”。从实际702/2721116沿原ledger/quota/rate/失败窗口，本轮只生成每入口一个新局部候选，Project依据97a1 authoring -4/review失败明确“tool schema不等于完整authoritative source；必要source读取不可省略，取得来源后才避免重复探索”；RP依据原development自然记忆表达/场景连续反馈，旧partial不冒充完整验收。候选经原Experience correction/reflection/diagnosis及原提炼/targets/CAS，不手写结果；若正文与已测候选完全相同则不重跑有效评分。原局部edits契约与base保持沿用，不重写算法或建立平行authority。
-
-正式恢复Step的依据为§8原评分形态成功诊断及本次用户继续授权；仅本有限周期最多24个独立评分send（development6、符合准入才promotion18），保留同一transport key/epoch/全recent、consecutive和stopped历史，不清stop。test-only增加一次显式续接许可，durable记录诊断证据与实际消耗；仅允许旧404且最新诊断成功的当前Step key，任何新Step失败或不完整响应立即撤销本周期许可、暂时停止API，无追试。restart/重复development不能自动重新取得许可；原primary有限transient retry/频繁错误规则保持，quota/rate/所有usage如实累计，8000输出保持。
-
-本轮development固定当前case set49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b，每入口三个v1场景各一次新candidate/baseline比较及双模型单次评分，免费stale challenge不占actual六次send的已修正revision保持。已有旧评分与候选不覆盖、不改解释；本轮无第二次修复或重提炼。完整双模型≥2一致candidate/其它tie/重要维度非负/原checks与funding全通过后，才冻结候选并执行一次v2每入口九对/六一致胜及原publication/next-run/rollback。若development失败则不发promotion。v1已用于诊断，不冒充未见材料；v2未作为提炼输入，来源隔离及revision沿§6/7，合成案例只证明有限工程效果，不能称真实用户反馈泛化或持续自迭代已验收。原生产human/price/budget gate保持；只最小相关验证，提交推送同一Record/live HANDOFF后停止，不合格不合并main、不进入S11/G。
-
-本周期结束：paid source a61b249ef，run-1791509036919-99e55d4c，每入口三个development pair与双模型观察完整，12 arms全部原checks通过。RP primary candidate/tie/candidate、Step tie/candidate/candidate，仅一项一致胜且primary continuity=-1，准入失败；Project两模型三项均tie/各维度0，准入失败。authoring candidate恢复get_project→plan/save/review，原review/single_changeset通过；conflict两arm保留human revision冲突，repair两arm一轮修复并review，证明当前基线在这三个简单任务已满足原目标，未显示行为改善空间，不改旧九tie解释或降低门槛。Step六次有效评分均成功，旧七stopped窗口/epoch与账目保持，有限许可消耗6/24且development一次claim已固定。未执行新promotion/发布/消费/回滚，不冻结资格。本轮59/218466，累计761/2939582、492reported/17unknown74948、pending0/lock0；24相关本地tests/触及lint/syntax通过，零发送acceptance和重复development均被拒绝，五累计文件hash不变。保持M1 pending并停止，不进入S11/G。后续若扩大行为案例，须先正式固定真实来源、case revision和独立隔离，不能继续用已指导修改的v1充当未见验收。
+来源读取修复的 development：每入口三个 pair，双模型至少两项一致 candidate 胜、其它一致 tie、重要维度非负且原 checks 完整才准入 promotion。该周期 RP 一项一致胜且 continuity 负差，Project 三项一致 tie；累计 761 / 2939582，未准入。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ## 10. 2026-10-09 原链路反馈与评价契约先行
 
-U13确认先明确原链路契约，后各一个RP/Project试点。详细设计及F0–F3工作包见 [m1-feedback-evaluation](m1-feedback-evaluation.md)，部署/生产准入仍归S10。F0只更新Plan/Record/HANDOFF、不发模型请求；F1最小实现和相关本地验证现已完成并停止。下一F2取得来源/可完成路径与case/profile/calibration revisions，最后F3一次有限试点。
-
-原§2工程退出门槛与§9 development准入保持。每域一个pilot不表示减少正式场景/对数：仍三个development pair、双模型至少2一致胜/其它tie/重要维度非负才冻结；promotion仍每域三个独立场景×三次、九对至少六一致胜/其它一致tie与重要维度非负，再原私有review→下一run消费→rollback。旧已指导修改的v1与仅换名v2不作为新资格材料，历史reports不改。
-
-F2任何真实source probe/calibration之前须先记录该阶段的exact来源、head/config/request身份、有限发送范围和当前失败窗口处理；F3付费之前须再固定完整case/input/source/lineage/profile/rubric/calibration/evaluator pins、候选/提炼来源、逐步范围和报告位置。本模块届时保存具体实验范围，不将设计估算416send当本轮许可或追加API硬限，不因U13自动复用旧Step许可剩余额度、清stop或新epoch。若source不就绪/基线饱和/校准不可判别，报告并结束该包，不拿旧合成材料凑数。
-
-所有失败/unknown/额外发现/校准/提炼/judge/消费按原761/2939582 ledger/quota/rate累计；API仅2000/day、20RPM硬限、每次输出最多8000、token建议超额通知后继续，原有限失败停止规则保持。工程humanPreference=not_observed/价格未知保持，production自动发布不绕human/price/budget gate。未达标不合并main，阶段结束停止，不进入S11/G，用户无需手测。
-
-F1实现/本地Tested HEAD `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关suites/101 distinct tests、16触及文件ESLint、共享production pane Chromium fixture通过，实际失败/修正见同一Record。原Experience资源内v2/采集水位/归因、原evaluator固定profile及Report v2消费者已接入；旧case明确historical_synthetic/not_established，新pilot来源未注册会source_unready。没有真实模型请求、私有Document迁移、新真人标签或新候选资格；paid source仍a61b249ef，761/2939582及全部窗口/6of24旧claim不变。上述只是工程契约证据，不计新的development或独立promotion胜。原§2/§9逐字保持，F2/F3尚未开始。
-
+原链路契约与 F1 实现已经完成；物理契约见 feedback §9，F2 source/calibration 当前继续，F3 仍未开始。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ### 10.1 F2准备核对的实际范围与停止状态
 
-2026-10-09本轮仅F2准备核对，结果source_unready；未启动F3。来源/控制/适用性与exact pins详见 [反馈/评价模块§10](m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态)。product固定57520d43d、起始docs74e687f7c；原§2/§9门槛及旧paid source a61b249ef不改。
-
-| 本轮工作 | 固定范围 | 真实模型发送 |
-| --- | --- | ---: |
-| 来源准备 | 每域三个development synthetic规格；每域三个promotion元数据预留槽，无独立内容/资格 | 0 |
-| 校准控制 | 六组positive/negative/unknown及两顺序；只运行原parser/critical coverage拒绝 | 0 |
-| 可完成路径 | 原Project tools三条隔离FS工程路径；无真实模型baseline/headroom | 0 |
-| 来源准入 | 六个新spec原validator拒绝；两个pilot原compare发送前source_unready | 0 |
-| 提炼、development pair、promotion及消费/发布 | 本轮不准入，不调用，不复用旧候选或许可 | 0 |
-
-本轮实际allowedActualSends=0，没有新retry、诊断、Step许可或epoch；七旧stop与完整recent/consecutive保持。此前416send形态估算和6/24旧许可余量均不成为本轮可发送额度。尚无新actual request/snapshot pins，不虚构冻结完成的付费envelope。
-
-若后续继续F2，须先解决六critical dimensions证据覆盖/原fixed catalogue与adapter、独立来源、baseline可完成性和实际配置/request pins，再在本节另记真实probe/calibration的具体范围与原窗口处理；原36source-probe/24judge-control估算只作设计参考，不是当前发送许可。F3仍须单独在其启动前固定完整范围，并沿原development/九对准入，不能由本轮准备自动开始。
-
-账目761requests/2939582tokens、17unknown/74948、pending0/lock0保持；原2000/day/20RPM硬限、8000输出和token建议语义不变。结构controls与直接工具执行不计独立质量胜、模型校准成功或人类偏好。F2实际来源/语义校准未完成，M1 pending，不合并main、不进入S11/G。
-
+当时免费准备确认 source_unready，真实调用为零；详细事实见同一 Record。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ### 10.2 F2续接已固定的有限范围与新许可边界
 
-用户仅授权继续F2与独立作者；尚未取得针对旧Step stop的新次数许可。产品源码 `eb1664138458ebae073d86792e5a5295ce27dfda` 已push；來源/原窗口/构造路径/pins见 [反馈/评价§11](m1-feedback-evaluation.md#11-f2续接独立密封来源原窗口与有限范围已准备)。原§2/§9工程退出/准入条件逐字保持。以下是已准备且可审阅的**拟执行有限范围**，当前allowedActualSends仍0。
-
-| 工作 | 固定范围 / 上界 | 发送前条件 |
-| --- | --- | --- |
-| 双judge语义校准 | 2域×3组engineering controls×两顺序×2judge=24，其中primary12/Step12 | 同一scope/controls/config/runner/product pins；新Step最多12次有限许可；首个无效、顺序不一致、负维度或无判别力即停 |
-| baseline/headroom探测 | 每域3个新development来源、baseline only、各一次/最多6 sends=36 | 该域校准先通过；原worker/owner funded path；保存实际不足/成功/unknown后核对，不将硬check伪作语义分数 |
-| 合计 | 最多60实际sends：primary最多48/Step最多12；不是必须消耗量 | 原2000 rolling day/20RPM、8000 output；attempt最多80秒/整体2小时；retry0、发现/额外诊断0 |
-| 提炼、development pair、promotion、消费/发布 | 全部0 | F3未授权；来源probe不能取得资格，也不读密封promotion正文 |
-
-拟用原primary与secondary route/provider，模型身份及无key配置hash保留私有。冻结原baseline配置/Skill与Preset body，从原准备副本restore，不重新造随机Preset refs，不改变production1024/owner硬预算/human/price gate。实际request compiler/rendered/requestHash/snapshotHash及对应charge在每次funding前私有记录；空缺/partial/unknown和失败全部沿原累计账目，不把提示预算当删除旧账目理由。现金价格仍unavailable。
-
-新Step许可如用户明确同意，仅依当前有限scope与历史诊断/最新成功观察设最多12次、一份新claim、一次使用；原404 stop/recent/consecutive/epoch不清除，旧6of24记录与余量不使用。任何新的transport/incomplete失败立即撤销并停止，无retry或换窗口。来源/pins变更、source_unready、baseline_saturated、calibration_failed、unsupported_locus、时限/取消/API硬限都结束本包。没有授权时，实际CLI已验证f2_step_permission_required且未获取ledger lock/发请求。
-
-私有`m1-f2-scope-20261009.json` SHA `355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d` 固定product/evaluator/runner/case/rubric、controls、每域primary/secondary/settings/target pins、准备副本run与initialAccounting761/2939582；stepPermission=null。密封metadata SHA `f7858cc57c9b5aa5eeaa1a2102174c83bca7f7eddf0e07330d6ffbeeeaf14505`，开发侧未读其正文。填入新许可会形成新的scope/claim hash，执行前须追加该许可记录及hash，而不是把这份未授权scope冒称已经执行。
-
-本包真实send0、无新独立质量胜/human label；两次原prepare免费完成且pins一致，五累计状态/五dirty文档字节保持。实际headroom、双judge语义校准、真实模型六round表现仍not_observed/not_run，F2未全部验收。即使有限探测通过，也只更新同一Record/live HANDOFF并停止；不直接进入F3、合并main或S11/G。
-
+当时原 fixed catalogue、独立密封 metadata、准备副本与免费构造路径已固定；旧次数/许可要求现已取消。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ### 10.3 F2本次新有限许可（发送前记录）
 
-2026-10-09用户对已审阅的§10.2范围明确回复“授权”。本次仅F2，最多60实际send，其中Step新最多12次；retry/提炼/pair/promotion/publication皆0，首个校准或transport/incomplete失败即停止，不进入F3。新许可evidence hash `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`；授权scope canonical hash `a1f48d8ae316a6eec6ee8bde4b99ca5d4b95dabb1340b9076b6c129226441666`、文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`。原未授权scope SHA355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d保留私有。
-
-发送前核对product eb1664138及全部case/rubric/evaluator/runner/config/settings/target pins、原761/2939582账目、五dirty文件字节；当前实际Step transport key对应旧404窗口满足consecutive0/最近成功条件。旧窗口/raw账目/6of24 claim/epoch不改，原Step余量不使用；新claim一次使用、最多12，任何新失败结束本scope。首次定位只按model匹配时发现两个历史窗口，未写许可/账目；改按原实际endpoint/epoch/output key唯一定位后完成许可固定，没有换window。尚未发送，实际结果及全部settle后账目另记本节与Record/HANDOFF。
-
+此节保留旧授权记录入口；原次数配额与首失败停测条款已撤销，当前执行无需新次数许可。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ### 10.4 F2授权范围实际结果与关闭
 
-2026-10-09沿§10.3预先固定的许可与全部pins执行原M1 CLI，paid/Tested source `eb1664138458ebae073d86792e5a5295ce27dfda`，run `run-1791523500486-7aee8a69`。本次结果 **f2_calibration_failed**，按首失败停止；F2未验收、F3未开始。RP两judge/两顺序12/12 controls通过，3个development baseline完成（6实际send），原hard checks/targetConsumed均通过。其报告origin=host_source_probe，无candidate/judge/human，semanticScores=not_run、headroom=not_established，不能以硬检查授予质量/饱和/晋升资格。
-
-Project执行4个calibration sends，前三通过；第4个secondary known_violation/flipped=true的左右偏好与六维符号正确，但解释552字符超过原parseBlindGrade的512上限，因此无效而停止。失败charge `a3b7e93f-2d98-43f2-88b2-f43675159fe3`，实际request hash `b6ccedee55d9902f1e5ce34e067958931fca8910c51355d49f939db0cbea0134`，snapshot hash `cb183a26279617eb8428260ce42460bb328863c4354cd7d5385ae3ffb8619f7d`；23306 provider-reported tokens。后续Project controls/baseline均未运行。这是严格评价输出契约失败，不声称语义意见相反或质量退步；不截断解释、放宽parser或重试追分。
-
-新增22请求/140750 tokens，累计783请求/3080332 tokens；514 reported/17 unknown（unknown 74948 tokens保持），pending0/lock0、quota783。22份实际请求包、response、owner funding与原shared ledger/quota逐ID/request/snapshot/token/status核对一致；RP owner18次/48133 tokens、Project owner4次/92617 tokens，各jobs/publications0。从当前ledger/quota移除本次22记录并恢复起始总数可逐字重建原文件，历史记录/carry/breach保持。最小新准入间隔3154ms，滚动分钟峰值7，原20RPM/2000/day硬限保持。
-
-新Step claim使用8/12后标failed=f2_calibration_failed关闭；剩余4次不可继续使用。旧6of24 claim/epochs字节不变，九transport窗口/七旧stop保持，无新transport/incomplete失败、retry0、提炼/pair/promotion/publication0。scope文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`授权后保持；raw summary SHA `f3e02e4bd5352a6f7d5af225df1b071b112277bfe9cbd60f376164df368fdc46`，私有paid audit SHA `c3c2ccce8b38459640622d2753e154a4a2f75a64a137080295132088683a9bc0`。现金价格unavailable、人类偏好not_observed。下一仅F2评价/source工程准备与重新固定范围；本scope终止，不自动新请求/F3/main集成。
-
+实际 paid source eb1664138：新增 22 请求 / 140750 tokens，累计 783 / 3080332。RP 12/12 controls 与三个 baseline hard checks 通过；Project 第四次校准解释 552 > parser 512 无效。原 raw/charge/source pins 在 Record 与私有结果保留，工程问题按 §0 修复后必要复测。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ### 10.5 F2继续授权：累计1000调用与20RPM（发送前）
 
-2026-10-09用户明确“继续,硬限制为1000次调用和20RPM,其他限制可适当调整以通过”。本轮将1000解释为包含历史carry/unknown的累计实际调用，起始783/3080332，剩余最多217；20RPM为滚动分钟硬上限，不能换epoch/清旧账扩大额度。当前仅F2，F3仍未授权。用户本次指令优先于旧封包固定次数与不得自动重跑的历史限制，旧封包8/12保持关闭、旧6of24保持，不复用余量。
-
-新schema2封包最多72send=24校准+36baseline上界+12基线证据评估；Step新最多18，retry0，提炼/pair/promotion/publication0。用户允许调整其它限制，本次采用必要的范围扩展和新judge输出提示，保持原parseBlindGrade512字符/六维/符号/缺证据unknown契约与生产gate。原control/schema/source/config/pins沿用，新实际提示显式告知512总字符上限；新runner版本而非裁剪旧失败响应。所有旧观察保留，新baseline按相同固定配置一次重新观察以绑定当前证据核对。
-
-基线证据评估为每case两judge各一次，全部六维status met/gap/unknown，met/gap需≤512字符的实际证据原文quote及解释；unknown必须空quote。逐字核对quote，不能由hard checks推断语义通过。只有两个独立模型在同case同维度都报告具体gap，才标observed_gap；否则headroom not_established，不伪造评分或人类标签。此为model_source_assessment来源就绪证据，不是candidate比较/promotion准入或稳定质量证明。无模型间共同缺口也可作为有效停止结论，不强迫“通过”。
-
-产品/Tested ac03448795232949a485b88f93305460c1476621；runner cbf8add7499185a0030945366d7825a935c8714e1bd8daaff24482a10db296db，evaluator/cases/rubric/config不变。许可evidence `028047f0889e8ee9c3a38e78bee12d8a9273b8ebfde77ccad367ce5973aa1f06`，新scope SHA `efddeb30b509bb4c9be2930f5429ec2eaf3436ed4bb88a879f05e4cc87d826ba`。原CLI免费prepare零send且configuration/settings复核；原ledger/quota/owner/transport与实际funding前请求包保持，累计1000准入（包括过期carry）与20RPM强制执行。首个无效评估/不可判别control/transport/incomplete/source/pin/quota失败停，不追分；新claim结束自动closed。结果另记§10.6，同一Record/HANDOFF，包末停，不F3/main/S11/G。
+旧累计 1000、72/Step18 封包和新许可条款已撤销。产品 ac0344879 增加 512 输出契约提示与两 judge 基线证据核对；met/gap 需当前证据的确切 quote，两模型共同 gap 才标 observed_gap，其余为 not_established，不冒充 candidate 比较或 human 标签。当前继续遵循 §0。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 
 ### 10.6 F2测试续接：最新每日2000调用与20RPM
 
-用户随后明确纠正硬限为**每天2000次调用和20RPM**，取消累计1000；以此最新指令为准，旧§10.5累计cap仅是已终止运行的历史，不再限制后续测试。原rolling24h保守计日与滚动minute20准入恢复；其它是可调整测试范围，不是产品/API硬限。仍仅F2，不F3。
-
-run-1791524899036-18298dde新增21请求/62624tokens，累计804/3142956全部settle，RP12校准通过、3baseline共8send hard checks通过，首份primary证据评估被原JSON字符匹配误拒绝。真实quote带换行，转义JSON中无literal match，但原decoded output中确切存在；六维均met、解释均≤512，未造证据。修正为在完整证据或decoded文本字段中核对原文；不模糊匹配/裁剪答案/修改语义结果。原失败与费用保持，v2 claim6/18已自动closed，无新transport/incomplete故障。
-
-当前product/Tested dd80d858338e92ef340a25d4bbf48e3e267f9595；新增只读resume消费，沿原frozen桥继续，复用上述12校准/3baseline/首份有效primary观察共21请求，不重复付费。resume pins绑定case/config/settings/原charge/元数据，原report仍host_source_probe无candidate/judge/human，不成为promotion资格。剩余RP5证据评估；Project12controls+最多18baseline+6证据评估，上界41新send，其中Step最多12；schema2封包总72/Step18仅保守测试窗口而非API硬限。用户继续测试授权已涵盖本次工程修正与续接，不再次请求许可。
-
-新permission evidence `8a173e4ddd973562364db3efcaf895ae2a6eea98fef27ca9f90fbb8ee802bc44`，scope SHA `dd0c4691fd69fe93e9a8611d762b17026fec663e8ba01ac1f3e04e6cdded2e25`，resume canonical hash `ef393a1f8540f56f4f1fa18e555fab2ec920e080a09fc46ef983f706fc182427`；runner62462b701dbfcbee5ce0b575e100b3e8c92007fb2882f1e7299567f551b0060f。原case/rubric/evaluator与准备配置pins保持。旧claims/epochs/账目与五dirty字节保护，grade/quality/unknown/密封隔离保持；本次按原CLI续接只F2并保存结果，任何真实失败保留，不清窗口/换epoch。本节取代此前累计1000的实时限制，结果另追加。
+并行产品工作已 push dd80d858338e92ef340a25d4bbf48e3e267f9595。run-1791524899036-18298dde 新增 21 请求 / 62624 tokens，累计 804 / 3142956、全部 settled；RP 12 controls 与三个 baseline（8 sends）通过。首份 primary 评估原 quote 含换行，在 serialized JSON 中被误拒绝，decoded 原文本逐字存在；修正表示层核对并复用已完成观察，保持 grade/source/quality 不变。旧失败/费用保留，必要后续证据检查沿 §0 继续，不以原 41/12/72/18 封包数字、新 permission 或旧 stop 增加当前额度/审批条件。详细历史见同一 Record，当前实际运行状态以 Git/私有结果为准。
 
 
-F2续接修正（发送前）：v3首个Step证据请求transport_failed，usage未取得，按原11631上界保守settle；累计805/3154587，unknown18/86579、pending0，claim1/18自动closed，失败历史保留。原F2 retry0却沿用三重试的timeoutMs/4=75秒；现使用原Route300000ms完整单次deadline，非F2路径不改。沿用户测试续接授权，允许修正后的单次有界恢复，旧404 stop/consecutive1/recent/epoch不清；不把旧claim余量搬入新claim，任何新失败仍立即撤销。product/Tested0479f5bd3e924c6031b09eaa4103e28684bc086a，retry12 tests及触及lint/diff通过。新scope SHA2910a6947ea5b50e766888842d17462caba9b6786a2128a8639694ebfd66f75c、许可evidence03106075bf3ff46de45c9e197ccdc5e4fb99f3b20294bdf3097a19da6e10853d，resumeHash ef393a1f8540f56f4f1fa18e555fab2ec920e080a09fc46ef983f706fc182427；原21已完成RP请求证据继续复用，剩余测试不变，只F2。每天2000/20RPM是最新API硬限，累计1000取消；完整实际结果在结束后保存。
+最新并行产品 0479f5bd3e924c6031b09eaa4103e28684bc086a 修复 F2 retry0 误用 timeout/4（75 秒）的问题，改用原 Route 300000ms 完整单次 deadline。一次 transport_failed 未取得 usage，保留 11631 上界；最新记录累计 805 / 3154587、unknown18/86579、pending0，复用原 21 个已完成请求证据。必要修复复测按当前规则继续，旧 claim/首失败撤销不增加次数许可或停测条件。

@@ -82,11 +82,9 @@ Scripted 模式：全部 12 cases 各执行一次，实际调用 Runtime / Direc
 Model 模式：先取一个 RP 和一个 Project development 案例，各三次 trial；复用当前已配置的 generation 入口。原调用路径不支持某能力时标 unavailable。
 promotion 场景的完整 baseline 在进入 S06 比较前补齐，不能用这六个 development trials 代替独立晋升案例。
 
-S01 live pilot 必须提供有限 `maxRequests` 与 `maxTotalTokens`；不默认读取 Secret、选择付费 route 或发起模型请求。
-每条路径每 trial 最多六次 model 请求，pilot 最多 36 次模型请求；如果增加独立 model judge，总上限最多 42 次。retry、fallback 与 grader 都计入上限。
-输出预算沿用当前明确 generation 配置；请求前按 input token count + reserved output 做 reservation。总预算不足就不发送下一请求；不缩小案例覆盖后声称完成。
-实际 token 上限由现有请求 preview / count 与有限 pilot 配置给出；没有该配置就报告 `budget_blocked`，先交付 scripted runner，不把无上限预算作为默认值。
-取消 / usage 缺失时保留 reservation 上界，避免重试重复开销被漏算。
+已授权测试连接上的 Model 验证遵循 [Governance §13.1](../../../README.md#131-api-测试执行规则)，硬限只有每日 2000 次 / 20 RPM。早期 36/42 次、maxRequests/maxTotalTokens 和 input+output reservation 属于历史 pilot 配置，不作为当前测试额度或 budget_blocked 条件。
+
+每 trial 的调用结构按待验证产品行为设计；必要诊断与修复复测自主执行，retry/fallback/grader 实际调用全计当日。输出配置适配任务与 Provider，usage 缺失保存估计并注明；不默认寻找其它 Secret 或选择未授权连接。
 
 ## 6. 验证与失败处理
 

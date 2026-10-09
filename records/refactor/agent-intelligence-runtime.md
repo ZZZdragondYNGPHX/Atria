@@ -1,5 +1,7 @@
 # Agent Intelligence Runtime — Record
 
+> 当前 API 测试规则（2026-10-09）以 [Governance §13.1](../../README.md#131-api-测试执行规则) 和 [acceptance §0](../../plans/architecture/agent-intelligence-runtime/m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包) 为准：仅每日 2000 次 / 20 RPM。本文旧预算、累计 1000、Step 次数、scope 许可、首失败停止等是历史事实，不能恢复为当前限制；实时恢复读 HANDOFF。
+
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Status: **Active**
@@ -1076,3 +1078,17 @@ RP文本的“检修没落定”与未见确认后的保守说明存在可能kno
 
 
 F2续接修正（发送前）：v3首个Step证据请求transport_failed，usage未取得，按原11631上界保守settle；累计805/3154587，unknown18/86579、pending0，claim1/18自动closed，失败历史保留。原F2 retry0却沿用三重试的timeoutMs/4=75秒；现使用原Route300000ms完整单次deadline，非F2路径不改。沿用户测试续接授权，允许修正后的单次有界恢复，旧404 stop/consecutive1/recent/epoch不清；不把旧claim余量搬入新claim，任何新失败仍立即撤销。product/Tested0479f5bd3e924c6031b09eaa4103e28684bc086a，retry12 tests及触及lint/diff通过。新scope SHA2910a6947ea5b50e766888842d17462caba9b6786a2128a8639694ebfd66f75c、许可evidence03106075bf3ff46de45c9e197ccdc5e4fb99f3b20294bdf3097a19da6e10853d，resumeHash ef393a1f8540f56f4f1fa18e555fab2ec920e080a09fc46ef983f706fc182427；原21已完成RP请求证据继续复用，剩余测试不变，只F2。每天2000/20RPM是最新API硬限，累计1000取消；完整实际结果在结束后保存。
+
+
+F2续接修正（发送前）：v3首个Step证据请求transport_failed，usage未取得，按原11631上界保守settle；累计805/3154587，unknown18/86579、pending0，claim1/18自动closed，失败历史保留。原F2 retry0却沿用三重试的timeoutMs/4=75秒；现使用原Route300000ms完整单次deadline，非F2路径不改。沿用户测试续接授权，允许修正后的单次有界恢复，旧404 stop/consecutive1/recent/epoch不清；不把旧claim余量搬入新claim，任何新失败仍立即撤销。product/Tested0479f5bd3e924c6031b09eaa4103e28684bc086a，retry12 tests及触及lint/diff通过。新scope SHA2910a6947ea5b50e766888842d17462caba9b6786a2128a8639694ebfd66f75c、许可evidence03106075bf3ff46de45c9e197ccdc5e4fb99f3b20294bdf3097a19da6e10853d，resumeHash ef393a1f8540f56f4f1fa18e555fab2ec920e080a09fc46ef983f706fc182427；原21已完成RP请求证据继续复用，剩余测试不变，只F2。每天2000/20RPM是最新API硬限，累计1000取消；完整实际结果在结束后保存。
+
+
+## 2026-10-09 API 测试规则清理
+
+用户明确要求彻底清理额外测试限制，当前硬限只有每日 2000 次调用与 20 RPM。本轮仅文档维护，从 origin/docs@d2fa5764f 的独立短期工作树执行，并合入并行推送 f16f180c2 / 054bbf68f 的产品修复与累计 805 证据，保护原 docs 草稿及产品工作树已有未提交修改；没有修改产品实现、私有账目、凭证或调用真实 API。
+
+主工作区 main 的 `docs/`（含 plans/handoff/fix/development 与多语言产品文档）也进行了针对 API 调用/测试预算/次数许可/硬限制的检索；未发现该 M1 测试的额外配额指令，命中为产品 context/工具调用能力及既有历史内容，不改成新的 agent 测试规则。Governance 明确 Plan 负责设计、Record 负责事实、HANDOFF 负责实时路由；历史文档不恢复执行限制，避免多入口重复否决。
+
+Governance §13.1 成为唯一测试限制权威。清理当前 M1 acceptance 执行规则、feedback §7、S01/S06 测试说明和 S10 生产/测试边界；取消历史累计上限、封包/Step 次数配额、token 停测、逐轮新许可与人工账目审计。旧执行封包从 Plan 移除执行指令并改为历史摘要，实际失败、账目及 source pins 保留。HANDOFF 重写为当前恢复入口，工程问题应定位修复并必要复测，真实验收与生产权限、正式阶段边界保持。
+
+实际文档验证：14 份文件的本地链接/锚点、39 个表格与代码围栏通过；原 acceptance §1、双模型九对/六一致胜/非负维度、私有闭环及 production gate 保持，历史 §6–§10.6 标题/锚点保留，git diff --check 通过。文档提交后直接 fast-forward/push 独立 docs 分支，不 merge main。本轮不宣称测试 CLI 已完成同步，也不把现有产品 dirty changes 纳入此文档提交；下一产品续接需按当前规则清理原测试消费者残留 guard。

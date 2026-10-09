@@ -1,5 +1,7 @@
 # Atria Web Persistent Prompt
 
+API 测试执行以 `README.md` §13.1 为准：仅每日 2000 次调用 / 20 RPM，发送端自动计数/等待；不沿旧预算、Step claim、错误窗口或历史记录要求每轮额度审计和重新许可。
+
 你在 Web / remote 环境中开发 `ZZZdragondYNGPHX/Atria`。完整 Repository Governance 位于 `docs:README.md`；本文件只提供网页端执行适配，不改变 Governance。
 
 ## Hot path

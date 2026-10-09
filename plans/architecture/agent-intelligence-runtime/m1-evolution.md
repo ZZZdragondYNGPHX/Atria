@@ -1,5 +1,7 @@
 # M1：双入口成长与局部自动启用设计
 
+> 本模块的 request/token/自动 job 预算管理生产局部自动模式，不能套作 agent 测试 API 配额。工程测试遵循 [Governance §13.1](../../../README.md#131-api-测试执行规则) / [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)，仅每日 2000 次 / 20 RPM，无逐轮次数许可或人工额度审计。
+
 > D1 产品边界与架构执行约束已冻结；S01 详细设计见 [s01-baseline.md](s01-baseline.md)。
 > S02 最小来源契约与只读 consumer 已完成，详细权威为 [s02-sources.md](s02-sources.md)；S03 可靠 RP 捕获 / 公共持久层已完成，详细权威为 [s03-capture.md](s03-capture.md)；S04 Project task 持久恢复已完成，详细权威为 [s04-project-recovery.md](s04-project-recovery.md)。
 > S05 feedback / diagnosis 的分层、scope / 生命周期与 reflection gate 已交付，详细权威为 [s05-feedback.md](s05-feedback.md)。
@@ -131,7 +133,7 @@ RP / Project 的局部改进不会自动扩散到其他角色、会话或项目�
 - 每 scope 每 24 小时最多一轮自动 job；一轮最多生成两个候选，最多发布一个单目标版本。
 - 首个 promotion 集每入口至少包含三个独立场景，每场景至少三次 paired trial；这是最小试运行规模，不是统计可靠性的保证。
 - 每轮与每 owner 都必须有有限的 request / token 总预算；包括 baseline、candidate、judge、retry 和提炼开销，不通过新增 scope 逃避总预算。
-- 先在 S01 测代表案例的实际开销，再冻结 token 上限和改善 / 回归容忍阈值。预算不足就停止并报告，不偷偷缩小验收集。
+- 生产自动模式的 token 上限依据实测开销配置，生产预算不足暂停自动 job；工程测试不沿此条停测，实际改善/回归仍须如实验证，不偷偷缩小验收集。
 
 上述频率和数量仍是建议；没有把它们当成本对话已批准值。取消 / 未知 usage 的请求按已预留上界记账或暂停自动模式，不能计零成本。reasoning / cached input 的 provider 子项不与 total token 重复相加；estimated user cost 与 settled charge 分开。Gateway 内部重试不可观测时不能承诺真实上游调用硬上限。
 
@@ -192,11 +194,11 @@ S10 支持 ordinary RP exact character 下的 bounded single-owner Director、�
 
 12 suites / 233 distinct local tests 与共享 pane 的真实 Chromium fixture 通过，两个固定 worker 使用 fake provider 验证原 RP / Studio 消费者与隔离；这不能替代实际模型收益。S06 的已有真实候选仍 ineligible，本轮未追加真实请求、未读写私有账本 / 报告。
 
-**M1 工程阶段 S01–S10 已交付；M1 完整产品退出条件仍待验收。** 独立真实案例质量 / 成本改善尚未证明，包含提炼 / judge 的净收益也未证明。下一仅复核有限实测与人工观察所需条件、预算和集成前置检查；若条件不足，记录明确待验收事项。main 未合并，S11 / G 未开始。
+**M1 工程阶段 S01–S10 已交付；M1 完整产品退出条件仍待验收。** 独立真实案例质量 / 成本改善尚未证明，包含提炼 / judge 的净收益也未证明。下一按 acceptance §0 推进必要实测与集成前置检查；若条件不足，记录明确待验收事项。main 未合并，S11 / G 未开始。
 
 ## 12. 2026-10-07 自动化工程验收调整
 
-用户批准agent代劳与保守结转 / 新有限验证预算。当前M1工程验收使用 [m1-acceptance](m1-acceptance.md) 的确定性检查 / 双模型盲评与真实局部review闭环，不要求用户本人提供human标签；缺失human仍真实标记not_observed。生产automatic promotion继续严格执行S10原human / price gate，工程通过不取得自动发布权限。完整退出门槛与恢复预算由该模块唯一管理，早期M1人工验收条款不再约束工程交付验收。
+用户批准agent代劳与保守结转 / 新有限验证预算。当前M1工程验收使用 [m1-acceptance](m1-acceptance.md) 的确定性检查 / 双模型盲评与真实局部review闭环，不要求用户本人提供human标签；缺失human仍真实标记not_observed。生产automatic promotion继续严格执行S10原human / price gate，工程通过不取得自动发布权限。完整退出门槛与当前测试执行由该模块管理，早期M1人工验收条款不再约束工程交付验收。
 
 ## 13. 原链路反馈与评价补充
 

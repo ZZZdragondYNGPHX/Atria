@@ -22,7 +22,7 @@
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
 
-2026-10-09 U13确认M1先补原反馈/评价契约，再各一个RP/Project试点。补充工作包F0–F3及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点门槛/有限发送范围归m1-acceptance §10；不新增正式S/G阶段，不降低M1退出条件。F0设计及F1最小消费者完成，下一仅F2来源/校准与有限范围固定，包末更新同一Record/HANDOFF并停止。
+2026-10-09 U13确认M1先补原反馈/评价契约，再各一个RP/Project试点。补充工作包F0–F3及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点门槛归 m1-acceptance §1/§2，测试执行归 §0，不以历史 §10 封包申请次数许可；不新增正式S/G阶段，不降低M1退出条件。F0设计及F1最小消费者完成，下一仅 F2 来源/校准与必要工程诊断、修复、复测，包末更新同一Record/HANDOFF并停止。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
 
 ## 2. D0 / D1

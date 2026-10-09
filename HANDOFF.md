@@ -2,32 +2,26 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Updated: 2026-10-09
-- Previous closed checkpoint: **F2授权有限探测以f2_calibration_failed停止；RP校准12/12和3基线完成，Project第4校准解释552>512无效。全部费用结算；headroom未建立、F2未验收，F3未开始，M1 pending。**
-- Product / latest paid / local Tested: `feat/agent-intelligence-runtime@eb1664138458ebae073d86792e5a5295ce27dfda` 已push且clean，本轮无源码改动。
-- Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
-- Docs: 从origin/docs102d54335隔离detached worktree续接，发送前许可已push42567be30；实际结果在同一Plan/Record更新并push docs，以actual Git为准。旧本机docs工作树五份纯CRLF dirty字节保留。
-- Read: actual Git/private账目 → 本HANDOFF → [index](plans/architecture/agent-intelligence-runtime/index.md) → [feedback§12](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#12-f2有限探测结果校准契约失败停止) / [acceptance§10.4](plans/architecture/agent-intelligence-runtime/m1-acceptance.md#104-f2授权范围实际结果与关闭) → [同一Record末节](records/refactor/agent-intelligence-runtime.md)。
+- 当前任务：M1；F1 工程已完成，F2 评价/source 仍待验收，F3 未开始。M1 pending，main 尚未集成。
+- 产品已提交 HEAD：`feat/agent-intelligence-runtime@0479f5bd3e924c6031b09eaa4103e28684bc086a`；本轮文档清理期间并行产品修正已 push，开始前以实际 Git 状态核对并保护任何现有修改。
+- 稳定 main：`ed1fd90521a63363e29856601abbf5e908c99d10`。
+- 最近已记录的真实执行：run-1791524899036-18298dde 新增 21 请求 / 62624 tokens，其后一次 transport_failed 保留 11631 上界，最新记录累计 805 / 3154587、unknown18/86579、pending0。这是上次结果，不宣称当前私有账目仍精确相同；不把历史累计当 API 终身额度。
+- 文档当前规则：[Governance §13.1](README.md#131-api-测试执行规则) → [Plan index](plans/architecture/agent-intelligence-runtime/index.md) → [acceptance §0](plans/architecture/agent-intelligence-runtime/m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包) / [feedback §7](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#7-成本调用范围与失败处理) → [Record 最新节](records/refactor/agent-intelligence-runtime.md)。旧 acceptance/feedback 执行封包仅供定位具体历史问题。
 
-## 当前证据与关闭边界
+## 当前 API 测试执行
 
-六development synthetic进入原fixed catalogue/adapter；六promotion由用户允许的独立作者密封，开发侧只读metadata SHA f7858cc57c9b5aa5eeaa1a2102174c83bca7f7eddf0e07330d6ffbeeeaf14505，不读正文/答案。原legacy12/revision不变，独立synthetic不是自然用户来源或人类标签。免费六case各两round的原路径证据保留。
+用户最新硬限制仅每日 2000 次调用、20 RPM，发送端自动计数与排队/等待。取消累计 1000、封包 60/72、Step 12/18/24、token/输出配额、逐轮次数许可与人工额度审计。已授权当前阶段内必要探测、诊断、修复及复测继续推进，不因旧 breach/stop/claim 停工或另请豁免；保留真实结果，生产权限与正式阶段边界保持。
 
-用户明确授权最多60实际send/新Step12/retry0/首失败停；evidence c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725，scope SHA19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72。原CLI执行run run-1791523500486-7aee8a69：RP12controls全过、3baseline共6send hard checks通过；semanticScores not_run、headroom not_established，无candidate/judge/human。Project前三controls过，第4个secondary known_violation反序响应552字符超过512上限，严格parser拒绝，首失败停止；其方向/六维符号正确，不能称质量退步。Project剩余controls/baseline未运行。
+## 当前证据与下一工作
 
-本轮22请求/140750 tokens，累计783/3080332、514reported/17unknown74948、pending0/lock0/quota783；22实际包/response/owner/shared ledger逐ID/pins/usage匹配，历史账目可逐字重建。RP18次/48133 tokens、Project4次/92617 tokens，各jobs/publications0。九transport窗口/七旧stop保留，旧6of24 claim/epoch不变；新Step claim8/12且failed=f2_calibration_failed已关闭，余下4次不可继续用。retry/提炼/pair/promotion/publication0，现金价格unavailable、人类偏好not_observed。私有paid audit SHA c3c2ccce8b38459640622d2753e154a4a2f75a64a137080295132088683a9bc0。
+最新并行产品 0479f5bd3e924c6031b09eaa4103e28684bc086a 修复 F2 retry0 误用 timeout/4（75 秒）的问题，改用原 Route 300000ms 完整单次 deadline。一次 transport_failed 未取得 usage，保留 11631 上界；最新记录累计 805 / 3154587、unknown18/86579、pending0，复用原 21 个已完成请求证据。必要修复复测按当前规则继续，旧 claim/首失败撤销不增加次数许可或停测条件。
 
-RP水库文本可能存在未知检修状态的措辞歧义，仅开发证据初阅；不能据此宣告六维失败或headroom成立，不能以hard checks全过宣告饱和。原compare仍source_unready、生产gate保持，F3无资格。
+RP 12/12 双 judge / 两顺序 controls 通过，三个 baseline 的 hard checks 通过；语义 headroom 尚未建立。Project 第四次校准的解释 552 > parser 512，旧 runner 首失败停止；其方向与六维符号正确，不能称质量退步。产品 ac0344879 已增加明确 512 输出提示和基线证据核对；最新 dd80d8583 又修复 quote 换行在 JSON 表示层被误拒绝的问题，复用已完成 RP 12 controls/3 baseline/首份有效观察，必要后续不重复这些请求。source/config/parser 问题须沿原消费者定位、修复并做必要真实复测，不直接以一次无效结果交接收尾。
 
-## 下一动作
+沿现有 `tests/agent-intelligence/m1-live.mjs`、ledger/quota/rate 与私有 Document 继续 F2。先保护当前工作树改动，清理原消费者中残留的 token/封包/Step permission/历史 stop guard，保持真实 source/configuration/request/usage 记录。正常运行不要求每轮逐字重建账本或提交许可文件。频率达到限制等待，日额度用尽等待恢复；确需用户权限/Provider 配置才请求介入。
 
-下一仅F2评价/source工程准备：核对原judge prompt是否明确≤512契约及控制公开轨迹的重复材料；必要修正沿原消费者/版本/验证固定，不截断解释/放宽parser，不由local Prompt writer掩盖，不重跑已关闭封包追分。Project真实baseline/全维证据、RP语义headroom与其余双judge控制未建立。新付费范围须另行固定并取得明确许可，本轮停止，不自动F3/main集成/S11/G。
+六 development synthetic 与六独立 promotion metadata 保留，promotion 正文/答案不回流开发；legacy12/case revision、质量维度和 production gate 不因测试限额清理降级。原 raw/partial/失败与累计统计保留，不伪造验收通过。F2 正式阶段完成后更新同一 Record / HANDOFF 并停止，不自动进入 F3/S11/G 或集成 main。
 
-上包6 relevant suites/44 distinct tests与lint/syntax是代码历史验证；本轮源码未变，只执行授权原CLI与费用/状态审计，未重跑Jest/build/CI/UI/Android/外部DB。用户无需手测。
+本轮仅文档规则清理，未执行真实 API、产品 tests/build/CI/UI/Android，未修改并行产品工作或私有数据。旧 docs 工作树的五份 CRLF dirty 与其它未跟踪草稿保持。
 
-接手提示词：**先fetch核对product eb1664138、origin/docs与main ed1fd905；保护旧docs五dirty，不从其旧HEAD恢复状态。HANDOFF→index→feedback§12/acceptance§10.4→Record末节，核对私有783/3080332、pending0和关闭的8/12新claim。只续F2评价/source工程准备，密封promotion只读metadata；RP硬检查通过不等于六维/饱和，Project552>512是严格输出契约失败。保留原账本/频率/硬API限额/unknown/旧窗口/旧claim/epoch，不用任何余量。新范围与许可先固定再请求；不追分、不F3、不合并main，不进入S11/G。**
-
-当前发送前状态：用户已明确授权继续，累计1000调用/20RPM硬限，起始783/3080332；产品ac03448795232949a485b88f93305460c1476621已push，3 suites/26 tests通过。新范围最多72/Step18，许可与scope见acceptance§10.5/feedback§13，旧claim关闭保持。下一原CLI只执行F2校准/基线/证据核对并保存实际结果，不F3；本段为最新状态。
-
-最新状态覆盖前段：用户纠正硬限为每天2000调用/20RPM，累计1000已取消；product dd80d858338e92ef340a25d4bbf48e3e267f9595。v2新增21/62624、累计804/3142956，RP12校准/3基线8send通过；首份评估quote换行表示误拒绝已修复，原有效观察复用，只补后续RP5与Project有限测试。scope/许可见acceptance§10.6，旧claimclosed保留，无F3。
-
-最新F2续接：product0479f5bd3，累计805/3154587、unknown18/86579/pending0。修正retry0路径误用75秒deadline为原Route300秒，复用21请求证据，原新claim1/18失败关闭不清；最新scope/许可见acceptance§10.6末段。每天2000/20RPM保持，继续测试但不F3。
+接手提示词：**先核对 actual Git 并保护现有修改，再读 Governance §13.1 → 本 HANDOFF → index → acceptance §0 / feedback §7 → 同一 Record 最新节。当前只续 M1/F2，沿原测试消费者清理额外限额与逐轮许可，必要诊断、修复、复测持续推进；API 硬限只有每日 2000 / 20 RPM，由发送端自动执行。历史 1000/60/72/Step/token/breach/stop/claim 不恢复为当前配额；不逐轮人工审计，不要求用户手测，保持真实验收与独立来源边界。**

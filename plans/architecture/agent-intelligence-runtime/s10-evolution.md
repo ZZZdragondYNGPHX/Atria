@@ -1,5 +1,7 @@
 # S10 — 评测、局部发布与恢复
 
+> 本模块的 owner/job/token/breach 限制管理生产 Evolution，不能套作 agent 工程测试 API 配额。现行测试遵循 [Governance §13.1](../../../README.md#131-api-测试执行规则) / [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)，仅每日 2000 次 / 20 RPM，不逐轮申请许可或人工额度审计。
+
 状态：**S10 工程交付完成；M1 实际模型改善与集成前置条件待验收**。依赖 S05–S09；仅本阶段，不进入 M2 / G。产品 / 本地验证 HEAD：`ed00f4f0cea53be360ed8dfa082bbd0afeec5398`。
 
 ## 冻结边界
@@ -67,13 +69,13 @@ Experience correction / withdrawal / diagnosis delete / source delete / retentio
 - 原 SettingsRepo MySQL / Postgres 的 12 项首次尝试因外部本地数据库不可用失败，最后限定 FS / SQLite 12 passed、外部 12 skipped。没有启动外部 DB，也不计其通过。
 - 无新真实模型请求；未读取或更新 S06 私有 config / ledger / artifacts，原 110 requests / 300464 记账 tokens 与 ineligible 结论保持。无 full test / build / Android / 真机 / CI。
 
-S10 工程链路已交付，**M1 独立案例的真实质量 / 成本改善尚未满足退出门槛**。下一 checkpoint 只复核 M1 验收与集成前置条件；如需补真实比较，先冻结双入口的有限验证范围、人工观察与共享累计预算，恢复原 S06 ledger / rate checkpoint，不能以本轮 fake provider 代替。main 未合并，不进入 S11 / G。
+S10 工程链路已交付，**M1 独立案例的真实质量 / 成本改善尚未满足退出门槛**。下一 checkpoint 只复核 M1 验收与集成前置条件；如需补真实比较，沿既定双入口与实际 source/config 记录必要范围，按现行测试规则自主执行；不能以 fake provider 代替真实结果。main 未合并，不进入 S11 / G。
 
 ### 2026-10-07 M1 自动验证补充
 
 用户授权agent代劳验证；固定loader / worker及相关三套48项已在Node20.20.2通过。首次16项SQLite失败为共享Node24二进制ABI不匹配，在临时目录安装同版本Node20依赖后仅重跑这16项全部通过，未修改产品源码 / 共享依赖。其余32项已通过，不重复累计；fake provider与合成人工标签仍仅为工程证据。
 
-按已有local Git keys核对发现原S06 ledger / limits / artifacts目录与lock / rate checkpoint缺失，用户答复“无迁移”；connection仍存在。未新建或重置账本，未发真实模型请求。历史累计无法实时核对，真实改善 / 独立human labels与两入口真实闭环仍待验收，M1不集成。后续先明确原累计账目恢复处理与可核对有限验证预算；只在本地执行最小相关验证，不进入S11 / G。
+按已有local Git keys核对发现原S06 ledger / limits / artifacts目录与lock / rate checkpoint缺失，用户答复“无迁移”；connection仍存在。未新建或重置账本，未发真实模型请求。历史累计无法实时核对，真实改善 / 独立human labels与两入口真实闭环仍待验收，M1不集成。历史恢复处理见 Record；后续按 acceptance §0 的现行规则继续；只在本地执行最小相关验证，不进入S11 / G。
 
 ### 当前M1工程验收与生产gate
 
