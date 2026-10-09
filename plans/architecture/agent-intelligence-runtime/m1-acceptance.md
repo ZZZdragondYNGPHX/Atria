@@ -106,3 +106,8 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 ## 12. F2双模型复核与 F3 一次试点结果
 
 F2两域controls和六来源的实际双模型观察已补齐，保留原正确基线与密封独立来源；当前事实见[feedback§15](m1-feedback-evaluation.md#15-f2双模型前置复核与-f3-一次双域试点结果)。每域一次F3候选提炼/三development场景已完成，两域一致candidate胜均0，有重要维度负差/分歧和一份无效grader契约响应，未满足原development前置门槛。§1/§2的每域九对独立promotion、六一致胜及私有review/下一消费/rollback未执行，M1仍未验收，不集成main。实际范围、原费用/unknown与producer pins见[同一Record](../../../records/refactor/agent-intelligence-runtime.md)最新节；§11保留此前主模型范围与暂缓第二模型的历史，不作为当前状态。
+
+
+## 13. F3 工程修复后的继续执行
+
+首次试点不达标后继续诊断和必要工程复测，新增真实比较协议校准及原执行槽位核对见[feedback§16](m1-feedback-evaluation.md#16-f3-工程修复与-m1-持续推进)。不把一次试验退出写成M1完成或交接停止。§1/§2门槛、原不利报告、密封独立来源与全部费用保持；只有完整验收及原publication/下一消费/rollback证据成立后才集成。当前修复版本的实际结果见同一Record。

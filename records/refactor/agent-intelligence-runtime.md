@@ -1251,3 +1251,16 @@ Project正式developmentReadiness=false，wins0；前两条有有效分歧/重�
 本轮按用户当前AGENTS阶段交接要求更新同一Record、Plan当前状态与live HANDOFF后停止。下一工作应基于本次原不利证据讨论归因/干预适用性及必要范围变化；不在同一候选或独立promotion来源上刷分，不将局部工程完成写为M1验收。
 
 最终文档最小本地核对：五份触及文件91个本地链接/锚点及代码围栏通过，git diff --check通过。原本地Atria-core无关AGENTS dirty仍保留；产品任务工作树clean，恢复的main checkpoint未变化。文档保存与远端同步沿独立docs分支，不把private Document或migration根分支推送公开。
+
+
+## 2026-10-09 M1 继续：F3 评价协议与可执行干预修复
+
+用户指出没有要求在本次试点结束时停工，并要求继续完成 M1。此前将 F3 一次 development 结束当成整个阶段停止点的判断撤销；M1 未完成，原不利结果和独立验收/发布/消费/回滚缺口保持。后续按 Governance §8 持续诊断和修复，同候选无新变化不重跑追分。原工作包的一次提炼是每个已固定试验版本的一次观察，不能把失败试验退出作为整体 M1 交付。当前修复沿原两域/单目标/三development/九promotion门槛，不增加领域或生产权限。
+
+免费诊断确认：旧 RP 候选仍推断未暴露当前时间/水位，且把 NPC 的交接条件扩展为玩家只能等；这是真实不利输出，非评分符号修补。Project 的候选 body188确实在实际 system message 内；公开 assistant 内容均为空，model-authored plan 未满足请求的状态解释。原 Studio loop 在 prepare_review 返回 review 后直接 finish/return；原 Host 也拒绝已停止 Task 的 generation。原候选“总结时说明”没有定位到可用执行位置，不能为补说明擅自开启停在 Review 后的 writer/模型循环。可用槽位是工具调用同轮的 assistant content 和 prepare_review 前 set_plan 的 summary/description，必须用当前事实/计划措辞，不提前称 validation passed、review reached 或 committed。
+
+同时发现 F3 比较消息是新的 sharedEvidence 编码/提示，而原 validateF3Calibration 只证明 F2 消息的 controls/source qualification，不能替不同 F3 比较协议授予校准。修复提交 `d1c793b38f4caf0eeddc9bb64c2fc00b86c3cfd8`：控制与实际双臂消息共用同一 system/证据编码，保留全部反事实/缺证据/左右翻转输入；两模型各域六个 exact controls必须在提炼前通过，费用沿原 repository reserve/settle。development report固定 gradeProtocolHash及十二条持久控制 receipts，readiness拒绝不同协议/缺控制/费用身份变化。F2已有来源判断与原基线保持历史 exact pins，不声称新增 F3 校准等于 M1通过。
+
+原 evaluator 的新提炼输入携带已核对原执行槽位及六维保护要求；不给模型新的工具/写入权限、不把代理分析伪造 explicit/diagnosis，不手写或评分后修订候选。RP仍需公开知识边界、玩家选择与可推进角色行动共同满足；Project必须在原公开槽位解释有界提案、fresh/prior conflict区别及未提交 Review 边界。必要修复复测以新协议/提炼输入版本各一新候选进行，旧候选、全部判断、账目和密封来源不覆盖，门槛不缩减。
+
+最小本地验证：F3 suite23/23、触及 JS ESLint/diff通过。二十四个 F3 exact control messages 的原 compiler/provider免费 sizing确认完整 user证据未裁剪，output16384不变；Project controls input696–6054，RP676–1575，全部原context可容纳。没有重复原不变retry/F2 suites，没有 full suite/build/CI/UI/Android验证。新 scope `e13f6b6ce109da97eb270724f34f316103d7a3f671736facd9559e4b77ad4ad7`固定 testedHEAD d1c793b3、原 F2完整sourceRun以及旧F3报告hash/修复理由；实际校准/新候选观察正在执行，结果在本节续记。

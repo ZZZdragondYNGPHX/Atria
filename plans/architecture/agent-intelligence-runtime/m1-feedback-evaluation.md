@@ -217,3 +217,10 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 2026-10-09恢复后已完成两域40项有效controls和六development来源各两模型观察，原六正确基线未重跑；RP档案knowledge_boundary、Project三来源status_accuracy为共同缺口，剧场knowledge判断分歧保留。第二模型grader使用实际验证的low reasoning配置并重新校准；前期404/超时、不完整响应、未知费用与历史账目保留。前置范围完成不等于M1验收。
 
 已按§2的delegated private engineering investigation完成每域一次原提炼和三个development场景，withdraw旧fixture代理纠正，不伪造生产feedback/diagnosis方向；完整两arm证据无损去重适配原context，原targets/worker/费用端口复用。两域一致candidate胜均0，重要维度出现负差/分歧，Project第三条第二模型解释违反长度契约而存invalid。未准入独立promotion，未进行review→消费→rollback，不重提炼追分、不缩减场景/维度。原生产gate、§8退出与M1门槛保持；actual pins/费用/最小本地验证唯一见[同一Record](../../../records/refactor/agent-intelligence-runtime.md)最新F3节。§14保留主模型完成时的历史结果，当前恢复点见live HANDOFF。
+
+
+## 16. F3 工程修复与 M1 持续推进
+
+§15的一次 development 失败不是整体 M1退出；失败后诊断与有依据修复按 Governance §8执行。每个固定修复版本仍每域提炼一个候选，评分前冻结，原两模型 development准入/三独立promotion各三pair及review→消费→rollback不变。不对同一有效负面候选无变化追试，不从 promotion取材，不降低必需维度或门槛。
+
+新增必需消费者核对：真实 F3比较提示和完整证据编码必须先使用同一协议通过两模型已固定正确/错误/unknown、反事实和顺序翻转控制，不能复用另一协议的F2校准作为证明。提炼输入须说明原可执行 slot；原Studio在prepare_review后停止，状态说明只能走已存在的公开assistant/plan槽位并区分当前事实与未来Review边界，不扩展停态writer。当前工程修复/原失败保留及实际结果唯一记入同一Record最新节，M1仍按acceptance §1/§2。

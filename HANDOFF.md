@@ -1,4 +1,4 @@
-# 阶段交接 — F3 一次双域试点完成，未准入 promotion
+# 恢复快照 — 已续接，M1 继续推进
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`；产品工作分支 `feat/agent-intelligence-runtime`，尚未集成 main。
@@ -27,6 +27,6 @@ F3 run `run-1791549607555-d38e4ef9`。每域只提炼一个候选，随后三个
 
 ## 下一行动与接手提示词
 
-本轮按用户当前 AGENTS 的阶段交接要求停止。下一工作先核对真实 Git 与最新 Record，分析本次有效不利输出及干预适用性，再讨论下一干预设计或范围变化。原二评委阈值、固定场景/维度、独立来源隔离和 M1 完整退出门槛保持；不在已评分候选或 promotion 材料上刷分。
+用户已明确要求继续 M1；本页保存换机恢复快照，实际最新状态以 Git 和同一 Record 的“M1 继续”节为准。一次实验退出不再作为整体停工点。继续基于不利证据修复有明确根因的工程与提炼输入问题。原二评委阈值、固定场景/维度、独立来源隔离和 M1 完整退出门槛保持；不在已评分候选或 promotion 材料上刷分。
 
-接手提示词：继续 Atria `agent-intelligence-runtime`，先核对 Git，再读 docs:HANDOFF.md → Plan index → feedback §2/§6/§8/§15、acceptance §1/§2/§12 → 同一 Record 最新 F3 节。产品分支 `feat/agent-intelligence-runtime`，HEAD `cebd14154b371f59a7b44dbac9726e2f9db18a4c`。私有包已恢复，F2 双模型前置范围完成；F3 每域一次候选/三development完成，但两域一致胜均0且有负差/分歧/无效评价，未准入promotion，M1 pending。先依据原不利证据核对归因和干预设计，保留六基线、候选/全部评分/费用与密封来源，不重跑正确结果、不改分、不清账；只做当前触及面最小本地验证，不集成main、不进入S11/G。
+接手提示词：继续 Atria `agent-intelligence-runtime`，先核对 Git，再读 docs:HANDOFF.md → Plan index → feedback §2/§6/§8/§15、acceptance §1/§2/§12 → 同一 Record 最新 F3 节。产品分支 `feat/agent-intelligence-runtime`，HEAD `cebd14154b371f59a7b44dbac9726e2f9db18a4c`。私有包已恢复，F2 双模型前置范围完成；F3 每域一次候选/三development完成，但两域一致胜均0且有负差/分歧/无效评价，未准入promotion，M1 pending。按最新 Record 持续推进 M1，先依据原不利证据核对归因和干预设计，保留六基线、候选/全部评分/费用与密封来源，不重跑正确结果、不改分、不清账；只做当前触及面最小本地验证，不集成main、不进入S11/G。
