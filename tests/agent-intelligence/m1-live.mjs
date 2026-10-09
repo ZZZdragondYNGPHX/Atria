@@ -21,7 +21,7 @@ import { m1TransportKey } from './m1-transport-key.js';
 import { m1GraderConfiguration, sendM1Grader, m1ExtractionConfiguration, sendM1Extraction, m1EvaluationConfiguration, sendM1Evaluation } from './m1-grader.js';
 import { assertM1PrivateAccess } from './m1-private-access.js';
 import { validateF2Scope, runF2Domain } from './m1-f2.js';
-import { runF3Domain } from './m1-f3.js';
+import { runF3Domain, f3JudgeLabels } from './m1-f3.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -72,6 +72,7 @@ try {
     const f2Resume = f2Scope?.resumeFile ? read(f2Scope.resumeFile) : null;
     if (f2Resume && hash(f2Resume) !== f2Scope.resumeHash) throw new Error('f2_resume_changed');
     const f3Scope = f3Name ? read(f3Name) : null;
+    if (f3Scope) f3JudgeLabels(f3Scope.judgeMode);
     const pilotScope = f2Scope || f3Scope;
     if (f3Scope && (!/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.sourceRun)
         || !/^m1-f2-[a-z0-9-]+\.json$/.test(f3Scope.controlFile) || f3Scope.schemaVersion !== 1 || f3Scope.purpose !== 'f3_private_development'
@@ -121,14 +122,16 @@ try {
     const output = path.join(directory, 'm1-reports', 'run-' + Date.now() + '-' + randomUUID().slice(0, 8));
     fs.mkdirSync(output, { recursive: true, mode: 0o700 });
     const store = (name, value) => writeFileAtomic.sync(path.join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
-    const connections = ['api-primary.json', temporarySecondary ? 'api-minimax-temporary.json' : 'api-secondary.json'].map(name => {
+    const connectionFiles = f3Scope?.judgeMode === 'primary_only' ? ['api-primary.json']
+        : ['api-primary.json', temporarySecondary ? 'api-minimax-temporary.json' : 'api-secondary.json'];
+    const connections = connectionFiles.map(name => {
         const file = path.join(directory, name);
         assertM1PrivateAccess(file, 0o600);
         const { apiKey, ...config } = read(name);
         if (!apiKey) throw new Error('explicit_key_required');
         return { apiKey, config };
     });
-    if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
+    if (connections[1] && connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
     const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-f2.js', 'm1-f3.js', 'm1-f3-promotion.js', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'm1-grader.js', 'm1-private-access.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
@@ -141,7 +144,7 @@ try {
     if (f3Scope) {
         if (f3Scope.testedHead !== testedHead || f3Scope.evaluatorRevision !== summary.evaluatorRevision
             || f3Scope.runnerRevision !== summary.runnerRevision) throw new Error('f3_scope_changed');
-        summary.mode = 'f3_private_development'; summary.f3ScopeHash = hash(f3Scope);
+        summary.mode = 'f3_private_development'; summary.f3ScopeHash = hash(f3Scope); summary.judgeMode = f3Scope.judgeMode || 'dual';
     }
     if (cycle) summary.mode = development ? cycleBaseline ? 'cycle_baseline_development' : 'cycle_optimized_development' : 'cycle_frozen_acceptance';
     if (boundedCycle) summary.envelope = 'cycle-output-8000-v1';
@@ -390,21 +393,24 @@ try {
             const owner = await f.repository.owner(f.h.handle);
             await f.service.budget(f.h.handle, { expectedSequence: owner.sequence, limits: { maxRequests: 260, maxTokens: 699536, minIntervalMs: 3150 } });
             const secondary = connections[1];
-            const seededSecondary = !resumed ? await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: boundedCycle ? { ...secondary.config, maxOutputTokens: Math.min(8000, secondary.config.maxOutputTokens) } : secondary.config,
-                secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } }) : null;
-            const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
-            const secondaryRoutes = [];
-            for (const route of routes.filter(r => r.role === 'role.orchestrator')) {
-                const model = await f.host.persistence.getModelProfile(f.h.handle, route.modelProfileRef.modelProfileId);
-                if (model.remoteModelId === secondary.config.model && (!seededSecondary || route.runtimeRouteId === seededSecondary.routes.orchestrator.runtimeRouteId)) secondaryRoutes.push(route);
+            const extendedGrader = secondary && (gradeSource || cycle || pilotScope || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
+            let secondaryConfig = null;
+            if (secondary) {
+                const seededSecondary = !resumed ? await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: boundedCycle ? { ...secondary.config, maxOutputTokens: Math.min(8000, secondary.config.maxOutputTokens) } : secondary.config,
+                    secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } }) : null;
+                const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
+                const secondaryRoutes = [];
+                for (const route of routes.filter(r => r.role === 'role.orchestrator')) {
+                    const model = await f.host.persistence.getModelProfile(f.h.handle, route.modelProfileRef.modelProfileId);
+                    if (model.remoteModelId === secondary.config.model && (!seededSecondary || route.runtimeRouteId === seededSecondary.routes.orchestrator.runtimeRouteId)) secondaryRoutes.push(route);
+                }
+                if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
+                const secondaryRoute = secondaryRoutes[0];
+                secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId, pilotScope || diagnoseOnly ? null : 8000)
+                    : await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
+                entry.secondaryConfigurationHash = hash(secondaryConfig);
+                entry.secondaryOutputTokens = secondaryConfig.generation.output.maxTokens;
             }
-            if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
-            const secondaryRoute = secondaryRoutes[0];
-            const extendedGrader = (gradeSource || cycle || pilotScope || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
-            const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId, pilotScope || diagnoseOnly ? null : 8000)
-                : await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
-            entry.secondaryConfigurationHash = hash(secondaryConfig);
-            entry.secondaryOutputTokens = secondaryConfig.generation.output.maxTokens;
             const secrets = createM1SecretPort(primary, secondary);
             f.host.secretPort = secrets.port;
             const reserve = f.evaluator.repository.reserve.bind(f.evaluator.repository), settle = f.evaluator.repository.settle.bind(f.evaluator.repository);

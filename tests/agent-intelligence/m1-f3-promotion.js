@@ -6,7 +6,7 @@ import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { runRp } from '../../src/native/agent-intelligence/evaluation/adapters.js';
-import { comparisonCalibrationReady, gradeF3Report } from './m1-f3.js';
+import { comparisonCalibrationReady, gradeF3Report, f3JudgeLabels } from './m1-f3.js';
 import { projectActivationMatches } from './m1-resume.js';
 
 const equal = (a, b) => canonical(a) === canonical(b);
@@ -15,6 +15,7 @@ const matches = (charge, paid) => paid && chargeFields.every(key => equal(charge
 
 export function pilotPromotionAcceptance(report, independent, owner, jobId) {
     const reasons = [], profileId = report.domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
+    const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     const required = selectCases({ purpose: 'evaluation', split: 'promotion', profileId });
     if (report.origin !== 'm1_f3_promotion' || report.evaluatorRevision !== evolutionEvaluatorRevision()
         || report.caseSetRevision !== PILOT_CASE_SET_REVISION || !equal(report.quality, qualityEnvelope(report.domain, required, 'promotion'))
@@ -32,14 +33,14 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
         const { pairHash, ...identity } = pair;
         if (pair.human !== null || pairHash !== hash(identity) || hash(pair.scenario.input) !== pair.case.inputHash) reasons.push('pair_or_source_changed');
         const observations = independent.filter(o => o.pairHash === pairHash), second = observations[0];
-        if (observations.length !== 1 || second?.origin !== 'independent_model' || second.model === second.primaryModel
+        if (secondaryRequired && (observations.length !== 1 || second?.origin !== 'independent_model' || second.model === second.primaryModel
             || !owner.attempts.some(a => a.id === second.chargeId && a.jobId === jobId + ':independent' && a.kind === 'judge'
-                && ['reported', 'unknown'].includes(a.status) && a.requestHash === second.requestHash && a.snapshotHash === second.snapshotHash)) reasons.push('independent_model_observation_missing');
-        if (!['candidate', 'tie'].includes(pair.judge?.preference) || second?.preference !== pair.judge?.preference) reasons.push('model_regression_uncertainty_or_disagreement');
-        if (pair.judge?.preference === 'candidate' && second?.preference === 'candidate') wins++;
+                && ['reported', 'unknown'].includes(a.status) && a.requestHash === second.requestHash && a.snapshotHash === second.snapshotHash))) reasons.push('independent_model_observation_missing');
+        if (!['candidate', 'tie'].includes(pair.judge?.preference) || secondaryRequired && second?.preference !== pair.judge?.preference) reasons.push('model_regression_uncertainty_or_disagreement');
+        if (pair.judge?.preference === 'candidate' && (!secondaryRequired || second?.preference === 'candidate')) wins++;
         if (!pair.judge?.chargeIds?.length || pair.judge.chargeIds.some(id => !report.charges.some(c => c.id === id && c.kind === 'judge'))) reasons.push('primary_model_observation_unfunded');
         for (const dimension of pair.case.behaviorDimensions) if (!Number.isInteger(pair.judge?.deltas?.[dimension]) || pair.judge.deltas[dimension] < 0
-            || !Number.isInteger(second?.deltas?.[dimension]) || second.deltas[dimension] < 0) reasons.push('behavior_regression_or_ungraded');
+            || secondaryRequired && (!Number.isInteger(second?.deltas?.[dimension]) || second.deltas[dimension] < 0)) reasons.push('behavior_regression_or_ungraded');
         for (const arm of ['baseline', 'candidate']) {
             const trial = pair[arm]; trialIds.add(trial.trialId);
             if (trial.error || !trial.output || !trial.requestHashes.length || trial.configurationHash !== report.configurations[arm]
@@ -50,9 +51,9 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
     }
     if (trialIds.size !== 18) reasons.push('trial_identity_repeated');
     if (owner.attempts.some(a => a.jobId === jobId && trialIds.has(a.trialId) && (!ids.has(a.id) || a.status === 'reserved'))) reasons.push('trial_send_accounting_incomplete');
-    if (independent.length !== 9) reasons.push('independent_model_observation_missing');
+    if (secondaryRequired && independent.length !== 9 || !secondaryRequired && independent.length !== 0) reasons.push('independent_model_observation_missing');
     if (wins < 6) reasons.push('improvement_threshold_not_met');
-    return { accepted: !reasons.length, reasons: [...new Set(reasons)], wins, tokensAdvisory: true,
+    return { accepted: !reasons.length, reasons: [...new Set(reasons)], wins, judgeMode: report.judgeMode || 'dual', tokensAdvisory: true,
         humanPreference: 'not_observed', currencyCost: 'unavailable', productionPromotion: 'original_gate_unchanged' };
 }
 
@@ -143,7 +144,7 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
     const attempts = (await f.repository.owner(f.h.handle)).attempts.filter(a => a.jobId === job.id && trialIds.has(a.trialId));
     report.charges = attempts.map(a => Object.fromEntries(chargeFields.map(key => [key, a[key]])));
     for (const pair of report.pairs) for (const arm of ['baseline', 'candidate']) pair[arm].charges = report.charges.filter(c => c.trialId === pair[arm].trialId);
-    report.origin = 'm1_f3_promotion'; report.gradeProtocolHash = developmentReport.gradeProtocolHash;
+    report.origin = 'm1_f3_promotion'; report.judgeMode = developmentReport.judgeMode || 'dual'; report.gradeProtocolHash = developmentReport.gradeProtocolHash;
     report.comparisonCalibration = developmentReport.comparisonCalibration;
     entry.promotionIndependent = await gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob: job,
         fresh, signal, store, phase: 'promotion' });

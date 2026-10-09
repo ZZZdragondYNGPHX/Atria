@@ -3,7 +3,8 @@ import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION } from '
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
-    f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration } from './m1-f3.js';
+    f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels } from './m1-f3.js';
+import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 
@@ -72,13 +73,47 @@ test.each(['rp-skill', 'project-prompt'])('F3 %s private investigation withdraws
     } finally { await f.h.cleanup(); }
 });
 
-test('F3 source gate rejects primary-only observations and missing calibration controls', () => {
+test('legacy dual F3 source gate rejects primary-only observations and missing calibration controls', () => {
     const config = { model: { remoteModelId: 'primary' } }, secondary = { model: { remoteModelId: 'secondary' } };
     const source = { entry: { judgeMode: 'primary_only', status: 'f2_sources_observed', baselineHeadroom: 'primary_observed_gap' } };
-    expect(() => validateF3Calibration(source, {}, {}, 'rp-skill', config, secondary)).toThrow('f3_dual_source_unready');
+    expect(() => validateF3Calibration(source, {}, {}, 'rp-skill', config, secondary)).toThrow('f3_source_unready');
     source.entry = { ...source.entry, judgeMode: 'dual', baselineHeadroom: 'observed_gap' };
     const controls = { origin: 'engineering_control', controls: [], sourceControls: [] };
-    expect(() => validateF3Calibration(source, { controlHash: hash(controls) }, controls, 'rp-skill', config, secondary)).toThrow('f3_dual_source_unready');
+    expect(() => validateF3Calibration(source, { controlHash: hash(controls) }, controls, 'rp-skill', config, secondary)).toThrow('f3_source_unready');
+});
+
+test.each(['rp', 'project'])('primary-only %s development qualifies without second-model receipts and retains negative/invalid rejection', domain => {
+    const f = example(domain); f.report.judgeMode = 'primary_only'; f.independent = [];
+    f.report.comparisonCalibration = f.report.comparisonCalibration.filter(c => c.label === 'primary');
+    expect(readiness(f)).toMatchObject({ accepted: true, wins: 2, judgeMode: 'primary_only' });
+    f.report.pairs[0].judge.deltas[f.report.pairs[0].case.behaviorDimensions[0]] = -1;
+    rehash(f.report.pairs[0]); expect(readiness(f).reasons).toContain('behavior_regression_or_ungraded');
+    f.report.pairs[0].judge.preference = 'uncertain';
+    rehash(f.report.pairs[0]); expect(readiness(f).accepted).toBe(false);
+});
+
+test('primary-only F3 grading sends only to the primary model without a secondary configuration', async () => {
+    const observed = [], fixture = example();
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { policyMode: 'review', confirmedPrice: null, fetchImpl: async (_url, options) => {
+        const body = JSON.parse(options.body); observed.push(body.model);
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: JSON.stringify({
+            preference: 'tie', deltas: Object.fromEntries(fixture.report.pairs[0].case.behaviorDimensions.map(d => [d, 0])), rationale: 'Synthetic primary observation.' }) } }],
+        usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
+    } });
+    try {
+        const primaryConfig = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId);
+        f.evaluator.send = (handle, job, config, payload, signal, fresh) => sendM1Evaluation(f.evaluator, handle,
+            { ...job, m1Envelope: 'm1-configured-output-v1' }, config, payload, signal, fresh);
+        const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
+        const independent = await gradeF3Report({ f, kind: 'rp-skill', report: fixture.report, primaryConfig, secondaryConfig: null,
+            scope: { judgeMode: 'primary_only', judgeOutputTokens: 1024 }, entry: { candidateValueHash: hash('synthetic') },
+            paidJob: { id: 'synthetic-primary-only', scopeId: doc.scopeId, domain: 'rp', price: null }, fresh: async () => {},
+            signal: AbortSignal.timeout(15000), store: () => {}, phase: 'development' });
+        expect(independent).toEqual([]); expect(observed).toEqual(Array(3).fill(primaryConfig.model.remoteModelId));
+        expect(fixture.report.pairs.every(p => p.judge.preference === 'tie' && p.judge.chargeIds.length === 1)).toBe(true);
+        expect(f3JudgeLabels('primary_only')).toEqual(['primary']);
+        expect(() => f3JudgeLabels('unknown')).toThrow('invalid_f3_judge_mode');
+    } finally { await f.h.cleanup(); }
 });
 
 test.each(['rp', 'project'])('F3 %s reuses exact funded baseline without claiming a new send or production eligibility', domain => {

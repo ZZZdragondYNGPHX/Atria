@@ -11,25 +11,33 @@ import { f2SourceEvidence, f2SourceMessages, parseF2SourceAssessment, reusableF2
 
 const profileFor = domain => domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
 const equal = (a, b) => canonical(a) === canonical(b);
+export function f3JudgeLabels(mode = 'dual') {
+    if (mode === 'primary_only') return ['primary'];
+    if (mode === 'dual') return ['primary', 'secondary'];
+    throw new Error('invalid_f3_judge_mode');
+}
 const paidMatches = (charge, paid) => paid && ['id', 'trialId', 'kind', 'requestHash', 'snapshotHash', 'tokens', 'status', 'usage', 'cost']
     .every(key => equal(charge[key], paid[key]));
 
 export function validateF3Calibration(source, scope, controls, kind, primaryConfig, secondaryConfig) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project', configs = { primary: primaryConfig, secondary: secondaryConfig };
-    if (source.entry?.judgeMode !== 'dual' || source.entry.status !== 'f2_sources_observed' || source.entry.baselineHeadroom !== 'observed_gap'
+    const labels = f3JudgeLabels(scope.judgeMode);
+    if (!(labels.length === 1 ? ['primary_only', 'dual'].includes(source.entry?.judgeMode) : source.entry?.judgeMode === 'dual')
+        || source.entry.status !== 'f2_sources_observed' || !(labels.length === 1
+        ? ['primary_observed_gap', 'observed_gap'].includes(source.entry.baselineHeadroom) : source.entry.baselineHeadroom === 'observed_gap')
         || controls.origin !== 'engineering_control' || controls.controls?.length !== 12 || controls.sourceControls?.length !== 8
-        || hash(controls) !== scope.controlHash || primaryConfig.model.remoteModelId === secondaryConfig.model.remoteModelId) throw new Error('f3_dual_source_unready');
+        || hash(controls) !== scope.controlHash || labels.length === 2 && primaryConfig.model.remoteModelId === secondaryConfig?.model.remoteModelId) throw new Error('f3_source_unready');
     const comparisons = controls.controls.filter(c => c.domain === domain), sources = controls.sourceControls.filter(c => c.pair.case.entrance === domain);
     if (comparisons.length !== 6 || new Set(comparisons.map(c => c.group + ':' + c.flipped)).size !== 6
         || ['known_violation', 'counterfactual', 'missing_evidence'].some(group => [false, true].some(flipped =>
             !comparisons.some(c => c.group === group && c.flipped === flipped)))
         || sources.length !== 4 || ['positive', 'known_violation', 'missing_evidence', domain === 'rp' ? 'unsupported_rule' : 'communication_omission']
         .some(group => !sources.some(c => c.group === group))) throw new Error('f3_calibration_changed');
-    for (const control of controls.controls.filter(c => c.domain === domain)) for (const label of ['primary', 'secondary']) {
+    for (const control of controls.controls.filter(c => c.domain === domain)) for (const label of labels) {
         if (!source.entry.calibration.some(row => reusableF2Calibration(row, control, label, configs[label], scope.judgeOutputTokens,
             scope.judgeReasoningEffort?.[label] ?? null))) throw new Error('f3_calibration_changed');
     }
-    for (const control of controls.sourceControls.filter(c => c.pair.case.entrance === domain)) for (const label of ['primary', 'secondary']) {
+    for (const control of controls.sourceControls.filter(c => c.pair.case.entrance === domain)) for (const label of labels) {
         const messagesHash = hash(f2SourceMessages(control.pair)), transportHash = hash(f2JudgeTransport(configs[label], scope.judgeOutputTokens,
             scope.judgeReasoningEffort?.[label] ?? null));
         if (!source.entry.sourceCalibration.some(row => row.label === label && row.group === control.group && row.passed === true
@@ -38,9 +46,9 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
     }
     for (const pair of source.report.pairs) {
         const rows = source.assessments.filter(row => row.caseId === pair.case.caseId);
-        if (rows.length !== 1 || rows[0].observations.length !== 2 || new Set(rows[0].observations.map(o => o.label)).size !== 2) throw new Error('f3_assessment_changed');
+        if (rows.length !== 1 || labels.some(label => rows[0].observations.filter(o => o.label === label).length !== 1)) throw new Error('f3_assessment_changed');
         const evidence = f2SourceEvidence(pair), messagesHash = hash(f2SourceMessages(pair));
-        for (const observation of rows[0].observations) {
+        for (const observation of rows[0].observations.filter(o => labels.includes(o.label))) {
             const config = configs[observation.label];
             if (!config || observation.messagesHash !== messagesHash || observation.evidenceHash !== hash(evidence)
                 || observation.configurationHash !== hash(config) || observation.transportConfigurationHash !== hash(f2JudgeTransport(config,
@@ -48,10 +56,11 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
             parseF2SourceAssessment(JSON.stringify(observation), pair.case, evidence);
         }
         const shared = pair.case.behaviorDimensions.filter(dimension => rows[0].observations.every(o => o.dimensions[dimension].status === 'gap'));
-        if (!equal(rows[0].sharedGaps, shared)) throw new Error('f3_assessment_changed');
+        if (source.entry.judgeMode === 'dual' ? !equal(rows[0].sharedGaps, shared) : rows[0].sharedGaps.length) throw new Error('f3_assessment_changed');
     }
     if (source.assessments.length !== 3) throw new Error('f3_assessment_changed');
-    if (!source.assessments.some(row => row.sharedGaps.length)) throw new Error('f3_headroom_unestablished');
+    if (!source.assessments.some(row => labels.length === 2 ? row.sharedGaps.length
+        : Object.values(row.observations.find(o => o.label === 'primary').dimensions).some(d => d.status === 'gap'))) throw new Error('f3_headroom_unestablished');
 }
 
 export function validateF3Baseline(report, domain, config, settings, ledger) {
@@ -80,6 +89,7 @@ export function validateF3Baseline(report, domain, config, settings, ledger) {
 // not inserted into a new owner ledger or described as a fresh paired trial.
 export function pilotDevelopmentReadiness(report, independent, owner, jobId, baseline, ledger) {
     const reasons = [], required = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(report.domain) });
+    const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     let wins = 0;
     if (report.origin !== 'm1_f3_development' || report.evaluatorRevision !== evolutionEvaluatorRevision()
         || report.caseSetRevision !== PILOT_CASE_SET_REVISION || report.baselineReuse.reportHash !== hash(baseline)
@@ -102,23 +112,23 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
             if (!paid?.settled || paid.trialId !== charge.trialId || paid.tokens !== charge.tokens) reasons.push('baseline_usage_missing');
         }
         const observations = independent.filter(o => o.pairHash === pairHash), observation = observations[0];
-        if (observations.length !== 1 || observation?.origin !== 'independent_model' || observation.model === observation.primaryModel
+        if (secondaryRequired && (observations.length !== 1 || observation?.origin !== 'independent_model' || observation.model === observation.primaryModel
             || !owner.attempts.some(a => a.id === observation.chargeId && a.jobId === jobId + ':independent' && a.kind === 'judge'
-                && ['reported', 'unknown'].includes(a.status) && a.requestHash === observation.requestHash && a.snapshotHash === observation.snapshotHash)) reasons.push('independent_model_observation_missing');
+                && ['reported', 'unknown'].includes(a.status) && a.requestHash === observation.requestHash && a.snapshotHash === observation.snapshotHash))) reasons.push('independent_model_observation_missing');
         if (!pair.judge?.chargeIds?.length || pair.judge.chargeIds.some(id => !report.charges.some(c => c.id === id && c.kind === 'judge'))) reasons.push('primary_model_observation_unfunded');
-        if (!['candidate', 'tie'].includes(pair.judge?.preference) || observation?.preference !== pair.judge?.preference) reasons.push('model_regression_uncertainty_or_disagreement');
-        if (pair.judge?.preference === 'candidate' && observation?.preference === 'candidate') wins++;
+        if (!['candidate', 'tie'].includes(pair.judge?.preference) || secondaryRequired && observation?.preference !== pair.judge?.preference) reasons.push('model_regression_uncertainty_or_disagreement');
+        if (pair.judge?.preference === 'candidate' && (!secondaryRequired || observation?.preference === 'candidate')) wins++;
         for (const dimension of pair.case.behaviorDimensions) if (!Number.isInteger(pair.judge?.deltas?.[dimension]) || pair.judge.deltas[dimension] < 0
-            || !Number.isInteger(observation?.deltas?.[dimension]) || observation.deltas[dimension] < 0) reasons.push('behavior_regression_or_ungraded');
+            || secondaryRequired && (!Number.isInteger(observation?.deltas?.[dimension]) || observation.deltas[dimension] < 0)) reasons.push('behavior_regression_or_ungraded');
         const trial = pair.candidate;
         if (trial?.error || !trial?.output || !trial?.requestHashes?.length || trial.configurationHash !== report.configurations.candidate
             || trial.settingsHash !== report.settings.candidate || [...pair.case.expectedInvariants, 'isolation', 'target_consumed'].some(k => trial?.checks?.[k] !== true)) reasons.push('authority_or_execution_incomplete');
         if (!trial?.charges?.length || trial.charges.some(c => c.kind !== 'candidate' || c.trialId !== trial.trialId
             || !report.charges.some(p => equal(p, c)) || !paidMatches(c, owner.attempts.find(a => a.id === c.id && a.jobId === jobId)))) reasons.push('candidate_usage_missing');
     }
-    if (independent.length !== 3) reasons.push('independent_model_observation_missing');
+    if (secondaryRequired && independent.length !== 3 || !secondaryRequired && independent.length !== 0) reasons.push('independent_model_observation_missing');
     if (wins < 2) reasons.push('improvement_threshold_not_met');
-    return { accepted: !reasons.length, reasons: [...new Set(reasons)], wins, tokensAdvisory: true, humanPreference: 'not_observed',
+    return { accepted: !reasons.length, reasons: [...new Set(reasons)], wins, judgeMode: report.judgeMode || 'dual', tokensAdvisory: true, humanPreference: 'not_observed',
         currencyCost: 'unavailable', productionPromotion: 'original_gate_unchanged', baselineReuse: 'cached_F2_development_observation' };
 }
 
@@ -155,9 +165,10 @@ const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses a
 
 export function comparisonCalibrationReady(report, owner) {
     const rows = report.comparisonCalibration;
-    return report.gradeProtocolHash === hash(F3_GRADE_INSTRUCTION) && Array.isArray(rows) && rows.length === 12
-        && new Set(rows.map(c => [c.group, c.flipped, c.label].join(':'))).size === 12
-        && ['known_violation', 'counterfactual', 'missing_evidence'].every(group => [false, true].every(flipped => ['primary', 'secondary'].every(label =>
+    const labels = f3JudgeLabels(report.judgeMode), count = labels.length * 6;
+    return report.gradeProtocolHash === hash(F3_GRADE_INSTRUCTION) && Array.isArray(rows) && rows.length === count
+        && new Set(rows.map(c => [c.group, c.flipped, c.label].join(':'))).size === count
+        && ['known_violation', 'counterfactual', 'missing_evidence'].every(group => [false, true].every(flipped => labels.every(label =>
             rows.some(c => c.group === group && c.flipped === flipped && c.label === label && c.passed === true
                 && paidMatches(c.charge, owner.attempts.find(a => a.id === c.charge?.id && a.jobId === c.jobId))))));
 }
@@ -212,7 +223,8 @@ async function calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, contr
     for (const control of controls.controls.filter(c => c.domain === domain)) {
         const actual = cases.find(c => c.caseId === control.caseId);
         const messages = f3CalibrationMessages(control, actual);
-        for (const [label, original] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+        for (const label of f3JudgeLabels(scope.judgeMode)) {
+            const original = label === 'primary' ? primaryConfig : secondaryConfig;
             const transport = f2JudgeTransport(original, scope.judgeOutputTokens, scope.judgeReasoningEffort?.[label] ?? null);
             const prior = resume.find(row => reusableF3Calibration(row, control, actual, label, transport, owner, ledger()));
             if (prior) {
@@ -277,7 +289,8 @@ export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryC
     const job = paidJob, send = f.evaluator.send.bind(f.evaluator);
     const independent = [];
     for (const pair of report.pairs) {
-        for (const [label, original] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+        for (const label of f3JudgeLabels(scope.judgeMode)) {
+            const original = label === 'primary' ? primaryConfig : secondaryConfig;
             const transport = f2JudgeTransport(original, scope.judgeOutputTokens, scope.judgeReasoningEffort?.[label] ?? null);
             const flipped = parseInt(hash([label, pair.case.caseRevision, pair.repetition, phase, entry.candidateValueHash]).slice(0, 2), 16) % 2 === 1;
             let charge;
@@ -309,6 +322,7 @@ export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryC
 
 export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal, calibrationResume = [], sealedDirectory = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project', profileId = profileFor(domain);
+    entry.judgeMode = scope.judgeMode || 'dual';
     const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
     validateF3Baseline(source.report, domain, primaryConfig, baselineSettings, ledger());
     validateF3Calibration(source, scope, controls, kind, primaryConfig, secondaryConfig);
@@ -331,8 +345,10 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
         if (hash(await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target)) !== hash(capture)) throw new Error('f3_base_changed');
     };
     const investigation = { origin: 'test_only_investigation', productionTrigger: 'not_established', sourceReportHash: hash(source.report),
-        findings: source.assessments.map(row => ({ caseId: row.caseId, sharedGaps: row.sharedGaps,
-            observations: row.observations.map(o => ({ origin: o.origin, label: o.label, dimensions: o.dimensions })) })) };
+        judgeMode: entry.judgeMode,
+        findings: source.assessments.map(row => ({ caseId: row.caseId, observedGaps: entry.judgeMode === 'primary_only'
+            ? Object.entries(row.observations.find(o => o.label === 'primary').dimensions).filter(([, d]) => d.status === 'gap').map(([d]) => d) : row.sharedGaps,
+        observations: row.observations.filter(o => f3JudgeLabels(scope.judgeMode).includes(o.label)).map(o => ({ origin: o.origin, label: o.label, dimensions: o.dimensions })) })) };
     entry.investigation = investigation; entry.jobId = job.id;
     const extractionConfig = f2JudgeTransport(primaryConfig, 8000, 'low');
     const input = f3ExtractionInput(capture, domain, investigation);
@@ -362,7 +378,7 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
             { profileId, split: 'development', repetitions: 1, mode: 'source_probe' });
     } finally { f.evaluator.send = send; }
     const report = { schemaVersion: 2, origin: 'm1_f3_development', evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision: PILOT_CASE_SET_REVISION,
-        domain, quality: probe.quality, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: null,
+        domain, judgeMode: entry.judgeMode, quality: probe.quality, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: null,
         configurations: { baseline: hash(primaryConfig), candidate: hash(config) }, settings: { baseline: hash(baselineSettings), candidate: hash(settings) },
         gradeProtocolHash: hash(F3_GRADE_INSTRUCTION), comparisonCalibration: entry.comparisonCalibration,
         baselineReuse: { reportHash: hash(source.report), evaluatorRevision: source.report.evaluatorRevision, origin: 'cached_F2_development_observation' },

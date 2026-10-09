@@ -23,6 +23,14 @@ test('model selection works through a frozen secret port and rejects unknown ref
     expect(() => secrets.select('unknown')).toThrow('unknown_test_model');
 });
 
+test('single-model tests resolve the primary secret without a secondary connection', async () => {
+    const secrets = createM1SecretPort({ config: { model: 'primary' }, apiKey: 'fixture-primary' });
+    Object.freeze(secrets.port);
+    const restore = secrets.select('primary');
+    expect(await secrets.port.resolveSecret({ secretId: 's06-test-key' })).toBe('fixture-primary');
+    restore(); expect(() => secrets.select('secondary')).toThrow('unknown_test_model');
+});
+
 test.each(['rp-skill', 'project-prompt'])('grading-only restore preserves %s comparison after rollback', async kind => {
     const f = await evolutionFixture(makeTempFsEngineHarness, kind, { policyMode: 'review' }); cleanup.push(f.h.cleanup);
     const result = await runEvolution(f);

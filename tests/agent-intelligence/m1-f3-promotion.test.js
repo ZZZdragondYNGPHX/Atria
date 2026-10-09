@@ -48,8 +48,17 @@ function fixture(domain = 'rp') {
 }
 const check = f => pilotPromotionAcceptance(f.report, f.independent, f.owner, 'job');
 const rehash = f => { for (let i = 0; i < f.report.pairs.length; i++) {
-    const p = f.report.pairs[i]; delete p.pairHash; p.pairHash = hash(p); f.independent[i].pairHash = p.pairHash;
+    const p = f.report.pairs[i]; delete p.pairHash; p.pairHash = hash(p); if (f.independent[i]) f.independent[i].pairHash = p.pairHash;
 } };
+
+test.each(['rp', 'project'])('primary-only %s promotion requires six primary wins without a second model', domain => {
+    const f = fixture(domain); f.report.judgeMode = 'primary_only'; f.independent = [];
+    f.report.comparisonCalibration = f.report.comparisonCalibration.filter(c => c.label === 'primary');
+    expect(check(f)).toMatchObject({ accepted: true, wins: 6, judgeMode: 'primary_only' });
+    expect(promotionDecision(f.report).eligible).toBe(false);
+    f.report.pairs[0].judge.preference = 'tie'; rehash(f);
+    expect(check(f).reasons).toContain('improvement_threshold_not_met');
+});
 
 test.each(['rp', 'project'])('synthetic %s promotion controls require six unanimous wins and never grant production eligibility', domain => {
     const f = fixture(domain);
