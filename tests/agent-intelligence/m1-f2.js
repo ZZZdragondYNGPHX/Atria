@@ -169,8 +169,8 @@ function projectSourceProjection(value) {
     return output;
 }
 
-export function f2SourceEvidence(pair) {
-    if (pair.case.entrance !== 'project') return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
+export function f2SourceEvidence(pair, scenario = publicCaseScenario(pair.case)) {
+    if (pair.case.entrance !== 'project') return withF2QuoteCatalogue({ scenario, baseline: pair.baseline });
     const output = projectSourceProjection(JSON.parse(pair.baseline.output));
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
     const modelStatements = Array.isArray(output.conversation) ? output.conversation.flatMap((row, index) =>
@@ -197,7 +197,7 @@ export function f2SourceEvidence(pair) {
         ...['source', 'originalSource', 'validatedProposal'].flatMap(label => (output[label]?.package?.entryPoints || []).flatMap(point =>
             ['worldIds', 'primaryWorldId', 'knowledgeBindingIds'].map(field => label + '.' + point.displayName + '.' + field + ': ' + canonical(point[field])))),
         ...(output.validationHistory || []).map(row => 'Validation history: ' + canonical(row))];
-    return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: { output, facts, modelStatements, checks: checks ?? {}, evidence: evidence ?? [],
+    return withF2QuoteCatalogue({ scenario, baseline: { output, facts, modelStatements, checks: checks ?? {}, evidence: evidence ?? [],
         error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
 }
 

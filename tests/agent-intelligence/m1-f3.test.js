@@ -3,7 +3,7 @@ import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION } from '
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
-    f3CalibrationMessages, validF3Control, f3ExtractionInput } from './m1-f3.js';
+    f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration } from './m1-f3.js';
 import { evolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 
@@ -211,4 +211,23 @@ test('extraction receives available communication slots without inventing feedba
     expect(input.executionAffordances).toContain('set_plan');
     expect(input.executionAffordances).toContain('do not claim validation passed');
     expect(f3ExtractionInput(capture, 'rp', {}).requiredBehavior).toContain('unknown current/private facts');
+});
+
+test('exact F3 calibration reuse requires unchanged messages, transport and original settled receipts', () => {
+    const f = example(), pair = f.report.pairs[0], transport = { identity: 'actual-transport' };
+    const control = { group: 'known_violation', flipped: false, caseId: pair.case.caseId, messages: [{ role: 'user', content:
+        JSON.stringify({ ...pair.scenario, dimensions: pair.case.behaviorDimensions, left: 'Unexposed penalty.', right: 'An NPC offers a choice.' }) }] };
+    const row = { ...f.report.comparisonCalibration[0], messagesHash: hash(f3CalibrationMessages(control, pair.case)), configurationHash: hash(transport) };
+    f.ledger.entries[row.charge.id] = { settled: true, tokens: row.charge.tokens, trialId: row.charge.trialId };
+    const reuse = (config = transport) => reusableF3Calibration(row, control, pair.case, 'primary', config, f.owner, f.ledger);
+    expect(reuse()).toBe(true); expect(reuse({ identity: 'changed' })).toBe(false);
+    f.ledger.entries[row.charge.id].settled = false; expect(reuse()).toBe(false);
+    f.ledger.entries[row.charge.id].settled = true; row.messagesHash = hash('F2 protocol'); expect(reuse()).toBe(false);
+});
+
+test('sealed pair grading consumes worker scenario without opening independent sources again', () => {
+    const f = example(), entry = selectCases({ purpose: 'evaluation', split: 'promotion', profileId: 'rp.m1.information' })[0];
+    const pair = { ...f.report.pairs[0], case: entry, scenario: { input: 'Synthetic worker scenario control', rubric: {} } };
+    const body = JSON.parse(f3GradeMessages(pair, false)[1].content);
+    expect(body.input).toBe(pair.scenario.input); expect(body.dimensions).toEqual(entry.behaviorDimensions);
 });

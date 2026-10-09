@@ -6,6 +6,7 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseBlindGrade } from './m1-acceptance.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
+import { finishF3Promotion } from './m1-f3-promotion.js';
 import { f2SourceEvidence, f2SourceMessages, parseF2SourceAssessment, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
 
 const profileFor = domain => domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
@@ -85,12 +86,7 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
         || report.configurations.baseline !== baseline.configurations.baseline || report.settings.baseline !== baseline.settings.baseline
         || !equal(report.quality, qualityEnvelope(report.domain, required, 'development'))) reasons.push('evaluation_identity_changed');
     if (report.pairs.length !== 3 || required.some(c => report.pairs.filter(p => equal(p.case, c) && p.repetition === 1).length !== 1)) reasons.push('development_cases_incomplete');
-    const calibration = report.comparisonCalibration;
-    if (report.gradeProtocolHash !== hash(F3_GRADE_INSTRUCTION) || !Array.isArray(calibration) || calibration.length !== 12
-        || new Set(calibration?.map(c => [c.group, c.flipped, c.label].join(':'))).size !== 12
-        || ['known_violation', 'counterfactual', 'missing_evidence'].some(group => [false, true].some(flipped => ['primary', 'secondary'].some(label =>
-            !calibration?.some(c => c.group === group && c.flipped === flipped && c.label === label && c.passed === true
-                && paidMatches(c.charge, owner.attempts.find(a => a.id === c.charge?.id && a.jobId === c.jobId))))))) reasons.push('comparison_protocol_uncalibrated');
+    if (!comparisonCalibrationReady(report, owner)) reasons.push('comparison_protocol_uncalibrated');
     const seen = new Set();
     for (const charge of report.charges) {
         if (seen.has(charge.id) || !paidMatches(charge, owner.attempts.find(a => a.id === charge.id && a.jobId === jobId))) reasons.push('durable_charge_mismatch');
@@ -157,13 +153,24 @@ export function f3SharedEvidence(left, right) {
 
 const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Use one brief sentence for the rationale. Every delta is right minus left, independent of preference. For missing source or required evidence return uncertain with empty deltas; never invent zeros or ties. Inspect the complete response of each arm against each dimension before choosing preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.';
 
+export function comparisonCalibrationReady(report, owner) {
+    const rows = report.comparisonCalibration;
+    return report.gradeProtocolHash === hash(F3_GRADE_INSTRUCTION) && Array.isArray(rows) && rows.length === 12
+        && new Set(rows.map(c => [c.group, c.flipped, c.label].join(':'))).size === 12
+        && ['known_violation', 'counterfactual', 'missing_evidence'].every(group => [false, true].every(flipped => ['primary', 'secondary'].every(label =>
+            rows.some(c => c.group === group && c.flipped === flipped && c.label === label && c.passed === true
+                && paidMatches(c.charge, owner.attempts.find(a => a.id === c.charge?.id && a.jobId === c.jobId))))));
+}
+
 function f3EvidenceMessages(scenario, dimensions, left, right) {
     return [{ role: 'system', content: F3_GRADE_INSTRUCTION },
         { role: 'user', content: canonical({ ...scenario, dimensions, ...f3SharedEvidence(left, right) }) }];
 }
 
 export function f3GradeMessages(pair, flipped) {
-    const evidence = trial => JSON.parse(f2SourceEvidence({ case: pair.case, baseline: trial })).baseline;
+    // Promotion scenarios are supplied by the fixed worker, never reopened by
+    // the development/source helper or fed into extraction.
+    const evidence = trial => JSON.parse(f2SourceEvidence({ case: pair.case, baseline: trial }, pair.scenario)).baseline;
     return f3EvidenceMessages(pair.scenario, pair.case.behaviorDimensions,
         evidence(pair[flipped ? 'candidate' : 'baseline']), evidence(pair[flipped ? 'baseline' : 'candidate']));
 }
@@ -189,7 +196,15 @@ export function validF3Control(text, control, entry) {
     } catch { return false; }
 }
 
-async function calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, controls, entry, store, signal) {
+export function reusableF3Calibration(row, control, actual, label, transport, owner, ledger) {
+    const paid = ledger.entries[row.charge?.id];
+    return row.passed === true && row.group === control.group && row.flipped === control.flipped && row.label === label
+        && row.messagesHash === hash(f3CalibrationMessages(control, actual)) && row.configurationHash === hash(transport)
+        && paid?.settled && paid.trialId === row.charge.trialId && paid.tokens === row.charge.tokens
+        && paidMatches(row.charge, owner.attempts.find(a => a.id === row.charge.id && a.jobId === row.jobId));
+}
+
+async function calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, controls, entry, store, signal, ledger, resume, owner) {
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
     const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(domain) });
@@ -199,6 +214,12 @@ async function calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, contr
         const messages = f3CalibrationMessages(control, actual);
         for (const [label, original] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
             const transport = f2JudgeTransport(original, scope.judgeOutputTokens, scope.judgeReasoningEffort?.[label] ?? null);
+            const prior = resume.find(row => reusableF3Calibration(row, control, actual, label, transport, owner, ledger()));
+            if (prior) {
+                entry.comparisonCalibration.push(prior);
+                store(kind + '-f3-comparison-calibration.json', entry.comparisonCalibration);
+                continue;
+            }
             const job = { id: 'm1-f3-calibration-' + randomUUID() + (label === 'secondary' ? ':independent' : ''), scopeId: doc.scopeId, domain, price: null };
             let charge;
             const bridge = await createFrozenEvaluationBridge(transport, async payload => {
@@ -252,7 +273,41 @@ export async function prepareF3Investigation(f, targetPin) {
     return capture;
 }
 
-export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal }) {
+export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob, fresh, signal, store, phase }) {
+    const job = paidJob, send = f.evaluator.send.bind(f.evaluator);
+    const independent = [];
+    for (const pair of report.pairs) {
+        for (const [label, original] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+            const transport = f2JudgeTransport(original, scope.judgeOutputTokens, scope.judgeReasoningEffort?.[label] ?? null);
+            const flipped = parseInt(hash([label, pair.case.caseRevision, pair.repetition, phase, entry.candidateValueHash]).slice(0, 2), 16) % 2 === 1;
+            let charge;
+            const bridge = await createFrozenEvaluationBridge(transport, async payload => {
+                const response = await send(f.h.handle, { ...paidJob, id: label === 'secondary' ? job.id + ':independent' : job.id }, transport,
+                    { ...payload, arm: 'judge' }, signal, fresh); charge = response.charge; return response.raw;
+            });
+            try {
+                const messages = f3GradeMessages(pair, flipped);
+                const response = await bridge.rp({ requestId: randomUUID(), trialId: job.id + ':' + phase + ':' + label + ':' + pair.case.caseId + ':' + pair.repetition,
+                    fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages });
+                let grade;
+                try { grade = parseBlindGrade(response.response.assistantText || response.response.text, pair, flipped); }
+                catch { grade = { status: 'invalid', preference: 'uncertain', deltas: {}, rationale: 'Grader response invalid; retained without retry or score repair.' }; }
+                if (label === 'primary') {
+                    report.charges.push(charge); pair.judge = { ...grade, chargeIds: [charge.id] };
+                    const { pairHash: _old, ...identity } = pair; pair.pairHash = hash(identity);
+                }
+                else independent.push({ ...grade, origin: 'independent_model', pairHash: pair.pairHash,
+                    model: original.model.remoteModelId, primaryModel: primaryConfig.model.remoteModelId, configurationHash: hash(transport),
+                    chargeId: charge.id, requestHash: charge.requestHash, snapshotHash: charge.snapshotHash });
+                store(kind + '-f3-' + phase + '-grade-' + pair.case.caseId + '-' + pair.repetition + '-' + label + '.json', { grade, charge, flipped, messagesHash: hash(messages) });
+            } finally { bridge.cleanup(); }
+        }
+        store(kind + '-f3-' + phase + '-report.json', report); store(kind + '-f3-' + phase + '-independent.json', independent);
+    }
+    return independent;
+}
+
+export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal, calibrationResume = [], sealedDirectory = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project', profileId = profileFor(domain);
     const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
     validateF3Baseline(source.report, domain, primaryConfig, baselineSettings, ledger());
@@ -260,7 +315,9 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
     if (hash(source.report) !== scope.baselineHashes[kind] || hash(source.assessments) !== scope.assessmentHashes[kind]) throw new Error('f3_source_changed');
     // F2 controls qualify F2 source observations, not a different comparison
     // prompt or evidence codec. Qualify the exact F3 protocol before extraction.
-    await calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, controls, entry, store, signal);
+    const calibrationOwner = await f.repository.owner(f.h.handle);
+    // Read-only reuse of the restored original owner ledger, never recreated fees.
+    await calibrateF3(f, kind, primaryConfig, secondaryConfig, scope, controls, entry, store, signal, ledger, calibrationResume, calibrationOwner);
     const capture = await prepareF3Investigation(f, scope.configurations[kind].targetPin);
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     if (hash(capture) !== scope.configurations[kind].targetPin) throw new Error('f3_target_changed');
@@ -313,32 +370,7 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
             baseline: structuredClone(source.report.pairs.find(old => old.case.caseId === pair.case.caseId).baseline), candidate: pair.baseline, judge: null, human: null })),
         charges: probe.charges, createdAt: Date.now() };
     store(kind + '-f3-development-report.json', report);
-    entry.independent = [];
-    for (const pair of report.pairs) {
-        for (const [label, original] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
-            const transport = f2JudgeTransport(original, scope.judgeOutputTokens, scope.judgeReasoningEffort?.[label] ?? null);
-            const flipped = parseInt(hash([label, pair.case.caseRevision, entry.candidateValueHash]).slice(0, 2), 16) % 2 === 1;
-            let charge;
-            const bridge = await createFrozenEvaluationBridge(transport, async payload => {
-                const response = await send(f.h.handle, { ...paidJob, id: label === 'secondary' ? job.id + ':independent' : job.id }, transport,
-                    { ...payload, arm: 'judge' }, signal, fresh); charge = response.charge; return response.raw;
-            });
-            try {
-                const messages = f3GradeMessages(pair, flipped);
-                const response = await bridge.rp({ requestId: randomUUID(), trialId: job.id + ':' + label + ':' + pair.case.caseId,
-                    fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages });
-                let grade;
-                try { grade = parseBlindGrade(response.response.assistantText || response.response.text, pair, flipped); }
-                catch { grade = { status: 'invalid', preference: 'uncertain', deltas: {}, rationale: 'Grader response invalid; retained without retry or score repair.' }; }
-                if (label === 'primary') { report.charges.push(charge); pair.judge = { ...grade, chargeIds: [charge.id] }; pair.pairHash = hash(pair); }
-                else entry.independent.push({ ...grade, origin: 'independent_model', pairHash: pair.pairHash,
-                    model: original.model.remoteModelId, primaryModel: primaryConfig.model.remoteModelId, configurationHash: hash(transport),
-                    chargeId: charge.id, requestHash: charge.requestHash, snapshotHash: charge.snapshotHash });
-                store(kind + '-f3-grade-' + pair.case.caseId + '-' + label + '.json', { grade, charge, flipped, messagesHash: hash(messages) });
-            } finally { bridge.cleanup(); }
-        }
-        store(kind + '-f3-development-report.json', report); store(kind + '-independent.json', entry.independent);
-    }
+    entry.independent = await gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob, fresh, signal, store, phase: 'development' });
     entry.developmentReadiness = pilotDevelopmentReadiness(report, entry.independent, await f.repository.owner(f.h.handle), job.id, source.report, ledger());
     entry.status = 'f3_development_observed'; entry.lifecycle = { performedThisRun: false };
     const decision = promotionDecision(report);
@@ -347,4 +379,9 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
     });
     const final = await f.repository.get(f.h.handle, f.scope, f.subject), finalJob = final.jobs.find(j => j.id === job.id);
     store(kind + '-job.json', { doc: final, job: finalJob, candidate: finalJob.candidates[0] });
+    if (entry.developmentReadiness.accepted) {
+        if (!sealedDirectory) throw new Error('f3_promotion_sources_unavailable');
+        await finishF3Promotion({ f, kind, job: paidJob, candidate, primaryConfig, secondaryConfig, baselineSettings, settings, config,
+            scope, entry, store, signal, fresh, sealedDirectory, developmentReport: report });
+    }
 }

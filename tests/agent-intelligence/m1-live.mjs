@@ -81,6 +81,11 @@ try {
     const f3SourcePath = f3Scope ? path.join(directory, 'm1-reports', f3Scope.sourceRun) : null;
     const f3Summary = f3SourcePath ? JSON.parse(fs.readFileSync(path.join(f3SourcePath, 'summary.json'), 'utf8')) : null;
     if (f3Scope && hash(f3Summary) !== f3Scope.sourceSummaryHash) throw new Error('f3_source_changed');
+    if (f3Scope?.calibrationResumeRun && !/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.calibrationResumeRun)) throw new Error('f3_resume_changed');
+    const f3Resume = f3Scope?.calibrationResumeRun ? read('m1-reports/' + f3Scope.calibrationResumeRun + '/summary.json') : null;
+    if (f3Resume && (hash(f3Resume) !== f3Scope.calibrationResumeSummaryHash || f3Resume.mode !== 'f3_private_development'
+        || f3Resume.entries.some(e => e.candidateValueHash || e.status === 'f3_development_observed'))) throw new Error('f3_resume_not_calibration');
+    if (f3Scope?.sealedDirectory && !/^m1-f2-sealed-[a-z0-9-]+$/.test(f3Scope.sealedDirectory)) throw new Error('f3_sealed_directory_changed');
     const limits = read('m1-limits.json');
     const ledgerPath = path.join(directory, 'm1-ledger.json');
     const snapshot = read('m1-ledger.json');
@@ -125,7 +130,7 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-f2.js', 'm1-f3.js', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'm1-grader.js', 'm1-private-access.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-f2.js', 'm1-f3.js', 'm1-f3-promotion.js', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'm1-grader.js', 'm1-private-access.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
@@ -312,10 +317,10 @@ try {
         summary.entries.push(entry); store('summary.json', summary);
         try {
             const primary = connections[0];
-            const f2Restored = pilotScope?.preparationRun;
+            const f2Restored = f3Scope?.calibrationResumeRun || pilotScope?.preparationRun;
             if (f2Restored && !/^run-[0-9]+-[a-f0-9]{8}$/.test(f2Restored)) throw new Error('invalid_f2_preparation_run');
             const f = f2Restored ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(directory, 'm1-reports', f2Restored, kind + '-private-fixture'),
-                JSON.parse(fs.readFileSync(path.join(directory, 'm1-reports', f2Restored, kind + '-f2-baseline.json'), 'utf8')),
+                JSON.parse(fs.readFileSync(path.join(directory, 'm1-reports', pilotScope.preparationRun, kind + '-f2-baseline.json'), 'utf8')),
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, baselineOnly: true }) : gradeSource ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(gradeSource.previous, kind + '-private-fixture'), gradeSource.results[kind],
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, requireCurrentPublication: false }) : resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository }) : await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
@@ -472,7 +477,9 @@ try {
                     report: JSON.parse(fs.readFileSync(path.join(f3SourcePath, kind + '-source-probe.json'), 'utf8')),
                     assessments: JSON.parse(fs.readFileSync(path.join(f3SourcePath, kind + '-f2-source-assessments.json'), 'utf8')) };
                 await runF3Domain({ f, kind, primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), secondaryConfig,
-                    scope: f3Scope, source, controls: f3Controls, ledger: () => budget.snapshot(), entry, store, signal: overall.signal }); continue;
+                    scope: f3Scope, source, controls: f3Controls, ledger: () => budget.snapshot(), entry, store, signal: overall.signal,
+                    calibrationResume: f3Resume?.entries.find(e => e.kind === kind)?.comparisonCalibration || [],
+                    sealedDirectory: f3Scope.sealedDirectory ? path.join(directory, f3Scope.sealedDirectory) : null }); continue;
             }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';
@@ -626,7 +633,8 @@ try {
             summary.transportFailures = [...new Set([...retryPolicy.connections.values()].map(s => s.stopped).filter(Boolean))];
             summary.transportObservations = [...retryPolicy.connections.values()].map(s => ({ consecutiveFailures: s.consecutive, recentSends: s.recent.length, recentFailures: s.recent.filter(Boolean).length, stopped: s.stopped }));
             summary.finalAccounting = { requests: budget.snapshot().requests, tokens: budget.snapshot().tokens, currentPeriodBreached: budget.snapshot().breached };
-            summary.f3Completed = Boolean(f3Scope) && summary.entries.length === 2 && summary.entries.every(e => e.status === 'f3_development_observed');
+            summary.f3Completed = Boolean(f3Scope) && summary.entries.length === 2 && summary.entries.every(e =>
+                ['f3_development_observed', 'f3_promotion_observed', 'f3_promotion_unqualified'].includes(e.status));
             summary.promotionReady = summary.f3Completed && summary.entries.every(e => e.developmentReadiness?.accepted);
             summary.accepted = summary.entries.length === 2 && summary.entries.every(e => e.acceptance?.accepted && e.lifecycle?.nextRunConsumed && e.lifecycle?.baseRestored);
             store('summary.json', summary);
