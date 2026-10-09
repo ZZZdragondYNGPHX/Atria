@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
-import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages } from './m1-f3.js';
+import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence } from './m1-f3.js';
 
 function example(domain = 'rp') {
     const config = { identity: 'original' }, settings = { identity: 'baseline' }, candidateConfig = { identity: 'candidate' }, candidateSettings = { identity: 'candidate-settings' };
@@ -104,4 +104,22 @@ test('F3 graded evidence retains public model statements separately from Host st
     expect(content.right.modelStatements).toEqual([]);
     expect(JSON.parse(f3GradeMessages(pair, true)[1].content).right).toEqual(content.left);
     expect(messages[0].content).toContain('complete public windows');
+});
+
+test('F3 shared Project evidence reconstructs both complete different arms without clipping observations', () => {
+    const source = { body: 'Protected original source. '.repeat(300), metadata: { preserved: true } };
+    const left = { source, originalSource: source, history: [{ source, status: 'review' }], statement: 'Explanation omitted.' };
+    const right = { source, originalSource: source, history: [{ source, status: 'review' }], statement: 'Explicitly uncommitted Review.' };
+    const encoded = f3SharedEvidence(left, right);
+    const expand = value => value && typeof value === 'object' && Object.hasOwn(value, '$f3ref') ? expand(encoded.sharedEvidence[value.$f3ref])
+        : Array.isArray(value) ? value.map(expand) : value && typeof value === 'object'
+            ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, expand(item)])) : value;
+    expect(expand(encoded.left)).toEqual(left);
+    expect(expand(encoded.right)).toEqual(right);
+    expect(Object.keys(encoded.sharedEvidence).length).toBeGreaterThan(0);
+    expect(JSON.stringify(encoded).length).toBeLessThan(JSON.stringify({ left, right }).length / 2);
+});
+
+test('F3 evidence aliases cannot reinterpret a model-authored reference marker', () => {
+    expect(() => f3SharedEvidence({ output: { $f3ref: 'untrusted' } }, {})).toThrow('f3_evidence_reference_conflict');
 });

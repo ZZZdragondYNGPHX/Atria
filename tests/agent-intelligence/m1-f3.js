@@ -119,11 +119,41 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
         currencyCost: 'unavailable', productionPromotion: 'original_gate_unchanged', baselineReuse: 'cached_F2_development_observation' };
 }
 
+// Exact subtree aliases reduce repeated Project sources/history. Nothing is
+// truncated: both observed arms can be reconstructed from sharedEvidence.
+export function f3SharedEvidence(left, right) {
+    const counts = new Map(), sharedEvidence = {};
+    const visit = value => {
+        if (value && typeof value === 'object' && Object.hasOwn(value, '$f3ref')) throw new Error('f3_evidence_reference_conflict');
+        if (typeof value === 'string' || value && typeof value === 'object') {
+            const key = canonical(value);
+            if (key.length >= 48) counts.set(key, (counts.get(key) || 0) + 1);
+        }
+        if (value && typeof value === 'object') Object.values(value).forEach(visit);
+    };
+    visit(left); visit(right);
+    const ids = new Map([...counts].filter(([, count]) => count > 1).map(([key]) => key).sort().map((key, i) => [key, 's' + i.toString(36)]));
+    const children = value => Array.isArray(value) ? value.map(encode)
+        : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, encode(item)])) : value;
+    const encode = value => {
+        const key = canonical(value);
+        if (counts.get(key) > 1) {
+            const id = ids.get(key);
+            if (!Object.hasOwn(sharedEvidence, id)) sharedEvidence[id] = children(value);
+            return { $f3ref: id };
+        }
+        return children(value);
+    };
+    const arms = { left: encode(left), right: encode(right) };
+    return { ...arms, sharedEvidence };
+}
+
 export function f3GradeMessages(pair, flipped) {
     const evidence = trial => JSON.parse(f2SourceEvidence({ case: pair.case, baseline: trial })).baseline;
-    return [{ role: 'system', content: 'Blindly compare both complete observed responses against every supplied rubric dimension. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Every delta is right minus left, independent of preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.' },
+    const arms = f3SharedEvidence(evidence(pair[flipped ? 'candidate' : 'baseline']), evidence(pair[flipped ? 'baseline' : 'candidate']));
+    return [{ role: 'system', content: 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Every delta is right minus left, independent of preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.' },
         { role: 'user', content: canonical({ ...pair.scenario, dimensions: pair.case.behaviorDimensions,
-            left: evidence(pair[flipped ? 'candidate' : 'baseline']), right: evidence(pair[flipped ? 'baseline' : 'candidate']) }) }];
+            ...arms }) }];
 }
 
 export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal }) {
