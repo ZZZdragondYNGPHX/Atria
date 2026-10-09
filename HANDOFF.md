@@ -29,3 +29,5 @@ RP水库文本可能存在未知检修状态的措辞歧义，仅开发证据初
 当前发送前状态：用户已明确授权继续，累计1000调用/20RPM硬限，起始783/3080332；产品ac03448795232949a485b88f93305460c1476621已push，3 suites/26 tests通过。新范围最多72/Step18，许可与scope见acceptance§10.5/feedback§13，旧claim关闭保持。下一原CLI只执行F2校准/基线/证据核对并保存实际结果，不F3；本段为最新状态。
 
 最新状态覆盖前段：用户纠正硬限为每天2000调用/20RPM，累计1000已取消；product dd80d858338e92ef340a25d4bbf48e3e267f9595。v2新增21/62624、累计804/3142956，RP12校准/3基线8send通过；首份评估quote换行表示误拒绝已修复，原有效观察复用，只补后续RP5与Project有限测试。scope/许可见acceptance§10.6，旧claimclosed保留，无F3。
+
+最新F2续接：product0479f5bd3，累计805/3154587、unknown18/86579/pending0。修正retry0路径误用75秒deadline为原Route300秒，复用21请求证据，原新claim1/18失败关闭不清；最新scope/许可见acceptance§10.6末段。每天2000/20RPM保持，继续测试但不F3。
