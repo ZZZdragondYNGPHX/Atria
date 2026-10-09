@@ -41,6 +41,20 @@ export function parseF2SourceAssessment(text, entry, evidence) {
     return { dimensions };
 }
 
+export function f2SourceEvidence(pair) {
+    if (pair.case.entrance !== 'project') return canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
+    const output = JSON.parse(pair.baseline.output);
+    // The old Task's duplicated inspection/workspace/timeline is retained in
+    // the raw report. The grader needs its actual conflict state and operations.
+    if (output.priorConflictTask) {
+        const { timeline, inspection, workspace, ...state } = output.priorConflictTask;
+        void timeline; void inspection; void workspace;
+        output.priorConflictTask = state;
+    }
+    const { checks, evidence, error, repairCount, completeness } = pair.baseline;
+    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output: canonical(output), checks, evidence, error, repairCount, completeness } });
+}
+
 export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal, resume = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
     if (hash(primaryConfig) !== scope.configurations[kind].primary || hash(secondaryConfig) !== scope.configurations[kind].secondary) throw new Error('f2_configuration_changed');
@@ -86,12 +100,13 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     if (scope.headroomAssessment) {
         const assessments = [];
         for (const pair of report.pairs) {
-            const evidence = canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
+            const evidence = f2SourceEvidence(pair);
             const observations = [];
             for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
                 const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label);
-                if (prior) { if (prior.evidenceHash !== hash(evidence)) throw new Error('f2_resume_changed');
-                    parseF2SourceAssessment(JSON.stringify(prior), pair.case, evidence); observations.push(prior); continue; }
+                if (prior) { const priorEvidence = prior.evidenceVariant === 'full_v1' ? canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline }) : evidence;
+                    if (prior.evidenceHash !== hash(priorEvidence)) throw new Error('f2_resume_changed');
+                    parseF2SourceAssessment(JSON.stringify(prior), pair.case, priorEvidence); observations.push(prior); continue; }
                 const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
                 const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
                     { ...payload, arm: 'judge' }, signal, async () => {})).raw);

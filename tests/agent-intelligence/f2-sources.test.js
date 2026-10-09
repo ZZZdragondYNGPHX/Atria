@@ -6,7 +6,7 @@ import { runRp, runProject } from '../../src/native/agent-intelligence/evaluatio
 import { withIsolatedRuntime } from './runner.js';
 import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages } from './m1-f2.js';
+import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence } from './m1-f2.js';
 
 const captureFor = entry => ({ trialId: 'f2:' + entry.caseId, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
     prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
@@ -76,6 +76,18 @@ test('source readiness assessments require all dimensions and literal evidence, 
     value.dimensions[entry.behaviorDimensions[0]] = { status: 'gap', quote: 'Invented evidence', rationale: 'Claim.' };
     expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
     expect(f2CalibrationMessages({ messages: [] })[0].content).toContain('512 characters');
+});
+
+test('Project source evidence removes duplicated old history while retaining conflict, operations and human source', () => {
+    const entry = PILOT_CASES.find(c => c.entrance === 'project' && c.split === 'development');
+    const source = { project: { displayName: 'Human revision' } };
+    const original = { status: 'active', source, originalSource: source, validation: { passed: false }, validatedProposal: null,
+        priorConflictTask: { taskId: 'old-task', baseRevision: 'old-base', status: 'conflict', operations: [{ kind: 'reviewed' }], changeSets: [], timeline: ['duplicate'], inspection: source, workspace: source } };
+    const pair = { case: entry, baseline: { output: canonical(original), checks: { review_gate: false, human_revision: true }, evidence: [], repairCount: 0 } };
+    const projected = JSON.parse(JSON.parse(f2SourceEvidence(pair)).baseline.output);
+    expect(projected.source).toEqual(source); expect(projected.originalSource).toEqual(source);
+    expect(projected.priorConflictTask).toEqual({ taskId: 'old-task', baseRevision: 'old-base', status: 'conflict', operations: [{ kind: 'reviewed' }], changeSets: [] });
+    expect(pair.baseline.output).toBe(canonical(original));
 });
 
 test.each(PILOT_CASES.filter(c => c.split === 'development' && c.entrance === 'rp'))('RP evidence window keeps every original authority check: $sourceId', async entry => {
