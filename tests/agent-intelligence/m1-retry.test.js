@@ -115,3 +115,13 @@ test('explicit bounded recovery after a timeout fix retains failed history and r
     policy.beginSend('step'); policy.observe('step', 'm1_transport_failed');
     expect(policy.isStopped('step')).toBe(true);
 });
+
+test('the API testing mode preserves historical stops without requiring another times permission', async () => {
+    const prior = new M1RetryPolicy(); prior.observe('step', 'm1_http_404');
+    const policy = new M1RetryPolicy({ snapshot: Object.fromEntries(prior.connections), ignoreHistoricalStops: true, wait: async () => {} });
+    expect(policy.isStopped('step')).toBe(false);
+    let sends = 0;
+    await policy.send('step', async () => { policy.beginSend('step'); sends++; if (sends === 1) { policy.observe('step', 'm1_http_503'); throw failure('m1_http_503'); } policy.observe('step'); }, new AbortController().signal);
+    expect(sends).toBe(2);
+    expect(policy.state('step').stopped).toBe('m1_http_404');
+});

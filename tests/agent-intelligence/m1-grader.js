@@ -6,16 +6,16 @@ import { evolutionHash as hash, evolutionInteger as integer } from '../../src/na
 
 // Extended outputs are restricted to the explicit local M1 boundary. Keep
 // the production evaluator and frozen primary comparison unchanged.
-export async function m1GraderConfiguration(host, handle, routeId, outputCeiling = 8192) {
+export async function m1GraderConfiguration(host, handle, routeId, outputCeiling = null) {
     const resolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
     const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role: 'role.orchestrator', requirements: [] });
     if (resolved.connection.providerAdapter !== 'provider.openai-compatible' || resolved.resources.some(r => r.ref.scope !== 'library')
         || resolved.generation.streaming.enabled) throw new Error('unsupported_m1_grader_configuration');
-    integer(resolved.generation.output.maxTokens, 1, 8192);
-    integer(outputCeiling, 1, 8192);
+    integer(resolved.generation.output.maxTokens, 1, resolved.model.limits.outputTokens);
+    if (outputCeiling !== null) integer(outputCeiling, 1, resolved.model.limits.outputTokens);
     const config = structuredClone({ route: resolved.route, connection: resolved.connection, model: resolved.model, generation: resolved.generation,
         resources: resolved.resources.map(({ ref, resource }) => ({ ref, resource })) });
-    return config.generation.output.maxTokens > outputCeiling ? boundedOutputConfiguration(config, outputCeiling, 'm1-grader-ceiling-' + outputCeiling) : config;
+    return outputCeiling !== null && config.generation.output.maxTokens > outputCeiling ? boundedOutputConfiguration(config, outputCeiling, 'm1-grader-ceiling-' + outputCeiling) : config;
 }
 
 export async function sendM1Grader(evaluator, handle, job, config, payload, signal, fresh) {
@@ -53,7 +53,7 @@ export async function m1EvaluationConfiguration(host, handle, routeId, projectPr
     const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role: route.role, requirements: ['generation.tools'] });
     if (resolved.connection.providerAdapter !== 'provider.openai-compatible' || resolved.resources.some(r => r.ref.scope !== 'library')
         || resolved.generation.streaming.enabled) throw new Error('unsupported_m1_evaluation_configuration');
-    integer(resolved.generation.output.maxTokens, 1, 8000);
+    integer(resolved.generation.output.maxTokens, 1, resolved.model.limits.outputTokens);
     return structuredClone({ route: resolved.route, connection: resolved.connection, model: resolved.model, generation: resolved.generation,
         resources: resolved.resources.map(({ ref, resource }) => ({ ref, resource })) });
 }
@@ -64,10 +64,10 @@ export async function sendM1Evaluation(evaluator, handle, job, config, payload, 
 
 async function sendM1Bounded(evaluator, handle, job, config, payload, signal, fresh, extraction, evaluation = false) {
     await fresh(); signal.throwIfAborted();
-    if (evaluation ? job.m1Envelope !== 'cycle-output-8000-v1' || !['baseline', 'candidate', 'judge', 'extraction'].includes(payload.arm) || job.price !== null
+    if (evaluation ? !['cycle-output-8000-v1', 'm1-configured-output-v1'].includes(job.m1Envelope) || !['baseline', 'candidate', 'judge', 'extraction'].includes(payload.arm) || job.price !== null
         : extraction ? payload.arm !== 'extraction' || payload.trialId !== job.id + ':extract' || job.price !== null
             : payload.arm !== 'judge' || !(job.id.endsWith(':independent') || job.id.startsWith('m1-secondary-diagnostic-') && job.id.endsWith(':diagnostic')) || job.price !== null) throw new Error(extraction ? 'm1_extraction_only' : 'independent_m1_grader_only');
-    integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, extraction || evaluation ? 8000 : 8192);
+    integer(payload.inputTokens, 1, config.model.limits.contextTokens); integer(payload.outputTokens, 1, config.model.limits.outputTokens);
     if (payload.rendered.endpoint !== config.connection.endpoint || payload.rendered.body.model !== config.model.remoteModelId
         || payload.rendered.body.max_tokens !== payload.outputTokens || payload.outputTokens !== config.generation.output.maxTokens
         || payload.outputTokens > config.model.limits.outputTokens || hash(payload.rendered) !== payload.requestHash) throw new Error('m1_grader_transport_changed');

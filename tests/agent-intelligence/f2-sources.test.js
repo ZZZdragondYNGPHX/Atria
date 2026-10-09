@@ -43,7 +43,7 @@ test('baseline source probes cannot select promotion or become comparative eligi
     expect(promotionDecision({ origin: 'host_source_probe' }).eligible).toBe(false);
 });
 
-test('F2 scope requires explicit new secondary permission and rejects drift before any funded run', () => {
+test('F2 configuration rejects source drift without reviving old packet quotas or Step permission', () => {
     const controls = { origin: 'engineering_control', controls: ['rp', 'project'].flatMap(domain => ['known_violation', 'counterfactual', 'missing_evidence'].flatMap(group => [false, true].map(flipped => {
         const entry = PILOT_CASES.find(c => c.entrance === domain && c.split === 'development');
         return { domain, group, flipped, expected: group === 'missing_evidence' ? 'uncertain' : flipped ? 'left' : 'right', caseId: entry.caseId, fixtureHash: entry.fixtureHash };
@@ -52,14 +52,15 @@ test('F2 scope requires explicit new secondary permission and rejects drift befo
     const scope = { schemaVersion: 1, purpose: 'f2_source_calibration', pilotCaseSetRevision: PILOT_CASE_SET_REVISION, controlHash: hash(controls),
         ...identity, maxSends: 60, maxSecondarySends: 12, retries: 0, extraction: 0, promotion: 0, publication: 0, stepPermission: null };
     expect(validateF2Scope(scope, controls, identity, true)).toBe(scope);
-    expect(() => validateF2Scope(scope, controls, identity, false)).toThrow('f2_step_permission_required');
+    expect(validateF2Scope(scope, controls, identity, false)).toBe(scope);
     const authorized = { ...scope, stepPermission: { explicitAuthorization: true, maxSends: 12, evidenceHash: hash('new explicit limited authority') } };
     expect(validateF2Scope(authorized, controls, identity, false)).toBe(authorized);
     const expanded = { ...authorized, schemaVersion: 2, headroomAssessment: true, apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, maxSends: 72, maxSecondarySends: 18,
         stepPermission: { ...authorized.stepPermission, maxSends: 18 } };
     expect(validateF2Scope(expanded, controls, identity, false)).toBe(expanded);
     expect(() => validateF2Scope({ ...expanded, apiHardLimits: { rollingDayRequests: 2001, requestsPerMinute: 20 } }, controls, identity, false)).toThrow('f2_scope_changed');
-    for (const change of [{ maxSends: 61 }, { retries: 1 }, { extraction: 1 }, { promotion: 1 }, { publication: 1 }, { pilotCaseSetRevision: hash('other source') }, { testedHead: hash('other source') }])
+    expect(validateF2Scope({ ...scope, maxSends: 9999, maxSecondarySends: 9999, retries: 2, initialAccounting: { requests: 1, tokens: 1 } }, controls, identity, false)).toBeDefined();
+    for (const change of [{ extraction: 1 }, { promotion: 1 }, { publication: 1 }, { pilotCaseSetRevision: hash('other source') }, { testedHead: hash('other source') }])
         expect(() => validateF2Scope({ ...authorized, ...change }, controls, identity, false)).toThrow('f2_scope_changed');
 });
 

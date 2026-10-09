@@ -43,7 +43,7 @@ export class EvaluationBudget {
         const carry = snapshot?.historicalCarry || null;
         if (carry && (Object.keys(carry).sort().join(',') !== 'evidenceHash,origin,requests,tokens' || carry.origin !== 'lost_s06_upper_bound'
             || carry.requests !== 252 || carry.tokens !== 1000000 || !/^[a-f0-9]{64}$/.test(carry.evidenceHash))) throw new Error('Invalid historical carry');
-        if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || maxRequests > (carry ? 2048 : 252)
+        if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || !advisory && maxRequests > (carry ? 2048 : 252)
             || !Number.isSafeInteger(maxTotalTokens) || maxTotalTokens < 1) throw new Error('Finite evaluation budget required');
         Object.assign(this, { maxRequests, maxTotalTokens, onChange, advisory }); this.historicalCarry = carry && Object.freeze({ ...carry }); this.entries = new Map(); this.breached = false;
         if (snapshot) {

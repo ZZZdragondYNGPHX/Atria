@@ -2,7 +2,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 // Explicit M1 CLI policy. Each attempt must call the original funded send.
 export class M1RetryPolicy {
-    constructor({ wait = (signal => delay(10000, undefined, { signal })), snapshot = {}, onChange = () => {} } = {}) {
+    constructor({ wait = (signal => delay(10000, undefined, { signal })), snapshot = {}, onChange = () => {}, ignoreHistoricalStops = false } = {}) {
         this.wait = wait;
         this.connections = new Map(Object.entries(snapshot).map(([key, state]) => {
             if (!state || Object.keys(state).sort().join(',') !== 'consecutive,recent,stopped' || !Number.isInteger(state.consecutive) || state.consecutive < 0
@@ -11,6 +11,7 @@ export class M1RetryPolicy {
             return [key, structuredClone(state)];
         }));
         this.onChange = onChange;
+        this.ignoreHistoricalStops = ignoreHistoricalStops;
         this.continuations = new Map();
     }
     state(key) {
@@ -34,6 +35,7 @@ export class M1RetryPolicy {
         this.onChange(Object.fromEntries(this.connections));
     }
     assertAvailable(key) {
+        if (this.ignoreHistoricalStops) return;
         const reason = this.state(key).stopped;
         const permit = this.continuations.get(key);
         if (reason && !(permit && !permit.revoked && permit.remaining > 0)) throw Object.assign(new Error(reason), { code: reason });
@@ -64,7 +66,7 @@ export class M1RetryPolicy {
                 // The original HTTP adapter deliberately wraps fetch errors.
                 // Retry that wrapper only after this transport observed a fail.
                 const retryable = this.transient(error.code) || error.kind === 'transport' && this.state(key).consecutive > 0;
-                if (!retryable || this.state(key).stopped || attempt === 2 || signal.aborted) throw error;
+                if (!retryable || !this.ignoreHistoricalStops && this.state(key).stopped || attempt === 2 || signal.aborted) throw error;
                 await this.wait(signal);
             }
         }

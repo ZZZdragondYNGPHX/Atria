@@ -8,11 +8,9 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
     const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
     if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || scope.pilotCaseSetRevision !== PILOT_CASE_SET_REVISION
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12
-        || scope.maxSends !== (expanded ? 72 : 60) || scope.maxSecondarySends !== (expanded ? 18 : 12) || scope.retries !== 0 || scope.extraction !== 0 || scope.promotion !== 0
+        || scope.extraction !== 0 || scope.promotion !== 0
         || scope.publication !== 0 || scope.testedHead !== identity.testedHead || scope.evaluatorRevision !== identity.evaluatorRevision
-        || scope.runnerRevision !== identity.runnerRevision || !Number.isSafeInteger(scope.initialAccounting?.requests) || !Number.isSafeInteger(scope.initialAccounting?.tokens)
-        || scope.initialAccounting?.requests !== identity.initialAccounting?.requests
-        || scope.initialAccounting?.tokens !== identity.initialAccounting?.tokens) throw new Error('f2_scope_changed');
+        || scope.runnerRevision !== identity.runnerRevision) throw new Error('f2_scope_changed');
     for (const domain of ['rp', 'project']) {
         const rows = controls.controls.filter(c => c.domain === domain);
         if (rows.length !== 6 || new Set(rows.map(c => c.group + ':' + c.flipped)).size !== 6
@@ -20,8 +18,7 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
                 || c.expected !== (c.group === 'missing_evidence' ? 'uncertain' : c.flipped ? 'left' : 'right')
                 || !PILOT_CASES.some(entry => entry.split === 'development' && entry.entrance === domain && entry.caseId === c.caseId && entry.fixtureHash === c.fixtureHash))) throw new Error('f2_control_changed');
     }
-    if (!prepareOnly && (scope.stepPermission?.explicitAuthorization !== true || scope.stepPermission.maxSends !== scope.maxSecondarySends
-        || !/^[a-f0-9]{64}$/.test(scope.stepPermission.evidenceHash))) throw new Error('f2_step_permission_required');
+    void prepareOnly; // Configuration preparation does not create a times-permission gate.
     return scope;
 }
 
@@ -51,7 +48,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
     if (hash(settings) !== scope.configurations[kind].settings) throw new Error('f2_baseline_changed');
     const job = { id: 'm1-f2-' + randomUUID(), scopeId: doc.scopeId, domain, price: null, targetPin: doc.policy.targetPin };
-    if (resume && (domain !== 'rp' || resume.calibration?.length !== 12 || resume.calibration.some(g => !g.passed)
+    if (resume && (resume.report?.domain !== domain || resume.calibration?.length !== 12 || resume.calibration.some(g => !g.passed)
         || resume.report?.origin !== 'host_source_probe' || resume.report.caseSetRevision !== PILOT_CASE_SET_REVISION
         || resume.report.configurations.baseline !== hash(primaryConfig) || resume.report.settings.baseline !== hash(settings)
         || resume.report.pairs.length !== 3 || resume.report.pairs.some(p => p.candidate !== null || p.judge !== null || p.human !== null

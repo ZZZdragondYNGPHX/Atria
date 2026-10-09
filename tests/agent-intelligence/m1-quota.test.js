@@ -27,6 +27,18 @@ test('quota enforces twenty per rolling minute and allows expired day carry', ()
     expect(() => quota.admit('too-fast')).toThrow('m1_api_rate_limit');
     at += 60001; quota.admit('later');
 });
+test('the sender waits for the minute and day windows instead of treating historical use as a lifetime cap', async () => {
+    let at = 100000000;
+    const now = () => at, wait = async ms => { at += ms; };
+    const quota = new M1ApiQuota({ schemaVersion: 1, carry: { requests: 0, at: 0 }, admissions: [] }, () => {}, now, wait);
+    for (let i = 0; i < 20; i++) quota.admit('send-' + i);
+    await quota.waitAvailable(); quota.admit('after-minute');
+    expect(at).toBe(100060000);
+    const fullDay = new M1ApiQuota({ schemaVersion: 1, carry: { requests: 2000, at }, admissions: [] }, () => {}, now, wait);
+    await fullDay.waitAvailable(); fullDay.admit('after-day');
+    expect(at).toBe(100060000 + 86400000);
+    expect(fullDay.snapshot.carry.requests).toBe(2000);
+});
 test('private advisory owner retains overreports and continues through original persistence', async () => {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { repositoryClass: M1AdvisoryRepository });
     try {
