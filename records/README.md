@@ -1,5 +1,7 @@
 # Records
 
+These files record historical facts. Current execution rules belong to [Governance](../README.md).
+
 Records are permanent implementation history.
 
 Use task-ownership categories such as `feat/`, `fix/`, `refactor/`, `package/`, and `plugin/`.

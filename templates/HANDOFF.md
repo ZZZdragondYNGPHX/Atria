@@ -1,6 +1,6 @@
 # HANDOFF Template
 
-> 本文件是模板。live handoff 存放于 `docs:HANDOFF.md`，仅在任务确实需要恢复/续接时存在。
+> 使用条件与生命周期见 [Governance §7](../README.md#7-handoff)。
 
 ## Task
 
@@ -27,7 +27,7 @@
 
 ## Local validation
 
-只列实际执行的最小相关检查及尚缺证据。Actions 已停用；不默认全量测试/构建或人工实机验收，不重复未受新变化影响的已通过检查。
+列出实际结果与尚缺证据；验证方式见 [Governance §12](../README.md#12-execution-adapters)。
 
 -
 

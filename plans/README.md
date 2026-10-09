@@ -1,5 +1,7 @@
 # Plans
 
+Read the relevant Plan index and Record. Execution rules belong to [Governance](../README.md).
+
 Plans 记录实现前或实现期间的设计与理由，不承担实施历史。
 
 按语义放入 `feat/`、`fix/`、`refactor/`、`package/`、`plugin/`、`architecture/` 等目录。
