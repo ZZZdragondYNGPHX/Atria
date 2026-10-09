@@ -221,7 +221,7 @@ test('the original funded worker executes only baseline and returns a non-promot
     } finally { await f.h.cleanup(); }
 }, 30000);
 
-test('a real funded calibration failure settles once and stops before baseline or candidate work', async () => {
+test.each([false, true])('a funded calibration failure settles once and preserves partial calibration reuse: resume=$#', async reuse => {
     let calls = 0;
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async (_url, options) => {
         calls++;
@@ -242,9 +242,12 @@ test('a real funded calibration failure settles once and stops before baseline o
         const scope = { configurations: { 'rp-skill': { primary: hash(config), secondary: hash(config), settings: hash(settings) } } };
         const controls = { controls: [{ domain: 'rp', group: 'known_violation', flipped: false, expected: 'right', caseId: source.caseId,
             fixtureHash: source.fixtureHash, messages: [{ role: 'user', content: 'Compare the engineering controls.' }] }] };
+        const resume = reuse ? { run: 'prior-control-run', calibration: [{ passed: true, label: 'primary', group: 'known_violation', flipped: false,
+            configurationHash: hash(config), messagesHash: hash(f2CalibrationMessages(controls.controls[0])) }] } : null;
         await expect(runF2Domain({ f, kind: 'rp-skill', primaryConfig: config, secondaryConfig: config, controls, scope, entry,
-            store: (name, value) => persisted.push({ name, value: structuredClone(value) }), signal: new AbortController().signal })).rejects.toThrow('f2_calibration_failed');
-        expect(calls).toBe(1); expect(entry.calibration).toHaveLength(1); expect(entry.calibration[0].passed).toBe(false);
+            store: (name, value) => persisted.push({ name, value: structuredClone(value) }), signal: new AbortController().signal, resume })).rejects.toThrow('f2_calibration_failed');
+        expect(calls).toBe(1); expect(entry.calibration).toHaveLength(reuse ? 2 : 1); expect(entry.calibration.at(-1).passed).toBe(false);
+        expect(entry.calibration[0].passed).toBe(reuse);
         expect(persisted).toHaveLength(1);
         const owner = await f.repository.owner(f.h.handle);
         expect(owner.attempts).toHaveLength(1); expect(owner.attempts[0]).toMatchObject({ kind: 'judge', status: 'reported', tokens: 10 });

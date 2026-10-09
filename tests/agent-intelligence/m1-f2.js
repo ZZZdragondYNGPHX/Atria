@@ -118,8 +118,10 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
     if (hash(settings) !== scope.configurations[kind].settings) throw new Error('f2_baseline_changed');
     const job = { id: 'm1-f2-' + randomUUID(), scopeId: doc.scopeId, domain, price: null, targetPin: doc.policy.targetPin };
-    if (resume && (resume.report?.domain !== domain || resume.calibration?.length !== 12 || resume.calibration.some(g => !g.passed)
-        || resume.report?.origin !== 'host_source_probe' || resume.report.caseSetRevision !== PILOT_CASE_SET_REVISION
+    if (resume && (!Array.isArray(resume.calibration) || resume.calibration.length > 12 || resume.calibration.some(g => !g.passed)
+        || new Set(resume.calibration.map(g => g.group + ':' + g.flipped + ':' + g.label)).size !== resume.calibration.length)) throw new Error('f2_resume_changed');
+    if (resume?.report && (resume.report.domain !== domain || resume.calibration.length !== 12
+        || resume.report.origin !== 'host_source_probe' || resume.report.caseSetRevision !== PILOT_CASE_SET_REVISION
         || resume.report.configurations.baseline !== hash(primaryConfig) || resume.report.settings.baseline !== hash(settings)
         || resume.report.pairs.length !== 3 || resume.report.pairs.some(p => p.candidate !== null || p.judge !== null || p.human !== null
             || !PILOT_CASES.some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
@@ -151,11 +153,12 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             if (!passed) throw new Error('f2_calibration_failed');
         } finally { bridge.cleanup(); }
     }
-    const report = resume ? resume.report : await f.evaluator.probe(f.h.handle, job, primaryConfig, settings, signal, async () => {},
+    const report = resume?.report || await f.evaluator.probe(f.h.handle, job, primaryConfig, settings, signal, async () => {},
         async pair => store(kind + '-source-' + pair.case.caseId + '.json', pair), async trial => store(kind + '-source-trial-' + trial.caseId + '.json', trial),
         { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', split: 'development', repetitions: 1, mode: 'source_probe' });
     store(kind + '-source-probe.json', report);
-    if (resume) { store(kind + '-f2-calibration.json', entry.calibration); entry.reusedEvidenceRun = resume.run; }
+    if (resume) { store(kind + '-f2-calibration.json', entry.calibration); entry.reusedCalibrationRun = resume.run; }
+    if (resume?.report) entry.reusedEvidenceRun = resume.run;
     entry.status = 'f2_sources_observed'; entry.sourceReportHash = hash(report);
     entry.baselineHeadroom = 'requires_evidence_review'; entry.semanticEffect = 'not_a_paired_trial';
     if (scope.headroomAssessment) {
