@@ -281,3 +281,5 @@ RP baseline六维semantic scores未运行，headroom未建立；没有开发pair
 用户允许调整其它限制并以累计1000调用/20RPM为硬上限，实际新范围与许可归 [acceptance§10.5](m1-acceptance.md#105-f2继续授权累计1000调用与20rpm发送前)。根因是原校准prompt仅要求concise而未说明parser512字符；本次沿原funded bridge追加明确输出契约，不改变原严格grade。新schema2最多72send/Step18包含两judge对六基线的有限证据核对；仅model_source_assessment，不写human反馈/候选/正式quality score，不grant promotion。
 
 六维status met/gap/unknown的quote须为当前所给原文的确切substring，met/gap无可引用证据则无效；quote/rationale各≤512。两judge同case同维度共同gap才为observed_gap，其余headroom not_established。共同met只说明这个短窗口，不声称全领域饱和；unknown不补零/NA。首无效停止；全部真实请求及旧失败保留。独立promotion payload仍密封只读metadata，case/rubric/生产gate不变，F3不开始。
+
+§13继续执行时出现quote表示层错误：实际文本换行在serialized JSON中转义。现以原证据及其decoded文本逐字核对，复用已经完成的RP校准/基线/首个评估；不是改判语义或模糊匹配。用户最新硬限为每天2000/20RPM，累计1000取消，续接详见acceptance§10.6。

@@ -191,3 +191,14 @@ Project执行4个calibration sends，前三通过；第4个secondary known_viola
 基线证据评估为每case两judge各一次，全部六维status met/gap/unknown，met/gap需≤512字符的实际证据原文quote及解释；unknown必须空quote。逐字核对quote，不能由hard checks推断语义通过。只有两个独立模型在同case同维度都报告具体gap，才标observed_gap；否则headroom not_established，不伪造评分或人类标签。此为model_source_assessment来源就绪证据，不是candidate比较/promotion准入或稳定质量证明。无模型间共同缺口也可作为有效停止结论，不强迫“通过”。
 
 产品/Tested ac03448795232949a485b88f93305460c1476621；runner cbf8add7499185a0030945366d7825a935c8714e1bd8daaff24482a10db296db，evaluator/cases/rubric/config不变。许可evidence `028047f0889e8ee9c3a38e78bee12d8a9273b8ebfde77ccad367ce5973aa1f06`，新scope SHA `efddeb30b509bb4c9be2930f5429ec2eaf3436ed4bb88a879f05e4cc87d826ba`。原CLI免费prepare零send且configuration/settings复核；原ledger/quota/owner/transport与实际funding前请求包保持，累计1000准入（包括过期carry）与20RPM强制执行。首个无效评估/不可判别control/transport/incomplete/source/pin/quota失败停，不追分；新claim结束自动closed。结果另记§10.6，同一Record/HANDOFF，包末停，不F3/main/S11/G。
+
+
+### 10.6 F2测试续接：最新每日2000调用与20RPM
+
+用户随后明确纠正硬限为**每天2000次调用和20RPM**，取消累计1000；以此最新指令为准，旧§10.5累计cap仅是已终止运行的历史，不再限制后续测试。原rolling24h保守计日与滚动minute20准入恢复；其它是可调整测试范围，不是产品/API硬限。仍仅F2，不F3。
+
+run-1791524899036-18298dde新增21请求/62624tokens，累计804/3142956全部settle，RP12校准通过、3baseline共8send hard checks通过，首份primary证据评估被原JSON字符匹配误拒绝。真实quote带换行，转义JSON中无literal match，但原decoded output中确切存在；六维均met、解释均≤512，未造证据。修正为在完整证据或decoded文本字段中核对原文；不模糊匹配/裁剪答案/修改语义结果。原失败与费用保持，v2 claim6/18已自动closed，无新transport/incomplete故障。
+
+当前product/Tested dd80d858338e92ef340a25d4bbf48e3e267f9595；新增只读resume消费，沿原frozen桥继续，复用上述12校准/3baseline/首份有效primary观察共21请求，不重复付费。resume pins绑定case/config/settings/原charge/元数据，原report仍host_source_probe无candidate/judge/human，不成为promotion资格。剩余RP5证据评估；Project12controls+最多18baseline+6证据评估，上界41新send，其中Step最多12；schema2封包总72/Step18仅保守测试窗口而非API硬限。用户继续测试授权已涵盖本次工程修正与续接，不再次请求许可。
+
+新permission evidence `8a173e4ddd973562364db3efcaf895ae2a6eea98fef27ca9f90fbb8ee802bc44`，scope SHA `dd0c4691fd69fe93e9a8611d762b17026fec663e8ba01ac1f3e04e6cdded2e25`，resume canonical hash `ef393a1f8540f56f4f1fa18e555fab2ec920e080a09fc46ef983f706fc182427`；runner62462b701dbfcbee5ce0b575e100b3e8c92007fb2882f1e7299567f551b0060f。原case/rubric/evaluator与准备配置pins保持。旧claims/epochs/账目与五dirty字节保护，grade/quality/unknown/密封隔离保持；本次按原CLI续接只F2并保存结果，任何真实失败保留，不清窗口/换epoch。本节取代此前累计1000的实时限制，结果另追加。

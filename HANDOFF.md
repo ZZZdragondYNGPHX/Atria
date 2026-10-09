@@ -27,3 +27,5 @@ RP水库文本可能存在未知检修状态的措辞歧义，仅开发证据初
 接手提示词：**先fetch核对product eb1664138、origin/docs与main ed1fd905；保护旧docs五dirty，不从其旧HEAD恢复状态。HANDOFF→index→feedback§12/acceptance§10.4→Record末节，核对私有783/3080332、pending0和关闭的8/12新claim。只续F2评价/source工程准备，密封promotion只读metadata；RP硬检查通过不等于六维/饱和，Project552>512是严格输出契约失败。保留原账本/频率/硬API限额/unknown/旧窗口/旧claim/epoch，不用任何余量。新范围与许可先固定再请求；不追分、不F3、不合并main，不进入S11/G。**
 
 当前发送前状态：用户已明确授权继续，累计1000调用/20RPM硬限，起始783/3080332；产品ac03448795232949a485b88f93305460c1476621已push，3 suites/26 tests通过。新范围最多72/Step18，许可与scope见acceptance§10.5/feedback§13，旧claim关闭保持。下一原CLI只执行F2校准/基线/证据核对并保存实际结果，不F3；本段为最新状态。
+
+最新状态覆盖前段：用户纠正硬限为每天2000调用/20RPM，累计1000已取消；product dd80d858338e92ef340a25d4bbf48e3e267f9595。v2新增21/62624、累计804/3142956，RP12校准/3基线8send通过；首份评估quote换行表示误拒绝已修复，原有效观察复用，只补后续RP5与Project有限测试。scope/许可见acceptance§10.6，旧claimclosed保留，无F3。

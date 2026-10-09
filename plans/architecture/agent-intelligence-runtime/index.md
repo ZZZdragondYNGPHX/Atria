@@ -154,3 +154,5 @@ M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；�
 2026-10-09最新实际执行结果以 [feedback§12](m1-feedback-evaluation.md#12-f2有限探测结果校准契约失败停止) / [acceptance§10.4](m1-acceptance.md#104-f2授权范围实际结果与关闭) 为准；上述零send/待许可段落属于各历史checkpoint，不覆盖本次已关闭封包。下一仅F2工程准备，不自动重新发送或进入F3。
 
 当前F2续接已获用户累计1000调用/20RPM授权，采用 [acceptance§10.5](m1-acceptance.md#105-f2继续授权累计1000调用与20rpm发送前) / [feedback§13](m1-feedback-evaluation.md#13-f2继续输出契约对齐与基线缺口证据评估) 的新最多72send/Step18封包；旧结果保留，F3未开始。
+
+最新用户硬限已纠正为每天2000调用/20RPM，累计1000取消。当前product dd80d8583，RP已完成证据复用、只补后续核对；实时范围唯一见acceptance§10.6，F3未开始。

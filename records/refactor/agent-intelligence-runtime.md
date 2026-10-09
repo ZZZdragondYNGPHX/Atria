@@ -1066,3 +1066,10 @@ RP文本的“检修没落定”与未见确认后的保守说明存在可能kno
 用户明确继续并允许调整其它限制；按累计1000/20RPM解释，起始783/3080332。fetch未发现其它设备push，main ed1fd905及五旧dirty保持，docs起始5dd4ac299。产品原分支commit/push ac03448795232949a485b88f93305460c1476621：原M1 quota可配置累计cap并计入过期carry，CLI强制1000且20RPM不变；校准消息明确≤512，新增有界双模型基线literal-evidence核对、schema2范围72/Step18；新claim成功/失败均自动closed，旧8/12不动。不是放宽quality/human/promotion或读密封payload。
 
 3相关suites/26 distinct tests（f2-sources14、m1-quota5、m1-acceptance7）通过，触及5文件ESLint、CLI syntax/diff通过。首次Jest使用根node_modules路径不存在，改原tests依赖路径后通过；patch一次context不匹配未写入，修正后完成。免费原CLI prepare零send，配置/settings pins沿旧准备副本精确复核。新授权evidence 028047f0889e8ee9c3a38e78bee12d8a9273b8ebfde77ccad367ce5973aa1f06，scope SHA efddeb30b509bb4c9be2930f5429ec2eaf3436ed4bb88a879f05e4cc87d826ba，详见acceptance§10.5/feedback§13；发送前先push docs，随后执行原封包。retry0/提炼/pair/promotion/publication0；本轮仍仅F2，不F3/main/S11/G，实际结果另追加。
+
+
+## 2026-10-09 F2表示层修复与已完成证据续接 — 发送前
+
+用户纠正为每天2000调用/20RPM，取消累计1000，要求专注测试；按最新指令恢复原quota并移除累计cap。上一新run新增21/62624、累计804/3142956，RP12/12校准与3baseline8send完成；首个评估原文含换行导致serialized JSON substring误拒绝，decoded原文精确存在。修复解析表示层并只读复用该21请求证据，不重跑已完成校准/基线；product commit/push dd80d858338e92ef340a25d4bbf48e3e267f9595。新范围与授权见acceptance§10.6：permission 8a173e4ddd973562364db3efcaf895ae2a6eea98fef27ca9f90fbb8ee802bc44、scopeSHA dd0c4691fd69fe93e9a8611d762b17026fec663e8ba01ac1f3e04e6cdded2e25、resumeHash ef393a1f8540f56f4f1fa18e555fab2ec920e080a09fc46ef983f706fc182427。
+
+变更后f2-sources14/m1-quota4共18 tests通过，触及lint/diff通过；此前m1-acceptance7保持代码未变。v2全部21 packets/responses/owner/共享账目核对一致，原账目/旧claim/epoch/五dirty可逐字保持；pending0，九窗口七stop不清。私有只读诊断首次Python默认GBK读取及直接JSON解析带围栏失败，改原parseEvaluationJson定位，无额外模型send。本轮未full/build/CI/UI/Android/外部DB。发送前本节push，继续仅F2，不F3/main/S11/G。
