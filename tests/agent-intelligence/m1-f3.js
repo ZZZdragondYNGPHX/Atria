@@ -161,7 +161,7 @@ export function f3SharedEvidence(left, right) {
     return { ...arms, sharedEvidence };
 }
 
-const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Use one brief sentence for the rationale. Every delta is right score minus left score, independent of preference: negative means left is better, positive means right is better, zero means equal. Never return an always-positive winning margin. Check each sign against the actual arms before returning JSON. A left preference requires at least one negative delta; a right preference requires at least one positive delta. For engineering controls, controlIntervention states the latest scenario change and overrides the previous intent or rule only within that stated change. For missing source or required evidence return uncertain with empty deltas; never invent zeros or ties. Inspect the complete response of each arm against each dimension before choosing preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.';
+const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","assessments":{dimension:{"left":{"status":"met|gap|unknown","quote":"exact brief observed span or null","reason":"at most 256 characters"},"right":{"status":"met|gap|unknown","quote":"exact brief observed span or null","reason":"at most 256 characters"}}},"deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. First assess EACH supplied dimension for EACH arm, including later clauses. Include every required dimension exactly in assessments and deltas; equal fully observed dimensions need explicit zero, never omission. Identify concrete unsupported assertions and omissions, not merely fluent style. quote must occur literally in that arm; null is allowed for structural evidence or a complete-window omission explained in reason. A gap-versus-met contrast must give the met arm a positive relative delta. unknown must produce uncertain, never a guessed tie. For wholly missing evidence, return uncertain with empty deltas and unknown assessments. Use one brief sentence for the rationale. Every delta is right score minus left score, independent of preference: negative means left is better, positive means right is better, zero means equal. Never return an always-positive winning margin. Check each sign against the actual arms before returning JSON. A left preference requires at least one negative delta; a right preference requires at least one positive delta. For engineering controls, controlIntervention states the latest scenario change and overrides the previous intent or rule only within that stated change. For missing source or required evidence return uncertain with empty deltas; never invent zeros or ties. Inspect the complete response of each arm against each dimension before choosing preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.';
 
 export function comparisonCalibrationReady(report, owner) {
     const rows = report.comparisonCalibration;
@@ -204,11 +204,31 @@ export function f3CalibrationMessages(control, entry) {
     return f3EvidenceMessages(scenario, dimensions, evidence(left), evidence(right));
 }
 
-export function parseF3Grade(text, pair, flipped) {
+export function parseF3Grade(text, pair, flipped, messages = null) {
     const raw = parseEvaluationJson(text), grade = parseBlindGrade(text, pair, flipped);
+    const dimensions = pair.case.behaviorDimensions;
+    const content = messages && parseEvaluationJson(messages.find(m => m.role === 'user').content);
+    const strings = value => typeof value === 'string' ? [value] : !value || typeof value !== 'object' ? []
+        : value.$f3ref ? strings(content.sharedEvidence[value.$f3ref]) : Object.values(value).flatMap(strings);
+    if (!raw.assessments || !equal(Object.keys(raw.assessments).sort(), [...dimensions].sort())) throw new Error('incomplete_f3_assessment');
+    for (const dimension of dimensions) {
+        const sides = raw.assessments[dimension];
+        if (!sides || !equal(Object.keys(sides).sort(), ['left', 'right'])) throw new Error('incomplete_f3_assessment');
+        for (const side of ['left', 'right']) {
+            const a = sides[side];
+            if (!a || !['met', 'gap', 'unknown'].includes(a.status) || !(a.quote === null || typeof a.quote === 'string' && a.quote.length <= 512)
+                || typeof a.reason !== 'string' || !a.reason.trim() || a.reason.length > 256) throw new Error('invalid_f3_assessment');
+            if (content && a.quote !== null && (!a.quote || !strings(content[side]).some(s => s.includes(a.quote)))) throw new Error('ungrounded_f3_assessment');
+        }
+        const left = sides.left.status, right = sides.right.status, delta = raw.deltas[dimension];
+        if (left === 'gap' && right === 'met' && delta <= 0 || left === 'met' && right === 'gap' && delta >= 0
+            || [left, right].includes('unknown') && raw.preference !== 'uncertain') throw new Error('contradictory_f3_assessment');
+    }
     if (raw.preference === 'left' && !Object.values(raw.deltas).some(v => v < 0)
         || raw.preference === 'right' && !Object.values(raw.deltas).some(v => v > 0)) throw new Error('contradictory_f3_grade');
-    return grade;
+    return { ...grade, assessments: Object.fromEntries(dimensions.map(d => [d, {
+        baseline: raw.assessments[d][flipped ? 'right' : 'left'], candidate: raw.assessments[d][flipped ? 'left' : 'right'],
+    }])) };
 }
 
 export function f3DevelopmentFeedback(prior, expected) {
@@ -229,7 +249,7 @@ export function validF3Control(text, control, entry) {
         const raw = parseEvaluationJson(text);
         if (control.expected === 'uncertain') return raw.preference === 'uncertain' && raw.deltas
             && !Object.keys(raw.deltas).length && typeof raw.rationale === 'string' && raw.rationale.length <= 512;
-        const grade = parseF3Grade(text, { case: entry }, control.flipped);
+        const grade = parseF3Grade(text, { case: entry }, control.flipped, control.messages && f3CalibrationMessages(control, entry));
         return raw.preference === control.expected && grade.preference === 'candidate'
             && Object.values(grade.deltas).every(v => v >= 0) && Object.values(grade.deltas).some(v => v > 0)
             && (control.requiredPositiveDimensions || []).every(d => grade.deltas[d] > 0);
@@ -346,7 +366,7 @@ export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryC
                 const response = await bridge.rp({ requestId: randomUUID(), trialId: job.id + ':' + phase + ':' + label + ':' + pair.case.caseId + ':' + pair.repetition,
                     fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages });
                 let grade;
-                try { grade = parseF3Grade(response.response.assistantText || response.response.text, pair, flipped); }
+                try { grade = parseF3Grade(response.response.assistantText || response.response.text, pair, flipped, messages); }
                 catch { grade = { status: 'invalid', preference: 'uncertain', deltas: {}, rationale: 'Grader response invalid; retained without retry or score repair.' }; }
                 if (label === 'primary') {
                     report.charges.push(charge); pair.judge = { ...grade, chargeIds: [charge.id] };

@@ -9,6 +9,9 @@ import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 
+const assessments = dimensions => Object.fromEntries(dimensions.map(d => [d, Object.fromEntries(['left', 'right'].map(side =>
+    [side, { status: 'met', quote: null, reason: 'Observed complete behavior.' }]))]));
+
 function example(domain = 'rp') {
     const config = { identity: 'original' }, settings = { identity: 'baseline' }, candidateConfig = { identity: 'candidate' }, candidateSettings = { identity: 'candidate-settings' };
     const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related' });
@@ -98,7 +101,7 @@ test('primary-only F3 grading sends only to the primary model without a secondar
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { policyMode: 'review', confirmedPrice: null, fetchImpl: async (_url, options) => {
         const body = JSON.parse(options.body); observed.push(body.model);
         return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: JSON.stringify({
-            preference: 'tie', deltas: Object.fromEntries(fixture.report.pairs[0].case.behaviorDimensions.map(d => [d, 0])), rationale: 'Synthetic primary observation.' }) } }],
+            preference: 'tie', assessments: assessments(fixture.report.pairs[0].case.behaviorDimensions), deltas: Object.fromEntries(fixture.report.pairs[0].case.behaviorDimensions.map(d => [d, 0])), rationale: 'Synthetic primary observation.' }) } }],
         usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
     } });
     try {
@@ -223,7 +226,7 @@ test.each(['rp', 'project'])('F3 %s controls use the actual grading prompt and p
 
 test('F3 control contract retains unknown and rejects swapped delta signs or overlong rationale', () => {
     const entry = example().report.pairs[0].case;
-    const grade = { preference: 'right', deltas: Object.fromEntries(entry.behaviorDimensions.map(d => [d, 1])), rationale: 'Observed.' };
+    const grade = { preference: 'right', assessments: assessments(entry.behaviorDimensions), deltas: Object.fromEntries(entry.behaviorDimensions.map(d => [d, 1])), rationale: 'Observed.' };
     const control = { expected: 'right', flipped: false, requiredPositiveDimensions: ['knowledge_boundary'] };
     expect(validF3Control(JSON.stringify(grade), control, entry)).toBe(true);
     grade.deltas.knowledge_boundary = -1;
@@ -254,10 +257,26 @@ test('Project counterfactual wrapper retains actual Task facts and its public st
 
 test.each([false, true])('F3 rejects a winning-margin sign contradiction without repairing scores (flip=%s)', flipped => {
     const pair = example().report.pairs[0];
-    const raw = { preference: 'left', deltas: Object.fromEntries(pair.case.behaviorDimensions.map(d => [d, 1])), rationale: 'Left is better.' };
+    const raw = { preference: 'left', assessments: assessments(pair.case.behaviorDimensions), deltas: Object.fromEntries(pair.case.behaviorDimensions.map(d => [d, 1])), rationale: 'Left is better.' };
     expect(() => parseF3Grade(JSON.stringify(raw), pair, flipped)).toThrow('contradictory_f3_grade');
     raw.deltas.knowledge_boundary = -1;
     expect(parseF3Grade(JSON.stringify(raw), pair, flipped).preference).toBe(flipped ? 'candidate' : 'baseline');
+});
+
+test('F3 requires every arm assessment and rejects a delta that hides a concrete gap', () => {
+    const pair = example().report.pairs[0], dimensions = pair.case.behaviorDimensions;
+    const raw = { preference: 'right', assessments: assessments(dimensions),
+        deltas: Object.fromEntries(dimensions.map(d => [d, d === 'actor_voice' ? 1 : 0])), rationale: 'Right is more expressive.' };
+    raw.assessments.knowledge_boundary.left.status = 'gap';
+    expect(() => parseF3Grade(JSON.stringify(raw), pair, false)).toThrow('contradictory_f3_assessment');
+    raw.deltas.knowledge_boundary = 1;
+    expect(parseF3Grade(JSON.stringify(raw), pair, false).preference).toBe('candidate');
+    raw.assessments.knowledge_boundary.left.quote = 'A fabricated quotation';
+    expect(() => parseF3Grade(JSON.stringify(raw), pair, false, f3GradeMessages(pair, false))).toThrow('ungrounded_f3_assessment');
+    raw.assessments.knowledge_boundary.left.quote = null;
+    expect(parseF3Grade(JSON.stringify(raw), pair, true).assessments.knowledge_boundary.candidate.status).toBe('gap');
+    delete raw.assessments.continuity;
+    expect(() => parseF3Grade(JSON.stringify(raw), pair, false)).toThrow('incomplete_f3_assessment');
 });
 
 test('prior development feedback is pinned and cannot silently replace original observations', () => {
