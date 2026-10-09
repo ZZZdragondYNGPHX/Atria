@@ -11,7 +11,7 @@
 | Packages | [Packages](package/README.md) |
 | Tools | [Plugins](plugin/README.md) |
 
-Active recovery is routed only by [HANDOFF](../HANDOFF.md); results are in [Records](../records/README.md). Read a project's index first, not every document in its directory.
+Read the relevant Plan index and [Record](../records/README.md). When resuming a user-requested interruption, read the existing [HANDOFF](../HANDOFF.md) first. Execution rules belong to [Governance](../README.md), not individual Plans.
 
 
 Plans 记录实现前或实现期间的设计与理由，不承担实施历史。

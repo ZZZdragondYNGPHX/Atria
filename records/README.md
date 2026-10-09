@@ -11,7 +11,7 @@
 | Packages | [Packages](package/README.md) |
 | Tools | [Plugins](plugin/README.md) |
 
-These files record what happened. Current implementation resumes from [HANDOFF](../HANDOFF.md) and the relevant [Plan](../plans/README.md), not old phase instructions.
+These files record what happened. Current work uses actual Git state and the relevant [Plan](../plans/README.md); user-requested interruption snapshots follow [Governance §7](../README.md#7-handoff). Historical phase instructions are not current rules.
 
 
 Records are permanent implementation history.
