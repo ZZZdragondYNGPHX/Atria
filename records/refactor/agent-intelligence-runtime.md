@@ -1167,3 +1167,87 @@ RP 逐句审核曾因复合句前半段有支持，把新增处罚也判 support
 累计仍为1008 requests /5132946 accounted tokens，pending0/lock0；原时间戳和旧错误不重置。新设备恢复不发送模型请求，重新指向当地 Document 路径；历史机器路径与原报告身份保留，旧辅助脚本不得未经迁移直接调用。具体本地包文件位置、SHA256 和恢复命令交付用户，公开文档不记录机器绝对路径。
 
 实际迁移验证：在隔离本地目录成功执行 verify-only 与完整 restore，七个工作树 HEAD、五个本地私有路径均符合 manifest；8988个 Document 文件逐项核对原 SHA256 一致，所有报告含嵌套 Git 原字节保留。修复恢复器的 Windows ACL 继承处理，私有包根目录仅当前用户访问；新 bundle 包含源码与文档完整历史。五份变更文档的89个本地链接/锚点与围栏、git diff --check 通过。没有新增模型请求或重复产品测试；后续网络连接与双模型验收不属于本次换机恢复验证。
+
+
+## 2026-10-09 新设备恢复与 F3 私有调查入口
+
+用户要求解压私有换机包、读取唯一 live HANDOFF 并继续 F3；确认 F2 主模型测试已完成、双模型验收仍待补齐。本轮恢复到新的私有目录，原本地工作树的无关 AGENTS 修改未被覆盖。执行随包 verify-only 与完整 restore：manifest 文件及 expanded reports 哈希、七个工作树 HEAD、五个本地路径和 Document 权限校验通过；恢复没有模型请求，没有修改原密封字节或历史账目。真实 upstream refs 与包内产品/docs/main checkpoints 一致；依源码及 tests 各自锁文件执行 npm ci，Node 24.21.0。
+
+F3 实验沿反馈模块 §2 已批准的 delegated private engineering investigation：模型来源观察不能取得生产自动触发方向。新增测试侧 `m1-f3.js` 与原 m1-live `--f3` 入口，严格读取冻结的六条 development 来源、双模型校准及 exact source/configuration/target pins。旧 fixture 的 explicit proxy correction 沿原 withdraw API 撤回；不把模型意见或调查 envelope 写成用户反馈，不建立生产 diagnosis/触发资格。
+
+每域一次原 evaluator 提炼、原 targets.prepare/check 候选；原隔离 worker 在 candidate settings 下执行三条单臂观察，parent 明确记账 candidate。六条正确 F2 baseline 保留原 trial/charge identity，以显式 baselineReuse 引用，不重跑、不给旧发送创建新账目、不称新独立 trial。development report 标 `m1_f3_development`，双评委独立 shuffle，三个场景至少两次一致 candidate、其余 tie，全部六个重要维度非负及原 authority checks/持久费用凭证必须满足。单模型、缺失校准、源/输入/目标变化、重复槽位、无效评价、分歧、负维度和费用身份不符拒绝准入；无效 grader 观察保存，不修补分数或重试有效负面结果。production promotionDecision 与 human/price/owner gates保持。
+
+本地实现提交 `1d7d52c9db328a6f63627694ade3f1faed1d9380`：最小相关 `f2-sources` 28/28 与 `m1-f3` 13/13、触及 JS ESLint、module syntax/diff 检查通过。随后双域 scope 去重检查与无效 grader 保存修正提交 `4a9a98a9` / `078fae40`；修正后 F3 13/13 与触及 syntax/ESLint/diff 检查通过，不重复未变化的 F2 suite。41 项是两套实际 distinct checks，不把重复运行累加。没有 full suite/build/CI/UI/Android/外部 DB。
+
+产品上述三个工程提交已推送到同一任务分支；main 未集成。本地辅助脚本使用恢复后的路径，原 Windows 辅助脚本、配置和 raw evidence 原件未改写。F2 双模型补齐及 F3 实际结果在本节续记，不将阶段准备或代码检查当作 M1 通过。
+
+第二模型连通性诊断两次确实取得响应，但首轮双模型续接在第三条 Project 来源返回 nginx 404；原失败 HTML、缺失 usage 上界及 funded packets 保留。下一续接完整补齐 Project 两模型 20 项 controls 与三条来源观察，三个来源的共同 status_accuracy gap 成立。RP 比较校准完成后，第二模型判原工程 positive 中“这是两页目录，不能混装”为无公开依据的约束；这是工程控制误标，不是冻结真实基线不利结果。新的私有 control 版本只将该普通动作描述改为“两页我分开摆，免得看错”，涉及两个 comparison messages / 两个 source-control outputs，case/rubric/负例/真实来源和原文件不改；控制 hash 为 `8d6b3e37f3dce423f8ef00a5a719f7358f9b78f0cde3b33dd289f16b65c441a9`。新版本两模型正例核对通过，先前负面观察不覆盖。用户曾明确暂缓第二模型，随后立即报告“第二模型已恢复”；当前按最新指示补齐双模型，不把单模型观察授予 promotion 资格。
+
+
+原默认 Step 推理配置的 run `run-1791546448988-6c06e6ff` 两域比较/source controls 已有效，但 RP 首条真实来源响应只有 usage，没有最终 assistant JSON：provider reported prompt5097 / completion16384 / total21481，其中 reasoning_tokens16383；原 funded sender 保留该不完整响应后 retry，retry 又发生 generation_provider_timeout，按原上界结算。此 run 结束累计1039 /5494867，RP真实语义尚未完成。依据 [Step 官方 Chat Completions 参数](https://platform.stepfun.com/docs/zh/api-reference/chat/chat-completion-create) 的 low reasoning_effort，在新的私有 scope 显式设置 secondary low，保留原 16384 output ceiling。此设置沿现有 f2JudgeTransport/adapter，不修改生产默认、模型 identifier、case/rubric 或基线配置；新 actual packet 已确认 reasoning_effort=low 与 max_completion_tokens=16384，取得有效 JSON。新 transport hash 必须重新通过第二模型全部 controls 和来源观察，旧默认推理分数不混入新配置正式结论；原主模型 exact 输入/配置控制、六基线仍复用。
+
+
+F3 免费盲评 sizing 暴露真实工程缺陷：两个完整 Project arms 的 source/工具历史重复投影超过原 context budget，GenerationService 在 provider 前拒绝 generation_context_budget_exceeded。没有为此发送或收取模型费用。新增 exact sharedEvidence subtree aliases，按固定原内容去重，全部字段、原 source、public modelStatements、authority/evidence 与差异均可逐字段重建；不裁剪 arm，不丢弃不利信息，不提高 context/output limit，不改原 production compiler。保留原标记冲突拒绝和 blind right-minus-left 语义。提交 `71c162b1`，新增完整不同 arms round-trip 与模型伪造引用冲突拒绝两项，F3 15/15、触及 ESLint/syntax/diff 通过。
+
+三个 Project baseline-alias 免费 sizing 的 inputTokens 为 8875/8853/8847；只用于 sizing 的不同临时 IDs 与新增公开状态说明 variant 为12674/12519/12732，均保留全部原 user evidence，原 output16384不变，未进行语义评分或称为真实 candidate。全部资金/基线/校准/target pin 免费检查通过。正在执行的 F2 producer 仍 pin 启动时 `078fae40`/旧 runner bytes；上述仅 F3 test-side 变动不反写其身份，后续 F3 scope 冻结新的 tested HEAD / runner。
+
+
+继续诊断发现原 Route timeout 可先于 parent funded send 真正结束；旧 domain finally 提前复制/清理 fixture 并释放共享 lock，parent 的迟到 settlement 可随后写回旧 accounting snapshot。这是测试消费者清理竞态，必须修复而非把 pending 当已结算。新提交 `11756061ed74dc298ab99f0701b1d7e7c1c0a607` 在每域 fixture snapshot/cleanup 和全局 lock release 前 drain 完整 funded send/retry 链（含 backoff）；不建立新账本、改费用或触碰生产 GenerationService。最小 `m1-retry`18/18、触及 ESLint/syntax/diff 通过，覆盖 timeout 后晚到 reported/unknown settlement 及 retry backoff 期间不得释放锁。
+
+旧进程于本地检查前自行退出，原 retry 迟到 console 为 requests1039/tokens5493380，但原 fixture 已清理且无该 retry 的完整持久 provider raw/usage；保留该实际 console 作为 provenance，不据此伪造 provider usage。已在当前进程退出后用原 repository.settle 与 EvaluationBudget.settle(null) 将 exact request `cfde5d72-6ba2-4ece-833a-47f997c3f984` 按22968上界标 unknown settled，原 request/snapshot/native owner identity 验证相同，requests/tokens不变。原 fixture 不覆盖，另存含 settlement 的私有副本与审计；全部新请求仍在当前完整内存/最终共享 ledger，已核对300个 distinct prefunded packets，未丢失新增费用。
+
+低推理 F2 producer `run-1791547582231-8c85a3d2` /启动HEAD078fae40：两域40项比较/source controls均通过，Project三来源共享status_accuracy gap；RP档案共享knowledge_boundary gap、水库无共享gap。最后剧场来源第二模型请求又 nginx404（原http-error1065保留），因此此 producer 不是完整双模型通过。复用全部有效控制、五条真实双模型来源和原六基线，沿11756061新清理消费者仅补余下一条。此次audit累计1065/5783300，769 reported+44 unknown+252carry；unknown上界636117，pending0/lock0。
+
+
+F2 最终双模型来源复核由 `run-1791549210360-d320b572` /11756061完成，只新增剧场的一个第二模型请求：两域40/40有效比较/source controls、六来源各两观察均完整，六基线 hash 不变。RP档案两模型 knowledge_boundary gap，水库两模型六维met；剧场主模型knowledge met、第二模型knowledge gap（保留分歧，不人为改成共享gap），其他维度两模型met。Project三来源两模型status_accuracy gap，其他五维met。两域都有实际共同缺口，可推进本次F3；这是来源前置复核，不是development/promotion或M1通过。F2scope `f7864d44577a8ee21c3506f21a145a49e52a9b86a9ec19451e8637aaf2064f65`，runner `45a7e6cecb9bb35fafac058681ede06b596f435447363916c4170053114d0243`；累计1066/5798528，770reported+44unknown+252carry，unknown636117，pending0/lock0，301个 distinct prefunded packets一致。
+
+首次F3执行在免费准备阶段被生产configure的agent_evolution_source_required拒绝，两域未发送/提炼/生成candidate，费用仍1066/5798528。因为调查主动withdraw原proxy correction后不具备生产反馈来源，这项拒绝符合边界；不重新造用户纠正或放宽生产gate。修复 `cebd14154b371f59a7b44dbac9726e2f9db18a4c`：test-only prepareF3Investigation严格核对原policy target/route/price与scope targetPin、空jobs/publications，withdraw后沿原repository仅将已有私有policy标review/m1_private_investigation，原fingerprint保持；生产configure/start不调用、不改，仍拒绝缺反馈。F3 17/17、触及ESLint/syntax/diff通过，新增两入口原FS/native fixture验证了错误target pin无修改、production configure source_required、start reflection_not_ready、无job/付费发送。此前retry18相关checks保持，不重复未变化的suite。
+
+F3实际提炼/候选执行以cebd1415启动，sourceRun仍F2最终双模型结果，scope hash `546fbd3f9403c3827bee241638fabbd2aa545c6f169999953eaae316bbaea7d4`；此前零请求工程拒绝不计一个候选周期。实际结果在下文续记。
+
+
+### F3 实际 RP development
+
+一次提炼产生324字符原character Skill body候选，实际 hypothesis 是避免NPC以未暴露的程序/机构处罚/世界规则作为既定权威；候选在执行前冻结，未据后续评分修订。三个原场景候选执行均完成，expectedInvariants/isolation/target_consumed原检查通过。candidate实际成功调用为档案4、水库2、剧场2（原F2基线各2保留，不重跑）；本域实际新增15请求=1提炼+8候选+3主judge+3独立judge，不将缓存baseline计为新发送。
+
+| Development | 主模型 | 第二模型 | 第二模型负差 / 正差 | 一致candidate胜 |
+| --- | --- | --- | --- | --- |
+| rp_variant_rp_dev_archive_return | tie | baseline | promise_application=-1, knowledge_boundary=-1, narrative_response=-1 | 否 |
+| rp_variant_rp_dev_reservoir_signal | tie | baseline | player_agency=-1, knowledge_boundary=-1, narrative_response=-1 | 否 |
+| rp_variant_rp_dev_theatre_variant | tie | candidate | promise_application=+1, continuity=+1 | 否 |
+
+RP正式developmentReadiness=false，wins0；三个case两模型均分歧，前两条出现重要行为负差，未满足至少两次一致胜/其余tie/全部非负。原不利判断、全部六个grade/raw/charges保留，不改分、不重提炼、不追试。新report origin=m1_f3_development，baselineReuse明确cached_F2_development_observation；production promotionDecision仍拒绝，未进行RP promotion/review publication/下一消费/rollback。
+
+
+### F3 实际 Project development 与本轮退出
+
+一次原user Preset system.style提炼产生188字符候选，hypothesis要求公开说明未提交Review及fresh Task/旧conflicted Task区别；候选在执行前冻结，不见密封promotion答案。三个原场景候选执行均完成，原authority/isolation/target_consumed/相关proposal/preservation检查通过；成功provider调用分别9/7/8，另一个HTTP524重试前失败按13937上界保守结算。实际本域新增32请求=1提炼+24成功候选+1失败retry+3主judge+3独立judge；失败retry保留在原owner/shared ledger与prefunded packets，不以report.charges的成功响应列表冒充全费用。
+
+| Development | 主模型 | 第二模型 | 不利/无效观察 | 一致candidate胜 |
+| --- | --- | --- | --- | --- |
+| project_repair_project_dev_entrypoint_dependencies | baseline | tie | primary status_accuracy=-1 | 否 |
+| project_repair_project_dev_binding_repair | tie | baseline | secondary conflict_handling=-1, repair_quality=-1, status_accuracy=-1 | 否 |
+| project_repair_project_dev_dependency_conflict | tie | uncertain | secondary invalid：rationale超512契约，保留原raw | 否 |
+
+Project正式developmentReadiness=false，wins0；前两条有有效分歧/重要维度负差。第三条独立模型原JSON选择tie/全0，但rationale超过512字符契约，原parser拒绝；按预定规则存status=invalid/preference=uncertain/deltas={}，完整raw与费用保留，不截断解释、修补分数或重试至通过。故本轮保存12次blind grade，11份契约有效、1份无效，不声称12份均为有效改善判断。
+
+本轮F3 run `run-1791549607555-d38e4ef9`，`f3Completed=true`仅表示两域各一次提炼/三development场景及完整观察保存完成；`promotionReady=false`、`accepted=false`。两域一致candidate wins均0，原门槛保持。未读取密封正文指导开发，未执行独立promotion、私有review publication、下一run消费或rollback，不集成main、不进入S11/G；两个候选只留在私有隔离fixture，原生产promotionDecision仍拒绝。
+
+| F3 Pin | Value |
+| --- | --- |
+| Product / local Tested HEAD | `cebd14154b371f59a7b44dbac9726e2f9db18a4c`（已推送） |
+| Evaluator | `912ff32a31111f9d162f337239758ce81470ad841ba23c3a2651765321fe162a` |
+| Runner | `09d901aab692f82a32d6e02415f67cfd8ad1f8522378875fcc6e8909c94c8042` |
+| Scope | `546fbd3f9403c3827bee241638fabbd2aa545c6f169999953eaae316bbaea7d4` |
+| rp-skill-f3-development-report.json SHA256 | `4a49d9333c0d20695ea9b2e0538f0b34a8d5f6664524507c02818292e530df90` |
+| rp-skill-f3-frozen-candidate.json SHA256 | `1ef6e17c856bee31ccf4734de28c4647c8635100641226520655bc5b2acd4578` |
+| project-prompt-f3-development-report.json SHA256 | `40fe2417dfb9432bf4da05db3f4cfbf75df55d0c9763a40e84efa13dd4aee568` |
+| project-prompt-f3-frozen-candidate.json SHA256 | `bae1750150d3cce6830a30eb6e27468c612d7903a761d89556c63253e106e3df` |
+
+本轮F3新增47请求/436781记账tokens=2提炼+32成功candidate发送+1失败retry+12judges，缓存六基线费用不重算。恢复后总新增105请求/1102363记账tokens（含F2补齐、诊断、失败与必要复测），完整历史不清。最终累计1113 requests /6235309 accounted tokens：816reported+45unknown+252carry；unknown650054按原上界结算，不作现金费或真实模型usage。pending0/lock0，348个distinct prefunded request/snapshot packets与原共享账目身份/上界/settlement一致；本次47个新F3 packets全部核对，六个baseline逐字段与F2原报告一致，六个candidate试验原硬检查完整。final audit SHA256 `92fe2dd70db909a0ba5fa0b53578a72a29fe8283656495836b75ef1034cf3ad8`。
+
+最新最小本地验证：F3 17/17与retry18/18，触及JS ESLint/syntax/diff通过；免费两域资金/校准/target pins与Project不同IDs双臂完整context sizing通过；实际原worker/两模型结果与mock工程tests分别记录。没有full suite/build/CI/UI/Android/外部DB验证。主模型identifier gemini-3.8-flash，第二模型step-5-preview，两模型grader各16384 output/low reasoning；不将grader配置当baseline配置，upstream identity/currencyCost unavailable，humanPreference not_observed。
+
+本轮按用户当前AGENTS阶段交接要求更新同一Record、Plan当前状态与live HANDOFF后停止。下一工作应基于本次原不利证据讨论归因/干预适用性及必要范围变化；不在同一候选或独立promotion来源上刷分，不将局部工程完成写为M1验收。
+
+最终文档最小本地核对：五份触及文件91个本地链接/锚点及代码围栏通过，git diff --check通过。原本地Atria-core无关AGENTS dirty仍保留；产品任务工作树clean，恢复的main checkpoint未变化。文档保存与远端同步沿独立docs分支，不把private Document或migration根分支推送公开。

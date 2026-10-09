@@ -18,7 +18,9 @@
 - S10 implementation / local Tested HEAD: `ed00f4f0cea53be360ed8dfa082bbd0afeec5398`；有限 Evolution / owner budget / 隔离 evaluator / 原局部 publication / 恢复 / shared UI；12 suites / 233 distinct local tests，实际模型改善待验收。
 - F1 implementation / local Tested HEAD: `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；原Experience v2、零模型采集、归因路由、固定quality/Report消费者；5相关suites / 101 distinct local tests及共享pane Chromium fixture通过。paid source仍a61b249ef，F2准备核对source_unready，独立来源/实际语义校准未完成；F3未开始，M1 pending。
 - F2 previous paid / local Tested HEAD: `eb1664138458ebae073d86792e5a5295ce27dfda`；独立来源密封保持；授权探测新增22请求/140750 tokens，RP校准12/12与3基线完成，Project第4校准因解释552>512无效，首失败停止。累计783/3080332，headroom未建立、F2未验收、F3未开始；详见feedback§12/acceptance§10.4。
-- F2 latest product / local Tested HEAD: `f495267023ca4475d15ba1c61b66702624c4938e`；新来源/独立密封/范围固定完成主模型测试；20/20 有效 controls、六真实基线原硬检查通过，RP knowledge / Project status 主模型缺口成立。第二模型复核暂缓，F3 未开始，M1 pending。实际结果与 pins 见同一 Record 最新节。
+- F2 primary checkpoint / local Tested HEAD: `f495267023ca4475d15ba1c61b66702624c4938e`；新来源/独立密封/范围固定完成主模型测试；20/20 有效 controls、六真实基线原硬检查通过，RP knowledge / Project status 主模型缺口成立。第二模型复核暂缓，F3 未开始，M1 pending。实际结果与 pins 见同一 Record 最新节。
+- F2 dual source completion / local Tested HEAD: `11756061ed74dc298ab99f0701b1d7e7c1c0a607`；两域40/40有效controls与六来源各两观察完成，原六基线复用；两域共同缺口成立。
+- F3 product / local Tested HEAD: `cebd14154b371f59a7b44dbac9726e2f9db18a4c`（已push）；一次双域提炼/development完成，两域一致candidate胜均0，存在重要维度负差/分歧与一份无效评价，未准入promotion，M1 pending。最新F3 17/17与retry18/18本地checks；具体实际结果/pins见同一Record。
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
@@ -60,7 +62,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [delivery.md](delivery.md) | 40 个候选实施阶段、依赖、实际交付与验收 | architecture、research |
 | [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
 | [m1-acceptance.md](m1-acceptance.md) | M1 当前测试执行、自动化工程验收与历史结果；生产 human gate 不变 | m1-evolution、s10-evolution、用户本轮确认 |
-| [m1-feedback-evaluation.md](m1-feedback-evaluation.md) | U13确认的原链路反馈来源、根因/干预分离、质量/案例/评价版本契约及双域试点工作包；F1最小实现完成；F2有限探测因校准输出契约失败停止，headroom未建立、F3未开始 | S05、S10、m1-acceptance、领域扩展研究 |
+| [m1-feedback-evaluation.md](m1-feedback-evaluation.md) | U13确认的原链路反馈来源、根因/干预分离、质量/案例/评价版本契约及双域试点工作包；F1/F2前置范围完成；F3一次双域试点未准入promotion，M1 pending；当前结果见feedback§15/同一Record | S05、S10、m1-acceptance、领域扩展研究 |
 | [m1-evolution.md](m1-evolution.md) | 首批双入口成长、局部自动启用与恢复的具体讨论设计 | architecture、decisions |
 | [s01-baseline.md](s01-baseline.md) | S01 的具体案例、报告契约、预算、验证和退出条件 | decisions、当前代码入口 |
 | [s02-sources.md](s02-sources.md) | S02 最小 source / reference / validity、预算与无迁移边界 | m1-evolution、当前 authority |
@@ -77,7 +79,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §7/§9 → 当前相关消费者 → 同一 Record 最新节；F1最小实现完成；F2主模型范围测试完成，双模型复核暂缓（feedback§14/acceptance§11/Record最新节）。累计1008/5132946、pending0。用户已要求换设备继续F3，本机未启动；恢复与正式准入核对见当前HANDOFF；主模型观察不替代M1两模型验收。历史首失败停止与重新许可不是当前规则。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
+S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §7/§9 → 当前相关消费者 → 同一 Record 最新节；F1/F2前置范围完成，F2双模型来源复核已补齐；F3一次双域提炼/development完成但两域未准入promotion，M1仍pending（feedback§15/acceptance§12/Record最新节）。最新实际分支/恢复与交接见当前HANDOFF；不重跑正确的冻结基线，不改不利模型判断，不将工程完成当M1两模型验收。历史首失败停止与重新许可不是当前规则。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图

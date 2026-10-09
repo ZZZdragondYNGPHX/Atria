@@ -1,32 +1,32 @@
-# 换设备接续 — Agent Intelligence Runtime
+# 阶段交接 — F3 一次双域试点完成，未准入 promotion
 
 - Task ID: `agent-intelligence-runtime`
-- Primary Workspace: `main`；当前产品工作分支 `feat/agent-intelligence-runtime`，尚未集成 main。
-- Current product / Tested HEAD: `f495267023ca4475d15ba1c61b66702624c4938e`（已推送）。
-- Current stage: F2 主模型范围完成；用户于 2026-10-09 要求打包隐私数据、换设备继续 F3。F3 已获后续执行授权，本机未启动；M1 正式验收 pending。
+- Primary Workspace: `main`；产品工作分支 `feat/agent-intelligence-runtime`，尚未集成 main。
+- Product / local Tested HEAD: `cebd14154b371f59a7b44dbac9726e2f9db18a4c`（已推送）。
+- Current stage: F2 双模型来源前置复核完成；F3 每域一次提炼与三 development 场景已完成，两域未获 promotion 资格，M1 正式验收 pending。
 - Plan: [index](plans/architecture/agent-intelligence-runtime/index.md)
-- Required modules: [feedback §7/§8/§14](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md)、[acceptance §0/§1/§2/§11](plans/architecture/agent-intelligence-runtime/m1-acceptance.md)；涉及候选/发布时再读 [s10-evolution](plans/architecture/agent-intelligence-runtime/s10-evolution.md)。
-- Record: [implementation history](records/refactor/agent-intelligence-runtime.md)，读取最新 F2 结果及换机节。
-- Privacy restore: 用户本地换机包的 `README.md` / `restore.py`；共享文档不保存凭证和机器绝对路径。
+- Required modules: [feedback §2/§6/§8/§15](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md)、[acceptance §1/§2/§12](plans/architecture/agent-intelligence-runtime/m1-acceptance.md)。
+- Record: [同一实施记录](records/refactor/agent-intelligence-runtime.md)，读取最新“新设备恢复与 F3 私有调查入口”及其实际结果。
+- Private state: 已恢复的私有根目录 `Document/` 与七个 workspaces；不使用旧 Windows 辅助脚本、不覆盖原凭证/报告/密封字节。
 
-## 已完成与证据边界
+## 当前结果
 
-六个 development 来源、六个独立作者密封 promotion 来源、固定质量维度/配置及隔离已准备。20/20 主模型语义 controls 有效，六条真实基线原硬检查通过；RP archive 的 knowledge_boundary、三个 Project 的 status_accuracy 为主模型观察缺口，另外两个 RP 全 met。保留正确结果，不人为制造缺口。
+F2 两域40/40有效比较/source controls、六来源各两模型观察完整。RP档案有共同 knowledge_boundary gap，水库两模型六维met，剧场知识判断分歧保留；Project三来源共同 status_accuracy gap。原六正确基线逐字段复用，没有重新付费生成。独立 promotion metadata 与密封正文保持；开发未读取密封答案。
 
-最终范围 `m1-f2-config-source-v2-clauses-primary-20261009.json`，`judgeMode=primary_only`；所有 `sharedGaps=[]`，不是 F2 双模型通过或 M1 达标。Step 在短暂恢复后再次 nginx 404，备用 MiniMax 401，按用户授权暂缓。新设备应核对实际连接并补齐正式双模型评价所需证据；不得把旧协议响应凑成新协议通过，也不得将 F3 的执行授权写成验收通过。
+F3 run `run-1791549607555-d38e4ef9`。每域只提炼一个候选，随后三个 development 场景执行与原硬检查通过，保存十二次盲评，十一份契约有效、一份因解释超过512字符而无效。两域一致 candidate 胜均0：RP主模型三tie，第二模型两baseline/一candidate；Project主模型一baseline/两tie，第二模型一tie/一baseline/一invalid。重要维度有负差和分歧，`promotionReady=false`、`accepted=false`；`f3Completed=true`仅表示本次观察周期完成。
 
-最终 run `run-1791541743682-aa0a9d56`；独立 metadata `m1-f2-sealed-20261009-project-window12/metadata.json`，SHA256 `7c47b310b6639ed8cfc58adfdc810f101454ffa2463c977a6776a88f5cf5aa38`。详细 source/control/runner/configuration pins 唯一见 Record 和私有 final audit。密封正文/答案未被开发读取，换机只复制并校验原字节。
+未执行独立 promotion、私有 review publication、下一 run 消费或 rollback；两候选只在隔离 fixture，原生产 gate/human/price/owner 权限不变。不集成 main、不进入 S11/G，不修改不利评分或重复同候选追分。
 
-累计 1008 requests / 5,132,946 accounted tokens；715 reported + 41 unknown + 252 carry，unknown 上界 558,397 tokens；pending0、lock0。迁移保留账本、quota/rate、transport epochs/历史错误及完整 fixtures，不重置历史费用或 timestamps。API 测试规则唯一见 [Governance §13.1](README.md#131-api-测试执行规则)。
+## 工程与验证
 
-## 实际验证与待办
+测试侧新增原 `--f3` 私有调查入口，沿原 evaluator/targets/worker/费用端口；旧代理纠正用 withdraw 撤回，不伪造用户反馈/生产 diagnosis 方向。私有 policy 的目标/Route/price/fingerprint 固定，原生产 configure/start 仍拒绝缺有效反馈。完整双臂证据用可逐字段还原的共享引用去重，保持原 context/output 限制。超时清理修复为等待完整 funded send/retry 链结算后才复制/清理 fixture、释放共享 lock。
 
-当前产品 HEAD 的 `f2-sources` 28/28、触及 JS ESLint/diff 检查通过；未变化的 retry consumer 已执行 `m1-retry` 15/15，相关 grader transport checks 有历史证据。未执行 full suite/build/CI/UI/Android/外部 DB；本次换机不新增模型请求。
+最新最小本地 checks：F3 17/17、retry18/18，触及 JS ESLint/syntax/diff；免费资金/校准/target pins、双臂完整 context sizing和实际六candidate试验/两模型报告核对通过。F2既有28项与前期验证见Record，不把重复执行累加。没有 full suite/build/CI/UI/Android/外部 DB 验证。
 
-新设备先验证换机包并运行恢复脚本，核对实际 Git 与私有 state，安装源码锁文件依赖，读取上述模块及最新 Record。原报告和配置保持 byte-for-byte；旧私有辅助脚本含原设备路径，不能直接运行，按换机 README 使用当前 worktree/Document 路径，原 native fixture 走已有 restore consumer。
+最后累计1113 requests /6235309 accounted tokens：816reported+45unknown+252carry，unknown650054按原上界结算；pending0/lock0。348个distinct prefunded packets与共享账目一致，本次F3新增47请求/436781记账tokens（含一次524 retry）。保留404/超时、原不完整和无效响应、原账目/epochs/timestamps；迟到旧retry无完整持久usage，按原上界unknown结算并另存审计，不清账。详细source/config/report/candidate/hash pins唯一见Record和私有final audit。API规则见[Governance §13.1](README.md#131-api-测试执行规则)。
 
-随后按原 F3 一次双域试点推进提炼与 development；原 development 的两评委一致胜/其余 tie/重要维度非负及原 checks 准入不变，通过才进行独立 promotion、私有 review→实际消费→rollback。第二连接仍不可用时可以准备和调试原消费者，但单模型结果不能获得双模型 promotion 资格；真实工程失败应修复复测，不在失败边界结束任务。不降低 M1 门槛，不集成 main，不进入 S11/G。
+## 下一行动与接手提示词
 
-## 接手提示词
+本轮按用户当前 AGENTS 的阶段交接要求停止。下一工作先核对真实 Git 与最新 Record，分析本次有效不利输出及干预适用性，再讨论下一干预设计或范围变化。原二评委阈值、固定场景/维度、独立来源隔离和 M1 完整退出门槛保持；不在已评分候选或 promotion 材料上刷分。
 
-继续 Atria 的 `agent-intelligence-runtime`，先核对 Git，再读 docs:HANDOFF.md → Plan index → feedback §7/§8/§14 和 acceptance §0/§1/§2/§11 → 同一 Record 最新节。产品分支 `feat/agent-intelligence-runtime`，冻结 HEAD `f495267023ca4475d15ba1c61b66702624c4938e`，F2 主模型范围已完成，20/20 controls、六条原基线及密封独立来源已保存；F3 已获用户换机后执行授权，本机未启动。先恢复并验证用户私有包、核对第二连接与当前正式准入条件，再持续完成一次双域 F3。原双模型验收与生产权限不变，不读密封答案指导开发，不重跑正确的冻结基线，不清账，不恢复旧额外测试配额；只遵守每日2000次与20RPM。不要在失败或阶段边界写新 handoff 代替继续工作。
+接手提示词：继续 Atria `agent-intelligence-runtime`，先核对 Git，再读 docs:HANDOFF.md → Plan index → feedback §2/§6/§8/§15、acceptance §1/§2/§12 → 同一 Record 最新 F3 节。产品分支 `feat/agent-intelligence-runtime`，HEAD `cebd14154b371f59a7b44dbac9726e2f9db18a4c`。私有包已恢复，F2 双模型前置范围完成；F3 每域一次候选/三development完成，但两域一致胜均0且有负差/分歧/无效评价，未准入promotion，M1 pending。先依据原不利证据核对归因和干预设计，保留六基线、候选/全部评分/费用与密封来源，不重跑正确结果、不改分、不清账；只做当前触及面最小本地验证，不集成main、不进入S11/G。

@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与 API 测试执行
 
 - Updated: 2026-10-09
-- Status: F1 工程已完成；F2 主模型范围测试完成，双模型复核暂缓；F3 未开始，M1 pending。测试限制按当前 §0 执行；后文旧封包与配额仅为历史。
+- Status: F1工程与F2双模型来源前置范围完成；F3一次双域development完成但未准入promotion，M1 pending。测试限制按当前 §0 执行；后文旧封包与配额仅为历史。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 
 ## 0. 当前 API 测试规则（覆盖全部历史封包）
@@ -101,3 +101,8 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 六条 development 真实基线、六条独立密封来源 metadata、免费原工具可完成路径、主模型 20/20 有效 controls 和两域可改善缺口已核对。RP 缺口为档案场景新增无来源支持的处罚/权限；Project 三场景提案正确，但遗漏明确请求的未提交 Review 状态说明。正例、缺证据及两个没有观察到 gap 的 RP 场景保持原结果，不用 hard checks 替代语义质量。失败、费用、旧判断与不确定性保留。
 
 原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。当前结果不是 F2 双模型通过，也不是 M1 完成；用户随后要求换设备继续 F3，已授权后续执行，本机未执行。恢复后按原 F3 工作包推进，第二连接可用时复核 F2 exact 条件；原双模型 development/promotion 准入不变。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
+
+
+## 12. F2双模型复核与 F3 一次试点结果
+
+F2两域controls和六来源的实际双模型观察已补齐，保留原正确基线与密封独立来源；当前事实见[feedback§15](m1-feedback-evaluation.md#15-f2双模型前置复核与-f3-一次双域试点结果)。每域一次F3候选提炼/三development场景已完成，两域一致candidate胜均0，有重要维度负差/分歧和一份无效grader契约响应，未满足原development前置门槛。§1/§2的每域九对独立promotion、六一致胜及私有review/下一消费/rollback未执行，M1仍未验收，不集成main。实际范围、原费用/unknown与producer pins见[同一Record](../../../records/refactor/agent-intelligence-runtime.md)最新节；§11保留此前主模型范围与暂缓第二模型的历史，不作为当前状态。

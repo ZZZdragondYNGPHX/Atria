@@ -1,7 +1,7 @@
 # M1：原链路反馈与评价契约补充
 
 - Updated：2026-10-09；Task ID：`agent-intelligence-runtime`。
-- 状态：**方向、设计边界及F1物理契约冻结；F1最小消费者已实现，验收记录见同一Record；F2准备核对以source_unready停止，独立来源/实际语义校准尚未完成；F3未开始，M1仍pending。**
+- 状态：**方向、设计边界及F1物理契约冻结；F1最小消费者与F2双模型来源前置复核完成；F3一次双域试点完成，但两域未准入promotion，M1仍pending。实际结果见§15/同一Record。**
 - 设计顺序：原链路反馈与评价契约 → 各一个 RP、Project 试点；具体工程契约如下。
 - 来源：[领域扩展研究](../agent-intelligence-m1-domain-evolution-research.md)、[S05](s05-feedback.md)、[S10](s10-evolution.md)、[M1 acceptance](m1-acceptance.md)。核对产品 `a61b249ef71f108d279ec7bd883fb5eeae97a463`；这些设计不计入已有实证。
 - 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程退出门槛与实际发送范围由 m1-acceptance 管理。
@@ -148,8 +148,8 @@ source/case/input/rubric/calibration/worker/request identity 随实际版本与�
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
 | F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
-| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费 controls/独立性和可完成路径先检查；必要模型探测、诊断与修复复测沿当前规则自动执行，保存实际 source/config/result pins | 主模型范围完成：20/20有效controls、六真实基线及独立密封metadata已核对；两域primary_observed_gap成立。双模型复核暂缓；用户已要求换设备继续F3，本机未启动；见§14/同一Record |
-| F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 未开始 |
+| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费 controls/独立性和可完成路径先检查；必要模型探测、诊断与修复复测沿当前规则自动执行，保存实际 source/config/result pins | 双模型前置范围完成：两域40/40有效controls、六来源各两观察与原六基线/密封metadata已核对，两域observed_gap成立；见§15/同一Record |
+| F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 一次双域development已完成，两域一致candidate胜均0、重要维度负差/分歧，未准入promotion；M1 pending，见§15 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 的 source_unready、calibration_failed、unsupported_locus 或 baseline_saturated 如实记录；可修复工程问题处理后继续，真实不适用或缺改善空间不伪造失败/人类标签来凑闭环。
 
@@ -210,3 +210,10 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 主模型有效控制为每域六个比较/顺序控制与四个单样本控制；全部返回六个维度，positive / known violation / missing evidence 保留，另有 RP unsupported_rule 和 Project communication_omission。六条真实基线原硬检查通过；主模型只在 RP archive knowledge_boundary 与三个 Project status_accuracy 观察 gap，其它结果保留。
 
 本次临时 `primary_only` 是用户授权的 F2 测试范围，标签仅 `primary_observed_gap`，不构成两个评委的共同结论。第二连接复核暂缓，M1 原门槛不改，用户已授权换设备继续 F3，本机未开始；不得把本节完成的来源准备测试写成 M1 或双域试点成功。版本、实际费用/失败/重用与 metadata commitments 见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节；仅按用户明确换机要求更新当前 HANDOFF。
+
+
+## 15. F2双模型前置复核与 F3 一次双域试点结果
+
+2026-10-09恢复后已完成两域40项有效controls和六development来源各两模型观察，原六正确基线未重跑；RP档案knowledge_boundary、Project三来源status_accuracy为共同缺口，剧场knowledge判断分歧保留。第二模型grader使用实际验证的low reasoning配置并重新校准；前期404/超时、不完整响应、未知费用与历史账目保留。前置范围完成不等于M1验收。
+
+已按§2的delegated private engineering investigation完成每域一次原提炼和三个development场景，withdraw旧fixture代理纠正，不伪造生产feedback/diagnosis方向；完整两arm证据无损去重适配原context，原targets/worker/费用端口复用。两域一致candidate胜均0，重要维度出现负差/分歧，Project第三条第二模型解释违反长度契约而存invalid。未准入独立promotion，未进行review→消费→rollback，不重提炼追分、不缩减场景/维度。原生产gate、§8退出与M1门槛保持；actual pins/费用/最小本地验证唯一见[同一Record](../../../records/refactor/agent-intelligence-runtime.md)最新F3节。§14保留主模型完成时的历史结果，当前恢复点见live HANDOFF。
