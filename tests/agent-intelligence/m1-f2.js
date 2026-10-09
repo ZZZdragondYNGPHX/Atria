@@ -39,6 +39,12 @@ export function reusableF2Calibration(row, control, label, config) {
         && row.configurationHash === hash(config) && row.messagesHash === hash(f2CalibrationMessages(control));
 }
 
+export function f2JudgeTransport(config) {
+    const transport = structuredClone(config);
+    transport.connection.options = { ...transport.connection.options, responseMode: 'stream' };
+    return transport;
+}
+
 export function parseF2SourceAssessment(text, entry, evidence) {
     const value = parseEvaluationJson(text);
     const excerpts = [evidence];
@@ -96,8 +102,9 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
         reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig)));
     for (const control of domainControls) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
         if (entry.calibration.some(row => reusableF2Calibration(row, control, label, config))) continue;
+        const transportConfig = f2JudgeTransport(config);
         const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
-        const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
+        const bridge = await createFrozenEvaluationBridge(transportConfig, async payload => (await f.evaluator.send(f.h.handle, gradeJob, transportConfig,
             { ...payload, arm: 'judge' }, signal, async () => {})).raw);
         try {
             const messages = f2CalibrationMessages(control);
@@ -113,7 +120,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                 : raw.preference === control.expected && normalized?.preference === 'candidate'
                     && Object.values(normalized.deltas).every(v => v >= 0) && Object.values(normalized.deltas).some(v => v > 0);
             entry.calibration.push({ group: control.group, flipped: control.flipped, label, passed, preference: raw.preference,
-                configurationHash: hash(config), messagesHash: hash(messages) });
+                configurationHash: hash(config), transportConfigurationHash: hash(transportConfig), messagesHash: hash(messages) });
             store(kind + '-f2-calibration.json', entry.calibration);
             if (!passed) throw new Error('f2_calibration_failed');
         } finally { bridge.cleanup(); }
@@ -136,7 +143,8 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                     if (prior.evidenceHash !== hash(priorEvidence)) throw new Error('f2_resume_changed');
                     parseF2SourceAssessment(JSON.stringify(prior), pair.case, priorEvidence); observations.push(prior); continue; }
                 const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
-                const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
+                const transportConfig = f2JudgeTransport(config);
+                const bridge = await createFrozenEvaluationBridge(transportConfig, async payload => (await f.evaluator.send(f.h.handle, gradeJob, transportConfig,
                     { ...payload, arm: 'judge' }, signal, async () => {})).raw);
                 try {
                     const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':source-assessment:' + pair.case.caseId,
@@ -144,7 +152,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                             { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
                             { role: 'user', content: evidence },
                         ] });
-                    observations.push({ label, origin: 'model_source_assessment', evidenceHash: hash(evidence),
+                    observations.push({ label, origin: 'model_source_assessment', configurationHash: hash(config), transportConfigurationHash: hash(transportConfig), evidenceHash: hash(evidence),
                         ...parseF2SourceAssessment(response.response.assistantText || response.response.text, pair.case, evidence) });
                 } finally { bridge.cleanup(); }
             }

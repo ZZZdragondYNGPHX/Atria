@@ -6,7 +6,13 @@ import { runRp, runProject } from '../../src/native/agent-intelligence/evaluatio
 import { withIsolatedRuntime } from './runner.js';
 import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence, reusableF2Calibration } from './m1-f2.js';
+import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
+
+test('F2 judge streaming changes transport only and leaves the baseline configuration intact', () => {
+    const config = { connection: { options: { toolSchemaMode: 'string-enums' } }, generation: { output: { maxTokens: 16384 } } };
+    expect(f2JudgeTransport(config)).toEqual({ ...config, connection: { options: { toolSchemaMode: 'string-enums', responseMode: 'stream' } } });
+    expect(config.connection.options).toEqual({ toolSchemaMode: 'string-enums' });
+});
 
 test('calibration reuse requires the actual judge configuration and exact control messages', () => {
     const control = { group: 'known_violation', flipped: false, messages: [{ role: 'user', content: 'control' }] };
@@ -170,9 +176,16 @@ test('the original funded worker executes only baseline and returns a non-promot
 
 test('a real funded calibration failure settles once and stops before baseline or candidate work', async () => {
     let calls = 0;
-    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async (_url, options) => {
         calls++;
-        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: '{"preference":"uncertain","deltas":{},"rationale":"Insufficient evidence."}' }, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
+        expect(JSON.parse(options.body).stream).toBe(true);
+        const events = [{ choices: [{ delta: { reasoning_content: 'Private reasoning is not grading evidence.' } }] },
+            { choices: [{ delta: { content: '{"preference":"uncertain","deltas":{},"rationale":"Insufficient evidence."}' }, finish_reason: 'stop' }] },
+            { choices: [], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }];
+        return { ok: true, headers: { get: () => 'text/event-stream' }, body: (async function* () {
+            for (const event of events) yield new TextEncoder().encode('data: ' + JSON.stringify(event) + '\n\n');
+            yield new TextEncoder().encode('data: [DONE]\n\n');
+        })() };
     } });
     try {
         const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId);
