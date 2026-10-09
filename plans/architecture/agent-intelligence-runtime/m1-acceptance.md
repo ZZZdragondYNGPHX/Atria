@@ -162,3 +162,10 @@ F1实现/本地Tested HEAD `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关s
 私有`m1-f2-scope-20261009.json` SHA `355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d` 固定product/evaluator/runner/case/rubric、controls、每域primary/secondary/settings/target pins、准备副本run与initialAccounting761/2939582；stepPermission=null。密封metadata SHA `f7858cc57c9b5aa5eeaa1a2102174c83bca7f7eddf0e07330d6ffbeeeaf14505`，开发侧未读其正文。填入新许可会形成新的scope/claim hash，执行前须追加该许可记录及hash，而不是把这份未授权scope冒称已经执行。
 
 本包真实send0、无新独立质量胜/human label；两次原prepare免费完成且pins一致，五累计状态/五dirty文档字节保持。实际headroom、双judge语义校准、真实模型六round表现仍not_observed/not_run，F2未全部验收。即使有限探测通过，也只更新同一Record/live HANDOFF并停止；不直接进入F3、合并main或S11/G。
+
+
+### 10.3 F2本次新有限许可（发送前记录）
+
+2026-10-09用户对已审阅的§10.2范围明确回复“授权”。本次仅F2，最多60实际send，其中Step新最多12次；retry/提炼/pair/promotion/publication皆0，首个校准或transport/incomplete失败即停止，不进入F3。新许可evidence hash `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`；授权scope canonical hash `a1f48d8ae316a6eec6ee8bde4b99ca5d4b95dabb1340b9076b6c129226441666`、文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`。原未授权scope SHA355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d保留私有。
+
+发送前核对product eb1664138及全部case/rubric/evaluator/runner/config/settings/target pins、原761/2939582账目、五dirty文件字节；当前实际Step transport key对应旧404窗口满足consecutive0/最近成功条件。旧窗口/raw账目/6of24 claim/epoch不改，原Step余量不使用；新claim一次使用、最多12，任何新失败结束本scope。首次定位只按model匹配时发现两个历史窗口，未写许可/账目；改按原实际endpoint/epoch/output key唯一定位后完成许可固定，没有换window。尚未发送，实际结果及全部settle后账目另记本节与Record/HANDOFF。

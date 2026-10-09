@@ -1041,3 +1041,8 @@ Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 e
 新source scope SHA 355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d；calibration 9081a5246dfa4c753a146a6b89cf09282da921a09b48fb9dcf8851e0748f3018；constructive evidence 71e631cc33f9381548893aa7b59d640b19e716da60b9fb7485c123f7c094e646；free readiness 12c3ddd111a6bb8dff751b67eaf7f69bf0621ec20057ebbd0303b6f59ae13c23；case/rubric/evaluator/Quality pins归feedback§11。私有scope/配置/正文与原raw reports不提交，公开仅metadata与受审构造fixtures；restricted ACL保持。原ledger761/2939582、492reported/17unknown74948、pending0/lock0、quota761不变。文档修改同一feedback/acceptance/index/Record/HANDOFF，原acceptance§2/§9逐字保护。
 
 停止边界：不是source已完整验收，也不把双域试点提前启动。原feedback§7/acceptance§10禁止复用旧Step余量/清stop；当前只独立作者授权，没有新有限次数许可。所有可审阅源码/来源/范围已准备并push后请求用户确认：仅此次F2最多60send（Step新12次），新故障即撤销，无retry；确认后先追加具体许可hash，沿准备副本执行并保存实际校准/headroom/全部费用，包末停止。若不授许可就保持免费准备状态。M1 pending，不合并main，不进入S11/G，用户无需手测。
+
+
+## 2026-10-09 F2授权执行 — 发送前固定
+
+用户明确授权§10.2的F2有限范围：总最多60send/Step新最多12/retry0/首失败即停，不F3。起始docs102d54335/product eb1664138，与远端一致且工作树clean，无其它设备push；账目761/2939582及五dirty字节保持。许可evidence `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`，scope文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`；所有原source/config/runner/pins保持，仅写新显式权限。原实际Step key唯一旧窗口符合404 stop、consecutive0/最近成功；model-only只读定位首次命中两个历史窗口并停止，改用原m1TransportKey定位，不清stop或换epoch。旧6of24 SHA锁定，准备副本沿原restore。写文档的首次shell Python命令因引号截断未写入，改文件脚本后核验；无请求或账目写入。发送前已追加acceptance§10.3，实际结果待执行后更新同一记录。

@@ -2,7 +2,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Updated: 2026-10-09
-- Checkpoint: **F2固定来源、独立密封、原窗口/adapter、校准素材与有限scope已准备；实际语义校准/headroom待新Step最多12次许可。F3未开始，M1 pending。**
+- Checkpoint: **F2固定来源、独立密封、原窗口/adapter、校准素材与有限scope已准备；用户已授权本次最多60send/新Step12，发送前scope已固定，实际结果待执行。F3未开始，M1 pending。**
 - Product / local Tested: `feat/agent-intelligence-runtime@eb1664138458ebae073d86792e5a5295ce27dfda` 已push；paid source仍`a61b249ef71f108d279ec7bd883fb5eeae97a463`。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 - Docs: 从origin/docs `a91f45e40e638b4f813d298250d2a4b393b10f57` 的隔离detached worktree更新同一Plan/Record并push到docs；以actual Git核对。旧本机docs worktree五份纯CRLF dirty字节全部保护。
@@ -25,3 +25,5 @@
 下一只在用户**明确新Step12次有限许可**后，先把许可/evidence/scope hash追加acceptance/Record（新claim一次），沿固定scope/准备副本运行F2校准和baseline headroom核对；首个校准/transport/incomplete/来源失效/饱和即停，无retry/追分。原feedback§7禁止把旧6of24余量当新许可，当前作者授权不包含这次有限次数。实际校准/headroom仍未观察；即使通过也保存同一Record/HANDOFF并停止，不自动F3/merge main/S11/G。用户无需手测。
 
 接手提示词：**fetch/actual Git核对远端docs与product eb1664138；勿用保留dirty的旧docs HEAD。沿private761/2939582及全部旧窗口，HANDOFF→index→feedback§11/acceptance§10.2→Record末节。F2六development/六独立密封metadata、原fixed adapter/probe和scope已准备；开发不得读promotion正文/答案。校准素材结构验证不等于实际语义校准或headroom，F3未开始。若用户明确允许新Step最多12次许可，则先记录本次权限/hash，原CLI固定最多60实际send/无retry，只校准及baseline；原restore复用准备配置，原账本/频率/硬API限额/unknown保留，不清stop/换epoch/用旧余量。结束按真实证据更新同一Record/HANDOFF并停，不进F3、S11/G或main集成。**
+
+当前执行授权以acceptance§10.3为准：用户已明确“授权”，permission evidence `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`，authorized scope SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`；下一仅执行本次F2有限校准/基线，旧许可不复用、首个失败即停。
