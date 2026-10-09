@@ -266,10 +266,10 @@ try {
             if (retryPolicy.continuations.has(key)) { continuationRecord.sends++; persistContinuation(); }
         }
         try {
-            // Three funded attempts plus backoff must fit inside the original
-            // Route deadline. This signal also bounds response body consumption.
+            // F2 has no automatic retry: give its single attempt the original
+            // Route deadline rather than reserving time for three attempts.
             const connection = connections.find(c => c.config.model === model);
-            const attemptTimeout = Math.min(80000, Math.max(1000, Math.floor(connection.config.timeoutMs / 4)));
+            const attemptTimeout = f2Scope ? connection.config.timeoutMs : Math.min(80000, Math.max(1000, Math.floor(connection.config.timeoutMs / 4)));
             const response = await httpFetch(url, { ...options, dispatcher, signal: AbortSignal.any([options.signal, overall.signal, AbortSignal.timeout(attemptTimeout)]) });
             if (!response.ok) {
                 const code = 'm1_http_' + response.status;
@@ -437,7 +437,8 @@ try {
                     boundedCycle || f2Scope ? 'evaluation' : 'extraction');
                 activeTransportKeys.add(transportKey);
                 if (stepContinuation && config.model.remoteModelId === secondary.config.model && !retryPolicy.continuations.has(transportKey))
-                    retryPolicy.authorizeContinuation(transportKey, stepContinuation.evidenceHash, (f2Scope ? f2Scope.maxSecondarySends : 24) - continuationRecord.sends);
+                    retryPolicy.authorizeContinuation(transportKey, stepContinuation.evidenceHash, (f2Scope ? f2Scope.maxSecondarySends : 24) - continuationRecord.sends,
+                        { allowTransientRecovery: f2Scope?.recoverTransientAfterTimeoutFix === true });
                 const fundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});

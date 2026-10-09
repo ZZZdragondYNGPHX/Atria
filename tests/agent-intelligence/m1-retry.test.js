@@ -104,3 +104,14 @@ test.each(['m1_http_404', 'm1_http_503', 'm1_response_incomplete'])('any new Ste
     expect(policy.isStopped('step')).toBe(true);
     expect(() => policy.beginSend('step')).toThrow();
 });
+
+test('explicit bounded recovery after a timeout fix retains failed history and revokes on another failure', () => {
+    const policy = new M1RetryPolicy();
+    policy.observe('step', 'm1_http_404'); policy.observe('step'); policy.observe('step', 'm1_transport_failed');
+    const history = structuredClone(policy.state('step'));
+    expect(() => policy.authorizeContinuation('step', 'c'.repeat(64), 2)).toThrow('invalid_step_continuation');
+    policy.authorizeContinuation('step', 'c'.repeat(64), 2, { allowTransientRecovery: true });
+    expect(policy.state('step')).toEqual(history);
+    policy.beginSend('step'); policy.observe('step', 'm1_transport_failed');
+    expect(policy.isStopped('step')).toBe(true);
+});

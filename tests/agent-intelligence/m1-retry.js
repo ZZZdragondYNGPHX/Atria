@@ -38,9 +38,11 @@ export class M1RetryPolicy {
         const permit = this.continuations.get(key);
         if (reason && !(permit && !permit.revoked && permit.remaining > 0)) throw Object.assign(new Error(reason), { code: reason });
     }
-    authorizeContinuation(key, evidenceHash, remaining) {
+    authorizeContinuation(key, evidenceHash, remaining, { allowTransientRecovery = false } = {}) {
         const state = this.state(key);
-        if (state.stopped !== 'm1_http_404' || state.consecutive !== 0 || state.recent.at(-1) !== false
+        const healthy = state.consecutive === 0 && state.recent.at(-1) === false;
+        const boundedRecovery = allowTransientRecovery && state.consecutive > 0 && state.consecutive < 3 && state.recent.filter(Boolean).length < 6;
+        if (state.stopped !== 'm1_http_404' || !(healthy || boundedRecovery)
             || !/^[a-f0-9]{64}$/.test(evidenceHash) || !Number.isInteger(remaining) || remaining < 1 || remaining > 24
             || this.continuations.has(key)) throw new Error('invalid_step_continuation');
         this.continuations.set(key, { evidenceHash, remaining, revoked: false });
