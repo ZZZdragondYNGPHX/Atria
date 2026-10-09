@@ -66,8 +66,8 @@ export function assertAssessment(value, domain, origin, signal) {
 export function qualityEnvelope(domain, cases, split) {
     return { schemaVersion: 1, registryRevision: QUALITY_REVISION, domain, split,
         cases: cases.map(entry => ({ caseId: entry.caseId, caseRevision: entry.caseRevision,
-            profile: qualityRef('legacy.' + entry.caseId.replace(/_[dp]1$/, '')),
-            provenance: { origin: 'historical_synthetic', groupId: 'legacy:' + entry.caseId.replace(/_[dp]1$/, ''), independence: 'not_established' } })) };
+            profile: qualityRef(entry.profileId || 'legacy.' + entry.caseId.replace(/_[dp]1$/, '')),
+            provenance: entry.provenance ? structuredClone(entry.provenance) : { origin: 'historical_synthetic', groupId: 'legacy:' + entry.caseId.replace(/_[dp]1$/, ''), independence: 'not_established' } })) };
 }
 export function validateQualityReport(report) {
     const quality = report.quality;

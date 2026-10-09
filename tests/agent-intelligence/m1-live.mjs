@@ -20,6 +20,7 @@ import { createM1SecretPort } from './m1-secrets.js';
 import { m1TransportKey } from './m1-transport-key.js';
 import { m1GraderConfiguration, sendM1Grader, m1ExtractionConfiguration, sendM1Extraction, m1EvaluationConfiguration, sendM1Evaluation } from './m1-grader.js';
 import { assertM1PrivateAccess } from './m1-private-access.js';
+import { validateF2Scope, runF2Domain } from './m1-f2.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -35,7 +36,10 @@ const safeReason = error => /^[a-z_0-9]{1,100}$/.test(error?.code || error?.mess
 try {
     const temporarySecondary = option.length === 4 && option[3] === '--temporary-secondary';
     if (temporarySecondary) option.pop();
-    const prepareOnly = option.length === 3 && option[2] === '--prepare';
+    const f2Prepare = option.length === 3 && option[2].startsWith('--f2-prepare=');
+    const f2Name = option.length === 3 && (f2Prepare || option[2].startsWith('--f2=')) ? option[2].slice((f2Prepare ? '--f2-prepare=' : '--f2=').length) : null;
+    if (f2Name && !/^m1-f2-[a-z0-9-]+\.json$/.test(f2Name)) throw new Error('invalid_f2_scope_name');
+    const prepareOnly = option.length === 3 && option[2] === '--prepare' || f2Prepare;
     const resumeName = option.length === 3 && option[2].startsWith('--resume-project=') ? option[2].slice('--resume-project='.length) : null;
     const gradeName = option.length === 3 && option[2].startsWith('--grade-only=') ? option[2].slice('--grade-only='.length) : null;
     const diagnosticSource = option.length === 3 && option[2].startsWith('--diagnose-secondary=') ? option[2].slice('--diagnose-secondary='.length) : null;
@@ -53,10 +57,14 @@ try {
     const cycle = cycleBaseline || cycleOptimize || cycleAcceptance || cycleFinish || cycleProjectExtract || boundedCycle;
     const development = cycleBaseline || Boolean(cycleOptimize || cycleFinish || cycleBoundedOptimize);
     if (temporarySecondary && !gradeName) throw new Error('temporary_secondary_grading_only');
-    if (!(option.length === 2 || prepareOnly || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
+    if (!(option.length === 2 || prepareOnly || f2Name || diagnoseOnly || option[2] === '--cycle-baseline' || (resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize) && /^run-[0-9]+-[a-f0-9]{8}$/.test(resumeName || gradeName || cycleOptimize || cycleAcceptance || cycleBaselineProject || cycleFinish || cycleProjectExtract || cycleBoundedOptimize)) || option[0] !== '--directory') throw new Error('explicit_private_directory_required');
     const directory = fs.realpathSync(option[1]);
     assertM1PrivateAccess(directory, 0o700);
     const read = name => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
+    const f2Scope = f2Name ? read(f2Name) : null;
+    if (f2Scope && !/^m1-f2-[a-z0-9-]+\.json$/.test(f2Scope.controlFile)) throw new Error('invalid_f2_control_name');
+    const f2Controls = f2Scope ? read(f2Scope.controlFile) : null;
+    if (f2Scope && !prepareOnly && f2Scope.stepPermission?.explicitAuthorization !== true) throw new Error('f2_step_permission_required');
     const limits = read('m1-limits.json');
     if (limits.maxRequests !== 512 || limits.maxTotalTokens !== 1699536) throw new Error('frozen_recovery_limits_required');
     const ledgerPath = path.join(directory, 'm1-ledger.json');
@@ -105,13 +113,14 @@ try {
     });
     if (connections[0].config.model === connections[1].config.model) throw new Error('different_model_identifier_required');
     const testedHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'm1-grader.js', 'm1-private-access.js', 'evolution-fixture.js', 'live-bridge.js'];
+    const sourceFiles = ['budget.js', 'm1-live.mjs', 'm1-f2.js', 'm1-acceptance.js', 'm1-retry.js', 'm1-quota.js', 'm1-response.js', 'm1-resume.js', 'm1-secrets.js', 'm1-transport-key.js', 'm1-grader.js', 'm1-private-access.js', 'evolution-fixture.js', 'live-bridge.js'];
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
         policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged', temporarySecondary };
     store('summary.json', summary);
+    if (f2Scope) { validateF2Scope(f2Scope, f2Controls, summary, prepareOnly); summary.mode = 'f2_source_calibration'; summary.f2ScopeHash = hash(f2Scope); }
     if (cycle) summary.mode = development ? cycleBaseline ? 'cycle_baseline_development' : 'cycle_optimized_development' : 'cycle_frozen_acceptance';
     if (boundedCycle) summary.envelope = 'cycle-output-8000-v1';
     if (cycleBaselineProject) {
@@ -237,11 +246,18 @@ try {
         continuationRecord[stepContinuation.phase] = path.basename(output);
         persistContinuation();
     }
+    if (f2Scope && !prepareOnly) {
+        stepContinuation = { evidenceHash: f2Scope.stepPermission.evidenceHash, phase: 'f2', scopeHash: hash(f2Scope) };
+        continuationPath = path.join(directory, f2Name.replace('.json', '-claim.json'));
+        if (fs.existsSync(continuationPath)) throw new Error('f2_scope_already_claimed');
+        continuationRecord = { evidenceHash: stepContinuation.evidenceHash, run: path.basename(output), sends: 0, failed: null };
+        persistContinuation();
+    }
     const activeTransportKeys = new Set();
     const transport = async (url, options) => {
         const body = JSON.parse(options.body), model = body.model, key = m1TransportKey(url, model, transportEpochs,
-            (cycleProjectExtract || boundedCycle) && model === connections[0].config.model && body.max_tokens === 8000 ? 8000 : null,
-            boundedCycle ? 'evaluation' : 'extraction');
+            (cycleProjectExtract || boundedCycle || f2Scope) && model === connections[0].config.model && body.max_tokens === 8000 ? 8000 : null,
+            boundedCycle || f2Scope ? 'evaluation' : 'extraction');
         if (!diagnoseOnly) {
             retryPolicy.beginSend(key);
             if (retryPolicy.continuations.has(key)) { continuationRecord.sends++; persistContinuation(); }
@@ -271,7 +287,7 @@ try {
     // Reuse the already paid RP proposal; do not learn from promotion outputs.
     let frozenRp;
     const reportRoot = path.join(directory, 'm1-reports');
-    for (const name of cycle ? [] : fs.readdirSync(reportRoot).filter(n => n.startsWith('run-')).sort().reverse()) {
+    for (const name of cycle || f2Scope ? [] : fs.readdirSync(reportRoot).filter(n => n.startsWith('run-')).sort().reverse()) {
         const prior = path.join(reportRoot, name), jobFile = path.join(prior, 'rp-skill-job.json');
         if (!fs.existsSync(jobFile)) continue;
         const source = JSON.parse(fs.readFileSync(path.join(prior, 'summary.json'), 'utf8'));
@@ -309,9 +325,9 @@ try {
             const f = gradeSource ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(gradeSource.previous, kind + '-private-fixture'), gradeSource.results[kind],
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, requireCurrentPublication: false }) : resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository }) : await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
-                connectionConfig: boundedCycle ? { ...primary.config, maxOutputTokens: 8000 } : primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository,
-                configureEvaluator: boundedCycle ? evaluator => { evaluator.configuration = (handle, routeId, promptRef = null) => m1EvaluationConfiguration(evaluator.host, handle, routeId, promptRef); } : undefined }); scratch = f.h;
-            if (boundedCycle) f.evaluator.configuration = (handle, routeId, promptRef = null) => m1EvaluationConfiguration(f.host, handle, routeId, promptRef);
+                connectionConfig: boundedCycle || f2Scope ? { ...primary.config, maxOutputTokens: 8000 } : primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository,
+                configureEvaluator: boundedCycle || f2Scope ? evaluator => { evaluator.configuration = (handle, routeId, promptRef = null) => m1EvaluationConfiguration(evaluator.host, handle, routeId, promptRef); } : undefined }); scratch = f.h;
+            if (boundedCycle || f2Scope) f.evaluator.configuration = (handle, routeId, promptRef = null) => m1EvaluationConfiguration(f.host, handle, routeId, promptRef);
             if (cycleBaseline || cycleAcceptance) {
                 const previous = cycleBaseline ? path.join(reportRoot, 'run-1791467157643-006f217f') : cycleSource.previous;
                 // Read only immutable proposals here, never old promotion outputs.
@@ -375,7 +391,7 @@ try {
             const owner = await f.repository.owner(f.h.handle);
             await f.service.budget(f.h.handle, { expectedSequence: owner.sequence, limits: { maxRequests: 260, maxTokens: 699536, minIntervalMs: 3150 } });
             const secondary = connections[1];
-            if (!resumed) await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: boundedCycle ? { ...secondary.config, maxOutputTokens: Math.min(8000, secondary.config.maxOutputTokens) } : secondary.config,
+            if (!resumed) await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: boundedCycle || f2Scope ? { ...secondary.config, maxOutputTokens: Math.min(8000, secondary.config.maxOutputTokens) } : secondary.config,
                 secretPort: { resolveSecret: async () => 'seed_only' }, fetchImpl: async () => { throw new Error('seed_send_forbidden'); } });
             const routes = await f.host.persistence.listRuntimeRoutes(f.h.handle);
             const secondaryRoutes = [];
@@ -385,7 +401,7 @@ try {
             }
             if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
             const secondaryRoute = secondaryRoutes[0];
-            const extendedGrader = (gradeSource || cycle || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
+            const extendedGrader = (gradeSource || cycle || f2Scope || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
             const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId, 8000)
                 : await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
             entry.secondaryConfigurationHash = hash(secondaryConfig);
@@ -396,6 +412,9 @@ try {
             let packet = null;
             f.evaluator.repository.reserve = async (handle, attempt) => {
                 if (!packet || attempt.upperBound !== packet.inputTokens + packet.outputTokens) throw new Error('send_reservation_mismatch');
+                if (f2Scope && budget.snapshot().requests - snapshot.requests >= f2Scope.maxSends) throw new Error('f2_send_scope_exhausted');
+                if (f2Scope) store(kind + '-f2-request-' + attempt.id + '.json', { attempt, rendered: packet.rendered,
+                    requestHash: packet.requestHash, snapshotHash: packet.snapshotHash, inputTokens: packet.inputTokens, outputTokens: packet.outputTokens });
                 quota.assertAvailable();
                 if (budget.reserve({ requestId: attempt.id, trialId: attempt.trialId, inputTokens: packet.inputTokens,
                     reservedOutput: packet.outputTokens, kind: packet.retryAttempt ? 'retry' : attempt.kind === 'judge' ? 'grader' : 'model' }).status !== 'passed') throw new Error('recovered_budget_blocked');
@@ -407,18 +426,18 @@ try {
             const send = f.evaluator.send.bind(f.evaluator);
             f.evaluator.send = async (handle, job, config, payload, signal, fresh) => {
                 const transportKey = m1TransportKey(payload.rendered.endpoint, payload.rendered.body.model, transportEpochs,
-                    (cycleProjectExtract || boundedCycle) && config.model.remoteModelId === primary.config.model && payload.outputTokens === 8000 ? 8000 : null,
-                    boundedCycle ? 'evaluation' : 'extraction');
+                    (cycleProjectExtract || boundedCycle || f2Scope) && config.model.remoteModelId === primary.config.model && payload.outputTokens === 8000 ? 8000 : null,
+                    boundedCycle || f2Scope ? 'evaluation' : 'extraction');
                 activeTransportKeys.add(transportKey);
                 if (stepContinuation && config.model.remoteModelId === secondary.config.model && !retryPolicy.continuations.has(transportKey))
-                    retryPolicy.authorizeContinuation(transportKey, stepContinuation.evidenceHash, 24 - continuationRecord.sends);
+                    retryPolicy.authorizeContinuation(transportKey, stepContinuation.evidenceHash, (f2Scope ? f2Scope.maxSecondarySends : 24) - continuationRecord.sends);
                 const fundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
                     packet = { ...payload, retryAttempt };
                     const restoreSecret = secrets.select(config.model.remoteModelId);
                     try {
-                        const result = boundedCycle && config.model.remoteModelId === primary.config.model
+                        const result = (boundedCycle || f2Scope) && config.model.remoteModelId === primary.config.model
                             ? await sendM1Evaluation(f.evaluator, handle, { ...job, m1Envelope: 'cycle-output-8000-v1' }, config, payload, signal, fresh)
                             : cycleProjectExtract && payload.arm === 'extraction'
                                 ? await sendM1Extraction(f.evaluator, handle, job, config, payload, signal, fresh)
@@ -446,14 +465,16 @@ try {
                     finally { restoreSecret(); packet = null;
                         const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
                 };
-                return diagnoseOnly ? fundedAttempt(0) : retryPolicy.send(transportKey, fundedAttempt, AbortSignal.any([signal, overall.signal]));
+                return diagnoseOnly || f2Scope ? fundedAttempt(0) : retryPolicy.send(transportKey, fundedAttempt, AbortSignal.any([signal, overall.signal]));
             };
             const compare = f.evaluator.compare.bind(f.evaluator);
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
                 async pair => { store(kind + '-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', { pair, observedAt: Date.now() }); console.log(JSON.stringify({ kind, case: pair.case.caseId, repetition: pair.repetition, primaryPreference: pair.judge.preference })); },
                 async trial => { store(kind + '-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial); },
                 development ? { split: 'development', repetitions: 1, ...(cycleFinish && kind === 'rp-skill' ? { caseIds: ['rp_variant_d1'] } : {}) } : { split: 'promotion', repetitions: 3 });
-            if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig); continue; }
+            if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig);
+                if (f2Scope) entry.baselineSettingsHash = hash(await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target)); continue; }
+            if (f2Scope) { await runF2Domain({ f, kind, primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), secondaryConfig, controls: f2Controls, scope: f2Scope, entry, store, signal: overall.signal }); continue; }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';
                 let messages = [{ role: 'user', content: 'Return JSON only: {"ok":true}' }];
@@ -609,9 +630,9 @@ try {
             store('summary.json', summary);
             console.log(JSON.stringify({ kind, status: entry.status, reason: entry.reason || null, acceptance: entry.acceptance || null }));
         }
-        if ([...activeTransportKeys].some(key => retryPolicy.isStopped(key)) && !entry.acceptance) break;
+        if (f2Scope && entry.status === 'unavailable' || [...activeTransportKeys].some(key => retryPolicy.isStopped(key)) && !entry.acceptance) break;
     }
-    if (!prepareOnly && !summary.accepted) process.exitCode = 1;
+    if (!prepareOnly && !summary.accepted && !(f2Scope && summary.entries.length === 2 && summary.entries.every(e => e.status === 'f2_sources_observed'))) process.exitCode = 1;
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));
 } catch (error) { console.error('M1 live acceptance:', safeReason(error)); process.exitCode = 1; }
 finally {

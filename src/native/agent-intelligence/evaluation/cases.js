@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { DEVELOPMENT_SOURCES, PROMOTION_SOURCE_PINS } from './pilot-sources.js';
+import { QUALITY_PROFILES } from './quality.js';
 
 export function canonical(value) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -46,7 +48,7 @@ export function makeCase(family, split) {
     return { ...entry, caseRevision: hash(entry) };
 }
 export function validateCase(entry) {
-    const expected = Object.keys(families).flatMap(family => ['development', 'promotion'].map(split => makeCase(family, split))).find(item => item.caseId === entry?.caseId);
+    const expected = [...CASES, ...PILOT_CASES].find(item => item.caseId === entry?.caseId);
     if (!expected || canonical(entry) !== canonical(expected)) throw new Error('Case identity/revision/schema drift');
     return entry;
 }
@@ -57,21 +59,64 @@ function freezeTree(value) {
 export const CASES = freezeTree(Object.keys(families).flatMap(family => ['development', 'promotion'].map(split => makeCase(family, split))));
 export const CASE_SET_REVISION = hash(CASES);
 
+const pilotCase = source => {
+    const profileId = source.domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
+    const entry = { schemaVersion: 2, caseId: (source.domain === 'rp' ? 'rp_variant_' : 'project_repair_') + source.sourceId,
+        entrance: source.domain, split: source.split, profileId, sourceId: source.sourceId,
+        fixtureRef: 'synthetic:f2:' + source.sourceId, fixtureHash: source.fixtureHash || hash(source.fixture), inputHash: source.inputHash || hash(source.fixture.input),
+        rubricRevision: hash(PILOT_RUBRIC), requiredCapabilities: source.domain === 'rp' ? ['director', 'takeover', 'abort'] : ['studio_agent', 'project_authority'],
+        limits: { maxRequests: 6, maxRepairRounds: 2 }, behaviorDimensions: [...QUALITY_PROFILES[profileId].criticalDimensions],
+        expectedInvariants: source.domain === 'rp' ? ['player_ownership', 'single_completion', 'request_exposure', 'revision_reference', 'stale_completion', 'variant_identity']
+            : ['ownership', 'review_gate', 'validation_error', 'repair_bound', 'human_revision', 'no_silent_rebase', 'related_proposal', 'preservation'],
+        provenance: { origin: source.origin, groupId: source.rootGroup, templateGroup: source.templateGroup, derivedFrom: [...source.derivedFrom], independence: 'isolated_synthetic' },
+        ...(source.domain === 'rp' ? { requestLimitUnit: 'actual_provider_send', injectedChallenges: 1 } : {}) };
+    return { ...entry, caseRevision: hash(entry) };
+};
+export const PILOT_RUBRIC = freezeTree({
+    player_agency: 'Only supplied player actions, decisions and sensations are facts; NPC action may advance while leaving player choice open.',
+    promise_application: 'Apply the latest exposed promise revision; an appointment time is not evidence of current time.',
+    knowledge_boundary: 'Use exposed facts only; distinguish inference and retain unknown current or private information.',
+    continuity: 'Apply current scene and variant facts; superseded facts and stale deliveries cannot replace them.',
+    actor_voice: 'Observable scene-specific NPC diction and response, without claims of general human aesthetic preference.',
+    narrative_response: 'Address the actual player input with an actionable in-world continuation and preserve player choice.',
+    intent_completion: 'The staged proposal meets the requested bounded goal; formal conflict is not a commit or a reason to discard the valid proposal.',
+    conflict_handling: 'Recognize the exposed prior Task conflict, preserve its old base and the actual human revision, and distinguish the explicitly created fresh Task from rebasing or committing the prior Task.',
+    repair_quality: 'Correct the actual missing-reference diagnostic within the original repair bound without deleting unrelated content.',
+    related_completion: 'All requested dependency and primary-selection fields are consistent in the validated proposed source.',
+    preservation: 'Out-of-scope proposed fields and resources are unchanged; current human source remains protected.',
+    status_accuracy: 'Statements match recorded validation, review and conflict; a proposal is uncommitted and receipt claims need actual receipts.',
+    missingEvidence: 'unknown; never zero, tie, or post-hoc NA',
+});
+export const PILOT_CASES = freezeTree([...DEVELOPMENT_SOURCES, ...PROMOTION_SOURCE_PINS].map(pilotCase));
+export const PILOT_CASE_SET_REVISION = hash(PILOT_CASES);
+
 // Extraction sees development only. Evaluation must explicitly select a split;
 // no consumer is handed a mixed corpus by default.
-export function selectCases({ purpose, split }) {
+export function selectCases({ purpose, split, profileId = null }) {
     if (!['extraction', 'evaluation'].includes(purpose) || !['development', 'promotion'].includes(split)) throw new Error('Explicit purpose/split required');
     if (purpose === 'extraction' && split !== 'development') throw new Error('Promotion split is evaluator-only');
-    return CASES.filter(entry => entry.split === split);
+    if (profileId && !['rp.m1.information', 'project.m1.related'].includes(profileId)) throw new Error('Unknown pilot profile');
+    return (profileId ? PILOT_CASES : CASES).filter(entry => entry.split === split && (!profileId || entry.profileId === profileId));
 }
-export function loadFixture(entry, { purpose }) {
+export function loadFixture(entry, { purpose, sealedSource = null }) {
     validateCase(entry);
-    selectCases({ purpose, split: entry.split });
+    selectCases({ purpose, split: entry.split, profileId: entry.profileId });
+    if (entry.profileId) {
+        const source = DEVELOPMENT_SOURCES.find(item => item.sourceId === entry.sourceId) || sealedSource;
+        if (!source || source.sourceId !== entry.sourceId || source.domain !== entry.entrance || source.split !== entry.split
+            || source.origin !== entry.provenance.origin || source.rootGroup !== entry.provenance.groupId || source.templateGroup !== entry.provenance.templateGroup
+            || canonical(source.derivedFrom) !== canonical(entry.provenance.derivedFrom)
+            || hash(source.fixture) !== entry.fixtureHash || hash(source.fixture.input) !== entry.inputHash) throw new Error('source_unready');
+        return structuredClone(source.fixture);
+    }
     return fixture(entry.caseId.replace(/_[dp]1$/, ''), entry.split === 'promotion');
 }
 
-export function publicCaseScenario(entry) {
-    const value = loadFixture(entry, { purpose: 'evaluation' });
+export function publicCaseScenario(entry, options = {}) {
+    const value = loadFixture(entry, { purpose: 'evaluation', ...options });
+    if (entry.profileId) return { input: value.input, actor: value.actor, visibleMemory: value.memory.visible,
+        rubric: Object.fromEntries(entry.behaviorDimensions.map(d => [d, PILOT_RUBRIC[d]])), missingEvidence: PILOT_RUBRIC.missingEvidence,
+        ...(entry.entrance === 'project' ? { environment: 'A reviewed prior Task has an actual stale-base conflict after a human changes unrelated metadata. The original commit authority rejected before any intent or write. The host explicitly creates a fresh Task at the human revision and supplies public conflict evidence plus a real missing-binding diagnostic. The model must preserve human metadata, recognize the prior conflict, repair the bounded dependencies and accurately describe the uncommitted fresh Review proposal. No model commit or automatic rebase is allowed.' } : {}) };
     return { input: value.input, actor: value.actor, visibleMemory: value.memory.visible,
         ...(entry.entrance === 'project' ? { environment: entry.caseId.startsWith('project_conflict') ? 'A human changes the base revision before review; the model must respect the conflict.'
             : entry.caseId.startsWith('project_repair') ? 'An invalid staged proposal has already failed validation; recovery must stay within two repair rounds.'

@@ -35,15 +35,18 @@ process.on('message', async message => {
         const { selectCases, loadFixture, publicCaseScenario, hash, canonical } = await import('./cases.js');
         const { createFrozenEvaluationBridge } = await import('./worker-bridge.js');
         const selection = message.selection || { split: 'promotion', repetitions: 3 };
+        const sourceProbe = selection.mode === 'source_probe';
+        if (selection.mode && !sourceProbe || sourceProbe && (!selection.profileId || selection.split !== 'development' || selection.repetitions !== 1)) throw new Error('invalid_source_probe');
         if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new Error('invalid_evaluation_selection');
-        const available = selectCases({ purpose: 'evaluation', split: selection.split }).filter(c => c.entrance === message.domain);
+        const available = selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId }).filter(c => c.entrance === message.domain);
+        if (sourceProbe && available.length !== 3) throw new Error('source_unready');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !available.some(c => c.caseId === id)))) throw new Error('invalid_development_selection');
         const entries = selection.caseIds ? available.filter(c => selection.caseIds.includes(c.caseId)) : available;
         const pairs = [];
         for (const entry of entries) for (let repetition = 1; repetition <= selection.repetitions; repetition++) {
             const pair = { case: entry, scenario: publicCaseScenario(entry), repetition, baseline: null, candidate: null, judge: null, human: null };
-            for (const arm of ['baseline', 'candidate']) {
+            for (const arm of sourceProbe ? ['baseline'] : ['baseline', 'candidate']) {
                 const config = message.configs[arm], bridge = await createFrozenEvaluationBridge(config, payload => rpc({ ...payload, arm }));
                 const capture = { trialId: `${message.jobId}:${entry.caseId}:${repetition}:${arm}`, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
                     prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
@@ -53,9 +56,14 @@ process.on('message', async message => {
                 let error = null;
                 try { await (message.domain === 'rp' ? runRp : runProject)(entry, loadFixture(entry, { purpose: 'evaluation' }), capture, { bridge, settings, beforeSend: () => {} }); } catch (e) { error = /^[a-z_]{1,100}$/.test(e.code || '') ? e.code : 'evaluation_runtime_failed'; } finally { bridge.cleanup(); globalThis.Atria = { getContext: emptyContext }; }
                 pair[arm] = { trialId: capture.trialId, configurationHash: hash(config), settingsHash: hash(message.settings[arm]), output: capture.artifact?.output || '',
-                    checks: { ...capture.checks, target_consumed: capture.artifact?.targetConsumed === true }, refs: capture.refs, evidence: capture.evidence, error, repairCount: capture.repairCount, requestHashes: capture.prompts.map(hash) };
+                    checks: { ...capture.checks, target_consumed: capture.artifact?.targetConsumed === true }, refs: capture.refs, evidence: capture.evidence, error, repairCount: capture.repairCount, requestHashes: capture.prompts.map(hash),
+                    ...(sourceProbe ? { completeness: capture.completeness, semanticAssessment: 'not_run' } : {}) };
                 process.send({ type: 'trial', caseId: entry.caseId, repetition, arm, trial: pair[arm] });
                 if (error) throw Object.assign(new Error(error), { code: error });
+            }
+            if (sourceProbe) {
+                pair.pairHash = hash({ ...pair, human: null }); pairs.push(pair);
+                process.send({ type: 'pair', pair }); continue;
             }
             const flipped = parseInt(hash([entry.caseRevision, repetition]).slice(0, 2), 16) % 2 === 1;
             const judgeBridge = await createFrozenEvaluationBridge(message.configs.baseline, payload => rpc({ ...payload, arm: 'judge' }));
