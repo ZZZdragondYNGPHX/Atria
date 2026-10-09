@@ -3,6 +3,7 @@ import { evolutionFixture, runEvolution, testConfig } from './evolution-fixture.
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { m1EvaluationConfiguration, sendM1Evaluation } from './m1-grader.js';
 import { EvolutionEvaluator } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { validateQualityReport } from '../../src/native/agent-intelligence/evaluation/quality.js';
 
 test.each([false, true])('the original worker completes only a missing development case and rejects filtered promotion, bounded=%s', async bounded => {
     let sends = 0;
@@ -32,6 +33,8 @@ test.each([false, true])('the original worker completes only a missing developme
         f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh, undefined, undefined,
             { split: 'development', repetitions: 1, caseIds: ['rp_variant_d1'] });
         const { candidate } = await runEvolution(f);
+        expect(candidate.report.schemaVersion).toBe(2);
+        expect(validateQualityReport(candidate.report).cases).toMatchObject([{ caseId: 'rp_variant_d1', provenance: { origin: 'historical_synthetic', independence: 'not_established' } }]);
         expect(candidate.report.pairs.map(p => p.case.caseId)).toEqual(['rp_variant_d1']);
         expect(candidate.report.pairs[0].baseline.checks.stale_completion).toBe(true);
         expect(candidate.report.pairs[0].candidate.checks.variant_identity).toBe(true);

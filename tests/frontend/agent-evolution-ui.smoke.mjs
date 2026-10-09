@@ -30,7 +30,13 @@ try {
                 window.calls.push({ entrance, group, action, value });
                 if (group === 'experience') {
                     if (action === 'target') return { subject: entrance, target: { kind: 'source', id: entrance } };
-                    if (action === 'submit') { experience = { sequence: 1, retentionDays: 30, feedback: [{ id: 'feedback', signal: value.feedback.signal, status: 'active', applicability: 'current', kind: 'explicit', note: value.feedback.note, source: { id: entrance } }] }; return experience; }
+                    if (action === 'submit') { experience = { sequence: 1, retentionDays: 30, feedback: [{ id: 'feedback', signal: value.feedback.signal, status: 'active', applicability: 'current', kind: 'explicit', origin: 'user', note: value.feedback.note, source: { id: entrance } }] }; return experience; }
+                    if (action === 'collect') {
+                        if (entrance === 'project') return { status: 'collection_unavailable', modelCalls: 0 };
+                        experience.feedback.push({ id: 'analysis', kind: 'assessment', signal: 'suspected_failure', origin: 'model_assessment', status: 'active', applicability: 'current', note: 'A hypothesis',
+                            source: { id: entrance }, assessment: { purpose: 'development', claims: [{ quote: '<img src=x onerror="window.injected=true">' }] } });
+                        return { status: 'collected', modelCalls: 0 };
+                    }
                     if (action === 'deleteScope') { experience = null; return { deleted: true }; }
                     return experience;
                 }
@@ -49,6 +55,15 @@ try {
         const pane = page.locator('#' + entrance); await pane.getByText('Feedback and local evolution', { exact: true }).click();
         await pane.getByLabel('Public note').fill('<img src=x onerror="window.injected=true"> Preserve my choice.'); await pane.getByRole('button', { name: 'Save feedback', exact: true }).click();
         await pane.getByText('correction · active · current', { exact: true }).waitFor(); assert.equal(await page.evaluate(() => window.injected), undefined);
+        await pane.getByText('correction · active · current', { exact: true }).click(); await pane.getByText('Source: user', { exact: true }).waitFor();
+        await pane.getByRole('button', { name: 'Collect saved result', exact: true }).click();
+        if (entrance === 'rp') {
+            await pane.getByText('suspected_failure · active · current', { exact: true }).click();
+            await pane.getByText('Source: model_assessment', { exact: true }).waitFor();
+            assert.equal(await page.evaluate(() => window.injected), undefined);
+        } else {
+            await pane.getByText('Saved-result feedback is unavailable (collection_unavailable).', { exact: true }).waitFor();
+        }
         await pane.getByText('Shared account budget', { exact: true }).click(); await pane.getByLabel('Total request limit').fill('40'); await pane.getByLabel('Total token limit').fill('100000');
         await pane.getByRole('button', { name: 'Save budget', exact: true }).click();
         await pane.getByText('Choose a local target and policy', { exact: true }).click(); await pane.getByRole('button', { name: 'Load available targets', exact: true }).click();
@@ -62,5 +77,5 @@ try {
     assert.equal(calls.filter(c => c.action === 'configure').length, 2); assert.ok(calls.filter(c => c.action === 'configure').every(c => c.value.mode === 'review' && c.value.price === null));
     assert.equal(calls.filter(c => c.action === 'publish').length, 0); assert.deepEqual(errors, []);
     await page.evaluate(() => window.disposers.forEach(fn => fn())); assert.equal(await page.locator('.atria-agent-evolution').count(), 0);
-    console.log('Evolution browser pane: RP + Project feedback, budget, default review, finite job, pause, delete and escaped text passed');
+    console.log('Evolution browser pane: RP + Project provenance, collection/unavailable, escaped analysis, budget, review, finite job, pause and delete passed');
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

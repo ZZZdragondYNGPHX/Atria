@@ -5,6 +5,7 @@ import { parseBlindGrade, automatedAcceptance, developmentReadiness } from './m1
 import { selectCases } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
+import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 
 function fundedReport() {
     const report = syntheticReport({ id: 'm1', domain: 'rp', price: null }, { baseline: {}, candidate: {} }, { baseline: {}, candidate: {} });
@@ -50,6 +51,14 @@ test('automated engineering acceptance never fills human labels or grants produc
     expect(JSON.stringify(f.report)).toBe(before);
     expect(promotionDecision(f.report).eligible).toBe(false);
     expect(f.report.pairs.every(p => p.human === null)).toBe(true);
+});
+
+test('new report consumers reject legacy source independence and cannot silently omit required quality grades', () => {
+    const f = fundedReport(); f.report.schemaVersion = 2;
+    f.report.quality = qualityEnvelope('rp', selectCases({ purpose: 'evaluation', split: 'promotion' }).filter(c => c.entrance === 'rp'), 'promotion');
+    expect(automatedAcceptance(f.report, f.independent, f.owner, 'm1').reasons).toContain('source_unready');
+    delete f.report.pairs[0].judge.deltas.player_agency;
+    expect(automatedAcceptance(f.report, f.independent, f.owner, 'm1').reasons).toContain('quality_ungraded_or_changed');
 });
 
 test('missing independent model, disagreement and unaccounted usage remain acceptance failures', () => {

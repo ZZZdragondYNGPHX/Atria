@@ -65,9 +65,16 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
             const selected = await request('experience', 'target', { kind: sourceKind, id: sourceId, scope });
             await request('experience', 'submit', { target: selected.target, feedback: feedbackValue(signal.value, note.value), expectedSequence: experience?.sequence ?? null });
         }, feedback);
+        button('Collect saved result', async () => {
+            const result = await request('experience', 'collect', { kind: sourceKind, id: sourceId, scope });
+            if (!['collected', 'already_collected'].includes(result.status)) throw new Error('Saved-result feedback is unavailable (' + result.status + ').');
+        }, feedback);
+        if (!experience?.collections?.some(marker => marker.sourceId === sourceId)) el('p', 'Saved-result collection has not been confirmed for this source.', feedback);
         for (const f of experience?.feedback || []) {
             const row = el('details', undefined, feedback); el('summary', f.signal + ' · ' + f.status + ' · ' + f.applicability, row);
             el('p', f.note, row); json('Exact source', f.source, row);
+            el('p', 'Source: ' + (f.origin || 'unknown'), row);
+            if (f.assessment) json('Quality hypothesis and evidence', f.assessment, row);
             const corrected = input('Correct note', 'textarea', row, f.note);
             if (f.kind === 'explicit') button('Correct', () => request('experience', 'correct', { ...identity, id: f.id, expectedSequence: experience.sequence, feedback: feedbackValue(f.signal, corrected.value) }), row, f.status !== 'active');
             for (const action of ['withdraw', 'delete']) button(action === 'withdraw' ? 'Withdraw feedback' : 'Delete feedback', () => request('experience', action, { ...identity, id: f.id, expectedSequence: experience.sequence }), row);

@@ -1,6 +1,7 @@
 import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { CASE_SET_REVISION, selectCases } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { validateQualityReport, qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 
 // This is the approved M1 engineering acceptance, never production eligibility.
@@ -26,7 +27,14 @@ export function developmentReadiness(report, independent, owner, jobId) {
 function evaluateAcceptance(report, independent, owner, jobId, tokensAdvisory, development) {
     const reasons = [], required = selectCases({ purpose: 'evaluation', split: development ? 'development' : 'promotion' }).filter(c => c.entrance === report?.domain);
     let wins = 0, baselineTokens = 0, candidateTokens = 0;
-    if (report?.origin !== 'host_evaluator' || report.evaluatorRevision !== evolutionEvaluatorRevision() || report.caseSetRevision !== CASE_SET_REVISION) reasons.push('evaluation_identity_changed');
+    if (report?.origin !== 'host_evaluator' || ![1, 2].includes(report.schemaVersion) || report.evaluatorRevision !== evolutionEvaluatorRevision() || report.caseSetRevision !== CASE_SET_REVISION) reasons.push('evaluation_identity_changed');
+    if (report?.schemaVersion === 2) {
+        try {
+            validateQualityReport(report);
+            if (hash(report.quality) !== hash(qualityEnvelope(report.domain, required, development ? 'development' : 'promotion'))) reasons.push('quality_envelope_changed');
+            if (report.quality.cases.some(c => c.provenance.independence !== 'established')) reasons.push('source_unready');
+        } catch { reasons.push('quality_ungraded_or_changed'); }
+    }
     if (report?.pairs?.length !== (development ? 3 : 9) || required.some(c => (development ? [1] : [1, 2, 3]).some(r => report?.pairs?.filter(p => p.case.caseId === c.caseId && p.repetition === r).length !== 1))) reasons.push('independent_cases_incomplete');
     const seen = new Set();
     for (const c of report?.charges || []) {

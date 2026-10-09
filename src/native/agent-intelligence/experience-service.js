@@ -5,9 +5,11 @@ import { isReadOnly, assertWritable } from '../../storage/read-only-mode.js';
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument, cloneNativeDocument } from '../repositories/common.js';
 import { AgentEvidenceRepository } from './evidence-repository.js';
-import { AgentExperienceRepository, DAY, assertFeedbackInput, pruneExperience, removeFeedback } from './experience-repository.js';
+import { AgentExperienceRepository, DAY, assertFeedbackInput, pruneExperience, removeFeedback, experienceIdentity } from './experience-repository.js';
 import { AgentEvidenceService } from './evidence-service.js';
 import { assertEvidenceScope, fields, text } from './contracts.js';
+import { AgentEvolutionRepository } from './evolution-repository.js';
+import { assertAssessment, assertAttribution, legacyAttribution, qualityProfile } from './evaluation/quality.js';
 
 const budget = { maxSources: 32, maxBytes: 131072, maxScanMessages: 8192 };
 const same = (a, b) => hashNativeDocument(a) === hashNativeDocument(b);
@@ -16,6 +18,8 @@ const sourceStatus = result => result?.status === 'current' ? 'current'
     : result?.checks?.some(check => check.status === 'missing') ? 'missing'
         : result?.checks?.some(check => ['stale', 'denied'].includes(check.status)) ? 'stale' : 'unavailable';
 const sequence = value => { if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new TypeError('Expected sequence required'); };
+export const supportsDirection = item => item.kind === 'explicit' || item.kind === 'technical' && ['failed', 'validation_failed'].includes(item.signal)
+    || item.kind === 'assessment' && item.origin === 'host_check' && item.signal === 'verified_failure';
 
 /** Public hypotheses and preferences only; source/config authorities stay upstream. */
 export class AgentExperienceService {
@@ -93,6 +97,11 @@ export class AgentExperienceService {
         for (const item of result.feedback) {
             const status = validity.get(hashNativeDocument(item.source));
             if (item.status === 'active' && status === 'stale') item.status = 'stale';
+            if (item.status === 'active' && item.kind === 'assessment' && item.origin === 'host_check' && status === 'current') {
+                const current = await this._target(handle, { kind: item.source.kind, id: item.source.id, integrity: item.source.integrity, scope: doc.scope });
+                const state = current.document.validation?.status, expected = state === 'failed' ? 'verified_failure' : state === 'passed' ? 'no_failure' : 'unknown';
+                if (item.signal !== expected) item.status = 'stale';
+            }
         }
         const usable = item => item.status === 'active' && validity.get(hashNativeDocument(item.source)) === 'current';
         for (const diagnosis of result.diagnoses) {
@@ -140,6 +149,74 @@ export class AgentExperienceService {
         if (target.source.kind === 'evidence' && target.document.origin !== 'host') throw new TypeError('Host outcome required');
         return this._append(handle, input.expectedSequence, target, { kind: 'technical', signal: target.signal, dimension: 'correctness', note: '' });
     }
+    // Explicit exact-source reconcile and normal terminal hooks share this port.
+    // No signals, origins, conclusions or model instructions come from clients.
+    async collect(handle, input) {
+        const selected = await this.target(handle, input), target = await this._target(handle, selected.target);
+        if (isReadOnly()) return { status: 'read_only', modelCalls: 0 };
+        if (!target.current) return { status: 'collection_unavailable', modelCalls: 0 };
+        const client = target.source.kind === 'evidence' && target.document.origin === 'client_observation';
+        if (client && (target.document.status !== 'completed' || !target.document.outputRef)
+            || !client && target.signal === 'unknown') return { status: 'not_ready', modelCalls: 0 };
+        const signal = client ? 'completed' : target.signal;
+        const sourceHash = hashNativeDocument(target.source.sources?.references ?? target.source);
+        const identity = { kind: target.source.kind, sourceId: target.source.id, sourceHash, signal }, id = hashNativeDocument(identity);
+        const previous = await this.repository.get(handle, target.scope, target.subject);
+        if (previous?.collections?.some(m => m.id === id)) return { status: 'already_collected', modelCalls: 0 };
+        // Even a first v2 collection must not re-create a withdrawn v1 event.
+        if (previous?.feedback.some(f => f.source.kind === identity.kind && f.source.id === identity.sourceId && f.signal === signal
+            && hashNativeDocument(f.source.sources?.references ?? f.source) === sourceHash)) return { status: 'already_collected', modelCalls: 0 };
+        const now = this.now();
+        await this.repository.mutate(handle, target.scope, target.subject, previous?.sequence ?? null, async doc => {
+            if (await this._valid(handle, target.scope, target.source) !== 'current') throw new ConflictError('agent_collection_source_changed');
+            doc.schemaVersion = 2; doc.collections ??= [];
+            for (const diagnosis of doc.diagnoses) diagnosis.attribution ??= legacyAttribution(diagnosis.direction);
+            if (doc.collections.some(m => m.id === id)) return;
+            doc.collections.push({ id, ...identity, createdAt: now });
+            doc.feedback.push({ id: 'feedback_' + randomUUID(), revision: 0, kind: client ? 'observation' : 'technical', signal,
+                dimension: client ? 'general' : 'correctness', note: '', origin: client ? 'client_observation' : 'host', status: 'active',
+                source: target.source, createdAt: now, expiresAt: now + doc.retentionDays * DAY });
+        });
+        return { status: 'collected', scope: target.scope, subject: target.subject, modelCalls: 0 };
+    }
+    // Server-only model port. The public submit router never exposes it.
+    async assessModel(handle, input, producer) {
+        fields(input, ['target', 'expectedSequence', 'profile', 'purpose', 'signal', 'claims', 'rationale'], 'Model assessment');
+        sequence(input.expectedSequence); assertWritable();
+        const target = await this._target(handle, input.target);
+        const assessment = { profile: input.profile, purpose: input.purpose, claims: input.claims, producer };
+        assertAssessment(assessment, target.scope.domain === 'project' ? 'project' : 'rp', 'model_assessment', input.signal);
+        const paid = (await new AgentEvolutionRepository({ engine: this.repository.engine }).owner(handle))?.attempts.find(a => a.id === producer.chargeId);
+        if (!paid || paid.scopeId !== experienceIdentity(target.scope, target.subject) || paid.status === 'reserved' || !['judge', 'extraction'].includes(paid.kind) || paid.requestHash !== producer.requestHash
+            || paid.snapshotHash !== producer.snapshotHash) throw new TypeError('Assessment execution is not durably funded');
+        await this._checkClaims(handle, target, assessment);
+        return this._append(handle, input.expectedSequence, target, { kind: 'assessment', signal: input.signal, dimension: 'general', note: input.rationale,
+            origin: 'model_assessment', assessment });
+    }
+    async _checkClaims(handle, target, assessment) {
+        if (!target.current || !target.source.sources) throw new TypeError('Current assessment source required');
+        const expanded = await this.sources.evaluate(handle, target.scope, target.source.sources, budget, { expand: true });
+        if (expanded.status !== 'current') throw new TypeError('Assessment source changed');
+        for (const claim of assessment.claims) {
+            const index = target.source.sources.references.findIndex(ref => ref.contentHash === claim.sourceHash);
+            const contains = value => typeof value === 'string' ? value.includes(claim.quote) : value && typeof value === 'object' && Object.values(value).some(contains);
+            if (index < 0 || !JSON.stringify(expanded.content[index]).includes(claim.quote) && !contains(expanded.content[index])) throw new TypeError('Assessment evidence quote missing');
+        }
+    }
+    async checkQuality(handle, input) {
+        fields(input, ['target', 'expectedSequence', 'profile', 'checkerId'], 'Fixed quality check');
+        sequence(input.expectedSequence); assertWritable();
+        const target = await this._target(handle, input.target);
+        const profile = qualityProfile(input.profile, target.scope.domain === 'project' ? 'project' : 'rp');
+        if (input.checkerId !== 'project.validation' || target.scope.domain !== 'project' || !profile.dimensions.includes('repair_quality')) throw new TypeError('Unknown fixed quality checker');
+        const status = target.document.validation?.status;
+        const signal = status === 'failed' ? 'verified_failure' : status === 'passed' ? 'no_failure' : 'unknown';
+        const assessment = { profile: input.profile, purpose: 'ordinary', claims: signal === 'unknown' ? [] : [{ dimension: 'repair_quality',
+            sourceHash: target.source.sources?.references[0]?.contentHash, quote: '"status":"' + status + '"' }],
+        producer: { checkerId: 'project.validation', revision: hashNativeDocument('project.validation:failed/passed:v1') } };
+        assertAssessment(assessment, 'project', 'host_check', signal); await this._checkClaims(handle, target, assessment);
+        return this._append(handle, input.expectedSequence, target, { kind: 'assessment', signal, dimension: 'general', note: 'Fixed validation-state check; not a user preference or root-cause proof.', origin: 'host_check', assessment });
+    }
     async _append(handle, expectedSequence, target, feedback) {
         const now = this.now();
         const sourceCurrent = target.current && await this._valid(handle, target.scope, target.source) === 'current';
@@ -147,7 +224,7 @@ export class AgentExperienceService {
             pruneExperience(doc, now);
             if (feedback.kind === 'technical' && doc.feedback.some(item => item.kind === 'technical' && same(item.source, target.source))) return;
             doc.feedback.push({ id: 'feedback_' + randomUUID(), revision: 0, ...feedback,
-                origin: feedback.kind === 'technical' ? 'host' : feedback.kind === 'explicit' ? 'user' : 'client_observation',
+                origin: feedback.kind === 'assessment' ? feedback.origin : feedback.kind === 'technical' ? 'host' : feedback.kind === 'explicit' ? 'user' : 'client_observation',
                 status: sourceCurrent ? 'active' : 'stale', source: target.source, createdAt: now, expiresAt: now + doc.retentionDays * DAY });
         });
     }
@@ -176,28 +253,42 @@ export class AgentExperienceService {
     _batch(view) {
         const items = view?.feedback.filter(item => item.applicability === 'current') ?? [];
         const selected = items.slice(-32).map(({ applicability: _applicability, ...item }) => item);
-        const event = selected.some(item => item.kind === 'explicit' || item.kind === 'technical' && ['failed', 'validation_failed'].includes(item.signal));
-        const weakSources = new Set(selected.filter(item => item.kind === 'observation').map(item => hashNativeDocument(item.source)));
+        const event = selected.some(supportsDirection);
+        const weakSources = new Set(selected.filter(item => item.kind === 'observation' && item.signal !== 'completed').map(item => hashNativeDocument(item.source)));
+        const assessments = new Map();
+        for (const item of selected.filter(item => item.kind === 'assessment' && item.origin === 'model_assessment' && item.signal === 'suspected_failure')) {
+            const source = hashNativeDocument(item.source.sources?.references ?? item.source);
+            for (const claim of item.assessment.claims) {
+                const group = hashNativeDocument({ profile: item.assessment.profile, dimension: claim.dimension });
+                if (!assessments.has(group)) assessments.set(group, new Set());
+                assessments.get(group).add(source);
+            }
+        }
         const dependencies = refs(selected);
         const batchHash = hashNativeDocument({ scopeId: view?.scopeId ?? null, feedbackRefs: dependencies });
         const used = view?.diagnoses.some(item => item.batchHash === batchHash && item.applicability === 'current');
-        return { status: selected.length && (event || weakSources.size >= 3) && !used ? 'ready' : 'idle',
+        return { status: selected.length && (event || weakSources.size >= 3 || [...assessments.values()].some(sources => sources.size >= 3)) && !used ? 'ready' : 'idle',
             reason: used ? 'batch_diagnosed' : event ? 'explicit_or_failure_event' : weakSources.size >= 3 ? 'observation_aggregate' : 'insufficient_trigger',
             batchHash, feedbackRefs: dependencies, modelCalls: 0 };
     }
     async reflection(handle, input) { return this._batch(await this.inspect(handle, input)); }
     async diagnose(handle, input, { origin = 'user_hypothesis' } = {}) {
-        fields(input, ['scope', 'subject', 'expectedSequence', 'batchHash', 'rationale', 'conditions', 'counterexamples', 'direction'], 'Diagnosis submit');
+        fields(input, ['scope', 'subject', 'expectedSequence', 'batchHash', 'rationale', 'conditions', 'counterexamples', 'direction', ...(input.attribution ? ['attribution'] : [])], 'Diagnosis submit');
         sequence(input.expectedSequence); assertWritable();
         const view = await this.inspect(handle, { scope: input.scope, subject: input.subject });
         const batch = this._batch(view);
         if (batch.status !== 'ready' || batch.batchHash !== input.batchHash || view.sequence !== input.expectedSequence) throw new ConflictError('agent_diagnosis_batch_changed');
         const evidence = view.feedback.filter(item => batch.feedbackRefs.some(ref => ref.id === item.id));
-        if (input.direction !== 'undetermined' && !evidence.some(item => item.kind === 'explicit' || item.kind === 'technical' && ['failed', 'validation_failed'].includes(item.signal))) throw new TypeError('Weak observation cannot establish improvement direction');
+        if (input.direction !== 'undetermined' && !evidence.some(supportsDirection)) throw new TypeError('Weak observation cannot establish improvement direction');
+        if (!input.attribution && input.direction !== 'undetermined') throw new TypeError('Root attribution required for a local intervention');
+        const attribution = input.attribution ? { ...input.attribution, support: 'unverified', legacy: false }
+            : { loci: ['unknown'], support: 'unverified', intervention: 'none', legacy: false };
+        if (input.attribution) fields(input.attribution, ['loci', 'intervention'], 'Proposed attribution');
+        assertAttribution(attribution, input.direction);
         const now = this.now();
         return this.repository.mutate(handle, input.scope, input.subject, input.expectedSequence, doc => {
             doc.diagnoses.push({ id: 'diagnosis_' + randomUUID(), batchHash: batch.batchHash, feedbackRefs: batch.feedbackRefs,
-                origin, status: 'active', rationale: input.rationale, conditions: input.conditions, counterexamples: input.counterexamples, direction: input.direction,
+                origin, status: 'active', rationale: input.rationale, conditions: input.conditions, counterexamples: input.counterexamples, direction: input.direction, attribution,
                 createdAt: now, expiresAt: Math.min(now + doc.retentionDays * DAY, ...evidence.map(item => item.expiresAt)) });
         });
     }
@@ -262,6 +353,6 @@ export class AgentExperienceService {
     }
     async export(handle, input) {
         const view = await this.inspect(handle, input);
-        return { format: 'atria-agent-experience', schemaVersion: 1, exportedAt: this.now(), experience: view };
+        return { format: 'atria-agent-experience', schemaVersion: view?.schemaVersion ?? 1, exportedAt: this.now(), experience: view };
     }
 }

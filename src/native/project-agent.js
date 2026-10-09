@@ -9,6 +9,7 @@ import {
 import { STUDIO_RESOURCE_OPERATION_TYPES } from './authoring/library-authoring.js';
 import { STUDIO_SOURCE_OPERATION_TYPES } from './authoring/studio-service.js';
 import { AgentExperienceRepository } from './agent-intelligence/experience-repository.js';
+import { AgentExperienceService } from './agent-intelligence/experience-service.js';
 import { ProjectTaskRepository, assertProjectTask } from './agent-intelligence/project-task-repository.js';
 import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
@@ -278,9 +279,12 @@ export class ProjectAgentService {
         repository = new ProjectTaskRepository({ engine }),
         idFactory = randomUUID,
         maxRepairRounds = PROJECT_AGENT_MAX_REPAIR_ROUNDS,
+        collectExperience = false,
+        onExperienceCollected = null,
     }) {
         if (!studio) throw new TypeError('ProjectAgentService requires StudioService');
         if (typeof idFactory !== 'function') throw new TypeError('ProjectAgentService idFactory must be a function');
+        if (onExperienceCollected !== null && typeof onExperienceCollected !== 'function') throw new TypeError('Project feedback consumer must be a function');
         if (!Number.isSafeInteger(maxRepairRounds) || maxRepairRounds < 1 || maxRepairRounds > 10) {
             throw new TypeError('ProjectAgentService maxRepairRounds must be 1-10');
         }
@@ -288,6 +292,10 @@ export class ProjectAgentService {
         this._idFactory = idFactory;
         this._maxRepairRounds = maxRepairRounds;
         this._repository = repository;
+        // Only the normal Host enables this. Fixed evaluation copies do not
+        // feed their executions back into development or recursively learn.
+        this._collectExperience = collectExperience === true;
+        this._onExperienceCollected = onExperienceCollected;
         if (!taskViews.has(repository.engine)) taskViews.set(repository.engine, new Map());
         this._tasks = taskViews.get(repository.engine);
         this._integrities = new Map();
@@ -384,24 +392,41 @@ export class ProjectAgentService {
     }
 
     async _operate(handle, projectId, id, operation, { write = true } = {}) {
-        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
-            if (write) assertWritable();
-            await this._studio.getProject(handle, projectId);
-            const task = await this._repository.get(handle, projectId, id);
-            if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
-            this._tasks.set(this._key(handle, projectId, id), task);
-            this._integrities.set(this._key(handle, projectId, id), hashNativeDocument(task));
-            await this._recover(handle, task);
-            if (hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id)) && !isReadOnly()) await this._persist(handle, task);
-            try {
-                const result = await operation(task);
-                if (!isReadOnly() && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
-                return result?.taskId === id ? this._snapshot(task) : result;
-            } catch (error) {
-                if (!isReadOnly() && !error.atriTaskPersistence && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
-                throw error;
+        let collectOutcome = false;
+        const outcomeHash = task => hashNativeDocument({ status: task.status, validation: task.validation, review: task.review, changeSets: task.changeSets });
+        try {
+            return await withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+                if (write) assertWritable();
+                await this._studio.getProject(handle, projectId);
+                const task = await this._repository.get(handle, projectId, id);
+                if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+                const before = outcomeHash(task);
+                this._tasks.set(this._key(handle, projectId, id), task);
+                this._integrities.set(this._key(handle, projectId, id), hashNativeDocument(task));
+                await this._recover(handle, task);
+                if (hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id)) && !isReadOnly()) await this._persist(handle, task);
+                try {
+                    const result = await operation(task);
+                    if (!isReadOnly() && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
+                    return result?.taskId === id ? this._snapshot(task) : result;
+                } catch (error) {
+                    if (!isReadOnly() && !error.atriTaskPersistence && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
+                    throw error;
+                } finally {
+                    collectOutcome = write && before !== outcomeHash(task);
+                }
+            });
+        } finally {
+            // Run after releasing the Task lock: the original source consumer
+            // re-reads that same Task, rather than accepting a copied outcome.
+            if (collectOutcome && this._collectExperience && !isReadOnly()) {
+                try {
+                    const result = await new AgentExperienceService({ engine: this._repository.engine, studio: this._studio, agent: this }).collect(handle,
+                        { kind: 'project_task', id, scope: { domain: 'project', projectId } });
+                    if (result.status === 'collected' && this._onExperienceCollected) await this._onExperienceCollected(handle, result);
+                } catch { console.warn('Project feedback collection unavailable; the saved Task remains authoritative.'); }
             }
-        });
+        }
     }
 
     async createTask(handle, projectId, options) {

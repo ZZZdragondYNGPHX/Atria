@@ -4,6 +4,7 @@ import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument, putMutable, withNativeResourceWrite } from '../repositories/common.js';
 import { assertEvidenceScope, assertEvidenceSet, fields, text } from './contracts.js';
 import { AgentEvolutionRepository } from './evolution-repository.js';
+import { assertAssessment, assertAttribution, legacyAttribution } from './evaluation/quality.js';
 
 export const DAY = 86400000;
 export const experienceIdentity = (scope, subject) => hashNativeDocument({ scope: assertEvidenceScope(scope), subject: text(subject, 'Subject') });
@@ -14,9 +15,9 @@ export function publicNote(value) {
     if (typeof value !== 'string' || value.length > 4096) throw new TypeError('Invalid public note');
     return value;
 }
-export function assertFeedbackInput(value) {
+export function assertFeedbackInput(value, version = 1) {
     fields(value, ['kind', 'signal', 'dimension', 'note'], 'Feedback input');
-    const signals = { explicit: ['correction', 'prefer', 'avoid'], observation: ['regenerate', 'edit', 'abandon', 'accept', 'review_reject'],
+    const signals = { explicit: ['correction', 'prefer', 'avoid'], observation: ['regenerate', 'edit', 'abandon', 'accept', 'review_reject', ...(version === 2 ? ['completed'] : [])],
         technical: ['validation_failed', 'validated', 'committed', 'failed', 'cancelled', 'unknown'] };
     if (!signals[value.kind]?.includes(value.signal) || !['behavior', 'style', 'correctness', 'workflow', 'general'].includes(value.dimension)) throw new TypeError('Invalid feedback classification');
     publicNote(value.note);
@@ -25,19 +26,25 @@ export function assertFeedbackInput(value) {
 }
 export function assertExperience(value) {
     const doc = cloneNativeDocument(value);
-    fields(doc, ['schemaVersion', 'scopeId', 'scope', 'subject', 'sequence', 'retentionDays', 'feedback', 'diagnoses'], 'Experience');
-    if (doc.schemaVersion !== 1 || doc.scopeId !== experienceIdentity(doc.scope, doc.subject)
+    fields(doc, ['schemaVersion', 'scopeId', 'scope', 'subject', 'sequence', 'retentionDays', 'feedback', 'diagnoses', ...(doc.schemaVersion === 2 ? ['collections'] : [])], 'Experience');
+    if (![1, 2].includes(doc.schemaVersion) || doc.scopeId !== experienceIdentity(doc.scope, doc.subject)
         || !Number.isSafeInteger(doc.sequence) || doc.sequence < 0 || !Number.isSafeInteger(doc.retentionDays) || doc.retentionDays < 1 || doc.retentionDays > 365) throw new TypeError('Invalid experience schema');
     if (!Array.isArray(doc.feedback) || doc.feedback.length > 256 || !Array.isArray(doc.diagnoses) || doc.diagnoses.length > 64
         || Buffer.byteLength(JSON.stringify(doc)) > 512 * 1024) throw new TypeError('Experience capacity exceeded');
     const ids = new Set();
     for (const item of doc.feedback) {
-        fields(item, ['id', 'revision', 'kind', 'signal', 'dimension', 'note', 'origin', 'status', 'source', 'createdAt', 'expiresAt'], 'Feedback');
+        const assessment = doc.schemaVersion === 2 && item.kind === 'assessment';
+        fields(item, ['id', 'revision', 'kind', 'signal', 'dimension', 'note', 'origin', 'status', 'source', 'createdAt', 'expiresAt', ...(assessment ? ['assessment'] : [])], 'Feedback');
         text(item.id, 'Feedback identity');
         if (ids.has(item.id) || !Number.isSafeInteger(item.revision) || item.revision < 0 || !['active', 'withdrawn', 'stale'].includes(item.status)) throw new TypeError('Invalid feedback identity/state');
         ids.add(item.id);
-        assertFeedbackInput({ kind: item.kind, signal: item.signal, dimension: item.dimension, note: item.note });
-        if (item.origin !== (item.kind === 'technical' ? 'host' : item.kind === 'explicit' ? 'user' : 'client_observation')) throw new TypeError('Feedback origin mismatch');
+        if (assessment) {
+            if (item.dimension !== 'general') throw new TypeError('Assessment requires versioned quality dimensions');
+            publicNote(item.note); assertAssessment(item.assessment, doc.scope.domain === 'project' ? 'project' : 'rp', item.origin, item.signal);
+        } else {
+            assertFeedbackInput({ kind: item.kind, signal: item.signal, dimension: item.dimension, note: item.note }, doc.schemaVersion);
+            if (item.origin !== (item.kind === 'technical' ? 'host' : item.kind === 'explicit' ? 'user' : 'client_observation')) throw new TypeError('Feedback origin mismatch');
+        }
         fields(item.source, ['kind', 'id', 'integrity', 'sources'], 'Feedback source');
         if (!['evidence', 'project_task'].includes(item.source.kind) || (doc.scope.domain === 'project') !== (item.source.kind === 'project_task')) throw new TypeError('Source domain mismatch');
         text(item.source.id, 'Source identity'); digest(item.source.integrity);
@@ -51,11 +58,12 @@ export function assertExperience(value) {
     }
     const diagnoses = new Set();
     for (const item of doc.diagnoses) {
-        fields(item, ['id', 'batchHash', 'feedbackRefs', 'origin', 'status', 'rationale', 'conditions', 'counterexamples', 'direction', 'createdAt', 'expiresAt'], 'Diagnosis');
+        fields(item, ['id', 'batchHash', 'feedbackRefs', 'origin', 'status', 'rationale', 'conditions', 'counterexamples', 'direction', 'createdAt', 'expiresAt', ...(doc.schemaVersion === 2 ? ['attribution'] : [])], 'Diagnosis');
         text(item.id, 'Diagnosis identity'); digest(item.batchHash); publicNote(item.rationale);
         if (diagnoses.has(item.id) || !['user_hypothesis', 'model_hypothesis'].includes(item.origin) || !['active', 'stale'].includes(item.status)
             || !['skill', 'prompt', 'orchestration', 'undetermined'].includes(item.direction)) throw new TypeError('Invalid diagnosis');
         diagnoses.add(item.id);
+        if (doc.schemaVersion === 2) assertAttribution(item.attribution, item.direction);
         for (const list of [item.conditions, item.counterexamples]) {
             if (!Array.isArray(list) || list.length > 16) throw new TypeError('Invalid diagnosis conditions');
             list.forEach(publicNote);
@@ -68,6 +76,18 @@ export function assertExperience(value) {
         if (item.batchHash !== hashNativeDocument({ scopeId: doc.scopeId, feedbackRefs: item.feedbackRefs })) throw new TypeError('Diagnosis batch mismatch');
         time(item.createdAt); time(item.expiresAt);
         if (item.expiresAt < item.createdAt || item.expiresAt > item.createdAt + 365 * DAY) throw new TypeError('Invalid diagnosis retention');
+    }
+    if (doc.schemaVersion === 2) {
+        if (!Array.isArray(doc.collections) || doc.collections.length > 256) throw new TypeError('Collection capacity exceeded');
+        const collected = new Set();
+        for (const marker of doc.collections) {
+            fields(marker, ['id', 'kind', 'sourceId', 'sourceHash', 'signal', 'createdAt'], 'Collection marker');
+            digest(marker.id); digest(marker.sourceHash); text(marker.sourceId, 'Collection source'); time(marker.createdAt);
+            if (!['evidence', 'project_task'].includes(marker.kind) || (doc.scope.domain === 'project') !== (marker.kind === 'project_task')
+                || !['completed', 'validation_failed', 'validated', 'committed', 'failed', 'cancelled'].includes(marker.signal)
+                || marker.id !== hashNativeDocument({ kind: marker.kind, sourceId: marker.sourceId, sourceHash: marker.sourceHash, signal: marker.signal }) || collected.has(marker.id)) throw new TypeError('Invalid collection identity');
+            collected.add(marker.id);
+        }
     }
     return doc;
 }
@@ -104,9 +124,14 @@ export class AgentExperienceRepository {
             const doc = previous ? cloneNativeDocument(previous) : { schemaVersion: 1, scopeId, scope, subject, sequence: 0, retentionDays: 30, feedback: [], diagnoses: [] };
             await operation(doc);
             if (previous && hashNativeDocument(doc) === hashNativeDocument(previous)) return previous;
+            const migrating = doc.schemaVersion === 1 || previous?.schemaVersion === 1 && doc.schemaVersion === 2;
+            if (doc.schemaVersion === 1) {
+                doc.schemaVersion = 2; doc.collections = [];
+                for (const diagnosis of doc.diagnoses) diagnosis.attribution ??= legacyAttribution(diagnosis.direction);
+            }
             doc.sequence = previous ? previous.sequence + 1 : 0;
             assertExperience(doc);
-            if (previous && (previous.feedback.some(old => {
+            if (previous && (migrating || previous.feedback.some(old => {
                 const next = doc.feedback.find(item => item.id === old.id); return !next || hashNativeDocument(next) !== hashNativeDocument(old);
             }) || previous.diagnoses.some(old => {
                 const next = doc.diagnoses.find(item => item.id === old.id); return !next || hashNativeDocument(next) !== hashNativeDocument(old);

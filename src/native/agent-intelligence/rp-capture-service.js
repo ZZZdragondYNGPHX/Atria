@@ -4,7 +4,7 @@ import { hashNativeDocument } from '../repositories/common.js';
 const budget = { maxSources: 32, maxBytes: 131072, maxScanMessages: 8192 };
 /** Authenticated transport consumer; client observations cannot create Host receipts. */
 export class RpEvidenceCaptureService {
-    constructor({ repository, service }) { Object.assign(this, { repository, service }); }
+    constructor({ repository, service, experience = null }) { Object.assign(this, { repository, service, experience }); }
     async begin(handle, input) {
         fields(input, ['scope', 'rootRunId', 'selectors'], 'Evidence begin');
         if (!['rp_chat', 'rp_session'].includes(input.scope?.domain)) throw new TypeError('RP scope required');
@@ -26,7 +26,11 @@ export class RpEvidenceCaptureService {
         }
         await this.repository.update(handle, input.evidenceId, { sequence: input.sequence, status: input.status, trace: input.trace, sources,
             outputRef: input.output ?? previous.outputRef }, 'client_observation');
-        return { outputBound };
+        let collection = null;
+        if (this.experience && input.status === 'completed' && previous.status !== 'completed' && outputBound) {
+            try { collection = await this.experience.collect(handle, { kind: 'evidence', id: input.evidenceId, scope: previous.scope }); } catch { collection = { status: 'collection_unavailable', modelCalls: 0 }; }
+        }
+        return { outputBound, ...(collection ? { collection } : {}) };
     }
     async inspect(handle, input) {
         fields(input, ['evidenceId'], 'Evidence identity');

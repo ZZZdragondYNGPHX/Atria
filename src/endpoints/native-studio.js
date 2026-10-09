@@ -30,7 +30,11 @@ function services() {
                 engine: getStorageEngine(),
             }),
         });
-        projectAgentService = new ProjectAgentService({ studio: studioService, engine: getStorageEngine() });
+        projectAgentService = new ProjectAgentService({ studio: studioService, engine: getStorageEngine(), collectExperience: true,
+            onExperienceCollected: async (handle, result) => {
+                const { wakeCollectedExperience } = await import('./native-generation.js');
+                await wakeCollectedExperience(handle, result);
+            } });
     }
     return { studio: studioService, agent: projectAgentService };
 }

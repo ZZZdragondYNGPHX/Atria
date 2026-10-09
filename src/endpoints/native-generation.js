@@ -24,6 +24,7 @@ import { IllustrationPromptService } from '../native/illustration-prompt-service
 import { IllustrationImageService } from '../native/illustration-image-service.js';
 import { AgentEvidenceRepository } from '../native/agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../native/agent-intelligence/evidence-service.js';
+import { AgentExperienceService } from '../native/agent-intelligence/experience-service.js';
 import { getChatRepo } from '../storage/index.js';
 import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
 import { AgentEvolutionService } from '../native/agent-intelligence/evolution-service.js';
@@ -55,6 +56,10 @@ function services() {
     });
 }
 
+export async function wakeCollectedExperience(handle, result) {
+    return new AgentEvolutionService({ host: services(), chatRepo: getChatRepo() }).wake(handle, result.scope, result.subject);
+}
+
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
     for (const action of ['begin', 'update', 'inspect', 'delete']) router.post('/evidence/' + action, async (req, res) => {
@@ -65,15 +70,18 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const host = getHost();
             const repository = new AgentEvidenceRepository({ engine: host.persistence._engine });
             const service = new AgentEvidenceService({ chatRepo: getChats(), sessionCore: host.sessionCore });
-            const capture = new RpEvidenceCaptureService({ repository, service });
+            const capture = new RpEvidenceCaptureService({ repository, service, experience: new AgentExperienceService({ engine: host.persistence._engine, chatRepo: getChats(), sessionCore: host.sessionCore }) });
             const result = await capture[action](handle, req.body);
+            if (result.collection?.status === 'collected') {
+                try { await new AgentEvolutionService({ host, chatRepo: getChats() }).wake(handle, result.collection.scope, result.collection.subject); } catch { result.collection.wake = 'unavailable'; }
+            }
             if (action === 'update') await observeEvolutionRp(host.persistence._engine, handle, req.body.evidenceId);
             return res.json(result);
         } catch (error) {
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });
         }
     });
-    for (const action of ['target', 'submit', 'outcome', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
+    for (const action of ['target', 'submit', 'outcome', 'collect', 'checkQuality', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
@@ -82,7 +90,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const evolution = new AgentEvolutionService({ host, chatRepo: getChats() });
             const service = evolution.experience;
             const result = await service[action](handle, req.body);
-            if (['submit', 'outcome', 'diagnose'].includes(action) && result?.scope && result?.subject) void evolution.wake(handle, result.scope, result.subject).catch(() => {});
+            if (['submit', 'outcome', 'collect', 'checkQuality', 'diagnose'].includes(action) && result?.scope && result?.subject) void evolution.wake(handle, result.scope, result.subject).catch(() => {});
             return res.json(result);
         } catch (error) {
             return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_experience_unavailable' });

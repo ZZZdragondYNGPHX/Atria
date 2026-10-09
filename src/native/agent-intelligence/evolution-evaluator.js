@@ -10,10 +10,11 @@ import { CASE_SET_REVISION, selectCases, publicCaseScenario } from './evaluation
 import { parseEvaluationJson, applyEvolutionProposal } from './evaluation/json.js';
 import { EVOLUTION_RULE, evolutionFields as fields, evolutionHash as hash, evolutionInteger as integer, evolutionText as text, sameEvolutionValue as same } from './evolution-repository.js';
 import { createNativeId } from '../identity.js';
+import { qualityEnvelope, validateQualityReport, qualityProfile, requirePilotSources } from './evaluation/quality.js';
 
 export function evolutionEvaluatorRevision() {
     return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
-        'evaluation/libraries.js', 'evaluation/loader.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
+        'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
         '../adapters/generation-host.js', '../adapters/http-generation-provider.js', '../project-agent.js',
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js',
         '../model-prompt-runtime/contracts.js', '../model-prompt-runtime/resources.js', '../../skills/repository.js', '../../skills/versions.js',
@@ -34,10 +35,17 @@ function usageCost(usage, price) {
 }
 export function promotionDecision(report, { policyFingerprint, targetPin, budgetBreached = false, ledger = null, jobId = null } = {}) {
     const reasons = [];
-    if (!report || report.origin !== 'host_evaluator' || report.schemaVersion !== 1 || report.evaluatorRevision !== evolutionEvaluatorRevision()
+    if (!report || report.origin !== 'host_evaluator' || ![1, 2].includes(report.schemaVersion) || report.evaluatorRevision !== evolutionEvaluatorRevision()
         || report.caseSetRevision !== CASE_SET_REVISION || !same(report.rule, EVOLUTION_RULE) || report.policyFingerprint !== policyFingerprint
         || report.targetPin !== targetPin) return { eligible: false, reasons: ['evaluation_identity_missing_or_changed'] };
     const entries = selectCases({ purpose: 'evaluation', split: 'promotion' }).filter(c => c.entrance === report.domain);
+    if (report.schemaVersion === 2) {
+        try {
+            validateQualityReport(report);
+            if (!same(report.quality, qualityEnvelope(report.domain, entries, 'promotion'))) reasons.push('quality_envelope_changed');
+            if (report.quality.cases.some(c => c.provenance.independence !== 'established')) reasons.push('source_unready');
+        } catch { reasons.push('quality_ungraded_or_changed'); }
+    }
     const required = entries.flatMap(entry => [1, 2, 3].map(r => entry.caseId + ':' + r));
     if (report.pairs.length !== 9 || required.some(id => report.pairs.filter(p => p.case.caseId + ':' + p.repetition === id).length !== 1)) reasons.push('independent_cases_incomplete');
     let wins = 0, baselineTokens = 0, candidateTokens = 0, baselineCost = 0, candidateCost = 0;
@@ -127,7 +135,9 @@ export class EvolutionEvaluator {
         } finally { await this.repository.settle(handle, id, usage?.totalTokens ?? null, { usage: usage || null, cost: usageCost(usage, job.price) }); }
     }
     async extract(handle, job, config, signal, fresh, publicInput) {
-        let prepared;
+        let prepared, lastCharge;
+        const assessment = publicInput.kind === 'quality_assessment';
+        if (assessment) qualityProfile(publicInput.profile, job.domain);
         const provider = this.host.providers[config.connection.providerAdapter], evaluator = this;
         const wrapped = { ...provider,
             renderRequest(input) {
@@ -138,6 +148,7 @@ export class EvolutionEvaluator {
             },
             async send(_rendered, boundary) {
                 const result = await evaluator.send(handle, job, config, prepared, boundary.signal, fresh);
+                lastCharge = result.charge;
                 return { headers: { get: () => 'application/json' }, json: async () => result.raw };
             },
         };
@@ -155,11 +166,18 @@ export class EvolutionEvaluator {
             secretPort: { resolveSecret: async () => 'parent-port' }, providerFor: () => wrapped });
         const result = await service.execute({ requestId: job.id, handle, role: config.route.role, routeRef: { scope: 'player', runtimeRouteId: config.route.runtimeRouteId },
             tools: [], prompt: {}, fallbackMode: 'disabled', signal });
-        const parsed = applyEvolutionProposal(parseEvaluationJson(result.response.assistantText || result.response.text), publicInput.base);
+        const response = parseEvaluationJson(result.response.assistantText || result.response.text);
+        if (assessment) {
+            fields(response, ['signal', 'claims', 'rationale']); text(response.rationale, 1024);
+            return { ...response, producer: { modelId: config.model.remoteModelId, configurationHash: hash(config), requestHash: lastCharge.requestHash,
+                snapshotHash: lastCharge.snapshotHash, chargeId: lastCharge.id } };
+        }
+        const parsed = applyEvolutionProposal(response, publicInput.base);
         fields(parsed, ['value', 'rationale']); text(parsed.rationale, 1024);
         return parsed;
     }
     async compare(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}, selection = { split: 'promotion', repetitions: 3 }) {
+        if (selection.profileId) requirePilotSources(selection.profileId);
         if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new TypeError('Invalid finite evaluation selection');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !selectCases({ purpose: 'evaluation', split: 'development' }).some(c => c.caseId === id && c.entrance === job.domain)))) throw new TypeError('Invalid development case selection');
@@ -195,7 +213,8 @@ export class EvolutionEvaluator {
                 pair.judge.chargeIds = charges.filter(c => c.trialId === job.id + ':judge:' + pairs.indexOf(pair)).map(c => c.id);
                 const { pairHash: _oldHash, ...identity } = pair; pair.pairHash = hash(identity);
             }
-            return { schemaVersion: 1, origin: 'host_evaluator', evaluatorRevision, caseSetRevision: CASE_SET_REVISION, rule: EVOLUTION_RULE,
+            return { schemaVersion: 2, origin: 'host_evaluator', evaluatorRevision, caseSetRevision: CASE_SET_REVISION, rule: EVOLUTION_RULE,
+                quality: qualityEnvelope(job.domain, selectCases({ purpose: 'evaluation', split: selection.split }).filter(c => c.entrance === job.domain && (!selection.caseIds || selection.caseIds.includes(c.caseId))), selection.split),
                 domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price,
                 configurations: { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: { baseline: hash(settings.baseline), candidate: hash(settings.candidate) },
                 pairs, charges, createdAt: Date.now() };

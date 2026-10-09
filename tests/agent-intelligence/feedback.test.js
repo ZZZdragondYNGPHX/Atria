@@ -27,7 +27,7 @@ const messages = () => [{ memory_os_source_id: 'user', is_user: true, name: 'Use
     { memory_os_source_id: 'actor', is_user: false, name: 'Actor', mes: 'A reply.', swipe_id: 0 }];
 const explicit = { kind: 'explicit', signal: 'correction', dimension: 'behavior', note: 'Leave my action open.' };
 const weak = { kind: 'observation', signal: 'regenerate', dimension: 'general', note: '' };
-const diagnosis = { rationale: 'A public hypothesis', conditions: ['Player action is unresolved'], counterexamples: ['Player already chose'], direction: 'prompt' };
+const diagnosis = { rationale: 'A public hypothesis', conditions: ['Player action is unresolved'], counterexamples: ['Player already chose'], direction: 'prompt', attribution: { loci: ['prompt'], intervention: 'local_target' } };
 
 // Both real local storage modes; no model or production data.
 describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('%s feedback lifecycle', (_name, make) => {
@@ -74,7 +74,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         for (const run of ['two', 'three']) doc = await submit(weak, doc.sequence, await captured(run));
         const batch = await service.reflection(h.handle, lookup(doc)); expect(batch.status).toBe('ready');
         await expect(service.diagnose(h.handle, { ...lookup(doc), expectedSequence: doc.sequence, batchHash: batch.batchHash, ...diagnosis })).rejects.toThrow('Weak observation');
-        const lesson = await service.diagnose(h.handle, { ...lookup(doc), expectedSequence: doc.sequence, batchHash: batch.batchHash, ...diagnosis, direction: 'undetermined' });
+        const lesson = await service.diagnose(h.handle, { ...lookup(doc), expectedSequence: doc.sequence, batchHash: batch.batchHash, ...diagnosis, direction: 'undetermined', attribution: { loci: ['unknown'], intervention: 'none' } });
         expect(lesson.diagnoses[0].direction).toBe('undetermined');
     });
     test('correct / withdraw revoke a diagnosis; delete purges all related diagnosis content', async () => {
@@ -165,7 +165,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const dump = await h.engine.dumpUser(h.handle);
         await h.engine.restoreUser(h.handle, dump);
         expect(await service.repository.get(h.handle, doc.scope, doc.subject)).toEqual(doc);
-        expect(() => assertExperience({ ...doc, schemaVersion: 2 })).toThrow();
+        expect(() => assertExperience({ ...doc, schemaVersion: 3 })).toThrow();
         expect(() => assertExperience({ ...doc, feedback: Array.from({ length: 257 }, (_, i) => ({ ...doc.feedback[0], id: 'feedback_' + i })) })).toThrow('capacity');
         expect(() => assertExperience({ ...doc, feedback: Array.from({ length: 140 }, (_, i) => ({ ...doc.feedback[0], id: 'feedback_' + i, note: 'x'.repeat(4096) })) })).toThrow('capacity');
         await h.engine.withTransaction(h.handle, async tx => { const value = await tx.getResource(resourceKey); value.doc.feedback[0].note = 'Corrupt'; await tx.putResource(resourceKey, value); });
