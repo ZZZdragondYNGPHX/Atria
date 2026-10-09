@@ -1,5 +1,20 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
+// A caller's Route timeout can precede settlement of its funded parent send.
+// Keep the fixture and shared ledger lock until every such send has finished.
+export class M1PendingSends {
+    constructor() { this.pending = new Set(); }
+    track(operation) {
+        const send = Promise.resolve().then(operation);
+        this.pending.add(send);
+        send.then(() => this.pending.delete(send), () => this.pending.delete(send));
+        return send;
+    }
+    async drain() {
+        while (this.pending.size) await Promise.allSettled([...this.pending]);
+    }
+}
+
 // Explicit M1 CLI policy. Each attempt must call the original funded send.
 export class M1RetryPolicy {
     constructor({ wait = (signal => delay(10000, undefined, { signal })), snapshot = {}, onChange = () => {}, ignoreHistoricalStops = false } = {}) {

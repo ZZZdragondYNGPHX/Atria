@@ -11,7 +11,7 @@ import { EvaluationBudget } from './budget.js';
 import { evolutionHash as hash } from '../../src/native/agent-intelligence/evolution-repository.js';
 import { evolutionEvaluatorRevision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { parseBlindGrade, automatedAcceptance, developmentReadiness } from './m1-acceptance.js';
-import { M1RetryPolicy } from './m1-retry.js';
+import { M1RetryPolicy, M1PendingSends } from './m1-retry.js';
 import { M1ApiQuota, M1AdvisoryRepository } from './m1-quota.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { completeM1Response, m1BodyFailure, m1TransportFailureCode, captureM1HttpError } from './m1-response.js';
@@ -32,6 +32,7 @@ globalThis.Atria = { getContext: emptyContext };
 const option = process.argv.slice(2);
 let lock, descriptor, dispatcher, scratch;
 const overall = new AbortController();
+const pendingSends = new M1PendingSends();
 const deadline = setTimeout(() => overall.abort(), 2 * 3600000);
 const safeReason = error => /^[a-z_0-9]{1,100}$/.test(error?.code || error?.message || '') ? error.code || error.message : 'inspect_private_report';
 try {
@@ -421,7 +422,7 @@ try {
                     (cycleProjectExtract || boundedCycle || pilotScope) && config.model.remoteModelId === primary.config.model && payload.outputTokens === 8000 ? 8000 : null,
                     boundedCycle || pilotScope ? 'evaluation' : 'extraction');
                 activeTransportKeys.add(transportKey);
-                const fundedAttempt = async retryAttempt => {
+                const performFundedAttempt = async retryAttempt => {
                     if (overall.signal.aborted) throw new Error('m1_duration_blocked');
                     if (job.id.endsWith(':activation') && [...budget.entries.values()].filter(e => e.trialId === payload.trialId).length >= (kind === 'rp-skill' ? 5 : 1)) warning('activation_send_suggestion_exceeded_' + job.id, {});
                     packet = { ...payload, retryAttempt };
@@ -453,7 +454,8 @@ try {
                     finally { restoreSecret(); packet = null;
                         const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
                 };
-                return diagnoseOnly ? fundedAttempt(0) : retryPolicy.send(transportKey, fundedAttempt, AbortSignal.any([signal, overall.signal]));
+                return pendingSends.track(() => diagnoseOnly ? performFundedAttempt(0)
+                    : retryPolicy.send(transportKey, performFundedAttempt, AbortSignal.any([signal, overall.signal])));
             };
             const compare = f.evaluator.compare.bind(f.evaluator);
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
@@ -619,6 +621,7 @@ try {
             entry.status = 'unavailable'; entry.reason = safeReason(error); process.exitCode = 1;
         }
         finally {
+            await pendingSends.drain();
             if (scratch) { fs.cpSync(scratch.dataRoot, path.join(output, kind + '-private-fixture'), { recursive: true }); scratch.cleanup(); scratch = null; }
             summary.transportFailures = [...new Set([...retryPolicy.connections.values()].map(s => s.stopped).filter(Boolean))];
             summary.transportObservations = [...retryPolicy.connections.values()].map(s => ({ consecutiveFailures: s.consecutive, recentSends: s.recent.length, recentFailures: s.recent.filter(Boolean).length, stopped: s.stopped }));
@@ -635,6 +638,7 @@ try {
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));
 } catch (error) { console.error('M1 live acceptance:', safeReason(error)); process.exitCode = 1; }
 finally {
+    await pendingSends.drain();
     clearTimeout(deadline);
     scratch?.cleanup();
     if (descriptor !== undefined) { fs.closeSync(descriptor); fs.unlinkSync(lock); }

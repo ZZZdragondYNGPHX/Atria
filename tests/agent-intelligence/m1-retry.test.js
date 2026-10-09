@@ -1,9 +1,51 @@
 import { expect, test } from '@jest/globals';
-import { M1RetryPolicy } from './m1-retry.js';
+import { M1RetryPolicy, M1PendingSends } from './m1-retry.js';
 import { EvaluationBudget } from './budget.js';
 import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
 
 const failure = code => Object.assign(new Error(code), { code });
+test.each([false, true])('Route timeout holds fixture/ledger lock until late funded send settles (failed=%s)', async failed => {
+    const sends = new M1PendingSends(), budget = new EvaluationBudget({ maxRequests: 2, maxTotalTokens: 200 });
+    let release, fixtureAlive = true, lockHeld = true;
+    const response = new Promise(resolve => { release = resolve; });
+    const paid = sends.track(async () => {
+        budget.reserve({ requestId: 'late', trialId: 'timed-out-route', inputTokens: 50, reservedOutput: 50 });
+        try { await response; if (failed) throw failure('m1_response_incomplete'); }
+        finally {
+            expect(fixtureAlive).toBe(true); expect(lockHeld).toBe(true);
+            budget.settle('late', failed ? null : 34);
+        }
+    });
+    expect(await Promise.race([paid, Promise.resolve('route_timeout')])).toBe('route_timeout');
+    const cleanup = sends.drain().then(() => { fixtureAlive = false; lockHeld = false; });
+    await Promise.resolve(); expect(lockHeld).toBe(true);
+    release(); await cleanup;
+    expect(budget.entries.get('late')).toMatchObject({ settled: true, tokens: failed ? 100 : 34,
+        usageStatus: failed ? 'reserved_upper_bound' : 'provider_reported' });
+    expect(lockHeld).toBe(false); expect(fixtureAlive).toBe(false);
+});
+
+test('cleanup also waits through retry backoff before releasing the shared ledger lock', async () => {
+    const sends = new M1PendingSends(), budget = new EvaluationBudget({ maxRequests: 2, maxTotalTokens: 200 });
+    let release, lockHeld = true;
+    const backoff = new Promise(resolve => { release = resolve; });
+    const policy = new M1RetryPolicy({ wait: () => backoff });
+    const paid = sends.track(() => policy.send('primary', async attempt => {
+        expect(lockHeld).toBe(true);
+        budget.reserve({ requestId: 'attempt-' + attempt, trialId: 'route', inputTokens: 50, reservedOutput: 50 });
+        budget.settle('attempt-' + attempt, attempt ? 34 : null);
+        if (!attempt) { policy.observe('primary', 'm1_http_524'); throw failure('m1_http_524'); }
+        return 'late_success';
+    }, new AbortController().signal));
+    expect(await Promise.race([paid, Promise.resolve('route_timeout')])).toBe('route_timeout');
+    const cleanup = sends.drain().then(() => { lockHeld = false; });
+    await Promise.resolve(); expect(lockHeld).toBe(true);
+    release(); await cleanup;
+    expect(budget.snapshot()).toMatchObject({ requests: 2, tokens: 134 });
+    expect([...budget.entries.values()].every(e => e.settled)).toBe(true);
+    expect(lockHeld).toBe(false);
+});
+
 test('a transient retry funds every send and retains unknown usage', async () => {
     const policy = new M1RetryPolicy({ wait: async () => {} });
     const budget = new EvaluationBudget({ maxRequests: 3, maxTotalTokens: 300 });
