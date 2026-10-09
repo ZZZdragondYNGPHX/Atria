@@ -1092,3 +1092,8 @@ F2续接修正（发送前）：v3首个Step证据请求transport_failed，usage
 Governance §13.1 成为唯一测试限制权威。清理当前 M1 acceptance 执行规则、feedback §7、S01/S06 测试说明和 S10 生产/测试边界；取消历史累计上限、封包/Step 次数配额、token 停测、逐轮新许可与人工账目审计。旧执行封包从 Plan 移除执行指令并改为历史摘要，实际失败、账目及 source pins 保留。HANDOFF 重写为当前恢复入口，工程问题应定位修复并必要复测，真实验收与生产权限、正式阶段边界保持。
 
 实际文档验证：14 份文件的本地链接/锚点、39 个表格与代码围栏通过；原 acceptance §1、双模型九对/六一致胜/非负维度、私有闭环及 production gate 保持，历史 §6–§10.6 标题/锚点保留，git diff --check 通过。文档提交后直接 fast-forward/push 独立 docs 分支，不 merge main。本轮不宣称测试 CLI 已完成同步，也不把现有产品 dirty changes 纳入此文档提交；下一产品续接需按当前规则清理原测试消费者残留 guard。
+
+
+本轮追加 `main:docs/` 路由清理（用户明确要求检查 docs 文件夹）：发现 English/简体/繁体贡献指南仍将 release 写成稳定分支，与当前 main 冲突；三份改为 main 并引用 docs:README 唯一治理入口。main AGENTS 补充当前 API 测试规则路由与历史文档不得恢复为执行指令；保留的十份旧 Plan 和一份 Phase1 HANDOFF 增加历史快照说明，原正文/结果保持，不迁移资产或建立新规则系统。产品说明中的 context/工具 budget 保留其产品语义，不充当 agent 测试配额。
+
+辅助 main 文档提交 `94cf032b5`（15 files，45 additions / 15 deletions）经短期 fix/docs-execution-routing commit/push 后 fast-forward 集成 main。实际验证：三语言贡献指南无旧 release 指令；11 历史快照移除新增说明后与原正文逐字相同；15 文件代码围栏保持、git diff/check 与暂存检查通过。未运行代码 tests/build/CI/API，未把并行 F2 的模型执行或测试当成本轮验证。main 仅 AGENTS/文档变化，M1 产品分支尚未集成；同一 Record/live HANDOFF 保留当前 M1/F2 状态。

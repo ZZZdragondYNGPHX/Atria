@@ -4,7 +4,7 @@
 - Updated: 2026-10-09
 - 当前任务：M1；F1 工程已完成，F2 评价/source 仍待验收，F3 未开始。M1 pending，main 尚未集成。
 - 产品已提交 HEAD：`feat/agent-intelligence-runtime@0479f5bd3e924c6031b09eaa4103e28684bc086a`；本轮文档清理期间并行产品修正已 push，开始前以实际 Git 状态核对并保护任何现有修改。
-- 稳定 main：`ed1fd90521a63363e29856601abbf5e908c99d10`。
+- 稳定 main：`94cf032b5`（本轮只集成 AGENTS / docs 历史路由与贡献指南修正；Runtime 产品实现尚未集成）。
 - 最近已记录的真实执行：run-1791524899036-18298dde 新增 21 请求 / 62624 tokens，其后一次 transport_failed 保留 11631 上界，最新记录累计 805 / 3154587、unknown18/86579、pending0。这是上次结果，不宣称当前私有账目仍精确相同；不把历史累计当 API 终身额度。
 - 文档当前规则：[Governance §13.1](README.md#131-api-测试执行规则) → [Plan index](plans/architecture/agent-intelligence-runtime/index.md) → [acceptance §0](plans/architecture/agent-intelligence-runtime/m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包) / [feedback §7](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#7-成本调用范围与失败处理) → [Record 最新节](records/refactor/agent-intelligence-runtime.md)。旧 acceptance/feedback 执行封包仅供定位具体历史问题。
 
