@@ -13,6 +13,7 @@ export class M1RetryPolicy {
         this.onChange = onChange;
         this.ignoreHistoricalStops = ignoreHistoricalStops;
         this.continuations = new Map();
+        this.lastFailureCodes = new Map();
     }
     state(key) {
         if (!this.connections.has(key)) this.connections.set(key, { consecutive: 0, recent: [], stopped: null });
@@ -27,6 +28,7 @@ export class M1RetryPolicy {
         this.observe(key, 'm1_response_incomplete');
     }
     observe(key, code = null) {
+        this.lastFailureCodes.set(key, code);
         const state = this.state(key);
         if (code && this.continuations.has(key)) this.continuations.get(key).revoked = true;
         state.recent.push(Boolean(code)); state.recent = state.recent.slice(-20);
@@ -61,11 +63,12 @@ export class M1RetryPolicy {
         for (let attempt = 0; attempt < 3; attempt++) {
             this.assertAvailable(key);
             signal.throwIfAborted();
+            this.lastFailureCodes.delete(key);
             try { return await operation(attempt); }
             catch (error) {
                 // The original HTTP adapter deliberately wraps fetch errors.
                 // Retry that wrapper only after this transport observed a fail.
-                const retryable = this.transient(error.code) || error.kind === 'transport' && this.state(key).consecutive > 0;
+                const retryable = this.transient(error.code) || error.kind === 'transport' && this.transient(this.lastFailureCodes.get(key));
                 if (!retryable || !this.ignoreHistoricalStops && this.state(key).stopped || attempt === 2 || signal.aborted) throw error;
                 await this.wait(signal);
             }

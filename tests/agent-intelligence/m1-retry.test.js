@@ -67,6 +67,17 @@ test('the original HTTP adapter wrapping a transient failure still permits a fun
     expect(result).toBe(response); expect(sends).toBe(2);
     expect(budget.snapshot()).toMatchObject({ requests: 2, tokens: 120 });
 });
+
+test.each([401, 404])('testing mode does not retry a wrapped current HTTP %i failure', async status => {
+    const policy = new M1RetryPolicy({ wait: async () => {}, ignoreHistoricalStops: true });
+    let sends = 0;
+    const provider = createHttpGenerationProvider({ fetchImpl: async () => {
+        sends++; policy.observe('primary', 'm1_http_' + status); throw failure('m1_http_' + status);
+    } });
+    await expect(policy.send('primary', () => provider.send({ endpoint: 'https://fixture.invalid', body: {} },
+        { secret: 'fixture-only', signal: new AbortController().signal }), new AbortController().signal)).rejects.toThrow();
+    expect(sends).toBe(1);
+});
 test('incomplete response replaces the header success and three such sends stop', async () => {
     const policy = new M1RetryPolicy({ wait: async () => {} }); let calls = 0;
     await expect(policy.send('primary', async () => {

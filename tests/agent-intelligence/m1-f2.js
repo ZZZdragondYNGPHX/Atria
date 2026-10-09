@@ -47,7 +47,8 @@ export function f2CalibrationMessages(control) {
         }
         return { ...message, content: canonical(content) };
     });
-    return [...messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.' }];
+    return [...messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.'
+        + (control.domain === 'rp' ? ' Every delta is right score minus left score, independent of the overall preference. A dimension where left is better has a negative delta; where right is better it has a positive delta; equal behavior is zero. Do not report an always-positive winning margin. Check each sign before returning JSON.' : '') }];
 }
 
 export function reusableF2Calibration(row, control, label, config, judgeOutputTokens = null, reasoningEffort = null) {
