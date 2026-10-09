@@ -100,6 +100,8 @@ test('F2 configuration rejects source drift without reviving old packet quotas o
     const expanded = { ...authorized, schemaVersion: 2, headroomAssessment: true, apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, maxSends: 72, maxSecondarySends: 18,
         stepPermission: { ...authorized.stepPermission, maxSends: 18 } };
     expect(validateF2Scope(expanded, controls, identity, false)).toBe(expanded);
+    expect(validateF2Scope({ ...expanded, domainOrder: ['project-prompt', 'rp-skill'] }, controls, identity, false)).toBeDefined();
+    expect(() => validateF2Scope({ ...expanded, domainOrder: ['project-prompt'] }, controls, identity, false)).toThrow('f2_scope_changed');
     expect(() => validateF2Scope({ ...expanded, apiHardLimits: { rollingDayRequests: 2001, requestsPerMinute: 20 } }, controls, identity, false)).toThrow('f2_scope_changed');
     expect(validateF2Scope({ ...scope, maxSends: 9999, maxSecondarySends: 9999, retries: 2, initialAccounting: { requests: 1, tokens: 1 } }, controls, identity, false)).toBeDefined();
     for (const change of [{ extraction: 1 }, { promotion: 1 }, { publication: 1 }, { pilotCaseSetRevision: hash('other source') }, { testedHead: hash('other source') }])

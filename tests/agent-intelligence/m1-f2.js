@@ -6,6 +6,8 @@ import { parseBlindGrade } from './m1-acceptance.js';
 import { m1JudgeOutputConfiguration } from './m1-grader.js';
 
 export function validateF2Scope(scope, controls, identity, prepareOnly) {
+    if (scope?.domainOrder && (!Array.isArray(scope.domainOrder) || scope.domainOrder.length !== 2
+        || new Set(scope.domainOrder).size !== 2 || scope.domainOrder.some(kind => !['rp-skill', 'project-prompt'].includes(kind)))) throw new Error('f2_scope_changed');
     const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
     if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || scope.pilotCaseSetRevision !== PILOT_CASE_SET_REVISION
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12

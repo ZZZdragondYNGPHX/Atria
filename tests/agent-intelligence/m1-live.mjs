@@ -283,7 +283,8 @@ try {
     const { NativeGenerationHost } = await import('../../src/native/adapters/generation-host.js');
     const { runRp } = await import('../../src/native/agent-intelligence/evaluation/adapters.js');
     const { selectCases, loadFixture, canonical } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
-    for (const [index, kind] of ['rp-skill', 'project-prompt'].entries()) {
+    for (const kind of f2Scope?.domainOrder || ['rp-skill', 'project-prompt']) {
+        const index = ['rp-skill', 'project-prompt'].indexOf(kind);
         if (cycleProjectExtract && index === 0) continue;
         if (cycleBaselineProject && index === 0) continue;
         if (diagnoseOnly && index !== 0) continue;
