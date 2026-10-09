@@ -47,6 +47,8 @@ Plan 保存产品设计与当前验收目标，Record 保存实际结果，HANDO
 
 不得放置产品实现、Package 资产、独立工具或 AI Skill 资产。
 
+产品使用/开发文档与站点资产在 `main:docs/`；设计和实施历史只在本分支保留。阅读入口：[Plans](plans/README.md)、[Records](records/README.md)、当前 [HANDOFF](HANDOFF.md)。
+
 ### `package`
 
 长期、独立的游戏 / Atria Package 资产工作空间。一个游戏一个顶级目录，每个游戏必须有自己的 `releases/`，历史 `.atria` 成品默认保留且不覆盖。

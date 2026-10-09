@@ -1,5 +1,19 @@
 # Plans
 
+## Directory map
+
+| Category | Plans |
+| --- | --- |
+| Architecture | [Architecture](architecture/README.md) |
+| Features | [Features](feat/README.md) |
+| Fixes | [Fixes](fix/README.md) |
+| Refactors | [Refactors](refactor/README.md) |
+| Packages | [Packages](package/README.md) |
+| Tools | [Plugins](plugin/README.md) |
+
+Active recovery is routed only by [HANDOFF](../HANDOFF.md); results are in [Records](../records/README.md). Read a project's index first, not every document in its directory.
+
+
 Plans 记录实现前或实现期间的设计与理由，不承担实施历史。
 
 按语义放入 `feat/`、`fix/`、`refactor/`、`package/`、`plugin/`、`architecture/` 等目录。

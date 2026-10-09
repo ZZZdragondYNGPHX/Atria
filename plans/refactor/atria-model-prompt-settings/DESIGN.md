@@ -710,5 +710,5 @@ portable save 保真，不改变普通 Package 升级的 exact/pinned 语义。
 引用保护。两者均不污染 Global。
 
 完整所有权、持久化、校验、删除、导入导出和验证记录见
-[Native Regex 三层作用域](../../feat/native-regex-scopes.md)。该扩展不恢复
+[Native Regex 三层作用域](../../../records/feat/native-regex-scopes.md)。该扩展不恢复
 Character Card、ST Prompt Manager、Tavern Helper DOM 或其他 legacy authority。

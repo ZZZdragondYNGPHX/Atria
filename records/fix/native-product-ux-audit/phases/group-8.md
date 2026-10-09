@@ -8,7 +8,7 @@ Issue commits:
 - NUX-041 `6cb86b33c`: exact Work Plugins and explicit two-item Global Plugins.
 - NUX-042 `42265308d`: dependency-first physical retirement and Native-owned capabilities.
 
-Ownership inventory: [retirement](native-extension-retirement.md).
+Ownership inventory: [retirement](../../../refactor/native-extension-retirement/legacy-handoffs/native-extension-retirement.md).
 
 ### NUX-041
 

@@ -24,7 +24,7 @@ Interrupted writes report completed copies and resume with the same review ident
 Trusted Resource Registry adapters extend this format to additional resource types.
 Prompt/Generation and World/Knowledge surfaces expose export and reviewed import,
 including historical World/Knowledge revisions. No new store or Project write path.
-Contract: [Resource Bundle](resource-bundle-contract.md).
+Contract: [Resource Bundle](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/development/resource-bundle.md).
 
 Validation: six Native suites passed 21 cases; four Shell suites passed 15 cases;
 final file-picker/localization checks passed six. Real Edge at 390px passed actual

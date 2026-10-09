@@ -1,5 +1,19 @@
 # Records
 
+## Directory map
+
+| Category | Records |
+| --- | --- |
+| Features | [Features](feat/README.md) |
+| Fixes | [Fixes](fix/README.md) |
+| Refactors | [Refactors](refactor/README.md) |
+| Architecture | [Native Package Runtime](architecture/native-package-runtime.md) |
+| Packages | [Packages](package/README.md) |
+| Tools | [Plugins](plugin/README.md) |
+
+These files record what happened. Current implementation resumes from [HANDOFF](../HANDOFF.md) and the relevant [Plan](../plans/README.md), not old phase instructions.
+
+
 Records are permanent implementation history.
 
 Use task-ownership categories such as `feat/`, `fix/`, `refactor/`, `package/`, and `plugin/`.

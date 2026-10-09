@@ -19,8 +19,8 @@
 ## 阅读顺序
 
 1. [DESIGN.md](DESIGN.md)：最终对象模型、权威边界、Prompt/Context/Generation 架构、产品界面与 hard-cut 决策。
-2. [EVIDENCE.md](EVIDENCE.md)：基于当前 main 的代码事实、旧依赖、冻结合同和 guard 冲突。
-3. [IMPLEMENTATION.md](IMPLEMENTATION.md)：P0–P8 实施阶段、每阶段退出条件和验证要求。
+2. [EVIDENCE.md](../../../records/refactor/atria-model-prompt-settings/EVIDENCE.md)：基于当前 main 的代码事实、旧依赖、冻结合同和 guard 冲突。
+3. [IMPLEMENTATION.md](../../../records/refactor/atria-model-prompt-settings/IMPLEMENTATION.md)：P0–P8 实施阶段、每阶段退出条件和验证要求。
 4. [NEXT.md](NEXT.md)：当前执行状态、下一阶段和新对话接手指令。
 
 ## 这次重构真正解决的问题
@@ -151,7 +151,7 @@ request-local immutable config、send-boundary Secret 和两种 Provider adapter
 已实现。本地 Native FS/SQLite：48 suites / 347 tests；P2 focused：33 tests；
 P0/P1/P2 与 A1/A2/A7/A8 guards、lint、syntax、frontend build 均通过。
 
-详见 [P2-VALIDATION.md](P2-VALIDATION.md)。下一阶段仅 P3，不重做 P0/P1/P2。
+详见 [P2-VALIDATION.md](../../../records/refactor/atria-model-prompt-settings/P2-VALIDATION.md)。下一阶段仅 P3，不重做 P0/P1/P2。
 
 ## P3 completion checkpoint (2026-09-23)
 

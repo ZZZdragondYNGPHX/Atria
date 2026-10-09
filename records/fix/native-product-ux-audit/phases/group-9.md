@@ -47,7 +47,7 @@ preserve authored names even when they match a translated action such as Save.
 placeholder identity, recognized hard-coded UI/accessibility copy and dynamic
 translation calls. Its focused regression verifies rejection examples as well as
 literal-value preservation and Chinese command discovery. Scope and maintenance
-contract: [Native product localization](native-product-localization.md).
+contract: [Native product localization](../../../refactor/atria-native-authoring-platform-product-frontend/legacy-handoffs/native-product-localization.md).
 
 Validation: related Native/Shell/Agents/Memory/Experience/Skills/Regex/Search suites
 passed 355 suites / 3541 tests (72 optional external-database skips). The final

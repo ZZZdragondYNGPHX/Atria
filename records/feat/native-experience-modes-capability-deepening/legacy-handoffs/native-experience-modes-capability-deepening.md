@@ -7,7 +7,7 @@ Updated: 2026-09-27. **P9 implementation and product verification complete. Stop
 - Current main: `4dab353ac639d42eae885c79e18245267abd6820` before integration.
 - Work branch: `feat/native-experience-modes-capability-deepening`.
 - Formal plan §0 now records concrete P9 boundaries.
-- Completion/evidence: [P9 record](../feat/native-experience-p9-completed.md), [screenshots](../feat/native-experience-p9-evidence/).
+- Completion/evidence: [P9 record](../phases/native-experience-p9-completed.md), [screenshots](../evidence/p9/).
 
 Studio v2 now uses production versioned compile/render with existing Review/Commit; exact author previews isolate private Native slots. Scenario fixtures execute real installed Package/SessionCore in disposable storage with recorded/mock Task results and no provider calls. Play Health exposes anchored read-only diagnostics, capability negotiation and Task binding preflight; typed repair requires preview and explicit confirmation. Static UI migration is lossless and reviewed; unsupported dynamic/ledger schema migration remains rejected. Shared product controls retain P8 authenticated fixed seats, all-required submit-once Host commit/cancel and explicit refresh/presence. Default invocation IDs and private-slot fallback discovered by integration are fixed.
 
