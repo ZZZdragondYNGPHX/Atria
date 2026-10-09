@@ -279,6 +279,17 @@ test('F3 requires every arm assessment and rejects a delta that hides a concrete
     expect(() => parseF3Grade(JSON.stringify(raw), pair, false)).toThrow('incomplete_f3_assessment');
 });
 
+test('F3 accepts an exact structural JSON quotation without accepting invented keys', () => {
+    const pair = example('project').report.pairs[0], dimensions = pair.case.behaviorDimensions;
+    const raw = { preference: 'tie', assessments: assessments(dimensions),
+        deltas: Object.fromEntries(dimensions.map(d => [d, 0])), rationale: 'Both observed.' };
+    const messages = f3GradeMessages(pair, false);
+    raw.assessments.status_accuracy.left.quote = '"status":"review"';
+    expect(parseF3Grade(JSON.stringify(raw), pair, false, messages).preference).toBe('tie');
+    raw.assessments.status_accuracy.left.quote = '"status":"committed"';
+    expect(() => parseF3Grade(JSON.stringify(raw), pair, false, messages)).toThrow('ungrounded_f3_assessment');
+});
+
 test('prior development feedback is pinned and cannot silently replace original observations', () => {
     const f = example(), candidate = { valueHash: hash('value'), candidate: { diff: { before: 'Original', after: 'Prior edit' } } };
     const prior = { report: f.report, candidate }, expected = { reportHash: hash(f.report), candidateHash: hash(candidate), valueHash: candidate.valueHash };
