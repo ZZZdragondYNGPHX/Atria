@@ -27,6 +27,14 @@ test('quota enforces twenty per rolling minute and allows expired day carry', ()
     expect(() => quota.admit('too-fast')).toThrow('m1_api_rate_limit');
     at += 60001; quota.admit('later');
 });
+test('cumulative ceiling counts expired carry and survives restart without admitting call 1001', () => {
+    let stored;
+    const now = () => 100000000;
+    const quota = new M1ApiQuota({ schemaVersion: 1, carry: { requests: 999, at: 0 }, admissions: [] }, next => { stored = structuredClone(next); }, now, { maxTotalRequests: 1000 });
+    quota.admit('call-1000');
+    expect(() => new M1ApiQuota(stored, () => {}, now, { maxTotalRequests: 1000 }).admit('call-1001')).toThrow('m1_api_total_limit');
+    expect(stored.admissions).toHaveLength(1);
+});
 test('private advisory owner retains overreports and continues through original persistence', async () => {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { repositoryClass: M1AdvisoryRepository });
     try {

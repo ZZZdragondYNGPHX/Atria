@@ -69,6 +69,7 @@ try {
     if (limits.maxRequests !== 512 || limits.maxTotalTokens !== 1699536) throw new Error('frozen_recovery_limits_required');
     const ledgerPath = path.join(directory, 'm1-ledger.json');
     const snapshot = read('m1-ledger.json');
+    if (!prepareOnly && snapshot.requests >= 1000) throw new Error('m1_api_total_limit');
     if (!snapshot.historicalCarry || snapshot.historicalCarry.evidenceHash !== read('m1-recovery.json').evidenceHash) throw new Error('historical_carry_changed');
     lock = ledgerPath + '.lock'; descriptor = fs.openSync(lock, 'wx', 0o600);
     fs.writeFileSync(descriptor, JSON.stringify({ pid: process.pid }));
@@ -78,13 +79,14 @@ try {
     lastAdmissionAt = Math.max(lastAdmissionAt, Date.now());
     const quotaPath = path.join(directory, 'm1-api-quota.json');
     if (!fs.existsSync(quotaPath)) writeFileAtomic.sync(quotaPath, JSON.stringify({ schemaVersion: 1, carry: { requests: snapshot.requests, at: Date.now() }, admissions: [] }, null, 2) + '\n', { mode: 0o600 });
-    const quota = new M1ApiQuota(read('m1-api-quota.json'), next => writeFileAtomic.sync(quotaPath, JSON.stringify(next, null, 2) + '\n', { mode: 0o600 }));
+    const quota = new M1ApiQuota(read('m1-api-quota.json'), next => writeFileAtomic.sync(quotaPath, JSON.stringify(next, null, 2) + '\n', { mode: 0o600 }), Date.now, { maxTotalRequests: 1000 });
     let admitted = snapshot.requests;
     const persistedIds = new Set(Object.keys(snapshot.entries));
     const warned = new Set(Object.entries(snapshot.entries).filter(([, e]) => e.tokens > e.upperBound).map(([id]) => 'reservation_overrun_' + id));
     const warning = (code, detail) => { if (!warned.has(code)) { warned.add(code); console.log(JSON.stringify({ advisoryWarning: code, ...detail })); } };
     const budget = new EvaluationBudget(limits, { snapshot, advisory: true, onChange: next => {
         if (next.requests > admitted) {
+            if (next.requests > 1000) throw new Error('m1_api_total_limit');
             const delay = Math.max(0, lastAdmissionAt + 3150 - Date.now());
             if (delay > 60000) throw new Error('invalid_rate_clock');
             if (delay) globalThis.Atomics.wait(new Int32Array(new globalThis.SharedArrayBuffer(4)), 0, 0, delay);
@@ -117,7 +119,7 @@ try {
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
-        policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
+        policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { cumulativeRequests: 1000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged', temporarySecondary };
     store('summary.json', summary);
     if (f2Scope) { validateF2Scope(f2Scope, f2Controls, summary, prepareOnly); summary.mode = 'f2_source_calibration'; summary.f2ScopeHash = hash(f2Scope); }
@@ -625,6 +627,7 @@ try {
         } catch (error) {
             store(kind + '-error.json', { name: error.name, message: error.message, stack: error.stack });
             entry.status = 'unavailable'; entry.reason = safeReason(error); process.exitCode = 1;
+            if (f2Scope && continuationRecord) { continuationRecord.failed ||= entry.reason; continuationRecord.closed = true; persistContinuation(); }
         }
         finally {
             if (scratch) { fs.cpSync(scratch.dataRoot, path.join(output, kind + '-private-fixture'), { recursive: true }); scratch.cleanup(); scratch = null; }
@@ -637,6 +640,7 @@ try {
         }
         if (f2Scope && entry.status === 'unavailable' || [...activeTransportKeys].some(key => retryPolicy.isStopped(key)) && !entry.acceptance) break;
     }
+    if (f2Scope && !prepareOnly && continuationRecord) { continuationRecord.closed = true; persistContinuation(); }
     if (!prepareOnly && !summary.accepted && !(f2Scope && summary.entries.length === 2 && summary.entries.every(e => e.status === 'f2_sources_observed'))) process.exitCode = 1;
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));
 } catch (error) { console.error('M1 live acceptance:', safeReason(error)); process.exitCode = 1; }

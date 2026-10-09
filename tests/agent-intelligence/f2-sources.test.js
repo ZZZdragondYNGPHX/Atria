@@ -6,7 +6,7 @@ import { runRp, runProject } from '../../src/native/agent-intelligence/evaluatio
 import { withIsolatedRuntime } from './runner.js';
 import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { validateF2Scope, runF2Domain } from './m1-f2.js';
+import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages } from './m1-f2.js';
 
 const captureFor = entry => ({ trialId: 'f2:' + entry.caseId, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
     prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
@@ -55,8 +55,23 @@ test('F2 scope requires explicit new secondary permission and rejects drift befo
     expect(() => validateF2Scope(scope, controls, identity, false)).toThrow('f2_step_permission_required');
     const authorized = { ...scope, stepPermission: { explicitAuthorization: true, maxSends: 12, evidenceHash: hash('new explicit limited authority') } };
     expect(validateF2Scope(authorized, controls, identity, false)).toBe(authorized);
+    const expanded = { ...authorized, schemaVersion: 2, headroomAssessment: true, apiHardLimits: { cumulativeRequests: 1000, requestsPerMinute: 20 }, maxSends: 72, maxSecondarySends: 18,
+        stepPermission: { ...authorized.stepPermission, maxSends: 18 } };
+    expect(validateF2Scope(expanded, controls, identity, false)).toBe(expanded);
+    expect(() => validateF2Scope({ ...expanded, apiHardLimits: { cumulativeRequests: 1001, requestsPerMinute: 20 } }, controls, identity, false)).toThrow('f2_scope_changed');
     for (const change of [{ maxSends: 61 }, { retries: 1 }, { extraction: 1 }, { promotion: 1 }, { publication: 1 }, { pilotCaseSetRevision: hash('other source') }, { testedHead: hash('other source') }])
         expect(() => validateF2Scope({ ...authorized, ...change }, controls, identity, false)).toThrow('f2_scope_changed');
+});
+
+test('source readiness assessments require all dimensions and literal evidence, with explicit unknown', () => {
+    const entry = PILOT_CASES[0], evidence = 'Actual public evidence.';
+    const value = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quote: evidence, rationale: 'Bounded evidence.' }])) };
+    expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toEqual(value);
+    value.dimensions[entry.behaviorDimensions[0]] = { status: 'unknown', quote: '', rationale: 'Insufficient evidence.' };
+    expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toEqual(value);
+    value.dimensions[entry.behaviorDimensions[0]] = { status: 'gap', quote: 'Invented evidence', rationale: 'Claim.' };
+    expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
+    expect(f2CalibrationMessages({ messages: [] })[0].content).toContain('512 characters');
 });
 
 test.each(PILOT_CASES.filter(c => c.split === 'development' && c.entrance === 'rp'))('RP evidence window keeps every original authority check: $sourceId', async entry => {

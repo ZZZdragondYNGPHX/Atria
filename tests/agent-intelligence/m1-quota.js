@@ -28,15 +28,18 @@ export class M1AdvisoryRepository extends AgentEvolutionRepository {
 // A rolling 24 hours is conservative across unknown API reset timezones.
 // The migration carry counts existing use without inventing old request rows.
 export class M1ApiQuota {
-    constructor(snapshot, persist = () => {}, now = Date.now) {
+    constructor(snapshot, persist = () => {}, now = Date.now, { maxTotalRequests = null } = {}) {
         if (!snapshot || snapshot.schemaVersion !== 1 || !Number.isSafeInteger(snapshot.carry?.requests) || snapshot.carry.requests < 0
             || !Number.isSafeInteger(snapshot.carry.at) || snapshot.carry.at < 0 || !Array.isArray(snapshot.admissions)
             || snapshot.admissions.some(a => !a.id || !Number.isSafeInteger(a.at) || a.at < 0)
             || new Set(snapshot.admissions.map(a => a.id)).size !== snapshot.admissions.length) throw new Error('invalid_api_quota_checkpoint');
         this.snapshot = structuredClone(snapshot); this.persist = persist; this.now = now;
+        if (maxTotalRequests !== null && (!Number.isSafeInteger(maxTotalRequests) || maxTotalRequests < 1)) throw new Error('invalid_api_total_limit');
+        this.maxTotalRequests = maxTotalRequests;
         if (snapshot.carry.at > now() + 60000 || snapshot.admissions.some(a => a.at > now() + 60000)) throw new Error('invalid_api_quota_clock');
     }
     assertAvailable() {
+        if (this.maxTotalRequests !== null && this.snapshot.carry.requests + this.snapshot.admissions.length >= this.maxTotalRequests) throw new Error('m1_api_total_limit');
         const at = this.now(), recent = this.snapshot.admissions.filter(a => a.at > at - 86400000);
         const carry = this.snapshot.carry.at > at - 86400000 ? this.snapshot.carry.requests : 0;
         if (recent.length + carry >= 2000) throw new Error('m1_api_daily_limit');

@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { hash, PILOT_CASE_SET_REVISION, PILOT_CASES } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, publicCaseScenario, PILOT_CASE_SET_REVISION, PILOT_CASES } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { parseBlindGrade } from './m1-acceptance.js';
 
 export function validateF2Scope(scope, controls, identity, prepareOnly) {
-    if (scope?.schemaVersion !== 1 || scope.purpose !== 'f2_source_calibration' || scope.pilotCaseSetRevision !== PILOT_CASE_SET_REVISION
+    const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.cumulativeRequests === 1000 && scope.apiHardLimits?.requestsPerMinute === 20;
+    if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || scope.pilotCaseSetRevision !== PILOT_CASE_SET_REVISION
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12
-        || scope.maxSends !== 60 || scope.maxSecondarySends !== 12 || scope.retries !== 0 || scope.extraction !== 0 || scope.promotion !== 0
+        || scope.maxSends !== (expanded ? 72 : 60) || scope.maxSecondarySends !== (expanded ? 18 : 12) || scope.retries !== 0 || scope.extraction !== 0 || scope.promotion !== 0
         || scope.publication !== 0 || scope.testedHead !== identity.testedHead || scope.evaluatorRevision !== identity.evaluatorRevision
         || scope.runnerRevision !== identity.runnerRevision || !Number.isSafeInteger(scope.initialAccounting?.requests) || !Number.isSafeInteger(scope.initialAccounting?.tokens)
         || scope.initialAccounting?.requests !== identity.initialAccounting?.requests
@@ -19,9 +20,24 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
                 || c.expected !== (c.group === 'missing_evidence' ? 'uncertain' : c.flipped ? 'left' : 'right')
                 || !PILOT_CASES.some(entry => entry.split === 'development' && entry.entrance === domain && entry.caseId === c.caseId && entry.fixtureHash === c.fixtureHash))) throw new Error('f2_control_changed');
     }
-    if (!prepareOnly && (scope.stepPermission?.explicitAuthorization !== true || scope.stepPermission.maxSends !== 12
+    if (!prepareOnly && (scope.stepPermission?.explicitAuthorization !== true || scope.stepPermission.maxSends !== scope.maxSecondarySends
         || !/^[a-f0-9]{64}$/.test(scope.stepPermission.evidenceHash))) throw new Error('f2_step_permission_required');
     return scope;
+}
+
+export function f2CalibrationMessages(control) {
+    return [...control.messages, { role: 'system', content: 'Output contract: rationale must contain at most 512 characters total (all dimensions combined). Use one brief sentence. Return exactly the required JSON, no prose outside JSON.' }];
+}
+
+export function parseF2SourceAssessment(text, entry, evidence) {
+    const value = parseEvaluationJson(text);
+    if (!value.dimensions || Object.keys(value.dimensions).sort().join(',') !== [...entry.behaviorDimensions].sort().join(',')) throw new Error('invalid_f2_source_assessment');
+    for (const row of Object.values(value.dimensions)) {
+        if (!['met', 'gap', 'unknown'].includes(row?.status) || typeof row.quote !== 'string' || row.quote.length > 512
+            || typeof row.rationale !== 'string' || row.rationale.length > 512
+            || (row.status === 'unknown' ? row.quote !== '' : !row.quote || !evidence.includes(row.quote))) throw new Error('invalid_f2_source_assessment');
+    }
+    return value;
 }
 
 export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal }) {
@@ -37,8 +53,9 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
         const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
             { ...payload, arm: 'judge' }, signal, async () => {})).raw);
         try {
+            const messages = f2CalibrationMessages(control);
             const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':' + control.group + ':' + control.flipped,
-                fixtureHash: control.fixtureHash, messages: control.messages, tools: [], kind: 'grader' });
+                fixtureHash: control.fixtureHash, messages, tools: [], kind: 'grader' });
             const text = response.response.assistantText || response.response.text;
             const pair = { case: PILOT_CASES.find(c => c.caseId === control.caseId) };
             let raw, normalized = null;
@@ -48,7 +65,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                 && typeof raw.rationale === 'string' && raw.rationale.length <= 512
                 : raw.preference === control.expected && normalized?.preference === 'candidate'
                     && Object.values(normalized.deltas).every(v => v >= 0) && Object.values(normalized.deltas).some(v => v > 0);
-            entry.calibration.push({ group: control.group, flipped: control.flipped, label, passed, preference: raw.preference, requestHash: hash(control.messages) });
+            entry.calibration.push({ group: control.group, flipped: control.flipped, label, passed, preference: raw.preference, messagesHash: hash(messages) });
             store(kind + '-f2-calibration.json', entry.calibration);
             if (!passed) throw new Error('f2_calibration_failed');
         } finally { bridge.cleanup(); }
@@ -59,5 +76,31 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     store(kind + '-source-probe.json', report);
     entry.status = 'f2_sources_observed'; entry.sourceReportHash = hash(report);
     entry.baselineHeadroom = 'requires_evidence_review'; entry.semanticEffect = 'not_a_paired_trial';
+    if (scope.headroomAssessment) {
+        const assessments = [];
+        for (const pair of report.pairs) {
+            const evidence = canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
+            const observations = [];
+            for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+                const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
+                const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
+                    { ...payload, arm: 'judge' }, signal, async () => {})).raw);
+                try {
+                    const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':source-assessment:' + pair.case.caseId,
+                        fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages: [
+                            { role: 'system', content: 'Assess this single baseline using every supplied dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Quotes must occur literally in the supplied evidence, including JSON escaping. Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
+                            { role: 'user', content: evidence },
+                        ] });
+                    observations.push({ label, origin: 'model_source_assessment', evidenceHash: hash(evidence),
+                        ...parseF2SourceAssessment(response.response.assistantText || response.response.text, pair.case, evidence) });
+                } finally { bridge.cleanup(); }
+            }
+            const sharedGaps = pair.case.behaviorDimensions.filter(d => observations.every(o => o.dimensions[d].status === 'gap'));
+            assessments.push({ caseId: pair.case.caseId, observations, sharedGaps, humanPreference: 'not_observed' });
+            store(kind + '-f2-source-assessments.json', assessments);
+        }
+        entry.baselineHeadroom = assessments.some(a => a.sharedGaps.length) ? 'observed_gap' : 'not_established';
+        entry.sourceAssessmentHash = hash(assessments);
+    }
     if ((await f.repository.get(f.h.handle, f.scope, f.subject)).jobs.length) throw new Error('f2_candidate_job_forbidden');
 }
