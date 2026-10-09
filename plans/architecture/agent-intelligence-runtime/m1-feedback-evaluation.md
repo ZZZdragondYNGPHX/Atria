@@ -1,7 +1,7 @@
 # M1：原链路反馈与评价契约补充
 
 - Updated：2026-10-09；Task ID：`agent-intelligence-runtime`。
-- 状态：**F1与F2双模型来源前置完成；首次F3两域未准入promotion，新协议校准被530/524中断，没有新候选。工程修复与待验证流程已提交推送；用户暂停换设备，M1未完成。设计补充见§16，实际结果见同一Record最新节，恢复见[HANDOFF](../../../HANDOFF.md)。**
+- 状态：**私有恢复和两域worker/lifecycle本地接线完成；用户已取消双模型准入，按主模型继续F3与M1工程验收。旧不利结果及账目保留，实际结果见同一Record最新节，当前契约见§16与m1-acceptance。**
 - 设计顺序：原链路反馈与评价契约 → 各一个 RP、Project 试点；具体工程契约如下。
 - 来源：[领域扩展研究](../agent-intelligence-m1-domain-evolution-research.md)、[S05](s05-feedback.md)、[S10](s10-evolution.md)、[M1 acceptance](m1-acceptance.md)。核对产品 `a61b249ef71f108d279ec7bd883fb5eeae97a463`；这些设计不计入已有实证。
 - 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程退出门槛与实际发送范围由 m1-acceptance 管理。
@@ -83,7 +83,7 @@ current、校准有效的 host_check verified_failure 可支持局部干预假�
 | QualityProfile | domain、profile/dimension/rubric revision、单位/时间尺度、必需维度、证据类型、条件与 unknown/N/A | 原重要维度保留；缺证据拒绝，不事后删除不利维度 |
 | Case provenance | 原 episode/task/project ref、source/fixture/input hashes、origin、派生组、split/用途、baseline headroom、保留边界 | source/派生组跨 split 重叠拒绝；无真人来源明确 agent-authored/synthetic |
 | Evaluation envelope | source/head/base/target、profile/case/adapter/evaluator、route/model/tools/配置、judge/calibration pins、公平条件、有限范围 | 变化即新 revision/资格；不可复用旧合格报告 |
-| Report | 逐 trial 正文/公开轨迹、正式结果、checks、维度证据与 unknown、双模型原判断、全部 charges、缺口 | execution/quality/preference/publication/consumption 分开；偏好不能抵消负 delta |
+| Report | 逐 trial 正文/公开轨迹、正式结果、checks、维度证据与 unknown、各实际评委原判断、全部 charges、缺口 | execution/quality/preference/publication/consumption 分开；偏好不能抵消负 delta |
 
 评分使用原 pair 和重要维度非负要求；新增维度必须纳入 case 行为集合并由两个评委实际评价，不只是附录文字。N/A 在执行前按输入条件固定；必需维度不能 N/A，未观察的长期维度不填零。质量向量与原 preference 均保留，不用文学均分补偿玩家代写/知识边界/正式操作缺陷。
 
@@ -132,11 +132,11 @@ API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)
 | --- | ---: | --- |
 | 来源/headroom 探测 | 6 场景 ×6 send =36 | 保存正式输出；不能冒充后续独立 paired baseline |
 | 有限缺陷分析 | 6 来源 ×1 =6 | 能用固定 checks 时无需这些调用；不得无限逐轮 critic |
-| judge controls | 2域 ×3组 ×2顺序 ×2judge =24 | 正确/错误/unknown，构造素材不另调用生成 |
-| 候选与 development | 2提炼 +12 arms ×6 +12 grades =86 | 各一候选/三pair，原双模型 ≥2一致胜/其它tie/非负才准入 |
-| 独立 promotion | 36 arms ×6 +36 grades =252 | 达development才各九对/六一致胜等原门槛 |
+| judge controls | 2域 ×3组 ×2顺序 ×1judge =12 | 正确/错误/unknown，构造素材不另调用生成 |
+| 候选与 development | 2提炼 +12 arms ×6 +6 grades =80；缓存正确基线不计新调用 | 各一候选/三pair，准入唯一见m1-acceptance §2 |
+| 独立 promotion | 36 arms ×6 +18 grades =234 | 达development才各九对；退出门槛唯一见m1-acceptance §2 |
 | 下一 run 消费 | 2域 ×6 =12 | 仅达标后在私有 fixture review；原 rollback 零模型 |
-| 合计 | 416，另列实际必要的 retry/诊断 | 无 retry 的形态上界；不是实际必需调用数或承诺费用 |
+| 合计 | 380，另列实际必要的 retry/诊断 | 无 retry 的形态上界；不是实际必需调用数或承诺费用 |
 
 source/case/input/rubric/calibration/worker/request identity 随实际版本与结果记录。现金价格未知仍 unavailable，不声称节约或回本。
 
@@ -221,6 +221,9 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 ## 16. F3 工程修复与 M1 持续推进
 
-§15的一次 development 失败不是整体 M1退出；失败后诊断与有依据修复按 Governance §8执行。每个固定修复版本仍每域提炼一个候选，评分前冻结，原两模型 development准入/三独立promotion各三pair及review→消费→rollback不变。不对同一有效负面候选无变化追试，不从 promotion取材，不降低必需维度或门槛。
+§15的一次 development 失败不是整体 M1退出；失败后诊断与有依据修复按 Governance §8执行。每个固定修复版本仍每域提炼一个候选，评分前冻结，当前development准入与独立promotion门槛唯一见m1-acceptance §1/§2；三独立promotion各三pair及review→消费→rollback不变。不对同一有效负面候选无变化追试，不从 promotion取材，不降低必需维度或门槛。
 
-新增必需消费者核对：真实 F3比较提示和完整证据编码必须先使用同一协议通过两模型已固定正确/错误/unknown、反事实和顺序翻转控制，不能复用另一协议的F2校准作为证明。提炼输入须说明原可执行 slot；原Studio在prepare_review后停止，状态说明只能走已存在的公开assistant/plan槽位并区分当前事实与未来Review边界，不扩展停态writer。工程修复和待验证流程已提交推送；本次校准每域仅一个主模型控制通过即被530/524中断，没有新候选。原worker/mock接线检查被用户中断，真实独立验收/审阅发布/下一消费/回滚未执行。用户已暂停换设备，恢复见HANDOFF；实际结果唯一记入同一Record最新节，M1仍按acceptance §1/§2。
+新增必需消费者核对：真实 F3比较提示和完整证据编码必须先使用同一协议通过当前主模型已固定正确/错误/unknown、反事实和顺序翻转控制，不能复用另一协议的F2校准作为证明。提炼输入须说明原可执行 slot；原Studio在prepare_review后停止，状态说明只能走已存在的公开assistant/plan槽位并区分当前事实与未来Review边界，不扩展停态writer。工程修复和待验证流程已提交推送；本次校准每域仅一个主模型控制通过即被530/524中断，没有新候选。原换机中断后的worker/mock接线现已补齐：两域各九对原worker隔离执行及两域审阅发布/下一消费/守卫回滚、消费失败回滚本地检查通过；mock不证明语义改善。新实际续接第二连接六次HTTP530/Tunnel1033，无新候选，真实独立验收/审阅发布/下一消费/回滚仍未完成。实际结果唯一记入同一Record最新节，M1仍按acceptance §1/§2。
+
+
+用户随后明确取消双模型准入；当前规则以[m1-acceptance §14](m1-acceptance.md#14-2026-10-09-当前主模型准入)为准，第二连接不可用不再阻止development/promotion。既有双模型数据和失败属于历史事实，不删除、不改分，也不创建第二份门槛。

@@ -21,7 +21,7 @@
 - F2 primary checkpoint / local Tested HEAD: `f495267023ca4475d15ba1c61b66702624c4938e`；新来源/独立密封/范围固定完成主模型测试；20/20 有效 controls、六真实基线原硬检查通过，RP knowledge / Project status 主模型缺口成立。第二模型复核暂缓，F3 未开始，M1 pending。实际结果与 pins 见同一 Record 最新节。
 - F2 dual source completion / local Tested HEAD: `11756061ed74dc298ab99f0701b1d7e7c1c0a607`；两域40/40有效controls与六来源各两观察完成，原六基线复用；两域共同缺口成立。
 - F3 product / local Tested HEAD: `cebd14154b371f59a7b44dbac9726e2f9db18a4c`（已push）；一次双域提炼/development完成，两域一致candidate胜均0，存在重要维度负差/分歧与一份无效评价，未准入promotion，M1 pending。最新F3 17/17与retry18/18本地checks；具体实际结果/pins见同一Record。
-- M1 current checkpoint / pushed HEAD: `88e5b34d30bc04d4011271f354c21b46627a6283`；工程修复与待验证流程均已提交并推送。新协议校准因HTTP530/524中断，未产生新候选；相关本地单元检查64项通过，原worker/mock接线与真实独立验收/发布/消费/回滚未完成。用户明确暂停换设备，M1 pending；接手AI自主拉取源码/docs、解压私有Document并恢复本机运行路径，见[HANDOFF](../../../HANDOFF.md)与同一Record最新节。
+- M1 current checkpoint / pushed HEAD: `57640f93362ddce6eb1fe666c94db79e1e2cecb4`；远端同步、私有恢复与本地接线完成。用户明确取消双模型准入，主模型development/promotion路径已落地；首轮主模型实测RP未达门槛、Project控制暴露证据编码缺陷。原不利结果保留；已修复counterfactual authority及评分符号协议并继续主模型实测，M1 pending。实际结果见同一Record最新节。
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
@@ -80,7 +80,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §16 → 当前相关消费者 → 同一 Record 最新节；F1/F2前置范围完成，F2双模型来源复核已补齐；F3一次双域提炼/development完成但两域未准入promotion，M1仍pending（feedback§15/acceptance§12/Record最新节）。最新实际分支/恢复与交接见当前HANDOFF；不重跑正确的冻结基线，不改不利模型判断，不将工程完成当M1两模型验收。历史首失败停止与重新许可不是当前规则。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
+S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §16 → 当前相关消费者 → 同一 Record 最新节；F1/F2前置范围完成，F2双模型来源复核已补齐；F3一次双域提炼/development完成但两域未准入promotion，M1仍pending（feedback§15/acceptance§12/Record最新节）。最新实际分支/恢复与交接见当前HANDOFF；不重跑正确的冻结基线，不改不利模型判断，不将工程完成当M1实测验收；当前主模型准入见acceptance §14。历史首失败停止与重新许可不是当前规则。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -124,7 +124,7 @@ D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Wo
 | S08 | Complete；原 Prompt / Preset authority body candidate / exact binding | Native immutable closure / Route CAS、ordinary RP Workspace pin、下一 request / run 消费；7 suites / 68 tests |
 | S09 | Complete；原 Workspace 参数 exact binding / rollback、Project pristine Task repair candidate / CAS | 8 suites / 105 tests；单字段 / whole base / conflicts；运行开始后 Project 不热改，手动 apply 无晋升资格 |
 | S10 | 工程交付完成；实际模型改善待验收 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
-| M1反馈/评价补充 F0–F3 | F0/F1及F2双模型前置完成；首次F3两域未准入promotion，M1 pending；用户暂停换设备 | 原critical维度与验收门槛保持；新比较协议校准被530/524中断，接线检查及真实独立验收闭环待完成；实际结果见Record |
+| M1反馈/评价补充 F0–F3 | F0/F1及F2双模型前置完成；换机恢复和本地接线完成，M1 pending | 用户已取消双模型准入，按主模型继续校准/development/独立验收；原场景/维度/authority/生命周期门槛及旧不利判断保持，实际结果见Record |
 | S11–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
 S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一工作补齐 M1 验收证据与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。

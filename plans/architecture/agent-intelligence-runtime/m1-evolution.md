@@ -198,7 +198,7 @@ S10 支持 ordinary RP exact character 下的 bounded single-owner Director、�
 
 ## 12. 2026-10-07 自动化工程验收调整
 
-用户批准agent代劳与保守结转 / 新有限验证预算。当前M1工程验收使用 [m1-acceptance](m1-acceptance.md) 的确定性检查 / 双模型盲评与真实局部review闭环，不要求用户本人提供human标签；缺失human仍真实标记not_observed。生产automatic promotion继续严格执行S10原human / price gate，工程通过不取得自动发布权限。完整退出门槛与当前测试执行由该模块管理，早期M1人工验收条款不再约束工程交付验收。
+用户批准agent代劳与保守结转 / 新有限验证预算。当前M1工程验收使用 [m1-acceptance](m1-acceptance.md) 的确定性检查 / 当前主模型盲评与真实局部review闭环，不要求用户本人提供human标签；缺失human仍真实标记not_observed。生产automatic promotion继续严格执行S10原human / price gate，工程通过不取得自动发布权限。完整退出门槛与当前测试执行由该模块管理，早期M1人工验收条款不再约束工程交付验收。
 
 ## 13. 原链路反馈与评价补充
 

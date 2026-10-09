@@ -1283,3 +1283,35 @@ Project正式developmentReadiness=false，wins0；前两条有有效分歧/重�
 换机交付按用户要求简化：源码与文档推送各自 Git 分支，私有文件仅打包 `Document/`，包名 `Atria-Document-private-20261009.zip`。该目录保留配置、报告、native fixtures、账本和密封材料；私有文件不推送 Git。用户只需转移该包并要求接手 AI 解压、读 docs/HANDOFF.md、继续 M1；拉取两分支、保护已有工作、恢复依赖、发现私有目录及适配本机路径由接手 AI 自主完成，再按 HANDOFF → Plan → 本 Record 推进。此前拟采用的离线 bundle/manifest/restore 和未提交 patch 恢复流程不再用于此次交付。
 
 本次单目录私有包已完成 ZIP CRC 与全部文件 SHA 字节核对，费用账本不变、pending0；私有包权限600。文档当前入口已移除过时的未推送/未提交及复杂恢复操作，永久历史事实与 M1 正式门槛保留。此次只验证文档链接、围栏、差异和同步状态，不继续产品测试或模型调用。
+
+
+## 2026-10-09 换机恢复与 M1 接线复核 — 第二连接 Tunnel 不可用
+
+用户要求解压私有包、读取 HANDOFF 并继续 M1，随后明确提醒本地落后、先拉取远端。本次先 fetch，再分别 fast-forward 产品任务工作树到 `88e5b34d30bc04d4011271f354c21b46627a6283`、正式 docs 到 `e5be06079`；保护正式 docs 未跟踪 Experience 草稿和另一设计工作树已有修改，main未变化。只在当前任务的非Git私有目录恢复Document，并适配辅助脚本工作副本的Windows路径，不改旧报告/冻结配置/密封内容。
+
+ZIP内10291个文件逐项SHA-256校验一致；密封metadata仍为 `7c47b310b6639ed8cfc58adfdc810f101454ffa2463c977a6776a88f5cf5aa38`。私有目录及继承文件仅当前用户ACL，源码/tests依各自锁文件执行npm ci。原账目1124 requests /6422466 accounted tokens、pending0/lock0恢复完整；未清除carry、旧breach、quota/rate、transport epochs或错误。密封正文仅交给固定worker执行，未输入提炼器或用于候选开发。
+
+原worker/mock sealed paired接线已完成：RP与Project各9对/18trials，mock provider请求分别18和36；原isolation、target_consumed及非空输出/charges均通过，真实ledger不变。随后Project no-op mock在完整准入检查中被related_proposal=false拒绝，正确保留此失败，不将中性mock变成正确依赖修复或强行通过。此接线正例不代表全部语义/准入硬检查通过，也不代表真实改善。
+
+为补足尚未验证的生命周期，新增test-only原 `publishConsumeRollback` 可测试导出及四项本地消费者检查：两域明确review→原下一Director/Host request实际消费candidate→guarded rollback恢复exact base，及两域下一请求transport失败仍恢复base。使用独立合成报告，无密封材料、真实模型或human labels；原持久publication为rolled_back、生产decision仍ineligible，activation发送有原durable receipts。初次检查因合成compare预留多项future admissions而撞10秒mock Route timeout；仅对synthetic repository返回的等待时间禁用mock pacing，持久timestamps与生产repository不改，相关四项复测全部通过。原私有sealed全链路RP mock也观察到发布/消费/回滚，但不计M1语义资格。
+
+本机原F3/准入/密封检查先39 passed/1 failed；失败是Windows缺file-symlink privilege。改为Windows真实NTFS junction、POSIX仍真实file/dir symlink，保留路径拒绝边界；密封suite复测4/4通过。当前最小验证共44 distinct local checks（F3 25、promotion gate11、sealed4、lifecycle4），触及JS ESLint与git diff --check通过。无full suite/build/CI/UI/Android/外部DB；不重复未变化F2/retry suites。产品修复及验证提交 `c61f40937`、当前 `53f12ed34284a5718155f0e4b06dee5ad7e120ae`，均推送同一feature分支，main未集成。
+
+真实续接run `run-1791557489398-ae5e0faf`固定product c61f40937、scope `67a19da3618aed08011f4b4b8c81bfa15fbdddef70259e451bf67a790bbaa9ba`，复用原两域各一个exact消息/transport/owner/shared费用身份一致的主控制。第二连接step-5-preview在两个域各三次funded attempts全部HTTP530，私有完整错误证据为Cloudflare Tunnel1033；非quota或认证错误，没有取得新有效控制或提炼新候选。没有重跑正确六基线、修改旧候选/不利判断或尝试独立promotion。新6请求/121068 accounted tokens全部以reserved upper bound结算，原错误/费用完整保留。
+
+当前累计1130 requests /6543534 accounted tokens：818provider_reported +60reserved_upper_bound +252carry，unknown上界950546，pending0/lock0；f3Completed/promotionReady/accepted均false。生产price/human gate保持。已向用户说明需要恢复原第二连接或在私有配置提供可用第二模型；本地没有服务端Tunnel管理权限，不能用单模型结果替代原双模型门槛。
+
+在完成本地检查后为当前HEAD准备新私有 `m1-f3-device-readiness-20261009.json`，未发送：scope `a76b003644ace4762d3816d7d3f712729bcb50ab3aab4ae3c6888e00e8c51847`，evaluator `736e6490e328f43c68663c5b5374f1954f7bde2163548a5797df0134f7d5ff1e`，runner `95141316a70c85fbd6a6d7435ec5a717659eb9a7d398735b66ce4f331ef86394`。校准恢复引用本次run的完整owner fixture及两份原已付费控制，保留新增失败费用；连接恢复后继续exact校准→一次新development→原独立验收/私有review/下一消费/rollback。第二配置若实际变化则重新核对F2来源与当前协议资格，不将旧连接观察嫁接为新连接通过。未新写HANDOFF，未把失败试验或局部工程完成当成M1完成。
+
+
+## 2026-10-09 取消双模型准入与主模型继续实测
+
+用户先说明第二模型暂不可用、只用主模型测试，随后明确要求取消双模型准入并询问来源。Git最早记录为 `aabdf8c75`，2026-10-07 21:06:53 +08:00，author字段 `ZZZdragondYNGPHX`；该版本详细规则被写为工程冻结而非用户逐条指定，不能把Git署名或泛化历史确认解释为用户亲自规定。当前主模型准入唯一权威为acceptance §1/§2/§14，原双模型记录保留历史。生产human/price gate、独立场景、冻结、维度、authority和生命周期要求保持。
+
+产品 `bfe49f3d0fc40e878096ea00adccdd4749b9862a` 已push：F3 primary_only不加载/seed/send第二配置；development与promotion均允许主模型资格，仍要求实际已付费控制、三development至少两胜其余tie、九对独立promotion至少六胜其余tie及非负维度。未声明模型观察为human labels。旧无mode/dual报告保持原兼容契约。相关F3 28/promotion13检查通过，单模型secret检查2项通过；触及ESLint/syntax/diff检查通过。
+
+实际 `run-1791558682146-034cb583` 固定bfe49f3d0、scope `f23c6c4fdd13f35901cdc7de2667bd1e3b05850a57114a444f62e8567c478437`。原六正确基线不重跑，恢复此前完整owner ledger并复用每域原exact主控制。RP六主比较controls有效，提炼一个新候选并运行三development，结果一candidate/一tie/一baseline，actor_voice/narrative_response/player_agency及knowledge_boundary负差，未准入promotion；archive的candidate偏好与分数符号/理由冲突，仍保留原响应且不能修分冒充改善。Project两个known_violation顺序控制有效，counterfactual返回uncertain，未产生Project候选。新增17请求均有provider reported usage，累计1147 requests /6607254 accounted tokens；unknown仍60项上界950546、carry252，pending0/lock0，accepted=false。
+
+有依据修复提交 `57640f93362ddce6eb1fe666c94db79e1e2cecb4` 已push。Project synthetic counterfactual的observedAuthority包裹完整Task/公共window，原F3 codec却从外层取status/modelStatements，误制造缺失；现先展开完整authority进入原codec，保留synthetic声明与真实facts。新比较协议明确right-minus-left正负号并要求自检，矛盾偏好/分数保持invalid，不自动重试或改分。新增冻结的原development反馈输入，提炼同时保护上轮实际voice/agency退化；只读development、不读promotion，原report/candidate/summary均固定hash。F3 32项与promotion13项通过，触及ESLint/diff通过；没有扩展full suite/build/CI/UI/Android。
+
+继续实测scope `2c77dd9bad217d60dc516fae6975e78376fc84e972c1c4a21ef98904b1581da6`，固定57640f933及原密封来源。私有 `run-1791559379647-eaf92995` 是显式calibration_snapshot，非新模型实验：原baseline fixture拷贝保持doc/target，逐项验证旧owner attempts是当前owner的完整子集，再逐字节拷贝最新真实owner resource，保留全部已有fees；只提取已有comparison控制引用。旧失败候选、原reports和真实账本不动。新的exact协议需要重新校准，旧消息不同的控制不得复用。正在运行 `run-1791559398792-4af198ac`；当前结果不计M1完成，完成时再记录实际结论。
