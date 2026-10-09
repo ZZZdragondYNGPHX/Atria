@@ -6,6 +6,7 @@ import { parseBlindGrade } from './m1-acceptance.js';
 import { m1JudgeOutputConfiguration } from './m1-grader.js';
 
 export function validateF2Scope(scope, controls, identity, prepareOnly) {
+    if (scope?.judgeMode && !['dual', 'primary_only'].includes(scope.judgeMode)) throw new Error('f2_scope_changed');
     if (scope?.domainOrder && (!Array.isArray(scope.domainOrder) || scope.domainOrder.length !== 2
         || new Set(scope.domainOrder).size !== 2 || scope.domainOrder.some(kind => !['rp-skill', 'project-prompt'].includes(kind)))) throw new Error('f2_scope_changed');
     if (scope?.judgeReasoningEffort && Object.entries(scope.judgeReasoningEffort).some(([label, effort]) =>
@@ -209,6 +210,10 @@ export function f2SourceMessages(pair, evidence = f2SourceEvidence(pair)) {
 
 export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal, resume = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
+    const primaryOnly = scope.judgeMode === 'primary_only';
+    const judges = primaryOnly ? [['primary', primaryConfig]] : [['primary', primaryConfig], ['secondary', secondaryConfig]];
+    entry.judgeMode = primaryOnly ? 'primary_only' : 'dual';
+    entry.secondModelValidation = primaryOnly ? 'deferred_by_user' : 'required';
     const transportFor = (label, config) => f2JudgeTransport(config, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[label] ?? null);
     if (hash(primaryConfig) !== scope.configurations[kind].primary || hash(secondaryConfig) !== scope.configurations[kind].secondary) throw new Error('f2_configuration_changed');
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
@@ -223,9 +228,9 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
         || resume.report.pairs.length !== 3 || resume.report.pairs.some(p => p.candidate !== null || p.judge !== null || p.human !== null
             || !PILOT_CASES.some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
     const domainControls = controls.controls.filter(c => c.domain === domain);
-    entry.calibration = (resume?.calibration || []).filter(row => domainControls.some(control =>
+    entry.calibration = (resume?.calibration || []).filter(row => (!primaryOnly || row.label === 'primary') && domainControls.some(control =>
         reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[row.label] ?? null)));
-    for (const control of domainControls) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+    for (const control of domainControls) for (const [label, config] of judges) {
         if (entry.calibration.some(row => reusableF2Calibration(row, control, label, config, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[label] ?? null))) continue;
         const transportConfig = transportFor(label, config);
         const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
@@ -254,7 +259,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     entry.sourceCalibration = [];
     for (const control of controls.sourceControls?.filter(c => c.pair.case.entrance === domain) || []) {
         const messages = f2SourceMessages(control.pair);
-        for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+        for (const [label, config] of judges) {
             const transportConfig = transportFor(label, config);
             const prior = resume?.sourceCalibration?.find(row => row.group === control.group && row.label === label && row.passed
                 && row.configurationHash === hash(config) && row.transportConfigurationHash === hash(transportConfig) && row.messagesHash === hash(messages));
@@ -290,7 +295,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             const evidence = f2SourceEvidence(pair);
             const messages = f2SourceMessages(pair, evidence);
             const observations = [];
-            for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+            for (const [label, config] of judges) {
                 const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label && o.messagesHash === hash(messages)
                     && o.configurationHash === hash(config) && o.transportConfigurationHash === hash(transportFor(label, config)));
                 if (prior) { const priorEvidence = prior.evidenceVariant === 'full_v1' ? canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline }) : evidence;
@@ -308,11 +313,13 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                         ...parseF2SourceAssessment(response.response.assistantText || response.response.text, pair.case, evidence) });
                 } finally { bridge.cleanup(); }
             }
-            const sharedGaps = pair.case.behaviorDimensions.filter(d => observations.every(o => o.dimensions[d].status === 'gap'));
-            assessments.push({ caseId: pair.case.caseId, observations, sharedGaps, humanPreference: 'not_observed' });
+            const gaps = pair.case.behaviorDimensions.filter(d => observations.every(o => o.dimensions[d].status === 'gap'));
+            const sharedGaps = primaryOnly ? [] : gaps;
+            assessments.push({ caseId: pair.case.caseId, observations, sharedGaps, ...(primaryOnly ? { primaryGaps: gaps } : {}), humanPreference: 'not_observed' });
             store(kind + '-f2-source-assessments.json', assessments);
         }
-        entry.baselineHeadroom = assessments.some(a => a.sharedGaps.length) ? 'observed_gap' : 'not_established';
+        entry.baselineHeadroom = primaryOnly ? assessments.some(a => a.primaryGaps.length) ? 'primary_observed_gap' : 'not_established'
+            : assessments.some(a => a.sharedGaps.length) ? 'observed_gap' : 'not_established';
         entry.sourceAssessmentHash = hash(assessments);
     }
     if ((await f.repository.get(f.h.handle, f.scope, f.subject)).jobs.length) throw new Error('f2_candidate_job_forbidden');

@@ -109,6 +109,8 @@ test('F2 configuration rejects source drift without reviving old packet quotas o
         stepPermission: { ...authorized.stepPermission, maxSends: 18 } };
     expect(validateF2Scope(expanded, controls, identity, false)).toBe(expanded);
     expect(validateF2Scope({ ...expanded, domainOrder: ['project-prompt', 'rp-skill'] }, controls, identity, false)).toBeDefined();
+    expect(validateF2Scope({ ...expanded, judgeMode: 'primary_only' }, controls, identity, false)).toBeDefined();
+    expect(() => validateF2Scope({ ...expanded, judgeMode: 'unverified' }, controls, identity, false)).toThrow('f2_scope_changed');
     expect(() => validateF2Scope({ ...expanded, domainOrder: ['project-prompt'] }, controls, identity, false)).toThrow('f2_scope_changed');
     expect(() => validateF2Scope({ ...expanded, apiHardLimits: { rollingDayRequests: 2001, requestsPerMinute: 20 } }, controls, identity, false)).toThrow('f2_scope_changed');
     expect(validateF2Scope({ ...scope, maxSends: 9999, maxSecondarySends: 9999, retries: 2, initialAccounting: { requests: 1, tokens: 1 } }, controls, identity, false)).toBeDefined();
@@ -337,6 +339,45 @@ test('the original restore preserves exact prepared Project baseline pins withou
         expect((await restored.repository.get(restored.h.handle, restored.scope, restored.subject)).jobs).toEqual([]);
         await expect(restoreEvolutionFixture(makeTempFsEngineHarness, f.h.dataRoot, { ...result, target: { ...f.target, presetId: 'forged' } }, { baselineOnly: true })).rejects.toThrow('f2_baseline_restore_changed');
     } finally { await restored?.h.cleanup(); await f.h.cleanup(); }
+}, 30000);
+
+test.each([false, true])('primary-only F2 funds no independent requests and cannot claim shared headroom: primaryOnly=$#', async primaryOnly => {
+    let calls = 0;
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { realEvaluator: true, confirmedPrice: null, fetchImpl: async (_url, options) => {
+        calls++;
+        const evidence = JSON.parse(options.body).messages.flatMap(message => {
+            try { const value = JSON.parse(message.content); return value.quoteCatalogue ? [value] : []; } catch { return []; }
+        })[0];
+        const content = evidence ? { dimensions: Object.fromEntries(Object.keys(evidence.scenario.rubric).map(d => [d,
+            { status: d === 'knowledge_boundary' ? 'gap' : 'met', quoteRef: evidence.quoteCatalogue[0].ref, rationale: 'Controlled observation.' }])),
+        knowledgeReview: evidence.quoteCatalogue.filter(row => row.origin === 'baseline.output').map(row =>
+            ({ quoteRef: row.ref, status: 'unsupported', rationale: 'Controlled unsupported assertion.' })) }
+            : { preference: 'uncertain', deltas: {}, rationale: 'No observations.' };
+        return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
+    } });
+    try {
+        const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId);
+        const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+        const cases = PILOT_CASES.filter(c => c.entrance === 'rp' && c.split === 'development');
+        const control = { domain: 'rp', group: 'missing_evidence', flipped: false, expected: 'uncertain', caseId: cases[0].caseId,
+            fixtureHash: cases[0].fixtureHash, messages: [{ role: 'user', content: 'No observations.' }] };
+        const report = { domain: 'rp', origin: 'host_source_probe', caseSetRevision: PILOT_CASE_SET_REVISION,
+            configurations: { baseline: hash(config) }, settings: { baseline: hash(settings) }, pairs: cases.map(entry =>
+                ({ case: entry, baseline: { output: 'NPC asserts an unsupported penalty.' }, candidate: null, judge: null, human: null })) };
+        const entry = {}, saved = new Map();
+        const scope = { judgeMode: primaryOnly ? 'primary_only' : 'dual', headroomAssessment: true,
+            configurations: { 'rp-skill': { primary: hash(config), secondary: hash(config), settings: hash(settings) } } };
+        await runF2Domain({ f, kind: 'rp-skill', primaryConfig: config, secondaryConfig: config, controls: { controls: [control] }, scope, entry,
+            store: (name, value) => saved.set(name, structuredClone(value)), signal: new AbortController().signal, resume: { calibration: [], report } });
+        expect(calls).toBe(primaryOnly ? 4 : 8);
+        const owner = await f.repository.owner(f.h.handle);
+        expect(owner.attempts.filter(row => row.jobId.endsWith(':independent'))).toHaveLength(primaryOnly ? 0 : 4);
+        expect(entry.baselineHeadroom).toBe(primaryOnly ? 'primary_observed_gap' : 'observed_gap');
+        const assessments = saved.get('rp-skill-f2-source-assessments.json');
+        expect(assessments.map(row => row.sharedGaps)).toEqual(cases.map(() => primaryOnly ? [] : ['knowledge_boundary']));
+        expect(assessments.map(row => row.observations.length)).toEqual(cases.map(() => primaryOnly ? 1 : 2));
+    } finally { await f.h.cleanup(); }
 }, 30000);
 
 test('pointwise calibration rejects an uninformative assessor before using a saved source probe', async () => {
