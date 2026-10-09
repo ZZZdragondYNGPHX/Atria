@@ -101,3 +101,11 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 用户明确要求检查第二模型，不能调用则暂时放弃该API。沿实际701/2717515及同一ledger/quota/rate/失败窗口，只允许一次Step原失败Project authoring独立grade形态的funded诊断，固定原pair/shuffle/messages来源与输出8000，无retry；该请求不计评分、不替换任何旧结果、不重跑trials或提炼。不清stop或另开epoch，不探测其它区域/模型。HTTP错误保存原body/status/request ID并关联charge；若失败，当前Step API暂时停用，缺第二模型时M1双模型验收仍pending，不降门槛或合并main。仅最小本地验证，更新同一Record/live HANDOFF后停止，不进入S11/G。
 
 结果：product source63dc0fd44，单次实际请求成功返回step-5-preview完整preference/deltas/rationale JSON、finish_reason=stop，reported3601（input1426/output2175，其中reasoning2085），累计702/2721116，无retry。保留该API；这只证明当前该形态可调用，不证明持续稳定或解释旧404，不清原stop、不计独立评分。原final report pair/shuffle/messages固定；诊断新建隔离fixture，configuration hash与旧不同，不能声称整份旧snapshot复用。两次前置校验因provider wrapper/中间onPair身份与final report身份差异拒绝，均零发送，修正后才进行唯一真实诊断。未修改候选或重新执行验收，M1仍pending、不进入S11/G。
+
+## 9. 2026-10-09 来源读取修复的有限周期
+
+用户再次明确“继续任务”。从实际702/2721116沿原ledger/quota/rate/失败窗口，本轮只生成每入口一个新局部候选，Project依据97a1 authoring -4/review失败明确“tool schema不等于完整authoritative source；必要source读取不可省略，取得来源后才避免重复探索”；RP依据原development自然记忆表达/场景连续反馈，旧partial不冒充完整验收。候选经原Experience correction/reflection/diagnosis及原提炼/targets/CAS，不手写结果；若正文与已测候选完全相同则不重跑有效评分。原局部edits契约与base保持沿用，不重写算法或建立平行authority。
+
+正式恢复Step的依据为§8原评分形态成功诊断及本次用户继续授权；仅本有限周期最多24个独立评分send（development6、符合准入才promotion18），保留同一transport key/epoch/全recent、consecutive和stopped历史，不清stop。test-only增加一次显式续接许可，durable记录诊断证据与实际消耗；仅允许旧404且最新诊断成功的当前Step key，任何新Step失败或不完整响应立即撤销本周期许可、暂时停止API，无追试。restart/重复development不能自动重新取得许可；原primary有限transient retry/频繁错误规则保持，quota/rate/所有usage如实累计，8000输出保持。
+
+本轮development固定当前case set49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b，每入口三个v1场景各一次新candidate/baseline比较及双模型单次评分，免费stale challenge不占actual六次send的已修正revision保持。已有旧评分与候选不覆盖、不改解释；本轮无第二次修复或重提炼。完整双模型≥2一致candidate/其它tie/重要维度非负/原checks与funding全通过后，才冻结候选并执行一次v2每入口九对/六一致胜及原publication/next-run/rollback。若development失败则不发promotion。v1已用于诊断，不冒充未见材料；v2未作为提炼输入，来源隔离及revision沿§6/7，合成案例只证明有限工程效果，不能称真实用户反馈泛化或持续自迭代已验收。原生产human/price/budget gate保持；只最小相关验证，提交推送同一Record/live HANDOFF后停止，不合格不合并main、不进入S11/G。
