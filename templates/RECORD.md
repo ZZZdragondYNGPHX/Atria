@@ -12,7 +12,7 @@
 - Start HEAD:
 - End/Tested HEAD:
 - Status:
-- Validation/CI:
+- Local validation:
 
 ### Completed
 

@@ -16,6 +16,8 @@
 
 ## Validation strategy
 
+按实际触及面安排最小充分的本地检查；优先自动化，不默认全量测试/构建、远端 CI 或人工实机验证。关键验收确实无法自动化替代时，明确缺口与最小人工动作。
+
 ## Stage plan
 
 ## Material design changes
