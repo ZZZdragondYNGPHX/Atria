@@ -1,5 +1,5 @@
 import { expect, test, jest } from '@jest/globals';
-import { mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readSealedSource } from '../../src/native/agent-intelligence/evaluation/sealed-sources.js';
@@ -20,13 +20,17 @@ test('the sealed reader rejects development, arbitrary case identity and changed
     } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-test('sealed sources cannot follow directory or file symlinks to another store', () => {
+test('sealed sources reject links at the source path and directory aliases', () => {
     const root = mkdtempSync(join(tmpdir(), 'atri-sealed-'));
     try {
-        const other = join(root, 'payload'); writeFileSync(other, '{}');
-        symlinkSync(other, join(root, promotion.sourceId + '.json'));
+        const other = join(root, 'payload');
+        // Windows junctions exercise real reparse points without requiring
+        // Developer Mode or the file-symlink privilege on the test machine.
+        if (process.platform === 'win32') mkdirSync(other);
+        else writeFileSync(other, '{}');
+        symlinkSync(other, join(root, promotion.sourceId + '.json'), process.platform === 'win32' ? 'junction' : 'file');
         expect(() => readSealedSource(promotion, root)).toThrow('sealed_source_unavailable');
-        symlinkSync(root, join(root, 'alias'));
+        symlinkSync(root, join(root, 'alias'), process.platform === 'win32' ? 'junction' : 'dir');
         expect(() => readSealedSource(promotion, join(root, 'alias'))).toThrow('sealed_source_unavailable');
         expect(() => readSealedSource(promotion, 'relative')).toThrow('sealed_source_unavailable');
     } finally { rmSync(root, { recursive: true, force: true }); }
