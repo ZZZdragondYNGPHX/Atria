@@ -89,8 +89,6 @@ All state data is persisted to disk and will not be lost due to server restarts.
 
 CardApp is the most typical user of the state system. In-card applications can save game progress, user preferences, interaction history, and other data through the state system. For example, an RPG-type CardApp can save character level, equipment, quest progress, and other information in the character state.
 
-See [CardApp](/features/cardapp) for details.
-
 ### Extension Data Storage
 
 Third-party extensions can use the state system to store custom data for each character or chat without managing file I/O themselves. This simplifies extension development and ensures correct lifecycle management of data.
@@ -109,7 +107,6 @@ See [Extension API — Floor State](/development/extension-api/chat-and-state#fl
 
 ## Related Pages
 
-- [CardApp](/features/cardapp) — In-card application system
 - [Extension API](/development/extension-api/) — Extension development interface
 - [Floor State](/development/extension-api/chat-and-state#floor-state) — Developer reference for chat state with automatic rewind
 - [Incremental Sync](/improvements/incremental-sync) — Incremental save mechanism for chat data

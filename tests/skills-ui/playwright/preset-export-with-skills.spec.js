@@ -22,7 +22,7 @@
  * Prerequisites:
  *   - Atria dev server running.
  *
- * Screenshots: docs/public/_screenshots/skills/preset-export-*.png.
+ * Screenshots: docs/public/screenshots/skills/preset-export-*.png.
  *
  * No LLM.
  */

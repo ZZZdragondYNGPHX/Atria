@@ -89,8 +89,6 @@ PRESET: "預設目錄" {
 
 CardApp 是狀態系統最典型的使用者。角色卡內嵌的應用可以透過狀態系統儲存遊戲進度、使用者偏好、互動歷史等資料。例如，一個 RPG 類型的 CardApp 可以將角色的等級、裝備、任務進度等資訊儲存在角色狀態中。
 
-詳見 [CardApp](/zh-TW/features/cardapp)。
-
 ### 擴充功能資料儲存
 
 第三方擴充功能可以利用狀態系統為每個角色或聊天儲存自訂資料，而無需自行管理檔案讀寫。這簡化了擴充功能開發，也確保了資料的生命週期管理是正確的。
@@ -109,7 +107,6 @@ API、程式碼範例與使用約定請見 [擴充 API — 樓層狀態](/zh-TW/
 
 ## 相關頁面
 
-- [CardApp](/zh-TW/features/cardapp) — 角色卡內嵌應用系統
 - [擴充 API](/zh-TW/development/extension-api/) — 擴充功能開發介面
 - [樓層狀態](/zh-TW/development/extension-api/chat-and-state#樓層狀態) — 帶自動回退的聊天狀態開發參考
 - [增量同步](/zh-TW/improvements/incremental-sync) — 聊天資料的增量儲存機制

@@ -89,8 +89,6 @@ PRESET: "预设目录" {
 
 CardApp 是状态系统最典型的使用者。角色卡内嵌的应用可以通过状态系统保存游戏进度、用户偏好、交互历史等数据。例如，一个 RPG 类型的 CardApp 可以将角色的等级、装备、任务进度等信息保存在角色状态中。
 
-详见 [CardApp](/zh-CN/features/cardapp)。
-
 ### 扩展数据存储
 
 第三方扩展可以利用状态系统为每个角色或聊天存储自定义数据，而无需自行管理文件读写。这简化了扩展开发，也确保了数据的生命周期管理是正确的。
@@ -109,7 +107,6 @@ API、代码示例与使用约定见 [扩展 API — 楼层状态](/zh-CN/develo
 
 ## 相关页面
 
-- [CardApp](/zh-CN/features/cardapp) — 角色卡内嵌应用系统
 - [扩展 API](/zh-CN/development/extension-api/) — 扩展开发接口
 - [楼层状态](/zh-CN/development/extension-api/chat-and-state#楼层状态) — 带自动回退的聊天状态开发参考
 - [增量同步](/zh-CN/improvements/incremental-sync) — 聊天数据的增量保存机制

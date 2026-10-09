@@ -492,5 +492,5 @@ During development, you can trigger a reload by disabling/enabling the plugin th
 
 - [Server Plugin Development](/development/server-plugin) — Server-side plugin development guide (filesystem, API proxy, credential storage)
 - [Extension API Reference](/development/extension-api/) — Complete API list with detailed parameter descriptions
-- [Card Developer Guide](/development/card-developers) — Character card extension fields and CardApp development
+- [Character Customization Walkthrough](/recipes/card-customization-walkthrough) — Customize a character card with the Studio
 - [Contributing](/development/contributing) — How to submit code to Atria

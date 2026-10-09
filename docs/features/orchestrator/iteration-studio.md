@@ -109,7 +109,7 @@ The prompt can be a plain sentence. For example:
 
 The Studio drafts the SKILL.md, opens the install round, and you approve. The skill lands on disk and is ready to use the moment you approve it. If you also asked the Studio to attach it ("…so every agent sees it" / "…for voice_critic"), it wires it into the right place too; otherwise you can attach it yourself later from the [skill list section](/features/orchestrator/skills) of the director editor.
 
-![Studio after the install round](/_screenshots/skills/iter-studio-05-after-llm-round.png)
+![Studio after the install round](/screenshots/skills/iter-studio-05-after-llm-round.png)
 
 See the [recipe](/recipes/rp-skills-walkthrough) for the full walkthrough.
 

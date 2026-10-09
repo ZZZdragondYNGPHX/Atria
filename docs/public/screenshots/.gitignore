@@ -1,0 +1,3 @@
+# Track only screenshots selected for published documentation.
+*
+!.gitignore

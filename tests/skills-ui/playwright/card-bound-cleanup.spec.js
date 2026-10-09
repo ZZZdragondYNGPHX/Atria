@@ -18,7 +18,7 @@
  * Prerequisites:
  *   - Atria dev server running.
  *
- * Screenshots: docs/public/_screenshots/skills/card-bound-cleanup-*.png.
+ * Screenshots: docs/public/screenshots/skills/card-bound-cleanup-*.png.
  *
  * No LLM.
  */

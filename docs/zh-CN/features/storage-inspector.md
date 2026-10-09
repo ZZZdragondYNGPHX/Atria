@@ -16,8 +16,6 @@ Atria 提供两个互补的存储审查工具，一个针对服务端的用户�
 
 ![聊天下钻](/images/storage-inspector/02-self-chats-drilldown.png)
 
-![Admin 聚合视图](/images/storage-inspector/05-admin-aggregate.png)
-
 ## 浏览器存储审查
 
 **入口：**「用户设置」→「帐户」→**「浏览器存储」**

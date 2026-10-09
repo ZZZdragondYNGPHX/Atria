@@ -492,5 +492,5 @@ Atria 內建了前端日誌管理器，會攔截 `console` 輸出和 `fetch` 請
 
 - [後端外掛開發](/zh-TW/development/server-plugin) — 伺服端外掛開發指南（檔案系統、API 代理、憑證儲存）
 - [擴充 API 參考](/zh-TW/development/extension-api/) — 完整的 API 列表和詳細參數說明
-- [角色卡開發](/zh-TW/development/card-developers) — 角色卡擴充欄位和 CardApp 開發
+- [角色卡定製教學](/zh-TW/recipes/card-customization-walkthrough) — 使用 Studio 定製角色卡
 - [貢獻指南](/zh-TW/development/contributing) — 如何向 Atria 提交程式碼

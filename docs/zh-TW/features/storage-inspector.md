@@ -16,8 +16,6 @@ Atria 提供兩個互補的儲存審查工具，一個針對伺服器端的使�
 
 ![聊天下鑽](/images/storage-inspector/02-self-chats-drilldown.png)
 
-![Admin 彙總視圖](/images/storage-inspector/05-admin-aggregate.png)
-
 ## 瀏覽器儲存審查
 
 **入口：**「使用者設定」→「帳號」→**「瀏覽器儲存」**

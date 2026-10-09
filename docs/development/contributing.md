@@ -201,4 +201,4 @@ Please respect all contributors and users. Maintain a friendly and professional 
 
 - [Frontend Plugin Development](/development/frontend-plugin) — Getting started with third-party plugin development
 - [Extension API Reference](/development/extension-api/) — Complete API documentation
-- [Character Card Development](/development/card-developers) — Character Card extension features
+- [Character Customization Walkthrough](/recipes/card-customization-walkthrough) — Customize a character card with the Studio

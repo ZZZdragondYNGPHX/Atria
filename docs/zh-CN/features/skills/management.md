@@ -14,7 +14,7 @@ Skill 管理顶部有三个 tab：
 - **浏览出厂** —— `default/skills/global/` 自带的 24 个 Skill，每行显示你本地副本是匹配、有差异，还是没装。
 - **导入** —— 从文件、URL，或角色卡 / 预设里抽出 Skill 的入口。
 
-![Skill 管理子面板，已安装 tab](/_screenshots/skills/manager-installed-tab.png)
+![Skill 管理子面板，已安装 tab](/screenshots/skills/manager-installed-tab.png)
 
 ## Tab 1 —— 已安装
 
@@ -50,7 +50,7 @@ Skill 管理顶部有三个 tab：
 | **已安装（你的版本有差异）** | 本地副本存在，但哈希与出厂版本不匹配 —— 你（或某次迭代工作台会话）改过它。 |
 | **未安装** | 本地没有副本。点击**安装**把它落到 `global`。 |
 
-![浏览出厂，混合状态](/_screenshots/skills/manager-bundled-tab.png)
+![浏览出厂，混合状态](/screenshots/skills/manager-bundled-tab.png)
 
 tab 顶部的**全量导入出厂**按钮，是对每个「未安装」或「有差异」行点**安装**的便捷等价 —— 它会用出厂版本**覆盖**全部 24 个出厂 Skill。
 
@@ -82,7 +82,7 @@ URL 导入器有意做窄 —— 它只抓一份 Markdown 文件。再复杂（�
 
 导入带 `embedded_skills_source` 字段的角色卡（PNG）或预设（JSON）时，Atria 会自动弹出预览对话框：
 
-![嵌入导入预览](/_screenshots/skills/embed-import-preview.png)
+![嵌入导入预览](/screenshots/skills/embed-import-preview.png)
 
 对话框逐项列出每个嵌入的 Skill 及其冲突状态。对每个冲突，你可选**跳过**（保留本地版本）或**替换**（用嵌入里的版本）。内容相同的项（`相同`）会静默不操作；新条目（`新`）直接安装。
 
@@ -92,7 +92,7 @@ URL 导入器有意做窄 —— 它只抓一份 Markdown 文件。再复杂（�
 
 点击 Skill 行的**编辑**会打开弹窗内编辑器：
 
-![内嵌 Skill 编辑器](/_screenshots/skills/skill-editor.png)
+![内嵌 Skill 编辑器](/screenshots/skills/skill-editor.png)
 
 - 左栏：文件树（SKILL.md + 任何子文件）。点击切换。
 - 右栏：Markdown 编辑器，frontmatter 区段有 YAML 感知高亮。

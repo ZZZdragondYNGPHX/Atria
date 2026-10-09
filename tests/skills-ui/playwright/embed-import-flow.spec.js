@@ -27,7 +27,7 @@
  * spec exercises it directly.
  *
  * Each step captures a screenshot under
- * docs/public/_screenshots/skills/import-*.png.
+ * docs/public/screenshots/skills/import-*.png.
  */
 
 import { test, expect } from '@playwright/test';

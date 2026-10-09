@@ -486,5 +486,5 @@ Atria 内置了前端日志管理器，会拦截 `console` 输出和 `fetch` 请
 
 - [后端插件开发](/zh-CN/development/server-plugin) — 服务端插件开发指南（文件系统、API 代理、凭证存储）
 - [Extension API 参考](/zh-CN/development/extension-api/) — 完整的 API 列表和详细参数说明
-- [角色卡开发](/zh-CN/development/card-developers) — 角色卡扩展字段和 CardApp 开发
+- [角色卡定制教程](/zh-CN/recipes/card-customization-walkthrough) — 使用 Studio 定制角色卡
 - [贡献指南](/zh-CN/development/contributing) — 如何向 Atria 提交代码

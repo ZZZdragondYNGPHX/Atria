@@ -109,7 +109,7 @@ AI 说没什么再改的了之后，点 **应用到全局**（到处都用）或
 
 你审批之后，skill 立刻落盘可用。如果你顺便交代了挂载（"让所有 agent 看到"、"给 voice_critic 看"），它会一起挂好；否则之后你也可以自己在 [Skill 列表](/zh-CN/features/orchestrator/skills) 里加。
 
-![工作台跑完安装](/_screenshots/skills/iter-studio-05-after-llm-round.png)
+![工作台跑完安装](/screenshots/skills/iter-studio-05-after-llm-round.png)
 
 详见 [《用 skills 调教 RP 输出》](/zh-CN/recipes/rp-skills-walkthrough)。
 

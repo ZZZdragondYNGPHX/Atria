@@ -229,7 +229,7 @@ This soft-fail behavior is deliberate. It means:
 
 In the orchestrator panel, each agent's settings card shows a **Skills** row:
 
-![Per-agent skill chips with + inherit](/_screenshots/skills/agent-skill-chips.png)
+![Per-agent skill chips with + inherit](/screenshots/skills/agent-skill-chips.png)
 
 - **`+`** chip — the explicit "inherit mode default" marker (appears when `visible` starts with `"+"`).
 - One chip per named skill. Click to remove; click **Add…** to pick from your installed inventory.

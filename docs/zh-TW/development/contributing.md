@@ -201,4 +201,4 @@ Atria/
 
 - [前端外掛開發](/zh-TW/development/frontend-plugin) — 第三方外掛開發入門
 - [擴充 API 參考](/zh-TW/development/extension-api/) — 完整的 API 文件
-- [角色卡開發](/zh-TW/development/card-developers) — 角色卡擴充功能
+- [角色卡定製教學](/zh-TW/recipes/card-customization-walkthrough) — 使用 Studio 定製角色卡

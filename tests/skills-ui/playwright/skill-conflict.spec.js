@@ -16,7 +16,7 @@
  *   - Atria dev server running.
  *   - Active character (the dialog needs a real character scope to install into).
  *
- * Screenshots: docs/public/_screenshots/skills/skill-conflict-*.png.
+ * Screenshots: docs/public/screenshots/skills/skill-conflict-*.png.
  *
  * No LLM.
  */
