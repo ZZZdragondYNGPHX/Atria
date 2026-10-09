@@ -4,7 +4,7 @@ import { DEVELOPMENT_SOURCES } from '../../src/native/agent-intelligence/evaluat
 import { EvolutionEvaluator, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { runRp, runProject } from '../../src/native/agent-intelligence/evaluation/adapters.js';
 import { withIsolatedRuntime } from './runner.js';
-import { evolutionFixture } from './evolution-fixture.js';
+import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { validateF2Scope, runF2Domain } from './m1-f2.js';
 
@@ -137,4 +137,19 @@ test('a real funded calibration failure settles once and stops before baseline o
         expect(owner.attempts).toHaveLength(1); expect(owner.attempts[0]).toMatchObject({ kind: 'judge', status: 'reported', tokens: 10 });
         expect((await f.repository.get(f.h.handle, f.scope, f.subject)).jobs).toEqual([]);
     } finally { await f.h.cleanup(); }
+}, 30000);
+
+test('the original restore preserves exact prepared Project baseline pins without a candidate or publication', async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review', realEvaluator: true });
+    let restored;
+    try {
+        const doc = await f.repository.get(f.h.handle, f.scope, f.subject), result = { doc, target: f.target };
+        const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+        const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId);
+        restored = await restoreEvolutionFixture(makeTempFsEngineHarness, f.h.dataRoot, result, { baselineOnly: true });
+        expect(hash(await restored.service.targets.evaluationSettings(restored.h.handle, restored.scope, restored.subject, restored.target))).toBe(hash(settings));
+        expect(hash(await restored.evaluator.configuration(restored.h.handle, restored.route.runtimeRouteId))).toBe(hash(config));
+        expect((await restored.repository.get(restored.h.handle, restored.scope, restored.subject)).jobs).toEqual([]);
+        await expect(restoreEvolutionFixture(makeTempFsEngineHarness, f.h.dataRoot, { ...result, target: { ...f.target, presetId: 'forged' } }, { baselineOnly: true })).rejects.toThrow('f2_baseline_restore_changed');
+    } finally { await restored?.h.cleanup(); await f.h.cleanup(); }
 }, 30000);

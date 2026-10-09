@@ -322,7 +322,11 @@ try {
         summary.entries.push(entry); store('summary.json', summary);
         try {
             const primary = connections[0];
-            const f = gradeSource ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(gradeSource.previous, kind + '-private-fixture'), gradeSource.results[kind],
+            const f2Restored = f2Scope?.preparationRun;
+            if (f2Restored && !/^run-[0-9]+-[a-f0-9]{8}$/.test(f2Restored)) throw new Error('invalid_f2_preparation_run');
+            const f = f2Restored ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(directory, 'm1-reports', f2Restored, kind + '-private-fixture'),
+                JSON.parse(fs.readFileSync(path.join(directory, 'm1-reports', f2Restored, kind + '-f2-baseline.json'), 'utf8')),
+                { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, baselineOnly: true }) : gradeSource ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(gradeSource.previous, kind + '-private-fixture'), gradeSource.results[kind],
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, requireCurrentPublication: false }) : resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository }) : await evolutionFixture(makeTempFsEngineHarness, kind, { realEvaluator: true, fetchImpl: transport,
                 connectionConfig: boundedCycle || f2Scope ? { ...primary.config, maxOutputTokens: 8000 } : primary.config, policyMode: 'review', confirmedPrice: null, repositoryClass: M1AdvisoryRepository,
@@ -473,7 +477,8 @@ try {
                 async trial => { store(kind + '-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial); },
                 development ? { split: 'development', repetitions: 1, ...(cycleFinish && kind === 'rp-skill' ? { caseIds: ['rp_variant_d1'] } : {}) } : { split: 'promotion', repetitions: 3 });
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig);
-                if (f2Scope) entry.baselineSettingsHash = hash(await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target)); continue; }
+                if (f2Scope) { entry.baselineSettingsHash = hash(await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target));
+                    store(kind + '-f2-baseline.json', { doc: await f.repository.get(f.h.handle, f.scope, f.subject), target: f.target }); } continue; }
             if (f2Scope) { await runF2Domain({ f, kind, primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), secondaryConfig, controls: f2Controls, scope: f2Scope, entry, store, signal: overall.signal }); continue; }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';
