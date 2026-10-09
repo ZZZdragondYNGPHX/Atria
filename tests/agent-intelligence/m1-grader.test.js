@@ -33,11 +33,11 @@ test('authorized extraction uses 8000 on the original compiler/provider with a s
     expect(restarted.state(old).stopped).toBe('m1_response_incomplete'); expect(restarted.state(revised).recent).toEqual([false]);
 });
 
-test.each([false, true])('extended independent grader funds the original provider and settles failure=%s without changing native limits', async failure => {
+test.each([{ failure: false, output: 8192 }, { failure: true, output: 8192 }, { failure: false, output: 16384 }])('extended independent grader funds the original provider: failure=$failure output=$output', async ({ failure, output }) => {
     let sends = 0, reserved;
     const f = await evolutionFixture(makeTempFsEngineHarness, 'project-strategy', { fetchImpl: async (_url, options) => {
         sends++;
-        expect(JSON.parse(options.body).max_tokens).toBe(8192);
+        expect(JSON.parse(options.body).max_tokens).toBe(output);
         reserved = (await f.repository.owner(f.h.handle)).attempts.at(-1);
         expect(reserved.status).toBe('reserved');
         if (failure) throw new Error('fixture_transport_failure');
@@ -45,7 +45,7 @@ test.each([false, true])('extended independent grader funds the original provide
     } });
     cleanup.push(f.h.cleanup);
     const { createLiveBridge } = await import('./live-bridge.js');
-    await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: { ...testConfig, model: 'independent', maxOutputTokens: 8192, contextTokens: 32000 }, secretPort: f.host.secretPort });
+    await createLiveBridge({ engine: f.h.engine, handle: f.h.handle, config: { ...testConfig, model: 'independent', maxOutputTokens: output, contextTokens: 32000 }, secretPort: f.host.secretPort });
     const route = (await f.host.persistence.listRuntimeRoutes(f.h.handle)).find(r => r.role === 'role.orchestrator' && r.runtimeRouteId !== f.route.runtimeRouteId
         && r.modelProfileRef.modelProfileId !== f.route.modelProfileRef.modelProfileId);
     const config = await m1GraderConfiguration(f.host, f.h.handle, route.runtimeRouteId);
