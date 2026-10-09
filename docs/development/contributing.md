@@ -1,5 +1,7 @@
 # Contributing Guide
 
+Repository governance is maintained in `docs:README.md` (read locally with `git show docs:README.md`). This guide describes contribution steps; current user instructions and governance define the active task boundaries. Historical plans and handoffs under `main:docs/` are snapshots, not current execution instructions.
+
 Thank you for your interest in the Atria project! This document explains how to contribute code, documentation, and other improvements to Atria.
 
 ## Setting Up the Development Environment
@@ -29,15 +31,15 @@ By default it listens on `http://localhost:8000`. You can change the port via co
 
 ## Branching Strategy
 
-- **`release`** — The stable branch, always kept in a releasable state. All PRs should target `release`.
-- Create feature branches from `release` for new development.
+- **`main`** — The stable branch, always kept in a releasable state. All PRs should target `main`.
+- Create feature branches from `main` for new development.
 
 ```bash
-git checkout -b feat/my-new-feature release
+git checkout -b feat/my-new-feature main
 ```
 
 > [!IMPORTANT]
-> Atria's stable branch is `release`.
+> Atria's stable branch is `main`.
 
 Recommended branch naming conventions:
 
@@ -94,7 +96,7 @@ docs(extension-api): add examples for registerExtensionApi
 git push origin feat/my-new-feature
 ```
 
-3. **Create a PR**: Open a Pull Request on GitHub targeting the `release` branch.
+3. **Create a PR**: Open a Pull Request on GitHub targeting the `main` branch.
 
 4. **PR description**: Clearly describe the changes, motivation, and impact. Reference any related Issues.
 

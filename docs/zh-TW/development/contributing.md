@@ -1,5 +1,7 @@
 # 貢獻指南
 
+倉庫治理統一位於 `docs:README.md`（本機以 `git show docs:README.md` 讀取）。本指南說明貢獻步驟；目前使用者指令與治理定義實際任務邊界。`main:docs/` 保留的舊企劃與交接是歷史快照，不是目前執行指令。
+
 感謝你對 Atria 專案的關注！本文件介紹如何為 Atria 貢獻程式碼、文件和其他改進。
 
 ## 開發環境準備
@@ -29,15 +31,15 @@ node server.js
 
 ## 分支策略
 
-- **`release`** — 穩定分支，始終保持可發布狀態。所有 PR 應以 `release` 為目標分支
-- 功能開發請從 `release` 建立特性分支
+- **`main`** — 穩定分支，始終保持可發布狀態。所有 PR 應以 `main` 為目標分支
+- 功能開發請從 `main` 建立特性分支
 
 ```bash
-git checkout -b feat/my-new-feature release
+git checkout -b feat/my-new-feature main
 ```
 
 > [!IMPORTANT]
-Atria 的穩定分支是 `release`。
+Atria 的穩定分支是 `main`。
 
 分支命名建議：
 
@@ -94,7 +96,7 @@ docs(extension-api): add examples for registerExtensionApi
 git push origin feat/my-new-feature
 ```
 
-3. **建立 PR**：在 GitHub 上建立 Pull Request，目標分支為 `release`。
+3. **建立 PR**：在 GitHub 上建立 Pull Request，目標分支為 `main`。
 
 4. **PR 描述**：清晰描述改動內容、動機和影響。如果關聯了 Issue，請引用。
 

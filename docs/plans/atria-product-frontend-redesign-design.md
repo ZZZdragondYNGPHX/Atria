@@ -1,5 +1,7 @@
 # Atria Product Frontend Redesign — Design Specification
 
+> 历史快照：本文件保留当时企划/结果，不作为当前任务的执行限制、次数许可或实时交接。当前 Plan / Record / HANDOFF 统一从独立 `docs` 分支路由（`git show docs:README.md`）；实际状态以 Git 和用户当前指令为准。
+
 Status: active (task `refactor/atria-product-frontend-redesign`).
 Input boundary map: `docs/plans/atria-product-frontend-redesign-audit.md`.
 This document is the visual and interaction authority for the redesign. It does

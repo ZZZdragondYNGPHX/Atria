@@ -1,5 +1,7 @@
 # Frontend redesign — Phase 1 complete
 
+> 历史快照：本文件保留当时企划/结果，不作为当前任务的执行限制、次数许可或实时交接。当前 Plan / Record / HANDOFF 统一从独立 `docs` 分支路由（`git show docs:README.md`）；实际状态以 Git 和用户当前指令为准。
+
 - Date: 2026-09-24
 - Task branch: `refactor/atria-product-frontend-redesign`
 - Baseline: `main@c664eded79b86df37bd951f1e5236a4335ce784b`

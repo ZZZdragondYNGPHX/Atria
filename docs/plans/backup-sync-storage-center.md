@@ -1,5 +1,7 @@
 # Backup, Sync & Storage Center Refactor
 
+> 历史快照：本文件保留当时企划/结果，不作为当前任务的执行限制、次数许可或实时交接。当前 Plan / Record / HANDOFF 统一从独立 `docs` 分支路由（`git show docs:README.md`）；实际状态以 Git 和用户当前指令为准。
+
 ## Goal
 
 Refactor the account-side maintenance surfaces around backup, restore, sync, and storage management while removing the obsolete Admin Panel product surface.

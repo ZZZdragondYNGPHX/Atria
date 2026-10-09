@@ -1,5 +1,7 @@
 # Agent Web Access & API Fallback
 
+> 历史快照：本文件保留当时企划/结果，不作为当前任务的执行限制、次数许可或实时交接。当前 Plan / Record / HANDOFF 统一从独立 `docs` 分支路由（`git show docs:README.md`）；实际状态以 Git 和用户当前指令为准。
+
 ## Goal
 
 Evolve Atria Search Tools from a mandatory pre-generation search stage into an independent web-access capability that agents can invoke only when external information is actually needed, while keeping lightweight non-orchestrated use available.
