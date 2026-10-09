@@ -122,6 +122,13 @@ test('source readiness assessments require all dimensions and literal evidence, 
     const messages = f2SourceMessages(pair);
     expect(messages[0].content).toContain('invented mandatory procedures');
     expect(hash(messages)).not.toBe(hash([{ ...messages[0], content: 'Different assessor contract' }, messages[1]]));
+    const citedEvidence = f2SourceEvidence(pair), catalogue = JSON.parse(citedEvidence).quoteCatalogue;
+    const cited = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quoteRef: catalogue[0].ref, rationale: 'Observed.' }])) };
+    expect(parseF2SourceAssessment(JSON.stringify(cited), entry, citedEvidence).dimensions[entry.behaviorDimensions[0]].quote).toBe(quote);
+    const forged = JSON.parse(citedEvidence); forged.quoteCatalogue[0].quote = 'Invented catalogue evidence';
+    expect(() => parseF2SourceAssessment(JSON.stringify(cited), entry, canonical(forged))).toThrow('invalid_f2_source_assessment');
+    cited.dimensions[entry.behaviorDimensions[0]].quoteRef = 'q9999';
+    expect(() => parseF2SourceAssessment(JSON.stringify(cited), entry, citedEvidence)).toThrow('invalid_f2_source_assessment');
 });
 
 test('Project source evidence removes duplicated old history while retaining conflict, operations and human source', () => {

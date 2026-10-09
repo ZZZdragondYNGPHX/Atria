@@ -60,17 +60,44 @@ export function f2JudgeTransport(config, judgeOutputTokens = null) {
 
 export function parseF2SourceAssessment(text, entry, evidence) {
     const value = parseEvaluationJson(text);
-    const excerpts = [evidence];
+    const source = JSON.parse(evidence), catalogue = source.quoteCatalogue || [];
+    delete source.quoteCatalogue;
+    const excerpts = [canonical(source)];
     const collect = v => { if (typeof v === 'string') excerpts.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(collect); };
-    collect(JSON.parse(evidence));
+    collect(source);
     if (!value.dimensions || entry.behaviorDimensions.some(d => !Object.hasOwn(value.dimensions, d))) throw new Error('invalid_f2_source_assessment');
     const dimensions = Object.fromEntries(entry.behaviorDimensions.map(d => [d, value.dimensions[d]]));
     for (const row of Object.values(dimensions)) {
+        if (row && typeof row === 'object' && Object.hasOwn(row, 'quoteRef')) {
+            const quote = row.quoteRef === null ? '' : catalogue.find(item => item.ref === row.quoteRef)?.quote;
+            if (quote === undefined || Object.hasOwn(row, 'quote') && row.quote !== quote) throw new Error('invalid_f2_source_assessment');
+            row.quote = quote;
+        }
         if (!['met', 'gap', 'unknown'].includes(row?.status) || typeof row.quote !== 'string' || row.quote.length > 512
             || typeof row.rationale !== 'string' || row.rationale.length > 512
             || (row.status === 'unknown' ? row.quote !== '' : !row.quote || !excerpts.some(s => s.includes(row.quote)))) throw new Error('invalid_f2_source_assessment');
     }
     return { dimensions };
+}
+
+function withF2QuoteCatalogue(data) {
+    const quoteCatalogue = [], seen = new Set();
+    const add = (value, origin) => {
+        if (typeof value === 'string') {
+            for (let start = 0; start < value.length;) {
+                let end = Math.min(start + 480, value.length);
+                if (end < value.length) {
+                    const span = value.slice(start, end), boundary = Math.max(...['\n', '。', '！', '？', '.', '!', '?'].map(mark => span.lastIndexOf(mark)));
+                    if (boundary >= 120) end = start + boundary + 1;
+                }
+                const quote = value.slice(start, end);
+                if (quote.trim() && !seen.has(quote)) { seen.add(quote); quoteCatalogue.push({ ref: 'q' + String(quoteCatalogue.length + 1).padStart(4, '0'), quote, origin, start, end }); }
+                start = end;
+            }
+        } else if (value && typeof value === 'object') for (const [key, item] of Object.entries(value)) add(item, origin + '.' + key);
+    };
+    add(data.baseline.output, 'baseline.output'); add(data.baseline.facts, 'baseline.facts');
+    return canonical({ ...data, quoteCatalogue });
 }
 
 function projectSourceProjection(value) {
@@ -106,7 +133,7 @@ function projectSourceProjection(value) {
 }
 
 export function f2SourceEvidence(pair) {
-    if (pair.case.entrance !== 'project') return canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
+    if (pair.case.entrance !== 'project') return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
     const output = projectSourceProjection(JSON.parse(pair.baseline.output));
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
     const facts = ['Fresh Task status: ' + output.status,
@@ -118,13 +145,13 @@ export function f2SourceEvidence(pair) {
         ...['source', 'originalSource', 'validatedProposal'].flatMap(label => (output[label]?.package?.entryPoints || []).flatMap(point =>
             ['worldIds', 'primaryWorldId', 'knowledgeBindingIds'].map(field => label + '.' + point.displayName + '.' + field + ': ' + canonical(point[field])))),
         ...(output.validationHistory || []).map(row => 'Validation history: ' + canonical(row))];
-    return canonical({ scenario: publicCaseScenario(pair.case), baseline: { output, facts, checks: checks ?? {}, evidence: evidence ?? [],
+    return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: { output, facts, checks: checks ?? {}, evidence: evidence ?? [],
         error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
 }
 
 export function f2SourceMessages(pair, evidence = f2SourceEvidence(pair)) {
     return [
-        { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Scan the entire baseline for each dimension before choosing a quote: one compliant passage cannot cancel a concrete contradiction elsewhere in that same dimension. met requires the complete observed response to satisfy the criterion; it is not a majority-of-sentences judgment. Copy one contiguous quote span without joining passages or stripping internal quotation marks. In RP, invented mandatory procedures, permissions, eligibility conditions or penalties asserted as established world rules require exposed support; do not treat these binding claims as ordinary atmospheric description or infer support from fluency. Creative NPC gestures and diction do not authorize new binding rules. Prefer copying a complete baseline.facts line verbatim as the quote; do not reconstruct partial JSON objects or omit fields inside a quoted object. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
+        { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quoteRef":"q0001 or null","rationale":"brief reason"}}}. Each rationale is at most 512 characters. Select quoteRef from the supplied immutable quoteCatalogue; Host resolves it to the exact original quote. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quoteRef must be null). Never infer semantic success from hard checks alone. Scan the entire baseline for each dimension before choosing a quote: one compliant passage cannot cancel a concrete contradiction elsewhere in that same dimension. met requires the complete observed response to satisfy the criterion; it is not a majority-of-sentences judgment. Use only a supplied quoteRef; do not rewrite, concatenate or invent quoted text. In RP, invented mandatory procedures, permissions, eligibility conditions or penalties asserted as established world rules require exposed support; do not treat these binding claims as ordinary atmospheric description or infer support from fluency. Creative NPC gestures and diction do not authorize new binding rules. Prefer a quoteCatalogue item from baseline.facts when it directly supports the status; otherwise select an actual output span. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. The resolved quote must occur literally in the original evidence, independent of the catalogue. A correct quotation alone is not proof that the semantic status is correct. Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
         { role: 'user', content: evidence },
     ];
 }
