@@ -169,3 +169,14 @@ F1实现/本地Tested HEAD `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关s
 2026-10-09用户对已审阅的§10.2范围明确回复“授权”。本次仅F2，最多60实际send，其中Step新最多12次；retry/提炼/pair/promotion/publication皆0，首个校准或transport/incomplete失败即停止，不进入F3。新许可evidence hash `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`；授权scope canonical hash `a1f48d8ae316a6eec6ee8bde4b99ca5d4b95dabb1340b9076b6c129226441666`、文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`。原未授权scope SHA355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d保留私有。
 
 发送前核对product eb1664138及全部case/rubric/evaluator/runner/config/settings/target pins、原761/2939582账目、五dirty文件字节；当前实际Step transport key对应旧404窗口满足consecutive0/最近成功条件。旧窗口/raw账目/6of24 claim/epoch不改，原Step余量不使用；新claim一次使用、最多12，任何新失败结束本scope。首次定位只按model匹配时发现两个历史窗口，未写许可/账目；改按原实际endpoint/epoch/output key唯一定位后完成许可固定，没有换window。尚未发送，实际结果及全部settle后账目另记本节与Record/HANDOFF。
+
+
+### 10.4 F2授权范围实际结果与关闭
+
+2026-10-09沿§10.3预先固定的许可与全部pins执行原M1 CLI，paid/Tested source `eb1664138458ebae073d86792e5a5295ce27dfda`，run `run-1791523500486-7aee8a69`。本次结果 **f2_calibration_failed**，按首失败停止；F2未验收、F3未开始。RP两judge/两顺序12/12 controls通过，3个development baseline完成（6实际send），原hard checks/targetConsumed均通过。其报告origin=host_source_probe，无candidate/judge/human，semanticScores=not_run、headroom=not_established，不能以硬检查授予质量/饱和/晋升资格。
+
+Project执行4个calibration sends，前三通过；第4个secondary known_violation/flipped=true的左右偏好与六维符号正确，但解释552字符超过原parseBlindGrade的512上限，因此无效而停止。失败charge `a3b7e93f-2d98-43f2-88b2-f43675159fe3`，实际request hash `b6ccedee55d9902f1e5ce34e067958931fca8910c51355d49f939db0cbea0134`，snapshot hash `cb183a26279617eb8428260ce42460bb328863c4354cd7d5385ae3ffb8619f7d`；23306 provider-reported tokens。后续Project controls/baseline均未运行。这是严格评价输出契约失败，不声称语义意见相反或质量退步；不截断解释、放宽parser或重试追分。
+
+新增22请求/140750 tokens，累计783请求/3080332 tokens；514 reported/17 unknown（unknown 74948 tokens保持），pending0/lock0、quota783。22份实际请求包、response、owner funding与原shared ledger/quota逐ID/request/snapshot/token/status核对一致；RP owner18次/48133 tokens、Project owner4次/92617 tokens，各jobs/publications0。从当前ledger/quota移除本次22记录并恢复起始总数可逐字重建原文件，历史记录/carry/breach保持。最小新准入间隔3154ms，滚动分钟峰值7，原20RPM/2000/day硬限保持。
+
+新Step claim使用8/12后标failed=f2_calibration_failed关闭；剩余4次不可继续使用。旧6of24 claim/epochs字节不变，九transport窗口/七旧stop保持，无新transport/incomplete失败、retry0、提炼/pair/promotion/publication0。scope文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`授权后保持；raw summary SHA `f3e02e4bd5352a6f7d5af225df1b071b112277bfe9cbd60f376164df368fdc46`，私有paid audit SHA `c3c2ccce8b38459640622d2753e154a4a2f75a64a137080295132088683a9bc0`。现金价格unavailable、人类偏好not_observed。下一仅F2评价/source工程准备与重新固定范围；本scope终止，不自动新请求/F3/main集成。

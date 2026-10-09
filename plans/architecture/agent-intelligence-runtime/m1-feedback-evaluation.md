@@ -150,7 +150,7 @@ Project development 的三个任务类型：真正有关联依赖的 authoring�
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
 | F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
-| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费controls/独立性和可完成路径先通过；有模型探测须先冻结其有限范围；最终请求前保存新acceptance范围 | 固定来源/独立密封/构造路径与有限范围已准备；实际headroom/语义校准待新Step许可，见§11 |
+| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费controls/独立性和可完成路径先通过；有模型探测须先冻结其有限范围；最终请求前保存新acceptance范围 | 本次授权探测以f2_calibration_failed停止；RP校准12/12、3基线完成，Project第4校准输出契约无效，headroom未建立；见§12 |
 | F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 未开始 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 中source_unready、calibration_failed、unsupported_locus或baseline_saturated是有效停止结果，不伪造失败/人类标签来凑闭环。
@@ -263,3 +263,14 @@ Project prepare首次创建的Preset引用不稳定，已通过原restore的base
 固定物理pins：Quality registry `2a3313cdec0280729bae2cf2401090c131682bc50d8bb33707a4d50b1320e370`；pilot case set `ff7409f24c7c7b5bb030a5f0052144ad3946c6459af1894ddbb225ed6b1211c3`；rubric `408f084132df98292863dcf2e1413b0c02803574aa913ad86e2e9603c78c248a`；evaluator `c5d6d2daf812a881955fc79c296b7174cfcef13f5a95f5a10a31c04cd76bd433`。私有scope文件SHA `355269bd804e4d069d1a98ac5f7352ec4690a2f86536c02253896bee4e243b0d`；calibration `9081a5246dfa4c753a146a6b89cf09282da921a09b48fb9dcf8851e0748f3018`；constructive evidence `71e631cc33f9381548893aa7b59d640b19e716da60b9fb7485c123f7c094e646`；free readiness `12c3ddd111a6bb8dff751b67eaf7f69bf0621ec20057ebbd0303b6f59ae13c23`。逐source/input/case/provenance和无key configuration/settings/runner hashes在scope/metadata中固定；尚无实际发送snapshot，不能用规格hash代替。
 
 本包6 relevant suites /44 distinct local tests、触及JS/MJS ESLint和syntax/diff通过；fake funded failure一次settle后停止、baseline worker无candidate、restore原publication路径等见Record。真实账目仍761/2939582，五累计状态与五无关dirty文档字节10/10一致；九窗口/七stop和旧6/24 claim保持，真实send0。main未合并、M1 pending。下一只执行经新许可的F2有限校准/基线探测并核对headroom，成功也须包末保存Record/HANDOFF停止，不自动F3。
+
+
+## 12. F2有限探测结果：校准契约失败停止
+
+2026-10-09用户明确授权后，按 [acceptance §10.3/§10.4](m1-acceptance.md#104-f2授权范围实际结果与关闭) 的新最多60send/Step12/retry0范围执行；paid source eb1664138，实际新增22send/140750 tokens。RP的12个双judge/两顺序控制均通过，包括4个missing evidence的uncertain/empty deltas；3个baseline共6send全部hard checks通过。Project前三控制通过，第4个Step known_violation反序响应解释552>512，原严格parser拒绝，立即停止。方向/六维符号正确并不能免除输出契约；Project剩余校准与baseline未运行。
+
+RP baseline六维semantic scores未运行，headroom未建立；没有开发pair、独立promotion或人类偏好。开发证据初阅发现水库场景“检修没落定”可能把未知检修状态说成事实，后续文字又按未见确认保守处理；这仅是语义歧义线索，不是正式dimension failure/评分或已确立的可干预缺口。不得以hard checks全过声称饱和，也不得将developer分析冒充model_assessment或人类标签。
+
+本次新增Step claim8/12并已关闭，原旧claim/epoch/stop保留；全部22费用settle，累计783/3080332、pending0，逐请求包/owner/共享账目一致。完整raw与metadata audit只在私有Document，密封promotion正文/答案没有被开发侧读取。具体hash/费用与权限归acceptance§10.4；本次不改生产gate、cases/rubric/parser/source pins。
+
+下一仅做F2工程准备：核对原评价prompt是否明确≤512字符契约，并检查控制公开轨迹是否存在可去除的重复上下文；如有修正，必须经原evaluator/source消费、版本与必要验证重新固定，不能把问题交给local Prompt writer、放宽原判定或重跑同一封包追分。Project实际baseline可完成性/全维证据、RP语义headroom和其余双judge控制仍未建立。新付费范围须另行固定与取得明确许可；本轮封包结束，F3/main集成/S11/G不启动。

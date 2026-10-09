@@ -8,7 +8,7 @@
 
 ## Summary
 
-最新checkpoint：2026-10-09 F2固定来源/独立密封/原adapter与构造路径/有限scope已准备；实际语义校准/headroom等待新Step最多12次许可，F3未开始。product `eb1664138458ebae073d86792e5a5295ce27dfda` 已push；main/paid source与761/2939582保持。本包6 relevant suites/44 distinct tests、零真实send，详见末节/live HANDOFF。
+最新checkpoint：2026-10-09 F2授权有限探测以f2_calibration_failed停止：RP校准12/12和3基线完成，Project第4校准解释552>512无效；新增22请求/140750 tokens，累计783/3080332全部结算。paid/Tested product `eb1664138458ebae073d86792e5a5295ce27dfda`，headroom未建立、F2未验收、F3未开始/main未合并。实际结果见末节/live HANDOFF。
 
 长期任务沿同一产品分支实施；D0–D4 / S01–S09 与 S10 工程交付完成。S10 将 S05 feedback / diagnosis、原六类局部 target、共享 finite budget、原 scheduler、隔离 evaluator、publication / recovery / rollback / next-run evidence 与双入口共享面板接为可用消费者。12 relevant suites / 233 distinct local tests 与真实 Chromium shared-pane fixture 通过。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 S06 真实执行与 model observations 保留，候选仍 ineligible；本轮无新真实模型请求。S10 的结构 / 假 provider 证据不证明稳定质量 / 成本收益；M1 的真实改善与集成前置条件待验收。本轮只续接 S10，下一只复核 M1 验收，不进入 S11 / G。
@@ -1046,3 +1046,16 @@ Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 e
 ## 2026-10-09 F2授权执行 — 发送前固定
 
 用户明确授权§10.2的F2有限范围：总最多60send/Step新最多12/retry0/首失败即停，不F3。起始docs102d54335/product eb1664138，与远端一致且工作树clean，无其它设备push；账目761/2939582及五dirty字节保持。许可evidence `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`，scope文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`；所有原source/config/runner/pins保持，仅写新显式权限。原实际Step key唯一旧窗口符合404 stop、consecutive0/最近成功；model-only只读定位首次命中两个历史窗口并停止，改用原m1TransportKey定位，不清stop或换epoch。旧6of24 SHA锁定，准备副本沿原restore。写文档的首次shell Python命令因引号截断未写入，改文件脚本后核验；无请求或账目写入。发送前已追加acceptance§10.3，实际结果待执行后更新同一记录。
+
+
+## 2026-10-09 F2授权执行 — 校准失败停止与全部结算
+
+发送前固定记录已commit/push至docs42567be30，随后原M1 CLI沿固定scope执行run `run-1791523500486-7aee8a69`；product/paid source `eb1664138458ebae073d86792e5a5295ce27dfda`无新改动。RP12/12双judge/顺序校准通过，3个development baseline共6send原hard checks/targetConsumed均通过，origin host_source_probe，candidate/judge/human为空、semantic scores not_run/headroom not_established。Project前三校准通过，第4个Step known_violation/flipped=true的解释552字符超过原512限制，虽然左右偏好/六维符号正确，原严格grade无效，runner以f2_calibration_failed/exit1首失败停止；不截断/放宽/重试。Project剩余controls及baseline未运行，F3未启动。
+
+全部22实际请求/140750 tokens已settle；累计783/3080332，514reported/17unknown74948、pending0/lock0/quota783。RP owner18次/48133 tokens，Project4次/92617 tokens，jobs/publications0。22 pre-funded实际rendered/request/snapshot包与22 response/owner funding/shared ledger/quota逐身份/usage匹配；calibration行的requestHash是control.messages hash，不能冒充实际compiler envelope pin，真正实际pins取funding前request包。原ledger/quota通过去除22新记录恢复旧总数后逐字重建；历史carry/breach/unknown保持。新准入最小3154ms/滚动分钟峰值7，原20RPM/2000/day保持。现金价格unavailable，人类偏好not_observed。
+
+新Step claim8/12在runner退出后按首失败规则标failed=f2_calibration_failed关闭，不使用余下4次；旧6of24/epoch与五无关dirty docs字节保持，九窗口七旧stop不清，无transport/incomplete新故障。scope授权后SHA保持19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72；raw summary SHA f3e02e4bd5352a6f7d5af225df1b071b112277bfe9cbd60f376164df368fdc46，paid audit SHA c3c2ccce8b38459640622d2753e154a4a2f75a64a137080295132088683a9bc0。失败实际charge/request/snapshot详见 [acceptance§10.4](../../plans/architecture/agent-intelligence-runtime/m1-acceptance.md#104-f2授权范围实际结果与关闭)，不提交私有报告/config/payload。
+
+RP文本的“检修没落定”与未见确认后的保守说明存在可能knowledge_boundary歧义，仅developer证据初阅，不冒充正式模型/人类反馈或headroom成立。密封promotion正文/答案未读。下一仅F2评价/source准备，检查原judge prompt的≤512契约及控制轨迹重复材料，再经原消费者/新版本固定必要范围；不修local Prompt writer、不降parser/准入、不自动新付费发送。本封包停止，M1 pending、main ed1fd905未合并、不进入F3/S11/G。
+
+本轮验证是上述原CLI有界真实执行和只读22请求/累计状态审计；审计初次因缺globalAtria导入失败，改空上下文/禁网络后通过，无额外send。沿用上一包6相关suites/44 distinct tests作为代码历史证据，本轮源码未变，没有重跑Jest/lint/build/CI/UI/Android/外部DB。五份docs本地链接/锚点/围栏、原acceptance§2/§9逐字保护与diff检查在提交前核对；同一Record/HANDOFF更新后停止，用户无需手测。
