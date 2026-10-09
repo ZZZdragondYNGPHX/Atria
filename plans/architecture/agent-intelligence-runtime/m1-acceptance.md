@@ -100,4 +100,4 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 六条 development 真实基线、六条独立密封来源 metadata、免费原工具可完成路径、主模型 20/20 有效 controls 和两域可改善缺口已核对。RP 缺口为档案场景新增无来源支持的处罚/权限；Project 三场景提案正确，但遗漏明确请求的未提交 Review 状态说明。正例、缺证据及两个没有观察到 gap 的 RP 场景保持原结果，不用 hard checks 替代语义质量。失败、费用、旧判断与不确定性保留。
 
-原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。当前结果不是 F2 双模型通过，也不是 M1 完成；F3 未授权、未执行。后续第二连接可用时仍仅复核 F2 exact 条件，不自动提炼或启动双域试点。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
+原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。当前结果不是 F2 双模型通过，也不是 M1 完成；用户随后要求换设备继续 F3，已授权后续执行，本机未执行。恢复后按原 F3 工作包推进，第二连接可用时复核 F2 exact 条件；原双模型 development/promotion 准入不变。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。

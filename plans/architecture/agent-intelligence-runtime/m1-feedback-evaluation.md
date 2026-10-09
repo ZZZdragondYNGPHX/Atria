@@ -148,7 +148,7 @@ source/case/input/rubric/calibration/worker/request identity 随实际版本与�
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
 | F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
-| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费 controls/独立性和可完成路径先检查；必要模型探测、诊断与修复复测沿当前规则自动执行，保存实际 source/config/result pins | 主模型范围完成：20/20有效controls、六真实基线及独立密封metadata已核对；两域primary_observed_gap成立。双模型复核暂缓，F3未授权；见§14/同一Record |
+| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费 controls/独立性和可完成路径先检查；必要模型探测、诊断与修复复测沿当前规则自动执行，保存实际 source/config/result pins | 主模型范围完成：20/20有效controls、六真实基线及独立密封metadata已核对；两域primary_observed_gap成立。双模型复核暂缓；用户已要求换设备继续F3，本机未启动；见§14/同一Record |
 | F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 未开始 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 的 source_unready、calibration_failed、unsupported_locus 或 baseline_saturated 如实记录；可修复工程问题处理后继续，真实不适用或缺改善空间不伪造失败/人类标签来凑闭环。
@@ -209,4 +209,4 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 主模型有效控制为每域六个比较/顺序控制与四个单样本控制；全部返回六个维度，positive / known violation / missing evidence 保留，另有 RP unsupported_rule 和 Project communication_omission。六条真实基线原硬检查通过；主模型只在 RP archive knowledge_boundary 与三个 Project status_accuracy 观察 gap，其它结果保留。
 
-本次临时 `primary_only` 是用户授权的 F2 测试范围，标签仅 `primary_observed_gap`，不构成两个评委的共同结论。第二连接复核暂缓，M1 原门槛不改，F3 未授权、未开始；不得把本节完成的来源准备测试写成 M1 或双域试点成功。版本、实际费用/失败/重用与 metadata commitments 见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节；不生成阶段 HANDOFF。
+本次临时 `primary_only` 是用户授权的 F2 测试范围，标签仅 `primary_observed_gap`，不构成两个评委的共同结论。第二连接复核暂缓，M1 原门槛不改，用户已授权换设备继续 F3，本机未开始；不得把本节完成的来源准备测试写成 M1 或双域试点成功。版本、实际费用/失败/重用与 metadata commitments 见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节；仅按用户明确换机要求更新当前 HANDOFF。

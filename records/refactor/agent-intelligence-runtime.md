@@ -1156,3 +1156,12 @@ RP 逐句审核曾因复合句前半段有支持，把新增处罚也判 support
 最终 run `run-1791541743682-aa0a9d56` 新增 8 请求 / 47,686 tokens，全部已结算；复用比较控制、Project 控制/观察和六条完整基线。累计 1008 请求 / 5,132,946 记账 tokens，715 reported + 41 unknown + 252 历史 carry；unknown 共 558,397 tokens 按原上界保守结算，不是现金费用或模型真实 usage。pending0 / lock0；最新 8 个 actual request/snapshot 包、response charge、共享账目 trial/tokens/reservation 一致，原 RP 6 / Project 27 基线发送另行完整核对。原 source/私有 raw/凭证不提交，sealed 正文未读。
 
 实际本地验证：当前 HEAD 完整 `f2-sources` 28/28 通过，覆盖原 Task/worker 路径、保护/修复、超过旧六轮的可完成窗口、source drift/密封拒绝、quote/source 表示、dual vs primary-only 实际资金路径与单模型不得声称 shared gap；触及 JS ESLint、diff 检查通过。当前测试消费者沿用已执行的 `m1-retry` 15/15 与相关 grader transport checks，未因没有新改动重复测试；真实语义控制与上述 mock 工程 tests 分开。没有运行 full product suite/build/CI/UI/Android/外部 DB。文档更新同一 Record 和当前 Plan 状态，未生成阶段 HANDOFF；M1 和第二模型正式结论保持待验收。
+
+
+## 2026-10-09 用户要求换设备继续 F3 — 私有快照与接续
+
+用户明确要求“打包一下隐私数据，我要换设备继续F3”，因此刷新唯一 live HANDOFF，并同步当前 Plan 的后续授权状态；这次是用户请求中断/换机，不以阶段完成代替继续工作。产品冻结 f495267023ca4475d15ba1c61b66702624c4938e 已推送；F3 本机未启动，第二连接未新增调用，F2 主模型完成及双模型未验收的事实保持。恢复后按原 F3 工作包持续执行，双模型 development/promotion 与 M1 门槛保持。
+
+本地私有换机包复用既有 manifest/restore 机制，更新 API 私有配置、账本/quota/rate/transport 历史、全部 raw reports/原 native fixtures、development 材料、独立密封来源、最终配置/controls/resume/audit，并携带最新产品/docs/main 与原独立资产工作空间的 Git bundle。原密封字节只复制/哈希，不作语义读取；不将隐私包或凭证提交公开 Git。保留原私有快照的无关工作树备份，更新工作树移除的旧 patch 另存历史副本；本机无关 dirty/untracked 不变。
+
+累计仍为1008 requests /5132946 accounted tokens，pending0/lock0；原时间戳和旧错误不重置。新设备恢复不发送模型请求，重新指向当地 Document 路径；历史机器路径与原报告身份保留，旧辅助脚本不得未经迁移直接调用。具体本地包文件位置、SHA256 和恢复命令交付用户，公开文档不记录机器绝对路径。
