@@ -161,7 +161,7 @@ export function f3SharedEvidence(left, right) {
     return { ...arms, sharedEvidence };
 }
 
-const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Use one brief sentence for the rationale. Every delta is right minus left, independent of preference. For missing source or required evidence return uncertain with empty deltas; never invent zeros or ties. Inspect the complete response of each arm against each dimension before choosing preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.';
+const F3_GRADE_INSTRUCTION = 'Blindly compare both complete observed responses against every supplied rubric dimension. A {"$f3ref":id} is an exact subtree alias into sharedEvidence; expand all aliases, including nested ones, before assessing either arm. The shared pool deduplicates repetition without removing observations. Return JSON only: {"preference":"left|right|tie|uncertain","deltas":{dimension:integer from -4 to 4},"rationale":"at most 512 characters"}. Use one brief sentence for the rationale. Every delta is right score minus left score, independent of preference: negative means left is better, positive means right is better, zero means equal. Never return an always-positive winning margin. Check each sign against the actual arms before returning JSON. A left preference requires at least one negative delta; a right preference requires at least one positive delta. For engineering controls, controlIntervention states the latest scenario change and overrides the previous intent or rule only within that stated change. For missing source or required evidence return uncertain with empty deltas; never invent zeros or ties. Inspect the complete response of each arm against each dimension before choosing preference. Retain unknown/missing evidence; do not infer semantic success from hard checks. In RP, exposed support is required for every binding rule, penalty, eligibility restriction and unknown current/private fact, including later clauses. Creative gestures do not authorize new rules. In Project, Host status is corroboration, not model-authored communication: inspect modelStatements for explicitly requested status explanation; complete public windows with requested explanation omitted are gaps, unavailable windows unknown. Do not penalize a correct proposal merely because its status explanation is missing. Evaluate the whole response, with no majority-vote cancellation of contradictions.';
 
 export function comparisonCalibrationReady(report, owner) {
     const rows = report.comparisonCalibration;
@@ -189,10 +189,38 @@ export function f3GradeMessages(pair, flipped) {
 export function f3CalibrationMessages(control, entry) {
     const { left, right, dimensions, ...scenario } = parseEvaluationJson(control.messages.find(m => m.role === 'user').content);
     if (entry.caseId !== control.caseId || !equal(dimensions, entry.behaviorDimensions)) throw new Error('f3_control_changed');
-    const evidence = output => entry.entrance === 'project' && !String(output).trim().startsWith('{')
-        ? { output, modelStatements: null }
-        : JSON.parse(f2SourceEvidence({ case: entry, baseline: { origin: 'engineering_control', output } })).baseline;
+    const evidence = output => {
+        if (entry.entrance === 'project') {
+            if (!String(output).trim().startsWith('{')) return { output, modelStatements: null };
+            const controlOutput = parseEvaluationJson(output);
+            // Synthetic counterfactuals wrap the same complete authority trace.
+            // Feed its actual public window and facts through the normal codec;
+            // the wrapper is not an absent Task or an unavailable conversation.
+            if (controlOutput.observedAuthority) output = canonical({ ...controlOutput.observedAuthority,
+                engineeringControlStatement: controlOutput.engineeringControlStatement });
+        }
+        return JSON.parse(f2SourceEvidence({ case: entry, baseline: { origin: 'engineering_control', output } })).baseline;
+    };
     return f3EvidenceMessages(scenario, dimensions, evidence(left), evidence(right));
+}
+
+export function parseF3Grade(text, pair, flipped) {
+    const raw = parseEvaluationJson(text), grade = parseBlindGrade(text, pair, flipped);
+    if (raw.preference === 'left' && !Object.values(raw.deltas).some(v => v < 0)
+        || raw.preference === 'right' && !Object.values(raw.deltas).some(v => v > 0)) throw new Error('contradictory_f3_grade');
+    return grade;
+}
+
+export function f3DevelopmentFeedback(prior, expected) {
+    if (!prior) return null;
+    if (!expected || hash(prior.report) !== expected.reportHash || hash(prior.candidate) !== expected.candidateHash
+        || prior.report.origin !== 'm1_f3_development' || prior.report.pairs.length !== 3
+        || prior.candidate.valueHash !== expected.valueHash || prior.report.pairs.some(p => p.human !== null)) throw new Error('f3_development_feedback_changed');
+    return { origin: 'prior_failed_development', reportHash: expected.reportHash, candidate: prior.candidate.candidate.diff,
+        observations: prior.report.pairs.map(p => ({ caseId: p.case.caseId, judge: p.judge,
+            interpretation: p.judge?.preference === 'candidate' && Object.values(p.judge.deltas).some(v => v < 0)
+                ? 'contains_regression_or_contradictory_grading; not established improvement' : 'retained_model_observation' })),
+        instruction: 'Use these retained development observations to address regressions as well as original gaps. Contradictory grades are not corrected or accepted. Preserve expressive voice, concrete NPC action and explicit player ownership while removing unsupported assertions. Generate a new minimal edit against the original base; do not copy a case answer.' };
 }
 
 export function validF3Control(text, control, entry) {
@@ -200,7 +228,7 @@ export function validF3Control(text, control, entry) {
         const raw = parseEvaluationJson(text);
         if (control.expected === 'uncertain') return raw.preference === 'uncertain' && raw.deltas
             && !Object.keys(raw.deltas).length && typeof raw.rationale === 'string' && raw.rationale.length <= 512;
-        const grade = parseBlindGrade(text, { case: entry }, control.flipped);
+        const grade = parseF3Grade(text, { case: entry }, control.flipped);
         return raw.preference === control.expected && grade.preference === 'candidate'
             && Object.values(grade.deltas).every(v => v >= 0) && Object.values(grade.deltas).some(v => v > 0)
             && (control.requiredPositiveDimensions || []).every(d => grade.deltas[d] > 0);
@@ -303,7 +331,7 @@ export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryC
                 const response = await bridge.rp({ requestId: randomUUID(), trialId: job.id + ':' + phase + ':' + label + ':' + pair.case.caseId + ':' + pair.repetition,
                     fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages });
                 let grade;
-                try { grade = parseBlindGrade(response.response.assistantText || response.response.text, pair, flipped); }
+                try { grade = parseF3Grade(response.response.assistantText || response.response.text, pair, flipped); }
                 catch { grade = { status: 'invalid', preference: 'uncertain', deltas: {}, rationale: 'Grader response invalid; retained without retry or score repair.' }; }
                 if (label === 'primary') {
                     report.charges.push(charge); pair.judge = { ...grade, chargeIds: [charge.id] };
@@ -320,7 +348,7 @@ export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryC
     return independent;
 }
 
-export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal, calibrationResume = [], sealedDirectory = null }) {
+export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal, calibrationResume = [], sealedDirectory = null, priorDevelopment = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project', profileId = profileFor(domain);
     entry.judgeMode = scope.judgeMode || 'dual';
     const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
@@ -349,6 +377,7 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
         findings: source.assessments.map(row => ({ caseId: row.caseId, observedGaps: entry.judgeMode === 'primary_only'
             ? Object.entries(row.observations.find(o => o.label === 'primary').dimensions).filter(([, d]) => d.status === 'gap').map(([d]) => d) : row.sharedGaps,
         observations: row.observations.filter(o => f3JudgeLabels(scope.judgeMode).includes(o.label)).map(o => ({ origin: o.origin, label: o.label, dimensions: o.dimensions })) })) };
+    investigation.priorDevelopment = f3DevelopmentFeedback(priorDevelopment, scope.repair?.priorDevelopmentReports?.[kind]);
     entry.investigation = investigation; entry.jobId = job.id;
     const extractionConfig = f2JudgeTransport(primaryConfig, 8000, 'low');
     const input = f3ExtractionInput(capture, domain, investigation);

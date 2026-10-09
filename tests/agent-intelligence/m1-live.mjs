@@ -78,6 +78,8 @@ try {
         || !/^m1-f2-[a-z0-9-]+\.json$/.test(f3Scope.controlFile) || f3Scope.schemaVersion !== 1 || f3Scope.purpose !== 'f3_private_development'
         || !Array.isArray(f3Scope.domainOrder) || f3Scope.domainOrder.length !== 2 || new Set(f3Scope.domainOrder).size !== 2
         || f3Scope.domainOrder.some(kind => !['rp-skill', 'project-prompt'].includes(kind)))) throw new Error('f3_scope_changed');
+    if (f3Scope?.repair?.priorDevelopmentReports && (!/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.repair.priorDevelopmentRun)
+        || hash(read('m1-reports/' + f3Scope.repair.priorDevelopmentRun + '/summary.json')) !== f3Scope.repair.priorSummaryHash)) throw new Error('f3_development_feedback_changed');
     const f3Controls = f3Scope ? read(f3Scope.controlFile) : null;
     const f3SourcePath = f3Scope ? path.join(directory, 'm1-reports', f3Scope.sourceRun) : null;
     const f3Summary = f3SourcePath ? JSON.parse(fs.readFileSync(path.join(f3SourcePath, 'summary.json'), 'utf8')) : null;
@@ -485,7 +487,11 @@ try {
                 await runF3Domain({ f, kind, primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), secondaryConfig,
                     scope: f3Scope, source, controls: f3Controls, ledger: () => budget.snapshot(), entry, store, signal: overall.signal,
                     calibrationResume: f3Resume?.entries.find(e => e.kind === kind)?.comparisonCalibration || [],
-                    sealedDirectory: f3Scope.sealedDirectory ? path.join(directory, f3Scope.sealedDirectory) : null }); continue;
+                    sealedDirectory: f3Scope.sealedDirectory ? path.join(directory, f3Scope.sealedDirectory) : null,
+                    priorDevelopment: f3Scope.repair?.priorDevelopmentReports?.[kind] ? {
+                        report: read('m1-reports/' + f3Scope.repair.priorDevelopmentRun + '/' + kind + '-f3-development-report.json'),
+                        candidate: read('m1-reports/' + f3Scope.repair.priorDevelopmentRun + '/' + kind + '-f3-frozen-candidate.json'),
+                    } : null }); continue;
             }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';

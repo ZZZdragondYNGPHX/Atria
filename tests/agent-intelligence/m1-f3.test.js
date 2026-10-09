@@ -3,7 +3,8 @@ import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION } from '
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
-    f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels } from './m1-f3.js';
+    f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
+    parseF3Grade, f3DevelopmentFeedback } from './m1-f3.js';
 import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
@@ -236,6 +237,35 @@ test('Project missing evidence remains unavailable under the F3 codec', () => {
     const messages = f3CalibrationMessages({ caseId: entry.caseId, messages: [{ role: 'user', content: JSON.stringify({ dimensions: entry.behaviorDimensions, left: 'Complete.', right: 'Done.' }) }] }, entry);
     const arms = JSON.parse(messages[1].content);
     expect(arms.left.modelStatements).toBeNull(); expect(arms.right.modelStatements).toBeNull();
+});
+
+test('Project counterfactual wrapper retains actual Task facts and its public statement', () => {
+    const entry = example('project').report.pairs[0].case;
+    const output = JSON.stringify({ observedAuthority: { status: 'review', validation: { status: 'passed' },
+        conversation: [], priorConflictTask: { status: 'conflict' } }, engineeringControlStatement: 'Inspected without new edits; Review is uncommitted.' });
+    const body = JSON.parse(f3CalibrationMessages({ caseId: entry.caseId, messages: [{ role: 'user', content:
+        JSON.stringify({ dimensions: entry.behaviorDimensions, left: 'Complete.', right: output }) }] }, entry)[1].content);
+    expect(body.right.facts).toContain('Fresh Task status: review');
+    expect(body.right.facts).toContain('Prior Task status: conflict');
+    const statement = body.right.modelStatements[0];
+    expect(statement.origin).toBe('engineeringControlStatement');
+    expect(body.sharedEvidence[statement.text.$f3ref]).toBe('Inspected without new edits; Review is uncommitted.');
+});
+
+test.each([false, true])('F3 rejects a winning-margin sign contradiction without repairing scores (flip=%s)', flipped => {
+    const pair = example().report.pairs[0];
+    const raw = { preference: 'left', deltas: Object.fromEntries(pair.case.behaviorDimensions.map(d => [d, 1])), rationale: 'Left is better.' };
+    expect(() => parseF3Grade(JSON.stringify(raw), pair, flipped)).toThrow('contradictory_f3_grade');
+    raw.deltas.knowledge_boundary = -1;
+    expect(parseF3Grade(JSON.stringify(raw), pair, flipped).preference).toBe(flipped ? 'candidate' : 'baseline');
+});
+
+test('prior development feedback is pinned and cannot silently replace original observations', () => {
+    const f = example(), candidate = { valueHash: hash('value'), candidate: { diff: { before: 'Original', after: 'Prior edit' } } };
+    const prior = { report: f.report, candidate }, expected = { reportHash: hash(f.report), candidateHash: hash(candidate), valueHash: candidate.valueHash };
+    expect(f3DevelopmentFeedback(prior, expected).observations).toHaveLength(3);
+    prior.report.pairs[0].judge.rationale = 'Changed evidence';
+    expect(() => f3DevelopmentFeedback(prior, expected)).toThrow('f3_development_feedback_changed');
 });
 
 test('extraction receives available communication slots without inventing feedback or publishing rights', () => {
