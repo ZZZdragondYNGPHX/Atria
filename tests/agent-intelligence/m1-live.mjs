@@ -376,7 +376,7 @@ try {
             if (secondaryRoutes.length !== 1) throw new Error('secondary_route_identity_ambiguous');
             const secondaryRoute = secondaryRoutes[0];
             const extendedGrader = (gradeSource || cycle || f2Scope || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
-            const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId, f2Scope ? null : 8000)
+            const secondaryConfig = extendedGrader ? await m1GraderConfiguration(f.host, f.h.handle, secondaryRoute.runtimeRouteId, f2Scope || diagnoseOnly ? null : 8000)
                 : await f.evaluator.configuration(f.h.handle, secondaryRoute.runtimeRouteId);
             entry.secondaryConfigurationHash = hash(secondaryConfig);
             entry.secondaryOutputTokens = secondaryConfig.generation.output.maxTokens;
