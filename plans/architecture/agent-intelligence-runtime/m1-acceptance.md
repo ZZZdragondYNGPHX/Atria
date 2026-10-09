@@ -1,7 +1,7 @@
 # M1 — 自动化工程验收与 API 测试执行
 
 - Updated: 2026-10-09
-- Status: F1工程与F2双模型来源前置范围完成；F3一次双域development完成但未准入promotion，M1 pending。测试限制按当前 §0 执行；后文旧封包与配额仅为历史。
+- Status: F1与F2双模型前置完成；首次F3两域未准入promotion，新校准被530/524中断。工程修复与待验证流程已提交推送；用户暂停换设备，M1未完成。当前结果见同一Record最新节，恢复见[HANDOFF](../../../HANDOFF.md)；测试规则按§0，旧封包与配额仅为历史。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 
 ## 0. 当前 API 测试规则（覆盖全部历史封包）
@@ -63,7 +63,7 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 ## 10. 2026-10-09 原链路反馈与评价契约先行
 
-原链路契约与 F1 实现已经完成；物理契约见 feedback §9，F2 source/calibration 当前继续，F3 仍未开始。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
+当时原链路契约与 F1 实现完成，F2 source/calibration 继续，F3 未开始；物理契约见 feedback §9。此后实际结果见§12/§13。 详细历史见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md)；本节不产生当前 API 配额或审批条件。
 
 ### 10.1 F2准备核对的实际范围与停止状态
 
@@ -100,7 +100,7 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 六条 development 真实基线、六条独立密封来源 metadata、免费原工具可完成路径、主模型 20/20 有效 controls 和两域可改善缺口已核对。RP 缺口为档案场景新增无来源支持的处罚/权限；Project 三场景提案正确，但遗漏明确请求的未提交 Review 状态说明。正例、缺证据及两个没有观察到 gap 的 RP 场景保持原结果，不用 hard checks 替代语义质量。失败、费用、旧判断与不确定性保留。
 
-原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。当前结果不是 F2 双模型通过，也不是 M1 完成；用户随后要求换设备继续 F3，已授权后续执行，本机未执行。恢复后按原 F3 工作包推进，第二连接可用时复核 F2 exact 条件；原双模型 development/promotion 准入不变。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
+原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。本节记录当时仅主模型范围的结果；此后已补齐 F2 双模型前置并完成首次 F3 development，见§12。原双模型 development/promotion 准入不变，不能将此前主模型结果写成 M1 完成。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
 
 
 ## 12. F2双模型复核与 F3 一次试点结果
@@ -110,4 +110,4 @@ F2两域controls和六来源的实际双模型观察已补齐，保留原正确�
 
 ## 13. F3 工程修复后的继续执行
 
-首次试点不达标后继续诊断和必要工程复测，新增真实比较协议校准及原执行槽位核对见[feedback§16](m1-feedback-evaluation.md#16-f3-工程修复与-m1-持续推进)。不把一次试验退出写成M1完成或交接停止。§1/§2门槛、原不利报告、密封独立来源与全部费用保持；只有完整验收及原publication/下一消费/rollback证据成立后才集成。当前修复版本的实际结果见同一Record。
+首次试点不达标后继续诊断和必要工程复测，新增真实比较协议校准及原执行槽位核对见[feedback§16](m1-feedback-evaluation.md#16-f3-工程修复与-m1-持续推进)。不把一次试验退出写成M1完成或交接停止。§1/§2门槛、原不利报告、密封独立来源与全部费用保持；只有完整验收及原publication/下一消费/rollback证据成立后才集成。修复及待验证流程已提交推送，原worker接线检查和真实独立验收闭环未完成；用户明确暂停换设备。用户转移私有Document包后，由接手AI自主恢复源码/docs、依赖及本机路径，恢复见HANDOFF，修复版本的实际结果见同一Record最新节。

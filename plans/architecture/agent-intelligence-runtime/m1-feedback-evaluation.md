@@ -1,7 +1,7 @@
 # M1：原链路反馈与评价契约补充
 
 - Updated：2026-10-09；Task ID：`agent-intelligence-runtime`。
-- 状态：**方向、设计边界及F1物理契约冻结；F1最小消费者与F2双模型来源前置复核完成；F3一次双域试点完成，但两域未准入promotion，M1仍pending。实际结果见§15/同一Record。**
+- 状态：**F1与F2双模型来源前置完成；首次F3两域未准入promotion，新协议校准被530/524中断，没有新候选。工程修复与待验证流程已提交推送；用户暂停换设备，M1未完成。设计补充见§16，实际结果见同一Record最新节，恢复见[HANDOFF](../../../HANDOFF.md)。**
 - 设计顺序：原链路反馈与评价契约 → 各一个 RP、Project 试点；具体工程契约如下。
 - 来源：[领域扩展研究](../agent-intelligence-m1-domain-evolution-research.md)、[S05](s05-feedback.md)、[S10](s10-evolution.md)、[M1 acceptance](m1-acceptance.md)。核对产品 `a61b249ef71f108d279ec7bd883fb5eeae97a463`；这些设计不计入已有实证。
 - 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程退出门槛与实际发送范围由 m1-acceptance 管理。
@@ -209,7 +209,7 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 主模型有效控制为每域六个比较/顺序控制与四个单样本控制；全部返回六个维度，positive / known violation / missing evidence 保留，另有 RP unsupported_rule 和 Project communication_omission。六条真实基线原硬检查通过；主模型只在 RP archive knowledge_boundary 与三个 Project status_accuracy 观察 gap，其它结果保留。
 
-本次临时 `primary_only` 是用户授权的 F2 测试范围，标签仅 `primary_observed_gap`，不构成两个评委的共同结论。第二连接复核暂缓，M1 原门槛不改，用户已授权换设备继续 F3，本机未开始；不得把本节完成的来源准备测试写成 M1 或双域试点成功。版本、实际费用/失败/重用与 metadata commitments 见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节；仅按用户明确换机要求更新当前 HANDOFF。
+本节记录当时临时 `primary_only` 的 F2 测试范围，标签仅 `primary_observed_gap`，不构成两个评委的共同结论。当时第二连接复核暂缓；此后双模型前置已补齐并完成首次F3 development，见§15。M1原门槛不改，不将本节的主模型结果写成双模型或M1验收通过。版本、实际费用/失败/重用与 metadata commitments 见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节；仅按用户明确换机要求更新当前 HANDOFF。
 
 
 ## 15. F2双模型前置复核与 F3 一次双域试点结果
@@ -223,4 +223,4 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 §15的一次 development 失败不是整体 M1退出；失败后诊断与有依据修复按 Governance §8执行。每个固定修复版本仍每域提炼一个候选，评分前冻结，原两模型 development准入/三独立promotion各三pair及review→消费→rollback不变。不对同一有效负面候选无变化追试，不从 promotion取材，不降低必需维度或门槛。
 
-新增必需消费者核对：真实 F3比较提示和完整证据编码必须先使用同一协议通过两模型已固定正确/错误/unknown、反事实和顺序翻转控制，不能复用另一协议的F2校准作为证明。提炼输入须说明原可执行 slot；原Studio在prepare_review后停止，状态说明只能走已存在的公开assistant/plan槽位并区分当前事实与未来Review边界，不扩展停态writer。当前工程修复/原失败保留及实际结果唯一记入同一Record最新节，M1仍按acceptance §1/§2。
+新增必需消费者核对：真实 F3比较提示和完整证据编码必须先使用同一协议通过两模型已固定正确/错误/unknown、反事实和顺序翻转控制，不能复用另一协议的F2校准作为证明。提炼输入须说明原可执行 slot；原Studio在prepare_review后停止，状态说明只能走已存在的公开assistant/plan槽位并区分当前事实与未来Review边界，不扩展停态writer。工程修复和待验证流程已提交推送；本次校准每域仅一个主模型控制通过即被530/524中断，没有新候选。原worker/mock接线检查被用户中断，真实独立验收/审阅发布/下一消费/回滚未执行。用户已暂停换设备，恢复见HANDOFF；实际结果唯一记入同一Record最新节，M1仍按acceptance §1/§2。
