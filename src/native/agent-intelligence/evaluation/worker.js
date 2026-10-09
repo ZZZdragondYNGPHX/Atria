@@ -34,9 +34,11 @@ process.on('message', async message => {
         const { runRp, runProject } = await import('./adapters.js');
         const { selectCases, loadFixture, publicCaseScenario, hash, canonical } = await import('./cases.js');
         const { createFrozenEvaluationBridge } = await import('./worker-bridge.js');
+        const { readSealedSource } = await import('./sealed-sources.js');
         const selection = message.selection || { split: 'promotion', repetitions: 3 };
-        const sourceProbe = selection.mode === 'source_probe';
-        if (selection.mode && !sourceProbe || sourceProbe && (!selection.profileId || selection.split !== 'development' || selection.repetitions !== 1)) throw new Error('invalid_source_probe');
+        const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
+        if (selection.mode && !sourceProbe && !pairedProbe || sourceProbe && (!selection.profileId || selection.split !== 'development' || selection.repetitions !== 1)
+            || pairedProbe && (!selection.profileId || selection.split !== 'promotion' || selection.repetitions !== 3 || selection.caseIds || !selection.sealedDirectory)) throw new Error('invalid_source_probe');
         if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new Error('invalid_evaluation_selection');
         const available = selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId }).filter(c => c.entrance === message.domain);
         if (sourceProbe && available.length !== 3) throw new Error('source_unready');
@@ -44,43 +46,47 @@ process.on('message', async message => {
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !available.some(c => c.caseId === id)))) throw new Error('invalid_development_selection');
         const entries = selection.caseIds ? available.filter(c => selection.caseIds.includes(c.caseId)) : available;
         const pairs = [];
-        for (const entry of entries) for (let repetition = 1; repetition <= selection.repetitions; repetition++) {
-            const pair = { case: entry, scenario: publicCaseScenario(entry), repetition, baseline: null, candidate: null, judge: null, human: null };
-            for (const arm of sourceProbe ? ['baseline'] : ['baseline', 'candidate']) {
-                const config = message.configs[arm], bridge = await createFrozenEvaluationBridge(config, payload => rpc({ ...payload, arm }));
-                const capture = { trialId: `${message.jobId}:${entry.caseId}:${repetition}:${arm}`, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
-                    prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
-                    observe(name, observed, expected) { this.checks[name] = canonical(observed) === canonical(expected); this.evidence.push({ name, observed, expected }); } };
-                const settings = { rpPrompt: 'Express only the NPC response. Preserve the player choice and use the revised visible promise.',
-                    projectSkill: 'Preserve the original Project authority and human Review gate.', roundLimit: 6, ...message.settings[arm] };
-                let error = null;
-                try { await (message.domain === 'rp' ? runRp : runProject)(entry, loadFixture(entry, { purpose: 'evaluation' }), capture, { bridge, settings, beforeSend: () => {} }); } catch (e) { error = /^[a-z_]{1,100}$/.test(e.code || '') ? e.code : 'evaluation_runtime_failed'; } finally { bridge.cleanup(); globalThis.Atria = { getContext: emptyContext }; }
-                pair[arm] = { trialId: capture.trialId, configurationHash: hash(config), settingsHash: hash(message.settings[arm]), output: capture.artifact?.output || '',
-                    checks: { ...capture.checks, target_consumed: capture.artifact?.targetConsumed === true }, refs: capture.refs, evidence: capture.evidence, error, repairCount: capture.repairCount, requestHashes: capture.prompts.map(hash),
-                    ...(sourceProbe ? { completeness: capture.completeness, semanticAssessment: 'not_run' } : {}) };
-                process.send({ type: 'trial', caseId: entry.caseId, repetition, arm, trial: pair[arm] });
-                if (error) throw Object.assign(new Error(error), { code: error });
-            }
-            if (sourceProbe) {
-                pair.pairHash = hash({ ...pair, human: null }); pairs.push(pair);
-                process.send({ type: 'pair', pair }); continue;
-            }
-            const flipped = parseInt(hash([entry.caseRevision, repetition]).slice(0, 2), 16) % 2 === 1;
-            const judgeBridge = await createFrozenEvaluationBridge(message.configs.baseline, payload => rpc({ ...payload, arm: 'judge' }));
-            try {
-                const result = await judgeBridge.rp({ requestId: 'judge:' + pairs.length, trialId: message.jobId + ':judge:' + pairs.length, fixtureHash: entry.fixtureHash,
-                    messages: [{ role: 'system', content: 'Compare the two public outputs against the task and all behavior dimensions. Output JSON only: {"preference":"left|right|tie|uncertain","deltas": {dimension: integer from -4 to 4},"rationale":"public concise explanation"}. Delta is right minus left; uncertainty must remain uncertain.' },
-                        { role: 'user', content: canonical({ ...publicCaseScenario(entry), dimensions: entry.behaviorDimensions,
-                            left: pair[flipped ? 'candidate' : 'baseline'].output, right: pair[flipped ? 'baseline' : 'candidate'].output }) }], tools: [], kind: 'grader' });
-                const grade = parseEvaluationJson(result.response.assistantText || result.response.text);
-                if (!['left', 'right', 'tie', 'uncertain'].includes(grade.preference) || typeof grade.rationale !== 'string' || grade.rationale.length > 512
+        for (const entry of entries) {
+            const sealedSource = pairedProbe ? readSealedSource(entry, selection.sealedDirectory) : null;
+            const fixture = loadFixture(entry, { purpose: 'evaluation', sealedSource });
+            for (let repetition = 1; repetition <= selection.repetitions; repetition++) {
+                const pair = { case: entry, scenario: publicCaseScenario(entry, { sealedSource }), repetition, baseline: null, candidate: null, judge: null, human: null };
+                for (const arm of sourceProbe ? ['baseline'] : ['baseline', 'candidate']) {
+                    const config = message.configs[arm], bridge = await createFrozenEvaluationBridge(config, payload => rpc({ ...payload, arm }));
+                    const capture = { trialId: `${message.jobId}:${entry.caseId}:${repetition}:${arm}`, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
+                        prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
+                        observe(name, observed, expected) { this.checks[name] = canonical(observed) === canonical(expected); this.evidence.push({ name, observed, expected }); } };
+                    const settings = { rpPrompt: 'Express only the NPC response. Preserve the player choice and use the revised visible promise.',
+                        projectSkill: 'Preserve the original Project authority and human Review gate.', roundLimit: 6, ...message.settings[arm] };
+                    let error = null;
+                    try { await (message.domain === 'rp' ? runRp : runProject)(entry, structuredClone(fixture), capture, { bridge, settings, beforeSend: () => {} }); } catch (e) { error = /^[a-z_]{1,100}$/.test(e.code || '') ? e.code : 'evaluation_runtime_failed'; } finally { bridge.cleanup(); globalThis.Atria = { getContext: emptyContext }; }
+                    pair[arm] = { trialId: capture.trialId, configurationHash: hash(config), settingsHash: hash(message.settings[arm]), output: capture.artifact?.output || '',
+                        checks: { ...capture.checks, target_consumed: capture.artifact?.targetConsumed === true }, refs: capture.refs, evidence: capture.evidence, error, repairCount: capture.repairCount, requestHashes: capture.prompts.map(hash),
+                        ...(sourceProbe || pairedProbe ? { completeness: capture.completeness, semanticAssessment: 'not_run' } : {}) };
+                    process.send({ type: 'trial', caseId: entry.caseId, repetition, arm, trial: pair[arm] });
+                    if (error) throw Object.assign(new Error(error), { code: error });
+                }
+                if (sourceProbe || pairedProbe) {
+                    pair.pairHash = hash({ ...pair, human: null }); pairs.push(pair);
+                    process.send({ type: 'pair', pair }); continue;
+                }
+                const flipped = parseInt(hash([entry.caseRevision, repetition]).slice(0, 2), 16) % 2 === 1;
+                const judgeBridge = await createFrozenEvaluationBridge(message.configs.baseline, payload => rpc({ ...payload, arm: 'judge' }));
+                try {
+                    const result = await judgeBridge.rp({ requestId: 'judge:' + pairs.length, trialId: message.jobId + ':judge:' + pairs.length, fixtureHash: entry.fixtureHash,
+                        messages: [{ role: 'system', content: 'Compare the two public outputs against the task and all behavior dimensions. Output JSON only: {"preference":"left|right|tie|uncertain","deltas": {dimension: integer from -4 to 4},"rationale":"public concise explanation"}. Delta is right minus left; uncertainty must remain uncertain.' },
+                            { role: 'user', content: canonical({ ...publicCaseScenario(entry), dimensions: entry.behaviorDimensions,
+                                left: pair[flipped ? 'candidate' : 'baseline'].output, right: pair[flipped ? 'baseline' : 'candidate'].output }) }], tools: [], kind: 'grader' });
+                    const grade = parseEvaluationJson(result.response.assistantText || result.response.text);
+                    if (!['left', 'right', 'tie', 'uncertain'].includes(grade.preference) || typeof grade.rationale !== 'string' || grade.rationale.length > 512
                     || !grade.deltas || canonical(Object.keys(grade.deltas).sort()) !== canonical([...entry.behaviorDimensions].sort())
                     || Object.values(grade.deltas).some(v => !Number.isInteger(v) || v < -4 || v > 4)) throw new Error('invalid_grade');
-                pair.judge = { preference: grade.preference === 'tie' || grade.preference === 'uncertain' ? grade.preference : (grade.preference === 'left') === flipped ? 'candidate' : 'baseline',
-                    deltas: Object.fromEntries(Object.entries(grade.deltas).map(([k, v]) => [k, flipped ? -v : v])), rationale: grade.rationale };
-            } catch { pair.judge = { preference: 'uncertain', deltas: {}, rationale: 'Grader response unavailable or invalid' }; } finally { judgeBridge.cleanup(); }
-            pair.pairHash = hash({ ...pair, human: null }); pairs.push(pair);
-            process.send({ type: 'pair', pair });
+                    pair.judge = { preference: grade.preference === 'tie' || grade.preference === 'uncertain' ? grade.preference : (grade.preference === 'left') === flipped ? 'candidate' : 'baseline',
+                        deltas: Object.fromEntries(Object.entries(grade.deltas).map(([k, v]) => [k, flipped ? -v : v])), rationale: grade.rationale };
+                } catch { pair.judge = { preference: 'uncertain', deltas: {}, rationale: 'Grader response unavailable or invalid' }; } finally { judgeBridge.cleanup(); }
+                pair.pairHash = hash({ ...pair, human: null }); pairs.push(pair);
+                process.send({ type: 'pair', pair });
+            }
         }
         process.send({ type: 'complete', pairs });
     } catch (error) { process.send({ type: 'failed', code: error.code || 'evaluation_failed' }); }
@@ -90,4 +96,14 @@ process.on('disconnect', () => process.exit(0));
 if (process.argv.includes('--check')) {
     await import('./adapters.js');
     console.log('Evaluation consumer modules load');
+}
+const sealedCheck = process.argv.find(arg => arg.startsWith('--check-sealed='));
+if (sealedCheck) {
+    const { selectCases } = await import('./cases.js');
+    const { readSealedSource } = await import('./sealed-sources.js');
+    for (const profileId of ['rp.m1.information', 'project.m1.related']) {
+        const entries = selectCases({ purpose: 'evaluation', split: 'promotion', profileId });
+        for (const entry of entries) readSealedSource(entry, sealedCheck.slice('--check-sealed='.length));
+        console.log(JSON.stringify({ profileId, sealedSourcesVerified: entries.length, modelSends: 0 }));
+    }
 }
