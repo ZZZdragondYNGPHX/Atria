@@ -114,10 +114,12 @@ Project-only continuation 已取得 authoring/conflict 两项有效 development 
 
 ## 10. 2026-10-09 原链路反馈与评价契约先行
 
-U13确认先明确原链路契约，后各一个RP/Project试点。详细设计及F0–F3工作包见 [m1-feedback-evaluation](m1-feedback-evaluation.md)，部署/生产准入仍归S10。本轮F0只更新Plan/Record/HANDOFF，不发模型请求、不改产品。下一F1实现与最小本地验证完成后停止；再F2取得来源/可完成路径与case/profile/calibration revisions，最后F3一次有限试点。
+U13确认先明确原链路契约，后各一个RP/Project试点。详细设计及F0–F3工作包见 [m1-feedback-evaluation](m1-feedback-evaluation.md)，部署/生产准入仍归S10。F0只更新Plan/Record/HANDOFF、不发模型请求；F1最小实现和相关本地验证现已完成并停止。下一F2取得来源/可完成路径与case/profile/calibration revisions，最后F3一次有限试点。
 
 原§2工程退出门槛与§9 development准入保持。每域一个pilot不表示减少正式场景/对数：仍三个development pair、双模型至少2一致胜/其它tie/重要维度非负才冻结；promotion仍每域三个独立场景×三次、九对至少六一致胜/其它一致tie与重要维度非负，再原私有review→下一run消费→rollback。旧已指导修改的v1与仅换名v2不作为新资格材料，历史reports不改。
 
 F2任何真实source probe/calibration之前须先记录该阶段的exact来源、head/config/request身份、有限发送范围和当前失败窗口处理；F3付费之前须再固定完整case/input/source/lineage/profile/rubric/calibration/evaluator pins、候选/提炼来源、逐步范围和报告位置。本模块届时保存具体实验范围，不将设计估算416send当本轮许可或追加API硬限，不因U13自动复用旧Step许可剩余额度、清stop或新epoch。若source不就绪/基线饱和/校准不可判别，报告并结束该包，不拿旧合成材料凑数。
 
 所有失败/unknown/额外发现/校准/提炼/judge/消费按原761/2939582 ledger/quota/rate累计；API仅2000/day、20RPM硬限、每次输出最多8000、token建议超额通知后继续，原有限失败停止规则保持。工程humanPreference=not_observed/价格未知保持，production自动发布不绕human/price/budget gate。未达标不合并main，阶段结束停止，不进入S11/G，用户无需手测。
+
+F1实现/本地Tested HEAD `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关suites/101 distinct tests、16触及文件ESLint、共享production pane Chromium fixture通过，实际失败/修正见同一Record。原Experience资源内v2/采集水位/归因、原evaluator固定profile及Report v2消费者已接入；旧case明确historical_synthetic/not_established，新pilot来源未注册会source_unready。没有真实模型请求、私有Document迁移、新真人标签或新候选资格；paid source仍a61b249ef，761/2939582及全部窗口/6of24旧claim不变。上述只是工程契约证据，不计新的development或独立promotion胜。原§2/§9逐字保持，F2/F3尚未开始。

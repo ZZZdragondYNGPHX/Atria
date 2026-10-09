@@ -200,4 +200,4 @@ S10 支持 ordinary RP exact character 下的 bounded single-owner Director、�
 
 ## 13. 原链路反馈与评价补充
 
-2026-10-09 U13确认先契约、后各一个RP/Project试点。新反馈来源、诊断根因/干预分离、QualityProfile/case provenance/report版本及有限工作包唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)。本轮F0设计完成，尚未实现；原S05生命周期、S10部署/发布、m1-acceptance退出门槛保持。下一仅F1最小消费者实现，不能把研究能力全部加进M1或直接重跑旧case；不进入S11/G。
+2026-10-09 U13确认先契约、后各一个RP/Project试点。新反馈来源、诊断根因/干预分离、QualityProfile/case provenance/report版本及有限工作包唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)。F0设计及F1最小消费者完成；原S05生命周期、S10部署/发布、m1-acceptance退出门槛保持。包末停止，下一仅F2来源/校准与有限范围固定，不能把研究能力全部加进M1或直接重跑旧case；不进入S11/G。

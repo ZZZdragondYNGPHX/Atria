@@ -39,6 +39,6 @@ FS / SQLite 持久 reopen、CAS、纠正 / 撤回 / 删除、source invalidation
 
 S05 已完成；产品 Tested HEAD `caf662842941d3261dc1840242278f5529db10af`。本地五个相关 suites / 137 个不同 tests 通过，反馈 suite 33 tests；详细实际验证与限制见同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。下一正式阶段仅 S06。
 
-## M1 后续契约补充（尚未实施）
+## M1 后续契约补充（F1最小实现）
 
-U13确认的自动分析来源、零模型反馈供给、根因路由和v1/v2兼容计划见 [m1-feedback-evaluation §2–§5](m1-feedback-evaluation.md)。该模块是新逻辑字段的唯一设计来源；本模块继续管理原source/subject、容量、retention、CAS、撤回/删除/失效生命周期。v1现有实现仍是explicit/observation/technical与旧diagnosis，不因Plan增加类型就称已支持；assessment不冒充Host正式outcome，weak-only不取得确定方向。
+U13确认的自动分析来源、零模型反馈供给、根因路由和v1/v2兼容见 [m1-feedback-evaluation §2–§5 / §9](m1-feedback-evaluation.md)。该模块是补充契约的唯一设计来源；本模块继续管理原source/subject、容量、retention、CAS、撤回/删除/失效生命周期。F1已实现同一Experience v2、Host绑定assessment与原采集/路由消费者，实际HEAD/本地验证见同一Record；assessment不冒充Host正式outcome，weak-only不取得确定方向。新试点来源/校准仍待F2。

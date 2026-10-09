@@ -79,6 +79,6 @@ S10 工程链路已交付，**M1 独立案例的真实质量 / 成本改善尚�
 
 2026-10-07用户批准M1工程验收调整，见 [m1-acceptance](m1-acceptance.md)。本模块的九对独立human labels / price等准入仍是production automatic publication要求；工程评测采用独立模型observation并保持human未观测，不输入human字段，不改本模块生产授权。账本丢失不伪造旧entries，沿已批准保守结转与新有限额度执行。
 
-### 原 evaluator 的领域契约补充（尚未实施）
+### 原 evaluator 的领域契约补充（F1最小实现）
 
-2026-10-09 U13确认先明确原反馈/评价契约，再各一个双域试点。新QualityProfile、case provenance/lineage、diagnosis路由与versioned consumer唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，不建立第二evaluator/targets。原固定worker和secret边界、原局部writer、publication/消费/rollback和production human/price/owner gates保持；新profile不会自动使旧报告合格。当前只有F0设计，F1实现与F2/F3来源/试验均未执行。
+2026-10-09 U13确认先明确原反馈/评价契约，再各一个双域试点。新QualityProfile、case provenance/lineage、diagnosis路由与versioned consumer唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，不建立第二evaluator/targets。原固定worker和secret边界、原局部writer、publication/消费/rollback和production human/price/owner gates保持；新profile不会自动使旧报告合格。F1最小registry、Report v2及原gate/worker消费者已实现并做本地验证，旧case明确historical_synthetic/not_established且不获新资格。F2来源/校准和F3真实试验未开始，实际结果见同一Record。

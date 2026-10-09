@@ -1,7 +1,7 @@
 # M1：原链路反馈与评价契约补充
 
 - Updated：2026-10-09；Task ID：`agent-intelligence-runtime`。
-- 状态：**方向及本模块的设计边界冻结；产品尚未实现；本轮仅完成契约阶段。**
+- 状态：**方向、设计边界及F1物理契约冻结；F1最小消费者已实现，验收记录见同一Record；F2/F3未开始，M1仍pending。**
 - 用户确认 U13：先明确原链路反馈与评价契约，再用各一个 RP、Project 试点验证。以下分类、兼容方案和工作包是该方向内的工程细化，不声称用户逐字段确认。
 - 来源：[领域扩展研究](../agent-intelligence-m1-domain-evolution-research.md)、[S05](s05-feedback.md)、[S10](s10-evolution.md)、[M1 acceptance](m1-acceptance.md)。核对产品 `a61b249ef71f108d279ec7bd883fb5eeae97a463`；这些设计不计入已有实证。
 - 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程退出门槛与实际发送范围由 m1-acceptance 管理。
@@ -149,10 +149,35 @@ Project development 的三个任务类型：真正有关联依赖的 authoring�
 | 工作包 | 范围 | 最小验证 / 退出 | 本轮状态 |
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
-| F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 未实施 |
+| F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
 | F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费controls/独立性和可完成路径先通过；有模型探测须先冻结其有限范围；最终请求前保存新acceptance范围 | 未开始 |
 | F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 未开始 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 中source_unready、calibration_failed、unsupported_locus或baseline_saturated是有效停止结果，不伪造失败/人类标签来凑闭环。
 
 M1 成功只能按原验收宣布；F0 文档冻结、F1本地通过或F3单一维度提升都不等于M1达标。未达标不合并main、不进入S11/G。后续是否扩展第二类领域问题依据真实证据另议，本轮不自动推进。
+
+## 9. F1 物理契约与支持边界
+
+以下是§2–§5在原资源和消费者上的最小实现，不是新的authority。产品实现/验证HEAD和实际检查唯一记入同一Record；本轮没有运行私有Document迁移或真实模型请求。
+
+| 原消费者 | 本次物理表示 / 行为 | 拒绝与适用边界 |
+| --- | --- | --- |
+| Experience repository | 原`atri_agent_experience` key不变；支持strict v1/v2。v2新增`collections`与diagnosis的`attribution`；assessment仍在原feedback数组 | 未知版本/字段、跨domain、损坏、超容量拒绝；没有第二个resource kind或storage registry |
+| assessment | `assessment={profile:{profileId,revision},purpose,claims,producer}`；claims最多4项，每项`dimension/sourceHash/quote`，quote非空且最多512字符，note沿原4096限制 | ordinary/development才可写入；calibration/promotion拒绝。current exact ref及原bounded expansion中确有片段才接受；片段存在不等于语义/根因证明 |
+| model producer | 原evaluator的`quality_assessment`分支调用同一compiler/resolver/provider及owner reserve/settle，Host绑定`modelId/configurationHash/requestHash/snapshotHash/chargeId` | 公共HTTP无assessModel入口；通用submit不接受assessment/可信origin。消费端要求同owner/Experience scope的settled extraction/judge charge及对应hash；unknown usage不改成reported。model不得写verified_failure |
+| 固定checker | 当前仅注册`project.validation`，revision为固定谓词代码的内容hash；从原Task validation状态生成repair_quality claim，passed→no_failure，failed→verified_failure，其余unknown | 不接受脚本、客户端verdict或文学checker。inspect重新核查actual predicate；与正式状态不符或source变更时不可用。该proof只证明validation状态，未证明用户目标完成或唯一原因 |
+| 根因路由 | `attribution={loci,support,intervention,legacy}`；loci最多3个；公共proposed attribution仅传loci/intervention，Host设unverified/legacy=false | 新local_target仅prompt locus且direction确定；engineering/none必须undetermined。Evolution拒绝缺归因、legacy、非local或context/state/runtime/evaluator/model/unknown，不仅存字段。旧项迁移unknown/unverified/legacy=true，不洗来源 |
+| 零模型采集 | normal RP capture首次completed且exact output已绑定后写client completed；normal Project仅正式status/validation/review/receipt变化后，在Task锁外重读原authority、写原technical并唤醒原Evolution | evaluation副本默认关闭采集；校准/晋升不回流。success/completed不独自触发reflection，conflict和无法证明的结果不伪写失败。正文/Task正式效果不因metadata失败被重放或撤销 |
+| 有界处理水位 | `collections`最多256项，每项`{id,kind,sourceId,sourceHash,signal,createdAt}`；id内容hash覆盖kind/sourceId/exact ref hash/signal | 同一版本重复事件拒绝重收；水位跨feedback过期/撤回/删除保留且不含原正文。不同Task正式版本的新失败仍可收。容量达到上限明确unavailable，不淘汰有效水位或开sidecar续跑 |
+| 原reflection | 原explicit/technical failure和三个弱观察事件触发保持；新model疑似失败按profile/dimension和exact refs分组，至少三个不同来源才形成弱批次 | 一条输出的多claim、重复capture/charge或混合不相关维度不能凑三来源；弱批次仍不能取得local direction。completed/no_failure用于覆盖，不是优化资格 |
+| fixed QualityProfile | 原evaluator目录内固定8个profile：六legacy与两个pilot；identity包含domain/unit、全部critical dimensions、unknown/N/A规则及内容revision | 两个pilot的六维均critical，无可事后N/A的必需维度；这是受审类型registry，不是已校准的文学rubric/独立案例。后者只在F2固定 |
+| report consumer | 原compare输出Report v2的`quality` envelope，固定registry revision/domain/split、case/profile revision及provenance派生组；原逐pair、charge、人类字段、原gate保留 | critical dimension漏评、case/split/profile变化或伪改来源资格拒绝；现有case只标historical_synthetic/not_established，新报告source_unready。旧v1历史仍可只读识别且受原revision/gate约束，不回填旧评分 |
+
+两个pilot profile ID是`rp.m1.information`与`project.m1.related`，维度分别对应§6。当前没有给它们注册新source/fixture/adapter或promotion答案；原compare收到该profile请求会在worker/provider前返回source_unready。F1本地fake worker只核验工程report消费，不能自动取得F2材料或F3资格。原fixed catalogue的旧case内容/revision不改，也不继续用它们追分。
+
+v1 writable mutation沿原CAS升v2，即使旧feedback hash未变也先失效旧Evolution job/report并暂停policy；read-only inspect/export不写。旧feedback id/revision/origin/source/期限和累计账目保留；新诊断须显式根因/干预，旧有向diagnose请求不兼容时拒绝，而非猜测归因。FS/SQLite依旧走generic reopen/dump/restore/deleteUser；回退旧二进制时必须暂停新功能，旧validator不能写v2。旧试验CLI的fixture代理explicit历史入口不改写为真人来源，也不作为新试点执行入口；F2只适配已冻结的新来源和内部分析port。
+
+采集失败由RP返回collection_unavailable、Project保留正式Task并提示metadata缺口；原共享panel展示origin、quality claims、未确认采集和Collect saved result的拒绝/重试信息。补收一次只处理当前指定ref，通过原CAS；没有全量历史扫描、无限retry/poll或每轮自动critic。只有已有明确auto policy可由原wake安排原有界job，review/default权限不扩张。
+
+尚未完成：真正的development/promotion来源包、独立性与headroom、可判别的文学/关联修改rubric、judge/calibration/实际request pins、有限真实发送范围和双域试点效果。这些仍按F2→F3处理；本模块物理契约不声称通用持续进化或长期领域质量已验收。

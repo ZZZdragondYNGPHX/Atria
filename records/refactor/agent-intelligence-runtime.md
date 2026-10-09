@@ -4,9 +4,11 @@
 - Primary Workspace: `main`
 - Status: **Active**
 - Plan: [正式架构与阶段入口](../../plans/architecture/agent-intelligence-runtime/index.md)
-- Updated: 2026-10-06
+- Updated: 2026-10-09
 
 ## Summary
+
+最新checkpoint：2026-10-09 F1原链路反馈/评价最小消费者完成，product `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关suites/101本地tests与共享pane Chromium fixture通过。本轮零真实send，累计761/2939582；paid source仍a61b249ef，M1 pending、main未合并。下一仅F2来源/校准与有限范围固定，详见本Record末节和live HANDOFF；下面S10及各轮段落保留历史，不作为当前HEAD。
 
 长期任务沿同一产品分支实施；D0–D4 / S01–S09 与 S10 工程交付完成。S10 将 S05 feedback / diagnosis、原六类局部 target、共享 finite budget、原 scheduler、隔离 evaluator、publication / recovery / rollback / next-run evidence 与双入口共享面板接为可用消费者。12 relevant suites / 233 distinct local tests 与真实 Chromium shared-pane fixture 通过。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 S06 真实执行与 model observations 保留，候选仍 ineligible；本轮无新真实模型请求。S10 的结构 / 假 provider 证据不证明稳定质量 / 成本收益；M1 的真实改善与集成前置条件待验收。本轮只续接 S10，下一只复核 M1 验收，不进入 S11 / G。
@@ -861,6 +863,8 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 
 ## Final state
 
+实时恢复以本Record最新F1节及live HANDOFF为准；以下按发生顺序保留后续周期，旧HEAD/旧接手语句均为其阶段历史。
+
 ### 2026-10-09 第二模型单次可用性检查
 
 用户要求检查第二模型，不能调用则暂时放弃该API；同一Plan §8在请求前固定一次真实评分形态诊断、无retry、不计评分、不清stop或新增epoch。从701/2717515续接；source `63dc0fd44` 已commit/push。CLI增加显式failed-report来源，沿原compiler/resolver/provider与owner/shared资金记录，复用97a1最终Project authoring pair、原shuffle/messages，输出8000。先前两次前置校验均零发送：HTTP代码被provider包装为generation_provider_failed，且onPair中间捕获的hash与final report身份不同；改为读取原transport状态及实际独立评分所消费的final report pair后才发唯一请求。私有零send报告仍保留，不将它们算API失败。
@@ -970,3 +974,26 @@ Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229
 原账目结构重新核对：历史carry252/1000000 +509 entries=761/2939582；492reported、17unknown计74948，全settled。quota carry332+429 unique admissions，所有IDs在原ledger，minimum3151ms、滚动一分钟峰值11；九窗口/七stop保持，lock0。首次审计脚本误按list读取dict entries产生KeyError，改用dict.values后核对通过；未改任何账目。文档补丁首次有错误delivery上下文校验失败，原子拒绝后修正上下文再应用，无部分Plan写入。没有模型请求/人工标签、产品测试/build/CI/UI/Android/外部DB或产品修改。
 
 最小验证完成：10份相关文档100处本地链接/锚点、28个表格结构和代码围栏有效；工作包/模块路由核对通过；原acceptance §2退出门槛与§9最新paid周期逐字保持，S05/S10/Record仅追加，416send估算加总正确；普通及staged diff检查通过。五草稿/五累计状态文件10/10 SHA保持，product clean且HEAD/main固定。仅提交本轮10份相关docs，未提交无关dirty草稿或私有数据。下一仅F1，直接落实最小消费者而不重开已确认方向讨论，不进入F2/F3。M1仍pending、不合并main、不进入S11/G，用户无需手测。
+
+
+### 2026-10-09 原链路反馈与评价 F1（最小实现完成）
+
+用户“继续”授权沿U13/F0工作顺序实施本工作包。Start product `a61b249ef71f108d279ec7bd883fb5eeae97a463`；Start docs `d9732ea292d869e11ac7471139ae71a029cfcdc7`。End / local Tested product `57520d43dd577c13d1eee6df50d3edb4a3379a1e`，沿同一feat/agent-intelligence-runtime提交推送；main `ed1fd90521a63363e29856601abbf5e908c99d10`未合并。先actual Git与迁移后Document/账目，再HANDOFF→index→acceptance §9/§10/S10→新反馈模块/S05→同一Record和直接源码；没有读写reference或加载非指定Skill。
+
+实现复用原Experience/evaluator/targets及authority，没有新resource kind或旁路系统。strict Experience v2增加有限assessment、attribution及原资源内collections；v1只在writable CAS修改时升v2、旧项来源不洗，迁移即使feedback字节未变也暂停/失效旧job/report。normal RP首次exact saved completion写client_observation，不冒充Host；Project在正式状态/validation/review/receipt变化持久化后释放Task锁再重读原authority、收technical并调用原wake。隔离evaluation副本默认关闭collector；完成/成功不独自触发reflection。失败metadata不重放generation/正式Task效果，面板明确来源/分析claims、未确认采集和一次指定source的补收拒绝/重试。
+
+水位按kind/sourceId/exact references hash/signal去重，原资源最多256项；跨feedback过期/撤回/删除保留无正文水位。特别验证同Task第二轮真实validation失败仍可收，旧撤回版本不能复活；达到有限容量不能旁路续跑。自动model分析由内部port绑定实际模型/config/request/snapshot及原owner同scope settled charge，普通HTTP不能选择该来源；校准/promotion、伪verified_failure、无charge或缺片段拒绝。三个同类profile/dimension疑似失败按真正exact refs聚合；同一输出重复capture、多claim或混合问题不凑独立来源，仍保持弱批次/undetermined。固定Host checker仅证明原Project.validation谓词，消费时重验实际状态，不证明开放语义、用户目标或唯一根因。
+
+根因与target方向实际分离：public proposed attribution由Host设unverified；新local只支持prompt locus。Evolution拒绝缺归因/旧legacy、unknown及context/state/runtime/evaluator等engineering/none，不把无writer问题交给提炼。原隐式提炼仍只在原explicit/technical失败或受审Host proof支持的条件下提出局部假设，不变为已证实原因。固定8个QualityProfiles与Report v2 envelope接原compare/worker和生产、工程gate；required dimension/case/split/profile/revision缺失或伪改provenance拒绝。旧case catalogue及case set内容不变，明确historical_synthetic/not_established，新pilot没有来源时在worker/provider前source_unready。旧报告/评分/费用保留，只读历史不变成新资格；旧fixture代理explicit CLI不作为新试点入口。
+
+物理字段、兼容/回退和支持边界冻结在原 [m1-feedback-evaluation §9](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md)，原S05生命周期/S10部署与production human/price/owner gate保持。更新原Bundle路由及acceptance §10，本工作包不修改§2/§9退出/旧有限周期，不冻结任何F2/F3真实请求范围。
+
+最终最小本地验证：Node24.21.0、FS/SQLite，五相关suites **101 distinct tests** 一次最终全通过（79.733s）：feedback contracts17、原feedback33、原evolution41、M1 acceptance7、原worker development selection3。命令在产品tests目录：`node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.json --runInBand agent-intelligence/feedback-contracts.test.js agent-intelligence/feedback.test.js agent-intelligence/evolution.test.js agent-intelligence/m1-acceptance.test.js agent-intelligence/m1-development-selection.test.js`。覆盖source/provenance/用途、零模型normal hooks、去重/非复活/第二轮失败、v1 readonly/migration pause、CAS/失效/容量/损坏、reopen/dump/restore/deleteUser、engineer-root拒绝、真实compiler/provider的fake-charge绑定、Report质量拒绝及fixed worker消费。所有fake调用/fixture标签只属工程控制，不是本轮真实反馈、独立质量胜或真人观察。
+
+实际修正与失败保留：新测试最初有硬编码错误sequence、空plan、错误rejection reason/compare参数，后有mock缺ok=true及误调用不存在的Evidence.list；修正为实际接口/原saved record一致性断言后通过。一次在回归运行中编辑受pin源码，使SQLite Project Prompt finalizing被原evaluator_revision变化gate拒绝；固定代码后该项定向重跑通过，最后101项在固定源码一次全部通过，没有放宽gate。新增归因字段与schema2允许后的旧测试输入同步修正；重复运行不累计distinct数量。ESLint初轮brace-style/测试indent/conditional-expect均已修正，最终16触及JS/mjs通过。真实Chromium390px执行同一个production pane在RP/Project的来源、collect/unavailable、escaped assessment、预算、默认review、finite job/pause/delete；fixture API检查通过，不声称完整应用E2E。没有full/build/CI/Android/外部DB或Node20新验证。
+
+Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 entries1939582；492reported/17unknown74948，全settled/pending0。quota carry332+429 unique admissions均在ledger；九transport窗口/七旧stop、rate与epoch、6of24历史claim不变，lock0。五累计状态文件与五无关dirty文件10/10 SHA保持，private Document无tracked文件且本轮未迁移其Experience/Task数据。没有真实API发送、新候选、人工标签、重评分、publication或新run消费/rollback；paid source仍a61b249ef。
+
+包末停止，M1仍pending、不合并main、不进入S11/G。下一仅F2：取得获准的实际来源/明确synthetic代表性工作负载、可完成路径与baseline headroom、按episode/Project/派生组隔离development/promotion，固定case/profile/rubric/calibration/evaluator与实际有限范围；缺来源/饱和/校准不可判别是有效停止结果。任何真实探测前先在原acceptance §10记录exact pins/范围与现有窗口处理，不复用旧Step剩余额度、不清stop，不重跑旧v1追分。用户无需手测。
+
+文档结束检查：本轮9份相关docs的114处本地链接/锚点、32表格和围栏有效；原acceptance §2/§9与起始docs逐字一致，普通/staged diff核对通过。产品HEAD与origin/feat一致，main仍固定；五无关dirty文件和五累计文件10/10 SHA保持，仅暂存九份相关docs，未提交草稿或私有数据。
