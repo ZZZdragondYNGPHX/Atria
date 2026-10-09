@@ -911,3 +911,9 @@ Project本次不是评价只看最终JSON：输入包含source/公开conversatio
 Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229c707e0a5c2`，最终private audit `b046e98e1dc174e7d28f841e148ff534d4168e7ecedf8d3281c667602ae316a3`。ledger SHA `2512e563608ec9bf8f2e424e6c080d504a1e8b599de9019a87a1a6d4093cf092`、quota `edc9490521bd5a1934371b714a8f669522c094fdd7b96490b2f9405c1e06fe11`、transport `1492bf982d7598ccfc676897f90686f496a8966217c24dbc2d6ac017855e94ca`、epoch `6f5adb9276065236d896b3f087e7ff327c110c3fb75142843a1d23d23f59c370`。详细真实报告/raw/fixtures/提案与候选均私有固定，凭证/endpoint/本地私有路径不入公共Git。
 
 当前M1仍pending、不集成。新Project候选恢复必要读取并完成review，双模型三tie未证明优于原base；新RP完整三pair/双模型只有一一致胜、两分歧与continuity负差。原权限/隔离/版本消费12arms全部通过，Step本轮六评分可用，旧stop保留。最新761/2939582、pending0/lock0，product a61b249ef已push、main不合并；同一Plan/Record/live HANDOFF更新后停止，不进入S11/G。接手沿该账本及同一窗口，先正式界定真实使用反馈/行为失败与独立case revision，不能反复重跑合成v1追分或把已训练案例当未见验收；用户无需手测。
+
+### 同日私有状态迁移与远端清理
+
+用户准备在另一台设备调整方向，先让AI调研再优化，并明确确认删除对象是GitHub私有仓库 `ZZZdragondYNGPHX/Atria-Dev`，不是产品仓库Atria或本机工作区。已备份3914个当前Document文件、五个无关dirty docs原始字节及私有仓库Git bundle；全部包内文件逐项SHA256验证，bundle在空仓库verify确认为complete history，取得全部九个远端heads及两个tags（bundle也保存本地/remote/HEAD refs）。本机包目录仅当前用户访问，凭证只在私有包/Document，不提交Git。接手说明明确bundle中旧Git快照不能替代当前Document/761账目，恢复时用包内最新Document覆盖克隆所得旧Document，local keys/ACL按新设备重绑定，报告/账目/窗口不清零；五dirty草稿保持单独来源。
+
+首次删除因现有GitHub凭证缺delete_repo scope返回403。启动当前账号授权流程，用户明确回复已授权，认证完成后权限生效；再次删除exit0，同账号GET该精确repo返回404，产品 `ZZZdragondYNGPHX/Atria` 仍可访问，删除完成。本机私有仓库/迁移包和产品工作区保留。没有额外模型请求，M1仍761/2939582，不合并main、不进入S11/G；下一设备先调研真实反馈/案例来源及方向，再正式更新同一Plan与有限验证范围，不重复旧合成测试追分。

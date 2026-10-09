@@ -33,4 +33,6 @@ Summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229c707e
 
 用户准备在另一台设备先调整方向、让AI调研再优化。下一先界定真实任务/反馈和行为失败，再正式固定新的代表性case revision、development/独立验收隔离与有限范围；不要反复重跑已用synthetic:v1，不降原门槛，不伪造人工观察。M1仍pending，main不合并，不进入S11/G，用户无需手测。
 
+私有迁移包已逐文件SHA核验并包含3914个当前Document文件、五dirty docs原件和Atria-Dev完整Git历史bundle；bundle旧Document不能代替当前761账目，恢复时以包内最新Document覆盖旧Git快照的Document，新设备重绑local Git keys/ACL。用户明确指定的GitHub ZZZdragondYNGPHX/Atria-Dev已在账户授权后删除（delete exit0/同账号GET404），产品仓库Atria仍可访问，本机私有副本和包保留；详见同一Record/包内PORTABLE-HANDOFF。无新增模型请求。
+
 接手提示词：**先核对actual Git与迁移后的私有Document/账本，再读docs:HANDOFF→M1 acceptance §9/S10→同一Record，沿761/2939582 ledger/quota/rate/windows。产品a61b249ef，main未合并。RP一致胜1/3且分歧/continuity负差，Project三一致tie但原目标/guards完整，Step六真实grade成功，旧stop保留；本有限周期已结束。先调研并重新明确真实使用反馈、代表性行为失败与新独立case来源/revision，再正式冻结优化方向和有限验证范围，不把合成v1当真实用户或未见验收。保持原authority、每入口九对六一致胜/其它tie/重要维度非负及原消费/发布/回滚门槛，最大输出8000，API仅2000/day和20RPM硬限，所有费用/未知usage照记；只最小相关本地验证，不要求用户手测、不进入S11/G。**
