@@ -158,6 +158,19 @@ test('RP knowledge assessment covers each output span and rejects a summary hidi
     expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
 });
 
+test('missing Project observations remain unknown rather than proving absent proposals or zero writes', () => {
+    const entry = PILOT_CASES.find(c => c.entrance === 'project' && c.split === 'development');
+    const evidence = output => JSON.parse(f2SourceEvidence({ case: entry, baseline: { output: canonical(output) } })).baseline.facts;
+    const missing = evidence({});
+    expect(missing).toContain('Validated proposal: unknown');
+    expect(missing).toContain('Prior Task writes: unknown');
+    expect(missing).toContain('Fresh Task status: not available');
+    expect(missing).not.toContain('Validated proposal: absent');
+    const observed = evidence({ validatedProposal: null, priorConflictTask: { changeSets: [] } });
+    expect(observed).toContain('Validated proposal: absent');
+    expect(observed).toContain('Prior Task writes: 0');
+});
+
 test('Project source evidence removes duplicated old history while retaining conflict, operations and human source', () => {
     const entry = PILOT_CASES.find(c => c.entrance === 'project' && c.split === 'development');
     const source = { project: { displayName: 'Human revision' } };

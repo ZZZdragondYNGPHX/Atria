@@ -168,12 +168,12 @@ export function f2SourceEvidence(pair) {
     if (pair.case.entrance !== 'project') return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
     const output = projectSourceProjection(JSON.parse(pair.baseline.output));
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
-    const facts = ['Fresh Task status: ' + output.status,
+    const facts = ['Fresh Task status: ' + (output.status ?? 'not available'),
         'Fresh Task validation: ' + (output.validation?.status ?? 'not available'),
-        'Validated proposal: ' + (output.validatedProposal ? 'present' : 'absent'),
+        'Validated proposal: ' + (Object.hasOwn(output, 'validatedProposal') ? output.validatedProposal ? 'present' : 'absent' : 'unknown'),
         'Current source equals the recorded protected original source: ' + (output.source && output.originalSource ? hash(output.source) === hash(output.originalSource) : 'unknown'),
-        'Prior Task status: ' + output.priorConflictTask?.status,
-        'Prior Task writes: ' + (output.priorConflictTask?.changeSets?.length ?? 0),
+        'Prior Task status: ' + (output.priorConflictTask?.status ?? 'not available'),
+        'Prior Task writes: ' + (output.priorConflictTask?.changeSets?.length ?? 'unknown'),
         ...['source', 'originalSource', 'validatedProposal'].flatMap(label => (output[label]?.package?.entryPoints || []).flatMap(point =>
             ['worldIds', 'primaryWorldId', 'knowledgeBindingIds'].map(field => label + '.' + point.displayName + '.' + field + ': ' + canonical(point[field])))),
         ...(output.validationHistory || []).map(row => 'Validation history: ' + canonical(row))];
