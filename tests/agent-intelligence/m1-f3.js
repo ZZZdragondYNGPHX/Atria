@@ -208,7 +208,9 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
                 const messages = f3GradeMessages(pair, flipped);
                 const response = await bridge.rp({ requestId: randomUUID(), trialId: job.id + ':' + label + ':' + pair.case.caseId,
                     fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages });
-                const grade = parseBlindGrade(response.response.assistantText || response.response.text, pair, flipped);
+                let grade;
+                try { grade = parseBlindGrade(response.response.assistantText || response.response.text, pair, flipped); }
+                catch { grade = { status: 'invalid', preference: 'uncertain', deltas: {}, rationale: 'Grader response invalid; retained without retry or score repair.' }; }
                 if (label === 'primary') { report.charges.push(charge); pair.judge = { ...grade, chargeIds: [charge.id] }; pair.pairHash = hash(pair); }
                 else entry.independent.push({ ...grade, origin: 'independent_model', pairHash: pair.pairHash,
                     model: original.model.remoteModelId, primaryModel: primaryConfig.model.remoteModelId, configurationHash: hash(transport),
