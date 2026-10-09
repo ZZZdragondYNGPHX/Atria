@@ -34,13 +34,14 @@ export function parseF2SourceAssessment(text, entry, evidence) {
     const excerpts = [evidence];
     const collect = v => { if (typeof v === 'string') excerpts.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(collect); };
     collect(JSON.parse(evidence));
-    if (!value.dimensions || Object.keys(value.dimensions).sort().join(',') !== [...entry.behaviorDimensions].sort().join(',')) throw new Error('invalid_f2_source_assessment');
-    for (const row of Object.values(value.dimensions)) {
+    if (!value.dimensions || entry.behaviorDimensions.some(d => !Object.hasOwn(value.dimensions, d))) throw new Error('invalid_f2_source_assessment');
+    const dimensions = Object.fromEntries(entry.behaviorDimensions.map(d => [d, value.dimensions[d]]));
+    for (const row of Object.values(dimensions)) {
         if (!['met', 'gap', 'unknown'].includes(row?.status) || typeof row.quote !== 'string' || row.quote.length > 512
             || typeof row.rationale !== 'string' || row.rationale.length > 512
             || (row.status === 'unknown' ? row.quote !== '' : !row.quote || !excerpts.some(s => s.includes(row.quote)))) throw new Error('invalid_f2_source_assessment');
     }
-    return value;
+    return { dimensions };
 }
 
 export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal, resume = null }) {
@@ -100,7 +101,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
                 try {
                     const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':source-assessment:' + pair.case.caseId,
                         fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages: [
-                            { role: 'system', content: 'Assess this single baseline using every supplied dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
+                            { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
                             { role: 'user', content: evidence },
                         ] });
                     observations.push({ label, origin: 'model_source_assessment', evidenceHash: hash(evidence),

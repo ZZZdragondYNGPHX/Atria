@@ -67,6 +67,9 @@ test('source readiness assessments require all dimensions and literal evidence, 
     const entry = PILOT_CASES[0], quote = 'Actual public\nevidence.', evidence = JSON.stringify({ output: quote });
     const value = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quote, rationale: 'Bounded evidence.' }])) };
     expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toEqual(value);
+    expect(parseF2SourceAssessment(JSON.stringify({ dimensions: { ...value.dimensions, engineering_check: { status: 'unknown' } } }), entry, evidence)).toEqual(value);
+    const incomplete = structuredClone(value); delete incomplete.dimensions[entry.behaviorDimensions[0]];
+    expect(() => parseF2SourceAssessment(JSON.stringify(incomplete), entry, evidence)).toThrow('invalid_f2_source_assessment');
     value.dimensions[entry.behaviorDimensions[0]] = { status: 'unknown', quote: '', rationale: 'Insufficient evidence.' };
     expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toEqual(value);
     value.dimensions[entry.behaviorDimensions[0]] = { status: 'gap', quote: 'Invented evidence', rationale: 'Claim.' };
