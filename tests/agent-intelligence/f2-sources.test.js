@@ -136,6 +136,8 @@ test('source readiness assessments require all dimensions and literal evidence, 
     const cited = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quoteRef: catalogue[0].ref, rationale: 'Observed.' }])),
         knowledgeReview: catalogue.map(item => ({ quoteRef: item.ref, status: 'supported', rationale: 'Exposed fixture support.' })) };
     expect(parseF2SourceAssessment(JSON.stringify(cited), entry, citedEvidence).dimensions[entry.behaviorDimensions[0]].quote).toBe(catalogue[0].quote);
+    cited.dimensions[entry.behaviorDimensions[0]].status = 'unknown';
+    expect(parseF2SourceAssessment(JSON.stringify(cited), entry, citedEvidence).dimensions[entry.behaviorDimensions[0]]).toMatchObject({ status: 'unknown', quote: catalogue[0].quote });
     const forged = JSON.parse(citedEvidence); forged.quoteCatalogue[0].quote = 'Invented catalogue evidence';
     expect(() => parseF2SourceAssessment(JSON.stringify(cited), entry, canonical(forged))).toThrow('invalid_f2_source_assessment');
     cited.dimensions[entry.behaviorDimensions[0]].quoteRef = 'q9999';
