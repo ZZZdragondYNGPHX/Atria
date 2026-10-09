@@ -3,7 +3,7 @@
 - Task ID: `local-first-normalization`
 - Primary Workspace: `docs`
 - Updated: 2026-10-09
-- Status: Active — 本地整理完成，最终存储同步待核对
+- Status: Complete
 - Plan: 本轮多轮讨论明确确认的范围；本任务一次闭环，不另建 Plan/HANDOFF。
 
 ## 已批准范围
@@ -40,8 +40,12 @@
 - GitHub API 确认 Actions `enabled=false`；仓库各分支无保护，rulesets 为空，因此无强制 CI 合并要求需要移除。无开放 PR、无未完成 Actions run。
 - 未执行产品全量测试、build、API 调用、浏览器/UI、Android/人工实机验证；这些不属于本次整理的相关验证。
 
-## 最终核对待完成
+## 最终状态
 
-- 推送同名存储分支并逐项核对远端 refs。
-- 删除已集成的本次临时整理分支；保留其它活跃/未合并分支。
-- 更新本记录为 Complete，并保留 Runtime live HANDOFF。
+- 七条已提交工作分支已推送并逐项核对同名远端 refs；本文件状态/格式收尾提交随后同步 docs。
+- 本次 `chore/local-first-normalization` 已在本地 fast-forward 集成 main 并删除；没有创建需要删除的同名远端临时分支。
+- 企划分支已改为跟踪 `origin/feat/agent-intelligence-plan`；清除了两条远端已删除任务的陈旧 tracking refs。
+- Actions 再次确认为 disabled，rulesets 为空，push 没有启动未完成的 Actions run。
+- 八份原 dirty/草稿保留，其它活跃/未合并分支和并行 docs-results 工作树保留；Runtime live HANDOFF 继续承担原任务路由。
+- 整理记录索引首次写入引入了 CRLF；本次收尾改回 LF，并重新验证最终相关差异，不修改原企划 CRLF 文件。
+- Runtime 在整理期间持续推进；这里的实现 HEAD 是观察记录，不能当作后续 F2 已验收证明。
