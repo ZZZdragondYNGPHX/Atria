@@ -871,4 +871,43 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 
 最小node syntax、触及ESLint及限定文件git diff check通过，无新full/tests/build/CI。五无关dirty docs保持，main不合并。接手先沿702/2721116及同一windows读取HANDOFF/Plan/Record；Step当前可调用，若正式恢复评分须另行固定有限范围与窗口处理，不能把本diagnostic冒充独立grade，也不能重试有效不利/tie/uncertain追分；本轮到此停止，不进入S11/G。
 
-当前M1仍pending、不集成。局部文本patch确定性保留base已实现并真实提炼两新候选；Project真实3pairs显示两primary胜/一严重回归(-4、review gate失败)，RP一胜一平及variant夹具失败，无新有效双模型完整观察。Step本次实际评分形态诊断可调用，旧404/unknown9831/stop保留，根因未明；此诊断不计评分。新v2九对/新candidate闭环未执行，原完整九对/Step18/cf-c0闭环仅保留历史。最新702/2721116、unknown17/74948、pending0/lock0；product63dc0fd44已push、main未合并、用户不用手测，同一Record/Plan/live HANDOFF更新后停止，不进入S11/G。
+### 2026-10-09 必要来源读取修复的有限实测周期
+
+用户再次要求继续任务，Plan §9在实测前固定一次双入口新局部候选/各三个development pair及双模型观察，保留原正式九对/六一致胜门槛。真实初始账目702/2721116，main仍ed1fd90521a63363e29856601abbf5e908c99d10，product沿feat/agent-intelligence-runtime；五无关dirty docs保护。不读写reference、不进入S11/G。
+
+Product `a61b249ef71f108d279ec7bd883fb5eeae97a463` 已commit/push并作为唯一paid source：原提炼instruction明确tool schema不等于已取得完整authoritative source，不能省略构造/校验改动所需读取；本轮公开technical反馈来自97a1实际development及旧RP已保存development弱点，经原Experience correction/reflection/diagnosis与原evaluator/targets生成，agent-authored synthetic diagnosis不冒充human preference。继续局部edits确定性保留base，声明边界/CAS/生产gates不变；相同正文或未改base直接拒绝重测，不以重复评分追分。
+
+Step的显式有限许可由§8原失败评分形态成功诊断与本次用户授权固定；M1RetryPolicy只对旧404且最近诊断成功的当前key授权最多24 actual independent sends。原stopped值、recent/consecutive、epoch和ledger保持；许可不写入原window schema、不会自动随restart恢复。私有durable claim保存证据/开发run/验收run/消耗，重复development拒绝；任何新Step错误/不完整响应撤销许可、无retry，primary原有限retry规则保持。本次六个真实独立评分全部成功，无新API错误/unknown；没有另开epoch或清stop。
+
+Paid run `run-1791509036919-99e55d4c`，新RP正文hash `75e6de6acd5bad8f85b0040cebe2bbd9b64b96a354a415d705cec092928b2d87`、Project正文hash `d30a6ddc2eb812c5e6fcf802ec7caacf2f2baf7787a4ae031e359591128ab479`，都完整保留原base，各只提炼一次。私有feedback hash `14abffddeb21fde1ee088f812d9a725d64b3ccea3fda2c6c6bff579f8389cbf2`、manifest hash `5505aaa5afe3049c628868a8a6ef7d4709b541ab843f0dd0d9b50c8d74a968d3`固定旧来源和单次诊断charge，不读promotion输入。evaluator revision `c46a3200099fa2dfa68e816c315a82e423c9404aa521c1b103b5d590f3bc1b6c`，case set保持 `49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b`；合成v1用于修改后development，不能计未见验收或真实用户泛化。
+
+| development case | primary | Step | 原维度/事实 |
+| --- | --- | --- | --- |
+| RP agency | candidate | tie | player_agency +1/0，分歧保留 |
+| RP memory | tie | candidate | promise_application 0/0、knowledge_boundary 0/+1，分歧保留 |
+| RP variant | candidate | candidate | continuity -1/+2；偏好与负差原样保存，非回归gate拒绝 |
+| Project authoring | tie | tie | intent_completion 0/0，两arm completed/review/单changeset |
+| Project conflict | tie | tie | conflict_handling 0/0，两arm conflict/原human revision保持 |
+| Project repair | tie | tie | repair_quality 0/0，两arm一轮repair、validation passed/review |
+
+12 actual arms全部原权限/隔离/target消费及各case checks通过。RP第三case首次在已修免费stale challenge计数的原六paid上限下完整比较，stale_completion/variant_identity保持；不据此补造上一97a1未完成结果。RP双模型一致胜1/3，不一致两项且continuity负差，developmentReadiness=false。Project一致胜0/3、三tie，developmentReadiness=false；没有符合冻结资格的新候选，不运行v2九对、publication/next-run/rollback。formal automatedAcceptance因development不是九对而含independent_cases_incomplete是预期；当前判断以单独developmentReadiness为准。生产humanPreference=not_observed/price unavailable与原gate保持，不降门槛或改评分解释。
+
+Project本次不是评价只看最终JSON：输入包含source/公开conversation、tools、plan/status、validation/repairRounds。authoring baseline原get_project→list_sources/validate→plan/save/review，candidate get_project→plan/save/review，两arm正常完成目标；新candidate不再出现97a1避读造成的review失败。conflict两arm都在prepare_review得到project_revision_conflict，未覆盖human revision；repair两arm都reset无效操作、一轮修复并完成review。这三个简单development任务的原基线已满足目标与guards，新增必要读取规则没有产生被原行为维度认可的改善，显示当前材料未提供足够观察空间；不能将省token换成行为胜或回头改旧九tie。若后续继续质量验证，应先正式固定更有代表性的真实任务/反馈来源及新case revision/独立隔离，既有v1已用于指导修改，旧报告独立保留。
+
+| 付费项 | requests | 记账tokens |
+| --- | ---: | ---: |
+| RP一次提炼 | 1 | 1132 |
+| RP baseline/candidate arms | 10 /7 | 43335 /32884 |
+| RP primary/Step judges | 3 /3 | 2538 /9542 |
+| Project一次提炼 | 1 | 976 |
+| Project baseline/candidate arms | 15 /13 | 62443 /51808 |
+| Project primary/Step judges | 3 /3 | 4635 /9173 |
+| 合计 | 59 | 218466 |
+
+最新同一累计 **761 requests /2939582记账tokens**，carry252/1000000/sticky breach保持，509恢复actual sends、492reported/17unknown74948，没有新增unknown，pending0/lock0。quota carry332+429admissions=761，59个当前owner attempts的id/tokens与shared逐项匹配；minimum3151ms、一分钟峰值11、保守rolling24h峰值761，2000/20硬限通过。token建议超额已即时通知并继续；paired候选RP少10451、Project少10635tokens，只作资源统计，不称费用或净收益。Step finite许可消耗6/24，acceptance claim=null，原七stopped窗口与epoch byte SHA保持，不因六个成功评分删除旧404。
+
+本地最小4相关suite **24 distinct tests passed**：retry/显式续接11、局部edits4、原worker development选择及免费challenge3、development/engineering gate6；新增许可有限消耗、restart不自动恢复及404/503/incomplete任一新失败无retry撤销经过fake测试。触及syntax/ESLint/diff通过，无无关full/build/CI/UI/Android/外部DB。结束零send acceptance拒绝cycle_development_gate_failed；重复development拒绝step_continuation_already_used_or_failed，五累计文件前后byte SHA不变、lock0。五无关dirty docs byte hashes保持，不提交它们。
+
+Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229c707e0a5c2`，最终private audit `b046e98e1dc174e7d28f841e148ff534d4168e7ecedf8d3281c667602ae316a3`。ledger SHA `2512e563608ec9bf8f2e424e6c080d504a1e8b599de9019a87a1a6d4093cf092`、quota `edc9490521bd5a1934371b714a8f669522c094fdd7b96490b2f9405c1e06fe11`、transport `1492bf982d7598ccfc676897f90686f496a8966217c24dbc2d6ac017855e94ca`、epoch `6f5adb9276065236d896b3f087e7ff327c110c3fb75142843a1d23d23f59c370`。详细真实报告/raw/fixtures/提案与候选均私有固定，凭证/endpoint/本地私有路径不入公共Git。
+
+当前M1仍pending、不集成。新Project候选恢复必要读取并完成review，双模型三tie未证明优于原base；新RP完整三pair/双模型只有一一致胜、两分歧与continuity负差。原权限/隔离/版本消费12arms全部通过，Step本轮六评分可用，旧stop保留。最新761/2939582、pending0/lock0，product a61b249ef已push、main不合并；同一Plan/Record/live HANDOFF更新后停止，不进入S11/G。接手沿该账本及同一窗口，先正式界定真实使用反馈/行为失败与独立case revision，不能反复重跑合成v1追分或把已训练案例当未见验收；用户无需手测。
