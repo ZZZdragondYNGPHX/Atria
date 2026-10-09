@@ -123,3 +123,22 @@ F2任何真实source probe/calibration之前须先记录该阶段的exact来源�
 所有失败/unknown/额外发现/校准/提炼/judge/消费按原761/2939582 ledger/quota/rate累计；API仅2000/day、20RPM硬限、每次输出最多8000、token建议超额通知后继续，原有限失败停止规则保持。工程humanPreference=not_observed/价格未知保持，production自动发布不绕human/price/budget gate。未达标不合并main，阶段结束停止，不进入S11/G，用户无需手测。
 
 F1实现/本地Tested HEAD `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关suites/101 distinct tests、16触及文件ESLint、共享production pane Chromium fixture通过，实际失败/修正见同一Record。原Experience资源内v2/采集水位/归因、原evaluator固定profile及Report v2消费者已接入；旧case明确historical_synthetic/not_established，新pilot来源未注册会source_unready。没有真实模型请求、私有Document迁移、新真人标签或新候选资格；paid source仍a61b249ef，761/2939582及全部窗口/6of24旧claim不变。上述只是工程契约证据，不计新的development或独立promotion胜。原§2/§9逐字保持，F2/F3尚未开始。
+
+
+### 10.1 F2准备核对的实际范围与停止状态
+
+2026-10-09本轮仅F2准备核对，结果source_unready；未启动F3。来源/控制/适用性与exact pins详见 [反馈/评价模块§10](m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态)。product固定57520d43d、起始docs74e687f7c；原§2/§9门槛及旧paid source a61b249ef不改。
+
+| 本轮工作 | 固定范围 | 真实模型发送 |
+| --- | --- | ---: |
+| 来源准备 | 每域三个development synthetic规格；每域三个promotion元数据预留槽，无独立内容/资格 | 0 |
+| 校准控制 | 六组positive/negative/unknown及两顺序；只运行原parser/critical coverage拒绝 | 0 |
+| 可完成路径 | 原Project tools三条隔离FS工程路径；无真实模型baseline/headroom | 0 |
+| 来源准入 | 六个新spec原validator拒绝；两个pilot原compare发送前source_unready | 0 |
+| 提炼、development pair、promotion及消费/发布 | 本轮不准入，不调用，不复用旧候选或许可 | 0 |
+
+本轮实际allowedActualSends=0，没有新retry、诊断、Step许可或epoch；七旧stop与完整recent/consecutive保持。此前416send形态估算和6/24旧许可余量均不成为本轮可发送额度。尚无新actual request/snapshot pins，不虚构冻结完成的付费envelope。
+
+若后续继续F2，须先解决六critical dimensions证据覆盖/原fixed catalogue与adapter、独立来源、baseline可完成性和实际配置/request pins，再在本节另记真实probe/calibration的具体范围与原窗口处理；原36source-probe/24judge-control估算只作设计参考，不是当前发送许可。F3仍须单独在其启动前固定完整范围，并沿原development/九对准入，不能由本轮准备自动开始。
+
+账目761requests/2939582tokens、17unknown/74948、pending0/lock0保持；原2000/day/20RPM硬限、8000输出和token建议语义不变。结构controls与直接工具执行不计独立质量胜、模型校准成功或人类偏好。F2实际来源/语义校准未完成，M1 pending，不合并main、不进入S11/G。

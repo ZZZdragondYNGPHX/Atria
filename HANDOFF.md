@@ -2,68 +2,30 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Updated: 2026-10-09
-- Checkpoint: U13契约先行，用户继续后的F1最小消费者实现/本地验证完成并停止。下一仅F2来源/校准和有限范围固定；F3未开始。旧有限优化周期结束，M1 pending，不集成，不进入S11/G。
-- Product: `feat/agent-intelligence-runtime@57520d43dd577c13d1eee6df50d3edb4a3379a1e`，F1实现已commit/push；唯一最新paid source仍`a61b249ef71f108d279ec7bd883fb5eeae97a463`。
+- Checkpoint: **F2本轮准备核对以source_unready停止；F2独立来源/实际语义校准尚未完成，F3未开始。** 用户限定本轮仅新来源、独立隔离、校准和有限范围，不启动双域试点。M1 pending，不集成，不进入S11/G。
+- Product: `feat/agent-intelligence-runtime@57520d43dd577c13d1eee6df50d3edb4a3379a1e`，本机已fast-forward到远端F1，无本轮源码修改；唯一最新paid source仍`a61b249ef71f108d279ec7bd883fb5eeae97a463`。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
-- Docs: 沿同一Plan/Record，执行前核对actual HEAD；五无关dirty docs保持，不提交它们。
-- Read: 实际Git → [index](plans/architecture/agent-intelligence-runtime/index.md) → [M1 acceptance §9/§10](plans/architecture/agent-intelligence-runtime/m1-acceptance.md) / [S10](plans/architecture/agent-intelligence-runtime/s10-evolution.md) → [新反馈/评价契约](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md) / [S05](plans/architecture/agent-intelligence-runtime/s05-feedback.md) → [同一Record最新周期/Final state](records/refactor/agent-intelligence-runtime.md)。不读写reference。
-- 讨论材料：[RP / Project 领域扩展研究](plans/architecture/agent-intelligence-m1-domain-evolution-research.md)。该文是研究建议，不是新增authority或批准后的Plan模块。
+- Docs: 本轮从origin/docs `74e687f7c` 的隔离docs worktree更新同一Plan/Record并push到docs；执行前以actual Git核对。原本机feat/agent-intelligence-plan工作树仍保留五份纯CRLF dirty字节，不用其旧HEAD恢复实时状态。
+- Read: actual Git / private账目 → 本HANDOFF → [index](plans/architecture/agent-intelligence-runtime/index.md) → [反馈/评价§10](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态) / [acceptance§10.1](plans/architecture/agent-intelligence-runtime/m1-acceptance.md#101-f2准备核对的实际范围与停止状态) → [同一Record最新F2节](records/refactor/agent-intelligence-runtime.md)。需要追溯时只读acceptance§9、S10、S05及F1物理契约；不读写reference。
 
-## 当前契约 checkpoint（F1完成）
+## F2本轮实际产物与边界
 
-F1在原Experience资源实现strict v2 assessment/attribution/collections及v1 writable CAS迁移，read-only不写、迁移暂停/失效旧job。normal RP完成仅client观察，Project正式outcome锁外重读并沿原wake，evaluation副本关闭采集；水位按exact source版本去重，旧撤回事件不复活，新Task失败仍可收。模型分析绑定原owner同scope settled charge及公开片段，不能通过普通HTTP伪造，校准/promotion不回流；三个同类分析按真正refs聚合且仍weak/undetermined。Evolution实际拒绝未归因/legacy和工程根因，不新增writer。
+私有原Document保存六份新development synthetic工作负载规格及逐input/control/spec hashes：RP档案馆玩家选择、水库交接修订/时间未知、剧场当前variant/私有信息；Project入口World/primary关联修改、具体缺失binding引用diagnostic修复、human revision冲突。没有新真实模型execution ref或baseline失败。promotion每域三个root仅为metadata预留，origin=not_acquired/sourceHash=null/independence=not_established，不能计独立来源或盲性，未读取其内容/答案。
 
-固定8个QualityProfiles与Report v2接原worker/evaluator/gate；旧case保持历史synthetic/not_established，新pilot无来源在send前source_unready，不把旧case当新独立资格。原共享panel显示来源/claims/未确认采集与一次指定ref补收。物理contract、容量/rollback/旧客户端拒绝及F2缺口见 [模块§9](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#9-f1-物理契约与支持边界)。没有新authority/资源库/无界扫描或自动critic。
+两个原profile全部六critical dimensions保持，draft rubric与positive/negative/unknown controls显式engineering_control。原parser36两顺序scripted grade映射、36遗漏维度拒绝、6新spec原validator拒绝、2pilot原compare发送前source_unready；不是实际judge校准或human审美。原12legacy catalogue不改，不用旧v1/v2追分。
 
-5相关suites/101 distinct tests最终固定源码一次通过：feedback契约17、原feedback33、原Evolution41、acceptance7、原worker选择3；16触及文件ESLint/diff通过，Chromium390px共享pane RP/Project provenance/collection失败/escaping/review/job/pause/delete fixture通过。一次中途源码变化触发旧revision gate的失败已固定源码后定向与最终全回归通过，未改gate；测试fixture错误及实际命令见同一Record。未full/build/CI/Android/外部DB，Node24本地工程证据不计新的独立胜/真人观察。
+原Studio/ProjectAgent隔离FS三条依赖/修复/冲突工具路径实际通过（4/7/4tool calls；review/review/conflict），source/无关字段/human revision保持，model changeSets0，不automatic commit。工具calls不等于model rounds，未证明模型六round可完成性或baseline headroom。临时副本已清理，精确source/Task/validation/tool证据留私有。
 
-本轮零真实模型请求，761/2939582、17unknown74948、pending0/lock0、九窗口七stop和6of24旧claim保持，五累计状态文件与五无关dirty字节10/10 SHA不变，未执行私有Document产品迁移。M1仍pending、main未合并。下一仅F2真实来源/明确synthetic工作负载、headroom/可完成性、派生组隔离和case/rubric/calibration/exact pins及有限范围；任何付费probe前先写原acceptance §10并处理原窗口，不复用旧许可。F2结束仍更新同一Record/HANDOFF停止，不直接进入F3。
+重要缺口：当前每pair全部六维critical，而单独authoring/repair/conflict不各自曝光其它操作；缺证据须unknown，不能零/tie/事后N/A。RP也须确认逐维exposure。后续F2先预注册原六round内的全维度证据来源/窗口，或如实evaluator/source_unready停止；不降profile门槛，不交Prompt writer掩盖。
 
-## F0契约设计（历史）
+尚缺：独立promotion实际来源；原new fixed catalogue/adapter消费；真实baseline headroom/六round可完成性；全部critical实际证据；双judge语义校准；actual request/snapshot pins。因此本轮allowedActualSends=0、提炼0、paired trial0、publication0，F3完全未开始。任何未来付费probe仍须在acceptance另记exact pins/有限范围与现有窗口处理；旧416send估算/6of24余量不授权本轮发送。
 
-用户回复“先明确原链路的反馈与评价契约，再用各一个 RP、Project 试点验证”，已在decisions记录U13。正式设计详细权威为 [m1-feedback-evaluation](plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md)：在原Experience内以版本化类型区分自动分析与user/client/Host正式outcome；零模型完成/结果采集不升级RP client trace来源；诊断根因与可写target分离；固定QualityProfile/case lineage/envelope/report消费者接原evaluator，弱信号/语义未知不取得确定方向，生产发布gate保持。
+私有来源包SHA `b7a46ff1b0550f3ee074f45a3819b037777fc4efdc1ff1df0c84e57f3be2a8f9`；draft rubric `4ec9760ce4b4906d6928558c8d2e2d410a077018714562c1c54442a380bcc8b8`；Project路径 `ed82408c425e4dc7d40a497adea9d40c1bd89a3d45391f29abda8823f54c3476`；final readiness `34e42c7b74714af224e9216940ae42dcb8a96e3aeedcc659c1fc9614f61da481`。实际配置hash仅留私有；规格hash不是已发送快照。
 
-工作顺序F0契约→F1原链路最小实现→F2来源/校准/实际有限范围→F3一次双域试点，每包结束更新同一Record/HANDOFF并停止。各域试点：RP信息边界内的叙事回应（原character Skill body），Project关联修改与可核查完成（原user Preset system.style body）；每pilot仍三个development场景、三个独立promotion场景及原重复/准入。真实来源优先已明确获准refs；缺材料可用agent隔离工作负载但标synthetic。source_unready/baseline_saturated/calibration_failed应停止，不能伪造失败/人工标签或改旧评分。
+## 保持状态与验证
 
-本轮仅F0，起始docs56151bfb8，product仍a61b249ef clean、main ed1fd905未合并；761/2939582、pending0/lock0、九窗口七stop与6/24旧claim保持，零模型请求。费用/shape估算不是发送许可，F2探测前和F3实测前各固定实际pins/范围及Step窗口处理；不直接复用旧剩余额度。最小验证通过：10文档100本地链接/锚点、28表格、围栏/路由及diff；原acceptance §2/§9逐字保持；原账目结构与五草稿/五累计文件10/10 SHA保持。下一无需重开方向讨论，按F1落实schema/兼容/采集/根因路由及固定consumer，暂不发试点请求；实际实现和测试还未完成。
+本轮零模型请求，仍761requests/2939582tokens，492reported/17unknown74948，pending0/lock0；quota761，九窗口七旧stop及6/24旧claim保持。五累计状态匹配旧audit，五无关dirty文档字节保护；不清stop、不新增epoch、不复用旧许可。private目录restricted Windows ACL保持；没有私有Experience/Task产品迁移。
 
-## 前序研究 checkpoint
+本轮只运行Node24.18.0原parser/source gate工程断言及隔离FS原Project工具路径、文档最小检查；不是新的Jest suites/独立质量胜。F1历史5suites/101tests及共享pane fixture仅保留上一轮证据，本轮没有full/build/CI/UI/Android/外部DB。脚本两次fixture错误与一只读SyntaxError的修正见同一Record。
 
-2026-10-09 领域扩展研究沿product a61b249ef、起始docs 6f1c18056完成。核对M1/S10/acceptance §9、S05及直接相关源码，再阅读GEPA/DSPy、RP-Bench、PHASE-Tree、NCP-Bench、Narrative State Tracking Agent、Novel Benchmark、judge偏差/校准与agent eval一手资料。报告包含已实现/计划/缺失矩阵、RP十三维与Project十一类质量、通用控制/领域模块职责、交叉冲突与回归、真实问题发现、根因路由、隔离与版本契约、成本/缓存方案；每项区分源码事实、Atria有限实测、论文实证、作者报告和待验证架构建议，并注明研究设置边界。
-
-建议讨论方向：复用原Experience/evaluator/targets与authority；系统策略、角色成长、用户偏好与正式事实分别管理；先确认真实outcome/feedback供给、问题来源与评价可判别性，再决定领域pilot。Prompt/Context/state/runtime/evaluator根因与可写target分开，无M1 writer的修复转工程任务。GEPA搜索集合/Pareto成绩不能授予独立验收资格；新case按原episode/Project/派生任务分组隔离，不靠换名恢复盲性。文学、连续性与实际运行必须各有证据，不能用单轮文风/模型一致证明长期体验。
-
-研究中的九项契约为待取舍建议，未实施；M2/M3/G、训练/自由多目标搜索与额外writer延后。后续U13已选择契约先行，正式收窄方案以上方F0 checkpoint及新模块为准，其余研究不自动取得实施批准。该研究轮零模型发送，761/2939582与原窗口保持，未修改产品或正式Plan；其文档最小检查见同一Record历史节。用户无需手测。
-
-## 本周期实际结果
-
-本机续接调研（2026-10-09）：用户说明手动以另一设备Document替换本地Document。初始本地product907cf/docs994c落后，远端只读核对为product a61b249ef/docs eec940273；fetch后仅fast-forward这两个任务工作树，未合并main。五无关dirty文件字节保护；迁移账本/quota/rate/transport/epoch均与最新private audit的SHA一致，761/2939582、492reported/17unknown74948、pending0/lock0保持。复制后目录755/配置644已仅恢复700/600，原Git exclude有效、无tracked私有文件、内容hash不变。本轮零模型请求。
-
-调研待讨论：现有三个RP family使用相同场景/可见记忆，synthetic v2主要换姓名/场所/时间及少量指令，不足以支持新的真实任务泛化结论。Project简单rename/conflict/repair基线已成功；旧避读回归修复不等于优于基线。RP候选仍出现未给定当前时间/玩家身体细节；continuity偏好与delta冲突原样保留。Experience已有host outcome入口、feedback/diagnosis唤醒及弱观测方向约束；定向代码检索未找到常规运行结束自动提交Experience outcome的调用，需讨论真实反馈供给的范围，不能将fixture代理写入的explicit反馈外推真人意见。建议先固定任务来源/可观察失败，按原始episode/Project分组隔离development与未见验收，沿原Experience/evaluator/targets；具体范围、case revision和预算等待用户确认。研究依据及讨论选项见同一Record末节；旧v1不重跑追分，原门槛保持。
-
-原Experience、owner/scheduler、evaluator/targets、compiler/resolver/provider、CAS/intent/receipt及原消费/rollback仍为authority，无新有效配置authority。提炼继续局部edits，明确tool schema不等于已取得完整authoritative source，不能压掉必要来源读取。公开technical反馈/诊断由agent依据已保存的synthetic development生成，不冒充真实用户反馈或human preference。
-
-每入口只提炼一个新候选，保留原base；RP正文hash `75e6de6acd5bad8f85b0040cebe2bbd9b64b96a354a415d705cec092928b2d87`、Project `d30a6ddc2eb812c5e6fcf802ec7caacf2f2baf7787a4ae031e359591128ab479`。Paid run `run-1791509036919-99e55d4c`：每入口三个development pair、双模型观察完整，12 actual arms全部权限/隔离/版本消费及原case checks通过。
-
-- RP primary candidate/tie/candidate，Step tie/candidate/candidate；一致候选胜1/3，两分歧，variant primary continuity=-1/Step+2。偏好/负差原样保留，developmentReadiness=false，不重试追分。
-- Project双模型三tie/各维度0，developmentReadiness=false。authoring两arm完成修改/review，candidate原get_project→plan/save/review，避读回归此次未再出现；conflict两arm保留原human revision conflict；repair两arm一轮修复并review。原基线在三个简单目标已满足要求，新增必要读取规则未显示被行为维度认可的收益。评价已包含公开tools/plan/status/source/validation/repair，不能把省token换成行为胜或改旧九tie解释。
-- Step六次真实独立评分成功。显式有限许可由上一评分形态成功诊断及用户继续授权固定，消耗6/24；原七stopped窗口/全部recent、consecutive/epoch与费用保留，不清stop、不自动restart。任何新Step错误/incomplete撤销许可且无retry；重复development已拒绝。Production human/price/budget gates、humanPreference=not_observed及price unavailable保持。
-- 未取得候选冻结资格，不运行新v2各九对、publication/next-run/rollback。正式每入口九对/至少六一致candidate胜/其它tie/重要维度非负及原闭环门槛保持。原cf九对/Step18/cf-c0闭环只保留历史；旧RP3/9一致胜、Project9tie仍M1不通过。
-
-## 账目与来源
-
-同一累计 **761 requests /2939582记账tokens**，本次+59/+218466；carry252/1000000与sticky breach保持。509恢复actual sends，492reported/17unknown74948，无新增unknown，pending0/lock0。quota carry332+429=761，59 owner attempts逐项匹配shared；minimum3151ms、一分钟峰值11、保守rolling24h峰值761，2000/20硬限通过。token建议超额已通知并继续，不是停止原因。
-
-Paid evaluator revision `c46a3200099fa2dfa68e816c315a82e423c9404aa521c1b103b5d590f3bc1b6c`；case set `49c56c12126aff08c83465f83412d2acb2aa6417e4183b25d7cbebe59f63b54b`。v1已经用于诊断和修改，不可冒充未见验收；v2未输入提炼且本轮未执行。合成case只证明有限工程实验，不声明真实用户泛化或持续自迭代已验收。旧报告/候选/partial/负差均独立保留，private Document/凭证仍Git exclude，私有路径/endpoint/key不入公共Git。
-
-Summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229c707e0a5c2`，private audit `b046e98e1dc174e7d28f841e148ff534d4168e7ecedf8d3281c667602ae316a3`。详细charges/raw/提案/fixtures和文件hash见同一Record/私有audit。
-
-## 最小验证与接手
-
-4 relevant suites/24 distinct tests通过：retry/有限续接11、局部edits4、原worker development选择/免费challenge3、development/engineering gates6；触及syntax/ESLint/diff通过。结束零send acceptance拒绝cycle_development_gate_failed，重复development拒绝step_continuation_already_used_or_failed，五累计文件byte SHA不变、lock0。五无关dirty docs hashes保持，无full/build/CI/UI/Android/外部DB。
-
-来源/案例与领域扩展调研、F0设计及F1最小实现已完成。下一仅F2固定新的代表性来源/可观察缺口、case revision、development/独立验收隔离、校准与有限范围；不直接进入F3。不要反复重跑已用synthetic:v1，不降原门槛、不伪造人工观察。M1仍pending，main不合并，不进入S11/G，用户无需手测。
-
-私有迁移包已逐文件SHA核验并包含3914个当前Document文件、五dirty docs原件和Atria-Dev完整Git历史bundle；bundle旧Document不能代替当前761账目，恢复时以包内最新Document覆盖旧Git快照的Document，新设备重绑local Git keys/ACL。用户明确指定的GitHub ZZZdragondYNGPHX/Atria-Dev已在账户授权后删除（delete exit0/同账号GET404），产品仓库Atria仍可访问，本机私有副本和包保留；详见同一Record/包内PORTABLE-HANDOFF。无新增模型请求。
-
-接手提示词：**先核对actual Git与迁移后的私有Document/账本，再读docs:HANDOFF→index→M1 acceptance §9/§10/S10→m1-feedback-evaluation（含§9）/S05→同一Record，沿761/2939582 ledger/quota/rate/windows。产品F1实现57520d43d已push，paid source仍a61b249ef，main未合并、M1未达标；旧有限周期已结束，旧stop和6/24已用claim保留、不复用剩余额度。U13已确认先原链路契约、后各一个RP/Project试点；F0/F1完成，101相关tests/共享pane fixture通过且零真实send。下一本轮仅F2来源/校准与实际有限范围固定，结束同一Record/HANDOFF后停止，不自动进入F3。复用原Experience/evaluator/targets；普通完成与分析来源分开，工程根因不走local writer，校准/promotion不回流。试点方向RP信息边界内叙事回应、Project关联修改与可核查完成；先取得获准来源或明确synthetic代表性工作负载，确认baseline headroom/原六round可完成性、派生组隔离，固定新case/profile/rubric/calibration/evaluator与request pins。任何真实probe前先冻结其有限范围/当前窗口处理；没有来源、饱和或校准失败则如实结束，不用旧v1追分。每域三开发pair/双模型至少2一致胜/其余tie/重要维度非负才冻结，独立验收仍每域九对六一致胜/其它tie/重要维度非负及原消费/发布/rollback；最大输出8000，API仅2000/day/20RPM硬限，所有失败/unknown usage照记，token建议超额通知后继续。用户无需手测、不合并main、不进入S11/G。**
+接手提示词：**先fetch/actual Git核对远端docs，勿用本机保留dirty的旧docs HEAD；沿private761/2939582账目与全部旧窗口。读取HANDOFF→index→feedback§10/acceptance§10.1→Record最新F2。F1 product57520d43d、paid source仍a61b249ef，main ed1fd905未合并、M1 pending；本轮F2准备以source_unready停止，独立来源/headroom/全critical证据/actual judge校准未完成，F3未开始。先补齐F2来源家族隔离、原fixed catalogue/adapter和原六round内逐维证据，缺证据保留unknown，不降门槛/旧v1追分/伪人工。任何付费probe之前在acceptance另固定actual request/config/source/范围与原Step窗口处理，不复用6of24旧余量或清stop。每包保存同一Record/HANDOFF后停止，不直接双域试点、不进入S11/G，用户无需手测。**

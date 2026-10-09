@@ -1,7 +1,7 @@
 # M1：原链路反馈与评价契约补充
 
 - Updated：2026-10-09；Task ID：`agent-intelligence-runtime`。
-- 状态：**方向、设计边界及F1物理契约冻结；F1最小消费者已实现，验收记录见同一Record；F2/F3未开始，M1仍pending。**
+- 状态：**方向、设计边界及F1物理契约冻结；F1最小消费者已实现，验收记录见同一Record；F2准备核对以source_unready停止，独立来源/实际语义校准尚未完成；F3未开始，M1仍pending。**
 - 用户确认 U13：先明确原链路反馈与评价契约，再用各一个 RP、Project 试点验证。以下分类、兼容方案和工作包是该方向内的工程细化，不声称用户逐字段确认。
 - 来源：[领域扩展研究](../agent-intelligence-m1-domain-evolution-research.md)、[S05](s05-feedback.md)、[S10](s10-evolution.md)、[M1 acceptance](m1-acceptance.md)。核对产品 `a61b249ef71f108d279ec7bd883fb5eeae97a463`；这些设计不计入已有实证。
 - 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程退出门槛与实际发送范围由 m1-acceptance 管理。
@@ -150,7 +150,7 @@ Project development 的三个任务类型：真正有关联依赖的 authoring�
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
 | F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
-| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费controls/独立性和可完成路径先通过；有模型探测须先冻结其有限范围；最终请求前保存新acceptance范围 | 未开始 |
+| F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费controls/独立性和可完成路径先通过；有模型探测须先冻结其有限范围；最终请求前保存新acceptance范围 | 准备核对完成，以source_unready停止；独立来源/headroom/实际语义校准未完成，见§10 |
 | F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 未开始 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 中source_unready、calibration_failed、unsupported_locus或baseline_saturated是有效停止结果，不伪造失败/人类标签来凑闭环。
@@ -181,3 +181,58 @@ v1 writable mutation沿原CAS升v2，即使旧feedback hash未变也先失效旧
 采集失败由RP返回collection_unavailable、Project保留正式Task并提示metadata缺口；原共享panel展示origin、quality claims、未确认采集和Collect saved result的拒绝/重试信息。补收一次只处理当前指定ref，通过原CAS；没有全量历史扫描、无限retry/poll或每轮自动critic。只有已有明确auto policy可由原wake安排原有界job，review/default权限不扩张。
 
 尚未完成：真正的development/promotion来源包、独立性与headroom、可判别的文学/关联修改rubric、judge/calibration/实际request pins、有限真实发送范围和双域试点效果。这些仍按F2→F3处理；本模块物理契约不声称通用持续进化或长期领域质量已验收。
+
+
+## 10. F2 来源准备、校准控制与本轮停止状态
+
+2026-10-09用户限定本轮只做F2的新来源、独立隔离、校准和有限范围固定，不启动双域试点。核对远端docs `74e687f7c`、product `57520d43dd577c13d1eee6df50d3edb4a3379a1e` 后，本轮准备核对结束于 **source_unready**。这不是F2全部完成，也没有取得F3资格。实际发送范围唯一归 [acceptance §10.1](m1-acceptance.md#101-f2准备核对的实际范围与停止状态)。
+
+### 来源规格与独立资格
+
+没有从未获准的真人聊天取得新来源。六份新development规格标为`agent_authored_synthetic_spec`，用途是代表性产品工作负载设计；尚无新模型执行ref，不能把它们称为已经观察的baseline失败。其完整输入、控制片段与pins留私有原Document，公开只记元数据。
+
+| development root group | 产品用途 | 原权限/可完成路径 |
+| --- | --- | --- |
+| rp_dev_archive_return | 档案馆归还登记、NPC询问与玩家未决选择 | 原Director/character Skill；短公开场景，不代写玩家 |
+| rp_dev_reservoir_signal | 修订交接条件、未知当前潮位/时间 | 显式可见修订与角色声音；不把预约时间推成现在 |
+| rp_dev_theatre_variant | 当前布景variant、迟到旧输出与另一角色私有信息 | 原variant/owner/exposure checks；私有sentinel不得曝光 |
+| project_dev_entrypoint_dependencies | Beta入口切换World依赖并同步primary选择，保留其它入口/资源 | 原get_project→plan→project_save→prepare_review |
+| project_dev_binding_repair | 原validator具体缺失binding引用诊断后的单轮修复 | 原source/diagnostic→reset staged operations→save→review |
+| project_dev_dependency_conflict | 关联修改审阅前出现human revision，保留human source并说明下一步 | 原staged proposal与conflict，不silent rebase/commit |
+
+每份规格独立root，派生关系为空；没有复用旧门口场景、rename-only任务或旧v1/v2换名资格。development与promotion按原episode/Project及派生家族隔离，不按文件hash/姓名划分。promotion仅预留每域三个root的元数据槽位，`origin=not_acquired/sourceHash=null/independence=not_established`；槽位不计来源数，也不证明盲性。没有读promotion内容/答案、共享其cache或把控制材料送入提炼。后续须取得独立内容并证明来源家族不重叠，development仅可见用途/元数据；不能将本轮作者知道的开发内容改名入promotion。
+
+### 校准与重要维度
+
+两个F1 profile全部六个critical dimensions保持，逐维draft rubric冻结如下。判定只覆盖所给短场景/公开Task证据；缺证据为unknown，不能填零/tie，也不能事后N/A。
+
+| profile dimension | 有限判定依据 |
+| --- | --- |
+| player_agency | NPC可推进自己的行动；玩家动作/选择/感觉/心理须已有明确输入 |
+| promise_application | 应用当前正式修订，约定时刻不等于当前时刻 |
+| knowledge_boundary | 仅用实际exposure，猜测与事实分开，私有或未给定内容unknown |
+| continuity | 当前variant/场景事实优先，迟到旧completion不能覆盖 |
+| actor_voice | 当前短场景中可观察的角色措辞与回应，不证明长期审美 |
+| narrative_response | 回应实际玩家输入并留下可行的场内下一步，保留玩家决定 |
+| intent_completion | exact proposed/current source与Task正式状态证明所要求目标 |
+| conflict_handling | 实际conflict时human source/旧base保留，说明可执行恢复动作 |
+| repair_quality | 原diagnostic及实际修正满足repair bound，不删无关内容掩盖问题 |
+| related_completion | 指定的依赖refs与primary选择等关联字段一致 |
+| preservation | 未授权字段、resource内容与权限经exact比较保持 |
+| status_accuracy | 说明符合正式validation/Review/receipt，不能虚构commit |
+
+六组positive/negative/unknown片段是`engineering_control`，不是人类标签或真实baseline失败。原`parseBlindGrade`在两种顺序的36组scripted JSON中保持preference/符号，36次遗漏critical dimension拒绝；这证明结构/换算，不证明模型能辨别这些文字。实际两个judge校准未运行，人类审美未观察。
+
+发现一个真实的适用性缺口：当前profile在每个pair上要求全部六维，而单独authoring/repair/conflict任务不各自曝光其它两类操作的实际证据。RP单场景也须逐维确认足够exposure。不能给未发生的冲突/修复填零或用假轨迹凑维度。后续F2先预注册能在原六round内覆盖所需维度的来源/公开窗口；若无法覆盖，明确evaluator/source_unready并停止，不能临时删除critical维度。此为评价/来源工程问题，不交local Prompt writer解决。
+
+### 已证实与未证实的可完成性
+
+在临时隔离FS副本直接执行原Studio/ProjectAgent工具，实际World依赖及KnowledgeBinding引用均由原authority创建/校验：关联修改4个tool calls达到review；含具体缺失引用diagnostic的单轮修复7个tool calls达到review；human revision冲突4个tool calls达到conflict。每项未自动commit、当前source/无关字段保持；临时副本清理，正文/精确source/Task与tool结果复制为私有engineering证据。工具可批次执行，但tool calls不等于model rounds；没有证明真实模型可在六round内完成，也没有证明baseline缺口。
+
+固定来源consumer仍只接受原12个legacy cases；六份新规格经原validateCase拒绝，两个pilot经原compare在创建worker/reserve/provider之前返回source_unready。这是实际消费者证据，不注册旁路case runner或绕开gate。新fixed catalogue/adapter、独立promotion来源、baseline headroom、逐维实际证据覆盖、双judge语义校准和实际request envelope仍未就绪。
+
+### 本轮exact pins与保留边界
+
+私有来源包SHA256 `b7a46ff1b0550f3ee074f45a3819b037777fc4efdc1ff1df0c84e57f3be2a8f9`；draft rubric `4ec9760ce4b4906d6928558c8d2e2d410a077018714562c1c54442a380bcc8b8`；原工具路径报告 `ed82408c425e4dc7d40a497adea9d40c1bd89a3d45391f29abda8823f54c3476`；最终readiness `34e42c7b74714af224e9216940ae42dcb8a96e3aeedcc659c1fc9614f61da481`。来源包内逐规格保存input/control/specification hashes及profile exact refs；原Quality registry revision `2a3313cdec0280729bae2cf2401090c131682bc50d8bb33707a4d50b1320e370`，evaluator revision `8f4b4fbfd402a3825d714e76d8a84c3d0c4ad67b6b6ac5053d3cd483bc892180`。当前primary/secondary无key配置hash仅留私有报告，未产生实际request pins，不把规格hash冒充已发送快照。
+
+本轮零真实发送、零提炼/paired trial/发布；累计761/2939582及五状态SHA、九窗口七stop、6of24旧claim保持。M1 pending、main未合并；包末保存同一Record/HANDOFF后停止。下一如获继续仍是补齐F2，不直接进入F3。

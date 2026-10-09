@@ -8,7 +8,7 @@
 
 ## Summary
 
-最新checkpoint：2026-10-09 F1原链路反馈/评价最小消费者完成，product `57520d43dd577c13d1eee6df50d3edb4a3379a1e`；5相关suites/101本地tests与共享pane Chromium fixture通过。本轮零真实send，累计761/2939582；paid source仍a61b249ef，M1 pending、main未合并。下一仅F2来源/校准与有限范围固定，详见本Record末节和live HANDOFF；下面S10及各轮段落保留历史，不作为当前HEAD。
+最新checkpoint：2026-10-09 F2准备核对以source_unready停止；六development synthetic规格、draft rubric/结构controls及原Project工具路径已保存，独立promotion来源/headroom/实际语义校准未完成，F3未开始。product57520d43d与main ed1fd905保持；本轮零真实send，761/2939582、旧窗口/6of24 claim不变。下一仍补齐F2，详见末节/live HANDOFF。
 
 长期任务沿同一产品分支实施；D0–D4 / S01–S09 与 S10 工程交付完成。S10 将 S05 feedback / diagnosis、原六类局部 target、共享 finite budget、原 scheduler、隔离 evaluator、publication / recovery / rollback / next-run evidence 与双入口共享面板接为可用消费者。12 relevant suites / 233 distinct local tests 与真实 Chromium shared-pane fixture 通过。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
 S06 真实执行与 model observations 保留，候选仍 ineligible；本轮无新真实模型请求。S10 的结构 / 假 provider 证据不证明稳定质量 / 成本收益；M1 的真实改善与集成前置条件待验收。本轮只续接 S10，下一只复核 M1 验收，不进入 S11 / G。
@@ -863,7 +863,7 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 
 ## Final state
 
-实时恢复以本Record最新F1节及live HANDOFF为准；以下按发生顺序保留后续周期，旧HEAD/旧接手语句均为其阶段历史。
+实时恢复以本Record最新F2节及live HANDOFF为准；以下按发生顺序保留后续周期，旧HEAD/旧接手语句均为其阶段历史。
 
 ### 2026-10-09 第二模型单次可用性检查
 
@@ -997,3 +997,26 @@ Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 e
 包末停止，M1仍pending、不合并main、不进入S11/G。下一仅F2：取得获准的实际来源/明确synthetic代表性工作负载、可完成路径与baseline headroom、按episode/Project/派生组隔离development/promotion，固定case/profile/rubric/calibration/evaluator与实际有限范围；缺来源/饱和/校准不可判别是有效停止结果。任何真实探测前先在原acceptance §10记录exact pins/范围与现有窗口处理，不复用旧Step剩余额度、不清stop，不重跑旧v1追分。用户无需手测。
 
 文档结束检查：本轮9份相关docs的114处本地链接/锚点、32表格和围栏有效；原acceptance §2/§9与起始docs逐字一致，普通/staged diff核对通过。产品HEAD与origin/feat一致，main仍固定；五无关dirty文件和五累计文件10/10 SHA保持，仅暂存九份相关docs，未提交草稿或私有数据。
+
+
+### 2026-10-09 F2 来源准备、独立资格核对与免费校准（source_unready停止）
+
+用户要求先拉取远端并核对其它设备推送，下一仅做F2，不启动双域试点。git status首先确认main clean；fetch发现origin/docs从eec940273到74e687f7c共4提交、产品任务分支从a61b249ef到57520d43d新增F1提交，main仍ed1fd905。产品clean工作树仅fast-forward到57520d43d；本机原docs工作树的五dirty文件用ignore-space-at-eol核对为纯CRLF差异，未修改/暂存。为保留其字节，从origin/docs创建临时detached docs worktree完成本轮文档，同一Task/Plan/Record与远端docs不变，不merge main。actual Git→远端HANDOFF→index→acceptance§9/§10/S10→feedback/S05→同一Record及直接代码，未读写reference。
+
+准备六份agent_authored_synthetic_spec：RP档案馆登记/玩家选择、水库交接条件修订/当前事实未知、剧场新variant/私有信息；Project真实入口World依赖与primary关联修改、具体缺失KnowledgeBinding引用diagnostic单轮修复、human revision冲突后的保护与准确说明。六个development root分别保存input/control/specification hashes，未沿旧v1/v2换名；没有新model execution refs，故不称已观察baseline失败。promotion每域三个root仅为未取得内容的metadata槽位，sourceHash=null/independence=not_established；槽位不计来源数，不证明盲性，没有promotion内容/答案回流或新提炼。完整source/rubric/control与执行材料仅写私有原Document，未提交。
+
+固定两个F1 profile全部六critical dimensions的draft rubric，positive/negative/unknown构造片段显式engineering_control。用原parseBlindGrade执行36组两顺序scripted grade的preference/符号换算，以及36次漏critical维度拒绝；六新spec经原validateCase拒绝，两个profile经原EvolutionEvaluator.compare在worker/reserve/provider前source_unready。原catalogue12个legacy cases不改，当前Quality registry/evaluator revisions及来源包/逐输入/控制/配置hash保存，不把spec hash冒充actual request pin。没有实际双judge语义校准或human标签，这些断言仅结构控制，不能计独立质量胜或F1回归suites通过。
+
+原Studio/ProjectAgent在隔离临时FS副本的三条工具路径实际通过：World依赖和primary同步修改4个calls达到review；具体缺失binding引用经过原diagnostic、reset/save/prepare，7个calls单轮修复达到review；审阅前human改变另一入口，4个calls原project_revision_conflict且Task为conflict。当前source、无关字段、权限和human revision保持，model changeSets0，无automatic commit；实际source/proposal/Task/validation/tool结果复制为私有engineering证据后清理temp。直接tool calls不是model rounds；尚无真实六round可完成性或baseline headroom结论。
+
+准备脚本两次本地fixture断言错误保留：初次把createProject前输入hash当规范化后权威source，修正为实际get_project返回的canonical source后比较；随后误用validation.errors，按源码改为diagnostics。固定脚本后最终三路径全部通过，未改产品validator/gate/源码，没有paid send或failure-window事件。前置只读账目Node -e脚本一次多余括号导致SyntaxError，改为PowerShell读取核对通过；无任何账目写入。
+
+实际发现的评价适用性缺口：profile每pair全部六维critical，但独立authoring/repair/conflict各不自然曝光另两类操作。没有证据必须unknown，不能填零/tie或事后N/A；RP也须逐维核对exposure。该问题属于evaluator/source工程准备，不能通过Prompt writer掩盖。后续F2须预注册能在原六round内取得全维度证据的来源/公开窗口，并接原fixed catalogue/adapter；若不能覆盖就继续如实停止，不能降原profile/准入门槛。
+
+因此本轮以source_unready结束，F2全部准备尚未完成；不是F3准入或取消来源要求。原模块§10与acceptance§10.1固定本轮allowedActualSends=0、提炼0、paired trials0、发布0。尚缺独立promotion实际来源、原新catalogue/adapter消费、真实baseline headroom/六round可完成性、全critical维度实际证据和双模型语义校准及actual request pins。未恢复Step剩余许可、清stop、另开epoch或启动付费probe/F3；旧416send估算不是本轮许可。
+
+私有source packet SHA b7a46ff1b0550f3ee074f45a3819b037777fc4efdc1ff1df0c84e57f3be2a8f9、rubric4ec9760ce4b4906d6928558c8d2e2d410a077018714562c1c54442a380bcc8b8、Project路径ed82408c425e4dc7d40a497adea9d40c1bd89a3d45391f29abda8823f54c3476、final readiness34e42c7b74714af224e9216940ae42dcb8a96e3aeedcc659c1fc9614f61da481。运行环境Node24.18.0；本轮仅原parser/source gate断言及隔离FS原工具路径，不运行产品Jest/full/build/CI/UI/Android/外部DB，不重计上轮101tests。准备目录继承原restricted Windows ACL，无unexpected Allow规则。
+
+五累计文件逐项匹配旧source-read-cycle-final-audit SHA：761requests/2939582tokens，509entries含492reported/17unknown74948，pending0；quota761、lock0，九windows/七stop，旧permit6/24保持。本轮末再核对五dirty文档加五累计文件10/10 byte SHA、product/main refs保持。无产品修改或新私有Experience迁移。文档仅同一feedback模块/acceptance/index/Record/live HANDOFF，原acceptance§2/§9逐字不改；五相关文档51处本地链接/锚点、12表格与围栏通过；原acceptance§2/§9文本逐字一致。首次文档diff因Windows默认CRLF将整份文本报为whitespace，五个本轮文件改回原LF后普通/staged diff通过，原dirty工作树字节不改。
+
+本轮阶段停止，M1 pending、main未合并、不进入S11/G。接手仍是F2，不直接F3；用户无需手测。读取原HANDOFF/index→feedback§10及acceptance§10.1→本节，核对private readiness/source packet与原账目，先补齐已列缺口，再任何请求之前固定新actual范围与窗口处理。
