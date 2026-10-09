@@ -185,6 +185,24 @@ test('Project source evidence removes duplicated old history while retaining con
     expect(pair.baseline.output).toBe(canonical(original));
 });
 
+test.each([false, true])('Project status met requires model communication rather than host state or a seeded plan: nested=$#', nested => {
+    const entry = PILOT_CASES.find(c => c.entrance === 'project' && c.split === 'development');
+    const output = { status: 'review', conversation: [{ content: '' }], plan: { summary: 'Host-created seed says Review.' }, tools: [] };
+    const evidenceFor = () => f2SourceEvidence({ case: entry, baseline: { origin: 'host_source_probe', output: canonical(output) } });
+    const evidence = evidenceFor(), hostQuote = 'Fresh Task status: review';
+    expect(JSON.parse(evidence).baseline.modelStatements).toEqual([]);
+    const assessment = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quote: hostQuote, rationale: 'Observed state.' }])) };
+    expect(() => parseF2SourceAssessment(JSON.stringify(assessment), entry, evidence)).toThrow('invalid_f2_source_assessment');
+    assessment.dimensions.status_accuracy.status = 'unknown';
+    expect(parseF2SourceAssessment(JSON.stringify(assessment), entry, evidence).dimensions.status_accuracy.status).toBe('unknown');
+    const statement = 'The bounded correction is prepared for uncommitted Review; the prior Task remains conflicted.';
+    const plan = { summary: statement, steps: [] };
+    output.tools.push({ name: 'atri_agent_set_plan', args: nested ? { plan } : plan });
+    assessment.dimensions.status_accuracy = { status: 'met', quote: statement, rationale: 'Model-authored status agrees with the host.' };
+    expect(JSON.parse(evidenceFor()).baseline.modelStatements).toEqual([{ origin: 'tools.0.args' + (nested ? '.plan' : '') + '.summary', text: statement }]);
+    expect(parseF2SourceAssessment(JSON.stringify(assessment), entry, evidenceFor()).dimensions.status_accuracy.status).toBe('met');
+});
+
 test.each(PILOT_CASES.filter(c => c.split === 'development' && c.entrance === 'rp'))('RP evidence window keeps every original authority check: $sourceId', async entry => {
     const capture = captureFor(entry);
     await withIsolatedRuntime(() => runRp(entry, loadFixture(entry, { purpose: 'evaluation' }), capture));

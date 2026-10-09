@@ -92,6 +92,8 @@ export function parseF2SourceAssessment(text, entry, evidence) {
             || typeof row.rationale !== 'string' || row.rationale.length > 512
             || row.status !== 'unknown' && !row.quote || row.quote && !excerpts.some(s => s.includes(row.quote))) throw new Error('invalid_f2_source_assessment');
     }
+    if (entry.entrance === 'project' && Object.hasOwn(source.baseline, 'modelStatements') && dimensions.status_accuracy.status === 'met'
+        && !source.baseline.modelStatements?.some(row => row.text.includes(dimensions.status_accuracy.quote))) throw new Error('invalid_f2_source_assessment');
     if (entry.entrance === 'rp' && Object.hasOwn(JSON.parse(evidence), 'quoteCatalogue')) {
         const refs = catalogue.filter(item => item.origin === 'baseline.output').map(item => item.ref);
         const review = value.knowledgeReview;
@@ -168,16 +170,31 @@ export function f2SourceEvidence(pair) {
     if (pair.case.entrance !== 'project') return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
     const output = projectSourceProjection(JSON.parse(pair.baseline.output));
     const { checks, evidence, error, repairCount, completeness } = pair.baseline;
+    const modelStatements = Array.isArray(output.conversation) ? output.conversation.flatMap((row, index) =>
+        typeof row.content === 'string' && row.content.trim() ? [{ origin: 'conversation.' + index + '.content', text: row.content }] : []) : null;
+    if (modelStatements) {
+        for (const [index, tool] of (output.tools || []).entries()) if (tool.name === 'atri_agent_set_plan' && tool.args) {
+            const plan = tool.args.plan || tool.args;
+            const origin = 'tools.' + index + '.args' + (tool.args.plan ? '.plan' : '');
+            for (const [field, text] of [['summary', plan.summary], ...(plan.steps || []).map((step, i) => ['steps.' + i + '.description', step.description])]) {
+                if (typeof text === 'string' && text.trim()) modelStatements.push({ origin: origin + '.' + field, text });
+            }
+        }
+        if (pair.baseline.origin === 'engineering_control' && typeof output.engineeringControlStatement === 'string') {
+            modelStatements.push({ origin: 'engineeringControlStatement', text: output.engineeringControlStatement });
+        }
+    }
     const facts = ['Fresh Task status: ' + (output.status ?? 'not available'),
         'Fresh Task validation: ' + (output.validation?.status ?? 'not available'),
         'Validated proposal: ' + (Object.hasOwn(output, 'validatedProposal') ? output.validatedProposal ? 'present' : 'absent' : 'unknown'),
         'Current source equals the recorded protected original source: ' + (output.source && output.originalSource ? hash(output.source) === hash(output.originalSource) : 'unknown'),
         'Prior Task status: ' + (output.priorConflictTask?.status ?? 'not available'),
         'Prior Task writes: ' + (output.priorConflictTask?.changeSets?.length ?? 'unknown'),
+        'Observed model-authored public statement count: ' + (modelStatements?.length ?? 'unknown'),
         ...['source', 'originalSource', 'validatedProposal'].flatMap(label => (output[label]?.package?.entryPoints || []).flatMap(point =>
             ['worldIds', 'primaryWorldId', 'knowledgeBindingIds'].map(field => label + '.' + point.displayName + '.' + field + ': ' + canonical(point[field])))),
         ...(output.validationHistory || []).map(row => 'Validation history: ' + canonical(row))];
-    return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: { output, facts, checks: checks ?? {}, evidence: evidence ?? [],
+    return withF2QuoteCatalogue({ scenario: publicCaseScenario(pair.case), baseline: { output, facts, modelStatements, checks: checks ?? {}, evidence: evidence ?? [],
         error: error ?? null, repairCount: repairCount ?? null, completeness: completeness ?? [] } });
 }
 
@@ -185,6 +202,7 @@ export function f2SourceMessages(pair, evidence = f2SourceEvidence(pair)) {
     return [
         { role: 'system', content: 'Required semantic dimensions: ' + pair.case.behaviorDimensions.join(', ') + '. Return these dimensions only; baseline.checks and evidence names are engineering checks, not additional grading dimensions. Assess this single baseline using every required dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quoteRef":"q0001 or null","rationale":"brief reason"}}}. Each rationale is at most 512 characters. Select quoteRef from the supplied immutable quoteCatalogue; Host resolves it to the exact original quote. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient: quoteRef may be null or an actual catalogue item documenting the absence or uncertainty. A cited absence remains unknown; it does not establish met or a semantic gap. Never infer semantic success from hard checks alone. Scan the entire baseline for each dimension before choosing a quote: one compliant passage cannot cancel a concrete contradiction elsewhere in that same dimension. met requires the complete observed response to satisfy the criterion; it is not a majority-of-sentences judgment. Use only a supplied quoteRef; do not rewrite, concatenate or invent quoted text. In RP, invented mandatory procedures, permissions, eligibility conditions or penalties asserted as established world rules require exposed support; do not treat these binding claims as ordinary atmospheric description or infer support from fluency. Creative NPC gestures and diction do not authorize new binding rules. Prefer a quoteCatalogue item from baseline.facts when it directly supports the status; otherwise select an actual output span. An absent validated proposal makes proposal checks fail; this does not prove source corruption or an unauthorized write. Distinguish current-source preservation from proposed-source preservation and retain unknown where the proposal is missing. The resolved quote must occur literally in the original evidence, independent of the catalogue. A correct quotation alone is not proof that the semantic status is correct. Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
         { role: 'user', content: evidence },
+        ...(pair.case.entrance === 'project' ? [{ role: 'system', content: 'Project communication evidence: baseline.modelStatements contains observed model-authored public conversation and submitted plan text; null means the public window is unavailable. Host Task status, validation, prior Task and baseline.facts corroborate statements but are not themselves model-authored statements. For status_accuracy=met, quoteRef must resolve to text occurring in modelStatements, and the actual statements must accurately communicate the required status. Check the explicit scenario request to explain the bounded correction and uncommitted Review state, including distinction from the prior conflicted Task. A complete observed public window omitting a specifically requested explanation is a concrete omission (gap), even if the proposal is correct; an unavailable window remains unknown. Submitted model plan text can satisfy communication only when it actually states the required information. Host-generated seed plan, intent copies, validation status and absence of a commit claim alone do not fulfill a requested explanation. Keep all proposal, preservation and conflict dimensions separately assessed. Do not infer proposal failure from a communication omission.' }] : []),
         ...(pair.case.entrance === 'rp' ? [{ role: 'system', content: 'Before deciding dimensions, review EVERY quoteCatalogue item whose origin is baseline.output, including the final sentence. Include knowledgeReview:[{quoteRef,status:"supported|nonbinding|unsupported|unresolved",rationale}] in the same JSON, exactly one row per output item. supported: all asserted binding rules and unknown/private/current facts in this span follow from exposed scenario facts; name the specific exposed support in rationale. nonbinding: only creative NPC gestures, voice, questions, conditionals or explicitly retained uncertainty, without adding binding rules or known facts. unsupported: at least one asserted binding rule, permission, eligibility restriction, penalty or private/current fact lacks exposed support; identify it. unresolved: evidence cannot determine the classification. An NPC claiming a rule is not itself exposed authority for that rule. Mixed spans containing any unsupported assertion are unsupported even if other clauses are supported. knowledge_boundary must be gap if any row is unsupported, citing one such row; otherwise unknown for no output or any unresolved row; otherwise met. Do not treat silence about a rule as support or a compliant earlier sentence as cancellation of a later violation. All other rubric dimensions still require their own semantic assessment.' }] : []),
     ];
 }
