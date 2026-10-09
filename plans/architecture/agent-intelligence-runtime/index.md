@@ -1,5 +1,7 @@
 # Atria Agent Intelligence Runtime — 正式架构与阶段入口
 
+> 执行方式按 [Governance §12](../../../README.md#12-execution-adapters)：本地主导、远端仅存储，Actions 全部停用；只做最小相关本地验证，优先自动化，不默认人工实机验收。本文产品验收目标、生产权限与正式阶段边界保持。
+
 > API 测试现行规则：仅每日 2000 次调用 / 20 RPM，唯一权威为 [Governance §13.1](../../../README.md#131-api-测试执行规则)，当前 M1 执行见 [acceptance §0](m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包)。旧累计/封包/Step/token 限额、逐轮许可及人工额度审计全部撤销；旧阶段结果仍保留。
 
 - Task ID: `agent-intelligence-runtime`
