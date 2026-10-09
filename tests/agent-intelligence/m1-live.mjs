@@ -73,7 +73,9 @@ try {
     const f3Scope = f3Name ? read(f3Name) : null;
     const pilotScope = f2Scope || f3Scope;
     if (f3Scope && (!/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.sourceRun)
-        || !/^m1-f2-[a-z0-9-]+\.json$/.test(f3Scope.controlFile) || f3Scope.purpose !== 'f3_private_development')) throw new Error('f3_scope_changed');
+        || !/^m1-f2-[a-z0-9-]+\.json$/.test(f3Scope.controlFile) || f3Scope.schemaVersion !== 1 || f3Scope.purpose !== 'f3_private_development'
+        || !Array.isArray(f3Scope.domainOrder) || f3Scope.domainOrder.length !== 2 || new Set(f3Scope.domainOrder).size !== 2
+        || f3Scope.domainOrder.some(kind => !['rp-skill', 'project-prompt'].includes(kind)))) throw new Error('f3_scope_changed');
     const f3Controls = f3Scope ? read(f3Scope.controlFile) : null;
     const f3SourcePath = f3Scope ? path.join(directory, 'm1-reports', f3Scope.sourceRun) : null;
     const f3Summary = f3SourcePath ? JSON.parse(fs.readFileSync(path.join(f3SourcePath, 'summary.json'), 'utf8')) : null;
