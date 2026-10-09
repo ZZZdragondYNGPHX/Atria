@@ -116,6 +116,16 @@ test('F2 configuration rejects source drift without reviving old packet quotas o
     expect(validateF2Scope({ ...scope, maxSends: 9999, maxSecondarySends: 9999, retries: 2, initialAccounting: { requests: 1, tokens: 1 } }, controls, identity, false)).toBeDefined();
     for (const change of [{ extraction: 1 }, { promotion: 1 }, { publication: 1 }, { pilotCaseSetRevision: hash('other source') }, { testedHead: hash('other source') }])
         expect(() => validateF2Scope({ ...authorized, ...change }, controls, identity, false)).toThrow('f2_scope_changed');
+    const sourceControls = ['rp', 'project'].flatMap(domain => ['positive', 'known_violation', 'missing_evidence'].map(group => {
+        const entry = PILOT_CASES.find(c => c.entrance === domain && c.split === 'development');
+        return { group, pair: { case: entry, baseline: { origin: 'engineering_control', output: '{}' } }, expected: { [entry.behaviorDimensions[0]]: 'unknown' } };
+    }));
+    sourceControls.push({ ...sourceControls[0], group: 'unsupported_rule', expected: { knowledge_boundary: 'gap' } },
+        { ...sourceControls[3], group: 'communication_omission', expected: { status_accuracy: 'gap' } });
+    const extendedControls = { ...controls, sourceControls }, sourceScope = { ...expanded, controlHash: hash(extendedControls) };
+    expect(validateF2Scope(sourceScope, extendedControls, identity, false)).toBeDefined();
+    const wrongDomain = { ...extendedControls, sourceControls: sourceControls.map(row => row.group === 'unsupported_rule' ? { ...row, group: 'communication_omission' } : row) };
+    expect(() => validateF2Scope({ ...sourceScope, controlHash: hash(wrongDomain) }, wrongDomain, identity, false)).toThrow('f2_control_changed');
 });
 
 test('source readiness assessments require all dimensions and literal evidence, with explicit unknown', () => {
@@ -158,6 +168,15 @@ test('RP knowledge assessment covers each output span and rejects a summary hidi
     expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence).knowledgeReview).toEqual(value.knowledgeReview);
     value.knowledgeReview.pop();
     expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
+});
+
+test('RP evidence isolates appended restrictions and penalties without losing surrounding text', () => {
+    const entry = PILOT_CASES.find(c => c.entrance === 'rp' && c.split === 'development');
+    const output = 'Anonymous return is permitted, but only for undisputed items—otherwise discard them.';
+    const evidence = JSON.parse(f2SourceEvidence({ case: entry, baseline: { output } }));
+    expect(evidence.quoteCatalogue.map(row => row.quote).join('')).toBe(output);
+    expect(evidence.quoteCatalogue.map(row => row.quote)).toContain('otherwise discard them.');
+    expect(evidence.quoteCatalogue.map(row => row.quote)).toContain(' but only for undisputed items—');
 });
 
 test('missing Project observations remain unknown rather than proving absent proposals or zero writes', () => {
