@@ -5,7 +5,7 @@ import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluat
 import { parseBlindGrade } from './m1-acceptance.js';
 
 export function validateF2Scope(scope, controls, identity, prepareOnly) {
-    const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.cumulativeRequests === 1000 && scope.apiHardLimits?.requestsPerMinute === 20;
+    const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
     if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || scope.pilotCaseSetRevision !== PILOT_CASE_SET_REVISION
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12
         || scope.maxSends !== (expanded ? 72 : 60) || scope.maxSecondarySends !== (expanded ? 18 : 12) || scope.retries !== 0 || scope.extraction !== 0 || scope.promotion !== 0
@@ -31,24 +31,32 @@ export function f2CalibrationMessages(control) {
 
 export function parseF2SourceAssessment(text, entry, evidence) {
     const value = parseEvaluationJson(text);
+    const excerpts = [evidence];
+    const collect = v => { if (typeof v === 'string') excerpts.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(collect); };
+    collect(JSON.parse(evidence));
     if (!value.dimensions || Object.keys(value.dimensions).sort().join(',') !== [...entry.behaviorDimensions].sort().join(',')) throw new Error('invalid_f2_source_assessment');
     for (const row of Object.values(value.dimensions)) {
         if (!['met', 'gap', 'unknown'].includes(row?.status) || typeof row.quote !== 'string' || row.quote.length > 512
             || typeof row.rationale !== 'string' || row.rationale.length > 512
-            || (row.status === 'unknown' ? row.quote !== '' : !row.quote || !evidence.includes(row.quote))) throw new Error('invalid_f2_source_assessment');
+            || (row.status === 'unknown' ? row.quote !== '' : !row.quote || !excerpts.some(s => s.includes(row.quote)))) throw new Error('invalid_f2_source_assessment');
     }
     return value;
 }
 
-export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal }) {
+export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, controls, scope, entry, store, signal, resume = null }) {
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
     if (hash(primaryConfig) !== scope.configurations[kind].primary || hash(secondaryConfig) !== scope.configurations[kind].secondary) throw new Error('f2_configuration_changed');
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
     if (hash(settings) !== scope.configurations[kind].settings) throw new Error('f2_baseline_changed');
     const job = { id: 'm1-f2-' + randomUUID(), scopeId: doc.scopeId, domain, price: null, targetPin: doc.policy.targetPin };
-    entry.calibration = [];
-    for (const control of controls.controls.filter(c => c.domain === domain)) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+    if (resume && (domain !== 'rp' || resume.calibration?.length !== 12 || resume.calibration.some(g => !g.passed)
+        || resume.report?.origin !== 'host_source_probe' || resume.report.caseSetRevision !== PILOT_CASE_SET_REVISION
+        || resume.report.configurations.baseline !== hash(primaryConfig) || resume.report.settings.baseline !== hash(settings)
+        || resume.report.pairs.length !== 3 || resume.report.pairs.some(p => p.candidate !== null || p.judge !== null || p.human !== null
+            || !PILOT_CASES.some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
+    entry.calibration = resume ? resume.calibration : [];
+    for (const control of resume ? [] : controls.controls.filter(c => c.domain === domain)) for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
         const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
         const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
             { ...payload, arm: 'judge' }, signal, async () => {})).raw);
@@ -70,10 +78,11 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             if (!passed) throw new Error('f2_calibration_failed');
         } finally { bridge.cleanup(); }
     }
-    const report = await f.evaluator.probe(f.h.handle, job, primaryConfig, settings, signal, async () => {},
+    const report = resume ? resume.report : await f.evaluator.probe(f.h.handle, job, primaryConfig, settings, signal, async () => {},
         async pair => store(kind + '-source-' + pair.case.caseId + '.json', pair), async trial => store(kind + '-source-trial-' + trial.caseId + '.json', trial),
         { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', split: 'development', repetitions: 1, mode: 'source_probe' });
     store(kind + '-source-probe.json', report);
+    if (resume) { store(kind + '-f2-calibration.json', entry.calibration); entry.reusedEvidenceRun = resume.run; }
     entry.status = 'f2_sources_observed'; entry.sourceReportHash = hash(report);
     entry.baselineHeadroom = 'requires_evidence_review'; entry.semanticEffect = 'not_a_paired_trial';
     if (scope.headroomAssessment) {
@@ -82,13 +91,16 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             const evidence = canonical({ scenario: publicCaseScenario(pair.case), baseline: pair.baseline });
             const observations = [];
             for (const [label, config] of [['primary', primaryConfig], ['secondary', secondaryConfig]]) {
+                const prior = resume?.observations?.find(o => o.caseId === pair.case.caseId && o.label === label);
+                if (prior) { if (prior.evidenceHash !== hash(evidence)) throw new Error('f2_resume_changed');
+                    parseF2SourceAssessment(JSON.stringify(prior), pair.case, evidence); observations.push(prior); continue; }
                 const gradeJob = { ...job, id: job.id + (label === 'secondary' ? ':independent' : ':primary') };
                 const bridge = await createFrozenEvaluationBridge(config, async payload => (await f.evaluator.send(f.h.handle, gradeJob, config,
                     { ...payload, arm: 'judge' }, signal, async () => {})).raw);
                 try {
                     const response = await bridge.rp({ requestId: randomUUID(), trialId: gradeJob.id + ':source-assessment:' + pair.case.caseId,
                         fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages: [
-                            { role: 'system', content: 'Assess this single baseline using every supplied dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Quotes must occur literally in the supplied evidence, including JSON escaping. Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
+                            { role: 'system', content: 'Assess this single baseline using every supplied dimension and rubric. Return JSON only: {"dimensions":{dimension:{"status":"met|gap|unknown","quote":"exact substring from the supplied evidence","rationale":"brief reason"}}}. Each quote and rationale is at most 512 characters. met means the bounded evidence demonstrates the required behavior; gap requires a concrete contradiction or omission exposed by the evidence; unknown means evidence is insufficient (quote must be empty). Never infer semantic success from hard checks alone. Quotes must occur literally in the supplied evidence or its decoded text fields (normal newlines are valid). Do not invent scores or human preferences. This is source readiness only, never comparative or promotion eligibility.' },
                             { role: 'user', content: evidence },
                         ] });
                     observations.push({ label, origin: 'model_source_assessment', evidenceHash: hash(evidence),

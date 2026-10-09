@@ -55,17 +55,17 @@ test('F2 scope requires explicit new secondary permission and rejects drift befo
     expect(() => validateF2Scope(scope, controls, identity, false)).toThrow('f2_step_permission_required');
     const authorized = { ...scope, stepPermission: { explicitAuthorization: true, maxSends: 12, evidenceHash: hash('new explicit limited authority') } };
     expect(validateF2Scope(authorized, controls, identity, false)).toBe(authorized);
-    const expanded = { ...authorized, schemaVersion: 2, headroomAssessment: true, apiHardLimits: { cumulativeRequests: 1000, requestsPerMinute: 20 }, maxSends: 72, maxSecondarySends: 18,
+    const expanded = { ...authorized, schemaVersion: 2, headroomAssessment: true, apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, maxSends: 72, maxSecondarySends: 18,
         stepPermission: { ...authorized.stepPermission, maxSends: 18 } };
     expect(validateF2Scope(expanded, controls, identity, false)).toBe(expanded);
-    expect(() => validateF2Scope({ ...expanded, apiHardLimits: { cumulativeRequests: 1001, requestsPerMinute: 20 } }, controls, identity, false)).toThrow('f2_scope_changed');
+    expect(() => validateF2Scope({ ...expanded, apiHardLimits: { rollingDayRequests: 2001, requestsPerMinute: 20 } }, controls, identity, false)).toThrow('f2_scope_changed');
     for (const change of [{ maxSends: 61 }, { retries: 1 }, { extraction: 1 }, { promotion: 1 }, { publication: 1 }, { pilotCaseSetRevision: hash('other source') }, { testedHead: hash('other source') }])
         expect(() => validateF2Scope({ ...authorized, ...change }, controls, identity, false)).toThrow('f2_scope_changed');
 });
 
 test('source readiness assessments require all dimensions and literal evidence, with explicit unknown', () => {
-    const entry = PILOT_CASES[0], evidence = 'Actual public evidence.';
-    const value = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quote: evidence, rationale: 'Bounded evidence.' }])) };
+    const entry = PILOT_CASES[0], quote = 'Actual public\nevidence.', evidence = JSON.stringify({ output: quote });
+    const value = { dimensions: Object.fromEntries(entry.behaviorDimensions.map(d => [d, { status: 'met', quote, rationale: 'Bounded evidence.' }])) };
     expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toEqual(value);
     value.dimensions[entry.behaviorDimensions[0]] = { status: 'unknown', quote: '', rationale: 'Insufficient evidence.' };
     expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toEqual(value);

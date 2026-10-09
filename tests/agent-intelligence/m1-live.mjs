@@ -64,12 +64,14 @@ try {
     const f2Scope = f2Name ? read(f2Name) : null;
     if (f2Scope && !/^m1-f2-[a-z0-9-]+\.json$/.test(f2Scope.controlFile)) throw new Error('invalid_f2_control_name');
     const f2Controls = f2Scope ? read(f2Scope.controlFile) : null;
+    if (f2Scope?.resumeFile && !/^m1-f2-[a-z0-9-]+\.json$/.test(f2Scope.resumeFile)) throw new Error('invalid_f2_resume_name');
+    const f2Resume = f2Scope?.resumeFile ? read(f2Scope.resumeFile) : null;
+    if (f2Resume && hash(f2Resume) !== f2Scope.resumeHash) throw new Error('f2_resume_changed');
     if (f2Scope && !prepareOnly && f2Scope.stepPermission?.explicitAuthorization !== true) throw new Error('f2_step_permission_required');
     const limits = read('m1-limits.json');
     if (limits.maxRequests !== 512 || limits.maxTotalTokens !== 1699536) throw new Error('frozen_recovery_limits_required');
     const ledgerPath = path.join(directory, 'm1-ledger.json');
     const snapshot = read('m1-ledger.json');
-    if (!prepareOnly && snapshot.requests >= 1000) throw new Error('m1_api_total_limit');
     if (!snapshot.historicalCarry || snapshot.historicalCarry.evidenceHash !== read('m1-recovery.json').evidenceHash) throw new Error('historical_carry_changed');
     lock = ledgerPath + '.lock'; descriptor = fs.openSync(lock, 'wx', 0o600);
     fs.writeFileSync(descriptor, JSON.stringify({ pid: process.pid }));
@@ -79,14 +81,13 @@ try {
     lastAdmissionAt = Math.max(lastAdmissionAt, Date.now());
     const quotaPath = path.join(directory, 'm1-api-quota.json');
     if (!fs.existsSync(quotaPath)) writeFileAtomic.sync(quotaPath, JSON.stringify({ schemaVersion: 1, carry: { requests: snapshot.requests, at: Date.now() }, admissions: [] }, null, 2) + '\n', { mode: 0o600 });
-    const quota = new M1ApiQuota(read('m1-api-quota.json'), next => writeFileAtomic.sync(quotaPath, JSON.stringify(next, null, 2) + '\n', { mode: 0o600 }), Date.now, { maxTotalRequests: 1000 });
+    const quota = new M1ApiQuota(read('m1-api-quota.json'), next => writeFileAtomic.sync(quotaPath, JSON.stringify(next, null, 2) + '\n', { mode: 0o600 }));
     let admitted = snapshot.requests;
     const persistedIds = new Set(Object.keys(snapshot.entries));
     const warned = new Set(Object.entries(snapshot.entries).filter(([, e]) => e.tokens > e.upperBound).map(([id]) => 'reservation_overrun_' + id));
     const warning = (code, detail) => { if (!warned.has(code)) { warned.add(code); console.log(JSON.stringify({ advisoryWarning: code, ...detail })); } };
     const budget = new EvaluationBudget(limits, { snapshot, advisory: true, onChange: next => {
         if (next.requests > admitted) {
-            if (next.requests > 1000) throw new Error('m1_api_total_limit');
             const delay = Math.max(0, lastAdmissionAt + 3150 - Date.now());
             if (delay > 60000) throw new Error('invalid_rate_clock');
             if (delay) globalThis.Atomics.wait(new Int32Array(new globalThis.SharedArrayBuffer(4)), 0, 0, delay);
@@ -119,7 +120,7 @@ try {
     execFileSync('git', ['diff', '--quiet', 'HEAD', '--', ...sourceFiles.map(f => 'tests/agent-intelligence/' + f)], { cwd: repo });
     const summary = { schemaVersion: 1, origin: 'm1_local_automated_acceptance', testedHead, evaluatorRevision: evolutionEvaluatorRevision(),
         runnerRevision: hash(sourceFiles.map(f => [f, fs.readFileSync(new URL(f, import.meta.url), 'utf8')])),
-        policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { cumulativeRequests: 1000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
+        policy: 'm1-advisory-tokens-2026-10-08', apiHardLimits: { rollingDayRequests: 2000, requestsPerMinute: 20 }, tokensAdvisory: true, historicalRecords: 'unavailable', historicalCarry: snapshot.historicalCarry,
         initialAccounting: { requests: snapshot.requests, tokens: snapshot.tokens }, limits, entries: [], humanPreference: 'not_observed', productionPromotion: 'original_gate_unchanged', temporarySecondary };
     store('summary.json', summary);
     if (f2Scope) { validateF2Scope(f2Scope, f2Controls, summary, prepareOnly); summary.mode = 'f2_source_calibration'; summary.f2ScopeHash = hash(f2Scope); }
@@ -481,7 +482,7 @@ try {
             if (prepareOnly) { entry.status = 'prepared'; entry.targetPin = (await f.repository.get(f.h.handle, f.scope, f.subject)).policy.targetPin; entry.primaryConfigurationHash = hash(await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId)); entry.secondaryConfigurationHash = hash(secondaryConfig);
                 if (f2Scope) { entry.baselineSettingsHash = hash(await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target));
                     store(kind + '-f2-baseline.json', { doc: await f.repository.get(f.h.handle, f.scope, f.subject), target: f.target }); } continue; }
-            if (f2Scope) { await runF2Domain({ f, kind, primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), secondaryConfig, controls: f2Controls, scope: f2Scope, entry, store, signal: overall.signal }); continue; }
+            if (f2Scope) { await runF2Domain({ f, kind, primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), secondaryConfig, controls: f2Controls, scope: f2Scope, entry, store, signal: overall.signal, resume: kind === 'rp-skill' ? f2Resume : null }); continue; }
             if (diagnoseOnly) {
                 summary.mode = 'one_request_secondary_diagnostic';
                 let messages = [{ role: 'user', content: 'Return JSON only: {"ok":true}' }];
