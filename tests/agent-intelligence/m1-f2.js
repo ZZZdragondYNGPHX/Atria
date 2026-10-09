@@ -120,6 +120,7 @@ function withF2QuoteCatalogue(data) {
 
 function projectSourceProjection(value) {
     const output = structuredClone(value);
+    if (output.observedAuthority && typeof output.observedAuthority === 'object') output.observedAuthority = projectSourceProjection(output.observedAuthority);
     // Keep actual public tool inputs and resource results. Task responses
     // repeat the full conversation/source history already retained in raw.
     if (output.tools) output.tools = output.tools.map(row => {

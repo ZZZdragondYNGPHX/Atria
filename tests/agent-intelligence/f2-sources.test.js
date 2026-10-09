@@ -45,11 +45,12 @@ const captureFor = entry => ({ trialId: 'f2:' + entry.caseId, refs: { runIds: []
 test('Project calibration projection preserves opposite outcomes and authoritative sources', () => {
     const priorConflictTask = { taskId: 'old', status: 'conflict', timeline: ['duplicate'], operations: [], changeSets: [] };
     const content = { left: canonical({ status: 'repair', source: { binding: 'wrong' }, priorConflictTask }),
-        right: canonical({ status: 'review', source: { binding: 'correct' }, priorConflictTask }) };
+        right: canonical({ engineeringControlStatement: 'Correct authority state.', observedAuthority: { status: 'review', source: { binding: 'correct' }, priorConflictTask } }) };
     const control = { domain: 'project', messages: [{ role: 'user', content: canonical(content) }] };
     const projected = JSON.parse(f2CalibrationMessages(control)[0].content);
     expect(projected.left).toMatchObject({ status: 'repair', source: { binding: 'wrong' }, priorConflictTask: { status: 'conflict' } });
-    expect(projected.right).toMatchObject({ status: 'review', source: { binding: 'correct' }, priorConflictTask: { status: 'conflict' } });
+    expect(projected.right).toMatchObject({ engineeringControlStatement: 'Correct authority state.', observedAuthority: { status: 'review', source: { binding: 'correct' }, priorConflictTask: { status: 'conflict' } } });
+    expect(projected.right.observedAuthority.priorConflictTask.timeline).toBeUndefined();
     expect(projected.left.priorConflictTask.timeline).toBeUndefined();
     expect(JSON.parse(control.messages[0].content)).toEqual(content);
 });

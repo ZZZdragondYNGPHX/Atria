@@ -435,7 +435,7 @@ try {
                     finally { restoreSecret(); packet = null;
                         const s = budget.snapshot(); console.log(JSON.stringify({ kind, retryAttempt, accountingRequests: s.requests, accountingTokens: s.tokens, freshSends: s.requests - 252 })); }
                 };
-                return diagnoseOnly || f2Scope ? fundedAttempt(0) : retryPolicy.send(transportKey, fundedAttempt, AbortSignal.any([signal, overall.signal]));
+                return diagnoseOnly ? fundedAttempt(0) : retryPolicy.send(transportKey, fundedAttempt, AbortSignal.any([signal, overall.signal]));
             };
             const compare = f.evaluator.compare.bind(f.evaluator);
             f.evaluator.compare = (handle, job, configs, settings, signal, fresh) => compare(handle, job, configs, settings, signal, fresh,
