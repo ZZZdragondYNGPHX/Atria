@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { selectCases, publicCaseScenario, hash, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
@@ -12,16 +12,16 @@ import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js'
 const assessments = dimensions => Object.fromEntries(dimensions.map(d => [d, Object.fromEntries(['left', 'right'].map(side =>
     [side, { status: 'met', quote: null, reason: 'Observed complete behavior.' }]))]));
 
-function example(domain = 'rp') {
+function example(domain = 'rp', caseSetRevision = PILOT_CASE_SET_REVISION) {
     const config = { identity: 'original' }, settings = { identity: 'baseline' }, candidateConfig = { identity: 'candidate' }, candidateSettings = { identity: 'candidate-settings' };
-    const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related' });
+    const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', caseSetRevision });
     const ledger = { entries: {} }, owner = { attempts: [] }, independent = [];
     const charge = (id, trialId, kind) => ({ id, trialId, kind, requestHash: hash([id, 'request']), snapshotHash: hash([id, 'snapshot']),
         status: 'reported', tokens: 100, usage: { totalTokens: 100 }, cost: null });
-    const baseline = { origin: 'host_source_probe', domain, caseSetRevision: PILOT_CASE_SET_REVISION, evaluatorRevision: 'historical-revision',
+    const baseline = { origin: 'host_source_probe', domain, caseSetRevision, evaluatorRevision: 'historical-revision',
         configurations: { baseline: hash(config) }, settings: { baseline: hash(settings) }, charges: [], pairs: [] };
     const report = { schemaVersion: 2, origin: 'm1_f3_development', domain, evaluatorRevision: evolutionEvaluatorRevision(),
-        caseSetRevision: PILOT_CASE_SET_REVISION, quality: qualityEnvelope(domain, cases, 'development'),
+        caseSetRevision, quality: qualityEnvelope(domain, cases, 'development'),
         configurations: { baseline: hash(config), candidate: hash(candidateConfig) }, settings: { baseline: hash(settings), candidate: hash(candidateSettings) }, charges: [], pairs: [] };
     for (const [i, entry] of cases.entries()) {
         const oldCharge = charge('old-' + i, 'old-trial-' + i, 'baseline');
@@ -53,6 +53,15 @@ function example(domain = 'rp') {
 }
 const readiness = f => pilotDevelopmentReadiness(f.report, f.independent, f.owner, 'job', f.baseline, f.ledger);
 const rehash = pair => { delete pair.pairHash; pair.pairHash = hash(pair); };
+
+test.each(['rp', 'project'])('renewal %s development retains the original threshold and rejects historical baseline substitution', domain => {
+    const f = example(domain, RENEWAL_PILOT_CASE_SET_REVISION);
+    expect(readiness(f)).toMatchObject({ accepted: true, wins: 2 });
+    expect(validateF3Baseline(f.baseline, domain, f.config, f.settings, f.ledger)).toBe(f.baseline);
+    const historical = example(domain);
+    f.baseline = historical.baseline; f.report.baselineReuse.reportHash = hash(f.baseline);
+    expect(readiness(f).reasons).toContain('evaluation_identity_changed');
+});
 
 test.each(['rp-skill', 'project-prompt'])('F3 %s private investigation withdraws proxy feedback while production start stays rejected', async kind => {
     const f = await evolutionFixture(makeTempFsEngineHarness, kind, { policyMode: 'review', confirmedPrice: null });

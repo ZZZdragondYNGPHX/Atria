@@ -1,6 +1,6 @@
 // Delegated private engineering investigation. Never registered in production.
 import { randomUUID } from 'node:crypto';
-import { hash, canonical, selectCases, publicCaseScenario, PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, selectCases, publicCaseScenario, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
@@ -59,13 +59,14 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
         if (source.entry.judgeMode === 'dual' ? !equal(rows[0].sharedGaps, shared) : rows[0].sharedGaps.length) throw new Error('f3_assessment_changed');
     }
     if (source.assessments.length !== 3) throw new Error('f3_assessment_changed');
-    if (!source.assessments.some(row => labels.length === 2 ? row.sharedGaps.length
-        : Object.values(row.observations.find(o => o.label === 'primary').dimensions).some(d => d.status === 'gap'))) throw new Error('f3_headroom_unestablished');
+    if (source.report.caseSetRevision !== (scope.pilotCaseSetRevision ?? PILOT_CASE_SET_REVISION) || source.assessments.filter(row => labels.length === 2 ? row.sharedGaps.length
+        : Object.values(row.observations.find(o => o.label === 'primary').dimensions).some(d => d.status === 'gap')).length
+        < (scope.pilotCaseSetRevision === RENEWAL_PILOT_CASE_SET_REVISION ? 2 : 1)) throw new Error('f3_headroom_unestablished');
 }
 
 export function validateF3Baseline(report, domain, config, settings, ledger) {
-    const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(domain) });
-    if (report?.origin !== 'host_source_probe' || report.domain !== domain || report.caseSetRevision !== PILOT_CASE_SET_REVISION
+    const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(domain), caseSetRevision: report?.caseSetRevision });
+    if (report?.origin !== 'host_source_probe' || report.domain !== domain || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision)
         || report.configurations.baseline !== hash(config) || report.settings.baseline !== hash(settings) || report.pairs.length !== 3
         || cases.some(entry => report.pairs.filter(pair => equal(pair.case, entry) && pair.repetition === 1).length !== 1)) throw new Error('f3_baseline_changed');
     for (const pair of report.pairs) {
@@ -88,11 +89,11 @@ export function validateF3Baseline(report, domain, config, settings, ledger) {
 // The cached F2 baseline retains its original charge and trial identity. It is
 // not inserted into a new owner ledger or described as a fresh paired trial.
 export function pilotDevelopmentReadiness(report, independent, owner, jobId, baseline, ledger) {
-    const reasons = [], required = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(report.domain) });
+    const reasons = [], required = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(report.domain), caseSetRevision: report.caseSetRevision });
     const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     let wins = 0;
     if (report.origin !== 'm1_f3_development' || report.evaluatorRevision !== evolutionEvaluatorRevision()
-        || report.caseSetRevision !== PILOT_CASE_SET_REVISION || report.baselineReuse.reportHash !== hash(baseline)
+        || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision) || report.caseSetRevision !== baseline.caseSetRevision || report.baselineReuse.reportHash !== hash(baseline)
         || report.configurations.baseline !== baseline.configurations.baseline || report.settings.baseline !== baseline.settings.baseline
         || !equal(report.quality, qualityEnvelope(report.domain, required, 'development'))) reasons.push('evaluation_identity_changed');
     if (report.pairs.length !== 3 || required.some(c => report.pairs.filter(p => equal(p.case, c) && p.repetition === 1).length !== 1)) reasons.push('development_cases_incomplete');
@@ -441,9 +442,9 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
         probe = await f.evaluator.probe(f.h.handle, paidJob, config, settings, signal, fresh,
             pair => store(kind + '-f3-candidate-' + pair.case.caseId + '.json', pair),
             trial => store(kind + '-f3-trial-' + trial.caseId + '.json', trial),
-            { profileId, split: 'development', repetitions: 1, mode: 'source_probe' });
+            { profileId, split: 'development', repetitions: 1, mode: 'source_probe', caseSetRevision: scope.pilotCaseSetRevision });
     } finally { f.evaluator.send = send; }
-    const report = { schemaVersion: 2, origin: 'm1_f3_development', evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision: PILOT_CASE_SET_REVISION,
+    const report = { schemaVersion: 2, origin: 'm1_f3_development', evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision: probe.caseSetRevision,
         domain, judgeMode: entry.judgeMode, quality: probe.quality, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: null,
         configurations: { baseline: hash(primaryConfig), candidate: hash(config) }, settings: { baseline: hash(baselineSettings), candidate: hash(settings) },
         gradeProtocolHash: hash(F3_GRADE_INSTRUCTION), comparisonCalibration: entry.comparisonCalibration,

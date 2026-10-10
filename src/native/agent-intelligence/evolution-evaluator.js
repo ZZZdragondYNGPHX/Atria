@@ -15,7 +15,7 @@ import { qualityEnvelope, validateQualityReport, qualityProfile, requirePilotSou
 
 export function evolutionEvaluatorRevision() {
     return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/sealed-sources.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
-        'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
+        'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'evaluation/pilot-renewal-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
         '../adapters/generation-host.js', '../adapters/http-generation-provider.js', '../project-agent.js',
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js',
         '../model-prompt-runtime/contracts.js', '../model-prompt-runtime/resources.js', '../../skills/repository.js', '../../skills/versions.js',
@@ -187,7 +187,7 @@ export class EvolutionEvaluator {
     async probe(handle, job, config, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}, selection = {}) {
         if (!['rp.m1.information', 'project.m1.related'].includes(selection.profileId) || selection.split !== 'development'
             || selection.repetitions !== 1 || selection.mode !== 'source_probe'
-            || selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId }).some(c => c.entrance !== job.domain)) throw new TypeError('Invalid source probe');
+            || selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.entrance !== job.domain)) throw new TypeError('Invalid source probe');
         return this._evaluate(handle, job, { baseline: config }, { baseline: settings }, signal, fresh, onPair, onTrial, selection);
     }
     // Explicit engineering observation port, not an automatic promotion path.
@@ -197,14 +197,14 @@ export class EvolutionEvaluator {
         if (!['rp.m1.information', 'project.m1.related'].includes(selection.profileId) || selection.split !== 'promotion'
             || selection.repetitions !== 3 || selection.mode !== 'sealed_pair_probe' || selection.caseIds
             || typeof selection.sealedDirectory !== 'string' || !isAbsolute(selection.sealedDirectory)
-            || selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId }).some(c => c.entrance !== job.domain)) throw new TypeError('Invalid sealed pair observation');
+            || selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.entrance !== job.domain)) throw new TypeError('Invalid sealed pair observation');
         return this._evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection);
     }
     async _evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection) {
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
         if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new TypeError('Invalid finite evaluation selection');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
-            || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !selectCases({ purpose: 'evaluation', split: 'development', profileId: selection.profileId }).some(c => c.caseId === id && c.entrance === job.domain)))) throw new TypeError('Invalid development case selection');
+            || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !selectCases({ purpose: 'evaluation', split: 'development', profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.caseId === id && c.entrance === job.domain)))) throw new TypeError('Invalid development case selection');
         const charges = [], evaluatorRevision = evolutionEvaluatorRevision();
         const child = fork(fileURLToPath(new URL('./evaluation/worker.js', import.meta.url)), [], {
             execArgv: ['--experimental-loader', new URL('./evaluation/loader.js', import.meta.url).href], env: { PATH: process.env.PATH || '', NODE_ENV: 'production' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], serialization: 'advanced',
@@ -237,9 +237,9 @@ export class EvolutionEvaluator {
                 if (!sourceProbe && !pairedProbe) pair.judge.chargeIds = charges.filter(c => c.trialId === job.id + ':judge:' + pairs.indexOf(pair)).map(c => c.id);
                 const { pairHash: _oldHash, ...identity } = pair; pair.pairHash = hash(identity);
             }
-            return { schemaVersion: 2, origin: sourceProbe ? 'host_source_probe' : pairedProbe ? 'host_pair_probe' : 'host_evaluator', evaluatorRevision, caseSetRevision: sourceProbe || pairedProbe ? PILOT_CASE_SET_REVISION : CASE_SET_REVISION, rule: EVOLUTION_RULE,
+            return { schemaVersion: 2, origin: sourceProbe ? 'host_source_probe' : pairedProbe ? 'host_pair_probe' : 'host_evaluator', evaluatorRevision, caseSetRevision: sourceProbe || pairedProbe ? selection.caseSetRevision ?? PILOT_CASE_SET_REVISION : CASE_SET_REVISION, rule: EVOLUTION_RULE,
                 ...(sourceProbe ? { purpose: 'source_probe' } : {}),
-                quality: qualityEnvelope(job.domain, selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId }).filter(c => c.entrance === job.domain && (!selection.caseIds || selection.caseIds.includes(c.caseId))), selection.split),
+                quality: qualityEnvelope(job.domain, selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).filter(c => c.entrance === job.domain && (!selection.caseIds || selection.caseIds.includes(c.caseId))), selection.split),
                 domain: job.domain, policyFingerprint: job.policyFingerprint, targetPin: job.targetPin, price: job.price,
                 configurations: sourceProbe ? { baseline: hash(configs.baseline) } : { baseline: hash(configs.baseline), candidate: hash(configs.candidate) }, settings: sourceProbe ? { baseline: hash(settings.baseline) } : { baseline: hash(settings.baseline), candidate: hash(settings.candidate) },
                 pairs, charges, createdAt: Date.now() };

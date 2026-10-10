@@ -40,7 +40,7 @@ process.on('message', async message => {
         if (selection.mode && !sourceProbe && !pairedProbe || sourceProbe && (!selection.profileId || selection.split !== 'development' || selection.repetitions !== 1)
             || pairedProbe && (!selection.profileId || selection.split !== 'promotion' || selection.repetitions !== 3 || selection.caseIds || !selection.sealedDirectory)) throw new Error('invalid_source_probe');
         if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new Error('invalid_evaluation_selection');
-        const available = selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId }).filter(c => c.entrance === message.domain);
+        const available = selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).filter(c => c.entrance === message.domain);
         if (sourceProbe && available.length !== 3) throw new Error('source_unready');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !available.some(c => c.caseId === id)))) throw new Error('invalid_development_selection');
@@ -102,7 +102,7 @@ if (sealedCheck) {
     const { selectCases } = await import('./cases.js');
     const { readSealedSource } = await import('./sealed-sources.js');
     for (const profileId of ['rp.m1.information', 'project.m1.related']) {
-        const entries = selectCases({ purpose: 'evaluation', split: 'promotion', profileId });
+        const entries = selectCases({ purpose: 'evaluation', split: 'promotion', profileId, caseSetRevision: process.argv.find(arg => arg.startsWith('--case-set='))?.slice('--case-set='.length) });
         for (const entry of entries) readSealedSource(entry, sealedCheck.slice('--check-sealed='.length));
         console.log(JSON.stringify({ profileId, sealedSourcesVerified: entries.length, modelSends: 0 }));
     }

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { evolutionFixture, runEvolution, restoreEvolutionFixture } from './evolution-fixture.js';
-import { publishConsumeRollback, recordRejectedF3Promotion } from './m1-f3-promotion.js';
+import { publishConsumeRollback, recordRejectedF3Promotion, f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
 import { hash } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
 
@@ -15,6 +15,26 @@ class ImmediateSyntheticRepository extends AgentEvolutionRepository {
         return { ...await super.reserve(handle, attempt), createdAt: Date.now() };
     }
 }
+
+test('lossless oversized private report binds native delegated review and the actual next Project consumer', async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review', repositoryClass: ImmediateSyntheticRepository,
+        fetchImpl: async () => ({ ok: true, headers: { get: () => 'application/json' }, json: async () => ({
+            choices: [{ message: { content: 'Synthetic review acknowledgement.' } }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) }) });
+    try {
+        const { job, candidate } = await runEvolution(f);
+        const report = { ...candidate.report, origin: 'm1_f3_promotion', completePrivateHistory: 'synthetic complete native history '.repeat(170000) };
+        const stored = f3ReportForStorage(report);
+        await f.repository.mutate(f.h.handle, f.scope, f.subject, doc => { doc.jobs.find(j => j.id === job.id).candidates[0].report = stored; });
+        expect(readF3StoredReport(stored)).toEqual(report);
+        const entry = {};
+        await publishConsumeRollback({ f, kind: 'project-prompt', job: { ...job, scopeId: (await f.repository.get(f.h.handle, f.scope, f.subject)).scopeId },
+            candidate, report, entry, store: () => {}, signal: AbortSignal.timeout(30000), fresh: () => f.service._fresh(f.h.handle, f.scope, f.subject, job.id) });
+        expect(entry.lifecycle).toMatchObject({ reportHash: hash(report), storedReportHash: hash(stored), nextRunConsumed: true, baseRestored: true });
+        const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
+        expect(doc.publications[0]).toMatchObject({ reportHash: hash(stored), status: 'rolled_back' });
+        expect(doc.jobs[0].candidates[0].decision.eligible).toBe(false);
+    } finally { await f.h.cleanup(); }
+}, 45000);
 
 // Synthetic reports exercise publication and the actual next consumers only.
 // No sealed content, empirical grades or real network calls enter these tests.

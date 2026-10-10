@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { DEVELOPMENT_SOURCES, PROMOTION_SOURCE_PINS } from './pilot-sources.js';
+import { RENEWAL_DEVELOPMENT_SOURCES, RENEWAL_PROMOTION_SOURCE_PINS } from './pilot-renewal-sources.js';
 import { QUALITY_PROFILES } from './quality.js';
 
 export function canonical(value) {
@@ -48,7 +49,7 @@ export function makeCase(family, split) {
     return { ...entry, caseRevision: hash(entry) };
 }
 export function validateCase(entry) {
-    const expected = [...CASES, ...PILOT_CASES].find(item => item.caseId === entry?.caseId);
+    const expected = [...CASES, ...PILOT_CASES, ...RENEWAL_PILOT_CASES].find(item => item.caseId === entry?.caseId);
     if (!expected || canonical(entry) !== canonical(expected)) throw new Error('Case identity/revision/schema drift');
     return entry;
 }
@@ -89,20 +90,32 @@ export const PILOT_RUBRIC = freezeTree({
 });
 export const PILOT_CASES = freezeTree([...DEVELOPMENT_SOURCES, ...PROMOTION_SOURCE_PINS].map(pilotCase));
 export const PILOT_CASE_SET_REVISION = hash(PILOT_CASES);
+export const RENEWAL_PILOT_CASES = freezeTree([...RENEWAL_DEVELOPMENT_SOURCES, ...RENEWAL_PROMOTION_SOURCE_PINS].map(pilotCase));
+export const RENEWAL_PILOT_CASE_SET_REVISION = hash(RENEWAL_PILOT_CASES);
+export function pilotCasesForRevision(revision = PILOT_CASE_SET_REVISION) {
+    if (revision === PILOT_CASE_SET_REVISION) return PILOT_CASES;
+    if (revision === RENEWAL_PILOT_CASE_SET_REVISION) return RENEWAL_PILOT_CASES;
+    throw new Error('Unknown pilot case set revision');
+}
+export function pilotRevisionForCase(entry) {
+    validateCase(entry);
+    return RENEWAL_PILOT_CASES.some(c => c.caseId === entry.caseId) ? RENEWAL_PILOT_CASE_SET_REVISION : PILOT_CASE_SET_REVISION;
+}
 
 // Extraction sees development only. Evaluation must explicitly select a split;
 // no consumer is handed a mixed corpus by default.
-export function selectCases({ purpose, split, profileId = null }) {
+export function selectCases({ purpose, split, profileId = null, caseSetRevision }) {
     if (!['extraction', 'evaluation'].includes(purpose) || !['development', 'promotion'].includes(split)) throw new Error('Explicit purpose/split required');
     if (purpose === 'extraction' && split !== 'development') throw new Error('Promotion split is evaluator-only');
     if (profileId && !['rp.m1.information', 'project.m1.related'].includes(profileId)) throw new Error('Unknown pilot profile');
-    return (profileId ? PILOT_CASES : CASES).filter(entry => entry.split === split && (!profileId || entry.profileId === profileId));
+    if (!profileId && caseSetRevision !== undefined) throw new Error('Pilot revision requires explicit profile');
+    return (profileId ? pilotCasesForRevision(caseSetRevision) : CASES).filter(entry => entry.split === split && (!profileId || entry.profileId === profileId));
 }
 export function loadFixture(entry, { purpose, sealedSource = null }) {
     validateCase(entry);
-    selectCases({ purpose, split: entry.split, profileId: entry.profileId });
+    selectCases({ purpose, split: entry.split, profileId: entry.profileId, ...(entry.profileId ? { caseSetRevision: pilotRevisionForCase(entry) } : {}) });
     if (entry.profileId) {
-        const source = DEVELOPMENT_SOURCES.find(item => item.sourceId === entry.sourceId) || sealedSource;
+        const source = [...DEVELOPMENT_SOURCES, ...RENEWAL_DEVELOPMENT_SOURCES].find(item => item.sourceId === entry.sourceId) || sealedSource;
         if (!source || source.sourceId !== entry.sourceId || source.domain !== entry.entrance || source.split !== entry.split
             || source.origin !== entry.provenance.origin || source.rootGroup !== entry.provenance.groupId || source.templateGroup !== entry.provenance.templateGroup
             || canonical(source.derivedFrom) !== canonical(entry.provenance.derivedFrom)

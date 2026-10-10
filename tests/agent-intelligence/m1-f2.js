@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { hash, canonical, publicCaseScenario, PILOT_CASE_SET_REVISION, PILOT_CASES } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, publicCaseScenario, PILOT_CASE_SET_REVISION, PILOT_CASES, pilotCasesForRevision, RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { parseBlindGrade } from './m1-acceptance.js';
@@ -12,7 +12,7 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
     if (scope?.judgeReasoningEffort && Object.entries(scope.judgeReasoningEffort).some(([label, effort]) =>
         !['primary', 'secondary'].includes(label) || !['low', 'medium', 'high'].includes(effort))) throw new Error('f2_scope_changed');
     const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
-    if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || scope.pilotCaseSetRevision !== PILOT_CASE_SET_REVISION
+    if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION].includes(scope.pilotCaseSetRevision)
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12
         || scope.extraction !== 0 || scope.promotion !== 0
         || scope.publication !== 0 || scope.testedHead !== identity.testedHead || scope.evaluatorRevision !== identity.evaluatorRevision
@@ -225,10 +225,10 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     if (resume && (!Array.isArray(resume.calibration) || resume.calibration.length > 12 || resume.calibration.some(g => !g.passed)
         || new Set(resume.calibration.map(g => g.group + ':' + g.flipped + ':' + g.label)).size !== resume.calibration.length)) throw new Error('f2_resume_changed');
     if (resume?.report && (resume.report.domain !== domain
-        || resume.report.origin !== 'host_source_probe' || resume.report.caseSetRevision !== PILOT_CASE_SET_REVISION
+        || resume.report.origin !== 'host_source_probe' || resume.report.caseSetRevision !== (scope.pilotCaseSetRevision ?? PILOT_CASE_SET_REVISION)
         || resume.report.configurations.baseline !== hash(primaryConfig) || resume.report.settings.baseline !== hash(settings)
         || resume.report.pairs.length !== 3 || resume.report.pairs.some(p => p.candidate !== null || p.judge !== null || p.human !== null
-            || !PILOT_CASES.some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
+            || !pilotCasesForRevision(scope.pilotCaseSetRevision).some(c => c.split === 'development' && c.entrance === domain && c.caseId === p.case.caseId && c.caseRevision === p.case.caseRevision)))) throw new Error('f2_resume_changed');
     const domainControls = controls.controls.filter(c => c.domain === domain);
     entry.calibration = (resume?.calibration || []).filter(row => (!primaryOnly || row.label === 'primary') && domainControls.some(control =>
         reusableF2Calibration(row, control, row.label, row.label === 'primary' ? primaryConfig : secondaryConfig, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[row.label] ?? null)));
@@ -285,7 +285,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     if (entry.sourceCalibration.length) store(kind + '-f2-source-calibration.json', entry.sourceCalibration);
     const report = resume?.report || await f.evaluator.probe(f.h.handle, job, primaryConfig, settings, signal, async () => {},
         async pair => store(kind + '-source-' + pair.case.caseId + '.json', pair), async trial => store(kind + '-source-trial-' + trial.caseId + '.json', trial),
-        { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', split: 'development', repetitions: 1, mode: 'source_probe' });
+        { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', split: 'development', repetitions: 1, mode: 'source_probe', caseSetRevision: scope.pilotCaseSetRevision });
     store(kind + '-source-probe.json', report);
     if (resume) { store(kind + '-f2-calibration.json', entry.calibration); entry.reusedCalibrationRun = resume.run; }
     if (resume?.report) entry.reusedEvidenceRun = resume.run;
@@ -320,8 +320,9 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
             assessments.push({ caseId: pair.case.caseId, observations, sharedGaps, ...(primaryOnly ? { primaryGaps: gaps } : {}), humanPreference: 'not_observed' });
             store(kind + '-f2-source-assessments.json', assessments);
         }
-        entry.baselineHeadroom = primaryOnly ? assessments.some(a => a.primaryGaps.length) ? 'primary_observed_gap' : 'not_established'
-            : assessments.some(a => a.sharedGaps.length) ? 'observed_gap' : 'not_established';
+        entry.observedGapCases = assessments.filter(a => (primaryOnly ? a.primaryGaps : a.sharedGaps).length).length;
+        const requiredGapCases = scope.pilotCaseSetRevision === RENEWAL_PILOT_CASE_SET_REVISION ? 2 : 1;
+        entry.baselineHeadroom = entry.observedGapCases >= requiredGapCases ? primaryOnly ? 'primary_observed_gap' : 'observed_gap' : 'not_established';
         entry.sourceAssessmentHash = hash(assessments);
     }
     if ((await f.repository.get(f.h.handle, f.scope, f.subject)).jobs.length) throw new Error('f2_candidate_job_forbidden');

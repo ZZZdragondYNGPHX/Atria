@@ -1,6 +1,7 @@
 // Delegated private engineering acceptance. Production promotion stays gated.
 import { randomUUID } from 'node:crypto';
-import { hash, canonical, selectCases, loadFixture, PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { gzipSync, gunzipSync } from 'node:zlib';
+import { hash, canonical, selectCases, loadFixture, CASE_SET_REVISION, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
@@ -16,9 +17,9 @@ const matches = (charge, paid) => paid && chargeFields.every(key => equal(charge
 export function pilotPromotionAcceptance(report, independent, owner, jobId) {
     const reasons = [], profileId = report.domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
     const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
-    const required = selectCases({ purpose: 'evaluation', split: 'promotion', profileId });
+    const required = selectCases({ purpose: 'evaluation', split: 'promotion', profileId, caseSetRevision: report.caseSetRevision });
     if (report.origin !== 'm1_f3_promotion' || report.evaluatorRevision !== evolutionEvaluatorRevision()
-        || report.caseSetRevision !== PILOT_CASE_SET_REVISION || !equal(report.quality, qualityEnvelope(report.domain, required, 'promotion'))
+        || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision) || !equal(report.quality, qualityEnvelope(report.domain, required, 'promotion'))
         || !comparisonCalibrationReady(report, owner)) reasons.push('promotion_identity_or_calibration_changed');
     if (report.pairs.length !== 9 || required.some(c => [1, 2, 3].some(repetition =>
         report.pairs.filter(p => equal(p.case, c) && p.repetition === repetition).length !== 1))) reasons.push('independent_cases_incomplete');
@@ -65,11 +66,14 @@ export async function publishConsumeRollback({ f, kind, job, candidate, report, 
         if (hash(config) !== report.configurations[arm] || hash(settings) !== report.settings[arm]) throw new Error('f3_publication_configuration_changed');
     }
     await fresh();
+    const storedCandidate = (await f.repository.get(f.h.handle, f.scope, f.subject)).jobs.find(j => j.id === job.id)?.candidates.find(c => c.candidateId === candidate.candidateId);
+    if (!storedCandidate || hash(readF3StoredReport(storedCandidate.report)) !== hash(report)) throw new Error('f3_publication_report_changed');
     const receipt = await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: job.id,
-        candidateId: candidate.candidateId, expectedReportHash: hash(report), review: true });
+        candidateId: candidate.candidateId, expectedReportHash: hash(storedCandidate.report), review: true });
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     const publication = doc.publications.find(p => p.jobId === job.id && p.candidateId === candidate.candidateId);
     entry.lifecycle = { delegatedFixtureReview: true, automaticPromotion: false, receipt,
+        reportHash: hash(report), storedReportHash: hash(storedCandidate.report),
         current: await f.service.targets.publicationCurrent(f.h.handle, f.scope, f.subject, publication) };
     try {
         const nextSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
@@ -105,7 +109,8 @@ export async function publishConsumeRollback({ f, kind, job, candidate, report, 
             entry.lifecycle.activation = (await f.repository.get(f.h.handle, f.scope, f.subject)).publications.find(p => p.id === publication.id).activation;
             entry.lifecycle.nextRunConsumed = Boolean(entry.lifecycle.activation && configMatches);
         } else {
-            const entryCase = selectCases({ purpose: 'evaluation', split: 'development', profileId: 'rp.m1.information' })[0];
+            const entryCase = selectCases({ purpose: 'evaluation', split: 'development', profileId: 'rp.m1.information',
+                caseSetRevision: report.caseSetRevision === CASE_SET_REVISION ? PILOT_CASE_SET_REVISION : report.caseSetRevision })[0];
             const bridge = await createFrozenEvaluationBridge(nextConfig, async payload => (await f.evaluator.send(f.h.handle, activationJob, nextConfig,
                 { ...payload, arm: 'candidate' }, signal, current)).raw);
             const capture = { trialId: activationJob.id, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
@@ -137,7 +142,7 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
         { baseline: baselineSettings, candidate: settings }, signal, fresh,
         pair => store(kind + '-f3-promotion-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', pair),
         trial => store(kind + '-f3-promotion-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial),
-        { mode: 'sealed_pair_probe', split: 'promotion', repetitions: 3, profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', sealedDirectory });
+        { mode: 'sealed_pair_probe', split: 'promotion', repetitions: 3, profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', sealedDirectory, caseSetRevision: developmentReport.caseSetRevision });
     const trialIds = new Set(report.pairs.flatMap(p => [p.baseline.trialId, p.candidate.trialId]));
     // Preserve all actual retry charges, including failed sends with unknown
     // usage; successful worker responses alone are not the complete fee list.
@@ -156,7 +161,7 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
     }
     await f.repository.mutate(f.h.handle, f.scope, f.subject, doc => {
         const saved = doc.jobs.find(j => j.id === job.id);
-        saved.status = 'awaiting_review'; saved.candidates[0].report = report; saved.candidates[0].decision = promotionDecision(report);
+        saved.status = 'awaiting_review'; saved.candidates[0].report = f3ReportForStorage(report); saved.candidates[0].decision = promotionDecision(report);
     });
     if (entry.acceptance.accepted) {
         await publishConsumeRollback({ f, kind, job, candidate, report, entry, store, signal, fresh });
@@ -164,6 +169,28 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
     } else entry.status = 'f3_promotion_unqualified';
     const final = await f.repository.get(f.h.handle, f.scope, f.subject), finalJob = final.jobs.find(j => j.id === job.id);
     store(kind + '-job.json', { doc: final, job: finalJob, candidate: finalJob.candidates[0] });
+}
+
+// Private engineering reports can contain repeated complete native histories.
+// Keep every byte/observation and bind the delegated review to the native stored
+// hash plus the decoded report hash. Production capacity and auto gates remain.
+export function f3ReportForStorage(report) {
+    const bytes = Buffer.from(JSON.stringify(report));
+    if (bytes.length <= 1024 * 1024) return report;
+    if (report.origin !== 'm1_f3_promotion' || bytes.length > 128 * 1024 * 1024) throw new Error('f3_report_archive_changed');
+    const stored = { origin: 'm1_f3_lossless_archive', schemaVersion: 1, encoding: 'gzip-base64',
+        reportHash: hash(report), decodedBytes: bytes.length, payload: gzipSync(bytes).toString('base64') };
+    if (hash(readF3StoredReport(stored)) !== hash(report)) throw new Error('f3_report_archive_changed');
+    return stored;
+}
+export function readF3StoredReport(stored) {
+    if (stored?.origin !== 'm1_f3_lossless_archive') return stored;
+    if (stored.schemaVersion !== 1 || stored.encoding !== 'gzip-base64' || !Number.isSafeInteger(stored.decodedBytes)
+        || stored.decodedBytes <= 1024 * 1024 || stored.decodedBytes > 128 * 1024 * 1024) throw new Error('f3_report_archive_changed');
+    const bytes = gunzipSync(Buffer.from(stored.payload, 'base64'), { maxOutputLength: stored.decodedBytes });
+    const report = JSON.parse(bytes);
+    if (bytes.length !== stored.decodedBytes || hash(report) !== stored.reportHash) throw new Error('f3_report_archive_changed');
+    return report;
 }
 
 export async function recordRejectedF3Promotion({ f, kind, job, report, entry, store }) {

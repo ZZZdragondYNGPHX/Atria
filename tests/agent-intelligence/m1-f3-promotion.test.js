@@ -9,12 +9,12 @@ const { pilotPromotionAcceptance } = await import('./m1-f3-promotion.js');
 const { f3GradeMessages } = await import('./m1-f3.js');
 const { evolutionEvaluatorRevision, promotionDecision } = await import('../../src/native/agent-intelligence/evolution-evaluator.js');
 const { qualityEnvelope } = await import('../../src/native/agent-intelligence/evaluation/quality.js');
-const { selectCases, hash, PILOT_CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
+const { selectCases, hash, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
 
-function fixture(domain = 'rp') {
-    const cases = selectCases({ purpose: 'evaluation', split: 'promotion', profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related' });
+function fixture(domain = 'rp', caseSetRevision = PILOT_CASE_SET_REVISION) {
+    const cases = selectCases({ purpose: 'evaluation', split: 'promotion', profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', caseSetRevision });
     const owner = { attempts: [] }, independent = [];
-    const report = { origin: 'm1_f3_promotion', domain, evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision: PILOT_CASE_SET_REVISION,
+    const report = { origin: 'm1_f3_promotion', domain, evaluatorRevision: evolutionEvaluatorRevision(), caseSetRevision,
         quality: qualityEnvelope(domain, cases, 'promotion'), configurations: { baseline: 'base', candidate: 'candidate' },
         settings: { baseline: 'base-settings', candidate: 'candidate-settings' }, comparisonCalibration: [], pairs: [], charges: [] };
     const receipt = (id, trialId, kind, jobId) => {
@@ -50,6 +50,14 @@ const check = f => pilotPromotionAcceptance(f.report, f.independent, f.owner, 'j
 const rehash = f => { for (let i = 0; i < f.report.pairs.length; i++) {
     const p = f.report.pairs[i]; delete p.pairHash; p.pairHash = hash(p); if (f.independent[i]) f.independent[i].pairHash = p.pairHash;
 } };
+
+test.each(['rp', 'project'])('renewal %s promotion retains six wins and rejects historical case substitution', domain => {
+    const f = fixture(domain, RENEWAL_PILOT_CASE_SET_REVISION); f.report.judgeMode = 'primary_only'; f.independent = [];
+    f.report.comparisonCalibration = f.report.comparisonCalibration.filter(c => c.label === 'primary');
+    expect(check(f)).toMatchObject({ accepted: true, wins: 6 });
+    f.report.pairs[0].case = fixture(domain).report.pairs[0].case; rehash(f);
+    expect(check(f).reasons).toContain('independent_cases_incomplete');
+});
 
 test.each(['rp', 'project'])('primary-only %s promotion requires six primary wins without a second model', domain => {
     const f = fixture(domain); f.report.judgeMode = 'primary_only'; f.independent = [];
