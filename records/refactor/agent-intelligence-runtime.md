@@ -1747,3 +1747,11 @@ source `4b1ece967`，单项m8-g06-long-memory-turn-v1.log通过，外部API0。�
 Timeline1004→1006，原view有界授权下实际Corpus63 Episode documents，选2sources，Memory估计UTF8计数1574≤2400；1次真实loopback HTTP，wire9229bytes，原Run在finalization前settled/direct synthetic120total。完整检索record的source_assertion/historical_source/requested at=null未知适用性进入actualwire，未获准末尾Later reply499及private read sentinel未进入。旧revision反例在HTTP前拒绝；原历史前缀不变、旧source在最终revision可exact读取。最终revision之后held eligibility拒绝，撤回memory grant后新eligibility拒绝；不称发送中撤权已由本项验证。
 
 该有限本地消费组结束，未重跑原构造候选检查，未更改产品实现/存储或测500次连续模型正文。当前真实正文completion失败仍保留，完整G06/HM2未通过、main不变。下一具体核查为原high-impact Project/reuse失败的工具声明是否与实际Project consumer一致：先零API核对冻结request/prompt和现有Studio工具入口，不直接重发旧矩阵；真实失败、费用及unknown不改。无HANDOFF。
+
+### G06 原 Project 失败输入的工具契约核对
+
+m8-g06-project-tool-contract-audit-v1为零API核对，原live-v2 request/normalized/report raw hashes均pin。high-impact Project/reuse真实request的PromptIR及wire工具声明均0，但所放完整官方Project Agent system明确要求call atri_agent_prepare_review等工具；模型实际返回该工具且无final prose。当前原ProjectAgent.getContext实际返回22个canonical tools，其中确有prepare_review，实际Studio run loop从context.tools+skillTools同时构造请求tools及allowed names。本处不一致来自私有direct Host实验省略tools参数，未证明实际Studio动态声明故障；原response仍对该request未声明，79480ab6b guard仍必要，prompt提到工具不构成许可。
+
+不改原paid输出/grade/费用/quality=false，不把“canonical工具”改判为当时请求合法，不宣称纠正request会完成review或新鲜正文；该audit只解释具体输入不一致并收窄原矩阵对完整Studio工具消费者/工具收益的证据边界。当前core tools始终来自原Task权威，未为私有fixture改产品prompt或发新API。该零API组结束。
+
+下一可独立H4根因是在只读读取已经观察到ledger更改/删除/不可用后，旧private currentness token是否被撤销；现有transaction只在可写路径刷新cache token，只读路径原样返回旧token。先定向复现再复用原token/cache修复，不新增authority/持久写入；同时核验冷启动只读实际完整ledger的合法proof，不把缺失ledger当有效复用。正文质量失败及main均不变，无HANDOFF。
