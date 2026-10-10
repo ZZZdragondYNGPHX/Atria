@@ -270,3 +270,9 @@ RP原F2主模型source assessment和本次比较均仅在三条baseline中的一
 | H0 | 隔离调用图、8样本/519来源及adapter/观察清单已准备，B0和H1/H2未实施；M1完整出口及集成前不推进H1/H2 |
 
 另一选择是先讨论publication收费凭据的有界容量契约：当前原owner ledger最多2048 attempts，与publication 120条限制不同。此方向会改变本轮明确要求保留的guard，必须先确认具体设计/范围；不能默认扩容，也不能以截断IDs、转移收费归属或零收费审阅job绕开绑定。已通过的Project语义报告和原producer pins保持，不将已有证据重新标为新运行。
+
+## 19. 用户要求持续完成、仅以硬限制为执行边界
+
+用户随后明确要求：“继续，没有完成任务不要停下，你只需考虑硬限制。”因此§18不再是待确认停工点；继续新来源、候选与独立作者材料工作，不再以已用完单候选范围或120条publication凭据的实现容量停止。每日2000次/20 RPM仍由统一发送端执行，日额度按滚动24小时保守计算，累计历史不是终身上限。有效负面评分、原六维及完整真实出口要求保持；不得删除收费、回灌独立材料或改分。
+
+publication绑定容量已与owner ledger的2048条有界容量对齐，生产自动job的120次 admission预算、human/price自动准入与4 MiB journal保持；重复/过长凭据仍拒绝。Project保留原producer的三胜development、九胜promotion与冻结候选，已在容量修复后的native代码完成显式私有review→真实下一请求消费→guarded rollback，完整149条费用绑定。原语义报告不改版本标识；旧producer与新生命周期代码分别固定，具体pins和费用唯一见同一Record。RP尚待完整出口，M1整体未完成、main未集成。H0准备保持。
