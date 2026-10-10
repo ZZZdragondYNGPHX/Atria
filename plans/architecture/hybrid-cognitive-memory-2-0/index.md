@@ -28,7 +28,7 @@
 - 稀疏调用、预算、后台调度：[compute-policy](../agent-intelligence-runtime/compute-policy.md)；
 - 依赖有效性、缓存复用：[execution-reuse](../agent-intelligence-runtime/execution-reuse.md)；
 - 现有阶段 M1/M2/M3/M4/M8：[delivery](../agent-intelligence-runtime/delivery.md)；
-- 当前产品实际进度：[M1 acceptance](../agent-intelligence-runtime/m1-acceptance.md) 与 [Record](../../records/refactor/agent-intelligence-runtime.md)。
+- 当前产品实际进度：[M1 acceptance](../agent-intelligence-runtime/m1-acceptance.md) 与 [Record](../../../records/refactor/agent-intelligence-runtime.md)。
 
 本研究不为相同概念另设第二份正式详细规则。Codex 应只把新 Memory 2.0 特有的职责放进相应消费者，不将 H0–H5 擅自追加为 M1 已完成的新阶段。
 
