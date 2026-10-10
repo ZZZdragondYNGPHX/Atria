@@ -1,0 +1,5931 @@
+{
+  "schemaVersion": 1,
+  "purpose": "h0_read_only_benchmark_specification",
+  "productSchema": false,
+  "source": "self_authored_synthetic_no_user_or_m1_material",
+  "status": "frozen_inputs_not_executed",
+  "baselineProductHead": "6ab12ba43c5b18bfec6df75c16456a4cb4497d3f",
+  "authority": "hybrid-memory.md",
+  "cases": [
+    {
+      "id": "H0-ZH-01",
+      "requester": "actor-alan",
+      "sceneActors": [
+        "actor-alan"
+      ],
+      "sources": [
+        {
+          "id": "s01-promise",
+          "text": "阿岚在第二十轮前承诺将借出的书归还；该承诺尚未履行。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ]
+        },
+        {
+          "id": "s01-other",
+          "text": "另一位同名阿岚答应归还画册。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-other"
+          ]
+        }
+      ],
+      "queries": [
+        {
+          "text": "她之前答应的那件事呢？",
+          "requiredSourceIds": [
+            "s01-promise"
+          ],
+          "excludedSourceIds": [
+            "s01-other"
+          ]
+        }
+      ],
+      "proseLabels": [
+        "do_not_act_for_player",
+        "commitment_source_does_not_establish_actor_recollection"
+      ]
+    },
+    {
+      "id": "H0-ZH-02",
+      "requester": "actor-alan",
+      "narrativePolicy": "B",
+      "sources": [
+        {
+          "id": "s02-secret",
+          "text": "正式事件确认：乙取走了钥匙。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "narrator"
+          ],
+          "epistemicKind": "world_fact"
+        },
+        {
+          "id": "s02-hearsay",
+          "text": "甲告诉阿岚：钥匙是丙取走的。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "epistemicKind": "exposure"
+        },
+        {
+          "id": "s02-belief",
+          "text": "阿岚目前相信甲的说法。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "epistemicKind": "belief"
+        }
+      ],
+      "queries": [
+        {
+          "text": "他为什么这样说？",
+          "referencedActor": "actor-jia",
+          "expected": "unknown_cause",
+          "requiredSourceIds": [
+            "s02-hearsay",
+            "s02-belief"
+          ],
+          "excludedSourceIds": [
+            "s02-secret"
+          ]
+        }
+      ],
+      "proseLabels": [
+        "separate_narrator_and_actor",
+        "belief_is_not_world_truth",
+        "exposure_and_belief_do_not_establish_speaker_motive",
+        "disclosure_requires_policy"
+      ]
+    },
+    {
+      "id": "H0-ZH-03",
+      "requester": "actor-alan",
+      "sources": [
+        {
+          "id": "s03-old",
+          "text": "阿岚从第十到第二十九个World Tick住在甲城。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "superseded",
+          "audience": [
+            "actor-alan"
+          ],
+          "validTicks": [
+            10,
+            29
+          ]
+        },
+        {
+          "id": "s03-current",
+          "text": "阿岚从第三十个World Tick起住在乙城。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "validTicks": [
+            30,
+            null
+          ]
+        }
+      ],
+      "queries": [
+        {
+          "text": "那时住在哪里？",
+          "requiredSourceIds": [
+            "s03-old"
+          ],
+          "excludedSourceIds": [],
+          "atTick": 20
+        },
+        {
+          "text": "现在住在哪里？",
+          "requiredSourceIds": [
+            "s03-current"
+          ],
+          "excludedSourceIds": [
+            "s03-old"
+          ],
+          "atTick": 40
+        }
+      ],
+      "proseLabels": [
+        "historical_and_current_are_distinct"
+      ]
+    },
+    {
+      "id": "H0-ZH-04",
+      "requester": "actor-alan",
+      "sources": [
+        {
+          "id": "s04-first",
+          "text": "甲收到了一封信；信上提及一次约见。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ]
+        },
+        {
+          "id": "s04-second",
+          "text": "甲后来在桥边等待约见。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ]
+        },
+        {
+          "id": "s04-third",
+          "text": "秘密档案解释了寄信者的动机。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "narrator"
+          ]
+        }
+      ],
+      "queries": [
+        {
+          "text": "寄信者真正的动机是什么？",
+          "requiredSourceIds": [],
+          "excludedSourceIds": [
+            "s04-third"
+          ],
+          "expected": "unknown"
+        }
+      ],
+      "proseLabels": [
+        "visible_path_does_not_prove_hidden_cause"
+      ]
+    },
+    {
+      "id": "H0-ZH-05",
+      "requester": "actor-alan",
+      "sources": [
+        {
+          "id": "s05-current",
+          "text": "当前选定对白说明约定是在西门。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ]
+        },
+        {
+          "id": "s05-old",
+          "text": "旧对白写约定在东门。",
+          "branch": "branch-main",
+          "variant": "variant-replaced",
+          "status": "stale",
+          "audience": [
+            "actor-alan"
+          ]
+        },
+        {
+          "id": "s05-sibling",
+          "text": "兄弟分支记录约定改为北门。",
+          "branch": "branch-sibling",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ]
+        },
+        {
+          "id": "s05-private",
+          "text": "另一角色的私人约定在南门。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-other"
+          ]
+        }
+      ],
+      "queries": [
+        {
+          "text": "约在哪里？",
+          "requiredSourceIds": [
+            "s05-current"
+          ],
+          "excludedSourceIds": [
+            "s05-old",
+            "s05-sibling",
+            "s05-private"
+          ]
+        }
+      ],
+      "mutations": [
+        {
+          "action": "edit_selected_variant",
+          "sourceId": "s05-current"
+        },
+        {
+          "action": "delete_source",
+          "sourceId": "s05-current"
+        },
+        {
+          "action": "switch_branch",
+          "branch": "branch-sibling"
+        },
+        {
+          "action": "revoke_actor_grant",
+          "requester": "actor-alan"
+        }
+      ],
+      "proseLabels": [
+        "revalidate_after_each_mutation",
+        "reject_late_callback"
+      ]
+    },
+    {
+      "id": "H0-ZH-06",
+      "requester": "actor-alan",
+      "sources": [
+        {
+          "id": "s06-one",
+          "text": "有来源的记录甲声称约定在河岸。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "epistemicKind": "disputed"
+        },
+        {
+          "id": "s06-two",
+          "text": "另一独立来源乙声称约定在山门。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "epistemicKind": "disputed"
+        },
+        {
+          "id": "s06-chain-a",
+          "text": "承诺的条件是先核对收据。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "atomicGroup": "commitment-chain"
+        },
+        {
+          "id": "s06-chain-b",
+          "text": "收据内容与前述条件的来源绑定。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "atomicGroup": "commitment-chain"
+        }
+      ],
+      "queries": [
+        {
+          "text": "约定地点已经确定了吗？",
+          "requiredSourceIds": [
+            "s06-one",
+            "s06-two"
+          ],
+          "excludedSourceIds": [],
+          "expected": "disputed"
+        }
+      ],
+      "budgetVariants": [
+        "enough_for_both_conflict_sources",
+        "insufficient_for_atomic_chain"
+      ],
+      "proseLabels": [
+        "preserve_conflicting_sources",
+        "insufficient_atomic_group_must_be_explicit"
+      ]
+    },
+    {
+      "id": "H0-ZH-07",
+      "requester": "actor-alan",
+      "sources": [
+        {
+          "id": "s07-promise",
+          "text": "阿岚答应在玩家确认后归还书籍。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ]
+        }
+      ],
+      "queries": [
+        {
+          "text": "阿岚答应归还什么？",
+          "requiredSourceIds": [
+            "s07-promise"
+          ],
+          "excludedSourceIds": []
+        }
+      ],
+      "serviceVariants": [
+        "embedding_unconfigured",
+        "rerank_transport_failure",
+        "request_cancelled",
+        "metadata_save_failed",
+        "source_grant_revoked"
+      ],
+      "proseLabels": [
+        "optional_failure_is_observed",
+        "hard_source_failure_rejects",
+        "source_is_not_deleted_to_rebuild_index"
+      ]
+    },
+    {
+      "id": "H0-ZH-08",
+      "requester": "actor-alan",
+      "sceneActors": [
+        "actor-alan"
+      ],
+      "sources": [
+        {
+          "id": "s08-001",
+          "text": "第1轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 1
+        },
+        {
+          "id": "s08-002",
+          "text": "第2轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 2
+        },
+        {
+          "id": "s08-003",
+          "text": "第3轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 3
+        },
+        {
+          "id": "s08-004",
+          "text": "第4轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 4
+        },
+        {
+          "id": "s08-005",
+          "text": "第5轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 5
+        },
+        {
+          "id": "s08-006",
+          "text": "第6轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 6
+        },
+        {
+          "id": "s08-007",
+          "text": "第7轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 7
+        },
+        {
+          "id": "s08-008",
+          "text": "第8轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 8
+        },
+        {
+          "id": "s08-009",
+          "text": "第9轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 9
+        },
+        {
+          "id": "s08-010",
+          "text": "第10轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 10
+        },
+        {
+          "id": "s08-011",
+          "text": "第11轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 11
+        },
+        {
+          "id": "s08-012",
+          "text": "第12轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 12
+        },
+        {
+          "id": "s08-013",
+          "text": "第13轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 13
+        },
+        {
+          "id": "s08-014",
+          "text": "第14轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 14
+        },
+        {
+          "id": "s08-015",
+          "text": "第15轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 15
+        },
+        {
+          "id": "s08-016",
+          "text": "第16轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 16
+        },
+        {
+          "id": "s08-017",
+          "text": "第17轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 17
+        },
+        {
+          "id": "s08-018",
+          "text": "第18轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 18
+        },
+        {
+          "id": "s08-019",
+          "text": "第19轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 19
+        },
+        {
+          "id": "s08-020",
+          "text": "第二十轮：阿岚借走蓝封面的书，承诺等玩家下次询问时归还；承诺未履行。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 20
+        },
+        {
+          "id": "s08-021",
+          "text": "第21轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 21
+        },
+        {
+          "id": "s08-022",
+          "text": "第22轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 22
+        },
+        {
+          "id": "s08-023",
+          "text": "第23轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 23
+        },
+        {
+          "id": "s08-024",
+          "text": "第24轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 24
+        },
+        {
+          "id": "s08-025",
+          "text": "第25轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 25
+        },
+        {
+          "id": "s08-026",
+          "text": "第26轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 26
+        },
+        {
+          "id": "s08-027",
+          "text": "第27轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 27
+        },
+        {
+          "id": "s08-028",
+          "text": "第28轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 28
+        },
+        {
+          "id": "s08-029",
+          "text": "第29轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 29
+        },
+        {
+          "id": "s08-030",
+          "text": "第30轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 30
+        },
+        {
+          "id": "s08-031",
+          "text": "第31轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 31
+        },
+        {
+          "id": "s08-032",
+          "text": "第32轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 32
+        },
+        {
+          "id": "s08-033",
+          "text": "第33轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 33
+        },
+        {
+          "id": "s08-034",
+          "text": "第34轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 34
+        },
+        {
+          "id": "s08-035",
+          "text": "第35轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 35
+        },
+        {
+          "id": "s08-036",
+          "text": "第36轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 36
+        },
+        {
+          "id": "s08-037",
+          "text": "第37轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 37
+        },
+        {
+          "id": "s08-038",
+          "text": "第38轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 38
+        },
+        {
+          "id": "s08-039",
+          "text": "第39轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 39
+        },
+        {
+          "id": "s08-040",
+          "text": "第40轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 40
+        },
+        {
+          "id": "s08-041",
+          "text": "第41轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 41
+        },
+        {
+          "id": "s08-042",
+          "text": "第42轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 42
+        },
+        {
+          "id": "s08-043",
+          "text": "第43轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 43
+        },
+        {
+          "id": "s08-044",
+          "text": "第44轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 44
+        },
+        {
+          "id": "s08-045",
+          "text": "第45轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 45
+        },
+        {
+          "id": "s08-046",
+          "text": "第46轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 46
+        },
+        {
+          "id": "s08-047",
+          "text": "第47轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 47
+        },
+        {
+          "id": "s08-048",
+          "text": "第48轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 48
+        },
+        {
+          "id": "s08-049",
+          "text": "第49轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 49
+        },
+        {
+          "id": "s08-050",
+          "text": "第50轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 50
+        },
+        {
+          "id": "s08-051",
+          "text": "第51轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 51
+        },
+        {
+          "id": "s08-052",
+          "text": "第52轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 52
+        },
+        {
+          "id": "s08-053",
+          "text": "第53轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 53
+        },
+        {
+          "id": "s08-054",
+          "text": "第54轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 54
+        },
+        {
+          "id": "s08-055",
+          "text": "第55轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 55
+        },
+        {
+          "id": "s08-056",
+          "text": "第56轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 56
+        },
+        {
+          "id": "s08-057",
+          "text": "第57轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 57
+        },
+        {
+          "id": "s08-058",
+          "text": "第58轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 58
+        },
+        {
+          "id": "s08-059",
+          "text": "第59轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 59
+        },
+        {
+          "id": "s08-060",
+          "text": "第60轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 60
+        },
+        {
+          "id": "s08-061",
+          "text": "第61轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 61
+        },
+        {
+          "id": "s08-062",
+          "text": "第62轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 62
+        },
+        {
+          "id": "s08-063",
+          "text": "第63轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 63
+        },
+        {
+          "id": "s08-064",
+          "text": "第64轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 64
+        },
+        {
+          "id": "s08-065",
+          "text": "第65轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 65
+        },
+        {
+          "id": "s08-066",
+          "text": "第66轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 66
+        },
+        {
+          "id": "s08-067",
+          "text": "第67轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 67
+        },
+        {
+          "id": "s08-068",
+          "text": "第68轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 68
+        },
+        {
+          "id": "s08-069",
+          "text": "第69轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 69
+        },
+        {
+          "id": "s08-070",
+          "text": "第70轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 70
+        },
+        {
+          "id": "s08-071",
+          "text": "第71轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 71
+        },
+        {
+          "id": "s08-072",
+          "text": "第72轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 72
+        },
+        {
+          "id": "s08-073",
+          "text": "第73轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 73
+        },
+        {
+          "id": "s08-074",
+          "text": "第74轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 74
+        },
+        {
+          "id": "s08-075",
+          "text": "第75轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 75
+        },
+        {
+          "id": "s08-076",
+          "text": "第76轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 76
+        },
+        {
+          "id": "s08-077",
+          "text": "第77轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 77
+        },
+        {
+          "id": "s08-078",
+          "text": "第78轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 78
+        },
+        {
+          "id": "s08-079",
+          "text": "第79轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 79
+        },
+        {
+          "id": "s08-080",
+          "text": "第80轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 80
+        },
+        {
+          "id": "s08-081",
+          "text": "第81轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 81
+        },
+        {
+          "id": "s08-082",
+          "text": "第82轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 82
+        },
+        {
+          "id": "s08-083",
+          "text": "第83轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 83
+        },
+        {
+          "id": "s08-084",
+          "text": "第84轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 84
+        },
+        {
+          "id": "s08-085",
+          "text": "第85轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 85
+        },
+        {
+          "id": "s08-086",
+          "text": "第86轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 86
+        },
+        {
+          "id": "s08-087",
+          "text": "第87轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 87
+        },
+        {
+          "id": "s08-088",
+          "text": "第88轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 88
+        },
+        {
+          "id": "s08-089",
+          "text": "第89轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 89
+        },
+        {
+          "id": "s08-090",
+          "text": "第90轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 90
+        },
+        {
+          "id": "s08-091",
+          "text": "第91轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 91
+        },
+        {
+          "id": "s08-092",
+          "text": "第92轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 92
+        },
+        {
+          "id": "s08-093",
+          "text": "第93轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 93
+        },
+        {
+          "id": "s08-094",
+          "text": "第94轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 94
+        },
+        {
+          "id": "s08-095",
+          "text": "第95轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 95
+        },
+        {
+          "id": "s08-096",
+          "text": "第96轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 96
+        },
+        {
+          "id": "s08-097",
+          "text": "第97轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 97
+        },
+        {
+          "id": "s08-098",
+          "text": "第98轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 98
+        },
+        {
+          "id": "s08-099",
+          "text": "第99轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 99
+        },
+        {
+          "id": "s08-100",
+          "text": "第100轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 100
+        },
+        {
+          "id": "s08-101",
+          "text": "第101轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 101
+        },
+        {
+          "id": "s08-102",
+          "text": "第102轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 102
+        },
+        {
+          "id": "s08-103",
+          "text": "第103轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 103
+        },
+        {
+          "id": "s08-104",
+          "text": "第104轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 104
+        },
+        {
+          "id": "s08-105",
+          "text": "第105轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 105
+        },
+        {
+          "id": "s08-106",
+          "text": "第106轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 106
+        },
+        {
+          "id": "s08-107",
+          "text": "第107轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 107
+        },
+        {
+          "id": "s08-108",
+          "text": "第108轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 108
+        },
+        {
+          "id": "s08-109",
+          "text": "第109轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 109
+        },
+        {
+          "id": "s08-110",
+          "text": "第110轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 110
+        },
+        {
+          "id": "s08-111",
+          "text": "第111轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 111
+        },
+        {
+          "id": "s08-112",
+          "text": "第112轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 112
+        },
+        {
+          "id": "s08-113",
+          "text": "第113轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 113
+        },
+        {
+          "id": "s08-114",
+          "text": "第114轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 114
+        },
+        {
+          "id": "s08-115",
+          "text": "第115轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 115
+        },
+        {
+          "id": "s08-116",
+          "text": "第116轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 116
+        },
+        {
+          "id": "s08-117",
+          "text": "第117轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 117
+        },
+        {
+          "id": "s08-118",
+          "text": "第118轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 118
+        },
+        {
+          "id": "s08-119",
+          "text": "第119轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 119
+        },
+        {
+          "id": "s08-120",
+          "text": "第120轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 120
+        },
+        {
+          "id": "s08-121",
+          "text": "第121轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 121
+        },
+        {
+          "id": "s08-122",
+          "text": "第122轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 122
+        },
+        {
+          "id": "s08-123",
+          "text": "第123轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 123
+        },
+        {
+          "id": "s08-124",
+          "text": "第124轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 124
+        },
+        {
+          "id": "s08-125",
+          "text": "第125轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 125
+        },
+        {
+          "id": "s08-126",
+          "text": "第126轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 126
+        },
+        {
+          "id": "s08-127",
+          "text": "第127轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 127
+        },
+        {
+          "id": "s08-128",
+          "text": "第128轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 128
+        },
+        {
+          "id": "s08-129",
+          "text": "第129轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 129
+        },
+        {
+          "id": "s08-130",
+          "text": "第130轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 130
+        },
+        {
+          "id": "s08-131",
+          "text": "第131轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 131
+        },
+        {
+          "id": "s08-132",
+          "text": "第132轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 132
+        },
+        {
+          "id": "s08-133",
+          "text": "第133轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 133
+        },
+        {
+          "id": "s08-134",
+          "text": "第134轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 134
+        },
+        {
+          "id": "s08-135",
+          "text": "第135轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 135
+        },
+        {
+          "id": "s08-136",
+          "text": "第136轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 136
+        },
+        {
+          "id": "s08-137",
+          "text": "第137轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 137
+        },
+        {
+          "id": "s08-138",
+          "text": "第138轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 138
+        },
+        {
+          "id": "s08-139",
+          "text": "第139轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 139
+        },
+        {
+          "id": "s08-140",
+          "text": "第140轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 140
+        },
+        {
+          "id": "s08-141",
+          "text": "第141轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 141
+        },
+        {
+          "id": "s08-142",
+          "text": "第142轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 142
+        },
+        {
+          "id": "s08-143",
+          "text": "第143轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 143
+        },
+        {
+          "id": "s08-144",
+          "text": "第144轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 144
+        },
+        {
+          "id": "s08-145",
+          "text": "第145轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 145
+        },
+        {
+          "id": "s08-146",
+          "text": "第146轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 146
+        },
+        {
+          "id": "s08-147",
+          "text": "第147轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 147
+        },
+        {
+          "id": "s08-148",
+          "text": "第148轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 148
+        },
+        {
+          "id": "s08-149",
+          "text": "第149轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 149
+        },
+        {
+          "id": "s08-150",
+          "text": "第150轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 150
+        },
+        {
+          "id": "s08-151",
+          "text": "第151轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 151
+        },
+        {
+          "id": "s08-152",
+          "text": "第152轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 152
+        },
+        {
+          "id": "s08-153",
+          "text": "第153轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 153
+        },
+        {
+          "id": "s08-154",
+          "text": "第154轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 154
+        },
+        {
+          "id": "s08-155",
+          "text": "第155轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 155
+        },
+        {
+          "id": "s08-156",
+          "text": "第156轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 156
+        },
+        {
+          "id": "s08-157",
+          "text": "第157轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 157
+        },
+        {
+          "id": "s08-158",
+          "text": "第158轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 158
+        },
+        {
+          "id": "s08-159",
+          "text": "第159轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 159
+        },
+        {
+          "id": "s08-160",
+          "text": "第160轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 160
+        },
+        {
+          "id": "s08-161",
+          "text": "第161轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 161
+        },
+        {
+          "id": "s08-162",
+          "text": "第162轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 162
+        },
+        {
+          "id": "s08-163",
+          "text": "第163轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 163
+        },
+        {
+          "id": "s08-164",
+          "text": "第164轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 164
+        },
+        {
+          "id": "s08-165",
+          "text": "第165轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 165
+        },
+        {
+          "id": "s08-166",
+          "text": "第166轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 166
+        },
+        {
+          "id": "s08-167",
+          "text": "第167轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 167
+        },
+        {
+          "id": "s08-168",
+          "text": "第168轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 168
+        },
+        {
+          "id": "s08-169",
+          "text": "第169轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 169
+        },
+        {
+          "id": "s08-170",
+          "text": "第170轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 170
+        },
+        {
+          "id": "s08-171",
+          "text": "第171轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 171
+        },
+        {
+          "id": "s08-172",
+          "text": "第172轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 172
+        },
+        {
+          "id": "s08-173",
+          "text": "第173轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 173
+        },
+        {
+          "id": "s08-174",
+          "text": "第174轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 174
+        },
+        {
+          "id": "s08-175",
+          "text": "第175轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 175
+        },
+        {
+          "id": "s08-176",
+          "text": "第176轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 176
+        },
+        {
+          "id": "s08-177",
+          "text": "第177轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 177
+        },
+        {
+          "id": "s08-178",
+          "text": "第178轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 178
+        },
+        {
+          "id": "s08-179",
+          "text": "第179轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 179
+        },
+        {
+          "id": "s08-180",
+          "text": "第180轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 180
+        },
+        {
+          "id": "s08-181",
+          "text": "第181轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 181
+        },
+        {
+          "id": "s08-182",
+          "text": "第182轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 182
+        },
+        {
+          "id": "s08-183",
+          "text": "第183轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 183
+        },
+        {
+          "id": "s08-184",
+          "text": "第184轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 184
+        },
+        {
+          "id": "s08-185",
+          "text": "第185轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 185
+        },
+        {
+          "id": "s08-186",
+          "text": "第186轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 186
+        },
+        {
+          "id": "s08-187",
+          "text": "第187轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 187
+        },
+        {
+          "id": "s08-188",
+          "text": "第188轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 188
+        },
+        {
+          "id": "s08-189",
+          "text": "第189轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 189
+        },
+        {
+          "id": "s08-190",
+          "text": "第190轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 190
+        },
+        {
+          "id": "s08-191",
+          "text": "第191轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 191
+        },
+        {
+          "id": "s08-192",
+          "text": "第192轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 192
+        },
+        {
+          "id": "s08-193",
+          "text": "第193轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 193
+        },
+        {
+          "id": "s08-194",
+          "text": "第194轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 194
+        },
+        {
+          "id": "s08-195",
+          "text": "第195轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 195
+        },
+        {
+          "id": "s08-196",
+          "text": "第196轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 196
+        },
+        {
+          "id": "s08-197",
+          "text": "第197轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 197
+        },
+        {
+          "id": "s08-198",
+          "text": "第198轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 198
+        },
+        {
+          "id": "s08-199",
+          "text": "第199轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 199
+        },
+        {
+          "id": "s08-200",
+          "text": "第200轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 200
+        },
+        {
+          "id": "s08-201",
+          "text": "第201轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 201
+        },
+        {
+          "id": "s08-202",
+          "text": "第202轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 202
+        },
+        {
+          "id": "s08-203",
+          "text": "第203轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 203
+        },
+        {
+          "id": "s08-204",
+          "text": "第204轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 204
+        },
+        {
+          "id": "s08-205",
+          "text": "第205轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 205
+        },
+        {
+          "id": "s08-206",
+          "text": "第206轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 206
+        },
+        {
+          "id": "s08-207",
+          "text": "第207轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 207
+        },
+        {
+          "id": "s08-208",
+          "text": "第208轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 208
+        },
+        {
+          "id": "s08-209",
+          "text": "第209轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 209
+        },
+        {
+          "id": "s08-210",
+          "text": "第210轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 210
+        },
+        {
+          "id": "s08-211",
+          "text": "第211轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 211
+        },
+        {
+          "id": "s08-212",
+          "text": "第212轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 212
+        },
+        {
+          "id": "s08-213",
+          "text": "第213轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 213
+        },
+        {
+          "id": "s08-214",
+          "text": "第214轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 214
+        },
+        {
+          "id": "s08-215",
+          "text": "第215轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 215
+        },
+        {
+          "id": "s08-216",
+          "text": "第216轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 216
+        },
+        {
+          "id": "s08-217",
+          "text": "第217轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 217
+        },
+        {
+          "id": "s08-218",
+          "text": "第218轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 218
+        },
+        {
+          "id": "s08-219",
+          "text": "第219轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 219
+        },
+        {
+          "id": "s08-220",
+          "text": "第220轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 220
+        },
+        {
+          "id": "s08-221",
+          "text": "第221轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 221
+        },
+        {
+          "id": "s08-222",
+          "text": "第222轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 222
+        },
+        {
+          "id": "s08-223",
+          "text": "第223轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 223
+        },
+        {
+          "id": "s08-224",
+          "text": "第224轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 224
+        },
+        {
+          "id": "s08-225",
+          "text": "第225轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 225
+        },
+        {
+          "id": "s08-226",
+          "text": "第226轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 226
+        },
+        {
+          "id": "s08-227",
+          "text": "第227轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 227
+        },
+        {
+          "id": "s08-228",
+          "text": "第228轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 228
+        },
+        {
+          "id": "s08-229",
+          "text": "第229轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 229
+        },
+        {
+          "id": "s08-230",
+          "text": "第230轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 230
+        },
+        {
+          "id": "s08-231",
+          "text": "第231轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 231
+        },
+        {
+          "id": "s08-232",
+          "text": "第232轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 232
+        },
+        {
+          "id": "s08-233",
+          "text": "第233轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 233
+        },
+        {
+          "id": "s08-234",
+          "text": "第234轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 234
+        },
+        {
+          "id": "s08-235",
+          "text": "第235轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 235
+        },
+        {
+          "id": "s08-236",
+          "text": "第236轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 236
+        },
+        {
+          "id": "s08-237",
+          "text": "第237轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 237
+        },
+        {
+          "id": "s08-238",
+          "text": "第238轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 238
+        },
+        {
+          "id": "s08-239",
+          "text": "第239轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 239
+        },
+        {
+          "id": "s08-240",
+          "text": "第240轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 240
+        },
+        {
+          "id": "s08-241",
+          "text": "第241轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 241
+        },
+        {
+          "id": "s08-242",
+          "text": "第242轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 242
+        },
+        {
+          "id": "s08-243",
+          "text": "第243轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 243
+        },
+        {
+          "id": "s08-244",
+          "text": "第244轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 244
+        },
+        {
+          "id": "s08-245",
+          "text": "第245轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 245
+        },
+        {
+          "id": "s08-246",
+          "text": "第246轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 246
+        },
+        {
+          "id": "s08-247",
+          "text": "第247轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 247
+        },
+        {
+          "id": "s08-248",
+          "text": "第248轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 248
+        },
+        {
+          "id": "s08-249",
+          "text": "第249轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 249
+        },
+        {
+          "id": "s08-250",
+          "text": "第250轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 250
+        },
+        {
+          "id": "s08-251",
+          "text": "第251轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 251
+        },
+        {
+          "id": "s08-252",
+          "text": "第252轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 252
+        },
+        {
+          "id": "s08-253",
+          "text": "第253轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 253
+        },
+        {
+          "id": "s08-254",
+          "text": "第254轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 254
+        },
+        {
+          "id": "s08-255",
+          "text": "第255轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 255
+        },
+        {
+          "id": "s08-256",
+          "text": "第256轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 256
+        },
+        {
+          "id": "s08-257",
+          "text": "第257轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 257
+        },
+        {
+          "id": "s08-258",
+          "text": "第258轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 258
+        },
+        {
+          "id": "s08-259",
+          "text": "第259轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 259
+        },
+        {
+          "id": "s08-260",
+          "text": "第260轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 260
+        },
+        {
+          "id": "s08-261",
+          "text": "第261轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 261
+        },
+        {
+          "id": "s08-262",
+          "text": "第262轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 262
+        },
+        {
+          "id": "s08-263",
+          "text": "第263轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 263
+        },
+        {
+          "id": "s08-264",
+          "text": "第264轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 264
+        },
+        {
+          "id": "s08-265",
+          "text": "第265轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 265
+        },
+        {
+          "id": "s08-266",
+          "text": "第266轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 266
+        },
+        {
+          "id": "s08-267",
+          "text": "第267轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 267
+        },
+        {
+          "id": "s08-268",
+          "text": "第268轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 268
+        },
+        {
+          "id": "s08-269",
+          "text": "第269轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 269
+        },
+        {
+          "id": "s08-270",
+          "text": "第270轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 270
+        },
+        {
+          "id": "s08-271",
+          "text": "第271轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 271
+        },
+        {
+          "id": "s08-272",
+          "text": "第272轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 272
+        },
+        {
+          "id": "s08-273",
+          "text": "第273轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 273
+        },
+        {
+          "id": "s08-274",
+          "text": "第274轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 274
+        },
+        {
+          "id": "s08-275",
+          "text": "第275轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 275
+        },
+        {
+          "id": "s08-276",
+          "text": "第276轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 276
+        },
+        {
+          "id": "s08-277",
+          "text": "第277轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 277
+        },
+        {
+          "id": "s08-278",
+          "text": "第278轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 278
+        },
+        {
+          "id": "s08-279",
+          "text": "第279轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 279
+        },
+        {
+          "id": "s08-280",
+          "text": "第280轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 280
+        },
+        {
+          "id": "s08-281",
+          "text": "第281轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 281
+        },
+        {
+          "id": "s08-282",
+          "text": "第282轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 282
+        },
+        {
+          "id": "s08-283",
+          "text": "第283轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 283
+        },
+        {
+          "id": "s08-284",
+          "text": "第284轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 284
+        },
+        {
+          "id": "s08-285",
+          "text": "第285轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 285
+        },
+        {
+          "id": "s08-286",
+          "text": "第286轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 286
+        },
+        {
+          "id": "s08-287",
+          "text": "第287轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 287
+        },
+        {
+          "id": "s08-288",
+          "text": "第288轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 288
+        },
+        {
+          "id": "s08-289",
+          "text": "第289轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 289
+        },
+        {
+          "id": "s08-290",
+          "text": "第290轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 290
+        },
+        {
+          "id": "s08-291",
+          "text": "第291轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 291
+        },
+        {
+          "id": "s08-292",
+          "text": "第292轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 292
+        },
+        {
+          "id": "s08-293",
+          "text": "第293轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 293
+        },
+        {
+          "id": "s08-294",
+          "text": "第294轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 294
+        },
+        {
+          "id": "s08-295",
+          "text": "第295轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 295
+        },
+        {
+          "id": "s08-296",
+          "text": "第296轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 296
+        },
+        {
+          "id": "s08-297",
+          "text": "第297轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 297
+        },
+        {
+          "id": "s08-298",
+          "text": "第298轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 298
+        },
+        {
+          "id": "s08-299",
+          "text": "第299轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 299
+        },
+        {
+          "id": "s08-300",
+          "text": "第300轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 300
+        },
+        {
+          "id": "s08-301",
+          "text": "第301轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 301
+        },
+        {
+          "id": "s08-302",
+          "text": "第302轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 302
+        },
+        {
+          "id": "s08-303",
+          "text": "第303轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 303
+        },
+        {
+          "id": "s08-304",
+          "text": "第304轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 304
+        },
+        {
+          "id": "s08-305",
+          "text": "第305轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 305
+        },
+        {
+          "id": "s08-306",
+          "text": "第306轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 306
+        },
+        {
+          "id": "s08-307",
+          "text": "第307轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 307
+        },
+        {
+          "id": "s08-308",
+          "text": "第308轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 308
+        },
+        {
+          "id": "s08-309",
+          "text": "第309轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 309
+        },
+        {
+          "id": "s08-310",
+          "text": "第310轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 310
+        },
+        {
+          "id": "s08-311",
+          "text": "第311轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 311
+        },
+        {
+          "id": "s08-312",
+          "text": "第312轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 312
+        },
+        {
+          "id": "s08-313",
+          "text": "第313轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 313
+        },
+        {
+          "id": "s08-314",
+          "text": "第314轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 314
+        },
+        {
+          "id": "s08-315",
+          "text": "第315轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 315
+        },
+        {
+          "id": "s08-316",
+          "text": "第316轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 316
+        },
+        {
+          "id": "s08-317",
+          "text": "第317轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 317
+        },
+        {
+          "id": "s08-318",
+          "text": "第318轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 318
+        },
+        {
+          "id": "s08-319",
+          "text": "第319轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 319
+        },
+        {
+          "id": "s08-320",
+          "text": "第320轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 320
+        },
+        {
+          "id": "s08-321",
+          "text": "第321轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 321
+        },
+        {
+          "id": "s08-322",
+          "text": "第322轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 322
+        },
+        {
+          "id": "s08-323",
+          "text": "第323轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 323
+        },
+        {
+          "id": "s08-324",
+          "text": "第324轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 324
+        },
+        {
+          "id": "s08-325",
+          "text": "第325轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 325
+        },
+        {
+          "id": "s08-326",
+          "text": "第326轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 326
+        },
+        {
+          "id": "s08-327",
+          "text": "第327轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 327
+        },
+        {
+          "id": "s08-328",
+          "text": "第328轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 328
+        },
+        {
+          "id": "s08-329",
+          "text": "第329轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 329
+        },
+        {
+          "id": "s08-330",
+          "text": "第330轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 330
+        },
+        {
+          "id": "s08-331",
+          "text": "第331轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 331
+        },
+        {
+          "id": "s08-332",
+          "text": "第332轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 332
+        },
+        {
+          "id": "s08-333",
+          "text": "第333轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 333
+        },
+        {
+          "id": "s08-334",
+          "text": "第334轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 334
+        },
+        {
+          "id": "s08-335",
+          "text": "第335轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 335
+        },
+        {
+          "id": "s08-336",
+          "text": "第336轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 336
+        },
+        {
+          "id": "s08-337",
+          "text": "第337轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 337
+        },
+        {
+          "id": "s08-338",
+          "text": "第338轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 338
+        },
+        {
+          "id": "s08-339",
+          "text": "第339轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 339
+        },
+        {
+          "id": "s08-340",
+          "text": "第340轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 340
+        },
+        {
+          "id": "s08-341",
+          "text": "第341轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 341
+        },
+        {
+          "id": "s08-342",
+          "text": "第342轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 342
+        },
+        {
+          "id": "s08-343",
+          "text": "第343轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 343
+        },
+        {
+          "id": "s08-344",
+          "text": "第344轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 344
+        },
+        {
+          "id": "s08-345",
+          "text": "第345轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 345
+        },
+        {
+          "id": "s08-346",
+          "text": "第346轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 346
+        },
+        {
+          "id": "s08-347",
+          "text": "第347轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 347
+        },
+        {
+          "id": "s08-348",
+          "text": "第348轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 348
+        },
+        {
+          "id": "s08-349",
+          "text": "第349轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 349
+        },
+        {
+          "id": "s08-350",
+          "text": "第350轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 350
+        },
+        {
+          "id": "s08-351",
+          "text": "第351轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 351
+        },
+        {
+          "id": "s08-352",
+          "text": "第352轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 352
+        },
+        {
+          "id": "s08-353",
+          "text": "第353轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 353
+        },
+        {
+          "id": "s08-354",
+          "text": "第354轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 354
+        },
+        {
+          "id": "s08-355",
+          "text": "第355轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 355
+        },
+        {
+          "id": "s08-356",
+          "text": "第356轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 356
+        },
+        {
+          "id": "s08-357",
+          "text": "第357轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 357
+        },
+        {
+          "id": "s08-358",
+          "text": "第358轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 358
+        },
+        {
+          "id": "s08-359",
+          "text": "第359轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 359
+        },
+        {
+          "id": "s08-360",
+          "text": "第360轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 360
+        },
+        {
+          "id": "s08-361",
+          "text": "第361轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 361
+        },
+        {
+          "id": "s08-362",
+          "text": "第362轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 362
+        },
+        {
+          "id": "s08-363",
+          "text": "第363轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 363
+        },
+        {
+          "id": "s08-364",
+          "text": "第364轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 364
+        },
+        {
+          "id": "s08-365",
+          "text": "第365轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 365
+        },
+        {
+          "id": "s08-366",
+          "text": "第366轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 366
+        },
+        {
+          "id": "s08-367",
+          "text": "第367轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 367
+        },
+        {
+          "id": "s08-368",
+          "text": "第368轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 368
+        },
+        {
+          "id": "s08-369",
+          "text": "第369轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 369
+        },
+        {
+          "id": "s08-370",
+          "text": "第370轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 370
+        },
+        {
+          "id": "s08-371",
+          "text": "第371轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 371
+        },
+        {
+          "id": "s08-372",
+          "text": "第372轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 372
+        },
+        {
+          "id": "s08-373",
+          "text": "第373轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 373
+        },
+        {
+          "id": "s08-374",
+          "text": "第374轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 374
+        },
+        {
+          "id": "s08-375",
+          "text": "第375轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 375
+        },
+        {
+          "id": "s08-376",
+          "text": "第376轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 376
+        },
+        {
+          "id": "s08-377",
+          "text": "第377轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 377
+        },
+        {
+          "id": "s08-378",
+          "text": "第378轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 378
+        },
+        {
+          "id": "s08-379",
+          "text": "第379轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 379
+        },
+        {
+          "id": "s08-380",
+          "text": "第380轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 380
+        },
+        {
+          "id": "s08-381",
+          "text": "第381轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 381
+        },
+        {
+          "id": "s08-382",
+          "text": "第382轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 382
+        },
+        {
+          "id": "s08-383",
+          "text": "第383轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 383
+        },
+        {
+          "id": "s08-384",
+          "text": "第384轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 384
+        },
+        {
+          "id": "s08-385",
+          "text": "第385轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 385
+        },
+        {
+          "id": "s08-386",
+          "text": "第386轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 386
+        },
+        {
+          "id": "s08-387",
+          "text": "第387轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 387
+        },
+        {
+          "id": "s08-388",
+          "text": "第388轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 388
+        },
+        {
+          "id": "s08-389",
+          "text": "第389轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 389
+        },
+        {
+          "id": "s08-390",
+          "text": "第390轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 390
+        },
+        {
+          "id": "s08-391",
+          "text": "第391轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 391
+        },
+        {
+          "id": "s08-392",
+          "text": "第392轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 392
+        },
+        {
+          "id": "s08-393",
+          "text": "第393轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 393
+        },
+        {
+          "id": "s08-394",
+          "text": "第394轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 394
+        },
+        {
+          "id": "s08-395",
+          "text": "第395轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 395
+        },
+        {
+          "id": "s08-396",
+          "text": "第396轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 396
+        },
+        {
+          "id": "s08-397",
+          "text": "第397轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 397
+        },
+        {
+          "id": "s08-398",
+          "text": "第398轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 398
+        },
+        {
+          "id": "s08-399",
+          "text": "第399轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 399
+        },
+        {
+          "id": "s08-400",
+          "text": "第400轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 400
+        },
+        {
+          "id": "s08-401",
+          "text": "第401轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 401
+        },
+        {
+          "id": "s08-402",
+          "text": "第402轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 402
+        },
+        {
+          "id": "s08-403",
+          "text": "第403轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 403
+        },
+        {
+          "id": "s08-404",
+          "text": "第404轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 404
+        },
+        {
+          "id": "s08-405",
+          "text": "第405轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 405
+        },
+        {
+          "id": "s08-406",
+          "text": "第406轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 406
+        },
+        {
+          "id": "s08-407",
+          "text": "第407轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 407
+        },
+        {
+          "id": "s08-408",
+          "text": "第408轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 408
+        },
+        {
+          "id": "s08-409",
+          "text": "第409轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 409
+        },
+        {
+          "id": "s08-410",
+          "text": "第410轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 410
+        },
+        {
+          "id": "s08-411",
+          "text": "第411轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 411
+        },
+        {
+          "id": "s08-412",
+          "text": "第412轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 412
+        },
+        {
+          "id": "s08-413",
+          "text": "第413轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 413
+        },
+        {
+          "id": "s08-414",
+          "text": "第414轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 414
+        },
+        {
+          "id": "s08-415",
+          "text": "第415轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 415
+        },
+        {
+          "id": "s08-416",
+          "text": "第416轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 416
+        },
+        {
+          "id": "s08-417",
+          "text": "第417轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 417
+        },
+        {
+          "id": "s08-418",
+          "text": "第418轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 418
+        },
+        {
+          "id": "s08-419",
+          "text": "第419轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 419
+        },
+        {
+          "id": "s08-420",
+          "text": "第420轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 420
+        },
+        {
+          "id": "s08-421",
+          "text": "第421轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 421
+        },
+        {
+          "id": "s08-422",
+          "text": "第422轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 422
+        },
+        {
+          "id": "s08-423",
+          "text": "第423轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 423
+        },
+        {
+          "id": "s08-424",
+          "text": "第424轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 424
+        },
+        {
+          "id": "s08-425",
+          "text": "第425轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 425
+        },
+        {
+          "id": "s08-426",
+          "text": "第426轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 426
+        },
+        {
+          "id": "s08-427",
+          "text": "第427轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 427
+        },
+        {
+          "id": "s08-428",
+          "text": "第428轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 428
+        },
+        {
+          "id": "s08-429",
+          "text": "第429轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 429
+        },
+        {
+          "id": "s08-430",
+          "text": "第430轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 430
+        },
+        {
+          "id": "s08-431",
+          "text": "第431轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 431
+        },
+        {
+          "id": "s08-432",
+          "text": "第432轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 432
+        },
+        {
+          "id": "s08-433",
+          "text": "第433轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 433
+        },
+        {
+          "id": "s08-434",
+          "text": "第434轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 434
+        },
+        {
+          "id": "s08-435",
+          "text": "第435轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 435
+        },
+        {
+          "id": "s08-436",
+          "text": "第436轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 436
+        },
+        {
+          "id": "s08-437",
+          "text": "第437轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 437
+        },
+        {
+          "id": "s08-438",
+          "text": "第438轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 438
+        },
+        {
+          "id": "s08-439",
+          "text": "第439轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 439
+        },
+        {
+          "id": "s08-440",
+          "text": "第440轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 440
+        },
+        {
+          "id": "s08-441",
+          "text": "第441轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 441
+        },
+        {
+          "id": "s08-442",
+          "text": "第442轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 442
+        },
+        {
+          "id": "s08-443",
+          "text": "第443轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 443
+        },
+        {
+          "id": "s08-444",
+          "text": "第444轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 444
+        },
+        {
+          "id": "s08-445",
+          "text": "第445轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 445
+        },
+        {
+          "id": "s08-446",
+          "text": "第446轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 446
+        },
+        {
+          "id": "s08-447",
+          "text": "第447轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 447
+        },
+        {
+          "id": "s08-448",
+          "text": "第448轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 448
+        },
+        {
+          "id": "s08-449",
+          "text": "第449轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 449
+        },
+        {
+          "id": "s08-450",
+          "text": "第450轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 450
+        },
+        {
+          "id": "s08-451",
+          "text": "第451轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 451
+        },
+        {
+          "id": "s08-452",
+          "text": "第452轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 452
+        },
+        {
+          "id": "s08-453",
+          "text": "第453轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 453
+        },
+        {
+          "id": "s08-454",
+          "text": "第454轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 454
+        },
+        {
+          "id": "s08-455",
+          "text": "第455轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 455
+        },
+        {
+          "id": "s08-456",
+          "text": "第456轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 456
+        },
+        {
+          "id": "s08-457",
+          "text": "第457轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 457
+        },
+        {
+          "id": "s08-458",
+          "text": "第458轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 458
+        },
+        {
+          "id": "s08-459",
+          "text": "第459轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 459
+        },
+        {
+          "id": "s08-460",
+          "text": "第460轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 460
+        },
+        {
+          "id": "s08-461",
+          "text": "第461轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 461
+        },
+        {
+          "id": "s08-462",
+          "text": "第462轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 462
+        },
+        {
+          "id": "s08-463",
+          "text": "第463轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 463
+        },
+        {
+          "id": "s08-464",
+          "text": "第464轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 464
+        },
+        {
+          "id": "s08-465",
+          "text": "第465轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 465
+        },
+        {
+          "id": "s08-466",
+          "text": "第466轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 466
+        },
+        {
+          "id": "s08-467",
+          "text": "第467轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 467
+        },
+        {
+          "id": "s08-468",
+          "text": "第468轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 468
+        },
+        {
+          "id": "s08-469",
+          "text": "第469轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 469
+        },
+        {
+          "id": "s08-470",
+          "text": "第470轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 470
+        },
+        {
+          "id": "s08-471",
+          "text": "第471轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 471
+        },
+        {
+          "id": "s08-472",
+          "text": "第472轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 472
+        },
+        {
+          "id": "s08-473",
+          "text": "第473轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 473
+        },
+        {
+          "id": "s08-474",
+          "text": "第474轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 474
+        },
+        {
+          "id": "s08-475",
+          "text": "第475轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 475
+        },
+        {
+          "id": "s08-476",
+          "text": "第476轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 476
+        },
+        {
+          "id": "s08-477",
+          "text": "第477轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 477
+        },
+        {
+          "id": "s08-478",
+          "text": "第478轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 478
+        },
+        {
+          "id": "s08-479",
+          "text": "第479轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 479
+        },
+        {
+          "id": "s08-480",
+          "text": "第480轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 480
+        },
+        {
+          "id": "s08-481",
+          "text": "第481轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 481
+        },
+        {
+          "id": "s08-482",
+          "text": "第482轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 482
+        },
+        {
+          "id": "s08-483",
+          "text": "第483轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 483
+        },
+        {
+          "id": "s08-484",
+          "text": "第484轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 484
+        },
+        {
+          "id": "s08-485",
+          "text": "第485轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 485
+        },
+        {
+          "id": "s08-486",
+          "text": "第486轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 486
+        },
+        {
+          "id": "s08-487",
+          "text": "第487轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 487
+        },
+        {
+          "id": "s08-488",
+          "text": "第488轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 488
+        },
+        {
+          "id": "s08-489",
+          "text": "第489轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 489
+        },
+        {
+          "id": "s08-490",
+          "text": "第490轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 490
+        },
+        {
+          "id": "s08-491",
+          "text": "第491轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 491
+        },
+        {
+          "id": "s08-492",
+          "text": "第492轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 492
+        },
+        {
+          "id": "s08-493",
+          "text": "第493轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 493
+        },
+        {
+          "id": "s08-494",
+          "text": "第494轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 494
+        },
+        {
+          "id": "s08-495",
+          "text": "第495轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 495
+        },
+        {
+          "id": "s08-496",
+          "text": "第496轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 496
+        },
+        {
+          "id": "s08-497",
+          "text": "第497轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 497
+        },
+        {
+          "id": "s08-498",
+          "text": "第498轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 498
+        },
+        {
+          "id": "s08-499",
+          "text": "第499轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 499
+        },
+        {
+          "id": "s08-500",
+          "text": "第500轮：阿岚在院中描述当天的云影与树叶；没有新增承诺、权限或世界结果。",
+          "branch": "branch-main",
+          "variant": "variant-current",
+          "status": "current",
+          "audience": [
+            "actor-alan"
+          ],
+          "turn": 500
+        }
+      ],
+      "queries": [
+        {
+          "text": "她还记得以前答应我的事吗？",
+          "requiredSourceIds": [
+            "s08-020"
+          ],
+          "excludedSourceIds": []
+        }
+      ],
+      "proseLabels": [
+        "promise_source_is_not_memory_state_writer",
+        "fresh_generate_each_repeat",
+        "preserve_player_choice"
+      ]
+    }
+  ]
+}
