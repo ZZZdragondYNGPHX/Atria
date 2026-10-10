@@ -1483,3 +1483,8 @@ run-1791631131818-d92059fe 候选 7080dac22797ef8f5c8b6ca5ed6b5598256acb563f1878
 run-1791632279844-e2732b41 候选 3a9f860eb192df71152043056bf72d7c816c3644b2e2dae0f0867b2ba4fa03cc 的三条公开回复完整147条 quoteRef核验六维met，开发二胜一tie；独立验证一胜一tie一负，continuity 有退化，native job拒绝发布。完整原结果与费用保留，没有publication/下一次消费。
 
 提交 39f3624dd19c2d199df9b9ccf59c712ad5935b0b 补齐成稿后场景、最新承诺、身份、语气与六维检查，从当前有效场景及props构建开场，旧修订只能作为明确历史或被引用的主张出现。触及文件 ESLint/diff通过；配置 m1-f3-rp-active-context-20261010.json 继续复用原baseline/协议控制，提炼仅接收公开开发信息，不接收独立评分或正文。新候选 64a2837c308640cba6f51000e675e8625ca48281c7ef486fc805a306efa36a4e 的三条公开完整189条quoteRef核验六维met，实际对照继续中。
+
+
+run-1791634234950-409351a1 候选 64a2837c308640cba6f51000e675e8625ca48281c7ef486fc805a306efa36a4e 的三公开189条quoteRef核验六维met，开发二胜一tie；独立结果一胜、一tie含knowledge_boundary负差、一个无效grader响应。真实负差与无效响应均保留，native job拒绝发布。
+
+公开回复的审阅片段比前轮147条增加至189条，增加了不必要事实断言的表面积。提交 dc743664ac2503a973324b81b70e6a4ffaad57e3 在提炼执行槽位中增加简洁、完整回应与事实选择原则；未知不只指精确时间，也涵盖未公开的粗略时段、容器内物件是否存在、来源和功能，避免用虚构背景解释拒绝。触及文件ESLint/diff通过；配置 m1-f3-rp-grounded-response-20261010.json 继续实际验证，原baseline/已付费协议控制复用，独立正文及评分不进入提炼。
