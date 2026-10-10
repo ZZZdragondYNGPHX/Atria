@@ -1677,3 +1677,13 @@ preflight失败原样保存：v1 lanePlan没有原executionResources，v2/v3 Con
 随后针对具体长篇失败检查现有packing：旧header含“supported active sources can answer current questions”，过宽地把来源仍受支持与当前状态混在一起；Package/Context消费的单个JSON group又不能只依赖全packet header。修正为明确active source不单独证明当前World/Actor状态，过去承诺不证明现在recollection/completion/possession；原JSON records新增authority区分source_assertion与provider_owned_state，当前provider字段继续标current_provider_state，历史provider与当前未决冲突分列。这只是原source/provider事实地位的呈现，不造新cognition/custody writer、不统一降级当前状态、不按中文case正则删正文。
 
 4个受影响本地检查通过：atomic source/conflict完整预算与Package最终Context整体admission各1项；原provider current字段覆盖旧relation/fact并进入packing为provider_owned/current1项；provider撤回/chat切换/late tokenizer原held snapshot拒绝1项。packing产品ESLint/diff通过。原已获准World优先、源链/冲突/currentness仍由原authority；新的field/header计入原Context token预算。未再付费重跑原矩阵，原35334 tokens/unfavorable/qualityPass=false保留；此修复尚不证明随机模型自由文本的当前认知/持有状态断言已得到保证。继续G06原scope与HM2可独立推进部分。
+
+日志 producer 补充：m8-g06-evidence-authority.log 的两个 packing 检查发生在最后 epistemic 分类表达式修改前，不能单凭该初日志宣称最终版本已验证。提交 `5595e0840` 后只补跑这两个受影响检查，m8-g06-evidence-final-packing.log 2/2通过；provider两个检查本来就在最终分类修改后执行。补跑不是新增 distinct 检查，原初日志保留。
+
+### G06 原生工具回传观察的有限消费者
+
+2026-10-11 source `89760af6b`。只解决 native observation 缺少当次决定的问题：成功 lowering/normalization 后，沿原 private envelope 的 binding/sequence 输出 protocol、mandatory_tool_exchange、request/task绑定 scope、process_only、已回传 checkpoint 数、首次/继续工具协议以及响应 capture/discard。三个 adapter 共用原 envelope 模块的呈现函数，无新 checkpoint/storage authority；不输出 signature/opaque body，不把回传数称上游已复用或缓存收益。原 Runtime 请求诊断 Provider观察可直接读取；真实 Studio client/routers/Host 两轮 HTTP 返回确实带 task scope，但仍仅当前 mandatory 工具循环，未实现跨turn task policy。
+
+3个受影响本地双轮 HTTP checks通过（Responses/Anthropic/Gemini），保留完整 opaque wire 回传、公开preview/response不泄漏及完成后旧 checkpoint拒绝；初观察断言误用 adapter format 名称而非实际版本化 protocol，修正测试期望后重测这3项，v1失败/v2成功日志均保留。真实 Studio client不同request/attempt IDs的1项消费检查通过，scope=task/count0→1仍process_only。明确 policy active_execution/task/adaptive 三项在兼容路径发送/Secret之前 unavailable，也已定向验证；这是有限不支持矩阵，不能用识别字段或工具round-trip宣称续接策略完成。3产品文件ESLint/diff通过。
+
+本组停止条件是以上受影响消费者和模式边界检查完成，新增外部API0，不重复已过协议/付费矩阵。原质量失败继续阻挡完整G06/HM2；剩余验收为可合法启用的策略生命周期及loss、真实长期入口/质量出口、H3已配置服务的收益或明确维持基础路径、费用/unknown与H4有限收益对应归因。H3新服务/算法及HM3 writer不扩张；继续原有长期消费者可独立验证范围，main未集成，无HANDOFF。
