@@ -73,6 +73,18 @@ source `1ccc6194a` 已push，13新distinct/4受影响旧checks通过（日志见
 
 source `1d1bf3f79` 已push，10新distinct/8受影响旧checks通过。原allowlist曾拒绝computeContext，before三项均400，记录为新合同未支持入口，不能说原scoped请求绕过预算。Native供给向量改沿同一bounded helper；legacy数值转换仅在非Native分支实施。非法向量拒绝、排队输入冻结/取消、实际Task变化、空/异常index保持、两engine/account recovery/Route移除、readonly及scoped browser-profile无inference均有实际检查。local provider推理仍不支持scoped预算，纯供给向量读取不触发它。费用/配额沿原记录，真实外部0，完整G05/G06仍未验收。
 
+## 已交付有限 G05：原 Session 过期工作成本结算
+
+完成条件先冻结（2026-10-11）：针对原RunControl在HEAD变化/后台intent撤回后裁剪operation的静态风险，先用实际Native Embedding/index消费者复现，再沿同一原control修复；不新建owner/费用日志或给旧anchor重新执行权限。已准入但仍charged的operation保持原identity至worker结算，当前generation/发布仍严格拒绝旧HEAD；死/终结状态允许已有receipt的成本结算，不开放新工作/domain写入。最多仍受原128未完成operation边界约束，取消且worker未结束继续占用原permit。
+
+原scope已结束且所有cost项均settled/unknown后，原control可压缩到可选累计retiredCompute成本摘要，再删除旧selection/fingerprint/详细operation；保留model次数、直接总/输入/输出计数、unknown数量/上界、local job/输入边界/真实process CPU/wall及完成/失败/取消/unknown数量。不把历史摘要当新额度/authority或声称完整逐attempt历史，旧版本已裁剪费用不能追回。摘要随原account backup/recovery和已有resume control导出/导入保留，旧无字段兼容；新HEAD的新turn仍按原语义独立额度，不设128个历史turn的终身上限。
+
+最小出口：actual Native HTTP期间Session append/fork/save restore变化后费用保留、拒绝旧index结果且不发布；冷RunControl/account恢复不补余额/丢摘要；实际后台outbox完成/撤回及run terminal期间晚到费用有定向反例。局部数值/portable校验与足够多正常HEAD推进验证有界压缩，非任意Session fork Continuity恢复或跨账户新预算。真实外部0，G06/H5和其它依赖继续。
+
+source `f1a04c041`已push，16新distinct/21受影响旧checks通过。FS/SQLite实际Embedding等待期间HEAD变化曾丢model/local成本，两项before FAIL/after PASS；在途charged operation不被裁剪，结算后旧scope进入原retiredCompute。额外真实terminal cleanup清空operation与readonly结算写账反例已修复。actual背景完成/撤回后unknown保留原window/period charge及上界；实际历史restore/fork、account recovery、ironman resume原导出/导入与130次query scope推进通过。原128 operation及131072字节验证现在也在写账/发送前实施。
+
+累计reported input/output仅计已报告值，未报告部分保持未知，不推导total；process CPU/wall逐job观察可重叠，不是独占job或全进程精确累计。旧scope的settled/unknown压缩后无逐receipt identity，额外late/repeated reconcile会拒绝，不能改摘要猜账/退款；原worker尚未完成的charged身份继续保留。旧版本已丢费用无法重建，旧没有摘要的resume仍兼容。此组不验任意旧account备份回滚单调性、跨账户预算、Session Task opaque恢复或后台本地准备全覆盖；剩余正式工程/外部证据依赖继续，M8/HM2/HM3未验收。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
