@@ -1767,3 +1767,7 @@ source `5fa2f7dc9`。先实测5新反例均失败：另一正式writer持久改l
 冷启动20document有限fixture证据：首次dependency_not_cached、后续valid_hit/hashReused20/documentsHashed0，文本及完整evidence相同，insert一次、access/persistence writes0；外部writer后旧warm请求在vector/service之前Abort，新proofmiss/hash20。它是实际读链的工作量和正确性，不是新的latency/Embedding/费用收益；此前100/1000/10000数值只归其原producer，未重复基准。缺失ledger的Native只读重建仍无派生reuse proof，原长Memory消费者不据此宣称全部可缓存。
 
 该有限H4组结束、外部API0，M1/HM1/payed原报告与正文completion失败保持，完整G06/HM2仍未验收、main不变、无HANDOFF。后续仍沿正式G06质量与收益出口核对可独立缺口，不因本组cache正确性推定自由正文已通过。
+
+最终producer `5fa2f7dc9`补h4-readonly-ledger-final-compatibility.log，仅early-revocation移动后受影响的4旧项，全部通过，仍不计新distinct；与boundary-v2的9新+queued旧1构成最终9新/5旧证据。新时点/authority字段改变packing预算后，又定向运行唯一B2/B3冻结检索覆盖测试（lexical/typed graph及loopback fixture vector），原2400预算、required/excluded sources全部通过；无model/API0，无ATRIA_HM_REPORT，不写原B0/HM1结果或重跑M1。这是当前包装预算兼容检查，不是H0基线重跑或正文质量通过。
+
+下一有限H4收益核对仅针对当前新增只读raw token复制/校验开销：一个10000-document配置、现有FS/loopback固定向量，先单独记录index/cache准备，再固定3对交替full recompute/valid corpus reuse，计入SourceLifecycle snapshot在内的总elapsed与保存工作，要求同producer完整evidence/source集合一致。停止后不扩规模/算法/paid模型，n3不成为SLO；旧数值/raw报告不改。
