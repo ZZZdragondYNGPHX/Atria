@@ -564,10 +564,11 @@ export class ProjectAgentService {
     }
 
     // Internal Generation Host observations. No HTTP endpoint accepts these fields.
-    chargeGeneration(handle, projectId, id, revision, limits, attempt) {
+    chargeGeneration(handle, projectId, id, revision, limits, attempt, executionFingerprint) {
         return this._operate(handle, projectId, id, async task => {
             this._ensureDraftMutable(task);
             if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
+            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
             return chargeComputeAttempt(task, limits, attempt);
         });
     }
@@ -643,6 +644,10 @@ export class ProjectAgentService {
             intent: task.intent,
             status: task.status,
             baseRevision: task.baseRevision,
+            executionFingerprint: hashNativeDocument({ taskId: task.taskId, projectId: task.projectId, baseRevision: task.baseRevision,
+                intent: task.intent, status: task.status, plan: task.plan, proposals: task.proposals, validation: task.validation,
+                authorityEpoch: task.timeline.findLast(event => !event.type.startsWith('generation.'))?.eventId ?? null,
+                repairRound: task.repairRound, maxRepairRounds: task.maxRepairRounds, strategyVersionId: task.strategyVersions?.activeVersionId ?? null }),
             plan: task.plan,
             operations: task.proposals.map(item => ({
                 stepId: item.stepId,

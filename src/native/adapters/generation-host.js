@@ -637,7 +637,7 @@ export class NativeGenerationHost {
             || input.routeRef.scope !== 'player' || typeof input.routeRef.runtimeRouteId !== 'string'
             || Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_generation_route_ref_invalid');
         const role = 'role.' + input.role;
-        let snapshot; let project; let source; let runtime;
+        let snapshot; let project; let source; let runtime; let projectTaskEvidence;
         if (input.sessionId) {
             snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
@@ -647,10 +647,11 @@ export class NativeGenerationHost {
         } else if (input.projectId) {
             project = immutable(await this.studio.getProject(handle, input.projectId));
             if (input.revision !== project.revision.revision) fail('native_generation_revision_conflict');
-            source = { kind: 'studio', projectId: input.projectId, revision: input.revision };
+            source = { kind: input.taskId ? 'task' : 'studio', projectId: input.projectId, revision: input.revision, ...(input.taskId ? { taskId: input.taskId } : {}) };
             runtime = project.source.package.runtime;
             if (input.taskId) {
                 const context = await this.agent.getContext(handle, input.projectId, input.taskId);
+                projectTaskEvidence = { source: 'native.project-task', ref: input.taskId + ':' + context.task.executionFingerprint };
                 if (context.task.baseRevision !== input.revision || ['review', 'blocked', 'conflict', 'taken_over', 'completed'].includes(context.task.status)) fail('native_generation_task_stopped');
                 if (!preview && input.projectAttemptId) await this.agent.recordGenerationRequest(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId);
                 const allowed = new Set(context.tools.map(tool => tool.function.name).concat(['atri_agent_list_skills', 'atri_agent_read_skill', 'atri_agent_skill_files']));
@@ -798,7 +799,7 @@ export class NativeGenerationHost {
                     .filter(([identity]) => items.some(item => item.id === 'knowledge:' + identity) || Object.hasOwn(snapshot.states.atri_knowledge_runtime?.targets?.[selected.nativeSelection.targetKey]?.effects ?? {}, identity))) },
                 selectedKnowledgeIdentities: selected.nativeSelection.selectedKnowledgeIdentities.filter(identity => items.some(item => item.id === 'knowledge:' + identity)),
             };
-            return { ...selected, items, ...(nativeSelection ? { nativeSelection } : {}) };
+            return { ...selected, items, ...(projectTaskEvidence ? { provenance: [...selected.provenance, projectTaskEvidence] } : {}), ...(nativeSelection ? { nativeSelection } : {}) };
         } };
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
         const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
@@ -832,6 +833,9 @@ export class NativeGenerationHost {
                         const observedAttempt = capture?.nextAttempt(input.requestId) ?? attempts.length;
                         const attemptId = input.requestId + ':' + observedAttempt;
                         try {
+                            if (projectTaskEvidence && (await this.agent.getContext(handle, input.projectId, input.taskId)).task.executionFingerprint !== projectTaskEvidence.ref.slice(-64)) {
+                                throw new GenerationError('native_generation_task_stopped');
+                            }
                             const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
                             const compute = limits ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
                                 targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
@@ -847,7 +851,7 @@ export class NativeGenerationHost {
                                     { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, compute.attempt);
                             } else if (compute) {
                                 if (!input.taskId || !this.agent) throw new GenerationError('native_generation_budget_lane_denied');
-                                receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt);
+                                receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt, projectTaskEvidence.ref.slice(-64));
                             }
                             if (compute) pendingCharge = { receipt, attemptId: compute.attempt.attemptId };
                             await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
@@ -861,7 +865,7 @@ export class NativeGenerationHost {
                             await settleAttempt(null);
                             attempt.status = 'failed';
                             capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
-                            if (error.code === 'native_generation_budget_exhausted') throw new GenerationError(error.code);
+                            if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
                             if (!(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                         }
                     }

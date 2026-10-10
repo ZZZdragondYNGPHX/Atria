@@ -14,6 +14,18 @@ const envelope = { id: 'reasoning-1', type: 'reasoning', summary: [], encrypted_
 const functionCall = { id: 'item-1', type: 'function_call', status: 'completed', call_id: 'call-1', name: 'lookup', arguments: '{"q":"current"}' };
 const result = output => ({ id: 'response-1', status: 'completed', model: 'reported-alias', output,
     usage: { input_tokens: 20, output_tokens: 8, total_tokens: 28, input_tokens_details: { cached_tokens: 12 } } });
+
+test('G04 cancellation discards the active private checkpoint before any later replay', async () => {
+    let onSecond;
+    const secondReceived = new Promise(resolve => { onSecond = resolve; });
+    const f = await fixture((res, round) => { if (round === 1) json(res, result([envelope, functionCall])); else onSecond(); });
+    const first = await f.host.execute(f.h.handle, f.request); const next = followup(f, first);
+    const controller = new AbortController();
+    const failed = expect(f.host.execute(f.h.handle, next, controller.signal)).rejects.toMatchObject({ code: 'generation_cancelled' });
+    await secondReceived; controller.abort(); await failed;
+    await expect(f.host.execute(f.h.handle, next, undefined, undefined, { preview: true })).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+    expect(f.requests).toHaveLength(2);
+});
 async function fixture(handler, format = 'openai-responses') {
     const requests = [];
     const server = createServer(async (req, res) => {

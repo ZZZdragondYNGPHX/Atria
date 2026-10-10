@@ -13,7 +13,7 @@ export function immutable(value) {
 
 const ERROR_CODES = new Set([
     'generation_target_policy_denied', 'generation_path_evidence_unavailable', 'generation_continuation_unavailable', 'generation_semantic_authority_changed',
-    'native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied',
+    'native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied', 'native_generation_task_stopped', 'native_generation_revision_conflict',
     'generation_provider_endpoint_not_found', 'generation_provider_request_rejected', 'generation_provider_authentication_failed', 'generation_provider_timeout',
     'generation_cancelled', 'generation_execution_failed', 'generation_provider_unavailable',
     'generation_route_mismatch', 'generation_profile_mismatch', 'generation_resource_cycle',

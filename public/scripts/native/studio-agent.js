@@ -239,7 +239,8 @@ export async function runNativeStudioAgentTask({
     const skillEntries = await listNativeSkills(projectId, packageRef);
     const transcript = [...(context.task.conversation || messages)];
     if (!transcript.length) transcript.push({ role: 'user', content: context.task.intent });
-    const modelTranscript = projectAgentResumeMessages(transcript);
+    let modelTranscript = projectAgentResumeMessages(transcript);
+    let previousSystem;
 
     for (let round = 0; round < maxModelRounds; round += 1) {
         if (abortSignal?.aborted) throw new Error('Project Agent request aborted');
@@ -250,6 +251,14 @@ export async function runNativeStudioAgentTask({
         }
 
         const tools = [...(context.tools || []), ...skillTools()];
+        const system = buildNativeProjectAgentSystemPrompt(context, skillEntries);
+        if (previousSystem !== undefined && system !== previousSystem && modelTranscript.some(message => message.providerState)) {
+            // Changed Task authority needs a new computation from current state
+            // and public observations, rather than replaying an old signed prefix.
+            modelTranscript = projectAgentResumeMessages(modelTranscript);
+            onUpdate({ task: context.task, messages: transcript, continuation: { status: 'reset', reason: 'semantic_prefix_changed' } });
+        }
+        previousSystem = system;
         const allowed = new Set(tools.map(item => item.function.name));
         const started = await nativeStudioClient.beginAgentGeneration(projectId, taskId, { expectedSequence: context.task.sequence });
         const attemptId = started.attempts.at(-1).attemptId;
@@ -260,7 +269,7 @@ export async function runNativeStudioAgentTask({
                 role: 'studio',
                 source: { projectId, taskId, revision: context.task.baseRevision, projectAttemptId: attemptId },
                 messages: [
-                    { role: 'system', content: buildNativeProjectAgentSystemPrompt(context, skillEntries) },
+                    { role: 'system', content: system },
                     ...modelTranscript,
                 ],
                 tools,

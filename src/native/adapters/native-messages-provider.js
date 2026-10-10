@@ -261,5 +261,6 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                     nativeEnvelope: providerState ? 'captured_active_execution' : 'completed', hiddenAttempts: 'unknown' } };
         },
         assertResponseSafe(response, secret) { assertNativeEnvelopeSafe(response.providerState, secret); },
+        discardExecution(rendered) { discardNativeEnvelopes(rendered.binding); },
     });
 }

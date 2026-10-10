@@ -114,7 +114,7 @@ describe('A8 Native Studio Project Agent client', () => {
                     if (generationRound === 1) {
                         return {
                             assistantText: ' I will first define the project plan. ',
-                            providerState: { binding: { provider: 'anthropic', connectionProfileId: 'exact-connection', model: 'exact-model' }, content: [{ type: 'thinking', signature: 'signed-tool-round' }] },
+                            providerState: { schemaVersion: 1, checkpointId: 'a'.repeat(64), bindingFingerprint: 'b'.repeat(64), text: ' I will first define the project plan. ', calls: [] },
                             toolCalls: [{
                                 raw: { id: 'call_plan' },
                                 name: 'atri_agent_set_plan',
@@ -163,10 +163,12 @@ describe('A8 Native Studio Project Agent client', () => {
             if (path === '/api/skills?scope=all') {
                 return response([{
                     name: 'project-guidance',
+                    installedHash: 'c'.repeat(64),
                     description: 'Project-specific authoring guidance',
                     scope: { kind: 'project', projectId },
                 }]);
             }
+            if (path.startsWith('/api/skills/') && path.endsWith('/pin')) return response({ version: body.expectedHash });
             if (path.endsWith(`/projects/${projectId}/agent/tasks/${taskId}/context`)) {
                 const reviewPosted = calls.some(item => (
                     item.type === 'fetch'
@@ -223,7 +225,7 @@ describe('A8 Native Studio Project Agent client', () => {
         expect(calls.filter(item => item.type === 'generate')).toHaveLength(2);
         const secondRequest = calls.filter(item => item.type === 'fetch' && item.path === '/api/native/generation/execute')[1].body;
         expect(secondRequest.messages).toContainEqual(expect.objectContaining({ role: 'assistant', content: ' I will first define the project plan. ',
-            providerState: expect.objectContaining({ content: [{ type: 'thinking', signature: 'signed-tool-round' }] }) }));
+            providerState: expect.objectContaining({ checkpointId: 'a'.repeat(64) }) }));
         expect(calls.filter(item => item.type === 'fetch' && item.path.endsWith('/tool')).map(item => item.body.name))
             .toEqual(['atri_agent_set_plan', 'atri_agent_prepare_review']);
         expect(calls.some(item => item.type === 'fetch' && item.path.endsWith('/commit'))).toBe(false);
@@ -233,6 +235,23 @@ describe('A8 Native Studio Project Agent client', () => {
         expect(firstGeneration.options.revision).toBe(baseRevision);
         expect(firstGeneration.options.tools.some(item => item.function.name === 'atri_agent_read_skill')).toBe(true);
         expect(firstGeneration.options.tools.some(item => item.function.name.includes('commit'))).toBe(false);
+    });
+
+    test('G04 changed authoritative Task prompt resets native state into public tool observations', async () => {
+        const fetchOriginal = globalThis.fetch;
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url).endsWith('/context')) {
+                const planPosted = calls.some(item => item.path?.endsWith('/tool') && item.body?.name === 'atri_agent_set_plan');
+                return response(context(planPosted ? 'planned' : 'planning'));
+            }
+            return fetchOriginal(url, options);
+        });
+        const updates = [];
+        await runNativeStudioAgentTask({ projectId, taskId, onUpdate: value => updates.push(value) });
+        const second = calls.filter(item => item.type === 'fetch' && item.path === '/api/native/generation/execute')[1].body;
+        expect(second.messages.some(message => message.providerState)).toBe(false);
+        expect(second.messages.some(message => message.role === 'user' && message.content.startsWith('Previous tool observation'))).toBe(true);
+        expect(updates.some(value => value.continuation?.reason === 'semantic_prefix_changed')).toBe(true);
     });
 
     test('AI panel can mount while generation is unavailable without mutating the project', async () => {
@@ -262,8 +281,8 @@ describe('A8 Native Studio Project Agent client', () => {
     });
     test('Studio applies path preferences and reads scoped supporting files through the actual tool loop', async () => {
         const original = globalThis.fetch;
-        const always = { name: 'always-guide', scope: { kind: 'project', projectId }, description: 'Always instructions' };
-        const demand = { name: 'reference-guide', scope: { kind: 'global' }, description: 'Reference instructions' };
+        const always = { name: 'always-guide', installedHash: 'c'.repeat(64), scope: { kind: 'project', projectId }, description: 'Always instructions' };
+        const demand = { name: 'reference-guide', installedHash: 'd'.repeat(64), scope: { kind: 'global' }, description: 'Reference instructions' };
         const hidden = { name: 'agents-only', scope: { kind: 'global' }, metadata: { 'atria-paths': 'agents' } };
         let round = 0; const prompts = []; const reads = [];
         globalThis.fetch = jest.fn(async (url, options = {}) => {
@@ -273,6 +292,7 @@ describe('A8 Native Studio Project Agent client', () => {
                 [skillEntryKey(always)]: { paths: { studio: 'always', narrative: 'off' } },
             } } });
             if (path.startsWith('/api/skills/')) {
+                if (path.endsWith('/pin')) return response({ version: JSON.parse(options.body).expectedHash });
                 reads.push(path);
                 return response({ content: path.includes('ref.md') ? 'Supporting reference' : 'LOADED ALWAYS', totalLines: 205 });
             }

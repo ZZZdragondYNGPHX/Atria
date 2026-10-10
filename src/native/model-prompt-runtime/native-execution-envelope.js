@@ -16,9 +16,11 @@ function prune() {
 export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
     if (!resolved.pathFingerprint) denied();
     const { promptIr: ir, contextPlan: plan } = snapshot;
-    return immutable({ schemaVersion: 1, protocol, pathFingerprint: resolved.pathFingerprint, requestId: snapshot.requestId,
+    return immutable({ schemaVersion: 1, protocol, pathFingerprint: resolved.pathFingerprint,
+        executionScope: plan.source.kind === 'task' ? { kind: 'task', projectId: plan.source.projectId, taskId: plan.source.taskId }
+            : { kind: 'request', requestId: snapshot.requestId },
         targetFingerprint: hashNativeDocument({ model: resolved.model.remoteModelId, connectionId: resolved.connection.connectionProfileId, endpoint: resolved.connection.endpoint }),
-        sourceFingerprint: hashNativeDocument({ source: plan.source,
+        sourceFingerprint: hashNativeDocument({ source: plan.source, provenance: plan.provenance,
             facts: plan.items.filter(item => !['context.history', 'context.input'].includes(item.kind)),
             nativeSelection: plan.nativeSelection ?? null, personaEvidence: plan.personaEvidence ?? null }),
         prefixFingerprint: hashNativeDocument({ directives: ir.directives, contextSlots: ir.contextSlots }),
@@ -51,7 +53,8 @@ export function readNativeEnvelope(state, binding, sequence, index) {
     return entry.content;
 }
 export function discardNativeEnvelopes(binding) {
-    for (const [id, entry] of checkpoints) if (entry.binding.pathFingerprint === binding.pathFingerprint && entry.binding.requestId === binding.requestId) checkpoints.delete(id);
+    for (const [id, entry] of checkpoints) if (entry.binding.pathFingerprint === binding.pathFingerprint
+        && hashNativeDocument(entry.binding.executionScope) === hashNativeDocument(binding.executionScope)) checkpoints.delete(id);
 }
 export function assertNativeEnvelopeSafe(state, secret) {
     const entry = checkpoints.get(state?.checkpointId);

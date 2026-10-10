@@ -230,6 +230,7 @@ export class GenerationService {
             try {
                 if (!settled) await provider.settleAttempt?.(observedUsage ?? null);
             } finally {
+                if (!settled) provider.discardExecution?.(rendered);
                 secret = undefined;
                 clearTimeout(timer);
                 signal?.removeEventListener('abort', abort);
