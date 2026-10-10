@@ -40,9 +40,13 @@ export function cloneNativeDocument(value, field = 'Native resource') {
     return structuredClone(value);
 }
 
-export function hashNativeDocument(value) {
+export function serializeNativeDocument(value) {
     const cloned = cloneNativeDocument(value);
-    return createHash('sha256').update(stableJson(cloned)).digest('hex');
+    return stableJson(cloned);
+}
+
+export function hashNativeDocument(value) {
+    return createHash('sha256').update(serializeNativeDocument(value)).digest('hex');
 }
 
 export function nativeRecord(value, {

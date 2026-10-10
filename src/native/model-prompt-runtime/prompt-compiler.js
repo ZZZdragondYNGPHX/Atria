@@ -2,6 +2,7 @@ import { assertExactResourceRef, assertPromptIR, assertPromptModule, assertPromp
 import { immutable } from './execution-utils.js';
 import { bindValues, evaluateCondition, interpolate, promptError, readVariable, typedValue } from './prompt-values.js';
 import { PROMPT_TARGETS, comparePromptModules } from '../../../public/shared/prompt-module-order.js';
+import { hashNativeDocument } from '../repositories/common.js';
 
 export { PROMPT_TARGETS };
 const refKey = value => JSON.stringify(assertExactResourceRef(value));
@@ -137,6 +138,7 @@ export class PromptCompiler {
             env.artifact[name] = typedValue(artifact.value, definition.type);
         }
         const blocks = [];
+        const segments = [];
         const personaStages = [];
         const diagnostics = [];
         const provenance = [...plan.provenance, ...program.provenance];
@@ -168,7 +170,12 @@ export class PromptCompiler {
                     diagnostics.push({ stageId: stage.stageId, moduleId: entry.id, status: 'condition-false' });
                     continue;
                 }
-                blocks.push({ target: module.target, content: interpolate(module.body, read) });
+                const content = interpolate(module.body, read);
+                blocks.push({ target: module.target, content });
+                const identity = { ...entry.ref }; delete identity.revision;
+                segments.push({ identity: hashNativeDocument({ ref: identity, stageId: stage.stageId, target: module.target }),
+                    kind: 'prompt.module', target: module.target, stageId: stage.stageId, ref: entry.ref,
+                    contentFingerprint: hashNativeDocument(content), volatility: 'compiled', cacheability: 'candidate' });
                 provenance.push({ source: 'prompt.module', ref: refKey(entry.ref) });
                 diagnostics.push({ stageId: stage.stageId, moduleId: entry.id, status: 'included', target: module.target });
             }
@@ -192,6 +199,11 @@ export class PromptCompiler {
             if (item.id && ids.has(item.id)) promptError('context_duplicate');
             if (item.id) ids.add(item.id);
             provenance.push(...item.provenance);
+            const scope = { ...plan.source }; delete scope.revisionId; delete scope.revision;
+            segments.push({ identity: hashNativeDocument({ scope, kind: item.kind, id: item.id ?? null }),
+                kind: item.kind, source: plan.source, provenance: item.provenance,
+                contentFingerprint: hashNativeDocument(item.content), volatility: 'request', cacheability: 'candidate',
+                consumed: item.kind !== 'context.player-persona' || personaStages.length > 0 });
             if (item.kind === 'context.history') ir.history.push(item.content);
             else if (item.kind === 'context.input') input.push(item.content);
             else if (item.kind === 'context.player-persona') {
@@ -207,8 +219,9 @@ export class PromptCompiler {
             else if (block.target === 'response.prefill') ir.prefill = block.content;
             else ir.contextSlots.push(block);
         }
-        ir.compilation = { ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,
-            reason: plan.personaEvidence.reason === 'selected' && !personaStages.length ? 'not_consumed' : plan.personaEvidence.reason } } : {}), parameters: env.param, modules: diagnostics, selectedStages: stages.filter(id => selected.includes(id)) };
+        ir.compilation = { versions: { compiler: 'native.prompt.v2', canonical: 'native.json.v1', layout: 'native.targets.v1' }, segments,
+            ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,
+                reason: plan.personaEvidence.reason === 'selected' && !personaStages.length ? 'not_consumed' : plan.personaEvidence.reason } } : {}), parameters: env.param, modules: diagnostics, selectedStages: stages.filter(id => selected.includes(id)) };
         return immutable({ promptIr: assertPromptIR(ir), diagnostics, selectedStages: ir.compilation.selectedStages });
     }
 }

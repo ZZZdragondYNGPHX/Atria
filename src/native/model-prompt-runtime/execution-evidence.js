@@ -69,12 +69,12 @@ export function prepareExecutionPlan(resolved, acceptedPolicy = resolved.route.e
         // G04 must provide an actual adapter handle consumer before these modes can execute.
         throw new GenerationError('generation_continuation_unavailable');
     }
-    return immutable({ schemaVersion: 1, pathFingerprint: resolved.pathFingerprint,
+    return immutable({ schemaVersion: 1, pathFingerprint: resolved.pathFingerprint ?? null,
         policyFingerprint: hashNativeDocument(policy), policy, selection: 'fixed_route',
         target: { modelProfileId: resolved.model.modelProfileId, remoteModelId: resolved.model.remoteModelId,
             connectionProfileId: resolved.connection.connectionProfileId, adapter: resolved.connection.providerAdapter,
             transport: resolved.connection.transport },
-        evidence: resolved.pathEvidence, economics: { state: 'unknown', currencyCost: null },
+        evidence: resolved.pathEvidence ?? [], economics: { state: 'unknown', currencyCost: null },
         upstream: { identity: 'unknown', attempts: 'unknown' },
         cache: { applicationResult: 'unknown', provider: resolved.capabilities.find(row => row.capability === 'generation.cache')?.state ?? 'unknown',
             inferenceBackend: 'unknown' } });

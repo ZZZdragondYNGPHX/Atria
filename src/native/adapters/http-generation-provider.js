@@ -2,6 +2,7 @@ import { getEncoding } from 'js-tiktoken';
 import { observedGenerationUsage } from './generation-usage.js';
 import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
+import { serializeNativeDocument } from '../repositories/common.js';
 
 function wireTools(tools, mode) {
     if (mode === 'json-schema') return tools;
@@ -111,7 +112,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             if (!['cl100k_base', 'o200k_base'].includes(encoding)) throw new GenerationError('generation_adapter_control_unsupported');
             const body = render({ resolved, promptIr, reserve: contextPlan.budget.reservedOutputTokens });
             const encoder = getEncoding(encoding);
-            return encoder.encode(JSON.stringify(body)).length + 32 * (body.messages?.length ?? 1);
+            return encoder.encode(serializeNativeDocument(body)).length + 32 * (body.messages?.length ?? 1);
         },
         renderRequest({ resolved, snapshot }) {
             return immutable({ endpoint: resolved.connection.endpoint,
@@ -121,7 +122,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             let response;
             try {
                 response = await fetchImpl(rendered.endpoint, { method: 'POST', signal, redirect: 'error',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` }, body: JSON.stringify(rendered.body) });
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` }, body: serializeNativeDocument(rendered.body) });
             } catch {
                 if (signal.aborted) throw new GenerationError('generation_cancelled');
                 throw new ProviderFailure('transport');

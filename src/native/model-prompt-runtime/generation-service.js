@@ -2,6 +2,7 @@ import { assertEffectiveRequestSnapshot, assertPromptIR, assertRequestContextPla
 import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } from './ports.js';
 import { cancellable, checkCancellation, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
 import { prepareExecutionPlan, assertExecutionEvidenceCurrent } from './execution-evidence.js';
+import { compiledRequestBinding } from './compiled-binding.js';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
@@ -69,7 +70,7 @@ export class GenerationService {
                     || tokens + contextPlan.budget.reservedOutputTokens > resolved.model.limits.contextTokens) {
                     throw new GenerationError('generation_context_budget_exceeded');
                 }
-                const snapshot = immutable(assertEffectiveRequestSnapshot({
+                const preparedSnapshot = immutable(assertEffectiveRequestSnapshot({
                     schemaVersion: 1, requestId: request.requestId,
                     runtimeRouteId: resolved.route.runtimeRouteId,
                     modelProfileId: resolved.model.modelProfileId,
@@ -98,7 +99,11 @@ export class GenerationService {
                         },
                     },
                 }));
-                const rendered = immutable(await cancellable(() => provider.renderRequest({ resolved, snapshot }), signal));
+                const rendered = immutable(await cancellable(() => provider.renderRequest({ resolved, snapshot: preparedSnapshot }), signal));
+                const snapshot = immutable(assertEffectiveRequestSnapshot({ ...preparedSnapshot, diagnostics: {
+                    ...preparedSnapshot.diagnostics,
+                    compiledBinding: compiledRequestBinding({ resolved, contextPlan, promptIr, rendered }),
+                } }));
                 if (preview) return immutable({ snapshot, rendered, preview: true });
                 assertExecutionEvidenceCurrent(resolved, this.now());
                 try {
