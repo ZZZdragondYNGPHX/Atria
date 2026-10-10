@@ -5,6 +5,7 @@ import { createSourceLifecycle } from '../../public/scripts/agents/memory/source
 import { emptyProvenance } from '../../public/scripts/agents/memory/source-provenance.js';
 import { buildMemoryCorpus, rankMemory, retrieveMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 import { existingStatePrompt, stateClaimAlreadyPresent } from '../../public/scripts/agents/memory/state-prompt.js';
+import { memoryEvidenceGroups } from '../../public/scripts/agents/memory/packing.js';
 
 function fixture() {
     const ctx = { key: 'chat1', chat: [{ mes: 'At the harbor', variables: [{ stat_data: { pilot: { place: 'Harbor', score: 0, empty: null } }, schema: {} }] }],
@@ -137,5 +138,9 @@ describe('Optional state providers', () => {
         { id: 'fact:old-fact', factId: 'old-fact', kind: 'fact', status: 'active', text: 'Alice Castle', episodeIds: [] });
         const result = rankMemory('Where is Alice?', corpus);
         expect(result.candidates.map(doc => doc.text)).toEqual(['Alice location: "Harbor"']);
+        const groups = memoryEvidenceGroups(result.candidates, corpus, state, result.plan);
+        expect(JSON.parse(groups[0].content).records).toEqual([expect.objectContaining({
+            authority: 'provider_owned_state', epistemic: 'current_provider_state', text: 'Alice location: "Harbor"',
+        })]);
     });
 });
