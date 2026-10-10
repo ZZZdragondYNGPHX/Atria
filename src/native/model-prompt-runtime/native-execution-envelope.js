@@ -20,7 +20,7 @@ export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
     const { promptIr: ir, contextPlan: plan } = snapshot;
     return immutable({ schemaVersion: 1, protocol, ownerFingerprint: resolved.ownerFingerprint ?? null, pathFingerprint: resolved.pathFingerprint,
         executionScope: plan.source.kind === 'task' ? { kind: 'task', projectId: plan.source.projectId, taskId: plan.source.taskId }
-            : { kind: 'request', requestId: snapshot.requestId },
+            : { kind: 'request', requestId: snapshot.requestId, source: plan.source, role: resolved.route.role },
         targetFingerprint: hashNativeDocument({ model: resolved.model.remoteModelId, connectionId: resolved.connection.connectionProfileId, endpoint: resolved.connection.endpoint }),
         sourceFingerprint: hashNativeDocument({ source: plan.source, provenance: plan.provenance,
             facts: plan.items.filter(item => !['context.history', 'context.input'].includes(item.kind)),

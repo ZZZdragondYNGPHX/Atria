@@ -12,11 +12,12 @@ const reasoning = { type: 'reasoning', encrypted_content: 'PRIVATE-SESSION-SKILL
 const tool = { type: 'function_call', call_id: 'skill-1', name: 'atri_skill_read', arguments: argumentsWire };
 const final = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final fresh prose.' }] };
 async function fixture(make, mode, maxJobs = 4) {
-    const h = await make(), wires = []; let onRead = async () => {};
+    const h = await make(), wires = []; let onRead = async () => {}, output = round => round === 1 ? [reasoning, tool] : [final];
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; wires.push(JSON.parse(raw));
+        const items = output(wires.length); if (!items) return;
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'completed', output: wires.length === 1 ? [reasoning, tool] : [final], usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } }));
+        res.end(JSON.stringify({ status: 'completed', output: items, usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const installed = await installFixture(h), base = await installed.core.create(h.handle, installed.start);
@@ -37,7 +38,8 @@ async function fixture(make, mode, maxJobs = 4) {
         extensions: { settings: async () => ({ value: {} }) },
         skillRepository: () => ({ list: async () => [guide], get: async () => guide, pin: async ({ expectedHash }) => ({ version: expectedHash }), readFile }) });
     const request = { role: 'narrator', sessionId: base.session.sessionId, revisionId: base.revision.revisionId, requestId: 'session-skill-rounds' };
-    return { ...h, ...seeded, core: installed.core, base, host, request, wires, readFile, onRead: fn => { onRead = fn; },
+    return { ...h, ...seeded, core: installed.core, start: installed.start, base, host, request, wires, readFile,
+        onRead: fn => { onRead = fn; }, output: fn => { output = fn; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
@@ -73,3 +75,37 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G04 Session Skill %s st
         expect(onChunk).not.toHaveBeenCalled();
     } finally { await f.cleanup(); }
 });
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test.each(['none', 'active_execution'])(`G04 source scope ${kind} %s cancellation cannot evict another real Session using the same requestId`, async mode => {
+        const f = await fixture(make, mode), controller = new AbortController(); let received, cleaned;
+        const arrival = new Promise(resolve => { received = resolve; }), cleanup = new Promise(resolve => { cleaned = resolve; });
+        try {
+            f.host.skillRepository = null;
+            const provider = f.host.providers['provider.openai-responses'];
+            f.host.providers['provider.openai-responses'] = { ...provider, async discardExecution(rendered) { await provider.discardExecution(rendered); cleaned(); } };
+            f.output(round => { if (round === 3) { received(); return null; } return round <= 2 ? [reasoning, tool] : [final]; });
+            const secondBase = await f.core.create(f.handle, f.start);
+            const tools = [{ type: 'function', function: { name: 'atri_skill_read', parameters: { type: 'object', properties: {
+                name: { type: 'string' }, path: { type: 'string' }, offset: { type: 'integer' }, limit: { type: 'integer' },
+            } } } }];
+            const firstRequest = { ...f.request, tools }, secondRequest = { ...firstRequest, sessionId: secondBase.session.sessionId, revisionId: secondBase.revision.revisionId };
+            const preview = await f.host.execute(f.handle, firstRequest, undefined, undefined, { preview: true });
+            expect(preview.rendered.binding.executionScope).toEqual({ kind: 'request', requestId: firstRequest.requestId, role: 'role.narrator',
+                source: { kind: 'session', sessionId: firstRequest.sessionId, branchId: f.base.revision.branchId, revisionId: firstRequest.revisionId } });
+            const first = await f.host.execute(f.handle, firstRequest), second = await f.host.execute(f.handle, secondRequest);
+            const next = (request, result) => ({ ...request, messages: [{ role: 'assistant', content: result.response.text,
+                tool_calls: result.response.toolCalls.map(call => call.raw), providerState: result.response.providerState },
+            { role: 'tool', tool_call_id: result.response.toolCalls[0].id, content: 'Current legal reference' }] });
+            const failed = f.host.execute(f.handle, next(firstRequest, first), controller.signal).catch(error => error);
+            await arrival; controller.abort(); expect(await failed).toMatchObject({ code: 'generation_cancelled' }); await cleanup;
+            const firstCost = Object.values((await f.core.runs.status(f.handle, firstRequest.sessionId)).operations).find(row => row.compute).compute;
+            expect(firstCost.attempts.map(row => row.status)).toEqual(['settled', 'unknown']); expect(firstCost.attempts[1].estimatedTokens).toBeGreaterThan(0);
+            const independent = await f.host.execute(f.handle, next(secondRequest, second));
+            expect(independent.response.text).toBe('Final fresh prose.'); expect(f.wires).toHaveLength(4);
+            const secondCost = Object.values((await f.core.runs.status(f.handle, secondRequest.sessionId)).operations).find(row => row.compute).compute;
+            expect(secondCost.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
+            expect((await f.core.load(f.handle, firstRequest.sessionId)).timeline).toEqual(f.base.timeline);
+            expect((await f.core.load(f.handle, secondRequest.sessionId)).timeline).toEqual(secondBase.timeline);
+        } finally { controller.abort(); await f.cleanup(); }
+    });
+}
