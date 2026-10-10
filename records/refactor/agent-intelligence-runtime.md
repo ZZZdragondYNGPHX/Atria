@@ -1739,3 +1739,11 @@ temporal-presentation-v1两失败为fixture把原生projection也计为recalled�
 m8-g06-temporal-consumer-live-v1/raw/normalized及audit-v1均append-only保留；audit确认1actual HTTP/2981总tokens/原Run settlement、baseline两ledger原hash与carry保持、prior report raw hash一致，audit时rolling24h694/2000、last60s0/20。500仍原始fixture sources，实际合法corpus256；预算内selected3（此前5/原6），required s08-020保留，reported input改变，不能推断严格同输入因果改善或reuse收益。该具体paid组结束；原矩阵qualityPass及完整G06/HM2仍false，main不变。
 
 下一可独立正式依赖为G06长入口的实际Memory检索消费：此前500轮预载Turn只消费构造的合法候选。有限本地补其原SourceLifecycle→Information eligibility→retrieveMemory→同anchor原Turn路径，不再加外部API、不扩writer或H3算法；它只补工程消费者，不能洗掉本节真实正文失败。无HANDOFF。
+
+### G06 长 Native Timeline 的实际 Memory→Turn 工程消费者
+
+source `4b1ece967`，单项m8-g06-long-memory-turn-v1.log通过，外部API0。经原Session publication合法批量预载500对user/assistant后，原projectNativeSession→SourceLifecycle readOnly snapshot→Information narrator授权→eligibleMemorySnapshot→retrieveMemory确实读取旧promise；未构造检索正文、未持久写派生/cognition/source。Memory结果由fixture映射为既有hostMemoryEvidence入参，再走原executeTurn/scheduler/authority-first action/finalization，不证明UI自动Memory bridge或500来源全部可见。
+
+Timeline1004→1006，原view有界授权下实际Corpus63 Episode documents，选2sources，Memory估计UTF8计数1574≤2400；1次真实loopback HTTP，wire9229bytes，原Run在finalization前settled/direct synthetic120total。完整检索record的source_assertion/historical_source/requested at=null未知适用性进入actualwire，未获准末尾Later reply499及private read sentinel未进入。旧revision反例在HTTP前拒绝；原历史前缀不变、旧source在最终revision可exact读取。最终revision之后held eligibility拒绝，撤回memory grant后新eligibility拒绝；不称发送中撤权已由本项验证。
+
+该有限本地消费组结束，未重跑原构造候选检查，未更改产品实现/存储或测500次连续模型正文。当前真实正文completion失败仍保留，完整G06/HM2未通过、main不变。下一具体核查为原high-impact Project/reuse失败的工具声明是否与实际Project consumer一致：先零API核对冻结request/prompt和现有Studio工具入口，不直接重发旧矩阵；真实失败、费用及unknown不改。无HANDOFF。
