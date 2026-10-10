@@ -1577,3 +1577,11 @@ source `37273d4ca` 在原 native repository canonical authority 导出 serialize
 最小验证：新增4项真实 Session/Project loopback HTTP 消费通过，覆盖 request ID/schema key order 相同bytes、工具/历史顺序、identity/expression 与 narration 参数隔离、当前source/旧revision拒绝、module revision identity与内容分离、output schema失效。原P3 46项初44通过、2失败：G01诊断把旧注入resolver的缺失path/evidence作为undefined写入JSON。先只补compiledBinding null未修根因，原失败及两次recheck日志保留；改原executionPlan缺证据为null/空列表后两项针对性通过。新增suite因source binding完善再跑4项通过；相关6产品文件ESLint/diff通过。未跑全量build/CI，无付费API/额度变更。
 
 这是G02上层编译checkpoint，native envelope/compaction、通用复用、共享预算、产品状态与收益尚待后续。继续G03，RP正文仍fresh generation，未以稳定bytes冒充provider hit或完整M8/HM2完成。
+
+## M8 / G03 Artifact 与 Plan authority checkpoint
+
+2026-10-11 source `c6979abda`。原 Task Artifact authority 提供显式 exact ReuseDecision，Context derivation 实际消费原 grant proof、记录依赖hash与当前anchor，scope/branch/definition/result/dependency/cardinality仍由原 readTaskArtifact 验证。没有提前返回 Task 执行或绕开 scheduler currentness/RunControl；once adoption/正式effect仍走原authority，未伪造send、usage或receipt。
+
+Project 原 TaskRepository/工具入口增加受限plan structure复用：同Project、同exact intent/currentbase，目标尚无plan/operation/workspace；重新创建pending步骤，记录sourceTask/sequence/planhash，不复制完成状态、操作或凭据。后续工具许可、Project base与Review/commit继续原guard。显式Route executionPolicy的fallback守住初始exact PromptProgram/network policy、有限target、verified requirements及既有output authority；failure plan随Snapshot固定，unknown economics保持unknown。旧无policy Route保持原适配路径。
+
+最小检查共7个相关断言通过：新增Artifact依赖/无关revision/scope/branch/manual bypass1项、Context实际复用1项、Project结构/restore与不同intent/foreignProject2项、显式fallback semantic/network拒绝1项、原Context其他audience/edited artifact2项。首轮Project测试误用不存在commitTask，按实际commit修正后复测通过；lint brace格式修复。初fail与repaired-policy/context-guards日志分别保留。5产品文件ESLint/diff通过，无全仓tests/build，无API/费用/quota变化。首批allowlist见substrate；价格/health/locality、nativecontinuation、共享send准入与实收益仍未验收，持续G04及后续，不创建HANDOFF或停工。
