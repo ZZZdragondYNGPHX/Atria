@@ -61,7 +61,8 @@ export async function runNarrativeSkillLoop({ execute, skills, transcript, signa
         if (calls.length > 8) throw new Error('native_skill_tool_limit');
         transcript.push({ role: 'assistant', content: result.response.text ?? '',
             ...(result.response.providerState ? { providerState: result.response.providerState } : {}),
-            tool_calls: calls.map(call => ({ id: call.id ?? call.raw?.id, type: 'function', function: { name: call.name, arguments: JSON.stringify(call.args) } })) });
+            tool_calls: calls.map(call => ({ id: call.id ?? call.raw?.id, type: 'function', function: { name: call.name,
+                arguments: typeof call.raw?.function?.arguments === 'string' ? call.raw.function.arguments : JSON.stringify(call.args) } })) });
         for (const call of calls) {
             checkCancellation(signal);
             const value = await skills.read(call);
