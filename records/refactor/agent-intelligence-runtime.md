@@ -1505,3 +1505,15 @@ M1实际验收与main集成完成。Project开发三胜、独立九胜；RP开�
 ## H0 / HM1换设备恢复资料
 
 M1交付后的main `ea75b76be4927e881de2f0be7c304a56301f1f83`与docs均干净且已推送；本次按换设备需求建立当前HANDOFF和完整私有迁移包`Atria-Document-private-H0-20261010.zip`。下一有限交付组为HM1（H0→H1→H2），H0仍只有准备，B0及产品adapter未运行。包保留全部原始证据、连接、账本、quota/rate/transport与密封材料，附外部SHA和逐文件恢复核验；无新模型请求。旧M1任务分支/工作树已清理，新设备从最新main继续，不恢复旧分支或重跑M1。
+
+## HM1 / H0 实际基线与恢复
+
+从最新 `main@ea75b76be4927e881de2f0be7c304a56301f1f83` 建立 `feat/agent-hybrid-memory`；现有旧任务工作树与 docs 未跟踪 Experience 草稿保留。私有迁移包实算 SHA-256 `1551535563aac211046df34ca743072e7a060c8b60a4ef04b434d7b44afee30e`，未提供外部 sidecar，不能声称外部校验已通过；包内 17921 文件的完整清单、大小、SHA-256、安全路径与重复项核对通过。使用已检查的 RESTORE.py 解压到新私有目录，Windows ACL 仅当前用户及 SYSTEM；原 ledger、quota/rate/transport、scope/report/receipt 与密封材料字节保留，未重跑 M1、未读取密封正文。
+
+冻结 8 个样本 /519 来源的原 bytes/hash 不变。test-only adapter 保存未过滤原 sources，并经原 captureEpisodes / applyFactOperations、temporal graph、createSourceLifecycle、Information projection 与 Context compiler 形成 fixture。选定 Branch/Variant 用原 source currentness 校验，不在 B0 增加 Actor filter 或 query seeds。1000 条 Episode/Fact 的长篇投影（500 原 source）、两个具体时间关系与合法桥边关系均来自合成原文。存储为每 fixture 独立临时文件；受控检索服务只监听 loopback，以固定字符重合排序观察真实 HTTP / 索引读写，属于合成 backend，不能冒充真实 Embedding 质量或 Provider费用。
+
+私有证据 `hm1-h0-b0-repaired.json` 保留完整18个 query/lane 观察；`hm1-h0-b0-graph-atomic.json` 补充实际 temporal graph / atomic预算 / Actor权限观察；`hm1-h0-b0-attempt3.json` 保留 source编辑/删除/branch/variant拒绝、rerank故障、取消与保存失败及 Game / Package结果；`hm1-h0-b0-ordinary-repaired.json` 保存 ordinary RP 原 after-WI→唯一lorebook注入。所有失败适配尝试保留，依赖与fixture错误修复后只复测相关项。三条消费分别记录 packet、哈希与原正文输入或 Context Plan；未运行真实模型，正文、Provider tokens、价格/TTFT保持未测/unknown，UTF-8字节估算不称真实tokens。
+
+B0实际不利结果：H0-ZH-01的同名他Actor来源、04的秘密动机来源、05的他Actor私人约定，在 lexical/graph 与受控vector两 lane 均入选；02只覆盖belief而漏掉hearsay。03历史/current来源分别命中；08遥远承诺命中。源编辑、删除、换branch与variant修改使旧snapshot抛AbortError；原metadata保存失败保持原来源；atomic chain仍无完整组协议。该泄露表述只指合成fixture检索结果，不声称真实用户数据或最终NPC自由文本已泄露。
+
+H0最小相关验证：新增5项观测测试分别修复并通过；原source-lifecycle / temporal-graph / hybrid-retrieval三suites共51项通过。没有全量test/build/UI/CI或模型发送。原累计1894 requests /15671701 accounted tokens、unknown64/carry252、pending0/lock0保持；API quota恢复原admissions，不以历史累计当终身限制。H0观测完成，继续H1→H2，尚未宣称HM1整体或真实质量收益完成。
