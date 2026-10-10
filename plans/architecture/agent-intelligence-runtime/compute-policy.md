@@ -95,6 +95,8 @@ source `1ccc6194a` 接续有限Native query/query-multi；工作单位与物理�
 
 source `1d1bf3f79` 接原Native query-by-vector，完成条件/输入边界见[G01 supplied-vector组](g01-substrate.md#已交付有限-g05原-native-query-by-vector-本地读取)。同一index_query lane累计输入字节与collection工作单位，不生成Embedding/provider attempt；readonly旧无scope读兼容。新computeContext入口与已存在的insert/query共用原限额/account恢复；没有给browser/local推理增加预算consumer。其它read/校验/后台与跨foreground revision历史费用继续保留未验收。
 
+source `77820a6d2` 接Native Memory原listHashes与`/list`同一原localWork的index_list类别，具体完成条件在[G01 枚举组](g01-substrate.md#已交付有限-g05native-memory-的原索引枚举)。供给列表无provider发送或虚构token；input/scan/currentness/physical permit沿已有read实现，额外请求仍只做所需枚举。实际current collection的Memory消费已检查，retired namespace转发仅静态/既有安全检查；delete/purge等成本仍未验收。
+
 ### 3.3 原 Run 过期工作成本保留
 
 source `f1a04c041`修复HEAD改变/intent退出后仍在结算的model/local operation被裁剪；完成条件、摘要字段与压缩边界唯一见[G01 过期工作组](g01-substrate.md#已交付有限-g05原-session-过期工作成本结算)。charged receipt保留原identity，成本-only结算在dead/terminal可用且遵守readonly，不允许新charge/world写入。已结束scope的settled/unknown费用在原control压缩累计、随原resume及account恢复搬运；摘要不参与新额度授权，压缩后不支持逐receipt再次reconcile。reported计数仅为已报告数值，unknown上界/数量保留；process观察累计可重叠，金额仍unknown。未覆盖后台本地准备/全read/cache成本或任意旧备份回滚单调性，不改原M1用途预算。

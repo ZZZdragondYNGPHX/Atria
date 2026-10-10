@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。M8 G01–G05、G06 诊断/UI 与 HM2 有界 rerank/source-valid corpus 复用已有有限 checkpoint；Native insert/query已有同一原localWork与有界Vectra消费者。source `d0f0bfeed` 接原Native Anthropic/Gemini的有限Studio Project Task task/adaptive/private Runtime恢复与ordered payload codec；`1d1bf3f79` 补原query-by-vector同预算/有界读取；最新 `f1a04c041` 保留Session HEAD/后台intent/terminal变化后的原在途成本、压缩旧成本并接原resume恢复，16新/21旧检查通过。真实路径verified状态未改，CPU观察不等于CPU时长硬上限。其他Task/Session消费者、安全fork/compaction、其它read/校验/本地模型/后台成本准入仍需实施。真实 G06 正文质量仍失败，实际语义 rerank/Embedding/货币收益缺证据；完整 M8/HM2/HM3 未验收，main 不变。详细有限结果及继续边界见 Record 最新节。
+- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。M8 G01–G05、G06 诊断/UI 与 HM2 有界 rerank/source-valid corpus 复用已有有限 checkpoint；Native insert/query已有同一原localWork与有界Vectra消费者。source `d0f0bfeed` 接原Native Anthropic/Gemini的有限Studio Project Task task/adaptive/private Runtime恢复与ordered payload codec；`1d1bf3f79` 补原query-by-vector同预算/有界读取；`f1a04c041` 保留Session HEAD/后台intent/terminal变化后的原在途成本并接原resume恢复；最新 `77820a6d2` 接Native Memory索引枚举同一费用lane，10新/加强与11旧检查通过。真实路径verified状态未改，CPU观察不等于CPU时长硬上限。其他Task/Session消费者、安全fork/compaction、其它read/校验/本地模型/后台成本准入仍需实施。真实 G06 正文质量仍失败，实际语义 rerank/Embedding/货币收益缺证据；完整 M8/HM2/HM3 未验收，main 不变。详细有限结果及继续边界见 Record 最新节。
 - Updated: 2026-10-11
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。

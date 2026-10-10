@@ -1923,3 +1923,14 @@ append-only private Document日志：g05-supplied-vector-before-v1（三项400 F
 append-only private Document日志：g05-retired-work-before-v1（2真实FAIL）、after-v1（2 PASS）；recovery-v1（6 PASS/1 fixture FAIL，restore保存并立刻恢复当前HEAD是原no-op，实际HEAD不变，未为它改product epoch）；run-resume-v1（2resume PASS/2真实death/readonly FAIL）；terminal-restore-v2（实际历史restore fixture及death/readonly修复3 PASS）；background-v1（4 PASS）；final-v1（写账schema/capacity保护之后15 PASS，130 actual scopes28.294s整组选定耗时）；observation-bounds-v1（1新增摘要合法性PASS）；old-consumers-v1（21 PASS）。新增duplicate不重复计数，M1/HM1/G06 paid/原FAIL/OOM全部未重跑/修改。
 
 压缩后的settled/unknown没有逐receipt identity，不支持额外late/repeated reconcile；原worker未完成的charged继续保留，不猜unknown退款。旧版本已经裁剪的成本无法重建；仅当前original account snapshot/recovery、普通Save历史restore与ironman resume检查，不宣称任意旧account备份回滚仍单调、所有跨账户预算或Session opaque Task/fork恢复。M8/HM2/HM3仍未验收，后台本地准备/其它read/校验/local模型及Session Task/fork-compaction工程按正式依赖继续；真实G06质量仍FAIL、Embedding/rerank语义及金额收益缺证据。本组外部0，累计M8 actual38/direct72982、unknown2/17515 upper/admission fetch0与M1/HM1 pins保持，无HANDOFF。
+### G05 — Native Memory 原索引枚举成本
+
+2026-10-11 source `77820a6d2b98ad470f051517fe27a7304414de22`已push，main3ee1332ef保持。先冻结G01有限枚举合同，只接原Native /list、Hybrid已有listHashes，不新建owner/检索器/后台/缓存。旧allowlist不接受computeContext，FS/SQLite before-v1均[400,400]，是新scoped合同未支持，不声称已复现合法scoped预算绕过。
+
+原queryNativeIndexes添加内部list模式，同一路径读permit、有界扫描与返回前scope/成本settle后重验；不实例化Vectra做额外ranking/Embedding，不缓存枚举、不建空index。localWork扩index_list类别，每次1 collection/冻结输入字节；沿原Run operation/Project Task共用job额度、原account/Route limits。坏/超界index保持原样。Hybrid现存与retired派生namespace枚举转发已有computeContext；实际current collection的client→Native HTTP→loopback Embedding消费者检查，retired namespace此组只静态修改与相关旧source guard回归，未把它写为真实HTTP执行。delete/purge仍原串行但成本尚未接入，源Timeline/Information/World不变。
+
+10新/加强distinct PASS：两engine实际并发list与insert共享额度、Route移除/account恢复2；空/坏/超界/readonly读取4；cost settle后cancel/原Task修改拒绝旧hashes且completed CPU不退款2；加强原Memory consumer为两配置，maxJobs3实际list→insert→query三工作/两模型发送，maxJobs1仅list准入、Embedding0并合法基础检索降级2。新增8，原1个Memory consumer扩为2项，累计10不同断言用例，不同时计旧Memory回归。11受影响旧PASS：Native原query空/输入边界/Task变化3、query-multi1、供给向量非法边界1、real vector IO/配置边界2；Hybrid vector可选失败及late source硬拒绝/content-addressed index/forged grants/pinned Information live revision4。未全仓测试/新UI检验/真实模型。
+
+append-only private Document：g05-local-list-before-v1（2 FAIL400）、after-v1（2 PASS）；safety-consumer-v1（8 PASS）；old-native-v1（7 PASS）、old-hybrid-v1（4 PASS）；lint-v1五相关product文件独立PASS，source/docs diff PASS。实际cost观察依旧process切片，已完成工作不等于consumer可接受；纯list没有provider usage0或金额推断。原paid/失败/OOM/原始文件与费用保持，本组外部0，M8actual38/direct72982、unknown2/17515 upper/admission fetch0不变。
+
+M8/HM2/HM3未验收，真实G06仍FAIL；delete/purge、其它cache/validation/local inference/后台成本、Session Task/fork/compaction及H5前置按正式依赖继续，无HANDOFF或main集成。

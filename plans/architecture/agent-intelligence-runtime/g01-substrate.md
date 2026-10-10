@@ -85,6 +85,14 @@ source `f1a04c041`已push，16新distinct/21受影响旧checks通过。FS/SQLite
 
 累计reported input/output仅计已报告值，未报告部分保持未知，不推导total；process CPU/wall逐job观察可重叠，不是独占job或全进程精确累计。旧scope的settled/unknown压缩后无逐receipt identity，额外late/repeated reconcile会拒绝，不能改摘要猜账/退款；原worker尚未完成的charged身份继续保留。旧版本已丢费用无法重建，旧没有摘要的resume仍兼容。此组不验任意旧account备份回滚单调性、跨账户预算、Session Task opaque恢复或后台本地准备全覆盖；剩余正式工程/外部证据依赖继续，M8/HM2/HM3未验收。
 
+## 已交付有限 G05：Native Memory 的原索引枚举
+
+完成条件先冻结（2026-10-11）：只接原Native `/list`及Hybrid `listHashes`现有调用，继续同一queryNativeIndexes物理读permit/扫描边界/原Session或Project Task成本authority。原localWork新增index_list类别，每次1 collection/冻结输入字节；不排序/嵌入/推理，不缓存列表，不新增后台或profile。Memory向现存及旧派生namespace的list转交已有computeContext；删除/purge及browser CPU仍是后续成本消费者，不借此宣称全部完成。
+
+最小出口：真实Hybrid client→Native HTTP list/insert/query同父额度，超过本地额度在index IO/Embedding前拒绝并沿合法基础检索降级；同scope并发、Route移除/recovery不恢复额度。空index无创建/无model usage，坏/超界index保持，readonly旧无scope兼容，cancel/stale Task拒绝列表且保留实际成本。query已有不受影响消费作少量回归；外部0、main不变，真实G06及其它正式依赖继续。
+
+source `77820a6d2`已push，10新/加强distinct、11受影响旧checks通过。原list allowlist未支持computeContext，两项before返回400，不是已证明绕过；新scoped枚举复用既有bounded read并以index_list记同一原费用lane。actual Memory current collection list→insert→query与限额1时Embedding前拒绝/合法降级两项通过；retired namespace转发仅静态修改，相关旧source guard检查通过，未宣称该分支已执行真实HTTP。FS/SQLite并发/恢复、空/坏/超界index保持、readonly与settle后cancel/Task拒绝均通过；query供应向量/文本/多集合既有消费者保持。删除/purge及其它CPU/后台/continuity和真实G06依赖仍未完成，外部0。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
