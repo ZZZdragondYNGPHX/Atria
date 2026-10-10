@@ -28,7 +28,7 @@
 | 原阶段与依赖 | [Agent Runtime delivery](../agent-intelligence-runtime/delivery.md) |
 | 当前已冻结 M1 退出条件 | [M1 acceptance](../agent-intelligence-runtime/m1-acceptance.md) |
 | 现有 Context / Compute / Reuse | [behavior-context](../agent-intelligence-runtime/behavior-context.md)、[compute-policy](../agent-intelligence-runtime/compute-policy.md)、[execution-reuse](../agent-intelligence-runtime/execution-reuse.md) |
-| 用户记录与开发事实 | [现有同一 Record](../../records/refactor/agent-intelligence-runtime.md) |
+| 用户记录与开发事实 | [现有同一 Record](../../../records/refactor/agent-intelligence-runtime.md) |
 
 ## 1. 功能工作包建议：原职责优先，而非无限新增阶段
 
