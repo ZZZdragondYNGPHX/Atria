@@ -91,6 +91,9 @@ try {
     if (f3Resume && (hash(f3Resume) !== f3Scope.calibrationResumeSummaryHash || f3Resume.mode !== 'f3_private_development'
         || f3Resume.entries.some(e => e.candidateValueHash || e.status === 'f3_development_observed'))) throw new Error('f3_resume_not_calibration');
     if (f3Scope?.sealedDirectory && !/^m1-f2-sealed-[a-z0-9-]+$/.test(f3Scope.sealedDirectory)) throw new Error('f3_sealed_directory_changed');
+    if (f3Scope?.developmentKinds && (!Array.isArray(f3Scope.developmentKinds) || !f3Scope.developmentKinds.length
+        || new Set(f3Scope.developmentKinds).size !== f3Scope.developmentKinds.length
+        || f3Scope.developmentKinds.some(kind => !f3Scope.domainOrder.includes(kind)))) throw new Error('f3_development_domains_changed');
     if (f3Promotion && (!/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.promotionResumeRun)
         || !/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.promotionSourceRun) || f3Scope.promotionKind !== 'project-prompt'
         || !/^[a-f0-9]{64}$/.test(f3Scope.frozenCandidateHash))) throw new Error('f3_promotion_resume_changed');
@@ -319,6 +322,7 @@ try {
     const { selectCases, loadFixture, canonical } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
     for (const kind of pilotScope?.domainOrder || ['rp-skill', 'project-prompt']) {
         if (f3Promotion && kind !== f3Scope.promotionKind) continue;
+        if (!f3Promotion && f3Scope?.developmentKinds && !f3Scope.developmentKinds.includes(kind)) continue;
         const index = ['rp-skill', 'project-prompt'].indexOf(kind);
         if (cycleProjectExtract && index === 0) continue;
         if (cycleBaselineProject && index === 0) continue;
