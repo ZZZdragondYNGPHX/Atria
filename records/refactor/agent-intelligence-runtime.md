@@ -1869,3 +1869,15 @@ source `304d0d199f50f335a8bbcca466af10dec8e4d10c` 已push，外部API0，未集�
 原日志append-only在private Document：g05-local-index-after-v1（6 fixture FAIL/2 PASS，route误用roleId与null status helper）、after-v2（修fixture只重跑6 PASS）；publication-before-v1（2真实FAIL）、publication-after-v1（7相关PASS）；recovery-after-v1（4 PASS）；bounds-after-v1（Jest worker heap OOM，16MiB Buffer.toEqual展开的fixture断言，未计任何PASS）、bounds-after-v2（改Buffer.equals，5 PASS）；budget-editor-v1（2，含1 old）；old-consumers-v1（12）；old-protocols-v1（2）；lint-v1 PASS。fixture修正不归产品因果，原OOM/FAIL保留；API/货币质量报告没有新producer。
 
 M8仍actual38/direct72982，unknown2/17515 upper/admission fetch0、M1/HM1 pins与不利正文/评价均不变。query/缓存校验/其它本地模型/后台预算，以及其他品牌/Session Task、安全fork/compaction继续正式依赖，真实G06质量仍FAIL、H5仍有M2/M3/G06前置；完整M8/HM2/HM3未验收、main3ee1332ef，无HANDOFF。
+
+### 有限 G05 Native query/query-multi 的索引读取与排序
+
+source `1ccc6194a9934f621a5739a6118da402687db7ef` 已push，外部API0。先冻结g01完成条件，再沿原Native query/query-multi→Vectra LocalIndex真实读取/排序接入原Run/Task compute.localWork，种类index_query；没有新rank算法/缓存、owner ledger或默认额度。一次single/multi为1 job，输入项是collection数量，字节是冻结请求数据，不冒称扫描vector数/CPU时长。Embedding每实际send沿同一原父model限额另charge/settle，cost CPU/wall仍process范围观察。FS/SQLite实际insert+single/multi并发同父限制、移除Route、account recovery及close/reopen engine+新RunControl后额度仍有效。
+
+多index按规范物理路径排序拿同一单Host permit，与insert/delete/purge串行，工作准入在读取和Embedding之前。query/collection/topK与读取候选/vector/总字节上界只在g01维护；坏/超界index拒绝，不清空/重建。空/缺index返回空候选，不创建文件，也不发送Embedding或记usage0；仍保留实际localWork。permit的read mode不误用assertWritable，旧unscoped readonly query兼容；有预算的durable写账继续服从原写权限。原scope在发模型前、计算结束与cost settle之后均核验，取消/Task变化不能返回已算出的旧结果，已发Embedding usage不退。如果变化发生于cost settle后，已完成工作的outcome=completed仍如实保留，最终consumer失败另由原错误码反映，不能把成本completed当请求成功。
+
+Windows真实反例：不同大小写collection名字原来被当两个paths，实际scan同一个物理文件，before-v1返回200而预期503，1项真实FAIL。统一Windows physical identity case folding、重复拒绝与规范permit排序后PASS，后续4受影响并发/排队入口同次PASS（其中3为本组新检查复验，1为上一组旧insert排队检查）。不新增跨进程/多writer保证；原scope/物理读/账本/网络响应无跨域原子性。
+
+13新distinct通过：FS/SQLite各1混合insert/query/multi并发+Route移除/recovery；空index no-send/no-file1；readonly旧路径1；坏index保持/有实际CPU但HTTP0/无fake model usage1；输入collection/查询bytes/topK准入边界1；实际Task在Embedding期间变化并保留usage1；结算后取消/Task变化拒绝但completed成本不退款2；反向multi路径并发避免deadlock/重复charge1；排队取消不启动work或provider1；物理候选/单vector/总vector扫描上界1；Windows casealias1。4旧distinct通过：原query-multi剩余model额度并发、Memory实际client anchor转发与真实vector IO/purge3，加上一组原insert排队取消1。重复不计新增。
+
+append-only原log在private Document：g05-local-query-old-entry-v1（3 old PASS），after-v1（10 new PASS），bounds-after-v1（2 new PASS），case-before-v1（1真实FAIL），case-after-v1（5 PASS=1新Windows+3本组复验+1 old），lint-v1/v2（最终v2独立PASS），diff PASS。没有重复OOM/全仓测试/真实API或新的primary/critic/Embedding/rerank/probe；上组index 16新/15旧与更早adaptive/Runtime断言不移作本组producer。M8仍actual38/direct72982，unknown2/17515 upper与M1/HM1 pins、不利质量和main3ee1332ef保持。其它read/缓存校验/本地模型/后台预算、其他品牌/Session Task、安全fork/compaction按依赖继续；G06质量仍FAIL，H5前置不变，完整M8/HM2/HM3未验收，无HANDOFF。

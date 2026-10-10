@@ -91,6 +91,8 @@ source `304d0d199`，原RuntimeRoute.computeBudget可选localWork、原Run opera
 
 成本记录为实际process范围CPU与wall观察，不证明job独占CPU、CPU毫秒硬cap、设备功耗或金额；没有provider调用不记model attempt/usage。native insert在临时Vectra副本处理，最终在原Session Run锁或原Task锁+Studio Project队列内重验/同步原子发布；取消/Task变动/写失败反例与普通Session实际消费通过。索引与账本之间没有跨域原子性，publish后结算不可写继续保守保留charged占用。仅原account recovery/冷engine恢复额度已检查，不扩大为所有fork/跨foreground revision费用历史保证。query/校验/其它local inference/后台消费者仍按依赖继续。
 
+source `1ccc6194a` 接续有限Native query/query-multi；工作单位与物理扫描边界见[G01 query组](g01-substrate.md#已交付有限-g05原-native-queryquery-multi-的本地索引工作)，不重新定义上节limit字段。原父work lane与Embedding sends分别准入/settle；空候选不创建index、不发送Embedding、不造usage0。结果在计算及cost settle后原scope重验，已完成CPU但此时取消/Task变动可以拒绝consumer返回，completed work成本不退、也不代表请求接受成功。旧unscoped readonly读取保持，所有其它read/validation/local model/background准入继续。
+
 ## 4. Scheduler 与故障边界
 
 继续使用 `turn_blocking / interactive / background / maintenance`；共享 owner resource permits 与公平调度。

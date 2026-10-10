@@ -55,6 +55,16 @@ source `304d0d199` 已push；16新distinct/15受影响旧checks通过（细项�
 
 范围保留：query/缓存校验/其他本地模型/后台成本、其他品牌/Session Task、fork/compaction与真实G06质量/H5前置继续，外部发送0，不集成main。
 
+## 已交付有限 G05：原 Native query/query-multi 的本地索引工作
+
+完成条件先冻结（2026-10-11）：沿上述同一原compute ledger/localWork限额，增加`index_query`工作种类，不新增quota或改Token计费。一个query/multi-query是1 job；输入项计实际请求的collection数，输入字节计冻结的collection/query/topK/threshold等请求数据，不能冒称候选vector扫描数或CPU时长。显式本地限额与Embedding同父但独立计量，放宽/移除仍继承；旧未配置/未持有本地限额兼容。
+
+实际Native query最多16个互异collection、query≤8192 UTF-8 bytes、topK1–100；一次job读取的index合计≤16MiB、候选≤10000、vector值≤1048576、单vector≤65536，拒绝不重建/清空原index。沿原Vectra LocalIndex读取/排序，不另建检索算法/缓存。多个物理index permit按规范路径排序获取，与insert/delete/purge共享同一单Host有界permit，读取/Embedding/排序/原scope最终核验/成本settle后释放；read-only旧读取不得被纯物理permit误判为write。原index不存在只返回空候选，不创建文件；全部不存在时无需Embedding发送，但本地准入与成本事实保留，不伪造provider usage0。
+
+发送前与返回结果前分别重验当前原Session/Task。取消/过期scope不能返回已算出的旧结果，已经实际发送的Embedding仍保留直接usage/unknown，未发送拒绝不charge model。成本仅沿同一process CPU/wall观察，FS/SQLite并发+混合insert/query父工作额度、原Task中途变化/取消、readonly旧路径、空index、异常/超界index保持及移除限额/recovery作最小定向检查。全组合/所有其他read消费者/后台/安全fork/compaction及G06质量仍未验收，外部发送0。
+
+source `1ccc6194a` 已push，13新distinct/4受影响旧checks通过（日志见Record）。Windows大小写alias曾实际返回200/重复扫描，before FAIL；physical permit key与multi路径身份统一Windows case folding、按该身份排序，after PASS。返回前在CPU成本settle之后再原scope重验；若此时取消/Task变化，实际计算completed与已报告usage仍保持，但拒绝返回结果，不能把completed成本字段解释成consumer接受成功。读取permit不要求readonly写权限，旧unscoped readonly读取通过；有预算/原scope的写账仍遵守原authority。未开启query-by-vector/list等所有其它read的预算，也未证明CPU时长硬cap、任意跨进程writer或网络投递的跨域原子性。
+
 ## G02 编译绑定 checkpoint
 
 source `37273d4ca`：原 canonical JSON serializer 统一资源 hash、HTTP token count 与发送 bytes；保留数组顺序和 raw instruction。PromptCompiler 原 target / stage layout 不改优先级，已有 typed parameters 分别控制 behavior / identity / expression / narration。compilation 增加稳定资源/segment identity、exact ref、内容指纹、volatility 与仅候选 cacheability；不是 Provider cache grant。
