@@ -4,7 +4,7 @@ import { memoryEligibleSnapshotProof } from './eligibility.js';
 
 // Derived process-local resources only. No saved query answer, rank or prose.
 const entries = new Map();
-const MAX_ENTRIES = 16, MAX_BYTES = 16 * 1024 * 1024, MAX_ENTRY_BYTES = 4 * 1024 * 1024;
+const MAX_ENTRIES = 16, MAX_BYTES = 16 * 1024 * 1024, MAX_ENTRY_BYTES = MAX_BYTES;
 let serial = 0, retainedBytes = 0;
 export function memoryCorpusReuse(snapshot, at, build) {
     const scoped = memoryEligibleSnapshotProof(snapshot);
@@ -19,7 +19,8 @@ export function memoryCorpusReuse(snapshot, at, build) {
     }
     const corpus = build();
     const bytes = new TextEncoder().encode(JSON.stringify(corpus)).length;
-    if (bytes > MAX_ENTRY_BYTES || corpus.documents.length > 10000) return { corpus, fingerprints: null, decision: { status: 'miss', reason: 'derived_cache_capacity' } };
+    if (bytes > MAX_ENTRY_BYTES || corpus.documents.length > 10000) return { corpus, fingerprints: null,
+        decision: { status: 'miss', reason: 'derived_cache_capacity', requiredBytes: bytes, maxBytes: MAX_ENTRY_BYTES } };
     while (entries.size >= MAX_ENTRIES || retainedBytes + bytes > MAX_BYTES) {
         const key = entries.keys().next().value; retainedBytes -= entries.get(key).bytes; entries.delete(key);
     }
