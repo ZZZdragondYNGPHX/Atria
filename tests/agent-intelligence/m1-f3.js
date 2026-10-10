@@ -7,7 +7,7 @@ import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligenc
 import { parseBlindGrade } from './m1-acceptance.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
 import { finishF3Promotion } from './m1-f3-promotion.js';
-import { f2SourceEvidence, f2SourceMessages, parseF2SourceAssessment, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
+import { f2SourceEvidence, f2SourceMessages, parseF2SourceAssessment, reusableF2Calibration, f2JudgeTransport, f2SourceTransport } from './m1-f2.js';
 
 const profileFor = domain => domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
 const equal = (a, b) => canonical(a) === canonical(b);
@@ -38,8 +38,7 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
             scope.judgeReasoningEffort?.[label] ?? null))) throw new Error('f3_calibration_changed');
     }
     for (const control of controls.sourceControls.filter(c => c.pair.case.entrance === domain)) for (const label of labels) {
-        const messagesHash = hash(f2SourceMessages(control.pair)), transportHash = hash(f2JudgeTransport(configs[label], scope.judgeOutputTokens,
-            scope.sourceReasoningEffort?.[kind]?.[label] ?? scope.judgeReasoningEffort?.[label] ?? null));
+        const messagesHash = hash(f2SourceMessages(control.pair)), transportHash = hash(f2SourceTransport(configs[label], scope, kind, label));
         if (!source.entry.sourceCalibration.some(row => row.label === label && row.group === control.group && row.passed === true
             && row.messagesHash === messagesHash && row.configurationHash === hash(configs[label]) && row.transportConfigurationHash === transportHash
             && Object.entries(control.expected).every(([dimension, status]) => row.statuses[dimension] === status))) throw new Error('f3_calibration_changed');
@@ -51,8 +50,8 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
         for (const observation of rows[0].observations.filter(o => labels.includes(o.label))) {
             const config = configs[observation.label];
             if (!config || observation.messagesHash !== messagesHash || observation.evidenceHash !== hash(evidence)
-                || observation.configurationHash !== hash(config) || observation.transportConfigurationHash !== hash(f2JudgeTransport(config,
-                scope.judgeOutputTokens, scope.sourceReasoningEffort?.[kind]?.[observation.label] ?? scope.judgeReasoningEffort?.[observation.label] ?? null))) throw new Error('f3_assessment_changed');
+                || observation.configurationHash !== hash(config) || observation.transportConfigurationHash !== hash(f2SourceTransport(config,
+                scope, kind, observation.label))) throw new Error('f3_assessment_changed');
             parseF2SourceAssessment(JSON.stringify(observation), pair.case, evidence);
         }
         const shared = pair.case.behaviorDimensions.filter(dimension => rows[0].observations.every(o => o.dimensions[dimension].status === 'gap'));

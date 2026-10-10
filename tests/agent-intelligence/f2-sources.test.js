@@ -6,7 +6,7 @@ import { runRp, runProject } from '../../src/native/agent-intelligence/evaluatio
 import { withIsolatedRuntime } from './runner.js';
 import { evolutionFixture, restoreEvolutionFixture } from './evolution-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence, f2SourceMessages, reusableF2Calibration, f2JudgeTransport } from './m1-f2.js';
+import { validateF2Scope, runF2Domain, parseF2SourceAssessment, f2CalibrationMessages, f2SourceEvidence, f2SourceMessages, reusableF2Calibration, f2JudgeTransport, f2SourceTransport } from './m1-f2.js';
 
 const judgeConfig = () => ({ connection: { providerAdapter: 'provider.openai-compatible' }, model: { limits: { contextTokens: 32000, outputTokens: 8000 } },
     generation: { output: { maxTokens: 8000 }, streaming: { enabled: false } }, route: { generationProfileRef: { revision: 'old' } },
@@ -43,6 +43,17 @@ test('calibration reuse requires the actual judge configuration and exact contro
     expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 16384)).toBe(true);
     expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 20000)).toBe(false);
     expect(reusableF2Calibration(pinned, control, 'secondary', fullConfig, 16384, 'low')).toBe(false);
+});
+
+test('Project source response reservation leaves RP, comparisons and baseline identities intact', () => {
+    const config = judgeConfig(), original = structuredClone(config);
+    const scope = { judgeOutputTokens: 16384, sourceOutputTokens: { 'project-prompt': 8000 },
+        judgeReasoningEffort: { primary: 'low' }, sourceReasoningEffort: { 'rp-skill': { primary: 'high' } } };
+    expect(f2SourceTransport(config, scope, 'project-prompt', 'primary')).toEqual(f2JudgeTransport(config, 8000, 'low'));
+    expect(f2SourceTransport(config, scope, 'rp-skill', 'primary')).toEqual(f2JudgeTransport(config, 16384, 'high'));
+    expect(hash(f2SourceTransport(config, scope, 'project-prompt', 'primary'))).not.toBe(hash(f2JudgeTransport(config, 16384, 'low')));
+    expect(f2SourceTransport(config, { judgeOutputTokens: 16384 }, 'project-prompt', 'primary')).toEqual(f2JudgeTransport(config, 16384));
+    expect(config).toEqual(original);
 });
 
 const captureFor = entry => ({ trialId: 'f2:' + entry.caseId, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },

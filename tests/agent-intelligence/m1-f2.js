@@ -15,6 +15,8 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
     if (scope?.sourceReasoningEffort && Object.entries(scope.sourceReasoningEffort).some(([kind, labels]) =>
         !['rp-skill', 'project-prompt'].includes(kind) || !labels || typeof labels !== 'object' || Object.entries(labels).some(([label, effort]) =>
             !['primary', 'secondary'].includes(label) || !['low', 'medium', 'high'].includes(effort)))) throw new Error('f2_scope_changed');
+    if (scope?.sourceOutputTokens && Object.entries(scope.sourceOutputTokens).some(([kind, tokens]) =>
+        !['rp-skill', 'project-prompt'].includes(kind) || !Number.isSafeInteger(tokens) || tokens < 1)) throw new Error('f2_scope_changed');
     const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
     if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION].includes(scope.pilotCaseSetRevision)
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12
@@ -78,6 +80,13 @@ export function f2JudgeTransport(config, judgeOutputTokens = null, reasoningEffo
     }
     transport.connection.options = { ...transport.connection.options, responseMode: 'stream' };
     return transport;
+}
+
+// Source assessments reserve their configured response space separately from
+// comparisons. Preserve the full evidence and the original baseline config.
+export function f2SourceTransport(config, scope, kind, label) {
+    return f2JudgeTransport(config, scope.sourceOutputTokens?.[kind] ?? scope.judgeOutputTokens ?? null,
+        scope.sourceReasoningEffort?.[kind]?.[label] ?? scope.judgeReasoningEffort?.[label] ?? null);
 }
 
 export function parseF2SourceAssessment(text, entry, evidence) {
@@ -242,8 +251,7 @@ export async function runF2Domain({ f, kind, primaryConfig, secondaryConfig, con
     entry.judgeMode = primaryOnly ? 'primary_only' : 'dual';
     entry.secondModelValidation = primaryOnly ? 'deferred_by_user' : 'required';
     const transportFor = (label, config) => f2JudgeTransport(config, scope.judgeOutputTokens ?? null, scope.judgeReasoningEffort?.[label] ?? null);
-    const sourceTransportFor = (label, config) => f2JudgeTransport(config, scope.judgeOutputTokens ?? null,
-        scope.sourceReasoningEffort?.[kind]?.[label] ?? scope.judgeReasoningEffort?.[label] ?? null);
+    const sourceTransportFor = (label, config) => f2SourceTransport(config, scope, kind, label);
     if (hash(primaryConfig) !== scope.configurations[kind].primary || hash(secondaryConfig) !== scope.configurations[kind].secondary) throw new Error('f2_configuration_changed');
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
