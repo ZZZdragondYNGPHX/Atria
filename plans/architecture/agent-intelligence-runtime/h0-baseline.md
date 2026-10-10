@@ -52,7 +52,7 @@ H1 操作顺序：枚举并固定原来源/设置清单 → 保留来源与撤�
 
 ## 5. 固定中文样本规格与 B0 观测准备
 
-使用下表自建合成来源，独立于 M1 development/promotion材料；不拿 M1 密封材料做 Memory benchmark。每行将物化为 source、Actor grants、时间/branch/variant、query、合法 source ID 与不可入选 source ID、正文判断标签。当前仅固定规格，尚无运行结果或数据 hash；执行前物化后固定 bytes/hash，不能用结果回改标签。
+使用下表自建合成来源，独立于 M1 development/promotion材料；不拿 M1 密封材料做 Memory benchmark。[h0-samples.json](h0-samples.json) 已物化八项逻辑样本、519条source（含500轮长篇检索压力样本）、Actor grants、时间/branch/variant、query、required/excluded source IDs与正文标签。它不是产品schema或已运行fixture，不证明长篇正文质量；H1接入原source adapter后才执行。冻结文件SHA-256：`ef9a584cfde78f5bc60e43914e1eb676d3530df4398e903f56afabb0631e6eeb`，193348 bytes。只有发现设计/标签错误并记录修订依据才更新，不能用运行结果回改标签。
 
 | 样本 | Query/场景 | 合法证据与拒绝标签 | 研究对应 |
 | --- | --- | --- | --- |
@@ -78,4 +78,4 @@ CPU热点规格：合法Episode规模100/1000/10000，cold/warm各自记录 corp
 - 三路径消费者：`tests/native/{package-turn-memory-bridge-g3,context-compiler,information-runtime-p6}.test.js`；ordinary RP/Game按实际调用图补requester与入口覆盖。
 - H5：原`tests/native/simulation-*.test.js`只作为后续入口，本次不执行新cognition/autonomous验收。
 
-H0剩余：物化并hash固定合成样本，运行source/Actor/Branch/Timeline/Variant确定性反例及B0观测，完成原生数据清单与三路径实际消费证据。H0全套验收、H1/H2产品交付与质量/性能收益均未完成；本次只读准备不能满足HM1集成出口。
+H0剩余：将冻结逻辑样本适配原source/Information/Context fixture，运行source/Actor/Branch/Timeline/Variant确定性反例及B0观测，完成原生数据清单与三路径实际消费证据。H0全套验收、H1/H2产品交付与质量/性能收益均未完成；本次只读准备不能满足HM1集成出口。
