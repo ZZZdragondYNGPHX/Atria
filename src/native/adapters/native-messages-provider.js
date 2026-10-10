@@ -1,7 +1,7 @@
 import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { observedGenerationUsage } from './generation-usage.js';
-import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest } from '../model-prompt-runtime/native-execution-envelope.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, nativeExecutionObservation } from '../model-prompt-runtime/native-execution-envelope.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
@@ -257,6 +257,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             const cached = anthropic ? value.usage?.cache_read_input_tokens : value.usageMetadata?.cachedContentTokenCount;
             return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
                 observation: { reportedModel: (anthropic ? value.model : value.modelVersion) ?? null, upstreamIdentity: 'unknown',
+                    nativeExecution: nativeExecutionObservation(binding, sequence, providerState),
                     cachedInputTokens: Number.isSafeInteger(cached) && cached >= 0 ? cached : null,
                     nativeEnvelope: providerState ? 'captured_active_execution' : 'completed', hiddenAttempts: 'unknown' } };
         },

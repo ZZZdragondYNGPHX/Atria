@@ -1,7 +1,7 @@
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { serializeNativeDocument } from '../repositories/common.js';
-import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest } from '../model-prompt-runtime/native-execution-envelope.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, nativeExecutionObservation } from '../model-prompt-runtime/native-execution-envelope.js';
 import { observedGenerationUsage } from './generation-usage.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
@@ -137,6 +137,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
             if (!toolCalls.length) discardNativeEnvelopes(binding);
             return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
                 observation: { reportedModel: typeof value.model === 'string' ? value.model : null, upstreamIdentity: 'unknown',
+                    nativeExecution: nativeExecutionObservation(binding, sequence, providerState),
                     cachedInputTokens: Number.isSafeInteger(value.usage?.input_tokens_details?.cached_tokens) && value.usage.input_tokens_details.cached_tokens >= 0 ? value.usage.input_tokens_details.cached_tokens : null,
                     nativeEnvelope: providerState ? 'captured_active_execution' : 'completed', hiddenAttempts: 'unknown' } };
         },

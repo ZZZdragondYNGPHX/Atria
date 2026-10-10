@@ -56,6 +56,16 @@ export function discardNativeEnvelopes(binding) {
     for (const [id, entry] of checkpoints) if (entry.binding.pathFingerprint === binding.pathFingerprint
         && hashNativeDocument(entry.binding.executionScope) === hashNativeDocument(binding.executionScope)) checkpoints.delete(id);
 }
+// Called only after successful native lowering and response normalization. This
+// describes local protocol transfer, not upstream reuse or durable task policy.
+export function nativeExecutionObservation(binding, sequence, providerState) {
+    const transferredCheckpoints = sequence.filter(message => message.providerState).length;
+    return { protocol: binding.protocol, lifecycle: 'mandatory_tool_exchange',
+        scope: binding.executionScope.kind, retention: 'process_only', transferredCheckpoints,
+        requestAction: transferredCheckpoints ? 'continue_tool_protocol' : 'fresh_protocol_request',
+        responseAction: providerState ? 'capture_tool_checkpoint' : 'discard_finished_execution',
+        upstreamReuse: 'unknown' };
+}
 export function assertNativeEnvelopeSafe(state, secret) {
     const entry = checkpoints.get(state?.checkpointId);
     if (entry && JSON.stringify(entry.content).includes(secret)) {

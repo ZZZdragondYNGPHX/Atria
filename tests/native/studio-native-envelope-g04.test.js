@@ -13,7 +13,7 @@ import { createNativeStudioRouter } from '../../src/endpoints/native-studio.js';
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
 
 test.each(['stable', 'different_task', 'changed_task', 'late_task', 'restored_task'])('G04 real Studio client/routers/Host %s protects signed state across distinct request/attempt IDs', async change => {
-    const h = await makeTempFsEngine(); const wires = [], requests = [], updates = [];
+    const h = await makeTempFsEngine(); const wires = [], requests = [], updates = [], generationResponses = [];
     const server = createServer(async (req, res) => {
         let wire = ''; for await (const chunk of req) wire += chunk;
         wires.push(JSON.parse(wire));
@@ -60,6 +60,7 @@ test.each(['stable', 'different_task', 'changed_task', 'late_task', 'restored_ta
             let request = supertest(app)[(options.method || 'GET').toLowerCase()](url);
             if (body) request = request.send(body);
             const result = await request;
+            if (url === '/api/native/generation/execute' && result.status === 200) generationResponses.push(result.body);
             return { ok: result.status >= 200 && result.status < 300, status: result.status,
                 headers: { get: name => result.headers[name.toLowerCase()] }, json: async () => result.body };
         };
@@ -75,6 +76,13 @@ test.each(['stable', 'different_task', 'changed_task', 'late_task', 'restored_ta
         expect(requests[0].requestId).not.toBe(requests[1].requestId);
         expect(requests[0].projectAttemptId).not.toBe(requests[1].projectAttemptId);
         expect(wires[1].contents.at(-2).parts).toEqual([{ functionCall: { name: 'atri_agent_get_project', args: {} }, thoughtSignature: 'PRIVATE-UI-NATIVE-SIGNATURE' }]);
+        expect(generationResponses.map(value => value.response.observation.nativeExecution)).toEqual([
+            { protocol: 'native.gemini.v1', lifecycle: 'mandatory_tool_exchange', scope: 'task', retention: 'process_only',
+                transferredCheckpoints: 0, requestAction: 'fresh_protocol_request', responseAction: 'capture_tool_checkpoint', upstreamReuse: 'unknown' },
+            { protocol: 'native.gemini.v1', lifecycle: 'mandatory_tool_exchange', scope: 'task', retention: 'process_only',
+                transferredCheckpoints: 1, requestAction: 'continue_tool_protocol', responseAction: 'discard_finished_execution', upstreamReuse: 'unknown' },
+        ]);
+        expect(JSON.stringify(generationResponses)).not.toContain('PRIVATE-UI-NATIVE-SIGNATURE');
         expect(JSON.stringify([requests, result, updates])).not.toContain('PRIVATE-UI-NATIVE-SIGNATURE');
         expect(result.messages.at(-1).content).toBe('Current project read.');
         const stored = await agent.getTask(h.handle, source.project.projectId, task.taskId);

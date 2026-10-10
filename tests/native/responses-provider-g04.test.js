@@ -75,10 +75,15 @@ describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => 
         const f = await fixture((res, round) => json(res, nativeResult(format, round)), format);
         const first = await f.host.execute(f.h.handle, f.request);
         expect(JSON.stringify(first)).not.toContain('NATIVE-OPAQUE-SENTINEL');
+        expect(first.response.observation.nativeExecution).toEqual({ protocol: 'native.' + format + '.v1', lifecycle: 'mandatory_tool_exchange',
+            scope: 'request', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
+            responseAction: 'capture_tool_checkpoint', upstreamReuse: 'unknown' });
         const next = followup(f, first);
         expect(JSON.stringify(await f.host.execute(f.h.handle, next, undefined, undefined, { preview: true }))).not.toContain('NATIVE-OPAQUE-SENTINEL');
         const final = await f.host.execute(f.h.handle, next);
         expect(final.response.text).toBe('Fresh native final.');
+        expect(final.response.observation.nativeExecution).toMatchObject({ transferredCheckpoints: 1,
+            requestAction: 'continue_tool_protocol', responseAction: 'discard_finished_execution' });
         expect(f.requests[1].wire).toContain('NATIVE-OPAQUE-SENTINEL');
         expect(f.requests[1].wire).not.toContain('nativeCheckpointId');
         expect(final.response.observation).toMatchObject({ reportedModel: 'reported-alias', cachedInputTokens: null, upstreamIdentity: 'unknown', hiddenAttempts: 'unknown' });
@@ -106,12 +111,17 @@ test('Native Project consumes complete Responses opaque items and call IDs in or
     const f = await fixture((res, round) => json(res, result(round === 1 ? [envelope, functionCall] : [message('Fresh final text.')] )));
     const first = await f.host.execute(f.h.handle, f.request);
     expect(first.response.providerState).toHaveProperty('checkpointId');
+    expect(first.response.observation.nativeExecution).toEqual({ protocol: 'openai.responses.v1', lifecycle: 'mandatory_tool_exchange',
+        scope: 'request', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
+        responseAction: 'capture_tool_checkpoint', upstreamReuse: 'unknown' });
     expect(JSON.stringify(first)).not.toContain('OPAQUE-STATE-SENTINEL');
     const next = followup(f, first);
     const preview = await f.host.execute(f.h.handle, next, undefined, undefined, { preview: true });
     expect(JSON.stringify(preview)).not.toContain('OPAQUE-STATE-SENTINEL');
     const second = await f.host.execute(f.h.handle, next);
     expect(second.response.text).toBe('Fresh final text.');
+    expect(second.response.observation.nativeExecution).toMatchObject({ transferredCheckpoints: 1,
+        requestAction: 'continue_tool_protocol', responseAction: 'discard_finished_execution' });
     const nativeInput = f.requests[1].body.input;
     expect(nativeInput.slice(-3)).toEqual([envelope, functionCall, { type: 'function_call_output', call_id: 'call-1', output: 'current evidence' }]);
     expect(f.requests[1].wire).not.toContain('nativeCheckpointId');

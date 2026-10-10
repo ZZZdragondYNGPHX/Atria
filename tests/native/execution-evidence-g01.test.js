@@ -117,13 +117,14 @@ test('evidence expiring during Context compilation cannot pass the later send bo
     expect(f.send).not.toHaveBeenCalled();
 });
 
-test('fixed target allowlist and unavailable continuation modes cannot resolve secrets', async () => {
+test.each(['active_execution', 'task', 'adaptive'])('fixed target allowlist and unavailable %s continuation cannot resolve secrets', async mode => {
     const f = await fixture();
     await f.savePolicy({ ...f.policy, verifiedRequirements: [], allowedModelProfileIds: [createNativeId('modelProfile')] });
     await expect(f.service.execute(f.request)).rejects.toMatchObject({ code: 'generation_target_policy_denied' });
-    await f.savePolicy({ ...f.policy, verifiedRequirements: [], continuity: 'task' });
+    await f.savePolicy({ ...f.policy, verifiedRequirements: [], continuity: mode });
     await expect(f.service.execute(f.request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
     expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
+    expect(f.send).not.toHaveBeenCalled();
 });
 
 test('unknown contract versions and invalid freshness are rejected without changing old Route format', () => {
