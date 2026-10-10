@@ -1607,3 +1607,13 @@ shared lease 与原生迁移相关的 Responses/native matrix 63 项通过；随
 新增10个实际断言通过：Project并发2请求只有1真实发送且reopen不退款1项，合法total/拒绝body/Secret echo/partial4项，token上界耗尽无发送1项，不完整Anthropic stream保留input/output而total未知1项，实际发送后cancel保持unknown1项，FS+真实SQLite background失败/reopen/Save restore的单笔charge和identity保持2项。原Core35项中34项先通过；旧fallback测试错误要求不同failurePlan相等，明确检查automatic/disabled计划后其余完整snapshot/wire仍相等，定向1项通过。旧budget的not-due/previews、retries/reopen和period/restore6项通过。11相关产品文件ESLint/diff通过，无全仓测试。
 
 失败证据保留：初Project optional field按required validator添加导致旧Task创建失败，改为实际optional字段；随后内部ledger未进公有Task投影，补入计数投影，两次repaired日志保留。background初命令未设DB flags，FS/SQLite2项已通过，MySQL/Postgres仅ECONNREFUSED，标未验证；后续旧budget6项在明确禁用不可用远程DB后运行，不将连不上算通过，也未无理由重跑已过新断言。所有m8-g05日志保存在私有Document。API新增0，原M1/HM1 ledger/quota未变；继续规则Invocation、gateway/G06和HM2，完整G05/M8未验收。
+
+## M8 / G04 真实 gateway 与 Studio lineage 消费
+
+2026-10-11，gateway producer `acd2d563f`，后续实际client修复 `9369f3b0a`。沿原配置主模型gemini-3.8-flash、同SecretRef account冻结四格式/endpoint后实际观察：Responses/Anthropic 404原响应保留，Gemini native/原chat-compatible 200且normalize。reportedModel仅alias，cached counter缺失null，canonical upstream/hidden attempts/价格unknown。直接total分别135/122，大于visible input/output之和，保持provider原total，不把差额抹零。compatible新增reported cache正/负数两项实际Host检查通过，cache子集不重复加入total。
+
+随后原Native Project Host + 原只读get_project工具跑Gemini signed round-trip。v1实际第一发送成功/186 tokens，但私有runner错误只传callId没传原started attemptId，工具authority拒绝project_agent_attempt_conflict；原失败/账不删除。诊断后v2调用beginGeneration取得原attemptId再执行只读工具，2发送/203+608 tokens，完整签名parts原序回传，公开response/preview无opaque，正确Project名/无后续calls/原revision保持/完成后replay拒绝8项通过。只证明该exact frozen path/current execution，不声明其它模型/通道或持久restore。7新增API共5个直接total/1254 tokens，2个404费用未知保留各自prepared upper占用，货币unavailable；原quota累计append并排队，2000/24h和20/min持续生效，M1/HM1原账本不改。
+
+费用校验脚本错误也保留：v1/v2的baselinesPreserved原值false，因为loop脚本对Buffer做JSON hash而初gateway脚本对原bytes hash。独立m8-loop-baseline-raw-hash-audit.json以raw SHA256核验两原账本均等于原pin；未覆盖两个false记录，未为此重发API。新runner后续须使用同raw hash算法。
+
+真实Studio入口另发现generation-client每轮新requestId，直接Host重复ID不能替代产品证据。修复后原Host将Project Task映为其现有task source，绑定原Task语义及非generation authority epoch；request/attempt identity仍逐轮独立，owner/path/prefix/history/provenance均保留。不接收caller Task proof。Task语义变化时client从公开工具观察重算，Host拒绝不同Task、变化/晚到变化及同内容restore旧epoch，取消/失败discard。真实client→原router→Host→实际loopback native provider稳定路径1项、上述guard4项及cancel replay1项通过；旧Studio5项先通过、3项因旧Skill fixture缺installedHash/pin失败，更新fixture匹配原A5 pin契约后3项定向通过（含新增prefix reset）。8相关产品文件ESLint/diff通过。source与实际producer分别保留，不扩张为当前HEAD已重跑全部真实API；继续Sparse/G06/HM2，无HANDOFF，无阶段停工。
