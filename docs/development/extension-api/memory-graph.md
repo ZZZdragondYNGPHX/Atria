@@ -7,6 +7,8 @@
 > - Lower-level: `getMemoryGraphReadApi(store, context)` from `public/scripts/agents/memory/read-api.js` (read factory)
 > - Lower-level: `getMemoryGraphWriteApi(store, context, options?)` from `public/scripts/agents/memory/write-api.js` (write factory; `options.onCommit` flushes mutations to floor-state)
 
+Use `openSession(context).recallMemory(query, options)` for narrative recall. It checks the original Information requester and source domain before all lanes and returns complete evidence groups, missing-group diagnostics and an `assertCurrent` consumer guard. `requester` supports narrator/actor/task; task requests also need `informationTaskId`; `at` is an explicit source time. Graph inspection APIs below do not grant permission to reuse their output as narrative evidence.
+
 ## Session API (recommended entry)
 
 Open a chat-scoped session through Atria's extension registry:
@@ -61,7 +63,7 @@ All 16 methods on the returned session object:
 
 | Method | Returns | Notes |
 | --- | --- | --- |
-| `listVisibleCandidates(opts)` | `NodeView[]` | The pool the native recall LLM sees |
+| `listVisibleCandidates(opts)` | `NodeView[]` | The pool the graph inspector sees |
 | `getEdgeSummary(id, opts)` | `EdgeSummaryView` | Degree + relations + sample neighbours |
 | `getNodeBrief(id, opts)` | `NodeBriefView \| null` | Full brief incl. fields + edges |
 | `expandFromSeeds(ids, opts)` | `NodeView[]` | BFS-expand a small seed set |
@@ -82,7 +84,6 @@ For full signatures of each method, see the **Read API** and **Write API** secti
 
 ### Lower-level access
 
-`getMemoryGraphReadApi(store, context)` and `getMemoryGraphWriteApi(store, context)` remain exported for internal callers that already hold a store reference (e.g. the native `chooseRecallRoute` pipeline). Third-party extensions should prefer `openSession` — the session facade handles store loading, fresh-chat fallback, and registration through Atria's standard extension api in one place.
 
 ## Per-character override accessors
 
@@ -198,9 +199,8 @@ Listener errors are caught and logged; one bad subscriber cannot block the other
 
 ## Overview
 
-The memory-graph extension drives Atria's long-term recall by feeding a curated pool of nodes (`character_sheet`, `event`, `relationship`, ...) plus a per-node `edge_summary` to a "route" LLM that picks which memories to inject into the next turn. The native pipeline (`chooseRecallRoute` / `collectRootCandidates` in `main.js`) constructs that LLM input from internal helpers — `buildProjectedEdges`, `getNearestVisibleAncestorId`, `formatNodeBrief`, etc.
 
-`getMemoryGraphReadApi(store, context)` exposes the same data, topology, and recall primitives as a frozen, caller-safe API surface. The intended consumer is an agent-style plugin that wants to run its own LLM-driven recall — for example the orchestrator's `memory_scout` sub-agent — with whatever model / preset its operator prefers, against the exact same candidate pool and field projection the native router sees.
+`getMemoryGraphReadApi(store, context)` exposes the same data, topology, and recall primitives as a frozen, caller-safe API surface. The intended consumer is an agent-style plugin that wants to run its graph inspection — for example the orchestrator's `memory_scout` sub-agent — with whatever model / preset its operator prefers, against the exact graph inspection projection.
 
 `getMemoryGraphWriteApi(store, context)` is the companion mutation surface: an extractor-style agent (or a curator agent that edits the graph between turns) goes through it instead of touching store internals. The Write API is documented in [Write API](#write-api) below.
 
@@ -218,7 +218,7 @@ import { getExtensionApi } from '/scripts/extensions.js';
 const session = await getExtensionApi('memory-graph')?.openSession?.(Atria.getContext());
 if (!session) return;
 
-// Enumerate the visible candidate pool the native recall LLM sees.
+// Enumerate the visible candidate pool the graph inspector sees.
 const candidates = session.listVisibleCandidates();
 
 // Get a brief for one node — id, summary, edge_summary, exposure, always_inject.
@@ -297,7 +297,7 @@ interface EdgeSummaryView {
 }
 ```
 
-The compact edge view the native recall LLM sees per candidate row. Counts are aggregated per `(relation, direction)` pair; `sample_neighbors` is a bounded sample (default 8) of distinct neighbour nodes, each carrying a `to_seq` so callers can sort by recency. Field names are snake_case to match the native LLM prompt block.
+The compact edge view the graph inspector sees per candidate row. Counts are aggregated per `(relation, direction)` pair; `sample_neighbors` is a bounded sample (default 8) of distinct neighbour nodes, each carrying a `to_seq` so callers can sort by recency. Field names are snake_case to match the native LLM prompt block.
 
 ### InjectionState
 
@@ -309,7 +309,7 @@ interface InjectionState {
 }
 ```
 
-The injection-side observation surface. `alwaysInjectIds` are nodes pinned by their type's `alwaysInject` flag. `recallSelectedIds` are nodes the route LLM picked for the last turn. `visibleIds` is the candidate pool the route LLM saw — *empty until the recall pipeline has run at least once*.
+The injection-side observation surface. `alwaysInjectIds` are nodes pinned by their type's `alwaysInject` flag. `recallSelectedIds` are graph IDs observed by the previous injection hook. `visibleIds` is the candidate pool the graph inspector saw — *empty until the recall pipeline has run at least once*.
 
 ### LastRecallProjection
 
@@ -373,7 +373,7 @@ interface NodeBriefView {
 }
 ```
 
-The single-node "brief" the native recall LLM sees per candidate row. Equivalent to `formatNodeBrief` output plus the recall-side fields (`exposure`, `edgeSummary`, `alwaysInject`) the router attaches before serialising. This is the unit a plugin assembles into a `candidateRows` block when replicating native recall input.
+The single-node "brief" the graph inspector sees per candidate row. Equivalent to `formatNodeBrief` output plus the recall-side fields (`exposure`, `edgeSummary`, `alwaysInject`) the projection attaches before serialising. This is the unit a plugin assembles into a `candidateRows` block when replicating graph inspection input.
 
 ## Layer A: Data Access
 
@@ -387,7 +387,7 @@ The single-node "brief" the native recall LLM sees per candidate row. Equivalent
 - Sorted by `compareNodesByTimeline` (seqTo ascending, id tiebreak) — the stable timeline order used for offline analysis. This is **different** from `listVisibleCandidates`, which sorts by `compareNodesByRecency` (seqTo desc, depth desc, id lex).
 - Returns a frozen array of frozen `NodeView` objects. The array itself, every view, every `fields` record, and every `childrenIds` array are frozen.
 
-**When to use:** offline scanning of the full store — debugging, one-shot statistics, exhaustive iteration. Hot-path callers replicating recall should use `listVisibleCandidates` instead, which is order-aligned with the route LLM input and applies the recall-side filters.
+**When to use:** offline scanning of the full store — debugging, one-shot statistics, exhaustive iteration. Hot-path callers inspecting graph projections should use `listVisibleCandidates` instead, which is order-aligned with the graph inspector input and applies the recall-side filters.
 
 **Minimal example:**
 
@@ -442,7 +442,7 @@ console.log(mentions.length, 'semantic mention edges');
 
 - Returns the character-effective schema (i.e. `getEffectiveNodeTypeSchema(context, settings)`). Character overrides — if any — are already applied.
 - Each `SchemaSpecView` is frozen, and arrays inside (`tableColumns`, `requiredColumns`, `primaryKeyColumns`) are frozen.
-- This is the source data for the `schema_overview` block of the native recall LLM input.
+- This is the source data for the `schema_overview` block of the graph inspector input.
 
 **When to use:** when building a `schema_overview` prompt block, or when reflecting on schema-derived projections (which columns are primary-key, which are required, etc.).
 
@@ -470,7 +470,7 @@ for (const spec of schema.types) {
 - Archived neighbours are always filtered.
 - Deduplicates by `(neighborId, edgeType, direction)`.
 
-**When to use:** building a neighbour ring around a focus node when assembling a custom LLM prompt block. Use `projectTo: 'visible'` to align with what the route LLM sees.
+**When to use:** building a neighbour ring around a focus node when assembling a custom LLM prompt block. Use `projectTo: 'visible'` to align with what the graph inspector sees.
 
 **Minimal example:**
 
@@ -558,7 +558,7 @@ const rollup = api.getNearestVisibleAncestor('event_99', { visibleNodeIds: visib
 - Returns frozen `EdgeView` objects with `weight` populated.
 - Implementation re-exports the internal `buildProjectedEdges` directly — no risk of drift.
 
-**When to use:** building a graph snapshot for the route LLM (or a custom LLM) that respects the visible candidate pool. Pair with `listVisibleCandidates` to get the (nodes, edges) pair the route LLM sees.
+**When to use:** building a graph snapshot for the graph inspector (or a custom LLM) that respects the visible candidate pool. Pair with `listVisibleCandidates` to get the (nodes, edges) pair the graph inspector sees.
 
 **Minimal example:**
 
@@ -579,10 +579,9 @@ console.log(projected.length, 'projected semantic edges');
 
 **Contract:**
 
-- Returns the same candidate pool `chooseRecallRoute` constructs via `collectRootCandidates` — but as deep-frozen `NodeView`.
 - `excludeRecentMessages` matches the native `isNodeInRecentExcludeWindow` semantics: nodes within the last N user messages are filtered. Default 0.
 - `seqWindow` and `types` apply *after* the native candidate construction, narrowing the pool.
-- **Sorted by `compareNodesByRecency`** (seqTo desc → semanticDepth desc → id lex) — this is the order the route LLM sees, *different* from `listNodes`.
+- **Sorted by `compareNodesByRecency`** (seqTo desc → semanticDepth desc → id lex) — this is the order the graph inspector sees, *different* from `listNodes`.
 
 **When to use:** the hot-path entry point for any custom recall plugin. Pair with `getNodeBrief` per id to construct a `candidateRows` block.
 
@@ -605,7 +604,7 @@ console.log(candidates.length, 'visible candidates');
 - `null` if the node doesn't exist or is archived.
 - Recomputed per call so character overrides take effect immediately.
 
-**When to use:** deciding how much of a node's field payload to render in a custom prompt. Mirrors what the native router gates.
+**When to use:** deciding how much of a node's field payload to render in a custom prompt. Mirrors what the graph inspector gates.
 
 **Minimal example:**
 
@@ -624,7 +623,7 @@ if (exposure === 'high_only') {
 
 - Wraps the internal `buildEdgeSummary` directly — no behaviour drift.
 - Default `visibleNodeIds` is the current injection-state `visibleIds`. **Empty until the recall pipeline has run at least once.** Pass an explicit set if you need guaranteed coverage.
-- Default `limit: 8` matches the native router.
+- Default `limit: 8` matches the graph inspector.
 - Always returns a frozen `EdgeSummaryView`; missing / unknown nodes get a zero-degree summary, never `null`.
 
 **When to use:** attaching a compact edge view to a custom candidate row, or inspecting a node's neighbourhood without paying for full topology traversal.
@@ -642,7 +641,7 @@ console.log(summary.degree, summary.sample_neighbors.length);
 
 **Contract:**
 
-- Equivalent to a single row of the route LLM's `candidateRows` block: `formatNodeBrief` projection plus the recall-side fields (`exposure`, `edgeSummary`, `alwaysInject`).
+- Equivalent to a single row of the graph inspector's `candidateRows` block: `formatNodeBrief` projection plus the recall-side fields (`exposure`, `edgeSummary`, `alwaysInject`).
 - `null` if the node doesn't exist or is archived.
 - Default `includeEdgeSummary: true`, default `edgeSummaryLimit: 8`.
 - Default `visibleNodeIds` is the current injection-state `visibleIds`. Pass an explicit set if you need a deterministic projection.
@@ -667,7 +666,7 @@ console.log(brief.summary, brief.exposure, brief.alwaysInject);
 
 **Contract:**
 
-- Wraps the internal `expandRouteCandidates` — the BFS drill expansion the route LLM triggers when it decides to dig deeper into a seed.
+- Wraps the internal `expandRouteCandidates` — the BFS drill expansion the graph inspector triggers when it decides to dig deeper into a seed.
 - Default `hops: 1`, `includeChildren: true`, `projectTo: 'visible'`, **`excludeInternal: false`** (to match native `expandRouteCandidates`, where `contains` / `semantic_contains` participate in drill).
 - With `projectTo: 'visible'`, the drill expands inside the current `visibleIds` pool (the seed itself is always admitted).
 - With `projectTo: 'raw'`, the drill expands across the full store.
@@ -830,40 +829,15 @@ const unsubscribe = api.onInjectionChanged(state => {
 unsubscribe();
 ```
 
-## Worked Example: replicate the native recall LLM input
+## Hybrid narrative recall
 
-The two LLM-input blocks that `chooseRecallRoute` constructs are `schema_overview` and `candidateRows`. With the API, replicating them is direct:
+Use `openSession(context).recallMemory(query, options)` for narrative recall. It checks the original Information requester and source domain before all lanes and returns complete evidence groups, missing-group diagnostics and an `assertCurrent` consumer guard. `requester` supports narrator/actor/task; task requests also need `informationTaskId`; `at` is an explicit source time. Graph inspection APIs below do not grant permission to reuse their output as narrative evidence.
 
 ```js
-import { getExtensionApi } from '/scripts/extensions.js';
-
-const api = await getExtensionApi('memory-graph')?.openSession?.(Atria.getContext());
-if (!api) return;
-
-// schema_overview block (the LLM prompt segment that describes each node type).
-const schemaOverview = api.getSchema().types.map(spec => ({
-    id: spec.type,
-    table_name: spec.tableName,
-    table_columns: [...spec.tableColumns],
-    required_columns: [...spec.requiredColumns],
-    force_update: spec.forceUpdate,
-    always_inject: spec.alwaysInject,
-    editable: spec.editable,
-    compression_mode: spec.compressionMode,
-}));
-
-// candidateRows block (one brief per visible candidate).
-const candidates = api.listVisibleCandidates();
-const candidateRows = candidates.map(view => api.getNodeBrief(view.id, {
-    includeEdgeSummary: true,
-    edgeSummaryLimit: 8,
-}));
-
-// You can now feed schemaOverview + candidateRows + always_inject_node_ids + your own
-// recall_query_context to your own recall LLM (with whatever model / preset you prefer).
+const session = await getExtensionApi("memory-graph")?.openSession?.(Atria.getContext());
+const result = await session?.recallMemory(query, { requester: { kind: "narrator" } });
+result?.assertCurrent(); // revalidate immediately before consumption
 ```
-
-The full equivalence guarantee — `candidateRows` field-by-field and order-by-order matching the native router's input — is enforced by the dogfood test (`tests/memory-graph/read-api-dogfood.test.js`), which constructs the same blocks via the API and asserts structural equality against the native `chooseRecallRoute` internal state.
 
 ## Write API
 
@@ -1071,7 +1045,6 @@ if (groups.length > 0) {
 
 ## See Also
 
-- Native recall path: `public/scripts/agents/memory/main.js` (`chooseRecallRoute`, `collectRootCandidates`, `expandRouteCandidates`)
 - Companion: the orchestrator opens a session via `getExtensionApi('memory-graph').openSession(context)` and stashes the resulting session on `__memoryGraphSession` for its `memory_*` loop tools — see [Director runtime](/features/orchestrator/director).
 - Related extension API: [Plugin Integration](/development/extension-api/plugin-integration) for the broader extension API registry that publishes `'memory-graph'` alongside other extension entry points.
 - To register custom orchestration tools (memory-graph itself does this for its read and write tools), see [Orchestrator Tools API](./orchestrator-tools.md).

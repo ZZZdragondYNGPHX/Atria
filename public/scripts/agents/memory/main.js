@@ -693,7 +693,6 @@ function ensureSettings() {
         0,
         Math.floor(Number.isFinite(persistentInjectionMaxSeqDistanceRaw) ? persistentInjectionMaxSeqDistanceRaw : defaultSettings.persistentInjectionMaxSeqDistance),
     );
-    // RAG per-type quota default. 0 disables bucketing (single shared pool).
 
     capabilitySettings[MODULE_NAME].includeWorldInfoWithPreset = capabilitySettings[MODULE_NAME].includeWorldInfoWithPreset !== false;
     capabilitySettings[MODULE_NAME].extractMode = ['oneshot', 'crawl'].includes(String(capabilitySettings[MODULE_NAME].extractMode || '').trim().toLowerCase())
@@ -8245,7 +8244,6 @@ async function runScheduledExtractionPass(chatKey) {
             { syncPersistentProjection: true, floor: seqToFloor(runtimeContext, finalSeq) },
         );
         const finalStore = finalResult.store;
-        // Sync vector index after extraction (only when RAG recall is enabled)
 
         // Hybrid rebuilds its legal source index at recall.
         const debug = finalStore?.lastExtractionDebug || workingStore.lastExtractionDebug || {};

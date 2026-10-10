@@ -28,6 +28,7 @@ export async function recallHybridMemory(context, query, options = {}) {
         : null;
     const laneCap = contextBudget ? Math.max(0, Number(contextBudget.tokens) || 0) : Number.POSITIVE_INFINITY;
     const result = await retrieveMemory(snapshot, query, { service: context.retrievalService,
+        sceneText: snapshot.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'),
         profile: profile && validateVectorConfig(profile).valid ? profile : null,
         rerankProfile: settings.rerankEnabled ? getRerankProfileFromSettings(settings) : null,
         countTokens: memoryTokenCounter(context), budget: Math.min(memoryTokenBudget(settings), laneCap),

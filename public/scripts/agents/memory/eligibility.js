@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { informationContext } from '../../../shared/native-information-runtime.js';
+import { informationContext, informationSourceMessageIds } from '../../../shared/native-information-runtime.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
-import { sourceMessageId, createMemorySupportChecker } from './source-provenance.js';
+import { sourceMessageId, createMemorySupportChecker, captureEpisodes } from './source-provenance.js';
 
 const denied = () => Object.assign(new Error('Memory source exposure unavailable'), { code: 'memory_exposure_denied' });
 const stale = () => Object.assign(new Error('Memory requester or anchor changed'), { name: 'AbortError' });
-const snapshotFor = context => context.nativeSnapshot || (nativeSessionRuntime.active ? nativeSessionRuntime.snapshot : null);
+const snapshotFor = context => {
+    const live = nativeSessionRuntime.active ? nativeSessionRuntime.snapshot : null;
+    const pinned = context.nativeSnapshot;
+    if (pinned && live && (pinned.session.sessionId !== live.session.sessionId
+        || pinned.revision.branchId !== live.revision.branchId || pinned.revision.revisionId !== live.revision.revisionId)) throw stale();
+    return pinned || live;
+};
 
 /** Resolve from the host's selected snapshot and Information authority, never caller-supplied source IDs/grants. */
 export function resolveMemoryEligibility(context, { requester = { kind: 'narrator' }, informationTaskId, at = null } = {}) {
@@ -23,20 +29,14 @@ export function resolveMemoryEligibility(context, { requester = { kind: 'narrato
         const information = informationContext(snapshot, target, informationTaskId);
         if (!information?.memory || !information.projection
             || information.projection.availability?.some(a => !a.available)) throw denied();
-        const timeline = new Map(snapshot.timeline.map(entry => [entry.messageId, entry]));
-        const ids = new Set();
-        for (const item of information.projection.items) {
-            if (item.variantId && timeline.get(item.recordId)?.activeVariantId === item.variantId) ids.add(item.recordId);
-            // An application exposure only proves the complete source when it
-            // exposes that exact content too. A reference/summary alone cannot
-            // grant the rest of a hidden Episode.
-            for (const id of Array.isArray(item.data?.sourceMessageIds) ? item.data.sourceMessageIds : []) {
-                const entry = timeline.get(id);
-                if (entry && item.data.text === entry.content) ids.add(id);
-            }
-        }
+        const ids = informationSourceMessageIds(snapshot, information);
+        const groups = information.projection.items.filter(item => typeof item.data?.atomicGroup === 'string'
+            && Array.isArray(item.data?.atomicSourceMessageIds)).map(item => ({ id: item.data.atomicGroup,
+            sourceMessageIds: [...new Set(item.data.atomicSourceMessageIds)] }));
+        const deniedIds = new Set(groups.filter(group => !group.sourceMessageIds.every(id => ids.includes(id))).flatMap(group => group.sourceMessageIds));
         return { identity: { kind: 'information', requester: target, at, anchor: information.projection.anchor, viewId: information.projection.viewId },
-            ids: [...ids], signature: JSON.stringify([information, snapshot.timeline]) };
+            ids: ids.filter(id => !deniedIds.has(id)), groups: groups.filter(group => group.sourceMessageIds.every(id => ids.includes(id))),
+            signature: JSON.stringify([information, snapshot.timeline]) };
     };
     const initial = read();
     const assertCurrent = () => {
@@ -44,6 +44,7 @@ export function resolveMemoryEligibility(context, { requester = { kind: 'narrato
         if (live.signature !== initial.signature || JSON.stringify(live.identity) !== JSON.stringify(initial.identity)) throw stale();
     };
     return Object.freeze({ identity: initial.identity, sourceMessageIds: Object.freeze(initial.ids), assertCurrent,
+        atomicGroups: Object.freeze(initial.groups || []),
         // Scene identities and aliases are taken from source-backed graph by
         // the query planner; arbitrary caller text is never an authority.
     });
@@ -53,10 +54,17 @@ export function resolveMemoryEligibility(context, { requester = { kind: 'narrato
 export function eligibleMemorySnapshot(snapshot, eligibility) {
     eligibility.assertCurrent(); snapshot.assertCurrent();
     const ids = new Set(eligibility.sourceMessageIds);
-    const check = createMemorySupportChecker(snapshot.state, snapshot.chat);
-    const episodes = Object.fromEntries(Object.entries(snapshot.state.episodes).filter(([, e]) => e.messageIds.length
-        && e.messageIds.every(id => ids.has(id)) && check({ episodeIds: [e.id] })));
     const state = structuredClone(snapshot.state);
+    // Existing Native Timeline is itself a formal source. Rebuild its legal
+    // Episode projection in memory even when extraction writes are off; no
+    // new source IDs, persistence or cognition changes are performed here.
+    if (eligibility.identity.kind === 'information') {
+        const floors = snapshot.chat.flatMap((message, floor) => message.atri_native?.messageId && ids.has(sourceMessageId(message)) ? [floor] : []);
+        captureEpisodes(state, snapshot.chat, floors, state.scopeId);
+    }
+    const check = createMemorySupportChecker(state, snapshot.chat);
+    const episodes = Object.fromEntries(Object.entries(state.episodes).filter(([, e]) => e.messageIds.length
+        && e.messageIds.every(id => ids.has(id)) && check({ episodeIds: [e.id] })));
     state.episodes = episodes;
     state.sources = Object.fromEntries(Object.entries(state.sources).filter(([id]) => ids.has(id)));
     const restricted = eligibility.identity.kind === 'information';

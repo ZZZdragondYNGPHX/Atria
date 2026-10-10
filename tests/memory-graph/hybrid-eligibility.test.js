@@ -7,6 +7,7 @@ import { frozen, hash, memoryFixture, localRetrieval, countTokens } from './hm1-
 import { informationActor } from '../native/helpers/information-fixture.js';
 import { resolveMemoryEligibility, eligibleMemorySnapshot } from '../../public/scripts/agents/memory/eligibility.js';
 import { retrieveMemory, buildMemoryCorpus } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
+import { nativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
 import { configureSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
 import { createMemoryRecallBridge, recallNativePackageTurnMemory } from '../../public/scripts/native/experience/llm/memory-bridge.js';
 import { compileNativeContextPlan } from '../../public/scripts/native/context-compiler.js';
@@ -18,6 +19,18 @@ const save = () => { if (process.env.ATRIA_HM_REPORT) fs.writeFileSync(process.e
 const opts = { countTokens, budget: 2400 };
 const legal = async (fixture, options = {}) => eligibleMemorySnapshot(await fixture.retrievalSnapshot(), resolveMemoryEligibility(fixture.context, { requester: actor, ...options }));
 const json = value => JSON.parse(JSON.stringify(value));
+
+test('existing Native Timeline rebuilds a read-only projection with extraction off and no derived ledger', async () => {
+    const f = memoryFixture(frozen.cases[6], { native: true });
+    const file = path.join(f.root, 'provenance.json');
+    fs.writeFileSync(file, JSON.stringify({ version: 1, scopeId: f.context.key, sources: {}, episodes: {}, dependencies: [] }));
+    const before = hash(fs.readFileSync(file));
+    const snapshot = await legal(f);
+    expect(Object.values(snapshot.state.episodes)).toHaveLength(1);
+    const result = await retrieveMemory(snapshot, '归还书籍', opts);
+    expect(result.sourceMessageIds).toEqual(['s07-promise']);
+    expect(hash(fs.readFileSync(file))).toBe(before);
+});
 
 test('B1 frozen paired source-first corpus precedes all lexical/vector/rerank lanes', async () => {
     const local = await localRetrieval();
@@ -85,5 +98,19 @@ test('Game and Package consume the shared Hybrid runtime with original Informati
     const pack = await recallNativePackageTurnMemory({ context: f.context, snapshot: f.snapshot, memoryApi: api, userInput: turn.userInput });
     const plan = await compileNativeContextPlan(f.snapshot, { modelContextLimit: 16000, responseReserve: 1000, memoryEvidence: pack.evidence });
     expect(pack.status).toBe('recalled'); expect(JSON.stringify(plan.included)).toContain('归还书籍');
+    expect(plan.included.some(item => item.contextItemId === 'memory:' + pack.evidence[0].memoryId)).toBe(true);
     report.consumers.push({ path: 'Game', result: game }, { path: 'Package', result: pack, contextPlan: plan }); save();
+});
+
+test('pinned Information evidence aborts when the live Native revision advances', async () => {
+    const f = memoryFixture(frozen.cases[6], { native: true });
+    const previous = nativeSessionRuntime.snapshot;
+    try {
+        nativeSessionRuntime.snapshot = f.snapshot;
+        const snapshot = await legal(f);
+        snapshot.assertCurrent();
+        nativeSessionRuntime.snapshot = { ...f.snapshot, revision: { ...f.snapshot.revision, revisionId: 'advanced-revision' } };
+        expect(() => snapshot.assertCurrent()).toThrow(expect.objectContaining({ name: 'AbortError' }));
+        await expect(retrieveMemory(snapshot, '归还书籍', opts)).rejects.toThrow(expect.objectContaining({ name: 'AbortError' }));
+    } finally { nativeSessionRuntime.snapshot = previous; }
 });

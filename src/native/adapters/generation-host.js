@@ -12,7 +12,7 @@ import { GenerationService } from '../model-prompt-runtime/generation-service.js
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
-import { assertInformationActorAvailable, informationDefinition, informationContext } from '../../../public/shared/native-information-runtime.js';
+import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, GenerationError, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
@@ -42,10 +42,10 @@ function normalizeHostMemoryEvidence(value, snapshot) {
     const turn = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.turn;
     const information = informationContext(snapshot, { kind: 'narrator' }, turn?.narratorTaskId);
     if (value.length && !information?.memory) fail('native_turn_memory_evidence_denied');
-    const messageIds = new Set((snapshot.timeline || []).map(item => String(item.messageId || '')));
+    const messageIds = new Set(informationSourceMessageIds(snapshot, information));
     return value.map((raw, index) => {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)
-            || Object.keys(raw).some(key => !['memoryId', 'content', 'sourceRefs', 'tokenCount', 'source'].includes(key))) {
+            || Object.keys(raw).some(key => !['memoryId', 'content', 'sourceRefs', 'tokenCount', 'source', 'atomicGroup'].includes(key))) {
             fail('native_turn_memory_evidence_invalid');
         }
         const memoryId = String(raw.memoryId || ('memory-' + index)).trim();
@@ -67,7 +67,8 @@ function normalizeHostMemoryEvidence(value, snapshot) {
                 branchId: ref.branchId, revisionId: ref.revisionId };
         });
         const tokenCount = Number(raw.tokenCount);
-        return { memoryId, content, sourceRefs,
+        if (raw.atomicGroup !== undefined && (typeof raw.atomicGroup !== 'string' || !raw.atomicGroup || raw.atomicGroup.length > 160)) fail('native_turn_memory_evidence_invalid');
+        return { memoryId, content, sourceRefs, ...(raw.atomicGroup ? { atomicGroup: raw.atomicGroup } : {}),
             ...(Number.isFinite(tokenCount) && tokenCount >= 0 && tokenCount <= 32768 ? { tokenCount: Math.floor(tokenCount) } : {}) };
     });
 }

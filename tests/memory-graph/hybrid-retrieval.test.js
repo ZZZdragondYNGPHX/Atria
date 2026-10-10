@@ -173,7 +173,7 @@ describe('Memory OS hybrid retrieval', () => {
         const snapshot = fixture();
         const baseline = rankMemory('Alice', buildMemoryCorpus(snapshot)).candidates;
         const service = { rerank: async ({ documents }) => documents.map((_, index) => ({ index, relevance_score: index })) };
-        const result = await retrieveMemory(snapshot, 'Alice', { service, rerankProfile: {}, countTokens, budget: 10000 });
+        const result = await retrieveMemory(snapshot, 'Alice', { service, rerankProfile: {}, countTokens, budget: 10000, packing: 'ranked' });
         expect(result.selected[0]).toBe(baseline.at(-1).id);
         expect(result.diagnostics).not.toContain('rerank_unavailable');
     });

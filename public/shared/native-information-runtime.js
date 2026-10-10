@@ -139,6 +139,20 @@ export function informationContext(snapshot, target, taskId, { onScan = null, in
         })) };
 }
 
+/** Exact complete source exposures; a summary/reference alone grants no raw history. */
+export function informationSourceMessageIds(snapshot, information) {
+    const timeline = new Map((snapshot.timeline || []).map(entry => [entry.messageId, entry]));
+    const ids = new Set();
+    for (const item of information?.projection?.items || []) {
+        if (item.variantId && timeline.get(item.recordId)?.activeVariantId === item.variantId) ids.add(item.recordId);
+        for (const id of Array.isArray(item.data?.sourceMessageIds) ? item.data.sourceMessageIds : []) {
+            const entry = timeline.get(id);
+            if (entry && typeof item.data.text === 'string' && entry.content === item.data.text) ids.add(id);
+        }
+    }
+    return [...ids];
+}
+
 export function assertInformationActorAvailable(snapshot, taskId) {
     const def = informationDefinition(snapshot);
     const view = def?.views.find(view => view.exposure.includes('context') && (taskId ? view.audience === 'task' && view.taskId === taskId : view.audience === 'narrator'));

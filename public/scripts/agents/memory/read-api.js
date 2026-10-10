@@ -2,8 +2,7 @@
 //
 // Memory-graph read-only API.
 //
-// Exposes the same data + topology + recall primitives that
-// `chooseRecallRoute` (main.js) feeds to the route LLM, but as a frozen,
+// Exposes existing graph data, topology and inspection primitives as a frozen,
 // caller-safe surface. The factory `getMemoryGraphReadApi(store, context)`
 // returns an object whose methods all read from the passed store. Returned
 // views are deep-frozen plain objects / Sets so callers cannot mutate
@@ -23,10 +22,10 @@
 // All hot-path helpers (`buildProjectedEdges`, `buildEdgeSummary`,
 // `getNearestVisibleAncestorId`, `formatNodeBrief`, `collectRootCandidates`,
 // `expandRouteCandidates`) are imported from `main.js` directly so this file
-// stays in lockstep with native recall behavior.
+// stays in lockstep with the existing graph projection.
 //
 // IMPORTANT (visibleIds default): `getInjectionState().visibleIds` is the
-// "current route LLM candidate pool" snapshot. It is empty until the recall
+// "last graph candidate pool" snapshot. It is empty until the recall
 // pipeline runs at least once (see `__recordInjectedNodeIds` in
 // external-api.js). For `getEdgeSummary` / `getNodeBrief` (the agent-only
 // hot path), when the snapshot is empty we transparently fall back to the
@@ -725,7 +724,7 @@ export function getMemoryGraphReadApi(store, context = null) {
         }
         if (!briefRaw) return null;
 
-        // Augment with the recall-side fields native chooseRecallRoute attaches
+        // Augment with the existing graph inspection fields
         // (exposure / edge_summary / always_inject) so the view matches
         // candidateRows in the recall LLM input.
         const exposure = (() => {

@@ -12,7 +12,7 @@ import {
     normalizeContextPolicy,
     normalizeContextSourceRefs,
 } from './context-derived.js';
-import { informationContext } from '../../shared/native-information-runtime.js';
+import { informationContext, informationSourceMessageIds } from '../../shared/native-information-runtime.js';
 import { PROCESSING_LIMITS } from '../../shared/native-processing-contract.js';
 
 export const CONTEXT_PLAN_SCHEMA_VERSION = 1;
@@ -588,6 +588,7 @@ function memoryItems(memoryEvidence, snapshot, rejectedMemoryIds = new Set()) {
                 branchId: snapshot?.revision?.branchId,
             }],
             tokenEstimate: raw?.tokens ?? raw?.tokenCount,
+            atomicGroup: raw?.atomicGroup,
             metadata: {
                 memoryId,
                 recalled: true,
@@ -906,7 +907,7 @@ export class SessionContextCompiler {
         // reads, including provider contributions. Knowledge keeps its existing
         // target contract and additionally requires explicit view permission.
         if (information) {
-            const visibleMessages = new Set((information.projection?.items ?? []).filter(item => item.variantId).map(item => item.recordId));
+            const visibleMessages = new Set(informationSourceMessageIds(snapshot, information));
             // Existing Memory evidence is reusable only with an explicit grant
             // and all of its source messages in this exact Perspective. Unknown
             // provenance and cross-Branch/Revision packets fail closed.

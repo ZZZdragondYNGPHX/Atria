@@ -6,6 +6,8 @@ import { projectProviders, providerProofCurrent } from './provider-provenance.js
 import { resolveProviderFields } from './state-providers.js';
 import { stateClaimAlreadyPresent } from './state-prompt.js';
 import { buildCollectionId } from './vector-index-core.js';
+import { memoryQuerySeeds, memorySemanticHints } from './query-plan.js';
+import { memoryEvidenceGroups, composeMemoryCoverage } from './packing.js';
 
 export const RETRIEVAL_DEFAULTS = Object.freeze({ tokenBudget: 2400, maxDepth: 2, maxEntities: 20,
     maxRelations: 30, topK: 30, maxResults: 20, rrf: 60,
@@ -99,11 +101,19 @@ export function buildMemoryCorpus(snapshot, at = null) {
             kind: 'state', type: 'provider-history', status: 'superseded', text: `${field.label}: ${JSON.stringify(field.value)}`,
             confidence: 1, createdAt: old.createdAt, episodeIds: [], providerRefs: [{ providerId: old.providerId, snapshotId: old.id, path: field.path }] });
     }
+    for (const doc of documents) {
+        const ids = (doc.episodeIds || []).flatMap(id => state.episodes[id]?.messageIds || []);
+        const group = snapshot.eligibility?.atomicGroups?.find(group => ids.some(id => group.sourceMessageIds.includes(id)));
+        if (group) doc.atomicGroup = group.id;
+    }
     return { documents, entities, providers };
 }
 
 export function rankMemory(query, corpus, vectorIds = [], options = {}) {
-    const plan = analyzeMemoryQuery(query, corpus.entities, options);
+    const seeds = memoryQuerySeeds(query, corpus.entities, options.sceneText);
+    const plan = { ...analyzeMemoryQuery(seeds.userInput, corpus.entities, options), ...seeds };
+    const seededEntities = analyzeMemoryQuery(seeds.seedText, corpus.entities, options).entityIds;
+    plan.entityIds = [...new Set([...plan.entityIds, ...seededEntities])].slice(0, RETRIEVAL_DEFAULTS.maxEntities);
     if (!plan.text.trim()) return { plan, candidates: [] };
     const cfg = RETRIEVAL_DEFAULTS;
     const entityIdSet = new Set(plan.entityIds);
@@ -148,7 +158,8 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
         else if (doc.kind === 'episode') episodeDocs.push(doc);
     }
 
-    const queryTerms = [...new Set(terms(query))];
+    const queryTerms = [...new Set(terms(plan.seedText))];
+    const originalTerms = new Set(terms(plan.userInput));
     const documentFrequency = new Map(queryTerms.map(term => [term, 0]));
     const bags = documents.map(doc => {
         const words = terms(doc.text);
@@ -163,7 +174,7 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
     const lexical = documents.map((doc, index) => ({ id: doc.id, score: queryTerms.reduce((sum, term) => {
         const count = bags[index].counts.get(term) || 0;
         const df = documentFrequency.get(term) || 0;
-        return sum + Math.log(1 + (documents.length - df + 0.5) / (df + 0.5))
+        return sum + (originalTerms.has(term) ? 1 : .25) * Math.log(1 + (documents.length - df + 0.5) / (df + 0.5))
             * count * 2.2 / (count + 1.2 * (0.25 + 0.75 * bags[index].length / average));
     }, 0) })).filter(hit => hit.score > 0).sort((a, b) => b.score - a.score).slice(0, cfg.topK);
 
@@ -216,6 +227,7 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
         scores.set(id, (scores.get(id) || 0) + weight / (cfg.rrf + index + 1));
     });
     lane(lexical.map(hit => hit.id), cfg.weights.lexical);
+    if (plan.commitment) lane(documents.filter(doc => memorySemanticHints(doc.text).commitment).map(doc => doc.id), 2);
     lane(vectorIds.slice(0, cfg.topK), cfg.weights.vector);
     lane([...graphHits.keys()], cfg.weights.graph);
     lane(stateDocs
@@ -294,7 +306,8 @@ async function digest(text) {
 
 /** Content-addressed vectors, isolated by chat and embedding configuration. */
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
-    budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false } = {}) {
+    budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
+    sceneText = '', packing = 'coverage' } = {}) {
     const guard = () => {
         if (signal?.aborted) throw Object.assign(new Error('Memory recall aborted'), { name: 'AbortError' });
         snapshot.assertCurrent();
@@ -302,13 +315,22 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const started = performance.now();
     guard();
     const corpus = buildMemoryCorpus(snapshot, at);
+    const querySeeds = memoryQuerySeeds(query, corpus.entities, sceneText);
+    const unavailableGroups = [];
     if (snapshot.eligibility) {
-        const temporal = analyzeMemoryQuery(query, corpus.entities, { at });
+        const temporal = analyzeMemoryQuery(querySeeds.userInput, corpus.entities, { at });
         // Time constraints apply to every lane, including vector indexing and
         // rerank inputs, rather than only suppressing ranked hits afterward.
         corpus.documents = corpus.documents.filter(doc => temporal.at !== null
             ? doc.kind !== 'episode' && doc.validAt === true
             : temporal.history || doc.status === 'active');
+        const present = new Set(corpus.documents.flatMap(doc => (doc.episodeIds || []).flatMap(id => snapshot.state.episodes[id]?.messageIds || [])));
+        for (const group of snapshot.eligibility.atomicGroups || []) {
+            if (!group.sourceMessageIds.every(id => present.has(id))) {
+                corpus.documents = corpus.documents.filter(doc => doc.atomicGroup !== group.id);
+                unavailableGroups.push({ id: group.id, reason: 'complete_group_outside_time_domain' });
+            }
+        }
     }
     const corpusReady = performance.now();
     const diagnostics = [];
@@ -345,7 +367,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             for (let start = 0; start < missing.length; start += 64) {
                 await service.insert({ collectionId, profile, items: missing.slice(start, start + 64), signal }); guard();
             }
-            const response = await service.query({ collectionId, profile, searchText: query, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal });
+            const response = await service.query({ collectionId, profile, searchText: querySeeds.seedText, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal });
             guard();
             const valid = new Map(items.map(item => [item.metadata.id, item.metadata.fingerprint]));
             vectorIds = [...new Set((response?.metadata || []).filter(hit => valid.get(hit.id) === hit.fingerprint && typeof hit.fingerprint === 'string').map(hit => hit.id))];
@@ -356,7 +378,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         }
     } else diagnostics.push('vector_unconfigured');
     const vectorsReady = performance.now();
-    const result = rankMemory(query, corpus, vectorIds, { at });
+    const result = rankMemory(query, corpus, vectorIds, { at, sceneText });
     result.candidates = result.candidates.filter(doc => !(doc.kind === 'state' && doc.type === 'provider'
         && doc.claims?.every(claim => stateClaimAlreadyPresent(claim, existingStateText))));
     if (service && rerankProfile && result.candidates.length) {
@@ -375,12 +397,17 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         }
     }
     guard();
-    const composition = await composeMemory(result.candidates, { countTokens, budget, corePacket, assertCurrent: guard });
+    const composition = packing === 'ranked'
+        ? await composeMemory(result.candidates, { countTokens, budget, corePacket, assertCurrent: guard })
+        : await composeMemoryCoverage(memoryEvidenceGroups(result.candidates, corpus, snapshot.state, result.plan),
+            { countTokens, budget, corePacket, assertCurrent: guard });
     const accessed = result.candidates.filter(doc => composition.selected.includes(doc.id)).flatMap(doc => doc.kind === 'fact'
         ? [doc.factId] : doc.kind === 'relation' ? doc.supports.map(ref => ref.factId) : []);
     if (accessed.length && snapshot.recordAccess) { await snapshot.recordAccess(accessed); guard(); }
     const selectedDocuments = result.candidates.filter(doc => composition.selected.includes(doc.id));
-    const evidence = selectedDocuments.map(doc => {
+    const evidence = composition.admitted ? composition.admitted.map(group => ({ id: group.id, content: group.content,
+        sourceMessageIds: group.sourceMessageIds, atomicGroup: group.atomicGroup, kind: 'source_group', eligibility: snapshot.eligibility?.identity,
+        sourceRefs: group.sourceMessageIds.map(id => ({ messageId: id, content: snapshot.state.sources[id]?.content, revision: snapshot.state.sources[id]?.revision })) })) : selectedDocuments.map(doc => {
         const sourceMessageIds = [...new Set((doc.episodeIds || []).flatMap(id =>
             Array.isArray(snapshot.state?.episodes?.[id]?.messageIds)
                 ? snapshot.state.episodes[id].messageIds
@@ -391,7 +418,19 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
                 revision: snapshot.state.sources[id]?.revision })), eligibility: snapshot.eligibility?.identity };
     });
     const sourceMessageIds = [...new Set(evidence.flatMap(item => item.sourceMessageIds))];
+    for (const item of evidence) {
+        item.producer = 'hybrid-retrieval-v1';
+        item.sourceRefs = await Promise.all(item.sourceMessageIds.map(async id => ({ messageId: id,
+            contentHash: await digest(snapshot.state.sources[id].content), sourceRevision: snapshot.state.sources[id].revision })));
+        guard();
+    }
+    if (!composition.selected.length) diagnostics.push('evidence_unknown');
+    if (composition.missingGroups?.length || unavailableGroups.length) diagnostics.push('atomic_evidence_unavailable');
+    const coverageGaps = result.plan.intent === 'cause' && !selectedDocuments.some(doc =>
+        ['causes', 'motivated_by', 'explains'].includes(doc.predicate) || /因为|由于|\bbecause\b/iu.test(doc.text))
+        ? [{ intent: 'cause', reason: 'causal_evidence_unknown' }] : [];
     return { ...composition, plan: result.plan, diagnostics, sourceMessageIds, evidence,
+        producer: 'hybrid-retrieval-v1', coverageGaps, missingGroups: [...(composition.missingGroups || []), ...unavailableGroups],
         metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
             corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, totalMs: performance.now() - started },
         providers: corpus.providers.map(provider => ({ providerId: provider.providerId, status: provider.status })), assertCurrent: guard };

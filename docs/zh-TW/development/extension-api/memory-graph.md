@@ -7,6 +7,8 @@
 > - 底層：`getMemoryGraphReadApi(store, context)`，來自 `public/scripts/agents/memory/read-api.js`（讀工廠）
 > - 底層：`getMemoryGraphWriteApi(store, context, options?)`，來自 `public/scripts/agents/memory/write-api.js`（寫工廠；`options.onCommit` 把變更刷到 floor-state）
 
+叙事召回使用 `openSession(context).recallMemory(query, options)`。它先核对原 Information requester/来源域，返回完整证据组、缺失组诊断与 `assertCurrent` 消费 guard。`requester` 支持 narrator/actor/task，task 还需 `informationTaskId`；`at` 指定来源时点。下方 graph inspection API 不授权将检查输出自动用作叙事证据。
+
 ## 會話 API（推薦入口）
 
 透過 Atria 的擴充註冊表開啟一個聊天作用域的會話：
@@ -61,7 +63,7 @@ orchestrator 的 `memory_*` loop 工具會把 `null` 會話翻譯成 `ToolError(
 
 | 方法 | 回傳 | 備註 |
 | --- | --- | --- |
-| `listVisibleCandidates(opts)` | `NodeView[]` | 原生召回 LLM 看到的候選池 |
+| `listVisibleCandidates(opts)` | `NodeView[]` | 图检查器 看到的候選池 |
 | `getEdgeSummary(id, opts)` | `EdgeSummaryView` | 度數 + 關係 + 鄰居取樣 |
 | `getNodeBrief(id, opts)` | `NodeBriefView \| null` | 含欄位與邊的完整 brief |
 | `expandFromSeeds(ids, opts)` | `NodeView[]` | 對一組種子做 BFS 擴張 |
@@ -82,7 +84,6 @@ orchestrator 的 `memory_*` loop 工具會把 `null` 會話翻譯成 `ToolError(
 
 ### 底層存取
 
-`getMemoryGraphReadApi(store, context)` 與 `getMemoryGraphWriteApi(store, context)` 仍然匯出，供已經持有 store 參照的內部呼叫端使用（例如原生 `chooseRecallRoute` 流水線）。第三方擴充應優先使用 `openSession` —— 會話外觀把 store 載入、空聊天兜底、透過 Atria 標準 extension api 的註冊都收在了一處。
 
 ## 角色級 override 存取器
 
@@ -198,9 +199,8 @@ mg.offStoreCommit(callback);
 
 ## 概覽
 
-記憶圖擴充驅動 Atria 的長期召回 —— 它把精選後的節點池（`character_sheet`、`event`、`relationship`、……）加上每個節點的 `edge_summary` 餵給一個「路由」LLM，由它挑出下一輪要注入哪些記憶。原生流水線（`main.js` 中的 `chooseRecallRoute` / `collectRootCandidates`）透過一組內部 helper —— `buildProjectedEdges`、`getNearestVisibleAncestorId`、`formatNodeBrief` 等等 —— 構造出 LLM 輸入。
 
-`getMemoryGraphReadApi(store, context)` 把同一份資料、拓撲與召回原語暴露成一個深凍結、對呼叫端安全的 API 介面。預期消費者是 agent 風格的外掛，自己跑一遍 LLM 驅動的召回 —— 例如 orchestrator 的 `memory_scout` 子代理 —— 用操作者偏好的模型 / preset，對著原生路由器看到的完全一樣的候選池與欄位投影來工作。
+`getMemoryGraphReadApi(store, context)` 提供原有图数据与拓扑检查的深冻结视图，供插件调试或图分析使用。检查输出不具有 Information 叙事授权；实际生成消费使用 `openSession(context).recallMemory` 的获准证据。
 
 `getMemoryGraphWriteApi(store, context)` 是與之配套的變更介面：一個 extractor 風格的 agent（或在兩輪對話之間編輯圖的 curator agent）透過它寫入，而不是去碰 store 內部。Write API 詳見下文 [Write API](#write-api)。
 
@@ -218,7 +218,7 @@ import { getExtensionApi } from '/scripts/extensions.js';
 const session = await getExtensionApi('memory-graph')?.openSession?.(Atria.getContext());
 if (!session) return;
 
-// Enumerate the visible candidate pool the native recall LLM sees.
+// Enumerate the visible candidate pool the graph inspector sees.
 const candidates = session.listVisibleCandidates();
 
 // Get a brief for one node — id, summary, edge_summary, exposure, always_inject.
@@ -297,7 +297,7 @@ interface EdgeSummaryView {
 }
 ```
 
-原生召回 LLM 每列候選看到的精簡邊 view。按 `(relation, direction)` 配對聚合計數；`sample_neighbors` 是去重後的鄰居節點的有限取樣（預設 8 個），每項帶 `to_seq`，呼叫端據此按時間近度排序。欄位名用 snake_case 以匹配原生 LLM prompt 區塊。
+图检查器 每列候選看到的精簡邊 view。按 `(relation, direction)` 配對聚合計數；`sample_neighbors` 是去重後的鄰居節點的有限取樣（預設 8 個），每項帶 `to_seq`，呼叫端據此按時間近度排序。欄位名用 snake_case 以匹配原生 LLM prompt 區塊。
 
 ### InjectionState
 
@@ -309,7 +309,7 @@ interface InjectionState {
 }
 ```
 
-注入側的觀察面。`alwaysInjectIds` 是被節點類型 `alwaysInject` 旗標固定下來的節點。`recallSelectedIds` 是路由 LLM 為上一輪選中的節點。`visibleIds` 是路由 LLM 看到的候選池 —— *在召回流水線至少跑過一次之前為空*。
+注入側的觀察面。`alwaysInjectIds` 是被節點類型 `alwaysInject` 旗標固定下來的節點。`recallSelectedIds` 是图检查器 為上一輪選中的節點。`visibleIds` 是图检查器 看到的候選池 —— *在召回流水線至少跑過一次之前為空*。
 
 ### LastRecallProjection
 
@@ -373,7 +373,7 @@ interface NodeBriefView {
 }
 ```
 
-原生召回 LLM 每列候選看到的單節點「brief」。等價於 `formatNodeBrief` 的輸出，加上路由器在序列化前補的幾個召回側欄位（`exposure`、`edgeSummary`、`alwaysInject`）。外掛複刻原生召回輸入時，就是把它當作 `candidateRows` 區塊的最小單元來組裝。
+图检查器 每列候選看到的單節點「brief」。等價於 `formatNodeBrief` 的輸出，加上路由器在序列化前補的幾個召回側欄位（`exposure`、`edgeSummary`、`alwaysInject`）。外掛複刻原生召回輸入時，就是把它當作 `candidateRows` 區塊的最小單元來組裝。
 
 ## Layer A： 資料存取
 
@@ -387,7 +387,7 @@ interface NodeBriefView {
 - 按 `compareNodesByTimeline` 排序（seqTo 升序，id 平手）—— 用於離線分析的穩定時間軸順序。這與 `listVisibleCandidates` **不同**，後者按 `compareNodesByRecency` 排序（seqTo 降序、depth 降序、id 字典序）。
 - 回傳凍結的 `NodeView` 物件的凍結陣列。陣列本身、每個 view、每個 `fields` record、每個 `childrenIds` 陣列都是凍結的。
 
-**何時使用：** 對整個 store 做離線掃描 —— 除錯、一次性統計、窮舉走訪。複刻召回的熱路徑呼叫端應改用 `listVisibleCandidates`，它的順序跟路由 LLM 輸入對齊，且已經套用了召回側過濾。
+**何時使用：** 對整個 store 做離線掃描 —— 除錯、一次性統計、窮舉走訪。複刻召回的熱路徑呼叫端應改用 `listVisibleCandidates`，它的順序跟图检查器 輸入對齊，且已經套用了召回側過濾。
 
 **最小範例：**
 
@@ -442,7 +442,7 @@ console.log(mentions.length, 'semantic mention edges');
 
 - 回傳角色卡生效後的 schema（即 `getEffectiveNodeTypeSchema(context, settings)`）。角色卡 override（若有）已經套用。
 - 每個 `SchemaSpecView` 都是凍結的，內部陣列（`tableColumns`、`requiredColumns`、`primaryKeyColumns`）也都是凍結的。
-- 這是原生召回 LLM 輸入中 `schema_overview` 區塊的源資料。
+- 這是图检查器 輸入中 `schema_overview` 區塊的源資料。
 
 **何時使用：** 建構 `schema_overview` prompt 區塊時，或基於 schema 衍生的投影（哪些欄位是主鍵、哪些是必填等）做反射時。
 
@@ -470,7 +470,7 @@ for (const spec of schema.types) {
 - 歸檔鄰居總是被過濾。
 - 按 `(neighborId, edgeType, direction)` 去重。
 
-**何時使用：** 給自訂 LLM prompt 區塊建構一個圍繞焦點節點的鄰居環。用 `projectTo: 'visible'` 與路由 LLM 看到的視角對齊。
+**何時使用：** 給自訂 LLM prompt 區塊建構一個圍繞焦點節點的鄰居環。用 `projectTo: 'visible'` 與图检查器 看到的視角對齊。
 
 **最小範例：**
 
@@ -558,7 +558,7 @@ const rollup = api.getNearestVisibleAncestor('event_99', { visibleNodeIds: visib
 - 回傳帶 `weight` 的凍結 `EdgeView` 物件。
 - 實作直接 re-export 內部的 `buildProjectedEdges` —— 沒有偏移風險。
 
-**何時使用：** 給路由 LLM（或自訂 LLM）建構一份尊重可見候選池的圖快照。與 `listVisibleCandidates` 配對就能拿到路由 LLM 看到的 （節點， 邊） 對。
+**何時使用：** 給图检查器（或自訂 LLM）建構一份尊重可見候選池的圖快照。與 `listVisibleCandidates` 配對就能拿到图检查器 看到的 （節點， 邊） 對。
 
 **最小範例：**
 
@@ -579,10 +579,9 @@ console.log(projected.length, 'projected semantic edges');
 
 **契約：**
 
-- 回傳與 `chooseRecallRoute` 透過 `collectRootCandidates` 建構的同一份候選池 —— 但形式是深凍結的 `NodeView`。
 - `excludeRecentMessages` 與原生 `isNodeInRecentExcludeWindow` 語意一致：過濾掉最近 N 條使用者訊息視窗內的節點。預設 0。
 - `seqWindow` 與 `types` 在原生候選建構**之後**生效，用來收窄結果池。
-- **按 `compareNodesByRecency` 排序**（seqTo 降序 → semanticDepth 降序 → id 字典序）—— 這是路由 LLM 看到的順序，與 `listNodes` **不同**。
+- **按 `compareNodesByRecency` 排序**（seqTo 降序 → semanticDepth 降序 → id 字典序）—— 這是图检查器 看到的順序，與 `listNodes` **不同**。
 
 **何時使用：** 任何自訂召回外掛的熱路徑入口。配合 `getNodeBrief` 按 id 呼叫來組裝 `candidateRows` 區塊。
 
@@ -605,7 +604,7 @@ console.log(candidates.length, 'visible candidates');
 - 節點不存在或已歸檔時回傳 `null`。
 - 每次呼叫都重新計算，因此角色卡 override 立即生效。
 
-**何時使用：** 決定自訂 prompt 中要渲染節點欄位 payload 的哪一部分。鏡像原生路由器的閘控。
+**何時使用：** 決定自訂 prompt 中要渲染節點欄位 payload 的哪一部分。鏡像图检查投影的閘控。
 
 **最小範例：**
 
@@ -624,7 +623,7 @@ if (exposure === 'high_only') {
 
 - 直接包裝內部的 `buildEdgeSummary` —— 行為沒有偏移。
 - 預設 `visibleNodeIds` 取目前 injection-state 的 `visibleIds`。**在召回流水線至少跑過一次之前為空。** 需要保證覆蓋時明確傳一個集合進來。
-- 預設 `limit: 8`，與原生路由器一致。
+- 預設 `limit: 8`，與图检查投影一致。
 - 總是回傳凍結的 `EdgeSummaryView`；缺失 / 未知節點回傳零度數 summary，絕不回傳 `null`。
 
 **何時使用：** 給自訂候選列附上精簡的邊 view，或在不付出完整拓撲走訪代價的前提下檢視節點鄰域。
@@ -642,7 +641,7 @@ console.log(summary.degree, summary.sample_neighbors.length);
 
 **契約：**
 
-- 等價於路由 LLM `candidateRows` 區塊中的一列：`formatNodeBrief` 投影，加上召回側的幾個欄位（`exposure`、`edgeSummary`、`alwaysInject`）。
+- 等價於图检查器 `candidateRows` 區塊中的一列：`formatNodeBrief` 投影，加上召回側的幾個欄位（`exposure`、`edgeSummary`、`alwaysInject`）。
 - 節點不存在或已歸檔時回傳 `null`。
 - 預設 `includeEdgeSummary: true`，預設 `edgeSummaryLimit: 8`。
 - 預設 `visibleNodeIds` 取目前 injection-state 的 `visibleIds`。需要決定性投影時明確傳集合。
@@ -667,7 +666,7 @@ console.log(brief.summary, brief.exposure, brief.alwaysInject);
 
 **契約：**
 
-- 包裝內部的 `expandRouteCandidates` —— 路由 LLM 決定繼續深挖某個 seed 時觸發的 BFS drill 擴張。
+- 包裝內部的 `expandRouteCandidates` —— 图检查器 決定繼續深挖某個 seed 時觸發的 BFS drill 擴張。
 - 預設 `hops: 1`、`includeChildren: true`、`projectTo: 'visible'`，**`excludeInternal: false`**（與原生 `expandRouteCandidates` 對齊，在 drill 中 `contains` / `semantic_contains` 也會參與）。
 - `projectTo: 'visible'` 時，drill 在目前 `visibleIds` 池內擴張（seed 自身永遠准入）。
 - `projectTo: 'raw'` 時，drill 跨整個 store 擴張。
@@ -830,40 +829,15 @@ const unsubscribe = api.onInjectionChanged(state => {
 unsubscribe();
 ```
 
-## 實戰範例：複刻原生召回 LLM 輸入
+## Hybrid narrative recall
 
-`chooseRecallRoute` 建構的兩個 LLM 輸入區塊是 `schema_overview` 與 `candidateRows`。用本 API 複刻它們非常直接：
+叙事召回使用 `openSession(context).recallMemory(query, options)`。它先核对原 Information requester/来源域，返回完整证据组、缺失组诊断与 `assertCurrent` 消费 guard。`requester` 支持 narrator/actor/task，task 还需 `informationTaskId`；`at` 指定来源时点。下方 graph inspection API 不授权将检查输出自动用作叙事证据。
 
 ```js
-import { getExtensionApi } from '/scripts/extensions.js';
-
-const api = await getExtensionApi('memory-graph')?.openSession?.(Atria.getContext());
-if (!api) return;
-
-// schema_overview block (the LLM prompt segment that describes each node type).
-const schemaOverview = api.getSchema().types.map(spec => ({
-    id: spec.type,
-    table_name: spec.tableName,
-    table_columns: [...spec.tableColumns],
-    required_columns: [...spec.requiredColumns],
-    force_update: spec.forceUpdate,
-    always_inject: spec.alwaysInject,
-    editable: spec.editable,
-    compression_mode: spec.compressionMode,
-}));
-
-// candidateRows block (one brief per visible candidate).
-const candidates = api.listVisibleCandidates();
-const candidateRows = candidates.map(view => api.getNodeBrief(view.id, {
-    includeEdgeSummary: true,
-    edgeSummaryLimit: 8,
-}));
-
-// You can now feed schemaOverview + candidateRows + always_inject_node_ids + your own
-// recall_query_context to your own recall LLM (with whatever model / preset you prefer).
+const session = await getExtensionApi("memory-graph")?.openSession?.(Atria.getContext());
+const result = await session?.recallMemory(query, { requester: { kind: "narrator" } });
+result?.assertCurrent(); // revalidate immediately before consumption
 ```
-
-完整的等價性保證 —— `candidateRows` 在欄位層面與順序層面都與原生路由器的輸入一致 —— 由 dogfood 測試（`tests/memory-graph/read-api-dogfood.test.js`）強制保證，它透過 API 建構出相同的區塊，並對原生 `chooseRecallRoute` 的內部狀態斷言結構相等。
 
 ## Write API
 
@@ -1071,7 +1045,6 @@ if (groups.length > 0) {
 
 ## 參見
 
-- 原生召回路徑：`public/scripts/agents/memory/main.js`（`chooseRecallRoute`、`collectRootCandidates`、`expandRouteCandidates`）
 - 搭配：orchestrator 透過 `getExtensionApi('memory-graph').openSession(context)` 開啟一個會話，並把它掛在 `__memoryGraphSession` 上供自身的 `memory_*` loop 工具消費 —— 見 [Director 執行期](/zh-TW/features/orchestrator/director)。
 - 相關擴充 API:[外掛整合](/zh-TW/development/extension-api/plugin-integration)，介紹了與其他擴充入口一併發布 `'memory-graph'` 的擴充 API 註冊表。
 - 要從你的擴充往編排器註冊自訂工具（memory-graph 自己就是這樣發布它的讀 / 寫工具的），參見 [編排器工具 API](./orchestrator-tools.md)。

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 const root = resolve(fileURLToPath(new URL('../../public', import.meta.url)));
 const server = createServer(async (req, res) => {
     try {
-        if (req.url === '/') { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/scripts/agents/orchestrator/workspace/panel.css"><style>body{margin:0;background:#171b23;color:#e5e7eb;font-family:system-ui}#agent-memory-workspace{position:static;width:100%;height:auto;min-height:100vh}*{box-sizing:border-box}</style><main id="agent-memory-workspace" data-atria-workspace-embedded="true"><div id="view"></div></main>'); return; }
+        if (req.url === '/') { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/css/atria-tokens.css"><link rel="stylesheet" href="/scripts/agents/orchestrator/workspace/panel.css"><style>body{margin:0;background:#171b23;color:#e5e7eb;font-family:system-ui}#agent-memory-workspace{position:static;width:100%;height:auto;min-height:100vh}*{box-sizing:border-box}</style><main id="agent-memory-workspace" data-atria-workspace-embedded="true"><div id="view"></div></main>'); return; }
         const path = resolve(root, '.' + new URL(req.url, 'http://localhost').pathname);
         if (!path.startsWith(root + sep)) throw new Error('outside root');
         res.setHeader('Content-Type', path.endsWith('.css') ? 'text/css' : 'text/javascript'); res.end(await readFile(path));
@@ -19,6 +19,10 @@ try {
     browser = await chromium.launch({ channel: 'msedge', headless: true });
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     const errors = []; page.on('pageerror', e => errors.push(e.message));
+    // Isolate shell dependency ports while rendering the production settings template.
+    await page.route('**/scripts/utils.js', route => route.fulfill({ contentType: 'text/javascript', body: 'export const escapeHtml = s => String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\\\"", "&quot;");' }));
+    await page.route('**/scripts/i18n.js', route => route.fulfill({ contentType: 'text/javascript', body: 'export const translate = s => s;' }));
+    await page.route('**/scripts/atria-shell/localization.js', route => route.fulfill({ contentType: 'text/javascript', body: 'export const translateShellText = s => s; export const formatShellText = (s, ...values) => values.reduce((text, value, i) => text.replaceAll("${" + i + "}", String(value)), s);' }));
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.evaluate(async () => {
         window.controls = { enabled: true, sourceWritesEnabled: false, recallEnabled: true };
@@ -51,5 +55,23 @@ try {
         await page.screenshot({ path: process.env.ATRIA_HM_UI_OUTPUT, fullPage: true });
         await writeFile(process.env.ATRIA_HM_UI_OUTPUT + '.json', JSON.stringify({ browser: 'msedge', viewport: [390, 844], sourceReadIndependent: true, saveFailureVisible: true, noOverflow: true, errors }));
     }
+    await page.evaluate(async () => {
+        const { buildMemoryGraphSettingsHtml } = await import('/scripts/agents/memory/ui-templates.js');
+        const escapeHtml = s => String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
+        document.querySelector('#view').innerHTML = buildMemoryGraphSettingsHtml({ escapeHtml, i18n: s => s,
+            UI_BLOCK_ID: 'hm-settings', world_info_position: { before: 0, after: 1, atDepth: 4 },
+            extension_prompt_roles: { SYSTEM: 0, USER: 1, ASSISTANT: 2 }, nativeRuntime: false });
+    });
+    for (const retired of ['recall_method', 'rag_rewrite_enabled', 'recall_api_preset', 'recall_preset']) {
+        assert.equal(await page.locator(`[id*="${retired}"]`).count(), 0);
+    }
+    await page.getByText('Retrieval and injection', { exact: true }).click();
+    await page.getByRole('combobox', { name: 'Embedding profile', exact: true }).waitFor();
+    assert.equal(await page.locator('#atria_rpg_memory_rerank_block').isVisible(), false);
+    await page.getByRole('checkbox', { name: 'Enable rerank', exact: true }).focus();
+    assert.equal(await page.getByRole('checkbox', { name: 'Enable source writes', exact: false }).count(), 1);
+    assert.deepEqual(errors, []);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (process.env.ATRIA_HM_UI_OUTPUT) await page.screenshot({ path: process.env.ATRIA_HM_UI_OUTPUT.replace('.png', '-settings.png'), fullPage: true });
     console.log('HM1 actual Memory workspace: source/recall toggles, save error, mobile width passed');
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

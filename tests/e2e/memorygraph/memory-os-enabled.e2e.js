@@ -7,7 +7,7 @@ import { selectCharacterByName } from '../_lib/page.js';
 
 test.use({ launchOptions: { channel: process.env.MEMORY_OS_BROWSER || undefined } });
 
-test('Memory OS UI flag reaches live lifecycle and survives server restart', async ({ page }) => {
+test('Source write UI flag reaches live lifecycle and survives server restart', async ({ page }) => {
     const scratch = resolve(import.meta.dirname, '../../.e2e-scratch');
     mkdirSync(scratch, { recursive: true });
     const dataRoot = mkdtempSync(resolve(scratch, 'memory-os-enabled-'));
@@ -16,8 +16,7 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
     const settings = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../default/content/settings.json'), 'utf8'));
     settings.firstRun = false;
     settings.atri_capabilities ||= {};
-    // Reproduce the reported state: both visible pre-fix switches are on,
-    // but the development-only OS flag has never been written by a user.
+    // Reading existing history does not opt into source-backed writes.
     settings.atri_capabilities.orchestrator = { enabled: true };
     settings.atri_capabilities.memory_graph = { enabled: true };
     writeFileSync(resolve(userRoot, 'settings.json'), JSON.stringify(settings));
@@ -25,13 +24,13 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const name = 'Memory OS activation regression';
-    const toggle = page.locator('#atria_rpg_memory_os_enabled');
+    const toggle = page.locator('#atria_rpg_memory_source_writes_enabled');
     const inspector = page.locator('.memory-os-inspector');
     const persisted = () => page.evaluate(async () => {
         const ctx = window.Atria.getContext();
         const response = await fetch('/api/settings/get', { method: 'POST', headers: ctx.getRequestHeaders(), body: '{}' });
         const payload = await response.json();
-        return JSON.parse(payload.settings).capabilitySettings.memory_graph.memoryOsEnabled;
+        return JSON.parse(payload.settings).capabilitySettings.memory_graph.sourceWritesEnabled;
     });
     const ready = () => page.waitForFunction(() => window.Atria?.getContext?.().getCapabilityApi?.('memory-graph')
         && window.Atria.getContext().getCapabilityApi('orchestrator') && !document.getElementById('preloader'));
@@ -47,7 +46,7 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
         await openMemory();
         await expect(toggle).not.toBeChecked();
         await page.getByRole('button', { name: 'Knowledge · Sources · Build & Maintenance', exact: true }).click();
-        await expect(inspector.getByRole('status')).toContainText('Memory OS is disabled');
+        await expect(inspector.getByRole('status')).toContainText('显示');
 
         await toggle.check();
         await inspector.getByRole('button', { name: '刷新', exact: true }).click();
@@ -83,10 +82,12 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
             const ctx = window.Atria.getContext();
             let stale;
             try { window.memoryOsSnapshot.assertCurrent(); } catch (error) { stale = error.name; }
-            try { await ctx.getCapabilityApi('memory-graph').getWorkspacePorts(ctx).load(); }
-            catch (error) { return { stale, message: error.message }; }
+            const snapshot = await ctx.getCapabilityApi('memory-graph').getWorkspacePorts(ctx).load();
+            snapshot.assertCurrent();
+            return { stale, key: snapshot.key };
         });
-        expect(disabled).toEqual({ stale: 'AbortError', message: 'Memory OS is disabled' });
+        expect(disabled.stale).toBe('AbortError');
+        expect(disabled.key).toBeTruthy();
         await expect.poll(persisted).toBe(false);
         await server.restart();
         await page.reload();

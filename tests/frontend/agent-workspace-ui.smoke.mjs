@@ -37,12 +37,11 @@ try {
         window.scope = { character: 'test-character', conversation: 'test-chat' };
         window.memoryLoads = 0;
         window.memoryControls = {
-            memoryOsEnabled: true,
+            sourceWritesEnabled: true,
             enabled: true,
             recallEnabled: true,
             autoExtractionEnabled: true,
             autoCompressionEnabled: true,
-            recallMethod: 'llm',
             updateEvery: 1,
         };
         const memorySnapshot = {
@@ -275,7 +274,7 @@ try {
         const snapshot = largeMemory(1000); window.memoryValid = true;
         snapshot.assertCurrent = () => { if (!window.memoryValid) throw new Error('fixture scope changed'); };
         const context = { getCapabilityApi: () => ({ getWorkspacePorts: () => ({
-            getStatus: () => ({ memoryOsEnabled:true, enabled:true, recallEnabled:true, autoExtractionEnabled:true, autoCompressionEnabled:true, recallMethod:'llm', updateEvery:1 }),
+            getStatus: () => ({ sourceWritesEnabled:true, enabled:true, recallEnabled:true, autoExtractionEnabled:true, autoCompressionEnabled:true, updateEvery:1 }),
             setControl: async () => {},
             load: async () => snapshot,
             inspect: current => computeInspector(current),

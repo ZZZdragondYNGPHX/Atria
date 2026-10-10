@@ -40,39 +40,19 @@ Nodes come in two tiers. The **default schema** ships with three types listed be
 |---|---|---|
 | `event` | An important event that occurred | "The protagonist was ambushed in the forest" |
 
-::: info Event nodes are different
-Event nodes are fundamentally not the same as the others:
-
-- **A new node is created on every extraction.** Titles auto-increment. Events are independent points on a timeline; they don't merge.
-- **The highest-tier timeline is always injected.** Event nodes are treated as core storyline context — top-level summaries are persistent in the prompt, ensuring the AI keeps a sense of the plot.
-- **Compressed lower-tier events are hidden.** When events accumulate too much, old events are compressed upward into higher-tier summaries. The lower-tier events stay in the graph and can be re-discovered through recall when the conversation calls them back, but they aren't injected by default.
-
-In short: the AI always sees the "big picture" (top-level summaries), and specific event details surface only when the conversation makes them relevant.
+::: info Hybrid source admission
+Persistent graph flags no longer bypass recall authorization. Use the original World and Context resources for required current rules. Memory evidence is admitted only through the current source/exposure/anchor and token budget; unproven historical graph nodes remain stored but are unavailable to recall.
 :::
 
 You can throttle extraction with the **Extraction Interval** setting — for example, `2` means extraction runs every 2 AI replies, halving the LLM cost.
 
 ### Smart recall
 
-When you send a message, Memory Graph looks at the conversation context and recalls the most relevant nodes from accumulated memory, then injects them into the prompt for the AI to use.
+Hybrid Memory is the only recall path. It resolves the current requester, Information exposure, Branch, active Variant and time before constructing any lexical, graph or optional vector candidates. Missing sources or grants fail closed; optional retrieval failures keep the legal lexical/graph path.
 
-| Method | Description |
-|---|---|
-| LLM Recall | The LLM directly picks relevant nodes from the memory store, with multi-round deep exploration |
-| RAG Recall | Vector retrieval over the embedded memory store, with optional cross-encoder rerank and optional LLM query rewrite |
+Chinese references, verified aliases and source-backed commitments supply bounded query seeds. Coverage packing preserves complete source groups and competing assertions within the Context budget. Retrieval does not establish World truth, Actor recollection or promise completion, and ordinary turns add no fixed recall LLM call.
 
-::: tip Which one?
-**LLM Recall is the default because it's the easiest to configure** — you already have an LLM API set up for chat, and that's all it needs.
-
-**RAG Recall** uses semantic vector search. In Atria Native, first create an embedding resource in **Runtime → Retrieval**, then select its exact revision in **Memory → Maintenance → Memory retrieval**. Retrieval is a player-owned Native family, separate from generation routes and portable Library content. Its immutable revisions own provider, model, endpoint, typed options and an exact reference to the existing Secret store; credentials are never copied into Memory settings or Packages.
-
-Inside RAG Recall, two opt-in switches let you trade extra cost for better quality:
-
-- **Enable rerank** — adds a cross-encoder rerank pass over the vector hits. Useful when your embedding model is small and the rerank model is strong; requires a Rerank Profile (cohere / jina / a custom endpoint).
-- **Enable query rewrite** — adds one extra LLM call before retrieval that rewrites the recent dialogue into a single concise sentence optimised for vector search. Materially improves recall when the user message is generic or roundabout. Adds latency + cost (one LLM call per turn).
-
-Rule of thumb: stay on LLM Recall while trying things out. Move to RAG Recall when you start hitting cost or latency walls on LLM Recall, or when you want recall to stay deterministic across model swaps. Turn on the two switches one at a time — they're independent.
-:::
+Enable **Memory** and **Recall** to consume permitted history. **Source writes** independently opts into source-backed extraction; switching it off preserves readable history. Configure optional exact Embedding and rerank revisions in **Runtime → Retrieval**, then **Memory → Maintenance**. Old LLM/RAG mode, recall presets and query rewrite controls have been removed.
 
 ### Hierarchical compression
 
@@ -164,16 +144,7 @@ Open **Extensions** drawer → **Memory** → toggle **Enable** on.
 
 ### Step 2 — Pick models for extraction and recall
 
-Memory Graph's extraction and recall both call an LLM, but they **don't have to use the same model as your main chat**. Set them in the same panel:
-
-| Setting | Description |
-|---|---|
-| Recall API Preset | API connection for recall |
-| Recall Chat Completion Preset | Chat Completion preset for recall |
-| Extraction (Generate) API Preset | API connection for extraction |
-| Extraction (Generate) Chat Completion Preset | Chat Completion preset for extraction |
-
-A common pattern: main chat on Claude Opus, Memory Graph on Haiku or Gemini Flash. Extraction does structured field-filling, not prose — a small model handles it fine and saves real money.
+Extraction and schema assistance retain their Memory runtime routes. Source-backed extraction requires **Source writes**; recall uses lexical/graph retrieval without an LLM connection. Optional Embedding and rerank use the exact Retrieval revisions selected in Maintenance. Existing native Timeline history remains a source even when extraction writes are off.
 
 ### Step 3 — Chat normally
 
@@ -208,11 +179,7 @@ Each type also carries two extraction-control fields:
 
 ### I want certain memories *always* in the prompt (not waiting for recall)
 
-That's **persistent injection**. Set certain node types to be persistently injected — they appear in the prompt regardless of recall triggers. A common case: if you add a `rule_constraint` or `world_law` type for inviolable world rules, mark it persistent so the model never forgets the rules.
-
-::: warning Persistent and recall are mutually exclusive per node
-A persistently-injected node is **excluded** from the recall pool — it bypasses recall entirely (it's already in the prompt every turn).
-:::
+Persistent graph flags no longer bypass recall authorization. Use the original World and Context resources for required current rules. Memory evidence is admitted only through the current source/exposure/anchor and token budget; unproven historical graph nodes remain stored but are unavailable to recall.
 
 ### I edit / delete a message — what happens to the memory?
 
@@ -250,7 +217,7 @@ Recall injection has its own placement settings:
 
 ### Result reuse
 
-When you swipe or regenerate on the same floor, Memory Graph reuses the previous recall result instead of re-running. Saves LLM cost and keeps memory context consistent within the same turn.
+Swipes and regeneration revalidate the current source, variant and Information domain. HM1 performs bounded retrieval again; it does not reuse generated prose or promise candidate caching.
 
 ## Configuration Reference
 
@@ -270,20 +237,15 @@ When you swipe or regenerate on the same floor, Memory Graph reuses the previous
 | Setting | Default | Description |
 |---|---|---|
 | Embedding Profile | (none) | Exact player-owned Native retrieval revision (mode `embed`), managed in Runtime → Retrieval and selected in Memory Maintenance. |
-| Vector Top-K | `20` | Top-K for vector retrieval |
-| Max recall results | `15` | Final cap on the number of nodes injected per recall |
 | Enable rerank | `off` | Whether to apply a cross-encoder rerank over the vector hits |
 | Rerank Profile | (none) | Exact player-owned Native retrieval revision (mode `rerank`). Only consulted when "Enable rerank" is on; managed in Runtime → Retrieval. |
-| Enable query rewrite | `off` | Whether to add an extra LLM call before retrieval that rewrites the recent dialogue into a concise sentence optimised for vector search |
-| Query rewrite API preset | (none) | Connection profile to use for the rewrite LLM call. Only consulted when "Enable query rewrite" is on. |
-| Query rewrite prompt preset | (none) | Chat-completion preset to use for the rewrite LLM call |
 
 ### Other
 
 | Setting | Default | Description |
 |---|---|---|
 | RPM Limit | `0` | Requests per minute (0 = unlimited) |
-| LLM Visible Recent Messages | `5` | Recent messages visible to recall LLM |
+| LLM Visible Recent Messages | `5` | Recent message layers visible to generation |
 | Include World Info with Preset | `true` | Whether to include World Info |
 | Override World Info Name | (empty) | Override the projection World Info name |
 | World Info Entry Sort Base | `9800` | Base sort order for projected entries |
@@ -297,25 +259,21 @@ When you swipe or regenerate on the same floor, Memory Graph reuses the previous
 <details>
 <summary>For curious readers and contributors</summary>
 
-### RAG recall pipeline
+### Hybrid retrieval pipeline
 
-In RAG Recall mode, Memory Graph runs a three-stage linear pipeline:
+1. Resolve the original source and Information authority before candidate/index IO.
+2. Build deterministic legal query seeds, lexical ranking and bounded typed graph lanes; add vector ranking only when configured. Fuse lanes by RRF. Optional rerank failure stays inside Hybrid.
+3. Pack complete evidence groups with typed historical/assertion hints, independent competing sources and explicit missing-group diagnostics. Revalidate at asynchronous return and Context consumption; budget rejection does not truncate a source chain.
 
-1. **Optional query rewrite** — if "Enable query rewrite" is on, one LLM call rewrites the last few dialogue turns into a single concise sentence optimised for vector search (the model is told to use entity names and concrete verbs that look like what would appear verbatim in a stored event summary).
-2. **Vector retrieval** — fetch the top-K nearest neighbours from the embedded memory store, keyed by either the raw query or the rewritten sentence.
-3. **Optional cross-encoder rerank** — if "Enable rerank" is on, every candidate is scored by the rerank model and the order is replaced with the rerank ranking. If rerank fails for any reason, the pipeline falls back to vector order rather than failing the whole recall.
-
-That's the whole path. There is no graph-diffusion stage and no cognitive layer — earlier versions of Memory Graph had a multi-stage PEDSA diffusion + NMF/FISTA/DPP cognitive pipeline, but A/B testing showed those stages contributed negatively or not at all to recall quality on real long-form roleplay. The pipeline was collapsed to vector + optional rerank + optional rewrite so users have fewer knobs to misconfigure.
+This HM1 path does not enable PPR, LLM query rewrite, candidate caching, delta indexing, cognition or forgetting writers.
 
 ### Vector index
 
-Memory Graph detects content changes through hashes and re-embeds changed nodes. Native RAG and Hybrid retrieval pass only an exact `nativeRetrievalRef`; the server resolves that revision and its Secret. Native vector caches are isolated by profile ID and revision, including endpoint and options changes. Creating a new revision leaves existing selections pinned; changing the Memory selection rebuilds the selected revision’s index. Cache-only list/delete/purge operations do not need an available provider Secret.
+Hybrid indexes only the current permitted source domain, isolated by requester, anchor, time and exact Embedding revision. It reconciles full fingerprints and rebuilds derived data without deleting source history.
 
 The Native family retains embedding protocols (OpenAI-compatible providers, Cohere, Jina, NomicAI, Google AI Studio/Vertex, local Transformers/WebLLM, Ollama, llama.cpp, vLLM, KoboldCpp and Extras) and Cohere/Jina/custom rerank. Supply the API base URL explicitly; NomicAI uses its full embedding URL and Google bases include `/v1` or `/v1beta`. Vertex offers explicit API-key, service-account and proxy authentication. Browser WebLLM requires its existing browser engine.
 
 Connection Manager profiles remain confined to non-Native compatibility callers. Native Memory neither reads them nor automatically converts old user data. Native resources use the existing storage engine and participate in Native backup/restore; derived vector caches can be rebuilt.
-
-When inserting vectors, Memory Graph includes `nodeId` in the `metadata` field. The vector backend stores `metadata` as-is; other plugins can use `metadata` for their own data, returned alongside query results. This design lets the `hash → nodeId` mapping bypass the frontend index cache — even if the cache is lost, nodes can be matched directly from query results.
 
 For manual control, the memory graph settings panel exposes a **Recompute Vector Index** button. Clicking it opens a dialog with two modes: **Fill Missing** re-embeds only nodes whose vectors are missing or stale (for example, after node edits); **Full Rebuild** clears the collection and re-embeds every eligible node (use this after switching the embedding model or profile). When the embedding configuration has changed, Fill Missing auto-promotes to a full rebuild because old vectors live in an incompatible embedding space. Failed nodes are logged to the console without aborting the overall run.
 

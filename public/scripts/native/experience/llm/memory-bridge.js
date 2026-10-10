@@ -1,5 +1,5 @@
 import { cloneGameLlmValue } from './clone.js';
-import { informationContext } from '../../../../shared/native-information-runtime.js';
+import { informationContext, informationSourceMessageIds } from '../../../../shared/native-information-runtime.js';
 
 const MAX_QUERY_CHARS = 12000;
 const MAX_MEMORY_CONTENT_CHARS = 48000;
@@ -98,6 +98,8 @@ export function buildMemoryRecallQuery(turnContext) {
 }
 
 export function normalizeMemoryRecallPacket(result, turnContext, query) {
+    const content = String(result?.content ?? result?.text ?? '');
+    if (content.length > MAX_MEMORY_CONTENT_CHARS) throw new Error('Complete memory packet exceeds bridge capacity');
     const rawReferences = Array.isArray(result?.references)
         ? result.references
         : (Array.isArray(result?.selected)
@@ -125,7 +127,7 @@ export function normalizeMemoryRecallPacket(result, turnContext, query) {
             revisionId: turnContext.anchor.revisionId,
         },
         query: truncate(query, MAX_QUERY_CHARS),
-        content: truncate(result?.content ?? result?.text ?? '', MAX_MEMORY_CONTENT_CHARS),
+        content,
         references,
         tokens: Number.isFinite(Number(result?.tokens ?? result?.tokenCount))
             ? Number(result?.tokens ?? result?.tokenCount)
@@ -283,18 +285,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
     }
     result?.assertCurrent?.();
 
-    const visibleMessages = new Set(
-        (information.projection?.items ?? [])
-            .filter(item => item.variantId)
-            .map(item => String(item.recordId || ''))
-            .filter(Boolean),
-    );
-    // Exact complete application exposures are also legal source proofs.
-    for (const item of information.projection?.items ?? []) {
-        for (const id of Array.isArray(item.data?.sourceMessageIds) ? item.data.sourceMessageIds : []) {
-            if (snapshot.timeline.some(entry => entry.messageId === id && entry.content === item.data.text)) visibleMessages.add(id);
-        }
-    }
+    const visibleMessages = new Set(informationSourceMessageIds(snapshot, information));
     const rawEvidence = Array.isArray(result?.evidence) && result.evidence.length
         ? result.evidence
         : [{
@@ -306,16 +297,17 @@ export async function recallNativePackageTurnMemory(options = {}) {
     const revisionId = String(snapshot.revision.revisionId || '');
     const evidence = [];
     for (const [index, item] of rawEvidence.slice(0, 32).entries()) {
-        const content = truncate(item?.content ?? '', MAX_MEMORY_CONTENT_CHARS).trim();
+        const content = String(item?.content ?? '').trim();
         const sourceMessageIds = [...new Set(
             (Array.isArray(item?.sourceMessageIds) ? item.sourceMessageIds : [])
                 .map(id => String(id || '').trim())
                 .filter(id => id && visibleMessages.has(id)),
         )].slice(0, MAX_REFERENCES);
-        if (!content || !sourceMessageIds.length || sourceMessageIds.length !== new Set(item?.sourceMessageIds ?? []).size) continue;
+        if (!content || content.length > MAX_MEMORY_CONTENT_CHARS || !sourceMessageIds.length || sourceMessageIds.length !== new Set(item?.sourceMessageIds ?? []).size) continue;
         evidence.push(deepFreeze({
             memoryId: 'package-turn:' + revisionId + ':' + String(item?.id || index),
             content,
+            ...(item.atomicGroup ? { atomicGroup: item.atomicGroup } : {}),
             sourceRefs: sourceMessageIds.map(messageId => ({
                 kind: 'timeline',
                 messageId,
