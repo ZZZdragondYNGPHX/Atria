@@ -579,6 +579,10 @@ router.post('/rerank', async (req, res) => {
     } catch (error) {
         console.error('Rerank failed:', error);
         failEmbeddingInspection(req, error?.message || String(error), 500);
+        if (req.nativeRetrieval) {
+            const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped'].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
+            return res.status(code === 'native_generation_budget_exhausted' ? 429 : 500).json({ error: code });
+        }
         return res.status(500).json({ error: error.message });
     }
 });

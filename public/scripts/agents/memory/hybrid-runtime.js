@@ -33,7 +33,10 @@ export async function recallHybridMemory(context, query, options = {}) {
         rerankProfile: settings.rerankEnabled ? getRerankProfileFromSettings(settings) : null,
         countTokens: memoryTokenCounter(context), budget: Math.min(memoryTokenBudget(settings), laneCap),
         corePacket: [existing, options.corePacket].filter(Boolean).join('\n'), existingStateText: existing, signal: options.signal, at: options.at,
-        rebuildVectors: options.rebuildVectors === true });
+        rebuildVectors: options.rebuildVectors === true,
+        computeContext: eligibility.identity.kind === 'information' ? {
+            kind: 'session', sessionId: eligibility.identity.anchor.sessionId, revisionId: eligibility.identity.anchor.revisionId,
+        } : null });
     if (result.coreOverBudget) result.diagnostics.push('existing_state_exceeds_memory_budget');
     return { ...result, tokenCounting: context.getTokenCountAsync ? 'tokenizer' : 'utf8_bytes_estimate' };
 }

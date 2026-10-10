@@ -5,6 +5,26 @@ import { attachInspectionEndpoint } from '../request-inspector.js';
 const DEFAULT_COHERE_URL = 'https://api.cohere.ai/v2';
 const DEFAULT_JINA_URL = 'https://api.jina.ai/v1';
 
+async function sendRerank(url, headers, body, request) {
+    const compute = request?.nativeRetrieval?.compute;
+    let usage = null;
+    try {
+        request?.nativeRetrieval?.signal?.throwIfAborted();
+        await compute?.beforeSend(body);
+        const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body),
+            ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}) });
+        if (!response.ok) throw new Error(`Rerank provider failed: ${response.status}`);
+        const data = await response.json();
+        usage = data.usage ?? null;
+        if (!Array.isArray(data.results) || data.results.length > body.documents.length
+            || new Set(data.results.map(row => row?.index)).size !== data.results.length
+            || data.results.some(row => !Number.isInteger(row?.index) || row.index < 0 || row.index >= body.documents.length || !Number.isFinite(row.relevance_score))) {
+            throw new Error('Invalid rerank results');
+        }
+        return data;
+    } finally { await compute?.settle(usage); }
+}
+
 /**
  * @typedef {object} RerankSettings
  * @property {string} model
@@ -72,22 +92,10 @@ async function rerankCohere(settings, query, documents, topK, directories, reque
 
     if (request) attachInspectionEndpoint(request, rerankUrl, key, body);
 
-    const response = await fetch(rerankUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`,
-        },
-        body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        console.error('Cohere rerank failed:', response.status, text);
-        throw new Error(`Cohere rerank failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const data = await sendRerank(rerankUrl, {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`,
+    }, body, request);
     return data.results.map(r => ({
         ...documents[r.index],
         relevance_score: r.relevance_score,
@@ -118,22 +126,10 @@ async function rerankJina(settings, query, documents, topK, directories, request
 
     if (request) attachInspectionEndpoint(request, rerankUrl, key, body);
 
-    const response = await fetch(rerankUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`,
-        },
-        body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        console.error('Jina rerank failed:', response.status, text);
-        throw new Error(`Jina rerank failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const data = await sendRerank(rerankUrl, {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`,
+    }, body, request);
     return data.results.map(r => ({
         ...documents[r.index],
         relevance_score: r.relevance_score,
@@ -179,19 +175,7 @@ async function rerankCustom(settings, query, documents, topK, directories, reque
 
     if (request) attachInspectionEndpoint(request, url.toString(), apiKey || '', body);
 
-    const response = await fetch(url.toString(), {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        console.error('Custom rerank failed:', response.status, text);
-        throw new Error(`Custom rerank failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const data = await sendRerank(url.toString(), headers, body, request);
     return data.results.map(r => ({
         ...documents[r.index],
         relevance_score: r.relevance_score,

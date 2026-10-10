@@ -4,6 +4,7 @@ import { getStorageEngine } from '../storage/index.js';
 import { readSecret, SECRET_KEYS } from '../endpoints/secrets.js';
 import { assertRetrievalRef } from '../../public/scripts/native/retrieval-contracts.js';
 import { assertWritable } from '../storage/read-only-mode.js';
+import { prepareRetrievalCompute } from './retrieval-compute.js';
 
 export function resolveRetrievalSecret(directories, ref) {
     if (!ref) return '';
@@ -17,7 +18,14 @@ export function resolveRetrievalSecret(directories, ref) {
 // Explicit Native request boundary. Only payload fields, never provider settings,
 // may come from a caller. The retained vector protocol implementations consume
 // this server-resolved configuration without consulting compatibility settings.
-export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPersistence({ engine: getStorageEngine() }), resolveSecret = resolveRetrievalSecret) {
+async function defaultComputeServices() {
+    const [{ getNativeSessionServices }, { getNativeStudioServices }, { NativeModelPromptPersistence }] = await Promise.all([
+        import('../endpoints/native-session.js'), import('../endpoints/native-studio.js'), import('./model-prompt-runtime/persistence.js'),
+    ]);
+    return { ...getNativeSessionServices(), ...getNativeStudioServices(), persistence: new NativeModelPromptPersistence({ engine: getStorageEngine() }) };
+}
+export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPersistence({ engine: getStorageEngine() }), resolveSecret = resolveRetrievalSecret,
+                                          getComputeServices = defaultComputeServices) {
     return async (req, res, next) => {
         if (req.nativeRetrieval) return next();
         try {
@@ -26,7 +34,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             const operations = {
                 '/insert': ['collectionId', 'items', 'embeddings'], '/query': ['collectionId', 'searchText', 'topK', 'threshold', 'includeVectors', 'embeddings'],
                 '/query-multi': ['collectionIds', 'searchText', 'topK', 'threshold', 'embeddings'], '/query-by-vector': ['collectionId', 'vector', 'topK', 'threshold', 'includeVectors'],
-                '/list': ['collectionId'], '/delete': ['collectionId', 'hashes'], '/purge': ['collectionId'], '/rerank': ['query', 'documents', 'topK'],
+                '/list': ['collectionId'], '/delete': ['collectionId', 'hashes'], '/purge': ['collectionId'], '/rerank': ['query', 'documents', 'topK', 'computeContext'],
             };
             const allowed = operations[req.path];
             if (!allowed || Object.keys(req.body || {}).some(key => key !== 'nativeRetrievalRef' && !allowed.includes(key))) throw new TypeError('Unsupported retrieval request');
@@ -34,8 +42,14 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             const ref = assertRetrievalRef(req.body.nativeRetrievalRef);
             const profile = await getStore().getExact(handle, ref);
             if (profile.mode !== (req.path === '/rerank' ? 'rerank' : 'embed')) throw new TypeError('Retrieval task mismatch');
+            if (req.path === '/rerank' && !req.body.computeContext) throw Object.assign(new Error('Rerank requires original Run/Task budget authority'), { code: 'native_generation_budget_lane_denied' });
+            if (req.path === '/rerank' && (typeof req.body.query !== 'string' || !req.body.query.trim() || req.body.query.length > 8192
+                || !Array.isArray(req.body.documents) || !req.body.documents.length || req.body.documents.length > 64
+                || req.body.documents.some(doc => typeof doc?.text !== 'string' || !doc.text || doc.text.length > 65536)
+                || Buffer.byteLength(JSON.stringify(req.body.documents), 'utf8') > 262144)) throw new TypeError('Bounded rerank input required');
             const usesProvider = ['/insert', '/query', '/query-multi', '/rerank'].includes(req.path);
             const secret = usesProvider ? resolveSecret(req.user.directories, profile.secretRef) : '';
+            const compute = req.body.computeContext ? await prepareRetrievalCompute({ handle, context: req.body.computeContext, profile, ...await getComputeServices() }) : null;
             const settings = {
                 native: true, model: profile.model, indexScope: ref.retrievalProfileId + '_' + ref.revision,
                 reverseProxy: profile.endpoint, proxyPassword: secret, apiUrl: profile.endpoint, apiKey: secret,
@@ -63,13 +77,15 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
                 if (!Array.isArray(result.data) || result.data.length !== texts.length || result.data.some(item => !Array.isArray(item.embedding) || !item.embedding.length || item.embedding.some(n => !Number.isFinite(n)))) throw new Error('Invalid embeddings');
                 settings.embeddings = Object.fromEntries(texts.map((text, i) => [text, result.data[i].embedding]));
             }
-            req.nativeRetrieval = { profile, secret, settings };
+            const controller = new AbortController();
+            res.once('close', () => { if (!res.writableEnded) controller.abort(); });
+            req.nativeRetrieval = { profile, secret, settings, compute, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]) };
             req.body = { ...req.body, source: profile.source, model: profile.model };
             const json = res.json.bind(res);
-            res.json = value => json(res.statusCode >= 400 ? { error: 'native_retrieval_execution_failed' } : value);
+            res.json = value => json(res.statusCode >= 400 ? { error: ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped'].includes(value?.error) ? value.error : 'native_retrieval_execution_failed' } : value);
             next();
         } catch (error) {
-            const code = ['native_retrieval_unavailable', 'native_retrieval_secret_unavailable', 'storage_read_only'].includes(error.code) ? error.code : 'native_retrieval_invalid';
+            const code = ['native_retrieval_unavailable', 'native_retrieval_secret_unavailable', 'storage_read_only', 'native_generation_budget_lane_denied', 'native_generation_revision_conflict'].includes(error.code) ? error.code : 'native_retrieval_invalid';
             res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
         }
     };

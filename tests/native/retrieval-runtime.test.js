@@ -10,6 +10,8 @@ import { createRetrievalMiddleware, resolveRetrievalSecret } from '../../src/nat
 import { router as vectors } from '../../src/endpoints/vectors.js';
 import { SecretManager, SECRET_KEYS } from '../../src/endpoints/secrets.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
+import { installFixture } from './helpers/session-fixture.js';
+import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 
 const cleanups = [];
 afterEach(async () => { setReadOnly(false); for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
@@ -47,8 +49,9 @@ async function fixture() {
     const h = await makeTempFsEngine(); cleanups.push(h.cleanup);
     const store = new NativeRetrievalPersistence({ engine: h.engine }); const value = profile(); await store.commit(h.handle, value);
     const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle }, directories: h.dirs }; next(); });
-    app.use(createRetrievalMiddleware(() => store)); app.use(vectors);
-    return { ...h, store, value, request: supertest(app) };
+    let computeServices;
+    app.use(createRetrievalMiddleware(() => store, resolveRetrievalSecret, async () => computeServices)); app.use(vectors);
+    return { ...h, store, value, request: supertest(app), useComputeServices: value => { computeServices = value; } };
 }
 test('real vector IO isolates exact revisions and Native purge from compatibility caches', async () => {
     const f = await fixture(); const ref = retrievalRef(f.value); const next = { ...f.value, revision: createNativeId('revision') }; await f.store.commit(f.handle, next);
@@ -109,9 +112,15 @@ test('remote embedding and rerank execute Native models, options and exact Secre
     }
     expect(calls.find(call => call.path === '/jina/embeddings').body).toMatchObject({ dimensions: 2, late_chunking: true, task: 'retrieval.passage' });
     expect(calls.find(call => call.path.startsWith('/vertexai/')).path).toContain('/projects/test-project/locations/us-central1/publishers/google/models/');
+    const installed = await installFixture(f), session = await installed.core.create(f.handle, installed.start);
+    const seeded = await seedGenerationProfiles({ ...f, endpoint: base + '/generation' });
+    await seeded.persistence.saveRuntimeRoute(f.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+        allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 3, maxTokens: 64000 } } });
+    f.useComputeServices({ core: installed.core, persistence: seeded.persistence });
+    const computeContext = { kind: 'session', sessionId: session.session.sessionId, revisionId: session.revision.revisionId };
     for (const source of ['cohere', 'jina', 'custom']) {
         const value = profile({ mode: 'rerank', source, endpoint: base + '/' + source, secretRef: { secretId } }); await f.store.commit(f.handle, value);
-        const result = await f.request.post('/rerank').send({ nativeRetrievalRef: retrievalRef(value), query: 'Q', documents: [{ text: 'Doc', index: 0 }], topK: 1 }).expect(200);
+        const result = await f.request.post('/rerank').send({ nativeRetrievalRef: retrievalRef(value), computeContext, query: 'Q', documents: [{ text: 'Doc', index: 0 }], topK: 1 }).expect(200);
         expect(result.body[0]).toMatchObject({ text: 'Doc', relevance_score: 0.9 });
         expect(calls.at(-1).authorization).toBe('Bearer exact-runtime-key');
         expect(calls.at(-1).body.model).toBe(value.model);

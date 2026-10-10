@@ -137,10 +137,12 @@ describe('Memory OS hybrid retrieval', () => {
         await retrieveMemory(snapshot, 'Alice', { ...options, profile: { source: 'test', model: 'v2' } });
         expect(service.query.mock.calls[3][0].collectionId).not.toBe(firstCollection);
     });
-    test('rerank failure preserves fusion and abort during tokenizer is rejected', async () => {
+    test('ordinary retrieval skips configured rerank and abort during tokenizer is rejected', async () => {
         const snapshot = fixture();
-        const result = await retrieveMemory(snapshot, 'Alice', { service: { rerank: async () => { throw new Error('offline'); } }, rerankProfile: {}, countTokens });
-        expect(result.diagnostics).toContain('rerank_unavailable');
+        const service = { rerank: jest.fn(async () => { throw new Error('offline'); }) };
+        const result = await retrieveMemory(snapshot, 'Alice', { service, rerankProfile: {}, countTokens });
+        expect(service.rerank).not.toHaveBeenCalled();
+        expect(result.invocation).toEqual({ action: 'skip', reason: 'base_retrieval_only' });
         const controller = new AbortController();
         await expect(retrieveMemory(snapshot, 'Alice', { signal: controller.signal, countTokens: async () => { controller.abort(); return 1; } })).rejects.toThrow('aborted');
     });

@@ -8,6 +8,7 @@ import { stateClaimAlreadyPresent } from './state-prompt.js';
 import { buildCollectionId } from './vector-index-core.js';
 import { memoryQuerySeeds, memorySemanticHints } from './query-plan.js';
 import { memoryEvidenceGroups, composeMemoryCoverage } from './packing.js';
+import { memoryInvocationDecision } from './invocation-policy.js';
 
 export const RETRIEVAL_DEFAULTS = Object.freeze({ tokenBudget: 2400, maxDepth: 2, maxEntities: 20,
     maxRelations: 30, topK: 30, maxResults: 20, rrf: 60,
@@ -307,7 +308,7 @@ async function digest(text) {
 /** Content-addressed vectors, isolated by chat and embedding configuration. */
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
     budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
-    sceneText = '', packing = 'coverage' } = {}) {
+    sceneText = '', packing = 'coverage', computeContext = null } = {}) {
     const guard = () => {
         if (signal?.aborted) throw Object.assign(new Error('Memory recall aborted'), { name: 'AbortError' });
         snapshot.assertCurrent();
@@ -381,19 +382,23 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const result = rankMemory(query, corpus, vectorIds, { at, sceneText });
     result.candidates = result.candidates.filter(doc => !(doc.kind === 'state' && doc.type === 'provider'
         && doc.claims?.every(claim => stateClaimAlreadyPresent(claim, existingStateText))));
-    if (service && rerankProfile && result.candidates.length) {
+    const invocation = memoryInvocationDecision(result.plan, result.candidates, { configured: Boolean(service && rerankProfile), computeContext });
+    if (invocation.action === 'rerank') {
         try {
-            const ranks = await service.rerank({ profile: rerankProfile, query, signal, topK: result.candidates.length,
+            const ranks = await service.rerank({ profile: rerankProfile, query, signal, computeContext, topK: result.candidates.length,
                 documents: result.candidates.map((doc, index) => ({ text: doc.text, index })) });
             guard();
             const scores = new Map((ranks || []).filter(hit => Number.isInteger(hit.index) && Number.isFinite(Number(hit.relevance_score ?? hit.score)))
                 .map(hit => [hit.index, Number(hit.relevance_score ?? hit.score)]));
             result.candidates = result.candidates.map((doc, index) => ({ ...doc, rerank: scores.get(index) ?? -Infinity }))
                 .sort((a, b) => b.rerank - a.rerank || b.score - a.score);
+            invocation.outcome = 'completed';
         } catch (error) {
             guard();
             if (error?.name === 'AbortError') throw error;
             diagnostics.push('rerank_unavailable');
+            invocation.outcome = 'unavailable';
+            invocation.stop = error.code || 'rerank_execution_failed';
         }
     }
     guard();
@@ -429,7 +434,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const coverageGaps = result.plan.intent === 'cause' && !selectedDocuments.some(doc =>
         ['causes', 'motivated_by', 'explains'].includes(doc.predicate) || /因为|由于|\bbecause\b/iu.test(doc.text))
         ? [{ intent: 'cause', reason: 'causal_evidence_unknown' }] : [];
-    return { ...composition, plan: result.plan, diagnostics, sourceMessageIds, evidence,
+    return { ...composition, plan: result.plan, invocation, diagnostics, sourceMessageIds, evidence,
         producer: 'hybrid-retrieval-v1', coverageGaps, missingGroups: [...(composition.missingGroups || []), ...unavailableGroups],
         metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
             corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, totalMs: performance.now() - started },
