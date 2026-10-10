@@ -973,6 +973,9 @@ test('G05 local delete actual Hybrid delta forwards computeContext and removes o
         expect(result.diagnostics).not.toContain('vector_unavailable'); expect(result.sourceMessageIds).toEqual(['source-a']);
         const deleted = calls.filter(row => row.url.endsWith('/delete'));
         expect(deleted).toHaveLength(1); expect(deleted[0].payload).toMatchObject({ computeContext: body.computeContext, hashes: [initialHash] });
+        const actual = JSON.parse((await fs.readFile(indexFile(f, { ...body, collectionId: deleted[0].payload.collectionId }))).toString());
+        const retained = actual.items.map(item => item.metadata.hash), replacement = calls.filter(row => row.url.endsWith('/insert')).at(-1).payload.items.map(item => item.hash);
+        expect(retained).not.toContain(initialHash); expect(retained.sort()).toEqual(replacement.sort());
         const ledger = await readCompute(f);
         expect(ledger.localWork.map(row => row.kind)).toEqual(['index_list', 'index_insert', 'index_query', 'index_list', 'index_delete', 'index_insert', 'index_query']);
         expect(ledger.attempts).toHaveLength(4); expect(f.seen).toHaveLength(4);
