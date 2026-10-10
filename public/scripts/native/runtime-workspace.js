@@ -499,7 +499,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 let executionPolicy = value.executionPolicy ? clone(value.executionPolicy) : undefined;
                 if (enabled.checked) {
                     executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [model.value] };
-                    executionPolicy.computeBudget = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value) });
+                    executionPolicy.computeBudget = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value),
+                        ...(value.executionPolicy?.computeBudget?.localWork ? { localWork: value.executionPolicy.computeBudget.localWork } : {}) });
                 } else if (executionPolicy) delete executionPolicy.computeBudget;
                 return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, modelProfileRef: { scope: 'player', modelProfileId: model.value }, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, generationProfileRef: JSON.parse(generation.value), promptProgramRef: JSON.parse(prompt.value), fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
             };

@@ -3,13 +3,26 @@ import { fields } from './native-values.js';
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 export function assertComputeBudget(value) {
-    fields(value, ['maxRequests', 'maxTokens'], 'Compute budget');
+    fields(value, ['maxRequests', 'maxTokens', 'localWork'], 'Compute budget');
     if (!integer(value.maxRequests) || value.maxRequests < 1 || value.maxRequests > 32
         || !integer(value.maxTokens) || value.maxTokens < 1) fail('native_generation_budget_invalid');
-    return { maxRequests: value.maxRequests, maxTokens: value.maxTokens };
+    return { maxRequests: value.maxRequests, maxTokens: value.maxTokens,
+        ...(value.localWork === undefined ? {} : { localWork: assertLocalWorkBudget(value.localWork) }) };
+}
+function assertLocalWorkBudget(value) {
+    fields(value, ['maxJobs', 'maxItems', 'maxInputBytes'], 'Local work budget');
+    for (const [key, max] of [['maxJobs', 32], ['maxItems', 10000], ['maxInputBytes', 16777216]]) {
+        if (!integer(value[key]) || value[key] < 1 || value[key] > max) fail('native_generation_budget_invalid');
+    }
+    return { maxJobs: value.maxJobs, maxItems: value.maxItems, maxInputBytes: value.maxInputBytes };
+}
+function tightenLimits(previous, current) {
+    const local = previous.localWork ?? current.localWork;
+    return { maxRequests: Math.min(previous.maxRequests, current.maxRequests), maxTokens: Math.min(previous.maxTokens, current.maxTokens),
+        ...(local ? { localWork: Object.fromEntries(Object.entries(local).map(([key, value]) => [key, Math.min(value, current.localWork?.[key] ?? value)])) } : {}) };
 }
 export function assertComputeLedger(value) {
-    fields(value, ['schemaVersion', 'limits', 'attempts'], 'Compute ledger');
+    fields(value, ['schemaVersion', 'limits', 'attempts', 'localWork'], 'Compute ledger');
     assertComputeBudget(value.limits);
     if (value.schemaVersion !== 1 || !Array.isArray(value.attempts) || value.attempts.length > 32) fail('native_generation_budget_invalid');
     const ids = new Set();
@@ -26,6 +39,25 @@ export function assertComputeLedger(value) {
         }
         if (entry.status === 'settled' && !integer(entry.usage?.totalTokens)) fail('native_generation_budget_invalid');
     }
+    if (value.localWork !== undefined) {
+        if (!value.limits.localWork || !Array.isArray(value.localWork) || value.localWork.length > 32) fail('native_generation_budget_invalid');
+        for (const entry of value.localWork) {
+            fields(entry, ['attemptId', 'requestId', 'targetFingerprint', 'kind', 'estimatedItems', 'estimatedInputBytes', 'status', 'usage'], 'Local work');
+            if (typeof entry.attemptId !== 'string' || !entry.attemptId || entry.attemptId.length > 128 || ids.has(entry.attemptId)
+                || typeof entry.requestId !== 'string' || !entry.requestId || entry.requestId.length > 128
+                || !/^[a-f0-9]{64}$/.test(entry.targetFingerprint) || entry.kind !== 'index_insert'
+                || !integer(entry.estimatedItems) || entry.estimatedItems < 1 || entry.estimatedItems > 10000
+                || !integer(entry.estimatedInputBytes) || entry.estimatedInputBytes < 1 || entry.estimatedInputBytes > 16777216
+                || !['charged', 'settled', 'unknown'].includes(entry.status)) fail('native_generation_budget_invalid');
+            ids.add(entry.attemptId);
+            if (entry.usage !== null) {
+                fields(entry.usage, ['wallMs', 'cpuUserMicros', 'cpuSystemMicros', 'cpuScope', 'outcome'], 'Local work usage');
+                if (!Number.isFinite(entry.usage.wallMs) || entry.usage.wallMs < 0 || !integer(entry.usage.cpuUserMicros) || !integer(entry.usage.cpuSystemMicros)
+                    || entry.usage.cpuScope !== 'process' || !['completed', 'failed', 'cancelled'].includes(entry.usage.outcome)) fail('native_generation_budget_invalid');
+            }
+            if (entry.status === 'settled' && !entry.usage) fail('native_generation_budget_invalid');
+        }
+    }
     return value;
 }
 // A single send identity is charged inside the original authority's durable
@@ -34,12 +66,40 @@ export function chargeComputeAttempt(holder, limits, attempt) {
     limits = assertComputeBudget(limits);
     const ledger = holder.compute ??= { schemaVersion: 1, limits, attempts: [] };
     assertComputeLedger(ledger);
-    ledger.limits = { maxRequests: Math.min(ledger.limits.maxRequests, limits.maxRequests), maxTokens: Math.min(ledger.limits.maxTokens, limits.maxTokens) };
+    ledger.limits = tightenLimits(ledger.limits, limits);
     const spent = ledger.attempts.reduce((sum, row) => sum + (row.status === 'settled' ? row.usage.totalTokens : row.estimatedTokens), 0);
     if (ledger.attempts.some(row => row.attemptId === attempt.attemptId)) fail('native_generation_attempt_conflict');
     if (ledger.attempts.length >= ledger.limits.maxRequests || spent + attempt.estimatedTokens > ledger.limits.maxTokens) fail('native_generation_budget_exhausted');
     const entry = { ...attempt, status: 'charged', usage: null };
     ledger.attempts.push(entry); assertComputeLedger(ledger);
+    return structuredClone(entry);
+}
+
+// Work units are explicit input bounds, never invented provider tokens. Both
+// lanes live in the original authority's one durable compute record.
+export function chargeLocalWork(holder, limits, attempt) {
+    limits ??= holder.compute?.limits;
+    if (!limits) return null;
+    limits = assertComputeBudget(limits);
+    const inherited = holder.compute?.limits;
+    if (!limits.localWork && !inherited?.localWork) return null;
+    const ledger = holder.compute ??= { schemaVersion: 1, limits, attempts: [] };
+    assertComputeLedger(ledger);
+    ledger.limits = tightenLimits(ledger.limits, limits);
+    const rows = ledger.localWork ??= [], cap = ledger.limits.localWork;
+    if (rows.some(row => row.attemptId === attempt.attemptId)) fail('native_generation_attempt_conflict');
+    if (rows.length >= cap.maxJobs || rows.reduce((n, row) => n + row.estimatedItems, 0) + attempt.estimatedItems > cap.maxItems
+        || rows.reduce((n, row) => n + row.estimatedInputBytes, 0) + attempt.estimatedInputBytes > cap.maxInputBytes) fail('native_generation_budget_exhausted');
+    const entry = { ...attempt, status: 'charged', usage: null };
+    rows.push(entry); assertComputeLedger(ledger);
+    return structuredClone(entry);
+}
+export function settleLocalWork(holder, attemptId, usage) {
+    const ledger = assertComputeLedger(holder.compute), entry = ledger.localWork?.find(row => row.attemptId === attemptId);
+    if (!entry) fail('native_generation_attempt_conflict');
+    if (entry.status === 'settled' && JSON.stringify(entry.usage) !== JSON.stringify(usage)) fail('native_generation_attempt_conflict');
+    entry.status = usage ? 'settled' : 'unknown'; entry.usage = usage;
+    assertComputeLedger(ledger);
     return structuredClone(entry);
 }
 export function settleComputeAttempt(holder, attemptId, usage) {

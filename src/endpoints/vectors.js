@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vectra from 'vectra';
 import express from 'express';
 import { createRetrievalMiddleware } from '../native/retrieval-execution.js';
+import { insertNativeIndex, withNativeIndexWrite } from '../native/vector-index-work.js';
 import sanitize from 'sanitize-filename';
 
 import { getNomicAIBatchVector, getNomicAIVector } from '../vectors/nomicai-vectors.js';
@@ -228,8 +229,7 @@ function getModelScope(sourceSettings) {
  * @returns {Promise<vectra.LocalIndex>} - The index for the collection
  */
 async function getIndex(directories, collectionId, source, sourceSettings) {
-    const model = getModelScope(sourceSettings);
-    const pathToFile = path.join(directories.vectors, sanitize(sourceSettings.native ? 'atri-retrieval' : source), sanitize(collectionId), sanitize(model));
+    const pathToFile = getIndexPath(directories, collectionId, source, sourceSettings);
     const store = new vectra.LocalIndex(pathToFile);
 
     if (!await store.isIndexCreated()) {
@@ -237,6 +237,9 @@ async function getIndex(directories, collectionId, source, sourceSettings) {
     }
 
     return store;
+}
+function getIndexPath(directories, collectionId, source, sourceSettings) {
+    return path.resolve(directories.vectors, sanitize(sourceSettings.native ? 'atri-retrieval' : source), sanitize(collectionId), sanitize(getModelScope(sourceSettings)));
 }
 
 /**
@@ -249,6 +252,9 @@ async function getIndex(directories, collectionId, source, sourceSettings) {
  * @param {import('express').Request} [request] - Inspector-carrying request
  */
 async function insertVectorItems(directories, collectionId, source, sourceSettings, items, request = null) {
+    if (sourceSettings.native) return insertNativeIndex({ indexPath: getIndexPath(directories, collectionId, source, sourceSettings), items,
+        compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal,
+        getVectors: () => getBatchVector(source, sourceSettings, items.map(x => x.text), false, directories, request) });
     const store = await getIndex(directories, collectionId, source, sourceSettings);
 
     await store.beginUpdate();
@@ -404,8 +410,8 @@ async function multiQueryCollection(directories, collectionIds, source, sourceSe
  */
 async function regenerateCorruptedIndexErrorHandler(req, res, error) {
     if (req.nativeRetrieval) {
-        const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped'].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
-        return res.status(code === 'native_generation_budget_exhausted' ? 429 : 500).json({ error: code });
+        const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped', 'native_retrieval_compute_unavailable'].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
+        return res.status(code === 'native_generation_budget_exhausted' ? 429 : code === 'native_retrieval_compute_unavailable' ? 503 : 500).json({ error: code });
     }
     if (error instanceof SyntaxError && !req.query.regenerated) {
         const collectionId = String(req.body.collectionId);
@@ -614,7 +620,7 @@ router.post('/insert', async (req, res) => {
         }));
         const sourceSettings = getSourceSettings(source, req);
 
-        const insertResult = await insertVectorItems(req.user.directories, collectionId, source, sourceSettings, items, inspect ? req : null);
+        const insertResult = await insertVectorItems(req.user.directories, collectionId, source, sourceSettings, items, inspect || req.nativeRetrieval ? req : null);
         if (inspect) {
             completeEmbeddingInspection(req, {
                 resultCount: insertResult?.insertedCount ?? items.length,
@@ -656,7 +662,9 @@ router.post('/delete', async (req, res) => {
         const source = String(req.body.source) || 'transformers';
         const sourceSettings = getSourceSettings(source, req);
 
-        await deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, hashes);
+        if (req.nativeRetrieval) await withNativeIndexWrite(getIndexPath(req.user.directories, collectionId, source, sourceSettings), req.nativeRetrieval.signal,
+            () => deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, hashes));
+        else await deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, hashes);
         return res.sendStatus(200);
     } catch (error) {
         return regenerateCorruptedIndexErrorHandler(req, res, error);
@@ -689,8 +697,11 @@ router.post('/purge', async (req, res) => {
 
         const collectionId = String(req.body.collectionId);
         if (req.nativeRetrieval) {
-            const index = await getIndex(req.user.directories, collectionId, req.body.source, req.nativeRetrieval.settings);
-            if (await index.isIndexCreated()) await index.deleteIndex();
+            const indexPath = getIndexPath(req.user.directories, collectionId, req.body.source, req.nativeRetrieval.settings);
+            await withNativeIndexWrite(indexPath, req.nativeRetrieval.signal, async () => {
+                const index = new vectra.LocalIndex(indexPath);
+                if (await index.isIndexCreated()) await index.deleteIndex();
+            });
             return res.sendStatus(200);
         }
 

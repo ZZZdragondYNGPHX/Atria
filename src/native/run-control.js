@@ -2,7 +2,7 @@ import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { getNativeDocument, putMutable, hashNativeDocument } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
-import { chargeComputeAttempt, settleComputeAttempt } from '../../public/shared/native-compute-budget.js';
+import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 
 export const runFailure = code => Object.assign(new TypeError(code), { code });
 const key = (handle, sessionId) => ({ kind: K.runControl, handle, sessionId });
@@ -173,6 +173,28 @@ export class RunControl {
         });
     }
 
+    async chargeLocalWork(handle, snapshot, anchor, limits, attempt) {
+        return this.update(handle, snapshot.session.sessionId, value => {
+            if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            const id = hashNativeDocument({ lane: 'turn', anchor });
+            let op = value.operations[id];
+            limits ??= op?.compute?.limits;
+            if (!limits?.localWork && !op?.compute?.limits.localWork) return null;
+            if (!op) {
+                if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
+                op = value.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
+            }
+            const localWork = chargeLocalWork(op, limits, attempt);
+            return { operation: id, localWork };
+        });
+    }
+    async settleLocalWork(handle, sessionId, operation, attemptId, usage) {
+        return this.update(handle, sessionId, value => {
+            const op = value.operations[operation];
+            if (!op) throw runFailure('native_generation_attempt_conflict');
+            return settleLocalWork(op, attemptId, usage);
+        });
+    }
     async settleCompute(handle, sessionId, operation, attemptId, usage) {
         return this.update(handle, sessionId, value => {
             const op = value.operations[operation];

@@ -234,6 +234,15 @@ export class StudioService {
         return this._queue(projectId, () => this._revisionUnlocked(handle, projectId));
     }
 
+    // Internal local publication: keep the existing Project queue through the
+    // final synchronous index replacement, without adding an authoring writer.
+    withLocalIndexPublication(handle, projectId, revision, publish) {
+        return this._queue(projectId, async () => {
+            await this._assertBaseRevision(handle, projectId, revision);
+            return publish();
+        });
+    }
+
     async _assertBaseRevision(handle, projectId, expectedRevision) {
         if (typeof expectedRevision !== 'string' || !expectedRevision) {
             throw new TypeError('Authoring workspace requires an explicit baseRevision');

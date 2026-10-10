@@ -86,7 +86,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             req.nativeRetrieval = { profile, secret, settings, compute, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]) };
             req.body = { ...req.body, source: profile.source, model: profile.model };
             const json = res.json.bind(res);
-            res.json = value => json(res.statusCode >= 400 ? { error: ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped'].includes(value?.error) ? value.error : 'native_retrieval_execution_failed' } : value);
+            res.json = value => json(res.statusCode >= 400 ? { error: ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped', 'native_retrieval_compute_unavailable'].includes(value?.error) ? value.error : 'native_retrieval_execution_failed' } : value);
             next();
         } catch (error) {
             const code = ['native_retrieval_unavailable', 'native_retrieval_compute_unavailable', 'native_retrieval_secret_unavailable', 'storage_read_only', 'native_generation_budget_lane_denied', 'native_generation_revision_conflict'].includes(error.code) ? error.code : 'native_retrieval_invalid';

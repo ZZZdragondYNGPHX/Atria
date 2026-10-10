@@ -26,8 +26,36 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
     // Old fixed Embedding routes remain unbounded unless explicitly configured.
     // Context freshness still has to pass before that compatibility decision.
     if (!limits && profile.mode !== 'embed') fail('native_generation_budget_lane_denied');
-    const sends = new WeakMap();
+    const sends = new WeakMap(), localJobs = new WeakMap();
     return {
+        async publishLocalIndex(publish) {
+            if (base) return core.runs.repo.withRunLock(handle, context.sessionId, async () => {
+                const current = await core.load(handle, context.sessionId);
+                if (current.revision.revisionId !== context.revisionId) fail('native_generation_revision_conflict');
+                await core.runs.assert(handle, context.sessionId, 'write');
+                return publish();
+            });
+            return agent.publishLocalIndex(handle, context.projectId, context.taskId, context.revision, task.executionFingerprint, publish);
+        },
+        async beforeLocalWork({ items, inputBytes, indexPath }) {
+            const attemptId = randomUUID(), attempt = { attemptId, requestId: 'index:' + randomUUID(),
+                targetFingerprint: hashNativeDocument({ path, indexPath }), kind: 'index_insert', estimatedItems: items, estimatedInputBytes: inputBytes };
+            let receipt;
+            if (base) receipt = await core.runs.chargeLocalWork(handle, base,
+                { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, limits, attempt);
+            else receipt = await agent.chargeLocalWork(handle, context.projectId, context.taskId, context.revision, limits, attempt, task.executionFingerprint);
+            if (!receipt) return null;
+            const ticket = Object.freeze({}); localJobs.set(ticket, { receipt, attemptId });
+            return ticket;
+        },
+        async settleLocalWork(ticket, usage) {
+            if (!ticket) return;
+            const job = localJobs.get(ticket);
+            if (!job) fail('native_generation_attempt_conflict');
+            localJobs.delete(ticket);
+            if (base) await core.runs.settleLocalWork(handle, context.sessionId, job.receipt.operation, job.attemptId, usage);
+            else await agent.settleLocalWork(handle, context.projectId, context.taskId, job.attemptId, usage);
+        },
         async beforeSend(body) {
             const attemptId = randomUUID();
             const attempt = { attemptId, requestId: 'retrieval:' + randomUUID(), targetFingerprint: path,

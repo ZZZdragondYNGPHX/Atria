@@ -16,7 +16,7 @@ import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
 import { fields as allowedFields } from '../../public/shared/native-values.js';
 import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
-import { chargeComputeAttempt, settleComputeAttempt } from '../../public/shared/native-compute-budget.js';
+import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
 
@@ -576,6 +576,25 @@ export class ProjectAgentService {
         });
     }
 
+    chargeLocalWork(handle, projectId, id, revision, limits, attempt, executionFingerprint) {
+        return this._operate(handle, projectId, id, async task => {
+            this._ensureDraftMutable(task);
+            if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
+            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+            return chargeLocalWork(task, limits, attempt);
+        });
+    }
+    settleLocalWork(handle, projectId, id, attemptId, usage) {
+        return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage));
+    }
+    publishLocalIndex(handle, projectId, id, revision, executionFingerprint, publish) {
+        return this._operate(handle, projectId, id, task => {
+            this._ensureDraftMutable(task);
+            if (task.baseRevision !== revision) throw new ConflictError('native_generation_revision_conflict');
+            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+            return this._studio.withLocalIndexPublication(handle, projectId, revision, publish);
+        });
+    }
     settleGeneration(handle, projectId, id, attemptId, usage) {
         return this._operate(handle, projectId, id, task => settleComputeAttempt(task, attemptId, usage));
     }
