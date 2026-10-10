@@ -1947,3 +1947,4 @@ M8/HM2/HM3未验收，真实G06仍FAIL；delete/purge、其它cache/validation/l
 append-only private Document：g05-local-delete-before-v1（1 FAIL400）、after-v1（首项PASS，之后加强为两engine/recovery而不重复计数）；safety-v1（8 PASS）；hybrid-v1（1 PASS）；recovery-old-v1（11 PASS=2加强新+9 old）；queue-readonly-v1（2 PASS）。lint-v1实际FAIL，仅Hybrid多行brace style四错误，其他四product文件检查无错误；仅修格式后lint-v2相关文件PASS，未以git命令遮蔽失败。source/docs diff PASS。实际成本观察process切片/有界输入，不证明CPU硬时长或金额。
 
 所有原baseline/结果/费用/FAIL保持，外部0；M8累计actual38/direct72982、unknown2/17515 upper/admission fetch0不变。M8/HM2/HM3与真实G06仍未验收；purge/其它CPU/cache/local inference/后台、Session Task/fork-compaction与H5前置继续，无HANDOFF或main集成。
+source `de9f3bb2d7e1ea9f3992f3380b88280ff2d45765`仅补强上组现有actual Hybrid delta：直接读取同一隔离index.json，旧initialHash不在、当次replacement hashes全部留存；hybrid-v2仅此一项PASS，不重复计入13/9。产品代码与费用事实无变化，没有用户资料或真实purge。
