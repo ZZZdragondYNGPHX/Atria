@@ -1383,3 +1383,9 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 新增逐case baseline复用端口，严格核对完整case/scenario/pair hash、配置/settings、权限、原trial及原owner实际charge。免费preflight携带最近原owner/shared费用并核对原request/snapshot pins，复用三条RP及一条已完成Project原baseline；有错误的第二条禁止复用。没有重复生成不变且已通过的baseline，没有修改旧报告或丢弃失败费用。新组合报告显式保存原trial与baselineReuse来源/原producer引用，不宣称复用证据是fresh paired trial。针对性检查99个distinct checks通过（renewal增至11，另F2 28/F3 38/promotion15/lifecycle7），触及ESLint/syntax/diff通过；新版本原sealed reader六条免费检查通过。
 
 零发送准备snapshot `run-1791610928002-b9a74591`，新资格scope `a73d6ae8ec50acedb59158b4c673e180fd5493271387c82302811e8a38568320` 固定上述修复与来源版本，目前开始实际RP source控制及原baseline语义观察，再完成两条修正Project baseline和三条资格观察。旧scope/评分/错误不覆盖；新候选与独立验收尚未执行，M1仍未通过。
+
+该资格run `run-1791610936546-f5f21758` 新增五请求/88523 reported tokens，累计1470 requests /10489551 accounted tokens，pending0/lock0。RP正确、已知错误、缺证据及unsupported_rule四控制通过；新增referent_existence响应识别未观察内容为gap，但knowledgeReview仅返回该违规片段，遗漏其余正文片段，原parser按完整覆盖契约拒绝为invalid_f2_source_assessment。没有新来源语义观察、候选或promotion；不将方向正确的无效响应算作通过。
+
+修复 `4bf78ff7748937eb233fc12e2fa40509a1ef348d` 已提交推送：RP source提示显式枚举全部必需output quoteRef与行数，要求包含supported/nonbinding片段；原parser及评分规则不变，禁止补写模型判断。现有控制测试增加“正确gap但仅返回违规行”拒绝检查；F2 sources28及renewal11共39个distinct checks通过，触及ESLint/diff通过。因真实提示改变，五个RP source控制均需重新实测，原四个已通过结果只保留历史；原F2比较、Project source协议及已付费完整baseline不变。
+
+独立作者仅根据公共字段契约复核三条密封Project来源，全部通过，无需修改；六正文与metadata共七文件hash保持，作者没有接收候选、development输出或promotion评分。零发送准备snapshot `run-1791611623393-682bc073` 保留最新完整owner费用及原三RP/一Project baseline，资格scope `d5a33de98a299d854750d798dbbf76fa6fb8700520c587dd1a10c810abcb0b7a` 固定4bf78ff77，开始上述实际重测。M1仍pending，main未集成；H0样本/清单准备身份与H1/H2前置保持。
