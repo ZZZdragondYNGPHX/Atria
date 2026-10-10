@@ -1,6 +1,7 @@
-import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
+import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { observedGenerationUsage } from './generation-usage.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest } from '../model-prompt-runtime/native-execution-envelope.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
@@ -10,8 +11,9 @@ const object = value => value && typeof value === 'object' && !Array.isArray(val
 export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {}) {
     if (!['anthropic', 'gemini'].includes(format)) throw new TypeError('Unsupported Native messages provider');
     const anthropic = format === 'anthropic';
-    const binding = resolved => ({ provider: format, connectionProfileId: resolved.connection.connectionProfileId, model: resolved.model.remoteModelId });
-    const render = ({ resolved, promptIr, reserve }) => {
+    const lower = ({ resolved, snapshot }) => {
+        const { promptIr } = snapshot;
+        const reserve = snapshot.contextPlan.budget.reservedOutputTokens;
         const { generation: g, connection, model } = resolved;
         for (const [section, allowed] of Object.entries({ sampling: ['temperature', 'topP'], output: ['maxTokens'],
             stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value', 'name'], providerExtensions: [],
@@ -24,24 +26,27 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
         const streaming = g.streaming.enabled ?? false;
         if (typeof streaming !== 'boolean') fail();
         const sequence = renderPromptMessages(promptIr);
+        const binding = nativeEnvelopeBinding(resolved, snapshot, 'native.' + format + '.v1');
         const first = sequence.findIndex(message => message.role !== 'system');
         if (first < 0 || sequence.slice(first).some(message => message.role === 'system')) fail();
         const systems = sequence.slice(0, first).map(message => ({ text: message.content }));
         const callNames = new Map();
-        const messages = sequence.slice(first).map(message => {
+        const publicMessages = [];
+        const messages = sequence.slice(first).map((message, offset) => {
             for (const call of message.tool_calls || []) callNames.set(call.id, call.function?.name);
             if (message.providerState) {
-                const state = message.providerState;
-                if (message.role !== 'assistant' || JSON.stringify(state.binding) !== JSON.stringify(binding(resolved))) fail();
-                if (state.text !== message.content || JSON.stringify(state.calls) !== JSON.stringify(message.tool_calls || [])) fail();
-                return anthropic ? { role: 'assistant', content: state.content } : { role: 'model', parts: state.content };
+                if (message.role !== 'assistant') fail();
+                const content = readNativeEnvelope(message.providerState, binding, sequence, first + offset);
+                publicMessages.push({ role: message.role, text: message.content, nativeCheckpointId: message.providerState.checkpointId });
+                return anthropic ? { role: 'assistant', content } : { role: 'model', parts: content };
             }
             if (message.role === 'tool') {
                 const name = callNames.get(message.tool_call_id);
                 if (!name) fail();
-                return anthropic
+                const result = anthropic
                     ? { role: 'user', content: [{ type: 'tool_result', tool_use_id: message.tool_call_id, content: message.content }] }
                     : { role: 'user', parts: [{ functionResponse: { name, response: { result: message.content } } }] };
+                publicMessages.push(result); return result;
             }
             const parts = message.content ? [anthropic ? { type: 'text', text: message.content } : { text: message.content }] : [];
             for (const call of message.tool_calls || []) {
@@ -51,7 +56,8 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                     : { functionCall: { name: call.function.name, args } });
             }
             if (!parts.length) fail();
-            return anthropic ? { role: message.role, content: parts } : { role: message.role === 'assistant' ? 'model' : 'user', parts };
+            const result = anthropic ? { role: message.role, content: parts } : { role: message.role === 'assistant' ? 'model' : 'user', parts };
+            publicMessages.push(result); return result;
         });
         const body = anthropic ? { model: model.remoteModelId, max_tokens: max, stream: streaming, messages }
             : { contents: messages, generationConfig: { maxOutputTokens: max } };
@@ -131,32 +137,34 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             endpoint.pathname = endpoint.pathname.replace(/\/$/, '') + '/models/' + encodeURIComponent(model.remoteModelId.replace(/^models\//, '')) + (streaming ? ':streamGenerateContent' : ':generateContent');
             if (streaming) endpoint.searchParams.set('alt', 'sse');
         }
-        return { endpoint: endpoint.href, body, binding: binding(resolved) };
+        return { endpoint: endpoint.href, body, publicBody: { ...body, [anthropic ? 'messages' : 'contents']: publicMessages },
+            wire: JSON.stringify(body), binding, sequence, resolved, snapshot };
     };
     return Object.freeze({
         contextTokenizer() { return text => Buffer.byteLength(String(text), 'utf8'); },
         resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache'].map(capability => ({ capability, state: capability === 'generation.cache' && !anthropic ? 'unsupported' : 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.' + format }] })),
         countTokens({ resolved, promptIr, contextPlan }) {
-            const request = render({ resolved, promptIr, reserve: contextPlan.budget.reservedOutputTokens });
+            const request = lower({ resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } });
             // Provider tokenizers differ. A byte upper bound deliberately avoids
             // treating an OpenAI encoding as an exact Claude/Gemini tokenizer.
-            return Buffer.byteLength(JSON.stringify(request.body), 'utf8') + 256;
+            return Buffer.byteLength(request.wire, 'utf8') + 256;
         },
-        renderRequest({ resolved, snapshot }) { return immutable(render({ resolved, promptIr: snapshot.promptIr, reserve: snapshot.contextPlan.budget.reservedOutputTokens })); },
-        async send(request, { secret, signal }) {
+        renderRequest(request) { return leaseNativeRequest(lower(request)); },
+        async send(rendered, { secret, signal }) {
+            const request = consumeNativeRequest(rendered, lower);
             let response;
             try {
                 response = await fetchImpl(request.endpoint, { method: 'POST', redirect: 'error', signal,
-                    headers: { 'Content-Type': 'application/json', ...(anthropic ? { 'x-api-key': secret, 'anthropic-version': '2023-06-01' } : { 'x-goog-api-key': secret }) }, body: JSON.stringify(request.body) });
+                    headers: { 'Content-Type': 'application/json', ...(anthropic ? { 'x-api-key': secret, 'anthropic-version': '2023-06-01' } : { 'x-goog-api-key': secret }) }, body: request.wire });
             } catch {
                 if (signal?.aborted) throw new GenerationError('generation_cancelled');
                 throw new ProviderFailure('transport');
             }
             if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
-            return { response, binding: request.binding };
+            return { response, binding: request.binding, sequence: request.sequence };
         },
-        async parseStream({ response, binding }, { onChunk } = {}) {
-            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding };
+        async parseStream({ response, binding, sequence }, { onChunk } = {}) {
+            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence };
             const blocks = []; let pending = ''; let text = ''; let size = 0; let usage; const decoder = new TextDecoder();
             let started = false; let completed = false; let stopReason; let reportedModel;
             const open = new Set();
@@ -215,9 +223,9 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             consume(pending + decoder.decode());
             if (!completed || blocks.filter(Boolean).length !== blocks.length) throw new GenerationError('generation_response_invalid');
             return { value: anthropic ? { content: blocks, stop_reason: stopReason, ...(reportedModel ? { model: reportedModel } : {}), ...(usage ? { usage } : {}) }
-                : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding };
+                : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding, sequence };
         },
-        normalizeResponse({ value, binding }) {
+        normalizeResponse({ value, binding, sequence }) {
             const content = anthropic ? value?.content : value?.candidates?.[0]?.content?.parts;
             if (!Array.isArray(content) || value.error || (!anthropic && value.promptFeedback?.blockReason)) throw new GenerationError('generation_response_invalid');
             if (anthropic ? !['end_turn', 'tool_use', 'stop_sequence'].includes(value.stop_reason) : value.candidates[0].finishReason !== 'STOP') throw new GenerationError('generation_response_invalid');
@@ -237,7 +245,14 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             const usage = observedGenerationUsage(anthropic ? value.usage : value.usageMetadata, anthropic
                 ? { inputTokens: 'input_tokens', outputTokens: 'output_tokens' }
                 : { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' });
-            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), providerState: { binding, content, text, calls: toolCalls.map(call => call.raw) } };
+            const providerState = toolCalls.length ? captureNativeEnvelope({ binding, sequence, content, text, calls: toolCalls.map(call => call.raw) }) : null;
+            if (!toolCalls.length) discardNativeEnvelopes(binding);
+            const cached = anthropic ? value.usage?.cache_read_input_tokens : value.usageMetadata?.cachedContentTokenCount;
+            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
+                observation: { reportedModel: (anthropic ? value.model : value.modelVersion) ?? null, upstreamIdentity: 'unknown',
+                    cachedInputTokens: Number.isSafeInteger(cached) && cached >= 0 ? cached : null,
+                    nativeEnvelope: providerState ? 'captured_active_execution' : 'completed', hiddenAttempts: 'unknown' } };
         },
+        assertResponseSafe(response, secret) { assertNativeEnvelopeSafe(response.providerState, secret); },
     });
 }

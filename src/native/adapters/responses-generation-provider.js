@@ -1,15 +1,11 @@
-import { createHash, randomBytes } from 'node:crypto';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
-import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
+import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { serializeNativeDocument } from '../repositories/common.js';
-import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe } from '../model-prompt-runtime/native-execution-envelope.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest } from '../model-prompt-runtime/native-execution-envelope.js';
 import { observedGenerationUsage } from './generation-usage.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
-// Private leases prevent opaque output items from entering preview/Experience.
-const leases = new Map();
-const sha = wire => createHash('sha256').update(wire).digest('hex');
 export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
     const lower = ({ resolved, snapshot }) => {
         const { generation: g, connection, model } = resolved;
@@ -82,18 +78,10 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
             return Buffer.byteLength(lower({ resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } }).wire, 'utf8') + 256;
         },
         renderRequest({ resolved, snapshot }) {
-            const request = lower({ resolved, snapshot });
-            for (const [id, lease] of leases) if (lease.expiresAt <= Date.now()) leases.delete(id);
-            while (leases.size >= 128) leases.delete(leases.keys().next().value);
-            const leaseId = randomBytes(32).toString('hex');
-            leases.set(leaseId, { request, expiresAt: Date.now() + 60000 });
-            return immutable({ endpoint: request.endpoint, body: request.publicBody, wireFingerprint: sha(request.wire), leaseId });
+            return leaseNativeRequest(lower({ resolved, snapshot }));
         },
         async send(rendered, { secret, signal }) {
-            const lease = leases.get(rendered.leaseId); leases.delete(rendered.leaseId);
-            if (!lease || lease.expiresAt <= Date.now()) throw new GenerationError('generation_continuation_unavailable');
-            const request = lower(lease.request);
-            if (sha(request.wire) !== rendered.wireFingerprint || request.endpoint !== rendered.endpoint) fail();
+            const request = consumeNativeRequest(rendered, lower);
             let response;
             try {
                 response = await fetchImpl(request.endpoint, { method: 'POST', signal, redirect: 'error',

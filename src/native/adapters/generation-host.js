@@ -807,11 +807,15 @@ export class NativeGenerationHost {
         const service = new GenerationService({ resolver, contextProvider, preparePrompt: compiler.preparePrompt, secretPort: this.secretPort,
             providerFor: (id, resolved) => {
                 const provider = resolver.provider(id);
-                return { ...provider, send: async (rendered, boundary) => {
+                let prepared;
+                return { ...provider, renderRequest: request => { prepared = request; return provider.renderRequest(request); }, send: async (rendered, boundary) => {
                     // Role-host retries stay inside this route's send/timeout boundary.
                     // Only after they are exhausted may Core resolve a complete fallback.
                     for (let retry = 0; ; retry++) {
                         checkCancellation(boundary.signal);
+                        // Private native request leases are single-send. A retry lowers
+                        // the same frozen snapshot again and rechecks its current envelope.
+                        if (retry) rendered = await provider.renderRequest(prepared);
                         const attempt = { runtimeRouteId: resolved.route.runtimeRouteId, retry, status: 'pending' };
                         attempts.push(attempt);
                         const capture = lanePlan?.evidenceCapture;

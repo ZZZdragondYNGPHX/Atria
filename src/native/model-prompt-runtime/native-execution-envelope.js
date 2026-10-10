@@ -1,10 +1,12 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { hashNativeDocument } from '../repositories/common.js';
 import { immutable, GenerationError } from './execution-utils.js';
 
 // Current execution only. Opaque native state is never a Prompt/Task/Memory
 // resource and cannot be published by caller JSON. A process restart discards it.
 const checkpoints = new Map();
+const leases = new Map();
+const wireHash = wire => createHash('sha256').update(wire).digest('hex');
 const ttlMs = 10 * 60 * 1000;
 const limit = 128;
 const denied = () => { throw new GenerationError('generation_continuation_unavailable'); };
@@ -15,6 +17,7 @@ export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
     if (!resolved.pathFingerprint) denied();
     const { promptIr: ir, contextPlan: plan } = snapshot;
     return immutable({ schemaVersion: 1, protocol, pathFingerprint: resolved.pathFingerprint, requestId: snapshot.requestId,
+        targetFingerprint: hashNativeDocument({ model: resolved.model.remoteModelId, connectionId: resolved.connection.connectionProfileId, endpoint: resolved.connection.endpoint }),
         sourceFingerprint: hashNativeDocument({ source: plan.source,
             facts: plan.items.filter(item => !['context.history', 'context.input'].includes(item.kind)),
             nativeSelection: plan.nativeSelection ?? null, personaEvidence: plan.personaEvidence ?? null }),
@@ -56,4 +59,20 @@ export function assertNativeEnvelopeSafe(state, secret) {
         checkpoints.delete(state.checkpointId);
         throw new GenerationError('generation_response_contains_secret');
     }
+}
+
+export function leaseNativeRequest(request) {
+    for (const [id, lease] of leases) if (lease.expiresAt <= Date.now()) leases.delete(id);
+    while (leases.size >= limit) leases.delete(leases.keys().next().value);
+    const leaseId = randomBytes(32).toString('hex');
+    leases.set(leaseId, { request, expiresAt: Date.now() + 60000 });
+    return immutable({ endpoint: request.endpoint, body: request.publicBody, binding: request.binding,
+        wireFingerprint: wireHash(request.wire), leaseId });
+}
+export function consumeNativeRequest(rendered, lower) {
+    const lease = leases.get(rendered.leaseId); leases.delete(rendered.leaseId);
+    if (!lease || lease.expiresAt <= Date.now()) denied();
+    const request = lower(lease.request);
+    if (wireHash(request.wire) !== rendered.wireFingerprint || request.endpoint !== rendered.endpoint) denied();
+    return request;
 }

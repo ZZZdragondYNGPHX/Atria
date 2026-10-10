@@ -1,15 +1,17 @@
 import { createServer } from 'node:http';
 import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
 import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
+import { renderPromptMessages } from '../../src/native/model-prompt-runtime/prompt-renderers.js';
 
 function fixture(format, overrides = {}) {
     const resolved = {
+        pathFingerprint: 'a'.repeat(64), route: {},
         connection: { connectionProfileId: 'conn-test', endpoint: 'https://example.invalid/v1beta', options: {}, networkPolicy: {} },
         model: { remoteModelId: 'test-model', providerHints: {}, messageFormat: {} },
         generation: { sampling: {}, output: { maxTokens: 4096 }, streaming: {}, reasoning: {}, cache: {}, stop: {}, toolChoice: {}, providerExtensions: {}, ...overrides },
     };
     const promptIr = { schemaVersion: 1, requestId: 'test', directives: ['System'], contextSlots: [], history: [], input: 'Hello', responseDirectives: [], tools: [], outputContract: null, provenance: [] };
-    const snapshot = { promptIr, contextPlan: { budget: { reservedOutputTokens: 4096 } } };
+    const snapshot = { requestId: 'test', promptIr, contextPlan: { source: {}, items: [], budget: { reservedOutputTokens: 4096 } } };
     return { resolved, snapshot, provider: createNativeMessagesProvider({ format }) };
 }
 
@@ -85,25 +87,32 @@ describe.each(['anthropic', 'gemini'])('Native %s transport', format => {
         }
     });
 
-    test('signed tool history survives replay and rejects a changed owner or edited content', () => {
+    test('signed tool history remains private, survives actual replay and rejects a changed target or edited content', async () => {
         const f = fixture(format);
+        f.snapshot.promptIr.input = 'look up';
         const content = format === 'anthropic'
             ? [{ type: 'thinking', thinking: 'provider summary', signature: 'signed-state' }, { type: 'tool_use', id: 'call-1', name: 'lookup', input: { q: 'test' } }]
             : [{ functionCall: { name: 'lookup', args: { q: 'test' } }, thoughtSignature: 'signed-state' }];
         const binding = f.provider.renderRequest(f).binding;
-        const normalized = f.provider.normalizeResponse({ binding, value: format === 'anthropic' ? { content, stop_reason: 'tool_use' } : { candidates: [{ content: { parts: content }, finishReason: 'STOP' }] } });
+        const normalized = f.provider.normalizeResponse({ binding, sequence: renderPromptMessages(f.snapshot.promptIr), value: format === 'anthropic' ? { content, stop_reason: 'tool_use' } : { candidates: [{ content: { parts: content }, finishReason: 'STOP' }] } });
+        expect(JSON.stringify(normalized)).not.toContain('signed-state');
         f.snapshot.promptIr.input = '';
         f.snapshot.promptIr.history = [
             { role: 'user', content: 'look up' },
             { role: 'assistant', content: normalized.text, tool_calls: normalized.toolCalls.map(call => call.raw), providerState: normalized.providerState },
             { role: 'tool', tool_call_id: normalized.toolCalls[0].id, content: 'result' },
         ];
-        expect(JSON.stringify(f.provider.renderRequest(f).body)).toContain('signed-state');
+        const rendered = f.provider.renderRequest(f);
+        expect(JSON.stringify(rendered)).not.toContain('signed-state');
+        let wire;
+        const transport = createNativeMessagesProvider({ format, fetchImpl: async (_, options) => { wire = options.body; return new Response('{}'); } });
+        await transport.send(rendered, { secret: 'synthetic-secret' });
+        expect(wire).toContain('signed-state');
         f.resolved.model.remoteModelId = 'different';
-        expect(() => f.provider.renderRequest(f)).toThrow('generation_adapter_control_unsupported');
+        expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
         f.resolved.model.remoteModelId = 'test-model';
         f.snapshot.promptIr.history[1].content = 'edited';
-        expect(() => f.provider.renderRequest(f)).toThrow('generation_adapter_control_unsupported');
+        expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
     });
 
     test('unknown options and interleaved system authority fail before HTTP', () => {
@@ -149,7 +158,7 @@ describe.each(['openai-compatible', 'anthropic', 'gemini'])('%s HTTP failures', 
         const provider = format === 'openai-compatible' ? createHttpGenerationProvider({ fetchImpl })
             : createNativeMessagesProvider({ format, fetchImpl });
         let failure;
-        try { await provider.send({ endpoint: 'https://example.invalid/endpoint', body: {}, binding: {} },
+        try { await provider.send(provider.renderRequest(fixture(format === 'openai-compatible' ? 'anthropic' : format)),
             { secret: 'test-secret', signal: new AbortController().signal }); } catch (error) { failure = error; }
         expect(failure).toMatchObject({ name: 'GenerationError', code, message: code });
         expect(failure.cause).toBeUndefined();
@@ -159,7 +168,7 @@ describe.each(['openai-compatible', 'anthropic', 'gemini'])('%s HTTP failures', 
         const fetchImpl = async () => new Response('temporary failure', { status });
         const provider = format === 'openai-compatible' ? createHttpGenerationProvider({ fetchImpl })
             : createNativeMessagesProvider({ format, fetchImpl });
-        await expect(provider.send({ endpoint: 'https://example.invalid/endpoint', body: {}, binding: {} },
+        await expect(provider.send(provider.renderRequest(fixture(format === 'openai-compatible' ? 'anthropic' : format)),
             { secret: 'test-secret', signal: new AbortController().signal })).rejects.toMatchObject({ kind: 'provider' });
     });
 });

@@ -5,6 +5,7 @@ import { createNativeId } from '../../src/native/identity.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createResponsesGenerationProvider } from '../../src/native/adapters/responses-generation-provider.js';
+import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
 
 const cleanups = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
@@ -13,7 +14,7 @@ const envelope = { id: 'reasoning-1', type: 'reasoning', summary: [], encrypted_
 const functionCall = { id: 'item-1', type: 'function_call', status: 'completed', call_id: 'call-1', name: 'lookup', arguments: '{"q":"current"}' };
 const result = output => ({ id: 'response-1', status: 'completed', model: 'reported-alias', output,
     usage: { input_tokens: 20, output_tokens: 8, total_tokens: 28, input_tokens_details: { cached_tokens: 12 } } });
-async function fixture(handler) {
+async function fixture(handler, format = 'openai-responses') {
     const requests = [];
     const server = createServer(async (req, res) => {
         let wire = ''; for await (const chunk of req) wire += chunk;
@@ -23,11 +24,11 @@ async function fixture(handler) {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     cleanups.push(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
     const h = await makeTempFsEngine(); cleanups.push(h.cleanup);
-    const seeded = await seedGenerationProfiles({ ...h, format: 'openai-responses', roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
+    const seeded = await seedGenerationProfiles({ ...h, format, roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
     const projectId = createNativeId('project');
     const project = { source: { project: { projectId }, package: {}, resources: [] }, revision: { revision: 'r1' } };
-    const provider = createResponsesGenerationProvider();
-    const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project }, providers: { 'provider.openai-responses': provider },
+    const provider = format === 'openai-responses' ? createResponsesGenerationProvider() : createNativeMessagesProvider({ format });
+    const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project }, providers: { ['provider.' + format]: provider },
         secretPort: { resolveSecret: async () => 'g04-test-credential' } });
     const request = { projectId, revision: 'r1', requestId: 'active-loop', role: 'studio',
         tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object', properties: { q: { type: 'string' } } } } }],
@@ -35,10 +36,59 @@ async function fixture(handler) {
     return { ...seeded, h, host, provider, request, project, requests };
 }
 const json = (res, body) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
+const nativeResult = (format, round, signature = 'NATIVE-OPAQUE-SENTINEL') => format === 'anthropic'
+    ? { model: 'reported-alias', stop_reason: round === 1 ? 'tool_use' : 'end_turn', content: round === 1
+        ? [{ type: 'thinking', thinking: 'provider-only summary', signature }, { type: 'tool_use', id: 'call-1', name: 'lookup', input: { q: 'current' } }]
+        : [{ type: 'text', text: 'Fresh native final.' }] }
+    : { modelVersion: 'reported-alias', candidates: [{ finishReason: 'STOP', content: { parts: round === 1
+        ? [{ functionCall: { name: 'lookup', args: { q: 'current' } }, thoughtSignature: signature }]
+        : [{ text: 'Fresh native final.' }] } }] };
 function followup(f, first) {
     return { ...f.request, messages: [...f.request.messages, { role: 'assistant', content: first.response.text, providerState: first.response.providerState,
-        tool_calls: first.response.toolCalls.map(call => call.raw) }, { role: 'tool', tool_call_id: 'call-1', content: 'current evidence' }] };
+        tool_calls: first.response.toolCalls.map(call => call.raw) }, { role: 'tool', tool_call_id: first.response.toolCalls[0].id, content: 'current evidence' }] };
 }
+
+describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => {
+    test('Host retry renews the single-send lease without changing the frozen request', async () => {
+        const f = await fixture((res, round) => {
+            if (round === 1) { res.writeHead(429); res.end('busy'); }
+            else json(res, nativeResult(format, 2));
+        }, format);
+        await f.persistence.saveRuntimeRoute(f.h.handle, { ...f.routes[0], policy: { ...f.routes[0].policy, maxRetries: 1 } });
+        expect((await f.host.execute(f.h.handle, f.request)).response.text).toBe('Fresh native final.');
+        expect(f.requests).toHaveLength(2);
+        expect(f.requests[0].wire).toBe(f.requests[1].wire);
+    });
+    test('actual two-round tool consumption preserves opaque wire while preview and response remain private', async () => {
+        const f = await fixture((res, round) => json(res, nativeResult(format, round)), format);
+        const first = await f.host.execute(f.h.handle, f.request);
+        expect(JSON.stringify(first)).not.toContain('NATIVE-OPAQUE-SENTINEL');
+        const next = followup(f, first);
+        expect(JSON.stringify(await f.host.execute(f.h.handle, next, undefined, undefined, { preview: true }))).not.toContain('NATIVE-OPAQUE-SENTINEL');
+        const final = await f.host.execute(f.h.handle, next);
+        expect(final.response.text).toBe('Fresh native final.');
+        expect(f.requests[1].wire).toContain('NATIVE-OPAQUE-SENTINEL');
+        expect(f.requests[1].wire).not.toContain('nativeCheckpointId');
+        expect(final.response.observation).toMatchObject({ reportedModel: 'reported-alias', cachedInputTokens: null, upstreamIdentity: 'unknown', hiddenAttempts: 'unknown' });
+        await expect(f.host.execute(f.h.handle, next, undefined, undefined, { preview: true })).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+        expect(f.requests).toHaveLength(2);
+    });
+    test.each(['path', 'source', 'history', 'tools', 'forged'])('changed %s denies replay before HTTP', async change => {
+        const f = await fixture(res => json(res, nativeResult(format, 1)), format);
+        const first = await f.host.execute(f.h.handle, f.request); const next = followup(f, first);
+        if (change === 'path') await f.persistence.saveConnectionProfile(f.h.handle, { ...f.connection, secretRef: { scope: 'player', secretId: 'different-account' } });
+        if (change === 'source') { f.project.revision.revision = 'r2'; next.revision = 'r2'; }
+        if (change === 'history') next.messages[0].content = 'Edited prior user message.';
+        if (change === 'tools') next.tools = [];
+        if (change === 'forged') next.messages[1].providerState = { ...first.response.providerState, checkpointId: 'a'.repeat(64) };
+        await expect(f.host.execute(f.h.handle, next)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+        expect(f.requests).toHaveLength(1);
+    });
+    test('secret echoed in signed opaque content is denied', async () => {
+        const f = await fixture(res => json(res, nativeResult(format, 1, 'g04-test-credential')), format);
+        await expect(f.host.execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_response_contains_secret' });
+    });
+});
 
 test('Native Project consumes complete Responses opaque items and call IDs in order, while snapshots and preview disclose no opaque body', async () => {
     const f = await fixture((res, round) => json(res, result(round === 1 ? [envelope, functionCall] : [message('Fresh final text.')] )));
