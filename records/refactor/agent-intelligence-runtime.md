@@ -1637,3 +1637,13 @@ H4原算法基线在实际loopback Native FS向量存储完成：有效SourceLif
 私有脚本失败证据全部保留：首次Node24 crypto只读setter、次未设默认config均发生在测量前；v1/v2把insert纯文本OK当JSON，0样本失败。v1/v2还静默过滤错误账本文件名，仅quota被校验，原记录不覆写；m8-scale-baseline-raw-hash-audit.json单独核验真实m1-ledger/hm1-model-ledger两raw pins均匹配。v3改为全部必需文件存在才开始，按content-type解析，完成24样本和基线校验；guard-v1及comparison-v1另保存source/report原hash与实际有限数据。原sealed M1材料不读、不重跑，quota原账不改。
 
 本checkpoint只完成观测与currentness热点，不计作source-valid delta/candidate cache、H3/G06或完整G05/H4/HM2验收；继续原任务，不写HANDOFF，不集成main。
+
+## M8 / H4 有限 corpus/hash 复用组结束，转 G06
+
+2026-10-11 source `33e72c0bf`、容量范围修正`6dfa778df`。支持矩阵唯一见hybrid-memory §6；原authority生成且immutable的source snapshot和真实Information eligibility组成cache依赖，拒绝JSON/换scope/Actor/Branch/时点/profile/源变更/晚到/重启错误复用。无proof和超容量full path，不缓存query rank或Final Prose；原remote hash/metadata校验及当前合法源guard全保留。改后的SourceSnapshot freezing有6个相关原source/currentness/rerank检查通过；新exact/hash/recompute/JSON/restart、time/profile/编辑/late/伪造metadata、Actor/Branch/grant三项通过。Actor fixture前两次因未声明第二Actor及对应view被原authority拒绝，补齐fixture正式声明后仅该项重测通过，不松产品grant。源/Information race及Game/Package/final Context四项通过；5相关产品lint/diff通过。
+
+实际Native FS index IO的初reuse-v1 24样本原hash/producer保留：100/1000 warm p50/p90 30.43/32.17、76.09/79.27ms；10000却因初4MiB单项容量miss仍hash10000，warm3119.49/3278.95ms，比guard producer2971.63/3056.04ms退化。独立零APIaudit重建同fixture corpus7538944 bytes证实超初cap。最终单项在原16MiB总cap内，仅10000复测8样本；warm601.14/668.68ms、hash0/reuse10000、remote请求2及query Embedding intent1保持；该n5局部收益不是SLO/真实Embedding或金额节省。全部32候选样本与基线对应完整evidence SHA/选中source IDs相同，两原ledger raw pins匹配；m8-h4-corpus-reuse-audit-v1.json另保存report hashes、scope和校验。
+
+各层cold口径显式保留：runner原cold字段只设置rebuildVectors；repeat0初derived miss，repeat1/2在可复用尺寸是derived warm+index rebuild，不能把三行称作所有cache全冷。initial大语料三行均容量miss；最终index-rebuild p50/p90 5094.78/7485.68ms只是混合derived状态，不作为全冷SLO。最新producer6dfa没有无理由重跑100/1000或API。失败报告、旧不利观察不覆盖，无新增外部API/quota变动。
+
+本有界组结束，后续当前验收尚欠：G05非发送CPU/Embedding全硬额度和后台scope明确不可用；G06双入口可配置预算/费用unknown、actual selected target/continuation/reuse原因及有限ordinary/hard/high-impact/long配对消费；H3启用算法实际收益与退出、H4 delta/rank-cache未启用时保持简单重建。继续原消费者/UI和有限对照；完整M8/HM2未验收，不写HANDOFF，不集成main。

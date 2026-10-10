@@ -111,6 +111,10 @@ Memory 只定义待复用投影，proof / invalidation 的完整规则沿 [execu
 
 以上是单机局部 elapsed 观测，分段耗时可重叠，不是硬 CPU 配额/功耗或正文收益。profile使用明确fixture vectors，只验实际索引/网络 IO；真实Embedding未执行。warm每次仍hash全corpus、2个local service请求/1个query embedding request intent、合法源证明全部保留；不将intent计作真实Embedding调用/免费usage。Private authority cache不与返回state别名，内容不变的读保留identity，修改/epoch/readonly/并发写/原access均重验；原完整chat/provider/external source核验不删。可验证delta/候选cache及Actor/Branch/profile/indexer负例、G06实际收益继续交付，完整H4/HM2未验收。详细结果和失败脚本证据见同一Record。
 
+source `33e72c0bf` 的首批有效复用仅为immutable corpus和文档指纹，沿原生命周期生成的process-local proof/Information projection域；没有proof、源/Actor/Branch/时点改变、重启或显式recompute都全量重建，源写入不拿旧候选作增量替代。rank/query/正文不缓存，向量远端hash及返回metadata每次核对，profile换版重新hash/隔离集合。cache总serialized data上限16MiB/16 entries/每项最多10000 documents，fingerprint每doc最多2个profile；超限full miss，opaque proof不进Save/Memory/World。SourceSnapshot数据及eligibility anchor/groups冻结，public JSON不能发布proof。
+
+该有限组已完成实际local IO对照与拒绝反例：初4MiB单项限制让10000语料7538944 bytes容量miss，warm p50从guard阶段2971.63变3119.49ms，原不利结果保留。`6dfa778df` 将单项置于同一16MiB总限制内，仅受影响10000规模复测；warm p50/p90 601.14/668.68ms，实际hash0/reuse10000，2个local requests/Embedding query intent1未变，八对完整evidence/选中IDs相同。100/1000原warm p50为30.43/76.09ms；不混成最新producer全部规模已重跑。原字段cold只表示vector rebuild，derived在repeat1/2可warm，不作为三次全层冷态分布。source-valid delta/candidate rank cache保持未启用/全量miss，下一组转G05/G06产品解释与有限双入口对照，不继续泛化性能调优。
+
 ## 7. 失败与成本边界
 
 | 失败 | 消费结果 |
