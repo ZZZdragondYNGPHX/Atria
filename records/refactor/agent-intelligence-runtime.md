@@ -1707,3 +1707,15 @@ m8-g06-long-turn-v4.log 单项通过（source `7d21baa91`），外部API0。v1�
 初v1测试Spy试图恢复被原Port冻结的resolveSecret，Jest suite失败，改fixture从创建时持jest.fn后仅相关新10项重测；同一初run的原兼容路径unavailable三模式检查已通过，未无理由再跑。owner unit初fixture缺原Context provenance字段被JSON authority拒绝，补provenance=[]后仅2项重测，不弱化产品规则。失败/成功各版本日志保留，7产品JS ESLint/diff通过。API新增0、M1/HM1账本及原paid unfavorable/qualityPass=false不变。
 
 该具体组结束，策略支持仍是process-only当前工具循环，未完成task/adaptive持久恢复、safe fork/compaction或跨turn收益。剩余实际G06质量出口及HM2收益/unknown验收不以本组协议成功代替，main未集成，无HANDOFF；继续原任务可用消费者与具体质量根因。
+
+### G06 Memory 呈现修复后的两条长篇 Session 局部复测
+
+目标仅核查此前两条长篇的当前记忆/持有越界，停止条件固定为2次fresh生成及2次原主模型完整合法Context旧/新盲评，总上限4请求，无retry/fallback/重评。producer `0cd35d851`（packing行为producer仍`5595e0840`），沿原primary account/config、Host Session/Project grade、原Run/Task charge及24h2000/20RPM append gate。两生成和两grade请求先本地preview，grader估计input12056/12074；preflight API0。私有builder初误用+字符串失败，配额摘要初GBK读UTF8失败；前者生成runner前失败，后者只是摘要读取，不改变实际fetch之前的原hard quota gate，后改UTF8完成零API核验。原M1/HM1及原paid矩阵都不重跑/覆写。
+
+4次actual HTTP200/direct totals28331：generation5002（recompute2903/reuse2099），critics23329（11819/11510）；gateway reported total不等于input+output时仍保留直接值，不推算reasoning/货币价格。currency/upstream/cache unknown。zero-API audit保留raw report/prior report hash、两冻结ledger pins、原charge receipts及carry unchanged；该audit时rolling24h693、last60s0，原限额2000/20未变，无reset/refund。M8累计actual35次、direct reported64919，原2次unknown上界17515及1次fetch前失败的quota admission仍单列。
+
+必须收窄前节与原runner的long标签：500是原始source fixture总数，**两份paid report的实际合法检索corpusSize均为256 documents**，并非全部500来源都在合法域，更不是500轮持续生成。原paid selected6/new selected5，仍覆盖required s08-020；新header/authority/epistemic字段增加固定2400 UTF8估计预算占用，使1条distractor不再入选。当前recompute/reuse完整evidence/packet hashes彼此相同，但旧/新packet及source集合、实际reported input1688→1534不同；不是严格同输入消融，不能宣称修复因果或reuse收益。n1每臂generation E2E11933/5454ms，对原2033/13876ms有涨有降，无分布/SLO/节费结论。此前500轮预载Timeline的一次local Turn工程检查保持独立。
+
+两新输出均未再断言当前“确实记得”或书“还在我这里”；同模型盲评当前两例六维全部2，同时将原两例来源/unknown降为1。但**完整quality仍false**：new reuse仍写“这件事确实尚未履行”“而它至今还没办妥”。原normalized Context确认当前World只hp/location，无当前履行字段；fact:H0-ZH-08-f39明确source_assertion/historical_source，只有第二十轮过去“未履行”，无validFrom/validUntil及独立当前cognition/custody/completion authority。该现在完成状态断言缺支持，critic仍漏检，原grades不改。完整Context提高了可见证据，仍是同模型观察而非独立事实真值；两旧错误被局部避免不等于两例完整source-boundary合格。
+
+m8-g06-assertion-recheck-audit-v1初scope把500称legal domain过宽，零API修正另存audit-v2并pin前audit raw hash；不覆写v1或原reports。该有限paid组结束，不为提高分数追加生成/评价。下一具体根因是原packing已计算的时点适用性是否真正进入每个Context evidence group；只沿既有temporal/provider权威检查和最小本地验证，不新建cognition/履行writer或语言case过滤。完整G06/HM2未验收、main不变、无HANDOFF。
