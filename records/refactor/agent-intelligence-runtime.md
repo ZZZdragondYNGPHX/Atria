@@ -1569,3 +1569,11 @@ source `c62ecc937b66e2125e35621483f186d6debadce3` 扩展原 CapabilityDecision/R
 最小检查：原contracts/P2 Core 2suites52项通过；新增10项全部经修复通过，包含FS实际profile消费、SQLite原registry dump/restore、policy target拒绝、path/account/expiry、编译期间晚过期及不可伪造发布。首轮冻结port测试误改只读方法、错误code未登记导致generic错误，已修并针对性复测。SQLite初缺native binding，npm rebuild被本机allowScripts跳过；检查锁定better-sqlite3安装命令后直接执行其install script，真实SQL恢复通过。原fail log与repaired/publication log保留；未测MySQL/Postgres，Docker daemon不可用，不把它写成SQL通过。相关ESLint/diff通过，无全量build/CI、无API发送、费用/quota未改变。
 
 本checkpoint不是完整M8验收；继续G02编译、G03复用/失败策略、G04原生执行观察、G05共享准入与G06双入口对照，再推进HM2对应包。新live HANDOFF未创建，阶段与环境失败不暂停工作。
+
+## M8 / G02 确定性编译与实际消费 checkpoint
+
+source `37273d4ca` 在原 native repository canonical authority 导出 serializer，HTTP count/send 共用同一 bytes。原 PromptModule targets、stage/module priority、raw instruction 和 history/tool arrays 顺序保留。compiler 增加 stable identity 与 exact source/content segment 元数据；Snapshot 固定最终 compiledBinding，包含 compiler/canonical/layout、source/provenance/native selection、path、exact resources、generation、tools/output/history/prefix/content/rendered 指纹。request ID/transport 时间不进入语义绑定，版本和权限不被删去追求 prefix 稳定。字段只标 candidate，不宣称 cache hit。
+
+最小验证：新增4项真实 Session/Project loopback HTTP 消费通过，覆盖 request ID/schema key order 相同bytes、工具/历史顺序、identity/expression 与 narration 参数隔离、当前source/旧revision拒绝、module revision identity与内容分离、output schema失效。原P3 46项初44通过、2失败：G01诊断把旧注入resolver的缺失path/evidence作为undefined写入JSON。先只补compiledBinding null未修根因，原失败及两次recheck日志保留；改原executionPlan缺证据为null/空列表后两项针对性通过。新增suite因source binding完善再跑4项通过；相关6产品文件ESLint/diff通过。未跑全量build/CI，无付费API/额度变更。
+
+这是G02上层编译checkpoint，native envelope/compaction、通用复用、共享预算、产品状态与收益尚待后续。继续G03，RP正文仍fresh generation，未以稳定bytes冒充provider hit或完整M8/HM2完成。
