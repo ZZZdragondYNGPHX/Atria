@@ -1,6 +1,7 @@
 import { assertEffectiveRequestSnapshot, assertPromptIR, assertRequestContextPlan } from './contracts.js';
 import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } from './ports.js';
 import { cancellable, checkCancellation, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
+import { prepareExecutionPlan, assertExecutionEvidenceCurrent } from './execution-evidence.js';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
@@ -23,6 +24,7 @@ export class GenerationService {
             let remaining = 0;
             let requirements = [...(request.requirements || [])];
             let outputAuthority;
+            let acceptedPolicy;
             while (pending.length) {
                 checkCancellation(signal);
                 const routeRef = pending.shift();
@@ -34,6 +36,8 @@ export class GenerationService {
                     unknownCapabilityOverrides: request.unknownCapabilityOverrides || [],
                 }), signal);
                 if (visited.size === 1) remaining = resolved.route.policy.maxFallbackAttempts;
+                if (visited.size === 1) acceptedPolicy = resolved.route.executionPolicy;
+                const executionPlan = prepareExecutionPlan(resolved, acceptedPolicy);
                 requirements = [...new Set([...requirements, ...resolved.requirements])];
                 const provider = this.providerFor(resolved.connection.providerAdapter, resolved);
                 const contextPlan = immutable(assertRequestContextPlan(await cancellable(
@@ -75,6 +79,7 @@ export class GenerationService {
                     capabilities: resolved.capabilities, contextPlan, promptIr,
                     createdAt: this.now(), diagnostics: {
                         inputTokens: tokens,
+                        executionPlan,
                         // The existing snapshot diagnostics contract carries the effective
                         // non-secret config so mutable player profiles remain explainable.
                         effectiveConfig: {
@@ -95,6 +100,7 @@ export class GenerationService {
                 }));
                 const rendered = immutable(await cancellable(() => provider.renderRequest({ resolved, snapshot }), signal));
                 if (preview) return immutable({ snapshot, rendered, preview: true });
+                assertExecutionEvidenceCurrent(resolved, this.now());
                 try {
                     const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk });
                     return immutable({ snapshot, response });
@@ -136,6 +142,7 @@ export class GenerationService {
             return encoded?.includes(secret) || encoded?.includes(JSON.stringify(secret).slice(1, -1));
         };
         if (containsSecret(snapshot) || containsSecret(rendered)) throw new GenerationError('generation_config_contains_secret');
+        assertExecutionEvidenceCurrent(resolved, this.now());
         const controller = new AbortController();
         const abort = () => controller.abort();
         signal?.addEventListener('abort', abort, { once: true });

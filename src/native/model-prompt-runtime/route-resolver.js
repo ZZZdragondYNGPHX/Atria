@@ -8,15 +8,17 @@ import {
     getVersionedModelPromptResourceIdentity,
 } from './resources.js';
 import { GenerationError, immutable } from './execution-utils.js';
+import { capabilityAtPath, executionPathFingerprint } from './execution-evidence.js';
 
 // Read-through ports over P1 authorities; this resolver owns no persistence/cache.
 export class RouteResolver {
-    constructor({ persistence, library, providers, getScopedResource, getSessionRoute }) {
+    constructor({ persistence, library, providers, getScopedResource, getSessionRoute, now = Date.now }) {
         this.persistence = persistence;
         this.library = library;
         this.providers = new Map(Object.entries(providers).map(([id, port]) => [id, assertProviderPort(port)]));
         this.getScopedResource = getScopedResource;
         this.getSessionRoute = getSessionRoute;
+        this.now = now;
     }
 
     provider(id) {
@@ -79,19 +81,26 @@ export class RouteResolver {
         const config = immutable({ route, connection, model, generation, prompt, resources });
         const discovered = await this.provider(connection.providerAdapter).resolveCapabilities(config);
         const decisions = new Map();
+        const pathFingerprint = executionPathFingerprint({ handle, connection, model });
+        const pathEvidence = [];
         for (const item of [...model.capabilities, ...discovered]) {
-            const decision = assertCapabilityDecision(item);
+            const evaluated = capabilityAtPath(assertCapabilityDecision(item), pathFingerprint, this.now());
+            const decision = evaluated.decision;
+            pathEvidence.push(evaluated.evidence);
             const previous = decisions.get(decision.capability);
             const states = [previous?.state, decision.state];
+            const state = states.includes('unsupported') ? 'unsupported'
+                : states.includes('supported') ? 'supported' : 'unknown';
+            const candidates = [previous, decision].filter(item => item?.state === state);
+            const chosen = candidates.find(item => item.binding?.assurance === 'verified') || candidates[0];
             decisions.set(decision.capability, {
-                ...decision,
-                state: states.includes('unsupported') ? 'unsupported'
-                    : states.includes('supported') ? 'supported' : 'unknown',
+                ...chosen, state,
                 provenance: [...(previous?.provenance || []), ...decision.provenance],
             });
         }
         const required = [...new Set([
             ...route.requirements, ...input.requirements,
+            ...(route.executionPolicy?.verifiedRequirements || []),
             ...(generation.streaming.enabled === true ? ['generation.streaming'] : []),
             ...(Object.keys(generation.reasoning).length ? ['generation.reasoning'] : []),
             ...(Object.keys(generation.cache).length ? ['generation.cache'] : []),
@@ -109,6 +118,7 @@ export class RouteResolver {
             }
             decisions.set(capability, decision);
         }
-        return immutable({ ...config, requirements: required, capabilities: [...decisions.values()].sort((a, b) => a.capability.localeCompare(b.capability)) });
+        return immutable({ ...config, pathFingerprint, pathEvidence, requirements: required,
+            capabilities: [...decisions.values()].sort((a, b) => a.capability.localeCompare(b.capability)) });
     }
 }

@@ -183,12 +183,45 @@ export function assertExactResourceRef(value, expectedResourceType = null, field
 
 export function assertCapabilityDecision(value, field = 'CapabilityDecision') {
     object(value, field);
-    only(value, ['capability', 'state', 'provenance'], field);
+    only(value, ['capability', 'state', 'provenance', 'binding'], field);
     const capability = namespaced(value.capability, field + '.capability');
     if (!ATRIA_CAPABILITY_STATES.includes(value.state)) {
         throw new TypeError(field + '.state must be supported, unsupported, or unknown');
     }
-    return Object.freeze({ capability, state: value.state, provenance: assertDecisionProvenance(value.provenance, field) });
+    let binding;
+    if (value.binding !== undefined) {
+        object(value.binding, field + '.binding');
+        only(value.binding, ['schemaVersion', 'pathFingerprint', 'observedAt', 'expiresAt', 'assurance'], field + '.binding');
+        if (value.binding.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(value.binding.pathFingerprint)
+            || !['declared', 'verified'].includes(value.binding.assurance)) throw new TypeError(field + '.binding is invalid');
+        const observedAt = integer(value.binding.observedAt, field + '.binding.observedAt');
+        const expiresAt = integer(value.binding.expiresAt, field + '.binding.expiresAt', { min: observedAt + 1 });
+        binding = Object.freeze({ schemaVersion: 1, pathFingerprint: value.binding.pathFingerprint,
+            observedAt, expiresAt, assurance: value.binding.assurance });
+    }
+    return Object.freeze({ capability, state: value.state, provenance: assertDecisionProvenance(value.provenance, field),
+        ...(binding ? { binding } : {}) });
+}
+
+/** Optional policy on the original Route; absent policies retain exact old resources. */
+export function assertExecutionPolicy(value) {
+    const field = 'RuntimeRoute.executionPolicy';
+    object(value, field);
+    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse'], field);
+    if (value.schemaVersion !== 1) throw new TypeError(field + '.schemaVersion must be 1');
+    if (!Array.isArray(value.allowedModelProfileIds) || !value.allowedModelProfileIds.length || value.allowedModelProfileIds.length > 16) {
+        throw new TypeError(field + '.allowedModelProfileIds must contain 1..16 targets');
+    }
+    const targets = value.allowedModelProfileIds.map(id => assertNativeId(id, 'modelProfile'));
+    if (new Set(targets).size !== targets.length) throw new TypeError(field + ' has duplicate targets');
+    const continuity = value.continuity ?? 'none';
+    const reuse = value.reuse ?? 'disabled';
+    if (!['none', 'active_execution', 'task', 'adaptive'].includes(continuity) || !['disabled', 'exact'].includes(reuse)) {
+        throw new TypeError(field + ' contains an unsupported execution mode');
+    }
+    return Object.freeze({ schemaVersion: 1, allowedModelProfileIds: freezeArray(targets),
+        verifiedRequirements: uniqueStrings(value.verifiedRequirements || [], field + '.verifiedRequirements', { namespacedValues: true }),
+        continuity, reuse });
 }
 
 function assertDecisionProvenance(value, field) {
@@ -616,6 +649,7 @@ export function assertRuntimeRoute(value) {
         'projectPromptBindings',
         'policy',
         'requirements',
+        'executionPolicy',
     ], 'RuntimeRoute');
     if (value.schemaVersion !== 1) throw new TypeError('RuntimeRoute.schemaVersion must be 1');
     if (!ATRIA_RUNTIME_ROUTE_SCOPES.includes(value.scope)) throw new TypeError('RuntimeRoute.scope is unsupported');
@@ -689,6 +723,7 @@ export function assertRuntimeRoute(value) {
             ),
         }),
         requirements: uniqueStrings(value.requirements || [], 'RuntimeRoute.requirements', { namespacedValues: true }),
+        ...(value.executionPolicy === undefined ? {} : { executionPolicy: assertExecutionPolicy(value.executionPolicy) }),
     });
 }
 

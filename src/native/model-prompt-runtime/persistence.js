@@ -1,5 +1,6 @@
 import { NotFoundError, ConflictError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
+import { assertCapabilityPublication } from './execution-evidence.js';
 import {
     NATIVE_RESOURCE_KINDS,
 } from '../contracts.js';
@@ -296,7 +297,7 @@ export class NativeModelPromptPersistence {
             .map(assertConnectionProfile));
     }
 
-    async saveModelProfile(handle, value, { expectedFingerprint } = {}) {
+    async saveModelProfile(handle, value, { expectedFingerprint, observationProof } = {}) {
         return withRuntimeWrite(handle, async () => {
             const profile = assertModelProfile(value);
             const connection = await this.getConnectionProfile(handle, profile.connectionProfileRef.connectionProfileId);
@@ -305,6 +306,8 @@ export class NativeModelPromptPersistence {
                     connectionProfileId: profile.connectionProfileRef.connectionProfileId,
                 });
             }
+            assertCapabilityPublication({ handle, connection, model: profile },
+                await this.getModelProfile(handle, profile.modelProfileId), observationProof);
             return this._save(
                 handle,
                 NATIVE_RESOURCE_KINDS.modelProfile,
