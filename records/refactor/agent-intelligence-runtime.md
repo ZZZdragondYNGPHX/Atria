@@ -1391,3 +1391,21 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 独立作者仅根据公共字段契约复核三条密封Project来源，全部通过，无需修改；六正文与metadata共七文件hash保持，作者没有接收候选、development输出或promotion评分。零发送准备snapshot `run-1791611623393-682bc073` 保留最新完整owner费用及原三RP/一Project baseline，资格scope `d5a33de98a299d854750d798dbbf76fa6fb8700520c587dd1a10c810abcb0b7a` 固定4bf78ff77，开始上述实际重测。M1仍pending，main未集成；H0样本/清单准备身份与H1/H2前置保持。
 
 完整性提示run `run-1791611628026-a6259788`：第一项positive控制完整有效；第二项known_violation请求无持久响应，generation_execution_failed未提供可确认的具体原因。新增两请求/29647 accounted tokens，其中10404为reported，19243为unknown上界；累计1472 requests /10519198 accounted tokens，pending0/lock0。这不是有效负面评分，不重写为已报告usage。继续同一协议的零发送snapshot `run-1791614074514-682bc073` 携带完整费用和原baseline，scope `4ab2ecdbc0e55ca4d198e407942a78006a6103d854c2d67966b266605fc6b47f`；实际run `run-1791614087966-32f919e6` 复用exact已通过positive控制，续接四项未完成控制与后续来源资格，没有重提炼或更换密封材料。
+
+## 2026-10-10 用户要求换设备暂停与私有迁移
+
+用户明确要求在恰当时机停止并打包隐私数据。当前F2批次自然退出、费用全部settle和原fixture保存后暂停；不再启动候选提炼、F3或其它模型请求。停止不是M1验收完成，也不是因阶段/失败自行交接；仅按用户要求刷新[HANDOFF](../../HANDOFF.md)。
+
+最终run `run-1791614087966-32f919e6` 固定 `4bf78ff7748937eb233fc12e2fa40509a1ef348d`、scope `4ab2ecdbc0e55ca4d198e407942a78006a6103d854c2d67966b266605fc6b47f`、修正版caseSet `661f990e145ad5c3f089f3f0becfb80d11d3c63f58eff8ce047ceb47a4363df4`。新增25请求/331435 accounted tokens，其中318348 reported、13087 unknown上界；全部失败与retry保留。累计1497 requests /10850633 accounted tokens，1182 reported requests /63 unknown /252 carry，pending0/lock0，M1进程与worker已退出。ledger hash `fa64d70643f1f5950cabc9fa2839ef2edac61cf7e2cb6e63b80955811844b56c`。
+
+RP五source控制全部通过，六原比较控制exact复用；三baseline均原checks完整、原trial/charge保留。新的high主观察：d1 knowledge_boundary gap，d2六维met，d3 knowledge_boundary与player_agency gap，其余维度met。observedGapCases=2，primary_observed_gap，免费F3来源门核对qualified；不是新候选改善或M1通过。完整report hash `2f6bf6ac164fcba4a6e29e939c9c2cf6134643224d4defb29b8f3a0badbf0e29`，assessment hash `471c33ad00b23928469d64aeaa32705f0935da51de2b35f1cb7b7f52f7310797`。原low零gap及不完整控制评分保持历史。
+
+Project六比较/四source控制保持exact旧协议结果；三个新baseline全部完成、原权限/isolation/target_consumed检查全部通过：d1复用原试验，d2/d3契约修正版新执行，完整report hash `3aae8482ba78e1dc45b4d0165dfb0807fffff2a13b01c4c37f9c8173b67249af`。随后第一条source assessment在原请求编译阶段被generation_context_budget_exceeded拒绝，没有该语义评估的付费请求，没有Project source assessments/headroom结论。不能把此错误说成第三条baseline失败；三个baseline及其费用可在exact身份核对后复用。证据编码/原context预算问题留待续接定位，不缩减维度、裁掉证据或读取promotion指导修复。
+
+零模型只读暂停审计 `m1-device-pause-audit-20261010-complete.json` 验证全局请求/tokens加总、两个owner费用与shared ledger、六baseline原case/配置/权限及原收费身份、RP来源门与无publication。初始审计未检查unavailable入口的完整baseline，补充完整审计并保留原文件。最新输出契约修复的F2/renewal39与F3 38共77个distinct checks通过；没有重跑不相关full suite/build/CI/UI或H0基准。
+
+下一仍先修复Project source assessment上下文问题并取得资格，再按正式有限包完成每域一个候选及原development→promotion→review→下一消费→rollback。静态核对原publication最多120个reservationIds：已有原续接端口支持同冻结候选的新native job，后续接线须保留各阶段完整报告/费用并继续原容量guard；本次未实施新的分阶段接线，未为获得通过扩大限制。源分支已push，main仍 `6ab12ba43c5b18bfec6df75c16456a4cb4497d3f`，未合入。
+
+H0只读调用图、旧LLM/RAG删除/保留清单及八项中文逻辑样本保持已准备；519条source/193348 bytes，SHA-256 `ef9a584cfde78f5bc60e43914e1eb676d3530df4398e903f56afabb0631e6eeb`。未执行产品adapter、H0 B0/性能/检索基准，H0完整出口、H1/H2未完成。docs无关未跟踪目录plans/feat/agent-experience-evolution/原状保留，未加入提交或本任务迁移包。
+
+私有迁移包范围固定为完整Document（凭证、原始reports、密封来源、账本/quota/rate/transport、原fixture及辅助脚本），另附离线HANDOFF、恢复说明、零模型解压校验脚本与逐文件SHA-256清单；包名Atria-Document-private-20261010.zip，未加密，仅保存在本地私有目录，不进入Git。最终文件数量、archive/file hashes和实际Git refs以包内MIGRATION-MANIFEST.json及外部.zip.sha256为准。接手AI负责校验、拉取Git、恢复依赖和本机路径；不覆盖原冻结材料或清账。
