@@ -119,6 +119,12 @@ source `efe9b9ca6`已push，30新distinct/34受影响旧checks通过，仅FS/SQL
 
 输入计公开contextPlan+promptIr字节，不写ledger原文或opaque；CPU仅原process切片/本阶段工作观察，不包含全部Host加载/Context编译/费用或硬CPU期限。取消返回仍沿原scheduler语义；worker继续保有permit至结算，非所有模式都承诺Host等待worker。Record区分各次真实/fixture失败和最小复验；Session Task缺完整公开历史消费者、安全fork/compaction、其他CPU/cache/local inference与真实G06依赖继续，未永久排除。
 
+## 当前有限 G04：原 Session Narrator Skill 工具轮次的公开协议历史
+
+完成条件先冻结（2026-10-11）：只接原Session Narrator→runNarrativeSkillLoop→GenerationService/Native Responses active execution的实际只读工具轮次，不创建ProjectTask或新Session task身份、store或历史writer。原loop当前会重新JSON.stringify解析后的tool args，可能破坏已有public providerState.calls的exact原arguments string；以原已normalize/工具声明核验的public call保留该字符串，fallback无raw的旧ports仍构造原公开call，源Skill读取继续用解析args及原scope/hash/pagination。
+
+最小出口为FS/SQLite真实Session Host+loopback Native Responses，两轮含空白/键序的arguments与encrypted native items完整回传、只读Skill读取、原Run两model send与四local job、仅final prose对外及Timeline不写。取消/Source HEAD变化/额度拒绝在相关边界仍停止额外send，保留usage/unknown；旧compatible loop与原none/active native回传检查只验受影响项。实际仅本invocation工具loop，非跨调用Session task/restart/safe fork/compaction验收；后续完整公开历史消费者仍需继续，无自动reset或真实verified升级，external0。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
