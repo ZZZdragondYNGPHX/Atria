@@ -1671,3 +1671,9 @@ ordinary为旧承诺/指代；hard为寄信人未知动机；high-impact是玩�
 preflight失败原样保存：v1 lanePlan没有原executionResources，v2/v3 Context ref误用message而非timeline，均零HTTP/零quota；临时本地debug插桩诊断后撤掉，v4/v5的16个preview完成（v5加入正式Project prompt及真实scope解释）。live-v1的Windows冒号证据文件名在fetch前失败，quota admission1/actualHTTP0分开；保留该准入，不称上游已收费。v2修证据文件名并在失败时保存原Run/Task ledger，完成原有24上限。两冻结raw pins、carry均匹配；新quota append共25admissions，其中实际HTTP24。m8-g06-paired-audit-v1.json以raw原report hash固定上述成本/延迟/不利质量，audit API0。
 
 本有限真实对照结束，不无限重评、不新增服务/算法以挑选有利样本。H3语义rerank/真实Embedding缺可用已配置服务，维持基础检索及明确skip/unavailable；G06 task/adaptive policy continuity、完整长期消费者与质量出口仍未验收。继续当前具体源码/consumer失败及原依赖下可推进部分，不集成main、不写HANDOFF。
+
+### G06 历史断言与当前 provider 状态的呈现边界
+
+随后针对具体长篇失败检查现有packing：旧header含“supported active sources can answer current questions”，过宽地把来源仍受支持与当前状态混在一起；Package/Context消费的单个JSON group又不能只依赖全packet header。修正为明确active source不单独证明当前World/Actor状态，过去承诺不证明现在recollection/completion/possession；原JSON records新增authority区分source_assertion与provider_owned_state，当前provider字段继续标current_provider_state，历史provider与当前未决冲突分列。这只是原source/provider事实地位的呈现，不造新cognition/custody writer、不统一降级当前状态、不按中文case正则删正文。
+
+4个受影响本地检查通过：atomic source/conflict完整预算与Package最终Context整体admission各1项；原provider current字段覆盖旧relation/fact并进入packing为provider_owned/current1项；provider撤回/chat切换/late tokenizer原held snapshot拒绝1项。packing产品ESLint/diff通过。原已获准World优先、源链/冲突/currentness仍由原authority；新的field/header计入原Context token预算。未再付费重跑原矩阵，原35334 tokens/unfavorable/qualityPass=false保留；此修复尚不证明随机模型自由文本的当前认知/持有状态断言已得到保证。继续G06原scope与HM2可独立推进部分。
