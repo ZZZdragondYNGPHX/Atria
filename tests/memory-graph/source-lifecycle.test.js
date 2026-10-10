@@ -39,6 +39,26 @@ function fixture() {
 }
 
 describe('Memory OS production source lifecycle', () => {
+    test('H4 queued authority mutation cannot lend its newer token to an older snapshot output', async () => {
+        const f = fixture(); await f.lifecycle.capture(f.context, [1]);
+        const existing = await f.lifecycle.retrievalSnapshot(f.context);
+        const read = f.context.getChatState; let queued, first = true;
+        f.context.getChatState = async (...args) => {
+            const result = await read(...args);
+            if (first) {
+                first = false;
+                queued = f.lifecycle.correct(f.context, { action: 'entity', name: 'Later authority', type: 'Concept', reason: 'Queued mutation' }, existing);
+            }
+            return result;
+        };
+        let snapshot, failure;
+        try { snapshot = await f.lifecycle.retrievalSnapshot(f.context); } catch (error) { failure = error; }
+        await queued;
+        if (snapshot) {
+            expect(Object.keys(snapshot.state.corrections || {})).toHaveLength(0);
+            expect(snapshot.assertCurrent).toThrow('changed');
+        } else expect(failure.name).toBe('AbortError');
+    });
     test('H4 unchanged readers share private ledger identity while observed source ABA and writes revoke it', async () => {
         const f = fixture();
         const ticket = await f.lifecycle.capture(f.context, [1]);

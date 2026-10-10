@@ -125,7 +125,7 @@ export function createSourceLifecycle({
         return next.finally(() => { if (queues.get(key) === next) queues.delete(key); });
     }
 
-    async function transaction(context, run, validate = () => {}, validateStored = null, readOnly = false) {
+    async function transaction(context, run, validate = () => {}, validateStored = null, readOnly = false, captureAuthority = false) {
         const scope = session(context);
         return enqueue(scope.key, async () => {
             scope.assertLive();
@@ -165,7 +165,7 @@ export function createSourceLifecycle({
             scope.assertLive();
             validate();
             validateSources();
-            if (readOnly) return output;
+            if (readOnly) return captureAuthority ? { value: output, cacheIdentity: cache.get(scope.key) } : output;
             if (before !== JSON.stringify(state)) {
                 const saved = await context.updateChatState(namespace, currentState => {
                     scope.assertLive();
@@ -184,7 +184,7 @@ export function createSourceLifecycle({
             for (const [id, epoch] of dirty) {
                 if (pending.get(scope.key)?.get(id) === epoch) pending.get(scope.key).delete(id);
             }
-            return output;
+            return captureAuthority ? { value: output, cacheIdentity: cache.get(scope.key) } : output;
         });
     }
 
@@ -409,8 +409,9 @@ export function createSourceLifecycle({
         const epoch = epochs.get(scope.key) || 0;
         const providerVersion = JSON.stringify(readProviders(context));
         const externalVersion = JSON.stringify(readExternalSources(context));
-        const state = await transaction(context, state => state, () => {}, null, readOnly);
-        let cachedVersion = cache.get(scope.key);
+        const receipt = await transaction(context, state => state, () => {}, null, readOnly, true);
+        const state = receipt.value;
+        let cachedVersion = receipt.cacheIdentity;
         const assertCurrent = () => {
             scope.assertLive();
             if (!enabled(getContext()) || original !== content() || epoch !== (epochs.get(scope.key) || 0)
@@ -422,7 +423,7 @@ export function createSourceLifecycle({
         const recordAccess = async ids => {
             assertCurrent();
             if (readOnly) return;
-            await transaction(context, ledger => {
+            const accessReceipt = await transaction(context, ledger => {
                 for (const id of new Set(ids)) {
                     const fact = ledger.facts?.[id];
                     if (fact) {
@@ -431,8 +432,8 @@ export function createSourceLifecycle({
                     }
                 }
                 return ledger;
-            }, assertCurrent);
-            cachedVersion = cache.get(scope.key);
+            }, assertCurrent, null, false, true);
+            cachedVersion = accessReceipt.cacheIdentity;
             assertCurrent();
         };
         return { key: scope.key, state: structuredClone(state), chat: structuredClone(scope.chat), assertCurrent, recordAccess };
