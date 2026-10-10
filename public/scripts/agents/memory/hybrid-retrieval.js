@@ -309,9 +309,24 @@ async function digest(text) {
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
     budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
     sceneText = '', packing = 'coverage', computeContext = null } = {}) {
+    const work = { guardChecks: 0, guardMs: 0, documentsHashed: 0, hashMs: 0, serviceRequests: 0,
+        requestDataBytes: 0, responseDataBytes: 0, embeddingTextsRequested: 0, rerankRequests: 0 };
     const guard = () => {
-        if (signal?.aborted) throw Object.assign(new Error('Memory recall aborted'), { name: 'AbortError' });
-        snapshot.assertCurrent();
+        const begin = performance.now(); work.guardChecks++;
+        try {
+            if (signal?.aborted) throw Object.assign(new Error('Memory recall aborted'), { name: 'AbortError' });
+            snapshot.assertCurrent();
+        } finally { work.guardMs += performance.now() - begin; }
+    };
+    const callService = async (method, args) => {
+        work.serviceRequests++;
+        work.requestDataBytes += new TextEncoder().encode(JSON.stringify(args)).length;
+        if (method === 'insert') work.embeddingTextsRequested += args.items.length;
+        if (method === 'query') work.embeddingTextsRequested++;
+        if (method === 'rerank') work.rerankRequests++;
+        const response = await service[method](args);
+        work.responseDataBytes += new TextEncoder().encode(JSON.stringify(response ?? null)).length;
+        return response;
     };
     const started = performance.now();
     guard();
@@ -345,30 +360,33 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             if (snapshot.eligibility) {
                 for (const retired of [buildCollectionId(snapshot.key), `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`]) {
                     guard();
-                    const hashes = await service.listHashes({ collectionId: retired, profile, signal }); guard();
-                    if (hashes.length) { await service.deleteByHashes({ collectionId: retired, profile, hashes, signal }); guard(); }
+                    const hashes = await callService('listHashes', { collectionId: retired, profile, signal }); guard();
+                    if (hashes.length) { await callService('deleteByHashes', { collectionId: retired, profile, hashes, signal }); guard(); }
                 }
             }
             const items = [];
+            const hashStarted = performance.now();
             for (let start = 0; start < corpus.documents.length; start += 64) {
                 const chunk = await Promise.all(corpus.documents.slice(start, start + 64).map(async (doc, offset) => {
                     const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
+                    work.documentsHashed++;
                     return { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index: start + offset, metadata: { id: doc.id, fingerprint } };
                 }));
                 guard(); items.push(...chunk);
                 if (start + 64 < corpus.documents.length) { await new Promise(resolve => setTimeout(resolve, 0)); guard(); }
             }
+            work.hashMs += performance.now() - hashStarted;
             const desired = new Map(items.map(item => [item.hash, item]));
             if (desired.size !== items.length) throw new Error('Memory vector hash collision');
-            const remote = new Set((await service.listHashes({ collectionId, profile, signal })).map(Number));
+            const remote = new Set((await callService('listHashes', { collectionId, profile, signal })).map(Number));
             guard();
             const hashes = [...remote].filter(hash => rebuildVectors || !desired.has(hash));
-            if (hashes.length) { await service.deleteByHashes({ collectionId, profile, hashes, signal }); guard(); }
+            if (hashes.length) { await callService('deleteByHashes', { collectionId, profile, hashes, signal }); guard(); }
             const missing = items.filter(item => rebuildVectors || !remote.has(item.hash));
             for (let start = 0; start < missing.length; start += 64) {
-                await service.insert({ collectionId, profile, items: missing.slice(start, start + 64), signal }); guard();
+                await callService('insert', { collectionId, profile, items: missing.slice(start, start + 64), signal }); guard();
             }
-            const response = await service.query({ collectionId, profile, searchText: querySeeds.seedText, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal });
+            const response = await callService('query', { collectionId, profile, searchText: querySeeds.seedText, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal });
             guard();
             const valid = new Map(items.map(item => [item.metadata.id, item.metadata.fingerprint]));
             vectorIds = [...new Set((response?.metadata || []).filter(hit => valid.get(hit.id) === hit.fingerprint && typeof hit.fingerprint === 'string').map(hit => hit.id))];
@@ -379,13 +397,16 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         }
     } else diagnostics.push('vector_unconfigured');
     const vectorsReady = performance.now();
+    const rankingStarted = performance.now();
     const result = rankMemory(query, corpus, vectorIds, { at, sceneText });
     result.candidates = result.candidates.filter(doc => !(doc.kind === 'state' && doc.type === 'provider'
         && doc.claims?.every(claim => stateClaimAlreadyPresent(claim, existingStateText))));
     const invocation = memoryInvocationDecision(result.plan, result.candidates, { configured: Boolean(service && rerankProfile), computeContext });
+    const rankingMs = performance.now() - rankingStarted;
+    const rerankStarted = performance.now();
     if (invocation.action === 'rerank') {
         try {
-            const ranks = await service.rerank({ profile: rerankProfile, query, signal, computeContext, topK: result.candidates.length,
+            const ranks = await callService('rerank', { profile: rerankProfile, query, signal, computeContext, topK: result.candidates.length,
                 documents: result.candidates.map((doc, index) => ({ text: doc.text, index })) });
             guard();
             const scores = new Map((ranks || []).filter(hit => Number.isInteger(hit.index) && Number.isFinite(Number(hit.relevance_score ?? hit.score)))
@@ -401,7 +422,9 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             invocation.stop = error.code || 'rerank_execution_failed';
         }
     }
+    const rerankMs = performance.now() - rerankStarted;
     guard();
+    const packingStarted = performance.now();
     const composition = packing === 'ranked'
         ? await composeMemory(result.candidates, { countTokens, budget, corePacket, assertCurrent: guard })
         : await composeMemoryCoverage(memoryEvidenceGroups(result.candidates, corpus, snapshot.state, result.plan),
@@ -423,6 +446,8 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
                 revision: snapshot.state.sources[id]?.revision })), eligibility: snapshot.eligibility?.identity };
     });
     const sourceMessageIds = [...new Set(evidence.flatMap(item => item.sourceMessageIds))];
+    const packingMs = performance.now() - packingStarted;
+    const proofStarted = performance.now();
     for (const item of evidence) {
         item.producer = 'hybrid-retrieval-v1';
         item.sourceRefs = await Promise.all(item.sourceMessageIds.map(async id => ({ messageId: id,
@@ -437,6 +462,9 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     return { ...composition, plan: result.plan, invocation, diagnostics, sourceMessageIds, evidence,
         producer: 'hybrid-retrieval-v1', coverageGaps, missingGroups: [...(composition.missingGroups || []), ...unavailableGroups],
         metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
-            corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, totalMs: performance.now() - started },
+            corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, rankingMs, rerankMs, packingMs,
+            proofMs: performance.now() - proofStarted, totalMs: performance.now() - started,
+            work: { ...work, costStatus: work.embeddingTextsRequested || work.rerankRequests ? 'unknown' : 'not_requested',
+                byteMeasurement: 'service_data_json_utf8', timingMeasurement: 'elapsed_ms' } },
         providers: corpus.providers.map(provider => ({ providerId: provider.providerId, status: provider.status })), assertCurrent: guard };
 }

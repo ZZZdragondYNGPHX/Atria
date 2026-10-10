@@ -129,8 +129,15 @@ describe('Memory OS hybrid retrieval', () => {
         expect(first.diagnostics).toEqual([]);
         expect(service.deleteByHashes).toHaveBeenCalled();
         expect(service.insert).toHaveBeenCalledTimes(1);
-        await retrieveMemory(snapshot, 'Alice', options);
+        const warm = await retrieveMemory(snapshot, 'Alice', options);
         expect(service.insert).toHaveBeenCalledTimes(1);
+        expect(first.metrics.work.documentsHashed).toBe(first.metrics.corpusSize);
+        expect(warm.metrics.work.documentsHashed).toBe(warm.metrics.corpusSize);
+        expect(first.metrics.work.embeddingTextsRequested).toBe(first.metrics.corpusSize + 1);
+        expect(warm.metrics.work.embeddingTextsRequested).toBe(1);
+        expect(warm.metrics.work).toMatchObject({ serviceRequests: 2, rerankRequests: 0, costStatus: 'unknown', byteMeasurement: 'service_data_json_utf8' });
+        expect(warm.metrics.work.guardChecks).toBeGreaterThan(0);
+        expect(warm.metrics.work.requestDataBytes).toBeGreaterThan(0);
         const firstCollection = service.query.mock.calls[0][0].collectionId;
         await retrieveMemory({ ...snapshot, key: 'other-chat' }, 'Alice', options);
         expect(service.query.mock.calls[2][0].collectionId).not.toBe(firstCollection);
@@ -172,10 +179,14 @@ describe('Memory OS hybrid retrieval', () => {
         expect((await lifecycle.listFacts(ctx))[0].accessCount).toBe(1);
     });
     test('successful rerank reorders only source-valid candidates', async () => {
-        const snapshot = fixture();
-        const baseline = rankMemory('Alice', buildMemoryCorpus(snapshot)).candidates;
+        const chat = [{ memory_os_source_id: 'cause-a', mes: 'Alice left because of the storm.' }, { memory_os_source_id: 'cause-b', mes: 'Alice left because of the promise.' }];
+        const state = emptyProvenance(); state.scopeId = 'causal-chat'; captureEpisodes(state, chat, [0, 1], state.scopeId);
+        const snapshot = { state, chat, key: state.scopeId, assertCurrent: jest.fn() };
+        const query = 'Why did Alice leave?';
+        const baseline = rankMemory(query, buildMemoryCorpus(snapshot)).candidates;
         const service = { rerank: async ({ documents }) => documents.map((_, index) => ({ index, relevance_score: index })) };
-        const result = await retrieveMemory(snapshot, 'Alice', { service, rerankProfile: {}, countTokens, budget: 10000, packing: 'ranked' });
+        const result = await retrieveMemory(snapshot, query, { service, rerankProfile: {}, computeContext: { kind: 'session' }, countTokens, budget: 10000, packing: 'ranked' });
+        expect(result.invocation.outcome).toBe('completed');
         expect(result.selected[0]).toBe(baseline.at(-1).id);
         expect(result.diagnostics).not.toContain('rerank_unavailable');
     });
