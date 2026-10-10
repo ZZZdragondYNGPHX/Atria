@@ -408,9 +408,14 @@ test('prior development feedback is pinned and cannot silently replace original 
 
 test('public diagnosis cites an exact prior candidate clause without rewriting its model grade', () => {
     const f = example(), candidate = { valueHash: hash('value'), candidate: { diff: { before: 'Original', after: 'Prior edit' } } };
+    f.report.publicSourceReviews = [{ caseId: f.report.pairs[0].case.caseId, evidenceHash: hash('full audit'),
+        assessment: { dimensions: { knowledge_boundary: { status: 'met' } }, knowledgeReview: [{ quoteRef: 'q1', status: 'supported' }] }, charge: f.report.charges[0] }];
     const prior = { report: f.report, candidate }, expected = { reportHash: hash(f.report), candidateHash: hash(candidate), valueHash: candidate.valueHash,
         publicFindings: [{ caseId: f.report.pairs[0].case.caseId, dimension: 'knowledge_boundary', quote: 'Actual bounded output', reason: 'Public statement still needs exposed support.' }] };
-    expect(f3DevelopmentFeedback(prior, expected).publicFindings).toEqual(expected.publicFindings);
+    const feedback = f3DevelopmentFeedback(prior, expected);
+    expect(feedback.publicFindings).toEqual(expected.publicFindings);
+    expect(feedback.publicSourceReviews[0].reviewedRows).toBe(1);
+    expect(feedback.publicSourceReviews[0].charge).toBeUndefined();
     expect(hash(prior.report)).toBe(expected.reportHash);
     expected.publicFindings[0].quote = 'Invented public statement';
     expect(() => f3DevelopmentFeedback(prior, expected)).toThrow('f3_public_finding_changed');
