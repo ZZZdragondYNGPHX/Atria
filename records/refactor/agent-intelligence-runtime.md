@@ -1593,3 +1593,9 @@ Project 原 TaskRepository/工具入口增加受限plan structure复用：同Pro
 Responses新12项全部通过：实际Project loopback两次请求回传reasoning/function_call及tool output，公开诊断无opaque；path/source/history/tools/forged反例；stream terminal/item_done/opaque/incomplete；missingusage/report identity unknown与opaque Secret echo拒绝。额外负cached_tokens1项针对性通过，负数保持null；reported model只作reported alias，canonical upstream/hidden attempts/价格unknown。byte upper-bound token admission，不声称真实Provider tokenizer等价。
 
 既有Anthropic/Gemini adapter发现EOF累计blocks可误当完成，修复message_start/block_stop/message_delta/message_stop及Gemini finishReason；thinking signature/redacted opaque字段完整性检查、delta类型/稀疏block拒绝。原loopbackfixture补齐真实协议结束字段，不改产品条件迎合旧缺字段fixture；同一native matrix50项通过，其中新增12个完整性检查，旧控制/auth/HTTP/签名顺序断言保留。Responses首轮lint brace格式修复后6相关产品文件ESLint/diff通过。所有原log保留；无付费API、quota/费用未改变。继续native私有envelope迁移、精确gateway观察、G05共享准入及G06收益，完整G04/M8/HM2未验收。
+
+## M8 / G04 原生私有 envelope 与 Host retry checkpoint
+
+2026-10-11 source `47575e344`。Anthropic/Gemini 原 provider 接入 Responses 使用的同一个 Runtime checkpoint/lease authority，不另建 store。公有 response/preview 仅保留 private checkpoint 引用，原始 thinking/signature/parts 不进入公开 snapshot；实际发送从原私有 state 回传完整内容。路径/account/source/request/history-prefix/tools/output/policy及额外 target 指纹重验，完成后 discard，opaque Secret echo 被拒绝。API缺 direct usage/cache counter 时仍 absent/null；canonical upstream/hidden attempts unknown。
+
+shared lease 与原生迁移相关的 Responses/native matrix 63 项通过；随后新增 Native Host 两格式各7项（实际两轮消费、path/source/history/tools/forged、Secret）共14项通过。单次 lease 接入 Host 后发现原 retry 会重用 rendered，修复为相同冻结 snapshot 重新 lowering/新 lease，429 后实际两请求相同 wire 的2项定向检查通过。四产品文件 ESLint/diff 通过；日志分别为 m8-g04-private-native-initial、m8-g04-native-host、m8-g04-native-retry。新增检查全为隔离 loopback，不声称真实品牌服务或配置 gateway 验收；无新 API/费用/quota变化。继续原 RunControl/send 与 Project Task 的共享准入/记账及 gateway/G06，未写 HANDOFF，未集成 main。
