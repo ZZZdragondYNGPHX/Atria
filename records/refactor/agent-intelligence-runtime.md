@@ -1409,3 +1409,23 @@ Project六比较/四source控制保持exact旧协议结果；三个新baseline�
 H0只读调用图、旧LLM/RAG删除/保留清单及八项中文逻辑样本保持已准备；519条source/193348 bytes，SHA-256 `ef9a584cfde78f5bc60e43914e1eb676d3530df4398e903f56afabb0631e6eeb`。未执行产品adapter、H0 B0/性能/检索基准，H0完整出口、H1/H2未完成。docs无关未跟踪目录plans/feat/agent-experience-evolution/原状保留，未加入提交或本任务迁移包。
 
 私有迁移包范围固定为完整Document（凭证、原始reports、密封来源、账本/quota/rate/transport、原fixture及辅助脚本），另附离线HANDOFF、恢复说明、零模型解压校验脚本与逐文件SHA-256清单；包名Atria-Document-private-20261010.zip，未加密，仅保存在本地私有目录，不进入Git。最终文件数量、archive/file hashes和实际Git refs以包内MIGRATION-MANIFEST.json及外部.zip.sha256为准。接手AI负责校验、拉取Git、恢复依赖和本机路径；不覆盖原冻结材料或清账。
+
+
+## 2026-10-10 新设备恢复与 Project 来源评估预算修复
+
+实际本地 source/docs 从 88e5b34d3/e5be06079 无冲突快进至迁移 manifest 的 4bf78ff77/5a0225542；main 保持 6ab12ba43。私有 ZIP 包内 14250 个文件的大小、逐文件 SHA-256、路径和清单由包内 RESTORE.py 核对后恢复到新空私有目录，原私有目录保留。外部 .zip.sha256 未随包出现，因此不能声称外部校验已通过；本地计算 archive SHA-256 为 9b99eee4fa318b426890298cb49e35c2c45bfa7619f4eefc040b3801bd5de69e。源码/tests 锁文件分别与现有依赖安装源一致，依赖链接可用，未无故重装或变更锁文件；凭证与私有路径未写入 Git。
+
+本地零发送经原 FrozenEvaluationBridge 复现 Project 三条完整 source assessment 的 generation_context_budget_exceeded。原输出 reservation 16384 与完整输入（分别 18455 / 16093 / 18163 tokens）超过配置的 32000 context。保留原 f2SourceEvidence/f2SourceMessages、全部六维、quote/parser、baseline 与密封字节；仅 Project source assessment 配置 8000 输出后，三请求均通过原编译及预算检查，截在本地发送回调，modelSends=0。没有增加 context/model 能力声明、裁掉必需证据或修改未知判断。
+
+test-only 提交 ce8486888eb011b33375213575e51dc5007e95c7 增加按用途的 sourceOutputTokens，F2 发送与 F3 来源准入共用相同 transport 身份计算；默认、RP source high、F2/F3 comparison 和原 baseline 配置不变。F2 source29 / renewal11 / F3 38 共78项最小相关本地检查通过，触及 ESLint/diff 通过。未做 full suite/build/UI/CI。
+
+零发送恢复 snapshot run-1791617696100-2c04e737 逐项复核六条完整原 baseline 的 case/input/config/settings/权限、原 owner receipt 及 shared ledger。原 owner 持有 request/snapshot pins；shared ledger 保留原 trial/tokens/settle 字段，未捏造不存在的 hash 字段。原 ledger hash fa64d70643f1f5950cabc9fa2839ef2edac61cf7e2cb6e63b80955811844b56c、1497 requests /10850633 accounted tokens、pending0/lock0 保持。scope m1-f2-config-context-recovery-20261010.json / hash 63ef22dde98eb39ffc186aac9e80aadb227ee549106ca2f42ade850d941c42d4 固定当前源码和来源版本，携带原三RP完整语义观察及两域完整 baseline report；改变 transport 的 Project 四项 source controls 必须重测，未复用成新协议通过。实际资格续接已启动，结果待落盘；无新候选或 publication，M1仍未通过。
+
+
+资格续接 run-1791617711441-ae498ed7 已完成：新增7请求/104900 reported tokens，累计1504 requests /10955533 accounted tokens、pending0/lock0。Project四控制有效，三个source assessment均发现status_accuracy gap，其余维度met；三gap，原完整report hash 3aae8482ba78e1dc45b4d0165dfb0807fffff2a13b01c4c37f9c8173b67249af保持，assessment hash 92221ee1497f023ec4911fe54cdca3df0b982b2a0ba5dc70a49ac4cb3a1d3207。RP五控制/三原high观察及全部baseline exact复用，原两个gap保持；新组合观察显式携带caseId引用，不冒充新发送。两域均通过原F3 source gate；这不是候选质量或M1通过。
+
+test-only 提交 b3832f8424b58be56ef20903dfda676596b52f9c 接入显式 separatePromotionJob：development通过后以同一冻结candidate启动新native promotion job，原development job、完整报告及owner费用保留；大development报告沿原无损归档降低重复存储，续接准入先完整解码核对原report/hash/config/target/receipts。原4 MiB scope和publication最多120 reservationIds不变，不能以接线代替实测通过。63个distinct相关本地检查通过（F3 40、promotion15、lifecycle8）；其中两入口真实FS新job接线检查在密封worker边界前停止，费用、candidate和两个归档development报告完整保持；不是模型或真实发布证据。触及ESLint/diff通过。
+
+新F3零发送preflight snapshot run-1791618136949-7c63eeb3、scope m1-f3-renewal-context-20261010.json / hash bf29836dcaf0af11d7e57ddd67bdf736f6632335a4d2d82579204e98d015b209，固定b3832f842；两域source gate、每域八项exact原F3比较控制及原付费receipt均核对可复用，不以F2替代。新密封metadata及六正文文件仅校验hash，开发侧未读正文。两域baseline scope分别703/945 bytes，原4 MiB guard保持；development/promotion各保存完整报告与费用，publication的120 IDs限制仍须按实测核对。已启动两域各一个新候选及原development→独立promotion→review→下一消费→rollback流程，结果尚未形成。
+
+H0新设备只读准备补充[h0-baseline §7](../../plans/architecture/agent-intelligence-runtime/h0-baseline.md#7-新设备-h0-执行准备核对)：重新确认Memory相关范围在main与M1工作分支字节一致；冻结8样本/519来源及hash不变。定位readOnly只约束来源账本、retrieveMemory仍同步向量索引，固定隔离临时source/graph与本地检索服务要求；为八样本及三实际消费者列出原fixture/authority适配和观察字段，禁止adapter提前补H1/H2算法或把逻辑audience/validTicks当产品授权。只做schema/ID/引用/hash、源码/测试符号及路径存在和diff检查；未运行H0 B0/产品adapter/检索/性能/正文基准，H0完整出口、H1/H2保持未完成。

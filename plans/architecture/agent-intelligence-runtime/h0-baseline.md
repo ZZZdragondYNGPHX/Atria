@@ -79,3 +79,22 @@ CPU热点规格：合法Episode规模100/1000/10000，cold/warm各自记录 corp
 - H5：原`tests/native/simulation-*.test.js`只作为后续入口，本次不执行新cognition/autonomous验收。
 
 H0剩余：将冻结逻辑样本适配原source/Information/Context fixture，运行source/Actor/Branch/Timeline/Variant确定性反例及B0观测，完成原生数据清单与三路径实际消费证据。H0全套验收、H1/H2产品交付与质量/性能收益均未完成；本次只读准备不能满足HM1集成出口。
+
+
+## 7. 新设备 H0 执行准备核对
+
+2026-10-10 再次核对 main@6ab12ba43 与 M1 修复 ce8486888：§2–§4 涉及 Memory / Game / Package Context / Information / Simulation / source 测试范围的 Git 差异为空。冻结样本仍为193348 bytes、8 cases /519 sources及§5原SHA-256；未因 M1 结果改变样本或标签。
+
+隔离要求来自实际源码：`source-lifecycle.js:getMemoryRetrievalSnapshot(...,{readOnly:true})` 约束来源持久写入和 access counts；`hybrid-retrieval.js:retrieveMemory` 仍会调用 `listHashes` / `deleteByHashes` / `insert` / `query`，且现有 collection identity 仅依赖 `[snapshot.key, profile]`。因此只传 readOnly 不能声称向量服务无副作用。H0 基准应使用自建合成数据、隔离临时 source / graph 存储、本地受控 retrieval service；无 Embedding 子项明确不提供 service/profile。不要连接用户原 collection 或把估计 tokenizer 结果写成真实 Provider token 数。真实模型/索引服务对照待固定 exact 配置和发送记账后另行运行，结果缺失标未测。
+
+| 样本组 | 原 fixture / authority 适配入口 | 必须保存的独立观察 |
+| --- | --- | --- |
+| H0-ZH-01 /08 承诺与长篇 | `source-provenance.js:captureEpisodes` → 原 `atomic-facts.js` / `temporal-graph.js` → `source-lifecycle.js:retrievalSnapshot`；原 `hybrid-retrieval.test.js` 的 source-backed fixture 结构 | 全部原source IDs、query、snapshot identity、候选/入选/required coverage；500轮输入不代表500轮正文生成或角色记忆writer |
+| H0-ZH-02 /04 /05 Actor与Branch | 原 `tests/native/helpers/information-fixture.js:informationSnapshot` → `informationContext` / 原 Package bridge → Context Compiler；原 `package-turn-memory-bridge-g3.test.js` 的 denied / hidden / stale / foreign 入口 | 原 authority 给出的 grant /可见variant/branch/revision，检索前合法域、返回packet与实际编译 admission 分别保存；不能由样本 audience 数组自授权限 |
+| H0-ZH-03 /06 时间、冲突与 atomic组 | 原 temporal operations / support checker / `buildMemoryCorpus(snapshot,at)` / `composeMemory`，原 temporal/hybrid tests 的 historical/disputed/token预算入口 | historical与current期望分开；冲突双方source、完整atomic组及无法装入原因；logical validTicks不能直接冒充产品 temporal boundary |
+| H0-ZH-05 /07 修改、撤回与故障 | 原 source lifecycle mutation ticket / snapshot.assertCurrent / abort；本地retrieval service注入失败；原 source-lifecycle tests 的编辑/删除/branch inheritance/save failure入口 | 每次mutation前后的source/anchor及late callback拒绝；optional失败和hard失败分开，持久source字节保持；取消和保存失败不记成零成本成功 |
+| 三条实际消费 | ordinary `injectMemoryPrompts`、Game `createMemoryRecallBridge`、Package `recallNativePackageTurnMemory` 分别用本地fixture与原consumer | 各入口调用次数、packet hash、最终Context包含/拒绝证据；共享底层通过不能替代三条实际消费者证明 |
+
+这是 adapter 与观测准备，尚未实现逻辑样本到产品fixture的转换。先保存未过滤的原合成source及明确的权限/时点标签，再按原authority生成fixture；B0直接执行当前算法，禁止为了“通过”在adapter里补入 H1 的前置过滤或 H2 的新query seed。没有适配能力的子项标 unsupported/pending，不能静默删除该子项、预过滤秘密后声称B0安全，也不能从检索来源存在推断NPC当前记得或正文已应用。
+
+本次仅验证样本schema/ID/引用/hash、上述源码符号与测试路径存在、Memory范围Git一致性及文档diff；没有执行产品测试、B0、Actor/Branch/Timeline/Variant反例、检索/时延基准或模型。H0完整出口和H1/H2仍未完成。
