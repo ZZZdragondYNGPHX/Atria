@@ -45,7 +45,7 @@ export function assertComputeLedger(value) {
             fields(entry, ['attemptId', 'requestId', 'targetFingerprint', 'kind', 'estimatedItems', 'estimatedInputBytes', 'status', 'usage'], 'Local work');
             if (typeof entry.attemptId !== 'string' || !entry.attemptId || entry.attemptId.length > 128 || ids.has(entry.attemptId)
                 || typeof entry.requestId !== 'string' || !entry.requestId || entry.requestId.length > 128
-                || !/^[a-f0-9]{64}$/.test(entry.targetFingerprint) || !['index_insert', 'index_query', 'index_list', 'index_delete', 'index_purge'].includes(entry.kind)
+                || !/^[a-f0-9]{64}$/.test(entry.targetFingerprint) || !['index_insert', 'index_query', 'index_list', 'index_delete', 'index_purge', 'generation_count', 'generation_render'].includes(entry.kind)
                 || !integer(entry.estimatedItems) || entry.estimatedItems < 1 || entry.estimatedItems > 10000
                 || !integer(entry.estimatedInputBytes) || entry.estimatedInputBytes < 1 || entry.estimatedInputBytes > 16777216
                 || !['charged', 'settled', 'unknown'].includes(entry.status)) fail('native_generation_budget_invalid');

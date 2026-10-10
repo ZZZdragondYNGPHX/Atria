@@ -107,15 +107,17 @@ export class RunControl {
     async assert(handle, sessionId, action, revisionId) {
         return this.repo.withRunLock(handle, sessionId, () => this.repo._engine.withTransaction(handle, tx => assertRunAccess(tx, handle, sessionId, action, revisionId)));
     }
-    async update(handle, sessionId, mutate, action = 'write') {
+    async update(handle, sessionId, mutate, action = 'write', writeWhen = null) {
         return this.repo.withRunLock(handle, sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
-            assertWritable();
+            if (!writeWhen) assertWritable();
             let value = await assertRunAccess(tx, handle, sessionId, action);
             if (!value) {
                 const session = await getNativeDocument(tx, { kind: K.session, handle, sessionId });
                 value = { schemaVersion: 1, operations: {}, background: {}, highWaterTurn: 0, headRevisionId: session?.headRevisionId ?? null };
                 controlVersions.set(value, null);
             }
+            if (writeWhen && !writeWhen(value)) return null;
+            if (writeWhen) assertWritable();
             const result = await mutate(value);
             await writeRunControl(tx, handle, sessionId, value);
             return result;
@@ -192,19 +194,22 @@ export class RunControl {
         });
     }
 
-    async chargeLocalWork(handle, snapshot, anchor, limits, attempt) {
+    async chargeLocalWork(handle, snapshot, anchor, limits, attempt, { background = false } = {}) {
+        const id = hashNativeDocument({ lane: background ? 'background' : 'turn', anchor });
         return this.update(handle, snapshot.session.sessionId, value => {
             if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
-            const id = hashNativeDocument({ lane: 'turn', anchor });
             let op = value.operations[id];
             limits ??= op?.compute?.limits;
             if (!limits?.localWork && !op?.compute?.limits.localWork) return null;
             if (!op) {
                 if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
-                op = value.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
+                op = value.operations[id] = { lane: background ? 'background' : 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
             }
             const localWork = chargeLocalWork(op, limits, attempt);
             return { operation: id, localWork };
+        }, 'write', value => {
+            if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            return Boolean(limits?.localWork || value.operations[id]?.compute?.limits.localWork);
         });
     }
     async settleLocalWork(handle, sessionId, operation, attemptId, usage) {

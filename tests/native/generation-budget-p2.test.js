@@ -47,6 +47,24 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
     async function command(action) { base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: 'cmd-' + ++serial, action }, { expectedRevisionId: base.revision.revisionId }); }
     const progress = effectiveTurns => command({ kind: 'app.command', domainId: 'progress', commandId: 'advance', recordId: 'main', args: { effectiveTurns } });
     const input = () => ({ sessionId: base.session.sessionId, revisionId: base.revision.revisionId, slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } });
+    test.each([1, 2])('G05 lowering background shares %i local jobs with original intent and keeps period charges separate', async maxJobs => {
+        await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+            allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: 32000,
+                localWork: { maxJobs, maxItems: maxJobs, maxInputBytes: 1048576 } } } });
+        respond = async () => ({ content: JSON.stringify({ text: 'filed' }) });
+        const result = await host.executeLifecycle(h.handle, input()).then(value => ({ value }), error => ({ error }));
+        const control = await svc.core.runs.status(h.handle, base.session.sessionId);
+        expect(result.error?.code ?? null).toBe(maxJobs === 1 ? 'native_generation_budget_exhausted' : null);
+        expect(seen).toHaveLength(maxJobs === 1 ? 0 : 1);
+        const cost = maxJobs === 1 ? Object.values(control.operations).find(row => row.compute)?.compute : control.retiredCompute;
+        const jobs = maxJobs === 1 ? cost.localWork.length : cost.localJobs;
+        expect(jobs).toBe(maxJobs);
+        const anchors = maxJobs === 1 ? Object.values(control.operations).filter(row => row.compute).map(row => row.lane) : [];
+        expect(anchors).toEqual(maxJobs === 1 ? ['background'] : []);
+        expect(Object.values(control.background).reduce((n, row) => n + row.count, 0)).toBe(maxJobs === 1 ? 0 : 1);
+        const modelAttempts = maxJobs === 1 ? cost.attempts.length : cost.modelAttempts;
+        expect(modelAttempts).toBe(maxJobs === 1 ? 0 : 1);
+    });
     test.each(['completed', 'withdrawn'])('G05 retired work actual background %s preserves its original late receipt and period charge', async scenario => {
         await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
             allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: 32000 } } });

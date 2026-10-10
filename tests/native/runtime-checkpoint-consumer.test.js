@@ -27,7 +27,7 @@ const messagesReply = (format, finalText, privateText = 'PRIVATE-TASK-RUNTIME') 
     : { candidates: [{ finishReason: 'STOP', content: { parts: [{ thought: true, text: privateText, thoughtSignature: 'PRIVATE-NATIVE-SIGNATURE' },
         ...(finalText ? [{ text: finalText }] : [{ functionCall: { id: 'read', name: 'atri_agent_get_project', args: {} }, thoughtSignature: 'PRIVATE-TOOL-SIGNATURE' }])] } }],
     usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 8, totalTokenCount: 20 } };
-async function fixture(make, mode = 'task', verified = true, maxRequests = 4, format = 'openai-responses') {
+async function fixture(make, mode = 'task', verified = true, maxRequests = 4, format = 'openai-responses', localWork) {
     const h = await make(); const wires = [];
     let reply = (_round, res) => res.end(JSON.stringify(format === 'openai-responses' ? { status: 'completed', output: [
         { type: 'reasoning', encrypted_content: 'PRIVATE-TASK-RUNTIME' },
@@ -53,7 +53,8 @@ async function fixture(make, mode = 'task', verified = true, maxRequests = 4, fo
     const decisions = [decision, ...(mode === 'adaptive' ? [{ ...decision, capability: 'generation.continuation.adaptive' }] : [])];
     await seeded.persistence.saveModelProfile(h.handle, { ...model, limits: { contextTokens: 32000, outputTokens: 512 }, capabilities: [...model.capabilities, ...decisions] },
         verified ? { observationProof: capabilityObservationProof({ handle: h.handle, connection, model }, decisions) } : {});
-    await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests, maxTokens: 128000 } } });
+    await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+        allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests, maxTokens: 128000, ...(localWork ? { localWork } : {}) } } });
     let onSecret = () => {};
     const providerFetch = globalThis.fetch;
     const newHost = () => new NativeGenerationHost({ ...seeded, studio, agent, providers: { ['provider.' + format]: format === 'openai-responses'
@@ -69,6 +70,32 @@ async function fixture(make, mode = 'task', verified = true, maxRequests = 4, fo
 const followup = (f, response) => ({ ...f.request, requestId: 'task-runtime-next', messages: [...f.request.messages,
     { role: 'assistant', content: response.text, tool_calls: response.toolCalls.map(call => call.raw), providerState: response.providerState },
     { role: 'tool', tool_call_id: response.toolCalls[0].id, content: 'Public project read' }] });
+test.each([['fs', harnesses[0][1], 'openai-responses'], ['sqlite', harnesses[1][1], 'openai-responses'], ['fs', harnesses[0][1], 'anthropic'], ['fs', harnesses[0][1], 'gemini']])('Runtime lowering %s %s quota refusal retains valid original Task checkpoint before second HTTP', async (_name, make, format) => {
+    const f = await fixture(make, 'task', true, 4, format, { maxJobs: 3, maxItems: 3, maxInputBytes: 1048576 });
+    try {
+        const first = await f.newHost().execute(f.h.handle, f.request), rows = await f.rows();
+        await expect(f.newHost().execute(f.h.handle, followup(f, first.response))).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(await f.rows()).toEqual(rows); expect(f.wires).toHaveLength(1);
+        const task = await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId);
+        expect(task.compute.localWork.map(row => row.kind)).toEqual(['generation_count', 'generation_render', 'generation_count']);
+        expect(task.compute.attempts).toHaveLength(1); expect(task.conversation).toEqual(f.task.conversation);
+    } finally { await f.cleanup(); }
+});
+test('Runtime lowering stale Task after render settlement cleans private state and keeps completed local work', async () => {
+    const f = await fixture(harnesses[0][1], 'task', true, 4, 'openai-responses', { maxJobs: 4, maxItems: 4, maxInputBytes: 1048576 }); let spy;
+    try {
+        const first = await f.newHost().execute(f.h.handle, f.request); let jobs = 0;
+        const original = f.agent.settleLocalWork.bind(f.agent);
+        spy = jest.spyOn(f.agent, 'settleLocalWork').mockImplementation(async (...args) => {
+            const result = await original(...args);
+            if (++jobs === 2) await f.agent.setPlan(f.h.handle, f.request.projectId, f.task.taskId, { summary: 'Changed after private lowering', steps: [{ id: 'read', title: 'Read', impact: 'low' }] });
+            return result;
+        });
+        await expect(f.newHost().execute(f.h.handle, followup(f, first.response))).rejects.toMatchObject({ code: 'native_generation_task_stopped' });
+        expect(await f.rows()).toEqual([]); expect(f.wires).toHaveLength(1);
+        expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.localWork.map(row => row.usage.outcome)).toEqual(Array(4).fill('completed'));
+    } finally { spy?.mockRestore(); await f.cleanup(); }
+});
 for (const format of ['anthropic', 'gemini']) {
     test.each(harnesses)(`Runtime messages task ${format} %s actual Host resumes full native state and persists the final checkpoint`, async (_name, make) => {
         const f = await fixture(make, 'task', true, 4, format);

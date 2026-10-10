@@ -1,6 +1,7 @@
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPackageContextDerivation } from '../context-computation.js';
 import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { processPackageText } from '../processing-runtime.js';
 import { prepareKnowledgeAdoption } from '../knowledge-authority.js';
 import { captureTaskProduction } from '../task-artifact-authority.js';
@@ -818,6 +819,7 @@ export class NativeGenerationHost {
         const attempts = [];
         const computeAttempts = [];
         let computeLimits = null;
+        const localWorkAttempts = [];
         const service = new GenerationService({ resolver, contextProvider, preparePrompt: compiler.preparePrompt, secretPort: this.secretPort,
             providerFor: (id, resolved) => {
                 const baseProvider = resolver.provider(id);
@@ -827,6 +829,59 @@ export class NativeGenerationHost {
                 let pendingCharge;
                 let sendAdmitted = false;
                 let retainOnBudgetRejection = false;
+                const assertLocalCurrent = async () => {
+                    checkCancellation(signal);
+                    if (input.sessionId) return this.sessionCore.runs.repo.withRunLock(handle, input.sessionId, async () => {
+                        if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) throw new GenerationError('native_generation_revision_conflict');
+                        await this.sessionCore.runs.assert(handle, input.sessionId, 'write');
+                    });
+                    if (projectTaskEvidence) return this.agent.publishLocalIndex(handle, input.projectId, input.taskId, input.revision, projectTaskEvidence.ref.slice(-64), () => {});
+                    throw new GenerationError('native_generation_budget_lane_denied');
+                };
+                const localWork = async (kind, request, operation) => {
+                    if (preview) return operation();
+                    checkCancellation(signal);
+                    const limits = request.resolved.effectiveExecutionPolicy?.computeBudget;
+                    const attempt = { attemptId: randomUUID(), requestId: input.requestId, kind, estimatedItems: 1,
+                        estimatedInputBytes: Buffer.byteLength(JSON.stringify({ contextPlan: request.contextPlan ?? request.snapshot.contextPlan,
+                            promptIr: request.promptIr ?? request.snapshot.promptIr }), 'utf8'),
+                        targetFingerprint: hashNativeDocument({ path: resolved.pathFingerprint, kind }) };
+                    let receipt;
+                    try {
+                        if (input.sessionId) {
+                            const context = lanePlan?.budgetContext;
+                            receipt = await this.sessionCore.runs.chargeLocalWork(handle, context?.snapshot ?? snapshot,
+                                context?.anchor ?? { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, attempt,
+                                { background: context?.background === true });
+                        } else if (projectTaskEvidence) receipt = await this.agent.chargeLocalWork(handle, input.projectId, input.taskId, input.revision, limits, attempt, projectTaskEvidence.ref.slice(-64));
+                        else if (limits?.localWork) throw new GenerationError('native_generation_budget_lane_denied');
+                    } catch (error) { throw new GenerationError(error.code ?? 'generation_execution_failed'); }
+                    if (!receipt) return operation();
+                    const entry = { ...(receipt.localWork ?? receipt) }; localWorkAttempts.push(entry);
+                    const started = performance.now(), cpu = process.cpuUsage();
+                    let outcome = 'failed', result;
+                    try {
+                        try {
+                            await assertLocalCurrent(); result = await operation(); await assertLocalCurrent(); outcome = 'completed';
+                        } catch (error) {
+                            if (signal?.aborted) outcome = 'cancelled';
+                            throw error;
+                        } finally {
+                            const used = process.cpuUsage(cpu), usage = { wallMs: performance.now() - started, cpuUserMicros: used.user,
+                                cpuSystemMicros: used.system, cpuScope: 'process', outcome };
+                            const settled = input.sessionId ? await this.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId, usage)
+                                : await this.agent.settleLocalWork(handle, input.projectId, input.taskId, attempt.attemptId, usage);
+                            Object.assign(entry, settled);
+                        }
+                        await assertLocalCurrent(); return result;
+                    } catch (error) {
+                        // A rendered request may already own a private lease.
+                        // Refused admission never reaches here and preserves a
+                        // valid old checkpoint; admitted stale work cleans up.
+                        if (kind === 'generation_render' && result) await provider.discardExecution?.(result);
+                        throw new GenerationError(error.code ?? 'generation_execution_failed');
+                    }
+                };
                 const settleAttempt = async usage => {
                     if (!pendingCharge) return;
                     const { receipt, attemptId, entry } = pendingCharge;
@@ -838,7 +893,8 @@ export class NativeGenerationHost {
                 };
                 return { ...provider, settleAttempt,
                     discardExecution: rendered => retainOnBudgetRejection ? undefined : provider.discardExecution?.(rendered),
-                    renderRequest: request => { prepared = request; return provider.renderRequest(request); }, send: async (rendered, boundary) => {
+                    countTokens: request => localWork('generation_count', request, () => provider.countTokens(request)),
+                    renderRequest: request => { prepared = request; return localWork('generation_render', request, () => provider.renderRequest(request)); }, send: async (rendered, boundary) => {
                     // Role-host retries stay inside this route's send/timeout boundary.
                     // Only after they are exhausted may Core resolve a complete fallback.
                         for (let retry = 0; ; retry++) {
@@ -846,7 +902,7 @@ export class NativeGenerationHost {
                             assertExecutionEvidenceCurrent(resolved, Date.now(), prepared.snapshot.diagnostics.executionPlan.policy);
                             // Private native request leases are single-send. A retry lowers
                             // the same frozen snapshot again and rechecks its current envelope.
-                            if (retry) rendered = await provider.renderRequest(prepared);
+                            if (retry) rendered = await localWork('generation_render', prepared, () => provider.renderRequest(prepared));
                             const attempt = { runtimeRouteId: resolved.route.runtimeRouteId, retry, status: 'pending' };
                             attempts.push(attempt);
                             const capture = lanePlan?.evidenceCapture;
@@ -930,9 +986,9 @@ export class NativeGenerationHost {
         }
         if (!preview && input.projectId) { try { await observeEvolutionProject(this, handle, input, result); } catch { /* Observation failure does not change an accepted generation. */ } }
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts,
-            compute: { configured: Boolean(computeAttempts.length || result.snapshot.diagnostics.executionPlan?.policy?.computeBudget),
+            compute: { configured: Boolean(computeAttempts.length || localWorkAttempts.length || result.snapshot.diagnostics.executionPlan?.policy?.computeBudget),
                 scope: input.sessionId ? 'run_operation' : input.taskId ? 'project_task' : 'unavailable',
-                limits: computeLimits ?? result.snapshot.diagnostics.executionPlan?.policy?.computeBudget ?? null, attempts: computeAttempts,
+                limits: computeLimits ?? result.snapshot.diagnostics.executionPlan?.policy?.computeBudget ?? null, attempts: computeAttempts, localWork: localWorkAttempts,
                 observationScope: 'current_request', currencyStatus: 'unavailable' },
             ...(projectTaskCapture ? { projectTaskCapture } : {}) } });
     }
