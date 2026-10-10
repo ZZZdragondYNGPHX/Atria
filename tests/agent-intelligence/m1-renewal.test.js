@@ -1,10 +1,11 @@
 import { expect, test } from '@jest/globals';
-import { PILOT_CASES, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASES, RENEWAL_PILOT_CASE_SET_REVISION,
-    selectCases, loadFixture, validateCase, hash, canonical } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { PILOT_CASES, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASES, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASES,
+    selectCases, loadFixture, validateCase, hash, canonical, publicCaseScenario } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { runRp, runProject } from '../../src/native/agent-intelligence/evaluation/adapters.js';
 import { withIsolatedRuntime } from './runner.js';
 import { f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
 import { promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
+import { validateF2BaselineReuse, f2SourceMessages } from './m1-f2.js';
 
 test('renewal requires explicit registered revision and never mixes the historical corpus', () => {
     const options = { purpose: 'evaluation', split: 'development', profileId: 'rp.m1.information' };
@@ -22,7 +23,7 @@ test('renewal requires explicit registered revision and never mixes the historic
     expect(() => validateCase({ ...sealed, fixtureHash: hash('changed') })).toThrow('identity');
 });
 
-test.each(RENEWAL_PILOT_CASES.filter(c => c.split === 'development'))('renewal native authority fixture: $sourceId', async entry => {
+test.each([...RENEWAL_PILOT_CASES.filter(c => c.split === 'development'), ...CORRECTED_RENEWAL_PILOT_CASES.filter(c => c.sourceId.endsWith('_contract'))])('renewal native authority fixture: $sourceId', async entry => {
     const capture = { trialId: 'synthetic-renewal:' + entry.caseId, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
         prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
         observe(name, observed, expected) { this.checks[name] = canonical(observed) === canonical(expected); this.evidence.push({ name, observed, expected }); } };
@@ -31,6 +32,25 @@ test.each(RENEWAL_PILOT_CASES.filter(c => c.split === 'development'))('renewal n
         { settings: { projectSkill: 'Preserve original authority.', roundLimit: entry.limits.maxRequests }, beforeSend: () => {} }));
     expect(capture.checks).toEqual(expect.objectContaining(Object.fromEntries([...entry.expectedInvariants, 'isolation'].map(d => [d, true]))));
     expect(capture.refs.effectIds).toEqual([]);
+});
+
+test('baseline reuse binds exact complete native case, configuration and original charge; assessor covers unseen referents', () => {
+    const entry = RENEWAL_PILOT_CASES.find(c => c.split === 'development' && c.entrance === 'rp');
+    const config = { original: true }, settings = { base: true }, charge = { id: 'paid', trialId: 'trial', kind: 'baseline', requestHash: hash('request'),
+        snapshotHash: hash('snapshot'), tokens: 100, status: 'reported', usage: { totalTokens: 100 }, cost: null };
+    const pair = { case: entry, scenario: { input: loadFixture(entry, { purpose: 'evaluation' }).input }, repetition: 1,
+        candidate: null, judge: null, human: null, baseline: { trialId: 'trial', configurationHash: hash(config), settingsHash: hash(settings), output: 'Synthetic original observation',
+            error: null, requestHashes: [hash('request')], charges: [charge], checks: Object.fromEntries([...entry.expectedInvariants, 'isolation', 'target_consumed'].map(k => [k, true])) } };
+    // The real public scenario must match too, not only the input hash.
+    expect(() => validateF2BaselineReuse([pair], [entry], config, settings, { attempts: [charge] })).toThrow('reuse_changed');
+    pair.scenario = publicCaseScenario(entry); pair.pairHash = hash(pair);
+    expect(validateF2BaselineReuse([pair], [entry], config, settings, { attempts: [charge] })).toEqual([pair]);
+    expect(() => validateF2BaselineReuse([pair], [entry], config, settings, { attempts: [] })).toThrow('reuse_changed');
+    expect(() => validateF2BaselineReuse([pair], [entry], { changed: true }, settings, { attempts: [charge] })).toThrow('reuse_changed');
+    expect(() => validateF2BaselineReuse([pair, pair], [entry], config, settings, { attempts: [charge] })).toThrow('reuse_changed');
+    pair.baseline.checks.target_consumed = false; delete pair.pairHash; pair.pairHash = hash(pair);
+    expect(() => validateF2BaselineReuse([pair], [entry], config, settings, { attempts: [charge] })).toThrow('reuse_changed');
+    expect(f2SourceMessages(pair).at(-1).content).toContain('does not prove it contains any object');
 });
 
 test('private archive is lossless, hash-bound and remains ineligible for production promotion', () => {

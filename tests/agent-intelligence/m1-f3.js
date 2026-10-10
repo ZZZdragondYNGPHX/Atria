@@ -1,6 +1,6 @@
 // Delegated private engineering investigation. Never registered in production.
 import { randomUUID } from 'node:crypto';
-import { hash, canonical, selectCases, publicCaseScenario, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, selectCases, publicCaseScenario, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
@@ -25,13 +25,13 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
     if (!(labels.length === 1 ? ['primary_only', 'dual'].includes(source.entry?.judgeMode) : source.entry?.judgeMode === 'dual')
         || source.entry.status !== 'f2_sources_observed' || !(labels.length === 1
         ? ['primary_observed_gap', 'observed_gap'].includes(source.entry.baselineHeadroom) : source.entry.baselineHeadroom === 'observed_gap')
-        || controls.origin !== 'engineering_control' || controls.controls?.length !== 12 || controls.sourceControls?.length !== 8
+        || controls.origin !== 'engineering_control' || controls.controls?.length !== 12 || ![8, 9].includes(controls.sourceControls?.length)
         || hash(controls) !== scope.controlHash || labels.length === 2 && primaryConfig.model.remoteModelId === secondaryConfig?.model.remoteModelId) throw new Error('f3_source_unready');
     const comparisons = controls.controls.filter(c => c.domain === domain), sources = controls.sourceControls.filter(c => c.pair.case.entrance === domain);
     if (comparisons.length !== 6 || new Set(comparisons.map(c => c.group + ':' + c.flipped)).size !== 6
         || ['known_violation', 'counterfactual', 'missing_evidence'].some(group => [false, true].some(flipped =>
             !comparisons.some(c => c.group === group && c.flipped === flipped)))
-        || sources.length !== 4 || ['positive', 'known_violation', 'missing_evidence', domain === 'rp' ? 'unsupported_rule' : 'communication_omission']
+        || sources.length !== (domain === 'rp' && controls.sourceControls.length === 9 ? 5 : 4) || ['positive', 'known_violation', 'missing_evidence', domain === 'rp' ? 'unsupported_rule' : 'communication_omission']
         .some(group => !sources.some(c => c.group === group))) throw new Error('f3_calibration_changed');
     for (const control of controls.controls.filter(c => c.domain === domain)) for (const label of labels) {
         if (!source.entry.calibration.some(row => reusableF2Calibration(row, control, label, configs[label], scope.judgeOutputTokens,
@@ -39,7 +39,7 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
     }
     for (const control of controls.sourceControls.filter(c => c.pair.case.entrance === domain)) for (const label of labels) {
         const messagesHash = hash(f2SourceMessages(control.pair)), transportHash = hash(f2JudgeTransport(configs[label], scope.judgeOutputTokens,
-            scope.judgeReasoningEffort?.[label] ?? null));
+            scope.sourceReasoningEffort?.[kind]?.[label] ?? scope.judgeReasoningEffort?.[label] ?? null));
         if (!source.entry.sourceCalibration.some(row => row.label === label && row.group === control.group && row.passed === true
             && row.messagesHash === messagesHash && row.configurationHash === hash(configs[label]) && row.transportConfigurationHash === transportHash
             && Object.entries(control.expected).every(([dimension, status]) => row.statuses[dimension] === status))) throw new Error('f3_calibration_changed');
@@ -52,7 +52,7 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
             const config = configs[observation.label];
             if (!config || observation.messagesHash !== messagesHash || observation.evidenceHash !== hash(evidence)
                 || observation.configurationHash !== hash(config) || observation.transportConfigurationHash !== hash(f2JudgeTransport(config,
-                scope.judgeOutputTokens, scope.judgeReasoningEffort?.[observation.label] ?? null))) throw new Error('f3_assessment_changed');
+                scope.judgeOutputTokens, scope.sourceReasoningEffort?.[kind]?.[observation.label] ?? scope.judgeReasoningEffort?.[observation.label] ?? null))) throw new Error('f3_assessment_changed');
             parseF2SourceAssessment(JSON.stringify(observation), pair.case, evidence);
         }
         const shared = pair.case.behaviorDimensions.filter(dimension => rows[0].observations.every(o => o.dimensions[dimension].status === 'gap'));
@@ -61,12 +61,12 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
     if (source.assessments.length !== 3) throw new Error('f3_assessment_changed');
     if (source.report.caseSetRevision !== (scope.pilotCaseSetRevision ?? PILOT_CASE_SET_REVISION) || source.assessments.filter(row => labels.length === 2 ? row.sharedGaps.length
         : Object.values(row.observations.find(o => o.label === 'primary').dimensions).some(d => d.status === 'gap')).length
-        < (scope.pilotCaseSetRevision === RENEWAL_PILOT_CASE_SET_REVISION ? 2 : 1)) throw new Error('f3_headroom_unestablished');
+        < (scope.pilotCaseSetRevision === PILOT_CASE_SET_REVISION ? 1 : 2)) throw new Error('f3_headroom_unestablished');
 }
 
 export function validateF3Baseline(report, domain, config, settings, ledger) {
     const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(domain), caseSetRevision: report?.caseSetRevision });
-    if (report?.origin !== 'host_source_probe' || report.domain !== domain || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision)
+    if (report?.origin !== 'host_source_probe' || report.domain !== domain || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision)
         || report.configurations.baseline !== hash(config) || report.settings.baseline !== hash(settings) || report.pairs.length !== 3
         || cases.some(entry => report.pairs.filter(pair => equal(pair.case, entry) && pair.repetition === 1).length !== 1)) throw new Error('f3_baseline_changed');
     for (const pair of report.pairs) {
@@ -93,7 +93,7 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
     const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     let wins = 0;
     if (report.origin !== 'm1_f3_development' || report.evaluatorRevision !== evolutionEvaluatorRevision()
-        || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision) || report.caseSetRevision !== baseline.caseSetRevision || report.baselineReuse.reportHash !== hash(baseline)
+        || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision) || report.caseSetRevision !== baseline.caseSetRevision || report.baselineReuse.reportHash !== hash(baseline)
         || report.configurations.baseline !== baseline.configurations.baseline || report.settings.baseline !== baseline.settings.baseline
         || !equal(report.quality, qualityEnvelope(report.domain, required, 'development'))) reasons.push('evaluation_identity_changed');
     if (report.pairs.length !== 3 || required.some(c => report.pairs.filter(p => equal(p.case, c) && p.repetition === 1).length !== 1)) reasons.push('development_cases_incomplete');
