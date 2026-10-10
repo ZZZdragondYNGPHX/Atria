@@ -8,7 +8,7 @@
 - Model CapabilityDecision 可附 v1 binding：owner/account/endpoint/target/adapter/transport/options 的 canonical path fingerprint，observedAt/expiresAt、declared/verified。它不把模型字符串当 canonical upstream identity。
 - Verified 发布仅接受服务端 adapter observation 的非 JSON marker；普通配置不可伪造。既有 exact 观测可原样保留，改 endpoint/account/model 时仍须消费路径核验。来源缺失、过期或改路径降 unknown；当前明确 unsupported 优先。配置与 runtime 预览不自行 probe。
 - 原 Route 可选 executionPolicy v1：有限目标 allowlist（1–16）、verified requirements、continuity 与 reuse 许可。旧无该字段的 Route 原样精确读取，不迁移 Package、Prompt、Generation refs。政策决定和非秘密证据随原 EffectiveRequestSnapshot 固定。
-- 当前 continuation consumer 仅 none；active_execution/task/adaptive 已严格识别但 unavailable，不能凭字段可构造宣布能力。原生 handle、lineage、完整 block/签名与 restore/delete 的实际消费者在 G04 补齐后才可启用。
+- G01 checkpoint时 continuation consumer 仅 none，其余模式 unavailable；当前有界 active_execution 消费者见本文末节。task/adaptive仍不可用，不能凭字段可构造宣布能力。
 - 价格、实际上游与网关内 retries 未知时明确 unknown；三层 cache 分开。不用用户声明或 adapter metadata 冒充 gateway measurements。
 
 ## 本地支持矩阵与继续顺序
@@ -18,7 +18,7 @@
 | 原 registry | FS 精确读写、SQLite 真实 dump/restore | 本轮未跑 MySQL/Postgres；codec/key 未变化 |
 | 基础执行 | 原 OpenAI-compatible/raw-text Core 52项保留 | G02 compiler binding、G03 failure/reuse、G05 charge |
 | Path evidence | 新10项：失效、账号/路径、send前过期、不可伪造、SQL恢复 | G04 真实 adapter/probe observation |
-| Continuation | none；其它模式发送前拒绝 | G04 按 delivery 原生协议顺序，不以兼容接口假充实现 |
+| Continuation | G01基线none；当前有界active_execution见末节，task/adaptive发送前拒绝 | G04 按 delivery 原生协议顺序，不以兼容接口假充实现 |
 | HM2 | 不开启深检索或缓存 | H3/H4 继续等待相应 G 消费者和 G06 实测 |
 
 具体结果与失败修复保留在同一 Record。G02 沿原 Prompt Module target 保护 behavior/character/style/context，canonical 仅处理结构化 JSON、保留 history/tool/opaque 顺序；G03 沿原 artifact authority 校验；G04 沿原 Provider Port；G05 沿原 RunControl/send；G06 最终评价。不存在跨阶段停工或另加 API 审批。
@@ -50,3 +50,16 @@ source `09ef28452`：`provider.openai-responses` 沿原 Provider Port/Host 接�
 `9369f3b0a` 修复真实Studio每轮不同requestId/Project attempt的问题：只有原Host核验的Task来源可用当前Task lineage，owner/account/endpoint/target、Project/base、Task语义fingerprint/authority epoch、history与prefix等继续精确绑定。Snapshot保留逐请求identity，原Task各generation attempt仍分别捕获。Session及非Task请求仍受原requestId绑定，不开启task/adaptive持久continuation。Task语义改变时Studio显式转换为公开工具observations重算，不重放旧签名；Host在发送边界重验当前Task语义，不信调用者旧prefix，改动再恢复同内容也由epoch拒绝。取消/失败discard当前private状态。
 
 真实client→原HTTP router→Host→loopback provider消费和不同Task/changed/late/restore反例通过，公开输出无opaque。此消费者修复未重发已通过gateway协议请求；真实API pins仍各自Record所列producer，不能把旧实测source改为新HEAD。完整G04/G05/M8/HM2尚未验收。
+
+## G06 有界 active_execution policy 消费
+
+source `0cd35d851`；以上G01/G04的“verified active未启用”是对应历史checkpoint的事实。当前native Responses/Anthropic/Gemini Port声明其实际current tool-exchange consumer，原GenerationService同时要求同owner/account/target/path的有效verified `generation.continuation.active-execution`证据才接受active policy；adapter构造声明不成为gateway验证。兼容Port无该consumer时仍拒绝，task/adaptive仍unavailable。
+
+| 当前模式/路径 | 有限实际消费者 | 明确边界 |
+| --- | --- | --- |
+| none + native | 保留协议必须的签名/opaque工具回传 | 不伪造“无状态”对照 |
+| active_execution + native + exact verified evidence | 原工具loop/private envelope/单次lease；Studio不同request/attempt ID沿原Task scope | process_only、完成/失败/取消discard，无跨turn/persistent恢复收益声明 |
+| active_execution仅声明或缺consumer/过期/换path | 发送前拒绝；编译及Secret期间再验 | 不能用override或active证据借用task/adaptive |
+| task/adaptive | unavailable | 无消费者，不按已配置字段计算成功率 |
+
+countTokens、render及capture使用同一accepted policy，候选Route的声明不改写；同路径fallback自身声明不同仍保持accepted binding，更换不兼容路径的旧opaque不回放。观察到同owner/execution的合法引用已失效即终止该checkpoint，active→none拒绝后恢复active不复活；伪造引用/其它owner不会删除原handle。原scope/权限/source守卫、使用量和协议完整性继续适用。17新本地有限checks及6受影响旧检查结果、失败fixture与实际producer见Record；新增外部API0。旧gateway成功只归原producer，不能据此标当前HEAD全网关verified或完整G06/HM2质量通过。
