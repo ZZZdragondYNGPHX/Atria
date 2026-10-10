@@ -1453,11 +1453,11 @@ Project独立promotion最终九对全部为有效candidate胜，六维均非负�
 
 续接run-1791621637584-9004f4ab新增151请求/2088618 reported tokens，包含两条补齐development评分及完整promotion；原两条中断收费仍在development报告中。全轮F3两producer合计新增234请求/2940594 accounted tokens，其中一次unknown28236；连同本设备F2恢复新增7请求/104900 reported tokens，总新增241请求/3045494 accounted tokens。最终累计1738 requests /13896127 accounted tokens，1422 reported/64 unknown/252 historical carry，pending0/lock0；ledger hash e3b7dfb7e7ca7c0f7da15b3b14f174f8e69ed4292b36b5d7efb52ff5586df99b。旧unknown/carry/不利结果未清理，humanPreference not_observed、currencyCost unavailable、生产auto gate保持。
 
-最终最小只读审计重算三胜development及九胜promotion、原owner/shared ledger逐receipt、完整归档和149条报告/owner收费集合相等；重开真实私有fixture确认publication=0、actual=base、原targetPin不变。modelSends=0，未重复已通过测试或执行full suite/build/UI/CI。三项源码修复已提交推送（ce8486888、b3832f842、da8b9e0a0）；本设备相关local checks共110个distinct检查通过，H0仍仅准备，不将该计数当作语义/性能证据。当前有限包每域一个候选均已使用；下一范围提案见[feedback §18](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#18-本轮有限包出口与下一范围提案待确认)，尚未授权/启动新包或扩大guard。
+最终最小只读审计重算三胜development及九胜promotion、原owner/shared ledger逐receipt、完整归档和149条报告/owner收费集合相等；重开真实私有fixture确认publication=0、actual=base、原targetPin不变。modelSends=0，未重复已通过测试或执行full suite/build/UI/CI。三项源码修复已提交推送（ce8486888、b3832f842、da8b9e0a0）；本设备相关local checks共110个distinct检查通过，H0仍仅准备，不将该计数当作语义/性能证据。
 
-### 2026-10-10 用户要求持续完成与Project完整生命周期
+### Project发布凭据容量修复与完整生命周期
 
-用户明确要求持续完成、只需考虑硬限制；当前执行授权见feedback §19，覆盖前一节待确认停工点。source 8f5989882e7014cf5a9e28e004b7a2af52844efe将publication凭据上限对齐owner的2048条有界容量，新增重复ID/有界文本检查；没有遗漏收费或转移归属，原生产自动job的120次 admission预算、4 MiB journal与human/price自动门保持。最小本地生命周期八项既有检查通过；新增149条收费发布/精确回滚/重复与2049拒绝检查首次因测试误读publish返回值失败，修正后目标一项通过，累计111 distinct相关检查；未重复全套。
+source 8f5989882e7014cf5a9e28e004b7a2af52844efe将publication凭据上限对齐owner的2048条有界容量，新增重复ID/有界文本检查；没有遗漏收费或转移归属，原生产自动job的120次 admission预算、4 MiB journal与human/price自动门保持。最小本地生命周期八项既有检查通过；新增149条收费发布/精确回滚/重复与2049拒绝检查首次因测试误读publish返回值失败，修正后目标一项通过，累计111 distinct相关检查；未重复全套。
 
 Project原完整语义报告由原da8b9e0a0/5b141e8cde1e5fe6474d7fa6be12db81f81d0a931b173e57970f8c5b43153499重新只读核对三胜development与九胜promotion；原owner/shared全部费用逐条相等。新代码与原代码src/public唯一变化是repository容量修复，旧producer保持、没有重新标成新语义运行。零发送预检run-1791628218857-24a9e36a确认真实fixture可完整绑定149条并回滚。首次实际初始化因私有连接配置形状误读失败，零发送/无pending后核对死PID并清理该锁，失败记录保留。
 

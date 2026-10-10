@@ -227,7 +227,7 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 ## 17. 2026-10-10 实测结论与有限来源更新提案
 
-本节有限更新提案前的主模型结果：Project冻结候选九对独立promotion为五胜/四tie、六维非负，未达到六胜门槛；RP当时最新development为一胜/两tie、六维非负，未达到两胜门槛。未发布、未集成main。完整来源、费用和工程错误唯一记入同一Record；这些有效未达标结论不能因接线修复撤销。本轮新包最终出口见§18与同一Record最新节。
+本节有限更新提案前的主模型结果：Project冻结候选九对独立promotion为五胜/四tie、六维非负，未达到六胜门槛；RP当时最新development为一胜/两tie、六维非负，未达到两胜门槛。未发布、未集成main。完整来源、费用和工程错误唯一记入同一Record；这些有效未达标结论不能因接线修复撤销。本轮新包实际结果见同一Record最新节。
 
 RP原F2主模型source assessment和本次比较均仅在三条baseline中的一条确认实际缺口，另两条六维met。这不证明全领域饱和，但不足以支持反复用同一包检验至少两胜。Project未读promotion正文，不能把其失败场景回灌提炼器。新版本应更新来源资格与独立材料，不能再试原冻结候选追分。
 
@@ -253,26 +253,3 @@ RP原F2主模型source assessment和本次比较均仅在三条baseline中的一
 
 
 用户随后明确取消双模型准入；当前规则以[m1-acceptance §14](m1-acceptance.md#14-2026-10-09-当前主模型准入)为准，第二连接不可用不再阻止development/promotion。既有双模型数据和失败属于历史事实，不删除、不改分，也不创建第二份门槛。
-
-## 18. 本轮有限包出口与下一范围提案（待确认）
-
-§17授权的每域一个候选均已使用，两域development均三胜。RP独立九对四胜/两tie/三负，重要维度有退化，未准入；Project独立九对全部胜、六维非负，但完整149条收费凭据超过原publication 120条上限，原native guard拒绝发布。两域均未取得本轮真实review→下一消费→rollback出口，M1未通过、main未集成。完整producer/source/report/费用/只读审计唯一见[同一Record](../../../records/refactor/agent-intelligence-runtime.md)最新节；没有把有效负面结果或容量拒绝撤销。
-
-以下是保持现有guard的具体下一范围提案，尚未授权；不把有限包退出当成整体M1完成：
-
-| 项目 | 待确认的有限范围 |
-| --- | --- |
-| RP | 同一信息边界/玩家自主问题，三个新的公开development来源；真实baseline至少两gap后只提炼一个新候选。干预仅依据公开缺口，保留原Actor persona/voice，不额外加入未有来源缺口的通用文风偏好 |
-| Project | 保留当前已获九胜的冻结候选，不从当前promotion取材或重新提炼；同一关联修复/状态说明问题准备三个新的公开development来源，降低非必需任务规模并先核对原生可完成性与实际费用规模，不减少必需权限、conflict/fresh Task/human revision/Review边界 |
-| 独立材料 | 每域三个新密封promotion，由只接收公共领域/格式/工作量契约的独立作者准备；作者不接收候选、development输出或旧promotion评分，开发侧只读metadata/hash |
-| 身份与准入 | 固定新来源版本及原角色/权限/config/request/usage pins。原三development至少两胜、三独立case各三pair至少六胜、其余tie且六维非负、完整review→真实下一消费→guarded rollback均不变 |
-| 费用与退出 | 全部历史与新收费/失败/unknown/完整报告保留，只有exact不变且完整已付费控制可复用；不重抽凑分。原4 MiB journal、publication最多120条IDs、生产human/price gate及每日2000/20RPM保持。费用预检不能声称保证模型实际调用数；若仍超限如实拒绝 |
-| H0 | 隔离调用图、8样本/519来源及adapter/观察清单已准备，B0和H1/H2未实施；M1完整出口及集成前不推进H1/H2 |
-
-另一选择是先讨论publication收费凭据的有界容量契约：当前原owner ledger最多2048 attempts，与publication 120条限制不同。此方向会改变本轮明确要求保留的guard，必须先确认具体设计/范围；不能默认扩容，也不能以截断IDs、转移收费归属或零收费审阅job绕开绑定。已通过的Project语义报告和原producer pins保持，不将已有证据重新标为新运行。
-
-## 19. 用户要求持续完成、仅以硬限制为执行边界
-
-用户随后明确要求：“继续，没有完成任务不要停下，你只需考虑硬限制。”因此§18不再是待确认停工点；继续新来源、候选与独立作者材料工作，不再以已用完单候选范围或120条publication凭据的实现容量停止。每日2000次/20 RPM仍由统一发送端执行，日额度按滚动24小时保守计算，累计历史不是终身上限。有效负面评分、原六维及完整真实出口要求保持；不得删除收费、回灌独立材料或改分。
-
-publication绑定容量已与owner ledger的2048条有界容量对齐，生产自动job的120次 admission预算、human/price自动准入与4 MiB journal保持；重复/过长凭据仍拒绝。Project保留原producer的三胜development、九胜promotion与冻结候选，已在容量修复后的native代码完成显式私有review→真实下一请求消费→guarded rollback，完整149条费用绑定。原语义报告不改版本标识；旧producer与新生命周期代码分别固定，具体pins和费用唯一见同一Record。RP尚待完整出口，M1整体未完成、main未集成。H0准备保持。
