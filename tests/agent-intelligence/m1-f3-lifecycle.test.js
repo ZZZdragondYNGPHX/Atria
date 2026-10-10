@@ -1,6 +1,8 @@
 import { expect, test } from '@jest/globals';
+import fs from 'node:fs';
+import path from 'node:path';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { evolutionFixture, runEvolution } from './evolution-fixture.js';
+import { evolutionFixture, runEvolution, restoreEvolutionFixture } from './evolution-fixture.js';
 import { publishConsumeRollback } from './m1-f3-promotion.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
 
@@ -42,6 +44,23 @@ test.each(['rp-skill', 'project-prompt'])('F3 %s delegated review consumes the s
         expect(owner.attempts.slice(ownerBefore.attempts.length).every(a => a.jobId === job.id + ':activation' && a.status === 'reported')).toBe(true);
         expect(sends.length).toBeGreaterThan(0);
     } finally { await f.h.cleanup(); }
+}, 45000);
+
+test('unpublished evaluation restore preserves the frozen candidate and original paid identities', async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review', repositoryClass: ImmediateSyntheticRepository });
+    let restored;
+    try {
+        const result = await runEvolution(f), owner = await f.repository.owner(f.h.handle);
+        restored = await restoreEvolutionFixture(makeTempFsEngineHarness, f.h.dataRoot, result, { evaluationOnly: true });
+        expect(await restored.repository.get(restored.h.handle, restored.scope, restored.subject)).toEqual(result.doc);
+        expect(await restored.repository.owner(restored.h.handle)).toEqual(owner);
+        expect(await restored.service.targets.check(restored.h.handle, restored.scope, restored.subject, restored.target, result.candidate.candidateId))
+            .toMatchObject({ base: result.candidate.base, desired: result.candidate.desired });
+        const changed = structuredClone(result); changed.candidate.diff.after += '\nChanged';
+        await expect(restoreEvolutionFixture(makeTempFsEngineHarness, f.h.dataRoot, changed, { evaluationOnly: true })).rejects.toThrow('resume_evaluation_changed');
+        const resources = path.join(f.h.dataRoot, 'u/atria-native/resources/atri_agent_evolution');
+        expect(fs.existsSync(resources)).toBe(true);
+    } finally { restored?.h.cleanup(); f.h.cleanup(); }
 }, 45000);
 
 test.each(['rp-skill', 'project-prompt'])('F3 %s restores the base when next-request transport fails', async kind => {

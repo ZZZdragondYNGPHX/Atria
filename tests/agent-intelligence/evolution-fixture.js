@@ -159,7 +159,7 @@ export async function runEvolution(f) {
     return { doc: next, job, candidate: job.candidates[0] };
 }
 // Reopen a saved private fixture for lifecycle evidence only; never rerun trials.
-export async function restoreEvolutionFixture(make, directory, result, { fetchImpl, repositoryClass = AgentEvolutionRepository, requireCurrentPublication = true, baselineOnly = false } = {}) {
+export async function restoreEvolutionFixture(make, directory, result, { fetchImpl, repositoryClass = AgentEvolutionRepository, requireCurrentPublication = true, baselineOnly = false, evaluationOnly = false } = {}) {
     const h = await make();
     try {
         fs.cpSync(directory, h.dataRoot, { recursive: true });
@@ -180,6 +180,12 @@ export async function restoreEvolutionFixture(make, directory, result, { fetchIm
         }
         const publication = doc.publications.find(p => p.jobId === result.job.id && p.candidateId === result.candidate.candidateId);
         const saved = doc.jobs.find(j => j.id === result.job.id)?.candidates.find(c => c.candidateId === result.candidate.candidateId);
+        if (evaluationOnly) {
+            if (publication || hash(doc) !== hash(result.doc) || !saved || hash(saved) !== hash(result.candidate)
+                || hash(await service.targets.capture(h.handle, scope, subject, target)) !== result.job.targetPin) throw new Error('resume_evaluation_changed');
+            const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || result.doc.policy.routeId);
+            return { h, host, service, repository, evaluator, scope, subject, target, route };
+        }
         if (!publication || !saved || hash(saved.report) !== hash(result.candidate.report)
             || requireCurrentPublication && !await service.targets.publicationCurrent(h.handle, scope, subject, publication)) throw new Error('resume_publication_changed');
         const route = await host.persistence.getRuntimeRoute(h.handle, target.runtimeRouteId || result.doc.policy.routeId);

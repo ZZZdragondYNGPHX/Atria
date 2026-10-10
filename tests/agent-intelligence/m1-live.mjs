@@ -22,6 +22,7 @@ import { m1GraderConfiguration, sendM1Grader, m1ExtractionConfiguration, sendM1E
 import { assertM1PrivateAccess } from './m1-private-access.js';
 import { validateF2Scope, runF2Domain } from './m1-f2.js';
 import { runF3Domain, f3JudgeLabels } from './m1-f3.js';
+import { continueF3Promotion } from './m1-f3-promotion.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 setConfigFilePath(path.join(repo, 'default/config.yaml'));
@@ -38,7 +39,8 @@ const safeReason = error => /^[a-z_0-9]{1,100}$/.test(error?.code || error?.mess
 try {
     const temporarySecondary = option.length === 4 && option[3] === '--temporary-secondary';
     if (temporarySecondary) option.pop();
-    const f3Name = option.length === 3 && option[2].startsWith('--f3=') ? option[2].slice('--f3='.length) : null;
+    const f3Promotion = option.length === 3 && option[2].startsWith('--f3-promotion=');
+    const f3Name = option.length === 3 && (f3Promotion || option[2].startsWith('--f3=')) ? option[2].slice((f3Promotion ? '--f3-promotion=' : '--f3=').length) : null;
     if (f3Name && !/^m1-f3-[a-z0-9-]+\.json$/.test(f3Name)) throw new Error('invalid_f3_scope_name');
     const f2Prepare = option.length === 3 && option[2].startsWith('--f2-prepare=');
     const f2Name = option.length === 3 && (f2Prepare || option[2].startsWith('--f2=')) ? option[2].slice((f2Prepare ? '--f2-prepare=' : '--f2=').length) : null;
@@ -89,6 +91,9 @@ try {
     if (f3Resume && (hash(f3Resume) !== f3Scope.calibrationResumeSummaryHash || f3Resume.mode !== 'f3_private_development'
         || f3Resume.entries.some(e => e.candidateValueHash || e.status === 'f3_development_observed'))) throw new Error('f3_resume_not_calibration');
     if (f3Scope?.sealedDirectory && !/^m1-f2-sealed-[a-z0-9-]+$/.test(f3Scope.sealedDirectory)) throw new Error('f3_sealed_directory_changed');
+    if (f3Promotion && (!/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.promotionResumeRun)
+        || !/^run-[0-9]+-[a-f0-9]{8}$/.test(f3Scope.promotionSourceRun) || f3Scope.promotionKind !== 'project-prompt'
+        || !/^[a-f0-9]{64}$/.test(f3Scope.frozenCandidateHash))) throw new Error('f3_promotion_resume_changed');
     const limits = read('m1-limits.json');
     const ledgerPath = path.join(directory, 'm1-ledger.json');
     const snapshot = read('m1-ledger.json');
@@ -313,6 +318,7 @@ try {
     const { runRp } = await import('../../src/native/agent-intelligence/evaluation/adapters.js');
     const { selectCases, loadFixture, canonical } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
     for (const kind of pilotScope?.domainOrder || ['rp-skill', 'project-prompt']) {
+        if (f3Promotion && kind !== f3Scope.promotionKind) continue;
         const index = ['rp-skill', 'project-prompt'].indexOf(kind);
         if (cycleProjectExtract && index === 0) continue;
         if (cycleBaselineProject && index === 0) continue;
@@ -322,9 +328,12 @@ try {
         summary.entries.push(entry); store('summary.json', summary);
         try {
             const primary = connections[0];
+            const promotionResult = f3Promotion ? read('m1-reports/' + f3Scope.promotionSourceRun + '/' + kind + '-job.json') : null;
+            if (promotionResult && hash(promotionResult) !== f3Scope.promotionResultHash) throw new Error('f3_promotion_resume_changed');
             const f2Restored = f3Scope?.calibrationResumeRun || pilotScope?.preparationRun;
             if (f2Restored && !/^run-[0-9]+-[a-f0-9]{8}$/.test(f2Restored)) throw new Error('invalid_f2_preparation_run');
-            const f = f2Restored ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(directory, 'm1-reports', f2Restored, kind + '-private-fixture'),
+            const f = f3Promotion ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(directory, 'm1-reports', f3Scope.promotionResumeRun, kind + '-private-fixture'),
+                promotionResult, { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, evaluationOnly: true }) : f2Restored ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(directory, 'm1-reports', f2Restored, kind + '-private-fixture'),
                 JSON.parse(fs.readFileSync(path.join(directory, 'm1-reports', pilotScope.preparationRun, kind + '-f2-baseline.json'), 'utf8')),
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, baselineOnly: true }) : gradeSource ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(gradeSource.previous, kind + '-private-fixture'), gradeSource.results[kind],
                 { fetchImpl: transport, repositoryClass: M1AdvisoryRepository, requireCurrentPublication: false }) : resumed ? await restoreEvolutionFixture(makeTempFsEngineHarness, path.join(resumed.previous, 'project-prompt-private-fixture'), resumed.result,
@@ -484,6 +493,12 @@ try {
                 const source = { entry: f3Summary.entries.find(e => e.kind === kind),
                     report: JSON.parse(fs.readFileSync(path.join(f3SourcePath, kind + '-source-probe.json'), 'utf8')),
                     assessments: JSON.parse(fs.readFileSync(path.join(f3SourcePath, kind + '-f2-source-assessments.json'), 'utf8')) };
+                if (f3Promotion) {
+                    await continueF3Promotion({ f, kind, result: promotionResult, source, scope: f3Scope, entry, store, signal: overall.signal,
+                        ledger: () => budget.snapshot(), sealedDirectory: path.join(directory, f3Scope.sealedDirectory),
+                        primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId) });
+                    continue;
+                }
                 await runF3Domain({ f, kind, primaryConfig: await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId), secondaryConfig,
                     scope: f3Scope, source, controls: f3Controls, ledger: () => budget.snapshot(), entry, store, signal: overall.signal,
                     calibrationResume: f3Resume?.entries.find(e => e.kind === kind)?.comparisonCalibration || [],

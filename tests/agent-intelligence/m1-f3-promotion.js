@@ -6,7 +6,7 @@ import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { runRp } from '../../src/native/agent-intelligence/evaluation/adapters.js';
-import { comparisonCalibrationReady, gradeF3Report, f3JudgeLabels } from './m1-f3.js';
+import { comparisonCalibrationReady, gradeF3Report, f3JudgeLabels, pilotDevelopmentReadiness } from './m1-f3.js';
 import { projectActivationMatches } from './m1-resume.js';
 
 const equal = (a, b) => canonical(a) === canonical(b);
@@ -160,4 +160,37 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
     } else entry.status = 'f3_promotion_unqualified';
     const final = await f.repository.get(f.h.handle, f.scope, f.subject), finalJob = final.jobs.find(j => j.id === job.id);
     store(kind + '-job.json', { doc: final, job: finalJob, candidate: finalJob.candidates[0] });
+}
+
+// An interrupted, ungraded batch is retained as history. Restart one complete
+// nine-pair batch with a new job identity and the exact already frozen candidate;
+// never regenerate the proposal or select favorable partial slots.
+export async function continueF3Promotion({ f, kind, result, source, scope, entry, store, signal, ledger, sealedDirectory, primaryConfig }) {
+    const candidate = result.candidate, report = candidate.report;
+    const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
+    if (hash(doc) !== hash(result.doc) || report.judgeMode !== 'primary_only' || scope.judgeMode !== 'primary_only'
+        || report.evaluatorRevision !== evolutionEvaluatorRevision() || hash(candidate.diff.after) !== scope.frozenCandidateHash
+        || hash(await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target)) !== result.job.targetPin) throw new Error('f3_frozen_continuation_changed');
+    const checked = await f.service.targets.check(f.h.handle, f.scope, f.subject, f.target, candidate.candidateId);
+    if (!equal(checked.base, candidate.base) || !equal(checked.desired, candidate.desired)) throw new Error('f3_frozen_continuation_changed');
+    entry.judgeMode = 'primary_only'; entry.candidateValueHash = hash(candidate.diff.after);
+    entry.developmentReadiness = pilotDevelopmentReadiness(report, [], await f.repository.owner(f.h.handle), result.job.id, source.report, ledger());
+    if (!entry.developmentReadiness.accepted) throw new Error('f3_development_unqualified');
+    const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+    const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target, candidate.candidateId);
+    const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, settings.projectPromptRef || null);
+    if (hash(primaryConfig) !== report.configurations.baseline || hash(config) !== report.configurations.candidate
+        || hash(baselineSettings) !== report.settings.baseline || hash(settings) !== report.settings.candidate) throw new Error('f3_continuation_configuration_changed');
+    const job = { ...result.job, id: 'm1-f3-promotion-' + randomUUID(), status: 'evaluating', createdAt: Date.now(),
+        candidates: [structuredClone(candidate)], operationId: null };
+    await f.repository.mutate(f.h.handle, f.scope, f.subject, saved => { saved.jobs.push(job); });
+    entry.jobId = job.id; entry.continuation = { originalJobId: result.job.id, candidateHash: hash(candidate),
+        developmentReportHash: hash(report), partialBatch: 'retained_ungraded_not_selected' };
+    const paidJob = { ...job, scopeId: doc.scopeId, domain: report.domain, price: null };
+    const fresh = async () => {
+        signal.throwIfAborted(); await f.service._fresh(f.h.handle, f.scope, f.subject, job.id);
+        if (hash(await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target)) !== job.targetPin) throw new Error('f3_base_changed');
+    };
+    await finishF3Promotion({ f, kind, job: paidJob, candidate, primaryConfig, secondaryConfig: null, baselineSettings, settings, config,
+        scope, entry, store, signal, fresh, sealedDirectory, developmentReport: report });
 }
