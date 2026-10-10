@@ -403,7 +403,7 @@ try {
             }
             const owner = await f.repository.owner(f.h.handle);
             if (!f3Promotion) await f.service.budget(f.h.handle, { expectedSequence: owner.sequence,
-                limits: { maxRequests: Math.max(260, owner.requests), maxTokens: Math.max(699536, owner.tokens), minIntervalMs: 3150 } });
+                limits: { maxRequests: Math.max(260, owner.attempts.length), maxTokens: Math.max(699536, owner.attempts.reduce((sum, a) => sum + a.tokens, 0)), minIntervalMs: 3150 } });
             const secondary = connections[1];
             const extendedGrader = secondary && (gradeSource || cycle || pilotScope || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
             let secondaryConfig = null;
