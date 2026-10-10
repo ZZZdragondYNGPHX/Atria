@@ -614,29 +614,11 @@ Do not report checks that were not actually run.
 
 ---
 
-## 26. CI / development workflow
+## 26. Local development and delivery
 
-For N0–N10:
+Use the task branch, preserve unrelated changes and record each coherent implementation slice in the same Record. At each stage and completion, run only the minimum relevant local validation. Diagnose and fix ordinary failures, then continue to the next dependency; a phase boundary does not require approval or a handoff.
 
-1. work only on `refactor/atria-native-content-session-architecture`;
-2. keep `main` stable and untouched until final integration;
-3. commit each coherent slice;
-4. run focused tests before broader tests;
-5. record validated HEAD per phase;
-6. when CI enters a clearly long verification run, stop polling and report status;
-7. resume when the user reports CI complete;
-8. if real Android/Termux logs, real UI screenshots, permissions, Secrets, or account authorization are required, stop and request only that external input;
-9. otherwise diagnose/fix ordinary failures independently.
-
-At final completion:
-
-1. finish N10 residual scan/validation;
-2. update permanent docs;
-3. create/update final PR to `main`;
-4. validate all required CI;
-5. merge;
-6. verify integrated `main`;
-7. delete the temporary refactor branch only after successful integration.
+Complete the remaining implementation and relevant validation, update permanent docs, integrate locally and verify the resulting Git state. Remote storage receives commits; CI and PRs are not prerequisites. Remove the temporary branch after integration. Execution and genuine external blockers follow Governance §8 / §13.
 
 ---
 

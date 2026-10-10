@@ -1,6 +1,6 @@
 # HANDOFF Template
 
-> 使用条件与生命周期见 [Governance §7](../README.md#7-handoff)。
+> 使用条件与生命周期见 [Governance §7](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/README.md#7-handoff)。
 
 ## Task
 
@@ -27,7 +27,7 @@
 
 ## Local validation
 
-列出实际结果与尚缺证据；验证方式见 [Governance §12](../README.md#12-execution-adapters)。
+列出实际结果与尚缺证据；验证方式见 [Governance §12](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/README.md#12-execution-adapters)。
 
 -
 

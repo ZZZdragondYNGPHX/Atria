@@ -1,5 +1,3 @@
 # Claude Code Entry
 
-Follow `AGENTS.md` as the authoritative local instructions for the docs workspace.
-
-For repository-governance questions, `README.md` on this branch is the complete authority. Do not duplicate those rules here.
+Follow `AGENTS.md`; repository governance and execution rules come only from `docs:README.md`.

@@ -130,8 +130,8 @@ RP / Project 的局部改进不会自动扩散到其他角色、会话或项目�
 
 - 每 scope 每 24 小时最多一轮自动 job；一轮最多生成两个候选，最多发布一个单目标版本。
 - 首个 promotion 集每入口至少包含三个独立场景，每场景至少三次 paired trial；这是最小试运行规模，不是统计可靠性的保证。
-- 每轮与每 owner 都必须有有限的 request / token 总预算；包括 baseline、candidate、judge、retry 和提炼开销，不通过新增 scope 逃避总预算。
-- 先在 S01 测代表案例的实际开销，再冻结 token 上限和改善 / 回归容忍阈值。预算不足就停止并报告，不偷偷缩小验收集。
+- 生产自动模式的每轮与每 owner 都必须有有限的 request / token 总预算；包括 baseline、candidate、judge、retry 和提炼开销，不通过新增 scope 逃避总预算。
+- 生产自动预算依据实测配置；工程测试只按 docs Governance 的每日 2000 次、20 RPM 执行，不因 token 建议或旧实验预算停工。
 
 上述频率和数量仍是建议；没有把它们当成本对话已批准值。取消 / 未知 usage 的请求按已预留上界记账或暂停自动模式，不能计零成本。reasoning / cached input 的 provider 子项不与 total token 重复相加；estimated user cost 与 settled charge 分开。Gateway 内部重试不可观测时不能承诺真实上游调用硬上限。
 
@@ -194,6 +194,6 @@ S10 支持 ordinary RP exact character 下的 bounded single-owner Director、�
 
 **M1 工程阶段 S01–S10 已交付；M1 完整产品退出条件仍待验收。** 独立真实案例质量 / 成本改善尚未证明，包含提炼 / judge 的净收益也未证明。下一仅复核有限实测与人工观察所需条件、预算和集成前置检查；若条件不足，记录明确待验收事项。main 未合并，S11 / G 未开始。
 
-## 12. 2026-10-07 自动化工程验收调整
+## 12. 工程验证路由
 
-用户批准agent代劳与保守结转 / 新有限验证预算。当前M1工程验收使用 [m1-acceptance](m1-acceptance.md) 的确定性检查 / 双模型盲评与真实局部review闭环，不要求用户本人提供human标签；缺失human仍真实标记not_observed。生产automatic promotion继续严格执行S10原human / price gate，工程通过不取得自动发布权限。完整退出门槛与恢复预算由该模块唯一管理，早期M1人工验收条款不再约束工程交付验收。
+当前工程验证见正式 `docs:plans/architecture/agent-intelligence-runtime/m1-acceptance.md`，按具体问题选择最小相关本地检查；不固定模型、样本、候选或胜场数量。生产自动发布仍按 S10 的产品权限，模型观察不冒充 human 标签。

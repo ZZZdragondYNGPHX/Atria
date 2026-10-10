@@ -1,5 +1,7 @@
 # Atria Agent Intelligence Runtime — 正式架构与阶段入口
 
+> 本分支只供企划编辑；状态与旧工程阈值不作为执行依据。正式恢复和工程验证使用 docs 分支的 Plan / Record；API 仅限每日 2000 次、20 RPM。
+
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
 - Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete / S09 complete / S10 engineering complete; M1 empirical acceptance pending**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。

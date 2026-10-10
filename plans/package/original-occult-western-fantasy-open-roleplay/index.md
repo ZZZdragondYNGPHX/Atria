@@ -58,4 +58,4 @@ Phase 1已定位实际authority resolver/准备与提交、动态提案反应、
 
 默认 Open Lives 3.0.0 保持 19 个事务/17 个玩家原语、2 个模拟 job；P4 替换 neutral shell 编译路径为真实 Native 页面。为支持有界最近消息和清理后的铁人终局展示，在原 Core 辅助分支补固定只读服务及终局受限 epoch，Core 已以相同 HEAD `1661af11245c856363bfc1084275c02b55a97452` 快进集成 main。实际接口以 runtime-contracts Phase 2/3/4 和游戏 `runtime/ROLEPLAY.md` 为准；精确实施 HEAD、本地浏览器/局部 Core 证据及限制见同一 Record / HANDOFF。Phase 5 已完成最终文件的内容/Native UI/发布安装校验，3.0.0 已保留在 package；生产模型叙述质量仍未测。
 
-用户 2026-10-04 最新 AGENTS.md 指令替代此前提供的 AGENTS.md 指令：每阶段及任务完成时，只在本地执行最小相关验证。详见同一 Record Phase 2 / HANDOFF；远端 refs 核对只属于发布确认，不启动/等待/依赖远端 CI。
+每阶段及任务完成时，只在本地执行最小相关验证。详见同一 Record Phase 2 / HANDOFF；远端 refs 核对只属于发布确认，不启动/等待/依赖远端 CI。

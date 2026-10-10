@@ -393,7 +393,7 @@ Frozen:
 - later generated matters should demonstrably reuse authentic prior history, family, artifacts, institutions and Historical Hooks;
 - save/history storage and active model projection must show sublinear growth relative to turn count through compaction and retrieval;
 - long fast-forward must prove hierarchical/event-driven resolution rather than secretly executing every intervening day at full fidelity;
-- deterministic fixtures plus a seed matrix plus long-running soak tests are required; a single favorable seed is insufficient;
+- choose relevant deterministic fixtures, seeds and duration for the actual change; a single favorable result does not prove stability;
 - failure to meet these gates blocks declaring the Long-Lived World project complete.
 
 Detailed authority: `verification.md`.

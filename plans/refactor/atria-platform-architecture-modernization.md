@@ -363,7 +363,7 @@ R8 可以把这些边界包进 Adapter，但不能偷偷创建新的并行 autho
 Express 4 → 5：
 
 - 独立兼容性 checkpoint；
-- 先跑 codemod + 全量 API/E2E；
+- 执行 codemod，并在本地验证受影响 API/E2E；
 - 若收益有限而 blast radius 明显，可以正式 defer；
 - Express 5 **不是 R8 成功的硬依赖**。
 

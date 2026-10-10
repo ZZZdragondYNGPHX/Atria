@@ -1,5 +1,7 @@
 # 最新 main：能力、接入点与缺口
 
+> 本分支只供企划编辑；状态与旧工程阈值不作为执行依据。正式恢复和工程验证使用 docs 分支的 Plan / Record；API 仅限每日 2000 次、20 RPM。
+
 - Inspected: 2026-10-06
 - Product: `origin/main@ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: `origin/docs@2e57f83b19d2321260be93f98dbbf5321f4b0b84`

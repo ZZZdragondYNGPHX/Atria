@@ -115,7 +115,7 @@ npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js
 
 Context suite 扩展 Shared 停用且不回退 solo 的断言，并复验受控 HTTP Provider 真正发送；Play suite 增加接受时姓名/头像与后来选择分离。Shared Host suite 验证 seat/access/scope/CAS anchors 与 observer/pending 拒绝。Chromium 390px 的四个产品场景包括管理/迁移重放/局部源预检、solo/Host/独立恢复及草稿/focus、中文管理、真实服务 Shared 自己席位选择与描述停用。实际数量/命令/失败修复/截图限制见 Record。
 
-没有执行全量 tests/构建/Android/真实手机IME/WebView/MySQL/Postgres/远端模型/远端 CI；完整矩阵继续归 A5/B/F。支持范围入口已开放，Shared 描述仍为停用；不能把有权限的 Shared 显示/选择误记为描述已消费。
+没有执行全量 tests/构建/Android/真实手机IME/WebView/MySQL/Postgres/远端模型/远端 CI；后续按实际改动选择最小相关本地验证，不把完整矩阵作为前置。支持范围入口已开放，Shared 描述仍为停用；不能把有权限的 Shared 显示/选择误记为描述已消费。
 
 ## A5 first-round local integration checkpoint
 

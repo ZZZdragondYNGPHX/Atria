@@ -41,6 +41,6 @@ Required reading:
 
 ## Validation strategy
 
-描述本任务的验收目标与相关检查；通用验证方式见 [Governance §12](../../README.md#12-execution-adapters)。
+描述本任务的验收目标与相关检查；通用验证方式见 [Governance §12](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/README.md#12-execution-adapters)。
 
 ## Material routing/design changes

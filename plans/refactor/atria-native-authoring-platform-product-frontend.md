@@ -643,7 +643,7 @@ Low-frequency legacy compatibility controls may temporarily remain behind an Adv
 
 ## Implementation phases
 
-The implementation uses one long-lived temporary refactor branch and stops after every phase for documentation/handoff and validation.
+Use one task branch, update the same Record and run minimum relevant local validation at each phase, then continue. Handoff follows Governance §7.
 
 ### A0 — Contracts & Hard-cutover Guards
 

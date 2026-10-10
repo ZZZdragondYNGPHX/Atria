@@ -221,7 +221,7 @@
 - 删除 legacy manifest/componentModelVersion plumbing；
 - 删除/改写旧Studio/Preview paths；
 - 清理 dead CSS/fixtures/tests；
-- 全量关联测试/CI；
+- 最小相关本地验证；
 - 最终 Docs Record；
 - merge回 `main`；
 - 删除 task branch。
@@ -230,8 +230,8 @@
 
 - 非Text Native Experience只存在 v3 正式路径；
 - repo搜索无意外 legacy Runtime selector；
-- targeted + adjacent + repository-required CI通过；
-- docs Record记录最终HEAD/CI/关键决策；
+- 受影响路径的最小相关本地检查通过；
+- docs Record记录最终 HEAD、实际本地验证和关键决策；
 - HANDOFF在任务最终完成后删除；
 - task branch确认merge后删除。
 

@@ -1,6 +1,8 @@
 # Records
 
-These files record historical facts. Current execution rules belong to [Governance](../README.md).
+> 本分支保存设计编辑副本；正式执行、验证、配额与恢复只归 `docs` 分支，不从本分支历史内容恢复许可或停止要求。
+
+These files record historical facts. Current execution rules belong to [Governance](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/README.md).
 
 Records are permanent implementation history.
 

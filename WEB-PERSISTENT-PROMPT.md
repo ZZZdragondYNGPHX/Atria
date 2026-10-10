@@ -1,3 +1,3 @@
-# Atria Remote Execution Status — Inactive
+# 远端执行入口
 
-执行环境与远端存储职责见 [Governance §12](README.md#12-execution-adapters)。本文件只保留远端入口，不定义另一套执行、测试或交接规则。
+远端保存提交。执行、验证与恢复规则统一见 `docs:README.md`；本分支不定义另一套流程。

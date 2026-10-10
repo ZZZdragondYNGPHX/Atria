@@ -76,17 +76,11 @@ production cases 的真实随机模型结果允许失败；失败是基线观测
 建议 test-only 模块放于 `tests/agent-intelligence/`，供 Jest 与 baseline command 共用；不向生产资源 registry 注册 S02 尚未引入的资源。
 本阶段输出只使用现有测试临时目录 / 明确的报告目标。永久 Record 保存可公开汇总和 tested HEAD，不提交私人响应、缓存或生成报告目录。
 
-## 5. 运行与预算
+## 5. 运行与调用计数
 
-Scripted 模式：全部 12 cases 各执行一次，实际调用 Runtime / Director / Project authority；费用明确为无外部 provider 调用。不能用于自动晋升的行为收益证据。
-Model 模式：先取一个 RP 和一个 Project development 案例，各三次 trial；复用当前已配置的 generation 入口。原调用路径不支持某能力时标 unavailable。
-promotion 场景的完整 baseline 在进入 S06 比较前补齐，不能用这六个 development trials 代替独立晋升案例。
+按实际改动选择相关 scripted / model 案例和必要 trial，沿现有测试连接执行；两种证据分别记录。API 测试只按正式 docs Governance 的每日 2000 次、20 RPM 自动计数，不要求额外 maxRequests/maxTotalTokens 配额或新许可。
 
-S01 live pilot 必须提供有限 `maxRequests` 与 `maxTotalTokens`；不默认读取 Secret、选择付费 route 或发起模型请求。
-每条路径每 trial 最多六次 model 请求，pilot 最多 36 次模型请求；如果增加独立 model judge，总上限最多 42 次。retry、fallback 与 grader 都计入上限。
-输出预算沿用当前明确 generation 配置；请求前按 input token count + reserved output 做 reservation。总预算不足就不发送下一请求；不缩小案例覆盖后声称完成。
-实际 token 上限由现有请求 preview / count 与有限 pilot 配置给出；没有该配置就报告 `budget_blocked`，先交付 scripted runner，不把无上限预算作为默认值。
-取消 / usage 缺失时保留 reservation 上界，避免重试重复开销被漏算。
+请求、retry、judge 和诊断全部计数；输出与 timeout 适配任务及 Provider 能力。取消和 usage 缺失如实标注，历史预算不作为停工条件。独立验收材料保持隔离，失败修复后做最小相关本地复测。
 
 ## 6. 验证与失败处理
 
@@ -100,7 +94,7 @@ fixture 运行必须对隔离产物做前后校验，确认生产对象未发生
 
 ## 7. D2 补充测量边界
 
-保留本模块 12 cases、Case / Trial / Report v1 和有限 pilot 上限，不增加生产 schema 或提前实现 G01–G06。已有真实入口能提供的 target、adapter、已观察 upstream、root / child / attempt、foreground / background、TTFT、input / cached / output / reasoning 等计数作为报告测量依据；拿不到就记录既有 completeness / unavailable。
+保留本模块 12 cases、Case / Trial / Report v1 和相关试验设计，不增加生产 schema 或提前实现 G01–G06。已有真实入口能提供的 target、adapter、已观察 upstream、root / child / attempt、foreground / background、TTFT、input / cached / output / reasoning 等计数作为报告测量依据；拿不到就记录既有 completeness / unavailable。
 新增可选测量在 test-only 版本化 sidecar 中关联 trialId；消费端未知 schema 明确拒绝，不把额外字段强塞进严格 v1。S02 / G01 注册新产品契约前单独细化。
 
 先记录当前 Director / Project 调用图；一次正文是后续 ablation 的对照目标，不因测量而删除 Package 必需 resolver、工具 / authority guard 或改变测试期望。S06 / G06 再运行可用对照。价格、上游 snapshot 与 usage 可知程度分别注明；scripted 零外部调用不能当真实模型低成本证据。

@@ -1,6 +1,8 @@
 # Plans
 
-Read the relevant Plan index and Record. Execution rules belong to [Governance](../README.md).
+> 本分支保存设计编辑副本；正式执行、验证、配额与恢复只归 `docs` 分支，不从本分支历史内容恢复许可或停止要求。
+
+Read the relevant Plan index and Record. Execution rules belong to [Governance](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/README.md).
 
 Plans 记录实现前或实现期间的设计与理由，不承担实施历史。
 
