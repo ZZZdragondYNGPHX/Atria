@@ -1809,3 +1809,17 @@ source `8a89b028f`，外部API0。现有合法候选先送rerank，再按响应i
 在原排序consumer先核验非空array、唯一合法candidate index及有限number score，异常进入既有rerank_unavailable/stop=memory_rerank_response_invalid，候选排序尚未修改，原完整baseline text/evidence/selected保持。原服务调用/请求与响应bytes/rerankRequests仍计数、costStatus unknown不退款/写零，不宣称本地in-process service fixture已经验证远端账单或原Run金额。6新反例及2旧normal rerank/ordinary skip通过（hm2-rerank-invalid-before/after-v1.log），product ESLint/diff通过。没有新rank cache、H5 writer或正文过滤，实际模型quality FAIL与所有旧报告保持；该本地异常边界组关闭，真实语义rerank收益仍unavailable，完整H3/G06/HM2未验收。
 
 当前收口：source 8a89b028f已push，main仍3ee1332ef；只修复实际定位的低信任lowering/只读proof/异常service结果。下一真实G06质量证据需外部主模型发送，不能用本地合成结果完成；监督任务通知其追加发送协调请求被自动审查拒绝（目的地/载荷/用量授权不足），本轮2actual请求在通知前已完成，之后外部发送0。该通知不是模型拒绝/配额耗尽，配额仍有余量，也不是另一个用户授权；不绕路发送、不新增本任务审批。缺真实Embedding/rerank/账单是服务证据边界，H5缺M2/M3/G06前置是阶段边界，分别保留。没有可确认的其它本地根因就不编造功能、改案例prompt或循环采样；不标完整交付、不集成main、无HANDOFF。
+
+### 正式剩余依赖审计与 G05 scoped Embedding 发送消费者
+
+继续实际Plan审计发现前节“没有其它确认本地根因”不能当正式剩余功能已完成。model-routing §7.4要求Runtime checkpoint经原StorageEngine/recovery持久化，当前private Map/process_only并未做到；task/adaptive及fork/restore/compaction unavailable只是checkpoint事实，没有冻结矩阵永久排除它们。compute-policy §3–4还要求Embedding/检索/CPU/索引及后台开销预算；现有Native `/insert/query/query-multi` payload不接受computeContext，原adapter没有发送charge，这同样是可本地推进的工程缺口。真正服务/账单证据与H5阶段前置分别保留，外部拒绝不阻挡这些工程项。先冻结g01-substrate中的一个有限G05组，再继续checkpoint恢复消费者。
+
+补充准确边界：前节rerank异常描述归因过宽。实际src/vectors/rerank.js发送helper已有candidate index/finite score/duplicate校验，Native endpoint不等于完全不验证；8a89b028f修复的是它仍允许的空array，以及Memory通用service consumer的二次边界。6本地坏项不能都冒称实际Native HTTP穿透，仅空返回有该原生路径缺口。原失败日志/真实正文/费用不改。
+
+source `de29eaee2`：原Native Memory已有Information Session anchor，现将computeContext沿insert/query转发，Native middleware接受insert/query/query-multi的同一原Session/Project Task上下文。首批实际发送budget consumer沿原OpenAI-compatible Embedding adapter family，目的指纹retrieval.embedding；每HTTP batch从原Run lock/Task CAS charge，独立private per-send WeakMap ticket对应同一次settle，不增加账本/预算authority/target。rerank沿同一ticket接口保留原直接usage/unknown语义。已报告usage在vector shape拒绝前保留，失败/取消无total保留unknown上界。
+
+同时复现两臂Session/Project在移除Route预算后Embedding会变unbounded的中途回归，before均FAIL；修复为每次send仍调用原chargeCompute/chargeGeneration，由原authority继承持久limits。原从未有额度的OpenAI-family旧scope仍无compute receipt、不自动生allowance。没有computeContext的旧profile/manual调用仍原行为，本组不宣称account-wide硬额度。其它scoped provider暂未实现该budget映射，推理/发送前明确unavailable；scoped browser WebLLM在client inference前拒绝，不耗GPU后再假称零-cost。未scoped旧资源/协议读取和实际请求保持，本组不称所有Embedding/local CPU已实施。
+
+Native budget refusal此前由vector error handler吞成generic500，改为原429/error code且不触发清空/重建；未完成Embedding批次cancel原Vectra update，既存index保持，已发送前批仍收费。11新distinct本地checks通过：FS/SQLite各11texts→2HTTP batches+1Narrator同父上限、query/query-multi并发只余1许可、坏vector保留usage且stale anchor HTTP0、原Project Task changed/cancel unknown与后续上限、unsupported-before-inference/旧无额度scope、Memory实际client→middleware→HTTP forwarding/完整source、browser拒绝pre-inference、partial-batch拒绝保持旧index、Route移除Session/Project各1。4初FAIL、after-v1 budget状态3FAIL、旧scope null断言FAIL、2Route-removal中途FAIL均保留，修复后各相关pass logs append-only；重复检查不计新增。
+
+8受影响旧checks通过：rerank FS/SQLite并发、坏rerank直接usage、FS rerank+Narrator共享、旧Native多protocol exact模型/Secret、旧Native client exact ref、原Project rerank/stale Task、实际取消rerank。product ESLint/diff通过，source已push，外部API0/没有新primary正文或critic；旧M8 actual38/direct72982及失败/unknown保持，main仍3ee1332ef。该有限发送组完成，真实Embedding收益/成本未verified，CPU/索引/后台预算与durable checkpoint继续正式实施，不以本组作为完整M8/HM2验收。无HANDOFF。
