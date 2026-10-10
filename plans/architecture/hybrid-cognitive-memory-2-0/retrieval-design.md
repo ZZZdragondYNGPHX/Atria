@@ -1,7 +1,7 @@
 # R6 — Hybrid Cognitive Memory 2.0：统一检索引擎技术调研
 
 > **文档性质：研究证据与方案比较（非正式实施 Plan）**  
-> **日期：2026-10-10**；**状态：Proposal / Pending user decision**；**任务：** `hybrid-cognitive-memory-2-0`；[入口](index.md) · [已确认决策](decisions.md)。  
+> **日期：2026-10-10**；**状态：R6 产品级架构方向已批准 / 具体算法效果尚未实测**；**任务：** `hybrid-cognitive-memory-2-0`；[入口](index.md) · [已确认决策](decisions.md)。  
 > **范围：** 统一 Recall 算法、候选评分、时间/认知边界、多跳推理、Context 编译、Cache 和验证方法。  
 > **源码基线：** Atria `main@6ab12ba43c5b18bfec6df75c16456a4cb4497d3f`；此前审查 `feat/agent-intelligence-runtime@25e1aef...` 的核心记忆文件与 main Git Blob 一致。本研究没有运行 Atria 的真实模型、数据库性能或浏览器实验。进入实施前必须重新核对 HEAD。
 
@@ -11,10 +11,10 @@
 
 **结论 C2（代码结构风险；待实验）：** 最大短板不在单个检索器，而在 **谁有权读取 → 查什么 → 如何选证据 → 生成器怎样使用** 四个接口尚未统一为角色认知检索契约。现有 `recallHybridMemory(context, query, options)` 只收到通用 Context 与字符串 query，缺明确的 audience/Actor/perspective 约束参数；已有 Native Information Runtime 在其他路径提供权限投影。需要证明这两条链路的**端到端交集**，不能仅凭最终文本过滤作安全保证。这是静态检查指出的契约缺口，不是已经发现线上泄漏。
 
-**推荐供讨论的 B 路线：Constraint-first Adaptive Hybrid：**
+**已确认的总体 B 路线：Constraint-first Adaptive Hybrid：**
 `精确 Anchor + 授权候选域 → 查询意图与事件线索 → 默认廉价混合候选 → 有需要时有界图扩展/PPR或重排/LLM → 覆盖约束和预算选择 → typed MemoryPacket → Context Compiler`。
 
-不推荐“每轮大模型生成检索计划”“全图 PPR”“把所有记忆喂给 Director”作为默认路径。**本段推荐未获用户批准。**
+不推荐“每轮大模型生成检索计划”“全图 PPR”“把所有记忆喂给 Director”作为默认路径。**总体方向已获用户确认，但阈值、具体实现与改进效果仍需实验**。
 
 ## 1. Atria 当前路径：具体代码、能够确认的行为与缺口
 
@@ -59,13 +59,13 @@
 | 路线 | 设计 | 预期成本 | 主要风险 | 建议 |
 | --- | --- | --- | --- | --- |
 | A：现有 Hybrid 加强 | 保留静态 BFS + RRF；补中文识别、索引增量、Context 类型 | 较低 | 长链因果和无显式实体的承诺问题可能仍弱 | 可以作为低成本 baseline |
-| **B：Constraint-first Adaptive Hybrid** | Actor/Time/Branch 授权先行；lexical + optional vector + typed graph；按需 MMR/多跳/PPR/rerank/LLM | 正常低，复杂查询自适应 | 路由门槛和多路合并复杂，需要专门评测 | **推荐讨论** |
+| **B：Constraint-first Adaptive Hybrid（已确认）** | Actor/Time/Branch 授权先行；lexical + optional vector + typed graph；按需 MMR/多跳/PPR/rerank/LLM | 正常低，复杂查询自适应 | 路由门槛和多路合并复杂，需要专门评测 | **已选总体架构；需工程验证** |
 | C：Graph-first 全量检索 | 所有请求都进行宽图检索、PPR、重排/多跳 | 更高 | 图污染、隐私域混合、频繁无用检索、延迟尾部 | 不做默认 |
 | D：LLM 每轮规划检索 | 每回合让 LLM 读上下文、写改写 query、判断结果后多轮召回 | 高且可变 | 额外调用，模型会臆造 Seed；难测成本和稳定性 | 只保留为复杂查询有预算备选 |
 
 B 与已确认的“删除**独立**旧 Recall 模式”不冲突；用户也没有批准上述 B，不能代替问询。
 
-## 4. 检索管线设计候选：权限是硬约束，相关性是软排序
+## 4. 已确定的检索边界与待实验管线：权限是硬约束，相关性是软排序
 
 ### 4.1 Step 0 — 先固定请求身份与任务，而不是只传字符串
 
@@ -257,7 +257,7 @@ B 与已确认的“删除**独立**旧 Recall 模式”不冲突；用户也没
 - B6：B5 + incremental index/valid cache/稳定 Context segments。
 每个消融在**同样输入、相同模型、相同权限和相同预算**下配对执行；避免一次新增多项后无法归因。性能瓶颈调查可以先于完整质量实验。
 
-## 9. 可能的实施切片（方案未批准，不改既有 M1）
+## 9. 实施工作切片候选（非正式阶段，不改既有 M1）
 
 | 切片 | 目的 | 前置与退出依据 |
 | --- | --- | --- |
@@ -270,45 +270,20 @@ B 与已确认的“删除**独立**旧 Recall 模式”不冲突；用户也没
 
 旧数据删除或继承、旧设置 hard-cutover、存储后端、具体阈值都要另行冻结。**本研究 H0–H5 是分析切片，不是用户已批准新增的六个正式阶段。**
 
-## 10. 研究决策点（等待用户选择）
+## 10. R6 技术研究的采纳结论
 
-**R6 总体方向：** A 最小增强；**B 强约束优先的自适应 Hybrid（研究推荐）**；C 统一 Graph-first 多跳；D 每轮 LLM 规划。
+**2026-10-10 用户明确批准第六轮三项最终建议，见 [decisions.md](decisions.md) HCM-06–08：**
 
-若选 B，下轮进一步定稿：
-1. 是否由 Auth/Information 先生成可见子集再交给检索，或允许索引分区再硬过滤（需要实测隔离与成本）；
-2. “承诺/认知/事件”是否保证独立最小覆盖和怎样计入 Context lane；
-3. 哪种查询触发 PPR/LLM，多跳和查询改写是否可以无损回退；
-4. Cache 采用保守 exact anchor 起步，何时具有足够 dependency proof 允许跨无关 Revision 重用；
-5. 普通 RP 的质量门槛、成本、缓存与延迟 SLO 由真实实验校准，不预先指定百分比。
+- **HCM-06：** 总体技术架构采用 Constraint-first Adaptive Hybrid。授权/来源先行；廉价词项和有界图检索为默认，Embedding 可选，复杂问题才预算内追加 PPR、rerank 或 LLM 辅助。
+- **HCM-07：** 旧 LLM/RAG 独立召回硬切换。删除旧 UI、配置与执行分叉，不做双读双写；保留有效原生 Timeline/World、故事历史与可验证记忆，派生索引重建，不迁移 SillyTavern 旧数据。
+- **HCM-08：** 普通 RP 零额外认知 LLM 为目标；当前正文所必需的来源/认知边界/正式事实同步核验；非关键的整理、压缩与反思按原后台和预算执行；证据不可得时不能用猜测替代。
 
-## 11. R6 收束：必须确认的产品决策与工程自主空间
+**这些是批准的产品边界，不是已经运行的算法或“提高召回率”的实验结论。**
 
-> **2026-10-10 补充；本节是决策框架，不代表任何推荐已获用户批准。** 已确认 HCM-01–05 仍以 [decisions.md](decisions.md) 为准，不重开。
+研究阶段的 A/C/D 路线保留为对照与反例，不再作为本产品需要反复重新投票的方案。具体中文检索实现、RRF/PPR/MMR/Embedding/Rerank 的参数和调用阈值、Source-valid 缓存和增量索引、Provider prompt cache、质量—成本 SLO 仍由 Codex 在原 Authority/Context/Compute/Reuse 条件内以固定基线、消融和真实长篇 RP 评测决定，不能越过 HCM-01–08。
 
-### 11.1 只剩三项需要产品级确认
+- 目标技术架构与职责：**[architecture.md](architecture.md)**。
+- 对正式 Agent Runtime 企划的接入、工作包和验收：**[integration.md](integration.md)**。
+- 用户已确认的决定：**[decisions.md](decisions.md)**。
 
-| 议题 | 仍待定案 | 推荐与理由 |
-| --- | --- | --- |
-| **D6.1 统一检索架构** | 第 3 节路线 A 小改，或 **B Constraint-first Adaptive Hybrid**，或 C 强图谱、D 每回合 LLM 规划 | **B**：先使用现有 Authority/Information 建立合法可见候选域，默认廉价 lexical/graph，Embedding 可选；复杂问题才升级 PPR、rerank 或 LLM；避免持续额外调用与信息越权 |
-| **D6.2 硬切换与原数据** | 废除旧 LLM/RAG 独立入口、配置后，如何处置当前有效记忆、历史与派生索引 | **保留有来源的原始故事、Timeline/World 正式数据及可验证的用户记忆；彻底删旧调用/配置分支；不做旧算法双读双写；向量/检索索引按新模型重建**。不把无来源旧衍生物悄悄晋升为可信事实 |
-| **D6.3 质量与时延的取舍** | 当前回合有重大知识/承诺冲突时，是否允许一次必要的阻塞校验，或一律先出正文再异步完善 | **正常回合以零额外认知 LLM 为目标；对必须影响当下叙事正确性的来源、认知边界和权威结果同步校验；非关键整理、反思、压缩后台批处理**。证据不足则标未知或阻断依赖操作，不猜事实 |
-
-以上决策是架构和玩家体验约束，而不是可通过固定一个 topK 阈值解决的工程细节。
-
-### 11.2 不再占用对话轮次的工程细节
-
-Codex 后续可以在上述边界内依据既有源码与针对性实验自行决定：
-
-- 中文分词/别名、指代 Seed、BM25/短语索引组合；
-- typed BFS、路径扩展、PPR、MMR、rerank 的阈值及开销；
-- typed MemoryPacket 最终字段、ContextItem lane 和压缩细节；
-- 增量同步、dependency-aware cache Key、失效条件、Provider prompt cache 顺序；
-- 请求、token、延迟与后台批次的校准值；不挪用 M1 Evolution 已定义的预算；
-- 评测中的 Precision/Recall、重要承诺覆盖率、Actor 越权、错误信念、玩家自主权、自然文风、长篇中文 RP 与冷/热成本；
-- 与 M1/M2/M3/M8 的阶段映射和每阶段局部验证。
-
-没有可重验依赖时缓存失效重算；相关状态变化不得为了提速绕过 Source/Authority guard。上一节的 H0–H5 仅是研究切片，不是新增正式阶段。
-
-### 11.3 收束建议
-
-只进行**一次集中定案 D6.1–D6.3**。若用户接受推荐，随后将研究结论整理为可落地的设计边界、阶段依赖和验收用例，供 Codex 正式合并企划；不反复追问细小算法参数。本轮用户仅询问“是否还有讨论点”，不等于同意新的三个推荐。
+本轮不改旧 M1 的验收和不利模型结果，不新增强制模型调用、独立 World/Actor authority 或平行存储预算。后续执行前按当时产品分支的真实 HEAD 与正式 Plan 重新核对。
