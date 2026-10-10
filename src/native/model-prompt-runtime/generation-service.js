@@ -222,6 +222,10 @@ export class GenerationService {
             if (encoded.includes(secret) || encoded.includes(JSON.stringify(secret).slice(1, -1))) {
                 throw new GenerationError('generation_response_contains_secret');
             }
+            // Only the frozen request's tool declarations authorize a response
+            // call. A name mentioned in dialogue is not a tool declaration.
+            const allowedTools = new Set(snapshot.promptIr.tools.map(tool => tool.function?.name ?? tool.name));
+            if (response.toolCalls?.some(call => !allowedTools.has(call.name))) throw new GenerationError('generation_response_invalid');
             if (onChunk && typeof response.text === 'string') publish(response.text);
             await provider.settleAttempt?.(response.usage);
             settled = true;

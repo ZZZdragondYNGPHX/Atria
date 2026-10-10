@@ -100,6 +100,35 @@ async function plannedTask(agent, handle, source, baseRevision, options = {}) {
 }
 
 describe('A8 Project Agent authority', () => {
+    test.each([false, true])('G06 actual provider tool response requires frozen declarations (%s) and retains direct usage', async declared => {
+        const h = await makeTempFsEngine(); let seen = 0;
+        const server = createServer(async (req, res) => {
+            for await (const chunk of req) void chunk;
+            seen++; res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: null,
+                tool_calls: [{ id: 'provider-read', type: 'function', function: { name: declared ? 'atri_agent_get_project' : 'atri_agent_prepare_review', arguments: '{}' } }] } }],
+            usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } }));
+        });
+        await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+        try {
+            const { studio, agent } = makeServices(h), source = projectSource();
+            const created = await studio.createProject(h.handle, source);
+            const task = await plannedTask(agent, h.handle, source, created.revision.revision);
+            const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/chat/completions` });
+            await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+                allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 1, maxTokens: 16000 } } });
+            const host = new NativeGenerationHost({ ...seeded, studio, agent, providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'test-credential' } });
+            const context = await agent.getContext(h.handle, source.project.projectId, task.taskId);
+            const run = host.execute(h.handle, { projectId: source.project.projectId, revision: created.revision.revision, taskId: task.taskId,
+                role: 'studio', requestId: 'frozen-tools', tools: declared ? context.tools.filter(tool => tool.function.name === 'atri_agent_get_project') : [],
+                messages: [{ role: 'user', content: 'Read with atri_agent_get_project if declared.' }] });
+            if (declared) expect((await run).response.toolCalls[0].name).toBe('atri_agent_get_project');
+            else await expect(run).rejects.toMatchObject({ code: 'generation_response_invalid' });
+            const current = await agent.getTask(h.handle, source.project.projectId, task.taskId);
+            expect(current.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
+            expect(current.operations).toHaveLength(0); expect(seen).toBe(1);
+        } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); }
+    });
     test.each(['reported', 'rejected_body', 'secret_echo', 'partial', 'tokens_exhausted', 'incomplete_native_stream', 'cancelled', 'negative_cache'])('G05 preserves direct numeric usage on %s without storing rejected content', async kind => {
         const h = await makeTempFsEngine(); let seen = 0; let notifySend;
         const sent = new Promise(resolve => { notifySend = resolve; });

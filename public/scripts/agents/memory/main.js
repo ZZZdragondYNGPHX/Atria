@@ -14083,7 +14083,8 @@ function bindUi() {
 
         const result = await recallHybridMemory(context, query, { readOnly: true, settings: effectiveSettings });
         result.assertCurrent();
-        store.lastRecallTrace = [{ tool: 'hybrid_memory', selected: result.selected, metrics: result.metrics, diagnostics: result.diagnostics }];
+        store.lastRecallTrace = [{ tool: 'hybrid_memory', selected: result.selected, plan: result.plan, invocation: result.invocation,
+            reuse: result.reuse, metrics: result.metrics, diagnostics: result.diagnostics }];
         updateUiStatus(i18nFormat('Recall ready. selected=${0}', result.selected.length));
         refreshUiStats();
     });
