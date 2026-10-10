@@ -1980,3 +1980,12 @@ lint-v1/v2产品及新generation-local-work PASS，另外两改动旧测试file�
 私有Document g04-session-skill-*：before-v1为fixture extensions.settings缺失；before-v2为fixture无合法hash/pin；before-v3/after-v1 active两FAIL和diagnose-v1 firstHTTP0/nojobs，原因capability拼写误用policy下划线，均fixture准备错误，不是arguments缺陷。修fixture直接import正式activeExecutionCapability（连字符），保持原旧loop负控制再跑before-valid-v4 FS none/active2真实FAIL：第一HTTP1/first count-render completed/第二count failed continuation_unavailable；finally恢复修复代码，after-valid-v2 fourPASS。safety-v1 threePASS，old-v1 tenPASS，产品及新fixture lint-v1 PASS/source/docs diff PASS。暂时诊断打印仅synthetic phase/cost，已从测试移除，原失败日志保留。
 
 本组同invocation公开工具历史与协议回传成立，但未据此宣称跨调用Session task/restart、safe fork/compaction或行为收益；继续原Task消费者/公开历史/owner边界依赖，不借Studio身份或自动reset。外部模型0，M8累计actual38/direct72982、unknown2/17515 upper/admission fetch0及原M1/HM1/G06 paid ledger/质量FAIL不变；main仍3ee1332ef，完整M8/HM2/HM3未验收，无HANDOFF。
+### 2026-10-11 有限 G04：active request scope 的原 source 清理隔离
+
+合同docs727bbe837先冻结，source b83281a387e82a09ff91db814907a45d43455bf6已push。仅原nativeEnvelopeBinding的非ProjectTask request scope新增受验证contextPlan.source和resolved.route.role；原Task scope完全不变，不新建owner/store/shared checkpoint/源history，不扩大fork继承或automatic reset。完整source/history/provenance/prefix/tools/target/account校验继续，原process envelope/lease/cap/TTL沿用。
+
+4新distinct PASS：FS/SQLite none/active，均同owner/target/requestId的两个真实Core Session分别先取合法public handle；一方第二HTTP实际取消并await原adapter cleanup、原ledger settled+unknown且estimated上界非零，另一方沿自己原HEAD与公开tool transcript仍第二HTTP完成reported20+20，两Timeline不写。preview只断言绑定原Session/branch/revision与route.role，不声称实际跨role并发/fork/restore/任务消费者。24旧PASS=上组7 Session Skill +17 Native旧protocol（Responses source/path/history3、cancel2、Project none/active2；Anthropic/Gemini各two-round2/source/path/history3共10）。没有再次跑Task-private、purge或paid组。
+
+私有Document g04-source-scope-before-v1 SyntaxError/零tests是新增fixture括号准备错误；before-v2一真实FAIL：两个Session先取tool state、取消一方并等cleanup，另一方continuation_unavailable，是requestId-only批清理造成跨source误撤回。after-v1四PASS（仅四新）/old-v1二十四PASS；产品及修改fixture lint-v1 PASS、source/docs diff PASS。before并未先执行新增的取消成本实物断言，该成本在after已明确验证，不混报未执行的检查。
+
+外部0与全部原baseline/付费结果/FAIL/费用保持，M8 actual38/direct72982、unknown2/17515 upper/admission fetch0不变。main不变，完整M8/HM2/HM3/真实G06未验收；原Session Task的跨调用公开历史消费者、安全fork/compaction、剩余CPU/cache/local inference与H5前置继续，无HANDOFF。

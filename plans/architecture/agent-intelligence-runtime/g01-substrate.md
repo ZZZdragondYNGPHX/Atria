@@ -127,11 +127,13 @@ source `efe9b9ca6`已push，30新distinct/34受影响旧checks通过，仅FS/SQL
 
 source `f48e90323`已push，7新distinct/10受影响旧checks通过。完整fixture使用正式activeExecutionCapability常量后，对原loop的负控制在FS none/active两路径实际第一send后第二count失败（arguments重stringify）；保留raw arguments后FS/SQLite四路径完整两轮wire/原模型usage20+20/四local jobs/只读Skill与仅final prose通过。cancel-read/HEAD变化/job额度反例不进入第二HTTP，原first reported20与两job保留。前几次fixture settings/hash/pin与capability拼写失败均单独记Record，不冒充目标缺陷。此组仍只是原Session本invocation，不启用跨调用Session task/restore/fork/compaction或真实verified。
 
-## 当前有限 G04：原 active execution 的 Session source 清理隔离
+## 已交付有限 G04：原 active execution 的 Session source 清理隔离
 
 完成条件先冻结（2026-10-11）：复用原nativeEnvelopeBinding/process envelope/lease与Host原Session/Run source；仅修原非ProjectTask request scope的清理身份，不能只靠用户requestId区分不同Session/branch/revision/role。公开成本与domain资源不添opaque，ProjectTask scope保持原contract。只为原request scope附当前受验证contextPlan.source与原route.role，source/provenance/prefix/tool/history/account/path校验继续完整保留；不扩展checkpoint共享、fork继承、自动reset或verified发布。
 
 最小出口：同owner/exact target/requestId的两真实Session各先取合法原生tool checkpoint；一个第二HTTP取消/cleanup并保留unknown成本，另一个仍沿自己原HEAD/公开历史续接，禁止清理跨source状态。source/role身份的adapter lowering局部断言、原Native none/active协议及Source/history/取消反例只验受影响项，fixture/loopback external0。Session Task公开历史消费者与fork/compaction等继续，拒绝不伪造重置或无损恢复。
+
+四条FS/SQLite none/active真实两Session取消隔离路径通过；此前同requestId的scope批删使另一Session续接实际FAIL。修复只在非ProjectTask request scope绑定原完整source/route.role，现有source/history/path/完整opaque检查与Task scope保持。取消方保留原settled+unknown，上界非零；另一Session沿本身原HEAD/公开history完成第二send，两者Timeline不写。24受影响旧checks通过，无跨调用Session task/fork/compaction验收，详见Record最新节。
 
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
