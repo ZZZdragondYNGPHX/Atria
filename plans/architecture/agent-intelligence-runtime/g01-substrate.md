@@ -135,6 +135,12 @@ source `f48e90323`已push，7新distinct/10受影响旧checks通过。完整fixt
 
 四条FS/SQLite none/active真实两Session取消隔离路径通过；此前同requestId的scope批删使另一Session续接实际FAIL。修复只在非ProjectTask request scope绑定原完整source/route.role，现有source/history/path/完整opaque检查与Task scope保持。取消方保留原settled+unknown，上界非零；另一Session沿本身原HEAD/公开history完成第二send，两者Timeline不写。24受影响旧checks通过，无跨调用Session task/fork/compaction验收，详见Record最新节。
 
+## 当前有限 G05：原 Narrator loop 的按需 Skill read
+
+完成条件先冻结（2026-10-11）：只接原Host已完成model tool-call声明核验后的skills.read（read/files），沿上轮真正接受的count/render原localWork port与同一Run/Task原budget，不新增owner/source writer/tool或默认限额。skill_read每call1 job，输入计parsed公开call name/args与既有Skill inventory指纹，不将Skill正文/opaque/秘密写ledger。准入先于repository read/listFiles；沿原pin/scope/pagination/累计公开内容上限，处理及结算后原source/cancel重验，失败/cancel保留工作成本；限额拒绝不执行read/第二model，旧无local限额保持。
+
+此组不宣称初始inventory/pin/always加载、全部source-file原始IO、CPU硬期限或金额已计量。FS/SQLite真实Session Native Skill两轮共享两send+五jobs；read额度/字节拒绝before repository、read/source/cancel失败及reported first-send成本、原no-raw/compatible consumer定向验证是出口。既有None/active请求与Task scope不变，不宣称跨调用Session task恢复；它与完整公开历史/safe fork/compaction/其它成本继续，external0。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
