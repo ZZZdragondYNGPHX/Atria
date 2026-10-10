@@ -9,6 +9,7 @@ import {
 } from './resources.js';
 import { GenerationError, immutable } from './execution-utils.js';
 import { capabilityAtPath, executionPathFingerprint } from './execution-evidence.js';
+import { hashNativeDocument } from '../repositories/common.js';
 
 // Read-through ports over P1 authorities; this resolver owns no persistence/cache.
 export class RouteResolver {
@@ -118,7 +119,7 @@ export class RouteResolver {
             }
             decisions.set(capability, decision);
         }
-        return immutable({ ...config, pathFingerprint, pathEvidence, requirements: required,
+        return immutable({ ...config, ownerFingerprint: hashNativeDocument(handle), pathFingerprint, pathEvidence, requirements: required,
             capabilities: [...decisions.values()].sort((a, b) => a.capability.localeCompare(b.capability)) });
     }
 }

@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from '@jest/globals';
+import { afterEach, expect, test, jest } from '@jest/globals';
 import { createServer } from 'node:http';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 import { createNativeId } from '../../src/native/identity.js';
@@ -6,6 +6,8 @@ import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createResponsesGenerationProvider } from '../../src/native/adapters/responses-generation-provider.js';
 import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
+import { capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
+import { hashNativeDocument } from '../../src/native/repositories/common.js';
 
 const cleanups = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
@@ -15,10 +17,11 @@ const functionCall = { id: 'item-1', type: 'function_call', status: 'completed',
 const result = output => ({ id: 'response-1', status: 'completed', model: 'reported-alias', output,
     usage: { input_tokens: 20, output_tokens: 8, total_tokens: 28, input_tokens_details: { cached_tokens: 12 } } });
 
-test('G04 cancellation discards the active private checkpoint before any later replay', async () => {
+test.each(['none', 'active_execution'])('G04 %s cancellation discards the active private checkpoint before any later replay', async mode => {
     let onSecond;
     const secondReceived = new Promise(resolve => { onSecond = resolve; });
     const f = await fixture((res, round) => { if (round === 1) json(res, result([envelope, functionCall])); else onSecond(); });
+    if (mode === 'active_execution') await enableActivePolicy(f);
     const first = await f.host.execute(f.h.handle, f.request); const next = followup(f, first);
     const controller = new AbortController();
     const failed = expect(f.host.execute(f.h.handle, next, controller.signal)).rejects.toMatchObject({ code: 'generation_cancelled' });
@@ -41,11 +44,25 @@ async function fixture(handler, format = 'openai-responses') {
     const project = { source: { project: { projectId }, package: {}, resources: [] }, revision: { revision: 'r1' } };
     const provider = format === 'openai-responses' ? createResponsesGenerationProvider() : createNativeMessagesProvider({ format });
     const host = new NativeGenerationHost({ ...seeded, studio: { getProject: async () => project }, providers: { ['provider.' + format]: provider },
-        secretPort: { resolveSecret: async () => 'g04-test-credential' } });
+        secretPort: { resolveSecret: jest.fn(async () => 'g04-test-credential') } });
     const request = { projectId, revision: 'r1', requestId: 'active-loop', role: 'studio',
         tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object', properties: { q: { type: 'string' } } } } }],
         messages: [{ role: 'user', content: 'Look up current evidence.' }] };
     return { ...seeded, h, host, provider, request, project, requests };
+}
+async function enableActivePolicy(f, { mode = 'active_execution', verified = true, expired = false } = {}) {
+    const connection = await f.persistence.getConnectionProfile(f.h.handle, f.connection.connectionProfileId);
+    const model = await f.persistence.getModelProfile(f.h.handle, f.model.modelProfileId);
+    const observedAt = Date.now() - 1000;
+    const decision = { capability: 'generation.continuation.active-execution', state: 'supported',
+        provenance: [{ kind: 'provider-endpoint', source: 'synthetic local native protocol fixture', observedAt }],
+        ...(verified ? { binding: { schemaVersion: 1, pathFingerprint: executionPathFingerprint({ handle: f.h.handle, connection, model }),
+            observedAt, expiresAt: Date.now() + (expired ? -1 : 60000), assurance: 'verified' } } : {}) };
+    await f.persistence.saveModelProfile(f.h.handle, { ...model, capabilities: [...model.capabilities, decision] }, verified
+        ? { observationProof: capabilityObservationProof({ handle: f.h.handle, connection, model }, [decision]) } : {});
+    await f.persistence.saveRuntimeRoute(f.h.handle, { ...f.routes[0], executionPolicy: { schemaVersion: 1,
+        allowedModelProfileIds: [model.modelProfileId], continuity: mode } });
+    return decision;
 }
 const json = (res, body) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 const nativeResult = (format, round, signature = 'NATIVE-OPAQUE-SENTINEL') => format === 'anthropic'
@@ -71,9 +88,11 @@ describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => 
         expect(f.requests).toHaveLength(2);
         expect(f.requests[0].wire).toBe(f.requests[1].wire);
     });
-    test('actual two-round tool consumption preserves opaque wire while preview and response remain private', async () => {
+    test.each(['none', 'active_execution'])('%s actual two-round tool consumption preserves opaque wire while preview and response remain private', async mode => {
         const f = await fixture((res, round) => json(res, nativeResult(format, round)), format);
+        if (mode === 'active_execution') await enableActivePolicy(f);
         const first = await f.host.execute(f.h.handle, f.request);
+        expect(first.snapshot.diagnostics.executionPlan.policy.continuity).toBe(mode);
         expect(JSON.stringify(first)).not.toContain('NATIVE-OPAQUE-SENTINEL');
         expect(first.response.observation.nativeExecution).toEqual({ protocol: 'native.' + format + '.v1', lifecycle: 'mandatory_tool_exchange',
             scope: 'request', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
@@ -107,9 +126,11 @@ describe.each(['anthropic', 'gemini'])('G04 Native Host %s envelope', format => 
     });
 });
 
-test('Native Project consumes complete Responses opaque items and call IDs in order, while snapshots and preview disclose no opaque body', async () => {
+test.each(['none', 'active_execution'])('%s Native Project consumes complete Responses opaque items and call IDs in order, while snapshots and preview disclose no opaque body', async mode => {
     const f = await fixture((res, round) => json(res, result(round === 1 ? [envelope, functionCall] : [message('Fresh final text.')] )));
+    if (mode === 'active_execution') await enableActivePolicy(f);
     const first = await f.host.execute(f.h.handle, f.request);
+    expect(first.snapshot.diagnostics.executionPlan.policy.continuity).toBe(mode);
     expect(first.response.providerState).toHaveProperty('checkpointId');
     expect(first.response.observation.nativeExecution).toEqual({ protocol: 'openai.responses.v1', lifecycle: 'mandatory_tool_exchange',
         scope: 'request', retention: 'process_only', transferredCheckpoints: 0, requestAction: 'fresh_protocol_request',
@@ -129,6 +150,90 @@ test('Native Project consumes complete Responses opaque items and call IDs in or
     expect(second.response.observation).toMatchObject({ reportedModel: 'reported-alias', upstreamIdentity: 'unknown', cachedInputTokens: 12, hiddenAttempts: 'unknown' });
     await expect(f.host.execute(f.h.handle, next, undefined, undefined, { preview: true })).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
     expect(f.requests).toHaveLength(2);
+});
+
+test.each(['declaration_only', 'no_consumer', 'path_changed', 'expired', 'task', 'adaptive'])('G06 active policy %s cannot borrow unsupported or stale state', async change => {
+    const f = await fixture(res => json(res, nativeResult('gemini', 1)), 'gemini');
+    await enableActivePolicy(f, { verified: change !== 'declaration_only', expired: change === 'expired',
+        mode: ['task', 'adaptive'].includes(change) ? change : 'active_execution' });
+    if (change === 'no_consumer') f.host.providers['provider.gemini'] = { ...f.provider, continuationScopes: [] };
+    if (change === 'path_changed') {
+        const connection = await f.persistence.getConnectionProfile(f.h.handle, f.connection.connectionProfileId);
+        await f.persistence.saveConnectionProfile(f.h.handle, { ...connection, secretRef: { scope: 'player', secretId: 'other-account' } });
+    }
+    const secret = f.host.secretPort.resolveSecret;
+    await expect(f.host.execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+    expect(f.requests).toHaveLength(0); expect(secret).not.toHaveBeenCalled();
+});
+
+test('G06 active policy evidence expiring in native token compilation rejects before Secret or HTTP', async () => {
+    let at = Date.now(); const now = jest.spyOn(Date, 'now').mockImplementation(() => at);
+    try {
+        const f = await fixture(res => json(res, nativeResult('gemini', 1)), 'gemini');
+        const decision = await enableActivePolicy(f);
+        f.host.providers['provider.gemini'] = { ...f.provider, countTokens: request => {
+            at = decision.binding.expiresAt; return f.provider.countTokens(request);
+        } };
+        const secret = f.host.secretPort.resolveSecret;
+        await expect(f.host.execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_path_evidence_unavailable' });
+        expect(f.requests).toHaveLength(0); expect(secret).not.toHaveBeenCalled();
+    } finally { now.mockRestore(); }
+});
+
+test('G06 disabling active policy rejects a previously captured checkpoint before another send', async () => {
+    const f = await fixture(res => json(res, nativeResult('gemini', 1)), 'gemini');
+    await enableActivePolicy(f);
+    const first = await f.host.execute(f.h.handle, f.request);
+    const route = await f.persistence.getRuntimeRoute(f.h.handle, f.routes[0].runtimeRouteId);
+    await f.persistence.saveRuntimeRoute(f.h.handle, { ...route, executionPolicy: { ...route.executionPolicy, continuity: 'none' } });
+    await expect(f.host.execute(f.h.handle, followup(f, first))).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+    expect(f.requests).toHaveLength(1); expect(f.host.secretPort.resolveSecret).toHaveBeenCalledTimes(1);
+    await f.persistence.saveRuntimeRoute(f.h.handle, route);
+    await expect(f.host.execute(f.h.handle, followup(f, first), undefined, undefined, { preview: true }))
+        .rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+    expect(f.requests).toHaveLength(1);
+});
+
+test('G06 same-path fallback lowers and captures the accepted active policy instead of the candidate declaration', async () => {
+    const f = await fixture((res, round) => {
+        if (round === 1) { res.writeHead(503); res.end('busy'); }
+        else json(res, nativeResult('gemini', round === 2 ? 1 : 2));
+    }, 'gemini');
+    await enableActivePolicy(f);
+    const route = await f.persistence.getRuntimeRoute(f.h.handle, f.routes[0].runtimeRouteId);
+    const fallback = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), executionPolicy: { ...route.executionPolicy, continuity: 'none' } };
+    await f.persistence.saveRuntimeRoute(f.h.handle, fallback);
+    await f.persistence.saveRuntimeRoute(f.h.handle, { ...route, fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: fallback.runtimeRouteId }] });
+    const bindings = [];
+    f.host.providers['provider.gemini'] = { ...f.provider, renderRequest: request => {
+        const rendered = f.provider.renderRequest(request); bindings.push(rendered.binding.policyFingerprint); return rendered;
+    } };
+    const first = await f.host.execute(f.h.handle, { ...f.request, fallbackMode: 'automatic' });
+    expect(first.routing.fallbackUsed).toBe(true);
+    expect(first.snapshot.runtimeRouteId).toBe(fallback.runtimeRouteId);
+    expect(first.snapshot.diagnostics.executionPlan.policy.continuity).toBe('active_execution');
+    const final = await f.host.execute(f.h.handle, followup(f, first));
+    expect(final.response.text).toBe('Fresh native final.');
+    expect(new Set(bindings)).toEqual(new Set([hashNativeDocument(route.executionPolicy)]));
+    expect(f.requests).toHaveLength(3); expect(f.requests[2].wire).toContain('NATIVE-OPAQUE-SENTINEL');
+});
+
+test('G06 active evidence expiring during Secret resolution discards the existing checkpoint without another HTTP', async () => {
+    let at = Date.now(); const originalAt = at;
+    const now = jest.spyOn(Date, 'now').mockImplementation(() => at);
+    try {
+        const f = await fixture(res => json(res, nativeResult('gemini', 1)), 'gemini');
+        const decision = await enableActivePolicy(f);
+        const first = await f.host.execute(f.h.handle, f.request);
+        f.host.secretPort.resolveSecret.mockImplementationOnce(async () => { at = decision.binding.expiresAt; return 'g04-test-credential'; });
+        await expect(f.host.execute(f.h.handle, followup(f, first))).rejects.toMatchObject({ code: 'generation_path_evidence_unavailable' });
+        expect(f.requests).toHaveLength(1);
+        // Restore the test clock while keeping the failure's discarded state.
+        at = originalAt;
+        await expect(f.host.execute(f.h.handle, followup(f, first), undefined, undefined, { preview: true }))
+            .rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+        expect(f.host.secretPort.resolveSecret).toHaveBeenCalledTimes(2);
+    } finally { now.mockRestore(); }
 });
 
 test.each(['path', 'source', 'history', 'tools', 'forged'])('changed %s rejects native envelope before a new HTTP send', async change => {

@@ -141,8 +141,9 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             wire: JSON.stringify(body), binding, sequence, resolved, snapshot };
     };
     return Object.freeze({
+        continuationScopes: Object.freeze(['active_execution']),
         contextTokenizer() { return text => Buffer.byteLength(String(text), 'utf8'); },
-        resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache'].map(capability => ({ capability, state: capability === 'generation.cache' && !anthropic ? 'unsupported' : 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.' + format }] })),
+        resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache', 'generation.continuation.active-execution'].map(capability => ({ capability, state: capability === 'generation.cache' && !anthropic ? 'unsupported' : 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.' + format }] })),
         countTokens({ resolved, promptIr, contextPlan }) {
             const request = lower({ resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } });
             // Provider tokenizers differ. A byte upper bound deliberately avoids

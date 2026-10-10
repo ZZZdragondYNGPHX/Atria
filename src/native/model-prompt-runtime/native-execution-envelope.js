@@ -16,7 +16,7 @@ function prune() {
 export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
     if (!resolved.pathFingerprint) denied();
     const { promptIr: ir, contextPlan: plan } = snapshot;
-    return immutable({ schemaVersion: 1, protocol, pathFingerprint: resolved.pathFingerprint,
+    return immutable({ schemaVersion: 1, protocol, ownerFingerprint: resolved.ownerFingerprint ?? null, pathFingerprint: resolved.pathFingerprint,
         executionScope: plan.source.kind === 'task' ? { kind: 'task', projectId: plan.source.projectId, taskId: plan.source.taskId }
             : { kind: 'request', requestId: snapshot.requestId },
         targetFingerprint: hashNativeDocument({ model: resolved.model.remoteModelId, connectionId: resolved.connection.connectionProfileId, endpoint: resolved.connection.endpoint }),
@@ -26,7 +26,7 @@ export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
         prefixFingerprint: hashNativeDocument({ directives: ir.directives, contextSlots: ir.contextSlots }),
         toolsFingerprint: hashNativeDocument(ir.tools), outputFingerprint: hashNativeDocument(ir.outputContract),
         generationFingerprint: hashNativeDocument(resolved.generation),
-        policyFingerprint: hashNativeDocument(resolved.route.executionPolicy ?? null) });
+        policyFingerprint: hashNativeDocument(resolved.effectiveExecutionPolicy ?? resolved.route.executionPolicy ?? null) });
 }
 const visibleMessages = sequence => sequence.map(message => {
     const visible = { ...message }; delete visible.providerState; return visible;
@@ -45,11 +45,18 @@ export function captureNativeEnvelope({ binding, sequence, content, text, calls 
 export function readNativeEnvelope(state, binding, sequence, index) {
     prune();
     const entry = checkpoints.get(state?.checkpointId);
-    if (!entry || state.schemaVersion !== 1 || entry.bindingFingerprint !== hashNativeDocument(binding)
-        || state.bindingFingerprint !== entry.bindingFingerprint || state.text !== entry.text
-        || hashNativeDocument(state.calls) !== hashNativeDocument(entry.calls)
+    const authenticReference = entry && state.schemaVersion === 1 && state.bindingFingerprint === entry.bindingFingerprint
+        && state.text === entry.text && hashNativeDocument(state.calls) === hashNativeDocument(entry.calls);
+    if (!authenticReference || entry.bindingFingerprint !== hashNativeDocument(binding)
         || sequence[index].content !== entry.text || hashNativeDocument(sequence[index].tool_calls || []) !== hashNativeDocument(entry.calls)
-        || hashNativeDocument(visibleMessages(sequence.slice(0, index))) !== hashNativeDocument(entry.sequence)) denied();
+        || hashNativeDocument(visibleMessages(sequence.slice(0, index))) !== hashNativeDocument(entry.sequence)) {
+        // An observed invalidation is terminal in this owner's execution scope.
+        // A forged reference or another owner/task cannot evict a live handle.
+        const sameOwner = binding.ownerFingerprint && binding.ownerFingerprint === entry?.binding.ownerFingerprint;
+        if (authenticReference && (sameOwner || binding.pathFingerprint === entry.binding.pathFingerprint)
+            && hashNativeDocument(binding.executionScope) === hashNativeDocument(entry.binding.executionScope)) checkpoints.delete(state.checkpointId);
+        denied();
+    }
     return entry.content;
 }
 export function discardNativeEnvelopes(binding) {

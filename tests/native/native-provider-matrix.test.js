@@ -11,7 +11,7 @@ function fixture(format, overrides = {}) {
         generation: { sampling: {}, output: { maxTokens: 4096 }, streaming: {}, reasoning: {}, cache: {}, stop: {}, toolChoice: {}, providerExtensions: {}, ...overrides },
     };
     const promptIr = { schemaVersion: 1, requestId: 'test', directives: ['System'], contextSlots: [], history: [], input: 'Hello', responseDirectives: [], tools: [], outputContract: null, provenance: [] };
-    const snapshot = { requestId: 'test', promptIr, contextPlan: { source: {}, items: [], budget: { reservedOutputTokens: 4096 } } };
+    const snapshot = { requestId: 'test', promptIr, contextPlan: { source: {}, items: [], provenance: [], budget: { reservedOutputTokens: 4096 } } };
     return { resolved, snapshot, provider: createNativeMessagesProvider({ format }) };
 }
 
@@ -112,6 +112,32 @@ describe.each(['anthropic', 'gemini'])('Native %s transport', format => {
         expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
         f.resolved.model.remoteModelId = 'test-model';
         f.snapshot.promptIr.history[1].content = 'edited';
+        expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
+    });
+
+    test('G06 invalid replay discards only authenticated same-owner execution state', () => {
+        const f = fixture(format); f.resolved.ownerFingerprint = 'c'.repeat(64); f.snapshot.promptIr.input = 'look up';
+        const content = format === 'anthropic'
+            ? [{ type: 'thinking', thinking: 'private', signature: 'signed-state' }, { type: 'tool_use', id: 'call-1', name: 'lookup', input: {} }]
+            : [{ functionCall: { name: 'lookup', args: {} }, thoughtSignature: 'signed-state' }];
+        const binding = f.provider.renderRequest(f).binding;
+        const normalized = f.provider.normalizeResponse({ binding, sequence: renderPromptMessages(f.snapshot.promptIr), value: format === 'anthropic'
+            ? { content, stop_reason: 'tool_use' } : { candidates: [{ content: { parts: content }, finishReason: 'STOP' }] } });
+        f.snapshot.promptIr.input = '';
+        f.snapshot.promptIr.history = [{ role: 'user', content: 'look up' },
+            { role: 'assistant', content: normalized.text, tool_calls: normalized.toolCalls.map(call => call.raw), providerState: normalized.providerState },
+            { role: 'tool', tool_call_id: normalized.toolCalls[0].id, content: 'current evidence' }];
+        f.resolved.ownerFingerprint = 'd'.repeat(64); f.resolved.pathFingerprint = 'b'.repeat(64);
+        expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
+        f.resolved.ownerFingerprint = 'c'.repeat(64); f.resolved.pathFingerprint = 'a'.repeat(64);
+        expect(() => f.provider.renderRequest(f)).not.toThrow();
+        f.snapshot.promptIr.history[1].providerState = { ...normalized.providerState, bindingFingerprint: 'e'.repeat(64) };
+        expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
+        f.snapshot.promptIr.history[1].providerState = normalized.providerState;
+        expect(() => f.provider.renderRequest(f)).not.toThrow();
+        f.resolved.effectiveExecutionPolicy = { continuity: 'active_execution' };
+        expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
+        delete f.resolved.effectiveExecutionPolicy;
         expect(() => f.provider.renderRequest(f)).toThrow('generation_continuation_unavailable');
     });
 

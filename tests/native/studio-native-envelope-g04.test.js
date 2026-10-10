@@ -11,8 +11,10 @@ import { createNativeMessagesProvider } from '../../src/native/adapters/native-m
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 import { createNativeStudioRouter } from '../../src/endpoints/native-studio.js';
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
+import { capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
 
-test.each(['stable', 'different_task', 'changed_task', 'late_task', 'restored_task'])('G04 real Studio client/routers/Host %s protects signed state across distinct request/attempt IDs', async change => {
+test.each(['stable', 'active_execution', 'different_task', 'changed_task', 'late_task', 'restored_task'])('G04 real Studio client/routers/Host %s protects signed state across distinct request/attempt IDs', async change => {
+    const stable = ['stable', 'active_execution'].includes(change);
     const h = await makeTempFsEngine(); const wires = [], requests = [], updates = [], generationResponses = [];
     const server = createServer(async (req, res) => {
         let wire = ''; for await (const chunk of req) wire += chunk;
@@ -32,6 +34,19 @@ test.each(['stable', 'different_task', 'changed_task', 'late_task', 'restored_ta
         const seeded = await seedGenerationProfiles({ ...h, format: 'gemini', roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/v1beta` });
         await seeded.persistence.saveModelProfile(h.handle, { ...seeded.model, limits: { contextTokens: 32000, outputTokens: 512 } });
         await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: 64000 } } });
+        if (change === 'active_execution') {
+            const connection = await seeded.persistence.getConnectionProfile(h.handle, seeded.connection.connectionProfileId);
+            const model = await seeded.persistence.getModelProfile(h.handle, seeded.model.modelProfileId);
+            const observedAt = Date.now() - 1;
+            const decision = { capability: 'generation.continuation.active-execution', state: 'supported',
+                provenance: [{ kind: 'provider-endpoint', source: 'synthetic local Studio native round trip', observedAt }],
+                binding: { schemaVersion: 1, pathFingerprint: executionPathFingerprint({ handle: h.handle, connection, model }),
+                    observedAt, expiresAt: Date.now() + 60000, assurance: 'verified' } };
+            await seeded.persistence.saveModelProfile(h.handle, { ...model, capabilities: [...model.capabilities, decision] },
+                { observationProof: capabilityObservationProof({ handle: h.handle, connection, model }, [decision]) });
+            const route = await seeded.persistence.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId);
+            await seeded.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { ...route.executionPolicy, continuity: 'active_execution' } });
+        }
         const changePlan = () => agent.setPlan(h.handle, source.project.projectId, task.taskId, { summary: 'New authority', steps: [{ id: 'fresh', title: 'New task state', impact: 'low' }] });
         let secretReads = 0;
         const host = new NativeGenerationHost({ ...seeded, studio, agent, secretPort: { resolveSecret: async () => {
@@ -65,7 +80,7 @@ test.each(['stable', 'different_task', 'changed_task', 'late_task', 'restored_ta
                 headers: { get: name => result.headers[name.toLowerCase()] }, json: async () => result.body };
         };
         const run = runNativeStudioAgentTask({ projectId: source.project.projectId, taskId: task.taskId, maxModelRounds: 3, onUpdate: value => updates.push(value) });
-        if (change !== 'stable') {
+        if (!stable) {
             await expect(run).rejects.toMatchObject({ code: change === 'late_task' ? 'native_generation_task_stopped' : 'generation_continuation_unavailable' });
             expect(wires).toHaveLength(1);
             expect((await agent.getTask(h.handle, source.project.projectId, task.taskId)).compute.attempts).toHaveLength(1);
@@ -82,6 +97,8 @@ test.each(['stable', 'different_task', 'changed_task', 'late_task', 'restored_ta
             { protocol: 'native.gemini.v1', lifecycle: 'mandatory_tool_exchange', scope: 'task', retention: 'process_only',
                 transferredCheckpoints: 1, requestAction: 'continue_tool_protocol', responseAction: 'discard_finished_execution', upstreamReuse: 'unknown' },
         ]);
+        expect(generationResponses.map(value => value.snapshot.diagnostics.executionPlan.policy.continuity))
+            .toEqual([change === 'active_execution' ? change : 'none', change === 'active_execution' ? change : 'none']);
         expect(JSON.stringify(generationResponses)).not.toContain('PRIVATE-UI-NATIVE-SIGNATURE');
         expect(JSON.stringify([requests, result, updates])).not.toContain('PRIVATE-UI-NATIVE-SIGNATURE');
         expect(result.messages.at(-1).content).toBe('Current project read.');

@@ -1,7 +1,7 @@
 import { assertEffectiveRequestSnapshot, assertPromptIR, assertRequestContextPlan } from './contracts.js';
 import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } from './ports.js';
 import { cancellable, checkCancellation, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
-import { prepareExecutionPlan, assertExecutionEvidenceCurrent } from './execution-evidence.js';
+import { prepareExecutionPlan, assertExecutionEvidenceCurrent, continuityRequirements } from './execution-evidence.js';
 import { compiledRequestBinding } from './compiled-binding.js';
 import { hashNativeDocument } from '../repositories/common.js';
 
@@ -35,7 +35,7 @@ export class GenerationService {
                 const key = JSON.stringify(routeRef);
                 if (visited.has(key)) continue;
                 visited.add(key);
-                const resolved = await cancellable(() => this.resolver.resolve({
+                let resolved = await cancellable(() => this.resolver.resolve({
                     handle, routeRef, role: request.role, requirements,
                     unknownCapabilityOverrides: request.unknownCapabilityOverrides || [],
                 }), signal);
@@ -49,9 +49,12 @@ export class GenerationService {
                 if (acceptedPolicy && hashNativeDocument(resolved.connection.networkPolicy) !== acceptedNetwork) {
                     throw new GenerationError('generation_target_policy_denied');
                 }
-                const executionPlan = prepareExecutionPlan(resolved, acceptedPolicy);
-                requirements = [...new Set([...requirements, ...resolved.requirements])];
                 const provider = this.providerFor(resolved.connection.providerAdapter, resolved);
+                const executionPlan = prepareExecutionPlan(resolved, acceptedPolicy, provider);
+                // Keep the candidate Route's declaration intact. Every lowering
+                // (including countTokens) binds the same accepted policy.
+                resolved = immutable({ ...resolved, effectiveExecutionPolicy: executionPlan.policy });
+                requirements = [...new Set([...requirements, ...resolved.requirements, ...continuityRequirements(executionPlan.policy)])];
                 const contextPlan = immutable(assertRequestContextPlan(await cancellable(
                     () => this.contextProvider.buildRequestContextPlan(request, resolved), signal,
                 )));
@@ -119,11 +122,14 @@ export class GenerationService {
                     compiledBinding: compiledRequestBinding({ resolved, contextPlan, promptIr, rendered }),
                 } }));
                 if (preview) return immutable({ snapshot, rendered, preview: true });
-                assertExecutionEvidenceCurrent(resolved, this.now());
                 try {
+                    assertExecutionEvidenceCurrent(resolved, this.now(), executionPlan.policy);
                     const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk });
                     return immutable({ snapshot, response });
                 } catch (error) {
+                    // Also covers failure before _send enters its usage/fetch
+                    // finally (e.g. Secret or path evidence expiring).
+                    provider.discardExecution?.(rendered);
                     checkCancellation(signal);
                     if (!(error instanceof ProviderFailure) || error.kind === 'application') throw error;
                     if (mode === 'confirm' && remaining > 0 && resolved.route.fallbackRouteRefs.length) {
@@ -161,7 +167,7 @@ export class GenerationService {
             return encoded?.includes(secret) || encoded?.includes(JSON.stringify(secret).slice(1, -1));
         };
         if (containsSecret(snapshot) || containsSecret(rendered)) throw new GenerationError('generation_config_contains_secret');
-        assertExecutionEvidenceCurrent(resolved, this.now());
+        assertExecutionEvidenceCurrent(resolved, this.now(), snapshot.diagnostics.executionPlan.policy);
         const controller = new AbortController();
         const abort = () => controller.abort();
         signal?.addEventListener('abort', abort, { once: true });

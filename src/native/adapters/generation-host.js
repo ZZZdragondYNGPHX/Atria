@@ -827,7 +827,7 @@ export class NativeGenerationHost {
                     // Only after they are exhausted may Core resolve a complete fallback.
                     for (let retry = 0; ; retry++) {
                         checkCancellation(boundary.signal);
-                        assertExecutionEvidenceCurrent(resolved, Date.now());
+                        assertExecutionEvidenceCurrent(resolved, Date.now(), prepared.snapshot.diagnostics.executionPlan.policy);
                         // Private native request leases are single-send. A retry lowers
                         // the same frozen snapshot again and rechecks its current envelope.
                         if (retry) rendered = await provider.renderRequest(prepared);

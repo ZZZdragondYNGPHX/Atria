@@ -53,7 +53,12 @@ export function capabilityAtPath(decision, pathFingerprint, now) {
             assurance: binding?.assurance ?? 'adapter_or_legacy_declaration', provenance: decision.provenance } };
 }
 
-export function prepareExecutionPlan(resolved, acceptedPolicy = resolved.route.executionPolicy) {
+export const activeExecutionCapability = 'generation.continuation.active-execution';
+export function continuityRequirements(policy) {
+    return policy?.continuity === 'active_execution' ? [activeExecutionCapability] : [];
+}
+
+export function prepareExecutionPlan(resolved, acceptedPolicy = resolved.route.executionPolicy, provider = null) {
     const policy = acceptedPolicy || { schemaVersion: 1, allowedModelProfileIds: [resolved.model.modelProfileId],
         verifiedRequirements: [], continuity: 'none', reuse: 'disabled' };
     // Legacy Route fallbacks remain governed by the original accepted fallback graph.
@@ -65,9 +70,17 @@ export function prepareExecutionPlan(resolved, acceptedPolicy = resolved.route.e
         if (decision?.state !== 'supported' || decision.binding?.assurance !== 'verified'
             || decision.binding.pathFingerprint !== resolved.pathFingerprint) throw new GenerationError('generation_path_evidence_unavailable');
     }
-    if (policy.continuity !== 'none') {
-        // G04 must provide an actual adapter handle consumer before these modes can execute.
+    if (['task', 'adaptive'].includes(policy.continuity)) {
+        // Cross-turn retention and adaptive lifecycle do not have consumers yet.
         throw new GenerationError('generation_continuation_unavailable');
+    }
+    if (policy.continuity === 'active_execution') {
+        const decision = resolved.capabilities.find(row => row.capability === activeExecutionCapability);
+        // Adapter implementation and exact live path evidence are separate. A
+        // configured/declared capability alone cannot enable this policy.
+        if (!provider?.continuationScopes?.includes('active_execution') || typeof provider.discardExecution !== 'function'
+            || decision?.state !== 'supported' || decision.binding?.assurance !== 'verified'
+            || decision.binding.pathFingerprint !== resolved.pathFingerprint) throw new GenerationError('generation_continuation_unavailable');
     }
     return immutable({ schemaVersion: 1, pathFingerprint: resolved.pathFingerprint ?? null,
         policyFingerprint: hashNativeDocument(policy), policy, selection: 'fixed_route',
@@ -80,8 +93,8 @@ export function prepareExecutionPlan(resolved, acceptedPolicy = resolved.route.e
             inferenceBackend: 'unknown' } });
 }
 
-export function assertExecutionEvidenceCurrent(resolved, now) {
-    for (const capability of [...resolved.requirements, ...(resolved.route.executionPolicy?.verifiedRequirements || [])]) {
+export function assertExecutionEvidenceCurrent(resolved, now, policy = resolved.route.executionPolicy) {
+    for (const capability of [...resolved.requirements, ...(policy?.verifiedRequirements || []), ...continuityRequirements(policy)]) {
         const decision = resolved.capabilities.find(row => row.capability === capability);
         if (decision?.binding && (decision.binding.pathFingerprint !== resolved.pathFingerprint
             || now < decision.binding.observedAt || now >= decision.binding.expiresAt)) {
