@@ -178,7 +178,9 @@ export function createSourceLifecycle({
                 if (!saved?.ok) throw new Error('Memory provenance write failed');
             }
             validateSources();
-            cache.set(scope.key, state);
+            // Keep an authority-owned identity stable for unchanged ledger reads.
+            // Public transaction outputs never alias this private currentness token.
+            if (JSON.stringify(cache.get(scope.key)) !== JSON.stringify(state)) cache.set(scope.key, structuredClone(state));
             for (const [id, epoch] of dirty) {
                 if (pending.get(scope.key)?.get(id) === epoch) pending.get(scope.key).delete(id);
             }
@@ -408,20 +410,19 @@ export function createSourceLifecycle({
         const providerVersion = JSON.stringify(readProviders(context));
         const externalVersion = JSON.stringify(readExternalSources(context));
         const state = await transaction(context, state => state, () => {}, null, readOnly);
-        const cachedVersion = JSON.stringify(cache.get(scope.key));
-        let version = JSON.stringify(state);
+        let cachedVersion = cache.get(scope.key);
         const assertCurrent = () => {
             scope.assertLive();
             if (!enabled(getContext()) || original !== content() || epoch !== (epochs.get(scope.key) || 0)
                 || providerVersion !== JSON.stringify(readProviders(context))
                 || externalVersion !== JSON.stringify(readExternalSources(context))
-                || (readOnly ? cachedVersion : version) !== JSON.stringify(cache.get(scope.key))) throw abort();
+                || cachedVersion !== cache.get(scope.key)) throw abort();
         };
         assertCurrent();
         const recordAccess = async ids => {
             assertCurrent();
             if (readOnly) return;
-            const updated = await transaction(context, ledger => {
+            await transaction(context, ledger => {
                 for (const id of new Set(ids)) {
                     const fact = ledger.facts?.[id];
                     if (fact) {
@@ -431,7 +432,7 @@ export function createSourceLifecycle({
                 }
                 return ledger;
             }, assertCurrent);
-            version = JSON.stringify(updated);
+            cachedVersion = cache.get(scope.key);
             assertCurrent();
         };
         return { key: scope.key, state: structuredClone(state), chat: structuredClone(scope.chat), assertCurrent, recordAccess };

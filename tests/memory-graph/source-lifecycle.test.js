@@ -39,6 +39,35 @@ function fixture() {
 }
 
 describe('Memory OS production source lifecycle', () => {
+    test('H4 unchanged readers share private ledger identity while observed source ABA and writes revoke it', async () => {
+        const f = fixture();
+        const ticket = await f.lifecycle.capture(f.context, [1]);
+        const first = await f.lifecycle.retrievalSnapshot(f.context);
+        const second = await f.lifecycle.retrievalSnapshot(f.context);
+        first.assertCurrent(); second.assertCurrent();
+        // Snapshot copies cannot alias the private authority cache.
+        second.state.episodes[ticket.episodeIds[0]].status = 'stale';
+        first.assertCurrent();
+        const original = f.context.chat[1].mes;
+        f.context.chat[1].mes = 'At work'; f.lifecycle.observeMutation(f.context, 1);
+        f.context.chat[1].mes = original; f.lifecycle.observeMutation(f.context, 1);
+        expect(first.assertCurrent).toThrow('changed');
+        const current = await f.lifecycle.retrievalSnapshot(f.context);
+        await f.lifecycle.correct(f.context, { action: 'entity', name: 'Alice', type: 'Character', reason: 'Current source' }, current);
+        expect(current.assertCurrent).toThrow('changed');
+    });
+    test('H4 read-only snapshots reject private ledger changes and unobserved source edits without persistence', async () => {
+        const f = fixture();
+        await f.lifecycle.capture(f.context, [1]);
+        const first = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true }); first.assertCurrent();
+        const writer = await f.lifecycle.retrievalSnapshot(f.context);
+        await f.lifecycle.correct(f.context, { action: 'entity', name: 'Alice', type: 'Character', reason: 'Changed ledger' }, writer);
+        expect(first.assertCurrent).toThrow('changed');
+        const fresh = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        f.context.chat[1].mes = 'Changed without callback';
+        expect(fresh.assertCurrent).toThrow('changed');
+    });
     test('observation recall neither persists reconciliation nor access counts and still revokes stale sources', async () => {
         const f = fixture();
         const snapshot = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
