@@ -432,8 +432,15 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             const ranks = await callService('rerank', { profile: rerankProfile, query, signal, computeContext, topK: result.candidates.length,
                 documents: result.candidates.map((doc, index) => ({ text: doc.text, index })) });
             guard();
-            const scores = new Map((ranks || []).filter(hit => Number.isInteger(hit.index) && Number.isFinite(Number(hit.relevance_score ?? hit.score)))
-                .map(hit => [hit.index, Number(hit.relevance_score ?? hit.score)]));
+            // A malformed response cannot be a successful ranking. Keep the
+            // source-valid baseline intact; the attempted service work stays counted.
+            if (!Array.isArray(ranks) || !ranks.length
+                || ranks.some(hit => !Number.isInteger(hit?.index) || hit.index < 0 || hit.index >= result.candidates.length
+                    || !Number.isFinite(hit.relevance_score ?? hit.score))
+                || new Set(ranks.map(hit => hit.index)).size !== ranks.length) {
+                throw Object.assign(new Error('Invalid Memory rerank response'), { code: 'memory_rerank_response_invalid' });
+            }
+            const scores = new Map(ranks.map(hit => [hit.index, hit.relevance_score ?? hit.score]));
             result.candidates = result.candidates.map((doc, index) => ({ ...doc, rerank: scores.get(index) ?? -Infinity }))
                 .sort((a, b) => b.rerank - a.rerank || b.score - a.score);
             invocation.outcome = 'completed';

@@ -183,6 +183,29 @@ describe('Memory OS hybrid retrieval', () => {
         await retrieveMemory(reread, 'Alice', { countTokens, budget: 0 });
         expect((await lifecycle.listFacts(ctx))[0].accessCount).toBe(1);
     });
+    test.each([
+        ['empty response', []], ['foreign candidate', [{ index: 100, score: 1 }]],
+        ['negative candidate', [{ index: -1, score: 1 }]], ['unknown score', [{ index: 0, score: null }]],
+        ['duplicate candidate', [{ index: 0, score: 1 }, { index: 0, score: 0 }]],
+        ['mixed invalid response', [{ index: 0, score: 1 }, { index: 100, score: 2 }]],
+    ])('invalid rerank %s preserves complete baseline evidence and reports failure work', async (_, response) => {
+        const chat = [{ memory_os_source_id: 'cause-a', mes: 'Alice left because of the storm.' }, { memory_os_source_id: 'cause-b', mes: 'Alice left because of the promise.' }];
+        const state = emptyProvenance(); state.scopeId = 'causal-chat'; captureEpisodes(state, chat, [0, 1], state.scopeId);
+        const snapshot = { state, chat, key: state.scopeId, assertCurrent: jest.fn() };
+        const query = 'Why did Alice leave?';
+        const options = { countTokens, budget: 10000, packing: 'ranked' };
+        const baseline = await retrieveMemory(snapshot, query, options);
+        const service = { rerank: jest.fn(async () => response) };
+        const result = await retrieveMemory(snapshot, query, { ...options, service, rerankProfile: {}, computeContext: { kind: 'session' } });
+        expect(result.invocation).toMatchObject({ action: 'rerank', outcome: 'unavailable', stop: 'memory_rerank_response_invalid' });
+        expect(result.diagnostics).toContain('rerank_unavailable');
+        expect(result.selected).toEqual(baseline.selected); expect(result.text).toBe(baseline.text);
+        expect(result.evidence).toEqual(baseline.evidence);
+        expect(service.rerank).toHaveBeenCalledTimes(1);
+        expect(result.metrics.work).toMatchObject({ serviceRequests: 1, rerankRequests: 1, costStatus: 'unknown' });
+        expect(result.metrics.work.responseDataBytes).toBeGreaterThan(0);
+    });
+
     test('successful rerank reorders only source-valid candidates', async () => {
         const chat = [{ memory_os_source_id: 'cause-a', mes: 'Alice left because of the storm.' }, { memory_os_source_id: 'cause-b', mes: 'Alice left because of the promise.' }];
         const state = emptyProvenance(); state.scopeId = 'causal-chat'; captureEpisodes(state, chat, [0, 1], state.scopeId);
