@@ -1517,3 +1517,11 @@ M1交付后的main `ea75b76be4927e881de2f0be7c304a56301f1f83`与docs均干净且
 B0实际不利结果：H0-ZH-01的同名他Actor来源、04的秘密动机来源、05的他Actor私人约定，在 lexical/graph 与受控vector两 lane 均入选；02只覆盖belief而漏掉hearsay。03历史/current来源分别命中；08遥远承诺命中。源编辑、删除、换branch与variant修改使旧snapshot抛AbortError；原metadata保存失败保持原来源；atomic chain仍无完整组协议。该泄露表述只指合成fixture检索结果，不声称真实用户数据或最终NPC自由文本已泄露。
 
 H0最小相关验证：新增5项观测测试分别修复并通过；原source-lifecycle / temporal-graph / hybrid-retrieval三suites共51项通过。没有全量test/build/UI/CI或模型发送。原累计1894 requests /15671701 accounted tokens、unknown64/carry252、pending0/lock0保持；API quota恢复原admissions，不以历史累计当终身限制。H0观测完成，继续H1→H2，尚未宣称HM1整体或真实质量收益完成。
+
+## HM1 / H1 唯一召回与前置合法域
+
+source `b8c2a85e6` 将自动/手动 recallMemory 与 ordinary RP/Game/Package 统一到 Hybrid。旧 LLM/RAG 执行、模式 UI、router/rewrite prompts/routes 与独立 retriever 删除；单向设置清理保留来源写入许可及 extraction/schema 合法路由。来源写入与召回读取独立，关闭写入仍能消费合法历史；待写 ticket 关闭写入时拒绝。原 source/World/Timeline/Journal 不迁移或删除。无证明旧图节点不自动入新 corpus，旧 mg_/memory_os_ 派生 namespace 只清 hashes，新域按 requester/Information anchor/time/profile 隔离与重建；维护重建同走授权路径。
+
+原 Information authority 在任何 corpus/index/query/rerank 前确定 Actor/task/narrator 完整来源域，application summary/reference 不授权未暴露整段 source。源/分支/variant、Information grant/availability/revision/anchor 及异步消费均重验；Package 对混合合法/非法引用拒绝整段正文。`hm1-h1-b1-attempt1.json` 保存18组B1双lane配对与两实际 Native消费者；禁止来源未入 corpus/insert/rerank/结果，02仍只命中1/2目标，H2尚未增强。`hm1-h1-ordinary.json` 保存实际ordinary单packet消费。
+
+针对性检查：新eligibility3/settings1/vector adapter3、原extract transaction7、抽取pipeline修复后19、source-lifecycle24、hybrid retrieval12、Package bridge5/runtime routing2通过。Package旧fixture补上main已有RunControl和entryPoint，未改原Host权限检查；初始失败和修复日志保留。仅相关ESLint/diff；Edge实际生产Memory workspace检查390px无横溢出、写入/Recall独立、失败可见并回显已保存值，截图保留。无新增模型发送，无全量build/test；H1已冻结B1，继续H2中文query与packing及真实正文配对。
