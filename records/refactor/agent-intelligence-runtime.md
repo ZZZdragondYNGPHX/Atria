@@ -1617,3 +1617,11 @@ shared lease 与原生迁移相关的 Responses/native matrix 63 项通过；随
 费用校验脚本错误也保留：v1/v2的baselinesPreserved原值false，因为loop脚本对Buffer做JSON hash而初gateway脚本对原bytes hash。独立m8-loop-baseline-raw-hash-audit.json以raw SHA256核验两原账本均等于原pin；未覆盖两个false记录，未为此重发API。新runner后续须使用同raw hash算法。
 
 真实Studio入口另发现generation-client每轮新requestId，直接Host重复ID不能替代产品证据。修复后原Host将Project Task映为其现有task source，绑定原Task语义及非generation authority epoch；request/attempt identity仍逐轮独立，owner/path/prefix/history/provenance均保留。不接收caller Task proof。Task语义变化时client从公开工具观察重算，Host拒绝不同Task、变化/晚到变化及同内容restore旧epoch，取消/失败discard。真实client→原router→Host→实际loopback native provider稳定路径1项、上述guard4项及cancel replay1项通过；旧Studio5项先通过、3项因旧Skill fixture缺installedHash/pin失败，更新fixture匹配原A5 pin契约后3项定向通过（含新增prefix reset）。8相关产品文件ESLint/diff通过。source与实际producer分别保留，不扩张为当前HEAD已重跑全部真实API；继续Sparse/G06/HM2，无HANDOFF，无阶段停工。
+
+## M8 / G05 规则触发与 rerank 原预算消费
+
+2026-10-11 source `ad21a1379`。有限支持唯一规则见 compute-policy §3.1。原 Hybrid 不再因配置存在而每次 rerank，普通/无因果证据/单一来源/缺预算上下文均 skip，仅多份独立因果来源请求排序，原 recall trace 收消费决定。Native rerank 省略 computeContext 也拒绝，未留未计账发送旁路。原 exact retrieval profile/Secret、Run operation/Project Task mutex/CAS 与 provider fetch 实际消费共享 send ledger；usage/null、取消、坏 output、上界估计均沿原规则，不新建执行器。权限及 source currentness 在拒绝可选计算后继续核验。
+
+11 distinct relevant checks通过：FS/SQLite各一次实际rerank+fresh Narrator共享父额度与并发2申请只有1发送，共4项；无效响应保留直接17 total/partial counts、缺上下文/过期锚点/坏输入不发送1项；Project原Task收费/晚变更拒绝1项；实际Hybrid→NativeRetrievalService→middleware→provider HTTP触发、耗尽退回合法source和拒绝后source撤回1项；实际发送取消unknown与65条超限输入无charge1项；纯规则去重/不造事实1项；原ordinary检索不调用配置rerank1项；旧三种rerank/远程embedding协议沿明确原Session预算调用1项。最后坏output新增严格结果校验后仅相关断言重测；日志保留 initial/consumers/terminal 三份。8产品文件ESLint/diff通过，初12个缩进错误修正，不虚报全量测试。
+
+新增API0，M1/HM1冻结基线和quota/费用未变化。只证明有限规则与已发送费用语义，不计作真实rerank算法收益、金额硬上限、Embedding/CPU全覆盖或G05/G06/HM2完成。继续本地投影/hash/proof/network观测及有界HM2；不写HANDOFF，不集成main。

@@ -77,7 +77,11 @@ Host 沿原发送边界，从冻结 Snapshot 的 prepared input count + reserved
 
 原 operation/Task 的可选 compute ledger 仅保留请求/目标指纹、上界、charged/settled/unknown、有限直接数值 usage。合法 totalTokens 可 settle；仅 input/output 或缺 usage 时保留部分计数并按上界占用，reasoning/cache 子集不重复相加。合法数值已取得后，正文/schema/Secret/stream 完整性失败也保留计数，不保存被拒正文或opaque状态。取消/崩溃且无法确定总计保持占用，不自动退款。reopen及原 background Save restore 保留原 identity/余额；这些实际断言不扩大为所有 Session fork/跨账户预算保证。
 
-该阶段只是共享发送成本语义。纯规则 Invocation、retrieval/validation CPU 和后台消费者继续接入；货币价格、canonical upstream、隐藏网关 retries 未知仍 unknown，估计 token admission 不证明金额硬上限或真实加速。
+2026-10-11 source `ad21a1379` 将有限规则 Invocation 接入唯一 Hybrid consumer：普通查询只用基础检索，因果证据缺失时不靠 rerank 造事实；仅多个不同合法 Episode 来源的因果候选允许请求排序。相同来源的 fact/relation/episode 不算多份独立证据。skip/trigger/completed/unavailable/stop 进入原 recall trace；未配置或没有原 Run/Task authority 时跳过。必需 source/Information/Actor/时间/Branch currentness 在可选拒绝后仍核验。该纯规则不是新的生成 classifier，也不说明每个难例必须 rerank。
+
+原 Native `/rerank` 必须提供当前 Session anchor 或原 Project Task；省略上下文、缺显式 Route computeBudget 或锚点不符在收费前拒绝。原 profile exact revision/Secret 仍唯一解析，沿原 Run operation/Task CAS 与正文共享发送额度。每个真实 provider fetch 前 charge；usage 存在时保留直接数值，即使排序响应无效；失败/取消/无 total 保持 unknown 上界，不自动退还。64 documents/256KiB 数据、原120s timeout 为首批有界输入/退出条件；request upper 使用送出 JSON UTF-8 bytes 估计，不能宣称 rerank search-unit/金额或隐藏网关开销被精确封顶。没有退款证据就保持占用。原 embedding/profile 配置仍独立保留；本 checkpoint 未声称所有 embedding/local inference/CPU 都已硬准入。
+
+纯规则首批与共享发送成本语义已接入；retrieval/validation CPU、增量索引和后台消费者继续推进。货币价格、canonical upstream、隐藏网关 retries 未知仍 unknown，估计 token admission 不证明金额硬上限或真实加速。
 
 ## 4. Scheduler 与故障边界
 

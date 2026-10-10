@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。M8 G01–G05 有限 checkpoint 已实施，原生私有 envelope 与原 Run/Task 共享发送记账已接入，继续 Sparse 消费与 gateway/G06 实测；完整 M8/HM2/HM3 未验收。
+- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。M8 G01–G05 有限 checkpoint 已实施，原生私有 envelope、原 Run/Task 共享发送记账及规则触发 rerank 已接入；继续本地工作量/索引、G06 与 HM2 实测，完整 M8/HM2/HM3 未验收。
 - Updated: 2026-10-11
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
