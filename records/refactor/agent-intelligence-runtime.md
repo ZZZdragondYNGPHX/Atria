@@ -1647,3 +1647,11 @@ H4原算法基线在实际loopback Native FS向量存储完成：有效SourceLif
 各层cold口径显式保留：runner原cold字段只设置rebuildVectors；repeat0初derived miss，repeat1/2在可复用尺寸是derived warm+index rebuild，不能把三行称作所有cache全冷。initial大语料三行均容量miss；最终index-rebuild p50/p90 5094.78/7485.68ms只是混合derived状态，不作为全冷SLO。最新producer6dfa没有无理由重跑100/1000或API。失败报告、旧不利观察不覆盖，无新增外部API/quota变动。
 
 本有界组结束，后续当前验收尚欠：G05非发送CPU/Embedding全硬额度和后台scope明确不可用；G06双入口可配置预算/费用unknown、actual selected target/continuation/reuse原因及有限ordinary/hard/high-impact/long配对消费；H3启用算法实际收益与退出、H4 delta/rank-cache未启用时保持简单重建。继续原消费者/UI和有限对照；完整M8/HM2未验收，不写HANDOFF，不集成main。
+
+## M8 / G06 共享额度产品消费与关闭反例
+
+2026-10-11 source `90c0dd72d`。原 Route fields editor 新增可选发送次数1–32及正整数 Token 上界，保存/撤回保留其它 policy；诊断展示当次实际 charge receipts、有效父 limits、unknown currency 与 Provider observations，Studio 沿原 Task.compute 显示累计记录。发现关闭 Route 配置可绕过已有 compute ledger，修复为原 Run lock/Task CAS 内优先复用已存在 limits；放宽配置也只取实际 receipt 的收紧值。没有并行预算 authority，未将当次 attempts 称作父剩余额度。
+
+7新相关确定性检查通过：FS/SQLite Session/Project 各1项放宽/关闭不退款且 diagnostic receipts 等于原账本，共4项；Package 原后台 allowance 仍有余额时关闭 compute 仍拒绝发送，FS/SQLite共2项；字段编辑 bounds/保留 policy/提交后重新读取再关闭1项。改了 receipt 后仅重测已报告/partial usage2项和 FS/SQLite后台 unknown/restore2项，共4项相关回归通过。初 Jest 路径错误及 UI fixture缺 fallbackRouteRefs/精确 resources array、保存后测试旧 detached form 的失败日志原样保留；补齐 fixture 并按产品重新打开后定向通过。
+
+真实 Edge browser 沿原全应用/隔离 Native Session 完成1440px/390px两项：invalid33浏览器拦截、2/64000保存再读取、关闭保存再读取、Escape恢复 list focus，无 pageerror/外部模型发送。初截图显示 checkbox继承文本框全宽，修正原 Runtime CSS 后仅这两个受影响 browser checks重测通过，截图已查看；沿用现有tokens/布局。6产品 JS ESLint与diff检查通过。外部API0，原quota/两冻结ledger未改；完整M8/HM2仍未验收，继续H3有限实际收益及G06双入口对照，无HANDOFF、main不变。

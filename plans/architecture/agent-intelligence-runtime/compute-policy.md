@@ -83,6 +83,8 @@ Host 沿原发送边界，从冻结 Snapshot 的 prepared input count + reserved
 
 纯规则首批与共享发送成本语义已接入；retrieval/validation CPU、增量索引和后台消费者继续推进。货币价格、canonical upstream、隐藏网关 retries 未知仍 unknown，估计 token admission 不证明金额硬上限或真实加速。
 
+2026-10-11 source `90c0dd72d`：原 Route editor 提供可选共享发送次数/Token 上界，不自动替旧 Route 设额度，保留其它 executionPolicy；关闭仅删除 Route 配置，同一原 operation/Task 的 durable limits 仍有效。Host routing.compute 的 limits 来自实际 charge receipt，而非放宽后的 Route 配置；attempts 只含 current_request，金额 unavailable，不冒充父余额。Studio 显示原 Task.compute；诊断保留 selected target、执行/恢复决定、Provider usage 与 unknown 身份。有限 UI/账本反例见 Record，不计作全部 G06 收益验收。
+
 ## 4. Scheduler 与故障边界
 
 继续使用 `turn_blocking / interactive / background / maintenance`；共享 owner resource permits 与公平调度。
