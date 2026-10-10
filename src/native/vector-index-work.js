@@ -32,11 +32,17 @@ async function withIndexPermit(indexPath, signal, operation, write) {
     }
 }
 
-export async function queryNativeIndexes({ indexes, query, topK, threshold, includeVectors = false, getVector, compute, signal }) {
+export async function queryNativeIndexes({ indexes, query, vector, topK, threshold, includeVectors = false, getVector, compute, signal }) {
+    const supplied = vector !== undefined;
+    if (supplied && (!Array.isArray(vector) || !vector.length || vector.length > 65536 || vector.some(n => !Number.isFinite(n)))) throw unavailable();
+    // The original caller may wait behind an index writer. Freeze its vector
+    // before that await, just like the serialized query/input admission bound.
+    const frozenVector = supplied ? Object.freeze([...vector]) : null;
     if (!indexes.length || indexes.length > 16 || new Set(indexes.map(row => indexIdentity(row.indexPath))).size !== indexes.length
-        || typeof query !== 'string' || !query.trim() || Buffer.byteLength(query, 'utf8') > 8192
+        || (!supplied && (typeof query !== 'string' || !query.trim() || Buffer.byteLength(query, 'utf8') > 8192))
         || !Number.isSafeInteger(topK) || topK < 1 || topK > 100 || !Number.isFinite(threshold)) throw unavailable();
-    const inputBytes = Buffer.byteLength(JSON.stringify({ collections: indexes.map(row => row.collectionId), query, topK, threshold, includeVectors }), 'utf8');
+    const inputBytes = Buffer.byteLength(JSON.stringify({ collections: indexes.map(row => row.collectionId),
+        ...(supplied ? { vector: frozenVector } : { query }), topK, threshold, includeVectors }), 'utf8');
     if (inputBytes > MAX_BYTES) throw unavailable();
     const paths = indexes.map(row => row.indexPath).sort((a, b) => indexIdentity(a) < indexIdentity(b) ? -1 : indexIdentity(a) > indexIdentity(b) ? 1 : 0);
     const enter = depth => depth === paths.length ? execute() : withIndexPermit(paths[depth], signal, () => enter(depth + 1), false);
@@ -70,7 +76,7 @@ export async function queryNativeIndexes({ indexes, query, topK, threshold, incl
             if (!count) result = { groups: {}, single: { hashes: [], metadata: [] } };
             else {
                 if (compute) await compute.publishLocalIndex(() => { signal?.throwIfAborted(); });
-                const vector = await getVector();
+                const vector = supplied ? frozenVector : await getVector();
                 signal?.throwIfAborted();
                 if (!Array.isArray(vector) || !vector.length || vector.length > 65536 || vector.some(n => !Number.isFinite(n))) throw unavailable();
                 const hits = [];

@@ -34,7 +34,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             if (!handle) return res.sendStatus(401);
             const operations = {
                 '/insert': ['collectionId', 'items', 'embeddings', 'computeContext'], '/query': ['collectionId', 'searchText', 'topK', 'threshold', 'includeVectors', 'embeddings', 'computeContext'],
-                '/query-multi': ['collectionIds', 'searchText', 'topK', 'threshold', 'embeddings', 'computeContext'], '/query-by-vector': ['collectionId', 'vector', 'topK', 'threshold', 'includeVectors'],
+                '/query-multi': ['collectionIds', 'searchText', 'topK', 'threshold', 'embeddings', 'computeContext'], '/query-by-vector': ['collectionId', 'vector', 'topK', 'threshold', 'includeVectors', 'computeContext'],
                 '/list': ['collectionId'], '/delete': ['collectionId', 'hashes'], '/purge': ['collectionId'], '/rerank': ['query', 'documents', 'topK', 'computeContext'],
             };
             const allowed = operations[req.path];
@@ -50,7 +50,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
                 || Buffer.byteLength(JSON.stringify(req.body.documents), 'utf8') > 262144)) throw new TypeError('Bounded rerank input required');
             const usesProvider = ['/insert', '/query', '/query-multi', '/rerank'].includes(req.path);
             const compute = req.body.computeContext ? await prepareRetrievalCompute({ handle, context: req.body.computeContext, profile, ...await getComputeServices() }) : null;
-            if (compute && profile.mode === 'embed' && !supportsOpenAIEmbeddingSource(profile.source)) {
+            if (compute && usesProvider && profile.mode === 'embed' && !supportsOpenAIEmbeddingSource(profile.source)) {
                 throw Object.assign(new Error('Budgeted Embedding provider unavailable'), { code: 'native_retrieval_compute_unavailable' });
             }
             const secret = usesProvider ? resolveSecret(req.user.directories, profile.secretRef) : '';

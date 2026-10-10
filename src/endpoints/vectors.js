@@ -494,13 +494,22 @@ router.post('/query-by-vector', async (req, res) => {
         }
 
         const collectionId = String(req.body.collectionId);
-        const vector = req.body.vector.map(x => Number(x) || 0);
-        const topK = Number(req.body.topK) || 10;
-        const threshold = Number(req.body.threshold) || 0.0;
         const source = String(req.body.source) || 'transformers';
         const sourceSettings = getSourceSettings(source, req);
         const includeVectors = Boolean(req.body.includeVectors);
 
+        if (sourceSettings.native) {
+            const { single: { hashes, metadata } } = await queryNativeIndexes({
+                indexes: [{ collectionId, indexPath: getIndexPath(req.user.directories, collectionId, source, sourceSettings) }],
+                vector: req.body.vector, topK: req.body.topK === undefined ? 10 : Number(req.body.topK),
+                threshold: req.body.threshold === undefined ? 0 : Number(req.body.threshold), includeVectors,
+                compute: req.nativeRetrieval?.compute, signal: req.nativeRetrieval?.signal,
+            });
+            return res.json({ metadata, hashes });
+        }
+        const vector = req.body.vector.map(x => Number(x) || 0);
+        const topK = Number(req.body.topK) || 10;
+        const threshold = Number(req.body.threshold) || 0.0;
         const store = await getIndex(req.user.directories, collectionId, source, sourceSettings);
         const result = await store.queryItems(vector, topK);
         const filtered = result.filter(x => x.score >= threshold);
