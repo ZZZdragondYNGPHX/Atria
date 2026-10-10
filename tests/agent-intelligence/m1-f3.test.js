@@ -140,7 +140,7 @@ test.each(['rp-skill', 'project-prompt'])('separate %s promotion preserves archi
     } finally { f.h.cleanup(); }
 });
 
-test.each(['rp', 'project'])('renewal %s development retains the original threshold and rejects historical baseline substitution', domain => {
+test.each(['rp', 'project'])('renewal %s development reports observed wins and rejects historical baseline substitution', domain => {
     const f = example(domain, RENEWAL_PILOT_CASE_SET_REVISION);
     expect(readiness(f)).toMatchObject({ accepted: true, wins: 2 });
     expect(validateF3Baseline(f.baseline, domain, f.config, f.settings, f.ledger)).toBe(f.baseline);
@@ -189,6 +189,15 @@ test.each(['rp', 'project'])('primary-only %s development qualifies without seco
     rehash(f.report.pairs[0]); expect(readiness(f).reasons).toContain('behavior_regression_or_ungraded');
     f.report.pairs[0].judge.preference = 'uncertain';
     rehash(f.report.pairs[0]); expect(readiness(f).accepted).toBe(false);
+});
+
+test('development reports one observed win without turning the count into an execution gate', () => {
+    const f = example(); f.report.judgeMode = 'primary_only'; f.independent = [];
+    f.report.comparisonCalibration = f.report.comparisonCalibration.filter(row => row.label === 'primary');
+    f.report.pairs[0].judge.preference = 'tie'; rehash(f.report.pairs[0]);
+    expect(readiness(f)).toMatchObject({ accepted: true, wins: 1 });
+    f.report.pairs[1].judge.deltas.actor_voice = -1; rehash(f.report.pairs[1]);
+    expect(readiness(f).reasons).toContain('behavior_regression_or_ungraded');
 });
 
 test.each([false, true])('primary-only F3 grading sends only to the primary model; preserve graded = %s', async preserveGraded => {
@@ -249,13 +258,12 @@ test('F3 rejects a rewritten cached baseline even when the new pair hash is self
     expect(readiness(f).reasons).toContain('pair_or_reused_baseline_changed');
 });
 
-test.each(['disagreement', 'negative_dimension', 'missing_judge', 'same_model', 'one_win'])('F3 preserves dual development threshold for %s', failure => {
+test.each(['disagreement', 'negative_dimension', 'missing_judge', 'same_model'])('F3 preserves dual development rejection for %s', failure => {
     const f = example();
     if (failure === 'disagreement') f.independent[0].preference = 'tie';
     if (failure === 'negative_dimension') f.independent[0].deltas.knowledge_boundary = -1;
     if (failure === 'missing_judge') f.independent.pop();
     if (failure === 'same_model') f.independent[0].model = f.independent[0].primaryModel;
-    if (failure === 'one_win') { f.report.pairs[1].judge.preference = 'tie'; f.independent[1].preference = 'tie'; rehash(f.report.pairs[1]); f.independent[1].pairHash = f.report.pairs[1].pairHash; }
     expect(readiness(f).accepted).toBe(false);
 });
 

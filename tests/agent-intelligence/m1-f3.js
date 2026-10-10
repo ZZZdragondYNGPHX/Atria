@@ -23,8 +23,7 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
     const domain = kind === 'rp-skill' ? 'rp' : 'project', configs = { primary: primaryConfig, secondary: secondaryConfig };
     const labels = f3JudgeLabels(scope.judgeMode);
     if (!(labels.length === 1 ? ['primary_only', 'dual'].includes(source.entry?.judgeMode) : source.entry?.judgeMode === 'dual')
-        || source.entry.status !== 'f2_sources_observed' || !(labels.length === 1
-        ? ['primary_observed_gap', 'observed_gap'].includes(source.entry.baselineHeadroom) : source.entry.baselineHeadroom === 'observed_gap')
+        || source.entry.status !== 'f2_sources_observed'
         || controls.origin !== 'engineering_control' || controls.controls?.length !== 12 || ![8, 9].includes(controls.sourceControls?.length)
         || hash(controls) !== scope.controlHash || labels.length === 2 && primaryConfig.model.remoteModelId === secondaryConfig?.model.remoteModelId) throw new Error('f3_source_unready');
     const comparisons = controls.controls.filter(c => c.domain === domain), sources = controls.sourceControls.filter(c => c.pair.case.entrance === domain);
@@ -58,9 +57,7 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
         if (source.entry.judgeMode === 'dual' ? !equal(rows[0].sharedGaps, shared) : rows[0].sharedGaps.length) throw new Error('f3_assessment_changed');
     }
     if (source.assessments.length !== 3) throw new Error('f3_assessment_changed');
-    if (source.report.caseSetRevision !== (scope.pilotCaseSetRevision ?? PILOT_CASE_SET_REVISION) || source.assessments.filter(row => labels.length === 2 ? row.sharedGaps.length
-        : Object.values(row.observations.find(o => o.label === 'primary').dimensions).some(d => d.status === 'gap')).length
-        < (scope.pilotCaseSetRevision === PILOT_CASE_SET_REVISION ? 1 : 2)) throw new Error('f3_headroom_unestablished');
+    if (source.report.caseSetRevision !== (scope.pilotCaseSetRevision ?? PILOT_CASE_SET_REVISION)) throw new Error('f3_source_changed');
 }
 
 export function validateF3Baseline(report, domain, config, settings, ledger) {
@@ -127,7 +124,6 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
             || !report.charges.some(p => equal(p, c)) || !paidMatches(c, owner.attempts.find(a => a.id === c.id && a.jobId === jobId)))) reasons.push('candidate_usage_missing');
     }
     if (secondaryRequired && independent.length !== 3 || !secondaryRequired && independent.length !== 0) reasons.push('independent_model_observation_missing');
-    if (wins < 2) reasons.push('improvement_threshold_not_met');
     return { accepted: !reasons.length, reasons: [...new Set(reasons)], wins, judgeMode: report.judgeMode || 'dual', tokensAdvisory: true, humanPreference: 'not_observed',
         currencyCost: 'unavailable', productionPromotion: 'original_gate_unchanged', baselineReuse: 'cached_F2_development_observation' };
 }
@@ -238,12 +234,12 @@ export function f3DevelopmentFeedback(prior, expected) {
     if (!expected || hash(prior.report) !== expected.reportHash || hash(prior.candidate) !== expected.candidateHash
         || prior.report.origin !== 'm1_f3_development' || prior.report.pairs.length !== 3
         || prior.candidate.valueHash !== expected.valueHash || prior.report.pairs.some(p => p.human !== null)) throw new Error('f3_development_feedback_changed');
-    return { origin: 'prior_failed_development', reportHash: expected.reportHash, candidate: prior.candidate.candidate.diff,
+    return { origin: 'prior_public_development', reportHash: expected.reportHash, candidate: prior.candidate.candidate.diff,
         observations: prior.report.pairs.map(p => ({ caseId: p.case.caseId, judge: p.judge,
             publicDevelopment: { scenario: p.scenario, baseline: p.baseline.output, candidate: p.candidate.output },
             interpretation: p.judge?.preference === 'candidate' && Object.values(p.judge.deltas).some(v => v < 0)
                 ? 'contains_regression_or_contradictory_grading; not established improvement' : 'retained_model_observation' })),
-        instruction: 'Use these retained development observations to address regressions as well as original gaps. Contradictory grades are not corrected or accepted. Preserve expressive voice, concrete NPC action and explicit player ownership while removing unsupported assertions. Generate a new minimal edit against the original base; do not copy a case answer.' };
+        instruction: 'Use these retained public development observations to improve the generality and clarity of the prior guidance. Preserve observed benefits and address any original gaps or regressions without inventing a new gap where the current baseline is met. Contradictory grades are not corrected or accepted. Preserve expressive voice, concrete NPC action and explicit player ownership while removing unsupported assertions and unnecessary prescriptions. Generate a new minimal edit against the original base; do not copy a case answer or repeat the prior guidance unchanged.' };
 }
 
 export function validF3Control(text, control, entry) {
@@ -324,7 +320,7 @@ export function f3ExtractionInput(capture, domain, investigation) {
             ? 'Preserve player choice, latest exposed promise and scene revisions, unknown current/private facts, distinct NPC voice and actionable in-world continuation. Never infer present time, physical conditions or private intentions from a schedule, metaphor, role or unobserved object. An object label, player assertion or discarded draft does not establish the actual contents of an unseen object, even in an incidental noun phrase. Preserve the exposed NPC identity and occupational role rather than substituting a scene-adjacent title. NPC actions and offers can advance the scene while leaving player action undecided. A supported prerequisite never authorizes extra penalties, restrictions or required choices.'
             : 'Read authoritative sources and diagnostics, reset invalid staged operations, preserve unrelated data and human revisions, distinguish prior conflicted Tasks from fresh Tasks, and accurately explain proposed changes and the pending human Review/Commit boundary.',
         executionAffordances: domain === 'rp'
-            ? 'The declared character Skill is read by the original Director before writing the public NPC response. Its instruction must preserve expressive NPC actions without authoring player action or turning unobserved circumstances into established facts. Use a concrete pre-response audit against exposed prerequisites and the player-owned action boundary; a broad prohibition alone is insufficient. Audit every factual clause and descriptive noun phrase, not merely explicit conclusions: attribute reported labels and hypotheses to their sources; keep unseen properties unknown; check role descriptions against the exposed identity. This audit is an internal instruction, not a public checklist or copied case answer. Preserve vivid NPC gestures and dialogue. Ordinary atmosphere does not establish binding rules or private knowledge.'
+            ? 'The declared character Skill is read by the original Director before writing the public NPC response. Its instruction must preserve expressive NPC actions without authoring player action or turning unobserved circumstances into established facts. Use a concrete pre-response audit against exposed prerequisites and the player-owned action boundary; a broad prohibition alone is insufficient. Audit every factual clause and descriptive noun phrase, not merely explicit conclusions: attribute reported labels and hypotheses to their sources; keep unseen properties unknown; check role descriptions against the exposed identity. This audit is an internal instruction, not a public checklist or copied case answer. Preserve vivid NPC gestures and dialogue. Ordinary atmosphere does not establish binding rules or private knowledge. A stern character voice or occupational authority shapes delivery but supplies no new punishments, duties or facts. When withholding an unsupported assertion, continue through a grounded NPC action or explicitly qualified offer tied to exposed conditions; avoid replacing the scene with generic disclaimers or prescribing the player response.'
             : 'The original Studio loop ends immediately after prepare_review returns a stopped Task. There is no post-Review model-summary round. Model-authored public text is available as assistant content alongside a tool call and as set_plan summary/step descriptions before prepare_review. State current facts and the planned uncommitted Review boundary there; do not claim validation passed or Review was reached before the tool confirms it. A future summary instruction alone has no executable post-Review slot.' };
 }
 

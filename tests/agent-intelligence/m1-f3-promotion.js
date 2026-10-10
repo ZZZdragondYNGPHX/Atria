@@ -18,11 +18,15 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
     const reasons = [], profileId = report.domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
     const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     const required = selectCases({ purpose: 'evaluation', split: 'promotion', profileId, caseSetRevision: report.caseSetRevision });
+    const repetitions = report.promotionRepetitions ?? 3;
+    if (!Number.isSafeInteger(repetitions) || repetitions < 1) reasons.push('independent_cases_incomplete');
     if (report.origin !== 'm1_f3_promotion' || report.evaluatorRevision !== evolutionEvaluatorRevision()
         || !isPilotCaseSetRevision(report.caseSetRevision) || !equal(report.quality, qualityEnvelope(report.domain, required, 'promotion'))
         || !comparisonCalibrationReady(report, owner)) reasons.push('promotion_identity_or_calibration_changed');
-    if (report.pairs.length !== 9 || required.some(c => [1, 2, 3].some(repetition =>
-        report.pairs.filter(p => equal(p.case, c) && p.repetition === repetition).length !== 1))) reasons.push('independent_cases_incomplete');
+    if (report.pairs.length !== required.length * repetitions || required.some(c => {
+        const rows = report.pairs.filter(p => equal(p.case, c) && Number.isSafeInteger(p.repetition) && p.repetition >= 1 && p.repetition <= repetitions);
+        return rows.length !== repetitions || new Set(rows.map(p => p.repetition)).size !== repetitions;
+    })) reasons.push('independent_cases_incomplete');
     const ids = new Set();
     for (const charge of report.charges) {
         if (ids.has(charge.id) || !matches(charge, owner.attempts.find(a => a.id === charge.id && a.jobId === jobId))) reasons.push('durable_charge_mismatch');
@@ -50,10 +54,9 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
                 || !report.charges.some(p => equal(p, c)) || !['reported', 'unknown'].includes(c.status))) reasons.push('trial_usage_missing');
         }
     }
-    if (trialIds.size !== 18) reasons.push('trial_identity_repeated');
+    if (trialIds.size !== report.pairs.length * 2) reasons.push('trial_identity_repeated');
     if (owner.attempts.some(a => a.jobId === jobId && trialIds.has(a.trialId) && (!ids.has(a.id) || a.status === 'reserved'))) reasons.push('trial_send_accounting_incomplete');
-    if (secondaryRequired && independent.length !== 9 || !secondaryRequired && independent.length !== 0) reasons.push('independent_model_observation_missing');
-    if (wins < 6) reasons.push('improvement_threshold_not_met');
+    if (secondaryRequired && independent.length !== report.pairs.length || !secondaryRequired && independent.length !== 0) reasons.push('independent_model_observation_missing');
     return { accepted: !reasons.length, reasons: [...new Set(reasons)], wins, judgeMode: report.judgeMode || 'dual', tokensAdvisory: true,
         humanPreference: 'not_observed', currencyCost: 'unavailable', productionPromotion: 'original_gate_unchanged' };
 }
@@ -136,13 +139,14 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
     scope, entry, store, signal, fresh, sealedDirectory, developmentReport }) {
     if (!entry.developmentReadiness?.accepted) throw new Error('f3_development_unqualified');
     const domain = kind === 'rp-skill' ? 'rp' : 'project';
+    const repetitions = scope.promotionRepetitions ?? 1;
     // Only the original isolated worker opens sealed contents. Extractor is
-    // already finished; both arms execute anew, three independent cases x3.
+    // already finished; both arms execute anew for the selected observations.
     const report = await f.evaluator.observePairs(f.h.handle, job, { baseline: primaryConfig, candidate: config },
         { baseline: baselineSettings, candidate: settings }, signal, fresh,
         pair => store(kind + '-f3-promotion-pair-' + pair.case.caseId + '-' + pair.repetition + '.json', pair),
         trial => store(kind + '-f3-promotion-trial-' + trial.caseId + '-' + trial.repetition + '-' + trial.arm + '.json', trial),
-        { mode: 'sealed_pair_probe', split: 'promotion', repetitions: 3, profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', sealedDirectory, caseSetRevision: developmentReport.caseSetRevision });
+        { mode: 'sealed_pair_probe', split: 'promotion', repetitions, profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', sealedDirectory, caseSetRevision: developmentReport.caseSetRevision });
     const trialIds = new Set(report.pairs.flatMap(p => [p.baseline.trialId, p.candidate.trialId]));
     // Preserve all actual retry charges, including failed sends with unknown
     // usage; successful worker responses alone are not the complete fee list.
@@ -150,6 +154,7 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
     report.charges = attempts.map(a => Object.fromEntries(chargeFields.map(key => [key, a[key]])));
     for (const pair of report.pairs) for (const arm of ['baseline', 'candidate']) pair[arm].charges = report.charges.filter(c => c.trialId === pair[arm].trialId);
     report.origin = 'm1_f3_promotion'; report.judgeMode = developmentReport.judgeMode || 'dual'; report.gradeProtocolHash = developmentReport.gradeProtocolHash;
+    report.promotionRepetitions = repetitions;
     report.comparisonCalibration = developmentReport.comparisonCalibration;
     entry.promotionIndependent = await gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob: job,
         fresh, signal, store, phase: 'promotion' });

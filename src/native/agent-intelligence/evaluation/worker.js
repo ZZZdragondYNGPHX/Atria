@@ -38,8 +38,10 @@ process.on('message', async message => {
         const selection = message.selection || { split: 'promotion', repetitions: 3 };
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
         if (selection.mode && !sourceProbe && !pairedProbe || sourceProbe && (!selection.profileId || selection.split !== 'development' || selection.repetitions !== 1)
-            || pairedProbe && (!selection.profileId || selection.split !== 'promotion' || selection.repetitions !== 3 || selection.caseIds || !selection.sealedDirectory)) throw new Error('invalid_source_probe');
-        if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new Error('invalid_evaluation_selection');
+            || pairedProbe && (!selection.profileId || selection.split !== 'promotion' || !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1 || selection.caseIds || !selection.sealedDirectory)) throw new Error('invalid_source_probe');
+        if (!['development', 'promotion'].includes(selection.split) || (pairedProbe
+            ? !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1
+            : selection.repetitions !== (selection.split === 'promotion' ? 3 : 1))) throw new Error('invalid_evaluation_selection');
         const available = selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).filter(c => c.entrance === message.domain);
         if (sourceProbe && available.length !== 3) throw new Error('source_unready');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length

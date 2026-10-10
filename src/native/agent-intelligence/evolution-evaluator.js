@@ -195,14 +195,16 @@ export class EvolutionEvaluator {
     // private M1 consumer. No HTTP input or production job calls this port.
     async observePairs(handle, job, configs, settings, signal, fresh, onPair = async () => {}, onTrial = async () => {}, selection = {}) {
         if (!['rp.m1.information', 'project.m1.related'].includes(selection.profileId) || selection.split !== 'promotion'
-            || selection.repetitions !== 3 || selection.mode !== 'sealed_pair_probe' || selection.caseIds
+            || !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1 || selection.mode !== 'sealed_pair_probe' || selection.caseIds
             || typeof selection.sealedDirectory !== 'string' || !isAbsolute(selection.sealedDirectory)
             || selectCases({ purpose: 'evaluation', split: selection.split, profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.entrance !== job.domain)) throw new TypeError('Invalid sealed pair observation');
         return this._evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection);
     }
     async _evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection) {
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
-        if (!['development', 'promotion'].includes(selection.split) || selection.repetitions !== (selection.split === 'promotion' ? 3 : 1)) throw new TypeError('Invalid finite evaluation selection');
+        if (!['development', 'promotion'].includes(selection.split) || (pairedProbe
+            ? !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1
+            : selection.repetitions !== (selection.split === 'promotion' ? 3 : 1))) throw new TypeError('Invalid finite evaluation selection');
         if (selection.caseIds && (selection.split !== 'development' || !Array.isArray(selection.caseIds) || !selection.caseIds.length
             || new Set(selection.caseIds).size !== selection.caseIds.length || selection.caseIds.some(id => !selectCases({ purpose: 'evaluation', split: 'development', profileId: selection.profileId, caseSetRevision: selection.caseSetRevision }).some(c => c.caseId === id && c.entrance === job.domain)))) throw new TypeError('Invalid development case selection');
         const charges = [], evaluatorRevision = evolutionEvaluatorRevision();

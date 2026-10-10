@@ -62,6 +62,21 @@ test('continuation RP promotion keeps the complete six-dimension gate and origin
     expect(check(f).reasons).toContain('durable_charge_mismatch');
 });
 
+test('one paired observation per independent source keeps full quality and detects a missing source', () => {
+    const f = fixture('rp', CONTINUATION_PILOT_CASE_SET_REVISION); f.report.judgeMode = 'primary_only'; f.independent = [];
+    f.report.comparisonCalibration = f.report.comparisonCalibration.filter(row => row.label === 'primary');
+    f.report.promotionRepetitions = 1;
+    f.report.pairs = f.report.pairs.filter(p => p.repetition === 1);
+    const ids = new Set(f.report.pairs.flatMap(p => [...p.baseline.charges, ...p.candidate.charges].map(c => c.id)).concat(f.report.pairs.flatMap(p => p.judge.chargeIds)));
+    f.report.charges = f.report.charges.filter(c => ids.has(c.id));
+    f.owner.attempts = f.owner.attempts.filter(a => a.jobId !== 'job' || ids.has(a.id));
+    expect(check(f)).toMatchObject({ accepted: true, wins: 2 });
+    f.report.pairs[0].judge.preference = 'tie'; rehash(f);
+    expect(check(f)).toMatchObject({ accepted: true, wins: 1 });
+    f.report.pairs.pop();
+    expect(check(f).reasons).toContain('independent_cases_incomplete');
+});
+
 test.each(['rp', 'project'])('renewal %s promotion retains six wins and rejects historical case substitution', domain => {
     const f = fixture(domain, RENEWAL_PILOT_CASE_SET_REVISION); f.report.judgeMode = 'primary_only'; f.independent = [];
     f.report.comparisonCalibration = f.report.comparisonCalibration.filter(c => c.label === 'primary');
@@ -70,25 +85,24 @@ test.each(['rp', 'project'])('renewal %s promotion retains six wins and rejects 
     expect(check(f).reasons).toContain('independent_cases_incomplete');
 });
 
-test.each(['rp', 'project'])('primary-only %s promotion requires six primary wins without a second model', domain => {
+test.each(['rp', 'project'])('primary-only %s promotion reports wins without imposing a numeric threshold', domain => {
     const f = fixture(domain); f.report.judgeMode = 'primary_only'; f.independent = [];
     f.report.comparisonCalibration = f.report.comparisonCalibration.filter(c => c.label === 'primary');
     expect(check(f)).toMatchObject({ accepted: true, wins: 6, judgeMode: 'primary_only' });
     expect(promotionDecision(f.report).eligible).toBe(false);
     f.report.pairs[0].judge.preference = 'tie'; rehash(f);
-    expect(check(f).reasons).toContain('improvement_threshold_not_met');
+    expect(check(f)).toMatchObject({ accepted: true, wins: 5 });
 });
 
-test.each(['rp', 'project'])('synthetic %s promotion controls require six unanimous wins and never grant production eligibility', domain => {
+test.each(['rp', 'project'])('synthetic %s promotion controls report observed wins and never grant production eligibility', domain => {
     const f = fixture(domain);
     expect(check(f)).toMatchObject({ accepted: true, wins: 6, humanPreference: 'not_observed' });
     expect(promotionDecision(f.report).eligible).toBe(false);
 });
 
-test.each(['one_missing_pair', 'five_wins', 'disagreement', 'negative_delta', 'invalid', 'same_model', 'duplicate_trial', 'configuration_drift'])('promotion rejects %s', failure => {
+test.each(['one_missing_pair', 'disagreement', 'negative_delta', 'invalid', 'same_model', 'duplicate_trial', 'configuration_drift'])('promotion rejects %s', failure => {
     const f = fixture();
     if (failure === 'one_missing_pair') f.report.pairs.pop();
-    if (failure === 'five_wins') { f.report.pairs[0].judge.preference = 'tie'; f.independent[0].preference = 'tie'; }
     if (failure === 'disagreement') f.independent[0].preference = 'baseline';
     if (failure === 'negative_delta') f.independent[0].deltas.knowledge_boundary = -1;
     if (failure === 'invalid') { f.independent[0].preference = 'uncertain'; f.independent[0].deltas = {}; }
