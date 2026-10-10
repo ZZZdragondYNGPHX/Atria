@@ -669,12 +669,16 @@ try {
                 ['f3_development_observed', 'f3_promotion_observed', 'f3_promotion_unqualified'].includes(e.status));
             summary.promotionReady = summary.f3Completed && summary.entries.every(e => e.developmentReadiness?.accepted);
             summary.accepted = summary.entries.length === 2 && summary.entries.every(e => e.acceptance?.accepted && e.lifecycle?.nextRunConsumed && e.lifecycle?.baseRestored);
+            summary.domainCompleted = Boolean(f3Scope) && summary.entries.length > 0 && summary.entries.every(e =>
+                ['f3_development_observed', 'f3_promotion_observed', 'f3_promotion_unqualified'].includes(e.status));
+            summary.domainAccepted = summary.domainCompleted && summary.entries.every(e => e.acceptance?.accepted && e.lifecycle?.nextRunConsumed && e.lifecycle?.baseRestored);
             store('summary.json', summary);
             console.log(JSON.stringify({ kind, status: entry.status, reason: entry.reason || null, acceptance: entry.acceptance || null }));
         }
         if (f2Scope && entry.status === 'unavailable' || [...activeTransportKeys].some(key => retryPolicy.isStopped(key)) && !entry.acceptance) break;
     }
-    if (!prepareOnly && !summary.accepted && !summary.f3Completed && !(f2Scope && summary.entries.length === 2 && summary.entries.every(e => e.status === 'f2_sources_observed'))) process.exitCode = 1;
+    if (!prepareOnly && !summary.accepted && !summary.f3Completed && !(f3Scope && (f3Promotion || f3Scope.developmentKinds) && summary.domainCompleted)
+        && !(f2Scope && summary.entries.length === 2 && summary.entries.every(e => e.status === 'f2_sources_observed'))) process.exitCode = 1;
     console.log(JSON.stringify({ accepted: summary.accepted, finalAccounting: summary.finalAccounting, humanPreference: summary.humanPreference }));
 } catch (error) { console.error('M1 live acceptance:', safeReason(error)); process.exitCode = 1; }
 finally {
