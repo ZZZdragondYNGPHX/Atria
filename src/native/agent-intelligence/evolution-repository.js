@@ -7,6 +7,7 @@ import { assertWritable } from '../../storage/read-only-mode.js';
 export const EVOLUTION_RULE = Object.freeze({ revision: 'atri-evolution-1', cases: 3, repetitions: 3,
     candidateWins: 6, maxTokenRatio: 1, maxCostRatio: 1, intervalMs: 86400000, candidates: 2 });
 export const evolutionHash = hashNativeDocument;
+const MAX_RESERVATIONS = 2048;
 const invalidationHandlers = new WeakMap();
 export function onEvolutionInvalidation(engine, handler) { invalidationHandlers.set(engine, handler); }
 export const sameEvolutionValue = (a, b) => evolutionHash(a) === evolutionHash(b);
@@ -24,11 +25,11 @@ export function evolutionText(value, max = 256) {
 function ownerDocument(value) {
     const d = cloneNativeDocument(value);
     evolutionFields(d, ['schemaVersion', 'sequence', 'limits', 'attempts', 'breached']);
-    if (d.schemaVersion !== 1 || typeof d.breached !== 'boolean' || !Array.isArray(d.attempts) || d.attempts.length > 2048) throw new TypeError('Invalid evolution ledger');
+    if (d.schemaVersion !== 1 || typeof d.breached !== 'boolean' || !Array.isArray(d.attempts) || d.attempts.length > MAX_RESERVATIONS) throw new TypeError('Invalid evolution ledger');
     evolutionInteger(d.sequence, 0, Number.MAX_SAFE_INTEGER);
     if (d.limits !== null) {
         evolutionFields(d.limits, ['maxRequests', 'maxTokens', 'minIntervalMs']);
-        evolutionInteger(d.limits.maxRequests, 1, 2048); evolutionInteger(d.limits.maxTokens, 1, 10000000);
+        evolutionInteger(d.limits.maxRequests, 1, MAX_RESERVATIONS); evolutionInteger(d.limits.maxTokens, 1, 10000000);
         evolutionInteger(d.limits.minIntervalMs, 1000, 60000);
     }
     const ids = new Set();
@@ -77,7 +78,12 @@ function scopeDocument(value) {
     for (const p of d.publications) {
         evolutionFields(p, ['id', 'jobId', 'candidateId', 'policyFingerprint', 'reportHash', 'dependencyHash', 'target', 'base', 'desired', 'previous', 'reservationIds', 'status', 'createdAt', 'receipt', 'activation', 'reason']);
         evolutionText(p.id); if (publications.has(p.id) || !jobs.has(p.jobId)) throw new TypeError('Invalid evolution publication');
-        if (!['intent', 'finalizing', 'published', 'invalidated', 'cancelled', 'conflict', 'rollback_intent', 'rollback_conflict', 'rolled_back'].includes(p.status) || !Array.isArray(p.reservationIds) || p.reservationIds.length > 120) throw new TypeError('Invalid publication state');
+        // A publication binds every paid owner attempt for its job, including
+        // retries and explicit review work. Never truncate its fee identity to
+        // the automatic job's smaller admission budget.
+        if (!['intent', 'finalizing', 'published', 'invalidated', 'cancelled', 'conflict', 'rollback_intent', 'rollback_conflict', 'rolled_back'].includes(p.status) || !Array.isArray(p.reservationIds) || p.reservationIds.length > MAX_RESERVATIONS) throw new TypeError('Invalid publication state');
+        if (new Set(p.reservationIds).size !== p.reservationIds.length) throw new TypeError('Invalid publication reservations');
+        for (const id of p.reservationIds) evolutionText(id);
         const { id, status: _status, receipt: _receipt, activation: _activation, reason: _reason, ...intent } = p;
         if (id !== evolutionHash(intent)) throw new TypeError('Evolution intent identity mismatch');
         publications.add(id);

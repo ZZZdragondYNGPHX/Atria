@@ -6,6 +6,7 @@ import { evolutionFixture, runEvolution, restoreEvolutionFixture } from './evolu
 import { publishConsumeRollback, recordRejectedF3Promotion, f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
 import { hash } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
+import { M1AdvisoryRepository } from './m1-quota.js';
 
 const completion = (name, args, id) => ({ id, type: 'function', function: { name, arguments: JSON.stringify(args) } });
 
@@ -17,6 +18,38 @@ test('oversized development keeps its full evidence for the separate promotion p
     expect(readF3StoredReport(stored)).toEqual(report);
     expect(() => readF3StoredReport({ ...stored, reportHash: hash('changed') })).toThrow('f3_report_archive_changed');
 });
+
+test('explicit review binds all 149 paid receipts and keeps the owner capacity bounded', async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review', repositoryClass: M1AdvisoryRepository });
+    try {
+        const { job, candidate } = await runEvolution(f);
+        const initial = await f.repository.owner(f.h.handle);
+        const jobCharges = initial.attempts.filter(a => a.jobId === job.id);
+        await f.repository.mutateOwner(f.h.handle, owner => {
+            const template = jobCharges[0];
+            for (let i = jobCharges.length; i < 149; i++) owner.attempts.push({ ...template, id: 'synthetic-review-fee-' + i });
+        });
+        const owner = await f.repository.owner(f.h.handle);
+        const expected = owner.attempts.filter(a => a.jobId === job.id).map(a => a.id);
+        await f.service.publish(f.h.handle, { scope: f.scope, subject: f.subject, jobId: job.id,
+            candidateId: candidate.candidateId, expectedReportHash: hash(candidate.report), review: true });
+        const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
+        const publication = doc.publications.find(p => p.jobId === job.id);
+        expect(publication.reservationIds).toEqual(expected);
+        expect(publication.reservationIds).toHaveLength(149);
+        expect(await f.repository.owner(f.h.handle)).toEqual(owner);
+        const replaceIds = ids => f.repository.mutate(f.h.handle, f.scope, f.subject, saved => {
+            const p = saved.publications[0]; p.reservationIds = ids;
+            const { id: _id, status: _status, receipt: _receipt, activation: _activation, reason: _reason, ...intent } = p;
+            p.id = hash(intent);
+        });
+        await expect(replaceIds([...expected, expected[0]])).rejects.toThrow('Invalid publication reservations');
+        await expect(replaceIds(Array.from({ length: 2049 }, (_, i) => 'fee-' + i))).rejects.toThrow('Invalid publication state');
+        expect((await f.repository.get(f.h.handle, f.scope, f.subject)).publications[0].reservationIds).toEqual(expected);
+        await f.service.rollback(f.h.handle, { scope: f.scope, subject: f.subject, publicationId: publication.id });
+        expect((await f.repository.get(f.h.handle, f.scope, f.subject)).publications[0].status).toBe('rolled_back');
+    } finally { await f.h.cleanup(); }
+}, 45000);
 class ImmediateSyntheticRepository extends AgentEvolutionRepository {
     async reserve(handle, attempt) {
         // Synthetic comparison reserves many receipts without actual sends.
