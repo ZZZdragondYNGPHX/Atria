@@ -1331,3 +1331,19 @@ focused run `run-1791559992820-9deff358` 新增3请求/14889 reported tokens，�
 修复 `25e1aef0f2ed6e209520a9883fb9527c0bff24cf` 已push：quote校验接受实际完整展开的arm中literal JSON结构片段，仍拒绝不存在字段/值；明确合规单句不能抵消后半句无依据规则/处罚。为证据表明low思考遗漏知识边界，新增F3 comparison/extraction单独reasoning pin，用同一个主模型high，原F2 source low已付费资格及generation trial配置不变；新comparison transport/协议须完整重校准，不复用low控制。F3 36/promotion13检查通过、ESLint/diff通过。
 
 当前high scope `ed38e054ba959e762afb8d2c9efaccf59989daa45c174a3d7ee1f1085859700a` 固定25e1aef0f；私有owner-history snapshot `run-1791560546546-c05b199d` 逐字节保留最近真实owner费用。当前实际run `run-1791560552323-d562d77e` 正在校准；不调用第二模型、不宣称M1完成或恢复暂停。所有此前sealed/本地生命周期正例仅工程接线证据，不替代当前实际独立验收。
+
+## 2026-10-10 M1 中断恢复与 H0 只读准备
+
+用户要求继续 M1 并准备 H0。本次核对三个本地工作树和实际远端 refs：docs `2ecf50b6ed341f732d95c3d2b2a45624731f4655`、main `6ab12ba43c5b18bfec6df75c16456a4cb4497d3f`、产品 `25e1aef0f2ed6e209520a9883fb9527c0bff24cf` 均与交接一致；feature未合入main。保护正式docs无关未跟踪Experience目录；没有根据旧HANDOFF回退源码或恢复双模型门槛。
+
+原high run已不在运行，summary停留在RP结束时，后续Project产物和真实owner/全局账本仍在。静态只读取development和账目，独立promotion正文没有输入开发过程。两域各八个主模型controls有效；RP development两candidate胜/一baseline，第三场景knowledge_boundary与continuity各-1，原有效负面结果保留，未准入。Project三development均candidate胜、非负维度及原checks完整，原job仍固定候选；已完成四对promotion、八个trial，未评分，随后中断。
+
+实际恢复前累计1295 requests /8044031 accounted tokens，存在一笔reserved请求 `6697c036-f763-4aaa-9e0c-07009cf43e8a`，upper bound18931；旧lock PID42520已不存在。找到原临时Project fixture并核对request/snapshot/trial/upper-bound身份；无该请求持久响应。私有恢复snapshot `run-1791605500731-930d53c8` 保留原fixture、旧lock及ledger-before，以原repository settle及EvaluationBudget将该笔标unknown上界，requests/tokens均不变，pending0。旧scope结果、sealed材料、失败和carry保持。
+
+test-only产品提交 `20e2c2d8c7f1cf60b405cf53f68a94b5947f7c1a` 新增严格未发布fixture恢复与冻结候选promotion续接入口；只接受完整development资格和exact候选/config/target，复用原worker、发送端及review→消费→rollback消费者，不扩展生产权限。原worker无安全partial-slot重放端口，因此保留旧四对未评分产物，用新job完整执行九对，不选择有利槽位、不重新提炼Project候选。两套针对性测试18/18通过（lifecycle5/promotion13），ESLint/syntax/diff通过。
+
+首次续接 `run-1791605697254-3a5c3474` 在发送前被原budget配置拒绝：恢复的实际费用高于旧699536建议值，repository正确禁止丢弃费用。该次新增模型调用为零。修复提交 `e88ad3ace513135bfa78b0f6d76f72a764753ef0` 在promotion续接保持原owner预算配置；普通测试配置也不降低已有requests/tokens，advisory测试额度和每日2000/20RPM权威保持。该变更执行ESLint/syntax/diff检查，无无关full suite/build/UI/CI。
+
+零发送preflight核对冻结Project三胜development资格、完整原费用、base/candidate配置和fixture成功。当前实测 `run-1791605723235-1eea0e9a` 固定e88ad3ace，scope `4fadacb1dbcae1a6be2812042fe4ba0ed496ec2cc165f62b7292e097b7b80d18`，起账1295/8044031，冻结candidate hash `29398bbf4f8aa5f009e5961ba577f73fbb9d002ad4de66ba929aa135738b6c85`；结果尚未形成完整独立验收。M1仍pending，main未集成。
+
+H0只读准备新增 [h0-baseline](../../../plans/architecture/agent-intelligence-runtime/h0-baseline.md)：固定main/原Memory基线，定位ordinary RP/Game/Package Turn调用图和anchors、旧LLM/RAG字段及UI/preview/sync消费者、memoryOsEnabled混合职责、原生source与派生存储边界，固定八项自建中文样本规格与B0/CPU观测准备。只定位相关测试入口，未读取用户会话或运行H0产品/模型/检索/时延基准；H0全套验收和H1/H2仍未完成。正式模块/新模块50项本地links/anchors检查通过，diff检查通过；未把只读准备当Hybrid实现或质量/性能收益。

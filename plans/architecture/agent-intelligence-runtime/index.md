@@ -83,11 +83,14 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 | [hybrid-memory.md](hybrid-memory.md) | 唯一 Hybrid、合法候选域 / query / typed evidence、三条生成路径、旧 LLM/RAG 硬切换 / 原生来源 / 索引、失败与验证边界 | 原 Memory / Information / Authority / Context / Compute / Reuse / Eval；HCM-01–08 |
+| [h0-baseline.md](h0-baseline.md) | H0 只读准备：当前调用图、anchor、旧模式删除/保留与持久资源清单、固定中文样本规格和待测出口；不是已完成基准 | delivery §8.2、hybrid-memory、baseline §10 |
 
 S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §16 → 当前相关消费者 → 同一 Record 最新节；F1/F2前置范围完成，F2双模型来源复核已补齐；F3一次双域提炼/development完成但两域未准入promotion，M1仍pending（feedback§15/acceptance§12/Record最新节）。最新实际分支/恢复与交接见当前HANDOFF；不重跑正确的冻结基线，不改不利模型判断，不将工程完成当M1实测验收；当前主模型准入见acceptance §14。历史首失败停止与重新许可不是当前规则。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 Hybrid 后续读取：本入口 → decisions §9 → delivery §8.2 → hybrid-memory 当前工作包章节 → baseline §10 / 对应原消费者。只有选择算法 / 冻结基准时再读 research §7 和原检索研究 §8；完整 HCM 技术建议不再作为第二份正式详细规则。当前 M1 续接仍按原验收路由，不把 D5 完成解释成 M1 通过或开始 H/S/G 实现。
+
+H0 只读准备见 [h0-baseline](h0-baseline.md)。已定位源码与样本规格；确定性反例、实际 B0/长篇/成本基准仍未运行，H0 全套验收未完成。此准备不改变 M1 当前门槛或 HM1 产品实施前置。
 
 ## 阶段图
 
