@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vectra from 'vectra';
 import express from 'express';
 import { createRetrievalMiddleware } from '../native/retrieval-execution.js';
-import { insertNativeIndex, queryNativeIndexes, withNativeIndexWrite } from '../native/vector-index-work.js';
+import { insertNativeIndex, queryNativeIndexes, purgeNativeIndex } from '../native/vector-index-work.js';
 import sanitize from 'sanitize-filename';
 
 import { getNomicAIBatchVector, getNomicAIVector } from '../vectors/nomicai-vectors.js';
@@ -714,10 +714,8 @@ router.post('/purge', async (req, res) => {
         const collectionId = String(req.body.collectionId);
         if (req.nativeRetrieval) {
             const indexPath = getIndexPath(req.user.directories, collectionId, req.body.source, req.nativeRetrieval.settings);
-            await withNativeIndexWrite(indexPath, req.nativeRetrieval.signal, async () => {
-                const index = new vectra.LocalIndex(indexPath);
-                if (await index.isIndexCreated()) await index.deleteIndex();
-            });
+            await purgeNativeIndex({ indexPath, root: path.resolve(req.user.directories.vectors, 'atri-retrieval'),
+                compute: req.nativeRetrieval.compute, signal: req.nativeRetrieval.signal });
             return res.sendStatus(200);
         }
 
@@ -732,6 +730,7 @@ router.post('/purge', async (req, res) => {
 
         return res.sendStatus(200);
     } catch (error) {
+        if (req.nativeRetrieval) return regenerateCorruptedIndexErrorHandler(req, res, error);
         console.error(error);
         return res.sendStatus(500);
     }

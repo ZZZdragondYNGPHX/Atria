@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import vectra from 'vectra';
@@ -28,6 +29,61 @@ async function cleanStage(stage, indexPath) {
 // physical index permit, not another owner budget or a cross-process lock.
 export async function withNativeIndexWrite(indexPath, signal, operation) {
     return withIndexPermit(indexPath, signal, operation, true);
+}
+
+export async function purgeNativeIndex({ indexPath, root, compute, signal }) {
+    const relative = path.relative(path.resolve(root), path.resolve(indexPath));
+    const segments = relative.split(path.sep);
+    if (path.basename(root) !== 'atri-retrieval' || segments.length !== 2 || segments.some(value => !value || value === '..' || value === '.') || path.isAbsolute(relative)) throw unavailable();
+    const inputBytes = Buffer.byteLength(JSON.stringify({ namespace: segments, operation: 'purge' }), 'utf8');
+    return withNativeIndexWrite(indexPath, signal, async () => {
+        const started = performance.now(), cpu = process.cpuUsage();
+        let ticket, outcome = 'failed';
+        try {
+            ticket = await compute?.beforeLocalWork({ items: 1, inputBytes, indexPath, kind: 'index_purge' });
+            signal?.throwIfAborted();
+            const folder = await fs.lstat(indexPath).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+            let existing;
+            const indexFile = path.join(indexPath, 'index.json');
+            if (folder) {
+                if (!folder.isDirectory() || folder.isSymbolicLink()) throw unavailable();
+                const realRoot = await fs.realpath(root), realIndex = await fs.realpath(indexPath);
+                if (indexIdentity(realIndex) !== indexIdentity(path.join(realRoot, relative))) throw unavailable();
+                // Native owns one in-file index. Stop on the first unknown
+                // entry; never recursively remove a namespace or sidecar.
+                for await (const entry of await fs.opendir(indexPath)) {
+                    if (entry.name !== 'index.json' || !entry.isFile() || entry.isSymbolicLink()) throw unavailable();
+                }
+                existing = await fs.lstat(indexFile).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+                if (existing) {
+                    if (!existing.isFile() || existing.isSymbolicLink() || existing.size > MAX_BYTES) throw unavailable();
+                    const raw = await fs.readFile(indexFile);
+                    if (raw.length !== existing.size) throw unavailable();
+                    indexValues(JSON.parse(raw.toString('utf8')));
+                }
+            }
+            const publish = () => {
+                signal?.throwIfAborted(); assertWritable();
+                if (!existing) return;
+                // Recheck the exact physical root at the original authority
+                // boundary. No await separates that decision from unlink.
+                const realRoot = fsSync.realpathSync(root), realIndex = fsSync.realpathSync(indexPath), current = fsSync.lstatSync(indexFile);
+                if (indexIdentity(realIndex) !== indexIdentity(path.join(realRoot, relative)) || current.isSymbolicLink() || !current.isFile()
+                    || current.ino !== existing.ino || current.size !== existing.size || current.mtimeMs !== existing.mtimeMs) throw unavailable();
+                fsSync.unlinkSync(indexFile);
+            };
+            if (compute) await compute.publishLocalIndex(publish);
+            else publish();
+            outcome = 'completed';
+        } catch (error) {
+            if (signal?.aborted) outcome = 'cancelled';
+            throw error;
+        } finally {
+            const used = process.cpuUsage(cpu);
+            await compute?.settleLocalWork(ticket, { wallMs: performance.now() - started, cpuUserMicros: used.user,
+                cpuSystemMicros: used.system, cpuScope: 'process', outcome });
+        }
+    });
 }
 async function withIndexPermit(indexPath, signal, operation, write) {
     if (queued >= 128) throw unavailable();

@@ -24,7 +24,7 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import vectra from 'vectra';
-import { insertNativeIndex, queryNativeIndexes, withNativeIndexWrite } from '../../src/native/vector-index-work.js';
+import { insertNativeIndex, queryNativeIndexes, purgeNativeIndex, withNativeIndexWrite } from '../../src/native/vector-index-work.js';
 import { snapshotUser, restoreFromSnapshot } from '../../src/storage/migration/backup.js';
 import { RunControl } from '../../src/native/run-control.js';
 import { SessionRepo } from '../../src/native/repositories/session-repo.js';
@@ -69,6 +69,155 @@ async function embeddingBody(f, items = [{ hash: 1, text: 'Current legal evidenc
 const localLimits = { maxJobs: 3, maxItems: 5, maxInputBytes: 4096 };
 const indexFile = (f, body) => path.join(f.dirs.vectors, 'atri-retrieval', body.collectionId, body.nativeRetrievalRef.retrievalProfileId + '_' + body.nativeRetrievalRef.revision, 'index.json');
 const readCompute = async f => Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId))?.operations ?? {}).find(row => row.compute)?.compute;
+test.each([['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]])('G05 local purge %s shares original allowance and recovery preserves it', async (_kind, make) => {
+    const f = await fixture(make, 1, { ...localLimits, maxJobs: 2 });
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send(body).expect(200);
+        const args = { nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext };
+        await f.request.post('/purge').send(args).expect(200);
+        await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' });
+        expect(await fs.readdir(path.dirname(indexFile(f, body)))).toEqual([]);
+        const ledger = await readCompute(f); expect(ledger.localWork.map(row => row.kind)).toEqual(['index_insert', 'index_purge']);
+        expect(ledger.localWork[1]).toMatchObject({ estimatedItems: 1, status: 'settled', usage: { outcome: 'completed' } });
+        expect(ledger.attempts).toHaveLength(1); expect(f.seen).toHaveLength(1);
+        const route = f.routes.find(row => row.role === 'role.narrator');
+        await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId] } });
+        const backupPath = await snapshotUser({ handle: f.handle, userRoot: f.dirs.root, backupRoot: f.backupRoot, engine: f.engine });
+        await restoreFromSnapshot({ handle: f.handle, userRoot: f.dirs.root, backupPath, engine: f.engine }); await f.engine.close();
+        f.core.runs = new RunControl(new SessionRepo({ engine: f.engine }));
+        await f.request.post('/purge').send(args).expect(429); expect(await readCompute(f)).toEqual(ledger); expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+test.each(['cancel', 'task_change', 'head_change', 'unlink_failure'])('G05 local purge %s preserves bytes before commit and retains original cost', async scenario => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits), controller = new AbortController(); let spy;
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const file = indexFile(f, body), saved = await fs.readFile(file), source = projectSource(), project = await f.studio.createProject(f.handle, source);
+        const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Clear derived namespace', baseRevision: project.revision.revision });
+        const context = scenario === 'head_change' ? body.computeContext : { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+        const compute = await prepareRetrievalCompute({ ...f, context, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        const original = fs.readFile;
+        spy = jest.spyOn(fs, 'readFile').mockImplementation(async (...args) => {
+            const result = await original(...args);
+            if (args[0] === file) {
+                if (scenario === 'cancel') controller.abort();
+                if (scenario === 'task_change') await f.agent.setPlan(f.handle, context.projectId, context.taskId, { summary: 'Changed clearing', steps: [{ id: 'read', title: 'Read', impact: 'low' }] });
+                if (scenario === 'head_change') await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'New HEAD during clearing' });
+            }
+            return result;
+        });
+        let unlink;
+        if (scenario === 'unlink_failure') {
+            const originalUnlink = fsSync.unlinkSync;
+            unlink = jest.spyOn(fsSync, 'unlinkSync').mockImplementation(value => { if (value === file) throw new Error('Synthetic unlink failure'); return originalUnlink(value); });
+        }
+        try {
+            await expect(purgeNativeIndex({ indexPath: path.dirname(file), root: path.join(f.dirs.vectors, 'atri-retrieval'), compute, signal: controller.signal })).rejects.toThrow();
+        } finally { unlink?.mockRestore(); spy.mockRestore(); }
+        expect((await fs.readFile(file)).equals(saved)).toBe(true); expect(f.seen).toHaveLength(1);
+        const observed = scenario === 'head_change' ? (await f.core.runs.status(f.handle, f.base.session.sessionId)).retiredCompute
+            : (await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute.localWork[0];
+        expect(observed).toMatchObject(scenario === 'head_change' ? { localJobs: 1, localFailedJobs: 1 }
+            : { kind: 'index_purge', status: 'settled', usage: { outcome: scenario === 'cancel' ? 'cancelled' : 'failed' } });
+    } finally { spy?.mockRestore(); await f.cleanup(); }
+});
+test.each(['corrupt', 'sidecar', 'metadata_file', 'oversize', 'candidates'])('G05 local purge %s refuses unknown work without modifying files', async scenario => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits);
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const file = indexFile(f, body);
+        if (scenario === 'corrupt') await fs.writeFile(file, '{broken');
+        if (scenario === 'sidecar') await fs.writeFile(path.join(path.dirname(file), 'private.txt'), 'Keep this fixture sidecar');
+        if (scenario === 'oversize') await fs.truncate(file, 16777217);
+        if (['metadata_file', 'candidates'].includes(scenario)) {
+            const doc = JSON.parse(await fs.readFile(file, 'utf8'));
+            if (scenario === 'metadata_file') doc.items[0].metadataFile = 'unknown.json';
+            else doc.items = Array(10001).fill(doc.items[0]);
+            await fs.writeFile(file, JSON.stringify(doc));
+        }
+        const saved = await fs.readFile(file);
+        await f.request.post('/purge').send({ nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext }).expect(scenario === 'corrupt' ? 500 : 503);
+        expect((await fs.readFile(file)).equals(saved)).toBe(true);
+        const sidecar = scenario === 'sidecar' ? await fs.readFile(path.join(path.dirname(file), 'private.txt'), 'utf8') : null;
+        expect(sidecar).toBe(scenario === 'sidecar' ? 'Keep this fixture sidecar' : null);
+        expect((await readCompute(f)).localWork[0].usage.outcome).toBe('failed'); expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+test.each(['namespace_link', 'parent_link'])('G05 local purge %s rejects physical aliases within isolated fixture', async scenario => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits);
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const folder = path.dirname(indexFile(f, body)), target = scenario === 'namespace_link' ? folder : path.dirname(folder);
+        const moved = path.join(f.dirs.root, 'isolated-alias'); await fs.rename(target, moved);
+        await fs.symlink(moved, target, process.platform === 'win32' ? 'junction' : 'dir');
+        const actual = scenario === 'namespace_link' ? path.join(moved, 'index.json') : path.join(moved, path.basename(folder), 'index.json'), saved = await fs.readFile(actual);
+        await f.request.post('/purge').send({ nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext }).expect(503);
+        expect((await fs.readFile(actual)).equals(saved)).toBe(true); expect((await readCompute(f)).localWork[0].usage.outcome).toBe('failed');
+    } finally { await f.cleanup(); }
+});
+test('G05 local purge missing index and unscoped compatibility never create index or invent model sends', async () => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits);
+    try {
+        const body = await embeddingBody(f), args = { nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId };
+        const before = await f.core.load(f.handle, f.base.session.sessionId);
+        await f.request.post('/purge').send({ ...args, computeContext: body.computeContext }).expect(200);
+        expect((await readCompute(f)).localWork[0]).toMatchObject({ kind: 'index_purge', usage: { outcome: 'completed' } });
+        await expect(fs.access(path.dirname(indexFile(f, body)))).rejects.toMatchObject({ code: 'ENOENT' });
+        await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        await f.request.post('/purge').send(args).expect(200);
+        expect((await readCompute(f)).localWork).toHaveLength(1); expect((await readCompute(f)).attempts).toEqual([]); expect(f.seen).toHaveLength(1);
+        expect((await f.core.load(f.handle, f.base.session.sessionId)).timeline).toEqual(before.timeline);
+    } finally { await f.cleanup(); }
+});
+test('G05 local purge readonly and exhausted bytes reject before index IO; queued cancellation starts no work', async () => {
+    const f = await fixture(makeTempFsEngine, 1, { ...localLimits, maxInputBytes: 1 }), controller = new AbortController(); let release;
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const file = indexFile(f, body), saved = await fs.readFile(file), args = { nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext };
+        setReadOnly(true); await f.request.post('/purge').send(args).expect(503); setReadOnly(false);
+        const stat = jest.spyOn(fs, 'lstat'); await f.request.post('/purge').send(args).expect(429);
+        expect(stat.mock.calls.some(call => call[0] === path.dirname(file))).toBe(false); stat.mockRestore();
+        const compute = await prepareRetrievalCompute({ ...f, context: body.computeContext, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        let entered; const ready = new Promise(resolve => { entered = resolve; }), waiting = new Promise(resolve => { release = resolve; });
+        const blocker = withNativeIndexWrite(path.dirname(file), undefined, async () => { entered(); await waiting; }); await ready;
+        const cancelled = purgeNativeIndex({ indexPath: path.dirname(file), root: path.join(f.dirs.vectors, 'atri-retrieval'), compute, signal: controller.signal });
+        const rejected = cancelled.catch(error => error); controller.abort(); release(); await blocker; expect(await rejected).toMatchObject({ name: 'AbortError' });
+        expect(await readCompute(f)).toBeUndefined(); expect((await fs.readFile(file)).equals(saved)).toBe(true);
+        await expect(purgeNativeIndex({ indexPath: path.join(f.dirs.root, 'outside'), root: path.join(f.dirs.vectors, 'atri-retrieval'), compute })).rejects.toThrow();
+        expect(await readCompute(f)).toBeUndefined();
+    } finally { release?.(); setReadOnly(false); jest.restoreAllMocks(); await f.cleanup(); }
+});
+test('G05 local purge committed deletion survives failed settlement without falsifying preservation', async () => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits);
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const compute = await prepareRetrievalCompute({ ...f, context: body.computeContext, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        let ticket, usage;
+        const interrupted = { ...compute, async settleLocalWork(t, u) { ticket = t; usage = u; throw new Error('Synthetic settlement interruption'); } };
+        await expect(purgeNativeIndex({ indexPath: path.dirname(indexFile(f, body)), root: path.join(f.dirs.vectors, 'atri-retrieval'), compute: interrupted })).rejects.toThrow('Synthetic settlement interruption');
+        await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' });
+        expect((await readCompute(f)).localWork[0]).toMatchObject({ kind: 'index_purge', status: 'charged', usage: null });
+        await compute.settleLocalWork(ticket, usage);
+        expect((await readCompute(f)).localWork[0]).toMatchObject({ status: 'settled', usage: { outcome: 'completed' } }); expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+test('G05 local purge actual Native client forwards exact ref and original anchor without inventory or inference', async () => {
+    jest.unstable_mockModule('../../public/script.js', () => ({ getRequestHeaders: () => ({}) }));
+    const { NativeRetrievalService } = await import('../../public/scripts/native/retrieval-client.js');
+    const f = await fixture(makeTempFsEngine, 1, localLimits), previousFetch = globalThis.fetch, calls = [];
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        globalThis.fetch = async (url, options) => {
+            const payload = JSON.parse(options.body); calls.push({ url, payload });
+            const result = await f.request.post(url.replace('/api/vector', '')).send(payload);
+            return { ok: result.status < 400, headers: new Headers(), json: async () => result.body };
+        };
+        await NativeRetrievalService.purgeCollection({ profile: { nativeRetrievalRef: body.nativeRetrievalRef }, collectionId: body.collectionId, computeContext: body.computeContext });
+        expect(calls).toEqual([{ url: '/api/vector/purge', payload: { collectionId: body.collectionId, computeContext: body.computeContext, nativeRetrievalRef: body.nativeRetrievalRef } }]);
+        await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' });
+        expect((await readCompute(f)).localWork[0].kind).toBe('index_purge'); expect(f.seen).toHaveLength(1);
+    } finally { globalThis.fetch = previousFetch; await f.cleanup(); }
+});
 test.each([['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]])('G05 local delete %s shares original allowance and retains limits through recovery', async (_kind, make) => {
     const f = await fixture(make, 2, { ...localLimits, maxJobs: 3 });
     try {
