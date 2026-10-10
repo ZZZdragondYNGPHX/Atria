@@ -109,11 +109,15 @@ source `2074ed7b9`已push，13新distinct/9受影响旧checks通过。原compute
 
 source `f07553645` / `4818ff76d`已push，18新distinct/9受影响旧checks通过；HTTP/client实物清理与原FS/SQLite额度恢复、取消/Task/HEAD变化均沿原owner。根目录junction反例此前实际200误删fixture单文件，修复为root/namespace/file非链接及root重验后503保留；所有测试仅隔离可重建fixture。同步unlink仅原index.json，保留空目录，不递归清理。已提交后settlement故障保留charged记录/明确文件已不存在，原receipt随后可settle完成；不冒称所有错误均保留原文件。Native typed quota/unavailable沿旧error handler返回，legacy purge-all保持。测试lint新增问题已修；base/current相同20项旧lint问题未改，无新增产品lint问题。Record保留各次失败及精准重验；其余成本/continuity/G06依赖继续。
 
-## 当前有限 G05：原 Native Host count/render 工作
+## 已交付有限 G05：原 Native Host count/render 工作
 
 完成条件先冻结（2026-10-11）：只包原Host provider.countTokens/renderRequest（含重试再次lowering与原私有checkpoint恢复校验），不声称Context编译/所有CPU或Session续接已交付。generation_count/generation_render各计1 job及原公开contextPlan+promptIr序列化输入字节，沿原computeBudget.localWork/Run operation或Studio Task；旧未设限路径及preview保持，Route移除后原保有额度不补。原background intent沿同一background lane/anchor，不新增period/window authority，不伪造模型attempt/token/价格。
 
 每次实际count/render前原scope+额度准入，处理/settlement后重验当前scope/cancel；失败保留原工作成本、未lower/send不假记HTTP。原已准入worker仍由scheduler保有permit至结算。request routing只增加当前请求localWork观察，durable账本仍原authority。限额先于adapter运行；计费输入为公开编译结果，私有opaque仍原128/16MiB/2MiB/TTL限制，CPU process切片不是独立线程/硬时长。最小出口：FS/SQLite原Session+Studio Task实际Host/loopback count+render→send、额度/并发/Route撤回恢复、stale/cancel/adapter失败/readonly-preview，原Task native checkpoint与背景任务消费者的受影响检查。API external0；剩余Session任务历史/安全fork/compaction与其他成本继续。
+
+source `efe9b9ca6`已push，30新distinct/34受影响旧checks通过，仅FS/SQLite/loopback。count/render（重试render另算）先原job额度后adapter；原Run/Task当次与继承额度原子判定，真正未设localWork不会写空control或Task，Route撤回不跳过已有额度。后台同原intent lane/anchor，模型period/window保持；preview仍不charge/不send。原routing.compute增加当前request localWork并将其计入configured，unknown价格仍不造数。处理或settlement后scope变化保留已观察failed/completed成本；render已取得private lease后失败沿原adapter await discard，发送前本地job拒绝不触发reset或丢弃有效旧checkpoint。原未设local预算路径/直接adapter同步接口保持。
+
+输入计公开contextPlan+promptIr字节，不写ledger原文或opaque；CPU仅原process切片/本阶段工作观察，不包含全部Host加载/Context编译/费用或硬CPU期限。取消返回仍沿原scheduler语义；worker继续保有permit至结算，非所有模式都承诺Host等待worker。Record区分各次真实/fixture失败和最小复验；Session Task缺完整公开历史消费者、安全fork/compaction、其他CPU/cache/local inference与真实G06依赖继续，未永久排除。
 
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
