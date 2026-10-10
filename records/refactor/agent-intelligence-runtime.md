@@ -1897,4 +1897,3 @@ v1 object-only private checkpoint明确失效，不重构或无损迁移opaque�
 append-only日志在private Document：g04-native-task-after-v1（12 PASS/2 fixture错误码FAIL，预期credential_echo而产品正确返回contains_secret）、safety-after-v2（仅修fixture重跑2 PASS）；studio-after-v1（8 new PASS）；codec-before-v1（2真实FAIL）、codec-after-v1（10 PASS=2新+8本组复验）；store-compat-v1（4 old PASS/2 fixture内部doc.content期望FAIL）、store-compat-v2（4 PASS=2 fixture修复+2旧cold）；final-consumers-v1（11 PASS=8本组复验+3 old）；legacy-v1（6 new PASS）；old-protocols-v1（9 old PASS）；safety-final-v1（4本组受影响复验PASS）；lint-v1独立PASS、diff PASS。store fixture修为私有doc.contentWire解析后的期望，原read.content接口不变；两类fixture失败不冒称产品修复。所有原FAIL/OOM/付费正文与费用保持，未重跑早先OOM或M1/HM1/API评价。
 
 M8仍actual38/direct72982，unknown2/17515 upper/admission fetch0、M1/HM1 pins与main3ee1332ef不变，G06真实质量仍FAIL。Session/其他Task、安全fork/compaction、其它read/校验/本地模型/后台预算继续原正式依赖；H5仍有M2/M3/G06前置，完整M8/HM2/HM3未验收，无HANDOFF。
-
