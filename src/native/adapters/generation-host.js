@@ -10,6 +10,7 @@ import { createNativeId, isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { assertExecutionEvidenceCurrent } from '../model-prompt-runtime/execution-evidence.js';
+import { RuntimeCheckpointStore } from '../model-prompt-runtime/runtime-checkpoint-store.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
@@ -637,7 +638,7 @@ export class NativeGenerationHost {
             || input.routeRef.scope !== 'player' || typeof input.routeRef.runtimeRouteId !== 'string'
             || Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_generation_route_ref_invalid');
         const role = 'role.' + input.role;
-        let snapshot; let project; let source; let runtime; let projectTaskEvidence;
+        let snapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation;
         if (input.sessionId) {
             snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
@@ -652,6 +653,7 @@ export class NativeGenerationHost {
             if (input.taskId) {
                 const context = await this.agent.getContext(handle, input.projectId, input.taskId);
                 projectTaskEvidence = { source: 'native.project-task', ref: input.taskId + ':' + context.task.executionFingerprint };
+                projectConversation = context.task.conversation;
                 if (context.task.baseRevision !== input.revision || ['review', 'blocked', 'conflict', 'taken_over', 'completed'].includes(context.task.status)) fail('native_generation_task_stopped');
                 if (!preview && input.projectAttemptId) await this.agent.recordGenerationRequest(handle, input.projectId, input.taskId, input.projectAttemptId, input.requestId);
                 const allowed = new Set(context.tools.map(tool => tool.function.name).concat(['atri_agent_list_skills', 'atri_agent_read_skill', 'atri_agent_skill_files']));
@@ -671,13 +673,21 @@ export class NativeGenerationHost {
         if (!preview && !scheduled) {
             const captured = {};
             const resources = await this.executionResources(handle, route, input.sessionId, captured);
+            let worker;
             return nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources,
                 timeoutMs: executionTimeout(captured),
                 key: (input.sessionId ?? input.projectId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(input), signal, onChunk,
                 fresh: async () => input.sessionId ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId === input.revisionId
                     : (await this.studio.getProject(handle, input.projectId)).revision.revision === input.revision,
-                run: boundary => this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured }),
-                finalize: async result => result }).result.catch(error => {
+                run: boundary => {
+                    worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured });
+                    return worker;
+                },
+                finalize: async result => result }).result.catch(async error => {
+                // The scheduler exposes cancellation promptly but keeps worker
+                // permits until settlement. Durable Task continuation must also
+                // finish usage settlement/private cleanup before this Host exits.
+                if (input.taskId && route.executionPolicy?.continuity === 'task' && worker) await worker.catch(() => {});
                 if (error.code === 'operation_cancelled') fail('generation_cancelled');
                 throw error;
             });
@@ -810,7 +820,9 @@ export class NativeGenerationHost {
         let computeLimits = null;
         const service = new GenerationService({ resolver, contextProvider, preparePrompt: compiler.preparePrompt, secretPort: this.secretPort,
             providerFor: (id, resolved) => {
-                const provider = resolver.provider(id);
+                const baseProvider = resolver.provider(id);
+                const provider = projectTaskEvidence && this.persistence._engine && baseProvider.withRuntimeCheckpointStore
+                    ? baseProvider.withRuntimeCheckpointStore(new RuntimeCheckpointStore({ engine: this.persistence._engine, handle, publicConversation: projectConversation })) : baseProvider;
                 let prepared;
                 let pendingCharge;
                 const settleAttempt = async usage => {

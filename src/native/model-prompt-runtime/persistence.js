@@ -10,6 +10,7 @@ import {
     listNativeDocuments,
     putImmutable,
     putMutable,
+    nativeRecord,
 } from '../repositories/common.js';
 import {
     assertConnectionProfile,
@@ -260,13 +261,22 @@ export class NativeModelPromptPersistence {
         assertWritable();
         return this._engine.withTransaction(handle, async tx => {
             const key = playerKey(kind, handle, idField, id);
+            const existing = await tx.getResource(key);
             if (expectedFingerprint !== undefined) {
                 const current = await getNativeDocument(tx, key);
                 if (!/^[a-f0-9]{64}$/.test(expectedFingerprint) || hashNativeDocument(current ?? null) !== expectedFingerprint) {
                     throw new ConflictError('native_generation_configuration_conflict');
                 }
             }
-            return putMutable(tx, key, value);
+            if (existing?.integrity === hashNativeDocument(value)) return existing.doc;
+            // Native record metadata is the configuration mutation version.
+            // Monotonic timestamps distinguish same-millisecond ABA edits.
+            for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle })) {
+                if (row.doc.binding?.runtimeResourceRefs?.[idField] === id) await tx.deleteResource(row.key);
+            }
+            const record = nativeRecord(value, { existing, updatedAt: Math.max(Date.now(), (existing?.updatedAt || 0) + 1) });
+            await tx.putResource(key, record);
+            return record.doc;
         });
     }
 
@@ -398,6 +408,9 @@ export class NativeModelPromptPersistence {
                     || (kind === 'routes' && route.fallbackRouteRefs.some(ref => ref.runtimeRouteId === id))) add('routes', route, 'runtimeRouteId');
             }
             if (usedBy.length) throw new ConflictError('native_runtime_referenced', { usedBy });
+            for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle })) {
+                if (row.doc.binding?.runtimeResourceRefs?.[idField] === id) await tx.deleteResource(row.key);
+            }
             await tx.deleteResource(key); return { deleted: true };
         }));
     }

@@ -4,6 +4,7 @@ import { resolveSkillInvocation, pinSkillEntries, skillReadPin, loadAlwaysSkills
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
+import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
 import { projectAgentConversation, completeProjectAgentConversation, projectAgentResumeMessages } from '../../shared/project-agent-conversation.js';
 
@@ -166,6 +167,7 @@ function normalizeToolCalls(result) {
             id: String(call?.raw?.id || call?.id || `agent_call_${Date.now()}_${index}`),
             name: String(call?.name || '').trim(),
             args: call?.args && typeof call.args === 'object' ? call.args : {},
+            arguments: typeof call?.raw?.function?.arguments === 'string' ? call.raw.function.arguments : JSON.stringify(call?.args || {}),
         }))
         .filter(call => call.name);
 }
@@ -180,7 +182,7 @@ function assistantToolMessage(text, calls, providerState) {
             type: 'function',
             function: {
                 name: call.name,
-                arguments: JSON.stringify(call.args || {}),
+                arguments: call.arguments,
             },
         })),
     };
@@ -239,7 +241,14 @@ export async function runNativeStudioAgentTask({
     const skillEntries = await listNativeSkills(projectId, packageRef);
     const transcript = [...(context.task.conversation || messages)];
     if (!transcript.length) transcript.push({ role: 'user', content: context.task.intent });
-    let modelTranscript = projectAgentResumeMessages(transcript);
+    // This public policy hint only chooses history presentation. The Host still
+    // resolves the exact route/path and revalidates stored Task state at send.
+    const configuration = await runtimeRequest('/configuration').catch(() => null);
+    const routes = configuration?.routes || [];
+    const fallbackIds = new Set(routes.flatMap(route => (route.fallbackRouteRefs || []).map(ref => ref.runtimeRouteId)));
+    const primary = routes.filter(route => route.scope === 'player' && route.role === 'role.studio' && !fallbackIds.has(route.runtimeRouteId));
+    const taskContinuity = primary.length === 1 && primary[0].executionPolicy?.continuity === 'task';
+    let modelTranscript = taskContinuity ? projectAgentConversation(completeProjectAgentConversation(transcript)) : projectAgentResumeMessages(transcript);
     let previousSystem;
 
     for (let round = 0; round < maxModelRounds; round += 1) {
@@ -278,7 +287,7 @@ export async function runNativeStudioAgentTask({
             const text = result?.providerState ? String(result.assistantText || '') : String(result?.assistantText || '').trim();
             const calls = normalizeToolCalls(result).filter(call => allowed.has(call.name));
             if (!calls.length) {
-                if (text) { const message = { role: 'assistant', content: text }; transcript.push(message); modelTranscript.push(message); }
+                if (text) { const message = { role: 'assistant', content: text, ...(result.providerState ? { providerState: result.providerState } : {}) }; transcript.push(message); modelTranscript.push(message); }
                 stopped = true;
             } else {
                 const assistant = assistantToolMessage(text, calls, result.providerState);

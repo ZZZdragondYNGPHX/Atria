@@ -129,7 +129,7 @@ export class GenerationService {
                 } catch (error) {
                     // Also covers failure before _send enters its usage/fetch
                     // finally (e.g. Secret or path evidence expiring).
-                    provider.discardExecution?.(rendered);
+                    await provider.discardExecution?.(rendered);
                     checkCancellation(signal);
                     if (!(error instanceof ProviderFailure) || error.kind === 'application') throw error;
                     if (mode === 'confirm' && remaining > 0 && resolved.route.fallbackRouteRefs.length) {
@@ -221,7 +221,7 @@ export class GenerationService {
                 throw new GenerationError('generation_response_invalid');
             }
             checkCancellation(signal);
-            provider.assertResponseSafe?.(response, secret);
+            await provider.assertResponseSafe?.(response, secret);
             // Adapters are untrusted with respect to accidental credential echoes.
             const encoded = JSON.stringify(response);
             if (encoded === undefined) throw new GenerationError('generation_response_invalid');
@@ -232,15 +232,20 @@ export class GenerationService {
             // call. A name mentioned in dialogue is not a tool declaration.
             const allowedTools = new Set(snapshot.promptIr.tools.map(tool => tool.function?.name ?? tool.name));
             if (response.toolCalls?.some(call => !allowedTools.has(call.name))) throw new GenerationError('generation_response_invalid');
+            await provider.commitResponse?.(response);
+            checkCancellation(signal);
+            if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
             if (onChunk && typeof response.text === 'string') publish(response.text);
             await provider.settleAttempt?.(response.usage);
+            checkCancellation(signal);
+            if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
             settled = true;
             return response;
         } finally {
             try {
                 if (!settled) await provider.settleAttempt?.(observedUsage ?? null);
             } finally {
-                if (!settled) provider.discardExecution?.(rendered);
+                if (!settled) await provider.discardExecution?.(rendered);
                 secret = undefined;
                 clearTimeout(timer);
                 signal?.removeEventListener('abort', abort);

@@ -8,20 +8,25 @@ import { projectSource, services } from '../agent-intelligence/project-fixture.j
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
+import { createResponsesGenerationProvider } from '../../src/native/adapters/responses-generation-provider.js';
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 import { createNativeStudioRouter } from '../../src/endpoints/native-studio.js';
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
 import { capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
 
-test.each(['stable', 'active_execution', 'different_task', 'changed_task', 'late_task', 'restored_task'])('G04 real Studio client/routers/Host %s protects signed state across distinct request/attempt IDs', async change => {
-    const stable = ['stable', 'active_execution'].includes(change);
+test.each(['stable', 'responses_arguments', 'active_execution', 'different_task', 'changed_task', 'late_task', 'restored_task'])('G04 real Studio client/routers/Host %s protects signed state across distinct request/attempt IDs', async change => {
+    const responses = change === 'responses_arguments';
+    const stable = ['stable', 'responses_arguments', 'active_execution'].includes(change);
     const h = await makeTempFsEngine(); const wires = [], requests = [], updates = [], generationResponses = [];
     const server = createServer(async (req, res) => {
         let wire = ''; for await (const chunk of req) wire += chunk;
         wires.push(JSON.parse(wire));
         const parts = wires.length === 1 ? [{ functionCall: { name: 'atri_agent_get_project', args: {} }, thoughtSignature: 'PRIVATE-UI-NATIVE-SIGNATURE' }] : [{ text: 'Current project read.' }];
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts } }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 25 } }));
+        res.end(JSON.stringify(responses ? { status: 'completed', output: wires.length === 1
+            ? [{ type: 'reasoning', encrypted_content: 'PRIVATE-UI-NATIVE-SIGNATURE' }, { type: 'function_call', call_id: 'read', name: 'atri_agent_get_project', arguments: '{\n  "z": 1, "a": 2\n}' }]
+            : [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Current project read.' }] }], usage: { input_tokens: 10, output_tokens: 5, total_tokens: 25 } }
+            : { candidates: [{ finishReason: 'STOP', content: { parts } }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 25 } }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const previousFetch = globalThis.fetch, previousAtria = globalThis.Atria;
@@ -31,7 +36,8 @@ test.each(['stable', 'active_execution', 'different_task', 'changed_task', 'late
         const task = await agent.createTask(h.handle, source.project.projectId, { intent: 'Read the project once.', baseRevision: created.revision.revision });
         const initialPlan = { summary: 'Original plan', steps: [{ id: 'original', title: 'Read the current project', impact: 'low' }] };
         await agent.setPlan(h.handle, source.project.projectId, task.taskId, initialPlan);
-        const seeded = await seedGenerationProfiles({ ...h, format: 'gemini', roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/v1beta` });
+        const format = responses ? 'openai-responses' : 'gemini';
+        const seeded = await seedGenerationProfiles({ ...h, format, roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/${responses ? 'v1/responses' : 'v1beta'}` });
         await seeded.persistence.saveModelProfile(h.handle, { ...seeded.model, limits: { contextTokens: 32000, outputTokens: 512 } });
         await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: 64000 } } });
         if (change === 'active_execution') {
@@ -53,7 +59,7 @@ test.each(['stable', 'active_execution', 'different_task', 'changed_task', 'late
             if (++secretReads === 2 && change === 'late_task') await changePlan();
             return 'ui-native-test-credential';
         } },
-            providers: { 'provider.gemini': createNativeMessagesProvider({ format: 'gemini', fetchImpl: nodeFetch }) } });
+            providers: { ['provider.' + format]: responses ? createResponsesGenerationProvider({ fetchImpl: nodeFetch }) : createNativeMessagesProvider({ format: 'gemini', fetchImpl: nodeFetch }) } });
         const app = express(); app.use(express.json({ limit: '4mb' }));
         app.use((req, _res, next) => { req.user = { profile: { handle: h.handle } }; next(); });
         app.get('/api/native/extensions/settings', (_req, res) => res.json({ value: { skills: {} } }));
@@ -90,11 +96,15 @@ test.each(['stable', 'active_execution', 'different_task', 'changed_task', 'late
         expect(wires).toHaveLength(2); expect(requests).toHaveLength(2);
         expect(requests[0].requestId).not.toBe(requests[1].requestId);
         expect(requests[0].projectAttemptId).not.toBe(requests[1].projectAttemptId);
-        expect(wires[1].contents.at(-2).parts).toEqual([{ functionCall: { name: 'atri_agent_get_project', args: {} }, thoughtSignature: 'PRIVATE-UI-NATIVE-SIGNATURE' }]);
+        if (responses) {
+            expect(wires[1].input).toContainEqual({ type: 'reasoning', encrypted_content: 'PRIVATE-UI-NATIVE-SIGNATURE' });
+            expect(wires[1].input.find(item => item.type === 'function_call').arguments).toBe('{\n  "z": 1, "a": 2\n}');
+            expect(requests[1].messages.find(message => message.tool_calls)?.tool_calls[0].function.arguments).toBe('{\n  "z": 1, "a": 2\n}');
+        } else expect(wires[1].contents.at(-2).parts).toEqual([{ functionCall: { name: 'atri_agent_get_project', args: {} }, thoughtSignature: 'PRIVATE-UI-NATIVE-SIGNATURE' }]);
         expect(generationResponses.map(value => value.response.observation.nativeExecution)).toEqual([
-            { protocol: 'native.gemini.v1', lifecycle: 'mandatory_tool_exchange', scope: 'task', retention: 'process_only',
+            { protocol: responses ? 'openai.responses.v1' : 'native.gemini.v1', lifecycle: 'mandatory_tool_exchange', scope: 'task', retention: 'process_only',
                 transferredCheckpoints: 0, requestAction: 'fresh_protocol_request', responseAction: 'capture_tool_checkpoint', upstreamReuse: 'unknown' },
-            { protocol: 'native.gemini.v1', lifecycle: 'mandatory_tool_exchange', scope: 'task', retention: 'process_only',
+            { protocol: responses ? 'openai.responses.v1' : 'native.gemini.v1', lifecycle: 'mandatory_tool_exchange', scope: 'task', retention: 'process_only',
                 transferredCheckpoints: 1, requestAction: 'continue_tool_protocol', responseAction: 'discard_finished_execution', upstreamReuse: 'unknown' },
         ]);
         expect(generationResponses.map(value => value.snapshot.diagnostics.executionPlan.policy.continuity))

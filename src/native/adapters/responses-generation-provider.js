@@ -1,13 +1,21 @@
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { serializeNativeDocument } from '../repositories/common.js';
-import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, nativeExecutionObservation } from '../model-prompt-runtime/native-execution-envelope.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes } from '../model-prompt-runtime/native-execution-envelope.js';
 import { observedGenerationUsage } from './generation-usage.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
-export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
-    const lower = ({ resolved, snapshot }) => {
+export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpointStore } = {}) {
+    const hydrate = async request => {
+        const binding = nativeEnvelopeBinding(request.resolved, request.snapshot, 'openai.responses.v1');
+        if (binding.continuity === 'task' && checkpointStore) await checkpointStore.prepare(binding);
+        let sequence = request.sequence ?? renderPromptMessages(request.snapshot.promptIr);
+        if (binding.continuity === 'task' && checkpointStore && !request.sequence) sequence = await checkpointStore.restore(binding, sequence);
+        await hydrateNativeEnvelopes({ store: checkpointStore, binding, sequence });
+        return { ...request, sequence };
+    };
+    const lower = ({ resolved, snapshot, sequence: preparedSequence }) => {
         const { generation: g, connection, model } = resolved;
         const ir = snapshot.promptIr;
         for (const [section, allowed] of Object.entries({ sampling: ['temperature', 'topP'], output: ['maxTokens'],
@@ -16,7 +24,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
         if (ir.prefill !== undefined) fail();
         const max = g.output.maxTokens ?? snapshot.contextPlan.budget.reservedOutputTokens;
         if (!Number.isSafeInteger(max) || max < 1 || max > snapshot.contextPlan.budget.reservedOutputTokens) throw new GenerationError('generation_adapter_output_budget');
-        const sequence = renderPromptMessages(ir);
+        const sequence = preparedSequence ?? renderPromptMessages(ir);
         const binding = nativeEnvelopeBinding(resolved, snapshot, 'openai.responses.v1');
         const input = [];
         const publicInput = [];
@@ -71,18 +79,24 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
         return { endpoint: connection.endpoint, body, publicBody: { ...body, input: publicInput }, wire, binding, sequence, resolved, snapshot };
     };
     return Object.freeze({
-        continuationScopes: Object.freeze(['active_execution']),
+        withRuntimeCheckpointStore: store => createResponsesGenerationProvider({ fetchImpl, checkpointStore: store }),
+        continuationScopes: Object.freeze(checkpointStore ? ['active_execution', 'task'] : ['active_execution']),
         contextTokenizer() { return text => Buffer.byteLength(String(text), 'utf8'); },
         resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache', 'generation.continuation.active-execution']
             .map(capability => ({ capability, state: 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.openai.responses.v1' }] })),
-        countTokens({ resolved, promptIr, contextPlan }) {
-            return Buffer.byteLength(lower({ resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } }).wire, 'utf8') + 256;
+        async countTokens({ resolved, promptIr, contextPlan }) {
+            const request = { resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } };
+            return Buffer.byteLength(lower(await hydrate(request)).wire, 'utf8') + 256;
         },
-        renderRequest({ resolved, snapshot }) {
-            return leaseNativeRequest(lower({ resolved, snapshot }));
+        async renderRequest({ resolved, snapshot }) {
+            return leaseNativeRequest(lower(await hydrate({ resolved, snapshot })));
         },
         async send(rendered, { secret, signal }) {
+            // Recheck private storage after Secret resolution, immediately before HTTP.
+            // The single-send lease then checks that this is the same frozen wire.
             const request = consumeNativeRequest(rendered, lower);
+            await hydrate(request);
+            if (lower(request).wire !== request.wire) throw new GenerationError('generation_continuation_unavailable');
             let response;
             try {
                 response = await fetchImpl(request.endpoint, { method: 'POST', signal, redirect: 'error',
@@ -134,8 +148,8 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
                 } else if (typeof item.encrypted_content !== 'string' || !item.encrypted_content) throw new GenerationError('generation_response_invalid');
             }
             const usage = observedGenerationUsage(value.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' });
-            const providerState = toolCalls.length ? captureNativeEnvelope({ binding, sequence, content: value.output, text, calls: toolCalls.map(call => call.raw) }) : null;
-            if (!toolCalls.length) discardNativeEnvelopes(binding);
+            const providerState = toolCalls.length || binding.continuity === 'task' ? captureNativeEnvelope({ binding, sequence, content: value.output, text, calls: toolCalls.map(call => call.raw) }) : null;
+            if (!providerState) discardNativeEnvelopes(binding);
             return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
                 observation: { reportedModel: typeof value.model === 'string' ? value.model : null, upstreamIdentity: 'unknown',
                     nativeExecution: nativeExecutionObservation(binding, sequence, providerState),
@@ -143,6 +157,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
                     nativeEnvelope: providerState ? 'captured_active_execution' : 'completed', hiddenAttempts: 'unknown' } };
         },
         assertResponseSafe(response, secret) { assertNativeEnvelopeSafe(response.providerState, secret); },
-        discardExecution(rendered) { discardNativeEnvelopes(rendered.binding); },
+        commitResponse(response) { return publishNativeEnvelope(response.providerState, checkpointStore); },
+        discardExecution(rendered) { return discardStoredNativeEnvelopes(rendered.binding, checkpointStore); },
     });
 }

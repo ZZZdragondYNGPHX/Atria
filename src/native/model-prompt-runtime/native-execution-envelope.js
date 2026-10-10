@@ -3,7 +3,8 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { immutable, GenerationError } from './execution-utils.js';
 
 // Current execution only. Opaque native state is never a Prompt/Task/Memory
-// resource and cannot be published by caller JSON. A process restart discards it.
+// resource and cannot be published by caller JSON. Task retention additionally
+// revalidates the private StorageEngine record on every lowering/send.
 const checkpoints = new Map();
 const leases = new Map();
 const wireHash = wire => createHash('sha256').update(wire).digest('hex');
@@ -26,6 +27,10 @@ export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
         prefixFingerprint: hashNativeDocument({ directives: ir.directives, contextSlots: ir.contextSlots }),
         toolsFingerprint: hashNativeDocument(ir.tools), outputFingerprint: hashNativeDocument(ir.outputContract),
         generationFingerprint: hashNativeDocument(resolved.generation),
+        ...(resolved.effectiveExecutionPolicy?.continuity === 'task' ? { continuity: 'task', runtimeResourceRefs: {
+            runtimeRouteId: resolved.route.runtimeRouteId, modelProfileId: resolved.model.modelProfileId,
+            connectionProfileId: resolved.connection.connectionProfileId,
+        } } : {}),
         policyFingerprint: hashNativeDocument(resolved.effectiveExecutionPolicy ?? resolved.route.executionPolicy ?? null) });
 }
 const visibleMessages = sequence => sequence.map(message => {
@@ -63,14 +68,38 @@ export function discardNativeEnvelopes(binding) {
     for (const [id, entry] of checkpoints) if (entry.binding.pathFingerprint === binding.pathFingerprint
         && hashNativeDocument(entry.binding.executionScope) === hashNativeDocument(binding.executionScope)) checkpoints.delete(id);
 }
+export async function hydrateNativeEnvelopes({ binding, sequence, store }) {
+    if (binding.continuity !== 'task') return;
+    if (!store) denied();
+    for (const [index, message] of sequence.entries()) if (message.providerState) {
+        // Never let an earlier process cache bypass deletion or owner recovery.
+        checkpoints.delete(message.providerState.checkpointId);
+        const entry = await store.read(message.providerState, binding, sequence, index);
+        while (checkpoints.size >= limit) checkpoints.delete(checkpoints.keys().next().value);
+        checkpoints.set(message.providerState.checkpointId, entry);
+    }
+}
+export async function publishNativeEnvelope(state, store) {
+    const entry = checkpoints.get(state?.checkpointId);
+    if (entry?.binding.continuity !== 'task') return;
+    if (!store) denied();
+    await store.save(state, entry);
+}
+export async function discardStoredNativeEnvelopes(binding, store) {
+    discardNativeEnvelopes(binding);
+    if (binding.continuity === 'task') {
+        if (!store) denied();
+        await store.discard(binding);
+    }
+}
 // Called only after successful native lowering and response normalization. This
 // describes local protocol transfer, not upstream reuse or durable task policy.
 export function nativeExecutionObservation(binding, sequence, providerState) {
     const transferredCheckpoints = sequence.filter(message => message.providerState).length;
-    return { protocol: binding.protocol, lifecycle: 'mandatory_tool_exchange',
-        scope: binding.executionScope.kind, retention: 'process_only', transferredCheckpoints,
+    return { protocol: binding.protocol, lifecycle: binding.continuity === 'task' ? 'task_continuation' : 'mandatory_tool_exchange',
+        scope: binding.executionScope.kind, retention: binding.continuity === 'task' ? 'owner_runtime_store' : 'process_only', transferredCheckpoints,
         requestAction: transferredCheckpoints ? 'continue_tool_protocol' : 'fresh_protocol_request',
-        responseAction: providerState ? 'capture_tool_checkpoint' : 'discard_finished_execution',
+        responseAction: providerState ? (binding.continuity === 'task' ? 'capture_task_checkpoint' : 'capture_tool_checkpoint') : 'discard_finished_execution',
         upstreamReuse: 'unknown' };
 }
 export function assertNativeEnvelopeSafe(state, secret) {
