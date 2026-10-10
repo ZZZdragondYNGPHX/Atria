@@ -8,6 +8,7 @@ import { assertWritable } from '../storage/read-only-mode.js';
 const writes = new Map();
 let queued = 0;
 const MAX_BYTES = 16777216;
+const indexIdentity = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
 const unavailable = () => Object.assign(new Error('Bounded Native index work unavailable'), { code: 'native_retrieval_compute_unavailable' });
 async function cleanStage(stage, indexPath) {
     if (path.dirname(path.resolve(stage)) !== path.dirname(path.resolve(indexPath)) || !path.basename(stage).startsWith('.atri-index-work-')) throw unavailable();
@@ -17,14 +18,94 @@ async function cleanStage(stage, indexPath) {
 // One server writer, matching the original FS authority boundary. This is a
 // physical index permit, not another owner budget or a cross-process lock.
 export async function withNativeIndexWrite(indexPath, signal, operation) {
+    return withIndexPermit(indexPath, signal, operation, true);
+}
+async function withIndexPermit(indexPath, signal, operation, write) {
     if (queued >= 128) throw unavailable();
-    const previous = writes.get(indexPath) ?? Promise.resolve();
+    const identity = indexIdentity(indexPath), previous = writes.get(identity) ?? Promise.resolve();
     queued++;
-    const next = previous.catch(() => {}).then(() => { signal?.throwIfAborted(); assertWritable(); return operation(); });
-    writes.set(indexPath, next);
+    const next = previous.catch(() => {}).then(() => { signal?.throwIfAborted(); if (write) assertWritable(); return operation(); });
+    writes.set(identity, next);
     try { return await next; } finally {
         queued--;
-        if (writes.get(indexPath) === next) writes.delete(indexPath);
+        if (writes.get(identity) === next) writes.delete(identity);
+    }
+}
+
+export async function queryNativeIndexes({ indexes, query, topK, threshold, includeVectors = false, getVector, compute, signal }) {
+    if (!indexes.length || indexes.length > 16 || new Set(indexes.map(row => indexIdentity(row.indexPath))).size !== indexes.length
+        || typeof query !== 'string' || !query.trim() || Buffer.byteLength(query, 'utf8') > 8192
+        || !Number.isSafeInteger(topK) || topK < 1 || topK > 100 || !Number.isFinite(threshold)) throw unavailable();
+    const inputBytes = Buffer.byteLength(JSON.stringify({ collections: indexes.map(row => row.collectionId), query, topK, threshold, includeVectors }), 'utf8');
+    if (inputBytes > MAX_BYTES) throw unavailable();
+    const paths = indexes.map(row => row.indexPath).sort((a, b) => indexIdentity(a) < indexIdentity(b) ? -1 : indexIdentity(a) > indexIdentity(b) ? 1 : 0);
+    const enter = depth => depth === paths.length ? execute() : withIndexPermit(paths[depth], signal, () => enter(depth + 1), false);
+    return enter(0);
+
+    async function execute() {
+        const started = performance.now(), cpu = process.cpuUsage();
+        let ticket, outcome = 'failed', result;
+        try {
+            ticket = await compute?.beforeLocalWork({ items: indexes.length, inputBytes, indexPath: paths, kind: 'index_query' });
+            signal?.throwIfAborted();
+            let bytes = 0, count = 0, values = 0;
+            const stores = [];
+            for (const row of indexes) {
+                signal?.throwIfAborted();
+                const file = path.join(row.indexPath, 'index.json');
+                const stat = await fs.stat(file).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+                if (!stat) continue;
+                if ((bytes += stat.size) > MAX_BYTES) throw unavailable();
+                const raw = await fs.readFile(file), doc = JSON.parse(raw.toString('utf8'));
+                if (!Array.isArray(doc.items) || (count += doc.items.length) > 10000 || doc.metadata_config?.indexed?.length || raw.length > stat.size) throw unavailable();
+                for (const item of doc.items) {
+                    if (item.metadataFile || !Array.isArray(item.vector) || !item.vector.length || item.vector.length > 65536
+                        || (values += item.vector.length) > 1048576 || item.vector.some(n => !Number.isFinite(n)) || !Number.isFinite(item.norm)) throw unavailable();
+                }
+                const store = new vectra.LocalIndex(row.indexPath);
+                stores.push({ ...row, store });
+            }
+            // Existing empty indexes also have no candidates. No provider
+            // usage is invented for this deterministic no-send decision.
+            if (!count) result = { groups: {}, single: { hashes: [], metadata: [] } };
+            else {
+                if (compute) await compute.publishLocalIndex(() => { signal?.throwIfAborted(); });
+                const vector = await getVector();
+                signal?.throwIfAborted();
+                if (!Array.isArray(vector) || !vector.length || vector.length > 65536 || vector.some(n => !Number.isFinite(n))) throw unavailable();
+                const hits = [];
+                for (const row of stores) {
+                    signal?.throwIfAborted();
+                    const selected = await row.store.queryItems(vector, topK);
+                    hits.push(...selected.map(hit => ({ collectionId: row.collectionId, hit })));
+                }
+                const selected = hits.sort((a, b) => b.hit.score - a.hit.score).filter(row => row.hit.score >= threshold).slice(0, topK);
+                const groups = Object.create(null);
+                for (const { collectionId, hit } of selected) {
+                    const group = groups[collectionId] ??= { hashes: [], metadata: [] };
+                    group.hashes.push(Number(hit.item.metadata.hash));
+                    group.metadata.push({ ...hit.item.metadata, score: hit.score,
+                        ...(includeVectors ? { vector: hit.item.vector } : {}) });
+                }
+                const single = groups[indexes[0].collectionId] ?? { hashes: [], metadata: [] };
+                if (includeVectors) single.queryVector = vector;
+                result = { groups, single };
+            }
+            // Cost settlement may await storage. Currentness is checked again
+            // afterwards, while the same physical permits are still held.
+            if (compute) await compute.publishLocalIndex(() => { signal?.throwIfAborted(); });
+            signal?.throwIfAborted();
+            outcome = 'completed';
+        } catch (error) {
+            if (signal?.aborted) outcome = 'cancelled';
+            throw error;
+        } finally {
+            const used = process.cpuUsage(cpu);
+            await compute?.settleLocalWork(ticket, { wallMs: performance.now() - started, cpuUserMicros: used.user,
+                cpuSystemMicros: used.system, cpuScope: 'process', outcome });
+        }
+        const current = () => { signal?.throwIfAborted(); return result; };
+        return compute ? compute.publishLocalIndex(current) : current();
     }
 }
 

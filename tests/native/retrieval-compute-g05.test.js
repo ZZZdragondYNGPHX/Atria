@@ -24,10 +24,11 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import vectra from 'vectra';
-import { insertNativeIndex, withNativeIndexWrite } from '../../src/native/vector-index-work.js';
+import { insertNativeIndex, queryNativeIndexes, withNativeIndexWrite } from '../../src/native/vector-index-work.js';
 import { snapshotUser, restoreFromSnapshot } from '../../src/storage/migration/backup.js';
 import { RunControl } from '../../src/native/run-control.js';
 import { SessionRepo } from '../../src/native/repositories/session-repo.js';
+import { setReadOnly } from '../../src/storage/read-only-mode.js';
 
 async function fixture(make, maxRequests = 2, localWork) {
     const h = await make(), seen = [];
@@ -252,6 +253,167 @@ test('G05 local index bounds existing files and returned vectors before indexing
         expect((await fs.readFile(indexFile(f, body))).equals(oversized)).toBe(true);
         const ledger = await readCompute(f); expect(ledger.attempts).toHaveLength(1); expect(ledger.attempts[0].usage.totalTokens).toBe(7);
         expect(ledger.localWork.map(row => row.usage.outcome)).toEqual(['failed', 'failed']); expect(f.seen).toHaveLength(2);
+    } finally { await f.cleanup(); }
+});
+
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test(`G05 local query ${kind} single and multi requests share original insert work limits after concurrent admission and recovery`, async () => {
+        const f = await fixture(make, 6, { ...localLimits, maxJobs: 3, maxItems: 4 });
+        try {
+            const body = await embeddingBody(f); await f.request.post('/insert').send(body).expect(200);
+            const { items: _items, ...query } = body, saved = await fs.readFile(indexFile(f, body));
+            const multi = await f.request.post('/query-multi').send({ ...query, collectionId: undefined, collectionIds: [body.collectionId, 'missing-index'], searchText: 'Current source' }).expect(200);
+            expect(multi.body[body.collectionId].hashes).toEqual([1]);
+            const responses = await Promise.all([1, 2].map(() => f.request.post('/query').send({ ...query, searchText: 'Current source', includeVectors: true })));
+            expect(responses.map(row => row.status).sort()).toEqual([200, 429]);
+            expect(responses.find(row => row.status === 200).body).toMatchObject({ hashes: [1], queryVector: [1, 0], metadata: [{ vector: [1, 0] }] });
+            const ledger = await readCompute(f);
+            expect(ledger.localWork.map(row => row.kind)).toEqual(['index_insert', 'index_query', 'index_query']);
+            expect(ledger.localWork.map(row => row.estimatedItems)).toEqual([1, 2, 1]);
+            expect(ledger.localWork.every(row => row.status === 'settled' && row.usage.cpuScope === 'process' && row.usage.outcome === 'completed')).toBe(true);
+            expect(ledger.attempts.map(row => row.usage.totalTokens)).toEqual([3, 3, 3]); expect(f.seen).toHaveLength(3);
+            const route = f.routes.find(row => row.role === 'role.narrator');
+            await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId] } });
+            const backupPath = await snapshotUser({ handle: f.handle, userRoot: f.dirs.root, backupRoot: f.backupRoot, engine: f.engine });
+            await restoreFromSnapshot({ handle: f.handle, userRoot: f.dirs.root, backupPath, engine: f.engine }); await f.engine.close();
+            f.core.runs = new RunControl(new SessionRepo({ engine: f.engine }));
+            await f.request.post('/query').send({ ...query, searchText: 'Current source' }).expect(429);
+            expect(await readCompute(f)).toEqual(ledger); expect(await fs.readFile(indexFile(f, body))).toEqual(saved); expect(f.seen).toHaveLength(3);
+        } finally { await f.cleanup(); }
+    });
+}
+test('G05 local query empty indexes return no candidates without file creation or invented model usage', async () => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits);
+    try {
+        const body = await embeddingBody(f), { items: _items, ...query } = body;
+        expect((await f.request.post('/query').send({ ...query, searchText: 'No evidence' }).expect(200)).body).toEqual({ hashes: [], metadata: [] });
+        expect((await f.request.post('/query-multi').send({ ...query, collectionId: undefined, collectionIds: ['empty-a', 'empty-b'], searchText: 'No evidence' }).expect(200)).body).toEqual({});
+        const ledger = await readCompute(f); expect(ledger.attempts).toEqual([]); expect(ledger.localWork.map(row => row.estimatedItems)).toEqual([1, 2]);
+        expect(ledger.localWork.every(row => row.usage.outcome === 'completed')).toBe(true); expect(f.seen).toHaveLength(0);
+        await expect(fs.access(path.dirname(indexFile(f, body)))).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally { await f.cleanup(); }
+});
+test('G05 local query physical read permit preserves the existing unscoped read-only path', async () => {
+    const f = await fixture(makeTempFsEngine);
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        await f.request.post('/insert').send(old).expect(200); const saved = await fs.readFile(indexFile(f, body));
+        setReadOnly(true); const { items: _items, ...query } = old;
+        expect((await f.request.post('/query').send({ ...query, searchText: 'Current source' }).expect(200)).body.hashes).toEqual([1]);
+        expect(await fs.readFile(indexFile(f, body))).toEqual(saved); expect(f.seen).toHaveLength(2);
+    } finally { setReadOnly(false); await f.cleanup(); }
+});
+test('G05 local query corrupt index is preserved and refuses before Embedding without pretending free CPU', async () => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits);
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        await f.request.post('/insert').send(old).expect(200); await fs.writeFile(indexFile(f, body), '{broken');
+        const { items: _items, ...query } = body;
+        await f.request.post('/query').send({ ...query, searchText: 'Current source' }).expect(500);
+        expect((await fs.readFile(indexFile(f, body))).toString()).toBe('{broken'); expect(f.seen).toHaveLength(1);
+        const ledger = await readCompute(f); expect(ledger.attempts).toEqual([]); expect(ledger.localWork[0]).toMatchObject({ kind: 'index_query', status: 'settled', usage: { outcome: 'failed' } });
+    } finally { await f.cleanup(); }
+});
+test('G05 local query bounded collection identities, query bytes and topK reject before either budget lane', async () => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits);
+    try {
+        const body = await embeddingBody(f), { items: _items, collectionId, ...query } = body;
+        for (const collectionIds of [[collectionId, collectionId], Array.from({ length: 17 }, (_, i) => 'index-' + i)]) {
+            await f.request.post('/query-multi').send({ ...query, collectionIds, searchText: 'Current source' }).expect(503);
+        }
+        for (const extra of [{ searchText: 'x'.repeat(8193) }, { topK: 101 }]) await f.request.post('/query').send({ ...query, collectionId, searchText: 'Current source', ...extra }).expect(503);
+        expect(await readCompute(f)).toBeUndefined(); expect(f.seen).toHaveLength(0);
+    } finally { await f.cleanup(); }
+});
+test('G05 local query actual Task change during Embedding refuses old results and retains actual usage', async () => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits);
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        await f.request.post('/insert').send(old).expect(200); const saved = await fs.readFile(indexFile(f, body));
+        const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+        const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Query evidence', baseRevision: project.revision.revision });
+        const context = { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+        f.respondEmbedding(async () => {
+            await f.agent.setPlan(f.handle, context.projectId, context.taskId, { summary: 'Changed query scope', steps: [{ id: 'read', title: 'Read evidence', impact: 'low' }] });
+            return { data: [{ index: 0, embedding: [1, 0] }], usage: { total_tokens: 7 } };
+        });
+        const { items: _items, ...query } = body;
+        const rejected = await f.request.post('/query').send({ ...query, computeContext: context, searchText: 'Current source' });
+        expect(rejected.status).toBe(500); expect(rejected.body).toEqual({ error: 'native_generation_task_stopped' });
+        const ledger = (await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute;
+        expect(ledger.attempts[0].usage.totalTokens).toBe(7); expect(ledger.localWork[0].usage.outcome).toBe('failed');
+        expect(await fs.readFile(indexFile(f, body))).toEqual(saved);
+    } finally { await f.cleanup(); }
+});
+test.each(['cancel', 'task_change'])('G05 local query %s after cost settlement refuses results without refunding completed work', async scenario => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits), controller = new AbortController();
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        await f.request.post('/insert').send(old).expect(200);
+        const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+        const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Query evidence', baseRevision: project.revision.revision });
+        const context = { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+        const compute = await prepareRetrievalCompute({ ...f, context, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        const wrapped = { ...compute, async settleLocalWork(ticket, usage) {
+            await compute.settleLocalWork(ticket, usage);
+            if (scenario === 'cancel') controller.abort();
+            else await f.agent.setPlan(f.handle, context.projectId, context.taskId, { summary: 'Changed after settlement', steps: [{ id: 'read', title: 'Read evidence', impact: 'low' }] });
+        } };
+        await expect(queryNativeIndexes({ indexes: [{ collectionId: body.collectionId, indexPath: path.dirname(indexFile(f, body)) }], query: 'Current source', topK: 1, threshold: 0,
+            compute: wrapped, signal: controller.signal, getVector: async () => (await getOpenAIBatchVector(['Current source'], 'openai', f.dirs, 'test-embed',
+                { reverseProxy: f.profile.endpoint, proxyPassword: 'synthetic-key' }, { nativeRetrieval: { compute, signal: controller.signal } }))[0] })).rejects.toThrow();
+        const ledger = (await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute;
+        expect(ledger.attempts[0].usage.totalTokens).toBe(3); expect(ledger.localWork[0].usage.outcome).toBe('completed'); expect(f.seen).toHaveLength(2);
+    } finally { await f.cleanup(); }
+});
+test('G05 local query reversed multi-index requests use one ordered physical permit set without deadlock or double model charge', async () => {
+    const f = await fixture(makeTempFsEngine, 2, { ...localLimits, maxJobs: 2, maxItems: 4 });
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        for (const collectionId of ['left', 'right']) await f.request.post('/insert').send({ ...old, collectionId }).expect(200);
+        const { items: _items, collectionId: _collectionId, ...query } = body;
+        const results = await Promise.all([['left', 'right'], ['right', 'left']].map(collectionIds => f.request.post('/query-multi').send({ ...query, collectionIds, searchText: 'Current source' })));
+        expect(results.map(row => row.status)).toEqual([200, 200]); for (const result of results) expect(Object.keys(result.body).sort()).toEqual(['left', 'right']);
+        const ledger = await readCompute(f); expect(ledger.localWork.map(row => row.estimatedItems)).toEqual([2, 2]); expect(ledger.attempts).toHaveLength(2); expect(f.seen).toHaveLength(4);
+    } finally { await f.cleanup(); }
+});
+test('G05 local query cancellation while queued starts neither work nor provider send', async () => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits), controller = new AbortController();
+    try {
+        const body = await embeddingBody(f), indexPath = path.dirname(indexFile(f, body));
+        const compute = await prepareRetrievalCompute({ ...f, context: f.body.computeContext, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        let release, entered;
+        const ready = new Promise(resolve => { entered = resolve; }), waiting = new Promise(resolve => { release = resolve; });
+        const blocker = withNativeIndexWrite(indexPath, undefined, async () => { entered(); await waiting; }); await ready;
+        const vector = jest.fn(async () => [1, 0]);
+        const query = queryNativeIndexes({ indexes: [{ collectionId: body.collectionId, indexPath }], query: 'Current source', topK: 1, threshold: 0, compute, signal: controller.signal, getVector: vector });
+        const rejected = expect(query).rejects.toMatchObject({ name: 'AbortError' }); controller.abort(); release(); await blocker; await rejected;
+        expect(vector).not.toHaveBeenCalled(); expect(await readCompute(f)).toBeUndefined(); expect(f.seen).toHaveLength(0);
+    } finally { await f.cleanup(); }
+});
+test('G05 local query bounded candidate and vector scans reject before Embedding and preserve the original file', async () => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits);
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        await f.request.post('/insert').send(old).expect(200); const original = JSON.parse((await fs.readFile(indexFile(f, body))).toString());
+        const { items: _items, ...query } = body;
+        const item = original.items[0], long = { ...item, vector: Array(65536).fill(1) };
+        for (const items of [Array(10001).fill(item), [{ ...item, vector: Array(65537).fill(1) }], Array(17).fill(long)]) {
+            const file = Buffer.from(JSON.stringify({ ...original, items })); await fs.writeFile(indexFile(f, body), file);
+            await f.request.post('/query').send({ ...query, searchText: 'Current source' }).expect(503);
+            expect((await fs.readFile(indexFile(f, body))).equals(file)).toBe(true);
+        }
+        const ledger = await readCompute(f); expect(ledger.attempts).toEqual([]); expect(ledger.localWork.map(row => row.usage.outcome)).toEqual(['failed', 'failed', 'failed']); expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+(process.platform === 'win32' ? test : test.skip)('G05 local query Windows collection case aliases cannot duplicate one physical index', async () => {
+    const f = await fixture(makeTempFsEngine, 4, localLimits);
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        await f.request.post('/insert').send(old).expect(200);
+        const { items: _items, collectionId, ...query } = body;
+        await f.request.post('/query-multi').send({ ...query, collectionIds: [collectionId, collectionId.toUpperCase()], searchText: 'Current source' }).expect(503);
+        expect(await readCompute(f)).toBeUndefined(); expect(f.seen).toHaveLength(1);
     } finally { await f.cleanup(); }
 });
 

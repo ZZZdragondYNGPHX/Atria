@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vectra from 'vectra';
 import express from 'express';
 import { createRetrievalMiddleware } from '../native/retrieval-execution.js';
-import { insertNativeIndex, withNativeIndexWrite } from '../native/vector-index-work.js';
+import { insertNativeIndex, queryNativeIndexes, withNativeIndexWrite } from '../native/vector-index-work.js';
 import sanitize from 'sanitize-filename';
 
 import { getNomicAIBatchVector, getNomicAIVector } from '../vectors/nomicai-vectors.js';
@@ -335,6 +335,9 @@ async function deleteVectorItems(directories, collectionId, source, sourceSettin
  * @returns {Promise<{hashes: number[], metadata: object[]}>} - The metadata of the items that match the search text
  */
 async function queryCollection(directories, collectionId, source, sourceSettings, searchText, topK, threshold, includeVectors = false, request = null) {
+    if (sourceSettings.native) return (await queryNativeIndexes({ indexes: [{ collectionId, indexPath: getIndexPath(directories, collectionId, source, sourceSettings) }],
+        query: searchText, topK, threshold, includeVectors, compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal,
+        getVector: () => getVector(source, sourceSettings, searchText, true, directories, request) })).single;
     const store = await getIndex(directories, collectionId, source, sourceSettings);
     const vector = await getVector(source, sourceSettings, searchText, true, directories, request);
 
@@ -369,6 +372,9 @@ async function queryCollection(directories, collectionId, source, sourceSettings
  * @returns {Promise<Record<string, { hashes: number[], metadata: object[] }>>} - The top K results from each collection
  */
 async function multiQueryCollection(directories, collectionIds, source, sourceSettings, searchText, topK, threshold, request = null) {
+    if (sourceSettings.native) return (await queryNativeIndexes({ indexes: collectionIds.map(collectionId => ({ collectionId, indexPath: getIndexPath(directories, collectionId, source, sourceSettings) })),
+        query: searchText, topK, threshold, compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal,
+        getVector: () => getVector(source, sourceSettings, searchText, true, directories, request) })).groups;
     const vector = await getVector(source, sourceSettings, searchText, true, directories, request);
     const results = [];
 
@@ -455,7 +461,7 @@ router.post('/query', async (req, res) => {
         const sourceSettings = getSourceSettings(source, req);
         const includeVectors = Boolean(req.body.includeVectors);
 
-        const results = await queryCollection(req.user.directories, collectionId, source, sourceSettings, searchText, topK, threshold, includeVectors, inspect ? req : null);
+        const results = await queryCollection(req.user.directories, collectionId, source, sourceSettings, searchText, topK, threshold, includeVectors, inspect || req.nativeRetrieval ? req : null);
         if (inspect) {
             // Store every returned hit verbatim; the UI folds each entry
             // behind a <details> so we never pay DOM cost until the user
@@ -528,7 +534,7 @@ router.post('/query-multi', async (req, res) => {
         const threshold = Number(req.body.threshold) || 0.0;
         const sourceSettings = getSourceSettings(source, req);
 
-        const results = await multiQueryCollection(req.user.directories, collectionIds, source, sourceSettings, searchText, topK, threshold, inspect ? req : null);
+        const results = await multiQueryCollection(req.user.directories, collectionIds, source, sourceSettings, searchText, topK, threshold, inspect || req.nativeRetrieval ? req : null);
         if (inspect) {
             // multiQueryCollection returns { [collectionId]: { hashes, metadata } };
             // flatten across collections into a single hits list so the UI

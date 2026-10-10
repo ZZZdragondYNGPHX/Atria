@@ -37,9 +37,9 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
             });
             return agent.publishLocalIndex(handle, context.projectId, context.taskId, context.revision, task.executionFingerprint, publish);
         },
-        async beforeLocalWork({ items, inputBytes, indexPath }) {
+        async beforeLocalWork({ items, inputBytes, indexPath, kind = 'index_insert' }) {
             const attemptId = randomUUID(), attempt = { attemptId, requestId: 'index:' + randomUUID(),
-                targetFingerprint: hashNativeDocument({ path, indexPath }), kind: 'index_insert', estimatedItems: items, estimatedInputBytes: inputBytes };
+                targetFingerprint: hashNativeDocument({ path, indexPath, kind }), kind, estimatedItems: items, estimatedInputBytes: inputBytes };
             let receipt;
             if (base) receipt = await core.runs.chargeLocalWork(handle, base,
                 { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, limits, attempt);
