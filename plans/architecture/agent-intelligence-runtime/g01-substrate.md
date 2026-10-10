@@ -109,6 +109,12 @@ source `2074ed7b9`已push，13新distinct/9受影响旧checks通过。原compute
 
 source `f07553645` / `4818ff76d`已push，18新distinct/9受影响旧checks通过；HTTP/client实物清理与原FS/SQLite额度恢复、取消/Task/HEAD变化均沿原owner。根目录junction反例此前实际200误删fixture单文件，修复为root/namespace/file非链接及root重验后503保留；所有测试仅隔离可重建fixture。同步unlink仅原index.json，保留空目录，不递归清理。已提交后settlement故障保留charged记录/明确文件已不存在，原receipt随后可settle完成；不冒称所有错误均保留原文件。Native typed quota/unavailable沿旧error handler返回，legacy purge-all保持。测试lint新增问题已修；base/current相同20项旧lint问题未改，无新增产品lint问题。Record保留各次失败及精准重验；其余成本/continuity/G06依赖继续。
 
+## 当前有限 G05：原 Native Host count/render 工作
+
+完成条件先冻结（2026-10-11）：只包原Host provider.countTokens/renderRequest（含重试再次lowering与原私有checkpoint恢复校验），不声称Context编译/所有CPU或Session续接已交付。generation_count/generation_render各计1 job及原公开contextPlan+promptIr序列化输入字节，沿原computeBudget.localWork/Run operation或Studio Task；旧未设限路径及preview保持，Route移除后原保有额度不补。原background intent沿同一background lane/anchor，不新增period/window authority，不伪造模型attempt/token/价格。
+
+每次实际count/render前原scope+额度准入，处理/settlement后重验当前scope/cancel；失败保留原工作成本、未lower/send不假记HTTP。原已准入worker仍由scheduler保有permit至结算。request routing只增加当前请求localWork观察，durable账本仍原authority。限额先于adapter运行；计费输入为公开编译结果，私有opaque仍原128/16MiB/2MiB/TTL限制，CPU process切片不是独立线程/硬时长。最小出口：FS/SQLite原Session+Studio Task实际Host/loopback count+render→send、额度/并发/Route撤回恢复、stale/cancel/adapter失败/readonly-preview，原Task native checkpoint与背景任务消费者的受影响检查。API external0；剩余Session任务历史/安全fork/compaction与其他成本继续。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
