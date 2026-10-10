@@ -5,6 +5,7 @@ import { readSecret, SECRET_KEYS } from '../endpoints/secrets.js';
 import { assertRetrievalRef } from '../../public/scripts/native/retrieval-contracts.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { prepareRetrievalCompute } from './retrieval-compute.js';
+import { supportsOpenAIEmbeddingSource } from '../vectors/openai-vectors.js';
 
 export function resolveRetrievalSecret(directories, ref) {
     if (!ref) return '';
@@ -32,8 +33,8 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             const handle = req.user?.profile?.handle;
             if (!handle) return res.sendStatus(401);
             const operations = {
-                '/insert': ['collectionId', 'items', 'embeddings'], '/query': ['collectionId', 'searchText', 'topK', 'threshold', 'includeVectors', 'embeddings'],
-                '/query-multi': ['collectionIds', 'searchText', 'topK', 'threshold', 'embeddings'], '/query-by-vector': ['collectionId', 'vector', 'topK', 'threshold', 'includeVectors'],
+                '/insert': ['collectionId', 'items', 'embeddings', 'computeContext'], '/query': ['collectionId', 'searchText', 'topK', 'threshold', 'includeVectors', 'embeddings', 'computeContext'],
+                '/query-multi': ['collectionIds', 'searchText', 'topK', 'threshold', 'embeddings', 'computeContext'], '/query-by-vector': ['collectionId', 'vector', 'topK', 'threshold', 'includeVectors'],
                 '/list': ['collectionId'], '/delete': ['collectionId', 'hashes'], '/purge': ['collectionId'], '/rerank': ['query', 'documents', 'topK', 'computeContext'],
             };
             const allowed = operations[req.path];
@@ -48,8 +49,11 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
                 || req.body.documents.some(doc => typeof doc?.text !== 'string' || !doc.text || doc.text.length > 65536)
                 || Buffer.byteLength(JSON.stringify(req.body.documents), 'utf8') > 262144)) throw new TypeError('Bounded rerank input required');
             const usesProvider = ['/insert', '/query', '/query-multi', '/rerank'].includes(req.path);
-            const secret = usesProvider ? resolveSecret(req.user.directories, profile.secretRef) : '';
             const compute = req.body.computeContext ? await prepareRetrievalCompute({ handle, context: req.body.computeContext, profile, ...await getComputeServices() }) : null;
+            if (compute && profile.mode === 'embed' && !supportsOpenAIEmbeddingSource(profile.source)) {
+                throw Object.assign(new Error('Budgeted Embedding provider unavailable'), { code: 'native_retrieval_compute_unavailable' });
+            }
+            const secret = usesProvider ? resolveSecret(req.user.directories, profile.secretRef) : '';
             const settings = {
                 native: true, model: profile.model, indexScope: ref.retrievalProfileId + '_' + ref.revision,
                 reverseProxy: profile.endpoint, proxyPassword: secret, apiUrl: profile.endpoint, apiKey: secret,
@@ -85,7 +89,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             res.json = value => json(res.statusCode >= 400 ? { error: ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped'].includes(value?.error) ? value.error : 'native_retrieval_execution_failed' } : value);
             next();
         } catch (error) {
-            const code = ['native_retrieval_unavailable', 'native_retrieval_secret_unavailable', 'storage_read_only', 'native_generation_budget_lane_denied', 'native_generation_revision_conflict'].includes(error.code) ? error.code : 'native_retrieval_invalid';
+            const code = ['native_retrieval_unavailable', 'native_retrieval_compute_unavailable', 'native_retrieval_secret_unavailable', 'storage_read_only', 'native_generation_budget_lane_denied', 'native_generation_revision_conflict'].includes(error.code) ? error.code : 'native_retrieval_invalid';
             res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
         }
     };

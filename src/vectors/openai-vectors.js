@@ -71,6 +71,8 @@ const SOURCES = {
     },
 };
 
+export const supportsOpenAIEmbeddingSource = source => Object.hasOwn(SOURCES, source);
+
 /**
  * Gets the vector for the given text batch from an OpenAI compatible endpoint.
  * @param {string[]} texts - The array of texts to get the vector for
@@ -135,35 +137,43 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
     const embeddingsUrl = `${url}/embeddings`;
     if (request) attachInspectionEndpoint(request, embeddingsUrl, key, body);
 
-    const response = await fetch(embeddingsUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`,
-            ...config.headers,
-        },
-        body: JSON.stringify(body),
-    });
+    const compute = request?.nativeRetrieval?.compute;
+    let usage = null, ticket;
+    try {
+        request?.nativeRetrieval?.signal?.throwIfAborted();
+        ticket = await compute?.beforeSend(body);
+        const response = await fetch(embeddingsUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${key}`,
+                ...config.headers,
+            },
+            body: JSON.stringify(body),
+            ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}),
+        });
 
-    if (!response.ok) {
-        const text = await response.text();
-        console.warn('API request failed', response.statusText, text);
-        throw new Error('API request failed');
-    }
+        if (!response.ok) {
+            const text = await response.text();
+            console.warn('API request failed', response.statusText, text);
+            throw new Error('API request failed');
+        }
 
-    /** @type {any} */
-    const data = await response.json();
+        /** @type {any} */
+        const data = await response.json();
+        usage = data?.usage ?? null;
 
-    if (!Array.isArray(data?.data)) {
-        console.warn('API response was not an array');
-        throw new Error('API response was not an array');
-    }
+        if (!Array.isArray(data?.data)) {
+            console.warn('API response was not an array');
+            throw new Error('API response was not an array');
+        }
 
-    // Sort data by x.index to ensure the order is correct
-    data.data.sort((a, b) => a.index - b.index);
+        // Sort data by x.index to ensure the order is correct
+        data.data.sort((a, b) => a.index - b.index);
 
-    const vectors = data.data.map(x => x.embedding);
-    return vectors;
+        const vectors = data.data.map(x => x.embedding);
+        return vectors;
+    } finally { await compute?.settle(usage, ticket); }
 }
 
 /**

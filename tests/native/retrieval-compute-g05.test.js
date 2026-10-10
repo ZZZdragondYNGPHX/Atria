@@ -16,6 +16,7 @@ import { router as vectors } from '../../src/endpoints/vectors.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
 import { rerank } from '../../src/vectors/rerank.js';
+import { getOpenAIBatchVector } from '../../src/vectors/openai-vectors.js';
 import { emptyProvenance, captureEpisodes } from '../../public/scripts/agents/memory/source-provenance.js';
 import { retrieveMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 import { webcrypto } from 'node:crypto';
@@ -23,10 +24,12 @@ import { webcrypto } from 'node:crypto';
 async function fixture(make, maxRequests = 2) {
     const h = await make(), seen = [];
     let respond = () => ({ results: [{ index: 0, relevance_score: .9 }] });
+    let respondEmbedding = body => ({ data: body.input.map((_, index) => ({ index, embedding: [1, 0] })), usage: { prompt_tokens: 3, total_tokens: 3 } });
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const chunk of req) raw += chunk;
         seen.push({ path: req.url, body: JSON.parse(raw) });
-        const body = req.url.endsWith('/rerank') ? await respond() : { choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
+        const body = req.url.endsWith('/rerank') ? await respond() : req.url.endsWith('/embeddings') ? await respondEmbedding(JSON.parse(raw))
+            : { choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
         res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -43,9 +46,172 @@ async function fixture(make, maxRequests = 2) {
     app.use(createRetrievalMiddleware(() => store, () => 'synthetic-key', async () => computeServices)); app.use(vectors);
     const computeContext = { kind: 'session', sessionId: base.session.sessionId, revisionId: base.revision.revisionId };
     const body = { nativeRetrievalRef: retrievalRef(profile), query: 'Why Alice?', documents: [{ text: 'Because of the storm', index: 0 }], computeContext };
-    return { ...h, ...seeded, ...computeServices, base, profile, body, seen, request: supertest(app), respond: fn => { respond = fn; },
+    return { ...h, ...seeded, ...computeServices, base, profile, body, seen, store, request: supertest(app), respond: fn => { respond = fn; }, respondEmbedding: fn => { respondEmbedding = fn; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
+
+async function embeddingBody(f, items = [{ hash: 1, text: 'Current legal evidence', index: 0 }]) {
+    const profile = { ...f.profile, retrievalProfileId: createNativeId('retrievalProfile'), mode: 'embed', source: 'openai', model: 'test-embed' };
+    await f.store.commit(f.handle, profile);
+    return { nativeRetrievalRef: retrievalRef(profile), collectionId: 'g05-embed', items, computeContext: f.body.computeContext };
+}
+
+for (const [kind, make] of [['fs', makeTempFsEngine], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test(`G05 ${kind} Embedding batches and narration consume the same original Run allowance`, async () => {
+        const f = await fixture(make, 3);
+        try {
+            const body = await embeddingBody(f, Array.from({ length: 11 }, (_, index) => ({ hash: index + 1, text: 'Legal source ' + index, index })));
+            await f.request.post('/insert').send(body).expect(200);
+            expect(f.seen.map(row => row.body.input.length)).toEqual([10, 1]);
+            const host = new NativeGenerationHost({ ...f, sessionCore: f.core,
+                providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-key' } });
+            await host.execute(f.handle, { sessionId: f.base.session.sessionId, revisionId: f.base.revision.revisionId, requestId: 'shared-embedding-narration', role: 'narrator' });
+            const { items: _items, ...query } = body;
+            await f.request.post('/query').send({ ...query, searchText: 'Legal source' }).expect(429);
+            expect(f.seen).toHaveLength(3);
+            const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
+            expect(ledger.attempts.map(row => row.status)).toEqual(['settled', 'settled', 'settled']);
+            expect(ledger.attempts.map(row => row.usage.totalTokens)).toEqual([3, 3, 15]);
+            expect(new Set(ledger.attempts.map(row => row.attemptId)).size).toBe(3);
+            expect(ledger.attempts[0].targetFingerprint).not.toBe(ledger.attempts[2].targetFingerprint);
+        } finally { await f.cleanup(); }
+    });
+}
+
+test('G05 query-multi spends one actual Embedding send; concurrent queries cannot exceed the remaining Run allowance', async () => {
+    const f = await fixture(makeTempFsEngine, 2);
+    try {
+        const body = await embeddingBody(f);
+        await f.request.post('/insert').send(body).expect(200);
+        const { items: _items, collectionId, ...query } = body;
+        const responses = await Promise.all([f.request.post('/query-multi').send({ ...query, collectionIds: [collectionId], searchText: 'evidence' }),
+            f.request.post('/query').send({ ...query, collectionId, searchText: 'evidence' })]);
+        expect(responses.map(row => row.status).sort()).toEqual([200, 429]);
+        expect(f.seen).toHaveLength(2);
+        const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
+        expect(ledger.attempts).toHaveLength(2);
+    } finally { await f.cleanup(); }
+});
+
+test('G05 scoped Embedding retains unknown cancellation and shares the original Project Task budget', async () => {
+    const f = await fixture(makeTempFsEngine, 2), controller = new AbortController();
+    try {
+        const body = await embeddingBody(f), profile = await f.store.getExact(f.handle, body.nativeRetrievalRef);
+        const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+        const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Read source evidence', baseRevision: project.revision.revision });
+        const context = { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+        const stale = await prepareRetrievalCompute({ ...f, context, profile });
+        await f.agent.setPlan(f.handle, context.projectId, context.taskId, { summary: 'Changed task', steps: [{ id: 'read', title: 'Read evidence', impact: 'low' }] });
+        const send = compute => getOpenAIBatchVector(['Legal evidence'], 'openai', f.dirs, profile.model,
+            { reverseProxy: profile.endpoint, proxyPassword: 'synthetic-key' }, { nativeRetrieval: { compute, signal: controller.signal } });
+        await expect(send(stale)).rejects.toMatchObject({ code: 'native_generation_task_stopped' });
+        expect(f.seen).toHaveLength(0);
+        const compute = await prepareRetrievalCompute({ ...f, context, profile });
+        f.respondEmbedding(() => { controller.abort(); return { data: [{ index: 0, embedding: [1, 0] }] }; });
+        await expect(send(compute)).rejects.toMatchObject({ name: 'AbortError' });
+        expect((await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute.attempts[0]).toMatchObject({ status: 'unknown', usage: null });
+        await f.request.post('/insert').send({ ...body, computeContext: context }).expect(200);
+        await f.request.post('/insert').send({ ...body, computeContext: context }).expect(429);
+        expect(f.seen).toHaveLength(2);
+        expect((await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute.attempts).toHaveLength(2);
+    } finally { await f.cleanup(); }
+});
+
+test('G05 scoped Embedding keeps old unbounded Routes and rejects unsupported budgeted providers before inference', async () => {
+    const f = await fixture(makeTempFsEngine);
+    try {
+        const body = await embeddingBody(f), profile = await f.store.getExact(f.handle, body.nativeRetrievalRef);
+        const unsupported = { ...profile, retrievalProfileId: createNativeId('retrievalProfile'), source: 'transformers', endpoint: '', secretRef: undefined };
+        await f.store.commit(f.handle, unsupported);
+        expect((await f.request.post('/insert').send({ ...body, nativeRetrievalRef: retrievalRef(unsupported) }).expect(400)).body.error)
+            .toBe('native_retrieval_compute_unavailable');
+        expect(f.seen).toHaveLength(0);
+        const route = f.routes.find(row => row.role === 'role.narrator');
+        await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: undefined });
+        await f.request.post('/insert').send(body).expect(200);
+        expect(f.seen).toHaveLength(1);
+        expect(Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId))?.operations ?? {}).every(row => !row.compute)).toBe(true);
+    } finally { await f.cleanup(); }
+});
+
+test.each(['session', 'project'])('G05 %s scoped Embedding keeps the durable limit after Route budget removal', async lane => {
+    const f = await fixture(makeTempFsEngine, 1);
+    try {
+        const body = await embeddingBody(f);
+        let context = body.computeContext;
+        if (lane === 'project') {
+            const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+            const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Read evidence', baseRevision: project.revision.revision });
+            context = { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+        }
+        await f.request.post('/insert').send({ ...body, computeContext: context }).expect(200);
+        const route = f.routes.find(row => row.role === (lane === 'project' ? 'role.studio' : 'role.narrator'));
+        await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: undefined });
+        const { items: _items, ...query } = body;
+        await f.request.post('/query').send({ ...query, computeContext: context, searchText: 'evidence' }).expect(429);
+        expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+
+test('G05 denied later Embedding batch keeps the prior index and charged first send', async () => {
+    const f = await fixture(makeTempFsEngine, 1);
+    try {
+        const body = await embeddingBody(f);
+        await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const replacements = Array.from({ length: 11 }, (_, index) => ({ hash: index + 100, text: 'New source ' + index, index }));
+        expect((await f.request.post('/insert').send({ ...body, items: replacements }).expect(429)).body.error)
+            .toBe('native_generation_budget_exhausted');
+        const found = await f.request.post('/query-by-vector').send({ nativeRetrievalRef: body.nativeRetrievalRef,
+            collectionId: body.collectionId, vector: [1, 0] }).expect(200);
+        expect(found.body.hashes).toEqual([1]); expect(f.seen).toHaveLength(2);
+        const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
+        expect(ledger.attempts).toHaveLength(1);
+        expect(ledger.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 3 } });
+    } finally { await f.cleanup(); }
+});
+
+test('G05 actual Memory client forwards the source Session anchor to Embedding insert and query', async () => {
+    jest.unstable_mockModule('../../public/script.js', () => ({ getRequestHeaders: () => ({}) }));
+    const { NativeRetrievalService } = await import('../../public/scripts/native/retrieval-client.js');
+    const f = await fixture(makeTempFsEngine, 2), previousFetch = globalThis.fetch, previousAtria = globalThis.Atria, calls = [];
+    Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
+    try {
+        const body = await embeddingBody(f);
+        globalThis.Atria = { getContext: () => ({ getRequestHeaders: () => ({}) }) };
+        globalThis.fetch = async (url, options) => {
+            if (url.endsWith('/retrieval')) return { ok: true, json: async () => f.store.list(f.handle) };
+            const payload = JSON.parse(options.body); calls.push({ url, payload });
+            const result = await f.request.post(url.replace('/api/vector', '')).send(payload);
+            return { ok: result.status < 400, headers: new Headers({ 'content-type': 'application/json' }), json: async () => result.body };
+        };
+        const chat = [{ memory_os_source_id: 'source-a', mes: 'Alice lives by the harbor.' }];
+        const state = emptyProvenance(); state.scopeId = 'chat'; captureEpisodes(state, chat, [0], state.scopeId);
+        const snapshot = { state, chat, key: state.scopeId, assertCurrent: jest.fn() };
+        const result = await retrieveMemory(snapshot, 'Alice harbor', { service: NativeRetrievalService,
+            profile: { nativeRetrievalRef: body.nativeRetrievalRef, source: 'native', model: 'exact-fixture' },
+            countTokens: async text => text.length, computeContext: body.computeContext });
+        expect(result.diagnostics).not.toContain('vector_unavailable');
+        expect(calls.filter(row => /\/(insert|query)$/.test(row.url)).map(row => row.payload.computeContext))
+            .toEqual([body.computeContext, body.computeContext]);
+        expect(result.sourceMessageIds).toEqual(['source-a']); expect(f.seen).toHaveLength(2);
+        const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
+        expect(ledger.attempts.map(row => row.status)).toEqual(['settled', 'settled']);
+    } finally { globalThis.fetch = previousFetch; globalThis.Atria = previousAtria; await f.cleanup(); }
+});
+
+test('G05 rejected Embedding vectors preserve usage and stale source never reaches provider HTTP', async () => {
+    const f = await fixture(makeTempFsEngine);
+    try {
+        const body = await embeddingBody(f);
+        await f.request.post('/insert').send({ ...body, computeContext: { ...body.computeContext, revisionId: createNativeId('revision') } }).expect(400);
+        expect(f.seen).toHaveLength(0);
+        f.respondEmbedding(() => ({ data: null, usage: { total_tokens: 7, prompt_tokens: 7 } }));
+        await f.request.post('/insert').send(body).expect(500);
+        expect(f.seen).toHaveLength(1);
+        const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
+        expect(ledger.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 7, inputTokens: 7, outputTokens: null } });
+    } finally { await f.cleanup(); }
+});
 
 for (const [kind, make] of [['fs', makeTempFsEngine], ['sqlite', makeTempSqliteEngineHarness]]) {
     test.each(['session', 'project'])(`G06 ${kind} %s effective limits survive Route relaxation/removal and diagnostics match durable receipts`, async lane => {

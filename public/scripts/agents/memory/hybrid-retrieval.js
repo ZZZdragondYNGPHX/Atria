@@ -407,9 +407,11 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             if (hashes.length) { await callService('deleteByHashes', { collectionId, profile, hashes, signal }); guard(); }
             const missing = items.filter(item => rebuildVectors || !remote.has(item.hash));
             for (let start = 0; start < missing.length; start += 64) {
-                await callService('insert', { collectionId, profile, items: missing.slice(start, start + 64), signal }); guard();
+                await callService('insert', { collectionId, profile, items: missing.slice(start, start + 64), signal,
+                    ...(computeContext ? { computeContext } : {}) }); guard();
             }
-            const response = await callService('query', { collectionId, profile, searchText: querySeeds.seedText, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal });
+            const response = await callService('query', { collectionId, profile, searchText: querySeeds.seedText, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal,
+                ...(computeContext ? { computeContext } : {}) });
             guard();
             const valid = new Map(items.map(item => [item.metadata.id, item.metadata.fingerprint]));
             vectorIds = [...new Set((response?.metadata || []).filter(hit => valid.get(hit.id) === hit.fingerprint && typeof hit.fingerprint === 'string').map(hit => hit.id))];

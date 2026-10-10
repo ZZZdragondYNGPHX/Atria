@@ -16,6 +16,9 @@ async function request(operation, { profile, signal, ...body }) {
         const selected = inventory.find(item => item.retrievalProfileId === ref.retrievalProfileId && item.revision === ref.revision);
         if (!selected) throw new Error('Native retrieval revision unavailable');
         if (selected.source === 'webllm') {
+            // No scoped browser-inference budget consumer exists yet. Reject
+            // before local inference rather than doing work before server admission.
+            if (body.computeContext) throw Object.assign(new Error('Scoped browser Embedding unavailable'), { code: 'native_retrieval_compute_unavailable' });
             const texts = operation === 'insert' ? body.items.map(item => item.text) : [body.searchText];
             const vectors = await webllm.embedTexts(texts, selected.model, { signal });
             body.embeddings = Object.fromEntries(texts.map((text, index) => [text, vectors[index]]));

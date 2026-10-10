@@ -34,3 +34,11 @@ test('missing exact revisions fail without using another revision or sending inf
     await expect(service.query({ profile: memoryProfile({ nativeRetrieval: { embed: ref } }, 'embed'), searchText: 'question', collectionId: 'memory' })).rejects.toThrow('revision unavailable');
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
 });
+
+test('scoped browser Embedding rejects before inference while no vector request is sent', async () => {
+    globalThis.fetch = jest.fn(async () => response([{ ...ref, source: 'webllm', model: 'never-load' }]));
+    await expect(service.query({ profile: memoryProfile({ nativeRetrieval: { embed: ref } }, 'embed'),
+        searchText: 'question', collectionId: 'memory', computeContext: { kind: 'session', sessionId: 'source', revisionId: 'current' } }))
+        .rejects.toMatchObject({ code: 'native_retrieval_compute_unavailable' });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+});

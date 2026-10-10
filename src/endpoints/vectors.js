@@ -253,7 +253,13 @@ async function insertVectorItems(directories, collectionId, source, sourceSettin
 
     await store.beginUpdate();
 
-    const vectors = await getBatchVector(source, sourceSettings, items.map(x => x.text), false, directories, request);
+    let vectors;
+    try {
+        vectors = await getBatchVector(source, sourceSettings, items.map(x => x.text), false, directories, request);
+    } catch (error) {
+        store.cancelUpdate();
+        throw error;
+    }
 
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
@@ -397,7 +403,10 @@ async function multiQueryCollection(directories, collectionIds, source, sourceSe
  * @returns {Promise<any>} Promise
  */
 async function regenerateCorruptedIndexErrorHandler(req, res, error) {
-    if (req.nativeRetrieval) return res.status(500).json({ error: 'native_retrieval_execution_failed' });
+    if (req.nativeRetrieval) {
+        const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped'].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
+        return res.status(code === 'native_generation_budget_exhausted' ? 429 : 500).json({ error: code });
+    }
     if (error instanceof SyntaxError && !req.query.regenerated) {
         const collectionId = String(req.body.collectionId);
         const source = String(req.body.source) || 'transformers';
@@ -580,8 +589,7 @@ router.post('/rerank', async (req, res) => {
         console.error('Rerank failed:', error);
         failEmbeddingInspection(req, error?.message || String(error), 500);
         if (req.nativeRetrieval) {
-            const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped'].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
-            return res.status(code === 'native_generation_budget_exhausted' ? 429 : 500).json({ error: code });
+            return regenerateCorruptedIndexErrorHandler(req, res, error);
         }
         return res.status(500).json({ error: error.message });
     }
