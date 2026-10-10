@@ -1771,3 +1771,11 @@ source `5fa2f7dc9`。先实测5新反例均失败：另一正式writer持久改l
 最终producer `5fa2f7dc9`补h4-readonly-ledger-final-compatibility.log，仅early-revocation移动后受影响的4旧项，全部通过，仍不计新distinct；与boundary-v2的9新+queued旧1构成最终9新/5旧证据。新时点/authority字段改变packing预算后，又定向运行唯一B2/B3冻结检索覆盖测试（lexical/typed graph及loopback fixture vector），原2400预算、required/excluded sources全部通过；无model/API0，无ATRIA_HM_REPORT，不写原B0/HM1结果或重跑M1。这是当前包装预算兼容检查，不是H0基线重跑或正文质量通过。
 
 下一有限H4收益核对仅针对当前新增只读raw token复制/校验开销：一个10000-document配置、现有FS/loopback固定向量，先单独记录index/cache准备，再固定3对交替full recompute/valid corpus reuse，计入SourceLifecycle snapshot在内的总elapsed与保存工作，要求同producer完整evidence/source集合一致。停止后不扩规模/算法/paid模型，n3不成为SLO；旧数值/raw报告不改。
+
+### H4 当前只读 proof 开销后的有限净工作量 / elapsed
+
+source `5fa2f7dc9`；m8-h4-readonly-current-net-v1及零API audit-v1完成，无新产品改动。仅10000-document一个配置，真实Native FS vector index/loopback与原SourceLifecycle，source provenance为完整in-memory fixture ledger。先分别记录index准备7461.24ms/159local requests、corpus准备3111.93ms/2local requests，再固定3对交替AB/BA/AB测量；准备不混入warm样本或抹掉。两臂测量都index-warm，每次snapshot计入总elapsed；不是Native source-store IO/Information权限收益，也不重跑旧100/1000/10000全矩阵。
+
+full recompute p50/p90=3039.49/3073.40ms；valid corpus reuse=696.04/728.98ms，均n3有限同机配置，无统计推广或SLO。snapshot median310.57/316.06ms，包含新增raw token复制/校验；组件guard/hash/network时间重叠，不相加冒充CPU总量。每hit hashReused10000/documentsHashed0，对手动bypass hash10000；6测量及2准备的完整evidence SHA相同a667e67d开头、同selected3sources、原2400预算内、readOnly persistence/access writes0。保存工作归source-valid corpus/fingerprint，不归正文/工具完成状态。
+
+测量两臂均2local service requests/query、642request bytes/165310response bytes，内部query embedding intent=1但固定[1,0] vectors绕过实际推理，real Embedding/model/API0。故无远端请求、Embedding或货币节省结论；currency/upstream/cache保持原unknown。prepare161+measure12=173local requests真实保留；原M1/HM1/quota raw hashes与旧报告不变。该有界组结束，不增加样本或分位数；它补当前读链的有限净elapsed/work证据，原质量失败及完整G06/HM2未验收不改变，main未集成，无HANDOFF。
