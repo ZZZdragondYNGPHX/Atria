@@ -47,6 +47,25 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
     async function command(action) { base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: 'cmd-' + ++serial, action }, { expectedRevisionId: base.revision.revisionId }); }
     const progress = effectiveTurns => command({ kind: 'app.command', domainId: 'progress', commandId: 'advance', recordId: 'main', args: { effectiveTurns } });
     const input = () => ({ sessionId: base.session.sessionId, revisionId: base.revision.revisionId, slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } });
+    test.each(['completed', 'withdrawn'])('G05 retired work actual background %s preserves its original late receipt and period charge', async scenario => {
+        await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+            allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: 32000 } } });
+        respond = async () => {
+            if (scenario === 'withdrawn') await command({ kind: 'scope.transition', scopeId: 'session', status: 'suspended' });
+            return { content: JSON.stringify({ text: 'filed' }) };
+        };
+        if (scenario === 'withdrawn') await expect(host.executeLifecycle(h.handle, input())).rejects.toThrow();
+        else {
+            const result = await host.executeLifecycle(h.handle, input()); base = result.snapshot;
+            expect(base.states.atri_lifecycle.domains.notes.records[0].value.text).toBe('resolved');
+        }
+        const control = await svc.core.runs.status(h.handle, base.session.sessionId);
+        expect(seen).toHaveLength(1); expect(control.background['1'].count).toBe(1);
+        expect(control.retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 0, unknownAttempts: 1 });
+        expect(control.retiredCompute.unknownUpperTokens).toBeGreaterThan(0);
+        expect(Object.values(control.operations).filter(row => row.compute)).toEqual([]);
+        expect(await services(h).core.runs.status(h.handle, base.session.sessionId)).toEqual(control);
+    });
     test('G06 removing Route compute bounds cannot use the remaining legacy Package allowance', async () => {
         const executionPolicy = { schemaVersion: 1, allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 1, maxTokens: 32000 } };
         await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy });

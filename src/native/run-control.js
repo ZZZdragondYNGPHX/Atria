@@ -2,12 +2,21 @@ import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { getNativeDocument, putMutable, hashNativeDocument } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
-import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../public/shared/native-compute-budget.js';
+import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
+import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger } from '../../public/shared/native-compute-budget.js';
 
 export const runFailure = code => Object.assign(new TypeError(code), { code });
 const key = (handle, sessionId) => ({ kind: K.runControl, handle, sessionId });
 const proofs = new WeakSet();
 const controlVersions = new WeakMap();
+function retireOperations(control, keep) {
+    control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => {
+        if (keep(op) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) return true;
+        if (op.compute) control.retiredCompute = retireComputeLedger(control.retiredCompute, op.compute);
+        return false;
+    }));
+}
+export function retireRunOperations(control) { retireOperations(control, () => false); return control; }
 export function runPublicationProof() { const proof = {}; proofs.add(proof); return proof; }
 export const validRunPublication = proof => Boolean(proof && proofs.has(proof));
 
@@ -19,12 +28,16 @@ export async function readRunControl(tx, handle, sessionId) {
     let control = record?.doc ? structuredClone(record.doc) : null;
     if (control) {
         if (hashNativeDocument(control) !== record.integrity || control.schemaVersion !== 1) throw runFailure('native_run_control_integrity');
-        assertRunContinuation({ operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn });
+        assertRunContinuation({ operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
+            ...(control.retiredCompute === undefined ? {} : { retiredCompute: control.retiredCompute }) });
         if (control.mode && (!['pending', 'ordinary', 'ironman'].includes(control.mode)
             || !['pending', 'active', 'dead', 'terminal'].includes(control.status)
             || !Number.isSafeInteger(control.sequence) || control.sequence < 0)) throw runFailure('native_run_control_invalid');
     }
-    if (control?.status === 'terminal') { controlVersions.set(control, record.integrity); return control; }
+    if (control?.status === 'terminal') {
+        retireOperations(control, () => false);
+        controlVersions.set(control, record.integrity); return control;
+    }
     const session = await getNativeDocument(tx, { kind: K.session, handle, sessionId });
     const revision = session?.headRevisionId && await getNativeDocument(tx, { kind: K.sessionRevision, handle, sessionId, revisionId: session.headRevisionId });
     const head = revision?.stateHeads[RUN_NAMESPACE];
@@ -35,7 +48,6 @@ export async function readRunControl(tx, handle, sessionId) {
         if (control?.status === 'terminal') return control;
         control ??= { schemaVersion: 1, operations: {}, background: {}, highWaterTurn: 0 };
         if (control.headRevisionId && control.headRevisionId !== session.headRevisionId) {
-            control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => op.lane === 'background'));
             // A queued batch keeps its attempts across unrelated foreground commits.
             // Foreground restores publish a new branch/revision, never the old anchor.
             delete control.resumeSourceRevisionId;
@@ -50,14 +62,16 @@ export async function readRunControl(tx, handle, sessionId) {
         };
     }
     if (control && !run && session?.headRevisionId && session.headRevisionId !== control.headRevisionId) {
-        control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => op.lane === 'background')); control.headRevisionId = session.headRevisionId;
+        control.headRevisionId = session.headRevisionId;
     }
     if (control && session?.headRevisionId) {
         const lifecycleHead = revision?.stateHeads.atri_lifecycle;
         const lifecycle = lifecycleHead && await getNativeDocument(tx, { kind: K.sessionState, handle, sessionId, namespace: 'atri_lifecycle', head: lifecycleHead });
         const pending = new Set(lifecycle?.outbox.filter(item => item.status === 'pending').map(item => item.invocationId));
-        control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => op.lane !== 'background' || pending.has(op.anchor.invocationId)));
+        retireOperations(control, op => !['dead', 'terminal'].includes(control.status)
+            && (op.lane === 'background' ? pending.has(op.anchor.invocationId) : op.anchor.revisionId === session.headRevisionId));
     }
+    if (control && !session) retireRunOperations(control);
     if (control) controlVersions.set(control, record?.integrity ?? null);
     return control;
 }
@@ -71,6 +85,10 @@ export async function assertRunAccess(tx, handle, sessionId, action, revisionId 
     return control;
 }
 export async function writeRunControl(tx, handle, sessionId, control) {
+    // Capacity/schema refusal belongs before admission is published and before
+    // any provider send, rather than leaving an unreadable durable record.
+    assertRunContinuation({ operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
+        ...(control.retiredCompute === undefined ? {} : { retiredCompute: control.retiredCompute }) });
     const expectedIntegrity = controlVersions.has(control) ? controlVersions.get(control) : (await tx.getResource(key(handle, sessionId)))?.integrity ?? null;
     const result = await putMutable(tx, key(handle, sessionId), control, { expectedIntegrity });
     controlVersions.set(control, hashNativeDocument(control));
@@ -82,16 +100,17 @@ export class RunControl {
     async status(handle, sessionId) {
         return this.repo.withRunLock(handle, sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
             const value = await readRunControl(tx, handle, sessionId);
-            if (value) await writeRunControl(tx, handle, sessionId, value);
+            if (value && !isReadOnly()) await writeRunControl(tx, handle, sessionId, value);
             return value;
         }));
     }
     async assert(handle, sessionId, action, revisionId) {
         return this.repo.withRunLock(handle, sessionId, () => this.repo._engine.withTransaction(handle, tx => assertRunAccess(tx, handle, sessionId, action, revisionId)));
     }
-    async update(handle, sessionId, mutate) {
+    async update(handle, sessionId, mutate, action = 'write') {
         return this.repo.withRunLock(handle, sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
-            let value = await assertRunAccess(tx, handle, sessionId, 'write');
+            assertWritable();
+            let value = await assertRunAccess(tx, handle, sessionId, action);
             if (!value) {
                 const session = await getNativeDocument(tx, { kind: K.session, handle, sessionId });
                 value = { schemaVersion: 1, operations: {}, background: {}, highWaterTurn: 0, headRevisionId: session?.headRevisionId ?? null };
@@ -193,13 +212,13 @@ export class RunControl {
             const op = value.operations[operation];
             if (!op) throw runFailure('native_generation_attempt_conflict');
             return settleLocalWork(op, attemptId, usage);
-        });
+        }, 'status');
     }
     async settleCompute(handle, sessionId, operation, attemptId, usage) {
         return this.update(handle, sessionId, value => {
             const op = value.operations[operation];
             if (!op) throw runFailure('native_generation_attempt_conflict');
             return settleComputeAttempt(op, attemptId, usage);
-        });
+        }, 'status');
     }
 }

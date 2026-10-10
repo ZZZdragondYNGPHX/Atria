@@ -1,6 +1,6 @@
 import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure } from '../run-control.js';
+import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure, retireRunOperations } from '../run-control.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../../public/shared/native-run-contract.js';
 import { normalizeSessionTitle } from '../../../public/scripts/native/session-title-contract.js';
 import { ILLUSTRATION_NAMESPACE, assertIllustrationState, illustrationAnchorMatches } from '../../../public/shared/native-illustration-contract.js';
@@ -896,7 +896,7 @@ export class SessionRepo {
         const session = await this.get(handle, sessionId);
         if (!session) return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
             const control = await readRunControl(tx, handle, sessionId);
-            if (control?.status === 'terminal') await writeRunControl(tx, handle, sessionId, { ...control, cleanup: 'complete', operations: {}, background: {} });
+            if (control?.status === 'terminal') await writeRunControl(tx, handle, sessionId, { ...retireRunOperations(control), cleanup: 'complete', background: {} });
             return false;
         }));
         return this.continuity.lock(handle, session.packageId, () => withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
@@ -923,7 +923,7 @@ export class SessionRepo {
                 }
             }
             const removed = await tx.deleteResource(this._sessionKey(handle, sessionId));
-            if (control?.mode === 'ironman') await writeRunControl(tx, handle, sessionId, { ...control, status: 'terminal', cleanup: 'complete', operations: {}, background: {} });
+            if (control?.mode === 'ironman') await writeRunControl(tx, handle, sessionId, { ...retireRunOperations(control), status: 'terminal', cleanup: 'complete', background: {} });
             return removed;
         })));
     }

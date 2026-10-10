@@ -60,6 +60,43 @@ export function assertComputeLedger(value) {
     }
     return value;
 }
+const retiredFields = ['modelAttempts', 'knownTotalTokens', 'unknownAttempts', 'unknownUpperTokens', 'reportedInputTokens', 'reportedOutputTokens',
+    'localJobs', 'localEstimatedItems', 'localEstimatedInputBytes', 'localUnknownJobs', 'localCompletedJobs', 'localFailedJobs', 'localCancelledJobs',
+    'localWallMs', 'cpuUserMicros', 'cpuSystemMicros'];
+// A cost-only projection inside the original Run control. It gives old work
+// no executable anchor and is never consulted to authorize a new allowance.
+export function assertRetiredCompute(value) {
+    fields(value, retiredFields, 'Retired compute');
+    for (const key of retiredFields) {
+        if (key === 'localWallMs' ? !Number.isFinite(value[key]) || value[key] < 0 : !integer(value[key])) fail('native_generation_budget_invalid');
+    }
+    if (value.unknownAttempts > value.modelAttempts || value.unknownUpperTokens < value.unknownAttempts || (!value.unknownAttempts && value.unknownUpperTokens)
+        || (!value.modelAttempts && (value.knownTotalTokens || value.reportedInputTokens || value.reportedOutputTokens))
+        || value.localEstimatedItems < value.localJobs || value.localEstimatedInputBytes < value.localJobs
+        || value.localUnknownJobs + value.localCompletedJobs + value.localFailedJobs + value.localCancelledJobs !== value.localJobs) fail('native_generation_budget_invalid');
+    return value;
+}
+export function retireComputeLedger(previous, ledger) {
+    assertComputeLedger(ledger);
+    if (ledger.attempts.some(row => row.status === 'charged') || ledger.localWork?.some(row => row.status === 'charged')) fail('native_generation_attempt_conflict');
+    const total = { ...(previous ? assertRetiredCompute(previous) : Object.fromEntries(retiredFields.map(key => [key, 0]))) };
+    for (const row of ledger.attempts) {
+        total.modelAttempts++;
+        if (row.status === 'settled') total.knownTotalTokens += row.usage.totalTokens;
+        else { total.unknownAttempts++; total.unknownUpperTokens += row.estimatedTokens; }
+        total.reportedInputTokens += row.usage?.inputTokens ?? 0;
+        total.reportedOutputTokens += row.usage?.outputTokens ?? 0;
+    }
+    for (const row of ledger.localWork ?? []) {
+        total.localJobs++; total.localEstimatedItems += row.estimatedItems; total.localEstimatedInputBytes += row.estimatedInputBytes;
+        if (row.status === 'unknown') total.localUnknownJobs++;
+        else {
+            total[{ completed: 'localCompletedJobs', failed: 'localFailedJobs', cancelled: 'localCancelledJobs' }[row.usage.outcome]]++;
+            total.localWallMs += row.usage.wallMs; total.cpuUserMicros += row.usage.cpuUserMicros; total.cpuSystemMicros += row.usage.cpuSystemMicros;
+        }
+    }
+    return assertRetiredCompute(total);
+}
 // A single send identity is charged inside the original authority's durable
 // mutation. Unknown sends occupy their prepared upper bound across recovery.
 export function chargeComputeAttempt(holder, limits, attempt) {

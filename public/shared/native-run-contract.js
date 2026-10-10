@@ -1,6 +1,6 @@
 import { fields, assertJsonDeclaration } from './native-values.js';
 import { taskId } from './native-task-contract.js';
-import { assertComputeLedger } from './native-compute-budget.js';
+import { assertComputeLedger, assertRetiredCompute } from './native-compute-budget.js';
 
 export const RUN_NAMESPACE = 'atri_run';
 const integer = (value, min, max) => {
@@ -74,7 +74,8 @@ export function assertRunState(value) {
 // Portable continuation preserves sends spent before export. It contains no
 // historical revisions or mutable world authority.
 export function assertRunContinuation(value) {
-    fields(value, ['operations', 'background', 'highWaterTurn'], 'Run continuation');
+    fields(value, ['operations', 'background', 'highWaterTurn', 'retiredCompute'], 'Run continuation');
+    if (value.retiredCompute !== undefined) assertRetiredCompute(value.retiredCompute);
     integer(value.highWaterTurn, 0, Number.MAX_SAFE_INTEGER);
     if (!value.operations || Array.isArray(value.operations) || Object.keys(value.operations).length > 128
         || !value.background || Array.isArray(value.background) || Object.keys(value.background).length > 1000) throw new TypeError('Invalid continuation ledger');

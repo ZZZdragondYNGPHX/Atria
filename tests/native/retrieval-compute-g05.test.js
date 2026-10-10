@@ -29,6 +29,7 @@ import { snapshotUser, restoreFromSnapshot } from '../../src/storage/migration/b
 import { RunControl } from '../../src/native/run-control.js';
 import { SessionRepo } from '../../src/native/repositories/session-repo.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
+import { assertRunContinuation } from '../../public/shared/native-run-contract.js';
 
 async function fixture(make, maxRequests = 2, localWork) {
     const h = await make(), seen = [];
@@ -68,6 +69,91 @@ async function embeddingBody(f, items = [{ hash: 1, text: 'Current legal evidenc
 const localLimits = { maxJobs: 3, maxItems: 5, maxInputBytes: 4096 };
 const indexFile = (f, body) => path.join(f.dirs.vectors, 'atri-retrieval', body.collectionId, body.nativeRetrievalRef.retrievalProfileId + '_' + body.nativeRetrievalRef.revision, 'index.json');
 const readCompute = async f => Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId))?.operations ?? {}).find(row => row.compute)?.compute;
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test(`G05 retired work ${kind} actual Session HEAD change during Embedding retains both costs and refuses stale index publication`, async () => {
+        const f = await fixture(make, 4, localLimits);
+        try {
+            const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+            await f.request.post('/insert').send(old).expect(200); const saved = await fs.readFile(indexFile(f, body));
+            f.respondEmbedding(async () => {
+                await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'New current input' }, { expectedRevisionId: f.base.revision.revisionId });
+                const pending = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations)[0].compute;
+                expect(pending.attempts[0].status).toBe('charged'); expect(pending.localWork[0].status).toBe('charged');
+                return { data: [{ index: 0, embedding: [1, 0] }], usage: { prompt_tokens: 7, total_tokens: 7 } };
+            });
+            await f.request.post('/insert').send(body).expect(500);
+            expect((await fs.readFile(indexFile(f, body))).equals(saved)).toBe(true); expect(f.seen).toHaveLength(2);
+            const control = await f.core.runs.status(f.handle, f.base.session.sessionId);
+            expect(control.retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 7, unknownAttempts: 0,
+                localJobs: 1, localFailedJobs: 1, localUnknownJobs: 0 });
+            expect(Object.values(control.operations)).toEqual([]);
+        } finally { await f.cleanup(); }
+    });
+}
+test.each(['fork', 'restore'])('G05 retired work actual Session %s during provider HTTP retains usage without publishing', async action => {
+    const f = await fixture(makeTempFsEngine, 2, localLimits);
+    try {
+        const body = await embeddingBody(f), saved = await f.core.createSavePoint(f.handle, f.base.session.sessionId);
+        if (action === 'restore') {
+            const current = await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'Work after saved history' });
+            body.computeContext = { ...body.computeContext, revisionId: current.revision.revisionId };
+        }
+        f.respondEmbedding(async () => {
+            if (action === 'fork') await f.core.forkBranch(f.handle, f.base.session.sessionId, { revisionId: f.base.revision.revisionId, expectedRevisionId: f.base.revision.revisionId });
+            else await f.core.restoreSavePoint(f.handle, f.base.session.sessionId, saved.saveId, { expectedRevisionId: body.computeContext.revisionId });
+            return { data: [{ index: 0, embedding: [1, 0] }], usage: { total_tokens: 5 } };
+        });
+        await f.request.post('/insert').send(body).expect(500);
+        await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' });
+        expect((await f.core.runs.status(f.handle, f.base.session.sessionId)).retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 5, localJobs: 1, localFailedJobs: 1 });
+        expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test(`G05 retired work ${kind} admitted interrupted receipts survive new HEAD and account recovery before unknown settlement`, async () => {
+        const f = await fixture(make, 1, { ...localLimits, maxJobs: 1 });
+        try {
+            const body = await embeddingBody(f), compute = await prepareRetrievalCompute({ ...f, context: body.computeContext, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+            const local = await compute.beforeLocalWork({ items: 1, inputBytes: 12, indexPath: path.dirname(indexFile(f, body)) });
+            const sentBody = { input: ['Frozen request'] }, send = await compute.beforeSend(sentBody);
+            await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'Advance interrupted work' });
+            const pending = await f.core.runs.status(f.handle, f.base.session.sessionId);
+            expect(Object.values(pending.operations)[0].compute.attempts[0].status).toBe('charged');
+            const backupPath = await snapshotUser({ handle: f.handle, userRoot: f.dirs.root, backupRoot: f.backupRoot, engine: f.engine });
+            await restoreFromSnapshot({ handle: f.handle, userRoot: f.dirs.root, backupPath, engine: f.engine }); await f.engine.close();
+            f.core.runs = new RunControl(new SessionRepo({ engine: f.engine }));
+            expect(await f.core.runs.status(f.handle, f.base.session.sessionId)).toEqual(pending);
+            await expect(compute.beforeSend(sentBody)).rejects.toMatchObject({ code: 'native_generation_revision_conflict' });
+            await expect(compute.publishLocalIndex(() => { throw new Error('must never publish'); })).rejects.toMatchObject({ code: 'native_generation_revision_conflict' });
+            await compute.settle({ inputTokens: 3, outputTokens: 2 }, send); await compute.settleLocalWork(local, null);
+            const control = await f.core.runs.status(f.handle, f.base.session.sessionId);
+            expect(control.retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 0, unknownAttempts: 1,
+                unknownUpperTokens: Buffer.byteLength(JSON.stringify(sentBody)), reportedInputTokens: 3, reportedOutputTokens: 2, localJobs: 1, localUnknownJobs: 1 });
+            expect(control.operations).toEqual({}); expect(await f.core.runs.status(f.handle, f.base.session.sessionId)).toEqual(control); expect(f.seen).toHaveLength(0);
+        } finally { await f.cleanup(); }
+    });
+}
+test('G05 retired work 130 actual query scopes compact costs without a lifetime turn cap or invented model usage', async () => {
+    const f = await fixture(makeTempFsEngine, 1, { ...localLimits, maxJobs: 1 });
+    try {
+        const body = await embeddingBody(f), { computeContext: _context, ...old } = body;
+        await f.request.post('/insert').send(old).expect(200); let current = f.base;
+        for (let turn = 0; turn < 130; turn++) {
+            await f.request.post('/query-by-vector').send({ nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId,
+                computeContext: { ...body.computeContext, revisionId: current.revision.revisionId }, vector: [1, 0] }).expect(200);
+            current = await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'Input ' + turn });
+        }
+        const control = await f.core.runs.status(f.handle, f.base.session.sessionId);
+        expect(control.operations).toEqual({}); expect(control.retiredCompute).toMatchObject({ localJobs: 130, localCompletedJobs: 130, modelAttempts: 0 });
+        expect(control.retiredCompute.localWallMs).toBeGreaterThan(0); expect(JSON.stringify(control).length).toBeLessThan(4096);
+        const portable = { operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn, retiredCompute: control.retiredCompute };
+        expect(assertRunContinuation(portable)).toEqual(portable);
+        for (const update of [row => row.localJobs++, row => row.unknownAttempts++, row => row.cpuUserMicros = -1, row => row.localWallMs = Infinity, row => row.knownTotalTokens = Number.MAX_SAFE_INTEGER + 1]) {
+            const invalid = structuredClone(portable); update(invalid.retiredCompute); expect(() => assertRunContinuation(invalid)).toThrow();
+        }
+        expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+}, 60000);
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
     test(`G05 supplied vector ${kind} mixed reads share local work through Route removal and account recovery`, async () => {
         const f = await fixture(make, 4, { ...localLimits, maxJobs: 2 });
