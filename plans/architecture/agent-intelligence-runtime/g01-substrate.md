@@ -101,6 +101,12 @@ source `77820a6d2`已push，10新/加强distinct、11受影响旧checks通过。
 
 source `2074ed7b9`已push，13新distinct/9受影响旧checks通过。原computeContext入口before400是未支持合同，不冒称预算绕过。原writer新增delete mode，hash冻结先于physical permit等待；只在临时副本deleteItem，原guard与同步原子replace沿既有insert方式，失败/取消保持原bytes且清理stage。actual Hybrid current-collection delta经过client→Native HTTP/同一job额度删除旧hash，再原Embedding/query重建；源chat/Timeline保持。retired namespace转发仅静态/既有source guard，未知sidecar/坏index拒绝保持。空hash不work，missing index实际stat可记录completed工作但不创建文件；scoped权限/readonly/Route移除与两engine recovery保持。纯Native拒绝无效hash在Number映射前，legacy转换保留；purge与其它依赖仍继续，外部0。
 
+## 当前有限 G05：原 Native 单文件派生索引清理
+
+完成条件先冻结（2026-10-12）：只接现有Native `/purge`，原authenticated vectors/atri-retrieval下exact collection/profile namespace；不扩大legacy purge-all、源Timeline/Information/World删除或真实用户资料清理授权。沿同一physical permit与原Run/Task localWork，index_purge计1 namespace及序列化输入字节，无模型send/新owner。静态路径必须恰为root下两级；实际目录/单文件均重验真实路径与非链接，未知sidecar、坏格式、超过原16MiB/10000项等边界拒绝且保留。
+
+准入先于index IO，等待取消不charge，缺失index观察可记completed且不创建。单文件读取校验后，原scope/cancel/readonly最后检查与同步unlink index.json在同一原authority锁内完成；保留空目录避免递归删除与提交后cleanup半成功。提交前失败保持原bytes，提交后成本结算失败不得冒称文件仍在；不宣称跨进程锁/CPU硬期限。取消/Task/HEAD变化、readonly、quota与FS/SQLite recovery，及真实隔离HTTP路由+单文件实物检查是有限出口。只用可重建fixture，不执行真实资料清理；external0，其他M8/HM2依赖继续。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
