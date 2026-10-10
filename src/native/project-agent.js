@@ -126,6 +126,8 @@ export function buildProjectAgentTools(registry) {
         tool({ name: 'atri_agent_frontend_patch', description: 'Propose a format-preserving frontend.patch. First inspect frontend_graph. Component edits address contract JSON path (state/props/uses/interactions); Node edits use field=text or an AUI attribute, null removes an attribute; Binding/View edits use JSON path; style uses string value; message uses locale. Pin contentHash from graph. Human review and formal compiler validation remain required.', parameters: objectSchema({ stepId: { type: 'string' }, ownerId: { type: 'string' }, kind: { type: 'string', enum: ['component', 'node', 'binding', 'view', 'style', 'state', 'interaction', 'message'] }, id: { type: 'string' }, componentId: { type: 'string' }, locale: { type: 'string' }, field: { type: 'string' }, path: { type: 'array', items: { type: 'string' } }, value: {}, contentHash: { type: 'string' } }, ['kind', 'id', 'value', 'contentHash']) }),
         tool({ name: 'atri_agent_api_catalog', description: 'Discover current Atria Native capabilities and authoritative authoring references, including Native Frontend v3, Tasks, Scene, information, continuity, Shared/Realm and Scenario. Read-only.', parameters: objectSchema({ query: { type: 'string' } }) }),
         tool({ name: 'atri_agent_api_read', description: 'Read a paginated current compiler contract or tested example by catalog id. Follow nextOffset for complete reference; never guess unsupported fields.', parameters: objectSchema({ id: { type: 'string' }, offset: { type: 'integer', minimum: 0 }, limit: { type: 'integer', minimum: 1, maximum: 24000 } }, ['id']) }),
+        tool({ name: 'atri_agent_reuse_plan', description: 'Reuse only the plan structure of another task in this Project with the same exact intent and current base revision. Steps become pending; operations, completion and receipts are never copied. Current tool and Review checks still apply.',
+            parameters: objectSchema({ sourceTaskId: { type: 'string' } }, ['sourceTaskId']) }),
         tool({
             name: 'atri_agent_set_plan',
             description: 'Set the semantic Project Task plan before proposing edits. This changes Task state only, never Project state.',
@@ -516,7 +518,7 @@ export class ProjectAgentService {
                 const previous = attempt.calls.find(item => item.callId === input.callId);
                 if (previous) {
                     if (previous.name !== input.name || previous.argsHash !== hashNativeDocument(input.args || {})) throw new ConflictError('project_agent_call_conflict');
-                    if (WRITE_TOOL_NAMES.has(input.name) || ['atri_agent_set_plan', 'atri_agent_reset_operations', 'atri_agent_prepare_review'].includes(input.name)) return this._snapshot(task);
+                    if (WRITE_TOOL_NAMES.has(input.name) || ['atri_agent_set_plan', 'atri_agent_reuse_plan', 'atri_agent_reset_operations', 'atri_agent_prepare_review'].includes(input.name)) return this._snapshot(task);
                 }
             }
             const result = await this._executeTool(handle, projectId, id, input);
@@ -817,6 +819,23 @@ export class ProjectAgentService {
         task.updatedAt = Date.now();
         this._event(task, 'plan', { plan });
         return this._snapshot(task);
+    }
+
+    async _reusePlan(handle, task, args) {
+        fields(args, ['sourceTaskId'], 'Project plan reuse');
+        this._ensureDraftMutable(task);
+        if (task.plan || task.proposals.length || task.workspace) throw new ConflictError('project_agent_plan_reuse_denied');
+        const sourceTaskId = requiredString(args.sourceTaskId, 'sourceTaskId');
+        const source = await this._repository.get(handle, task.projectId, sourceTaskId);
+        if (!source?.plan || source.taskId === task.taskId || source.intent !== task.intent || source.baseRevision !== task.baseRevision
+            || ['blocked', 'conflict', 'taken_over', 'cancelled'].includes(source.status)) throw new ConflictError('project_agent_plan_reuse_denied');
+        await this._assertTaskBaseRevision(handle, task);
+        const plan = { summary: source.plan.summary, steps: source.plan.steps.map(({ id, title, description, impact }) => ({ id, title, description, impact })) };
+        const result = this._setPlan(handle, task.projectId, task.taskId, plan);
+        this._event(task, 'plan.reused', { schemaVersion: 1, object: 'project.plan', match: 'structural', status: 'reused',
+            reason: 'current_exact_intent_and_base', sourceTaskId, sourceSequence: source.sequence,
+            sourcePlanFingerprint: hashNativeDocument(source.plan), baseRevision: task.baseRevision });
+        return result;
     }
 
     async _propose(handle, task, toolName, args = {}) {
@@ -1135,6 +1154,7 @@ export class ProjectAgentService {
         if (toolName === 'atri_agent_set_plan') {
             return this._setPlan(handle, projectId, id, args);
         }
+        if (toolName === 'atri_agent_reuse_plan') return this._reusePlan(handle, task, args || {});
         if (toolName === 'atri_agent_reset_operations') {
             return this._resetOperations(handle, projectId, id);
         }

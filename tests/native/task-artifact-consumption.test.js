@@ -3,11 +3,30 @@ import { artifactFixture } from './helpers/task-artifact-fixture.js';
 import { tradeSource } from './helpers/package-computation-fixture.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
-import { captureTaskProduction, readTaskArtifact } from '../../src/native/task-artifact-authority.js';
+import { captureTaskProduction, readTaskArtifact, decideTaskArtifactReuse } from '../../src/native/task-artifact-authority.js';
 import { prepareAuthorityTransaction } from '../../src/native/authority-transaction.js';
 
 const run = f => prepareAuthorityTransaction(f.base, f.installed, f.request);
 describe('Task artifact authority consumption', () => {
+    test('G03 exact Context reuse uses the original dependency proof and rejects changed scope, branch and manual bypass', () => {
+        const f = artifactFixture();
+        const grant = { taskId: f.task.id, variantId: 'default', usageId: 'summary' };
+        const decide = () => decideTaskArtifactReuse(f.base, grant, 'npc-1');
+        const proved = decide();
+        expect(proved.decision.status).toBe('reused');
+        expect(proved.artifact.value).toEqual({ quantity: 2 });
+        f.base.revision.revisionId = createNativeId('revision');
+        f.base.states.atri_lifecycle.domains.other.records[0].value.text = 'unrelated';
+        expect(decide().decision.status).toBe('reused');
+        const epoch = f.base.states.atri_lifecycle.scopes.session.epoch;
+        f.base.states.atri_lifecycle.scopes.session.epoch++;
+        expect(decide().decision.status).toBe('miss');
+        f.base.states.atri_lifecycle.scopes.session.epoch = epoch;
+        f.base.revision.branchId = createNativeId('branch');
+        expect(decide()).not.toHaveProperty('artifact');
+        expect(decideTaskArtifactReuse(f.base, grant, 'npc-1', { bypass: true }).decision.reason).toBe('manual_bypass');
+        expect(f.record).not.toHaveProperty('consumptions');
+    });
     test('unrelated revision reuse reruns current rules and consumes once only in the private candidate', async () => {
         const f = artifactFixture(); const oldRevision = f.base.revision.revisionId;
         f.base.revision.revisionId = createNativeId('revision'); f.request.anchor.revisionId = f.base.revision.revisionId;

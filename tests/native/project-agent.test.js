@@ -95,6 +95,48 @@ async function plannedTask(agent, handle, source, baseRevision, options = {}) {
 }
 
 describe('A8 Project Agent authority', () => {
+    test('G03 plan reuse copies only current exact intent structure and survives task restore without copying operations or receipts', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { studio, agent } = makeServices(h);
+            const source = projectSource();
+            const created = await studio.createProject(h.handle, source);
+            const original = await plannedTask(agent, h.handle, source, created.revision.revision);
+            const next = { ...source, project: { ...source.project, displayName: 'Candidate name' } };
+            await agent.executeTool(h.handle, source.project.projectId, original.taskId,
+                { name: 'atri_agent_project_save', args: { source: next, stepId: 'step_metadata' } });
+            const target = await agent.createTask(h.handle, source.project.projectId,
+                { intent: original.intent, baseRevision: created.revision.revision });
+            const result = await agent.executeTool(h.handle, source.project.projectId, target.taskId,
+                { name: 'atri_agent_reuse_plan', args: { sourceTaskId: original.taskId } });
+            expect(result.plan.steps.every(step => step.status === 'pending')).toBe(true);
+            expect(result.operations).toHaveLength(0);
+            expect(result.changeSets).toHaveLength(0);
+            expect(result.timeline.at(-1)).toMatchObject({ type: 'plan.reused', sourceTaskId: original.taskId, status: 'reused' });
+            const restored = new ProjectAgentService({ studio, maxRepairRounds: 2 });
+            expect((await restored.getTask(h.handle, source.project.projectId, target.taskId)).timeline.at(-1)).toEqual(result.timeline.at(-1));
+            expect((await studio.getProject(h.handle, source.project.projectId)).source.project.displayName).toBe(source.project.displayName);
+            await expect(restored.commit(h.handle, source.project.projectId, target.taskId)).rejects.toThrow();
+        } finally { await h.cleanup(); }
+    });
+    test('G03 plan candidate with a different intent or foreign Project is denied before changing target plan', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { studio, agent } = makeServices(h);
+            const source = projectSource();
+            const created = await studio.createProject(h.handle, source);
+            const original = await plannedTask(agent, h.handle, source, created.revision.revision);
+            const target = await agent.createTask(h.handle, source.project.projectId,
+                { intent: 'Different goal.', baseRevision: created.revision.revision });
+            await expect(agent.executeTool(h.handle, source.project.projectId, target.taskId,
+                { name: 'atri_agent_reuse_plan', args: { sourceTaskId: original.taskId } })).rejects.toMatchObject({ code: 'project_agent_plan_reuse_denied' });
+            const other = projectSource(); const foreign = await studio.createProject(h.handle, other);
+            const foreignTask = await plannedTask(agent, h.handle, other, foreign.revision.revision);
+            await expect(agent.executeTool(h.handle, source.project.projectId, target.taskId,
+                { name: 'atri_agent_reuse_plan', args: { sourceTaskId: foreignTask.taskId } })).rejects.toMatchObject({ code: 'project_agent_plan_reuse_denied' });
+            expect((await agent.getTask(h.handle, source.project.projectId, target.taskId)).plan).toBeNull();
+        } finally { await h.cleanup(); }
+    });
     test('dry-runs Agent Workspace through validation/preview/simulation and only commits after review', async () => {
         const h = await makeTempFsEngine();
         try {

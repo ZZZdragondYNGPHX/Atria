@@ -42,6 +42,8 @@ describe('Native dynamic context and Knowledge main chain', () => {
         expect(preview.included.some(item => item.content.startsWith('Scene: public note'))).toBe(true);
         expect(JSON.stringify(preview.included)).not.toContain('PRIVATE SENTINEL');
         expect(preview.derivationEvidence).toHaveLength(2);
+        const reuse = preview.derivationEvidence.flatMap(item => item.artifacts ?? []).find(item => item.reuseDecision);
+        expect(reuse.reuseDecision).toMatchObject({ status: 'reused', object: 'task.artifact', reason: 'current_grant_proved' });
         expect(Object.keys(preview.knowledgeSelection.pendingState.effects)).toHaveLength(1);
         expect(f.base).toEqual(before);
     });

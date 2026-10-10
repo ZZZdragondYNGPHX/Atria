@@ -1,7 +1,7 @@
 import { projectInformation } from '../../public/shared/native-information-runtime.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { runPackageComputation } from './package-computation.js';
-import { readTaskArtifact } from './task-artifact-authority.js';
+import { decideTaskArtifactReuse } from './task-artifact-authority.js';
 import { hashNativeDocument } from './repositories/common.js';
 
 const outputSchema = { type: 'object', additionalProperties: false, properties: {
@@ -23,8 +23,9 @@ export function createPackageContextDerivation(snapshot, installed) {
             const records = snapshot.states.atri_task_results?.records ?? [];
             const record = [...records].reverse().find(record => record.kind === 'task' && record.taskId === grant.taskId && record.variantId === grant.variantId);
             if (!record) throw new TypeError('Context Task artifact missing');
-            const artifact = readTaskArtifact(snapshot, grant, record.invocationId, 'context');
-            artifacts[grant.id] = artifact.value; sources.push(artifact.evidence);
+            const { artifact, decision } = decideTaskArtifactReuse(snapshot, grant, record.invocationId);
+            if (!artifact) throw new TypeError('Task artifact consumption denied: ' + decision.reason);
+            artifacts[grant.id] = artifact.value; sources.push({ ...artifact.evidence, reuseDecision: decision });
         }
         const projection = projectInformation(snapshot, fixed.viewId, { purpose: 'context', includeRollups: false });
         const result = await runPackageComputation(installed, fixed.source, 'derive', { projection, artifacts,

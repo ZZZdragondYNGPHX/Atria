@@ -55,6 +55,24 @@ export function readTaskArtifact(base, grant, invocationId, purpose) {
             productionRevisionId: production.anchor.revisionId, resultHash: record.normalizedResultHash } };
 }
 
+// Read-only Context reuse consumes the original artifact grant. Candidate
+// selection does not authorize an operation or replay a once/side-effect use.
+export function decideTaskArtifactReuse(base, grant, invocationId, { bypass = false } = {}) {
+    const decision = { schemaVersion: 1, object: 'task.artifact', match: 'exact', invocationId,
+        taskId: grant.taskId, variantId: grant.variantId, usageId: grant.usageId,
+        anchor: anchor(base), status: 'miss', reason: 'not_found' };
+    if (bypass) return { decision: { ...decision, reason: 'manual_bypass' } };
+    let artifact;
+    try { artifact = readTaskArtifact(base, grant, invocationId, 'context'); } catch {
+        return { decision: { ...decision, reason: 'dependency_or_authority_unavailable' } };
+    }
+    if (artifact.use.cardinality !== 'reusable') return { decision: { ...decision, reason: 'side_effect_use' } };
+    return { artifact, decision: { ...decision, status: 'reused', reason: 'current_grant_proved',
+        checks: ['identity', 'definition', 'normalized_result', 'branch', 'package', 'scope_epoch', 'dependency', 'cardinality'],
+        evidence: artifact.evidence,
+        dependencyFingerprint: hashNativeDocument(artifact.record.production.dependencies[artifact.use.id]) } };
+}
+
 export function markTaskArtifactConsumption(candidate, artifact, authorityId) {
     if (artifact.use.cardinality !== 'once') return;
     const state = candidate.states.atri_task_results;

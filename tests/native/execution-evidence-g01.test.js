@@ -9,6 +9,7 @@ import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 import { makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 import { Readable } from 'node:stream';
+import { ProviderFailure } from '../../src/native/model-prompt-runtime/execution-utils.js';
 
 const cleanups = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); });
@@ -56,6 +57,34 @@ test('adapter field construction cannot prove a hard gateway cache requirement',
     const preview = await f.service.execute(f.request, { preview: true });
     expect(preview.snapshot.diagnostics.executionPlan.cache.provider).toBe('unknown');
     expect(preview.snapshot.diagnostics.executionPlan.evidence[0].reason).toBe('path_unverified');
+});
+
+test('G03 explicit policy fallback cannot change accepted semantic program or weaken network policy', async () => {
+    const f = await fixture();
+    const prompt = { ...f.prompt, promptProgramId: createNativeId('promptProgram') };
+    await f.library.commit(f.h.handle, 'core.prompt-program', prompt);
+    const fallback = { ...f.routes[0], runtimeRouteId: createNativeId('runtimeRoute'),
+        promptProgramRef: { ...f.routes[0].promptProgramRef, resourceId: prompt.promptProgramId } };
+    await f.persistence.saveRuntimeRoute(f.h.handle, fallback);
+    const initial = { ...f.routes[0], fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: fallback.runtimeRouteId }],
+        executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId], verifiedRequirements: [] } };
+    await f.persistence.saveRuntimeRoute(f.h.handle, initial);
+    f.send.mockRejectedValueOnce(new ProviderFailure('transport'));
+    await expect(f.service.execute({ ...f.request, fallbackMode: 'automatic' })).rejects.toMatchObject({ code: 'generation_semantic_authority_changed' });
+    expect(f.send).toHaveBeenCalledTimes(1); expect(f.secretPort.resolveSecret).toHaveBeenCalledTimes(1);
+
+    const connection = { ...f.connection, connectionProfileId: createNativeId('connectionProfile'), networkPolicy: { region: 'different' } };
+    await f.persistence.saveConnectionProfile(f.h.handle, connection);
+    const model = { ...f.model, modelProfileId: createNativeId('modelProfile'),
+        connectionProfileRef: { scope: 'player', connectionProfileId: connection.connectionProfileId } };
+    await f.persistence.saveModelProfile(f.h.handle, model);
+    await f.persistence.saveRuntimeRoute(f.h.handle, { ...fallback, promptProgramRef: initial.promptProgramRef,
+        modelProfileRef: { scope: 'player', modelProfileId: model.modelProfileId }, connectionProfileRef: model.connectionProfileRef });
+    await f.persistence.saveRuntimeRoute(f.h.handle, { ...initial, executionPolicy: { ...initial.executionPolicy,
+        allowedModelProfileIds: [f.model.modelProfileId, model.modelProfileId] } });
+    f.send.mockRejectedValueOnce(new ProviderFailure('transport'));
+    await expect(f.service.execute({ ...f.request, fallbackMode: 'automatic' })).rejects.toMatchObject({ code: 'generation_target_policy_denied' });
+    expect(f.send).toHaveBeenCalledTimes(2); expect(f.secretPort.resolveSecret).toHaveBeenCalledTimes(2);
 });
 
 test('persisted exact evidence and policy are consumed before sending; provider identity and price stay unknown', async () => {

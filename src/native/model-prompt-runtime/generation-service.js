@@ -3,6 +3,7 @@ import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } 
 import { cancellable, checkCancellation, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
 import { prepareExecutionPlan, assertExecutionEvidenceCurrent } from './execution-evidence.js';
 import { compiledRequestBinding } from './compiled-binding.js';
+import { hashNativeDocument } from '../repositories/common.js';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
@@ -26,6 +27,8 @@ export class GenerationService {
             let requirements = [...(request.requirements || [])];
             let outputAuthority;
             let acceptedPolicy;
+            let acceptedPrompt;
+            let acceptedNetwork;
             while (pending.length) {
                 checkCancellation(signal);
                 const routeRef = pending.shift();
@@ -38,6 +41,14 @@ export class GenerationService {
                 }), signal);
                 if (visited.size === 1) remaining = resolved.route.policy.maxFallbackAttempts;
                 if (visited.size === 1) acceptedPolicy = resolved.route.executionPolicy;
+                if (visited.size === 1) acceptedPrompt = hashNativeDocument(resolved.route.promptProgramRef);
+                if (visited.size === 1) acceptedNetwork = hashNativeDocument(resolved.connection.networkPolicy);
+                if (acceptedPolicy && hashNativeDocument(resolved.route.promptProgramRef) !== acceptedPrompt) {
+                    throw new GenerationError('generation_semantic_authority_changed');
+                }
+                if (acceptedPolicy && hashNativeDocument(resolved.connection.networkPolicy) !== acceptedNetwork) {
+                    throw new GenerationError('generation_target_policy_denied');
+                }
                 const executionPlan = prepareExecutionPlan(resolved, acceptedPolicy);
                 requirements = [...new Set([...requirements, ...resolved.requirements])];
                 const provider = this.providerFor(resolved.connection.providerAdapter, resolved);
@@ -81,6 +92,9 @@ export class GenerationService {
                     createdAt: this.now(), diagnostics: {
                         inputTokens: tokens,
                         executionPlan,
+                        failurePlan: { mode, remainingFallbackAttempts: remaining,
+                            routeRefs: resolved.route.fallbackRouteRefs, semanticBinding: acceptedPrompt,
+                            networkPolicyFingerprint: acceptedNetwork, economics: 'unknown' },
                         // The existing snapshot diagnostics contract carries the effective
                         // non-secret config so mutable player profiles remain explainable.
                         effectiveConfig: {
