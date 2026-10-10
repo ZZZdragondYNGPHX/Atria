@@ -1429,3 +1429,6 @@ test-only 提交 b3832f8424b58be56ef20903dfda676596b52f9c 接入显式 separateP
 新F3零发送preflight snapshot run-1791618136949-7c63eeb3、scope m1-f3-renewal-context-20261010.json / hash bf29836dcaf0af11d7e57ddd67bdf736f6632335a4d2d82579204e98d015b209，固定b3832f842；两域source gate、每域八项exact原F3比较控制及原付费receipt均核对可复用，不以F2替代。新密封metadata及六正文文件仅校验hash，开发侧未读正文。两域baseline scope分别703/945 bytes，原4 MiB guard保持；development/promotion各保存完整报告与费用，publication的120 IDs限制仍须按实测核对。已启动两域各一个新候选及原development→独立promotion→review→下一消费→rollback流程，结果尚未形成。
 
 H0新设备只读准备补充[h0-baseline §7](../../plans/architecture/agent-intelligence-runtime/h0-baseline.md#7-新设备-h0-执行准备核对)：重新确认Memory相关范围在main与M1工作分支字节一致；冻结8样本/519来源及hash不变。定位readOnly只约束来源账本、retrieveMemory仍同步向量索引，固定隔离临时source/graph与本地检索服务要求；为八样本及三实际消费者列出原fixture/authority适配和观察字段，禁止adapter提前补H1/H2算法或把逻辑audience/validTicks当产品授权。只做schema/ID/引用/hash、源码/测试符号及路径存在和diff检查；未运行H0 B0/产品adapter/检索/性能/正文基准，H0完整出口、H1/H2保持未完成。
+
+
+F3 run-1791618171873-a2ab3077 的 RP 新候选已冻结，value hash f798f031409878f0094f4e73fd42b4a71392b331b021b71e056799b22f4f5b5a；三个development均为有效candidate胜，六维全部非负、原checks完整，developmentReport hash 11380d261b8002773512093d191cf54bb7b85dfe6463db3153572249b7757fe2（76077 bytes）。原development gate通过，同一冻结候选经 separatePromotionJob 进入新native job，原三case各三次独立 paired trial；完整promotion、review/真实下一消费/rollback尚待结果。Project新候选尚未提炼；不将单入口development通过改写为整体M1完成。
