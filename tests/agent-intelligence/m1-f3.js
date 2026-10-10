@@ -409,6 +409,23 @@ export async function prepareF3Investigation(f, targetPin) {
     return capture;
 }
 
+export function preserveIncompleteF3Grades(report) {
+    const incomplete = report.pairs.filter(pair => pair.judge?.status === 'invalid');
+    for (const pair of incomplete) {
+        if (!pair.judge.chargeIds?.length || pair.judge.chargeIds.some(id => !report.charges.some(c => c.id === id && c.kind === 'judge'))) {
+            throw new Error('f3_incomplete_grade_unfunded');
+        }
+    }
+    if (!incomplete.length) return;
+    report.gradeAttempts ||= [];
+    for (const pair of incomplete) {
+        report.gradeAttempts.push({ caseId: pair.case.caseId, repetition: pair.repetition, pairHash: pair.pairHash, judge: structuredClone(pair.judge) });
+        pair.judge = null;
+        const { pairHash: _old, ...identity } = pair;
+        pair.pairHash = hash(identity);
+    }
+}
+
 export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob, fresh, signal, store, phase, preserveGraded = false }) {
     const job = paidJob, send = f.evaluator.send.bind(f.evaluator);
     const independent = [];

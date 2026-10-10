@@ -4,7 +4,7 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
     f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
-    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume, publicSourceReviewReasons, preserveIncompletePublicReviews } from './m1-f3.js';
+    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume, publicSourceReviewReasons, preserveIncompletePublicReviews, preserveIncompleteF3Grades } from './m1-f3.js';
 import { f2SourceEvidence, f2SourceMessages } from './m1-f2.js';
 import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture, runEvolution } from './evolution-fixture.js';
@@ -497,4 +497,33 @@ test('sealed pair grading consumes worker scenario without opening independent s
     const pair = { ...f.report.pairs[0], case: entry, scenario: { input: 'Synthetic worker scenario control', rubric: {} } };
     const body = JSON.parse(f3GradeMessages(pair, false)[1].content);
     expect(body.input).toBe(pair.scenario.input); expect(body.dimensions).toEqual(entry.behaviorDimensions);
+});
+
+test('F3 incomplete grade continuation preserves valid adverse evidence and every original receipt', () => {
+    const { report } = example(), original = structuredClone(report);
+    report.pairs[0].judge.status = 'invalid';
+    report.pairs[1].judge.preference = 'baseline';
+    report.pairs[1].judge.deltas.player_agency = -1;
+    report.pairs[2].judge.preference = 'uncertain';
+    const adverse = structuredClone(report.pairs.slice(1)), charges = structuredClone(report.charges);
+    const invalid = structuredClone(report.pairs[0].judge);
+    preserveIncompleteF3Grades(report);
+    expect(report.pairs[0].judge).toBeNull();
+    expect(report.gradeAttempts[0].judge).toEqual(invalid);
+    expect(report.pairs.slice(1)).toEqual(adverse);
+    expect(report.charges).toEqual(charges);
+    expect(original.gradeAttempts).toBeUndefined();
+    const retained = structuredClone(report);
+    preserveIncompleteF3Grades(report);
+    expect(report).toEqual(retained);
+});
+
+test('F3 incomplete grade continuation rejects a missing original receipt before changing any pair', () => {
+    const { report } = example();
+    report.pairs[0].judge.status = 'invalid';
+    report.pairs[1].judge.status = 'invalid';
+    report.pairs[1].judge.chargeIds = ['missing-receipt'];
+    const original = structuredClone(report);
+    expect(() => preserveIncompleteF3Grades(report)).toThrow('f3_incomplete_grade_unfunded');
+    expect(report).toEqual(original);
 });
