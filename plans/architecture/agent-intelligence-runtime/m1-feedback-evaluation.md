@@ -225,5 +225,25 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 新增必需消费者核对：真实 F3比较提示和完整证据编码必须先使用同一协议通过当前主模型已固定正确/错误/unknown、反事实和顺序翻转控制，不能复用另一协议的F2校准作为证明。提炼输入须说明原可执行 slot；原Studio在prepare_review后停止，状态说明只能走已存在的公开assistant/plan槽位并区分当前事实与未来Review边界，不扩展停态writer。工程修复和待验证流程已提交推送；本次校准每域仅一个主模型控制通过即被530/524中断，没有新候选。原换机中断后的worker/mock接线现已补齐：两域各九对原worker隔离执行及两域审阅发布/下一消费/守卫回滚、消费失败回滚本地检查通过；mock不证明语义改善。新实际续接第二连接六次HTTP530/Tunnel1033，无新候选，真实独立验收/审阅发布/下一消费/回滚仍未完成。实际结果唯一记入同一Record最新节，M1仍按acceptance §1/§2。
 
+## 17. 2026-10-10 实测结论与有限来源更新提案
+
+当前主模型结果：Project冻结候选九对独立promotion为五胜/四tie、六维非负，未达到六胜门槛；RP最新development为一胜/两tie、六维非负，未达到两胜门槛。未发布、未集成main。完整来源、费用和工程错误唯一记入同一Record；这些有效未达标结论不能因接线修复撤销。
+
+RP原F2主模型source assessment和本次比较均仅在三条baseline中的一条确认实际缺口，另两条六维met。这不证明全领域饱和，但不足以支持反复用同一包检验至少两胜。Project未读promotion正文，不能把其失败场景回灌提炼器。新版本应更新来源资格与独立材料，不能再试原冻结候选追分。
+
+用户随后明确选择“授权独立作者，推进新材料包”。以下有限范围已获授权，新的来源资格与实测尚未取得，不改八项产品决定或acceptance门槛：
+
+| 项目 | 固定范围与证据要求 |
+| --- | --- |
+| 问题范围 | 仍为RP信息边界与Project关联修复/状态说明，不加入第二类领域问题、长期自动实验或新产品权限 |
+| development | 每域三条新版本来源；按原scope/role/版本/可完成性原生路径生成实际baseline并资格评估。提炼前核对至少两条确有可改善缺口；不足则记录source不足，不反复抽取直到凑足，不伪造负面baseline |
+| 独立来源 | 每域三条新的密封promotion来源，由不参与候选开发的独立作者准备。作者不接收旧候选、development输出或promotion评分；开发侧只读metadata/hash。新候选冻结后仅原worker读取正文 |
+| 候选与退出 | 每域一个新候选、三development；达标才三独立case各三次。primary-only、六维非负、至少两development胜/六promotion胜、原review→消费→rollback保持 |
+| 身份与控制 | 旧catalogue、来源、失败和账目保留历史。新split/provenance/case revision/生产者/配置/request pins先固定；exact已付费控制仅在协议/transport/费用身份相同才复用，变化的控制必须实测 |
+| 工程准备 | 发送前免费检查原scope容量、来源可完成性、密封隔离和完整证据消费。拒绝的完整报告保留私有产物，原有界journal保存failed及report hash；合格报告仍必须经原容量、binding及publication guard，不放宽guard来获得通过 |
+| 记录 | 全部请求、retry、不完整响应、unknown与不利结果保留；不声称human preference、价格/性能收益或跨领域效果 |
+
+已启动独立来源作者，隔离会话只接收公共领域/格式契约，不接收旧候选、development输出或promotion评分；开发侧只接收新metadata/hash。新来源字节与消费者检查通过后才固定scope并发送。本文不是暂停M1或交接；同一任务继续执行。
+
 
 用户随后明确取消双模型准入；当前规则以[m1-acceptance §14](m1-acceptance.md#14-2026-10-09-当前主模型准入)为准，第二连接不可用不再阻止development/promotion。既有双模型数据和失败属于历史事实，不删除、不改分，也不创建第二份门槛。
