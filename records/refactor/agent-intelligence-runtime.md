@@ -1558,3 +1558,14 @@ H2 最小本地验证：eligibility/packing/hybrid/Context/Information/Package 6
 真实9组模型正文E2E（包含provider发送与等待，不是TTFT/检索latency）B1 median6868ms、范围3573–23472；B2 median6386、2955–18329；B3 median7547、3763–11730。时点不同且小样本，不宣称加速或节省费用；Provider TTFT未观测。private `hm1-evidence-index.json` 索引154个任务证据文件及hash，原失败、原始基线、各配对report与账本保持。产品提交不包含私有连接、费用正文、机器路径或cache。
 
 HM1 本有限组完成，继续工作的授权不被阶段边界或失败暂停。Plan 已更新当前状态，H3/H4/H5 保持未交付。main依赖以lockfile重新安装恢复；只同步本组main/docs提交，保护现有Experience草稿和旧无关工作树；本组工作树/分支及已消费live HANDOFF交付后清理。
+
+
+## M8 / G01 基础 checkpoint 与继续
+
+用户在 HM1 交付后要求继续。实际 main/origin main均`3ee1332ef`、docs`894d84c04`；保护原Experience未跟踪草稿及旧任务树。从最新main建`feat/agent-compute-runtime`，不恢复或重跑M1/HM1。HM2 H3/H4的G依赖未实施，先推进M8，未跳依赖或宣布HM2完成。
+
+source `c62ecc937b66e2125e35621483f186d6debadce3` 扩展原 CapabilityDecision/RuntimeRoute：optional v1 path binding与有限executionPolicy；原profile/route/library authority及资源keys不变。Resolver前置核对owner/account/endpoint/target/adapter/transport/options及时点；advanced cache/reasoning/continuation 的字段可构造只计unknown，unsupported优先。现有Snapshot固定target/policy/evidence与三层cache、价格/上游unknown，不发Secret、不provision配置。verified publication有服务端非JSONmarker，普通profile JSON不能自封测量事实；配置改名可保留原exact观测。原Route兼容、精确refs和fallback authority保留，待G03继续强化；continuation仅none，其它模式明确unavailable而非空壳通过。
+
+最小检查：原contracts/P2 Core 2suites52项通过；新增10项全部经修复通过，包含FS实际profile消费、SQLite原registry dump/restore、policy target拒绝、path/account/expiry、编译期间晚过期及不可伪造发布。首轮冻结port测试误改只读方法、错误code未登记导致generic错误，已修并针对性复测。SQLite初缺native binding，npm rebuild被本机allowScripts跳过；检查锁定better-sqlite3安装命令后直接执行其install script，真实SQL恢复通过。原fail log与repaired/publication log保留；未测MySQL/Postgres，Docker daemon不可用，不把它写成SQL通过。相关ESLint/diff通过，无全量build/CI、无API发送、费用/quota未改变。
+
+本checkpoint不是完整M8验收；继续G02编译、G03复用/失败策略、G04原生执行观察、G05共享准入与G06双入口对照，再推进HM2对应包。新live HANDOFF未创建，阶段与环境失败不暂停工作。

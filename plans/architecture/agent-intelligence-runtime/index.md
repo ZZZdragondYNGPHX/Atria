@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。HM2/HM3 与后续生成工作包未实施。
+- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。M8 G01 基础 checkpoint 已实施，G02 继续；HM2/HM3 未实施。
 - Updated: 2026-10-10
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
@@ -28,6 +28,7 @@
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
 - D4 source docs HEAD: `1c2502dae8ac1bcb7a0bb1dfb1e18d9f01b984b8`；研究源提交 `aa4d2d2fe`，S03 产品 HEAD 与 main 未变化。
 - D5 source / integration start docs HEAD: `13d09ccac68b2c4f71f84a8ae2a405f3eb53577b`；HCM-01–08 最终决定已冻结，本轮只整合 docs，产品 refs 与 M1 历史不变。
+- M8 current checkpoint: 从 main `3ee1332ef` 在 `feat/agent-compute-runtime` 推进；G01 基础 source `c62ecc937`，未集成，完整 M8/HM2 尚未验收。实施矩阵见 [G01 substrate](g01-substrate.md)，持续按 G01→G06→HM2 依赖推进。
 - Record: [阶段记录](../../../records/refactor/agent-intelligence-runtime.md)
 
 ## 目标与当前结论
@@ -81,6 +82,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [s10-evolution.md](s10-evolution.md) | 共享有限预算、source / policy validity、隔离评测、局部 publication / rollback / 消费证据、双入口 UI 与支持矩阵 | S05–S09、原 scheduler / authorities |
 | [behavior-context.md](behavior-context.md) | Behavior / Creative / Context / Generation 分层、语义编译、overlay、压缩与迁移 | 当前 Prompt / Context substrate |
 | [compute-policy.md](compute-policy.md) | sparse 默认路径、共享 cognition、硬预算、后台分流与计算收益评价 | TaskScheduler / RunControl、M1 Eval |
+| [g01-substrate.md](g01-substrate.md) | 当前 M8 基础 binding/policy schema、有限支持矩阵与未测边界 | delivery §8、model-routing、原 Runtime |
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 | [hybrid-memory.md](hybrid-memory.md) | 唯一 Hybrid、合法候选域 / query / typed evidence、三条生成路径、旧 LLM/RAG 硬切换 / 原生来源 / 索引、失败与验证边界 | 原 Memory / Information / Authority / Context / Compute / Reuse / Eval；HCM-01–08 |
