@@ -274,6 +274,7 @@ export async function reviewF3PublicSources({ f, kind, report, primaryConfig, sc
         || required.some(id => !report.pairs.some(p => p.case.caseId === id && p.case.split === 'development'))
         || report.publicSourceReviewRequired && !equal(report.publicSourceReviewRequired, required)) throw new Error('f3_public_source_cases_changed');
     report.publicSourceReviewRequired = structuredClone(required); report.publicSourceReviews ||= [];
+    if (scope.resumeInvalidPublicReviews) preserveIncompletePublicReviews(report);
     for (const caseId of required) {
         if (report.publicSourceReviews.some(r => r.caseId === caseId)) continue;
         const pair = report.pairs.find(p => p.case.caseId === caseId), observed = { case: pair.case, baseline: pair.candidate };
@@ -294,6 +295,14 @@ export async function reviewF3PublicSources({ f, kind, report, primaryConfig, sc
             store(kind + '-f3-development-report.json', report);
         } finally { bridge.cleanup(); }
     }
+}
+
+export function preserveIncompletePublicReviews(report) {
+    const incomplete = (report.publicSourceReviews || []).filter(row => row.assessment === null);
+    if (!incomplete.length) return;
+    report.publicSourceReviewAttempts ||= [];
+    report.publicSourceReviewAttempts.push(...structuredClone(incomplete));
+    report.publicSourceReviews = report.publicSourceReviews.filter(row => row.assessment !== null);
 }
 
 export function validF3Control(text, control, entry) {
@@ -452,7 +461,7 @@ export function validateF3DevelopmentResume(report, scope, owner, jobId, baselin
     }
     const readiness = pilotDevelopmentReadiness(checked, [], owner, jobId, baseline, ledger);
     const incomplete = new Set(['primary_model_observation_unfunded', 'model_regression_uncertainty_or_disagreement',
-        'behavior_regression_or_ungraded', 'improvement_threshold_not_met']);
+        'behavior_regression_or_ungraded', 'public_source_review_incomplete', 'improvement_threshold_not_met']);
     if (readiness.reasons.some(reason => !incomplete.has(reason))) throw new Error('f3_development_resume_changed');
     for (const charge of checked.charges) {
         const paid = ledger.entries[charge.id];

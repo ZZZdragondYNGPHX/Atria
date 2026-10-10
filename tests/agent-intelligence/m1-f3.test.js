@@ -4,7 +4,7 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
     f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
-    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume, publicSourceReviewReasons } from './m1-f3.js';
+    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume, publicSourceReviewReasons, preserveIncompletePublicReviews } from './m1-f3.js';
 import { f2SourceEvidence, f2SourceMessages } from './m1-f2.js';
 import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture, runEvolution } from './evolution-fixture.js';
@@ -438,6 +438,19 @@ test('complete public source review rejects a late unsupported clause despite po
     expect(publicSourceReviewReasons(f.report, f.owner, 'job')).toContain('public_source_review_incomplete');
     f.report.publicSourceReviews[0].charge = { ...paid, requestHash: 'changed' };
     expect(publicSourceReviewReasons(f.report, f.owner, 'job')).toContain('public_source_review_identity_changed');
+});
+
+test('incomplete public review can resume while preserving its fees and a valid adverse review', () => {
+    const met = { caseId: 'met', assessment: { dimensions: { knowledge_boundary: { status: 'met' } } } };
+    const gap = { caseId: 'gap', assessment: { dimensions: { knowledge_boundary: { status: 'gap' } } } };
+    const failed = { caseId: 'failed', assessment: null, charge: { id: 'paid-incomplete', status: 'reported', tokens: 100 } };
+    const report = { publicSourceReviews: [met, gap, failed], charges: [failed.charge] }, original = structuredClone(report);
+    preserveIncompletePublicReviews(report);
+    expect(report.publicSourceReviews).toEqual([met, gap]);
+    expect(report.publicSourceReviewAttempts).toEqual([failed]);
+    expect(report.charges).toEqual(original.charges);
+    preserveIncompletePublicReviews(report);
+    expect(report.publicSourceReviewAttempts).toHaveLength(1);
 });
 
 test('extraction receives available communication slots without inventing feedback or publishing rights', () => {
