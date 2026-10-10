@@ -65,6 +65,14 @@ source `304d0d199` 已push；16新distinct/15受影响旧checks通过（细项�
 
 source `1ccc6194a` 已push，13新distinct/4受影响旧checks通过（日志见Record）。Windows大小写alias曾实际返回200/重复扫描，before FAIL；physical permit key与multi路径身份统一Windows case folding、按该身份排序，after PASS。返回前在CPU成本settle之后再原scope重验；若此时取消/Task变化，实际计算completed与已报告usage仍保持，但拒绝返回结果，不能把completed成本字段解释成consumer接受成功。读取permit不要求readonly写权限，旧unscoped readonly读取通过；有预算/原scope的写账仍遵守原authority。未开启query-by-vector/list等所有其它read的预算，也未证明CPU时长硬cap、任意跨进程writer或网络投递的跨域原子性。
 
+## 已交付有限 G05：原 Native query-by-vector 本地读取
+
+完成条件先冻结（2026-10-11）：只接原 `/query-by-vector`，沿既有 `queryNativeIndexes`、同路径 physical permit、原 Session operation / Project Task computeContext 与同一 `index_query` localWork。供给向量只作为本次查询输入，不发送 Embedding、不新增模型/后台入口或预算 authority。输入向量1–65536个有限数值、topK1–100；冻结序列化输入字节计入原 maxInputBytes，输入项数为1个collection。既有 index 总字节16MiB/候选10000/向量值1048576等边界不变，异常文件不自动覆盖或重新下载。
+
+定向出口：混合 insert/query/query-by-vector 共用原父 localWork，上限拒绝前不读index、不产生model attempt；Route移除/冷engine/account recovery不恢复余额。实际CPU/wall沿原记录，取消/过期Task不返回旧结果；等待permit取消不准入。空index不创建文件且不伪造免费usage，旧无预算readonly与原响应形状保持；非法向量不转换为0掩盖输入问题。仅本地最小消费检查，真实外部发送0，其他read/缓存核验/本地模型/后台、Session Task/fork/compaction与G06/H5前置仍继续，不集成main。
+
+source `1d1bf3f79` 已push，10新distinct/8受影响旧checks通过。原allowlist曾拒绝computeContext，before三项均400，记录为新合同未支持入口，不能说原scoped请求绕过预算。Native供给向量改沿同一bounded helper；legacy数值转换仅在非Native分支实施。非法向量拒绝、排队输入冻结/取消、实际Task变化、空/异常index保持、两engine/account recovery/Route移除、readonly及scoped browser-profile无inference均有实际检查。local provider推理仍不支持scoped预算，纯供给向量读取不触发它。费用/配额沿原记录，真实外部0，完整G05/G06仍未验收。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。

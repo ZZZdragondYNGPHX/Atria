@@ -1897,3 +1897,14 @@ v1 object-only private checkpoint明确失效，不重构或无损迁移opaque�
 append-only日志在private Document：g04-native-task-after-v1（12 PASS/2 fixture错误码FAIL，预期credential_echo而产品正确返回contains_secret）、safety-after-v2（仅修fixture重跑2 PASS）；studio-after-v1（8 new PASS）；codec-before-v1（2真实FAIL）、codec-after-v1（10 PASS=2新+8本组复验）；store-compat-v1（4 old PASS/2 fixture内部doc.content期望FAIL）、store-compat-v2（4 PASS=2 fixture修复+2旧cold）；final-consumers-v1（11 PASS=8本组复验+3 old）；legacy-v1（6 new PASS）；old-protocols-v1（9 old PASS）；safety-final-v1（4本组受影响复验PASS）；lint-v1独立PASS、diff PASS。store fixture修为私有doc.contentWire解析后的期望，原read.content接口不变；两类fixture失败不冒称产品修复。所有原FAIL/OOM/付费正文与费用保持，未重跑早先OOM或M1/HM1/API评价。
 
 M8仍actual38/direct72982，unknown2/17515 upper/admission fetch0、M1/HM1 pins与main3ee1332ef不变，G06真实质量仍FAIL。Session/其他Task、安全fork/compaction、其它read/校验/本地模型/后台预算继续原正式依赖；H5仍有M2/M3/G06前置，完整M8/HM2/HM3未验收，无HANDOFF。
+### G05 — 原 Native query-by-vector 本地工作与有界读取
+
+2026-10-11 source `1d1bf3f7906dc7c08b13c6ba13e00b8213ae5e5b`，沿原task分支push，main `3ee1332ef`不变。先在G01冻结一个有限其它read消费者，后台模型已有原window/period/reopen/restore准入，未重做或冒称后台全部成本已完成。原query-by-vector allowlist不接受computeContext，before-v1三项400：这是新合同尚未支持的入口，不证明合法scoped请求已绕过预算或坏向量已准入。
+
+原Native供给向量沿queryNativeIndexes，不增sender/store/预算authority，单index_query job沿原Run operation/Project Task localWork。严格有限数值/维度/topK、冻结输入字节/队列前向量副本，保持原index文件/候选/向量扫描边界；legacy map(Number)移到非Native分支，Native不先对未限长输入分配转换数组。返回仅原hashes/metadata形状，includeVectors兼容，无额外queryVector。无候选不创建文件、不调用Embedding、不伪造usage；实际CPU/wall记在原lane。异常index保持原样，不自动regenerate。
+
+10新distinct通过：FS/SQLite实际mixed insert/供给向量并发/Route移除/account recovery/冷RunControl2；非法供给向量/65537维度/topK/threshold1；空index1；输入字节限额前index IO0一项；旧无scope readonly与scoped browser profile不触发推理1；实际query期间cancel/原Task变更2；等待physical permit输入冻结/取消无准入1；坏index保持与已观察工作1。8旧受影响通过：原query空index/输入边界/Task变动3，query-multi逐send1，unsupported scoped Embedding1，后批拒绝保持原index及旧供给向量读取1，原real vector IO1，browser scoped推理拒绝1。不是PG/MySQL、跨进程或所有read/CPU后台验收，无全仓测试/额外UI改动。
+
+append-only private Document日志：g05-supplied-vector-before-v1（三项400 FAIL）、after-v1（3 PASS）；safety-v1（6 PASS/1 fixture FAIL，browser profile继承远端endpoint不符合原schema）、safety-v2（修fixture移除endpoint/Secret，1新+1Native边界移动后的复验PASS）；old-consumers-v1（8旧PASS）；lint-v1独立PASS、source/docs diff PASS。Jest fixture body limit2MiB容纳65537维合法协议边界检查，生产原500MiB解析器未改变；不运行大内存/OOM测试。没有把fixture错误声称产品修复。累计10新/8旧，不把重复计算为新增。
+
+本组外部API0，保留M8 actual38/direct72982、unknown2/17515 upper及admission fetch0，M1/HM1 ledgers与全部原FAIL不变。M8/HM2/HM3与真实G06仍未验收；其它read/校验/local推理/后台本地成本、Session Task/fork/compaction按正式依赖继续，无HANDOFF。

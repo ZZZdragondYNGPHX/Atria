@@ -93,6 +93,8 @@ source `304d0d199`，原RuntimeRoute.computeBudget可选localWork、原Run opera
 
 source `1ccc6194a` 接续有限Native query/query-multi；工作单位与物理扫描边界见[G01 query组](g01-substrate.md#已交付有限-g05原-native-queryquery-multi-的本地索引工作)，不重新定义上节limit字段。原父work lane与Embedding sends分别准入/settle；空候选不创建index、不发送Embedding、不造usage0。结果在计算及cost settle后原scope重验，已完成CPU但此时取消/Task变动可以拒绝consumer返回，completed work成本不退、也不代表请求接受成功。旧unscoped readonly读取保持，所有其它read/validation/local model/background准入继续。
 
+source `1d1bf3f79` 接原Native query-by-vector，完成条件/输入边界见[G01 supplied-vector组](g01-substrate.md#已交付有限-g05原-native-query-by-vector-本地读取)。同一index_query lane累计输入字节与collection工作单位，不生成Embedding/provider attempt；readonly旧无scope读兼容。新computeContext入口与已存在的insert/query共用原限额/account恢复；没有给browser/local推理增加预算consumer。其它read/校验/后台与跨foreground revision历史费用继续保留未验收。
+
 ## 4. Scheduler 与故障边界
 
 继续使用 `turn_blocking / interactive / background / maintenance`；共享 owner resource permits 与公平调度。
