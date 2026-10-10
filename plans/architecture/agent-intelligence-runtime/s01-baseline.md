@@ -4,7 +4,7 @@
 - Live checkpoint: [S06](s06-comparison.md) 已补原 generation bridge / 可恢复有限预算，最终六个 development trials execution / authority全部 passed，18 sends / 57167 provider-reported tokens，S01 live report empiricalReady=true；独立 promotion六对与保守 model judge另见 S06 / Record。S01 原结构历史保持；未评分行为与候选晋升仍不可知 / 不合格。
 - Task ID: `agent-intelligence-runtime`
 - Product baseline: `ed1fd90521a63363e29856601abbf5e908c99d10`
-- Basis: 用户已确认 M1 范围、三类候选、局部自动启用、逐 scope 开启和分组集成；本模块是该已授权任务的首阶段工程细化。
+- Scope: M1 双入口、三类候选、局部自动启用与分组集成的首阶段基线。
 - Scope: 有可执行消费者的 cases、报告契约与基线 runner；S01 不发布改进版本。
 
 ## 1. 有限交付与读取路由
@@ -78,8 +78,8 @@ production cases 的真实随机模型结果允许失败；失败是基线观测
 
 ## 5. 运行与预算
 
-Scripted 模式：全部 12 cases 各执行一次，实际调用 Runtime / Director / Project authority；费用明确为无外部 provider 调用。不能用于自动晋升的行为收益证据。
-Model 模式：先取一个 RP 和一个 Project development 案例，各三次 trial；复用当前已配置的 generation 入口。原调用路径不支持某能力时标 unavailable。
+Scripted 模式：按实际改动选择相关 cases，实际调用 Runtime / Director / Project authority；费用明确为无外部 provider 调用。不能用于自动晋升的行为收益证据。
+Model 模式：选择相关 RP / Project development 案例与必要 trial；复用当前已配置的 generation 入口。原调用路径不支持某能力时标 unavailable。
 promotion 场景的完整 baseline 在进入 S06 比较前补齐，不能用这六个 development trials 代替独立晋升案例。
 
 工程 API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)；本模块只管理试验设计与产品行为契约。

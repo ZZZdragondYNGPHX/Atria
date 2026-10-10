@@ -1,6 +1,6 @@
 # Atria Agent Intelligence Runtime — 正式架构与阶段入口
 
-> 执行规则统一见 [Governance](../../../README.md)。本 Bundle 管理设计、依赖和验收。
+> 执行规则统一见 [Governance](../../../README.md)。本 Bundle 管理产品设计、依赖和实际验证；历史工程数字不构成当前配额、测试许可或人工审批。
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
@@ -140,7 +140,7 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S08 | Complete；原 Prompt / Preset authority body candidate / exact binding | Native immutable closure / Route CAS、ordinary RP Workspace pin、下一 request / run 消费；7 suites / 68 tests |
 | S09 | Complete；原 Workspace 参数 exact binding / rollback、Project pristine Task repair candidate / CAS | 8 suites / 105 tests；单字段 / whole base / conflicts；运行开始后 Project 不热改，手动 apply 无晋升资格 |
 | S10 | 工程交付完成；实际模型改善待验收 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
-| M1反馈/评价补充 F0–F3 | F0/F1及F2双模型前置完成；换机恢复和本地接线完成，M1 pending | 用户已取消双模型准入，按主模型继续校准/development/独立验收；原场景/维度/authority/生命周期门槛及旧不利判断保持，实际结果见Record |
+| M1反馈/评价补充 F0–F3 | F0/F1及F2双模型前置完成；换机恢复和本地接线完成，M1 pending | 按主模型完成最小相关验证；保留产品行为、隔离、生命周期检查与旧不利判断，实际结果见Record |
 | S11–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 | HM1–HM3 / H0–H5 | 未交付；D5 仅完成企划 | 源码静态复核不是 H0 基准验收；新 Actor eligibility、中文检索 / packing、deep retrieval、delta / cache 与认知完整消费均待实施 / 实测 |
 
@@ -162,15 +162,15 @@ S01–S10 工程链路沿同一分支完成，下一轮核对真实 Git，只复
 S06 仍 promotion ineligible；本轮 fake provider / 浏览器 fixture 仅证明工程闭环，独立真实案例改善尚未证明。需要真实补测时按 acceptance §0 自主执行必要验证，保存实际版本与结果、不覆盖历史报告。
 S10 工程完成；M1 退出条件仍待验收，集成与后续交付组依赖 M1 验收通过。
 
-## 2026-10-07 M1 验收调整
+## M1 工程验证路由
 
-用户批准由agent代劳自动化工程验收与旧预算保守结转，详细退出门槛与当前测试执行唯一归属 [m1-acceptance](m1-acceptance.md)。生产automatic promotion仍沿S10原human / price gate；工程报告不伪造人工标签、不证明净收益。当前只执行M1，实际结果待取得，不进入S11 / G。恢复先核对actual refs / HANDOFF，再读本模块 / S10和同一Record。
+工程验证见 [m1-acceptance](m1-acceptance.md)，执行与测试配额见 Governance §12 / §13.1。生产 automatic promotion 的 human / price gate 归 S10；工程报告不冒充人工偏好或净收益。实际进度按 Git 与 Record 核对。
 
 M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；本地五套61 distinct tests通过，生产S10门槛源码不变。实际模型结果待执行，不能将接线完成计作改善通过。
 
-## 2026-10-09 原链路契约先行
+## 反馈与评价契约路由
 
-用户U13确认先明确原反馈与评价契约，再用各一个RP/Project试点验证。详细新契约唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点/调用范围归m1-acceptance，研究不再作为直接实施依据。F0设计及F1最小实现完成；product实现HEAD见上，paid source仍a61b249ef、M1未达标、累计761/2939582，main未合并。后续F2→F3按依赖推进，不新增S/G阶段，不降低原门槛。
+先明确原反馈与评价契约，再验证 RP / Project 试点。详细新契约唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点/调用范围归m1-acceptance，研究不再作为直接实施依据。F0设计及F1最小实现完成；product实现HEAD见上，paid source仍a61b249ef、M1未达标、累计761/2939582，main未合并。后续 F2→F3 按工程依赖推进，按当前问题选择最小相关验证。
 
 2026-10-09 F2本轮准备核对详见 [反馈/评价模块§10](m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态)：新工作负载规格不等于正式source，promotion仅预留元数据不计独立来源；六critical dimensions实际证据覆盖未解决，原consumer发送前source_unready。下一仍F2，F3未开始。
 

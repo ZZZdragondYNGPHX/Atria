@@ -153,7 +153,7 @@ main 与当前产品工作树均干净、各自与 origin 同步；docs 快进�
 
 对 main 与开发分支执行 `git diff --exit-code`，以下范围差异为空：`public/scripts/agents/memory/`、`public/scripts/native/experience/llm/`、`public/scripts/native/{play-generation,context-compiler,context-derived}.js`、`public/shared/native-information-runtime.js`、`src/native/{simulation-authority,lifecycle-authority}.js`、`tests/memory-graph/` 与 `tests/native/information-runtime-p6.test.js`。这是这些源码 / 测试范围的字节一致性证据，**不表示整个开发分支与 main 一致**；M1 的 Evidence / Eval / Evolution 和 worker 等改动仍在产品分支。
 
-M1 的 S01–S10 工程结果及全部不利真实观察保留；当前主模型准入、development / 独立 promotion 与 review → 下一消费 → rollback 门槛仍归 [m1-acceptance §1 / §2 / §14](m1-acceptance.md#14-2026-10-09-当前主模型准入)。同一 [Record 最新节](../../../records/refactor/agent-intelligence-runtime.md#2026-10-09-取消双模型准入与主模型继续实测) 记录主模型 focused 校准仍未形成 M1 完成证据；不能将此前 36 / 13 等本地 checks 或本次企划完成改写为验收通过，也不据旧“正在运行”描述推断本机现有进程。
+M1 的 S01–S10 工程结果及全部不利真实观察保留；当前主模型准入、development / 独立 promotion 与 review → 下一消费 → rollback 门槛仍归 [m1-acceptance §1 / §2 / §14](m1-acceptance.md#14-当前主模型验证)。同一 [Record 最新节](../../../records/refactor/agent-intelligence-runtime.md#2026-10-09-取消双模型准入与主模型继续实测) 记录主模型 focused 校准仍未形成 M1 完成证据；不能将此前 36 / 13 等本地 checks 或本次企划完成改写为验收通过，也不据旧“正在运行”描述推断本机现有进程。
 
 ### 10.2 实际召回入口
 

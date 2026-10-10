@@ -150,9 +150,9 @@ D4 仅完成文档整合，D3 §7 详细规则保持原样；M1 范围、三类�
 
 U13批准先后顺序。原链路补充设计唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)；F0本轮完成，后续F1原消费者实现、F2来源/有限范围固定、F3一次双域试点按依赖推进。这些是当前M1工作包，不增加S/G正式阶段或新authority。
 
-已纳入的工程边界：自动质量分析独立于user explicit、client observation与Host正式outcome；根因与intervention分开，非局部writer问题转工程；versioned quality/profile/case lineage接原固定evaluator，原开发/独立验收与发布门槛保持；每域一个pilot/单target/一次候选周期。新逻辑字段/兼容策略不是已实施schema，具体validator和请求identity在相应工作包、模型发送前固定。
+已纳入的工程边界：自动质量分析独立于user explicit、client observation与Host正式outcome；根因与intervention分开，非局部writer问题转工程；versioned quality/profile/case lineage接原固定evaluator，原开发/独立验收与发布门槛保持；双域局部 target 试点；候选、案例和轮数按具体问题选择最小相关验证。新逻辑字段/兼容策略不是已实施schema，具体validator和请求identity在相应工作包、模型发送前固定。
 
-现有761/2939582与失败窗口保持，不恢复旧6/24许可、不重跑合成v1追分，不伪造human。未授权扩大writer、自动改rubric/连接/模型路由、长期状态或跨任务知识库；本轮无付费调用。M1未达标，不合并main、不进入S11/G。
+历史 761/2939582 与失败窗口保留；旧许可和自设数值门槛不作为执行规则。工程诊断、来源修正和必要测试按当前规则继续，不伪造 human 标签。产品 writer、生产自动权限及后续能力仍按对应产品设计；当前真实进度见 Record。
 
 ## 9. D5 — Hybrid Cognitive Memory 2.0 正式采纳
 
@@ -169,6 +169,6 @@ U14 要求采纳八项已最终批准的产品决定。决定 ID 与最终语义
 | HCM-07 | 旧 LLM/RAG UI / 设置 / 独立链硬切换，无别名 / 双读双写；保留有效 Atria 原生来源，重建派生索引，不迁移 ST 旧数据 | [hybrid-memory §4](hybrid-memory.md#4-旧-llmrag-召回的硬切换)；H0 清单、H1 切换，H4 后续优化 |
 | HCM-08 | 普通回合零额外认知 LLM 目标；正文必要来源 / 知识 / 权威同步核验，非关键维护有界后台，缺证据不能猜 | [compute-policy §4.1](compute-policy.md#41-hybrid-memory同步核验与后台工作)；H1–H5 与 G05 / G06 |
 
-**D5 本轮只完成正式企划整合。** [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖) 将 H0–H5 组织为三个有限交付组，保留 S01–S34 / G01–G06 身份，不追加 M1 阶段或改变其退出门槛。当前 M1 仍 pending，主模型准入以 [m1-acceptance §1 / §2 / §14](m1-acceptance.md#14-2026-10-09-当前主模型准入) 为准；原测试通过、不利评分、无效响应与费用记录保持。
+**D5 本轮只完成正式企划整合。** [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖) 将 H0–H5 组织为三个有限交付组，保留 S01–S34 / G01–G06 身份，不追加 M1 阶段或改变其退出门槛。当前 M1 仍 pending，主模型准入以 [m1-acceptance §1 / §2 / §14](m1-acceptance.md#14-当前主模型验证) 为准；原测试通过、不利评分、无效响应与费用记录保持。
 
 未冻结的工程变量：物理 schema / backend、中文分词 / 指代算法、RRF / PPR / MMR 参数、升级阈值、lane token 配额、delta / cache key / TTL、UI 细节与实测 SLO。它们按所属工作包依据真实 HEAD / 基准定稿，不是新的产品选择题；本轮未执行实现、数据清理、模型调用或性能实验。

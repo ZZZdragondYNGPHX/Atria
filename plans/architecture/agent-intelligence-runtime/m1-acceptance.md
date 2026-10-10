@@ -1,7 +1,6 @@
 # M1 — 自动化工程验收与 API 测试执行
 
-- Updated: 2026-10-09
-- Status: 已拉取远端并完成私有恢复、两域原worker接线和审阅发布/下一消费/回滚本地检查；用户已取消双模型准入，当前按主模型校准、development与独立场景验收继续；M1实际结果pending。当前结果见同一Record最新节；测试规则按§0，旧封包与配额仅为历史。
+- Status: 已拉取远端并完成私有恢复、两域原worker接线和审阅发布/下一消费/回滚本地检查；当前按主模型校准、development与独立场景验收继续；M1实际结果pending。当前结果见同一Record最新节；测试规则按§0，旧封包与配额仅为历史。
 - 本模块仅管理本轮 M1 工程验收。生产 automatic promotion 的详细权威仍为 [S10](s10-evolution.md)，不改运行时授权或原 human gate。
 
 ## 0. 当前 API 测试规则（覆盖全部历史封包）
@@ -10,22 +9,20 @@ API 测试唯一规则见 [Governance §13.1](../../../README.md#131-api-测试�
 
 ## 1. 验收语义
 
-M1工程验收采用确定性authority检查、固定独立场景、原实际模型执行与主模型盲评；不要求用户本人运行tests或提供human labels。报告保留 `humanPreference=not_observed`，不将model observation写入生产human字段。
+M1 验证 ordinary RP / Project 的实际执行、候选效果与审阅发布→下一请求消费→回滚。每阶段及完成时只在本地执行最小相关验证；测试调用仅遵循 Governance §13.1。
 
-只评价 ordinary RP / Project 支持矩阵内各一个单目标：RP原character Skill body、Project原user Preset system.style body。原三类目标×双入口的48项 / 历史233项工程authority覆盖保留；两种实测不外推其它目标质量。
+按具体改动选择相关案例、重复次数和控制。使用现有主模型连接即可；第二模型、固定三/九对、两/六胜、八项控制、至少两条 gap 和单轮/单候选均不作为工程准入或继续执行条件。历史试验中的这些数字保留为观测结果。
 
-每入口三个固定独立promotion场景×三次paired trial，两arm输入、原Route / model / connection / tools / configuration精确固定。提炼只见原公开feedback / diagnosis / declared base，候选在promotion执行前冻结。原固定worker运行Director / Studio / compiler / resolver / provider；每对由当前已校准的主模型进行shuffle盲评。第二模型不作为development或promotion准入条件；历史双模型观察保留原标签，不改成新协议/新候选的评价。网关upstream identity未知时仍标unavailable，不声称独立厂商验证。
+基线与候选的输入、工具、配置和来源应可比较；记录实际版本，评测前固定被测候选。开发材料与独立验收材料隔离。协议、来源或实现有变化时按受影响部分验证，不把旧结果冒充新试验，也不重复运行未受影响的已通过检查。
 
-## 2. 自动化工程退出门槛
+## 2. 结果与交付
 
-- 两入口各九对完整独立comparison，无重复槽位 / 混source；evaluator / runner source、actual request / snapshot / usage / charge、originaltarget version与配置固定。
-- 主模型每对有效observation为candidate或tie；每入口至少六对candidate胜，其余只能tie；全部重要行为维度非负。invalid / uncertain / 缺失不能补分、伪造或强行通过。development每入口三个pair，至少两次candidate胜，其余tie且全部重要维度非负、原checks完整，才准入独立promotion。
-- 原authority / isolation / target_consumed / source与exact配置检查全部通过；所有send均可核对到持久账本；usage 未知如实报告；API 每日 / 速率硬限由发送端执行。
-- trial candidate /baseline tokens仅报告、不作工程通过条件；提炼 / judge / retry / activation 的实际调用全部计入每日调用数并单列统计。价格未确认时currencyCost=unavailable，工程验收说明行为表现并单列token资源统计，不声称货币费用改善或含学习成本后的净收益。若价格取得则另行报告金额，不推断provider价目或隐藏retry。
-- 在私有fixture里执行明确review publication，保存原intent / receipt；原下一Director / Project request实际消费已选版本并核对exact snapshot / target；再guarded rollback回原base。工程review不是human preference，也不计automatic eligibility；生产用户对象不修改。
-- 原production promotionDecision继续拒绝缺human labels / confirmed price等证据的候选。模型盲评工程通过不触发生产自动发布，也不改默认review / 单目标 / scope / guards。
+- 核对相关来源、权限、实际目标消费和配置；缺失、不确定、失败与行为退化如实记录，修复后继续必要复测。没有质量改善证据就不宣称改善。
+- 保存实际请求、结果和调用计数；token/费用只作统计，未知 usage 明确标注，价格未知记为 unavailable。不要求每轮人工核对全部历史账目或 hash。
+- 在私有 fixture 检查相关 review publication、下一请求实际消费与 guarded rollback；不修改生产用户对象。模型观察不冒充 human preference，工程验证不触发生产自动发布。
+- 已有产品行为、数据保护与生产发布权限按实际产品契约验证；S10 的生产自动预算/human/price gate 不作为测试 API 配额或停工条件。
 
-不达标则记录具体failure与partial证据；不缩减cases / repetitions、训练promotion输出、偷偷更换case或追试至通过。M1 工程验收达标后集成；S11 / G 仍依赖其产品设计与前置条件，不把远期任务标为完成。
+相关问题解决且最小验证通过后按交付路线集成。普通失败、材料不足或容量错误继续诊断、修复和补充相关测试，不新建用户审批。
 
 ## 3. 历史账目与自动计数
 
@@ -44,6 +41,8 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 ## 5. 继续执行与验证
 
 失败处理与阶段推进见 [Governance §8](../../../README.md#8-task-lifecycle)，通用验证见 [§12](../../../README.md#12-execution-adapters)。本任务的具体验收以 §1 / §2 为准；独立验收输出不回流开发，有效不利评分保留。
+
+> 以下 §6–§13 保存历史过程，不定义当前配额、许可、模型数量或数值验收门槛。
 
 ## 6. 2026-10-08 有限优化周期
 
@@ -96,25 +95,25 @@ M1工程验收采用确定性authority检查、固定独立场景、原实际模
 
 ## 11. F2主模型范围完成与双模型暂缓
 
-用户明确允许第二连接不可用时仅测主模型。本次仅 F2 使用显式 `primary_only` 测试模式，不修改 §1/§2 的 M1 两模型验收、盲评、独立场景、原 gate 或生产权限。来源/配置/rubric/全部必需维度仍固定，单模型结果标 `primary_observed_gap`，`sharedGaps` 为空；第二连接旧观察不能补充为新协议通过。
+用户明确允许第二连接不可用时仅测主模型。本次仅 F2 使用显式 `primary_only` 测试模式，当时不修改旧 M1 两模型验收、盲评、独立场景、原 gate 或生产权限。来源/配置/rubric/全部必需维度仍固定，单模型结果标 `primary_observed_gap`，`sharedGaps` 为空；第二连接旧观察不能补充为新协议通过。
 
 六条 development 真实基线、六条独立密封来源 metadata、免费原工具可完成路径、主模型 20/20 有效 controls 和两域可改善缺口已核对。RP 缺口为档案场景新增无来源支持的处罚/权限；Project 三场景提案正确，但遗漏明确请求的未提交 Review 状态说明。正例、缺证据及两个没有观察到 gap 的 RP 场景保持原结果，不用 hard checks 替代语义质量。失败、费用、旧判断与不确定性保留。
 
-原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。本节记录当时仅主模型范围的结果；此后已补齐 F2 双模型前置并完成首次 F3 development，见§12。原双模型 development/promotion 准入不变，不能将此前主模型结果写成 M1 完成。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
+原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。本节记录当时仅主模型范围的结果；此后已补齐 F2 双模型前置并完成首次 F3 development，见§12。当时仍按旧双模型 development/promotion 准入，不能将此前主模型结果写成 M1 完成。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
 
 
 ## 12. F2双模型复核与 F3 一次试点结果
 
-F2两域controls和六来源的实际双模型观察已补齐，保留原正确基线与密封独立来源；当前事实见[feedback§15](m1-feedback-evaluation.md#15-f2双模型前置复核与-f3-一次双域试点结果)。每域一次F3候选提炼/三development场景已完成，两域一致candidate胜均0，有重要维度负差/分歧和一份无效grader契约响应，未满足原development前置门槛。§1/§2的每域九对独立promotion、六一致胜及私有review/下一消费/rollback未执行，M1仍未验收，不集成main。实际范围、原费用/unknown与producer pins见[同一Record](../../../records/refactor/agent-intelligence-runtime.md)最新节；§11保留此前主模型范围与暂缓第二模型的历史，不作为当前状态。
+F2两域controls和六来源的实际双模型观察已补齐，保留原正确基线与密封独立来源；当前事实见[feedback§15](m1-feedback-evaluation.md#15-f2双模型前置复核与-f3-一次双域试点结果)。每域一次F3候选提炼/三development场景已完成，两域一致candidate胜均0，有重要维度负差/分歧和一份无效grader契约响应，未满足原development前置门槛。当时方案的每域九对独立promotion、六一致胜及私有review/下一消费/rollback未执行，M1仍未验收，不集成main。实际范围、原费用/unknown与producer pins见[同一Record](../../../records/refactor/agent-intelligence-runtime.md)最新节；§11保留此前主模型范围与暂缓第二模型的历史，不作为当前状态。
 
 
 ## 13. F3 工程修复后的继续执行
 
-首次试点不达标后继续诊断和必要工程复测，新增真实比较协议校准及原执行槽位核对见[feedback§16](m1-feedback-evaluation.md#16-f3-工程修复与-m1-持续推进)。不把一次试验退出写成M1完成或交接停止。§1/§2门槛、原不利报告、密封独立来源与全部费用保持；只有完整验收及原publication/下一消费/rollback证据成立后才集成。原暂停换设备已由当前用户要求继续而结束；远端/私有恢复与本地worker、生命周期接线检查完成，真实独立验收闭环仍pending。恢复背景见HANDOFF，当前修复及实测结果见同一Record最新节。
+首次试点不达标后继续诊断和必要工程复测，新增真实比较协议校准及原执行槽位核对见[feedback§16](m1-feedback-evaluation.md#16-f3-工程修复与-m1-持续推进)。不把一次试验退出写成M1完成或交接停止。§1/§2门槛、原不利报告、密封独立来源与全部费用保持；只有完整验收及原publication/下一消费/rollback证据成立后才集成。恢复后继续执行；远端/私有恢复与本地worker、生命周期接线检查完成，真实独立验收闭环仍pending。恢复背景见HANDOFF，当前修复及实测结果见同一Record最新节。
 
 
-## 14. 2026-10-09 当前主模型准入
+## 14. 当前主模型验证
 
-用户明确要求取消双模型准入，当前development和promotion按§1/§2主模型盲评执行。每域同协议八个主模型controls（正确/错误/unknown、反事实、实际缺陷对应的focused source及左右翻转）须有效且绑定原费用身份；只复用exact消息/配置/费用一致的已付费结果。原三development、九对独立promotion、六胜、非负维度、source/authority/隔离、候选冻结和review→下一消费→rollback均保留。旧双模型要求仅记录历史，不形成当前执行限制；生产automatic human/price gate仍归S10。
+当前工程验证使用现有主模型，按 §1 / §2 选择最小相关检查。同协议已完成且未受影响的结果可复用，保留来源与费用身份；变化的部分做必要复测。旧双模型准入及固定控制/胜场/候选数量不构成测试许可或工程硬门槛。生产自动发布仍归 S10。
 
 双模型规则最早进入Git为 `aabdf8c75`（2026-10-07 21:06:53 +08:00，Git author `ZZZdragondYNGPHX`）。该提交将不同model identifier第二连接shuffle盲评写入验收；同版本决策说明详细门槛属于工程冻结，并非用户逐条指定。Git author仅是提交署名，不能证明用户亲自制定该规则；历史泛化确认不覆盖本次明确取消。

@@ -1,5 +1,7 @@
 # Atria M1：RP / Project 自迭代领域能力扩展研究
 
+> 研究材料与历史工作量估算，不定义当前执行许可或 API 配额；测试按 [Governance §12 / §13.1](../../README.md#131-api-测试执行规则)，工程验证按 [m1-acceptance](agent-intelligence-runtime/m1-acceptance.md)。
+
 - Task ID：`agent-intelligence-runtime`；研究日期：2026-10-09。
 - 状态：**研究与设计差距分析完成，待讨论；不是批准后的实施 Plan。** 不修改产品、不扩大自动授权、不改变 M1 门槛、不进入 S11 / G。
 - 核对产品：`feat/agent-intelligence-runtime@a61b249ef71f108d279ec7bd883fb5eeae97a463`；main：`ed1fd90521a63363e29856601abbf5e908c99d10`，未合并；起始 docs：`6f1c18056`。
@@ -247,9 +249,9 @@ H：先用无模型的source/authority检查，再按问题价值与不确定性
 
 `requests = discovery + extraction + baseline执行 + candidate执行 + primary评分 + independent评分 + 其它校准/ablation + retry + next-run`
 
-以测试一入口最坏形态估算：正式九对×两arm×六send =108，两个judge×九对=18，另一次提炼=1，**不含retry/activation为127send的形态上界**。这是结构算式，不是实际费用，也不是批准预算。该测试形态超过生产原job120send；生产原单judge/人工标签形态对应118，二者不能混称。长程/多候选扩大后更明显，新设计不能照搬完整外部benchmark或静默增job限额；应先证明实际任务能在原有限边界完成，或另行讨论实验envelope/阶段归属。两入口一次development三个pair、两judge及提炼的形态上界为86send；完整promotion两入口不含提炼为252send，仍非授权发送额度。
+以测试一入口最坏形态估算：正式九对×两arm×六send =108，两个judge×九对=18，另一次提炼=1，**不含retry/activation为127send的形态上界**。这是结构算式，不是实际费用，也不是批准预算。该测试形态超过生产原job120send；生产原单judge/人工标签形态对应118，二者不能混称。长程/多候选扩大后更明显，新设计不能照搬完整外部benchmark或静默增job限额；测试容量问题沿相关工程消费者解决，不另建实验额度审批。两入口一次development三个pair、两judge及提炼的形态上界为86send；完整promotion两入口不含提炼为252send，仍非授权发送额度。
 
-候选扩展应按价值分层：免费source/current/schema/guard和case controls；小development包验证具体假设；候选冻结后原正式验收；获准的有限观察样本。费用不足或无质量空间时先报告，不删正式对数/维度追分。候选根本不可apply、base unchanged、重复已测proposal或unknown原因未解决时不发送重复评分。
+候选扩展应按价值分层：免费source/current/schema/guard和case controls；小development包验证具体假设；候选冻结后原正式验收；获准的有限观察样本。实际缺口与费用如实报告，按具体问题调整相关验证，保留失败。候选根本不可apply、base unchanged、重复已测proposal或unknown原因未解决时不发送重复评分。
 
 | 缓存对象 | 可以复用 | 不能省掉/冒称 |
 | --- | --- | --- |
@@ -259,7 +261,7 @@ H：先用无模型的source/authority检查，再按问题价值与不确定性
 | lesson/经验 | 原有效refs、条件/反例与依赖校验后推荐 | 相似结果不是已获跨scope权威；成功经验未必适用于新任务 |
 | provider prompt cache | 可报告实际cache usage项及已知capability | hit保证、网关隐藏retry、货币节约不可推断；cached/reasoning子项不和total重复相加 |
 
-缓存key必须含用途/split、source/case/rubric/候选版本和Trust Domain，不能让验收内容通过共同cache泄入开发。已有D4复用设计沿用，实际实现归G，不另建M1有效状态缓存。持续优化采用有限epoch/候选/调用与去重，遇新独立验收失败即保留并结束该实验；下一轮以新来源与批准范围开始，不能不断重试到出现高分。
+缓存key必须含用途/split、source/case/rubric/候选版本和Trust Domain，不能让验收内容通过共同cache泄入开发。已有D4复用设计沿用，实际实现归G，不另建M1有效状态缓存。优化按当前问题安排相关候选与验证，独立验收失败后保留结果并继续诊断、修复；必要的新来源准备不产生逐轮审批，历史试验不冒充新独立证据。
 
 长期收益应报告质量变化、成功任务成本、总控制开销、延迟、回归与unknown，不能只展示paired省token。任何人类标签缺失/价格未知保持原字段；无净收益证据就不声明回本。
 
@@ -272,9 +274,9 @@ H：先用无模型的source/authority检查，再按问题价值与不确定性
 1. 真实来源优先级：已有获准保存任务/反馈；无材料时由agent执行明确产品用途的隔离工作负载，并保持代理实验标签。选择数据授权与保留边界，不要求用户手测。
 2. 首个RP/Project领域pilot的时间尺度、关键维度和可观察失败；是否先补outcome供给/归因/评价器，而不是继续Prompt修正。
 3. M1仅预留哪些契约、哪些有实际consumer的最小实现必须补，哪些明确移交后续阶段；不得无止境把全领域质量加入M1退出条件。
-4. 新case来源/lineage、development与独立promotion集合、rubric/calibration revision、未见材料管理和finite发送范围。用户讨论确认后才正式冻结。
+4. 新case来源/lineage、development与独立promotion集合、rubric/calibration revision、未见材料管理和finite发送范围。按具体验证问题固定实际版本。
 
-不改变当前事实：M1 pending，a61产品不变，main不合并；原九对/六一致胜/重要维度非负及原publication/next-run/rollback保持，生产human/price/budget gate保持。新研究没有新人工观察、模型费用或泛化实证。
+不改变当前事实：M1 pending，a61产品不变，main不合并；历史九对/六一致胜等工程数字只作记录，publication/next-run/rollback仍按实际产品行为验证，生产human/price/budget gate保持。新研究没有新人工观察、模型费用或泛化实证。
 
 ## 附录：当前代码依据
 

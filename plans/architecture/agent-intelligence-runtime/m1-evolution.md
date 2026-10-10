@@ -132,10 +132,10 @@ RP / Project 的局部改进不会自动扩散到其他角色、会话或项目�
 
 - 每 scope 每 24 小时最多一轮自动 job；一轮最多生成两个候选，最多发布一个单目标版本。
 - 首个 promotion 集每入口至少包含三个独立场景，每场景至少三次 paired trial；这是最小试运行规模，不是统计可靠性的保证。
-- 每轮与每 owner 都必须有有限的 request / token 总预算；包括 baseline、candidate、judge、retry 和提炼开销，不通过新增 scope 逃避总预算。
+- 生产自动模式的每轮与每 owner 都必须有有限的 request / token 总预算；包括 baseline、candidate、judge、retry 和提炼开销，不通过新增 scope 逃避总预算。
 - 生产自动模式的 token 上限依据实测开销配置，生产预算不足暂停自动 job；工程测试不沿此条停测，实际改善/回归仍须如实验证，不偷偷缩小验收集。
 
-上述频率和数量仍是建议；没有把它们当成本对话已批准值。取消 / 未知 usage 的请求按已预留上界记账或暂停自动模式，不能计零成本。reasoning / cached input 的 provider 子项不与 total token 重复相加；estimated user cost 与 settled charge 分开。Gateway 内部重试不可观测时不能承诺真实上游调用硬上限。
+上述频率和数量是生产配置建议，依据实测调整；工程测试仅按 Governance §13.1 执行。取消 / 未知 usage 的请求按已预留上界记账或暂停自动模式，不能计零成本。reasoning / cached input 的 provider 子项不与 total token 重复相加；estimated user cost 与 settled charge 分开。Gateway 内部重试不可观测时不能承诺真实上游调用硬上限。
 
 ## 7. 精确版本与真实读取
 

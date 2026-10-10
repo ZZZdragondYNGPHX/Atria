@@ -505,23 +505,13 @@ At the end of every formal Package phase:
 6. provide a copyable next-phase handoff prompt;
 7. stop.
 
-Do not automatically cross a formal phase boundary.
+After each phase, record the result and continue along the dependencies.
 
 ---
 
-## Validation / CI stop policy
+## Validation and execution
 
-Ordinary code/test failures are handled autonomously.
-
-Stop only when the next step genuinely depends on:
-
-- a formal phase boundary;
-- clearly long-running CI that is the sole remaining dependency;
-- Android/Termux or other real-device evidence;
-- real UI/screenshots that code-level validation cannot replace;
-- user-only Secret / account / permission action.
-
-Do not wait indefinitely for CI. Once CI becomes the only long-running dependency, report the run/checkpoint and stop polling.
+At each stage and completion, run only the minimum relevant local validation. Diagnose, fix and retest ordinary failures, then continue; phases, long-running CI and missing device matrices do not create approval checkpoints. Remote storage is not a verification dependency. API tests follow Governance §13.1; genuine external blockers follow §13.
 
 ---
 
@@ -553,7 +543,7 @@ Approved:
 - P8 research may overlap after P5, but formal integration converges after P7;
 - phase-specific minimal reading map;
 - separate P0 Record and one continuous P1–P9 Package Record;
-- formal phase boundary stop / HANDOFF rules;
+- continuous execution and Governance HANDOFF lifecycle;
 - v1 deferral list.
 
 The project is ready to become **Approved Implementation Baseline v1.0** once the Plan index is promoted accordingly.

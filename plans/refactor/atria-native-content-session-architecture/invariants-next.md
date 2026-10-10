@@ -60,7 +60,7 @@ Continue N4 as follows:
 9. rewrite N4 real-host tests: Edit/Delete/Swipe/Swipe-delete become negative/fail-closed cases; Send/Stop/Retry/Continue-as-append/Branch/reload/prompt/Regex/Knowledge/attachments remain positive acceptance;
 10. add a direct third-party/projected `chat[]` committed-content mutation test proving Native authority does not change and no `/api/chats/*` fallback occurs;
 11. do not begin N5 state migration, N6 KnowledgeCompiler, N7 Context Architecture, N9 UI cutover or N10 retirement early;
-12. record actual N4 verification/CI and stop at its phase boundary.
+12. record actual N4 local validation and continue along the implementation dependencies.
 
 Do not create another branch, merge to main, or introduce an old-store fallback.
 

@@ -14,7 +14,7 @@
 Read the relevant Plan index and [Record](../records/README.md). When resuming a user-requested interruption, read the existing [HANDOFF](../HANDOFF.md) first. Execution rules belong to [Governance](../README.md), not individual Plans.
 
 
-Plans 记录实现前或实现期间的设计与理由，不承担实施历史。
+Plans 记录设计与理由，不定义执行许可。测试数字如非产品契约仅是工程建议；最小相关本地验证与 API 配额统一见 [Governance §12 / §13.1](../README.md#131-api-测试执行规则)。
 
 按语义放入 `feat/`、`fix/`、`refactor/`、`package/`、`plugin/`、`architecture/` 等目录。
 

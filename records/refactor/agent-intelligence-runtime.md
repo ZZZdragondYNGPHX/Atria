@@ -1,5 +1,7 @@
 # Agent Intelligence Runtime — Record
 
+> 本文件保留实际工程与试验历史。旧配额、scope/claim、双模型、首失败停止、单轮/候选与数值门槛不恢复为执行规则；当前验证见 [M1 acceptance](../../plans/architecture/agent-intelligence-runtime/m1-acceptance.md)，调用限额见 [Governance §13.1](../../README.md#131-api-测试执行规则)。
+
 > 当前 API 测试规则（2026-10-09）以 [Governance §13.1](../../README.md#131-api-测试执行规则) 和 [acceptance §0](../../plans/architecture/agent-intelligence-runtime/m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包) 为准：仅每日 2000 次 / 20 RPM。本文旧预算、累计 1000、Step 次数、scope 许可、首失败停止等是历史事实，不能恢复为当前限制；实时恢复读 HANDOFF。
 
 - Task ID: `agent-intelligence-runtime`
@@ -1362,7 +1364,7 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 
 两域只读最终审计重算原准入、完整报告/原job拒绝绑定与费用：Project九对/十八trial IDs、139个报告+已付费校准receipts与原owner/shared ledger一致；RP development原baseline/候选/费用与readiness一致。累计1437 requests /10138703 accounted tokens，pending0/lock0；ledger hash `52cd503758c0436110d3aa8959539fb3cdc89a4e58d74726dcf33a369d70b836`。未清旧unknown/carry/breached；当前advisory token超界不等于每日API硬限被取消。humanPreference not_observed、currencyCost unavailable，M1 accepted=false，main未集成。
 
-来源复核确认原RP三条F2主assessment仅archive有knowledge gap，reservoir/theatre六维met；与本次一胜/两tie吻合。不能声称全领域饱和，也不对同一冻结材料追分。用户明确授权按 [feedback §17](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#17-2026-10-10-实测结论与有限来源更新提案) 更新有限来源包并启用独立作者。独立作者只读取公共格式/领域契约，写六个新promotion来源与metadata，不接收旧候选、development输出或promotion评分；开发侧不读新密封正文。下一来源准备、资格与候选验证仍沿同一M1任务持续推进；H1/H2未开始，没有新HANDOFF。
+来源复核确认原RP三条F2主assessment仅archive有knowledge gap，reservoir/theatre六维met；与本次一胜/两tie吻合。不能声称全领域饱和，也不对同一冻结材料追分。用户明确授权按 [feedback §17](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#17-来源更新与结果复用) 更新有限来源包并启用独立作者。独立作者只读取公共格式/领域契约，写六个新promotion来源与metadata，不接收旧候选、development输出或promotion评分；开发侧不读新密封正文。下一来源准备、资格与候选验证仍沿同一M1任务持续推进；H1/H2未开始，没有新HANDOFF。
 
 ## 2026-10-10 M1 有限新材料包接线与资格观察
 

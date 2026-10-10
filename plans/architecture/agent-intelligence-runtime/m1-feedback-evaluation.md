@@ -1,10 +1,10 @@
 # M1：原链路反馈与评价契约补充
 
-- Updated：2026-10-09；Task ID：`agent-intelligence-runtime`。
-- 状态：**私有恢复和两域worker/lifecycle本地接线完成；用户已取消双模型准入，按主模型继续F3与M1工程验收。旧不利结果及账目保留，实际结果见同一Record最新节，当前契约见§16与m1-acceptance。**
+- Task ID：`agent-intelligence-runtime`。
+- 状态：**私有恢复和两域worker/lifecycle本地接线完成；按主模型继续相关验证与M1工程验收。旧不利结果及账目保留，实际结果见同一Record最新节，当前契约见§16与m1-acceptance。**
 - 设计顺序：原链路反馈与评价契约 → 各一个 RP、Project 试点；具体工程契约如下。
 - 来源：[领域扩展研究](../agent-intelligence-m1-domain-evolution-research.md)、[S05](s05-feedback.md)、[S10](s10-evolution.md)、[M1 acceptance](m1-acceptance.md)。核对产品 `a61b249ef71f108d279ec7bd883fb5eeae97a463`；这些设计不计入已有实证。
-- 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程退出门槛与实际发送范围由 m1-acceptance 管理。
+- 唯一职责：原 Experience / evaluator 的新反馈来源、根因路由、质量与案例来源的补充契约，以及先契约后双域试点的有限工作顺序。既有资源生命周期由 S05、部署/发布由 S10、M1 工程验证由 m1-acceptance 管理；测试配额与执行由 Governance §12 / §13.1 管理。
 
 ## 1. 范围与原 authority
 
@@ -72,7 +72,7 @@ current、校准有效的 host_check verified_failure 可支持局部干预假�
 
 支持状态区分 unverified、reproduced、rule_verified；reproduced 不等于唯一因果。允许多个 locus，不用自填数值 confidence 伪装概率。Engineering/none 路由不得伪造可用 direction；weak-only diagnosis 仍 undetermined。
 
-原 Evolution 必须消费这些路由，不能仅存字段：非 local intervention 不提炼候选；根因未知且无获准调查 envelope 则拒绝；源码/状态/评委问题在本轮报告待修工程项，候选收益也不能归功于未执行修复。对应 diagnosis 或源变更继续沿原依赖暂停/失效。
+原 Evolution 必须消费这些路由，不能仅存字段：非 local intervention 不提炼候选；根因未知时继续工程调查，不凭不明原因提炼或发布；源码/状态/评委问题在本轮报告待修工程项，候选收益也不能归功于未执行修复。对应 diagnosis 或源变更继续沿原依赖暂停/失效。
 
 ## 4. 评价契约：QualityProfile、case 来源与 report
 
@@ -85,11 +85,11 @@ current、校准有效的 host_check verified_failure 可支持局部干预假�
 | Evaluation envelope | source/head/base/target、profile/case/adapter/evaluator、route/model/tools/配置、judge/calibration pins、公平条件、有限范围 | 变化即新 revision/资格；不可复用旧合格报告 |
 | Report | 逐 trial 正文/公开轨迹、正式结果、checks、维度证据与 unknown、各实际评委原判断、全部 charges、缺口 | execution/quality/preference/publication/consumption 分开；偏好不能抵消负 delta |
 
-评分使用原 pair 和重要维度非负要求；新增维度必须纳入 case 行为集合并由两个评委实际评价，不只是附录文字。N/A 在执行前按输入条件固定；必需维度不能 N/A，未观察的长期维度不填零。质量向量与原 preference 均保留，不用文学均分补偿玩家代写/知识边界/正式操作缺陷。
+评分使用原 pair 和重要维度非负要求；新增维度必须纳入 case 行为集合并在相关试验中实际评价，不只是附录文字。N/A 在执行前按输入条件固定；必需维度不能 N/A，未观察的长期维度不填零。质量向量与原 preference 均保留，不用文学均分补偿玩家代写/知识边界/正式操作缺陷。
 
 schema/checker controls 先本地验证；实际 judge 必须对预先标注的正确/错误/unknown、反事实变化和顺序反转有合理响应。构造标签标为 engineering_control，不写 human 字段；控制通过只能支持该 rubric 的可判别性，不证明人类审美校准。judge alias 上游未知如实报告，两个 identifier 不等于独立厂商。
 
-提炼只能看 development feedback/diagnosis与声明 base；promotion 数据由原固定 worker 专用读取。按 episode/Project/任务模板的来源和派生关系分组，不能只换姓名/字段名。开发代理不能用共同检索/cache读取独立答案；一旦 promotion 被用于诊断，下一轮转 development/回归，需新独立来源。旧 v1/v2 只留历史，不重跑追分。
+提炼只能看 development feedback/diagnosis与声明 base；promotion 数据由原固定 worker 专用读取。按 episode/Project/任务模板的来源和派生关系分组，不能只换姓名/字段名。开发代理不能用共同检索/cache读取独立答案；一旦 promotion 被用于诊断，下一轮转 development/回归并准备新独立来源；相关来源更新属于正常测试工作。历史数据可用于诊断与回归，不能冒充新的独立证据。
 
 新 profile/case 支持须扩展原固定 catalogue/validator、adapter 和 report gate；不新增可上传任意 case JSON 自动取得资格的通道。构造数据可入受审测试 fixture，真实材料和原 raw 报告留私有 storage。只读分析/回归缓存可复用历史，不能当新独立 trial/grade。
 
@@ -107,7 +107,7 @@ EvalCase/Report 使用原资源内版本/内容 hash，不能静默改 v1；保�
 
 ## 6. 两个试点：验证原链路，而非全部领域
 
-每域一个试点、一个局部 target、一个候选提炼周期；每试点仍有三个 development 场景及三个独立 promotion 场景，各有不同来源。没有合格来源/headroom 时 source_unready，而不是加大提示强度或降低门槛。
+试点覆盖 RP 与 Project 的局部目标。案例、候选和轮次按实际问题选择最小相关集合；来源不足时继续准备有实际用途的测试材料，保留 source_unready 事实，不伪造来源或基线缺陷。
 
 | 试点 | 核心任务 / 失败观察 | 评价与原 target | 范围之外 |
 | --- | --- | --- | --- |
@@ -116,11 +116,11 @@ EvalCase/Report 使用原资源内版本/内容 hash，不能静默改 v1；保�
 
 RP development 的三个任务类型：局部 NPC 回应/玩家未决选择；已明确修订的承诺与当前时间未知；同一角色可见/不可见信息及当前 variant 冲突。各取独立 episode/场景语义，不把旧门口场景换名字当新来源。文学维度只测这一场景/短公开窗口，关键知识与行动边界和文风共同测，不声称长程提升。
 
-Project development 的三个任务类型：真正有关联依赖的 authoring；有明确诊断信息的一轮修复；发生版本冲突后的无覆盖与可执行说明。不能只是 rename 加故障计数；先确认原工具/schema支持实际操作、原六 send/round有可完成路径。promotion 用独立 Project/任务派生组，局部 target 在隔离副本中显式映射，记录原 ref 与 fixture ref，不把克隆配置冒充原对象权限。
+Project development 的三个任务类型：真正有关联依赖的 authoring；有明确诊断信息的一轮修复；发生版本冲突后的无覆盖与可执行说明。不能只是 rename 加故障计数；先确认原工具/schema支持实际操作及可完成路径。promotion 用独立 Project/任务派生组，局部 target 在隔离副本中显式映射，记录原 ref 与 fixture ref，不把克隆配置冒充原对象权限。
 
 现有公开报告只能证明旧 RP 时间/玩家行为问题和旧 Project 避读回归；这些用于选题，不证明新增工作负载已经有失败。来源优先现有明确获准的执行 refs；未获准的真人聊天不批量读取。缺材料时由 agent 在隔离副本运行有实际产品用途的工作负载，标 agent-authored/synthetic 和 task purpose；用户无需手测，这也不会生成 human preference。
 
-构造一条已知坏输出只能校准 checker，不算 baseline 实际失败。候选前先确认开发基线有可观察且可改善的缺口；无缺口则该试点饱和/不适用，保留原报告并结束。promotion 来源在候选前锁定，开发只知元数据/用途，不得读其内容来选有利任务。
+构造一条已知坏输出只能校准 checker，不算 baseline 实际失败。候选前先确认开发基线有可观察且可改善的缺口；无缺口时保留原报告，按当前问题调整相关测试或验证其它未解决部分；不把它作为整个任务停工点。promotion 来源在候选前锁定，开发只知元数据/用途，不得读其内容来选有利任务。
 
 ## 7. 成本、调用范围与失败处理
 
@@ -128,32 +128,34 @@ API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)
 
 以下只是**一次双域试点的形态估算**，不是调用上限或需要逐轮申请的许可：
 
-| 工作 | 双域最多模型请求的结构估算 | 使用边界 |
+| 工作 | 双域模型请求的结构估算 | 说明 |
 | --- | ---: | --- |
 | 来源/headroom 探测 | 6 场景 ×6 send =36 | 保存正式输出；不能冒充后续独立 paired baseline |
-| 有限缺陷分析 | 6 来源 ×1 =6 | 能用固定 checks 时无需这些调用；不得无限逐轮 critic |
+| 有限缺陷分析 | 6 来源 ×1 =6 | 能用固定 checks 时无需这些调用；按当前问题选用相关分析 |
 | judge controls | 2域 ×4组 ×2顺序 ×1judge =16 | 正确/错误/unknown，构造素材不另调用生成 |
-| 候选与 development | 2提炼 +12 arms ×6 +6 grades =80；缓存正确基线不计新调用 | 各一候选/三pair，准入唯一见m1-acceptance §2 |
-| 独立 promotion | 36 arms ×6 +18 grades =234 | 达development才各九对；退出门槛唯一见m1-acceptance §2 |
+| 候选与 development | 2提炼 +12 arms ×6 +6 grades =80；缓存正确基线不计新调用 | 按实际问题调整；结果见 m1-acceptance §2 |
+| 独立 promotion | 36 arms ×6 +18 grades =234 | 按相关验证需要选择案例；结果见 m1-acceptance §2 |
 | 下一 run 消费 | 2域 ×6 =12 | 仅达标后在私有 fixture review；原 rollback 零模型 |
 | 合计 | 384，另列实际必要的 retry/诊断 | 无 retry 的形态上界；不是实际必需调用数或承诺费用 |
 
 source/case/input/rubric/calibration/worker/request identity 随实际版本与结果记录。现金价格未知仍 unavailable，不声称节约或回本。
 
-## 8. 有限工作顺序与每包退出
+## 8. 工作顺序
 
-这是当前 M1 的补充工作包，不新增正式 S/G 阶段，不将全领域研究变成 M1无限退出要求。工作包退出条件是后续包的前置依赖。
+这是当前 M1 的补充工作包，不新增正式 S/G 阶段，不将全领域研究变成 M1无限退出要求。依赖用于安排工程顺序，不产生逐包许可或停工要求。
 
 | 工作包 | 范围 | 最小验证 / 退出 | 本轮状态 |
 | --- | --- | --- | --- |
 | F0 契约 | 本模块、原权威路由、U13和恢复状态 | 文档一致/链接有效；原账目与草稿不变；不发模型请求 | 设计完成 |
 | F1 原链路最小实现 | 原 Experience v2/自动分析来源、零模型采集、诊断路由；固定 quality/case/report consumer与隔离；必要原panel来源/拒绝提示 | targeted source/provenance、去重/CAS/read-only/失效、FS/SQLite兼容及worker/split/critical dims/consumer checks；fake控制仅工程证据 | 最小消费者已实现；物理契约见§9，实际验证见Record |
 | F2 来源与有限范围固定 | 两域development/独立来源包、baseline缺口/可完成性、校准素材、exact revisions、原失败窗口处理 | 免费 controls/独立性和可完成路径先检查；必要模型探测、诊断与修复复测沿当前规则自动执行，保存实际 source/config/result pins | 双模型前置范围完成：两域40/40有效controls、六来源各两观察与原六基线/密封metadata已核对，两域observed_gap成立；见§15/同一Record |
-| F3 一次双域试点 | 一次提炼/development；通过才一次独立promotion及原review→消费→rollback | 原development准入与M1退出门槛；全费用/partial/unknown保留；不追分 | 一次双域development已完成，两域一致candidate胜均0、重要维度负差/分歧，未准入promotion；M1 pending，见§15 |
+| F3 双域试点 | 按相关问题提炼、验证与修复，检查独立效果及review→消费→rollback | 最小相关本地验证；全费用/partial/unknown保留 | 一次双域development已完成，两域一致candidate胜均0、重要维度负差/分歧，未准入promotion；M1 pending，见§15 |
 
 F1 不实现 GEPA 种群、自动修改 rubric、长期状态存储或跨任务推荐；只使上述契约有实际消费者。F2 的 source_unready、calibration_failed、unsupported_locus 或 baseline_saturated 如实记录；可修复工程问题处理后继续，真实不适用或缺改善空间不伪造失败/人类标签来凑闭环。
 
 M1 成功只能按原验收宣布；F0 文档冻结、F1本地通过或F3单一维度提升都不等于M1达标。未达标不合并main、不进入S11/G。扩展第二类领域问题属于范围变化，依据真实证据另议。
+
+> 以下 §9–§15 保存实现与试验历史；双模型、次数、首失败停止及旧数值门槛不作为当前执行规则。
 
 ## 9. F1 物理契约与支持边界
 
@@ -221,35 +223,18 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 ## 16. F3 工程修复与 M1 持续推进
 
-§15的一次 development 失败不是整体 M1退出；失败后诊断与有依据修复按 Governance §8执行。每个固定修复版本仍每域提炼一个候选，评分前冻结，当前development准入与独立promotion门槛唯一见m1-acceptance §1/§2；三独立promotion各三pair及review→消费→rollback不变。不对同一有效负面候选无变化追试，不从 promotion取材，不降低必需维度或门槛。
+执行与失败处理统一见 [Governance §8](../../../README.md#8-task-lifecycle)，最小相关本地验证与 API 限额见 §12 / §13.1。当前工程验证见 m1-acceptance §1 / §2。
 
-新增必需消费者核对：真实 F3比较提示和完整证据编码必须先使用同一协议通过当前主模型已固定正确/错误/unknown、反事实和顺序翻转控制，不能复用另一协议的F2校准作为证明。提炼输入须说明原可执行 slot；原Studio在prepare_review后停止，状态说明只能走已存在的公开assistant/plan槽位并区分当前事实与未来Review边界，不扩展停态writer。工程修复和待验证流程已提交推送；本次校准每域仅一个主模型控制通过即被530/524中断，没有新候选。原换机中断后的worker/mock接线现已补齐：两域各九对原worker隔离执行及两域审阅发布/下一消费/守卫回滚、消费失败回滚本地检查通过；mock不证明语义改善。新实际续接第二连接六次HTTP530/Tunnel1033，无新候选，真实独立验收/审阅发布/下一消费/回滚仍未完成。实际结果唯一记入同一Record最新节，M1仍按acceptance §1/§2。
+格式、上下文、transport、容量和测试材料问题沿现有消费者修复；调整后验证受影响部分。候选、校准、案例和复测次数由具体问题决定，不使用固定数量作为许可。评测记录实际协议/配置/来源，保留全部失败与费用，独立验收正文不输入候选开发。
 
-## 17. 2026-10-10 实测结论与有限来源更新提案
+提炼输入说明实际可执行槽位；Studio 的 prepare_review 与后续操作依原产品权限。测试需要更多上下文或更大的结果容量时修复测试消费路径，完整保存证据并核对相关发布/消费/回滚行为，不把产品存储常数套成 API 停测门槛。
 
-本节有限更新提案前的主模型结果：Project冻结候选九对独立promotion为五胜/四tie、六维非负，未达到六胜门槛；RP当时最新development为一胜/两tie、六维非负，未达到两胜门槛。未发布、未集成main。完整来源、费用和工程错误唯一记入同一Record；这些有效未达标结论不能因接线修复撤销。本轮新包实际结果见同一Record最新节。
+## 17. 来源更新与结果复用
 
-RP原F2主模型source assessment和本次比较均仅在三条baseline中的一条确认实际缺口，另两条六维met。这不证明全领域饱和，但不足以支持反复用同一包检验至少两胜。Project未读promotion正文，不能把其失败场景回灌提炼器。新版本应更新来源资格与独立材料，不能再试原冻结候选追分。
+旧来源包、试验版本、不利判断、未知费用与原始报告保留。来源资格不足时按实际问题准备或修正材料并验证相关消费者；不要求先得到两条 gap 才能继续工程工作，也不限制每域只能一个新候选或一轮。来源应有明确用途与预期行为，不能通过捏造基线缺陷、隐藏失败或挑选有利评分证明改善。
 
-用户随后明确选择“授权独立作者，推进新材料包”。以下有限范围已获授权，新的来源资格与实测尚未取得，不改八项产品决定或acceptance门槛：
+开发和独立验收材料按来源与派生关系隔离。独立材料准备者只接收公共契约，不接收候选或评分；开发侧只读 metadata/hash，评测执行侧读取正文。准备测试材料无需额外作者许可。
 
-| 项目 | 固定范围与证据要求 |
-| --- | --- |
-| 问题范围 | 仍为RP信息边界与Project关联修复/状态说明，不加入第二类领域问题、长期自动实验或新产品权限 |
-| development | 每域三条新版本来源；按原scope/role/版本/可完成性原生路径生成实际baseline并资格评估。提炼前核对至少两条确有可改善缺口；不足则记录source不足，不反复抽取直到凑足，不伪造负面baseline |
-| 独立来源 | 每域三条新的密封promotion来源，由不参与候选开发的独立作者准备。作者不接收旧候选、development输出或promotion评分；开发侧只读metadata/hash。新候选冻结后仅原worker读取正文 |
-| 候选与退出 | 每域一个新候选、三development；达标才三独立case各三次。primary-only、六维非负、至少两development胜/六promotion胜、原review→消费→rollback保持 |
-| 身份与控制 | 旧catalogue、来源、失败和账目保留历史。新split/provenance/case revision/生产者/配置/request pins先固定；exact已付费控制仅在协议/transport/费用身份相同才复用，变化的控制必须实测 |
-| 工程准备 | 发送前免费检查原scope容量、来源可完成性、密封隔离和完整证据消费。拒绝的完整报告保留私有产物，原有界journal保存failed及report hash；合格报告仍必须经原容量、binding及publication guard，不放宽guard来获得通过 |
-| 记录 | 全部请求、retry、不完整响应、unknown与不利结果保留；不声称human preference、价格/性能收益或跨领域效果 |
+测试 scope 和 caseSetRevision 用于记录实际输入与版本，不是审批凭据。协议、transport 或输入变化后重测受影响部分；未变且实际配置、权限检查和结果身份完整的基线/控制可复用，保留原 trial/request/charge 与生产者引用，不冒充新调用。
 
-已启动独立来源作者，隔离会话只接收公共领域/格式契约，不接收旧候选、development输出或promotion评分；开发侧只接收新metadata/hash。新来源字节与消费者检查通过后才固定scope并发送。本文不是暂停M1或交接；同一任务继续执行。
-
-当前消费者已显式注册新来源版本，旧默认catalogue与历史身份保留；新scope必须选定新caseSetRevision，baseline、development与promotion不得跨版本混用。新来源包先通过免费原生可完成性与原密封reader校验，再实际采集baseline；每域不足两条实际gap时不得提炼。
-
-私有工程promotion完整报告超过小报告边界时，可使用无损gzip归档保存于原journal，原始报告仍保留私有文件。归档同时固定完整report hash、解码字节数及原生stored-report hash，审阅前须完整解码并核对原报告和exact配置/目标。没有丢弃观察、改变评分或扩容；原publication绑定、4 MiB容量、下一消费及回滚守卫继续执行。归档origin不能取得生产自动准入。本地合成生命周期检查通过仅证明工程消费接线，实际语义与实测发布证据仍以同一Record为准。
-
-新来源的实际执行暴露契约错误或资格协议盲点时，保留旧来源版本/失败/评分，以有依据的修正版本继续同一有限材料包，不能把修正当作有效负面结果撤销或反复抽样凑分。来源修正只澄清实际产品字段；不改变预期权限/目标。仅输入、case、配置、原权限检查与收费身份都完全一致的已完成baseline可按逐case证据复用，保留原trial/request/charge和原生产者引用；有错误、缺权限检查、未收费或改过输入的trial禁止复用。新报告显式记录组合生产者与原baselineReuse，不能将复用试验说成重新发送。资格协议/transport改变后对应控制与语义观察必须重测，旧判分不覆盖；独立密封来源不参与这些修复。
-
-
-用户随后明确取消双模型准入；当前规则以[m1-acceptance §14](m1-acceptance.md#14-2026-10-09-当前主模型准入)为准，第二连接不可用不再阻止development/promotion。既有双模型数据和失败属于历史事实，不删除、不改分，也不创建第二份门槛。
+完整报告超出原测试存储容量时沿相关消费者解决，保留原报告、实际结果和费用。测试归档与发布绑定需可重建、核对；本地合成检查只证明工程接线，语义效果依据实际输出。

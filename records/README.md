@@ -14,7 +14,7 @@
 These files record what happened. Current work uses actual Git state and the relevant [Plan](../plans/README.md); user-requested interruption snapshots follow [Governance §7](../README.md#7-handoff). Historical phase instructions are not current rules.
 
 
-Records are permanent implementation history.
+Records are permanent implementation history. Historical quotas, claims, approval wording, stop instructions and test thresholds remain evidence only; current validation and API execution follow [Governance §12 / §13.1](../README.md#131-api-测试执行规则).
 
 Use task-ownership categories such as `feat/`, `fix/`, `refactor/`, `package/`, and `plugin/`.
 

@@ -95,7 +95,6 @@ Do not start the next formal phase in the same work round.
 - existing v1 opening/Eastbank regression fixtures still run to the extent their behavior is intentionally preserved;
 - no claim of 1k/10y Gate A yet unless Phase 2 compaction is already present (it should not be pulled forward merely to satisfy the gate).
 
-Stop after Phase 1.
 
 ### Phase 2 — History / Memory / Compaction Core
 
@@ -127,7 +126,6 @@ Stop after Phase 1.
 - early Century-Retrieval analogue;
 - evidence that active projection/raw retention is not simply linear with turn count.
 
-Stop after Phase 2.
 
 ### Phase 3 — Human Lifetime / Family / Institution Lifecycle
 
@@ -165,7 +163,6 @@ Stop after Phase 2.
 - leadership succession;
 - Save/Restore around birth/death/succession/reconstruction.
 
-Stop after Phase 3.
 
 ### Phase 4 — Renewable World Content
 
@@ -201,7 +198,6 @@ Stop after Phase 3.
 - later content legitimately reuses accumulated history;
 - semantic repetition audit shows no obvious template collapse.
 
-Stop after Phase 4.
 
 ### Phase 5 — Progression / Wealth / Delegation / Organization
 
@@ -237,7 +233,6 @@ Stop after Phase 4.
 - identity changes interact coherently with property/roles;
 - organization autonomy can diverge from founder direction.
 
-Stop after Phase 5.
 
 ### Phase 6 — Multi-Region / Era / Macro History
 
@@ -282,7 +277,6 @@ Stop after Phase 5.
   coverage), as specified in verification.md; optional 5k soak no longer blocks
   Phase 6. Preserve old saves, facts, permissions, budgets and real turn counting.
 
-Stop after Phase 6.
 
 ### Phase 7 — Player-Facing Long-Life Experience
 
@@ -347,7 +341,6 @@ system. Read completed Phase 5–6 schemas rather than guessing their fields.
 - update existing `frontend/DESIGN.md` and `runtime/FRONTEND.md` with implemented
   bindings, actual evidence and any measured deviations.
 
-Stop after Phase 7.
 
 ### Phase 8 — Century Integration / Stress / Release
 
