@@ -1599,3 +1599,11 @@ Responses新12项全部通过：实际Project loopback两次请求回传reasonin
 2026-10-11 source `47575e344`。Anthropic/Gemini 原 provider 接入 Responses 使用的同一个 Runtime checkpoint/lease authority，不另建 store。公有 response/preview 仅保留 private checkpoint 引用，原始 thinking/signature/parts 不进入公开 snapshot；实际发送从原私有 state 回传完整内容。路径/account/source/request/history-prefix/tools/output/policy及额外 target 指纹重验，完成后 discard，opaque Secret echo 被拒绝。API缺 direct usage/cache counter 时仍 absent/null；canonical upstream/hidden attempts unknown。
 
 shared lease 与原生迁移相关的 Responses/native matrix 63 项通过；随后新增 Native Host 两格式各7项（实际两轮消费、path/source/history/tools/forged、Secret）共14项通过。单次 lease 接入 Host 后发现原 retry 会重用 rendered，修复为相同冻结 snapshot 重新 lowering/新 lease，429 后实际两请求相同 wire 的2项定向检查通过。四产品文件 ESLint/diff 通过；日志分别为 m8-g04-private-native-initial、m8-g04-native-host、m8-g04-native-retry。新增检查全为隔离 loopback，不声称真实品牌服务或配置 gateway 验收；无新 API/费用/quota变化。继续原 RunControl/send 与 Project Task 的共享准入/记账及 gateway/G06，未写 HANDOFF，未集成 main。
+
+## M8 / G05 原发送 authority 共享记账 checkpoint
+
+2026-10-11 source `9599dad35`。首批明确上限和作用域见 compute-policy §3.1。原 Route 可选 computeBudget，旧配置不自动增加限制；沿原 Host/RunControl operation及Project Task锁/CAS准入与charged，合法usage settle，未知/partial按上界占用，原Package旧计数同mutation，不重复扣两筆发送。请求ID变化不重建父operation/Task allowance，内部发送ID不同。Core保留正文/Secret拒绝和不完整stream已取得的数值usage，只有计数进入原ledger；无新发送器或预算registry。数值未知与货币费用unknown边界保留。
+
+新增10个实际断言通过：Project并发2请求只有1真实发送且reopen不退款1项，合法total/拒绝body/Secret echo/partial4项，token上界耗尽无发送1项，不完整Anthropic stream保留input/output而total未知1项，实际发送后cancel保持unknown1项，FS+真实SQLite background失败/reopen/Save restore的单笔charge和identity保持2项。原Core35项中34项先通过；旧fallback测试错误要求不同failurePlan相等，明确检查automatic/disabled计划后其余完整snapshot/wire仍相等，定向1项通过。旧budget的not-due/previews、retries/reopen和period/restore6项通过。11相关产品文件ESLint/diff通过，无全仓测试。
+
+失败证据保留：初Project optional field按required validator添加导致旧Task创建失败，改为实际optional字段；随后内部ledger未进公有Task投影，补入计数投影，两次repaired日志保留。background初命令未设DB flags，FS/SQLite2项已通过，MySQL/Postgres仅ECONNREFUSED，标未验证；后续旧budget6项在明确禁用不可用远程DB后运行，不将连不上算通过，也未无理由重跑已过新断言。所有m8-g05日志保存在私有Document。API新增0，原M1/HM1 ledger/quota未变；继续规则Invocation、gateway/G06和HM2，完整G05/M8未验收。

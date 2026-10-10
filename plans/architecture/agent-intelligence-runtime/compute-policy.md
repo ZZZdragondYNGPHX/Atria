@@ -69,6 +69,16 @@ StorageEngine 的 SQL / FS 差异沿 M1 commit-last 与单 Host writer 边界设
 模型 token 上限不等于金额硬上限。没有可信价格 / gateway charge cap 时只能保障可执行的请求 / token 额度，金额标 estimated；要求金额硬上限的 policy 无法获得保守上界就不准入。
 本地模型也计调用、延迟、内存 / 设备负载与可取得的功耗证据；没有能力或设备就使用允许的替代路径或报告 unavailable，不自动下载模型。
 
+### 3.1 G05 首批发送准入矩阵
+
+2026-10-11 source `9599dad35`，有限 checkpoint，尚非完整 G05/G06 验收。原 RuntimeRoute.executionPolicy 可选 computeBudget `{maxRequests,maxTokens}`：请求上限1–32，token上限为正安全整数，均明确来自用户配置。无字段的旧 Route 不增加默认额度/费用限制。这个首批额度的父作用域是原 Session RunControl operation 或原 Project Task；M1 Evolution owner 的不同用途额度保持原 authority，不挪用。本 checkpoint 未新增账户总额、金额硬上限或所有 CPU/media 子额度。
+
+Host 沿原发送边界，从冻结 Snapshot 的 prepared input count + reserved output 固定估计上界，Secret/编译/preview/不准入阶段不创建 send attempt；明确拒绝上界时 attempts 为空。原 RunControl lock/Project Task CAS 在发出前将准入及 charge 合为一次 durable mutation，内部 attempt ID 唯一。既有 Package generationBudget 同一次 mutation 增加原计数与 compute evidence，不双计收费事件。retry、fallback和当前工具续接仍各占真实发送；相同 operation/Task 的新 request ID 不重建父额度，已保存额度只能收紧，Route 回退不恢复余额。
+
+原 operation/Task 的可选 compute ledger 仅保留请求/目标指纹、上界、charged/settled/unknown、有限直接数值 usage。合法 totalTokens 可 settle；仅 input/output 或缺 usage 时保留部分计数并按上界占用，reasoning/cache 子集不重复相加。合法数值已取得后，正文/schema/Secret/stream 完整性失败也保留计数，不保存被拒正文或opaque状态。取消/崩溃且无法确定总计保持占用，不自动退款。reopen及原 background Save restore 保留原 identity/余额；这些实际断言不扩大为所有 Session fork/跨账户预算保证。
+
+该阶段只是共享发送成本语义。纯规则 Invocation、retrieval/validation CPU 和后台消费者继续接入；货币价格、canonical upstream、隐藏网关 retries 未知仍 unknown，估计 token admission 不证明金额硬上限或真实加速。
+
 ## 4. Scheduler 与故障边界
 
 继续使用 `turn_blocking / interactive / background / maintenance`；共享 owner resource permits 与公平调度。
