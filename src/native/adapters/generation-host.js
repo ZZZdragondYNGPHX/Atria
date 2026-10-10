@@ -852,6 +852,8 @@ export class NativeGenerationHost {
                             if (projectTaskEvidence && (await this.agent.getContext(handle, input.projectId, input.taskId)).task.executionFingerprint !== projectTaskEvidence.ref.slice(-64)) {
                                 throw new GenerationError('native_generation_task_stopped');
                             }
+                            await provider.assertRequestCurrent?.(rendered);
+                            checkCancellation(boundary.signal);
                             const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
                             const compute = limits || input.sessionId || input.taskId ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
                                 targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;

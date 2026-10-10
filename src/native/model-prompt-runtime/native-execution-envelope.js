@@ -118,10 +118,13 @@ export function leaseNativeRequest(request) {
     return immutable({ endpoint: request.endpoint, body: request.publicBody, binding: request.binding,
         wireFingerprint: wireHash(request.wire), leaseId });
 }
-export function consumeNativeRequest(rendered, lower) {
-    const lease = leases.get(rendered.leaseId); leases.delete(rendered.leaseId);
+export function inspectNativeRequest(rendered, lower) {
+    const lease = leases.get(rendered.leaseId);
     if (!lease || lease.expiresAt <= Date.now()) denied();
     const request = lower(lease.request);
     if (wireHash(request.wire) !== rendered.wireFingerprint || request.endpoint !== rendered.endpoint) denied();
     return request;
+}
+export function consumeNativeRequest(rendered, lower) {
+    try { return inspectNativeRequest(rendered, lower); } finally { leases.delete(rendered.leaseId); }
 }

@@ -1,7 +1,7 @@
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { serializeNativeDocument } from '../repositories/common.js';
-import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes } from '../model-prompt-runtime/native-execution-envelope.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes } from '../model-prompt-runtime/native-execution-envelope.js';
 import { observedGenerationUsage } from './generation-usage.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
@@ -90,6 +90,11 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         },
         async renderRequest({ resolved, snapshot }) {
             return leaseNativeRequest(lower(await hydrate({ resolved, snapshot })));
+        },
+        async assertRequestCurrent(rendered) {
+            const request = inspectNativeRequest(rendered, lower);
+            await hydrate(request);
+            if (lower(request).wire !== request.wire) throw new GenerationError('generation_continuation_unavailable');
         },
         async send(rendered, { secret, signal }) {
             // Recheck private storage after Secret resolution, immediately before HTTP.

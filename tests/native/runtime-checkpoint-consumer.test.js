@@ -119,6 +119,7 @@ test.each(['deleted_before_send', 'task_changed_then_restored', 'secret_echo', '
         await expect(host.execute(f.h.handle, next)).rejects.toMatchObject({ code: change === 'secret_echo' ? 'generation_response_contains_secret' : 'generation_continuation_unavailable' });
         expect(f.wires).toHaveLength(['secret_echo', 'storage_write_failure'].includes(change) ? 2 : 1);
         expect(await f.rows()).toHaveLength(0);
+        if (change === 'deleted_before_send') expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.attempts).toHaveLength(1);
     } finally { await f.cleanup(); }
 });
 test.each(['task', 'adaptive'])('Runtime %s unverified actual path still denies before provider HTTP', async mode => {
@@ -199,6 +200,7 @@ test('Runtime task same-millisecond configuration ABA advances original Native r
         });
         await expect(f.newHost().execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
         expect(f.wires).toHaveLength(0); expect(await f.rows()).toHaveLength(0);
+        expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute?.attempts || []).toHaveLength(0);
     } finally { clock?.mockRestore(); await f.cleanup(); }
 });
 test.each(harnesses)('Runtime task %s same-millisecond route delete/recreate cannot restore an in-flight configuration authority', async (_name, make) => {
@@ -216,6 +218,7 @@ test.each(harnesses)('Runtime task %s same-millisecond route delete/recreate can
         });
         await expect(f.newHost().execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
         expect(f.wires).toHaveLength(0); expect(await f.rows()).toHaveLength(0);
+        expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute?.attempts || []).toHaveLength(0);
     } finally { clock?.mockRestore(); await f.cleanup(); }
 });
 test.each(['restore', 'edited_history', 'task_authority_aba'])('Runtime task actual Studio restart %s uses only current saved public Task history', async change => {
