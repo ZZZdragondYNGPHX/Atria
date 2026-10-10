@@ -10,6 +10,15 @@ let queued = 0;
 const MAX_BYTES = 16777216;
 const indexIdentity = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
 const unavailable = () => Object.assign(new Error('Bounded Native index work unavailable'), { code: 'native_retrieval_compute_unavailable' });
+function indexValues(doc) {
+    if (!Array.isArray(doc?.items) || doc.items.length > 10000 || doc.metadata_config?.indexed?.length) throw unavailable();
+    let values = 0;
+    for (const item of doc.items) {
+        if (item?.metadataFile || !Array.isArray(item?.vector) || !item.vector.length || item.vector.length > 65536
+            || (values += item.vector.length) > 1048576 || item.vector.some(n => !Number.isFinite(n)) || !Number.isFinite(item.norm)) throw unavailable();
+    }
+    return values;
+}
 async function cleanStage(stage, indexPath) {
     if (path.dirname(path.resolve(stage)) !== path.dirname(path.resolve(indexPath)) || !path.basename(stage).startsWith('.atri-index-work-')) throw unavailable();
     await fs.rm(stage, { recursive: true, force: true });
@@ -65,11 +74,7 @@ export async function queryNativeIndexes({ indexes, query, vector, topK, thresho
                 if (!stat) continue;
                 if ((bytes += stat.size) > MAX_BYTES) throw unavailable();
                 const raw = await fs.readFile(file), doc = JSON.parse(raw.toString('utf8'));
-                if (!Array.isArray(doc.items) || (count += doc.items.length) > 10000 || doc.metadata_config?.indexed?.length || raw.length > stat.size) throw unavailable();
-                for (const item of doc.items) {
-                    if (item.metadataFile || !Array.isArray(item.vector) || !item.vector.length || item.vector.length > 65536
-                        || (values += item.vector.length) > 1048576 || item.vector.some(n => !Number.isFinite(n)) || !Number.isFinite(item.norm)) throw unavailable();
-                }
+                if ((values += indexValues(doc)) > 1048576 || (count += doc.items.length) > 10000 || raw.length > stat.size) throw unavailable();
                 stores.push({ ...row, ...(listing ? { doc } : { store: new vectra.LocalIndex(row.indexPath) }) });
             }
             // Existing empty indexes also have no candidates. No provider
@@ -121,20 +126,28 @@ export async function queryNativeIndexes({ indexes, query, vector, topK, thresho
     }
 }
 
-export async function insertNativeIndex({ indexPath, items, getVectors, compute, signal }) {
-    if (!items.length) return { insertedCount: 0, vectorDim: null };
-    if (items.length > 10000 || items.some(item => typeof item.text !== 'string' || !item.text)) throw unavailable();
-    const inputBytes = Buffer.byteLength(JSON.stringify(items), 'utf8');
+export async function insertNativeIndex({ indexPath, items, getVectors, compute, signal, deleteHashes }) {
+    const deleting = deleteHashes !== undefined;
+    if (deleting && (!Array.isArray(deleteHashes) || deleteHashes.length > 10000 || deleteHashes.some(n => !Number.isFinite(n)))) throw unavailable();
+    const hashes = deleting ? Object.freeze([...deleteHashes]) : null;
+    if (deleting ? !hashes.length : !items.length) return deleting ? { deletedCount: 0 } : { insertedCount: 0, vectorDim: null };
+    if (!deleting && (items.length > 10000 || items.some(item => typeof item.text !== 'string' || !item.text))) throw unavailable();
+    const inputBytes = Buffer.byteLength(JSON.stringify(deleting ? hashes : items), 'utf8');
     if (inputBytes > MAX_BYTES) throw unavailable();
     return withNativeIndexWrite(indexPath, signal, async () => {
         const started = performance.now(), cpu = process.cpuUsage();
         let ticket, stage, store, outcome = 'failed';
         try {
-            ticket = await compute?.beforeLocalWork({ items: items.length, inputBytes, indexPath });
+            ticket = await compute?.beforeLocalWork({ items: deleting ? hashes.length : items.length, inputBytes, indexPath,
+                kind: deleting ? 'index_delete' : 'index_insert' });
             signal?.throwIfAborted();
             const indexFile = path.join(indexPath, 'index.json');
             const existing = await fs.stat(indexFile).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
             if (existing && existing.size > MAX_BYTES) throw unavailable();
+            if (deleting && !existing) {
+                if (compute) await compute.publishLocalIndex(() => { signal?.throwIfAborted(); });
+                outcome = 'completed'; return { deletedCount: 0 };
+            }
             const parent = path.dirname(indexPath);
             await fs.mkdir(parent, { recursive: true });
             stage = await fs.mkdtemp(path.join(parent, '.atri-index-work-'));
@@ -145,17 +158,21 @@ export async function insertNativeIndex({ indexPath, items, getVectors, compute,
                 // Native indexes use full in-file metadata. Reject an unknown
                 // multi-file format instead of publishing missing sidecars.
                 if (original.length > MAX_BYTES || doc.metadata_config?.indexed?.length || doc.items?.some(item => item.metadataFile)) throw unavailable();
+                if (deleting) indexValues(doc);
                 await fs.writeFile(path.join(stage, 'index.json'), original);
             } else await store.createIndex();
             await store.beginUpdate();
-            const vectors = await getVectors();
+            let vectors, removed = [];
+            if (deleting) removed = await store.listItemsByMetadata({ hash: { '$in': hashes } });
+            else vectors = await getVectors();
             signal?.throwIfAborted();
             let values = 0;
-            if (!Array.isArray(vectors) || vectors.length !== items.length) throw unavailable();
-            for (const vector of vectors) {
+            if (!deleting && (!Array.isArray(vectors) || vectors.length !== items.length)) throw unavailable();
+            for (const vector of vectors ?? []) {
                 if (!Array.isArray(vector) || !vector.length || vector.length > 65536 || (values += vector.length) > 1048576 || vector.some(n => !Number.isFinite(n))) throw unavailable();
             }
-            for (let i = 0; i < items.length; i++) {
+            for (const item of removed) { signal?.throwIfAborted(); await store.deleteItem(item.id); }
+            for (let i = 0; !deleting && i < items.length; i++) {
                 signal?.throwIfAborted();
                 const item = items[i];
                 await store.upsertItem({ vector: vectors[i], metadata: { hash: item.hash, text: item.text, index: item.index, ...(item.metadata || {}) } });
@@ -175,7 +192,7 @@ export async function insertNativeIndex({ indexPath, items, getVectors, compute,
             if (compute) await compute.publishLocalIndex(publish);
             else publish();
             outcome = 'completed';
-            return { insertedCount: items.length, vectorDim: Array.isArray(vectors[0]) ? vectors[0].length : null };
+            return deleting ? { deletedCount: removed.length } : { insertedCount: items.length, vectorDim: Array.isArray(vectors[0]) ? vectors[0].length : null };
         } catch (error) {
             if (signal?.aborted) outcome = 'cancelled';
             throw error;

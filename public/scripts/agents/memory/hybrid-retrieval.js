@@ -363,7 +363,10 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
                     guard();
                     const hashes = await callService('listHashes', { collectionId: retired, profile, signal,
                         ...(computeContext ? { computeContext } : {}) }); guard();
-                    if (hashes.length) { await callService('deleteByHashes', { collectionId: retired, profile, hashes, signal }); guard(); }
+                    if (hashes.length) {
+                        await callService('deleteByHashes', { collectionId: retired, profile, hashes, signal,
+                            ...(computeContext ? { computeContext } : {}) }); guard();
+                    }
                 }
             }
             const items = [];
@@ -406,7 +409,10 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
                 ...(computeContext ? { computeContext } : {}) })).map(Number));
             guard();
             const hashes = [...remote].filter(hash => rebuildVectors || !desired.has(hash));
-            if (hashes.length) { await callService('deleteByHashes', { collectionId, profile, hashes, signal }); guard(); }
+            if (hashes.length) {
+                await callService('deleteByHashes', { collectionId, profile, hashes, signal,
+                    ...(computeContext ? { computeContext } : {}) }); guard();
+            }
             const missing = items.filter(item => rebuildVectors || !remote.has(item.hash));
             for (let start = 0; start < missing.length; start += 64) {
                 await callService('insert', { collectionId, profile, items: missing.slice(start, start + 64), signal,

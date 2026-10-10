@@ -675,13 +675,12 @@ router.post('/delete', async (req, res) => {
         }
 
         const collectionId = String(req.body.collectionId);
-        const hashes = req.body.hashes.map(x => Number(x));
         const source = String(req.body.source) || 'transformers';
         const sourceSettings = getSourceSettings(source, req);
 
-        if (req.nativeRetrieval) await withNativeIndexWrite(getIndexPath(req.user.directories, collectionId, source, sourceSettings), req.nativeRetrieval.signal,
-            () => deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, hashes));
-        else await deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, hashes);
+        if (req.nativeRetrieval) await insertNativeIndex({ indexPath: getIndexPath(req.user.directories, collectionId, source, sourceSettings),
+            deleteHashes: req.body.hashes, compute: req.nativeRetrieval.compute, signal: req.nativeRetrieval.signal });
+        else await deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, req.body.hashes.map(x => Number(x)));
         return res.sendStatus(200);
     } catch (error) {
         return regenerateCorruptedIndexErrorHandler(req, res, error);

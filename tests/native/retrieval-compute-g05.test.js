@@ -69,6 +69,111 @@ async function embeddingBody(f, items = [{ hash: 1, text: 'Current legal evidenc
 const localLimits = { maxJobs: 3, maxItems: 5, maxInputBytes: 4096 };
 const indexFile = (f, body) => path.join(f.dirs.vectors, 'atri-retrieval', body.collectionId, body.nativeRetrievalRef.retrievalProfileId + '_' + body.nativeRetrievalRef.revision, 'index.json');
 const readCompute = async f => Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId))?.operations ?? {}).find(row => row.compute)?.compute;
+test.each([['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]])('G05 local delete %s shares original allowance and retains limits through recovery', async (_kind, make) => {
+    const f = await fixture(make, 2, { ...localLimits, maxJobs: 3 });
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send(body).expect(200);
+        const args = { nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext };
+        await f.request.post('/list').send(args).expect(200);
+        await f.request.post('/delete').send({ ...args, hashes: [1] }).expect(200);
+        expect((await f.request.post('/list').send({ ...args, computeContext: undefined }).expect(200)).body).toEqual([]);
+        const ledger = await readCompute(f); expect(ledger.localWork.map(row => row.kind)).toEqual(['index_insert', 'index_list', 'index_delete']);
+        expect(ledger.localWork[2].usage.outcome).toBe('completed'); expect(ledger.attempts).toHaveLength(1); expect(f.seen).toHaveLength(1);
+        const route = f.routes.find(row => row.role === 'role.narrator');
+        await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId] } });
+        const backupPath = await snapshotUser({ handle: f.handle, userRoot: f.dirs.root, backupRoot: f.backupRoot, engine: f.engine });
+        await restoreFromSnapshot({ handle: f.handle, userRoot: f.dirs.root, backupPath, engine: f.engine }); await f.engine.close();
+        f.core.runs = new RunControl(new SessionRepo({ engine: f.engine }));
+        await f.request.post('/delete').send({ ...args, hashes: [2] }).expect(429);
+        expect(await readCompute(f)).toEqual(ledger); expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+test.each(['cancel', 'task_change', 'head_change', 'delete_failure', 'rename_failure'])('G05 local delete %s preserves original index bytes and settles actual work', async scenario => {
+    const f = await fixture(makeTempFsEngine, 2, localLimits), controller = new AbortController(); let spy;
+    try {
+        const body = await embeddingBody(f, [1, 2].map(hash => ({ hash, text: 'Evidence ' + hash, index: hash })));
+        await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200); const saved = await fs.readFile(indexFile(f, body));
+        const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+        const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Delete derived hashes', baseRevision: project.revision.revision });
+        const context = scenario === 'head_change' ? body.computeContext : { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+        const compute = await prepareRetrievalCompute({ ...f, context, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        const original = vectra.LocalIndex.prototype.deleteItem; let removed = 0;
+        if (scenario === 'rename_failure') {
+            const rename = fsSync.renameSync;
+            spy = jest.spyOn(fsSync, 'renameSync').mockImplementation((from, to) => {
+                if (to === indexFile(f, body)) throw new Error('Synthetic atomic publication failure'); return rename(from, to);
+            });
+        } else spy = jest.spyOn(vectra.LocalIndex.prototype, 'deleteItem').mockImplementation(async function (...args) {
+            await original.apply(this, args);
+            if (++removed === 1) {
+                if (scenario === 'cancel') controller.abort();
+                else if (scenario === 'task_change') await f.agent.setPlan(f.handle, context.projectId, context.taskId, { summary: 'Changed deletion', steps: [{ id: 'read', title: 'Read', impact: 'low' }] });
+                else if (scenario === 'head_change') await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'New HEAD during deletion' });
+                else throw new Error('Synthetic partial deletion failure');
+            }
+        });
+        await expect(insertNativeIndex({ indexPath: path.dirname(indexFile(f, body)), deleteHashes: [1, 2], compute, signal: controller.signal })).rejects.toThrow();
+        expect((await fs.readFile(indexFile(f, body))).equals(saved)).toBe(true); expect(f.seen).toHaveLength(1);
+        if (scenario === 'head_change') expect((await f.core.runs.status(f.handle, f.base.session.sessionId)).retiredCompute).toMatchObject({ localJobs: 1, localFailedJobs: 1 });
+        else {
+            const ledger = (await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute;
+            expect(ledger.attempts).toEqual([]); expect(ledger.localWork[0]).toMatchObject({ kind: 'index_delete', status: 'settled', usage: { outcome: scenario === 'cancel' ? 'cancelled' : 'failed' } });
+        }
+        expect((await fs.readdir(path.dirname(path.dirname(indexFile(f, body))))).filter(name => name.startsWith('.atri-index-work-'))).toEqual([]);
+    } finally { spy?.mockRestore(); await f.cleanup(); }
+});
+test('G05 local delete empty input does no work; missing index is observed without creating a file; bad hashes reject before admission', async () => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits);
+    try {
+        const body = await embeddingBody(f), args = { nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext };
+        await f.request.post('/delete').send({ ...args, hashes: [] }).expect(200); expect(await readCompute(f)).toBeUndefined();
+        for (const hashes of [[null], ['1'], Array(10001).fill(1)]) await f.request.post('/delete').send({ ...args, hashes }).expect(503);
+        expect(await readCompute(f)).toBeUndefined();
+        await f.request.post('/delete').send({ ...args, hashes: [1] }).expect(200);
+        expect((await readCompute(f)).localWork[0]).toMatchObject({ kind: 'index_delete', usage: { outcome: 'completed' } });
+        await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' }); expect(f.seen).toHaveLength(0);
+    } finally { await f.cleanup(); }
+});
+test.each(['corrupt', 'sidecar'])('G05 local delete %s index refuses while retaining bytes and costs', async scenario => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits);
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        if (scenario === 'corrupt') await fs.writeFile(indexFile(f, body), '{broken');
+        else {
+            const doc = JSON.parse((await fs.readFile(indexFile(f, body))).toString()); doc.items[0].metadataFile = 'unknown.json';
+            await fs.writeFile(indexFile(f, body), JSON.stringify(doc));
+        }
+        const saved = await fs.readFile(indexFile(f, body));
+        await f.request.post('/delete').send({ nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext, hashes: [1] }).expect(scenario === 'corrupt' ? 500 : 503);
+        expect((await fs.readFile(indexFile(f, body))).equals(saved)).toBe(true); expect((await readCompute(f)).localWork[0].usage.outcome).toBe('failed'); expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+test('G05 local delete queued hashes freeze and cancelled waiters do not start work', async () => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits), controller = new AbortController(); let release;
+    try {
+        const body = await embeddingBody(f, [1, 2].map(hash => ({ hash, text: 'Evidence ' + hash, index: hash })));
+        await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const compute = await prepareRetrievalCompute({ ...f, context: body.computeContext, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        const indexPath = path.dirname(indexFile(f, body)); let entered;
+        const ready = new Promise(resolve => { entered = resolve; }), waiting = new Promise(resolve => { release = resolve; });
+        const blocker = withNativeIndexWrite(indexPath, undefined, async () => { entered(); await waiting; }); await ready;
+        const hashes = [1], valid = insertNativeIndex({ indexPath, deleteHashes: hashes, compute });
+        const cancelled = insertNativeIndex({ indexPath, deleteHashes: [2], compute, signal: controller.signal });
+        const rejected = expect(cancelled).rejects.toThrow(); hashes[0] = 2; controller.abort();
+        expect(await readCompute(f)).toBeUndefined(); release(); await blocker; await rejected; await valid;
+        const doc = JSON.parse((await fs.readFile(indexFile(f, body))).toString()); expect(doc.items.map(row => row.metadata.hash)).toEqual([2]);
+        expect((await readCompute(f)).localWork).toHaveLength(1); expect(f.seen).toHaveLength(1);
+    } finally { release?.(); await f.cleanup(); }
+});
+test('G05 local delete readonly rejects before any job while retaining index bytes', async () => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits);
+    try {
+        const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const saved = await fs.readFile(indexFile(f, body)); setReadOnly(true);
+        await f.request.post('/delete').send({ nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext, hashes: [1] }).expect(503);
+        expect((await fs.readFile(indexFile(f, body))).equals(saved)).toBe(true); expect(await readCompute(f)).toBeUndefined(); expect(f.seen).toHaveLength(1);
+    } finally { setReadOnly(false); await f.cleanup(); }
+});
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
     test(`G05 local list ${kind} concurrent reads share insert allowance and preserve limits through recovery`, async () => {
         const f = await fixture(make, 2, { ...localLimits, maxJobs: 2 });
@@ -840,6 +945,38 @@ test.each([3, 1])('G05 local list actual Memory consumer forwards its original a
         const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
         expect(ledger.attempts.map(row => row.status)).toEqual(jobs === 3 ? ['settled', 'settled'] : []);
         expect(ledger.localWork.map(row => row.kind)).toEqual(jobs === 3 ? ['index_list', 'index_insert', 'index_query'] : ['index_list']);
+    } finally { globalThis.fetch = previousFetch; globalThis.Atria = previousAtria; await f.cleanup(); }
+});
+test('G05 local delete actual Hybrid delta forwards computeContext and removes only stale derived hashes', async () => {
+    jest.unstable_mockModule('../../public/script.js', () => ({ getRequestHeaders: () => ({}) }));
+    const { NativeRetrievalService } = await import('../../public/scripts/native/retrieval-client.js');
+    const f = await fixture(makeTempFsEngine, 4, { maxJobs: 7, maxItems: 64, maxInputBytes: 65536 });
+    const previousFetch = globalThis.fetch, previousAtria = globalThis.Atria, calls = [];
+    Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
+    try {
+        const body = await embeddingBody(f); globalThis.Atria = { getContext: () => ({ getRequestHeaders: () => ({}) }) };
+        globalThis.fetch = async (url, options) => {
+            if (url.endsWith('/retrieval')) return { ok: true, json: async () => f.store.list(f.handle) };
+            const payload = JSON.parse(options.body); calls.push({ url, payload });
+            const result = await f.request.post(url.replace('/api/vector', '')).send(payload);
+            return { ok: result.status < 400, headers: new Headers({ 'content-type': 'application/json' }), json: async () => result.body };
+        };
+        const chat = [{ memory_os_source_id: 'source-a', mes: 'Alice lives by the harbor.' }], state = emptyProvenance(); state.scopeId = 'chat';
+        const snapshot = { state, chat, key: state.scopeId, assertCurrent: jest.fn() };
+        const options = { service: NativeRetrievalService, profile: { nativeRetrievalRef: body.nativeRetrievalRef, source: 'native', model: 'exact-fixture' },
+            countTokens: async text => text.length, computeContext: body.computeContext };
+        captureEpisodes(state, chat, [0], state.scopeId);
+        expect((await retrieveMemory(snapshot, 'Alice', options)).diagnostics).not.toContain('vector_unavailable');
+        const initialHash = calls.find(row => row.url.endsWith('/insert')).payload.items[0].hash;
+        chat[0].mes = 'Alice now lives in the mountains.'; captureEpisodes(state, chat, [0], state.scopeId);
+        const result = await retrieveMemory(snapshot, 'Alice', options);
+        expect(result.diagnostics).not.toContain('vector_unavailable'); expect(result.sourceMessageIds).toEqual(['source-a']);
+        const deleted = calls.filter(row => row.url.endsWith('/delete'));
+        expect(deleted).toHaveLength(1); expect(deleted[0].payload).toMatchObject({ computeContext: body.computeContext, hashes: [initialHash] });
+        const ledger = await readCompute(f);
+        expect(ledger.localWork.map(row => row.kind)).toEqual(['index_list', 'index_insert', 'index_query', 'index_list', 'index_delete', 'index_insert', 'index_query']);
+        expect(ledger.attempts).toHaveLength(4); expect(f.seen).toHaveLength(4);
+        expect(chat[0].mes).toBe('Alice now lives in the mountains.'); expect((await f.core.load(f.handle, f.base.session.sessionId)).timeline).toEqual(f.base.timeline);
     } finally { globalThis.fetch = previousFetch; globalThis.Atria = previousAtria; await f.cleanup(); }
 });
 
