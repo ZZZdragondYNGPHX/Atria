@@ -1755,3 +1755,15 @@ m8-g06-project-tool-contract-audit-v1为零API核对，原live-v2 request/normal
 不改原paid输出/grade/费用/quality=false，不把“canonical工具”改判为当时请求合法，不宣称纠正request会完成review或新鲜正文；该audit只解释具体输入不一致并收窄原矩阵对完整Studio工具消费者/工具收益的证据边界。当前core tools始终来自原Task权威，未为私有fixture改产品prompt或发新API。该零API组结束。
 
 下一可独立H4根因是在只读读取已经观察到ledger更改/删除/不可用后，旧private currentness token是否被撤销；现有transaction只在可写路径刷新cache token，只读路径原样返回旧token。先定向复现再复用原token/cache修复，不新增authority/持久写入；同时核验冷启动只读实际完整ledger的合法proof，不把缺失ledger当有效复用。正文质量失败及main均不变，无HANDOFF。
+
+### H4 只读 ledger 观察撤销原 currentness proof
+
+source `5fa2f7dc9`。先实测5新反例均失败：另一正式writer持久改ledger、ledger删除、read ok=false、未知version后，原只读快照仍assertCurrent成功；冷启动完整ledger只读也未建立原proof。复用SourceLifecycle原private cache/token修复：只读合法raw读取即同步替换/撤销旧身份，只有已存储的完整normalized ledger可成为token；缺失、不可用、transport rejection、未知version撤销。reconciliation只撤旧token，cache仍保存其raw ledger，不发布未持久projection，原snapshot输出clone/freeze及WeakMap证明规则不变；source/provider改变被只读观察后，同字节恢复也不复活旧token。无新authority、epoch/缓存账本、source writer或持久副作用。
+
+补一个具体边界初测也FAIL：raw replacement已返回，但后续provider projection抛错前旧proof仍活。将raw观察处的token撤销前移到provider读取/任何awaited projection之前，并在同步source/provider reconciliation观察改变后先撤旧token；单项后测及受影响group通过。撤销不以projection成功为条件，恢复原ledger字节仍须新身份；不宣称未被任何读/源事件观察到的外部修改会同步自动发现。
+
+9新distinct本地checks通过：other writer、删除、unavailable/unknown-version/transport三项、source临时编辑/恢复且unpersisted reconciliation无proof、raw replacement→provider失败→restore、冷启动完整ledgerreadonly有效corpus/hash reuse、实际warm retrieval在观察外部writer后guard拒绝且service IO0/新proof重建。另5受影响旧checks通过：queued receipt不能借后写token、unchanged/observed ABA、readonly private write/source edit、readonly无持久/访问写、Native Actor/Branch/grant隔离。初五fail、projection fail以及各修复pass logs均保留；重复相关checks不计新增，首ESLint brace-style失败仅改格式后product ESLint/diff通过。
+
+冷启动20document有限fixture证据：首次dependency_not_cached、后续valid_hit/hashReused20/documentsHashed0，文本及完整evidence相同，insert一次、access/persistence writes0；外部writer后旧warm请求在vector/service之前Abort，新proofmiss/hash20。它是实际读链的工作量和正确性，不是新的latency/Embedding/费用收益；此前100/1000/10000数值只归其原producer，未重复基准。缺失ledger的Native只读重建仍无派生reuse proof，原长Memory消费者不据此宣称全部可缓存。
+
+该有限H4组结束、外部API0，M1/HM1/payed原报告与正文completion失败保持，完整G06/HM2仍未验收、main不变、无HANDOFF。后续仍沿正式G06质量与收益出口核对可独立缺口，不因本组cache正确性推定自由正文已通过。
