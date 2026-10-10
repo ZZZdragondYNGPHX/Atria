@@ -8,6 +8,15 @@ import { hash } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
 
 const completion = (name, args, id) => ({ id, type: 'function', function: { name, arguments: JSON.stringify(args) } });
+
+test('oversized development keeps its full evidence for the separate promotion phase', () => {
+    const report = { origin: 'm1_f3_development', observations: 'complete synthetic development evidence '.repeat(40000) };
+    const stored = f3ReportForStorage(report);
+    expect(stored.origin).toBe('m1_f3_lossless_archive');
+    expect(stored.reportHash).toBe(hash(report));
+    expect(readF3StoredReport(stored)).toEqual(report);
+    expect(() => readF3StoredReport({ ...stored, reportHash: hash('changed') })).toThrow('f3_report_archive_changed');
+});
 class ImmediateSyntheticRepository extends AgentEvolutionRepository {
     async reserve(handle, attempt) {
         // Synthetic comparison reserves many receipts without actual sends.

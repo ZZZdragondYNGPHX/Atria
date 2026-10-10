@@ -6,7 +6,7 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseBlindGrade } from './m1-acceptance.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
-import { finishF3Promotion } from './m1-f3-promotion.js';
+import { finishF3Promotion, continueF3Promotion, f3ReportForStorage } from './m1-f3-promotion.js';
 import { f2SourceEvidence, f2SourceMessages, parseF2SourceAssessment, reusableF2Calibration, f2JudgeTransport, f2SourceTransport } from './m1-f2.js';
 
 const profileFor = domain => domain === 'rp' ? 'rp.m1.information' : 'project.m1.related';
@@ -386,6 +386,8 @@ export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryC
 }
 
 export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal, calibrationResume = [], sealedDirectory = null, priorDevelopment = null }) {
+    if (scope.separatePromotionJob !== undefined && (typeof scope.separatePromotionJob !== 'boolean'
+        || scope.separatePromotionJob && scope.judgeMode !== 'primary_only')) throw new Error('f3_phase_configuration_changed');
     const domain = kind === 'rp-skill' ? 'rp' : 'project', profileId = profileFor(domain);
     entry.judgeMode = scope.judgeMode || 'dual';
     const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
@@ -457,12 +459,22 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
     entry.status = 'f3_development_observed'; entry.lifecycle = { performedThisRun: false };
     const decision = promotionDecision(report);
     await f.repository.mutate(f.h.handle, f.scope, f.subject, d => {
-        const j = d.jobs.find(j => j.id === job.id); j.status = 'awaiting_review'; j.candidates[0].report = report; j.candidates[0].decision = decision;
+        const j = d.jobs.find(j => j.id === job.id); j.status = 'awaiting_review';
+        j.candidates[0].report = scope.separatePromotionJob ? f3ReportForStorage(report) : report; j.candidates[0].decision = decision;
     });
     const final = await f.repository.get(f.h.handle, f.scope, f.subject), finalJob = final.jobs.find(j => j.id === job.id);
     store(kind + '-job.json', { doc: final, job: finalJob, candidate: finalJob.candidates[0] });
     if (entry.developmentReadiness.accepted) {
         if (!sealedDirectory) throw new Error('f3_promotion_sources_unavailable');
+        if (scope.separatePromotionJob) {
+            // Keep development and its original receipts intact. Evaluate the
+            // same frozen candidate under a new native promotion job identity.
+            const result = { doc: final, job: finalJob, candidate: finalJob.candidates[0] };
+            store(kind + '-f3-development-job.json', result);
+            await continueF3Promotion({ f, kind, result, source, scope: { ...scope, frozenCandidateHash: entry.candidateValueHash },
+                entry, store, signal, ledger, sealedDirectory, primaryConfig });
+            return;
+        }
         await finishF3Promotion({ f, kind, job: paidJob, candidate, primaryConfig, secondaryConfig, baselineSettings, settings, config,
             scope, entry, store, signal, fresh, sealedDirectory, developmentReport: report });
     }

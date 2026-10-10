@@ -177,7 +177,7 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
 export function f3ReportForStorage(report) {
     const bytes = Buffer.from(JSON.stringify(report));
     if (bytes.length <= 1024 * 1024) return report;
-    if (report.origin !== 'm1_f3_promotion' || bytes.length > 128 * 1024 * 1024) throw new Error('f3_report_archive_changed');
+    if (!['m1_f3_promotion', 'm1_f3_development'].includes(report.origin) || bytes.length > 128 * 1024 * 1024) throw new Error('f3_report_archive_changed');
     const stored = { origin: 'm1_f3_lossless_archive', schemaVersion: 1, encoding: 'gzip-base64',
         reportHash: hash(report), decodedBytes: bytes.length, payload: gzipSync(bytes).toString('base64') };
     if (hash(readF3StoredReport(stored)) !== hash(report)) throw new Error('f3_report_archive_changed');
@@ -216,7 +216,7 @@ export async function recordRejectedF3Promotion({ f, kind, job, report, entry, s
 // nine-pair batch with a new job identity and the exact already frozen candidate;
 // never regenerate the proposal or select favorable partial slots.
 export async function continueF3Promotion({ f, kind, result, source, scope, entry, store, signal, ledger, sealedDirectory, primaryConfig }) {
-    const candidate = result.candidate, report = candidate.report;
+    const candidate = result.candidate, report = readF3StoredReport(candidate.report);
     const doc = await f.repository.get(f.h.handle, f.scope, f.subject);
     if (hash(doc) !== hash(result.doc) || report.judgeMode !== 'primary_only' || scope.judgeMode !== 'primary_only'
         || report.evaluatorRevision !== evolutionEvaluatorRevision() || hash(candidate.diff.after) !== scope.frozenCandidateHash
@@ -235,7 +235,8 @@ export async function continueF3Promotion({ f, kind, result, source, scope, entr
         candidates: [structuredClone(candidate)], operationId: null };
     await f.repository.mutate(f.h.handle, f.scope, f.subject, saved => { saved.jobs.push(job); });
     entry.jobId = job.id; entry.continuation = { originalJobId: result.job.id, candidateHash: hash(candidate),
-        developmentReportHash: hash(report), partialBatch: 'retained_ungraded_not_selected' };
+        developmentReportHash: hash(report), storedDevelopmentReportHash: hash(candidate.report),
+        partialBatch: scope.separatePromotionJob ? 'no_partial_batch; separate_development_and_promotion' : 'retained_ungraded_not_selected' };
     const paidJob = { ...job, scopeId: doc.scopeId, domain: report.domain, price: null };
     const fresh = async () => {
         signal.throwIfAborted(); await f.service._fresh(f.h.handle, f.scope, f.subject, job.id);

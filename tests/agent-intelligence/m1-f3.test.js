@@ -6,7 +6,8 @@ import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f
     f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
     parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls } from './m1-f3.js';
 import { sendM1Evaluation } from './m1-grader.js';
-import { evolutionFixture } from './evolution-fixture.js';
+import { evolutionFixture, runEvolution } from './evolution-fixture.js';
+import { continueF3Promotion, f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 
 const assessments = dimensions => Object.fromEntries(dimensions.map(d => [d, Object.fromEntries(['left', 'right'].map(side =>
@@ -53,6 +54,51 @@ function example(domain = 'rp', caseSetRevision = PILOT_CASE_SET_REVISION) {
 }
 const readiness = f => pilotDevelopmentReadiness(f.report, f.independent, f.owner, 'job', f.baseline, f.ledger);
 const rehash = pair => { delete pair.pairHash; pair.pairHash = hash(pair); };
+
+test.each(['rp-skill', 'project-prompt'])('separate %s promotion preserves archived development and its funded identities', async kind => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, kind, { policyMode: 'review' });
+    try {
+        const original = await runEvolution(f), domain = kind === 'rp-skill' ? 'rp' : 'project', data = example(domain);
+        const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+        const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target, original.candidate.candidateId);
+        const primaryConfig = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId);
+        const candidateConfig = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, settings.projectPromptRef || null);
+        data.baseline.configurations.baseline = hash(primaryConfig); data.baseline.settings.baseline = hash(baselineSettings);
+        for (const pair of data.baseline.pairs) { pair.baseline.configurationHash = hash(primaryConfig); pair.baseline.settingsHash = hash(baselineSettings); rehash(pair); }
+        const report = data.report;
+        report.judgeMode = 'primary_only'; report.configurations = { baseline: hash(primaryConfig), candidate: hash(candidateConfig) };
+        report.settings = { baseline: hash(baselineSettings), candidate: hash(settings) }; report.baselineReuse.reportHash = hash(data.baseline);
+        report.comparisonCalibration = report.comparisonCalibration.filter(row => row.label === 'primary');
+        report.syntheticFullHistory = 'complete development record '.repeat(50000);
+        for (const pair of report.pairs) { pair.candidate.configurationHash = hash(candidateConfig); pair.candidate.settingsHash = hash(settings); rehash(pair); }
+        const attempts = data.owner.attempts.filter(a => a.jobId === 'job' || report.comparisonCalibration.some(c => c.charge.id === a.id))
+            .map(a => ({ ...a, jobId: a.jobId === 'job' ? original.job.id : a.jobId, scopeId: original.doc.scopeId, upperBound: a.tokens, createdAt: Date.now() }));
+        await f.repository.mutateOwner(f.h.handle, owner => { owner.attempts.push(...attempts); });
+        const stored = f3ReportForStorage(report);
+        await f.repository.mutate(f.h.handle, f.scope, f.subject, doc => { doc.jobs.find(j => j.id === original.job.id).candidates[0].report = stored; });
+        const doc = await f.repository.get(f.h.handle, f.scope, f.subject), job = doc.jobs.find(j => j.id === original.job.id);
+        const result = { doc, job, candidate: job.candidates[0] }, ownerBefore = await f.repository.owner(f.h.handle);
+        let promotionJob;
+        f.evaluator.observePairs = async (_handle, currentJob, _configs, _settings, _signal, fresh) => {
+            await fresh(); promotionJob = currentJob; throw new Error('synthetic_before_sealed_worker');
+        };
+        const entry = {};
+        await expect(continueF3Promotion({ f, kind, result, source: { report: data.baseline },
+            scope: { judgeMode: 'primary_only', separatePromotionJob: true, frozenCandidateHash: hash(result.candidate.diff.after) },
+            entry, store: () => {}, signal: AbortSignal.timeout(15000), ledger: () => data.ledger,
+            sealedDirectory: 'synthetic_no_contents_read', primaryConfig })).rejects.toThrow('synthetic_before_sealed_worker');
+        expect(entry.developmentReadiness.accepted).toBe(true);
+        expect(promotionJob.id).not.toBe(job.id);
+        expect(await f.repository.owner(f.h.handle)).toEqual(ownerBefore);
+        const final = await f.repository.get(f.h.handle, f.scope, f.subject);
+        expect(final.publications).toEqual([]);
+        for (const id of [job.id, promotionJob.id]) {
+            const saved = final.jobs.find(j => j.id === id).candidates[0];
+            expect(saved.candidateId).toBe(result.candidate.candidateId);
+            expect(readF3StoredReport(saved.report)).toEqual(report);
+        }
+    } finally { f.h.cleanup(); }
+});
 
 test.each(['rp', 'project'])('renewal %s development retains the original threshold and rejects historical baseline substitution', domain => {
     const f = example(domain, RENEWAL_PILOT_CASE_SET_REVISION);
