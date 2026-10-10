@@ -1395,7 +1395,7 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 
 ## 2026-10-10 用户要求换设备暂停与私有迁移
 
-用户明确要求在恰当时机停止并打包隐私数据。当前F2批次自然退出、费用全部settle和原fixture保存后暂停；不再启动候选提炼、F3或其它模型请求。停止不是M1验收完成，也不是因阶段/失败自行交接；仅按用户要求刷新[HANDOFF](../../HANDOFF.md)。
+用户明确要求在恰当时机停止并打包隐私数据。当前F2批次自然退出、费用全部settle和原fixture保存后暂停；不再启动候选提炼、F3或其它模型请求。停止不是M1验收完成，也不是因阶段/失败自行交接；仅按用户要求刷新`HANDOFF`（历史恢复快照已消费清理）。
 
 最终run `run-1791614087966-32f919e6` 固定 `4bf78ff7748937eb233fc12e2fa40509a1ef348d`、scope `4ab2ecdbc0e55ca4d198e407942a78006a6103d854c2d67966b266605fc6b47f`、修正版caseSet `661f990e145ad5c3f089f3f0becfb80d11d3c63f58eff8ce047ceb47a4363df4`。新增25请求/331435 accounted tokens，其中318348 reported、13087 unknown上界；全部失败与retry保留。累计1497 requests /10850633 accounted tokens，1182 reported requests /63 unknown /252 carry，pending0/lock0，M1进程与worker已退出。ledger hash `fa64d70643f1f5950cabc9fa2839ef2edac61cf7e2cb6e63b80955811844b56c`。
 
