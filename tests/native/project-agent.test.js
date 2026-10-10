@@ -100,7 +100,7 @@ async function plannedTask(agent, handle, source, baseRevision, options = {}) {
 }
 
 describe('A8 Project Agent authority', () => {
-    test.each(['reported', 'rejected_body', 'secret_echo', 'partial', 'tokens_exhausted', 'incomplete_native_stream', 'cancelled'])('G05 preserves direct numeric usage on %s without storing rejected content', async kind => {
+    test.each(['reported', 'rejected_body', 'secret_echo', 'partial', 'tokens_exhausted', 'incomplete_native_stream', 'cancelled', 'negative_cache'])('G05 preserves direct numeric usage on %s without storing rejected content', async kind => {
         const h = await makeTempFsEngine(); let seen = 0; let notifySend;
         const sent = new Promise(resolve => { notifySend = resolve; });
         const server = createServer(async (req, res) => {
@@ -114,8 +114,8 @@ describe('A8 Project Agent authority', () => {
                 return;
             }
             seen++; res.writeHead(200, { 'Content-Type': 'application/json' });
-            const usage = { prompt_tokens: 12, completion_tokens: 8, ...(kind === 'partial' ? {} : { total_tokens: 20 }) };
-            res.end(JSON.stringify({ choices: kind === 'rejected_body' ? [] : [{ message: { role: 'assistant', content: kind === 'secret_echo' ? 'test-credential' : 'Current result.' } }], usage }));
+            const usage = { prompt_tokens: 12, completion_tokens: 8, prompt_tokens_details: { cached_tokens: kind === 'negative_cache' ? -1 : 7 }, ...(kind === 'partial' ? {} : { total_tokens: 20 }) };
+            res.end(JSON.stringify({ model: 'reported-alias', choices: kind === 'rejected_body' ? [] : [{ message: { role: 'assistant', content: kind === 'secret_echo' ? 'test-credential' : 'Current result.' } }], usage }));
         });
         await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
         try {
@@ -138,7 +138,8 @@ describe('A8 Project Agent authority', () => {
                 await sent; controller.abort(); await rejection;
             }
             else if (kind === 'tokens_exhausted') await expect(run).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
-            else if (['rejected_body', 'secret_echo', 'incomplete_native_stream'].includes(kind)) await expect(run).rejects.toHaveProperty('code'); else await run;
+            else if (['rejected_body', 'secret_echo', 'incomplete_native_stream'].includes(kind)) await expect(run).rejects.toHaveProperty('code');
+            else expect((await run).response.observation).toMatchObject({ reportedModel: 'reported-alias', upstreamIdentity: 'unknown', cachedInputTokens: kind === 'negative_cache' ? null : 7, hiddenAttempts: 'unknown' });
             const current = await agent.getTask(h.handle, input.projectId, task.taskId);
             if (kind === 'tokens_exhausted') { expect(current.compute.attempts).toHaveLength(0); expect(seen).toBe(0); return; }
             expect(current.compute.attempts).toHaveLength(1); expect(seen).toBe(1);

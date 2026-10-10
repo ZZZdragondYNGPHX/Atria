@@ -181,7 +181,10 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 return { id: call.id, name: call.function.name, args, raw: call };
             });
             const usage = observedGenerationUsage(raw.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' });
-            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}) };
+            const cached = raw.usage?.prompt_tokens_details?.cached_tokens;
+            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}),
+                observation: { reportedModel: typeof raw.model === 'string' ? raw.model : null, upstreamIdentity: 'unknown',
+                    cachedInputTokens: Number.isSafeInteger(cached) && cached >= 0 ? cached : null, hiddenAttempts: 'unknown' } };
         },
     });
 }
