@@ -1855,3 +1855,17 @@ source `dcf69fe29` 已push，外部API0，未集成main。沿model-routing §7.3
 关键失败/修正：adaptive preview及Context token拒绝在countTokens中提前discard合法checkpoint，before-v1两项真实FAIL；将restore只读选择/实际reset清理移到原预算准入后provider.send，after-v1两项及3受影响reset检查PASS。原Task charge拒绝仍被GenerationService finally无条件清状态，charge-before-v1真实FAIL；Host仅在原预算尚未准入、无send/reset时保留，已准入失败仍discard。charge-after-v1保留检查/取消PASS，retry测试因fixture重复writeHead导致timeout FAIL（产品未改HTTP协议）；fixture改setHeader后retry-after-v2 PASS，最后admission-final-v1两项PASS。Task计数保留原1实际调用，未准入的第二次无新attempt；已经尝试的429仍第2次/unknown、不退款。其余studio-after-v1(8含3 old)、gate-async-v1(5含2 old)、old-protocol-ui-v1(3)、old-task-v1(2)均保留在private Document。最后ESLint单独运行PASS，此前同调用后置diff覆盖退出码但stdout显示58条indent失败的日志仍保留，只修新函数缩进，未将其写为lint PASS。
 
 34+12新增工程断言不构成真实模型质量改判。M8 actual38/direct72982、unknown2/17515 upper及M1/HM1 pins/不利基线保持；没有外部primary/Embedding/rerank/critic/probe，main3ee1332ef与H5前置不变。CPU/index/background预算、其他品牌/Session Task消费者、安全fork/compaction继续按依赖实现，完整G06/M8/HM2/HM3仍未验收，无HANDOFF。
+
+### 有限 G05 Native insert 本地索引工作与最终发布
+
+source `304d0d199f50f335a8bbcca466af10dec8e4d10c` 已push，外部API0，未集成main。先在g01-substrate冻结完成条件，再扩展原RuntimeRoute.computeBudget与原Run operation/Project Task的同一个compute ledger：可选localWork记录显式job/输入项/输入字节限额，实际model attempts/token/usage独立，不用默认1 token模拟CPU、不加shadow owner或默认allowance。原chargeGeneration/Embedding继续保留localWork limits，放宽/移除Route、原account snapshotUser/restoreFromSnapshot及close/reopen engine+新RunControl不能恢复余额。中断的已charged工作继续占输入上界；本组不是所有foreground restore/fork或历史费用保存保证。
+
+实际Native router insert→原Vectra在有界临时副本完成，原owner/profile/collection路径单Host写permit涵盖排队、更新、发布、清理/settle；Native delete/purge也同路径串行，但其成本准入仍未完成。工作准入先于Embedding与index IO，拒绝HTTP0且原index不变。候选vector数值/完整输入/旧与新index有明确有限上界，数值仅在g01维护；16MiB同步原子替换会阻塞server事件循环，CPU/延迟是实际观察而非硬时长cap。每项保留process.cpuUsage user/system微秒、wallMs、cpuScope=process与completed/failed/cancelled；并发process CPU不冒称单job独占，实际没有模型send不记provider attempt或造usage0。
+
+真实发布竞态已留before：初实现await currentness之后还有mkdir/异步atomic write，最终mkdir期间取消/原Task setPlan，两项均真实FAIL（仍resolved并发布）。修复为先完成目录准备，最终原Session Run锁或原Task `_operate`锁+原Studio Project queue内重验，signal/readonly核验与同步write-file-atomic之间无await；两项反例及受影响7项consumer通过。原Run锁使用AsyncLocalStorage可重入，嵌套assert不是已复现deadlock；FS/SQLite普通Session实际insert均通过，不能把监督期间的风险推测写成产品缺陷。索引与账本仍无跨域原子性；写失败旧bytes保持，publish后settle不可写仍按charged上界保守占用，不退款已发生Embedding费用。
+
+16新distinct检查通过：FS/SQLite各1实际并发insert+Route放宽/移除+account recovery；输入项/字节拒绝2；实际Task在Embedding后改变+移除Route继承1；取消/第二次upsert失败保留旧index2；等待permit取消不charge1；最终mkdir取消/Task改变2；原子rename失败1；FS/SQLite未settle charged经account recovery各1（模拟中断窗口，不冒称新Node杀进程）；实际Narrator charge保留另一lane1；超大旧index/返回vector拒绝并保留usage1；原Route editor保存已有localWork1。15旧distinct通过：12原Embedding/Memory/Run/Task/Route移除/rerank消费者，2旧真实vector IO/purge及多protocol exact模型/Secret，1原Route预算editor。复验不再计新增，未做全仓测试。product ESLint独立PASS、diff PASS。
+
+原日志append-only在private Document：g05-local-index-after-v1（6 fixture FAIL/2 PASS，route误用roleId与null status helper）、after-v2（修fixture只重跑6 PASS）；publication-before-v1（2真实FAIL）、publication-after-v1（7相关PASS）；recovery-after-v1（4 PASS）；bounds-after-v1（Jest worker heap OOM，16MiB Buffer.toEqual展开的fixture断言，未计任何PASS）、bounds-after-v2（改Buffer.equals，5 PASS）；budget-editor-v1（2，含1 old）；old-consumers-v1（12）；old-protocols-v1（2）；lint-v1 PASS。fixture修正不归产品因果，原OOM/FAIL保留；API/货币质量报告没有新producer。
+
+M8仍actual38/direct72982，unknown2/17515 upper/admission fetch0、M1/HM1 pins与不利正文/评价均不变。query/缓存校验/其它本地模型/后台预算，以及其他品牌/Session Task、安全fork/compaction继续正式依赖，真实G06质量仍FAIL、H5仍有M2/M3/G06前置；完整M8/HM2/HM3未验收、main3ee1332ef，无HANDOFF。

@@ -43,6 +43,18 @@ model-routing §7.4 的 Runtime checkpoint 持久化、task/adaptive consumer、
 
 定向完成条件：同原Session/Task的Embedding与正文共享额度，批次逐send/并发不超支，stale source/Task与budget拒绝在provider HTTP前，失败/取消/无usage保留占用，合法usage在坏vector响应前保存；客户端的Memory实际forwarding及旧无预算路径兼容。本地FS/SQLite和loopback仅证明本组工程行为，未verified路径保持unknown，不启用task/adaptive或把实际模型质量改判通过。之后继续Runtime checkpoint存储/recovery设计及尚未完成的预算消费者，不以该组结束为整体退出。
 
+## 已交付有限 G05：原 Native insert 的本地索引工作
+
+完成条件先冻结（2026-10-11）：只接现有 Native `/insert`、同原 Information Session anchor / Project Task computeContext；不新增模型入口、后台 worker 或下载。原 `computeBudget` 可选 `localWork {maxJobs,maxItems,maxInputBytes}`，分别为累计工作数1–32、累计输入项1–10000、累计序列化输入字节1–16MiB。原 Run operation / Task 的同一个 compute ledger 保存本地工作 identity、冻结输入上界、charged/settled/unknown 与实际观察；model attempts/token/usage 独立，不用1 token模拟CPU，不建立第二owner账本。既有 limits 只能收紧，Route移除/放宽、冷 engine/recovery 不恢复余额；旧未配置且未持有本地限额保持兼容。
+
+实际 native index 写入按原 owner/profile/collection 路径在单Host内串行，等待中取消不准入；队列有界。工作准入先于Embedding/索引写入，拒绝HTTP0、原index不变；Embedding仍逐实际send沿同一父发送限额另记usage。既存index文件与新发布均≤16MiB，输入≤10000项/16MiB，不能以该工作量边界声称CPU毫秒硬上限。原Vectra操作在临时副本完成，发布前重验原Session/Task及取消，原index commit-last原子替换；upsert/取消/失败不发布副本，临时文件清理后才释放串行permit。Native delete/purge采用同路径串行避免同Host丢更新，非本组的成本准入仍未验收。
+
+成本观察只保留实际 wall time 与 `process.cpuUsage` 的进程范围user/system微秒、完成/失败/取消状态和输入量；并发进程CPU不可冒称单job独占CPU，provider usage不由这些数值推导。进程中断的charged项继续按输入上界占额度，不能重建allowance；完成或失败也不退已准入工作量。FS/SQLite原authority、实际router→Vectra→loopback、并发、额度拒绝/移除、取消或stale提交、恢复与旧发送消费者作最小对应检查。索引文件和账本没有跨域原子性，publish后settle失败仍保守占用，不回滚已发生成本。
+
+source `304d0d199` 已push；16新distinct/15受影响旧checks通过（细项与原失败见Record）。最终实现补充：同路径排队最多128工作，完整输入和既存/发布index各16MiB，单vector≤65536数值/一job总vector值≤1048576；超界在Vectra upsert前拒绝，已报告Embedding usage保留。最后mkdir在最终核验前完成；原Run锁可重入，Task锁与原Studio Project queue涵盖最终核验及同步write-file-atomic替换，消除已复现的mkdir期间取消/Task变化发布竞态。该≤16MiB同步窗口会阻塞server事件循环，保留实际wall/CPU观察，不声称任意cancel跨OS rename原子或CPU硬时长cap。
+
+范围保留：query/缓存校验/其他本地模型/后台成本、其他品牌/Session Task、fork/compaction与真实G06质量/H5前置继续，外部发送0，不集成main。
+
 ## G02 编译绑定 checkpoint
 
 source `37273d4ca`：原 canonical JSON serializer 统一资源 hash、HTTP token count 与发送 bytes；保留数组顺序和 raw instruction。PromptCompiler 原 target / stage layout 不改优先级，已有 typed parameters 分别控制 behavior / identity / expression / narration。compilation 增加稳定资源/segment identity、exact ref、内容指纹、volatility 与仅候选 cacheability；不是 Provider cache grant。

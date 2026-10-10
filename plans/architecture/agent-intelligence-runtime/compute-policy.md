@@ -85,6 +85,12 @@ Host 沿原发送边界，从冻结 Snapshot 的 prepared input count + reserved
 
 2026-10-11 source `90c0dd72d`：原 Route editor 提供可选共享发送次数/Token 上界，不自动替旧 Route 设额度，保留其它 executionPolicy；关闭仅删除 Route 配置，同一原 operation/Task 的 durable limits 仍有效。Host routing.compute 的 limits 来自实际 charge receipt，而非放宽后的 Route 配置；attempts 只含 current_request，金额 unavailable，不冒充父余额。Studio 显示原 Task.compute；诊断保留 selected target、执行/恢复决定、Provider usage 与 unknown 身份。有限 UI/账本反例见 Record，不计作全部 G06 收益验收。
 
+### 3.2 有限 Native index 本地工作准入
+
+source `304d0d199`，原RuntimeRoute.computeBudget可选localWork、原Run operation/Task同一compute ledger扩展；具体数值与完成条件只在[G01 本地索引组](g01-substrate.md#已交付有限-g05原-native-insert-的本地索引工作)维护，不建立第二预算authority。model sends/token与本地job/输入项/输入字节独立准入，generation/Embedding写账保留另一lane，durable limits继续只能收紧。旧未配置且未持有本地限额不自动添加allowance；有原computeContext的index在原owner额度前不发送Embedding，不用token伪造CPU开销。
+
+成本记录为实际process范围CPU与wall观察，不证明job独占CPU、CPU毫秒硬cap、设备功耗或金额；没有provider调用不记model attempt/usage。native insert在临时Vectra副本处理，最终在原Session Run锁或原Task锁+Studio Project队列内重验/同步原子发布；取消/Task变动/写失败反例与普通Session实际消费通过。索引与账本之间没有跨域原子性，publish后结算不可写继续保守保留charged占用。仅原account recovery/冷engine恢复额度已检查，不扩大为所有fork/跨foreground revision费用历史保证。query/校验/其它local inference/后台消费者仍按依赖继续。
+
 ## 4. Scheduler 与故障边界
 
 继续使用 `turn_blocking / interactive / background / maintenance`；共享 owner resource permits 与公平调度。
