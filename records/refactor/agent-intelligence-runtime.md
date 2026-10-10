@@ -1687,3 +1687,11 @@ preflight失败原样保存：v1 lanePlan没有原executionResources，v2/v3 Con
 3个受影响本地双轮 HTTP checks通过（Responses/Anthropic/Gemini），保留完整 opaque wire 回传、公开preview/response不泄漏及完成后旧 checkpoint拒绝；初观察断言误用 adapter format 名称而非实际版本化 protocol，修正测试期望后重测这3项，v1失败/v2成功日志均保留。真实 Studio client不同request/attempt IDs的1项消费检查通过，scope=task/count0→1仍process_only。明确 policy active_execution/task/adaptive 三项在兼容路径发送/Secret之前 unavailable，也已定向验证；这是有限不支持矩阵，不能用识别字段或工具round-trip宣称续接策略完成。3产品文件ESLint/diff通过。
 
 本组停止条件是以上受影响消费者和模式边界检查完成，新增外部API0，不重复已过协议/付费矩阵。原质量失败继续阻挡完整G06/HM2；剩余验收为可合法启用的策略生命周期及loss、真实长期入口/质量出口、H3已配置服务的收益或明确维持基础路径、费用/unknown与H4有限收益对应归因。H3新服务/算法及HM3 writer不扩张；继续原有长期消费者可独立验证范围，main未集成，无HANDOFF。
+
+### G06 预载长 Timeline 的真实 Turn 消费边界
+
+新增单一工程检查经原 Session `_newEntry`/publication 写入500对user/assistant及最终input，实际Timeline从1004到1006条；随后沿原 executeTurn、scheduler、Information、authority-first candidate、GenerationService、local HTTP与finalization完成一轮。已构造的合法memory候选引用旧Timeline message/current revision；旧revision反例在HTTP之前拒绝。实际wire8354 UTF-8 bytes，携带获准历史promise及正式public note，私有read sentinel和超出view的末尾raw历史不进入请求。原生产anchor的Run receipt在finalization之前观察为1次settled/direct120total；finalization进新anchor，不能把新anchor剪裁后的operations当同一账本。旧source在最终revision仍可exact读取，原action trace与新narration一同发布，历史前缀不变。
+
+m8-g06-long-turn-v4.log 单项通过（source提交见同组源码），外部API0。v1逐条1000次持久化准备约3分钟仍未完成，由本地终止并保留初log/隔离临时data；没有完成或模型发送证据，不计性能分布。改为原publication合法批量预载后v2原断言只计narration而漏authority action trace失败；v3误把原Run operations object当array失败；修正fixture期望及在产生anchor读取正式receipt后，仅该单项定向重测通过。未改生产存储/预算规则、不扩成全局性能组。
+
+本组只证明预载500轮历史的一次真实Turn和有限Context/source/时点/费用工程边界，memory输入是已构造合法候选，不等同整条Memory检索验收，更不证明500次连续模型生成、长期文体或source-backed cognition质量。该具体组结束，不重复已过checks；完整G06/HM2质量与可用continuation路径仍待验收，原不利paid输出/费用和main均不变。
