@@ -14,6 +14,36 @@ function fixture(format, overrides = {}) {
 }
 
 describe.each(['anthropic', 'gemini'])('Native %s transport', format => {
+    test.each(['valid', 'missing_terminal', 'missing_block_stop', 'missing_signature', 'incomplete'])('G04 native stream %s cannot publish an incomplete envelope', async kind => {
+        const signed = format === 'anthropic'
+            ? [{ type: 'thinking', thinking: 'summary', signature: 'native-signature' }, { type: 'text', text: 'done' }]
+            : [{ text: 'done', thoughtSignature: 'native-signature' }];
+        if (kind === 'missing_signature') {
+            if (format === 'anthropic') delete signed[0].signature;
+            else signed[0].thoughtSignature = '';
+        }
+        const events = format === 'anthropic'
+            ? [{ type: 'message_start', message: { content: [] } }, ...signed.flatMap((content_block, index) => [
+                { type: 'content_block_start', index, content_block },
+                ...(kind === 'missing_block_stop' ? [] : [{ type: 'content_block_stop', index }]),
+            ]), { type: 'message_delta', delta: { stop_reason: kind === 'incomplete' ? 'max_tokens' : 'end_turn' } },
+            ...(kind === 'missing_terminal' ? [] : [{ type: 'message_stop' }])]
+            : [{ candidates: [{ content: { parts: signed }, ...(kind === 'missing_terminal' || kind === 'missing_block_stop' ? {} : { finishReason: kind === 'incomplete' ? 'MAX_TOKENS' : 'STOP' }) }] }];
+        const f = fixture(format);
+        const provider = createNativeMessagesProvider({ format, fetchImpl: async () => new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''),
+            { headers: { 'Content-Type': 'text/event-stream' } }) });
+        const response = await provider.send(provider.renderRequest(f), { secret: 'synthetic-native-secret', signal: new AbortController().signal });
+        const consume = async () => provider.normalizeResponse(await provider.parseStream(response));
+        if (kind === 'valid') expect((await consume()).text).toBe('done');
+        else await expect(consume()).rejects.toMatchObject({ code: 'generation_response_invalid' });
+    });
+
+    test('G04 nonstream missing signature/opaque data is not a valid native envelope', () => {
+        const f = fixture(format); const binding = f.provider.renderRequest(f).binding;
+        const content = format === 'anthropic' ? [{ type: 'redacted_thinking' }] : [{ text: 'summary', thoughtSignature: '' }];
+        expect(() => f.provider.normalizeResponse({ binding, value: format === 'anthropic'
+            ? { content, stop_reason: 'end_turn' } : { candidates: [{ content: { parts: content }, finishReason: 'STOP' }] } })).toThrow('generation_response_invalid');
+    });
     test.each([false, true])('real HTTP stream=%s uses protocol auth and normalizes text', async streaming => {
         const requests = [];
         const server = createServer(async (req, res) => {
@@ -21,14 +51,18 @@ describe.each(['anthropic', 'gemini'])('Native %s transport', format => {
             requests.push({ headers: req.headers, url: req.url, body: JSON.parse(raw) });
             if (!streaming) {
                 res.writeHead(200, { 'content-type': 'application/json' });
-                res.end(JSON.stringify(format === 'anthropic' ? { content: [{ type: 'text', text: '你好' }] } : { candidates: [{ content: { parts: [{ text: '你好' }] } }] }));
+                res.end(JSON.stringify(format === 'anthropic' ? { content: [{ type: 'text', text: '你好' }], stop_reason: 'end_turn' } : { candidates: [{ content: { parts: [{ text: '你好' }] }, finishReason: 'STOP' }] }));
             } else {
                 res.writeHead(200, { 'content-type': 'text/event-stream' });
                 const chunks = format === 'anthropic' ? [
+                    { type: 'message_start', message: { content: [] } },
                     { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
                     { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '你' } },
                     { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '好' } },
-                ] : ['你', '好'].map(text => ({ candidates: [{ content: { parts: [{ text }] } }] }));
+                    { type: 'content_block_stop', index: 0 },
+                    { type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+                    { type: 'message_stop' },
+                ] : ['你', '好'].map((text, index) => ({ candidates: [{ content: { parts: [{ text }] }, ...(index === 1 ? { finishReason: 'STOP' } : {}) }] }));
                 res.end(chunks.map(chunk => 'data: ' + JSON.stringify(chunk) + '\n\n').join(''));
             }
         });
@@ -57,7 +91,7 @@ describe.each(['anthropic', 'gemini'])('Native %s transport', format => {
             ? [{ type: 'thinking', thinking: 'provider summary', signature: 'signed-state' }, { type: 'tool_use', id: 'call-1', name: 'lookup', input: { q: 'test' } }]
             : [{ functionCall: { name: 'lookup', args: { q: 'test' } }, thoughtSignature: 'signed-state' }];
         const binding = f.provider.renderRequest(f).binding;
-        const normalized = f.provider.normalizeResponse({ binding, value: format === 'anthropic' ? { content } : { candidates: [{ content: { parts: content } }] } });
+        const normalized = f.provider.normalizeResponse({ binding, value: format === 'anthropic' ? { content, stop_reason: 'tool_use' } : { candidates: [{ content: { parts: content }, finishReason: 'STOP' }] } });
         f.snapshot.promptIr.input = '';
         f.snapshot.promptIr.history = [
             { role: 'user', content: 'look up' },

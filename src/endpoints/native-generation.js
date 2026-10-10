@@ -16,6 +16,7 @@ import { getNativeStudioServices } from './native-studio.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
 import { NativeGenerationHost, selectNativeRuntimeRoute } from '../native/adapters/generation-host.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
+import { createResponsesGenerationProvider } from '../native/adapters/responses-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
 import { assertConnectionProfile, assertExactResourceRef } from '../native/model-prompt-runtime/contracts.js';
 import { prepareProviderDiscovery, discoverProviderModels } from '../native/adapters/provider-discovery.js';
@@ -42,6 +43,7 @@ function services() {
         providers: {
             'provider.openai-compatible': createHttpGenerationProvider(),
             'provider.raw-text': createHttpGenerationProvider({ format: 'raw-text' }),
+            'provider.openai-responses': createResponsesGenerationProvider(),
             'provider.anthropic': createNativeMessagesProvider({ format: 'anthropic' }),
             'provider.gemini': createNativeMessagesProvider({ format: 'gemini' }),
         },

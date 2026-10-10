@@ -158,24 +158,51 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
         async parseStream({ response, binding }, { onChunk } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding };
             const blocks = []; let pending = ''; let text = ''; let size = 0; let usage; const decoder = new TextDecoder();
+            let started = false; let completed = false; let stopReason; let reportedModel;
+            const open = new Set();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
                 const payload = line.slice(5).trim(); if (!payload || payload === '[DONE]') return;
                 const value = JSON.parse(payload); if (value.error || value.type === 'error') throw new GenerationError('generation_response_invalid');
+                if (completed && (anthropic ? value.type !== 'ping' : value.candidates?.length)) throw new GenerationError('generation_response_invalid');
                 let delta = '';
                 if (anthropic) {
                     if (value.message?.usage || value.usage) usage = { ...usage, ...value.message?.usage, ...value.usage };
-                    if (value.type === 'content_block_start') blocks[value.index] = { ...value.content_block };
+                    if (value.type === 'message_start') {
+                        if (started) throw new GenerationError('generation_response_invalid');
+                        started = true; reportedModel = value.message?.model;
+                    }
+                    if (value.type === 'content_block_start') {
+                        if (!started || !Number.isSafeInteger(value.index) || value.index < 0 || value.index > 255 || blocks[value.index]) throw new GenerationError('generation_response_invalid');
+                        blocks[value.index] = { ...value.content_block }; open.add(value.index);
+                    }
                     if (value.type === 'content_block_delta') {
-                        const block = blocks[value.index]; if (!block) fail();
+                        const block = blocks[value.index]; if (!block || !open.has(value.index)) throw new GenerationError('generation_response_invalid');
                         const d = value.delta;
+                        const field = { text_delta: 'text', thinking_delta: 'thinking', signature_delta: 'signature', input_json_delta: 'partial_json' }[d?.type];
+                        if (!field || typeof d[field] !== 'string'
+                            || (d.type === 'text_delta' && block.type !== 'text')
+                            || (['thinking_delta', 'signature_delta'].includes(d.type) && block.type !== 'thinking')
+                            || (d.type === 'input_json_delta' && block.type !== 'tool_use')) throw new GenerationError('generation_response_invalid');
                         if (d.type === 'text_delta') { block.text = (block.text || '') + d.text; delta = d.text; } else if (d.type === 'thinking_delta') block.thinking = (block.thinking || '') + d.thinking;
                         else if (d.type === 'signature_delta') block.signature = (block.signature || '') + d.signature;
                         else if (d.type === 'input_json_delta') block.partial = (block.partial || '') + d.partial_json;
                         else fail();
                     }
+                    if (value.type === 'content_block_stop') {
+                        const block = blocks[value.index];
+                        if (!block || !open.delete(value.index)) throw new GenerationError('generation_response_invalid');
+                        if (block.partial !== undefined) { block.input = JSON.parse(block.partial); delete block.partial; }
+                    }
+                    if (value.type === 'message_delta' && value.delta?.stop_reason) stopReason = value.delta.stop_reason;
+                    if (value.type === 'message_stop') {
+                        if (!started || open.size || !['end_turn', 'tool_use', 'stop_sequence'].includes(stopReason)) throw new GenerationError('generation_response_invalid');
+                        completed = true;
+                    }
                 } else {
                     if (value.usageMetadata) usage = value.usageMetadata;
+                    if (value.modelVersion) reportedModel = value.modelVersion;
+                    if (value.candidates?.[0]?.finishReason) { stopReason = value.candidates[0].finishReason; completed = stopReason === 'STOP'; }
                     const parts = value.candidates?.[0]?.content?.parts || [];
                     blocks.push(...parts); delta = parts.filter(part => !part.thought && typeof part.text === 'string').map(part => part.text).join('');
                 }
@@ -186,16 +213,20 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                 pending += decoder.decode(bytes, { stream: true }); const lines = pending.split('\n'); pending = lines.pop(); lines.forEach(consume);
             }
             consume(pending + decoder.decode());
-            for (const block of blocks) if (block.partial !== undefined) { block.input = JSON.parse(block.partial); delete block.partial; }
-            return { value: anthropic ? { content: blocks, ...(usage ? { usage } : {}) }
-                : { candidates: [{ content: { parts: blocks } }], ...(usage ? { usageMetadata: usage } : {}) }, binding };
+            if (!completed || blocks.filter(Boolean).length !== blocks.length) throw new GenerationError('generation_response_invalid');
+            return { value: anthropic ? { content: blocks, stop_reason: stopReason, ...(reportedModel ? { model: reportedModel } : {}), ...(usage ? { usage } : {}) }
+                : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding };
         },
         normalizeResponse({ value, binding }) {
             const content = anthropic ? value?.content : value?.candidates?.[0]?.content?.parts;
             if (!Array.isArray(content) || value.error || (!anthropic && value.promptFeedback?.blockReason)) throw new GenerationError('generation_response_invalid');
+            if (anthropic ? !['end_turn', 'tool_use', 'stop_sequence'].includes(value.stop_reason) : value.candidates[0].finishReason !== 'STOP') throw new GenerationError('generation_response_invalid');
             if (content.some(part => !object(part) || (anthropic
                 ? !['text', 'tool_use', 'thinking', 'redacted_thinking'].includes(part.type) || (part.type === 'text' && typeof part.text !== 'string')
                 : (typeof part.text !== 'string' && !object(part.functionCall))))) throw new GenerationError('generation_response_invalid');
+            if (content.some(part => anthropic ? (part.type === 'thinking' && (typeof part.thinking !== 'string' || typeof part.signature !== 'string' || !part.signature))
+                || (part.type === 'redacted_thinking' && (typeof part.data !== 'string' || !part.data))
+                : part.thoughtSignature !== undefined && (typeof part.thoughtSignature !== 'string' || !part.thoughtSignature))) throw new GenerationError('generation_response_invalid');
             const text = content.filter(part => anthropic ? part.type === 'text' : !part.thought && typeof part.text === 'string').map(part => part.text).join('');
             const toolCalls = content.filter(part => anthropic ? part.type === 'tool_use' : part.functionCall).map((part, index) => {
                 const name = anthropic ? part.name : part.functionCall.name; const args = anthropic ? part.input : part.functionCall.args;

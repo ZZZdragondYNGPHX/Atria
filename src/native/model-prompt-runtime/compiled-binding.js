@@ -29,7 +29,7 @@ export function compiledRequestBinding({ resolved, contextPlan, promptIr, render
             contextSlots: promptIr.contextSlots.filter(item => item.target === 'context.before_history'),
             tools: promptIr.tools, outputContract: promptIr.outputContract }),
         contentFingerprint: hashNativeDocument(semantic),
-        renderedFingerprint: hashNativeDocument(rendered),
+        renderedFingerprint: rendered.wireFingerprint ?? hashNativeDocument(rendered),
     };
     return immutable({ ...binding, fingerprint: hashNativeDocument(binding) });
 }

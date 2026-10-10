@@ -210,6 +210,7 @@ export class GenerationService {
                 throw new GenerationError('generation_response_invalid');
             }
             checkCancellation(signal);
+            provider.assertResponseSafe?.(response, secret);
             // Adapters are untrusted with respect to accidental credential echoes.
             const encoded = JSON.stringify(response);
             if (encoded === undefined) throw new GenerationError('generation_response_invalid');
