@@ -1843,3 +1843,15 @@ async发布反例before-v1取消/timeout均真实FAIL；after-v1修正post-commi
 ### Runtime continuation准入与原Task费用边界补验
 
 source `2a282ed73` 已push，外部API0。继续核对compute-policy §3.1发现真实HTTP0不足以证明未占发送额度：Secret期间配置ABA原先在provider.send内拒绝，但Host已经charge；增强原同毫秒反例before-v1真实FAIL，出现1条unknown send attempt。复用同一私有lease的非消费inspect，在原Host Task freshness之后、compute charge之前await adapter currentness；实际provider send仍再次重验并单次消费原lease，没有新allowance/计费系统。之后4个相关反例通过：同毫秒编辑、FS/SQLite删除重建均HTTP0/Task attempts0，已有checkpoint的Secret期间删除只保留原1实际发送；合法FS Task两轮与旧Responses none两轮各1通过，原发送/usage不变。product ESLint/diff通过，before/after/valid-v1 append-only，distinct仍原34/7不重复加数。后续若charge之后竞态或真实HTTP发生，继续原保守unknown/settle规则，不声称跨store/charge/HTTP原子，也不虚构费用退款。
+
+### 有限Responses/原Studio Task adaptive生命周期
+
+source `dcf69fe29` 已push，外部API0，未集成main。沿model-routing §7.3–7.4冻结本有限组：同一原Task/owner/public history/配置authority、同时exact verified task+adaptive能力，原send quota继续共享；没有新classifier请求、默认learned router、opaque域字段或H5 writer。实际Snapshot在HTTP前固定requestedPolicy/effectiveScope/action/reason/sourceCheckpointIds/loss，response observation追加同一决定，gateway内部复用仍unknown。
+
+修正此前有限task消费者的范围：旧source在history编辑/Task ABA后有public fresh路径，但没有证明task policy允许reset。现在task policy只在完整且唯一的合法checkpoint上继续，已保存assistant历史缺失/不匹配时HTTP前拒绝；首次Task可start。adaptive才允许reset，且必须匹配原Task保存history的既有`projectAgentResumeMessages`获准public projection。Studio每run只允许一次本地重新编译，原failed generation attempt记录保留，未发模型HTTP/未占发送额度不消耗model round；重新推理仍沿原Task预算。历史伪造、缺task能力或非Task source不能借adaptive重算越权。投影reset之后cold history若不再匹配compiled prefix会再次明确reset，不冒称所有跨turn/品牌的恢复完成。
+
+新增12 distinct本地checks通过：8实际Studio adaptive场景（继续、checkpoint缺失、Task ABA、重复reset有界拒绝、历史伪造、preview projection、Context token拒绝、原Task charge拒绝），2无task证据/无Task consumer拒绝，1取消private publication并等待usage/cleanup，1已尝试HTTP429后retry budget拒绝仍清理/unknown。10受影响旧checks通过：3原Studio task合法恢复/编辑/ABA（后两项现在拒绝），2未verified task/adaptive，2原FS Task普通/独立Node消费，2Responses none/active协议与1普通missing-route UI诊断。复验不累计新增。
+
+关键失败/修正：adaptive preview及Context token拒绝在countTokens中提前discard合法checkpoint，before-v1两项真实FAIL；将restore只读选择/实际reset清理移到原预算准入后provider.send，after-v1两项及3受影响reset检查PASS。原Task charge拒绝仍被GenerationService finally无条件清状态，charge-before-v1真实FAIL；Host仅在原预算尚未准入、无send/reset时保留，已准入失败仍discard。charge-after-v1保留检查/取消PASS，retry测试因fixture重复writeHead导致timeout FAIL（产品未改HTTP协议）；fixture改setHeader后retry-after-v2 PASS，最后admission-final-v1两项PASS。Task计数保留原1实际调用，未准入的第二次无新attempt；已经尝试的429仍第2次/unknown、不退款。其余studio-after-v1(8含3 old)、gate-async-v1(5含2 old)、old-protocol-ui-v1(3)、old-task-v1(2)均保留在private Document。最后ESLint单独运行PASS，此前同调用后置diff覆盖退出码但stdout显示58条indent失败的日志仍保留，只修新函数缩进，未将其写为lint PASS。
+
+34+12新增工程断言不构成真实模型质量改判。M8 actual38/direct72982、unknown2/17515 upper及M1/HM1 pins/不利基线保持；没有外部primary/Embedding/rerank/critic/probe，main3ee1332ef与H5前置不变。CPU/index/background预算、其他品牌/Session Task消费者、安全fork/compaction继续按依赖实现，完整G06/M8/HM2/HM3仍未验收，无HANDOFF。
