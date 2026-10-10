@@ -247,7 +247,9 @@ export async function runNativeStudioAgentTask({
     const routes = configuration?.routes || [];
     const fallbackIds = new Set(routes.flatMap(route => (route.fallbackRouteRefs || []).map(ref => ref.runtimeRouteId)));
     const primary = routes.filter(route => route.scope === 'player' && route.role === 'role.studio' && !fallbackIds.has(route.runtimeRouteId));
-    const taskContinuity = primary.length === 1 && primary[0].executionPolicy?.continuity === 'task';
+    const adaptive = primary.length === 1 && primary[0].executionPolicy?.continuity === 'adaptive';
+    const taskContinuity = primary.length === 1 && ['task', 'adaptive'].includes(primary[0].executionPolicy?.continuity);
+    let resetPerformed = false;
     let modelTranscript = taskContinuity ? projectAgentConversation(completeProjectAgentConversation(transcript)) : projectAgentResumeMessages(transcript);
     let previousSystem;
 
@@ -320,6 +322,15 @@ export async function runNativeStudioAgentTask({
                     attemptId, status: 'failed', conversation: projectAgentConversation(completeProjectAgentConversation(transcript)),
                 });
             } catch (captureError) { error.captureError = captureError; }
+            if (adaptive && !resetPerformed && error.code === 'generation_continuation_reset_required' && !error.captureError) {
+                resetPerformed = true;
+                modelTranscript = projectAgentResumeMessages(transcript);
+                onUpdate({ task: context.task, messages: transcript, continuation: { status: 'reset', reason: 'checkpoint_incompatible_or_unavailable' } });
+                // One policy-approved local recompile; it has sent no model
+                // request and must not consume this run's model-round bound.
+                round -= 1;
+                continue;
+            }
             throw error;
         }
     }

@@ -10,6 +10,7 @@ const leases = new Map();
 const wireHash = wire => createHash('sha256').update(wire).digest('hex');
 const ttlMs = 10 * 60 * 1000;
 const limit = 128;
+export const isDurableNativeContinuity = binding => ['task', 'adaptive'].includes(binding.continuity);
 const denied = () => { throw new GenerationError('generation_continuation_unavailable'); };
 function prune() {
     for (const [id, entry] of checkpoints) if (entry.expiresAt <= Date.now()) checkpoints.delete(id);
@@ -27,7 +28,7 @@ export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
         prefixFingerprint: hashNativeDocument({ directives: ir.directives, contextSlots: ir.contextSlots }),
         toolsFingerprint: hashNativeDocument(ir.tools), outputFingerprint: hashNativeDocument(ir.outputContract),
         generationFingerprint: hashNativeDocument(resolved.generation),
-        ...(resolved.effectiveExecutionPolicy?.continuity === 'task' ? { continuity: 'task', runtimeResourceRefs: {
+        ...(['task', 'adaptive'].includes(resolved.effectiveExecutionPolicy?.continuity) ? { continuity: resolved.effectiveExecutionPolicy.continuity, runtimeResourceRefs: {
             runtimeRouteId: resolved.route.runtimeRouteId, modelProfileId: resolved.model.modelProfileId,
             connectionProfileId: resolved.connection.connectionProfileId,
         } } : {}),
@@ -69,7 +70,7 @@ export function discardNativeEnvelopes(binding) {
         && hashNativeDocument(entry.binding.executionScope) === hashNativeDocument(binding.executionScope)) checkpoints.delete(id);
 }
 export async function hydrateNativeEnvelopes({ binding, sequence, store }) {
-    if (binding.continuity !== 'task') return;
+    if (!isDurableNativeContinuity(binding)) return;
     if (!store) denied();
     for (const [index, message] of sequence.entries()) if (message.providerState) {
         // Never let an earlier process cache bypass deletion or owner recovery.
@@ -81,25 +82,26 @@ export async function hydrateNativeEnvelopes({ binding, sequence, store }) {
 }
 export async function publishNativeEnvelope(state, store) {
     const entry = checkpoints.get(state?.checkpointId);
-    if (entry?.binding.continuity !== 'task') return;
+    if (!entry || !isDurableNativeContinuity(entry.binding)) return;
     if (!store) denied();
     await store.save(state, entry);
 }
 export async function discardStoredNativeEnvelopes(binding, store) {
     discardNativeEnvelopes(binding);
-    if (binding.continuity === 'task') {
+    if (isDurableNativeContinuity(binding)) {
         if (!store) denied();
         await store.discard(binding);
     }
 }
 // Called only after successful native lowering and response normalization. This
-// describes local protocol transfer, not upstream reuse or durable task policy.
-export function nativeExecutionObservation(binding, sequence, providerState) {
+// describes local protocol transfer/retention, never measured upstream reuse.
+export function nativeExecutionObservation(binding, sequence, providerState, decision) {
     const transferredCheckpoints = sequence.filter(message => message.providerState).length;
-    return { protocol: binding.protocol, lifecycle: binding.continuity === 'task' ? 'task_continuation' : 'mandatory_tool_exchange',
-        scope: binding.executionScope.kind, retention: binding.continuity === 'task' ? 'owner_runtime_store' : 'process_only', transferredCheckpoints,
-        requestAction: transferredCheckpoints ? 'continue_tool_protocol' : 'fresh_protocol_request',
-        responseAction: providerState ? (binding.continuity === 'task' ? 'capture_task_checkpoint' : 'capture_tool_checkpoint') : 'discard_finished_execution',
+    return { protocol: binding.protocol, lifecycle: isDurableNativeContinuity(binding) ? 'task_continuation' : 'mandatory_tool_exchange',
+        scope: binding.executionScope.kind, retention: isDurableNativeContinuity(binding) ? 'owner_runtime_store' : 'process_only', transferredCheckpoints,
+        requestAction: transferredCheckpoints ? (isDurableNativeContinuity(binding) ? 'continue_task_protocol' : 'continue_tool_protocol') : 'fresh_protocol_request',
+        responseAction: providerState ? (isDurableNativeContinuity(binding) ? 'capture_task_checkpoint' : 'capture_tool_checkpoint') : 'discard_finished_execution',
+        ...(decision ? { decision } : {}),
         upstreamReuse: 'unknown' };
 }
 export function assertNativeEnvelopeSafe(state, secret) {
@@ -116,6 +118,7 @@ export function leaseNativeRequest(request) {
     const leaseId = randomBytes(32).toString('hex');
     leases.set(leaseId, { request, expiresAt: Date.now() + 60000 });
     return immutable({ endpoint: request.endpoint, body: request.publicBody, binding: request.binding,
+        ...(request.continuityDecision ? { continuityDecision: request.continuityDecision } : {}),
         wireFingerprint: wireHash(request.wire), leaseId });
 }
 export function inspectNativeRequest(rendered, lower) {

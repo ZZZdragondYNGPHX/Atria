@@ -55,8 +55,10 @@ export function capabilityAtPath(decision, pathFingerprint, now) {
 
 export const activeExecutionCapability = 'generation.continuation.active-execution';
 export const taskContinuityCapability = 'generation.continuation.task';
+export const adaptiveContinuityCapability = 'generation.continuation.adaptive';
 export function continuityRequirements(policy) {
-    return policy?.continuity === 'active_execution' ? [activeExecutionCapability] : policy?.continuity === 'task' ? [taskContinuityCapability] : [];
+    return policy?.continuity === 'active_execution' ? [activeExecutionCapability] : policy?.continuity === 'task' ? [taskContinuityCapability]
+        : policy?.continuity === 'adaptive' ? [taskContinuityCapability, adaptiveContinuityCapability] : [];
 }
 
 export function prepareExecutionPlan(resolved, acceptedPolicy = resolved.route.executionPolicy, provider = null) {
@@ -71,18 +73,15 @@ export function prepareExecutionPlan(resolved, acceptedPolicy = resolved.route.e
         if (decision?.state !== 'supported' || decision.binding?.assurance !== 'verified'
             || decision.binding.pathFingerprint !== resolved.pathFingerprint) throw new GenerationError('generation_path_evidence_unavailable');
     }
-    if (policy.continuity === 'adaptive') {
-        // Adaptive continue/reset selection still needs its own consumer.
-        throw new GenerationError('generation_continuation_unavailable');
-    }
-    if (['active_execution', 'task'].includes(policy.continuity)) {
-        const capability = policy.continuity === 'task' ? taskContinuityCapability : activeExecutionCapability;
-        const decision = resolved.capabilities.find(row => row.capability === capability);
-        // Adapter implementation and exact live path evidence are separate. A
-        // configured/declared capability alone cannot enable this policy.
-        if (!provider?.continuationScopes?.includes(policy.continuity) || typeof provider.discardExecution !== 'function'
-            || decision?.state !== 'supported' || decision.binding?.assurance !== 'verified'
-            || decision.binding.pathFingerprint !== resolved.pathFingerprint) throw new GenerationError('generation_continuation_unavailable');
+    if (['active_execution', 'task', 'adaptive'].includes(policy.continuity)) {
+        for (const capability of continuityRequirements(policy)) {
+            const decision = resolved.capabilities.find(row => row.capability === capability);
+            // Adapter implementation and exact live path evidence are separate.
+            // A declaration alone cannot enable either continuity policy.
+            if (!provider?.continuationScopes?.includes(policy.continuity) || typeof provider.discardExecution !== 'function'
+                || decision?.state !== 'supported' || decision.binding?.assurance !== 'verified'
+                || decision.binding.pathFingerprint !== resolved.pathFingerprint) throw new GenerationError('generation_continuation_unavailable');
+        }
     }
     return immutable({ schemaVersion: 1, pathFingerprint: resolved.pathFingerprint ?? null,
         policyFingerprint: hashNativeDocument(policy), policy, selection: 'fixed_route',

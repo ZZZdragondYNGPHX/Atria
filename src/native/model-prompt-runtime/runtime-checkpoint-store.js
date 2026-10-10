@@ -3,6 +3,7 @@ import { hashNativeDocument, nativeRecord } from '../repositories/common.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { withRuntimeWrite } from './persistence.js';
 import { GenerationError, immutable } from './execution-utils.js';
+import { projectAgentResumeMessages } from '../../../public/shared/project-agent-conversation.js';
 
 export const runtimeCheckpointLimits = Object.freeze({ count: 128, totalBytes: 16 * 1024 * 1024, entryBytes: 2 * 1024 * 1024, ttlMs: 600000 });
 const unavailable = () => { throw new GenerationError('generation_continuation_unavailable'); };
@@ -112,23 +113,45 @@ export class RuntimeCheckpointStore {
         const publicSequence = sequence.filter(message => message.role !== 'system').map(({ providerState: _state, ...message }) => message);
         // Automatic selection uses the current original Task's saved, complete
         // public conversation, not arbitrary matching caller history or TaskId.
-        if (!this.publicConversation || hashNativeDocument(publicSequence) !== hashNativeDocument(this.publicConversation)) return sequence;
+        const adaptive = binding.continuity === 'adaptive';
+        const hasHistory = this.publicConversation?.some(message => message.role === 'assistant');
+        const decide = (messages, action, reason) => immutable({ sequence: messages, decision: { requestedPolicy: binding.continuity,
+            effectiveScope: action === 'continue' ? 'task' : 'none', action, reason,
+            sourceCheckpointIds: messages.flatMap(message => message.providerState ? [message.providerState.checkpointId] : []),
+            loss: action === 'reset' ? 'opaque_not_restored' : 'none' } });
+        if (sequence.some(message => message.providerState)) return decide(sequence, 'continue', 'supplied_checkpoint');
+        const matches = this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(this.publicConversation);
+        if (!matches) {
+            if (adaptive && this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(projectAgentResumeMessages(this.publicConversation))) {
+                return decide(sequence, 'reset', 'public_observation_projection');
+            }
+            if (hasHistory || adaptive) unavailable();
+            return decide(sequence, 'start', 'no_checkpoint');
+        }
         const restored = [...sequence];
+        let ambiguous = false;
         await this._operate(async tx => {
             for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle })) {
-                if (!this.valid(row)) { await tx.deleteResource(row.key); continue; }
+                if (!this.valid(row)) continue;
                 const doc = row.doc;
                 if (!sameScope(binding, doc.binding)) continue;
-                if (doc.bindingFingerprint !== hashNativeDocument(binding) || doc.authorityFingerprint !== await this.authority(tx, binding)) { await tx.deleteResource(row.key); continue; }
+                if (doc.bindingFingerprint !== hashNativeDocument(binding) || doc.authorityFingerprint !== await this.authority(tx, binding)) continue;
                 const index = doc.sequence.length; const message = restored[index];
-                if (message?.role !== 'assistant' || message.providerState || message.content !== doc.text
+                if (message?.role !== 'assistant' || message.content !== doc.text
                     || hashNativeDocument(message.tool_calls || []) !== hashNativeDocument(doc.calls)
                     || hashNativeDocument(sequence.slice(0, index).map(({ providerState: _state, ...item }) => item)) !== hashNativeDocument(doc.sequence)) continue;
+                if (message.providerState) { ambiguous = true; continue; }
                 restored[index] = { ...message, providerState: { schemaVersion: 1, checkpointId: doc.checkpointId,
                     bindingFingerprint: doc.bindingFingerprint, text: doc.text, calls: doc.calls } };
             }
         });
-        return immutable(restored);
+        const assistants = sequence.filter(message => message.role === 'assistant').length;
+        const checkpoints = restored.filter(message => message.providerState).length;
+        if (assistants && (ambiguous || checkpoints !== assistants)) {
+            if (adaptive) throw new GenerationError('generation_continuation_reset_required');
+            unavailable();
+        }
+        return decide(restored, checkpoints ? 'continue' : 'start', checkpoints ? 'saved_task_checkpoint' : 'no_checkpoint');
     }
     async discard(binding) {
         if (binding.ownerFingerprint !== this.ownerFingerprint) unavailable();

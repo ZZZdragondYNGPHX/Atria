@@ -15,9 +15,10 @@ import supertest from 'supertest';
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 import { createNativeStudioRouter } from '../../src/endpoints/native-studio.js';
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
+import { projectAgentResumeMessages } from '../../public/shared/project-agent-conversation.js';
 
 const harnesses = [['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]];
-async function fixture(make, mode = 'task', verified = true) {
+async function fixture(make, mode = 'task', verified = true, maxRequests = 4) {
     const h = await make(); const wires = [];
     let reply = (_round, res) => res.end(JSON.stringify({ status: 'completed', output: [
         { type: 'reasoning', encrypted_content: 'PRIVATE-TASK-RUNTIME' },
@@ -25,7 +26,7 @@ async function fixture(make, mode = 'task', verified = true) {
     ], usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } }));
     const server = createServer(async (req, res) => {
         let wire = ''; for await (const chunk of req) wire += chunk; wires.push(JSON.parse(wire));
-        res.writeHead(200, { 'Content-Type': 'application/json' }); reply(wires.length, res);
+        res.setHeader('Content-Type', 'application/json'); reply(wires.length, res);
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const { studio, agent } = services(h); const source = projectSource();
@@ -40,9 +41,10 @@ async function fixture(make, mode = 'task', verified = true) {
     const decision = { capability: 'generation.continuation.task', state: 'supported', provenance: [{ kind: 'provider-endpoint', source: 'synthetic loopback task consumer', observedAt }],
         ...(verified ? { binding: { schemaVersion: 1, pathFingerprint: executionPathFingerprint({ handle: h.handle, connection, model }), observedAt,
             expiresAt: Date.now() + 60000, assurance: 'verified' } } : {}) };
-    await seeded.persistence.saveModelProfile(h.handle, { ...model, limits: { contextTokens: 32000, outputTokens: 512 }, capabilities: [...model.capabilities, decision] },
-        verified ? { observationProof: capabilityObservationProof({ handle: h.handle, connection, model }, [decision]) } : {});
-    await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests: 4, maxTokens: 128000 } } });
+    const decisions = [decision, ...(mode === 'adaptive' ? [{ ...decision, capability: 'generation.continuation.adaptive' }] : [])];
+    await seeded.persistence.saveModelProfile(h.handle, { ...model, limits: { contextTokens: 32000, outputTokens: 512 }, capabilities: [...model.capabilities, ...decisions] },
+        verified ? { observationProof: capabilityObservationProof({ handle: h.handle, connection, model }, decisions) } : {});
+    await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests, maxTokens: 128000 } } });
     let onSecret = () => {};
     const providerFetch = globalThis.fetch;
     const newHost = () => new NativeGenerationHost({ ...seeded, studio, agent, providers: { 'provider.openai-responses': createResponsesGenerationProvider({ fetchImpl: providerFetch }) },
@@ -51,7 +53,7 @@ async function fixture(make, mode = 'task', verified = true) {
     const request = { role: 'studio', projectId: source.project.projectId, taskId: task.taskId, revision: created.revision.revision,
         requestId: 'task-runtime-first', tools: context.tools, messages: [{ role: 'user', content: task.intent }] };
     const rows = () => h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: h.handle }));
-    return { h, seeded, studio, agent, task, originalPlan, request, newHost, wires, rows, setSecret: fn => { onSecret = fn; }, setReply: fn => { reply = fn; },
+    return { h, seeded, studio, agent, task, originalPlan, request, newHost, providerFetch, wires, rows, setSecret: fn => { onSecret = fn; }, setReply: fn => { reply = fn; },
         cleanup: async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
 const followup = (f, response) => ({ ...f.request, requestId: 'task-runtime-next', messages: [...f.request.messages,
@@ -127,6 +129,52 @@ test.each(['task', 'adaptive'])('Runtime %s unverified actual path still denies 
     try {
         await expect(f.newHost().execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
         expect(f.wires).toHaveLength(0); expect(await f.rows()).toHaveLength(0);
+    } finally { await f.cleanup(); }
+});
+test.each(['missing_task_evidence', 'non_task_source'])('Runtime adaptive %s cannot borrow a lifecycle or a consumer from another scope', async change => {
+    const f = await fixture(makeTempFsEngineHarness, 'adaptive');
+    try {
+        if (change === 'missing_task_evidence') {
+            const model = await f.seeded.persistence.getModelProfile(f.h.handle, f.seeded.model.modelProfileId);
+            await f.seeded.persistence.saveModelProfile(f.h.handle, { ...model, capabilities: model.capabilities.filter(row => row.capability !== 'generation.continuation.task') });
+        }
+        const request = { ...f.request }; if (change === 'non_task_source') delete request.taskId;
+        await expect(f.newHost().execute(f.h.handle, request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+        expect(f.wires).toHaveLength(0); expect(await f.rows()).toHaveLength(0);
+        expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute?.attempts || []).toHaveLength(0);
+    } finally { await f.cleanup(); }
+});
+test('Runtime adaptive cancelled publication waits for original Task usage and private cleanup', async () => {
+    const f = await fixture(makeTempFsEngineHarness, 'adaptive');
+    try {
+        let arrived, release;
+        const paused = new Promise(resolve => { arrived = resolve; }); const resumed = new Promise(resolve => { release = resolve; });
+        const original = f.h.engine.withTransaction.bind(f.h.engine);
+        f.h.engine.withTransaction = (handle, operation) => original(handle, tx => operation(new Proxy(tx, { get(target, key) {
+            if (key === 'putResourceIfMatch') return async (resource, ...args) => {
+                if (resource.kind === NATIVE_RESOURCE_KINDS.runtimeCheckpoint) { arrived(); await resumed; }
+                return target.putResourceIfMatch(resource, ...args);
+            };
+            return typeof target[key] === 'function' ? target[key].bind(target) : target[key];
+        } })));
+        const controller = new AbortController();
+        const pending = f.newHost().execute(f.h.handle, f.request, controller.signal).then(value => ({ value }), error => ({ error }));
+        await paused; controller.abort(); release(); const outcome = await pending;
+        expect(outcome.error).toMatchObject({ code: 'generation_cancelled' }); expect(await f.rows()).toHaveLength(0);
+        expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
+    } finally { await f.cleanup(); }
+});
+test('Runtime adaptive attempted HTTP then retry budget refusal still discards private state and retains unknown cost', async () => {
+    const f = await fixture(makeTempFsEngineHarness, 'adaptive', true, 2);
+    try {
+        const route = await f.seeded.persistence.getRuntimeRoute(f.h.handle, f.seeded.routes[0].runtimeRouteId);
+        await f.seeded.persistence.saveRuntimeRoute(f.h.handle, { ...route, policy: { ...route.policy, maxRetries: 1 } });
+        const host = f.newHost(); const first = await host.execute(f.h.handle, f.request);
+        f.setReply((_round, res) => { res.writeHead(429); res.end('{}'); });
+        await expect(host.execute(f.h.handle, followup(f, first.response))).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(f.wires).toHaveLength(2); expect(await f.rows()).toHaveLength(0);
+        const task = await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId);
+        expect(task.compute.attempts.map(row => row.status)).toEqual(['settled', 'unknown']);
     } finally { await f.cleanup(); }
 });
 test.each(['cancel_during_publish', 'timeout_during_publish', 'cancel_during_settlement', 'timeout_during_settlement'])('Runtime task %s never reports success or leaves private state after delayed persistence', async change => {
@@ -221,11 +269,12 @@ test.each(harnesses)('Runtime task %s same-millisecond route delete/recreate can
         expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute?.attempts || []).toHaveLength(0);
     } finally { clock?.mockRestore(); await f.cleanup(); }
 });
-test.each(['restore', 'edited_history', 'task_authority_aba'])('Runtime task actual Studio restart %s uses only current saved public Task history', async change => {
-    const f = await fixture(makeTempFsEngineHarness);
+test.each(['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue', 'adaptive_missing', 'adaptive_task_aba', 'adaptive_repeat_reset', 'adaptive_malformed_history', 'adaptive_preview_projection', 'adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'])('Runtime Studio continuity %s uses only current saved public Task history', async change => {
+    const adaptive = change.startsWith('adaptive');
+    const f = await fixture(makeTempFsEngineHarness, adaptive ? 'adaptive' : 'task', true, change === 'adaptive_charge_refusal_projection' ? 1 : 4);
     const previousFetch = globalThis.fetch, previousAtria = globalThis.Atria;
     try {
-        let host = f.newHost(); const requests = [], responses = [];
+        let host = f.newHost(); const requests = [], responses = [], updates = [];
         const app = express(); app.use(express.json({ limit: '4mb' }));
         app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle } }; next(); });
         app.get('/api/native/extensions/settings', (_req, res) => res.json({ value: { skills: {} } }));
@@ -241,29 +290,73 @@ test.each(['restore', 'edited_history', 'task_authority_aba'])('Runtime task act
             return { ok: result.status >= 200 && result.status < 300, status: result.status,
                 headers: { get: name => result.headers[name.toLowerCase()] }, json: async () => result.body };
         };
-        const options = { projectId: f.request.projectId, taskId: f.task.taskId, maxModelRounds: 1 };
+        const options = { projectId: f.request.projectId, taskId: f.task.taskId, maxModelRounds: 1, onUpdate: update => updates.push(update) };
         await runNativeStudioAgentTask(options);
         const saved = (await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).conversation;
         expect(saved.some(message => message.tool_calls?.length)).toBe(true);
         expect(JSON.stringify(saved)).not.toContain('providerState'); expect(JSON.stringify(saved)).not.toContain('PRIVATE-TASK-RUNTIME');
-        if (change === 'task_authority_aba') {
+        if (['adaptive_preview_projection', 'adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'].includes(change)) {
+            const before = (await f.rows()).map(row => row.doc.checkpointId);
+            const projected = { ...requests[0], requestId: 'projection-preflight', messages: [requests[0].messages[0], ...projectAgentResumeMessages(saved)] };
+            delete projected.projectAttemptId;
+            if (change === 'adaptive_preview_projection') {
+                const preview = await host.execute(f.h.handle, projected, undefined, undefined, { preview: true });
+                expect(preview.snapshot.diagnostics.continuity).toMatchObject({ action: 'reset', reason: 'public_observation_projection', loss: 'opaque_not_restored' });
+            } else if (change === 'adaptive_charge_refusal_projection') {
+                await expect(host.execute(f.h.handle, projected)).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            } else {
+                const base = createResponsesGenerationProvider({ fetchImpl: f.providerFetch });
+                const measured = { ...base, withRuntimeCheckpointStore: store => {
+                    const native = base.withRuntimeCheckpointStore(store);
+                    return { ...native, countTokens: async input => { await native.countTokens(input); return 100000; } };
+                } };
+                const blocked = new NativeGenerationHost({ ...f.seeded, studio: f.studio, agent: f.agent, providers: { 'provider.openai-responses': measured }, secretPort: { resolveSecret: async () => 'task-runtime-credential' } });
+                await expect(blocked.execute(f.h.handle, projected)).rejects.toMatchObject({ code: 'generation_context_budget_exceeded' });
+            }
+            expect((await f.rows()).map(row => row.doc.checkpointId)).toEqual(before);
+            expect(f.wires).toHaveLength(1);
+            expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.attempts).toHaveLength(1);
+            if (change !== 'adaptive_preview_projection') return;
+        }
+        if (['task_authority_aba', 'adaptive_task_aba'].includes(change)) {
             await f.agent.setPlan(f.h.handle, f.request.projectId, f.task.taskId, { summary: 'changed', steps: [{ id: 'new', title: 'new', impact: 'low' }] });
             await f.agent.setPlan(f.h.handle, f.request.projectId, f.task.taskId, f.originalPlan);
         }
-        if (change === 'edited_history') {
+        if (['adaptive_missing', 'adaptive_repeat_reset'].includes(change)) await new RuntimeCheckpointStore(f.h).discard((await f.rows())[0].doc.binding);
+        if (['edited_history', 'adaptive_malformed_history', 'adaptive_repeat_reset'].includes(change)) {
             // A caller editing the input is not the saved Task history authority.
             const bridge = globalThis.fetch;
             globalThis.fetch = (url, options = {}) => {
-                if (url === '/api/native/generation/execute') { const body = JSON.parse(options.body); body.messages.find(message => message.role === 'user').content = 'Edited old user text'; options = { ...options, body: JSON.stringify(body) }; }
+                if (url === '/api/native/generation/execute') {
+                    const body = JSON.parse(options.body);
+                    if (change === 'adaptive_repeat_reset') { if (requests.length === 2) body.messages = [body.messages[0], ...saved]; }
+                    else body.messages.find(message => message.role === 'user').content = 'Edited old user text';
+                    options = { ...options, body: JSON.stringify(body) };
+                }
                 return bridge(url, options);
             };
         }
         host = f.newHost();
         f.setReply((_round, res) => res.end(JSON.stringify({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final public read' }] }], usage: { input_tokens: 4, output_tokens: 3, total_tokens: 7 } })));
+        const denied = ['edited_history', 'task_authority_aba', 'adaptive_malformed_history', 'adaptive_repeat_reset'].includes(change);
+        if (denied) {
+            await expect(runNativeStudioAgentTask(options)).rejects.toMatchObject({ code: change === 'adaptive_repeat_reset' ? 'generation_continuation_reset_required' : 'generation_continuation_unavailable' });
+            expect(f.wires).toHaveLength(1);
+            expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.attempts).toHaveLength(1);
+            if (change === 'adaptive_repeat_reset') { expect(requests).toHaveLength(3); expect(updates.filter(update => update.continuation?.status === 'reset')).toHaveLength(1); }
+            return;
+        }
         await runNativeStudioAgentTask(options);
         expect(f.wires).toHaveLength(2);
-        expect(JSON.stringify(f.wires[1]).includes('PRIVATE-TASK-RUNTIME')).toBe(change === 'restore');
-        expect(responses[1].response.observation.nativeExecution.transferredCheckpoints).toBe(change === 'restore' ? 1 : 0);
+        const continued = ['restore', 'adaptive_continue', 'adaptive_preview_projection'].includes(change);
+        expect(JSON.stringify(f.wires[1]).includes('PRIVATE-TASK-RUNTIME')).toBe(continued);
+        expect(responses[1].response.observation.nativeExecution.transferredCheckpoints).toBe(continued ? 1 : 0);
+        const planned = responses[1].snapshot.diagnostics.continuity;
+        expect(responses[1].response.observation.nativeExecution.decision).toEqual(planned);
+        expect(planned).toMatchObject({ requestedPolicy: adaptive ? 'adaptive' : 'task', action: continued ? 'continue' : 'reset',
+            effectiveScope: continued ? 'task' : 'none', reason: continued ? 'saved_task_checkpoint' : 'public_observation_projection', loss: continued ? 'none' : 'opaque_not_restored' });
+        if (!continued) { expect(requests).toHaveLength(3); expect(f.wires[1].input.some(item => item.type === 'function_call')).toBe(false);
+            expect(JSON.stringify(f.wires[1])).toContain('Previous tool observation'); expect(updates.filter(update => update.continuation?.status === 'reset')).toHaveLength(1); }
         expect(requests[1].messages.some(message => message.providerState)).toBe(false);
         expect(JSON.stringify(responses)).not.toContain('PRIVATE-TASK-RUNTIME');
         const finished = await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId);

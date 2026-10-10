@@ -687,7 +687,7 @@ export class NativeGenerationHost {
                 // The scheduler exposes cancellation promptly but keeps worker
                 // permits until settlement. Durable Task continuation must also
                 // finish usage settlement/private cleanup before this Host exits.
-                if (input.taskId && route.executionPolicy?.continuity === 'task' && worker) await worker.catch(() => {});
+                if (input.taskId && ['task', 'adaptive'].includes(route.executionPolicy?.continuity) && worker) await worker.catch(() => {});
                 if (error.code === 'operation_cancelled') fail('generation_cancelled');
                 throw error;
             });
@@ -825,6 +825,8 @@ export class NativeGenerationHost {
                     ? baseProvider.withRuntimeCheckpointStore(new RuntimeCheckpointStore({ engine: this.persistence._engine, handle, publicConversation: projectConversation })) : baseProvider;
                 let prepared;
                 let pendingCharge;
+                let sendAdmitted = false;
+                let retainOnBudgetRejection = false;
                 const settleAttempt = async usage => {
                     if (!pendingCharge) return;
                     const { receipt, attemptId, entry } = pendingCharge;
@@ -834,65 +836,72 @@ export class NativeGenerationHost {
                     Object.assign(entry, settled);
                     pendingCharge = null;
                 };
-                return { ...provider, settleAttempt, renderRequest: request => { prepared = request; return provider.renderRequest(request); }, send: async (rendered, boundary) => {
+                return { ...provider, settleAttempt,
+                    discardExecution: rendered => retainOnBudgetRejection ? undefined : provider.discardExecution?.(rendered),
+                    renderRequest: request => { prepared = request; return provider.renderRequest(request); }, send: async (rendered, boundary) => {
                     // Role-host retries stay inside this route's send/timeout boundary.
                     // Only after they are exhausted may Core resolve a complete fallback.
-                    for (let retry = 0; ; retry++) {
-                        checkCancellation(boundary.signal);
-                        assertExecutionEvidenceCurrent(resolved, Date.now(), prepared.snapshot.diagnostics.executionPlan.policy);
-                        // Private native request leases are single-send. A retry lowers
-                        // the same frozen snapshot again and rechecks its current envelope.
-                        if (retry) rendered = await provider.renderRequest(prepared);
-                        const attempt = { runtimeRouteId: resolved.route.runtimeRouteId, retry, status: 'pending' };
-                        attempts.push(attempt);
-                        const capture = lanePlan?.evidenceCapture;
-                        const observedAttempt = capture?.nextAttempt(input.requestId) ?? attempts.length;
-                        const attemptId = input.requestId + ':' + observedAttempt;
-                        try {
-                            if (projectTaskEvidence && (await this.agent.getContext(handle, input.projectId, input.taskId)).task.executionFingerprint !== projectTaskEvidence.ref.slice(-64)) {
-                                throw new GenerationError('native_generation_task_stopped');
-                            }
-                            await provider.assertRequestCurrent?.(rendered);
+                        for (let retry = 0; ; retry++) {
                             checkCancellation(boundary.signal);
-                            const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
-                            const compute = limits || input.sessionId || input.taskId ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
-                                targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
-                            let receipt;
-                            if (budget) {
-                                const context = lanePlan.budgetContext;
-                                try { receipt = await this.sessionCore.runs.charge(handle, context.snapshot, { anchor: context.anchor, role: input.role, background: context.background === true, ...(compute ? { compute } : {}) }, budget); } catch (error) {
-                                    if (['native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied'].includes(error.code)) throw new GenerationError(error.code);
-                                    throw error;
+                            assertExecutionEvidenceCurrent(resolved, Date.now(), prepared.snapshot.diagnostics.executionPlan.policy);
+                            // Private native request leases are single-send. A retry lowers
+                            // the same frozen snapshot again and rechecks its current envelope.
+                            if (retry) rendered = await provider.renderRequest(prepared);
+                            const attempt = { runtimeRouteId: resolved.route.runtimeRouteId, retry, status: 'pending' };
+                            attempts.push(attempt);
+                            const capture = lanePlan?.evidenceCapture;
+                            const observedAttempt = capture?.nextAttempt(input.requestId) ?? attempts.length;
+                            const attemptId = input.requestId + ':' + observedAttempt;
+                            try {
+                                if (projectTaskEvidence && (await this.agent.getContext(handle, input.projectId, input.taskId)).task.executionFingerprint !== projectTaskEvidence.ref.slice(-64)) {
+                                    throw new GenerationError('native_generation_task_stopped');
                                 }
-                            } else if (compute && input.sessionId) {
-                                receipt = await this.sessionCore.runs.chargeCompute(handle, snapshot,
-                                    { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, compute.attempt);
-                            } else if (compute) {
-                                if (!input.taskId || !this.agent) throw new GenerationError('native_generation_budget_lane_denied');
-                                receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt, projectTaskEvidence.ref.slice(-64));
+                                await provider.assertRequestCurrent?.(rendered);
+                                checkCancellation(boundary.signal);
+                                const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
+                                const compute = limits || input.sessionId || input.taskId ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
+                                    targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
+                                let receipt;
+                                if (budget) {
+                                    const context = lanePlan.budgetContext;
+                                    try { receipt = await this.sessionCore.runs.charge(handle, context.snapshot, { anchor: context.anchor, role: input.role, background: context.background === true, ...(compute ? { compute } : {}) }, budget); } catch (error) {
+                                        if (['native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied'].includes(error.code)) throw new GenerationError(error.code);
+                                        throw error;
+                                    }
+                                } else if (compute && input.sessionId) {
+                                    receipt = await this.sessionCore.runs.chargeCompute(handle, snapshot,
+                                        { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, compute.attempt);
+                                } else if (compute) {
+                                    if (!input.taskId || !this.agent) throw new GenerationError('native_generation_budget_lane_denied');
+                                    receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt, projectTaskEvidence.ref.slice(-64));
+                                }
+                                sendAdmitted = true;
+                                if (receipt?.compute) {
+                                    computeLimits = receipt.limits ?? limits;
+                                    const entry = { ...receipt.compute };
+                                    computeAttempts.push(entry);
+                                    pendingCharge = { receipt, attemptId: compute.attempt.attemptId, entry };
+                                }
+                                await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
+                                    requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
+                                    agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
+                                const response = await provider.send(rendered, boundary);
+                                attempt.status = 'success';
+                                capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
+                                return response;
+                            } catch (error) {
+                            // A refused original budget admission has performed
+                            // no send/reset. Preserve an existing valid checkpoint;
+                            // retries after any attempted send still discard on failure.
+                                retainOnBudgetRejection = error.code === 'native_generation_budget_exhausted' && !sendAdmitted;
+                                await settleAttempt(null);
+                                attempt.status = 'failed';
+                                capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
+                                if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
+                                if (!(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                             }
-                            if (receipt?.compute) {
-                                computeLimits = receipt.limits ?? limits;
-                                const entry = { ...receipt.compute };
-                                computeAttempts.push(entry);
-                                pendingCharge = { receipt, attemptId: compute.attempt.attemptId, entry };
-                            }
-                            await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
-                                requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
-                                agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
-                            const response = await provider.send(rendered, boundary);
-                            attempt.status = 'success';
-                            capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
-                            return response;
-                        } catch (error) {
-                            await settleAttempt(null);
-                            attempt.status = 'failed';
-                            capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
-                            if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
-                            if (!(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                         }
-                    }
-                } };
+                    } };
             } });
         const request = { requestId: input.requestId, role, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId },
             handle, signal, onChunk: skills?.tools.length ? undefined : onChunk, requirements, tools: skills?.tools.length ? skills.tools : input.tools || [], outputContract: input.outputContract ?? null,

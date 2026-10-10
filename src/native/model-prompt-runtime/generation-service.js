@@ -119,6 +119,7 @@ export class GenerationService {
                 const rendered = immutable(await cancellable(() => provider.renderRequest({ resolved, snapshot: preparedSnapshot }), signal));
                 const snapshot = immutable(assertEffectiveRequestSnapshot({ ...preparedSnapshot, diagnostics: {
                     ...preparedSnapshot.diagnostics,
+                    ...(rendered.continuityDecision ? { continuity: rendered.continuityDecision } : {}),
                     compiledBinding: compiledRequestBinding({ resolved, contextPlan, promptIr, rendered }),
                 } }));
                 if (preview) return immutable({ snapshot, rendered, preview: true });

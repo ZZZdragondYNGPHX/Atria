@@ -74,7 +74,7 @@ export function runtimeRemediation(code) {
 
 export function runtimeGenerationError(code, status) {
     const [message, target] = runtimeRemediation(code);
-    if (target && globalThis.document && typeof CustomEvent === 'function') {
+    if (target && globalThis.document && typeof CustomEvent === 'function' && code !== 'generation_continuation_reset_required') {
         document.dispatchEvent(new CustomEvent('atria-native-runtime-error', { detail: { message, target } }));
     }
     return Object.assign(new Error(message), { code, status });
