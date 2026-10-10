@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete / S09 complete / S10 engineering complete; M1 empirical acceptance pending**；D3 Reasoning Continuity、D4 Execution Reuse / Cache Locality / Adaptive Invocation 与 D5 Hybrid Cognitive Memory 2.0 企划整合完成；新增 Memory 工作包未实施 / 未实测，生成基础组与远期技术契约按阶段细化。
+- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / H0 preparation complete**。D3–D5企划保留，后续Memory与生成工作包未实施。
 - Updated: 2026-10-10
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
@@ -21,7 +21,7 @@
 - F2 primary checkpoint / local Tested HEAD: `f495267023ca4475d15ba1c61b66702624c4938e`；新来源/独立密封/范围固定完成主模型测试；20/20 有效 controls、六真实基线原硬检查通过，RP knowledge / Project status 主模型缺口成立。第二模型复核暂缓，F3 未开始，M1 pending。实际结果与 pins 见同一 Record 最新节。
 - F2 dual source completion / local Tested HEAD: `11756061ed74dc298ab99f0701b1d7e7c1c0a607`；两域40/40有效controls与六来源各两观察完成，原六基线复用；两域共同缺口成立。
 - F3 product / local Tested HEAD: `cebd14154b371f59a7b44dbac9726e2f9db18a4c`（已push）；一次双域提炼/development完成，两域一致candidate胜均0，存在重要维度负差/分歧与一份无效评价，未准入promotion，M1 pending。最新F3 17/17与retry18/18本地checks；具体实际结果/pins见同一Record。
-- M1 current checkpoint / local HEAD: `8f5989882`；两域development均三胜。Project独立promotion九胜、六维非负；发布凭据容量与owner ledger对齐后，完整149条费用绑定native review→真实下一消费→guarded rollback通过。原语义报告与新生命周期分别固定版本，全部历史/unknown/费用保留。RP独立promotion四胜/两tie/三负，重要维度有退化，正在继续优化和新材料验证。M1整体未通过、main未集成；API硬限制每日2000/20RPM由发送端执行。H0隔离调用图、八样本/519来源和观察清单已准备，B0及H1/H2未运行。具体实际pins/费用/最小验证见同一Record最新节。
+- M1 current checkpoint: M1实际验收与main集成完成。Project开发三胜、独立九胜；RP开发3胜、独立3胜/3对，相关六维无负差，三条公开回复完整152条核验六维met。两域完整费用绑定、native review发布、下一真实请求精确消费和guarded rollback均通过。main `ea75b76be4927e881de2f0be7c304a56301f1f83`；原生产自动发布规则、历史不利结果和unknown费用保留。H0八样本/519来源、隔离调用图和观测清单已准备，B0及H1/H2未运行。
 - D0/D2 inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`；D5 最新 main `6ab12ba43c5b18bfec6df75c16456a4cb4497d3f` 与当前开发分支 `25e1aef0f2ed6e209520a9883fb9527c0bff24cf` 已静态核对，范围与限制见 [baseline §10](baseline.md#10-d5hybrid-memory-整合时的实际基线)。
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)、[Hybrid Cognitive Memory 2.0](../hybrid-cognitive-memory-2-0/index.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
@@ -139,10 +139,10 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S07 | Complete；原 Skill authority candidate / version / read pin | full-file history、正文候选 / whole-base CAS、RP shared run / Native / Studio exact consumers；13 suites / 247 tests |
 | S08 | Complete；原 Prompt / Preset authority body candidate / exact binding | Native immutable closure / Route CAS、ordinary RP Workspace pin、下一 request / run 消费；7 suites / 68 tests |
 | S09 | Complete；原 Workspace 参数 exact binding / rollback、Project pristine Task repair candidate / CAS | 8 suites / 105 tests；单字段 / whole base / conflicts；运行开始后 Project 不热改，手动 apply 无晋升资格 |
-| S10 | 工程交付完成；实际模型改善待验收 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
-| M1反馈/评价补充 F0–F3 | F0/F1及F2双模型前置完成；换机恢复和本地接线完成，M1 pending | 按主模型完成最小相关验证；保留产品行为、隔离、生命周期检查与旧不利判断，实际结果见Record |
+| S10 | 工程交付及两域M1实际验收完成 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
+| M1反馈/评价补充 F0–F3 | Complete；实际双域验收与main集成完成 | 相关真实语义、完整费用与原生命周期通过；历史不利结果保留，具体版本见Record最新节 |
 | S11–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
-| HM1–HM3 / H0–H5 | 未交付；D5 仅完成企划 | 源码静态复核不是 H0 基准验收；新 Actor eligibility、中文检索 / packing、deep retrieval、delta / cache 与认知完整消费均待实施 / 实测 |
+| HM1–HM3 / H0–H5 | H0准备完成；完整基准及后续包未交付 | 八样本/519来源、三条原消费者调用图与隔离观测已准备；B0、H1/H2与后续性能/质量未实测 |
 
 S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一工作补齐 M1 验收证据与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
@@ -158,20 +158,20 @@ S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runti
 
 ## 进入正式实施的条件
 
-S01–S10 工程链路沿同一分支完成，下一轮核对真实 Git，只复核 M1 验收与集成前置条件。读取 s10-evolution → m1-evolution / delivery M1 → 同一 Record。保留 ordinary RP bounded Director / 原 character Skill 和 Workspace binding、Project 原局部 Skill / style binding / pristine Task repair 的部署边界；不以独立报告叠加不同改进。
-S06 仍 promotion ineligible；本轮 fake provider / 浏览器 fixture 仅证明工程闭环，独立真实案例改善尚未证明。需要真实补测时按 acceptance §0 自主执行必要验证，保存实际版本与结果、不覆盖历史报告。
-S10 工程完成；M1 退出条件仍待验收，集成与后续交付组依赖 M1 验收通过。
+S01–S10与M1完整交付已集成main；H0准备从h0-baseline§7及同一Record最新节读取，完整H0基准仍待实施。保留 ordinary RP bounded Director / 原 character Skill 和 Workspace binding、Project 原局部 Skill / style binding / pristine Task repair 的部署边界；不以独立报告叠加不同改进。
+历史S06候选仍promotion ineligible；当时fake provider / 浏览器fixture只证明工程闭环，不改写为真实改善。需要真实补测时按 acceptance §0 自主执行必要验证，保存实际版本与结果、不覆盖历史报告。
+S10与M1已完成并集成main；H0准备见h0-baseline§7，完整基准与后续工作包仍按各自产品范围实施。
 
 ## M1 工程验证路由
 
 工程验证见 [m1-acceptance](m1-acceptance.md)，执行与测试配额见 Governance §12 / §13.1。生产 automatic promotion 的 human / price gate 归 S10；工程报告不冒充人工偏好或净收益。实际进度按 Git 与 Record 核对。
 
-M1本轮自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；本地五套61 distinct tests通过，生产S10门槛源码不变。实际模型结果待执行，不能将接线完成计作改善通过。
+历史自动验收runner / 保守恢复test-only source HEAD：`2c5499bb6`；本地五套61 distinct tests通过，生产S10门槛源码不变。实际模型结果待执行，不能将接线完成计作改善通过。
 
 ## 反馈与评价契约路由
 
-先明确原反馈与评价契约，再验证 RP / Project 试点。详细新契约唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点/调用范围归m1-acceptance，研究不再作为直接实施依据。F0设计及F1最小实现完成；product实现HEAD见上，paid source仍a61b249ef、M1未达标、累计761/2939582，main未合并。后续 F2→F3 按工程依赖推进，按当前问题选择最小相关验证。
+以下保留反馈契约与试点的历史进度；当前双域已通过并集成，最终结果见Record最新节。详细新契约唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点/调用范围归m1-acceptance，研究不再作为直接实施依据。F0设计及F1最小实现完成；product实现HEAD见上，paid source仍a61b249ef、M1未达标、累计761/2939582，main未合并。后续 F2→F3 按工程依赖推进，按当前问题选择最小相关验证。
 
 2026-10-09 F2本轮准备核对详见 [反馈/评价模块§10](m1-feedback-evaluation.md#10-f2-来源准备校准控制与本轮停止状态)：新工作负载规格不等于正式source，promotion仅预留元数据不计独立来源；六critical dimensions实际证据覆盖未解决，原consumer发送前source_unready。下一仍F2，F3未开始。
 
-本节保留 F2 准备时的设计与工程历史；此后 F2 双模型前置复核已完成，F3 已进行一次双域 development。当前按 acceptance §1/§2、feedback §16 与同一 Record 最新节继续；换机恢复见 HANDOFF。旧累计 1000、72/Step18 和逐轮许可不生效。
+本节保留 F2 准备时的设计与工程历史；此后 F2 双模型前置复核已完成，F3 已进行一次双域 development。当前按 acceptance §1/§2、feedback §16 与同一 Record 最新节继续；恢复历史与最终交付见同一Record最新节。旧累计 1000、72/Step18 和逐轮许可不生效。

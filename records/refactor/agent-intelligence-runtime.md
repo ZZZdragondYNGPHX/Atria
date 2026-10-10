@@ -2,20 +2,19 @@
 
 > 本文件保留实际工程与试验历史。旧配额、scope/claim、双模型、首失败停止、单轮/候选与数值门槛不恢复为执行规则；当前验证见 [M1 acceptance](../../plans/architecture/agent-intelligence-runtime/m1-acceptance.md)，调用限额见 [Governance §13.1](../../README.md#131-api-测试执行规则)。
 
-> 当前 API 测试规则（2026-10-09）以 [Governance §13.1](../../README.md#131-api-测试执行规则) 和 [acceptance §0](../../plans/architecture/agent-intelligence-runtime/m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包) 为准：仅每日 2000 次 / 20 RPM。本文旧预算、累计 1000、Step 次数、scope 许可、首失败停止等是历史事实，不能恢复为当前限制；实时恢复读 HANDOFF。
+> 当前 API 测试规则（2026-10-09）以 [Governance §13.1](../../README.md#131-api-测试执行规则) 和 [acceptance §0](../../plans/architecture/agent-intelligence-runtime/m1-acceptance.md#0-当前-api-测试规则覆盖全部历史封包) 为准：仅每日 2000 次 / 20 RPM。本文旧预算、累计 1000、Step 次数、scope 许可、首失败停止等是历史事实，不能恢复为当前限制；当前交付读本文最新节。
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **Active**
+- Status: **M1 complete / H0 preparation complete；后续交付组计划保留**
 - Plan: [正式架构与阶段入口](../../plans/architecture/agent-intelligence-runtime/index.md)
-- Updated: 2026-10-09
+- Updated: 2026-10-10
 
 ## Summary
 
-最新结果：2026-10-09 F2 在用户授权的主模型测试范围内完成来源、隔离、校准与有限范围固定。产品/Tested HEAD `f495267023ca4475d15ba1c61b66702624c4938e` 已 push；12 个比较控制与 8 个单样本控制全部有效，六个真实 development 基线的原硬检查通过。主模型观察到 RP 档案场景的知识边界缺口，以及三个 Project 场景的状态说明遗漏；均标 `primary_observed_gap`，不是双模型共同结论。第二模型复核暂缓，F3 未开始，M1 pending，未合并 main。实际结果与 pins 见本 Record 最新节；没有因阶段结束生成 HANDOFF。
+M1实际验收与main集成完成。Project开发三胜、独立九胜；RP开发3胜、独立3胜/3对，相关六维无负差，三条公开回复完整152条核验六维met。两域完整费用绑定、native review发布、下一真实请求精确消费和guarded rollback均通过。main `ea75b76be4927e881de2f0be7c304a56301f1f83`；原生产自动发布规则、历史不利结果和unknown费用保留。H0八样本/519来源、隔离调用图和观测清单已准备，B0及H1/H2未运行。
 
-长期任务沿同一产品分支实施；D0–D4 / S01–S09 与 S10 工程交付完成。S10 将 S05 feedback / diagnosis、原六类局部 target、共享 finite budget、原 scheduler、隔离 evaluator、publication / recovery / rollback / next-run evidence 与双入口共享面板接为可用消费者。12 relevant suites / 233 distinct local tests 与真实 Chromium shared-pane fixture 通过。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
-S06 真实执行与 model observations 保留，候选仍 ineligible；本轮无新真实模型请求。S10 的结构 / 假 provider 证据不证明稳定质量 / 成本收益；M1 的真实改善与集成前置条件待验收。本轮只续接 S10，下一只复核 M1 验收，不进入 S11 / G。
+以下按时间保留工程和试验历史；其中旧pending、暂停、许可和数值门槛不是当前执行状态。
 
 ## D0 — 最新 main 核对与架构调研
 
@@ -1488,3 +1487,16 @@ run-1791632279844-e2732b41 候选 3a9f860eb192df71152043056bf72d7c816c3644b2e2da
 run-1791634234950-409351a1 候选 64a2837c308640cba6f51000e675e8625ca48281c7ef486fc805a306efa36a4e 的三公开189条quoteRef核验六维met，开发二胜一tie；独立结果一胜、一tie含knowledge_boundary负差、一个无效grader响应。真实负差与无效响应均保留，native job拒绝发布。
 
 公开回复的审阅片段比前轮147条增加至189条，增加了不必要事实断言的表面积。提交 dc743664ac2503a973324b81b70e6a4ffaad57e3 在提炼执行槽位中增加简洁、完整回应与事实选择原则；未知不只指精确时间，也涵盖未公开的粗略时段、容器内物件是否存在、来源和功能，避免用虚构背景解释拒绝。触及文件ESLint/diff通过；配置 m1-f3-rp-grounded-response-20261010.json 继续实际验证，原baseline/已付费协议控制复用，独立正文及评分不进入提炼。
+
+
+## M1完整交付与H0准备
+
+M1实际验收与main集成完成。Project开发三胜、独立九胜；RP开发3胜、独立3胜/3对，相关六维无负差，三条公开回复完整152条核验六维met。两域完整费用绑定、native review发布、下一真实请求精确消费和guarded rollback均通过。main `ea75b76be4927e881de2f0be7c304a56301f1f83`；原生产自动发布规则、历史不利结果和unknown费用保留。H0八样本/519来源、隔离调用图和观测清单已准备，B0及H1/H2未运行。
+
+最后候选 `97c489d8ad9ce77a146e5f859f5a1ba5b714377b64d71806c0a2a4f7415cd667` 的原生成run-1791635587931-03e12aa6完成三条原worker试验；第三条来源审阅返回47条完整行，却缺失六项status，保持原始响应与费用，不从理由推断评分。提交 `ffca4dcfecc9f4c178d64918a9991602f1f19426` 续接assessment=null的缺失公开审阅；三项最小恢复检查通过。公开核验与开发三胜完成后，独立验收取得两条有效胜及一条漏status的无效响应。提交 `99575717bd22222aeddde5212084c7b50b3fd7a5` 保留无效grade尝试及原费用，只补这条不完整评价；两项相关检查、ESLint/diff和零发送预检通过。有效met/gap、不利/uncertain评价均不替换，不重新生成候选或已完成核验。
+
+公开完整来源核验与开发三胜由 `run-1791636508549-80ea15b1` 完成并原样复用；最终 `run-1791637497806-f6febf72` 仅补一条独立评价和执行下一实际消费，新增5请求/44175 reported tokens；独立材料正文、输出和评分理由未进入开发。development report `967a99f7d53bd8ccba7a5ef0fcb8632f43b9f5d80ecd2c72659729864b4e60ba`，promotion report `d84b0328bec12d2281463758d24ae089041b0d16ca363eec28ae8e0bc5e596d9`；evaluator `cded22e0fdc13b15d3b23dedd898ee5a10c931b7ad7fb844015bbfb732252423`，runner `b9ad6235ff6a7d18e55a71aa9408b3f1c825615aab25dc5e5686614aaff7bb40`。Project保留原语义producer `da8b9e0a0aec61e3d701bea0ad860828766a40f5` 与report `d0c253b780c37b3a913e0396ba7ba4b3ce09ea14019d7b74c71561407e896046`，新生命周期producer `8f5989882e7014cf5a9e28e004b7a2af52844efe`，未将旧语义结果标成新运行。两域publication分别完整绑定149和16条原receipt，真实nextRunConsumed、configuration match与baseRestored均true。
+
+最终费用统计 `{"requests":1894,"accountedTokens":15671701,"reportedRequests":1578,"unknownRequests":64,"historicalCarryRequests":252}`，pending0/lock0。unknown和historical carry保持，humanPreference not_observed、currencyCost unavailable；主模型工程观察不声称人工偏好、双模型共识或生产自动发布收益。所有历史有效不利结果、格式失败及费用保留。
+
+集成main前merge-tree无冲突；合并树运行源码与已验证任务分支一致，唯一public差异是既有CSS注释的文档路径。完成时仅做本地相关证据/收费/lifecycle只读核对、合并身份与文档diff/链接检查，不重复全套或build/CI。H0样本SHA `ef9a584cfde78f5bc60e43914e1eb676d3530df4398e903f56afabb0631e6eeb`保持；准备仅含样本、隔离fixture/服务方案与观察入口，完整H0尚未运行。中断HANDOFF在交付后删除，已合并临时任务工作树/分支清理。
