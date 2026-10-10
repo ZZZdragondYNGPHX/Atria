@@ -1779,3 +1779,11 @@ source `5fa2f7dc9`；m8-h4-readonly-current-net-v1及零API audit-v1完成，无
 full recompute p50/p90=3039.49/3073.40ms；valid corpus reuse=696.04/728.98ms，均n3有限同机配置，无统计推广或SLO。snapshot median310.57/316.06ms，包含新增raw token复制/校验；组件guard/hash/network时间重叠，不相加冒充CPU总量。每hit hashReused10000/documentsHashed0，对手动bypass hash10000；6测量及2准备的完整evidence SHA相同a667e67d开头、同selected3sources、原2400预算内、readOnly persistence/access writes0。保存工作归source-valid corpus/fingerprint，不归正文/工具完成状态。
 
 测量两臂均2local service requests/query、642request bytes/165310response bytes，内部query embedding intent=1但固定[1,0] vectors绕过实际推理，real Embedding/model/API0。故无远端请求、Embedding或货币节省结论；currency/upstream/cache保持原unknown。prepare161+measure12=173local requests真实保留；原M1/HM1/quota raw hashes与旧报告不变。该有界组结束，不增加样本或分位数；它补当前读链的有限净elapsed/work证据，原质量失败及完整G06/HM2未验收不改变，main未集成，无HANDOFF。
+
+### G06 Native Memory 原文的请求优先级
+
+source `632ca314a`；按 behavior-context §3.2，剧情 / Memory 原文是低信任来源数据。零API核对显示原Native provider把memory lane映射为context.fact，经PromptCompiler/contextSlots实际lower为system；此前保存的真实请求也有历史Memory record进入system。这是产品数据边界缺陷，不把它推定为此前自由正文失败的唯一原因。
+
+先增加定向检查，4种协议编译及实际长Session Memory→Turn共5项修改前均因system角色失败（m8-memory-data-role-before-v1.log）。复用既有context.history/user数据通道，完整Memory record、sourceRefs/provenance与预算保留；current_state_event、正式World与runtime_system继续原路径，无新IR种类、writer、案例prompt或正文过滤。修复后上述5项及2旧Native selection/真实adapter检查通过（after-v1），ESLint/diff通过。长Turn为前述实际SourceLifecycle/Information/retrieval/HTTP消费者因本次角色改变而必要的复验；1次loopback请求，非新外部模型/质量样本。公开工具allowlist/outputContract没有由Memory引文扩张；4协议为本地renderer证据，不冒充新的gateway验证。该本地组关闭，外部API0。
+
+剩余边界分开记录：本地已确认的上述优先级与只读proof缺陷已修复，不为追求检查数量制造后续改动；已有授权G06目标仍需新producer真实正文质量与双入口消费证据，旧失败/费用原样保留，不能凭本地修复宣布通过。配置gateway的Responses/Anthropic实际404，真实Embedding/rerank服务及货币账单证据未配置/不可得，明确unavailable/unknown而非零成本；这是服务证据边界，不是新增审批。task/adaptive及H5新cognition/writer没有当前已实施消费者，H5正式依赖M2/M3/G06，不绕过阶段前置。不新增服务、学习路由或H5 writer。完整M8/HM2仍未验收、main不变；后续仅在当前授权和有限支持矩阵内推进有依据的消费/质量出口。
