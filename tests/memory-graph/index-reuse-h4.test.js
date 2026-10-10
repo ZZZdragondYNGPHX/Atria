@@ -38,6 +38,33 @@ test('H4 exact source proof reuses immutable corpus/hash only; recompute and JSO
     const restarted = createSourceLifecycle(f.options);
     expect((await retrieveMemory(await restarted.retrievalSnapshot(f.context), '林澈在港口', f.opts)).reuse.status).toBe('miss');
 });
+test('H4 cold read-only complete ledger issues original proof and reuses exact corpus without access writes', async () => {
+    const f = fixture(); f.context.updateChatState = jest.fn(f.context.updateChatState);
+    const cold = await retrieveMemory(await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true }), '林澈在港口', f.opts);
+    const warm = await retrieveMemory(await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true }), '林澈在港口', f.opts);
+    expect(cold.reuse).toMatchObject({ status: 'miss', reason: 'dependency_not_cached' });
+    expect(warm.reuse.status).toBe('valid_hit');
+    expect(warm.metrics.work).toMatchObject({ documentsHashed: 0, hashReused: 20 });
+    expect(warm.evidence).toEqual(cold.evidence); expect(warm.text).toBe(cold.text);
+    expect(f.context.updateChatState).not.toHaveBeenCalled(); expect(f.service.insert).toHaveBeenCalledTimes(1);
+});
+test('H4 read-only observed external ledger change rejects a warm corpus before service IO and rebuilds on new proof', async () => {
+    const f = fixture(); f.service.query = jest.fn(f.service.query);
+    await retrieveMemory(await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true }), '林澈在港口', f.opts);
+    const prior = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+    const warm = await retrieveMemory(prior, '林澈在港口', f.opts);
+    expect(warm.reuse.status).toBe('valid_hit');
+    const writer = createSourceLifecycle(f.options);
+    await writer.correct(f.context, { action: 'entity', name: 'Other authority', type: 'Concept', reason: 'Another writer' },
+        await writer.retrievalSnapshot(f.context));
+    const current = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+    const calls = f.service.query.mock.calls.length;
+    await expect(retrieveMemory(prior, '林澈在港口', f.opts)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(f.service.query).toHaveBeenCalledTimes(calls);
+    const rebuilt = await retrieveMemory(current, '林澈在港口', f.opts);
+    expect(rebuilt.reuse.status).toBe('miss'); expect(rebuilt.metrics.work.documentsHashed).toBe(20);
+    expect(rebuilt.evidence).toEqual(warm.evidence);
+});
 test('H4 time/profile/new ledger/late source changes reject stale reuse and forged vector metadata', async () => {
     const f = fixture();
     const snapshot = await f.lifecycle.retrievalSnapshot(f.context);

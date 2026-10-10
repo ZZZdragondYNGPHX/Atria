@@ -148,15 +148,26 @@ export function createSourceLifecycle({
         return enqueue(scope.key, async () => {
             scope.assertLive();
             const namespace = provenanceNamespace(context);
-            const result = await context.getChatState(namespace, provenanceOptions(context, scope.target));
+            let result;
+            try { result = await context.getChatState(namespace, provenanceOptions(context, scope.target)); } catch (error) { cache.delete(scope.key); throw error; }
             scope.assertLive();
-            if (!result?.ok) throw new Error('Memory provenance read failed');
-            if (result.state && result.state.version !== 1) throw new Error('Unsupported memory provenance version');
+            if (!result?.ok) { cache.delete(scope.key); throw new Error('Memory provenance read failed'); }
+            if (result.state && result.state.version !== 1) { cache.delete(scope.key); throw new Error('Unsupported memory provenance version'); }
             const state = normalizeProvenance(result.state);
             state.scopeId ||= scope.key;
             const before = JSON.stringify(state);
+            // A read can establish the stored ledger identity, but reconciliation
+            // is only a projection until the original writer persists it.
+            const readLedger = readOnly && result.state ? structuredClone(state) : null;
+            if (readOnly) {
+                // Revoke at the observed read boundary, before provider projection
+                // or an awaited callback can fail while older proof remains live.
+                if (!readLedger) cache.delete(scope.key);
+                else if (JSON.stringify(cache.get(scope.key)) !== before) cache.set(scope.key, readLedger);
+            }
             const dirty = new Map(pending.get(scope.key));
             reconcileSources(state, scope.chat, new Set(dirty.keys()));
+            if (readLedger && before !== JSON.stringify(state)) cache.set(scope.key, readLedger);
             const providers = enabled(context) ? readProviders(context) : [];
             const providerVersion = JSON.stringify(providers);
             const externalSources = enabled(context) ? readExternalSources(context) : [];
@@ -167,6 +178,7 @@ export function createSourceLifecycle({
             };
             if (providers.length || state.providerSources) reconcileProviders(state, providers, scope.chat, newId);
             if (externalSources.length || state.externalSources) reconcileExternalSources(state, externalSources);
+            if (readLedger && before !== JSON.stringify(state)) cache.set(scope.key, readLedger);
             const output = await run(state, scope);
             const changed = before !== JSON.stringify(state);
             if (changed && state.facts) {
@@ -183,7 +195,12 @@ export function createSourceLifecycle({
             scope.assertLive();
             validate();
             validateSources();
-            if (readOnly) return captureAuthority ? { value: output, cacheIdentity: cache.get(scope.key) } : output;
+            if (readOnly) {
+                // A later projection can only revoke; it never replaces the raw
+                // stored token with its unpersisted output.
+                if (readLedger && before !== JSON.stringify(state)) cache.set(scope.key, readLedger);
+                return captureAuthority ? { value: output, cacheIdentity: cache.get(scope.key) } : output;
+            }
             if (before !== JSON.stringify(state)) {
                 const saved = await context.updateChatState(namespace, currentState => {
                     scope.assertLive();

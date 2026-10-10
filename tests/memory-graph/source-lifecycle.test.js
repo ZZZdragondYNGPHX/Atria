@@ -3,6 +3,7 @@ import {
     createSourceLifecycle,
     PROVENANCE_NAMESPACE,
     NATIVE_PROVENANCE_NAMESPACE,
+    memorySourceSnapshotProof,
 } from '../../public/scripts/agents/memory/source-lifecycle.js';
 import { sourceContent } from '../../public/scripts/agents/memory/source-provenance.js';
 
@@ -87,6 +88,80 @@ describe('Memory OS production source lifecycle', () => {
         const fresh = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
         f.context.chat[1].mes = 'Changed without callback';
         expect(fresh.assertCurrent).toThrow('changed');
+    });
+    test('H4 read-only observation of another writer revokes the earlier ledger token without writing', async () => {
+        const f = fixture(); await f.lifecycle.capture(f.context, [1]);
+        const first = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        const other = createSourceLifecycle({ getContext: () => f.context,
+            resolveScope: ctx => ({ key: ctx.key, target: { key: ctx.key } }), enabled: ctx => ctx.enabled });
+        await other.correct(f.context, { action: 'entity', name: 'Alice', type: 'Character', reason: 'Other authoritative writer' },
+            await other.retrievalSnapshot(f.context));
+        f.context.updateChatState.mockClear();
+        const observed = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        observed.assertCurrent(); expect(first.assertCurrent).toThrow('changed');
+        expect(Object.keys(observed.state.corrections)).toHaveLength(1);
+        expect(f.context.updateChatState).not.toHaveBeenCalled();
+    });
+    test('H4 read-only observed ledger deletion revokes the earlier token without restoring storage', async () => {
+        const f = fixture(); await f.lifecycle.capture(f.context, [1]);
+        const first = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        f.disk.delete(f.context.key); f.context.updateChatState.mockClear();
+        const absent = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        absent.assertCurrent(); expect(first.assertCurrent).toThrow('changed');
+        expect(f.context.updateChatState).not.toHaveBeenCalled(); expect(f.disk.size).toBe(0);
+        expect(memorySourceSnapshotProof(absent)).toBeNull();
+    });
+    test.each(['unavailable', 'unknown_version', 'transport_error'])('H4 observed %s ledger read rejects old read-only authority', async reason => {
+        const f = fixture(); await f.lifecycle.capture(f.context, [1]);
+        const first = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        if (reason === 'transport_error') f.context.getChatState.mockRejectedValueOnce(new Error('Read transport failed'));
+        else f.context.getChatState.mockResolvedValueOnce(reason === 'unavailable' ? { ok: false } : { ok: true, state: { version: 999 } });
+        f.context.updateChatState.mockClear();
+        await expect(f.lifecycle.retrievalSnapshot(f.context, { readOnly: true })).rejects.toThrow(reason === 'unavailable' ? 'read failed' : reason === 'transport_error' ? 'transport failed' : 'Unsupported');
+        expect(first.assertCurrent).toThrow('changed');
+        const restored = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        restored.assertCurrent(); expect(first.assertCurrent).toThrow('changed');
+        expect(f.context.updateChatState).not.toHaveBeenCalled();
+    });
+    test('H4 read-only reconciliation observes source ABA without publishing derived state or reviving old proof', async () => {
+        const f = fixture(); await f.lifecycle.capture(f.context, [1]);
+        const first = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        const original = f.context.chat[1].mes, persisted = structuredClone(f.disk.get(f.context.key));
+        f.context.updateChatState.mockClear(); f.context.chat[1].mes = 'Observed temporary edit';
+        const edited = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        expect(memorySourceSnapshotProof(edited)).toBeNull();
+        f.context.chat[1].mes = original;
+        const restored = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        restored.assertCurrent(); expect(first.assertCurrent).toThrow('changed');
+        expect(f.context.updateChatState).not.toHaveBeenCalled(); expect(f.disk.get(f.context.key)).toEqual(persisted);
+    });
+    test('H4 observed raw replacement revokes old proof before provider projection fails and restore cannot revive it', async () => {
+        const f = fixture(); await f.lifecycle.capture(f.context, [1]);
+        const originalLedger = structuredClone(f.disk.get(f.context.key));
+        let observedRead = false, failProjection = false, checking = false, first, currentDuringProjection;
+        const reader = createSourceLifecycle({ getContext: () => f.context,
+            resolveScope: ctx => ({ key: ctx.key, target: { key: ctx.key } }), enabled: ctx => ctx.enabled,
+            readProviders: () => {
+                if (observedRead && failProjection && !checking) {
+                    checking = true;
+                    try { first.assertCurrent(); currentDuringProjection = true; } catch { currentDuringProjection = false; }
+                    checking = false; throw new Error('Provider projection failed');
+                }
+                return [];
+            } });
+        first = await reader.retrievalSnapshot(f.context, { readOnly: true });
+        await f.lifecycle.correct(f.context, { action: 'entity', name: 'Alice', type: 'Character', reason: 'Other writer' },
+            await f.lifecycle.retrievalSnapshot(f.context));
+        const read = f.context.getChatState;
+        f.context.getChatState = async (...args) => { const result = await read(...args); observedRead = true; return result; };
+        failProjection = true; f.context.updateChatState.mockClear();
+        await expect(reader.retrievalSnapshot(f.context, { readOnly: true })).rejects.toThrow('Provider projection failed');
+        expect(currentDuringProjection).toBe(false);
+        failProjection = false; observedRead = false;
+        f.disk.set(f.context.key, originalLedger);
+        const restored = await reader.retrievalSnapshot(f.context, { readOnly: true });
+        restored.assertCurrent(); expect(first.assertCurrent).toThrow('changed');
+        expect(f.context.updateChatState).not.toHaveBeenCalled();
     });
     test('observation recall neither persists reconciliation nor access counts and still revokes stale sources', async () => {
         const f = fixture();
