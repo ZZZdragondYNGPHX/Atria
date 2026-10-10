@@ -15,6 +15,7 @@ afterEach(() => resetNativeSessionLifecycleForTesting());
 
 function memorySnapshot(enabled = true) {
     const snapshot = informationSnapshot();
+    snapshot.entryPoint = { runtime: {} };
     snapshot.manifest = structuredClone(snapshot.manifest);
     const view = snapshot.manifest.runtime.experienceContract.informationRuntime.views.find(item => item.id === 'pov');
     view.sources = [...view.sources, 'history'];
@@ -104,7 +105,7 @@ test('G3 memory:false is a hard authorization gate and does not call Memory Grap
         turn: { policy: 'authority-first', stages: [] },
     };
     const host = new NativeGenerationHost({
-        sessionCore: { load: jest.fn(async () => snapshot) },
+        sessionCore: { load: jest.fn(async () => snapshot), runs: { assert: jest.fn(async () => {}) } },
         persistence: { listRuntimeRoutes: jest.fn(async () => [{
             runtimeRouteId: 'route-test',
             role: 'role.narrator',
@@ -131,7 +132,7 @@ test.each([
         turn: { policy: 'authority-first', stages: [] },
     };
     const host = new NativeGenerationHost({
-        sessionCore: { load: jest.fn(async () => snapshot) },
+        sessionCore: { load: jest.fn(async () => snapshot), runs: { assert: jest.fn(async () => {}) } },
         persistence: { listRuntimeRoutes: jest.fn(async () => [{
             runtimeRouteId: 'route-test',
             role: 'role.narrator',

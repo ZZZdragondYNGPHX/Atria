@@ -5,8 +5,8 @@ const legacyNames = new Set([
     'apiPresetName', 'promptPresetName', 'llmPresetName',
     'llmNodeApiPresetName', 'llmNodePresetName', 'llmNodePromptPresetName',
     'requestApiPresetName', 'requestLlmPresetName', 'aiSuggestApiPresetName', 'aiSuggestPresetName', 'aiSuggestPromptPresetName',
-    'recallApiPresetName', 'recallPresetName', 'extractApiPresetName', 'extractPresetName',
-    'schemaIterationApiPresetName', 'schemaIterationPresetName', 'ragRewriteApiPresetName', 'ragRewriteLlmPresetName',
+    'extractApiPresetName', 'extractPresetName',
+    'schemaIterationApiPresetName', 'schemaIterationPresetName',
 ]);
 
 /** Remove obsolete names, without resolving or converting any legacy resource. */

@@ -69,19 +69,16 @@ export function registerLocaleData() {
         'Auto compression': '自动压缩',
         'Auto compression help': '事件累积到阈值后由记忆图自动压缩为高层 rollup。关闭后可由编排器接管，或完全手动。',
         'Enable recall injection': '启用记忆召回注入',
-        'Recall method': '召回方法',
-        'LLM Recall (default)': 'LLM 召回（默认）',
-        'RAG Recall (vector + optional rerank + optional rewrite)': 'RAG 召回（向量+可选重排+可选改写）',
+
+
         'Embedding source': '嵌入源',
         'Embedding model (empty = source default)': '嵌入模型（留空=源默认）',
         'Vector pre-filter Top-K': '向量预筛 Top-K',
         'Max recall results': '最大召回结果数',
-        'Default per-type quota': '每类默认名额',
+
         'Enable rerank': '启用重排',
-        'Enable query rewrite (extra LLM call)': '启用查询改写（额外一次 LLM 调用）',
-        'Query rewrite API preset (Connection profile)': '查询改写 API 预设',
-        'Query rewrite prompt preset': '查询改写提示词预设',
-        'Query rewrite system prompt': '查询改写系统提示词',
+
+
         'Rerank source': '重排源',
         'Rerank model (empty = default)': '重排模型（留空=默认）',
         'Embedding Columns (comma separated, empty = all table columns)': '嵌入字段（逗号分隔，留空=全部表字段）',
@@ -98,8 +95,8 @@ export function registerLocaleData() {
         'System': 'System',
         'User': 'User',
         'Assistant': 'Assistant',
-        'Recall API preset (Connection profile)': '召回 API 预设',
-        'Recall preset (params + prompt)': '召回提示词预设',
+
+
         'Extract API preset (Connection profile)': '生成图 API 预设',
         'Extract preset (params + prompt)': '生成图提示词预设',
         'Iteration AI API preset (Connection profile)': '迭代 AI 的 API 预设',
@@ -109,7 +106,7 @@ export function registerLocaleData() {
         'Persistent injection recency horizon (assistant turns; 0 = no limit)': '常驻注入最大回溯楼层数（Assistant 回复数；0 = 不限制）',
         'Main-context injection window (assistant turns; 0 = no limit)': '主上下文注入窗口（Assistant 回复数；0 = 不限制）',
         '0 = inject all always-on nodes (current behavior). N > 0 = drop always-on nodes older than N assistant turns from the main context; recall candidates and recall-selected nodes are unaffected.': '0 = 注入所有常驻节点（当前行为）。N > 0 时，N 条 Assistant 回复之前的常驻节点不进入主上下文；召回候选池与召回选中节点不受影响。',
-        'Recall max iterations': '召回最大轮数',
+
         'Extract context assistant turns': '生成图时参考最近 Assistant 回复条数',
         'Recall query recent assistant turns': '召回查询使用最近 Assistant 回复条数',
         'Visible recent message layers for generation (0 = disabled)': '创作 LLM 仅可见最近 N 条消息（0=不裁剪）',
@@ -137,8 +134,8 @@ export function registerLocaleData() {
         'RPM limit (0 = unlimited)': 'RPM 限制（0 = 不限制）',
         'Plain-text function-call mode': '纯文本函数调用模式',
         'Extract Table Fill Prompt': '生成图提示词',
-        'Recall Stage 1 Prompt (Route/Drill)': '召回阶段1提示词（路由/深挖）',
-        'Recall Stage 2 Prompt (Finalize)': '召回阶段2提示词（最终选择）',
+
+
         'Schema Iteration Prompt (schema-editor AI)': 'Schema 迭代提示词（Schema 编辑 AI）',
         'Schema': 'Schema',
         'Changes take effect immediately but are not persisted. Click Save to Global or Save to Character to keep them.': '修改会立即生效，但不会持久化。点击"保存到全局"或"保存到角色卡"以持久化。',
@@ -321,6 +318,9 @@ export function registerLocaleData() {
         '(select node)': '（选择节点）',
         '(unset)': '（未设置）',
         '(new)': '（新建）',
+        'Enable source writes': '启用来源写入',
+        'Allow extraction to add source-backed facts and relations. Recall reads permitted history independently.': '允许提取有来源的事实和关系。召回独立读取获准历史。',
+        'Hybrid Memory recalls only current, permitted sources.': '混合记忆只召回当前有效且获准的来源。',
         'Memory Graph': '记忆图',
         'Inspector': '检查器',
         'Select a node or edge to edit.': '点击节点或边以编辑。',
@@ -451,8 +451,8 @@ export function registerLocaleData() {
         'Per-type rules appended to the extraction system prompt when this type is active this round.': '本类型本轮启用时，附加到提取系统提示词的专属规则。',
         'Extract Every N Floors': '每 N 层提取一次',
         '1 = every extraction pass (default). Larger N reduces frequency for slow-changing tables.': '1 = 每次提取（默认）。设大可降低慢变化表的提取频率。',
-        'RAG per-type quota override': 'RAG 每类名额覆写',
-        'Empty = use the global default from RAG settings. Non-negative integer overrides only this type. 0 = never surface this type via RAG.': '0 = 跟随 RAG 设置里的全局默认。正整数 = 只覆写这一类，取该值为上限。',
+
+
         '(use default)': '（使用默认）',
         'Enable Hierarchical Compression': '启用层级压缩',
         'none': 'none',
@@ -550,32 +550,30 @@ export function registerLocaleData() {
         'Graph': '图谱',
         'Advanced': '高级',
         'How many trailing assistant turns are visible as raw text. Recall excludes events derived from these turns; the same window also offsets always-injected snapshots (except latest-only types like character sheets and locations, which stay as current truth).': '最新的 N 条 assistant 消息以原文形式对模型可见。召回会排除来自这些消息生成的事件；同一窗口也会偏移始终注入的快照（latest-only 类型除外，如角色信息与地点，它们始终以当前值注入）。',
-        'About query rewrite': '关于查询改写',
-        'Query rewrite sends the raw user query to a small LLM to rewrite it into a phrasing that vector search retrieves more relevant memory events. Costs one extra LLM call per recall.': '查询改写会把原始用户查询发送给一个小型 LLM，将其改写为更适合向量检索的表述，从而召回更相关的记忆事件。每次召回额外发起一次 LLM 请求。',
-        'About Recall method': '关于召回方式',
-        'Recall method help body': '切换召回引擎。LLM 走两阶段 LLM 驱动召回；RAG 走向量检索 + 可选 rerank + 可选 query rewrite。',
+
+
         'About Embedding profile': '关于 Embedding profile',
         'Embedding profile help body': 'Connection Manager 里已注册的 embed profile。RAG 向量检索、Rebuild Vectors、后台 vector index sync 都使用它。',
         'About Vector pre-filter Top-K': '关于向量 pre-filter Top-K',
         'Vector pre-filter Top-K help body': 'RAG 向量 pre-filter 阶段返回的候选节点数。',
         'About Max recall results': '关于最大召回结果数',
         'Max recall results help body': 'RAG 召回最终返回给注入管线的节点数上限。在 vector top-K 和可选 rerank 之后的 hard cap。',
-        'About Default per-type quota': '关于每类默认名额',
-        'Default per-type quota help body': 'RAG 向量召回按节点类型分桶，每类最多取这个数量的候选，防止 event 一类淹没 character_sheet/location_state 等少数派类型。可在节点类型 schema 编辑器里为单个类型覆写。设为 0 = 关闭分桶，退回旧共享池行为。',
+
+
         'About Enable rerank': '关于启用 rerank',
         'Enable rerank help body': '开启后 RAG 向量 pre-filter 结果送 cross-encoder rerank profile 重打分，用 rerank 分数覆盖向量分数排序。',
         'About Rerank profile': '关于 Rerank profile',
         'Rerank profile help body': 'Connection Manager 里 rerank 类型 profile 的 id。RAG 开启 rerank 时用它跑 cross-encoder。',
-        'About Query rewrite API preset': '关于 query rewrite API 预设',
-        'Query rewrite API preset help body': 'RAG query rewrite 单独使用的 API 连接配置（Connection Profile），独立于主聊天预设。',
+
+
         'About Injection position': '关于注入位置',
         'Injection position help body': 'Memory Graph 把召回结果和 always-inject 快照写成托管的 lorebook entry 注入给主模型；这个字段决定这些 entry 的 position（Before/After Character Def、AN 前后、EM 前后、聊天深度）。',
         'About Injection depth': '关于注入深度',
         'Injection depth help body': '注入 lorebook entry 的 depth（对话尾部往前数第几层）。0 = 顶部（尽早塞入历史）。',
         'About Injection role': '关于注入角色',
         'Injection role help body': '聊天深度注入时消息的角色（system / user / assistant）。决定主模型看到这些记忆时归到哪个说话方。',
-        'About Recall API preset': '关于召回 API 预设',
-        'Recall API preset help body': 'LLM Recall 两阶段（Route/Drill + Finalize）用的 Connection Profile。不影响 RAG 召回本身。',
+
+
         'About Recall debug query': '关于召回调试查询',
         'Recall debug query help body': '一次性调试输入。点 Run Recall Debug 时把这段文本当做用户 query，跑一次完整召回管线，把 trace 存到 store.lastRecallTrace，不发给主模型。',
         'About Extract API preset': '关于生成图 API 预设',
@@ -592,8 +590,8 @@ export function registerLocaleData() {
         'Exclude latest N assistant turns from memory injection help body': '最近 N 条 assistant 消息保持原文可见；召回排除从这些消息生成的事件节点；always-inject 快照 seqTo ≥ latestSeq − N + 1 的节点也会被排除；latest-only 类型（如角色卡、地点）例外。',
         'About Persistent injection recency horizon': '关于常驻注入最大回溯楼层数',
         'Persistent injection recency horizon help body': '常驻注入只回溯最近 N 条 Assistant 回复；更早写入的常驻节点不再进入主上下文，仍可通过召回捞回。0 = 不限制。',
-        'About Recall max iterations': '关于召回最大迭代次数',
-        'Recall max iterations help body': 'LLM Recall 的 Route/Drill 阶段最多可迭代几轮（每轮 LLM 可以选 finalize 或 expand 深挖）。到上限强制 finalize。',
+
+
         'About Extract context assistant turns': '关于生成图上下文 assistant 消息数',
         'Extract context assistant turns help body': '生成图时给 LLM 的前文上下文 assistant 消息数（batch 之前的 N 条作为 prior context，供 LLM 理解连贯性，但不作为生成目标）。',
         'About Exclude latest N assistant turns from graph extraction': '关于生成图排除最近 N 条 assistant',
@@ -602,11 +600,11 @@ export function registerLocaleData() {
         'Recall query recent assistant turns help body': '构造召回查询时拿最近多少条 assistant 消息拼成 query（LLM recall 和 RAG 都用同一个 bundle）。',
         'About Extract Table Fill Prompt': '关于生成图表格填充 prompt',
         'Extract Table Fill Prompt help body': '生成图 LLM 的 system prompt。定义"你是生成器、看到 dialogue_batch、按 schema 输出工具调用"的角色和规则。',
-        'About Recall Stage 1 Prompt': '关于召回第一阶段 prompt', // banned-words-allow
-        'Recall Stage 1 Prompt help body': 'LLM Recall 第一阶段（Route/Drill）的 system prompt——模型看到候选节点 brief，决定 finalize 还是 expand 深挖。', // banned-words-allow
-        'About Recall Stage 2 Prompt': '关于召回第二阶段 prompt', // banned-words-allow
-        'Recall Stage 2 Prompt help body': 'LLM Recall 第二阶段（Finalize）的 system prompt——模型根据 Route/Drill 累积的候选做最终选择。', // banned-words-allow
-        'About Query rewrite system prompt': '关于 query rewrite system prompt',
-        'Query rewrite system prompt help body': 'RAG query rewrite 用的 system prompt——教模型把"最近对话上下文"改写成一个向量检索友好的单句 query。',
+        // banned-words-allow
+        // banned-words-allow
+        // banned-words-allow
+        // banned-words-allow
+
+
     });
 }

@@ -13,7 +13,7 @@ beforeAll(async () => {
     const base = global.Atria.getContext();
     context = Object.assign(Object.create(base), {
         characterId: null, groupId: null, characters: [], chatMetadata: {},
-        capabilitySettings: { memory_graph: { memoryOsEnabled: true } },
+        capabilitySettings: { memory_graph: { sourceWritesEnabled: true } },
         resolveChatStateTarget: () => ({ is_group: false, avatar_url: 'fact-test.png', file_name: 'facts' }),
     });
     global.Atria.getContext = () => context;
@@ -49,7 +49,7 @@ function answer(request, excerptOverride, withGraph = false) {
     ] };
 }
 function run(settings = {}) {
-    return processBatch(context, createEmptyStore(), { memoryOsEnabled: true, includeWorldInfoWithPreset: false, ...settings }, [],
+    return processBatch(context, createEmptyStore(), { sourceWritesEnabled: true, includeWorldInfoWithPreset: false, ...settings }, [],
         [{ ...context.chat[0], seq: 1, source_index: 0 }], 0, 0);
 }
 describe('production extraction dispatch with simulated model responses', () => {
@@ -118,7 +118,7 @@ const factsCall = () => ({ name: 'atri_memory_facts', args: { operations: [], gr
 const doneCall = () => ({ name: 'atria_rpg_extract_done', args: {} });
 function runEventBatch(store = createEmptyStore()) {
     const schema = getDefaultSchema().filter(type => type.id === 'event');
-    return processBatch(context, store, { memoryOsEnabled: true, nodeTypeSchema: schema, toolCallRetryMax: 1 }, schema,
+    return processBatch(context, store, { sourceWritesEnabled: true, nodeTypeSchema: schema, toolCallRetryMax: 1 }, schema,
         [{ ...context.chat[0], seq: 1, source_index: 0 }], 0, 0);
 }
 describe('seq=1 uninitialized event extraction transaction', () => {
@@ -178,7 +178,7 @@ describe('seq=1 uninitialized event extraction transaction', () => {
         const controller = new AbortController();
         context.generateTask = jest.fn(async () => { controller.abort(); return { toolCalls: [eventCall()] }; });
         const store = createEmptyStore(), schema = getDefaultSchema().filter(type => type.id === 'event');
-        await expect(processBatch(context, store, { memoryOsEnabled: true, nodeTypeSchema: schema }, schema,
+        await expect(processBatch(context, store, { sourceWritesEnabled: true, nodeTypeSchema: schema }, schema,
             [{ ...context.chat[0], seq: 1, source_index: 0 }], 0, 0, { abortSignal: controller.signal })).rejects.toThrow();
         expect(Object.values(store.nodes || {})).toHaveLength(0);
         expect(context.generateTask).toHaveBeenCalledTimes(1);

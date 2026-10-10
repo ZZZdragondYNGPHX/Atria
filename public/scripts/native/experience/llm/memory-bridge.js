@@ -194,6 +194,7 @@ export function createMemoryRecallBridge(options = {}) {
 
             const result = await session.recallMemory(query, {
                 signal: input.signal,
+                requester: input.requester || { kind: 'narrator' },
                 ...(input.at === undefined ? {} : { at: input.at }),
                 ...(input.accountExistingState === undefined
                     ? {}
@@ -275,7 +276,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
 
     let result;
     try {
-        result = await session.recallMemory(query, { signal: options.signal });
+        result = await session.recallMemory(query, { signal: options.signal, requester: target, informationTaskId: options.informationTaskId });
     } catch (error) {
         if (options.signal?.aborted || error?.name === 'AbortError') throw error;
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
@@ -288,6 +289,12 @@ export async function recallNativePackageTurnMemory(options = {}) {
             .map(item => String(item.recordId || ''))
             .filter(Boolean),
     );
+    // Exact complete application exposures are also legal source proofs.
+    for (const item of information.projection?.items ?? []) {
+        for (const id of Array.isArray(item.data?.sourceMessageIds) ? item.data.sourceMessageIds : []) {
+            if (snapshot.timeline.some(entry => entry.messageId === id && entry.content === item.data.text)) visibleMessages.add(id);
+        }
+    }
     const rawEvidence = Array.isArray(result?.evidence) && result.evidence.length
         ? result.evidence
         : [{
@@ -305,7 +312,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
                 .map(id => String(id || '').trim())
                 .filter(id => id && visibleMessages.has(id)),
         )].slice(0, MAX_REFERENCES);
-        if (!content || !sourceMessageIds.length) continue;
+        if (!content || !sourceMessageIds.length || sourceMessageIds.length !== new Set(item?.sourceMessageIds ?? []).size) continue;
         evidence.push(deepFreeze({
             memoryId: 'package-turn:' + revisionId + ':' + String(item?.id || index),
             content,

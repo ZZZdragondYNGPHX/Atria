@@ -5,6 +5,7 @@ import { createMemorySupportChecker } from './source-provenance.js';
 import { projectProviders, providerProofCurrent } from './provider-provenance.js';
 import { resolveProviderFields } from './state-providers.js';
 import { stateClaimAlreadyPresent } from './state-prompt.js';
+import { buildCollectionId } from './vector-index-core.js';
 
 export const RETRIEVAL_DEFAULTS = Object.freeze({ tokenBudget: 2400, maxDepth: 2, maxEntities: 20,
     maxRelations: 30, topK: 30, maxResults: 20, rrf: 60,
@@ -293,7 +294,7 @@ async function digest(text) {
 
 /** Content-addressed vectors, isolated by chat and embedding configuration. */
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
-    budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null } = {}) {
+    budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false } = {}) {
     const guard = () => {
         if (signal?.aborted) throw Object.assign(new Error('Memory recall aborted'), { name: 'AbortError' });
         snapshot.assertCurrent();
@@ -301,13 +302,30 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const started = performance.now();
     guard();
     const corpus = buildMemoryCorpus(snapshot, at);
+    if (snapshot.eligibility) {
+        const temporal = analyzeMemoryQuery(query, corpus.entities, { at });
+        // Time constraints apply to every lane, including vector indexing and
+        // rerank inputs, rather than only suppressing ranked hits afterward.
+        corpus.documents = corpus.documents.filter(doc => temporal.at !== null
+            ? doc.kind !== 'episode' && doc.validAt === true
+            : temporal.history || doc.status === 'active');
+    }
     const corpusReady = performance.now();
     const diagnostics = [];
     let vectorIds = [];
     if (service && profile && String(query).trim()) {
         try {
-            const collectionId = `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`;
+            const collectionId = `memory_hybrid_v1_${await digest(JSON.stringify([snapshot.key, profile, snapshot.eligibility?.identity ?? null]))}`;
             guard();
+            // Only identified derived namespaces are cleared. Source/World/
+            // Timeline storage is outside this retrieval service entirely.
+            if (snapshot.eligibility) {
+                for (const retired of [buildCollectionId(snapshot.key), `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`]) {
+                    guard();
+                    const hashes = await service.listHashes({ collectionId: retired, profile, signal }); guard();
+                    if (hashes.length) { await service.deleteByHashes({ collectionId: retired, profile, hashes, signal }); guard(); }
+                }
+            }
             const items = [];
             for (let start = 0; start < corpus.documents.length; start += 64) {
                 const chunk = await Promise.all(corpus.documents.slice(start, start + 64).map(async (doc, offset) => {
@@ -321,9 +339,9 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             if (desired.size !== items.length) throw new Error('Memory vector hash collision');
             const remote = new Set((await service.listHashes({ collectionId, profile, signal })).map(Number));
             guard();
-            const hashes = [...remote].filter(hash => !desired.has(hash));
+            const hashes = [...remote].filter(hash => rebuildVectors || !desired.has(hash));
             if (hashes.length) { await service.deleteByHashes({ collectionId, profile, hashes, signal }); guard(); }
-            const missing = items.filter(item => !remote.has(item.hash));
+            const missing = items.filter(item => rebuildVectors || !remote.has(item.hash));
             for (let start = 0; start < missing.length; start += 64) {
                 await service.insert({ collectionId, profile, items: missing.slice(start, start + 64), signal }); guard();
             }
@@ -367,7 +385,10 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             Array.isArray(snapshot.state?.episodes?.[id]?.messageIds)
                 ? snapshot.state.episodes[id].messageIds
                 : []))].filter(Boolean);
-        return { id: doc.id, content: String(doc.text || ''), sourceMessageIds };
+        return { id: doc.id, content: String(doc.text || ''), sourceMessageIds, kind: doc.kind, type: doc.type,
+            status: doc.status, validFrom: doc.validFrom, validUntil: doc.validUntil,
+            sourceRefs: sourceMessageIds.map(id => ({ messageId: id, content: snapshot.state.sources[id]?.content,
+                revision: snapshot.state.sources[id]?.revision })), eligibility: snapshot.eligibility?.identity };
     });
     const sourceMessageIds = [...new Set(evidence.flatMap(item => item.sourceMessageIds))];
     return { ...composition, plan: result.plan, diagnostics, sourceMessageIds, evidence,

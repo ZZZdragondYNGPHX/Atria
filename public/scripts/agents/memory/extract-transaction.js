@@ -111,7 +111,7 @@ function isRetryableExtractionRequestError(error) {
 }
 
 /** Validate the whole staged batch, not just the most recent completion. */
-export function validateExtractTransaction({ calls = [], tools = [], requiredTypes = [], memoryOsEnabled = false, nodeIds = [], toolTypes = {} }) {
+export function validateExtractTransaction({ calls = [], tools = [], requiredTypes = [], sourceBacked = false, nodeIds = [], toolTypes = {} }) {
     const missing = [], duplicate = [], orderingErrors = [], malformed = [];
     const names = calls.map(call => call.name);
     const count = name => names.filter(value => value === name).length;
@@ -123,12 +123,12 @@ export function validateExtractTransaction({ calls = [], tools = [], requiredTyp
         toolNames(type, 'create').includes(call.name) || (type !== 'event' && toolNames(type, 'edit').includes(call.name))));
     missing.push(...requiredWrites.flatMap(type => toolNames(type, 'create')));
     if (count('atria_rpg_extract_event_create') > 1) duplicate.push('atria_rpg_extract_event_create');
-    for (const name of [EXTRACT_DONE, ...(memoryOsEnabled ? [FACT_TOOL_NAME] : [])]) {
+    for (const name of [EXTRACT_DONE, ...(sourceBacked ? [FACT_TOOL_NAME] : [])]) {
         if (!count(name)) missing.push(name);
         if (count(name) > 1) duplicate.push(name);
     }
     if (names.includes(EXTRACT_DONE) && names.at(-1) !== EXTRACT_DONE) orderingErrors.push('done_must_be_last');
-    if (memoryOsEnabled && names.includes(EXTRACT_DONE) && !names.includes(FACT_TOOL_NAME)) orderingErrors.push('done_before_memory_facts');
+    if (sourceBacked && names.includes(EXTRACT_DONE) && !names.includes(FACT_TOOL_NAME)) orderingErrors.push('done_before_memory_facts');
     if (names.includes(EXTRACT_DONE) && requiredWrites.length) orderingErrors.push('done_before_required_writes');
     const refs = new Set(), ids = new Set(nodeIds);
     // Semantic extraction refs are transaction-local and may be referenced
@@ -159,7 +159,7 @@ export function validateExtractTransaction({ calls = [], tools = [], requiredTyp
     }
     const invalid = duplicate.length > 0 || orderingErrors.length > 0 || malformed.length > 0;
     const phase = requiredWrites.length ? 'EXTRACTING'
-        : memoryOsEnabled && !count(FACT_TOOL_NAME) ? 'MEMORY_FACTS_PENDING'
+        : sourceBacked && !count(FACT_TOOL_NAME) ? 'MEMORY_FACTS_PENDING'
             : !count(EXTRACT_DONE) ? 'DONE_PENDING' : 'COMPLETE';
     return { valid: !invalid && missing.length === 0, invalid, missing, requiredWrites, duplicate, orderingErrors, malformed, phase,
         event_create: count('atria_rpg_extract_event_create'), memory_facts_count: count(FACT_TOOL_NAME),
@@ -167,10 +167,10 @@ export function validateExtractTransaction({ calls = [], tools = [], requiredTyp
 }
 
 /** Calls are staged only. The caller validates semantic effects and commits once. */
-async function collectExtractTransactionInternal({ send, tools, requiredTypes, memoryOsEnabled, nodeIds, taskMessages, repairContext, maxRepairs = 1, signal, initialCalls = [], toolTypes = {} }) {
+async function collectExtractTransactionInternal({ send, tools, requiredTypes, sourceBacked, nodeIds, taskMessages, repairContext, maxRepairs = 1, signal, initialCalls = [], toolTypes = {} }) {
     const calls = [...initialCalls];
     repairUnambiguousMissingSemanticRefs(calls, toolTypes);
-    let state = validateExtractTransaction({ calls, tools, requiredTypes, memoryOsEnabled, nodeIds, toolTypes });
+    let state = validateExtractTransaction({ calls, tools, requiredTypes, sourceBacked, nodeIds, toolTypes });
     let transientRetries = 0;
     let schemaRetries = 0;
     let protocolRetries = 0;
@@ -241,7 +241,7 @@ async function collectExtractTransactionInternal({ send, tools, requiredTypes, m
         // transaction ordering. Valid non-done calls are retained across the retry.
         calls.push(...(rejected.length ? accepted.filter(call => call.name !== EXTRACT_DONE) : accepted));
         const semanticRefRepairs = repairUnambiguousMissingSemanticRefs(calls, toolTypes);
-        state = validateExtractTransaction({ calls, tools, requiredTypes, memoryOsEnabled, nodeIds, toolTypes });
+        state = validateExtractTransaction({ calls, tools, requiredTypes, sourceBacked, nodeIds, toolTypes });
         validationErrors = rejected;
         console.debug('[Memory Extract Protocol]', {
             round,
@@ -279,7 +279,7 @@ async function collectExtractTransactionInternal({ send, tools, requiredTypes, m
                 const nextCalls = repairedCalls.filter((call, index) => !badIndexes.has(index) && call.name !== EXTRACT_DONE);
                 if (nextCalls.length === repairedCalls.length) break;
                 repairedCalls = nextCalls;
-                repairedState = validateExtractTransaction({ calls: repairedCalls, tools, requiredTypes, memoryOsEnabled, nodeIds, toolTypes });
+                repairedState = validateExtractTransaction({ calls: repairedCalls, tools, requiredTypes, sourceBacked, nodeIds, toolTypes });
                 if (repairedState.duplicate.length || repairedState.orderingErrors.length) break;
             }
             calls.splice(0, calls.length, ...repairedCalls);
@@ -323,7 +323,7 @@ export async function collectExtractTransaction(options = {}) {
             code: String(error?.code || ''),
             message: error?.message || String(error),
             requiredTypes: Array.isArray(options?.requiredTypes) ? options.requiredTypes : [],
-            memoryOsEnabled: Boolean(options?.memoryOsEnabled),
+            sourceBacked: Boolean(options?.sourceBacked),
         }, { category: 'extraction' });
         void captureFrontendIncident({
             type: 'tool_failure',
@@ -335,7 +335,7 @@ export async function collectExtractTransaction(options = {}) {
             environment: {
                 code: String(error?.code || ''),
                 requiredTypes: Array.isArray(options?.requiredTypes) ? options.requiredTypes : [],
-                memoryOsEnabled: Boolean(options?.memoryOsEnabled),
+                sourceBacked: Boolean(options?.sourceBacked),
                 validation: error?.details || null,
             },
             retryHistory: Array.isArray(error?.details?.validation_errors) ? error.details.validation_errors : [],

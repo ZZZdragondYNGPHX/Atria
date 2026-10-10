@@ -36,6 +36,7 @@
  */
 
 const getContext = Atria.getContext;
+import { normalizeHybridMemorySettings } from './settings.js';
 const UNSET_VALUE = Atria.getContext().constants.unset;
 
 let deps = {
@@ -105,7 +106,7 @@ export function getCharacterAdvancedOverrideByAvatar(context, avatar) {
     if (!override || typeof override !== 'object') {
         return null;
     }
-    return deps.normalizeAdvancedSettings(override, deps.defaultSettings);
+    return deps.normalizeAdvancedSettings(normalizeHybridMemorySettings(structuredClone(override)), deps.defaultSettings);
 }
 
 export function getEffectiveAdvancedSettings(context = null, settings = null) {
@@ -127,11 +128,11 @@ export function getEffectiveSettings(context = null, settings = null) {
     // main.js, etc.) see the character override instead of the raw global
     // schema. Without this, getEffectiveSettings only carried advanced-key
     // overrides and the schema override was lost on the read path.
-    return {
+    return normalizeHybridMemorySettings({
         ...base,
         ...getEffectiveAdvancedSettings(context, base),
         nodeTypeSchema: getEffectiveNodeTypeSchema(context, base),
-    };
+    });
 }
 
 export function getEffectiveNodeTypeSchema(context = null, settings = null) {
@@ -239,7 +240,7 @@ export async function persistCharacterAdvancedOverride(context, avatar, advanced
     const previous = getCharacterExtensionDataByAvatar(context, target);
     const next = {
         ...previous,
-        [CHARACTER_ADVANCED_OVERRIDE_KEY]: deps.normalizeAdvancedSettings(advancedSettings, deps.defaultSettings),
+        [CHARACTER_ADVANCED_OVERRIDE_KEY]: normalizeHybridMemorySettings(deps.normalizeAdvancedSettings(advancedSettings, deps.defaultSettings)),
     };
     await context.writeExtensionField(characterIndex, deps.MODULE_NAME, next);
     return true;

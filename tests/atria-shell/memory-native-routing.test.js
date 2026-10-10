@@ -12,7 +12,9 @@ afterEach(() => { nativeSessionRuntime.snapshot = null; delete globalThis.fetch;
 test('Memory tasks use independent exact routes and the shared schema runner sends the memory role', async () => {
     const nativeRoutes = Object.fromEntries(Object.keys(MEMORY_ROUTE_TASKS).map((task, index) => [task, ref(index + 1)]));
     expect(normalizeMemoryRoutes(nativeRoutes)).toEqual(nativeRoutes);
-    expect(memoryRouteOptions({}, 'recall')).toEqual({ nativeRole: 'memory' });
+    expect(memoryRouteOptions({}, 'extraction')).toEqual({ nativeRole: 'memory' });
+    expect(() => memoryRouteOptions({}, 'recall')).toThrow();
+    expect(() => memoryRouteOptions({}, 'rewrite')).toThrow();
     expect(() => normalizeMemoryRoutes({ unknown: ref(1) })).toThrow('Invalid Memory');
     expect(() => normalizeMemoryRoutes({ schema: { scope: 'package', runtimeRouteId: ref(1).runtimeRouteId } })).toThrow('exact player');
     nativeSessionRuntime.snapshot = { session: { sessionId: 'session' }, revision: { revisionId: 'revision' } };

@@ -111,12 +111,11 @@ export function createMemoryWorkspace({ getContext }) {
         }
 
         const settings = () => service.getStatus?.() || {
-            memoryOsEnabled: false,
+            sourceWritesEnabled: false,
             enabled: false,
             recallEnabled: false,
             autoExtractionEnabled: false,
             autoCompressionEnabled: false,
-            recallMethod: 'llm',
             updateEvery: 1,
         };
 
@@ -133,7 +132,7 @@ export function createMemoryWorkspace({ getContext }) {
             const version = ++refreshVersion;
             loadError = '';
             const current = settings();
-            if (!current.memoryOsEnabled) {
+            if (!current.enabled) {
                 snapshot = null;
                 computed = null;
                 status.textContent = i18n('Memory OS is disabled.');
@@ -177,7 +176,10 @@ export function createMemoryWorkspace({ getContext }) {
                 pending.delete(key); if (control) { control.disabled = false; control.removeAttribute('aria-busy'); }
             }
         };
-        const setControl = (name, value) => operation('control:' + name, null, () => service.setControl?.(name, value));
+        const setControl = async (name, value) => {
+            await operation('control:' + name, null, () => service.setControl?.(name, value));
+            if (!disposed && page.isConnected) renderView();
+        };
 
         const showRecord = (record, kind) => {
             if (!inspector || !snapshot) return;
@@ -253,15 +255,15 @@ export function createMemoryWorkspace({ getContext }) {
             hero.className = 'workspace-memory-overview-hero';
             const heroCopy = el('div', undefined, hero);
             el('span', 'Memory OS', heroCopy).className = 'workspace-eyebrow';
-            el('h3', current.memoryOsEnabled ? 'Memory is available' : 'Memory OS is disabled', heroCopy);
-            el('p', current.memoryOsEnabled
+            el('h3', current.enabled ? 'Memory is available' : 'Memory is disabled', heroCopy);
+            el('p', current.enabled
                 ? 'Atria can extract, recall and audit long-term knowledge for this conversation.'
-                : 'Enable Memory OS to load source-backed facts and the world graph.', heroCopy).className = 'workspace-hint';
+                : 'Enable Memory to read permitted source-backed history.', heroCopy).className = 'workspace-hint';
 
             const controls = el('div', undefined, content);
             controls.className = 'workspace-memory-control-grid';
-            toggleCard({ host: controls, el, label: 'Memory OS', description: 'Source-backed facts and world graph.', checked: current.memoryOsEnabled,
-                onChange: value => void setControl('memoryOsEnabled', value) });
+            toggleCard({ host: controls, el, label: 'Source writes', description: 'Allow extraction to add source-backed facts and relations.', checked: current.sourceWritesEnabled,
+                onChange: value => void setControl('sourceWritesEnabled', value) });
             toggleCard({ host: controls, el, label: 'Memory', description: 'Keep memory active for this conversation.', checked: current.enabled,
                 onChange: value => void setControl('enabled', value) });
             toggleCard({ host: controls, el, label: 'Recall', description: 'Inject relevant memories into replies.', checked: current.recallEnabled,
@@ -270,16 +272,6 @@ export function createMemoryWorkspace({ getContext }) {
                 onChange: value => void setControl('autoExtractionEnabled', value) });
             toggleCard({ host: controls, el, label: 'Auto compression', description: 'Compact older memory using the schema.', checked: current.autoCompressionEnabled,
                 onChange: value => void setControl('autoCompressionEnabled', value) });
-
-            const recall = el('label', 'Recall method', controls);
-            recall.className = 'workspace-memory-toggle-card workspace-memory-select-card';
-            const select = el('select', undefined, recall);
-            for (const [value, label] of [['llm', 'LLM Recall'], ['rag', 'RAG Recall']]) {
-                const option = el('option', label, select);
-                option.value = value;
-            }
-            select.value = current.recallMethod;
-            select.addEventListener('change', () => void setControl('recallMethod', select.value));
 
             const metrics = el('div', undefined, content);
             metrics.className = 'workspace-memory-metrics';

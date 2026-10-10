@@ -63,17 +63,16 @@ import {
     buildMemoryGraphSettingsHtml,
     buildSchemaEditorPopupHtml,
 } from './ui-templates.js';
-import { runRagRecall } from './retriever.js';
+import { normalizeHybridMemorySettings } from './settings.js';
 import { recallHybridMemory } from './hybrid-runtime.js';
 import { memoryTokenBudget, memoryTokenCounter } from './hybrid-retrieval.js';
 import { readStateProviders } from './state-providers.js';
-import { existingStatePrompt } from './state-prompt.js';
 import { openMemoryOsInspector } from './graph-inspector.js';
 import { createHistoryBuilder, computeHistoryBatch } from './history-build.js';
 import { projectFacts } from './atomic-facts.js';
 import { projectTemporalGraph } from './temporal-graph.js';
 import { openHistoryBuildPopup } from './history-build-ui.js';
-import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
+import { getMemoryVectorStore, MEMORY_SOURCE_WRITES_DEFAULT_ENABLED, isHybridMemoryEnabled, isMemorySourceWriteEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
 import { evaluateDerivationGate } from '../../native/context-derived.js';
@@ -81,9 +80,7 @@ import { FACT_TOOL_NAME, factExtractionTool, factExtractionContext, readFactTool
 import { temporalExtractionContext, readTemporalToolCalls } from './temporal-extraction.js';
 import {
     getVectorConfigFromSettings,
-    getRerankProfileFromSettings,
     validateVectorConfig,
-    ensureVectorIndexState,
     buildCollectionId,
 } from './vector-index.js';
 
@@ -133,7 +130,8 @@ const sourceLifecycle = configureSourceLifecycle({
         key: getChatKey(context, target),
         target: buildMemoryTargetFromContext(context, target),
     }),
-    enabled: context => isMemoryOsEnabled(getEffectiveSettings(context, getSettings())),
+    enabled: context => isHybridMemoryEnabled(getEffectiveSettings(context, getSettings())),
+    writeEnabled: context => isMemorySourceWriteEnabled(getEffectiveSettings(context, getSettings())),
     readProviders: context => readStateProviders(context, getEffectiveSettings(context, getSettings())),
     readExternalSources: context => {
         const api = context?.getCapabilityApi?.('game-runtime');
@@ -152,7 +150,7 @@ const SHARED_LOREBOOK_NAME = '__MEMORY_GRAPH__';
 const RUNTIME_LOREBOOK_COMMENT_PREFIX = 'MEMORY_GRAPH_RUNTIME';
 const PERSISTENT_LOREBOOK_COMMENT_PREFIX = 'MEMORY_GRAPH_PERSISTENT';
 const RECALL_ALLOWED_GENERATION_TYPES = new Set(['normal', 'continue', 'regenerate', 'swipe', 'impersonate']);
-const RECALL_REUSE_GENERATION_TYPES = new Set(['continue', 'regenerate', 'swipe']);
+
 
 const MEMORY_GRAPH_SEARCH_ALL_TYPE = '__all__';
 const MEMORY_GRAPH_SEARCH_RESULT_PREVIEW_LIMIT = 10;
@@ -321,86 +319,6 @@ void ([
     'Event summary prefix rule: after the time prefix, continue with concise causal summary text.',
 ]);
 
-const DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT = [
-    'You are a memory recall planner focused on relevance, continuity, and efficiency.',
-    'You must output exactly one short <thought>...</thought> before tool call to explain your plan.',
-    'Input format: XML blocks (recall_query_context, candidate_nodes, always_inject_node_ids, schema_overview, selection_constraints). Read all blocks before deciding.',
-    'First, extract a compact query profile from recall_query_context: active entities, locations, goals, unresolved commitments, relationship/emotion shifts, and causal constraints.',
-    'Do not rely on keywords only. Use semantic cues, intent, and causal context from recent dialogue.',
-    'Primary goal: pick the smallest high-value set that best supports the CURRENT scene and next reply.',
-    'Apply layered relevance explicitly: (1) direct relevance to this turn, (2) indirect continuity support, (3) background context with clear potential impact.',
-    'Rank candidates by practical usefulness now: direct event support, causality continuity, unresolved commitments/constraints, and key character/location/rule grounding.',
-    'Use edge_summary to follow relation chains and avoid isolated picks.',
-    '',
-    '## Hierarchy awareness (event nodes form a multi-layer tree)',
-    'Each candidate carries three structural fields:',
-    '  - semantic_depth: 0 = leaf (one source-batch event); 1+ = rollup that compresses N children into one milestone.',
-    '  - parent_id: id of the rollup that contains this node, if any.',
-    '  - child_count: number of immediate children this node summarises (0 for leaves).',
-    'Mental model: deeper into the tree = more abstract over a longer span; closer to the leaves = richer scene-specific detail (paraphrased lines, specific actions, specific reactions, posture / scene / sensory cues). The same storyline exists at multiple zoom levels.',
-    'You do NOT have to drill — finalize is fine when the current candidate set already covers the need. The hierarchy is a tool, not an obligation.',
-    '',
-    '## When to drill (use sparingly)',
-    'Drill when a rollup looks topically on-target but, by design, has compressed away the specifics this turn needs — e.g. what exactly was promised, who reacted how, what one specific ally did, what items changed hands, what the scene felt like.',
-    'Do NOT drill when:',
-    '  - The rollup\'s abstract gist is enough (continuation, background context).',
-    '  - No rollup is topically relevant — drilling will not create relevance.',
-    '  - The needed detail is already present in another candidate at lower depth.',
-    'How drill works: set action="drill" and put 1-2 high-value rollups in expand_plan as seed_node_id with include_children:true (the system will pull their immediate children into the next-pass candidate set). Keep depth small (1 unless grand-children are clearly needed). Wide drilling wastes budget.',
-    '',
-    'Return action="finalize" if current candidates are sufficient.',
-    'Return action="drill" only when extra expansion is clearly needed for missing context.',
-    'When drilling, expand around high-value seeds instead of broad expansion.',
-    'Always-inject nodes are already injected separately. Never include them in selected_node_ids.',
-    'Do not fabricate missing facts. If grounded evidence is weak or absent, prefer conservative selection or empty selection and explain briefly in reason.',
-    'Be honest: if no grounded memory should be recalled, return finalize with empty selected_node_ids.',
-    'FINAL OUTPUT CONTRACT (ABSOLUTE): return EXACTLY two parts in order: (1) one <thought>...</thought>; (2) function call output only.',
-    'Do not output any narrative/body text, markdown, code fences, XML blocks (except <thought>), comments, or any extra JSON payload.',
-    'After function call output, stop immediately.',
-].join('\n');
-
-const DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT = [
-    'You are finalizing memory recall node selection after optional drill expansion.',
-    'You must output exactly one short <thought>...</thought> before tool call to explain your final tradeoff.',
-    'Input format: XML blocks (recall_query_context, candidate_nodes, always_inject_node_ids, route_result, selection_constraints). Read all blocks before deciding.',
-    'Before selecting, extract the key information needs of this turn from context: who/where/what is active, what must stay continuous, and what unknowns matter now.',
-    'Do not rely on keywords only. Use semantic intent and causal continuity.',
-    'Select nodes that maximize practical value for the immediate next reply.',
-    'Keep storyline continuity first, then add essential support nodes (character/location/rule) only when they materially improve correctness.',
-    'Apply layered relevance in final ranking: direct > indirect > background-potential.',
-    '',
-    '## Hierarchy preference (event nodes)',
-    'Event candidates carry semantic_depth (0 = leaf, 1+ = rollup), parent_id, and child_count. When both a rollup and one of its descendant leaves are in candidate_nodes:',
-    '  - Prefer the LEAF when this turn needs specifics (a paraphrased line, a specific action, a specific reaction, exact items / promises / damage).',
-    '  - Prefer the ROLLUP when this turn needs gist over a long span and per-scene detail would dilute the signal.',
-    '  - Avoid selecting both for the same storyline — the rollup was synthesised from those leaves, so the two views overlap and the budget would be wasted.',
-    'When picking detail leaves, choose only the few most causally relevant ones; do not pick an entire sibling group just because their parent is relevant.',
-    '',
-    'Output selected_node_ids in priority order (highest value first).',
-    'Prefer a compact set (typically 3-8 when available) instead of selecting everything.',
-    'Always-inject nodes are already injected separately. Never include them in selected_node_ids.',
-    'If no candidate is grounded and useful, return an empty list rather than forcing weak picks or inventing links.',
-    'Be explicit and honest when returning empty selection.',
-    'Never hallucinate facts not grounded in candidates.',
-    'FINAL OUTPUT CONTRACT (ABSOLUTE): return EXACTLY two parts in order: (1) one <thought>...</thought>; (2) function call output only.',
-    'Do not output any narrative/body text, markdown, code fences, XML blocks (except <thought>), comments, or any extra JSON payload.',
-    'After function call output, stop immediately.',
-].join('\n');
-
-const DEFAULT_RAG_REWRITE_SYSTEM_PROMPT = [
-    'You rewrite the user\'s most recent conversational context into a single concise sentence in the dialogue\'s language that maximizes vector-search recall of related past events from a long-form roleplay\'s memory graph.',
-    '',
-    'Output requirements:',
-    '- Exactly one sentence, 15-40 characters (for CJK) or 8-25 words (for Latin scripts).',
-    '- State the SUBSTANCE the user wants recalled (a past event, scene, or fact), NOT the meta-instruction to recall.',
-    '- Use entity names and concrete verbs that would appear verbatim in summarized event records. Prefer "<actor> <verb> <object>" form. Avoid abstract framing like "讨论某事" or "talked about something" — name the act directly.',
-    '- Drop pronouns, filler, and current scene setup; keep only what identifies the callback target.',
-    '- Resolve ambiguous references to a named entity when context supports it, otherwise omit.',
-    '- Never invent facts not present in the dialogue.',
-    '- If the dialogue contains no clear callback intent toward a prior memory, output the most salient concrete action and its named actor from the recent turns instead.',
-    '',
-    'FINAL OUTPUT CONTRACT: return EXACTLY one function call to rewrite_recall_query with the sentence. No prose, no markdown, no extra text.',
-].join('\n');
 
 const CANONICAL_EXTRACT_RELATION_TYPES = [
     // Generic graph relations (existing)
@@ -425,7 +343,7 @@ void ([
 ]);
 
 const defaultSettings = {
-    memoryOsEnabled: MEMORY_OS_DEFAULT_ENABLED,
+    sourceWritesEnabled: MEMORY_SOURCE_WRITES_DEFAULT_ENABLED,
     memoryOsTokenBudget: 2400,
     memoryOsStateMappings: [],
     memoryOsStateOwners: {},
@@ -439,15 +357,11 @@ const defaultSettings = {
     updateEvery: 1,
     maxTurns: 900,
     recallEnabled: true,
-    recallMethod: 'llm',
     recallInjectPosition: world_info_position.atDepth,
     recallInjectDepth: 9999,
     recallInjectRole: extension_prompt_roles.SYSTEM,
     includeWorldInfoWithPreset: true,
     toolCallRetryMax: 2,
-    recallMaxIterations: 3,
-    recallRouteSystemPrompt: DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT,
-    recallFinalizeSystemPrompt: DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT,
     extractSystemPrompt: DEFAULT_EXTRACT_SYSTEM_PROMPT,
     extractCrawlSystemPrompt: DEFAULT_CRAWL_SYSTEM_PROMPT,
     schemaIterSystemPrompt: DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT,
@@ -465,16 +379,6 @@ const defaultSettings = {
     rerankProfileId: '',
     vectorTopK: 20,
     hybridMaxResults: 15,
-    // RAG per-type bucketing: default quota per node type. Each vector
-    // pre-filter hit is bucketed by node.type; each bucket takes at most
-    // ragDefaultPerTypeK hits (or the per-type override in
-    // schema.ragPerTypeK). Prevents one dominant type (typically `event`)
-    // from starving other types out of recall. Set to 0 to disable
-    // bucketing and use the legacy shared-pool topK behaviour.
-    ragDefaultPerTypeK: 3,
-    ragUseRerank: false,
-    ragUseQueryRewrite: false,
-    ragRewriteSystemPrompt: DEFAULT_RAG_REWRITE_SYSTEM_PROMPT,
     rpmLimit: 0,
 };
 
@@ -628,12 +532,7 @@ export function normalizeNodeTypeSchema(schema) {
                 editable,
                 alwaysInject: Boolean(item.alwaysInject),
                 latestOnly,
-                // Per-type RAG recall quota. 0 (default) = follow the global
-                // ragDefaultPerTypeK. Positive integer = override just this
-                // type. Negative / NaN / null / undefined all collapse to 0.
-                ragPerTypeK: Math.max(0, Math.floor(
-                    Number.isFinite(Number(item.ragPerTypeK)) ? Number(item.ragPerTypeK) : 0,
-                )),
+
                 recordsFloorRange: Boolean(item?.recordsFloorRange),
                 primaryKeyColumns,
                 compression: {
@@ -720,6 +619,7 @@ function getExtractableLatestSeq(totalTurns, settings = null) {
 }
 
 function ensureSettings() {
+    normalizeHybridMemorySettings(capabilitySettings[MODULE_NAME]);
     if (!capabilitySettings[MODULE_NAME] || typeof capabilitySettings[MODULE_NAME] !== 'object') {
         capabilitySettings[MODULE_NAME] = {};
     }
@@ -760,10 +660,7 @@ function ensureSettings() {
         1,
         Math.floor(Number(capabilitySettings[MODULE_NAME].updateEvery) || defaultSettings.updateEvery),
     );
-    capabilitySettings[MODULE_NAME].recallMaxIterations = Math.max(
-        2,
-        Math.min(6, Math.floor(Number(capabilitySettings[MODULE_NAME].recallMaxIterations) || defaultSettings.recallMaxIterations)),
-    );
+
     const extractBatchTurnsRaw = Number(capabilitySettings[MODULE_NAME].extractBatchTurns);
     const extractContextTurnsRaw = Number(capabilitySettings[MODULE_NAME].extractContextTurns);
     const extractExcludeRecentTurnsRaw = Number(capabilitySettings[MODULE_NAME].extractExcludeRecentTurns);
@@ -797,11 +694,7 @@ function ensureSettings() {
         Math.floor(Number.isFinite(persistentInjectionMaxSeqDistanceRaw) ? persistentInjectionMaxSeqDistanceRaw : defaultSettings.persistentInjectionMaxSeqDistance),
     );
     // RAG per-type quota default. 0 disables bucketing (single shared pool).
-    const ragDefaultPerTypeKRaw = Number(capabilitySettings[MODULE_NAME].ragDefaultPerTypeK);
-    capabilitySettings[MODULE_NAME].ragDefaultPerTypeK = Math.max(
-        0,
-        Math.min(50, Math.floor(Number.isFinite(ragDefaultPerTypeKRaw) ? ragDefaultPerTypeKRaw : defaultSettings.ragDefaultPerTypeK)),
-    );
+
     capabilitySettings[MODULE_NAME].includeWorldInfoWithPreset = capabilitySettings[MODULE_NAME].includeWorldInfoWithPreset !== false;
     capabilitySettings[MODULE_NAME].extractMode = ['oneshot', 'crawl'].includes(String(capabilitySettings[MODULE_NAME].extractMode || '').trim().toLowerCase())
         ? String(capabilitySettings[MODULE_NAME].extractMode).trim().toLowerCase()
@@ -812,58 +705,15 @@ function ensureSettings() {
     capabilitySettings[MODULE_NAME].extractSystemPrompt = String(capabilitySettings[MODULE_NAME].extractSystemPrompt || '').trim() || DEFAULT_EXTRACT_SYSTEM_PROMPT;
     capabilitySettings[MODULE_NAME].extractCrawlSystemPrompt = String(capabilitySettings[MODULE_NAME].extractCrawlSystemPrompt || '').trim() || DEFAULT_CRAWL_SYSTEM_PROMPT;
     capabilitySettings[MODULE_NAME].schemaIterSystemPrompt = String(capabilitySettings[MODULE_NAME].schemaIterSystemPrompt || '').trim() || DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT;
-    capabilitySettings[MODULE_NAME].recallRouteSystemPrompt = String(capabilitySettings[MODULE_NAME].recallRouteSystemPrompt || '').trim() || DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT;
-    capabilitySettings[MODULE_NAME].recallFinalizeSystemPrompt = String(capabilitySettings[MODULE_NAME].recallFinalizeSystemPrompt || '').trim() || DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT;
-    capabilitySettings[MODULE_NAME].ragRewriteSystemPrompt = String(capabilitySettings[MODULE_NAME].ragRewriteSystemPrompt || '').trim() || DEFAULT_RAG_REWRITE_SYSTEM_PROMPT;
+
+
     capabilitySettings[MODULE_NAME].nodeTypeSchema = normalizeNodeTypeSchema(capabilitySettings[MODULE_NAME].nodeTypeSchema);
-
-    normalizeLegacyRecallSettings(capabilitySettings[MODULE_NAME]);
 }
 
-/**
- * Collapse the 4-mode hybrid recall settings into the 2-mode LLM/RAG schema.
- * Mutates `settings` in place. Pure helper exported for unit tests; ensureSettings
- * is the production caller.
- *
- *   hybrid           → rag (no toggles)
- *   hybrid_rerank    → rag + ragUseRerank=true
- *   hybrid_llm       → rag (no toggles — hybrid_llm was second-stage LLM finalize, not query rewrite)
- *   unknown / blank  → llm
- *
- * Also coerces the rag* fields to canonical types and strips the legacy
- * diffusion / enableRerank fields so they stop round-tripping through disk.
- */
-export function normalizeLegacyRecallSettings(settings) {
-    if (!settings || typeof settings !== 'object') {
-        return settings;
-    }
-    const legacy = String(settings.recallMethod || '').trim().toLowerCase();
-    if (legacy === 'hybrid' || legacy === 'hybrid_llm') {
-        settings.recallMethod = 'rag';
-    } else if (legacy === 'hybrid_rerank') {
-        settings.recallMethod = 'rag';
-        settings.ragUseRerank = true;
-    } else if (legacy !== 'llm' && legacy !== 'rag') {
-        settings.recallMethod = 'llm';
-    }
-    settings.ragUseRerank = Boolean(settings.ragUseRerank);
-    settings.ragUseQueryRewrite = Boolean(settings.ragUseQueryRewrite);
-    if (settings.ragRewriteApiPresetName !== undefined) settings.ragRewriteApiPresetName = String(settings.ragRewriteApiPresetName || '');
-    if (settings.ragRewriteLlmPresetName !== undefined) settings.ragRewriteLlmPresetName = String(settings.ragRewriteLlmPresetName || '');
-    delete settings.diffusionSteps;
-    delete settings.diffusionDecay;
-    delete settings.diffusionTopK;
-    delete settings.diffusionTeleportAlpha;
-    delete settings.enableRerank;
-    // Legacy: mainInjectionAssistantTurnsWindow was a separate setting that
-    // duplicated recentRawTurns' meaning ("how many trailing assistant turns
-    // are already visible as raw text"). Collapsed into recentRawTurns alone.
-    delete settings.mainInjectionAssistantTurnsWindow;
-    return settings;
-}
 
 export function getSettings() {
     const settings = capabilitySettings[MODULE_NAME];
+    normalizeHybridMemorySettings(settings);
     return nativePromptUiActive() ? clearNativePresetNames(settings) : settings;
 }
 
@@ -882,7 +732,7 @@ function normalizeAdvancedSettings(source = null, fallbackSource = null) {
     const recentRawTurnsRaw = Number(input.recentRawTurns);
     const llmVisibleRecentMessagesRaw = Number(input.llmVisibleRecentMessages);
     const persistentInjectionMaxSeqDistanceRaw = Number(input.persistentInjectionMaxSeqDistance);
-    const recallIterationsRaw = Number(input.recallMaxIterations);
+
     const toolRetryRaw = Number(input.toolCallRetryMax);
     const rpmLimitRaw = Number(input.rpmLimit);
     return {
@@ -901,10 +751,6 @@ function normalizeAdvancedSettings(source = null, fallbackSource = null) {
         llmVisibleRecentMessages: Math.max(
             0,
             Math.min(200, Math.floor(Number.isFinite(llmVisibleRecentMessagesRaw) ? llmVisibleRecentMessagesRaw : Number(base.llmVisibleRecentMessages ?? defaultSettings.llmVisibleRecentMessages))),
-        ),
-        recallMaxIterations: Math.max(
-            2,
-            Math.min(6, Math.floor(Number.isFinite(recallIterationsRaw) ? recallIterationsRaw : Number(base.recallMaxIterations || defaultSettings.recallMaxIterations))),
         ),
         toolCallRetryMax: Math.max(
             0,
@@ -938,9 +784,6 @@ function normalizeAdvancedSettings(source = null, fallbackSource = null) {
         extractSystemPrompt: String(input.extractSystemPrompt || '').trim() || String(base.extractSystemPrompt || DEFAULT_EXTRACT_SYSTEM_PROMPT),
         extractCrawlSystemPrompt: String(input.extractCrawlSystemPrompt || '').trim() || String(base.extractCrawlSystemPrompt || DEFAULT_CRAWL_SYSTEM_PROMPT),
         schemaIterSystemPrompt: String(input.schemaIterSystemPrompt || '').trim() || String(base.schemaIterSystemPrompt || DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT),
-        recallRouteSystemPrompt: String(input.recallRouteSystemPrompt || '').trim() || String(base.recallRouteSystemPrompt || DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT),
-        recallFinalizeSystemPrompt: String(input.recallFinalizeSystemPrompt || '').trim() || String(base.recallFinalizeSystemPrompt || DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT),
-        ragRewriteSystemPrompt: String(input.ragRewriteSystemPrompt || '').trim() || String(base.ragRewriteSystemPrompt || DEFAULT_RAG_REWRITE_SYSTEM_PROMPT),
         includeWorldInfoWithPreset: (
             typeof input.includeWorldInfoWithPreset === 'boolean'
                 ? input.includeWorldInfoWithPreset
@@ -957,7 +800,7 @@ function applyAdvancedSettings(target, values) {
     target.recentRawTurns = normalized.recentRawTurns;
     target.persistentInjectionMaxSeqDistance = normalized.persistentInjectionMaxSeqDistance;
     target.llmVisibleRecentMessages = normalized.llmVisibleRecentMessages;
-    target.recallMaxIterations = normalized.recallMaxIterations;
+
     target.toolCallRetryMax = normalized.toolCallRetryMax;
     target.rpmLimit = normalized.rpmLimit;
     target.extractExcludeRecentTurns = normalized.extractExcludeRecentTurns;
@@ -971,9 +814,8 @@ function applyAdvancedSettings(target, values) {
     target.extractSystemPrompt = normalized.extractSystemPrompt;
     target.extractCrawlSystemPrompt = normalized.extractCrawlSystemPrompt;
     target.schemaIterSystemPrompt = normalized.schemaIterSystemPrompt;
-    target.recallRouteSystemPrompt = normalized.recallRouteSystemPrompt;
-    target.recallFinalizeSystemPrompt = normalized.recallFinalizeSystemPrompt;
-    target.ragRewriteSystemPrompt = normalized.ragRewriteSystemPrompt;
+
+
     target.includeWorldInfoWithPreset = normalized.includeWorldInfoWithPreset;
 }
 
@@ -1022,14 +864,10 @@ function renderConnectionProfileOptions(selectedName = '') {
 
 function refreshOpenAIPresetSelectors(root, context, settings) {
     const selectorValues = [
-        ['#atria_rpg_memory_recall_api_preset', settings.recallApiPresetName],
-        ['#atria_rpg_memory_recall_preset', settings.recallPresetName],
         ['#atria_rpg_memory_extract_api_preset', settings.extractApiPresetName],
         ['#atria_rpg_memory_extract_preset', settings.extractPresetName],
         ['#atria_rpg_memory_request_api_preset', settings.requestApiPresetName],
         ['#atria_rpg_memory_request_llm_preset', settings.requestLlmPresetName],
-        ['#atria_rpg_memory_rag_rewrite_api_preset', settings.ragRewriteApiPresetName],
-        ['#atria_rpg_memory_rag_rewrite_llm_preset', settings.ragRewriteLlmPresetName],
     ];
 
     for (const [selector, value] of selectorValues) {
@@ -1045,7 +883,7 @@ function refreshOpenAIPresetSelectors(root, context, settings) {
 
 function getChatKey(context, explicitTarget = null) {
     if (isNativeMemorySession(context)) {
-        const sessionId = getNativeMemorySessionId();
+        const sessionId = String(context?.nativeSnapshot?.session?.sessionId || getNativeMemorySessionId());
         return sessionId ? `native:${sessionId}` : 'invalid_target';
     }
     const target = buildMemoryTargetFromContext(context, explicitTarget);
@@ -1094,7 +932,7 @@ function normalizeResolvedMemoryTarget(target) {
 
 function buildMemoryTargetFromContext(context, explicitTarget = null) {
     if (isNativeMemorySession(context)) {
-        const sessionId = getNativeMemorySessionId();
+        const sessionId = String(context?.nativeSnapshot?.session?.sessionId || getNativeMemorySessionId());
         return sessionId
             ? { is_group: false, avatar_url: 'atria-native', file_name: sessionId }
             : null;
@@ -1860,7 +1698,7 @@ export async function commitSessionMutation(context, chatKey, beforeStore, after
     const key = String(chatKey || '').trim();
     const store = afterStore;
     if (!key || !store || typeof store !== 'object') return;
-    if (!isMemoryOsEnabled(getSettings())) memoryStoreCache.set(key, store);
+    if (!isHybridMemoryEnabled(getSettings())) memoryStoreCache.set(key, store);
     clearRollbackHistory(key);
 
     const anchor = resolveInFlightAnchor(context);
@@ -1942,7 +1780,7 @@ async function persistRecallMetadataByChatKey(context, chatKey, { trace, project
     }
     const cached = getCachedMeta(chatKey) || {};
     // Preserve vectorIndexState across recall meta writes. This function is
-    // called at the end of every recall (both LLM and RAG paths); using a
+    // called after recall; using a
     // trimmed meta shape here silently drops vectorIndexState from the
     // sidecar, so the next refreshMemoryStoreCacheFromFloorState reloads
     // an empty vector state and syncVectorIndex's configChanged branch
@@ -2523,42 +2361,6 @@ function getNodeTypeSchemaMap(settings, context = null) {
     return map;
 }
 
-// Build the { perTypeK, defaultPerTypeK } pair that runRagRecall consumes to
-// bucket vector hits by node type. Each schema spec may set `ragPerTypeK`
-// to override the global default for that type; unset (null) means "use the
-// global default", so old schemas keep working without any migration.
-//
-// When ragDefaultPerTypeK is 0 (bucketing disabled) AND no schema entry
-// overrides it, we return { perTypeK: null, defaultPerTypeK: null }, which
-// tells runRagRecall to run the legacy single-pool path.
-function buildRagPerTypeQuotas(context, settings) {
-    const schema = getEffectiveNodeTypeSchema(context, settings);
-    const perTypeK = {};
-    let anyOverride = false;
-    for (const entry of schema) {
-        const id = String(entry?.id || '').trim().toLowerCase();
-        if (!id) continue;
-        // Only positive values are overrides. 0 (the default and the value
-        // users leave when they don't care) means "follow the global".
-        const override = Number(entry?.ragPerTypeK);
-        if (Number.isFinite(override) && override > 0) {
-            perTypeK[id] = Math.floor(override);
-            anyOverride = true;
-        }
-    }
-    const rawDefault = Number(settings?.ragDefaultPerTypeK);
-    const defaultPerTypeK = Number.isFinite(rawDefault) && rawDefault > 0
-        ? Math.floor(rawDefault)
-        : null;
-    if (!anyOverride && defaultPerTypeK === null) {
-        return { perTypeK: null, defaultPerTypeK: null };
-    }
-    return {
-        perTypeK: anyOverride ? perTypeK : null,
-        defaultPerTypeK,
-    };
-}
-
 export function getSemanticTypeSpec(settings, type, context = null) {
     const map = getNodeTypeSchemaMap(settings, context);
     return map.get(String(type || '').toLowerCase()) || null;
@@ -2926,27 +2728,6 @@ function hasEffectiveRuntimeWorldInfo(runtimeWorldInfo = null) {
     return Object.keys(normalized.outletEntries).length > 0;
 }
 
-function buildRuntimeWorldInfoFromPayload(payload = null) {
-    const candidate = normalizeRuntimeWorldInfo({
-        worldInfoBeforeEntries: Array.isArray(payload?.worldInfoBeforeEntries) ? payload.worldInfoBeforeEntries : [],
-        worldInfoAfterEntries: Array.isArray(payload?.worldInfoAfterEntries) ? payload.worldInfoAfterEntries : [],
-        worldInfoDepth: Array.isArray(payload?.worldInfoDepth) ? payload.worldInfoDepth : [],
-        outletEntries: payload?.outletEntries && typeof payload.outletEntries === 'object' ? payload.outletEntries : {},
-        worldInfoExamples: Array.isArray(payload?.worldInfoExamples) ? payload.worldInfoExamples : [],
-        anBefore: Array.isArray(payload?.anBefore) ? payload.anBefore : [],
-        anAfter: Array.isArray(payload?.anAfter) ? payload.anAfter : [],
-    });
-    const rewritten = normalizeRuntimeWorldInfo(rewriteDepthWorldInfoToAfter({
-        ...candidate,
-        worldInfoDepth: Array.isArray(candidate.worldInfoDepth)
-            ? candidate.worldInfoDepth.map(entry => ({
-                ...entry,
-                entries: Array.isArray(entry?.entries) ? entry.entries.slice() : [],
-            }))
-            : [],
-    }));
-    return hasEffectiveRuntimeWorldInfo(rewritten) ? rewritten : null;
-}
 
 async function summarizeTextWithLLM(context, settings, instruction, lines, abortSignal = null) {
     const joined = summarizeTextHeuristic(lines);
@@ -4349,71 +4130,15 @@ function buildRoleSplitChatMessages(batchItems, context, { wrapWithSeq = false }
     return out;
 }
 
-function buildRecallRouteInputHead() {
-    return [
-        '<recall_route_input>',
-        '  <input_guide>Plan recall route from the data blocks below. Use node ids from candidate_nodes only.</input_guide>',
-        '  <input_guide>always_inject_node_ids are injected separately; never include them in selected_node_ids.</input_guide>',
-        '  <input_guide>The dialogue_context block below carries recent chat turns as real role=user|assistant messages (raw dialogue, no per-turn seq wrapper). Use them to reason about scene, entities, and intent.</input_guide>',
-        '  <dialogue_context>',
-    ].join('\n');
-}
-
-function buildRecallRouteInputTail({
-    recallQueryContext = {},
-    candidateNodes = [],
-    alwaysInjectNodeIds = [],
-    schemaOverview = [],
-    selectionConstraints = {},
-} = {}) {
-    return [
-        '  </dialogue_context>',
-        buildJsonXmlSection('recall_query_context', recallQueryContext),
-        buildJsonXmlSection('candidate_nodes', candidateNodes),
-        buildJsonXmlSection('always_inject_node_ids', alwaysInjectNodeIds),
-        buildJsonXmlSection('schema_overview', schemaOverview),
-        buildJsonXmlSection('selection_constraints', selectionConstraints),
-        '</recall_route_input>',
-    ].join('\n');
-}
-
-function buildRecallFinalizeInputHead() {
-    return [
-        '<recall_finalize_input>',
-        '  <input_guide>Finalize selected node ids for injection from candidate_nodes.</input_guide>',
-        '  <input_guide>always_inject_node_ids are injected separately; never include them in selected_node_ids.</input_guide>',
-        '  <input_guide>The dialogue_context block below carries recent chat turns as real role=user|assistant messages (raw dialogue, no per-turn seq wrapper). Use them to reason about scene, entities, and intent.</input_guide>',
-        '  <dialogue_context>',
-    ].join('\n');
-}
-
-function buildRecallFinalizeInputTail({
-    recallQueryContext = {},
-    candidateNodes = [],
-    alwaysInjectNodeIds = [],
-    routeResult = {},
-    selectionConstraints = {},
-} = {}) {
-    return [
-        '  </dialogue_context>',
-        buildJsonXmlSection('recall_query_context', recallQueryContext),
-        buildJsonXmlSection('candidate_nodes', candidateNodes),
-        buildJsonXmlSection('always_inject_node_ids', alwaysInjectNodeIds),
-        buildJsonXmlSection('route_result', routeResult),
-        buildJsonXmlSection('selection_constraints', selectionConstraints),
-        '</recall_finalize_input>',
-    ].join('\n');
-}
 
 function getMemoryWorkspaceStatus() {
     const settings = getSettings();
     return {
-        memoryOsEnabled: isMemoryOsEnabled(settings),
+        sourceWritesEnabled: isMemorySourceWriteEnabled(settings),
         enabled: Boolean(settings.enabled),
         recallEnabled: Boolean(settings.recallEnabled),
         autoExtractionEnabled: settings.autoExtractionEnabled !== false,
         autoCompressionEnabled: settings.autoCompressionEnabled !== false,
-        recallMethod: String(settings.recallMethod || 'llm'),
         updateEvery: Math.max(1, Number(settings.updateEvery) || defaultSettings.updateEvery),
     };
 }
@@ -4421,8 +4146,8 @@ function getMemoryWorkspaceStatus() {
 async function setMemoryWorkspaceControl(name, value) {
     const settings = getSettings();
     const enabled = Boolean(value);
-    if (name === 'memoryOsEnabled') {
-        settings.memoryOsEnabled = enabled;
+    if (name === 'sourceWritesEnabled') {
+        settings.sourceWritesEnabled = enabled;
         latestRecallSnapshot = null;
         await stopMemoryRuntimeWork();
     } else if (name === 'enabled') {
@@ -4440,10 +4165,6 @@ async function setMemoryWorkspaceControl(name, value) {
         settings.autoExtractionEnabled = enabled;
     } else if (name === 'autoCompressionEnabled') {
         settings.autoCompressionEnabled = enabled;
-    } else if (name === 'recallMethod') {
-        const method = String(value || '').trim();
-        if (!['llm', 'rag'].includes(method)) throw new Error('Invalid recall method');
-        settings.recallMethod = method;
     } else {
         throw new Error(`Unknown Memory Workspace control: ${name}`);
     }
@@ -4740,7 +4461,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
         const calls = await collectExtractTransaction({
             initialCalls: stagedCalls,
             toolTypes: Object.fromEntries([...specByToolName].map(([name, spec]) => [name, { type: spec.id, op: spec.op }])),
-            tools, requiredTypes: [...forceUpdateTypes], memoryOsEnabled: Boolean(options.sourceTicket),
+            tools, requiredTypes: [...forceUpdateTypes], sourceBacked: Boolean(options.sourceTicket),
             nodeIds: [...graphNodeIds], taskMessages,
             repairContext: {
                 EXTRACTING: [extractInputTail, ...roleSplitChatMessages.map(message => message.content)].join('\n'),
@@ -6338,7 +6059,7 @@ async function runExtractionForStore(context, store, {
     getEffectiveLatestSeq = null,
 } = {}) {
     const settings = getEffectiveSettings(context, getSettings());
-    const sourceSnapshot = isMemoryOsEnabled(settings) ? (context.chat || []).map(sourceContent) : null;
+    const sourceSnapshot = isHybridMemoryEnabled(settings) ? (context.chat || []).map(sourceContent) : null;
     const window = computeExtractionWindow(context, store, startSeq, settings);
     const frames = window.frames;
     const latestSeq = window.latestSeq;
@@ -6572,16 +6293,6 @@ export function formatNodeBrief(node, settings = null, context = null, extra = {
     return out;
 }
 
-function formatNodeDetail(node, settings = null, context = null, extra = {}) {
-    const spec = settings ? getSemanticTypeSpec(settings, node?.type, context) : null;
-    return {
-        ...buildLlmFriendlyNodeProjection(node, spec),
-        semantic_depth: Number(node?.semanticDepth || 0),
-        semantic_rollup: Boolean(node?.semanticRollup),
-        children: Array.isArray(node?.childrenIds) ? node.childrenIds : [],
-        ...extra,
-    };
-}
 
 export function compareNodesByRecency(a, b) {
     const aSeq = Number(a?.seqTo ?? -1);
@@ -6603,50 +6314,6 @@ function getSortedNodesByRecency(nodes) {
         .sort(compareNodesByRecency);
 }
 
-function buildRecallDebugCoreChat(context, queryText, settings = null) {
-    const source = Array.isArray(context?.chat) ? context.chat : [];
-    const recentTurns = Math.max(
-        1,
-        Math.min(60, Math.floor(Number(settings?.recentRawTurns ?? defaultSettings.recentRawTurns))),
-    );
-    const recentMessageLimit = Math.max(2, recentTurns * 2);
-    const history = [];
-    for (let i = source.length - 1; i >= 0 && history.length < recentMessageLimit; i -= 1) {
-        const message = source[i];
-        if (!message || message.is_system) {
-            continue;
-        }
-        const text = normalizeText(message.mes ?? message.content ?? message.text ?? '');
-        if (!text) {
-            continue;
-        }
-        history.push({
-            is_user: Boolean(message.is_user),
-            name: String(message.name || ''),
-            mes: text,
-        });
-    }
-    history.reverse();
-
-    const query = normalizeText(queryText || '');
-    if (query) {
-        history.push({
-            is_user: true,
-            name: String(context?.name1 || 'User'),
-            mes: query,
-        });
-    }
-
-    if (history.length === 0) {
-        history.push({
-            is_user: true,
-            name: String(context?.name1 || 'User'),
-            mes: query || 'Recall debug for current context.',
-        });
-    }
-
-    return history;
-}
 
 function getRecallQueryBundle(payload, context, settings = null) {
     const payloadMessages = Array.isArray(payload?.coreChat) ? payload.coreChat : null;
@@ -6742,73 +6409,6 @@ function getRecallQueryBundle(payload, context, settings = null) {
     };
 }
 
-// Optional pre-recall step: ask the LLM to rewrite the recent dialogue context
-// into a single concise sentence optimised for vector recall. The rewrite call
-// runs against ragRewriteApiPresetName + ragRewriteLlmPresetName (independent
-// of the main chat preset). Returns the rewritten string, or null on failure
-// — caller falls back to the raw query.
-async function runQueryRewrite(context, settings, queryBundle, opts = {}) {
-    const apiPresetName = String(settings?.ragRewriteApiPresetName || '').trim();
-    if (!apiPresetName && !nativePromptUiActive()) {
-        return null;
-    }
-    const llmPresetName = String(settings?.ragRewriteLlmPresetName || '').trim();
-    const systemPrompt = String(settings?.ragRewriteSystemPrompt || '').trim() || DEFAULT_RAG_REWRITE_SYSTEM_PROMPT;
-    const recentMessages = Array.isArray(queryBundle?.recent_messages) ? queryBundle.recent_messages : [];
-    if (recentMessages.length === 0) {
-        return null;
-    }
-
-    const rewriteInputHead = [
-        '<rewrite_recall_query_input>',
-        '  <input_guide>The recent_dialogue_context block below carries chat turns as real role=user|assistant messages. Use them as source data — do not roleplay, do not respond in-character.</input_guide>',
-        '  <recent_dialogue_context>',
-    ].join('\n');
-    const rewriteInputTail = [
-        '  </recent_dialogue_context>',
-        '  <task>',
-        '  Following the system rules above, produce one sentence optimised for vector recall of related past memory-graph events. Output strictly via the rewrite_recall_query function call.',
-        '  </task>',
-        '</rewrite_recall_query_input>',
-    ].join('\n');
-    const roleSplitChatMessages = buildRoleSplitChatMessages(recentMessages, context);
-
-    try {
-        const args = await requestSingleFunctionCallWithRetry(context, settings, {
-            taskMessages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'system', content: rewriteInputHead },
-                ...roleSplitChatMessages,
-                { role: 'user', content: rewriteInputTail },
-            ],
-            ...memoryRouteOptions(settings, 'rewrite'),
-            apiPresetName,
-            llmPresetName,
-            functionName: 'rewrite_recall_query',
-            functionDescription: 'Output the single sentence optimised for vector recall.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    rewritten_query: { type: 'string' },
-                },
-                required: ['rewritten_query'],
-                additionalProperties: false,
-            },
-            abortSignal: opts.abortSignal || null,
-            recallRunToken: Number(opts.recallRunToken || 0),
-            allowPreamble: true,
-        });
-        const rewritten = String(args?.rewritten_query || '').trim();
-        return rewritten || null;
-    } catch (err) {
-        if (isAbortError(err, opts.abortSignal || null)) {
-            throw err;
-        }
-        console.warn(`[${MODULE_NAME}] Query rewrite failed, falling back to raw query`, err);
-        return null;
-    }
-}
-
 function buildLastUserAnchorFromMessages(messages) {
     if (!Array.isArray(messages) || messages.length === 0) {
         return null;
@@ -6848,26 +6448,6 @@ function buildLastUserAnchor(context, payloadMessages) {
     return buildLastUserAnchorFromMessages(payloadMessages);
 }
 
-function canReuseLatestRecallSnapshot(chatKey, anchor) {
-    if (!latestRecallSnapshot || typeof latestRecallSnapshot !== 'object') {
-        return false;
-    }
-    if (!anchor || typeof anchor !== 'object') {
-        return false;
-    }
-    if (String(latestRecallSnapshot.chatKey || '') !== String(chatKey || '')) {
-        return false;
-    }
-    const storedFloor = Number(latestRecallSnapshot.anchorFloor);
-    const incomingFloor = Number(anchor.floor);
-    const storedPlayableFloor = Number(latestRecallSnapshot.anchorPlayableFloor);
-    const incomingPlayableFloor = Number(anchor.playableFloor);
-    const floorMatched = Number.isFinite(storedPlayableFloor) && Number.isFinite(incomingPlayableFloor)
-        ? storedPlayableFloor === incomingPlayableFloor
-        : storedFloor === incomingFloor;
-    return floorMatched
-        && String(latestRecallSnapshot.anchorHash || '') === String(anchor.hash || '');
-}
 
 function shouldPreserveLatestRecallSnapshotForAssistantMutation(context, fromSeq) {
     if (!latestRecallSnapshot || typeof latestRecallSnapshot !== 'object') {
@@ -7126,161 +6706,6 @@ function normalizeEdgeTypeList(rawTypes) {
     return list.length > 0 ? list : ['related', 'involved_in', 'mentions', 'evidence', 'contains', 'updates', 'advances', 'occurred_at'];
 }
 
-async function chooseRecallRoute(context, settings, recallState) {
-    const routeSystemPrompt = String(settings?.recallRouteSystemPrompt || '').trim() || DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT;
-    const alwaysInjectIds = Array.isArray(recallState?.alwaysInjectIds) ? recallState.alwaysInjectIds : [];
-    const candidateSet = new Set((recallState.candidates || []).map(node => String(node?.id || '')).filter(Boolean));
-    if (candidateSet.size === 0) {
-        return {
-            action: 'finalize',
-            selected_node_ids: [],
-            expand_plan: [],
-            referenced_always_inject_ids: [],
-            reason: 'No recall candidates.',
-        };
-    }
-    // Dogfood the read-only API for candidate brief + schema overview so the
-    // recall LLM and any plugin that re-implements recall both consume the
-    // same view shape. Dynamic import avoids a static circular dependency
-    // with read-api.js (which itself imports helpers from here); the ESM
-    // module cache makes repeat calls effectively free.
-    const { getMemoryGraphReadApi } = await import('./read-api.js');
-    const readApi = getMemoryGraphReadApi(recallState.store, context);
-
-    const candidateRows = (recallState.candidates || []).map(node => {
-        const id = String(node?.id || '');
-        const brief = readApi.getNodeBrief(id, {
-            visibleNodeIds: candidateSet,
-            edgeSummaryLimit: 8,
-        });
-        if (brief) return brief;
-        // Fallback: node was dropped from the live store between candidate
-        // collection and this point (archived / merged). Reconstruct the
-        // legacy shape so the route LLM still sees a row for it.
-        return formatNodeBrief(node, settings, context, {
-            exposure: getNodeRecallExposure(settings, node, context),
-            edge_summary: buildEdgeSummary(recallState.store, node?.id, { nodeSet: candidateSet, limit: 8 }),
-            always_inject: alwaysInjectIds.includes(id),
-        });
-    });
-
-    const schemaOverview = readApi.getSchema().types.map(spec => ({
-        id: spec.type,
-        table_name: spec.tableName,
-        table_columns: spec.tableColumns,
-        required_columns: spec.requiredColumns,
-        force_update: Boolean(spec.forceUpdate),
-        always_inject: Boolean(spec.alwaysInject),
-        editable: Boolean(spec.editable),
-        compression_mode: String(spec.compressionMode || 'none'),
-    }));
-
-    try {
-        const routeInputHead = buildRecallRouteInputHead();
-        const routeInputTail = buildRecallRouteInputTail({
-            recallQueryContext: {
-                user_query_text: recallState.query,
-            },
-            candidateNodes: candidateRows,
-            alwaysInjectNodeIds: alwaysInjectIds,
-            schemaOverview,
-            selectionConstraints: {
-                recent_message_window: Math.max(3, Number(settings.recentRawTurns ?? defaultSettings.recentRawTurns)),
-                injection_exclude_recent_messages: Math.max(0, Number(settings.recentRawTurns ?? defaultSettings.recentRawTurns)),
-                recall_query_recent_messages: sanitizeRecallQueryMessages(settings.recallQueryMessages),
-            },
-        });
-        const roleSplitChatMessages = buildRoleSplitChatMessages(
-            recallState?.queryBundle?.recent_messages || [],
-            context,
-        );
-        const parsed = await runFunctionCallTask(context, settings, {
-            taskMessages: [
-                { role: 'system', content: routeSystemPrompt },
-                { role: 'system', content: routeInputHead },
-                ...roleSplitChatMessages,
-                { role: 'user', content: routeInputTail },
-            ],
-            ...memoryRouteOptions(settings, 'recall'),
-            apiPresetName: settings.recallApiPresetName || '',
-            promptPresetName: String(settings.recallPresetName || '').trim(),
-            worldInfoMessages: Array.isArray(recallState?.worldInfoMessages) ? recallState.worldInfoMessages : null,
-            runtimeWorldInfo: recallState?.runtimeWorldInfo && typeof recallState.runtimeWorldInfo === 'object'
-                ? recallState.runtimeWorldInfo
-                : null,
-            forceWorldInfoResimulate: Boolean(recallState?.forceWorldInfoResimulate),
-            worldInfoType: 'quiet',
-            functionName: 'atria_rpg_recall_plan',
-            functionDescription: 'Plan recall as finalize or drill with optional expansion plan.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    action: { type: 'string', enum: ['finalize', 'drill'] },
-                    selected_node_ids: {
-                        type: 'array',
-                        items: { type: 'string' },
-                    },
-                    expand_plan: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                seed_node_id: { type: 'string' },
-                                relation_types: {
-                                    type: 'array',
-                                    items: { type: 'string' },
-                                },
-                                depth: { type: 'integer' },
-                                include_children: { type: 'boolean' },
-                            },
-                            required: ['seed_node_id'],
-                            additionalProperties: true,
-                        },
-                    },
-                    referenced_always_inject_ids: {
-                        type: 'array',
-                        items: { type: 'string' },
-                    },
-                    reason: { type: 'string' },
-                },
-                required: ['action'],
-                additionalProperties: true,
-            },
-            abortSignal: recallState?.abortSignal || null,
-            recallRunToken: Number(recallState?.recallRunToken || 0),
-        });
-        return {
-            action: String(parsed?.action || '').toLowerCase() === 'drill' ? 'drill' : 'finalize',
-            selected_node_ids: Array.isArray(parsed?.selected_node_ids)
-                ? parsed.selected_node_ids.map(id => String(id || '').trim()).filter(id => id && candidateSet.has(id))
-                : [],
-            expand_plan: Array.isArray(parsed?.expand_plan)
-                ? parsed.expand_plan.map(item => ({
-                    seed_node_id: String(item?.seed_node_id || '').trim(),
-                    relation_types: normalizeEdgeTypeList(item?.relation_types),
-                    depth: Math.max(1, Math.floor(Number(item?.depth) || 1)),
-                    include_children: item?.include_children !== false,
-                })).filter(item => item.seed_node_id && candidateSet.has(item.seed_node_id))
-                : [],
-            referenced_always_inject_ids: Array.isArray(parsed?.referenced_always_inject_ids)
-                ? parsed.referenced_always_inject_ids.map(id => String(id || '').trim()).filter(Boolean)
-                : [],
-            reason: String(parsed?.reason || ''),
-        };
-    } catch (error) {
-        if (isAbortError(error, recallState?.abortSignal || null)) {
-            throw error;
-        }
-        console.warn(`[${MODULE_NAME}] recall route failed`, error);
-        return {
-            action: 'finalize',
-            selected_node_ids: recallState.candidates.map(node => node.id),
-            expand_plan: [],
-            referenced_always_inject_ids: [],
-            reason: 'Fallback route used.',
-        };
-    }
-}
 
 function addCandidate(candidateMap, node) {
     if (!node?.id) {
@@ -7366,98 +6791,6 @@ export function expandRouteCandidates(store, route, rootCandidates) {
     return Array.from(candidateMap.values());
 }
 
-async function chooseFocusNodes(context, settings, recallState) {
-    const finalizeSystemPrompt = String(settings?.recallFinalizeSystemPrompt || '').trim() || DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT;
-    const alwaysInjectIds = Array.isArray(recallState?.alwaysInjectIds) ? recallState.alwaysInjectIds : [];
-    const candidateSet = new Set((recallState.candidates || []).map(node => String(node?.id || '')).filter(Boolean));
-    if (candidateSet.size === 0) {
-        return {
-            selected_node_ids: [],
-            reason: 'No recall candidates.',
-        };
-    }
-    const detailRows = (recallState.candidates || []).map(node => {
-        const row = formatNodeDetail(node, settings, context, {
-            exposure: getNodeRecallExposure(settings, node, context),
-            edge_summary: buildEdgeSummary(recallState.store, node?.id, { nodeSet: candidateSet, limit: 12 }),
-            always_inject: alwaysInjectIds.includes(String(node?.id || '')),
-        });
-        return row;
-    });
-    try {
-        const finalizeInputHead = buildRecallFinalizeInputHead();
-        const finalizeInputTail = buildRecallFinalizeInputTail({
-            recallQueryContext: {
-                user_query_text: recallState.query,
-            },
-            candidateNodes: detailRows,
-            alwaysInjectNodeIds: alwaysInjectIds,
-            routeResult: recallState.route || {},
-            selectionConstraints: {
-                include_non_event_nodes: true,
-                require_event_continuity: true,
-                recent_message_window: Math.max(3, Number(settings.recentRawTurns ?? defaultSettings.recentRawTurns)),
-                injection_exclude_recent_messages: Math.max(0, Number(settings.recentRawTurns ?? defaultSettings.recentRawTurns)),
-                recall_query_recent_messages: sanitizeRecallQueryMessages(settings.recallQueryMessages),
-                min_event_nodes_if_available: 2,
-            },
-        });
-        const roleSplitChatMessages = buildRoleSplitChatMessages(
-            recallState?.queryBundle?.recent_messages || [],
-            context,
-        );
-        const parsed = await runFunctionCallTask(context, settings, {
-            taskMessages: [
-                { role: 'system', content: finalizeSystemPrompt },
-                { role: 'system', content: finalizeInputHead },
-                ...roleSplitChatMessages,
-                { role: 'user', content: finalizeInputTail },
-            ],
-            ...memoryRouteOptions(settings, 'recall'),
-            apiPresetName: settings.recallApiPresetName || '',
-            promptPresetName: String(settings.recallPresetName || '').trim(),
-            worldInfoMessages: Array.isArray(recallState?.worldInfoMessages) ? recallState.worldInfoMessages : null,
-            runtimeWorldInfo: recallState?.runtimeWorldInfo && typeof recallState.runtimeWorldInfo === 'object'
-                ? recallState.runtimeWorldInfo
-                : null,
-            forceWorldInfoResimulate: Boolean(recallState?.forceWorldInfoResimulate),
-            worldInfoType: 'quiet',
-            functionName: 'atria_rpg_recall_finalize',
-            functionDescription: 'Finalize memory node IDs to inject.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    selected_node_ids: {
-                        type: 'array',
-                        items: { type: 'string' },
-                    },
-                    reason: { type: 'string' },
-                },
-                required: ['selected_node_ids'],
-                additionalProperties: true,
-            },
-            abortSignal: recallState?.abortSignal || null,
-            recallRunToken: Number(recallState?.recallRunToken || 0),
-        });
-
-        const selectedIds = Array.isArray(parsed?.selected_node_ids)
-            ? parsed.selected_node_ids.map(id => String(id || '').trim()).filter(id => id && candidateSet.has(id))
-            : [];
-        return {
-            selected_node_ids: selectedIds,
-            reason: String(parsed?.reason || ''),
-        };
-    } catch (error) {
-        if (isAbortError(error, recallState?.abortSignal || null)) {
-            throw error;
-        }
-        console.warn(`[${MODULE_NAME}] recall select failed`, error);
-        return {
-            selected_node_ids: recallState.candidates.map(node => node.id),
-            reason: 'Fallback selection used.',
-        };
-    }
-}
 
 function getActiveSemanticParentOfType(store, node, type) {
     const parentId = String(node?.parentId || '').trim();
@@ -7683,7 +7016,7 @@ export function computeRecentRawWindowFrom(store, settings) {
 // `collectAlwaysInjectNodes` in that case.
 //
 // PASSED BY: syncPersistentLorebookProjection AND all recall pipeline
-// call sites (runLLMDrivenRecall, injectMemoryPrompts). Keeping the two
+// source-backed Recall and Context consumers. Keeping the two
 // sides in sync is what makes recency-horizon nodes fall back to recall
 // instead of vanishing from both channels.
 export function computePersistentInjectionSeqCutoff(store, settings) {
@@ -7769,21 +7102,6 @@ export function isNodeInRecentExcludeWindow(node, latestSeqIndex, excludeMessage
     return Number.isFinite(cutoff) && toSeq >= cutoff;
 }
 
-function toMarkdownTable(headers, rows) {
-    if (!Array.isArray(headers) || headers.length === 0 || !Array.isArray(rows) || rows.length === 0) {
-        return '';
-    }
-    const safeHeaders = headers.map(header => normalizeText(header || '-').replaceAll('|', '\\|'));
-    const lines = [];
-    lines.push(`| ${safeHeaders.join(' | ')} |`);
-    lines.push(`| ${safeHeaders.map(() => '---').join(' | ')} |`);
-    for (const row of rows) {
-        const cells = safeHeaders.map((_, index) => normalizeText(row?.[index] ?? '').replaceAll('|', '\\|'));
-        lines.push(`| ${cells.join(' | ')} |`);
-    }
-    return lines.join('\n');
-}
-
 function getTableCellValueFromNode(node, columnName) {
     const key = String(columnName || '').trim().toLowerCase();
     if (!key) {
@@ -7824,56 +7142,6 @@ function getTableCellValueFromNode(node, columnName) {
         return toDisplayScalar(deepHit);
     }
     return String(node?.fields?.[key] ?? '');
-}
-
-function buildFocusTablesText(nodes, settings, options = {}, context = null) {
-    const byBucket = new Map();
-    const sourceNodes = Array.isArray(nodes) ? nodes : [];
-    const tablePrefix = String(options?.tablePrefix || 'Focus').trim() || 'Focus';
-    const schemaMap = getNodeTypeSchemaMap(settings, context);
-    for (const node of sourceNodes) {
-        if (!node) {
-            continue;
-        }
-        const bucket = node.level === LEVEL.SEMANTIC
-            ? `semantic:${String(node.type || 'semantic')}`
-            : `timeline:${String(node.level || 'unknown')}`;
-        if (!byBucket.has(bucket)) {
-            byBucket.set(bucket, []);
-        }
-        byBucket.get(bucket).push(node);
-    }
-
-    const blocks = [];
-    for (const [bucket, bucketNodes] of byBucket.entries()) {
-        let headers = ['title', 'type', 'seq_range', 'summary'];
-        let rows = bucketNodes.map(node => [
-            String(node.title || ''),
-            String(node.type || ''),
-            getNodeSeqRange(node),
-            getNodeSummary(node),
-        ]);
-        let bucketTitle = `${tablePrefix} ${bucket}`;
-
-        if (bucket.startsWith('semantic:')) {
-            const semanticType = String(bucket.slice('semantic:'.length) || '').trim().toLowerCase();
-            const spec = schemaMap.get(semanticType);
-            const columns = Array.isArray(spec?.tableColumns) ? spec.tableColumns : [];
-            if (columns.length > 0) {
-                headers = columns;
-                rows = bucketNodes.map(node => columns.map(column => getTableCellValueFromNode(node, column)));
-            }
-            bucketTitle = `${tablePrefix} ${spec?.tableName || semanticType || bucket}`;
-        }
-
-        const table = toMarkdownTable(headers, rows);
-        if (!table) {
-            continue;
-        }
-        blocks.push(`[Table: ${bucketTitle}]\n${table}`);
-    }
-
-    return blocks.join('\n\n');
 }
 
 const DEFAULT_MANAGED_LOREBOOK_ENTRY_CONFIG = Object.freeze({
@@ -8164,67 +7432,12 @@ async function applyManagedLorebookProjection(context, settings, {
     return { changed: true, bookName };
 }
 
-async function syncPersistentLorebookProjection(context, settings, store, assertCurrent = undefined) {
-    assertCurrent ||= () => {};
-    const semanticNodes = listNodesByLevel(store, LEVEL.SEMANTIC)
-        .filter(node => node && !node.archived);
-    if (semanticNodes.length === 0) {
-        const changed = await clearPersistentLorebookProjection(context, settings);
-        return {
-            changed,
-            corePacket: '',
-            alwaysInjectNodes: [],
-        };
-    }
-    // seqWindowFrom (raw-visible recent-turns window) and seqCutoffFrom
-    // (persistent-injection recency horizon) are both derived from settings
-    // via the exported helpers so recall pipeline call sites can compute
-    // the same seqCutoffFrom bound — that's how horizon-dropped nodes
-    // fall back to being recallable instead of vanishing from both
-    // channels. See computePersistentInjectionSeqCutoff docs.
-    const seqWindowFrom = computeRecentRawWindowFrom(store, settings);
-    const seqCutoffFrom = computePersistentInjectionSeqCutoff(store, settings);
-    const collectOptions = {};
-    if (seqWindowFrom !== undefined) collectOptions.seqWindowFrom = seqWindowFrom;
-    if (seqCutoffFrom !== undefined) collectOptions.seqCutoffFrom = seqCutoffFrom;
-    const alwaysInjectNodes = collectAlwaysInjectNodes(
-        store,
-        settings,
-        context,
-        collectOptions,
-    );
-    let corePacket = normalizeMultilineText(
-        buildFocusTablesText(alwaysInjectNodes, settings, { tablePrefix: 'Core' }, context),
-    );
-    if (isMemoryOsEnabled(settings)) {
-        const count = memoryTokenCounter(context);
-        const contextBudget = nativeSessionRuntime.active
-            ? nativeSessionRuntime.contextLaneBudget('memory')
-            : null;
-        const laneCap = contextBudget ? Math.max(0, Number(contextBudget.tokens) || 0) : Number.POSITIVE_INFINITY;
-        const budget = Math.max(
-            0,
-            Math.min(memoryTokenBudget(settings), laneCap) - await count(existingStatePrompt(context, settings)),
-        );
-        while (alwaysInjectNodes.length && await count(corePacket) > budget) {
-            assertCurrent();
-            alwaysInjectNodes.pop();
-            corePacket = normalizeMultilineText(buildFocusTablesText(alwaysInjectNodes, settings, { tablePrefix: 'Core' }, context));
-        }
-        if (!alwaysInjectNodes.length) corePacket = '';
-    }
-    const result = await upsertManagedLorebookProjection(context, settings, {
-        commentPrefix: PERSISTENT_LOREBOOK_COMMENT_PREFIX,
-        sections: [['CORE_PACKET', corePacket]],
-        orderBase: Math.max(100, Number(settings.lorebookEntryOrderBase || 9800)),
-        allowCreate: true,
-        assertCurrent,
-    });
-    return {
-        changed: Boolean(result?.changed),
-        corePacket,
-        alwaysInjectNodes,
-    };
+async function syncPersistentLorebookProjection(context, settings, _store, assertCurrent = () => {}) {
+    assertCurrent();
+    const changed = await clearPersistentLorebookProjection(context, settings);
+    assertCurrent();
+    // Unproven graph-only text must not bypass the source-first Recall packet.
+    return { changed, corePacket: '', alwaysInjectNodes: [] };
 }
 
 async function syncRuntimeLorebookProjection(context, settings, store, assertCurrent = undefined) {
@@ -8296,220 +7509,6 @@ async function syncPersistentProjectionForCurrentChat(context = getContext()) {
     }
 }
 
-async function runLLMDrivenRecall(context, store, payload) {
-    const settings = getEffectiveSettings(context, getSettings());
-    if (!settings.recallEnabled) {
-        return { selectedNodes: [], alwaysInjectNodes: [], trace: [], query: '' };
-    }
-    const abortSignal = isAbortSignalLike(payload?.signal) ? payload.signal : null;
-    const recallRunToken = Number(payload?.__atriaRpgMemoryRecallRunToken || 0);
-    throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
-
-    const queryBundle = getRecallQueryBundle(payload, context, settings);
-    const query = normalizeText(queryBundle.fullText || '');
-    const runtimeWorldInfo = buildRuntimeWorldInfoFromPayload(payload);
-    const forceWorldInfoResimulate = Boolean(payload?.forceWorldInfoResimulate);
-    const worldInfoMessages = Array.isArray(payload?.coreChat) ? payload.coreChat : [];
-    // Recall-side always-inject set is horizon-adjusted (seqCutoffFrom) but
-    // NOT window-adjusted (seqWindowFrom) — see computeRecallAlwaysInjectOptions.
-    const alwaysInjectNodes = collectAlwaysInjectNodes(
-        store,
-        settings,
-        context,
-        computeRecallAlwaysInjectOptions(store, settings),
-    );
-    const latestSeqIndex = getLatestSeqIndex(store);
-    const excludeMessages = Math.max(0, Number(settings.recentRawTurns ?? defaultSettings.recentRawTurns));
-    const rootCandidates = collectRootCandidates(store, settings, queryBundle, alwaysInjectNodes, context, {
-        latestSeqIndex,
-        excludeMessages,
-    });
-    const maxIterations = Math.max(2, Math.min(6, Number(settings.recallMaxIterations || 3)));
-    const trace = [];
-    const alwaysInjectIds = alwaysInjectNodes.map(node => String(node?.id || '')).filter(Boolean);
-    const alwaysInjectSet = new Set(alwaysInjectIds);
-    const routeCandidates = rootCandidates.filter((node) => node?.id && !alwaysInjectSet.has(String(node.id)));
-
-    if (routeCandidates.length === 0) {
-        trace.push({
-            step: 'skip_recall_route_no_candidates',
-            latest_seq: latestSeqIndex,
-            exclude_messages: excludeMessages,
-            always_inject_count: alwaysInjectNodes.length,
-        });
-        if (alwaysInjectNodes.length > 0) {
-            trace.push({
-                step: 'always_inject',
-                node_ids: alwaysInjectNodes.map(node => node.id),
-            });
-        }
-        return {
-            selectedNodes: [],
-            alwaysInjectNodes,
-            query,
-            trace,
-        };
-    }
-
-    let selectedIds = [];
-    let currentCandidates = routeCandidates.slice();
-    let latestRoute = null;
-    let earlyFinalized = false;
-    const drillBudget = Math.max(0, maxIterations - 1);
-
-    for (let pass = 1; pass <= drillBudget; pass++) {
-        throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
-        const route = await chooseRecallRoute(context, settings, {
-            store,
-            query,
-            queryBundle,
-            candidates: currentCandidates,
-            alwaysInjectIds,
-            worldInfoMessages,
-            runtimeWorldInfo,
-            forceWorldInfoResimulate,
-            abortSignal,
-            recallRunToken,
-        });
-        throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
-        latestRoute = route;
-        trace.push({
-            step: `plan_pass_${pass}`,
-            route,
-            stage1_candidates: currentCandidates.map(node => node.id),
-        });
-        if (Array.isArray(route?.referenced_always_inject_ids) && route.referenced_always_inject_ids.length > 0) {
-            trace.push({
-                step: `plan_referenced_always_inject_${pass}`,
-                node_ids: route.referenced_always_inject_ids,
-            });
-        }
-
-        if (route.action === 'finalize') {
-            selectedIds = Array.isArray(route.selected_node_ids) ? route.selected_node_ids : [];
-            trace.push({
-                step: `plan_early_finalize_${pass}`,
-                selected_ids: selectedIds,
-                reason: route.reason || '',
-            });
-            earlyFinalized = true;
-            break;
-        }
-
-        if (route.action !== 'drill') {
-            trace.push({
-                step: `plan_stop_non_drill_${pass}`,
-                action: String(route.action || ''),
-            });
-            break;
-        }
-
-        const expandedCandidates = expandRouteCandidates(store, route, currentCandidates);
-        trace.push({
-            step: `expand_from_plan_${pass}`,
-            expanded_candidates: expandedCandidates.map(node => node.id),
-        });
-
-        if (expandedCandidates.length <= currentCandidates.length) {
-            currentCandidates = expandedCandidates;
-            trace.push({
-                step: `drill_stagnated_${pass}`,
-                candidate_count: currentCandidates.length,
-            });
-            break;
-        }
-
-        currentCandidates = expandedCandidates;
-    }
-
-    if (!earlyFinalized) {
-        throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
-        const selectedRaw = await chooseFocusNodes(context, settings, {
-            store,
-            query,
-            queryBundle,
-            route: latestRoute || {},
-            candidates: currentCandidates,
-            alwaysInjectIds,
-            worldInfoMessages,
-            runtimeWorldInfo,
-            forceWorldInfoResimulate,
-            abortSignal,
-            recallRunToken,
-        });
-        throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
-        selectedIds = Array.isArray(selectedRaw.selected_node_ids) ? selectedRaw.selected_node_ids : [];
-        trace.push({
-            step: 'finalize_pass',
-            selected_ids: selectedIds,
-            reason: selectedRaw.reason || '',
-        });
-    }
-
-    const droppedAlwaysInjectIds = [];
-    const filteredSelectionIds = [];
-    for (const id of selectedIds) {
-        const key = String(id || '').trim();
-        if (!key) {
-            continue;
-        }
-        if (alwaysInjectSet.has(key)) {
-            droppedAlwaysInjectIds.push(key);
-            continue;
-        }
-        filteredSelectionIds.push(key);
-    }
-    if (droppedAlwaysInjectIds.length > 0) {
-        trace.push({
-            step: 'drop_always_inject_from_selection',
-            dropped_always_inject_ids: droppedAlwaysInjectIds,
-        });
-    }
-
-    const selectedNodesRaw = filteredSelectionIds
-        .map(id => store.nodes[id])
-        .filter(Boolean);
-    const dedupedSelectedNodes = [];
-    const selectedNodeSeen = new Set();
-    for (const node of selectedNodesRaw) {
-        if (!node?.id || selectedNodeSeen.has(node.id)) {
-            continue;
-        }
-        selectedNodeSeen.add(node.id);
-        dedupedSelectedNodes.push(node);
-    }
-    const selectedNodes = dedupedSelectedNodes;
-    if (alwaysInjectNodes.length > 0) {
-        trace.push({
-            step: 'always_inject',
-            node_ids: alwaysInjectNodes.map(node => node.id),
-        });
-    }
-
-    const excludedNodeIds = [];
-    const filteredSelectedNodes = selectedNodes.filter((node) => {
-        const excluded = isNodeInRecentExcludeWindow(node, latestSeqIndex, excludeMessages);
-        if (excluded && node?.id) {
-            excludedNodeIds.push(node.id);
-        }
-        return !excluded;
-    }).sort(compareNodesByTimeline);
-    if (excludeMessages > 0 && excludedNodeIds.length > 0) {
-        trace.push({
-            step: 'exclude_recent_window',
-            exclude_messages: excludeMessages,
-            latest_seq: latestSeqIndex,
-            excluded_node_ids: excludedNodeIds,
-        });
-    }
-
-    return {
-        selectedNodes: filteredSelectedNodes,
-        alwaysInjectNodes,
-        query,
-        trace,
-    };
-}
 
 async function rebuildStoreFromCurrentChat(context, { abortSignal = null, onBatchStart = null } = {}) {
     const chatKey = getChatKey(context);
@@ -8746,14 +7745,14 @@ async function injectMemoryPrompts(context, payload) {
         return false;
     }
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const sourceSnapshot = isMemoryOsEnabled(settings) ? await sourceLifecycle.retrievalSnapshot(context) : null;
+    const sourceSnapshot = isHybridMemoryEnabled(settings) ? await sourceLifecycle.retrievalSnapshot(context) : null;
     const persistentSync = await syncPersistentLorebookProjection(context, settings, store, () => {
         throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
         sourceSnapshot?.assertCurrent();
     });
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
     const corePacket = normalizeMultilineText(persistentSync.corePacket || '');
-    const coreGuard = isMemoryOsEnabled(settings) ? sourceLifecycle.commitGuard(context, store) : null;
+    const coreGuard = isHybridMemoryEnabled(settings) ? sourceLifecycle.commitGuard(context, store) : null;
     if (isAbortSignalLike(payload?.signal) && payload.signal.aborted) {
         const chatKey = getChatKey(context);
         store.lastRecallProjection = { at: Date.now(), blocks: { corePacket, focusPacket: '' } };
@@ -8770,43 +7769,6 @@ async function injectMemoryPrompts(context, payload) {
     const chatKey = getChatKey(context);
     const anchor = buildLastUserAnchor(context, payload?.coreChat);
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const shouldReuseSnapshot = !isMemoryOsEnabled(settings) && settings.recallEnabled
-        && RECALL_REUSE_GENERATION_TYPES.has(generationType)
-        && canReuseLatestRecallSnapshot(chatKey, anchor);
-    if (shouldReuseSnapshot) {
-        const focusPacket = normalizeMultilineText(latestRecallSnapshot?.blocks?.focusPacket || '');
-        const blocks = { corePacket, focusPacket };
-        store.lastRecallTrace = structuredClone(Array.isArray(latestRecallSnapshot.trace) ? latestRecallSnapshot.trace : []);
-        store.lastRecallProjection = {
-            at: Date.now(),
-            blocks,
-        };
-        await persistRecallMetadataByChatKey(context, chatKey, {
-            trace: store.lastRecallTrace,
-            projection: store.lastRecallProjection,
-        });
-        throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-        const runtimeSync = await syncRuntimeLorebookProjection(context, settings, store);
-        throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-        if (payload && typeof payload === 'object') {
-            payload.__atriaRpgMemoryNeedRescan = Boolean(persistentSync.changed || runtimeSync.changed);
-        }
-        updateUiStatus(i18nFormat('Recall ready. selected=${0}', Math.max(0, Number(latestRecallSnapshot.selectedCount || 0))));
-        return Boolean(persistentSync.changed || runtimeSync.changed);
-    }
-
-    const recallMethod = String(settings.recallMethod || 'llm').trim().toLowerCase();
-    // Persistent injection (alwaysInject nodes) ran above via
-    // syncPersistentLorebookProjection. Collect here independently of recall
-    // so __recordInjectedNodeIds publishes the real set even when recall is
-    // disabled or short-circuits. Same recall-side options shape as
-    // runLLMDrivenRecall — see computeRecallAlwaysInjectOptions.
-    const alwaysInjectNodes = collectAlwaysInjectNodes(
-        store,
-        settings,
-        context,
-        computeRecallAlwaysInjectOptions(store, settings),
-    );
     let selectedNodes = [];
     let trace = [];
     let hybrid = null;
@@ -8814,7 +7776,7 @@ async function injectMemoryPrompts(context, payload) {
 
     if (!settings.recallEnabled) {
         // Skip recall; fall through to clear runtime lorebook projection.
-    } else if (isMemoryOsEnabled(settings)) {
+    } else if (isHybridMemoryEnabled(settings)) {
         // Clear the previous packet before asynchronous retrieval can fail.
         clearedHybridPacket = await clearRuntimeLorebookProjection(context, settings);
         store.lastRecallProjection = { at: Date.now(), blocks: { corePacket, focusPacket: '' } };
@@ -8824,151 +7786,8 @@ async function injectMemoryPrompts(context, payload) {
             corePacket, signal: payload?.signal, settings, accountExistingState: true,
         });
         hybrid.assertCurrent();
-        trace = [{ tool: 'memory_os_hybrid', selected: hybrid.selected, tokens: hybrid.tokenCount,
+        trace = [{ tool: 'hybrid_memory', selected: hybrid.selected, tokens: hybrid.tokenCount,
             budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, providers: hybrid.providers, diagnostics: hybrid.diagnostics, metrics: hybrid.metrics }];
-    } else if (recallMethod === 'rag') {
-        const queryBundle = getRecallQueryBundle(payload, context, settings);
-        const queryText = normalizeText(queryBundle.fullText || '');
-
-        // Ensure vector index is synced before first RAG recall
-        const vs = ensureVectorIndexState(store);
-        if (!vs.hashToNodeId || Object.keys(vs.hashToNodeId).length === 0) {
-            const syncVectorConfig = getVectorConfigFromSettings(settings);
-            const effectiveSchema = getEffectiveNodeTypeSchema(context, settings);
-            await getMemoryVectorStore(settings).sync(store, syncVectorConfig, chatKey, {
-                schema: effectiveSchema,
-                signal: payload?.signal,
-            });
-            // syncVectorIndex mutates store.vectorIndexState in place, which is
-            // a meta-sidecar field after Commit B. Without this persist call
-            // the freshly-built hash map would only live in memoryStoreCache
-            // and the next refreshMemoryStoreCacheFromFloorState would wipe
-            // it — forcing a re-embed on every chat reload.
-            //
-            // No try/catch: silently warning here was the reason RAG chats
-            // re-embedded the full corpus every recall. If the persist
-            // fails, let injectMemoryPrompts' outer catch surface it as a
-            // "Recall injection failed" notice so the user can act on the
-            // real failure (auth, disk, target changed) instead of paying
-            // the full-corpus cost on every subsequent turn.
-            await persistMemoryStoreByChatKey(context, chatKey, store, { syncPersistentProjection: false });
-        }
-
-        let rewrittenQuery = null;
-        if (settings.ragUseQueryRewrite && (nativePromptUiActive() || String(settings.ragRewriteApiPresetName || '').trim())) {
-            rewrittenQuery = await runQueryRewrite(context, settings, queryBundle, {
-                abortSignal: payload?.signal || null,
-                recallRunToken,
-            });
-            throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-        }
-
-        const useRerank = Boolean(settings.ragUseRerank);
-        const rerankProfile = useRerank ? getRerankProfileFromSettings(settings) : null;
-        const { perTypeK, defaultPerTypeK } = buildRagPerTypeQuotas(context, settings);
-
-        const ragResult = await runRagRecall(store, queryText, chatKey, settings, {
-            maxResults: Number(settings.hybridMaxResults) || 15,
-            vectorTopK: Number(settings.vectorTopK) || 20,
-            useRerank,
-            rerankProfile,
-            rewrittenQuery,
-            perTypeK,
-            defaultPerTypeK,
-            signal: payload?.signal,
-        });
-        throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-
-        const alwaysInjectSet = new Set(alwaysInjectNodes.map(n => n?.id).filter(Boolean));
-        const latestSeqIndex = getLatestSeqIndex(store);
-        const excludeMessages = Math.max(0, Number(settings.recentRawTurns ?? defaultSettings.recentRawTurns));
-
-        selectedNodes = ragResult.candidates
-            .map(c => store.nodes?.[c.nodeId])
-            .filter(node => node && !node.archived && !alwaysInjectSet.has(node.id))
-            .filter(node => !isNodeInRecentExcludeWindow(node, latestSeqIndex, excludeMessages))
-            .sort(compareNodesByTimeline);
-
-        // Structured recall diagnostic. Emits one row per RAG recall so users
-        // can grep `[memory_graph] rag_recall` in DevTools when injection ends
-        // up empty or lopsided. All numbers are counts so the payload stays
-        // small — actual candidate lists are already in `store.lastRecallTrace`.
-        // The three stages must add up for anyone reading the log to know
-        // WHERE candidates disappeared:
-        //   vector_hits   → returned by the embedding backend (post store-filter)
-        //   rag_candidates → after per-type bucketing + optional rerank + maxResults trim
-        //   selected      → after main-flow filters (alwaysInject exclusion + recent-turns window)
-        try {
-            const candByType = ragResult.candidates.reduce((acc, c) => {
-                const t = c.nodeType || 'unknown';
-                acc[t] = (acc[t] || 0) + 1;
-                return acc;
-            }, {});
-            const droppedAlwaysInject = ragResult.candidates.filter((c) => {
-                const n = store.nodes?.[c.nodeId];
-                return n && alwaysInjectSet.has(n.id);
-            }).length;
-            const droppedRecentWindow = ragResult.candidates.filter((c) => {
-                const n = store.nodes?.[c.nodeId];
-                return n && !alwaysInjectSet.has(n.id)
-                    && isNodeInRecentExcludeWindow(n, latestSeqIndex, excludeMessages);
-            }).length;
-            const droppedArchivedOrMissing = ragResult.candidates.filter((c) => {
-                const n = store.nodes?.[c.nodeId];
-                return !n || n.archived;
-            }).length;
-            const perBucketFinal = ragResult.meta?.perBucket
-                ? Object.fromEntries(
-                    Object.entries(ragResult.meta.perBucket)
-                        .map(([type, m]) => [type, m?.finalCount ?? 0]),
-                )
-                : null;
-            console.info(`[${MODULE_NAME}] rag_recall`, {
-                chatKey,
-                bucketing: {
-                    perTypeK: perTypeK || null,
-                    defaultPerTypeK,
-                    active: Boolean(perBucketFinal),
-                },
-                vector: {
-                    topKRequested: Number(settings.vectorTopK) || 20,
-                    hits: ragResult.meta?.vectorHits ?? 0,
-                },
-                rerank: {
-                    enabled: useRerank,
-                    applied: Boolean(ragResult.meta?.rerankApplied),
-                },
-                candidates: {
-                    total: ragResult.candidates.length,
-                    byType: candByType,
-                    perBucketFinal,
-                },
-                dropped: {
-                    archivedOrMissing: droppedArchivedOrMissing,
-                    alwaysInjectOverlap: droppedAlwaysInject,
-                    recentTurnsWindow: droppedRecentWindow,
-                },
-                selected: {
-                    count: selectedNodes.length,
-                    recentTurnsWindowSize: excludeMessages,
-                    alwaysInjectSetSize: alwaysInjectSet.size,
-                },
-                skipReasons: ragResult.meta?.skipReasons || [],
-            });
-        } catch (logErr) {
-            console.warn(`[${MODULE_NAME}] rag_recall log emit failed`, logErr);
-        }
-
-        trace = [{
-            step: 'rag_recall',
-            method: 'rag',
-            meta: ragResult.meta,
-            selected_ids: selectedNodes.map(n => n.id),
-        }];
-    } else {
-        const llmResult = await runLLMDrivenRecall(context, store, payload);
-        selectedNodes = llmResult.selectedNodes;
-        trace = llmResult.trace;
     }
 
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
@@ -8979,13 +7798,13 @@ async function injectMemoryPrompts(context, payload) {
     // what's already in the main model context. Read via
     // `getCurrentlyInjectedNodeIds(context)` from external-api.js.
     __recordInjectedNodeIds({
-        alwaysInjectIds: (isMemoryOsEnabled(settings) ? persistentSync.alwaysInjectNodes : alwaysInjectNodes).map(node => String(node?.id || '')).filter(Boolean),
+        alwaysInjectIds: persistentSync.alwaysInjectNodes.map(node => String(node?.id || '')).filter(Boolean),
         recallSelectedIds: selectedNodes.map(node => String(node?.id || '')).filter(Boolean),
     });
 
     const blocks = {
         corePacket,
-        focusPacket: hybrid ? hybrid.text : normalizeMultilineText(buildFocusTablesText(selectedNodes, settings, { tablePrefix: 'Recall' }, context)),
+        focusPacket: hybrid?.text || '',
     };
     if (nativeSessionRuntime.active) {
         const revisionId = String(nativeSessionRuntime.snapshot?.revision?.revisionId || '');
@@ -9427,36 +8246,8 @@ async function runScheduledExtractionPass(chatKey) {
         );
         const finalStore = finalResult.store;
         // Sync vector index after extraction (only when RAG recall is enabled)
-        const effectiveStore = finalStore || workingStore;
-        const recallMethod = String(settings.recallMethod || 'llm').trim().toLowerCase();
-        if (recallMethod !== 'llm' && effectiveStore) {
-            try {
-                const vectorConfig = getVectorConfigFromSettings(settings);
-                if (validateVectorConfig(vectorConfig).valid) {
-                    const chatIdForVector = String(chatKey || '').trim();
-                    const effectiveSchema = settings.nodeTypeSchema || defaultSettings.nodeTypeSchema;
-                    await getMemoryVectorStore(settings).sync(effectiveStore, vectorConfig, chatIdForVector, {
-                        signal: extractionAbortController.signal,
-                        schema: effectiveSchema,
-                    });
-                    // syncVectorIndex mutates effectiveStore.vectorIndexState
-                    // in place. That field is meta-sidecar after Commit B, so
-                    // we explicitly persist here — the preceding
-                    // commitMemoryStoreDiffByChatKey ran *before* the sync and
-                    // already wrote its meta snapshot without the new hashes.
-                    try {
-                        await persistMemoryStoreByChatKey(runtimeContext, chatKey, effectiveStore, { syncPersistentProjection: false });
-                    } catch (persistError) {
-                        console.warn(`[${MODULE_NAME}] Failed to persist vectorIndexState after extraction-tail sync: ${persistError?.message || persistError}`);
-                    }
-                }
-            } catch (vecError) {
-                if (!isAbortError(vecError, extractionAbortController.signal)) {
-                    console.warn(`[${MODULE_NAME}] Vector index sync after extraction failed`, vecError);
-                }
-            }
-        }
 
+        // Hybrid rebuilds its legal source index at recall.
         const debug = finalStore?.lastExtractionDebug || workingStore.lastExtractionDebug || {};
         updateUiStatus(i18nFormat(
             'Extraction ${0}: begin=${1} latest=${2} covered=${3}',
@@ -14194,11 +12985,7 @@ function renderNodeTypeSchemaCard(spec, index) {
         <small style="opacity:0.7">${escapeHtml(i18n('1 = every extraction pass (default). Larger N reduces frequency for slow-changing tables.'))}</small>
         <input data-field="extractEveryN" class="text_pole" type="number" min="1" step="1" value="${Number(spec.extractEveryN || 1)}" />
     </label>
-    <label>${escapeHtml(i18n('RAG per-type quota override'))}
-        <small style="opacity:0.7">${escapeHtml(i18n('Empty = use the global default from RAG settings. Non-negative integer overrides only this type. 0 = never surface this type via RAG.'))}</small>
-        <input data-field="ragPerTypeK" class="text_pole" type="number" min="0" step="1" value="${Math.max(0, Math.floor(Number.isFinite(Number(spec.ragPerTypeK)) ? Number(spec.ragPerTypeK) : 0))}" />
-    </label>
-    <label class="checkbox_label atria-schema-checkbox"><input data-field="compression.enabled" type="checkbox" ${mode === 'hierarchical' ? 'checked' : ''} />${escapeHtml(i18n('Enable Hierarchical Compression'))}
+<label class="checkbox_label atria-schema-checkbox"><input data-field="compression.enabled" type="checkbox" ${mode === 'hierarchical' ? 'checked' : ''} />${escapeHtml(i18n('Enable Hierarchical Compression'))}
     </label>
     <div class="atria-schema-grid-2 atria-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">
         <label>${escapeHtml(i18n('Threshold'))}
@@ -14251,9 +13038,9 @@ function readSchemaCard(card) {
         extractHint: String(root.find('[data-field="extractHint"]').val() || '').trim(),
         extractionInstructions: String(root.find('[data-field="extractionInstructions"]').val() || '').trim(),
         extractEveryN: Math.max(1, Math.floor(Number(root.find('[data-field="extractEveryN"]').val()) || 1)),
-        // 0 means "follow the global ragDefaultPerTypeK"; positive integer
+        // 0 means "follow the global the obsolete per-type quota"; positive integer
         // overrides only this type.
-        ragPerTypeK: Math.max(0, Math.floor(Number(root.find('[data-field="ragPerTypeK"]').val()) || 0)),
+
         keywords: splitCommaList(root.find('[data-field="keywords"]').val()),
         forceUpdate: Boolean(root.find('[data-field="forceUpdate"]').prop('checked')),
         editable: Boolean(root.find('[data-field="editable"]').prop('checked')),
@@ -14608,7 +13395,7 @@ function hydrateAdvancedTabFields(root, source) {
     root.find('#atria_rpg_memory_advanced_include_world_info').prop('checked', source.includeWorldInfoWithPreset !== false);
     root.find('#atria_rpg_memory_advanced_recent_raw_turns').val(String(Math.max(0, Number(source.recentRawTurns ?? defaultSettings.recentRawTurns))));
     root.find('#atria_rpg_memory_advanced_persistent_injection_max_seq_distance').val(String(Math.max(0, Number(source.persistentInjectionMaxSeqDistance ?? defaultSettings.persistentInjectionMaxSeqDistance))));
-    root.find('#atria_rpg_memory_advanced_recall_iterations').val(String(Math.max(2, Math.min(6, Number(source.recallMaxIterations ?? defaultSettings.recallMaxIterations)))));
+
     root.find('#atria_rpg_memory_advanced_tool_retries').val(String(Math.max(0, Math.min(10, Number(source.toolCallRetryMax ?? defaultSettings.toolCallRetryMax)))));
     root.find('#atria_rpg_memory_advanced_rpm_limit').val(String(Math.max(0, Math.min(600, Number(source.rpmLimit ?? defaultSettings.rpmLimit)))));
     root.find('#atria_rpg_memory_advanced_extract_context_turns').val(String(Math.max(1, Math.min(32, Number(source.extractContextTurns ?? defaultSettings.extractContextTurns)))));
@@ -14622,12 +13409,9 @@ function hydrateAdvancedTabFields(root, source) {
     root.find('#atria_rpg_memory_advanced_extract_crawl_reads').val(String(Math.max(1, Math.min(30, Number(source.extractCrawlMaxReads ?? defaultSettings.extractCrawlMaxReads)))));
     root.find('#atria_rpg_memory_advanced_extract_system_prompt').val(String(source.extractSystemPrompt || DEFAULT_EXTRACT_SYSTEM_PROMPT));
     root.find('#atria_rpg_memory_advanced_extract_crawl_system_prompt').val(String(source.extractCrawlSystemPrompt || DEFAULT_CRAWL_SYSTEM_PROMPT));
-    root.find('#atria_rpg_memory_advanced_recall_route_prompt').val(String(source.recallRouteSystemPrompt || DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT));
-    root.find('#atria_rpg_memory_advanced_recall_finalize_prompt').val(String(source.recallFinalizeSystemPrompt || DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT));
-    root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt').val(String(source.ragRewriteSystemPrompt || DEFAULT_RAG_REWRITE_SYSTEM_PROMPT));
+
+
     root.find('#atria_rpg_memory_advanced_schema_iter_system_prompt').val(String(source.schemaIterSystemPrompt || DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT));
-    const ragRewriteVisible = String(source.recallMethod || 'llm') === 'rag' && Boolean(source.ragUseQueryRewrite);
-    root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt_block').toggle(ragRewriteVisible);
 }
 
 function readAdvancedTabFields(root) {
@@ -14636,7 +13420,6 @@ function readAdvancedTabFields(root) {
         includeWorldInfoWithPreset: Boolean(root.find('#atria_rpg_memory_advanced_include_world_info').prop('checked')),
         recentRawTurns: Number(root.find('#atria_rpg_memory_advanced_recent_raw_turns').val()),
         persistentInjectionMaxSeqDistance: Number(root.find('#atria_rpg_memory_advanced_persistent_injection_max_seq_distance').val()),
-        recallMaxIterations: Number(root.find('#atria_rpg_memory_advanced_recall_iterations').val()),
         toolCallRetryMax: Number(root.find('#atria_rpg_memory_advanced_tool_retries').val()),
         rpmLimit: Number(root.find('#atria_rpg_memory_advanced_rpm_limit').val()),
         extractContextTurns: Number(root.find('#atria_rpg_memory_advanced_extract_context_turns').val()),
@@ -14650,9 +13433,6 @@ function readAdvancedTabFields(root) {
         extractCrawlMaxReads: Number(root.find('#atria_rpg_memory_advanced_extract_crawl_reads').val()),
         extractSystemPrompt: String(root.find('#atria_rpg_memory_advanced_extract_system_prompt').val() || '').trim(),
         extractCrawlSystemPrompt: String(root.find('#atria_rpg_memory_advanced_extract_crawl_system_prompt').val() || '').trim(),
-        recallRouteSystemPrompt: String(root.find('#atria_rpg_memory_advanced_recall_route_prompt').val() || '').trim(),
-        recallFinalizeSystemPrompt: String(root.find('#atria_rpg_memory_advanced_recall_finalize_prompt').val() || '').trim(),
-        ragRewriteSystemPrompt: String(root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt').val() || '').trim(),
         schemaIterSystemPrompt: String(root.find('#atria_rpg_memory_advanced_schema_iter_system_prompt').val() || '').trim(),
     };
 }
@@ -14867,18 +13647,11 @@ async function openVectorRecomputePopup(context, settings) {
         return;
     }
 
-    const nodes = store?.nodes || {};
-    const hasAnyNode = Object.values(nodes).some(node => !node?.archived);
-    if (!hasAnyNode) {
-        notifyInfo(i18n('No eligible nodes to embed.'));
-        return;
-    }
-
     const content = `
         <div class="flex-container flexFlowColumn" style="gap:6px">
-            <div>${escapeHtml(i18n('Recompute vector embeddings for memory graph nodes.'))}</div>
-            <div style="opacity:0.85">${escapeHtml(i18n('Fill Missing: re-embed only nodes whose vectors are missing or stale (after node edits).'))}</div>
-            <div style="opacity:0.85">${escapeHtml(i18n('Full Rebuild: clear and re-embed all eligible nodes (after changing embedding model/profile).'))}</div>
+            <div>${escapeHtml(i18n('Recompute the authorized Hybrid memory index.'))}</div>
+            <div style="opacity:0.85">${escapeHtml(i18n('Fill Missing: index authorized sources whose vectors are missing or stale.'))}</div>
+            <div style="opacity:0.85">${escapeHtml(i18n('Full Rebuild: clear and re-embed the current authorized source domain.'))}</div>
         </div>
     `;
     const choice = await context.callGenericPopup(content, context.POPUP_TYPE.TEXT, '', {
@@ -14899,71 +13672,19 @@ async function openVectorRecomputePopup(context, settings) {
 }
 
 async function runVectorRecompute(context, settings, store, chatKey, { mode }) {
-    const vectorConfig = getVectorConfigFromSettings(settings);
-    const schema = getEffectiveNodeTypeSchema(context, settings);
-    const vs = ensureVectorIndexState(store);
-    const profileChanged = Boolean(vs.source) && (vs.source !== vectorConfig.source || (vs.model || '') !== (vectorConfig.model || ''));
-
-    let purge = mode === 'full';
-    if (mode === 'incremental' && profileChanged) {
-        notifyInfo(i18n('Embedding configuration changed. Switching to full rebuild automatically.'));
-        purge = true;
-    }
-
-    let progressToast = null;
-    const updateProgressToast = (current, total) => {
-        if (typeof toastr === 'undefined') return;
-        const message = i18nFormat('Recomputing vectors: ${0} / ${1}', current, total);
-        if (!progressToast) {
-            progressToast = toastr.info(message, '', {
-                timeOut: 0,
-                extendedTimeOut: 0,
-                tapToDismiss: false,
-                closeButton: false,
-                progressBar: false,
-            });
-        }
-        if (progressToast) {
-            const body = progressToast.find('.toast-message');
-            if (body && body.length) body.text(message);
-        }
-    };
-    const dismissProgressToast = () => {
-        if (progressToast && typeof toastr !== 'undefined') {
-            toastr.clear(progressToast);
-        }
-        progressToast = null;
-    };
-
-    notifyInfo(i18n('Starting vector recompute…'));
     try {
-        const result = await getMemoryVectorStore(settings).sync(store, vectorConfig, chatKey, {
-            schema,
-            purge,
-            tolerateErrors: true,
-            onProgress: ({ current, total }) => updateProgressToast(current, total),
+        const result = await recallHybridMemory(context, 'Memory index maintenance', {
+            settings, readOnly: true, rebuildVectors: mode === 'full',
         });
+        result.assertCurrent();
+        if (result.diagnostics.includes('vector_unavailable')) throw new Error('Hybrid vector index unavailable');
+        store.vectorIndexState = null;
         await persistMemoryStoreByChatKey(context, chatKey, store, { syncPersistentProjection: false });
-        const total = Number(result?.stats?.total || 0);
-        const inserted = Number(result?.insertedCount || 0);
-        const deleted = Number(result?.deletedCount || 0);
-        const failed = Array.isArray(result?.failedNodeIds) ? result.failedNodeIds.length : 0;
-        if (total === 0) {
-            notifyInfo(i18n('No eligible nodes to embed.'));
-        } else if (inserted === 0 && deleted === 0 && failed === 0) {
-            notifySuccess(i18n('Vector index already up to date.'));
-        } else if (failed > 0) {
-            notifyError(i18nFormat('Vector recompute complete: ${0} indexed, ${1} failed (see console).', inserted, failed));
-        } else {
-            notifySuccess(i18nFormat('Vector recompute complete: ${0} indexed.', inserted));
-        }
+        result.assertCurrent();
+        notifySuccess(i18n('Vector index already up to date.'));
     } catch (error) {
-        console.error(`[${MODULE_NAME}] Vector recompute (${mode}) failed:`, error);
         notifyError(i18nFormat('Vector recompute failed: ${0}', String(error?.message || error)));
-    } finally {
-        dismissProgressToast();
-        refreshUiStats();
-    }
+    } finally { refreshUiStats(); }
 }
 
 function bindUi() {
@@ -14975,7 +13696,7 @@ function bindUi() {
         return;
     }
 
-    root.find('#atria_rpg_memory_os_enabled').prop('checked', isMemoryOsEnabled(settings));
+    root.find('#atria_rpg_memory_source_writes_enabled').prop('checked', isMemorySourceWriteEnabled(settings));
     root.find('#atria_rpg_memory_enabled').prop('checked', Boolean(settings.enabled));
     root.find('#atria_rpg_memory_auto_extraction_enabled').prop('checked', settings.autoExtractionEnabled !== false);
     root.find('#atria_rpg_memory_auto_compression_enabled').prop('checked', settings.autoCompressionEnabled !== false);
@@ -14983,8 +13704,7 @@ function bindUi() {
     root.find('#atria_rpg_memory_recall_inject_position').val(String(normalizeRecallInjectPosition(settings.recallInjectPosition)));
     root.find('#atria_rpg_memory_recall_inject_depth').val(String(normalizeRecallInjectDepth(settings.recallInjectDepth)));
     root.find('#atria_rpg_memory_recall_inject_role').val(String(normalizeRecallInjectRole(settings.recallInjectRole)));
-    root.find('#atria_rpg_memory_recall_api_preset').val(String(settings.recallApiPresetName || ''));
-    root.find('#atria_rpg_memory_recall_preset').val(String(settings.recallPresetName || ''));
+
     root.find('#atria_rpg_memory_extract_api_preset').val(String(settings.extractApiPresetName || ''));
     root.find('#atria_rpg_memory_extract_preset').val(String(settings.extractPresetName || ''));
     root.find('#atria_rpg_memory_request_api_preset').val(String(settings.requestApiPresetName || ''));
@@ -15005,8 +13725,8 @@ function bindUi() {
         .then(() => refreshUiStats())
         .catch(() => refreshUiStats());
 
-    root.find('#atria_rpg_memory_os_enabled').off('input').on('input', function () {
-        void setMemoryWorkspaceControl('memoryOsEnabled', Boolean(jQuery(this).prop('checked')));
+    root.find('#atria_rpg_memory_source_writes_enabled').off('input').on('input', function () {
+        void setMemoryWorkspaceControl('sourceWritesEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_enabled').off('input').on('input', function () {
@@ -15025,47 +13745,17 @@ function bindUi() {
         void setMemoryWorkspaceControl('autoCompressionEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
-    // Recall method selector + RAG settings visibility
-    root.find('#atria_rpg_memory_recall_method').val(String(settings.recallMethod || 'llm'));
-
-    root.find('#atria_rpg_memory_vector_topk').val(String(settings.vectorTopK || 20));
-    root.find('#atria_rpg_memory_hybrid_max_results').val(String(settings.hybridMaxResults || 15));
-    root.find('#atria_rpg_memory_rag_default_per_type_k').val(String(
-        Number.isFinite(Number(settings.ragDefaultPerTypeK))
-            ? Number(settings.ragDefaultPerTypeK)
-            : defaultSettings.ragDefaultPerTypeK,
-    ));
-    root.find('#atria_rpg_memory_rag_use_rerank').prop('checked', Boolean(settings.ragUseRerank));
-    root.find('#atria_rpg_memory_rag_use_query_rewrite').prop('checked', Boolean(settings.ragUseQueryRewrite));
-
-    function updateRecallMethodVisibility() {
-        const method = String(root.find('#atria_rpg_memory_recall_method').val() || 'llm');
-        const isRag = method === 'rag';
-        const isLlm = method === 'llm';
-        // RAG-only blocks
-        root.find('#atria_rpg_memory_rag_settings').toggle(isRag);
-        root.find('#atria_rpg_memory_rag_rerank_block').toggle(isRag && Boolean(settings.ragUseRerank));
-        root.find('#atria_rpg_memory_rag_rewrite_block').toggle(isRag && Boolean(settings.ragUseQueryRewrite));
-        // Advanced tab's rag rewrite system prompt textarea follows the same gate.
-        root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt_block').toggle(isRag && Boolean(settings.ragUseQueryRewrite));
-        // LLM-only fields: preset row + iterations + stage prompts. Hidden when RAG.
-        root.find('#atria_rpg_memory_recall_llm_settings').toggle(isLlm);
-        root.find('#atria_rpg_memory_advanced_recall_iterations_row').toggle(isLlm);
-        root.find('#atria_rpg_memory_advanced_recall_route_prompt_row').toggle(isLlm);
-        root.find('#atria_rpg_memory_advanced_recall_finalize_prompt_row').toggle(isLlm);
-        // Chat-depth-only injection controls: shown only when position === atDepth.
-        const positionVal = Number(root.find('#atria_rpg_memory_recall_inject_position').val());
-        const isAtDepth = positionVal === Number(world_info_position.atDepth);
+    function updateRecallLayout() {
+        const isAtDepth = Number(root.find('#atria_rpg_memory_recall_inject_position').val()) === Number(world_info_position.atDepth);
         root.find('#atria_rpg_memory_recall_inject_depth_block').toggle(isAtDepth);
         root.find('#atria_rpg_memory_recall_inject_role_block').toggle(isAtDepth);
+        root.find('#atria_rpg_memory_rerank_block').prop('hidden', !settings.rerankEnabled);
     }
-    updateRecallMethodVisibility();
-
-    root.find('#atria_rpg_memory_recall_method').off('change').on('change', function () {
-        void setMemoryWorkspaceControl('recallMethod', String(jQuery(this).val() || 'llm').trim());
-        updateRecallMethodVisibility();
+    root.find('#atria_rpg_memory_rerank_enabled').prop('checked', Boolean(settings.rerankEnabled));
+    root.find('#atria_rpg_memory_rerank_enabled').off('input').on('input', function () {
+        settings.rerankEnabled = Boolean(jQuery(this).prop('checked')); updateRecallLayout(); saveSettingsDebounced();
     });
-
+    updateRecallLayout();
     root.find('#atria_rpg_memory_vector_topk').off('change input').on('change input', function () {
         settings.vectorTopK = Math.max(5, Math.min(100, Math.floor(Number(jQuery(this).val()) || 20)));
         jQuery(this).val(String(settings.vectorTopK));
@@ -15074,13 +13764,6 @@ function bindUi() {
     root.find('#atria_rpg_memory_hybrid_max_results').off('change input').on('change input', function () {
         settings.hybridMaxResults = Math.max(3, Math.min(50, Math.floor(Number(jQuery(this).val()) || 15)));
         jQuery(this).val(String(settings.hybridMaxResults));
-        saveSettingsDebounced();
-    });
-    root.find('#atria_rpg_memory_rag_default_per_type_k').off('change input').on('change input', function () {
-        const raw = Number(jQuery(this).val());
-        const next = Number.isFinite(raw) ? raw : defaultSettings.ragDefaultPerTypeK;
-        settings.ragDefaultPerTypeK = Math.max(0, Math.min(50, Math.floor(next)));
-        jQuery(this).val(String(settings.ragDefaultPerTypeK));
         saveSettingsDebounced();
     });
 
@@ -15094,27 +13777,6 @@ function bindUi() {
         saveSettingsDebounced();
     });
 
-    root.find('#atria_rpg_memory_rag_use_rerank').off('input').on('input', function () {
-        settings.ragUseRerank = Boolean(jQuery(this).prop('checked'));
-        updateRecallMethodVisibility();
-        saveSettingsDebounced();
-    });
-
-    root.find('#atria_rpg_memory_rag_use_query_rewrite').off('input').on('input', function () {
-        settings.ragUseQueryRewrite = Boolean(jQuery(this).prop('checked'));
-        updateRecallMethodVisibility();
-        saveSettingsDebounced();
-    });
-
-    root.find('#atria_rpg_memory_rag_rewrite_api_preset').off('change').on('change', function () {
-        settings.ragRewriteApiPresetName = String(jQuery(this).val() || '').trim();
-        saveSettingsDebounced();
-    });
-
-    root.find('#atria_rpg_memory_rag_rewrite_llm_preset').off('change').on('change', function () {
-        settings.ragRewriteLlmPresetName = String(jQuery(this).val() || '').trim();
-        saveSettingsDebounced();
-    });
 
     [event_types.CONNECTION_PROFILE_CREATED, event_types.CONNECTION_PROFILE_UPDATED, event_types.CONNECTION_PROFILE_DELETED].forEach(evt => {
         eventSource.on(evt, () => {
@@ -15124,7 +13786,7 @@ function bindUi() {
     root.find('#atria_rpg_memory_recall_inject_position').off('change').on('change', function () {
         settings.recallInjectPosition = normalizeRecallInjectPosition(jQuery(this).val());
         jQuery(this).val(String(settings.recallInjectPosition));
-        updateRecallMethodVisibility();
+        updateRecallLayout();
         void syncPersistentProjectionForCurrentChat(getContext());
         saveSettingsDebounced();
     });
@@ -15145,15 +13807,6 @@ function bindUi() {
         saveSettingsDebounced();
     });
 
-    root.find('#atria_rpg_memory_recall_api_preset').off('change').on('change', function () {
-        settings.recallApiPresetName = String(jQuery(this).val() || '').trim();
-        saveSettingsDebounced();
-    });
-
-    root.find('#atria_rpg_memory_recall_preset').off('change').on('change', function () {
-        settings.recallPresetName = String(jQuery(this).val() || '').trim();
-        saveSettingsDebounced();
-    });
 
     root.find('#atria_rpg_memory_extract_api_preset').off('change').on('change', function () {
         settings.extractApiPresetName = String(jQuery(this).val() || '').trim();
@@ -15214,7 +13867,6 @@ function bindUi() {
     const advancedFieldSelectors = [
         '#atria_rpg_memory_advanced_include_world_info',
         '#atria_rpg_memory_advanced_recent_raw_turns',
-        '#atria_rpg_memory_advanced_recall_iterations',
         '#atria_rpg_memory_advanced_tool_retries',
         '#atria_rpg_memory_advanced_rpm_limit',
         '#atria_rpg_memory_advanced_extract_context_turns',
@@ -15228,9 +13880,6 @@ function bindUi() {
         '#atria_rpg_memory_advanced_extract_crawl_reads',
         '#atria_rpg_memory_advanced_extract_system_prompt',
         '#atria_rpg_memory_advanced_extract_crawl_system_prompt',
-        '#atria_rpg_memory_advanced_recall_route_prompt',
-        '#atria_rpg_memory_advanced_recall_finalize_prompt',
-        '#atria_rpg_memory_advanced_rag_rewrite_prompt',
         '#atria_rpg_memory_advanced_schema_iter_system_prompt',
     ].join(', ');
     root.find(advancedFieldSelectors).off('input change').on('input change', function () {
@@ -15309,7 +13958,7 @@ function bindUi() {
 
     root.find('#atria_rpg_memory_view_graph').off('click').on('click', async function () {
         const live = getContext();
-        if (isMemoryOsEnabled(getEffectiveSettings(live, getSettings()))) {
+        if (isHybridMemoryEnabled(getEffectiveSettings(live, getSettings()))) {
             await openMemoryOsInspector(live, {
                 load: () => sourceLifecycle.retrievalSnapshot(live),
                 correct: (command, snapshot) => sourceLifecycle.correct(live, command, snapshot),
@@ -15432,66 +14081,12 @@ function bindUi() {
         }
         const query = String(root.find('#atria_rpg_memory_debug_query').val() || '');
         const effectiveSettings = getEffectiveSettings(context, getSettings());
-        const payload = {
-            coreChat: buildRecallDebugCoreChat(context, query, effectiveSettings),
-            forceWorldInfoResimulate: true,
-        };
 
-        const recallMethod = String(effectiveSettings.recallMethod || 'llm').trim().toLowerCase();
-        let selectedNodes = [];
-        let trace = [];
 
-        if (recallMethod === 'rag') {
-            const chatKey = getChatKey(context);
-            const queryBundle = getRecallQueryBundle(payload, context, effectiveSettings);
-            const queryText = normalizeText(queryBundle.fullText || '');
-
-            let rewrittenQuery = null;
-            if (effectiveSettings.ragUseQueryRewrite && (nativePromptUiActive() || String(effectiveSettings.ragRewriteApiPresetName || '').trim())) {
-                rewrittenQuery = await runQueryRewrite(context, effectiveSettings, queryBundle, {
-                    abortSignal: null,
-                    recallRunToken: null,
-                });
-            }
-
-            const useRerank = Boolean(effectiveSettings.ragUseRerank);
-            const rerankProfile = useRerank ? getRerankProfileFromSettings(effectiveSettings) : null;
-            const { perTypeK, defaultPerTypeK } = buildRagPerTypeQuotas(context, effectiveSettings);
-
-            const ragResult = await runRagRecall(store, queryText, chatKey, effectiveSettings, {
-                maxResults: Number(effectiveSettings.hybridMaxResults) || 15,
-                vectorTopK: Number(effectiveSettings.vectorTopK) || 20,
-                useRerank,
-                rerankProfile,
-                rewrittenQuery,
-                perTypeK,
-                defaultPerTypeK,
-                signal: null,
-            });
-
-            const latestSeqIndex = getLatestSeqIndex(store);
-            const excludeMessages = Math.max(0, Number(effectiveSettings.recentRawTurns ?? defaultSettings.recentRawTurns));
-
-            selectedNodes = ragResult.candidates
-                .map(c => store.nodes?.[c.nodeId])
-                .filter(node => node && !node.archived)
-                .filter(node => !isNodeInRecentExcludeWindow(node, latestSeqIndex, excludeMessages))
-                .sort(compareNodesByTimeline);
-
-            trace = [{
-                step: 'rag_recall',
-                method: 'rag',
-                meta: ragResult.meta,
-                selected_ids: selectedNodes.map(n => n.id),
-            }];
-        } else {
-            const result = await runLLMDrivenRecall(context, store, payload);
-            selectedNodes = result.selectedNodes;
-            trace = result.trace;
-        }
-
-        store.lastRecallTrace = trace;
-        updateUiStatus(i18nFormat('Recall ready. selected=${0}', selectedNodes.length));
+        const result = await recallHybridMemory(context, query, { readOnly: true, settings: effectiveSettings });
+        result.assertCurrent();
+        store.lastRecallTrace = [{ tool: 'hybrid_memory', selected: result.selected, metrics: result.metrics, diagnostics: result.diagnostics }];
+        updateUiStatus(i18nFormat('Recall ready. selected=${0}', result.selected.length));
         refreshUiStats();
     });
 
@@ -16240,7 +14835,7 @@ jQuery(() => {
         // would queue behind the commit that is waiting for this listener.
         // Cheap ingest runs detached, then schedules gated heavy work.
         void (async () => {
-            if (isMemoryOsEnabled(getEffectiveSettings(runtimeContext, getSettings()))) {
+            if (isHybridMemoryEnabled(getEffectiveSettings(runtimeContext, getSettings()))) {
                 try {
                     await sourceLifecycle.capture(runtimeContext, assistantFloors);
                 } catch (error) {
@@ -16311,7 +14906,7 @@ jQuery(() => {
         context.eventSource.on(context.eventTypes.MESSAGE_EDITED, messageId => {
             if (isNativeMemorySession(getContext())) return;
             sourceLifecycle.observeMutation(getContext(), Number(messageId));
-            if (!isMemoryOsEnabled(getSettings())) return;
+            if (!isHybridMemoryEnabled(getSettings())) return;
             scheduleMutationInvalidation(findAffectedAssistantSeqFromMessageIndex(getContext(), messageId), 'refresh');
         });
     }
@@ -16319,7 +14914,7 @@ jQuery(() => {
         context.eventSource.on(context.eventTypes.MESSAGE_SWIPE_DELETED, payload => {
             if (isNativeMemorySession(getContext())) return;
             sourceLifecycle.observeMutation(getContext(), Number(payload?.messageId));
-            if (!isMemoryOsEnabled(getSettings())) return;
+            if (!isHybridMemoryEnabled(getSettings())) return;
             scheduleMutationInvalidation(null, 'refresh');
         });
     }

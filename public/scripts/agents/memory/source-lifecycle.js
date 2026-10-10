@@ -72,6 +72,7 @@ export function createSourceLifecycle({
     getContext,
     resolveScope,
     enabled,
+    writeEnabled = enabled,
     onInvalidation = () => {},
     newId = () => crypto.randomUUID(),
     readProviders = () => [],
@@ -212,7 +213,7 @@ export function createSourceLifecycle({
     }
 
     async function capture(context, floors, expected = null) {
-        if (!enabled(context)) return null;
+        if (!enabled(context) || !writeEnabled(context)) return null;
         const scope = session(context);
         const selected = [...new Set(floors)].filter(floor => Number.isInteger(floor) && scope.chat[floor]);
         if (!selected.length) throw new Error('Memory extraction has no source messages');
@@ -247,6 +248,7 @@ export function createSourceLifecycle({
 
     function assertTicket(ticket, context) {
         if (!ticket) return;
+        if (!enabled(context) || !writeEnabled(context)) throw abort();
         const scope = session(context);
         const state = cache.get(scope.key) || emptyProvenance();
         if (scope.key !== ticket.key || scope.chat !== ticket.chat
@@ -332,7 +334,7 @@ export function createSourceLifecycle({
     }
 
     async function writeAuthoritativeFacts(context, operations, sourceIds) {
-        if (!enabled(context)) throw new Error('Memory OS is disabled');
+        if (!enabled(context) || !writeEnabled(context)) throw new Error('Memory source writes disabled');
         if (
             !Array.isArray(operations)
             || operations.some(operation => (

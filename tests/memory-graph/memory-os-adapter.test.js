@@ -7,28 +7,23 @@ const legacy = {
     purgeVectorCollection: jest.fn(),
 };
 jest.unstable_mockModule('../../public/scripts/agents/memory/vector-index.js', () => legacy);
-const { createMemoryVectorAdapter, getMemoryVectorStore, isMemoryOsEnabled, MEMORY_OS_DEFAULT_ENABLED } =
+const { createMemoryVectorAdapter, getMemoryVectorStore, isMemorySourceWriteEnabled, MEMORY_SOURCE_WRITES_DEFAULT_ENABLED } =
     await import('../../public/scripts/agents/memory/memory-os.js');
 
 describe('Memory OS Phase 1 vector boundary', () => {
     test('only explicit true opts in; missing and malformed legacy settings stay off', () => {
-        expect(MEMORY_OS_DEFAULT_ENABLED).toBe(false);
+        expect(MEMORY_SOURCE_WRITES_DEFAULT_ENABLED).toBe(false);
         for (const value of [undefined, null, false, 0, 1, 'true', {}, []]) {
-            expect(isMemoryOsEnabled({ memoryOsEnabled: value })).toBe(false);
+            expect(isMemorySourceWriteEnabled({ sourceWritesEnabled: value })).toBe(false);
         }
-        expect(isMemoryOsEnabled()).toBe(false);
-        expect(isMemoryOsEnabled({ memoryOsEnabled: true })).toBe(true);
-        const settings = {};
-        expect(getMemoryVectorStore(settings).search).toBe(legacy.findSimilarNodes);
-        settings.memoryOsEnabled = true;
-        expect(getMemoryVectorStore(settings).search).not.toBe(legacy.findSimilarNodes);
-        settings.memoryOsEnabled = false;
-        expect(getMemoryVectorStore(settings).search).toBe(legacy.findSimilarNodes);
+        expect(isMemorySourceWriteEnabled()).toBe(false);
+        expect(isMemorySourceWriteEnabled({ sourceWritesEnabled: true })).toBe(true);
+        expect(getMemoryVectorStore({ sourceWritesEnabled: false })).toBe(getMemoryVectorStore({ sourceWritesEnabled: true }));
     });
 
-    test('both modes preserve results, options, signals and scope across pending calls', async () => {
+    test('source-write settings preserve results, options, signals and scope across pending calls', async () => {
         for (const enabled of [false, true]) {
-            const vectors = getMemoryVectorStore({ memoryOsEnabled: enabled });
+            const vectors = getMemoryVectorStore({ sourceWritesEnabled: enabled });
             const signal = new AbortController().signal;
             const options = { signal, schema: [{ id: 'event' }], tolerateErrors: true, onProgress: jest.fn() };
             const storeA = { nodes: {} };

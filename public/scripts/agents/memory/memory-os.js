@@ -4,11 +4,10 @@ import * as legacyVectorIndex from './vector-index.js';
 
 // User-level opt-in controlled by the Workspace Memory OS switch. Keep this
 // separate from orchestration and automatic legacy memory processing.
-export const MEMORY_OS_DEFAULT_ENABLED = false;
+export const MEMORY_SOURCE_WRITES_DEFAULT_ENABLED = false;
 
-export function isMemoryOsEnabled(settings) {
-    return settings?.memoryOsEnabled === true;
-}
+export function isHybridMemoryEnabled(settings) { return settings?.enabled !== false; }
+export function isMemorySourceWriteEnabled(settings) { return settings?.sourceWritesEnabled === true; }
 
 /**
  * Provider-independent boundary over the existing node index. Scope, profile,
@@ -29,14 +28,5 @@ export function createMemoryVectorAdapter(legacy) {
 }
 
 const memoryOsVectors = createMemoryVectorAdapter(legacyVectorIndex);
-const legacyVectors = Object.freeze({
-    sync: legacyVectorIndex.syncVectorIndex,
-    search: legacyVectorIndex.findSimilarNodes,
-    removeByHashes: legacyVectorIndex.deleteVectorItems,
-    purge: legacyVectorIndex.purgeVectorCollection,
-});
-
-/** Select at call time so settings hydration/toggling cannot pin an old mode. */
-export function getMemoryVectorStore(settings) {
-    return isMemoryOsEnabled(settings) ? memoryOsVectors : legacyVectors;
-}
+/** Shared vector tooling is independent of recall/source-write switches. */
+export function getMemoryVectorStore() { return memoryOsVectors; }

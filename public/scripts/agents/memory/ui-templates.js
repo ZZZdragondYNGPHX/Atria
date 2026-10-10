@@ -91,36 +91,14 @@ function buildRecallTabHtml(deps) {
         title: i18n(titleKey),
         bodyHtml: escapeHtml(i18n(bodyKey)),
     });
-    const rewriteHelpBody = escapeHtml(i18n('Query rewrite sends the raw user query to a small LLM to rewrite it into a phrasing that vector search retrieves more relevant memory events. Costs one extra LLM call per recall.'));
-    const rewriteHelpBtn = renderFieldHelpButton({
-        title: i18n('About query rewrite'),
-        bodyHtml: rewriteHelpBody,
-    });
     return `
-            <label for="atria_rpg_memory_recall_method">${escapeHtml(i18n('Recall method'))}${fh('About Recall method', 'Recall method help body')}</label>
-            <select id="atria_rpg_memory_recall_method" class="text_pole">
-                <option value="llm">${escapeHtml(i18n('LLM Recall (default)'))}</option>
-                <option value="rag">${escapeHtml(i18n('RAG Recall (vector + optional rerank + optional rewrite)'))}</option>
-            </select>
-            <div id="atria_rpg_memory_rag_settings" style="display:none">
-                ${deps.nativeRuntime ? `<p class="workspace-hint">${escapeHtml(i18n('Choose exact embedding and rerank revisions in Memory Maintenance.'))}</p>` : `<small style="opacity:0.85">${escapeHtml(i18n('Embedding profile is shared via the Connection Profile registry — pick one below. Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.'))}</small><br>
-                <label>${escapeHtml(i18n('Embedding profile'))}${fh('About Embedding profile', 'Embedding profile help body')}</label>
-                <select id="atria_rpg_memory_embedding_profile" class="text_pole flex1"></select>`}
-                <label>${escapeHtml(i18n('Vector pre-filter Top-K'))}${fh('About Vector pre-filter Top-K', 'Vector pre-filter Top-K help body')} <input id="atria_rpg_memory_vector_topk" class="text_pole" type="number" min="5" max="100" step="1" /></label>
-                <label>${escapeHtml(i18n('Max recall results'))}${fh('About Max recall results', 'Max recall results help body')} <input id="atria_rpg_memory_hybrid_max_results" class="text_pole" type="number" min="3" max="50" step="1" /></label>
-                <label>${escapeHtml(i18n('Default per-type quota'))}${fh('About Default per-type quota', 'Default per-type quota help body')} <input id="atria_rpg_memory_rag_default_per_type_k" class="text_pole" type="number" min="0" max="50" step="1" /></label>
-                <label class="checkbox_label"><input id="atria_rpg_memory_rag_use_rerank" type="checkbox" /> ${escapeHtml(i18n('Enable rerank'))}${fh('About Enable rerank', 'Enable rerank help body')}</label>
-                <div id="atria_rpg_memory_rag_rerank_block" style="display:none;padding-left:18px">
-                    ${deps.nativeRuntime ? `<p class="workspace-hint">${escapeHtml(i18n('Choose exact embedding and rerank revisions in Memory Maintenance.'))}</p>` : `<label>${escapeHtml(i18n('Rerank profile'))}${fh('About Rerank profile', 'Rerank profile help body')}</label>
-                    <select id="atria_rpg_memory_rerank_profile" class="text_pole flex1"></select>`}
-                </div>
-                <label class="checkbox_label"><input id="atria_rpg_memory_rag_use_query_rewrite" type="checkbox" /><span>${escapeHtml(i18n('Enable query rewrite (extra LLM call)'))}</span>${rewriteHelpBtn}</label>
-                <div id="atria_rpg_memory_rag_rewrite_block" style="display:none;padding-left:18px">
-                    ${deps.nativeRuntime ? `<p class="workspace-hint">${escapeHtml(i18n('Configure this task’s Memory Runtime Route in Maintenance.'))}</p>` : `<label for="atria_rpg_memory_rag_rewrite_api_preset">${escapeHtml(i18n('Query rewrite API preset (Connection profile)'))}${fh('About Query rewrite API preset', 'Query rewrite API preset help body')}</label>
-                    <select id="atria_rpg_memory_rag_rewrite_api_preset" class="text_pole"></select>
-                    <label for="atria_rpg_memory_rag_rewrite_llm_preset">${escapeHtml(i18n('Query rewrite prompt preset'))}${renderRuntimeHelpButton({ kind: 'iteration', targetSelectId: 'atria_rpg_memory_rag_rewrite_llm_preset' })}</label>
-                    <select id="atria_rpg_memory_rag_rewrite_llm_preset" class="text_pole"></select>`}
-                </div>
+            <p class="workspace-hint">${escapeHtml(i18n('Hybrid Memory recalls only current, permitted sources.'))}</p>
+            ${deps.nativeRuntime ? `<p class="workspace-hint">${escapeHtml(i18n('Choose exact embedding and rerank revisions in Memory Maintenance.'))}</p>` : `<label>${escapeHtml(i18n('Embedding profile'))}</label>
+            <select id="atria_rpg_memory_embedding_profile" class="text_pole flex1" aria-label="${escapeHtml(i18n('Embedding profile'))}"></select>`}
+            <label class="checkbox_label"><input id="atria_rpg_memory_rerank_enabled" type="checkbox" /> ${escapeHtml(i18n('Enable rerank'))}</label>
+            <div id="atria_rpg_memory_rerank_block" hidden>
+                ${deps.nativeRuntime ? '' : `<label>${escapeHtml(i18n('Rerank profile'))}</label>
+                <select id="atria_rpg_memory_rerank_profile" class="text_pole flex1" aria-label="${escapeHtml(i18n('Rerank profile'))}"></select>`}
             </div>
             <label for="atria_rpg_memory_recall_inject_position">${escapeHtml(i18n('Injection position'))}${fh('About Injection position', 'Injection position help body')}</label>
             <select id="atria_rpg_memory_recall_inject_position" class="text_pole">
@@ -144,13 +122,6 @@ function buildRecallTabHtml(deps) {
                     <option value="${extension_prompt_roles.ASSISTANT}">${escapeHtml(i18n('Assistant'))}</option>
                 </select>
             </div>
-            <div id="atria_rpg_memory_recall_llm_settings">
-                ${deps.nativeRuntime ? `<p class="workspace-hint">${escapeHtml(i18n('Configure this task’s Memory Runtime Route in Maintenance.'))}</p>` : `<label for="atria_rpg_memory_recall_api_preset">${escapeHtml(i18n('Recall API preset (Connection profile)'))}${fh('About Recall API preset', 'Recall API preset help body')}</label>
-                <select id="atria_rpg_memory_recall_api_preset" class="text_pole"></select>
-                <label for="atria_rpg_memory_recall_preset">${escapeHtml(i18n('Recall preset (params + prompt)'))}${renderRuntimeHelpButton({ kind: 'iteration', targetSelectId: 'atria_rpg_memory_recall_preset' })}</label>
-                <select id="atria_rpg_memory_recall_preset" class="text_pole"></select>`}
-            </div>
-
             <label for="atria_rpg_memory_debug_query">${escapeHtml(i18n('Recall debug query'))}${fh('About Recall debug query', 'Recall debug query help body')}</label>
             <input id="atria_rpg_memory_debug_query" class="text_pole" type="text" placeholder="${escapeHtml(i18n('e.g. what happened at the ruins with Mira?'))}" />
             <div class="flex-container">
@@ -240,10 +211,7 @@ function buildAdvancedTabHtml(deps) {
             <label>${escapeHtml(i18n('Persistent injection recency horizon (assistant turns; 0 = no limit)'))}${fh('About Persistent injection recency horizon', 'Persistent injection recency horizon help body')}
                 <input id="atria_rpg_memory_advanced_persistent_injection_max_seq_distance" class="text_pole" type="number" min="0" step="1" />
             </label>
-            <label id="atria_rpg_memory_advanced_recall_iterations_row">${escapeHtml(i18n('Recall max iterations'))}${fh('About Recall max iterations', 'Recall max iterations help body')}
-                <input id="atria_rpg_memory_advanced_recall_iterations" class="text_pole" type="number" min="2" max="6" step="1" />
-            </label>
-            <label>${escapeHtml(i18n('Tool-call retries'))}
+<label>${escapeHtml(i18n('Tool-call retries'))}
                 <input id="atria_rpg_memory_advanced_tool_retries" class="text_pole" type="number" min="0" max="10" step="1" />
             </label>
             <label>${escapeHtml(i18n('RPM limit (0 = unlimited)'))}
@@ -287,18 +255,7 @@ function buildAdvancedTabHtml(deps) {
             <label>${escapeHtml(i18n('Extract Table Fill Prompt'))}${fh('About Extract Table Fill Prompt', 'Extract Table Fill Prompt help body')}
                 <textarea id="atria_rpg_memory_advanced_extract_system_prompt" class="text_pole textarea_compact" rows="8"></textarea>
             </label>
-            <label id="atria_rpg_memory_advanced_recall_route_prompt_row">${escapeHtml(i18n('Recall Stage 1 Prompt (Route/Drill)'))}${fh('About Recall Stage 1 Prompt', 'Recall Stage 1 Prompt help body')} <!-- banned-words-allow -->
-                <textarea id="atria_rpg_memory_advanced_recall_route_prompt" class="text_pole textarea_compact" rows="8"></textarea>
-            </label>
-            <label id="atria_rpg_memory_advanced_recall_finalize_prompt_row">${escapeHtml(i18n('Recall Stage 2 Prompt (Finalize)'))}${fh('About Recall Stage 2 Prompt', 'Recall Stage 2 Prompt help body')} <!-- banned-words-allow -->
-                <textarea id="atria_rpg_memory_advanced_recall_finalize_prompt" class="text_pole textarea_compact" rows="8"></textarea>
-            </label>
-            <div id="atria_rpg_memory_advanced_rag_rewrite_prompt_block" style="display:none">
-                <label>${escapeHtml(i18n('Query rewrite system prompt'))}${fh('About Query rewrite system prompt', 'Query rewrite system prompt help body')}
-                    <textarea id="atria_rpg_memory_advanced_rag_rewrite_prompt" class="text_pole textarea_compact" rows="8"></textarea>
-                </label>
-            </div>
-            </details>
+</details>
             <small id="atria_rpg_memory_advanced_scope" style="opacity:0.85"></small>
             <div class="flex-container">
                 <button type="button" id="atria_rpg_memory_advanced_reset" class="menu_button">${escapeHtml(i18n('Reset Advanced Settings'))}</button>
@@ -325,7 +282,7 @@ export function buildMemoryGraphSettingsHtml(deps) {
     <div class="memory-overview">
         <div class="memory-section-heading"><h3>${text('Memory overview')}</h3><p>${text('Choose what to remember and when to bring it into the conversation.')}</p></div>
         <div class="memory-control-grid">
-            ${toggle('atria_rpg_memory_os_enabled', 'Enable Memory OS', 'Enable source-backed facts and the world graph. Automatic extraction and reply injection use the memory controls below.')}
+            ${toggle('atria_rpg_memory_source_writes_enabled', 'Enable source writes', 'Allow extraction to add source-backed facts and relations. Recall reads permitted history independently.')}
             ${toggle('atria_rpg_memory_enabled', 'Enable memory', 'Keep and recall information across conversation turns.')}
             ${toggle('atria_rpg_memory_recall_enabled', 'Recall into replies', 'Bring relevant memories into the reply context.')}
             ${toggle('atria_rpg_memory_auto_extraction_enabled', 'Auto extraction', 'Extract new memories as the conversation progresses.')}
