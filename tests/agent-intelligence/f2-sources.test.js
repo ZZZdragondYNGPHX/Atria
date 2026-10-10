@@ -166,6 +166,11 @@ test('RP knowledge assessment covers each output span and rejects a summary hidi
     expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
     value.dimensions.knowledge_boundary = { status: 'gap', quoteRef: catalogue[1].ref, rationale: 'Unexposed penalty.' };
     expect(parseF2SourceAssessment(JSON.stringify(value), entry, evidence).knowledgeReview).toEqual(value.knowledgeReview);
+    const messages = f2SourceMessages({ case: entry }, evidence);
+    expect(messages.at(-1).content).toContain('exactly 2 rows');
+    expect(messages.at(-1).content).toContain(canonical(catalogue.map(item => item.ref)));
+    // A correct gap is still invalid when only the violating span is returned.
+    expect(() => parseF2SourceAssessment(JSON.stringify({ ...value, knowledgeReview: [value.knowledgeReview[1]] }), entry, evidence)).toThrow('invalid_f2_source_assessment');
     value.knowledgeReview.pop();
     expect(() => parseF2SourceAssessment(JSON.stringify(value), entry, evidence)).toThrow('invalid_f2_source_assessment');
 });
