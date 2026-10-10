@@ -1655,3 +1655,19 @@ H4原算法基线在实际loopback Native FS向量存储完成：有效SourceLif
 7新相关确定性检查通过：FS/SQLite Session/Project 各1项放宽/关闭不退款且 diagnostic receipts 等于原账本，共4项；Package 原后台 allowance 仍有余额时关闭 compute 仍拒绝发送，FS/SQLite共2项；字段编辑 bounds/保留 policy/提交后重新读取再关闭1项。改了 receipt 后仅重测已报告/partial usage2项和 FS/SQLite后台 unknown/restore2项，共4项相关回归通过。初 Jest 路径错误及 UI fixture缺 fallbackRouteRefs/精确 resources array、保存后测试旧 detached form 的失败日志原样保留；补齐 fixture 并按产品重新打开后定向通过。
 
 真实 Edge browser 沿原全应用/隔离 Native Session 完成1440px/390px两项：invalid33浏览器拦截、2/64000保存再读取、关闭保存再读取、Escape恢复 list focus，无 pageerror/外部模型发送。初截图显示 checkbox继承文本框全宽，修正原 Runtime CSS 后仅这两个受影响 browser checks重测通过，截图已查看；沿用现有tokens/布局。6产品 JS ESLint与diff检查通过。外部API0，原quota/两冻结ledger未改；完整M8/HM2仍未验收，继续H3有限实际收益及G06双入口对照，无HANDOFF、main不变。
+
+## M8 / G06 主模型有限配对：不利结果、裁判局限与工具边界修复
+
+2026-10-11 paid producer `90c0dd72d`；后续 exact tool guard producer 见同组源码提交。新私有 run-m8-g06-paired.mjs 使用原 primary-only config（openai-compatible/gemini-3.8-flash），沿原 Host Session/Project、真实隔离 FS Session/Task 和原 shared charge，固定四个自写冻结场景、recompute/reuse两臂。两臂完整 evidence/packet hash相同，各1次fresh生成，不缓存Final Prose；Project目标Task从原复用工具取得fresh pending plan，通过现有buildNativeProjectAgentSystemPrompt进入实际请求。预览先核对16份有限请求；不跑M1/HM1原模型基线，不改两个冻结ledger。
+
+ordinary为旧承诺/指代；hard为寄信人未知动机；high-impact是玩家自主权负例及source exposure边界（新增要求代玩家前往/宣告见面，不执行实际高影响mutation）；long是500源检索域、只将选中6源送入有限Host Context，不是500轮live历史。实际估计Input与Provider reportedInput分列，长Session实际reportedInput1688、Project1628 tokens。原合法Information过滤先于检索，生成Session将选中来源转换到正式Timeline IDs/Context refs；本有限Host直接消费没有代替完整UI入口/500轮持续正文验收。actual consumer Task/anchor/path/response/charge与原request bytes均在私有证据保存，不向正文输入opaque CoT。
+
+24次实际HTTP200（16生成+8同主模型盲评），全部直接reported total共35334 tokens：recompute 8次12913、reuse 8次15182、judge 8次7239。currency/upstream/cache identity仍unknown。mixed Host E2E n8每臂p50/p90分别4864/13608和5678/13876ms，不是每层分布/SLO；non-streaming TTFT unavailable。long两入口复用均更慢且total更高，原不利结果保留，不能称Provider减费或总体加速。四对检索elapsed仅一次为0.54→0.42、1.12→0.62、0.60→0.95、73.73→70.92ms；有效corpus hit只说明少做对应投影，不保证生成费用下降。H4较大语料n5 IO收益仍只归原独立scale audit。
+
+**完整qualityPass=false，未通过G06/HM2。** high-impact Project/reuse没有final prose，返回未声明的atri_agent_prepare_review调用；原报告judge六维0保留，工具未执行。long Session/recompute写“我确实记得”，reuse写“如今…书确实还在我这里”，前者无当前cognition source，后者无当前custody source；judge却给来源/unknown全2，实际漏判，不以平均分宣称满足底线。另judge仅看selectedSources，漏看合法原Native World中的harbor及渲染packet中的fact:H0-ZH-08-f39，误称该地点/ID捏造。零API audit比对保存的request/snapshot确认上述两个false criticism，保留原grades不覆写/补刷分。现有表达仍fresh generation，自由文本source/当前状态不能靠检索过滤保证；这些观察沿G06正文/原Narrative policy消费者继续处理，不把HM3 cognition当已实施。
+
+具体工具失败修复沿原GenerationService：response.toolCalls必须属于冻结PromptIR.tools，正文提到工具名称不能授权response call；拒绝仍finally结算已取得direct usage，并discard失败native envelope。2新实际loopback反例（声明的只读工具合法、未声明prepare_review拒绝且20total结算、Task无operations）和受影响真实Studio client/native signed loop 1项通过；改成实观prepare_review形状后仅相关false项重测。原Memory手动debug trace补齐plan/invocation/reuse；checkbox tick改用原Atria text token后仅390px浏览器受影响项重测通过并查看截图。2相关产品JS ESLint/diff通过。该局部guard不覆盖未通过的自由文本质量。
+
+preflight失败原样保存：v1 lanePlan没有原executionResources，v2/v3 Context ref误用message而非timeline，均零HTTP/零quota；临时本地debug插桩诊断后撤掉，v4/v5的16个preview完成（v5加入正式Project prompt及真实scope解释）。live-v1的Windows冒号证据文件名在fetch前失败，quota admission1/actualHTTP0分开；保留该准入，不称上游已收费。v2修证据文件名并在失败时保存原Run/Task ledger，完成原有24上限。两冻结raw pins、carry均匹配；新quota append共25admissions，其中实际HTTP24。m8-g06-paired-audit-v1.json以raw原report hash固定上述成本/延迟/不利质量，audit API0。
+
+本有限真实对照结束，不无限重评、不新增服务/算法以挑选有利样本。H3语义rerank/真实Embedding缺可用已配置服务，维持基础检索及明确skip/unavailable；G06 task/adaptive policy continuity、完整长期消费者与质量出口仍未验收。继续当前具体源码/consumer失败及原依赖下可推进部分，不集成main、不写HANDOFF。
