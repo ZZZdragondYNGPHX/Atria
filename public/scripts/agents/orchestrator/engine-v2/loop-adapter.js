@@ -79,7 +79,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
             model: { request: effect => sendLlm(withRuntimeContext(guardRequestCallbacks({ context, settings: deps.settings || null,
                 runtimeWorldInfo: deps.runtimeWorldInfo || null, ...configuredNativeRoute(profile), apiPresetName: String(profile.apiPresetName || ''), llmPresetName: String(profile.promptPresetName || ''),
                 messages: effect.messages, tools, round: effect.step, abortSignal: effect.signal,
-                onUsage: usage => addTokenUsage({ runId: panelRunId, usage }) }, effect.signal), context, assertFresh)) },
+                onUsage: usage => addTokenUsage({ runId: panelRunId, usage }) }, effect.signal), context, assertFresh, effect)) },
             tool: { async execute(effect) {
                 let message, error = null;
                 const state = runtime.getState(runId).policyState;

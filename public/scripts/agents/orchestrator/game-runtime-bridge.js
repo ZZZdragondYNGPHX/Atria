@@ -1,4 +1,5 @@
 import { executeFirstPartyGeneration, firstPartyStreamingEnabled, streamFirstPartyGeneration } from '../../native/generation-compat.js';
+import { createEvidenceTrace } from '../../../shared/agent-evidence-trace.js';
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);
 }
@@ -231,11 +232,13 @@ export function createOrchestratorGameRuntimeApi(deps = {}) {
                 ),
             };
 
+            const evidenceTrace = createEvidenceTrace();
             await runMainAgentLoop({
                 handle,
                 profile,
                 eventData,
                 deps: {
+                    onRuntimeEvent: event => evidenceTrace.append(event),
                     generateTask: taskRouter,
                     generateTaskStreamForMainAgent: taskRouter,
                     generateTaskStream: typeof context.generateTaskStream === 'function'
@@ -258,7 +261,7 @@ export function createOrchestratorGameRuntimeApi(deps = {}) {
             return {
                 status: finalProse ? 'completed' : 'empty',
                 finalProse,
-                trace: null,
+                trace: { ...evidenceTrace.snapshot(), anchor: clone(input.turnContext?.anchor || null) },
                 guidance: null,
             };
         },

@@ -131,7 +131,7 @@ describe('A8 Project Agent authority', () => {
                 .toBe('A8 Project');
             let reviewLockError;
             try {
-                agent.setPlan(h.handle, source.project.projectId, task.taskId, {
+                await agent.setPlan(h.handle, source.project.projectId, task.taskId, {
                     summary: 'Changed after review',
                     steps: [{ id: 'other', title: 'Other change', impact: 'low' }],
                 });
@@ -193,7 +193,7 @@ describe('A8 Project Agent authority', () => {
                         actualRevision: human.changeSet.resultingRevision,
                     },
                 });
-            expect(agent.getTask(h.handle, source.project.projectId, task.taskId).status).toBe('conflict');
+            expect((await agent.getTask(h.handle, source.project.projectId, task.taskId)).status).toBe('conflict');
             expect((await studio.getProject(h.handle, source.project.projectId)).source.project.displayName)
                 .toBe('Human Change');
         } finally {
@@ -252,7 +252,7 @@ describe('A8 Project Agent authority', () => {
             const source = projectSource();
             const created = await studio.createProject(h.handle, source);
             let task = await plannedTask(agent, h.handle, source, created.revision.revision);
-            task = agent.takeOver(h.handle, source.project.projectId, task.taskId);
+            task = await agent.takeOver(h.handle, source.project.projectId, task.taskId);
             expect(task.status).toBe('taken_over');
             expect(task.timeline.at(-1).type).toBe('human.takeover');
 

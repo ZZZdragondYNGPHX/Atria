@@ -763,6 +763,7 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
     try {
         const skillRes = await loadSkillResolution();
         visibleSkillsForNode = await skillRes.resolveAgentVisibleSkills({
+            run: options?.runtime,
             modeProfile: options?.runtime?.spec || {},
             agentConfig: nodeSpec,
             runtimeContext: skillRes.buildSkillRuntimeContext(

@@ -92,6 +92,10 @@ export const nativeStudioClient = Object.freeze({
     getAgentContext: (projectId, taskId) => request(
         `projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/context`,
     ),
+    resumeAgentTask: (projectId, taskId) => request(`projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/resume`, { method: 'POST', body: {} }),
+    beginAgentGeneration: (projectId, taskId, body) => request(`projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/generation/begin`, { method: 'POST', body }),
+    finishAgentGeneration: (projectId, taskId, body) => request(`projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/generation/finish`, { method: 'POST', body }),
+    deleteAgentTask: (projectId, taskId) => request(`projects/${encode(projectId)}/agent/tasks/${encode(taskId)}`, { method: 'DELETE' }),
     executeAgentTool: (projectId, taskId, body) => request(
         `projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/tool`,
         { method: 'POST', body },

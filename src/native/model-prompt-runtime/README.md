@@ -277,3 +277,120 @@ Provider HTTP 404, 400/422 and 401/403 now produce endpoint, request and authent
 error codes respectively. They do not trigger fallback or expose response bodies.
 A route timeout, including response consumption, is `generation_provider_timeout`; transient
 429/5xx keep existing bounded provider retry/fallback behavior.
+# S08 Prompt candidates
+
+`PromptCandidateStore({ engine })` reuses the Library immutable revisions and the
+Preset root. Its authenticated endpoints are
+`POST /api/native/generation/presets/:id/prompt-candidates/{inspect,declare,prepare,check,apply}`.
+Use the existing `/presets/:id` export to obtain the exact module refs and current
+revision. `declare` accepts `{ expectedRevision, moduleRefs }`; an empty list
+revokes pending candidates. Only explicitly selected active module bodies can
+change. `prepare` accepts `{ runtimeRouteId, expectedRouteFingerprint, moduleRef,
+body }`; the fingerprint is `hashNativeDocument` of the complete original Route.
+It returns immutable `changedRefs`, a candidate ID and the full body diff without
+changing any effective binding. `check` and explicit `apply` take `{ candidateId }`.
+Apply switches only that Route's exact Program ref, retains its exact Generation
+ref and rejects any Preset/declaration/Route drift. Repeating the same complete
+desired binding returns `alreadyApplied`. Missing revisions fail without a
+current-version fallback. Package definitions require an explicit imported
+Library Preset copy first. Manual editing does not confer evaluation eligibility.
+
+Ordinary RP uses the original Workspace settings library and its scoped bindings.
+The orchestrator API exposes `inspectPromptVersions()`,
+`checkPromptCandidate(candidateId)` and `updatePromptVersions(action)`:
+
+```js
+// Start from a user copy and a character/conversation binding to that copy.
+{ type: 'declare', presetId, expectedPreset, agentIds: ['owner'] }
+{ type: 'prepare', presetId, agentId: 'owner', body, scope: 'conversation',
+  subjectId: chatId, expectedBindings }
+{ type: 'apply', candidateId }
+```
+
+The complete normalized `expectedPreset` and current `expectedBindings` are
+available in the existing Workspace settings. Candidates retain exact base and
+desired definitions under SHA-256 content identities; validation reconstructs the allowed
+single Agent `instructions` change and compares complete snapshots. The selected
+profile/Plan carries `promptVersionId`; the next preparation reads that exact
+definition. An existing run keeps its cloned profile. An ordinary `setPresetBinding`
+clears the pin. Factory definitions and global/default evolution are rejected.
+These operations retain the existing settings save behavior and single-client
+support boundary; they do not provide a cross-tab/server publication transaction.
+
+Native candidates: at most 16 per Preset, metadata ≤2 MiB. Workspace candidates:
+at most 16 per owner library, complete definitions/metadata ≤2 MiB. Each changed
+body is ≤64 KiB; Workspace candidate instructions must be nonempty. Read-only
+Native check/inspect are supported, writes return 503. Preset edit/deletion or
+declaration changes block pending activation; existing exact definitions follow
+their original history/backup lifecycle. Automatic jobs, promotion and rollback
+remain S10 work.
+
+Small local checks (no external model):
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/native/prompt-candidates.test.js tests/agent-runtime/workspace-prompt-versions.test.js
+```
+
+# S09 orchestration strategy candidates
+
+Ordinary RP retains the Workspace settings authority. The orchestrator API exposes
+`inspectStrategyVersions()`, `checkStrategyCandidate(candidateId)` and
+`updateStrategyVersions(action)`. Explicit declarations select existing bounded
+integer fields on user copies: `budgets.maxSteps` for Loop/Director (1–64),
+`budgets.maxConcurrency` for Spec/Director/Agenda (1–16), or Agenda
+`scheduler.maxPlannerRounds` (1–32) / `scheduler.maxTotalRuns` (1–64).
+
+```js
+{ type: 'declare', presetId, expectedPreset, allowedFields: ['budgets.maxSteps'] }
+{ type: 'prepare', presetId, field: 'budgets.maxSteps', value: 4,
+  scope: 'conversation', subjectId: chatId, expectedBindings }
+{ type: 'apply', candidateId }
+{ type: 'rollback', candidateId }
+```
+
+One candidate changes one field. Its SHA-256 identity binds complete base/desired
+definitions, the declaration, diff and original binding table. The scoped binding
+selects `strategyVersionId`; the next original compiler/profile/Plan consumes the
+exact definition. Current runs keep their accepted clone. Prompt and strategy pins
+cannot be combined without a new evaluation; prepare requires an unpinned local
+binding. All other fields, capabilities, output contracts and guards remain fixed.
+Rollback compares the complete desired/base bindings and the unchanged Preset;
+it remains available after declaration revocation, but rejects later user edits.
+Preset deletion clears metadata/pins; ordinary binding selection clears either pin.
+There are at most 64 declarations / 16 candidates, total metadata ≤2 MiB. Existing
+single-client/debounced settings persistence applies; this is explicit editing.
+
+Project uses the original durable Task parameter `maxRepairRounds`, within the
+current server cap. `POST /api/native/studio/projects/:projectId/agent/tasks/:taskId/strategy-candidates`
+accepts these actions:
+
+```js
+{ type: 'inspect' }
+{ type: 'declare', expectedSequence, allowedFields: ['maxRepairRounds'] }
+{ type: 'prepare', expectedSequence, field: 'maxRepairRounds', value: 1 }
+{ type: 'check', candidateId }
+{ type: 'apply', candidateId }
+{ type: 'rollback', candidateId }
+```
+
+Use the current Task sequence returned by the original Task API. A Task must still
+be planning, with no plan, generation attempt, proposal or Workspace. Complete task
+base (excluding only repository sequence and candidate metadata), Project revision,
+server cap and selected identity are checked. Candidate/active value commit in the
+same original Task document with integrity CAS. Old Tasks without metadata remain
+valid. At most 16 candidates / 1 MiB strategy metadata, within the original 2 MiB
+Task limit. Context policy and Task snapshot expose `strategyVersionId` after apply;
+the original server repair policy consumes `maxRepairRounds`. Once execution starts,
+apply/rollback is refused. Other Tasks retain their own creation parameters; there
+is no Project-wide default or automatic inheritance. An empty declaration revokes
+pending apply; pristine-task rollback still restores the frozen base. Task deletion
+and StorageEngine user backup/restore include the metadata. Read-only inspect/check
+are available; writes return 503. No candidate tools are exposed to the Agent model.
+
+Manual apply does not confer evaluation eligibility. S10 still owns feedback/policy
+dependencies, shared budgets, Review, automatic promotion and runtime monitoring.
+These targeted checks use provider stubs and local storage, without model requests:
+
+```sh
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-runtime/workspace-strategy-versions.test.js tests/agent-intelligence/project-strategy.test.js
+```

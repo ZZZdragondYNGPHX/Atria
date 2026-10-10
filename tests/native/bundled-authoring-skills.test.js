@@ -90,10 +90,13 @@ test('mocked Studio model reads references, proposes compiler-valid v3 and reach
             const [, , , , name, operation] = address.pathname.split('/');
             if (operation === 'files') result = { files: await repository.listFiles({ scope, name }) };
             else { const path = address.searchParams.get('path'); reads.push(path); result = await repository.readFile({ scope, name, path, offset: Number(address.searchParams.get('offset')), limit: Number(address.searchParams.get('limit')) }); }
-        } else if (address.pathname.endsWith('/context')) result = await agent.getContext(h.handle, projectId, task.taskId);
+        } else if (address.pathname.endsWith('/resume')) result = await agent.resumeTask(h.handle, projectId, task.taskId);
+        else if (address.pathname.endsWith('/generation/begin')) result = await agent.beginGeneration(h.handle, projectId, task.taskId, body);
+        else if (address.pathname.endsWith('/generation/finish')) result = await agent.finishGeneration(h.handle, projectId, task.taskId, body);
+        else if (address.pathname.endsWith('/context')) result = await agent.getContext(h.handle, projectId, task.taskId);
         else if (address.pathname.endsWith('/preflight')) result = await studio.preflightProject(h.handle, projectId, body);
         else if (address.pathname.endsWith('/tool')) result = await agent.executeTool(h.handle, projectId, task.taskId, body);
-        else if (address.pathname.endsWith('/' + task.taskId)) result = agent.getTask(h.handle, projectId, task.taskId);
+        else if (address.pathname.endsWith('/' + task.taskId)) result = await agent.getTask(h.handle, projectId, task.taskId);
         else throw new Error('Unexpected request: ' + url);
         return { ok: true, json: async () => result };
     };

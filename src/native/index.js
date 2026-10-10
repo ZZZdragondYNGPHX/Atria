@@ -74,6 +74,10 @@ export {
 
 export { ProjectStore } from './project-store.js';
 
+export { AgentEvidenceService } from './agent-intelligence/evidence-service.js';
+export { AgentEvidenceRepository, assertEvidenceRecord } from './agent-intelligence/evidence-repository.js';
+export { assertEvidenceSet, EvidenceSourceError } from './agent-intelligence/contracts.js';
+
 export {
     STUDIO_SOURCE_OPERATION_TYPES,
     StudioService,

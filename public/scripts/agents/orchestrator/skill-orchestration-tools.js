@@ -1,3 +1,4 @@
+import { skillReadPin } from '../../../shared/skill-invocation.js';
 /**
  * Orchestrator-side registration of the three agent-visible skill tools
  * (`skill_list`, `skill_read`, `skill_search`) via `registerOrchestrationTool`.
@@ -101,6 +102,7 @@ export function registerSkillOrchestrationTools() {
             const target = resolveVisibleSkill(args.name, visible, 'skill_read');
             return await skillsApi.readFile({
                 scope: target.scope,
+                ...skillReadPin(target),
                 name: args.name,
                 path: args.path,
                 offset: args.offset,
@@ -144,7 +146,8 @@ export function registerSkillOrchestrationTools() {
             if (args?.path) {
                 paths = [String(args.path)];
             } else {
-                const listed = await skillsApi.listFiles({ scope: target.scope, name: args.name });
+                const listed = await skillsApi.listFiles({ scope: target.scope,
+                    ...skillReadPin(target), name: args.name });
                 const files = Array.isArray(listed?.files) ? listed.files : [];
                 paths = files
                     .filter((f) => f && !f.isBinary && typeof f.path === 'string')
@@ -155,6 +158,7 @@ export function registerSkillOrchestrationTools() {
             for (const p of paths) {
                 const file = await skillsApi.readFile({
                     scope: target.scope,
+                    ...skillReadPin(target),
                     name: args.name,
                     path: p,
                 });

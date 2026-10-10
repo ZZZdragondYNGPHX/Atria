@@ -59,7 +59,7 @@ import { resolveToolSource } from './loop-tools.js';
 import { resolveCardFirstPresetName } from './agent-preset-resolver.js';
 import {
     appendRound, appendToSection, ensureSection,
-    finishRun, setRoundStatus, setSectionStatus, addTokenUsage,
+    finishRun, setRoundStatus, setSectionStatus, addTokenUsage, bindEvidenceMessage,
 } from './run-state/store.js';
 import { i18n, i18nFormat } from './i18n.js';
 
@@ -310,6 +310,7 @@ export async function handleDirectorDispatch(eventData, deps) {
                 } catch (_) { /* trace is best-effort */ }
             }
             if (deps?.runId) {
+                if (resolvedStatus === 'committed' && chat?.[messageId]) bindEvidenceMessage(deps.runId, chat[messageId], messageId);
                 try {
                     finishRun({
                         runId: deps.runId,
@@ -448,6 +449,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     // agent and every sub-agent. Layer-2 tools use this for run-scoped state
     // such as Web Evidence Cache and activated-entry bookkeeping.
     const sharedToolRunState = {
+        __atriRunId: deps?.runId,
         lorebookFilter: director?.lorebookFilter || { bookPattern: '', entryPattern: '' },
         activatedEntryKeys: new Set(),
         wiFinalizedPayload: null,
@@ -546,6 +548,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     try {
         const skillRes = await loadSkillResolution();
         visibleSkillsForMain = await skillRes.resolveAgentVisibleSkills({
+            run: sharedToolRunState,
             modeProfile: director,
             agentConfig: director.mainAgent || null,
             runtimeContext: skillRes.buildSkillRuntimeContext(

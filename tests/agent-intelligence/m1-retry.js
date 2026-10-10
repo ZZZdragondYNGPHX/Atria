@@ -1,0 +1,92 @@
+import { setTimeout as delay } from 'node:timers/promises';
+
+// A caller's Route timeout can precede settlement of its funded parent send.
+// Keep the fixture and shared ledger lock until every such send has finished.
+export class M1PendingSends {
+    constructor() { this.pending = new Set(); }
+    track(operation) {
+        const send = Promise.resolve().then(operation);
+        this.pending.add(send);
+        send.then(() => this.pending.delete(send), () => this.pending.delete(send));
+        return send;
+    }
+    async drain() {
+        while (this.pending.size) await Promise.allSettled([...this.pending]);
+    }
+}
+
+// Explicit M1 CLI policy. Each attempt must call the original funded send.
+export class M1RetryPolicy {
+    constructor({ wait = (signal => delay(10000, undefined, { signal })), snapshot = {}, onChange = () => {}, ignoreHistoricalStops = false } = {}) {
+        this.wait = wait;
+        this.connections = new Map(Object.entries(snapshot).map(([key, state]) => {
+            if (!state || Object.keys(state).sort().join(',') !== 'consecutive,recent,stopped' || !Number.isInteger(state.consecutive) || state.consecutive < 0
+                || !Array.isArray(state.recent) || state.recent.length > 20 || state.recent.some(v => typeof v !== 'boolean')
+                || state.stopped !== null && !/^m1_[a-z_0-9]+$/.test(state.stopped)) throw new Error('invalid_transport_checkpoint');
+            return [key, structuredClone(state)];
+        }));
+        this.onChange = onChange;
+        this.ignoreHistoricalStops = ignoreHistoricalStops;
+        this.continuations = new Map();
+        this.lastFailureCodes = new Map();
+    }
+    state(key) {
+        if (!this.connections.has(key)) this.connections.set(key, { consecutive: 0, recent: [], stopped: null });
+        return this.connections.get(key);
+    }
+    transient(code) { return /^m1_http_5\d\d$/.test(code) || code === 'm1_transport_failed' || code === 'm1_response_incomplete'; }
+    incomplete(key) {
+        const state = this.state(key);
+        if (state.recent.at(-1) !== false) throw new Error('invalid_response_observation');
+        state.recent.pop(); state.consecutive = 0;
+        for (let i = state.recent.length - 1; i >= 0 && state.recent[i]; i--) state.consecutive++;
+        this.observe(key, 'm1_response_incomplete');
+    }
+    observe(key, code = null) {
+        this.lastFailureCodes.set(key, code);
+        const state = this.state(key);
+        if (code && this.continuations.has(key)) this.continuations.get(key).revoked = true;
+        state.recent.push(Boolean(code)); state.recent = state.recent.slice(-20);
+        state.consecutive = code ? state.consecutive + 1 : 0;
+        if (code && (!this.transient(code) || state.consecutive >= 3 || state.recent.filter(Boolean).length >= 6)) state.stopped = code;
+        this.onChange(Object.fromEntries(this.connections));
+    }
+    assertAvailable(key) {
+        if (this.ignoreHistoricalStops) return;
+        const reason = this.state(key).stopped;
+        const permit = this.continuations.get(key);
+        if (reason && !(permit && !permit.revoked && permit.remaining > 0)) throw Object.assign(new Error(reason), { code: reason });
+    }
+    authorizeContinuation(key, evidenceHash, remaining, { allowTransientRecovery = false } = {}) {
+        const state = this.state(key);
+        const healthy = state.consecutive === 0 && state.recent.at(-1) === false;
+        const boundedRecovery = allowTransientRecovery && state.consecutive > 0 && state.consecutive < 3 && state.recent.filter(Boolean).length < 6;
+        if (state.stopped !== 'm1_http_404' || !(healthy || boundedRecovery)
+            || !/^[a-f0-9]{64}$/.test(evidenceHash) || !Number.isInteger(remaining) || remaining < 1 || remaining > 24
+            || this.continuations.has(key)) throw new Error('invalid_step_continuation');
+        this.continuations.set(key, { evidenceHash, remaining, revoked: false });
+    }
+    beginSend(key) {
+        this.assertAvailable(key);
+        const permit = this.continuations.get(key);
+        if (permit) permit.remaining--;
+    }
+    isStopped(key) {
+        try { this.assertAvailable(key); return false; } catch { return true; }
+    }
+    async send(key, operation, signal) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            this.assertAvailable(key);
+            signal.throwIfAborted();
+            this.lastFailureCodes.delete(key);
+            try { return await operation(attempt); }
+            catch (error) {
+                // The original HTTP adapter deliberately wraps fetch errors.
+                // Retry that wrapper only after this transport observed a fail.
+                const retryable = this.transient(error.code) || error.kind === 'transport' && this.transient(this.lastFailureCodes.get(key));
+                if (!retryable || !this.ignoreHistoricalStops && this.state(key).stopped || attempt === 2 || signal.aborted) throw error;
+                await this.wait(signal);
+            }
+        }
+    }
+}

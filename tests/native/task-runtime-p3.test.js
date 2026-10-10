@@ -10,6 +10,8 @@ import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
 import http from 'node:http';
 import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
+import { AgentEvidenceRepository } from '../../src/native/agent-intelligence/evidence-repository.js';
+import { AgentEvidenceService } from '../../src/native/agent-intelligence/evidence-service.js';
 
 const schema = { type: 'object', additionalProperties: false, properties: {}, required: [] };
 function contract() {
@@ -144,6 +146,8 @@ describe.each(CONTRACT_HARNESSES)('P3 Session authority - $name', ({ make }) => 
         taskRuntime.tasks.push({ id: 'prepare', bindingSlotId: 'structured', executionClass: 'turn_blocking', inputSchema: schema,
             context: ['input'], resultPolicy: { resultClass: 'turn_context', sink: 'turn' }, variants: [{ ...variant, outputSchema: schema }] });
         taskRuntime.turn.stages = ['prepare'];
+        taskRuntime.tasks.push({ ...taskRuntime.tasks[0], id: 'background.classify', executionClass: 'background',
+            interpretation: { ...taskRuntime.tasks[0].interpretation, id: 'background-outcome' } });
         f.manifest.resources = [
             { resourceType: 'core.prompt-program', resource: { schemaVersion: 1, promptProgramId: variant.prompt.resourceId, revision: 'r1', displayName: 'Task', stages: [{ stageId: 'stage.main', moduleRefs: [] }] } },
             { resourceType: 'core.generation-profile', resource: { schemaVersion: 1, generationProfileId: variant.generation.resourceId, revision: 'r1', displayName: 'Task', output: { maxTokens: 128 } } },
@@ -209,7 +213,17 @@ describe.each(CONTRACT_HARNESSES)('P3 Session authority - $name', ({ make }) => 
                 providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
             const input = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, invocationId: 'host-turn',
                 slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } };
-            const next = await host.executeTurn(h.handle, input);
+            const [next, coalesced] = await Promise.all([host.executeTurn(h.handle, input), host.executeTurn(h.handle, input)]);
+            expect(coalesced.evidenceCapture.evidenceId).toBe(next.evidenceCapture.evidenceId);
+            expect(next.evidenceCapture.status).toBe('completed');
+            const evidence = await new AgentEvidenceRepository({ engine: h.engine }).inspect(h.handle, next.evidenceCapture.evidenceId,
+                new AgentEvidenceService({ sessionCore: f.core }), { maxSources: 4, maxBytes: 131072, maxScanMessages: 8192 });
+            expect(evidence.captureStatus).toBe('captured');
+            expect(evidence.record.outcome).toMatchObject({ kind: 'turn', invocationId: input.invocationId,
+                revisionId: next.revision.revisionId, variantId: next.timeline.at(-1).activeVariantId });
+            expect(evidence.record.trace.events.filter(item => item.type === 'request.attempt.started')).toHaveLength(3);
+            expect(evidence.record.trace.events.filter(item => item.type === 'request.completed').every(item => item.usageStatus === 'missing')).toBe(true);
+            expect(JSON.stringify(evidence.record)).not.toContain('You recover.');
             expect(seen).toHaveLength(3);
             expect(JSON.stringify(seen[2])).toContain('You recover.');
             expect(next.states.atri_world_state.worlds[f.worldId].state.hp).toBe(9);
@@ -217,6 +231,49 @@ describe.each(CONTRACT_HARNESSES)('P3 Session authority - $name', ({ make }) => 
             expect((await host.executeTurn(h.handle, input)).revision).toEqual(next.revision);
             expect(seen).toHaveLength(3);
         } finally { if (server) await new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }); }
+    });
+    test('background task captures a receipt without expanding an operation artifact', async () => {
+        const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/v1/chat/completions' });
+        const provider = { ...createHttpGenerationProvider(), send: async () => new Response(JSON.stringify({
+            choices: [{ message: { content: JSON.stringify({ decision: 'no_change', confidence: 1 }) } }],
+            usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        }), { headers: { 'Content-Type': 'application/json' } }) };
+        const host = new NativeGenerationHost({ ...seeded, sessionCore: f.core, packageInstaller: f.packageInstaller,
+            providers: { 'provider.openai-compatible': provider }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
+        const result = await host.executeTask(h.handle, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId,
+            taskId: 'background.classify', variantId: 'default', invocationId: 'background-test', input: { narrative: 'A reply.', stages: [] },
+            slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } });
+        expect(result.evidenceCapture.status).toBe('completed');
+        const evidence = await new AgentEvidenceRepository({ engine: h.engine }).inspect(h.handle, result.evidenceCapture.evidenceId,
+            new AgentEvidenceService({ sessionCore: f.core }), { maxSources: 4, maxBytes: 131072, maxScanMessages: 8192 });
+        expect(evidence.captureStatus).toBe('captured');
+        expect(evidence.record.outcome.kind).toBe('task'); expect(evidence.record.sources).toBeNull();
+        expect(evidence.record.trace.events.find(item => item.type === 'request.attempt.started').lane).toBe('background');
+        expect(evidence.record.trace.events.find(item => item.type === 'request.completed')).toMatchObject({ usageStatus: 'observed', totalTokens: 14 });
+        expect(result.snapshot.states.atri_world_state.worlds[f.worldId].state.hp).toBe(8);
+    });
+    test('capture failure after formal finalization preserves the receipt and never replays the effect', async () => {
+        const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/v1/chat/completions' });
+        const host = new NativeGenerationHost({ ...seeded, sessionCore: f.core, packageInstaller: f.packageInstaller });
+        host.prepareTurn = jest.fn(async (_handle, input) => ({ invocationId: input.invocationId, envelope: envelope() }));
+        host.persistence._engine = { withTransaction: (handle, operation) => h.engine.withTransaction(handle, tx => operation(new Proxy(tx, {
+            get(target, prop) {
+                if (prop === 'putResourceIfMatch') return async (key, expected, value) => {
+                    if (key.kind === 'atri_agent_evidence' && value.doc.status === 'completed') throw new Error('isolated capture IO failure');
+                    return target.putResourceIfMatch(key, expected, value);
+                };
+                const value = target[prop]; return typeof value === 'function' ? value.bind(target) : value;
+            },
+        }))) };
+        const input = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, invocationId: 'capture-failure',
+            slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } };
+        const result = await host.executeTurn(h.handle, input);
+        expect(result.evidenceCapture.status).toBe('failed');
+        expect(result.states.atri_world_state.worlds[f.worldId].state.hp).toBe(9);
+        const restored = await new AgentEvidenceRepository({ engine: h.engine }).get(h.handle, result.evidenceCapture.evidenceId);
+        expect(restored.status).toBe('capturing');
+        expect((await host.executeTurn(h.handle, input)).revision).toEqual(result.revision);
+        expect(host.prepareTurn).toHaveBeenCalledTimes(1);
     });
     test.each(['cancel', 'stale', 'interpreter-failure'])('Turn %s never publishes its provisional narrative', async mode => {
         const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/v1/chat/completions' });

@@ -1,0 +1,25 @@
+import { afterEach, expect, test } from '@jest/globals';
+import express from 'express';
+import supertest from 'supertest';
+import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
+import { evolutionFixture } from './evolution-fixture.js';
+import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
+import { setReadOnly } from '../../src/storage/read-only-mode.js';
+const cleanup = [];
+afterEach(async () => { setReadOnly(false); for (const fn of cleanup.splice(0)) await fn(); });
+test('HTTP exposes only authenticated owner operations, rejects foreign scopes/fields and keeps read-only views available', async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-strategy'); cleanup.push(f.h.cleanup);
+    const app = express(); app.use(express.json()); app.use((req, _res, next) => { if (req.headers['x-user']) req.user = { profile: { handle: req.headers['x-user'] } }; next(); });
+    app.use('/evolution-host', createNativeGenerationRouter(() => f.host, () => f.service.experience.sources.chat?.repo));
+    const api = supertest(app), path = '/evolution-host/evolution/', scope = { scope: f.scope, subject: f.subject };
+    expect((await api.post(path + 'inspect').send(scope)).status).toBe(401);
+    const view = await api.post(path + 'inspect').set('x-user', f.h.handle).send(scope);
+    expect(view.status).toBe(200); expect(view.headers['cache-control']).toBe('private, no-store');
+    expect(JSON.stringify(view.body)).not.toContain('fixture-secret');
+    const invalid = await api.post(path + 'configure').set('x-user', f.h.handle).send({ ...scope, handle: 'foreign', mode: 'auto' }); expect(invalid.status).toBe(400);
+    const foreign = await api.post(path + 'inspect').set('x-user', 'other').send(scope); expect(foreign.body.scope || null).toBeNull();
+    setReadOnly(true);
+    expect((await api.post(path + 'inspect').set('x-user', f.h.handle).send(scope)).status).toBe(200);
+    expect((await api.post(path + 'budget').set('x-user', f.h.handle).send({ expectedSequence: 1, limits: { maxRequests: 200, maxTokens: 1000000, minIntervalMs: 1000 } })).status).toBe(503);
+    expect((await api.post(path + 'mode').set('x-user', f.h.handle).send({ ...scope, expectedSequence: view.body.scope.sequence, mode: 'paused' })).status).toBe(503);
+});

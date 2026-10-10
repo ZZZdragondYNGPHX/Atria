@@ -4,6 +4,7 @@ import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURC
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import { readPromptControls, validatePromptOverrides } from '../native/model-prompt-runtime/prompt-controls.js';
 import { PromptPresetStore } from '../native/model-prompt-runtime/presets.js';
+import { PromptCandidateStore } from '../native/model-prompt-runtime/prompt-candidates.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
@@ -21,6 +22,13 @@ import { prepareProviderDiscovery, discoverProviderModels } from '../native/adap
 import { nativeTaskScheduler } from '../native/task-scheduler.js';
 import { IllustrationPromptService } from '../native/illustration-prompt-service.js';
 import { IllustrationImageService } from '../native/illustration-image-service.js';
+import { AgentEvidenceRepository } from '../native/agent-intelligence/evidence-repository.js';
+import { AgentEvidenceService } from '../native/agent-intelligence/evidence-service.js';
+import { AgentExperienceService } from '../native/agent-intelligence/experience-service.js';
+import { getChatRepo } from '../storage/index.js';
+import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
+import { AgentEvolutionService } from '../native/agent-intelligence/evolution-service.js';
+import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
@@ -48,8 +56,52 @@ function services() {
     });
 }
 
-export function createNativeGenerationRouter(getHost = services) {
+export async function wakeCollectedExperience(handle, result) {
+    return new AgentEvolutionService({ host: services(), chatRepo: getChatRepo() }).wake(handle, result.scope, result.subject);
+}
+
+export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    for (const action of ['begin', 'update', 'inspect', 'delete']) router.post('/evidence/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const host = getHost();
+            const repository = new AgentEvidenceRepository({ engine: host.persistence._engine });
+            const service = new AgentEvidenceService({ chatRepo: getChats(), sessionCore: host.sessionCore });
+            const capture = new RpEvidenceCaptureService({ repository, service, experience: new AgentExperienceService({ engine: host.persistence._engine, chatRepo: getChats(), sessionCore: host.sessionCore }) });
+            const result = await capture[action](handle, req.body);
+            if (result.collection?.status === 'collected') {
+                try { await new AgentEvolutionService({ host, chatRepo: getChats() }).wake(handle, result.collection.scope, result.collection.subject); } catch { result.collection.wake = 'unavailable'; }
+            }
+            if (action === 'update') await observeEvolutionRp(host.persistence._engine, handle, req.body.evidenceId);
+            return res.json(result);
+        } catch (error) {
+            res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });
+        }
+    });
+    for (const action of ['target', 'submit', 'outcome', 'collect', 'checkQuality', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const host = getHost();
+            const evolution = new AgentEvolutionService({ host, chatRepo: getChats() });
+            const service = evolution.experience;
+            const result = await service[action](handle, req.body);
+            if (['submit', 'outcome', 'collect', 'checkQuality', 'diagnose'].includes(action) && result?.scope && result?.subject) void evolution.wake(handle, result.scope, result.subject).catch(() => {});
+            return res.json(result);
+        } catch (error) {
+            return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_experience_unavailable' });
+        }
+    });
+    for (const action of ['inspect', 'catalog', 'declare', 'budget', 'configure', 'start', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export', 'workspace']) router.post('/evolution/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() })[action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
+    });
     router.get('/illustration-images', (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
@@ -128,6 +180,18 @@ export function createNativeGenerationRouter(getHost = services) {
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
+    for (const action of ['inspect', 'declare', 'prepare', 'check', 'apply']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const store = new PromptCandidateStore({ engine: getHost().library._engine });
+            const input = ['check', 'apply'].includes(action) ? req.body.candidateId : req.body;
+            res.json(await store[action](handle, req.params.id, input));
+        } catch (error) {
+            res.status(error.name === 'ConflictError' ? 409 : error.name === 'NotFoundError' ? 404 : error.code === 'storage_read_only' ? 503 : 400).json({ error: 'native_prompt_candidate_unavailable' });
+        }
+    });
     router.get(['/regex-scopes', '/prompt-scope'], async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
@@ -163,7 +227,7 @@ export function createNativeGenerationRouter(getHost = services) {
     const resourceReferences = async (host, handle, ref) => {
         const references = [...await host.studio.getResourceReferences(handle, ref, { reverse: true })].filter(item => !(item.node?.scope === 'library' && item.node.resourceType === ref.resourceType && item.node.resourceId === ref.resourceId));
         for (const route of await host.persistence.listRuntimeRoutes(handle)) {
-            if ([route.promptProgramRef, route.generationProfileRef].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && (!ref.revision || item.revision === ref.revision))) {
+            if ([route.promptProgramRef, route.generationProfileRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && (!ref.revision || item.revision === ref.revision))) {
                 references.push({ node: { displayName: route.displayName, resourceType: 'core.runtime-route', resourceId: route.runtimeRouteId, scope: 'player', metadata: { exactRef: ref } }, owner: 'Runtime', edge: { kind: 'runtime-route-exact', from: route.runtimeRouteId } });
             }
         }
@@ -232,7 +296,7 @@ export function createNativeGenerationRouter(getHost = services) {
             if (ref.scope !== 'library') throw new TypeError('Library owner required');
             const references = [...await host.studio.getResourceReferences(handle, ref, { reverse: true })];
             for (const route of await host.persistence.listRuntimeRoutes(handle)) {
-                if ([route.promptProgramRef, route.generationProfileRef].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && item.revision === ref.revision)) {
+                if ([route.promptProgramRef, route.generationProfileRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && item.revision === ref.revision)) {
                     references.push({ node: { displayName: route.displayName, resourceType: 'core.runtime-route', resourceId: route.runtimeRouteId, scope: 'player', metadata: { exactRef: ref } }, owner: 'Runtime', edge: { kind: 'runtime-route-exact', from: route.runtimeRouteId } });
                 }
             }
@@ -369,7 +433,7 @@ export function createNativeGenerationRouter(getHost = services) {
             if (method) return response.json(await host.persistence[method](handle, request.body, {
                 expectedFingerprint: request.headers['if-match'],
                 validate: async route => {
-                    for (const ref of [route.promptProgramRef, route.generationProfileRef]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
+                    for (const ref of [route.promptProgramRef, route.generationProfileRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
                     await presets(host).assertPair(handle, route.promptProgramRef, route.generationProfileRef);
                 },
             }));

@@ -16,6 +16,8 @@ const registerCapabilityApi = __ctx.registerCapabilityApi;
 import { buildLastUserAnchor, compactStageOutputs, normalizeNodeOutputForSnapshot } from './anchors.js';
 import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import { createWorkspaceHostRefresh } from './workspace/host-refresh.js';
+import { createRpEvidenceCapture } from './evidence-capture.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
     onNativeSessionLifecycle,
@@ -51,6 +53,8 @@ import {
     getCurrentRun,
     startRun,
     recordMemoryRecall,
+    configureEvidenceCapture,
+    flushEvidenceOutput,
 } from './run-state/store.js';
 import { openWorkspace, configureWorkspace, destroyWorkspace, initWorkspace as initRunPanel } from './workspace/panel.js';
 import { workspaceRunView } from '../../lib/agent-workspace/projection.js';
@@ -58,6 +62,8 @@ import { resolveWorkspaceProfile, getWorkspaceLibrary } from './workspace/host-p
 import { createPresetAuthoring } from './workspace/authoring.js';
 import { createMemoryWorkspace } from './workspace/memory.js';
 import { updatePresetLibrary } from '../../lib/agent-workspace/presets.js';
+import { checkWorkspacePromptCandidate, updateWorkspacePromptVersions } from '../../lib/agent-workspace/prompt-versions.js';
+import { checkWorkspaceStrategyCandidate, updateWorkspaceStrategyVersions } from '../../lib/agent-workspace/strategy-versions.js';
 
 import { canReuseLatestOrchestrationSnapshot, clearCacheForChatChange, getActiveSnapshot, getChatKey, getCurrentAvatar, getLatestOrchestrationEntry, loadOrchestratorChatState, refreshActiveSnapshotFromCache, refreshOrchestratorStateAfterStructuralEvent, storeCompletedOrchestrationSnapshot } from './snapshot-cache.js';
 import { sanitizeConnectionProfileName } from './agent-resolution.js';
@@ -165,6 +171,22 @@ registerCapabilityApi(MODULE_NAME, {
         const settings = getSettings();
         settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), { type: 'bind', scope, subjectId, presetId });
         saveSettingsDebounced(); return true;
+    },
+    inspectPromptVersions: () => structuredClone(getWorkspaceLibrary(getSettings()).promptVersions || { schemaVersion: 1, declarations: [], candidates: [] }),
+    inspectStrategyVersions: () => structuredClone(getWorkspaceLibrary(getSettings()).strategyVersions || { schemaVersion: 1, declarations: [], candidates: [] }),
+    checkStrategyCandidate: candidateId => checkWorkspaceStrategyCandidate(getWorkspaceLibrary(getSettings()), candidateId),
+    updateStrategyVersions: action => {
+        const settings = getSettings();
+        settings.agentWorkspace = updateWorkspaceStrategyVersions(getWorkspaceLibrary(settings), action);
+        saveSettingsDebounced();
+        return structuredClone(settings.agentWorkspace.strategyVersions);
+    },
+    checkPromptCandidate: candidateId => checkWorkspacePromptCandidate(getWorkspaceLibrary(getSettings()), candidateId),
+    updatePromptVersions: action => {
+        const settings = getSettings();
+        settings.agentWorkspace = updateWorkspacePromptVersions(getWorkspaceLibrary(settings), action);
+        saveSettingsDebounced();
+        return structuredClone(settings.agentWorkspace.promptVersions);
     },
     // Skill-export bridge: walks a portable orchestrator payload's agent
     // surface and returns the union of skills any agent in the preset
@@ -473,6 +495,7 @@ async function onWorldInfoFinalized(payload) {
     // outputs from earlier in the same run are unaffected — filter changes
     // take effect from the next turn.
     let preFilterProfile = null;
+    await refreshHostWorkspace();
     try {
         preFilterProfile = getEffectiveProfile(context);
         const preFilter = preFilterProfile?.lorebookFilter;
@@ -574,6 +597,7 @@ async function onWorldInfoFinalized(payload) {
     try {
         await loadOrchestratorChatState(context);
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
+        await refreshHostWorkspace();
         const profile = getEffectiveProfile(context);
         if (!agendaGate && profile?.mode === ORCH_EXECUTION_MODE_AGENDA) {
             agendaGate = payload.generationBlocked = { source: MODULE_NAME, status: 'pending' };
@@ -775,6 +799,16 @@ function notifyError(message) {
     }
 }
 
+let hostWorkspaceRefresh = null;
+function initializeHostWorkspaceRefresh() {
+    hostWorkspaceRefresh ||= createWorkspaceHostRefresh(getSettings(), async () => {
+        const response = await fetch('/api/native/generation/evolution/workspace', { method: 'POST', headers: getContext().getRequestHeaders(), body: '{}' });
+        if (!response.ok) throw new Error('Workspace authority could not be refreshed');
+        return response.json();
+    });
+    return hostWorkspaceRefresh;
+}
+async function refreshHostWorkspace() { return initializeHostWorkspaceRefresh()(); }
 function getSettings() {
     const settings = capabilitySettings[MODULE_NAME];
     return nativePromptUiActive() ? clearNativePresetNames(settings) : settings;
@@ -959,8 +993,15 @@ jQuery(() => {
         },
     });
     initRunPanel();
+    configureEvidenceCapture(runId => {
+        const capture = createRpEvidenceCapture(getContext(), runId), profile = getEffectiveProfile(getContext());
+        for (const kind of ['prompt', 'strategy']) if (profile?.[kind + 'VersionId']) capture.append({ type: 'version.consumed', eventId: runId + '/workspace/' + kind, runId,
+            targetKind: 'workspace-' + kind, presetId: profile.presetId, versionId: profile[kind + 'VersionId'] });
+        return capture;
+    });
     ensureSettings();
     getWorkspaceLibrary(getSettings());
+    initializeHostWorkspaceRefresh();
     saveSettingsDebounced();
     ensureDirectorPureSyntheticPreset(context);
     void rehydrateBridgedSillyTavernTools(capabilitySettings[MODULE_NAME]);
@@ -1088,6 +1129,8 @@ jQuery(() => {
     if (context.eventTypes.GENERATION_ENDED) {
         context.eventSource.on(context.eventTypes.GENERATION_ENDED, () => {
             try { restoreDirectorPresetSwap(getContext()); } catch (_) { /* best-effort */ }
+            const run = getCurrentRun();
+            if (run?.chatKey === getChatKey(getContext()) && !['aborted', 'cancelled', 'error', 'failed'].includes(run.status)) void flushEvidenceOutput(run.runId);
         });
     }
     if (context.eventTypes.GENERATION_STOPPED) {
@@ -1127,6 +1170,7 @@ jQuery(() => {
 
                 if (!capabilitySettings[MODULE_NAME]?.enabled) return;
 
+                await refreshHostWorkspace();
                 const profile = getEffectiveProfile(context);
                 if (!profile) return;
                 // Bail early when the active profile is not director —

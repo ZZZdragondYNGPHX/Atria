@@ -8,8 +8,18 @@ import {
 } from './authoring-contracts.js';
 import { STUDIO_RESOURCE_OPERATION_TYPES } from './authoring/library-authoring.js';
 import { STUDIO_SOURCE_OPERATION_TYPES } from './authoring/studio-service.js';
+import { AgentExperienceRepository } from './agent-intelligence/experience-repository.js';
+import { AgentExperienceService } from './agent-intelligence/experience-service.js';
+import { ProjectTaskRepository, assertProjectTask } from './agent-intelligence/project-task-repository.js';
+import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
+import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
+import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
+import { fields as allowedFields } from '../../public/shared/native-values.js';
+import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
+
+const taskViews = new WeakMap();
 
 const TERMINAL_STATES = new Set(['completed', 'taken_over', 'cancelled']);
 const WRITE_TOOL_NAMES = new Set([
@@ -38,6 +48,10 @@ function operationId(idFactory) {
 function requiredString(value, field) {
     if (typeof value !== 'string' || !value.trim()) throw new TypeError(field + ' is required');
     return value.trim();
+}
+
+function fields(value, keys, label) {
+    try { allowedFields(value, keys, label); } catch (error) { throw new TypeError(error.message); }
 }
 
 function normalizePlan(value) {
@@ -261,28 +275,335 @@ export function buildProjectAgentTools(registry) {
 export class ProjectAgentService {
     constructor({
         studio,
+        engine = studio?.storageEngine,
+        repository = new ProjectTaskRepository({ engine }),
         idFactory = randomUUID,
         maxRepairRounds = PROJECT_AGENT_MAX_REPAIR_ROUNDS,
+        collectExperience = false,
+        onExperienceCollected = null,
     }) {
         if (!studio) throw new TypeError('ProjectAgentService requires StudioService');
         if (typeof idFactory !== 'function') throw new TypeError('ProjectAgentService idFactory must be a function');
+        if (onExperienceCollected !== null && typeof onExperienceCollected !== 'function') throw new TypeError('Project feedback consumer must be a function');
         if (!Number.isSafeInteger(maxRepairRounds) || maxRepairRounds < 1 || maxRepairRounds > 10) {
             throw new TypeError('ProjectAgentService maxRepairRounds must be 1-10');
         }
         this._studio = studio;
         this._idFactory = idFactory;
         this._maxRepairRounds = maxRepairRounds;
-        this._tasks = new Map();
+        this._repository = repository;
+        // Only the normal Host enables this. Fixed evaluation copies do not
+        // feed their executions back into development or recursively learn.
+        this._collectExperience = collectExperience === true;
+        this._onExperienceCollected = onExperienceCollected;
+        if (!taskViews.has(repository.engine)) taskViews.set(repository.engine, new Map());
+        this._tasks = taskViews.get(repository.engine);
+        this._integrities = new Map();
     }
 
-    _key(handle, id) {
-        return String(handle) + '\0' + String(id);
+    _key(handle, projectId, id) {
+        return JSON.stringify([handle, projectId, id]);
     }
 
-    _task(handle, id) {
-        const task = this._tasks.get(this._key(handle, id));
+    _task(handle, projectId, id) {
+        const task = this._tasks.get(this._key(handle, projectId, id));
         if (!task) throw new NotFoundError('native project agent task', { taskId: id });
         return task;
+    }
+
+    async _persist(handle, task, expectedIntegrity = this._integrities.get(this._key(handle, task.projectId, task.taskId))) {
+        let next;
+        try {
+            next = assertProjectTask({ ...task, sequence: expectedIntegrity === null ? 0 : task.sequence + 1 });
+            await this._repository.save(handle, next, expectedIntegrity);
+        } catch (error) {
+            this._tasks.delete(this._key(handle, task.projectId, task.taskId));
+            this._integrities.delete(this._key(handle, task.projectId, task.taskId));
+            error.atriTaskPersistence = true;
+            throw error;
+        }
+        task.sequence = next.sequence;
+        this._tasks.set(this._key(handle, task.projectId, task.taskId), task);
+        this._integrities.set(this._key(handle, task.projectId, task.taskId), hashNativeDocument(task));
+    }
+
+    _startAttempt(task, kind) {
+        const attempt = { attemptId: 'attempt_' + String(this._idFactory()).replaceAll('-', '').toLowerCase(),
+            kind, origin: kind === 'generation' ? 'client_observation' : 'host', status: 'started', startedAt: Date.now(), endedAt: null, calls: [], requestId: null, observation: null };
+        task.attempts.push(attempt);
+        this._event(task, kind + '.attempt.started', { attemptId: attempt.attemptId, origin: attempt.origin });
+        return attempt;
+    }
+
+    _finishAttempt(task, attempt, status) {
+        attempt.status = status;
+        attempt.endedAt = Date.now();
+        task.updatedAt = attempt.endedAt;
+        this._event(task, attempt.kind + '.attempt.' + status, { attemptId: attempt.attemptId, origin: attempt.origin });
+    }
+
+    _completeCommit(task, receipt) {
+        if (!task.changeSets.some(item => item.changeSetId === receipt.changeSetId)) task.changeSets.push(receipt);
+        task.validation = receipt.validation;
+        task.status = 'completed';
+        for (const step of task.plan.steps) step.status = 'completed';
+        task.updatedAt = Date.now();
+        this._event(task, 'changeset.committed', { changeSetId: receipt.changeSetId, baseRevision: receipt.baseRevision, resultingRevision: receipt.resultingRevision });
+    }
+
+    async _recover(handle, task) {
+        if (task.status === 'committing') {
+            let receipt;
+            try { receipt = await this._studio.inspectWorkspaceReceipt(handle, task.workspace, task.commitIntent.changeSetId); } catch (error) {
+                if (error?.name !== 'ConflictError' && !(error instanceof TypeError)) throw error;
+                task.status = 'conflict';
+                task.recovery = { status: 'conflict', code: 'receipt_unverifiable' };
+            }
+            if (receipt) {
+                this._completeCommit(task, receipt);
+                task.recovery = { status: 'recovered', code: 'formal_receipt_reconciled' };
+            } else if (task.status !== 'conflict') {
+                const revision = await this._studio.getRevision(handle, task.projectId);
+                task.status = revision.revision === task.baseRevision ? 'review' : 'conflict';
+                task.recovery = { status: task.status === 'review' ? 'awaiting_review' : 'conflict', code: 'commit_receipt_missing' };
+            }
+            const attempt = task.attempts.findLast(item => item.kind === 'commit' && item.status === 'started');
+            if (attempt) this._finishAttempt(task, attempt, receipt ? 'completed' : 'interrupted');
+            this._event(task, 'recovery', task.recovery);
+        } else if (task.status === 'evaluating') {
+            task.repairRound += 1;
+            task.status = task.repairRound >= task.maxRepairRounds ? 'blocked' : 'repair';
+            task.preview = null;
+            task.review = null;
+            task.recovery = { status: 'interrupted', code: 'evaluation_interrupted' };
+            const attempt = task.attempts.findLast(item => item.kind === 'evaluation' && item.status === 'started');
+            if (attempt) this._finishAttempt(task, attempt, 'interrupted');
+            this._event(task, 'recovery', task.recovery);
+        }
+        if (!TERMINAL_STATES.has(task.status) && task.status !== 'conflict') {
+            const revision = await this._studio.getRevision(handle, task.projectId);
+            if (revision.revision !== task.baseRevision) {
+                task.status = 'conflict';
+                task.recovery = { status: 'conflict', code: 'base_revision_changed' };
+                task.updatedAt = Date.now();
+                this._event(task, 'conflict', { expectedRevision: task.baseRevision, actualRevision: revision.revision });
+            }
+        }
+    }
+
+    async _operate(handle, projectId, id, operation, { write = true } = {}) {
+        let collectOutcome = false;
+        const outcomeHash = task => hashNativeDocument({ status: task.status, validation: task.validation, review: task.review, changeSets: task.changeSets });
+        try {
+            return await withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+                if (write) assertWritable();
+                await this._studio.getProject(handle, projectId);
+                const task = await this._repository.get(handle, projectId, id);
+                if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+                const before = outcomeHash(task);
+                this._tasks.set(this._key(handle, projectId, id), task);
+                this._integrities.set(this._key(handle, projectId, id), hashNativeDocument(task));
+                await this._recover(handle, task);
+                if (hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id)) && !isReadOnly()) await this._persist(handle, task);
+                try {
+                    const result = await operation(task);
+                    if (!isReadOnly() && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
+                    return result?.taskId === id ? this._snapshot(task) : result;
+                } catch (error) {
+                    if (!isReadOnly() && !error.atriTaskPersistence && hashNativeDocument(task) !== this._integrities.get(this._key(handle, projectId, id))) await this._persist(handle, task);
+                    throw error;
+                } finally {
+                    collectOutcome = write && before !== outcomeHash(task);
+                }
+            });
+        } finally {
+            // Run after releasing the Task lock: the original source consumer
+            // re-reads that same Task, rather than accepting a copied outcome.
+            if (collectOutcome && this._collectExperience && !isReadOnly()) {
+                try {
+                    const result = await new AgentExperienceService({ engine: this._repository.engine, studio: this._studio, agent: this }).collect(handle,
+                        { kind: 'project_task', id, scope: { domain: 'project', projectId } });
+                    if (result.status === 'collected' && this._onExperienceCollected) await this._onExperienceCollected(handle, result);
+                } catch { console.warn('Project feedback collection unavailable; the saved Task remains authoritative.'); }
+            }
+        }
+    }
+
+    async createTask(handle, projectId, options) {
+        assertWritable();
+        fields(options, ['intent', 'baseRevision', 'maxRepairRounds'], 'Project Agent task request');
+        return withNativeResourceWrite(handle, 'project-agent-create:' + projectId, () => this._createTask(handle, projectId, options));
+    }
+
+    async listTasks(handle, projectId) {
+        await this._studio.getProject(handle, projectId);
+        const tasks = await this._repository.list(handle, projectId);
+        const snapshots = await Promise.all(tasks.map(task => this.getTask(handle, projectId, task.taskId)));
+        return Object.freeze(snapshots.sort((left, right) => right.updatedAt - left.updatedAt));
+    }
+
+    getTask(handle, projectId, id) {
+        return this._operate(handle, projectId, id, task => this._snapshot(task), { write: false });
+    }
+
+    // Used only immediately after awaited authority reads by the evidence consumer.
+    peekTask(handle, projectId, id) {
+        const task = this._task(handle, projectId, id);
+        if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+        return this._snapshot(task);
+    }
+
+    getContext(handle, projectId, id) {
+        return this._operate(handle, projectId, id, () => this._getContext(handle, projectId, id), { write: false });
+    }
+
+    async strategyCandidates(handle, projectId, id, action, { beforeCommit = async () => {} } = {}) {
+        fields(action, ['type', 'expectedSequence', 'allowedFields', 'field', 'value', 'candidateId', 'rollback'], 'Project strategy request');
+        const reading = ['inspect', 'check'].includes(action.type);
+        return this._operate(handle, projectId, id, async task => {
+            if (action.type === 'inspect') {
+                fields(action, ['type'], 'Project strategy inspect');
+                return clone(task.strategyVersions || { schemaVersion: 1, declaration: null, candidates: [], activeVersionId: null });
+            }
+            if (action.type === 'discard') {
+                fields(action, ['type', 'candidateId'], 'Project strategy discard');
+                if (task.strategyVersions?.activeVersionId === action.candidateId) throw new ConflictError('project_strategy_active');
+                if (task.strategyVersions) task.strategyVersions.candidates = task.strategyVersions.candidates.filter(c => c.candidateId !== action.candidateId);
+                return task;
+            }
+            const revision = await this._studio.getRevision(handle, projectId);
+            if (revision.revision !== task.baseRevision) throw new ConflictError('project_strategy_conflict');
+            if (action.type === 'check') {
+                fields(action, ['type', 'candidateId', 'rollback'], 'Project strategy check');
+                if (action.rollback !== undefined && typeof action.rollback !== 'boolean') throw new TypeError('Invalid rollback check');
+                if (!task.strategyVersions) throw new NotFoundError('Project strategy candidate');
+                return checkProjectStrategyCandidate(task, action.candidateId, this._maxRepairRounds, action.rollback === true);
+            }
+            const next = updateProjectStrategy(task, action, this._maxRepairRounds);
+            if (['apply', 'rollback'].includes(action.type)) await beforeCommit();
+            Object.assign(task, next);
+            return task;
+        }, { write: !reading });
+    }
+
+    setPlan(handle, projectId, id, value) {
+        return this._operate(handle, projectId, id, () => this._setPlan(handle, projectId, id, value));
+    }
+
+    resetOperations(handle, projectId, id) {
+        return this._operate(handle, projectId, id, () => this._resetOperations(handle, projectId, id));
+    }
+
+    prepareReview(handle, projectId, id, options) {
+        return this._operate(handle, projectId, id, () => this._prepareReview(handle, projectId, id, options));
+    }
+
+    commit(handle, projectId, id) {
+        return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id));
+    }
+
+    takeOver(handle, projectId, id) {
+        return this._operate(handle, projectId, id, () => this._takeOver(handle, projectId, id));
+    }
+
+    executeTool(handle, projectId, id, input = {}) {
+        return this._operate(handle, projectId, id, async task => {
+            fields(input, ['name', 'args', 'attemptId', 'callId'], 'Project Agent tool request');
+            let attempt;
+            if (input.attemptId !== undefined || input.callId !== undefined) {
+                attempt = task.attempts.find(item => item.attemptId === input.attemptId && item.kind === 'generation' && item.status === 'started');
+                if (!attempt || typeof input.callId !== 'string' || !input.callId) throw new ConflictError('project_agent_attempt_conflict');
+                const previous = attempt.calls.find(item => item.callId === input.callId);
+                if (previous) {
+                    if (previous.name !== input.name || previous.argsHash !== hashNativeDocument(input.args || {})) throw new ConflictError('project_agent_call_conflict');
+                    if (WRITE_TOOL_NAMES.has(input.name) || ['atri_agent_set_plan', 'atri_agent_reset_operations', 'atri_agent_prepare_review'].includes(input.name)) return this._snapshot(task);
+                }
+            }
+            const result = await this._executeTool(handle, projectId, id, input);
+            if (attempt && !attempt.calls.some(item => item.callId === input.callId)) attempt.calls.push({ callId: input.callId, name: input.name, argsHash: hashNativeDocument(input.args || {}) });
+            return result;
+        });
+    }
+
+    resumeTask(handle, projectId, id) {
+        return this._operate(handle, projectId, id, task => {
+            for (const attempt of task.attempts.filter(item => item.kind === 'generation' && item.status === 'started')) this._finishAttempt(task, attempt, 'interrupted');
+            return this._snapshot(task);
+        });
+    }
+
+    beginGeneration(handle, projectId, id, input) {
+        return this._operate(handle, projectId, id, task => {
+            fields(input, ['expectedSequence'], 'Generation start');
+            this._ensureDraftMutable(task);
+            if (input.expectedSequence !== task.sequence || task.attempts.some(item => item.kind === 'generation' && item.status === 'started')) throw new ConflictError('project_agent_attempt_conflict');
+            this._startAttempt(task, 'generation');
+            return this._snapshot(task);
+        });
+    }
+
+    finishGeneration(handle, projectId, id, input) {
+        return this._operate(handle, projectId, id, task => {
+            fields(input, ['attemptId', 'status', 'conversation'], 'Generation finish');
+            if (!['completed', 'failed'].includes(input.status)) throw new TypeError('Invalid generation observation');
+            const attempt = task.attempts.find(item => item.attemptId === input.attemptId && item.kind === 'generation');
+            if (!attempt || attempt.status === 'interrupted') throw new ConflictError('project_agent_attempt_conflict');
+            assertProjectAgentConversation(input.conversation);
+            if (hashNativeDocument(input.conversation.slice(0, task.conversation.length)) !== hashNativeDocument(task.conversation)) throw new ConflictError('project_agent_conversation_conflict');
+            if (attempt.status !== 'started') {
+                if (attempt.status !== input.status || hashNativeDocument(input.conversation) !== hashNativeDocument(task.conversation)) throw new ConflictError('project_agent_attempt_conflict');
+                return this._snapshot(task);
+            }
+            task.conversation = clone(input.conversation);
+            this._finishAttempt(task, attempt, input.status);
+            return this._snapshot(task);
+        });
+    }
+
+    // Internal Generation Host observations. No HTTP endpoint accepts these fields.
+    recordGenerationRequest(handle, projectId, id, attemptId, requestId) {
+        return this._operate(handle, projectId, id, task => {
+            const attempt = task.attempts.find(item => item.attemptId === attemptId && item.kind === 'generation' && item.status === 'started');
+            this._ensureDraftMutable(task);
+            if (!attempt || (attempt.requestId !== null && attempt.requestId !== requestId)) throw new ConflictError('project_agent_attempt_conflict');
+            if (attempt.requestId === null) {
+                attempt.requestId = requiredString(requestId, 'Generation requestId');
+                this._event(task, 'generation.request', { attemptId, requestId, origin: 'host' });
+            }
+            return this._snapshot(task);
+        });
+    }
+
+    recordGenerationObservation(handle, projectId, id, attemptId, requestId, { snapshot, attempts, usage }) {
+        return this._operate(handle, projectId, id, task => {
+            const attempt = task.attempts.find(item => item.attemptId === attemptId && item.kind === 'generation' && item.requestId === requestId && item.status === 'started');
+            if (!attempt) throw new ConflictError('project_agent_attempt_conflict');
+            const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
+            const observation = { origin: 'host', snapshotHash: hashNativeDocument(snapshot), attempts: clone(attempts), usage: usage ? {
+                inputTokens: count(usage.inputTokens ?? usage.prompt_tokens), outputTokens: count(usage.outputTokens ?? usage.completion_tokens), totalTokens: count(usage.totalTokens ?? usage.total_tokens),
+            } : null };
+            if (attempt.observation !== null) {
+                if (hashNativeDocument(attempt.observation) !== hashNativeDocument(observation)) throw new ConflictError('project_agent_observation_conflict');
+            } else {
+                attempt.observation = observation;
+                this._event(task, 'generation.observed', { attemptId, requestId, origin: 'host', usageStatus: usage ? 'observed' : 'missing' });
+            }
+            return this._snapshot(task);
+        });
+    }
+
+    deleteTask(handle, projectId, id, expectedIntegrity = undefined) {
+        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+            const result = await this._repository.delete(handle, projectId, id, expectedIntegrity);
+            this._tasks.delete(this._key(handle, projectId, id)); this._integrities.delete(this._key(handle, projectId, id));
+            return result;
+        });
+    }
+
+    async deleteProjectTasks(handle, projectId) {
+        await new AgentExperienceRepository({ engine: this._repository.engine }).purgeProject(handle, projectId);
+        const tasks = await this._repository.list(handle, projectId);
+        for (const task of tasks) await this.deleteTask(handle, projectId, task.taskId);
     }
 
     _event(task, type, detail = {}) {
@@ -300,6 +621,8 @@ export class ProjectAgentService {
 
     _snapshot(task) {
         return Object.freeze(clone({
+            schemaVersion: task.schemaVersion,
+            sequence: task.sequence,
             taskId: task.taskId,
             projectId: task.projectId,
             intent: task.intent,
@@ -318,9 +641,13 @@ export class ProjectAgentService {
             simulation: task.simulation,
             repairRound: task.repairRound,
             maxRepairRounds: task.maxRepairRounds,
+            ...(task.strategyVersions?.activeVersionId ? { strategyVersionId: task.strategyVersions.activeVersionId } : {}),
             review: task.review,
             changeSets: task.changeSets,
             timeline: task.timeline,
+            attempts: task.attempts,
+            conversation: task.conversation,
+            recovery: task.recovery,
             createdAt: task.createdAt,
             updatedAt: task.updatedAt,
         }));
@@ -353,9 +680,11 @@ export class ProjectAgentService {
             });
         }
         if (task.status === 'conflict') {
+            const actualRevision = task.timeline.findLast(event => event.type === 'conflict')?.actualRevision;
             throw new ConflictError(ATRIA_PROJECT_CONFLICT_CODE, {
                 taskId: task.taskId,
                 expectedRevision: task.baseRevision,
+                ...(actualRevision ? { actualRevision } : {}),
             });
         }
         if (task.status === 'blocked') {
@@ -383,7 +712,7 @@ export class ProjectAgentService {
         if (step) step.status = status;
     }
 
-    async createTask(handle, projectId, {
+    async _createTask(handle, projectId, {
         intent,
         baseRevision,
         maxRepairRounds = this._maxRepairRounds,
@@ -405,6 +734,8 @@ export class ProjectAgentService {
 
         const now = Date.now();
         const task = {
+            schemaVersion: 1,
+            sequence: 0,
             taskId: taskId(this._idFactory),
             projectId,
             intent: normalizedIntent,
@@ -422,31 +753,20 @@ export class ProjectAgentService {
             review: null,
             changeSets: [],
             timeline: [],
+            attempts: [],
+            commitIntent: null,
+            conversation: [{ role: 'user', content: normalizedIntent }],
+            recovery: null,
             createdAt: now,
             updatedAt: now,
         };
         this._event(task, 'intent', { intent: normalizedIntent, baseRevision: expected });
-        this._tasks.set(this._key(handle, task.taskId), task);
+        await this._persist(handle, task, null);
         return this._snapshot(task);
     }
 
-    listTasks(handle, projectId) {
-        return Object.freeze(
-            [...this._tasks.entries()]
-                .filter(([key, task]) => key.startsWith(String(handle) + '\0') && task.projectId === projectId)
-                .map(([, task]) => this._snapshot(task))
-                .sort((left, right) => right.updatedAt - left.updatedAt),
-        );
-    }
-
-    getTask(handle, projectId, id) {
-        const task = this._task(handle, id);
-        if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
-        return this._snapshot(task);
-    }
-
-    async getContext(handle, projectId, id) {
-        const task = this._task(handle, id);
+    async _getContext(handle, projectId, id) {
+        const task = this._task(handle, projectId, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         const [project, resources, registry] = await Promise.all([
             this._studio.getProject(handle, projectId),
@@ -482,12 +802,13 @@ export class ProjectAgentService {
                 humanReviewRequired: true,
                 silentRebase: false,
                 maxRepairRounds: task.maxRepairRounds,
+                ...(task.strategyVersions?.activeVersionId ? { strategyVersionId: task.strategyVersions.activeVersionId } : {}),
             }),
         });
     }
 
-    setPlan(handle, projectId, id, planValue) {
-        const task = this._task(handle, id);
+    _setPlan(handle, projectId, id, planValue) {
+        const task = this._task(handle, projectId, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         this._ensureDraftMutable(task);
         const plan = normalizePlan(planValue);
@@ -599,6 +920,7 @@ export class ProjectAgentService {
         task.inspection = null;
         task.validation = null;
         task.review = null;
+        task.commitIntent = null;
         task.updatedAt = Date.now();
         this._setStepStatus(task, stepId, 'working');
         this._event(task, 'operation.proposed', {
@@ -609,8 +931,8 @@ export class ProjectAgentService {
         return this._snapshot(task);
     }
 
-    async resetOperations(handle, projectId, id) {
-        const task = this._task(handle, id);
+    async _resetOperations(handle, projectId, id) {
+        const task = this._task(handle, projectId, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         this._ensureDraftMutable(task);
         await this._assertTaskBaseRevision(handle, task);
@@ -622,6 +944,7 @@ export class ProjectAgentService {
         task.preview = null;
         task.simulation = null;
         task.review = null;
+        task.commitIntent = null;
         task.status = task.plan ? 'planned' : 'planning';
         if (task.plan) {
             for (const step of task.plan.steps) step.status = 'pending';
@@ -631,8 +954,8 @@ export class ProjectAgentService {
         return this._snapshot(task);
     }
 
-    async prepareReview(handle, projectId, id, options = {}) {
-        const task = this._task(handle, id);
+    async _prepareReview(handle, projectId, id, options = {}) {
+        const task = this._task(handle, projectId, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         this._ensureDraftMutable(task);
         if (!task.plan) throw new TypeError('Project Agent requires a Plan before review');
@@ -650,6 +973,8 @@ export class ProjectAgentService {
         task.status = 'evaluating';
         task.updatedAt = Date.now();
         this._event(task, 'workspace', { workspace });
+        const attempt = this._startAttempt(task, 'evaluation');
+        await this._persist(handle, task);
 
         try {
             const evaluation = await this._studio.evaluateWorkspace(handle, workspace, {
@@ -677,6 +1002,7 @@ export class ProjectAgentService {
                     diagnostics: evaluation.validation.diagnostics,
                 });
                 task.updatedAt = Date.now();
+                this._finishAttempt(task, attempt, 'failed');
                 return this._snapshot(task);
             }
 
@@ -703,6 +1029,7 @@ export class ProjectAgentService {
                 preview: evaluation.preview,
                 simulation: evaluation.simulation,
             });
+            this._finishAttempt(task, attempt, 'completed');
             return this._snapshot(task);
         } catch (error) {
             if (error?.name === 'ConflictError' || error?.code === ATRIA_PROJECT_CONFLICT_CODE) {
@@ -712,6 +1039,7 @@ export class ProjectAgentService {
                     expectedRevision: task.baseRevision,
                     details: error?.details,
                 });
+                this._finishAttempt(task, attempt, 'failed');
                 throw error;
             }
             task.repairRound += 1;
@@ -729,71 +1057,65 @@ export class ProjectAgentService {
                 repairRound: task.repairRound,
                 diagnostics: task.validation.diagnostics,
             });
+            this._finishAttempt(task, attempt, 'failed');
             return this._snapshot(task);
         }
     }
 
-    async commit(handle, projectId, id) {
-        const task = this._task(handle, id);
-        if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
+    async _commit(handle, projectId, id) {
+        const task = this._task(handle, projectId, id);
+        if (task.status === 'completed') return this._snapshot(task);
         this._ensureMutable(task);
         if (task.status !== 'review' || !task.workspace || task.review?.required !== true) {
-            throw new ConflictError('project_agent_review_required', {
-                taskId: id,
-                status: task.status,
-            });
+            throw new ConflictError('project_agent_review_required', { taskId: id, status: task.status });
         }
         await this._assertTaskBaseRevision(handle, task);
+        const attempt = this._startAttempt(task, 'commit');
+        task.commitIntent = { changeSetId: 'changeset_' + String(this._idFactory()).replaceAll('-', '').toLowerCase(), workspaceHash: hashNativeDocument(task.workspace) };
         task.status = 'committing';
         task.updatedAt = Date.now();
+        await this._persist(handle, task);
+        let result;
         try {
-            const result = await this._studio.executeWorkspace(handle, task.workspace);
-            task.changeSets.push(result.changeSet);
-            task.validation = result.changeSet.validation;
-            if (result.changeSet.validation.status !== 'passed' || !result.changeSet.resultingRevision) {
-                task.repairRound += 1;
-                task.status = task.repairRound >= task.maxRepairRounds ? 'blocked' : 'repair';
-                this._event(task, 'changeset.failed', {
-                    changeSet: result.changeSet,
-                    repairRound: task.repairRound,
-                });
-                task.updatedAt = Date.now();
-                return this._snapshot(task);
-            }
-            task.status = 'completed';
-            for (const step of task.plan.steps) step.status = 'completed';
-            task.updatedAt = Date.now();
-            this._event(task, 'changeset.committed', {
-                changeSetId: result.changeSet.changeSetId,
-                baseRevision: result.changeSet.baseRevision,
-                resultingRevision: result.changeSet.resultingRevision,
-            });
-            return this._snapshot(task);
+            result = await this._studio.executeWorkspace(handle, task.workspace, { changeSetId: task.commitIntent.changeSetId,
+                beforeCommit: receipt => {
+                    const candidate = clone(task);
+                    // Git SHA-1 IDs have the same length; this placeholder is never stored or consumed.
+                    this._completeCommit(candidate, { ...receipt, resultingRevision: task.baseRevision });
+                    this._finishAttempt(candidate, candidate.attempts.find(item => item.attemptId === attempt.attemptId), 'completed');
+                    assertProjectTask({ ...candidate, sequence: candidate.sequence + 1 });
+                    candidate.recovery = { status: 'recovered', code: 'formal_receipt_reconciled' };
+                    this._event(candidate, 'recovery', candidate.recovery);
+                    assertProjectTask({ ...candidate, sequence: candidate.sequence + 1 });
+                } });
         } catch (error) {
-            if (error?.name === 'ConflictError' || error?.code === ATRIA_PROJECT_CONFLICT_CODE) {
-                task.status = 'conflict';
-                task.updatedAt = Date.now();
-                this._event(task, 'conflict', {
-                    expectedRevision: task.baseRevision,
-                    details: error?.details,
-                });
-            } else {
-                task.status = 'review';
-                task.updatedAt = Date.now();
-                this._event(task, 'commit.failed', {
-                    message: error?.message || String(error),
-                });
-            }
+            // The intent remains durable. Reconcile against Studio before exposing any retry.
+            await this._recover(handle, task);
+            if (task.status === 'completed') return this._snapshot(task);
             throw error;
         }
+        if (result.changeSet.validation.status !== 'passed' || !result.changeSet.resultingRevision) {
+            task.changeSets.push(result.changeSet);
+            task.validation = result.changeSet.validation;
+            task.repairRound += 1;
+            task.status = task.repairRound >= task.maxRepairRounds ? 'blocked' : 'repair';
+            task.commitIntent = null;
+            this._event(task, 'changeset.failed', { changeSet: result.changeSet, repairRound: task.repairRound });
+            this._finishAttempt(task, attempt, 'failed');
+        } else {
+            this._completeCommit(task, result.changeSet);
+            this._finishAttempt(task, attempt, 'completed');
+        }
+        return this._snapshot(task);
     }
 
-    takeOver(handle, projectId, id) {
-        const task = this._task(handle, id);
+    _takeOver(handle, projectId, id) {
+        const task = this._task(handle, projectId, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         if (task.status === 'completed') {
             throw new ConflictError('project_agent_task_closed', { taskId: id, status: task.status });
         }
+        if (task.status === 'taken_over') return this._snapshot(task);
         task.status = 'taken_over';
         task.updatedAt = Date.now();
         this._event(task, 'human.takeover', {
@@ -803,21 +1125,21 @@ export class ProjectAgentService {
         return this._snapshot(task);
     }
 
-    async executeTool(handle, projectId, id, { name, args = {} } = {}) {
-        const task = this._task(handle, id);
+    async _executeTool(handle, projectId, id, { name, args = {} } = {}) {
+        const task = this._task(handle, projectId, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
         const toolName = requiredString(name, 'Project Agent tool name');
         if (WRITE_TOOL_NAMES.has(toolName)) {
             return this._propose(handle, task, toolName, args || {});
         }
         if (toolName === 'atri_agent_set_plan') {
-            return this.setPlan(handle, projectId, id, args);
+            return this._setPlan(handle, projectId, id, args);
         }
         if (toolName === 'atri_agent_reset_operations') {
-            return this.resetOperations(handle, projectId, id);
+            return this._resetOperations(handle, projectId, id);
         }
         if (toolName === 'atri_agent_prepare_review') {
-            return this.prepareReview(handle, projectId, id, args || {});
+            return this._prepareReview(handle, projectId, id, args || {});
         }
 
         this._ensureMutable(task);

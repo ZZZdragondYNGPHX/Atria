@@ -1,0 +1,180 @@
+import { expect, test } from '@jest/globals';
+import { M1RetryPolicy, M1PendingSends } from './m1-retry.js';
+import { EvaluationBudget } from './budget.js';
+import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
+
+const failure = code => Object.assign(new Error(code), { code });
+test.each([false, true])('Route timeout holds fixture/ledger lock until late funded send settles (failed=%s)', async failed => {
+    const sends = new M1PendingSends(), budget = new EvaluationBudget({ maxRequests: 2, maxTotalTokens: 200 });
+    let release, fixtureAlive = true, lockHeld = true;
+    const response = new Promise(resolve => { release = resolve; });
+    const paid = sends.track(async () => {
+        budget.reserve({ requestId: 'late', trialId: 'timed-out-route', inputTokens: 50, reservedOutput: 50 });
+        try { await response; if (failed) throw failure('m1_response_incomplete'); }
+        finally {
+            expect(fixtureAlive).toBe(true); expect(lockHeld).toBe(true);
+            budget.settle('late', failed ? null : 34);
+        }
+    });
+    expect(await Promise.race([paid, Promise.resolve('route_timeout')])).toBe('route_timeout');
+    const cleanup = sends.drain().then(() => { fixtureAlive = false; lockHeld = false; });
+    await Promise.resolve(); expect(lockHeld).toBe(true);
+    release(); await cleanup;
+    expect(budget.entries.get('late')).toMatchObject({ settled: true, tokens: failed ? 100 : 34,
+        usageStatus: failed ? 'reserved_upper_bound' : 'provider_reported' });
+    expect(lockHeld).toBe(false); expect(fixtureAlive).toBe(false);
+});
+
+test('cleanup also waits through retry backoff before releasing the shared ledger lock', async () => {
+    const sends = new M1PendingSends(), budget = new EvaluationBudget({ maxRequests: 2, maxTotalTokens: 200 });
+    let release, lockHeld = true;
+    const backoff = new Promise(resolve => { release = resolve; });
+    const policy = new M1RetryPolicy({ wait: () => backoff });
+    const paid = sends.track(() => policy.send('primary', async attempt => {
+        expect(lockHeld).toBe(true);
+        budget.reserve({ requestId: 'attempt-' + attempt, trialId: 'route', inputTokens: 50, reservedOutput: 50 });
+        budget.settle('attempt-' + attempt, attempt ? 34 : null);
+        if (!attempt) { policy.observe('primary', 'm1_http_524'); throw failure('m1_http_524'); }
+        return 'late_success';
+    }, new AbortController().signal));
+    expect(await Promise.race([paid, Promise.resolve('route_timeout')])).toBe('route_timeout');
+    const cleanup = sends.drain().then(() => { lockHeld = false; });
+    await Promise.resolve(); expect(lockHeld).toBe(true);
+    release(); await cleanup;
+    expect(budget.snapshot()).toMatchObject({ requests: 2, tokens: 134 });
+    expect([...budget.entries.values()].every(e => e.settled)).toBe(true);
+    expect(lockHeld).toBe(false);
+});
+
+test('a transient retry funds every send and retains unknown usage', async () => {
+    const policy = new M1RetryPolicy({ wait: async () => {} });
+    const budget = new EvaluationBudget({ maxRequests: 3, maxTotalTokens: 300 });
+    const operation = async attempt => {
+        const requestId = 'send-' + attempt;
+        expect(budget.reserve({ requestId, trialId: 'one', inputTokens: 50, reservedOutput: 50, kind: attempt ? 'retry' : 'model' }).status).toBe('passed');
+        if (!attempt) { policy.observe('primary', 'm1_http_524'); budget.settle(requestId, null); throw failure('m1_http_524'); }
+        policy.observe('primary'); budget.settle(requestId, 20); return 'success';
+    };
+    expect(await policy.send('primary', operation, new AbortController().signal)).toBe('success');
+    expect(budget.snapshot()).toMatchObject({ requests: 2, tokens: 120 });
+    expect(budget.entries.get('send-0')).toMatchObject({ settled: true, usageStatus: 'reserved_upper_bound', tokens: 100 });
+});
+test('three consecutive failures stop that connection without another send', async () => {
+    const policy = new M1RetryPolicy({ wait: async () => {} }); let sends = 0;
+    const operation = async () => { sends++; policy.observe('primary', 'm1_http_524'); throw failure('m1_http_524'); };
+    await expect(policy.send('primary', operation, new AbortController().signal)).rejects.toThrow('m1_http_524');
+    await expect(policy.send('primary', operation, new AbortController().signal)).rejects.toThrow('m1_http_524');
+    expect(sends).toBe(3); expect(policy.state('secondary').stopped).toBeNull();
+});
+test('six intermittent failures in the recent window stop; expired failures do not', () => {
+    const policy = new M1RetryPolicy();
+    for (let i = 0; i < 5; i++) { policy.observe('frequent', 'm1_http_502'); policy.observe('frequent'); }
+    expect(policy.state('frequent').stopped).toBeNull();
+    policy.observe('frequent', 'm1_http_502'); expect(policy.state('frequent').stopped).toBe('m1_http_502');
+    for (let i = 0; i < 5; i++) { policy.observe('old', 'm1_http_502'); policy.observe('old'); }
+    for (let i = 0; i < 20; i++) policy.observe('old');
+    policy.observe('old', 'm1_http_502'); expect(policy.state('old').stopped).toBeNull();
+});
+test('authentication, budget and cancellation errors do not retry', async () => {
+    const policy = new M1RetryPolicy({ wait: async () => {} }); let sends = 0;
+    await expect(policy.send('auth', async () => { sends++; policy.observe('auth', 'm1_http_401'); throw failure('m1_http_401'); }, new AbortController().signal)).rejects.toThrow('m1_http_401');
+    await expect(policy.send('budget', async () => { sends++; throw failure('recovered_budget_blocked'); }, new AbortController().signal)).rejects.toThrow('recovered_budget_blocked');
+    const cancelled = new AbortController(); cancelled.abort();
+    await expect(policy.send('cancelled', async () => { sends++; }, cancelled.signal)).rejects.toThrow();
+    expect(sends).toBe(2);
+});
+test('restart retains a stopped connection and rejects malformed checkpoints', () => {
+    let snapshot;
+    const policy = new M1RetryPolicy({ onChange: next => { snapshot = structuredClone(next); } });
+    for (let i = 0; i < 3; i++) policy.observe('primary', 'm1_http_524');
+    expect(() => new M1RetryPolicy({ snapshot }).assertAvailable('primary')).toThrow('m1_http_524');
+    expect(() => new M1RetryPolicy({ snapshot: { primary: { ...snapshot.primary, recent: ['false'] } } })).toThrow('invalid_transport_checkpoint');
+});
+test('the original HTTP adapter wrapping a transient failure still permits a funded retry', async () => {
+    const policy = new M1RetryPolicy({ wait: async () => {} });
+    const budget = new EvaluationBudget({ maxRequests: 3, maxTotalTokens: 300 }); let sends = 0;
+    const response = { ok: true };
+    const provider = createHttpGenerationProvider({ fetchImpl: async () => {
+        sends++;
+        if (sends === 1) { policy.observe('primary', 'm1_http_524'); throw failure('m1_http_524'); }
+        policy.observe('primary'); return response;
+    } });
+    const result = await policy.send('primary', async attempt => {
+        const id = 'wrapped-' + attempt;
+        expect(budget.reserve({ requestId: id, trialId: 'wrapped', inputTokens: 50, reservedOutput: 50, kind: attempt ? 'retry' : 'model' }).status).toBe('passed');
+        let usage = null;
+        try { const raw = await provider.send({ endpoint: 'https://fixture.invalid', body: {} }, { secret: 'fixture-only', signal: new AbortController().signal }); usage = 20; return raw; }
+        finally { budget.settle(id, usage); }
+    }, new AbortController().signal);
+    expect(result).toBe(response); expect(sends).toBe(2);
+    expect(budget.snapshot()).toMatchObject({ requests: 2, tokens: 120 });
+});
+
+test.each([401, 404])('testing mode does not retry a wrapped current HTTP %i failure', async status => {
+    const policy = new M1RetryPolicy({ wait: async () => {}, ignoreHistoricalStops: true });
+    let sends = 0;
+    const provider = createHttpGenerationProvider({ fetchImpl: async () => {
+        sends++; policy.observe('primary', 'm1_http_' + status); throw failure('m1_http_' + status);
+    } });
+    await expect(policy.send('primary', () => provider.send({ endpoint: 'https://fixture.invalid', body: {} },
+        { secret: 'fixture-only', signal: new AbortController().signal }), new AbortController().signal)).rejects.toThrow();
+    expect(sends).toBe(1);
+});
+test('incomplete response replaces the header success and three such sends stop', async () => {
+    const policy = new M1RetryPolicy({ wait: async () => {} }); let calls = 0;
+    await expect(policy.send('primary', async () => {
+        calls++; policy.observe('primary'); policy.incomplete('primary'); throw failure('m1_response_incomplete');
+    }, new AbortController().signal)).rejects.toThrow('m1_response_incomplete');
+    expect(calls).toBe(3);
+    expect(policy.state('primary')).toMatchObject({ consecutive: 3, recent: [true, true, true], stopped: 'm1_response_incomplete' });
+});
+
+test('an explicit diagnostic continuation preserves the stopped window and exhausts its finite sends', () => {
+    const policy = new M1RetryPolicy();
+    policy.observe('step', 'm1_http_404');
+    expect(() => policy.authorizeContinuation('step', 'a'.repeat(64), 2)).toThrow('invalid_step_continuation');
+    policy.observe('step');
+    const history = structuredClone(policy.state('step'));
+    policy.authorizeContinuation('step', 'a'.repeat(64), 2);
+    expect(policy.state('step')).toEqual(history);
+    policy.beginSend('step'); policy.observe('step');
+    policy.beginSend('step'); policy.observe('step');
+    expect(policy.state('step').stopped).toBe('m1_http_404');
+    expect(policy.isStopped('step')).toBe(true);
+    expect(() => policy.beginSend('step')).toThrow('m1_http_404');
+    const restored = new M1RetryPolicy({ snapshot: Object.fromEntries(policy.connections) });
+    expect(() => restored.beginSend('step')).toThrow('m1_http_404');
+});
+
+test.each(['m1_http_404', 'm1_http_503', 'm1_response_incomplete'])('any new Step failure revokes its explicit continuation without retry: %s', async code => {
+    const policy = new M1RetryPolicy({ wait: async () => { throw new Error('unexpected_retry'); } });
+    policy.observe('step', 'm1_http_404'); policy.observe('step');
+    policy.authorizeContinuation('step', 'b'.repeat(64), 24);
+    let sends = 0;
+    await expect(policy.send('step', async () => { policy.beginSend('step'); sends++; policy.observe('step', code); throw failure(code); },
+        new AbortController().signal)).rejects.toThrow(code);
+    expect(sends).toBe(1);
+    expect(policy.isStopped('step')).toBe(true);
+    expect(() => policy.beginSend('step')).toThrow();
+});
+
+test('explicit bounded recovery after a timeout fix retains failed history and revokes on another failure', () => {
+    const policy = new M1RetryPolicy();
+    policy.observe('step', 'm1_http_404'); policy.observe('step'); policy.observe('step', 'm1_transport_failed');
+    const history = structuredClone(policy.state('step'));
+    expect(() => policy.authorizeContinuation('step', 'c'.repeat(64), 2)).toThrow('invalid_step_continuation');
+    policy.authorizeContinuation('step', 'c'.repeat(64), 2, { allowTransientRecovery: true });
+    expect(policy.state('step')).toEqual(history);
+    policy.beginSend('step'); policy.observe('step', 'm1_transport_failed');
+    expect(policy.isStopped('step')).toBe(true);
+});
+
+test('the API testing mode preserves historical stops without requiring another times permission', async () => {
+    const prior = new M1RetryPolicy(); prior.observe('step', 'm1_http_404');
+    const policy = new M1RetryPolicy({ snapshot: Object.fromEntries(prior.connections), ignoreHistoricalStops: true, wait: async () => {} });
+    expect(policy.isStopped('step')).toBe(false);
+    let sends = 0;
+    await policy.send('step', async () => { policy.beginSend('step'); sends++; if (sends === 1) { policy.observe('step', 'm1_http_503'); throw failure('m1_http_503'); } policy.observe('step'); }, new AbortController().signal);
+    expect(sends).toBe(2);
+    expect(policy.state('step').stopped).toBe('m1_http_404');
+});

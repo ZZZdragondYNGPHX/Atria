@@ -7,6 +7,18 @@ import * as EV from './events.js';
 import { RuntimeProjection } from '../../../lib/agent-runtime/projection.js';
 
 let runtimeProjection = new RuntimeProjection();
+let evidenceFactory = null;
+let evidenceCapture = null;
+export function configureEvidenceCapture(factory) { evidenceFactory = factory; }
+export function bindEvidenceMessage(runId, message, floor) {
+    if (currentRun?.runId === runId) evidenceCapture?.bindMessage(message, floor);
+}
+export function boundEvidenceCapture(runId) { return currentRun?.runId === runId ? evidenceCapture : null; }
+export async function flushEvidenceOutput(runId) {
+    const capture = boundEvidenceCapture(runId);
+    const view = await capture?.flushOutput();
+    if (view && currentRun?.runId === runId) { currentRun.evidenceCapture = view; emit({ type: EV.RUN_META, runId }); }
+}
 let cachedSnapshot = null;
 let cachedRuntimeProjection = null;
 const freeze = value => {
@@ -54,6 +66,7 @@ export function startRun({ mode, chatKey, abortFn = null, stopFn = null, quiet =
     cachedRuntimeProjection = null;
     runCounter += 1;
     const runId = `run_${runCounter}_${Date.now().toString(36)}`;
+    try { evidenceCapture = evidenceFactory?.(runId) || null; } catch { evidenceCapture = null; }
     currentRun = {
         runId,
         mode: String(mode || ''),
@@ -67,6 +80,7 @@ export function startRun({ mode, chatKey, abortFn = null, stopFn = null, quiet =
         error: null,
         tokensSpent: null,
         cost: null,
+        evidenceCapture: evidenceCapture?.view() || { status: 'unavailable', evidenceId: null, missing: 1, usage: null },
         abortFn: typeof abortFn === 'function' ? abortFn : null,
         // `stopFn` is the fast-unwind path used by orchestration
         // dispatches that own a `Promise.race([task, stopRequestPromise])`
@@ -132,6 +146,7 @@ export function requestRunStop(runId) {
 }
 export function clearCurrentRun() {
     engineInspectors.clear();
+    evidenceCapture = null;
     if (currentRun !== null) {
         currentRun = null;
         runtimeProjection = new RuntimeProjection();
@@ -249,6 +264,12 @@ export function finishRun({ runId, status, finalText = null, error = null }) {
     if (finalText != null) currentRun.finalText = String(finalText);
     if (error != null) currentRun.error = String(error);
     emit({ type: EV.RUN_FINISHED, runId, status: currentRun.status });
+    const capture = evidenceCapture;
+    if (capture) void capture.flush(['aborted', 'cancelled'].includes(status) ? 'cancelled' : ['error', 'failed'].includes(status) ? 'failed' : 'completed').then(view => {
+        if (currentRun?.runId !== runId) return;
+        currentRun.evidenceCapture = view;
+        emit({ type: EV.RUN_META, runId });
+    });
 }
 
 export function setRunMeta({ runId, tokensSpent, cost }) {

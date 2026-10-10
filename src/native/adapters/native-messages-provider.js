@@ -1,5 +1,6 @@
 import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
+import { observedGenerationUsage } from './generation-usage.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
@@ -156,13 +157,14 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
         },
         async parseStream({ response, binding }, { onChunk } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding };
-            const blocks = []; let pending = ''; let text = ''; let size = 0; const decoder = new TextDecoder();
+            const blocks = []; let pending = ''; let text = ''; let size = 0; let usage; const decoder = new TextDecoder();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
                 const payload = line.slice(5).trim(); if (!payload || payload === '[DONE]') return;
                 const value = JSON.parse(payload); if (value.error || value.type === 'error') throw new GenerationError('generation_response_invalid');
                 let delta = '';
                 if (anthropic) {
+                    if (value.message?.usage || value.usage) usage = { ...usage, ...value.message?.usage, ...value.usage };
                     if (value.type === 'content_block_start') blocks[value.index] = { ...value.content_block };
                     if (value.type === 'content_block_delta') {
                         const block = blocks[value.index]; if (!block) fail();
@@ -173,6 +175,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                         else fail();
                     }
                 } else {
+                    if (value.usageMetadata) usage = value.usageMetadata;
                     const parts = value.candidates?.[0]?.content?.parts || [];
                     blocks.push(...parts); delta = parts.filter(part => !part.thought && typeof part.text === 'string').map(part => part.text).join('');
                 }
@@ -184,7 +187,8 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             }
             consume(pending + decoder.decode());
             for (const block of blocks) if (block.partial !== undefined) { block.input = JSON.parse(block.partial); delete block.partial; }
-            return { value: anthropic ? { content: blocks } : { candidates: [{ content: { parts: blocks } }] }, binding };
+            return { value: anthropic ? { content: blocks, ...(usage ? { usage } : {}) }
+                : { candidates: [{ content: { parts: blocks } }], ...(usage ? { usageMetadata: usage } : {}) }, binding };
         },
         normalizeResponse({ value, binding }) {
             const content = anthropic ? value?.content : value?.candidates?.[0]?.content?.parts;
@@ -199,7 +203,10 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                 if (typeof name !== 'string' || typeof id !== 'string' || !object(args)) throw new GenerationError('generation_response_invalid');
                 return { id, name, args, raw: { id, type: 'function', function: { name, arguments: JSON.stringify(args) } } };
             });
-            return { text, assistantText: text, toolCalls, providerState: { binding, content, text, calls: toolCalls.map(call => call.raw) } };
+            const usage = observedGenerationUsage(anthropic ? value.usage : value.usageMetadata, anthropic
+                ? { inputTokens: 'input_tokens', outputTokens: 'output_tokens' }
+                : { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' });
+            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), providerState: { binding, content, text, calls: toolCalls.map(call => call.raw) } };
         },
     });
 }

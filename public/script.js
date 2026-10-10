@@ -15883,7 +15883,7 @@ async function saveSettingsInternal(loopCounter = 0, options = {}) {
                 const patchResult = await fetch('/api/settings/patch', {
                     method: 'POST',
                     headers: getRequestHeaders(),
-                    body: JSON.stringify({ operations }),
+                    body: JSON.stringify({ operations, expectedWorkspaceRevision: payload.atri_capabilities?.orchestrator?.agentWorkspaceRevision || 0 }),
                     cache: 'no-cache',
                 });
                 saved = patchResult.ok;

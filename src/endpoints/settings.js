@@ -324,7 +324,7 @@ router.post('/patch', async function (request, response) {
         const handle = request.user.profile.handle;
         const repo = getSettingsRepo();
         try {
-            await repo.patch(handle, operations);
+            await repo.patch(handle, operations, { expectedWorkspaceRevision: request.body?.expectedWorkspaceRevision || 0 });
         } catch (err) {
             if (err instanceof NotFoundError) {
                 const seeded = applyJsonPatch({}, operations);
@@ -336,6 +336,7 @@ router.post('/patch', async function (request, response) {
         triggerAutoSave(handle, request.user.directories);
         return response.send({ result: 'ok', applied: operations.length });
     } catch (error) {
+        if (error?.code === 'agent_workspace_write_conflict') return response.status(409).json({ error: error.code });
         if (error instanceof PatchTestFailedError || error instanceof PatchMissingParentError) {
             return response.status(409).send({
                 error: 'Settings patch test conflict.',
@@ -362,6 +363,7 @@ router.post('/save', async function (request, response) {
         triggerAutoSave(handle, request.user.directories);
         response.send({ result: 'ok' });
     } catch (err) {
+        if (err?.code === 'agent_workspace_write_conflict') return response.status(409).json({ error: err.code });
         console.error(err);
         response.send(err);
     }

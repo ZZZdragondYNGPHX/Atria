@@ -28,6 +28,8 @@ import { frontendOwners, inspectFrontend, planFrontendPatch } from '../frontend/
 import { fields } from '../../../public/shared/native-values.js';
 import { processingText } from '../../../public/shared/native-processing-contract.js';
 import { processPackageText } from '../processing-runtime.js';
+import { hashNativeDocument } from '../repositories/common.js';
+import { fields as receiptFields } from '../agent-intelligence/contracts.js';
 
 export const STUDIO_SOURCE_OPERATION_TYPES = Object.freeze({
     write: 'source.write',
@@ -186,6 +188,10 @@ export class StudioService {
         const run = previous.then(operation, operation);
         this._projectQueues.set(projectId, run.catch(() => undefined));
         return run;
+    }
+
+    get storageEngine() {
+        return this._worlds._engine;
     }
 
     async _project(handle, projectId) {
@@ -780,8 +786,41 @@ export class StudioService {
         });
     }
 
-    async executeWorkspace(handle, workspaceValue) {
+    async _workspaceReceiptUnlocked(handle, workspace, changeSetId) {
+        const directory = this._projects.getProjectDirectory(handle, workspace.projectId);
+        // Inspect existing Git objects before synchronization can create a human-edit revision.
+        const history = await this._git.log(directory, 200);
+        const candidates = history.filter(entry => entry.message.split('\n')[0].split(' · Task ')[0] === `Atria Studio ChangeSet ${changeSetId}`);
+        if (!candidates.length) return null;
+        if (candidates.length !== 1) throw new ConflictError('project_agent_receipt_conflict');
+        const commit = await this._git.readCommit(directory, candidates[0].fullHash);
+        const markers = commit.message.split('\n').filter(line => line.startsWith('Atria-Receipt: '));
+        if (markers.length !== 1) throw new ConflictError('project_agent_receipt_conflict');
+        let receipt;
+        try {
+            receipt = JSON.parse(markers[0].slice('Atria-Receipt: '.length));
+            receiptFields(receipt, ['schemaVersion', 'changeSetId', 'workspaceHash', 'baseRevision', 'validation'], 'Studio receipt');
+        } catch { throw new ConflictError('project_agent_receipt_conflict'); }
+        if (receipt.schemaVersion !== 1 || receipt.changeSetId !== changeSetId
+            || receipt.workspaceHash !== hashNativeDocument(workspace) || receipt.baseRevision !== workspace.baseRevision
+            || commit.parents.length !== 1 || commit.parents[0] !== workspace.baseRevision) throw new ConflictError('project_agent_receipt_conflict');
+        return assertAuthoringChangeSet({ changeSetId, workspaceId: workspace.workspaceId, projectId: workspace.projectId,
+            baseRevision: workspace.baseRevision, operations: workspace.operations, validation: receipt.validation, resultingRevision: commit.fullHash });
+    }
+
+    async inspectWorkspaceReceipt(handle, workspaceValue, changeSetId) {
         const workspace = assertAuthoringWorkspace(workspaceValue);
+        if (typeof changeSetId !== 'string' || !/^changeset_[a-z0-9]+$/.test(changeSetId)) throw new TypeError('Invalid Studio changeset identity');
+        return this._queue(workspace.projectId, async () => {
+            await this._project(handle, workspace.projectId);
+            return this._workspaceReceiptUnlocked(handle, workspace, changeSetId);
+        });
+    }
+
+    async executeWorkspace(handle, workspaceValue, { changeSetId = opaqueId('changeset', this._idFactory), beforeCommit = null } = {}) {
+        const workspace = assertAuthoringWorkspace(workspaceValue);
+        if (!/^changeset_[a-z0-9]+$/.test(changeSetId)) throw new TypeError('Invalid Studio changeset identity');
+        if (beforeCommit !== null && typeof beforeCommit !== 'function') throw new TypeError('Invalid Studio commit guard');
         if (!workspace.operations.length) throw new TypeError('Authoring workspace must contain at least one operation');
         for (const operation of workspace.operations) {
             if (!sameOrigin(operation.origin, workspace.origin)) {
@@ -790,9 +829,13 @@ export class StudioService {
         }
 
         return this._queue(workspace.projectId, async () => {
+            await this._project(handle, workspace.projectId);
+            const receipt = await this._workspaceReceiptUnlocked(handle, workspace, changeSetId);
+            if (receipt) return Object.freeze({ changeSet: receipt, changes: [] });
             const base = await this._assertBaseRevision(handle, workspace.projectId, workspace.baseRevision);
             const snapshot = await this._snapshot(handle, workspace.projectId);
             const changes = [];
+            let commitStarted = false;
             try {
                 for (const operation of workspace.operations) {
                     changes.push(await this._inspectOperation(handle, workspace.projectId, operation, snapshot));
@@ -800,7 +843,6 @@ export class StudioService {
                 }
 
                 const validation = await this._validateUnlocked(handle, workspace.projectId);
-                const changeSetId = opaqueId('changeset', this._idFactory);
                 if (validation.status === 'failed') {
                     await this._restore(handle, workspace.projectId, snapshot);
                     return Object.freeze({
@@ -821,26 +863,34 @@ export class StudioService {
                 const semanticOrigin = workspace.origin.kind === 'agent' && workspace.origin.id
                     ? ` · Task ${workspace.origin.id}`
                     : '';
+                const marker = { schemaVersion: 1, changeSetId, workspaceHash: hashNativeDocument(workspace), baseRevision: base.revision, validation };
+                // Host-owned consumers may prove receipt capacity before the formal Git write.
+                await beforeCommit?.(assertAuthoringChangeSet({ changeSetId, workspaceId: workspace.workspaceId, projectId: workspace.projectId,
+                    baseRevision: base.revision, operations: workspace.operations, validation, resultingRevision: null }));
+                commitStarted = true;
                 await this._git.commitIfChanged(
                     directory,
-                    `Atria Studio ChangeSet ${changeSetId}${semanticOrigin}`,
+                    `Atria Studio ChangeSet ${changeSetId}${semanticOrigin}\n\nAtria-Receipt: ${JSON.stringify(marker)}`,
                     HISTORY_AUTHOR,
+                    { allowEmpty: true },
                 );
-                const resulting = await this._revisionUnlocked(handle, workspace.projectId);
+                const changeSet = await this._workspaceReceiptUnlocked(handle, workspace, changeSetId);
+                if (!changeSet) throw new ConflictError('project_agent_receipt_conflict');
                 this._resourceGraph.invalidate(handle);
                 return Object.freeze({
-                    changeSet: assertAuthoringChangeSet({
-                        changeSetId,
-                        workspaceId: workspace.workspaceId,
-                        projectId: workspace.projectId,
-                        baseRevision: base.revision,
-                        operations: workspace.operations,
-                        validation,
-                        resultingRevision: resulting.revision,
-                    }),
+                    changeSet,
                     changes: Object.freeze(changes),
                 });
             } catch (error) {
+                if (commitStarted) {
+                    const receipt = await this._workspaceReceiptUnlocked(handle, workspace, changeSetId);
+                    if (receipt) {
+                        this._resourceGraph.invalidate(handle);
+                        return Object.freeze({ changeSet: receipt, changes: Object.freeze(changes) });
+                    }
+                    // An uncertain commit must be reconciled, never undone or replayed here.
+                    throw error;
+                }
                 await this._restore(handle, workspace.projectId, snapshot);
                 throw error;
             }

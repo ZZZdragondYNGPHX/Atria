@@ -1,4 +1,5 @@
 import { getEncoding } from 'js-tiktoken';
+import { observedGenerationUsage } from './generation-usage.js';
 import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 
@@ -133,7 +134,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         },
         async parseStream(response, { onChunk } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return response.json();
-            let pending = ''; let text = ''; const calls = new Map();
+            let pending = ''; let text = ''; const calls = new Map(); let usage;
             const decoder = new TextDecoder();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
@@ -141,6 +142,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 if (!value || value === '[DONE]') return;
                 const chunk = JSON.parse(value);
                 if (chunk.error) throw new GenerationError('generation_response_invalid');
+                if (chunk.usage) usage = chunk.usage;
                 const delta = chunk.choices?.[0]?.delta;
                 const content = messages ? (delta?.content || '') : (chunk.choices?.[0]?.text || '');
                 text += content;
@@ -160,7 +162,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 if (text.length + pending.length > 8 * 1024 * 1024) throw new GenerationError('generation_response_invalid');
             }
             consume(pending + decoder.decode());
-            return { choices: [{ text, message: { content: text, tool_calls: [...calls.values()] } }] };
+            return { choices: [{ text, message: { content: text, tool_calls: [...calls.values()] } }], ...(usage ? { usage } : {}) };
         },
         normalizeResponse(raw) {
             const choice = raw?.choices?.[0];
@@ -173,7 +175,8 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 if (!args || typeof args !== 'object' || Array.isArray(args)) throw new GenerationError('generation_response_invalid');
                 return { id: call.id, name: call.function.name, args, raw: call };
             });
-            return { text, assistantText: text, toolCalls };
+            const usage = observedGenerationUsage(raw.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' });
+            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}) };
         },
     });
 }

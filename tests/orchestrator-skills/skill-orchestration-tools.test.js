@@ -100,7 +100,7 @@ describe('skill-orchestration-tools', () => {
     test('skill_read reads scoped via visible entry', async () => {
         const result = await registered.skill_read.exec(
             { name: 'foo-skill' },
-            { __visibleSkillsForAgent: [{ name: 'foo-skill', scope: { kind: 'preset', name: 'rp' } }] },
+            { __visibleSkillsForAgent: [{ name: 'foo-skill', version: 'a'.repeat(64), scope: { kind: 'preset', name: 'rp' } }] },
         );
         expect(result.content).toBe('body');
         const lastCall = skillsApi.readFile.mock.calls[skillsApi.readFile.mock.calls.length - 1];
@@ -125,7 +125,7 @@ describe('skill-orchestration-tools', () => {
 
         const result = await registered.skill_search.exec(
             { name: 'foo-skill', pattern: '茶杯' },
-            { __visibleSkillsForAgent: [{ name: 'foo-skill', scope: { kind: 'global' } }] },
+            { __visibleSkillsForAgent: [{ name: 'foo-skill', version: 'a'.repeat(64), scope: { kind: 'global' } }] },
         );
 
         expect(result.ok).toBe(true);
@@ -133,7 +133,7 @@ describe('skill-orchestration-tools', () => {
         expect(result.output).toContain('foo-skill/SKILL.md:2: 手里端着茶杯');
         expect(result.output).toContain('foo-skill/usage.md:2: 端着茶杯前进');
         expect(skillsApi.listFiles).toHaveBeenCalledWith(expect.objectContaining({
-            scope: { kind: 'global' }, name: 'foo-skill',
+            version: 'a'.repeat(64), scope: { kind: 'global' }, name: 'foo-skill',
         }));
     });
 
@@ -144,14 +144,14 @@ describe('skill-orchestration-tools', () => {
 
         const result = await registered.skill_search.exec(
             { name: 'foo-skill', pattern: '命中', path: 'notes/extra.md' },
-            { __visibleSkillsForAgent: [{ name: 'foo-skill', scope: { kind: 'global' } }] },
+            { __visibleSkillsForAgent: [{ name: 'foo-skill', version: 'a'.repeat(64), scope: { kind: 'global' } }] },
         );
 
         expect(result.ok).toBe(true);
         expect(result.output).toContain('foo-skill/notes/extra.md:2: 行二命中');
         expect(skillsApi.listFiles).not.toHaveBeenCalled();
         expect(skillsApi.readFile).toHaveBeenCalledWith(expect.objectContaining({
-            scope: { kind: 'global' }, name: 'foo-skill', path: 'notes/extra.md',
+            version: 'a'.repeat(64), scope: { kind: 'global' }, name: 'foo-skill', path: 'notes/extra.md',
         }));
     });
 
@@ -163,7 +163,7 @@ describe('skill-orchestration-tools', () => {
 
         const result = await registered.skill_search.exec(
             { name: 'foo-skill', pattern: '[bad' },
-            { __visibleSkillsForAgent: [{ name: 'foo-skill', scope: { kind: 'global' } }] },
+            { __visibleSkillsForAgent: [{ name: 'foo-skill', version: 'a'.repeat(64), scope: { kind: 'global' } }] },
         );
         expect(result.ok).toBe(false);
         expect(result.error).toMatch(/escape regex metacharacters/);
@@ -172,14 +172,14 @@ describe('skill-orchestration-tools', () => {
     test('skill_search throws when pattern is missing', async () => {
         await expect(registered.skill_search.exec(
             { name: 'foo-skill' },
-            { __visibleSkillsForAgent: [{ name: 'foo-skill', scope: { kind: 'global' } }] },
+            { __visibleSkillsForAgent: [{ name: 'foo-skill', version: 'a'.repeat(64), scope: { kind: 'global' } }] },
         )).rejects.toThrow(/pattern/i);
     });
 
     test('skill_search throws when pattern is empty string', async () => {
         await expect(registered.skill_search.exec(
             { name: 'foo-skill', pattern: '' },
-            { __visibleSkillsForAgent: [{ name: 'foo-skill', scope: { kind: 'global' } }] },
+            { __visibleSkillsForAgent: [{ name: 'foo-skill', version: 'a'.repeat(64), scope: { kind: 'global' } }] },
         )).rejects.toThrow(/pattern/i);
     });
 

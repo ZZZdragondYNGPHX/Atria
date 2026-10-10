@@ -1,8 +1,11 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { parseSkillFrontmatter } from './frontmatter-parser.js';
 import { encodeScopePath, scopeLabel } from './scope.js';
+
+import { createSkillVersions, orderSkillOperation } from './versions.js';
+import { assertWritable } from '../storage/read-only-mode.js';
 
 const SKILL_MD = 'SKILL.md';
 
@@ -20,7 +23,7 @@ function assertSafeSkillName(n) {
 }
 
 function assertSafeFilePath(p) {
-    if (typeof p !== 'string' || !/^[A-Za-z0-9._\-/]+$/.test(p) || p.includes('..') || p.startsWith('/')) {
+    if (typeof p !== 'string' || !/^[A-Za-z0-9._\-/]+$/.test(p) || p.includes('..') || p.startsWith('/') || /\.staging-[a-f0-9-]{36}(?:\/|$)/.test(p)) {
         throw new Error(`illegal file path: ${p}`);
     }
 }
@@ -51,9 +54,13 @@ export function createSkillRepository(dataRoot) {
         const out = [];
         async function recurse(rel) {
             const abs = rel ? join(skillDir, rel) : skillDir;
+            const info = await fs.lstat(abs);
+            if (info.isSymbolicLink()) throw new Error('invalid Skill symlink');
             const entries = await fs.readdir(abs, { withFileTypes: true });
             for (const e of entries) {
+                if (/\.staging-[a-f0-9-]{36}$/.test(e.name)) continue;
                 const relPath = rel ? `${rel}/${e.name}` : e.name;
+                if (e.isSymbolicLink()) throw new Error('invalid Skill symlink');
                 if (e.isDirectory()) await recurse(relPath);
                 else if (e.isFile()) {
                     const buf = await fs.readFile(join(abs, e.name));
@@ -198,9 +205,12 @@ export function createSkillRepository(dataRoot) {
             throw new Error(`too many files (${files.length} > ${LIMITS.fileCount})`);
         }
         let total = 0;
+        const paths = new Set();
         for (const f of files) {
             if (!/^[A-Za-z0-9._\-/]+$/.test(f.path)) throw new Error(`illegal file path: ${f.path}`);
             if (f.path.includes('..') || f.path.startsWith('/')) throw new Error(`path traversal: ${f.path}`);
+            if (paths.has(f.path) || f.path.split('/').some(part => !part || part === '.') || /\.staging-[a-f0-9-]{36}(?:\/|$)/.test(f.path)) throw new Error('invalid duplicate or noncanonical file path');
+            paths.add(f.path);
             const buf = fileBufferFromPayload(f);
             if (buf.length > LIMITS.perFile) throw new Error(`file size limit exceeded for ${f.path}`);
             if (f.path === 'SKILL.md' && buf.length > LIMITS.skillMd) {
@@ -256,9 +266,11 @@ export function createSkillRepository(dataRoot) {
         const stagingDir = join(
             skillsRoot,
             encodeScopePath(scope),
-            `.staging-${preview.name}-${Date.now()}`,
+            `.staging-${preview.name}-${randomUUID()}`,
         );
 
+        const backupDir = `${stagingDir}-backup`;
+        let backedUp = false;
         try {
             await fs.mkdir(stagingDir, { recursive: true });
             for (const f of payload.files) {
@@ -266,8 +278,15 @@ export function createSkillRepository(dataRoot) {
                 await fs.mkdir(join(abs, '..'), { recursive: true });
                 await fs.writeFile(abs, f._buffer);
             }
-            await fs.rm(targetDir, { recursive: true, force: true });
-            await fs.rename(stagingDir, targetDir);
+            if (await fs.stat(targetDir).catch(() => null)) {
+                await fs.rename(targetDir, backupDir);
+                backedUp = true;
+            }
+            try { await fs.rename(stagingDir, targetDir); } catch (error) {
+                if (backedUp) await fs.rename(backupDir, targetDir);
+                throw error;
+            }
+            if (backedUp) await fs.rm(backupDir, { recursive: true, force: true });
             return {
                 action: preview.conflict === 'different' ? 'replaced' : 'installed',
                 name: preview.name,
@@ -343,9 +362,11 @@ export function createSkillRepository(dataRoot) {
         }
 
         await fs.mkdir(join(absFile, '..'), { recursive: true });
-        const stagingFile = `${absFile}.staging-${Date.now()}`;
-        await fs.writeFile(stagingFile, content);
-        await fs.rename(stagingFile, absFile);
+        const stagingFile = `${absFile}.staging-${randomUUID()}`;
+        try {
+            await fs.writeFile(stagingFile, content);
+            await fs.rename(stagingFile, absFile);
+        } finally { await fs.rm(stagingFile, { force: true }); }
         return { sha256: sha256(Buffer.from(content)) };
     }
 
@@ -367,9 +388,11 @@ export function createSkillRepository(dataRoot) {
             ? current.split(oldString).join(newString)
             : current.replace(oldString, newString);
 
-        const stagingFile = `${absFile}.staging-${Date.now()}`;
-        await fs.writeFile(stagingFile, next);
-        await fs.rename(stagingFile, absFile);
+        const stagingFile = `${absFile}.staging-${randomUUID()}`;
+        try {
+            await fs.writeFile(stagingFile, next);
+            await fs.rename(stagingFile, absFile);
+        } finally { await fs.rm(stagingFile, { force: true }); }
         return {
             sha256: sha256(Buffer.from(next)),
             changesApplied: replaceAll ? occurrences : 1,
@@ -481,8 +504,9 @@ export function createSkillRepository(dataRoot) {
      * Returns every file in the skill directory, sorted by relative path.
      * Used by the embed packer to walk a skill's contents for packaging.
      */
-    async function listFiles({ scope, name }) {
+    async function listFiles({ scope, name, version }) {
         assertSafeSkillName(name);
+        if (version !== undefined) return versions.readVersion({ scope, name, version });
         const skillDir = join(skillsRoot, encodeScopePath(scope), name);
         const isDir = await fs.stat(skillDir).then(s => s.isDirectory()).catch(() => false);
         if (!isDir) throw new Error(`skill not found: ${scopeLabel(scope)}:${name}`);
@@ -511,11 +535,11 @@ export function createSkillRepository(dataRoot) {
      * @param {number} [opts.contextLines=2] - lines of context above/below
      * @returns {Promise<{hits: Array<{path:string, lineStart:number, lineEnd:number, snippet:string}>}>}
      */
-    async function search({ scope, name, query, path: filePath = SKILL_MD, limit = 10, contextLines = 2 }) {
+    async function search({ scope, name, query, path: filePath = SKILL_MD, limit = 10, contextLines = 2, version }) {
         assertSafeSkillName(name);
         if (filePath !== SKILL_MD) assertSafeFilePath(filePath);
         if (typeof query !== 'string' || query.length === 0) throw new Error('query required');
-        const result = await readFile({ scope, name, path: filePath });
+        const result = await readFile({ scope, name, path: filePath, version });
         const lines = result.content.split('\n');
         const hits = [];
         const ql = query.toLowerCase();
@@ -537,15 +561,16 @@ export function createSkillRepository(dataRoot) {
 
     // ──────────────────────────── readFile ────────────────────────────
 
-    async function readFile({ scope, name, path: filePath = SKILL_MD, offset, limit }) {
+    async function readFile({ scope, name, path: filePath = SKILL_MD, offset, limit, version }) {
         assertSafeSkillName(name);
         assertSafeFilePath(filePath);
         if (Number.isInteger(offset) && offset < 1) throw new Error('offset must be ≥1');
         if (Number.isInteger(limit) && limit < 0) throw new Error('limit must be ≥0');
         const absFile = join(skillsRoot, encodeScopePath(scope), name, filePath);
-        const buf = await fs.readFile(absFile).catch((e) => {
-            throw new Error(`cannot read ${filePath}: ${e.message}`);
-        });
+        const buf = version !== undefined
+            ? (await versions.readVersion({ scope, name, version })).find(file => file.path === filePath)?.buffer
+            : await fs.readFile(absFile).catch((e) => { throw new Error(`cannot read ${filePath}: ${e.message}`); });
+        if (!buf) throw new Error(`file not found: ${filePath}`);
         if (isBinaryBuffer(buf)) throw new Error(`file is binary: ${filePath}`);
 
         const text = buf.toString('utf8');
@@ -559,7 +584,7 @@ export function createSkillRepository(dataRoot) {
             slice = allLines.slice(start, end);
         }
         const content = slice.join('\n');
-        return { content, totalLines };
+        return { content, totalLines, ...(version !== undefined ? { version } : {}) };
     }
 
     // ──────────────────────────── scope-level ops ────────────────────────────
@@ -638,23 +663,96 @@ export function createSkillRepository(dataRoot) {
         await fs.cp(fromDir, toDir, { recursive: true });
     }
 
-    return {
-        list,
-        get,
-        previewInstall,
-        install,
-        delete: deleteSkill,
-        rename,
-        moveScope,
-        writeFile,
-        editFile,
-        deleteFile: deleteFileImpl,
-        renameFile,
-        readFile,
-        listFiles,
-        search,
-        deleteScope,
-        renameScope,
-        copyScope,
+    const versions = createSkillVersions(skillsRoot, listFiles);
+    async function preserve(scope, name) {
+        if (await fs.stat(join(skillsRoot, encodeScopePath(scope), name)).catch(() => null)) {
+            const md = await fs.readFile(join(skillsRoot, encodeScopePath(scope), name, SKILL_MD), 'utf8').catch(error => {
+                if (error.code === 'ENOENT') return null;
+                throw error;
+            });
+            // Legacy editor saves may be malformed. They cannot be accepted
+            // versions, but must remain repairable through the original editor.
+            if (md === null) return;
+            let declaredName;
+            try { declaredName = parseSkillFrontmatter(md).name; } catch { return; }
+            if (declaredName !== name) return;
+            await versions.pin({ scope, name });
+        }
+    }
+    const operations = { list, get, previewInstall, readFile, listFiles, search,
+        pin: versions.pin, history: versions.history, prepareCandidate: versions.prepareCandidate, checkCandidate: versions.checkCandidate };
+    const writes = { install, delete: deleteSkill, rename, moveScope, writeFile, editFile,
+        deleteFile: deleteFileImpl, renameFile, deleteScope, renameScope, copyScope };
+    for (const [method, operation] of Object.entries(writes)) {
+        operations[method] = async (...args) => {
+            assertWritable();
+            const opts = args[0];
+            const scope = method === 'delete' ? args[1] : method === 'copyScope' ? args[0] : opts.scope ?? opts.fromScope ?? opts;
+            const name = ['deleteScope', 'renameScope', 'copyScope'].includes(method) ? undefined : method === 'delete' ? args[0] : method === 'install'
+                ? (await previewInstall(opts)).name : opts.name ?? opts.fromName;
+            if ((scope.kind === 'package' && !(method === 'install' && (await previewInstall(opts)).conflict !== 'different')) || opts.toScope?.kind === 'package' || (method === 'copyScope' && args[1]?.kind === 'package')) {
+                const error = new Error('Package Skill originals are read-only'); error.status = 403; throw error;
+            }
+            if (method !== 'delete' && method !== 'deleteScope') {
+                if (name) await preserve(scope, name);
+                else for (const entry of await listScope(scope)) await preserve(scope, entry.name);
+            }
+            if (method === 'install' && opts.expectedInstalledHash !== undefined) {
+                const current = await readSkillEntry(scope, name);
+                if ((current?.installedHash ?? null) !== opts.expectedInstalledHash) {
+                    const error = new Error('Skill version conflict'); error.status = 409; throw error;
+                }
+            }
+            if (method === 'install' && (await previewInstall(opts)).conflict === 'new') await versions.remove(scope, name);
+            let historyTarget = null;
+            if (method === 'moveScope') historyTarget = opts.toScope;
+            if (method === 'copyScope') historyTarget = args[1];
+            if (method === 'renameScope') historyTarget = scope.kind === 'orch-preset' ? { ...scope, ...args[1] }
+                : scope.kind === 'preset' ? { ...scope, name: args[1] } : { ...scope, characterFile: args[1] };
+            if (historyTarget) {
+                const destination = join(skillsRoot, encodeScopePath(historyTarget), name ?? '');
+                if (await fs.stat(destination).catch(() => null)) {
+                    throw new Error(method === 'moveScope' ? `destination already has skill ${name}` : `${method}: destination scope already exists`);
+                }
+                // Copy before the authority move, so a failed history copy cannot
+                // strand the successful move without its accepted versions.
+                await versions.remove(historyTarget, name);
+                await versions.copy(scope, historyTarget, name);
+            }
+            let result;
+            try { result = await operation(...args); } catch (error) {
+                if (historyTarget) await versions.remove(historyTarget, name);
+                throw error;
+            }
+            if (method === 'delete' || method === 'deleteScope' || method === 'rename') await versions.remove(scope, name);
+            if (method === 'moveScope' || method === 'renameScope') await versions.remove(scope, name);
+            return result;
+        };
+    }
+    operations.discardCandidate = args => versions.discardCandidate(args);
+    operations.applyCandidate = async ({ scope, name, candidateId, expectedBaseVersion, beforeCommit = async () => {} }) => {
+        assertWritable();
+        if (scope.kind === 'package') { const error = new Error('Package Skill originals are read-only'); error.status = 403; throw error; }
+        const candidate = await versions.checkCandidate({ scope, name, candidateId });
+        if (candidate.baseVersion !== expectedBaseVersion || (candidate.conflict && candidate.currentVersion !== candidate.version)) {
+            const error = new Error('Skill version conflict'); error.status = 409; throw error;
+        }
+        if (candidate.currentVersion === candidate.version) return { name, previousVersion: candidate.baseVersion, version: candidate.version, alreadyApplied: true };
+        await beforeCommit();
+        await writeFile({ scope, name, path: SKILL_MD, content: candidate.diff.after });
+        return { name, previousVersion: candidate.baseVersion, version: candidate.version };
     };
+    operations.rollbackCandidate = async ({ scope, name, candidateId, expectedVersion, beforeCommit = async () => {} }) => {
+        assertWritable();
+        if (scope.kind === 'package') { const error = new Error('Package Skill originals are read-only'); error.status = 403; throw error; }
+        // checkCandidate validates both complete snapshots and supporting files.
+        const candidate = await versions.checkCandidate({ scope, name, candidateId });
+        if (candidate.version !== expectedVersion || ![candidate.version, candidate.baseVersion].includes(candidate.currentVersion)) {
+            const error = new Error('Skill version conflict'); error.status = 409; throw error;
+        }
+        if (candidate.currentVersion !== candidate.baseVersion) { await beforeCommit(); await writeFile({ scope, name, path: SKILL_MD, content: candidate.diff.before }); }
+        return { name, version: candidate.baseVersion, alreadyRolledBack: candidate.currentVersion === candidate.baseVersion };
+    };
+    return Object.fromEntries(Object.entries(operations).map(([method, operation]) =>
+        [method, (...args) => orderSkillOperation(dataRoot, () => operation(...args))]));
 }

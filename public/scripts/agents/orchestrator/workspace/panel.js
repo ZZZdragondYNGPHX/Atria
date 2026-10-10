@@ -1,3 +1,4 @@
+import { mountAgentEvolution } from '../../../native/agent-evolution-panel.js';
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../../../atria-shell/workspace-leave-guard.js';
 import { onNativeSessionLifecycle, NATIVE_SESSION_LIFECYCLE } from '../../../native/session-lifecycle.js';
 import { nativePromptUiActive } from '../../../native/generation-compat.js';
@@ -369,6 +370,7 @@ function renderContent() {
     }
     if (section === 'run') {
         renderRun(run, view);
+        if (run?.evidenceCapture?.evidenceId && run.evidenceCapture.scope) disposePage = mountAgentEvolution({ slot: shell.main, scope: run.evidenceCapture.scope, sourceKind: 'evidence', sourceId: run.evidenceCapture.evidenceId });
         return;
     }
     if (section === 'memory') {

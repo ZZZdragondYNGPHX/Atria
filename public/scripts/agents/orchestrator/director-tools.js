@@ -968,6 +968,7 @@ export function createSubagentDispatcher({
             try {
                 const skillRes = await loadSkillResolution();
                 visibleSkillsForSubAgent = await skillRes.resolveAgentVisibleSkills({
+                    run: sharedRunState,
                     modeProfile: directorProfile,
                     agentConfig,
                     runtimeContext: skillRes.buildSkillRuntimeContext(

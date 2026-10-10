@@ -1,4 +1,4 @@
-import { SKILL_INVOCATION_PATHS, skillInvocationMode } from './extension-contract.js';
+import { SKILL_INVOCATION_PATHS, skillInvocationMode, skillEntryKey } from './extension-contract.js';
 
 // Scope selection precedes routing: disabling an override must not resurrect
 // an identically named, less specific Skill.
@@ -39,12 +39,35 @@ export function resolveSkillInvocation(entries, { context = {}, settings, path, 
 export const SKILL_CONTENT_LIMIT = 32768;
 export const SKILL_TOTAL_LIMIT = 131072;
 
+export async function pinSkillEntries(entries, pin, acceptedEntries = new Map()) {
+    const pinned = [];
+    for (const entry of entries) {
+        const key = skillEntryKey(entry);
+        if (!acceptedEntries.has(key)) {
+            // Publish the promise first so parallel workers share one acceptance.
+            acceptedEntries.set(key, (async () => {
+                if (!/^[a-f0-9]{64}$/.test(entry.installedHash)) throw new Error('skill_version_missing');
+                const accepted = await pin({ scope: entry.scope, name: entry.name, expectedHash: entry.installedHash });
+                if (accepted.version !== entry.installedHash) throw new Error('skill_version_conflict');
+                return { ...entry, version: accepted.version };
+            })());
+        }
+        pinned.push({ ...await acceptedEntries.get(key), invocationMode: entry.invocationMode });
+    }
+    return pinned;
+}
+
+export function skillReadPin(entry) {
+    if (!/^[a-f0-9]{64}$/.test(entry?.version)) throw new Error('skill_version_missing');
+    return { version: entry.version };
+}
+
 export async function loadAlwaysSkills(entries, readFile) {
     let size = 0;
     const result = [];
     for (const entry of entries) {
         if (entry.invocationMode !== 'always') { result.push(entry); continue; }
-        const file = await readFile({ scope: entry.scope, name: entry.name, path: 'SKILL.md' });
+        const file = await readFile({ scope: entry.scope, name: entry.name, path: 'SKILL.md', ...(entry.version ? skillReadPin(entry) : {}) });
         size += file.content.length;
         if (file.content.length > SKILL_CONTENT_LIMIT || size > SKILL_TOTAL_LIMIT) throw new Error('skill_content_budget_exceeded');
         result.push({ ...entry, alwaysContent: file.content });
@@ -54,7 +77,7 @@ export async function loadAlwaysSkills(entries, readFile) {
 
 export function skillInstructions(entries) {
     return entries.filter(entry => entry.invocationMode === 'always').map(entry =>
-        JSON.stringify({ skill: entry.name, scope: entry.scope, instructions: entry.alwaysContent })).join('\n');
+        JSON.stringify({ skill: entry.name, scope: entry.scope, version: entry.version, instructions: entry.alwaysContent })).join('\n');
 }
 
 export function boundedSkillReadOptions(args = {}) {
