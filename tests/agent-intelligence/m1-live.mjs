@@ -402,7 +402,8 @@ try {
                 };
             }
             const owner = await f.repository.owner(f.h.handle);
-            await f.service.budget(f.h.handle, { expectedSequence: owner.sequence, limits: { maxRequests: 260, maxTokens: 699536, minIntervalMs: 3150 } });
+            if (!f3Promotion) await f.service.budget(f.h.handle, { expectedSequence: owner.sequence,
+                limits: { maxRequests: Math.max(260, owner.requests), maxTokens: Math.max(699536, owner.tokens), minIntervalMs: 3150 } });
             const secondary = connections[1];
             const extendedGrader = secondary && (gradeSource || cycle || pilotScope || prepareOnly || diagnoseOnly) && secondary.config.maxOutputTokens > 1024;
             let secondaryConfig = null;
