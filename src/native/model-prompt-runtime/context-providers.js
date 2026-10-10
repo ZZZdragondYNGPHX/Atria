@@ -2,6 +2,8 @@ import { assertRequestContextPlan } from './contracts.js';
 import { immutable, effectiveOutputReserve } from './execution-utils.js';
 import { promptError } from './prompt-values.js';
 
+const sourceDataLanes = new Set(['recent_raw', 'memory', 'narrative_spine']);
+
 // Host readers return already selected facts. These providers neither discover facts
 // nor own a second context store; the final rendered request is counted by the Provider Port.
 function createContextProvider(kind, readContext) {
@@ -34,12 +36,12 @@ export function createNativeSessionContextProvider(readSelectedContext) {
             items: plan.included.map(item => ({
                 id: item.contextItemId,
                 kind: item.lane === 'player_persona' ? 'context.player-persona' : item.lane === 'current_user' ? 'context.input'
-                    : item.lane === 'recent_raw' || item.lane === 'memory' ? 'context.history'
+                    : sourceDataLanes.has(item.lane) ? 'context.history'
                         : item.lane === 'runtime_system' ? 'context.directive' : 'context.fact',
                 // Native selection already renders complete, speaker-labelled TurnGroups.
-                // Memory is source data too: do not promote historical quotations to
+                // Memory and narrative summaries are source data: do not promote quotations to
                 // system instructions. Current state continues through its own lane.
-                content: item.lane === 'recent_raw' || item.lane === 'memory' ? { role: 'user', content: item.content } : item.content,
+                content: sourceDataLanes.has(item.lane) ? { role: 'user', content: item.content } : item.content,
                 provenance: [
                     { source: 'native.context', ref: item.contextItemId },
                     ...(item.sourceRefs || []).map(ref => ({ source: 'native.context-source', ref: JSON.stringify(ref) })),
