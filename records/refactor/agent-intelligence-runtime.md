@@ -1971,3 +1971,12 @@ source `de9f3bb2d7e1ea9f3992f3380b88280ff2d45765`仅补强上组现有actual Hyb
 lint-v1/v2产品及新generation-local-work PASS，另外两改动旧测试file的test-lint-v1共有27旧问题；随后逐file current/base比对ruleId+原行文本完全相同（background2、runtime25），无新增lint，未改旧规则或跳过失败。source/docs diff PASS。公开字节输入与process CPU slice不等于全部Host编译/加载成本、线程独占、价格或硬时长；Context编译/其他CPU/cache/local inference成本仍继续。
 
 外部API0，原paid基线、FAIL、费用和账本不变：M8 actual38/direct72982、unknown2/17515 upper/admission fetch0。main不变，完整M8/HM2/HM3/真实G06未验收。Session Task缺完整公开历史消费者是后续实际工程依赖，不借ProjectTask身份、不永久排除；安全fork/compaction与H5前置继续，无HANDOFF。
+### 2026-10-11 有限 G04：原 Session Skill loop 的 exact public tool arguments
+
+合同docs323c91643先冻结；source f48e90323d51e389ad2776a0ccdbb40eb8fdd1bc已push。只改原runNarrativeSkillLoop的公开tool call arguments：优先已有normalized call.raw.function.arguments字符串，id/type/name仍原公开字段，无raw port则保留旧JSON.stringify。工具执行仍用parsed args/原Skill scope、hash pin和分页；无opaque/public writer/Project Task伪装、新store或默认policy。
+
+7新distinct PASS：FS/SQLite原Session Narrator+实际Host→GenerationService→Native Responses→只读Skill→第二model的none/active四路径，原参数空白/键序和完整reasoning/function_call items逐项相等；原Run两reported model20+20/four local jobs、源Timeline不变、对外只final prose/无opaque。三个cancel-read/HEAD改动/local job耗尽反例实际first HTTP1后无second HTTP/无正文，reported20/two local jobs保留。10旧PASS：原narrative loop选择/pin/fallback无raw及停止4、Anthropic/Gemini none/active实际两轮工具4、原Responses none/active完整items公开隔离2；未跑无关整套，不宣称真实协议签名/跨调用或永久Session支持矩阵完成。
+
+私有Document g04-session-skill-*：before-v1为fixture extensions.settings缺失；before-v2为fixture无合法hash/pin；before-v3/after-v1 active两FAIL和diagnose-v1 firstHTTP0/nojobs，原因capability拼写误用policy下划线，均fixture准备错误，不是arguments缺陷。修fixture直接import正式activeExecutionCapability（连字符），保持原旧loop负控制再跑before-valid-v4 FS none/active2真实FAIL：第一HTTP1/first count-render completed/第二count failed continuation_unavailable；finally恢复修复代码，after-valid-v2 fourPASS。safety-v1 threePASS，old-v1 tenPASS，产品及新fixture lint-v1 PASS/source/docs diff PASS。暂时诊断打印仅synthetic phase/cost，已从测试移除，原失败日志保留。
+
+本组同invocation公开工具历史与协议回传成立，但未据此宣称跨调用Session task/restart、safe fork/compaction或行为收益；继续原Task消费者/公开历史/owner边界依赖，不借Studio身份或自动reset。外部模型0，M8累计actual38/direct72982、unknown2/17515 upper/admission fetch0及原M1/HM1/G06 paid ledger/质量FAIL不变；main仍3ee1332ef，完整M8/HM2/HM3未验收，无HANDOFF。
