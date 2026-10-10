@@ -33,6 +33,8 @@ Runtime checkpoint 有限物理契约（依据 model-routing §7.2–7.4）：�
 
 source `0a3f98d10` / `d62cb73c4` 已实现上述有限契约；进一步同毫秒delete/recreate反例真实FAIL后，原connection/model/route record以`doc:null`保留删除版本metadata，profile get/list仍返回不存在，重建同ID延续单调updatedAt。无额外版本kind/影子存储；原account snapshot/recovery保持该metadata，受引用删除/只读拒绝规则不变。有限实现不等于完整task/adaptive或真实路径验收。
 
+source `2a282ed73`补原charge之前的私有lease/存储当前性核验，Secret期间已确认失效的请求HTTP0且不创建send attempt；发送前仍再次核验。下一有限adaptive组只沿同一Responses/原Studio Task与verified task+adaptive路径，按实际checkpoint兼容性冻结continue/start/reset理由、public handle lineage和损失；task policy不借自动fresh逃避缺失连续性，adaptive只允许从原Task保存的public observations做一次有界reset。禁止任意改写历史、fallback到未验证路径、新classifier或默认learned router；投影reset后无法兼容的cold history可再次明确reset，不假称已恢复。其他品牌/Session Task/fork/compaction及CPU/index/background预算仍按依赖继续。
+
 model-routing §7.4 的 Runtime checkpoint 持久化、task/adaptive consumer、安全fork/restore/compaction，以及compute-policy §3–4的Embedding/CPU/后台成本准入仍是工程项；此前process_only/unavailable只描述已实施checkpoint，不是永久产品范围排除。真正gateway验证、语义Embedding/rerank与货币账单另属外部证据；H5仍须M2/M3/G06前置。不能把这些三类边界互换。
 
 先沿原Native Retrieval/RunControl/Project Task补一个有限Embedding发送消费者：insert/query/query-multi允许原computeContext，合法Native Memory传递其已有Information Session anchor；首批按原OpenAI-compatible Embedding family的每个实际HTTP批次charge/settle，与正文/rerank共用原额度，旧无显式Route预算不自动加额度。具备computeContext但暂未实现预算映射的其它provider在推理/发送前明确unavailable，保留原非该请求的资源与固定路径，不伪装全部Embedding/local CPU已完成。无新profile/registry/发送器/预算authority，真实外部发送0。
