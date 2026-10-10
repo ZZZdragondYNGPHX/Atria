@@ -1,6 +1,6 @@
 # H0：只读准备、实际调用图与切换核对
 
-> Updated: 2026-10-10。只读设计准备已完成；H0 全套基准与验收未完成，H1/H2 未开始。
+> Updated: 2026-10-10。本文保留只读准备时的历史设计与清单。H0→H1→H2 已在 main `3ee1332ef` 交付；实际结果见 [同一 Record 最新 HM1 节](../../../records/refactor/agent-intelligence-runtime.md#hm1--h2-中文种子完整来源组与正文配对)，下文“待测”不代表当前状态。
 > 产品实施依赖 M1 原验收及集成，见 [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖)。检索与切换规则只归 [hybrid-memory](hybrid-memory.md)，本文保存当前 HEAD 的工程清单和待测样本，不复制产品决定。
 
 ## 1. 固定源码与证据边界

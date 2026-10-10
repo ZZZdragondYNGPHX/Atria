@@ -1525,3 +1525,36 @@ source `b8c2a85e6` 将自动/手动 recallMemory 与 ordinary RP/Game/Package �
 原 Information authority 在任何 corpus/index/query/rerank 前确定 Actor/task/narrator 完整来源域，application summary/reference 不授权未暴露整段 source。源/分支/variant、Information grant/availability/revision/anchor 及异步消费均重验；Package 对混合合法/非法引用拒绝整段正文。`hm1-h1-b1-attempt1.json` 保存18组B1双lane配对与两实际 Native消费者；禁止来源未入 corpus/insert/rerank/结果，02仍只命中1/2目标，H2尚未增强。`hm1-h1-ordinary.json` 保存实际ordinary单packet消费。
 
 针对性检查：新eligibility3/settings1/vector adapter3、原extract transaction7、抽取pipeline修复后19、source-lifecycle24、hybrid retrieval12、Package bridge5/runtime routing2通过。Package旧fixture补上main已有RunControl和entryPoint，未改原Host权限检查；初始失败和修复日志保留。仅相关ESLint/diff；Edge实际生产Memory workspace检查390px无横溢出、写入/Recall独立、失败可见并回显已保存值，截图保留。无新增模型发送，无全量build/test；H1已冻结B1，继续H2中文query与packing及真实正文配对。
+
+
+## HM1 / H2 中文种子、完整来源组与正文配对
+
+H0 `722f1d698` → H1 `b8c2a85e6` → H2 `3ee1332ef113d4c57c65d9577222ba88d5171101` 从 M1 完成后的最新 main 连续交付；main 已 fast-forward 到完全相同提交/树，无冲突解决或合并后产品变化，不重复已通过测试。M1 未重跑，原报告、未知费用、quota/admissions、carry 与密封正文保持；私有路径与依赖自主恢复，无新增审批。
+
+H2 使用合法 scene / source-backed Actor identity 和已验证别名、中文指代/时间与未完成承诺的确定性种子，合法 lexical/原有界 typed graph/可选 vector 经 RRF 融合。负面“没有新增承诺”不作为承诺种子；歧义保留 unknown。coverage 在固定 Context 预算内装入完整 source groups：关联关系包含原支持 Fact、formal Information atomicGroup 整组保留，独立冲突断言并列不裁赢家；超预算或跨时点缺成员拒整组。原 SourceRef 增 exact content hash/revision、producer、eligibility identity；cause 无来源保持 unknown。未添加 cognition/forgetting writer、新事实图、PPR、LLM rewrite、候选缓存或 delta 索引。
+
+复用唯一 `informationSourceMessageIds` 与原 Information authority，允许 exact application source text，摘要不能放大授权。原 Context Compiler/Native generation host 同源域检查并保留 atomicGroup，Game/Package 对超上限证据拒整组。纠正 H1 Package 观测的一个不足：当时“包含归还文本”的断言可能命中原 Information ContextItem，不能证明 memory item admission。H2 改为明确检查 `memory:<id>` 和 atomicGroup 在最终 Context included；真实 memory item 与预算整组拒绝现在通过。无 ledger、关闭写入时，原合法 Native Timeline 可在内存只读重建 Episode 投影，原 bytes 不写回；pinned snapshot 遇 live revision 前进即 AbortError。无证明旧图仍保留存储，不自动获得叙事授权。
+
+`hm1-h2-b2b3-final.json` 保存 36 组 B2/B3 × lexical/graph 与 synthetic-loopback vector 的同输入/权限/预算（2400 UTF-8 bytes estimate）配对：每个目标来源均命中，禁止来源均零，候选与 Context 不截断 atomic链。`hm1-h2-sourceproof-final.json` 与 `hm1-final-proof.json` 逐组核对最终产品的36份 packet 文本与 source IDs 完全等同模型评测输入；后续引用/guard 元数据改变保留原 model producer hash，不把旧模型结果标为新发送。`hm1-h2-ordinary.json` 记录实际 after-WI 唯一packet；Game / Package 与 formal atomic组分别走原实际 Context。
+
+真实正文沿原 createLiveBridge → NativeGenerationService/PromptCompiler/RouteResolver/HttpProvider 发送，保留 exact config/messages/packet/output hashes、原 provider raw 与 normalized result、usage 和原 quota gate。只用冻结公开合成样本，不读 M1 密封正文；B1/B2 已测相同输入原样复用，B3 header 修正后 fresh-generate，算法标签隐藏的主模型盲评有9组有效观察。仅 lexical/graph 正文真实发送；vector 是本地合成服务，不能称真实 Embedding 或 Provider 检索效果。500来源是长篇固定检索 fixture，不是500轮连续正文实验；单 provider 工程观察不是人工偏好或独立双模型验收。
+
+每维最大18分：
+
+| 算法 | 来源边界 | 目标应用 | 未知/冲突 | 玩家自主权 | 角色声音 | 自然度 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| B1 | 17 | 16 | 17 | 18 | 14 | 13 |
+| B2 | 18 | 18 | 17 | 18 | 15 | 14 |
+| B3 | 17 | 18 | 17 | 18 | 17 | 17 |
+
+B3 六维总分均不低于 B1，目标、声音与自然度改善；不声称每个案例无退化。H03过去的时态/未知、H07“依记录来看”等元话语仍有1分不足。原 v1 header 对 current 来源警告过强，导致无依据 uncertainty 和正文退化，已依证据修正并完整保留 v1。H08三份不同请求/hash的新鲜B3正文中第三份仍无依据自述“确实记得”；原输出及原配对评分保留，单独标 observed invalid_unproven_present_recollection。按 hybrid-memory §7 对该观察做一次有界修正发送与本地来源审查，修正保留过去借书/未履约，当前是否记得与心思未知、不控制玩家；该修正仅评测内触发，不冒充产品全局自由文本保证或新H5认知能力。
+
+失败/修复完整保留：非法request ID、grader超Context预算均发送前失败无费用；首个成功请求随后结果读取接口错误，已记reported total1336但公开正文丢失，不能声称该次raw输出已保留。随后在解析前保存response clone与normalized结果；一份grader尾部非法JSON保留并计费，不修评分。初中文seed/重复episode packing、rerank排序断言和浏览器隔离端口缺导出依根因修复，只重验相关项。
+
+H2 最小本地验证：eligibility/packing/hybrid/Context/Information/Package 6suites 94项通过；read/write/external API 3suites100项通过；ordinary实际消费1项、最终配对packet等价1项、live-revision late-consume1项通过（后者为新增回归）；相关产品ESLint、修改smoke/E2E脚本语法与diff检查通过。Edge实际Memory workspace与production settings模板通过source/recall独立、保存失败可见与已保存值回显、旧模式控件移除、Embedding可访问名称、默认rerank隐藏、390px无横向溢出，截图视觉核对通过。模板测试隔离shell dependency ports，不声称启动完整Atria浏览器应用；更新的全应用source写开关E2E只做语法检查，未执行。无全量test/build/CI。
+
+本轮模型/评审/修正合计新增 **58 requests /62749 accounted tokens**，reported58、unknown0，含不利正文、无效grader和丢失正文那次的已报告费用。原 M1 `1894/15671701` 字节账本保持；合计观察1952 requests/15734450 accounted tokens，原unknown64/historical carry252不改。货币费用 unavailable，不记零。原quota历史admissions1562与carry332保留，本轮58次均有admission；发送点滚动60秒最大11、完成时近期24h805，遵守每日2000/20RPM，未另加累计终身限额。原费用账本和quota carry是各自authority，不混淆统计。
+
+真实9组模型正文E2E（包含provider发送与等待，不是TTFT/检索latency）B1 median6868ms、范围3573–23472；B2 median6386、2955–18329；B3 median7547、3763–11730。时点不同且小样本，不宣称加速或节省费用；Provider TTFT未观测。private `hm1-evidence-index.json` 索引154个任务证据文件及hash，原失败、原始基线、各配对report与账本保持。产品提交不包含私有连接、费用正文、机器路径或cache。
+
+HM1 本有限组完成，继续工作的授权不被阶段边界或失败暂停。Plan 已更新当前状态，H3/H4/H5 保持未交付。main依赖以lockfile重新安装恢复；只同步本组main/docs提交，保护现有Experience草稿和旧无关工作树；本组工作树/分支及已消费live HANDOFF交付后清理。

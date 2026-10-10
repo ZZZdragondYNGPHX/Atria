@@ -1,6 +1,6 @@
 # Hybrid Cognitive Memory 2.0：唯一召回与证据消费
 
-> D5 正式企划整合完成；**本模块定义目标契约，功能未实施、质量与性能收益未验证**。
+> D5 正式企划整合完成；**HM1（H0–H2）已交付；本文继续管理目标契约，H3–H5 未实施，收益只限实际 Record 证据**。
 > Updated: 2026-10-10。产品决定唯一来源为 [HCM-01–08](../hybrid-cognitive-memory-2-0/decisions.md)，正式采纳路由见 [decisions §9](decisions.md#9-d5--hybrid-cognitive-memory-20-正式采纳)。
 > 本模块唯一管理 Hybrid Memory 的检索、返回证据和旧召回硬切换；[baseline §10](baseline.md#10-d5hybrid-memory-整合时的实际基线) 管理源码事实，[delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖) 管理交付依赖。研究中的技术架构与 H0–H5 建议是输入，不构成另一份正式实施权威。
 
@@ -29,7 +29,7 @@ Episode、Semantic Fact、Perspective / Belief、Social / Commitment、Affective
 | Native Game：`experience/llm/runtime.js` → `createMemoryRecallBridge` → Memory API | 原 Turn Context、Narrative Contract / Orchestrator；Session / Branch / Revision 与正式 World outcome | 保留现有 turn currentness，增加请求用途与 Actor audience；旁白较宽视图不能传给 NPC 工具 |
 | Native Package Turn：`play-generation.js` → `recallNativePackageTurnMemory` → 原 Context Compiler | Information memory grant、可见 Timeline sourceMessageIds、exact Package / Session / Branch / Revision | 将已有 grant / 来源收缩前移至检索候选域，同时保留返回与编译时复验；只在最后删引用不足以证明正文合法 |
 
-当前三条路径并不具有相同的检索契约；H1 必须分别验证实际调用和输出消费，不以一个共享函数单测宣布三条链路完成。
+HM1 已统一三条路径并分别验证实际调用与消费，原 anchor / Context authority 保留；具体结果见同一 Record，不以共享函数单测替代消费证据。
 Project 只沿原 Task / Evidence / Context consumer 读取与任务有关的合法历史，不复制 NPC 心理或娱乐关系系统；共用 source / budget / Eval 语义不意味着已接入同一 RP pipeline。
 
 ## 3. 请求、检索与证据协议
@@ -63,7 +63,7 @@ Project 只沿原 Task / Evidence / Context consumer 读取与任务有关的合
 
 ## 4. 旧 LLM/RAG 召回的硬切换
 
-HCM-07 已批准方向；**本次只定义 H1 后续实施范围，没有删除代码、设置或用户数据**。H0 必须按届时 HEAD 列出符号、全部消费者及持久命名空间，H1 按清单执行。
+HCM-07 的硬切换已在 H1 实施；下表保持范围权威，实际删除、保留与重建证据见同一 Record。H0 保存切换前真实基线，不回写成 H1/H2 算法。
 
 ### 4.1 删除与保留清单
 
@@ -122,10 +122,10 @@ Memory 只定义待复用投影，proof / invalidation 的完整规则沿 [execu
 
 ## 8. 验证出口与未完成项
 
-复用现有 Evidence / Eval，在同版本、输入、权限、预算和模型下区分 source / authority、retrieval usefulness、正文 Enacting 与成本。R6-T01–T15、B0–B6 消融及其**未运行状态**唯一保留在 [检索研究 §8](../hybrid-cognitive-memory-2-0/retrieval-design.md#8-必须做的评测评价检索也评价叙事消费)；所属交付组的退出见 [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖)。
+复用现有 Evidence / Eval，在同版本、输入、权限、预算和模型下区分 source / authority、retrieval usefulness、正文 Enacting 与成本。R6-T01–T15、B0–B6 消融设计唯一保留在 [检索研究 §8](../hybrid-cognitive-memory-2-0/retrieval-design.md#8-必须做的评测评价检索也评价叙事消费)；所属交付组的退出见 [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖)。
 
 先验确定性反例验证 source / Actor / 时间 / Branch / Variant、race、delete / restore 和无权限失败；再评中文指代、老承诺、合法多跳 / 冲突与无证据拒答；独立长篇 RP 验证角色声音、玩家自主权、自然应用 / 新鲜正文。检索 Recall@K 提高、shared schema 或 fake provider 通过都不替代正文收益。
 
-本轮没有运行产品测试、模型、索引基准或浏览器实验。唯一召回硬切换、端到端 Actor eligibility、增强中文 query / packing、选择性 PPR / LLM、delta / cache、完整 cognition / forgetting / narrative policy 消费均未交付。参数、物理 schema、支持矩阵、质量阈值和性能 SLO 在各有限工作包以实际证据冻结；不得宣称长篇质量提高、降低费用或缓存已加速。
+HM1 已交付唯一召回、source/Information 前置合法域、中文 query seeds/RRF 和完整 Context source groups；无派生 ledger 的合法 Native Timeline 可只读重建。普通回合没有固定附加召回 LLM。实际 B0–B3、安全反例、三路径消费、浏览器、主模型正文与费用见 [Record 最新 HM1 节](../../../records/refactor/agent-intelligence-runtime.md#hm1--h2-中文种子完整来源组与正文配对)。主模型九组六维总分不低于 B1，个例不足和长篇无依据当前回忆的输出保留并触发一次评测内有界修正；不把检索过滤称为自由文本绝对保证。选择性 PPR/LLM、delta/cache、完整 cognition/forgetting/narrative policy 尚未交付；真实 Embedding、独立人工偏好、500轮持续正文及性能/费用节省仍未验证。
 
 M1 的 S01–S10 已有工程结果、主模型准入、独立验收缺口及不利观察继续以 [m1-acceptance](m1-acceptance.md) 和 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 为准。本模块不变更它们，不把新 Memory 能力变为当前 M1 的隐藏前置。

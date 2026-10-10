@@ -139,6 +139,8 @@ Expression 应接入这些真实输出路径。语音、Avatar 与远程 Agent �
 
 ## 10. D5：Hybrid Memory 整合时的实际基线
 
+> 本节保持 D5 inspected HEAD 的历史事实；HM1 后最新 main `3ee1332ef` 已硬切换，当前实际能力、删除与验证见 [Record 最新 HM1 节](../../../records/refactor/agent-intelligence-runtime.md#hm1--h2-中文种子完整来源组与正文配对)。旧模式与待测描述不能作为当前源码事实。
+
 ### 10.1 实际 Git与 M1边界
 
 2026-10-10 拉取远端并核对本地 refs / 工作树：

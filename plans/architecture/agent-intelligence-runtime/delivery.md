@@ -3,7 +3,7 @@
 > M1 范围已冻结；S01–S09 与 S10 工程交付完成。S06 真实比较仍 ineligible；M1 的独立真实案例改善与集成前置条件待验收。后续阶段未进入。
 > D2 保留 S01–S34，新增 M8 的 G01–G06；不重编号已有阶段。阶段数服务于可独立审阅与验证。
 > D4 将 Execution Reuse / Cache Locality / Adaptive Invocation 的 A–F 逻辑顺序映射既有阶段与后续研究池，不新增正式阶段或扩张 M1。
-> D5 将 HCM-01–08 纳入正式架构；H0–H5 是三个有限交付组的工作包（§8.2），全部未实施，不增列 S/G 或改写 M1 结果。
+> D5 将 HCM-01–08 纳入正式架构；H0–H5 是三个有限交付组的工作包（§8.2），HM1 已完成，HM2/HM3 未实施，不增列 S/G 或改写 M1 结果。
 
 ## 1. 建议的交付组
 
@@ -190,7 +190,7 @@ A → B → C → D → E → F 是能力依赖与建议演进顺序，不是六
 
 测试入口见 [baseline §10.4](baseline.md#104-验证入口与证据边界)，R6-T01–T15 与 B0–B6 定义只保留在 [研究 §8](../hybrid-cognitive-memory-2-0/retrieval-design.md#8-必须做的评测评价检索也评价叙事消费)。各包只跑受影响 source / Context / Information / Memory / Simulation / Eval 测试；实施 UI 改动才做相关浏览器检查。不要求当前文档整合运行这些测试或全量构建。
 
-**截至 D5：H0–H5 / HM1–HM3 全部未交付。** 本次源码静态核对不是 H0 全套基准验收；R6 场景、算法消融、长篇质量、费用 / latency / cache 收益均待实测。M1 原工程 tests、primary-only gate、失败 / invalid / unknown 与密封独立材料不因本分组而变更。
+**2026-10-10 实际交付：HM1 / H0–H2 已集成 main `3ee1332ef`；HM2/HM3 未交付。** H0 原样冻结八样本/519来源，原生 fixture、隔离存储与 loopback 检索完成 B0；H1 硬切换及合法域前置，H2 中文种子/RRF/完整来源组和原 Context 消费完成。B1–B3 检索及主模型九组正文配对有实际证据；总体六维不低于 B1，不利个例与长篇一次触发修正均保留。只作为有限主模型工程观察，不声称自由文本绝对保证、真实 Embedding、500轮持续正文或 latency/cache/费用节省。详细证据、费用与最小验证唯一见 [Record 最新 HM1 节](../../../records/refactor/agent-intelligence-runtime.md#hm1--h2-中文种子完整来源组与正文配对)。M1 原工程 tests、primary-only gate、失败 / invalid / unknown 与密封独立材料不因本分组而变更。
 
 ## 9. 后续研究池
 
@@ -208,7 +208,7 @@ A → B → C → D → E → F 是能力依赖与建议演进顺序，不是六
 
 通用执行与交付流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 按用户明确确认，M1 全部阶段完成后集成 / 验证 main 并清理该组产品分支，再从最新 main 推进下一组；这是本任务对治理默认最终统一集成的明确安排。
-同一长期 Task ID / Record 持续，live HANDOFF 在任务活跃期间保持，不能因 M1 集成而把远期阶段标为完成。
+同一长期 Task ID / Record 持续；HANDOFF 生命周期以 Governance §7 为准，有限组完成不把远期阶段标为完成。
 
 ## 11. 最小阶段阅读集合
 
