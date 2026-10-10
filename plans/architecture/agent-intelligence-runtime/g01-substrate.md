@@ -65,6 +65,18 @@ source `304d0d199` 已push；16新distinct/15受影响旧checks通过（细项�
 
 source `1ccc6194a` 已push，13新distinct/4受影响旧checks通过（日志见Record）。Windows大小写alias曾实际返回200/重复扫描，before FAIL；physical permit key与multi路径身份统一Windows case folding、按该身份排序，after PASS。返回前在CPU成本settle之后再原scope重验；若此时取消/Task变化，实际计算completed与已报告usage仍保持，但拒绝返回结果，不能把completed成本字段解释成consumer接受成功。读取permit不要求readonly写权限，旧unscoped readonly读取通过；有预算/原scope的写账仍遵守原authority。未开启query-by-vector/list等所有其它read的预算，也未证明CPU时长硬cap、任意跨进程writer或网络投递的跨域原子性。
 
+## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
+
+完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
+
+完整原生thinking/redacted blocks/signature与Gemini parts/thoughtSignature保留原数组/键序，仅存原private Runtime；count/render只读恢复，原charge前重验私有lease/存储，send再重验并单次消费，实际reset在额度准入后。合法final response也持久化；public Snapshot/Task/portable资源仍无opaque，restart仅原StorageEngine冷恢复，不因新Host/请求ID重建预算。共享通用store/Host的配置ABA、取消/结算清理和未准入budget拒绝边界保持；只重跑实际受影响的协议/消费者。
+
+定向检查实际Host→loopback两brand的FS/SQLite存储/独立Node恢复、至少原Studio cold public-history消费、未verified与Secret期间删除前HTTP0/无新model attempt，以及tool/credential/private状态完整性。Anthropic仅reported input/output、无total时保持unknown上界，不造input+output总计或金额；Gemini reported total原样settle。零新增外部调用/真实质量改判，其他Session Task、安全fork/compaction、后台成本和G06/H5前置仍继续。
+
+source `d0f0bfeed` 已push，30新distinct/20受影响旧checks通过（Record维护日志与计数）。两brand的FS/SQLite实际Host/独立Node恢复与Studio public-history/有限adaptive reset通过；只在fixture提供verified能力，真实路径不升级。旧none/active的direct adapter count/render仍同步兼容，durable新路径返回Promise，由原GenerationService await；旧native stream/private replay/Studio active检查通过，未因异步假设改写不相关旧fixture。
+
+Private store内部doc codec升级v2：仅opaque content以`contentWire`有序JSON字符串持久化，解码回原数组供lowering；完整doc仍按原容量/TTL/integrity/authority校验，通用resource/engine serializer未改。两项本地归一化JSON codec模拟此前真实改写键序，before FAIL/after PASS；不是执行PG/MySQL或真实服务签名验收。v1 object-only checkpoint不能证明原始顺序，恢复时失效；task发送前拒绝，adaptive仅原保存public observation projection reset并记录opaque loss，不宣称无损迁移。普通public handle schema继续v1，无opaque portable/domain字段。其他Session Task/fork/compaction与后台成本、G06/H5前置仍继续，外部API0/main不变。
+
 ## G02 编译绑定 checkpoint
 
 source `37273d4ca`：原 canonical JSON serializer 统一资源 hash、HTTP token count 与发送 bytes；保留数组顺序和 raw instruction。PromptCompiler 原 target / stage layout 不改优先级，已有 typed parameters 分别控制 behavior / identity / expression / narration。compilation 增加稳定资源/segment identity、exact ref、内容指纹、volatility 与仅候选 cacheability；不是 Provider cache grant。

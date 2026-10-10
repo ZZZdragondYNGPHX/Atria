@@ -130,6 +130,8 @@ Restore 只可选择该 revision / variant 可达且仍兼容的 checkpoint，�
 
 ### 7.4 快照、存储与边界
 
+最新有限消费者 source `d0f0bfeed`：原Responses/Anthropic/Gemini + Studio Project Task task/adaptive的private存储、冷恢复与ordered payload codec在本地通过；实际支持矩阵、v1 checkpoint失效/获准reset损失与codec契约只在[G01 Native Task组](g01-substrate.md#已交付有限-g04原-native-anthropicgemini-的-studio-task-checkpoint)维护。synthetic通过不发布真实路径verified状态，Session Task/fork/compaction与真实gateway/质量证据继续。
+
 发送前的 Effective Execution Plan / Snapshot 固定 requested policy、实际拟采用范围、来源 checkpoint / lineage、路径与 binding 证据、兼容决定，以及 continue / fork / reset / discard 原因。响应 ExecutionObservation 追加实际捕获 / 保留 / 重置 / 丢失 / 不兼容 / unknown 结果及 fallback loss，沿 attempt identity 关联；不得事后改写发出前 snapshot，也不能用 API 成功推断旧状态已被使用。
 
 共享 Experience evidence 只保存获准的 handle 标识、决定、损失原因与 usage 完整性；opaque payload 留在受权限和容量控制的 Runtime checkpoint，经既有 StorageEngine / recovery 路径持久化。Checkpoint 与可导出学习轨迹分开，不复制进 World / Session domain state、Memory、角色卡、World Book、Package 或 Experience 候选；Package / 脚本不能任意读写。
