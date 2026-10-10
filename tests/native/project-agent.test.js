@@ -12,6 +12,11 @@ import {
     createNativeId,
 } from '../../src/native/index.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
+import { createServer } from 'node:http';
+import { seedGenerationProfiles } from './helpers/generation-fixture.js';
+import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
+import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
+import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
 
 function projectSource(overrides = {}) {
     const projectId = overrides.projectId || createNativeId('project');
@@ -95,6 +100,86 @@ async function plannedTask(agent, handle, source, baseRevision, options = {}) {
 }
 
 describe('A8 Project Agent authority', () => {
+    test.each(['reported', 'rejected_body', 'secret_echo', 'partial', 'tokens_exhausted', 'incomplete_native_stream', 'cancelled'])('G05 preserves direct numeric usage on %s without storing rejected content', async kind => {
+        const h = await makeTempFsEngine(); let seen = 0; let notifySend;
+        const sent = new Promise(resolve => { notifySend = resolve; });
+        const server = createServer(async (req, res) => {
+            for await (const chunk of req) void chunk;
+            if (kind === 'cancelled') { seen++; notifySend(); return; }
+            if (kind === 'incomplete_native_stream') {
+                seen++; res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                res.end([{ type: 'message_start', message: { usage: { input_tokens: 12 } } },
+                    { type: 'message_delta', usage: { output_tokens: 8 }, delta: { stop_reason: 'end_turn' } }]
+                    .map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''));
+                return;
+            }
+            seen++; res.writeHead(200, { 'Content-Type': 'application/json' });
+            const usage = { prompt_tokens: 12, completion_tokens: 8, ...(kind === 'partial' ? {} : { total_tokens: 20 }) };
+            res.end(JSON.stringify({ choices: kind === 'rejected_body' ? [] : [{ message: { role: 'assistant', content: kind === 'secret_echo' ? 'test-credential' : 'Current result.' } }], usage }));
+        });
+        await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+        try {
+            const { studio, agent } = makeServices(h); const source = projectSource();
+            const created = await studio.createProject(h.handle, source);
+            const task = await plannedTask(agent, h.handle, source, created.revision.revision);
+            const format = kind === 'incomplete_native_stream' ? 'anthropic' : 'openai-compatible';
+            const seeded = await seedGenerationProfiles({ ...h, format, roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/chat/completions` });
+            await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+                allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: kind === 'tokens_exhausted' ? 1 : 32000 } } });
+            const host = new NativeGenerationHost({ ...seeded, studio, agent, providers: { ['provider.' + format]: format === 'anthropic' ? createNativeMessagesProvider({ format }) : createHttpGenerationProvider() },
+                secretPort: { resolveSecret: async () => 'test-credential' } });
+            const input = { projectId: source.project.projectId, revision: created.revision.revision, taskId: task.taskId, role: 'studio', requestId: 'usage-1', messages: [{ role: 'user', content: 'Use current task evidence.' }] };
+            await host.execute(h.handle, input, undefined, undefined, { preview: true });
+            expect((await agent.getTask(h.handle, input.projectId, task.taskId)).compute).toBeUndefined(); expect(seen).toBe(0);
+            const controller = new AbortController();
+            const run = host.execute(h.handle, input, controller.signal);
+            if (kind === 'cancelled') {
+                const rejection = expect(run).rejects.toMatchObject({ code: 'generation_cancelled' });
+                await sent; controller.abort(); await rejection;
+            }
+            else if (kind === 'tokens_exhausted') await expect(run).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            else if (['rejected_body', 'secret_echo', 'incomplete_native_stream'].includes(kind)) await expect(run).rejects.toHaveProperty('code'); else await run;
+            const current = await agent.getTask(h.handle, input.projectId, task.taskId);
+            if (kind === 'tokens_exhausted') { expect(current.compute.attempts).toHaveLength(0); expect(seen).toBe(0); return; }
+            expect(current.compute.attempts).toHaveLength(1); expect(seen).toBe(1);
+            if (kind === 'cancelled') { expect(current.compute.attempts[0]).toMatchObject({ status: 'unknown', usage: null }); return; }
+            expect(current.compute.attempts[0]).toMatchObject({ status: ['partial', 'incomplete_native_stream'].includes(kind) ? 'unknown' : 'settled',
+                usage: { inputTokens: 12, outputTokens: 8, totalTokens: ['partial', 'incomplete_native_stream'].includes(kind) ? null : 20 } });
+            expect(JSON.stringify(current.compute)).not.toContain('test-credential');
+        } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); }
+    });
+    test('G05 concurrent actual Host sends share durable Task limits; missing usage and reopening never refund', async () => {
+        const h = await makeTempFsEngine(); let seen = 0;
+        const server = createServer(async (req, res) => {
+            for await (const chunk of req) void chunk;
+            seen++; res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Current result.' } }] }));
+        });
+        await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+        try {
+            const { studio, agent } = makeServices(h); const source = projectSource();
+            const created = await studio.createProject(h.handle, source);
+            const task = await plannedTask(agent, h.handle, source, created.revision.revision);
+            const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], endpoint: `http://127.0.0.1:${server.address().port}/chat/completions` });
+            await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+                allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 1, maxTokens: 16000 } } });
+            const host = new NativeGenerationHost({ ...seeded, studio, agent, providers: { 'provider.openai-compatible': createHttpGenerationProvider() },
+                secretPort: { resolveSecret: async () => 'test-credential' } });
+            const input = { projectId: source.project.projectId, revision: created.revision.revision, taskId: task.taskId, role: 'studio', messages: [{ role: 'user', content: 'Use current task evidence.' }] };
+            const results = await Promise.allSettled([host.execute(h.handle, { ...input, requestId: 'concurrent-1' }), host.execute(h.handle, { ...input, requestId: 'concurrent-2' })]);
+            expect(results.filter(row => row.status === 'fulfilled')).toHaveLength(1);
+            expect(results.find(row => row.status === 'rejected').reason).toMatchObject({ code: 'native_generation_budget_exhausted' });
+            expect(seen).toBe(1);
+            const restored = new ProjectAgentService({ studio });
+            const current = await restored.getTask(h.handle, input.projectId, task.taskId);
+            expect(current.compute.attempts).toHaveLength(1);
+            expect(current.compute.attempts[0]).toMatchObject({ status: 'unknown', usage: null });
+            expect(current.compute.attempts[0].estimatedTokens).toBeGreaterThan(512);
+            host.agent = restored;
+            await expect(host.execute(h.handle, { ...input, requestId: 'after-reopen' })).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            expect(seen).toBe(1);
+        } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); }
+    });
     test('G03 plan reuse copies only current exact intent structure and survives task restore without copying operations or receipts', async () => {
         const h = await makeTempFsEngine();
         try {

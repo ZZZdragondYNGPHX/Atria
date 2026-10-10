@@ -9,6 +9,7 @@ import { buildAuthorityObservation } from '../authority-transaction.js';
 import { createNativeId, isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
+import { assertExecutionEvidenceCurrent } from '../model-prompt-runtime/execution-evidence.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
@@ -808,11 +809,20 @@ export class NativeGenerationHost {
             providerFor: (id, resolved) => {
                 const provider = resolver.provider(id);
                 let prepared;
-                return { ...provider, renderRequest: request => { prepared = request; return provider.renderRequest(request); }, send: async (rendered, boundary) => {
+                let pendingCharge;
+                const settleAttempt = async usage => {
+                    if (!pendingCharge) return;
+                    const { receipt, attemptId } = pendingCharge;
+                    if (input.sessionId) await this.sessionCore.runs.settleCompute(handle, input.sessionId, receipt.operation, attemptId, usage);
+                    else await this.agent.settleGeneration(handle, input.projectId, input.taskId, attemptId, usage);
+                    pendingCharge = null;
+                };
+                return { ...provider, settleAttempt, renderRequest: request => { prepared = request; return provider.renderRequest(request); }, send: async (rendered, boundary) => {
                     // Role-host retries stay inside this route's send/timeout boundary.
                     // Only after they are exhausted may Core resolve a complete fallback.
                     for (let retry = 0; ; retry++) {
                         checkCancellation(boundary.signal);
+                        assertExecutionEvidenceCurrent(resolved, Date.now());
                         // Private native request leases are single-send. A retry lowers
                         // the same frozen snapshot again and rechecks its current envelope.
                         if (retry) rendered = await provider.renderRequest(prepared);
@@ -822,13 +832,24 @@ export class NativeGenerationHost {
                         const observedAttempt = capture?.nextAttempt(input.requestId) ?? attempts.length;
                         const attemptId = input.requestId + ':' + observedAttempt;
                         try {
+                            const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
+                            const compute = limits ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
+                                targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
+                            let receipt;
                             if (budget) {
                                 const context = lanePlan.budgetContext;
-                                try { await this.sessionCore.runs.charge(handle, context.snapshot, { anchor: context.anchor, role: input.role, background: context.background === true }, budget); } catch (error) {
+                                try { receipt = await this.sessionCore.runs.charge(handle, context.snapshot, { anchor: context.anchor, role: input.role, background: context.background === true, ...(compute ? { compute } : {}) }, budget); } catch (error) {
                                     if (['native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied'].includes(error.code)) throw new GenerationError(error.code);
                                     throw error;
                                 }
+                            } else if (compute && input.sessionId) {
+                                receipt = await this.sessionCore.runs.chargeCompute(handle, snapshot,
+                                    { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, compute.attempt);
+                            } else if (compute) {
+                                if (!input.taskId || !this.agent) throw new GenerationError('native_generation_budget_lane_denied');
+                                receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt);
                             }
+                            if (compute) pendingCharge = { receipt, attemptId: compute.attempt.attemptId };
                             await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
                                 requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
                                 agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
@@ -837,8 +858,10 @@ export class NativeGenerationHost {
                             capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
                             return response;
                         } catch (error) {
+                            await settleAttempt(null);
                             attempt.status = 'failed';
                             capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
+                            if (error.code === 'native_generation_budget_exhausted') throw new GenerationError(error.code);
                             if (!(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                         }
                     }

@@ -8,6 +8,7 @@ import { AgentExperienceRepository } from './experience-repository.js';
 import { fields, text } from './contracts.js';
 import { assertProjectAgentConversation } from '../../../public/shared/project-agent-conversation.js';
 import { assertProjectStrategyVersions } from './project-strategy.js';
+import { assertComputeLedger } from '../../../public/shared/native-compute-budget.js';
 
 const key = (handle, projectId, taskId) => ({ kind: NATIVE_RESOURCE_KINDS.projectAgentTask, handle, projectId, taskId });
 const STATES = new Set(['planning', 'planned', 'working', 'evaluating', 'repair', 'blocked', 'review', 'committing', 'completed', 'conflict', 'taken_over', 'cancelled']);
@@ -15,7 +16,8 @@ const TASK_FIELDS = ['schemaVersion', 'sequence', 'taskId', 'projectId', 'intent
 
 export function assertProjectTask(value) {
     const task = cloneNativeDocument(value);
-    fields(task, [...TASK_FIELDS, ...(Object.hasOwn(task, 'strategyVersions') ? ['strategyVersions'] : [])], 'Project Agent task');
+    fields(task, [...TASK_FIELDS, ...(Object.hasOwn(task, 'compute') ? ['compute'] : []), ...(Object.hasOwn(task, 'strategyVersions') ? ['strategyVersions'] : [])], 'Project Agent task');
+    if (task.compute !== undefined) assertComputeLedger(task.compute);
     if (TASK_FIELDS.some(field => task[field] === undefined) || task.schemaVersion !== 1 || !STATES.has(task.status)) throw new TypeError('Invalid Project Agent task schema');
     if (!/^agenttask_[a-z0-9]+$/.test(task.taskId)) throw new TypeError('Invalid Project Agent task identity');
     assertNativeId(task.projectId, 'project');

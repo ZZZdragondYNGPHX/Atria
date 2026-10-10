@@ -47,6 +47,24 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
     async function command(action) { base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: 'cmd-' + ++serial, action }, { expectedRevisionId: base.revision.revisionId }); }
     const progress = effectiveTurns => command({ kind: 'app.command', domainId: 'progress', commandId: 'advance', recordId: 'main', args: { effectiveTurns } });
     const input = () => ({ sessionId: base.session.sessionId, revisionId: base.revision.revisionId, slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } });
+    test('G05 actual failed background sends keep one shared charge each and preserve compute bounds across reopen/restore', async () => {
+        await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
+            allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: 32000 } } });
+        const saved = await svc.saveSystem.manualSave(h.handle, base.session.sessionId);
+        await expect(host.executeLifecycle(h.handle, input())).rejects.toThrow();
+        const before = await svc.core.runs.status(h.handle, base.session.sessionId);
+        const op = Object.values(before.operations).find(row => row.compute);
+        expect(op.total).toBe(2); expect(op.compute.attempts).toHaveLength(2);
+        expect(op.compute.attempts.every(row => row.status === 'unknown' && row.usage === null && row.estimatedTokens > 128)).toBe(true);
+        expect(new Set(op.compute.attempts.map(row => row.attemptId)).size).toBe(2);
+        const reopened = new NativeGenerationHost({ ...host, sessionCore: services(h).core });
+        await expect(reopened.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        base = await svc.core.restoreSavePoint(h.handle, base.session.sessionId, saved.saveId, { expectedRevisionId: base.revision.revisionId });
+        await expect(reopened.executeLifecycle(h.handle, input())).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(seen).toHaveLength(2);
+        const after = await svc.core.runs.status(h.handle, base.session.sessionId);
+        expect(Object.values(after.operations).find(row => row.compute).compute).toEqual(op.compute);
+    });
     test('queued batch retries spend two sends; reopen and ordinary restore do not refund', async () => {
         const saved = await svc.saveSystem.manualSave(h.handle, base.session.sessionId);
         const before = base;

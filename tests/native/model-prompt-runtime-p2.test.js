@@ -70,7 +70,14 @@ describe('P2 Generation Core with P1 filesystem authorities', () => {
         await f.persistence.saveRuntimeRoute(f.h.handle, f.routes[1]);
         const switched = await f.service.execute(f.request(0, { fallbackMode: 'automatic' }));
         const direct = await f.service.execute(f.request(1));
-        expect(switched).toEqual(direct);
+        // Request-time failure authority differs, while the selected target's
+        // prompt/config/body remains identical to direct execution.
+        expect(switched.snapshot.diagnostics.failurePlan).toMatchObject({ mode: 'automatic', remainingFallbackAttempts: 0 });
+        expect(direct.snapshot.diagnostics.failurePlan).toMatchObject({ mode: 'disabled', remainingFallbackAttempts: 1 });
+        const withoutFailurePlan = value => {
+            const copy = structuredClone(value); delete copy.snapshot.diagnostics.failurePlan; return copy;
+        };
+        expect(withoutFailurePlan(switched)).toEqual(withoutFailurePlan(direct));
         expect(f.sends.mock.calls[0][0].body.temperature).toBe(0.2);
         expect(f.sends.mock.calls[1][0].body.temperature).toBe(0.8);
         expect(f.sends.mock.calls[1][0]).toEqual(f.sends.mock.calls[2][0]);

@@ -166,6 +166,8 @@ export class GenerationService {
         const abort = () => controller.abort();
         signal?.addEventListener('abort', abort, { once: true });
         const timer = setTimeout(abort, resolved.route.policy.timeoutMs);
+        let settled = false;
+        let observedUsage;
         try {
             let raw;
             try {
@@ -190,6 +192,7 @@ export class GenerationService {
             try {
                 const parsed = await cancellable(() => provider.parseStream(raw, {
                     signal: controller.signal,
+                    onUsage: usage => { observedUsage = usage; },
                     onChunk: onChunk && (chunk => {
                         if (containsSecret(chunk)) throw new GenerationError('generation_response_contains_secret');
                         checkCancellation(controller.signal);
@@ -203,7 +206,9 @@ export class GenerationService {
                         publish(streamed.slice(0, streamed.length - held));
                     }),
                 }), controller.signal);
+                observedUsage = provider.readUsage?.(parsed);
                 response = await cancellable(() => provider.normalizeResponse(parsed), controller.signal);
+                observedUsage = response.usage ?? observedUsage;
             } catch {
                 checkCancellation(signal);
                 if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
@@ -218,11 +223,17 @@ export class GenerationService {
                 throw new GenerationError('generation_response_contains_secret');
             }
             if (onChunk && typeof response.text === 'string') publish(response.text);
+            await provider.settleAttempt?.(response.usage);
+            settled = true;
             return response;
         } finally {
-            secret = undefined;
-            clearTimeout(timer);
-            signal?.removeEventListener('abort', abort);
+            try {
+                if (!settled) await provider.settleAttempt?.(observedUsage ?? null);
+            } finally {
+                secret = undefined;
+                clearTimeout(timer);
+                signal?.removeEventListener('abort', abort);
+            }
         }
     }
 }

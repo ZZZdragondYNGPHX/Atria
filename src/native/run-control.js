@@ -2,6 +2,7 @@ import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { getNativeDocument, putMutable, hashNativeDocument } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
+import { chargeComputeAttempt, settleComputeAttempt } from '../../public/shared/native-compute-budget.js';
 
 export const runFailure = code => Object.assign(new TypeError(code), { code });
 const key = (handle, sessionId) => ({ kind: K.runControl, handle, sessionId });
@@ -147,10 +148,32 @@ export class RunControl {
                 entry.count++; value.background[window] = entry;
                 for (const [oldWindow, item] of Object.entries(value.background)) if (item.period < period) delete value.background[oldWindow];
             }
+            const compute = request.compute ? chargeComputeAttempt(op, request.compute.limits, request.compute.attempt) : null;
             op.attempts[lane] = (op.attempts[lane] ?? 0) + 1; op.total++;
             // Persist before send. A process interruption is an unknown send,
             // not a refund or a new operation identity.
-            return { operation: id, attempt: op.total };
+            return { operation: id, attempt: op.total, ...(compute ? { compute } : {}) };
+        });
+    }
+
+    async chargeCompute(handle, snapshot, anchor, limits, attempt) {
+        return this.update(handle, snapshot.session.sessionId, value => {
+            if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            const id = hashNativeDocument({ lane: 'turn', anchor });
+            let op = value.operations[id];
+            if (!op) {
+                if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
+                op = value.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
+            }
+            return { operation: id, compute: chargeComputeAttempt(op, limits, attempt) };
+        });
+    }
+
+    async settleCompute(handle, sessionId, operation, attemptId, usage) {
+        return this.update(handle, sessionId, value => {
+            const op = value.operations[operation];
+            if (!op) throw runFailure('native_generation_attempt_conflict');
+            return settleComputeAttempt(op, attemptId, usage);
         });
     }
 }

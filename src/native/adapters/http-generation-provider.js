@@ -133,7 +133,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             }
             return response;
         },
-        async parseStream(response, { onChunk } = {}) {
+        async parseStream(response, { onChunk, onUsage } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return response.json();
             let pending = ''; let text = ''; const calls = new Map(); let usage;
             const decoder = new TextDecoder();
@@ -143,7 +143,10 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 if (!value || value === '[DONE]') return;
                 const chunk = JSON.parse(value);
                 if (chunk.error) throw new GenerationError('generation_response_invalid');
-                if (chunk.usage) usage = chunk.usage;
+                if (chunk.usage) {
+                    usage = chunk.usage;
+                    onUsage?.(observedGenerationUsage(usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }));
+                }
                 const delta = chunk.choices?.[0]?.delta;
                 const content = messages ? (delta?.content || '') : (chunk.choices?.[0]?.text || '');
                 text += content;
@@ -165,6 +168,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             consume(pending + decoder.decode());
             return { choices: [{ text, message: { content: text, tool_calls: [...calls.values()] } }], ...(usage ? { usage } : {}) };
         },
+        readUsage(raw) { return observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }); },
         normalizeResponse(raw) {
             const choice = raw?.choices?.[0];
             if (!choice || (messages && !choice.message)) throw new GenerationError('generation_response_invalid');

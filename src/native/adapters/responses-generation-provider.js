@@ -90,13 +90,14 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
             if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
             return { response, binding: request.binding, sequence: request.sequence };
         },
-        async parseStream({ response, binding, sequence }, { onChunk } = {}) {
+        async parseStream({ response, binding, sequence }, { onChunk, onUsage } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence };
             let pending = ''; let bytesRead = 0; let text = ''; let completed; const done = new Map();
             const decoder = new TextDecoder();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
                 const value = JSON.parse(line.slice(5));
+                if (value.response?.usage) onUsage?.(observedGenerationUsage(value.response.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' }));
                 if (completed || ['error', 'response.failed', 'response.incomplete'].includes(value.type)) throw new GenerationError('generation_response_invalid');
                 if (value.type === 'response.output_text.delta') { text += value.delta; onChunk?.({ text, delta: value.delta }); }
                 if (value.type === 'response.output_item.done') { if (done.has(value.output_index)) throw new GenerationError('generation_response_invalid'); done.set(value.output_index, value.item); }
@@ -111,6 +112,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch } = {}) {
                 || completed.output.length !== done.size || completed.output.some((item, index) => serializeNativeDocument(item) !== serializeNativeDocument(done.get(index)))) throw new GenerationError('generation_response_invalid');
             return { value: completed, binding, sequence };
         },
+        readUsage({ value }) { return observedGenerationUsage(value?.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' }); },
         normalizeResponse({ value, binding, sequence }) {
             if (value?.status !== 'completed' || !Array.isArray(value.output) || value.error) throw new GenerationError('generation_response_invalid');
             let text = ''; const toolCalls = [];

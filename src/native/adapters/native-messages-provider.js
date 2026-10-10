@@ -163,7 +163,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
             return { response, binding: request.binding, sequence: request.sequence };
         },
-        async parseStream({ response, binding, sequence }, { onChunk } = {}) {
+        async parseStream({ response, binding, sequence }, { onChunk, onUsage } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence };
             const blocks = []; let pending = ''; let text = ''; let size = 0; let usage; const decoder = new TextDecoder();
             let started = false; let completed = false; let stopReason; let reportedModel;
@@ -176,6 +176,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                 let delta = '';
                 if (anthropic) {
                     if (value.message?.usage || value.usage) usage = { ...usage, ...value.message?.usage, ...value.usage };
+                    if (value.message?.usage || value.usage) onUsage?.(observedGenerationUsage(usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens' }));
                     if (value.type === 'message_start') {
                         if (started) throw new GenerationError('generation_response_invalid');
                         started = true; reportedModel = value.message?.model;
@@ -209,6 +210,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                     }
                 } else {
                     if (value.usageMetadata) usage = value.usageMetadata;
+                    if (value.usageMetadata) onUsage?.(observedGenerationUsage(usage, { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' }));
                     if (value.modelVersion) reportedModel = value.modelVersion;
                     if (value.candidates?.[0]?.finishReason) { stopReason = value.candidates[0].finishReason; completed = stopReason === 'STOP'; }
                     const parts = value.candidates?.[0]?.content?.parts || [];
@@ -224,6 +226,11 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             if (!completed || blocks.filter(Boolean).length !== blocks.length) throw new GenerationError('generation_response_invalid');
             return { value: anthropic ? { content: blocks, stop_reason: stopReason, ...(reportedModel ? { model: reportedModel } : {}), ...(usage ? { usage } : {}) }
                 : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding, sequence };
+        },
+        readUsage({ value }) {
+            return observedGenerationUsage(anthropic ? value?.usage : value?.usageMetadata, anthropic
+                ? { inputTokens: 'input_tokens', outputTokens: 'output_tokens' }
+                : { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' });
         },
         normalizeResponse({ value, binding, sequence }) {
             const content = anthropic ? value?.content : value?.candidates?.[0]?.content?.parts;

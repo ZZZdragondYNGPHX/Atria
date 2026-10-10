@@ -16,6 +16,7 @@ import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
 import { fields as allowedFields } from '../../public/shared/native-values.js';
 import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
+import { chargeComputeAttempt, settleComputeAttempt } from '../../public/shared/native-compute-budget.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
 
@@ -563,6 +564,18 @@ export class ProjectAgentService {
     }
 
     // Internal Generation Host observations. No HTTP endpoint accepts these fields.
+    chargeGeneration(handle, projectId, id, revision, limits, attempt) {
+        return this._operate(handle, projectId, id, async task => {
+            this._ensureDraftMutable(task);
+            if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
+            return chargeComputeAttempt(task, limits, attempt);
+        });
+    }
+
+    settleGeneration(handle, projectId, id, attemptId, usage) {
+        return this._operate(handle, projectId, id, task => settleComputeAttempt(task, attemptId, usage));
+    }
+
     recordGenerationRequest(handle, projectId, id, attemptId, requestId) {
         return this._operate(handle, projectId, id, task => {
             const attempt = task.attempts.find(item => item.attemptId === attemptId && item.kind === 'generation' && item.status === 'started');
@@ -648,6 +661,7 @@ export class ProjectAgentService {
             changeSets: task.changeSets,
             timeline: task.timeline,
             attempts: task.attempts,
+            ...(task.compute ? { compute: task.compute } : {}),
             conversation: task.conversation,
             recovery: task.recovery,
             createdAt: task.createdAt,

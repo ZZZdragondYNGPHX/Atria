@@ -1,5 +1,6 @@
 import { validatePromptParameters } from '../../../public/shared/prompt-parameters.js';
 import { assertNativeId } from '../identity.js';
+import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 
 export const ATRIA_MODEL_PROMPT_SCHEMA_VERSION = 1;
 export const ATRIA_CAPABILITY_STATES = Object.freeze(['supported', 'unsupported', 'unknown']);
@@ -207,7 +208,7 @@ export function assertCapabilityDecision(value, field = 'CapabilityDecision') {
 export function assertExecutionPolicy(value) {
     const field = 'RuntimeRoute.executionPolicy';
     object(value, field);
-    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse'], field);
+    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse', 'computeBudget'], field);
     if (value.schemaVersion !== 1) throw new TypeError(field + '.schemaVersion must be 1');
     if (!Array.isArray(value.allowedModelProfileIds) || !value.allowedModelProfileIds.length || value.allowedModelProfileIds.length > 16) {
         throw new TypeError(field + '.allowedModelProfileIds must contain 1..16 targets');
@@ -221,7 +222,7 @@ export function assertExecutionPolicy(value) {
     }
     return Object.freeze({ schemaVersion: 1, allowedModelProfileIds: freezeArray(targets),
         verifiedRequirements: uniqueStrings(value.verifiedRequirements || [], field + '.verifiedRequirements', { namespacedValues: true }),
-        continuity, reuse });
+        continuity, reuse, ...(value.computeBudget === undefined ? {} : { computeBudget: Object.freeze(assertComputeBudget(value.computeBudget)) }) });
 }
 
 function assertDecisionProvenance(value, field) {
