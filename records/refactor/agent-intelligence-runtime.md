@@ -1934,3 +1934,16 @@ append-only private Document日志：g05-retired-work-before-v1（2真实FAIL）
 append-only private Document：g05-local-list-before-v1（2 FAIL400）、after-v1（2 PASS）；safety-consumer-v1（8 PASS）；old-native-v1（7 PASS）、old-hybrid-v1（4 PASS）；lint-v1五相关product文件独立PASS，source/docs diff PASS。实际cost观察依旧process切片，已完成工作不等于consumer可接受；纯list没有provider usage0或金额推断。原paid/失败/OOM/原始文件与费用保持，本组外部0，M8actual38/direct72982、unknown2/17515 upper/admission fetch0不变。
 
 M8/HM2/HM3未验收，真实G06仍FAIL；delete/purge、其它cache/validation/local inference/后台成本、Session Task/fork/compaction及H5前置按正式依赖继续，无HANDOFF或main集成。
+### G05 — Hybrid派生索引按hash删除的原预算与原子发布
+
+2026-10-11 source `2074ed7b9ef468456276affd8479b132ba8e652d`已push，main3ee1332ef保持。只接已冻结/delete和Hybrid既有deleteByHashes，purge仍本组之外。实际请求与文件都在可重建os.tmpdir()/atria-*-engine-test-* fixture及127.0.0.1服务，没有对用户真实资料执行不可逆删除。Native旧allowlist拒绝新增computeContext，before-v1一项400是合同未支持，不是已证明预算绕过。
+
+复用原insertNativeIndex临时Vectra副本、同physical write permit、原Run operation/Task localWork，新增index_delete类别。hash严格有限数值/10000项，排队前复制冻结、输入项/字节沿原额度；空hash无job，非空hash但index不存在时实际stat/原scope核验可以记completed CPU，仍无建文件/provider。共享indexValues保持原query/list扫描边界，删除拒绝坏/sidecar文件并保留真实bytes。deleteItem在stage执行，原Session/Task锁内最后cancel/readonly/currentness决策到sync atomic replace无await；stage先准备/失败清理，成本不伪装provider token或新清理权限。legacy Number转换只留nonNative分支。
+
+13新distinct PASS：FS/SQLite实际insert/list/delete共享限额、Route移除/account恢复2；可控deleteItem期间cancel/Task变更/Session HEAD推进、partial删除失败与renameSync发布失败注入5；空hash/坏hash输入/missing index不创建与真实观测1；坏JSON/未知sidecar拒绝且保持2；排队hash冻结/取消无准入1；readonly HTTP拒绝前无job1；actual Hybrid current namespace两次检索源码改变后的delta旧hash删除、Context转交、同原7job/4loopback模型发送与源chat/Timeline保持1。spy注入只是工程失败反例，不是实际磁盘事故/进程kill。retired namespace转交仅静态修改与相关旧source guard，未冒称该分支执行了actual HTTP。
+
+9受影响旧distinct PASS：原query候选/向量扫描边界1；两engine insert并发limit/Route/account恢复2；两engine list共享限额2；供给向量非法边界1；原real vector IO1；Hybrid可选vector失败/late source硬拒绝与content-addressed delta2。所有验证仅隔离fixture；没重跑M1/HM1/G06 paid/原OOM/全仓测试或浏览器。
+
+append-only private Document：g05-local-delete-before-v1（1 FAIL400）、after-v1（首项PASS，之后加强为两engine/recovery而不重复计数）；safety-v1（8 PASS）；hybrid-v1（1 PASS）；recovery-old-v1（11 PASS=2加强新+9 old）；queue-readonly-v1（2 PASS）。lint-v1实际FAIL，仅Hybrid多行brace style四错误，其他四product文件检查无错误；仅修格式后lint-v2相关文件PASS，未以git命令遮蔽失败。source/docs diff PASS。实际成本观察process切片/有界输入，不证明CPU硬时长或金额。
+
+所有原baseline/结果/费用/FAIL保持，外部0；M8累计actual38/direct72982、unknown2/17515 upper/admission fetch0不变。M8/HM2/HM3与真实G06仍未验收；purge/其它CPU/cache/local inference/后台、Session Task/fork-compaction与H5前置继续，无HANDOFF或main集成。

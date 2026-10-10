@@ -93,6 +93,14 @@ source `f1a04c041`已push，16新distinct/21受影响旧checks通过。FS/SQLite
 
 source `77820a6d2`已push，10新/加强distinct、11受影响旧checks通过。原list allowlist未支持computeContext，两项before返回400，不是已证明绕过；新scoped枚举复用既有bounded read并以index_list记同一原费用lane。actual Memory current collection list→insert→query与限额1时Embedding前拒绝/合法降级两项通过；retired namespace转发仅静态修改，相关旧source guard检查通过，未宣称该分支已执行真实HTTP。FS/SQLite并发/恢复、空/坏/超界index保持、readonly与settle后cancel/Task拒绝均通过；query供应向量/文本/多集合既有消费者保持。删除/purge及其它CPU/后台/continuity和真实G06依赖仍未完成，外部0。
 
+## 已交付有限 G05：Hybrid 派生索引按hash删除
+
+完成条件先冻结（2026-10-11）：只接原Native `/delete`与Hybrid现有deleteByHashes，沿原index write permit/临时Vectra副本/Run operation或Project Task localWork，不新增owner或源数据writer。index_delete job计冻结hash输入项/字节；1–10000有限数值，空输入无工作。原单文件Native格式及16MiB等扫描边界保持，异常文件不自动覆盖。删除在副本执行，最终原scope+cancel/readonly重验后原子替换；失败/取消不部分发布，准入先于index IO，无Embedding/model usage。
+
+定向出口：已有list/insert/delete共享原job限额，Route移除/冷恢复不补余额；actual Hybrid当前collection delta删除转交已有computeContext。排队/处理取消、Task/Session变化及写失败保留原index/已观察成本，源Timeline/Information/World保持。旧无预算路径兼容；retired namespace仅转发须区分静态与实际覆盖。purge、其它CPU/local inference/background/continuity与真实G06依赖仍继续，本组外部0/main不变。
+
+source `2074ed7b9`已push，13新distinct/9受影响旧checks通过。原computeContext入口before400是未支持合同，不冒称预算绕过。原writer新增delete mode，hash冻结先于physical permit等待；只在临时副本deleteItem，原guard与同步原子replace沿既有insert方式，失败/取消保持原bytes且清理stage。actual Hybrid current-collection delta经过client→Native HTTP/同一job额度删除旧hash，再原Embedding/query重建；源chat/Timeline保持。retired namespace转发仅静态/既有source guard，未知sidecar/坏index拒绝保持。空hash不work，missing index实际stat可记录completed工作但不创建文件；scoped权限/readonly/Route移除与两engine recovery保持。纯Native拒绝无效hash在Number映射前，legacy转换保留；purge与其它依赖仍继续，外部0。
+
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
 完成条件先冻结（2026-10-11）：复用原native-messages-provider、Private envelope/lease、同一个RuntimeCheckpointStore、原Studio Task public conversation与executionFingerprint/配置anchor；不另建store/协议/continuity authority。仅原Native Anthropic/Gemini + Project Task task/adaptive，仍须exact verified task能力，adaptive另须exact verified adaptive能力；只在本地synthetic fixture提供能力，不改变真实路径verified状态。未verified/非Task/missing或编辑历史仍发送前拒绝；同样冻结start/continue/reset原因/公开handle lineage/loss，仅允许原public observation projection的有限adaptive reset。
