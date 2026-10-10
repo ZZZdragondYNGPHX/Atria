@@ -2,6 +2,17 @@
 import { informationContext, informationSourceMessageIds } from '../../../shared/native-information-runtime.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
 import { sourceMessageId, createMemorySupportChecker, captureEpisodes } from './source-provenance.js';
+import { freezeMemoryData, memorySourceSnapshotProof } from './source-lifecycle.js';
+const scopedProofs = new WeakMap();
+const eligibilityProofs = new WeakSet();
+
+export function memoryEligibleSnapshotProof(snapshot) {
+    const proof = scopedProofs.get(snapshot);
+    if (!proof || snapshot.state !== proof.state || snapshot.chat !== proof.chat || snapshot.key !== proof.key || snapshot.eligibility !== proof.eligibility) return null;
+    proof.eligibility.assertCurrent();
+    const identity = memorySourceSnapshotProof(proof.parent);
+    return identity ? { identity, domain: proof.domain } : null;
+}
 
 const denied = () => Object.assign(new Error('Memory source exposure unavailable'), { code: 'memory_exposure_denied' });
 const stale = () => Object.assign(new Error('Memory requester or anchor changed'), { name: 'AbortError' });
@@ -43,11 +54,13 @@ export function resolveMemoryEligibility(context, { requester = { kind: 'narrato
         let live; try { live = read(); } catch { throw stale(); }
         if (live.signature !== initial.signature || JSON.stringify(live.identity) !== JSON.stringify(initial.identity)) throw stale();
     };
-    return Object.freeze({ identity: initial.identity, sourceMessageIds: Object.freeze(initial.ids), assertCurrent,
-        atomicGroups: Object.freeze(initial.groups || []),
+    const eligibility = Object.freeze({ identity: freezeMemoryData(initial.identity), sourceMessageIds: Object.freeze(initial.ids), assertCurrent,
+        atomicGroups: freezeMemoryData(initial.groups || []),
         // Scene identities and aliases are taken from source-backed graph by
         // the query planner; arbitrary caller text is never an authority.
     });
+    eligibilityProofs.add(eligibility);
+    return eligibility;
 }
 
 /** Short-lived legal subgraph; do not mutate or rewrite the original ledger. */
@@ -88,6 +101,9 @@ export function eligibleMemorySnapshot(snapshot, eligibility) {
             ? [[id, { ...relation, supports, resolutions: (relation.resolutions || []).filter(legal), supersededBy: (relation.supersededBy || []).filter(legal) }]] : [];
     }));
     const assertCurrent = () => { snapshot.assertCurrent(); eligibility.assertCurrent(); };
-    return { ...snapshot, state, chat: snapshot.chat.map(message => ids.has(sourceMessageId(message)) ? message : {}),
+    const projected = { ...snapshot, state: freezeMemoryData(state), chat: freezeMemoryData(snapshot.chat.map(message => ids.has(sourceMessageId(message)) ? message : {})),
         eligibility, assertCurrent, recordAccess: async selected => { assertCurrent(); await snapshot.recordAccess?.(selected); assertCurrent(); } };
+    if (eligibilityProofs.has(eligibility)) scopedProofs.set(projected, { parent: snapshot, eligibility, state: projected.state, chat: projected.chat, key: projected.key,
+        domain: JSON.stringify([eligibility.identity, eligibility.sourceMessageIds, eligibility.atomicGroups]) });
+    return projected;
 }

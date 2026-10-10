@@ -7786,7 +7786,7 @@ async function injectMemoryPrompts(context, payload) {
         });
         hybrid.assertCurrent();
         trace = [{ tool: 'hybrid_memory', selected: hybrid.selected, tokens: hybrid.tokenCount,
-            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, invocation: hybrid.invocation, providers: hybrid.providers, diagnostics: hybrid.diagnostics, metrics: hybrid.metrics }];
+            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, invocation: hybrid.invocation, reuse: hybrid.reuse, providers: hybrid.providers, diagnostics: hybrid.diagnostics, metrics: hybrid.metrics }];
     }
 
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');

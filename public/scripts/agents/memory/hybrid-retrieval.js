@@ -9,6 +9,7 @@ import { buildCollectionId } from './vector-index-core.js';
 import { memoryQuerySeeds, memorySemanticHints } from './query-plan.js';
 import { memoryEvidenceGroups, composeMemoryCoverage } from './packing.js';
 import { memoryInvocationDecision } from './invocation-policy.js';
+import { memoryCorpusReuse } from './index-reuse.js';
 
 export const RETRIEVAL_DEFAULTS = Object.freeze({ tokenBudget: 2400, maxDepth: 2, maxEntities: 20,
     maxRelations: 30, topK: 30, maxResults: 20, rrf: 60,
@@ -308,8 +309,8 @@ async function digest(text) {
 /** Content-addressed vectors, isolated by chat and embedding configuration. */
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
     budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
-    sceneText = '', packing = 'coverage', computeContext = null } = {}) {
-    const work = { guardChecks: 0, guardMs: 0, documentsHashed: 0, hashMs: 0, serviceRequests: 0,
+    sceneText = '', packing = 'coverage', computeContext = null, reuseDerived = true } = {}) {
+    const work = { guardChecks: 0, guardMs: 0, documentsHashed: 0, hashReused: 0, hashMs: 0, serviceRequests: 0,
         requestDataBytes: 0, responseDataBytes: 0, embeddingTextsRequested: 0, rerankRequests: 0 };
     const guard = () => {
         const begin = performance.now(); work.guardChecks++;
@@ -330,7 +331,9 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     };
     const started = performance.now();
     guard();
-    const corpus = buildMemoryCorpus(snapshot, at);
+    const reused = reuseDerived ? memoryCorpusReuse(snapshot, at, () => buildMemoryCorpus(snapshot, at))
+        : { corpus: buildMemoryCorpus(snapshot, at), fingerprints: null, decision: { status: 'miss', reason: 'manual_bypass' } };
+    const corpus = reused.corpus;
     const querySeeds = memoryQuerySeeds(query, corpus.entities, sceneText);
     const unavailableGroups = [];
     if (snapshot.eligibility) {
@@ -366,15 +369,37 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             }
             const items = [];
             const hashStarted = performance.now();
+            const profileKey = JSON.stringify(profile);
             for (let start = 0; start < corpus.documents.length; start += 64) {
-                const chunk = await Promise.all(corpus.documents.slice(start, start + 64).map(async (doc, offset) => {
+                const documents = corpus.documents.slice(start, start + 64);
+                const ready = documents.map((doc, offset) => {
+                    const item = reused.fingerprints?.get(doc)?.get(profileKey);
+                    return item ? { ...item, index: start + offset } : null;
+                });
+                if (ready.every(Boolean)) {
+                    work.hashReused += ready.length; items.push(...ready);
+                    continue;
+                }
+                const chunk = await Promise.all(documents.map(async (doc, offset) => {
+                    const memo = reused.fingerprints?.get(doc);
+                    if (memo?.has(profileKey)) {
+                        work.hashReused++;
+                        return { ...memo.get(profileKey), index: start + offset };
+                    }
                     const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
                     work.documentsHashed++;
-                    return { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index: start + offset, metadata: { id: doc.id, fingerprint } };
+                    const item = { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index: start + offset, metadata: { id: doc.id, fingerprint } };
+                    if (reused.fingerprints) {
+                        const next = memo ?? new Map();
+                        if (!next.has(profileKey) && next.size >= 2) next.delete(next.keys().next().value);
+                        next.set(profileKey, Object.freeze({ ...item, metadata: Object.freeze({ ...item.metadata }) })); reused.fingerprints.set(doc, next);
+                    }
+                    return item;
                 }));
                 guard(); items.push(...chunk);
                 if (start + 64 < corpus.documents.length) { await new Promise(resolve => setTimeout(resolve, 0)); guard(); }
             }
+            guard();
             work.hashMs += performance.now() - hashStarted;
             const desired = new Map(items.map(item => [item.hash, item]));
             if (desired.size !== items.length) throw new Error('Memory vector hash collision');
@@ -459,7 +484,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const coverageGaps = result.plan.intent === 'cause' && !selectedDocuments.some(doc =>
         ['causes', 'motivated_by', 'explains'].includes(doc.predicate) || /因为|由于|\bbecause\b/iu.test(doc.text))
         ? [{ intent: 'cause', reason: 'causal_evidence_unknown' }] : [];
-    return { ...composition, plan: result.plan, invocation, diagnostics, sourceMessageIds, evidence,
+    return { ...composition, plan: result.plan, invocation, reuse: reused.decision, diagnostics, sourceMessageIds, evidence,
         producer: 'hybrid-retrieval-v1', coverageGaps, missingGroups: [...(composition.missingGroups || []), ...unavailableGroups],
         metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
             corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, rankingMs, rerankMs, packingMs,

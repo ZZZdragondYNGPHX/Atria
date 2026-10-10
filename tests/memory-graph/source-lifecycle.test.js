@@ -66,7 +66,7 @@ describe('Memory OS production source lifecycle', () => {
         const second = await f.lifecycle.retrievalSnapshot(f.context);
         first.assertCurrent(); second.assertCurrent();
         // Snapshot copies cannot alias the private authority cache.
-        second.state.episodes[ticket.episodeIds[0]].status = 'stale';
+        expect(() => { second.state.episodes[ticket.episodeIds[0]].status = 'stale'; }).toThrow(TypeError);
         first.assertCurrent();
         const original = f.context.chat[1].mes;
         f.context.chat[1].mes = 'At work'; f.lifecycle.observeMutation(f.context, 1);

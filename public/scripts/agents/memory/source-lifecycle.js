@@ -13,6 +13,24 @@ import { reconcileProviders } from './provider-provenance.js';
 
 export const PROVENANCE_NAMESPACE = 'memory_graph__provenance';
 export const NATIVE_PROVENANCE_NAMESPACE = 'atri_memory_graph.provenance';
+const snapshotProofs = new WeakMap();
+const ledgerIdentities = new WeakMap();
+
+export function freezeMemoryData(value) {
+    if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+        for (const child of Object.values(value)) freezeMemoryData(child);
+        Object.freeze(value);
+    }
+    return value;
+}
+/** Process-local authority proof; JSON copies and caller-supplied tokens have no entry. */
+export function memorySourceSnapshotProof(snapshot) {
+    const proof = snapshotProofs.get(snapshot);
+    if (!proof || snapshot.key !== proof.key || snapshot.state !== proof.state || snapshot.chat !== proof.chat) return null;
+    proof.assertCurrent();
+    if (!proof.sameLedger()) return null;
+    return proof.identity;
+}
 
 function isNativeSessionContext(context) {
     return Array.isArray(context?.chat)
@@ -436,7 +454,17 @@ export function createSourceLifecycle({
             cachedVersion = accessReceipt.cacheIdentity;
             assertCurrent();
         };
-        return { key: scope.key, state: structuredClone(state), chat: structuredClone(scope.chat), assertCurrent, recordAccess };
+        const snapshot = { key: scope.key, state: freezeMemoryData(structuredClone(state)),
+            chat: freezeMemoryData(structuredClone(scope.chat)), assertCurrent, recordAccess };
+        // A read-only reconciled projection can differ from the private cached
+        // ledger. Without that exact dependency proof it takes the full path.
+        if (receipt.cacheIdentity && JSON.stringify(state) === JSON.stringify(receipt.cacheIdentity)) {
+            let identity = ledgerIdentities.get(receipt.cacheIdentity);
+            if (!identity) { identity = Object.freeze({}); ledgerIdentities.set(receipt.cacheIdentity, identity); }
+            snapshotProofs.set(snapshot, { identity, key: snapshot.key, state: snapshot.state, chat: snapshot.chat,
+                assertCurrent, sameLedger: () => cachedVersion === receipt.cacheIdentity });
+        }
+        return snapshot;
     }
 
     async function correct(context, command, snapshot) {
