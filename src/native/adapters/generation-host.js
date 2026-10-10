@@ -806,6 +806,8 @@ export class NativeGenerationHost {
             revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '' };
         const compiler = new PromptCompiler({ hostDefinitions: Object.fromEntries(Object.keys(hostView).map(key => [key, { type: 'string', required: true }])) });
         const attempts = [];
+        const computeAttempts = [];
+        let computeLimits = null;
         const service = new GenerationService({ resolver, contextProvider, preparePrompt: compiler.preparePrompt, secretPort: this.secretPort,
             providerFor: (id, resolved) => {
                 const provider = resolver.provider(id);
@@ -813,9 +815,11 @@ export class NativeGenerationHost {
                 let pendingCharge;
                 const settleAttempt = async usage => {
                     if (!pendingCharge) return;
-                    const { receipt, attemptId } = pendingCharge;
-                    if (input.sessionId) await this.sessionCore.runs.settleCompute(handle, input.sessionId, receipt.operation, attemptId, usage);
-                    else await this.agent.settleGeneration(handle, input.projectId, input.taskId, attemptId, usage);
+                    const { receipt, attemptId, entry } = pendingCharge;
+                    const settled = input.sessionId
+                        ? await this.sessionCore.runs.settleCompute(handle, input.sessionId, receipt.operation, attemptId, usage)
+                        : await this.agent.settleGeneration(handle, input.projectId, input.taskId, attemptId, usage);
+                    Object.assign(entry, settled);
                     pendingCharge = null;
                 };
                 return { ...provider, settleAttempt, renderRequest: request => { prepared = request; return provider.renderRequest(request); }, send: async (rendered, boundary) => {
@@ -837,7 +841,7 @@ export class NativeGenerationHost {
                                 throw new GenerationError('native_generation_task_stopped');
                             }
                             const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
-                            const compute = limits ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
+                            const compute = limits || input.sessionId || input.taskId ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
                                 targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
                             let receipt;
                             if (budget) {
@@ -853,7 +857,12 @@ export class NativeGenerationHost {
                                 if (!input.taskId || !this.agent) throw new GenerationError('native_generation_budget_lane_denied');
                                 receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt, projectTaskEvidence.ref.slice(-64));
                             }
-                            if (compute) pendingCharge = { receipt, attemptId: compute.attempt.attemptId };
+                            if (receipt?.compute) {
+                                computeLimits = receipt.limits ?? limits;
+                                const entry = { ...receipt.compute };
+                                computeAttempts.push(entry);
+                                pendingCharge = { receipt, attemptId: compute.attempt.attemptId, entry };
+                            }
                             await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
                                 requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
                                 agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
@@ -898,6 +907,10 @@ export class NativeGenerationHost {
         }
         if (!preview && input.projectId) { try { await observeEvolutionProject(this, handle, input, result); } catch { /* Observation failure does not change an accepted generation. */ } }
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts,
+            compute: { configured: Boolean(computeAttempts.length || result.snapshot.diagnostics.executionPlan?.policy?.computeBudget),
+                scope: input.sessionId ? 'run_operation' : input.taskId ? 'project_task' : 'unavailable',
+                limits: computeLimits ?? result.snapshot.diagnostics.executionPlan?.policy?.computeBudget ?? null, attempts: computeAttempts,
+                observationScope: 'current_request', currencyStatus: 'unavailable' },
             ...(projectTaskCapture ? { projectTaskCapture } : {}) } });
     }
 }

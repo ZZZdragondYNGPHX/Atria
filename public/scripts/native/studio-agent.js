@@ -542,6 +542,8 @@ export function mountNativeStudioAgent({
             review: activeTask.review || null,
             recovery: activeTask.recovery || null,
             attempts: (activeTask.attempts || []).map(({ attemptId, kind, status, origin }) => ({ attemptId, kind, status, origin })),
+            compute: activeTask.compute ?? null,
+            currencyStatus: 'unavailable',
             history: (activeTask.timeline || []).slice(-8).map(item => ({
                 type: item.type,
                 at: item.at,

@@ -566,10 +566,13 @@ export class ProjectAgentService {
     // Internal Generation Host observations. No HTTP endpoint accepts these fields.
     chargeGeneration(handle, projectId, id, revision, limits, attempt, executionFingerprint) {
         return this._operate(handle, projectId, id, async task => {
+            limits ??= task.compute?.limits;
+            if (!limits) return null;
             this._ensureDraftMutable(task);
             if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
             if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
-            return chargeComputeAttempt(task, limits, attempt);
+            const compute = chargeComputeAttempt(task, limits, attempt);
+            return { compute, limits: clone(task.compute.limits) };
         });
     }
 

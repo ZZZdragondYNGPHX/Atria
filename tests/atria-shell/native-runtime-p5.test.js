@@ -9,6 +9,39 @@ const flush = () => new Promise(done => setTimeout(done, 0));
 const config = { connections: [{ schemaVersion: 1, scope: 'player', connectionProfileId: 'conn_11111111111111111111111111111111', displayName: 'Exact connection', endpoint: 'https://example.invalid/chat', providerAdapter: 'provider.openai-compatible', secretRef: { scope: 'player', secretId: 'stored-id' } }], models: [], routes: [], profiles: [], resources: [] };
 const response = (body, ok = true) => ({ ok, json: async () => body });
 
+test('G06 Route budget editor validates bounds, preserves policy and removes only the configured budget', async () => {
+    const policy = { schemaVersion: 1, allowedModelProfileIds: ['model-current', 'model-fallback'], continuity: 'none', reuse: 'exact' };
+    const route = { schemaVersion: 1, runtimeRouteId: 'route-budget', displayName: 'Bounded Narrator', role: 'role.narrator',
+        modelProfileRef: { modelProfileId: 'model-current' }, connectionProfileRef: { connectionProfileId: config.connections[0].connectionProfileId },
+        generationProfileRef: {}, promptProgramRef: {}, fallbackRouteRefs: [], executionPolicy: policy };
+    let storedRoute = route;
+    globalThis.fetch = jest.fn(async (url, options) => {
+        if (options.method === 'PUT') { storedRoute = JSON.parse(options.body); return response(storedRoute); }
+        return response(url.endsWith('/resources') ? [] : { ...config, models: [{ modelProfileId: 'model-current', displayName: 'Current model', connectionProfileRef: route.connectionProfileRef }], routes: [storedRoute] });
+    });
+    const body = document.createElement('div'); document.body.append(body);
+    const view = mountNativeRuntimeWorkspace({ document, body, section: 'routes', route: { child: { id: 'routes:route-budget' } }, host: {} }); await flush();
+    const enabled = view.root.querySelector('[aria-label="启用共享发送额度"]');
+    const requests = view.root.querySelector('[aria-label="最大发送次数"]'), tokens = view.root.querySelector('[aria-label="Token 占用上限"]');
+    if (!requests) throw new Error(view.root.textContent);
+    expect(requests.disabled).toBe(true); expect(tokens.value).toBe('');
+    enabled.checked = true; enabled.dispatchEvent(new Event('change'));
+    expect(requests.required).toBe(true); expect(tokens.disabled).toBe(false);
+    requests.value = '33'; tokens.value = '64000';
+    const form = view.root.querySelector('form'); form.dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    expect(globalThis.fetch.mock.calls.some(([, options]) => options.method === 'PUT')).toBe(false);
+    expect(requests.value).toBe('33');
+    requests.value = '2'; form.dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    const writes = () => globalThis.fetch.mock.calls.filter(([, options]) => options.method === 'PUT');
+    expect(JSON.parse(writes()[0][1].body).executionPolicy).toEqual({ ...policy, computeBudget: { maxRequests: 2, maxTokens: 64000 } });
+    view.updateRoute({ child: { id: 'routes:route-budget' } }); await flush();
+    const reopened = view.root.querySelector('[aria-label="启用共享发送额度"]');
+    expect(reopened.checked).toBe(true); reopened.checked = false; reopened.dispatchEvent(new Event('change'));
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    expect(JSON.parse(writes()[1][1].body).executionPolicy).toEqual(policy);
+    view.dispose();
+});
+
 test('Diagnostics pins Build inventory and requires an explicit revision selection after refresh', async () => {
     let revision = 'a'.repeat(40);
     const projectId = 'project_11111111111111111111111111111111';

@@ -74,3 +74,4 @@
     .atri-runtime button:not(:disabled):active:not(:focus-visible) { transform: scale(.97); }
 }
 .atri-runtime[data-atria-reduced-motion="true"] button { transition: none; transform: none; }
+.atri-runtime input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; padding: 0; accent-color: var(--atri-accent); }

@@ -48,6 +48,36 @@ async function fixture(make, maxRequests = 2) {
 }
 
 for (const [kind, make] of [['fs', makeTempFsEngine], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test.each(['session', 'project'])(`G06 ${kind} %s effective limits survive Route relaxation/removal and diagnostics match durable receipts`, async lane => {
+        const f = await fixture(make, 2);
+        try {
+            let context;
+            if (lane === 'project') {
+                const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+                const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Inspect current evidence', baseRevision: project.revision.revision });
+                context = { projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision, role: 'studio' };
+            } else context = { sessionId: f.base.session.sessionId, revisionId: f.base.revision.revisionId, role: 'narrator' };
+            const host = new NativeGenerationHost({ ...f, sessionCore: f.core,
+                providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-key' } });
+            const readLedger = async () => lane === 'project'
+                ? (await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute
+                : Object.values((await f.core.runs.status(f.handle, context.sessionId)).operations).find(row => row.compute).compute;
+            const send = requestId => host.execute(f.handle, { ...context, requestId });
+            const first = await send('g06-first');
+            expect(first.routing.compute).toMatchObject({ limits: { maxRequests: 2, maxTokens: 64000 }, observationScope: 'current_request', currencyStatus: 'unavailable' });
+            expect(first.routing.compute.attempts).toEqual((await readLedger()).attempts);
+            const route = f.routes.find(row => row.role === 'role.' + context.role);
+            const executionPolicy = { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId], computeBudget: { maxRequests: 32, maxTokens: 128000 } };
+            await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy });
+            const second = await send('g06-relaxed');
+            expect(second.routing.compute.limits).toEqual({ maxRequests: 2, maxTokens: 64000 });
+            expect(second.routing.compute.attempts).toEqual((await readLedger()).attempts.slice(1));
+            delete executionPolicy.computeBudget;
+            await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy });
+            await expect(send('g06-disabled')).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            expect(f.seen).toHaveLength(2); expect((await readLedger()).attempts).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
     test(`G05 ${kind} actual rerank and Narrator sends share one durable operation allowance`, async () => {
         const f = await fixture(make);
         try {

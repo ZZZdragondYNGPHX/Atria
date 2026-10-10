@@ -13,6 +13,7 @@ import { nativeStudioClient } from './studio-client.js';
 import { runtimeReadiness } from './runtime-readiness.js';
 import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
+import { assertComputeBudget } from '../../shared/native-compute-budget.js';
 
 const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
@@ -27,7 +28,7 @@ const refKey = value => JSON.stringify(value, Object.keys(value).sort());
 function assertRuntimeEditorShape(value) {
     const reject = key => { throw new TypeError(translateShellText('Unsupported resource field shape:') + ' ' + key); };
     for (const key of ['displayName', 'providerAdapter', 'transport', 'endpoint', 'remoteModelId', 'role']) if (value[key] !== undefined && typeof value[key] !== 'string') reject(key);
-    for (const key of ['options', 'networkPolicy', 'secretRef', 'connectionProfileRef', 'modelProfileRef', 'generationProfileRef', 'promptProgramRef', 'policy', 'limits', 'limitProvenance', 'tokenizer', 'messageFormat', 'providerHints', 'promptParameters']) if (value[key] !== undefined && (!value[key] || typeof value[key] !== 'object' || Array.isArray(value[key]))) reject(key);
+    for (const key of ['options', 'networkPolicy', 'secretRef', 'connectionProfileRef', 'modelProfileRef', 'generationProfileRef', 'promptProgramRef', 'policy', 'limits', 'limitProvenance', 'tokenizer', 'messageFormat', 'providerHints', 'promptParameters', 'executionPolicy']) if (value[key] !== undefined && (!value[key] || typeof value[key] !== 'object' || Array.isArray(value[key]))) reject(key);
     for (const key of ['capabilities', 'fallbackRouteRefs', 'requirements']) if (value[key] !== undefined && !Array.isArray(value[key])) reject(key);
     for (const item of value.capabilities || []) if (!item || typeof item !== 'object' || Array.isArray(item)) reject('capabilities');
     for (const item of Object.values(value.limitProvenance || {})) if (!Array.isArray(item)) reject('limitProvenance');
@@ -487,7 +488,21 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const attempts = number(fields, 'Maximum fallback attempts', value.policy?.maxFallbackAttempts ?? 0, 0);
             notice('Fallback mode is chosen per request: automatic, confirm or disabled. Game Runtime requests automatic; other callers default to disabled. Zero attempts disables fallback.', fields);
             const requirements = field(fields, 'Required capabilities (comma separated)', value.requirements?.join(', ') || '');
-            serialize = () => ({ ...value, role: role.value, modelProfileRef: { scope: 'player', modelProfileId: model.value }, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, generationProfileRef: JSON.parse(generation.value), promptProgramRef: JSON.parse(prompt.value), fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) });
+            fields = group(form, '共享计算额度', '同一 Run 操作或 Project Task 的实际发送共用额度，重试和 rerank 也计入。费用未知的已发送请求保留估计占用。');
+            const enabled = field(fields, '启用共享发送额度'); enabled.type = 'checkbox'; enabled.checked = Boolean(value.executionPolicy?.computeBudget);
+            const requests = number(fields, '最大发送次数', value.executionPolicy?.computeBudget?.maxRequests ?? '', 1, 32); requests.step = '1';
+            const tokens = number(fields, 'Token 占用上限', value.executionPolicy?.computeBudget?.maxTokens ?? '', 1); tokens.step = '1';
+            const syncBudget = () => { for (const input of [requests, tokens]) { input.disabled = !enabled.checked; input.required = enabled.checked; } };
+            enabled.addEventListener('change', syncBudget); syncBudget();
+            notice('这是发送次数和 Token 估计占用限制。价格及网关隐藏重试不可知时，金额仍未知。取消设置不会退还同一任务已发生的消费。', fields);
+            serialize = () => {
+                let executionPolicy = value.executionPolicy ? clone(value.executionPolicy) : undefined;
+                if (enabled.checked) {
+                    executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [model.value] };
+                    executionPolicy.computeBudget = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value) });
+                } else if (executionPolicy) delete executionPolicy.computeBudget;
+                return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, modelProfileRef: { scope: 'player', modelProfileId: model.value }, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, generationProfileRef: JSON.parse(generation.value), promptProgramRef: JSON.parse(prompt.value), fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
+            };
         }
         const status = node('div', undefined, form); status.className = 'atri-runtime-status';
         const actions = node('footer', undefined, form); actions.className = 'atri-runtime-actions';
@@ -549,7 +564,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const snapshot = result.snapshot;
         node('h3', result.preview ? 'Compiled preview — no request sent' : 'Latest effective request', parent);
         notice(fmt('Input: ${0} / ${1} tokens · reserved output: ${2}', [snapshot.diagnostics.inputTokens, snapshot.contextPlan.budget.maxTokens, snapshot.contextPlan.budget.reservedOutputTokens]), parent);
-        for (const [title, value] of [['Effective Request', snapshot.diagnostics.effectiveConfig], ['Capabilities and provenance', snapshot.capabilities], ['Prompt provenance', { ref: snapshot.promptProgramRef, ir: snapshot.promptIr }], ['Context selection', snapshot.contextPlan], ['Fallback attempts', result.routing]]) {
+        notice(result.preview ? '仅预览，未产生发送费用。' : '显示本次请求的实际发送记录；金额、上游身份或缓存命中未报告时保持未知。', parent);
+        for (const [title, value] of [['Effective Request', snapshot.diagnostics.effectiveConfig], ['能力与执行决定', { capabilities: snapshot.capabilities, execution: snapshot.diagnostics.executionPlan, recovery: snapshot.diagnostics.failurePlan }],
+            ['共享发送记录', result.routing?.compute ?? { configured: false, observationScope: 'unavailable', currencyStatus: 'unavailable' }],
+            ['Provider 观察', { observation: result.response?.observation ?? null, usage: result.response?.usage ?? null, upstreamIdentity: result.response?.observation?.upstreamIdentity ?? 'unknown' }],
+            ['Prompt provenance', { ref: snapshot.promptProgramRef, ir: snapshot.promptIr }], ['Context selection', snapshot.contextPlan], ['Fallback attempts', result.routing]]) {
             const details = node('details', undefined, parent); node('summary', title, details); node('pre', JSON.stringify(value, null, 2), details);
         }
     }

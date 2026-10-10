@@ -148,11 +148,12 @@ export class RunControl {
                 entry.count++; value.background[window] = entry;
                 for (const [oldWindow, item] of Object.entries(value.background)) if (item.period < period) delete value.background[oldWindow];
             }
-            const compute = request.compute ? chargeComputeAttempt(op, request.compute.limits, request.compute.attempt) : null;
+            const limits = request.compute?.limits ?? op.compute?.limits;
+            const compute = limits && request.compute ? chargeComputeAttempt(op, limits, request.compute.attempt) : null;
             op.attempts[lane] = (op.attempts[lane] ?? 0) + 1; op.total++;
             // Persist before send. A process interruption is an unknown send,
             // not a refund or a new operation identity.
-            return { operation: id, attempt: op.total, ...(compute ? { compute } : {}) };
+            return { operation: id, attempt: op.total, ...(compute ? { compute, limits: structuredClone(op.compute.limits) } : {}) };
         });
     }
 
@@ -161,11 +162,14 @@ export class RunControl {
             if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
             const id = hashNativeDocument({ lane: 'turn', anchor });
             let op = value.operations[id];
+            limits ??= op?.compute?.limits;
+            if (!limits) return null;
             if (!op) {
                 if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
                 op = value.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
             }
-            return { operation: id, compute: chargeComputeAttempt(op, limits, attempt) };
+            const compute = chargeComputeAttempt(op, limits, attempt);
+            return { operation: id, compute, limits: structuredClone(op.compute.limits) };
         });
     }
 
