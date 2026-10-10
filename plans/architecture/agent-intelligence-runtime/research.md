@@ -110,3 +110,21 @@
 
 G04 实施前再核对所选 Provider 的具体 cache / continuation 协议、模型版本、支持路径、计费与 TTL；论文作者数字不写作 Atria SLO。应用依赖复用需源 authority 实际证明，不能把研究中的细粒度版本视为当前代码已有。
 保留 D3 / 原研究各自的 A–F 语义；D4 A–F 只作 delivery §8.1 的映射，不复制新正式阶段。研究的 schema 示意、cache mode 名称、Narrative Intent 字段、算法或跨域共享建议仍在正式阶段局部深化。
+
+## 7. D5：Hybrid Memory研究采纳与待验证项
+
+2026-10-10 按 [Hybrid 入口](../hybrid-cognitive-memory-2-0/index.md) 阅读 decisions、architecture、retrieval-design、integration；来源 docs HEAD `13d09ccac68b2c4f71f84a8ae2a405f3eb53577b`。HCM-01–08 已获最终批准，本次采纳路由归 [decisions §9](decisions.md#9-d5--hybrid-cognitive-memory-20-正式采纳)。最新 main / 开发分支与实际调用图另见 [baseline §10](baseline.md#10-d5hybrid-memory-整合时的实际基线)，不拿研究陈述替代当前源码。
+
+| 研究输入 | 正式采纳与证据等级 | 详细权威 / 交付 |
+| --- | --- | --- |
+| architecture §2–5 / R6 F01–F12 | 当前三条召回链、已有 lexical / vector / graph / RRF、source / Context / Information 为静态代码事实；缺 Actor 请求交集是风险，非已复现泄露 | hybrid-memory §1–4、baseline §10；H0–H2 |
+| HCM-06 / query / packing / multi-hop | 总体 Constraint-first 方向已批准；中文 seeds、typed path / PPR、MMR / coverage、rerank / LLM 触发器是待消融工程方案，不承诺全部启用 | hybrid-memory §3；H2 / H3，G05/G06 |
+| HCM-02–05 / architecture §3 / §6–7 | 旁白 / Actor 分域、事件驱动、正式 World Tick、遗忘默认与可选范围已冻结；完整 writer / 叙事消费者未实施 | architecture §6.1 / §8.1、behavior-context §2.1；H5 / M2 / M3 与既有 Simulation |
+| architecture §8 / retrieval-design §6 | 已有指纹全量核对与不重复 Embedding；O(N) 工作静态成立，实际热点 / delta / cache / prefix 收益未测 | execution-reuse §2–3、behavior-context §3、model-routing §8；H4 / M8 |
+| retrieval-design §2 / §8 | Graphiti、HippoRAG 2、LightRAG、MOOM、REVERIEMEM、PersMem、LongMemEval / V2、RP 四阶段评测是来源报告中的技术 / 作者实验输入；未在 Atria 复现 | [R6 原研究](../hybrid-cognitive-memory-2-0/retrieval-design.md) 唯一保存完整来源与 R6-T01–T15 / B0–B6；各 H 包按需读取 |
+
+本次没有重新浏览外部论文 / 官方协议、下载数据、复现作者实验或执行模型 / 索引 / 浏览器基准。来源版本、第三方样本可用范围及所选 Provider 能力在实际相关工作包核对；报告的算法支持和数据集数字不变为 Atria 已测事实。
+
+验证复用原 Evidence / Eval：先 source / authority / exposure / Branch / 时间 / race 的确定性断言，再检索 Recall@K / 覆盖 / 有效链与拒答，正文另测 Anchoring / Selecting / Bounding / Enacting、玩家自主权 / 角色声音 / 长期连续性；成本分 cold / warm、额外 LLM / Embedding / rerank、CPU / network、usage / charge 和 p50/p90。固定数据、源版本、权限、预算与模型做 B0–B6 成对比较，各新增机制分别归因；未知价格、usage 与质量标 unknown / 未验证。
+
+Memory 评测 profile / 场景标签 / 数据切分在 H0 按消费者冻结，不新建 Eval authority，不借此修改当前 M1 rubric / cases / 主模型准入或解除生产 human / price gate。M1 已有测试与不利判断保持原来源；36 / 13 等工程 checks 不证明生产 Memory resolver 效果。没有真实正文 / 成本结果就不写“中文长篇提高”“完全防串知”“检索免费”或“缓存加速”。

@@ -6,6 +6,7 @@
 - D0 核对时本地 main 与远端一致、工作树干净。D2 再次 fetch / pull 后产品 HEAD 不变；main 的 AGENTS.md 与 docs 治理 / 模板已有未提交修改，隔离保留。三份新增研究使用同一产品基线。
 
 以下代码路径均相对于该产品 HEAD；可用 `git show <HEAD>:<path>` 复核。研究建议不能反向改写为代码现状。
+以上是 D0/D2 的历史基线与验证，保留原样；2026-10-10 的最新 main / 当前产品分支与 Memory 静态复核见 [§10](#10-d5hybrid-memory-整合时的实际基线)，不将旧测试结果改标为本轮执行。
 
 ## 1. 执行与结构化结果
 
@@ -135,3 +136,54 @@ Expression 应接入这些真实输出路径。语音、Avatar 与远程 Agent �
 
 相关最小验证入口：`tests/native/{provider-discovery,native-provider-matrix,generation-budget-p2,prompt-presets,model-prompt-runtime-persistence}.test.js` 与既有双入口 harness。D2 只读相关实现 / 契约 / 测试内容，未运行这些测试。
 没有为本轮改动当前 Prompt / Route / 预算运行逻辑、注册产品资源、配置 gateway 或发送模型请求。
+
+## 10. D5：Hybrid Memory 整合时的实际基线
+
+### 10.1 实际 Git与 M1边界
+
+2026-10-10 拉取远端并核对本地 refs / 工作树：
+
+| 用途 | 实际分支 / HEAD |
+| --- | --- |
+| 稳定产品主线 | `main` / `origin/main@6ab12ba43c5b18bfec6df75c16456a4cb4497d3f` |
+| 当前产品开发 | `feat/agent-intelligence-runtime` / `origin/feat/agent-intelligence-runtime@25e1aef0f2ed6e209520a9883fb9527c0bff24cf`；未合并 main |
+| 本次企划整合起点 / 研究来源 | `docs` / `origin/docs@13d09ccac68b2c4f71f84a8ae2a405f3eb53577b` |
+
+main 与当前产品工作树均干净、各自与 origin 同步；docs 快进到研究起点，已有无关未跟踪 Experience 草稿保留。辅助 `feat/agent-intelligence-plan` 的旧副本不替代 docs 正式 Plan / Record。
+
+对 main 与开发分支执行 `git diff --exit-code`，以下范围差异为空：`public/scripts/agents/memory/`、`public/scripts/native/experience/llm/`、`public/scripts/native/{play-generation,context-compiler,context-derived}.js`、`public/shared/native-information-runtime.js`、`src/native/{simulation-authority,lifecycle-authority}.js`、`tests/memory-graph/` 与 `tests/native/information-runtime-p6.test.js`。这是这些源码 / 测试范围的字节一致性证据，**不表示整个开发分支与 main 一致**；M1 的 Evidence / Eval / Evolution 和 worker 等改动仍在产品分支。
+
+M1 的 S01–S10 工程结果及全部不利真实观察保留；当前主模型准入、development / 独立 promotion 与 review → 下一消费 → rollback 门槛仍归 [m1-acceptance §1 / §2 / §14](m1-acceptance.md#14-2026-10-09-当前主模型准入)。同一 [Record 最新节](../../../records/refactor/agent-intelligence-runtime.md#2026-10-09-取消双模型准入与主模型继续实测) 记录主模型 focused 校准仍未形成 M1 完成证据；不能将此前 36 / 13 等本地 checks 或本次企划完成改写为验收通过，也不据旧“正在运行”描述推断本机现有进程。
+
+### 10.2 实际召回入口
+
+下列路径相对于 §10.1 两个相同 Memory 基线，函数 / 引用已静态读取。
+
+| 路径 | 可确认行为 | 尚未交付的目标契约 |
+| --- | --- | --- |
+| `memory/main.js`、`memory-os.js`、`ui-templates.js` | `memoryOsEnabled=false`、`recallMethod='llm'` 默认；`injectMemoryPrompts` 按 disabled / Hybrid / RAG / LLM 分支；仍有 selector、preview、模式归一化与模式专属 sync | 对外唯一 Hybrid 与旧设置 / UI / 执行链清理；当前仍有旧路径，不能写已硬切换 |
+| `memory/api.js`、`hybrid-runtime.js` | `openSession().recallMemory`、preview / public recall 已委托 `recallHybridMemory(context, query, options)`；source snapshot / assertCurrent、原 lane budget、Native profile 消费已存在 | 显式 requester / Actor / audience 与前置授权候选域；函数签名中未形成完整认知请求契约 |
+| `native/experience/llm/runtime.js`、`memory-bridge.js` | Game Turn 调用 `createMemoryRecallBridge`，归一 packet 前后复验 Turn Branch 与 Memory source | 请求视角与 Actor grant 的端到端交集，保持现有 turn / source guard |
+| `native/play-generation.js`、`memory-bridge.js`、`context-compiler.js` | Package Turn 先取得 Information memory grant，再调用 recall；返回 evidence 按可见 Timeline sourceMessageIds 收缩，原 Compiler 再做最终 admission | 将合法源域前移至检索读取 / 图扩展 / 辅助模型 / cache；最终引用过滤本身不证明召回正文全部获准 |
+
+这里的 `memory/` 和 `native/` 文件位于 `public/scripts/`。上述缺口是静态契约风险，未运行泄露复现或在线用户数据实验。
+
+### 10.3 已有能力与未实现边界
+
+| 当前源码 | 已有事实 | D5 后续范围 |
+| --- | --- | --- |
+| `memory/hybrid-retrieval.js` | `analyzeMemoryQuery` 使用关键词 / 名称别名与中文字 / 双字；`buildMemoryCorpus` 检查 source / 时间 / provider state；lexical、vector IDs、有界邻接、RRF 与完整记录 token packing 已有 | 场景指代 / 承诺种子、Actor 候选域、coverage / MMR、选择性 typed path / PPR 等待 H1–H3 实现 / 消融；现有权重不计最优 |
+| 同上 `retrieveMemory` | 向量可选、指纹与 `listHashes` 全量对照、增删 / 缺项 insert，再 query；未变项无需重复 Embedding，rerank 失败有回退 | corpus projection / hashing / network 仍有 O(N) 工作；H4 delta / source-valid candidate cache 与加速均未验证 |
+| `public/shared/native-information-runtime.js` | `projectInformation` / `informationContext` 已有 audience / Actor、epistemic status、exposure、Knowledge / Memory grant 与 ContextItems | 不另造 Belief 数据权威；完整持续 cognition / 遗忘不是这些已有投影的同义词 |
+| `public/scripts/native/context-compiler.js` | 当前 World / commitments / raw / spine / memory 等 lanes，target / visibility、required / atomicGroup、SourceRef 与 token admission | Hybrid typed packet 应修补原 item consumer，不新建 prompt compiler；完整旁白策略消费未实测 |
+| `src/native/simulation-authority.js`、`lifecycle-authority.js`、`public/shared/native-simulation-contract.js` | canonical clock、正式合法 advance、bounded catch-up / steps / deliberations、原 task outbox；World Tick 与 requested targetTick 区分 | H5 复用合法 tick 的有限自主消费者，不按现实时间推演；S22–S24 是另外的 hypothetical 能力，不是已有 Simulation 缺失 |
+
+### 10.4 验证入口与证据边界
+
+已核对下列文件在 main 存在，**本轮没有执行其中的产品测试**：
+
+- H0–H2：`tests/memory-graph/{hybrid-retrieval,source-lifecycle,temporal-graph,recall-rag-pipeline}.test.js`；旧 RAG 专属测试在 H1 改为唯一 Hybrid 契约，仍适用的 source / 安全断言保留。
+- 三条入口与 Context / Information：`tests/native/{package-turn-memory-bridge-g3,context-compiler,information-runtime-p6}.test.js`；相关 Game / ordinary RP consumer 在实施时按调用图补 focused coverage。
+- H5 / 原 Simulation：`tests/native/{simulation-contract,simulation-session,simulation-task,simulation-candidate}.test.js`；不能以这些已存在文件证明新的 cognition / forgetting / autonomous consumer 通过。
+
+R6-T01–T15、B0–B6 是未运行的测试 / 消融设计，完整定义见 [研究 §8](../hybrid-cognitive-memory-2-0/retrieval-design.md#8-必须做的评测评价检索也评价叙事消费)。本次只做源码 / refs 静态复核与企划文档验证；不安装产品依赖、不运行模型 / 全量 tests / build / 浏览器。历史 §7 与 M1 的既有结果保留其原 HEAD、范围和通过 / 未通过状态。

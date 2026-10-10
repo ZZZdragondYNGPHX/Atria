@@ -1,6 +1,6 @@
 # 正式架构方向：连接权威、语义、计算与成长闭环
 
-> D2 / D3 / D4 已更新职责、依赖与架构约束；API、字段清单、存储种类和代码目录仍按阶段冻结。
+> D2 / D3 / D4 / D5 已更新职责、依赖与架构约束；API、字段清单、存储种类和代码目录仍按阶段冻结。D5 是 Hybrid Memory 企划整合，未实施、未实测。
 > 代码事实由 baseline 管理；用户选择和冻结状态由 decisions 管理。
 
 ## 1. 保持责任清楚，避免平行系统
@@ -37,6 +37,7 @@ Target 限制与 Context 精确编译有有界复核；依赖最终路径 / 编�
 - [compute-policy](compute-policy.md)：稀疏调用、预算准入、非阻塞维护与收益。
 - [model-routing](model-routing.md)：boundary / deployment / identity、动态证据、真实执行观察与 Reasoning Continuity 生命周期。
 - [execution-reuse](execution-reuse.md)：Runtime 一级复用能力、候选 / 有效性证明、共享依赖失效、Tool / Artifact / Plan 消费与隔离；cache storage 实现分离。
+- [hybrid-memory](hybrid-memory.md)：现有 Memory 的唯一召回、Constraint-first 候选域、typed evidence 与旧 LLM/RAG 硬切换；Actor / World / Context / Compute 的所属权威保持。
 
 这些模块是相应细则的唯一来源；本文件继续管理跨 Plane 的连接。Reasoning Continuity 是 Deliberation 经 Interop 的 Provider Adapter 使用的可选执行能力，沿现有 Runtime / request authority 管理，不新增 Plane；详细术语与规则见 [model-routing §7](model-routing.md#7-reasoning-continuity执行状态与生命周期)。
 Execution Reuse 消费已完成且仍适用的工作；Adaptive Invocation 沿 [compute-policy §1.1](compute-policy.md#11-adaptive-invocation-决策阶梯) 选择尚需执行的工作；必须发送时 Routing 再选择获准路径并考虑 [Cache Locality](model-routing.md#82-cache-locality-与有效成本)。Execution Continuation 继续引用 §7，不重复定义为普通 cache。
@@ -128,6 +129,16 @@ Actor identity / stable traits / expression style 属于作者定义或明确选
 先支持一阶 ToM，再以有限深度支持二阶；限制节点、引用、展开、更新频率与计算预算。
 confidence 默认是模型 / 策略的相对置信表达；未校准前不能当成客观概率。
 
+### 6.1 事件驱动认知与角色遗忘
+
+HCM-03 采用事件驱动混合认知为默认，作品可选高度自主认知；不是所有 NPC 每轮或后台持续调用模型。明确接触 / 规则变化优先确定性更新；重大 belief 冲突、承诺、关系 / 意图转折才提出预算内 appraisal，按各原 state authority 与 source / base revision 采纳。自主模式另遵循 [§8.1](#81-正式-world-tick与自主-npc)，调度与费用归 compute-policy。
+
+Exposure（甲听到乙的说法）、Belief（甲相信 / 怀疑该说法）与 Disclosure（甲向丙转述）是三个不同事件 / 状态；每级传播保留来源，不自动复制 belief 或生成 Truth。Memory 查询不是认知更新的证据；检索到旧誓言不能直接写为角色刚刚想起或一定愿意履约。
+
+HCM-05 默认轻度自然遗忘、作品可选深度认知遗忘。轻度只影响非关键细节的清晰度 / 使用意愿，保护重要身份、未履行承诺、关键关系和事件；深度遗忘允许有据的模糊 / 再认识 / 错误重构，须有来源、版本与撤回。角色剧情性遗忘、检索降权、摘要压缩、索引淘汰、正式来源删除是不同生命周期；不清除 World Truth，不把缓存 miss 当失忆。
+
+上述是冻结产品语义，完整 writer / projection / inspector 在 S16–S21 与 H5 交付，现有 Information belief 不计完整实现。具体认知权限、转移规则与物理字段在这些边界内深化，不重新选择默认方向。
+
 ## 7. 知识边界与 Memory applicability
 
 确定性边界：Actor / task 只能取得允许的投影、Knowledge、Memory ref 和 tools；任何正式世界修改必须有 authority receipt。
@@ -137,6 +148,8 @@ confidence 默认是模型 / 策略的相对置信表达；未校准前不能当
 Memory 继续回答发生过什么；cognition 决定本轮如何解释与使用。
 检索后的 applicability 要考虑 Actor exposure、时间、branch、source 修订、例外和当前 Goal；失败时能放弃旧经验。
 不将所有 actor 模型状态作为 Memory 的“事实”无差别注入其他角色。
+
+D5 将上述限制前移至 [Hybrid 候选域](hybrid-memory.md#32-constraint-first-adaptive-hybrid)，并保留异步返回 / Context 编译 / 消费时复验。三条生成路径沿 [hybrid-memory §2](hybrid-memory.md#2-三条生成路径分别接入) 接入；获准历史、Actor 解读与当前正式状态分开。旁白策略 / disclosure 归 [behavior-context §2.1](behavior-context.md#21-作品叙事策略与角色可知)，Memory 不另建完整 prompt compiler。
 
 ## 8. Counterfactual 与 metacognition
 
@@ -148,6 +161,14 @@ deterministic dry-run 与语言 / 视觉 World Model 是不同 provider 能力�
 controller 先调 optional scout、retrieval depth、candidate count、critic rounds 和已授权模型 route；必要权限 / authority / knowledge guard 保留。
 规则 controller 是基线；只有数据证明小模型 / 主模型 controller 有收益时才启用。
 fast / slow 除开销外也有时序：异步 slow result 必须核对 revision，不能覆盖新回合的 state。
+
+### 8.1 正式 World Tick与自主 NPC
+
+HCM-04 已冻结：自主 NPC 只按正式游戏 World Tick 推进，不以在线等待、离线真实时间或读取记忆自动推进世界。复用已有 Simulation / Lifecycle 的 canonical clock、合法 advance、bounded jobs / steps / deliberations、task outbox 与原 TaskScheduler；当前源码事实见 [baseline §10](baseline.md#10-d5hybrid-memory-整合时的实际基线)。
+
+只有作品显式启用高度自主认知，且正式 tick 合法推进、scope / job / budget 满足时，才调度该范围 NPC 的认知或意图任务。生成的 NPC plan 是待裁决提案，正式 effect 经原 World / Session authority；异步采纳核对 base revision / scope epoch，回滚或关闭作品策略使旧 pending 任务失效。保留现有 step / deliberation 限制，本设计不自动提额或另建现实时间循环。
+
+这是 H5 消费现有 Simulation 的边界，不依赖 S22–S24 新 World Model。后者的 hypothetical rollout 继续隔离，不写正式 Memory；Host / Project 的现实时间 Goal wake 是 §5 的另一契约。
 
 ## 9. Expression、protocol 与 training
 

@@ -4,8 +4,8 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete / S09 complete / S10 engineering complete; M1 empirical acceptance pending**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
-- Updated: 2026-10-09
+- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete / S09 complete / S10 engineering complete; M1 empirical acceptance pending**；D3 Reasoning Continuity、D4 Execution Reuse / Cache Locality / Adaptive Invocation 与 D5 Hybrid Cognitive Memory 2.0 企划整合完成；新增 Memory 工作包未实施 / 未实测，生成基础组与远期技术契约按阶段细化。
+- Updated: 2026-10-10
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
 - S03 implementation / Tested HEAD: `78acfb65da6b1afa1dee1c2f35482af215832c74`；沿用同一任务分支，已 push，main 未变化。
@@ -22,10 +22,11 @@
 - F2 dual source completion / local Tested HEAD: `11756061ed74dc298ab99f0701b1d7e7c1c0a607`；两域40/40有效controls与六来源各两观察完成，原六基线复用；两域共同缺口成立。
 - F3 product / local Tested HEAD: `cebd14154b371f59a7b44dbac9726e2f9db18a4c`（已push）；一次双域提炼/development完成，两域一致candidate胜均0，存在重要维度负差/分歧与一份无效评价，未准入promotion，M1 pending。最新F3 17/17与retry18/18本地checks；具体实际结果/pins见同一Record。
 - M1 current checkpoint / pushed HEAD: `25e1aef0f2ed6e209520a9883fb9527c0bff24cf`；远端同步、私有恢复与本地接线完成。用户明确取消双模型准入，主模型development/promotion路径已落地；首轮主模型实测RP未达门槛、Project控制暴露证据编码缺陷。原不利结果保留；已修复counterfactual authority、评分符号及追加编辑契约，补充对应真实缺陷的focused source校准并继续主模型实测，M1 pending。实际结果见同一Record最新节。
-- Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
-- Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)
+- D0/D2 inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`；D5 最新 main `6ab12ba43c5b18bfec6df75c16456a4cb4497d3f` 与当前开发分支 `25e1aef0f2ed6e209520a9883fb9527c0bff24cf` 已静态核对，范围与限制见 [baseline §10](baseline.md#10-d5hybrid-memory-整合时的实际基线)。
+- Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)、[Hybrid Cognitive Memory 2.0](../hybrid-cognitive-memory-2-0/index.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
 - D4 source docs HEAD: `1c2502dae8ac1bcb7a0bb1dfb1e18d9f01b984b8`；研究源提交 `aa4d2d2fe`，S03 产品 HEAD 与 main 未变化。
+- D5 source / integration start docs HEAD: `13d09ccac68b2c4f71f84a8ae2a405f3eb53577b`；HCM-01–08 最终决定已冻结，本轮只整合 docs，产品 refs 与 M1 历史不变。
 - Record: [阶段记录](../../../records/refactor/agent-intelligence-runtime.md)
 
 ## 目标与当前结论
@@ -43,6 +44,8 @@ D3 将 Reasoning Continuity 纳入现有 Runtime 的可选执行能力，沿 Pro
 
 D4 将已完成工作的有效复用、稳定 Context 与缓存局部性接入同一链路：[execution-reuse](execution-reuse.md) 唯一管理 Reuse Contract / validity proof / dependency invalidation 与 Tool / Plan 消费；[behavior-context §3.1 / §4](behavior-context.md#31-稳定-context-segment-与-cache-aware-compiler) 管理 Segment identity / canonical compiler；[compute-policy §1.1](compute-policy.md#11-adaptive-invocation-决策阶梯) 管理按需执行；[model-routing §8](model-routing.md#8-cache-capability与cache-locality) 管理三层 cache capability / locality 与可观察执行。相似度只找候选，原 authority 证明当前适用；RP 复用前置 facts / plan / intent 并 fresh-generate 正文。Execution Continuation 引用 D3，详细定义不重复。
 
+D5 采纳 HCM-01–08，正式检索与硬切换的唯一详细权威为 [hybrid-memory](hybrid-memory.md)：来源 / Actor / 时间 / Branch 先形成合法候选域，再廉价混合、按需升级和证据覆盖，最终经原 Context 消费。旧独立 LLM/RAG UI / 配置 / 执行链的删除属于 H1 后续实现；有效 Atria 原生来源保留、派生索引重建，不做旧模式双读双写。旁白 B / A、C、事件驱动认知、角色遗忘、正式 World Tick 分别纳入原 Context / Actor / Simulation 职责，预算与缓存沿原 Compute / Reuse / Routing。未实施的质量、成本与时延收益均保持待验证。
+
 主线不是缺一种编排模式。当前最重要的缺口是跨运行的可信证据与评价、持久目标、可追溯的角色认知，以及它们与既有 authority 的连接。
 建议先完成两条入口都能实际使用的 Experience / Eval / Evolution 交付，再进入目标和社会认知。模型 / 网关 / 计算基础以新增有限交付组 M8（G01–G06）补齐，之后社会认知与预测消费共享 substrate；前沿技术通过有消费者的 adapter 接入。
 
@@ -51,7 +54,7 @@ D4 将已完成工作的有效复用、稳定 Context 与缓存局部性接入�
 已确认：先调研、讨论、定案、执行；RP 与 Project Agent 并重；首批 Skill / Prompt / 编排参数成长闭环包含有预算与回滚约束的局部自动启用；M1 完整交付后集成，再从最新 main 继续。
 
 D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，共用 owner 级有限预算。M1 产品边界与架构执行约束已冻结，S01 设计就绪。
-后续物理 schema、具体预算 / 阈值、迁移和 M2 以后认知权限按对应阶段深化；决策状态只由 [decisions.md](decisions.md) 管理。六份研究是来源材料；被正式采纳的架构约束由 decisions / 对应模块管理，其余研究建议不构成实施批准。D2 / D3 / D4 只授权企划更新，不把研究中的统计数字、示例 schema、候选名称、Provider 支持或新自动化权限当作用户批准；G01–G06 未实施。
+后续物理 schema、具体预算 / 阈值、迁移和认知具体权限按对应阶段深化；HCM-01–08 的产品方向已冻结，不重新讨论。正式采纳范围由 [decisions.md](decisions.md) 管理，八项决定的最终语义引用原 Hybrid decisions。前六份研究与 Hybrid Bundle 是来源材料；被正式采纳的架构约束由对应模块管理，其余研究建议不构成实施批准。D2 / D3 / D4 / D5 只授权企划更新，不把研究统计、示例 schema、候选名称、Provider 支持或新自动化权限当作用户批准；G01–G06 与 H0–H5 未实施。
 
 ## 模块图与阅读路由
 
@@ -59,8 +62,8 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | --- | --- | --- |
 | [baseline.md](baseline.md) | main 的代码事实、接入点、现有测试与缺口 | inspected HEAD |
 | [research.md](research.md) | 一手资料复核、证据边界、原研究需要收窄的推论 | 原研究、baseline |
-| [architecture.md](architecture.md) | 六 Plane 与语义 / 复用 / 计算 / 路由连接、证据与认知边界 | baseline、decisions |
-| [delivery.md](delivery.md) | 40 个候选实施阶段、依赖、实际交付与验收 | architecture、research |
+| [architecture.md](architecture.md) | 六 Plane 与语义 / 复用 / 计算 / 路由 / Memory 连接、证据 / 认知 / World Tick 边界 | baseline、decisions |
+| [delivery.md](delivery.md) | 40 个候选实施阶段、HM1–HM3 有限工作包、依赖、实际交付与验收 | architecture、research |
 | [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
 | [m1-acceptance.md](m1-acceptance.md) | M1 当前测试执行、自动化工程验收与历史结果；生产 human gate 不变 | m1-evolution、s10-evolution、用户本轮确认 |
 | [m1-feedback-evaluation.md](m1-feedback-evaluation.md) | U13确认的原链路反馈来源、根因/干预分离、质量/案例/评价版本契约及双域试点工作包；F1/F2前置范围完成；F3一次双域试点未准入promotion，M1 pending；当前结果见feedback§15/同一Record | S05、S10、m1-acceptance、领域扩展研究 |
@@ -79,9 +82,12 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [compute-policy.md](compute-policy.md) | sparse 默认路径、共享 cognition、硬预算、后台分流与计算收益评价 | TaskScheduler / RunControl、M1 Eval |
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
+| [hybrid-memory.md](hybrid-memory.md) | 唯一 Hybrid、合法候选域 / query / typed evidence、三条生成路径、旧 LLM/RAG 硬切换 / 原生来源 / 索引、失败与验证边界 | 原 Memory / Information / Authority / Context / Compute / Reuse / Eval；HCM-01–08 |
 
 S01–S09 与 S10 工程链路已交付；来源、捕获、Project 恢复与反馈生命周期见对应模块。S10 的支持矩阵 / 预算 / 保守 gate / publication / recovery / 双入口消费者唯一详细权威为 s10-evolution。当前M1续接读取：本入口 → m1-acceptance §0/§1/§2 → m1-feedback-evaluation §16 → 当前相关消费者 → 同一 Record 最新节；F1/F2前置范围完成，F2双模型来源复核已补齐；F3一次双域提炼/development完成但两域未准入promotion，M1仍pending（feedback§15/acceptance§12/Record最新节）。最新实际分支/恢复与交接见当前HANDOFF；不重跑正确的冻结基线，不改不利模型判断，不将工程完成当M1实测验收；当前主模型准入见acceptance §14。历史首失败停止与重新许可不是当前规则。需要追溯其它authority时再读相关S02–S09。D0–D4保持，D4不成为M1新依赖；不重读全量研究、不进入S11/G。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
+
+Hybrid 后续读取：本入口 → decisions §9 → delivery §8.2 → hybrid-memory 当前工作包章节 → baseline §10 / 对应原消费者。只有选择算法 / 冻结基准时再读 research §7 和原检索研究 §8；完整 HCM 技术建议不再作为第二份正式详细规则。当前 M1 续接仍按原验收路由，不把 D5 完成解释成 M1 通过或开始 H/S/G 实现。
 
 ## 阶段图
 
@@ -91,8 +97,12 @@ flowchart LR
   D1 --> M1[S01–S10 证据、评价与成长]
   M1 --> M2[S11–S14 持续目标]
   M1 --> M8[G01–G06 生成与计算基础]
+  M1 --> HM1[H0–H2 唯一 Memory 与基础检索]
+  HM1 --> HM2[H3/H4 M8 深检索与有效复用]
+  M8 --> HM2
   M2 --> M3[S15–S21 社会认知与角色连续性]
   M8 --> M3
+  HM1 --> M3
   M3 --> M4[S22–S26 预测与计算分配]
   M8 --> M4
   M4 --> M5[S27–S29 表达与多模态]
@@ -105,6 +115,8 @@ flowchart LR
 远期技术成熟度不构成第一批产品交付的隐含依赖。
 D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Workflow → Adaptive Invocation → Local optimization 映射见 [delivery §8.1](delivery.md#81-execution-reuse实施顺序与既有阶段映射)；前五项沿 G01–G06，Local KV / decode 在后续研究池，保持 40 个正式阶段身份。
 
+D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，HM2（H3/H4）映射 M8 的 proof / Context / Routing / G05 / G06，HM3（H5）随 M2/M3 与原 Simulation 完成，S25/S26 / S27 后续深化计算 / 表达。H1/H2 不依赖完整 M3 或新 Goal writer，H3/H4 不互为前置，H5 不额外等待全部深检索算法或缓存数值收益；精确依赖及每组出口唯一见 [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖)。这些是工作包，不增列 S/G，也不延期 M1。
+
 ## 当前状态
 
 | Checkpoint | 状态 | 产物 |
@@ -114,6 +126,7 @@ D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Wo
 | D2 — 三份研究综合更新 | 本轮完成 | 三个权威模块、六个基础阶段、依赖与评价 / 测量补充 |
 | D3 — Reasoning Continuity 架构整合 | 本轮完成 | 既有术语归并、opaque execution / lineage / loss、G01–G06 实施映射与评价边界 |
 | D4 — Execution Reuse / Cache Locality / Adaptive Invocation 整合 | Complete；本轮仅企划 | 复用契约、Segment / canonical compiler、按需调用、路径 cache evidence 与 A–F 映射；continuation 沿 model-routing §7 |
+| D5 — Hybrid Cognitive Memory 2.0 正式整合 | Complete；仅企划，未实现 / 未实测 | 八项冻结决定、唯一 Hybrid / 硬切换范围、原权威消费者、HM1–HM3 / H0–H5 依赖与逐包验收；M1 pending 与不利证据保持 |
 | S01 | 原结构阶段 complete；S06 live pilot empiricalReady=true | 12 cases、双入口 runner、strict v1 consumer / sidecar、有限预算与缺失状态；实际验证见 Record |
 | S02 | Complete；只读来源契约与 consumer | 双域 adapter、EvidenceSet / Evaluation v1；43 新增 / 17 既有 tests 通过；无持久资源或迁移 |
 | S03 | Complete；可靠 RP 捕获与公共持久层 | bounded metadata、run / request / attempt / variant、Native receipt、FS / SQLite durable CAS 与 authenticated consumer；验证见 Record |
@@ -126,6 +139,7 @@ D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Wo
 | S10 | 工程交付完成；实际模型改善待验收 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
 | M1反馈/评价补充 F0–F3 | F0/F1及F2双模型前置完成；换机恢复和本地接线完成，M1 pending | 用户已取消双模型准入，按主模型继续校准/development/独立验收；原场景/维度/authority/生命周期门槛及旧不利判断保持，实际结果见Record |
 | S11–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
+| HM1–HM3 / H0–H5 | 未交付；D5 仅完成企划 | 源码静态复核不是 H0 基准验收；新 Actor eligibility、中文检索 / packing、deep retrieval、delta / cache 与认知完整消费均待实施 / 实测 |
 
 S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一工作补齐 M1 验收证据与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。

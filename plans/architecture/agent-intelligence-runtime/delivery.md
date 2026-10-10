@@ -3,6 +3,7 @@
 > M1 范围已冻结；S01–S09 与 S10 工程交付完成。S06 真实比较仍 ineligible；M1 的独立真实案例改善与集成前置条件待验收。后续阶段未进入。
 > D2 保留 S01–S34，新增 M8 的 G01–G06；不重编号已有阶段。阶段数服务于可独立审阅与验证。
 > D4 将 Execution Reuse / Cache Locality / Adaptive Invocation 的 A–F 逻辑顺序映射既有阶段与后续研究池，不新增正式阶段或扩张 M1。
+> D5 将 HCM-01–08 纳入正式架构；H0–H5 是三个有限交付组的工作包（§8.2），全部未实施，不增列 S/G 或改写 M1 结果。
 
 ## 1. 建议的交付组
 
@@ -22,7 +23,9 @@
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
 
-M1先补原反馈/评价契约，再各一个RP/Project试点。补充工作包F0–F3及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，实际试点门槛归 m1-acceptance §1/§2，测试执行归 Governance §13.1。F0设计及F1最小消费者完成，下一是 F2 来源/校准与必要工程诊断、修复、复测，验收通过后进入 F3。
+Hybrid Memory 后续按 [§8.2](#82-hybrid-memory有限交付组与依赖) 交付：M1 验收 / 集成后从最新 main 开始 HM1（H0–H2）；HM2（H3/H4）消费 M8；HM3（H5）纳入 M2/M3 与已有 World Simulation。H0 的只读基准设计可以独立准备，但新 Memory 能力不是当前 M1 的准入或退出前置。
+
+M1 原反馈 / 评价补充工作包 F0–F3 及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，当前主模型准入归 m1-acceptance §1/§2/§14，测试执行归 Governance §13.1。F1/F2 前置与首次 F3 development 已有实际结果，M1 仍 pending；继续位置见 index 与同一 Record 最新节，不将早期 F2 路由恢复为当前状态。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
 
 ## 2. D0 / D1
@@ -54,6 +57,10 @@ D1 完成后按依赖从 S01 推进 M1；不把整个 Bundle 自动标为 Approv
 ### D4 — Execution Reuse / Cache Locality / Adaptive Invocation 整合
 
 读取新研究并参考 Reasoning Continuity 边界；execution-reuse 管理有效性 / 依赖 / 产物消费，behavior-context 管理 Segment / canonical compiler，compute-policy 管理调用阶梯与预算，model-routing §8 管理 cache capability / locality / observations。保持 §7 唯一 continuation 定义；A–F 映射见 §8.1。本轮仅企划整合、同一 Record / HANDOFF 和本地文档验证，下一产品 checkpoint 仍是 S04。
+
+### D5 — Hybrid Cognitive Memory 2.0 正式企划整合
+
+按指定研究阅读路由核对 HCM-01–08、最新 main 与当前产品分支；hybrid-memory 唯一管理召回 / 硬切换，Actor / World / Context / Compute / Reuse / Eval 仍归原模块。H0–H5 依赖与有限出口见 §8.2，R6-T01–T15 / B0–B6 只引用研究中的验证设计。此次只更新企划并验证实际修改的文档 / 链接 / 结构；不修改实现、M1 验收模块、历史 Record 或 HANDOFF，不运行产品 / 模型实验。
 
 ## 3. M1 — 证据、评价与经验成长
 
@@ -91,12 +98,12 @@ S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.m
 | 阶段 | 依赖 | 实际交付 | 针对性验收 |
 | --- | --- | --- | --- |
 | S15 — 角色身份与 profile projection | S02、S11、G06、M3 设计冻结 | 在既有 Actor 精确身份下分离稳定设定、风格与动态 state；保留旧文本 profile、表达 / Narration 分域 | 旧角色 / Package 可读；作者设定不被一次互动改写；更换模型保持身份 |
-| S16 — Belief 与可见知识边界 | S15 | 扩展已有 Information 投影的 cognition consumer；工具 / context disclosure 检查及自然语言 audit | 不同 Actor 不共享隐藏信息；belief 可错但不写为 Truth；自由文本 audit 的保证等级明确 |
+| S16 — Belief 与可见知识边界 | S15、H2（§8.2） | 扩展已有 Information 投影的 cognition consumer；消费 Hybrid 合法证据，旁白 B / 作品 A、C 与独立 disclosure；工具 / context disclosure 检查及自然语言 audit | 不同 Actor 不共享隐藏信息；belief 可错但不写为 Truth；Exposure / Belief / Disclosure 分域，数据隔离与自由文本 audit 的保证等级分别明确 |
 | S17 — Desire / Intention 与 Goal 关联 | S11–S12、S16 | 持续愿望、当前意图、有限竞争 / 冲突，与 Goal / commitment 显式关联 | 用户执行目标与角色愿望权限不同；事件导致有依据更新；局部意图有取消和过期 |
 | S18 — Emotion / Relationship appraisal | S16、S17 | 以获准事件的共享 cognition pass 采纳动态情绪 / 关系变化，可选择认知 profile | 一次事件不重写全部 traits；变化可解释 / 撤回；不强制对玩家公开数值；不追求单调加深依赖；普通 turn 读 state，事件 gate 与费用可验收 |
 | S19 — 有界一阶 / 二阶 ToM | S18 | Actor 自己关于他者的假设、预测和 confidence 更新 | 不写成他者真心；hidden state 不泄露；嵌套 / 节点 / 展开 / 模型调用有界；真实行为可反驳假设 |
-| S20 — 因果角色轨迹与 Memory applicability | S19 | 事件 → appraisal → state change → action 的来源链；检索后的适用判断 | 避免第二事实图；旧证据修订能失效下游；检索旧记忆不机械强制行为 |
-| S21 — 认知检查、保存恢复与长期场景 | S20 | 用户 / 作者允许的 cognition inspector；save / export / rollback 接入；多角色持续场景 | 秘密、误会、承诺、关系变化跨多回合可恢复；权限视图分离；评价连续性、费用和用户偏好 |
+| S20 — 因果角色轨迹与 Memory applicability | S19 | 事件 → appraisal → state change → action 的来源链；检索后的适用判断与 HCM-05 轻度默认 / 深度可选遗忘 | 避免第二事实图；旧证据修订能失效下游；保护关键承诺 / 关系，检索 / 索引压缩不触发角色失忆，不机械强制行为 |
+| S21 — 认知检查、保存恢复与长期场景 | S20 | 用户 / 作者允许的 cognition inspector；save / export / rollback；H5 完整 cognitive consumer 与作品可选的正式 World Tick 自主 NPC | 秘密、误会、承诺、关系 / 遗忘状态跨回合可恢复；权限视图分离；只沿原 Simulation / outbox / 原预算，评价正文、连续性、费用和偏好 |
 
 RP 是本组主要产品 consumer。Project Agent 只消费与其真实任务相关的用户约束 / 意图假设，不强行使用 NPC 情绪或娱乐关系系统。
 “并重”意味着基础设施与验收都有两条路径，不意味着每种角色心理能力都必须复制到 Project UI。
@@ -112,6 +119,8 @@ RP 是本组主要产品 consumer。Project Agent 只消费与其真实任务相
 | S26 — Metacognitive budget policy | S25、G06、S10 的评价数据；预测策略另需 S24 | 基于共享预算与 policy resolver 深化计算分配，含 reasoning / recall / target / branch / critic；先规则后有证据的 classifier / learned candidate | controller 开销计入总成本；同质量底线比较；难例不能因 fast-path 回归；可回退固定策略 |
 
 硬预算、普通路径和 telemetry 从 M1 / M8 开始，不能到 S26 才补。S25 / S26 不必等待 World Model 才优化普通路径；使用预测的策略单独依赖 S24。初期先固定预算做对照，再增加动态策略。没有预测质量证据时，更多 rollout 不能算成功。
+
+HCM-04 的正式 World Tick 自主 NPC 消费已有 Simulation，边界归 [architecture §8.1](architecture.md#81-正式-world-tick与自主-npc)，不是新增 S22–S24 前置。S25 / S26 可用 H0–H5 取得的真实检索 / 成本证据深化策略；不能以未测 PPR 或 cache 收益启动 learned policy。
 
 ## 7. M5 / M6 / M7 — 后续可替换能力
 
@@ -158,9 +167,34 @@ G 阶段按依赖与验收推进；本组实现分支与完整交付后的集成
 A → B → C → D → E → F 是能力依赖与建议演进顺序，不是六个新增正式阶段。B 的上层结构先交付，其具体 Provider cache 支持在 G04 延续验证；C / D 的应用产物复用不依赖 Local KV。G04 是普通 local target / 可观测能力接入，不能算 F 或把所有品牌 / 算法列为 M8 必做。
 进入 M8 前冻结有限对象 / 工具 / 模板 allowlist、支持路径、物理 schema / migration、实际 consumer 与退出阈值；当前只采纳架构顺序，未授权 prewarm、付费 probe、connection / privacy 改动或 learned routing 发布。
 
+### 8.2 Hybrid Memory有限交付组与依赖
+
+**本表确定企划分组，不表示本轮实施或验收完成。** H0–H5 沿研究 ID 保持为工作包，不新增六个 S/G 正式阶段，不扩张 M1；原 40 个阶段身份保留。每组在进入实现前固定有限数据 / 路径 / 算法支持矩阵、预算 / 阈值与存储清单，以真实消费者和下表出口集成；参数选择不重开 HCM-01–08。
+
+| 有限交付组 | 范围与前置 | 集成出口 |
+| --- | --- | --- |
+| HM1 — 唯一召回与基础检索 | H0 → H1 → H2；产品改动在 M1 原验收 / 集成后，从最新 main 开始，复用现有 Information / Context / source / budget | 三条实际生成路径硬切换完成、原生来源完整、确定性安全与中文基础检索 / 正文对照通过；不等待 M2/M3 新 writer、G05 或 cache |
+| HM2 — 有界深检索与有效复用 | H2 后的 H3 与 H4；纳入 M8 相关消费者，精确 G 依赖见下表；两包不互为前置 | G06 取得所启用算法 / 复用的实际收益和失败 / unknown 证据；无收益方案保留简单基线，不能凭研究算法名称或 mock 宣布通过 |
+| HM3 — 角色认知与长期 RP 消费 | H5；沿 M2 的 Goal 和 M3 S15–S21 消费，保留 G06 前置与既有 Simulation / Lifecycle | S21 完成 source-backed cognition、叙事策略、遗忘 / 关键承诺保护、合法 tick 自主、保存回滚和独立长期场景验收；S27 再延续 ExpressionPlan |
+
+| 工作包 | 依赖 | 有限消费者 / 接口交付 | 失败、成本与针对性验证 / 出口 |
+| --- | --- | --- | --- |
+| H0 — 实际基准与安全契约 | 最新 refs；原只读 Authority / Information / Evidence / Eval；可独立做只读准备，产品变更仍依 HM1 前置 | Ordinary RP / Game / Package Turn 调用图、exact anchors、旧模式符号 / 数据保留清单；固定中文 / 长篇样本和 query / 证据标签，B0 成本观测 | source / Actor / Branch / Timeline / Variant 反例与原 targeted tests 入口定位；分别固定 source、retrieval、正文、成本判断。无真实模型 / latency 时标未测；不把静态风险写成已泄露，不用新样本改 M1 |
+| H1 — 唯一 Recall 与前置 eligibility | H0；当前原生来源 / Information / Context 即可，不依赖完整 M3 | 原 `recallMemory` 统一语义、requester / anchor / 合法候选域、typed evidence 和各原 Context consumer；按 [hybrid-memory §4](hybrid-memory.md#4-旧-llmrag-召回的硬切换) 完成旧 UI / 配置 / 执行清理与派生重建 | 无旧入口 / 别名 / 双读双写 / 重复注入；有效 Atria 历史与原权威不丢失。三路径 source delete、编辑 / variant、fork / restore、late callback、取消 / 保存失败、无 Embedding 各有断言；硬失败拒绝，可选失败只在 Hybrid 内降级 |
+| H2 — 中文查询与有界融合 / packing | H1；当前 source-backed Commitment / Narrative / Actor 投影，不依赖新 Goal writer | 当前 scene / Actor / 别名 / 时间 / 指代种子；合法 lexical / typed graph / optional vector、RRF 与覆盖选取，完整 ContextItem / atomic source groups | B1–B3 配对验证省略指代、旧承诺、历史 / 当前冲突、错信 / 传言、冲突双方、token 与无证据 unknown；普通回合不固定追加认知 LLM。质量无退化 / 目标覆盖有实际证据后退出，无收益 packing 回退简单合法算法 |
+| H3 — 按需多跳与辅助计算 | H2、G03 / G04 的 exact target / capability、G05 原准入 / charge；G06 验收 | 仅困难查询消费有限 typed path / PPR 或 rerank / LLM rewrite，固定所选有限算法而非全部并跑；输出 skip / trigger / stop、合法来源链 | B3–B5 配对测合法多跳、无法补全链、服务异常 / deadline / budget exhaustion；节点 / 边 / CPU / 额外请求计入原预算。普通 RP 无固定额外模型，收益不成立维持基础路径；来源 / 权限失败不猜测 |
+| H4 — source-valid delta / cache | H2、G01 / G03 的原 proof / invalidation；Context segment 依 G02，Provider observation 依 G04，新增工作依 G05，G06 对照 | 原索引的可验证 source delta 与候选复用；稳定 Context / Provider prefix 消费原 Reuse 契约。CPU 热点基准可在 H0 先做，H4 不必等待 H3 | 原生历史保持；edit / delete / rollback / scope 撤回、同 query 不同 Actor / Branch、Embedding / indexer 换版及丢失 delta 均拒绝错误复用；依赖不完整全量重建。B6 与冷暖 corpus 基准记录 p50/p90、network / index / Embedding / valid-hit / rejected-invalid；真实收益未得不计加速 |
+| H5 — cognitive consumers 与 RP 质量 | H2、M2 S11–S12 的 Goal 来源、S15 与 G06；已有 Simulation / Lifecycle，不依赖 S22–S24 | 从 S16 的知识 / 旁白消费开始，S17–S18 接入事件认知与意图 / 关系，S20 接入因果轨迹 / 遗忘，S21 完成恢复与合法 tick 自主的组验收 | 原 state writer / CAS / exposure / source 仍裁决；不把整个 H5 作为 S16 的前置，也不要求先完成 S21 才开始 H5。正文 / 玩家自主权 / 声音 / 承诺应用与 source 检查分开；actor data、遗忘恢复、策略关闭、回滚、world tick 跳跃 / 无推进 / 晚到任务各有验证。后台预算 / pending 保留，无源或成本不足停止相关更新 |
+
+依赖为 `H0 → H1 → H2`，之后 `H2 + G05 → H3`、`H2 + Reuse/Context/Route substrate → H4`、`H2 + M2/M3/G06 + 既有 Simulation → H5`。H5 不额外等待 H3/H4 全部算法或数值收益；M3 仍保留已验收 G06 的原前置，避免为基本角色知识边界制造无限性能任务。M4 S25/S26 只在实际数据成立后深化计算策略，S27 延续已获准表达。
+
+测试入口见 [baseline §10.4](baseline.md#104-验证入口与证据边界)，R6-T01–T15 与 B0–B6 定义只保留在 [研究 §8](../hybrid-cognitive-memory-2-0/retrieval-design.md#8-必须做的评测评价检索也评价叙事消费)。各包只跑受影响 source / Context / Information / Memory / Simulation / Eval 测试；实施 UI 改动才做相关浏览器检查。不要求当前文档整合运行这些测试或全量构建。
+
+**截至 D5：H0–H5 / HM1–HM3 全部未交付。** 本次源码静态核对不是 H0 全套基准验收；R6 场景、算法消融、长篇质量、费用 / latency / cache 收益均待实测。M1 原工程 tests、primary-only gate、失败 / invalid / unknown 与密封独立材料不因本分组而变更。
+
 ## 9. 后续研究池
 
-- society-scale autonomous NPC：在单 Actor、Goal、cognition 和成本成立后再定义规模、运行频率与玩家控制。
+- society-scale autonomous NPC：HCM-03/04 已批准作品可选的有限自主与正式 World Tick；规模化社会模拟在单 Actor、Goal、cognition 和成本成立后再定义规模 / 频率，不延期或重开已定默认。
 - visual world model：选定可用 observation / action 空间后对接，不替代 World authority。
 - latent / KV / hidden-state communication：只有模型后端暴露且允许这些表示时才开展 PoC；近期不承诺通用闭源 API 可用。
 - Local inference reuse / decode：对接成熟 serving backend，Prefix / Segment / non-prefix KV、workflow-aware eviction / progress hints、speculative / multi-head decoding 与安全重算分别证明能力；不自建 GPU engine，不默认开放 cross-user / cross-package KV。
@@ -189,6 +223,9 @@ A → B → C → D → E → F 是能力依赖与建议演进顺序，不是六
 | S22–S26 | index、architecture §8、compute-policy、model-routing §3–4、baseline §1 / §3、当前阶段详细设计 | World Model / dual-process 资料 |
 | G01–G04 | index、decisions、execution-reuse、behavior-context、model-routing（含 §7 / §8）、baseline §9、当前阶段详细设计 | research §5 / §6；两份研究对应 validity / adapter / probe 章节；仅对应 provider / gateway 资料 |
 | G05–G06 | index、compute-policy、execution-reuse §7、model-routing、当前阶段详细设计 | behavior-context / execution-reuse 对应消费者；research §5 / §6 |
+| H0–H2 / HM1 | index、decisions §9、hybrid-memory §1–4 / §7–8、delivery §8.2、baseline §10 | 研究 §8 的本包场景 / 消融；三条调用图与对应旧配置 / 源生命周期 |
+| H3–H4 / HM2 | index、delivery §8.2、hybrid-memory §3 / §6–8、compute-policy §4.1、execution-reuse §2–3 / §7、对应 G 设计 | behavior-context §3、model-routing §8、research §7；仅所选算法 / provider 资料 |
+| H5 / HM3 | index、delivery §5 / §8.2、architecture §5–8、behavior-context §2.1、compute-policy §2 / §4.1、hybrid-memory §5 | 当前 S16–S21 消费者；已有 Simulation / Lifecycle；研究 §8 对应 RP 场景 |
 | S27–S34 | index、architecture §9、当前阶段详细设计 | 仅对应 provider / protocol / training 的官方资料 |
 
 当前阶段详细设计在进入交付组之前补齐；远期模块未冻结时不虚构“实施指南已经完整”。
@@ -228,6 +265,8 @@ A → B → C → D → E → F 是能力依赖与建议演进顺序，不是六
 | Execution Reuse §7–10、21–24、56、68–71 | behavior-context §3–4、model-routing §8 | G02 Segment / Resource identity、canonical compiler / layout；G04 exact-path cache capability / controls / telemetry；不冻结研究示例字段 |
 | Execution Reuse §45–47、50–55、72–81、85 | compute-policy §1.1 / §3–5、model-routing §8、delivery §8.1 | G03 locality / cost evidence；G05 规则 invocation / retrieval / budget，G06 hit / miss / TTFT / E2E / savings 对照；S26 后续策略 |
 | Execution Reuse §25–36、48–49、84–87 | execution-reuse §6、model-routing §8、后续研究池 | Provider / Local 分层、Trust Domain / HijackKV 与 workflow / progress hints；Local KV / speculative decode 为 F，需另定有限 PoC |
+| Hybrid Memory HCM-01–08 / architecture / integration H0–H5 | hybrid-memory；decisions §9；architecture §6.1 / §8.1、behavior-context §2.1 / §3.2、compute-policy §4.1、execution-reuse | §8.2 的 HM1–HM3；H3 / H4 消费 G05/G06，H5 沿 S16–S21，S25/S26 / S27 后续消费真实数据 / 表达 |
+| Hybrid 检索研究 R6-T01–T15 / B0–B6 | research §7；baseline §10；原研究 §8 保存完整场景 / 消融 | H0 冻结实际基准，各包只验证相关断言；不改 M1 当前验收，也不将作者实验或建议写成 Atria 收益 |
 
 报告中的资料索引与后续读取提示用于来源核对，不重复建立功能阶段。
 

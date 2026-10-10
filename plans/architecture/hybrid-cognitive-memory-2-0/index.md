@@ -1,8 +1,10 @@
 # Atria Hybrid Cognitive Memory 2.0 — 研究与 Codex 整合入口
 
-> **产品级架构决策已全部定案（HCM-01–08）；技术研究与交付建议已形成；未实施、未并入现有正式 Agent Runtime 企划。**
+> **产品级架构决策已全部定案（HCM-01–08）；D5 已整合进 Agent Intelligence Runtime 正式企划；功能未实施、收益未实测。**
 > 更新：2026-10-10；Task ID：hybrid-cognitive-memory-2-0；Primary Workspace：docs。
 > 目标消费者：[Agent Intelligence Runtime 正式 Plan](../agent-intelligence-runtime/index.md)。由 Codex 在用户指定的现有开发分支/文档工作区按当前真实 HEAD 集成，**不默认改动 M1 已冻结的验收要求，也不把本研究视为产品实现或真实模型验收**。
+
+2026-10-10 正式采纳已完成：检索 / 证据 / 硬切换的唯一详细权威为 [hybrid-memory](../agent-intelligence-runtime/hybrid-memory.md)，有限交付与依赖为 [delivery §8.2](../agent-intelligence-runtime/delivery.md#82-hybrid-memory有限交付组与依赖)，产品决定仍由本 Bundle 的 decisions 保存。下列 architecture / integration 保留研究输入与原建议；后续实施沿正式 Plan 对应模块，不并行维护第二套详细规则。
 
 ## 核心目标
 
@@ -42,6 +44,6 @@
 
 ## 完成条件与后续动作
 
-本**研究与产品决策阶段结束**。下一步是 Codex 按 [integration.md](integration.md) 将设计正确纳入原 Agent Intelligence Runtime 正式 Plan，并定义有消费者、有预算和针对性验收的后续实施阶段。此动作不是本研究直接改动生产分支或开始运行真实模型测试的许可。
+本**研究与产品决策阶段及 D5 正式企划整合均已结束**。后续按 [正式交付映射](../agent-intelligence-runtime/delivery.md#82-hybrid-memory有限交付组与依赖) 在原 M1 验收 / 集成后推进有限实现，H3/H4 消费 M8，H5 沿 M2/M3 与原 Simulation。本次整合没有改生产分支或运行真实模型 / 性能实验，M1 状态仍以正式验收与 Record 为准。
 
 研究文件已远端持久化在 docs 长期分支；只有出现新用户决定或新的实质研究证据才更新相应模块。不得重复进行已经结束的选择题讨论。

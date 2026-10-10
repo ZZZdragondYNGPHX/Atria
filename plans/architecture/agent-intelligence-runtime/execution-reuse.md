@@ -60,6 +60,9 @@ unknown、缺失依赖、过期来源或不可重验结果保留拒绝 / unavail
 生命周期由对象决定：只读结果依赖源版本 / 时间，模板依赖 Package / Runtime / 工具版本，Narrative Intent 依赖当前 turn / scene / revision，静态知识依赖资源版本，Provider cache 服从其路径能力和 TTL。它们不共享一个全局寿命。
 Retention / 删除沿对应原存储与资源生命周期；先证明安全消费，再选择索引、内存或持久缓存实现。持久资源进入实际阶段前补齐容量、迁移、read-only、backup / restore 与撤回，不在本轮新增存储 kind。
 
+D5 的 Memory corpus / index delta、query seeds / 候选 IDs / ranks / paths 与 Context / Intent 是本契约的消费者，对象范围见 [hybrid-memory §6](hybrid-memory.md#6-增量索引与有效缓存)。Audience / Actor、历史时点与授权投影是必须重验的适用依赖；相同 query / vector / TTL 不允许跨 Actor、Branch 或 Narrator/NPC 复用。缺完整 source delta 时保守重建 / 重算，不能删 currentness 检查来提高命中。
+索引失效、cache 淘汰与角色认知遗忘分开；后者归 [architecture §6.1](architecture.md#61-事件驱动认知与角色遗忘)，正式来源删除沿原 authority / retention。Memory 不新建第二套 dependency writer。
+
 ## 4. Tool Value、Task Artifact 与 Discovery
 
 | 对象 / effect 类别 | 允许的复用与限制 |
@@ -99,3 +102,5 @@ Cache storage loss 可导致重算，不能取消 authority、降低 quality flo
 
 必要案例：同输入同依赖可用、无关状态更新仍可用、相关依赖 / 时间 / 实体 / 权限 / Authority 变化拒绝；模板可匹配但失效工具 / precondition 阻止执行；side effect 不被 cache 跳过；fork / restore / edit / source 删除不污染消费；RP 复用前置产物 + fresh narrator 与完整重算比较状态正确性、重复 / 多样性、角色一致性和质量—成本。
 复用 M1 Eval，不新增 judge authority；本轮无模型收益结论。实施 A–F 顺序及 G 阶段映射唯一见 [delivery §8.1](delivery.md#81-execution-reuse实施顺序与既有阶段映射)。M1 与下一 S04 不依赖本模块的未实施能力。
+
+Hybrid Memory H4 沿 G01 / G03 的 proof、G02 的 Context、G04 的 Provider observation、G05 / G06 的预算与对照交付，精确前置见 [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖)。当前 M1 checkpoint 见 [m1-acceptance](m1-acceptance.md) 与同一 Record；上文 S04 是 D4 当时路由，不恢复为当前进度。H4 未实施，不把既有 source guards 或向量去重算作已验收缓存加速。

@@ -180,3 +180,5 @@ Provider-reported、gateway-reported、locally-verified 是来源 / 核对方式
 未发送的纯应用复用只有 task decision 与原产物 provenance，不能伪造 request attempt / token usage。Saved model / tool / plan calls、tokens / 延迟按 execution-reuse §7 与 ComputePolicy 的对照 / 估算归因，分别报告实际支付与反事实节省。
 
 G06 的已有请求检查 / 运行投影呈现有效复用、对象 / source、why miss、selected cache mode / target、可见 usage / unknown 和必要的版本 / 隔离诊断；普通用户只看到帮助理解结果与消费的摘要，不暴露 KV、opaque reasoning 或敏感 Context。指标 / paired eval 沿 [execution-reuse §7](execution-reuse.md#7-reusedecision评价与阶段路由) 与 compute-policy §5，不另建 Eval / cache authority。
+
+D5 的 Hybrid 内部 Embedding、rerank / 辅助 LLM 与 prefix reuse 继续消费原 exact resource / target / adapter evidence，不形成对外 LLM/RAG 召回模式或独立发送器。H3 的模型准入与 H4 的实际 cache 观察沿 [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖) 接入 G05 / G06；未配置能力及 gateway 缺失 usage 分别标 unavailable / unknown，不推断免费或已命中。Memory 检索与硬切换详细规则只归 [hybrid-memory](hybrid-memory.md)，§7 continuation 生命周期保持独立。

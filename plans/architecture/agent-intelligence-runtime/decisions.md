@@ -18,11 +18,12 @@
 | U10 | 读取 Reasoning Continuity 研究，将已确认架构结论融入当前企划，沿既有正式术语消除重复概念 | 2026-10-06 本轮明确请求；仅授权企划整合 |
 | U11 | 读取 Execution Reuse / Cache Locality / Adaptive Invocation 研究，将已确认架构结论整合进当前企划，并参考 Reasoning Continuity 避免重复定义 | 2026-10-06 本轮明确请求；仅授权企划整合与必要 Record / HANDOFF |
 | U13 | 先明确原链路的反馈与评价契约，再用各一个 RP、Project 试点验证 | 契约先行；具体工程字段在本模块与对应设计中细化 |
+| U14 | 将已最终批准的 HCM-01–08 整合进现有正式 Runtime 企划，保留 M1 实际状态与不利证据，只改企划并提交 / 推送 docs | 2026-10-10 明确请求；不重开八项决定，不授权本轮产品实现 |
 
 M1 工程验收契约见 [m1-acceptance](m1-acceptance.md)；生产自动权限仍由 S10 管理。API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)。
 
 
-M1 产品范围、自动模式默认方式与分组集成已确认。S01 工程设计本轮冻结；S02–S10 技术契约在进入对应阶段前细化，M2 以后的认知权限仍待设计。
+M1 产品范围、自动模式默认方式与分组集成已确认。S01–S10 的原工程冻结记录保持；当前进度见 index / m1-acceptance / Record。HCM-01–08 的产品认知方向已冻结，M2/M3 的物理契约、具体权限 / takeover 与阈值仍在这些边界内深化。
 
 ## 2. 交付建议与确认状态
 
@@ -152,3 +153,22 @@ U13批准先后顺序。原链路补充设计唯一归属 [m1-feedback-evaluatio
 已纳入的工程边界：自动质量分析独立于user explicit、client observation与Host正式outcome；根因与intervention分开，非局部writer问题转工程；versioned quality/profile/case lineage接原固定evaluator，原开发/独立验收与发布门槛保持；每域一个pilot/单target/一次候选周期。新逻辑字段/兼容策略不是已实施schema，具体validator和请求identity在相应工作包、模型发送前固定。
 
 现有761/2939582与失败窗口保持，不恢复旧6/24许可、不重跑合成v1追分，不伪造human。未授权扩大writer、自动改rubric/连接/模型路由、长期状态或跨任务知识库；本轮无付费调用。M1未达标，不合并main、不进入S11/G。
+
+## 9. D5 — Hybrid Cognitive Memory 2.0 正式采纳
+
+U14 要求采纳八项已最终批准的产品决定。决定 ID 与最终语义唯一保留在 [Hybrid decisions](../hybrid-cognitive-memory-2-0/decisions.md)，本表只管理正式消费者和禁止越界；研究中的旧“未批准”措辞不重开已冻结方向。
+
+| 决定 | 正式采纳范围 | 详细权威 / 交付 |
+| --- | --- | --- |
+| HCM-01 | 完整规划、分组实现；对外唯一 Hybrid，内部算法按需组合 | [hybrid-memory §1–3](hybrid-memory.md#1-复用现有权威)；HM1–HM3 |
+| HCM-02 | B 旁白 / NPC 分离默认，A 严格限知与 C 作者自定义作品可选；可知不等于可揭示，不给 NPC 扩权 | [behavior-context §2.1](behavior-context.md#21-作品叙事策略与角色可知)；H1 源域隔离，H5 / S16–S21 完整消费 |
+| HCM-03 | 默认事件驱动混合认知，作品可选高度自主；不默认每 NPC 持续调用 | [architecture §6.1](architecture.md#61-事件驱动认知与角色遗忘)、compute-policy §2；H5 / S16–S21 |
+| HCM-04 | 自主 NPC 只按正式 World Tick 推进；现实时间不自动成为世界时间 | [architecture §8.1](architecture.md#81-正式-world-tick与自主-npc)；H5 复用现有 Simulation / Lifecycle |
+| HCM-05 | 轻度自然遗忘默认，深度认知遗忘作品可选；关键历史 / 承诺 / 关系与 World Truth 保护，存储压缩不等于失忆 | architecture §6.1；H5 / S20–S21，H4 只管索引 / cache |
+| HCM-06 | Constraint-first Adaptive Hybrid；来源、Actor、时间、Branch 在排名前约束，廉价默认、复杂查询预算内升级 | [hybrid-memory §3](hybrid-memory.md#3-请求检索与证据协议)；H0–H3，G05 / G06 |
+| HCM-07 | 旧 LLM/RAG UI / 设置 / 独立链硬切换，无别名 / 双读双写；保留有效 Atria 原生来源，重建派生索引，不迁移 ST 旧数据 | [hybrid-memory §4](hybrid-memory.md#4-旧-llmrag-召回的硬切换)；H0 清单、H1 切换，H4 后续优化 |
+| HCM-08 | 普通回合零额外认知 LLM 目标；正文必要来源 / 知识 / 权威同步核验，非关键维护有界后台，缺证据不能猜 | [compute-policy §4.1](compute-policy.md#41-hybrid-memory同步核验与后台工作)；H1–H5 与 G05 / G06 |
+
+**D5 本轮只完成正式企划整合。** [delivery §8.2](delivery.md#82-hybrid-memory有限交付组与依赖) 将 H0–H5 组织为三个有限交付组，保留 S01–S34 / G01–G06 身份，不追加 M1 阶段或改变其退出门槛。当前 M1 仍 pending，主模型准入以 [m1-acceptance §1 / §2 / §14](m1-acceptance.md#14-2026-10-09-当前主模型准入) 为准；原测试通过、不利评分、无效响应与费用记录保持。
+
+未冻结的工程变量：物理 schema / backend、中文分词 / 指代算法、RRF / PPR / MMR 参数、升级阈值、lane token 配额、delta / cache key / TTL、UI 细节与实测 SLO。它们按所属工作包依据真实 HEAD / 基准定稿，不是新的产品选择题；本轮未执行实现、数据清理、模型调用或性能实验。

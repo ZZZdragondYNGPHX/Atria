@@ -1,9 +1,11 @@
 # Hybrid Cognitive Memory 2.0 — Codex 正式企划整合与分阶段交付建议
 
-> 状态：**产品决策已冻结，供 Codex 整合正式 Plan 的技术交接**；这里的工作切片不是已获实施许可的新增 S/G 阶段。
+> 状态：**产品决策已冻结；2026-10-10 D5 正式企划整合完成，本文件保留研究阶段整合建议**；这里的工作切片不是已获实施许可的新增 S/G 阶段。
 > 日期：2026-10-10；Task ID：hybrid-cognitive-memory-2-0；Primary Workspace：docs。
 > 按顺序阅读：[入口](index.md) → [最终决定](decisions.md) → [目标架构](architecture.md) → 当前章节。具体算法证据、15 个评测案例及 7 组消融对照见 [检索调研](retrieval-design.md)。
 > 原产品开发是否继续、旧 M1 能否退出，以 [正式 Agent Intelligence Runtime Plan](../agent-intelligence-runtime/index.md)、[M1 Acceptance](../agent-intelligence-runtime/m1-acceptance.md) 和当时实际 Git/Record 为准。本文件不直接修改旧 Plan。
+
+当前正式入口：八项采纳范围见 [decisions §9](../agent-intelligence-runtime/decisions.md#9-d5--hybrid-cognitive-memory-20-正式采纳)，检索 / 硬切换见 [hybrid-memory](../agent-intelligence-runtime/hybrid-memory.md)，HM1–HM3 / H0–H5 的实际依赖与退出见 [delivery §8.2](../agent-intelligence-runtime/delivery.md#82-hybrid-memory有限交付组与依赖)。下文建议依赖图不替代正式映射；H3/H4 不互为前置，H5 复用已有 Simulation，不等待 S22–S24 World Model。整合仍仅文档，功能 / 基准未交付，不改变 M1 历史和当前验收。
 
 ## 0. Codex 需要完成的正式企划任务
 

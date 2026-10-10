@@ -1,6 +1,6 @@
 # Behavior / Context / Generation：语义到请求
 
-> D2 / D4 纳入正式架构方向；本模块唯一管理语义选择与 Context 编译。资源名、Schema、迁移 API 在 G01 / G02 前细化，不表示已有实现。
+> D2 / D4 / D5 纳入正式架构方向；本模块唯一管理语义选择与 Context 编译。资源名、Schema、迁移 API 在 G01 / G02 前细化，不表示已有实现；D5 的完整 Memory / 叙事消费者未交付。
 > 输入研究：[Prompt / Context 报告](../model-prompt-context-frontier-research.md)、[Execution Reuse 报告](../execution-reuse-cache-locality-adaptive-invocation-research.md)。当前代码事实见 [baseline](baseline.md)，计算与路由分别见 [compute-policy](compute-policy.md)、[model-routing](model-routing.md)，产物复用见 [execution-reuse](execution-reuse.md)。
 
 ## 1. 明确分层及修改权
@@ -33,6 +33,14 @@ Creative Profile 先表达用户可理解的意图，例如慢节奏、第三人
 至少有“换旁白风格而 Actor identity / cognition 不变”和“不同角色口癖不污染旁白 / 他人”的独立案例。
 Project 复用 Behavior、Context、Generation 层；不强加娱乐文风或 NPC 情绪配置。Planner 的目标连续与 Narrator 的表达新鲜分别评价：后者使用显式 narrative / actor state 和短 reasoning horizon，具体执行范围沿 model-routing §7，不把角色稳定性寄托于永久 hidden reasoning。
 
+### 2.1 作品叙事策略与角色可知
+
+HCM-02 冻结 B 为默认：旁白与 NPC 认知分离；作品可选 A 严格限知、C 作者自定义。Narrator “可知”与“允许提前揭示”分别由获准视图和 Narrative disclosure policy 管理；B 不自动公开秘密，C 的创作选择也不升级 Actor / task 的工具或事实权限。
+
+Narrator 与 Actor 分别编译 audience-specific Context。NPC 决策 / tool 不接收旁白宽视图；A 的旁白自身也只取得获准限知投影。B 若在一次正文调用中提供宽事实，提示词不能确定性证明所有对白不串知；严格需求使用源级隔离 / 有界分阶段生成并独立评价其成本与正文，保证等级如实报告。
+
+Memory 提供人物经历与心理变化的来源；Character Expression 决定语言 / 节奏，Narration 决定旁白，不把旧台词 / 摘要作为必复制模板。H5 / S16–S21 完成知识与叙事消费者，S27 延续表达，不另建 Memory 文风 writer。
+
 ## 3. Context 选择、展开与压缩
 
 Context lanes 按来源与用途组织：固定方法 / 合约、身份核心、当前 task / input、获准 world view、动态 cognition、Memory / Evidence、必要历史、tool results。
@@ -60,6 +68,14 @@ Character / Lore / Memory / Tool / Skill / output schema 复用原精确资源�
 Tool Registry / capability discovery 与 Loaded Tool Schema Set 分开：先看获准有限 descriptors，再按需加载 exact schema；Discovery 候选的可复用性见 execution-reuse §4。延后加载改变 prefix 时如实重编译，不能因此绕过 allowlist。
 语义效用先于 cacheable length：不添加无关 few-shot、填充文本或多余 lore 来达到缓存长度；确有新内容价值时才在相同质量—成本对照中评价。来源 freshness、actor exposure、必要 guard 优先于 prefix 稳定。
 
+### 3.2 Hybrid Memory证据编译
+
+[hybrid-memory §3](hybrid-memory.md#3-请求检索与证据协议) 只返回来源与 audience 已核验的候选；Context 仍负责最终 target / visibility / freshness、required / atomicGroup、实际 tokenizer 和 token admission。复用当前 `current_state_event`、`commitments`、`recent_raw`、`narrative_spine`、`memory`、`knowledge`、`target_agent`、`runtime_system` lanes，不为 Core / Focus / Narrative 概念再造编译器。
+
+必需 World / Command / Event、Actor exposure 与有效承诺由其原 provider 进入相应 lane，焦点历史只用剩余允许预算，不能靠检索排名决定硬 guard 是否存在。冲突双方与完整来源组受保护；证据装不下时提供有来源的引用 / rollup 或明确不足，不裸截断成误导事实。来自剧情 / Memory 的原文保持低信任数据，不能修改 Runtime system、工具 allowlist 或 output schema。
+
+Ordinary RP 保留原 World Info / Workspace 消费与精确消息锚点；Native Game 保留 Turn / Narrative Contract；Package Turn 保留 Information grant 与最终 Context admission。三个接入点见 [hybrid-memory §2](hybrid-memory.md#2-三条生成路径分别接入)。稳定 segment 仍按 §3.1 / §4 编译，动态 focus memory 不为缓存命中保留 stale 内容。
+
 ## 4. 确定性编译与优化分离
 
 `固定 Task / semantic profiles / Context Plan / contracts → Semantic Request → 精确 model overlay → provider lowering → request snapshot`
@@ -80,6 +96,8 @@ M1 仍使用当前 Skill、Prompt、Preset authority；S08 的允许文本区块
 G01 / G02 显式分类旧 Preset 混合内容，建立版本化映射与诊断；无法确定是 identity、规则还是 style 的部分保留为 scoped raw module 并要求选择，不猜测迁移。
 旧精确资源、PackageVersion 与 active binding 保持可读；新模型配置采用新 schema / version，未知版本拒绝。切换前验证 compiled request，切换失败恢复旧 exact binding。
 不为保留 ST UI / identifier / injection position 固化新设计；已有数据兼容由迁移与显式选择保障，不通过静默 legacy fallback。
+
+该通用资源兼容不保留旧 LLM/RAG Recall 模式。HCM-07 的删除、原生来源保留与派生索引重建唯一见 [hybrid-memory §4](hybrid-memory.md#4-旧-llmrag-召回的硬切换)，不新增 ST 旧数据迁移。
 
 S27 的 prose ExpressionPlan 消费上述角色表达 / Narration 语义；语音和 Avatar 再消费相同 intent 与允许公开的投影。
 LoRA、vector prefix、learned control 留在 S34 / 研究池；只有可用 backend、序列化和 eval 成立时引入，近期不注册无消费者的万能控制对象。

@@ -1,6 +1,6 @@
 # Sparse Compute：调用准入、预算与收益
 
-> D2 / D4 正式架构约束；本模块唯一管理 Sparse / Adaptive Invocation 准入、预算与收益。策略阈值、档位名称与 SLO 保持待实测。M1 的有限预算已冻结，完整跨入口 substrate 在 G05 交付，S26 再深化自适应策略。
+> D2 / D4 / D5 正式架构约束；本模块唯一管理 Sparse / Adaptive Invocation 准入、预算与收益。策略阈值、档位名称与 SLO 保持待实测。M1 的有限预算已冻结，完整跨入口 substrate 在 G05 交付，S26 再深化自适应策略；D5 的 Memory 升级与收益未实施 / 未验证。
 > 输入研究：[Sparse AI 报告](../sparse-ai-invocation-adaptive-compute-research.md)、[Execution Reuse 报告](../execution-reuse-cache-locality-adaptive-invocation-research.md)。复用证明见 [execution-reuse](execution-reuse.md)，实际目标解析见 [model-routing](model-routing.md)。
 
 ## 1. 默认路径与适用范围
@@ -44,6 +44,7 @@ Adaptive Invocation 是现有 ComputePolicy / policy controller 对“是否执�
 仅当权限、输入域、模型或独立评价需要不同 specialist 时拆分，并证明增益。
 
 多数回合读取已有 cognition；规则可处理已冻结的 decay / transition。事件 gate 的详细数值在 M3 前定稿。
+事件驱动默认、作品可选高度自主与角色遗忘沿 [architecture §6.1](architecture.md#61-事件驱动认知与角色遗忘)，不把 retrieval 成功当作认知触发。自主 NPC 的唯一时间准入见 [architecture §8.1](architecture.md#81-正式-world-tick与自主-npc)；复用现有 Simulation / outbox，不另建 timer 或每 NPC 固定 LLM pass。
 Memory 写入与 Experience reflection 积累必要 evidence 后触发；普通低信息 turn 不默认执行 extraction。保留待处理 source anchors，让 consolidation 延迟不会丢证据或越过 actor 可见边界。
 后台结果必须重验 source / revision / scope，不能覆盖新回合；失败显示 pending / stale，不伪装成已学会。
 
@@ -80,6 +81,14 @@ Gateway 内部重试未知时，外层只能限制自己可控 attempts，并记
 
 Task graph / 当前 stage / possible next stages 与 Tool progress 可经原 scheduler 向支持的 backend 提供获准 locality / near-completion hints，指导 retention / offload / prefetch；它们是建议，不是已完成 receipt 或新的执行授权。缺 progress 保留 unknown；backend 不支持时忽略 hint 并保持原语义。Workflow-aware eviction、transition learning 与 speculative decode 留在 model-routing §8 的后续能力。
 Prewarm / prefetch 仅在已有显式 policy、发送许可、有限预算和近期复用依据下准入，沿 background / maintenance 路径支持取消与 stale-source 重验；不放大正文等待链或占用必要工作额度。本轮未启用这些策略。
+
+### 4.1 Hybrid Memory同步核验与后台工作
+
+HCM-08 将普通回合零额外认知 LLM 作为目标，内部检索仍按 [hybrid-memory §3.2](hybrid-memory.md#32-constraint-first-adaptive-hybrid) 选择必要 lanes。当前正文依赖的 source currentness、Actor 知识边界、Branch / Variant 与正式 World 状态必须同步核验；预算和低时延不允许跳过它们。缺必要证明返回 unknown / unavailable 或阻断相关操作，不用辅助模型猜测补事实。
+
+非关键 reflection、整理、压缩与索引维护沿 background / maintenance 有界执行；若本轮必须等 source / index 修复才能取得正确证据，就显式进入原 blocking 准入，不能在陈旧证据上先返回正文。后台保留 exact pending source anchors，重验后提交，不自行认定 Actor 已学会或已忘记。
+
+H3 的 typed path / PPR 有节点 / 边 / CPU / deadline 上限；rerank / query rewrite 还必须有覆盖缺口、可用 exact profile / target、G05 reservation / charge 与停止原因，G06 验实际收益。可选能力失败或额度耗尽退回合法基础检索，硬条件失败保持拒绝。Embedding、rerank、LLM、index / cache / proof 的费用与资源开销沿 §3 / §5 记录；不复用 M1 Evolution 额度作为新的前台或 NPC 自主预算。
 
 ## 5. 评价与观测
 
