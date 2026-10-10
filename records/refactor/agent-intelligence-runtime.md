@@ -1625,3 +1625,15 @@ shared lease 与原生迁移相关的 Responses/native matrix 63 项通过；随
 11 distinct relevant checks通过：FS/SQLite各一次实际rerank+fresh Narrator共享父额度与并发2申请只有1发送，共4项；无效响应保留直接17 total/partial counts、缺上下文/过期锚点/坏输入不发送1项；Project原Task收费/晚变更拒绝1项；实际Hybrid→NativeRetrievalService→middleware→provider HTTP触发、耗尽退回合法source和拒绝后source撤回1项；实际发送取消unknown与65条超限输入无charge1项；纯规则去重/不造事实1项；原ordinary检索不调用配置rerank1项；旧三种rerank/远程embedding协议沿明确原Session预算调用1项。最后坏output新增严格结果校验后仅相关断言重测；日志保留 initial/consumers/terminal 三份。8产品文件ESLint/diff通过，初12个缩进错误修正，不虚报全量测试。
 
 新增API0，M1/HM1冻结基线和quota/费用未变化。只证明有限规则与已发送费用语义，不计作真实rerank算法收益、金额硬上限、Embedding/CPU全覆盖或G05/G06/HM2完成。继续本地投影/hash/proof/network观测及有界HM2；不写HANDOFF，不集成main。
+
+## M8 / G05 工作量观测与 H4 source currentness 热点
+
+2026-10-11，work metrics source `528735d2b`，private identity `ab9dd69b8`，对应 transaction receipt修复 `bd51fd94c`。唯一Hybrid追加guard/哈希文档数、service请求和data JSON bytes、Embedding text请求意图、rerank次数以及投影/排序/packing/proof的elapsed phase；费用unknown与not_requested分开，未宣称硬CPU/金额预算。原content-addressed index对伪造metadata/冷暖IO的新增metrics检查、NativeHybrid实际调用及原成功rerank改为合法因果fixture共3相关checks通过；不扩大为全suite。
+
+H4原算法基线在实际loopback Native FS向量存储完成：有效SourceLifecycle conversation Episodes 100/1000/10000，各cold3/warm5，共24样本；明确fixture vectors、真实Embedding0、外部API0。每个warm仍hash全部文档，只有2个local request/1个query embedding意图；10000cold网络request body约4.50–4.66MB，warm642 bytes request/165310 bytes response，均是实测HTTP body数据，不含TLS/header。data metrics另标service_data_json_utf8，不能混作相同口径。基线p50/p90ms分别100 cold91.11/94.08 warm47.42/49.01、1000 cold618.64/626.38 warm350.44/367.21、10000 cold17735.54/18328.92 warm10086.85/10678.36。hash elapsed含chunk guard/yield，不能把guard与hash相加当总CPU。
+
+热点证据支持沿原authority优化：私有cache复制以隔离公开输出，只在ledger内容改变时换identity；guard仍逐次查完整chat内容、enabled/scope、原epochs/provider/external proofs。10000暖态新p50/p90为2971.63/3056.04ms（有限样本下降70.54%，不是SLO），cold7499.28/7511.54ms；24对evidence SHA/选中source IDs全相同，原M1/HM1 raw ledger hashes与原pins匹配。随后发现await transaction返回后取最新cache token有借用后写identity的窗口，改为transaction内部receipt；该fix不是改写原ab9 producer测量。7 distinct针对性反例通过，包含未通知edit/chat切换/flag/concurrent write/access、readonly、manual stale/persistenceboundary、公开copy不别名、观察ABA以及queued transaction；新增queuefixture初未处理optional corrections导致TypeError，修正fixture后定向通过，日志保留。产品lint/diff通过。
+
+私有脚本失败证据全部保留：首次Node24 crypto只读setter、次未设默认config均发生在测量前；v1/v2把insert纯文本OK当JSON，0样本失败。v1/v2还静默过滤错误账本文件名，仅quota被校验，原记录不覆写；m8-scale-baseline-raw-hash-audit.json单独核验真实m1-ledger/hm1-model-ledger两raw pins均匹配。v3改为全部必需文件存在才开始，按content-type解析，完成24样本和基线校验；guard-v1及comparison-v1另保存source/report原hash与实际有限数据。原sealed M1材料不读、不重跑，quota原账不改。
+
+本checkpoint只完成观测与currentness热点，不计作source-valid delta/candidate cache、H3/G06或完整G05/H4/HM2验收；继续原任务，不写HANDOFF，不集成main。

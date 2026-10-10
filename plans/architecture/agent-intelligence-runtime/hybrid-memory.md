@@ -107,6 +107,10 @@ Memory 只定义待复用投影，proof / invalidation 的完整规则沿 [execu
 
 当前向量同步仍遍历 corpus 指纹并核对远端 hash 集。H4 先测合法 Episode 规模 100 / 1000 / 10000 的 projection / hashing CPU、network / index bytes、Embedding 次数与 cold / warm p50/p90，再决定 delta / candidate cache 的实际方案。数字是**基准规模，不是已测结果或性能 SLO**；依赖误命中先判正确性失败，不能用更快延迟抵消。
 
+2026-10-11 H4 前置有限实测：原 SourceLifecycle 有效 conversation Episodes + 实际 Native loopback FS 索引，100/1000/10000各 cold3/warm5；source `528735d2b` 基线与 `ab9dd69b8` 私有 ledger identity 优化的24对完整 evidence hash/选中 source IDs一致。10000暖态E2E p50/p90从10086.85/10678.36ms到2971.63/3056.04ms，guard median从8241.78到1392.19ms。source `bd51fd94c` 随后将 identity 绑定到产生输出的原 transaction receipt，避免 await 返回间误借另一事务的新 token；有定向反例，不把旧 producer 报告改写为新HEAD已重测。
+
+以上是单机局部 elapsed 观测，分段耗时可重叠，不是硬 CPU 配额/功耗或正文收益。profile使用明确fixture vectors，只验实际索引/网络 IO；真实Embedding未执行。warm每次仍hash全corpus、2个local service请求/1个query embedding request intent、合法源证明全部保留；不将intent计作真实Embedding调用/免费usage。Private authority cache不与返回state别名，内容不变的读保留identity，修改/epoch/readonly/并发写/原access均重验；原完整chat/provider/external source核验不删。可验证delta/候选cache及Actor/Branch/profile/indexer负例、G06实际收益继续交付，完整H4/HM2未验收。详细结果和失败脚本证据见同一Record。
+
 ## 7. 失败与成本边界
 
 | 失败 | 消费结果 |
