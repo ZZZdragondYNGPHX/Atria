@@ -1373,3 +1373,13 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 同次test-only修复合格大报告接线：完整报告可无损gzip保存于原scope，并保留raw私有报告、完整report hash/解码长度/native stored-report hash；原delegated review前核对完整解码与exact配置/target，实际原publication绑定stored hash，下一请求消费与回滚沿原权威。没有丢弃原始观察、改分、扩容或放开生产auto gate。新增超过5 MiB合成报告的真实native FS审阅/Project下一消费/rollback检查、归档篡改拒绝及新旧材料混用拒绝检查。针对性检查累计96个distinct checks通过（F2 source28、F3 development38、promotion15、lifecycle7、renewal8）；中间旧未显式版本调用兼容及新RP合成测试参数缺失导致的失败已定位修复，未作为实际模型质量证据。触及ESLint/diff通过；未执行full suite/build/CI/UI或H0基准。
 
 零发送preflight snapshot `run-1791609902417-7989bd9e` 复制原未发布baseline fixture并携带最新真实owner ledger，核对原base/config/settings及费用身份。新F2 scope hash `a8785a850e4d9c2cbd9681e3ed6e27336539ca6f00bb9bd844199b94c5df0586`；每域十条原F2 primary比较/source校准仅在exact协议与transport同一时复用，旧baseline不作为新来源结果。实际资格run `run-1791609911641-83c05a69` 固定上述源码/新版本，起账1437 requests /10138703 accounted tokens；目前进行新baseline采集与source assessment，尚无新候选或promotion。原八项F3同协议已付费比较控制在提炼前另核对费用/身份，不以F2控制替代。M1 accepted=false，main未集成；H0仍为已准备的逻辑样本/清单，H1/H2未实施。
+
+上述首次新材料run结束：新增28请求/262325 reported tokens，累计1465 requests /10401028 accounted tokens，pending0/lock0。RP三条baseline六维均met、原权限checks完整，observedGapCases=0，未建立提炼前置；全部原评分保持。Project第一条baseline完成Review及原权限检查，第二条十次generation后调用不适用于该source的frontend_graph，报native_studio_request_failed；第三条尚未执行，没有完整source资格报告。没有新候选、promotion或publication。
+
+只读诊断定位两项具体问题：Project新development文字要求同步“primary binding”，但原source实际只有有序knowledgeBindingIds，没有该字段；模型随后查API并转向不适用的Frontend工具。RP回复分别把未核验封套内容称为“机件”、断言关闭盒中乐器仍在，原low资格评委均判supported。后者先作为资格判别盲点待核查，不手工改成gap，也不按最终收益取舍来源。
+
+有依据修复 `4b436972b` 已提交推送：保留原新包字节，新增来源契约修正版 `661f990e145ad5c3f089f3f0becfb80d11d3c63f58eff8ce047ceb47a4363df4`，只将两条Project指令澄清为实际有序绑定字段，保留derivedFrom及原root/template；RP文字和六个独立密封来源不变。原资格提示补明未见对象的存在性/种类/材质、描述性名词与未提供玩家姿态同样需要支持；新增referent_existence免费构造控制，在真实来源观察前实测，RP source观察使用单独固定的high reasoning。原F2比较配置和Project资格协议不变；变化的RP source控制/语义观察必须重新实测，F3八项同协议校准仍另核对。这里增加的是评委判别检查，原两胜/六胜门槛、六维及权限未降低。
+
+新增逐case baseline复用端口，严格核对完整case/scenario/pair hash、配置/settings、权限、原trial及原owner实际charge。免费preflight携带最近原owner/shared费用并核对原request/snapshot pins，复用三条RP及一条已完成Project原baseline；有错误的第二条禁止复用。没有重复生成不变且已通过的baseline，没有修改旧报告或丢弃失败费用。新组合报告显式保存原trial与baselineReuse来源/原producer引用，不宣称复用证据是fresh paired trial。针对性检查99个distinct checks通过（renewal增至11，另F2 28/F3 38/promotion15/lifecycle7），触及ESLint/syntax/diff通过；新版本原sealed reader六条免费检查通过。
+
+零发送准备snapshot `run-1791610928002-b9a74591`，新资格scope `a73d6ae8ec50acedb59158b4c673e180fd5493271387c82302811e8a38568320` 固定上述修复与来源版本，目前开始实际RP source控制及原baseline语义观察，再完成两条修正Project baseline和三条资格观察。旧scope/评分/错误不覆盖；新候选与独立验收尚未执行，M1仍未通过。
