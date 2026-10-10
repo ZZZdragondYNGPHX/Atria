@@ -42,6 +42,8 @@ export async function purgeNativeIndex({ indexPath, root, compute, signal }) {
         try {
             ticket = await compute?.beforeLocalWork({ items: 1, inputBytes, indexPath, kind: 'index_purge' });
             signal?.throwIfAborted();
+            const rootStat = await fs.lstat(root).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+            if (rootStat && (!rootStat.isDirectory() || rootStat.isSymbolicLink())) throw unavailable();
             const folder = await fs.lstat(indexPath).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
             let existing;
             const indexFile = path.join(indexPath, 'index.json');
@@ -67,8 +69,8 @@ export async function purgeNativeIndex({ indexPath, root, compute, signal }) {
                 if (!existing) return;
                 // Recheck the exact physical root at the original authority
                 // boundary. No await separates that decision from unlink.
-                const realRoot = fsSync.realpathSync(root), realIndex = fsSync.realpathSync(indexPath), current = fsSync.lstatSync(indexFile);
-                if (indexIdentity(realIndex) !== indexIdentity(path.join(realRoot, relative)) || current.isSymbolicLink() || !current.isFile()
+                const rootStat = fsSync.lstatSync(root), realRoot = fsSync.realpathSync(root), realIndex = fsSync.realpathSync(indexPath), current = fsSync.lstatSync(indexFile);
+                if (!rootStat.isDirectory() || rootStat.isSymbolicLink() || indexIdentity(realIndex) !== indexIdentity(path.join(realRoot, relative)) || current.isSymbolicLink() || !current.isFile()
                     || current.ino !== existing.ino || current.size !== existing.size || current.mtimeMs !== existing.mtimeMs) throw unavailable();
                 fsSync.unlinkSync(indexFile);
             };

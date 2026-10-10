@@ -143,14 +143,15 @@ test.each(['corrupt', 'sidecar', 'metadata_file', 'oversize', 'candidates'])('G0
         expect((await readCompute(f)).localWork[0].usage.outcome).toBe('failed'); expect(f.seen).toHaveLength(1);
     } finally { await f.cleanup(); }
 });
-test.each(['namespace_link', 'parent_link'])('G05 local purge %s rejects physical aliases within isolated fixture', async scenario => {
+test.each(['namespace_link', 'parent_link', 'root_link'])('G05 local purge %s rejects physical aliases within isolated fixture', async scenario => {
     const f = await fixture(makeTempFsEngine, 1, localLimits);
     try {
         const body = await embeddingBody(f); await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
-        const folder = path.dirname(indexFile(f, body)), target = scenario === 'namespace_link' ? folder : path.dirname(folder);
+        const folder = path.dirname(indexFile(f, body)), target = scenario === 'root_link' ? path.join(f.dirs.vectors, 'atri-retrieval')
+            : scenario === 'namespace_link' ? folder : path.dirname(folder);
         const moved = path.join(f.dirs.root, 'isolated-alias'); await fs.rename(target, moved);
         await fs.symlink(moved, target, process.platform === 'win32' ? 'junction' : 'dir');
-        const actual = scenario === 'namespace_link' ? path.join(moved, 'index.json') : path.join(moved, path.basename(folder), 'index.json'), saved = await fs.readFile(actual);
+        const actual = path.join(moved, path.relative(target, indexFile(f, body))), saved = await fs.readFile(actual);
         await f.request.post('/purge').send({ nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext }).expect(503);
         expect((await fs.readFile(actual)).equals(saved)).toBe(true); expect((await readCompute(f)).localWork[0].usage.outcome).toBe('failed');
     } finally { await f.cleanup(); }
