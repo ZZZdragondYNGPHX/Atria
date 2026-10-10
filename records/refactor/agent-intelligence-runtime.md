@@ -1795,3 +1795,9 @@ producer `632ca314a`，m8-g06-data-role-pair preflight/live/audit-v1是新append
 零API审查保存完整Memory source records/currentWorld、normalized/request/report raw hashes与两份原正文。两臂完整actual request JSON与request SHA相同、同reported input1226、同selected3sources/required s08-020，actual legal corpus256/raw fixture500；均实际Memory user、currentWorld system，正式状态仅hp/location。E2E15373/8486ms各n1，不能称SLO或reuse性能/费用收益；相同请求只比较新鲜正文，未隔离before/after修复因果。
 
 quality仍FAIL：recompute“这项承诺至今尚未履行”“那件事目前确实还没有完成”；reuse“那件事确实一直未曾履行”。历史source只建立旧turn未履行，record historical_source及requested-time未建立，原当前provider无completion/cognition/custody。这是有来源的自由正文审查，未以自动regex/盲评高分洗掉失败；也不因此否定已验证的数据角色修复。audit时rolling24h696/2000、last60s1/20，后续不原样刷新本组或新增critic。完整G06/M8/HM2未通过、main未集成。fetch确认最新main仍3ee1332ef，任务分支ahead24/behind0，无M1/HM1重跑或无关改动。
+
+### G06 同一低信任边界的 Native narrative_spine 消费
+
+source `76f9bc757`，外部API0。继续同一behavior-context §3.2边界时确认narrativeItems把合法旧source摘要标为source_backed_narrative，但Native provider仍context.fact→system。新定向检查从实际Session fixture/atri_context_derived/sourceRefs经原Context Compiler选择scene摘要，修改前真实FAIL；不是为正文案例构造新prompt或H5 writer。
+
+将既有recent_raw/memory/narrative_spine统一沿原context.history/user通道，完整摘要和来源不改，当前World/承诺/runtimeSystem继续其原lane。1新actual selection/lowering检查覆盖4本地协议，及1受影响旧Memory compatible检查通过；new check首次后测只因JSON sourceRefs键序比较失败，改语义比较后通过，不改生产source归一化。before-v1/after-v1/v2均保留，ESLint/diff通过，无重复长Turn/paid正文。此前真实paired报告仍只归632ca314a，既有质量失败和unknown不转移为新producer通过。main未集成，完整G06/M8/HM2仍未验收。
