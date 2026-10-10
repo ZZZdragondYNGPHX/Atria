@@ -70,6 +70,71 @@ const localLimits = { maxJobs: 3, maxItems: 5, maxInputBytes: 4096 };
 const indexFile = (f, body) => path.join(f.dirs.vectors, 'atri-retrieval', body.collectionId, body.nativeRetrievalRef.retrievalProfileId + '_' + body.nativeRetrievalRef.revision, 'index.json');
 const readCompute = async f => Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId))?.operations ?? {}).find(row => row.compute)?.compute;
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test(`G05 local list ${kind} concurrent reads share insert allowance and preserve limits through recovery`, async () => {
+        const f = await fixture(make, 2, { ...localLimits, maxJobs: 2 });
+        try {
+            const body = await embeddingBody(f); await f.request.post('/insert').send(body).expect(200);
+            const query = { nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext };
+            const replies = await Promise.all([1, 2].map(() => f.request.post('/list').send(query)));
+            expect(replies.map(row => row.status).sort()).toEqual([200, 429]); expect(replies.find(row => row.status === 200).body).toEqual([1]);
+            const ledger = await readCompute(f); expect(ledger.localWork.map(row => row.kind)).toEqual(['index_insert', 'index_list']); expect(ledger.attempts).toHaveLength(1);
+            const route = f.routes.find(row => row.role === 'role.narrator');
+            await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId] } });
+            const backupPath = await snapshotUser({ handle: f.handle, userRoot: f.dirs.root, backupRoot: f.backupRoot, engine: f.engine });
+            await restoreFromSnapshot({ handle: f.handle, userRoot: f.dirs.root, backupPath, engine: f.engine }); await f.engine.close();
+            f.core.runs = new RunControl(new SessionRepo({ engine: f.engine }));
+            await f.request.post('/list').send(query).expect(429); expect(await readCompute(f)).toEqual(ledger); expect(f.seen).toHaveLength(1);
+        } finally { await f.cleanup(); }
+    });
+}
+test.each(['empty', 'corrupt', 'overlimit', 'readonly'])('G05 local list %s keeps original read boundaries without inference or regeneration', async scenario => {
+    const f = await fixture(makeTempFsEngine, 2, localLimits);
+    try {
+        const body = await embeddingBody(f), args = { nativeRetrievalRef: body.nativeRetrievalRef, collectionId: body.collectionId, computeContext: body.computeContext };
+        let saved;
+        if (scenario !== 'empty') {
+            await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+            if (scenario === 'corrupt') await fs.writeFile(indexFile(f, body), '{broken');
+            if (scenario === 'overlimit') {
+                const doc = JSON.parse((await fs.readFile(indexFile(f, body))).toString()); doc.items = Array(10001).fill(doc.items[0]);
+                await fs.writeFile(indexFile(f, body), JSON.stringify(doc));
+            }
+            saved = await fs.readFile(indexFile(f, body));
+        }
+        if (scenario === 'readonly') { setReadOnly(true); delete args.computeContext; }
+        const result = await f.request.post('/list').send(args).expect(scenario === 'corrupt' ? 500 : scenario === 'overlimit' ? 503 : 200);
+        if (scenario === 'empty') {
+            expect(result.body).toEqual([]); await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' });
+        } else expect((await fs.readFile(indexFile(f, body))).equals(saved)).toBe(true);
+        if (scenario === 'readonly') expect(result.body).toEqual([1]);
+        else {
+            const ledger = await readCompute(f); expect(ledger.attempts).toEqual([]);
+            expect(ledger.localWork[0]).toMatchObject({ kind: 'index_list', status: 'settled', usage: { outcome: scenario === 'empty' ? 'completed' : 'failed' } });
+        }
+        expect(f.seen).toHaveLength(scenario === 'empty' ? 0 : 1);
+    } finally { setReadOnly(false); await f.cleanup(); }
+});
+test.each(['cancel', 'task_change'])('G05 local list %s during cost settlement refuses stale hashes without refunding completed work', async scenario => {
+    const f = await fixture(makeTempFsEngine, 1, localLimits), controller = new AbortController();
+    try {
+        const body = await embeddingBody(f);
+        await f.request.post('/insert').send({ ...body, computeContext: undefined }).expect(200);
+        const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+        const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Read index hashes', baseRevision: project.revision.revision });
+        const context = { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+        const compute = await prepareRetrievalCompute({ ...f, context, profile: await f.store.getExact(f.handle, body.nativeRetrievalRef) });
+        const wrapped = { ...compute, async settleLocalWork(ticket, usage) {
+            await compute.settleLocalWork(ticket, usage);
+            if (scenario === 'cancel') controller.abort();
+            else await f.agent.setPlan(f.handle, context.projectId, context.taskId, { summary: 'Changed after enumeration', steps: [{ id: 'read', title: 'Read evidence', impact: 'low' }] });
+        } };
+        await expect(queryNativeIndexes({ indexes: [{ collectionId: body.collectionId, indexPath: path.dirname(indexFile(f, body)) }],
+            mode: 'list', compute: wrapped, signal: controller.signal })).rejects.toThrow();
+        const ledger = (await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute;
+        expect(ledger.attempts).toEqual([]); expect(ledger.localWork[0].usage.outcome).toBe('completed'); expect(f.seen).toHaveLength(1);
+    } finally { await f.cleanup(); }
+});
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
     test(`G05 retired work ${kind} actual Session HEAD change during Embedding retains both costs and refuses stale index publication`, async () => {
         const f = await fixture(make, 4, localLimits);
         try {
@@ -746,10 +811,10 @@ test('G05 denied later Embedding batch keeps the prior index and charged first s
     } finally { await f.cleanup(); }
 });
 
-test('G05 actual Memory client forwards the source Session anchor to Embedding insert and query', async () => {
+test.each([3, 1])('G05 local list actual Memory consumer forwards its original anchor and shares %i work jobs', async jobs => {
     jest.unstable_mockModule('../../public/script.js', () => ({ getRequestHeaders: () => ({}) }));
     const { NativeRetrievalService } = await import('../../public/scripts/native/retrieval-client.js');
-    const f = await fixture(makeTempFsEngine, 2), previousFetch = globalThis.fetch, previousAtria = globalThis.Atria, calls = [];
+    const f = await fixture(makeTempFsEngine, 2, { maxJobs: jobs, maxItems: 64, maxInputBytes: 65536 }), previousFetch = globalThis.fetch, previousAtria = globalThis.Atria, calls = [];
     Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
     try {
         const body = await embeddingBody(f);
@@ -766,12 +831,15 @@ test('G05 actual Memory client forwards the source Session anchor to Embedding i
         const result = await retrieveMemory(snapshot, 'Alice harbor', { service: NativeRetrievalService,
             profile: { nativeRetrievalRef: body.nativeRetrievalRef, source: 'native', model: 'exact-fixture' },
             countTokens: async text => text.length, computeContext: body.computeContext });
-        expect(result.diagnostics).not.toContain('vector_unavailable');
-        expect(calls.filter(row => /\/(insert|query)$/.test(row.url)).map(row => row.payload.computeContext))
-            .toEqual([body.computeContext, body.computeContext]);
-        expect(result.sourceMessageIds).toEqual(['source-a']); expect(f.seen).toHaveLength(2);
+        expect(calls[0]).toMatchObject({ url: '/api/vector/list', payload: { computeContext: body.computeContext } });
+        if (jobs === 3) {
+            expect(result.diagnostics).not.toContain('vector_unavailable');
+            expect(calls.filter(row => /\/(insert|query)$/.test(row.url)).map(row => row.payload.computeContext)).toEqual([body.computeContext, body.computeContext]);
+        } else expect(result.diagnostics).toContain('vector_unavailable');
+        expect(result.sourceMessageIds).toEqual(['source-a']); expect(f.seen).toHaveLength(jobs === 3 ? 2 : 0);
         const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
-        expect(ledger.attempts.map(row => row.status)).toEqual(['settled', 'settled']);
+        expect(ledger.attempts.map(row => row.status)).toEqual(jobs === 3 ? ['settled', 'settled'] : []);
+        expect(ledger.localWork.map(row => row.kind)).toEqual(jobs === 3 ? ['index_list', 'index_insert', 'index_query'] : ['index_list']);
     } finally { globalThis.fetch = previousFetch; globalThis.Atria = previousAtria; await f.cleanup(); }
 });
 

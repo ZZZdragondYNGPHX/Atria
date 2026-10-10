@@ -361,7 +361,8 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             if (snapshot.eligibility) {
                 for (const retired of [buildCollectionId(snapshot.key), `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`]) {
                     guard();
-                    const hashes = await callService('listHashes', { collectionId: retired, profile, signal }); guard();
+                    const hashes = await callService('listHashes', { collectionId: retired, profile, signal,
+                        ...(computeContext ? { computeContext } : {}) }); guard();
                     if (hashes.length) { await callService('deleteByHashes', { collectionId: retired, profile, hashes, signal }); guard(); }
                 }
             }
@@ -401,7 +402,8 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             work.hashMs += performance.now() - hashStarted;
             const desired = new Map(items.map(item => [item.hash, item]));
             if (desired.size !== items.length) throw new Error('Memory vector hash collision');
-            const remote = new Set((await callService('listHashes', { collectionId, profile, signal })).map(Number));
+            const remote = new Set((await callService('listHashes', { collectionId, profile, signal,
+                ...(computeContext ? { computeContext } : {}) })).map(Number));
             guard();
             const hashes = [...remote].filter(hash => rebuildVectors || !desired.has(hash));
             if (hashes.length) { await callService('deleteByHashes', { collectionId, profile, hashes, signal }); guard(); }

@@ -291,7 +291,9 @@ async function insertVectorItems(directories, collectionId, source, sourceSettin
  * @param {Object} sourceSettings - Settings for the source, if it needs any
  * @returns {Promise<number[]>} - The hashes of the items in the collection
  */
-async function getSavedHashes(directories, collectionId, source, sourceSettings) {
+async function getSavedHashes(directories, collectionId, source, sourceSettings, request = null) {
+    if (sourceSettings.native) return queryNativeIndexes({ indexes: [{ collectionId, indexPath: getIndexPath(directories, collectionId, source, sourceSettings) }], mode: 'list',
+        compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal });
     const store = await getIndex(directories, collectionId, source, sourceSettings);
 
     const items = await store.listItems();
@@ -659,7 +661,7 @@ router.post('/list', async (req, res) => {
         const source = String(req.body.source) || 'transformers';
         const sourceSettings = getSourceSettings(source, req);
 
-        const hashes = await getSavedHashes(req.user.directories, collectionId, source, sourceSettings);
+        const hashes = await getSavedHashes(req.user.directories, collectionId, source, sourceSettings, req);
         return res.json(hashes);
     } catch (error) {
         return regenerateCorruptedIndexErrorHandler(req, res, error);

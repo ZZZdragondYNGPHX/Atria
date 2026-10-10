@@ -32,17 +32,19 @@ async function withIndexPermit(indexPath, signal, operation, write) {
     }
 }
 
-export async function queryNativeIndexes({ indexes, query, vector, topK, threshold, includeVectors = false, getVector, compute, signal }) {
+export async function queryNativeIndexes({ indexes, query, vector, topK, threshold, includeVectors = false, getVector, compute, signal, mode = 'query' }) {
+    if (!['query', 'list'].includes(mode) || (mode === 'list' && indexes.length !== 1)) throw unavailable();
+    const listing = mode === 'list';
     const supplied = vector !== undefined;
     if (supplied && (!Array.isArray(vector) || !vector.length || vector.length > 65536 || vector.some(n => !Number.isFinite(n)))) throw unavailable();
     // The original caller may wait behind an index writer. Freeze its vector
     // before that await, just like the serialized query/input admission bound.
     const frozenVector = supplied ? Object.freeze([...vector]) : null;
     if (!indexes.length || indexes.length > 16 || new Set(indexes.map(row => indexIdentity(row.indexPath))).size !== indexes.length
-        || (!supplied && (typeof query !== 'string' || !query.trim() || Buffer.byteLength(query, 'utf8') > 8192))
-        || !Number.isSafeInteger(topK) || topK < 1 || topK > 100 || !Number.isFinite(threshold)) throw unavailable();
+        || (!listing && !supplied && (typeof query !== 'string' || !query.trim() || Buffer.byteLength(query, 'utf8') > 8192))
+        || (!listing && (!Number.isSafeInteger(topK) || topK < 1 || topK > 100 || !Number.isFinite(threshold)))) throw unavailable();
     const inputBytes = Buffer.byteLength(JSON.stringify({ collections: indexes.map(row => row.collectionId),
-        ...(supplied ? { vector: frozenVector } : { query }), topK, threshold, includeVectors }), 'utf8');
+        ...(listing ? { operation: 'list' } : { ...(supplied ? { vector: frozenVector } : { query }), topK, threshold, includeVectors }) }), 'utf8');
     if (inputBytes > MAX_BYTES) throw unavailable();
     const paths = indexes.map(row => row.indexPath).sort((a, b) => indexIdentity(a) < indexIdentity(b) ? -1 : indexIdentity(a) > indexIdentity(b) ? 1 : 0);
     const enter = depth => depth === paths.length ? execute() : withIndexPermit(paths[depth], signal, () => enter(depth + 1), false);
@@ -52,7 +54,7 @@ export async function queryNativeIndexes({ indexes, query, vector, topK, thresho
         const started = performance.now(), cpu = process.cpuUsage();
         let ticket, outcome = 'failed', result;
         try {
-            ticket = await compute?.beforeLocalWork({ items: indexes.length, inputBytes, indexPath: paths, kind: 'index_query' });
+            ticket = await compute?.beforeLocalWork({ items: indexes.length, inputBytes, indexPath: paths, kind: listing ? 'index_list' : 'index_query' });
             signal?.throwIfAborted();
             let bytes = 0, count = 0, values = 0;
             const stores = [];
@@ -68,12 +70,16 @@ export async function queryNativeIndexes({ indexes, query, vector, topK, thresho
                     if (item.metadataFile || !Array.isArray(item.vector) || !item.vector.length || item.vector.length > 65536
                         || (values += item.vector.length) > 1048576 || item.vector.some(n => !Number.isFinite(n)) || !Number.isFinite(item.norm)) throw unavailable();
                 }
-                const store = new vectra.LocalIndex(row.indexPath);
-                stores.push({ ...row, store });
+                stores.push({ ...row, ...(listing ? { doc } : { store: new vectra.LocalIndex(row.indexPath) }) });
             }
             // Existing empty indexes also have no candidates. No provider
             // usage is invented for this deterministic no-send decision.
-            if (!count) result = { groups: {}, single: { hashes: [], metadata: [] } };
+            if (listing) {
+                result = (stores[0]?.doc.items ?? []).map(item => {
+                    if (item.metadata?.hash === null || !Number.isFinite(Number(item.metadata?.hash))) throw unavailable();
+                    return Number(item.metadata.hash);
+                });
+            } else if (!count) result = { groups: {}, single: { hashes: [], metadata: [] } };
             else {
                 if (compute) await compute.publishLocalIndex(() => { signal?.throwIfAborted(); });
                 const vector = supplied ? frozenVector : await getVector();

@@ -35,7 +35,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             const operations = {
                 '/insert': ['collectionId', 'items', 'embeddings', 'computeContext'], '/query': ['collectionId', 'searchText', 'topK', 'threshold', 'includeVectors', 'embeddings', 'computeContext'],
                 '/query-multi': ['collectionIds', 'searchText', 'topK', 'threshold', 'embeddings', 'computeContext'], '/query-by-vector': ['collectionId', 'vector', 'topK', 'threshold', 'includeVectors', 'computeContext'],
-                '/list': ['collectionId'], '/delete': ['collectionId', 'hashes'], '/purge': ['collectionId'], '/rerank': ['query', 'documents', 'topK', 'computeContext'],
+                '/list': ['collectionId', 'computeContext'], '/delete': ['collectionId', 'hashes'], '/purge': ['collectionId'], '/rerank': ['query', 'documents', 'topK', 'computeContext'],
             };
             const allowed = operations[req.path];
             if (!allowed || Object.keys(req.body || {}).some(key => key !== 'nativeRetrievalRef' && !allowed.includes(key))) throw new TypeError('Unsupported retrieval request');
