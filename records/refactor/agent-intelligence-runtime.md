@@ -1801,3 +1801,11 @@ quality仍FAIL：recompute“这项承诺至今尚未履行”“那件事目前
 source `76f9bc757`，外部API0。继续同一behavior-context §3.2边界时确认narrativeItems把合法旧source摘要标为source_backed_narrative，但Native provider仍context.fact→system。新定向检查从实际Session fixture/atri_context_derived/sourceRefs经原Context Compiler选择scene摘要，修改前真实FAIL；不是为正文案例构造新prompt或H5 writer。
 
 将既有recent_raw/memory/narrative_spine统一沿原context.history/user通道，完整摘要和来源不改，当前World/承诺/runtimeSystem继续其原lane。1新actual selection/lowering检查覆盖4本地协议，及1受影响旧Memory compatible检查通过；new check首次后测只因JSON sourceRefs键序比较失败，改语义比较后通过，不改生产source归一化。before-v1/after-v1/v2均保留，ESLint/diff通过，无重复长Turn/paid正文。此前真实paired报告仍只归632ca314a，既有质量失败和unknown不转移为新producer通过。main未集成，完整G06/M8/HM2仍未验收。
+
+### H3 可选 rerank 异常返回的基础路径保留
+
+source `8a89b028f`，外部API0。现有合法候选先送rerank，再按响应index/score排序；核对实际vector endpoint发现它原样返回provider results，并不保证Memory candidate索引/分数合法。Memory consumer此前接受空结果、负/越界索引、null score转0、重复索引或混合坏项后仍标completed。按hybrid-memory §7 / delivery H3的服务异常出口复现6项修改前FAIL，非新增算法/服务。
+
+在原排序consumer先核验非空array、唯一合法candidate index及有限number score，异常进入既有rerank_unavailable/stop=memory_rerank_response_invalid，候选排序尚未修改，原完整baseline text/evidence/selected保持。原服务调用/请求与响应bytes/rerankRequests仍计数、costStatus unknown不退款/写零，不宣称本地in-process service fixture已经验证远端账单或原Run金额。6新反例及2旧normal rerank/ordinary skip通过（hm2-rerank-invalid-before/after-v1.log），product ESLint/diff通过。没有新rank cache、H5 writer或正文过滤，实际模型quality FAIL与所有旧报告保持；该本地异常边界组关闭，真实语义rerank收益仍unavailable，完整H3/G06/HM2未验收。
+
+当前收口：source 8a89b028f已push，main仍3ee1332ef；只修复实际定位的低信任lowering/只读proof/异常service结果。下一真实G06质量证据需外部主模型发送，不能用本地合成结果完成；监督任务通知其追加发送协调请求被自动审查拒绝（目的地/载荷/用量授权不足），本轮2actual请求在通知前已完成，之后外部发送0。该通知不是模型拒绝/配额耗尽，配额仍有余量，也不是另一个用户授权；不绕路发送、不新增本任务审批。缺真实Embedding/rerank/账单是服务证据边界，H5缺M2/M3/G06前置是阶段边界，分别保留。没有可确认的其它本地根因就不编造功能、改案例prompt或循环采样；不标完整交付、不集成main、无HANDOFF。
