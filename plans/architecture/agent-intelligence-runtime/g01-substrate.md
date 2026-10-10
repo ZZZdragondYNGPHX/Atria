@@ -25,6 +25,14 @@
 
 ## 当前剩余依赖与下一有限 G05 组
 
+Runtime checkpoint 有限物理契约（依据 model-routing §7.2–7.4）：复用 StorageEngine Native resource 与 `withRuntimeWrite(handle)`，private kind `atri_runtime_checkpoint` 的 key 仅 owner handle + 随机 SHA-256 checkpointId；payload 含 schema、owner hash、完整 binding、public-prefix 校验、原生 opaque envelope、到期时间和 Native integrity。每 owner 至多128项、总16MiB、单项完整 JSON 至多2MiB，TTL10分钟；超过容量淘汰最旧，过期/完整性失败/真实同owner同scope binding变更终止旧引用。读与发送均重读既有存储；只读/存储失败显式 unavailable，不假报清理或恢复成功。发布须在 credential echo 与工具声明校验之后；取消/失败须 await private cleanup。原配置record的integrity/单调updatedAt作mutation anchor，保存/发送均核验，受影响connection/model/route修改或删除清除相关checkpoint，未关联配置不清除；同毫秒ABA也不能复活旧状态。
+
+原 Task semantic fingerprint/authorityEpoch、Project base revision、public conversation 前缀，以及 exact path/account/target/tools/policy 继续是恢复准入；private resource 不写 Task conversation/domain/Memory/Package，不提供 public CRUD。既有 account backup/recovery 可搬运该 Runtime resource，但 owner/path/lineage 必须重新匹配；portable Session/Save/Package 导出默认无此kind。先以有限 Native Responses consumer验证，未实现适配器/生命周期和未verified真实路径继续拒绝发送；task/adaptive、fork/restore/compaction剩余项按依赖继续。
+
+当前有限消费者：Native Responses + 原Studio Project Task的task policy，须对应`generation.continuation.task`的exact verified path，真实未verified路径仍拒绝；本地measurement不写任何真实账户证据。Host据当前Task保存的完整public conversation自动重建private引用；caller历史编辑、authorityEpoch或配置变更不恢复旧opaque；fresh/reset与transferred数由实际lowering观察，不写复用/费用收益。FS/SQLite可冷进程读取、原account snapshot/recovery，实际Studio重新进入使用原public字段。其他品牌/task consumer、Session Task与adaptive生命周期、安全fork/compaction及G05 CPU/index/background预算仍未完成；H5前置和真实G06质量失败不变。
+
+source `0a3f98d10` / `d62cb73c4` 已实现上述有限契约；进一步同毫秒delete/recreate反例真实FAIL后，原connection/model/route record以`doc:null`保留删除版本metadata，profile get/list仍返回不存在，重建同ID延续单调updatedAt。无额外版本kind/影子存储；原account snapshot/recovery保持该metadata，受引用删除/只读拒绝规则不变。有限实现不等于完整task/adaptive或真实路径验收。
+
 model-routing §7.4 的 Runtime checkpoint 持久化、task/adaptive consumer、安全fork/restore/compaction，以及compute-policy §3–4的Embedding/CPU/后台成本准入仍是工程项；此前process_only/unavailable只描述已实施checkpoint，不是永久产品范围排除。真正gateway验证、语义Embedding/rerank与货币账单另属外部证据；H5仍须M2/M3/G06前置。不能把这些三类边界互换。
 
 先沿原Native Retrieval/RunControl/Project Task补一个有限Embedding发送消费者：insert/query/query-multi允许原computeContext，合法Native Memory传递其已有Information Session anchor；首批按原OpenAI-compatible Embedding family的每个实际HTTP批次charge/settle，与正文/rerank共用原额度，旧无显式Route预算不自动加额度。具备computeContext但暂未实现预算映射的其它provider在推理/发送前明确unavailable，保留原非该请求的资源与固定路径，不伪装全部Embedding/local CPU已完成。无新profile/registry/发送器/预算authority，真实外部发送0。

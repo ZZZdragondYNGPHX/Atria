@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。M8 G01–G05、G06 诊断/UI 与 HM2 有界 rerank/source-valid corpus 复用已有有限 checkpoint；最新 source `8a89b028f` 修复低信任 Memory/剧情 lowering、只读 proof 撤销与 rerank 异常返回。真实 G06 正文质量仍失败，实际语义 rerank/Embedding/货币收益缺证据；完整 M8/HM2/HM3 未验收，main 不变。详细有限结果及继续边界见 Record 最新节。
+- Status: **S01–S10 / M1 engineering and empirical acceptance complete; integrated main / HM1 (H0–H2) complete**。M8 G01–G05、G06 诊断/UI 与 HM2 有界 rerank/source-valid corpus 复用已有有限 checkpoint；最新 source `d62cb73c4` 完成 scoped Embedding 后的 private Runtime checkpoint/原StorageEngine recovery与有限Responses/Studio Task消费者、取消清理及配置ABA拒绝。adaptive/其他Task消费者、安全fork/compaction、CPU/索引/后台预算仍需实施。真实 G06 正文质量仍失败，实际语义 rerank/Embedding/货币收益缺证据；完整 M8/HM2/HM3 未验收，main 不变。详细有限结果及继续边界见 Record 最新节。
 - Updated: 2026-10-11
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
