@@ -45,6 +45,7 @@
 | `memory/persistence.js` 的 `atri_memory_graph` / `atri_memory_graph__meta` / `atri_memory_graph__floor_log` | 包含 source-backed图状态、metadata与原增量日志，不能整体删除。`vectorIndexState` / `lastRecallTrace` / `lastRecallProjection` 是待分类派生字段；正式来源及手工更正按原生命周期保留 |
 | `source-lifecycle.js` 的 `memory_graph__provenance` / `atri_memory_graph.provenance` | 保留原来源、Episode、facts/temporal graph 支持链和 currentness；旧 namespace 名称不是迁移权限或删除许可 |
 | `vector-index-core.js:buildCollectionId` 的 `mg_` + sanitized chat ID、profile相关索引 | 只在确切 chat/profile/source域证明后重建；严禁全局 purge `mg_*` 或删除其它角色/会话索引。当前 prefix/hash不是 Actor授权proof |
+| `hybrid-retrieval.js:retrieveMemory` 的 `memory_os_` + SHA-256(`[snapshot.key, profile]`) | 当前Hybrid另有独立collection identity，和旧`mg_`空间分别枚举。逐条document fingerprint / `listHashes`全量核对仍存在；不能只清理旧prefix就宣称切换/失效完整 |
 | World/Session/Journal/Timeline/Actor/Goal与关键关系/承诺 | 保留原 authority；source-backed Memory 是其投影，不成为第二份事实权威 |
 
 H1 操作顺序：枚举并固定原来源/设置清单 → 保留来源与撤回依据 → 固定新 indexer/profile 版本 → 合法索引重建并验证 → 一次切换所有入口 → 限定派生空间清理。缺 source/grant 或重建失败保留原数据并标 unavailable/pending；不能恢复旧 Recall 分叉。容量、资源版本和保存失败恢复设计仍待按届时 schema 冻结。
