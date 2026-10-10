@@ -245,5 +245,9 @@ RP原F2主模型source assessment和本次比较均仅在三条baseline中的一
 
 已启动独立来源作者，隔离会话只接收公共领域/格式契约，不接收旧候选、development输出或promotion评分；开发侧只接收新metadata/hash。新来源字节与消费者检查通过后才固定scope并发送。本文不是暂停M1或交接；同一任务继续执行。
 
+当前消费者已显式注册新来源版本，旧默认catalogue与历史身份保留；新scope必须选定新caseSetRevision，baseline、development与promotion不得跨版本混用。新来源包先通过免费原生可完成性与原密封reader校验，再实际采集baseline；每域不足两条实际gap时不得提炼。
+
+私有工程promotion完整报告超过小报告边界时，可使用无损gzip归档保存于原journal，原始报告仍保留私有文件。归档同时固定完整report hash、解码字节数及原生stored-report hash，审阅前须完整解码并核对原报告和exact配置/目标。没有丢弃观察、改变评分或扩容；原publication绑定、4 MiB容量、下一消费及回滚守卫继续执行。归档origin不能取得生产自动准入。本地合成生命周期检查通过仅证明工程消费接线，实际语义与实测发布证据仍以同一Record为准。
+
 
 用户随后明确取消双模型准入；当前规则以[m1-acceptance §14](m1-acceptance.md#14-2026-10-09-当前主模型准入)为准，第二连接不可用不再阻止development/promotion。既有双模型数据和失败属于历史事实，不删除、不改分，也不创建第二份门槛。

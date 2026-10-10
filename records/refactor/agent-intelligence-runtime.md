@@ -1363,3 +1363,13 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 两域只读最终审计重算原准入、完整报告/原job拒绝绑定与费用：Project九对/十八trial IDs、139个报告+已付费校准receipts与原owner/shared ledger一致；RP development原baseline/候选/费用与readiness一致。累计1437 requests /10138703 accounted tokens，pending0/lock0；ledger hash `52cd503758c0436110d3aa8959539fb3cdc89a4e58d74726dcf33a369d70b836`。未清旧unknown/carry/breached；当前advisory token超界不等于每日API硬限被取消。humanPreference not_observed、currencyCost unavailable，M1 accepted=false，main未集成。
 
 来源复核确认原RP三条F2主assessment仅archive有knowledge gap，reservoir/theatre六维met；与本次一胜/两tie吻合。不能声称全领域饱和，也不对同一冻结材料追分。用户明确授权按 [feedback §17](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#17-2026-10-10-实测结论与有限来源更新提案) 更新有限来源包并启用独立作者。独立作者只读取公共格式/领域契约，写六个新promotion来源与metadata，不接收旧候选、development输出或promotion评分；开发侧不读新密封正文。下一来源准备、资格与候选验证仍沿同一M1任务持续推进；H1/H2未开始，没有新HANDOFF。
+
+## 2026-10-10 M1 有限新材料包接线与资格观察
+
+独立作者完成六个新密封promotion来源，每域三条独立root/template；origin均为agent_authored_synthetic，不伪造真人来源。metadata SHA-256 `a95f541612246ee9636688b6758a760e7892508aca3587e4f4f21d187e27334b`。开发侧只读metadata与字节hash；新正文仅由原sealed reader在免费格式检查及冻结后的原worker评估中读取。原reader免费校验六条，原生权限/可完成性免费检查六条新development；没有因此取得模型headroom或语义准入。
+
+源码 `e722a22705be79f85b0630d4b31b9cf5a72ef724` 已提交推送，显式注册第二材料版本 `68a948b78e3968ad05cd2788330d7dbfa863284a1bce0810a7a80856734962fa`，保留原默认catalogue和全部旧来源。probe/worker/report/F3门槛透传并严格核对来源版本，拒绝任意版本和旧baseline/独立case替换；新scope在提炼前要求至少两条实际可改善gap。每域三个development、一个候选、三独立case各三次、原六维与两胜/六胜退出条件保持。
+
+同次test-only修复合格大报告接线：完整报告可无损gzip保存于原scope，并保留raw私有报告、完整report hash/解码长度/native stored-report hash；原delegated review前核对完整解码与exact配置/target，实际原publication绑定stored hash，下一请求消费与回滚沿原权威。没有丢弃原始观察、改分、扩容或放开生产auto gate。新增超过5 MiB合成报告的真实native FS审阅/Project下一消费/rollback检查、归档篡改拒绝及新旧材料混用拒绝检查。针对性检查累计96个distinct checks通过（F2 source28、F3 development38、promotion15、lifecycle7、renewal8）；中间旧未显式版本调用兼容及新RP合成测试参数缺失导致的失败已定位修复，未作为实际模型质量证据。触及ESLint/diff通过；未执行full suite/build/CI/UI或H0基准。
+
+零发送preflight snapshot `run-1791609902417-7989bd9e` 复制原未发布baseline fixture并携带最新真实owner ledger，核对原base/config/settings及费用身份。新F2 scope hash `a8785a850e4d9c2cbd9681e3ed6e27336539ca6f00bb9bd844199b94c5df0586`；每域十条原F2 primary比较/source校准仅在exact协议与transport同一时复用，旧baseline不作为新来源结果。实际资格run `run-1791609911641-83c05a69` 固定上述源码/新版本，起账1437 requests /10138703 accounted tokens；目前进行新baseline采集与source assessment，尚无新候选或promotion。原八项F3同协议已付费比较控制在提炼前另核对费用/身份，不以F2控制替代。M1 accepted=false，main未集成；H0仍为已准备的逻辑样本/清单，H1/H2未实施。
