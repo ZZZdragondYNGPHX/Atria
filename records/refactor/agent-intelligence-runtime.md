@@ -1500,3 +1500,8 @@ M1实际验收与main集成完成。Project开发三胜、独立九胜；RP开�
 最终费用统计 `{"requests":1894,"accountedTokens":15671701,"reportedRequests":1578,"unknownRequests":64,"historicalCarryRequests":252}`，pending0/lock0。unknown和historical carry保持，humanPreference not_observed、currencyCost unavailable；主模型工程观察不声称人工偏好、双模型共识或生产自动发布收益。所有历史有效不利结果、格式失败及费用保留。
 
 集成main前merge-tree无冲突；合并树运行源码与已验证任务分支一致，唯一public差异是既有CSS注释的文档路径。完成时仅做本地相关证据/收费/lifecycle只读核对、合并身份与文档diff/链接检查，不重复全套或build/CI。H0样本SHA `ef9a584cfde78f5bc60e43914e1eb676d3530df4398e903f56afabb0631e6eeb`保持；准备仅含样本、隔离fixture/服务方案与观察入口，完整H0尚未运行。中断HANDOFF在交付后删除，已合并临时任务工作树/分支清理。
+
+
+## H0 / HM1换设备恢复资料
+
+M1交付后的main `ea75b76be4927e881de2f0be7c304a56301f1f83`与docs均干净且已推送；本次按换设备需求建立当前HANDOFF和完整私有迁移包`Atria-Document-private-H0-20261010.zip`。下一有限交付组为HM1（H0→H1→H2），H0仍只有准备，B0及产品adapter未运行。包保留全部原始证据、连接、账本、quota/rate/transport与密封材料，附外部SHA和逐文件恢复核验；无新模型请求。旧M1任务分支/工作树已清理，新设备从最新main继续，不恢复旧分支或重跑M1。
