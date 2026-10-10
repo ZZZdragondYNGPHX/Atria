@@ -81,7 +81,11 @@ test('G06 long Native Timeline retrieves granted historical source through Memor
         const result = await f.host.executeTurn(h.handle, input, undefined, undefined, { transaction: f.selection });
         expect(requests).toHaveLength(1);
         const wire = JSON.stringify(requests[0]);
-        for (const item of memory.evidence) expect(wire).toContain(JSON.stringify(item.content).slice(1, -1));
+        for (const item of memory.evidence) {
+            expect(requests[0].messages.filter(message => message.content === item.content))
+                .toEqual([{ role: 'user', content: item.content }]);
+        }
+        expect(requests[0].messages.filter(message => message.role === 'system').some(message => message.content.includes('visible new note'))).toBe(true);
         expect(wire).not.toContain('Later reply 499'); expect(wire).not.toContain('PRIVATE READ SENTINEL');
         expect(Buffer.byteLength(wire)).toBeLessThan(64000);
         expect(result.timeline.slice(0, current.timeline.length)).toEqual(current.timeline);

@@ -34,11 +34,12 @@ export function createNativeSessionContextProvider(readSelectedContext) {
             items: plan.included.map(item => ({
                 id: item.contextItemId,
                 kind: item.lane === 'player_persona' ? 'context.player-persona' : item.lane === 'current_user' ? 'context.input'
-                    : item.lane === 'recent_raw' ? 'context.history'
+                    : item.lane === 'recent_raw' || item.lane === 'memory' ? 'context.history'
                         : item.lane === 'runtime_system' ? 'context.directive' : 'context.fact',
                 // Native selection already renders complete, speaker-labelled TurnGroups.
-                // Preserve that text as supplied history instead of rebuilding messages.
-                content: item.lane === 'recent_raw' ? { role: 'user', content: item.content } : item.content,
+                // Memory is source data too: do not promote historical quotations to
+                // system instructions. Current state continues through its own lane.
+                content: item.lane === 'recent_raw' || item.lane === 'memory' ? { role: 'user', content: item.content } : item.content,
                 provenance: [
                     { source: 'native.context', ref: item.contextItemId },
                     ...(item.sourceRefs || []).map(ref => ({ source: 'native.context-source', ref: JSON.stringify(ref) })),
