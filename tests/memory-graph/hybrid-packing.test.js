@@ -5,7 +5,7 @@ import './_mocks/main-module-stack.js';
 import { frozen, memoryFixture, localRetrieval, countTokens } from './hm1-fixture.js';
 import { informationActor } from '../native/helpers/information-fixture.js';
 import { resolveMemoryEligibility, eligibleMemorySnapshot } from '../../public/scripts/agents/memory/eligibility.js';
-import { retrieveMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
+import { retrieveMemory, buildMemoryCorpus } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 import { composeMemoryCoverage, memoryEvidenceGroups } from '../../public/scripts/agents/memory/packing.js';
 import { memoryQuerySeeds } from '../../public/scripts/agents/memory/query-plan.js';
 import { compileNativeContextPlan } from '../../public/scripts/native/context-compiler.js';
@@ -79,6 +79,72 @@ test('Information-backed source groups survive Package and final Context whole-g
     f.snapshot.states.atri_lifecycle.domains.memories.records.find(r => r.id === 's06-chain-b').value.actor = 'other';
     const revoked = await legal(f);
     expect(Object.values(revoked.state.episodes).flatMap(e => e.messageIds).some(id => chain.includes(id))).toBe(false);
+});
+
+test('requested-time source applicability survives ranked and coverage Package Context without claiming present truth', async () => {
+    const sample = frozen.cases[2], f = memoryFixture(sample, { native: true });
+    for (const query of [...sample.queries, { text: '阿岚曾住在哪里？', atTick: null, requiredSourceIds: ['s03-old'], excludedSourceIds: [] }]) {
+        for (const packing of ['ranked', 'coverage']) {
+            const result = await retrieveMemory(await legal(f), query.text, { countTokens, budget: 2400, at: query.atTick, packing });
+            expect(result.tokenCount).toBeLessThanOrEqual(2400);
+            expect(result.sourceMessageIds).toEqual(expect.arrayContaining(query.requiredSourceIds));
+            expect(result.sourceMessageIds.filter(id => query.excludedSourceIds.includes(id))).toEqual([]);
+            expect(result.text).not.toMatch(/Current facts|Current relations/);
+            const records = result.evidence.flatMap(item => packing === 'ranked' ? [JSON.parse(item.content)] : JSON.parse(item.content).records);
+            expect(records.length).toBeGreaterThan(0);
+            for (const record of records) {
+                expect(record.authority).toBe('source_assertion');
+                expect(record.temporalApplicability).toEqual({ at: query.atTick,
+                    status: query.atTick === null ? 'not_established_at_requested_time' : 'supported_at_requested_time' });
+            }
+            const bridge = await recallNativePackageTurnMemory({ context: f.context, snapshot: f.snapshot,
+                memoryApi: { openSession: async () => ({ recallMemory: async () => result }) }, userInput: query.text });
+            const context = await compileNativeContextPlan(f.snapshot, { modelContextLimit: 16000, responseReserve: 1000, memoryEvidence: bridge.evidence });
+            const consumed = context.included.filter(item => item.metadata?.recalled);
+            expect(consumed).toHaveLength(bridge.evidence.length);
+            expect(consumed.map(item => item.content).sort()).toEqual(bridge.evidence.map(item => item.content).sort());
+        }
+    }
+    for (const record of f.snapshot.states.atri_lifecycle.domains.memories.records) record.value.actor = 'other';
+    for (const packing of ['ranked', 'coverage']) {
+        const revoked = await retrieveMemory(await legal(f), sample.queries[1].text, { countTokens, budget: 2400, at: 40, packing });
+        expect(revoked.sourceMessageIds).toEqual([]); expect(revoked.evidence).toEqual([]);
+    }
+});
+
+test('complete source groups retain outside-time and unknown-time proof within the counted budget', async () => {
+    const f = memoryFixture(frozen.cases[2], { native: true }), snapshot = await legal(f);
+    for (const at of [40, null]) {
+        const corpus = buildMemoryCorpus(snapshot, at);
+        const relations = corpus.documents.filter(doc => doc.kind === 'relation');
+        const groups = memoryEvidenceGroups(relations, corpus, snapshot.state, { userInput: '阿岚住在哪里？', at });
+        const old = groups.flatMap(group => JSON.parse(group.content).records).find(doc => doc.kind === 'relation' && doc.text.includes('甲城'));
+        expect(old.temporalApplicability).toEqual({ at,
+            status: at === null ? 'not_established_at_requested_time' : 'outside_requested_time' });
+        const group = groups.find(item => item.content.includes(old.id));
+        const packed = await composeMemoryCoverage([group], { countTokens, budget: 32000 });
+        expect(packed.tokenCount).toBe(await countTokens(packed.text));
+        expect((await composeMemoryCoverage([group], { countTokens, budget: packed.tokenCount - 1 })).selected).toEqual([]);
+    }
+});
+
+test('long fixture untimed commitment retains its legal source and unknown applicability under the original memory budget', async () => {
+    const sample = frozen.cases[7], f = memoryFixture(sample, { native: true }), query = sample.queries[0];
+    for (const packing of ['ranked', 'coverage']) {
+        const result = await retrieveMemory(await legal(f), query.text, { sceneText: '阿岚在桥边', countTokens, budget: 2400, packing });
+        expect(result.tokenCount).toBeLessThanOrEqual(2400);
+        expect(result.sourceMessageIds).toEqual(expect.arrayContaining(query.requiredSourceIds));
+        const item = result.evidence.find(evidence => evidence.sourceMessageIds.includes('s08-020'));
+        const records = packing === 'ranked' ? [JSON.parse(item.content)] : JSON.parse(item.content).records;
+        expect(records).toEqual(expect.arrayContaining([expect.objectContaining({
+            authority: 'source_assertion', epistemic: 'historical_source',
+            temporalApplicability: { at: null, status: 'not_established_at_requested_time' },
+        })]));
+        const bridge = await recallNativePackageTurnMemory({ context: f.context, snapshot: f.snapshot,
+            memoryApi: { openSession: async () => ({ recallMemory: async () => result }) }, userInput: query.text });
+        const context = await compileNativeContextPlan(f.snapshot, { modelContextLimit: 16000, responseReserve: 1000, memoryEvidence: bridge.evidence });
+        expect(context.included.some(entry => entry.metadata?.recalled && entry.content === item.content)).toBe(true);
+    }
 });
 
 test('aliases and ambiguous references remain source constrained without creating cognition', () => {

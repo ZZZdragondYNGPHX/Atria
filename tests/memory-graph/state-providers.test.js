@@ -75,6 +75,19 @@ describe('Optional state providers', () => {
         expect(resolveProviderFields(providers, { location: 'mvu' })[0]).toMatchObject({ status: 'ready', claims: [{ value: 'A' }] });
         expect(resolveProviderFields(providers, { location: 'missing' })[0].status).toBe('conflict');
     });
+    test('provider conflict presentation remains unresolved current authority without source temporal inference', () => {
+        const state = emptyProvenance(); state.scopeId = 's'; let serial = 0;
+        const chat = [{ mes: 'Provider observations' }];
+        reconcileProviders(state, ['mvu', 'lorestate'].map((providerId, index) => ({ providerId, status: 'ready', floor: 0, revision: '1',
+            fields: [{ key: 'place', path: ['place'], label: 'Pilot location', value: ['Harbor', 'Castle'][index] }] })), chat, () => `${++serial}`);
+        const corpus = buildMemoryCorpus({ state, chat });
+        const result = rankMemory('Pilot location', corpus);
+        const records = memoryEvidenceGroups(result.candidates, corpus, state, result.plan).flatMap(group => JSON.parse(group.content).records);
+        expect(records).toHaveLength(1);
+        expect(records[0]).toMatchObject({ authority: 'provider_owned_state', epistemic: 'unresolved_current_state' });
+        expect(records[0]).not.toHaveProperty('temporalApplicability');
+        expect(records[0].text).toContain('Harbor'); expect(records[0].text).toContain('Castle');
+    });
     test('unchanged revisions deduplicate; same-floor manual edit invalidates old evidence', async () => {
         const f = fixture(); const first = await f.lifecycle.retrievalSnapshot(f.ctx);
         await f.lifecycle.retrievalSnapshot(f.ctx);
@@ -95,6 +108,11 @@ describe('Optional state providers', () => {
         expect(rankMemory('Pilot location before', corpus).candidates.some(doc => doc.text.includes('Harbor'))).toBe(true);
         expect(rankMemory('Pilot location now', corpus).candidates.some(doc => doc.text.includes('Harbor'))).toBe(false);
         expect(corpus.documents.filter(doc => doc.type === 'provider-history')).toHaveLength(1);
+        const past = rankMemory('Pilot location before', corpus);
+        const records = memoryEvidenceGroups(past.candidates, corpus, next.state, past.plan).flatMap(group => JSON.parse(group.content).records);
+        const historical = records.find(record => record.type === 'provider-history');
+        expect(historical).toMatchObject({ authority: 'provider_owned_state', epistemic: 'historical_provider_state' });
+        expect(historical).not.toHaveProperty('temporalApplicability');
         f.ctx.chat[0].mes = 'Edited original history';
         const edited = await f.lifecycle.retrievalSnapshot(f.ctx);
         expect(buildMemoryCorpus(edited).documents.some(doc => doc.text.includes('Harbor'))).toBe(false);
@@ -142,5 +160,6 @@ describe('Optional state providers', () => {
         expect(JSON.parse(groups[0].content).records).toEqual([expect.objectContaining({
             authority: 'provider_owned_state', epistemic: 'current_provider_state', text: 'Alice location: "Harbor"',
         })]);
+        expect(JSON.parse(groups[0].content).records[0]).not.toHaveProperty('temporalApplicability');
     });
 });

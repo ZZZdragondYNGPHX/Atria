@@ -95,10 +95,15 @@ describe('Memory OS hybrid retrieval', () => {
     });
     test('token budget includes core, headings and source IDs; oversized records are skipped', async () => {
         const candidates = rankMemory('Alice', buildMemoryCorpus(fixture())).candidates;
-        const result = await composeMemory(candidates, { countTokens, budget: 500, corePacket: 'core'.repeat(25) });
-        expect(result.tokenCount).toBeLessThanOrEqual(500);
+        const corePacket = 'core'.repeat(25);
+        const first = await composeMemory(candidates.slice(0, 1), { countTokens, budget: 32000, corePacket });
+        const budget = first.tokenCount;
+        const result = await composeMemory([{ ...candidates[0], id: 'oversized', text: 'x'.repeat(budget) }, ...candidates], { countTokens, budget, corePacket });
+        expect(result.tokenCount).toBeLessThanOrEqual(budget);
         expect(result.selected.length).toBeGreaterThan(0);
+        expect(result.selected).not.toContain('oversized');
         expect(result.text).toContain('sources');
+        expect((await composeMemory(candidates.slice(0, 1), { countTokens, budget: budget - 1, corePacket })).selected).toEqual([]);
         expect((await composeMemory(candidates, { countTokens, budget: 0 })).text).toBe('');
         expect(memoryTokenBudget({ memoryOsTokenBudget: 0 })).toBe(0);
         expect(await memoryTokenCounter({})('港口')).toBe(6);
