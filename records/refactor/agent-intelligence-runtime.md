@@ -1787,3 +1787,11 @@ source `632ca314a`；按 behavior-context §3.2，剧情 / Memory 原文是低�
 先增加定向检查，4种协议编译及实际长Session Memory→Turn共5项修改前均因system角色失败（m8-memory-data-role-before-v1.log）。复用既有context.history/user数据通道，完整Memory record、sourceRefs/provenance与预算保留；current_state_event、正式World与runtime_system继续原路径，无新IR种类、writer、案例prompt或正文过滤。修复后上述5项及2旧Native selection/真实adapter检查通过（after-v1），ESLint/diff通过。长Turn为前述实际SourceLifecycle/Information/retrieval/HTTP消费者因本次角色改变而必要的复验；1次loopback请求，非新外部模型/质量样本。公开工具allowlist/outputContract没有由Memory引文扩张；4协议为本地renderer证据，不冒充新的gateway验证。该本地组关闭，外部API0。
 
 剩余边界分开记录：本地已确认的上述优先级与只读proof缺陷已修复，不为追求检查数量制造后续改动；已有授权G06目标仍需新producer真实正文质量与双入口消费证据，旧失败/费用原样保留，不能凭本地修复宣布通过。配置gateway的Responses/Anthropic实际404，真实Embedding/rerank服务及货币账单证据未配置/不可得，明确unavailable/unknown而非零成本；这是服务证据边界，不是新增审批。task/adaptive及H5新cognition/writer没有当前已实施消费者，H5正式依赖M2/M3/G06，不绕过阶段前置。不新增服务、学习路由或H5 writer。完整M8/HM2仍未验收、main不变；后续仅在当前授权和有限支持矩阵内推进有依据的消费/质量出口。
+
+### G06 请求优先级修复后的有界真实正文配对
+
+producer `632ca314a`，m8-g06-data-role-pair preflight/live/audit-v1是新append-only组。只同primary account/endpoint/model，long Session的recompute/reuse两臂，max2、retry/fallback0、无模型grader；非原矩阵重跑。preflight无发送，live恰好2HTTP200、原Run2settled，direct totals2890/2192，合计5082；M8累计actual38/direct reported72982，此前2unknown/upper17515与1admitted但fetch0仍单列。货币、upstream/cache unknown没有改零，原M1/HM1 ledger hash、quota carry和旧raw reports保持。
+
+零API审查保存完整Memory source records/currentWorld、normalized/request/report raw hashes与两份原正文。两臂完整actual request JSON与request SHA相同、同reported input1226、同selected3sources/required s08-020，actual legal corpus256/raw fixture500；均实际Memory user、currentWorld system，正式状态仅hp/location。E2E15373/8486ms各n1，不能称SLO或reuse性能/费用收益；相同请求只比较新鲜正文，未隔离before/after修复因果。
+
+quality仍FAIL：recompute“这项承诺至今尚未履行”“那件事目前确实还没有完成”；reuse“那件事确实一直未曾履行”。历史source只建立旧turn未履行，record historical_source及requested-time未建立，原当前provider无completion/cognition/custody。这是有来源的自由正文审查，未以自动regex/盲评高分洗掉失败；也不因此否定已验证的数据角色修复。audit时rolling24h696/2000、last60s1/20，后续不原样刷新本组或新增critic。完整G06/M8/HM2未通过、main未集成。fetch确认最新main仍3ee1332ef，任务分支ahead24/behind0，无M1/HM1重跑或无关改动。
