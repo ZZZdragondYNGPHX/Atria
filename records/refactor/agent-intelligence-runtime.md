@@ -1948,3 +1948,13 @@ append-only private Document：g05-local-delete-before-v1（1 FAIL400）、after
 
 所有原baseline/结果/费用/FAIL保持，外部0；M8累计actual38/direct72982、unknown2/17515 upper/admission fetch0不变。M8/HM2/HM3与真实G06仍未验收；purge/其它CPU/cache/local inference/后台、Session Task/fork-compaction与H5前置继续，无HANDOFF或main集成。
 source `de9f3bb2d7e1ea9f3992f3380b88280ff2d45765`仅补强上组现有actual Hybrid delta：直接读取同一隔离index.json，旧initialHash不在、当次replacement hashes全部留存；hybrid-v2仅此一项PASS，不重复计入13/9。产品代码与费用事实无变化，没有用户资料或真实purge。
+
+### 2026-10-11 有限 G05：原 Native 单文件派生索引 purge 成本
+
+原source de9f3bb2d，合同docs531f6f139先冻结；产品f07553645d9e0779c91b391029ff5e93c4ddd568，根目录拒绝修复4818ff76d9d213393a27527df1c38ed195d2c698均push。冻结段日期原误写10-12，按本机git实际提交10-11纠正。只接原Native /purge与原client purgeCollection computeContext；index_purge仍为同一Run operation/Task localWork，原physical permit和publication lock，未添owner或源writer。原account root下exact两级namespace，root/parent/leaf真实路径及非链接核验，单文件16MiB/10000项/向量边界与未知sidecar拒绝；最终取消/readonly/原scope重验后同步unlink index.json，保留空目录而不递归删除。只有隔离可重建fixture，没有任何真实资料purge或legacy purge-all改动。
+
+18新distinct PASS：FS/SQLite insert+purge共享两job与Route移除/account恢复2；helper受控cancel/Task变化/Session HEAD变化/unlink故障4；坏JSON/未知sidecar/metadataFile/16MiB越界/10001项5；namespace/parent/root junction3；missing+unscoped+源Timeline保持1；readonly/bytequota before-IO/queuedcancel/static越界无charge1；提交后settlement中断charged保留并原receipt恢复1；actual Native client exactref/anchor→HTTP实物清理无inventory/infer1。9旧PASS：实际vector IO/purge revision隔离、Native injection/readonly、两engine hash delete、两engine list、query bounds/cancel、旧client exact-ref消费者。运行FS/SQLite，不声称PG/MySQL、真实服务或进程kill。
+
+私有Document追加日志 g05-local-purge-*：before-v1 1FAIL400旧computeContext未支持，不冒称预算绕过；after-v1两engine2PASS；safety-v1 13PASS；safety-v2 7PASS/1fixture FAIL（跨realm DOMException非Error instanceof，改断言AbortError name，不改产品abort）；cancel-v3同一项PASS；old-v1 9PASS。root-before-v1 1真实FAIL（root junction此前HTTP200，fixture index已被unlink）；root-after-v1 9PASS含1新root+7受影响新+1旧，不重复计数。lint-v1新增4测试写法及20旧错误，新增修复后产品四文件lint-v2与root-lint-v1 PASS；test-lint-v2/base JSON比对ruleId+原行文本，均20且完全相同，无新增旧测试清理。source/docs diff PASS。
+
+提交前拒绝保留原文件；提交后settlement失败则文件已删除而原charged仍在，原receipt可结算completed，两个事实均实物断言保留。CPU仍原process切片/输入观察，非CPU硬期限/价格。外部API0，M8 actual38/direct72982、unknown2/17515 upper/admission fetch0及原付费FAIL不变；main不变，完整M8/HM2/HM3和真实G06仍未验收。其它CPU/cache/local inference/后台、Session Task/fork-compaction与H5前置继续，无HANDOFF。

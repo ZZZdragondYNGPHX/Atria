@@ -101,11 +101,13 @@ source `77820a6d2`已push，10新/加强distinct、11受影响旧checks通过。
 
 source `2074ed7b9`已push，13新distinct/9受影响旧checks通过。原computeContext入口before400是未支持合同，不冒称预算绕过。原writer新增delete mode，hash冻结先于physical permit等待；只在临时副本deleteItem，原guard与同步原子replace沿既有insert方式，失败/取消保持原bytes且清理stage。actual Hybrid current-collection delta经过client→Native HTTP/同一job额度删除旧hash，再原Embedding/query重建；源chat/Timeline保持。retired namespace转发仅静态/既有source guard，未知sidecar/坏index拒绝保持。空hash不work，missing index实际stat可记录completed工作但不创建文件；scoped权限/readonly/Route移除与两engine recovery保持。纯Native拒绝无效hash在Number映射前，legacy转换保留；purge与其它依赖仍继续，外部0。
 
-## 当前有限 G05：原 Native 单文件派生索引清理
+## 已交付有限 G05：原 Native 单文件派生索引清理
 
-完成条件先冻结（2026-10-12）：只接现有Native `/purge`，原authenticated vectors/atri-retrieval下exact collection/profile namespace；不扩大legacy purge-all、源Timeline/Information/World删除或真实用户资料清理授权。沿同一physical permit与原Run/Task localWork，index_purge计1 namespace及序列化输入字节，无模型send/新owner。静态路径必须恰为root下两级；实际目录/单文件均重验真实路径与非链接，未知sidecar、坏格式、超过原16MiB/10000项等边界拒绝且保留。
+完成条件先冻结（2026-10-11，本机提交日期）：只接现有Native `/purge`，原authenticated vectors/atri-retrieval下exact collection/profile namespace；不扩大legacy purge-all、源Timeline/Information/World删除或真实用户资料清理授权。沿同一physical permit与原Run/Task localWork，index_purge计1 namespace及序列化输入字节，无模型send/新owner。静态路径必须恰为root下两级；实际目录/单文件均重验真实路径与非链接，未知sidecar、坏格式、超过原16MiB/10000项等边界拒绝且保留。
 
 准入先于index IO，等待取消不charge，缺失index观察可记completed且不创建。单文件读取校验后，原scope/cancel/readonly最后检查与同步unlink index.json在同一原authority锁内完成；保留空目录避免递归删除与提交后cleanup半成功。提交前失败保持原bytes，提交后成本结算失败不得冒称文件仍在；不宣称跨进程锁/CPU硬期限。取消/Task/HEAD变化、readonly、quota与FS/SQLite recovery，及真实隔离HTTP路由+单文件实物检查是有限出口。只用可重建fixture，不执行真实资料清理；external0，其他M8/HM2依赖继续。
+
+source `f07553645` / `4818ff76d`已push，18新distinct/9受影响旧checks通过；HTTP/client实物清理与原FS/SQLite额度恢复、取消/Task/HEAD变化均沿原owner。根目录junction反例此前实际200误删fixture单文件，修复为root/namespace/file非链接及root重验后503保留；所有测试仅隔离可重建fixture。同步unlink仅原index.json，保留空目录，不递归清理。已提交后settlement故障保留charged记录/明确文件已不存在，原receipt随后可settle完成；不冒称所有错误均保留原文件。Native typed quota/unavailable沿旧error handler返回，legacy purge-all保持。测试lint新增问题已修；base/current相同20项旧lint问题未改，无新增产品lint问题。Record保留各次失败及精准重验；其余成本/continuity/G06依赖继续。
 
 ## 已交付有限 G04：原 Native Anthropic/Gemini 的 Studio Task checkpoint
 
