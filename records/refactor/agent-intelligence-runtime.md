@@ -1719,3 +1719,13 @@ m8-g06-long-turn-v4.log 单项通过（source `7d21baa91`），外部API0。v1�
 两新输出均未再断言当前“确实记得”或书“还在我这里”；同模型盲评当前两例六维全部2，同时将原两例来源/unknown降为1。但**完整quality仍false**：new reuse仍写“这件事确实尚未履行”“而它至今还没办妥”。原normalized Context确认当前World只hp/location，无当前履行字段；fact:H0-ZH-08-f39明确source_assertion/historical_source，只有第二十轮过去“未履行”，无validFrom/validUntil及独立当前cognition/custody/completion authority。该现在完成状态断言缺支持，critic仍漏检，原grades不改。完整Context提高了可见证据，仍是同模型观察而非独立事实真值；两旧错误被局部避免不等于两例完整source-boundary合格。
 
 m8-g06-assertion-recheck-audit-v1初scope把500称legal domain过宽，零API修正另存audit-v2并pin前audit raw hash；不覆写v1或原reports。该有限paid组结束，不为提高分数追加生成/评价。下一具体根因是原packing已计算的时点适用性是否真正进入每个Context evidence group；只沿既有temporal/provider权威检查和最小本地验证，不新建cognition/履行writer或语言case过滤。完整G06/HM2未验收、main不变、无HANDOFF。
+
+### G06 检索时点适用性进入实际 Context
+
+source `e1b3de862`。已定位三处语义丢失：coverage完整组未序列化Corpus已计算的validAt；ranked把普通active Fact/Relation标题写成Current facts/relations且缺authority/epistemic；其实际Native evidence仅取doc.text。复用packing唯一record呈现，两个packing及ranked原生evidence均携原authority/epistemic与temporalApplicability的requested at及supported/outside/not_established三态。只呈现既有判断，不根据turn文字、source active或承诺推算当前cognition/持有/履行；requested time可为历史，未建立适用性不等于来源无效。provider current/conflict/history仍各持原epistemic，不加source未知时点来降级正式当前字段。头部规则共用，不新增writer、案例语言过滤或第二时间权威。
+
+本有限组8 distinct本地checks通过：3项新增实际历史/当前/无请求时点ranked+coverage→原Package→最终Context内容与撤权、完整组outside/null与预算少1拒绝、长fixture原2400 UTF8估计预算下保留s08-020及未知时点；1项新增真实provider conflict双来源呈现；4项受影响原检查为provider当前字段抑制旧事实、正式历史快照与源编辑失效、Package完整chain最终预算/撤权、ranked core/header/source完整计数/oversized skip。long仍500原始sources、256实际合法documents，不升级为500轮持续生成。2产品JS ESLint、diff check通过，外部API新增0。
+
+temporal-presentation-v1两失败为fixture把原生projection也计为recalled，以及原inactive relation支撑Fact的validAt实际null而预期false；改为识别原recalled metadata及读取已有relation false判断，未改Corpus权威。v2仅最终Context原排序与bridge原顺序不同失败，按完整内容多重集核对后v3通过。新增撤权断言后仅该受影响check与ranked预算检查重测通过；provider和long分别定向通过。v1/v2失败及各通过log均保留，不计重复为distinct。
+
+该呈现组已结束；原两paid报告、completion失败及critic漏判不改，尚无本producer真实正文验收，完整G06/HM2仍未通过。下一正式依赖是G06实际质量出口：只对前次已明确失败的reuse输出做必要新producer有限消费及零API来源判定，不追加同模型评分或刷原配对矩阵；H3无已配置真实辅助服务仍保留简单路径，H4已有有限本地收益不外推。main未集成，无HANDOFF。
