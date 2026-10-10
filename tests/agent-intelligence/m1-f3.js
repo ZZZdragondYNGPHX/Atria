@@ -350,10 +350,11 @@ export async function prepareF3Investigation(f, targetPin) {
     return capture;
 }
 
-export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob, fresh, signal, store, phase }) {
+export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob, fresh, signal, store, phase, preserveGraded = false }) {
     const job = paidJob, send = f.evaluator.send.bind(f.evaluator);
     const independent = [];
     for (const pair of report.pairs) {
+        if (preserveGraded && pair.judge !== null) continue;
         for (const label of f3JudgeLabels(scope.judgeMode)) {
             const original = label === 'primary' ? primaryConfig : secondaryConfig;
             const transport = f2JudgeTransport(original, scope.judgeOutputTokens, scope.comparisonReasoningEffort?.[label] ?? scope.judgeReasoningEffort?.[label] ?? null);
@@ -383,6 +384,83 @@ export async function gradeF3Report({ f, kind, report, primaryConfig, secondaryC
         store(kind + '-f3-' + phase + '-report.json', report); store(kind + '-f3-' + phase + '-independent.json', independent);
     }
     return independent;
+}
+
+// Resume missing observations, never re-extract or replace a completed score.
+export function validateF3DevelopmentResume(report, scope, owner, jobId, baseline, ledger) {
+    if (scope.judgeMode !== 'primary_only' || report.judgeMode !== 'primary_only'
+        || hash(report) !== scope.developmentReportHash) throw new Error('f3_development_resume_changed');
+    const checked = structuredClone(report);
+    for (const pair of checked.pairs) {
+        const { pairHash, ...identity } = pair;
+        if (pair.judge === null) {
+            if (pairHash !== undefined && pairHash !== hash(identity)) throw new Error('f3_development_resume_changed');
+            pair.pairHash = hash(identity);
+        } else if (!pair.judge?.chargeIds?.length || pair.judge.chargeIds.some(id => !checked.charges.some(c => c.id === id && c.kind === 'judge'))) {
+            throw new Error('f3_development_resume_changed');
+        }
+    }
+    const readiness = pilotDevelopmentReadiness(checked, [], owner, jobId, baseline, ledger);
+    const incomplete = new Set(['primary_model_observation_unfunded', 'model_regression_uncertainty_or_disagreement',
+        'behavior_regression_or_ungraded', 'improvement_threshold_not_met']);
+    if (readiness.reasons.some(reason => !incomplete.has(reason))) throw new Error('f3_development_resume_changed');
+    for (const charge of checked.charges) {
+        const paid = ledger.entries[charge.id];
+        if (!paid?.settled || paid.trialId !== charge.trialId || paid.tokens !== charge.tokens) throw new Error('f3_development_resume_changed');
+    }
+    // Retain every failed/late grader charge, including responses that did not
+    // complete the native operation and therefore have no valid observation.
+    for (const attempt of owner.attempts.filter(a => a.jobId === jobId && a.kind === 'judge')) {
+        if (!['reported', 'unknown'].includes(attempt.status)) throw new Error('f3_development_resume_changed');
+        const paid = ledger.entries[attempt.id];
+        if (!paid?.settled || paid.trialId !== attempt.trialId || paid.tokens !== attempt.tokens) throw new Error('f3_development_resume_changed');
+        if (!checked.charges.some(c => c.id === attempt.id)) checked.charges.push(Object.fromEntries(
+            ['id', 'trialId', 'kind', 'requestHash', 'snapshotHash', 'tokens', 'status', 'usage', 'cost']
+                .filter(key => attempt[key] !== undefined).map(key => [key, attempt[key]])));
+    }
+    return checked;
+}
+
+export async function continueF3Development({ f, kind, result, report: original, source, scope, entry, store, signal, ledger, sealedDirectory, primaryConfig, controls }) {
+    const doc = await f.repository.get(f.h.handle, f.scope, f.subject), candidate = result.candidate, job = result.job;
+    if (hash(doc) !== hash(result.doc) || hash(candidate.diff.after) !== scope.frozenCandidateHash
+        || !scope.separatePromotionJob || hash(await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target)) !== job.targetPin) throw new Error('f3_development_resume_changed');
+    const checked = await f.service.targets.check(f.h.handle, f.scope, f.subject, f.target, candidate.candidateId);
+    if (!equal(checked.base, candidate.base) || !equal(checked.desired, candidate.desired)) throw new Error('f3_development_resume_changed');
+    const baselineSettings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target);
+    const settings = await f.service.targets.evaluationSettings(f.h.handle, f.scope, f.subject, f.target, candidate.candidateId);
+    const config = await f.evaluator.configuration(f.h.handle, f.route.runtimeRouteId, settings.projectPromptRef || null);
+    validateF3Baseline(source.report, original.domain, primaryConfig, baselineSettings, ledger());
+    validateF3Calibration(source, scope, controls, kind, primaryConfig, null);
+    if (hash(source.report) !== scope.baselineHashes[kind] || hash(source.assessments) !== scope.assessmentHashes[kind]
+        || hash(primaryConfig) !== original.configurations.baseline || hash(config) !== original.configurations.candidate
+        || hash(baselineSettings) !== original.settings.baseline || hash(settings) !== original.settings.candidate
+        || original.targetPin !== job.targetPin || original.policyFingerprint !== job.policyFingerprint) throw new Error('f3_development_resume_changed');
+    const report = validateF3DevelopmentResume(original, scope, await f.repository.owner(f.h.handle), job.id, source.report, ledger());
+    entry.jobId = job.id; entry.judgeMode = 'primary_only'; entry.candidateValueHash = hash(candidate.diff.after);
+    entry.developmentContinuation = { sourceRun: scope.developmentSourceRun, originalReportHash: hash(original),
+        preservedTrialIds: report.pairs.map(p => p.candidate.trialId), preservedGrades: report.pairs.filter(p => p.judge !== null).map(p => ({ caseId: p.case.caseId, hash: hash(p.judge) })) };
+    const paidJob = { ...job, scopeId: doc.scopeId, domain: report.domain, price: null };
+    const fresh = async () => {
+        signal.throwIfAborted(); await f.service._fresh(f.h.handle, f.scope, f.subject, job.id);
+        if (hash(await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target)) !== job.targetPin) throw new Error('f3_base_changed');
+    };
+    store(kind + '-f3-development-report.json', report);
+    entry.independent = await gradeF3Report({ f, kind, report, primaryConfig, scope, entry, paidJob, fresh, signal, store, phase: 'development', preserveGraded: true });
+    entry.developmentReadiness = pilotDevelopmentReadiness(report, [], await f.repository.owner(f.h.handle), job.id, source.report, ledger());
+    entry.status = 'f3_development_observed'; entry.lifecycle = { performedThisRun: false };
+    await f.repository.mutate(f.h.handle, f.scope, f.subject, saved => {
+        const current = saved.jobs.find(j => j.id === job.id); current.status = 'awaiting_review';
+        current.candidates[0].report = f3ReportForStorage(report); current.candidates[0].decision = promotionDecision(report);
+    });
+    const final = await f.repository.get(f.h.handle, f.scope, f.subject), finalJob = final.jobs.find(j => j.id === job.id);
+    const next = { doc: final, job: finalJob, candidate: finalJob.candidates[0] };
+    store(kind + '-job.json', next);
+    if (entry.developmentReadiness.accepted) {
+        if (!sealedDirectory) throw new Error('f3_promotion_sources_unavailable');
+        store(kind + '-f3-development-job.json', next);
+        await continueF3Promotion({ f, kind, result: next, source, scope, entry, store, signal, ledger, sealedDirectory, primaryConfig });
+    }
 }
 
 export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, scope, source, controls, ledger, entry, store, signal, calibrationResume = [], sealedDirectory = null, priorDevelopment = null }) {

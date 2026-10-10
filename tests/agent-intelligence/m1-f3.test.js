@@ -4,7 +4,7 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
     f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
-    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls } from './m1-f3.js';
+    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume } from './m1-f3.js';
 import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture, runEvolution } from './evolution-fixture.js';
 import { continueF3Promotion, f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
@@ -54,6 +54,46 @@ function example(domain = 'rp', caseSetRevision = PILOT_CASE_SET_REVISION) {
 }
 const readiness = f => pilotDevelopmentReadiness(f.report, f.independent, f.owner, 'job', f.baseline, f.ledger);
 const rehash = pair => { delete pair.pairHash; pair.pairHash = hash(pair); };
+
+function resumeExample() {
+    const f = example('project'); f.report.judgeMode = 'primary_only'; f.independent = [];
+    f.report.comparisonCalibration = f.report.comparisonCalibration.filter(c => c.label === 'primary');
+    for (const [i, pair] of f.report.pairs.entries()) {
+        pair.candidate.requestHashes = pair.candidate.charges.map(c => c.requestHash);
+        if (i) { pair.judge = null; delete pair.pairHash; } else rehash(pair);
+    }
+    for (const attempt of f.owner.attempts) f.ledger.entries[attempt.id] = { trialId: attempt.trialId, tokens: attempt.tokens, settled: true };
+    f.scope = { judgeMode: 'primary_only', developmentReportHash: hash(f.report) };
+    return f;
+}
+
+test('development resume retains complete trials, observed grades, and failed grader charges without mutating history', () => {
+    const f = resumeExample(), before = hash(f.report), failed = { ...f.owner.attempts.find(a => a.id === 'judge-1'), id: 'failed-judge', status: 'unknown' };
+    f.owner.attempts.push(failed); f.ledger.entries[failed.id] = { trialId: failed.trialId, tokens: failed.tokens, settled: true };
+    const next = validateF3DevelopmentResume(f.report, f.scope, f.owner, 'job', f.baseline, f.ledger);
+    expect(hash(f.report)).toBe(before);
+    expect(next.pairs.map(p => p.candidate)).toEqual(f.report.pairs.map(p => p.candidate));
+    expect(next.pairs[0].judge).toEqual(f.report.pairs[0].judge);
+    expect(next.pairs.slice(1).every(p => p.judge === null)).toBe(true);
+    expect(next.charges.some(c => c.id === failed.id && c.status === 'unknown')).toBe(true);
+});
+
+test.each(['baseline', 'authority', 'funding', 'observed_grade'])('development resume rejects changed %s before any grader send', change => {
+    const f = resumeExample();
+    if (change === 'baseline') f.report.pairs[1].baseline.output += ' tampered';
+    if (change === 'authority') f.report.pairs[1].candidate.checks.isolation = false;
+    if (change === 'funding') f.ledger.entries['new-1'].settled = false;
+    if (change === 'observed_grade') f.report.pairs[0].judge.chargeIds = [];
+    f.scope.developmentReportHash = hash(f.report);
+    expect(() => validateF3DevelopmentResume(f.report, f.scope, f.owner, 'job', f.baseline, f.ledger)).toThrow('f3_development_resume_changed');
+});
+
+test('development resume preserves an existing adverse observation rather than selecting a replacement', () => {
+    const f = resumeExample(); f.report.pairs[0].judge.preference = 'baseline';
+    f.report.pairs[0].judge.deltas[f.report.pairs[0].case.behaviorDimensions[0]] = -1;
+    rehash(f.report.pairs[0]); f.scope.developmentReportHash = hash(f.report);
+    expect(validateF3DevelopmentResume(f.report, f.scope, f.owner, 'job', f.baseline, f.ledger).pairs[0].judge).toEqual(f.report.pairs[0].judge);
+});
 
 test.each(['rp-skill', 'project-prompt'])('separate %s promotion preserves archived development and its funded identities', async kind => {
     const f = await evolutionFixture(makeTempFsEngineHarness, kind, { policyMode: 'review' });
@@ -151,8 +191,10 @@ test.each(['rp', 'project'])('primary-only %s development qualifies without seco
     rehash(f.report.pairs[0]); expect(readiness(f).accepted).toBe(false);
 });
 
-test('primary-only F3 grading sends only to the primary model without a secondary configuration', async () => {
+test.each([false, true])('primary-only F3 grading sends only to the primary model; preserve graded = %s', async preserveGraded => {
     const observed = [], fixture = example();
+    const firstGrade = structuredClone(fixture.report.pairs[0].judge);
+    if (preserveGraded) for (const pair of fixture.report.pairs.slice(1)) pair.judge = null;
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { policyMode: 'review', confirmedPrice: null, fetchImpl: async (_url, options) => {
         const body = JSON.parse(options.body); observed.push(body.model);
         return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ choices: [{ message: { content: JSON.stringify({
@@ -167,9 +209,11 @@ test('primary-only F3 grading sends only to the primary model without a secondar
         const independent = await gradeF3Report({ f, kind: 'rp-skill', report: fixture.report, primaryConfig, secondaryConfig: null,
             scope: { judgeMode: 'primary_only', judgeOutputTokens: 1024 }, entry: { candidateValueHash: hash('synthetic') },
             paidJob: { id: 'synthetic-primary-only', scopeId: doc.scopeId, domain: 'rp', price: null }, fresh: async () => {},
-            signal: AbortSignal.timeout(15000), store: () => {}, phase: 'development' });
-        expect(independent).toEqual([]); expect(observed).toEqual(Array(3).fill(primaryConfig.model.remoteModelId));
-        expect(fixture.report.pairs.every(p => p.judge.preference === 'tie' && p.judge.chargeIds.length === 1)).toBe(true);
+            signal: AbortSignal.timeout(15000), store: () => {}, phase: 'development', preserveGraded });
+        expect(independent).toEqual([]); expect(observed).toEqual(Array(preserveGraded ? 2 : 3).fill(primaryConfig.model.remoteModelId));
+        expect(fixture.report.pairs.slice(preserveGraded ? 1 : 0).every(p => p.judge.preference === 'tie' && p.judge.chargeIds.length === 1)).toBe(true);
+        expect(preserveGraded ? hash(fixture.report.pairs[0].judge) : fixture.report.pairs[0].judge.preference)
+            .toBe(preserveGraded ? hash(firstGrade) : 'tie');
         expect(f3JudgeLabels('primary_only')).toEqual(['primary']);
         expect(() => f3JudgeLabels('unknown')).toThrow('invalid_f3_judge_mode');
     } finally { await f.h.cleanup(); }
