@@ -9,7 +9,7 @@ const { pilotPromotionAcceptance } = await import('./m1-f3-promotion.js');
 const { f3GradeMessages } = await import('./m1-f3.js');
 const { evolutionEvaluatorRevision, promotionDecision } = await import('../../src/native/agent-intelligence/evolution-evaluator.js');
 const { qualityEnvelope } = await import('../../src/native/agent-intelligence/evaluation/quality.js');
-const { selectCases, hash, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
+const { selectCases, hash, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CONTINUATION_PILOT_CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
 
 function fixture(domain = 'rp', caseSetRevision = PILOT_CASE_SET_REVISION) {
     const cases = selectCases({ purpose: 'evaluation', split: 'promotion', profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related', caseSetRevision });
@@ -50,6 +50,17 @@ const check = f => pilotPromotionAcceptance(f.report, f.independent, f.owner, 'j
 const rehash = f => { for (let i = 0; i < f.report.pairs.length; i++) {
     const p = f.report.pairs[i]; delete p.pairHash; p.pairHash = hash(p); if (f.independent[i]) f.independent[i].pairHash = p.pairHash;
 } };
+
+test('continuation RP promotion keeps the complete six-dimension gate and original fee checks', () => {
+    const f = fixture('rp', CONTINUATION_PILOT_CASE_SET_REVISION); f.report.judgeMode = 'primary_only'; f.independent = [];
+    f.report.comparisonCalibration = f.report.comparisonCalibration.filter(c => c.label === 'primary');
+    expect(check(f)).toMatchObject({ accepted: true, wins: 6 });
+    f.report.pairs[0].judge.deltas.actor_voice = -1; rehash(f);
+    expect(check(f).reasons).toContain('behavior_regression_or_ungraded');
+    f.report.pairs[0].judge.deltas.actor_voice = 1; rehash(f);
+    f.owner.attempts = f.owner.attempts.filter(a => a.id !== f.report.pairs[0].baseline.charges[0].id);
+    expect(check(f).reasons).toContain('durable_charge_mismatch');
+});
 
 test.each(['rp', 'project'])('renewal %s promotion retains six wins and rejects historical case substitution', domain => {
     const f = fixture(domain, RENEWAL_PILOT_CASE_SET_REVISION); f.report.judgeMode = 'primary_only'; f.independent = [];

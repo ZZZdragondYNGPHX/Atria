@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { hash, canonical, publicCaseScenario, PILOT_CASE_SET_REVISION, PILOT_CASES, pilotCasesForRevision, selectCases, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, publicCaseScenario, PILOT_CASE_SET_REVISION, PILOT_CASES, pilotCasesForRevision, selectCases, isPilotCaseSetRevision } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
 import { parseEvaluationJson } from '../../src/native/agent-intelligence/evaluation/json.js';
@@ -8,8 +8,8 @@ import { m1JudgeOutputConfiguration } from './m1-grader.js';
 
 export function validateF2Scope(scope, controls, identity, prepareOnly) {
     if (scope?.judgeMode && !['dual', 'primary_only'].includes(scope.judgeMode)) throw new Error('f2_scope_changed');
-    if (scope?.domainOrder && (!Array.isArray(scope.domainOrder) || scope.domainOrder.length !== 2
-        || new Set(scope.domainOrder).size !== 2 || scope.domainOrder.some(kind => !['rp-skill', 'project-prompt'].includes(kind)))) throw new Error('f2_scope_changed');
+    if (scope?.domainOrder && (!Array.isArray(scope.domainOrder) || scope.domainOrder.length < 1 || scope.domainOrder.length > 2
+        || new Set(scope.domainOrder).size !== scope.domainOrder.length || scope.domainOrder.some(kind => !['rp-skill', 'project-prompt'].includes(kind)))) throw new Error('f2_scope_changed');
     if (scope?.judgeReasoningEffort && Object.entries(scope.judgeReasoningEffort).some(([label, effort]) =>
         !['primary', 'secondary'].includes(label) || !['low', 'medium', 'high'].includes(effort))) throw new Error('f2_scope_changed');
     if (scope?.sourceReasoningEffort && Object.entries(scope.sourceReasoningEffort).some(([kind, labels]) =>
@@ -18,7 +18,7 @@ export function validateF2Scope(scope, controls, identity, prepareOnly) {
     if (scope?.sourceOutputTokens && Object.entries(scope.sourceOutputTokens).some(([kind, tokens]) =>
         !['rp-skill', 'project-prompt'].includes(kind) || !Number.isSafeInteger(tokens) || tokens < 1)) throw new Error('f2_scope_changed');
     const expanded = scope?.schemaVersion === 2 && scope.headroomAssessment === true && scope.apiHardLimits?.rollingDayRequests === 2000 && scope.apiHardLimits?.requestsPerMinute === 20;
-    if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION].includes(scope.pilotCaseSetRevision)
+    if (!(scope?.schemaVersion === 1 || expanded) || scope.purpose !== 'f2_source_calibration' || !isPilotCaseSetRevision(scope.pilotCaseSetRevision)
         || scope.controlHash !== hash(controls) || controls.origin !== 'engineering_control' || controls.controls?.length !== 12
         || scope.extraction !== 0 || scope.promotion !== 0
         || scope.publication !== 0 || scope.testedHead !== identity.testedHead || scope.evaluatorRevision !== identity.evaluatorRevision

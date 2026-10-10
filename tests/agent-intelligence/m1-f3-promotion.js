@@ -1,7 +1,7 @@
 // Delegated private engineering acceptance. Production promotion stays gated.
 import { randomUUID } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
-import { hash, canonical, selectCases, loadFixture, CASE_SET_REVISION, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, selectCases, loadFixture, CASE_SET_REVISION, PILOT_CASE_SET_REVISION, isPilotCaseSetRevision } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
@@ -19,7 +19,7 @@ export function pilotPromotionAcceptance(report, independent, owner, jobId) {
     const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     const required = selectCases({ purpose: 'evaluation', split: 'promotion', profileId, caseSetRevision: report.caseSetRevision });
     if (report.origin !== 'm1_f3_promotion' || report.evaluatorRevision !== evolutionEvaluatorRevision()
-        || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision) || !equal(report.quality, qualityEnvelope(report.domain, required, 'promotion'))
+        || !isPilotCaseSetRevision(report.caseSetRevision) || !equal(report.quality, qualityEnvelope(report.domain, required, 'promotion'))
         || !comparisonCalibrationReady(report, owner)) reasons.push('promotion_identity_or_calibration_changed');
     if (report.pairs.length !== 9 || required.some(c => [1, 2, 3].some(repetition =>
         report.pairs.filter(p => equal(p.case, c) && p.repetition === repetition).length !== 1))) reasons.push('independent_cases_incomplete');

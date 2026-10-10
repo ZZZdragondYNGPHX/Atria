@@ -1,5 +1,6 @@
 import { expect, test } from '@jest/globals';
 import { PILOT_CASES, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASES, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASES,
+    CONTINUATION_PILOT_CASES, CONTINUATION_PILOT_CASE_SET_REVISION,
     selectCases, loadFixture, validateCase, hash, canonical, publicCaseScenario } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { runRp, runProject } from '../../src/native/agent-intelligence/evaluation/adapters.js';
 import { withIsolatedRuntime } from './runner.js';
@@ -21,6 +22,27 @@ test('renewal requires explicit registered revision and never mixes the historic
     expect(() => loadFixture(sealed, { purpose: 'extraction' })).toThrow('evaluator-only');
     expect(() => loadFixture(sealed, { purpose: 'evaluation' })).toThrow('source_unready');
     expect(() => validateCase({ ...sealed, fixtureHash: hash('changed') })).toThrow('identity');
+});
+
+test('continuation freezes a separate RP corpus and keeps promotion contents unavailable to extraction', () => {
+    const options = { purpose: 'evaluation', split: 'development', profileId: 'rp.m1.information', caseSetRevision: CONTINUATION_PILOT_CASE_SET_REVISION };
+    expect(selectCases(options)).toHaveLength(3);
+    expect(CONTINUATION_PILOT_CASES).toHaveLength(6);
+    expect(new Set(CONTINUATION_PILOT_CASES.map(c => c.provenance.groupId)).size).toBe(6);
+    expect(CONTINUATION_PILOT_CASES.every(c => ![...PILOT_CASES, ...RENEWAL_PILOT_CASES].some(old => old.caseId === c.caseId || old.fixtureHash === c.fixtureHash))).toBe(true);
+    const sealed = CONTINUATION_PILOT_CASES.find(c => c.split === 'promotion');
+    expect(() => loadFixture(sealed, { purpose: 'extraction' })).toThrow('evaluator-only');
+    expect(() => loadFixture(sealed, { purpose: 'evaluation' })).toThrow('source_unready');
+    expect(() => validateCase({ ...sealed, fixtureHash: hash('changed') })).toThrow('identity');
+});
+
+test.each(CONTINUATION_PILOT_CASES.filter(c => c.split === 'development'))('continuation native authority fixture: $sourceId', async entry => {
+    const capture = { trialId: 'synthetic-continuation:' + entry.caseId, refs: { runIds: [], requestIds: [], effectIds: [], taskIds: [], messageVariants: [] },
+        prompts: [], evidence: [], checks: {}, completeness: [], toolCalls: 0, repairCount: 0,
+        observe(name, observed, expected) { this.checks[name] = canonical(observed) === canonical(expected); this.evidence.push({ name, observed, expected }); } };
+    await withIsolatedRuntime(() => runRp(entry, loadFixture(entry, { purpose: 'evaluation' }), capture));
+    expect(capture.checks).toEqual(expect.objectContaining(Object.fromEntries([...entry.expectedInvariants, 'isolation'].map(d => [d, true]))));
+    expect(capture.refs.effectIds).toEqual([]);
 });
 
 test.each([...RENEWAL_PILOT_CASES.filter(c => c.split === 'development'), ...CORRECTED_RENEWAL_PILOT_CASES.filter(c => c.sourceId.endsWith('_contract'))])('renewal native authority fixture: $sourceId', async entry => {

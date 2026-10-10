@@ -1,6 +1,6 @@
 // Delegated private engineering investigation. Never registered in production.
 import { randomUUID } from 'node:crypto';
-import { hash, canonical, selectCases, publicCaseScenario, PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION } from '../../src/native/agent-intelligence/evaluation/cases.js';
+import { hash, canonical, selectCases, publicCaseScenario, PILOT_CASE_SET_REVISION, isPilotCaseSetRevision } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/quality.js';
 import { createFrozenEvaluationBridge } from '../../src/native/agent-intelligence/evaluation/worker-bridge.js';
@@ -65,7 +65,7 @@ export function validateF3Calibration(source, scope, controls, kind, primaryConf
 
 export function validateF3Baseline(report, domain, config, settings, ledger) {
     const cases = selectCases({ purpose: 'evaluation', split: 'development', profileId: profileFor(domain), caseSetRevision: report?.caseSetRevision });
-    if (report?.origin !== 'host_source_probe' || report.domain !== domain || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision)
+    if (report?.origin !== 'host_source_probe' || report.domain !== domain || !isPilotCaseSetRevision(report.caseSetRevision)
         || report.configurations.baseline !== hash(config) || report.settings.baseline !== hash(settings) || report.pairs.length !== 3
         || cases.some(entry => report.pairs.filter(pair => equal(pair.case, entry) && pair.repetition === 1).length !== 1)) throw new Error('f3_baseline_changed');
     for (const pair of report.pairs) {
@@ -92,7 +92,7 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
     const secondaryRequired = f3JudgeLabels(report.judgeMode).length === 2;
     let wins = 0;
     if (report.origin !== 'm1_f3_development' || report.evaluatorRevision !== evolutionEvaluatorRevision()
-        || ![PILOT_CASE_SET_REVISION, RENEWAL_PILOT_CASE_SET_REVISION, CORRECTED_RENEWAL_PILOT_CASE_SET_REVISION].includes(report.caseSetRevision) || report.caseSetRevision !== baseline.caseSetRevision || report.baselineReuse.reportHash !== hash(baseline)
+        || !isPilotCaseSetRevision(report.caseSetRevision) || report.caseSetRevision !== baseline.caseSetRevision || report.baselineReuse.reportHash !== hash(baseline)
         || report.configurations.baseline !== baseline.configurations.baseline || report.settings.baseline !== baseline.settings.baseline
         || !equal(report.quality, qualityEnvelope(report.domain, required, 'development'))) reasons.push('evaluation_identity_changed');
     if (report.pairs.length !== 3 || required.some(c => report.pairs.filter(p => equal(p.case, c) && p.repetition === 1).length !== 1)) reasons.push('development_cases_incomplete');

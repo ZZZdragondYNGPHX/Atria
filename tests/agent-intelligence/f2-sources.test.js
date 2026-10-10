@@ -122,7 +122,10 @@ test('F2 configuration rejects source drift without reviving old packet quotas o
     expect(validateF2Scope({ ...expanded, domainOrder: ['project-prompt', 'rp-skill'] }, controls, identity, false)).toBeDefined();
     expect(validateF2Scope({ ...expanded, judgeMode: 'primary_only' }, controls, identity, false)).toBeDefined();
     expect(() => validateF2Scope({ ...expanded, judgeMode: 'unverified' }, controls, identity, false)).toThrow('f2_scope_changed');
-    expect(() => validateF2Scope({ ...expanded, domainOrder: ['project-prompt'] }, controls, identity, false)).toThrow('f2_scope_changed');
+    expect(validateF2Scope({ ...expanded, domainOrder: ['project-prompt'] }, controls, identity, false)).toBeDefined();
+    expect(validateF2Scope({ ...expanded, domainOrder: ['rp-skill'] }, controls, identity, false)).toBeDefined();
+    expect(() => validateF2Scope({ ...expanded, domainOrder: [] }, controls, identity, false)).toThrow('f2_scope_changed');
+    expect(() => validateF2Scope({ ...expanded, domainOrder: ['rp-skill', 'rp-skill'] }, controls, identity, false)).toThrow('f2_scope_changed');
     expect(() => validateF2Scope({ ...expanded, apiHardLimits: { rollingDayRequests: 2001, requestsPerMinute: 20 } }, controls, identity, false)).toThrow('f2_scope_changed');
     expect(validateF2Scope({ ...scope, maxSends: 9999, maxSecondarySends: 9999, retries: 2, initialAccounting: { requests: 1, tokens: 1 } }, controls, identity, false)).toBeDefined();
     for (const change of [{ extraction: 1 }, { promotion: 1 }, { publication: 1 }, { pilotCaseSetRevision: hash('other source') }, { testedHead: hash('other source') }])

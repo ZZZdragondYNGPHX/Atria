@@ -5,10 +5,11 @@ import { createHash } from 'node:crypto';
 import { validateCase, loadFixture } from './cases.js';
 import { PROMOTION_SOURCE_PINS } from './pilot-sources.js';
 import { RENEWAL_PROMOTION_SOURCE_PINS } from './pilot-renewal-sources.js';
+import { CONTINUATION_PROMOTION_SOURCE_PINS } from './pilot-continuation-sources.js';
 
 export function readSealedSource(entry, directory) {
     validateCase(entry);
-    const pin = [...PROMOTION_SOURCE_PINS, ...RENEWAL_PROMOTION_SOURCE_PINS].find(p => p.sourceId === entry.sourceId);
+    const pin = [...PROMOTION_SOURCE_PINS, ...RENEWAL_PROMOTION_SOURCE_PINS, ...CONTINUATION_PROMOTION_SOURCE_PINS].find(p => p.sourceId === entry.sourceId);
     if (entry.split !== 'promotion' || !pin || typeof directory !== 'string' || !isAbsolute(directory)
         || realpathSync(directory) !== resolve(directory)) throw new Error('sealed_source_unavailable');
     const file = join(directory, pin.sourceId + '.json');
