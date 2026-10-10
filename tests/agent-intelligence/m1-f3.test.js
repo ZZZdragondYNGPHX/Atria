@@ -4,7 +4,8 @@ import { qualityEnvelope } from '../../src/native/agent-intelligence/evaluation/
 import { evolutionEvaluatorRevision, promotionDecision } from '../../src/native/agent-intelligence/evolution-evaluator.js';
 import { validateF3Baseline, validateF3Calibration, pilotDevelopmentReadiness, f3GradeMessages, f3SharedEvidence, prepareF3Investigation,
     f3CalibrationMessages, validF3Control, f3ExtractionInput, reusableF3Calibration, gradeF3Report, f3JudgeLabels,
-    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume } from './m1-f3.js';
+    parseF3Grade, f3DevelopmentFeedback, f3ComparisonControls, validateF3DevelopmentResume, publicSourceReviewReasons } from './m1-f3.js';
+import { f2SourceEvidence, f2SourceMessages } from './m1-f2.js';
 import { sendM1Evaluation } from './m1-grader.js';
 import { evolutionFixture, runEvolution } from './evolution-fixture.js';
 import { continueF3Promotion, f3ReportForStorage, readF3StoredReport } from './m1-f3-promotion.js';
@@ -403,6 +404,35 @@ test('prior development feedback is pinned and cannot silently replace original 
     expect(f3DevelopmentFeedback(prior, expected).observations).toHaveLength(3);
     prior.report.pairs[0].judge.rationale = 'Changed evidence';
     expect(() => f3DevelopmentFeedback(prior, expected)).toThrow('f3_development_feedback_changed');
+});
+
+test('public diagnosis cites an exact prior candidate clause without rewriting its model grade', () => {
+    const f = example(), candidate = { valueHash: hash('value'), candidate: { diff: { before: 'Original', after: 'Prior edit' } } };
+    const prior = { report: f.report, candidate }, expected = { reportHash: hash(f.report), candidateHash: hash(candidate), valueHash: candidate.valueHash,
+        publicFindings: [{ caseId: f.report.pairs[0].case.caseId, dimension: 'knowledge_boundary', quote: 'Actual bounded output', reason: 'Public statement still needs exposed support.' }] };
+    expect(f3DevelopmentFeedback(prior, expected).publicFindings).toEqual(expected.publicFindings);
+    expect(hash(prior.report)).toBe(expected.reportHash);
+    expected.publicFindings[0].quote = 'Invented public statement';
+    expect(() => f3DevelopmentFeedback(prior, expected)).toThrow('f3_public_finding_changed');
+});
+
+test('complete public source review rejects a late unsupported clause despite positive comparison grades', () => {
+    const f = example(), pair = f.report.pairs[0], observed = { case: pair.case, baseline: pair.candidate };
+    const evidence = f2SourceEvidence(observed, pair.scenario), refs = JSON.parse(evidence).quoteCatalogue.filter(q => q.origin === 'baseline.output');
+    const assessment = { dimensions: Object.fromEntries(pair.case.behaviorDimensions.map(d => [d, { status: 'met', quoteRef: refs[0].ref, rationale: 'Exposed support.' }])),
+        knowledgeReview: refs.map(q => ({ quoteRef: q.ref, status: 'nonbinding', rationale: 'A creative gesture.' })) };
+    const paid = { ...f.report.charges.find(c => c.kind === 'judge'), id: 'source-review', trialId: 'job:public-source:' + pair.case.caseId };
+    f.report.charges.push(paid); f.owner.attempts.push({ ...paid, jobId: 'job' });
+    f.report.publicSourceReviewRequired = [pair.case.caseId];
+    f.report.publicSourceReviews = [{ caseId: pair.case.caseId, evidenceHash: hash(evidence), messagesHash: hash(f2SourceMessages(observed, evidence)), assessment, charge: paid }];
+    expect(publicSourceReviewReasons(f.report, f.owner, 'job')).toEqual([]);
+    assessment.knowledgeReview[0].status = 'unsupported'; assessment.dimensions.knowledge_boundary.status = 'gap';
+    expect(publicSourceReviewReasons(f.report, f.owner, 'job')).toContain('public_source_gap');
+    expect(pilotDevelopmentReadiness(f.report, f.independent, f.owner, 'job', f.baseline, f.ledger).accepted).toBe(false);
+    assessment.knowledgeReview = [];
+    expect(publicSourceReviewReasons(f.report, f.owner, 'job')).toContain('public_source_review_incomplete');
+    f.report.publicSourceReviews[0].charge = { ...paid, requestHash: 'changed' };
+    expect(publicSourceReviewReasons(f.report, f.owner, 'job')).toContain('public_source_review_identity_changed');
 });
 
 test('extraction receives available communication slots without inventing feedback or publishing rights', () => {

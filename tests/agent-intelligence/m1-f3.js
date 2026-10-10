@@ -124,6 +124,7 @@ export function pilotDevelopmentReadiness(report, independent, owner, jobId, bas
             || !report.charges.some(p => equal(p, c)) || !paidMatches(c, owner.attempts.find(a => a.id === c.id && a.jobId === jobId)))) reasons.push('candidate_usage_missing');
     }
     if (secondaryRequired && independent.length !== 3 || !secondaryRequired && independent.length !== 0) reasons.push('independent_model_observation_missing');
+    reasons.push(...publicSourceReviewReasons(report, owner, jobId));
     return { accepted: !reasons.length, reasons: [...new Set(reasons)], wins, judgeMode: report.judgeMode || 'dual', tokensAdvisory: true, humanPreference: 'not_observed',
         currencyCost: 'unavailable', productionPromotion: 'original_gate_unchanged', baselineReuse: 'cached_F2_development_observation' };
 }
@@ -234,12 +235,65 @@ export function f3DevelopmentFeedback(prior, expected) {
     if (!expected || hash(prior.report) !== expected.reportHash || hash(prior.candidate) !== expected.candidateHash
         || prior.report.origin !== 'm1_f3_development' || prior.report.pairs.length !== 3
         || prior.candidate.valueHash !== expected.valueHash || prior.report.pairs.some(p => p.human !== null)) throw new Error('f3_development_feedback_changed');
+    const publicFindings = expected.publicFindings || [];
+    if (!Array.isArray(publicFindings) || publicFindings.some(f => !prior.report.pairs.some(p => p.case.caseId === f.caseId
+        && p.case.behaviorDimensions.includes(f.dimension) && typeof f.quote === 'string' && f.quote.trim()
+        && String(p.candidate.output).includes(f.quote)) || typeof f.reason !== 'string' || !f.reason.trim())) throw new Error('f3_public_finding_changed');
     return { origin: 'prior_public_development', reportHash: expected.reportHash, candidate: prior.candidate.candidate.diff,
+        publicFindings: structuredClone(publicFindings), publicSourceReviews: structuredClone(prior.report.publicSourceReviews || []),
         observations: prior.report.pairs.map(p => ({ caseId: p.case.caseId, judge: p.judge,
             publicDevelopment: { scenario: p.scenario, baseline: p.baseline.output, candidate: p.candidate.output },
             interpretation: p.judge?.preference === 'candidate' && Object.values(p.judge.deltas).some(v => v < 0)
                 ? 'contains_regression_or_contradictory_grading; not established improvement' : 'retained_model_observation' })),
-        instruction: 'Use these retained public development observations to improve the generality and clarity of the prior guidance. Preserve observed benefits and address any original gaps or regressions without inventing a new gap where the current baseline is met. Contradictory grades are not corrected or accepted. Preserve expressive voice, concrete NPC action and explicit player ownership while removing unsupported assertions and unnecessary prescriptions. Generate a new minimal edit against the original base; do not copy a case answer or repeat the prior guidance unchanged.' };
+        instruction: 'Use these retained public development observations to improve the generality and clarity of the prior guidance. Preserve observed benefits and address any original gaps or regressions without inventing a new gap where the current baseline is met. Public findings identify concrete remaining defects in the supplied public output; a positive relative grade does not prove every clause is supported. Contradictory grades are retained. Preserve expressive voice, concrete NPC action and explicit player ownership while removing unsupported assertions and unnecessary prescriptions. Generate a new minimal edit against the original base; do not copy a case answer or repeat the prior guidance unchanged.' };
+}
+
+export function publicSourceReviewReasons(report, owner, jobId) {
+    const required = report.publicSourceReviewRequired;
+    if (required === undefined) return [];
+    const rows = report.publicSourceReviews || [], reasons = [];
+    if (!Array.isArray(required) || new Set(required).size !== required.length || rows.length !== required.length || new Set(rows.map(r => r.charge?.id)).size !== rows.length) return ['public_source_review_incomplete'];
+    for (const caseId of required) {
+        const pair = report.pairs.find(p => p.case.caseId === caseId), matches = rows.filter(r => r.caseId === caseId), row = matches[0];
+        if (!pair || pair.case.split !== 'development' || matches.length !== 1) { reasons.push('public_source_review_incomplete'); continue; }
+        const observed = { case: pair.case, baseline: pair.candidate }, evidence = f2SourceEvidence(observed, pair.scenario);
+        if (row.charge?.kind !== 'judge' || row.charge?.trialId !== jobId + ':public-source:' + caseId || row.evidenceHash !== hash(evidence) || row.messagesHash !== hash(f2SourceMessages(observed, evidence))
+            || !report.charges.some(c => equal(c, row.charge)) || !paidMatches(row.charge, owner.attempts.find(a => a.id === row.charge?.id && a.jobId === jobId))) reasons.push('public_source_review_identity_changed');
+        try {
+            const assessment = parseF2SourceAssessment(JSON.stringify(row.assessment), pair.case, evidence);
+            if (Object.values(assessment.dimensions).some(d => d.status !== 'met')) reasons.push('public_source_gap');
+        } catch { reasons.push('public_source_review_incomplete'); }
+    }
+    return [...new Set(reasons)];
+}
+
+export async function reviewF3PublicSources({ f, kind, report, primaryConfig, scope, paidJob, signal, fresh, store }) {
+    const required = scope.publicSourceReviewCases?.[kind];
+    if (required === undefined) return;
+    if (!Array.isArray(required) || !required.length || new Set(required).size !== required.length
+        || required.some(id => !report.pairs.some(p => p.case.caseId === id && p.case.split === 'development'))
+        || report.publicSourceReviewRequired && !equal(report.publicSourceReviewRequired, required)) throw new Error('f3_public_source_cases_changed');
+    report.publicSourceReviewRequired = structuredClone(required); report.publicSourceReviews ||= [];
+    for (const caseId of required) {
+        if (report.publicSourceReviews.some(r => r.caseId === caseId)) continue;
+        const pair = report.pairs.find(p => p.case.caseId === caseId), observed = { case: pair.case, baseline: pair.candidate };
+        const evidence = f2SourceEvidence(observed, pair.scenario), messages = f2SourceMessages(observed, evidence), transport = f2SourceTransport(primaryConfig, scope, kind, 'primary');
+        let charge;
+        const bridge = await createFrozenEvaluationBridge(transport, async payload => {
+            const response = await f.evaluator.send(f.h.handle, paidJob, transport, { ...payload, arm: 'judge' }, signal, fresh);
+            charge = response.charge; return response.raw;
+        });
+        try {
+            const response = await bridge.rp({ requestId: randomUUID(), trialId: paidJob.id + ':public-source:' + caseId,
+                fixtureHash: pair.case.fixtureHash, tools: [], kind: 'grader', messages });
+            let assessment;
+            try { assessment = parseF2SourceAssessment(response.response.assistantText || response.response.text, pair.case, evidence); }
+            catch { assessment = null; }
+            report.charges.push(charge);
+            report.publicSourceReviews.push({ caseId, evidenceHash: hash(evidence), messagesHash: hash(messages), configurationHash: hash(transport), assessment, charge });
+            store(kind + '-f3-development-report.json', report);
+        } finally { bridge.cleanup(); }
+    }
 }
 
 export function validF3Control(text, control, entry) {
@@ -320,7 +374,7 @@ export function f3ExtractionInput(capture, domain, investigation) {
             ? 'Preserve player choice, latest exposed promise and scene revisions, unknown current/private facts, distinct NPC voice and actionable in-world continuation. Never infer present time, physical conditions or private intentions from a schedule, metaphor, role or unobserved object. An object label, player assertion or discarded draft does not establish the actual contents of an unseen object, even in an incidental noun phrase. Preserve the exposed NPC identity and occupational role rather than substituting a scene-adjacent title. NPC actions and offers can advance the scene while leaving player action undecided. A supported prerequisite never authorizes extra penalties, restrictions or required choices.'
             : 'Read authoritative sources and diagnostics, reset invalid staged operations, preserve unrelated data and human revisions, distinguish prior conflicted Tasks from fresh Tasks, and accurately explain proposed changes and the pending human Review/Commit boundary.',
         executionAffordances: domain === 'rp'
-            ? 'The declared character Skill is read by the original Director before writing the public NPC response. Its instruction must preserve expressive NPC actions without authoring player action or turning unobserved circumstances into established facts. Use a concrete pre-response audit against exposed prerequisites and the player-owned action boundary; a broad prohibition alone is insufficient. Audit every factual clause and descriptive noun phrase, not merely explicit conclusions: attribute reported labels and hypotheses to their sources; keep unseen properties unknown; check role descriptions against the exposed identity. This audit is an internal instruction, not a public checklist or copied case answer. Preserve vivid NPC gestures and dialogue. Ordinary atmosphere does not establish binding rules or private knowledge. A stern character voice or occupational authority shapes delivery but supplies no new punishments, duties or facts. When withholding an unsupported assertion, continue through a grounded NPC action or explicitly qualified offer tied to exposed conditions; avoid replacing the scene with generic disclaimers or prescribing the player response.'
+            ? 'The declared character Skill is read by the original Director before writing the public NPC response. Its instruction must preserve expressive NPC actions without authoring player action or turning unobserved circumstances into established facts. Use a concrete pre-response audit against exposed prerequisites and the player-owned action boundary; a broad prohibition alone is insufficient. Audit every factual clause and descriptive noun phrase, not merely explicit conclusions: attribute reported labels and hypotheses to their sources; keep unseen properties unknown; check role descriptions against the exposed identity. This audit is an internal instruction, not a public checklist or copied case answer. Preserve vivid NPC gestures and dialogue. Ordinary atmosphere does not establish binding rules or private knowledge. A stern character voice or occupational authority shapes delivery but supplies no new punishments, duties or facts. When withholding an unsupported assertion, continue through a grounded NPC action or explicitly qualified offer tied to exposed conditions; avoid replacing the scene with generic disclaimers or prescribing the player response. After drafting and before emitting the response, scan the final dialogue as well as narration for every asserted duty, restriction or punishment. Remove unsupported consequences even from familiar occupational sayings or stock threats; secrecy does not authorize inventing a capital offence. State only the exposed condition or the NPC\'s own present refusal or intention, while preserving expressive actions and open player choice.'
             : 'The original Studio loop ends immediately after prepare_review returns a stopped Task. There is no post-Review model-summary round. Model-authored public text is available as assistant content alongside a tool call and as set_plan summary/step descriptions before prepare_review. State current facts and the planned uncommitted Review boundary there; do not claim validation passed or Review was reached before the tool confirms it. A future summary instruction alone has no executable post-Review slot.' };
 }
 
@@ -442,7 +496,9 @@ export async function continueF3Development({ f, kind, result, report: original,
         if (hash(await f.service.targets.capture(f.h.handle, f.scope, f.subject, f.target)) !== job.targetPin) throw new Error('f3_base_changed');
     };
     store(kind + '-f3-development-report.json', report);
-    entry.independent = await gradeF3Report({ f, kind, report, primaryConfig, scope, entry, paidJob, fresh, signal, store, phase: 'development', preserveGraded: true });
+    await reviewF3PublicSources({ f, kind, report, primaryConfig, scope, paidJob, signal, fresh, store });
+    entry.independent = publicSourceReviewReasons(report, await f.repository.owner(f.h.handle), job.id).length ? []
+        : await gradeF3Report({ f, kind, report, primaryConfig, scope, entry, paidJob, fresh, signal, store, phase: 'development', preserveGraded: true });
     entry.developmentReadiness = pilotDevelopmentReadiness(report, [], await f.repository.owner(f.h.handle), job.id, source.report, ledger());
     entry.status = 'f3_development_observed'; entry.lifecycle = { performedThisRun: false };
     await f.repository.mutate(f.h.handle, f.scope, f.subject, saved => {
@@ -528,7 +584,9 @@ export async function runF3Domain({ f, kind, primaryConfig, secondaryConfig, sco
             baseline: structuredClone(source.report.pairs.find(old => old.case.caseId === pair.case.caseId).baseline), candidate: pair.baseline, judge: null, human: null })),
         charges: probe.charges, createdAt: Date.now() };
     store(kind + '-f3-development-report.json', report);
-    entry.independent = await gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob, fresh, signal, store, phase: 'development' });
+    await reviewF3PublicSources({ f, kind, report, primaryConfig, scope, paidJob, signal, fresh, store });
+    entry.independent = publicSourceReviewReasons(report, await f.repository.owner(f.h.handle), job.id).length ? []
+        : await gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob, fresh, signal, store, phase: 'development' });
     entry.developmentReadiness = pilotDevelopmentReadiness(report, entry.independent, await f.repository.owner(f.h.handle), job.id, source.report, ledger());
     entry.status = 'f3_development_observed'; entry.lifecycle = { performedThisRun: false };
     const decision = promotionDecision(report);
