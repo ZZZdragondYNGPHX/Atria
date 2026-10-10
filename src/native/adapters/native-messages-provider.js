@@ -1,17 +1,29 @@
 import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { observedGenerationUsage } from './generation-usage.js';
-import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, nativeExecutionObservation } from '../model-prompt-runtime/native-execution-envelope.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes, isDurableNativeContinuity } from '../model-prompt-runtime/native-execution-envelope.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 
 // Provider wire formats are adapters over PromptIR, never another prompt/config authority.
-export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {}) {
+export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkpointStore } = {}) {
     if (!['anthropic', 'gemini'].includes(format)) throw new TypeError('Unsupported Native messages provider');
     const anthropic = format === 'anthropic';
-    const lower = ({ resolved, snapshot }) => {
+    const hydrate = async request => {
+        const binding = nativeEnvelopeBinding(request.resolved, request.snapshot, 'native.' + format + '.v1');
+        if (isDurableNativeContinuity(binding) && checkpointStore) await checkpointStore.prepare(binding);
+        let sequence = request.sequence ?? renderPromptMessages(request.snapshot.promptIr);
+        let continuityDecision = request.continuityDecision;
+        if (isDurableNativeContinuity(binding) && checkpointStore && !request.sequence) {
+            const restored = await checkpointStore.restore(binding, sequence);
+            sequence = restored.sequence; continuityDecision = restored.decision;
+        }
+        await hydrateNativeEnvelopes({ store: checkpointStore, binding, sequence });
+        return { ...request, sequence, continuityDecision };
+    };
+    const lower = ({ resolved, snapshot, sequence: preparedSequence, continuityDecision }) => {
         const { promptIr } = snapshot;
         const reserve = snapshot.contextPlan.budget.reservedOutputTokens;
         const { generation: g, connection, model } = resolved;
@@ -25,7 +37,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
         if (!Number.isSafeInteger(max) || max < 1 || max > reserve) throw new GenerationError('generation_adapter_output_budget');
         const streaming = g.streaming.enabled ?? false;
         if (typeof streaming !== 'boolean') fail();
-        const sequence = renderPromptMessages(promptIr);
+        const sequence = preparedSequence ?? renderPromptMessages(promptIr);
         const binding = nativeEnvelopeBinding(resolved, snapshot, 'native.' + format + '.v1');
         const first = sequence.findIndex(message => message.role !== 'system');
         if (first < 0 || sequence.slice(first).some(message => message.role === 'system')) fail();
@@ -138,21 +150,37 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             if (streaming) endpoint.searchParams.set('alt', 'sse');
         }
         return { endpoint: endpoint.href, body, publicBody: { ...body, [anthropic ? 'messages' : 'contents']: publicMessages },
-            wire: JSON.stringify(body), binding, sequence, resolved, snapshot };
+            wire: JSON.stringify(body), binding, sequence, resolved, snapshot, continuityDecision };
     };
     return Object.freeze({
-        continuationScopes: Object.freeze(['active_execution']),
+        withRuntimeCheckpointStore: store => createNativeMessagesProvider({ format, fetchImpl, checkpointStore: store }),
+        continuationScopes: Object.freeze(checkpointStore ? ['active_execution', 'task', 'adaptive'] : ['active_execution']),
         contextTokenizer() { return text => Buffer.byteLength(String(text), 'utf8'); },
         resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache', 'generation.continuation.active-execution'].map(capability => ({ capability, state: capability === 'generation.cache' && !anthropic ? 'unsupported' : 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.' + format }] })),
         countTokens({ resolved, promptIr, contextPlan }) {
-            const request = lower({ resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } });
+            const request = { resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } };
             // Provider tokenizers differ. A byte upper bound deliberately avoids
             // treating an OpenAI encoding as an exact Claude/Gemini tokenizer.
-            return Buffer.byteLength(request.wire, 'utf8') + 256;
+            const count = input => Buffer.byteLength(lower(input).wire, 'utf8') + 256;
+            return isDurableNativeContinuity(nativeEnvelopeBinding(resolved, request.snapshot, 'native.' + format + '.v1')) ? hydrate(request).then(count) : count(request);
         },
-        renderRequest(request) { return leaseNativeRequest(lower(request)); },
+        renderRequest(request) {
+            const render = input => leaseNativeRequest(lower(input));
+            return isDurableNativeContinuity(nativeEnvelopeBinding(request.resolved, request.snapshot, 'native.' + format + '.v1')) ? hydrate(request).then(render) : render(request);
+        },
+        async assertRequestCurrent(rendered) {
+            const request = inspectNativeRequest(rendered, lower);
+            await hydrate(request);
+            if (lower(request).wire !== request.wire) throw new GenerationError('generation_continuation_unavailable');
+        },
         async send(rendered, { secret, signal }) {
             const request = consumeNativeRequest(rendered, lower);
+            await hydrate(request);
+            if (lower(request).wire !== request.wire) throw new GenerationError('generation_continuation_unavailable');
+            if (request.continuityDecision?.action === 'reset') {
+                await checkpointStore.discard(request.binding);
+                await checkpointStore.prepare(request.binding);
+            }
             let response;
             try {
                 response = await fetchImpl(request.endpoint, { method: 'POST', redirect: 'error', signal,
@@ -162,10 +190,10 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                 throw new ProviderFailure('transport');
             }
             if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
-            return { response, binding: request.binding, sequence: request.sequence };
+            return { response, binding: request.binding, sequence: request.sequence, continuityDecision: request.continuityDecision };
         },
-        async parseStream({ response, binding, sequence }, { onChunk, onUsage } = {}) {
-            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence };
+        async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {
+            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence, continuityDecision };
             const blocks = []; let pending = ''; let text = ''; let size = 0; let usage; const decoder = new TextDecoder();
             let started = false; let completed = false; let stopReason; let reportedModel;
             const open = new Set();
@@ -226,14 +254,14 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             consume(pending + decoder.decode());
             if (!completed || blocks.filter(Boolean).length !== blocks.length) throw new GenerationError('generation_response_invalid');
             return { value: anthropic ? { content: blocks, stop_reason: stopReason, ...(reportedModel ? { model: reportedModel } : {}), ...(usage ? { usage } : {}) }
-                : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding, sequence };
+                : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding, sequence, continuityDecision };
         },
         readUsage({ value }) {
             return observedGenerationUsage(anthropic ? value?.usage : value?.usageMetadata, anthropic
                 ? { inputTokens: 'input_tokens', outputTokens: 'output_tokens' }
                 : { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' });
         },
-        normalizeResponse({ value, binding, sequence }) {
+        normalizeResponse({ value, binding, sequence, continuityDecision }) {
             const content = anthropic ? value?.content : value?.candidates?.[0]?.content?.parts;
             if (!Array.isArray(content) || value.error || (!anthropic && value.promptFeedback?.blockReason)) throw new GenerationError('generation_response_invalid');
             if (anthropic ? !['end_turn', 'tool_use', 'stop_sequence'].includes(value.stop_reason) : value.candidates[0].finishReason !== 'STOP') throw new GenerationError('generation_response_invalid');
@@ -253,16 +281,17 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
             const usage = observedGenerationUsage(anthropic ? value.usage : value.usageMetadata, anthropic
                 ? { inputTokens: 'input_tokens', outputTokens: 'output_tokens' }
                 : { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' });
-            const providerState = toolCalls.length ? captureNativeEnvelope({ binding, sequence, content, text, calls: toolCalls.map(call => call.raw) }) : null;
-            if (!toolCalls.length) discardNativeEnvelopes(binding);
+            const providerState = toolCalls.length || isDurableNativeContinuity(binding) ? captureNativeEnvelope({ binding, sequence, content, text, calls: toolCalls.map(call => call.raw) }) : null;
+            if (!providerState) discardNativeEnvelopes(binding);
             const cached = anthropic ? value.usage?.cache_read_input_tokens : value.usageMetadata?.cachedContentTokenCount;
             return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
                 observation: { reportedModel: (anthropic ? value.model : value.modelVersion) ?? null, upstreamIdentity: 'unknown',
-                    nativeExecution: nativeExecutionObservation(binding, sequence, providerState),
+                    nativeExecution: nativeExecutionObservation(binding, sequence, providerState, continuityDecision),
                     cachedInputTokens: Number.isSafeInteger(cached) && cached >= 0 ? cached : null,
-                    nativeEnvelope: providerState ? 'captured_active_execution' : 'completed', hiddenAttempts: 'unknown' } };
+                    nativeEnvelope: providerState ? (isDurableNativeContinuity(binding) ? 'captured_task' : 'captured_active_execution') : 'completed', hiddenAttempts: 'unknown' } };
         },
         assertResponseSafe(response, secret) { assertNativeEnvelopeSafe(response.providerState, secret); },
-        discardExecution(rendered) { discardNativeEnvelopes(rendered.binding); },
+        commitResponse(response) { return publishNativeEnvelope(response.providerState, checkpointStore); },
+        discardExecution(rendered) { return discardStoredNativeEnvelopes(rendered.binding, checkpointStore); },
     });
 }

@@ -130,6 +130,6 @@ test.each(harnesses)('Runtime checkpoint %s bounds full entries/count/total byte
         await h.engine.withTransaction(h.handle, tx => tx.putResource(exported.key, nativeRecord(exported.doc)));
         const recovered = new RuntimeCheckpointStore({ ...h, now: () => now });
         const doc = exported.doc; const state = { schemaVersion: 1, checkpointId: doc.checkpointId, bindingFingerprint: doc.bindingFingerprint, text: doc.text, calls: doc.calls };
-        expect((await recovered.read(state, doc.binding, [...doc.sequence, { role: 'assistant', content: doc.text }], doc.sequence.length)).content).toEqual(doc.content);
+        expect((await recovered.read(state, doc.binding, [...doc.sequence, { role: 'assistant', content: doc.text }], doc.sequence.length)).content).toEqual(JSON.parse(doc.contentWire));
     } finally { await h.cleanup(); }
 });

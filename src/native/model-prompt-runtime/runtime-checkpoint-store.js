@@ -49,7 +49,7 @@ export class RuntimeCheckpointStore {
     valid(record) {
         try {
             const doc = record?.doc;
-            return doc?.schemaVersion === 1 && /^[a-f0-9]{64}$/.test(doc.checkpointId)
+            return doc?.schemaVersion === 2 && /^[a-f0-9]{64}$/.test(doc.checkpointId)
                 && doc.binding?.ownerFingerprint === this.ownerFingerprint
                 && doc.bindingFingerprint === hashNativeDocument(doc.binding)
                 && record.integrity === hashNativeDocument(doc)
@@ -57,12 +57,17 @@ export class RuntimeCheckpointStore {
                 && doc.createdAt <= this.now() && doc.expiresAt > this.now()
                 && doc.expiresAt - doc.createdAt === runtimeCheckpointLimits.ttlMs
                 && Array.isArray(doc.sequence) && Array.isArray(doc.calls) && typeof doc.text === 'string'
-                && Buffer.byteLength(JSON.stringify(doc)) <= runtimeCheckpointLimits.entryBytes;
+                && Buffer.byteLength(JSON.stringify(doc)) <= runtimeCheckpointLimits.entryBytes
+                && typeof doc.contentWire === 'string' && Array.isArray(JSON.parse(doc.contentWire));
         } catch { return false; }
     }
     async save(state, entry) {
         const createdAt = this.now();
-        const doc = immutable({ ...entry, schemaVersion: 1, checkpointId: state.checkpointId,
+        // Native objects must survive object-normalizing JSON storage codecs.
+        // Only this private opaque payload is encoded as an ordered JSON string;
+        // common resources, public history, hashes and serializers stay unchanged.
+        const { content, ...metadata } = entry;
+        const doc = immutable({ ...metadata, contentWire: JSON.stringify(content), schemaVersion: 2, checkpointId: state.checkpointId,
             createdAt, expiresAt: createdAt + runtimeCheckpointLimits.ttlMs });
         const record = nativeRecord(doc, { createdAt });
         if (!this.valid(record) || !authentic(doc, state)) unavailable();
@@ -106,7 +111,8 @@ export class RuntimeCheckpointStore {
             else if (sameScope(binding, doc.binding)) await tx.deleteResource(key);
         });
         if (!accepted) unavailable();
-        return immutable(accepted);
+        const { contentWire, ...entry } = accepted;
+        return immutable({ ...entry, content: JSON.parse(contentWire) });
     }
     async restore(binding, sequence) {
         if (binding.ownerFingerprint !== this.ownerFingerprint) unavailable();

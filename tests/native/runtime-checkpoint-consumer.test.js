@@ -7,6 +7,7 @@ import { projectSource, services } from '../agent-intelligence/project-fixture.j
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createResponsesGenerationProvider } from '../../src/native/adapters/responses-generation-provider.js';
+import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
 import { capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
 import { NATIVE_RESOURCE_KINDS } from '../../src/native/contracts.js';
 import { RuntimeCheckpointStore } from '../../src/native/model-prompt-runtime/runtime-checkpoint-store.js';
@@ -16,14 +17,22 @@ import { createNativeGenerationRouter } from '../../src/endpoints/native-generat
 import { createNativeStudioRouter } from '../../src/endpoints/native-studio.js';
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
 import { projectAgentResumeMessages } from '../../public/shared/project-agent-conversation.js';
+import { serializeNativeDocument, hashNativeDocument } from '../../src/native/repositories/common.js';
 
 const harnesses = [['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]];
-async function fixture(make, mode = 'task', verified = true, maxRequests = 4) {
+const messagesReply = (format, finalText, privateText = 'PRIVATE-TASK-RUNTIME') => format === 'anthropic'
+    ? { content: [{ type: 'thinking', thinking: privateText, signature: 'PRIVATE-NATIVE-SIGNATURE' }, { type: 'redacted_thinking', data: 'PRIVATE-REDACTED-BLOCK' },
+        ...(finalText ? [{ type: 'text', text: finalText }] : [{ type: 'tool_use', id: 'read', name: 'atri_agent_get_project', input: {} }])],
+    stop_reason: finalText ? 'end_turn' : 'tool_use', usage: { input_tokens: 12, output_tokens: 8 } }
+    : { candidates: [{ finishReason: 'STOP', content: { parts: [{ thought: true, text: privateText, thoughtSignature: 'PRIVATE-NATIVE-SIGNATURE' },
+        ...(finalText ? [{ text: finalText }] : [{ functionCall: { id: 'read', name: 'atri_agent_get_project', args: {} }, thoughtSignature: 'PRIVATE-TOOL-SIGNATURE' }])] } }],
+    usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 8, totalTokenCount: 20 } };
+async function fixture(make, mode = 'task', verified = true, maxRequests = 4, format = 'openai-responses') {
     const h = await make(); const wires = [];
-    let reply = (_round, res) => res.end(JSON.stringify({ status: 'completed', output: [
+    let reply = (_round, res) => res.end(JSON.stringify(format === 'openai-responses' ? { status: 'completed', output: [
         { type: 'reasoning', encrypted_content: 'PRIVATE-TASK-RUNTIME' },
         { type: 'function_call', call_id: 'read', name: 'atri_agent_get_project', arguments: '{\n}' },
-    ], usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } }));
+    ], usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } } : messagesReply(format)));
     const server = createServer(async (req, res) => {
         let wire = ''; for await (const chunk of req) wire += chunk; wires.push(JSON.parse(wire));
         res.setHeader('Content-Type', 'application/json'); reply(wires.length, res);
@@ -34,7 +43,7 @@ async function fixture(make, mode = 'task', verified = true, maxRequests = 4) {
     const task = await agent.createTask(h.handle, source.project.projectId, { intent: 'Read project', baseRevision: created.revision.revision });
     const originalPlan = { summary: 'Original read', steps: [{ id: 'read', title: 'Read project', impact: 'low' }] };
     await agent.setPlan(h.handle, source.project.projectId, task.taskId, originalPlan);
-    const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], format: 'openai-responses', endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
+    const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], format, endpoint: `http://127.0.0.1:${server.address().port}/${format === 'openai-responses' ? 'v1/responses' : format === 'anthropic' ? 'v1/messages' : 'v1beta'}` });
     const model = await seeded.persistence.getModelProfile(h.handle, seeded.model.modelProfileId);
     const connection = await seeded.persistence.getConnectionProfile(h.handle, seeded.connection.connectionProfileId);
     const observedAt = Date.now() - 1;
@@ -47,7 +56,8 @@ async function fixture(make, mode = 'task', verified = true, maxRequests = 4) {
     await seeded.persistence.saveRuntimeRoute(h.handle, { ...seeded.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests, maxTokens: 128000 } } });
     let onSecret = () => {};
     const providerFetch = globalThis.fetch;
-    const newHost = () => new NativeGenerationHost({ ...seeded, studio, agent, providers: { 'provider.openai-responses': createResponsesGenerationProvider({ fetchImpl: providerFetch }) },
+    const newHost = () => new NativeGenerationHost({ ...seeded, studio, agent, providers: { ['provider.' + format]: format === 'openai-responses'
+        ? createResponsesGenerationProvider({ fetchImpl: providerFetch }) : createNativeMessagesProvider({ format, fetchImpl: providerFetch }) },
         secretPort: { resolveSecret: async () => { await onSecret(); return 'task-runtime-credential'; } } });
     const context = await agent.getContext(h.handle, source.project.projectId, task.taskId);
     const request = { role: 'studio', projectId: source.project.projectId, taskId: task.taskId, revision: created.revision.revision,
@@ -59,6 +69,109 @@ async function fixture(make, mode = 'task', verified = true, maxRequests = 4) {
 const followup = (f, response) => ({ ...f.request, requestId: 'task-runtime-next', messages: [...f.request.messages,
     { role: 'assistant', content: response.text, tool_calls: response.toolCalls.map(call => call.raw), providerState: response.providerState },
     { role: 'tool', tool_call_id: response.toolCalls[0].id, content: 'Public project read' }] });
+for (const format of ['anthropic', 'gemini']) {
+    test.each(harnesses)(`Runtime messages task ${format} %s actual Host resumes full native state and persists the final checkpoint`, async (_name, make) => {
+        const f = await fixture(make, 'task', true, 4, format);
+        try {
+            const first = await f.newHost().execute(f.h.handle, f.request);
+            expect(await f.rows()).toHaveLength(1); expect(JSON.stringify(first)).not.toContain('PRIVATE-');
+            f.setReply((_round, res) => res.end(JSON.stringify(messagesReply(format, 'Native read complete', 'PRIVATE-FINAL-RUNTIME'))));
+            const second = await f.newHost().execute(f.h.handle, followup(f, first.response));
+            expect(f.wires).toHaveLength(2);
+            const actual = format === 'anthropic' ? f.wires[1].messages.find(row => row.role === 'assistant').content : f.wires[1].contents.find(row => row.role === 'model').parts;
+            expect(JSON.stringify(actual)).toBe(JSON.stringify(format === 'anthropic' ? messagesReply(format).content : messagesReply(format).candidates[0].content.parts));
+            expect(second.response.providerState).toBeDefined(); expect(await f.rows()).toHaveLength(2);
+            expect(second.snapshot.diagnostics.continuity).toMatchObject({ requestedPolicy: 'task', action: 'continue', reason: 'supplied_checkpoint' });
+            expect(second.response.observation.nativeExecution).toMatchObject({ retention: 'owner_runtime_store', transferredCheckpoints: 1, decision: second.snapshot.diagnostics.continuity });
+            expect(JSON.stringify(second)).not.toContain('PRIVATE-');
+            const task = await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId);
+            expect(task.conversation).toEqual(f.task.conversation); expect(JSON.stringify(task)).not.toContain('PRIVATE-');
+            expect(task.compute.attempts.map(row => row.status)).toEqual(format === 'anthropic' ? ['unknown', 'unknown'] : ['settled', 'settled']);
+            if (format === 'anthropic') expect(task.compute.attempts[0].usage).toEqual({ inputTokens: 12, outputTokens: 8, totalTokens: null });
+            expect((await f.studio.getProject(f.h.handle, f.request.projectId)).revision.revision).toBe(f.request.revision);
+        } finally { await f.cleanup(); }
+    });
+    test.each(harnesses)(`Runtime messages task ${format} %s fresh Node restores persisted private state`, async (_name, make) => {
+        const f = await fixture(make, 'task', true, 4, format);
+        try {
+            const first = await f.newHost().execute(f.h.handle, f.request);
+            f.setReply((_round, res) => res.end(JSON.stringify(messagesReply(format, 'Cold native read'))));
+            const output = await new Promise((resolve, reject) => {
+                const child = spawn(process.execPath, [fileURLToPath(new URL('./helpers/runtime-checkpoint-restart-worker.mjs', import.meta.url))], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, timeout: 20000 });
+                let stdout = '', stderr = ''; child.stdout.on('data', bytes => { stdout += bytes; }); child.stderr.on('data', bytes => { stderr += bytes; });
+                child.on('error', reject); child.on('close', code => code === 0 ? resolve(JSON.parse(stdout)) : reject(new Error('Cold native fixture failed: ' + stderr)));
+                child.stdin.end(JSON.stringify({ format, kind: f.h.kind, handle: f.h.handle, dirs: f.h.dirs, request: followup(f, first.response) }));
+            });
+            expect(output.text).toBe('Cold native read'); expect(output.observation).toMatchObject({ transferredCheckpoints: 1, retention: 'owner_runtime_store' });
+            const native = format === 'anthropic' ? f.wires[1].messages.find(row => row.role === 'assistant').content : f.wires[1].contents.find(row => row.role === 'model').parts;
+            expect(JSON.stringify(native)).toBe(JSON.stringify(format === 'anthropic' ? messagesReply(format).content : messagesReply(format).candidates[0].content.parts));
+            expect(await f.rows()).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
+    test.each(['unverified', 'deleted_before_charge', 'secret_echo', 'legacy_checkpoint', 'malformed_wire'])(`Runtime messages task ${format} %s cannot bypass private currentness or publication`, async change => {
+        const f = await fixture(makeTempFsEngineHarness, 'task', change !== 'unverified', 4, format);
+        try {
+            if (change === 'unverified') {
+                await expect(f.newHost().execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+                expect(f.wires).toHaveLength(0); expect(await f.rows()).toHaveLength(0); return;
+            }
+            const first = await f.newHost().execute(f.h.handle, f.request);
+            const blockedBeforeCharge = change !== 'secret_echo';
+            if (change === 'deleted_before_charge') f.setSecret(async () => { await new RuntimeCheckpointStore(f.h).discard((await f.rows())[0].doc.binding); });
+            else if (['legacy_checkpoint', 'malformed_wire'].includes(change)) {
+                const row = (await f.rows())[0], doc = { ...row.doc };
+                if (change === 'legacy_checkpoint') { doc.schemaVersion = 1; doc.content = JSON.parse(doc.contentWire); delete doc.contentWire; }
+                else doc.contentWire = '[invalid-json]';
+                await f.h.engine.withTransaction(f.h.handle, tx => tx.putResource(row.key, { ...row, doc, integrity: hashNativeDocument(doc) }));
+            } else f.setReply((_round, res) => res.end(JSON.stringify(messagesReply(format, 'Rejected public reply', 'task-runtime-credential'))));
+            await expect(f.newHost().execute(f.h.handle, followup(f, first.response))).rejects.toMatchObject({ code: blockedBeforeCharge ? 'generation_continuation_unavailable' : 'generation_response_contains_secret' });
+            expect(f.wires).toHaveLength(blockedBeforeCharge ? 1 : 2); expect(await f.rows()).toHaveLength(0);
+            const task = await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId);
+            expect(task.compute.attempts).toHaveLength(blockedBeforeCharge ? 1 : 2);
+        } finally { await f.cleanup(); }
+    });
+    test(`Runtime messages adaptive ${format} cancelled publication awaits original usage and private cleanup`, async () => {
+        const f = await fixture(makeTempFsEngineHarness, 'adaptive', true, 4, format);
+        try {
+            let arrived, release;
+            const paused = new Promise(resolve => { arrived = resolve; }), resumed = new Promise(resolve => { release = resolve; });
+            const original = f.h.engine.withTransaction.bind(f.h.engine);
+            f.h.engine.withTransaction = (handle, operation) => original(handle, tx => operation(new Proxy(tx, { get(target, key) {
+                if (key === 'putResourceIfMatch') return async (resource, ...args) => {
+                    if (resource.kind === NATIVE_RESOURCE_KINDS.runtimeCheckpoint) { arrived(); await resumed; }
+                    return target.putResourceIfMatch(resource, ...args);
+                };
+                return typeof target[key] === 'function' ? target[key].bind(target) : target[key];
+            } })));
+            const controller = new AbortController(), pending = f.newHost().execute(f.h.handle, f.request, controller.signal).then(value => ({ value }), error => ({ error }));
+            await paused; controller.abort(); release(); const outcome = await pending;
+            expect(outcome.error).toMatchObject({ code: 'generation_cancelled' }); expect(await f.rows()).toHaveLength(0);
+            const attempt = (await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.attempts[0];
+            expect(attempt).toMatchObject(format === 'anthropic' ? { status: 'unknown', usage: { inputTokens: 12, outputTokens: 8, totalTokens: null } }
+                : { status: 'settled', usage: { totalTokens: 20 } });
+        } finally { await f.cleanup(); }
+    });
+    test(`Runtime messages task ${format} a reordering JSON storage codec cannot rewrite signed native key order`, async () => {
+        const f = await fixture(makeTempFsEngineHarness, 'task', true, 4, format);
+        try {
+            const first = await f.newHost().execute(f.h.handle, f.request);
+            // A deterministic local codec simulation, not an executed PG/MySQL
+            // backend. JSON object normalization must not alter native wire.
+            const original = f.h.engine.withTransaction.bind(f.h.engine);
+            f.h.engine.withTransaction = (handle, operation) => original(handle, tx => operation(new Proxy(tx, { get(target, key) {
+                if (key === 'getResource') return async resource => {
+                    const row = await target.getResource(resource);
+                    return resource.kind === NATIVE_RESOURCE_KINDS.runtimeCheckpoint && row ? { ...row, doc: JSON.parse(serializeNativeDocument(row.doc)) } : row;
+                };
+                return typeof target[key] === 'function' ? target[key].bind(target) : target[key];
+            } })));
+            f.setReply((_round, res) => res.end(JSON.stringify(messagesReply(format, 'Codec read complete'))));
+            await f.newHost().execute(f.h.handle, followup(f, first.response));
+            const native = format === 'anthropic' ? f.wires[1].messages.find(row => row.role === 'assistant').content : f.wires[1].contents.find(row => row.role === 'model').parts;
+            expect(JSON.stringify(native)).toBe(JSON.stringify(format === 'anthropic' ? messagesReply(format).content : messagesReply(format).candidates[0].content.parts));
+        } finally { await f.cleanup(); }
+    });
+}
 test.each(harnesses)('Runtime task %s actual Host resumes persisted opaque state and retains final state without domain writes', async (_name, make) => {
     const f = await fixture(make);
     try {
@@ -269,9 +382,13 @@ test.each(harnesses)('Runtime task %s same-millisecond route delete/recreate can
         expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute?.attempts || []).toHaveLength(0);
     } finally { clock?.mockRestore(); await f.cleanup(); }
 });
-test.each(['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue', 'adaptive_missing', 'adaptive_task_aba', 'adaptive_repeat_reset', 'adaptive_malformed_history', 'adaptive_preview_projection', 'adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'])('Runtime Studio continuity %s uses only current saved public Task history', async change => {
+const studioContinuityCases = [
+    ...['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue', 'adaptive_missing', 'adaptive_task_aba', 'adaptive_repeat_reset', 'adaptive_malformed_history', 'adaptive_preview_projection', 'adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'].map(change => ['openai-responses', change]),
+    ...['anthropic', 'gemini'].flatMap(format => ['restore', 'edited_history', 'adaptive_missing', 'adaptive_legacy'].map(change => [format, change])),
+];
+test.each(studioContinuityCases)('Runtime Studio continuity %s %s uses only current saved public Task history', async (format, change) => {
     const adaptive = change.startsWith('adaptive');
-    const f = await fixture(makeTempFsEngineHarness, adaptive ? 'adaptive' : 'task', true, change === 'adaptive_charge_refusal_projection' ? 1 : 4);
+    const f = await fixture(makeTempFsEngineHarness, adaptive ? 'adaptive' : 'task', true, change === 'adaptive_charge_refusal_projection' ? 1 : 4, format);
     const previousFetch = globalThis.fetch, previousAtria = globalThis.Atria;
     try {
         let host = f.newHost(); const requests = [], responses = [], updates = [];
@@ -323,6 +440,10 @@ test.each(['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue
             await f.agent.setPlan(f.h.handle, f.request.projectId, f.task.taskId, f.originalPlan);
         }
         if (['adaptive_missing', 'adaptive_repeat_reset'].includes(change)) await new RuntimeCheckpointStore(f.h).discard((await f.rows())[0].doc.binding);
+        if (change === 'adaptive_legacy') {
+            const row = (await f.rows())[0], doc = { ...row.doc, schemaVersion: 1, content: JSON.parse(row.doc.contentWire) }; delete doc.contentWire;
+            await f.h.engine.withTransaction(f.h.handle, tx => tx.putResource(row.key, { ...row, doc, integrity: hashNativeDocument(doc) }));
+        }
         if (['edited_history', 'adaptive_malformed_history', 'adaptive_repeat_reset'].includes(change)) {
             // A caller editing the input is not the saved Task history authority.
             const bridge = globalThis.fetch;
@@ -337,7 +458,7 @@ test.each(['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue
             };
         }
         host = f.newHost();
-        f.setReply((_round, res) => res.end(JSON.stringify({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final public read' }] }], usage: { input_tokens: 4, output_tokens: 3, total_tokens: 7 } })));
+        f.setReply((_round, res) => res.end(JSON.stringify(format === 'openai-responses' ? { status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final public read' }] }], usage: { input_tokens: 4, output_tokens: 3, total_tokens: 7 } } : messagesReply(format, 'Final public read', 'PRIVATE-FINAL-RUNTIME'))));
         const denied = ['edited_history', 'task_authority_aba', 'adaptive_malformed_history', 'adaptive_repeat_reset'].includes(change);
         if (denied) {
             await expect(runNativeStudioAgentTask(options)).rejects.toMatchObject({ code: change === 'adaptive_repeat_reset' ? 'generation_continuation_reset_required' : 'generation_continuation_unavailable' });
@@ -355,7 +476,7 @@ test.each(['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue
         expect(responses[1].response.observation.nativeExecution.decision).toEqual(planned);
         expect(planned).toMatchObject({ requestedPolicy: adaptive ? 'adaptive' : 'task', action: continued ? 'continue' : 'reset',
             effectiveScope: continued ? 'task' : 'none', reason: continued ? 'saved_task_checkpoint' : 'public_observation_projection', loss: continued ? 'none' : 'opaque_not_restored' });
-        if (!continued) { expect(requests).toHaveLength(3); expect(f.wires[1].input.some(item => item.type === 'function_call')).toBe(false);
+        if (!continued) { expect(requests).toHaveLength(3); expect(JSON.stringify(f.wires[1])).not.toContain('PRIVATE-TASK-RUNTIME');
             expect(JSON.stringify(f.wires[1])).toContain('Previous tool observation'); expect(updates.filter(update => update.continuation?.status === 'reset')).toHaveLength(1); }
         expect(requests[1].messages.some(message => message.providerState)).toBe(false);
         expect(JSON.stringify(responses)).not.toContain('PRIVATE-TASK-RUNTIME');
