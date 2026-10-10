@@ -201,6 +201,23 @@ test('Runtime task same-millisecond configuration ABA advances original Native r
         expect(f.wires).toHaveLength(0); expect(await f.rows()).toHaveLength(0);
     } finally { clock?.mockRestore(); await f.cleanup(); }
 });
+test.each(harnesses)('Runtime task %s same-millisecond route delete/recreate cannot restore an in-flight configuration authority', async (_name, make) => {
+    const f = await fixture(make); let clock;
+    try {
+        const route = await f.seeded.persistence.getRuntimeRoute(f.h.handle, f.seeded.routes[0].runtimeRouteId);
+        const key = { kind: NATIVE_RESOURCE_KINDS.runtimeRoute, handle: f.h.handle, runtimeRouteId: route.runtimeRouteId };
+        const original = await f.h.engine.withTransaction(f.h.handle, tx => tx.getResource(key));
+        clock = jest.spyOn(Date, 'now').mockReturnValue(original.updatedAt);
+        f.setSecret(async () => {
+            await f.seeded.persistence.deleteProfile(f.h.handle, 'routes', route.runtimeRouteId);
+            expect(await f.seeded.persistence.getRuntimeRoute(f.h.handle, route.runtimeRouteId)).toBeNull();
+            expect(await f.seeded.persistence.listRuntimeRoutes(f.h.handle)).toEqual([]);
+            await f.seeded.persistence.saveRuntimeRoute(f.h.handle, route);
+        });
+        await expect(f.newHost().execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'generation_continuation_unavailable' });
+        expect(f.wires).toHaveLength(0); expect(await f.rows()).toHaveLength(0);
+    } finally { clock?.mockRestore(); await f.cleanup(); }
+});
 test.each(['restore', 'edited_history', 'task_authority_aba'])('Runtime task actual Studio restart %s uses only current saved public Task history', async change => {
     const f = await fixture(makeTempFsEngineHarness);
     const previousFetch = globalThis.fetch, previousAtria = globalThis.Atria;

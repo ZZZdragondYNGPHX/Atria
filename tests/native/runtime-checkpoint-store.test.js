@@ -8,8 +8,34 @@ import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage
 import { installFixture } from './helpers/session-fixture.js';
 import { inspectAtriaSaveContainer } from '../../src/native/save-container.js';
 import { snapshotUser, restoreFromSnapshot } from '../../src/storage/migration/backup.js';
+import { seedGenerationProfiles } from './helpers/generation-fixture.js';
+import { NativeModelPromptPersistence } from '../../src/native/model-prompt-runtime/persistence.js';
 
 const harnesses = [['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]];
+test.each(harnesses)('Runtime checkpoint %s original deleted configuration versions survive account recovery and same-ID recreation', async (_name, make) => {
+    const h = await make();
+    try {
+        const seeded = await seedGenerationProfiles({ ...h, roles: ['studio'], endpoint: 'http://127.0.0.1:1/v1/responses' }); const p = seeded.persistence;
+        const connection = await p.getConnectionProfile(h.handle, seeded.connection.connectionProfileId);
+        const model = await p.getModelProfile(h.handle, seeded.model.modelProfileId);
+        const route = await p.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId);
+        const keys = [['routes', { kind: NATIVE_RESOURCE_KINDS.runtimeRoute, handle: h.handle, runtimeRouteId: route.runtimeRouteId }],
+            ['models', { kind: NATIVE_RESOURCE_KINDS.modelProfile, handle: h.handle, modelProfileId: model.modelProfileId }],
+            ['connections', { kind: NATIVE_RESOURCE_KINDS.connectionProfile, handle: h.handle, connectionProfileId: connection.connectionProfileId }]];
+        const originals = [];
+        for (const [kind, key] of keys) { originals.push(await h.engine.withTransaction(h.handle, tx => tx.getResource(key))); await p.deleteProfile(h.handle, kind, Object.values(key).at(-1)); }
+        const backupPath = await snapshotUser({ handle: h.handle, userRoot: h.dirs.root, backupRoot: h.backupRoot, engine: h.engine });
+        await restoreFromSnapshot({ handle: h.handle, userRoot: h.dirs.root, backupPath, engine: h.engine });
+        await h.engine.close();
+        const cold = new NativeModelPromptPersistence({ engine: h.engine });
+        expect(await cold.listRuntimeRoutes(h.handle)).toEqual([]); expect(await cold.listModelProfiles(h.handle)).toEqual([]); expect(await cold.listConnectionProfiles(h.handle)).toEqual([]);
+        await cold.saveConnectionProfile(h.handle, connection); await cold.saveModelProfile(h.handle, model); await cold.saveRuntimeRoute(h.handle, route);
+        for (const [index, [, key]] of keys.entries()) {
+            const current = await h.engine.withTransaction(h.handle, tx => tx.getResource(key));
+            expect(current.integrity).toBe(originals[index].integrity); expect(current.updatedAt).toBeGreaterThan(originals[index].updatedAt);
+        }
+    } finally { await h.cleanup(); }
+});
 function fixture(handle, now = 1000) {
     const binding = { schemaVersion: 1, ownerFingerprint: hashNativeDocument(handle), pathFingerprint: hashNativeDocument('path'),
         executionScope: { kind: 'task', projectId: 'project', taskId: 'task' }, continuity: 'task' };

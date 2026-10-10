@@ -250,11 +250,11 @@ export class NativeModelPromptPersistence {
     }
 
     async _list(handle, kind) {
-        return this._engine.withTransaction(handle, tx => listNativeDocuments(tx, {
+        return this._engine.withTransaction(handle, async tx => (await listNativeDocuments(tx, {
             kind,
             handle,
             orderBy: 'updatedAt',
-        }));
+        })).filter(value => value !== null));
     }
 
     async _save(handle, kind, idField, id, value, expectedFingerprint = undefined) {
@@ -397,8 +397,8 @@ export class NativeModelPromptPersistence {
             assertWritable();
             const [resourceKind, idField] = definitions[kind]; const key = playerKey(resourceKind, handle, idField, id);
             if (!await getNativeDocument(tx, key)) throw new NotFoundError('Runtime resource');
-            const models = await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.modelProfile, handle });
-            const routes = await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.runtimeRoute, handle });
+            const models = (await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.modelProfile, handle })).filter(value => value !== null);
+            const routes = (await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.runtimeRoute, handle })).filter(value => value !== null);
             const usedBy = [];
             const add = (section, value, field) => usedBy.push({ section, id: value[field], displayName: value.displayName });
             if (kind === 'connections') for (const model of models) if (model.connectionProfileRef.connectionProfileId === id) add('models', model, 'modelProfileId');
@@ -411,7 +411,12 @@ export class NativeModelPromptPersistence {
             for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle })) {
                 if (row.doc.binding?.runtimeResourceRefs?.[idField] === id) await tx.deleteResource(row.key);
             }
-            await tx.deleteResource(key); return { deleted: true };
+            // Keep only this original record's deletion version. A null doc is
+            // absent to profile readers; its metadata prevents same-ID recreate
+            // from reusing an in-flight authority, including after restart.
+            const existing = await tx.getResource(key);
+            await tx.putResource(key, nativeRecord(null, { existing, updatedAt: Math.max(Date.now(), existing.updatedAt + 1) }));
+            return { deleted: true };
         }));
     }
 

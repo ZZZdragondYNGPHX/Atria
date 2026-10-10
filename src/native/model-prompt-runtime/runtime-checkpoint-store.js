@@ -26,7 +26,7 @@ export class RuntimeCheckpointStore {
         const rows = [];
         for (const [field, kind] of [['runtimeRouteId', NATIVE_RESOURCE_KINDS.runtimeRoute], ['modelProfileId', NATIVE_RESOURCE_KINDS.modelProfile], ['connectionProfileId', NATIVE_RESOURCE_KINDS.connectionProfile]]) {
             const key = { kind, handle: this.handle, [field]: refs[field] }; const row = await tx.getResource(key);
-            if (!row || row.integrity !== hashNativeDocument(row.doc)) unavailable();
+            if (!row?.doc || row.integrity !== hashNativeDocument(row.doc)) unavailable();
             rows.push({ key, integrity: row.integrity, updatedAt: row.updatedAt });
         }
         return hashNativeDocument(rows);
