@@ -1729,3 +1729,13 @@ source `e1b3de862`。已定位三处语义丢失：coverage完整组未序列化
 temporal-presentation-v1两失败为fixture把原生projection也计为recalled，以及原inactive relation支撑Fact的validAt实际null而预期false；改为识别原recalled metadata及读取已有relation false判断，未改Corpus权威。v2仅最终Context原排序与bridge原顺序不同失败，按完整内容多重集核对后v3通过。新增撤权断言后仅该受影响check与ranked预算检查重测通过；provider和long分别定向通过。v1/v2失败及各通过log均保留，不计重复为distinct。
 
 该呈现组已结束；原两paid报告、completion失败及critic漏判不改，尚无本producer真实正文验收，完整G06/HM2仍未通过。下一正式依赖是G06实际质量出口：只对前次已明确失败的reuse输出做必要新producer有限消费及零API来源判定，不追加同模型评分或刷原配对矩阵；H3无已配置真实辅助服务仍保留简单路径，H4已有有限本地收益不外推。main未集成，无HANDOFF。
+
+### G06 时点呈现后的单次实际正文：仍失败
+
+限定组仅1次新producer `e1b3de862` 长fixture Session/reuse，maxNewRequests/原Run maxRequests=1、retry/fallback=0，无model grader；preview API0后沿原primary target/account和原2000/20 append gate实际HTTP200。generation direct reported input1219/output68/total2981，原Run attempt settled且usage与raw/normalized一致；E2E15.033s只为n1，无SLO或收益。M8累计actual36次、direct reported67900；两旧unknown上界17515及一fetch前quota admission仍单列，不推算currency/upstream/cache。
+
+完整合法Context零API人工核对仍quality=false：输出“那项承诺至今尚未履行”“那本书现在确实还没有还给你”。所需fact:H0-ZH-08-f39已在最终Context，source_assertion/historical_source、temporalApplicability at=null/not_established，无validFrom/validUntil；正式当前World只有hp/location。raw历史也含原第二十轮过去“未履行”，不产生当前completion/cognition/custody权威。输出对记忆/意愿自述不确定不能抵消明确当前未归还断言。信息呈现工程通过不能当正文质量通过；不再增加同例生成或盲评，也不叠加案例prompt/regex/writer。
+
+m8-g06-temporal-consumer-live-v1/raw/normalized及audit-v1均append-only保留；audit确认1actual HTTP/2981总tokens/原Run settlement、baseline两ledger原hash与carry保持、prior report raw hash一致，audit时rolling24h694/2000、last60s0/20。500仍原始fixture sources，实际合法corpus256；预算内selected3（此前5/原6），required s08-020保留，reported input改变，不能推断严格同输入因果改善或reuse收益。该具体paid组结束；原矩阵qualityPass及完整G06/HM2仍false，main不变。
+
+下一可独立正式依赖为G06长入口的实际Memory检索消费：此前500轮预载Turn只消费构造的合法候选。有限本地补其原SourceLifecycle→Information eligibility→retrieveMemory→同anchor原Turn路径，不再加外部API、不扩writer或H3算法；它只补工程消费者，不能洗掉本节真实正文失败。无HANDOFF。
