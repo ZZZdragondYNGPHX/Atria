@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { evolutionFixture, runEvolution, restoreEvolutionFixture } from './evolution-fixture.js';
-import { publishConsumeRollback } from './m1-f3-promotion.js';
+import { publishConsumeRollback, recordRejectedF3Promotion } from './m1-f3-promotion.js';
+import { hash } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { AgentEvolutionRepository } from '../../src/native/agent-intelligence/evolution-repository.js';
 
 const completion = (name, args, id) => ({ id, type: 'function', function: { name, arguments: JSON.stringify(args) } });
@@ -61,6 +62,27 @@ test('unpublished evaluation restore preserves the frozen candidate and original
         const resources = path.join(f.h.dataRoot, 'u/atria-native/resources/atri_agent_evolution');
         expect(fs.existsSync(resources)).toBe(true);
     } finally { restored?.h.cleanup(); f.h.cleanup(); }
+}, 45000);
+
+test('rejected oversized promotion keeps exact raw evidence and the bounded original journal', async () => {
+    const f = await evolutionFixture(makeTempFsEngineHarness, 'project-prompt', { policyMode: 'review', repositoryClass: ImmediateSyntheticRepository });
+    try {
+        const result = await runEvolution(f), owner = await f.repository.owner(f.h.handle), saved = new Map();
+        const report = { origin: 'synthetic_oversized_rejection', output: 'x'.repeat(5 * 1024 * 1024) };
+        await expect(f.repository.mutate(f.h.handle, f.scope, f.subject, doc => { doc.jobs[0].candidates[0].report = report; }))
+            .rejects.toThrow('Evolution scope capacity exceeded');
+        const entry = { acceptance: { accepted: false, reasons: ['improvement_threshold_not_met'] } };
+        await recordRejectedF3Promotion({ f, kind: 'project-prompt', job: result.job, report, entry, store: (name, value) => saved.set(name, value) });
+        const final = await f.repository.get(f.h.handle, f.scope, f.subject);
+        expect(final.jobs[0]).toMatchObject({ status: 'failed', reason: 'm1_promotion_unqualified:' + hash(report) });
+        expect(final.jobs[0].candidates[0].report).toEqual(result.candidate.report);
+        expect(final.publications).toHaveLength(0);
+        expect(await f.repository.owner(f.h.handle)).toEqual(owner);
+        expect(saved.get('project-prompt-f3-promotion-report.json')).toEqual(report);
+        expect(entry).toMatchObject({ status: 'f3_promotion_unqualified', rejectedReportHash: hash(report) });
+        await expect(recordRejectedF3Promotion({ f, kind: 'project-prompt', job: result.job, report,
+            entry: { acceptance: { accepted: true } }, store: () => {} })).rejects.toThrow('f3_rejection_unestablished');
+    } finally { await f.h.cleanup(); }
 }, 45000);
 
 test.each(['rp-skill', 'project-prompt'])('F3 %s restores the base when next-request transport fails', async kind => {

@@ -149,17 +149,40 @@ export async function finishF3Promotion({ f, kind, job, candidate, primaryConfig
     entry.promotionIndependent = await gradeF3Report({ f, kind, report, primaryConfig, secondaryConfig, scope, entry, paidJob: job,
         fresh, signal, store, phase: 'promotion' });
     entry.acceptance = pilotPromotionAcceptance(report, entry.promotionIndependent, await f.repository.owner(f.h.handle), job.id);
+    store(kind + '-f3-promotion-report.json', report);
+    if (!entry.acceptance.accepted) {
+        await recordRejectedF3Promotion({ f, kind, job, report, entry, store });
+        return;
+    }
     await f.repository.mutate(f.h.handle, f.scope, f.subject, doc => {
         const saved = doc.jobs.find(j => j.id === job.id);
         saved.status = 'awaiting_review'; saved.candidates[0].report = report; saved.candidates[0].decision = promotionDecision(report);
     });
-    store(kind + '-f3-promotion-report.json', report);
     if (entry.acceptance.accepted) {
         await publishConsumeRollback({ f, kind, job, candidate, report, entry, store, signal, fresh });
         entry.status = 'f3_promotion_observed';
     } else entry.status = 'f3_promotion_unqualified';
     const final = await f.repository.get(f.h.handle, f.scope, f.subject), finalJob = final.jobs.find(j => j.id === job.id);
     store(kind + '-job.json', { doc: final, job: finalJob, candidate: finalJob.candidates[0] });
+}
+
+export async function recordRejectedF3Promotion({ f, kind, job, report, entry, store }) {
+    if (entry.acceptance?.accepted !== false) throw new Error('f3_rejection_unestablished');
+    // Raw pairs, grades and the full report are already durable private files.
+    // An ineligible batch has no review/publication consumer. Keep the existing
+    // development record and fee ledger rather than embedding another large
+    // authority transcript into the bounded production scope journal.
+    const reportHash = hash(report);
+    store(kind + '-f3-promotion-report.json', report);
+    await f.repository.mutate(f.h.handle, f.scope, f.subject, doc => {
+        const saved = doc.jobs.find(j => j.id === job.id);
+        if (!saved || doc.publications.some(p => p.jobId === job.id)) throw new Error('f3_rejection_binding_changed');
+        saved.status = 'failed'; saved.reason = 'm1_promotion_unqualified:' + reportHash;
+        saved.candidates[0].decision = { eligible: false, reasons: [...entry.acceptance.reasons] };
+    });
+    entry.status = 'f3_promotion_unqualified'; entry.rejectedReportHash = reportHash;
+    const doc = await f.repository.get(f.h.handle, f.scope, f.subject), saved = doc.jobs.find(j => j.id === job.id);
+    store(kind + '-job.json', { doc, job: saved, candidate: saved.candidates[0], rejectedReportHash: reportHash });
 }
 
 // An interrupted, ungraded batch is retained as history. Restart one complete
