@@ -2215,3 +2215,13 @@ long-v2 实际创建并发布 500 轮预载双消息历史，Native Timeline 100
 用户明确暂无可核对计价，保留 currency unknown。实际报数 input/output/total原样保存，不从差值硬造reasoning tokens。gcli raw/cache/upstream/hiddenAttempts仍unknown；同证据同wire、每臂n1和trial controller CPU未计量不能证明净费用/可靠时延收益。一个另行计入原quota的只读 `/v1/models` HTTP200返回29条模型，无明确embedding/rerank catalogue项（本地配置也只有文本模型）；不据名称推测服务能力或另猜收费目标。该目录HTTP不是模型生成，金额/usage未知，原ledger1661→1688连续append、carry332保留，窗口按原实现自然重算。
 
 全部新 private runner 默认preflight，显式live且UTF-8 gate exit检查后才发送，旧paid脚本/raw不修改；原 baseline m1/hm1 ledger hashes保持。完整G06/M8/HM2仍未验收，下一有限组沿已有服务端 Transformers port补真实本地语义消费者的原localWork准入，再验证实际模型，不能用fixture升级semantic或provider verified。M3前置不绕过，main不合并/部署，私有材料不上传。
+
+### 2026-10-11 G05 — 原 Transformers 本地推理与原 bank 准入
+
+source `24dcb551faec74d5265348a5f3e79e80fd1183f4` 已 push。设计入口 [g05-transformers-embedding](../../../plans/architecture/agent-intelligence-runtime/g05-transformers-embedding.md)；只开放已有服务端 Transformers 的 scoped embed 路径，复用原 singleton pipeline 串行队列、middleware、Run/Task bank 与索引发布。每实际 text 先准入一 `embedding_local` job/item/UTF-8 bytes，再模型载入与推理；排队后、载入后、推理后、settlement 后重验原 scope/cancel。已发生失败/取消工作保留进程 CPU/wall/outcome，不因新模型 profile 另开账本。无法中断的 ONNX 工作返回后拒绝发布。旧无预算 helper 保持，WebLLM 等其它 scoped provider 仍 unavailable。
+
+9 新增 / 3 受影响既有 distinct checks PASS：`g05-transformers-after-v1` 首三正向通过、六因 fixture 错期待 HTTP500/读取 live bank 失败；产品实际额度拒绝为429，HEAD变更已将原成本退休保存。只修原状态/retiredCompute断言，`after-v2` 六复验 PASS。四正向为 FS/SQLite × Session/Project 实际两条插入+查询，五local jobs（三推理/两索引）、下一查询无 pipeline；两耗尽 before load、两载入中 HEAD 变更保留 retired 两 failed jobs。取消单项实际推理中取消保留一 cancelled job，另一个排队取消无 pipeline；lint修 promise 断言后仅该项 `cancel-v3` 必要复验 PASS。`regression-v1` 仅原 unbounded/unsupported 与两 backend actual source 变化共三 PASS。四生产文件 lint-v1 PASS；新增 test 两 valid-expect 问题修后 test-lint-v3 PASS，diff PASS。未运行全仓、UI、MySQL/Postgres、M1/HM1。
+
+真实 local neural port `g05-transformers-real-h0-v1.json`：既有 Transformers.js/ONNX 模型 `Xenova/paraphrase-multilingual-MiniLM-L12-v2`，真实 FS engine/Session、authenticated Native middleware与原索引，三条原 H0-ZH-08 合法选中历史来源，不用 mock vector。实际插入 HTTP200/23683.50ms，查询 HTTP200/192.49ms、189.33ms；384维，原承诺 s08-020 排首位 score0.365723，其余 s08-002/001 为0.217025/0.209507。保留五实际推理 job与三索引 job，全部 settled/completed、model attempts零；原 gateway quota文件hash不变，M8 actual66/direct145577与原unknown成本不变。首调用包含下载/模型载入，其它暖推理 wall约63–104ms；进程CPU与外层索引区间重叠，不能相加成净CPU节省，下载字节/电费/货币仍unknown。
+
+私有脚本首launch只因 Windows static ESM路径不合法退出，v1失败日志保留，未开始 provider/生成；修 file URL 后 v2日志与实际report完成。Report原source HEAD0c50438f加四生产文件diff hash固定实际dirty producer，不把已提交HEAD冒充该次实测producer。模型缓存及原raw仅存private、不提交。此有限三候选检查不证明完整Hybrid corpus、rerank或总质量/成本收益，整体G06/HM2/M8仍pending，M3前置保持，main未merge/deploy。继续真实原Hybrid消费者与可知成本对照。
