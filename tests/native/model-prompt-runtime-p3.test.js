@@ -265,6 +265,13 @@ describe('P3 Context Provider and protocol ports', () => {
         expect(ir.provenance).toContainEqual({ source: 'native.memory-use-policy', ref: 'v1' });
         expect(ir.compilation.segments.find(item => item.identity === 'native.memory-use-policy.v1'))
             .toMatchObject({ volatility: 'stable', consumed: true });
+        const unselected = structuredClone(value);
+        unselected.contextPlan.items = unselected.contextPlan.items.filter(item => item.id !== 'memory:old-promise');
+        expect(compile(unselected).promptIr.directives).toEqual(['Runtime instructions', 'Stable foundation']);
+        const otherSource = structuredClone(value);
+        otherSource.contextPlan.items.find(item => item.id === 'memory:old-promise').provenance = [{ source: 'other.source' }];
+        expect(compile(otherSource).promptIr.directives).toEqual(['Runtime instructions', 'Stable foundation']);
+        expect(renderPromptMessages(compile(otherSource).promptIr)).not.toEqual(messages);
         expect(messages.filter(message => message.content === evidence)).toEqual([{ role: 'user', content: evidence }]);
         expect(messages.filter(message => message.role === 'system').map(message => message.content))
             .toEqual(['Runtime instructions', 'Stable foundation', policy, 'Authoritative current state']);
