@@ -340,7 +340,7 @@ source `1e148cd8c`：52相关本地distinct PASS（其中4增强边界必要复�
 
 ## 已交付有限 G06：Package Turn Recall 最终消费者保留权限拒绝
 
-实际Play→recallNativePackageTurnMemory的catch目前把原Memory服务的scope拒绝降成unavailable，允许后续provisional Turn。只复用原NATIVE_RETRIEVAL_SCOPE_ERRORS，使原权限/Run currentness/readonly拒绝穿透最终bridge；不新建错误/权限authority。普通可选服务不可用及budget exhaustion继续原空Recall基础路径，取消及成功返回后的source assertCurrent保持。
+修复前，实际Play→recallNativePackageTurnMemory的catch曾把原Memory服务的scope拒绝降成unavailable，允许后续provisional Turn；现在拒绝穿透最终bridge。只复用原NATIVE_RETRIEVAL_SCOPE_ERRORS，使原权限/Run currentness/readonly拒绝穿透最终bridge；不新建错误/权限authority。普通可选服务不可用及budget exhaustion继续原空Recall基础路径，取消及成功返回后的source assertCurrent保持。
 
 最小出口为原Play调用链在scope拒绝时不markProvisional、不调用Turn端口，必要cleanup/error投影保持；原正常Memory准入/来源反例及可选故障路径仍工作。仅定向本地检查，无新真实模型、不宣称正文/风格改善。
 

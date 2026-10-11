@@ -2151,3 +2151,14 @@ source `5e5ca1ebdf03cc9e2a1c3df7a3ae9e38feb2afc7`，本组沿原Play→recallNat
 10 distinct PASS（5新增/5原）：g06-package-scope-before-v1.log 3新反例真实FAIL，revision_conflict/run_terminal/storage_read_only均被吞；g06-package-scope-after-v1.log全10 PASS。原Play函数及Information grant实际执行；服务拒绝是注入的原非秘密code，不冒称本组重新走外部/实际server权限裁决（下层真实server证据仍归原G05）。三拒绝均不markProvisional、不调用Turn port、cleanup和failed projection/ended均实际断言；另2新增保持optional service与budget fallback。5旧覆盖可见source准入/hidden/stale/foreign反例、memory:false gate/Host拒绝和正式Timeline事件幂等。生产1文件/test1文件ESLint、diff PASS，没有UI设计变更/浏览器/全仓/DB/M1/HM1或外部发送。原40/direct77955、2unknown/17515 upper、admission fetch0和真实质量边界保持。
 
 用户已明确最终范围为全部剩余S/G阶段。继续原正式依赖，有限G05边界不升全覆盖；G06双入口产品质量/成本/latency仍未齐，不能凭本组local检查称M8/HM2完成。M2只依M1，可在原实现/文档分支准备S11有限契约及实现，不等待M8；M3仍等待G06验收。所有推进保持唯一写入者、不建审批/线程/子agent/Goal工具、不合并main或部署。
+
+
+### 2026-10-11 S11 — 产品持续目标主体与持久控制
+
+source `9b0ad933fdeb7698c05ddd063a0ac6b3686f273b` 已push/核对，原docs先冻结s11-goals有限契约。用户已明确全部剩余S/G，M2只依已完成M1；不是宣称G06/M8/HM2验收。沿原authenticated handle、Evidence scope/selector和StorageEngine新增单一atri_agent_goal kind，不另建发送/事实/预算registry。User/Project execution goal与精确Session/Actor desire分域，Actor不借执行budget；Todo/commitment/Task completed不自动转Goal。固定intent、criteria/invariants、主体/scope和声明budget，metadata integrity/sequence CAS复用原helpers；真正Source完成核验留S12、durable执行/原Run-Task计费留S13、UI留S14。HTTP create/list/get/control挂现有Native generation router，用户只pause/resume/cancel，不接受owner/成功状态/整doc热改。
+
+16 distinct本地PASS（14新增/2既有）：s11-goals-after-v1.log 首8项4PASS/4FAIL，四失败均fixture按message精确比对却遗漏原ConflictError的storage conflict前缀；产品确已阻断Terminal/CAS，未改authority放行。改断言为原code，goal API投影也保留原code。s11-goals-repair-backup-v2.log仅复验4失败+2新backup=6PASS；s11-goals-api-definition-v3.log仅2原CAS/2原HTTP增强后的4PASS（定义budget扩展拒绝、anonymous401、409原code），不重复计数。s11-goals-owner-scope-v4.log新增4PASS：FS/SQLite实际第二handle的分离目录/数据库不能枚举或读取原Goal；实际不存在Actor/非法scope不发布；原SessionCore.forkBranch真实换branch后resume拒绝、旧paused doc保持。s11-goals-storage-regression-v1.log原N1 FS/SQLite全authority round-trip各1、共2PASS，注册新kind不破坏原keys。没有全仓/DB/M1/HM1重跑。
+
+Cold证据为两个真实fresh Node读取刚由真实Project/Task服务创建的Goal metadata，原doc完全一致；控制后原Task及bank完整不变。Native user/Actor与ordinary Chat实际原Scope读取，Actor不能借执行budget。FS备份是独立目录实际文件复制→fresh engine，不是调用no-op dumpUser或端到端ZIP恢复；SQLite真实dumpUser→新engine restoreUser，Goal状态与budget未重置。只证明本组metadata持久；不宣称S13已续跑、Scope完整portable重绑定或M2完成。
+
+所有6改动文件ESLint初/修后PASS，新增owner/scope test后仅该文件lint-v3 PASS，diff PASS。实际shell保存原test/lint LASTEXITCODE后读日志并据原值退出，首轮被Get-Content覆盖的shell exit0不当tests通过。所有原失败日志保留。外部API0，原quota1661条、M8 actual40/direct77955、2unknown/upper17515及admitted fetch0完整保持，main仍3ee1332ef，未合并/部署。继续S12完成证据/冲突/失效；G06真实分层双入口质量/风格、合法continuation/reuse/invocation对照、完整成本/cache/可靠延迟和未知路径的出口仍pending，M3前置不取消。
