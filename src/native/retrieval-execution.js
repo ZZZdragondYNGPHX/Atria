@@ -50,7 +50,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
                 || Buffer.byteLength(JSON.stringify(req.body.documents), 'utf8') > 262144)) throw new TypeError('Bounded rerank input required');
             const usesProvider = ['/insert', '/query', '/query-multi', '/rerank'].includes(req.path);
             const compute = req.body.computeContext ? await prepareRetrievalCompute({ handle, context: req.body.computeContext, profile, ...await getComputeServices() }) : null;
-            if (compute && usesProvider && profile.mode === 'embed' && !supportsOpenAIEmbeddingSource(profile.source)) {
+            if (compute && usesProvider && profile.mode === 'embed' && profile.source !== 'transformers' && !supportsOpenAIEmbeddingSource(profile.source)) {
                 throw Object.assign(new Error('Budgeted Embedding provider unavailable'), { code: 'native_retrieval_compute_unavailable' });
             }
             const secret = usesProvider ? resolveSecret(req.user.directories, profile.secretRef) : '';

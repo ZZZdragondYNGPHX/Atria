@@ -89,7 +89,8 @@ async function getVector(source, sourceSettings, text, isQuery, directories, req
         case 'openrouter':
             return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
         case 'transformers':
-            return getTransformersVector(text, sourceSettings.native ? sourceSettings.model : undefined);
+            return getTransformersVector(text, sourceSettings.native ? sourceSettings.model : undefined,
+                { compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal });
         case 'extras':
             return getExtrasVector(text, sourceSettings.extrasUrl, sourceSettings.extrasKey, request);
         // palm/vertexai already receive the Express request via
@@ -160,7 +161,8 @@ async function getBatchVector(source, sourceSettings, texts, isQuery, directorie
                 results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
                 break;
             case 'transformers':
-                results.push(...await getTransformersBatchVector(batch, sourceSettings.native ? sourceSettings.model : undefined));
+                results.push(...await getTransformersBatchVector(batch, sourceSettings.native ? sourceSettings.model : undefined,
+                    { compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal }));
                 break;
             case 'extras':
                 results.push(...await getExtrasBatchVector(batch, sourceSettings.extrasUrl, sourceSettings.extrasKey, request));

@@ -1172,7 +1172,7 @@ test('G05 scoped Embedding keeps old unbounded Routes and rejects unsupported bu
     const f = await fixture(makeTempFsEngine);
     try {
         const body = await embeddingBody(f), profile = await f.store.getExact(f.handle, body.nativeRetrievalRef);
-        const unsupported = { ...profile, retrievalProfileId: createNativeId('retrievalProfile'), source: 'transformers', endpoint: '', secretRef: undefined };
+        const unsupported = { ...profile, retrievalProfileId: createNativeId('retrievalProfile'), source: 'webllm', endpoint: '', secretRef: undefined };
         await f.store.commit(f.handle, unsupported);
         expect((await f.request.post('/insert').send({ ...body, nativeRetrievalRef: retrievalRef(unsupported) }).expect(400)).body.error)
             .toBe('native_retrieval_compute_unavailable');
