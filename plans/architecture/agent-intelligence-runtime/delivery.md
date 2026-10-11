@@ -87,7 +87,7 @@ S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.m
 | 阶段 | 依赖 | 实际交付 | 针对性验收 |
 | --- | --- | --- | --- |
 | [S11 — Goal 主体、契约与持久状态](s11-goals.md) | M1、M2 设计冻结 | User / Project Goal 与 Actor Goal 分域；criteria / budget / lifecycle / evidence refs | 跨 run / 重启仍存在；Todo / commitment 不自动变成有写权限的自主 Goal |
-| S12 — 完成证据、冲突与失效 | S11 | 通过现有 authority / artifact 检查 criteria，处理不足、冲突、过期和撤回 | run complete / 模型自述 / 外部 complete 无法伪造 Goal 成功；fork / rollback 重验 |
+| [S12 — 完成证据、冲突与失效](s12-goal-evidence.md) | S11 | 通过现有 authority / artifact 检查 criteria，处理不足、冲突、过期和撤回 | run complete / 模型自述 / 外部 complete 无法伪造 Goal 成功；fork / rollback 重验 |
 | S13 — 事件触发、durable intent 与调度 | S12 | 复用 lifecycle outbox 与 TaskScheduler，补 Project continuation adapter；暂停 / 取消 / takeover | 重启无重复 wake / effect；scope 关闭终止；预算耗尽不会假报完成；公平调度与幂等 |
 | S14 — 双入口 Goal 工作体验 | S13 | 可检查 criteria、证据、预算和下一步；将 Goal 接入 Agenda / Director / Project 的现有 context | 两条路径各完成一个跨 run 目标；waiting / blocked / stale / cancelled / resumed 状态有清楚显示与恢复 |
 

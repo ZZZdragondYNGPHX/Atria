@@ -145,7 +145,8 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S10 | 工程交付及两域M1实际验收完成 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
 | M1反馈/评价补充 F0–F3 | Complete；实际双域验收与main集成完成 | 相关真实语义、完整费用与原生命周期通过；历史不利结果保留，具体版本见Record最新节 |
 | S11 | 有限持久/控制出口已交付；M2尚未完成 | [s11-goals](s11-goals.md)，14新增/2相关既有distinct本地检查PASS；S12–S14继续 |
-| S12–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
+| S12 | 有限criteria/完成证据与失效出口已交付 | [s12-goal-evidence](s12-goal-evidence.md)，14新增/12受影响既有distinct本地PASS；S13–S14继续，Actor认知完成留S17 |
+| S13–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 | HM1 / H0–H2 | Complete；main `3ee1332ef` | B0 保留，B1–B3 / 三路径 / Context 完整组 / 主模型正文观察与相关本地验证通过；限制见 Record |
 | HM2–HM3 / H3–H5 | 未实施 | 深检索、delta/cache、cognition/forgetting 与后续成本/性能仍待交付 |
 

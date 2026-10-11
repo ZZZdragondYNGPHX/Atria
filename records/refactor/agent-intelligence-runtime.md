@@ -2162,3 +2162,16 @@ source `9b0ad933fdeb7698c05ddd063a0ac6b3686f273b` 已push/核对，原docs先冻
 Cold证据为两个真实fresh Node读取刚由真实Project/Task服务创建的Goal metadata，原doc完全一致；控制后原Task及bank完整不变。Native user/Actor与ordinary Chat实际原Scope读取，Actor不能借执行budget。FS备份是独立目录实际文件复制→fresh engine，不是调用no-op dumpUser或端到端ZIP恢复；SQLite真实dumpUser→新engine restoreUser，Goal状态与budget未重置。只证明本组metadata持久；不宣称S13已续跑、Scope完整portable重绑定或M2完成。
 
 所有6改动文件ESLint初/修后PASS，新增owner/scope test后仅该文件lint-v3 PASS，diff PASS。实际shell保存原test/lint LASTEXITCODE后读日志并据原值退出，首轮被Get-Content覆盖的shell exit0不当tests通过。所有原失败日志保留。外部API0，原quota1661条、M8 actual40/direct77955、2unknown/upper17515及admitted fetch0完整保持，main仍3ee1332ef，未合并/部署。继续S12完成证据/冲突/失效；G06真实分层双入口质量/风格、合法continuation/reuse/invocation对照、完整成本/cache/可靠延迟和未知路径的出口仍pending，M3前置不取消。
+
+
+### 2026-10-11 S12 — 原source完成证据、冲突与失效
+
+source `3ee22238e4b7bc5b40ed01bf1a78b478c8ac086e` 已push/核对，先冻结s12-goal-evidence。沿原AgentEvidenceService capture/evaluate/current double-read与Scope/selector处理固定path/equality；注册受限project_field到原Project adapter，原Studio source及revision双读，不新建事实/判断registry。只限authoring source的既有根与安全固定path，不读取Runtime Profile/Secret；Task仍原正式state/receipt/currentrevision。Goal最多32唯一source共用coherent EvidenceSet，progress/refs严格结构与metadata64KiB；保存前后及每次completed get/list重验，定义/预算不变，Actor desire仍blocked等待S17。
+
+26 distinct本地PASS（14新增/12既有）：s12-goals-after-v1.log 6PASS/2FAIL，两个RP fixture把原sourceContent当纯文本，实际原序列化含speaker/role/variant；仅修expected调用原sourceContent，不改数据或判据，s12-goals-rp-v2.log同2PASS。原6含真实Project属性/model generation attempt完成自述不能满足、正式authoring可满足/撤回、真实fork发生precheck后capture前、invariant与pause/cancel保持。s12-goals-http-failures-v3.log新增4PASS：实际router evaluate+原Task计划/提案/Review（仍waiting）→正式Commit receipt与当前属性组合completed；extra status字段400；原Source denied/unavailable/missing分类及private IO details不回显。s12-goals-publication-v4.log新增2PASS：在原Goal repo已保存observed proof后真实fork，最终返回和随后get都stale，不把新branch当旧Goal完成。
+
+12受影响既有：s12-goals-source-regression-v1.log仅原5Project Source cases与strict source contract1共6PASS（Review/Commit区分、人类revision、task更新/takeover、wrong project/delete、读中变化与schema/extra/duplicates）；s12-goals-controls-regression-v1.log仅S11 cold Node/原CAS/认证HTTP两backend共6PASS。没有全仓/DB/M1/HM1重跑。原源码/新增test6文件ESLint首轮5无错误，service3新brace-style修正后局部v2、最终全6v3 PASS；新增发布竞态后仅service/test v4 PASS，diff PASS。原失败日志append-only保留。
+
+证据范围：generation attempt由真实begin/finish接口保存合成完成自述，无外部模型；新正文物理输出匹配只证明该精确输出，不证明World/Actor真相。Actor没有新的认知完成权限。raw repository completed只记录带anchor的observed proof，服务读时重新确认；readonly失效只返回stale投影、原doc保留，显式evaluate才CAS写新状态。最终发布竞态中原doc可保留旧observed completed，但API返回/后续消费都拒绝current完成；S13必须用service/freshness guard，不读裸metadata自动effect。来源stale/missing与denied/unavailable/budget guard按原code分类，阻断不降为普通等待。
+
+外部API0；原quota1661条、M8 actual40/direct77955、unknown2/17515 upper及admitted fetch0不变。S13自动调度与原Run/Task budget/localWork尚未接，metadata admin核验不冒称全CPU计量或收益；S14 UI待做，整个M2未完成。G06/M8/HM2真实分层双入口质量/风格、合法continuation/reuse/invocation、成本/cache/可靠延迟/unknown出口保留，M3前置不绕过，main未合并/部署。继续S13。
