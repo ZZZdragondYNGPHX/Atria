@@ -2285,3 +2285,23 @@ source `55ad73d9d6c2b0616489fe81c99d19c94d045fe7`；新shared-bank runner默认p
 实际完整检索332637.34ms；四64-text插入在500轮物理Timeline下比bare Session显著慢，原逐条source freshness加载/检验长Snapshot的成本计入实际embedding/index job，区间相互重叠，不混同纯NN时间或相加成净CPU。此前约28.7s的bare Scope检查不能替代这次长历史端到端数据；该不利耗时及preflight原值都private保存，不为通过提高32-job cap、删freshness guard或泛化性能调优。用户计价/上游/cache仍unknown，controller CPU也非免费。
 
 原quota1704→1705连续append、carry332保持、M1/HM1 ledger hashes不变。M8累计actual83/direct217829，原unknown2/upper17515与admission fetch0仍单列。此有限同bank出口成立，不等于整体G05/G06/HM2已验收；完整费用收益仍缺可核对外部计价，旧FAIL及未支持路径保留，M3前置不越过。source/docs当前入口同步实际有限交付，main仍3ee1332ef、未merge/deploy，私有包/模型缓存/raw均未提交。
+
+### 2026-10-11 G04/G06 — 原 Session 声明 Task 的消息协议冷恢复与冗余工作修复
+
+Start HEAD `55ad73d9d6c2b0616489fe81c99d19c94d045fe7`；End/Tested product HEAD `84fca4a73e0a0b2ef2af74aa0dea7e5bd0c87fe1`。先核对长历史 freshness：core.load 不只读 HEAD，还负责当前 Package Regex/Knowledge 编辑、投影与生命周期完整性；不为压低上轮332637ms移除这些守卫，不把裸Scope数据替代长历史结果。本组转向当前清单的原 Session declared Task 原生消息协议矩阵；按原消费者冻结有限出口后执行，无新平台、预算、Task/store 或用户路径 verified 发布。
+
+沿既有 session-task-continuation fixture / restart worker 增加 Anthropic/Gemini format，公开协议仍原 RunControl history、private opaque 仍原 ordered codec。八项新增FS/SQLite × 两brand × task/adaptive独立Node冷恢复，首轮已保存只读工具结果、第二count charge后exit73，新进程不重读，原签名精确wire回传；公开history不含opaque，原23jobs/1charged保留，最终结果CAS及第三次独立Node重复调用HTTP不增。四项新增missing-checkpoint反例实际确认Session两种policy都拒绝、没有额外模型attempt/结果或自动reset；初次把Studio adaptive reset预期套到Session的两FAIL保留，核对原store显式排除sessionHistory后修正测试预期，未扩大产品权限。既有Session预算触发public summary reset仍独立通过。
+
+最初Jest入口错误（root node_modules没有Jest）未运行任何测试，改用原tests/node_modules；private预检v1因未读回规范化ModelProfile、messageFormat为undefined失败，HTTP0；修复预检v2完成、原quota不变。实际probe仍只H0-ZH-08/s08-020原承诺与原query，original /v1beta Gemini消息adapter、原readonly Skill loop和foreground Narrator声明Task；不是500轮自由正文，也未迁移用户资料或升级真实capability。
+
+真实v1两实际HTTP admissions，原raw分别reported total658和1404（direct2062）；first summary有HTTP200，第二HTTP status已随summary丢失，保留缺失而不补造header状态。第一Skill成功并保存公开结果，冷请求精确回传其签名，但模型再次请求同一guide/ref.md，cold child未完成。原两-send budget没有扩大，quota只有这两笔admissions。parent的generic session_cold_child_failed覆盖了child更具体错误与第二summary row，最终bank随隔离fixture cleanup不可核查，不能事后声称掌握准确失败ledger。原raw/request/quota均保留，独立offline audit从原两admissions/raw补齐第二row、核对签名与重复read，external0；原报告不重写，不造最终bank或以之后PASS覆盖此不利结果。新runner随后保留child报告/错误及最终bank再cleanup。
+
+产品最小修复只在compiler复用nativeExecutionScope识别的Narrator Session Task追加固定directive/stable provenance/segment `native.session-task-use-policy.v1`：保存assistant/tool history是同Task先前已完成工作，恢复不重启初始指令；已有结果满足需求就使用，明确缺口才追加不同文件/分页读取。结果仍数据、输出contract/玩家权限不变。无正文改写、重复调用硬删除、缓存返回伪造或自动reset；原工具、history/CAS、quota及scope authority保持。stable body进入原IR语义指纹，旧checkpoint不绕过绑定。
+
+修复后v3预检HTTP0，实际v2仍原输入/工具/两-send/32jobs bank，两独立Node两HTTP200：第一次reported input547/output26/total689，冷续接input723/output72/total1130，direct1819。最终同一原operation两settled model attempts与23local jobs（22settled completed，退出时第二count1charged）；没有补余额或清零旧工作。saved_session_task_checkpoint / effective task / continue / loss none，exact raw signed parts回传；第一读取一次、冷读取零，final正式Task result一次且重复调用无新HTTP，原Timeline与World hash保持。真实producer仍55ad73d9+private compilerSourceHash `1db8155c088b542b9ceac6d8c567a486cffd1bbc9027597fb5cf235a83dd6eb7`，最终产品提交对应此production修改，不给旧实测改producer。
+
+完整可见structured结果“第二十轮…当时该承诺尚未履行…不能证明她现在是否还记得、是否仍持有书或愿意归还”，有限人工历史/当前unknown与无玩家行动项通过。保留“记录显示/第二十轮”的说明式文本：本Task探针不是此前style-v2普通Narrator，不能计为风格、角色声音、独立盲评或总体质量改善。n1随机输出/隔离fixture身份不同，不声称强因果保证；任何模型未来仍可重复工具，原限额继续裁决。
+
+本地总13新增+8旧distinct PASS，必要复验不重复计：新增八native冷恢复、四missing checkpoint、一个compiler scope/数据角色/determinism；旧四Responses冷恢复、一个原public summary、一个Project policy、work_quota和plain Session无Task权限各一。production compiler、Task测试/worker lint和git diff --check通过；P3文件两处旧jest/no-conditional-expect与HEAD相同，无新增lint问题，不冒称整文件lint PASS。新增scope测试fixture使用原source身份，不扩产品schema。未运行全仓库/新M1/HM1/浏览器回归，未生成测试基础设施或提交私有raw/keys/cache。
+
+本组新增四实际generations/direct3881；累计M8 actual87/direct221710。原unknown2/upper17515及admission fetch0保持单列；原quota1705→1709连续append、carry332/原时间不改，M1/HM1 ledger hashes保持。金额、上游映射、provider cache和收益继续unknown，用户已确认保留unknown，不重复询问计价。Anthropic真实路径、Session missing-checkpoint reset、Provider native compaction/copy仍没有本组实际支持证据；完整G06/M8/HM2与M3前置保持。source/docs按原授权push，main不merge/deploy，后续真实质量/费用支持矩阵与既有依赖不能由有限协议PASS替代。

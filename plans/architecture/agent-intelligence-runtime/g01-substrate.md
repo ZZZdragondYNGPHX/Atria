@@ -29,12 +29,22 @@
 
 | 有限条目 / 正式阶段 | 当前实际消费者与缺口 | 下一动作与有限出口 | 状态 |
 | --- | --- | --- | --- |
-| Session declared Task continuity — G01/G02/G04/G05 | `fafdb8608` 已交付原foreground Narrator声明Task的公开工具history/独立Node冷恢复；Responses实际Session证据，原结果CAS与Run额度保持 | 已交付组不重做；其它实际Task消费者按所选支持矩阵继续，不把Studio或后台消费者写成已覆盖 | 有限组已完成；其它消费者本地可做 |
+| Session declared Task continuity — G01/G02/G04/G05 | `fafdb8608` 已交付原foreground Narrator公开history；`84fca4a73` 补 Anthropic/Gemini 双engine冷恢复及固定完成工作解释，原Gemini H0 Task实际签名续接/同bank成功；原FAIL保留 | 已交付组不重做；缺失 checkpoint 的 Session reset、后台与未测实际路径维持各自支持边界，不能自动复制 Studio 能力 | 有限所选组已完成；完整G06仍未验收 |
 | Session fork/restore 与 compaction — G02/G03/G04/G05 | `804b088ae` 已验真实 fork/restore；`3cebec8f7` 已接 Responses 原 Session Task 有界摘要/一次 adaptive reset、公开来源与配置版本、原费用及冷 epoch | 已交付有限出口不重做；Provider native safe-copy/compaction须已有精确支持证据，本组不发送其字段；FS补偿不声明中途进程退出跨文件原子性 | 有限本地出口已交付；真实 native compaction 未verified |
 | 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；`bc31bf963` 已接原 Native Narrator 初始 inventory/pin/always-load；`49036006a` 已接scoped Hybrid corpus/reuse入口unknown工作；`f3f967cbd` 已接client hash/rank/packing原unknown工作；`a63f21054` 已接Studio原Task Skill准备/工具；legacy无原Run/Task consumer入口和开端source/config读取仍明确有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | 所选有限 G05 工程出口完成；未计量边界见下表 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 所选本地工程出口完成；真实收益待G06 |
 | 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 真实质量仍FAIL；语义修复后沿原连接最小复验 |
 | 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
+
+## 当前有限 G04/G06：Native Session 声明 Task 的消息协议冷恢复
+
+完成条件先冻结（2026-10-11）：沿原 foreground Narrator 声明 Task、RunControl 公开工具 history、private Runtime checkpoint 与 executeTask，不新增 Task/store 或支持声明。既有 Responses 出口保持；补 Anthropic/Gemini 原 adapter 在 FS/SQLite、task/adaptive 下的独立 Node 冷恢复。首轮只读 Skill 结果已保存、第二 count charge 后退出，新进程必须沿同一原 bank 续接，原有 charged 工作不退回，公开 history 不含签名/opaque，wire 精确回传原 blocks/parts。最终结果 CAS 与重复调用不增 HTTP；checkpoint 缺失时两种 policy 沿原 Session Task contract 拒绝，不将 Studio 的 public observation reset 支持自动扩为 Session 权限。原 Session 的预算触发有界摘要/reset 属于既有独立出口。
+
+本地先用原 loopback/隔离 fixture 验有限协议矩阵，再只在已授权 H0-ZH-08 / 原 Gemini 连接做一次实际 Session Task 冷恢复。测试能力声明仅隔离 probe，不升级用户路径 verified；实际签名只留 private checkpoint/raw，成本与不利质量单独记录。没有 Anthropic 实际连接、原生 compaction/copy 支持、完整计价的组合继续 unavailable/unknown。长历史逐条 freshness 开销保持，不以 HEAD-only 替换原 Package/知识/投影守卫；本组不做性能架构变化，不越过完整 G06/M3 前置。
+
+首次实际 Gemini Session Task 冷恢复已回传签名，但重新请求同一已完成 Skill；原两-send bank 保持、实际只有两笔新 admissions，不能靠加额度称为成功。局部修复仅在 compiler 复用原 nativeExecutionScope 识别的 Narrator Session Task 编译固定 history-use directive/stable segment：保存工具结果为同一 Task 的已完成工作，缺口才追加只读请求；结果仍为数据，输出与玩家权限保持。原 Task 绑定、工具声明、历史 writer 和拒绝机制不改，不硬删重复模型调用或伪造结果。先 scope/数据角色/determinism 与受影响 cold consumer 检查，再保持原输入/工具/预算复验；任何新增 PASS 不覆盖首次冗余请求及成本。
+
+source `84fca4a73e0a0b2ef2af74aa0dea7e5bd0c87fe1`：13新增/8受影响旧 distinct本地检查通过；compiler/两Task测试文件lint通过，P3测试仅保留与HEAD相同的两处旧conditional-expect，diff通过。实际Gemini v2两独立Node、两HTTP200、原只读结果不重读、exact signed parts、单次正式Task结果/重复无send、Timeline/World不变、同bank23local jobs（22settled+退出时1charged）和两settled模型attempt，direct1819。v1两原raw报告direct2062、重复Skill及generic cold child失败保留，最终bank已随fixture清理不可核查；独立offline audit补原summary丢失的第二row，不重写原文件/账本。此项不是500轮普通Narrator风格或独立质量验收，probe仅原H0/隔离临时capability，价格/上游/cache继续unknown。详见同一Record。
 
 ## 已交付有限 G05：原 Context build / Prompt compile 工作准入
 
