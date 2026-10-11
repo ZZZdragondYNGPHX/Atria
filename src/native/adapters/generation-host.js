@@ -820,6 +820,7 @@ export class NativeGenerationHost {
         const computeAttempts = [];
         let computeLimits = null;
         const localWorkAttempts = [];
+        let readSkill;
         const service = new GenerationService({ resolver, contextProvider, preparePrompt: compiler.preparePrompt, secretPort: this.secretPort,
             providerFor: (id, resolved) => {
                 const baseProvider = resolver.provider(id);
@@ -838,12 +839,12 @@ export class NativeGenerationHost {
                     if (projectTaskEvidence) return this.agent.publishLocalIndex(handle, input.projectId, input.taskId, input.revision, projectTaskEvidence.ref.slice(-64), () => {});
                     throw new GenerationError('native_generation_budget_lane_denied');
                 };
-                const localWork = async (kind, request, operation) => {
+                const localWork = async (kind, request, operation, publicInput) => {
                     if (preview) return operation();
                     checkCancellation(signal);
                     const limits = request.resolved.effectiveExecutionPolicy?.computeBudget;
                     const attempt = { attemptId: randomUUID(), requestId: input.requestId, kind, estimatedItems: 1,
-                        estimatedInputBytes: Buffer.byteLength(JSON.stringify({ contextPlan: request.contextPlan ?? request.snapshot.contextPlan,
+                        estimatedInputBytes: Buffer.byteLength(JSON.stringify(publicInput ?? { contextPlan: request.contextPlan ?? request.snapshot.contextPlan,
                             promptIr: request.promptIr ?? request.snapshot.promptIr }), 'utf8'),
                         targetFingerprint: hashNativeDocument({ path: resolved.pathFingerprint, kind }) };
                     let receipt;
@@ -894,7 +895,12 @@ export class NativeGenerationHost {
                 return { ...provider, settleAttempt,
                     discardExecution: rendered => retainOnBudgetRejection ? undefined : provider.discardExecution?.(rendered),
                     countTokens: request => localWork('generation_count', request, () => provider.countTokens(request)),
-                    renderRequest: request => { prepared = request; return localWork('generation_render', request, () => provider.renderRequest(request)); }, send: async (rendered, boundary) => {
+                    renderRequest: request => {
+                        prepared = request;
+                        readSkill = call => localWork('skill_read', request, () => skills.read(call),
+                            { name: call.name, args: call.args, inventoryFingerprint: hashNativeDocument(skills.items) });
+                        return localWork('generation_render', request, () => provider.renderRequest(request));
+                    }, send: async (rendered, boundary) => {
                     // Role-host retries stay inside this route's send/timeout boundary.
                     // Only after they are exhausted may Core resolve a complete fallback.
                         for (let retry = 0; ; retry++) {
@@ -963,7 +969,7 @@ export class NativeGenerationHost {
             handle, signal, onChunk: skills?.tools.length ? undefined : onChunk, requirements, tools: skills?.tools.length ? skills.tools : input.tools || [], outputContract: input.outputContract ?? null,
             prompt: { ...input.prompt, host: hostView }, fallbackMode: input.fallbackMode ?? 'disabled', unknownCapabilityOverrides: input.unknownCapabilityOverrides || [] };
         const result = skills?.tools.length && !preview ? await runNarrativeSkillLoop({
-            execute: () => service.execute(request), skills, transcript: skillTranscript, signal, onChunk,
+            execute: () => service.execute(request), skills: { ...skills, read: call => readSkill(call) }, transcript: skillTranscript, signal, onChunk,
             fresh: async () => {
                 const current = snapshot ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId
                     : (await this.studio.getProject(handle, input.projectId)).revision.revision;
