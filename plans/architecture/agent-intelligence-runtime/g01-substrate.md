@@ -31,7 +31,7 @@
 | --- | --- | --- | --- |
 | Session declared Task continuity — G01/G02/G04/G05 | `fafdb8608` 已交付原foreground Narrator声明Task的公开工具history/独立Node冷恢复；Responses实际Session证据，原结果CAS与Run额度保持 | 已交付组不重做；其它实际Task消费者按所选支持矩阵继续，不把Studio或后台消费者写成已覆盖 | 有限组已完成；其它消费者本地可做 |
 | Session fork/restore 与 compaction — G02/G03/G04/G05 | `804b088ae` 已验真实 fork/restore；`3cebec8f7` 已接 Responses 原 Session Task 有界摘要/一次 adaptive reset、公开来源与配置版本、原费用及冷 epoch | 已交付有限出口不重做；Provider native safe-copy/compaction须已有精确支持证据，本组不发送其字段；FS补偿不声明中途进程退出跨文件原子性 | 有限本地出口已交付；真实 native compaction 未verified |
-| 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；`bc31bf963` 已接原 Native Narrator 初始 inventory/pin/always-load；`49036006a` 已接scoped Hybrid corpus/reuse入口unknown工作；`f3f967cbd` 已接client hash/rank/packing原unknown工作；其它已启用Skill入口及开端source/config读取仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | Context/Prompt 有限组完成；其余已启用消费者本地可做 |
+| 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；`bc31bf963` 已接原 Native Narrator 初始 inventory/pin/always-load；`49036006a` 已接scoped Hybrid corpus/reuse入口unknown工作；`f3f967cbd` 已接client hash/rank/packing原unknown工作；`a63f21054` 已接Studio原Task Skill准备/工具；legacy无原Run/Task consumer入口和开端source/config读取仍明确有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | Context/Prompt 有限组完成；其余已启用消费者本地可做 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 本地工程可做；外部收益证据暂停 |
 | 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 外部证据暂停；不新增付费发送 |
 | 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
@@ -75,6 +75,16 @@ corp完成后先准入必要rank/packing，再进入可选hash/index/rerank，�
 有限出口：FS/SQLite原Session/Task冷暖+恢复的同bank新费用、缺rank/pack预算不开始相关work/HTTP、optional拒绝仍保留base、hash/rank/packing取消/stale成本与原输出一致；只做受影响原消费者。其它已启用Skill入口、开端source/config读取、未选择的消费者准确pending；此组不构造H3真实服务或G06质量改善证据。
 
 source `f3f967cbd`：10新增/16受影响既有distinct PASS。真实Server HEAD/Task变化的4个反例保持本地source guard有效，hash admission仅预算拒绝可fallback；原index/rerank scope错误经原handler/HTTP投影共享错误协议保留，不吞为普通服务故障。localAdmissions/localMeteredAdmissions/localCostStatus将client unknown与原model costStatus分开。失败、最小复验和既存lint边界见Record。
+
+## 已交付有限 G05：原 Studio Project Task Skill 消费
+
+仅runNativeStudioAgentTask已有Task的initial inventory/scope-mode selection、pin、always-load及list/read/files工具；沿原Native generation Host/repository与prepareRetrievalCompute接有限skill-work适配，不改普通Skill editor REST或新增Task/bank。当前Project/baseRevision和原Task fingerprint、role.studio Route及持久限额仍原authority；list/pin/read前charge，原version/expectedHash/readonly内容界限保持。
+
+server真实repository工作按原process CPU/wall观察settle，非独占CPU或硬时长/金额；cached catalog是client工作，只工作前unknown占用，不伪造server usage。每个请求1job/item、bytes为实际请求/settings/context描述，不虚称物理扫描/响应大小。无local cap旧路径不造allowance；取消、错误、Task变更、额度/readonly拒绝保留原费用，scope拒绝不降级成空inventory或成功工具结果。
+
+有限出口为FS/SQLite真实Project Task+Skill repository+原Host/HTTP、immutable pin/live编辑反例、各步准入/错误/取消/stale及少量受影响Studio client工具loop。除此以外的配置/开端读取、legacy orchestrator等无当前原Run/Task consumer的入口准确pending，不新造预算平台。
+
+source `a63f21054`：13新增/6受影响既有distinct PASS，原Task只读assertLocalIndexCurrent复用原mutability/revision/fingerprint检查，不因null ticket省略guard；无cap接管拒绝与active readonly兼容有真实结果。取消fixture隐式Supertest server遗留warning已改显式owned server，单项detectOpenHandles复验无报告。相关静态检查和费用界限见Record。
 
 ## 已交付有限 G04：原 Session 声明 Task 的原生工具轮次
 

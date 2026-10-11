@@ -2101,3 +2101,16 @@ scope缺陷有真实失败：`g05-client-phases-authority-before-v1.log`新增Se
 4个scope反例实际调用原Core.appendTimeline或Agent.takeOver，frontend source guard仍有效，服务端拒绝必须阻断CPU/result；保持3/4已准入unknown jobs与model HTTP0。后两项还走原NativeRetrievalService/middleware/实际index或rerank端口，不是只测validator。共享scope error只保存原非秘密code，不新增权限裁决或预算registry；普通服务/budget可选失败仍走原合法基础路径，currentness/权限失败不降级。
 
 全部9改动文件相关ESLint：8无报错，retrieval-compute-g05原HEAD20既存错误与当前message多重集一致，新增0；diff PASS。未运行MySQL/Postgres、全仓suite、M1/HM1或外部API。原真实38/direct72982、unknown2/17515 upper/admission fetch0、G06 quality FAIL及原quota保持；M8/HM2未验收。其它实际Skill入口、开端source/config读取和未选消费者准确pending，继续按原正式依赖推进，不合并main/部署。
+
+
+### 2026-10-11 G05 — Studio原Project Task Skill准备与工具消费
+
+source `a63f210541e30282c3caf1a36231ef96c2620103`，前client phases组已push/核对后继续。沿原Host.skillRepository/ExtensionsStore、原Skill resolve/pin/read及prepareRetrievalCompute→原Task localWork接有限skill-work适配；普通Skill editor REST不改，不建Task/bank/registry。Studio已有Task的list/scope-mode选择、pin、always-load、supporting read/files均工作前charge，实际server process CPU/wall settle；cached catalog先unknown占用，再client总结，不假充server CPU。原expectedHash/version、A5作用域、32768/131072字符及公开tool conversation/CAS不变；失败不是空inventory或成功工具结果。
+
+原ProjectAgent新增只读assertLocalIndexCurrent，复用已有_ensureDraftMutable/revision/fingerprint且write:false，无local cap/null ticket也前后及settle后核验，不加默认allowance或要求readonly读取变为写入。真实active Task readonly/no cap owner完整不变；无cap takeover仍在repo前拒绝。背景/legacy其它无当前原Run/Task consumer入口、开端source/config读取保持pending，不能将本组称全部CPU硬cap。
+
+19 distinct PASS（13新/6受影响既有）：`g05-studio-skill-after-v1.log`11新增，FS/SQLite实际repository list→pin→always-load→supporting read→files→cached catalog→原Host/loopback。live ref.md编辑后仍读原immutable pin字节；共10jobs（5Skill server settled +1client catalog unknown +4Context/Prompt/count/render），1model/20直接fixture tokens，移除Route budget后list在repo前拒绝、同Task原bank保持。其余bytes/pin quota/pin conflict/接管/读中变化/settle后变化/no-cap接管/no-cap readonly/cancel有真实结果；取消保留1settled cancelled server job/HTTP0。`g05-studio-skill-regression-v1.log`只6既有：Studio实际工具loop/原权威提示变更/reset/path偏好/off拒绝4，原Narrator初始Skill FS/SQLite两项。`g05-studio-skill-client-denial-v1.log`新增2：initial预算拒绝不变空inventory/不发送，Task closed read不产生成功tool result或下一round。
+
+首轮11PASS/exit0仍有worker force-exit warning；定位Supertest(app)在abort时可能跳过end callback中的隐式server.close，fixture改为显式owned apiServer并cleanup所有连接。`g05-studio-skill-cancel-handles-after-v2.log`仅取消单项--detectOpenHandles复验PASS，无遗留handle/force-exit报告，没重跑其它10项。原日志保留，不抹为完全无warning。相关7文件ESLint首轮5无报错、两新错误为迁移后unused requestHeaders和brace-style；删已不使用helper/修正braces后仅两文件复验PASS，diff PASS。未运行MySQL/Postgres、全仓或M1/HM1；所有HTTP为本地/loopback，外部0，原quota/费用/G06真实FAIL保持，M8/HM2未验收。
+
+继续原bootstrap/source/config工作准入及所选Task支持矩阵，然后实质语义修复后作已授权H0-ZH-08原连接的有意义复验；不恢复助手次数/token限制，不上传私有文件，不合并main/部署。
