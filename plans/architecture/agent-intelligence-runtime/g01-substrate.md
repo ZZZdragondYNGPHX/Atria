@@ -46,6 +46,16 @@
 
 source `23e95b695` 已提交/push：11新增定向cases与22既有cases通过。新增实际Session协议证据仅Responses + FS/SQLite task/adaptive；共享接点可给原三个native port附store，但本组不将旧Studio Anthropic/Gemini结果写成实际Session测试。原Task取消曾真实FAIL（外层返回时private row仍在），修复为task/adaptive await同worker结算/清理，复验通过；none/active原取消语义保持。同invocation不同实际Session各工具/最终2 checkpoint、各40 direct tokens；合法最终Task结果重复调用不再发送。不完整恢复反例只在fixture恢复原private row，未杀进程、未完成cold history恢复。完整边界见同一Record，本组之后继续公开history消费者。
 
+## 下一有限 G04/G05：原 Session Task 公开工具历史与冷恢复（冻结）
+
+2026-10-11 在 `23e95b695` 后仅沿原声明Narrator Task、现有只读Skill工具与RuntimeCheckpointStore继续。原RunControl operation增加可选 `taskHistories`，按原invocation识别、精确Task/input fingerprint与Skill inventory pin固定，至多8项/operation、54条消息/Task、单项64KiB，原control整体131072-byte上限不变；容量拒绝，不无声淘汰。只保存assistant公共text/tool_calls与tool公共结果，不保存providerState、opaque/native payload/Secret或caller历史。字段为可选，旧Run资源无迁移/新registry/新Session state writer。
+
+读取和追加都核当前原HEAD/Run权限与原operation anchor；追加以原公共prefix CAS且只允许原readonly Skill工具的顺序结果。原Host在exact capability/policy检查后，首次Context构建读取历史；先保存工具assistant再读取，保存每条工具结果后才允许下一模型round。Task history读/写及cold未完成的readonly read分别在工作前沿同一Run `localWork` 准入/结算，model发送仍走原charge。旧无local cap不新造默认额度，已有cap不能被移除Route绕过；6-round总界限跨Host计数，不因恢复重置。
+
+cold Host不相信caller messages：从上述原history重建当前公开Context，在原store按完整原native prefix/Task scope/path/config authority匹配私有checkpoint；缺失、过期、pin/历史/config变化或不完整恢复均拒绝task/adaptive，Session adaptive不借Studio public projection作自动reset。工具结果已保存就不再读；仅尚未完成的只读工具可重读，仍用当前pin/预算并保留以前已花成本。生产结果只沿原Task结果/receipt CAS，正式结果已存在时原cached invocation直接返回，不重放effect；若未正式提交则恢复的是原进行中工具任务，不假报已完成。
+
+本地有限出口：实际FS/SQLite原Package/Session Task由一个fresh Node执行，公共工具history与私有checkpoint均已持久后在第二count原charge返回处进程立即退出，另一个fresh Node恢复并完成同一原Task/Run预算；明确这是进程exit夹具、不是真实服务kill。检验只发原2 HTTP、readonly结果不重读、CPP wire顺序原样、charged本地工作保守保留、正式结果重复调用HTTP不增；另检验history缺失/篡改/pin变化、部分工具历史、quota/取消及公开/私有隔离。支持先验仍只提升本地Responses实际Session证据；不宣称其它品牌Session、真实gateway/质量或fork/compaction完成。
+
 ## 历史 checkpoint 与后续组记录
 
 Runtime checkpoint 有限物理契约（依据 model-routing §7.2–7.4）：复用 StorageEngine Native resource 与 `withRuntimeWrite(handle)`，private kind `atri_runtime_checkpoint` 的 key 仅 owner handle + 随机 SHA-256 checkpointId；payload 含 schema、owner hash、完整 binding、public-prefix 校验、原生 opaque envelope、到期时间和 Native integrity。每 owner 至多128项、总16MiB、单项完整 JSON 至多2MiB，TTL10分钟；超过容量淘汰最旧，过期/完整性失败/真实同owner同scope binding变更终止旧引用。读与发送均重读既有存储；只读/存储失败显式 unavailable，不假报清理或恢复成功。发布须在 credential echo 与工具声明校验之后；取消/失败须 await private cleanup。原配置record的integrity/单调updatedAt作mutation anchor，保存/发送均核验，受影响connection/model/route修改或删除清除相关checkpoint，未关联配置不清除；同毫秒ABA也不能复活旧状态。
