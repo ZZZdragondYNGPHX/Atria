@@ -14,12 +14,13 @@ const authentic = (doc, state) => state?.schemaVersion === 1 && state.bindingFin
 // Private Runtime storage. Only the server adapter obtains this port; no domain
 // resource, public endpoint or caller JSON can supply its engine/owner binding.
 export class RuntimeCheckpointStore {
-    constructor({ engine, handle, now = Date.now, publicConversation = null, sessionTask = false }) {
+    constructor({ engine, handle, now = Date.now, publicConversation = null, sessionTask = false, sessionTaskHistory = null }) {
         if (!engine || !handle) throw new TypeError('Runtime checkpoint requires engine and owner');
         this.engine = engine; this.handle = handle; this.now = now;
         this.ownerFingerprint = hashNativeDocument(handle);
         this.publicConversation = publicConversation;
         this.sessionTask = sessionTask;
+        this.sessionTaskHistory = sessionTaskHistory;
     }
     key(checkpointId) { return { kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle, checkpointId }; }
     async authority(tx, binding) {
@@ -127,17 +128,21 @@ export class RuntimeCheckpointStore {
             sourceCheckpointIds: messages.flatMap(message => message.providerState ? [message.providerState.checkpointId] : []),
             loss: action === 'reset' ? 'opaque_not_restored' : 'none' } });
         if (sequence.some(message => message.providerState)) return decide(sequence, 'continue', 'supplied_checkpoint');
+        let sessionHistory;
         if (this.sessionTask && binding.executionScope.kind === 'session_task') {
-            // This original consumer has no persisted public Task history yet.
-            // An orphaned private checkpoint cannot authorize a silent restart.
-            await this._operate(async tx => {
-                const rows = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle });
-                if (rows.some(row => row.doc?.binding && sameScope(binding, row.doc.binding))) unavailable();
-            });
-            return decide(sequence, 'start', 'declared_session_task');
+            sessionHistory = this.sessionTaskHistory?.() ?? [];
+            if (!sessionHistory.length) {
+                // An orphaned private checkpoint never authorizes a restart.
+                await this._operate(async tx => {
+                    const rows = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle });
+                    if (rows.some(row => row.doc?.binding && sameScope(binding, row.doc.binding))) unavailable();
+                });
+                return decide(sequence, 'start', 'declared_session_task');
+            }
+            if (hashNativeDocument(publicSequence.slice(-sessionHistory.length)) !== hashNativeDocument(sessionHistory)) unavailable();
         }
         const matches = this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(this.publicConversation);
-        if (!matches) {
+        if (!sessionHistory && !matches) {
             if (adaptive && this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(projectAgentResumeMessages(this.publicConversation))) {
                 return decide(sequence, 'reset', 'public_observation_projection');
             }
@@ -161,13 +166,14 @@ export class RuntimeCheckpointStore {
                     bindingFingerprint: doc.bindingFingerprint, text: doc.text, calls: doc.calls } };
             }
         });
-        const assistants = sequence.filter(message => message.role === 'assistant').length;
+        const assistants = (sessionHistory ?? sequence).filter(message => message.role === 'assistant').length;
         const checkpoints = restored.filter(message => message.providerState).length;
         if (assistants && (ambiguous || checkpoints !== assistants)) {
-            if (adaptive) throw new GenerationError('generation_continuation_reset_required');
+            if (adaptive && !sessionHistory) throw new GenerationError('generation_continuation_reset_required');
             unavailable();
         }
-        return decide(restored, checkpoints ? 'continue' : 'start', checkpoints ? 'saved_task_checkpoint' : 'no_checkpoint');
+        return decide(restored, checkpoints ? 'continue' : 'start', checkpoints
+            ? sessionHistory ? 'saved_session_task_checkpoint' : 'saved_task_checkpoint' : 'no_checkpoint');
     }
     async discard(binding) {
         if (binding.ownerFingerprint !== this.ownerFingerprint) unavailable();

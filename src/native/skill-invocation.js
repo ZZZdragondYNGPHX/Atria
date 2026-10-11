@@ -44,11 +44,20 @@ export async function prepareNarrativeSkills({ repository, settings, context }) 
 
 // Each round re-enters GenerationService (capabilities, prompt budget, secrets,
 // cancellation and fallback); it stays within the parent's existing scheduler.
-export async function runNarrativeSkillLoop({ execute, skills, transcript, signal, onChunk, fresh }) {
+export async function completeNarrativeSkillTools({ calls, skills, transcript, signal, persist }) {
+    for (const call of calls) {
+        checkCancellation(signal);
+        const value = await skills.read(call);
+        transcript.push({ role: 'tool', tool_call_id: call.id ?? call.raw?.id, name: call.name, content: JSON.stringify(value) });
+        await persist?.();
+    }
+}
+export async function runNarrativeSkillLoop({ execute, skills, transcript, signal, onChunk, fresh, persist }) {
     const evidence = [];
-    for (let round = 0; round < 6; round++) {
+    while (true) {
         checkCancellation(signal);
         await fresh();
+        if (transcript.filter(message => message.role === 'assistant').length >= 6) throw new Error('native_skill_round_limit');
         const result = await execute();
         checkCancellation(signal);
         await fresh();
@@ -63,11 +72,7 @@ export async function runNarrativeSkillLoop({ execute, skills, transcript, signa
             ...(result.response.providerState ? { providerState: result.response.providerState } : {}),
             tool_calls: calls.map(call => ({ id: call.id ?? call.raw?.id, type: 'function', function: { name: call.name,
                 arguments: typeof call.raw?.function?.arguments === 'string' ? call.raw.function.arguments : JSON.stringify(call.args) } })) });
-        for (const call of calls) {
-            checkCancellation(signal);
-            const value = await skills.read(call);
-            transcript.push({ role: 'tool', tool_call_id: call.id ?? call.raw?.id, name: call.name, content: JSON.stringify(value) });
-        }
+        await persist?.();
+        await completeNarrativeSkillTools({ calls, skills, transcript, signal, persist });
     }
-    throw new Error('native_skill_round_limit');
 }

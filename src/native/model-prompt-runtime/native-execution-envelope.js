@@ -15,16 +15,19 @@ const denied = () => { throw new GenerationError('generation_continuation_unavai
 function prune() {
     for (const [id, entry] of checkpoints) if (entry.expiresAt <= Date.now()) checkpoints.delete(id);
 }
+export function nativeExecutionScope(plan, requestId, role) {
+    const sessionTask = plan.source.kind === 'session' && plan.provenance.find(item => item.source === 'native.session-task'
+        && typeof item.ref === 'string' && /^[a-zA-Z0-9._:-]{1,128}:[a-f0-9]{64}$/.test(item.ref));
+    return plan.source.kind === 'task' ? { kind: 'task', projectId: plan.source.projectId, taskId: plan.source.taskId }
+        : sessionTask ? { kind: 'session_task', invocationId: requestId, source: plan.source, role,
+            taskFingerprint: sessionTask.ref.slice(-64) }
+            : { kind: 'request', requestId, source: plan.source, role };
+}
 export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
     if (!resolved.pathFingerprint) denied();
     const { promptIr: ir, contextPlan: plan } = snapshot;
-    const sessionTask = plan.source.kind === 'session' && plan.provenance.find(item => item.source === 'native.session-task'
-        && typeof item.ref === 'string' && /^[a-zA-Z0-9._:-]{1,128}:[a-f0-9]{64}$/.test(item.ref));
     return immutable({ schemaVersion: 1, protocol, ownerFingerprint: resolved.ownerFingerprint ?? null, pathFingerprint: resolved.pathFingerprint,
-        executionScope: plan.source.kind === 'task' ? { kind: 'task', projectId: plan.source.projectId, taskId: plan.source.taskId }
-            : sessionTask ? { kind: 'session_task', invocationId: snapshot.requestId, source: plan.source, role: resolved.route.role,
-                taskFingerprint: sessionTask.ref.slice(-64) }
-                : { kind: 'request', requestId: snapshot.requestId, source: plan.source, role: resolved.route.role },
+        executionScope: nativeExecutionScope(plan, snapshot.requestId, resolved.route.role),
         targetFingerprint: hashNativeDocument({ model: resolved.model.remoteModelId, connectionId: resolved.connection.connectionProfileId, endpoint: resolved.connection.endpoint }),
         sourceFingerprint: hashNativeDocument({ source: plan.source, provenance: plan.provenance,
             facts: plan.items.filter(item => !['context.history', 'context.input'].includes(item.kind)),

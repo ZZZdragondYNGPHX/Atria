@@ -4,6 +4,7 @@ import { getNativeDocument, putMutable, hashNativeDocument } from './repositorie
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger } from '../../public/shared/native-compute-budget.js';
+import { assertSessionTaskHistory, sessionTaskHistoryLimits } from '../../public/shared/native-session-task-history.js';
 
 export const runFailure = code => Object.assign(new TypeError(code), { code });
 const key = (handle, sessionId) => ({ kind: K.runControl, handle, sessionId });
@@ -138,6 +139,41 @@ export class RunControl {
                 op.selection = structuredClone(selected);
             }
             return op.selection ? structuredClone(op.selection) : null;
+        });
+    }
+    async sessionTaskHistory(handle, snapshot, anchor, identity, append = null) {
+        const operation = hashNativeDocument({ lane: 'turn', anchor }), id = hashNativeDocument(identity.invocationId);
+        const select = control => {
+            if (control?.headRevisionId && control.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            const history = control?.operations[operation]?.taskHistories?.[id];
+            if (history && (history.invocationId !== identity.invocationId || history.fingerprint !== identity.fingerprint || history.inventoryFingerprint !== identity.inventoryFingerprint)) {
+                throw runFailure('generation_continuation_unavailable');
+            }
+            return history;
+        };
+        if (!append) return this.repo.withRunLock(handle, snapshot.session.sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
+            const session = await getNativeDocument(tx, { kind: K.session, handle, sessionId: snapshot.session.sessionId });
+            if (session?.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            return structuredClone(select(await assertRunAccess(tx, handle, snapshot.session.sessionId, 'write')) ?? null);
+        }));
+        const next = assertSessionTaskHistory({ ...identity, messages: append.messages });
+        return this.update(handle, snapshot.session.sessionId, control => {
+            if (control.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            const previous = select(control);
+            if (hashNativeDocument(previous?.messages ?? []) !== append.expectedPrefix
+                || next.messages.length <= (previous?.messages.length ?? 0)
+                || hashNativeDocument(next.messages.slice(0, previous?.messages.length ?? 0)) !== append.expectedPrefix) {
+                throw new ConflictError('native_session_task_history_conflict');
+            }
+            let op = control.operations[operation];
+            if (!op) {
+                if (Object.keys(control.operations).length >= 128) throw runFailure('native_run_continuation_limit');
+                op = control.operations[operation] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
+            }
+            op.taskHistories ??= {};
+            if (!previous && Object.keys(op.taskHistories).length >= sessionTaskHistoryLimits.tasks) throw runFailure('native_session_task_history_limit');
+            op.taskHistories[id] = structuredClone(next);
+            return structuredClone(next);
         });
     }
     async charge(handle, snapshot, request, policy) {

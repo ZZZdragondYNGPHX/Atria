@@ -1,6 +1,7 @@
 import { fields, assertJsonDeclaration } from './native-values.js';
 import { taskId } from './native-task-contract.js';
 import { assertComputeLedger, assertRetiredCompute } from './native-compute-budget.js';
+import { assertSessionTaskHistory, sessionTaskHistoryLimits } from './native-session-task-history.js';
 
 export const RUN_NAMESPACE = 'atri_run';
 const integer = (value, min, max) => {
@@ -81,7 +82,14 @@ export function assertRunContinuation(value) {
         || !value.background || Array.isArray(value.background) || Object.keys(value.background).length > 1000) throw new TypeError('Invalid continuation ledger');
     for (const [id, op] of Object.entries(value.operations)) {
         if (!/^[a-f0-9]{64}$/.test(id)) throw new TypeError('Invalid operation identity');
-        fields(op, ['lane', 'anchor', 'fingerprint', 'selection', 'attempts', 'total', 'compute'], 'Run operation');
+        fields(op, ['lane', 'anchor', 'fingerprint', 'selection', 'attempts', 'total', 'compute', 'taskHistories'], 'Run operation');
+        if (op.taskHistories !== undefined) {
+            if (!op.taskHistories || Array.isArray(op.taskHistories) || Object.keys(op.taskHistories).length > sessionTaskHistoryLimits.tasks) throw new TypeError('Task history capacity');
+            for (const [key, history] of Object.entries(op.taskHistories)) {
+                if (!/^[a-f0-9]{64}$/.test(key)) throw new TypeError('Task history identity');
+                assertSessionTaskHistory(history);
+            }
+        }
         if (op.compute !== undefined) assertComputeLedger(op.compute);
         if (!['turn', 'background'].includes(op.lane)) throw new TypeError('Invalid operation lane');
         fields(op.anchor, op.lane === 'background' ? ['invocationId'] : ['branchId', 'revisionId'], 'Operation anchor');
