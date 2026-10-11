@@ -29,7 +29,7 @@
 
 | 有限条目 / 正式阶段 | 当前实际消费者与缺口 | 下一动作与有限出口 | 状态 |
 | --- | --- | --- | --- |
-| Session declared Task continuity — G01/G02/G04/G05 | 原 `executeTask` 已有声明、invocation、原 Run 预算与结果 CAS；Narrator Skill 公开 transcript 仅在本次 Host 内存，durable task/adaptive 目前只接原 Studio Project Task | 沿原 Session Task 持久公开工具历史、精确 Task/input/Session anchor 绑定；原私有 checkpoint 从合法历史冷恢复，同额度，不重放 production effect；历史/配置/HEAD 变化及取消拒绝错误续接。先完成原历史消费者，再验证恢复 | 本地可做；下一组 |
+| Session declared Task continuity — G01/G02/G04/G05 | `fafdb8608` 已交付原foreground Narrator声明Task的公开工具history/独立Node冷恢复；Responses实际Session证据，原结果CAS与Run额度保持 | 已交付组不重做；其它实际Task消费者按所选支持矩阵继续，不把Studio或后台消费者写成已覆盖 | 有限组已完成；其它消费者本地可做 |
 | Session fork/restore 与 compaction — G02/G03/G04/G05 | 现有 Session Core 的 fork/save restore、Context lowering 与 checkpoint invalidation；完整 Task 生命周期反例未覆盖 | 上项原历史消费者完成后，以实际派生 branch/revision 验独立 lineage/reset loss与不倒退成本；只在已验证路径支持 compaction 时接原能力，否则按原获准有界公开摘要/reset，新增发送同额度 | 本地可做；依赖上项；真实 compaction 能力证据暂停 |
 | 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 已接原 localWork；原 Context 编译、初始 Skill inventory/pin/always load及已启用 reuse/corpus 校验仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | 本地可做；范围仅已启用消费者 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 本地工程可做；外部收益证据暂停 |
@@ -57,6 +57,14 @@ cold Host不相信caller messages：从上述原history重建当前公开Context
 本地有限出口：实际FS/SQLite原Package/Session Task由一个fresh Node执行，公共工具history与私有checkpoint均已持久后在第二count原charge返回处进程立即退出，另一个fresh Node恢复并完成同一原Task/Run预算；明确这是进程exit夹具、不是真实服务kill。检验只发原2 HTTP、readonly结果不重读、CPP wire顺序原样、charged本地工作保守保留、正式结果重复调用HTTP不增；另检验history缺失/篡改/pin变化、部分工具历史、quota/取消及公开/私有隔离。支持先验仍只提升本地Responses实际Session证据；不宣称其它品牌Session、真实gateway/质量或fork/compaction完成。
 
 source `fafdb8608` 已提交/push，17真正新增cases、9原cases增强及25其它既有cases通过（复验不重复计distinct）。冷退出前公共结果已保存时，新进程不重读；pending readonly read可按当前pin/额度重读，旧charged工作保持。本组只支持原foreground Narrator声明Task，background明确unavailable；其它Task消费者继续按实际依赖。pending重读发生在Context阶段，checkpoint完整prefix/private校验在随后count/lowering，不声称缺CPP在所有repository访问前拒绝；缺失/篡改/权限反例保证新HTTP0并保留原成本。公共history不存providerState/private payload；原cached正式结果不重发。详细费用、首次旧guard回归/修复与进程exit范围在Record，不提升真实路径verified。下一验证原Session实际fork/历史restore，并沿原能力处理compaction。
+
+## 下一有限 G04/G05：真实 Session 派生分支与历史 restore（冻结）
+
+2026-10-11 从 `fafdb8608` 接原foreground Narrator Task的Session Core生命周期，先固定Responses、FS/SQLite与原工具fixture，不新增native fork/copy能力。实际`forkBranch`或历史`restoreSavePoint`发布新的branch/revision，因此Task/input/anchor fingerprint与Run operation identity不同；该新Task scope必须fresh，不携旧CPP/工具历史或未来revision状态。task policy的新scope开始不冒充旧Task已恢复；原有charged/settled/unknown消费仍保留在原Run，不把新scope的独立费用写成原余额退回/复位。完整Provider ancestor fork/copy/reset loss与compaction继续是下一工程依赖。
+
+本组有限出口：一个fresh Node在原count charge后退出，真实fork或restore到早于该Task source的Save后，原旧revision调用在HTTP前拒绝；新Task真实消费只当前合法Session Context、wire无旧opaque/function_call/tool result，原已花费用与未settle工作保持、正式结果只提交一次。核实历史restore确实产生新branch/revision且保留旧branch HEAD；同HEAD Save restore只使frontend epoch失效，允许同scope冷恢复，不能伪装成一次派生分支反例。只检查这些新的Core/Task边界与少量相邻原消费者，不重跑已通过cold/pin/费用组。
+
+本地退出夹具、合成只读Skill port与loopback仍不提升真实path verified；原外部复测按用户最新每日2000次/20RPM与原实际账本执行，不恢复助手旧固定次数/token限制。远端仅在核清准确目标及待发送差异后另行处理，本组先本地提交/Record。
 
 ## 历史 checkpoint 与后续组记录
 
