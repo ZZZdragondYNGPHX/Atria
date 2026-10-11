@@ -1989,3 +1989,14 @@ lint-v1/v2产品及新generation-local-work PASS，另外两改动旧测试file�
 私有Document g04-source-scope-before-v1 SyntaxError/零tests是新增fixture括号准备错误；before-v2一真实FAIL：两个Session先取tool state、取消一方并等cleanup，另一方continuation_unavailable，是requestId-only批清理造成跨source误撤回。after-v1四PASS（仅四新）/old-v1二十四PASS；产品及修改fixture lint-v1 PASS、source/docs diff PASS。before并未先执行新增的取消成本实物断言，该成本在after已明确验证，不混报未执行的检查。
 
 外部0与全部原baseline/付费结果/FAIL/费用保持，M8 actual38/direct72982、unknown2/17515 upper/admission fetch0不变。main不变，完整M8/HM2/HM3/真实G06未验收；原Session Task的跨调用公开历史消费者、安全fork/compaction、剩余CPU/cache/local inference与H5前置继续，无HANDOFF。
+### 2026-10-11 有限 G05：原 Narrator 按需 Skill read 同预算
+
+合同docs4fa3110cb先冻结；source05f526fa8d9db173d0b6373c27c23c1ca10534ce已push。skills.read/files只在实际model tool-call声明核验成功后，复用上一轮真正接受的render request localWork closure及原Run/Task预算；skill_read每call1 job，输入公开parsed name/args+原inventory指纹，ledger只有指纹/有界数量字节/CPU观察，没有Skill正文或opaque。repository read/list前准入，原pinned scope/hash/pagination/content总上限保持，处理及settlement后Source/cancel检查不撤回。旧无local限额不发明账本，默认未改。
+
+7既有Session Skill case增强PASS（从上一G04的7明确强化/改名，不另称7全新重复验收）：FS/SQLite none/active完整两轮从四job增强为five（第三为skill_read）；cancel/head反例从two增强three job/read已执行，quota two jobs时read 0/second HTTP0，已报告first model20保持。cancel同一worker最终settled/cancelled明确断言，不强行改变Host/scheduler取消语义。
+6真正新增case PASS：file_list实际repository port调用、read_failure failed费用、262144字符公开args在131072字节预算前拒绝read/list0、old_unbounded旧路径两send无local账本、read结算后HEAD变化three completed留存/second HTTP0、实际accepted fallback保留failed primary unknown+随后two settled/three HTTP/seven local jobs，Skill一次且仅同一原ledger，skillRounds显示真正fallback与原route。Skill repository port为synthetic pinned fixture，Core Session/Host/GenerationService/HTTP/账本为实际实现；不冒称真实资料文件IO已经跑。
+16旧PASS：Shared narrative loop4、FS/SQLite两lane原count/render恢复4、无local-limit失败count原owner不变4、此前两个真实Session source清理隔离4。未再跑purge/paid/不相关协议全集。
+
+私有Document g05-skill-read-*：before-v1 1真实FAIL（原账本仅four jobs，实际Skill工作无row；不是冒称模型quota绕过）；after-v1 seven增强PASS；safety-v1 four新增PASS/one fixture FAIL（旧unbounded不存在compute，而测试取compute，原路径已成功）；compat-v2仅同一修helpercase1PASS；fallback-v1 1新增PASS；cancel-v2 1同case最终结算补强PASS、cancel-v3 3相关增强因共同断言更改复验PASS，计数不再增加；old-v1 sixteenPASS；lint-v1相关产品/fixture与lint-v2改动fixturePASS，source/docs diff PASS。
+
+局部计量包含实际按需read/files、Scope/settlement费用观察；原initial inventory/pin/always loading、Context compiler与reuse validation等已启用但未覆盖的工作须继续明确原G05出口，非unknown冒充已完成。未启用classifier/prewarm/local inference等不会为了泛化成本而新建平台。SessionTask持久公开历史/safe fork/compaction与真实G06待证据是当前具体缺口，H5仍依M2/M3/G06前置；完整M8/HM2/HM3未验收。全部原baseline/paid FAIL/费用不改，external0，M8actual38/direct72982、unknown2/17515 upper/admission fetch0不变，main不变，无HANDOFF。
