@@ -14,11 +14,12 @@ const authentic = (doc, state) => state?.schemaVersion === 1 && state.bindingFin
 // Private Runtime storage. Only the server adapter obtains this port; no domain
 // resource, public endpoint or caller JSON can supply its engine/owner binding.
 export class RuntimeCheckpointStore {
-    constructor({ engine, handle, now = Date.now, publicConversation = null }) {
+    constructor({ engine, handle, now = Date.now, publicConversation = null, sessionTask = false }) {
         if (!engine || !handle) throw new TypeError('Runtime checkpoint requires engine and owner');
         this.engine = engine; this.handle = handle; this.now = now;
         this.ownerFingerprint = hashNativeDocument(handle);
         this.publicConversation = publicConversation;
+        this.sessionTask = sessionTask;
     }
     key(checkpointId) { return { kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle, checkpointId }; }
     async authority(tx, binding) {
@@ -126,6 +127,15 @@ export class RuntimeCheckpointStore {
             sourceCheckpointIds: messages.flatMap(message => message.providerState ? [message.providerState.checkpointId] : []),
             loss: action === 'reset' ? 'opaque_not_restored' : 'none' } });
         if (sequence.some(message => message.providerState)) return decide(sequence, 'continue', 'supplied_checkpoint');
+        if (this.sessionTask && binding.executionScope.kind === 'session_task') {
+            // This original consumer has no persisted public Task history yet.
+            // An orphaned private checkpoint cannot authorize a silent restart.
+            await this._operate(async tx => {
+                const rows = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle });
+                if (rows.some(row => row.doc?.binding && sameScope(binding, row.doc.binding))) unavailable();
+            });
+            return decide(sequence, 'start', 'declared_session_task');
+        }
         const matches = this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(this.publicConversation);
         if (!matches) {
             if (adaptive && this.publicConversation && hashNativeDocument(publicSequence) === hashNativeDocument(projectAgentResumeMessages(this.publicConversation))) {
