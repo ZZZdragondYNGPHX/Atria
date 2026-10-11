@@ -24,7 +24,7 @@
 - 保存跨模块冻结决策、领域能力模型、权威模块和阶段路由。
 - 保存阶段 Record 和单一 live HANDOFF，下一目标明确为 S1。
 - 用户已要求停止逐项技术确认：后续只讨论范围、职责和关键取舍。
-- 按用户最新要求设置 CP1（S3 后）、CP2（S5 后）与 CP3（最终完成）；每阶段照常验证、记录、推送，中间阶段完成后连续推进。
+- 设置 CP1（S3 后）、CP2（S5 后）与 CP3（最终完成）；每阶段照常验证、记录、推送，中间阶段完成后连续推进。
 
 ### 关键决策
 
@@ -49,7 +49,7 @@ S1–S6 按 [阶段路由](../../plans/architecture/native-package-runtime/index
 
 ## 最终状态
 
-S0–S6 全部完成，已按用户要求停在 CP3。产品 main 已快进至 `ed1fd90521a63363e29856601abbf5e908c99d10` 并推送；本地/远端 `feat/native-package-runtime` 已删除。Plan 状态更新、永久 Record 和 live HANDOFF 删除属于本次最终 docs 提交，不自引用 docs hash；发布以真实远端 ref 为准。
+S0–S6 全部完成，停在 CP3。产品 main 已快进至 `ed1fd90521a63363e29856601abbf5e908c99d10` 并推送；本地/远端 `feat/native-package-runtime` 已删除。Plan 状态更新、永久 Record 和 live HANDOFF 删除属于本次最终 docs 提交，不自引用 docs hash；发布以真实远端 ref 为准。
 
 ## S1 — 技术契约冻结
 
@@ -131,7 +131,7 @@ Studio 在 Runtime Design 使用现有结构化/Source draft，支持 Processor 
 
 ### CP2 停止与下一目标
 
-S4 / S5 完成，产品/docs 已推送。沿用分支，不合并 main、不删除活跃分支，按用户要求停在 CP2。S6 才实施最终原生 Package 场景、针对性集成、main 验证与清理；不自动继续。
+S4 / S5 完成，产品/docs 已推送。沿用分支，不合并 main、不删除活跃分支，停在 CP2。S6 才实施最终原生 Package 场景、针对性集成、main 验证与清理；不自动继续。
 
 处理上限和 Scope 见 Plan：输出只接 Turn narrator 正文；上下文接 recent_raw，Information 替代历史不会隐式补读；呈现只接数据式文本派生，复杂呈现仍走已有 Controller/组件。旧 Regex 主链兼容；未声称所有 Processing/设备/外部数据库/跨 Realm 矩阵通过。私有候选/单 Session CAS/Task uses/Knowledge adoption 边界保持。
 

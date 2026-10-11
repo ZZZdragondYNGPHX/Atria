@@ -272,7 +272,7 @@ B 与已确认的“删除**独立**旧 Recall 模式”不冲突；总体 B 架
 
 ## 10. R6 技术研究的采纳结论
 
-**2026-10-10 用户明确批准第六轮三项最终建议，见 [decisions.md](decisions.md) HCM-06–08：**
+**第六轮三项设计决策，见 [decisions.md](decisions.md) HCM-06–08：**
 
 - **HCM-06：** 总体技术架构采用 Constraint-first Adaptive Hybrid。授权/来源先行；廉价词项和有界图检索为默认，Embedding 可选，复杂问题才预算内追加 PPR、rerank 或 LLM 辅助。
 - **HCM-07：** 旧 LLM/RAG 独立召回硬切换。删除旧 UI、配置与执行分叉，不做双读双写；保留有效原生 Timeline/World、故事历史与可验证记忆，派生索引重建，不迁移 SillyTavern 旧数据。

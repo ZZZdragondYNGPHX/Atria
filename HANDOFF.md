@@ -1,6 +1,6 @@
 # Atria Agent Intelligence Runtime — 换设备恢复快照
 
-> 2026-10-11 用户明确要求找安全时机停下、换设备继续；按 [Governance §7](README.md#7-handoff) 保存。当前停止，不再开启新组；用户明确继续后以实际 Git 状态恢复，快照不创建额外审批或长期执行限制。
+> 2026-10-11 设备迁移恢复快照，使用方式见 [Governance §7](README.md#7-handoff)。当前停止；恢复后从实际 Git 状态继续。
 
 ## Task
 
@@ -37,7 +37,7 @@
 - 复用既有 StorageEngine、RunControl、Project Task、RouteResolver、GenerationService 与原 provider port；无新预算/发送器/许可 authority，不把公开摘要当事实确认、工具许可或世界状态。
 - SQLite 本组是真实事务回滚；FS 本组在原 Runtime→Run 锁内对有界资源删除/发布失败作补偿，Host 随后的失败 cleanup 是另一个时点。原费用/unknown/charged 不退款。
 - 未启用 classifier、learned router、prewarm、local KV/LoRA 不自动扩为本轮必做。H5 仍依赖 M2/M3/G06，不新建 Goal/Memory writer。
-- 外部调用已获准同任务合成 H0-ZH-08 到原 `gcli.ggchan.dev` / `gemini-3.8-flash`。硬上限只有每日 2000 次、20 RPM，延续原统一 ledger；助手旧 2 次/no retry/输出或总 token 上限不作为用户限制。实际 Provider 技术限制与产品原预算照常执行。当前为用户换设备停止，暂无新发送；恢复后先修复真实语义缺陷再作有意义复验。
+- 外部调用范围为同任务合成 H0-ZH-08 到原 `gcli.ggchan.dev` / `gemini-3.8-flash`。硬上限只有每日 2000 次、20 RPM，延续原统一 ledger；助手旧 2 次/no retry/输出或总 token 上限不作为用户限制。实际 Provider 技术限制与产品原预算照常执行。当前为用户换设备停止，暂无新发送；恢复后先修复真实语义缺陷再作有意义复验。
 - 已授权本任务代码/合成测试/文档 push 到同一 origin 的 `feat/agent-compute-runtime` 和 `docs`，不重复申请。私有材料、原始日志/账本、凭据不上传 GitHub；main 合并/部署不属于本次停止收口。
 
 ## Local validation
@@ -50,9 +50,9 @@
 
 ## Private evidence and device migration
 
-- 2026-10-11 用户随后明确要求**完整恢复包，包括 API 配置**，用于新设备接手。当前交付改为本机 `Atria-full-restore-20261011.zip`：包含当前全部私有目录/凭据、原ZIP、main/source/docs的Git bundle、恢复脚本、路径映射说明与接手提示词；校验数字归该包旁的 `.sha256` 和包内manifest。这些私有内容只在本地包，不进GitHub。下列无凭据包保留为较早可选交付，不再是用户本次完整恢复的唯一包。新设备以完整包的 `RESUME-PROMPT.txt` / `RECOVERY-README.md` 为入口，不执行历史付费脚本；凭据和原额度账本直接沿当前完整包恢复，不需要用户在聊天里重发key。
+- 完整任务恢复包：`Atria-full-restore-20261011.zip`，包含当前私有目录和 API 配置、原 ZIP、main/source/docs Git bundle、校验清单、恢复脚本与接手提示词，仅本机交付。新设备入口为包内 `RESUME-PROMPT.txt` / `RECOVERY-README.md`，校验数字见 `.sha256` 和包内 manifest；不用另填 key，不覆盖或清零原额度账本。
 - GitHub **不含**私有基线和累计结果。旧设备私有根 `D:/Dev/Atria-private/hm1-20261010`，原日志/脚本/报告/账本在 `Document/`；新设备需通过用户自己的本地安全迁移保留它，不能只重新解压旧 ZIP 来替代新增账本/失败证据。
-- 本地无凭据迁移包已完成：`C:/Users/5insi/Documents/Codex/2026-10-10/task/Atria-private-evidence-no-credentials-20261011.zip`，56452855 bytes，SHA-256 `be8088c5745122bea18743200fdd36419d62ccf0cec692aa7c24688c70b68568`。旁边 `.zip.sha256` 与 `ATRIA-MIGRATION-MANIFEST-20261011.json`，包内有 `MIGRATION-README.txt` / manifest。监督已校验 ZIP CRC 与逐文件 SHA-256；无凭据包仅本机保存，无上传。含18585文件/237339656原始bytes，排除37项凭据配置/含已知credential内容/secret资源/sealed或可重建scratch/browser；不是完整机器备份，原件未删除。新设备先校验，再解包到新的空私有目录；按照 README 映射路径，任何历史脚本都不能因解包而自动启动付费调用。
+- 本地无凭据迁移包已完成：`C:/Users/5insi/Documents/Codex/2026-10-10/task/Atria-private-evidence-no-credentials-20261011.zip`，56452855 bytes，SHA-256 `be8088c5745122bea18743200fdd36419d62ccf0cec692aa7c24688c70b68568`。旁边 `.zip.sha256` 与 `ATRIA-MIGRATION-MANIFEST-20261011.json`，包内有 `MIGRATION-README.txt` / manifest。已校验 ZIP CRC 与逐文件 SHA-256；无凭据包仅本机保存，无上传。含18585文件/237339656原始bytes，排除37项凭据配置/含已知credential内容/secret资源/sealed或可重建scratch/browser；不是完整机器备份，原件未删除。新设备先校验，再解包到新的空私有目录；按照 README 映射路径，任何历史脚本都不能因解包而自动启动付费调用。
 - 原 ZIP `C:/Users/5insi/Downloads/Atria-Document-private-H0-20261010.zip`：55288312 bytes，SHA-256 `1551535563aac211046df34ca743072e7a060c8b60a4ef04b434d7b44afee30e`。
 - 原 ZIP 含真实 API 凭据，不能作为上述无凭据包直接共享/上传；新设备的连接 Secret 另沿用户私有配置恢复，不因此授予新设备权限。原 ZIP 也没有本轮新增结果和账本，不能替代当前迁移包。
 - 必须延续 `Document/m1-api-quota.json`（153422 bytes，SHA-256 `af6f88fd0ae899f7697a30b2187633a27441b3bb47cbffbfb8372fa56799c680`）、`hm1-model-ledger.json`（33189 bytes，`12c4cb4826f001826388762b998687a0b7b4ade884e1699220fd2104bbe9fdb5`）、`m1-ledger.json` / `.rate.json`、原 raw baseline / request / response / reports 和复验日志。恢复时先读原发送计数实现，不另建空 ledger、默认全额或重置历史。
@@ -61,7 +61,7 @@
 
 ## Next target
 
-用户继续后：先核对三个真实 Git HEAD、source clean / docs 无关 draft，再读本 HANDOFF→Plan index→G01 当前清单→Record 最新组。先补一个有限 G05 原 Context build/Prompt compile 工作准入合同，再复用 Host 既有原 Run/Task `localWork` charge/settle 端口，确保任务/后台 anchor、accepted fallback policy、取消/stale/失败成本与无 localWork 旧路径兼容。初始 Skill/reuse 如未在此组纳入仍明确 pending，不假称全部 CPU 被硬封顶。只做新组最小实际消费和受影响回归，再持续下一依赖。
+恢复时先核对三个真实 Git HEAD、source clean / docs 无关 draft，再读本 HANDOFF→Plan index→G01 当前清单→Record 最新组。先补一个有限 G05 原 Context build/Prompt compile 工作准入合同，再复用 Host 既有原 Run/Task `localWork` charge/settle 端口，确保任务/后台 anchor、accepted fallback policy、取消/stale/失败成本与无 localWork 旧路径兼容。初始 Skill/reuse 如未在此组纳入仍明确 pending，不假称全部 CPU 被硬封顶。只做新组最小实际消费和受影响回归，再持续下一依赖。
 
 只读定位：Host `src/native/adapters/generation-host.js` 的 `execute` 在 `providerFor` 前调用 `prepareNarrativeSkills`，原包装 `localWork` 目前只涵盖 count/render/按需 read/task_history；`contextProvider.buildRequestContextPlan` 与 `compiler.preparePrompt` 尚未工作前准入。`public/shared/native-compute-budget.js` 的现有 kind 列表没有 context/initial Skill 种类。不要借修改预算上限让旧 fixtures 绿；新增真实计量应如实调整合成 fixture 的成本断言及明确边界。
 
@@ -76,7 +76,7 @@
 - 不重跑 M1、HM1 H0–H2 或已交付有限组，不为换设备重复所有测试/付费输入。
 - 不删除 raw FAIL/unknown/费用或重置 quota，不把历史累计视为终身上限，不恢复助手旧固定次数/token限制。
 - 不上传 private/凭据、不改独立密封材料、不 add 无关 docs draft，不合并 main/部署，不创建新线程/子 agent/Goal。
-- 停止后不后台测试/请求/修改。用户明确继续前保持 idle；恢复后正常按 Governance 推进，阶段/失败不自动停工。
+- 当前无后台测试、请求或写入。恢复后按 Governance 持续推进。
 
 ## New-chat bootstrap prompt
 

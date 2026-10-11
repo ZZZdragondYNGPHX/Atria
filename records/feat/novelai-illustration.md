@@ -146,7 +146,7 @@ S3 完成后停止。用户续接时进入 S4：读 Git → live HANDOFF → Pla
 
 按真实 Git → live HANDOFF → Plan index/core/plugin/generation/novelai → 本 Record 续接。main 的 AGENTS.md 与 docs 的治理/模板 dirty changes 保留；没有读取 reference。按 Plan 使用本地 ui-ux-pro-max 指导异步按钮、状态、取消、错误反馈、编辑保留及能力表单。
 
-核对 [NovelAI 官方 OpenAPI](https://image.novelai.net/docs/doc.json) 与 [多人提示词说明](https://docs.novelai.net/en/image/multiplecharacters/)，实现 generate 请求、V4 caption 与 ZIP/JSON base64 响应。当前官方适配范围为 V3/V4/V4.5，未声称支持所有官方型号或执行过官方真实请求。用户本轮明确实际第三方路线是“实际调用官方 NovelAI，只不过要走中转站”；据此按官方协议透传中转接入，提供“采用官方协议透传配置”快捷入口。中转连接仍显式保存模型/参数能力与响应格式；若中转改写响应或限制模型/参数，可按其说明调整，不自动假设所有中转完全相同。未提供/使用实际站点地址与密钥，本地兼容证据不等于真实中转请求证据。
+核对 [NovelAI 官方 OpenAPI](https://image.novelai.net/docs/doc.json) 与 [多人提示词说明](https://docs.novelai.net/en/image/multiplecharacters/)，实现 generate 请求、V4 caption 与 ZIP/JSON base64 响应。当前官方适配范围为 V3/V4/V4.5，未声称支持所有官方型号或执行过官方真实请求。第三方中转路线透传官方 NovelAI 协议，提供“采用官方协议透传配置”快捷入口。中转连接仍显式保存模型/参数能力与响应格式；若中转改写响应或限制模型/参数，可按其说明调整，不自动假设所有中转完全相同。未提供/使用实际站点地址与密钥，本地兼容证据不等于真实中转请求证据。
 
 ### Completed
 

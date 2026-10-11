@@ -37,7 +37,7 @@ Scripted 的原六次 request / 两次 repair 是产品行为契约；早期 1�
 
 未接 bridge 的 Model readiness 保留全部 pair 槽并标 unavailable，不替换成 scripted；已接 bridge 的测试不以旧有限 pilot/token 数值缺失返回 budget_blocked。
 
-`tests/agent-intelligence/live.mjs` 是明确配置的本地 live consumer：私有连接文件含 apiKey、endpoint、model、tokenizer / context guard、按任务配置的 output 和 timeout。按用户纠正，endpoint 可为 `/v1` / `/v1/` base，由 evaluator 创建原 Native connection 时拼接一次 `/chat/completions`；既有完整 endpoint 不再拼接。base 配置有新的 identity，早先完整 endpoint 的报告不改写。只接用户明确提供的测试连接，不发现其它 Secret / route。RP 沿原 GenerationService / PromptCompiler / RouteResolver / HTTP provider，Project 沿原 NativeGenerationHost 与真实 isolated Studio task；RP 多轮只传 public role / content / tool pairing，过滤 Director presentation metadata 与 private reasoning。测试沿现有显式模型连接执行；必要 transport retry 按实际问题处理并计数，产品路由权限沿原契约。
+`tests/agent-intelligence/live.mjs` 是明确配置的本地 live consumer：私有连接文件含 apiKey、endpoint、model、tokenizer / context guard、按任务配置的 output 和 timeout。endpoint 可为 `/v1` / `/v1/` base，由 evaluator 创建原 Native connection 时拼接一次 `/chat/completions`；既有完整 endpoint 不再拼接。base 配置有新的 identity，早先完整 endpoint 的报告不改写。只接显式配置的测试连接，不发现其它 Secret / route。RP 沿原 GenerationService / PromptCompiler / RouteResolver / HTTP provider，Project 沿原 NativeGenerationHost 与真实 isolated Studio task；RP 多轮只传 public role / content / tool pairing，过滤 Director presentation metadata 与 private reasoning。测试沿现有显式模型连接执行；必要 transport retry 按实际问题处理并计数，产品路由权限沿原契约。
 
 工程 API 测试见 [Governance §13.1](../../../README.md#131-api-测试执行规则)；本模块只管理试验设计与产品行为契约。
 

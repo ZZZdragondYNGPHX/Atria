@@ -66,8 +66,8 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [research.md](research.md) | 一手资料复核、证据边界、原研究需要收窄的推论 | 原研究、baseline |
 | [architecture.md](architecture.md) | 六 Plane 与语义 / 复用 / 计算 / 路由 / Memory 连接、证据 / 认知 / World Tick 边界 | baseline、decisions |
 | [delivery.md](delivery.md) | 40 个候选实施阶段、HM1–HM3 有限工作包、依赖、实际交付与验收 | architecture、research |
-| [decisions.md](decisions.md) | 本对话已确认选择、推荐方案、待讨论和批准记录 | index |
-| [m1-acceptance.md](m1-acceptance.md) | M1 当前测试执行、自动化工程验收与历史结果；生产 human gate 不变 | m1-evolution、s10-evolution、用户本轮确认 |
+| [decisions.md](decisions.md) | 架构选择、建议与待定事项 | index |
+| [m1-acceptance.md](m1-acceptance.md) | M1 当前测试执行、自动化工程验收与历史结果；生产 human gate 不变 | m1-evolution、s10-evolution、当前阶段范围 |
 | [m1-feedback-evaluation.md](m1-feedback-evaluation.md) | U13确认的原链路反馈来源、根因/干预分离、质量/案例/评价版本契约及双域试点工作包；F1/F2前置范围完成；F3一次双域试点未准入promotion，M1 pending；当前结果见feedback§15/同一Record | S05、S10、m1-acceptance、领域扩展研究 |
 | [m1-evolution.md](m1-evolution.md) | 首批双入口成长、局部自动启用与恢复的具体讨论设计 | architecture、decisions |
 | [s01-baseline.md](s01-baseline.md) | S01 的具体案例、报告契约、预算、验证和退出条件 | decisions、当前代码入口 |

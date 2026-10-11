@@ -13,7 +13,7 @@
 `generation_execution_failed`，诊断截图只有 frontend/request HTTP 200。
 核对实例 source revision 与两条路由均正确，当前失败已不是前次缺失路由。
 
-用户明确授权发送专用测试 API。测试使用独立临时 FS authority、精确 3.0.0 Package
+实际调用专用测试 API。测试使用独立临时 FS authority、精确 3.0.0 Package
 和非 Secret 配置；Secret 只在授权请求的内存 send boundary 中使用，未输出或提交。
 未推进用户的真实 Session。
 

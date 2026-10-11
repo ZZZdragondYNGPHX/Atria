@@ -8,7 +8,7 @@
 `0-call first → 1 main generation for ordinary RP → evidence-driven escalation`
 
 “0-call”指不新增生成模型调用，不代表 embedding、索引、CPU / GPU 或检索没有成本。已有状态、authority、图遍历、规则和确定性编译优先；正常 RP 以一次主要正文生成作为架构目标。
-这不是已测 SLO，也不要求 Project 的多步工具任务只运行一次模型。用户明确选择的 Director、Package 必需 resolver 或高影响任务可有更多调用，但须标明依赖、预算和收益；必要 authority / knowledge / output guard 始终保留。
+这不是已测 SLO，也不要求 Project 的多步工具任务只运行一次模型。显式启用的 Director、Package 必需 resolver 或高影响任务可有更多调用，但须标明依赖、预算和收益；必要 authority / knowledge / output guard 始终保留。
 M1 的当前基线如实记录，不为了达成 one-call 指标改写既有 execution contract。
 
 | 路径 | 触发 | 额外工作 |

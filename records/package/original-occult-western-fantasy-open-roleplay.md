@@ -23,7 +23,7 @@
 
 ### 已完成
 
-读取完整Governance与相关工作空间规则，确认远端main／package／docs基线，原工作树干净。根据用户明确建分支指令，从package创建上述任务分支；未修改main或稳定package。
+读取完整Governance与相关工作空间规则，确认远端main／package／docs基线，原工作树干净。从package创建上述任务分支；未修改main或稳定package。
 
 用户HTML／TXT原样存入任务分支frontend/references/open-roleplay，并补来源／hash说明，提交为d7be6f1abff4d9d756f2dfa24c5492104e72aa75。该提交不改真实游戏前端、运行契约或旧发布。任务分支已推送并跟踪同名origin分支。
 
@@ -31,7 +31,7 @@ docs下建立8模块Plan Bundle，保存批准方向、体验、世界超凡、�
 
 ### 关键决定
 
-产品方向详见Plan decisions，不在Record复制第二套详细规则。Primary Workspace是package；用户明确要求建工作分支，后续阶段沿用并最终集成package。Core支持只有Phase 1确认需要时建立main派生辅助分支，同一Task ID、同一Record。
+产品方向详见Plan decisions，不在Record复制第二套详细规则。Primary Workspace是package；使用工作分支，后续阶段沿用并最终集成package。Core支持只有Phase 1确认需要时建立main派生辅助分支，同一Task ID、同一Record。
 
 当前阶段仅企划／参考归档。下一阶段做实际契约核对与实施设计，不直接开始代码。不复读所有历史Plan，不恢复旧固定调查／长生默认约束。
 
@@ -146,7 +146,7 @@ MySQL/PostgreSQL 本地服务未启动；最终明确禁用这两套 harness，�
 
 辅助分支按分阶段交付保留，main 未动；当前主线没有这组新能力。Phase 3 使用上述精确 tested Core checkout 接入 Package，主线集成按后续阶段安排，项目验证仅本地最小相关；MySQL/PostgreSQL 等额外检查只随实际风险决定，不预设为阶段阻塞条件。游戏原任务分支、旧发布、方向和 Phase 0/1 记录保持原样。
 
-### 用户最新工作约定
+### 工作范围
 
 用户于本阶段交付时更新 AGENTS.md 指令并明确替代此前提供的 AGENTS.md 指令：**每阶段及任务完成时，只在本地执行最小相关验证。** 已同步唯一 HANDOFF 和当前 Plan 路由；不主动启动、等待或依赖远端 CI/GitHub Actions。推送后远端 refs 复核只属于发布确认。已执行本地阶段检查保持真实记录，无需为旧默认流程追加远端或无关验证。
 
@@ -202,7 +202,7 @@ node tools/package.mjs validate --fixture --core /home/henry/Projects/Atria-core
 
 默认编译的 neutral Native shell 仅支持内容容器验收，实际问答/故事阅读/建议草稿/抽屉/保存/终局交互留 P4。没有新 `.atria` 输出，不合并 main 或 package，不运行/等待远端 CI。阶段发布只推当前游戏任务与 docs refs，保护无关 dirty；Record/HANDOFF 继续唯一。
 
-下一次用户明确继续时仅 Phase 4：按 frontend/玩家体验/已实施运行接口和 UI 验证路由接真实 Native 前端，使用上述 tested 组合；沿用当前任务分支，完成最小相关本地检查后提交推送并停止。Core/main、game/package 最终集成及新发布留 P5。
+下一阶段为 Phase 4：按 frontend/玩家体验/已实施运行接口和 UI 验证路由接真实 Native 前端，使用上述 tested 组合；沿用当前任务分支，完成最小相关本地检查后提交推送并停止。Core/main、game/package 最终集成及新发布留 P5。
 
 ## Phase 4 真实 Native 前端
 
@@ -276,7 +276,7 @@ UI harness 暂停自动后台派发以专注交互，P3 自动派发证据保持
 
 旧发布 v1/v2 与参考 HTML/TXT SHA-256 均保持 P0/P3 值；历史 frontend/源码/发布未覆盖。Core AGENTS.md、docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 的无关 dirty 全部保留。只推送原游戏任务/Core 辅助/docs refs；不 merge main/package、不建新 .atria、不启动/等待远端 CI。
 
-下一步用户明确继续时仅 Phase 5：核对精确待集成 refs 与工作树，按 staging/verification 完成实际影响所需本地兼容和最终组合验证，再集成 Core main / game package、创建新版本输出并按治理交付。沿用唯一 Record/HANDOFF，完成整体任务后再移除 live HANDOFF/短期分支。P4 更新同一文档并推送后停止。
+下一阶段为 Phase 5：核对精确待集成 refs 与工作树，按 staging/verification 完成实际影响所需本地兼容和最终组合验证，再集成 Core main / game package、创建新版本输出并按治理交付。沿用唯一 Record/HANDOFF，完成整体任务后再移除 live HANDOFF/短期分支。P4 更新同一文档并推送后停止。
 
 ## Phase 5 集成、版本化与收尾
 

@@ -258,7 +258,7 @@ D1：沿已确认的 M1 范围与局部自动启用设计，收敛 scope / 权�
 - 中断留下的 capturing marker 可重启检查 incomplete，不自动恢复模型执行或 authority 写入。capsule-only / 其它未绑定正文模式、legacy 无 source ID 或未保存输出显式 incomplete；Director 完成只绑定同一已保存 variant。metadata captured 不证明完整 upstream retry、效果 / 费用达标或 publication 权限。scope 删除使 currentness 失效；lesson / feedback 级联与 retention 留待 S05。
 - Project task durable state / recovery 未实施，仍由 S04 交付；Reasoning Continuity 不透明 payload 留在 M8 / G01–G06。M1 尚未完成，不合并 main、不删除本组任务分支。
 - main AGENTS 与 docs README / WEB Adapter / 两模板既有 dirty 未暂存 / 提交；整理记录前后文件 hash 一致。其它工作树 Experience 草稿 / reference 未读写；无第二份 Record / HANDOFF。并发 D3 与前序 Record 逐字保留。
-- 下一正式阶段仅 **S04**：Git → HANDOFF → index / decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project 与存储 → 本 Record；沿同一分支细化 Project task / attempts / timeline / recovery，复用 Studio authority / receipt。仅下一阶段用户明确续接后开始；本轮到 S03 记录 / push 停止。
+- 下一正式阶段仅 **S04**：Git → HANDOFF → index / decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project 与存储 → 本 Record；沿同一分支细化 Project task / attempts / timeline / recovery，复用 Studio authority / receipt。本轮到 S03 记录 / push 停止。
 
 ## D4 — Execution Reuse / Cache Locality / Adaptive Invocation 企划整合
 
@@ -390,9 +390,9 @@ API / Schema / key、容量 / TTL、完整依赖覆盖、semantic threshold、�
 - Comparison v1 严格容量 / schema / coverage / refs / fixture / input / rubric / settings / source / request / outcome / summary 校验；pin 实际源码字节与 HEAD。每次 invocation / trial / request ID 独立，不共享可变状态；模型比较先持久化完整独立 baseline，随后跑 candidate。预算 / 执行失败保留所有槽位与缺失。
 - Project 工具仅经 exact Project / task 的有限 GET / POST 接线；Commit / publication / foreign Project / DELETE / 网络和未知路径拒绝。fixture reviewer 只在模型 Review 后向临时副本 Commit / replay；无关 Project canary 前后 hash 相同。模型不获正式生产写入权。
 - NativeSaveSystem exportSession、原已安装 Package exact archive、importSave 与 SessionCore 校验同 revision 的两个独立副本，candidate append / stale CAS 与来源 / baseline 不变。这是副本隔离验证，未接生产 Session generation replay。RP 生成使用原 Director 与 synthetic task context，fixture 可见历史不是 Memory resolver。
-- 原 Native Prompt persistence / immutable library / resolver / compiler / HTTP provider 接用户明确测试 connection；Project 接原 NativeGenerationHost 与隔离 Studio task。RP 多轮去除 Director presentation / reasoning metadata，保留 public tool pairing；单条 tool 与完整 Studio loop 的原 Host 接线有本地回归。真实 Project 读取结果被误当 task、repair seed 使用错误 tool 字段、显式分段 Skill read 被过窄路由拒绝先暴露失败；修复后 read / bounded Skill read / write / reset / Review 完整原 Host 测试通过。
+- 原 Native Prompt persistence / immutable library / resolver / compiler / HTTP provider 接专用测试 connection；Project 接原 NativeGenerationHost 与隔离 Studio task。RP 多轮去除 Director presentation / reasoning metadata，保留 public tool pairing；单条 tool 与完整 Studio loop 的原 Host 接线有本地回归。真实 Project 读取结果被误当 task、repair seed 使用错误 tool 字段、显式分段 Skill read 被过窄路由拒绝先暴露失败；修复后 read / bounded Skill read / write / reset / Review 完整原 Host 测试通过。
 - `live.mjs` 明确读取 Git 外的私有 connection，输出 / progress / 独立 baseline 新文件；ledger exclusive writer lock 与原子持久化在 send 前生效。`EvaluationBudget` 全流程累计 model / retry / fallback / grader、每 trial 最多六次普通 sends；未知 / 取消 / failed usage 保留预留，restore 不重置、过量实报记账并封锁后续发送。
-- 初始建议 120 / 250000 / output 1024，后用户明确 API hard cap 每日2000 / 20 RPM。显式 budget override 保留旧账、当前 finite guard 252 / 1000000、output1024；持久 rate checkpoint / 3.15秒 admission 间隔不超过20RPM。初轮 timeout 60 秒，获知首字慢后改为 300 秒，不重置已发送计数。不提交凭证、headers、原始 provider body、报告或本地配置；私有 key 仅 send boundary 读取。local tokenizer / context guard 不宣称 Gemini 精确能力。
+- 初始建议 120 / 250000 / output 1024，实际 API hard cap 每日2000 / 20 RPM。显式 budget override 保留旧账、当前 finite guard 252 / 1000000、output1024；持久 rate checkpoint / 3.15秒 admission 间隔不超过20RPM。初轮 timeout 60 秒，获知首字慢后改为 300 秒，不重置已发送计数。不提交凭证、headers、原始 provider body、报告或本地配置；私有 key 仅 send boundary 读取。local tokenizer / context guard 不宣称 Gemini 精确能力。
 - Blind pair human observation 有 exact artifact / envelope binding 与每 pair ≤3 judges；分歧 awaiting_review。未运行行为评分不填零或通过；单次 blind model judge 已实现严格 typed observation / confidence / score / 实际共享 grader charge；不改写原 S01 behavior slots，human preference / 多 judge 分歧仍未观测，promotion thresholds 未定稿，不赋予 publication eligibility。可用原 Director scripted graph，仅此；其它等价 ablations unavailable。
 
 ### Minimal local validation
@@ -405,7 +405,7 @@ API / Schema / key、容量 / TTL、完整依赖覆盖、semantic threshold、�
 
 ### Real observations
 
-测试模型为用户明确提供的 OpenAI-compatible `gemini-3.8-flash`；初期与完成运行使用完整 generation endpoint。后用户纠正为 `/v1` base，最后一个提交只补 evaluator 的一次拼接与两种 base 变体回归；历史模型报告不改写。Gemini final pilot / 完整比较 / judge 在最终实现上重新 strict validate通过，以下 hashes 为完整报告 canonical hashes，不是文件字节 hash。
+测试模型为原配置的 OpenAI-compatible `gemini-3.8-flash`；初期与完成运行使用完整 generation endpoint。后用户纠正为 `/v1` base，最后一个提交只补 evaluator 的一次拼接与两种 base 变体回归；历史模型报告不改写。Gemini final pilot / 完整比较 / judge 在最终实现上重新 strict validate通过，以下 hashes 为完整报告 canonical hashes，不是文件字节 hash。
 
 | 保留报告（Git外 artifacts目录） | 实際 sends | tokens / 知识边界 | 执行观察 |
 | --- | --- | --- | --- |
@@ -432,7 +432,7 @@ API / Schema / key、容量 / TTL、完整依赖覆盖、semantic threshold、�
 
 Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory candidate（.8，promise 4 vs 3）；rp_variant invalid_response，无分数；Project三个tie（confidence 1，intent 4/4、conflict 3/3、repair 4/4）。这是五次model observations；无人类labels、无独立多judge分歧证据，malformed响应需审阅，不能证明稳定改善。原S01 behavior保留not_run；Comparison empiricalReady=false、JudgeReport promotion=ineligible，价格 / costDelta / latencyBenefit不可知。S06完成隔离执行与报告消费，不表示候选晋升、M1整体或自动启用完成。
 
-第二个 `claude-haiku-4-5` 连接由用户明确补充，未知RPM采用单请求串行至少10秒间隔、独立配置与receipt，三个探针不混进Gemini trials / scores。连接曾成功，最终base配置请求为524；不承诺站点稳定性或模型工具能力。首个失败保留，第二次用原已安装undici的30秒connect timeout，未安装依赖或改变lockfile；第三次只核对用户纠正的base接线，停止附加重试。
+第二个 `claude-haiku-4-5` 连接作为备用接入，未知RPM采用单请求串行至少10秒间隔、独立配置与receipt，三个探针不混进Gemini trials / scores。连接曾成功，最终base配置请求为524；不承诺站点稳定性或模型工具能力。首个失败保留，第二次用原已安装undici的30秒connect timeout，未安装依赖或改变lockfile；第三次只核对用户纠正的base接线，停止附加重试。
 
 本地Git config `atria.s06.connection` / `ledger` / `artifacts` / `limits` / `secondaryconnection`仅存Git外位置，不把值写入文档。两份private config mode600，Secret仅本地保留；公开报告不含credentials、headers、原始provider response body，所有输出新文件、共享writer lock已释放，rate checkpoint与账本保留。最终docs检查覆盖本任务七文件、82个内部links / 两个锚点、40阶段依赖与D0–S05原Record文本不变、五份既有dirty hashes不变；product / docs staged diff与两条实际key扫描通过。
 
@@ -716,9 +716,9 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - **M1 pending / 不集成。** 已有主模型一对回归与partial token增加，且完整九对 / 两模型 / Project与真实publication闭环尚缺。用户无需自行验证 / 重发API来解释本轮中断；恢复前先核对provider usage / output limit与保守reservation口径，保留所有charges及sticky，需明确预算复核规则，不能自动清除保护继续付费。生产human / price gate不变，human未观测。
 - 本轮只做相关本地checks：原consumers6 /partial1、retry最终6、parser2及相关工程helper定向；Node20.20.2固定worker加载与触及lint /diff。无full tests /build /新browser /external DB /Android /真机 /CI，不读reference。五个protected dirty hashes保持，未暂存治理 /模板；本轮更新同一Record /live HANDOFF与m1-acceptance状态、最小文档检查后commit /push docs并停止，不进入S11 /G。
 
-## M1 — 用户明确仅API调用硬限 /继续验证（2026-10-08）
+## M1 — API调用硬限与持续验证（2026-10-08）
 
-- 用户明确无token要求，真实测试API仅每日2000次 /20RPM硬限，其它建议预算超出立即通知且继续。此授权覆盖前轮sticky token超报的停止规则，保留332 /1305716所有旧entries /carry /breached与5389unknown，不清账、不下调报告用量；token增加不再作为M1工程验收失败条件，行为 /authority /双模型门槛保持，生产原预算 /human /price gate不改。
+- 真实测试API仅每日2000次 /20RPM硬限，其它建议预算超出立即通知且继续。token超报不触发停止，保留332 /1305716所有旧entries /carry /breached与5389unknown，不清账、不下调报告用量；token增加不再作为M1工程验收失败条件，行为 /authority /双模型门槛保持，生产原预算 /human /price gate不改。
 - Test-only EvaluationBudget显式advisory模式保留默认strict行为；私有fixture subclass沿原owner queue /schema /storage做真实reserve /settle，不建立新production authority。原repo源码不改，旧私有owner不清breach；新测试owner按新无token硬限语义记录费用。shared CLI quota覆盖两连接与全部sends、最少3150ms，滚动一分钟20与滚动24小时2000硬限、request IDs /timestamps持久；初始化单一332 aggregate carry，不伪造旧timestamps。
 - RP复用原source6c真实付费、冻结proposal：核对original value /rationale /target /base与原公开feedback，报告原source charge provenance，不新增提炼费，不输入promotion输出。重新完整九对，不导入前轮八对拼资格；Project仍独立原feedback提炼。四套19tests passed（quota4 /recovery4 /engineering5 /retry6）、七文件lint /diff通过；source `c997086bd49c2f8a9c875cded65e6ad529f93442`已commit /push。两个入口零send prepare通过、原332 /1305716与breached保持、quota持久初始化；随后沿同一账本继续真实执行，超建议只通知、不停止。
 
@@ -757,7 +757,7 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 
 ### 最终预算、最小本地检查与集成结论
 
-- 最终累计 **529requests /2063807记账tokens**，包含丢失旧guard historicalCarry252 /1000000；恢复期277sends，其中271provider_reported、6unknown共20542上界，pending0，旧breached=true历史标记保持。前轮HTTP524 unknown5389与c997 transport unknown5217未覆盖。用户最新授权期从332开始新增197sends /758091，超建议仅通知继续。
+- 最终累计 **529requests /2063807记账tokens**，包含丢失旧guard historicalCarry252 /1000000；恢复期277sends，其中271provider_reported、6unknown共20542上界，pending0，旧breached=true历史标记保持。前轮HTTP524 unknown5389与c997 transport unknown5217未覆盖。该阶段统计窗口从332开始新增197sends /758091，超建议仅通知继续。
 - shared quota aggregate carry332 +197实际admissions=529，所有新request IDs与同一账本一一对应；最短admission间隔3151ms、滚动一分钟峰值10、滚动24小时含保守carry峰值529，均满足2000 /20硬限。carry不是伪造旧timestamps或精确当天实际调用统计。两个owner所有attempts与共享账本id /tokens一致、无reserved；独占lock已释放。
 - 私有comparison summary SHA256 `9df6bf648b7775e5c9a7ca2c9a417d168128d6cca7972c7c73bf4365ddcbb3e2`；最终Project lifecycle summary `25b2e01281521719dc3879f6c4954a742bf16eea36f9fc9e928eb07ce9d57b39`；累计ledger `50ee44cbde864fc03cf5e556f98018d2e6c048086c7803ed9d06fef271fbdab1`；quota `837f31d47ba55dea281c81badbbaded4328e78132c7c7f4e2afdb31d49f1a1c6`。详细audit私有保存，不提交connection /endpoint /credential /私有路径。
 - 恢复相关最终 **2 distinct local tests passed**：冻结Secret port选模型 /unknown拒绝；保存Project重开、report tamper拒绝、双Route歧义零send、原funded evaluator /Host真实fake send、exact Prompt /model漂移拒绝、Host activation与rollback。最初funded fake测试遇fixture集中reserve的未来timestamps /10秒timeout，测试仅推进mock时钟后通过；实际账本 /rate时间未改。此前九项retry /response与19项budget /quota等证据保持各自source，不重复累加。全部本次触及文件ESLint /diff通过；没有full tests /build /新UI /Android /真机 /external DB /CI，不读reference。
@@ -800,7 +800,7 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - 第一次baseline RP三对双模型完整，但一致候选胜仅1/3，memory第二模型判baseline/-2 knowledge boundary。Project-only续接只补尚无有效pair的Project：authoring/conflict两对主模型均baseline，conflict原checks也失败；repair无有效pair，Project无有效第二模型观察。两partial只用于诊断，不计完整baseline/验收，不重跑旧候选或已有效评分。
 - bounded恢复修复Windows loader file URL、HTTP200 header后body timeout的单次失败归因、DOMException numeric code包装，以及只续接unfinished development slots。每attempt仍原Route四分之一/最多80秒、最多两追加funded sends/10秒backoff；原300秒Route不改。transport checkpoint从555原始私有snapshot按79实际ledger/raw responses精确重放，替代两次此前无request-ID的歧义手动重分类，旧state/手动备份/重放audit全部另存。失败、unknown、费用和历史stopped窗口不清除；当前连接停止检查不被旧临时候补窗口误挡。
 - 9f的新Project提炼连续三次HTTP200但`finish_reason=length`且JSON截断，均请求1024，provider每次prompt644/completion39—41/total1664。每次完整记账1664，不用小分项覆盖total，不修复或接受截断value；差值1024吻合输出限，但本次无reasoning breakdown，不能断言隐藏部分确切组成。三次不完整按原规则停止primary。Step一次HTTP404，unknown8741保留，配置错误立即停止；未保存error body，只能确认404，不能把旧group诊断套用于此次，也不能声称已验证model/channel根因。
-- 用户随后明确将截断响应输出上限提高至8000；同一Plan追加单次Project extraction-only补测。test-only沿原compiler/resolver/provider与原owner reserve/settle，冻结提炼快照和wire max_tokens=8000；新持久extraction-output:8000窗口只代表实际输出配置变化，旧1024 stop和Step404窗口保留，同配置restart不换窗口。production/native comparison1024边界不改，没有重试旧有效评分或Step404。该补测f6ac一次成功，finish_reason=stop、JSON完整，usage prompt641/completion139/total1673，按total照录，无retry。
+- 截断响应输出上限提高至8000；同一Plan追加单次Project extraction-only补测。test-only沿原compiler/resolver/provider与原owner reserve/settle，冻结提炼快照和wire max_tokens=8000；新持久extraction-output:8000窗口只代表实际输出配置变化，旧1024 stop和Step404窗口保留，同配置restart不换窗口。production/native comparison1024边界不改，没有重试旧有效评分或Step404。该补测f6ac一次成功，finish_reason=stop、JSON完整，usage prompt641/completion139/total1673，按total照录，无retry。
 - 新Project提案针对直接使用已提供contract、明确review状态、只stage请求变更、revision conflict即停且不silent rebase，包含缺contract/schema错误时允许targeted lookup的反例。value hash `40744a932718465fbb10cb3f81625771c78ca4faa2aabb36e156d47b029924aa`。目前只保存为proposed/not_validated；提案没有原`Original style.`文本，必须在下一明确有限周期检查base保留与development回归，不能冒称最小局部修复已验证。原comparison窗口和Step仍stopped，本轮不送新trials或promotion、不借旧闭环给新提案；该summary unavailable/evaluation_unavailable表示未完成比较，不表示这次提炼失败。
 - 9f immutable summary的RP status误为development_observed，实际Step观察unavailable；在此更正为development_incomplete，旧summary不覆盖。最终helper6c以后按有效charge/preference判断status。零send prepare在6c两入口prepared，仅说明准备快照合法，ledger/quota/rate/transport四文件字节hash前后不变，不表示API可用。
 
@@ -870,7 +870,7 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 
 ### 2026-10-09 第二模型单次可用性检查
 
-用户要求检查第二模型，不能调用则暂时放弃该API；同一Plan §8在请求前固定一次真实评分形态诊断、无retry、不计评分、不清stop或新增epoch。从701/2717515续接；source `63dc0fd44` 已commit/push。CLI增加显式failed-report来源，沿原compiler/resolver/provider与owner/shared资金记录，复用97a1最终Project authoring pair、原shuffle/messages，输出8000。先前两次前置校验均零发送：HTTP代码被provider包装为generation_provider_failed，且onPair中间捕获的hash与final report身份不同；改为读取原transport状态及实际独立评分所消费的final report pair后才发唯一请求。私有零send报告仍保留，不将它们算API失败。
+第二模型不可调用时暂缓该API；同一Plan §8在请求前固定一次真实评分形态诊断、无retry、不计评分、不清stop或新增epoch。从701/2717515续接；source `63dc0fd44` 已commit/push。CLI增加显式failed-report来源，沿原compiler/resolver/provider与owner/shared资金记录，复用97a1最终Project authoring pair、原shuffle/messages，输出8000。先前两次前置校验均零发送：HTTP代码被provider包装为generation_provider_failed，且onPair中间捕获的hash与final report身份不同；改为读取原transport状态及实际独立评分所消费的final report pair后才发唯一请求。私有零send报告仍保留，不将它们算API失败。
 
 实际run `run-1791478981173-3c395953`：成功返回 `step-5-preview`，finish_reason=stop，完整JSON含preference/deltas/rationale，无截断；provider usage input1426/output2175/total3601，其中reasoning2085。charge `28356b4d-fcc9-4b0e-8fc1-a45f62dae930`，request hash `97b928e35d6ae493fec2712a9dcb71a8ba91f90c204d95db1441be242acbb260`；原pair hash `980ed007cba27f563c5bc2b357c58c7316733269a25799513b8383a2e37e7284`，messages hash `1a90d1b35747052e67404ba26785d60e640acc13fd69c523f88ab783605192a7`，summary byte SHA256 `002ee7cc00de1a51a8e65a6b098a63b01f1d3d71a619bd95043a8a284d02f6e0`。新隔离fixture配置identity不同，完整configuration hash不相同；只称原评分内容/形态复现，不称整份旧快照复用。CLI exit1来自M1 accepted=false，不代表此次HTTP调用失败。
 
@@ -880,7 +880,7 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 
 ### 2026-10-09 必要来源读取修复的有限实测周期
 
-用户再次要求继续任务，Plan §9在实测前固定一次双入口新局部候选/各三个development pair及双模型观察，保留原正式九对/六一致胜门槛。真实初始账目702/2721116，main仍ed1fd90521a63363e29856601abbf5e908c99d10，product沿feat/agent-intelligence-runtime；五无关dirty docs保护。不读写reference、不进入S11/G。
+Plan §9在实测前固定一次双入口新局部候选/各三个development pair及双模型观察，保留原正式九对/六一致胜门槛。真实初始账目702/2721116，main仍ed1fd90521a63363e29856601abbf5e908c99d10，product沿feat/agent-intelligence-runtime；五无关dirty docs保护。不读写reference、不进入S11/G。
 
 Product `a61b249ef71f108d279ec7bd883fb5eeae97a463` 已commit/push并作为唯一paid source：原提炼instruction明确tool schema不等于已取得完整authoritative source，不能省略构造/校验改动所需读取；本轮公开technical反馈来自97a1实际development及旧RP已保存development弱点，经原Experience correction/reflection/diagnosis与原evaluator/targets生成，agent-authored synthetic diagnosis不冒充human preference。继续局部edits确定性保留base，声明边界/CAS/生产gates不变；相同正文或未改base直接拒绝重测，不以重复评分追分。
 
@@ -923,11 +923,11 @@ Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229
 
 用户准备在另一台设备调整方向，先让AI调研再优化，并明确确认删除对象是GitHub私有仓库 `ZZZdragondYNGPHX/Atria-Dev`，不是产品仓库Atria或本机工作区。已备份3914个当前Document文件、五个无关dirty docs原始字节及私有仓库Git bundle；全部包内文件逐项SHA256验证，bundle在空仓库verify确认为complete history，取得全部九个远端heads及两个tags（bundle也保存本地/remote/HEAD refs）。本机包目录仅当前用户访问，凭证只在私有包/Document，不提交Git。接手说明明确bundle中旧Git快照不能替代当前Document/761账目，恢复时用包内最新Document覆盖克隆所得旧Document，local keys/ACL按新设备重绑定，报告/账目/窗口不清零；五dirty草稿保持单独来源。
 
-首次删除因现有GitHub凭证缺delete_repo scope返回403。启动当前账号授权流程，用户明确回复已授权，认证完成后权限生效；再次删除exit0，同账号GET该精确repo返回404，产品 `ZZZdragondYNGPHX/Atria` 仍可访问，删除完成。本机私有仓库/迁移包和产品工作区保留。没有额外模型请求，M1仍761/2939582，不合并main、不进入S11/G；下一设备先调研真实反馈/案例来源及方向，再正式更新同一Plan与有限验证范围，不重复旧合成测试追分。
+首次删除因现有GitHub凭证缺delete_repo scope返回403。启动当前账号授权流程，认证完成后权限生效；再次删除exit0，同账号GET该精确repo返回404，产品 `ZZZdragondYNGPHX/Atria` 仍可访问，删除完成。本机私有仓库/迁移包和产品工作区保留。没有额外模型请求，M1仍761/2939582，不合并main、不进入S11/G；下一设备先调研真实反馈/案例来源及方向，再正式更新同一Plan与有限验证范围，不重复旧合成测试追分。
 
 ### 2026-10-09 本机来源、行为失败与案例隔离调研（待讨论）
 
-用户要求先调研、讨论确认方案后正式开工。本轮只核对状态、阅读相关代码/报告和一手评测资料，不修改产品或冻结Plan，不发模型请求、不重跑已指导修改的v1，不进入S11/G。
+这一阶段先调研并确定方案。本轮只核对状态、阅读相关代码/报告和一手评测资料，不修改产品或冻结Plan，不发模型请求、不重跑已指导修改的v1，不进入S11/G。
 
 用户说明手动删除本地Document并粘贴另一设备Document。初始本地product907cf1e87/docs994cd6e92落后，Git不存在a61b对象；实际私有账本已为761/2939582。只读远端refs确认product a61b249ef71f108d279ec7bd883fb5eeae97a463、docs eec940273c78db6db2557fb7bc798a71f422fc06和main ed1fd90521a63363e29856601abbf5e908c99d10；fetch后读取最新HANDOFF→index→acceptance §9/S10→同一Record，再将两个任务工作树仅fast-forward，main保持。远端docs只变更HANDOFF、acceptance、Record，未触及四份dirty草稿；五个本地dirty文件建立字节保护基线。
 
@@ -942,7 +942,7 @@ Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229
 
 一手资料：[Anthropic评测实践](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)区分能力提升与回归套件，要求结合transcript/outcome审查评分和任务歧义，强调简单case饱和后需要更新任务；[τ-bench论文](https://arxiv.org/abs/2406.12045)以最终authority状态验证目标并用重复试验衡量一致性，其用户为模型模拟，不能冒称真人观察。本轮只采用方法论，不导入外部benchmark或新评测平台。
 
-待讨论建议（非批准/冻结）：优先从原保存RP episode、Studio Task/正式receipt、有效Experience反馈与validation/repair记录选择任务；如无合格真实材料，由agent在隔离副本执行用户确认的代表性工作负载，明确标注agent-authored/synthetic。按原始episode、Project、任务模板/派生关系分组划分development/独立验收，禁止同一失败换名进两集，禁止独立验收输出回流本轮提炼。旧v1转为历史回归证据，不再作为收益目标；新case/input/source/rubric revision在候选与付费前固定，并用免费正/负/unknown controls证明可判别且可完成。每入口一个局部target、一次候选提炼与一次development；达标才原三场景×三重复/九对六一致胜、其它一致tie、重要维度非负及原publication/消费/rollback。API8000输出、2000/day/20RPM、全部失败/unknown记账、token建议通知后继续保持；具体send envelope在用户确认后再正式固定，不追加本轮实验。
+待讨论建议（非批准/冻结）：优先从原保存RP episode、Studio Task/正式receipt、有效Experience反馈与validation/repair记录选择任务；如无合格真实材料，由agent在隔离副本执行范围内的代表性工作负载，明确标注agent-authored/synthetic。按原始episode、Project、任务模板/派生关系分组划分development/独立验收，禁止同一失败换名进两集，禁止独立验收输出回流本轮提炼。旧v1转为历史回归证据，不再作为收益目标；新case/input/source/rubric revision在候选与付费前固定，并用免费正/负/unknown controls证明可判别且可完成。每入口一个局部target、一次候选提炼与一次development；达标才原三场景×三重复/九对六一致胜、其它一致tie、重要维度非负及原publication/消费/rollback。API8000输出、2000/day/20RPM、全部失败/unknown记账、token建议通知后继续保持；具体send envelope在范围确定后再正式固定，不追加本轮实验。
 
 迁移权限核对发现本机Document目录755、连接配置/ledger644，与原私有700/600不符。只恢复目录700/普通文件600，符号链接不跟随；文件内容及五累计状态SHA保持，原Git exclude有效、Document无tracked文件。首次exclude核对误在docs工作树对外部绝对路径执行git ls-files导致只读命令报错，改在Document所属core工作树核对后通过；未读写reference或产品配置内容。
 
@@ -964,7 +964,7 @@ Paid summary byte SHA256 `731a9c0b019fafc631b3e35a117bea035d1259cbcbb37d34314229
 
 ### 2026-10-09 原链路反馈与评价契约 F0（设计完成）
 
-用户明确选择“先明确原链路的反馈与评价契约，再用各一个 RP、Project 试点验证”，已记U13；批准先后方向，具体逻辑字段/工作包是授权范围内工程细化，不冒称逐字段用户确认。Start docs `56151bfb8c0eff40e00b4234add851b4bbd82afa`；product `a61b249ef71f108d279ec7bd883fb5eeae97a463` clean，main `ed1fd90521a63363e29856601abbf5e908c99d10`，五无关dirty保护。本轮按actual Git→HANDOFF→index→acceptance §9/S10→同一Record及S05/直接源码核对，没有重新全量调研或读取reference。
+反馈与评价契约先于 RP、Project 试点验证，具体逻辑字段/工作包为该范围内的工程细化。Start docs `56151bfb8c0eff40e00b4234add851b4bbd82afa`；product `a61b249ef71f108d279ec7bd883fb5eeae97a463` clean，main `ed1fd90521a63363e29856601abbf5e908c99d10`，五无关dirty保护。本轮按actual Git→HANDOFF→index→acceptance §9/S10→同一Record及S05/直接源码核对，没有重新全量调研或读取reference。
 
 正式补充设计保存于原Bundle的 [m1-feedback-evaluation](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md)，并在index/decisions/M1/S05/S10/delivery/acceptance中路由，详细新规则只保留该模块一份，原生命周期/部署/生产gate/工程门槛仍由原模块管理。修正acceptance页首过期701状态为实际761/2939582，历史§7–§9报告不改。
 
@@ -1004,7 +1004,7 @@ Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 e
 
 ### 2026-10-09 F2 来源准备、独立资格核对与免费校准（source_unready停止）
 
-用户要求先拉取远端并核对其它设备推送，下一仅做F2，不启动双域试点。git status首先确认main clean；fetch发现origin/docs从eec940273到74e687f7c共4提交、产品任务分支从a61b249ef到57520d43d新增F1提交，main仍ed1fd905。产品clean工作树仅fast-forward到57520d43d；本机原docs工作树的五dirty文件用ignore-space-at-eol核对为纯CRLF差异，未修改/暂存。为保留其字节，从origin/docs创建临时detached docs worktree完成本轮文档，同一Task/Plan/Record与远端docs不变，不merge main。actual Git→远端HANDOFF→index→acceptance§9/§10/S10→feedback/S05→同一Record及直接代码，未读写reference。
+先拉取远端并核对其它设备推送；当时范围仅F2，不启动双域试点。git status首先确认main clean；fetch发现origin/docs从eec940273到74e687f7c共4提交、产品任务分支从a61b249ef到57520d43d新增F1提交，main仍ed1fd905。产品clean工作树仅fast-forward到57520d43d；本机原docs工作树的五dirty文件用ignore-space-at-eol核对为纯CRLF差异，未修改/暂存。为保留其字节，从origin/docs创建临时detached docs worktree完成本轮文档，同一Task/Plan/Record与远端docs不变，不merge main。actual Git→远端HANDOFF→index→acceptance§9/§10/S10→feedback/S05→同一Record及直接代码，未读写reference。
 
 准备六份agent_authored_synthetic_spec：RP档案馆登记/玩家选择、水库交接条件修订/当前事实未知、剧场新variant/私有信息；Project真实入口World依赖与primary关联修改、具体缺失KnowledgeBinding引用diagnostic单轮修复、human revision冲突后的保护与准确说明。六个development root分别保存input/control/specification hashes，未沿旧v1/v2换名；没有新model execution refs，故不称已观察baseline失败。promotion每域三个root仅为未取得内容的metadata槽位，sourceHash=null/independence=not_established；槽位不计来源数，不证明盲性，没有promotion内容/答案回流或新提炼。完整source/rubric/control与执行材料仅写私有原Document，未提交。
 
@@ -1048,7 +1048,7 @@ Document累计仍 **761 requests /2939582记账tokens**：carry252/1000000+509 e
 
 ## 2026-10-09 F2授权执行 — 发送前固定
 
-用户明确授权§10.2的F2有限范围：总最多60send/Step新最多12/retry0/首失败即停，不F3。起始docs102d54335/product eb1664138，与远端一致且工作树clean，无其它设备push；账目761/2939582及五dirty字节保持。许可evidence `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`，scope文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`；所有原source/config/runner/pins保持，仅写新显式权限。原实际Step key唯一旧窗口符合404 stop、consecutive0/最近成功；model-only只读定位首次命中两个历史窗口并停止，改用原m1TransportKey定位，不清stop或换epoch。旧6of24 SHA锁定，准备副本沿原restore。写文档的首次shell Python命令因引号截断未写入，改文件脚本后核验；无请求或账目写入。发送前已追加acceptance§10.3，实际结果待执行后更新同一记录。
+当时F2执行范围为§10.2：总最多60send/Step新最多12/retry0/首失败即停，不F3。起始docs102d54335/product eb1664138，与远端一致且工作树clean，无其它设备push；账目761/2939582及五dirty字节保持。许可evidence `c73ceca38db1993b9c38961d4a9a863107d498a687465834867a10dad37f3725`，scope文件SHA `19f270e48390213496df8703fd4a873c6ad36964032a52d9af30746409c73b72`；所有原source/config/runner/pins保持，仅写新显式权限。原实际Step key唯一旧窗口符合404 stop、consecutive0/最近成功；model-only只读定位首次命中两个历史窗口并停止，改用原m1TransportKey定位，不清stop或换epoch。旧6of24 SHA锁定，准备副本沿原restore。写文档的首次shell Python命令因引号截断未写入，改文件脚本后核验；无请求或账目写入。发送前已追加acceptance§10.3，实际结果待执行后更新同一记录。
 
 
 ## 2026-10-09 F2授权执行 — 校准失败停止与全部结算
@@ -1066,7 +1066,7 @@ RP文本的“检修没落定”与未见确认后的保守说明存在可能kno
 
 ## 2026-10-09 F2新硬上限与证据核对 — 发送前
 
-用户明确继续并允许调整其它限制；按累计1000/20RPM解释，起始783/3080332。fetch未发现其它设备push，main ed1fd905及五旧dirty保持，docs起始5dd4ac299。产品原分支commit/push ac03448795232949a485b88f93305460c1476621：原M1 quota可配置累计cap并计入过期carry，CLI强制1000且20RPM不变；校准消息明确≤512，新增有界双模型基线literal-evidence核对、schema2范围72/Step18；新claim成功/失败均自动closed，旧8/12不动。不是放宽quality/human/promotion或读密封payload。
+继续验证并调整当时限制；按累计1000/20RPM解释，起始783/3080332。fetch未发现其它设备push，main ed1fd905及五旧dirty保持，docs起始5dd4ac299。产品原分支commit/push ac03448795232949a485b88f93305460c1476621：原M1 quota可配置累计cap并计入过期carry，CLI强制1000且20RPM不变；校准消息明确≤512，新增有界双模型基线literal-evidence核对、schema2范围72/Step18；新claim成功/失败均自动closed，旧8/12不动。不是放宽quality/human/promotion或读密封payload。
 
 3相关suites/26 distinct tests（f2-sources14、m1-quota5、m1-acceptance7）通过，触及5文件ESLint、CLI syntax/diff通过。首次Jest使用根node_modules路径不存在，改原tests依赖路径后通过；patch一次context不匹配未写入，修正后完成。免费原CLI prepare零send，配置/settings pins沿旧准备副本精确复核。新授权evidence 028047f0889e8ee9c3a38e78bee12d8a9273b8ebfde77ccad367ce5973aa1f06，scope SHA efddeb30b509bb4c9be2930f5429ec2eaf3436ed4bb88a879f05e4cc87d826ba，详见acceptance§10.5/feedback§13；发送前先push docs，随后执行原封包。retry0/提炼/pair/promotion/publication0；本轮仍仅F2，不F3/main/S11/G，实际结果另追加。
 
@@ -1086,7 +1086,7 @@ F2续接修正（发送前）：v3首个Step证据请求transport_failed，usage
 
 ## 2026-10-09 API 测试规则清理
 
-用户明确要求彻底清理额外测试限制，当前硬限只有每日 2000 次调用与 20 RPM。本轮仅文档维护，从 origin/docs@d2fa5764f 的独立短期工作树执行，并合入并行推送 f16f180c2 / 054bbf68f 的产品修复与累计 805 证据，保护原 docs 草稿及产品工作树已有未提交修改；没有修改产品实现、私有账目、凭证或调用真实 API。
+额外测试限制已清理，当前硬限只有每日 2000 次调用与 20 RPM。本轮仅文档维护，从 origin/docs@d2fa5764f 的独立短期工作树执行，并合入并行推送 f16f180c2 / 054bbf68f 的产品修复与累计 805 证据，保护原 docs 草稿及产品工作树已有未提交修改；没有修改产品实现、私有账目、凭证或调用真实 API。
 
 主工作区 main 的 `docs/`（含 plans/handoff/fix/development 与多语言产品文档）也进行了针对 API 调用/测试预算/次数许可/硬限制的检索；未发现该 M1 测试的额外配额指令，命中为产品 context/工具调用能力及既有历史内容，不改成新的 agent 测试规则。Governance 明确 Plan 负责设计、Record 负责事实、HANDOFF 负责实时路由；历史文档不恢复执行限制，避免多入口重复否决。
 
@@ -1095,14 +1095,14 @@ Governance §13.1 成为唯一测试限制权威。清理当前 M1 acceptance �
 实际文档验证：14 份文件的本地链接/锚点、39 个表格与代码围栏通过；原 acceptance §1、双模型九对/六一致胜/非负维度、私有闭环及 production gate 保持，历史 §6–§10.6 标题/锚点保留，git diff --check 通过。文档提交后直接 fast-forward/push 独立 docs 分支，不 merge main。本轮不宣称测试 CLI 已完成同步，也不把现有产品 dirty changes 纳入此文档提交；下一产品续接需按当前规则清理原测试消费者残留 guard。
 
 
-本轮追加 `main:docs/` 路由清理（用户明确要求检查 docs 文件夹）：发现 English/简体/繁体贡献指南仍将 release 写成稳定分支，与当前 main 冲突；三份改为 main 并引用 docs:README 唯一治理入口。main AGENTS 补充当前 API 测试规则路由与历史文档不得恢复为执行指令；保留的十份旧 Plan 和一份 Phase1 HANDOFF 增加历史快照说明，原正文/结果保持，不迁移资产或建立新规则系统。产品说明中的 context/工具 budget 保留其产品语义，不充当 agent 测试配额。
+本轮追加 `main:docs/` 路由清理（docs 文件夹路由检查）：发现 English/简体/繁体贡献指南仍将 release 写成稳定分支，与当前 main 冲突；三份改为 main 并引用 docs:README 唯一治理入口。main AGENTS 补充当前 API 测试规则路由与历史文档不得恢复为执行指令；保留的十份旧 Plan 和一份 Phase1 HANDOFF 增加历史快照说明，原正文/结果保持，不迁移资产或建立新规则系统。产品说明中的 context/工具 budget 保留其产品语义，不充当 agent 测试配额。
 
 辅助 main 文档提交 `94cf032b5`（15 files，45 additions / 15 deletions）经短期 fix/docs-execution-routing commit/push 后 fast-forward 集成 main。实际验证：三语言贡献指南无旧 release 指令；11 历史快照移除新增说明后与原正文逐字相同；15 文件代码围栏保持、git diff/check 与暂存检查通过。未运行代码 tests/build/CI/API，未把并行 F2 的模型执行或测试当成本轮验证。main 仅 AGENTS/文档变化，M1 产品分支尚未集成；同一 Record/live HANDOFF 保留当前 M1/F2 状态。
 
 
 ## 2026-10-09 F2 新来源、隔离与校准 — 主模型范围完成
 
-用户要求仅推进 F2，失败应继续诊断、检索、修复与复测，不进入 F3；API 硬限仍唯一归 Governance §13.1。用户明确允许备用 MiniMax，不可用时暂缓第二连接、只测主模型。本轮 fetch 核对产品分支与远端一致，保护 main、旧任务 docs 的五份无关 dirty 文件及正式 docs 草稿。结果从 docs@8a274e090 的隔离结果工作树更新，不以旧 HANDOFF 的失败 checkpoint 恢复停止条件。
+当时仅推进 F2，失败继续诊断、检索、修复与复测，不进入 F3；API 硬限仍唯一归 Governance §13.1。备用连接为 MiniMax，不可用时暂缓第二连接、只测主模型。本轮 fetch 核对产品分支与远端一致，保护 main、旧任务 docs 的五份无关 dirty 文件及正式 docs 草稿。结果从 docs@8a274e090 的隔离结果工作树更新，不以旧 HANDOFF 的失败 checkpoint 恢复停止条件。
 
 完成声明限于主模型测试范围：`judgeMode=primary_only`、`secondModelValidation=deferred_by_user`，每域六个比较控制、四个单样本控制及三个真实来源观察均完成。全部 `sharedGaps=[]`，单模型观察只写 `primaryGaps/primary_observed_gap`。原 M1 两 model identifiers、盲评、development/promotion 准入与生产权限不变；F2 的双模型结论仍待复核，不宣布 M1 通过，也不启动 F3/S11/G。
 
@@ -1159,9 +1159,9 @@ RP 逐句审核曾因复合句前半段有支持，把新增处罚也判 support
 实际本地验证：当前 HEAD 完整 `f2-sources` 28/28 通过，覆盖原 Task/worker 路径、保护/修复、超过旧六轮的可完成窗口、source drift/密封拒绝、quote/source 表示、dual vs primary-only 实际资金路径与单模型不得声称 shared gap；触及 JS ESLint、diff 检查通过。当前测试消费者沿用已执行的 `m1-retry` 15/15 与相关 grader transport checks，未因没有新改动重复测试；真实语义控制与上述 mock 工程 tests 分开。没有运行 full product suite/build/CI/UI/Android/外部 DB。文档更新同一 Record 和当前 Plan 状态，未生成阶段 HANDOFF；M1 和第二模型正式结论保持待验收。
 
 
-## 2026-10-09 用户要求换设备继续 F3 — 私有快照与接续
+## 2026-10-09 F3 设备迁移 — 私有快照与接续
 
-用户明确要求“打包一下隐私数据，我要换设备继续F3”，因此刷新唯一 live HANDOFF，并同步当前 Plan 的后续授权状态；这次是用户请求中断/换机，不以阶段完成代替继续工作。产品冻结 f495267023ca4475d15ba1c61b66702624c4938e 已推送；F3 本机未启动，第二连接未新增调用，F2 主模型完成及双模型未验收的事实保持。恢复后按原 F3 工作包持续执行，双模型 development/promotion 与 M1 门槛保持。
+F3 设备迁移时保存唯一 live HANDOFF 与私有快照，当前 Plan 状态同步。产品冻结 f495267023ca4475d15ba1c61b66702624c4938e 已推送；F3 本机未启动，第二连接未新增调用，F2 主模型完成及双模型未验收的事实保持。恢复后按原 F3 工作包持续执行，双模型 development/promotion 与 M1 门槛保持。
 
 本地私有换机包复用既有 manifest/restore 机制，更新 API 私有配置、账本/quota/rate/transport 历史、全部 raw reports/原 native fixtures、development 材料、独立密封来源、最终配置/controls/resume/audit，并携带最新产品/docs/main 与原独立资产工作空间的 Git bundle。原密封字节只复制/哈希，不作语义读取；不将隐私包或凭证提交公开 Git。保留原私有快照的无关工作树备份，更新工作树移除的旧 patch 另存历史副本；本机无关 dirty/untracked 不变。
 
@@ -1172,7 +1172,7 @@ RP 逐句审核曾因复合句前半段有支持，把新增处罚也判 support
 
 ## 2026-10-09 新设备恢复与 F3 私有调查入口
 
-用户要求解压私有换机包、读取唯一 live HANDOFF 并继续 F3；确认 F2 主模型测试已完成、双模型验收仍待补齐。本轮恢复到新的私有目录，原本地工作树的无关 AGENTS 修改未被覆盖。执行随包 verify-only 与完整 restore：manifest 文件及 expanded reports 哈希、七个工作树 HEAD、五个本地路径和 Document 权限校验通过；恢复没有模型请求，没有修改原密封字节或历史账目。真实 upstream refs 与包内产品/docs/main checkpoints 一致；依源码及 tests 各自锁文件执行 npm ci，Node 24.21.0。
+解压私有换机包、读取唯一 live HANDOFF 并继续 F3；确认 F2 主模型测试已完成、双模型验收仍待补齐。本轮恢复到新的私有目录，原本地工作树的无关 AGENTS 修改未被覆盖。执行随包 verify-only 与完整 restore：manifest 文件及 expanded reports 哈希、七个工作树 HEAD、五个本地路径和 Document 权限校验通过；恢复没有模型请求，没有修改原密封字节或历史账目。真实 upstream refs 与包内产品/docs/main checkpoints 一致；依源码及 tests 各自锁文件执行 npm ci，Node 24.21.0。
 
 F3 实验沿反馈模块 §2 已批准的 delegated private engineering investigation：模型来源观察不能取得生产自动触发方向。新增测试侧 `m1-f3.js` 与原 m1-live `--f3` 入口，严格读取冻结的六条 development 来源、双模型校准及 exact source/configuration/target pins。旧 fixture 的 explicit proxy correction 沿原 withdraw API 撤回；不把模型意见或调查 envelope 写成用户反馈，不建立生产 diagnosis/触发资格。
 
@@ -1267,15 +1267,15 @@ Project正式developmentReadiness=false，wins0；前两条有有效分歧/重�
 最小本地验证：F3 suite23/23、触及 JS ESLint/diff通过。二十四个 F3 exact control messages 的原 compiler/provider免费 sizing确认完整 user证据未裁剪，output16384不变；Project controls input696–6054，RP676–1575，全部原context可容纳。没有重复原不变retry/F2 suites，没有 full suite/build/CI/UI/Android验证。新 scope `e13f6b6ce109da97eb270724f34f316103d7a3f671736facd9559e4b77ad4ad7`固定 testedHEAD d1c793b3、原 F2完整sourceRun以及旧F3报告hash/修复理由；该 scope 的后续实际结果见下节；新协议校准被连接错误中断，没有产生新候选。
 
 
-## 2026-10-09 用户明确暂停并再次换设备 — M1 未完成
+## 2026-10-09 设备迁移 checkpoint — M1 未完成
 
-用户要求“停下手中任务，我打算换设备进行了，你顺便将隐私文件进行打包”。已停止实施、真实模型验证和正在执行的免费 mock 接线检查；本次刷新唯一 live HANDOFF 是用户请求中断。M1 未验收，main 未集成，后续不自动运行付费 CLI。
+任务停在设备迁移 checkpoint。已停止实施、真实模型验证和正在执行的免费 mock 接线检查；唯一 live HANDOFF 保存恢复状态。M1 未验收，main 未集成，后续不自动运行付费 CLI。
 
 此前新协议 run `run-1791552826778-8fccb497` / testedHEAD `d1c793b38f4caf0eeddc9bb64c2fc00b86c3cfd8` 已结束：每域仅取得一个有效主模型 F3 比较控制，第二连接返回 HTTP530（Cloudflare Tunnel error），主连接多次 HTTP524，原 funded retry 保留。新增11请求/187157记账tokens，没有提炼新候选、没有执行新 development/promotion。summary SHA256 `a0190fd490f62b26f37fae7d4a1e6bae535192cc81544ef6ac6b4f009c9de9b8`，f3Completed/promotionReady/accepted均false。两份通过的控制和原 owner/shared receipts 保存，只有 exact messages/transport/费用身份一致才可复用。
 
 产品提交 `4fc2871f8b7cc9971efc064dc8bb94cc3c175377` 将原 worker 的独立来源读取和 paired observation 接入显式工程端口：只有固定 worker 按 pin/SHA读取三条密封来源，双臂各三次独立执行，公开场景由 worker 提供；生产 compare/source_unready 与自动 promotion gate保持。原 sealed reader checks4、F2 source checks28、evolution consumers6 共38项最小本地检查通过，免费 worker `--check-sealed` 六个 source pins/hash通过。密封正文不输入提炼器、不作候选开发参考。临时 `fix/m1-promotion-worker@6eb9cdfe` 的同等提交已 cherry-pick到当前任务分支，临时工作树没有必要恢复运行。
 
-用户随后要求简化交付；原四个 tracked 修改和两个新文件已统一 checkpoint 提交并推送至 `feat/agent-intelligence-runtime@88e5b34d30bc04d4011271f354c21b46627a6283`：m1-f2.js、m1-f3.js、m1-f3.test.js、m1-live.mjs，以及新 m1-f3-promotion.js/.test.js。内容为失败校准的 exact 有费控制恢复、worker场景评分、九对新独立执行/双模型盲评、工程验收后原私有 review publication、实际下一请求消费与守卫 rollback。只有开发门槛通过才进入独立验收；保持六维非负/双模型一致/九对至少六胜、完整费用和原 authority gate，不伪造 human/price。尚未真实跑到这些步骤，不能声称完整 M1 或发布/消费/回滚已验证。下一设备先审阅这些已提交但未验证完整流程的改动，完成对应实现与最小验证，再按当前源码固定 scope/runner/HEAD；不能直接重跑旧已冻结 scope。
+交付已简化；原四个 tracked 修改和两个新文件已统一 checkpoint 提交并推送至 `feat/agent-intelligence-runtime@88e5b34d30bc04d4011271f354c21b46627a6283`：m1-f2.js、m1-f3.js、m1-f3.test.js、m1-live.mjs，以及新 m1-f3-promotion.js/.test.js。内容为失败校准的 exact 有费控制恢复、worker场景评分、九对新独立执行/双模型盲评、工程验收后原私有 review publication、实际下一请求消费与守卫 rollback。只有开发门槛通过才进入独立验收；保持六维非负/双模型一致/九对至少六胜、完整费用和原 authority gate，不伪造 human/price。尚未真实跑到这些步骤，不能声称完整 M1 或发布/消费/回滚已验证。下一设备先审阅这些已提交但未验证完整流程的改动，完成对应实现与最小验证，再按当前源码固定 scope/runner/HEAD；不能直接重跑旧已冻结 scope。
 
 最近实际本地验证为 F3 25、promotion门槛11、F2 source28，共64项通过；其中F2此前重复执行不累加为新的 distinct checks。触及 JS ESLint、m1-live syntax、git diff --check通过。随后实际原 worker/mock transport的免费 sealed paired 接线 smoke先因 mock sender配置失败，修正私有 mock helper后被用户中断，没有最终成功结果；不能将单元门槛正例或 hash检查称为真实语义验收。没有新增模型请求，也没有 full suite/build/CI/UI/Android验证。
 
@@ -1363,7 +1363,7 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 
 两域只读最终审计重算原准入、完整报告/原job拒绝绑定与费用：Project九对/十八trial IDs、139个报告+已付费校准receipts与原owner/shared ledger一致；RP development原baseline/候选/费用与readiness一致。累计1437 requests /10138703 accounted tokens，pending0/lock0；ledger hash `52cd503758c0436110d3aa8959539fb3cdc89a4e58d74726dcf33a369d70b836`。未清旧unknown/carry/breached；当前advisory token超界不等于每日API硬限被取消。humanPreference not_observed、currencyCost unavailable，M1 accepted=false，main未集成。
 
-来源复核确认原RP三条F2主assessment仅archive有knowledge gap，reservoir/theatre六维met；与本次一胜/两tie吻合。不能声称全领域饱和，也不对同一冻结材料追分。用户明确授权按 [feedback §17](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#17-来源更新与结果复用) 更新有限来源包并启用独立作者。独立作者只读取公共格式/领域契约，写六个新promotion来源与metadata，不接收旧候选、development输出或promotion评分；开发侧不读新密封正文。下一来源准备、资格与候选验证仍沿同一M1任务持续推进；H1/H2未开始，没有新HANDOFF。
+来源复核确认原RP三条F2主assessment仅archive有knowledge gap，reservoir/theatre六维met；与本次一胜/两tie吻合。不能声称全领域饱和，也不对同一冻结材料追分。来源更新按 [feedback §17](../../plans/architecture/agent-intelligence-runtime/m1-feedback-evaluation.md#17-来源更新与结果复用) 更新有限来源包并启用独立作者。独立作者只读取公共格式/领域契约，写六个新promotion来源与metadata，不接收旧候选、development输出或promotion评分；开发侧不读新密封正文。下一来源准备、资格与候选验证仍沿同一M1任务持续推进；H1/H2未开始，没有新HANDOFF。
 
 ## 2026-10-10 M1 有限新材料包接线与资格观察
 
@@ -1395,7 +1395,7 @@ RP实测 `run-1791608183475-a249755e` 固定ebcfc97a5及scope `41099d83355473068
 
 ## 2026-10-10 用户要求换设备暂停与私有迁移
 
-用户明确要求在恰当时机停止并打包隐私数据。当前F2批次自然退出、费用全部settle和原fixture保存后暂停；不再启动候选提炼、F3或其它模型请求。停止不是M1验收完成，也不是因阶段/失败自行交接；仅按用户要求刷新`HANDOFF`（历史恢复快照已消费清理）。
+F2批次退出、费用全部settle和原fixture保存后停在设备迁移 checkpoint；不再启动候选提炼、F3或其它模型请求。M1尚未验收；恢复状态保存于`HANDOFF`（历史恢复快照已消费清理）。
 
 最终run `run-1791614087966-32f919e6` 固定 `4bf78ff7748937eb233fc12e2fa40509a1ef348d`、scope `4ab2ecdbc0e55ca4d198e407942a78006a6103d854c2d67966b266605fc6b47f`、修正版caseSet `661f990e145ad5c3f089f3f0becfb80d11d3c63f58eff8ce047ceb47a4363df4`。新增25请求/331435 accounted tokens，其中318348 reported、13087 unknown上界；全部失败与retry保留。累计1497 requests /10850633 accounted tokens，1182 reported requests /63 unknown /252 carry，pending0/lock0，M1进程与worker已退出。ledger hash `fa64d70643f1f5950cabc9fa2839ef2edac61cf7e2cb6e63b80955811844b56c`。
 
@@ -2034,7 +2034,7 @@ Host在原GenerationService exact capability/policy核验后首次构建Context�
 
 原old operation.compute深比较保持，原20 direct tokens/7local jobs/1charged count未退款或改写；新scope另外20direct tokens/3local jobs进入原retiredCompute，原Run可查两份费用。这证明成本不丢/新scope隔离，不扩大为任意branch child共享父额度或Provider原生安全复制。same-HEAD restore则只有frontend epoch失效，revision/graph不变，同一Task冷恢复合法、实际总2HTTP/40tokens/10jobs+1charged，第三cold调用返回原record不重发。
 
-产品既有branch/invalidation边界本组通过；Provider ancestor safe-copy/reset loss、compaction与其它实际消费者仍继续。opaque只在原Runtime kind，fixture Skill port非OS实物IO、loopback非真实gateway。当前HANDOFF.md在docs HEAD不存在，仅模板，不伪造交接；按实际Git/Plan/Record继续。M8原实际38/direct72982、unknown2/17515 upper/admission fetch0与G06 quality FAIL不改，main不变；用户最新调用硬上限仅每日2000次、20RPM，助手旧固定次数/token限制不生效。新远端动作尚待核实/报告，当前仅本地提交。
+产品既有branch/invalidation边界本组通过；Provider ancestor safe-copy/reset loss、compaction与其它实际消费者仍继续。opaque只在原Runtime kind，fixture Skill port非OS实物IO、loopback非真实gateway。当前HANDOFF.md在docs HEAD不存在，仅模板，不伪造交接；按实际Git/Plan/Record继续。M8原实际38/direct72982、unknown2/17515 upper/admission fetch0与G06 quality FAIL不改，main不变；调用硬上限仅每日2000次、20RPM，助手旧固定次数/token限制不生效。新远端动作尚待核实/报告，当前仅本地提交。
 
 ### 2026-10-11 G02/G04/G05 — 原 Session Task 有界公开摘要及一次 adaptive reset
 
@@ -2050,6 +2050,6 @@ Host在原GenerationService exact capability/policy核验后首次构建Context�
 
 累计真实模型38/direct72982、unknown2/17515 upper、admission fetch0及G06质量FAIL不变；本地loopback tokens不是gateway账单，实际价格/cache/可靠收益无新证据。已交付组不重做，继续其它已选Task消费者和已启用Context/初始Skill/reuse准入，再沿实际有意义质量修复进入获准G06。main不变，不创建HANDOFF、不新设审批/固定调用次数或token门槛。
 
-2026-10-11 用户明确要求换设备，在已推送 source `3cebec8f7` / docs `96ccf204b` 安全 checkpoint 停止并保存 [HANDOFF](../../HANDOFF.md)。下一 Context/Skill 组仅只读定位，无产品改动/新测试/外部发送；HM1 ledger哈希保持，原quota窗口延续，等待用户在新设备明确继续。
+2026-10-11 设备迁移停在已推送 source `3cebec8f7` / docs `96ccf204b` 安全 checkpoint 停止并保存 [HANDOFF](../../HANDOFF.md)。下一 Context/Skill 组仅只读定位，无产品改动/新测试/外部发送；HM1 ledger哈希保持，原quota窗口延续，等待新设备恢复执行。
 
-换设备私有交付：监督已在本机生成并CRC/逐文件SHA验证无凭据迁移包 `Atria-private-evidence-no-credentials-20261011.zip`，56452855bytes / SHA256 `be8088c5745122bea18743200fdd36419d62ccf0cec692aa7c24688c70b68568`；具体本地路径/manifest/排除范围见HANDOFF。原含凭据ZIP与私有原件保留，无上传、未运行恢复或paid脚本。迁移包不是全部机器备份，原额度ledger延续不重置。
+换设备私有交付：本机生成并CRC/逐文件SHA验证无凭据迁移包 `Atria-private-evidence-no-credentials-20261011.zip`，56452855bytes / SHA256 `be8088c5745122bea18743200fdd36419d62ccf0cec692aa7c24688c70b68568`；具体本地路径/manifest/排除范围见HANDOFF。原含凭据ZIP与私有原件保留，无上传、未运行恢复或paid脚本。迁移包不是全部机器备份，原额度ledger延续不重置。

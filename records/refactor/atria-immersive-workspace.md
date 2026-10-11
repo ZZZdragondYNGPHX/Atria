@@ -67,7 +67,7 @@ D1 必须核定 Persona schema/API、会话 namespace/CAS、请求 context 类�
 
 ### Completed and authority
 
-用户明确要求“拉取远端……准备开工”，随后要求遇到问题自行处理并简要说明。以此作为既有 Bundle 分阶段实施授权；D01–D20 不重开。P01–P06 作为实施选择冻结，不伪称用户逐项答复。B1–B4 沿用方案顺序，各资源类型仍是独立 checkpoint。
+实施沿既有 Bundle 推进，常规问题自主处理；D01–D20 不重开，P01–P06 为冻结的实施选择。B1–B4 沿用方案顺序，各资源类型仍是独立 checkpoint。
 
 拉取远端，main fast-forward 到新语言基线，docs fast-forward 到本任务 Draft；在产品工作树创建同一任务语义分支。产品只有用户原有 AGENTS.md dirty change，没有本阶段产品源码改动。docs 原有 README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md dirty changes 保留且不提交。package/plugin/skills 未改；未读取任何 reference 工作区。
 
@@ -89,7 +89,7 @@ schema/API 与测试责任在 personas/validation 权威模块中维护；Record
 
 仅本地最小相关验证：核对上述直接相关源码的实现/函数/注册，检查变更文档内部链接、源码证据路径、21 coverage/21 acceptance 行、P01–P06 与 C20.1–C20.8、Plan/HANDOFF 阶段一致性，并执行仅针对本任务文件的 git diff --check。检查覆盖当前 D1 文档内容，不验证新契约可运行性。
 
-未运行产品 unit/E2E/lint/build、真机/IME、模型实发或远端 CI。用户要求每阶段及任务完成时仅本地最小相关验证；validation 已按此更新，不发起/等待远端 CI。
+未运行产品 unit/E2E/lint/build、真机/IME、模型实发或远端 CI。每阶段及任务完成时仅本地最小相关验证；validation 已按此更新，不发起/等待远端 CI。
 
 ### Limits / next checkpoint
 
@@ -513,7 +513,7 @@ Save 与 run-policy 的 MySQL/Postgres 试探均连接拒绝（本地服务未�
 - Product Start / End / locally tested HEAD: `784bb91a83e205669f14445fa1ef49ed248b9799`，产品代码未改；原分支已 push，未合并 main。
 - Docs start HEAD: `ff22eb5d2e5164a898b059c08039d4193fed8c9e`
 - Mapping commit: `2d19fdf28`（docs），已提交；本轮 Record/HANDOFF 持久化提交以真实 Git HEAD 为准，不自引用 hash。
-- Status: **Mapping complete; Actors display replacement pending.** 用户本轮指定先完成字段/动作/authority 映射，故停在 replacement gate 前，不把整个 Actors checkpoint 记为完成。
+- Status: **Mapping complete; Actors display replacement pending.** 字段/动作/authority 映射完成，停在 replacement gate 前，不把整个 Actors checkpoint 记为完成。
 
 ### Mapping and findings
 
@@ -606,7 +606,7 @@ Shared Persona description 继续固定 `shared_scope_unsupported`，无 caller 
 - Start / End / Tested product HEAD: `9991c6ef03941ac6d6c321843d692b77841b7797`（本轮无产品修改）。
 - Product branch: `refactor/atria-immersive-workspace`；本地/远端 HEAD 一致，未合并 main。
 - Docs start HEAD: `f68251af9798d23cd8b60b093cfca0dab22557be`；映射、路由与 Record/HANDOFF 持久化提交以真实 docs Git HEAD 为准，不自引用 hash。
-- Status: **EntryPoints mapping complete; stopped before display replacement.** 用户明确要求先字段/动作/authority 映射并在完成后停止。
+- Status: **EntryPoints mapping complete; stopped before display replacement.** 字段/动作/authority 映射完成，停在替换展示之前。
 
 ### Mapping and findings
 
@@ -642,7 +642,7 @@ npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/stu
 
 产品 HEAD 无变动、不新建任务分支；docs 单独 commit/push 本轮映射、index/coverage、同一 Record/live HANDOFF。产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes 保留未提交。package/plugin/skills/reference 未读/未改，不 main merge 到独立长期空间。
 
-本轮按用户要求完成映射后停止，不合并 main、不删除活跃分支。下一轮按 live HANDOFF → index → entrypoints-mapping → 对应 delivery/coverage S12/states/validation → 本 Record 恢复，只实施 B1 EntryPoints 展示与局部防护；Actors 不重做，不自动进入 Worlds/Knowledge/B2/F。Shared 描述停用与首轮支持范围冻结保持，完整字段/设备/引擎/最终集成仍待后续阶段。
+本轮停在映射 checkpoint，不合并 main、不删除活跃分支。下一轮按 live HANDOFF → index → entrypoints-mapping → 对应 delivery/coverage S12/states/validation → 本 Record 恢复，只实施 B1 EntryPoints 展示与局部防护；Actors 不重做，不自动进入 Worlds/Knowledge/B2/F。Shared 描述停用与首轮支持范围冻结保持，完整字段/设备/引擎/最终集成仍待后续阶段。
 
 
 ## Stage B1 EntryPoints — Display checkpoint
@@ -725,7 +725,7 @@ PW_NATIVE_CHANNEL=chromium PW_WORKERS=1 npm --prefix tests run test:e2e -- nativ
 
 产品/docs 本轮只提交指定产品/测试和 index/coverage/validation/mapping 注记、同一 Record/live HANDOFF。产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes 保持未提交；package/plugin/skills/reference 未读/未改。
 
-按用户要求停在 EntryPoints 展示 checkpoint，未合并 main、不删除活跃任务分支，不进入 Worlds/Knowledge/B2/F。下一轮先做 B1 Worlds 字段/动作/authority 映射，再独立决定展示 checkpoint；Actors/EntryPoints 不重做。
+停在 EntryPoints 展示 checkpoint，未合并 main、不删除活跃任务分支，不进入 Worlds/Knowledge/B2/F。下一轮先做 B1 Worlds 字段/动作/authority 映射，再独立决定展示 checkpoint；Actors/EntryPoints 不重做。
 
 ## Stage B1 Worlds — Mapping checkpoint
 
@@ -769,7 +769,7 @@ docs whitespace、Markdown 相对链接/锚点、index/coverage/HANDOFF/Record �
 
 只提交 worlds-mapping/index/coverage/同一 Record/live HANDOFF 到 docs；产品 task branch HEAD 与远端不变。实际工作树无 HANDOFF 所述旧 tracked dirty；现有 package 的 dist/node_modules/tests、产品依赖目录与旧日志等 untracked 均保持，不提交、不删除。没有将 main merge 到 package/docs、没有更改 AGENTS/Governance 或删除活跃分支。
 
-本轮按用户要求完成 Worlds 映射后停止。下一轮按 live HANDOFF → index → worlds-mapping → delivery/coverage S12/S07/states/validation → 本 Record B1 Worlds mapping，只实施 Worlds 展示与局部防护并验证共用 editor 的 Library 回归；不自动进入 Knowledge/B2/F。首轮支持范围冻结、Shared 描述停用、完整矩阵与最终集成待验收保持。
+本轮停在 Worlds 映射 checkpoint。下一轮按 live HANDOFF → index → worlds-mapping → delivery/coverage S12/S07/states/validation → 本 Record B1 Worlds mapping，只实施 Worlds 展示与局部防护并验证共用 editor 的 Library 回归；不自动进入 Knowledge/B2/F。首轮支持范围冻结、Shared 描述停用、完整矩阵与最终集成待验收保持。
 
 ## Stage B1 Worlds — Display checkpoint
 

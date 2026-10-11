@@ -64,7 +64,7 @@ source `fafdb8608` 已提交/push，17真正新增cases、9原cases增强及25�
 
 本组有限出口：一个fresh Node在原count charge后退出，真实fork或restore到早于该Task source的Save后，原旧revision调用在HTTP前拒绝；新Task真实消费只当前合法Session Context、wire无旧opaque/function_call/tool result，原已花费用与未settle工作保持、正式结果只提交一次。核实历史restore确实产生新branch/revision且保留旧branch HEAD；同HEAD Save restore只使frontend epoch失效，允许同scope冷恢复，不能伪装成一次派生分支反例。只检查这些新的Core/Task边界与少量相邻原消费者，不重跑已通过cold/pin/费用组。
 
-本地退出夹具、合成只读Skill port与loopback仍不提升真实path verified；原外部复测按用户最新每日2000次/20RPM与原实际账本执行，不恢复助手旧固定次数/token限制。远端仅在核清准确目标及待发送差异后另行处理，本组先本地提交/Record。
+本地退出夹具、合成只读Skill port与loopback仍不提升真实path verified；原外部复测按 Governance 每日2000次/20RPM与原实际账本执行，不恢复助手旧固定次数/token限制。远端仅在核清准确目标及待发送差异后另行处理，本组先本地提交/Record。
 
 source本组为test-only（具体HEAD见Record），6个新增FS/SQLite cases及新增test ESLint/diff检查通过；未改产品/未重跑已通过组。派生分支为新Task scope/fresh开始，旧revision调用HTTP前拒绝；旧operation的20 direct tokens、7 local jobs与1 charged count原样保留，新scope独立20tokens/3jobs在原Run retiredCompute可查。两种派生场景均保留原branch HEAD、wire无旧opaque/tool exchange或未来文本、重复正式结果不发HTTP。same-HEAD restore并未派生branch，原cold恢复仍2HTTP/40tokens/10jobs+1 charged。此证据不等于Provider ancestor safe-copy/reset loss控制器或compaction；继续下一实际工程依赖。
 
