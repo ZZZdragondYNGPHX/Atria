@@ -2199,3 +2199,19 @@ source `0c50438f6cc95dcc22278bc8f07eec328ee5c117` 已 push/核对远端。沿原
 保留失败：lint-v1 新 pane 2 brace-style，修后 lint-v2/最终16改动 JS/test文件 lint-v7 PASS；native-artifact-v4 fixture 复用旧 Package origin 与新 PackageVersion 不匹配，修真实 fixture envelope 后 v5 因旧模型stub精确 prompt/generation refs 缺失拒绝。补对应 variant refs 仅 v6 复验 PASS，生产 provenance guard 未放宽。其它新 Source/Goal checks首轮 PASS，diff PASS。未运行全仓、MySQL/Postgres、M1/HM1；外部API0，原quota1661/M8 actual40/direct77955/unknown2与17515 upper/admission fetch0和原真实G06 FAIL完整保持。
 
 有限 S13/S14 用户/作品事件消费者已交付，RP Goal 没有额外 Task/World 执行权限；原 Goal metadata管理/legacy context读取不冒称全部 localWork 已计量，Project 自动 proof 才计同原Task bank。关闭应用期间系统唤醒、未选 RP 自动执行/所有consumer没有验收；Actor desire completion仍依赖S17。继续 G06 的真实叙事质量、分层对照、费用/cache/延迟证据，M3 不跳过此前置。main仍3ee1332ef，未merge/deploy，旧HANDOFF不自动刷新。
+
+### 2026-10-11 G06 — 原 H0-ZH-08 角色表达资源与真实受影响复验
+
+producer source `0c50438f6`，没有放松 compiler-owned Memory 事实/时间规则。发现旧 private fixture 同时注入 Session 第一人称正文与 Project 审阅要求，且只读 Project 输入借用 Studio 可执行流程却不声明空工具。新 private runner 分离角色，沿原 `system.style` 精确不可变 PromptModule/Program 给旁白第三人称克制表达；后续 style-v2 去除轮次数字/来源标签、约束仅当前明示场景。它是隔离作者资源与评测 frame 的修正，不是修改用户已保存角色、更改生产事实规则或覆盖旧失败评分。
+
+仅原 H0-ZH-08/原 gcli.ggchan.dev/gemini-3.8-flash 合成材料，未重跑 M1/HM1 或四份不同来源。role-frame-long-session 新2真实请求/direct3908，仅初步时间项与减少审阅语气；h0-role-strata 14零发送准备，实际12/direct25686，在高影响 Project reuse 因未声明 `atri_agent_prepare_review` 失败而结束该次 runner；原发送器正确拒绝，raw HTTP200/usage total2117 与 Task settled 2117 保留，不退款、不清额度。其余11输出保留，其中旁白若干输出照搬“第二十轮”或添加场景修饰，未标完整风格通过。
+
+针对失败和资源变化，role-v2 零发送准备12后实际12/direct38028。只复验新版 Narration 的四组 pairs、受影响高影响 Project pair及前次未执行 long Project pair；已通过 ordinary/hard Project 不重发。readonly frame 明确 tools=[] 只返正文，不将审阅转为操作；全部12未再有未声明工具响应。原 Source/分层输入均为 H0-ZH-08 的受控普通/困难/高影响/long 变体，不冒称四个独立案例或总体分布。
+
+long-v2 实际创建并发布 500 轮预载双消息历史，Native Timeline 1005 条（开场、三原选中历史来源、1000预载消息、当前输入）；原 Host Context 213 items、实际 input6312、两 fresh 正文 reported total6979/7104。不是连续500次模型生成，也不是以 raw500 代替真实 Timeline。模型/Run 与 Source refs、原 Memory provenance/currentness 实际消费；scope 当前 world.location=harbor，仅这份 fixture 的当前场景，不提供任意 Actor-specific 位置/认知保证。
+
+私有只读 combined-audit-v1 保存三个 raw report pins、26 distinct实际发送、全部 raw usage及一次拒绝输出；本组 direct reported67622，M8累计actual66/direct145577。原unknown2/upper17515与admission fetch0保持。当前16个选定正文（v2全部12加未重发的4个 Project）按完整文本人工非盲核对，有限历史/当前断言和玩家自主权项通过；Narrator v2不再照搬轮次标签，高影响仍有“旁白/决断界限”等meta措辞，不能声称全部自然度或普遍自由文本保证。没有用“未知”一句抵消其它断言，原FAIL不覆盖，不宣称blind grader或独立新来源晋升。
+
+用户明确暂无可核对计价，保留 currency unknown。实际报数 input/output/total原样保存，不从差值硬造reasoning tokens。gcli raw/cache/upstream/hiddenAttempts仍unknown；同证据同wire、每臂n1和trial controller CPU未计量不能证明净费用/可靠时延收益。一个另行计入原quota的只读 `/v1/models` HTTP200返回29条模型，无明确embedding/rerank catalogue项（本地配置也只有文本模型）；不据名称推测服务能力或另猜收费目标。该目录HTTP不是模型生成，金额/usage未知，原ledger1661→1688连续append、carry332保留，窗口按原实现自然重算。
+
+全部新 private runner 默认preflight，显式live且UTF-8 gate exit检查后才发送，旧paid脚本/raw不修改；原 baseline m1/hm1 ledger hashes保持。完整G06/M8/HM2仍未验收，下一有限组沿已有服务端 Transformers port补真实本地语义消费者的原localWork准入，再验证实际模型，不能用fixture升级semantic或provider verified。M3前置不绕过，main不合并/部署，私有材料不上传。
