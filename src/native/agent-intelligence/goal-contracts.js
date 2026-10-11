@@ -21,7 +21,12 @@ export function assertGoalCriteria(values, scope, { required = true } = {}) {
 export function assertGoal(value) {
     const doc = cloneNativeDocument(value, 'Goal');
     fields(doc, ['schemaVersion', 'sequence', 'goalId', 'subject', 'scope', 'anchor', 'intent', 'criteria', 'invariants', 'budget',
-        'status', 'evidence', 'progress', 'blockers', 'createdAt', 'updatedAt'], 'Goal');
+        'status', 'evidence', 'progress', 'blockers', 'createdAt', 'updatedAt', ...(Object.hasOwn(doc, 'execution') ? ['execution'] : [])], 'Goal');
+    if (doc.execution) {
+        fields(doc.execution, ['kind', 'taskId'], 'Goal execution binding');
+        if (doc.execution.kind !== 'project_task' || !/^agenttask_[a-z0-9]+$/.test(doc.execution.taskId)
+            || doc.scope.domain !== 'project' || doc.subject.kind !== 'user') throw new TypeError('Goal execution permission');
+    }
     if (doc.schemaVersion !== 1 || !/^goal_[a-f0-9]{32}$/.test(doc.goalId) || !GOAL_STATUSES.includes(doc.status)
         || !['sequence', 'createdAt', 'updatedAt'].every(key => integer(doc[key]))) throw new TypeError('Goal schema');
     doc.scope = assertEvidenceScope(doc.scope);

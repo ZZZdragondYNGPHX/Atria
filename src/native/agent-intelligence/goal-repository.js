@@ -36,6 +36,7 @@ export class AgentGoalRepository {
             if (doc.sequence !== (previous ? previous.sequence + 1 : 0)) throw new ConflictError('goal_sequence_conflict');
             if (previous && ['subject', 'scope', 'intent', 'criteria', 'invariants', 'budget', 'createdAt']
                 .some(field => hashNativeDocument(previous[field]) !== hashNativeDocument(doc[field]))) throw new ConflictError('goal_definition_conflict');
+            if (previous?.execution && hashNativeDocument(previous.execution) !== hashNativeDocument(doc.execution)) throw new ConflictError('goal_execution_binding_conflict');
             return putMutable(tx, resourceKey, doc, { expectedIntegrity });
         }));
     }

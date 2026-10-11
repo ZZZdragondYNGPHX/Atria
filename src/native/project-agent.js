@@ -16,7 +16,7 @@ import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
 import { fields as allowedFields } from '../../public/shared/native-values.js';
 import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
-import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../public/shared/native-compute-budget.js';
+import { bindComputeBudget, chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
 
@@ -586,6 +586,54 @@ export class ProjectAgentService {
             return chargeLocalWork(task, limits, attempt);
         }, { write: false });
     }
+    bindGoal(handle, projectId, id, { goalId, definitionHash, intent, revision, limits }) {
+        return this._operate(handle, projectId, id, async task => {
+            this._ensureDraftMutable(task);
+            if (task.intent !== intent || task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('goal_task_binding_conflict');
+            if (task.goalBinding && (task.goalBinding.goalId !== goalId || task.goalBinding.definitionHash !== definitionHash)) throw new ConflictError('goal_task_binding_conflict');
+            bindComputeBudget(task, limits);
+            task.goalBinding ??= { goalId, definitionHash, wakes: [] };
+            return this._snapshot(task);
+        });
+    }
+    chargeGoalWork(handle, projectId, id, goalId, attempt) {
+        return this._operate(handle, projectId, id, async task => {
+            if (task.goalBinding?.goalId !== goalId || ['cancelled', 'taken_over', 'conflict', 'committing'].includes(task.status)) throw new ConflictError('goal_execution_stopped');
+            const revision = task.status === 'completed' ? task.changeSets.at(-1)?.resultingRevision : task.baseRevision;
+            if (!revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
+            if (attempt.kind !== 'goal_validate' || attempt.targetFingerprint !== task.goalBinding.definitionHash) throw new ConflictError('goal_task_binding_conflict');
+            return chargeLocalWork(task, task.compute?.limits, attempt);
+        }, { write: false });
+    }
+    queueGoalWake(handle, projectId, id, goalId, eventId) {
+        return this._operate(handle, projectId, id, task => {
+            this._ensureDraftMutable(task);
+            if (task.goalBinding?.goalId !== goalId) throw new ConflictError('goal_task_binding_conflict');
+            if (task.goalBinding.wakes.some(wake => wake.eventId === eventId)) return this._snapshot(task);
+            if (task.goalBinding.wakes.length >= 32) throw new ConflictError('goal_wake_capacity');
+            const at = Date.now();
+            task.goalBinding.wakes.push({ eventId, status: 'pending', operationId: null, requestId: null, createdAt: at, updatedAt: at });
+            return this._snapshot(task);
+        });
+    }
+    claimGoalWake(handle, projectId, id, goalId, eventId, operationId) {
+        return this._operate(handle, projectId, id, task => {
+            this._ensureDraftMutable(task);
+            const wake = task.goalBinding?.goalId === goalId && task.goalBinding.wakes.find(item => item.eventId === eventId);
+            if (!wake || wake.status !== 'pending') throw new ConflictError('goal_wake_claim_conflict');
+            wake.status = 'running'; wake.operationId = operationId; wake.updatedAt = Date.now();
+            return this._snapshot(task);
+        });
+    }
+    finishGoalWake(handle, projectId, id, goalId, eventId, operationId, status) {
+        return this._operate(handle, projectId, id, task => {
+            if (!['done', 'unknown', 'cancelled'].includes(status)) throw new TypeError('Goal wake outcome');
+            const wake = task.goalBinding?.goalId === goalId && task.goalBinding.wakes.find(item => item.eventId === eventId);
+            if (!wake || wake.operationId !== operationId || wake.status !== 'running') throw new ConflictError('goal_wake_claim_conflict');
+            wake.status = status; wake.updatedAt = Date.now();
+            return this._snapshot(task);
+        });
+    }
     settleLocalWork(handle, projectId, id, attemptId, usage) {
         return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage));
     }
@@ -698,6 +746,7 @@ export class ProjectAgentService {
             timeline: task.timeline,
             attempts: task.attempts,
             ...(task.compute ? { compute: task.compute } : {}),
+            ...(task.goalBinding ? { goalBinding: task.goalBinding } : {}),
             conversation: task.conversation,
             recovery: task.recovery,
             createdAt: task.createdAt,

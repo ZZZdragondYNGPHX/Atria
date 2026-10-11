@@ -45,7 +45,7 @@ export function assertComputeLedger(value) {
             fields(entry, ['attemptId', 'requestId', 'targetFingerprint', 'kind', 'estimatedItems', 'estimatedInputBytes', 'status', 'usage'], 'Local work');
             if (typeof entry.attemptId !== 'string' || !entry.attemptId || entry.attemptId.length > 128 || ids.has(entry.attemptId)
                 || typeof entry.requestId !== 'string' || !entry.requestId || entry.requestId.length > 128
-                || !/^[a-f0-9]{64}$/.test(entry.targetFingerprint) || !['index_insert', 'index_query', 'index_list', 'index_delete', 'index_purge', 'route_resolve', 'context_build', 'prompt_compile', 'skill_inventory', 'skill_pin', 'skill_load', 'memory_corpus', 'memory_hash', 'memory_rank', 'memory_pack', 'generation_count', 'generation_render', 'skill_read', 'task_history'].includes(entry.kind)
+                || !/^[a-f0-9]{64}$/.test(entry.targetFingerprint) || !['index_insert', 'index_query', 'index_list', 'index_delete', 'index_purge', 'route_resolve', 'context_build', 'prompt_compile', 'skill_inventory', 'skill_pin', 'skill_load', 'memory_corpus', 'memory_hash', 'memory_rank', 'memory_pack', 'goal_validate', 'generation_count', 'generation_render', 'skill_read', 'task_history'].includes(entry.kind)
                 || !integer(entry.estimatedItems) || entry.estimatedItems < 1 || entry.estimatedItems > 10000
                 || !integer(entry.estimatedInputBytes) || entry.estimatedInputBytes < 1 || entry.estimatedInputBytes > 16777216
                 || !['charged', 'settled', 'unknown'].includes(entry.status)) fail('native_generation_budget_invalid');
@@ -99,11 +99,15 @@ export function retireComputeLedger(previous, ledger) {
 }
 // A single send identity is charged inside the original authority's durable
 // mutation. Unknown sends occupy their prepared upper bound across recovery.
-export function chargeComputeAttempt(holder, limits, attempt) {
+export function bindComputeBudget(holder, limits) {
     limits = assertComputeBudget(limits);
     const ledger = holder.compute ??= { schemaVersion: 1, limits, attempts: [] };
     assertComputeLedger(ledger);
     ledger.limits = tightenLimits(ledger.limits, limits);
+    return ledger;
+}
+export function chargeComputeAttempt(holder, limits, attempt) {
+    const ledger = bindComputeBudget(holder, limits);
     const spent = ledger.attempts.reduce((sum, row) => sum + (row.status === 'settled' ? row.usage.totalTokens : row.estimatedTokens), 0);
     if (ledger.attempts.some(row => row.attemptId === attempt.attemptId)) fail('native_generation_attempt_conflict');
     if (ledger.attempts.length >= ledger.limits.maxRequests || spent + attempt.estimatedTokens > ledger.limits.maxTokens) fail('native_generation_budget_exhausted');

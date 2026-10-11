@@ -16,7 +16,22 @@ const TASK_FIELDS = ['schemaVersion', 'sequence', 'taskId', 'projectId', 'intent
 
 export function assertProjectTask(value) {
     const task = cloneNativeDocument(value);
-    fields(task, [...TASK_FIELDS, ...(Object.hasOwn(task, 'compute') ? ['compute'] : []), ...(Object.hasOwn(task, 'strategyVersions') ? ['strategyVersions'] : [])], 'Project Agent task');
+    fields(task, [...TASK_FIELDS, ...(Object.hasOwn(task, 'compute') ? ['compute'] : []), ...(Object.hasOwn(task, 'strategyVersions') ? ['strategyVersions'] : []),
+        ...(Object.hasOwn(task, 'goalBinding') ? ['goalBinding'] : [])], 'Project Agent task');
+    if (task.goalBinding) {
+        fields(task.goalBinding, ['goalId', 'definitionHash', 'wakes'], 'Goal Task binding');
+        if (!/^goal_[a-f0-9]{32}$/.test(task.goalBinding.goalId) || !/^[a-f0-9]{64}$/.test(task.goalBinding.definitionHash)
+            || !Array.isArray(task.goalBinding.wakes) || task.goalBinding.wakes.length > 32) throw new TypeError('Goal Task binding bounds');
+        const ids = new Set();
+        for (const wake of task.goalBinding.wakes) {
+            fields(wake, ['eventId', 'status', 'operationId', 'requestId', 'createdAt', 'updatedAt'], 'Goal wake');
+            text(wake.eventId, 'Wake identity');
+            if (ids.has(wake.eventId) || wake.eventId.length > 160 || !['pending', 'running', 'done', 'unknown', 'cancelled'].includes(wake.status)
+                || !Number.isSafeInteger(wake.createdAt) || !Number.isSafeInteger(wake.updatedAt) || wake.createdAt < 0 || wake.updatedAt < 0
+                || (wake.operationId !== null && typeof wake.operationId !== 'string') || (wake.requestId !== null && typeof wake.requestId !== 'string')) throw new TypeError('Goal wake state');
+            ids.add(wake.eventId);
+        }
+    }
     if (task.compute !== undefined) assertComputeLedger(task.compute);
     if (TASK_FIELDS.some(field => task[field] === undefined) || task.schemaVersion !== 1 || !STATES.has(task.status)) throw new TypeError('Invalid Project Agent task schema');
     if (!/^agenttask_[a-z0-9]+$/.test(task.taskId)) throw new TypeError('Invalid Project Agent task identity');

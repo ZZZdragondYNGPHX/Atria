@@ -30,6 +30,7 @@ import { IllustrationImageService } from '../native/illustration-image-service.j
 import { AgentEvidenceRepository } from '../native/agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../native/agent-intelligence/evidence-service.js';
 import { AgentGoalService } from '../native/agent-intelligence/goal-service.js';
+import { GoalContinuationService } from '../native/agent-intelligence/goal-continuation.js';
 import { AgentExperienceService } from '../native/agent-intelligence/experience-service.js';
 import { getChatRepo } from '../storage/index.js';
 import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
@@ -69,13 +70,19 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
-    for (const action of ['create', 'list', 'get', 'control', 'evaluate']) router.post('/goals/' + action, async (req, res) => {
+    for (const action of ['create', 'list', 'get', 'control', 'evaluate', 'bind', 'wake', 'pump', 'inspect']) router.post('/goals/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
             if (action === 'list') fields(req.body, [], 'Goal list');
             const host = getHost();
+            if (['bind', 'wake', 'pump', 'inspect', 'control'].includes(action)) {
+                const continuation = new GoalContinuationService({ host, chatRepo: getChats() });
+                const result = await continuation[action](handle, req.body);
+                if (result?.completion) { const { completion: _completion, ...ack } = result; return res.json(ack); }
+                return res.json(result);
+            }
             const goal = new AgentGoalService({ engine: host.persistence._engine, sessionCore: host.sessionCore, studio: host.studio, agent: host.agent, chatRepo: getChats() });
             res.json(await goal[action](handle, req.body));
         } catch (error) {

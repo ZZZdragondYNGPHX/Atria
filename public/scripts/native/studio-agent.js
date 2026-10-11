@@ -23,20 +23,20 @@ function scopePath(scope) {
 }
 
 const projectSkillWork = (computeContext, operation, input, signal) => runtimeRequest('/skill-work', { method: 'POST', body: { computeContext, operation, input }, signal });
-async function listNativeSkills(projectId, packageRef, computeContext, signal) {
-    const resolved = await projectSkillWork(computeContext, 'list', { context: { projectId, ...packageRef } }, signal);
-    const pinned = await pinSkillEntries(resolved, opts => projectSkillWork(computeContext, 'pin', opts, signal));
-    return loadAlwaysSkills(pinned, opts => readNativeSkill(pinned, opts.name, { ...opts, full: true }, computeContext, signal));
+async function listNativeSkills(projectId, packageRef, computeContext, signal, work = projectSkillWork) {
+    const resolved = await work(computeContext, 'list', { context: { projectId, ...packageRef } }, signal);
+    const pinned = await pinSkillEntries(resolved, opts => work(computeContext, 'pin', opts, signal));
+    return loadAlwaysSkills(pinned, opts => readNativeSkill(pinned, opts.name, { ...opts, full: true }, computeContext, signal, work));
 }
 
-async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false, full = false } = {}, computeContext, signal) {
+async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false, full = false } = {}, computeContext, signal, work = projectSkillWork) {
     if (!list && !full) boundedSkillReadOptions({ path, offset, limit });
     const entry = entries.find(item => item.name === name);
     if (!entry) throw new Error('Native Skill is not available in the current project scope: ' + name);
     const encodedScope = scopePath(entry.scope);
     if (!encodedScope) throw new Error('Native Skill does not use an A5 Native scope');
     const versionQuery = skillReadPin(entry);
-    const result = await projectSkillWork(computeContext, list ? 'files' : 'read', { scope: entry.scope, name: entry.name, ...versionQuery,
+    const result = await work(computeContext, list ? 'files' : 'read', { scope: entry.scope, name: entry.name, ...versionQuery,
         ...(list ? {} : full ? { path, full: true } : { path, offset, limit }) }, signal);
     return list ? result : boundSkillFile(result);
 }
@@ -181,16 +181,16 @@ function toolResultMessage(call, result) {
     };
 }
 
-async function executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, signal) {
+async function executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, signal, client = nativeStudioClient, work = projectSkillWork) {
     if (call.name === 'atri_agent_list_skills') {
-        await projectSkillWork(computeContext, 'catalog', { names: skillEntries.map(entry => entry.name) }, signal);
+        await work(computeContext, 'catalog', { names: skillEntries.map(entry => entry.name) }, signal);
         return { skills: summarizeSkills(skillEntries) };
     }
     if (call.name === 'atri_agent_read_skill') {
-        return readNativeSkill(skillEntries, String(call.args?.name || ''), boundedSkillReadOptions(call.args), computeContext, signal);
+        return readNativeSkill(skillEntries, String(call.args?.name || ''), boundedSkillReadOptions(call.args), computeContext, signal, work);
     }
-    if (call.name === 'atri_agent_skill_files') return readNativeSkill(skillEntries, String(call.args?.name || ''), { list: true }, computeContext, signal);
-    return nativeStudioClient.executeAgentTool(projectId, taskId, {
+    if (call.name === 'atri_agent_skill_files') return readNativeSkill(skillEntries, String(call.args?.name || ''), { list: true }, computeContext, signal, work);
+    return client.executeAgentTool(projectId, taskId, {
         name: call.name,
         args: call.args || {},
         attemptId,
@@ -205,11 +205,12 @@ export async function runNativeStudioAgentTask({
     onUpdate = () => {},
     abortSignal = undefined,
     maxModelRounds = MAX_MODEL_ROUNDS,
+    client = nativeStudioClient, request = runtimeRequest, generate = executeNativeGeneration, work = projectSkillWork,
 }) {
-    let context = await nativeStudioClient.getAgentContext(projectId, taskId);
+    let context = await client.getAgentContext(projectId, taskId);
     if (STOP_STATES.has(context.task.status)) return { task: context.task, messages: context.task.conversation || messages };
-    await nativeStudioClient.resumeAgentTask(projectId, taskId);
-    const preflight = await nativeStudioClient.preflight(
+    await client.resumeAgentTask(projectId, taskId);
+    const preflight = await client.preflight(
         projectId,
         context.task.baseRevision,
     ).catch(() => null);
@@ -220,12 +221,12 @@ export async function runNativeStudioAgentTask({
         }
         : null;
     const computeContext = { kind: 'project', projectId, taskId, revision: context.task.baseRevision };
-    const skillEntries = await listNativeSkills(projectId, packageRef, computeContext, abortSignal);
+    const skillEntries = await listNativeSkills(projectId, packageRef, computeContext, abortSignal, work);
     const transcript = [...(context.task.conversation || messages)];
     if (!transcript.length) transcript.push({ role: 'user', content: context.task.intent });
     // This public policy hint only chooses history presentation. The Host still
     // resolves the exact route/path and revalidates stored Task state at send.
-    const configuration = await runtimeRequest('/configuration').catch(() => null);
+    const configuration = await request('/configuration').catch(() => null);
     const routes = configuration?.routes || [];
     const fallbackIds = new Set(routes.flatMap(route => (route.fallbackRouteRefs || []).map(ref => ref.runtimeRouteId)));
     const primary = routes.filter(route => route.scope === 'player' && route.role === 'role.studio' && !fallbackIds.has(route.runtimeRouteId));
@@ -237,7 +238,7 @@ export async function runNativeStudioAgentTask({
 
     for (let round = 0; round < maxModelRounds; round += 1) {
         if (abortSignal?.aborted) throw new Error('Project Agent request aborted');
-        context = await nativeStudioClient.getAgentContext(projectId, taskId);
+        context = await client.getAgentContext(projectId, taskId);
         if (STOP_STATES.has(context.task.status)) {
             onUpdate({ task: context.task, messages: transcript });
             return { task: context.task, messages: transcript };
@@ -253,12 +254,12 @@ export async function runNativeStudioAgentTask({
         }
         previousSystem = system;
         const allowed = new Set(tools.map(item => item.function.name));
-        const started = await nativeStudioClient.beginAgentGeneration(projectId, taskId, { expectedSequence: context.task.sequence });
+        const started = await client.beginAgentGeneration(projectId, taskId, { expectedSequence: context.task.sequence });
         const attemptId = started.attempts.at(-1).attemptId;
         const savedLength = transcript.length;
         let stopped = false;
         try {
-            const result = await executeNativeGeneration({
+            const result = await generate({
                 role: 'studio',
                 source: { projectId, taskId, revision: context.task.baseRevision, projectAttemptId: attemptId },
                 messages: [
@@ -283,15 +284,15 @@ export async function runNativeStudioAgentTask({
                         transcript.push(message); modelTranscript.push(message);
                         continue;
                     }
-                    const toolResult = await executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, abortSignal);
+                    const toolResult = await executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, abortSignal, client, work);
                     const message = toolResultMessage(call, toolResult);
                     transcript.push(message); modelTranscript.push(message);
-                    const task = toolResult?.taskId ? toolResult : await nativeStudioClient.getAgentTask(projectId, taskId);
+                    const task = toolResult?.taskId ? toolResult : await client.getAgentTask(projectId, taskId);
                     onUpdate({ task, messages: transcript, toolCall: call, toolResult });
                     stopped = STOP_STATES.has(task.status);
                 }
             }
-            const task = await nativeStudioClient.finishAgentGeneration(projectId, taskId, {
+            const task = await client.finishAgentGeneration(projectId, taskId, {
                 attemptId, status: 'completed', conversation: projectAgentConversation(transcript),
             });
             onUpdate({ task, messages: transcript });
@@ -300,7 +301,7 @@ export async function runNativeStudioAgentTask({
             // Keep the last complete conversation; authority may already contain successful tool calls.
             transcript.splice(savedLength);
             try {
-                await nativeStudioClient.finishAgentGeneration(projectId, taskId, {
+                await client.finishAgentGeneration(projectId, taskId, {
                     attemptId, status: 'failed', conversation: projectAgentConversation(completeProjectAgentConversation(transcript)),
                 });
             } catch (captureError) { error.captureError = captureError; }
@@ -317,7 +318,7 @@ export async function runNativeStudioAgentTask({
         }
     }
 
-    const task = await nativeStudioClient.getAgentTask(projectId, taskId);
+    const task = await client.getAgentTask(projectId, taskId);
     return { task, messages: transcript };
 }
 

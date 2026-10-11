@@ -92,7 +92,7 @@ export class NativeTaskScheduler {
             for (let attempt = 0; ; attempt++) {
                 await check(); view.status = 'running'; view.attempt = attempt;
                 try {
-                    output = await operation.run({ signal: controller.signal, onChunk: chunk => {
+                    output = await operation.run({ signal: controller.signal, operationId: view.operationId, onChunk: chunk => {
                         if (controller.signal.aborted || terminal.has(view.status)) return;
                         if (typeof chunk.text !== 'string' || chunk.text.length > 65536 || !chunk.text.startsWith(view.provisionalPresentation)) throw failure('operation_stream_invalid');
                         view.status = 'streaming'; view.provisionalPresentation = chunk.text;
