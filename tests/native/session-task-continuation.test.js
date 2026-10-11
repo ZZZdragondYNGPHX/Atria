@@ -8,6 +8,7 @@ import { lifecycleFixture } from './helpers/lifecycle-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
 import { createResponsesGenerationProvider } from '../../src/native/adapters/responses-generation-provider.js';
+import { createNativeMessagesProvider } from '../../src/native/adapters/native-messages-provider.js';
 import { continuityRequirements, capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
@@ -16,17 +17,28 @@ import { assertSessionTaskHistory, sessionTaskPublicSummary } from '../../public
 const reasoning = { type: 'reasoning', encrypted_content: 'PRIVATE-DECLARED-SESSION-TASK' };
 const tool = { type: 'function_call', call_id: 'skill-task-1', name: 'atri_skill_read', arguments: '{ "path":"ref.md", "name":"guide" }' };
 const final = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: '{"text":"Fresh Task result."}' }] };
-async function fixture(make, mode, maxJobs = 16) {
+async function fixture(make, mode, maxJobs = 16, format = 'openai-responses') {
     const h = await make(), wires = []; let onRead = async () => {}, readContent = 'Current pinned Task reference';
     let output = n => n % 2 ? [reasoning, tool] : [final];
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; wires.push(JSON.parse(raw));
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'completed', output: output(wires.length),
-            usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } }));
+        const content = output(wires.length);
+        const native = content.flatMap(item => item.type === 'reasoning'
+            ? [format === 'gemini' ? { text: 'Private reasoning', thought: true, thoughtSignature: reasoning.encrypted_content }
+                : { type: 'thinking', thinking: 'Private reasoning', signature: reasoning.encrypted_content }]
+            : item.type === 'function_call'
+                ? [format === 'gemini' ? { functionCall: { name: item.name, args: JSON.parse(item.arguments) }, thoughtSignature: reasoning.encrypted_content }
+                    : { type: 'tool_use', id: item.call_id, name: item.name, input: JSON.parse(item.arguments) }]
+                : [format === 'gemini' ? { text: item.content[0].text } : { type: 'text', text: item.content[0].text }]);
+        res.end(JSON.stringify(format === 'openai-responses' ? { status: 'completed', output: content,
+            usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } }
+            : format === 'gemini' ? { candidates: [{ content: { role: 'model', parts: native }, finishReason: 'STOP' }],
+                usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 8, totalTokenCount: 20 } }
+                : { content: native, stop_reason: 'end_turn', usage: { input_tokens: 12, output_tokens: 8 } }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    const seeded = await seedGenerationProfiles({ ...h, format: 'openai-responses', endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
+    const seeded = await seedGenerationProfiles({ ...h, format, endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
     const f = sessionFixture(), taskRuntime = lifecycleFixture().taskRuntime, task = taskRuntime.tasks[0];
     task.executionClass = 'turn_blocking'; task.context = ['input', 'history'];
     taskRuntime.turn = { policy: 'authority-first', stages: [], narratorTaskId: task.id };
@@ -50,7 +62,7 @@ async function fixture(make, mode, maxJobs = 16) {
     const guide = { name: 'guide', scope: { kind: 'global' }, installedHash: '1'.repeat(64) };
     const readFile = jest.fn(async () => { await onRead(); return { content: readContent, totalLines: 1 }; });
     const host = new NativeGenerationHost({ ...seeded, sessionCore: installed.core, packageInstaller: installed.packageInstaller,
-        providers: { 'provider.openai-responses': createResponsesGenerationProvider() }, secretPort: { resolveSecret: async () => 'fixture-secret' },
+        providers: { ['provider.' + format]: format === 'openai-responses' ? createResponsesGenerationProvider() : createNativeMessagesProvider({ format }) }, secretPort: { resolveSecret: async () => 'fixture-secret' },
         extensions: { settings: async () => ({ value: {} }) },
         skillRepository: () => ({ list: async () => [guide], pin: async ({ expectedHash }) => ({ version: expectedHash }), readFile }) });
     const input = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, taskId: task.id, variantId: variant.id,
@@ -123,6 +135,58 @@ async function freshNode(f, interrupt = null, readContent = undefined) {
         child.stdin.end(JSON.stringify({ kind: f.kind, handle: f.handle, dirs: f.dirs, input: f.input, interrupt, readContent }));
     });
 }
+
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    for (const format of ['anthropic', 'gemini']) test.each(['task', 'adaptive'])(`G04 Native Session Task ${kind} ${format} %s cold restores exact signed wire and original bank`, async mode => {
+        const f = await fixture(make, mode, 28, format);
+        try {
+            expect(await freshNode(f, 'charged_count')).toEqual({ stage: 'charged_count', reads: 1 });
+            const before = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.taskHistories);
+            const history = Object.values(before.taskHistories)[0];
+            expect(history.messages.map(message => message.role)).toEqual(['assistant', 'tool']);
+            expect(JSON.stringify(history)).not.toContain(reasoning.encrypted_content);
+            expect(JSON.stringify(history)).not.toContain('providerState');
+            const checkpoints = await f.checkpoints(); expect(checkpoints).toHaveLength(1);
+            const signed = JSON.parse(checkpoints[0].doc.contentWire);
+            expect(JSON.stringify(signed)).toContain(reasoning.encrypted_content);
+            expect(before.compute.localWork.at(-1)).toMatchObject({ kind: 'generation_count', status: 'charged' });
+            const resumed = await freshNode(f);
+            expect(resumed.reads).toBe(0); expect(resumed.record.payload).toEqual({ text: 'Fresh Task result.' });
+            expect(f.wires).toHaveLength(2);
+            const wire = format === 'gemini' ? f.wires[1].contents : f.wires[1].messages;
+            const assistant = wire.find(message => message.role === (format === 'gemini' ? 'model' : 'assistant'));
+            expect(assistant[format === 'gemini' ? 'parts' : 'content']).toEqual(signed);
+            expect(JSON.stringify(wire)).toContain('Current pinned Task reference');
+            const cost = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute).compute;
+            expect(cost.attempts.map(row => row.usage.totalTokens)).toEqual(format === 'gemini' ? [20, 20] : [null, null]);
+            expect(cost.attempts.map(row => row.usage.inputTokens)).toEqual([12, 12]);
+            expect(cost.attempts.map(row => row.usage.outputTokens)).toEqual([8, 8]);
+            expect(cost.localWork).toHaveLength(23); expect(cost.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
+            expect((await f.core.load(f.handle, f.input.sessionId)).states.atri_task_results.records).toHaveLength(1);
+            expect((await freshNode(f)).record).toEqual(resumed.record); expect(f.wires).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
+}
+
+for (const format of ['anthropic', 'gemini']) test.each(['task', 'adaptive'])(`G04 Native Session Task ${format} %s missing checkpoint refuses without authorizing a reset`, async mode => {
+    const f = await fixture(makeTempFsEngineHarness, mode, 32, format);
+    try {
+        await freshNode(f, 'charged_count');
+        const checkpoints = await f.checkpoints();
+        await f.engine.withTransaction(f.handle, async tx => {
+            for (const row of checkpoints) await tx.deleteResource(row.key);
+        });
+        const result = await f.host.executeTask(f.handle, f.input).catch(error => error);
+        expect(result.code).toBe('generation_continuation_unavailable');
+        expect(result.record).toBeUndefined();
+        expect(f.wires).toHaveLength(1); expect(f.readFile).not.toHaveBeenCalled();
+        expect(JSON.stringify(f.wires.at(-1))).not.toContain(reasoning.encrypted_content);
+        const cost = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute).compute;
+        expect(cost.attempts).toHaveLength(1);
+        expect(cost.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
+        expect((await f.core.load(f.handle, f.input.sessionId)).states.atri_task_results?.records ?? []).toHaveLength(0);
+    } finally { await f.cleanup(); }
+});
 test.each(['task', 'work_quota', 'model_quota', 'config_change', 'checkpoint_deleted', 'head_change', 'cancel_reset', 'storage_fault', 'storage_fault_sqlite', 'storage_fault_after_write', 'storage_fault_delete'])('G04 Session Task public summary %s refuses another send and retains original costs', async scenario => {
     const storageFault = scenario.startsWith('storage_fault');
     const f = await publicSummaryFixture(scenario === 'storage_fault_sqlite' ? makeTempSqliteEngineHarness : makeTempFsEngineHarness, scenario === 'task' ? 'task' : 'adaptive',
