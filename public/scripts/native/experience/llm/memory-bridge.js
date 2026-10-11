@@ -1,5 +1,6 @@
 import { cloneGameLlmValue } from './clone.js';
 import { informationContext, informationSourceMessageIds } from '../../../../shared/native-information-runtime.js';
+import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../retrieval-contracts.js';
 
 const MAX_QUERY_CHARS = 12000;
 const MAX_MEMORY_CONTENT_CHARS = 48000;
@@ -280,7 +281,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
     try {
         result = await session.recallMemory(query, { signal: options.signal, requester: target, informationTaskId: options.informationTaskId });
     } catch (error) {
-        if (options.signal?.aborted || error?.name === 'AbortError') throw error;
+        if (options.signal?.aborted || error?.name === 'AbortError' || NATIVE_RETRIEVAL_SCOPE_ERRORS.includes(error?.code)) throw error;
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
     }
     result?.assertCurrent?.();

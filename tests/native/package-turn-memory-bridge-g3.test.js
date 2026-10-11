@@ -9,9 +9,38 @@ import {
     resetNativeSessionLifecycleForTesting,
 } from '../../public/scripts/native/session-lifecycle.js';
 import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
+import { runNativePlayGeneration } from '../../public/scripts/native/play-generation.js';
 import { informationSnapshot } from './helpers/information-fixture.js';
 
 afterEach(() => resetNativeSessionLifecycleForTesting());
+
+test.each(['native_generation_revision_conflict', 'native_run_terminal', 'storage_read_only'])(
+    'G06 final Package Play consumer preserves %s instead of starting a Turn without Memory', async code => {
+        const snapshot = memorySnapshot(true);
+        snapshot.manifest.runtime.experienceContract.taskRuntime = { schemaVersion: 1, slots: [], tasks: [], turn: { policy: 'authority-first', stages: [] } };
+        const error = Object.assign(new Error(code), { code });
+        const runtime = { snapshot, prepareGeneration: jest.fn(async () => 'normal'), markProvisionalTurn: jest.fn(),
+            finalizeStoppedGeneration: jest.fn(async () => {}), acceptOperationSnapshot: jest.fn() };
+        const executeOperation = jest.fn(async () => snapshot);
+        const recallMemory = jest.fn(async () => { throw error; });
+        const host = { context: () => ({ getCapabilityApi: () => ({ openSession: async () => ({ recallMemory }) }) }), ended: jest.fn() };
+        await expect(runNativePlayGeneration({ runtime, host, executeOperation })).rejects.toBe(error);
+        expect(recallMemory).toHaveBeenCalledTimes(1);
+        expect(runtime.markProvisionalTurn).not.toHaveBeenCalled();
+        expect(executeOperation).not.toHaveBeenCalled();
+        expect(runtime.finalizeStoppedGeneration).toHaveBeenCalledTimes(1);
+        expect(runtime.generationProjection.state).toBe('failed');
+        expect(host.ended).toHaveBeenCalledTimes(1);
+    },
+);
+
+test.each(['native_generation_budget_exhausted', 'optional_service_unavailable'])(
+    'G06 Package Recall keeps the optional %s fallback', async code => {
+        const result = await recallNativePackageTurnMemory({ snapshot: memorySnapshot(true),
+            memoryApi: { openSession: async () => ({ recallMemory: async () => { throw Object.assign(new Error(code), { code }); } }) } });
+        expect(result).toMatchObject({ status: 'unavailable', evidence: [] });
+    },
+);
 
 function memorySnapshot(enabled = true) {
     const snapshot = informationSnapshot();
