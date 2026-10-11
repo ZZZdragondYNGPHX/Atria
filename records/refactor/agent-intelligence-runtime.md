@@ -2088,3 +2088,16 @@ source `49036006ab54cd89edaafa771441d0943a41ff26`，在初始Skill组已push/核
 原bank只2个unknown corpus rows/0model attempts；恢复后第3 warm在原bank前拒绝，旧成本保持。actual list完整路径现在4 jobs（corpus/list/insert/query），不足2仍基础合法来源；实际delta两次9 jobs，新hash留/旧hash消失与4个loopback Embedding保持。复制JSON仍不能获得原source currentness proof；fixture Game/Package admission port仅unconfigured协议夹具，不假称那里新验证真实预算。其它成功客户端trace只作client观察，未知currency/CPU不提升。全部新增/回归HTTP为本地接口或loopback，无外部请求。
 
 ESLint检查全部9改动文件：8无新报错，retrieval-compute-g05原HEAD20条既存rule错误与当前规范化message完全相同，新增0，不改无关旧cases；修改client mock和Game/Package fixture后只相关文件补lint，git diff --check PASS。MySQL/Postgres未运行。原真实G06 FAIL、38/direct72982、unknown2/17515 upper/admission fetch0与原quota保留，未宣称M8/HM2完成或cache/金额收益；按正式依赖继续。
+
+
+### 2026-10-11 G05 — 原 Hybrid client hash/rank/packing及scope拒绝保持
+
+source `f3f967cbdfcfb5414740389f3df5e79b7b09376b`，前corpus组已push/核对后继续。唯一合同在G01本组；原retrieval-work有限phase corpus/hash/rank/pack映射memory_corpus/hash/rank/pack，不接受model或prototype目的。corp完成后先charge必要rank/pack，再允许可选hash/index/rerank，全部原Run/Task bank。描述bytes是已存在snapshot/corpus/query/core/budget的真实请求JSON，不把未来vector/rerank response算已知；每macro请求1job/item。准入后即unknown持久占用，未开始/取消/失败也不伪造completed或退款。client trace新增localAdmissions/localMeteredAdmissions/localCostStatus，local unknown与原model costStatus/not_requested分开，CPU仍client elapsed观察；没有server CPU证明或独占/金额硬cap。
+
+共26 distinct PASS（10新增/16受影响既有），只本组相关子集：`g05-client-phases-after-v1.log`22PASS，含6新增必需1/2-job拒绝、rank/pack/hash晚取消及phase allowlist；16既有为FS/SQLite Session/Task冷暖/恢复4、unbounded readonly1、actual list2/delta1/rerank1及7rerank异常/成功。新费用：纯base一次3 unknown jobs，两次6，原warm证据相同；可选index完整一次7，不足3时hash预算拒绝仍使用已准入base并不发index/model；delta两次15（含原7index工作+2corpus+6新增phases），真实旧hash消失/新hash留存，4loopback Embedding数未增。模型/index实际lane独立保留，不把client阶段算多笔provider费用。
+
+scope缺陷有真实失败：`g05-client-phases-authority-before-v1.log`新增Session HEAD/Project takeover两项FAIL，原vector catch吞hash admission的authority错误，实际返回vector_unavailable+base，local source guard仍有效。移到可选工作前独立处理，只有budget_exhausted可降级；after-v2 6PASS/1FAIL（Project拒绝已生效但被HTTP投影成compute_invalid）。原Task真实code是project_agent_task_closed，不伪造native task_stopped；原retrieval contracts共享scope错误协议，经新endpoint、原middleware与vectors handler保留，client vector/rerank catch不吞。`scope-after-v3.log`5PASS/3FAIL包含warm telemetry4/Session hash1与Project code/原index/rerank两新反例；`scope-after-v4.log`hash两个PASS、index/rerank仍FAIL，定位到vectors regenerateCorruptedIndexErrorHandler更早已抹code；补同一原projection后`scope-after-v5.log`仅2新反例PASS。v3/v4/v5失败和相关复验均保留，不把重复检查加到distinct，不因失败停止任务。
+
+4个scope反例实际调用原Core.appendTimeline或Agent.takeOver，frontend source guard仍有效，服务端拒绝必须阻断CPU/result；保持3/4已准入unknown jobs与model HTTP0。后两项还走原NativeRetrievalService/middleware/实际index或rerank端口，不是只测validator。共享scope error只保存原非秘密code，不新增权限裁决或预算registry；普通服务/budget可选失败仍走原合法基础路径，currentness/权限失败不降级。
+
+全部9改动文件相关ESLint：8无报错，retrieval-compute-g05原HEAD20既存错误与当前message多重集一致，新增0；diff PASS。未运行MySQL/Postgres、全仓suite、M1/HM1或外部API。原真实38/direct72982、unknown2/17515 upper/admission fetch0、G06 quality FAIL及原quota保持；M8/HM2未验收。其它实际Skill入口、开端source/config读取和未选消费者准确pending，继续按原正式依赖推进，不合并main/部署。

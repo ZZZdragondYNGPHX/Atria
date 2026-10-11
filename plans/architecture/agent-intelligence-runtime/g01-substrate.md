@@ -31,7 +31,7 @@
 | --- | --- | --- | --- |
 | Session declared Task continuity — G01/G02/G04/G05 | `fafdb8608` 已交付原foreground Narrator声明Task的公开工具history/独立Node冷恢复；Responses实际Session证据，原结果CAS与Run额度保持 | 已交付组不重做；其它实际Task消费者按所选支持矩阵继续，不把Studio或后台消费者写成已覆盖 | 有限组已完成；其它消费者本地可做 |
 | Session fork/restore 与 compaction — G02/G03/G04/G05 | `804b088ae` 已验真实 fork/restore；`3cebec8f7` 已接 Responses 原 Session Task 有界摘要/一次 adaptive reset、公开来源与配置版本、原费用及冷 epoch | 已交付有限出口不重做；Provider native safe-copy/compaction须已有精确支持证据，本组不发送其字段；FS补偿不声明中途进程退出跨文件原子性 | 有限本地出口已交付；真实 native compaction 未verified |
-| 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；`bc31bf963` 已接原 Native Narrator 初始 inventory/pin/always-load；`49036006a` 已接scoped Hybrid corpus/reuse入口unknown工作；其它已启用 Skill 入口及client hash/rank/packing阶段仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | Context/Prompt 有限组完成；其余已启用消费者本地可做 |
+| 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；`bc31bf963` 已接原 Native Narrator 初始 inventory/pin/always-load；`49036006a` 已接scoped Hybrid corpus/reuse入口unknown工作；`f3f967cbd` 已接client hash/rank/packing原unknown工作；其它已启用Skill入口及开端source/config读取仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | Context/Prompt 有限组完成；其余已启用消费者本地可做 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 本地工程可做；外部收益证据暂停 |
 | 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 外部证据暂停；不新增付费发送 |
 | 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
@@ -65,6 +65,16 @@ source `bc31bf963`：14新增/39受影响既有distinct checks通过，原内容
 最小出口：真实FS/SQLite Session/Project Task HTTP准入→原corpus消费者，冷暖命中仍同一原bank、Route关闭/耗尽/bytes/readonly/stale/服务失败拒绝及原成本保持。仅本地协议与未知成本，不升级真实verified或算法/金额收益。初始source/config读取、其它Skill入口、rank/packing等其它已启用本地阶段仍如实pending，后续逐组接原端口。
 
 source `49036006a`：13新增/13受影响既有distinct PASS；Memory实际list/delta/rerank和Game/Package Context、原proof冷暖反例只检查受影响部分。client请求不带profile/Secret，不发送Embedding/model；backend使用原local-purpose指纹，不是可调用模型配置。实际成本和一次fixture header失败见Record。
+
+## 已交付有限 G05：原 Hybrid client hash / rank / packing 准入
+
+仅接已启用retrieveMemory剩余三个macro消费者：`memory_hash`包住当前profile的collection/hash/metadata校验与原index请求准备，`memory_rank`包住原规则/query/lexical/graph融合与可选rerank结果验证，`memory_pack`包住原token counting/packing/evidence投影。沿前组同一retrieval-work端口以有限phase allowlist复用原budget，不新增registry/子额度；每项1job/item，bytes为已存在snapshot/corpus/query/core/budget等请求描述，不含未知未来vector/rerank响应的虚构bytes。
+
+corp完成后先准入必要rank/packing，再进入可选hash/index/rerank，使可选拒绝仍能消费已获准基础路径。已准入但最终未执行的client阶段也保守unknown占用，不虚称全部完成或退款；每次等待及实际阶段边界继续原guard。模型/index实际发送/CPU各沿既有独立lane，unknown client数据不证明server process CPU、独占工作量或金额。缺必需预算停止此Recall；可选hash/index拒绝走现有合法基础检索，权限/currentness失败不降级。
+
+有限出口：FS/SQLite原Session/Task冷暖+恢复的同bank新费用、缺rank/pack预算不开始相关work/HTTP、optional拒绝仍保留base、hash/rank/packing取消/stale成本与原输出一致；只做受影响原消费者。其它已启用Skill入口、开端source/config读取、未选择的消费者准确pending；此组不构造H3真实服务或G06质量改善证据。
+
+source `f3f967cbd`：10新增/16受影响既有distinct PASS。真实Server HEAD/Task变化的4个反例保持本地source guard有效，hash admission仅预算拒绝可fallback；原index/rerank scope错误经原handler/HTTP投影共享错误协议保留，不吞为普通服务故障。localAdmissions/localMeteredAdmissions/localCostStatus将client unknown与原model costStatus分开。失败、最小复验和既存lint边界见Record。
 
 ## 已交付有限 G04：原 Session 声明 Task 的原生工具轮次
 
