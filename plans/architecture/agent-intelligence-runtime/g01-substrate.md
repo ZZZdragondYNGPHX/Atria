@@ -46,7 +46,7 @@
 
 source `23e95b695` 已提交/push：11新增定向cases与22既有cases通过。新增实际Session协议证据仅Responses + FS/SQLite task/adaptive；共享接点可给原三个native port附store，但本组不将旧Studio Anthropic/Gemini结果写成实际Session测试。原Task取消曾真实FAIL（外层返回时private row仍在），修复为task/adaptive await同worker结算/清理，复验通过；none/active原取消语义保持。同invocation不同实际Session各工具/最终2 checkpoint、各40 direct tokens；合法最终Task结果重复调用不再发送。不完整恢复反例只在fixture恢复原private row，未杀进程、未完成cold history恢复。完整边界见同一Record，本组之后继续公开history消费者。
 
-## 下一有限 G04/G05：原 Session Task 公开工具历史与冷恢复（冻结）
+## 已交付有限 G04/G05：原 Session Task 公开工具历史与冷恢复
 
 2026-10-11 在 `23e95b695` 后仅沿原声明Narrator Task、现有只读Skill工具与RuntimeCheckpointStore继续。原RunControl operation增加可选 `taskHistories`，按原invocation识别、精确Task/input fingerprint与Skill inventory pin固定，至多8项/operation、54条消息/Task、单项64KiB，原control整体131072-byte上限不变；容量拒绝，不无声淘汰。只保存assistant公共text/tool_calls与tool公共结果，不保存providerState、opaque/native payload/Secret或caller历史。字段为可选，旧Run资源无迁移/新registry/新Session state writer。
 
@@ -55,6 +55,8 @@ source `23e95b695` 已提交/push：11新增定向cases与22既有cases通过。
 cold Host不相信caller messages：从上述原history重建当前公开Context，在原store按完整原native prefix/Task scope/path/config authority匹配私有checkpoint；缺失、过期、pin/历史/config变化或不完整恢复均拒绝task/adaptive，Session adaptive不借Studio public projection作自动reset。工具结果已保存就不再读；仅尚未完成的只读工具可重读，仍用当前pin/预算并保留以前已花成本。生产结果只沿原Task结果/receipt CAS，正式结果已存在时原cached invocation直接返回，不重放effect；若未正式提交则恢复的是原进行中工具任务，不假报已完成。
 
 本地有限出口：实际FS/SQLite原Package/Session Task由一个fresh Node执行，公共工具history与私有checkpoint均已持久后在第二count原charge返回处进程立即退出，另一个fresh Node恢复并完成同一原Task/Run预算；明确这是进程exit夹具、不是真实服务kill。检验只发原2 HTTP、readonly结果不重读、CPP wire顺序原样、charged本地工作保守保留、正式结果重复调用HTTP不增；另检验history缺失/篡改/pin变化、部分工具历史、quota/取消及公开/私有隔离。支持先验仍只提升本地Responses实际Session证据；不宣称其它品牌Session、真实gateway/质量或fork/compaction完成。
+
+source `fafdb8608` 已提交/push，17真正新增cases、9原cases增强及25其它既有cases通过（复验不重复计distinct）。冷退出前公共结果已保存时，新进程不重读；pending readonly read可按当前pin/额度重读，旧charged工作保持。本组只支持原foreground Narrator声明Task，background明确unavailable；其它Task消费者继续按实际依赖。pending重读发生在Context阶段，checkpoint完整prefix/private校验在随后count/lowering，不声称缺CPP在所有repository访问前拒绝；缺失/篡改/权限反例保证新HTTP0并保留原成本。公共history不存providerState/private payload；原cached正式结果不重发。详细费用、首次旧guard回归/修复与进程exit范围在Record，不提升真实路径verified。下一验证原Session实际fork/历史restore，并沿原能力处理compaction。
 
 ## 历史 checkpoint 与后续组记录
 
