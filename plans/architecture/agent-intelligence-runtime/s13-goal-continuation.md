@@ -18,4 +18,4 @@
 
 ## 当前实施
 
-Project 有限消费者已在 `fdea2011b` 接入并推送：同 Task bank、durable wake/claim、无重复发送、独立 Node claimed 恢复拒绝、排队失效和暂停保留费用。Native/Ordinary RP 的事件消费者与 Goal context 投影尚未接，不把 Project 的检查当作全部 S13 或 M2 验收。下一组接 RP 原用户事件的证据更新与原工作体验；没有声明 consumer 的 RP Goal 不创建隐藏发送或新 Run。
+Project 有限消费者已在 `fdea2011b` 接入并推送：同 Task bank、durable wake/claim、无重复发送、独立 Node claimed 恢复拒绝、排队失效和暂停保留费用。RP 后续显式用户/作者事件及 context 投影见 [S14](s14-goal-experience.md)。Native Goal 只沿既有作品 Task/lifecycle 产物的 context grant 核验，不从目标文本创建隐藏发送、新 Run 或 World 命令；未具备原获准 consumer 时继续等待原事件。Project 自动执行与 RP 手动证据管理的预算边界保持分开，不将后者宣称自动续跑或全部 CPU 计量。

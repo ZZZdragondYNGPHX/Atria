@@ -2185,3 +2185,17 @@ source `fdea2011bdba322555a7ece5a6064655ac2c9b0f` 已 push 并核对远端。恢
 失败历史完整保留：after-v1 两 binding projection 失败，补公开 snapshot goalBinding；after-v2 两 Task sequence 冲突，proof 工作先保守 unknown 占用再 capture，start 前读最新 sequence/核验 execution fingerprint；pause-v5 两夹具误期待 charged，原 Provider 实际已结算 unknown，修按原账目断言。recovery-v7 两失败误期待一笔发送，原 Host policy 合法 retry 实际两笔 unknown；未修改生产 retry 权限或退款，仅如实修消费者断言。Goal proof 的 localWork 是保守 unknown，不宣称实际 CPU 已完成。
 
 所有十改动文件 `s13-goals-lint-v9.log` ESLint PASS，diff PASS。未运行 MySQL/Postgres、M1/HM1、全仓或外部API；原 quota/真实费用/G06 FAIL 不变。Native/Ordinary RP 原事件消费者及 context 投影仍待接，不能将 Project 有限组标为全部 S13/M2 完成；继续 RP 与 S14，再处理 G06/M8 的剩余真实出口。main 仍 `3ee1332ef`，未 merge/deploy，私有日志和账本未上传。
+
+### 2026-10-11 S14 — scoped RP 事件、原 Goal context 与共享工作体验
+
+source `0c50438f6cc95dcc22278bc8f07eec328ee5c117` 已 push/核对远端。沿原 Goal integrity/sequence CAS 增加可选最近 lastEvent；RP 显式用户/作者事件只走 S12 原 Source capture/current evaluate，不生产模型请求、Run 或 World 操作。重复最近 event 不重复写，较早 event 也仅能再次核验证据，不执行 effect。Native 有声明 Task/lifecycle 产物时只能消费其原 context grant；未具备 consumer 时等待原用户/作品事件。Project 仍用 S13 原 bank 和 durable claim，正式 Commit 前不完成。
+
+原 Studio Task 与 RP Workspace Run 共享 pane，展示判据、进度、声明预算、原 Task 实际 settled/reserved/unknown 占用和下一步，接原 pause/resume/cancel/bind/wake/inspect；创建仍沿 S11 用户/作品结构化 API，没有自由文本自动授权/新 Goal 编辑器。readonly 禁用写控件；loading/错误恢复和键盘焦点保持，内容 textContent 转义。用户 Goal context 按 authenticated owner/精确 Evidence scope 从原 metadata 读取，Actor desires 排除、Native branch 变化投影 stale；Agenda 使用原冻结 Run scope、Director 的相同 loadRunGoalContext + 原 user message builder、Project 真实 Host 请求消费原 criteria 数据，不提升为 system/事实/工具 grant。运行切换后的异步 context 拒绝使用。
+
+25 distinct Jest PASS（13新/12受影响既有）与 1 独立真实 Edge smoke PASS：`s14-goals-after-v1.log` 8新（FS/SQLite RP 后续真实 ChatRepo.save 才 completed、重复 event 与新 service 恢复、Native Actor 排除/真实 fork stale、readonly/pause/resume/cancel；Project loopback user 数据→原 authoring Plan/Review→正式 Commit→Goal completed，共2单项正向各20 reported tokens）。`context-v2` 2新冻结 Scope/Run 变更与1新 Director 数据层、7旧 builder checks；`consumers-v3` 1新实际 Agenda worker 提示与3旧相关 consumer（Goal API 只作为 fixture port，实际 frame/runtime 分支执行）。`native-artifact-v6` 1新实际 Native lifecycle outbox→原 Host scheduler→Session Task publication→原 artifact grant→恢复后 Goal completed，重复事件不重写、producer outbox 不重放；该单项模型输出/精确 refs 是 fixture stub，不是 HTTP/真实费用或模型质量证明。`bank-regression-v8` 仅2旧完整两次原 Studio/第三额度拒绝，新增 Goal 数据未重建 bank。
+
+`ui-v4` 用安装的真实 Edge/headless 检查两入口，390px 无横向溢出、XSS 文本转义、加载 aria-busy/disabled、暂停后 Resume 按钮焦点、恢复/完成、错误不回显私有 detail、readonly、uncertain cost/resend 阻断展示和 dispose；只用 fixture API，不冒充生产登录/整产品视觉验收。截图本地 private 保存并实际查看，沿 Atria tokens 统一控件/边框与宽度。ui-v1 只因迁移后 Playwright bundled Chromium 缺失未启动，改用已有 msedge 后 ui-v2 PASS；token 样式调整 ui-v3 与焦点/loading增强 ui-v4 必要复验 PASS。
+
+保留失败：lint-v1 新 pane 2 brace-style，修后 lint-v2/最终16改动 JS/test文件 lint-v7 PASS；native-artifact-v4 fixture 复用旧 Package origin 与新 PackageVersion 不匹配，修真实 fixture envelope 后 v5 因旧模型stub精确 prompt/generation refs 缺失拒绝。补对应 variant refs 仅 v6 复验 PASS，生产 provenance guard 未放宽。其它新 Source/Goal checks首轮 PASS，diff PASS。未运行全仓、MySQL/Postgres、M1/HM1；外部API0，原quota1661/M8 actual40/direct77955/unknown2与17515 upper/admission fetch0和原真实G06 FAIL完整保持。
+
+有限 S13/S14 用户/作品事件消费者已交付，RP Goal 没有额外 Task/World 执行权限；原 Goal metadata管理/legacy context读取不冒称全部 localWork 已计量，Project 自动 proof 才计同原Task bank。关闭应用期间系统唤醒、未选 RP 自动执行/所有consumer没有验收；Actor desire completion仍依赖S17。继续 G06 的真实叙事质量、分层对照、费用/cache/延迟证据，M3 不跳过此前置。main仍3ee1332ef，未merge/deploy，旧HANDOFF不自动刷新。

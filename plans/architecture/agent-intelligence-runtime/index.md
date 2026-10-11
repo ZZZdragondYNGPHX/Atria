@@ -30,6 +30,7 @@
 - D5 source / integration start docs HEAD: `13d09ccac68b2c4f71f84a8ae2a405f3eb53577b`；HCM-01–08 最终决定已冻结，本轮只整合 docs，产品 refs 与 M1 历史不变。
 - M8 current checkpoint: 从 main `3ee1332ef` 在 `feat/agent-compute-runtime` 推进；G01 基础 `c62ecc937`、G02 编译绑定 `37273d4ca`、G03 Artifact/Plan proof `c6979abda`、G04 Responses/stream `09ef28452`、原生私有 envelope/Host retry `47575e344`、G05 shared send `9599dad35`、gateway counters `acd2d563f` 与原Studio Task lineage消费者 `9369f3b0a`，未集成，完整 M8/HM2 尚未验收。实施矩阵见 [G01 substrate](g01-substrate.md)，持续按 G01→G06→HM2 依赖推进。
 - Record: [阶段记录](../../../records/refactor/agent-intelligence-runtime.md)
+- M2 local checkpoint: S11 `9b0ad933f` / S12 `3ee22238e` / S13 Project `fdea2011b` / S14 scoped RP events and shared pane `0c50438f6` 已 push。有限双入口 Source 完成、原 bank 和用户控制已验证；RP 不从 Goal 文本创建隐藏 Task/Run，关闭应用期间无系统唤醒。实际支持及证据边界见 [S13](s13-goal-continuation.md) / [S14](s14-goal-experience.md) 和最新 Record。M8/HM2 的 G06 真实出口仍未验收，M3 前置保持。
 
 ## 目标与当前结论
 
