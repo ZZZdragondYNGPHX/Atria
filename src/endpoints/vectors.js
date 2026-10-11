@@ -140,6 +140,10 @@ async function getVector(source, sourceSettings, text, isQuery, directories, req
  * @returns {Promise<number[][]>} - The array of vectors for the texts
  */
 async function getBatchVector(source, sourceSettings, texts, isQuery, directories, request = null) {
+    if (source === 'transformers') {
+        return getTransformersBatchVector(texts, sourceSettings.native ? sourceSettings.model : undefined,
+            { compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal });
+    }
     const batchSize = 10;
     const batches = Array(Math.ceil(texts.length / batchSize)).fill(undefined).map((_, i) => texts.slice(i * batchSize, i * batchSize + batchSize));
 
@@ -159,10 +163,6 @@ async function getBatchVector(source, sourceSettings, texts, isQuery, directorie
                 break;
             case 'openrouter':
                 results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
-                break;
-            case 'transformers':
-                results.push(...await getTransformersBatchVector(batch, sourceSettings.native ? sourceSettings.model : undefined,
-                    { compute: request?.nativeRetrieval?.compute, signal: request?.nativeRetrieval?.signal }));
                 break;
             case 'extras':
                 results.push(...await getExtrasBatchVector(batch, sourceSettings.extrasUrl, sourceSettings.extrasKey, request));

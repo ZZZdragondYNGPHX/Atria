@@ -15,10 +15,10 @@ const infer = jest.fn(async () => { await onInfer(); return { data: [1, 0] }; })
 const load = jest.fn(async () => { await onLoad(); return infer; });
 jest.unstable_mockModule('../../src/transformers.js', () => ({ getPipeline: load }));
 const { router } = await import('../../src/endpoints/vectors.js');
-const { getTransformersVector } = await import('../../src/vectors/embedding.js');
+const { getTransformersVector, getTransformersBatchVector } = await import('../../src/vectors/embedding.js');
 afterEach(() => { onLoad = async () => {}; onInfer = async () => {}; load.mockClear(); infer.mockClear(); });
 
-async function fixture(make, lane = 'session', maxJobs = 5) {
+async function fixture(make, lane = 'session', maxJobs = 4) {
     const h = await make(), installed = await installFixture(h), base = await installed.core.create(h.handle, installed.start);
     const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/never-send', roles: ['narrator', 'studio'] });
     const project = services(h), limits = { maxRequests: 2, maxTokens: 64000, localWork: { maxJobs, maxItems: 32, maxInputBytes: 1048576 } };
@@ -50,12 +50,14 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             await h.request.post('/query').send({ ...h.body, searchText: 'Promise', topK: 1, threshold: 0 }).expect(200);
             const bank = await h.bank();
             expect(bank.attempts).toEqual([]); expect(bank.limits).toEqual(h.limits);
-            expect(bank.localWork).toHaveLength(5);
-            expect(bank.localWork.filter(row => row.kind === 'embedding_local')).toHaveLength(3);
+            expect(bank.localWork).toHaveLength(4);
+            expect(bank.localWork.filter(row => row.kind === 'embedding_local').map(row => row.estimatedItems)).toEqual([2, 1]);
+            expect(bank.localWork.find(row => row.kind === 'embedding_local').estimatedInputBytes)
+                .toBe(Buffer.byteLength('A historical promiseA different source', 'utf8'));
             expect(bank.localWork.every(row => row.status === 'settled' && row.usage.outcome === 'completed')).toBe(true);
-            expect(load).toHaveBeenCalledTimes(3); expect(infer).toHaveBeenCalledTimes(3);
+            expect(load).toHaveBeenCalledTimes(2); expect(infer).toHaveBeenCalledTimes(3);
             await h.request.post('/query').send({ ...h.body, searchText: 'No extra work', topK: 1, threshold: 0 }).expect(429);
-            expect(load).toHaveBeenCalledTimes(3); expect((await h.bank()).localWork).toHaveLength(5);
+            expect(load).toHaveBeenCalledTimes(2); expect((await h.bank()).localWork).toHaveLength(4);
         } finally { await h.cleanup(); }
     }, 60000);
 
@@ -98,3 +100,28 @@ test('G05 Transformers cancellation after inference retains cost; queued cancell
     expect(await activeRejected).toMatchObject({ name: 'AbortError' }); expect(await queuedRejected).toMatchObject({ name: 'AbortError' });
     expect(jobs).toHaveLength(1); expect(jobs[0].usage.outcome).toBe('cancelled'); expect(load).toHaveBeenCalledTimes(1);
 });
+
+test('G05 Transformers partial batch failure retains all admitted items and bytes; later texts are not inferred', async () => {
+    const jobs = [], texts = ['第一条', 'Second', 'Never inferred'];
+    let count = 0;
+    onInfer = async () => { if (++count === 2) throw new Error('Local inference failed'); };
+    const compute = { assertCurrent: async () => {}, beforeLocalWork: async input => { jobs.push(input); return 0; },
+        settleLocalWork: async (_ticket, usage) => { jobs[0].usage = usage; } };
+    await expect(getTransformersBatchVector(texts, 'exact-model', { compute })).rejects.toThrow('Local inference failed');
+    expect(load).toHaveBeenCalledTimes(1); expect(infer).toHaveBeenCalledTimes(2);
+    expect(jobs).toHaveLength(1); expect(jobs[0]).toMatchObject({ items: 3,
+        inputBytes: Buffer.byteLength(texts.join(''), 'utf8'), usage: { outcome: 'failed' } });
+});
+
+test('G05 Transformers original insert batch is one local job beyond the remote ten-text batch limit', async () => {
+    const h = await fixture(makeTempFsEngineHarness);
+    try {
+        const items = Array.from({ length: 12 }, (_, index) => ({ hash: index + 1, text: 'Source ' + index, index }));
+        await h.request.post('/insert').send({ ...h.body, items }).expect(200);
+        await h.request.post('/query').send({ ...h.body, searchText: 'Source', topK: 1, threshold: 0 }).expect(200);
+        const bank = await h.bank();
+        expect(bank.localWork).toHaveLength(4);
+        expect(bank.localWork.filter(row => row.kind === 'embedding_local').map(row => row.estimatedItems)).toEqual([12, 1]);
+        expect(load).toHaveBeenCalledTimes(2); expect(infer).toHaveBeenCalledTimes(13);
+    } finally { await h.cleanup(); }
+}, 60000);
