@@ -9,10 +9,12 @@ export function isNarrativeSkillInvocation(role, taskPlan, runtime) {
             && activity.narrator.variantId === taskPlan.variant.id));
 }
 
-export async function prepareNarrativeSkills({ repository, settings, context }) {
-    const entries = await loadAlwaysSkills(await pinSkillEntries(resolveSkillInvocation(await repository.list({ scope: 'all' }), {
-        context, settings, path: 'narrative',
-    }), opts => repository.pin(opts)), opts => repository.readFile(opts));
+export async function prepareNarrativeSkills({ repository, settings, context, work = (_kind, _input, operation) => operation() }) {
+    const selected = await work('skill_inventory', { scope: 'all', context, settings, path: 'narrative' }, async () =>
+        resolveSkillInvocation(await repository.list({ scope: 'all' }), { context, settings, path: 'narrative' }));
+    const entries = await loadAlwaysSkills(await pinSkillEntries(selected,
+        opts => work('skill_pin', opts, () => repository.pin(opts))),
+    opts => work('skill_load', opts, () => repository.readFile(opts)));
     const inventory = entries.map(({ name, scope, description, invocationMode, installedHash, version }) => ({ name, scope, description, invocationMode, installedHash, version }));
     const tools = entries.length ? [
         { type: 'function', function: { name: 'atri_skill_read', description: 'Read a scoped Skill instruction or supporting file. Offset is one-based; limit is at most 200 lines.',

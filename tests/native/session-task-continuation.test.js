@@ -16,7 +16,7 @@ import { assertSessionTaskHistory, sessionTaskPublicSummary } from '../../public
 const reasoning = { type: 'reasoning', encrypted_content: 'PRIVATE-DECLARED-SESSION-TASK' };
 const tool = { type: 'function_call', call_id: 'skill-task-1', name: 'atri_skill_read', arguments: '{ "path":"ref.md", "name":"guide" }' };
 const final = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: '{"text":"Fresh Task result."}' }] };
-async function fixture(make, mode, maxJobs = 12) {
+async function fixture(make, mode, maxJobs = 14) {
     const h = await make(), wires = []; let onRead = async () => {}, readContent = 'Current pinned Task reference';
     let output = n => n % 2 ? [reasoning, tool] : [final];
     const server = createServer(async (req, res) => {
@@ -60,7 +60,7 @@ async function fixture(make, mode, maxJobs = 12) {
         async checkpoints() { return h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: K.runtimeCheckpoint, handle: h.handle })); },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
-async function publicSummaryFixture(make, mode, { maxJobs = 26, maxRequests = 3 } = {}) {
+async function publicSummaryFixture(make, mode, { maxJobs = 30, maxRequests = 3 } = {}) {
     const f = await fixture(make, mode, maxJobs);
     f.output(n => n <= 2 ? [reasoning, { ...tool, call_id: 'summary-read-' + n }] : [final]);
     f.readContent('x'.repeat(10000));
@@ -104,8 +104,8 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
         expect(observation.snapshot.diagnostics.continuity).toEqual({ requestedPolicy: 'adaptive', effectiveScope: 'none', action: 'reset',
             reason: 'bounded_public_task_summary', sourceCheckpointIds: history.compaction.sourceCheckpointIds, loss: 'opaque_not_restored' });
         expect(operation.compute.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20, 20]);
-        expect(operation.compute.localWork).toHaveLength(23); expect(operation.compute.localWork.every(row => row.status === 'settled')).toBe(true);
-        expect(observation.routing.compute.localWork).toHaveLength(23); expect(observation.routing.compute.currencyStatus).toBe('unavailable');
+        expect(operation.compute.localWork).toHaveLength(25); expect(operation.compute.localWork.every(row => row.status === 'settled')).toBe(true);
+        expect(observation.routing.compute.localWork).toHaveLength(25); expect(observation.routing.compute.currencyStatus).toBe('unavailable');
         const checkpoints = await f.checkpoints(); expect(checkpoints).toHaveLength(1);
         expect(checkpoints[0].doc.binding.executionScope.epoch).toBe(1);
         expect(history.compaction.sourceCheckpointIds).not.toContain(checkpoints[0].doc.checkpointId);
@@ -126,7 +126,7 @@ async function freshNode(f, interrupt = null, readContent = undefined) {
 test.each(['task', 'work_quota', 'model_quota', 'config_change', 'checkpoint_deleted', 'head_change', 'cancel_reset', 'storage_fault', 'storage_fault_sqlite', 'storage_fault_after_write', 'storage_fault_delete'])('G04 Session Task public summary %s refuses another send and retains original costs', async scenario => {
     const storageFault = scenario.startsWith('storage_fault');
     const f = await publicSummaryFixture(scenario === 'storage_fault_sqlite' ? makeTempSqliteEngineHarness : makeTempFsEngineHarness, scenario === 'task' ? 'task' : 'adaptive',
-        { maxJobs: scenario === 'work_quota' ? 18 : 26, maxRequests: scenario === 'model_quota' ? 2 : 3 });
+        { maxJobs: scenario === 'work_quota' ? 20 : 30, maxRequests: scenario === 'model_quota' ? 2 : 3 });
     const controller = new AbortController(); let rollback;
     const charge = f.core.runs.chargeLocalWork.bind(f.core.runs); let histories = 0;
     f.core.runs.chargeLocalWork = async (...args) => {
@@ -181,7 +181,7 @@ test.each(['task', 'work_quota', 'model_quota', 'config_change', 'checkpoint_del
         const control = await f.core.runs.status(f.handle, f.input.sessionId), operation = Object.values(control.operations).find(row => row.compute);
         const cost = operation ? { tokens: operation.compute.attempts.reduce((sum, row) => sum + row.usage.totalTokens, 0), jobs: operation.compute.localWork.length }
             : { tokens: control.retiredCompute.knownTotalTokens, jobs: control.retiredCompute.localJobs };
-        expect(cost).toEqual({ tokens: 40, jobs: ['task', 'work_quota'].includes(scenario) ? 18 : scenario === 'model_quota' ? 23 : 19 });
+        expect(cost).toEqual({ tokens: 40, jobs: ['task', 'work_quota'].includes(scenario) ? 20 : scenario === 'model_quota' ? 25 : 21 });
         expect(Boolean(operation && Object.values(operation.taskHistories)[0].compaction)).toBe(['model_quota', 'cancel_reset'].includes(scenario));
         expect(await f.checkpoints()).toHaveLength(['task', 'work_quota'].includes(scenario) ? 2 : 0);
         expect(rollback?.checkpoints ?? null).toBe(storageFault ? 2 : null);
@@ -204,7 +204,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
         expect(f.wires[2].input.some(item => ['reasoning', 'function_call', 'function_call_output'].includes(item.type))).toBe(false);
         const retained = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute).compute;
         expect(retained.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20, 20]);
-        expect(retained.localWork).toHaveLength(24); expect(retained.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
+        expect(retained.localWork).toHaveLength(28); expect(retained.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
         expect((await f.checkpoints())[0].doc.binding.executionScope.epoch).toBe(1);
         expect((await freshNode(f)).record).toEqual(resumed.record); expect(f.wires).toHaveLength(3);
     } finally { await f.cleanup(); }
@@ -242,7 +242,7 @@ test.each(['pin_change', 'config_change', 'summary_edit', 'source_hash_edit', 'r
     } finally { await f.cleanup(); }
 });
 test.each(['public_prefix_edit', 'pin_change', 'checkpoint_deleted', 'pending_checkpoint_deleted', 'model_quota', 'history_quota', 'cancel_pending'])('G04 Session Task history %s refuses a false next send and retains original cost', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'task', scenario === 'history_quota' ? 11 : 18), controller = new AbortController();
+    const f = await fixture(makeTempFsEngineHarness, 'task', scenario === 'history_quota' ? 13 : 24), controller = new AbortController();
     try {
         if (scenario === 'model_quota') {
             const route = await f.persistence.getRuntimeRoute(f.handle, f.routes[0].runtimeRouteId);
@@ -270,7 +270,7 @@ test.each(['public_prefix_edit', 'pin_change', 'checkpoint_deleted', 'pending_ch
     } finally { await f.cleanup(); }
 });
 test('G04 Session Task history original prefix CAS and strict public byte/tool fields preserve saved history', async () => {
-    const f = await fixture(makeTempFsEngineHarness, 'task', 18);
+    const f = await fixture(makeTempFsEngineHarness, 'task', 24);
     try {
         await freshNode(f, 'charged_count');
         const op = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.taskHistories);
@@ -288,7 +288,7 @@ test('G04 Session Task history original prefix CAS and strict public byte/tool f
     } finally { await f.cleanup(); }
 });
 test.each(['task_capacity', 'global_bytes', 'round_limit'])('G04 Session Task history %s remains bounded in the original Run resource', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'task', 18);
+    const f = await fixture(makeTempFsEngineHarness, 'task', 24);
     try {
         await freshNode(f, 'charged_count');
         const op = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.taskHistories);
@@ -327,7 +327,7 @@ test.each(['task_capacity', 'global_bytes', 'round_limit'])('G04 Session Task hi
 });
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
     test.each(['fork', 'historical_restore'])(`G04 Session Task branch ${kind} %s starts an independent actual scope without old or future execution`, async action => {
-        const f = await fixture(make, 'task', 18);
+        const f = await fixture(make, 'task', 24);
         try {
             const save = await f.core.createSavePoint(f.handle, f.input.sessionId, { expectedRevisionId: f.input.revisionId });
             if (action === 'historical_restore') {
@@ -361,7 +361,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(Object.values(after.operations).find(row => row.anchor.revisionId === oldRequest.revisionId).compute).toEqual(oldCost);
             expect(oldCost.attempts.map(row => row.usage.totalTokens)).toEqual([20]);
             expect(oldCost.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
-            expect(after.retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 20, localJobs: 5 });
+            expect(after.retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 20, localJobs: 7 });
             const scopes = (await f.checkpoints()).map(row => row.doc.binding.executionScope);
             expect(scopes).toContainEqual(oldCheckpoint.binding.executionScope);
             expect(scopes.find(scope => scope.source.revisionId === derived.revision.revisionId).taskFingerprint).toBe(result.record.fingerprint);
@@ -369,7 +369,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
         } finally { await f.cleanup(); }
     });
     test(`G04 Session Task branch ${kind} same-HEAD restore is a no-op and preserves exact original cold continuation`, async () => {
-        const f = await fixture(make, 'task', 18);
+        const f = await fixture(make, 'task', 24);
         try {
             const save = await f.core.createSavePoint(f.handle, f.input.sessionId, { expectedRevisionId: f.input.revisionId });
             await freshNode(f, 'charged_count');
@@ -381,12 +381,12 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(f.wires[1].input.filter(item => ['reasoning', 'function_call'].includes(item.type))).toEqual([reasoning, tool]);
             const cost = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute).compute;
             expect(cost.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
-            expect(cost.localWork).toHaveLength(16); expect(cost.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
+            expect(cost.localWork).toHaveLength(20); expect(cost.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
             expect((await freshNode(f)).record).toEqual(resumed.record); expect(f.wires).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
     test.each(['task', 'adaptive'])(`G04 Session Task history ${kind} %s cold process consumes exact original public history and private wire`, async mode => {
-        const f = await fixture(make, mode, 18);
+        const f = await fixture(make, mode, 24);
         try {
             expect(await freshNode(f, 'charged_count')).toEqual({ stage: 'charged_count', reads: 1 });
             expect(f.wires).toHaveLength(1);
@@ -405,14 +405,14 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             const control = await f.core.runs.status(f.handle, f.input.sessionId);
             const retained = Object.values(control.operations).find(row => row.compute).compute;
             expect(retained.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
-            expect(retained.localWork).toHaveLength(16);
+            expect(retained.localWork).toHaveLength(20);
             expect(retained.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
             expect((await f.core.load(f.handle, f.input.sessionId)).states.atri_task_results.records).toHaveLength(1);
             expect((await freshNode(f)).record).toEqual(resumed.record); expect(f.wires).toHaveLength(2);
         } finally { await f.cleanup(); }
     });
     test(`G04 Session Task history ${kind} resumes only the pending read-only Skill result and preserves old cost`, async () => {
-        const f = await fixture(make, 'task', 18);
+        const f = await fixture(make, 'task', 24);
         try {
             expect(await freshNode(f, 'pending_read')).toEqual({ stage: 'pending_read', reads: 1 });
             const original = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute);
@@ -444,7 +444,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
                 taskFingerprint: result.record.fingerprint, role: 'role.narrator', source: { kind: 'session', sessionId: f.input.sessionId,
                     branchId: f.base.revision.branchId, revisionId: f.input.revisionId } });
             expect(bank.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
-            expect(bank.localWork.map(row => row.kind)).toEqual(['context_build', 'task_history', 'prompt_compile', 'generation_count', 'generation_render',
+            expect(bank.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'context_build', 'task_history', 'prompt_compile', 'generation_count', 'generation_render',
                 'task_history', 'skill_read', 'task_history', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(f.readFile).toHaveBeenCalledTimes(1);
             expect(result.snapshot.timeline).toEqual(f.base.timeline);
@@ -454,7 +454,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
     });
 }
 test.each(['cancel_read', 'read_failure', 'head_change', 'work_quota'])('G04 declared Session Task %s keeps original cost and awaited private lifecycle', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'task', scenario === 'work_quota' ? 10 : 12), controller = new AbortController();
+    const f = await fixture(makeTempFsEngineHarness, 'task', scenario === 'work_quota' ? 12 : 14), controller = new AbortController();
     try {
         f.onRead(async () => {
             if (scenario === 'cancel_read') controller.abort();
@@ -469,7 +469,7 @@ test.each(['cancel_read', 'read_failure', 'head_change', 'work_quota'])('G04 dec
         const observed = scenario === 'head_change' ? { models: control.retiredCompute.modelAttempts,
             tokens: control.retiredCompute.knownTotalTokens, jobs: control.retiredCompute.localJobs }
             : { models: bank.attempts.length, tokens: bank.attempts.reduce((n, row) => n + row.usage.totalTokens, 0), jobs: bank.localWork.length };
-        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 10 : 7 });
+        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 12 : 9 });
         expect(bank?.localWork.find(row => row.kind === 'skill_read').usage.outcome ?? null).toBe(scenario === 'head_change' ? null
             : scenario === 'cancel_read' ? 'cancelled' : scenario === 'read_failure' ? 'failed' : 'completed');
         expect((await f.core.load(f.handle, f.input.sessionId)).states.atri_task_results?.records ?? []).toEqual([]);
@@ -492,7 +492,7 @@ test('G04 declared Session Task same invocation on another actual Session has an
     } finally { await f.cleanup(); }
 });
 test('G04 declared Session Task missing public history refuses cross-call restart before a second HTTP', async () => {
-    const f = await fixture(makeTempFsEngineHarness, 'adaptive', 12); let saved;
+    const f = await fixture(makeTempFsEngineHarness, 'adaptive', 14); let saved;
     try {
         f.onRead(async () => { saved = await f.checkpoints(); throw new Error('Synthetic interruption after checkpoint'); });
         await expect(f.host.executeTask(f.handle, f.input)).rejects.toThrow(); expect(saved).toHaveLength(1);

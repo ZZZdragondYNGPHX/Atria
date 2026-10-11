@@ -7,12 +7,13 @@ import { NativeGenerationHost } from '../../src/native/adapters/generation-host.
 import { createResponsesGenerationProvider } from '../../src/native/adapters/responses-generation-provider.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { activeExecutionCapability, capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
+import { skillEntryKey } from '../../public/shared/extension-contract.js';
 
 const argumentsWire = '{\n "path" : "ref.md", "name":"guide", "limit":1, "offset":2\n}';
 const reasoning = { type: 'reasoning', encrypted_content: 'PRIVATE-SESSION-SKILL' };
 const tool = { type: 'function_call', call_id: 'skill-1', name: 'atri_skill_read', arguments: argumentsWire };
 const final = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final fresh prose.' }] };
-async function fixture(make, mode, maxJobs = 9, maxInputBytes = 1048576) {
+async function fixture(make, mode, maxJobs = 11, maxInputBytes = 1048576) {
     const h = await make(), wires = []; let onRead = async () => {}, output = round => round === 1 ? [reasoning, tool] : [final], status = () => 200;
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; wires.push(JSON.parse(raw));
@@ -33,17 +34,83 @@ async function fixture(make, mode, maxJobs = 9, maxInputBytes = 1048576) {
         allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests: 2, maxTokens: 64000,
             localWork: { maxJobs, maxItems: maxJobs, maxInputBytes } } } });
     const guide = { name: 'guide', scope: { kind: 'global' }, installedHash: '1'.repeat(64) };
+    const inventory = jest.fn(async () => [guide]), pin = jest.fn(async ({ expectedHash }) => ({ version: expectedHash }));
     const readFile = jest.fn(async () => { await onRead(); return { content: 'Current scoped reference', totalLines: 3 }; });
     const listFiles = jest.fn(async () => { await onRead(); return [{ path: 'ref.md', buffer: Buffer.from('Current scoped reference'), isBinary: false }]; });
     const host = new NativeGenerationHost({ ...seeded, sessionCore: installed.core,
         providers: { 'provider.openai-responses': createResponsesGenerationProvider() }, secretPort: { resolveSecret: async () => 'fixture-secret' },
         extensions: { settings: async () => ({ value: {} }) },
-        skillRepository: () => ({ list: async () => [guide], get: async () => guide, pin: async ({ expectedHash }) => ({ version: expectedHash }), readFile, listFiles }) });
+        skillRepository: () => ({ list: inventory, get: async () => guide, pin, readFile, listFiles }) });
     const request = { role: 'narrator', sessionId: base.session.sessionId, revisionId: base.revision.revisionId, requestId: 'session-skill-rounds' };
-    return { ...h, ...seeded, core: installed.core, start: installed.start, base, host, request, wires, readFile, listFiles,
+    return { ...h, ...seeded, core: installed.core, start: installed.start, base, host, request, wires, readFile, listFiles, guide, inventory, pin,
         onRead: fn => { onRead = fn; }, output: fn => { output = fn; }, status: fn => { status = fn; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
+function alwaysLoad(f) {
+    f.host.extensions.settings = async () => ({ value: { skills: { [skillEntryKey(f.guide)]: { paths: { narrative: 'always' } } } } });
+    f.output(() => [final]);
+}
+const originalSkillBank = async f => Object.values((await f.core.runs.status(f.handle, f.request.sessionId))?.operations ?? {}).find(row => row.compute)?.compute;
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test(`G05 initial Skill ${kind} actual inventory pin always-load share original seven jobs`, async () => {
+        const f = await fixture(make, 'active_execution', 7);
+        try {
+            alwaysLoad(f); const result = await f.host.execute(f.handle, f.request);
+            const bank = await originalSkillBank(f);
+            expect(bank.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'skill_load', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
+            expect(bank.localWork.every(row => row.status === 'settled' && row.usage.outcome === 'completed')).toBe(true);
+            expect(result.routing.compute.localWork).toEqual(bank.localWork);
+            expect(f.inventory).toHaveBeenCalledTimes(1); expect(f.pin).toHaveBeenCalledTimes(1); expect(f.readFile).toHaveBeenCalledTimes(1);
+            expect(f.readFile).toHaveBeenCalledWith({ scope: f.guide.scope, name: f.guide.name, path: 'SKILL.md', version: f.guide.installedHash });
+            expect(JSON.stringify(f.wires[0])).toContain('Current scoped reference'); expect(f.wires).toHaveLength(1);
+            await f.persistence.saveRuntimeRoute(f.handle, { ...f.routes[0], executionPolicy: { schemaVersion: 1,
+                allowedModelProfileIds: [f.model.modelProfileId], continuity: 'active_execution' } });
+            await expect(f.host.execute(f.handle, { ...f.request, requestId: 'initial-skill-next' })).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            expect(await originalSkillBank(f)).toEqual(bank); expect(f.inventory).toHaveBeenCalledTimes(1); expect(f.wires).toHaveLength(1);
+        } finally { await f.cleanup(); }
+    });
+    test.each([1, 2, 3])(`G05 initial Skill ${kind} %i jobs refuses next repository or Context work before HTTP`, async maxJobs => {
+        const f = await fixture(make, 'active_execution', maxJobs);
+        try {
+            alwaysLoad(f);
+            await expect(f.host.execute(f.handle, f.request)).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            expect(f.inventory).toHaveBeenCalledTimes(1); expect(f.pin).toHaveBeenCalledTimes(maxJobs >= 2 ? 1 : 0);
+            expect(f.readFile).toHaveBeenCalledTimes(maxJobs >= 3 ? 1 : 0);
+            const bank = await originalSkillBank(f); expect(bank.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'skill_load'].slice(0, maxJobs));
+            expect(bank.localWork.every(row => row.status === 'settled')).toBe(true); expect(bank.attempts).toEqual([]); expect(f.wires).toEqual([]);
+        } finally { await f.cleanup(); }
+    });
+}
+test('G05 initial Skill input quota refuses inventory before the first repository scan', async () => {
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 7, 1);
+    try {
+        alwaysLoad(f);
+        await expect(f.host.execute(f.handle, f.request)).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(f.inventory).not.toHaveBeenCalled(); expect(f.pin).not.toHaveBeenCalled(); expect(f.readFile).not.toHaveBeenCalled();
+        expect(await originalSkillBank(f)).toBeUndefined(); expect(f.wires).toEqual([]);
+    } finally { await f.cleanup(); }
+});
+test.each(['inventory', 'pin', 'load', 'cancel_load', 'head_change'])('G05 initial Skill %s retains failed or cancelled admission and never sends', async scenario => {
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 7), controller = new AbortController();
+    try {
+        alwaysLoad(f);
+        if (scenario === 'inventory') f.inventory.mockRejectedValue(new Error('Synthetic inventory failure'));
+        if (scenario === 'pin') f.pin.mockRejectedValue(new Error('Synthetic immutable pin failure'));
+        if (scenario === 'load') f.readFile.mockRejectedValue(new Error('Synthetic always-load failure'));
+        if (scenario === 'cancel_load') f.onRead(async () => { controller.abort(); });
+        if (scenario === 'head_change') f.onRead(async () => { await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed during initial Skill loading' }); });
+        await expect(f.host.execute(f.handle, f.request, controller.signal)).rejects.toThrow();
+        if (scenario === 'cancel_load') for (let n = 0; n < 50; n++) {
+            if ((await originalSkillBank(f))?.localWork.at(-1)?.status === 'settled') break;
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        const control = await f.core.runs.status(f.handle, f.request.sessionId);
+        const bank = scenario === 'head_change' ? control.retiredCompute : await originalSkillBank(f);
+        expect(scenario === 'head_change' ? bank.localJobs : bank.localWork.length).toBe(scenario === 'inventory' ? 1 : scenario === 'pin' ? 2 : 3);
+        expect(scenario === 'head_change' ? bank.localFailedJobs : bank.localWork.at(-1).usage.outcome).toBe(scenario === 'head_change' ? 1 : scenario === 'cancel_load' ? 'cancelled' : 'failed');
+        expect(scenario === 'head_change' ? bank.modelAttempts : bank.attempts.length).toBe(0); expect(f.wires).toEqual([]);
+    } finally { await f.cleanup(); }
+});
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
     test.each(['none', 'active_execution'])(`G05 Skill read ${kind} %s actual loop shares original budget including preparation jobs and preserves public protocol`, async mode => {
         const f = await fixture(make, mode), onChunk = jest.fn();
@@ -54,7 +121,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.readFile.mock.calls[0][0]).toMatchObject({ name: 'guide', path: 'ref.md', offset: 2, limit: 1 });
             const ledger = Object.values((await f.core.runs.status(f.handle, f.request.sessionId)).operations).find(row => row.compute).compute;
             expect(ledger.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
-            expect(ledger.localWork.map(row => row.kind)).toEqual(['context_build', 'prompt_compile', 'generation_count', 'generation_render', 'skill_read', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
+            expect(ledger.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'context_build', 'prompt_compile', 'generation_count', 'generation_render', 'skill_read', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(JSON.stringify(result)).not.toContain('PRIVATE-SESSION-SKILL');
             expect((await f.core.load(f.handle, f.request.sessionId)).timeline).toEqual(f.base.timeline);
             expect(onChunk.mock.calls.map(([chunk]) => chunk.text)).toEqual(['Final fresh prose.']);
@@ -62,7 +129,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
     });
 }
 test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops the next round and keeps original observed cost', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', scenario === 'work_quota' ? 4 : 8), controller = new AbortController(), onChunk = jest.fn();
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', scenario === 'work_quota' ? 6 : 10), controller = new AbortController(), onChunk = jest.fn();
     try {
         f.onRead(async () => {
             if (scenario === 'cancel_read') controller.abort();
@@ -73,7 +140,7 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops
         const cost = scenario === 'head_change' ? control.retiredCompute : Object.values(control.operations).find(row => row.compute).compute;
         const observed = scenario === 'head_change' ? { models: cost.modelAttempts, tokens: cost.knownTotalTokens, jobs: cost.localJobs }
             : { models: cost.attempts.length, tokens: cost.attempts.reduce((n, row) => n + row.usage.totalTokens, 0), jobs: cost.localWork.length };
-        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 4 : 5 }); expect(f.wires).toHaveLength(1);
+        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 6 : 7 }); expect(f.wires).toHaveLength(1);
         expect(f.readFile).toHaveBeenCalledTimes(scenario === 'work_quota' ? 0 : 1);
         expect(onChunk).not.toHaveBeenCalled();
         let cancelledWork = null;
@@ -90,7 +157,7 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops
     } finally { await f.cleanup(); }
 });
 test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_settlement_change'])('G05 Skill read %s uses only original bounded read authority', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 9, scenario === 'byte_quota' ? 131072 : 1048576); let spy;
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 11, scenario === 'byte_quota' ? 131072 : 1048576); let spy;
     try {
         if (scenario === 'file_list') f.output(round => round === 1 ? [reasoning, { ...tool, name: 'atri_skill_files', arguments: '{ "name": "guide" }' }] : [final]);
         if (scenario === 'byte_quota') f.output(round => round === 1 ? [reasoning, { ...tool, arguments: JSON.stringify({ name: 'guide', path: 'x'.repeat(262144) + '.md' }) }] : [final]);
@@ -101,7 +168,7 @@ test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_set
             const original = f.core.runs.settleLocalWork.bind(f.core.runs); let jobs = 0;
             spy = jest.spyOn(f.core.runs, 'settleLocalWork').mockImplementation(async (...args) => {
                 const result = await original(...args);
-                if (++jobs === 5) await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Skill cost settlement' });
+                if (++jobs === 7) await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Skill cost settlement' });
                 return result;
             });
         }
@@ -110,13 +177,13 @@ test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_set
         expect(f.readFile).toHaveBeenCalledTimes(['byte_quota', 'file_list'].includes(scenario) ? 0 : 1); expect(f.listFiles).toHaveBeenCalledTimes(scenario === 'file_list' ? 1 : 0);
         const control = await f.core.runs.status(f.handle, f.request.sessionId), cost = scenario === 'post_settlement_change' ? control.retiredCompute : Object.values(control.operations).find(row => row.compute)?.compute ?? {};
         const jobs = scenario === 'post_settlement_change' ? cost.localJobs : cost.localWork?.length ?? 0;
-        expect(jobs).toBe(scenario === 'old_unbounded' ? 0 : success ? 9 : scenario === 'byte_quota' ? 4 : 5);
+        expect(jobs).toBe(scenario === 'old_unbounded' ? 0 : success ? 11 : scenario === 'byte_quota' ? 6 : 7);
         const work = scenario === 'post_settlement_change' ? cost.localCompletedJobs : cost.localWork?.find(row => row.kind === 'skill_read')?.usage.outcome ?? null;
-        expect(work).toBe(scenario === 'post_settlement_change' ? 5 : scenario === 'read_failure' ? 'failed' : scenario === 'file_list' ? 'completed' : null);
+        expect(work).toBe(scenario === 'post_settlement_change' ? 7 : scenario === 'read_failure' ? 'failed' : scenario === 'file_list' ? 'completed' : null);
     } finally { spy?.mockRestore(); await f.cleanup(); }
 });
 test('G05 Skill read accepted fallback keeps one original ledger including failed primary work', async () => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 13);
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 15);
     try {
         const root = await f.persistence.getRuntimeRoute(f.handle, f.routes[0].runtimeRouteId), budget = { ...root.executionPolicy.computeBudget, maxRequests: 3 };
         const fallback = { ...root, runtimeRouteId: createNativeId('runtimeRoute'), fallbackRouteRefs: [], executionPolicy: { ...root.executionPolicy, computeBudget: budget } };
@@ -126,7 +193,7 @@ test('G05 Skill read accepted fallback keeps one original ledger including faile
         const result = await f.host.execute(f.handle, { ...f.request, fallbackMode: 'automatic' });
         expect(result.skillRounds.map(row => row.runtimeRouteId)).toEqual([fallback.runtimeRouteId, root.runtimeRouteId]);
         const operations = Object.values((await f.core.runs.status(f.handle, f.request.sessionId)).operations).filter(row => row.compute);
-        expect(operations).toHaveLength(1); expect(operations[0].compute.localWork).toHaveLength(13);
+        expect(operations).toHaveLength(1); expect(operations[0].compute.localWork).toHaveLength(15);
         expect(operations[0].compute.localWork.filter(row => row.kind === 'skill_read')).toHaveLength(1);
         expect(operations[0].compute.attempts.map(row => row.status)).toEqual(['unknown', 'settled', 'settled']); expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.wires).toHaveLength(3);
     } finally { await f.cleanup(); }
