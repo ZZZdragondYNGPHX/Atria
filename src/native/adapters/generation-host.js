@@ -9,7 +9,7 @@ import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolve
 import { buildAuthorityObservation } from '../authority-transaction.js';
 import { createNativeId, isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, completeNarrativeSkillTools, isNarrativeSkillInvocation } from '../skill-invocation.js';
-import { publicSessionTaskMessages } from '../../../public/shared/native-session-task-history.js';
+import { publicSessionTaskMessages, sessionTaskRoundCount, completeSessionTaskHistory } from '../../../public/shared/native-session-task-history.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { assertExecutionEvidenceCurrent } from '../model-prompt-runtime/execution-evidence.js';
 import { RuntimeCheckpointStore } from '../model-prompt-runtime/runtime-checkpoint-store.js';
@@ -779,9 +779,11 @@ export class NativeGenerationHost {
         if (skills?.tools.length && input.tools?.length) fail('native_skill_tool_conflict');
         if (skills?.tools.length && !requirements.includes('generation.tools')) requirements.push('generation.tools');
         const skillTranscript = [];
-        let taskHistoryLoaded = false, taskHistory = null, taskHistoryWork, resumeSkillRead, persistTaskHistory, discardTaskHistory;
+        let taskHistoryLoaded = false, taskHistory = null, taskHistoryWork, resumeSkillRead, persistTaskHistory, discardTaskHistory, compactTaskHistory;
         const sessionTaskEvidence = source.kind === 'session' && taskPlan?.executionFingerprint
             ? { source: 'native.session-task', ref: input.requestId + ':' + taskPlan.executionFingerprint } : null;
+        const taskProvenance = () => [sessionTaskEvidence, ...(taskHistory?.compaction
+            ? [{ source: 'native.session-task-compaction', ref: '1:' + hashNativeDocument(taskHistory.compaction) }] : [])];
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
             if (!preview && sessionTaskEvidence && skills?.tools.length && ['task', 'adaptive'].includes(resolved.effectiveExecutionPolicy?.continuity) && !taskHistoryLoaded) {
                 const context = lanePlan?.budgetContext;
@@ -808,7 +810,7 @@ export class NativeGenerationHost {
                     await completeNarrativeSkillTools({ calls, skills: { ...skills, read: call => resumeSkillRead({ resolved }, call) },
                         transcript: skillTranscript, signal, persist: persistTaskHistory });
                 }
-                if (skillTranscript.filter(message => message.role === 'assistant').length >= 6) throw new GenerationError('generation_continuation_unavailable');
+                if (sessionTaskRoundCount(taskHistory, skillTranscript) >= 6) throw new GenerationError('generation_continuation_unavailable');
             }
             if (illustrationPlan) return illustrationPlan.buildContext(request, resolved, resolver.provider(resolved.connection.providerAdapter), compiler);
             const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : {
@@ -834,6 +836,8 @@ export class NativeGenerationHost {
             for (const [index, message] of (input.messages || []).entries()) {
                 items.push({ kind: 'context.history', id: 'task-message-' + index, content: message, provenance: [{ source: 'host.task' }] });
             }
+            if (taskHistory?.compaction) items.push({ kind: 'context.history', id: 'task-public-summary',
+                content: { role: 'user', content: taskHistory.compaction.summary }, provenance: [{ source: 'host.task.public-summary', ref: taskHistory.compaction.sourcePrefixFingerprint }] });
             if (taskPlan?.task.context.includes('input')) items.push({ kind: skillTranscript.length ? 'context.history' : 'context.input', id: 'task-input',
                 content: skillTranscript.length ? { role: 'user', content: JSON.stringify(taskPlan.payload) } : JSON.stringify(taskPlan.payload), provenance: [{ source: 'host.task' }] });
             if (authorityContext) {
@@ -851,7 +855,8 @@ export class NativeGenerationHost {
                 selectedKnowledgeIdentities: selected.nativeSelection.selectedKnowledgeIdentities.filter(identity => items.some(item => item.id === 'knowledge:' + identity)),
             };
             const taskEvidence = projectTaskEvidence ?? sessionTaskEvidence;
-            return { ...selected, items, ...(taskEvidence ? { provenance: [...selected.provenance, taskEvidence] } : {}), ...(nativeSelection ? { nativeSelection } : {}) };
+            return { ...selected, items, ...(taskEvidence ? { provenance: [...selected.provenance,
+                ...(sessionTaskEvidence ? taskProvenance() : [taskEvidence])] } : {}), ...(nativeSelection ? { nativeSelection } : {}) };
         } };
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
         const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
@@ -869,8 +874,9 @@ export class NativeGenerationHost {
                 const provider = (projectTaskEvidence || sessionTaskEvidence) && this.persistence._engine && baseProvider.withRuntimeCheckpointStore
                     ? baseProvider.withRuntimeCheckpointStore(new RuntimeCheckpointStore({ engine: this.persistence._engine, handle,
                         publicConversation: projectConversation, sessionTask: Boolean(sessionTaskEvidence),
-                        sessionTaskHistory: () => publicSessionTaskMessages(skillTranscript) })) : baseProvider;
+                        sessionTaskHistory: () => publicSessionTaskMessages(skillTranscript), sessionTaskCompaction: () => taskHistory?.compaction })) : baseProvider;
                 let prepared;
+                let counted;
                 let pendingCharge;
                 let sendAdmitted = false;
                 let retainOnBudgetRejection = false;
@@ -942,11 +948,28 @@ export class NativeGenerationHost {
                 discardTaskHistory = effective => provider.discardExecution?.({ binding: {
                     ownerFingerprint: effective.ownerFingerprint, pathFingerprint: effective.pathFingerprint,
                     continuity: effective.effectiveExecutionPolicy.continuity,
-                    executionScope: nativeExecutionScope({ source, provenance: [sessionTaskEvidence] }, input.requestId, effective.route.role),
+                    executionScope: nativeExecutionScope({ source, provenance: taskProvenance() }, input.requestId, effective.route.role),
                 } });
+                compactTaskHistory = async () => {
+                    if (!counted || !provider.resetExecution || counted.resolved.effectiveExecutionPolicy?.continuity !== 'adaptive'
+                        || !taskHistory || taskHistory.compaction || !completeSessionTaskHistory(taskHistory.messages)
+                        || this.sessionCore.runs.repo._engine !== this.persistence._engine) throw new GenerationError('generation_context_budget_exceeded');
+                    const { messages, compaction: _compact, ...identity } = taskHistory;
+                    const anchor = { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
+                    taskHistory = await localWork('task_history', counted, () => provider.resetExecution(counted,
+                        discard => this.sessionCore.runs.compactSessionTaskHistory(handle, snapshot, anchor, identity, hashNativeDocument(messages), discard)),
+                    { action: 'public_summary_reset', ...identity, messages });
+                    skillTranscript.splice(0);
+                };
                 return { ...provider, settleAttempt,
                     discardExecution: rendered => retainOnBudgetRejection ? undefined : provider.discardExecution?.(rendered),
-                    countTokens: request => localWork('generation_count', request, () => provider.countTokens(request)),
+                    countTokens: async request => {
+                        const tokens = await localWork('generation_count', request, () => provider.countTokens(request));
+                        // This round's exact path, public prefix and private authority
+                        // have been checked, even when the service refuses before render.
+                        counted = request;
+                        return tokens;
+                    },
                     renderRequest: async request => {
                         prepared = request;
                         readSkill = call => localWork('skill_read', request, () => skills.read(call),
@@ -1027,8 +1050,17 @@ export class NativeGenerationHost {
         let result;
         try {
             result = skills?.tools.length && !preview ? await runNarrativeSkillLoop({
-                execute: () => service.execute(request), skills: { ...skills, read: call => readSkill(call) }, transcript: skillTranscript, signal, onChunk,
+                execute: async () => {
+                    try { return await service.execute(request); } catch (error) {
+                        if (sessionTaskEvidence && error.code === 'generation_context_budget_exceeded' && taskHistory && !taskHistory.compaction) {
+                            await compactTaskHistory();
+                            return service.execute(request);
+                        }
+                        throw error;
+                    }
+                }, skills: { ...skills, read: call => readSkill(call) }, transcript: skillTranscript, signal, onChunk,
                 persist: () => persistTaskHistory?.(),
+                roundCount: () => sessionTaskRoundCount(taskHistory, skillTranscript),
                 fresh: async () => {
                     const current = snapshot ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId
                         : (await this.studio.getProject(handle, input.projectId)).revision.revision;
@@ -1038,7 +1070,7 @@ export class NativeGenerationHost {
         } catch (error) {
             // Errors between model rounds (for example a cancelled Skill read)
             // must await the same private cleanup as provider failures.
-            if (error.code !== 'native_generation_budget_exhausted') await discardSessionTaskExecution?.();
+            if (!['native_generation_budget_exhausted', 'generation_context_budget_exceeded'].includes(error.code)) await discardSessionTaskExecution?.();
             throw error;
         }
         if (authorityContext?.mode === 'narrator' && (result.response.toolCalls?.length || result.response.tool_calls?.length)) fail('native_narrator_outcome_denied');

@@ -1,7 +1,7 @@
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { serializeNativeDocument } from '../repositories/common.js';
-import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes, isDurableNativeContinuity } from '../model-prompt-runtime/native-execution-envelope.js';
+import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes, resetStoredNativeEnvelopes, isDurableNativeContinuity } from '../model-prompt-runtime/native-execution-envelope.js';
 import { observedGenerationUsage } from './generation-usage.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
@@ -172,5 +172,9 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         assertResponseSafe(response, secret) { assertNativeEnvelopeSafe(response.providerState, secret); },
         commitResponse(response) { return publishNativeEnvelope(response.providerState, checkpointStore); },
         discardExecution(rendered) { return discardStoredNativeEnvelopes(rendered.binding, checkpointStore); },
+        resetExecution({ resolved, contextPlan, promptIr }, publish) {
+            return resetStoredNativeEnvelopes(
+                nativeEnvelopeBinding(resolved, { requestId: contextPlan.requestId, contextPlan, promptIr }, 'openai.responses.v1'), checkpointStore, publish);
+        },
     });
 }

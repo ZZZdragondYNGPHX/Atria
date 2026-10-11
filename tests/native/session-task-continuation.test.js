@@ -10,16 +10,19 @@ import { NativeGenerationHost } from '../../src/native/adapters/generation-host.
 import { createResponsesGenerationProvider } from '../../src/native/adapters/responses-generation-provider.js';
 import { continuityRequirements, capabilityObservationProof, executionPathFingerprint } from '../../src/native/model-prompt-runtime/execution-evidence.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
+import { hashNativeDocument } from '../../src/native/repositories/common.js';
+import { assertSessionTaskHistory, sessionTaskPublicSummary } from '../../public/shared/native-session-task-history.js';
 
 const reasoning = { type: 'reasoning', encrypted_content: 'PRIVATE-DECLARED-SESSION-TASK' };
 const tool = { type: 'function_call', call_id: 'skill-task-1', name: 'atri_skill_read', arguments: '{ "path":"ref.md", "name":"guide" }' };
 const final = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: '{"text":"Fresh Task result."}' }] };
 async function fixture(make, mode, maxJobs = 8) {
-    const h = await make(), wires = []; let onRead = async () => {};
+    const h = await make(), wires = []; let onRead = async () => {}, readContent = 'Current pinned Task reference';
+    let output = n => n % 2 ? [reasoning, tool] : [final];
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; wires.push(JSON.parse(raw));
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'completed', output: wires.length % 2 ? [reasoning, tool] : [final],
+        res.end(JSON.stringify({ status: 'completed', output: output(wires.length),
             usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } }));
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -45,7 +48,7 @@ async function fixture(make, mode, maxJobs = 8) {
         allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests: 2, maxTokens: 64000,
             localWork: { maxJobs, maxItems: maxJobs, maxInputBytes: 1048576 } } } });
     const guide = { name: 'guide', scope: { kind: 'global' }, installedHash: '1'.repeat(64) };
-    const readFile = jest.fn(async () => { await onRead(); return { content: 'Current pinned Task reference', totalLines: 1 }; });
+    const readFile = jest.fn(async () => { await onRead(); return { content: readContent, totalLines: 1 }; });
     const host = new NativeGenerationHost({ ...seeded, sessionCore: installed.core, packageInstaller: installed.packageInstaller,
         providers: { 'provider.openai-responses': createResponsesGenerationProvider() }, secretPort: { resolveSecret: async () => 'fixture-secret' },
         extensions: { settings: async () => ({ value: {} }) },
@@ -53,19 +56,191 @@ async function fixture(make, mode, maxJobs = 8) {
     const input = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, taskId: task.id, variantId: variant.id,
         input: {}, invocationId: 'declared-task-one', slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } };
     return { ...h, ...seeded, ...installed, base, host, input, wires, readFile, onRead: fn => { onRead = fn; },
+        output: fn => { output = fn; }, readContent: value => { readContent = value; },
         async checkpoints() { return h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: K.runtimeCheckpoint, handle: h.handle })); },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
-async function freshNode(f, interrupt = null) {
+async function publicSummaryFixture(make, mode, { maxJobs = 18, maxRequests = 3 } = {}) {
+    const f = await fixture(make, mode, maxJobs);
+    f.output(n => n <= 2 ? [reasoning, { ...tool, call_id: 'summary-read-' + n }] : [final]);
+    f.readContent('x'.repeat(10000));
+    const model = await f.persistence.getModelProfile(f.handle, f.model.modelProfileId);
+    const connection = await f.persistence.getConnectionProfile(f.handle, f.connection.connectionProfileId);
+    const updated = { ...model, limits: { ...model.limits, contextTokens: 17000 } }, observedAt = Date.now() - 1;
+    const decisions = continuityRequirements({ continuity: mode }).map(capability => ({ capability, state: 'supported',
+        provenance: [{ kind: 'provider-endpoint', source: 'synthetic public summary', observedAt }],
+        binding: { schemaVersion: 1, pathFingerprint: executionPathFingerprint({ handle: f.handle, connection, model: updated }),
+            observedAt, expiresAt: Date.now() + 60000, assurance: 'verified' } }));
+    await f.persistence.saveModelProfile(f.handle, { ...updated, capabilities: [...updated.capabilities.filter(row => !row.capability.startsWith('generation.continuation.')), ...decisions] },
+        { observationProof: capabilityObservationProof({ handle: f.handle, connection, model: updated }, decisions) });
+    const route = await f.persistence.getRuntimeRoute(f.handle, f.routes[0].runtimeRouteId);
+    await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: { ...route.executionPolicy,
+        computeBudget: { ...route.executionPolicy.computeBudget, maxRequests } } });
+    return f;
+}
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) test(`G04 Session Task public summary ${kind} adaptive resets after the actual third count`, async () => {
+    const f = await publicSummaryFixture(make, 'adaptive'); let operation, observation;
+    const originalRecord = f.core.recordTaskResult.bind(f.core), originalExecute = f.host.execute.bind(f.host);
+    f.core.recordTaskResult = async (...args) => {
+        operation = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.taskHistories);
+        return originalRecord(...args);
+    };
+    f.host.execute = async (...args) => { observation = await originalExecute(...args); return observation; };
+    try {
+        const result = await f.host.executeTask(f.handle, f.input);
+        expect(result.record).toBeDefined(); expect(f.wires).toHaveLength(3);
+        expect(f.wires[2].input.some(item => item.role === 'user' && item.content.includes('atria.session-task.observations.v1'))).toBe(true);
+        expect(f.wires[2].input.some(item => ['reasoning', 'function_call', 'function_call_output'].includes(item.type))).toBe(false);
+        const history = Object.values(operation.taskHistories)[0];
+        expect(history.messages).toEqual([]); expect(history.compaction.sourceMessages.map(message => message.role)).toEqual(['assistant', 'tool', 'assistant', 'tool']);
+        expect(history.compaction.sourcePrefixFingerprint).toBe(hashNativeDocument(history.compaction.sourceMessages));
+        expect(history.compaction.summary).toBe(sessionTaskPublicSummary(history.compaction.sourceMessages));
+        const summary = JSON.parse(history.compaction.summary);
+        expect(summary).toMatchObject({ totalResults: 2, omittedResults: 0 });
+        expect(summary.observations.every(item => Buffer.byteLength(item.excerpt) <= 512 && item.truncated)).toBe(true);
+        expect(Buffer.byteLength(history.compaction.summary)).toBeLessThanOrEqual(8192);
+        expect(JSON.stringify(history)).not.toContain('PRIVATE-DECLARED-SESSION-TASK'); expect(JSON.stringify(history)).not.toContain('providerState');
+        expect(history.compaction.sourceCheckpointIds).toHaveLength(2);
+        expect(observation.snapshot.diagnostics.continuity).toEqual({ requestedPolicy: 'adaptive', effectiveScope: 'none', action: 'reset',
+            reason: 'bounded_public_task_summary', sourceCheckpointIds: history.compaction.sourceCheckpointIds, loss: 'opaque_not_restored' });
+        expect(operation.compute.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20, 20]);
+        expect(operation.compute.localWork).toHaveLength(15); expect(operation.compute.localWork.every(row => row.status === 'settled')).toBe(true);
+        expect(observation.routing.compute.localWork).toHaveLength(15); expect(observation.routing.compute.currencyStatus).toBe('unavailable');
+        const checkpoints = await f.checkpoints(); expect(checkpoints).toHaveLength(1);
+        expect(checkpoints[0].doc.binding.executionScope.epoch).toBe(1);
+        expect(history.compaction.sourceCheckpointIds).not.toContain(checkpoints[0].doc.checkpointId);
+        expect(f.readFile).toHaveBeenCalledTimes(2); expect(result.snapshot.timeline).toEqual(f.base.timeline);
+        expect((await f.host.executeTask(f.handle, f.input)).record).toEqual(result.record); expect(f.wires).toHaveLength(3);
+    } finally { await f.cleanup(); }
+});
+async function freshNode(f, interrupt = null, readContent = undefined) {
     return new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [fileURLToPath(new URL('./helpers/session-task-restart-worker.mjs', import.meta.url))],
             { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, timeout: 20000 });
         let stdout = '', stderr = ''; child.stdout.on('data', bytes => { stdout += bytes; }); child.stderr.on('data', bytes => { stderr += bytes; });
         child.on('error', reject); child.on('close', code => code === (interrupt ? 73 : 0)
             ? resolve(JSON.parse(stdout)) : reject(new Error('Session Task cold fixture: ' + stderr)));
-        child.stdin.end(JSON.stringify({ kind: f.kind, handle: f.handle, dirs: f.dirs, input: f.input, interrupt }));
+        child.stdin.end(JSON.stringify({ kind: f.kind, handle: f.handle, dirs: f.dirs, input: f.input, interrupt, readContent }));
     });
 }
+test.each(['task', 'work_quota', 'model_quota', 'config_change', 'checkpoint_deleted', 'head_change', 'cancel_reset', 'storage_fault', 'storage_fault_sqlite', 'storage_fault_after_write', 'storage_fault_delete'])('G04 Session Task public summary %s refuses another send and retains original costs', async scenario => {
+    const storageFault = scenario.startsWith('storage_fault');
+    const f = await publicSummaryFixture(scenario === 'storage_fault_sqlite' ? makeTempSqliteEngineHarness : makeTempFsEngineHarness, scenario === 'task' ? 'task' : 'adaptive',
+        { maxJobs: scenario === 'work_quota' ? 12 : 18, maxRequests: scenario === 'model_quota' ? 2 : 3 });
+    const controller = new AbortController(); let rollback;
+    const charge = f.core.runs.chargeLocalWork.bind(f.core.runs); let histories = 0;
+    f.core.runs.chargeLocalWork = async (...args) => {
+        const receipt = await charge(...args);
+        if (args[4].kind === 'task_history' && ++histories === 6 && scenario === 'config_change') {
+            const model = await f.persistence.getModelProfile(f.handle, f.model.modelProfileId);
+            await f.persistence.saveModelProfile(f.handle, { ...model, displayName: 'Changed during reset' });
+        }
+        return receipt;
+    };
+    const compact = f.core.runs.compactSessionTaskHistory.bind(f.core.runs);
+    f.core.runs.compactSessionTaskHistory = async (...args) => {
+        if (scenario === 'checkpoint_deleted') await f.engine.withTransaction(f.handle, async tx => {
+            for (const row of await tx.listResources({ kind: K.runtimeCheckpoint, handle: f.handle })) await tx.deleteResource(row.key);
+        });
+        if (scenario === 'head_change') await f.core.appendTimeline(f.handle, f.input.sessionId, { role: 'user', content: 'New HEAD during reset' });
+        if (storageFault) {
+            const transaction = f.engine.withTransaction.bind(f.engine);
+            f.engine.withTransaction = (owner, fn) => transaction(owner, async tx => {
+                const put = tx.putResourceIfMatch.bind(tx);
+                tx.putResourceIfMatch = async (key, ...rest) => {
+                    if (key.kind === K.runControl && Object.values(rest[1]?.doc?.operations ?? {}).some(op => Object.values(op.taskHistories ?? {}).some(history => history.compaction))) {
+                        if (scenario === 'storage_fault_after_write') await put(key, ...rest);
+                        throw new Error('Synthetic Run summary publication fault');
+                    }
+                    return put(key, ...rest);
+                };
+                const remove = tx.deleteResource.bind(tx); let deletions = 0;
+                tx.deleteResource = async key => {
+                    const result = await remove(key);
+                    if (scenario === 'storage_fault_delete' && key.kind === K.runtimeCheckpoint && ++deletions === 1) throw new Error('Synthetic first CPP removal fault');
+                    return result;
+                };
+                return fn(tx);
+            });
+            try { return await compact(...args); } catch (error) {
+                rollback = { checkpoints: (await f.checkpoints()).length,
+                    history: Object.values(Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.taskHistories).taskHistories)[0] };
+                throw error;
+            } finally { f.engine.withTransaction = transaction; }
+        }
+        const result = await compact(...args);
+        if (scenario === 'cancel_reset') controller.abort();
+        return result;
+    };
+    try {
+        const error = await f.host.executeTask(f.handle, f.input, controller.signal).catch(cause => cause);
+        expect(error).toBeInstanceOf(Error); expect(f.wires).toHaveLength(2); expect(f.readFile).toHaveBeenCalledTimes(2);
+        expect(error.code).toBe(scenario === 'task' ? 'generation_context_budget_exceeded'
+            : ['work_quota', 'model_quota'].includes(scenario) ? 'native_generation_budget_exhausted'
+                : scenario === 'cancel_reset' ? 'operation_cancelled' : 'generation_continuation_unavailable');
+        const control = await f.core.runs.status(f.handle, f.input.sessionId), operation = Object.values(control.operations).find(row => row.compute);
+        const cost = operation ? { tokens: operation.compute.attempts.reduce((sum, row) => sum + row.usage.totalTokens, 0), jobs: operation.compute.localWork.length }
+            : { tokens: control.retiredCompute.knownTotalTokens, jobs: control.retiredCompute.localJobs };
+        expect(cost).toEqual({ tokens: 40, jobs: ['task', 'work_quota'].includes(scenario) ? 12 : scenario === 'model_quota' ? 15 : 13 });
+        expect(Boolean(operation && Object.values(operation.taskHistories)[0].compaction)).toBe(['model_quota', 'cancel_reset'].includes(scenario));
+        expect(await f.checkpoints()).toHaveLength(['task', 'work_quota'].includes(scenario) ? 2 : 0);
+        expect(rollback?.checkpoints ?? null).toBe(storageFault ? 2 : null);
+        expect(rollback?.history.compaction).toBeUndefined();
+        expect((await f.core.load(f.handle, f.input.sessionId)).states.atri_task_results?.records ?? []).toEqual([]);
+    } finally { await f.cleanup(); }
+});
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) test(`G04 Session Task public summary ${kind} cold epoch retains charged reset and original history`, async () => {
+    const f = await publicSummaryFixture(make, 'adaptive');
+    try {
+        expect(await freshNode(f, 'after_compaction', 'x'.repeat(10000))).toEqual({ stage: 'after_compaction', reads: 2 });
+        const operation = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.taskHistories);
+        const history = Object.values(operation.taskHistories)[0];
+        expect(history.compaction.sourceMessages).toHaveLength(4); expect(await f.checkpoints()).toHaveLength(0);
+        expect(operation.compute.localWork.at(-1)).toMatchObject({ kind: 'task_history', status: 'charged' });
+        expect(operation.compute.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
+        const resumed = await freshNode(f);
+        expect(resumed.reads).toBe(0); expect(f.wires).toHaveLength(3);
+        expect(f.wires[2].input.some(item => item.role === 'user' && item.content.includes(history.compaction.summary))).toBe(true);
+        expect(f.wires[2].input.some(item => ['reasoning', 'function_call', 'function_call_output'].includes(item.type))).toBe(false);
+        const retained = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute).compute;
+        expect(retained.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20, 20]);
+        expect(retained.localWork).toHaveLength(16); expect(retained.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
+        expect((await f.checkpoints())[0].doc.binding.executionScope.epoch).toBe(1);
+        expect((await freshNode(f)).record).toEqual(resumed.record); expect(f.wires).toHaveLength(3);
+    } finally { await f.cleanup(); }
+});
+test.each(['pin_change', 'config_change', 'summary_edit', 'source_hash_edit', 'round_limit'])('G04 Session Task public summary cold %s cannot escape original source or total tool rounds', async scenario => {
+    const f = await publicSummaryFixture(makeTempFsEngineHarness, 'adaptive');
+    try {
+        await freshNode(f, 'after_compaction', 'x'.repeat(10000));
+        const op = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.taskHistories);
+        const history = Object.values(op.taskHistories)[0];
+        if (scenario === 'pin_change') f.host.skillRepository = () => ({ list: async () => [{ name: 'guide', scope: { kind: 'global' }, installedHash: '2'.repeat(64) }],
+            pin: async ({ expectedHash }) => ({ version: expectedHash }), readFile: f.readFile });
+        if (scenario === 'config_change') {
+            const model = await f.persistence.getModelProfile(f.handle, f.model.modelProfileId);
+            await f.persistence.saveModelProfile(f.handle, { ...model, displayName: 'Changed after summary publication' });
+        }
+        let declarationError = null, refusal = null;
+        if (scenario === 'summary_edit') {
+            try { assertSessionTaskHistory({ ...history, compaction: { ...history.compaction, summary: 'Fake instructions' } }); } catch (error) { declarationError = error; }
+        }
+        if (scenario === 'source_hash_edit') await f.core.runs.update(f.handle, f.input.sessionId, control => {
+            Object.values(Object.values(control.operations).find(row => row.taskHistories).taskHistories)[0].compaction.sourcePrefixFingerprint = '0'.repeat(64);
+        });
+        if (scenario === 'round_limit') {
+            const messages = Array.from({ length: 5 }, () => history.compaction.sourceMessages.slice(0, 2)).flat();
+            try { assertSessionTaskHistory({ ...history, messages }); } catch (error) { declarationError = error; }
+        }
+        if (['pin_change', 'config_change', 'source_hash_edit'].includes(scenario)) refusal = await f.host.executeTask(f.handle, f.input).catch(error => error);
+        expect(declarationError?.code ?? null).toBe(['summary_edit', 'round_limit'].includes(scenario) ? 'native_session_task_history_invalid' : null);
+        expect(refusal?.code ?? null).toBe(['pin_change', 'config_change', 'source_hash_edit'].includes(scenario) ? 'generation_continuation_unavailable' : null);
+        const retained = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute).compute;
+        expect(retained.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
+        expect(retained.localWork.filter(row => row.status === 'charged')).toHaveLength(1); expect(f.wires).toHaveLength(2);
+        expect((await f.core.load(f.handle, f.input.sessionId)).states.atri_task_results?.records ?? []).toEqual([]);
+    } finally { await f.cleanup(); }
+});
 test.each(['public_prefix_edit', 'pin_change', 'checkpoint_deleted', 'pending_checkpoint_deleted', 'model_quota', 'history_quota', 'cancel_pending'])('G04 Session Task history %s refuses a false next send and retains original cost', async scenario => {
     const f = await fixture(makeTempFsEngineHarness, 'task', scenario === 'history_quota' ? 7 : 12), controller = new AbortController();
     try {

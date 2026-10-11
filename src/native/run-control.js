@@ -4,12 +4,22 @@ import { getNativeDocument, putMutable, hashNativeDocument } from './repositorie
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger } from '../../public/shared/native-compute-budget.js';
-import { assertSessionTaskHistory, sessionTaskHistoryLimits } from '../../public/shared/native-session-task-history.js';
+import { assertSessionTaskHistory, sessionTaskHistoryLimits, completeSessionTaskHistory, sessionTaskPublicSummary } from '../../public/shared/native-session-task-history.js';
 
 export const runFailure = code => Object.assign(new TypeError(code), { code });
 const key = (handle, sessionId) => ({ kind: K.runControl, handle, sessionId });
 const proofs = new WeakSet();
 const controlVersions = new WeakMap();
+function selectSessionTaskHistory(control, snapshot, operation, id, identity) {
+    if (control?.headRevisionId && control.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+    const history = control?.operations[operation]?.taskHistories?.[id];
+    if (history && (history.invocationId !== identity.invocationId || history.fingerprint !== identity.fingerprint
+        || history.inventoryFingerprint !== identity.inventoryFingerprint
+        || (history.compaction && history.compaction.sourcePrefixFingerprint !== hashNativeDocument(history.compaction.sourceMessages)))) {
+        throw runFailure('generation_continuation_unavailable');
+    }
+    return history;
+}
 function retireOperations(control, keep) {
     control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => {
         if (keep(op) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) return true;
@@ -143,23 +153,17 @@ export class RunControl {
     }
     async sessionTaskHistory(handle, snapshot, anchor, identity, append = null) {
         const operation = hashNativeDocument({ lane: 'turn', anchor }), id = hashNativeDocument(identity.invocationId);
-        const select = control => {
-            if (control?.headRevisionId && control.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
-            const history = control?.operations[operation]?.taskHistories?.[id];
-            if (history && (history.invocationId !== identity.invocationId || history.fingerprint !== identity.fingerprint || history.inventoryFingerprint !== identity.inventoryFingerprint)) {
-                throw runFailure('generation_continuation_unavailable');
-            }
-            return history;
-        };
+        const select = control => selectSessionTaskHistory(control, snapshot, operation, id, identity);
         if (!append) return this.repo.withRunLock(handle, snapshot.session.sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
             const session = await getNativeDocument(tx, { kind: K.session, handle, sessionId: snapshot.session.sessionId });
             if (session?.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
             return structuredClone(select(await assertRunAccess(tx, handle, snapshot.session.sessionId, 'write')) ?? null);
         }));
-        const next = assertSessionTaskHistory({ ...identity, messages: append.messages });
         return this.update(handle, snapshot.session.sessionId, control => {
             if (control.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
             const previous = select(control);
+            const next = assertSessionTaskHistory({ ...identity, messages: append.messages,
+                ...(previous?.compaction ? { compaction: previous.compaction } : {}) });
             if (hashNativeDocument(previous?.messages ?? []) !== append.expectedPrefix
                 || next.messages.length <= (previous?.messages.length ?? 0)
                 || hashNativeDocument(next.messages.slice(0, previous?.messages.length ?? 0)) !== append.expectedPrefix) {
@@ -175,6 +179,38 @@ export class RunControl {
             op.taskHistories[id] = structuredClone(next);
             return structuredClone(next);
         });
+    }
+    async compactSessionTaskHistory(handle, snapshot, anchor, identity, expectedPrefix, discardCheckpoints) {
+        const operation = hashNativeDocument({ lane: 'turn', anchor }), id = hashNativeDocument(identity.invocationId);
+        return this.repo.withRunLock(handle, snapshot.session.sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
+            assertWritable();
+            const resourceKey = key(handle, snapshot.session.sessionId), before = await tx.getResource(resourceKey);
+            const control = await assertRunAccess(tx, handle, snapshot.session.sessionId, 'write');
+            const previous = selectSessionTaskHistory(control, snapshot, operation, id, identity);
+            if (!previous || previous.compaction || !completeSessionTaskHistory(previous.messages)
+                || hashNativeDocument(previous.messages) !== expectedPrefix) throw runFailure('generation_continuation_unavailable');
+            const next = structuredClone(assertSessionTaskHistory({ ...identity, messages: [], compaction: { schemaVersion: 1, reason: 'context_budget',
+                sourceMessages: previous.messages, sourcePrefixFingerprint: expectedPrefix,
+                summary: sessionTaskPublicSummary(previous.messages), runtimeAuthorityFingerprint: '0'.repeat(64), sourceCheckpointIds: [] } }));
+            let discarded;
+            try {
+                discarded = await discardCheckpoints(tx);
+                next.compaction.sourceCheckpointIds = discarded.ids;
+                next.compaction.runtimeAuthorityFingerprint = discarded.authorityFingerprint;
+                assertSessionTaskHistory(next);
+                control.operations[operation].taskHistories[id] = structuredClone(next);
+                await writeRunControl(tx, handle, snapshot.session.sessionId, control);
+                return structuredClone(next);
+            } catch (error) {
+                // FS transactions publish individual atomic files, not SQL rollback.
+                // Compensate this bounded reset before either authority lock releases.
+                if (this.repo._engine.kind === 'fs' && discarded) {
+                    await discarded.rollback();
+                    await tx.putResource(resourceKey, before);
+                }
+                throw error;
+            }
+        }));
     }
     async charge(handle, snapshot, request, policy) {
         const { sessionId } = snapshot.session;

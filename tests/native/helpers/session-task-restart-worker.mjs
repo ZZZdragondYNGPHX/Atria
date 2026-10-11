@@ -6,7 +6,7 @@ import { createResponsesGenerationProvider } from '../../../src/native/adapters/
 import { services } from './session-fixture.js';
 
 let raw = ''; for await (const part of process.stdin) raw += part;
-const { kind, handle, dirs, input, interrupt = null } = JSON.parse(raw);
+const { kind, handle, dirs, input, interrupt = null, readContent = 'Current pinned Task reference' } = JSON.parse(raw);
 const Engine = kind === 'fs' ? FsEngine : SqliteEngine;
 const engine = new Engine({ directoriesByHandle: owner => { if (owner !== handle) throw new Error('Wrong fixture owner'); return dirs; } });
 try {
@@ -24,6 +24,15 @@ try {
         }
         return receipt;
     };
+    const compact = installed.core.runs.compactSessionTaskHistory.bind(installed.core.runs);
+    installed.core.runs.compactSessionTaskHistory = async (...args) => {
+        const result = await compact(...args);
+        if (interrupt === 'after_compaction') {
+            process.stdout.write(JSON.stringify({ stage: 'after_compaction', reads }), () => process.exit(73));
+            await new Promise(() => {});
+        }
+        return result;
+    };
     const host = new NativeGenerationHost({ persistence, library, sessionCore: installed.core, packageInstaller: installed.packageInstaller,
         providers: { 'provider.openai-responses': createResponsesGenerationProvider() }, secretPort: { resolveSecret: async () => 'fixture-secret' },
         extensions: { settings: async () => ({ value: {} }) }, skillRepository: () => ({ list: async () => [guide],
@@ -33,7 +42,7 @@ try {
                     process.stdout.write(JSON.stringify({ stage: 'pending_read', reads }), () => process.exit(73));
                     await new Promise(() => {});
                 }
-                return { content: 'Current pinned Task reference', totalLines: 1 };
+                return { content: readContent, totalLines: 1 };
             } }) });
     const result = await host.executeTask(handle, input);
     process.stdout.write(JSON.stringify({ record: result.record, reads }));

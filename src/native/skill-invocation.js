@@ -52,12 +52,13 @@ export async function completeNarrativeSkillTools({ calls, skills, transcript, s
         await persist?.();
     }
 }
-export async function runNarrativeSkillLoop({ execute, skills, transcript, signal, onChunk, fresh, persist }) {
+export async function runNarrativeSkillLoop({ execute, skills, transcript, signal, onChunk, fresh, persist,
+    roundCount = () => transcript.filter(message => message.role === 'assistant').length }) {
     const evidence = [];
     while (true) {
         checkCancellation(signal);
         await fresh();
-        if (transcript.filter(message => message.role === 'assistant').length >= 6) throw new Error('native_skill_round_limit');
+        if (roundCount() >= 6) throw new Error('native_skill_round_limit');
         const result = await execute();
         checkCancellation(signal);
         await fresh();

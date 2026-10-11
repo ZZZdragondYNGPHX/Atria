@@ -18,9 +18,11 @@ function prune() {
 export function nativeExecutionScope(plan, requestId, role) {
     const sessionTask = plan.source.kind === 'session' && plan.provenance.find(item => item.source === 'native.session-task'
         && typeof item.ref === 'string' && /^[a-zA-Z0-9._:-]{1,128}:[a-f0-9]{64}$/.test(item.ref));
+    const compact = sessionTask && plan.provenance.some(item => item.source === 'native.session-task-compaction'
+        && typeof item.ref === 'string' && /^1:[a-f0-9]{64}$/.test(item.ref));
     return plan.source.kind === 'task' ? { kind: 'task', projectId: plan.source.projectId, taskId: plan.source.taskId }
         : sessionTask ? { kind: 'session_task', invocationId: requestId, source: plan.source, role,
-            taskFingerprint: sessionTask.ref.slice(-64) }
+            taskFingerprint: sessionTask.ref.slice(-64), ...(compact ? { epoch: 1 } : {}) }
             : { kind: 'request', requestId, source: plan.source, role };
 }
 export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
@@ -99,6 +101,12 @@ export async function discardStoredNativeEnvelopes(binding, store) {
         if (!store) denied();
         await store.discard(binding);
     }
+}
+export async function resetStoredNativeEnvelopes(binding, store, publish) {
+    if (!store || binding.continuity !== 'adaptive') denied();
+    const result = await store.resetFromPublicHistory(binding, publish);
+    discardNativeEnvelopes(binding);
+    return result;
 }
 // Called only after successful native lowering and response normalization. This
 // describes local protocol transfer/retention, never measured upstream reuse.

@@ -14,13 +14,14 @@ const authentic = (doc, state) => state?.schemaVersion === 1 && state.bindingFin
 // Private Runtime storage. Only the server adapter obtains this port; no domain
 // resource, public endpoint or caller JSON can supply its engine/owner binding.
 export class RuntimeCheckpointStore {
-    constructor({ engine, handle, now = Date.now, publicConversation = null, sessionTask = false, sessionTaskHistory = null }) {
+    constructor({ engine, handle, now = Date.now, publicConversation = null, sessionTask = false, sessionTaskHistory = null, sessionTaskCompaction = null }) {
         if (!engine || !handle) throw new TypeError('Runtime checkpoint requires engine and owner');
         this.engine = engine; this.handle = handle; this.now = now;
         this.ownerFingerprint = hashNativeDocument(handle);
         this.publicConversation = publicConversation;
         this.sessionTask = sessionTask;
         this.sessionTaskHistory = sessionTaskHistory;
+        this.sessionTaskCompaction = sessionTaskCompaction;
     }
     key(checkpointId) { return { kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle, checkpointId }; }
     async authority(tx, binding) {
@@ -130,6 +131,8 @@ export class RuntimeCheckpointStore {
         if (sequence.some(message => message.providerState)) return decide(sequence, 'continue', 'supplied_checkpoint');
         let sessionHistory;
         if (this.sessionTask && binding.executionScope.kind === 'session_task') {
+            const compact = this.sessionTaskCompaction?.();
+            if (compact && compact.runtimeAuthorityFingerprint !== this.authorityFingerprint) unavailable();
             sessionHistory = this.sessionTaskHistory?.() ?? [];
             if (!sessionHistory.length) {
                 // An orphaned private checkpoint never authorizes a restart.
@@ -137,6 +140,9 @@ export class RuntimeCheckpointStore {
                     const rows = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle });
                     if (rows.some(row => row.doc?.binding && sameScope(binding, row.doc.binding))) unavailable();
                 });
+                if (compact) return immutable({ sequence, decision: { requestedPolicy: binding.continuity, effectiveScope: 'none',
+                    action: 'reset', reason: 'bounded_public_task_summary', sourceCheckpointIds: compact.sourceCheckpointIds,
+                    loss: 'opaque_not_restored' } });
                 return decide(sequence, 'start', 'declared_session_task');
             }
             if (hashNativeDocument(publicSequence.slice(-sessionHistory.length)) !== hashNativeDocument(sessionHistory)) unavailable();
@@ -182,5 +188,30 @@ export class RuntimeCheckpointStore {
                 if (!this.valid(row) || sameScope(binding, row.doc.binding)) await tx.deleteResource(row.key);
             }
         });
+    }
+    async resetFromPublicHistory(binding, publish) {
+        if (binding.ownerFingerprint !== this.ownerFingerprint || binding.continuity !== 'adaptive' || !this.sessionTask) unavailable();
+        try {
+            assertWritable();
+            return await withRuntimeWrite(this.handle, () => publish(async tx => {
+                const authority = await this.authority(tx, binding);
+                if (this.authorityFingerprint !== authority) unavailable();
+                const removed = [];
+                for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle: this.handle })) {
+                    if (row.doc?.binding && sameScope(binding, row.doc.binding)) {
+                        if (!this.valid(row) || row.doc.bindingFingerprint !== hashNativeDocument(binding)
+                            || row.doc.authorityFingerprint !== authority) unavailable();
+                        removed.push(row);
+                    }
+                }
+                if (removed.length !== (this.sessionTaskHistory?.() ?? []).filter(message => message.role === 'assistant').length) unavailable();
+                const rollback = async () => { for (const row of removed) await tx.putResource(row.key, row); };
+                try { for (const row of removed) await tx.deleteResource(row.key); } catch (error) {
+                    if (this.engine.kind === 'fs') await rollback();
+                    throw error;
+                }
+                return { ids: removed.map(row => row.doc.checkpointId), authorityFingerprint: authority, rollback };
+            }));
+        } catch { return unavailable(); }
     }
 }
