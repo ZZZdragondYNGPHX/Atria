@@ -18,6 +18,8 @@ import { createNativeStudioRouter } from '../../src/endpoints/native-studio.js';
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
 import { projectAgentResumeMessages } from '../../public/shared/project-agent-conversation.js';
 import { serializeNativeDocument, hashNativeDocument } from '../../src/native/repositories/common.js';
+import { createSkillRepository } from '../../src/skills/repository.js';
+import { ExtensionsStore } from '../../src/native/extensions-store.js';
 
 const harnesses = [['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]];
 const messagesReply = (format, finalText, privateText = 'PRIVATE-TASK-RUNTIME') => format === 'anthropic'
@@ -57,8 +59,9 @@ async function fixture(make, mode = 'task', verified = true, maxRequests = 4, fo
         allowedModelProfileIds: [model.modelProfileId], continuity: mode, computeBudget: { maxRequests, maxTokens: 128000, ...(localWork ? { localWork } : {}) } } });
     let onSecret = () => {};
     const providerFetch = globalThis.fetch;
-    const newHost = () => new NativeGenerationHost({ ...seeded, studio, agent, providers: { ['provider.' + format]: format === 'openai-responses'
-        ? createResponsesGenerationProvider({ fetchImpl: providerFetch }) : createNativeMessagesProvider({ format, fetchImpl: providerFetch }) },
+    const newHost = () => new NativeGenerationHost({ ...seeded, studio, agent, skillRepository: () => createSkillRepository(h.dirs.root),
+        extensions: new ExtensionsStore({ engine: h.engine }), providers: { ['provider.' + format]: format === 'openai-responses'
+            ? createResponsesGenerationProvider({ fetchImpl: providerFetch }) : createNativeMessagesProvider({ format, fetchImpl: providerFetch }) },
         secretPort: { resolveSecret: async () => { await onSecret(); return 'task-runtime-credential'; } } });
     const context = await agent.getContext(h.handle, source.project.projectId, task.taskId);
     const request = { role: 'studio', projectId: source.project.projectId, taskId: task.taskId, revision: created.revision.revision,

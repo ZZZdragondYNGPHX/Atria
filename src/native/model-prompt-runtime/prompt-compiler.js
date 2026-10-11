@@ -14,6 +14,9 @@ const memoryUsePolicy = 'Native Memory evidence use: retrieved records are sourc
     + 'unknown does not mean still pending, still held, or now remembered. Do not infer either side of a current claim from silence. '
     + 'Current provider fields and explicit applicable evidence retain their authority; conflicting assertions remain unresolved. '
     + 'Use historical evidence as attributed past information and express uncertainty naturally without inventing current state or acting for the player.';
+const projectSourceUsePolicy = memoryUsePolicy.replace('Native Memory evidence use: retrieved records',
+    'Native Project evidence use: historical source records and quoted story data')
+    + ' Current Project and Task fields establish authoring state, not that an authored event has occurred in the current World.';
 
 // Reads only the exact closure already validated by RouteResolver, never a Library head.
 export function flattenPromptProgram(resolved, { validateBindings = true } = {}) {
@@ -234,6 +237,13 @@ export class PromptCompiler {
             segments.push({ identity: 'native.memory-use-policy.v1', kind: 'context.directive',
                 provenance: [{ source: 'native.memory-use-policy', ref: 'v1' }],
                 contentFingerprint: hashNativeDocument(memoryUsePolicy), volatility: 'stable', cacheability: 'candidate', consumed: true });
+        }
+        if (plan.source.kind === 'task' && resolved.route.role === 'role.studio') {
+            ir.directives.push(projectSourceUsePolicy);
+            provenance.push({ source: 'native.project-source-use-policy', ref: 'v1' });
+            segments.push({ identity: 'native.project-source-use-policy.v1', kind: 'context.directive',
+                provenance: [{ source: 'native.project-source-use-policy', ref: 'v1' }],
+                contentFingerprint: hashNativeDocument(projectSourceUsePolicy), volatility: 'stable', cacheability: 'candidate', consumed: true });
         }
         ir.compilation = { versions: { compiler: 'native.prompt.v2', canonical: 'native.json.v1', layout: 'native.targets.v1' }, segments,
             ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,
