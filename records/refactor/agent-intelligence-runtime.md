@@ -2261,3 +2261,15 @@ studio-task-cold-v1 走原runNativeStudioAgentTask、原Skill/repository/compute
 只复验changed compiler的studio-task-cold-v2两真实发送，原意图/历史source/工具/流程不改（隔离IDs不同，不称严格因果pair）；实际wire含固定Project policy。reported1681+2302=3983，同Task十二local jobs/二model attempts settled，签名/冷恢复/公共历史全部保持。新完整正文明确“且当时该承诺未履行”，当前记忆/持有/意愿保持未知，有限时间项PASS；原不利结果不覆盖，n1不声明自由文本绝对保证或整体G06。当前generation实测producer为69ab3bd6+私有记录的compilerSourceHash，不能将最终提交HEAD写成该次实测HEAD。
 
 本组三组共六actual/direct8473；M8累计actual74/direct163204，原unknown2/upper17515及admission fetch0保持，原quota1690→1696连续append/carry不变，m1/hm1 ledger hashes保持。currency/cache/upstream/hiddenAttempts按用户答复unknown，不从total差值推reasoning。capability binding只为隔离可丢弃fixture的provisional声明以探测，未发布用户path verified或自动改变用户Role/Profile；实际Task consumer证据成立，不宣称所有会话Task/所有provider。完整G06/G05/HM2与M3前置仍pending，main未merge/deploy。
+
+### 2026-10-11 G06 — 原 adaptive 显式loss与流式时延观察
+
+source dfa4ccce的原Gemini/Studio adaptive流程新preflight HTTP0，再两真实HTTP200：第一轮原readonly tool/public conversation保存后，私有fixture用原RuntimeCheckpointStore丢弃该Task checkpoint；cold Node只从原Task身份恢复。第一次准备出现reset_required，没有HTTP/model attempt，原loop一次投影重编译后才第二发送。只一次reset事件、effectiveScope none/reason public_observation_projection/loss opaque_not_restored，transferredCheckpoints0、旧signature不在新wire，没有自动重复只读tool或authoring effect。原同Task保留三generation lifecycle attempts completed/failed/completed、两model attempts settled、十六local jobs（十五completed/一failed），不退款/清bank。新正文明确“该承诺当时未履行”、当前记忆未知，有限人工非盲时间项PASS；reported1619+3257=4876。临时capability同前仅private probe声明，不发布用户path verified。
+
+三组原H0-ZH-08 streaming first/repeat，Session None policy、不变style-v2/真实neural packet/实际500预载轮。default preflight三个独立Run各两Snapshot通过/API0，显式live六HTTP200/SSE、各原Run两settled。每pair actual request SHA完全相同；原quota1698→1704连续append，direct42230。首次是观测顺序，不假称Provider cold/warm、prefix/cache hit。raw clone异步观察、不预缓冲原Response，原Host onChunk首次公开内容另计，reasoning字段不作为正文首token或输入。
+
+n3/arm实测分布：wire首正文chunk first p50/p90 9155/12818ms，repeat 8581/9604ms；Host公开首chunk 10322/13924 vs9787/10665ms；含原executionResources/Host工作的E2E 10764/14292 vs10049/11094ms。一个pair重复E2E反而变慢，保留全部六值；小样本不能声明稳定SLO或归因缓存加速。完整六正文人工读过，历史借书/承诺限过去、当前记忆未知，无轮次编号、新动作或玩家决定；六text hash不同但都是相近两句不确定结构，不宣称创作多样性或总体分布改善。
+
+发现六raw SSE均报告gemini-3.8-flash，而原parser丢掉model，normalized误显示null。source `55ad73d9d6c2b0616489fe81c99d19c94d045fe7`已push，只保留SSE一致的reported alias，冲突/缺失仍null；upstream/cache/hiddenAttempts仍各自unknown，不把alias当canonical mapping。三新consistent/missing/conflicting观察与三旧compatible/raw-text真实stream及credential跨chunk检查共六PASS，两个改动文件lint/diff PASS。无需新增真实API：同六已保存raw streams经实际新adapter offline replay，text/usage完全不变、reported alias保留，原raw/report/quota hashes不改。新audit保留原producer dfa与replay producer dfa+providerSourceHash的区别，未给旧报告改分。
+
+累计M8 actual82/direct210310，原unknown2/upper17515与admission fetch0保持；原quota1704 admissions/carry完整保留，m1/hm1 ledger hashes保持。currency、上游映射、cache hit、hidden attempts、controller/instrumentation CPU仍unknown；net savings/完整G06/HM2不宣布通过，M3前置保留。source/docs仍原分支、main不merge/deploy。下一有限项补检索与generation同原Run bank端到端，不将前面的分离诊断冒称已覆盖。
