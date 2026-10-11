@@ -249,7 +249,7 @@ describe('P3 Context Provider and protocol ports', () => {
         const plan = { schemaVersion: 1, revisionId: sessionSource.revisionId, branchId: sessionSource.branchId,
             included: [{ contextItemId: 'runtime', lane: 'runtime_system', content: 'Runtime instructions' },
                 { contextItemId: 'state', lane: 'current_state_event', content: 'Authoritative current state' },
-                { contextItemId: 'memory', lane: 'memory', content: evidence, sourceRefs: [sourceRef] },
+                { contextItemId: 'memory:old-promise', lane: 'memory', content: evidence, sourceRefs: [sourceRef] },
                 { contextItemId: 'raw', lane: 'recent_raw', content: 'Earlier labelled history' },
                 { contextItemId: 'input', lane: 'current_user', content: 'Current question' }],
             budget: { promptCeiling: 900, safetyMargin: 50, responseReserve: 100 } };
@@ -259,10 +259,16 @@ describe('P3 Context Provider and protocol ports', () => {
             .buildRequestContextPlan(value.request, resolved);
         const ir = compile(value).promptIr;
         const messages = renderPromptMessages(ir);
+        const policy = ir.directives.find(content => content.startsWith('Native Memory evidence use:'));
+        expect(policy).toContain('unknown does not mean still pending, still held, or now remembered');
+        expect(policy).not.toContain('forbidden_tool');
+        expect(ir.provenance).toContainEqual({ source: 'native.memory-use-policy', ref: 'v1' });
+        expect(ir.compilation.segments.find(item => item.identity === 'native.memory-use-policy.v1'))
+            .toMatchObject({ volatility: 'stable', consumed: true });
         expect(messages.filter(message => message.content === evidence)).toEqual([{ role: 'user', content: evidence }]);
         expect(messages.filter(message => message.role === 'system').map(message => message.content))
-            .toEqual(['Runtime instructions', 'Stable foundation', 'Authoritative current state']);
-        expect(value.contextPlan.items.find(item => item.id === 'memory').provenance)
+            .toEqual(['Runtime instructions', 'Stable foundation', policy, 'Authoritative current state']);
+        expect(value.contextPlan.items.find(item => item.id === 'memory:old-promise').provenance)
             .toContainEqual({ source: 'native.context-source', ref: JSON.stringify(sourceRef) });
         expect(value.contextPlan.budget).toEqual({ maxTokens: 850, reservedOutputTokens: 100 });
         const wire = renderPromptProtocol(ir, format);

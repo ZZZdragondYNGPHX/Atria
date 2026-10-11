@@ -86,6 +86,10 @@ test('G06 long Native Timeline retrieves granted historical source through Memor
                 .toEqual([{ role: 'user', content: item.content }]);
         }
         expect(requests[0].messages.filter(message => message.role === 'system').some(message => message.content.includes('visible new note'))).toBe(true);
+        const useRules = requests[0].messages.filter(message => message.role === 'system' && message.content.startsWith('Native Memory evidence use:'));
+        expect(useRules).toHaveLength(1);
+        expect(useRules[0].content).toContain('unknown does not mean still pending, still held, or now remembered');
+        expect(useRules[0].content).not.toContain('OLD PROMISE');
         expect(wire).not.toContain('Later reply 499'); expect(wire).not.toContain('PRIVATE READ SENTINEL');
         expect(Buffer.byteLength(wire)).toBeLessThan(64000);
         expect(result.timeline.slice(0, current.timeline.length)).toEqual(current.timeline);
