@@ -2127,3 +2127,18 @@ source `272e6f716f0c0a4e20c12323eb48b6d59c34919c`，原resolver.resolve仍是唯
 按delivery §8完成所选有限G05工程出口核对，唯一矩阵见G01新出口表。原Run/Task共享原子准入、retry/fallback、所选child/background、continuation/summary/reset/reopen/restore成本及当前Native Skill/reuse/local工作已覆盖；bootstrap source/owner/首Route/budget读取仍未计量，legacy无该Run/Task consumer的Skill/reuse仍pending；未启用classifier/prewarm/Local KV与原生safe-copy/compaction不凭字段计能力。不是完整child scheduler/全部CPU硬cap/完整M8-HM2验收。继续有限G06语义修复与有意义原连接复验，不在G05无限扩bootstrap清单。
 
 本轮外部发送0；原真实38/direct72982、unknown2/17515 upper、admission fetch0、原G06质量FAIL、费用及quota完整保持，main仍3ee1332ef，未合并/部署。
+
+
+### 2026-10-11 G06 — compiler-owned Memory证据使用规则与原H0-ZH-08真实复验
+
+producer source `1e148cd8c2d7b37562f7325d8b1728b7cde90b2d`（规则实现7acb07a41，边界增强1e148cd8）。原PromptCompiler只在已准入Native memory: history且原native.context provenance匹配时加入固定证据使用规则，metadata stable segment/version及最终compiled binding/count/render/send均实际消费；不把数据正文升级为system或补World/Actor状态。active/confidence不是present truth，历史声明/承诺只证明当时时点，unknown不推出still pending/held/remembered。原数据、来源、query、角色/模型/预算authority不变。
+
+相关52既有distinct检查PASS（g06-memory-policy-local-v1.log）：原P3 compiler51与actual长Memory→Turn1，原1004→1006 Timeline/合法检索/来源撤回/真实loopback120 reported tokens保留。仅4增强protocol边界再验g06-memory-policy-boundary-v2.log，4PASS，不重复计数；无Memory或缺Native provenance无新规则，原注入正文仍user且tools/output不升权限。ESLint生产及long Turn test无错误；P3 test原/新均2既存conditional-expect，normalized messages相同新增0，diff PASS。没有全仓/DB/M1/HM1重跑。
+
+新私有runner显式适配恢复路径，原历史paid脚本未执行/修改；preflight2arms零API、实际Snapshot均消费固定规则。live仅原合成H0-ZH-08 long Session/recompute+reuse、同原account与https://gcli.ggchan.dev/v1/chat/completions / gemini-3.8-flash、retry/fallback0、无grader。原M1ApiQuota账本1659→1661 append，原carry/历史保留；2HTTP200、同Run2settled，direct reported totals2484/2489合4973，input各1369/output75和65，total原样保留、不硬造reasoning分解。M8累计actual40/direct77955；原2unknown/upper17515与1admitted fetch0仍单列，原M1/HM1 ledger hashes保持，currency/cache/upstream仍unknown。audit时rolling24h343/2000、last60s0/20，窗口自然过期而非清零。
+
+只读audit完成source→actual wire→normalized→Run settlement核对（m8-g06-memory-policy-pair-audit-v1.json/g06-memory-policy-audit-v2.log）。same case/query/selected3sources/required s08-020及Memory records字节与旧producer相同，raw500/合法corpus256；同producer两arms的完整actual请求SHA相同，都是fresh prose。before/after除固定policy外，隔离fixture world/worldRevision随机IDs不同，但唯一World字段及值都hp8/location harbor，故不称严格相同before/after bytes或强因果证明。全部raw request/response、normalized、prior hash及原FAIL append-only保留。
+
+本例有限时间语义项两条新输出PASS：recompute明确“过去借走/答应”，当前履行/持有/记忆不能断言；reuse将未履行限定“当时”，当前无进一步凭据。没有用“未知”一句抵消其他硬断言，也没有修改旧评分；旧report grades[]、至今/一直未履行确为真实正文FAIL。新文本仍偏审阅语言（凭据/实情/无法断言），不宣布风格自然度/完整G06、双入口、500轮持续RP或普遍自由文本保证通过。E2E15297/9385ms各n1，无TTFT/SLO/cache/净费用收益证明。
+
+执行诊断也保留：额外Python source等价audit默认GBK读取失败后PowerShell仍进入显式live；已有零发送preflight有效，随后UTF-8只读同源审计通过，无付费重跑。首版audit将fixture worldRevisionId与state一起比较而FAIL，改为核对确切state字段值并单列随机IDs后PASS，只修比较、不改正文判据/raw。后续gate显式UTF-8并检查exit code，失败不进入依赖live。完整M8/HM2仍未验收，main及远端均3ee1332ef，不合并/部署，按正式剩余出口继续。

@@ -111,6 +111,14 @@ source `272e6f716`：7新增/77受影响既有 distinct checks PASS；每次原c
 
 下一有限G06先修复历史Memory证据被提升为当前完成/持有/回忆事实的语义消费，再沿原H0-ZH-08/原连接作有意义复验；不重发未改变的失败输入或以fixture宣称改善。
 
+## 已交付有限 G06：Native Memory 证据使用规则与历史/当前推论
+
+沿原PromptCompiler，仅当原Context选择已准入的Native Memory数据时加入固定compiler-owned规则：source的active/confidence说明支持状态，不说明当前World/Actor；历史承诺只证明当时声明，缺完成证据不能推“尚未完成”或“仍持有”，未知也不能推当前记忆。适用时间与当前authority仍由原Source/Information/World裁决，不解析自然语言补事实或写Memory，不改排序、pin、原始数据/user优先级或玩家权限。
+
+规则是编译代码的固定内容，不从Memory正文提升instruction；最终count/render/send、编译fingerprint和原预算照常消费。无已准入Native Memory的编译不新增规则。先只增强原长Memory actual Turn/wire与相关compiler检查，再冻结原合成H0-ZH-08/原连接的最小recompute/reuse对照；每次真实attempt沿原quota记录实际usage/unknown及费用证据，无model grader/自动重试。历史paid脚本不自动执行，路径适配后创建新的私有本组runner/append-only证据，凭据只原配置内存读取。
+
+本地结构证明不改变原G06真实FAIL。真实新输出分别评价历史应用、当前事实、玩家自主权与语言表现；未通过时诊断并修复，不抹原不利结果或升gateway/cache/金额unknown。
+
 ## 已交付有限 G04：原 Session 声明 Task 的原生工具轮次
 
 2026-10-11 在 source `05f526fa8` 后先接 Session Task 历史消费者的先决路径：仅原 `_executeTask` 校验后的 Task/Variant/input、invocation、Session branch/revision及既有 route binding 得到 Host 内部精确 fingerprint。沿原 Context provenance与 native envelope binding传递；Session source不伪装Studio Project Task，普通caller JSON/messages不产生此authority。
@@ -327,3 +335,5 @@ source `0cd35d851`；以上G01/G04的“verified active未启用”是对应历�
 countTokens、render及capture使用同一accepted policy，候选Route的声明不改写；同路径fallback自身声明不同仍保持accepted binding，更换不兼容路径的旧opaque不回放。观察到同owner/execution的合法引用已失效即终止该checkpoint，active→none拒绝后恢复active不复活；伪造引用/其它owner不会删除原handle。原scope/权限/source守卫、使用量和协议完整性继续适用。17新本地有限checks及6受影响旧检查结果、失败fixture与实际producer见Record；新增外部API0。旧gateway成功只归原producer，不能据此标当前HEAD全网关verified或完整G06/HM2质量通过。
 
 2026-10-11 本有限组 source `3cebec8f7`：20 新distinct与71受影响既有checks通过；原两HTTP工具后第三count超窗→adaptive一次摘要→第三HTTP final，总60 direct tokens/15 settled local jobs。受控进程退出在摘要发布完成、reset job结算前，cold epoch总16jobs并保留旧charged。严格task/no local quota保留合法CPP；原model quota不发第三HTTP。FS补偿/SQLite rollback与最终Host cleanup时点及原始失败见[Record](../../../records/refactor/agent-intelligence-runtime.md)。真实外部quality/price/cache不升级。
+
+source `1e148cd8c`：52相关本地distinct PASS（其中4增强边界必要复验），原H0-ZH-08/原连接新2真实输出仅时间语义项PASS，direct4973、M8累计40/direct77955。原质量FAIL不覆盖；风格仍偏审阅，完整双入口G06/M8/HM2未验收。费用、TTFT/cache/upstream及其他不支持路径的unknown保留；详细wire/来源/费用与执行诊断唯一见Record。
