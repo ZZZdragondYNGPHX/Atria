@@ -7,6 +7,8 @@ import { PromptPresetStore } from '../native/model-prompt-runtime/presets.js';
 import { PromptCandidateStore } from '../native/model-prompt-runtime/prompt-candidates.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
+import { admitMemoryCorpusWork } from '../native/retrieval-compute.js';
+import { fields } from '../../public/shared/native-values.js';
 import { getStorageEngine } from '../storage/index.js';
 import { getUserDirectories } from '../users.js';
 import { readSecret, SECRET_KEYS, SecretManager } from './secrets.js';
@@ -271,6 +273,21 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
     router.post('/retrieval', async (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(await new NativeRetrievalPersistence({ engine: getStorageEngine() }).commit(req.user.profile.handle, req.body)); } catch (error) { res.status(error.code === 'native_immutable_conflict' ? 409 : 400).json({ error: error.code === 'storage_read_only' ? error.code : 'native_retrieval_invalid' }); }
+    });
+    router.post('/retrieval-work', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['computeContext', 'input'], 'Memory corpus work');
+            const host = getHost();
+            res.json(await admitMemoryCorpusWork({ handle, context: req.body.computeContext, input: req.body.input,
+                persistence: host.persistence, core: host.sessionCore, agent: host.agent, studio: host.studio }));
+        } catch (error) {
+            const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped',
+                'native_generation_budget_lane_denied', 'storage_read_only'].includes(error.code) ? error.code : 'native_retrieval_compute_invalid';
+            res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
+        }
     });
     router.delete('/configuration/:kind/:id', async (request, response) => {
         const handle = request.user?.profile?.handle;

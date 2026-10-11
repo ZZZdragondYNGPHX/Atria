@@ -4,6 +4,24 @@ import { hashNativeDocument } from './repositories/common.js';
 import { selectNativeRuntimeRoute } from './adapters/generation-host.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
+
+// This is admission for the existing client corpus consumer, not a second
+// execution or source authority. Client CPU/elapsed is not server process usage.
+export async function admitMemoryCorpusWork({ handle, context, input, ...services }) {
+    fields(input, ['key', 'state', 'chat', 'providers', 'eligibility', 'at'], 'Memory corpus input');
+    if (typeof input.key !== 'string' || !input.key || input.key.length > 4096 || !input.state || typeof input.state !== 'object'
+        || Array.isArray(input.state) || !Array.isArray(input.chat)) fail('native_retrieval_compute_invalid');
+    const inputBytes = Buffer.byteLength(JSON.stringify(input), 'utf8');
+    if (inputBytes < 1 || inputBytes > 16777216) fail('native_retrieval_compute_invalid');
+    const compute = await prepareRetrievalCompute({ handle, context, ...services,
+        profile: { mode: 'embed', purpose: 'memory.corpus.v1' } });
+    const ticket = await compute.beforeLocalWork({ items: 1, inputBytes, indexPath: input.key, kind: 'memory_corpus' });
+    // Retain the admitted upper bound even if the client never starts or exits.
+    // No client-supplied metrics can assert trusted server process settlement.
+    await compute.settleLocalWork(ticket, null);
+    if (ticket) await compute.publishLocalIndex(() => {});
+    return { admitted: true, metered: Boolean(ticket), costStatus: ticket ? 'unknown' : 'unconfigured' };
+}
 /** Optional retrieval work shares the existing Run operation / Project Task ledger. */
 export async function prepareRetrievalCompute({ handle, context, profile, persistence, core, agent, studio }) {
     fields(context, ['kind', 'sessionId', 'revisionId', 'projectId', 'taskId', 'revision', 'routeRef'], 'Retrieval compute context');

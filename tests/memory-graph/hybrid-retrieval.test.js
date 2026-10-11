@@ -195,14 +195,14 @@ describe('Memory OS hybrid retrieval', () => {
         const query = 'Why did Alice leave?';
         const options = { countTokens, budget: 10000, packing: 'ranked' };
         const baseline = await retrieveMemory(snapshot, query, options);
-        const service = { rerank: jest.fn(async () => response) };
+        const service = { admitCorpus: async () => ({ admitted: true, metered: false, costStatus: 'unconfigured' }), rerank: jest.fn(async () => response) };
         const result = await retrieveMemory(snapshot, query, { ...options, service, rerankProfile: {}, computeContext: { kind: 'session' } });
         expect(result.invocation).toMatchObject({ action: 'rerank', outcome: 'unavailable', stop: 'memory_rerank_response_invalid' });
         expect(result.diagnostics).toContain('rerank_unavailable');
         expect(result.selected).toEqual(baseline.selected); expect(result.text).toBe(baseline.text);
         expect(result.evidence).toEqual(baseline.evidence);
         expect(service.rerank).toHaveBeenCalledTimes(1);
-        expect(result.metrics.work).toMatchObject({ serviceRequests: 1, rerankRequests: 1, costStatus: 'unknown' });
+        expect(result.metrics.work).toMatchObject({ serviceRequests: 2, rerankRequests: 1, costStatus: 'unknown' });
         expect(result.metrics.work.responseDataBytes).toBeGreaterThan(0);
     });
 
@@ -212,7 +212,8 @@ describe('Memory OS hybrid retrieval', () => {
         const snapshot = { state, chat, key: state.scopeId, assertCurrent: jest.fn() };
         const query = 'Why did Alice leave?';
         const baseline = rankMemory(query, buildMemoryCorpus(snapshot)).candidates;
-        const service = { rerank: async ({ documents }) => documents.map((_, index) => ({ index, relevance_score: index })) };
+        const service = { admitCorpus: async () => ({ admitted: true, metered: false, costStatus: 'unconfigured' }),
+            rerank: async ({ documents }) => documents.map((_, index) => ({ index, relevance_score: index })) };
         const result = await retrieveMemory(snapshot, query, { service, rerankProfile: {}, computeContext: { kind: 'session' }, countTokens, budget: 10000, packing: 'ranked' });
         expect(result.invocation.outcome).toBe('completed');
         expect(result.selected[0]).toBe(baseline.at(-1).id);

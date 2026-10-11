@@ -42,3 +42,15 @@ test('scoped browser Embedding rejects before inference while no vector request 
         .rejects.toMatchObject({ code: 'native_retrieval_compute_unavailable' });
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
 });
+
+test('corpus admission uses original Native authority without a retrieval profile or inference request', async () => {
+    globalThis.Atria = { getContext: () => ({ getRequestHeaders: () => ({ 'X-CSRF-Token': 'native-test' }) }) };
+    globalThis.fetch = jest.fn(async () => response({ admitted: true, metered: true, costStatus: 'unknown' }));
+    const controller = new AbortController(), body = { computeContext: { kind: 'session', sessionId: 'current', revisionId: 'head' },
+        input: { key: 'memory', state: {}, chat: [], at: null } };
+    await expect(service.admitCorpus({ ...body, signal: controller.signal })).resolves.toMatchObject({ admitted: true, costStatus: 'unknown' });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('/api/native/generation/retrieval-work'); expect(JSON.parse(options.body)).toEqual(body);
+    expect(options.signal).toBe(controller.signal); expect(options.headers['X-CSRF-Token']).toBe('native-test');
+});

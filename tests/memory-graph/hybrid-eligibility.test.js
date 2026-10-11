@@ -88,6 +88,7 @@ test('authority rejects forged grants, summaries and revocations before IO and l
 
 test('Game and Package consume the shared Hybrid runtime with original Information and Context', async () => {
     const f = memoryFixture(frozen.cases[6], { native: true });
+    f.context.retrievalService = { admitCorpus: async () => ({ admitted: true, metered: false, costStatus: 'unconfigured' }) };
     configureSourceLifecycle({ getContext: () => f.context, resolveScope: ctx => ({ key: ctx.key, target: { key: ctx.key } }), enabled: () => true, writeEnabled: () => false });
     const { recallHybridMemory } = await import('../../public/scripts/agents/memory/hybrid-runtime.js');
     const api = { openSession: async context => ({ recallMemory: (query, input) => recallHybridMemory(context, query, { ...input, readOnly: true }) }) };

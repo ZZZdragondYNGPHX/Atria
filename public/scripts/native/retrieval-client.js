@@ -29,6 +29,7 @@ async function request(operation, { profile, signal, ...body }) {
     return response.headers.get('content-type')?.includes('json') ? response.json() : null;
 }
 export const NativeRetrievalService = {
+    admitCorpus: ({ signal, ...body }) => runtimeRequest('/retrieval-work', { method: 'POST', body, signal }),
     insert: args => request('insert', args), query: args => request('query', args), queryMulti: args => request('query-multi', args),
     queryByVector: args => request('query-by-vector', args), listHashes: args => request('list', args),
     deleteByHashes: args => request('delete', args), purgeCollection: args => request('purge', args), rerank: args => request('rerank', args),

@@ -329,6 +329,13 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     };
     const started = performance.now();
     guard();
+    if (computeContext) {
+        if (typeof service?.admitCorpus !== 'function') throw Object.assign(new Error('Scoped Memory corpus admission unavailable'), { code: 'native_retrieval_compute_unavailable' });
+        const admission = await callService('admitCorpus', { computeContext, signal,
+            input: { key: snapshot.key, state: snapshot.state, chat: snapshot.chat, providers: snapshot.providers, eligibility: snapshot.eligibility, at } });
+        guard();
+        if (admission?.admitted !== true) throw Object.assign(new Error('Scoped Memory corpus admission refused'), { code: 'native_retrieval_compute_unavailable' });
+    }
     const reused = reuseDerived ? memoryCorpusReuse(snapshot, at, () => buildMemoryCorpus(snapshot, at))
         : { corpus: buildMemoryCorpus(snapshot, at), fingerprints: null, decision: { status: 'miss', reason: 'manual_bypass' } };
     const corpus = reused.corpus;

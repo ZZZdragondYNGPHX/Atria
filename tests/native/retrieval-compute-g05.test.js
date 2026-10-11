@@ -30,6 +30,8 @@ import { RunControl } from '../../src/native/run-control.js';
 import { SessionRepo } from '../../src/native/repositories/session-repo.js';
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
 import { assertRunContinuation } from '../../public/shared/native-run-contract.js';
+import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
+import { createSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
 
 async function fixture(make, maxRequests = 2, localWork) {
     const h = await make(), seen = [];
@@ -53,12 +55,93 @@ async function fixture(make, maxRequests = 2, localWork) {
     const store = new NativeRetrievalPersistence({ engine: h.engine }); await store.commit(h.handle, profile);
     const computeServices = { core: installed.core, persistence: seeded.persistence, ...projectServices(h) };
     const app = express(); app.use(express.json({ limit: '2mb' })); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle }, directories: h.dirs }; next(); });
+    app.use('/api/native/generation', createNativeGenerationRouter(() => ({ ...seeded, sessionCore: installed.core, ...computeServices })));
     app.use(createRetrievalMiddleware(() => store, () => 'synthetic-key', async () => computeServices)); app.use(vectors);
     const computeContext = { kind: 'session', sessionId: base.session.sessionId, revisionId: base.revision.revisionId };
     const body = { nativeRetrievalRef: retrievalRef(profile), query: 'Why Alice?', documents: [{ text: 'Because of the storm', index: 0 }], computeContext };
     return { ...h, ...seeded, ...computeServices, base, profile, body, seen, store, request: supertest(app), respond: fn => { respond = fn; }, respondEmbedding: fn => { respondEmbedding = fn; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
+
+async function corpusFixture(f, lane = 'session') {
+    const disk = new Map(), ctx = { key: 'corpus:' + f.base.session.sessionId, enabled: true,
+        chat: [{ mes: 'Alice promised to return a book.' }, { mes: 'Alice discussed the earlier promise.' }], saveChat: async () => {},
+        getChatState: async (_, { target }) => ({ ok: true, state: structuredClone(disk.get(target.key)) }),
+        updateChatState: async (_, update, { target }) => { disk.set(target.key, structuredClone(update())); return { ok: true }; } };
+    let serial = 0;
+    const lifecycle = createSourceLifecycle({ getContext: () => ctx, resolveScope: context => ({ key: context.key, target: { key: context.key } }),
+        enabled: context => context.enabled, newId: () => 'corpus-source-' + ++serial });
+    await lifecycle.capture(ctx, [0, 1]); const snapshot = await lifecycle.retrievalSnapshot(ctx);
+    let context = f.body.computeContext;
+    if (lane === 'project') {
+        const source = projectSource(), project = await f.studio.createProject(f.handle, source);
+        const task = await f.agent.createTask(f.handle, source.project.projectId, { intent: 'Read corpus', baseRevision: project.revision.revision });
+        context = { kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: project.revision.revision };
+    }
+    let onAdmission = async () => {};
+    const service = { admitCorpus: jest.fn(async ({ signal: _signal, ...body }) => {
+        const response = await f.request.post('/api/native/generation/retrieval-work').send(body);
+        if (response.status !== 200) throw Object.assign(new Error('Corpus admission refused'), { code: response.body.error });
+        await onAdmission(); return response.body;
+    }) };
+    const bank = async () => lane === 'session' ? Object.values((await f.core.runs.status(f.handle, context.sessionId))?.operations ?? {}).find(row => row.compute)?.compute
+        : (await f.agent.getTask(f.handle, context.projectId, context.taskId)).compute;
+    return { ctx, lifecycle, snapshot, service, context, bank, onAdmission: fn => { onAdmission = fn; },
+        recall: () => retrieveMemory(snapshot, 'Alice', { service, computeContext: context, countTokens: async text => text.length, budget: 10000 }) };
+}
+for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test.each(['session', 'project'])(`G05 corpus ${kind} %s cold and warm reuse share original unknown work through recovery`, async lane => {
+        const f = await fixture(make, 2, { maxJobs: 2, maxItems: 2, maxInputBytes: 1048576 });
+        try {
+            const c = await corpusFixture(f, lane), first = await c.recall(), warm = await c.recall();
+            expect(first.reuse.status).toBe('miss'); expect(warm.reuse.status).toBe('valid_hit');
+            expect(warm.evidence).toEqual(first.evidence); const bank = await c.bank();
+            expect(bank.localWork.map(row => [row.kind, row.status, row.usage])).toEqual([['memory_corpus', 'unknown', null], ['memory_corpus', 'unknown', null]]);
+            expect(bank.attempts).toEqual([]); expect(c.service.admitCorpus).toHaveBeenCalledTimes(2); expect(f.seen).toEqual([]);
+            const route = f.routes[lane === 'session' ? 0 : 1];
+            await f.persistence.saveRuntimeRoute(f.handle, { ...route, executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId] } });
+            const backupPath = await snapshotUser({ handle: f.handle, userRoot: f.dirs.root, backupRoot: f.backupRoot, engine: f.engine });
+            await restoreFromSnapshot({ handle: f.handle, userRoot: f.dirs.root, backupPath, engine: f.engine });
+            f.core.runs = new RunControl(new SessionRepo({ engine: f.engine }));
+            await expect(c.recall()).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            expect(await c.bank()).toEqual(bank); expect(f.seen).toEqual([]);
+        } finally { await f.cleanup(); }
+    });
+}
+test.each(['input_bytes', 'readonly', 'head_change', 'late_source', 'cancel', 'settle_failure'])('G05 corpus %s refuses stale client work and retains admitted cost', async scenario => {
+    const f = await fixture(makeTempFsEngineHarness, 2, { maxJobs: 2, maxItems: 2, maxInputBytes: scenario === 'input_bytes' ? 1 : 1048576 });
+    let settle;
+    try {
+        const c = await corpusFixture(f), controller = new AbortController();
+        if (scenario === 'readonly') setReadOnly(true);
+        if (scenario === 'head_change') await f.core.appendTimeline(f.handle, c.context.sessionId, { role: 'user', content: 'Changed corpus anchor' });
+        if (scenario === 'late_source') c.onAdmission(async () => { c.ctx.chat[0].mes = 'Edited while awaiting admission'; });
+        if (scenario === 'cancel') c.onAdmission(async () => { controller.abort(); });
+        if (scenario === 'settle_failure') settle = jest.spyOn(f.core.runs, 'settleLocalWork').mockRejectedValue(new Error('Synthetic cost write failure'));
+        await expect(retrieveMemory(c.snapshot, 'Alice', { service: c.service, computeContext: c.context, signal: controller.signal,
+            countTokens: async text => text.length, budget: 10000 })).rejects.toThrow();
+        const bank = await c.bank();
+        expect(bank?.localWork.map(row => row.status) ?? []).toEqual(['late_source', 'cancel'].includes(scenario) ? ['unknown'] : scenario === 'settle_failure' ? ['charged'] : []);
+        expect(bank?.attempts ?? []).toEqual([]); expect(f.seen).toEqual([]);
+    } finally { settle?.mockRestore(); setReadOnly(false); await f.cleanup(); }
+});
+test('G05 corpus missing scoped admission port refuses before tokenization or any budget bypass', async () => {
+    const f = await fixture(makeTempFsEngineHarness, 2, { maxJobs: 2, maxItems: 2, maxInputBytes: 1048576 });
+    try {
+        const c = await corpusFixture(f), countTokens = jest.fn();
+        await expect(retrieveMemory(c.snapshot, 'Alice', { service: {}, computeContext: c.context, countTokens })).rejects.toMatchObject({ code: 'native_retrieval_compute_unavailable' });
+        expect(countTokens).not.toHaveBeenCalled(); expect(await c.bank()).toBeUndefined(); expect(f.seen).toEqual([]);
+    } finally { await f.cleanup(); }
+});
+test('G05 corpus old unbounded readonly consumer creates no local ledger or invented usage', async () => {
+    const f = await fixture(makeTempFsEngineHarness);
+    try {
+        const c = await corpusFixture(f), before = await f.core.runs.status(f.handle, c.context.sessionId);
+        setReadOnly(true); const result = await c.recall();
+        expect(result.evidence.length).toBeGreaterThan(0); expect(await f.core.runs.status(f.handle, c.context.sessionId)).toEqual(before);
+        expect(c.service.admitCorpus.mock.results).toHaveLength(1); expect(await c.bank()).toBeUndefined(); expect(f.seen).toEqual([]);
+    } finally { setReadOnly(false); await f.cleanup(); }
+});
 
 async function embeddingBody(f, items = [{ hash: 1, text: 'Current legal evidence', index: 0 }]) {
     const profile = { ...f.profile, retrievalProfileId: createNativeId('retrievalProfile'), mode: 'embed', source: 'openai', model: 'test-embed' };
@@ -1066,7 +1149,7 @@ test('G05 denied later Embedding batch keeps the prior index and charged first s
     } finally { await f.cleanup(); }
 });
 
-test.each([3, 1])('G05 local list actual Memory consumer forwards its original anchor and shares %i work jobs', async jobs => {
+test.each([4, 2])('G05 local list actual Memory consumer forwards its original anchor and shares %i work jobs', async jobs => {
     jest.unstable_mockModule('../../public/script.js', () => ({ getRequestHeaders: () => ({}) }));
     const { NativeRetrievalService } = await import('../../public/scripts/native/retrieval-client.js');
     const f = await fixture(makeTempFsEngine, 2, { maxJobs: jobs, maxItems: 64, maxInputBytes: 65536 }), previousFetch = globalThis.fetch, previousAtria = globalThis.Atria, calls = [];
@@ -1086,21 +1169,21 @@ test.each([3, 1])('G05 local list actual Memory consumer forwards its original a
         const result = await retrieveMemory(snapshot, 'Alice harbor', { service: NativeRetrievalService,
             profile: { nativeRetrievalRef: body.nativeRetrievalRef, source: 'native', model: 'exact-fixture' },
             countTokens: async text => text.length, computeContext: body.computeContext });
-        expect(calls[0]).toMatchObject({ url: '/api/vector/list', payload: { computeContext: body.computeContext } });
-        if (jobs === 3) {
+        expect(calls[1]).toMatchObject({ url: '/api/vector/list', payload: { computeContext: body.computeContext } });
+        if (jobs === 4) {
             expect(result.diagnostics).not.toContain('vector_unavailable');
             expect(calls.filter(row => /\/(insert|query)$/.test(row.url)).map(row => row.payload.computeContext)).toEqual([body.computeContext, body.computeContext]);
         } else expect(result.diagnostics).toContain('vector_unavailable');
-        expect(result.sourceMessageIds).toEqual(['source-a']); expect(f.seen).toHaveLength(jobs === 3 ? 2 : 0);
+        expect(result.sourceMessageIds).toEqual(['source-a']); expect(f.seen).toHaveLength(jobs === 4 ? 2 : 0);
         const ledger = Object.values((await f.core.runs.status(f.handle, f.base.session.sessionId)).operations).find(row => row.compute).compute;
-        expect(ledger.attempts.map(row => row.status)).toEqual(jobs === 3 ? ['settled', 'settled'] : []);
-        expect(ledger.localWork.map(row => row.kind)).toEqual(jobs === 3 ? ['index_list', 'index_insert', 'index_query'] : ['index_list']);
+        expect(ledger.attempts.map(row => row.status)).toEqual(jobs === 4 ? ['settled', 'settled'] : []);
+        expect(ledger.localWork.map(row => row.kind)).toEqual(jobs === 4 ? ['memory_corpus', 'index_list', 'index_insert', 'index_query'] : ['memory_corpus', 'index_list']);
     } finally { globalThis.fetch = previousFetch; globalThis.Atria = previousAtria; await f.cleanup(); }
 });
 test('G05 local delete actual Hybrid delta forwards computeContext and removes only stale derived hashes', async () => {
     jest.unstable_mockModule('../../public/script.js', () => ({ getRequestHeaders: () => ({}) }));
     const { NativeRetrievalService } = await import('../../public/scripts/native/retrieval-client.js');
-    const f = await fixture(makeTempFsEngine, 4, { maxJobs: 7, maxItems: 64, maxInputBytes: 65536 });
+    const f = await fixture(makeTempFsEngine, 4, { maxJobs: 9, maxItems: 64, maxInputBytes: 65536 });
     const previousFetch = globalThis.fetch, previousAtria = globalThis.Atria, calls = [];
     Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
     try {
@@ -1127,7 +1210,7 @@ test('G05 local delete actual Hybrid delta forwards computeContext and removes o
         const retained = actual.items.map(item => item.metadata.hash), replacement = calls.filter(row => row.url.endsWith('/insert')).at(-1).payload.items.map(item => item.hash);
         expect(retained).not.toContain(initialHash); expect(retained.sort()).toEqual(replacement.sort());
         const ledger = await readCompute(f);
-        expect(ledger.localWork.map(row => row.kind)).toEqual(['index_list', 'index_insert', 'index_query', 'index_list', 'index_delete', 'index_insert', 'index_query']);
+        expect(ledger.localWork.map(row => row.kind)).toEqual(['memory_corpus', 'index_list', 'index_insert', 'index_query', 'memory_corpus', 'index_list', 'index_delete', 'index_insert', 'index_query']);
         expect(ledger.attempts).toHaveLength(4); expect(f.seen).toHaveLength(4);
         expect(chat[0].mes).toBe('Alice now lives in the mountains.'); expect((await f.core.load(f.handle, f.base.session.sessionId)).timeline).toEqual(f.base.timeline);
     } finally { globalThis.fetch = previousFetch; globalThis.Atria = previousAtria; await f.cleanup(); }
