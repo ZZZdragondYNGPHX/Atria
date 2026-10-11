@@ -145,11 +145,13 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S09 | Complete；原 Workspace 参数 exact binding / rollback、Project pristine Task repair candidate / CAS | 8 suites / 105 tests；单字段 / whole base / conflicts；运行开始后 Project 不热改，手动 apply 无晋升资格 |
 | S10 | 工程交付及两域M1实际验收完成 | 原六类局部 target、有限 owner ledger、隔离 evaluator、publication / recovery / next-run evidence、共享面板；12 suites / 233 tests |
 | M1反馈/评价补充 F0–F3 | Complete；实际双域验收与main集成完成 | 相关真实语义、完整费用与原生命周期通过；历史不利结果保留，具体版本见Record最新节 |
-| S11 | 有限持久/控制出口已交付；M2尚未完成 | [s11-goals](s11-goals.md)，14新增/2相关既有distinct本地检查PASS；S12–S14继续 |
-| S12 | 有限criteria/完成证据与失效出口已交付 | [s12-goal-evidence](s12-goal-evidence.md)，14新增/12受影响既有distinct本地PASS；S13–S14继续，Actor认知完成留S17 |
-| S13–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
+| S11 | 有限持久/控制出口已交付 | [s11-goals](s11-goals.md)，S12证据、S13持久续跑和S14体验已接；有限范围见各入口与Record |
+| S12 | 有限criteria/完成证据与失效出口已交付 | [s12-goal-evidence](s12-goal-evidence.md)，14新增/12受影响既有distinct本地PASS；Actor认知完成留S17 |
+| S13–S14 | 有限用户/作品事件出口已交付 | [s13-goal-continuation](s13-goal-continuation.md)、[s14-goal-experience](s14-goal-experience.md)，同Task bank/恢复、显式RP事件和共享pane；非应用关闭唤醒或Actor欲望验收 |
+| G01–G06 | 有限消费者陆续交付；M8完整验收未完成 | 当前入口[g01-substrate](g01-substrate.md)及[g05-transformers-embedding](g05-transformers-embedding.md)；原source/预算/复用、真实签名冷恢复、实际本地语义与分层正文、SSE观察已补；原FAIL和完整费用/收益缺口保留 |
+| S15–S34 | 尚未实施当前正式范围 | M3入口依赖已验收G06；不以接口或预留字段替代交付 |
 | HM1 / H0–H2 | Complete；main `3ee1332ef` | B0 保留，B1–B3 / 三路径 / Context 完整组 / 主模型正文观察与相关本地验证通过；限制见 Record |
-| HM2–HM3 / H3–H5 | 未实施 | 深检索、delta/cache、cognition/forgetting 与后续成本/性能仍待交付 |
+| HM2–HM3 / H3–H5 | 有限HM2工作进行中；整体未验收，HM3未交付 | 原合法corpus/hash派生复用与有限本地Embedding已有实际消费者；delta/candidate cache、启用算法收益与cognition/forgetting仍按各组出口交付 |
 
 以下为历史阶段摘要，当前交付状态以上表和同一 Record 最新节为准。S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一工作补齐 M1 验收证据与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。

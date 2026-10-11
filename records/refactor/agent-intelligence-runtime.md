@@ -2273,3 +2273,15 @@ n3/arm实测分布：wire首正文chunk first p50/p90 9155/12818ms，repeat 8581
 发现六raw SSE均报告gemini-3.8-flash，而原parser丢掉model，normalized误显示null。source `55ad73d9d6c2b0616489fe81c99d19c94d045fe7`已push，只保留SSE一致的reported alias，冲突/缺失仍null；upstream/cache/hiddenAttempts仍各自unknown，不把alias当canonical mapping。三新consistent/missing/conflicting观察与三旧compatible/raw-text真实stream及credential跨chunk检查共六PASS，两个改动文件lint/diff PASS。无需新增真实API：同六已保存raw streams经实际新adapter offline replay，text/usage完全不变、reported alias保留，原raw/report/quota hashes不改。新audit保留原producer dfa与replay producer dfa+providerSourceHash的区别，未给旧报告改分。
 
 累计M8 actual82/direct210310，原unknown2/upper17515与admission fetch0保持；原quota1704 admissions/carry完整保留，m1/hm1 ledger hashes保持。currency、上游映射、cache hit、hidden attempts、controller/instrumentation CPU仍unknown；net savings/完整G06/HM2不宣布通过，M3前置保留。source/docs仍原分支、main不merge/deploy。下一有限项补检索与generation同原Run bank端到端，不将前面的分离诊断冒称已覆盖。
+
+### 2026-10-11 G06 — 完整语义检索与Narrator同Run bank
+
+source `55ad73d9d6c2b0616489fe81c99d19c94d045fe7`；新shared-bank runner默认preflight，完整实际local NN/256合法H0 corpus后Host只preview，生成HTTP0、原private M1/HM1/quota不变。显式live重新建立同样隔离Source：原三选中历史真实发布/映射，500预载双消息轮/1005 Timeline，固定不变style-v2。先实际SourceLifecycle/Information合法fixture corpus与原Native middleware/索引，随后原Host沿实际该Session refs编译Memory并生成一次；不把fixture Information快照称为整个生产Native Source lifecycle验收。
+
+最终原Run只有一个有compute的operation，原同一32jobs/4096items/16MiB bank先十七检索jobs再五Host jobs，总22。具体为四client corpus/rank/hash/pack保守unknown；四index_insert/三index_list/一index_query/五embedding_local及route_resolve/context_build/prompt_compile/generation_count/generation_render各一，十八server jobs settled。五embedding批次覆盖256corpus+一次query，非fixture vector。generation model attempt只有一笔settled/input6309/output36/total7519，HTTP200；没有新开或拆分检索/模型bank、预算清零、额外retry/fallback/grader，也没有模型输出写World/Timeline。
+
+新正文“借书那天…答应过…如今是否还记得…并没有确切的消息”，有限历史/当前记忆未知、无玩家决定/当前履行硬断言人工项通过；n1不足以声明总体或全生命周期Actor保证。请求数量并非此前分离packet诊断的两域pair。原H0必需来源020保持，选择020/008/089和typed完整packet来源核验不减；atomic_evidence_unavailable保留。
+
+实际完整检索332637.34ms；四64-text插入在500轮物理Timeline下比bare Session显著慢，原逐条source freshness加载/检验长Snapshot的成本计入实际embedding/index job，区间相互重叠，不混同纯NN时间或相加成净CPU。此前约28.7s的bare Scope检查不能替代这次长历史端到端数据；该不利耗时及preflight原值都private保存，不为通过提高32-job cap、删freshness guard或泛化性能调优。用户计价/上游/cache仍unknown，controller CPU也非免费。
+
+原quota1704→1705连续append、carry332保持、M1/HM1 ledger hashes不变。M8累计actual83/direct217829，原unknown2/upper17515与admission fetch0仍单列。此有限同bank出口成立，不等于整体G05/G06/HM2已验收；完整费用收益仍缺可核对外部计价，旧FAIL及未支持路径保留，M3前置不越过。source/docs当前入口同步实际有限交付，main仍3ee1332ef、未merge/deploy，私有包/模型缓存/raw均未提交。
