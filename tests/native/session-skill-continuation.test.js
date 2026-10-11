@@ -12,7 +12,7 @@ const argumentsWire = '{\n "path" : "ref.md", "name":"guide", "limit":1, "offset
 const reasoning = { type: 'reasoning', encrypted_content: 'PRIVATE-SESSION-SKILL' };
 const tool = { type: 'function_call', call_id: 'skill-1', name: 'atri_skill_read', arguments: argumentsWire };
 const final = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final fresh prose.' }] };
-async function fixture(make, mode, maxJobs = 5, maxInputBytes = 1048576) {
+async function fixture(make, mode, maxJobs = 9, maxInputBytes = 1048576) {
     const h = await make(), wires = []; let onRead = async () => {}, output = round => round === 1 ? [reasoning, tool] : [final], status = () => 200;
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; wires.push(JSON.parse(raw));
@@ -45,7 +45,7 @@ async function fixture(make, mode, maxJobs = 5, maxInputBytes = 1048576) {
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
-    test.each(['none', 'active_execution'])(`G05 Skill read ${kind} %s actual loop shares original five jobs and preserves public protocol`, async mode => {
+    test.each(['none', 'active_execution'])(`G05 Skill read ${kind} %s actual loop shares original budget including preparation jobs and preserves public protocol`, async mode => {
         const f = await fixture(make, mode), onChunk = jest.fn();
         try {
             const result = await f.host.execute(f.handle, f.request, undefined, onChunk);
@@ -54,7 +54,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.readFile.mock.calls[0][0]).toMatchObject({ name: 'guide', path: 'ref.md', offset: 2, limit: 1 });
             const ledger = Object.values((await f.core.runs.status(f.handle, f.request.sessionId)).operations).find(row => row.compute).compute;
             expect(ledger.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
-            expect(ledger.localWork.map(row => row.kind)).toEqual(['generation_count', 'generation_render', 'skill_read', 'generation_count', 'generation_render']);
+            expect(ledger.localWork.map(row => row.kind)).toEqual(['context_build', 'prompt_compile', 'generation_count', 'generation_render', 'skill_read', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(JSON.stringify(result)).not.toContain('PRIVATE-SESSION-SKILL');
             expect((await f.core.load(f.handle, f.request.sessionId)).timeline).toEqual(f.base.timeline);
             expect(onChunk.mock.calls.map(([chunk]) => chunk.text)).toEqual(['Final fresh prose.']);
@@ -62,7 +62,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
     });
 }
 test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops the next round and keeps original observed cost', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', scenario === 'work_quota' ? 2 : 4), controller = new AbortController(), onChunk = jest.fn();
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', scenario === 'work_quota' ? 4 : 8), controller = new AbortController(), onChunk = jest.fn();
     try {
         f.onRead(async () => {
             if (scenario === 'cancel_read') controller.abort();
@@ -73,7 +73,7 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops
         const cost = scenario === 'head_change' ? control.retiredCompute : Object.values(control.operations).find(row => row.compute).compute;
         const observed = scenario === 'head_change' ? { models: cost.modelAttempts, tokens: cost.knownTotalTokens, jobs: cost.localJobs }
             : { models: cost.attempts.length, tokens: cost.attempts.reduce((n, row) => n + row.usage.totalTokens, 0), jobs: cost.localWork.length };
-        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 2 : 3 }); expect(f.wires).toHaveLength(1);
+        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 4 : 5 }); expect(f.wires).toHaveLength(1);
         expect(f.readFile).toHaveBeenCalledTimes(scenario === 'work_quota' ? 0 : 1);
         expect(onChunk).not.toHaveBeenCalled();
         let cancelledWork = null;
@@ -90,7 +90,7 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops
     } finally { await f.cleanup(); }
 });
 test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_settlement_change'])('G05 Skill read %s uses only original bounded read authority', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 5, scenario === 'byte_quota' ? 131072 : 1048576); let spy;
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 9, scenario === 'byte_quota' ? 131072 : 1048576); let spy;
     try {
         if (scenario === 'file_list') f.output(round => round === 1 ? [reasoning, { ...tool, name: 'atri_skill_files', arguments: '{ "name": "guide" }' }] : [final]);
         if (scenario === 'byte_quota') f.output(round => round === 1 ? [reasoning, { ...tool, arguments: JSON.stringify({ name: 'guide', path: 'x'.repeat(262144) + '.md' }) }] : [final]);
@@ -101,7 +101,7 @@ test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_set
             const original = f.core.runs.settleLocalWork.bind(f.core.runs); let jobs = 0;
             spy = jest.spyOn(f.core.runs, 'settleLocalWork').mockImplementation(async (...args) => {
                 const result = await original(...args);
-                if (++jobs === 3) await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Skill cost settlement' });
+                if (++jobs === 5) await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Skill cost settlement' });
                 return result;
             });
         }
@@ -110,13 +110,13 @@ test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_set
         expect(f.readFile).toHaveBeenCalledTimes(['byte_quota', 'file_list'].includes(scenario) ? 0 : 1); expect(f.listFiles).toHaveBeenCalledTimes(scenario === 'file_list' ? 1 : 0);
         const control = await f.core.runs.status(f.handle, f.request.sessionId), cost = scenario === 'post_settlement_change' ? control.retiredCompute : Object.values(control.operations).find(row => row.compute)?.compute ?? {};
         const jobs = scenario === 'post_settlement_change' ? cost.localJobs : cost.localWork?.length ?? 0;
-        expect(jobs).toBe(scenario === 'old_unbounded' ? 0 : success ? 5 : scenario === 'byte_quota' ? 2 : 3);
+        expect(jobs).toBe(scenario === 'old_unbounded' ? 0 : success ? 9 : scenario === 'byte_quota' ? 4 : 5);
         const work = scenario === 'post_settlement_change' ? cost.localCompletedJobs : cost.localWork?.find(row => row.kind === 'skill_read')?.usage.outcome ?? null;
-        expect(work).toBe(scenario === 'post_settlement_change' ? 3 : scenario === 'read_failure' ? 'failed' : scenario === 'file_list' ? 'completed' : null);
+        expect(work).toBe(scenario === 'post_settlement_change' ? 5 : scenario === 'read_failure' ? 'failed' : scenario === 'file_list' ? 'completed' : null);
     } finally { spy?.mockRestore(); await f.cleanup(); }
 });
 test('G05 Skill read accepted fallback keeps one original ledger including failed primary work', async () => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 7);
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 13);
     try {
         const root = await f.persistence.getRuntimeRoute(f.handle, f.routes[0].runtimeRouteId), budget = { ...root.executionPolicy.computeBudget, maxRequests: 3 };
         const fallback = { ...root, runtimeRouteId: createNativeId('runtimeRoute'), fallbackRouteRefs: [], executionPolicy: { ...root.executionPolicy, computeBudget: budget } };
@@ -126,7 +126,7 @@ test('G05 Skill read accepted fallback keeps one original ledger including faile
         const result = await f.host.execute(f.handle, { ...f.request, fallbackMode: 'automatic' });
         expect(result.skillRounds.map(row => row.runtimeRouteId)).toEqual([fallback.runtimeRouteId, root.runtimeRouteId]);
         const operations = Object.values((await f.core.runs.status(f.handle, f.request.sessionId)).operations).filter(row => row.compute);
-        expect(operations).toHaveLength(1); expect(operations[0].compute.localWork).toHaveLength(7);
+        expect(operations).toHaveLength(1); expect(operations[0].compute.localWork).toHaveLength(13);
         expect(operations[0].compute.localWork.filter(row => row.kind === 'skill_read')).toHaveLength(1);
         expect(operations[0].compute.attempts.map(row => row.status)).toEqual(['unknown', 'settled', 'settled']); expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.wires).toHaveLength(3);
     } finally { await f.cleanup(); }

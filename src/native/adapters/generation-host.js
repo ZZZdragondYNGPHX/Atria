@@ -780,11 +780,12 @@ export class NativeGenerationHost {
         if (skills?.tools.length && !requirements.includes('generation.tools')) requirements.push('generation.tools');
         const skillTranscript = [];
         let taskHistoryLoaded = false, taskHistory = null, taskHistoryWork, resumeSkillRead, persistTaskHistory, discardTaskHistory, compactTaskHistory;
+        let contextBuildWork, promptCompileWork;
         const sessionTaskEvidence = source.kind === 'session' && taskPlan?.executionFingerprint
             ? { source: 'native.session-task', ref: input.requestId + ':' + taskPlan.executionFingerprint } : null;
         const taskProvenance = () => [sessionTaskEvidence, ...(taskHistory?.compaction
             ? [{ source: 'native.session-task-compaction', ref: '1:' + hashNativeDocument(taskHistory.compaction) }] : [])];
-        const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
+        const buildContext = async (request, resolved) => {
             if (!preview && sessionTaskEvidence && skills?.tools.length && ['task', 'adaptive'].includes(resolved.effectiveExecutionPolicy?.continuity) && !taskHistoryLoaded) {
                 const context = lanePlan?.budgetContext;
                 const anchor = context?.anchor ?? { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
@@ -857,7 +858,9 @@ export class NativeGenerationHost {
             const taskEvidence = projectTaskEvidence ?? sessionTaskEvidence;
             return { ...selected, items, ...(taskEvidence ? { provenance: [...selected.provenance,
                 ...(sessionTaskEvidence ? taskProvenance() : [taskEvidence])] } : {}), ...(nativeSelection ? { nativeSelection } : {}) };
-        } };
+        };
+        const contextProvider = { buildRequestContextPlan: (request, resolved) => contextBuildWork(request, resolved,
+            () => buildContext(request, resolved)) };
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
         const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
             revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '' };
@@ -868,7 +871,7 @@ export class NativeGenerationHost {
         const localWorkAttempts = [];
         let readSkill;
         let discardSessionTaskExecution;
-        const service = new GenerationService({ resolver, contextProvider, preparePrompt: compiler.preparePrompt, secretPort: this.secretPort,
+        const service = new GenerationService({ resolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
             providerFor: (id, resolved) => {
                 const baseProvider = resolver.provider(id);
                 const provider = (projectTaskEvidence || sessionTaskEvidence) && this.persistence._engine && baseProvider.withRuntimeCheckpointStore
@@ -943,6 +946,16 @@ export class NativeGenerationHost {
                     pendingCharge = null;
                 };
                 taskHistoryWork = (request, operation, descriptor) => localWork('task_history', request, operation, descriptor);
+                // GenerationService creates this provider before preparing Context
+                // and passes the accepted effective policy to both work ports.
+                contextBuildWork = (request, effective, operation) => localWork('context_build', { resolved: effective }, operation,
+                    { source, snapshot: nativeContext ? snapshot : null, contextPackage, illustrationPlan,
+                        task: taskPlan ? { context: taskPlan.task.context, payload: taskPlan.payload } : null,
+                        messages: input.messages ?? [], skillItems: skills?.items ?? [], skillTranscript,
+                        memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityContext });
+                promptCompileWork = args => localWork('prompt_compile', args, () => compiler.preparePrompt(args),
+                    { contextPlan: args.contextPlan, resources: args.resolved.resources, prompt: args.request.prompt,
+                        tools: args.request.tools, outputContract: args.request.outputContract });
                 resumeSkillRead = (request, call) => localWork('skill_read', request, () => skills.read(call),
                     { name: call.name, args: call.args, inventoryFingerprint: hashNativeDocument(skills.items) });
                 discardTaskHistory = effective => provider.discardExecution?.({ binding: {
