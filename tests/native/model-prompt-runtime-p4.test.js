@@ -155,6 +155,23 @@ describe('P4 authenticated Native generation host and real HTTP transport', () =
         expect(result.snapshot.contextPlan.source.projectId).toBe(f.request.projectId);
     });
 
+    test.each(['consistent', 'missing', 'conflicting'])('stream observation retains only a consistent reported model: %s', async kind => {
+        const provider = createHttpGenerationProvider();
+        const models = kind === 'consistent' ? ['reported-alias', 'reported-alias'] : kind === 'conflicting' ? ['first-alias', 'second-alias'] : [];
+        const events = [
+            { ...(models[0] ? { model: models[0] } : {}), choices: [{ delta: { content: 'Native ' } }] },
+            { ...(models[1] ? { model: models[1] } : {}), choices: [{ delta: { content: 'response' } }],
+                usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20, prompt_tokens_details: { cached_tokens: 5 } } },
+        ];
+        const response = new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join('') + 'data: [DONE]\n\n',
+            { headers: { 'Content-Type': 'text/event-stream' } });
+        const result = provider.normalizeResponse(await provider.parseStream(response));
+        expect(result.text).toBe('Native response');
+        expect(result.usage).toMatchObject({ inputTokens: 12, outputTokens: 8, totalTokens: 20 });
+        expect(result.observation).toEqual({ reportedModel: kind === 'consistent' ? 'reported-alias' : null,
+            upstreamIdentity: 'unknown', cachedInputTokens: 5, hiddenAttempts: 'unknown' });
+    });
+
     test('all first-party roles consume the same exact Program resources with isolated requests', async () => {
         const f = await fixture();
         const results = await Promise.all(f.routes.map(route => f.host.execute(f.h.handle, { ...f.request, role: route.role.slice(5), messages: [{ role: 'user', content: route.role }] })));

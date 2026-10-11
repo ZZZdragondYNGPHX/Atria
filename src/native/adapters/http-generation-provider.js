@@ -135,7 +135,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         },
         async parseStream(response, { onChunk, onUsage } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return response.json();
-            let pending = ''; let text = ''; const calls = new Map(); let usage;
+            let pending = ''; let text = ''; const calls = new Map(); let usage, reportedModel; let modelConflict = false;
             const decoder = new TextDecoder();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
@@ -143,6 +143,10 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 if (!value || value === '[DONE]') return;
                 const chunk = JSON.parse(value);
                 if (chunk.error) throw new GenerationError('generation_response_invalid');
+                if (typeof chunk.model === 'string' && chunk.model) {
+                    if (reportedModel === undefined) reportedModel = chunk.model;
+                    else if (reportedModel !== chunk.model) modelConflict = true;
+                }
                 if (chunk.usage) {
                     usage = chunk.usage;
                     onUsage?.(observedGenerationUsage(usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }));
@@ -166,7 +170,8 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 if (text.length + pending.length > 8 * 1024 * 1024) throw new GenerationError('generation_response_invalid');
             }
             consume(pending + decoder.decode());
-            return { choices: [{ text, message: { content: text, tool_calls: [...calls.values()] } }], ...(usage ? { usage } : {}) };
+            return { choices: [{ text, message: { content: text, tool_calls: [...calls.values()] } }], ...(usage ? { usage } : {}),
+                ...(!modelConflict && reportedModel !== undefined ? { model: reportedModel } : {}) };
         },
         readUsage(raw) { return observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }); },
         normalizeResponse(raw) {
