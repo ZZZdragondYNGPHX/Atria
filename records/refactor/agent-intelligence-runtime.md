@@ -2114,3 +2114,16 @@ source `a63f210541e30282c3caf1a36231ef96c2620103`，前client phases组已push/�
 首轮11PASS/exit0仍有worker force-exit warning；定位Supertest(app)在abort时可能跳过end callback中的隐式server.close，fixture改为显式owned apiServer并cleanup所有连接。`g05-studio-skill-cancel-handles-after-v2.log`仅取消单项--detectOpenHandles复验PASS，无遗留handle/force-exit报告，没重跑其它10项。原日志保留，不抹为完全无warning。相关7文件ESLint首轮5无报错、两新错误为迁移后unused requestHeaders和brace-style；删已不使用helper/修正braces后仅两文件复验PASS，diff PASS。未运行MySQL/Postgres、全仓或M1/HM1；所有HTTP为本地/loopback，外部0，原quota/费用/G06真实FAIL保持，M8/HM2未验收。
 
 继续原bootstrap/source/config工作准入及所选Task支持矩阵，然后实质语义修复后作已授权H0-ZH-08原连接的有意义复验；不恢复助手次数/token限制，不上传私有文件，不合并main/部署。
+
+
+### 2026-10-11 G05 — 原RouteResolver准入与有限工程出口
+
+source `272e6f716f0c0a4e20c12323eb48b6d59c34919c`，原resolver.resolve仍是唯一exact closure authority。Host仅在真实GenerationService candidate前沿现有localWork加route_resolve；首Route冻结policy/已有bank在读取前准入，后续accepted policy由原GenerationService形成。每candidate1job/item，描述为真实首Route/request JSON bytes，不虚称全部文件IO/未来结果大小。preview/preflight/no local cap不造ledger；失败、取消、HEAD/Task变化保留已准入成本，下一round/fallback/摘要重建再次计真实闭包。
+
+84 distinct PASS（7新增/77受影响既有）：g05-resolver-after-v1.log 38 PASS（5新/33旧），新增quota在原port读取前拒绝及failure/cancel/head_change/task_change；g05-resolver-child-after-v1.log 2新PASS，实际Session/Project搜索child role沿同原10-job父bank，child声明32不扩额度，每次5jobs/20 loopback direct tokens，第三call拒绝保持成本；g05-resolver-regression-v1.log仅4相关suite子集44既有PASS，含initial Skill、Task公开history、summary/reset/cold epoch、Studio真实Skill和background quota1–5。normal发送5jobs/fallback10；cold摘要32jobs正好原product上限，未升maxJobs32。
+
+本组无测试失败。6改动文件ESLint g05-resolver-lint-v1.log PASS；generation-budget-p2原HEAD/当前都2条既存no-conditional-expect，规范化message相同、新增0，不改无关case。git diff --check PASS。未跑MySQL/Postgres/全仓/M1/HM1；全部HTTP本地loopback。此前失败日志保留，不重写为全绿历史。
+
+按delivery §8完成所选有限G05工程出口核对，唯一矩阵见G01新出口表。原Run/Task共享原子准入、retry/fallback、所选child/background、continuation/summary/reset/reopen/restore成本及当前Native Skill/reuse/local工作已覆盖；bootstrap source/owner/首Route/budget读取仍未计量，legacy无该Run/Task consumer的Skill/reuse仍pending；未启用classifier/prewarm/Local KV与原生safe-copy/compaction不凭字段计能力。不是完整child scheduler/全部CPU硬cap/完整M8-HM2验收。继续有限G06语义修复与有意义原连接复验，不在G05无限扩bootstrap清单。
+
+本轮外部发送0；原真实38/direct72982、unknown2/17515 upper、admission fetch0、原G06质量FAIL、费用及quota完整保持，main仍3ee1332ef，未合并/部署。
