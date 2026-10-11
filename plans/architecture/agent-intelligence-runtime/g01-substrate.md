@@ -23,7 +23,20 @@
 
 具体结果与失败修复保留在同一 Record。G02 沿原 Prompt Module target 保护 behavior/character/style/context，canonical 仅处理结构化 JSON、保留 history/tool/opaque 顺序；G03 沿原 artifact authority 校验；G04 沿原 Provider Port；G05 沿原 RunControl/send；G06 最终评价。不存在跨阶段停工或另加 API 审批。
 
-## 当前剩余依赖与下一有限 G05 组
+## 当前有限剩余清单（2026-10-11）
+
+以下按 source `05f526fa8` 与 docs 当前 Record 收敛实际剩余依赖；后续历史 checkpoint 段落保留其当时状态。出口沿 delivery §8/§8.2、model-routing §7/§8 与 compute-policy §3/§4，不把未启用的研究选项扩为本轮必做。
+
+| 有限条目 / 正式阶段 | 当前实际消费者与缺口 | 下一动作与有限出口 | 状态 |
+| --- | --- | --- | --- |
+| Session declared Task continuity — G01/G02/G04/G05 | 原 `executeTask` 已有声明、invocation、原 Run 预算与结果 CAS；Narrator Skill 公开 transcript 仅在本次 Host 内存，durable task/adaptive 目前只接原 Studio Project Task | 沿原 Session Task 持久公开工具历史、精确 Task/input/Session anchor 绑定；原私有 checkpoint 从合法历史冷恢复，同额度，不重放 production effect；历史/配置/HEAD 变化及取消拒绝错误续接。先完成原历史消费者，再验证恢复 | 本地可做；下一组 |
+| Session fork/restore 与 compaction — G02/G03/G04/G05 | 现有 Session Core 的 fork/save restore、Context lowering 与 checkpoint invalidation；完整 Task 生命周期反例未覆盖 | 上项原历史消费者完成后，以实际派生 branch/revision 验独立 lineage/reset loss与不倒退成本；只在已验证路径支持 compaction 时接原能力，否则按原获准有界公开摘要/reset，新增发送同额度 | 本地可做；依赖上项；真实 compaction 能力证据暂停 |
+| 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 已接原 localWork；原 Context 编译、初始 Skill inventory/pin/always load及已启用 reuse/corpus 校验仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | 本地可做；范围仅已启用消费者 |
+| 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 本地工程可做；外部收益证据暂停 |
+| 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 外部证据暂停；不新增付费发送 |
+| 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
+
+## 历史 checkpoint 与后续组记录
 
 Runtime checkpoint 有限物理契约（依据 model-routing §7.2–7.4）：复用 StorageEngine Native resource 与 `withRuntimeWrite(handle)`，private kind `atri_runtime_checkpoint` 的 key 仅 owner handle + 随机 SHA-256 checkpointId；payload 含 schema、owner hash、完整 binding、public-prefix 校验、原生 opaque envelope、到期时间和 Native integrity。每 owner 至多128项、总16MiB、单项完整 JSON 至多2MiB，TTL10分钟；超过容量淘汰最旧，过期/完整性失败/真实同owner同scope binding变更终止旧引用。读与发送均重读既有存储；只读/存储失败显式 unavailable，不假报清理或恢复成功。发布须在 credential echo 与工具声明校验之后；取消/失败须 await private cleanup。原配置record的integrity/单调updatedAt作mutation anchor，保存/发送均核验，受影响connection/model/route修改或删除清除相关checkpoint，未关联配置不清除；同毫秒ABA也不能复活旧状态。
 
