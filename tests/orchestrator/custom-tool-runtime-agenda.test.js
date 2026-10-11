@@ -1,4 +1,5 @@
 import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/agents/orchestrator/run-state/store.js';
+import { configureEvidenceCapture, clearCurrentRun } from '../../public/scripts/agents/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-agenda.test.js
 //
 // Verifies agenda runtime constructs the per-run customToolRegistry at
@@ -229,6 +230,29 @@ test('Agenda planner, selected worker and finalizer use parent-owned Runtime bra
     expect(result.status).toBe('partial');
     expect(getRuntimePanelState().runtime.runs.every(run => run.status === 'completed')).toBe(true);
     expect(JSON.stringify(profile)).toBe(before);
+});
+
+test('S14 original Agenda worker consumes current user Goal in its user message without changing the system frame', async () => {
+    const scope = { domain: 'rp_chat', charDir: 'Actor', name: 'fixed', isGroup: false, groupId: '' };
+    const goal = { goalId: 'current-goal', status: 'waiting', intent: 'Produce the agreed saved result', criteria: [], invariants: [], progress: [], budget: { maxRequests: 2, maxTokens: 1000 } };
+    const originalFetch = globalThis.fetch;
+    configureEvidenceCapture(() => ({ view: () => ({ scope }), flush: async () => ({ scope }) }));
+    const fetched = [];
+    globalThis.fetch = async (url, options) => {
+        expect(url).toBe('/api/native/generation/goals/context');
+        fetched.push(JSON.parse(options.body));
+        return { ok: true, json: async () => ({ scope, goals: [goal] }) };
+    };
+    try {
+        const profile = { mode: 'agenda', planner: { systemPrompt: 'plan' },
+            agents: { writer: { systemPrompt: 'write', tools: { chat: { read_range: true } } } }, finalAgentId: 'writer' };
+        plannerResponses.push({ dispatches: [{ todo_id: 'main', agent: 'writer', task_brief: 'work', input_run_ids: [] }] }, { finalize: 'done' });
+        for (const text of ['evidence', 'final']) agentResponses.push({ toolCalls: [{ name: 'atri_orch_submit_result', args: { text } }] });
+        await runAgendaOrchestration({}, {}, [], profile);
+        expect(fetched.length).toBeGreaterThan(0); expect(fetched.every(input => JSON.stringify(input.scope) === JSON.stringify(scope))).toBe(true);
+        expect(JSON.stringify(agentRequests[0].taskMessages.filter(message => message.role === 'user'))).toContain(goal.intent);
+        expect(JSON.stringify(agentRequests[0].taskMessages.filter(message => message.role === 'system'))).not.toContain(goal.intent);
+    } finally { globalThis.fetch = originalFetch; configureEvidenceCapture(null); clearCurrentRun(); }
 });
 
 test('Agenda transfer excludes unselected run output and rejects unknown target/input before sending', async () => {

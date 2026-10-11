@@ -7,6 +7,14 @@ import {
 } from '../../../public/scripts/agents/orchestrator/director-runtime.js';
 
 describe('buildAgentTaskMessages', () => {
+    test('persistent user Goal is data outside the system frame; stopped Goals are absent', () => {
+        const goals = [{ goalId: 'current', status: 'waiting', intent: 'Exact saved outcome', criteria: [], invariants: [], progress: [], budget: { maxRequests: 2, maxTokens: 1000 } },
+            { goalId: 'paused', status: 'paused', intent: 'Do not continue', criteria: [], invariants: [], progress: [], budget: null }];
+        const result = buildAgentTaskMessages({ systemPrompt: 'Original Director' }, { messages: [], goalContext: { goals } });
+        expect(result.at(-1).role).toBe('user'); expect(result.at(-1).content).toContain('Exact saved outcome');
+        expect(result.at(-1).content).not.toContain('Do not continue');
+        expect(result.filter(message => message.role === 'system').map(message => message.content).join('\n')).not.toContain('Exact saved outcome');
+    });
     const agentProfile = {
         systemPrompt: 'You are the main director agent.',
     };

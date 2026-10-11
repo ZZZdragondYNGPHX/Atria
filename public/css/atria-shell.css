@@ -2022,3 +2022,15 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 /* Host-only scoped SceneCue and Shared projection surfaces, not Package renderers. */
 .atri-host-scene { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .atri-shared-projection { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+/* Persistent goals share the original Run/Studio tokens and controls. */
+.atria-agent-goals { margin-block: 16px; min-width: 0; color: var(--atri-text-primary); font-family: var(--atri-font-sans); }
+.atria-agent-goals > summary { min-height: 44px; padding-block: 12px; cursor: pointer; font-weight: 600; }
+.atria-agent-goals > div { padding: 12px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-md); background: var(--atri-surface-1); }
+.atria-agent-goals :is(h4, p, li, summary) { overflow-wrap: anywhere; }
+.atria-agent-goals section { margin-block: 16px; padding-block: 12px; border-top: 1px solid var(--atri-separator); }
+.atria-agent-goals h4 { margin: 0 0 8px; }
+.atria-agent-goals .atria-goal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.atria-agent-goals button { appearance: none; min-height: 44px; max-width: 100%; white-space: normal; border: 0; border-radius: var(--atri-radius-md); padding: 8px 12px; background: var(--atri-fill); color: var(--atri-text-primary); font: inherit; cursor: pointer; }
+.atria-agent-goals button:disabled { opacity: .5; cursor: default; }
+.atria-agent-goals button:focus-visible, .atria-agent-goals summary:focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
+.atria-agent-goals[aria-busy="true"] { cursor: progress; }

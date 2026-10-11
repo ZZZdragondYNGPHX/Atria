@@ -1,12 +1,13 @@
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { AgentGoalService } from './goal-service.js';
-import { fields } from './contracts.js';
+import { fields, text } from './contracts.js';
 import { ConflictError } from '../../storage/errors.js';
 import { runNativeStudioAgentTask } from '../../../public/scripts/native/studio-agent.js';
 import { executeProjectSkillWork } from '../skill-invocation.js';
 import { prepareRetrievalCompute } from '../retrieval-compute.js';
 import { randomUUID } from 'node:crypto';
+import { goalContextMessage } from '../../../public/shared/agent-goal-context.js';
 
 const definition = goal => hashNativeDocument(Object.fromEntries(['subject', 'scope', 'anchor', 'intent', 'criteria', 'invariants', 'budget'].map(key => [key, goal[key]])));
 const eligible = goal => goal.subject.kind === 'user' && ['active', 'waiting'].includes(goal.status);
@@ -44,7 +45,10 @@ export class GoalContinuationService {
     }
     async wake(handle, input) {
         fields(input, ['goalId', 'eventId'], 'Goal wake');
+        text(input.eventId, 'Goal event');
+        if (input.eventId.length > 160) throw new TypeError('Goal event bounds');
         let goal = await this.goals._stored(handle, { goalId: input.goalId });
+        if (!goal.execution && goal.scope.domain !== 'project') return this.goals.observe(handle, input);
         if (!goal.execution) throw new ConflictError('goal_execution_unavailable');
         if (!eligible(goal)) return goal;
         goal = await this._verify(handle, goal);
@@ -137,7 +141,10 @@ export class GoalContinuationService {
                     settings: operation === 'list' ? (await this.host.extensions.settings(handle)).value : undefined, signal });
             }, generate: async ({ source, ...request }) => {
                 await check();
+                const currentGoal = await this.goals.get(handle, { goalId: goal.goalId });
+                const contextMessage = goalContextMessage({ goals: [currentGoal] });
                 const result = await this.host.execute(handle, { ...source, role: request.role, messages: request.messages, tools: request.tools,
+                    ...(contextMessage ? { messages: [request.messages[0], contextMessage, ...request.messages.slice(1)] } : {}),
                     requestId: 'goal:' + hashNativeDocument({ goalId: goal.goalId, eventId: wake.eventId, round: round++ }) }, signal);
                 return { ...result.response, snapshot: result.snapshot, routing: result.routing };
             } });

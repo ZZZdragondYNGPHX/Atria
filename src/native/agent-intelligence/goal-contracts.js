@@ -21,7 +21,13 @@ export function assertGoalCriteria(values, scope, { required = true } = {}) {
 export function assertGoal(value) {
     const doc = cloneNativeDocument(value, 'Goal');
     fields(doc, ['schemaVersion', 'sequence', 'goalId', 'subject', 'scope', 'anchor', 'intent', 'criteria', 'invariants', 'budget',
-        'status', 'evidence', 'progress', 'blockers', 'createdAt', 'updatedAt', ...(Object.hasOwn(doc, 'execution') ? ['execution'] : [])], 'Goal');
+        'status', 'evidence', 'progress', 'blockers', 'createdAt', 'updatedAt', ...(Object.hasOwn(doc, 'execution') ? ['execution'] : []),
+        ...(Object.hasOwn(doc, 'lastEvent') ? ['lastEvent'] : [])], 'Goal');
+    if (doc.lastEvent) {
+        fields(doc.lastEvent, ['eventId', 'observedAt'], 'Goal event observation');
+        text(doc.lastEvent.eventId, 'Goal event');
+        if (doc.lastEvent.eventId.length > 160 || !integer(doc.lastEvent.observedAt)) throw new TypeError('Goal event bounds');
+    }
     if (doc.execution) {
         fields(doc.execution, ['kind', 'taskId'], 'Goal execution binding');
         if (doc.execution.kind !== 'project_task' || !/^agenttask_[a-z0-9]+$/.test(doc.execution.taskId)

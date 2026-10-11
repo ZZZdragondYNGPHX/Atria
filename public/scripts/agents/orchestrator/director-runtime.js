@@ -1,4 +1,6 @@
 import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
+import { loadRunGoalContext } from './goal-context.js';
+import { goalContextMessage } from '../../../shared/agent-goal-context.js';
 import { isNativeGenerationFailure } from '../../native/generation-compat.js';
 import { nativeGenerationActive } from '../../native/generation-client.js';
 import { AgentRegistry } from '../../lib/agent-runtime/index.js';
@@ -442,7 +444,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     const getContentPayload = typeof deps?.getContentPayload === 'function'
         ? deps.getContentPayload
         : () => null;
-    const contentPayload = getContentPayload();
+    const contentPayload = { ...getContentPayload(), goalContext: await loadRunGoalContext(deps?.runId) };
 
     // Director executes after the normal generation frame, so it cannot reuse
     // payload.__atriaRun. Keep one explicit run object shared by the main
@@ -1053,5 +1055,7 @@ export function buildAgentTaskMessages(agentProfile, contentPayload, runtimeStat
     if (runtimeState) {
         out.push({ role: 'user', content: '<runtime_state>\n' + runtimeState + '\n</runtime_state>' });
     }
+    const goalMessage = goalContextMessage(contentPayload?.goalContext);
+    if (goalMessage) out.push(goalMessage);
     return out;
 }

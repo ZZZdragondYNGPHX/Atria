@@ -7,7 +7,8 @@ import { NativeGenerationHost } from '../../src/native/adapters/generation-host.
 import { createNativeSessionRouter } from '../../src/endpoints/native-session.js';
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
-import { sessionFixture, services } from './helpers/session-fixture.js';
+import { sessionFixture, services, installFixture } from './helpers/session-fixture.js';
+import { GoalContinuationService } from '../../src/native/agent-intelligence/goal-continuation.js';
 import { lifecycleFixture } from './helpers/lifecycle-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 
@@ -40,6 +41,45 @@ function host(core = f.core) {
 }
 const input = () => ({ sessionId: base.session.sessionId, revisionId: base.revision.revisionId,
     slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } });
+
+test('S14 Native user event observes a real declared lifecycle artifact; Goal never schedules or repeats its producer', async () => {
+    const fixture = sessionFixture(), { taskRuntime, lifecycleRuntime } = lifecycleFixture();
+    lifecycleRuntime.workflows = [];
+    lifecycleRuntime.automations[0].action = { kind: 'task', taskId: 'summarize', variantId: 'default', input: {} };
+    taskRuntime.tasks[0].resultPolicy.uses = [{ id: 'summary', purpose: 'context', reuse: 'same_branch', cardinality: 'reusable', viewIds: [], scopeIds: ['session'] }];
+    fixture.manifest.resources = structuredClone(f.manifest.resources).map(item => ({ ...item, origin: {
+        scope: 'package', packageId: fixture.manifest.packageId, packageVersionId: fixture.manifest.packageVersionId,
+    } }));
+    fixture.manifest.runtime = { experienceContract: { schemaVersion: 1, capabilities: [], dataResources: [], taskRuntime, lifecycleRuntime } };
+    const installed = await installFixture(h, fixture);
+    let current = await installed.core.create(h.handle, installed.start);
+    current = await installed.core.applyLifecycleCommand(h.handle, current.session.sessionId, { type: 'lifecycle', invocationId: 'goal-ready', action: { kind: 'experience.ready' } },
+        { expectedRevisionId: current.revision.revisionId });
+    const invocationId = current.states.atri_lifecycle.outbox[0].invocationId;
+    const original = host(installed.core), model = original.execute;
+    original.execute = jest.fn(async (...args) => {
+        const result = await model(...args), variant = taskRuntime.tasks[0].variants[0];
+        return { ...result, snapshot: { ...result.snapshot, promptProgramRef: variant.prompt, generationProfileRef: variant.generation } };
+    });
+    const goals = new GoalContinuationService({ host: original });
+    const goal = await goals.goals.create(h.handle, { subject: { kind: 'user', actorId: null }, scope: { domain: 'rp_session', sessionId: current.session.sessionId },
+        intent: 'Observe the declared saved summary', budget: { maxRequests: 2, maxTokens: 64000 }, invariants: [],
+        criteria: [{ criterionId: 'summary', description: 'Declared summary result', selector: { kind: 'artifact', invocationId,
+            grant: { taskId: 'summarize', variantId: 'default', usageId: 'summary' } }, path: ['text'], equals: 'Durable result' }] });
+    const pending = await goals.wake(h.handle, { goalId: goal.goalId, eventId: 'before-result' });
+    expect(pending.status).toBe('blocked'); expect(original.execute).not.toHaveBeenCalled();
+    const request = { sessionId: current.session.sessionId, revisionId: current.revision.revisionId,
+        slotBindings: { structured: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } } };
+    const produced = await original.executeLifecycle(h.handle, request);
+    expect(original.execute).toHaveBeenCalledTimes(1);
+    const restored = new GoalContinuationService({ host: original });
+    const completed = await restored.wake(h.handle, { goalId: goal.goalId, eventId: 'after-result' });
+    expect(completed.status).toBe('completed'); expect(completed.execution).toBeUndefined();
+    expect(completed.evidence[0].references[0].selector.invocationId).toBe(invocationId);
+    expect(await restored.wake(h.handle, { goalId: goal.goalId, eventId: 'after-result' })).toEqual(completed);
+    expect((await original.executeLifecycle(h.handle, { ...request, revisionId: produced.snapshot.revision.revisionId })).results).toEqual([]);
+    expect(original.execute).toHaveBeenCalledTimes(1);
+});
 
 test('ready intent survives Host restart, runs in existing scheduler, publishes once with separate receipt kinds', async () => {
     const first = host(); await expect(first.executeLifecycle(h.handle, input())).rejects.toThrow('not_ready');

@@ -1,4 +1,5 @@
 import { mountAgentEvolution } from './agent-evolution-panel.js';
+import { mountAgentGoals } from './agent-goals-panel.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
@@ -625,7 +626,10 @@ export function mountNativeStudioAgent({
             slot.querySelector('textarea')?.focus();
         }, { disabled: running || takingOver }));
         slot.append(actions);
-        disposeEvolution = mountAgentEvolution({ slot, scope: { domain: 'project', projectId }, sourceKind: 'project_task', sourceId: activeTask.taskId });
+        const scope = { domain: 'project', projectId };
+        const disposeGoalPane = mountAgentGoals({ slot, scope, task: activeTask });
+        const disposeEvolutionPane = mountAgentEvolution({ slot, scope, sourceKind: 'project_task', sourceId: activeTask.taskId });
+        disposeEvolution = () => { disposeGoalPane(); disposeEvolutionPane(); };
         restoreFocus();
     };
 

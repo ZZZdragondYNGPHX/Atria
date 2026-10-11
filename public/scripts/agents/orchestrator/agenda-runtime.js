@@ -1,4 +1,6 @@
 import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
+import { loadRunGoalContext } from './goal-context.js';
+import { goalContextMessage } from '../../../shared/agent-goal-context.js';
 import { runLegacyParallel } from './legacy-parallel-adapter.js';
 import { runLegacySingleRequest } from './legacy-runtime-adapter.js';
 import { runAgendaEngine } from './engine-v2/agenda-adapter.js';
@@ -436,6 +438,7 @@ export function buildAgendaSharedContextText(context, payload, messages) {
     const lastUserText = buildAgendaLastUserText(messages);
     return [
         '## shared_context',
+        goalContextMessage(payload?.__atriaGoalContext)?.content || '',
         '### recent_chat',
         '```text',
         recent || '(empty)',
@@ -601,6 +604,7 @@ export function runAgendaPlannerStep(...args) {
 }
 
 async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, state, abortSignal = null, options = {}) {
+    payload = { ...payload, __atriaGoalContext: await loadRunGoalContext(options.parentRunId) };
     const settings = capabilitySettings[MODULE_NAME];
     const previousOrchestration = await getPreviousOrchestrationCapsuleText(context, payload);
     const planner = createAgendaPlannerDraft(profile?.planner);
@@ -759,6 +763,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
     onFirstChunk = null,
     engineNode = false, runtimeRunId, engineParentRunId, onRuntimeEvent, engineCapabilities, engineTools,
 }, abortSignal = null) {
+    payload = { ...payload, __atriaGoalContext: await loadRunGoalContext(panelRunId) };
     const settings = capabilitySettings[MODULE_NAME];
     const planner = createAgendaPlannerDraft(profile?.planner);
     const preset = profile?.agents?.[dispatch.agent] || {};

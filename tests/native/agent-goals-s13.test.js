@@ -42,6 +42,27 @@ async function fixture(make, { invariants = () => [], scheduler = new NativeTask
 }
 
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test(`S14 ${kind} Project continuation consumes Goal criteria as user data; formal Commit completes across wakes`, async () => {
+        const h = await fixture(make);
+        try {
+            const first = await h.service.wake(h.handle, { goalId: h.goal.goalId, eventId: 'start-work' });
+            await first.completion;
+            const userMessages = h.seen[0].messages.filter(message => message.role === 'user');
+            expect(JSON.stringify(userMessages)).toContain('Persistent user goals (data)');
+            expect(JSON.stringify(h.seen[0].messages.filter(message => message.role === 'system'))).not.toContain(h.goal.goalId);
+            const current = await h.studio.getProject(h.handle, h.goal.scope.projectId);
+            const source = structuredClone(current.source); source.project.displayName = 'Desired name';
+            await h.agent.setPlan(h.handle, h.goal.scope.projectId, h.task.taskId, { summary: 'Formal rename', steps: [{ id: 'rename', title: 'Rename', impact: 'low' }] });
+            await h.agent.executeTool(h.handle, h.goal.scope.projectId, h.task.taskId, { name: 'atri_agent_project_save', args: { source, stepId: 'rename' } });
+            await h.agent.prepareReview(h.handle, h.goal.scope.projectId, h.task.taskId);
+            expect((await h.service.goals.get(h.handle, { goalId: h.goal.goalId })).status).toBe('waiting');
+            await h.agent.commit(h.handle, h.goal.scope.projectId, h.task.taskId);
+            const complete = await h.service.wake(h.handle, { goalId: h.goal.goalId, eventId: 'formal-commit' });
+            expect(complete.status).toBe('completed'); expect(h.seen).toHaveLength(1);
+            const last = await h.agent.getTask(h.handle, h.goal.scope.projectId, h.task.taskId);
+            expect(last.compute.attempts).toHaveLength(1); expect(last.compute.attempts[0].usage.totalTokens).toBe(20);
+        } finally { await h.cleanup(); }
+    }, 60000);
     test(`S13 ${kind} concurrent schedulers cannot claim the same durable wake twice`, async () => {
         const h = await fixture(make);
         try {

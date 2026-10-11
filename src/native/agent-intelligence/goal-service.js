@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
-import { assertWritable } from '../../storage/read-only-mode.js';
+import { assertWritable, isReadOnly } from '../../storage/read-only-mode.js';
 import { hashNativeDocument } from '../repositories/common.js';
-import { assertEvidenceScope, fields, readEvidencePath, EvidenceSourceError } from './contracts.js';
+import { assertEvidenceScope, fields, readEvidencePath, EvidenceSourceError, text } from './contracts.js';
 import { assertGoal } from './goal-contracts.js';
 import { AgentGoalRepository } from './goal-repository.js';
 import { AgentEvidenceService } from './evidence-service.js';
@@ -49,6 +49,33 @@ export class AgentGoalService {
         return doc;
     }
     async get(handle, input) { return this._present(handle, await this._stored(handle, input)); }
+    async context(handle, input) {
+        fields(input, ['scope'], 'Goal context');
+        const scope = assertEvidenceScope(input.scope);
+        const anchor = await this._anchor(handle, scope, { kind: 'user', actorId: null });
+        const selected = (await this.repository.list(handle)).filter(doc => doc.subject.kind === 'user' && equal(doc.scope, scope));
+        if (selected.length > 32) throw new TypeError('Goal context capacity');
+        const goals = await Promise.all(selected.map(async doc => {
+            const current = scope.domain === 'rp_session' && !equal(doc.anchor, anchor) ? this._failure(doc, 'stale', 'goal_scope_stale') : await this._present(handle, doc);
+            return { goalId: current.goalId, sequence: current.sequence, intent: current.intent, status: current.status,
+                criteria: current.criteria, invariants: current.invariants, progress: current.progress, blockers: current.blockers,
+                budget: current.budget, taskId: current.execution?.taskId ?? null };
+        }));
+        if (!equal(anchor, await this._anchor(handle, scope, { kind: 'user', actorId: null }))) throw new ConflictError('goal_scope_stale');
+        if (Buffer.byteLength(JSON.stringify(goals)) > 65536) throw new TypeError('Goal context capacity');
+        return { scope, goals, readOnly: isReadOnly() };
+    }
+    async observe(handle, input) {
+        fields(input, ['goalId', 'eventId'], 'Goal user event');
+        text(input.eventId, 'Goal event');
+        if (input.eventId.length > 160) throw new TypeError('Goal event bounds');
+        const doc = await this._stored(handle, { goalId: input.goalId });
+        if (doc.subject.kind !== 'user' || doc.scope.domain === 'project') throw new ConflictError('goal_execution_unavailable');
+        if (doc.lastEvent?.eventId === input.eventId || ['paused', 'cancelled'].includes(doc.status)) return this._present(handle, doc);
+        // An explicit RP user/author event updates evidence only. It cannot create
+        // a Run, a model send or a lifecycle/World command from Goal text.
+        return this.evaluate(handle, { goalId: doc.goalId, expectedSequence: doc.sequence }, { eventId: input.eventId });
+    }
     _failure(doc, status, code) {
         return { ...doc, status, progress: doc.criteria.map(item => ({ criterionId: item.criterionId, status: 'unknown', code })),
             blockers: [{ code, ids: [] }] };
@@ -95,7 +122,7 @@ export class AgentGoalService {
                 error instanceof EvidenceSourceError ? error.code : 'goal_evidence_unavailable');
         }
     }
-    async evaluate(handle, input) {
+    async evaluate(handle, input, { eventId } = {}) {
         assertWritable(); fields(input, ['goalId', 'expectedSequence'], 'Goal evaluation');
         const doc = await this._stored(handle, { goalId: input.goalId });
         if (doc.sequence !== input.expectedSequence) throw new ConflictError('goal_sequence_conflict');
@@ -115,7 +142,8 @@ export class AgentGoalService {
                 error?.status && error?.code ? error.code : 'goal_evidence_unavailable');
         }
         if (next.status === 'completed') next = await this._present(handle, next);
-        const saved = await this.repository.save(handle, { ...next, sequence: doc.sequence + 1, updatedAt: this.now() }, hashNativeDocument(doc));
+        const saved = await this.repository.save(handle, { ...next, ...(eventId ? { lastEvent: { eventId, observedAt: this.now() } } : {}),
+            sequence: doc.sequence + 1, updatedAt: this.now() }, hashNativeDocument(doc));
         return this._present(handle, saved);
     }
     async control(handle, input) {

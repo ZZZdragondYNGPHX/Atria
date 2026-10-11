@@ -70,7 +70,7 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
-    for (const action of ['create', 'list', 'get', 'control', 'evaluate', 'bind', 'wake', 'pump', 'inspect']) router.post('/goals/' + action, async (req, res) => {
+    for (const action of ['create', 'list', 'get', 'control', 'evaluate', 'context', 'bind', 'wake', 'pump', 'inspect']) router.post('/goals/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
