@@ -2053,3 +2053,14 @@ Host在原GenerationService exact capability/policy核验后首次构建Context�
 2026-10-11 设备迁移停在已推送 source `3cebec8f7` / docs `96ccf204b` 安全 checkpoint 停止并保存 [HANDOFF](../../HANDOFF.md)。下一 Context/Skill 组仅只读定位，无产品改动/新测试/外部发送；HM1 ledger哈希保持，原quota窗口延续，等待新设备恢复执行。
 
 换设备私有交付：本机生成并CRC/逐文件SHA验证无凭据迁移包 `Atria-private-evidence-no-credentials-20261011.zip`，56452855bytes / SHA256 `be8088c5745122bea18743200fdd36419d62ccf0cec692aa7c24688c70b68568`；具体本地路径/manifest/排除范围见HANDOFF。原含凭据ZIP与私有原件保留，无上传、未运行恢复或paid脚本。迁移包不是全部机器备份，原额度ledger延续不重置。
+
+
+### 2026-10-11 G05 — 换设备恢复及原 Context build / Prompt compile 准入
+
+从真实 source `3cebec8f7`、docs `69c14b440`、main `3ee1332ef` 恢复；原完整包路径/CRC及20,620文件SHA-256校验通过，RESTORE-TASK.py在新空目录恢复后，18,633个完整private文件逐条复核通过。原四账本hash与MANIFEST一致，原旧迁移manifest17,921项有17,920项原样、quota一项已有后续变更、无缺失；独立20261011无凭据manifest未取得，不能声称其18,585项已逐条比对。原Git/Node24.18与source/tests锁文件依赖恢复，本机映射和私有副本仅本机保存。原quota实现在06:28:29 UTC只读复算：1659 admissions保留，carry332过期，24h519/60s0，剩余1481；这是当时窗口而非gateway余额，发送前重新计算，无写入/新请求。M1/HM1不重跑。
+
+产品 source `bf0ac797d9fbc4efca5f7ca2cb9e131129441dba` 沿原Host两个注入端口接 `context_build` / `prompt_compile`。GenerationService先形成accepted effective policy，再在工作前原Run/Task charge；Context冻结输入/Prompt exact closure以实际JSON UTF-8 bytes和各1item/job估计，随后原currentness/settle。新request/fallback/工具轮/摘要epoch不重建额度，无localWork旧路径/readonly preview不造ledger。取消、编译错误、HEAD/Task变动保留已花成本，fallback不能借candidate更宽声明绕过accepted/持久限额；原背景lane/period按原anchor消费。Context包住原task_history/恢复read，process CPU/wall可能嵌套重叠，不解释为独占硬CPU时限/金额。初始Skill inventory/pin/always-load、开端snapshot/package/config读取及已启用reuse/corpus工作仍pending。
+
+实际最小相关验证共102 distinct PASS：`g05-context-prompt-after-v1.log` 27PASS/6FAIL，6FAIL均SQLite缺原生binding；仓库ignore-scripts默认导致npm ci未建binding，显式只rebuild better-sqlite3后内存SQL消费者通过，`g05-context-prompt-sqlite-after-v2.log`仅复验该6项PASS，未重跑27项。该suite含12新/21原受影响检查。`g05-context-prompt-regression-v1.log`三个suite实际受影响子集69PASS，其中背景maxJobs1/2/3/4的新增4项，其余65为受影响既有；Session summary/独立Node cold/fork/restore/Skill loop均计新实际工作，不靠修改产品maxJobs32上限。该次runner默认还纳入本机未启动MySQL/Postgres的8项，全部ECONNREFUSED，不声明它们通过；以后用已有disable flags仅跑本组FS/SQLite，不为此建立DB矩阵或重复69项。
+
+ESLint检查六个改动文件：五个无报错，generation-budget-p2两条jest/no-conditional-expect在原HEAD相同75/78行已存在；lintText对比原/新完整message相同、新增0，不修改无关旧用例。git diff --check PASS。原失败日志均保留。工作成功路径各4个Context/Prompt/count/render jobs；实际accepted fallback共享4/8-job原bank，失败primary的unknown send保留；后台拒绝1/2/3 jobs均HTTP0，合法4jobs只有1HTTP/原period1。所有新HTTP均loopback，外部请求0；原真实38/direct72982、unknown2/17515 upper/admission fetch0与G06 quality FAIL保持，不升级真实verified/货币或算法收益。继续初始Skill及已启用reuse/corpus准入，随后按正式依赖推进。

@@ -31,10 +31,20 @@
 | --- | --- | --- | --- |
 | Session declared Task continuity — G01/G02/G04/G05 | `fafdb8608` 已交付原foreground Narrator声明Task的公开工具history/独立Node冷恢复；Responses实际Session证据，原结果CAS与Run额度保持 | 已交付组不重做；其它实际Task消费者按所选支持矩阵继续，不把Studio或后台消费者写成已覆盖 | 有限组已完成；其它消费者本地可做 |
 | Session fork/restore 与 compaction — G02/G03/G04/G05 | `804b088ae` 已验真实 fork/restore；`3cebec8f7` 已接 Responses 原 Session Task 有界摘要/一次 adaptive reset、公开来源与配置版本、原费用及冷 epoch | 已交付有限出口不重做；Provider native safe-copy/compaction须已有精确支持证据，本组不发送其字段；FS补偿不声明中途进程退出跨文件原子性 | 有限本地出口已交付；真实 native compaction 未verified |
-| 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 已接原 localWork；原 Context 编译、初始 Skill inventory/pin/always load及已启用 reuse/corpus 校验仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | 本地可做；范围仅已启用消费者 |
+| 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；初始 Skill inventory/pin/always load及已启用 reuse/corpus 校验仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | Context/Prompt 有限组完成；其余已启用消费者本地可做 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 本地工程可做；外部收益证据暂停 |
 | 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 外部证据暂停；不新增付费发送 |
 | 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
+
+## 已交付有限 G05：原 Context build / Prompt compile 工作准入
+
+本组仅接 NativeGenerationHost 已启用的 Context plan 构建与 PromptCompiler.preparePrompt。每次实际 GenerationService candidate 准备（含获准 fallback、工具下一轮和摘要后重建）分别沿原 Run operation / Project Task 的同一 localWork charge/settle，kind 为 `context_build` / `prompt_compile`，各一个 job/item；不创建新预算或发送 authority。Context 输入 bytes 来自已有冻结 source snapshot、package derivation 输入、Task payload、公共 messages/Skill items、Memory evidence 与 authority projection；Prompt 输入 bytes 来自 exact resolved resource closure、request prompt/tools/outputContract 与实际 Context plan。它们是输入工作量估计，不是读取文档数、CPU 时长硬上限或金额。
+
+GenerationService 先形成 accepted effective executionPolicy 再进入两个工作端口；原 Session HEAD/Run 权限、Task fingerprint/状态及后台 anchor 继续用现有准入与 settle 后 currentness。额度拒绝不执行该端口，不发送 HTTP；取消/过期/失败保留已准入工作和旧成本，未能结算保持 charged。Preview 和无 localWork 旧路径不新造 ledger，已有 durable limits 不因删除/放宽 Route 或恢复而重建。初始 Skill inventory/pin/always-load、开端读取 snapshot/package/config 与已启用 reuse/corpus 校验不属于本组，仍准确 pending。
+
+有限出口：FS/SQLite 原 Session 与 Studio Project Task 实际 Context→Prompt→count/render→loopback 消费及同账本恢复；工作拒绝、编译失败、取消/stale、accepted fallback 和后台 anchor 的最小相关反例。新成本如实更新受影响合成 fixture 的 job/item 断言，产品额度上限不变；本地协议与成本证据不提升真实 gateway/quality verified，原 G06 FAIL 保留。
+
+source `bf0ac797d`：16 新 / 86 受影响既有 distinct checks 通过，共102；包含实际后台部分，其余三个 suite 只执行受影响子集。Context 外层 job 会包含已有 task_history/恢复 read 的嵌套工作，因此 process CPU/wall 观察可能重叠，不能相加解释为独占CPU。初始 Skill/reuse 缺口继续 pending；详细失败与环境边界见同一 Record 最新组。
 
 ## 已交付有限 G04：原 Session 声明 Task 的原生工具轮次
 
