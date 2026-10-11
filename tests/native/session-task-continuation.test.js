@@ -151,6 +151,65 @@ test.each(['task_capacity', 'global_bytes', 'round_limit'])('G04 Session Task hi
     } finally { await f.cleanup(); }
 });
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
+    test.each(['fork', 'historical_restore'])(`G04 Session Task branch ${kind} %s starts an independent actual scope without old or future execution`, async action => {
+        const f = await fixture(make, 'task', 12);
+        try {
+            const save = await f.core.createSavePoint(f.handle, f.input.sessionId, { expectedRevisionId: f.input.revisionId });
+            if (action === 'historical_restore') {
+                const future = await f.core.appendTimeline(f.handle, f.input.sessionId, { role: 'user', content: 'Future-only Task source.' });
+                f.input.revisionId = future.revision.revisionId;
+            }
+            const oldRequest = structuredClone(f.input), old = await f.core.load(f.handle, f.input.sessionId);
+            await freshNode(f, 'charged_count');
+            const before = await f.core.runs.status(f.handle, f.input.sessionId);
+            const oldOperation = Object.values(before.operations).find(row => row.compute);
+            const oldCost = structuredClone(oldOperation.compute), oldCheckpoint = (await f.checkpoints())[0].doc;
+            const derived = action === 'fork'
+                ? await f.core.forkBranch(f.handle, f.input.sessionId, { expectedRevisionId: oldRequest.revisionId })
+                : await f.core.restoreSavePoint(f.handle, f.input.sessionId, save.saveId, { expectedRevisionId: oldRequest.revisionId });
+            expect(derived.revision.branchId).not.toBe(old.revision.branchId);
+            expect(derived.revision.revisionId).not.toBe(old.revision.revisionId);
+            expect(derived.graph.find(node => node.branchId === old.revision.branchId).headRevisionId).toBe(old.revision.revisionId);
+            expect(derived.graph.find(node => node.branchId === derived.revision.branchId).forkRevisionId)
+                .toBe(action === 'fork' ? old.revision.revisionId : save.revisionId);
+            await expect(f.host.executeTask(f.handle, oldRequest)).rejects.toMatchObject({ code: 'native_generation_revision_conflict' });
+            expect(f.wires).toHaveLength(1);
+            f.input.revisionId = derived.revision.revisionId;
+            const result = await f.host.executeTask(f.handle, f.input);
+            expect(result.record.payload).toEqual({ text: 'Fresh Task result.' }); expect(f.wires).toHaveLength(2);
+            expect(f.wires[1].input.some(item => ['reasoning', 'function_call', 'function_call_output'].includes(item.type))).toBe(false);
+            expect(JSON.stringify(f.wires[1])).not.toContain('PRIVATE-DECLARED-SESSION-TASK');
+            expect(JSON.stringify(f.wires[1])).not.toContain('Current pinned Task reference');
+            expect(JSON.stringify(f.wires[1])).not.toContain('Future-only Task source.');
+            expect(f.readFile).not.toHaveBeenCalled(); expect(result.snapshot.timeline).toEqual(f.base.timeline);
+            const after = await f.core.runs.status(f.handle, f.input.sessionId);
+            expect(Object.values(after.operations).find(row => row.anchor.revisionId === oldRequest.revisionId).compute).toEqual(oldCost);
+            expect(oldCost.attempts.map(row => row.usage.totalTokens)).toEqual([20]);
+            expect(oldCost.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
+            expect(after.retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 20, localJobs: 3 });
+            const scopes = (await f.checkpoints()).map(row => row.doc.binding.executionScope);
+            expect(scopes).toContainEqual(oldCheckpoint.binding.executionScope);
+            expect(scopes.find(scope => scope.source.revisionId === derived.revision.revisionId).taskFingerprint).toBe(result.record.fingerprint);
+            expect((await f.host.executeTask(f.handle, f.input)).record).toEqual(result.record); expect(f.wires).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
+    test(`G04 Session Task branch ${kind} same-HEAD restore is a no-op and preserves exact original cold continuation`, async () => {
+        const f = await fixture(make, 'task', 12);
+        try {
+            const save = await f.core.createSavePoint(f.handle, f.input.sessionId, { expectedRevisionId: f.input.revisionId });
+            await freshNode(f, 'charged_count');
+            const restored = await f.core.restoreSavePoint(f.handle, f.input.sessionId, save.saveId, { expectedRevisionId: f.input.revisionId });
+            expect(restored.revision).toEqual(f.base.revision); expect(restored.graph).toEqual(f.base.graph);
+            const resumed = await freshNode(f);
+            expect(resumed.reads).toBe(0); expect(resumed.record.payload).toEqual({ text: 'Fresh Task result.' });
+            expect(f.wires).toHaveLength(2);
+            expect(f.wires[1].input.filter(item => ['reasoning', 'function_call'].includes(item.type))).toEqual([reasoning, tool]);
+            const cost = Object.values((await f.core.runs.status(f.handle, f.input.sessionId)).operations).find(row => row.compute).compute;
+            expect(cost.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
+            expect(cost.localWork).toHaveLength(10); expect(cost.localWork.filter(row => row.status === 'charged')).toHaveLength(1);
+            expect((await freshNode(f)).record).toEqual(resumed.record); expect(f.wires).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
     test.each(['task', 'adaptive'])(`G04 Session Task history ${kind} %s cold process consumes exact original public history and private wire`, async mode => {
         const f = await fixture(make, mode, 12);
         try {
