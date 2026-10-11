@@ -50,6 +50,7 @@
 
 ## Private evidence and device migration
 
+- 2026-10-11 用户随后明确要求**完整恢复包，包括 API 配置**，用于新设备接手。当前交付改为本机 `Atria-full-restore-20261011.zip`：包含当前全部私有目录/凭据、原ZIP、main/source/docs的Git bundle、恢复脚本、路径映射说明与接手提示词；校验数字归该包旁的 `.sha256` 和包内manifest。这些私有内容只在本地包，不进GitHub。下列无凭据包保留为较早可选交付，不再是用户本次完整恢复的唯一包。新设备以完整包的 `RESUME-PROMPT.txt` / `RECOVERY-README.md` 为入口，不执行历史付费脚本；凭据和原额度账本直接沿当前完整包恢复，不需要用户在聊天里重发key。
 - GitHub **不含**私有基线和累计结果。旧设备私有根 `D:/Dev/Atria-private/hm1-20261010`，原日志/脚本/报告/账本在 `Document/`；新设备需通过用户自己的本地安全迁移保留它，不能只重新解压旧 ZIP 来替代新增账本/失败证据。
 - 本地无凭据迁移包已完成：`C:/Users/5insi/Documents/Codex/2026-10-10/task/Atria-private-evidence-no-credentials-20261011.zip`，56452855 bytes，SHA-256 `be8088c5745122bea18743200fdd36419d62ccf0cec692aa7c24688c70b68568`。旁边 `.zip.sha256` 与 `ATRIA-MIGRATION-MANIFEST-20261011.json`，包内有 `MIGRATION-README.txt` / manifest。监督已校验 ZIP CRC 与逐文件 SHA-256；无凭据包仅本机保存，无上传。含18585文件/237339656原始bytes，排除37项凭据配置/含已知credential内容/secret资源/sealed或可重建scratch/browser；不是完整机器备份，原件未删除。新设备先校验，再解包到新的空私有目录；按照 README 映射路径，任何历史脚本都不能因解包而自动启动付费调用。
 - 原 ZIP `C:/Users/5insi/Downloads/Atria-Document-private-H0-20261010.zip`：55288312 bytes，SHA-256 `1551535563aac211046df34ca743072e7a060c8b60a4ef04b434d7b44afee30e`。
