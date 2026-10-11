@@ -2175,3 +2175,13 @@ source `3ee22238e4b7bc5b40ed01bf1a78b478c8ac086e` 已push/核对，先冻结s12-
 证据范围：generation attempt由真实begin/finish接口保存合成完成自述，无外部模型；新正文物理输出匹配只证明该精确输出，不证明World/Actor真相。Actor没有新的认知完成权限。raw repository completed只记录带anchor的observed proof，服务读时重新确认；readonly失效只返回stale投影、原doc保留，显式evaluate才CAS写新状态。最终发布竞态中原doc可保留旧observed completed，但API返回/后续消费都拒绝current完成；S13必须用service/freshness guard，不读裸metadata自动effect。来源stale/missing与denied/unavailable/budget guard按原code分类，阻断不降为普通等待。
 
 外部API0；原quota1661条、M8 actual40/direct77955、unknown2/17515 upper及admitted fetch0不变。S13自动调度与原Run/Task budget/localWork尚未接，metadata admin核验不冒称全CPU计量或收益；S14 UI待做，整个M2未完成。G06/M8/HM2真实分层双入口质量/风格、合法continuation/reuse/invocation、成本/cache/可靠延迟/unknown出口保留，M3前置不绕过，main未合并/部署。继续S13。
+
+### 2026-10-11 S13 — Project durable wake、同 Task bank 与恢复
+
+source `fdea2011bdba322555a7ece5a6064655ac2c9b0f` 已 push 并核对远端。恢复聊天时 source 原未提交十文件与 docs 原 S13 设计继续保留；实际 Git 优先于迁移前 HANDOFF。原 Task 持久 Goal binding、32 个有界事件与 pending/running/done/unknown/cancelled 状态，原 TaskScheduler 执行并传原 operationId；原 Studio loop 通过可注入原 client/Skill/Host 端口共用公开 history、正式 tool 幂等与原 bank。Goal 固定额度仅收紧原 Task，运行/重启不新开账本或自动 commit，完成仍由 S12 当前 source 判定。
+
+23 distinct 本地 PASS（12 新/11 受影响既有）：前聊天 `s13-goals-after-v3.log` 两原 FS/SQLite 正向消费、`queued-source-v4` 两排队变更反例、`pause-v6` 两暂停实际 HTTP 保留 unknown 成本；本聊天 `recovery-v7` 四并发/独立 Node PASS，两个 HTTP 检查 FAIL；`http-v8` 仅修后复验两 HTTP PASS。两次正向唤醒各 20 loopback reported tokens、第三因同原额度拒绝，重复事件不发送。并发两个 scheduler 只一 claim/一发送；独立 Node 重新打开真实 engine/Project/Task，保留旧 running wake 与 compute limits/attempts，返回 unknown 不发送。HTTP ack 不等待 background Promise，已观察 rejection；Host 原一次 provider retry 的两笔 unknown 占用都保留，后续 pump 不新增 HTTP。原 Studio 子集 `studio-regression-v1` 六 PASS（前聊天），本聊天 `scheduler-regression-v10` 五 PASS，原 ready/stale/scope 与 queued retry，未全仓重跑。
+
+失败历史完整保留：after-v1 两 binding projection 失败，补公开 snapshot goalBinding；after-v2 两 Task sequence 冲突，proof 工作先保守 unknown 占用再 capture，start 前读最新 sequence/核验 execution fingerprint；pause-v5 两夹具误期待 charged，原 Provider 实际已结算 unknown，修按原账目断言。recovery-v7 两失败误期待一笔发送，原 Host policy 合法 retry 实际两笔 unknown；未修改生产 retry 权限或退款，仅如实修消费者断言。Goal proof 的 localWork 是保守 unknown，不宣称实际 CPU 已完成。
+
+所有十改动文件 `s13-goals-lint-v9.log` ESLint PASS，diff PASS。未运行 MySQL/Postgres、M1/HM1、全仓或外部API；原 quota/真实费用/G06 FAIL 不变。Native/Ordinary RP 原事件消费者及 context 投影仍待接，不能将 Project 有限组标为全部 S13/M2 完成；继续 RP 与 S14，再处理 G06/M8 的剩余真实出口。main 仍 `3ee1332ef`，未 merge/deploy，私有日志和账本未上传。
