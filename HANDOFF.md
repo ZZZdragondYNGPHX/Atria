@@ -1,83 +1,51 @@
-# Atria Agent Intelligence Runtime — 换设备恢复快照
+# Atria Agent Intelligence Runtime — 新对话交接
 
-> 2026-10-11 设备迁移恢复快照，使用方式见 [Governance §7](README.md#7-handoff)。当前停止；恢复后从实际 Git 状态继续。
+> 2026-10-11 用户明确要求交接提示词并新建对话继续。本文替换旧设备迁移快照；历史快照仍在 Git。交接后本对话不继续工程或发起 API。恢复规则见 [Governance §7](README.md#7-handoff)，事实以实际 Git 和最新 Record 为准。
 
-## Task
+## 当前工作空间与状态
 
-- Task ID: `agent-intelligence-runtime`
-- Primary Workspace: `main`
-- Current stage: HM1 已完成并合入 main；继续接受的 M8 G01–G06 / HM2 H3–H4，完整验收未完成。停在 Session Task 有界公开摘要/adaptive reset 已验证并推送的 checkpoint。
-- Repository / origin: `https://github.com/ZZZdragondYNGPHX/Atria.git`
-- Source branch: `feat/agent-compute-runtime`，HEAD `3cebec8f7e143d58d54d7dddd9d46fcef88694f5`，本地/远端一致、工作树干净。
-- Docs branch: `docs`，交接前已推送 Record HEAD `96ccf204ba4914c8fa96e8551e3646e28e920b3c`；本 HANDOFF 将随 docs 新提交推送。包含它的最终 HEAD 以 `git rev-parse HEAD` / `git ls-remote origin refs/heads/docs` 核对，不将交接前 HEAD 当最新。
-- Main HEAD: `3ee1332ef113d4c57c65d9577222ba88d5171101`，本地/远端一致、工作树干净；本轮不合并、不部署。
-- Current paths: source `D:/Dev/Atria-worktrees/tasks/agent-compute-runtime/source`；docs `D:/Dev/Atria-worktrees/docs`；main `D:/Dev/Atria`。新设备可换绝对路径，以分支/HEAD和现有 authority 为准。
-- Plan entrypoint: [index.md](plans/architecture/agent-intelligence-runtime/index.md)
-- Stage-required Plan modules: [G01 当前有限清单](plans/architecture/agent-intelligence-runtime/g01-substrate.md#当前有限剩余清单2026-10-11)、[compute-policy §3/§4](plans/architecture/agent-intelligence-runtime/compute-policy.md)、[model-routing §7/§8](plans/architecture/agent-intelligence-runtime/model-routing.md)、[delivery §8/§8.2](plans/architecture/agent-intelligence-runtime/delivery.md)。只读当前需要部分。
-- Record: [agent-intelligence-runtime.md](records/refactor/agent-intelligence-runtime.md)，最新摘要恢复组含原始失败、修复、费用及证据边界。
+- Repository: `https://github.com/ZZZdragondYNGPHX/Atria.git`。
+- source: `E:/Dev/Atria-worktrees/tasks/agent-compute-runtime/source`，branch `feat/agent-compute-runtime`，HEAD `84fca4a73e0a0b2ef2af74aa0dea7e5bd0c87fe1`；本地/远端一致、干净。
+- docs: `E:/Dev/Atria-worktrees/docs`，branch `docs`，交接前 HEAD `b04c89380a0e109ec2d624bc7272261edf5d66e6`；本 HANDOFF 会另行提交/push，包含它的最新 HEAD 应实时核对，勿把交接前 HEAD 当最新。
+- main: `E:/Dev/Atria`，HEAD `3ee1332ef113d4c57c65d9577222ba88d5171101`；干净、未merge/deploy。
+- Shell: PowerShell；Node `E:/Dev/Node/node.exe`。Jest 用 source 下 `tests/node_modules/jest/bin/jest.js` 和 `tests/jest.config.json`，root node_modules 没有 Jest；ESM 跨绝对路径用 `file:///E:/...` / pathToFileURL。
+- 当前无本任务仍在运行的测试/付费请求，也没有子agent。其它应用进程不属于本任务。
 
-## Completed
+## 恢复读取路由
 
-- M1 / HM1 H0–H2 已完成并入 main，不重跑 ZIP baseline 或 M1。原 ZIP 校验/解压、原生 source/Information/Context、三路径实际消费及其失败/账本沿原 Record 保留。
-- 原 Run/Task 预算、Native 私有 envelope/CPP、配置 ABA 失效、按需 Skill read、原单文件 index 的 insert/query/vector/list/delete/purge、在途/retired 成本等有限 checkpoint 已交付，详见 G01 当前清单，不重复所有历史组。
-- `fafdb8608` 原 foreground 声明 Narrator Session Task 公共工具 history / 独立 Node 冷恢复；`804b088ae` 真实 FS/SQLite fork、历史 restore、same-HEAD restore 的独立 scope 与费用保持。
-- `3cebec8f7` Responses 原 Session Task 一次有界摘要：实际两工具 HTTP 后第三 count 超窗，exact adaptive 才原预算准入 reset；保留公开 sourceMessages/hash、原配置版本指纹及旧非秘密 CPP IDs。摘要进 user data lane，epoch1 首次无旧 opaque/native 工具块，HTTP 前声明 reset reason/loss。原正式 Task 结果 CAS / model/localWork bank 不重建。
-- 原 6 总工具轮 / 54 总消息 / 64KiB history / 131072 Run 上限跨 epoch 保持。严格 task / quota 拒绝、config/pin/HEAD/CPP 失效、取消、FS 补偿与 SQLite 回滚、发布后冷 epoch 已有有限结果。
+先 git status / HEAD，再本文 → [Plan index](plans/architecture/agent-intelligence-runtime/index.md) → [G01 当前有限清单](plans/architecture/agent-intelligence-runtime/g01-substrate.md#当前有限剩余清单2026-10-11) → [Record](records/refactor/agent-intelligence-runtime.md) 最新几组。当前主要模块为 compute-policy §3/§4/§5、model-routing §7/§8、delivery §8/§8.2、必要时 g05-transformers-embedding。只读当前组需要部分，不扫描全部历史/分支/Skills。
 
-## Pending
+Record 最新节为 `2026-10-11 G04/G06 — 原 Session 声明 Task 的消息协议冷恢复与冗余工作修复`。旧 HANDOFF 所称未实施 Context/Skill 等、D: 路径及72982累计已过时，不据其重做或回退。
 
-- M8 / HM2 未验收。真实 G06 正文 quality 仍 FAIL；实际 semantic Embedding/rerank、gateway cache/价格/可靠收益证据尚缺。不得用本地 fixture 升级真实 verified 或收益。
-- 已启用本地工作仍有缺口：原 Context build/Prompt compile、初始 Skill inventory/pin/always-load、已启用 reuse/corpus validation；其它已选 Session Task 实际消费者按支持矩阵继续。
-- Provider native safe-copy/compaction 未有 exact verified 证据，本组不发送这些字段。FS 补偿只证明锁内同进程捕获异常恢复，不证明 CPP delete→Run publication 间突然退出的跨文件原子性；冷测试只在发布完成后受控 exit。
-- 下一 Context/Skill 组仅做了只读定位，未冻结新合同、未编辑产品、未启动其测试。停止时 source 工作树干净。
-- docs 无关未跟踪 `plans/feat/agent-experience-evolution/` 保留，不 add、清理、搬移或覆盖。
+## 已交付，不重做
 
-## Key decisions
+- M1/HM1 H0–H2 已入 main；M1/HM1 不重跑。S11–S14 有限 Goal source/同Task wake、用户/作者event出口及共享pane控制已push；Actor S15–S21尚未实施。
+- 原 G01–G05 所选预算、Context/Prompt、RouteResolver、初始/按需 Skill、Hybrid corpus/hash/rank/pack、Native index insert/query/vector/list/delete/purge、原 checkpoint/公开 history 等有限消费者已交付。恢复不重置原 Run/Task bank。
+- 实际既有 Transformers 模型 `Xenova/paraphrase-multilingual-MiniLM-L12-v2` 已通过原本地路径；256合法 H0 corpus/实际NN及source-valid reuse有有限证据。按原text批次计一个embedding_local job，每文本仍计items/bytes。原32-job schema没有提高。
+- G06 已补 Project 历史时间解释、SSE reported model、Gemini Studio Task冷恢复与adaptive明确loss、三对实际流式时延、检索与Narrator同原Run bank（22jobs/一次实际generation）。均为有限实际出口，原质量/费用FAIL保持。
+- 最新 `84fca4a73`：compiler复用nativeExecutionScope，只对声明Narrator Session Task编译固定history-use规则，恢复不重启已完成工具工作；未硬删调用、造cache结果或放宽权限。13新/8旧distinct定向检查PASS；compiler和Task测试/worker lint、diff PASS。P3测试仍有HEAD已有两处conditional-expect，未冒称整文件lint通过。
+- 八项Anthropic/Gemini × FS/SQLite × task/adaptive本地独立Node冷恢复PASS；四missing checkpoint两policy均拒绝，不能自动套用Studio adaptive public-observation reset。原Session预算触发有界public summary reset是另一既有有限出口。
+- 原Gemini Session Task实测v2两独立Node/two HTTP200、精确签名、冷只读结果不重读、同bank23jobs（22settled/1退出时charged）、two settled model attempts/direct1819，单次正式结果、重复无HTTP，Timeline/World保持。此前v1实际重复Skill/direct2062和generic child失败保留；second summary/header与最终bank缺失，offline audit仅据原raw补第二row，不造遗失事实。该探针不是500轮普通Narrator风格或独立盲评。
 
-- 复用既有 StorageEngine、RunControl、Project Task、RouteResolver、GenerationService 与原 provider port；无新预算/发送器/许可 authority，不把公开摘要当事实确认、工具许可或世界状态。
-- SQLite 本组是真实事务回滚；FS 本组在原 Runtime→Run 锁内对有界资源删除/发布失败作补偿，Host 随后的失败 cleanup 是另一个时点。原费用/unknown/charged 不退款。
-- 未启用 classifier、learned router、prewarm、local KV/LoRA 不自动扩为本轮必做。H5 仍依赖 M2/M3/G06，不新建 Goal/Memory writer。
-- 外部调用范围为同任务合成 H0-ZH-08 到原 `gcli.ggchan.dev` / `gemini-3.8-flash`。硬上限只有每日 2000 次、20 RPM，延续原统一 ledger；助手旧 2 次/no retry/输出或总 token 上限不作为用户限制。实际 Provider 技术限制与产品原预算照常执行。当前为用户换设备停止，暂无新发送；恢复后先修复真实语义缺陷再作有意义复验。
-- 已授权本任务代码/合成测试/文档 push 到同一 origin 的 `feat/agent-compute-runtime` 和 `docs`，不重复申请。私有材料、原始日志/账本、凭据不上传 GitHub；main 合并/部署不属于本次停止收口。
+## 下一步：先本地复现可选检索与必要生成的额度争用，再补 G06 对照
 
-## Local validation
+1. 先收敛所选支持/验收矩阵，区分已经通过、真实FAIL、unknown、未启用/unavailable，避免把历史pending全当新工程。完整G06/M8/HM2仍未验收，M3必须保留G06前置。
+2. 优先调查同一原Session/Run bank内，重复召回是否先花可选vector/hash/index额度，导致必要Context/Prompt/count/render/生成随后被拒绝。已实测冷检索+生成22jobs，另一有限暖检索9jobs、Host5jobs；`22+9+5=36 > 32` 只是跨报告推算，**尚未复现为真实故障**，不得先写成产品缺陷或PASS。
+3. 沿既有 Hybrid / Native middleware / Host / 原预算与已有fixture本地复现，先冻结真实工作序列与有限出口；零外部API即可验证准入与费用。若确认缺口，复用原Invocation/compute authority做最小修复，使可选工作预算不足时能选择合法基础检索，并保留必要生成、来源守卫和已发生成本；不要扩大32-job schema、拆/重置bank、删除freshness guard、新建并行预算或凭空规定固定reserve。若没有缺口就保留证据，不为了推算造新机制。
+4. 只对实际改动运行必要现有检查。然后沿原H0/原连接作仍缺的合法基础路径/有效复用/规则Invocation端到端配对，固定Source、角色frame、配置与原账本；先本地/预检，再显式新live opt-in。保持所有失败分母、实际usage/latency、controller未计量部分与unknown；无收益方案维持简单基线。已有signed cold/流式/M1/HM1不无故重跑。
+5. 普通RP style-v2和Project Task/structured诊断分开评价。原500轮是预载Timeline，不是500次真实模型生成；n1和同H0多frame不变成独立样本。Project回合不证明当前World事件，Actor记忆/持有/愿意/履行无后续证据仍unknown。
+6. 后续沿原正式S/G依赖持续推进；不要把每个有限组自动变成要求用户“继续”的阶段审批，也不要假报完整G06来进入M3。未启用classifier/prewarm/Local KV/decode/vector-LoRA不自动扩为当前必做。实际外部缺证据和正式阶段边界准确报告。
 
-- 最新组：`g04-session-task-summary-after-v7.log` 20 新 distinct PASS；`g04-session-task-summary-regression-v1.log` 71 受影响既有 distinct PASS，三个 suite 的实际子集。`g04-session-task-summary-lint-v5.log` ESLint、`git diff --check` PASS。未运行 MySQL/Postgres；本轮新外部 HTTP 0。
-- 20 新检查中 summary edit / 跨 epoch 总轮数两项是声明 validator，未完整执行 Host；其余按 Record 的实际消费者/冷拒绝分类，不能都标完整生成。
-- 实际正向 3 个 loopback HTTP / 60 direct fixture tokens / 15 settled local jobs；发布后 cold epoch 16 jobs，保留 1 charged reset。不等于 gateway 账单或实际价格。
-- 失败证据不删除：factory count-before-render、reset 缺 requestId、fixture Runtime 锁重入 hang、FS 无 SQL rollback、immutable history 工作副本、摘要发布后配置修改错误重启；均见 Record/私有日志。`after-v3` 在停止其测试进程后留下 11 FAIL/5 PASS/超时的运行日志，不写成通过。
-- 真实 M8 累计 38 / direct 72982、unknown 2 / 17515 upper、admission fetch0；G06 质量 FAIL。最后实际 pair 的两份历史否定正文与费用保留，不重发未改变的付费输入。
+相关实现入口按需要：`public/scripts/agents/memory/hybrid-retrieval.js`、`invocation-policy.js`、`index-reuse.js`，`src/native/retrieval-compute.js`、`retrieval-execution.js`、`adapters/generation-host.js`、`run-control.js`，`public/shared/native-compute-budget.js` 与相关既有tests。core.load包含Package Regex/Knowledge编辑、projection/lifecycle验证，不能只换成HEAD read；500轮同bank实测完整检索332637.34ms不利开销原样保持，不启动泛化性能重构。
 
-## Private evidence and device migration
+## 私有证据、累计与调用约束
 
-- 完整任务恢复包：`Atria-full-restore-20261011.zip`，包含当前私有目录和 API 配置、原 ZIP、main/source/docs Git bundle、校验清单、恢复脚本与接手提示词，仅本机交付。新设备入口为包内 `RESUME-PROMPT.txt` / `RECOVERY-README.md`，校验数字见 `.sha256` 和包内 manifest；不用另填 key，不覆盖或清零原额度账本。
-- GitHub **不含**私有基线和累计结果。旧设备私有根 `D:/Dev/Atria-private/hm1-20261010`，原日志/脚本/报告/账本在 `Document/`；新设备需通过用户自己的本地安全迁移保留它，不能只重新解压旧 ZIP 来替代新增账本/失败证据。
-- 本地无凭据迁移包已完成：`C:/Users/5insi/Documents/Codex/2026-10-10/task/Atria-private-evidence-no-credentials-20261011.zip`，56452855 bytes，SHA-256 `be8088c5745122bea18743200fdd36419d62ccf0cec692aa7c24688c70b68568`。旁边 `.zip.sha256` 与 `ATRIA-MIGRATION-MANIFEST-20261011.json`，包内有 `MIGRATION-README.txt` / manifest。已校验 ZIP CRC 与逐文件 SHA-256；无凭据包仅本机保存，无上传。含18585文件/237339656原始bytes，排除37项凭据配置/含已知credential内容/secret资源/sealed或可重建scratch/browser；不是完整机器备份，原件未删除。新设备先校验，再解包到新的空私有目录；按照 README 映射路径，任何历史脚本都不能因解包而自动启动付费调用。
-- 原 ZIP `C:/Users/5insi/Downloads/Atria-Document-private-H0-20261010.zip`：55288312 bytes，SHA-256 `1551535563aac211046df34ca743072e7a060c8b60a4ef04b434d7b44afee30e`。
-- 原 ZIP 含真实 API 凭据，不能作为上述无凭据包直接共享/上传；新设备的连接 Secret 另沿用户私有配置恢复，不因此授予新设备权限。原 ZIP 也没有本轮新增结果和账本，不能替代当前迁移包。
-- 必须延续 `Document/m1-api-quota.json`（153422 bytes，SHA-256 `af6f88fd0ae899f7697a30b2187633a27441b3bb47cbffbfb8372fa56799c680`）、`hm1-model-ledger.json`（33189 bytes，`12c4cb4826f001826388762b998687a0b7b4ade884e1699220fd2104bbe9fdb5`）、`m1-ledger.json` / `.rate.json`、原 raw baseline / request / response / reports 和复验日志。恢复时先读原发送计数实现，不另建空 ledger、默认全额或重置历史。
-- 2026-10-11 05:24:53 UTC 只读 snapshot：原 quota 总 admissions1659，滚动24h554、最近60s0；carry332已过24h，最后 admission2026-10-10 20:06:47 UTC。这是本地历史计数，不是新设备实时 gateway 余额，恢复发送前由原实现重新算窗口。
-- 旧 runtime：Node `D:/Dev/Node/node.exe` 24.18；Python 3.12。source 使用其现有 dependency lockfiles/node_modules；新设备按原工程恢复依赖。私有脚本旧绝对路径可适配新 checkout，不能修改原冻结 raw 文件来伪造新 pins；凭据在用户私有配置中恢复，不写 HANDOFF/公开包/Git，不推测新设备授权或 Secret。
+- 当前私有根 `E:/Dev/Atria-Private/hm1-20261010`，raw/config/report/原quota在 `Document/`；keys只私下读取，不能输出或提交。旧恢复ZIP不能替代当前新增账本/失败证据；历史paid脚本不能因恢复自动执行。
+- 原quota文件 `Document/m1-api-quota.json`，沿原 `tests/agent-intelligence/m1-quota.js`连续append；当前1709 admissions、carry `{requests:332, at:1791460574562}`。这是原本地累计，不猜gateway余额或当作终身cap。API硬上限**只有每日2000、20RPM**；不另设测试次数/token上限，不reset/split ledger。fixture/product预算仍按原authority有效且不可为绿灯扩大schema。
+- M8当前实际generations87 / direct reported221710；原unknown2/upper17515与admission fetch0保持单列。M1/HM1 ledger hashes保持。真实金额、缓存计价、上游mapping、净收益缺证据；用户已经回复“目前没有，保留 unknown”，**不要再追问价格、填0或将缺价格当成停止所有技术工作的理由**。
+- 最新private reports：`g06-shared-bank-h0-live-v1.json`，`g06-gemini-session-task-cold-live-v1.json` / `...live-v1-audit.json` / `...live-v2.json`；相关runner是只读参考，不重新执行已完成live。v2实际producer是旧HEAD55ad73d9+compilerSourceHash `1db8155c088b542b9ceac6d8c567a486cffd1bbc9027597fb5cf235a83dd6eb7`，已核对最终产品文件同hash，不能把旧实测producer改成新HEAD。
+- 所有新实际生成仍只限原合成H0-ZH-08、`gcli.ggchan.dev/v1` / `gemini-3.8-flash`；Native Gemini消息路径沿已核对的`/v1beta`。不凭`/models`目录猜embedding/rerank能力；没有可用真实rerank/其它brand路径就记录unavailable。
 
-## Next target
+## 授权与停止状态
 
-恢复时先核对三个真实 Git HEAD、source clean / docs 无关 draft，再读本 HANDOFF→Plan index→G01 当前清单→Record 最新组。先补一个有限 G05 原 Context build/Prompt compile 工作准入合同，再复用 Host 既有原 Run/Task `localWork` charge/settle 端口，确保任务/后台 anchor、accepted fallback policy、取消/stale/失败成本与无 localWork 旧路径兼容。初始 Skill/reuse 如未在此组纳入仍明确 pending，不假称全部 CPU 被硬封顶。只做新组最小实际消费和受影响回归，再持续下一依赖。
-
-只读定位：Host `src/native/adapters/generation-host.js` 的 `execute` 在 `providerFor` 前调用 `prepareNarrativeSkills`，原包装 `localWork` 目前只涵盖 count/render/按需 read/task_history；`contextProvider.buildRequestContextPlan` 与 `compiler.preparePrompt` 尚未工作前准入。`public/shared/native-compute-budget.js` 的现有 kind 列表没有 context/initial Skill 种类。不要借修改预算上限让旧 fixtures 绿；新增真实计量应如实调整合成 fixture 的成本断言及明确边界。
-
-## Read first
-
-- 实际 Git / source `AGENTS.md`、docs `README.md` §7/§8/§12/§13.1。
-- 上述 index、G01 当前清单、Record 最新两个有限组；不要扫描整个历史 Bundle。
-- 当组才读取 Host、`skill-invocation.js`、`model-prompt-runtime/prompt-compiler.js`、`adapters/native-session-context.js`、`public/shared/native-compute-budget.js` 与相关既有测试；私有额度实现按发送需要读取。
-
-## Do not repeat
-
-- 不重跑 M1、HM1 H0–H2 或已交付有限组，不为换设备重复所有测试/付费输入。
-- 不删除 raw FAIL/unknown/费用或重置 quota，不把历史累计视为终身上限，不恢复助手旧固定次数/token限制。
-- 不上传 private/凭据、不改独立密封材料、不 add 无关 docs draft，不合并 main/部署，不创建新线程/子 agent/Goal。
-- 当前无后台测试、请求或写入。恢复后按 Governance 持续推进。
-
-## New-chat bootstrap prompt
-
-继续 `ZZZdragondYNGPHX/Atria` 的 `agent-intelligence-runtime`：先核对实际 Git，再读最新 `docs:HANDOFF.md`、Plan `plans/architecture/agent-intelligence-runtime/index.md`、G01 当前有限清单与 Record 最新摘要恢复组。source `feat/agent-compute-runtime` 应在 `3cebec8f7e143d58d54d7dddd9d46fcef88694f5`；main 已完成 HM1 在 `3ee1332ef113d4c57c65d9577222ba88d5171101`，M1/HM1 不重跑。M8/HM2 未验收，G06真实质量仍 FAIL。最近摘要/adaptive reset 20 新/71 旧实际检查通过、已push，FS只同进程补偿、cold仅发布完成后退出。下一有限 G05 Context build/Prompt compile 准入尚未实施；沿原 Run/Task预算推进并保护无关 docs draft。私有 `hm1-20261010/Document` 与原 quota/raw证据需已安全迁移，缺 ledger 时不能用空账本发送。外部仅原合成 H0-ZH-08 / 原gcli模型目的，每日2000/20RPM由原统一计数执行；无助手固定次数/token审批，不重发未实质修复的失败输入。继续直至正式目标完成，最小相关验证，按已授权推送 feat/agent-compute-runtime/docs；不上传私有材料、不自行merge/deploy。
+用户已授权本任务code/test/docs push到原 `feat/agent-compute-runtime` 和 `docs`，不重复审批。保护无关用户修改、最小相关验证、不写新平台/平行报告体系、不上传private/keys/cache；不自行merge/deploy main，不创建子agent、新chat或Goal。按AGENTS.md和Governance执行。此次用户明确换对话，交接推送后本对话停止；新对话读取本文直接恢复。
