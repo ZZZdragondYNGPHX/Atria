@@ -29,6 +29,7 @@ import { IllustrationPromptService } from '../native/illustration-prompt-service
 import { IllustrationImageService } from '../native/illustration-image-service.js';
 import { AgentEvidenceRepository } from '../native/agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../native/agent-intelligence/evidence-service.js';
+import { AgentGoalService } from '../native/agent-intelligence/goal-service.js';
 import { AgentExperienceService } from '../native/agent-intelligence/experience-service.js';
 import { getChatRepo } from '../storage/index.js';
 import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
@@ -68,6 +69,20 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    for (const action of ['create', 'list', 'get', 'control']) router.post('/goals/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            if (action === 'list') fields(req.body, [], 'Goal list');
+            const host = getHost();
+            const goal = new AgentGoalService({ engine: host.persistence._engine, sessionCore: host.sessionCore, studio: host.studio, chatRepo: getChats() });
+            res.json(await goal[action](handle, req.body));
+        } catch (error) {
+            res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : error?.name === 'NotFoundError' ? 404 : 400)
+                .json({ error: error?.name === 'ConflictError' ? error.code : 'agent_goal_unavailable' });
+        }
+    });
     for (const action of ['begin', 'update', 'inspect', 'delete']) router.post('/evidence/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
