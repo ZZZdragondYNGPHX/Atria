@@ -2075,3 +2075,16 @@ source `bc31bf963666578a8ec308737107ea9831348ca9`，在上一Context/Prompt组�
 实际always-load fixture FS/SQLite各7 jobs（inventory/pin/load/context/prompt/count/render）、1loopback HTTP；关闭Route budget后同Run下一request仍在list前拒绝并保留原bank，不重建额度。1/2/3 jobs分别在pin/load/context前拒绝；inputBytes1在list前拒绝且无Run。inventory/pin/load错误各保留1/2/3失败工作，取消/HEAD变化保留3工作并HTTP0。On-demand工具2HTTP的原bank现在11jobs，fallback15jobs；Task normal14、summary25、cold history20、cold summary28（含重复进程初始准备和原charged reset），真实成本断言随新工作调整，产品32jobs上限不改。输入项/字节仅实际repository请求描述，inventory物理scan和响应bytes不是CPU/金额硬cap。Settings及初始source/package/config读取、其它Skill入口和已启用corpus/reuse工作准确pending；下一继续原Hybrid corpus/reuse准入。
 
 外部HTTP0，原quota/费用/失败与G06真实quality FAIL保持；loopback和synthetic repository port不升级真实verified、算法或货币收益。代码/合成测试/文档沿既定两个分支保存；不合并main、不部署、不上传私有文件。
+
+
+### 2026-10-11 G05 — 原 scoped Hybrid corpus/reuse 工作前准入
+
+source `49036006ab54cd89edaafa771441d0943a41ff26`，在初始Skill组已push/核对后继续。仅原retrieveMemory corpus build/memo validation之前，经NativeRetrievalService→原Native generation router有限retrieval-work端口→prepareRetrievalCompute→原Run/Task localWork，kind memory_corpus；无Secret/profile/inference解析，无新bank/registry或模型发送器。1job/item代表一次corpus请求，inputBytes为已存在snapshot key/state/chat/providers/eligibility/at JSON UTF-8 bytes，限16MiB，不假充实际文档scan数。原Source/Information品牌proof未换成JSON许可；等待budget后重验原guard再build/reuse，缺port/无accepted回复拒绝，不走未计量scoped旁路。
+
+客户端CPU/elapsed不是server process usage，工作前charge后原settle(null)记unknown，input/item上界仍占用、不退款；client未开始/取消/失败也不虚构completed/0CPU。cost写失败保留charged，currentness后拒绝不让client开始。scoped无local cap/readonly旧路径不造ledger，原metered scope关闭Route仍继承limits。这里local-purpose配置仅用于原cost fingerprint/兼容无local cap语义，不是一个新可调用Retrieval Profile或gateway proof。初始snapshot/config读取、其它Skill入口及client hash/rank/packing仍pending，下一沿原端口补实际消费者。
+
+实际26 distinct PASS（13新/13受影响既有）：`g05-corpus-admission-after-v1.log`17PASS/1FAIL，10新FS/SQLite Session/Project Task实际cold/warm原memo与account snapshot恢复/Route去budget拒绝；bytes/readonly/HEAD/late-source/取消/settle失败；7原rerank bad-output/成功消费者通过。client header测试没设原mock，undefined失败，不是产品凭据或network配置问题；补fixture header后`g05-corpus-admission-regression-v2.log`9PASS，其中该单项必要复验、新缺port与unbounded-readonly两项，以及原Native Memory list2/delta1/rerank1、Game/Package最终Context1、H4原品牌proof冷暖/JSON重算1。未重复17个已通过项。
+
+原bank只2个unknown corpus rows/0model attempts；恢复后第3 warm在原bank前拒绝，旧成本保持。actual list完整路径现在4 jobs（corpus/list/insert/query），不足2仍基础合法来源；实际delta两次9 jobs，新hash留/旧hash消失与4个loopback Embedding保持。复制JSON仍不能获得原source currentness proof；fixture Game/Package admission port仅unconfigured协议夹具，不假称那里新验证真实预算。其它成功客户端trace只作client观察，未知currency/CPU不提升。全部新增/回归HTTP为本地接口或loopback，无外部请求。
+
+ESLint检查全部9改动文件：8无新报错，retrieval-compute-g05原HEAD20条既存rule错误与当前规范化message完全相同，新增0，不改无关旧cases；修改client mock和Game/Package fixture后只相关文件补lint，git diff --check PASS。MySQL/Postgres未运行。原真实G06 FAIL、38/direct72982、unknown2/17515 upper/admission fetch0与原quota保留，未宣称M8/HM2完成或cache/金额收益；按正式依赖继续。
