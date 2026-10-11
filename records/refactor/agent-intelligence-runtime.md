@@ -2026,3 +2026,12 @@ Host在原GenerationService exact capability/policy核验后首次构建Context�
 25其它既有distinct cases最终通过：`old-v1` 21PASS/1真实旧guard回归FAIL（复用已满6轮transcript的stale检查被round_limit提前遮蔽），修正loop为先cancel/fresh再总轮数检查，`old-guard-v2` 原case与原Run continuation validator共2PASS；另上述两原Session scope/plain consumer，合25，不将old-v1写成全绿。原Narrator单次fresh计数/输出、原Session 4工具路径/4scope、Studio Responses/Anthropic/Gemini恢复/预算有限消费者保留。新生产8文件/新增fixture及test ESLint `lint-v4` PASS，loop guard修改后 `loop-lint-v5` PASS，`git diff --check` PASS。临时只禁用原公共history消费的 `negative-v1` cold真实FAIL于generation_continuation_unavailable，原history/private数据确已保存，finally还原产品；不篡改已保存wire或真实path evidence。
 
 外部发送0；M8累计38/direct72982、unknown2/17515 upper、admission fetch0、原G06质量FAIL与费用/限额历史保持。Skill repository仍synthetic port，原SessionCore/Package、StorageEngine、Task scheduler、Host/GenerationService及本地HTTP真实执行；实际协议新增只有Responses。完整M8/HM2未验收，继续真实fork/历史restore/compaction及已启用本地工作缺口；未启用研究选项不扩为本轮必做。
+### 2026-10-11 G04/G05 — 真实 Session fork/历史 restore 的新 Task scope
+
+本组合同 docs `f77588619`，source `804b088ae6b93ee9dce0150ada558e27eb40deb8` 为test-only新增6cases，已本地提交；未改产品，未重复已通过cold/pin/配额组。`g04-session-task-branch-after-v1.log` 6PASS，FS/SQLite各真实fork、historical_restore、same-HEAD restore；新增test ESLint `g04-session-task-branch-lint-v1.log`及`git diff --check` PASS。无新外部HTTP、未push新增提交。
+
+真实派生场景：原fresh Node在原second count charge后退出，forkBranch生成新的branch/revision；historical_restore先把未来user text提交到新revision、在此未来source运行原Task/保存CPP与公共工具history，然后restore较早的实际Save，确实生成新branch/revision并保留旧branch HEAD。旧Task revision请求在新HTTP前拒绝。新Task source fingerprint/Run operation不同，实际只发送一次fresh final请求，wire没有旧reasoning/function_call/function_call_output、原工具结果或未来文本；结果与旧初始Timeline相同，重复正式Task record不新增HTTP。
+
+原old operation.compute深比较保持，原20 direct tokens/7local jobs/1charged count未退款或改写；新scope另外20direct tokens/3local jobs进入原retiredCompute，原Run可查两份费用。这证明成本不丢/新scope隔离，不扩大为任意branch child共享父额度或Provider原生安全复制。same-HEAD restore则只有frontend epoch失效，revision/graph不变，同一Task冷恢复合法、实际总2HTTP/40tokens/10jobs+1charged，第三cold调用返回原record不重发。
+
+产品既有branch/invalidation边界本组通过；Provider ancestor safe-copy/reset loss、compaction与其它实际消费者仍继续。opaque只在原Runtime kind，fixture Skill port非OS实物IO、loopback非真实gateway。当前HANDOFF.md在docs HEAD不存在，仅模板，不伪造交接；按实际Git/Plan/Record继续。M8原实际38/direct72982、unknown2/17515 upper/admission fetch0与G06 quality FAIL不改，main不变；用户最新调用硬上限仅每日2000次、20RPM，助手旧固定次数/token限制不生效。新远端动作尚待核实/报告，当前仅本地提交。

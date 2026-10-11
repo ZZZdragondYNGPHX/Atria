@@ -58,13 +58,15 @@ cold Host不相信caller messages：从上述原history重建当前公开Context
 
 source `fafdb8608` 已提交/push，17真正新增cases、9原cases增强及25其它既有cases通过（复验不重复计distinct）。冷退出前公共结果已保存时，新进程不重读；pending readonly read可按当前pin/额度重读，旧charged工作保持。本组只支持原foreground Narrator声明Task，background明确unavailable；其它Task消费者继续按实际依赖。pending重读发生在Context阶段，checkpoint完整prefix/private校验在随后count/lowering，不声称缺CPP在所有repository访问前拒绝；缺失/篡改/权限反例保证新HTTP0并保留原成本。公共history不存providerState/private payload；原cached正式结果不重发。详细费用、首次旧guard回归/修复与进程exit范围在Record，不提升真实路径verified。下一验证原Session实际fork/历史restore，并沿原能力处理compaction。
 
-## 下一有限 G04/G05：真实 Session 派生分支与历史 restore（冻结）
+## 已验证有限 G04/G05：真实 Session 派生分支与历史 restore
 
 2026-10-11 从 `fafdb8608` 接原foreground Narrator Task的Session Core生命周期，先固定Responses、FS/SQLite与原工具fixture，不新增native fork/copy能力。实际`forkBranch`或历史`restoreSavePoint`发布新的branch/revision，因此Task/input/anchor fingerprint与Run operation identity不同；该新Task scope必须fresh，不携旧CPP/工具历史或未来revision状态。task policy的新scope开始不冒充旧Task已恢复；原有charged/settled/unknown消费仍保留在原Run，不把新scope的独立费用写成原余额退回/复位。完整Provider ancestor fork/copy/reset loss与compaction继续是下一工程依赖。
 
 本组有限出口：一个fresh Node在原count charge后退出，真实fork或restore到早于该Task source的Save后，原旧revision调用在HTTP前拒绝；新Task真实消费只当前合法Session Context、wire无旧opaque/function_call/tool result，原已花费用与未settle工作保持、正式结果只提交一次。核实历史restore确实产生新branch/revision且保留旧branch HEAD；同HEAD Save restore只使frontend epoch失效，允许同scope冷恢复，不能伪装成一次派生分支反例。只检查这些新的Core/Task边界与少量相邻原消费者，不重跑已通过cold/pin/费用组。
 
 本地退出夹具、合成只读Skill port与loopback仍不提升真实path verified；原外部复测按用户最新每日2000次/20RPM与原实际账本执行，不恢复助手旧固定次数/token限制。远端仅在核清准确目标及待发送差异后另行处理，本组先本地提交/Record。
+
+source本组为test-only（具体HEAD见Record），6个新增FS/SQLite cases及新增test ESLint/diff检查通过；未改产品/未重跑已通过组。派生分支为新Task scope/fresh开始，旧revision调用HTTP前拒绝；旧operation的20 direct tokens、7 local jobs与1 charged count原样保留，新scope独立20tokens/3jobs在原Run retiredCompute可查。两种派生场景均保留原branch HEAD、wire无旧opaque/tool exchange或未来文本、重复正式结果不发HTTP。same-HEAD restore并未派生branch，原cold恢复仍2HTTP/40tokens/10jobs+1 charged。此证据不等于Provider ancestor safe-copy/reset loss控制器或compaction；继续下一实际工程依赖。
 
 ## 历史 checkpoint 与后续组记录
 
