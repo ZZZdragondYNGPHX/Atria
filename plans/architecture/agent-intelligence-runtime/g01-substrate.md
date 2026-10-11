@@ -68,6 +68,16 @@ source `fafdb8608` 已提交/push，17真正新增cases、9原cases增强及25�
 
 source本组为test-only（具体HEAD见Record），6个新增FS/SQLite cases及新增test ESLint/diff检查通过；未改产品/未重跑已通过组。派生分支为新Task scope/fresh开始，旧revision调用HTTP前拒绝；旧operation的20 direct tokens、7 local jobs与1 charged count原样保留，新scope独立20tokens/3jobs在原Run retiredCompute可查。两种派生场景均保留原branch HEAD、wire无旧opaque/tool exchange或未来文本、重复正式结果不发HTTP。same-HEAD restore并未派生branch，原cold恢复仍2HTTP/40tokens/10jobs+1 charged。此证据不等于Provider ancestor safe-copy/reset loss控制器或compaction；继续下一实际工程依赖。
 
+## 下一有限 G02/G04/G05：原 Session Task 的公开摘要与一次 adaptive reset（冻结）
+
+2026-10-11 从 `804b088ae` 继续，仅原foreground声明Narrator Task + Responses实际本地消费者；尚无verified Provider native compaction/copy，本组不发送这些未支持字段。触发固定为原GenerationService已完成count后报告`generation_context_budget_exceeded`，且当前accepted policy为exact verified task+adaptive、原public history有完整的readonly工具结果、尚未做此reset。task policy严格拒绝；无历史、未完成工具、source/pin/config变化不借摘要重启。
+
+沿原RunControl.taskHistories可选 `compaction` 保存一次metadata：原sourceMessages、sourcePrefixFingerprint、确定性summary与被放弃CPP的非秘密IDs；保留原source公开历史，不复制providerState/contentWire/opaque/Secret。summary只取最后至多8项工具公共结果的UTF-8有界excerpt，每项至多512 bytes，总8192 bytes，明确partial/prior/read-only data、截断/省略数量；它不是事实确认、工具许可或世界状态。原Task字段/整体64KiB、54msgs、6总工具轮及Run131072 bytes上限仍执行，原工具总轮数跨摘要/Host不重置。唯一生成算法在shared Task history合同，Native读取会重验原source hash及精确确定性summary。
+
+reset沿原同Run一次task_history localWork先准入；原account Runtime写锁和Session Run锁内的同StorageEngine transaction同时保存摘要metadata/清原Task scope CPP；失败回滚两者，成功后清相同process envelope。source/Input/Task fingerprint及预算bank保持，新增binding epoch区分摘要后的私有lineage；下一请求Snapshot在HTTP前明确reset reason、原CPP IDs和opaque loss，不宣称native safe-copy/命中。摘要进入原Context history的user data lane；首次fresh epoch不回传旧native blocks，后续继续原工具协议。新增count/render/model都同原额度，原已发生usage/unknown/charged不退回。
+
+最小本地出口：两个实际工具HTTP后第三count因窗口不足，adaptive原端口reset并完成第三HTTP，Task仅原结果CAS一次；task严格不发第三HTTP。摘要不含旧opaque、history可追溯、总请求/local jobs与reset observation实数可查；quota、pin/HEAD变化、存储故障、取消及cold摘要epoch反例保留成本/拒绝错误请求。只用实际FS/SQLite/Host/loopback及合成Skill port，不声明真实语义质量、费用收益或其它brand Session支持；真实G06仍待已授权的有意义修复后复测。
+
 ## 历史 checkpoint 与后续组记录
 
 Runtime checkpoint 有限物理契约（依据 model-routing §7.2–7.4）：复用 StorageEngine Native resource 与 `withRuntimeWrite(handle)`，private kind `atri_runtime_checkpoint` 的 key 仅 owner handle + 随机 SHA-256 checkpointId；payload 含 schema、owner hash、完整 binding、public-prefix 校验、原生 opaque envelope、到期时间和 Native integrity。每 owner 至多128项、总16MiB、单项完整 JSON 至多2MiB，TTL10分钟；超过容量淘汰最旧，过期/完整性失败/真实同owner同scope binding变更终止旧引用。读与发送均重读既有存储；只读/存储失败显式 unavailable，不假报清理或恢复成功。发布须在 credential echo 与工具声明校验之后；取消/失败须 await private cleanup。原配置record的integrity/单调updatedAt作mutation anchor，保存/发送均核验，受影响connection/model/route修改或删除清除相关checkpoint，未关联配置不清除；同毫秒ABA也不能复活旧状态。
