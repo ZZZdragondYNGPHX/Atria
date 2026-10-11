@@ -369,8 +369,25 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const diagnostics = [];
     let vectorIds = [];
     const vectorRequested = Boolean(service && profile && String(query).trim());
-    let vectorAdmitted = vectorRequested;
-    if (vectorRequested) {
+    const baseRankingStarted = performance.now();
+    const baseRank = vectorRequested && work.localMeteredAdmissions && reused.decision.status === 'valid_hit' && !rebuildVectors
+        ? rankMemory(query, corpus, [], { at, sceneText }) : null;
+    const compose = result => packing === 'ranked'
+        ? composeMemory(result.candidates, { countTokens, budget, corePacket, at: result.plan.at, assertCurrent: guard })
+        : composeMemoryCoverage(memoryEvidenceGroups(result.candidates, corpus, snapshot.state, result.plan),
+            { countTokens, budget, corePacket, assertCurrent: guard });
+    if (baseRank) baseRank.candidates = baseRank.candidates.filter(doc => !(doc.kind === 'state' && doc.type === 'provider'
+        && doc.claims?.every(claim => stateClaimAlreadyPresent(claim, existingStateText))));
+    const baseRankingMs = baseRank ? performance.now() - baseRankingStarted : 0;
+    const basePackingStarted = performance.now();
+    const baseComposition = baseRank ? await compose(baseRank) : null;
+    const basePackingMs = baseRank ? performance.now() - basePackingStarted : 0;
+    const vectorInvocation = memoryInvocationDecision(baseRank?.plan ?? {},
+        baseRank?.candidates.filter(doc => baseComposition.selected.includes(doc.id)) ?? [], {
+            lane: 'vector', configured: vectorRequested, computeContext, reuse: reused.decision,
+            metered: work.localMeteredAdmissions > 0, rebuild: rebuildVectors });
+    let vectorAdmitted = vectorInvocation.action === 'vector';
+    if (vectorAdmitted) {
         try {
             await admitWork('hash', { corpus, query, profileRef: profile.nativeRetrievalRef ?? null });
         } catch (error) {
@@ -459,11 +476,11 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     } else if (!vectorRequested) diagnostics.push('vector_unconfigured');
     const vectorsReady = performance.now();
     const rankingStarted = performance.now();
-    const result = rankMemory(query, corpus, vectorIds, { at, sceneText });
+    const result = baseRank && !vectorAdmitted ? baseRank : rankMemory(query, corpus, vectorIds, { at, sceneText });
     result.candidates = result.candidates.filter(doc => !(doc.kind === 'state' && doc.type === 'provider'
         && doc.claims?.every(claim => stateClaimAlreadyPresent(claim, existingStateText))));
     const invocation = memoryInvocationDecision(result.plan, result.candidates, { configured: Boolean(service && rerankProfile), computeContext });
-    const rankingMs = performance.now() - rankingStarted;
+    const rankingMs = baseRankingMs + performance.now() - rankingStarted;
     const rerankStarted = performance.now();
     if (invocation.action === 'rerank') {
         try {
@@ -493,10 +510,8 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const rerankMs = performance.now() - rerankStarted;
     guard();
     const packingStarted = performance.now();
-    const composition = packing === 'ranked'
-        ? await composeMemory(result.candidates, { countTokens, budget, corePacket, at: result.plan.at, assertCurrent: guard })
-        : await composeMemoryCoverage(memoryEvidenceGroups(result.candidates, corpus, snapshot.state, result.plan),
-            { countTokens, budget, corePacket, assertCurrent: guard });
+    const composition = baseComposition && vectorInvocation.action === 'skip' && invocation.action === 'skip'
+        ? baseComposition : await compose(result);
     const accessed = result.candidates.filter(doc => composition.selected.includes(doc.id)).flatMap(doc => doc.kind === 'fact'
         ? [doc.factId] : doc.kind === 'relation' ? doc.supports.map(ref => ref.factId) : []);
     if (accessed.length && snapshot.recordAccess) { await snapshot.recordAccess(accessed); guard(); }
@@ -514,7 +529,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
                 revision: snapshot.state.sources[id]?.revision })), eligibility: snapshot.eligibility?.identity };
     });
     const sourceMessageIds = [...new Set(evidence.flatMap(item => item.sourceMessageIds))];
-    const packingMs = performance.now() - packingStarted;
+    const packingMs = basePackingMs + performance.now() - packingStarted;
     const proofStarted = performance.now();
     for (const item of evidence) {
         item.producer = 'hybrid-retrieval-v1';
@@ -527,10 +542,10 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const coverageGaps = result.plan.intent === 'cause' && !selectedDocuments.some(doc =>
         ['causes', 'motivated_by', 'explains'].includes(doc.predicate) || /因为|由于|\bbecause\b/iu.test(doc.text))
         ? [{ intent: 'cause', reason: 'causal_evidence_unknown' }] : [];
-    return { ...composition, plan: result.plan, invocation, reuse: reused.decision, diagnostics, sourceMessageIds, evidence,
+    return { ...composition, plan: result.plan, invocation, vectorInvocation, reuse: reused.decision, diagnostics, sourceMessageIds, evidence,
         producer: 'hybrid-retrieval-v1', coverageGaps, missingGroups: [...(composition.missingGroups || []), ...unavailableGroups],
         metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
-            corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, rankingMs, rerankMs, packingMs,
+            corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady - baseRankingMs - basePackingMs, rankingMs, rerankMs, packingMs,
             proofMs: performance.now() - proofStarted, totalMs: performance.now() - started,
             work: { ...work, costStatus: work.embeddingTextsRequested || work.rerankRequests ? 'unknown' : 'not_requested',
                 localCostStatus: work.localAdmissions ? 'unknown' : 'not_requested',

@@ -5,8 +5,17 @@ import { applyFactOperations } from '../../public/scripts/agents/memory/atomic-f
 import { applyTemporalOperations } from '../../public/scripts/agents/memory/temporal-graph.js';
 import { buildMemoryCorpus, rankMemory, analyzeMemoryQuery, composeMemory, retrieveMemory, memoryTokenBudget, memoryTokenCounter } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 import { createSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
+import { memoryInvocationDecision } from '../../public/scripts/agents/memory/invocation-policy.js';
 
 Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
+test.each(['cold', 'unmetered', 'rebuild', 'missing_evidence', 'causal', 'unproved'])('vector Invocation %s keeps the configured work instead of asserting valid base coverage', async scenario => {
+    const options = { lane: 'vector', configured: true, metered: scenario !== 'unmetered', rebuild: scenario === 'rebuild',
+        reuse: scenario === 'cold' ? { status: 'miss' } : { status: 'valid_hit', reason: scenario === 'unproved' ? 'untrusted' : 'exact_source_authority' } };
+    const plan = { commitment: true, intent: scenario === 'causal' ? 'cause' : 'general' };
+    if (scenario === 'causal') plan.commitment = false;
+    const candidates = scenario === 'missing_evidence' ? [] : [{ text: 'Alice promised to return the book.', episodeIds: ['source-a'] }];
+    expect(memoryInvocationDecision(plan, candidates, options).action).toBe('vector');
+});
 function fixture() {
     const chat = [{ memory_os_source_id: 'm1', mes: 'Alice lives in Castle. 爱丽丝在城堡。' },
         { memory_os_source_id: 'm2', mes: 'Alice moved to Harbor. 爱丽丝搬到港口。' }];

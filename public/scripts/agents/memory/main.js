@@ -7786,7 +7786,7 @@ async function injectMemoryPrompts(context, payload) {
         });
         hybrid.assertCurrent();
         trace = [{ tool: 'hybrid_memory', selected: hybrid.selected, tokens: hybrid.tokenCount,
-            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, invocation: hybrid.invocation, reuse: hybrid.reuse, providers: hybrid.providers, diagnostics: hybrid.diagnostics, metrics: hybrid.metrics }];
+            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, invocation: hybrid.invocation, vectorInvocation: hybrid.vectorInvocation, reuse: hybrid.reuse, providers: hybrid.providers, diagnostics: hybrid.diagnostics, metrics: hybrid.metrics }];
     }
 
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
@@ -14083,7 +14083,7 @@ function bindUi() {
 
         const result = await recallHybridMemory(context, query, { readOnly: true, settings: effectiveSettings });
         result.assertCurrent();
-        store.lastRecallTrace = [{ tool: 'hybrid_memory', selected: result.selected, plan: result.plan, invocation: result.invocation,
+        store.lastRecallTrace = [{ tool: 'hybrid_memory', selected: result.selected, plan: result.plan, invocation: result.invocation, vectorInvocation: result.vectorInvocation,
             reuse: result.reuse, metrics: result.metrics, diagnostics: result.diagnostics }];
         updateUiStatus(i18nFormat('Recall ready. selected=${0}', result.selected.length));
         refreshUiStats();

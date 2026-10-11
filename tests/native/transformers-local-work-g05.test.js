@@ -9,6 +9,14 @@ import { NativeRetrievalPersistence } from '../../src/native/retrieval-persisten
 import { createRetrievalMiddleware } from '../../src/native/retrieval-execution.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { retrievalRef } from '../../public/scripts/native/retrieval-contracts.js';
+import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
+import { NativeGenerationHost } from '../../src/native/adapters/generation-host.js';
+import { createHttpGenerationProvider } from '../../src/native/adapters/http-generation-provider.js';
+import { retrieveMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
+import { eligibleMemorySnapshot, resolveMemoryEligibility } from '../../public/scripts/agents/memory/eligibility.js';
+import { memoryFixture, frozen } from '../memory-graph/hm1-fixture.js';
+import { informationActor } from './helpers/information-fixture.js';
+import fs from 'node:fs';
 
 let onLoad = async () => {}, onInfer = async () => {};
 const infer = jest.fn(async () => { await onInfer(); return { data: [1, 0] }; });
@@ -33,7 +41,8 @@ async function fixture(make, lane = 'session', maxJobs = 4) {
     const profile = { retrievalProfileId: createNativeId('retrievalProfile'), revision: createNativeId('revision'), displayName: 'Local inference fixture',
         mode: 'embed', source: 'transformers', model: 'fixture-local-model', endpoint: '', options: {} };
     const store = new NativeRetrievalPersistence({ engine: h.engine }); await store.commit(h.handle, profile);
-    const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle }, directories: h.dirs }; next(); });
+    const app = express(); app.use(express.json({ limit: '2mb' })); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle }, directories: h.dirs }; next(); });
+    app.use('/api/native/generation', createNativeGenerationRouter(() => ({ ...seeded, sessionCore: installed.core, ...project })));
     app.use(createRetrievalMiddleware(() => store, () => '', async () => ({ persistence: seeded.persistence, core: installed.core, ...project })));
     app.use(router); const server = app.listen(0, '127.0.0.1');
     const bank = async () => context.kind === 'project' ? (await project.agent.getTask(h.handle, context.projectId, context.taskId)).compute
@@ -42,6 +51,58 @@ async function fixture(make, lane = 'session', maxJobs = 4) {
         body: { nativeRetrievalRef: retrievalRef(profile), collectionId: 'local-work', computeContext: context },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
+
+test.each(['session', 'project'])('G06 repeated H0 retrieval and necessary generation share the original %s 32-job bank', async lane => {
+    const h = await fixture(makeTempFsEngineHarness, lane, 32);
+    const m = memoryFixture(frozen.cases[7], { native: true, key: 'g06-shared-' + h.base.session.sessionId });
+    try {
+        const limits = { ...h.limits, localWork: { maxJobs: 32, maxItems: 4096, maxInputBytes: 16777216 } };
+        const route = h.routes.find(row => row.role === (lane === 'session' ? 'role.narrator' : 'role.studio'));
+        await h.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { schemaVersion: 1,
+            allowedModelProfileIds: [h.model.modelProfileId], computeBudget: limits } });
+        const call = async (url, body) => {
+            const { signal: _signal, profile: _profile, ...data } = body;
+            const result = await h.request.post(url).send(data);
+            if (result.status !== 200) throw Object.assign(new Error('Original work refused'), { code: result.body.error });
+            return result.body;
+        };
+        const service = { admitCorpus: args => call('/api/native/generation/retrieval-work', args),
+            ...Object.fromEntries(Object.entries({ listHashes: 'list', insert: 'insert', query: 'query', deleteByHashes: 'delete' })
+                .map(([name, operation]) => [name, args => call('/' + operation, { ...args, nativeRetrievalRef: retrievalRef(h.profile) })])) };
+        const recall = async () => retrieveMemory(eligibleMemorySnapshot(await m.retrievalSnapshot(),
+            resolveMemoryEligibility(m.context, { requester: { kind: 'actor', id: informationActor } })), frozen.cases[7].queries[0].text,
+        { service, profile: { nativeRetrievalRef: retrievalRef(h.profile) }, computeContext: h.context,
+            countTokens: async text => Buffer.byteLength(text), budget: 2400 });
+        const fetchImpl = jest.fn(async () => new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }],
+            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }), { headers: { 'content-type': 'application/json' } }));
+        const host = new NativeGenerationHost({ ...h, sessionCore: h.installed.core,
+            providers: { 'provider.openai-compatible': createHttpGenerationProvider({ fetchImpl }) }, secretPort: { resolveSecret: async () => 'synthetic-key' } });
+        const { kind: _kind, ...generationContext } = h.context;
+        const generate = requestId => host.execute(h.handle, { ...generationContext, role: lane === 'session' ? 'narrator' : 'studio', requestId });
+        const first = await recall();
+        expect(first.metrics.corpusSize).toBe(256); expect(first.diagnostics).not.toContain('vector_unavailable');
+        expect((await h.bank()).localWork).toHaveLength(17);
+        await generate('g06-first');
+        const before = await h.bank(); expect(before.localWork).toHaveLength(22);
+        const warm = await recall(); expect(warm.reuse.status).toBe('valid_hit');
+        expect(warm.vectorInvocation).toMatchObject({ action: 'skip', reason: 'source_valid_base_coverage' });
+        expect(warm.sourceMessageIds).toContain('s08-020');
+        expect((await h.bank()).localWork).toHaveLength(25);
+        expect(load).toHaveBeenCalledTimes(5); expect(infer).toHaveBeenCalledTimes(257);
+        await generate('g06-second');
+        const bank = await h.bank(); expect(bank.localWork).toHaveLength(30);
+        expect(bank.localWork.slice(0, 22)).toEqual(before.localWork);
+        expect(bank.localWork.slice(22, 25).map(row => [row.kind, row.status])).toEqual([
+            ['memory_corpus', 'unknown'], ['memory_rank', 'unknown'], ['memory_pack', 'unknown']]);
+        expect(bank.attempts).toHaveLength(2); expect(fetchImpl).toHaveBeenCalledTimes(2);
+        const originalText = m.context.chat[0].mes; m.context.chat[0].mes = 'Edited source';
+        expect(() => warm.assertCurrent()).toThrow(); m.context.chat[0].mes = originalText;
+        await expect(recall()).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        const exhausted = await h.bank(); expect(exhausted.localWork).toHaveLength(32);
+        expect(exhausted.localWork.slice(0, 30)).toEqual(bank.localWork); expect(exhausted.attempts).toEqual(bank.attempts);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally { fs.rmSync(m.root, { recursive: true, force: true }); await h.cleanup(); }
+}, 60000);
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
     for (const lane of ['session', 'project']) test(`G05 Transformers ${kind}/${lane} actual index consumer charges local inference on the original bank`, async () => {
         const h = await fixture(make, lane);
