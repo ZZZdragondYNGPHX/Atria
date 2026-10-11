@@ -2247,3 +2247,17 @@ source `69ab3bd6e6f0116dad2a0b849adeb32af2a6c3bf` 已 push。真实完整 H0 消
 live两HTTP200、原各Run/Task两笔settled报数：Session input6317/output37/total7126，Project input1447/output78/total2028，合direct9154。完整正文人工非盲读：Session“借书那天…曾说过…如今是否还记得，尚无从知晓”，无轮次编号、新场景、角色行动或玩家决定；Project历史借书/承诺此前未履行在过去语境，当前认知未知。Project审阅“第二十轮”不当成Narrator风格退化，也不从无记录推断现时一直未还。有限时间/自主权项通过；n1/domain、不证明独立总体、全部四分层自然度/收益或全产品G06。
 
 原quota1688→1690连续append，carry保留；M8累计actual68/direct154731，原unknown2/upper17515与admitted fetch0仍在。m1/hm1原ledger hashes保持。金额按用户决定仍unknown，reasoning/cache/upstream/hiddenAttempts不由差值补造；原G06FAIL与完整验收缺口保持。main仍3ee1332ef，不merge/deploy。下一有限核对沿已有真实Gemini签名路径验证当前Task durable消费者；仅private受限probe，不把fixture capability自动发布到用户路径或跳过M3 gate。
+
+### 2026-10-11 G04/G06 — 真实 Gemini Task 冷恢复、公共历史与 Project 时间修复
+
+三个独立原H0-ZH-08/同gcli/gemini-3.8-flash有限组均默认preflight HTTP0，再显式live：task-cold-v1 两HTTP200、两不同实际Node、同一持久Task/原bank、签名parts键序完全相同、continue/supplied_checkpoint/loss none、最终第二checkpoint保存、无Project revision变化；reported330+857=1187、十local jobs settled。仅手动公开消息历史，不能把该项当Studio保存恢复。只读private核对一signature字符串不在public normalized或Task，未回显opaque。
+
+studio-task-cold-v1 走原runNativeStudioAgentTask、原Skill/repository/compute port、真实begin/tool/finish与StorageEngine，第一轮存公开tool-call/result，cold Node只传Task身份/dirs，读取原conversation继续，saved_task_checkpoint/loss none、两签名wire相同、最终public conversation四messages/两private checkpoints，十二local jobs settled，reported1368+1935=3303。协议项PASS，但完整正文“该承诺尚未履行”缺明确历史时点，保留时间语义不利，不能用后面当前记忆未知抵消；第一组类似含糊表述也不算严格当前履行断言项通过。
+
+根因是原Memory compiler policy只接typed Memory lane，普通Project Task的历史作品/用户引用没有相同解释规则。先在g01-substrate冻结有限修复；source `dfa4ccce39eb3787f1b53281ca5cdf2227ad4fb2`已push，新增原PromptCompiler精确task Source+role.studio条件，直接复用不变的memoryUsePolicy时间原则并区分当前Project/Task authoring state与World已发生事实；稳定segment/provenance native.project-source-use-policy.v1进入原binding/cache指纹。Narrator原policy文字/条件不变，不将用户引用提升system或新增状态writer/输出改写器/判断模型。
+
+9 distinct相关本地PASS（1新/8受影响旧）：compiler-v1新Project scope/role、引用data层、可重建与4旧Memory protocol checks；runtime-v1仅两FS/SQLite Gemini Task真正Host续接。最初regex未选Studio项，未计为已运行；studio-v2两实际失败均native_skill_execution_failed，旧fixture Host缺Skill repository/Extensions端口，补接同engine/owned目录后仅两v3 PASS（Studio saved restore/adaptive missing）。生产compiler lint PASS，P3整test lint两旧conditional-expect与HEAD完全相同；Runtime整test24旧conditional-expect保留（HEAD另含一旧indent，改动构造器修indent后不再报），没有假称整文件lint PASS。新增测试无新增lint诊断，diff PASS；未全仓/其它数据库/UI/M1/HM1重跑。
+
+只复验changed compiler的studio-task-cold-v2两真实发送，原意图/历史source/工具/流程不改（隔离IDs不同，不称严格因果pair）；实际wire含固定Project policy。reported1681+2302=3983，同Task十二local jobs/二model attempts settled，签名/冷恢复/公共历史全部保持。新完整正文明确“且当时该承诺未履行”，当前记忆/持有/意愿保持未知，有限时间项PASS；原不利结果不覆盖，n1不声明自由文本绝对保证或整体G06。当前generation实测producer为69ab3bd6+私有记录的compilerSourceHash，不能将最终提交HEAD写成该次实测HEAD。
+
+本组三组共六actual/direct8473；M8累计actual74/direct163204，原unknown2/upper17515及admission fetch0保持，原quota1690→1696连续append/carry不变，m1/hm1 ledger hashes保持。currency/cache/upstream/hiddenAttempts按用户答复unknown，不从total差值推reasoning。capability binding只为隔离可丢弃fixture的provisional声明以探测，未发布用户path verified或自动改变用户Role/Profile；实际Task consumer证据成立，不宣称所有会话Task/所有provider。完整G06/G05/HM2与M3前置仍pending，main未merge/deploy。

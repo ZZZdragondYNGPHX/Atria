@@ -345,3 +345,9 @@ source `1e148cd8c`：52相关本地distinct PASS（其中4增强边界必要复�
 最小出口为原Play调用链在scope拒绝时不markProvisional、不调用Turn端口，必要cleanup/error投影保持；原正常Memory准入/来源反例及可选故障路径仍工作。仅定向本地检查，无新真实模型、不宣称正文/风格改善。
 
 原Play调用链新增5/受影响既有5，共10 distinct PASS。before-v1的3个权限拒绝反例均FAIL，复用原共享scope错误协议后after-v1全部PASS；不markProvisional/不调用Turn端口并完成cleanup。只是本地消费者/错误传播证明，无新真实正文、费用或权限升级，producer见Record。
+
+## G06 当前有限修复：Project 历史来源的时间解释
+
+2026-10-11 完成条件先冻结：真实原 Studio loop/Task cold Gemini消费者已能恢复签名和公共历史，正文却将过去未履行写成无时点的“尚未履行”；原报告保留协议PASS/时间语义不利，不用当前记忆未知抵消它。只沿原PromptCompiler解释authority，在精确task Source+role.studio Route的现有固定规则段复用原Memory时间原则，说明历史source/用户作品引用是数据，当前Project/Task authoring事实不证明当前World已经发生。Narrator已有memory-use-policy正文与条件不变；不新增World/Source writer、输出改写器、自动判断调用、Role/预算authority或用户prompt热改。
+
+最小出口：typed Project Route才编译固定directive及stable segment/provenance；其它Source/role与原Memory数据角色不变。局部compiler与受影响Task durable/Studio restore/adaptive消费者检查，然后只在原H0/原Gemini路径复验改变compiler的实际Studio正文+冷恢复。任何新通过只归该producer/有限scope；原FAIL、费用unknown、尚未补齐的G06/G05矩阵及M3前置保持。
