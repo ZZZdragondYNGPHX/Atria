@@ -2305,3 +2305,29 @@ Start HEAD `55ad73d9d6c2b0616489fe81c99d19c94d045fe7`；End/Tested product HEAD 
 本地总13新增+8旧distinct PASS，必要复验不重复计：新增八native冷恢复、四missing checkpoint、一个compiler scope/数据角色/determinism；旧四Responses冷恢复、一个原public summary、一个Project policy、work_quota和plain Session无Task权限各一。production compiler、Task测试/worker lint和git diff --check通过；P3文件两处旧jest/no-conditional-expect与HEAD相同，无新增lint问题，不冒称整文件lint PASS。新增scope测试fixture使用原source身份，不扩产品schema。未运行全仓库/新M1/HM1/浏览器回归，未生成测试基础设施或提交私有raw/keys/cache。
 
 本组新增四实际generations/direct3881；累计M8 actual87/direct221710。原unknown2/upper17515及admission fetch0保持单列；原quota1705→1709连续append、carry332/原时间不改，M1/HM1 ledger hashes保持。金额、上游映射、provider cache和收益继续unknown，用户已确认保留unknown，不重复询问计价。Anthropic真实路径、Session missing-checkpoint reset、Provider native compaction/copy仍没有本组实际支持证据；完整G06/M8/HM2与M3前置保持。source/docs按原授权push，main不merge/deploy，后续真实质量/费用支持矩阵与既有依赖不能由有限协议PASS替代。
+
+### 2026-10-12 G05/G06 — 同 bank 重复召回争用复现与基础覆盖 Invocation
+
+恢复核对source `84fca4a73`、docs `b881ae982`均干净，按HANDOFF→Plan index→G01有限清单→最新Record续接。source最终 `5a80e1563b1e9db4150da98d0096bdc61704d3f9` 已push并核对远端。没有重跑已完成Session Task协议组、M1/HM1或全仓检查，没有子agent、新chat、Goal或main集成。
+
+沿既有Transformers/local-work测试fixture，实际Native corpus准入、middleware/Vectra与Host，原合成H0-ZH-08/256合法corpus、受控ONNX输出与生成响应，外部API零。首次before-v1因fixture默认100KiB JSON上限拒绝corpus，改原fixture请求上限为2MiB后before-v2真实复现：冷检索17local jobs+第一Host5=22，暖检索9=31，第二Host只准入route_resolve到32，context_build被原bank拒绝；第二模型attempt未发生，第一笔settled及原成本保持。这将此前跨报告推算收敛为一个有限本地故障，不称已在真实ONNX/真实第二外部生成中复现。
+
+最小修复只扩原memoryInvocationDecision的vector lane：已有原localWork准入、memoryCorpusReuse精确source authority valid_hit时，重新执行已准入的lexical/typed基础排序和实际token装包；已装包的合法来源具备当前请求的基础覆盖时选source_valid_base_coverage，跳过重复可选hash/vector/index。承诺提示复用原memorySemanticHints，位置/持有按原typed predicate；因果请求不以此宣称覆盖。冷/失效/无证明、装包后无所需证据、显式rebuild和未计量旧路径保持原可选路径及authority拒绝。原rerank决策、来源/Information/Actor/时点/Branch守卫和后续Host currentness不删；没有缓存正文/查询排名、伪造向量或新budget。该决定进入原recall trace；原rank/pack成本保守unknown继续占用。没有扩大32-job schema、重置/拆bank或规定固定reserve；此有限规则也不保证任意连续请求必有额度。
+
+修复后Session/Project各沿同一原bank两次生成到30jobs：原17+5完整保留，第二召回3必要client jobs+第二Host5；无新pipeline/inference，所需s08-020仍入选。来源编辑后返回proof拒绝；第三召回只准入到32即在必要pack前拒绝，不能凭复用挪走旧成本。after-v1/v2的单Session出口通过；扩大到两入口的after-v3因fixture把kind:undefined传给Host的JSON hash失败，原日志保留，删除该非JSON字段后after-v4两入口通过，未改产品契约。
+
+最终30distinct相关checks PASS：两新增同bank入口、六新增Invocation冷/无本地额度/rebuild/覆盖缺口/因果/无证明反例，18受影响Hybrid既有检查和四原server HEAD/Task拒绝回归。失败与必要复验不重复计数。改动的两个production模块、两个test文件lint通过；首次indent两问题修正后仅受影响文件复验通过；main.js两处trace元数据用node --check通过，git diff --check通过。没有声称整份main.js lint或浏览器验收，也没有重复原11项Transformers已通过组。所有before/after/scope/graph日志仅private保存。
+
+### 2026-10-12 G06 — 原 H0 双入口基础/有效复用/规则三臂实际配对与换设备停止
+
+私有新runner `run-g06-base-reuse-invocation-h0.mjs` 默认preflight，append-only report已存在则拒绝；只读历史runner未执行。首次launch在模块导入前未设置config而退出，外部HTTP零，失败日志保留；前置设置后preflight完成六臂、每入口12local jobs/零模型attempt，原quota与M1/HM1 hashes保持。live显式opt-in随后沿原gcli.ggchan.dev/v1/gemini-3.8-flash生成六次，producer为干净source `5a80e156`。
+
+仅原H0-ZH-08、原query、原source-valid/Information合法投影，三选中来源s08-020/001/002映射真实Native Timeline；各入口三臂packet/evidence hash一致。Session沿未改style-v2精确system.style，Project沿原Task只读frame/tools=[]，三臂均fresh生成。每个入口的三臂共用一个原bank，初始声明maxRequests3/maxTokens64000、localWork32/4096/16MiB，不修改已存在原bank。base完整重算；reuse的准备/校验也在该bank内计3jobs，随后有效corpus复用；invocation配置原Transformers profile但合法基础覆盖满足而不启动vector工作。最终Session与Project各27local jobs（12client unknown、15server settled）、3settled模型attempt，逐臂累计8/19/27；无免费预热、旧账删除、额外retry/fallback/grader或跨入口借额度。跨入口是原Session与原Task各自owner，不将它们伪称一个bank。
+
+真实六HTTP200/direct reported11877：Session三臂1732/1730/1739，Project2332/2080/2264。Session三臂input1682、Project三臂input1721；reported total与input/output差异原样保存，不硬推reasoning/cache。逐臂elapsed约4.06–10.23s、检索约0.48–1.21s，reuse准备工作包含在外层elapsed/原bank中；n1/同H0/同model/顺序运行和controller未计量不能证明可靠延迟或净金额收益。原scope内World/Timeline hash保持，无实际模型写入。
+
+完整可见文本人工非盲核对：六条都没有把历史承诺升级成当前记忆/持有/意愿/履行，也未替玩家行动；Project三条历史/当前unknown有限项通过。Session reuse与invocation两条仍添加“港口的风平浪静”；真实fixture当前World baseline只有hp/location=harbor，没有weather支持，原style-v2已经禁止添加天气，故新增场景断言质量FAIL，不能用另一句unknown抵消。Session base有限事实项通过。没有独立盲评/总体质量晋升；旧所有不利输出保留。沿原作者style资源收敛受影响表达是下一可诊断方向，**尚未实施style-v3或发起其复验**；不预先认定必须全局禁止创作或用正文后处理制造PASS。
+
+本组新增实际generations6/direct11877；M8累计actual93/direct233587，原unknown2/upper17515与admission fetch0单列。原quota1709→1715连续append，carry{requests:332,at:1791460574562}保持，M1/HM1 ledger hashes保持。金额、上游/cache/隐含重试及净收益仍unknown；用户已确认暂无价格，不重复询问、不填零。完整G06/M8/HM2未验收，M3前置保持，未merge/deploy main。
+
+2026-10-12用户明确要求在合适边界停止并换设备。六臂live已完成且最终bank保存，核对没有本任务运行中的Node测试/付费请求；停止新增工程/API，补当前Record、Plan入口与唯一HANDOFF并推送docs。私有根 `E:/Dev/Atria-Private/hm1-20261010` 的新增runner、Document原raw/reports/logs/quota必须一并迁移，旧ZIP不含这些新增事实；不上传private/keys/cache。恢复后按HANDOFF当前路由继续已授权S/G，普通工程/复验无逐组审批；本次停止只因用户换设备要求。

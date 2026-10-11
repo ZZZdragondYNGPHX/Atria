@@ -25,7 +25,9 @@
 
 ## 当前有限剩余清单（2026-10-11）
 
-以下按 source `05f526fa8` 与 docs 当前 Record 收敛实际剩余依赖；后续历史 checkpoint 段落保留其当时状态。出口沿 delivery §8/§8.2、model-routing §7/§8 与 compute-policy §3/§4，不把未启用的研究选项扩为本轮必做。
+> 当前状态更新：2026-10-12；保留既有入口锚点。
+
+以下按 source `5a80e156` 与 docs 当前 Record 收敛实际剩余依赖；后续历史 checkpoint 段落保留其当时状态。出口沿 delivery §8/§8.2、model-routing §7/§8 与 compute-policy §3/§4，不把未启用的研究选项扩为本轮必做。
 
 | 有限条目 / 正式阶段 | 当前实际消费者与缺口 | 下一动作与有限出口 | 状态 |
 | --- | --- | --- | --- |
@@ -33,8 +35,11 @@
 | Session fork/restore 与 compaction — G02/G03/G04/G05 | `804b088ae` 已验真实 fork/restore；`3cebec8f7` 已接 Responses 原 Session Task 有界摘要/一次 adaptive reset、公开来源与配置版本、原费用及冷 epoch | 已交付有限出口不重做；Provider native safe-copy/compaction须已有精确支持证据，本组不发送其字段；FS补偿不声明中途进程退出跨文件原子性 | 有限本地出口已交付；真实 native compaction 未verified |
 | 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；`bc31bf963` 已接原 Native Narrator 初始 inventory/pin/always-load；`49036006a` 已接scoped Hybrid corpus/reuse入口unknown工作；`f3f967cbd` 已接client hash/rank/packing原unknown工作；`a63f21054` 已接Studio原Task Skill准备/工具；legacy无原Run/Task consumer入口和开端source/config读取仍明确有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | 所选有限 G05 工程出口完成；未计量边界见下表 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 所选本地工程出口完成；真实收益待G06 |
+| 同 bank 重复召回与必要生成 — G05/G06 | 本地原 H0 256 合法 corpus 复现 17 检索+5 Host+9 暖检索后，第二 Context build 被32-job bank拒绝；`5a80e156` 沿原 Invocation 用精确 source-valid corpus 和实际已装包的基础证据选择跳过重复可选 vector/hash/index | Session/Project 两次生成各30 jobs，原成本保留；冷/失效来源、覆盖缺口、显式rebuild、无本地限额维持原路径。此有限修复不保证任意连续调用必有余额，也不引入固定reserve | 有限所选修复及30相关检查通过；真实基础/复用/规则三臂见最新Record |
 | 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 真实质量仍FAIL；语义修复后沿原连接最小复验 |
 | 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
+
+原 H0 双入口基础/有效 corpus 复用/规则 Invocation 三臂已合法实际消费同入口的同一32-job bank（各27 jobs、3 settled model attempts），来源与packet逐臂一致，所有正文fresh生成。计入同bank的预热/校验开销不删除；这不是Provider cache命中或净费用收益。新6输出中Session两条添加了无当前World依据的“港口的风平浪静”，保留质量FAIL，沿原作者style资源做受影响诊断；Project三条只读历史/当前unknown有限项通过。完整G06/M8/HM2尚未验收，M3前置保持；货币及上游/cache仍unknown。
 
 ## 当前有限 G04/G06：Native Session 声明 Task 的消息协议冷恢复
 
