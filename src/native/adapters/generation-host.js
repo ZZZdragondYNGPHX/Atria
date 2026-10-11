@@ -926,7 +926,9 @@ export class NativeGenerationHost {
         let computeLimits = null;
         let readSkill;
         let discardSessionTaskExecution;
-        const service = new GenerationService({ resolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
+        const budgetedResolver = { resolve: request => localWork('route_resolve', { resolved: { effectiveExecutionPolicy: route.executionPolicy,
+            pathFingerprint: hashNativeDocument(route) } }, () => resolver.resolve(request), { route, request }), provider: id => resolver.provider(id) };
+        const service = new GenerationService({ resolver: budgetedResolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
             providerFor: (id, resolved) => {
                 const baseProvider = resolver.provider(id);
                 const provider = (projectTaskEvidence || sessionTaskEvidence) && this.persistence._engine && baseProvider.withRuntimeCheckpointStore

@@ -13,7 +13,7 @@ const argumentsWire = '{\n "path" : "ref.md", "name":"guide", "limit":1, "offset
 const reasoning = { type: 'reasoning', encrypted_content: 'PRIVATE-SESSION-SKILL' };
 const tool = { type: 'function_call', call_id: 'skill-1', name: 'atri_skill_read', arguments: argumentsWire };
 const final = { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Final fresh prose.' }] };
-async function fixture(make, mode, maxJobs = 11, maxInputBytes = 1048576) {
+async function fixture(make, mode, maxJobs = 13, maxInputBytes = 1048576) {
     const h = await make(), wires = []; let onRead = async () => {}, output = round => round === 1 ? [reasoning, tool] : [final], status = () => 200;
     const server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; wires.push(JSON.parse(raw));
@@ -52,12 +52,12 @@ function alwaysLoad(f) {
 }
 const originalSkillBank = async f => Object.values((await f.core.runs.status(f.handle, f.request.sessionId))?.operations ?? {}).find(row => row.compute)?.compute;
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
-    test(`G05 initial Skill ${kind} actual inventory pin always-load share original seven jobs`, async () => {
-        const f = await fixture(make, 'active_execution', 7);
+    test(`G05 initial Skill ${kind} actual inventory pin always-load share original eight jobs`, async () => {
+        const f = await fixture(make, 'active_execution', 8);
         try {
             alwaysLoad(f); const result = await f.host.execute(f.handle, f.request);
             const bank = await originalSkillBank(f);
-            expect(bank.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'skill_load', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
+            expect(bank.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'skill_load', 'route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(bank.localWork.every(row => row.status === 'settled' && row.usage.outcome === 'completed')).toBe(true);
             expect(result.routing.compute.localWork).toEqual(bank.localWork);
             expect(f.inventory).toHaveBeenCalledTimes(1); expect(f.pin).toHaveBeenCalledTimes(1); expect(f.readFile).toHaveBeenCalledTimes(1);
@@ -91,7 +91,7 @@ test('G05 initial Skill input quota refuses inventory before the first repositor
     } finally { await f.cleanup(); }
 });
 test.each(['inventory', 'pin', 'load', 'cancel_load', 'head_change'])('G05 initial Skill %s retains failed or cancelled admission and never sends', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 7), controller = new AbortController();
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 8), controller = new AbortController();
     try {
         alwaysLoad(f);
         if (scenario === 'inventory') f.inventory.mockRejectedValue(new Error('Synthetic inventory failure'));
@@ -121,7 +121,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.readFile.mock.calls[0][0]).toMatchObject({ name: 'guide', path: 'ref.md', offset: 2, limit: 1 });
             const ledger = Object.values((await f.core.runs.status(f.handle, f.request.sessionId)).operations).find(row => row.compute).compute;
             expect(ledger.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
-            expect(ledger.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'context_build', 'prompt_compile', 'generation_count', 'generation_render', 'skill_read', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
+            expect(ledger.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render', 'skill_read', 'route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(JSON.stringify(result)).not.toContain('PRIVATE-SESSION-SKILL');
             expect((await f.core.load(f.handle, f.request.sessionId)).timeline).toEqual(f.base.timeline);
             expect(onChunk.mock.calls.map(([chunk]) => chunk.text)).toEqual(['Final fresh prose.']);
@@ -129,7 +129,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
     });
 }
 test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops the next round and keeps original observed cost', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', scenario === 'work_quota' ? 6 : 10), controller = new AbortController(), onChunk = jest.fn();
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', scenario === 'work_quota' ? 7 : 12), controller = new AbortController(), onChunk = jest.fn();
     try {
         f.onRead(async () => {
             if (scenario === 'cancel_read') controller.abort();
@@ -140,7 +140,7 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops
         const cost = scenario === 'head_change' ? control.retiredCompute : Object.values(control.operations).find(row => row.compute).compute;
         const observed = scenario === 'head_change' ? { models: cost.modelAttempts, tokens: cost.knownTotalTokens, jobs: cost.localJobs }
             : { models: cost.attempts.length, tokens: cost.attempts.reduce((n, row) => n + row.usage.totalTokens, 0), jobs: cost.localWork.length };
-        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 6 : 7 }); expect(f.wires).toHaveLength(1);
+        expect(observed).toEqual({ models: 1, tokens: 20, jobs: scenario === 'work_quota' ? 7 : 8 }); expect(f.wires).toHaveLength(1);
         expect(f.readFile).toHaveBeenCalledTimes(scenario === 'work_quota' ? 0 : 1);
         expect(onChunk).not.toHaveBeenCalled();
         let cancelledWork = null;
@@ -157,7 +157,7 @@ test.each(['cancel_read', 'head_change', 'work_quota'])('G05 Skill read %s stops
     } finally { await f.cleanup(); }
 });
 test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_settlement_change'])('G05 Skill read %s uses only original bounded read authority', async scenario => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 11, scenario === 'byte_quota' ? 131072 : 1048576); let spy;
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 13, scenario === 'byte_quota' ? 131072 : 1048576); let spy;
     try {
         if (scenario === 'file_list') f.output(round => round === 1 ? [reasoning, { ...tool, name: 'atri_skill_files', arguments: '{ "name": "guide" }' }] : [final]);
         if (scenario === 'byte_quota') f.output(round => round === 1 ? [reasoning, { ...tool, arguments: JSON.stringify({ name: 'guide', path: 'x'.repeat(262144) + '.md' }) }] : [final]);
@@ -168,7 +168,7 @@ test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_set
             const original = f.core.runs.settleLocalWork.bind(f.core.runs); let jobs = 0;
             spy = jest.spyOn(f.core.runs, 'settleLocalWork').mockImplementation(async (...args) => {
                 const result = await original(...args);
-                if (++jobs === 7) await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Skill cost settlement' });
+                if (++jobs === 8) await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Skill cost settlement' });
                 return result;
             });
         }
@@ -177,13 +177,13 @@ test.each(['file_list', 'read_failure', 'byte_quota', 'old_unbounded', 'post_set
         expect(f.readFile).toHaveBeenCalledTimes(['byte_quota', 'file_list'].includes(scenario) ? 0 : 1); expect(f.listFiles).toHaveBeenCalledTimes(scenario === 'file_list' ? 1 : 0);
         const control = await f.core.runs.status(f.handle, f.request.sessionId), cost = scenario === 'post_settlement_change' ? control.retiredCompute : Object.values(control.operations).find(row => row.compute)?.compute ?? {};
         const jobs = scenario === 'post_settlement_change' ? cost.localJobs : cost.localWork?.length ?? 0;
-        expect(jobs).toBe(scenario === 'old_unbounded' ? 0 : success ? 11 : scenario === 'byte_quota' ? 6 : 7);
+        expect(jobs).toBe(scenario === 'old_unbounded' ? 0 : success ? 13 : scenario === 'byte_quota' ? 7 : 8);
         const work = scenario === 'post_settlement_change' ? cost.localCompletedJobs : cost.localWork?.find(row => row.kind === 'skill_read')?.usage.outcome ?? null;
-        expect(work).toBe(scenario === 'post_settlement_change' ? 7 : scenario === 'read_failure' ? 'failed' : scenario === 'file_list' ? 'completed' : null);
+        expect(work).toBe(scenario === 'post_settlement_change' ? 8 : scenario === 'read_failure' ? 'failed' : scenario === 'file_list' ? 'completed' : null);
     } finally { spy?.mockRestore(); await f.cleanup(); }
 });
 test('G05 Skill read accepted fallback keeps one original ledger including failed primary work', async () => {
-    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 15);
+    const f = await fixture(makeTempFsEngineHarness, 'active_execution', 18);
     try {
         const root = await f.persistence.getRuntimeRoute(f.handle, f.routes[0].runtimeRouteId), budget = { ...root.executionPolicy.computeBudget, maxRequests: 3 };
         const fallback = { ...root, runtimeRouteId: createNativeId('runtimeRoute'), fallbackRouteRefs: [], executionPolicy: { ...root.executionPolicy, computeBudget: budget } };
@@ -193,7 +193,7 @@ test('G05 Skill read accepted fallback keeps one original ledger including faile
         const result = await f.host.execute(f.handle, { ...f.request, fallbackMode: 'automatic' });
         expect(result.skillRounds.map(row => row.runtimeRouteId)).toEqual([fallback.runtimeRouteId, root.runtimeRouteId]);
         const operations = Object.values((await f.core.runs.status(f.handle, f.request.sessionId)).operations).filter(row => row.compute);
-        expect(operations).toHaveLength(1); expect(operations[0].compute.localWork).toHaveLength(15);
+        expect(operations).toHaveLength(1); expect(operations[0].compute.localWork).toHaveLength(18);
         expect(operations[0].compute.localWork.filter(row => row.kind === 'skill_read')).toHaveLength(1);
         expect(operations[0].compute.attempts.map(row => row.status)).toEqual(['unknown', 'settled', 'settled']); expect(f.readFile).toHaveBeenCalledTimes(1); expect(f.wires).toHaveLength(3);
     } finally { await f.cleanup(); }

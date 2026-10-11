@@ -12,8 +12,9 @@ import { snapshotUser, restoreFromSnapshot } from '../../src/storage/migration/b
 import { setReadOnly } from '../../src/storage/read-only-mode.js';
 import { PromptCompiler } from '../../src/native/model-prompt-runtime/prompt-compiler.js';
 import { createNativeId } from '../../src/native/identity.js';
+import { RouteResolver } from '../../src/native/model-prompt-runtime/route-resolver.js';
 
-const limits = { maxRequests: 4, maxTokens: 64000, localWork: { maxJobs: 4, maxItems: 4, maxInputBytes: 1048576 } };
+const limits = { maxRequests: 4, maxTokens: 64000, localWork: { maxJobs: 5, maxItems: 5, maxInputBytes: 1048576 } };
 async function fixture(make, lane, budget = limits) {
     const h = await make(), seen = []; let status = () => 200;
     const server = createServer(async (req, res) => {
@@ -54,7 +55,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
         try {
             const result = await f.newHost().execute(f.handle, f.request);
             const ledger = await f.ledger();
-            expect(ledger.localWork?.map(row => row.kind)).toEqual(['context_build', 'prompt_compile', 'generation_count', 'generation_render']);
+            expect(ledger.localWork?.map(row => row.kind)).toEqual(['route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(ledger.localWork.every(row => row.usage.outcome === 'completed')).toBe(true); expect(ledger.attempts).toHaveLength(1);
             expect(result.routing.compute.localWork).toEqual(ledger.localWork); expect(f.seen).toHaveLength(1);
             await f.persistence.saveRuntimeRoute(f.handle, { ...f.routes[0], executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId] } });
@@ -70,7 +71,7 @@ test.each(['session', 'project'])('G05 lowering %s concurrent preparations canno
     const f = await fixture(makeTempFsEngineHarness, lane);
     try {
         const replies = await Promise.allSettled([1, 2].map(n => f.newHost().execute(f.handle, { ...f.request, requestId: 'concurrent-' + n })));
-        const ledger = await f.ledger(); expect(ledger.localWork).toHaveLength(4);
+        const ledger = await f.ledger(); expect(ledger.localWork).toHaveLength(5);
         expect(replies.filter(row => row.status === 'fulfilled').length).toBeLessThanOrEqual(1); expect(f.seen.length).toBeLessThanOrEqual(1);
         expect(ledger.attempts).toHaveLength(f.seen.length); expect(ledger.localWork.every(row => row.status === 'settled')).toBe(true);
     } finally { await f.cleanup(); }
@@ -101,7 +102,7 @@ test.each(['count_failure', 'render_failure', 'cancel', 'head_change', 'task_cha
         }
         const observed = scenario === 'head_change' ? { jobs: ledger.localJobs, outcome: ledger.localFailedJobs ? 'failed' : 'unknown' }
             : { jobs: ledger.localWork.length, outcome: ledger.localWork.at(-1).usage.outcome };
-        expect(observed).toEqual({ jobs: scenario === 'render_failure' ? 4 : 3, outcome: scenario === 'cancel' ? 'cancelled' : 'failed' });
+        expect(observed).toEqual({ jobs: scenario === 'render_failure' ? 5 : 4, outcome: scenario === 'cancel' ? 'cancelled' : 'failed' });
         expect(calls).toBe(scenario === 'render_failure' ? 2 : 1); expect(f.seen).toEqual([]);
     } finally { await f.cleanup(); }
 });
@@ -122,15 +123,15 @@ test('G05 lowering readonly preview leaves original ledger empty while actual ex
         await expect(f.newHost().execute(f.handle, f.request)).rejects.toThrow(); expect(count).toBe(1); expect(await f.ledger()).toBeUndefined();
     } finally { setReadOnly(false); await f.cleanup(); }
 });
-test.each([4, 5])('G05 lowering retry shares %i jobs and retains unknown first send without hiding render work', async maxJobs => {
+test.each([5, 6])('G05 lowering retry shares %i jobs and retains unknown first send without hiding render work', async maxJobs => {
     const f = await fixture(makeTempFsEngineHarness, 'session', { ...limits, localWork: { ...limits.localWork, maxJobs, maxItems: maxJobs } });
     try {
         f.status(round => round === 1 ? 503 : 200);
         await f.persistence.saveRuntimeRoute(f.handle, { ...await f.persistence.getRuntimeRoute(f.handle, f.routes[0].runtimeRouteId), policy: { ...f.routes[0].policy, maxRetries: 1 } });
         const result = await f.newHost().execute(f.handle, f.request).then(value => ({ value }), error => ({ error }));
-        const ledger = await f.ledger(); expect(ledger.localWork.map(row => row.kind)).toEqual(['context_build', 'prompt_compile', 'generation_count', 'generation_render', ...maxJobs === 5 ? ['generation_render'] : []]);
-        expect(ledger.attempts.map(row => row.status)).toEqual(['unknown', ...maxJobs === 5 ? ['settled'] : []]); expect(f.seen).toHaveLength(maxJobs === 5 ? 2 : 1);
-        expect(result.error?.code ?? null).toBe(maxJobs === 4 ? 'native_generation_budget_exhausted' : null);
+        const ledger = await f.ledger(); expect(ledger.localWork.map(row => row.kind)).toEqual(['route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render', ...maxJobs === 6 ? ['generation_render'] : []]);
+        expect(ledger.attempts.map(row => row.status)).toEqual(['unknown', ...maxJobs === 6 ? ['settled'] : []]); expect(f.seen).toHaveLength(maxJobs === 6 ? 2 : 1);
+        expect(result.error?.code ?? null).toBe(maxJobs === 5 ? 'native_generation_budget_exhausted' : null);
     } finally { await f.cleanup(); }
 });
 test.each(['session', 'project'])('G05 lowering %s changed after settlement keeps completed cost and never sends', async lane => {
@@ -154,13 +155,13 @@ test.each(['session', 'project'])('G05 lowering %s changed after settlement keep
 
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
     test.each(['session', 'project'])(`G05 preparation ${kind} %s denies compilation before compiler work`, async lane => {
-        const f = await fixture(make, lane, { ...limits, localWork: { ...limits.localWork, maxJobs: 1, maxItems: 1 } });
+        const f = await fixture(make, lane, { ...limits, localWork: { ...limits.localWork, maxJobs: 2, maxItems: 2 } });
         const compile = jest.spyOn(PromptCompiler.prototype, 'compile');
         try {
             await expect(f.newHost().execute(f.handle, f.request)).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
             expect(compile).not.toHaveBeenCalled(); expect(f.seen).toEqual([]);
             const bank = await f.ledger();
-            expect(bank.localWork).toHaveLength(1); expect(bank.localWork[0]).toMatchObject({ kind: 'context_build', status: 'settled', usage: { outcome: 'completed' } });
+            expect(bank.localWork).toHaveLength(2); expect(bank.localWork[1]).toMatchObject({ kind: 'context_build', status: 'settled', usage: { outcome: 'completed' } });
             expect(bank.attempts).toEqual([]);
         } finally { compile.mockRestore(); await f.cleanup(); }
     });
@@ -171,7 +172,7 @@ test.each(['session', 'project'])('G05 preparation %s actual invalid projection 
         f.transform(provider => ({ ...provider, countTokens: count }));
         await expect(f.newHost().execute(f.handle, { ...f.request, prompt: { stageIds: ['stage.missing'] } })).rejects.toThrow();
         const bank = await f.ledger(); expect(bank.localWork.map(row => [row.kind, row.usage.outcome])).toEqual([
-            ['context_build', 'completed'], ['prompt_compile', 'failed'],
+            ['route_resolve', 'completed'], ['context_build', 'completed'], ['prompt_compile', 'failed'],
         ]);
         expect(count).not.toHaveBeenCalled(); expect(f.seen).toEqual([]); expect(bank.attempts).toEqual([]);
     } finally { await f.cleanup(); }
@@ -190,7 +191,7 @@ test.each(['session', 'project'])('G05 preparation %s cancellation during compil
             await new Promise(resolve => setTimeout(resolve, 10));
         }
         expect(bank.localWork.map(row => [row.kind, row.usage.outcome])).toEqual([
-            ['context_build', 'completed'], ['prompt_compile', 'cancelled'],
+            ['route_resolve', 'completed'], ['context_build', 'completed'], ['prompt_compile', 'cancelled'],
         ]);
         expect(bank.attempts).toEqual([]); expect(f.seen).toEqual([]);
     } finally { compile.mockRestore(); await f.cleanup(); }
@@ -200,18 +201,20 @@ test.each(['session', 'project'])('G05 preparation %s changed after Context sett
     const original = owner.settleLocalWork.bind(owner), compile = jest.spyOn(PromptCompiler.prototype, 'compile');
     const settle = jest.spyOn(owner, 'settleLocalWork').mockImplementation(async (...args) => {
         const receipt = await original(...args);
-        if (lane === 'session') await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Context build' });
-        else await f.agent.setPlan(f.handle, f.request.projectId, f.request.taskId, { summary: 'Changed Context anchor', steps: [{ id: 'read', title: 'Read', impact: 'low' }] });
+        if (receipt.kind === 'context_build') {
+            if (lane === 'session') await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed after Context build' });
+            else await f.agent.setPlan(f.handle, f.request.projectId, f.request.taskId, { summary: 'Changed Context anchor', steps: [{ id: 'read', title: 'Read', impact: 'low' }] });
+        }
         return receipt;
     });
     try {
         await expect(f.newHost().execute(f.handle, f.request)).rejects.toThrow();
         const cost = lane === 'session' ? (await f.core.runs.status(f.handle, f.request.sessionId)).retiredCompute : await f.ledger();
-        expect(lane === 'session' ? cost.localCompletedJobs : cost.localWork.filter(row => row.usage.outcome === 'completed').length).toBe(1);
+        expect(lane === 'session' ? cost.localCompletedJobs : cost.localWork.filter(row => row.usage.outcome === 'completed').length).toBe(2);
         expect(compile).not.toHaveBeenCalled(); expect(f.seen).toEqual([]);
     } finally { settle.mockRestore(); compile.mockRestore(); await f.cleanup(); }
 });
-test.each([4, 8])('G05 preparation accepted fallback keeps original %i-job allowance and charges each Context/Prompt', async maxJobs => {
+test.each([5, 10])('G05 preparation accepted fallback keeps original %i-job allowance and charges each Context/Prompt', async maxJobs => {
     const f = await fixture(makeTempFsEngineHarness, 'session', { ...limits, localWork: { ...limits.localWork, maxJobs, maxItems: maxJobs } });
     try {
         const primary = await f.persistence.getRuntimeRoute(f.handle, f.routes[0].runtimeRouteId), fallbackId = createNativeId('runtimeRoute');
@@ -221,8 +224,54 @@ test.each([4, 8])('G05 preparation accepted fallback keeps original %i-job allow
         f.status(round => round === 1 ? 503 : 200);
         const result = await f.newHost().execute(f.handle, { ...f.request, fallbackMode: 'automatic' }).then(value => ({ value }), error => ({ error }));
         const bank = await f.ledger(); expect(bank.limits.localWork.maxJobs).toBe(maxJobs);
-        expect(bank.localWork.map(row => row.kind)).toEqual(Array.from({ length: maxJobs / 4 }, () => ['context_build', 'prompt_compile', 'generation_count', 'generation_render']).flat());
-        expect(bank.attempts.map(row => row.status)).toEqual(['unknown', ...maxJobs === 8 ? ['settled'] : []]);
-        expect(f.seen).toHaveLength(maxJobs === 8 ? 2 : 1); expect(result.error?.code ?? null).toBe(maxJobs === 4 ? 'native_generation_budget_exhausted' : null);
+        expect(bank.localWork.map(row => row.kind)).toEqual(Array.from({ length: maxJobs / 5 }, () => ['route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']).flat());
+        expect(bank.attempts.map(row => row.status)).toEqual(['unknown', ...maxJobs === 10 ? ['settled'] : []]);
+        expect(f.seen).toHaveLength(maxJobs === 10 ? 2 : 1); expect(result.error?.code ?? null).toBe(maxJobs === 5 ? 'native_generation_budget_exhausted' : null);
+    } finally { await f.cleanup(); }
+});
+test('G05 resolver input quota rejects before the original exact closure port reads', async () => {
+    const f = await fixture(makeTempFsEngineHarness, 'session', { ...limits, localWork: { ...limits.localWork, maxInputBytes: 1 } });
+    const resolve = jest.spyOn(RouteResolver.prototype, 'resolve');
+    try {
+        await expect(f.newHost().execute(f.handle, f.request)).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(resolve).not.toHaveBeenCalled(); expect(await f.ledger()).toBeUndefined(); expect(f.seen).toEqual([]);
+    } finally { resolve.mockRestore(); await f.cleanup(); }
+});
+test.each(['failure', 'cancel', 'head_change', 'task_change'])('G05 resolver %s retains real admitted closure work and never compiles or sends', async scenario => {
+    const lane = scenario === 'task_change' ? 'project' : 'session', f = await fixture(makeTempFsEngineHarness, lane), controller = new AbortController();
+    const original = RouteResolver.prototype.resolve, compile = jest.spyOn(PromptCompiler.prototype, 'compile');
+    const resolve = jest.spyOn(RouteResolver.prototype, 'resolve').mockImplementation(async function (request) {
+        if (scenario === 'failure') throw new Error('Synthetic original closure read failure');
+        const result = await original.call(this, request);
+        if (scenario === 'cancel') controller.abort();
+        if (scenario === 'head_change') await f.core.appendTimeline(f.handle, f.request.sessionId, { role: 'user', content: 'Changed during exact closure read' });
+        if (scenario === 'task_change') await f.agent.setPlan(f.handle, f.request.projectId, f.request.taskId, { summary: 'Changed during closure read', steps: [{ id: 'read', title: 'Read', impact: 'low' }] });
+        return result;
+    });
+    try {
+        await expect(f.newHost().execute(f.handle, f.request, controller.signal)).rejects.toThrow();
+        let bank;
+        for (let n = 0; n < 50; n++) {
+            bank = scenario === 'head_change' ? (await f.core.runs.status(f.handle, f.request.sessionId)).retiredCompute : await f.ledger();
+            if (bank?.localFailedJobs || bank?.localWork?.at(-1)?.status === 'settled') break;
+            await new Promise(resume => setTimeout(resume, 10));
+        }
+        expect(scenario === 'head_change' ? bank.localFailedJobs : bank.localWork.map(row => [row.kind, row.usage.outcome]))
+            .toEqual(scenario === 'head_change' ? 1 : [['route_resolve', scenario === 'cancel' ? 'cancelled' : 'failed']]);
+        expect(compile).not.toHaveBeenCalled(); expect(f.seen).toEqual([]);
+    } finally { resolve.mockRestore(); compile.mockRestore(); await f.cleanup(); }
+});
+test.each(['session', 'project'])('G05 resolver %s selected child role cannot create a fresh allowance or evade original tighter bank', async lane => {
+    const f = await fixture(makeTempFsEngineHarness, lane, { ...limits, localWork: { ...limits.localWork, maxJobs: 10, maxItems: 10 } });
+    try {
+        await f.newHost().execute(f.handle, f.request);
+        const childId = createNativeId('runtimeRoute');
+        await f.persistence.saveRuntimeRoute(f.handle, { ...f.routes[0], runtimeRouteId: childId, role: 'role.search',
+            executionPolicy: { schemaVersion: 1, allowedModelProfileIds: [f.model.modelProfileId], computeBudget: { ...limits, localWork: { ...limits.localWork, maxJobs: 32, maxItems: 32 } } } });
+        await f.newHost().execute(f.handle, { ...f.request, role: 'search', requestId: 'selected-child', routeRef: { scope: 'player', runtimeRouteId: childId } });
+        const bank = await f.ledger(); expect(bank.limits.localWork.maxJobs).toBe(10); expect(bank.localWork).toHaveLength(10);
+        expect(bank.localWork.filter(row => row.kind === 'route_resolve')).toHaveLength(2); expect(bank.attempts.map(row => row.usage.totalTokens)).toEqual([20, 20]);
+        await expect(f.newHost().execute(f.handle, { ...f.request, requestId: 'after-child' })).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(await f.ledger()).toEqual(bank); expect(f.seen).toHaveLength(2);
     } finally { await f.cleanup(); }
 });

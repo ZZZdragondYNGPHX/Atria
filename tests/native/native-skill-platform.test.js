@@ -61,7 +61,7 @@ describe('A5 Native Skill scopes', () => {
     });
 });
 
-async function projectSkillFixture(make, maxJobs = 10, maxInputBytes = 1048576) {
+async function projectSkillFixture(make, maxJobs = 11, maxInputBytes = 1048576) {
     const h = await make(), seen = [], server = createServer(async (req, res) => {
         let raw = ''; for await (const part of req) raw += part; seen.push(JSON.parse(raw));
         res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Read pinned guidance.' } }],
@@ -104,7 +104,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             await f.host.execute(f.handle, { ...f.computeContext, role: 'studio', requestId: 'same-task-generation', revision: f.computeContext.revision });
             const bank = await f.bank();
             expect(bank.localWork.map(row => row.kind)).toEqual(['skill_inventory', 'skill_pin', 'skill_load', 'skill_read', 'skill_read', 'skill_inventory',
-                'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
+                'route_resolve', 'context_build', 'prompt_compile', 'generation_count', 'generation_render']);
             expect(bank.localWork.filter(row => row.status === 'unknown')).toHaveLength(1);
             expect(bank.localWork.filter(row => row.status === 'settled').every(row => row.usage.cpuScope === 'process' && row.usage.outcome === 'completed')).toBe(true);
             expect(bank.attempts[0].usage.totalTokens).toBe(20); expect(f.seen).toHaveLength(1);
