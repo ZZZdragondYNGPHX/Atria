@@ -160,6 +160,13 @@ describe('A8 Native Studio Project Agent client', () => {
                 });
             }
             if (path === '/api/native/extensions/settings') return response({ value: { skills: {} } });
+            if (path === '/api/native/generation/skill-work') {
+                if (body.operation === 'list') return response([{ name: 'project-guidance', installedHash: 'c'.repeat(64), invocationMode: 'on-demand',
+                    description: 'Project-specific authoring guidance', scope: { kind: 'project', projectId } }]);
+                if (body.operation === 'pin') return response({ version: body.input.expectedHash });
+                if (body.operation === 'catalog') return response({ admitted: true });
+                return response({ content: 'Scoped guidance', totalLines: 1 });
+            }
             if (path === '/api/skills?scope=all') {
                 return response([{
                     name: 'project-guidance',
@@ -287,6 +294,13 @@ describe('A8 Native Studio Project Agent client', () => {
         let round = 0; const prompts = []; const reads = [];
         globalThis.fetch = jest.fn(async (url, options = {}) => {
             const path = String(url);
+            if (path === '/api/native/generation/skill-work') {
+                const body = JSON.parse(options.body);
+                if (body.operation === 'list') return response([{ ...always, invocationMode: 'always' }, { ...demand, invocationMode: 'on-demand' }]);
+                if (body.operation === 'pin') return response({ version: body.input.expectedHash });
+                reads.push(body);
+                return response({ content: body.input.path === 'ref.md' ? 'Supporting reference' : 'LOADED ALWAYS', totalLines: 205 });
+            }
             if (path === '/api/skills?scope=all') return response([always, demand, hidden]);
             if (path === '/api/native/extensions/settings') return response({ value: { skills: {
                 [skillEntryKey(always)]: { paths: { studio: 'always', narrative: 'off' } },
@@ -308,13 +322,15 @@ describe('A8 Native Studio Project Agent client', () => {
         expect(prompts[0].messages[0].content).toContain('reference-guide');
         expect(prompts[0].messages[0].content).not.toContain('agents-only');
         expect(reads).toHaveLength(2);
-        expect(reads[1]).toContain('global/reference-guide/file?path=ref.md&offset=201&limit=5');
+        expect(reads[1]).toMatchObject({ operation: 'read', input: { scope: { kind: 'global' }, name: 'reference-guide', path: 'ref.md', offset: 201, limit: 5, version: demand.installedHash },
+            computeContext: { kind: 'project', projectId, taskId, revision: baseRevision } });
         expect(prompts[1].messages.at(-1).content).toContain('Supporting reference');
     });
 
     test('Studio off paths cannot be read by naming them directly', async () => {
         const original = globalThis.fetch;
         globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url) === '/api/native/generation/skill-work' && JSON.parse(options.body).operation === 'list') return response([]);
             if (String(url) === '/api/native/extensions/settings') return response({ value: { skills: {
                 [skillEntryKey({ name: 'project-guidance', scope: { kind: 'project', projectId } })]: { paths: { agents: 'always' } },
             } } });
@@ -324,6 +340,28 @@ describe('A8 Native Studio Project Agent client', () => {
             return original(url, options);
         });
         await expect(runNativeStudioAgentTask({ projectId, taskId })).rejects.toThrow('not available');
+    });
+
+    test('G05 Studio Skill initial budget refusal never becomes empty inventory or a model request', async () => {
+        const original = globalThis.fetch;
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url) === '/api/native/generation/skill-work') return response({ error: 'native_generation_budget_exhausted' }, 400);
+            return original(url, options);
+        });
+        await expect(runNativeStudioAgentTask({ projectId, taskId })).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+        expect(calls.some(item => item.type === 'generate')).toBe(false);
+    });
+    test('G05 Studio Skill stopped Task read blocks the next model round instead of returning a tool result', async () => {
+        const original = globalThis.fetch; let models = 0;
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url) === '/api/native/generation/execute') {
+                models++; return response({ response: { toolCalls: [{ id: 'read', name: 'atri_agent_read_skill', args: { name: 'project-guidance' } }] }, snapshot: {} });
+            }
+            if (String(url) === '/api/native/generation/skill-work' && JSON.parse(options.body).operation === 'read') return response({ error: 'project_agent_task_closed' }, 400);
+            return original(url, options);
+        });
+        await expect(runNativeStudioAgentTask({ projectId, taskId })).rejects.toMatchObject({ code: 'project_agent_task_closed' });
+        expect(models).toBe(1);
     });
 
     test('Agent Commit is blocked by a human draft and a committed Task cannot be replayed after a list failure', async () => {

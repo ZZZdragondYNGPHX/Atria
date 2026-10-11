@@ -589,6 +589,13 @@ export class ProjectAgentService {
     settleLocalWork(handle, projectId, id, attemptId, usage) {
         return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage));
     }
+    assertLocalIndexCurrent(handle, projectId, id, revision, executionFingerprint) {
+        return this._operate(handle, projectId, id, async task => {
+            this._ensureDraftMutable(task);
+            if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
+            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+        }, { write: false });
+    }
     publishLocalIndex(handle, projectId, id, revision, executionFingerprint, publish) {
         return this._operate(handle, projectId, id, task => {
             this._ensureDraftMutable(task);

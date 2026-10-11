@@ -7,7 +7,8 @@ import { PromptPresetStore } from '../native/model-prompt-runtime/presets.js';
 import { PromptCandidateStore } from '../native/model-prompt-runtime/prompt-candidates.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
-import { admitMemoryCorpusWork } from '../native/retrieval-compute.js';
+import { admitMemoryCorpusWork, prepareRetrievalCompute } from '../native/retrieval-compute.js';
+import { executeProjectSkillWork } from '../native/skill-invocation.js';
 import { fields } from '../../public/shared/native-values.js';
 import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
 import { getStorageEngine } from '../storage/index.js';
@@ -287,6 +288,27 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         } catch (error) {
             const code = ['native_generation_budget_exhausted', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_retrieval_compute_invalid';
             res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
+        }
+    });
+    router.post('/skill-work', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        const controller = new AbortController();
+        res.once('close', () => { if (!res.writableEnded) controller.abort(); });
+        try {
+            fields(req.body, ['operation', 'input', 'computeContext'], 'Project Skill work');
+            if (req.body.computeContext?.kind !== 'project') throw new TypeError('Original Project Task required');
+            const host = getHost();
+            const compute = await prepareRetrievalCompute({ handle, context: req.body.computeContext, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
+                persistence: host.persistence, core: host.sessionCore, agent: host.agent, studio: host.studio });
+            const result = await executeProjectSkillWork({ ...req.body, compute, repository: host.skillRepository(handle),
+                projectId: req.body.computeContext.projectId, settings: req.body.operation === 'list' ? (await host.extensions.settings(handle)).value : undefined,
+                signal: controller.signal });
+            if (!res.destroyed) res.json(result);
+        } catch (error) {
+            const code = ['native_generation_budget_exhausted', 'generation_cancelled', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_skill_execution_failed';
+            if (!res.destroyed) res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
         }
     });
     router.delete('/configuration/:kind/:id', async (request, response) => {

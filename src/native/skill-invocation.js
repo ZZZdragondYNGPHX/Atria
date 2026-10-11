@@ -1,5 +1,46 @@
 import { resolveSkillInvocation, pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile, SKILL_TOTAL_LIMIT } from '../../public/shared/skill-invocation.js';
 import { checkCancellation } from './model-prompt-runtime/execution-utils.js';
+import { fields } from '../../public/shared/native-values.js';
+import { performance } from 'node:perf_hooks';
+
+// The existing Studio Task owns this work. A catalog consumes cached client
+// inventory; repository reads are measured only in this server process.
+export async function executeProjectSkillWork({ operation, input, compute, repository, settings, projectId, signal }) {
+    if (!['list', 'pin', 'read', 'files', 'catalog'].includes(operation)) throw Object.assign(new TypeError('Invalid Skill operation'), { code: 'native_skill_execution_invalid' });
+    const allowed = { list: ['context'], pin: ['scope', 'name', 'expectedHash'], read: ['scope', 'name', 'version', 'path', 'offset', 'limit', 'full'],
+        files: ['scope', 'name', 'version'], catalog: ['names'] };
+    fields(input, allowed[operation], 'Skill work input');
+    const kind = { list: 'skill_inventory', pin: 'skill_pin', read: input.full ? 'skill_load' : 'skill_read', files: 'skill_read', catalog: 'skill_inventory' }[operation];
+    const descriptor = { operation, input, ...(operation === 'list' ? { settings, projectId } : {}) };
+    checkCancellation(signal);
+    await compute.assertCurrent();
+    const ticket = await compute.beforeLocalWork({ items: 1, inputBytes: Buffer.byteLength(JSON.stringify(descriptor), 'utf8'), indexPath: 'studio.skill:' + operation, kind });
+    if (operation === 'catalog') {
+        await compute.settleLocalWork(ticket, null);
+        await compute.assertCurrent();
+        checkCancellation(signal); return { admitted: true };
+    }
+    const started = performance.now(), cpu = process.cpuUsage(); let outcome = 'failed', result;
+    try {
+        checkCancellation(signal); await compute.assertCurrent();
+        if (operation === 'list') result = resolveSkillInvocation(await repository.list({ scope: 'all' }),
+            { context: { ...input.context, projectId }, settings, path: 'studio' });
+        if (operation === 'pin') result = await repository.pin(input);
+        if (operation === 'read') {
+            const { full, ...options } = input;
+            if (!full) boundedSkillReadOptions(options);
+            result = boundSkillFile(await repository.readFile(options));
+        }
+        if (operation === 'files') result = { files: (await repository.listFiles(input)).map(file => ({ path: file.path, size: file.buffer.length, isBinary: file.isBinary })), version: input.version };
+        checkCancellation(signal); await compute.assertCurrent();
+        outcome = 'completed';
+    } catch (error) { if (signal?.aborted) outcome = 'cancelled'; throw error; } finally {
+        const used = process.cpuUsage(cpu);
+        await compute.settleLocalWork(ticket, { wallMs: performance.now() - started, cpuUserMicros: used.user, cpuSystemMicros: used.system, cpuScope: 'process', outcome });
+    }
+    checkCancellation(signal); await compute.assertCurrent();
+    return result;
+}
 
 export function isNarrativeSkillInvocation(role, taskPlan, runtime) {
     if (!taskPlan) return role === 'narrator';

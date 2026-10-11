@@ -1,6 +1,6 @@
 import { mountAgentEvolution } from './agent-evolution-panel.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
-import { resolveSkillInvocation, pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
+import { pinSkillEntries, skillReadPin, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
@@ -15,10 +15,6 @@ function clone(value) {
     return value == null ? value : structuredClone(value);
 }
 
-function requestHeaders() {
-    return globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
-}
-
 function scopePath(scope) {
     if (scope?.kind === 'global') return 'global';
     if (scope?.kind === 'project') return `project/${scope.projectId}`;
@@ -26,38 +22,22 @@ function scopePath(scope) {
     return null;
 }
 
-async function listNativeSkills(projectId, packageRef = null) {
-    const response = await fetch('/api/skills?scope=all', { headers: requestHeaders() });
-    if (!response.ok) return [];
-    const payload = await response.json();
-    const entries = Array.isArray(payload) ? payload : (payload?.entries || []);
-    const settingsResponse = await fetch('/api/native/extensions/settings', { headers: requestHeaders() });
-    if (!settingsResponse.ok) throw new Error('Skill settings unavailable');
-    const settings = (await settingsResponse.json()).value;
-    const resolved = resolveSkillInvocation(entries, { context: { projectId, ...packageRef }, settings, path: 'studio' });
-    const pinned = await pinSkillEntries(resolved, async opts => {
-        const response = await fetch(`/api/skills/${encodeURIComponent(scopePath(opts.scope))}/${encodeURIComponent(opts.name)}/pin`, {
-            method: 'POST', headers: { ...requestHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedHash: opts.expectedHash }),
-        });
-        if (!response.ok) throw new Error('Native Skill pin failed (' + response.status + ')');
-        return response.json();
-    });
-    return loadAlwaysSkills(pinned, opts => readNativeSkill(pinned, opts.name, { ...opts, full: true }));
+const projectSkillWork = (computeContext, operation, input, signal) => runtimeRequest('/skill-work', { method: 'POST', body: { computeContext, operation, input }, signal });
+async function listNativeSkills(projectId, packageRef, computeContext, signal) {
+    const resolved = await projectSkillWork(computeContext, 'list', { context: { projectId, ...packageRef } }, signal);
+    const pinned = await pinSkillEntries(resolved, opts => projectSkillWork(computeContext, 'pin', opts, signal));
+    return loadAlwaysSkills(pinned, opts => readNativeSkill(pinned, opts.name, { ...opts, full: true }, computeContext, signal));
 }
 
-async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false, full = false } = {}) {
+async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false, full = false } = {}, computeContext, signal) {
     if (!list && !full) boundedSkillReadOptions({ path, offset, limit });
     const entry = entries.find(item => item.name === name);
     if (!entry) throw new Error('Native Skill is not available in the current project scope: ' + name);
     const encodedScope = scopePath(entry.scope);
     if (!encodedScope) throw new Error('Native Skill does not use an A5 Native scope');
     const versionQuery = skillReadPin(entry);
-    const response = await fetch(
-        `/api/skills/${encodeURIComponent(encodedScope)}/${encodeURIComponent(entry.name)}/${list ? 'files?' + new URLSearchParams(versionQuery) : 'file?' + new URLSearchParams(full ? { path, ...versionQuery } : { path, offset, limit, ...versionQuery })}`,
-        { headers: requestHeaders() },
-    );
-    if (!response.ok) throw new Error('Native Skill read failed (' + response.status + ')');
-    const result = await response.json();
+    const result = await projectSkillWork(computeContext, list ? 'files' : 'read', { scope: entry.scope, name: entry.name, ...versionQuery,
+        ...(list ? {} : full ? { path, full: true } : { path, offset, limit }) }, signal);
     return list ? result : boundSkillFile(result);
 }
 
@@ -201,14 +181,15 @@ function toolResultMessage(call, result) {
     };
 }
 
-async function executeModelTool(projectId, taskId, call, skillEntries, attemptId) {
+async function executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, signal) {
     if (call.name === 'atri_agent_list_skills') {
+        await projectSkillWork(computeContext, 'catalog', { names: skillEntries.map(entry => entry.name) }, signal);
         return { skills: summarizeSkills(skillEntries) };
     }
     if (call.name === 'atri_agent_read_skill') {
-        return readNativeSkill(skillEntries, String(call.args?.name || ''), boundedSkillReadOptions(call.args));
+        return readNativeSkill(skillEntries, String(call.args?.name || ''), boundedSkillReadOptions(call.args), computeContext, signal);
     }
-    if (call.name === 'atri_agent_skill_files') return readNativeSkill(skillEntries, String(call.args?.name || ''), { list: true });
+    if (call.name === 'atri_agent_skill_files') return readNativeSkill(skillEntries, String(call.args?.name || ''), { list: true }, computeContext, signal);
     return nativeStudioClient.executeAgentTool(projectId, taskId, {
         name: call.name,
         args: call.args || {},
@@ -238,7 +219,8 @@ export async function runNativeStudioAgentTask({
             packageVersionId: preflight.packageVersion.packageVersionId,
         }
         : null;
-    const skillEntries = await listNativeSkills(projectId, packageRef);
+    const computeContext = { kind: 'project', projectId, taskId, revision: context.task.baseRevision };
+    const skillEntries = await listNativeSkills(projectId, packageRef, computeContext, abortSignal);
     const transcript = [...(context.task.conversation || messages)];
     if (!transcript.length) transcript.push({ role: 'user', content: context.task.intent });
     // This public policy hint only chooses history presentation. The Host still
@@ -301,7 +283,7 @@ export async function runNativeStudioAgentTask({
                         transcript.push(message); modelTranscript.push(message);
                         continue;
                     }
-                    const toolResult = await executeModelTool(projectId, taskId, call, skillEntries, attemptId);
+                    const toolResult = await executeModelTool(projectId, taskId, call, skillEntries, attemptId, computeContext, abortSignal);
                     const message = toolResultMessage(call, toolResult);
                     transcript.push(message); modelTranscript.push(message);
                     const task = toolResult?.taskId ? toolResult : await nativeStudioClient.getAgentTask(projectId, taskId);

@@ -49,6 +49,13 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
     if (!limits && profile.mode !== 'embed') fail('native_generation_budget_lane_denied');
     const sends = new WeakMap(), localJobs = new WeakMap();
     return {
+        async assertCurrent() {
+            if (base) {
+                if ((await core.load(handle, context.sessionId)).revision.revisionId !== context.revisionId) fail('native_generation_revision_conflict');
+                return core.runs.assert(handle, context.sessionId, 'inspect', context.revisionId);
+            }
+            return agent.assertLocalIndexCurrent(handle, context.projectId, context.taskId, context.revision, task.executionFingerprint);
+        },
         async publishLocalIndex(publish) {
             if (base) return core.runs.repo.withRunLock(handle, context.sessionId, async () => {
                 const current = await core.load(handle, context.sessionId);
