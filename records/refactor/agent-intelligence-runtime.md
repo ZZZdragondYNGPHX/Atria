@@ -2142,3 +2142,12 @@ producer source `1e148cd8c2d7b37562f7325d8b1728b7cde90b2d`（规则实现7acb07a
 本例有限时间语义项两条新输出PASS：recompute明确“过去借走/答应”，当前履行/持有/记忆不能断言；reuse将未履行限定“当时”，当前无进一步凭据。没有用“未知”一句抵消其他硬断言，也没有修改旧评分；旧report grades[]、至今/一直未履行确为真实正文FAIL。新文本仍偏审阅语言（凭据/实情/无法断言），不宣布风格自然度/完整G06、双入口、500轮持续RP或普遍自由文本保证通过。E2E15297/9385ms各n1，无TTFT/SLO/cache/净费用收益证明。
 
 执行诊断也保留：额外Python source等价audit默认GBK读取失败后PowerShell仍进入显式live；已有零发送preflight有效，随后UTF-8只读同源审计通过，无付费重跑。首版audit将fixture worldRevisionId与state一起比较而FAIL，改为核对确切state字段值并单列随机IDs后PASS，只修比较、不改正文判据/raw。后续gate显式UTF-8并检查exit code，失败不进入依赖live。完整M8/HM2仍未验收，main及远端均3ee1332ef，不合并/部署，按正式剩余出口继续。
+
+
+### 2026-10-11 G06 — 最终Package Play Recall权限拒绝保持
+
+source `5e5ca1ebdf03cc9e2a1c3df7a3ae9e38feb2afc7`，本组沿原Play→recallNativePackageTurnMemory→原Memory API接线，发现最外catch把已传播的权限/Run currentness/readonly拒绝抹为unavailable，继而markProvisional并调用Turn。只import并使用已有NATIVE_RETRIEVAL_SCOPE_ERRORS，不新增权限authority；普通optional service failure和budget exhaustion仍合法空Recall基础路径，取消/返回后assertCurrent不改。
+
+10 distinct PASS（5新增/5原）：g06-package-scope-before-v1.log 3新反例真实FAIL，revision_conflict/run_terminal/storage_read_only均被吞；g06-package-scope-after-v1.log全10 PASS。原Play函数及Information grant实际执行；服务拒绝是注入的原非秘密code，不冒称本组重新走外部/实际server权限裁决（下层真实server证据仍归原G05）。三拒绝均不markProvisional、不调用Turn port、cleanup和failed projection/ended均实际断言；另2新增保持optional service与budget fallback。5旧覆盖可见source准入/hidden/stale/foreign反例、memory:false gate/Host拒绝和正式Timeline事件幂等。生产1文件/test1文件ESLint、diff PASS，没有UI设计变更/浏览器/全仓/DB/M1/HM1或外部发送。原40/direct77955、2unknown/17515 upper、admission fetch0和真实质量边界保持。
+
+用户已明确最终范围为全部剩余S/G阶段。继续原正式依赖，有限G05边界不升全覆盖；G06双入口产品质量/成本/latency仍未齐，不能凭本组local检查称M8/HM2完成。M2只依M1，可在原实现/文档分支准备S11有限契约及实现，不等待M8；M3仍等待G06验收。所有推进保持唯一写入者、不建审批/线程/子agent/Goal工具、不合并main或部署。

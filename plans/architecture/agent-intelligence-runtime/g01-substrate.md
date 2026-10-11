@@ -337,3 +337,11 @@ countTokens、render及capture使用同一accepted policy，候选Route的声明
 2026-10-11 本有限组 source `3cebec8f7`：20 新distinct与71受影响既有checks通过；原两HTTP工具后第三count超窗→adaptive一次摘要→第三HTTP final，总60 direct tokens/15 settled local jobs。受控进程退出在摘要发布完成、reset job结算前，cold epoch总16jobs并保留旧charged。严格task/no local quota保留合法CPP；原model quota不发第三HTTP。FS补偿/SQLite rollback与最终Host cleanup时点及原始失败见[Record](../../../records/refactor/agent-intelligence-runtime.md)。真实外部quality/price/cache不升级。
 
 source `1e148cd8c`：52相关本地distinct PASS（其中4增强边界必要复验），原H0-ZH-08/原连接新2真实输出仅时间语义项PASS，direct4973、M8累计40/direct77955。原质量FAIL不覆盖；风格仍偏审阅，完整双入口G06/M8/HM2未验收。费用、TTFT/cache/upstream及其他不支持路径的unknown保留；详细wire/来源/费用与执行诊断唯一见Record。
+
+## 已交付有限 G06：Package Turn Recall 最终消费者保留权限拒绝
+
+实际Play→recallNativePackageTurnMemory的catch目前把原Memory服务的scope拒绝降成unavailable，允许后续provisional Turn。只复用原NATIVE_RETRIEVAL_SCOPE_ERRORS，使原权限/Run currentness/readonly拒绝穿透最终bridge；不新建错误/权限authority。普通可选服务不可用及budget exhaustion继续原空Recall基础路径，取消及成功返回后的source assertCurrent保持。
+
+最小出口为原Play调用链在scope拒绝时不markProvisional、不调用Turn端口，必要cleanup/error投影保持；原正常Memory准入/来源反例及可选故障路径仍工作。仅定向本地检查，无新真实模型、不宣称正文/风格改善。
+
+原Play调用链新增5/受影响既有5，共10 distinct PASS。before-v1的3个权限拒绝反例均FAIL，复用原共享scope错误协议后after-v1全部PASS；不markProvisional/不调用Turn端口并完成cleanup。只是本地消费者/错误传播证明，无新真实正文、费用或权限升级，producer见Record。
