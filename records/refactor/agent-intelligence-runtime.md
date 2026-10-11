@@ -2064,3 +2064,14 @@ Host在原GenerationService exact capability/policy核验后首次构建Context�
 实际最小相关验证共102 distinct PASS：`g05-context-prompt-after-v1.log` 27PASS/6FAIL，6FAIL均SQLite缺原生binding；仓库ignore-scripts默认导致npm ci未建binding，显式只rebuild better-sqlite3后内存SQL消费者通过，`g05-context-prompt-sqlite-after-v2.log`仅复验该6项PASS，未重跑27项。该suite含12新/21原受影响检查。`g05-context-prompt-regression-v1.log`三个suite实际受影响子集69PASS，其中背景maxJobs1/2/3/4的新增4项，其余65为受影响既有；Session summary/独立Node cold/fork/restore/Skill loop均计新实际工作，不靠修改产品maxJobs32上限。该次runner默认还纳入本机未启动MySQL/Postgres的8项，全部ECONNREFUSED，不声明它们通过；以后用已有disable flags仅跑本组FS/SQLite，不为此建立DB矩阵或重复69项。
 
 ESLint检查六个改动文件：五个无报错，generation-budget-p2两条jest/no-conditional-expect在原HEAD相同75/78行已存在；lintText对比原/新完整message相同、新增0，不修改无关旧用例。git diff --check PASS。原失败日志均保留。工作成功路径各4个Context/Prompt/count/render jobs；实际accepted fallback共享4/8-job原bank，失败primary的unknown send保留；后台拒绝1/2/3 jobs均HTTP0，合法4jobs只有1HTTP/原period1。所有新HTTP均loopback，外部请求0；原真实38/direct72982、unknown2/17515 upper/admission fetch0与G06 quality FAIL保持，不升级真实verified/货币或算法收益。继续初始Skill及已启用reuse/corpus准入，随后按正式依赖推进。
+
+
+### 2026-10-11 G05 — 原 Native Narrator 初始 Skill 工作准入
+
+source `bc31bf963666578a8ec308737107ea9831348ca9`，在上一Context/Prompt组已push并核对后继续；main保持。唯一合同见G01当前组。将原Host localWork函数提到Skill准备之前复用，render失败仍传原provider discard回调，没有新budget/lease registry；prepareNarrativeSkills的可选work端口在原inventory+scope/mode选择、每个immutable pin、每个always-load file读前分别charge `skill_inventory`/`skill_pin`/`skill_load`。首个冻结Route声明提供原accepted限额，准备fingerprint只代表其非秘密输入，不假称已解析gateway path；正式candidate后续照常消费accepted policy。原其它caller默认直读保持；现有scope覆盖/expectedHash/version和Skill32768/131072字符边界不改。
+
+`g05-initial-skill-after-v1.log` 26PASS/1FAIL（14新增中的13PASS及13原受影响PASS）：首次inputBytes拒绝已成功阻断list/pin/read，Run未创建，fixture helper直接读null.operations失败；可选读原Run后`g05-initial-skill-input-quota-after-v2.log`仅该项1PASS，没重复26项。`g05-initial-skill-regression-v1.log`26受影响既有PASS，三个suite实际子集：summary实际/cold、Task exact/cold/pending-read/失败、原count/render/stale清理及两个无新work端口的Skill消费者。总14新+39受影响既有=53 distinct PASS，未运行MySQL/Postgres及未重跑不受影响前组。ESLint5改动文件PASS；helper修正后只该文件复验lint，diff PASS。
+
+实际always-load fixture FS/SQLite各7 jobs（inventory/pin/load/context/prompt/count/render）、1loopback HTTP；关闭Route budget后同Run下一request仍在list前拒绝并保留原bank，不重建额度。1/2/3 jobs分别在pin/load/context前拒绝；inputBytes1在list前拒绝且无Run。inventory/pin/load错误各保留1/2/3失败工作，取消/HEAD变化保留3工作并HTTP0。On-demand工具2HTTP的原bank现在11jobs，fallback15jobs；Task normal14、summary25、cold history20、cold summary28（含重复进程初始准备和原charged reset），真实成本断言随新工作调整，产品32jobs上限不改。输入项/字节仅实际repository请求描述，inventory物理scan和响应bytes不是CPU/金额硬cap。Settings及初始source/package/config读取、其它Skill入口和已启用corpus/reuse工作准确pending；下一继续原Hybrid corpus/reuse准入。
+
+外部HTTP0，原quota/费用/失败与G06真实quality FAIL保持；loopback和synthetic repository port不升级真实verified、算法或货币收益。代码/合成测试/文档沿既定两个分支保存；不合并main、不部署、不上传私有文件。
