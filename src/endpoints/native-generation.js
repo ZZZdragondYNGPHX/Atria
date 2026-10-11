@@ -9,6 +9,7 @@ import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
 import { admitMemoryCorpusWork } from '../native/retrieval-compute.js';
 import { fields } from '../../public/shared/native-values.js';
+import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
 import { getStorageEngine } from '../storage/index.js';
 import { getUserDirectories } from '../users.js';
 import { readSecret, SECRET_KEYS, SecretManager } from './secrets.js';
@@ -279,13 +280,12 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
-            fields(req.body, ['computeContext', 'input'], 'Memory corpus work');
+            fields(req.body, ['computeContext', 'input', 'phase'], 'Memory work');
             const host = getHost();
-            res.json(await admitMemoryCorpusWork({ handle, context: req.body.computeContext, input: req.body.input,
+            res.json(await admitMemoryCorpusWork({ handle, context: req.body.computeContext, input: req.body.input, phase: req.body.phase,
                 persistence: host.persistence, core: host.sessionCore, agent: host.agent, studio: host.studio }));
         } catch (error) {
-            const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped',
-                'native_generation_budget_lane_denied', 'storage_read_only'].includes(error.code) ? error.code : 'native_retrieval_compute_invalid';
+            const code = ['native_generation_budget_exhausted', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_retrieval_compute_invalid';
             res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
         }
     });

@@ -202,7 +202,7 @@ describe('Memory OS hybrid retrieval', () => {
         expect(result.selected).toEqual(baseline.selected); expect(result.text).toBe(baseline.text);
         expect(result.evidence).toEqual(baseline.evidence);
         expect(service.rerank).toHaveBeenCalledTimes(1);
-        expect(result.metrics.work).toMatchObject({ serviceRequests: 2, rerankRequests: 1, costStatus: 'unknown' });
+        expect(result.metrics.work).toMatchObject({ serviceRequests: 4, rerankRequests: 1, costStatus: 'unknown' });
         expect(result.metrics.work.responseDataBytes).toBeGreaterThan(0);
     });
 

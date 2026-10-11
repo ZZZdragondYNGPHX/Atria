@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vectra from 'vectra';
 import express from 'express';
 import { createRetrievalMiddleware } from '../native/retrieval-execution.js';
+import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
 import { insertNativeIndex, queryNativeIndexes, purgeNativeIndex } from '../native/vector-index-work.js';
 import sanitize from 'sanitize-filename';
 
@@ -418,7 +419,7 @@ async function multiQueryCollection(directories, collectionIds, source, sourceSe
  */
 async function regenerateCorruptedIndexErrorHandler(req, res, error) {
     if (req.nativeRetrieval) {
-        const code = ['native_generation_budget_exhausted', 'native_generation_revision_conflict', 'native_generation_task_stopped', 'native_retrieval_compute_unavailable'].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
+        const code = ['native_generation_budget_exhausted', 'native_retrieval_compute_unavailable', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
         return res.status(code === 'native_generation_budget_exhausted' ? 429 : code === 'native_retrieval_compute_unavailable' ? 503 : 500).json({ error: code });
     }
     if (error instanceof SyntaxError && !req.query.regenerated) {

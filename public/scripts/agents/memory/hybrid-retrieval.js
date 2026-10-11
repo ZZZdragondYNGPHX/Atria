@@ -10,6 +10,7 @@ import { memoryQuerySeeds, memorySemanticHints } from './query-plan.js';
 import { memoryEvidenceGroups, memoryEvidenceRecord, memoryEvidenceHeader, composeMemoryCoverage } from './packing.js';
 import { memoryInvocationDecision } from './invocation-policy.js';
 import { memoryCorpusReuse } from './index-reuse.js';
+import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../native/retrieval-contracts.js';
 
 export const RETRIEVAL_DEFAULTS = Object.freeze({ tokenBudget: 2400, maxDepth: 2, maxEntities: 20,
     maxRelations: 30, topK: 30, maxResults: 20, rrf: 60,
@@ -309,7 +310,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
     sceneText = '', packing = 'coverage', computeContext = null, reuseDerived = true } = {}) {
     const work = { guardChecks: 0, guardMs: 0, documentsHashed: 0, hashReused: 0, hashMs: 0, serviceRequests: 0,
-        requestDataBytes: 0, responseDataBytes: 0, embeddingTextsRequested: 0, rerankRequests: 0 };
+        requestDataBytes: 0, responseDataBytes: 0, embeddingTextsRequested: 0, rerankRequests: 0, localAdmissions: 0, localMeteredAdmissions: 0 };
     const guard = () => {
         const begin = performance.now(); work.guardChecks++;
         try {
@@ -329,13 +330,17 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     };
     const started = performance.now();
     guard();
-    if (computeContext) {
+    const admitWork = async (phase, extra = {}) => {
+        if (!computeContext) return;
+        guard();
         if (typeof service?.admitCorpus !== 'function') throw Object.assign(new Error('Scoped Memory corpus admission unavailable'), { code: 'native_retrieval_compute_unavailable' });
-        const admission = await callService('admitCorpus', { computeContext, signal,
-            input: { key: snapshot.key, state: snapshot.state, chat: snapshot.chat, providers: snapshot.providers, eligibility: snapshot.eligibility, at } });
+        const admission = await callService('admitCorpus', { computeContext, signal, phase,
+            input: { key: snapshot.key, state: snapshot.state, chat: snapshot.chat, providers: snapshot.providers, eligibility: snapshot.eligibility, at, ...extra } });
         guard();
         if (admission?.admitted !== true) throw Object.assign(new Error('Scoped Memory corpus admission refused'), { code: 'native_retrieval_compute_unavailable' });
-    }
+        work.localAdmissions++; if (admission.metered) work.localMeteredAdmissions++;
+    };
+    await admitWork('corpus');
     const reused = reuseDerived ? memoryCorpusReuse(snapshot, at, () => buildMemoryCorpus(snapshot, at))
         : { corpus: buildMemoryCorpus(snapshot, at), fingerprints: null, decision: { status: 'miss', reason: 'manual_bypass' } };
     const corpus = reused.corpus;
@@ -357,9 +362,25 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         }
     }
     const corpusReady = performance.now();
+    // Admit necessary base work first. Optional index/rerank work may fail,
+    // but cannot consume the base path's already charged original allowance.
+    await admitWork('rank', { corpus, query, sceneText, existingStateText });
+    await admitWork('pack', { corpus, query, sceneText, corePacket, budget, packing });
     const diagnostics = [];
     let vectorIds = [];
-    if (service && profile && String(query).trim()) {
+    const vectorRequested = Boolean(service && profile && String(query).trim());
+    let vectorAdmitted = vectorRequested;
+    if (vectorRequested) {
+        try {
+            await admitWork('hash', { corpus, query, profileRef: profile.nativeRetrievalRef ?? null });
+        } catch (error) {
+            // Only optional budget exhaustion can fall back. Server scope/Task
+            // refusal remains decisive even if the local source guard is fresh.
+            if (error.code !== 'native_generation_budget_exhausted') throw error;
+            vectorAdmitted = false; diagnostics.push('vector_unavailable');
+        }
+    }
+    if (vectorAdmitted) {
         try {
             const collectionId = `memory_hybrid_v1_${await digest(JSON.stringify([snapshot.key, profile, snapshot.eligibility?.identity ?? null]))}`;
             guard();
@@ -432,10 +453,10 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             vectorIds = [...new Set((response?.metadata || []).filter(hit => valid.get(hit.id) === hit.fingerprint && typeof hit.fingerprint === 'string').map(hit => hit.id))];
         } catch (error) {
             guard();
-            if (error?.name === 'AbortError') throw error;
+            if (error?.name === 'AbortError' || NATIVE_RETRIEVAL_SCOPE_ERRORS.includes(error?.code)) throw error;
             diagnostics.push('vector_unavailable');
         }
-    } else diagnostics.push('vector_unconfigured');
+    } else if (!vectorRequested) diagnostics.push('vector_unconfigured');
     const vectorsReady = performance.now();
     const rankingStarted = performance.now();
     const result = rankMemory(query, corpus, vectorIds, { at, sceneText });
@@ -463,7 +484,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             invocation.outcome = 'completed';
         } catch (error) {
             guard();
-            if (error?.name === 'AbortError') throw error;
+            if (error?.name === 'AbortError' || NATIVE_RETRIEVAL_SCOPE_ERRORS.includes(error?.code)) throw error;
             diagnostics.push('rerank_unavailable');
             invocation.outcome = 'unavailable';
             invocation.stop = error.code || 'rerank_execution_failed';
@@ -512,6 +533,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, rankingMs, rerankMs, packingMs,
             proofMs: performance.now() - proofStarted, totalMs: performance.now() - started,
             work: { ...work, costStatus: work.embeddingTextsRequested || work.rerankRequests ? 'unknown' : 'not_requested',
+                localCostStatus: work.localAdmissions ? 'unknown' : 'not_requested',
                 byteMeasurement: 'service_data_json_utf8', timingMeasurement: 'elapsed_ms' } },
         providers: corpus.providers.map(provider => ({ providerId: provider.providerId, status: provider.status })), assertCurrent: guard };
 }

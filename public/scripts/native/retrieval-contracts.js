@@ -1,4 +1,10 @@
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
+// Scope refusals must survive the HTTP error projection. Optional provider or
+// budget failure cannot turn a stopped original authority into usable evidence.
+export const NATIVE_RETRIEVAL_SCOPE_ERRORS = Object.freeze(['native_generation_revision_conflict', 'native_generation_task_stopped',
+    'native_generation_budget_lane_denied', 'storage_read_only', 'native_run_dead', 'native_run_terminal', 'native_story_not_started',
+    'native_run_rewind_denied', 'native_run_mode_conflict', 'native_run_control_integrity', 'native_run_control_invalid',
+    'project_agent_task_closed', 'project_agent_review_locked', 'project_revision_conflict', 'project_agent_repair_limit']);
 // Player-owned retrieval resources. These are never portable Library content.
 export const RETRIEVAL_PROVIDERS = Object.freeze({
     embed: ['transformers', 'webllm', 'openai', 'cohere', 'jina', 'mistral', 'nomicai', 'togetherai', 'openrouter', 'electronhub', 'chutes', 'nanogpt', 'siliconflow', 'workers_ai', 'palm', 'vertexai', 'ollama', 'llamacpp', 'vllm', 'koboldcpp', 'extras'],

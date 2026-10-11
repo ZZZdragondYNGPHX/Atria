@@ -7,15 +7,18 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 // This is admission for the existing client corpus consumer, not a second
 // execution or source authority. Client CPU/elapsed is not server process usage.
-export async function admitMemoryCorpusWork({ handle, context, input, ...services }) {
-    fields(input, ['key', 'state', 'chat', 'providers', 'eligibility', 'at'], 'Memory corpus input');
+export async function admitMemoryCorpusWork({ handle, context, input, phase = 'corpus', ...services }) {
+    if (!['corpus', 'hash', 'rank', 'pack'].includes(phase)) fail('native_retrieval_compute_invalid');
+    const kind = { corpus: 'memory_corpus', hash: 'memory_hash', rank: 'memory_rank', pack: 'memory_pack' }[phase];
+    fields(input, ['key', 'state', 'chat', 'providers', 'eligibility', 'at', 'corpus', 'query', 'sceneText',
+        'profileRef', 'budget', 'packing', 'corePacket', 'existingStateText'], 'Memory work input');
     if (typeof input.key !== 'string' || !input.key || input.key.length > 4096 || !input.state || typeof input.state !== 'object'
         || Array.isArray(input.state) || !Array.isArray(input.chat)) fail('native_retrieval_compute_invalid');
     const inputBytes = Buffer.byteLength(JSON.stringify(input), 'utf8');
     if (inputBytes < 1 || inputBytes > 16777216) fail('native_retrieval_compute_invalid');
     const compute = await prepareRetrievalCompute({ handle, context, ...services,
-        profile: { mode: 'embed', purpose: 'memory.corpus.v1' } });
-    const ticket = await compute.beforeLocalWork({ items: 1, inputBytes, indexPath: input.key, kind: 'memory_corpus' });
+        profile: { mode: 'embed', purpose: 'memory.' + phase + '.v1' } });
+    const ticket = await compute.beforeLocalWork({ items: 1, inputBytes, indexPath: input.key, kind });
     // Retain the admitted upper bound even if the client never starts or exits.
     // No client-supplied metrics can assert trusted server process settlement.
     await compute.settleLocalWork(ticket, null);
