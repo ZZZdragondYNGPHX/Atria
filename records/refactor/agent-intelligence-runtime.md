@@ -2237,3 +2237,13 @@ source `69ab3bd6e6f0116dad2a0b849adeb32af2a6c3bf` 已 push。真实完整 H0 消
 批次修复后 full-h0-v3 成功：同原冻结H0-ZH-08 raw500/实际合法corpus256，真实 SourceLifecycle/Native Information eligibility、原 retrieveMemory、authenticated corpus admission/Native middleware/FS index与真实 ONNX模型，全程同一个Run/32-job bank。首次cold index+query 28702.50ms，后续warm有效复用1121.26ms；两次完整evidence hash/IDs相同，选中s08-020/008/089，原必需历史承诺覆盖。与无vector baseline选中020/001/002不同的两条filler不是质量晋升。atomic_evidence_unavailable仍报告，未猜测域外完整组；rerank未配置/额外生成零。
 
 实际最终26local jobs：六embedding_local批次覆盖258文本items（cold256+query1、warmquery1），八client corpus/rank/pack/hash admissions保守unknown、其余12 server jobs settled。warm query仍真实infer一次、核对远端索引与完整合法source，跳过256文档hash；两条n1 cold/warm不能当独立recompute/reuse分布，也不能把建索引/加载差值都算派生reuse收益或合算重叠process CPU。价格、client CPU、权重下载bytes与钱款仍unknown；原m1/hm1/quota hashes全部保持，gateway/M8 totals不变。Report pins为24dcb551加实际embedding/vectors文件hash，提交仅另去EOF空行，不能改写实测HEAD。整体G06质量/收益与M3前置仍pending；接下去只复验真实语义改变所影响的原双入口正文，不用新embedding名称宣布达标。
+
+### 2026-10-11 G06 — 真实 neural packet 的受影响双入口正文
+
+沿69ab3bd6已提交生产实现，full-h0-packet-v4仅为下一消费者所需补保存真实完整 text/evidence packet：前v3只有hash/IDs，不能以手工重建替代实际typed包。原失败、v3时延与账本不覆盖；v4新隔离Run仍32 jobs，实际全corpus索引+一次warm的26jobs/258texts保持，全部raw/typed packet在private。它是必要消费者材料捕获，非新的独立H0来源或晋升分布。
+
+新private opt-in neural-packet-prose runner默认preflight，两Native Host Snapshot/原Source映射通过、HTTP0后才显式live。原H0-ZH-08/原gcli/gemini-3.8-flash，仅因真实vector选择两条不同filler而复验long Session与Project各一个输出，没有重发已经通过的其它stratum。完整真实packet hash核对、三个selected source精确发布到新Native Timeline并映射source refs，Session实际500预载双消息轮/1005 Timeline，沿原Memory compiler guard与不变system.style-v2；Project原Task只读审阅/空tools。既有小bank失败与client admission unknown不因此转settled；该诊断读保存packet后另用各生成域的原bank，不宣称同Run端到端retrieval/generation计量。
+
+live两HTTP200、原各Run/Task两笔settled报数：Session input6317/output37/total7126，Project input1447/output78/total2028，合direct9154。完整正文人工非盲读：Session“借书那天…曾说过…如今是否还记得，尚无从知晓”，无轮次编号、新场景、角色行动或玩家决定；Project历史借书/承诺此前未履行在过去语境，当前认知未知。Project审阅“第二十轮”不当成Narrator风格退化，也不从无记录推断现时一直未还。有限时间/自主权项通过；n1/domain、不证明独立总体、全部四分层自然度/收益或全产品G06。
+
+原quota1688→1690连续append，carry保留；M8累计actual68/direct154731，原unknown2/upper17515与admitted fetch0仍在。m1/hm1原ledger hashes保持。金额按用户决定仍unknown，reasoning/cache/upstream/hiddenAttempts不由差值补造；原G06FAIL与完整验收缺口保持。main仍3ee1332ef，不merge/deploy。下一有限核对沿已有真实Gemini签名路径验证当前Task durable消费者；仅private受限probe，不把fixture capability自动发布到用户路径或跳过M3 gate。
