@@ -115,7 +115,7 @@ Expression 应接入这些真实输出路径。语音、Avatar 与远程 Agent �
 ## 8. 已有草稿与并行变更保护
 
 已有 docs worktree 中存在未提交的 `plans/feat/agent-experience-evolution/`，本轮只读取 index 以及当前调研需要的 baseline / decisions，未修改、暂存或提交。
-其入口提到的自动模式 / 三类候选选择不能替代本对话中的批准证据。它可作为 S01–S10 的设计输入，D1 决定整合方式后再处理。
+其入口提到的自动模式 / 三类候选选择不能替代正式架构决定。它可作为 S01–S10 的设计输入，D1 决定整合方式后再处理。
 本 Bundle 在从最新 origin/docs 创建的独立短期文档分支准备，避免覆盖该草稿。
 
 ## 9. D2：Generation / Routing / Sparse 接入复核

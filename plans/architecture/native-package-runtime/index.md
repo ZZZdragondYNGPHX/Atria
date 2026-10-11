@@ -30,7 +30,7 @@
 
 | 模块 | 唯一职责 | 依赖 |
 | --- | --- | --- |
-| [decisions.md](decisions.md) | 跨模块冻结边界、排除项与设计授权 | 用户已确认方向 |
+| [decisions.md](decisions.md) | 跨模块冻结边界、排除项与设计授权 | 已定方向 |
 | [research.md](research.md) | 定向研究、锁定基线、现有能力与缺口、代码入口 | 锁定源码证据 |
 | [authority-script.md](authority-script.md) | 领域契约、受限业务逻辑、State 归属、候选计算与正式提交 | decisions；Task 消费约束引用 context-generation |
 | [context-generation.md](context-generation.md) | 上下文派生、Knowledge、Prompt、模型任务与产物消费 | decisions；authority-script 的读授权和提交边界 |
@@ -94,7 +94,7 @@ S1 已冻结：Game Logic v3 可选 computation、复用固定模块编译与 Qu
 
 ## 实质变更记录
 
-- 2026-10-06：根据定向研究和用户确认方向建立正式 Plan Bundle；技术细节转入阶段设计，结束逐项方向确认。
+- 2026-10-06：根据定向研究和已定方向建立正式 Plan Bundle；技术细节转入阶段设计，结束逐项方向确认。
 - 2026-10-06：S0 完成；CP1（S3 后）、CP2（S5 后）和 CP3（S6 最终完成）用于组织结果记录，不构成当前停工或审批点。
 
 - 2026-10-06：S1 契约冻结，S2 固定领域计算，S3 动态上下文 / Knowledge / 真实 Task 消费已实施并完成 CP1 本地验证；停在 CP1，S4 尚未开始。

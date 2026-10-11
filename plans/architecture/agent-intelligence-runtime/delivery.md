@@ -18,7 +18,7 @@
 | M7 — 可学习后端 | S33–S34 | 经许可导出轨迹，接入优化 / 训练并重新评测结果 | 数据与 adapter 有真实消费者；产物重新通过晋升门槛 |
 | M8 — 生成与计算基础 | G01–G06 | 创作 / Behavior 与 Context 分层、按预算解析模型 / 网关、稀疏调用与全部费用可检查 | 双入口真实请求消费；迁移与撤回；可用 gateway integration 与质量—成本对照 |
 
-用户已确认先完成 M1，并在首批包含有预算与回滚约束的局部自动启用；首批详细设计见 [m1-evolution.md](m1-evolution.md)。
+先完成 M1，首批包含有预算与回滚约束的局部自动启用；首批详细设计见 [m1-evolution.md](m1-evolution.md)。
 建议保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation；M3 开始前要求 G06 完成。M1 不等待 M8。S01–S10 工程链路已交付，S10 的原局部 authority / 有限预算 / 隔离评测 / publication / rollback / 双入口 UI 见 s10-evolution。真实六槽基线与六对比较保留，候选仍 ineligible；本轮假 provider 不证明实际质量 / 成本收益。下一工作补齐 M1 验收证据与集成前置条件；不合并 main、不进入 S11 / G。
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
@@ -39,7 +39,7 @@ M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；�
 
 ### D1 — 冻结首批方案
 
-首批双入口、三类候选、局部自动启用与 M1 完成交付后集成的安排已由用户确认。
+首批范围为双入口、三类候选和局部自动启用；M1 完成交付后集成。
 逐角色 / Project 开启局部自动、新建默认审阅、共享 owner 有限预算已确认；scope / publication / 恢复约束与 [S01 执行设计](s01-baseline.md) 本轮冻结。
 S01 使用 test-only cases / report / runner，无产品数据迁移；S02–S10 的资源契约在引入能力前细化，其余路线仍为候选。
 D1 完成后按依赖从 S01 推进 M1；不把整个 Bundle 自动标为 Approved。

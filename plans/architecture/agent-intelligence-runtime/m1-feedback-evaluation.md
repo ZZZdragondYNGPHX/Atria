@@ -205,7 +205,7 @@ paid source eb1664138 新增 22 请求 / 140750 tokens，累计 783 / 3080332。
 
 ## 14. F2新来源与有限范围固定：主模型测试结论
 
-本次按用户授权保留 RP / Project 六个必需维度、六个 development 与六个独立密封来源。旧 catalogue 保持；Project 新工作负载具备原工具可完成的关联字段修复、真实 conflict / fresh Task / human revision / Review 轨迹，不再把短窗口未完成等同不可完成。免费控制与真实模型来源分开，完整有效基线按 exact 输入/配置复用，独立作者的内容不暴露给开发。
+本次保留 RP / Project 六个必需维度、六个 development 与六个独立密封来源。旧 catalogue 保持；Project 新工作负载具备原工具可完成的关联字段修复、真实 conflict / fresh Task / human revision / Review 轨迹，不再把短窗口未完成等同不可完成。免费控制与真实模型来源分开，完整有效基线按 exact 输入/配置复用，独立作者的内容不暴露给开发。
 
 校准补充覆盖复合句新增规则与完整窗口说明遗漏。RP 在原不可变 quote catalogue 中细分子句并逐项核对支持，不能用前半句支持覆盖后半句处罚，或用职业惯例冒充 exposed facts。Project 区分 model conversation / submitted plan 与 Host 状态事实；未观察字段保持 unknown，完整窗口遗漏明确要求的说明与缺证据区分，正确提案不因说明遗漏被降为失败。实际消费者与当前测试版本见同一 Record。
 

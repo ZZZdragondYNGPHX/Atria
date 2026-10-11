@@ -14,7 +14,7 @@
 
 ### Decisions
 
-用户已经多轮确认并授权开始。单标注、提示词/图片两步、NovelAI 双接口、角色库/预设和停用后插图保留等冻结规则见 Plan。原 main 的 AGENTS.md 与 docs 的治理/模板 dirty changes 不属于本任务，不提交。
+单标注、提示词/图片两步、NovelAI 双接口、角色库/预设和停用后插图保留等冻结规则见 Plan。原 main 的 AGENTS.md 与 docs 的治理/模板 dirty changes 不属于本任务，不提交。
 
 ### Completed
 

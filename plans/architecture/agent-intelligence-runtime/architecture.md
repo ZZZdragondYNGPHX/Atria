@@ -91,7 +91,7 @@ Experience 使用既有 Host StorageEngine 的明确资源契约，不能把全�
 - rollout / judge / training feedback 不回写真实 Memory、World 或正式用户偏好。
 
 推荐第一批覆盖 Skill、Prompt、现有可配置编排策略，但分阶段接入。
-用户已选择首批包含受预算与回滚约束的局部自动启用。具体发布状态机、门槛和恢复见 [m1-evolution.md](m1-evolution.md)；超出已声明范围的变更继续审阅。
+首批包含受预算与回滚约束的局部自动启用。具体发布状态机、门槛和恢复见 [m1-evolution.md](m1-evolution.md)；超出已声明范围的变更继续审阅。
 Package 已安装资源不能被原位“成长”；作者副本或明确的 Host binding 选择才能生效。
 
 ## 5. Persistent Goal：用户执行契约与角色愿望

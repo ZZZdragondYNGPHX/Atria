@@ -21,7 +21,7 @@
 ### Completed
 
 - 新建 9 模块 Bundle：index、决策、工作空间布局、原文能力基线、接线覆盖、共有状态、Native Persona、阶段交付、验证矩阵。
-- 整理 D01–D20 用户已确认项，P01–P06 实施提议保留 Draft 标记，避免重新询问已确认偏好。
+- 整理 D01–D20 已定项，P01–P06 实施提议保留 Draft 标记，避免重新询问已确认偏好。
 - S00–S20 映射新归属、源码控制器、结果边界、阶段与 V00–V20 验收责任。
 - 复制原任务 `01-screens-and-actions.txt` 的 S00–S19 原文基线，明确其中布局建议由新 Bundle 覆盖；保留完整编辑器与高级 JSON/Source。
 - S20 拆为 A4a 原生契约/持久化与 A4b UI/迁移/备份开放；覆盖 account、session、message、request、branch/save、shared seat 和 Host UI。
@@ -31,7 +31,7 @@
 
 原任务：`01a10777-5ad9-76b1-900d-9f53dbb5511a`；续接讨论：`01a107a4-a3f9-7ba3-9adf-47d1d0c2660f`。
 
-独立讨论资产（非仓库产品输出）：v0.2–v0.8 HTML 原型与各轮状态；最新 `19-personas-v0.8.html`、`20-discussion-state-v0.8.txt`、`21-coverage-gaps-v0.8.txt`、`22-persona-reconstruction-scope-v0.8.txt`。用户提供了旧 Persona 管理截图和 [官方概念资料](https://docs.sillytavern.app/usage/core-concepts/personas/)。
+独立讨论资产（非仓库产品输出）：v0.2–v0.8 HTML 原型与各轮状态；最新 `19-personas-v0.8.html`、`20-discussion-state-v0.8.txt`、`21-coverage-gaps-v0.8.txt`、`22-persona-reconstruction-scope-v0.8.txt`。参考材料包括旧 Persona 管理截图和 [官方概念资料](https://docs.sillytavern.app/usage/core-concepts/personas/)。
 
 v0.8 前轮实际证据包括组装/JS 语法检查、真实 IAB 的管理/身份选择、保存失败草稿/重试、历史身份保持、新会话默认捕获、迁移样例与原配置详情、归档恢复、390×844 布局和深色 picker；日志未读到 error。其限制为内存样例，无真实持久化、迁移、图片上传、模型请求、共享席位或完整会话隔离证明。D0 未重新执行上述原型测试，不把其结果算作产品验收。
 
@@ -46,7 +46,7 @@ v0.8 前轮实际证据包括组装/JS 语法检查、真实 IAB 的管理/身�
 
 ### Key decisions
 
-当前总体状态 Draft。用户已确认的偏好被保留，但没有把“继续整理”当作产品实施批准。旧全局 persona 设置不构成 Native 会话/请求身份 authority；原生重构与迁移是新增工作。
+当前总体状态 Draft。已定偏好保持；产品实施尚未开始。旧全局 persona 设置不构成 Native 会话/请求身份 authority；原生重构与迁移是新增工作。
 
 旧整站 SillyTavern 迁移退役与本次用户设定数据转换范围区分；旧角色/聊天/连接抽屉不恢复成平行主入口。资产/会话/请求映射不得凭名字猜测。
 
@@ -381,7 +381,7 @@ Shared 描述停用仍需 A4b 明示产品状态并决定有权限 consumer 的�
 
 ### Implementation and scope
 
-按 HANDOFF → index → personas/coverage S20/validation → Record A4a 路由，保护原有 dirty changes。用户确认“A4a 是已有停点，本轮执行 A4b 并停在 A4b”。没有加载 Skill/reference、没有跨正式阶段或合并 main。
+按 HANDOFF → index → personas/coverage S20/validation → Record A4a 路由，保护原有 dirty changes。A4a 为既有检查点，本轮执行范围为 A4b。没有加载 Skill/reference、没有跨正式阶段或合并 main。
 
 Persona 管理与 solo picker 接既有 authenticated Product client/PersonaRepo/Session CAS。Library 第四分类、exact owner 搜索路由、排序/分页、姓名/描述/管理备注、头像上传/移除/预览、创建/复制/新修订/归档/恢复/default/Used By/无引用删除均保留 authority。编辑失败保留草稿；成功保留 immutable receipt，刷新失败不重放。内部取消和原外壳 route guard 保留草稿；状态切换不更改 Composer 未发送内容。历史输入读取正式 Timeline identity，当前设定重命名不追随；头像失败显示回退。
 
@@ -597,7 +597,7 @@ G01/G04 展示缺口关闭。G02/G03 的 UI 防护只作用于新 Actors Review�
 
 Shared Persona description 继续固定 `shared_scope_unsupported`，无 caller opt-in、owner solo 回退、自动 Actor/席位映射或迁移。没有资源/default 编辑自动推进 Session/Save。FS 浏览器 fixture 与受控 HTTP 不代替远端模型/完整任意作品；外部数据库、真机/Android/WebView/软键盘/中文 IME、完整 native@3 lease/nonce 和完整设备/字段/呈现矩阵仍未测。未运行全量 tests/CI。
 
-产品 AGENTS.md 和 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes 保留未提交；package/plugin/skills/reference 未读/未改。使用本地 ui-ux-pro-max Skill 的相关表单错误/键盘/布局检查，没有额外设计系统/资产。产品与 docs 单独 commit/push，同一 Record/live HANDOFF 更新；不合并 main、不删除活跃 task branch。下一 checkpoint 为 EntryPoints，先映射；按用户“完成 Actors 后停止”已停止。
+产品 AGENTS.md 和 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes 保留未提交；package/plugin/skills/reference 未读/未改。使用本地 ui-ux-pro-max Skill 的相关表单错误/键盘/布局检查，没有额外设计系统/资产。产品与 docs 单独 commit/push，同一 Record/live HANDOFF 更新；不合并 main、不删除活跃 task branch。下一 checkpoint 为 EntryPoints，先映射；Actors 完成后停止。
 
 ## Stage B1 EntryPoints — Mapping checkpoint
 

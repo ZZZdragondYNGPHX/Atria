@@ -23,7 +23,7 @@
 - 完成指定入口与调用链的静态研究，区分既有能力、扩展项、新缺口与不继承机制。
 - 保存跨模块冻结决策、领域能力模型、权威模块和阶段路由。
 - 保存阶段 Record 和单一 live HANDOFF，下一目标明确为 S1。
-- 用户已要求停止逐项技术确认：后续只讨论范围、职责和关键取舍。
+- 后续讨论集中于范围、职责和关键取舍，不逐项确认技术细节。
 - 设置 CP1（S3 后）、CP2（S5 后）与 CP3（最终完成）；每阶段照常验证、记录、推送，中间阶段完成后连续推进。
 
 ### 关键决策
@@ -107,7 +107,7 @@ S0–S6 全部完成，停在 CP3。产品 main 已快进至 `ed1fd90521a63363e2
 - outbox 保存真实触发 Revision / Branch / invocation，Task 保存宿主派生的生命周期原因；外来 cause 不得冒充，旧记录仍兼容。
 - 本地验证：新增 CP2 Experience 1 例，既有 Frontend Bridge 16 例、Lifecycle scheduler 6 例、Lifecycle runtime Fs/SQLite 108 例、Authority Turn Fs/SQLite 24 例通过，共 155 例；触及 JS ESLint、diff whitespace 通过。新 fixture 的冻结对象与表达式格式错误已修正并复验。
 - 未运行远端 CI、整库 tests、构建、浏览器或设备测试。每阶段只做本地相关验证。
-- S4 已完成，按用户授权继续 S5，CP2 才停止；不合并 main。
+- S4 已完成，下一阶段为 S5，检查点为 CP2；不合并 main。
 
 ## S5 — Processing / 作者工作流（CP2）
 
@@ -138,7 +138,7 @@ S4 / S5 完成，产品/docs 已推送。沿用分支，不合并 main、不删�
 ## S6 — 原生集成与最终完成（CP3）
 
 - 日期：2026-10-06。Start HEAD：`8f86a4e9f8450dc27b3c3d0818adcbd7a1ce4fb3`；End / Tested / main HEAD：`ed1fd90521a63363e29856601abbf5e908c99d10`。
-- docs 起点：`0776f01153ee669231bcde93ad1cde64928257d9`。用户授权“继续 S6，到 CP3 停止”。沿用产品分支完成场景后推送、快进 main、最小复验并推送 main，随后删除本地/远端任务分支。
+- docs 起点：`0776f01153ee669231bcde93ad1cde64928257d9`。S6 的检查点为 CP3。沿用产品分支完成场景后推送、快进 main、最小复验并推送 main，随后删除本地/远端任务分支。
 
 ### 原生场景与完成内容
 

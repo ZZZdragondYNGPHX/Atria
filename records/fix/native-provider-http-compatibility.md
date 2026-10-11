@@ -53,16 +53,16 @@
 
 ## Slow gateway and final defaults
 
-用户确认 SillyTavern 的可用连接是 OpenAI-compatible、同一中转域名、
+SillyTavern 的可用连接是 OpenAI-compatible、同一中转域名、
 `Gemini 3.8 Flash`、流式。模型列表分别列出 `gemini-3-flash-preview` 与
-`gemini-3.8-flash`，原配置并不是用户确认可用的模型。极简流式探针约 54 秒才收到
+`gemini-3.8-flash`，原配置与可用连接的模型不同。极简流式探针约 54 秒才收到
 HTTP 200；后续真实 MCP 请求约 60 秒才返回。不能将此前超时解释为 API 不可用。
 
 隔离完整 3.0.0 游戏回合：3.8 Flash、流式、4096 输出预算下，意图解析返回合法
 `ask_work` 行动，接着正文返回并成功提交；共两次真实模型发送，未推进个人 Session。
 512 预算的流式探针未得到合法行动。未拿到 finish reason，故不把截断机制当成已证实事实。
 
-用户进一步明确要求默认等待十分钟、输入 200K、输出 20K。已完成：
+默认等待十分钟、输入 200K、输出 20K。已完成：
 
 - 共享默认值：单次 600,000 ms、输入 200,000、输出 20,000，合计上下文 220,000。
   新 Runtime Models、Routes、Generation Profiles 与 Runtime Role 使用相应默认值；

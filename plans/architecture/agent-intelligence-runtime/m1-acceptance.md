@@ -99,7 +99,7 @@ M1 验证 ordinary RP / Project 的实际执行、候选效果与审阅发布→
 
 六条 development 真实基线、六条独立密封来源 metadata、免费原工具可完成路径、主模型 20/20 有效 controls 和两域可改善缺口已核对。RP 缺口为档案场景新增无来源支持的处罚/权限；Project 三场景提案正确，但遗漏明确请求的未提交 Review 状态说明。正例、缺证据及两个没有观察到 gap 的 RP 场景保持原结果，不用 hard checks 替代语义质量。失败、费用、旧判断与不确定性保留。
 
-原第二连接恢复后又返回 404，备用 MiniMax 返回 401；按用户 fallback 暂缓第二模型，主模型测试已完成。本节记录当时仅主模型范围的结果；此后已补齐 F2 双模型前置并完成首次 F3 development，见§12。当时仍按旧双模型 development/promotion 准入，不能将此前主模型结果写成 M1 完成。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
+原第二连接恢复后又返回 404，备用 MiniMax 返回 401；fallback 暂缓第二模型，主模型测试已完成。本节记录当时仅主模型范围的结果；此后已补齐 F2 双模型前置并完成首次 F3 development，见§12。当时仍按旧双模型 development/promotion 准入，不能将此前主模型结果写成 M1 完成。实际 producer HEAD、执行/复用边界、账目与全部 pins 唯一见 [同一 Record](../../../records/refactor/agent-intelligence-runtime.md) 最新节。
 
 
 ## 12. F2双模型复核与 F3 一次试点结果

@@ -3,7 +3,7 @@
 - Task ID: fix/native-package-task-binding-preflight
 - Primary Workspace: main 产品源码；短期分支 fix/native-package-task-binding-preflight
 - Status: Complete — PR #102 已合并 main，验证与分支清理完成
-- Plan: 小型修复，无独立 Plan；按用户交接要求执行。
+- Plan: 小型修复，无独立 Plan。
 - Date: 2026-10-02
 
 ## Summary

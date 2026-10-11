@@ -9,7 +9,7 @@
 > S08 原 Prompt / Preset body candidates / exact binding 已交付，详细权威为 [s08-prompts.md](s08-prompts.md)。
 > S09 原Workspace / pristine Project Task参数候选、exact binding / CAS / rollback已交付，详细权威为 [s09-strategies.md](s09-strategies.md)。
 > S10 工程链路已交付，部署边界与保守 gate 的唯一详细权威为 [s10-evolution.md](s10-evolution.md)；实际模型改善与 M1 集成前置条件待验收。
-> 用户已确认双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
+> 既定范围：双入口、三类候选、逐 scope 开启局部自动、统一预算和 M1 完成后集成。
 > 后续物理 schema / 数值校准按对应阶段细化；逻辑资源表不表示全部 API 已冻结。
 > 长期方向读 architecture；代码事实读 baseline；产品选择读 decisions。
 
@@ -177,7 +177,7 @@ FS 初期按单 Host writer 的支持边界设计；无法保证冲突检测 / �
 
 ## 10. 已冻结范围与后续深化
 
-第一批三类候选均纳入、分阶段发布，以及 M1 完成后集成 main 再推进下一组，已由用户确认。
+第一批纳入三类候选并分阶段发布；M1 完成后集成 main 再推进下一组。
 首批使用仓库可复现 RP / Native authoring fixture 建代表案例，再在已配置的真实模型上验证；用户指定案例可替换对应 case revision。
 
 S01 cases / report / 运行界限见 s01-baseline。产品 scope、版本生效、共享预算、发布 / 恢复 / 回滚流程作为本组执行约束。

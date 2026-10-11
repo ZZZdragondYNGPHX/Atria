@@ -14,7 +14,7 @@
 **已确认的总体 B 路线：Constraint-first Adaptive Hybrid：**
 `精确 Anchor + 授权候选域 → 查询意图与事件线索 → 默认廉价混合候选 → 有需要时有界图扩展/PPR或重排/LLM → 覆盖约束和预算选择 → typed MemoryPacket → Context Compiler`。
 
-不推荐“每轮大模型生成检索计划”“全图 PPR”“把所有记忆喂给 Director”作为默认路径。**总体方向已获用户确认，但阈值、具体实现与改进效果仍需实验**。
+不推荐“每轮大模型生成检索计划”“全图 PPR”“把所有记忆喂给 Director”作为默认路径。**总体方向已定，阈值、具体实现与改进效果仍需实验**。
 
 ## 1. Atria 当前路径：具体代码、能够确认的行为与缺口
 
@@ -268,7 +268,7 @@ B 与已确认的“删除**独立**旧 Recall 模式”不冲突；总体 B 架
 | H4 索引与 Cache | 增量指纹/索引，合法 Context 与 Provider prefix reuse | 精确失效证明、修订/回滚/删除测试与真实延迟收益 |
 | H5 与 M3/M8 整合 | 已获准证据连接 Cognition/Goal/Expression，不修改 Writer 权威 | M1 质量证据与原阶段职责一致，失败/未知完整保留 |
 
-旧模式硬切换、保留有效 Atria 原生来源与重建派生索引已由 HCM-07 冻结；精确删除 / 保留符号及持久命名空间、存储后端、具体阈值在所属实现工作包定稿。**本研究 H0–H5 是分析切片，不是用户已批准新增的六个正式阶段。** 正式采纳后沿 [delivery §8.2](../agent-intelligence-runtime/delivery.md#82-hybrid-memory有限交付组与依赖) 的有限组和依赖实施，本表保留原研究建议。
+旧模式硬切换、保留有效 Atria 原生来源与重建派生索引已由 HCM-07 冻结；精确删除 / 保留符号及持久命名空间、存储后端、具体阈值在所属实现工作包定稿。**本研究 H0–H5 是分析切片，不构成六个新增正式阶段。** 正式采纳后沿 [delivery §8.2](../agent-intelligence-runtime/delivery.md#82-hybrid-memory有限交付组与依赖) 的有限组和依赖实施，本表保留原研究建议。
 
 ## 10. R6 技术研究的采纳结论
 
@@ -284,6 +284,6 @@ B 与已确认的“删除**独立**旧 Recall 模式”不冲突；总体 B 架
 
 - 目标技术架构与职责：**[architecture.md](architecture.md)**。
 - 对正式 Agent Runtime 企划的接入、工作包和验收：**[integration.md](integration.md)**。
-- 用户已确认的决定：**[decisions.md](decisions.md)**。
+- 已冻结的决定：**[decisions.md](decisions.md)**。
 
 本轮不改旧 M1 的验收和不利模型结果，不新增强制模型调用、独立 World/Actor authority 或平行存储预算。后续执行前按当时产品分支的真实 HEAD 与正式 Plan 重新核对。
