@@ -1,7 +1,7 @@
 import { sourceContent, sourceMessageId } from '../../../public/scripts/agents/memory/source-provenance.js';
 import { hashNativeDocument, cloneNativeDocument } from '../repositories/common.js';
 import { readTaskArtifact } from '../task-artifact-authority.js';
-import { EvidenceSourceError } from './contracts.js';
+import { EvidenceSourceError, readEvidencePath } from './contracts.js';
 
 const fail = (status, code) => { throw new EvidenceSourceError(status, code); };
 
@@ -93,9 +93,13 @@ export class ProjectEvidenceSourceAdapter {
     }
 
     async readMany(handle, scope, selectors) {
-        if (!this.studio || !this.agent) fail('unavailable', 'project_authority_unavailable');
+        if (!this.studio || (selectors.some(selector => selector.kind === 'task') && !this.agent)) fail('unavailable', 'project_authority_unavailable');
         const before = await this.studio.getRevision(handle, scope.projectId);
+        const project = selectors.some(selector => selector.kind === 'project_field') ? await this.studio.getProject(handle, scope.projectId) : null;
         const tasks = await Promise.all(selectors.map(async selector => {
+            if (selector.kind === 'project_field') {
+                try { return { field: readEvidencePath(project.source, selector.path) }; } catch (error) { return { error }; }
+            }
             try { return { source: await this.agent.getTask(handle, scope.projectId, selector.taskId) }; } catch (error) { return { error }; }
         }));
         const after = await this.studio.getRevision(handle, scope.projectId);
@@ -104,6 +108,7 @@ export class ProjectEvidenceSourceAdapter {
             if (item.error) return item;
             try {
                 const selector = selectors[index];
+                if (selector.kind === 'project_field') return { source: observed(selector, { revision: before.revision }, { fieldValue: item.field }) };
                 if (hashNativeDocument(item.source) !== hashNativeDocument(this.agent.peekTask(handle, scope.projectId, selector.taskId))) fail('stale', 'project_source_changed_during_read');
                 return { source: this._taskSource(before, item.source, selector) };
             } catch (error) { return { error }; }

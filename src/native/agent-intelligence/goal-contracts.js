@@ -1,7 +1,7 @@
 import { assertNativeId } from '../identity.js';
-import { cloneNativeDocument } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument } from '../repositories/common.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
-import { assertEvidenceScope, assertEvidenceSelector, fields, text } from './contracts.js';
+import { assertEvidenceScope, assertEvidenceSelector, assertEvidencePath, assertEvidenceSet, fields, text } from './contracts.js';
 
 export const GOAL_STATUSES = Object.freeze(['active', 'paused', 'waiting', 'blocked', 'stale', 'cancelled', 'completed']);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -11,8 +11,8 @@ export function assertGoalCriteria(values, scope, { required = true } = {}) {
     return values.map(value => {
         fields(value, ['criterionId', 'description', 'selector', 'path', 'equals'], 'Goal criterion');
         text(value.criterionId, 'Criterion identity'); text(value.description, 'Criterion description');
-        if (ids.has(value.criterionId) || value.description.length > 1000 || !Array.isArray(value.path) || value.path.length > 16
-            || value.path.some(part => typeof part !== 'string' || !part || part.length > 128 || ['__proto__', 'constructor', 'prototype'].includes(part))) throw new TypeError('Goal criterion path');
+        assertEvidencePath(value.path);
+        if (ids.has(value.criterionId) || value.description.length > 1000) throw new TypeError('Goal criterion path');
         ids.add(value.criterionId);
         return { ...value, selector: assertEvidenceSelector(value.selector, scope) };
     });
@@ -41,10 +41,22 @@ export function assertGoal(value) {
     if (doc.intent.length > 12000) throw new TypeError('Goal intent bound');
     doc.criteria = assertGoalCriteria(doc.criteria, doc.scope);
     doc.invariants = assertGoalCriteria(doc.invariants, doc.scope, { required: false });
+    if (new Set([...doc.criteria, ...doc.invariants].map(item => hashNativeDocument(item.selector))).size > 32) throw new TypeError('Goal source selection bound');
     if (!Array.isArray(doc.evidence) || doc.evidence.length > 32 || !Array.isArray(doc.progress) || doc.progress.length > 32
         || !Array.isArray(doc.blockers) || doc.blockers.length > 32) throw new TypeError('Goal evidence bounds');
-    // Evidence evaluation/verified completion belongs to S12, never a client state flag.
-    if (doc.status === 'completed' && doc.evidence.length !== doc.criteria.length) throw new TypeError('Goal completion requires criterion evidence');
+    if (doc.evidence.length > 1) throw new TypeError('Goal uses one coherent EvidenceSet');
+    for (const set of doc.evidence) {
+        assertEvidenceSet(set);
+        if (hashNativeDocument(set.scope) !== hashNativeDocument(doc.scope)) throw new TypeError('Goal evidence scope');
+    }
+    for (const row of doc.progress) {
+        fields(row, ['criterionId', 'status', 'code'], 'Goal progress');
+        if (!doc.criteria.some(item => item.criterionId === row.criterionId) || !['satisfied', 'unmet', 'unknown'].includes(row.status)
+            || (row.code !== null && typeof row.code !== 'string')) throw new TypeError('Goal progress status');
+    }
+    if (new Set(doc.progress.map(row => row.criterionId)).size !== doc.progress.length) throw new TypeError('Duplicate Goal progress');
+    if (doc.status === 'completed' && (doc.evidence.length !== 1 || doc.progress.length !== doc.criteria.length
+        || doc.progress.some(row => row.status !== 'satisfied') || doc.blockers.length)) throw new TypeError('Goal completion requires criterion evidence');
     if (Buffer.byteLength(JSON.stringify(doc)) > 65536) throw new TypeError('Goal capacity');
     return doc;
 }

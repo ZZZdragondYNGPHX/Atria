@@ -69,14 +69,14 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
-    for (const action of ['create', 'list', 'get', 'control']) router.post('/goals/' + action, async (req, res) => {
+    for (const action of ['create', 'list', 'get', 'control', 'evaluate']) router.post('/goals/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
             if (action === 'list') fields(req.body, [], 'Goal list');
             const host = getHost();
-            const goal = new AgentGoalService({ engine: host.persistence._engine, sessionCore: host.sessionCore, studio: host.studio, chatRepo: getChats() });
+            const goal = new AgentGoalService({ engine: host.persistence._engine, sessionCore: host.sessionCore, studio: host.studio, agent: host.agent, chatRepo: getChats() });
             res.json(await goal[action](handle, req.body));
         } catch (error) {
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : error?.name === 'NotFoundError' ? 404 : 400)

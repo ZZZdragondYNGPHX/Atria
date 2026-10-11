@@ -61,11 +61,31 @@ export function assertEvidenceSelector(value, scope) {
         fields(selector.grant, ['taskId', 'variantId', 'usageId'], 'Artifact grant');
         Object.values(selector.grant).forEach(value => text(value, 'Artifact grant identity'));
     } else if (scope.domain === 'project') {
-        fields(selector, ['kind', 'taskId'], 'Project selector');
-        if (selector.kind !== 'task') throw new TypeError('Invalid project selector');
-        text(selector.taskId, 'Task identity');
+        if (selector.kind === 'project_field') {
+            fields(selector, ['kind', 'path'], 'Project field selector');
+            assertEvidencePath(selector.path);
+            if (!['project', 'package', 'worlds', 'knowledge', 'knowledgeBindings', 'dependencies'].includes(selector.path[0])) throw new TypeError('Unsupported Project source field');
+        } else {
+            fields(selector, ['kind', 'taskId'], 'Project selector');
+            if (selector.kind !== 'task') throw new TypeError('Invalid project selector');
+            text(selector.taskId, 'Task identity');
+        }
     } else throw new TypeError('Unsupported evidence selector');
     return selector;
+}
+
+export function assertEvidencePath(value) {
+    if (!Array.isArray(value) || value.length > 16 || value.some(part => typeof part !== 'string' || !part || part.length > 128
+        || ['__proto__', 'constructor', 'prototype'].includes(part))) throw new TypeError('Invalid evidence field path');
+    return value;
+}
+
+export function readEvidencePath(value, path) {
+    for (const part of assertEvidencePath(path)) {
+        if (!value || typeof value !== 'object' || !Object.hasOwn(value, part)) throw new EvidenceSourceError('missing', 'evidence_field_missing');
+        value = value[part];
+    }
+    return value;
 }
 
 function assertAnchor(anchor, scope, selector) {
@@ -80,6 +100,8 @@ function assertAnchor(anchor, scope, selector) {
         assertNativeId(anchor.packageVersionId, 'packageVersion');
         if (selector.kind === 'message') assertNativeId(anchor.variantId, 'variant');
         else assertNativeId(anchor.productionRevisionId, 'revision');
+    } else if (selector.kind === 'project_field') {
+        fields(anchor, ['revision'], 'Project field anchor'); text(anchor.revision, 'Project field revision');
     } else {
         fields(anchor, ['baseRevision', 'revision', 'taskHash'], 'Project anchor');
         text(anchor.baseRevision, 'Project base revision');
