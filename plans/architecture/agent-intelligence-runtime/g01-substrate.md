@@ -30,7 +30,7 @@
 | 有限条目 / 正式阶段 | 当前实际消费者与缺口 | 下一动作与有限出口 | 状态 |
 | --- | --- | --- | --- |
 | Session declared Task continuity — G01/G02/G04/G05 | `fafdb8608` 已交付原foreground Narrator声明Task的公开工具history/独立Node冷恢复；Responses实际Session证据，原结果CAS与Run额度保持 | 已交付组不重做；其它实际Task消费者按所选支持矩阵继续，不把Studio或后台消费者写成已覆盖 | 有限组已完成；其它消费者本地可做 |
-| Session fork/restore 与 compaction — G02/G03/G04/G05 | 现有 Session Core 的 fork/save restore、Context lowering 与 checkpoint invalidation；完整 Task 生命周期反例未覆盖 | 上项原历史消费者完成后，以实际派生 branch/revision 验独立 lineage/reset loss与不倒退成本；只在已验证路径支持 compaction 时接原能力，否则按原获准有界公开摘要/reset，新增发送同额度 | 本地可做；依赖上项；真实 compaction 能力证据暂停 |
+| Session fork/restore 与 compaction — G02/G03/G04/G05 | `804b088ae` 已验真实 fork/restore；`3cebec8f7` 已接 Responses 原 Session Task 有界摘要/一次 adaptive reset、公开来源与配置版本、原费用及冷 epoch | 已交付有限出口不重做；Provider native safe-copy/compaction须已有精确支持证据，本组不发送其字段；FS补偿不声明中途进程退出跨文件原子性 | 有限本地出口已交付；真实 native compaction 未verified |
 | 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 已接原 localWork；原 Context 编译、初始 Skill inventory/pin/always load及已启用 reuse/corpus 校验仍有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | 本地可做；范围仅已启用消费者 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 本地工程可做；外部收益证据暂停 |
 | 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 外部证据暂停；不新增付费发送 |
@@ -68,13 +68,13 @@ source `fafdb8608` 已提交/push，17真正新增cases、9原cases增强及25�
 
 source本组为test-only（具体HEAD见Record），6个新增FS/SQLite cases及新增test ESLint/diff检查通过；未改产品/未重跑已通过组。派生分支为新Task scope/fresh开始，旧revision调用HTTP前拒绝；旧operation的20 direct tokens、7 local jobs与1 charged count原样保留，新scope独立20tokens/3jobs在原Run retiredCompute可查。两种派生场景均保留原branch HEAD、wire无旧opaque/tool exchange或未来文本、重复正式结果不发HTTP。same-HEAD restore并未派生branch，原cold恢复仍2HTTP/40tokens/10jobs+1 charged。此证据不等于Provider ancestor safe-copy/reset loss控制器或compaction；继续下一实际工程依赖。
 
-## 下一有限 G02/G04/G05：原 Session Task 的公开摘要与一次 adaptive reset（冻结）
+## 已交付有限 G02/G04/G05：原 Session Task 的公开摘要与一次 adaptive reset
 
 2026-10-11 从 `804b088ae` 继续，仅原foreground声明Narrator Task + Responses实际本地消费者；尚无verified Provider native compaction/copy，本组不发送这些未支持字段。触发固定为原GenerationService已完成count后报告`generation_context_budget_exceeded`，且当前accepted policy为exact verified task+adaptive、原public history有完整的readonly工具结果、尚未做此reset。task policy严格拒绝；无历史、未完成工具、source/pin/config变化不借摘要重启。
 
-沿原RunControl.taskHistories可选 `compaction` 保存一次metadata：原sourceMessages、sourcePrefixFingerprint、确定性summary与被放弃CPP的非秘密IDs；保留原source公开历史，不复制providerState/contentWire/opaque/Secret。summary只取最后至多8项工具公共结果的UTF-8有界excerpt，每项至多512 bytes，总8192 bytes，明确partial/prior/read-only data、截断/省略数量；它不是事实确认、工具许可或世界状态。原Task字段/整体64KiB、54msgs、6总工具轮及Run131072 bytes上限仍执行，原工具总轮数跨摘要/Host不重置。唯一生成算法在shared Task history合同，Native读取会重验原source hash及精确确定性summary。
+沿原RunControl.taskHistories可选 `compaction` 保存一次metadata：原sourceMessages、sourcePrefixFingerprint、runtimeAuthorityFingerprint（原配置record完整性/单调版本）、确定性summary与被放弃CPP的非秘密IDs；保留原source公开历史，不复制providerState/contentWire/opaque/Secret。summary只取最后至多8项工具公共结果的UTF-8有界excerpt，每项至多512 bytes，总8192 bytes，明确partial/prior/read-only data、截断/省略数量；它不是事实确认、工具许可或世界状态。冷摘要在count前重验该配置版本，修改/ABA不借空CPP重启。原Task字段/整体64KiB、54msgs、6总工具轮及Run131072 bytes上限仍执行，原工具总轮数跨摘要/Host不重置。唯一生成算法在shared Task history合同，Native读取会重验原source hash及精确确定性summary。
 
-reset沿原同Run一次task_history localWork先准入；原account Runtime写锁和Session Run锁内的同StorageEngine transaction同时保存摘要metadata/清原Task scope CPP；失败回滚两者，成功后清相同process envelope。source/Input/Task fingerprint及预算bank保持，新增binding epoch区分摘要后的私有lineage；下一请求Snapshot在HTTP前明确reset reason、原CPP IDs和opaque loss，不宣称native safe-copy/命中。摘要进入原Context history的user data lane；首次fresh epoch不回传旧native blocks，后续继续原工具协议。新增count/render/model都同原额度，原已发生usage/unknown/charged不退回。
+reset沿原同Run一次task_history localWork先准入；原account Runtime写锁和Session Run锁内的同StorageEngine transaction同时保存摘要metadata/清原Task scope CPP；SQLite失败由事务回滚两者；FS不是SQL事务，仅此有界发布在原两锁内保存旧record并对删除/发布异常补偿恢复两者，成功后清相同process envelope。FS中途process exit跨文件原子性未证明，不为本组新建通用事务平台；读取残缺状态仍拒绝，不假报恢复成功。source/Input/Task fingerprint及预算bank保持，新增binding epoch区分摘要后的私有lineage；下一请求Snapshot在HTTP前明确reset reason、原CPP IDs和opaque loss，不宣称native safe-copy/命中。摘要进入原Context history的user data lane；首次fresh epoch不回传旧native blocks，后续继续原工具协议。新增count/render/model都同原额度，原已发生usage/unknown/charged不退回。
 
 最小本地出口：两个实际工具HTTP后第三count因窗口不足，adaptive原端口reset并完成第三HTTP，Task仅原结果CAS一次；task严格不发第三HTTP。摘要不含旧opaque、history可追溯、总请求/local jobs与reset observation实数可查；quota、pin/HEAD变化、存储故障、取消及cold摘要epoch反例保留成本/拒绝错误请求。只用实际FS/SQLite/Host/loopback及合成Skill port，不声明真实语义质量、费用收益或其它brand Session支持；真实G06仍待已授权的有意义修复后复测。
 
@@ -250,3 +250,5 @@ source `0cd35d851`；以上G01/G04的“verified active未启用”是对应历�
 | task/adaptive | unavailable | 无消费者，不按已配置字段计算成功率 |
 
 countTokens、render及capture使用同一accepted policy，候选Route的声明不改写；同路径fallback自身声明不同仍保持accepted binding，更换不兼容路径的旧opaque不回放。观察到同owner/execution的合法引用已失效即终止该checkpoint，active→none拒绝后恢复active不复活；伪造引用/其它owner不会删除原handle。原scope/权限/source守卫、使用量和协议完整性继续适用。17新本地有限checks及6受影响旧检查结果、失败fixture与实际producer见Record；新增外部API0。旧gateway成功只归原producer，不能据此标当前HEAD全网关verified或完整G06/HM2质量通过。
+
+2026-10-11 本有限组 source `3cebec8f7`：20 新distinct与71受影响既有checks通过；原两HTTP工具后第三count超窗→adaptive一次摘要→第三HTTP final，总60 direct tokens/15 settled local jobs。受控进程退出在摘要发布完成、reset job结算前，cold epoch总16jobs并保留旧charged。严格task/no local quota保留合法CPP；原model quota不发第三HTTP。FS补偿/SQLite rollback与最终Host cleanup时点及原始失败见[Record](../../../records/refactor/agent-intelligence-runtime.md)。真实外部quality/price/cache不升级。
