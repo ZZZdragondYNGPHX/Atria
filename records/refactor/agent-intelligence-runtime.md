@@ -2225,3 +2225,15 @@ source `24dcb551faec74d5265348a5f3e79e80fd1183f4` 已 push。设计入口 [g05-t
 真实 local neural port `g05-transformers-real-h0-v1.json`：既有 Transformers.js/ONNX 模型 `Xenova/paraphrase-multilingual-MiniLM-L12-v2`，真实 FS engine/Session、authenticated Native middleware与原索引，三条原 H0-ZH-08 合法选中历史来源，不用 mock vector。实际插入 HTTP200/23683.50ms，查询 HTTP200/192.49ms、189.33ms；384维，原承诺 s08-020 排首位 score0.365723，其余 s08-002/001 为0.217025/0.209507。保留五实际推理 job与三索引 job，全部 settled/completed、model attempts零；原 gateway quota文件hash不变，M8 actual66/direct145577与原unknown成本不变。首调用包含下载/模型载入，其它暖推理 wall约63–104ms；进程CPU与外层索引区间重叠，不能相加成净CPU节省，下载字节/电费/货币仍unknown。
 
 私有脚本首launch只因 Windows static ESM路径不合法退出，v1失败日志保留，未开始 provider/生成；修 file URL 后 v2日志与实际report完成。Report原source HEAD0c50438f加四生产文件diff hash固定实际dirty producer，不把已提交HEAD冒充该次实测producer。模型缓存及原raw仅存private、不提交。此有限三候选检查不证明完整Hybrid corpus、rerank或总质量/成本收益，整体G06/HM2/M8仍pending，M3前置保持，main未merge/deploy。继续真实原Hybrid消费者与可知成本对照。
+
+### 2026-10-11 G05/G06 — 完整 H0 本地批次与实际 Hybrid 消费
+
+source `69ab3bd6e6f0116dad2a0b849adeb32af2a6c3bf` 已 push。真实完整 H0 消费暴露每 text 一 job 与原 localWork maxJobs32 不相容；不扩大生产 ledger/schema。原 Transformers 单条/原本地 insert 批次各一 job，所有文本逐条计 items/UTF-8 bytes，原 singleton 模型锁覆盖整批并共享一次初始化；逐条前后 scope/cancel、settlement/publish guard 保留。原 getBatchVector 对 Transformers 不再沿远端十条拆分，其它 provider 不变。局部出错保留整批工作量与实际 process CPU，不发布部分向量。不是引入 KV cache、并行推理或降低语义准入。
+
+11 distinct 本组 Transformers checks PASS（九受影响复验/两新增），加一旧精确模型切换回归 PASS。batch-after-v1 九 PASS；补整批 bytes断言及中途第二文本失败，仅 fs/session+新增partial-batch在v2两PASS。batch-regression-v3 新12条实际insert/query跨旧十条界限，只两次load、13次inference、四local jobs；旧失败后模型切换一项PASS。三个改动文件batch-lint-v2 PASS；diff最初仅EOF空行，移除后PASS，无行为复验必要。未新增依赖、全仓或UI检查。
+
+失败严格保留：完整原H0第一次沿此前三来源fixture的32 jobs/128 items/1MiB bank，corpus/rank两次unknown占用734559 input bytes后pack拒绝，before index/inference；private首report未保存最终bank，v2仅必要补记账复验，两unknown/零model attempts及原成本保持。另一次预声明512-job完整实验配置被原schema native_generation_budget_invalid拒绝，无work/模型，不修改schema放行。改为原允许32-job、4096 items/16MiB的独立作者实验，原小bank不扩展/退款；十条分块时full-h0-v2仍在第四次insert因32jobs耗尽，不能把fallback结果计作语义成功，实际失败推理/成本保存在该report.finalRun。模型/API均零，原failed private reports/logs不覆盖。
+
+批次修复后 full-h0-v3 成功：同原冻结H0-ZH-08 raw500/实际合法corpus256，真实 SourceLifecycle/Native Information eligibility、原 retrieveMemory、authenticated corpus admission/Native middleware/FS index与真实 ONNX模型，全程同一个Run/32-job bank。首次cold index+query 28702.50ms，后续warm有效复用1121.26ms；两次完整evidence hash/IDs相同，选中s08-020/008/089，原必需历史承诺覆盖。与无vector baseline选中020/001/002不同的两条filler不是质量晋升。atomic_evidence_unavailable仍报告，未猜测域外完整组；rerank未配置/额外生成零。
+
+实际最终26local jobs：六embedding_local批次覆盖258文本items（cold256+query1、warmquery1），八client corpus/rank/pack/hash admissions保守unknown、其余12 server jobs settled。warm query仍真实infer一次、核对远端索引与完整合法source，跳过256文档hash；两条n1 cold/warm不能当独立recompute/reuse分布，也不能把建索引/加载差值都算派生reuse收益或合算重叠process CPU。价格、client CPU、权重下载bytes与钱款仍unknown；原m1/hm1/quota hashes全部保持，gateway/M8 totals不变。Report pins为24dcb551加实际embedding/vectors文件hash，提交仅另去EOF空行，不能改写实测HEAD。整体G06质量/收益与M3前置仍pending；接下去只复验真实语义改变所影响的原双入口正文，不用新embedding名称宣布达标。

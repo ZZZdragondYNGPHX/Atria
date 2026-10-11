@@ -2,7 +2,7 @@
 
 为 G06/HM2 的真实语义检查接原已存在的 `source: transformers` 服务端路径。复用原 `getTransformersVector` pipeline 串行队列、Native Retrieval middleware、原 Run/Task compute port 与原 index publication，不新增 provider/预算/模型发送 authority。
 
-每个实际 text 推理为一个 `embedding_local` job/item，UTF-8 文本 bytes 工作前准入，包含该次需要的 pipeline 初始化/模型载入和实际 inference。排队后重验 scope/取消；模型载入结束、推理结束、settle 后继续重验。已发生工作保留 actual process CPU/wall/outcome；线程/库不可中断时等待返回后拒绝发布。观察是进程 CPU，可能包含其他工作，不是 CPU 时长硬 cap、模型权重下载 bytes 或货币收益。
+每个实际单条调用/原本地 text 批次为一个 `embedding_local` job，每条文本仍计一个 item，全部 UTF-8 文本 bytes 工作前准入，包含该批次需要的 pipeline 初始化/模型载入和逐条实际 inference。服务端 Transformers 原插入批次不再拆成只适用于远端请求的十条小批次。排队后重验 scope/取消；模型载入结束、每条推理前后、settle 后继续重验。批次中途失败不发布部分结果，全部准入 items/bytes 与已发生工作保留 actual process CPU/wall/outcome；线程/库不可中断时等待返回后拒绝发布。观察是进程 CPU，可能包含其他工作，不是 CPU 时长硬 cap、模型权重下载 bytes 或货币收益。
 
 旧无 localWork 限额入口不造 ledger；继承的原限额不因 Route 删除而清零。其它 scoped provider（包括 browser WebLLM）仍维持原 unavailable，不把全本地推理都标为已计量。
 
