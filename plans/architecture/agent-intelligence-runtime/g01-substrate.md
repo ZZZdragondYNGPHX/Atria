@@ -36,6 +36,14 @@
 | 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 外部证据暂停；不新增付费发送 |
 | 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
 
+## 下一有限 G04：原 Session 声明 Task 的原生工具轮次（冻结）
+
+2026-10-11 在 source `05f526fa8` 后先接 Session Task 历史消费者的先决路径：仅原 `_executeTask` 校验后的 Task/Variant/input、invocation、Session branch/revision及既有 route binding 得到 Host 内部精确 fingerprint。沿原 Context provenance与 native envelope binding传递；Session source不伪装Studio Project Task，普通caller JSON/messages不产生此authority。
+
+原Native Responses/Anthropic/Gemini port可以给上述Task的当前工具轮次附既有 RuntimeCheckpointStore；task/adaptive仍须exact verified capabilities。count/render中的私有读/校验及现有Skill read继续同原Run localWork/model budget。第一次无checkpoint允许声明Task开始；完整公共工具轮次与私有payload沿原协议续接。另一次调用若同scope已有checkpoint但缺完整获准公开历史，必须拒绝，不自动fresh/reset；持久公开history/冷恢复仍是下一依赖，不能将本组的private保存写成已完成跨调用恢复。
+
+本组本地出口：实际SessionCore/安装Package声明Task/Host/loopback的工具round-trip、精确scope与费用；无声明普通Session仍不获task consumer，Task或input/branch变更不共用scope；取消/Skill失败await私有清理、已发生成本保留，额度拒绝不清已有合法checkpoint。仅隔离FS/SQLite与synthetic Skill repository port，不提升真实path verified或声明实际模型收益。
+
 ## 历史 checkpoint 与后续组记录
 
 Runtime checkpoint 有限物理契约（依据 model-routing §7.2–7.4）：复用 StorageEngine Native resource 与 `withRuntimeWrite(handle)`，private kind `atri_runtime_checkpoint` 的 key 仅 owner handle + 随机 SHA-256 checkpointId；payload 含 schema、owner hash、完整 binding、public-prefix 校验、原生 opaque envelope、到期时间和 Native integrity。每 owner 至多128项、总16MiB、单项完整 JSON 至多2MiB，TTL10分钟；超过容量淘汰最旧，过期/完整性失败/真实同owner同scope binding变更终止旧引用。读与发送均重读既有存储；只读/存储失败显式 unavailable，不假报清理或恢复成功。发布须在 credential echo 与工具声明校验之后；取消/失败须 await private cleanup。原配置record的integrity/单调updatedAt作mutation anchor，保存/发送均核验，受影响connection/model/route修改或删除清除相关checkpoint，未关联配置不清除；同毫秒ABA也不能复活旧状态。
