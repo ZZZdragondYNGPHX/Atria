@@ -4,7 +4,7 @@ import { hashNativeDocument } from './repositories/common.js';
 
 // This guard runs inside the original Session publication. It does not publish,
 // synthesize evidence, grant reads or adopt a model's World/Task claims.
-export function validateCognitionTransition(base, candidate) {
+export function validateCognitionTransition(base, candidate, { taskId = null } = {}) {
     const def = informationDefinition(base);
     let scans = 0;
     const projections = new Map();
@@ -14,10 +14,11 @@ export function validateCognitionTransition(base, candidate) {
             if (old.has(id) && hashNativeDocument(old.get(id)) === hashNativeDocument(value)) continue;
             assertCognitionValue(source, value);
             const previous = old.get(id);
-            if (previous && ['paused', 'cancelled', 'abandoned'].includes(value.status)
+            if (!taskId && previous && ['paused', 'cancelled', 'abandoned'].includes(value.status)
                 && hashNativeDocument({ ...previous, status: value.status }) === hashNativeDocument(value)) continue;
             const view = def.views.find(view => view.id === value.basis.viewId);
-            if (view?.audience !== 'actor' || view.actorId !== value.actor || !view.exposure.includes('context')) throw new TypeError('Cognition update requires this Actor context grant');
+            const audienceMatches = taskId ? view?.audience === 'task' && view.taskId === taskId : view?.audience === 'actor';
+            if (!audienceMatches || view.actorId !== value.actor || !view.exposure.includes('context')) throw new TypeError('Cognition update requires this Actor or exact Task context grant');
             if (previous && previous.actor !== value.actor) throw new TypeError('Cognition Actor is immutable');
             assertInformationAnchor(base, value.basis.anchor);
             if (!projections.has(view.id)) projections.set(view.id, projectInformation(base, view.id, { purpose: 'context', includeRollups: false,

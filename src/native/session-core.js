@@ -487,7 +487,7 @@ export class SessionCore {
             }] } };
         }
         if (states.atri_lifecycle) {
-            validateCognitionTransition(base, { ...base, states });
+            validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null });
             states = cloneNativeDocument(states);
             for (const item of states.atri_lifecycle.outbox) {
                 if (!base.states.atri_lifecycle?.outbox.some(previous => previous.invocationId === item.invocationId)) {

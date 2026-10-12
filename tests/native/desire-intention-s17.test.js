@@ -186,6 +186,27 @@ test('S17 read-time availability and Goal race cannot revive support or expose a
     } finally { await h.cleanup(); }
 });
 
+test('S17 an actual declared Task writer must cite its own Actor-bound context, including when withdrawing a plan', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installIntentionFixture(h, { taskWriter: true }); await f.plan('task-plan');
+        const before = f.current(), ready = await f.core.applyLifecycleCommand(h.handle, before.session.sessionId,
+            { type: 'lifecycle', invocationId: 's17-ready', action: { kind: 'experience.ready' } }, { expectedRevisionId: before.revision.revisionId });
+        const queued = ready.states.atri_lifecycle.outbox[0], original = structuredClone(ready.states.atri_lifecycle.domains.intentions.records[0].value);
+        const publish = payload => f.core.recordTaskResult(h.handle, ready.session.sessionId,
+            { invocationId: queued.invocationId, taskId: queued.taskId, variantId: queued.variantId, payload }, { expectedRevisionId: ready.revision.revisionId });
+        await expect(publish({ ...original, status: 'cancelled' })).rejects.toThrow(/exact Task context/);
+        const actorProjection = projectInformation(ready, 'actor', { purpose: 'context', includeRollups: false });
+        await expect(publish({ ...original, basis: { ...original.basis, anchor: actorProjection.anchor } })).rejects.toThrow(/exact Task context/);
+        expect((await f.core.load(h.handle, ready.session.sessionId)).revision.revisionId).toBe(ready.revision.revisionId);
+        const taskProjection = projectInformation(ready, 'intent-task', { purpose: 'context', includeRollups: false });
+        const accepted = await publish({ ...original, basis: { ...original.basis, viewId: 'intent-task', anchor: taskProjection.anchor } });
+        expect(accepted.states.atri_lifecycle.outbox[0].status).toBe('completed');
+        expect(accepted.states.atri_lifecycle.domains.intentions.records[0].value.basis.viewId).toBe('intent-task');
+        expect(projectInformation(accepted, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'intention').cognition.status).toBe('active');
+    } finally { await h.cleanup(); }
+});
+
 test('S17 installed Host and declared Task consume plans through original Information, disclosure, Source and budget', async () => {
     const h = await makeTempFsEngineHarness();
     try {

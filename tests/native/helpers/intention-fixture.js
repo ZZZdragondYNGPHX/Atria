@@ -15,7 +15,7 @@ export function intentionSchema() {
             sourceRefs: { type: 'array', maxItems: 16, items: object({ itemId: string(256), fingerprint: string(64) }) } }) });
 }
 
-export async function installIntentionFixture(h) {
+export async function installIntentionFixture(h, { taskWriter = false } = {}) {
     const fixture = sessionFixture(), actorId = fixture.manifest.actors[0].actorId, otherActorId = createNativeId('actor');
     fixture.manifest.actors[0].displayName = '阿岚';
     fixture.manifest.actors.push({ actorId: otherActorId, displayName: '沈墨' });
@@ -42,6 +42,13 @@ export async function installIntentionFixture(h) {
     contract.taskRuntime.tasks[0].context = ['input', 'projection'];
     info.views.push({ ...info.views.find(view => view.id === 'actor'), id: 'intent-task', audience: 'task', taskId: 'summarize' });
     const variant = contract.taskRuntime.tasks[0].variants[0];
+    if (taskWriter) {
+        contract.taskRuntime.tasks[0].resultPolicy = { resultClass: 'declared_app_command', sink: 'app_command' };
+        variant.outputSchema = intentionSchema();
+        variant.resultBinding = { kind: 'app.command', domainId: 'intentions', recordId: 'task-plan', commandId: 'save' };
+        contract.lifecycleRuntime.automations = [{ id: 'on-ready', scopeId: 'session', trigger: { kind: 'experience.ready' },
+            action: { kind: 'task', taskId: 'summarize', variantId: 'default', input: {} }, maxCatchUp: 1 }];
+    }
     fixture.manifest.resources = [
         { resourceType: 'core.prompt-program', resource: { schemaVersion: 1, promptProgramId: variant.prompt.resourceId, revision: variant.prompt.revision,
             displayName: 'Intent fixture', stages: [{ stageId: 'stage.main', moduleRefs: [] }] } },
