@@ -205,10 +205,40 @@ export function assertCapabilityDecision(value, field = 'CapabilityDecision') {
 }
 
 /** Optional policy on the original Route; absent policies retain exact old resources. */
+function assertMcpPolicy(value, field) {
+    object(value, field);
+    only(value, ['protocolVersion', 'connectionProfileId', 'toolNames', 'resourceUris', 'auth'], field);
+    if (value.protocolVersion !== '2025-11-25') throw new TypeError(field + '.protocolVersion unsupported');
+    if (!['none', 'secret'].includes(value.auth)) throw new TypeError(field + '.auth unsupported');
+    const list = (items, name, validate) => {
+        if (!Array.isArray(items) || items.length > 8) throw new TypeError(field + '.' + name + ' must contain 0..8 entries');
+        const result = items.map((item, index) => validate(item, field + '.' + name + '[' + index + ']'));
+        if (new Set(result).size !== result.length) throw new TypeError(field + '.' + name + ' contains duplicates');
+        return freezeArray(result);
+    };
+    const toolNames = list(value.toolNames, 'toolNames', (item, label) => {
+        text(item, label, 96);
+        if (!/^[A-Za-z0-9_.-]{1,96}$/.test(item)) throw new TypeError(label + ' invalid');
+        return item;
+    });
+    const resourceUris = list(value.resourceUris, 'resourceUris', (item, label) => {
+        text(item, label, 256);
+        if (/\s|[\u0000-\u001f\u007f]/.test(item) || !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(item)) throw new TypeError(label + ' invalid URI');
+        let uri;
+        try { uri = new URL(item); } catch { throw new TypeError(label + ' invalid URI'); }
+        if (uri.username || uri.password || /^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^/?#]*@/.test(item)) throw new TypeError(label + ' must not contain userinfo');
+        return item;
+    });
+    if (!toolNames.length && !resourceUris.length) throw new TypeError(field + ' must select a tool or resource');
+    return Object.freeze({ protocolVersion: value.protocolVersion,
+        connectionProfileId: assertNativeId(value.connectionProfileId, 'connectionProfile', field + '.connectionProfileId'),
+        toolNames, resourceUris, auth: value.auth });
+}
+
 export function assertExecutionPolicy(value) {
     const field = 'RuntimeRoute.executionPolicy';
     object(value, field);
-    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse', 'computeBudget', 'optionalWork'], field);
+    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse', 'computeBudget', 'optionalWork', 'mcp'], field);
     if (value.schemaVersion !== 1) throw new TypeError(field + '.schemaVersion must be 1');
     if (!Array.isArray(value.allowedModelProfileIds) || !value.allowedModelProfileIds.length || value.allowedModelProfileIds.length > 16) {
         throw new TypeError(field + '.allowedModelProfileIds must contain 1..16 targets');
@@ -232,7 +262,8 @@ export function assertExecutionPolicy(value) {
     return Object.freeze({ schemaVersion: 1, allowedModelProfileIds: freezeArray(targets),
         verifiedRequirements: uniqueStrings(value.verifiedRequirements || [], field + '.verifiedRequirements', { namespacedValues: true }),
         continuity, reuse, ...(value.computeBudget === undefined ? {} : { computeBudget: Object.freeze(assertComputeBudget(value.computeBudget)) }),
-        ...(optionalWork ? { optionalWork } : {}) });
+        ...(optionalWork ? { optionalWork } : {}),
+        ...(value.mcp === undefined ? {} : { mcp: assertMcpPolicy(value.mcp, field + '.mcp') }) });
 }
 
 function assertDecisionProvenance(value, field) {
