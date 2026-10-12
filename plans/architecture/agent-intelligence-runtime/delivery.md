@@ -102,7 +102,7 @@ S02 已完成最小只读契约，详细边界见 [s02-sources.md](s02-sources.m
 | [S17 — Desire / Intention 与 Goal 关联](s17-desire-intention.md) | S11–S12、S16 | 持续愿望、当前意图、有限竞争 / 冲突，与 Goal / commitment 显式关联 | 用户执行目标与角色愿望权限不同；事件导致有依据更新；局部意图有取消和过期 |
 | [S18 — Emotion / Relationship appraisal](s18-event-appraisal.md) | S16、S17 | 以获准事件的共享 cognition pass 采纳动态情绪 / 关系变化，可选择认知 profile | 一次事件不重写全部 traits；变化可解释 / 撤回；不强制对玩家公开数值；不追求单调加深依赖；普通 turn 读 state，事件 gate 与费用可验收 |
 | [S19 — 有界一阶 / 二阶 ToM](s19-theory-of-mind.md) | S18 | Actor 自己关于他者的假设、预测和 confidence 更新 | 不写成他者真心；hidden state 不泄露；嵌套 / 节点 / 展开 / 模型调用有界；真实行为可反驳假设 |
-| S20 — 因果角色轨迹与 Memory applicability | S19 | 事件 → appraisal → state change → action 的来源链；检索后的适用判断与 HCM-05 轻度默认 / 深度可选遗忘 | 避免第二事实图；旧证据修订能失效下游；保护关键承诺 / 关系，检索 / 索引压缩不触发角色失忆，不机械强制行为 |
+| [S20 — 因果角色轨迹与 Memory applicability](s20-memory-applicability.md) | S19 | 事件 → appraisal → state change → action 的来源链；检索后的适用判断与 HCM-05 轻度默认 / 深度可选遗忘 | 避免第二事实图；旧证据修订能失效下游；保护关键承诺 / 关系，检索 / 索引压缩不触发角色失忆，不机械强制行为 |
 | S21 — 认知检查、保存恢复与长期场景 | S20 | 用户 / 作者允许的 cognition inspector；save / export / rollback；H5 完整 cognitive consumer 与作品可选的正式 World Tick 自主 NPC | 秘密、误会、承诺、关系 / 遗忘状态跨回合可恢复；权限视图分离；只沿原 Simulation / outbox / 原预算，评价正文、连续性、费用和偏好 |
 
 RP 是本组主要产品 consumer。Project Agent 只消费与其真实任务相关的用户约束 / 意图假设，不强行使用 NPC 情绪或娱乐关系系统。

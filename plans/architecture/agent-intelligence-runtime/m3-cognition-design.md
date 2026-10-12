@@ -1,6 +1,6 @@
 # M3 入口设计：身份投影、认知可见范围与接管
 
-状态：2026-10-12 已明确采用原作者/作品授权的可见范围与接管，M3 入口设计冻结；S15 有限身份消费者已交付，S16 有限cognition/Disclosure消费者已交付，S17 有限Desire/Intention与Goal关联已交付，S18 有限共享事件appraisal已交付（实际范围见 [S18](s18-event-appraisal.md)/Record），S19 有限一阶/二阶ToM已交付（实际范围见 [S19](s19-theory-of-mind.md)/Record），S20–S21 尚未交付。实施前置仍为 delivery §5 的 G06 验收与本设计冻结（已满足）。本文只细化已批准的 Actor / Information / Context 方向，不将研究能力或草案声明为已实现权限。
+状态：2026-10-12 已明确采用原作者/作品授权的可见范围与接管，M3 入口设计冻结；S15 有限身份消费者已交付，S16 有限cognition/Disclosure消费者已交付，S17 有限Desire/Intention与Goal关联已交付，S18 有限共享事件appraisal已交付（实际范围见 [S18](s18-event-appraisal.md)/Record），S19 有限一阶/二阶ToM已交付（实际范围见 [S19](s19-theory-of-mind.md)/Record），S20 有限因果轨迹/Memory applicability/遗忘已交付（实际范围见 [S20](s20-memory-applicability.md)/Record），S21 尚未交付。实施前置仍为 delivery §5 的 G06 验收与本设计冻结（已满足）。本文只细化已批准的 Actor / Information / Context 方向，不将研究能力或草案声明为已实现权限。
 
 ## 1. 当前代码与 S15 的有限交付
 

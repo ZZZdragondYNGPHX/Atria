@@ -2525,3 +2525,26 @@ producer `e39a425a9` 沿原HTTP adapter增加显式connection.options.responseSc
 S19阶段累计3真实admissions：1HTTP400/unknown upper6261、2HTTP200/direct8593（3055+5538），没有删掉首失败/退款或将unknown当0。quota1803→1806连续append/carry332与M1/HM1 ledger pins保持；自本设备恢复累计91admissions/88HTTP200/direct222482，3unknown（原2TLS与本HTTP400）upper52609。原M8组reported161/direct402366、其旧unknown2/upper17515/admission fetch0仍另列，price/cache/upstream保持unknown，不按input+output猜total。
 
 S19有限阶段出口完成，source `9c393143d`、`e39a425a9`沿原feature保存；19新增/2受影响distinct本地PASS，所有local/lint/Provider400及私有证据保留。当前用户明确继续“下一阶段”，本轮收尾到S19；S20–S34未实施，整体任务未宣称完成。仅补修改文档链接/diff及Git身份/同步/干净核对，不重复产品已通过组，不刷新HANDOFF，不merge/deploy main3ee1332ef。
+
+
+### 2026-10-12 S20：因果轨迹、Memory applicability 与遗忘有限出口
+
+用户继续下一阶段；先核对原source `e39a425a9` 与docs `ebceefba4`，两原分支干净/远端一致，ff-only拉取均Already up to date。沿最新index/architecture §6.1–7/Hybrid Memory/M3/delivery及同一Record推进 [S20](../../plans/architecture/agent-intelligence-runtime/s20-memory-applicability.md)，不刷新旧HANDOFF，不重问原作者/作品授权，不建子agent/Codex Goal，不merge/deploy main `3ee1332ef`。
+
+producer `6de1328c4` 在原Information source、canonical生命周期domain、原command/Session CAS增加作品opt-in memoryPolicy与truth application causalBasis。Memory actor/text/status/recordedAt/role/clarity/use/basis/applicability由作者或原精确Task grant发布；非认知来源哈希/branch/Package/epoch/CAS与原4096扫描/128投影保持。Memory role由作品分类、记录内role和历史时点不可改；guard不声称从文字自动识别全部关键事件。mode缺省light，只派生非关键detail blurred/reluctant，identity/commitment/relationship/key_event仍clear/willing。作品明确deep时才接受有源forgotten/reconstructed/unavailable detail；不自动生成错误重构文字、删除World真相或把原检索/索引/summary压缩当角色失忆。旧Memory/Chronicle不迁移。
+
+Desire/Intention可引用自己获准且当前的Memory/appraisal；正式行为沿原truth app.command保存basis，不新建事实图/另一个graph store/timer/Task/每turn认知调用。最大依赖深度4、拒绝环/foreign Actor/隐藏、失效、未选意向；原意向竞争结算后再次传播解释失效。源事件改写后appraisal→intention→action explanation逐级stale，已发生动作的原raw和旧Revision保留；不会推导动作未发生、强制续行动、履约或Goal完成。appraisal原sealed Host provenance与非认知来源限制没有扩大。
+
+Memory投影在原来源Exposure/版本/branch/epoch外核对World Clock until、已获准例外ref改写及本Actor当前source-current/selected Intention.goalId关联；没有当前关联/隐藏证明为unknown，不是角色没有目标，不授予原外部Goal执行权。Memory only-text alias不自动附带私有clarity/use/条件；current派生qualifiers与raw历史字段明确分开。post-retrieval由原Package Memory bridge、Host Turn intake与Context compiler共用准入：每条timeline ref须由该consumer当前可用的managed Memory basis覆盖，撤回/过期/unavailable/不可见use拒绝；旧无policy作品保留原可见来源/branch/revision消费者。检索packet独立displayGrant null，正式公开历史仍从原Information display grant消费，packet不扩权。必需Context解释不把检索当新记起/愿意/信念变化，角色遗忘与World历史/索引删除分别裁决。
+
+12新增distinct本地PASS：FS/SQLite真实发布事件→作者appraisal→intention→正式action/CAS与新service重读；事件修订只失效解释/保留已发生动作及未履约承诺；轻度模糊/四关键类别保护/纯读与only-text私有隔离；显式deep有源遗忘/重构/withdraw与旧Revision；Clock/Goal关联/例外/缺关联；原bridge→compiler共享post-retrieval/Context/private packet、withdraw拒绝；foreign/hidden/self/multi-node cycle/保护及future time原publication原子拒绝；alias policy closure/legacy兼容；Memory支持意向/withdraw和竞争使动作解释失效；深度4与隐藏来源；actual Host原Turn在发送前拒绝withdrawn Memory/fetch0；partial Memory grant隐蔽use不能支持新意向。2受影响distinct PASS：S17原竞争/Actor分离/撤回/保留desire消费者，以及G3原memory:true/精确可见provenance桥接消费者。仅FS/SQLite、相关源/fixture静态检查和diff，不跑全仓、DB、build、browser或旧paid组。
+
+`s20-local-v1..v7`全留：v1 fixture async默认参数错误、0执行；v2链路PASS/light负例因原Authority封装错误文本与测试预期不符FAIL，修改为实际公开错误后v3七PASS。v4新增两PASS和旧S17 PASS；新Host缺intent_resolver route、旧G3 synthetic entryPoint缺actorIds两FAIL，补测试路由与原fixture必要actorIds后v5两PASS，不改产品fallback。review将发布与读取的深度计数对齐，v6只复验受变化depth PASS。`s20-lint-v1`缩进/fixture解析错误保留，v2/v3改动全文件静态PASS；完整producer后仅部分grant新guard/新测试lint-v4 PASS。每次通过只计distinct，不累加复验。最终 `9736eabd5` 要求Memory use明确获准为willing/reluctant，v7仅新增实际部分字段grant负例PASS；标准完整grant路径不受影响，未重跑已通过组/正文。
+
+私有runner `run-s20-memory-v1/v2` 与所有package/archive/native Save/原external Run bank、raw请求响应/完整normalized/实际Context/PromptIR都留在原private目录。v1零API preflight因自定义lanePlan缺Host完整routes capture失败；v2沿原executionResources捕获后零API预检通过，不修改产品。live-v2 source6de1328c4一次原连接HTTP200，direct reported total5955（input4840/output71/total5955原样，不能按input+output推导total）。同原Session实际消费作者来源appraisal/意向/确认行为、protected commitment以及自然blurred detail；Memory recall是受控本地adapter返回正式timeline源，再经过原Package bridge和actual Host/compiler/PromptIR，不冒称真实长程检索排名质量或新paid model cognition pass。最终raw state/World/Timeline/manifest完全相同，原foreground bank一个settled attempt及5原localWork均保留；没有新认知调用、response replay或退款。
+
+完整正文有限非盲审读PASS：公开措辞仍笼统/模糊，关键还书承诺仍记得且待履行，确认是已有行为，未添加归还/玩家选择/未来保证、private犹豫、数值/ID/hash/Goal/私有因果链/他者真心、场景/性别/天气/台词等事实。不是独立六维评分/普遍无泄露保证、深度遗忘正文或S21长期恢复验收。零API audit v1/v2分别因normalized context.history外层对象及role/content wrapper形状误判失败，原failure JSON/script/log保留；v3按实际shape完整核对18项PASS，包括唯一raw/hash/actual model/full输出、原packet适用且独立display null、当前模糊/保护、原作者来源链/未履约/纯读、一个settled5955/原localWork、唯一quota记录/carry/ledger pins及exact package/前后Save保存。不为audit失败重复API。
+
+S20累计1实际admission/1HTTP200/direct5955，无新增unknown；quota1806→1807连续append/carry332与原M1/HM1 ledger pins保持。自本设备恢复累计92admissions/89HTTP200/direct228437，原3unknown upper52609（2TLS+S19HTTP400）保持；原M8组reported161/direct402366、其旧unknown2/upper17515/admission fetch0另列，price/cache/upstream仍unknown。S18完整normalized缺失及下游本地重放限制保持，没有用S20冒称修复历史证据。
+
+S20有限阶段出口完成，source `6de1328c4`/`9736eabd5` 与docs沿原分支push仅存储。12新增/2受影响distinct本地PASS、1HTTP200/direct5955、私有证据/全部失败/连续费用均保留；S21–S34及完整任务未宣称完成。正常收尾只补Plan/Record链接/diff和Git身份/同步/干净核对，不重复产品已通过组，不自行merge/deploy main。
