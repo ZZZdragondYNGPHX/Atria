@@ -30,6 +30,7 @@ import { processingText } from '../../../public/shared/native-processing-contrac
 import { processPackageText } from '../processing-runtime.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { fields as receiptFields } from '../agent-intelligence/contracts.js';
+import { ProjectTaskRepository } from '../agent-intelligence/project-task-repository.js';
 
 export const STUDIO_SOURCE_OPERATION_TYPES = Object.freeze({
     write: 'source.write',
@@ -53,6 +54,11 @@ function opaqueId(prefix, idFactory) {
 
 function hashBytes(bytes) {
     return createHash('sha256').update(bytes).digest('hex');
+}
+
+function evaluationSourceIdentity(snapshot) {
+    return { sourceHash: hashNativeDocument(snapshot.source),
+        files: [...snapshot.files].map(([file, bytes]) => [file, hashBytes(bytes)]).sort(([a], [b]) => a.localeCompare(b)) };
 }
 
 function fingerprint(bytes) {
@@ -181,6 +187,7 @@ export class StudioService {
         this._idFactory = idFactory;
         this._projectQueues = new Map();
         this._previewOwners = new Map();
+        this._evaluationRecovery = new Map();
     }
 
     _queue(projectId, operation) {
@@ -201,8 +208,44 @@ export class StudioService {
     }
 
     async _ensureHistory(handle, projectId) {
-        const source = await this._project(handle, projectId);
         const directory = this._projects.getProjectDirectory(handle, projectId);
+        const markerPath = path.join(directory, '.git', 'atria-evaluation-recovery.json');
+        const recoveryKey = JSON.stringify([handle, projectId]);
+        const markers = [this._evaluationRecovery.get(recoveryKey)].filter(Boolean);
+        const taskRepository = new ProjectTaskRepository({ engine: this.storageEngine });
+        const tasks = await taskRepository.list(handle, projectId);
+        for (const task of tasks) {
+            if (task.status === 'blocked' && task.recovery?.originalSourceIdentity) markers.push({ handle, projectId,
+                baseRevision: task.baseRevision, source: task.recovery.originalSourceIdentity });
+        }
+        const markerFiles = [markerPath, markerPath + '.tmp'].filter(file => fs.existsSync(file));
+        for (const file of markerFiles) {
+            try {
+                markers.push(JSON.parse(fs.readFileSync(file, 'utf8')));
+            } catch {
+                throw Object.assign(new Error('native_studio_restore_failed'), { code: 'native_studio_restore_failed' });
+            }
+        }
+        for (const marker of markers) {
+            if (marker.handle !== handle || marker.projectId !== projectId
+                || (await this._git.log(directory, 1))[0]?.fullHash !== marker.baseRevision
+                || hashNativeDocument(evaluationSourceIdentity(await this._snapshot(handle, projectId))) !== hashNativeDocument(marker.source)) {
+                throw Object.assign(new Error('native_studio_restore_failed'), { code: 'native_studio_restore_failed' });
+            }
+        }
+        // Source and original HEAD are now proven restored. Clear only the
+        // active blocking identity through the original Task CAS; status stays
+        // blocked and history/costs remain for explicit human Task control.
+        // Do not acquire ProjectAgent's lock: this may already run under it.
+        for (const task of tasks) {
+            if (task.status === 'blocked' && task.recovery?.originalSourceIdentity) {
+                const { originalSourceIdentity: _identity, ...recovery } = task.recovery;
+                await taskRepository.save(handle, { ...task, recovery, sequence: task.sequence + 1 }, hashNativeDocument(task));
+            }
+        }
+        for (const file of markerFiles) fs.unlinkSync(file);
+        this._evaluationRecovery.delete(recoveryKey);
+        const source = await this._project(handle, projectId);
         if (!fs.existsSync(path.join(directory, '.git'))) {
             await this._git.init(directory);
             await this._git.setConfig(directory, 'user.name', HISTORY_AUTHOR.name);
@@ -450,6 +493,57 @@ export class StudioService {
         }
     }
 
+    async _finishEvaluation(handle, workspace, snapshot, createdPreviewId, keepPreview) {
+        // Temporary source writes must be repaired before cleanup can throw.
+        // Both a marker and its interrupted rename file are fail-closed inputs
+        // to the original history authority, including in another instance.
+        const identity = value => hashNativeDocument(evaluationSourceIdentity(value));
+        let interrupted = false, restored = false, recoveryMarkerPersisted = false;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                await this._restore(handle, workspace.projectId, snapshot);
+                if (identity(await this._snapshot(handle, workspace.projectId)) !== identity(snapshot)) throw new Error('Restore mismatch');
+                restored = true;
+                break;
+            } catch {
+                interrupted = true;
+            }
+        }
+        if (!restored) {
+            const marker = { schemaVersion: 1, handle, projectId: workspace.projectId, baseRevision: workspace.baseRevision,
+                source: evaluationSourceIdentity(snapshot) };
+            this._evaluationRecovery.set(JSON.stringify([handle, workspace.projectId]), marker);
+            const markerPath = path.join(this._projects.getProjectDirectory(handle, workspace.projectId), '.git', 'atria-evaluation-recovery.json');
+            try {
+                fs.writeFileSync(markerPath + '.tmp', JSON.stringify(marker));
+                fs.renameSync(markerPath + '.tmp', markerPath);
+                recoveryMarkerPersisted = true;
+            } catch {
+                // Retain any temp marker. If its initial write failed, try the
+                // final marker directly; incomplete JSON also blocks history.
+                try {
+                    fs.writeFileSync(markerPath, JSON.stringify(marker));
+                    recoveryMarkerPersisted = true;
+                } catch {
+                    recoveryMarkerPersisted = fs.existsSync(markerPath) || fs.existsSync(markerPath + '.tmp');
+                }
+            }
+        }
+        let cleanupFailed = false;
+        if (createdPreviewId && (!keepPreview || interrupted || !restored)) {
+            try {
+                this.closePreview(handle, createdPreviewId);
+            } catch {
+                cleanupFailed = true;
+            }
+        }
+        if (interrupted || !restored) {
+            const code = restored ? 'native_studio_restore_interrupted' : 'native_studio_restore_failed';
+            throw Object.assign(new Error(code), { code, stateRestored: restored, recoveryMarkerPersisted, cleanupFailed });
+        }
+        if (cleanupFailed) throw Object.assign(new Error('native_studio_preview_cleanup_failed'), { code: 'native_studio_preview_cleanup_failed', stateRestored: true });
+    }
+
     async _inspectOperation(handle, projectId, operation, baseSnapshot = null) {
         if (operation.operationType === STUDIO_SOURCE_OPERATION_TYPES.frontendPatch) {
             const edit = await this._frontendPatch(handle, projectId, operation, baseSnapshot);
@@ -668,8 +762,7 @@ export class StudioService {
                     simulation: simulationResult,
                 });
             } finally {
-                if (createdPreviewId && !keepPreview) this.closePreview(handle, createdPreviewId);
-                await this._restore(handle, workspace.projectId, snapshot);
+                await this._finishEvaluation(handle, workspace, snapshot, createdPreviewId, keepPreview);
             }
         });
     }

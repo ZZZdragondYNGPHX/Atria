@@ -37,7 +37,7 @@ function normalizeRelativePath(input, { allowManifest = false } = {}) {
     if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
         throw new TypeError('Project source path contains an illegal segment');
     }
-    if (segments[0] === '.git') {
+    if (segments[0].toLowerCase() === '.git') {
         throw new TypeError('ProjectStore does not expose .git internals as source files');
     }
     if (!allowManifest && input === ATRIA_PROJECT_MANIFEST) {

@@ -12,6 +12,21 @@ import { assertComputeLedger } from '../../../public/shared/native-compute-budge
 
 const key = (handle, projectId, taskId) => ({ kind: NATIVE_RESOURCE_KINDS.projectAgentTask, handle, projectId, taskId });
 const STATES = new Set(['planning', 'planned', 'working', 'evaluating', 'repair', 'blocked', 'review', 'committing', 'completed', 'conflict', 'taken_over', 'cancelled']);
+export function assertOriginalProjectSourceIdentity(value) {
+    fields(value, ['sourceHash', 'files'], 'Original Project source identity');
+    if (!/^[a-f0-9]{64}$/.test(value.sourceHash) || !Array.isArray(value.files) || value.files.length > 1024
+        || Buffer.byteLength(JSON.stringify(value)) > 524288) throw new TypeError('Original Project source identity bounds');
+    const paths = new Set();
+    for (const entry of value.files) {
+        if (!Array.isArray(entry) || entry.length !== 2) throw new TypeError('Original Project file identity');
+        const [file, digest] = entry;
+        if (typeof file !== 'string' || !file || file.length > 512 || file.includes('\\') || file.includes('\0') || file.startsWith('/') || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(file)
+            || file.split('/').some(segment => !segment || segment === '.' || segment === '..' || segment.toLowerCase() === '.git')
+            || paths.has(file) || !/^[a-f0-9]{64}$/.test(digest)) throw new TypeError('Original Project file identity');
+        paths.add(file);
+    }
+    return value;
+}
 const TASK_FIELDS = ['schemaVersion', 'sequence', 'taskId', 'projectId', 'intent', 'status', 'baseRevision', 'plan', 'proposals', 'workspace', 'inspection', 'validation', 'preview', 'simulation', 'repairRound', 'maxRepairRounds', 'review', 'changeSets', 'timeline', 'attempts', 'commitIntent', 'conversation', 'recovery', 'createdAt', 'updatedAt'];
 
 export function assertProjectTask(value) {
@@ -129,9 +144,14 @@ export function assertProjectTask(value) {
         }
     }
     if (task.recovery !== null) {
-        fields(task.recovery, ['status', 'code'], 'Task recovery');
+        fields(task.recovery, ['status', 'code', ...(Object.hasOwn(task.recovery, 'originalSourceIdentity') ? ['originalSourceIdentity'] : [])], 'Task recovery');
         if (!['recovered', 'interrupted', 'awaiting_review', 'conflict'].includes(task.recovery.status)) throw new TypeError('Invalid task recovery');
         text(task.recovery.code, 'Recovery reason');
+        if (task.recovery.originalSourceIdentity !== undefined) {
+            if (task.recovery.status !== 'interrupted' || task.recovery.code !== 'comparison_source_restore_failed'
+                || task.status !== 'blocked') throw new TypeError('Project recovery source identity requires a blocked comparison');
+            assertOriginalProjectSourceIdentity(task.recovery.originalSourceIdentity);
+        }
     }
     assertProjectAgentConversation(task.conversation);
     if (task.strategyVersions !== undefined) {

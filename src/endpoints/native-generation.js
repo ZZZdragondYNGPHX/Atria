@@ -28,6 +28,8 @@ import { nativeTaskScheduler } from '../native/task-scheduler.js';
 import { IllustrationPromptService } from '../native/illustration-prompt-service.js';
 import { IllustrationImageService } from '../native/illustration-image-service.js';
 import { PredictionService } from '../native/prediction-service.js';
+import { CandidateComparisonService } from '../native/candidate-comparison.js';
+import { ProjectComparisonService } from '../native/project-comparison.js';
 import { AgentEvidenceRepository } from '../native/agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../native/agent-intelligence/evidence-service.js';
 import { AgentGoalService } from '../native/agent-intelligence/goal-service.js';
@@ -71,6 +73,25 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    for (const [path, Consumer, actions] of [
+        ['comparison', CandidateComparisonService, ['prepare', 'current', 'feedback']],
+        ['project-comparison', ProjectComparisonService, ['prepare', 'current', 'outcome']],
+    ]) for (const action of actions) router.post('/' + path + '/' + action, async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        const controller = new AbortController();
+        const abort = () => { if (!response.writableEnded) controller.abort(); };
+        response.on('close', abort);
+        try {
+            const result = await new Consumer({ host: getHost() })[action](handle, request.body, controller.signal);
+            if (!controller.signal.aborted) response.json(result);
+        } catch (error) {
+            const code = /^(native_comparison_|native_project_comparison_|native_generation_|native_studio_restore_)[a-z_]+$/.test(error.code || '')
+                ? error.code : 'native_comparison_failed';
+            if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
+        } finally { response.off('close', abort); }
+    });
     for (const action of ['prepare', 'current']) router.post('/prediction/' + action, async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);

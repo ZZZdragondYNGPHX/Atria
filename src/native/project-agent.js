@@ -10,7 +10,7 @@ import { STUDIO_RESOURCE_OPERATION_TYPES } from './authoring/library-authoring.j
 import { STUDIO_SOURCE_OPERATION_TYPES } from './authoring/studio-service.js';
 import { AgentExperienceRepository } from './agent-intelligence/experience-repository.js';
 import { AgentExperienceService } from './agent-intelligence/experience-service.js';
-import { ProjectTaskRepository, assertProjectTask } from './agent-intelligence/project-task-repository.js';
+import { ProjectTaskRepository, assertProjectTask, assertOriginalProjectSourceIdentity } from './agent-intelligence/project-task-repository.js';
 import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
@@ -636,6 +636,30 @@ export class ProjectAgentService {
     }
     settleLocalWork(handle, projectId, id, attemptId, usage) {
         return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage));
+    }
+
+    // A failed Studio evaluation restore cannot enter _operate: its initial
+    // source synchronization would read a temporary candidate as a human edit.
+    // Settle the admitted job and stop this original Task through its own CAS.
+    failComparisonRecovery(handle, projectId, id, executionFingerprint, attemptId, usage, originalSourceIdentity) {
+        assertOriginalProjectSourceIdentity(originalSourceIdentity);
+        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+            assertWritable();
+            const task = await this._repository.get(handle, projectId, id);
+            if (!task || this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+            const expected = hashNativeDocument(task);
+            const settled = settleLocalWork(task, attemptId, usage);
+            task.status = 'blocked'; task.recovery = { status: 'interrupted', code: 'comparison_source_restore_failed',
+                originalSourceIdentity: clone(originalSourceIdentity) };
+            task.updatedAt = Date.now(); this._event(task, 'recovery', { status: task.recovery.status, code: task.recovery.code });
+            try {
+                await this._persist(handle, task, expected);
+            } catch {
+                throw Object.assign(new Error('native_project_comparison_recovery_persistence_failed'),
+                    { code: 'native_project_comparison_recovery_persistence_failed', stateRestored: false, taskRecoveryPersisted: false, settlementPersisted: false });
+            }
+            return settled;
+        });
     }
     assertLocalIndexCurrent(handle, projectId, id, revision, executionFingerprint) {
         return this._operate(handle, projectId, id, async task => {
