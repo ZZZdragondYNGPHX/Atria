@@ -202,6 +202,7 @@ test('S17 installed Host and declared Task consume plans through original Inform
         expect(text).toContain('A goalId or commitment reference grants no Task');
         const policy = result.snapshot.contextPlan.items.find(item => item.id === 'projection:policy:cognition');
         expect(policy.content).toContain('Do not make the player act');
+        expect(policy.content).toContain('describe only the named plan');
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
         const planned = await host.execute(h.handle, { ...input, requestId: 's17-task-preview' }, undefined, undefined,
             { preview: true, taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } });
