@@ -1,49 +1,36 @@
-# Atria Agent Intelligence Runtime — S21 续接
+# Agent Intelligence Runtime — M5有限工程移交
 
-2026-10-12 用户明确要求交接提示词，新建对话继续。本轮私有资料精简已完成；交接后暂停开发。整体任务未完成，S21–S34 尚未实施。执行与恢复规则归 [Governance](README.md)，本次暂停不成为下一对话的阶段停止规则。
+2026-10-13 用户明确要求在M5本地工程自然边界换聊。按 [Governance §7](README.md#7-handoff) 刷新唯一交接；整体任务未完成，待监管核实停稳后创建一个新主聊天。本聊天退出写入，不自行创建新主。旧S21交接已替换，不重做M1/HM1或S27–S29。
 
-## 真实工作空间
+## 实际Git与入口
 
-- Task ID：`agent-intelligence-runtime`。Windows / PowerShell / Asia/Shanghai。
-- source：`D:/Dev/Atria-worktrees/tasks/agent-compute-runtime/source`；branch `feat/agent-compute-runtime`，HEAD/origin `96ff4487e2b43384120eb4567636a58e9b994708`，干净。
-- docs：`D:/Dev/Atria-worktrees/docs`；branch `docs`，交接前 HEAD/origin `5871804c70525d3692fd4955764fbb7465bd04b2`；本文提交后的 HEAD 以实际 Git 为准。已有未跟踪 `plans/feat/agent-experience-evolution/` 草稿必须保留，不纳入本任务提交。
-- main：`D:/Dev/Atria`；HEAD/origin `3ee1332ef113d4c57c65d9577222ba88d5171101`，干净，本轮未合并或部署。
-- 没有本轮遗留 API 调用、测试进程、quota 锁、子 agent 或 Codex Goal。其它工作树保留，不清理活跃或用途不明的工作树/分支。
+- Task：`agent-intelligence-runtime`。主工作区 `D:/Dev/Atria-worktrees/tasks/agent-compute-runtime/source`，branch `feat/agent-compute-runtime`，HEAD/origin `a8272315332af99b8430f39d498ff0afcaee5a09`，干净；其中S30只有配置准备，未交付MCP消费者。
+- docs：`D:/Dev/Atria-worktrees/docs`，branch `docs`。交接前HEAD/origin `59087024c762780228ff9e68440ce7464e4feccb`；本文、同一Record和S30模块一起提交/push后以实际Git为准，勿把前HEAD当最新。
+- main：`D:/Dev/Atria`，`3ee1332ef113d4c57c65d9577222ba88d5171101`，未改。docs无关未跟踪 `plans/feat/agent-experience-evolution/` 保留，不stage。
+- 恢复：实际Git/status → 本文 → [Plan index](plans/architecture/agent-intelligence-runtime/index.md) → [同一Record最新S27/S28/S29/工程移交节](records/refactor/agent-intelligence-runtime.md)。按需只读当前模块，不扫全Plans/历史/Skills。
 
-## 恢复顺序与当前任务
+## 已完成与证据边界
 
-先核对真实 Git/status；按需要 fetch 并 ff-only 同步原 feature/docs，保护草稿与无关改动。随后读本文 → [Plan index](plans/architecture/agent-intelligence-runtime/index.md) → [同一 Record 最新 S20 与私有精简两节](records/refactor/agent-intelligence-runtime.md)。旧 S16 交接已过时，不回退进度。
+S21/S22、S23有限工程、S24双域比较、S25普通异步、S26可选留额均已push，详细结果/费用/失败归Record。M4真实provider、双域决策和quality-cost仍pending，新素材外传范围未解决，不改成通过。
 
-M1/HM1 已集成 main；所选 G06 与 S11–S20 的有限出口已交付，完整 M8/HM2/后续任务不冒称完成。下一 S21 是认知检查、Save/export/rollback 与长期场景/H5：秘密、误会、承诺、关系/遗忘跨回合恢复，原作者/作品授权 inspector 与普通玩家 disclosure 分离，作品可选自主 NPC 只沿原 Simulation/outbox/预算与合法 World Tick。S21 尚无已实施出口，不把清理算作认知验收。
+S27 source `4fe3a172a`：原公开display→typed ExpressionPlan→prose，16新增/12受影响distinct PASS，原Host/预算/取消/source guard；loopback不是模型语义/风格验收。S28 `43a1505e2`：本地Windows SAPI→原辅助Scheduler/RunControl/AssetStore，18新增/4受影响PASS，其中真实WAV、实际spawn后kill/close取消、FS/SQLite/HTTP及跨消息exactvoice；没有播放声音，音质/细粒度时序/感知仍pending。S29功能 `05a18e6d4`/规范化 `293653079`：原readonly bridge安全五字段、exactPackage PNG/文字fallback，backend4及Chromium六组合PASS（component/hybrid/full×1440/390），原Conversation7/required media1受影响PASS。图片decode误标available已修复，full390损坏/恢复/旧事件复验，root实际截图QA通过，状态/费用只读。
 
-S21 最小设计入口按 [delivery](plans/architecture/agent-intelligence-runtime/delivery.md) 的 S21 / H5 / HM3 路由：
+原不利结果保留：S27首轮provenance长度/Actor-Task误插/fixture与费用断言失败后相关修复通过；S28 canonical actorId解析及fixture非法actorField两轮失败、并发cache/TTL/结算故障已修；S29实际decode失败、test EOF cached diff警告已修。不要重写为从未失败、普遍无泄漏、独立模型质量或完整M5验收。
 
-- [architecture](plans/architecture/agent-intelligence-runtime/architecture.md) §6–7（H5 需要时 §5–8）；
-- [behavior-context](plans/architecture/agent-intelligence-runtime/behavior-context.md) §2 / §2.1；
-- [compute-policy](plans/architecture/agent-intelligence-runtime/compute-policy.md) §2（H5 需要时 §4.1）；
-- [baseline](plans/architecture/agent-intelligence-runtime/baseline.md) §4；
-- [M3 design](plans/architecture/agent-intelligence-runtime/m3-cognition-design.md)、[S20](plans/architecture/agent-intelligence-runtime/s20-memory-applicability.md)，H5 按需补 [hybrid-memory](plans/architecture/agent-intelligence-runtime/hybrid-memory.md) §5。
+## 下一行动：S30有限本地READ
 
-先检查原认知、Session/Save、Information 权限、Simulation/Lifecycle 和运行成本持久化实现，定位 S21 当前差距；需要详细 S21 模块时在原 Bundle 补充设计，不建平行 authority。沿原 task branch 与同一 Record 持续实现、最小相关本地验证及必要实际正文验证。已完成且未受变化影响的 M1/HM1/G06/S11–S20 检查不重跑。用户此前已选择“原作者/作品授权”，不重新询问同一权限设计；Session owner/操控 Actor 不自动获得全部 private cognition。
+先读 [delivery §7](plans/architecture/agent-intelligence-runtime/delivery.md) 与 [S30范围](plans/architecture/agent-intelligence-runtime/s30-local-mcp.md)。依赖原S02/S13，不因M4/M5外部证据pending自动停止独立本地项。S31–S34尚未实施，按真实依赖后续推进。
 
-## 私有资料新状态
+交接通知前原Route `executionPolicy.mcp` 已准备：固定`2025-11-25`、canonical connectionProfileId、tool/resource精确allowlist、auth none/secret；36新增+原contracts17 PASS、2文件ESLint及cached diff-check PASS，source `a82723153`已push。这只是strict配置，**没有MCP adapter/clientService/SDK Server/工具或resource调用**，不要算S30完成。
 
-当前目录是 `D:/Dev/Atria-private`，仅 6 个文件 / 3578 bytes：根 `README.md` 阶段摘要，`Document/` 中 `api-primary.json`、`api-secondary.json`、`api-minimax-temporary.json`、`minimax-subscription-key.json` 和 `m1-api-quota.json`。凭证只私下读取；primary 与最新记录的 endpoint/model 一致。不打印、提交或上传 key/config。
+下一实现沿原owner ConnectionProfile/Route、Session公开item、TaskScheduler/RunControl，落实provider.mcp/transport.http、字面loopback/no redirects、exactSecretRef、源/预算/取消/unknown和外部provenance；外部payload不获World/Memory/Goal权限。默认不调用，SSE/未知版本/Apps脚本或callback能力明确unsupported。用真实SDK公开文字统计/临时公开resource验证，不启动连接用户数据的Atria plugin或stdio任意命令。
 
-本地 Git `atria.s06.connection` / `atria.s06.secondaryconnection` 已指向此 `Document/`，`atria.private.directory` 同路径；旧 ledger/limits/artifacts 映射已移除。不要恢复旧 `Atria-private-state/Document` 或 `hm1-20261010/Document` 路径。
+已核实独立临时SDK `1.30.1`，实际支持latest `2025-11-25`，未知requested版本会自动回退，客户端仍需exact核对；现代其它revision不能混称。SDK在本机临时根 `C:/Users/5insi/AppData/Local/Temp/atria-s30-sdk-d4adf0202e05400abb4a008495f7193b` 下，未运行Server。测试可经`ATRIA_MCP_SDK_ROOT`传路径，不把机器路径/依赖cache提交产品；若临时目录丢失按精确版本重准备即可，不重做旧阶段。清理前核实resolved目标确在该临时根，使用单一PowerShell/文件API，勿跨shell递归删除。
 
-当前 quota 为 schemaVersion1，carry `{requests:148,at:1791815433800}`、admissions 空。旧本机 1659 条均过期；最新 S20 Record 为 1807 条，差额 148 的时间缺失，在本次导入时一次保守计入窗口，按文件时间 24h 后自动失效。**不要重新导入 148、清零窗口或用永久累计推算剩余额度。** 原 `M1ApiQuota` 已自动压缩过期 entries/carry，仍执行每日 2000 次、20 RPM；retry/judge/必要诊断均计数并排队。
+## 权限、保留与停稳
 
-后续私有测试用 source `tests/agent-intelligence/private-test-run.js` 的 `withPrivateTestRun(directory, run)`：共享 quota 排他锁，`run.directory` 为临时 fixture/诊断目录，`run.connection()` 私下读配置；发送前 `await run.quota.waitAvailable(signal)`、`run.quota.admit(uniqueAttemptId)`，实际 retries 分别计数。回调要 await 当前所有操作再退出；成功/失败均清理临时目录，阶段结论归同一 Record。详细保留规则只见 Governance §13.1，不新增永久逐次 raw/normalized/费用账本或自动执行已完成 M1 历史脚本。
+新素材producer/judge/诊断外发继续暂停；公开协议资料/依赖registry只读不等于素材发送许可。夜间不自动播放音频。只推送已授权任务代码/相关测试/正式docs到feature/docs，不merge/deploy，不扰动main、plugin或无关草稿。
 
-用户已明确批准删除旧私有原始资料和三个迁移/备份目录；约 2.12 GB / 57796 个文件已移出工作目录，因自动审批策略拒绝永久删除，转入 Windows 回收站，未永久擦除或释放同等磁盘空间。不要为了续接重新解压、恢复回收站或重建历史副本。远端私有仓库/另一设备未修改；本轮不要求清空回收站。
+私有Git `atria.private.directory` 当前为 `D:/Dev/Atria-private/Document`（已是Document，不双重拼接）。只保留当前API配置、最小滚动额度、阶段摘要；不打印/提交/上传凭据，不恢复旧备份/raw正文/永久历史账本。`carry148`只导入一次，不清零或重加；必要获准调用沿原`tests/agent-intelligence/private-test-run.js`自动2000/day、20RPM与临时清理，不私建ledger。
 
-## 证据与验证边界
-
-历史阶段摘要、失败与费用 unknown 保留在 Record；本机没有另一设备 S16–S20 原始文件，旧已删材料不能再宣称可重审。S18 原完整 normalized 缺失、部分下游本地重放限制依旧成立，不补造证据或重跑历史只为恢复文件。当前历史有限出口不升级为绝对无泄漏/普遍质量或独立长期场景通过。
-
-本轮源码 `96ff4487e`：2 targeted Jest suites / 8 distinct tests PASS（滚动日/分钟限流、排队、历史压缩保留有效用量、临时清理成功/失败、锁与白名单）；lint 的两项 conditional-expect 已修复，仅受影响 2 cases 复测 PASS。4 修改文件 ESLint、syntax/diff 检查通过；实际四份本地配置读取成功、carry148 保持、quota 锁已清理。外部 API 0，不跑全仓 test/build、不合并 main。已 push source/docs；交接文档只做路径/diff/Git 同步验证。
-
-当前用户明确授权并鼓励子 agent 并行：在不发生写入冲突、能降低耗时或改善质量的前提下，主动委派独立分析、实现、测试与审查，无需逐次询问。主 agent 明确每个子任务的文件写入归属、依赖和交付结果，统一集成、提交及共享 API quota；同一文件的依赖修改顺序执行，需并行写入不同 Git 状态时使用隔离工作树。不要同时抢占全程锁定的付费测试 helper。按当前环境并发槽位安排；本交接时环境为主 agent 加最多 3 个子 agent，后续以实际工具能力为准。不为短小或强依赖步骤机械拆分。
-
-Codex Goal 的创建按当前工具定义执行，只有用户明确要求建立 Goal 时创建；子 agent 并行授权不需要依赖 Goal。无新建/迁移工作树需要时复用当前 source/docs。继续已授权工程任务，无需逐阶段重新确认；merge/deploy 的实际范围按当前用户指令和 Governance 核对，不从旧历史记录推导新授权。
+三个子代理已结束并报告无受控进程/请求仍运行；浏览器/Server测试已正常finally关闭，root同步命令结束后只作Git/交接核验。未建Codex Goal，无在途素材/API调用或旧主写入。新聊天须在监管核实本聊天停稳后唯一创建，沿原主工作区接续；交接本身不是阶段验收通过或整个路线停止条件。
