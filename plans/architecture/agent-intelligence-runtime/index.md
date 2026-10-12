@@ -165,7 +165,10 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S18 | 有限共享事件appraisal交付 | [s18-event-appraisal](s18-event-appraisal.md)，15新增/4受影响本地PASS；两实际发送/direct7236；下游正文为保留response的本地重放消费，原完整normalized快照缺失归Record |
 | S19 | 有限一阶/二阶ToM出口完成 | [s19-theory-of-mind](s19-theory-of-mind.md)，19新增/2受影响本地PASS；同Session实际共享Task与反例后正文/direct8593，HTTP400 unknown6261保留；不升级为真实他者mind或校准概率 |
 | S20 | 有限因果轨迹/Memory applicability/遗忘出口完成 | [s20-memory-applicability](s20-memory-applicability.md)，12新增/2受影响本地PASS；同Session原连接正文direct5955，原失败/费用保留；不强制行为/不改变World历史 |
-| S21–S34 | 尚未实施 | 所选G06、M3权限及S20前置已满足；下阶段沿权限分离检查/原Save恢复/长期场景依赖推进 |
+| S21 | 有限消费者出口完成 | [认知恢复设计](s21-cognition-recovery.md)；source `c73bad012`，44新增/3受影响本地distinct PASS，7实际请求含保留失败及修复后正文对照；完整 HM3/任务不冒称完成 |
+| S22 | 有限确定性消费者出口完成 | [确定性预演设计](s22-hypothetical-preview.md)；source `c73bad012`，12 distinct PASS；exact snapshot、原 Simulation/transaction 私有 candidate、获准投影与 stale 复验 |
+| S23 | 实施中 | [文本结构化预测](s23-model-prediction.md)；原 Host/Task/费用与只读预测 lane，真实 provider 验证待执行 |
+| S24–S34 | 尚未实施 | 按原 delivery 依赖继续；实际 provider/协议/训练出口不能由 mock 或占位替代 |
 | HM1 / H0–H2 | Complete；main `3ee1332ef` | B0 保留，B1–B3 / 三路径 / Context 完整组 / 主模型正文观察与相关本地验证通过；限制见 Record |
 | HM2–HM3 / H3–H5 | 有限HM2工作进行中；整体未验收，HM3未交付 | 原合法corpus/hash派生复用与有限本地Embedding已有实际消费者；delta/candidate cache、启用算法收益与cognition/forgetting仍按各组出口交付 |
 

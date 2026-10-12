@@ -2560,3 +2560,19 @@ S20有限阶段出口完成，source `6de1328c4`/`9736eabd5` 与docs沿原分支
 源码本次提交 `96ff4487e` 沿原 `M1ApiQuota` 清除过期 admissions/carry，保留有效滚动 24h 与 20 RPM 原 authority/排队；恢复时即持久化压缩状态，不只在下次付费调用后清理。`withPrivateTestRun` 复用同一 quota，用排他锁串行共享连接测试，在系统临时目录容纳当前 fixture/诊断，成功或失败均清理；API 配置只通过白名单读取，不另建产品持久层。后续必要测试沿该临时生命周期，阶段结论归本 Record；已完成的旧 M1 runner 不自动重跑。详细保留规则只在 Governance §13.1 定义，旧私有路径相关本地 Git 配置已修正，失效 ledger/limits/artifacts 映射移除。
 
 实际验证：2 个 targeted Jest suites / 8 distinct tests PASS（原限流/排队/有效 carry、恢复压缩不丢有效分钟/日用量、成功/失败清理、锁拒绝并发、路径白名单、已计 admission 跨测试退出保留）；静态检查最初发现测试条件 expect 两项错误，修成无条件结果断言后只复测受影响的 2 cases PASS。4 个改动文件 ESLint 与 syntax/diff 检查通过；实际四份本地凭证由新 helper 私下读取成功，carry148 保留，结束无临时锁/fixture；四个清理目标均不存在于原路径。外部 API 0，不重复旧已通过产品组，无全仓 test/build 或 main 集成。S21–S34 仍未实施，不将本次清理当作产品认知验收。
+### 2026-10-12 S21/S22：中断实现恢复与针对性复核
+
+续接聊天 `01a13097-44de-77c2-9a26-c0fdbe5ae8c2`，真实 source HEAD 仍为 `96ff4487e`，已有未提交 S21/S22 实现；docs HEAD `95f4ddf8d` 有同阶段设计及 index 修改，原 `agent-experience-evolution` 草稿保留；main `3ee1332ef` 未变。旧 HANDOFF 为开始 S21 前快照，以当前 Git 与本节为准。前轮中断前正文评价曾报告截断/信息不足；原临时正文已清理，具体费用与逐次结果本轮未取得，不补造、不当零费用。限流沿现有共享 helper，不重复导入 carry148。
+
+本轮恢复审查 19 distinct 本地 PASS：普通 Save v3 携带原 RunContinuation、跨 FS/SQLite restart、snapshot/session export/import、same-store 旧费用拒绝覆盖新花费、unknown 保持、schema1 兼容、FS RunControl/Session marker 写入故障与重试、fork/rollback 有效 basis 重绑定及 stale/withdrawn 不复活、原 Revision 不可变。未改另一套存储/费用 authority。原 ironman retiredCompute portable 2 项受影响检查 PASS。
+
+S21 Tick/Host 12 distinct PASS：百万 Tick 有界调度、原 Host 封存采纳、outbox 及费用跨 Save、无推进/pump/关闭/无 job 零发送、缺预算与 maxJobs 耗尽后重启 pending、Clock 晚到及关闭拒绝发布且保留已发生150 tokens。新增条件断言 ESLint 两项报错后改为无条件断言，仅受影响1 case复验 PASS；该文件 ESLint PASS。作者 inspector/player disclosure 13 distinct PASS，原 ProjectStore ownership/exact source hash 与 installed grant 双重检查、外部 handle 不可冒充、历史 snapshot/Actor unavailable、HTTP no-store 与 caller authority 拒绝，保留旧 raw Session/完整 archive 本地可信接口边界。
+
+新临时 S21 原连接正文第一组：4 requests/4 HTTP200，light-before 7163、light-after-portable 7541、deep-opt-in 8489、judge5218 reported total tokens，合计28411，不以 input+output 推导 reported total。状态纯读、rollback/portable cognition 与费用恢复通过；judge 对两 light 样本判 FAIL（把已 blurred 的三只紫色燕子当确凿当前回忆），deep 样本 PASS，light pairConsistent=true。保留此失败，不将结构成功升级正文验收。所有当前测试 raw/fixture 随 helper 退出清理；provider currency/upstream retries 未知。
+
+沿原 Context compiler 的 memoryApplicabilityUse 修复 raw 历史字段/derived qualifier 解释：blurred 不可作为精确当前回忆，forgotten/unavailable 不可恢复成当前记忆，reconstructed 保持重构来源，reluctant 不等于愿意，不用精确 raw detail 解释角色忘记了什么；不改变 World/raw state 或展示授权。相关原 bridge/compiler/Host 1 case PASS；compiler/runner ESLint 与 syntax PASS。仅轻度两样本及 judge 正在复测，深度已过样本不重复发送。
+
+S22 原 authority 私有 candidate/Player view delta 与 freshness：2 suites/12 distinct PASS。审查发现 Clock path 可能执行 Simulation job 引用的非 deterministic resolution，已在 pinned logic 中拒绝 Fortune 等声明；新增 fortune Clock、maxSteps、Package pin，以及 timeline/asset stale 检查。预演不发布、不调模型、不改原 state/outbox/费用；模型预测仍归 S23。三份 S22 文件及本轮修改生产文件 ESLint、diff 检查通过。
+
+轻度修复复测3 requests/3 HTTP200：light-before7222、light-after-portable7479、judge1881，reported total16582。两 light cards PASS、pairConsistent=true，stateReadOnly 与 rollbackAndPortableCosts PASS。与首组累计7 requests/7 HTTP200/direct44993；没有新增unknown，原失败保留。评价为同连接不同请求、匿名 cards 的有限非人工评价，未宣称独立六维、人类偏好或普遍质量；跨回合/跨存储的作者场景与正式 Tick Host 分别验证，不冒称真实长程自主认知收益。S21/S22 所选有限消费者出口完成，source `c73bad0129d4e4249c97e665c2e7261172d37f32`；44 S21/12 S22新增及3受影响distinct本地PASS。完整 HM3/任务仍有后续依赖，不将阶段作为暂停边界，继续 S23。
+
