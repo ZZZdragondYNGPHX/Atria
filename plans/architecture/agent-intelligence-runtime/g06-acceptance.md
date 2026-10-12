@@ -21,7 +21,7 @@
 
 2026-10-12 先沿精确作者 style-v3 修正地点暗示天气，七原 H0-ZH-08 正文实际消费原 Memory authority；同主模型匿名六维观察的 hard prose不利已触发式修正。style-v4 hard 最初将未定义 hp 写成“体力”，最小生产 World interpretation policy 消费真实选定 World，不补字段/后处理正文；必要 actual Host、stable/dynamic fingerprint与scope反例本地验证后，新 hard输出及六维持平。
 
-原 H0-ZH-01/04/05 的受影响 Session pairs 与 Project reuse 只重发八必要 generation。承诺的过去/当前未知、寄信动机未知以及 Project只读来源/工具权限项通过；三 Session pair 各同bank8→19 jobs，原Project已通过base保留。五匿名观察中高影响Session reuse的“旁白不能…”出现风格负差；保留原评分，不以其事实守卫通过抵消叙事退步。后续仅该arm的作者资源修正，又观察到无依据的行动/会面否定；World policy补充“没有事件证据不能断言未发生”，历史两次坏输出保留。style-v6 未代玩家行动或断言事件发生/未发生，但最后观察knowledge/voice各-1；style-v7又把场景location赋给阿岚，保持失败。source4160851ca补场景字段归属规则；复核旧正文也发现若干“你身在港口”无明确World所有者支持，之前天气/时间通过不等于所有位置断言通过。下一仅受影响H0-08三臂/ordinary/high-impact frame、H0-01 pair与H0-05 pair，用同一泛化作者表达资源及真实compiler归属policy复验。
+原 H0-ZH-01/04/05 的受影响 Session pairs 与 Project reuse 只重发八必要 generation。承诺的过去/当前未知、寄信动机未知以及 Project只读来源/工具权限项通过；三 Session pair 各同bank8→19 jobs，原Project已通过base保留。五匿名观察中高影响Session reuse的“旁白不能…”出现风格负差；保留原评分，不以其事实守卫通过抵消叙事退步。后续仅该arm的作者资源修正，又观察到无依据的行动/会面否定；World policy补充“没有事件证据不能断言未发生”，历史两次坏输出保留。style-v6 未代玩家行动或断言事件发生/未发生，但最后观察knowledge/voice各-1；style-v7又把场景location赋给阿岚，保持失败。source4160851ca补场景字段归属规则；复核旧正文也发现若干“你身在港口”无明确World所有者支持，之前天气/时间通过不等于所有位置断言通过。以上五组style-v9九必要正文/真实compiler归属policy复验已完成；七匿名观察六组无负差，同bank reuse仅voice-1（相邻“借”重复），其事实守卫全4。只作作者表达自然短句小修后，保持新版本三臂相同，完成最后必要配对。
 
 匿名观察采用原 JUDGE_RULE 与既有 rp.m1.information/project.m1.related 维度，完整合法事实/World/作者frame提供，算法、费用、版本和旧评分隐藏。格式必须 strict JSON；原七次 fenced JSON 失败全额保留，后续真实 outputContract进入wire response_format。该证据是同主模型有限工程观察，不是独立人类/第二模型评测或 M1 promotion。Project 的repair/related不存在时0=absent两侧同判，不据此虚构维修/正式Commit成功。
 

@@ -1,0 +1,19 @@
+# S15：精确 Actor 身份与作者 profile 投影
+
+状态：实施契约准备；待 G06 所选技术矩阵验收后开始。M3可见范围与接管已按 [M3入口设计](m3-cognition-design.md) 明确。本文沿原 core.actor/project-source、immutable PackageVersion、Native Context 与旧 Session projection，不创建第二Actor或认知仓库。
+
+## 有限物理投影与消费者
+
+原 Actor 保存 actorId/displayName/role、任意合法 JSON profile/metadata；不要求旧包迁移。共享纯投影从当前精确 PackageVersion/EntryPoint的原Actor取得身份。身份固定actorId，source为packageId/packageVersionId/entryPointId和原Actor引用；Session branch/revision只作为本次读取anchor，不把模型ID/Session消息当Actor身份。明确三个数据面：作者description/personality/scenario等旧文本、examples/systemPrompt/postHistoryInstructions等旧表达字段、原样保留的未知JSON字段。分类只是投影，不修改源profile或推断心理字段，旧examples优先/null回落行为保持。
+
+旧 projectNativeSession.character 保持原全部文本字段行为，增加可检查的精确Actor identity/source；分类数据由纯投影复用，未知JSON保留在原source不额外塞入legacy ABI；临时投影修改不回写manifest/profile，动态states不会覆盖作者设定。无Actor的旧EntryPoint仍原Package名称与空文本，不生成虚构Actor身份；primaryActorId选择和fallback第一Actor沿原EntryPoint，不用姓名或数组avatar充当存储identity。
+
+Native Host只消费EntryPoint中已选定的公开Actor身份（actorId/displayName/role）以及精确来源。该数据不携带任意profile文本、其它未选择Actor、动态cognition或World状态，也不成为Narrator声音指令；已有表达仍由精确PromptProgram/Module管理。含Information时继续原target/view/actorAvailability约束，不能以新身份投影替代原可见信息。无Information的旧Native上下文只带原EntryPoint选定primary/fallback Actor公开身份；Actor目标仅自己的身份。启用Information时新身份不能绕过原candidate replacement：仅所选合法context view显式绑定且available的Actor可带身份，未绑定/缺context grant保持原不投影。没有合法Actor/原授权时不补数据。
+
+新数据进入原Context lane与预算/token计数，绑定内容/精确PackageVersion，当前branch/revision沿原source freshness复验；不存在额外模型调用、免费旁路或新增writer。未知profile高级字段不会自动升级成Native system指令，角色口吻不会污染Narrator/Project。S16再按Information view接入动态belief consumer；本阶段不预先添加认知更新/接管API。
+
+## 最小相关本地出口
+
+使用真实installed Package/Session和Host preview或loopback验证公开身份精确消费、预算拒绝、两Actor/未选择Actor隔离、原Expression不混入Narrator。检查旧profile完整JSON与legacy examples/null回落、多次投影不改变作者/动态状态、更换模型身份不变；PackageVersion/源定义更换反映新source，branch/fork恢复沿实际旧anchor。仅新增/受影响consumer检查与改动文件lint/diff，不全仓、M1/HM1或额外付费。未改UI不重跑浏览器。
+
+实施后同一Record报告实际source、consumer、兼容/撤回/恢复证据和限制；通过后继续S16，不把S15或本组commit当默认停止点。

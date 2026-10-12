@@ -2380,3 +2380,13 @@ M3入口已准备具体可审阅设计；用户明确选择“采用原作者/�
 
 
 后续位置归属诊断：style-v7 H0-ZH-05 reuse HTTP200/direct1916虽回到第三人称，却称“阿岚眼下仍在港口”；World只有场景location，无Actor/player归属。source `4160851ca` 最小固定解释禁止无明示定义/适用事实将World场景/地点分配给Actor或玩家；actualHost+stable/dynamic两受影响本地检查、compiler lint/diff PASS并已push。此前style-v3同bank三条、ordinary08及ordinary01两条含“你身在港口”，还有“人在港口”的模糊位置项需要复验；原天气/时间守卫PASS只保留其有限项，不再当作全部World断言通过。raw与旧评分完全保留，新的完整正文审读修正的是scope/解释结论，不是改写历史输出。style-v8的一次preflight未发送；下一泛化作者style-v9只沿原表达资源澄清第三人称/已知事实/未知事件/无人物位置归属，原Source/32-job bank不改，受影响五组共九必要generation正在继续。
+
+
+位置归属修复的五组preflight均零外部API，泛化style-v9九必要generation共九HTTP200/direct25521：H0-ZH-08同bank三臂7988、ordinary frame2604、高影响frame4971，H0-ZH-01 pair4978、H0-ZH-05 pair4980。原query/Source与packet/evidence保持；同bank三臂仍8/19/27jobs，01/05 pairs各8/19。完整九正文审读未见将无归属World地点分给Actor/player、天气、hp标签或未知事件发生/未发生；不把高影响当前World场景值本身判成幻觉。此前所有明确人物位置语句与模糊“人仍在港口”作为不利材料保留，原基线六维的漏判也保留，未反向改写原报告。
+
+既有JUDGE_RULE/六维、完整World未给Actor/player归属的实际事实明确后，七匿名观察七HTTP200/direct16746：三臂base相对旧v3不利正文改进；Invocation相对同版本base持平；01/05同版本pairs及ordinary08/high08原frame对照无负差。reuse对同版本base仅actor_voice-1，理由为“借书那天，阿岚借走”同词复出；原事实守卫维度全4，但不删除风格不利。沿原作者资源仅增加自然短句避免相邻同动词重述，style-v10的同bank三臂预检后正在必要复验；未修改输出、做grader偏好提示或增加全局系统文风限制。
+
+`g06-continuation-audit-v3.json`离线通过，归档此前51新实际发送/direct117145（含34、style-v7的1916、v9九正文与七评分）、quota1724→1775/carry保持，所有raw/usage/strict JSON/Task settled/同bank/Source/World/Timeline/M1-HM1 hashes一致。与初恢复组累计60 admissions/58HTTP200/direct139392及2TLS unknown/upper46348；M8 reported actual151/direct372979，旧unknown2/upper17515/admission fetch0另列。无价格/cache/upstream或controller金额补造。完整G06继续以最后同bank风格出口和所选matrix归档判断，未跳过M3前置。
+
+
+最后同bank prose仍按原模型有限观察修正而不循环重发已通过案例。style-v10三generation/direct9032，base/reuse/Invocation使用完全相同新author frame与原bank，8/19/27 jobs；reuse六维对base持平，Invocation因正文将具体蓝封面书/履约背景缩为泛指借书而continuity/voice/narrative各-1。两评分/direct5787及所有reported成本保留，知识/玩家守卫均全4，没有把其它守卫PASS抵消此表达退步。只补作者资源要求保留来源已有的对象识别细节/履约时机，style-v11同bank受影响配对准备中；不补事实、输出后处理或指导grader评分。v4离线audit归档累计56新发送/direct131964、原quota1724→1780；含初恢复共65 admissions/63HTTP200/direct154211，M8 actual156/direct387798，原两组unknown与上界完整保持。
