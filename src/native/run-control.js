@@ -250,7 +250,7 @@ export class RunControl {
         });
     }
 
-    async chargeCompute(handle, snapshot, anchor, limits, attempt) {
+    async chargeCompute(handle, snapshot, anchor, limits, attempt, options = {}) {
         return this.update(handle, snapshot.session.sessionId, value => {
             if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
             const id = hashNativeDocument({ lane: 'turn', anchor });
@@ -261,7 +261,7 @@ export class RunControl {
                 if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
                 op = value.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
             }
-            const compute = chargeComputeAttempt(op, limits, attempt);
+            const compute = chargeComputeAttempt(op, limits, attempt, options);
             return { operation: id, compute, limits: structuredClone(op.compute.limits) };
         });
     }

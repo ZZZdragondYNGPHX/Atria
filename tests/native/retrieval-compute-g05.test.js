@@ -915,17 +915,20 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
         } finally { await f.cleanup(); }
     });
 }
-test('G05 local index work limits survive a real Narrator charge while model quota remains independent', async () => {
-    const f = await fixture(makeTempFsEngine, 3, { ...localLimits, maxJobs: 1 });
+test.each([1, 6])('G05 local index work limits survive a real Narrator charge while model quota remains independent (%i shared jobs)', async maxJobs => {
+    const f = await fixture(makeTempFsEngine, 3, { maxJobs, maxItems: 32, maxInputBytes: 16777216 });
     try {
         const body = await embeddingBody(f); await f.request.post('/insert').send(body).expect(200);
         const local = (await readCompute(f)).localWork;
         const host = new NativeGenerationHost({ ...f, sessionCore: f.core,
             providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-key' } });
-        await host.execute(f.handle, { sessionId: f.base.session.sessionId, revisionId: f.base.revision.revisionId, requestId: 'local-work-narration', role: 'narrator' });
+        const outcome = await host.execute(f.handle, { sessionId: f.base.session.sessionId, revisionId: f.base.revision.revisionId, requestId: 'local-work-narration', role: 'narrator' })
+            .then(() => 'sent', error => error.code);
+        expect(outcome).toBe(maxJobs === 1 ? 'native_generation_budget_exhausted' : 'sent');
         await f.request.post('/insert').send(body).expect(429);
-        const ledger = await readCompute(f); expect(ledger.localWork).toEqual(local); expect(ledger.attempts.map(row => row.usage.totalTokens)).toEqual([3, 15]);
-        expect(ledger.limits.localWork.maxJobs).toBe(1); expect(f.seen).toHaveLength(2);
+        const ledger = await readCompute(f); expect(ledger.localWork[0]).toEqual(local[0]); expect(ledger.localWork).toHaveLength(maxJobs);
+        expect(ledger.attempts.map(row => row.usage.totalTokens)).toEqual(maxJobs === 1 ? [3] : [3, 15]);
+        expect(ledger.limits.localWork.maxJobs).toBe(maxJobs); expect(f.seen).toHaveLength(maxJobs === 1 ? 1 : 2);
     } finally { await f.cleanup(); }
 });
 test('G05 local index bounds existing files and returned vectors before indexing while retaining real Embedding usage', async () => {

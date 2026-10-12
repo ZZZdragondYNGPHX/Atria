@@ -208,7 +208,7 @@ export function assertCapabilityDecision(value, field = 'CapabilityDecision') {
 export function assertExecutionPolicy(value) {
     const field = 'RuntimeRoute.executionPolicy';
     object(value, field);
-    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse', 'computeBudget'], field);
+    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse', 'computeBudget', 'optionalWork'], field);
     if (value.schemaVersion !== 1) throw new TypeError(field + '.schemaVersion must be 1');
     if (!Array.isArray(value.allowedModelProfileIds) || !value.allowedModelProfileIds.length || value.allowedModelProfileIds.length > 16) {
         throw new TypeError(field + '.allowedModelProfileIds must contain 1..16 targets');
@@ -220,9 +220,19 @@ export function assertExecutionPolicy(value) {
     if (!['none', 'active_execution', 'task', 'adaptive'].includes(continuity) || !['disabled', 'exact'].includes(reuse)) {
         throw new TypeError(field + ' contains an unsupported execution mode');
     }
+    let optionalWork;
+    if (value.optionalWork !== undefined) {
+        object(value.optionalWork, field + '.optionalWork');
+        only(value.optionalWork, ['mode', 'requiredCompute'], field + '.optionalWork');
+        if (value.optionalWork.mode !== 'preserve_required') throw new TypeError(field + '.optionalWork.mode unsupported');
+        const required = value.optionalWork.requiredCompute;
+        if (required !== undefined) only(required, ['maxRequests', 'maxTokens'], field + '.optionalWork.requiredCompute');
+        optionalWork = Object.freeze({ mode: 'preserve_required', ...(required === undefined ? {} : { requiredCompute: Object.freeze(assertComputeBudget(required)) }) });
+    }
     return Object.freeze({ schemaVersion: 1, allowedModelProfileIds: freezeArray(targets),
         verifiedRequirements: uniqueStrings(value.verifiedRequirements || [], field + '.verifiedRequirements', { namespacedValues: true }),
-        continuity, reuse, ...(value.computeBudget === undefined ? {} : { computeBudget: Object.freeze(assertComputeBudget(value.computeBudget)) }) });
+        continuity, reuse, ...(value.computeBudget === undefined ? {} : { computeBudget: Object.freeze(assertComputeBudget(value.computeBudget)) }),
+        ...(optionalWork ? { optionalWork } : {}) });
 }
 
 function assertDecisionProvenance(value, field) {

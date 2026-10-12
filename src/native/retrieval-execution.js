@@ -2,7 +2,7 @@ import fetch from 'node-fetch';
 import { NativeRetrievalPersistence } from './retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
 import { readSecret, SECRET_KEYS } from '../endpoints/secrets.js';
-import { assertRetrievalRef, NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
+import { assertRetrievalRef, NATIVE_RETRIEVAL_SCOPE_ERRORS, NATIVE_RETRIEVAL_COMPUTE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { prepareRetrievalCompute } from './retrieval-compute.js';
 import { supportsOpenAIEmbeddingSource } from '../vectors/openai-vectors.js';
@@ -86,7 +86,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
             req.nativeRetrieval = { profile, secret, settings, compute, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]) };
             req.body = { ...req.body, source: profile.source, model: profile.model };
             const json = res.json.bind(res);
-            res.json = value => json(res.statusCode >= 400 ? { error: ['native_generation_budget_exhausted', 'native_retrieval_compute_unavailable', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(value?.error) ? value.error : 'native_retrieval_execution_failed' } : value);
+            res.json = value => json(res.statusCode >= 400 ? { error: [...NATIVE_RETRIEVAL_COMPUTE_ERRORS, ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(value?.error) ? value.error : 'native_retrieval_execution_failed' } : value);
             next();
         } catch (error) {
             const code = ['native_retrieval_unavailable', 'native_retrieval_compute_unavailable', 'native_retrieval_secret_unavailable', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_retrieval_invalid';

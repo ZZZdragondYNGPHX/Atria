@@ -33,6 +33,9 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
     if (context.routeRef && (context.routeRef.scope !== 'player' || Object.keys(context.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_retrieval_compute_invalid');
     const route = selectNativeRuntimeRoute(await persistence.listRuntimeRoutes(handle), role, context.routeRef);
     const limits = route.executionPolicy?.computeBudget;
+    // This policy comes only from the selected stored Route. Client context has
+    // no allocation fields; the same original writer checks it during charge.
+    const optionalWork = profile.mode === 'rerank' ? route.executionPolicy?.optionalWork : null;
     const path = hashNativeDocument({ owner: handle, profile, purpose: profile.mode === 'embed' ? 'retrieval.embedding' : 'retrieval.rerank' });
     let base, task;
     if (context.kind === 'session') {
@@ -85,13 +88,14 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
             else await agent.settleLocalWork(handle, context.projectId, context.taskId, job.attemptId, usage);
         },
         async beforeSend(body) {
+            const options = optionalWork ? { reserve: optionalWork.requiredCompute ?? null } : {};
             const attemptId = randomUUID();
             const attempt = { attemptId, requestId: 'retrieval:' + randomUUID(), targetFingerprint: path,
                 estimatedTokens: Math.max(1, Buffer.byteLength(JSON.stringify(body), 'utf8')) };
             let receipt;
             if (base) receipt = await core.runs.chargeCompute(handle, base,
-                { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, limits, attempt);
-            else receipt = await agent.chargeGeneration(handle, context.projectId, context.taskId, context.revision, limits, attempt, task.executionFingerprint);
+                { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, limits, attempt, options);
+            else receipt = await agent.chargeGeneration(handle, context.projectId, context.taskId, context.revision, limits, attempt, task.executionFingerprint, options);
             // The original authority resolves inherited durable limits even if
             // the Route has removed its budget. A truly unbounded old scope has
             // no compute receipt and must not fabricate a charged attempt.

@@ -106,11 +106,21 @@ export function bindComputeBudget(holder, limits) {
     ledger.limits = tightenLimits(ledger.limits, limits);
     return ledger;
 }
-export function chargeComputeAttempt(holder, limits, attempt) {
+// Optional work leaves the configured required allowance in the same parent
+// bank. This is admission headroom, not a new ledger or a tighter parent limit;
+// subsequent mandatory work can consume it and still applies its own guards.
+export function chargeComputeAttempt(holder, limits, attempt, { reserve } = {}) {
+    if (reserve === null) fail('native_generation_required_budget_unknown');
+    if (reserve !== undefined) {
+        fields(reserve, ['maxRequests', 'maxTokens'], 'Required compute reserve');
+        reserve = assertComputeBudget(reserve);
+    }
     const ledger = bindComputeBudget(holder, limits);
     const spent = ledger.attempts.reduce((sum, row) => sum + (row.status === 'settled' ? row.usage.totalTokens : row.estimatedTokens), 0);
     if (ledger.attempts.some(row => row.attemptId === attempt.attemptId)) fail('native_generation_attempt_conflict');
     if (ledger.attempts.length >= ledger.limits.maxRequests || spent + attempt.estimatedTokens > ledger.limits.maxTokens) fail('native_generation_budget_exhausted');
+    if (reserve && (ledger.attempts.length + 1 + reserve.maxRequests > ledger.limits.maxRequests
+        || spent + attempt.estimatedTokens + reserve.maxTokens > ledger.limits.maxTokens)) fail('native_generation_required_budget_reserved');
     const entry = { ...attempt, status: 'charged', usage: null };
     ledger.attempts.push(entry); assertComputeLedger(ledger);
     return structuredClone(entry);
