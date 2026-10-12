@@ -2588,3 +2588,16 @@ S22 原 authority 私有 candidate/Player view delta 与 freshness：2 suites/12
 S23 工程 checkpoint `defc95b55bc7e98e639dfdbde23120b75cc5ddc2` 已push原feature。最终17新增distinct本地PASS（Host7/consumer7/HTTP3）及原2受影响PASS；全部9修改文件 ESLint、syntax/diff通过，当前runner实际preflight apiRequests0/attempts0/localJobs0，原全状态与费用保持。准备层的rehearsal/projection/source fingerprints工作沿原context_build计量，估计items/bytes含pinned源、assets、Timeline及domain records，finally结算真实process CPU/wall；失败和取消保留，maxJobs耗尽拒绝后续准备。Package打开与重复freshness核验不宣称完整硬CPU上限。匿名预测不进入World/Task结果，真实provider出口仍pending，本地fake transport成功不升级实际能力/收益。
 
 继续独立普通路径 S25，S24 的模型比较/实际prediction feedback依赖 S23真实出口暂不宣称验收；沿现有合法后台Task/outbox/RunControl处理普通slow工作，不启用新classifier或默认额外认知调用。
+### 2026-10-13 S25/S26：普通异步后台与可选计算留额工程出口
+
+S25 source `e2adac4bb316bd294bf65c60a782447573c979f9`：在原有generationBudget的作品中，作者显式声明的exact普通background lifecycle intent进入原 `{invocationId}` bank，复用task/variant/input、pending/scope/epoch检查和typed app-command writer。原operation有已发生发送但无可信采纳receipt时保持pending `native_task_outcome_unknown`，不因Host重启或原Scheduler失败重跑获得新发送；仅普通lane禁自动retry，不改Simulation/appraisal既有retry。旧无generationBudget作品保持旧消费者，不把本组扩大为全部legacy后台恢复保证。
+
+22新增distinct FS/SQLite Host tests PASS：普通/declared app-command真实采纳、window/period/local限额、forged/changed输入及scope拒绝、实际Engine reopen pending/charged/unknown、无默认binding、晚到/取消费用、跨Host同intent并发一次send、取消worker未结束permit保持。原Simulation queued-batch retry两引擎与原Memory fast规则1项受影响PASS。回归第一次pattern误匹配MySQL/Pg，两数据库本地端口未启动而ECONNREFUSED；不是成功、也不是本地FS/SQLite产品断言失败，不为此重跑已过项或扩大验证矩阵。
+
+Project原S13 durable wake/unknown/取消/费用/Review证据复用，未重跑未变化完整组。审查发现pending wake后来进入Review时pump仍submit，虽claim会拒绝正式工作但调度不应启动；同一stoppedTask谓词接wake/pump及Scheduler fresh。真实FS/SQLite两新增cases修前FAIL、修后PASS，包含已pending/已排队进入Review、恢复仍stopped、原pending历史/费用/Project revision保持；原S13 queued-source invariant两受影响cases PASS。S25累计24新增/5受影响distinct PASS，4归属文件ESLint/diff PASS。实际低延迟/难例quality-cost收益仍pending，不把fake transport与工程恢复当实测收益。
+
+S26 source `cedf4433081a82c262fa688cc9788f6abe1e474f`：服务器真实Route可选optionalWork preserve_required，仅optional rerank发送检查配置requiredCompute留额；未知上界返回`native_generation_required_budget_unknown`，留额不足为`native_generation_required_budget_reserved`，必要工作自身耗尽仍原budget_exhausted。原Session/Project锁内一次检查+charge，known及unknown上界保留；reserve不是新ledger、不写成更小durable限额，必要Host/Task仍可用原额度。缺policy固定规则不变，Embed/necessary corpus不套可选留额；client自报policy/余额拒绝。shared safe compute codes让真实HTTP/原invocation stop能区分原因，不泄露private diagnostics。
+
+10新增original Session/Project ledger tests及2新增真实HTTP拒绝投影PASS；并发、unknown/token上界、必要工作可用、fixed回退、客户端伪造和必要corpus/local admission保留。原contracts/retrieval 146-case回归首次145PASS/1FAIL：旧local index+Narrator fixture maxJobs1已被index耗尽却期望Narrator继续发出，与当前必要Host localWork计量矛盾。按真实消费修为1/6 shared jobs两case，分别验证耗尽不发新模型/充足时原Narrator正常发送、所有local费用共享且原index记录不改；仅这两case复验PASS，不重跑原145已过检查。原全文件ESLint20诊断均在其它既有行，经HEAD baseline/current源码诊断逐项比对相同；修改旧case未增加lint诊断，不冒称该旧文件完整lintPASS。其余10修改文件ESLint及diff PASS。
+
+两source提交均已push原feature。S25普通/有限S26工程出口完成；S23/S24实际provider、双域决策与质量—成本、完整M4尚未验收，继续S24独立本地比较/receipt消费者；不把工程checkpoint作为大阶段换聊出口。新增外部发送0，不merge/deploy、无新HANDOFF。
