@@ -2331,3 +2331,24 @@ Start HEAD `55ad73d9d6c2b0616489fe81c99d19c94d045fe7`；End/Tested product HEAD 
 本组新增实际generations6/direct11877；M8累计actual93/direct233587，原unknown2/upper17515与admission fetch0单列。原quota1709→1715连续append，carry{requests:332,at:1791460574562}保持，M1/HM1 ledger hashes保持。金额、上游/cache/隐含重试及净收益仍unknown；用户已确认暂无价格，不重复询问、不填零。完整G06/M8/HM2未验收，M3前置保持，未merge/deploy main。
 
 2026-10-12用户明确要求在合适边界停止并换设备。六臂live已完成且最终bank保存，核对没有本任务运行中的Node测试/付费请求；停止新增工程/API，补当前Record、Plan入口与唯一HANDOFF并推送docs。私有根 `E:/Dev/Atria-Private/hm1-20261010` 的新增runner、Document原raw/reports/logs/quota必须一并迁移，旧ZIP不含这些新增事实；不上传private/keys/cache。恢复后按HANDOFF当前路由继续已授权S/G，普通工程/复验无逐组审批；本次停止只因用户换设备要求。
+
+
+### 2026-10-12 G06 — 私有 RAR 恢复与 Session style-v3 有限复验
+
+恢复顺序为私有包校验/解压 → 拉取远端 → HANDOFF → Plan index/G01 当前清单 → Record 最新两节。`hm1-20261010.rar` SHA256 为 `40d145e1aaad0cb775ea5f818556751701ba8ffb39f36555d60d0d675806829f`；RAR 全包完整性测试通过，28,184 条路径无绝对路径或上级穿越，解压在 Git 外的私有根且收紧文件访问权限。旧 MIGRATION-MANIFEST 17,921 文件无缺失、17,920 hash/size 匹配，仅 `Document/m1-api-quota.json` 与旧清单不同；实际包内 1715 admissions/carry332 与最新 HANDOFF 一致，因此保留当前账本，未用旧 manifest 回退。新增根级 runner/raw/report 经 RAR 完整性检查保留；旧 Document/README 和迁移清单阶段说明不作为当前恢复 authority。
+
+main/docs 已分别 fast-forward 到 `3ee1332ef` / `dd34565f7`；从远端恢复原 `feat/agent-compute-runtime`，source HEAD `5a80e1563b1e9db4150da98d0096bdc61704d3f9` 干净且与远端一致。本组仅修改隔离作者 PromptModule 资源和 Git 外 runner/audit，产品源码 HEAD 未变，不自行 merge/deploy main，不重跑 M1/HM1、Task 冷恢复或全仓组，没有子 agent/new chat/Goal。
+
+先核对原六臂 raw/request/normalized：原 style-v2 明确禁止添加天气，compiler 实际发送的 World 只有 hp/location=harbor，原 reuse/invocation raw 正文也确实包含“港口的风平浪静”，排除 normalized 后处理或漏发 World。沿原精确 `core.prompt-module` / `system.style` 新建隔离作者 revision `g06-role-v3`，body hash `9d8721f42cbaab2eec44d7179310d869d7aef3ec6dffb48f0724c684aaa51ac2`。只替换既有场景句：地点只确定位置，不能据地点补天气/海况/声音/光线/气氛/人物在场/动作；未提供字段留白，景物比喻不能暗写当前事实，创作仍可用语序、节奏与有依据的过去叙述。不改 compiler authority、Memory/Actor/time 规则，不补造 World，不改正文或全局默认，也没有把私有作者 fixture 当产品自动发布。
+
+新 `run-g06-session-style-v3.mjs` 先本地默认 preflight，三臂 HTTP0/12 local jobs/0 model attempts，精确 v3 directive 及原 Memory policy 真实消费，来源/packet/evidence 与原组三臂一致，World/Timeline/M1/HM1 hashes 保持。显式 live 后仍原 H0-ZH-08、原 gcli/gemini-3.8-flash、原 source/frame/config、原每 Session bank 的 3 sends / 64000 tokens / 32 jobs / 4096 items / 16MiB；base/reuse/invocation 三 HTTP200，累计 jobs 8/19/27、三 model attempts settled，reuse 准备开销仍计同 bank，Invocation 为 source_valid_base_coverage，全部 fresh 正文未新增场景状态。reported total 共 6437，不从 total/input/output 差值推 cache 或 reasoning。
+
+受影响风格回归只做原 H0 的 ordinary/hard/high-impact/long 四个既有输入 frame，每 frame 一次 base；它们不是四个独立来源案例。四组 preflight HTTP0，通过原 scope、exact style/Memory policy 和未改 World/Timeline。long 实际预载 500 双消息轮，Native Timeline 1005 条，不是 500 次模型调用。ordinary/hard/high-impact 首次各 HTTP200，分别 reported2233/2640/3389；正文历史仍限过去、当前持有/记忆/意愿/履行保持未知，越权请求没有替玩家去港口/见角色/归还书。
+
+long live-v1 无响应为 transport unknown，保存八 local jobs/一 unknown model attempt/estimated upper23174；v2 增补发送端 transport cause 后同样在 TLS 握手前 ECONNRESET，无 HTTP 状态/response/usage，另一原 trial bank 八 jobs/一 unknown/upper23174 保存。没有退款或重写两次失败，各隔离试验的原 bank 单列，不把新试验伪称失败原 bank 的零成本续接。一次仅 TLS 握手诊断授权成功，未发送 HTTP/Secret/模型请求；随后必要 long preflight-v3 HTTP0，再 live-v3 HTTP200/reported7548，完整可见正文只述历史承诺与当前未知，1005 Timeline 的原 World/Timeline hash 保持。v1/v2 没有响应就不能声称掌握 Provider 费用或正文质量；v2 的明确 TLS cause 不倒填 v1。
+
+本组新增 9 API admissions，其中 7 HTTP200/direct reported22247、2 transport unknown/upper46348。原 quota 1715→1724 连续 append，carry `{requests:332,at:1791460574562}` 保持；原 M1/HM1 ledger hashes 保持。旧 M8 direct233587 后追加本组 reported22247 为255834；原 unknown2/upper17515、admission fetch0 与全部历史不利结果单列保留。金额/上游/cache/hidden attempts/controller CPU 仍 unknown，不填0或声明净收益。
+
+最小本地验证为四个新私有 runner 的 node --check、七次所需 preflight、已保存 raw/request/normalized 的独立离线一致性 audit（无 API）和 docs diff/链接验证。`Document/g06-session-style-v3-audit-v1.json` 核对七成功正文 raw→normalized 完全一致、精确 style 与原 Memory directive、World 仍无 weather、packet/evidence、原 32-job 上限、所有九 admissions 与连续 quota、27-job 三臂 bank、1005 Timeline 及原两条天气失败保留。完整七正文由仓库 agent 非盲审读：有限未支持场景/历史与当前/玩家自主权项通过；high-impact 拒绝仍偏说明式，未做叙事六维评分或独立盲评，不将单 H0/同 model/frame 观察当总体质量晋升。没有产品代码改动，因此不重复产品 lint/Jest/浏览器组。
+
+私有材料包含上述 runner、`run-g06-session-style-v3-regression.mjs`、long retry/v3 runner、`audit-g06-session-style-v3.py` 及 Document 下新增 preflight/live/raw/normalized/log/audit；历史 runner 未自动执行，旧 raw/report 不修改。已恢复交接撤销旧停工要求，正常进度仅更新本 Record/Plan 当前入口，不刷新用户换设备 HANDOFF。下一有限出口继续沿 delivery §8/§8.2 归纳已支持 G06 质量/规则/复用与全部已知开销；本组只收敛作者风格的具体场景缺口，完整 G06/M8/HM2 仍 pending，真实 semantic rerank/Provider native compaction/cache/货币收益缺证据保持各自边界，M3 前置不越过。
