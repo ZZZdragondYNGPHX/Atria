@@ -44,4 +44,6 @@ S21 最小设计入口按 [delivery](plans/architecture/agent-intelligence-runti
 
 本轮源码 `96ff4487e`：2 targeted Jest suites / 8 distinct tests PASS（滚动日/分钟限流、排队、历史压缩保留有效用量、临时清理成功/失败、锁与白名单）；lint 的两项 conditional-expect 已修复，仅受影响 2 cases 复测 PASS。4 修改文件 ESLint、syntax/diff 检查通过；实际四份本地配置读取成功、carry148 保持、quota 锁已清理。外部 API 0，不跑全仓 test/build、不合并 main。已 push source/docs；交接文档只做路径/diff/Git 同步验证。
 
-不主动创建子 agent/Codex Goal；无新建/迁移工作树需要时复用当前 source/docs。继续已授权工程任务，无需逐阶段重新确认；merge/deploy 的实际范围按当前用户指令和 Governance 核对，不从旧历史记录推导新授权。
+当前用户明确授权并鼓励子 agent 并行：在不发生写入冲突、能降低耗时或改善质量的前提下，主动委派独立分析、实现、测试与审查，无需逐次询问。主 agent 明确每个子任务的文件写入归属、依赖和交付结果，统一集成、提交及共享 API quota；同一文件的依赖修改顺序执行，需并行写入不同 Git 状态时使用隔离工作树。不要同时抢占全程锁定的付费测试 helper。按当前环境并发槽位安排；本交接时环境为主 agent 加最多 3 个子 agent，后续以实际工具能力为准。不为短小或强依赖步骤机械拆分。
+
+Codex Goal 的创建按当前工具定义执行，只有用户明确要求建立 Goal 时创建；子 agent 并行授权不需要依赖 Goal。无新建/迁移工作树需要时复用当前 source/docs。继续已授权工程任务，无需逐阶段重新确认；merge/deploy 的实际范围按当前用户指令和 Governance 核对，不从旧历史记录推导新授权。
