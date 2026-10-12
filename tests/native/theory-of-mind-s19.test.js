@@ -13,8 +13,9 @@ import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { appraisalEventCurrent } from '../../src/native/appraisal-authority.js';
 import { compileNativeContextPlan } from '../../public/scripts/native/context-compiler.js';
 
-async function runtime(h, f, payload = tomCandidate(f), fetchHook = null) {
+async function runtime(h, f, payload = tomCandidate(f), fetchHook = null, responseSchemaMode = 'full') {
     const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/s19-local-stub' });
+    if (responseSchemaMode !== 'full') await seeded.persistence.saveConnectionProfile(h.handle, { ...seeded.connection, options: { responseSchemaMode } });
     for (const route of seeded.routes) await seeded.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { schemaVersion: 1,
         allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: { maxRequests: 2, maxTokens: 64000, localWork: { maxJobs: 32, maxItems: 4096, maxInputBytes: 16777216 } } } });
     const fetchImpl = jest.fn(async () => { await fetchHook?.(); return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: JSON.stringify(payload) }, finish_reason: 'stop' }],
@@ -251,5 +252,21 @@ test('S19 invalid behavioral predictions, self/foreign subjects and duplicate ke
         const r = await runtime(h, f, payload), result = await r.host.executeLifecycle(h.handle, r.input(queued));
         expect(result.results[0].authorityReceipt.decisions.map(item => item.status)).toEqual(['rejected', 'applied', 'rejected', 'rejected', 'rejected', 'rejected']);
         expect(result.snapshot.states.atri_lifecycle.domains.hypotheses.records).toHaveLength(1); expect(r.fetchImpl).toHaveBeenCalledTimes(1);
+    } finally { await h.cleanup(); }
+});
+
+test('S19 explicitly simplified wire schema retains original strict Task validation and settled fees for a bad confidence', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installTomFixture(h); await f.ready(); const queued = await f.queue(), payload = tomCandidate(f); payload.hypotheses[0].confidence = 101;
+        const r = await runtime(h, f, payload, null, 'shape-only');
+        await expect(r.host.executeLifecycle(h.handle, r.input(queued))).rejects.toThrow(); expect(r.fetchImpl).toHaveBeenCalledTimes(1);
+        const wire = JSON.parse(r.fetchImpl.mock.calls[0][1].body).response_format.json_schema.schema;
+        expect(wire.properties.hypotheses.items.properties.confidence).toEqual({ type: 'integer' });
+        expect(wire.properties.hypotheses.items.additionalProperties).toBe(false);
+        expect(queued.manifest.runtime.experienceContract.taskRuntime.tasks[0].variants[0].outputSchema.properties.hypotheses.items.properties.confidence.maximum).toBe(100);
+        const current = await f.core.load(h.handle, queued.session.sessionId), bank = await f.core.runs.status(h.handle, queued.session.sessionId);
+        expect(current.states.atri_lifecycle.domains.hypotheses.records).toEqual([]); expect(current.revision.revisionId).toBe(queued.revision.revisionId);
+        expect(Object.values(bank.operations).find(op => op.compute?.attempts.length).compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 150 } });
     } finally { await h.cleanup(); }
 });

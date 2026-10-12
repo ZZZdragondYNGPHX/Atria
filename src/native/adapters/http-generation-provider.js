@@ -26,6 +26,20 @@ function wireTools(tools, mode) {
     return rendered;
 }
 
+function wireOutput(contract, mode) {
+    if (mode === 'full') return contract;
+    if (contract.strict === true) throw new GenerationError('generation_adapter_control_unsupported');
+    const lowered = structuredClone(contract);
+    const lower = schema => {
+        if (!schema || typeof schema !== 'object') return;
+        for (const key of ['minLength', 'maxLength', 'minimum', 'maximum', 'minItems', 'maxItems']) delete schema[key];
+        for (const child of Object.values(schema.properties ?? {})) lower(child);
+        if (schema.items) lower(schema.items);
+    };
+    lower(lowered.schema);
+    return lowered;
+}
+
 // Explicit-config transport. No preset, active model, browser settings or secret lookup.
 export function createHttpGenerationProvider({ format = 'openai-compatible', fetchImpl = fetch } = {}) {
     const messages = format === 'openai-compatible';
@@ -37,12 +51,14 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             if (Object.keys(generation[section]).length) throw new GenerationError('generation_adapter_control_unsupported');
         }
         const schemaMode = connection.options.toolSchemaMode ?? 'json-schema';
+        const outputSchemaMode = connection.options.responseSchemaMode ?? 'full';
         const responseMode = connection.options.responseMode ?? 'generation-profile';
         const minimumOutputTokens = connection.options.minimumOutputTokens ?? 0;
         if (!['json-schema', 'string-enums'].includes(schemaMode) || (!messages && schemaMode !== 'json-schema')) throw new GenerationError('generation_adapter_control_unsupported');
+        if (!['full', 'shape-only'].includes(outputSchemaMode) || (!messages && outputSchemaMode !== 'full')) throw new GenerationError('generation_adapter_control_unsupported');
         if (!['generation-profile', 'stream'].includes(responseMode) || !Number.isSafeInteger(minimumOutputTokens) || minimumOutputTokens < 0
             || (!messages && (responseMode !== 'generation-profile' || minimumOutputTokens !== 0))) throw new GenerationError('generation_adapter_control_unsupported');
-        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseMode', 'minimumOutputTokens'].includes(key))
+        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode', 'minimumOutputTokens'].includes(key))
             || Object.keys(model.messageFormat).length || Object.keys(model.providerHints).length) throw new GenerationError('generation_adapter_control_unsupported');
         const allowed = { sampling: ['temperature', 'topP'], output: ['maxTokens'], stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value'] };
         if (messages) Object.assign(allowed, { reasoning: ['effort'], cache: ['key', 'retention'] });
@@ -95,7 +111,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             body.tools = wireTools(promptIr.tools, schemaMode);
             body.tool_choice = generation.toolChoice.value ?? 'auto';
         } else if (generation.toolChoice.value !== undefined) throw new GenerationError('generation_adapter_prompt_unsupported');
-        if (promptIr.outputContract) body.response_format = { type: 'json_schema', json_schema: promptIr.outputContract };
+        if (promptIr.outputContract) body.response_format = { type: 'json_schema', json_schema: wireOutput(promptIr.outputContract, outputSchemaMode) };
         return body;
     };
     return Object.freeze({

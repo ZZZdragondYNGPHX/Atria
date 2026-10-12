@@ -242,3 +242,25 @@ test.each([{ minimumOutputTokens: -1 }, { minimumOutputTokens: 1.5 }, { response
     expect(() => createHttpGenerationProvider().renderRequest(f)).toThrow('generation_adapter_control_unsupported');
     expect(() => createHttpGenerationProvider({ format: 'raw-text' }).renderRequest(f)).toThrow('generation_adapter_control_unsupported');
 });
+
+test('explicit shape-only response schema preserves canonical authority, JSON shape and enums without lowering tools', () => {
+    const f = fixture('anthropic'), provider = createHttpGenerationProvider();
+    f.snapshot.promptIr.outputContract = { name: 'result', schema: { type: 'object', additionalProperties: false, required: ['nodes'], properties: {
+        nodes: { type: 'array', maxItems: 2, items: { type: 'object', additionalProperties: false, required: ['name', 'score'], properties: {
+            name: { type: 'string', maxLength: 64, enum: ['own'] }, score: { type: 'integer', minimum: 0, maximum: 100 },
+        } } },
+    } } };
+    const canonical = structuredClone(f.snapshot.promptIr.outputContract);
+    expect(provider.renderRequest(f).body.response_format.json_schema).toEqual(canonical);
+    f.resolved.connection.options = { responseSchemaMode: 'shape-only' };
+    const wire = provider.renderRequest(f).body.response_format.json_schema.schema;
+    expect(wire.properties.nodes.maxItems).toBeUndefined(); expect(wire.properties.nodes.items.properties.score).toEqual({ type: 'integer' });
+    expect(wire.properties.nodes.items.properties.name).toEqual({ type: 'string', enum: ['own'] }); expect(wire.properties.nodes.items.required).toEqual(['name', 'score']);
+    expect(wire.additionalProperties).toBe(false); expect(f.snapshot.promptIr.outputContract).toEqual(canonical);
+});
+
+test.each(['strict', 'raw', 'unknown'])('shape-only response refuses %s instead of silently dropping strict authority', scenario => {
+    const f = fixture('anthropic'); f.resolved.connection.options = { responseSchemaMode: scenario === 'unknown' ? 'guess' : 'shape-only' };
+    f.snapshot.promptIr.outputContract = { name: 'result', schema: { type: 'object', properties: {}, additionalProperties: false }, ...(scenario === 'strict' ? { strict: true } : {}) };
+    expect(() => createHttpGenerationProvider(scenario === 'raw' ? { format: 'raw-text' } : {}).renderRequest(f)).toThrow('generation_adapter_control_unsupported');
+});
