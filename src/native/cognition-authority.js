@@ -1,8 +1,60 @@
 import { isCognitionSource, isAppraisalSource, assertCognitionValue, assertCognitionBasis, informationItemFingerprint } from '../../public/shared/native-cognition-runtime.js';
 import { hasInformationBasis, isManagedMemory, assertMemoryValue } from '../../public/shared/native-memory-contract.js';
-import { informationDefinition, projectInformation, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
+import { informationDefinition, projectInformation, refreshInformationCognition, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { validateHypothesisEvidence } from './tom-authority.js';
+import { INFORMATION_LIMITS } from '../../public/shared/native-information-contract.js';
+
+// Only SessionCore's coherent branch recovery calls this. Keep the immutable
+// source Revision untouched; copy current evidence into the derived Branch in
+// dependency order. Stale/denied evidence is never repaired by a restore.
+export function rebindCognitionBranch(base, candidate) {
+    if (base.revision.branchId === candidate.revision.branchId) return candidate.states;
+    const def = informationDefinition(base);
+    if (!def) return candidate.states;
+    const states = structuredClone(candidate.states);
+    const inherited = { ...candidate, states, revision: base.revision };
+    const destination = { ...candidate, states };
+    const views = new Map(), eligible = new Map(), completed = new Set();
+    let scans = 0;
+    const project = (snapshot, id) => projectInformation(snapshot, id, { purpose: 'context', includeRollups: false,
+        onScan: count => { scans += count; if (scans > INFORMATION_LIMITS.views * INFORMATION_LIMITS.records) throw new TypeError('Cognition recovery scan budget'); } });
+    for (const source of def.sources.filter(source => isCognitionSource(source) || hasInformationBasis(source))) {
+        for (const record of states.atri_lifecycle.domains[source.domainId]?.records ?? []) {
+            const basis = record.value.basis;
+            if (!basis || basis.anchor.branchId !== base.revision.branchId) continue;
+            if (!views.has(basis.viewId)) views.set(basis.viewId, project(inherited, basis.viewId));
+            const projection = views.get(basis.viewId), item = projection.items.find(item => item.sourceId === source.id && item.recordId === record.id);
+            if (!(item?.cognition?.sourceCurrent || item?.memory?.sourceCurrent || item?.causality?.sourceCurrent)) continue;
+            const original = base.states.atri_lifecycle.domains[source.domainId]?.records.find(old => old.id === record.id);
+            if (hashNativeDocument(original?.value ?? null) !== hashNativeDocument(record.value)) continue;
+            eligible.set(source.domainId + ':' + record.id, { source, record, projection });
+        }
+    }
+    const visit = (key, path = []) => {
+        if (completed.has(key)) return;
+        const entry = eligible.get(key);
+        if (!entry || path.includes(key) || path.length > 4) return;
+        const { record, projection } = entry;
+        for (const ref of record.value.basis.sourceRefs) {
+            const item = projection.items.find(item => item.id === ref.itemId);
+            const source = def.sources.find(source => source.id === item?.sourceId);
+            if (source?.domainId) visit(source.domainId + ':' + item.recordId, [...path, key]);
+        }
+        const next = refreshInformationCognition(destination, projection);
+        const refs = record.value.basis.sourceRefs.map(ref => {
+            const item = next.items.find(item => item.id === ref.itemId);
+            return item ? { ...ref, fingerprint: informationItemFingerprint(item) } : ref;
+        });
+        record.value = { ...record.value, basis: { ...record.value.basis, anchor: next.anchor, sourceRefs: refs } };
+        if (isManagedMemory(entry.source)) record.value.applicability = { ...record.value.applicability,
+            exceptionRefs: record.value.applicability.exceptionRefs.map(ref => ({ ...ref,
+                fingerprint: refs.find(next => next.itemId === ref.itemId).fingerprint })) };
+        completed.add(key);
+    };
+    for (const key of eligible.keys()) visit(key);
+    return states;
+}
 
 // This guard runs inside the original Session publication. It does not publish,
 // synthesize evidence, grant reads or adopt a model's World/Task claims.

@@ -98,6 +98,26 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
     return clone(result);
 }
 
+// Recovery may change only cognitive basis metadata on the already granted
+// immutable leaf set. Re-evaluate those leaves without rescanning Timeline or
+// broadening the view; field selection and status use the original projector.
+export function refreshInformationCognition(snapshot, projection) {
+    const result = clone(projection), def = informationDefinition(snapshot), values = new Map();
+    result.anchor = { ...result.anchor, ...anchor(snapshot) };
+    for (const item of result.items) {
+        const source = def.sources.find(source => source.id === item.sourceId);
+        if (!isCognitionSource(source) && !hasInformationBasis(source)) continue;
+        const value = snapshot.states.atri_lifecycle.domains[source.domainId].records.find(record => record.id === item.recordId).value;
+        const data = {};
+        for (const path of source.fields) { const selected = read(value, path); if (selected !== undefined) data[path.join('.')] = clone(selected); }
+        item.data = data;
+        delete item.cognition; delete item.memory; delete item.causality;
+        values.set(item.id, value);
+    }
+    projectCognitionItems(snapshot, result, values);
+    return result;
+}
+
 export function isInformationRollupCurrent(snapshot, artifact, projection) {
     const meta = artifact.projection;
     if (!meta || meta.viewId !== projection.viewId || artifact.branchId !== snapshot.revision.branchId
@@ -201,7 +221,7 @@ export function validateInformationState(snapshot) {
 
 export function displayInformation(snapshot) {
     if (!informationDefinition(snapshot)) return {};
-    return Object.fromEntries(informationDefinition(snapshot).views.filter(view => view.exposure.includes('display'))
+    return Object.fromEntries(informationDefinition(snapshot).views.filter(view => view.audience !== 'inspector' && view.exposure.includes('display'))
         .map(view => [view.id, projectInformation(snapshot, view.id)]));
 }
 

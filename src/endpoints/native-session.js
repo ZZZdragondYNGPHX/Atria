@@ -1,4 +1,8 @@
 import { getPersonaRepo } from '../storage/index.js';
+import { getUserDirectories } from '../users.js';
+import { ProjectStore } from '../native/project-store.js';
+import { cognitionDisclosure, inspectCognition } from '../native/cognition-inspection.js';
+import { prepareHypothetical, hypotheticalCurrent } from '../native/hypothetical-authority.js';
 import { personaFields } from '../native/persona-contract.js';
 import { frontendBridgeService } from '../native/frontend/host-bridge.js';
 import { bridgeReceipt, publicBridgeError } from '../../public/shared/native-frontend-bridge.js';
@@ -23,7 +27,7 @@ function services() {
         packageInstaller,
         personaRepo: getPersonaRepo(),
         knowledgeRepo: getKnowledgeRepo() });
-    return { core, assets, sessionRepo, packageInstaller };
+    return { core, assets, sessionRepo, packageInstaller, projectStore: new ProjectStore({ directoriesByHandle: getUserDirectories }) };
 }
 
 /** Authenticated handle is server-owned. No arbitrary repo method dispatch or legacy fallback. */
@@ -38,7 +42,7 @@ export function createNativeSessionRouter(getServices = services) {
             await operation(request, response, getServices(), request.user.profile.handle);
         } catch (error) {
             if (response.headersSent) { response.destroy(); return; }
-            const status = error?.code === 'native_persona_scope_denied' ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error.name === 'ConflictError' || error.code?.includes('conflict') ? 409
+            const status = ['native_persona_scope_denied', 'native_cognition_inspection_denied'].includes(error?.code) ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error.name === 'ConflictError' || error.code?.includes('conflict') ? 409
                 : error instanceof TypeError ? 400 : error.name === 'NotFoundError' ? 404 : 500;
             response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
@@ -141,6 +145,32 @@ export function createNativeSessionRouter(getServices = services) {
     }
     router.post('/load', route(async (req, res, { core }, handle) => {
         res.json(await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId }));
+    }));
+    router.post('/cognition/display', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'revisionId', 'expectedAnchor']);
+        const snapshot = await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId, skipPackageEdits: true });
+        res.set('Cache-Control', 'private, no-store').json(cognitionDisclosure(snapshot, req.body.expectedAnchor));
+    }));
+    router.post('/cognition/inspect', route(async (req, res, { core, projectStore }, handle) => {
+        fields(req.body, ['sessionId', 'revisionId', 'viewId', 'expectedAnchor']);
+        const snapshot = await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId, skipPackageEdits: true });
+        res.set('Cache-Control', 'private, no-store').json(await inspectCognition(snapshot, handle, projectStore, req.body));
+    }));
+    router.post('/hypothetical/prepare', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'revisionId', 'request']);
+        const snapshot = await core.load(handle, req.body.sessionId, { skipPackageEdits: true });
+        if (snapshot.revision.revisionId !== req.body.revisionId) throw Object.assign(new TypeError('Hypothetical base changed'), { code: 'native_hypothetical_revision_conflict' });
+        const installed = await core._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
+        const artifact = await prepareHypothetical(snapshot, installed, req.body.request);
+        const current = await core.load(handle, req.body.sessionId, { skipPackageEdits: true });
+        if (!hypotheticalCurrent(current, installed, artifact)) throw Object.assign(new TypeError('Hypothetical base changed'), { code: 'native_hypothetical_revision_conflict' });
+        res.set('Cache-Control', 'private, no-store').json(artifact);
+    }));
+    router.post('/hypothetical/current', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'artifact']);
+        const snapshot = await core.load(handle, req.body.sessionId, { skipPackageEdits: true });
+        const installed = await core._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
+        res.set('Cache-Control', 'private, no-store').json({ current: hypotheticalCurrent(snapshot, installed, req.body.artifact) });
     }));
     router.post('/command', route(async (req, res, { core, assets }, handle) => {
         const { sessionId, expectedRevisionId, command } = req.body;

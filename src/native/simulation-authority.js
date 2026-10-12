@@ -3,6 +3,7 @@ import { hashNativeDocument } from './repositories/common.js';
 import { privateReads, template, predicate, prepareSimulationStep } from './authority-transaction.js';
 import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
 import { addOutbox } from './lifecycle-authority.js';
+import { captureAppraisalEvent } from './appraisal-authority.js';
 
 const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'cold'] };
 const compare = (a, b) => a.tick - b.tick || a.job.priority - b.job.priority || (a.job.id < b.job.id ? -1 : a.job.id > b.job.id ? 1 : 0);
@@ -45,7 +46,7 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
     }
     candidate.states.atri_lifecycle.clocks[simulation.clockId] = untilTick;
     // Admission is after deterministic catch-up, not once per event or model.
-    if (admit && simulation.policy.maxDeliberations) {
+    if (admit && untilTick > start && simulation.policy.maxDeliberations) {
         const state = candidate.states.atri_lifecycle;
         const pending = state.outbox.some(item => item.status === 'pending' && item.simulation);
         if (!pending) {
@@ -61,6 +62,8 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
                 const action = { kind: 'task', taskId: job.action.taskId, variantId: job.action.variantId, input };
                 budget.effect(action);
                 const queued = addOutbox(state, action, job.scopeId, 'simulation:' + job.id + ':' + tick);
+                const variant = task.variants.find(item => item.id === job.action.variantId);
+                if (variant.resultBinding?.kind === 'cognition.appraise') queued.appraisalEvent = captureAppraisalEvent(candidate, task, variant, input);
                 queued.simulation = { jobId: job.id, tick: untilTick, dueTick: tick, anchorRevisionId: base.revision.revisionId };
                 state.automations['simulation:' + job.id] = { cursor: tick, epoch: state.scopes[job.scopeId].epoch };
             }
@@ -74,7 +77,7 @@ export function simulationTaskCurrent(base, item, budget) {
     const contract = base.manifest.runtime.experienceContract;
     const simulation = contract.simulationRuntime;
     const job = simulation?.jobs.find(job => job.id === item.simulation.jobId);
-    if (!job || job.action.kind !== 'task' || job.action.taskId !== item.taskId || job.action.variantId !== item.variantId
+    if (!simulation?.policy.maxDeliberations || !job || job.action.kind !== 'task' || job.action.taskId !== item.taskId || job.action.variantId !== item.variantId
         || job.scopeId !== item.scopeId || item.simulation.tick !== base.states.atri_lifecycle.clocks[simulation.clockId]) return false;
     const evaluated = evaluate(base, contract, job, budget);
     if (!evaluated || evaluated.relevance === 'cold' || evaluated.tick !== item.simulation.dueTick) return false;

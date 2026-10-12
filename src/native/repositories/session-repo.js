@@ -603,7 +603,7 @@ export class SessionRepo {
         })));
     }
 
-    async importClosure(handle, closure, { resume = null } = {}) {
+    async importClosure(handle, closure, { resume = null, runContinuation = null } = {}) {
         assertWritable();
         if (!closure || typeof closure !== 'object' || Array.isArray(closure)) {
             throw new TypeError('Native Session import closure must be an object');
@@ -627,6 +627,19 @@ export class SessionRepo {
         return withSessionWrite(handle, sessionId, () => withNativeResourceWrites(handle, illustrationAssets, () => this._engine.withTransaction(handle, async (tx) => {
             const sessionKey = this._sessionKey(handle, sessionId);
             const control = await assertRunAccess(tx, handle, sessionId, 'import');
+            if (runContinuation) {
+                assertRunContinuation(runContinuation);
+                if (resume) throw runFailure('native_run_continuation_conflict');
+                // An archive must not overwrite independently spent local work.
+                // A clean store restores the original ledger; same-store import
+                // keeps the existing authority only when its canonical costs agree.
+                if (control) {
+                    const local = retireRunOperations(structuredClone(control));
+                    const incoming = retireRunOperations(structuredClone(runContinuation));
+                    if (hashNativeDocument({ operations: local.operations, retiredCompute: local.retiredCompute ?? null })
+                        !== hashNativeDocument({ operations: incoming.operations, retiredCompute: incoming.retiredCompute ?? null })) throw runFailure('native_run_continuation_conflict');
+                }
+            }
             const rootRevision = revisions.find(item => item.revisionId === session.headRevisionId);
             const run = stateRecords.find(item => item.namespace === RUN_NAMESPACE && item.head === rootRevision.stateHeads[RUN_NAMESPACE])?.data;
             if (run) assertRunState(run);
@@ -696,9 +709,18 @@ export class SessionRepo {
             const head = revisions.find(item => item.revisionId === session.headRevisionId);
             const snapshot = await readSessionSnapshot(tx, handle, session, head);
 
+            // FS has no transactional rollback. Costs must be durable before
+            // the mutable Session marker exposes the imported playable state.
+            // An interrupted import can retry against the retained control.
+            if (control || run || runContinuation) await writeRunControl(tx, handle, sessionId, {
+                ...(control ?? { schemaVersion: 1, operations: {}, background: {}, highWaterTurn: 0 }),
+                ...(!control && runContinuation ? runContinuation : {}),
+                ...(run ? { mode: run.mode, status: run.status === 'dead' && run.mode === 'ironman' ? 'terminal' : run.status, sequence: Math.max(control?.sequence ?? 0, run.sequence),
+                    origin: { packageId: session.packageId, packageVersionId: session.packageVersionId, entryPointId: session.entryPointId, packageContentHash: session.packageContentHash } } : {}),
+                headRevisionId: session.headRevisionId,
+                ...(resume ? { ...resume.control, resumeSourceRevisionId: resume.sourceRevisionId } : {}),
+            });
             await putMutable(tx, sessionKey, session, { expectedIntegrity: null });
-            const imported = await readRunControl(tx, handle, sessionId);
-            if (imported) await writeRunControl(tx, handle, sessionId, { ...imported, ...(resume ? { ...resume.control, resumeSourceRevisionId: resume.sourceRevisionId } : {}) });
             return snapshot;
         })));
     }

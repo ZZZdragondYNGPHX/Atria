@@ -326,7 +326,9 @@ export class NativeSaveSystem {
 
         const save = assertAtriaSave({
             format: ATRIA_SAVE_FORMAT,
-            schemaVersion: closure.stateRecords.some(item => item.namespace === PERSONA_NAMESPACE) ? 3 : scope === 'resume' ? 2 : ATRIA_SAVE_SCHEMA_VERSION,
+            schemaVersion: closure.stateRecords.some(item => item.namespace === PERSONA_NAMESPACE) || (control && scope !== 'resume') ? 3 : scope === 'resume' ? 2 : ATRIA_SAVE_SCHEMA_VERSION,
+            ...(control && scope !== 'resume' ? { runContinuation: { operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
+                ...(control.retiredCompute ? { retiredCompute: control.retiredCompute } : {}) } } : {}),
             ...(scope === 'resume' ? { resume: { mode: 'ironman', sequence: control.sequence, sourceRevisionId: control.resumeSourceRevisionId ?? current.headRevisionId,
                 control: { operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
                     ...(control.retiredCompute ? { retiredCompute: control.retiredCompute } : {}) } } } : {}),
@@ -486,7 +488,7 @@ export class NativeSaveSystem {
                 if (!existing) newlyAdded.push(ref.assetId);
                 await this._assets.put(handle, ref, bytes);
             }
-            await this._sessions.importClosure(handle, save.closure, { resume: save.resume });
+            await this._sessions.importClosure(handle, save.closure, { resume: save.resume, runContinuation: save.runContinuation });
         } catch (error) {
             for (const assetId of newlyAdded) {
                 try { await this._assets.deleteRef(handle, assetId); } catch { /* orphan blob is GC-safe */ }

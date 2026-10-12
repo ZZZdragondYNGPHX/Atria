@@ -33,7 +33,7 @@ import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory } from './history-authority.js';
 import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
-import { validateCognitionTransition } from './cognition-authority.js';
+import { validateCognitionTransition, rebindCognitionBranch } from './cognition-authority.js';
 import { consumeAppraisalDelivery } from './appraisal-authority.js';
 import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
@@ -509,6 +509,8 @@ export class SessionCore {
         const checkpoint = checkpointHistory(base, states, timeline, taskRecord);
         if (checkpoint) timeline = checkpoint.timeline;
         validateHistory({ ...base, states });
+        if (runAction === 'rewind' && branchId !== base.revision.branchId) states = rebindCognitionBranch(base,
+            { ...base, states, timeline, revision: { ...base.revision, revisionId, branchId } });
         const core = { schemaVersion: 1, parentRevisionId: checkpoint ? null : base.session.headRevisionId,
             branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
                 headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };

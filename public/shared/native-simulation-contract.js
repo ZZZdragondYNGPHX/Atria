@@ -1,5 +1,6 @@
 import { fields, json, assertJsonDeclaration } from './native-values.js';
 import { taskId } from './native-task-contract.js';
+import { appraisalTargets } from './native-appraisal-contract.js';
 import { authorityInteger as integer, authorityList as list, authorityReference as reference } from './native-authority-contract.js';
 import { reads, readContext, predicate, template } from '../scripts/native/experience/logic/bound-expressions.js';
 
@@ -43,10 +44,14 @@ export function assertSimulationRuntime(raw, lifecycle, tasks, authority) {
             fields(job.action, ['kind', 'taskId', 'variantId', 'input'], 'Simulation Task');
             const task = reference(tasks?.tasks, job.action.taskId, 'simulation Task');
             const variant = reference(task.variants, job.action.variantId, 'simulation Variant');
+            const appraisal = variant.resultBinding?.kind === 'cognition.appraise';
             if (task.executionClass !== 'background' || task.queuePolicy !== 'fifo' || task.resultPolicy.sink !== 'app_command'
-                || task.resultPolicy.resultClass !== 'declared_app_command' || task.context.length !== 1 || task.context[0] !== 'input'
-                || variant.resultBinding?.kind !== 'app.command') throw new TypeError('Simulation Task requires isolated FIFO background intent binding');
-            if (reference(lifecycle.domains, variant.resultBinding.domainId, 'simulation intent').scopeId !== job.scopeId
+                || task.resultPolicy.resultClass !== 'declared_app_command'
+                || (appraisal ? task.context.length !== 2 || !task.context.includes('input') || !task.context.includes('projection')
+                    : task.context.length !== 1 || task.context[0] !== 'input' || variant.resultBinding?.kind !== 'app.command')) throw new TypeError('Simulation Task requires isolated FIFO background intent binding');
+            if (appraisal) {
+                if (appraisalTargets(variant.resultBinding).some(kind => reference(lifecycle.domains, variant.resultBinding[kind].domainId, 'simulation appraisal').scopeId !== job.scopeId)) throw new TypeError('Simulation appraisal requires same-scope targets');
+            } else if (reference(lifecycle.domains, variant.resultBinding.domainId, 'simulation intent').scopeId !== job.scopeId
                 || typeof variant.resultBinding.recordId !== 'string') throw new TypeError('Simulation intent requires static same-scope target');
             template(job.action.input, task.inputSchema, context);
         } else if (job.action?.kind === 'transaction') {

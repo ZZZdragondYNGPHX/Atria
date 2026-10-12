@@ -758,6 +758,7 @@ const SAVE_KEYS = new Set([
     'root',
     'closure',
     'resume',
+    'runContinuation',
 ]);
 
 function assertSavePackage(value) {
@@ -807,6 +808,7 @@ export function assertAtriaSave(value) {
     if (value.format !== ATRIA_SAVE_FORMAT) throw new TypeError(`.atriasave format must be '${ATRIA_SAVE_FORMAT}'`);
     if (![1, 2, 3].includes(value.schemaVersion) || (value.schemaVersion < 3 && (value.schemaVersion === 2) !== (value.scope === 'resume'))) throw new TypeError('Unsupported .atriasave schema/scope');
     if (value.schemaVersion === 1 && value.resume !== undefined) throw new TypeError('Legacy saves cannot carry resume control');
+    if (value.runContinuation !== undefined && (value.schemaVersion < 3 || value.scope === 'resume')) throw new TypeError('Run continuation requires a version 3 ordinary Save');
     if (value.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION) throw new TypeError('.atriasave nativeSchemaVersion must be 1');
     if (![...ATRIA_SAVE_SCOPES, 'resume'].includes(value.scope)) throw new TypeError('.atriasave scope must be snapshot, session or resume');
 
@@ -981,6 +983,7 @@ export function assertAtriaSave(value) {
         format: ATRIA_SAVE_FORMAT,
         schemaVersion: value.schemaVersion,
         ...(resume ? { resume } : {}),
+        ...(value.runContinuation === undefined ? {} : { runContinuation: assertRunContinuation(value.runContinuation) }),
         nativeSchemaVersion: NATIVE_SCHEMA_VERSION,
         scope: value.scope,
         exportedAt: timestamp(value.exportedAt, '.atriasave.exportedAt'),

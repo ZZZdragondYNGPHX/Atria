@@ -24,7 +24,7 @@ export function informationInteger(value, min, max) {
 const reference = value => { if (typeof value !== 'string' || !/^[a-z][A-Za-z0-9._:-]{0,127}$/.test(value)) throw new TypeError('Invalid information reference'); return value; };
 export function assertInformationRuntime(value, lifecycle, tasks) {
     value = assertLifecycleJson(value);
-    fields(value, ['schemaVersion', 'sources', 'views', 'actors', 'graphs', 'narration'], 'Information runtime');
+    fields(value, ['schemaVersion', 'sources', 'views', 'actors', 'graphs', 'narration', 'inspection'], 'Information runtime');
     if (value.schemaVersion !== 1 || !lifecycle) throw new TypeError('Information runtime requires version 1 and lifecycle');
     const sources = informationList(value.sources, 32, source => {
         fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField', 'hypothesisPolicy', 'memoryPolicy', 'causalBasis'], 'Information source');
@@ -102,7 +102,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     });
     const views = informationList(value.views, 16, view => {
         fields(view, ['id', 'audience', 'actorId', 'taskId', 'sources', 'exposure', 'knowledge', 'memory', 'maxItems', 'maxCharacters'], 'Information view');
-        taskId(view.id); choice(view.audience, ['player', 'narrator', 'actor', 'task']);
+        taskId(view.id); choice(view.audience, ['player', 'narrator', 'actor', 'task', 'inspector']);
         if (view.actorId !== undefined && !actors.some(actor => actor.id === view.actorId)) throw new TypeError('Unknown Perspective Actor');
         if (view.audience === 'actor' && !view.actorId) throw new TypeError('Actor view requires identity');
         if (view.audience === 'task' ? !tasks?.tasks.some(task => task.id === view.taskId && task.context.includes('projection')) : view.taskId !== undefined) throw new TypeError('Unknown projection Task');
@@ -112,6 +112,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         if (view.audience === 'player' && exposure.includes('context')) throw new TypeError('Player-only data cannot enter Context');
         if (typeof view.knowledge !== 'boolean') throw new TypeError('Knowledge exposure must be explicit');
         if (view.memory !== undefined && typeof view.memory !== 'boolean') throw new TypeError('Memory exposure must be explicit');
+        if (view.audience === 'inspector' && (exposure.length !== 1 || exposure[0] !== 'display' || view.knowledge || view.memory)) throw new TypeError('Inspector grants are display-only');
         informationInteger(view.maxItems, 1, 128); informationInteger(view.maxCharacters, 1, 32768);
         return { ...view, sources: refs, exposure };
     });
@@ -151,7 +152,16 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
             || disclosure?.audience !== 'player' || !disclosure.exposure.includes('display')) throw new TypeError('Narration requires exact context and display grants');
         narration = { mode, contextViewId: context.id, disclosureViewId: disclosure.id };
     }
-    return json({ schemaVersion: 1, sources, views, actors, graphs, ...(narration ? { narration } : {}) });
+    let inspection;
+    if (value.inspection !== undefined) {
+        fields(value.inspection, ['projectId', 'sourceHash', 'viewIds'], 'Information inspection');
+        if (!/^project_[a-f0-9]{32}$/.test(value.inspection.projectId) || !/^[a-f0-9]{64}$/.test(value.inspection.sourceHash)) throw new TypeError('Inspector requires exact authoring source');
+        const viewIds = informationList(value.inspection.viewIds, 16, taskId);
+        if (!viewIds.length || viewIds.some(id => views.find(view => view.id === id)?.audience !== 'inspector')) throw new TypeError('Inspector requires declared inspector views');
+        inspection = { projectId: value.inspection.projectId, sourceHash: value.inspection.sourceHash, viewIds };
+    }
+    if (views.some(view => view.audience === 'inspector' && !inspection?.viewIds.includes(view.id))) throw new TypeError('Inspector view requires authoring authorization');
+    return json({ schemaVersion: 1, sources, views, actors, graphs, ...(narration ? { narration } : {}), ...(inspection ? { inspection } : {}) });
 }
 
 export function assertInformationClosure(contract, manifest) {
