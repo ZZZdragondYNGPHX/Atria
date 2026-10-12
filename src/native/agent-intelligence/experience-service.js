@@ -10,6 +10,7 @@ import { AgentEvidenceService } from './evidence-service.js';
 import { assertEvidenceScope, fields, text } from './contracts.js';
 import { AgentEvolutionRepository } from './evolution-repository.js';
 import { assertAssessment, assertAttribution, legacyAttribution, qualityProfile } from './evaluation/quality.js';
+import { learningExport, learningRecord } from './learning-trajectory.js';
 
 const budget = { maxSources: 32, maxBytes: 131072, maxScanMessages: 8192 };
 const same = (a, b) => hashNativeDocument(a) === hashNativeDocument(b);
@@ -18,6 +19,10 @@ const sourceStatus = result => result?.status === 'current' ? 'current'
     : result?.checks?.some(check => check.status === 'missing') ? 'missing'
         : result?.checks?.some(check => ['stale', 'denied'].includes(check.status)) ? 'stale' : 'unavailable';
 const sequence = value => { if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new TypeError('Expected sequence required'); };
+const withoutApplicability = view => ({ ...view,
+    feedback: view.feedback.map(({ applicability, ...item }) => item),
+    diagnoses: view.diagnoses.map(({ applicability, ...item }) => item),
+});
 export const supportsDirection = item => item.kind === 'explicit' || item.kind === 'technical' && ['failed', 'validation_failed'].includes(item.signal)
     || item.kind === 'assessment' && item.origin === 'host_check' && item.signal === 'verified_failure';
 
@@ -354,5 +359,24 @@ export class AgentExperienceService {
     async export(handle, input) {
         const view = await this.inspect(handle, input);
         return { format: 'atria-agent-experience', schemaVersion: view?.schemaVersion ?? 1, exportedAt: this.now(), experience: view };
+    }
+    async exportLearning(handle, input) {
+        fields(input, ['scope', 'subject', 'expectedSequence', 'purpose'], 'Learning export request');
+        text(handle, 'Authenticated owner'); sequence(input.expectedSequence);
+        if (input.purpose !== 'offline-analysis' || input.expectedSequence === null) throw new TypeError('Explicit offline purpose and sequence required');
+        const view = await this.inspect(handle, { scope: input.scope, subject: input.subject });
+        if (!view || view.sequence !== input.expectedSequence) throw new ConflictError('learning_sequence_conflict');
+        const expectedHash = hashNativeDocument(withoutApplicability(view));
+        const records = [], sources = [];
+        for (const item of view.feedback.filter(item => item.status === 'active' && item.applicability === 'current')) {
+            const target = await this._target(handle, { kind: item.source.kind, id: item.source.id, integrity: item.source.integrity, scope: view.scope });
+            if (!target.current) throw new ConflictError('learning_source_changed');
+            records.push(learningRecord(view.scope, item, target.document)); sources.push(item.source);
+        }
+        // Recheck both feedback CAS and exact source authorities after all reads.
+        for (const source of sources) if (await this._valid(handle, view.scope, source) !== 'current') throw new ConflictError('learning_source_changed');
+        const final = await this.repository.get(handle, view.scope, view.subject);
+        if (!final || hashNativeDocument(final) !== expectedHash) throw new ConflictError('learning_sequence_conflict');
+        return learningExport(handle, view.scope, view.sequence, this.now(), records);
     }
 }

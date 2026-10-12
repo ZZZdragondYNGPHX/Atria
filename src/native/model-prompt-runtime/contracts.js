@@ -235,10 +235,23 @@ function assertMcpPolicy(value, field) {
         toolNames, resourceUris, auth: value.auth });
 }
 
+function assertA2aPolicy(value, field) {
+    object(value, field);
+    only(value, ['protocolVersion', 'connectionProfileId', 'skillIds', 'auth'], field);
+    if (value.protocolVersion !== '1.0') throw new TypeError(field + '.protocolVersion unsupported');
+    if (!['none', 'secret'].includes(value.auth)) throw new TypeError(field + '.auth unsupported');
+    if (!Array.isArray(value.skillIds) || !value.skillIds.length || value.skillIds.length > 8) throw new TypeError(field + '.skillIds must contain 1..8 entries');
+    const skillIds = value.skillIds.map((id, index) => token(id, field + '.skillIds[' + index + ']'));
+    if (new Set(skillIds).size !== skillIds.length) throw new TypeError(field + '.skillIds contains duplicates');
+    return Object.freeze({ protocolVersion: '1.0',
+        connectionProfileId: assertNativeId(value.connectionProfileId, 'connectionProfile', field + '.connectionProfileId'),
+        skillIds: freezeArray(skillIds), auth: value.auth });
+}
+
 export function assertExecutionPolicy(value) {
     const field = 'RuntimeRoute.executionPolicy';
     object(value, field);
-    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse', 'computeBudget', 'optionalWork', 'mcp'], field);
+    only(value, ['schemaVersion', 'allowedModelProfileIds', 'verifiedRequirements', 'continuity', 'reuse', 'computeBudget', 'optionalWork', 'mcp', 'a2a'], field);
     if (value.schemaVersion !== 1) throw new TypeError(field + '.schemaVersion must be 1');
     if (!Array.isArray(value.allowedModelProfileIds) || !value.allowedModelProfileIds.length || value.allowedModelProfileIds.length > 16) {
         throw new TypeError(field + '.allowedModelProfileIds must contain 1..16 targets');
@@ -263,7 +276,8 @@ export function assertExecutionPolicy(value) {
         verifiedRequirements: uniqueStrings(value.verifiedRequirements || [], field + '.verifiedRequirements', { namespacedValues: true }),
         continuity, reuse, ...(value.computeBudget === undefined ? {} : { computeBudget: Object.freeze(assertComputeBudget(value.computeBudget)) }),
         ...(optionalWork ? { optionalWork } : {}),
-        ...(value.mcp === undefined ? {} : { mcp: assertMcpPolicy(value.mcp, field + '.mcp') }) });
+        ...(value.mcp === undefined ? {} : { mcp: assertMcpPolicy(value.mcp, field + '.mcp') }),
+        ...(value.a2a === undefined ? {} : { a2a: assertA2aPolicy(value.a2a, field + '.a2a') }) });
 }
 
 function assertDecisionProvenance(value, field) {
