@@ -1,0 +1,13 @@
+# S28：Windows SAPI 的有限本地文字语音
+
+状态：2026-10-13 有限本地API消费者完成，source `43a1505e2`。依赖[S27](s27-expression-plan.md)，不需要新增外部连接、凭据或素材发送。选Windows SAPI已有voice，不设机器专属默认voice、不自动播放。其它平台/缺voice明确unavailable并保留文字fallback；自然prosody、phoneme时序及通用远程TTS不在首批范围。
+
+首批只朗读原ExpressionPlan中已经公开、绑定该Actor的原Timeline assistant消息，必须由作品原context/display源声明选中content/actorId，保持精确message/variant引用，不接受caller自由文本或复制private认知字段。对既有原文字输出做可选辅助消费，不把音频合成当角色行动、World结果或Goal完成。
+
+选择本地exact voiceId、bounded rate/volume，provider明确只支持plain text/语速/音量，拒绝XML/SSML解释。Node使用隐藏子进程及stdin JSON，临时文件独立清理；取消/timeout结束子进程并等待close后才释放原Scheduler permit。输出真实WAV及音频总duration，不能把总时长称为精确词/音素时间轴。
+
+沿原TaskScheduler auxiliary_task、Session RunControl localWork与AssetStore exact音频引用；显式player Route预算准入，缺本地预算不启动。准备/合成/取消/失败保留已发生本地工作，parent CPU与子进程wall分别说明，不伪报完整child CPU或付费模型tokens。来源/分支/原Route配置变更使在途结果失效，音频不写World/Memory/认知state；有界临时缓存只供同authority/owner/exact源与voice配置复用，重启丢失时不能用caller artifact恢复producer证明。
+
+消费者返回audio资产及原文字fallback，播放由原资产交付/显式用户控制执行，不自动播放。TaskScheduler是已有辅助执行任务，不声称新增durable speech Task/outbox或跨重启音频producer记录。最小检查包含真实SAPI WAV、原installed Session→公开message→scheduler/local预算/AssetStore、exactvoice复用、source/取消/跨owner隔离及授权HTTP出口。音质、人类偏好、细粒度时序与完整M5验收单独保持pending。
+
+已执行18新增distinct PASS：provider6（2真实Windows case、4模拟/输入边界）及consumer12（FS/SQLite真实WAV、真实HTTP及下一消息exactvoice共4case，其余8工程故障/权限case）；原Information contract2和Scheduler取消/最终采纳2共4受影响PASS。实际子进程取消先观察spawn，再kill→close→返回typedcancel，临时目录清理，不以预先abort替代真正取消。并发重复start不覆盖原producer record；cache到期删除未引用asset，正式Timeline已引用asset由原AssetStore保护且不阻断后续音频；final settlement失败删除未采纳asset、charged费用保留。Source/Route变化不采纳音频，跨engine/owner不能读producer证明。
