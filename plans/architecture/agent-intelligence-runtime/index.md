@@ -87,6 +87,7 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [compute-policy.md](compute-policy.md) | sparse 默认路径、共享 cognition、硬预算、后台分流与计算收益评价 | TaskScheduler / RunControl、M1 Eval |
 | [g01-substrate.md](g01-substrate.md) | 当前 M8 基础 binding/policy schema、有限支持矩阵与未测边界 | delivery §8、model-routing、原 Runtime |
 | [g06-acceptance.md](g06-acceptance.md) | 所选消费者、质量/成本/时延/unknown出口及当前不利观察 | delivery、compute-policy、同一Record |
+| [s16-belief-disclosure.md](s16-belief-disclosure.md) | 原Information cognition/独立Disclosure实施与保证等级 | S15、H2、M3权限 |
 | [m3-cognition-design.md](m3-cognition-design.md) | 已明确的原作者/作品授权可见范围与接管、S15有限入口 | decisions R5、G06、原Actor/Information/Context |
 | [s15-actor-identity.md](s15-actor-identity.md) | 精确Actor/旧profile分类投影与原Context身份consumer | 已验收G06、M3入口权限、原Actor/Information |
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |

@@ -2404,3 +2404,12 @@ G06的S15前置和已明确的M3可见范围/接管满足，读取具体S15契�
 source `1fb00fa5a` 沿原 Actor/PackageVersion/EntryPoint新增共享纯投影，原 Session projection保持全部旧字段/null回落，附精确公开 identity/source；未知 profile JSON 完整保留，不猜测认知迁移。legacy高级字段投影副本可编辑，不回写作者定义。原 Context only public actorId/displayName/role+source，required current-state进入原预算及 Source freshness。Information candidate replacement后只沿实际context view显式绑定且available的Actor；无grant/未绑定/未选择/不可用不补身份。没有 narrator voice/profile private字段、动态cognition、writer、新Task/API授权或模型请求。
 
 最小相关本地验证：新增8 distinct PASS，含真实installed Host preview、修改原ModelProfile后 identity不变、SavePoint/fork/restore与原current branch/revision refs、新实际安装PackageVersion、新Actor target隔离/预算拒绝、70k未知JSON/空examples/null兼容与不可变/legacy可编辑副本、Information五边界；4原受影响检查PASS（旧projection、World、target隔离、Information raw/provider排除）。初Host夹具使用不存在request ID kind失败，改为原request string后仅重跑失败项及实际变化项；其余通过不重复。改动文件lint/diff PASS；无外部API、整仓测试、build或浏览器。代码仍原feature分支，main未集成；完整cognition writer和自由文本审计留S16–S21。三处Record相对Plan链接多一层目录已修正，相关文档链接检查PASS。阶段出口通过，继续S16。
+
+
+### S16进行中：独立Disclosure与Information cognition
+
+source `4ddfcef68` 实施原Information v1可选narration（B默认separate/A限知绑定Actor/C作者选定view）、原Narrator context与player display独立grant，Actor/Task不继承旁白知识。旧schema无字段不迁移，原Memory/Hybrid资格与writer/CAS保持；required认知解释与Disclosure投影同原预算/Source。source `634b2494b` 后续补Information source/时态解释，未变World值或view权限。尚未宣布本阶段正文验收通过。
+
+新增13 distinct本地检查PASS（12实际Host/Actor/Task/A-B-C/独立Disclosure/原belief错误不写World/availability与Save恢复/strict旧schema，1实际Hybrid输入/结果/撤回）。受影响8 distinct本地PASS（FS/SQLite旧Host与PackageTask、旧Skill context、新S15 bound Actor和原Context私有原文排除）；旧projection-only断言按S15精确公开identity更新，旧Skill夹具补原S07 installedHash/pin。初fixture修改display sources时原Graph closure拒绝，移除本案例未使用graph后通过；Task preview夹具补原PackageInstaller后通过。第一次误跑已不可用MySQL/Postgres，各两项ECONNREFUSED不冒称PASS；最小消费者只用当前本地FS/SQLite，不启动额外DB或全仓。改动文件lint/diff PASS。
+
+私有主模型runner三模式预检零API；首预检因preview无Run bank而读取null失败，修正null诊断后通过，无HTTP。第一实际三HTTP200/direct5976，认知/Disclosure边界合规，但无source动作/纸张特征/微风均保留不利。补Information解释的三个实际Host本地检查PASS，主模型第二三正文仍含无source动作/细节；原raw/Provider usage/settled bank均保留。仅本次作者叙事资源收紧事实范围，不新增系统全局文风表、不把自然语言提示称确定性guard；三个受影响模式继续必要复验，原G06/HM1已通过组不重复。source原feature分支，main未merge/deploy，S17可独立准备但不跳过S16出口。
