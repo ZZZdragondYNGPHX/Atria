@@ -15,6 +15,8 @@ import {
 } from './context-derived.js';
 import { informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../shared/native-information-runtime.js';
 import { PROCESSING_LIMITS } from '../../shared/native-processing-contract.js';
+import { deriveExpressionPlan } from '../../shared/native-expression-runtime.js';
+import { contentSha256 } from '../../shared/content-sha256.js';
 
 export const CONTEXT_PLAN_SCHEMA_VERSION = 1;
 
@@ -348,8 +350,28 @@ function informationCognitionItems(snapshot, information) {
         authority: 'information_policy', authorityRank: 100, required: true,
         content: 'Native Information cognition/disclosure policy:\n' + JSON.stringify(policy),
         sourceRefs: [{ kind: 'runtime', providerId: 'native.information-cognition',
-            contentIdentity: JSON.stringify([snapshot.manifest.packageVersionId, policy.viewId, information.narration ?? null]),
+            contentIdentity: information.narration?.expression
+                ? contentSha256(JSON.stringify([snapshot.manifest.packageVersionId, policy.viewId, information.narration]))
+                : JSON.stringify([snapshot.manifest.packageVersionId, policy.viewId, information.narration ?? null]),
             branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }],
+    })];
+}
+
+function expressionItems(snapshot, information, onScan) {
+    if (!information?.narration?.expression) return [];
+    const plan = deriveExpressionPlan(snapshot, information, { onScan });
+    if (!plan) return [];
+    return [normalizeContextItem({
+        contextItemId: 'projection:expression:text', lane: CONTEXT_LANES.currentState,
+        authority: 'information_policy', authorityRank: 100, required: true,
+        content: 'Native text ExpressionPlan (reference data):\n' + JSON.stringify(plan)
+            + '\nUse the declared communicative intent only for this Actor within the existing character expression and narration modules. '
+            + 'Only the plan\'s independently displayed items and their qualifiers support public assertions; beliefs and appraisals are not World Truth. '
+            + 'The intent is an authored expression proposal, not a performed action, new cognition, willingness, tool permission or Goal completion. '
+            + 'Do not choose the player action, invent facts to reassure, infer private emotions, or transfer this Actor\'s voice to another Actor. '
+            + 'On fallback keep the ordinary text path and existing disclosure rules; do not reconstruct missing support from private context.',
+        sourceRefs: [{ kind: 'runtime', providerId: 'native.expression-text',
+            contentIdentity: contentSha256(JSON.stringify(plan)), branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }],
     })];
 }
 
@@ -855,8 +877,9 @@ export class SessionContextCompiler {
             options.promptContentByMessageId,
         );
         let informationScans = 0;
+        const onInformationScan = count => { informationScans += count; if (informationScans > 4096) throw new TypeError('Authority context scan limit'); };
         const information = informationContext(snapshot, target, options.informationTaskId, options.authorityTurn ? {
-            includeRollups: false, onScan: count => { informationScans += count; if (informationScans > 4096) throw new TypeError('Authority context scan limit'); },
+            includeRollups: false, onScan: onInformationScan,
         } : {});
         const knowledgeTarget = information?.actorId ? { kind: 'actor', id: information.actorId } : target;
         const knowledgeTargetKey = JSON.stringify(options.informationTaskId ? ['task', options.informationTaskId] : [knowledgeTarget.kind, knowledgeTarget.id ?? '']);
@@ -976,7 +999,7 @@ export class SessionContextCompiler {
             }) : [];
             candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds, information)];
         }
-        candidates.push(...actorIdentityItems(snapshot, target, information), ...informationCognitionItems(snapshot, information), ...dynamicItems, ...persona.items.map(normalizeContextItem));
+        candidates.push(...actorIdentityItems(snapshot, target, information), ...informationCognitionItems(snapshot, information), ...expressionItems(snapshot, information, options.authorityTurn ? onInformationScan : null), ...dynamicItems, ...persona.items.map(normalizeContextItem));
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
             if (visibleTo(item, target)) return true;

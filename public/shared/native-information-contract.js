@@ -142,7 +142,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     });
     let narration;
     if (value.narration !== undefined) {
-        fields(value.narration, ['mode', 'contextViewId', 'disclosureViewId'], 'Information narration');
+        fields(value.narration, ['mode', 'contextViewId', 'disclosureViewId', 'expression'], 'Information narration');
         const mode = choice(value.narration.mode ?? 'separate', ['separate', 'limited', 'custom']);
         taskId(value.narration.contextViewId); taskId(value.narration.disclosureViewId);
         const context = views.find(view => view.id === value.narration.contextViewId);
@@ -151,6 +151,17 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
             || (mode === 'limited' && !context.actorId)
             || disclosure?.audience !== 'player' || !disclosure.exposure.includes('display')) throw new TypeError('Narration requires exact context and display grants');
         narration = { mode, contextViewId: context.id, disclosureViewId: disclosure.id };
+        if (value.narration.expression !== undefined) {
+            const expression = value.narration.expression;
+            fields(expression, ['actorId', 'intent', 'sourceIds'], 'Narration expression');
+            reference(expression.actorId);
+            if (!actors.some(actor => actor.id === expression.actorId) || mode === 'limited' && context.actorId !== expression.actorId) throw new TypeError('Expression requires the declared Perspective Actor');
+            const intent = choice(expression.intent, ['inform', 'ask', 'reassure', 'decline', 'reflect']);
+            const sourceIds = informationList(expression.sourceIds, 8, taskId);
+            if (!sourceIds.length || sourceIds.some(id => !sources.some(source => source.id === id)
+                || !context.sources.includes(id) || !disclosure.sources.includes(id))) throw new TypeError('Expression requires existing context and display source grants');
+            narration.expression = { actorId: expression.actorId, intent, sourceIds };
+        }
     }
     let inspection;
     if (value.inspection !== undefined) {
