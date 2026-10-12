@@ -167,8 +167,10 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S20 | 有限因果轨迹/Memory applicability/遗忘出口完成 | [s20-memory-applicability](s20-memory-applicability.md)，12新增/2受影响本地PASS；同Session原连接正文direct5955，原失败/费用保留；不强制行为/不改变World历史 |
 | S21 | 有限消费者出口完成 | [认知恢复设计](s21-cognition-recovery.md)；source `c73bad012`，44新增/3受影响本地distinct PASS，7实际请求含保留失败及修复后正文对照；完整 HM3/任务不冒称完成 |
 | S22 | 有限确定性消费者出口完成 | [确定性预演设计](s22-hypothetical-preview.md)；source `c73bad012`，12 distinct PASS；exact snapshot、原 Simulation/transaction 私有 candidate、获准投影与 stale 复验 |
-| S23 | 实施中 | [文本结构化预测](s23-model-prediction.md)；原 Host/Task/费用与只读预测 lane，真实 provider 验证待执行 |
-| S24–S34 | 尚未实施 | 按原 delivery 依赖继续；实际 provider/协议/训练出口不能由 mock 或占位替代 |
+| S23 | 工程消费者完成，真实出口 pending | [文本结构化预测](s23-model-prediction.md)；source `defc95b55`，17新增/2受影响本地PASS，原 Host/Task/费用与只读预测 lane；新素材外部发送范围待核实 |
+| S24 | 尚未实施 | 模型比较与实际prediction feedback依赖 S23真实出口；不由本地 mock替代 |
+| S25 | 普通路径实施中 | [异步普通认知](s25-async-cognition.md)；复用 author-explicit Task/outbox/RunControl，预测路径另依赖S24 |
+| S26–S34 | 尚未实施 | 按原 delivery 依赖继续；实际 provider/协议/训练出口不能由 mock 或占位替代 |
 | HM1 / H0–H2 | Complete；main `3ee1332ef` | B0 保留，B1–B3 / 三路径 / Context 完整组 / 主模型正文观察与相关本地验证通过；限制见 Record |
 | HM2–HM3 / H3–H5 | 有限HM2工作进行中；整体未验收，HM3未交付 | 原合法corpus/hash派生复用与有限本地Embedding已有实际消费者；delta/candidate cache、启用算法收益与cognition/forgetting仍按各组出口交付 |
 

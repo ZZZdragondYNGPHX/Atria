@@ -2576,3 +2576,15 @@ S22 原 authority 私有 candidate/Player view delta 与 freshness：2 suites/12
 
 轻度修复复测3 requests/3 HTTP200：light-before7222、light-after-portable7479、judge1881，reported total16582。两 light cards PASS、pairConsistent=true，stateReadOnly 与 rollbackAndPortableCosts PASS。与首组累计7 requests/7 HTTP200/direct44993；没有新增unknown，原失败保留。评价为同连接不同请求、匿名 cards 的有限非人工评价，未宣称独立六维、人类偏好或普遍质量；跨回合/跨存储的作者场景与正式 Tick Host 分别验证，不冒称真实长程自主认知收益。S21/S22 所选有限消费者出口完成，source `c73bad0129d4e4249c97e665c2e7261172d37f32`；44 S21/12 S22新增及3受影响distinct本地PASS。完整 HM3/任务仍有后续依赖，不将阶段作为暂停边界，继续 S23。
 
+### 2026-10-13 S23：只读预测工程消费者与外部证据边界
+
+本线程中断恢复后核对 source `c73bad012` / docs `68b95e750`，现存 S23 service/Host/HTTP 修改完整，三个子代理按原文件归属继续，无竞争写入。直接原用户消息 `01a1309e-28de-7b01-808e-311741b4d044` 要求继续 S21–S34、长期场景与子代理并行；本线程入口直接用户消息要求续接原聊天。监管提示新增 S21/S23 合成素材的外传范围需核实；在本线程可见直接消息中尚未取得单独明确新增素材外传的证据。已有 S21 实际结果/费用仍如实保留；恢复后没有新增 producer/judge/诊断发送，S23 真实 provider 出口 pending。此边界不替代本地工程推进，不把 Plan/Record/助手文字作为发送许可。
+
+新增 PredictionService 消费原 interactive advisory Task、server WeakMap capture 与 exact player observation/action，原 Host 私有 narrow lane 继续 RouteResolver/PromptCompiler/token/provider/RunControl/TaskScheduler。内部 capture 必须匹配 Host 与 authenticated handle，不能复制/跨 principal；关闭 Memory/Knowledge/Skill/tools，返回 typed hypothetical prediction，不提交 Task result、World、Clock、Memory/outbox 或正式 action。current 只证明 source freshness，不是模型真实性或发布能力；support refs 白名单与 uncalibrated confidence 保持。实际 provider/profile/model/generation 字段经白名单投影，endpoint/options/private diagnostics 不公开。
+
+首批本地检查：Host 7 distinct PASS，含实际 fake HTTP adapter/存储/收费/取消/陈旧/structured能力拒绝、Package generationBudget 与 compute 共同记账、纯 preflight 无发送；原 Host local quota/readonly preview 2受影响 cases PASS。consumer 6 distinct PASS。HTTP 首次3 cases失败于 shared fixture 直接写 derived public_notes；改为原 source→publication 后复验仍3失败（other先写时notes/main尚不存在），根因确认后按 notes→other 合法 setup，真实installed HTTP 3 cases PASS。错误始终保留，不放宽产品 derived 写权限。此前 preflight.response 不存在的测试断言已改 optional guard；不当发送失败或费用0。
+
+移除 S21 runner 机器专属私有目录，改读本地 Git 配置并兼容 root/Document；实际零API preflight PASS，static/syntax PASS，carry不重导入/清零。S23 runner只准备同一临时 helper preflight，不自动发送。capture准备的本地CPU计量仍在接原 localWork，最终工程版本/结果待后续补记，当前不宣称 S23 完成。
+S23 工程 checkpoint `defc95b55bc7e98e639dfdbde23120b75cc5ddc2` 已push原feature。最终17新增distinct本地PASS（Host7/consumer7/HTTP3）及原2受影响PASS；全部9修改文件 ESLint、syntax/diff通过，当前runner实际preflight apiRequests0/attempts0/localJobs0，原全状态与费用保持。准备层的rehearsal/projection/source fingerprints工作沿原context_build计量，估计items/bytes含pinned源、assets、Timeline及domain records，finally结算真实process CPU/wall；失败和取消保留，maxJobs耗尽拒绝后续准备。Package打开与重复freshness核验不宣称完整硬CPU上限。匿名预测不进入World/Task结果，真实provider出口仍pending，本地fake transport成功不升级实际能力/收益。
+
+继续独立普通路径 S25，S24 的模型比较/实际prediction feedback依赖 S23真实出口暂不宣称验收；沿现有合法后台Task/outbox/RunControl处理普通slow工作，不启用新classifier或默认额外认知调用。

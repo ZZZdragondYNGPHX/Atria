@@ -1,6 +1,6 @@
 # S23：文本/结构化模型预测消费者
 
-状态：2026-10-12 实施中。依赖 [S22](s22-hypothetical-preview.md)、[architecture §8](architecture.md#8-counterfactual-与-metacognition)、原 Task/Host/RunControl 与 G06。实际结果归同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。
+状态：2026-10-13 工程消费者完成（source `defc95b55`），真实 provider 出口 pending。依赖 [S22](s22-hypothetical-preview.md)、[architecture §8](architecture.md#8-counterfactual-与-metacognition)、原 Task/Host/RunControl 与 G06。实际结果和外部材料范围待核实只归同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)，本地fake transport不代替真实能力/预测收益。
 
 首批有限范围是 Native Session、单个作品声明行动、文本 observation 与结构化 prediction。PredictionService 是原 Host 的消费者，不新增 provider executor、authority 或 World state。由服务器从 exact Session/Package snapshot 捕获 player display view、Actor/source/scope 与声明 action；不能以 caller 自报 observation 或模型填写锚点代替权限。
 
