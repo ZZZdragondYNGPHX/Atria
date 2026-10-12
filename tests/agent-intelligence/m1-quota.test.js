@@ -37,7 +37,21 @@ test('the sender waits for the minute and day windows instead of treating histor
     const fullDay = new M1ApiQuota({ schemaVersion: 1, carry: { requests: 2000, at }, admissions: [] }, () => {}, now, wait);
     await fullDay.waitAvailable(); fullDay.admit('after-day');
     expect(at).toBe(100060000 + 86400000);
-    expect(fullDay.snapshot.carry.requests).toBe(2000);
+    expect(fullDay.snapshot.carry.requests).toBe(0);
+});
+
+test('restore compacts expired history without discarding active minute or day use', () => {
+    const at = 200000000;
+    let stored;
+    const admissions = [{ id: 'expired', at: at - 86400000 },
+        ...Array.from({ length: 20 }, (_, i) => ({ id: 'active-' + i, at: at - i }))];
+    const quota = new M1ApiQuota({ schemaVersion: 1, carry: { requests: 1980, at: at - 120000 }, admissions },
+        next => { stored = structuredClone(next); }, () => at);
+    expect(stored.admissions).toHaveLength(20);
+    expect(() => quota.admit('blocked')).toThrow('m1_api_daily_limit');
+    expect(() => new M1ApiQuota({ ...stored, carry: { requests: 0, at: 0 } }, () => {}, () => at)
+        .admit('blocked-rate')).toThrow('m1_api_rate_limit');
+    expect(quota.snapshot.carry.requests).toBe(1980);
 });
 test('private advisory owner retains overreports and continues through original persistence', async () => {
     const f = await evolutionFixture(makeTempFsEngineHarness, 'rp-skill', { repositoryClass: M1AdvisoryRepository });

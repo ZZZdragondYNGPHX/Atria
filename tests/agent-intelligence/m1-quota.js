@@ -37,8 +37,20 @@ export class M1ApiQuota {
         this.snapshot = structuredClone(snapshot); this.persist = persist; this.now = now;
         this.wait = wait;
         if (snapshot.carry.at > now() + 60000 || snapshot.admissions.some(a => a.at > now() + 60000)) throw new Error('invalid_api_quota_clock');
+        this.compact();
+    }
+    compact() {
+        const cutoff = this.now() - 86400000;
+        const admissions = this.snapshot.admissions.filter(a => a.at > cutoff).map(({ id, at }) => ({ id, at }));
+        const carry = this.snapshot.carry.at > cutoff ? this.snapshot.carry : { requests: 0, at: 0 };
+        const next = { schemaVersion: 1, carry, admissions };
+        if (JSON.stringify(next) !== JSON.stringify(this.snapshot)) {
+            this.persist(next);
+            this.snapshot = next;
+        }
     }
     assertAvailable() {
+        this.compact();
         const at = this.now(), recent = this.snapshot.admissions.filter(a => a.at > at - 86400000);
         const carry = this.snapshot.carry.at > at - 86400000 ? this.snapshot.carry.requests : 0;
         if (recent.length + carry >= 2000) throw new Error('m1_api_daily_limit');
