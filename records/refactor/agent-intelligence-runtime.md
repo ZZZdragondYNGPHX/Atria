@@ -2456,3 +2456,37 @@ S16三批实际HTTP均200：v1 source4ddfcef68/direct5976，v2 source634b2494b/d
 两个零API完整性audit `s17-intention-integrity-audit-v1/v2.json` 分别核对前三发送及最后一发送，不重复已通过raw组；actual model/raw request-response/hash/normalized全文、Provider total usage与原每案例1settled modelattempt/32-job、World/Timeline/definitions/cognition domains保持。`s17-semantic-audit-v1.json`保存不利与最终范围；原S16九Disclosure FAIL及此前全部不利/unknown仍保留在private根，不提交Git。
 
 本阶段累计4admissions/4HTTP200/direct12762，quota1797→1801连续append/carry332与M1/HM1 hashes不变。自本设备恢复累计86 admissions/84HTTP200/direct206653及2TLS unknown upper46348；原M8组reported161/direct402366、旧unknown2/upper17515/admission fetch0另列，price/cache/upstream保持unknown。失败不退款、不把unknown当0。本阶段有限出口已完成；当前用户指定到阶段完成，下一阶段S18尚未开始，整体agent-intelligence-runtime仍未完成。正常进度仅归Plan/Record，不刷新旧HANDOFF。
+
+
+### 2026-10-12 S18：共享事件 appraisal 实施与本地出口
+
+依用户继续至阶段完成，从source `186c449fa`沿 [S18具体契约](../../plans/architecture/agent-intelligence-runtime/s18-event-appraisal.md)实施，当前producer `f62fcace0`、作者Prompt package refs夹具修正 `a8ca155cc`，尚待真实模型有限出口。原M3作者/作品授权不重问，main3ee1332ef未merge/deploy；没有子agent或Codex Goal。
+
+原declared_app_command Task增加固定cognition.appraise binding，复用原workflow/outbox/NativeGenerationHost/TaskScheduler、Run后台窗口及原compute/localWork bank。一事件一次有界结构化提案，emotion/relationship按固定作者domain/command分别检查并在同Session publication原子发布；target不由模型选domain，source和direction按Actor-bound Task view裁决，允许负向关系/情绪下降，不强制亲近或依赖。Task排队冻结事件leaf/hash、Actor/profile/Package/branch/scope epoch和旧state，调用前复核；低重要性无send，缺证据或预算返回pending。在途source/取消/HEAD变化拒绝采纳，实际费用不退款。模型/Prompt/Generation/profile及旧值provenance由原Host opaque能力封存，caller JSON不可伪造；原author可以沿授权写入和纯撤回。普通turn只读state，不增加poll/timer/默认每NPC调用。
+
+Information增加原application emotion/relationship语义，不迁移旧sources；raw状态保留在原domain/Revision，撤回/失效与Save恢复只改变读取解释。动态情绪和方向关系不当World Truth、他者真心、stable traits或实际行动；独立displayGrant可仅给text，level/rationale/model证据不自动公开。
+
+最小新增本地14distinct PASS：真实FS/SQLite installed Host一次共享pass分别采纳负delta与负关系、sealed provenance/原bank/原定义World/Timeline保持、新service重读；低信息/读取不排Task，逐组件拒绝私有来源/自身target/过大delta且坏首组件不阻挡后续同target合法组件；source/Actor/旧state调用前失效，epoch/profile/branch/Package/missing proof与declared closure反例，伪造Host/作者冒称模型，在途source/取消与Save恢复费用，no-change/缺预算/耗尽pending，撤回/恢复原值stale，坏structured输出结算后重启沿同bank拒绝新增额度。4受影响旧检查PASS：S17原Task自己的view writer、原Variant/App args closure、FS/SQLite原background proposal。没有全仓/build/browser、不可用DB、已通过M1/HM1/G06或S16/S17正文复发。
+
+所有`s18-local-v1..v10`、`s18-lint-v1..v3`、`s18-affected-v1..v3`私有保留。早期夹具共享view数组导致duplicate来源、localWork新增kind未纳入原枚举、短synthetic secret撞上公开fixture字符串、采纳后Run账本已归档却按当前operations查找、后台budget夹具缺authority/原Logic v3/必需Transaction逐项修正，失败不冒称PASS。旧受影响首次命令遗漏Jest config导致import期process.exit(1)，第二最小命令2项PASS/后台名称过滤未匹配，第三仅两后台项PASS。后续变化只复验失败/直接受影响项；14/4为distinct而非执行次数。源码改动文件lint/diff PASS。
+
+私有runner预检v1零API因Prompt module package refs缺ID失败，修正夹具后v2实际Host精确Task Prompt/来源准备通过、零API。连续2000/20RPM sender保持原quota1801起append与carry332，M1/HM1 pins未改；当前只执行一个真实共享appraisal与其后正文，结果及实际费用待下面追加，不宣称S18已验收。
+
+
+S18真实appraisal `s18-appraisal-live-v1.json` sourcea8ca155cc一次HTTP200/direct2229，原Task封存实际primary model/Profile/Prompt/Generation/旧state hashes；emotion worry delta-15采纳为25，relationship trust delta+10采纳为10，两个receipts分别applied，原World/Timeline/definitions保持，原后台bank1settled modelattempt与8settled local jobs归档。候选明确为阿岚的有限解释，未写沈墨真实心理、私有经历、新行为或强制依赖；关系负向能力由实际本地Host组件验证，主模型此案例选择正向信任，不伪造负向实测。
+
+同runner原计划继续正文时，私有lanePlan只给budgetContext、遗漏原executionResources捕获的routes，在发送前Cannot convert undefined or null to object；错误与原已付费appraisal均保留。runner finally已清理临时Session，未保留其完整package archive/portable Run，不能冒称原Session可无损续跑。为遵守不重复已通过appraisal，只将未编辑原raw Provider response以明确`s18-retained-response-replay`模型在新作者夹具通过实际Task/原两domain commands本地重放，事件文字/目标/两个level/text/dimension逐项与原结果核对；新Actor/Session/branch/source anchor、replay model provenance明确区分，不给原primary provenance假装迁移。重放raw usage仅作原response字段，不计新的外部发送或新增direct费用；原实际primary成本仍唯一计入连续账本。此为后续正文的有限重放consumer，不是原Session两次primary端到端或S21 portable费用恢复验收。
+
+正文补充预检v1/v2都零外部API，因重放fixture替换target Actor却漏保留helper仍seed的原Actor引用而被原publication guard拒绝；保留失败，修正私有fixture Actor registry后v3原Host重放采纳及精确正文Context/policy/独立text-only grant准备通过、外部零send。source无变化，不重跑产品已PASS组；下一只真实调用后续正文。
+
+
+后续正文第一次live（`s18-prose-live-v1`）仍零API：原Host公开execute会再进Scheduler，私有runner给的budgetContext未传入新captured lane，原native_generation_budget_lane_denied正确拒绝。下一仅修正私有composition，沿原TaskScheduler明确父lane、executionResources、fresh与原Run bank，不修改生产预算守卫；preflight-v4零外部API通过，live-v2一次HTTP200/direct5007，真实正文完整审读只表达获准的澄清/阿岚听到、已公开的担忧缓解及方向信任；没有数值/delta/rationale/profile、private memory/他者内心、新行动/台词/性别/天气/位置/玩家选择。原public-emotions/public-relations两个text-only displayGrant current active，raw emotions/relations marker的item仍null；状态、World/Timeline/definition保持。`s18-semantic-audit-v1.json`为repo agent非盲有限审读，不是独立评分或绝对自然语言保证。
+
+完整性审计保留所有失败，发现私有runner以各fixture相同的deterministic invocationId命名normalized文件，后续local replay覆盖了原完整appraisal requestSnapshot文件。原actual raw request/response、实际ContextPlan/hash、Task sealed receipt/effectiveConfig/hash、完整adopted snapshot、后台费用仍在原live report；原完整normalized快照不能独立重算requestSnapshot hash，明确缺失，不用重放模型伪装原primary模型或重发已经通过的实际appraisal。后续runner normalized采用report名称+request ID并拒绝覆盖；当前最后replay文件另以明确名称保留。原audit-v1因读取覆盖后的replay snapshot而actual model核对FAIL；audit-v2因原quota字段为id而非attemptId失败；audit-v3因原marker为displayGrant.item null而非outer null失败；修正audit消费者后v4零API核对两actual raw/hash/usage/原typed Candidate/Context/source basis、actual effectiveConfig/metadata provenance、原bank/独立Disclosure与本文保留边界通过39项。它只证明现存材料的上述完整性，不宣称缺失原完整requestSnapshot重新验证。所有私有报告、失败和raw未提交Git。
+
+S18累计2真实admissions/2HTTP200/direct7236（2229 appraisal +5007 prose），所有local response replay/preflight均零外部API、原usage字段不重复加入direct。quota1801→1803连续append/carry332和M1/HM1 pins保持；自本设备恢复累计88admissions/86HTTP200/direct213889及2TLS unknown/upper46348。原M8组reported161/direct402366、旧unknown2/upper17515/admission fetch0另列；price/cache/upstream仍unknown，失败不退款/不按input+output猜total。当前source `a8ca155cc9614a75b10c2289ea8e902113886465`的有限S18产品出口完成，原Session两primary端到端消费及完整portable认知/费用恢复没有冒称通过，S21仍后续阶段。
+
+用户当前明确到阶段完成，故在S18出口收尾；S19–S34未实施，整体agent-intelligence-runtime未宣称完成。只做修改文档链接/diff与Git身份/同步/干净核对，不重复已通过产品组。正常进度仅写同一Plan/Record，不刷新旧HANDOFF，不merge/deploy main3ee1332ef。
+
+
+最终收尾 `fbe0f5b7a8a62811964de168559fe5ada0e66327` 补原author手动relationship写入的当前Package target membership，与model分项采纳原检查一致；纯撤回原值仍沿作者授权。仅新增真实publication foreign-target负例1项PASS（`s18-local-v11.log`），两改动文件lint/diff PASS，不重复原15项之外的已通过组、完整primary样本或重放。S18最终15新增distinct/4受影响本地PASS；真实paid producer仍a8ca155cc及原2/direct7236，不把新guard commit说成重测paid结果。源feature/docs沿原分支push存储，最终main HEAD/同步按Git核对。
