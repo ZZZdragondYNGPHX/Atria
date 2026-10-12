@@ -2352,3 +2352,31 @@ long live-v1 无响应为 transport unknown，保存八 local jobs/一 unknown m
 最小本地验证为四个新私有 runner 的 node --check、七次所需 preflight、已保存 raw/request/normalized 的独立离线一致性 audit（无 API）和 docs diff/链接验证。`Document/g06-session-style-v3-audit-v1.json` 核对七成功正文 raw→normalized 完全一致、精确 style 与原 Memory directive、World 仍无 weather、packet/evidence、原 32-job 上限、所有九 admissions 与连续 quota、27-job 三臂 bank、1005 Timeline 及原两条天气失败保留。完整七正文由仓库 agent 非盲审读：有限未支持场景/历史与当前/玩家自主权项通过；high-impact 拒绝仍偏说明式，未做叙事六维评分或独立盲评，不将单 H0/同 model/frame 观察当总体质量晋升。没有产品代码改动，因此不重复产品 lint/Jest/浏览器组。
 
 私有材料包含上述 runner、`run-g06-session-style-v3-regression.mjs`、long retry/v3 runner、`audit-g06-session-style-v3.py` 及 Document 下新增 preflight/live/raw/normalized/log/audit；历史 runner 未自动执行，旧 raw/report 不修改。已恢复交接撤销旧停工要求，正常进度仅更新本 Record/Plan 当前入口，不刷新用户换设备 HANDOFF。下一有限出口继续沿 delivery §8/§8.2 归纳已支持 G06 质量/规则/复用与全部已知开销；本组只收敛作者风格的具体场景缺口，完整 G06/M8/HM2 仍 pending，真实 semantic rerank/Provider native compaction/cache/货币收益缺证据保持各自边界，M3 前置不越过。
+
+
+### 2026-10-12 G06 — 六维观察、World 解释 authority 与原四案例收尾
+
+source `87a769860d6181422fa2fbfb75e01c9768a336f2` / `35e903a4c82dd674a36c0a32cef435b15dc1e1b6` 已沿原任务分支 push，main 仍 `3ee1332ef`，没有 merge/deploy。前一有限风格组结束不是任务完成；收到继续指令后沿 G06 原依赖推进，未重跑已通过协议组、M1/HM1、全仓或浏览器，也无子 agent/new chat/Goal。
+
+沿原 JUDGE_RULE 与 rp.m1.information 六维给已保存的七个 H0-ZH-08 输出作同主模型匿名观察：公开合法 Memory、当前 World 和作者 frame 完整提供，不把合法 harbor/fact ID 当幻觉；只去掉隔离 fixture 的随机 fact ID，所有事实正文、authority、source/time 保持精确相等。首 preflight-v1 因误将随机 fact ID 当事实差异退出，修对比边界后 v2 七准备/HTTP0。live-v2 七 HTTP200/direct11236 却全为 fenced JSON，严格 JSON.parse 七格式失败、原 Task settled 成本保持。使用已有真实 outputContract→wire response_format.json_schema，v3 七准备后七 HTTP200/direct16890/七有效，未用字符串修补或覆盖失败。
+
+七有效观察的六组无负差，hard 在 knowledge_boundary/narrative_response 各-1；理由仅批评“记载”的审阅视角，与knowledge扣分不完全一致，原评分及理由均保留，不替评价者改分。只修改 hard 作者 resource 到style-v4，新增一句让旁白留在故事内而非介绍资料保存。首hard输出 HTTP200/direct2700 却把未定义 World.hp=8 写成“体力尚余八点”，保留无依据标签失败，不补造World或后处理正文。
+
+最小生产 PromptCompiler World policy 仅消费 session Source 中真实 `state:atri_world_state` / context.fact / native.context provenance，位置不能推天气/他者在场/动作/心理；没有定义或明确适用事实，缩写/数值不擅加标签、单位或派生属性。稳定 segment/hash进入原 compilation与count/render，当前World动态内容独立绑定；其它provider/quoted history未获得此authority，不新建source/writer/预算。6新增distinct本地检查及1受影响旧long实际Turn通过：初v1两fixture缺Provider和错找context segment、v2只缺SecretPort；补原合法端口后v3仅失败actualHost+旧long两PASS，另五已在v2PASS。产品/新test相关lint与diff通过，所有失败日志保留。
+
+source87a干净producer+原style-v4/同hardframe一必要preflight后一HTTP200/direct3161，实际World policy消费、原Memory/Source/Timeline保持。新正文历史未交还只限当时，现时持有/记忆/愿意与后续归还未知，无hp标签或场景补造。与原已保存style-v2 hard的一次匿名六维观察HTTP200/direct2305，全维持平；非独立来源/模型或全质量晋升。
+
+原首G06四不同案例为H0-ZH-01/04/05/08，不把后续同H0-ZH-08多frame替代其它受影响案例。只补原01/04/05 Session各base/reuse两fresh生成、Project原01/05坏reuse各一次，共八HTTP200/direct15973；原Project通过base/04不重发。原query/selectedSourceIds逐项保持，Session各同一原bank8→19jobs/两settled modelattempt，reuse准备/校验也收费。Project实际沿原atri_agent_reuse_plan重绑定原结构、清工具请求，不把plan命中当effect。05首两preflight因遗漏原runner的非readonly来源协调，返回authority_proof_unavailable；补原SourceLifecycle步骤后各v2通过，未改生产proof守卫或伪造valid hit。
+
+五组匿名质量观察HTTP200/direct11219：01/04 Session持平，两个Project corrected reuse相对原保留的passed base无负差；Project repair/related不存在时0=absent两侧同判，不声称工具/正式Commit成功。05 Session reuse的“旁白不能…”出戏说明出现六维负差，原grader多维扣分的理由集中于风格，事实守卫单独保留，不修改原评分。
+
+05只复验受影响reuse：style-v5一HTTP200/direct2087写“未曾动身，也未曾见到”，未知被转换为否定事件，保留失败。source35e补World固定解释：缺事件证据时，发生与未发生都保持未知。仅actualHost+stable/dynamic绑定两受影响本地检查PASS，生产compiler lint/diff PASS。下一同style-v5一次HTTP200/direct2080仍写“脚步尚未迈出…都还没发生”，产品规则不冒称自由文本硬保证；再沿精确作者style-v6补自然留白语义，一HTTP200/direct2605没有越权事件，却将已知约处混写“在何处会面…抉择”。必要匿名观察HTTP200/direct2706，knowledge_boundary/actor_voice各-1，保留不利结果；下一只针对同arm区分已知约处、待决定的行动、未知会面及第三人称声音，正在复验。
+
+截至上述stage，新增34 admissions/34 HTTP200/direct72962（其中7评分格式失败与所有坏正文均计入），原quota1724→1758连续append/carry332不变。加前恢复v3组，包恢复后共43 admissions/41HTTP200/direct95209、2 TLS unknown/upper46348；M8 reported actual134/direct328796，原unknown2/upper17515/admission fetch0另列。`g06-continuation-audit-v1/v2.json`均离线零API，v2核对上述34 raw request/response/hash/normalized/usage、strict outputContract、同原bank预算与settled、全部quota IDs、原四case输入/来源、World/Timeline保持及M1/HM1 ledger hashes；不是独立语义评价。
+
+验收路由新建 [G06有限矩阵](../../../plans/architecture/agent-intelligence-runtime/g06-acceptance.md)，保留source/producer边界、实际NN长Timeline332637ms的不利值、原10000文档交错对照与SSE六值分布，价格/cache/upstream/controller未知不写0，不为unknown停掉其它技术工作，也不声明全部路径净收益。高影响质量负差未闭合之前，完整G06/M8/HM2仍pending，M3前置保持。
+
+M3入口已准备具体可审阅设计；用户明确选择“采用原作者/作品授权”，普通玩家按显式disclosure，不默认新增操控Actor全部私有认知读写。R5边界和 [M3入口设计](../../../plans/architecture/agent-intelligence-runtime/m3-cognition-design.md)据此更新，S15–S21尚未实施。此为真实产品权限取舍的确认，后续正常实现/最小验证不逐阶段再问许可。
+
+
+后续位置归属诊断：style-v7 H0-ZH-05 reuse HTTP200/direct1916虽回到第三人称，却称“阿岚眼下仍在港口”；World只有场景location，无Actor/player归属。source `4160851ca` 最小固定解释禁止无明示定义/适用事实将World场景/地点分配给Actor或玩家；actualHost+stable/dynamic两受影响本地检查、compiler lint/diff PASS并已push。此前style-v3同bank三条、ordinary08及ordinary01两条含“你身在港口”，还有“人在港口”的模糊位置项需要复验；原天气/时间守卫PASS只保留其有限项，不再当作全部World断言通过。raw与旧评分完全保留，新的完整正文审读修正的是scope/解释结论，不是改写历史输出。style-v8的一次preflight未发送；下一泛化作者style-v9只沿原表达资源澄清第三人称/已知事实/未知事件/无人物位置归属，原Source/32-job bank不改，受影响五组共九必要generation正在继续。

@@ -59,7 +59,7 @@ M1 产品范围、自动模式默认方式与分组集成已确认。S01–S10 �
 
 用户 / Project Goal 是执行契约；Actor Goal 是角色愿望。关联而不合并权限。
 作者固定稳定设定；运行时在已允许范围采纳有证据的动态 cognition。错误 belief 合法，World Truth 仍由现有 authority 决定。
-认知状态的可见范围和 user takeover 在 M3 冻结前明确。
+M3 采用原作者/作品授权的认知检查与接管；普通玩家按显式 display/disclosure 视图取得信息，不默认获得操控 Actor 的完整私有认知读写权限。具体边界和阶段落点见 [M3入口设计](m3-cognition-design.md)。
 
 ### R6 — 交付组完成后集成（已确认）
 
