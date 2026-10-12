@@ -2548,3 +2548,15 @@ Memory投影在原来源Exposure/版本/branch/epoch外核对World Clock until�
 S20累计1实际admission/1HTTP200/direct5955，无新增unknown；quota1806→1807连续append/carry332与原M1/HM1 ledger pins保持。自本设备恢复累计92admissions/89HTTP200/direct228437，原3unknown upper52609（2TLS+S19HTTP400）保持；原M8组reported161/direct402366、其旧unknown2/upper17515/admission fetch0另列，price/cache/upstream仍unknown。S18完整normalized缺失及下游本地重放限制保持，没有用S20冒称修复历史证据。
 
 S20有限阶段出口完成，source `6de1328c4`/`9736eabd5` 与docs沿原分支push仅存储。12新增/2受影响distinct本地PASS、1HTTP200/direct5955、私有证据/全部失败/连续费用均保留；S21–S34及完整任务未宣称完成。正常收尾只补Plan/Record链接/diff和Git身份/同步/干净核对，不重复产品已通过组，不自行merge/deploy main。
+
+### 2026-10-12 开发私有资料精简与本地恢复
+
+用户批准“当前 API 配置 + 极小限流状态 + 阶段摘要”，并明确将三个旧迁移/备份目录纳入清理。源码先 ff-only 同步至 `9736eabd5`，docs 至 `1042680aa`；main `3ee1332ef` 不变，原 docs 未跟踪 `agent-experience-evolution` 草稿保护。旧 HANDOFF 的 S16 缺口已被最新 index/Record 的 S20 出口取代；恢复后移除旧快照，不新建交接。
+
+两套私有目录中四份当前 API 配置逐字节一致，primary endpoint/model 与最新阶段记录一致；保留原配置与凭证，不上传公共 Git。三个旧迁移补丁只含已由当前治理取代的规则文字，没有独有产品实现补丁。将旧私有测试根及三个迁移/备份目录移出工作目录，共 57796 个文件 / 2120568172 逻辑字节；批量永久删除遭工具自动审批策略拒绝（仅返回 blocked by policy），改用 Windows 回收站，未永久擦除或宣称释放同等磁盘空间。当前私有根仅四份配置、一份 quota 与一份本地阶段摘要。仅清理开发资料，不触碰产品用户数据/Session/Save 或生产费用持久化；远端私有仓库和另一设备数据未修改。
+
+本机私有包只有 1659 条旧 admissions，均在当前滚动窗口外；另一设备最新 S20 Record 为 1807 条。缺失差额 148 的准确时间不可得，本次导入将差额一次保守计入当前 carry，24 小时后过期；不把缺失时间当 0 用量、不伪造恢复原始调用证据。旧累计账本/原始材料删除后的历史费用数字、失败/unknown、S18 完整快照缺失仍保留为既有 Record 事实，不能再声称本机可从已删除材料重新审计或增强验收。生产费用 authority 不变。
+
+源码本次提交 `96ff4487e` 沿原 `M1ApiQuota` 清除过期 admissions/carry，保留有效滚动 24h 与 20 RPM 原 authority/排队；恢复时即持久化压缩状态，不只在下次付费调用后清理。`withPrivateTestRun` 复用同一 quota，用排他锁串行共享连接测试，在系统临时目录容纳当前 fixture/诊断，成功或失败均清理；API 配置只通过白名单读取，不另建产品持久层。后续必要测试沿该临时生命周期，阶段结论归本 Record；已完成的旧 M1 runner 不自动重跑。详细保留规则只在 Governance §13.1 定义，旧私有路径相关本地 Git 配置已修正，失效 ledger/limits/artifacts 映射移除。
+
+实际验证：2 个 targeted Jest suites / 8 distinct tests PASS（原限流/排队/有效 carry、恢复压缩不丢有效分钟/日用量、成功/失败清理、锁拒绝并发、路径白名单、已计 admission 跨测试退出保留）；静态检查最初发现测试条件 expect 两项错误，修成无条件结果断言后只复测受影响的 2 cases PASS。4 个改动文件 ESLint 与 syntax/diff 检查通过；实际四份本地凭证由新 helper 私下读取成功，carry148 保留，结束无临时锁/fixture；四个清理目标均不存在于原路径。外部 API 0，不重复旧已通过产品组，无全仓 test/build 或 main 集成。S21–S34 仍未实施，不将本次清理当作产品认知验收。
