@@ -322,6 +322,7 @@ function informationCognitionItems(snapshot, information) {
         viewId: information.projection.viewId, actorId: information.actorId ?? null,
         mode: information.narration?.mode ?? 'separate',
         semantics: 'Belief is the named Actor\'s interpretation, not World Truth. Status and channel describe its epistemic source; hearing or inference does not prove truth. Exposure, belief adoption and disclosure are distinct events. Retrieval does not prove remembering, belief change or willingness to act. Narrator knowledge does not grant NPC knowledge or tool authority.',
+        evidenceUse: 'Use only the selected fields for source facts. Do not infer physical attributes, scene conditions, location ownership or character actions from an unrelated field, an absence of evidence or an old exposure. A remembered past event does not establish current possession, presence, memory or willingness. Missing evidence leaves both occurrence and non-occurrence unknown. Authored narrative style does not grant new World facts; express the supplied facts and uncertainty without fabricating concrete scene details.',
         ...(information.disclosure ? { disclosure: information.disclosure,
             disclosureRule: 'Only the independently granted display projection authorizes revealing source facts to the player. Private context may inform narration without revealing its secrets or assigning them to NPC dialogue. Do not present a belief as established Truth.' } : {}),
     };

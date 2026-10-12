@@ -37,6 +37,8 @@ test.each(['separate', 'limited', 'custom'])('S16 installed %s narrator, Actor a
         const policy = narrator.snapshot.contextPlan.items.find(item => item.id === 'projection:policy:cognition');
         expect(policy.content).toContain('independently granted display projection');
         expect(policy.content).toContain('not World Truth');
+        expect(policy.content).toContain('current possession, presence, memory or willingness');
+        expect(policy.content).toContain('Missing evidence leaves both occurrence and non-occurrence unknown');
         expect(policy.content).toContain('"hp":8');
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
         const result = await host.execute(h.handle, { ...request, routeRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } }, undefined, undefined,
