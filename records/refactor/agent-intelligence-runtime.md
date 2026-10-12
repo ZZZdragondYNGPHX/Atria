@@ -2613,3 +2613,10 @@ Native12 distinct检查已PASS，包括installed真实源/正式transaction rece
 
 恢复后新增外部发送0，原S21实际结果与费用保留。S24有限双域工程出口已接通，S23实际provider、双域质量/决策与quality-cost仍pending，完整M4未验收；不merge/deploy、不创建新聊天、不生成阶段HANDOFF。
 S24最终source `886aa3566`。最终33新增distinct PASS：Native12、Project18（FS17/SQLite1）、HTTP2、Git metadata1。新增Project跨engine同owner/跨owner隔离PASS；相关恢复case复验PASS，timeline只留status/code，source identity仅原Task.recovery一处。最后authority缓存变更后的HTTP2复验PASS，相关3文件ESLint及最终diff-check PASS；此前已过无关检查未重复。代码与文档推送后核对远端branch，不改main及无关Experience草稿。
+### 2026-10-13 S27：公开表达计划的原文字消费者
+
+按delivery精确依赖S18/S25推进M5有限本地范围，不以M4真实provider/收益pending自动停止全部S/G，也不冒称M4完成。source `4fe3a172a`：作品可选原Information narration.expression绑定已有Actor、五类communicative intent及context/display共同选择的1–8源；原manifest closure继续核实Actor。只读ExpressionPlan使用原display projection重投影/hash核验、exact anchor、原cognition/memory/causal限定，排除他者、stale/withdrawn、不适用/不可用源，max8items/8192bytes。无配置保持旧路径；缺获准公开依据typed文字fallback，不从private context补齐。原compile prose/contextProvider实际消费同一plan，原Actor表达/Narration模块及World/玩家权限不变，不新增state writer或默认调用。表达准备/重投影仍原Host localWork，原authority4096 scan callback累计，超限不吞为fallback。
+
+新增shared10与真实installed FS/SQLite Host6 distinct PASS；原S16三种installed/strict7/legacy1及G02角色表达模块1共12受影响distinct PASS。Host走本地loopback实际HTTP adapter一send，reported17tokens原bank，返回文字且Session只读；在途源改拒旧结果、费用转原retiredCompute保留，cancel后unknown attempt不退款。公开emotion仅text/derived限定、不取private等级/rationale，原Memory必须current/applicable/usable。初次Host6为5FAIL/1PASS：root rawplan provenance ref违反原512上限、Actor/Task被插narrator fallback，以及测试费用/Actorguard断言需按真实authority调整；修为SHA身份、narrator gate及原retiredCompute/entry.status精确断言后仅相关失败项逐次复验PASS，未隐藏失败或放宽旧权限。6文件ESLint/diff PASS。loopback不是实际模型语义/风格收益证据，新外部发送0。
+
+S28只读盘点后真实静默本地试合成：Windows SAPI现有中文voice、plain text/Rate2/Volume80，RIFF/WAVE118896bytes、非零PCM118850bytes，22050Hz/16bit/mono，音频时长2.695s、单次合成47.534ms。临时测试句/文件已清理、未播放、网络0；仅证明文件输出可用，不宣称prosody、精确phoneme timing、取消、质量或完整Task消费者。机器voice exact id不写进产品默认/代码；待原预算/Scheduler/AssetStore接线。S29现有Native renderer及headless Chromium可用，尚未验收实际画面。M4外部证据pending保持、整体未完成，不创建新主聊天、不merge/deploy。
