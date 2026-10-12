@@ -2645,3 +2645,15 @@ source功能`05a18e6d4`及末尾规范化`293653079`已push。原closed host.exp
 当前用户经可信监管转述明确要求M5有限工程自然边界换对话；这是工程移交，不是M4/M5完整验收或整体任务完成。通知到达时S30配置子代理已开始原contracts可选mcp修改，未启动adapter/provider/SDK Server。让现有命令自然结束，不取消、覆盖或丢弃；36新增policy及原contracts17受影响distinct PASS，2文件ESLint PASS，root审查并保存准备性source `a8272315332af99b8430f39d498ff0afcaee5a09`、cached diff-check PASS及push。其余两代理只读检查/协调，未创建MCP adapter/fixture/test文件；全部三个子代理结束，报告无本人启动的受控子进程、请求或测试仍运行。root不再开启S30实现，按Governance §7刷新唯一HANDOFF，不建历史副本。
 
 S30范围与精确SDK准备保留：固定2025-11-25 JSON响应的loopback READ、原ConnectionProfile/Route allowlist及RunControl/Scheduler方向，真正client准入/协议/工具与资源出口未实施。SDK1.30.1来自明确public npm registry，独立temp安装禁scripts/audit/fund、不改repo lock/userconfig；仅公开协议资料/registry读取，无新素材producer/judge/诊断外发或MCP工具请求。Machine临时依赖是后续可选本地测试准备，不作为真实协议通过或必须重做前置；退出前没有Server启动。无关Experience草稿保持，main仍`3ee1332ef`，没有merge/deploy、新主聊天、Goal或永久调用正文/私有账本。最后docs/remote实际HEAD在交接后的Git核对结果读取。
+
+### 2026-10-13 S30：真实有限本地MCP READ消费者
+
+新主按实际Git/status恢复唯一工程交接：source a82723153、docs5580e6621，与原远端一致；无关Experience草稿保留。已恢复快照事实归本Record，删除不再需要的live HANDOFF，未创建历史副本或再次换主。M1/HM1和S27–S29未重做，M4/M5真实质量收益仍pending。
+
+source `e93672e3cd861b8a8d353fbe609b2d2af3078720` 已push并以ls-remote核对同一feature HEAD。原Route可选mcp声明和owner ConnectionProfile只在显式start消费；provider.mcp/transport.http、字面127.0.0.1/[::1] HTTP、无redirect/userinfo，auth none或原exact SecretRef。服务器从当前player/display view选exact item text/content；private view、caller正文/endpoint/header/secret/未allowlist项拒绝。真实discovery必须包含选中工具/resource。固定2025-11-25 initialize/initialized及JSON单响应子模式；SSE/callback/未知版本/HTML/file/resource link执行unsupported，完整Streamable HTTP通用兼容未宣称。连接session token仅内部保留，外部结果白名单投影与profile/protocol/source/input/output fingerprints不获World/Memory/Task/Goal写权限。
+
+context_build及每次实际POST沿原Scheduler/RunControl localWork，owner/Route/profile/scope/revision在前后核验；每请求壁钟/当前进程CPU计量不等于远端CPU/费用或硬上限。失败、取消、耗尽和late result不退款、不自动重发；已dispatched远端结果未知明确unknown，Cancel通知只是建议，initialized不发送非法initialize取消。取消cleanup通知仍fresh/预算且有独立5s上限，不能发送时unconfirmed。临时operation/外部artifact没有持久远端恢复保证。
+
+新增43 distinct PASS：adapter27（其中真实SDK1.30.1统计计算/临时公开resource；最终增强后root仅复验该真实case1PASS）、原Service14（含实际SDK FS/SQLite两case的工具计算、resource文件读取、认证HTTP、owner/raw-input拒绝、原Session不变与10项同bank工作），Scheduler2（预算不退款、typed unknown且不retry）。原Scheduler finalizing/timeout permit两项受影响PASS。8归属JS文件ESLint与cached diff-check PASS。初轮adapter21PASS/真实case loopback EACCES，正常沙箱外复验后发现SDK stateless transport跨请求复用引发HTTP失败；fixture改正确stateful生命周期后原22PASS，最终5项新边界与原取消受影响共6项PASS，非新变化旧已过项未继续机械重跑。consumer原10中9PASS/changed revision1FAIL为只读live work而忽略原retiredCompute，修正真实成本断言；context/discovery/cancel新依赖修改后14相关distinct复验全PASS。Jest默认sandbox tmpdir EPERM与初次错误runner路径MODULE_NOT_FOUND保留为环境/命令失败，不当产品通过；被中断的是尚未执行的重复审批等待，源码/测试未丢弃，root统一相关验证。最后SDK测试alias改为正常条件test.each并移除lint suppression，语义未变仅静态复验。
+
+真实fixture只绑定loopback、计算公开合成文字和读取临时公开文件；全部服务/worker/临时材料正常finally关闭清理，无音频播放、新模型/业务服务调用或用户数据外发。远程MCP/OAuth/SSE/Apps、M4实际provider/双域quality-cost、M5模型语义/风格/音质/长期收益仍pending，不声明完整M6或任务完成。继续S31固定A2A协议与独立S33本地元数据/离线consumer；S32实际UI与S34训练后端仍需真实证据，不merge/deploy或改main。
