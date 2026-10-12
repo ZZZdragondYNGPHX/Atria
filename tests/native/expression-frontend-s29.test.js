@@ -74,5 +74,3 @@ describe('S29 closed expression status frontend capability', () => {
         expect(JSON.stringify(receipt)).not.toMatch(/CURRENT PUBLIC|OTHER PRIVATE|sourceRefs|items|epistemic/);
     });
 });
-
-
