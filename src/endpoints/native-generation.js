@@ -1,4 +1,5 @@
 import { createSkillRepository } from '../skills/repository.js';
+import { SpeechService } from '../native/speech-service.js';
 import { ExtensionsStore } from '../native/extensions-store.js';
 import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
@@ -73,6 +74,22 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    for (const action of ['voices', 'start', 'status', 'cancel']) router.post('/speech/' + action, async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'no-store');
+        const controller = new AbortController(), abort = () => { if (!response.writableEnded) controller.abort(); };
+        response.on('close', abort);
+        try {
+            const speech = new SpeechService({ host: getHost() });
+            const result = action === 'voices' ? await speech.voices(controller.signal)
+                : await speech[action](handle, request.body, action === 'start' ? controller.signal : undefined);
+            if (!controller.signal.aborted) response.json(result);
+        } catch (error) {
+            const code = /^(native_speech_|native_generation_|operation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_speech_failed';
+            if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
+        } finally { response.off('close', abort); }
+    });
     for (const [path, Consumer, actions] of [
         ['comparison', CandidateComparisonService, ['prepare', 'current', 'feedback']],
         ['project-comparison', ProjectComparisonService, ['prepare', 'current', 'outcome']],

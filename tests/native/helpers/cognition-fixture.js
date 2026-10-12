@@ -3,7 +3,7 @@ import { sessionFixture, installFixture } from './session-fixture.js';
 import { informationFixture } from './information-fixture.js';
 import { lifecycleFixture } from './lifecycle-fixture.js';
 
-export async function installCognitionFixture(h, mode = 'separate', expression = null) {
+export async function installCognitionFixture(h, mode = 'separate', expression = null, configure = null) {
     const fixture = sessionFixture(), actorId = fixture.manifest.actors[0].actorId;
     const otherActorId = createNativeId('actor');
     fixture.manifest.actors[0].displayName = '阿岚';
@@ -28,6 +28,7 @@ export async function installCognitionFixture(h, mode = 'separate', expression =
     contract.taskRuntime = lifecycleFixture().taskRuntime;
     contract.taskRuntime.tasks[0].context = ['input', 'projection'];
     info.views.push({ ...info.views.find(view => view.id === 'actor'), id: 'cognition-task', audience: 'task', taskId: 'summarize' });
+    configure?.({ fixture, contract, actorId });
     const variant = contract.taskRuntime.tasks[0].variants[0];
     fixture.manifest.resources = [
         { resourceType: 'core.prompt-program', resource: { schemaVersion: 1, promptProgramId: variant.prompt.resourceId, revision: variant.prompt.revision,

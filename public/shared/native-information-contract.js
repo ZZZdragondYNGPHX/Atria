@@ -39,7 +39,8 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         if (source.causalBasis !== undefined && (source.causalBasis !== true || source.kind !== 'application' || source.semantic !== 'truth')) throw new TypeError('Causal basis requires a formal application Truth source');
         if (!lifecycle.scopes.some(scope => scope.id === source.scopeId)) throw new TypeError('Unknown information scope');
         const paths = informationList(source.fields, 16, path => informationList(path, 8,
-            key => (isCognitionSource(source) || hasInformationBasis(source)) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt', 'recordedAt', 'exceptionRefs', 'sourceRefs', 'viewId', 'scopeEpochs', 'itemId'].includes(key) ? key : taskId(key)));
+            key => source.kind === 'timeline' && key === 'actorId'
+                || (isCognitionSource(source) || hasInformationBasis(source)) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt', 'recordedAt', 'exceptionRefs', 'sourceRefs', 'viewId', 'scopeEpochs', 'itemId'].includes(key) ? key : taskId(key)));
         if (!paths.length || paths.some(path => !path.length) || new Set(paths.map(path => path.join('.'))).size !== paths.length) throw new TypeError('Information fields must be unique nonempty paths');
         if (source.kind === 'history') {
             if (!lifecycle.history || source.semantic !== 'narrative' || paths.some(p => p.length !== 1 || !['summary', 'tick', 'year', 'refs', 'transaction'].includes(p[0]))
