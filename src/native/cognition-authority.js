@@ -17,6 +17,7 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
             if (!taskId && previous && ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status)
                 && hashNativeDocument({ ...previous, status: value.status }) === hashNativeDocument(value)) continue;
             if (['emotion', 'relationship'].includes(source.semantic)) {
+                if (source.semantic === 'relationship' && !base.manifest.actors.some(actor => actor.actorId === value.target)) throw new TypeError('Appraisal relationship target is outside this Package');
                 const { previousHash, ...evidence } = value.appraisal;
                 if (taskId ? !appraisalEvidence || hashNativeDocument(evidence) !== hashNativeDocument(appraisalEvidence)
                     : value.appraisal.origin !== 'author') throw new TypeError('Appraisal provenance requires author or sealed Host adoption');

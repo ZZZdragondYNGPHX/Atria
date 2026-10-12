@@ -193,6 +193,18 @@ test('S18 invalid structured output remains charged; reopened retries cannot obt
     } finally { await h.cleanup(); }
 });
 
+test('S18 author relationship targets must belong to the current Package too', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installAppraisalFixture(h); await f.ready(); const base = await f.queue();
+        const relation = base.manifest.runtime.experienceContract.lifecycleRuntime.domains.find(domain => domain.id === 'relations');
+        const value = { ...authorEmotion(base), target: 'actor_' + 'f'.repeat(32), dimension: 'trust', level: 0,
+            appraisal: { ...relation.initial.appraisal, previousHash: hashNativeDocument(relation.initial) } };
+        await expect(write(h, f, 'relations', 'foreign', value)).rejects.toThrow(/outside this Package/);
+        expect((await f.core.load(h.handle, base.session.sessionId)).revision.revisionId).toBe(base.revision.revisionId);
+    } finally { await h.cleanup(); }
+});
+
 test.each(['source', 'cancel'])('S18 late %s rejects adoption and preserves the actual send across reopen/Save restore', async change => {
     const h = await makeTempFsEngineHarness();
     try {
