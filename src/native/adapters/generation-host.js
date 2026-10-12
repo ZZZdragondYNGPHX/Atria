@@ -30,8 +30,10 @@ import { AgentEvidenceRepository } from '../agent-intelligence/evidence-reposito
 import { AgentEvidenceService } from '../agent-intelligence/evidence-service.js';
 import { beginHostCapture } from '../agent-intelligence/host-capture.js';
 import { appraisalEventCurrent, prepareAppraisalDelivery } from '../appraisal-authority.js';
+import { assertPredictionCapture, assertPredictionCaptureCurrent } from '../prediction-service.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+const predictionLanes = new WeakSet();
 
 function executionTimeout(capture, requestLimit) {
     const routes = Object.values(capture.routes ?? {});
@@ -124,6 +126,61 @@ export class NativeGenerationHost {
     }
 
     get authoritySelections() { return authoritySelectionCache(this.sessionCore); }
+
+    // The capture is minted by the server's prediction authority. Request JSON
+    // cannot grant a context, and this path has no Session publication callback.
+    async executePrediction(handle, input, capture, signal) {
+        return this._executePrediction(handle, input, capture, signal);
+    }
+
+    async previewPrediction(handle, input, capture, signal) {
+        return this._executePrediction(handle, input, capture, signal, { preview: true });
+    }
+
+    async _executePrediction(handle, input, capture, signal, { preview = false } = {}) {
+        if (!input || Object.keys(input).some(key => !['sessionId', 'revisionId', 'requestId', 'routeRef'].includes(key))) fail('native_prediction_request_invalid');
+        const captured = assertPredictionCapture(capture, { host: this, handle });
+        await assertPredictionCaptureCurrent(capture);
+        const snapshot = captured.snapshot;
+        if (snapshot.session.sessionId !== input.sessionId || snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        if (typeof input.requestId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(input.requestId)) fail('native_task_invocation_required');
+        await this.sessionCore.runs.assert(handle, input.sessionId, 'generate');
+        const routes = await this.persistence.listRuntimeRoutes(handle);
+        const route = routes.find(value => value.runtimeRouteId === input.routeRef?.runtimeRouteId && value.scope === 'player');
+        if (!route || input.routeRef?.scope !== 'player') fail('native_task_binding_missing');
+        if (!['role.narrator', 'role.intent_resolver'].includes(route.role)) fail('native_prediction_route_unsupported');
+        const { task, variant, slot } = captured;
+        const payload = captured.payload;
+        const fingerprint = hashNativeDocument({ task, variant, payload, anchor: captured.baseAnchor, routeRef: input.routeRef });
+        const taskPlan = { task, variant, slot, payload, executionFingerprint: fingerprint };
+        const lanePlan = { prediction: { capture, payload }, budgetContext: { snapshot,
+            anchor: { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId } } };
+        predictionLanes.add(lanePlan);
+        const resources = await this.executionResources(handle, route, input.sessionId, lanePlan);
+        const result = await nativeTaskScheduler.submit({ owner: handle, kind: 'model_task', executionClass: 'interactive', resources,
+            anchor: { sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: input.revisionId },
+            key: input.sessionId + ':' + input.requestId + ':prediction', fingerprint, signal, retry: false,
+            timeoutMs: executionTimeout(lanePlan),
+            fresh: async () => { await assertPredictionCaptureCurrent(capture); return true; },
+            run: boundary => this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId, requestId: input.requestId,
+                role: route.role.replace(/^role\./, ''), routeRef: input.routeRef,
+                outputContract: { name: 'atria_prediction', schema: variant.outputSchema } }, boundary.signal, undefined,
+            { taskPlan, scheduled: true, lanePlan, preview }),
+            finalize: async generated => {
+                await assertPredictionCaptureCurrent(capture);
+                if (preview) return generated;
+                const payload = assertTaskValue(generated.response.jsonData ?? generated.response.json ?? JSON.parse(generated.response.text), variant.outputSchema);
+                if (generated.response.toolCalls?.length || generated.response.tool_calls?.length) fail('native_prediction_tools_denied');
+                return immutable({ record: { invocationId: input.requestId, taskId: task.id, variantId: variant.id, fingerprint, payload,
+                    definitionHash: hashNativeDocument(task), contextHash: hashNativeDocument(generated.snapshot.contextPlan),
+                    requestSnapshotHash: hashNativeDocument(generated.snapshot), rawResultHash: hashNativeDocument(generated.response),
+                    normalizedResultHash: hashNativeDocument(payload), execution: generated.snapshot.diagnostics?.effectiveConfig ?? null,
+                    promptProgramRef: generated.snapshot.promptProgramRef, generationProfileRef: generated.snapshot.generationProfileRef,
+                    runtimeRouteId: generated.snapshot.runtimeRouteId }, routing: generated.routing });
+            } }).result;
+        await assertPredictionCaptureCurrent(capture);
+        return result;
+    }
 
     async executionResources(handle, route, sessionId, capture = {}) {
         capture.routes ??= {}; capture.connections ??= {}; capture.models ??= {};
@@ -688,6 +745,12 @@ export class NativeGenerationHost {
 
     async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null } = {}) {
         const input = immutable(value);
+        const prediction = predictionLanes.has(lanePlan) ? lanePlan.prediction : null;
+        if (lanePlan?.prediction && !prediction) fail('native_prediction_capture_required');
+        if (prediction) {
+            await assertPredictionCaptureCurrent(prediction.capture);
+            if (input.tools?.length || input.messages?.length || input.prompt || illustrationPlan || preflight) fail('native_prediction_context_denied');
+        }
         await prepareEvolutionProject(this, handle, input.projectId);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
         if (input.role === 'illustration_prompt' && !illustrationPlan) fail('native_generation_context_required');
@@ -804,12 +867,12 @@ export class NativeGenerationHost {
         if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
         const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource });
         if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements });
-        if (snapshot && !illustrationPlan) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
+        if (snapshot && !illustrationPlan && !prediction) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
         const authorityContext = lanePlan?.authorityContext;
         if (!authorityContext && informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
-        const contextPackage = snapshot && (snapshot.manifest.runtime?.experienceContract?.contextRuntime || snapshot.manifest.runtime?.experienceContract?.processingRuntime)
+        const contextPackage = !prediction && snapshot && (snapshot.manifest.runtime?.experienceContract?.contextRuntime || snapshot.manifest.runtime?.experienceContract?.processingRuntime)
             ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
-        const nativeContext = snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
+        const nativeContext = !prediction && snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
             options: {
                 tokenizerFor: resolved => resolver.provider(resolved.connection.providerAdapter).contextTokenizer?.(resolved),
                 deriveContext: contextPackage ? createPackageContextDerivation(snapshot, contextPackage) : undefined,
@@ -823,6 +886,7 @@ export class NativeGenerationHost {
         const localWorkAttempts = [];
         const assertLocalCurrent = async () => {
             checkCancellation(signal);
+            if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
             if (input.sessionId) return this.sessionCore.runs.repo.withRunLock(handle, input.sessionId, async () => {
                 if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) throw new GenerationError('native_generation_revision_conflict');
                 await this.sessionCore.runs.assert(handle, input.sessionId, 'write');
@@ -874,7 +938,7 @@ export class NativeGenerationHost {
                 throw new GenerationError(error.code ?? 'generation_execution_failed');
             }
         };
-        const skills = !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
+        const skills = !prediction && !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
             ? await prepareNarrativeSkills({ repository: this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
                 work: (kind, descriptor, operation) => localWork(kind, { resolved: { effectiveExecutionPolicy: route.executionPolicy,
                     pathFingerprint: hashNativeDocument(route) } }, operation, descriptor),
@@ -891,6 +955,14 @@ export class NativeGenerationHost {
         const taskProvenance = () => [sessionTaskEvidence, ...(taskHistory?.compaction
             ? [{ source: 'native.session-task-compaction', ref: '1:' + hashNativeDocument(taskHistory.compaction) }] : [])];
         const buildContext = async (request, resolved) => {
+            if (prediction) {
+                await assertPredictionCaptureCurrent(prediction.capture);
+                return { schemaVersion: 1, requestId: request.requestId, source,
+                    items: [{ kind: 'context.input', id: 'prediction-policy', content: 'Produce only a hypothetical prediction from the supplied observation and proposed action. The action has not occurred; do not report its consequences as observed facts or claim any write authority. State assumptions and limitations. Confidence is an uncalibrated model estimate, not a measured probability. Use supportRefs only from observation item identifiers. No tools, Memory, Knowledge or Skills are available.', provenance: [{ source: 'host.prediction.policy' }] },
+                        { kind: 'context.input', id: 'prediction-input', content: JSON.stringify(prediction.payload), provenance: [{ source: 'host.prediction' }] }],
+                    provenance: [{ source: 'host.prediction', ref: taskPlan.executionFingerprint }],
+                    budget: { maxTokens: resolved.model.limits.contextTokens - resolved.model.limits.outputTokens, reservedOutputTokens: resolved.model.limits.outputTokens } };
+            }
             if (!preview && sessionTaskEvidence && skills?.tools.length && ['task', 'adaptive'].includes(resolved.effectiveExecutionPolicy?.continuity) && !taskHistoryLoaded) {
                 const context = lanePlan?.budgetContext;
                 const anchor = context?.anchor ?? { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
@@ -1060,6 +1132,7 @@ export class NativeGenerationHost {
                             const observedAttempt = capture?.nextAttempt(input.requestId) ?? attempts.length;
                             const attemptId = input.requestId + ':' + observedAttempt;
                             try {
+                                if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
                                 if (projectTaskEvidence && (await this.agent.getContext(handle, input.projectId, input.taskId)).task.executionFingerprint !== projectTaskEvidence.ref.slice(-64)) {
                                     throw new GenerationError('native_generation_task_stopped');
                                 }
@@ -1092,6 +1165,7 @@ export class NativeGenerationHost {
                                 await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
                                     requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
                                     agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
+                                if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
                                 const response = await provider.send(rendered, boundary);
                                 attempt.status = 'success';
                                 capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
@@ -1140,6 +1214,10 @@ export class NativeGenerationHost {
             throw error;
         }
         if (authorityContext?.mode === 'narrator' && (result.response.toolCalls?.length || result.response.tool_calls?.length)) fail('native_narrator_outcome_denied');
+        if (prediction) {
+            await assertPredictionCaptureCurrent(prediction.capture);
+            if (result.response?.toolCalls?.length || result.response?.tool_calls?.length) fail('native_prediction_tools_denied');
+        }
         lanePlan?.evidenceCapture?.append({ type: 'request.completed', eventId: input.requestId + '/parsed/' + attempts.length,
             requestId: input.requestId, usageStatus: result.response.usage ? 'observed' : 'missing',
             inputTokens: result.response.usage?.inputTokens ?? result.response.usage?.prompt_tokens,

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { fetch as httpFetch, Agent } from 'undici';
 import { setConfigFilePath } from '../../src/util.js';
@@ -188,7 +189,9 @@ async function runLive(run) {
     } finally { for (const h of all.reverse()) h.engine.close?.(); await dispatcher.close(); }
 }
 try {
-    const result = await withPrivateTestRun('D:/Dev/Atria-private/Document', runLive);
+    const privateRoot = execFileSync('git', ['config', '--get', 'atria.private.directory'], { encoding: 'utf8' }).trim();
+    const privateDirectory = path.basename(privateRoot).toLowerCase() === 'document' ? privateRoot : path.join(privateRoot, 'Document');
+    const result = await withPrivateTestRun(privateDirectory, runLive);
     console.log(JSON.stringify(result));
     if (!['finite_samples_passed', 'preflight_passed'].includes(result.status)) process.exitCode = 1;
 } catch (error) {
