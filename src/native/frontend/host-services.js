@@ -1,6 +1,21 @@
 import { readChronicle, reviewInterval, readWorldView } from '../../../public/shared/native-chronicle-host.js';
 import { fixedHostTarget, projectPersonaStatus, projectConversation, projectPresentation, projectSession, projectMessageBlocks, projectSave } from '../../../public/shared/native-frontend-host.js';
 import { bridgeFailure } from '../../../public/shared/native-frontend-bridge.js';
+import { informationContext } from '../../../public/shared/native-information-runtime.js';
+import { deriveExpressionPlan } from '../../../public/shared/native-expression-runtime.js';
+
+function expressionStatus(base) {
+    const fallback = reason => ({ status: 'fallback', actorId: '', intent: '', reason, revisionId: base.revision.revisionId });
+    if (!base.manifest.runtime?.experienceContract?.informationRuntime?.narration?.expression) return fallback('not_configured');
+    let scanned = 0, scanExceeded = false;
+    const onScan = count => { scanned += count; if (scanned > 4096) { scanExceeded = true; throw new RangeError('Expression scan limit'); } };
+    try {
+        const information = informationContext(base, { kind: 'narrator' }, undefined, { includeRollups: false, onScan });
+        const plan = deriveExpressionPlan(base, information, { onScan });
+        if (plan?.status !== 'ready') return fallback(plan?.reason ?? 'not_configured');
+        return { status: 'ready', actorId: plan.actorId, intent: plan.intent, reason: '', revisionId: base.revision.revisionId };
+    } catch { return fallback(scanExceeded ? 'truncated' : 'display_grant_unavailable'); }
+}
 
 export async function readFixedHost(core, owner, state, base, binding, input) {
     const { service, method } = binding.target;
@@ -10,6 +25,7 @@ export async function readFixedHost(core, owner, state, base, binding, input) {
     if (service === 'host.chronology' && method === 'interval') return reviewInterval(base, input);
     if (service === 'host.session' && method === 'run') return core.runStatus(owner, state.sessionId);
     if (service === 'host.persona' && method === 'status') return projectPersonaStatus(base);
+    if (service === 'host.expression' && method === 'status') return expressionStatus(base);
     if (method === 'status') return projectSession(base);
     if (service === 'host.session' && method === 'saves') return (await core.listSavePoints(owner, state.sessionId)).map(projectSave);
     if (service === 'host.conversation' && method === 'retryStatus') return core.inspectReplyRetry(owner, state.sessionId, input);

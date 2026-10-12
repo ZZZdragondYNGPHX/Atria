@@ -251,7 +251,7 @@ export async function mountNativeFrontend(options) {
         }
         assertPresentationNode(definition);
         if (definition.each) return createRepeat(definition, instance, initialItem, parent);
-        let item = initialItem, childInstance = null, gone = false, mediaKey = null, mediaRequest = 0, mediaRelease = null;
+        let item = initialItem, childInstance = null, gone = false, mediaKey = null, mediaRequest = 0, mediaRelease = null, imageState = null;
         const node = definition.tag === 'component' ? document.createElement('div') : SVG.has(definition.tag)
             ? document.createElementNS('http://www.w3.org/2000/svg', definition.tag) : document.createElement(definition.tag);
         const disposers = [], children = []; let proseText = null;
@@ -309,13 +309,33 @@ export async function mountNativeFrontend(options) {
             void instance.controller?.invoke('event', { ...eventValue(event), type, node: definition.id });
         });
         if (definition.events?.drop) listen('dragover', event => event.preventDefault());
-        if (definition.tag === 'img') listen('error', () => {
-            if (node.dataset.mediaStatus === 'available' && !definition.asset) {
+        if (definition.tag === 'img') {
+            const currentImage = value => value && !gone && !instance.disposed && value === imageState
+                && value.request === mediaRequest && value.epoch === media.epoch && node.src === value.url;
+            const decoded = value => {
+                if (!currentImage(value) || !node.complete || node.naturalWidth < 1) return;
+                node.dataset.mediaStatus = value.status; node.dataset.mediaReason = value.reasonCode;
+            };
+            const failed = value => {
+                if (!currentImage(value)) return;
                 node.dataset.mediaStatus = 'unavailable'; node.dataset.mediaReason = 'media_decode_failed';
-                const ref = definition.media ?? evaluate(definition.bindings.media, context(instance, item)); const request = mediaRequest;
-                void media.fallback(ref).then(url => { if (!gone && request === mediaRequest) node.src = url; }).catch(instance.failBoundary ?? diagnostic);
-            } else if (definition.boundary === 'required') (instance.failBoundary ?? diagnostic)(new Error('media_decode_failed'));
-        });
+                if (!definition.asset && value.status === 'available') {
+                    const ref = definition.media ?? evaluate(definition.bindings.media, context(instance, item));
+                    void media.fallback(ref).then(url => {
+                        if (!currentImage(value)) return;
+                        imageState = { ...value, url, status: 'unavailable', reasonCode: 'media_decode_failed' }; node.src = url;
+                    }).catch(instance.failBoundary ?? diagnostic);
+                } else if (definition.boundary === 'required') (instance.failBoundary ?? diagnostic)(new Error('media_decode_failed'));
+            };
+            listen('load', () => decoded(imageState));
+            listen('error', () => {
+                const value = imageState;
+                // decode observes the current selected resource. A queued old
+                // error cannot mark a newer, valid image unavailable.
+                if (typeof node.decode === 'function') void node.decode().then(() => decoded(value), () => failed(value));
+                else failed(value);
+            });
+        }
         const input = definition.tag === 'option' ? null : definition.bindings?.value ?? definition.bindings?.checked;
         if (input) {
             const change = () => {
@@ -397,11 +417,13 @@ export async function mountNativeFrontend(options) {
                         const result = await media.resolve(mediaRef, definition.tag === 'img' ? 'image' : definition.tag);
                         if (gone || instance.disposed || request !== mediaRequest) { result.release?.(); return; }
                         mediaRelease = result.release;
-                        node.src = result.url; node.dataset.mediaStatus = result.status; node.dataset.mediaReason = result.reasonCode;
+                        if (definition.tag === 'img') imageState = { request, epoch: media.epoch, url: result.url, status: result.status, reasonCode: result.reasonCode };
+                        node.src = result.url; node.dataset.mediaStatus = definition.tag === 'img' && result.status === 'available' ? 'loading' : result.status;
+                        node.dataset.mediaReason = result.reasonCode;
                         if (definition.tag === 'img') { node.referrerPolicy = 'no-referrer'; node.loading = 'lazy'; }
                     } catch (error) { mediaKey = null; if (gone || instance.disposed) return; if (!key.startsWith(media.epoch + ':')) { requestRender(); return; } throw error; }
                 }
-            } else if (mediaKey) { ++mediaRequest; mediaRelease?.(); mediaRelease = null; mediaKey = null; node.removeAttribute('src'); }
+            } else if (mediaKey) { ++mediaRequest; imageState = null; mediaRelease?.(); mediaRelease = null; mediaKey = null; node.removeAttribute('src'); }
             for (const [id, expr] of Object.entries(definition.styles ?? {})) {
                 const declaration = instance.contract.dynamicStyles[id]; if (!declaration) throw new TypeError('Undeclared style sink');
                 node.style.setProperty(declaration.property, styleValue(declaration, evaluate(expr, ctx)));

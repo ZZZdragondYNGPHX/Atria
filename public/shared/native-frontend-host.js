@@ -10,6 +10,8 @@ const id = string(128), text = string(65536), number = { type: 'integer', minimu
 export const MESSAGE_SCHEMA = hostObject({ messageId: id, sequence: number, role: string(16), content: text, actorId: id, predecessorId: id, branchId: id, revisionId: id });
 export const MESSAGE_PRESENTATION_SCHEMA = hostObject({ ...MESSAGE_SCHEMA.properties, displayContent: text });
 export const SESSION_SCHEMA = hostObject({ sessionId: id, branchId: id, revisionId: id, tailMessageId: id });
+export const EXPRESSION_STATUS_SCHEMA = hostObject({ status: { ...string(16), enum: ['ready', 'fallback'] }, actorId: id,
+    intent: { ...string(16), enum: ['', 'inform', 'ask', 'reassure', 'decline', 'reflect'] }, reason: string(128), revisionId: id });
 export const GENERATION_SCHEMA = hostObject({ state: { ...string(16), enum: ['idle', 'preparing', 'streaming', 'finalizing', 'cancelling', 'failed'] }, text, error: string(128) });
 export const MEDIA_REF_SCHEMA = hostObject({ kind: { ...string(16), enum: ['exact', 'declared', 'host'] }, id: string(64) });
 const localeSchema = hostObject({ locale: string(64), direction: { ...string(3), enum: ['ltr', 'rtl'] } });
@@ -21,6 +23,7 @@ const action = (inputSchema = HOST_EMPTY, local = false, outputSchema = HOST_EMP
 // Closed Host-owned target catalogue. These are capabilities, never arbitrary
 // method dispatch; both authoring and installed graph validation use this table.
 const targets = {
+    'host.expression.status': read(EXPRESSION_STATUS_SCHEMA),
     'host.persona.status': read(hostObject({ status: string(32), name: string(512), avatarId: id, avatarHash: string(64), revisionId: id })),
     'host.persona.openSelector': action(HOST_EMPTY, true),
     'host.world.view': { ...read(CHRONICLE_PAGE), inputSchema: WORLD_QUERY },
