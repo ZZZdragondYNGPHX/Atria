@@ -59,7 +59,7 @@ export async function installAppraisalFixture(h, { publicAppraisal = false, impo
         if (promptBody) {
             const prompt = fixture.manifest.resources.find(item => item.resourceType === 'core.prompt-program').resource;
             const moduleId = 'pmod_' + 'e'.repeat(32);
-            prompt.stages[0].moduleRefs = [{ resourceType: 'core.prompt-module', scope: 'package', resourceId: moduleId, revision: 'v1' }];
+            prompt.stages[0].moduleRefs = [{ resourceType: 'core.prompt-module', scope: 'package', packageId: fixture.manifest.packageId, packageVersionId: fixture.manifest.packageVersionId, resourceId: moduleId, revision: 'v1' }];
             fixture.manifest.resources.push({ resourceType: 'core.prompt-module', resource: { schemaVersion: 1, promptModuleId: moduleId, revision: 'v1', displayName: 'Event appraisal', target: 'system.foundation', stages: ['stage.main'], body: promptBody },
                 origin: { scope: 'package', packageId: fixture.manifest.packageId, packageVersionId: fixture.manifest.packageVersionId } });
         }
