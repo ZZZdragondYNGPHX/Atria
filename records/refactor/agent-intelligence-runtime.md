@@ -2490,3 +2490,38 @@ S18累计2真实admissions/2HTTP200/direct7236（2229 appraisal +5007 prose）�
 
 
 最终收尾 `fbe0f5b7a8a62811964de168559fe5ada0e66327` 补原author手动relationship写入的当前Package target membership，与model分项采纳原检查一致；纯撤回原值仍沿作者授权。仅新增真实publication foreign-target负例1项PASS（`s18-local-v11.log`），两改动文件lint/diff PASS，不重复原15项之外的已通过组、完整primary样本或重放。S18最终15新增distinct/4受影响本地PASS；真实paid producer仍a8ca155cc及原2/direct7236，不把新guard commit说成重测paid结果。源feature/docs沿原分支push存储，最终main HEAD/同步按Git核对。
+
+
+### 2026-10-12 S19：一阶先行、有界二阶ToM实施与本地出口
+
+用户明确继续下一阶段，先核对原feature sourcefbe0f5b7a、docscabce4c96均干净/与远端一致，ff-only拉取均Already up to date；按index→architecture §6–7/compute-policy §2/behavior-context/baseline/M3/S18及最新Record继续，新增 [S19具体契约](../../plans/architecture/agent-intelligence-runtime/s19-theory-of-mind.md)。M3不重问，不建子agent/Codex Goal，不merge/deploy main3ee1332ef。
+
+沿原cognition.appraise可选theory target，旧S18 input/output严格闭合不变。只有作品明确声明时同一共享pass追加最多8个flat hypothesis候选；原Information新增theory_of_mind source、inline policy id/revision、原canonical lifecycle domain/command。主体是观察Actor A，perspective[B]或[B,C]分别是一阶/二阶的A自身推断，C可为A；不读/写B/C私有mind，不创建递归node/引用展开、第二facts graph、新Task/timer/每回合调用。policy depth1..2、每Actor当前domain全量nodes1..16、每事件updates1..8；撤回节点占容量、重复key及换subject拒绝，旧值保留原Revision。
+
+原Host opaque model/Profile/Prompt/Generation provenance、event/Actor/package/branch/epoch/旧state pin与Run后台窗口/compute/localWork bank继续裁决；新声明把可见behavior leaf和hypothesis policy hash纳入排队pin。作者/Task更新都沿原publication/CAS核对自己的view/source/anchor、主体、policy与容量，不授予World/Goal/行动效果。confidence只是相对且未校准的表达。
+
+可选prediction指向原作品声明的truth application行为item，target/observed/outcome字段须在当前consumer可见且有类型/枚举；观测true/同target/不匹配expected时仅有界读projection标contradicted，并对已授权confidence字段应用min(旧confidence,作者反例值)，原raw不变，不追加API，也不推导target真正相信相反内容。隐藏/未知/不同target不计match或反驳；撤回/stale不再当当前解释。独立text-only display不会自动公开confidence、perspective、prediction或rationale。首次没有任何hypothesis的Task也获得required语义和作者上限，避免凭空绕过解释；正式读工作沿原Context/localWork消费者。
+
+本地新增14distinct PASS：FS/SQLite实际installed一阶Host/封存来源/独立display/原bank/新service重读；一阶明确拒绝二阶/私有来源/另一hypothesis，之后二阶在同pass与一阶/情绪/关系分别采纳，Context/实际HTTP stub无B私有mind；node/update容量、未知/匹配/已观察反例、不公开行为隔离、声明closure反例、作者foreign/self/model冒称/policy/subject变更及合法更新、撤回节点容量/Save raw与旧branch stale/费用、behavior排队前/在途变更、空state必需Context/预算和非法预测枚举/peer、自身foreign/duplicate。1受影响旧S18 FS共享pass PASS；已通过S16/S17/S18完整组、paid组、DB/全仓/build/browser没有重跑。
+
+`s19-local-v1..v5`全部保留：v1一阶三PASS；v2五PASS/二阶一FAIL来自测试把fetch参数数组当[]而触发Jest跨realm Map formatter错误，改为真实request.body私有串排除后只复验失败项与新增作者/恢复/race；v4旧S18 PASS/空state FAIL因normalized Context item不导出内部required标志，保留并改为实际已消费语义/limits及硬预算断言，v5两项PASS。`s19-lint-v1/v2`的catch brace与暂未使用的未来测试helper imports保留，补实际消费者后v3改动文件lint/diff PASS；distinct计数不累加重复执行。真实原连接有限出口尚待下面结果追加。原S18完整normalized缺失和下游重放限制保持，不用新阶段消除旧证据缺口。
+
+
+S19 producer `9c393143d91c35a18b12b0cb590dccc20f0e9b28` 本地完整实现提交。私有runner v1的Task/正文preflight零API通过，唯一命名且exclusive-write的完整normalized、原package archive及before/after原Save都在private根。第一live Task实际HTTP400/上游INVALID_ARGUMENT，无normalized正文或采纳；原quota1803→1804与Run bank背景attempt1/usage unknown/upper6261完整保留，不当0费用或成功。实际具体schema拒绝原因未确证；[Gemini官方structured output文档](https://ai.google.dev/gemini-api/docs/structured-output)说明复杂schema可能被拒绝，此为尝试减少wire约束的依据，不把推断升级为本gateway具体根因。
+
+producer `e39a425a9` 沿原HTTP adapter增加显式connection.options.responseSchemaMode=shape-only，仅从wire JSON schema副本去掉长度/数量/数值边界，types/enums/required/closed object及tools保持；默认full与原PromptIR outputContract完全不改。strict:true/未知mode/raw-text明确拒绝，未把output authority改成prompt文字或自动silent fallback。Task完整本地schema/来源/主体/depth/nodes等采纳guard保持，计数/render/实际config仍走原bank。新增5distinct PASS（4实际provider render/strict/raw/invalid mode、1真实Host坏confidence101即使wire不含maximum仍原typed Task拒绝/settled费用/不写state），原真实HTTP工具+strict结构化协议1受影响PASS。阶段累计19新增/2受影响distinct本地PASS，不重跑未受变化的ToM已通过组。
+
+`s19-local-v6`六PASS，source/新ToM测试lint-v5 PASS；修改的provider-matrix文件原lines39–40既有conditional-expect在完整规则lint-v4报两项，新增四测试全部无条件expect，未改/重跑其它native transport旧测试。该文件只关闭既有这一条规则后的静态lint通过（`s19-lint-provider-matrix-v1`）；保留完整规则失败，不冒称完整配置全文件lintPASS。源码diff PASS，不新增lint suppression或修改产品权限。
+
+私有runner v2从v1真实保存的exact package/after Save沿原installer/import恢复相同Session/revision，并以原RunControl持久port恢复其原完整external control；恢复bank hash与原failed bank相同，unknown6261、attempt、窗口与原maxRequests2/local32均不退款。此为私有测试恢复composition，未把普通Save自动跨设备携带费用作为已交付生产能力。preflight-v2 Task/正文原Host准备通过、零API；当前只复测失败Task然后在同Session消费正式行为反例的正文，不是重放或新建model allowance。原S18快照缺失依旧保留。
+
+
+`run-s19-tom-v2` live-v2 sourcee39a425a9在同一原Session/revision/原bank恢复后必要重试成功：Task一次HTTP200/direct3055，原same background operation累计2attempts（首HTTP400 unknown6261和本次settled3055）均保留，分别采纳一阶share-next/二阶view-of-aran，55/45相对confidence仅在内部；hypotheses只引用events:contact，Actor主体/perspective、author-tom/v1、原模型/Prompt/Generation/profile/old state metadata封存。原beliefs（含B私有mind）/Actor definitions/World/Timeline保持，没有把A解释写入B真心。
+
+随后原作者正式behavior app.command发布observed=true/同B target/action=withhold的有限行为反例；原hypothesis raw不变，A读投影首预测contradicted/已授权confidence0、第二条active，player只获得原公开text/status。不增加一次认知调用。原TaskScheduler/current Source/冻结lane/原foreground Run bank的一次真实Narrator HTTP200/direct5538在同Session消费这一current projection：正文只表达A的未证实猜测与获准观察不符，明确不能反推B相反信念，二阶仍属A推测且未确证；没有confidence/itemId/expected/perspective数组、private memory/他者真实mind或新行动/台词/性别/天气/位置/物件特征/玩家选择。完整输出由repo agent非盲审读，`s19-semantic-audit-v1.json`保留有限结论；不是独立六维评分、概率校准或绝对泄漏保证。
+
+`s19-tom-integrity-audit-v1.json`零API一次通过68项：三actual sends raw request/response/hash/原quota唯一ID、两个HTTP200完整normalized→raw全文/hash/actual requested model/effective config、完整原strict Task schema仍在PromptIR、typed proposals/分项receipt、Actor/basis/event SHA256/Package/branch/epoch/model/Prompt/Generation/profile/旧state metadata、同Session正文/两独立text-only displayGrant（raw hypothesis item仍null）、counterexample原raw保持、actual foreground单settled、原后台2attempt/unknown upper6261及原32 local-job限额。所有原exact package archive/native Save closure/external Run control均唯一命名且exclusive-write保留并核对，未使用response replay或覆盖旧normalized。测试用原持久port恢复external control的实际成功不升级为普通Save自动恢复全部费用的产品能力；S21仍后续阶段。
+
+S19阶段累计3真实admissions：1HTTP400/unknown upper6261、2HTTP200/direct8593（3055+5538），没有删掉首失败/退款或将unknown当0。quota1803→1806连续append/carry332与M1/HM1 ledger pins保持；自本设备恢复累计91admissions/88HTTP200/direct222482，3unknown（原2TLS与本HTTP400）upper52609。原M8组reported161/direct402366、其旧unknown2/upper17515/admission fetch0仍另列，price/cache/upstream保持unknown，不按input+output猜total。
+
+S19有限阶段出口完成，source `9c393143d`、`e39a425a9`沿原feature保存；19新增/2受影响distinct本地PASS，所有local/lint/Provider400及私有证据保留。当前用户明确继续“下一阶段”，本轮收尾到S19；S20–S34未实施，整体任务未宣称完成。仅补修改文档链接/diff及Git身份/同步/干净核对，不重复产品已通过组，不刷新HANDOFF，不merge/deploy main3ee1332ef。
