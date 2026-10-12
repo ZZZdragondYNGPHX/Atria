@@ -198,3 +198,19 @@ test('S20 actual original Host rejects retrieved Memory after withdrawal before 
         expect((await f.load()).revision.revisionId).toBe(base.revision.revisionId);
     } finally { await h.cleanup(); }
 });
+
+
+test('S20 a partial Memory grant cannot treat hidden deep use as current intention evidence', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installMemoryFixture(h, { mode: 'deep', configure: ({ contract }) => {
+            contract.informationRuntime.sources.find(source => source.id === 'experiences').fields = [['text'], ['applicability']];
+        } });
+        const saved = await f.memory('detail', { clarity: 'forgotten', use: 'unavailable' });
+        const item = find(saved, 'experiences:detail');
+        expect(item.memory.applicability).toBe('applicable');
+        expect(Object.hasOwn(item.memory, 'use')).toBe(false);
+        await expect(f.write('intentions', 'hidden-use', { commitmentIds: [], basis: await f.basis(['experiences:detail']) })).rejects.toThrow(/denied/);
+        expect((await f.load()).revision.revisionId).toBe(saved.revision.revisionId);
+    } finally { await h.cleanup(); }
+});

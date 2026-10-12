@@ -77,7 +77,7 @@ export function projectCognitionItems(snapshot, projection, values) {
     const leaves = new Map(projection.items.map(item => [item.id, item]));
     const evaluated = new Set(), visiting = new Set(), selections = new Map();
     const usable = item => item && (!item.cognition || item.cognition.status === 'active' && (item.semantic !== 'intention' || item.cognition.selection === 'current'))
-        && (!item.memory || item.memory.status === 'active' && item.memory.applicability === 'applicable' && item.memory.use !== 'unavailable')
+        && (!item.memory || item.memory.status === 'active' && item.memory.applicability === 'applicable' && ['willing', 'reluctant'].includes(item.memory.use))
         && (!item.causality || item.causality.sourceCurrent);
     const evaluate = (item, depth = 0) => {
         if (!item || depth > 4 || visiting.has(item.id)) return false;

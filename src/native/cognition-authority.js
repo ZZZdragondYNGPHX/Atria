@@ -47,7 +47,7 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
             const mayUseCognition = ['desire', 'intention'].includes(source.semantic) || source.causalBasis;
             const leaves = new Map(projection.items.filter(item => item.semantic !== 'rollup' && (mayUseCognition || !isCognitionSource(item)))
                 .filter(item => !item.cognition || item.actorId === value.actor && item.cognition.status === 'active' && (item.semantic !== 'intention' || item.cognition.selection === 'current'))
-                .filter(item => !item.memory || item.actorId === value.actor && item.memory.status === 'active' && item.memory.applicability === 'applicable' && item.memory.use !== 'unavailable')
+                .filter(item => !item.memory || item.actorId === value.actor && item.memory.status === 'active' && item.memory.applicability === 'applicable' && ['willing', 'reluctant'].includes(item.memory.use))
                 .filter(item => !item.causality || item.causality.sourceCurrent).map(item => [item.id, item]));
             if (value.basis.sourceRefs.some(ref => !leaves.has(ref.itemId) || informationItemFingerprint(leaves.get(ref.itemId)) !== ref.fingerprint)) throw new TypeError('Cognition source changed or denied');
             const derived = item => isCognitionSource(item) || hasInformationBasis(def.sources.find(source => source.id === item.sourceId));
