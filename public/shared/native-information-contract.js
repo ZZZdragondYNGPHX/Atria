@@ -1,6 +1,7 @@
 import { fields, json, text } from './native-values.js';
 import { taskId } from './native-task-contract.js';
 import { assertLifecycleJson } from './native-lifecycle-contract.js';
+import { isCognitionSource, assertCognitionSource } from './native-cognition-runtime.js';
 
 export const INFORMATION_LIMITS = Object.freeze({ sources: 32, views: 16, records: 4096, items: 128, characters: 32768, depth: 4, edges: 256, rollups: 128 });
 export function informationList(value, limit, convert = value => value) {
@@ -25,9 +26,10 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     const sources = informationList(value.sources, 32, source => {
         fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField'], 'Information source');
         taskId(source.id); choice(source.kind, ['application', 'world', 'timeline', 'history']);
-        choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative']);
+        choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative', 'desire', 'intention']);
         if (!lifecycle.scopes.some(scope => scope.id === source.scopeId)) throw new TypeError('Unknown information scope');
-        const paths = informationList(source.fields, 16, path => informationList(path, 8, taskId));
+        const paths = informationList(source.fields, 16, path => informationList(path, 8,
+            key => isCognitionSource(source) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt'].includes(key) ? key : taskId(key)));
         if (!paths.length || paths.some(path => !path.length) || new Set(paths.map(path => path.join('.'))).size !== paths.length) throw new TypeError('Information fields must be unique nonempty paths');
         if (source.kind === 'history') {
             if (!lifecycle.history || source.semantic !== 'narrative' || paths.some(p => p.length !== 1 || !['summary', 'tick', 'year', 'refs', 'transaction'].includes(p[0]))
@@ -49,6 +51,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
             if (source.semantic === 'belief' && (!source.actorField || !source.statusField || !source.channelField)) throw new TypeError('Belief requires actor, status and channel');
             if (source.semantic === 'thread' && !source.participantsField) throw new TypeError('Thread requires participants');
             if (source.semantic === 'open_loop' && !source.statusField) throw new TypeError('Open Loop requires status');
+            if (isCognitionSource(source)) assertCognitionSource(source, domain);
         } else {
             if (['domainId', 'actorField', 'statusField', 'channelField', 'participantsField'].some(key => source[key] !== undefined)
                 || source.semantic !== (source.kind === 'world' ? 'truth' : 'narrative')) throw new TypeError('Invalid source semantics');

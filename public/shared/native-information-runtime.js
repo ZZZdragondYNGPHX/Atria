@@ -1,5 +1,6 @@
 import { queryHistory } from './native-history-runtime.js';
 import { INFORMATION_LIMITS, informationInteger } from './native-information-contract.js';
+import { isCognitionSource, assertCognitionValue, projectCognitionItems } from './native-cognition-runtime.js';
 
 export const informationDefinition = snapshot => snapshot?.manifest?.runtime?.experienceContract?.informationRuntime;
 const clone = value => structuredClone(value);
@@ -38,8 +39,10 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
         result.anchor.scopeEpochs[availability.scopeId] = availability.scopeEpoch;
     }
     let scanned = 0; let characters = 0;
+    const cognitionValues = new Map();
     const append = item => {
-        const length = JSON.stringify(item).length;
+        // Reserve the bounded derived status before adding a cognitive item.
+        const length = JSON.stringify(item).length + (isCognitionSource(item) ? 96 : 0);
         if (result.items.length >= view.maxItems || characters + length > view.maxCharacters) { result.truncated = true; return; }
         characters += length; result.items.push(item);
     };
@@ -70,12 +73,16 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
                 || !['witnessed', 'direct_message', 'told_by', 'public_broadcast', 'surveillance', 'rumor', 'inference'].includes(value[source.channelField]))) throw new TypeError('Invalid epistemic record');
             const data = {};
             for (const path of source.fields) { const selected = read(value, path); if (selected !== undefined) data[path.join('.')] = clone(selected); }
-            append({ id: source.id + ':' + record.id, sourceId: source.id, recordId: record.id, semantic: source.semantic, data,
+            const itemId = source.id + ':' + record.id;
+            if (isCognitionSource(source)) { assertCognitionValue(source, value); cognitionValues.set(itemId, value); }
+            append({ id: itemId, sourceId: source.id, recordId: record.id, semantic: source.semantic, data,
                 ...(record.variantId ? { variantId: record.variantId } : {}),
                 ...(source.semantic === 'belief' ? { epistemicStatus: status, channel: value[source.channelField], actorId: value[source.actorField] } : {}),
+                ...(isCognitionSource(source) ? { actorId: value.actor, intentStatus: value.status } : {}),
                 ...(source.semantic === 'open_loop' ? { status: 'open' } : {}) });
         }
     }
+    projectCognitionItems(snapshot, result, cognitionValues);
     if (includeRollups) {
         const artifacts = (snapshot.states.atri_context_derived?.narrative ?? []).filter(artifact => isInformationRollupCurrent(snapshot, artifact, result));
         const covered = new Set(artifacts.flatMap(artifact => artifact.childNarrativeIds));
@@ -138,9 +145,9 @@ export function informationContext(snapshot, target, taskId, { onScan = null, in
     return { knowledge: view.knowledge && (!view.actorId || projection.availability[0]?.available), memory: view.memory === true, actorId: view.actorId, projection,
         ...(narration ? { narration: clone(narration), disclosure } : {}),
         items: projection.items.map(item => ({ contextItemId: 'projection:' + view.id + ':' + item.id,
-            lane: item.semantic === 'open_loop' ? 'commitments' : item.semantic === 'memory' ? 'memory' : ['rollup', 'narrative'].includes(item.semantic) ? 'narrative_spine' : 'current_state_event',
-            authority: item.semantic === 'truth' ? 'world_projection' : item.semantic === 'belief' ? 'actor_belief' : 'derived',
-            authorityRank: item.semantic === 'truth' ? 100 : 10, priority: 0,
+            lane: ['open_loop', 'intention'].includes(item.semantic) ? 'commitments' : item.semantic === 'memory' ? 'memory' : ['rollup', 'narrative'].includes(item.semantic) ? 'narrative_spine' : 'current_state_event',
+            authority: item.semantic === 'truth' ? 'world_projection' : item.semantic === 'belief' ? 'actor_belief' : isCognitionSource(item) ? 'actor_cognition' : 'derived',
+            authorityRank: item.semantic === 'truth' ? 100 : 10, priority: item.semantic === 'intention' ? item.data.priority : 0,
             content: JSON.stringify(disclosure ? { ...item, displayGrant: { viewId: disclosure.viewId, item: displayItems.get(item.id) ?? null } } : item),
             sourceRefs: [{ kind: item.variantId ? 'timeline' : 'state', ...(item.variantId ? { messageId: item.recordId } : {}),
                 revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId }],
@@ -181,6 +188,7 @@ export function validateInformationState(snapshot) {
             if (source.semantic === 'belief' && (!['known', 'believed', 'suspected', 'disputed'].includes(value[source.statusField])
                 || !['witnessed', 'direct_message', 'told_by', 'public_broadcast', 'surveillance', 'rumor', 'inference'].includes(value[source.channelField]))) throw new TypeError('Invalid epistemic record');
             if (source.semantic === 'open_loop' && !['open', 'closed', 'superseded'].includes(value[source.statusField])) throw new TypeError('Invalid Open Loop status');
+            if (isCognitionSource(source)) assertCognitionValue(source, value);
         }
     }
 }

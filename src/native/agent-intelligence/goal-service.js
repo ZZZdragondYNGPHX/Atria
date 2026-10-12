@@ -6,6 +6,7 @@ import { assertEvidenceScope, fields, readEvidencePath, EvidenceSourceError, tex
 import { assertGoal } from './goal-contracts.js';
 import { AgentGoalRepository } from './goal-repository.js';
 import { AgentEvidenceService } from './evidence-service.js';
+import { informationDefinition, projectInformation } from '../../../public/shared/native-information-runtime.js';
 
 const proofBudget = () => ({ maxSources: 32, maxBytes: 131072, maxScanMessages: 8192 });
 const equal = (left, right) => hashNativeDocument(left) === hashNativeDocument(right);
@@ -49,6 +50,23 @@ export class AgentGoalService {
         return doc;
     }
     async get(handle, input) { return this._present(handle, await this._stored(handle, input)); }
+    async associations(handle, input) {
+        fields(input, ['goalId', 'viewId'], 'Actor Goal associations');
+        text(input.viewId, 'Actor Goal display view');
+        const doc = await this._stored(handle, { goalId: input.goalId });
+        if (doc.subject.kind !== 'actor' || doc.scope.domain !== 'rp_session') throw new ConflictError('actor_goal_association_denied');
+        const base = await this.sessionCore.load(handle, doc.scope.sessionId);
+        if (!equal(doc.anchor, { branchId: base.revision.branchId, packageVersionId: base.session.packageVersionId })) return { goalId: doc.goalId, status: 'stale', links: [], readOnly: isReadOnly() };
+        const view = informationDefinition(base)?.views.find(view => view.id === input.viewId);
+        if (view?.audience !== 'player' || view.actorId !== doc.subject.actorId || !view.exposure.includes('display')) throw new ConflictError('actor_goal_association_denied');
+        const projection = projectInformation(base, view.id, { purpose: 'display', includeRollups: false });
+        const links = projection.items.filter(item => ['desire', 'intention'].includes(item.semantic) && item.actorId === doc.subject.actorId && item.data.goalId === doc.goalId)
+            .map(item => ({ itemId: item.id, semantic: item.semantic, cognition: item.cognition,
+                commitmentIds: item.data.commitmentIds, fingerprint: hashNativeDocument(item) }));
+        const current = await this.sessionCore.load(handle, doc.scope.sessionId), stored = await this._stored(handle, { goalId: doc.goalId });
+        if (current.revision.revisionId !== base.revision.revisionId || !equal(doc, stored)) throw new ConflictError('actor_goal_association_stale');
+        return { goalId: doc.goalId, status: doc.status, anchor: projection.anchor, links, readOnly: isReadOnly() };
+    }
     async context(handle, input) {
         fields(input, ['scope'], 'Goal context');
         const scope = assertEvidenceScope(input.scope);

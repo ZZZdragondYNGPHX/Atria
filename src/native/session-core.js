@@ -33,6 +33,7 @@ import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory } from './history-authority.js';
 import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
+import { validateCognitionTransition } from './cognition-authority.js';
 import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
 
@@ -486,6 +487,7 @@ export class SessionCore {
             }] } };
         }
         if (states.atri_lifecycle) {
+            validateCognitionTransition(base, { ...base, states });
             states = cloneNativeDocument(states);
             for (const item of states.atri_lifecycle.outbox) {
                 if (!base.states.atri_lifecycle?.outbox.some(previous => previous.invocationId === item.invocationId)) {
