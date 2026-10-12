@@ -1,6 +1,6 @@
 # S24：有界候选比较与正式结果绑定
 
-状态：2026-10-13 Native有限消费者实施中。依赖 [S22](s22-hypothetical-preview.md)、[S23](s23-model-prediction.md)、S19及 [architecture §8](architecture.md#8-counterfactual-与-metacognition)。S23真实provider、RP决策收益及Project高影响方案收益仍pending；本地工程不替代这些证据。
+状态：2026-10-13 Native与Project有限工程消费者完成。依赖 [S22](s22-hypothetical-preview.md)、[S23](s23-model-prediction.md)、S19及 [architecture §8](architecture.md#8-counterfactual-与-metacognition)。S23真实provider、RP决策收益及Project高影响方案收益仍pending；本地工程不替代这些证据。
 
 首批比较是服务器自己准备的有界声明action与 exact Player projection。用户显式指定已有公开item/data field的期望值；固定规则先匹配目标，再选公开delta最小的候选，无法满足则不选择。不以未校准confidence当客观成功概率，不推导未声明的价值标准或玩家动作。可选模型预测沿原PredictionService逐候选执行，不信任客户端上传prediction artifact的producer身份。
 
@@ -10,6 +10,8 @@
 
 准备、比较、hash/packing与核验沿原Run localWork，有界候选/goal/item/bytes；模型发送继续同一bank，失败/取消/晚到费用保持。临时comparison不能声称跨restart durable恢复；丢失来源时保持unavailable，不从客户端字段重建producer证明。
 
-Project需要独立消费者：复用原Workspace串行evaluate/review/commit，注意evaluateWorkspace实际临时应用并finally恢复文件及preview handle，不能称为纯内存隔离。源恢复失败、并发读取、Preview清理与真实changeSet receipt须验证后才交付该域；Native schema不能冒充Project授权。
+Project独立消费者复用原planning Task、localWork与Workspace串行evaluate/review/commit，最多8候选、每个32操作，只接受source/project/frontend操作，不接受无法按原源快照恢复的Library资源操作。固定规则从validation通过者选择改动最少的proposal；原Task计划、Review及commit仍须执行。evaluateWorkspace实际临时应用并finally恢复文件及preview handle，不能称为纯内存隔离，也不宣称所有并发reader均隔离。正式outcome从原completed Task及Studio Git changeSet receipt取得，质量和模型误差保持not_measurable。
+
+恢复最多两次并验证源及文件hash；中断后修复成功仍报告失败并保留费用，持续失败阻止原Task及Git同步。Git恢复marker与原Task.recovery中的服务器源identity共同保证重建Studio不自动把临时候选提交成用户修改；双marker写入失败时依赖原Task CAS持久化，连Task持久化失败也明确报错，不承诺不存在的durability。精确原HEAD/源恢复后只清活动阻断identity，原blocked状态、费用及历史保留供显式Task控制。ProjectStore拒绝大小写变体.git路径。临时comparison按原storage authority及owner隔离；丢失token不可从caller重建。
 
 最小本地验证包括真实installed Session、候选公开/私有隔离、typed目标/选择与abstain、费用/容量/stale、选中proposal再次正式receipt与公开字段误差、未选未来不污染、model artifact伪造拒绝。实际双域决策收益需同任务/配置/质量底线的真实对照，缺外部发送范围或资料时保持pending。

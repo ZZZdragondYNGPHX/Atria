@@ -168,7 +168,7 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S21 | 有限消费者出口完成 | [认知恢复设计](s21-cognition-recovery.md)；source `c73bad012`，44新增/3受影响本地distinct PASS，7实际请求含保留失败及修复后正文对照；完整 HM3/任务不冒称完成 |
 | S22 | 有限确定性消费者出口完成 | [确定性预演设计](s22-hypothetical-preview.md)；source `c73bad012`，12 distinct PASS；exact snapshot、原 Simulation/transaction 私有 candidate、获准投影与 stale 复验 |
 | S23 | 工程消费者完成，真实出口 pending | [文本结构化预测](s23-model-prediction.md)；source `defc95b55`，17新增/2受影响本地PASS，原 Host/Task/费用与只读预测 lane；新素材外部发送范围待核实 |
-| S24 | Native有限消费者实施中 | [候选比较](s24-candidate-comparison.md)；服务器owned候选/公开typed目标/proposal/正式receipt误差；S23实际provider与双域收益pending |
+| S24 | 双域有限工程消费者完成，收益pending | [候选比较](s24-candidate-comparison.md)；source `886aa3566`，33新增distinct本地PASS；服务器owned候选/proposal/正式receipt、原Task与恢复保护；S23实际provider与双域收益pending |
 | S25 | 普通路径工程出口完成，收益pending | [异步普通认知](s25-async-cognition.md)；source `e2adac4bb`，24新增/5受影响PASS；原author-explicit Task/outbox/RunControl，预测路径另依赖S24 |
 | S26 | 有限普通规则工程出口完成，收益pending | [可选计算分配](s26-optional-allocation.md)；source `cedf44330`，12新增与原回归检查通过，旧lint诊断保持；真实quality-cost与预测/learned路径未验收 |
 | S27–S34 | 尚未实施 | 按原 delivery 依赖继续；实际 provider/协议/训练出口不能由 mock 或占位替代 |
