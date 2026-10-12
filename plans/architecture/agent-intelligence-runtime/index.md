@@ -175,8 +175,8 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S28 | 有限Windows本地API消费者完成 | [本地语音](s28-local-speech.md)；source `43a1505e2`，18新增/4受影响PASS；真实WAV/取消/原Scheduler、bank与exactAsset，音质/细粒度时序pending |
 | S29 | 原renderer有限工程消费者完成 | [公开表达展示](s29-native-expression-view.md)；source `293653079`，4新增backend/6真实浏览器组合与8受影响PASS；原bridge/素材/降级，模型语义收益pending |
 | S30 | 有限本地READ工程消费者完成 | [本地MCP](s30-local-mcp.md)；source `e93672e3c`，43新增/2受影响PASS，真实SDK工具/resource经原Service/FS/SQLite/HTTP；远程/OAuth/Apps pending |
-| S31 | 固定本地协议范围，实现中 | [本地A2A](s31-local-a2a.md)；固定1.0 wire/JSONRPC、原owner/预算/公开源；真实消费结果归Record，不升级远端Goal权威 |
-| S33 | 本地元数据范围，实现中 | [离线轨迹](s33-learning-export.md)；原Experience/Evidence current导出与离线消费者，正文/外发/训练不扩展 |
+| S31 | 固定本地协议WIP，用户换设备暂停 | [本地A2A](s31-local-a2a.md)；source `dc2b2c2b9`未验证快照，30非loopback PASS/1真实loopback FAIL待定位；消费者/公共kind/HTTP仍待补，不升级远端Goal权威 |
+| S33 | 本地元数据WIP，用户换设备暂停 | [离线轨迹](s33-learning-export.md)；source `dc2b2c2b9`原Experience/Evidence导出及函数消费者；静态PASS、实际测试/HTTP待做，正文/外发/训练不扩展 |
 | S32 / S34 | 尚未实施 | 按原 delivery 依赖继续；实际UI/训练后端出口不能由mock或占位替代 |
 | HM1 / H0–H2 | Complete；main `3ee1332ef` | B0 保留，B1–B3 / 三路径 / Context 完整组 / 主模型正文观察与相关本地验证通过；限制见 Record |
 | HM2–HM3 / H3–H5 | 有限HM2工作进行中；整体未验收，HM3未交付 | 原合法corpus/hash派生复用与有限本地Embedding已有实际消费者；delta/candidate cache、启用算法收益与cognition/forgetting仍按各组出口交付 |

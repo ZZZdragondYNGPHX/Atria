@@ -2657,3 +2657,13 @@ context_build及每次实际POST沿原Scheduler/RunControl localWork，owner/Rou
 新增43 distinct PASS：adapter27（其中真实SDK1.30.1统计计算/临时公开resource；最终增强后root仅复验该真实case1PASS）、原Service14（含实际SDK FS/SQLite两case的工具计算、resource文件读取、认证HTTP、owner/raw-input拒绝、原Session不变与10项同bank工作），Scheduler2（预算不退款、typed unknown且不retry）。原Scheduler finalizing/timeout permit两项受影响PASS。8归属JS文件ESLint与cached diff-check PASS。初轮adapter21PASS/真实case loopback EACCES，正常沙箱外复验后发现SDK stateless transport跨请求复用引发HTTP失败；fixture改正确stateful生命周期后原22PASS，最终5项新边界与原取消受影响共6项PASS，非新变化旧已过项未继续机械重跑。consumer原10中9PASS/changed revision1FAIL为只读live work而忽略原retiredCompute，修正真实成本断言；context/discovery/cancel新依赖修改后14相关distinct复验全PASS。Jest默认sandbox tmpdir EPERM与初次错误runner路径MODULE_NOT_FOUND保留为环境/命令失败，不当产品通过；被中断的是尚未执行的重复审批等待，源码/测试未丢弃，root统一相关验证。最后SDK测试alias改为正常条件test.each并移除lint suppression，语义未变仅静态复验。
 
 真实fixture只绑定loopback、计算公开合成文字和读取临时公开文件；全部服务/worker/临时材料正常finally关闭清理，无音频播放、新模型/业务服务调用或用户数据外发。远程MCP/OAuth/SSE/Apps、M4实际provider/双域quality-cost、M5模型语义/风格/音质/长期收益仍pending，不声明完整M6或任务完成。继续S31固定A2A协议与独立S33本地元数据/离线consumer；S32实际UI与S34训练后端仍需真实证据，不merge/deploy或改main。
+
+### 2026-10-13 用户换设备：S31/S33 WIP停稳保存
+
+用户明确要求交接提示词及隐私文件打包。即时收齐三个子代理停止写入，无受控进程/requests/待执行审批，root只作快照、最小静态与交接核验，不继续新阶段实施。source WIP `dc2b2c2b9b986618ec580b263c03bd29835dcaff` 已commit/push/ls-remote一致、工作区干净；main3ee1332ef干净未改。S30已验证e93672e3c证据保持，WIP中helper抽取后的MCP14消费者尚未复验，不能把旧通过套给新HEAD。
+
+S31 adapter固定官方v1.0.0 proto与1.0 JSONRPC：30非loopback distinct PASS，真实loopback默认1FAIL a2a_transport_unknown，原因未最终定位，正常权限复验未执行；不冒称真实协议出口通过。新A2aService/SessionPublicWork/12消费者tests及MCP复用静态4文件PASS，实际消费者12/MCP14均未跑。原contracts strict a2a配置已写、root ESLint PASS但针对性测试未写/跑；公共a2a_protocol kind、Scheduler native_a2a_投影和认证HTTP入口尚缺。scope/原identity/费用/unknown保障待真实验证，不把transient对象重建重连称process重启恢复。
+
+S33 source三文件包含exportLearning、strict metadata轨迹/真实文件分析函数与tests；root最终ESLint PASS。missingReasons/有界读取/fatal UTF8/合法Project状态/native receipt缺失/CAS/split限定修复已保存，补充边界cases、真实测试、HTTP入口和CLI仍未完成。两次Jest启动EPERM无测试执行，未执行的审批请求被中断；没有consumer PASS或训练验收。10文件WIP cached diff-check PASS后明确chore保存，不把WIP作为工程验收提交。
+
+唯一HANDOFF按用户要求重建，记录上述缺口与恢复次序。隐私迁移只打包当前四配置、原最小滚动quota和README阶段摘要；不恢复旧备份/raw账本/cache，不打印凭据，不在Git保存隐私archive。carry148不重加/不清零，素材producer/judge/诊断外发暂停、夜间不播放、无merge/deploy/main修改保持。本聊天完成交接包核验后退出写入；新设备唯一主执行者沿实际Git/同一Plan/Record继续，未完成验收不改写为通过。
