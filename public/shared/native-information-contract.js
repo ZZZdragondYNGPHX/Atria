@@ -26,7 +26,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     const sources = informationList(value.sources, 32, source => {
         fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField'], 'Information source');
         taskId(source.id); choice(source.kind, ['application', 'world', 'timeline', 'history']);
-        choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative', 'desire', 'intention']);
+        choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative', 'desire', 'intention', 'emotion', 'relationship']);
         if (!lifecycle.scopes.some(scope => scope.id === source.scopeId)) throw new TypeError('Unknown information scope');
         const paths = informationList(source.fields, 16, path => informationList(path, 8,
             key => isCognitionSource(source) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt'].includes(key) ? key : taskId(key)));
@@ -88,6 +88,18 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     });
     const contextKeys = views.filter(view => view.exposure.includes('context')).map(view => view.audience + ':' + (view.audience === 'actor' ? view.actorId : view.taskId ?? ''));
     if (new Set(contextKeys).size !== contextKeys.length) throw new TypeError('Ambiguous Context Perspective');
+    for (const task of tasks?.tasks ?? []) for (const variant of task.variants) {
+        const binding = variant.resultBinding;
+        if (binding?.kind !== 'cognition.appraise') continue;
+        const view = views.find(view => view.id === binding.viewId);
+        if (view?.audience !== 'task' || view.taskId !== task.id || !view.actorId || !view.exposure.includes('context')) throw new TypeError('Appraisal requires exact Actor-bound Task context');
+        if (binding.eventSourceIds.some(id => !view.sources.includes(id) || sources.find(source => source.id === id)?.kind !== 'application'
+            || isCognitionSource(sources.find(source => source.id === id)) || !sources.find(source => source.id === id).fields.some(path => path.length === 1 && path[0] === binding.eventGate.field))) throw new TypeError('Appraisal gate requires a selected event field');
+        for (const kind of ['emotion', 'relationship']) {
+            const target = sources.find(source => source.id === binding[kind].sourceId);
+            if (target?.kind !== 'application' || target.semantic !== kind || target.domainId !== binding[kind].domainId) throw new TypeError('Appraisal target requires its declared Information domain');
+        }
+    }
     const graphs = informationList(value.graphs, 16, graph => {
         fields(graph, ['id', 'viewId', 'nodeSource', 'edgeSource', 'fromField', 'toField', 'maxDepth', 'maxEdges'], 'Bounded graph'); taskId(graph.id);
         const view = views.find(view => view.id === graph.viewId);

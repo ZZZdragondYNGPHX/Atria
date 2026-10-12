@@ -29,6 +29,7 @@ import { assertTurnEnvelope } from '../../../public/shared/native-message-contra
 import { AgentEvidenceRepository } from '../agent-intelligence/evidence-repository.js';
 import { AgentEvidenceService } from '../agent-intelligence/evidence-service.js';
 import { beginHostCapture } from '../agent-intelligence/host-capture.js';
+import { appraisalEventCurrent, prepareAppraisalDelivery } from '../appraisal-authority.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 
@@ -513,9 +514,18 @@ export class NativeGenerationHost {
                     continue;
                 }
             }
-            const result = await this.executeTask(handle, { sessionId: input.sessionId, revisionId: snapshot.revision.revisionId,
-                invocationId: item.invocationId, taskId: item.taskId, variantId: item.variantId, input: item.input, slotBindings: input.slotBindings }, signal, undefined, { lifecycleInvocation: true });
-            snapshot = result.snapshot; results.push(result.record);
+            let result;
+            try {
+                result = await this.executeTask(handle, { sessionId: input.sessionId, revisionId: snapshot.revision.revisionId,
+                    invocationId: item.invocationId, taskId: item.taskId, variantId: item.variantId, input: item.input, slotBindings: input.slotBindings }, signal, undefined, { lifecycleInvocation: true });
+            } catch (error) {
+                const variant = snapshot.manifest.runtime.experienceContract.taskRuntime.tasks.find(task => task.id === item.taskId)?.variants.find(variant => variant.id === item.variantId);
+                if (variant?.resultBinding?.kind !== 'cognition.appraise' || !['native_generation_budget_exhausted', 'native_generation_background_not_due'].includes(error.code)) throw error;
+                return { snapshot, results, pending: { invocationId: item.invocationId, reason: error.code } };
+            }
+            snapshot = result.snapshot;
+            if (result.pending) return { snapshot, results, pending: result.pending };
+            results.push(result.record);
         }
         return { snapshot, results };
     }
@@ -567,6 +577,7 @@ export class NativeGenerationHost {
         if (!route) fail('native_task_binding_missing');
         const slot = snapshot.manifest.runtime.experienceContract.taskRuntime.slots.find(item => item.id === task.bindingSlotId);
         const taskPlan = { task, variant, slot, payload };
+        const appraisal = variant.resultBinding?.kind === 'cognition.appraise';
         const production = captureTaskProduction(snapshot, task, payload);
         const anchor = { sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: input.revisionId };
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(input.invocationId)) fail('native_task_invocation_required');
@@ -590,9 +601,43 @@ export class NativeGenerationHost {
         if (evidenceCapture) captured.evidenceCapture = evidenceCapture;
         if (lifecycleInvocation && snapshot.manifest.runtime.experienceContract.generationBudget) {
             const intent = snapshot.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
-            if (!intent?.simulation || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
+            if ((!intent?.simulation && !(appraisal && intent?.appraisalEvent)) || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
                 || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_generation_budget_lane_denied');
             captured.budgetContext = { snapshot, background: true, anchor: { invocationId: intent.invocationId } };
+        }
+        const appraisalWork = async (kind, value, operation) => {
+            const context = captured.budgetContext;
+            const attempt = { attemptId: randomUUID(), requestId: input.invocationId, kind, estimatedItems: 1,
+                estimatedInputBytes: Buffer.byteLength(JSON.stringify(value)), targetFingerprint: hashNativeDocument({ task, variant, anchor, kind }) };
+            const receipt = await this.sessionCore.runs.chargeLocalWork(handle, context?.snapshot ?? snapshot,
+                context?.anchor ?? { branchId: snapshot.revision.branchId, revisionId: input.revisionId }, route.executionPolicy?.computeBudget, attempt,
+                { background: context?.background === true });
+            const start = performance.now(), cpu = process.cpuUsage(); let outcome = 'failed';
+            try {
+                checkCancellation(signal);
+                if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+                const result = await operation(); outcome = 'completed'; return result;
+            } finally {
+                if (receipt) {
+                    const used = process.cpuUsage(cpu);
+                    await this.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId,
+                        { wallMs: performance.now() - start, cpuUserMicros: used.user, cpuSystemMicros: used.system, cpuScope: 'process', outcome });
+                }
+            }
+        };
+        if (appraisal) {
+            if (!snapshot.manifest.runtime.experienceContract.generationBudget || !route.executionPolicy?.computeBudget?.localWork) {
+                return { snapshot, pending: { invocationId: input.invocationId, reason: 'appraisal_budget_unavailable' } };
+            }
+            const queued = snapshot.states.atri_lifecycle.outbox.find(item => item.invocationId === input.invocationId);
+            const check = await appraisalWork('appraisal_gate', { snapshot, task, variant, queued }, () => appraisalEventCurrent(snapshot, queued, task, variant));
+            if (check.status === 'pending') return { snapshot, pending: { invocationId: input.invocationId, reason: check.reason } };
+            if (check.status === 'skip') {
+                const skipped = await this.sessionCore.applyLifecycleCommand(handle, input.sessionId,
+                    { type: 'lifecycle', invocationId: 'skip-' + input.invocationId, action: { kind: 'scheduled.cancel', invocationId: input.invocationId } },
+                    { expectedRevisionId: snapshot.revision.revisionId, hostProof: this.sessionCore._lifecycleProof });
+                return { snapshot: skipped, record: { invocationId: input.invocationId, taskId: task.id, variantId: variant.id, status: 'skipped', reason: check.reason } };
+            }
         }
         const resources = lanePlan ? [] : await this.executionResources(handle, route, input.sessionId, captured);
         let taskWorker;
@@ -610,7 +655,8 @@ export class NativeGenerationHost {
                 return taskWorker;
             },
             finalize: async (result, deliveryReceipt) => {
-                const payload = assertTaskValue(result.response.jsonData ?? result.response.json ?? JSON.parse(result.response.text), variant.outputSchema);
+                const parse = () => assertTaskValue(result.response.jsonData ?? result.response.json ?? JSON.parse(result.response.text), variant.outputSchema);
+                const payload = appraisal ? await appraisalWork('appraisal_parse', result.response, parse) : parse();
                 const record = { ...(production ? { production } : {}), invocationId: input.invocationId, taskId: task.id, variantId: variant.id, fingerprint, payload,
                     definitionHash: hashNativeDocument(task), contextHash: hashNativeDocument(result.snapshot.contextPlan),
                     requestSnapshotHash: hashNativeDocument(result.snapshot), rawResultHash: hashNativeDocument(result.response),
@@ -619,7 +665,9 @@ export class NativeGenerationHost {
                     generationProfileRef: result.snapshot.generationProfileRef, runtimeRouteId: result.snapshot.runtimeRouteId, deliveryReceipt };
                 const knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, snapshot, result.snapshot.contextPlan?.nativeSelection);
                 if (task.resultPolicy.sink === 'turn' || transient) return { record: immutable(record), knowledgeProof };
-                const committed = await this.sessionCore.recordTaskResult(handle, input.sessionId, record, { expectedRevisionId: input.revisionId, knowledgeProof });
+                const adopt = () => this.sessionCore.recordTaskResult(handle, input.sessionId, record, { expectedRevisionId: input.revisionId, knowledgeProof,
+                    appraisalProof: appraisal ? prepareAppraisalDelivery(this.sessionCore, handle, snapshot, task, variant, record, result.snapshot) : null });
+                const committed = appraisal ? await appraisalWork('appraisal_adopt', { record, snapshot }, adopt) : await adopt();
                 return immutable({ record: committed.states.atri_task_results.records.at(-1), snapshot: committed });
             } };
         if (scheduled) {

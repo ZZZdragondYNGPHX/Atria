@@ -41,6 +41,12 @@ export async function beginHostCapture(repository, handle, scope, rootRunId, inv
         },
         async finishTask(result) {
             const { snapshot, record } = result;
+            if (result.pending || record?.status === 'skipped') {
+                trace.miss('events_missing');
+                append({ type: 'run.completed', eventId: rootRunId + '/completed' });
+                closed = true;
+                return flush('completed');
+            }
             append({ type: 'task.receipt', eventId: rootRunId + '/receipt', requestId: invocationId, status: record.status || 'recorded' });
             closed = true;
             return flush('completed', null, { kind: 'task', invocationId, branchId: snapshot.revision.branchId,

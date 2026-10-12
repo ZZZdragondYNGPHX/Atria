@@ -72,7 +72,7 @@ export function services(h, engine = h.engine) {
 
 export async function installFixture(h, fixture = sessionFixture(), svc = services(h)) {
     const { archive } = buildAtriaPackageContainer({ manifest: fixture.manifest,
-        sourceFiles: new Map(), assetPayloads: new Map() });
+        sourceFiles: fixture.sourceFiles ?? new Map(), assetPayloads: new Map() });
     await svc.packageInstaller.install(h.handle, archive);
     return { ...fixture, ...svc, start: { packageId: fixture.manifest.packageId,
         packageVersionId: fixture.manifest.packageVersionId, entryPointId: fixture.entryPointId } };

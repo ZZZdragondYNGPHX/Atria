@@ -3,6 +3,7 @@ import { compileDataSchema } from './native-data-schema.js';
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
 import { normalizeEventInterpretationRequest, validateEventInterpretation } from '../scripts/native/experience/llm/event-interpreter.js';
 import { assertOutcomeShape } from './native-message-contract.js';
+import { assertAppraisalBinding } from './native-appraisal-contract.js';
 
 export const TASK_STATE_NAMESPACE = 'atri_task_results';
 export const EXECUTION_CLASSES = Object.freeze(['turn_blocking', 'interactive', 'background', 'maintenance']);
@@ -75,15 +76,19 @@ export function assertTaskRuntime(value) {
         if (bridge && item.executionClass !== 'background') throw new TypeError('Declared App Command requires a background Task');
         if (queuePolicy === 'latest' && (bridge || item.resultPolicy.resultClass === 'world_outcome_proposal' || item.resultPolicy.applyCommand)) throw new TypeError('Authority-producing Tasks cannot supersede confirmed work');
         const variants = list(item.variants, 8, variant => {
+            let resultBinding = variant.resultBinding;
             fields(variant, ['id', 'prompt', 'generation', 'outputSchema', 'requiredCapabilities', 'resultBinding'], 'Task Variant');
             if (bridge !== (variant.resultBinding !== undefined)) throw new TypeError('Declared App Command requires an exclusive Variant result binding');
             if (bridge) {
                 const binding = variant.resultBinding;
-                choice(binding.kind, ['app.command', 'interaction.schedule']);
+                choice(binding.kind, ['app.command', 'interaction.schedule', 'cognition.appraise']);
                 if (binding.kind === 'app.command') {
                     fields(binding, ['kind', 'domainId', 'commandId', 'recordId'], 'Task App binding');
                     taskId(binding.domainId); taskId(binding.commandId);
                     if (binding.recordId !== undefined) taskId(binding.recordId);
+                } else if (binding.kind === 'cognition.appraise') {
+                    resultBinding = assertAppraisalBinding(binding);
+                    if (!context.includes('projection')) throw new TypeError('Appraisal requires a projection consumer');
                 } else {
                     fields(binding, ['kind', 'interactionId'], 'Task interaction binding');
                     taskId(binding.interactionId);
@@ -91,7 +96,7 @@ export function assertTaskRuntime(value) {
             }
             return { id: taskId(variant.id), prompt: exact(variant.prompt), generation: exact(variant.generation),
                 outputSchema: compileDataSchema(variant.outputSchema), requiredCapabilities: list(variant.requiredCapabilities, 16, taskId),
-                ...(bridge ? { resultBinding: variant.resultBinding } : {}) };
+                ...(bridge ? { resultBinding } : {}) };
         });
         if (!variants.length) throw new TypeError('Task requires a Variant');
         const interpretation = item.interpretation === undefined ? undefined : normalizeEventInterpretationRequest(item.interpretation);

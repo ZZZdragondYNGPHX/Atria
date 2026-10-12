@@ -9,6 +9,7 @@ import { assertTaskValue, taskId } from '../../public/shared/native-task-contrac
 import { LIFECYCLE_STATE_NAMESPACE as NS } from '../../public/shared/native-lifecycle-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { prepareTaskAuthority } from './task-authority.js';
+import { captureAppraisalEvent, prepareAppraisalCommands } from './appraisal-authority.js';
 
 const copy = value => structuredClone(value);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -170,6 +171,18 @@ export async function prepareDeclaredTaskResult(base, installed, queued, task, v
     const state = base.states[NS];
     if (!state?.ready || !queued || task.resultPolicy.sink !== 'app_command') throw new TypeError('Declared App Command requires durable Lifecycle intent');
     const binding = variant.resultBinding;
+    if (binding.kind === 'cognition.appraise') {
+        let candidate = { ...base, states: copy(base.states) };
+        const receipt = await prepareAppraisalCommands(base, task, variant, queued, record, async action => {
+            const domain = lifecycleDefinition(base).domains.find(domain => domain.id === action.domainId);
+            if (domain.scopeId !== queued.scopeId) throw new TypeError('Appraisal target scope mismatch');
+            const prepared = await prepareLifecycle(candidate, installed, action, authority);
+            const value = prepared.states[NS].domains[domain.id].records.find(record => record.id === action.recordId)?.value;
+            if (hashNativeDocument(value) !== hashNativeDocument(action.args)) throw new TypeError('Appraisal command changed sealed state');
+            candidate = { ...base, states: prepared.states };
+        });
+        return { states: candidate.states, authorityReceipt: receipt };
+    }
     const def = lifecycleDefinition(base);
     const mapping = binding.kind === 'interaction.schedule' ? def.interactions.find(item => item.id === binding.interactionId) : null;
     const domain = def.domains.find(item => item.id === (mapping?.domainId ?? binding.domainId));
@@ -203,6 +216,13 @@ export async function prepareLifecycle(base, installed, action, authority = null
     if (!def) throw new TypeError('Package lifecycle contract required');
     const candidate = { ...base, states: copy(base.states) }; const state = candidate.states[NS];
     const events = []; let budget = 32; let taskResolution = null; const drafts = [];
+    const queue = (...args) => {
+        const item = addOutbox(...args);
+        const task = base.manifest.runtime.experienceContract.taskRuntime?.tasks.find(task => task.id === item.taskId);
+        const variant = task?.variants.find(variant => variant.id === item.variantId);
+        if (variant?.resultBinding?.kind === 'cognition.appraise' && !item.appraisalEvent) item.appraisalEvent = captureAppraisalEvent(candidate, task, variant, assertTaskValue(item.input, task.inputSchema));
+        return item;
+    };
     const apply = async (request, occurrence = 'direct', scopeId = null) => {
         if (--budget < 0) throw new TypeError('Lifecycle transaction work limit');
         authority?.effect(request);
@@ -227,7 +247,7 @@ export async function prepareLifecycle(base, installed, action, authority = null
             fields(request, ['kind', 'commandId', 'args'], 'World Process Command');
             Object.assign(candidate.states, await prepareTaskAuthority(candidate, installed, { command: { id: request.commandId, args: request.args } }, authority));
         } else if (request.kind === 'task') {
-            active(state, scopeId); addOutbox(state, request, scopeId, occurrence);
+            active(state, scopeId); queue(state, request, scopeId, occurrence);
         } else if (request.kind === 'workflow.transition') {
             fields(request, ['kind', 'workflowId', 'transitionId'], 'Workflow transition');
             const flow = def.workflows.find(item => item.id === request.workflowId); const current = state.workflows[request.workflowId];
@@ -250,7 +270,7 @@ export async function prepareLifecycle(base, installed, action, authority = null
         if (node.kind === 'model_task') {
             authority?.effect(node.action);
             const occurrence = `workflow:${flow.id}:${current.instance}`;
-            addOutbox(state, node.action, flow.scopeId, occurrence, flow.id);
+            queue(state, node.action, flow.scopeId, occurrence, flow.id);
             current.taskInvocationId = state.outbox.at(-1).invocationId;
         } else if (node.kind === 'action') await apply(node.action, `workflow:${flow.id}:${current.instance}`, flow.scopeId);
         if (node.kind === 'terminal') current.status = 'completed';
@@ -364,7 +384,7 @@ export async function prepareLifecycle(base, installed, action, authority = null
     } else if (action.kind === 'information.rollup') {
         prepareInformationRollup(candidate, action);
     } else if (action.kind.startsWith('activity.')) {
-        await prepareActivity(candidate, action, { apply, addOutbox, events });
+        await prepareActivity(candidate, action, { apply, addOutbox: queue, events });
     } else if (['app.command', 'workflow.transition'].includes(action.kind)) await apply(action);
     else throw new TypeError('Undeclared lifecycle command');
     compactLifecycle(candidate, state, { pruneInteractions: action.kind === 'retention.compact' });

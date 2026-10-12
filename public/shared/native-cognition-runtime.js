@@ -1,13 +1,22 @@
 import { contentSha256 } from './content-sha256.js';
 import { fields } from './native-values.js';
 
-export const isCognitionSource = source => ['desire', 'intention'].includes(source.semantic);
-const statuses = semantic => semantic === 'desire' ? ['active', 'satisfied', 'abandoned'] : ['proposed', 'active', 'paused', 'cancelled', 'completed'];
+export const isCognitionSource = source => ['desire', 'intention', 'emotion', 'relationship'].includes(source?.semantic);
+const isAppraisal = source => ['emotion', 'relationship'].includes(source.semantic);
+const statuses = semantic => ['emotion', 'relationship'].includes(semantic) ? ['active', 'withdrawn'] : semantic === 'desire' ? ['active', 'satisfied', 'abandoned'] : ['proposed', 'active', 'paused', 'cancelled', 'completed'];
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 export const informationItemFingerprint = item => contentSha256(JSON.stringify(item));
 const selectedFields = ['text', 'goalId', 'commitmentIds', 'priority', 'conflictKey', 'expiresAt'];
 
 export function assertCognitionSource(source, domain) {
+    if (isAppraisal(source)) {
+        const properties = domain.recordSchema.properties;
+        if (!Number.isSafeInteger(domain.initial.level) || domain.initial.level < (source.semantic === 'emotion' ? 0 : -100) || domain.initial.level > 100) throw new TypeError('Appraisal requires a bounded declared baseline');
+        if (source.actorField !== 'actor' || source.statusField !== 'status' || !source.fields.some(path => path.length === 1 && path[0] === 'text')
+            || Object.entries({ actor: 'string', target: 'string', dimension: 'string', level: 'integer', status: 'string', text: 'string', rationale: 'string', basis: 'object', appraisal: 'object' })
+                .some(([key, type]) => properties[key]?.type !== type || !domain.recordSchema.required?.includes(key))) throw new TypeError('Appraisal requires its declared cognitive state');
+        return;
+    }
     if (source.actorField !== 'actor' || source.statusField !== 'status'
         || selectedFields.some(field => !source.fields.some(path => path.length === 1 && path[0] === field))) throw new TypeError('Cognition requires exact actor/status and selected plan fields');
     const properties = domain.recordSchema.properties;
@@ -17,11 +26,24 @@ export function assertCognitionSource(source, domain) {
 }
 
 export function assertCognitionValue(source, value) {
-    if (!statuses(source.semantic).includes(value.status) || typeof value.text !== 'string' || !value.text.trim() || value.text.length > 12000
+    if (isAppraisal(source)) {
+        if (!statuses(source.semantic).includes(value.status) || !/^actor_[a-f0-9]{32}$/.test(value.actor)
+            || (source.semantic === 'emotion' ? value.target !== '' : !/^actor_[a-f0-9]{32}$/.test(value.target) || value.target === value.actor)
+            || typeof value.dimension !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(value.dimension)
+            || !Number.isSafeInteger(value.level) || value.level < (source.semantic === 'emotion' ? 0 : -100) || value.level > 100
+            || typeof value.text !== 'string' || !value.text.trim() || value.text.length > 2048 || typeof value.rationale !== 'string' || value.rationale.length > 1024) throw new TypeError('Invalid appraisal state');
+        const meta = value.appraisal;
+        fields(meta, ['origin', 'invocationId', 'taskId', 'variantId', 'profileId', 'profileRevision', 'modelProfileId', 'modelProfileHash', 'requestSnapshotHash', 'previousHash', 'promptId', 'promptRevision', 'generationId', 'generationRevision'], 'Appraisal provenance');
+        if (Object.values(meta).some(value => typeof value !== 'string' || !value || value.length > 128)
+            || !['author', 'model'].includes(meta.origin)
+            || ['modelProfileHash', 'requestSnapshotHash', 'previousHash'].some(key => !/^[a-f0-9]{64}$/.test(meta[key]))) throw new TypeError('Invalid appraisal provenance');
+    } else {
+        if (!statuses(source.semantic).includes(value.status) || typeof value.text !== 'string' || !value.text.trim() || value.text.length > 12000
         || !/^actor_[a-f0-9]{32}$/.test(value.actor) || (value.goalId !== '' && !/^goal_[a-f0-9]{32}$/.test(value.goalId))
         || !integer(value.priority) || value.priority > 100 || typeof value.conflictKey !== 'string' || value.conflictKey.length > 128
         || !integer(value.expiresAt) || !Array.isArray(value.commitmentIds) || value.commitmentIds.length > 16
         || value.commitmentIds.some(id => typeof id !== 'string' || !id || id.length > 256) || new Set(value.commitmentIds).size !== value.commitmentIds.length) throw new TypeError('Invalid cognition record');
+    }
     fields(value.basis, ['viewId', 'anchor', 'sourceRefs'], 'Cognition basis');
     const { anchor, sourceRefs } = value.basis;
     fields(anchor, ['sessionId', 'packageVersionId', 'revisionId', 'branchId', 'scopeEpochs'], 'Cognition anchor');
@@ -50,8 +72,8 @@ export function projectCognitionItems(snapshot, projection, values) {
         const current = ['sessionId', 'packageVersionId', 'branchId'].every(key => basis.anchor[key] === projection.anchor[key])
             && Object.entries(basis.anchor.scopeEpochs).every(([id, epoch]) => snapshot.states.atri_lifecycle.scopes[id]?.status === 'active' && snapshot.states.atri_lifecycle.scopes[id].epoch === epoch)
             && basis.sourceRefs.every(ref => leaves.has(ref.itemId) && fingerprint(ref.itemId) === ref.fingerprint)
-            && value.commitmentIds.every(id => leaves.get(id)?.semantic === 'open_loop');
-        const status = ['paused', 'cancelled', 'abandoned'].includes(value.status) ? value.status
+            && (value.commitmentIds ?? []).every(id => leaves.get(id)?.semantic === 'open_loop');
+        const status = ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status) ? value.status
             : ['active', 'proposed'].includes(value.status) && value.expiresAt && snapshot.states.atri_lifecycle.logicalTime >= value.expiresAt ? 'expired' : !current ? 'stale' : value.status;
         item.cognition = { status, sourceCurrent: current, selection: status === 'active' && item.semantic === 'intention' ? 'current' : 'none' };
     }

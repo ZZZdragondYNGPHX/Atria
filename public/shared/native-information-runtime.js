@@ -78,7 +78,7 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
             append({ id: itemId, sourceId: source.id, recordId: record.id, semantic: source.semantic, data,
                 ...(record.variantId ? { variantId: record.variantId } : {}),
                 ...(source.semantic === 'belief' ? { epistemicStatus: status, channel: value[source.channelField], actorId: value[source.actorField] } : {}),
-                ...(isCognitionSource(source) ? { actorId: value.actor, intentStatus: value.status } : {}),
+                ...(isCognitionSource(source) ? { actorId: value.actor, ...(['emotion', 'relationship'].includes(source.semantic) ? { appraisalStatus: value.status } : { intentStatus: value.status }) } : {}),
                 ...(source.semantic === 'open_loop' ? { status: 'open' } : {}) });
         }
     }

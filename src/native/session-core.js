@@ -34,6 +34,7 @@ import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory }
 import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
 import { validateCognitionTransition } from './cognition-authority.js';
+import { consumeAppraisalDelivery } from './appraisal-authority.js';
 import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
 
@@ -487,7 +488,8 @@ export class SessionCore {
             }] } };
         }
         if (states.atri_lifecycle) {
-            validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null });
+            validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null,
+                appraisalEvidence: taskRecord?.authorityReceipt?.decision === 'cognition.appraise' ? taskRecord.appraisalEvidence : null });
             states = cloneNativeDocument(states);
             for (const item of states.atri_lifecycle.outbox) {
                 if (!base.states.atri_lifecycle?.outbox.some(previous => previous.invocationId === item.invocationId)) {
@@ -701,9 +703,10 @@ export class SessionCore {
                 outcomes: envelope.outcomes, status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId } } });
     }
 
-    async recordTaskResult(handle, sessionId, record, { expectedRevisionId, knowledgeProof = null } = {}) {
+    async recordTaskResult(handle, sessionId, record, { expectedRevisionId, knowledgeProof = null, appraisalProof = null } = {}) {
         if (!expectedRevisionId || typeof record.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(record.invocationId)) throw new TypeError('Task requires an invocation and revision anchor');
         const base = await this._current(handle, sessionId, expectedRevisionId);
+        const deliveredRecord = record;
         const queued = base.states.atri_lifecycle?.outbox.find(item => item.invocationId === record.invocationId);
         // Derive causality from durable authority data, never supplied model JSON.
         const { lifecycleCause: _untrustedCause, ...taskData } = record;
@@ -716,6 +719,8 @@ export class SessionCore {
         const variant = task?.variants.find(item => item.id === record.variantId);
         if (!variant || task.resultPolicy.resultClass === 'turn_context') throw new TypeError('Task result is not durable');
         const payload = assertTaskValue(record.payload, variant.outputSchema);
+        if (variant.resultBinding?.kind === 'cognition.appraise') record = { ...record,
+            appraisalEvidence: consumeAppraisalDelivery(appraisalProof, this, handle, base, task, variant, deliveredRecord) };
         if (task.resultPolicy.uses?.length && (!record.production
             || record.definitionHash !== hashNativeDocument(task) || record.normalizedResultHash !== hashNativeDocument(payload)
             || hashNativeDocument(record.production) !== hashNativeDocument(captureTaskProduction(base, task, assertTaskValue(record.production.input, task.inputSchema)))

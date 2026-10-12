@@ -15,7 +15,7 @@ export function intentionSchema() {
             sourceRefs: { type: 'array', maxItems: 16, items: object({ itemId: string(256), fingerprint: string(64) }) } }) });
 }
 
-export async function installIntentionFixture(h, { taskWriter = false } = {}) {
+export async function installIntentionFixture(h, { taskWriter = false, configure = null } = {}) {
     const fixture = sessionFixture(), actorId = fixture.manifest.actors[0].actorId, otherActorId = createNativeId('actor');
     fixture.manifest.actors[0].displayName = '阿岚';
     fixture.manifest.actors.push({ actorId: otherActorId, displayName: '沈墨' });
@@ -55,7 +55,8 @@ export async function installIntentionFixture(h, { taskWriter = false } = {}) {
         { resourceType: 'core.generation-profile', resource: { schemaVersion: 1, generationProfileId: variant.generation.resourceId, revision: variant.generation.revision,
             displayName: 'Intent fixture', output: { maxTokens: 128 } } },
     ].map(item => ({ ...item, origin: { scope: 'package', packageId: fixture.manifest.packageId, packageVersionId: fixture.manifest.packageVersionId } }));
-    fixture.manifest.runtime = { experienceContract: contract };
+    configure?.({ fixture, contract, actorId, otherActorId });
+    fixture.manifest.runtime = { ...fixture.manifest.runtime, experienceContract: contract };
     const installed = await installFixture(h, fixture);
     let snapshot = await installed.core.create(h.handle, installed.start), serial = 0;
     const write = async (domainId, recordId, value) => {
