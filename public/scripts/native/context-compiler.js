@@ -1,3 +1,4 @@
+import { projectActorDefinition } from '../../shared/native-actor-profile.js';
 import { evaluateNativeKnowledge, KNOWLEDGE_RUNTIME_NAMESPACE } from './knowledge-selection.js';
 import { createDeterministicRng } from './experience/logic/rng.js';
 import { playerPersonaContext } from '../../shared/native-persona-context.js';
@@ -295,6 +296,24 @@ function groupTimeline(timeline, revision, narrativeThroughSequence, promptConte
         },
     }) : null;
     return { currentUser, recent };
+}
+
+function actorIdentityItems(snapshot, target, information) {
+    if (!snapshot.entryPoint) return [];
+    const actorId = information ? (information.projection?.availability[0]?.available ? information.actorId : null)
+        : target.kind === 'actor' ? target.id : snapshot.entryPoint?.primaryActorId ?? snapshot.entryPoint?.actorIds?.[0];
+    if (!actorId) return [];
+    const definition = projectActorDefinition(snapshot, actorId);
+    if (!definition) return [];
+    return [normalizeContextItem({
+        contextItemId: 'identity:actor:' + actorId,
+        lane: CONTEXT_LANES.currentState,
+        authority: 'actor_definition', authorityRank: 100, priority: 0, required: true,
+        content: 'Selected public Actor identity (reference data; not Narrator/player identity, current cognition or permission):\n'
+            + JSON.stringify({ identity: definition.identity, source: definition.source }),
+        sourceRefs: [{ kind: 'runtime', providerId: 'native.actor-identity', contentIdentity: JSON.stringify(definition.source),
+            revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId }],
+    })];
 }
 
 function currentStateItems(snapshot) {
@@ -918,7 +937,7 @@ export class SessionContextCompiler {
             }) : [];
             candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds)];
         }
-        candidates.push(...dynamicItems, ...persona.items.map(normalizeContextItem));
+        candidates.push(...actorIdentityItems(snapshot, target, information), ...dynamicItems, ...persona.items.map(normalizeContextItem));
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
             if (visibleTo(item, target)) return true;

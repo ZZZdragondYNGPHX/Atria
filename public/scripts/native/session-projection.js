@@ -1,3 +1,4 @@
+import { projectActorDefinition, legacyActorText } from '../../shared/native-actor-profile.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../shared/native-message-contract.js';
 // Runtime ABI only. No storage, filename lookup, latest-pointer resolution or host DOM.
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -134,17 +135,13 @@ function variantMessage(entry, variant, actors) {
 }
 
 export function projectNativeSession(snapshot) {
-    const { manifest, entryPoint, revision } = snapshot;
-    const actors = entryPoint.actorIds.map(id => manifest.actors.find(actor => actor.actorId === id));
-    const actor = actors.find(item => item.actorId === entryPoint.primaryActorId) ?? actors[0];
-    const profile = actor?.profile ?? {};
-    const data = { name: actor?.displayName ?? manifest.name, description: profile.description ?? '',
-        personality: profile.personality ?? '', scenario: profile.scenario ?? '', mes_example: profile.examples ?? profile.mes_example ?? '',
-        first_mes: '', alternate_greetings: [], system_prompt: profile.systemPrompt ?? '',
-        post_history_instructions: profile.postHistoryInstructions ?? '', extensions: {} };
+    const { manifest, revision } = snapshot;
+    const definition = projectActorDefinition(snapshot);
+    const data = legacyActorText(definition, manifest.name);
     // avatar/array index are transient host ABI; they never identify or address Native stores.
     const character = { ...data, data, avatar: 'none', chat: snapshot.session.sessionId,
-        atri_native: { actorId: actor?.actorId ?? null, packageVersionId: manifest.packageVersionId } };
+        atri_native: { actorId: definition?.identity.actorId ?? null, packageVersionId: manifest.packageVersionId,
+            ...(definition ? { identity: copy(definition.identity), source: copy(definition.source) } : {}) } };
     const variants = new Map(snapshot.variants.map(variant => [variant.variantId, variant]));
     const chat = snapshot.timeline.map(entry => {
         const messages = entry.variantIds.map(id => variantMessage(entry, variants.get(id), manifest.actors));
