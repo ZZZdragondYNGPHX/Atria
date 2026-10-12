@@ -2,6 +2,8 @@ import { fields, json, text } from './native-values.js';
 import { taskId } from './native-task-contract.js';
 import { assertLifecycleJson } from './native-lifecycle-contract.js';
 import { isCognitionSource, assertCognitionSource } from './native-cognition-runtime.js';
+import { assertHypothesisPolicy } from './native-tom-contract.js';
+import { appraisalTargets } from './native-appraisal-contract.js';
 
 export const INFORMATION_LIMITS = Object.freeze({ sources: 32, views: 16, records: 4096, items: 128, characters: 32768, depth: 4, edges: 256, rollups: 128 });
 export function informationList(value, limit, convert = value => value) {
@@ -24,9 +26,11 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     fields(value, ['schemaVersion', 'sources', 'views', 'actors', 'graphs', 'narration'], 'Information runtime');
     if (value.schemaVersion !== 1 || !lifecycle) throw new TypeError('Information runtime requires version 1 and lifecycle');
     const sources = informationList(value.sources, 32, source => {
-        fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField'], 'Information source');
+        fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField', 'hypothesisPolicy'], 'Information source');
         taskId(source.id); choice(source.kind, ['application', 'world', 'timeline', 'history']);
-        choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative', 'desire', 'intention', 'emotion', 'relationship']);
+        choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative', 'desire', 'intention', 'emotion', 'relationship', 'theory_of_mind']);
+        if ((source.semantic === 'theory_of_mind') !== (source.hypothesisPolicy !== undefined)) throw new TypeError('Hypothesis policy requires its own Information semantic');
+        if (source.hypothesisPolicy) assertHypothesisPolicy(source.hypothesisPolicy);
         if (!lifecycle.scopes.some(scope => scope.id === source.scopeId)) throw new TypeError('Unknown information scope');
         const paths = informationList(source.fields, 16, path => informationList(path, 8,
             key => isCognitionSource(source) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt'].includes(key) ? key : taskId(key)));
@@ -60,6 +64,20 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         }
         return { ...source, fields: paths };
     });
+    for (const source of sources.filter(source => source.semantic === 'theory_of_mind')) {
+        const policy = source.hypothesisPolicy;
+        for (const id of policy.behaviorSourceIds) {
+            const behavior = sources.find(source => source.id === id);
+            const schema = lifecycle.domains.find(domain => domain.id === behavior?.domainId)?.recordSchema;
+            if (behavior?.kind !== 'application' || behavior.semantic !== 'truth'
+                || [[policy.targetField, 'string'], [policy.outcomeField, 'string'], [policy.observedField, 'boolean']].some(([field, type]) =>
+                    schema?.properties[field]?.type !== type || !schema.required?.includes(field)
+                    || !behavior.fields.some(path => path.length === 1 && path[0] === field))
+                || !schema.properties[policy.outcomeField].enum?.some(value => typeof value === 'string' && value.length > 0 && value.length <= 128)) throw new TypeError('Hypothesis behavior requires selected typed Truth fields');
+        }
+        if (sources.some(peer => peer !== source && peer.domainId === source.domainId && (peer.semantic !== 'theory_of_mind'
+            || Object.keys(policy).some(key => JSON.stringify(peer.hypothesisPolicy[key]) !== JSON.stringify(policy[key]))))) throw new TypeError('Hypothesis aliases require the same declared policy');
+    }
     const actors = informationList(value.actors, 64, actor => {
         fields(actor, ['id', 'scopeId', 'availability'], 'Actor availability'); reference(actor.id);
         if (!lifecycle.scopes.some(scope => scope.id === actor.scopeId)) throw new TypeError('Unknown Actor scope');
@@ -95,9 +113,10 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         if (view?.audience !== 'task' || view.taskId !== task.id || !view.actorId || !view.exposure.includes('context')) throw new TypeError('Appraisal requires exact Actor-bound Task context');
         if (binding.eventSourceIds.some(id => !view.sources.includes(id) || sources.find(source => source.id === id)?.kind !== 'application'
             || isCognitionSource(sources.find(source => source.id === id)) || !sources.find(source => source.id === id).fields.some(path => path.length === 1 && path[0] === binding.eventGate.field))) throw new TypeError('Appraisal gate requires a selected event field');
-        for (const kind of ['emotion', 'relationship']) {
+        for (const kind of appraisalTargets(binding)) {
             const target = sources.find(source => source.id === binding[kind].sourceId);
-            if (target?.kind !== 'application' || target.semantic !== kind || target.domainId !== binding[kind].domainId) throw new TypeError('Appraisal target requires its declared Information domain');
+            if (target?.kind !== 'application' || target.semantic !== (kind === 'theory' ? 'theory_of_mind' : kind) || target.domainId !== binding[kind].domainId) throw new TypeError('Appraisal target requires its declared Information domain');
+            if (kind === 'theory' && (!view.sources.includes(target.id) || target.hypothesisPolicy.behaviorSourceIds.some(id => !view.sources.includes(id)))) throw new TypeError('Hypothesis Task requires its declared state and behavior view');
         }
     }
     const graphs = informationList(value.graphs, 16, graph => {

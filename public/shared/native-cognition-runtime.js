@@ -1,19 +1,23 @@
 import { contentSha256 } from './content-sha256.js';
 import { fields } from './native-values.js';
+import { hypothesisShapeValid, hypothesisObservation } from './native-tom-contract.js';
 
-export const isCognitionSource = source => ['desire', 'intention', 'emotion', 'relationship'].includes(source?.semantic);
-const isAppraisal = source => ['emotion', 'relationship'].includes(source.semantic);
-const statuses = semantic => ['emotion', 'relationship'].includes(semantic) ? ['active', 'withdrawn'] : semantic === 'desire' ? ['active', 'satisfied', 'abandoned'] : ['proposed', 'active', 'paused', 'cancelled', 'completed'];
+export const isCognitionSource = source => ['desire', 'intention', 'emotion', 'relationship', 'theory_of_mind'].includes(source?.semantic);
+export const isAppraisalSource = source => ['emotion', 'relationship', 'theory_of_mind'].includes(source.semantic);
+const statuses = semantic => ['emotion', 'relationship', 'theory_of_mind'].includes(semantic) ? ['active', 'withdrawn'] : semantic === 'desire' ? ['active', 'satisfied', 'abandoned'] : ['proposed', 'active', 'paused', 'cancelled', 'completed'];
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 export const informationItemFingerprint = item => contentSha256(JSON.stringify(item));
 const selectedFields = ['text', 'goalId', 'commitmentIds', 'priority', 'conflictKey', 'expiresAt'];
 
 export function assertCognitionSource(source, domain) {
-    if (isAppraisal(source)) {
+    if (isAppraisalSource(source)) {
         const properties = domain.recordSchema.properties;
-        if (!Number.isSafeInteger(domain.initial.level) || domain.initial.level < (source.semantic === 'emotion' ? 0 : -100) || domain.initial.level > 100) throw new TypeError('Appraisal requires a bounded declared baseline');
+        const types = source.semantic === 'theory_of_mind'
+            ? { actor: 'string', key: 'string', target: 'string', perspective: 'array', text: 'string', confidence: 'integer', status: 'string', prediction: 'object', policy: 'object', basis: 'object', appraisal: 'object' }
+            : { actor: 'string', target: 'string', dimension: 'string', level: 'integer', status: 'string', text: 'string', rationale: 'string', basis: 'object', appraisal: 'object' };
+        if (source.semantic !== 'theory_of_mind' && (!Number.isSafeInteger(domain.initial.level) || domain.initial.level < (source.semantic === 'emotion' ? 0 : -100) || domain.initial.level > 100)) throw new TypeError('Appraisal requires a bounded declared baseline');
         if (source.actorField !== 'actor' || source.statusField !== 'status' || !source.fields.some(path => path.length === 1 && path[0] === 'text')
-            || Object.entries({ actor: 'string', target: 'string', dimension: 'string', level: 'integer', status: 'string', text: 'string', rationale: 'string', basis: 'object', appraisal: 'object' })
+            || Object.entries(types)
                 .some(([key, type]) => properties[key]?.type !== type || !domain.recordSchema.required?.includes(key))) throw new TypeError('Appraisal requires its declared cognitive state');
         return;
     }
@@ -26,12 +30,14 @@ export function assertCognitionSource(source, domain) {
 }
 
 export function assertCognitionValue(source, value) {
-    if (isAppraisal(source)) {
+    if (isAppraisalSource(source)) {
         if (!statuses(source.semantic).includes(value.status) || !/^actor_[a-f0-9]{32}$/.test(value.actor)
-            || (source.semantic === 'emotion' ? value.target !== '' : !/^actor_[a-f0-9]{32}$/.test(value.target) || value.target === value.actor)
-            || typeof value.dimension !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(value.dimension)
-            || !Number.isSafeInteger(value.level) || value.level < (source.semantic === 'emotion' ? 0 : -100) || value.level > 100
-            || typeof value.text !== 'string' || !value.text.trim() || value.text.length > 2048 || typeof value.rationale !== 'string' || value.rationale.length > 1024) throw new TypeError('Invalid appraisal state');
+            || (source.semantic === 'theory_of_mind' ? !hypothesisShapeValid(source, value)
+                : (source.semantic === 'emotion' ? value.target !== '' : !/^actor_[a-f0-9]{32}$/.test(value.target) || value.target === value.actor)
+                || typeof value.dimension !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(value.dimension)
+                || !Number.isSafeInteger(value.level) || value.level < (source.semantic === 'emotion' ? 0 : -100) || value.level > 100
+                || typeof value.rationale !== 'string' || value.rationale.length > 1024)
+            || typeof value.text !== 'string' || !value.text.trim() || value.text.length > 2048) throw new TypeError('Invalid appraisal state');
         const meta = value.appraisal;
         fields(meta, ['origin', 'invocationId', 'taskId', 'variantId', 'profileId', 'profileRevision', 'modelProfileId', 'modelProfileHash', 'requestSnapshotHash', 'previousHash', 'promptId', 'promptRevision', 'generationId', 'generationRevision'], 'Appraisal provenance');
         if (Object.values(meta).some(value => typeof value !== 'string' || !value || value.length > 128)
@@ -73,9 +79,18 @@ export function projectCognitionItems(snapshot, projection, values) {
             && Object.entries(basis.anchor.scopeEpochs).every(([id, epoch]) => snapshot.states.atri_lifecycle.scopes[id]?.status === 'active' && snapshot.states.atri_lifecycle.scopes[id].epoch === epoch)
             && basis.sourceRefs.every(ref => leaves.has(ref.itemId) && fingerprint(ref.itemId) === ref.fingerprint)
             && (value.commitmentIds ?? []).every(id => leaves.get(id)?.semantic === 'open_loop');
-        const status = ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status) ? value.status
+        let status = ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status) ? value.status
             : ['active', 'proposed'].includes(value.status) && value.expiresAt && snapshot.states.atri_lifecycle.logicalTime >= value.expiresAt ? 'expired' : !current ? 'stale' : value.status;
         item.cognition = { status, sourceCurrent: current, selection: status === 'active' && item.semantic === 'intention' ? 'current' : 'none' };
+        if (item.semantic === 'theory_of_mind') {
+            const source = snapshot.manifest.runtime.experienceContract.informationRuntime.sources.find(source => source.id === item.sourceId);
+            const prediction = current && status === 'active' ? hypothesisObservation(source, value, leaves) : 'unknown';
+            if (prediction === 'contradicted') {
+                status = 'contradicted'; item.cognition.status = status;
+                if (Object.hasOwn(item.data, 'confidence')) item.data.confidence = Math.min(value.confidence, source.hypothesisPolicy.confidenceOnContradiction);
+            }
+            item.cognition.prediction = prediction;
+        }
     }
     const groups = new Map();
     for (const item of projection.items.filter(item => item.semantic === 'intention' && item.cognition.status === 'active' && item.data.conflictKey)) {

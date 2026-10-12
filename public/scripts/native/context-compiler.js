@@ -318,6 +318,9 @@ function actorIdentityItems(snapshot, target, information) {
 
 function informationCognitionItems(snapshot, information) {
     if (!information?.projection || information.projection.availability.some(item => !item.available)) return [];
+    const definition = snapshot.manifest.runtime?.experienceContract?.informationRuntime;
+    const view = definition?.views.find(view => view.id === information.projection.viewId);
+    const theories = definition?.sources.filter(source => view?.sources.includes(source.id) && source.semantic === 'theory_of_mind') ?? [];
     const policy = {
         viewId: information.projection.viewId, actorId: information.actorId ?? null,
         mode: information.narration?.mode ?? 'separate',
@@ -328,6 +331,11 @@ function informationCognitionItems(snapshot, information) {
         } : {}),
         ...(information.projection.items.some(item => ['emotion', 'relationship'].includes(item.semantic)) ? {
             appraisalUse: 'Emotion and Relationship are this Actor\'s source-backed appraisals, not World Truth, another Actor\'s actual mind, stable traits or performed actions. Relationships are directional. Levels are authored relative state, not objective probabilities or a requirement for increasing closeness or dependence. Read only source-current active state; stale and withdrawn records do not establish current emotion or relationship. Numeric state and rationale may be private: only independently displayed fields and qualifiers can be narrated. Do not infer a new change from recall or make the player act.',
+        } : {}),
+        ...(theories.length ? {
+            theoryOfMindUse: 'Theory of Mind belongs only to the named observing Actor. A flat perspective [B] means that Actor\'s hypothesis about B; [B,C] means that Actor\'s hypothesis about B\'s view of C. Neither is B or C\'s actual private mind, World Truth, an action or a recursive permission to read more state. Confidence is relative and uncalibrated, not an objective probability. Only source-current active hypotheses are current interpretations. A contradicted prediction challenges the observer\'s forecast and its applicability; a different observed behavior does not prove the target believes the opposite. Unknown or hidden behavior proves neither a match nor a contradiction. Withdrawn and stale records retain history without current authority. Only independently displayed fields and qualifiers may be narrated; numeric confidence, prediction details and deeper perspective may be private. Do not invent behavior, expand the flat hypothesis, treat recall as an update or make the player act.',
+            ...(view.audience === 'task' ? { hypothesisLimits: [...new Map(theories.map(source => [source.domainId, source.hypothesisPolicy])).values()]
+                .map(({ id, revision, maxDepth, maxNodes, maxUpdates }) => ({ id, revision, maxDepth, maxNodes, maxUpdates })) } : {}),
         } : {}),
         ...(information.disclosure ? { disclosure: information.disclosure,
             disclosureRule: 'Only the independently granted display projection authorizes revealing source facts to the player. This applies to every assertion in narration and dialogue, including past events, Exposure, memories, beliefs, and what an Actor knows or does not know, not just secrets or World Truth. Each context record carries a displayGrant: null means no disclosure of that record; a matching item permits only its displayed fields and epistemic qualifiers, never the rest of the context record. Private context may inform selection and consistency without being quoted, paraphrased, implied, or turned into dialogue. Do not infer disclosure from a related public fact or from a request to discuss it. Absence from display is not evidence that an event did not happen or an Actor does not know something. Do not present a belief as established Truth.' } : {}),

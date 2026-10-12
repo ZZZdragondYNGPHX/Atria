@@ -4,7 +4,8 @@ import { fields, json, assertJsonDeclaration } from './native-values.js';
 import { compileDataSchema } from './native-data-schema.js';
 import { compileDeclarativeLogic } from '../scripts/native/experience/logic/declarative.js';
 import { assertTaskRuntime, assertTaskValue, taskId } from './native-task-contract.js';
-import { APPRAISAL_INPUT_SCHEMA, APPRAISAL_OUTPUT_SCHEMA } from './native-appraisal-contract.js';
+import { APPRAISAL_INPUT_SCHEMA, APPRAISAL_OUTPUT_SCHEMA, appraisalTargets } from './native-appraisal-contract.js';
+import { TOM_OUTPUT_SCHEMA } from './native-tom-contract.js';
 
 export const LIFECYCLE_STATE_NAMESPACE = 'atri_lifecycle';
 
@@ -294,12 +295,12 @@ export function assertLifecycleRuntime(value, taskRuntime) {
             const command = reference(target.commands, binding.commandId, 'Task command');
             if (schemaSignature(variant.outputSchema) !== schemaSignature(command.argsSchema)) throw new TypeError('Task output must exactly match App Command args');
         } else if (binding.kind === 'cognition.appraise') {
-            for (const kind of ['emotion', 'relationship']) {
+            for (const kind of appraisalTargets(binding)) {
                 const target = reference(domains, binding[kind].domainId, 'Appraisal domain');
                 reference(target.commands, binding[kind].commandId, 'Appraisal command');
             }
             if (schemaSignature(task.inputSchema) !== schemaSignature(compileDataSchema(APPRAISAL_INPUT_SCHEMA))
-                || schemaSignature(variant.outputSchema) !== schemaSignature(compileDataSchema(APPRAISAL_OUTPUT_SCHEMA))) throw new TypeError('Appraisal requires its bounded candidate schemas');
+                || schemaSignature(variant.outputSchema) !== schemaSignature(compileDataSchema(binding.theory ? TOM_OUTPUT_SCHEMA : APPRAISAL_OUTPUT_SCHEMA))) throw new TypeError('Appraisal requires its bounded candidate schemas');
         } else {
             const target = reference(runtime.interactions, binding.interactionId, 'Task interaction');
             if (target.taskId !== task.id) throw new TypeError('Task interaction binding mismatch');
@@ -321,7 +322,7 @@ export function assertLifecycleRuntime(value, taskRuntime) {
         const binding = tasks.tasks.find(task => task.id === action.taskId).variants.find(variant => variant.id === action.variantId).resultBinding;
         if (!binding) return;
         if (binding.kind === 'cognition.appraise') {
-            if (['emotion', 'relationship'].some(kind => runtime.domains.find(item => item.id === binding[kind].domainId)?.scopeId !== scopeId)) throw new TypeError('Appraisal trigger and target scopes must match');
+            if (appraisalTargets(binding).some(kind => runtime.domains.find(item => item.id === binding[kind].domainId)?.scopeId !== scopeId)) throw new TypeError('Appraisal trigger and target scopes must match');
             return;
         }
         const target = binding.kind === 'app.command' ? runtime.domains.find(item => item.id === binding.domainId)

@@ -42,7 +42,7 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
     const cognitionValues = new Map();
     const append = item => {
         // Reserve the bounded derived status before adding a cognitive item.
-        const length = JSON.stringify(item).length + (isCognitionSource(item) ? 96 : 0);
+        const length = JSON.stringify(item).length + (isCognitionSource(item) ? item.semantic === 'theory_of_mind' ? 128 : 96 : 0);
         if (result.items.length >= view.maxItems || characters + length > view.maxCharacters) { result.truncated = true; return; }
         characters += length; result.items.push(item);
     };
@@ -78,7 +78,7 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
             append({ id: itemId, sourceId: source.id, recordId: record.id, semantic: source.semantic, data,
                 ...(record.variantId ? { variantId: record.variantId } : {}),
                 ...(source.semantic === 'belief' ? { epistemicStatus: status, channel: value[source.channelField], actorId: value[source.actorField] } : {}),
-                ...(isCognitionSource(source) ? { actorId: value.actor, ...(['emotion', 'relationship'].includes(source.semantic) ? { appraisalStatus: value.status } : { intentStatus: value.status }) } : {}),
+                ...(isCognitionSource(source) ? { actorId: value.actor, ...(['emotion', 'relationship', 'theory_of_mind'].includes(source.semantic) ? { appraisalStatus: value.status } : { intentStatus: value.status }) } : {}),
                 ...(source.semantic === 'open_loop' ? { status: 'open' } : {}) });
         }
     }

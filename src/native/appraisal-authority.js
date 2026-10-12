@@ -1,10 +1,12 @@
 import { informationDefinition, projectInformation } from '../../public/shared/native-information-runtime.js';
 import { isCognitionSource, informationItemFingerprint } from '../../public/shared/native-cognition-runtime.js';
 import { hashNativeDocument } from './repositories/common.js';
+import { appraisalTargets } from '../../public/shared/native-appraisal-contract.js';
+import { prepareHypothesisCommands } from './tom-authority.js';
 
 const proofs = new WeakMap();
 const domains = base => base.manifest.runtime.experienceContract.lifecycleRuntime.domains;
-const snapshotHash = (base, binding, actor) => hashNativeDocument(['emotion', 'relationship'].map(kind => {
+const snapshotHash = (base, binding, actor) => hashNativeDocument(appraisalTargets(binding).map(kind => {
     const domain = domains(base).find(domain => domain.id === binding[kind].domainId);
     return { domain: domain.id, initial: domain.initial, records: base.states.atri_lifecycle.domains[domain.id].records.filter(record => record.value.actor === actor) };
 }));
@@ -24,6 +26,8 @@ export function captureAppraisalEvent(base, task, variant, input) {
         anchor: { sessionId: base.session.sessionId, packageVersionId: base.session.packageVersionId, branchId: base.revision.branchId },
         actorHash: hashNativeDocument(base.manifest.actors.find(actor => actor.actorId === view.actorId)),
         eventItemId: event.id, eventFingerprint: informationItemFingerprint(event), taskHash: hashNativeDocument(task), profileHash: hashNativeDocument(binding.profile),
+        ...(binding.theory ? { hypothesisPolicyHash: hashNativeDocument(informationDefinition(base).sources.find(source => source.id === binding.theory.sourceId).hypothesisPolicy),
+            hypothesisBehaviorHash: hashNativeDocument(projection.items.filter(item => informationDefinition(base).sources.find(source => source.id === binding.theory.sourceId).hypothesisPolicy.behaviorSourceIds.includes(item.sourceId))) } : {}),
         stateHash: snapshotHash(base, binding, view.actorId), scopeEpochs: projection.anchor.scopeEpochs };
 }
 
@@ -69,7 +73,7 @@ export async function prepareAppraisalCommands(base, task, variant, queued, reco
     const binding = variant.resultBinding, payload = record.payload, profile = binding.profile;
     const view = projectInformation(base, binding.viewId, { purpose: 'context', includeRollups: false });
     const leaves = new Map(view.items.filter(item => !isCognitionSource(item) && item.semantic !== 'rollup').map(item => [item.id, item]));
-    if (payload.significance === 'none' && payload.updates.length) throw new TypeError('No-change appraisal has updates');
+    if (payload.significance === 'none' && (payload.updates.length || payload.hypotheses?.length)) throw new TypeError('No-change appraisal has updates');
     const decisions = [], used = new Set();
     for (let index = 0; index < payload.updates.length; index++) {
         const update = payload.updates[index];
@@ -98,6 +102,7 @@ export async function prepareAppraisalCommands(base, task, variant, queued, reco
             decisions.push({ index, kind: update.kind, status: 'applied', code: null, domainId: domain.id, recordId });
         } catch { decisions.push({ index, kind: update.kind, status: 'rejected', code: 'appraisal_command_rejected' }); }
     }
+    decisions.push(...await prepareHypothesisCommands(base, binding, queued, record, view, leaves, applyCommand));
     return { kind: 'authority', decision: 'cognition.appraise', baseRevisionId: base.revision.revisionId,
         significance: payload.significance, decisions, applied: decisions.filter(decision => decision.status === 'applied').length };
 }

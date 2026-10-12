@@ -1,6 +1,7 @@
-import { isCognitionSource, assertCognitionValue, informationItemFingerprint } from '../../public/shared/native-cognition-runtime.js';
+import { isCognitionSource, isAppraisalSource, assertCognitionValue, informationItemFingerprint } from '../../public/shared/native-cognition-runtime.js';
 import { informationDefinition, projectInformation, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
 import { hashNativeDocument } from './repositories/common.js';
+import { validateHypothesisEvidence } from './tom-authority.js';
 
 // This guard runs inside the original Session publication. It does not publish,
 // synthesize evidence, grant reads or adopt a model's World/Task claims.
@@ -16,7 +17,7 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
             const previous = old.get(id);
             if (!taskId && previous && ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status)
                 && hashNativeDocument({ ...previous, status: value.status }) === hashNativeDocument(value)) continue;
-            if (['emotion', 'relationship'].includes(source.semantic)) {
+            if (isAppraisalSource(source)) {
                 if (source.semantic === 'relationship' && !base.manifest.actors.some(actor => actor.actorId === value.target)) throw new TypeError('Appraisal relationship target is outside this Package');
                 const { previousHash, ...evidence } = value.appraisal;
                 if (taskId ? !appraisalEvidence || hashNativeDocument(evidence) !== hashNativeDocument(appraisalEvidence)
@@ -38,6 +39,7 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ap
             if (projection.availability.some(actor => !actor.available)) throw new TypeError('Cognition Actor unavailable');
             const leaves = new Map(projection.items.filter(item => !isCognitionSource(item) && item.semantic !== 'rollup').map(item => [item.id, item]));
             if (value.basis.sourceRefs.some(ref => !leaves.has(ref.itemId) || informationItemFingerprint(leaves.get(ref.itemId)) !== ref.fingerprint)) throw new TypeError('Cognition source changed or denied');
+            if (source.semantic === 'theory_of_mind') validateHypothesisEvidence(base, source, value, projection, previous, candidate.states.atri_lifecycle.domains[source.domainId].records);
             for (const itemId of value.commitmentIds ?? []) {
                 const item = leaves.get(itemId), loop = def.sources.find(source => source.id === item?.sourceId);
                 if (item?.semantic !== 'open_loop' || !loop.actorField
