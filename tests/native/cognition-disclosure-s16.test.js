@@ -23,6 +23,13 @@ test.each(['separate', 'limited', 'custom'])('S16 installed %s narrator, Actor a
         expect(JSON.stringify(info.disclosure)).toContain('林舟');
         expect(JSON.stringify(info.disclosure).includes('真实身份是沈墨')).toBe(mode === 'custom');
         expect(JSON.stringify(info.disclosure)).not.toContain('有人跟踪自己');
+        const grants = info.items.map(item => JSON.parse(item.content));
+        expect(grants.find(item => item.id === 'memories:exposure').displayGrant).toEqual({ viewId: 'player', item: null });
+        expect(grants.find(item => item.id === 'beliefs:alan-rumor').displayGrant.item)
+            .toEqual(info.disclosure.items.find(item => item.id === 'beliefs:alan-rumor'));
+        expect(grants.find(item => item.id === 'beliefs:other-private')?.displayGrant.item).toEqual(mode === 'limited' ? undefined : null);
+        expect(grants.find(item => item.sourceId === 'world')?.displayGrant.item)
+            .toEqual(mode === 'custom' ? info.disclosure.items.find(item => item.sourceId === 'world') : mode === 'limited' ? undefined : null);
         const actor = await compileNativeContextPlan(base, { ...budget, target: { kind: 'actor', id: f.actorId } });
         const other = await compileNativeContextPlan(base, { ...budget, target: { kind: 'actor', id: f.otherActorId } });
         expect(JSON.stringify(actor.included)).toContain('林舟');
@@ -39,17 +46,37 @@ test.each(['separate', 'limited', 'custom'])('S16 installed %s narrator, Actor a
         expect(policy.content).toContain('not World Truth');
         expect(policy.content).toContain('current possession, presence, memory or willingness');
         expect(policy.content).toContain('Missing evidence leaves both occurrence and non-occurrence unknown');
+        expect(policy.content).toContain('including past events, Exposure');
+        expect(policy.content).toContain('quoted, paraphrased, implied');
+        const exposure = narrator.snapshot.contextPlan.items.find(item => item.id.endsWith(':memories:exposure'));
+        expect(exposure.content).toEqual(expect.objectContaining({ content: expect.stringContaining('"displayGrant":{"viewId":"player","item":null}') }));
         expect(policy.content).toContain('"hp":8');
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
         const result = await host.execute(h.handle, { ...request, routeRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } }, undefined, undefined,
             { preview: true, taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } });
         const taskText = JSON.stringify(result.snapshot.contextPlan.items);
         expect(taskText).toContain('林舟');
-        for (const hidden of ['真实身份是沈墨', '有人跟踪自己', 'disclosureRule']) expect(taskText).not.toContain(hidden);
+        for (const hidden of ['真实身份是沈墨', '有人跟踪自己', 'disclosureRule', 'displayGrant']) expect(taskText).not.toContain(hidden);
         expect(result.snapshot.contextPlan.items.some(item => item.id.startsWith('projection:cognition-task:'))).toBe(true);
         expect((await f.core.load(h.handle, base.session.sessionId)).states).toEqual(before);
         const policyOnly = structuredClone(base); policyOnly.manifest.runtime.experienceContract.informationRuntime.views.find(view => view.id === 'pov').sources = [];
         await expect(compileNativeContextPlan(policyOnly, { ...budget, laneCaps: { current_state_event: 1 } })).rejects.toMatchObject({ code: 'native_context_hard_reserve_overflow' });
+    } finally { await h.cleanup(); }
+});
+
+test.each(['empty', 'truncated', 'unavailable'])('S16 %s display cannot grant context records even when narrator can read them', async variant => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installCognitionFixture(h, 'separate'), base = structuredClone(f.snapshot);
+        const player = base.manifest.runtime.experienceContract.informationRuntime.views.find(view => view.id === 'player');
+        if (variant === 'empty') player.sources = [];
+        if (variant === 'truncated') player.maxItems = 1;
+        if (variant === 'unavailable') base.states.atri_lifecycle.domains.availability.records.find(record => record.id === 'main').value.available = false;
+        const before = structuredClone(base), info = informationContext(base, { kind: 'narrator' });
+        expect(info.items.length).toBeGreaterThan(0);
+        expect(info.items.map(item => JSON.parse(item.content).displayGrant.item)).toEqual(info.items.map(() => null));
+        expect(info.projection.items.every(item => !Object.hasOwn(item, 'displayGrant'))).toBe(true);
+        expect(base).toEqual(before);
     } finally { await h.cleanup(); }
 });
 

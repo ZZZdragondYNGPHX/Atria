@@ -131,12 +131,17 @@ export function informationContext(snapshot, target, taskId, { onScan = null, in
     if (!view) return { items: [], knowledge: false };
     const projection = projectInformation(snapshot, view.id, { purpose: 'context', onScan, includeRollups });
     const disclosure = narration ? projectInformation(snapshot, narration.disclosureViewId, { purpose: 'display', onScan, includeRollups: false }) : null;
+    // Bind each context record to its independently projected display grant.
+    // A source/record match grants only that display item's selected fields;
+    // context-only records and rollups do not gain disclosure by being read.
+    const displayItems = new Map((disclosure?.items ?? []).map(item => [item.id, item]));
     return { knowledge: view.knowledge && (!view.actorId || projection.availability[0]?.available), memory: view.memory === true, actorId: view.actorId, projection,
         ...(narration ? { narration: clone(narration), disclosure } : {}),
         items: projection.items.map(item => ({ contextItemId: 'projection:' + view.id + ':' + item.id,
             lane: item.semantic === 'open_loop' ? 'commitments' : item.semantic === 'memory' ? 'memory' : ['rollup', 'narrative'].includes(item.semantic) ? 'narrative_spine' : 'current_state_event',
             authority: item.semantic === 'truth' ? 'world_projection' : item.semantic === 'belief' ? 'actor_belief' : 'derived',
-            authorityRank: item.semantic === 'truth' ? 100 : 10, priority: 0, content: JSON.stringify(item),
+            authorityRank: item.semantic === 'truth' ? 100 : 10, priority: 0,
+            content: JSON.stringify(disclosure ? { ...item, displayGrant: { viewId: disclosure.viewId, item: displayItems.get(item.id) ?? null } } : item),
             sourceRefs: [{ kind: item.variantId ? 'timeline' : 'state', ...(item.variantId ? { messageId: item.recordId } : {}),
                 revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId }],
         })) };
