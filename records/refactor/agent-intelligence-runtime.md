@@ -2413,3 +2413,14 @@ source `4ddfcef68` 实施原Information v1可选narration（B默认separate/A限
 新增13 distinct本地检查PASS（12实际Host/Actor/Task/A-B-C/独立Disclosure/原belief错误不写World/availability与Save恢复/strict旧schema，1实际Hybrid输入/结果/撤回）。受影响8 distinct本地PASS（FS/SQLite旧Host与PackageTask、旧Skill context、新S15 bound Actor和原Context私有原文排除）；旧projection-only断言按S15精确公开identity更新，旧Skill夹具补原S07 installedHash/pin。初fixture修改display sources时原Graph closure拒绝，移除本案例未使用graph后通过；Task preview夹具补原PackageInstaller后通过。第一次误跑已不可用MySQL/Postgres，各两项ECONNREFUSED不冒称PASS；最小消费者只用当前本地FS/SQLite，不启动额外DB或全仓。改动文件lint/diff PASS。
 
 私有主模型runner三模式预检零API；首预检因preview无Run bank而读取null失败，修正null诊断后通过，无HTTP。第一实际三HTTP200/direct5976，认知/Disclosure边界合规，但无source动作/纸张特征/微风均保留不利。补Information解释的三个实际Host本地检查PASS，主模型第二三正文仍含无source动作/细节；原raw/Provider usage/settled bank均保留。仅本次作者叙事资源收紧事实范围，不新增系统全局文风表、不把自然语言提示称确定性guard；三个受影响模式继续必要复验，原G06/HM1已通过组不重复。source原feature分支，main未merge/deploy，S17可独立准备但不跳过S16出口。
+
+
+### 2026-10-12 S16：完整Disclosure范围复核与用户要求交接停止
+
+用户明确要求“到合适的时机停下，然后发我交界词，我要新建对话继续任务”。因此只收尾已经在执行的三正文调用、离线完整审读/账本审计与当前交接，不启动S17或新一批API。此暂停不是全部任务完成，也不撤销此前继续全部S/G、最小验证、原branch push的授权；下一对话恢复后沿真实Git继续。
+
+S16三批实际HTTP均200：v1 source4ddfcef68/direct5976，v2 source634b2494b/direct5959，v3 source634b2494b/direct6042，共9发送/direct17977。v3唯一变化为该实验作者PromptModule收紧来源内叙事表达，不改World、原Context/private Exposure、display grant或输出。三条完整正文已无新增动作/外观/天气/场景，仍区分林舟传闻与沈墨真相，C允许旁白而非NPC揭示沈墨。但完整Disclosure审读发现九条都转述未获player display授权的“收到未署名信”：该Exposure来自context memories，display只含hp和阿岚传闻（C另有沈墨真相）。上一节“认知/Disclosure边界合规”只覆盖真相/他者认知，误扩大为整个Disclosure；在此明确纠正，raw与费用保持，不给display新grant制造PASS。S16未验收，最小下一步只修复此Exposure传播。
+
+私有 `s16-cognition-integrity-audit-v1.json`零API完整核对9raw request/response hashes、实际模型/normalized全文及snapshot、Provider total usage、原32-job limit、每案例1settled model attempt、World/Timeline/作者定义不变，三模式实际display grant与Exposure缺口一致。quota1785→1794/carry332与M1/HM1 hashes保持；原未知/token上界不改。自本设备恢复累计79 admissions/77HTTP200/direct186756及2TLS unknown upper46348；原M8 reported161/direct402366保留为其原组分母，S16新增9/direct17977另列，旧unknown2/upper17515/admission fetch0仍另列。价格/cache/upstream仍unknown，不退款失败或假定total=input+output。
+
+最终本地只做当前离线审计、相关docs links/diff、Git身份/干净与push核对，不重复已通过13+8 checks、M1/HM1、G06、整仓或浏览器。source634b2494b与origin一致，main3ee1332ef未merge/deploy；当前付费runner结束。按用户此时授权刷新唯一HANDOFF，完整当前private根留本地；旧RAR不能代替本设备新增证据。S17仅只读研究原Goal/source/lifecycle接点，未写计划或代码；下次先完成S16，不把讨论当实施。

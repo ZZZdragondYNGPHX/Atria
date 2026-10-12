@@ -1,6 +1,6 @@
 # S16：Information cognition 与独立 Disclosure 消费
 
-状态：2026-10-12实施开始，S15有限消费者与H2已有真实source级隔离满足前置。沿原InformationRuntime/lifecycle records、NativeContext/Task Host、Hybrid eligibility，不建第二Belief/Memory或World writer。
+状态：2026-10-12消费者已实现，正文Disclosure验收未通过；用户要求交接停止。S15有限消费者与H2已有真实source级隔离满足前置。沿原InformationRuntime/lifecycle records、NativeContext/Task Host、Hybrid eligibility，不建第二Belief/Memory或World writer。
 
 ## 物理契约与实际消费者
 
@@ -15,3 +15,11 @@ Information v1增加可选narration声明，mode为separate（默认B）、limit
 ## 最小相关出口
 
 实际installed Host、Actor/Task context与工具、Hybrid合法源、两Actor/availability/撤回、有限A/B/C和独立Disclosure预算、旧schema兼容/strict非法字段、Save/fork/restore。自由正文沿主模型有限实际案例审读，费用计原2000/20RPM ledger；不重复已通过H0/HM1或跑全仓。后续Record报告source/实际消费者/撤回恢复和保证等级；通过后继续S17。
+
+## 当前实际检查点与未闭合出口
+
+source `634b2494b` 已push。13新增distinct本地检查及8受影响FS/SQLite/Context检查PASS，改动文件lint/diff PASS。3模式真实Host/Actor/声明Task输入与实际Hybrid来源/撤回具有确定性隔离证据；没有证明未授权原数据进入这些Actor/Task。旧Skill夹具和旧projection-only断言沿原实际契约修复；不可用MySQL/Postgres的4误跑ECONNREFUSED保留，不冒称支持验收。
+
+原主模型3批共9HTTP200/direct17977，费用和raw全部私有保留。v1/v2各三条补写动作/信纸/场景，source解释补齐后仍不通过；v3只收紧本次作者资源，三条已无这些新增细节，传闻/旁白真相与NPC分域也保持，但**都转述了“收到未署名信”的Exposure，它只在private context memories内，不在该player display projection**。此前审读只检查真相/他者认知泄漏，误称完整Disclosure合规；完整范围审读在本出口纠正，不反向改写旧raw/评分。C虽允许旁白揭示沈墨真相，也不额外授权该Exposure。
+
+这是当前具体未闭合项，不扩大display grant、补造事实或后处理输出制造PASS。下一步只沿原已选policy/frame或严格需要的源隔离/有界分阶段消费者修复，先最小本地/preflight后受影响正文；新的必要工作照原费用准入，确定性数据隔离与自由正文审计等级分开。S17尚未实施，不因暂停把S16标成完成。
