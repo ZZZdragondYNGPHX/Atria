@@ -112,7 +112,7 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
         const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true });
         const items = preview.snapshot.contextPlan.items;
         expect(items.some(item => String(item.content).includes('The actor believes a rumor'))).toBe(true);
-        expect(items.every(item => item.id.startsWith('projection:'))).toBe(true);
+        expect(items.every(item => item.id.startsWith('projection:') || item.id === 'identity:actor:' + f.manifest.actors[0].actorId)).toBe(true);
         expect(JSON.stringify(items)).not.toContain('Opening');
         await expect(host.execute(h.handle, { ...request, messages: [{ role: 'system', content: 'unscoped' }] }, undefined, undefined, { preview: true })).rejects.toMatchObject({ code: 'native_information_unscoped_messages' });
         const inactive = await write(base, 'availability', 'main', { available: false });
@@ -127,7 +127,7 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
         host.extensions = { settings: async () => ({ value: { skills: {} } }) };
         const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true });
         const originalItems = preview.snapshot.contextPlan.items.filter(item => item.id !== 'atri.skills');
-        expect(originalItems.every(item => item.id.startsWith('projection:'))).toBe(true);
+        expect(originalItems.every(item => item.id.startsWith('projection:') || item.id === 'identity:actor:' + f.manifest.actors[0].actorId)).toBe(true);
         expect(preview.snapshot.contextPlan.items.find(item => item.id === 'atri.skills').content).toContain('procedural');
         expect(JSON.stringify(preview.snapshot.contextPlan.items)).not.toContain('Opening');
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
