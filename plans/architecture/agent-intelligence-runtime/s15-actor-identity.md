@@ -1,6 +1,6 @@
 # S15：精确 Actor 身份与作者 profile 投影
 
-状态：2026-10-12实施开始；G06所选技术矩阵验收通过。M3可见范围与接管已按 [M3入口设计](m3-cognition-design.md) 明确。本文沿原 core.actor/project-source、immutable PackageVersion、Native Context 与旧 Session projection，不创建第二Actor或认知仓库。
+状态：2026-10-12有限消费者交付，source `1fb00fa5a`；G06所选技术矩阵验收通过。M3可见范围与接管已按 [M3入口设计](m3-cognition-design.md) 明确。本文沿原 core.actor/project-source、immutable PackageVersion、Native Context 与旧 Session projection，不创建第二Actor或认知仓库。
 
 ## 有限物理投影与消费者
 
@@ -17,3 +17,9 @@ Native Host只消费EntryPoint中已选定的公开Actor身份（actorId/display
 使用真实installed Package/Session和Host preview或loopback验证公开身份精确消费、预算拒绝、两Actor/未选择Actor隔离、原Expression不混入Narrator。检查旧profile完整JSON与legacy examples/null回落、多次投影不改变作者/动态状态、更换模型身份不变；PackageVersion/源定义更换反映新source，branch/fork恢复沿实际旧anchor。仅新增/受影响consumer检查与改动文件lint/diff，不全仓、M1/HM1或额外付费。未改UI不重跑浏览器。
 
 实施后同一Record报告实际source、consumer、兼容/撤回/恢复证据和限制；通过后继续S16，不把S15或本组commit当默认停止点。
+
+## 实际出口
+
+共享 `native-actor-profile.js` 已被原 Session projection 与 Context compiler 消费。公开身份随精确源进入原 required current-state lane/预算；profile 分类在共享纯投影保留，legacy ABI 使用独立可编辑副本，不回写冻结定义。Information 缺少选定 Actor/context/availability 时没有身份补入。实际 Host preview、更换原 ModelProfile、SavePoint/fork/restore、新安装 PackageVersion 均有本地证据。
+
+8 新增 distinct 检查与 4 受影响既有检查 PASS，改动文件 lint/diff PASS。初 Host 夹具错误使用不存在的 request ID family 已修正，只重跑失败与改变项；没有外部 API/浏览器。70k 未知字段兼容、null/空 examples、Actor 目标隔离与缺授权、预算拒绝均通过。动态 cognition/writer、自然语言质量与全量迁移不是本阶段交付，继续 S16。

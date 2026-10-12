@@ -2218,7 +2218,7 @@ long-v2 实际创建并发布 500 轮预载双消息历史，Native Timeline 100
 
 ### 2026-10-11 G05 — 原 Transformers 本地推理与原 bank 准入
 
-source `24dcb551faec74d5265348a5f3e79e80fd1183f4` 已 push。设计入口 [g05-transformers-embedding](../../../plans/architecture/agent-intelligence-runtime/g05-transformers-embedding.md)；只开放已有服务端 Transformers 的 scoped embed 路径，复用原 singleton pipeline 串行队列、middleware、Run/Task bank 与索引发布。每实际 text 先准入一 `embedding_local` job/item/UTF-8 bytes，再模型载入与推理；排队后、载入后、推理后、settlement 后重验原 scope/cancel。已发生失败/取消工作保留进程 CPU/wall/outcome，不因新模型 profile 另开账本。无法中断的 ONNX 工作返回后拒绝发布。旧无预算 helper 保持，WebLLM 等其它 scoped provider 仍 unavailable。
+source `24dcb551faec74d5265348a5f3e79e80fd1183f4` 已 push。设计入口 [g05-transformers-embedding](../../plans/architecture/agent-intelligence-runtime/g05-transformers-embedding.md)；只开放已有服务端 Transformers 的 scoped embed 路径，复用原 singleton pipeline 串行队列、middleware、Run/Task bank 与索引发布。每实际 text 先准入一 `embedding_local` job/item/UTF-8 bytes，再模型载入与推理；排队后、载入后、推理后、settlement 后重验原 scope/cancel。已发生失败/取消工作保留进程 CPU/wall/outcome，不因新模型 profile 另开账本。无法中断的 ONNX 工作返回后拒绝发布。旧无预算 helper 保持，WebLLM 等其它 scoped provider 仍 unavailable。
 
 9 新增 / 3 受影响既有 distinct checks PASS：`g05-transformers-after-v1` 首三正向通过、六因 fixture 错期待 HTTP500/读取 live bank 失败；产品实际额度拒绝为429，HEAD变更已将原成本退休保存。只修原状态/retiredCompute断言，`after-v2` 六复验 PASS。四正向为 FS/SQLite × Session/Project 实际两条插入+查询，五local jobs（三推理/两索引）、下一查询无 pipeline；两耗尽 before load、两载入中 HEAD 变更保留 retired 两 failed jobs。取消单项实际推理中取消保留一 cancelled job，另一个排队取消无 pipeline；lint修 promise 断言后仅该项 `cancel-v3` 必要复验 PASS。`regression-v1` 仅原 unbounded/unsupported 与两 backend actual source 变化共三 PASS。四生产文件 lint-v1 PASS；新增 test 两 valid-expect 问题修后 test-lint-v3 PASS，diff PASS。未运行全仓、UI、MySQL/Postgres、M1/HM1。
 
@@ -2374,9 +2374,9 @@ source87a干净producer+原style-v4/同hardframe一必要preflight后一HTTP200/
 
 截至上述stage，新增34 admissions/34 HTTP200/direct72962（其中7评分格式失败与所有坏正文均计入），原quota1724→1758连续append/carry332不变。加前恢复v3组，包恢复后共43 admissions/41HTTP200/direct95209、2 TLS unknown/upper46348；M8 reported actual134/direct328796，原unknown2/upper17515/admission fetch0另列。`g06-continuation-audit-v1/v2.json`均离线零API，v2核对上述34 raw request/response/hash/normalized/usage、strict outputContract、同原bank预算与settled、全部quota IDs、原四case输入/来源、World/Timeline保持及M1/HM1 ledger hashes；不是独立语义评价。
 
-验收路由新建 [G06有限矩阵](../../../plans/architecture/agent-intelligence-runtime/g06-acceptance.md)，保留source/producer边界、实际NN长Timeline332637ms的不利值、原10000文档交错对照与SSE六值分布，价格/cache/upstream/controller未知不写0，不为unknown停掉其它技术工作，也不声明全部路径净收益。高影响质量负差未闭合之前，完整G06/M8/HM2仍pending，M3前置保持。
+验收路由新建 [G06有限矩阵](../../plans/architecture/agent-intelligence-runtime/g06-acceptance.md)，保留source/producer边界、实际NN长Timeline332637ms的不利值、原10000文档交错对照与SSE六值分布，价格/cache/upstream/controller未知不写0，不为unknown停掉其它技术工作，也不声明全部路径净收益。高影响质量负差未闭合之前，完整G06/M8/HM2仍pending，M3前置保持。
 
-M3入口已准备具体可审阅设计；用户明确选择“采用原作者/作品授权”，普通玩家按显式disclosure，不默认新增操控Actor全部私有认知读写。R5边界和 [M3入口设计](../../../plans/architecture/agent-intelligence-runtime/m3-cognition-design.md)据此更新，S15–S21尚未实施。此为真实产品权限取舍的确认，后续正常实现/最小验证不逐阶段再问许可。
+M3入口已准备具体可审阅设计；用户明确选择“采用原作者/作品授权”，普通玩家按显式disclosure，不默认新增操控Actor全部私有认知读写。R5边界和 [M3入口设计](../../plans/architecture/agent-intelligence-runtime/m3-cognition-design.md)据此更新，S15–S21尚未实施。此为真实产品权限取舍的确认，后续正常实现/最小验证不逐阶段再问许可。
 
 
 后续位置归属诊断：style-v7 H0-ZH-05 reuse HTTP200/direct1916虽回到第三人称，却称“阿岚眼下仍在港口”；World只有场景location，无Actor/player归属。source `4160851ca` 最小固定解释禁止无明示定义/适用事实将World场景/地点分配给Actor或玩家；actualHost+stable/dynamic两受影响本地检查、compiler lint/diff PASS并已push。此前style-v3同bank三条、ordinary08及ordinary01两条含“你身在港口”，还有“人在港口”的模糊位置项需要复验；原天气/时间守卫PASS只保留其有限项，不再当作全部World断言通过。raw与旧评分完全保留，新的完整正文审读修正的是scope/解释结论，不是改写历史输出。style-v8的一次preflight未发送；下一泛化作者style-v9只沿原表达资源澄清第三人称/已知事实/未知事件/无人物位置归属，原Source/32-job bank不改，受影响五组共九必要generation正在继续。
@@ -2397,3 +2397,10 @@ style-v11保持来源已有对象特征与履约时机，最后同bank三HTTP200
 按delivery/compute/reuse的原有限支持范围，所选G06技术验收完成，路由与边界唯一见G06矩阵：实际消费者、共享bank/Source、分层质量和freshness、预算/失效/迁移、可知检索工作收益及时延分布都有对应有限证据。未测连接、native compaction/cache/货币净收益、controller/bootstrap未计量边界与不利NN长Timeline不升级为成功；unknown不是0，也不阻断其它技术消费者。没有新设胜场、绝对自然语言保证或要求所有品牌支持。source4160851ca/docs原分支，main未merge/deploy，完整M8/HM2集成仍单列。
 
 G06的S15前置和已明确的M3可见范围/接管满足，读取具体S15契约后开始原Actor/profile/Context consumer实现。S15文档在be4a5a2f3已push，首次push因TLS eof失败、必要重试成功；阶段commit或技术验收不是默认停止点，继续S15。
+
+
+### S15：精确 Actor 身份/profile 的实际消费者
+
+source `1fb00fa5a` 沿原 Actor/PackageVersion/EntryPoint新增共享纯投影，原 Session projection保持全部旧字段/null回落，附精确公开 identity/source；未知 profile JSON 完整保留，不猜测认知迁移。legacy高级字段投影副本可编辑，不回写作者定义。原 Context only public actorId/displayName/role+source，required current-state进入原预算及 Source freshness。Information candidate replacement后只沿实际context view显式绑定且available的Actor；无grant/未绑定/未选择/不可用不补身份。没有 narrator voice/profile private字段、动态cognition、writer、新Task/API授权或模型请求。
+
+最小相关本地验证：新增8 distinct PASS，含真实installed Host preview、修改原ModelProfile后 identity不变、SavePoint/fork/restore与原current branch/revision refs、新实际安装PackageVersion、新Actor target隔离/预算拒绝、70k未知JSON/空examples/null兼容与不可变/legacy可编辑副本、Information五边界；4原受影响检查PASS（旧projection、World、target隔离、Information raw/provider排除）。初Host夹具使用不存在request ID kind失败，改为原request string后仅重跑失败项及实际变化项；其余通过不重复。改动文件lint/diff PASS；无外部API、整仓测试、build或浏览器。代码仍原feature分支，main未集成；完整cognition writer和自由文本审计留S16–S21。三处Record相对Plan链接多一层目录已修正，相关文档链接检查PASS。阶段出口通过，继续S16。
