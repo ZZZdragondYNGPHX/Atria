@@ -17,7 +17,7 @@ import { nativeExecutionScope } from '../model-prompt-runtime/native-execution-e
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
-import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds } from '../../../public/shared/native-information-runtime.js';
+import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, GenerationError, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
@@ -73,6 +73,7 @@ function normalizeHostMemoryEvidence(value, snapshot) {
                 branchId: ref.branchId, revisionId: ref.revisionId };
         });
         const tokenCount = Number(raw.tokenCount);
+        if (!['legacy', 'applicable'].includes(memoryEvidenceApplicability(snapshot, information, { sourceRefs }).status)) fail('native_turn_memory_evidence_inapplicable');
         if (raw.atomicGroup !== undefined && (typeof raw.atomicGroup !== 'string' || !raw.atomicGroup || raw.atomicGroup.length > 160)) fail('native_turn_memory_evidence_invalid');
         return { memoryId, content, sourceRefs, ...(raw.atomicGroup ? { atomicGroup: raw.atomicGroup } : {}),
             ...(Number.isFinite(tokenCount) && tokenCount >= 0 && tokenCount <= 32768 ? { tokenCount: Math.floor(tokenCount) } : {}) };

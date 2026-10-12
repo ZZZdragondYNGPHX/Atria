@@ -44,7 +44,7 @@ test.each(['native_generation_budget_exhausted', 'optional_service_unavailable']
 
 function memorySnapshot(enabled = true) {
     const snapshot = informationSnapshot();
-    snapshot.entryPoint = { runtime: {} };
+    snapshot.entryPoint = { runtime: {}, actorIds: [] };
     snapshot.manifest = structuredClone(snapshot.manifest);
     const view = snapshot.manifest.runtime.experienceContract.informationRuntime.views.find(item => item.id === 'pov');
     view.sources = [...view.sources, 'history'];

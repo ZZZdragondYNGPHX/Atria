@@ -13,7 +13,7 @@ import {
     normalizeContextPolicy,
     normalizeContextSourceRefs,
 } from './context-derived.js';
-import { informationContext, informationSourceMessageIds } from '../../shared/native-information-runtime.js';
+import { informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../shared/native-information-runtime.js';
 import { PROCESSING_LIMITS } from '../../shared/native-processing-contract.js';
 
 export const CONTEXT_PLAN_SCHEMA_VERSION = 1;
@@ -326,6 +326,9 @@ function informationCognitionItems(snapshot, information) {
         mode: information.narration?.mode ?? 'separate',
         semantics: 'Belief is the named Actor\'s interpretation, not World Truth. Status and channel describe its epistemic source; hearing or inference does not prove truth. Exposure, belief adoption and disclosure are distinct events. Retrieval does not prove remembering, belief change or willingness to act. Narrator knowledge does not grant NPC knowledge or tool authority.',
         evidenceUse: 'Use only the selected fields for source facts. Do not infer physical attributes, scene conditions, location ownership or character actions from an unrelated field, an absence of evidence or an old exposure. A remembered past event does not establish current possession, presence, memory or willingness. Missing evidence leaves both occurrence and non-occurrence unknown. Authored narrative style does not grant new World facts; express the supplied facts and uncertainty without fabricating concrete scene details.',
+        ...(definition?.sources.some(source => view?.sources.includes(source.id) && (source.memoryPolicy || source.causalBasis)) ? {
+            memoryApplicabilityUse: 'Memory records are the named Actor\'s source-backed history, not current World Truth or proof of newly remembering, willingness, belief change or action. The derived memory projection describes current clarity, use and applicability; selected raw fields retain their authored historical value and do not override the derived qualifiers. Use active, applicable records only within their supplied time, goal and exception conditions. Unknown applicability is unresolved; inapplicable, stale, withdrawn or unavailable records do not support current use. Light forgetting affects only noncritical detail clarity and use; protected identity, commitments, relationships and key events remain protected. Deep forgetting is explicitly authored and does not rewrite the historical source. Retrieval, index eviction, summaries and compression do not change the Actor\'s memory. A formal action remains an occurred action even when its source explanation becomes stale; an intention or appraisal is only an influence, never a mandatory action or Goal/commitment completion. All private conditions and derived memory qualifiers require their own independent display grant.',
+        } : {}),
         ...(information.projection.items.some(item => ['desire', 'intention'].includes(item.semantic)) ? {
             intentionUse: 'Desire and Intention describe this Actor\'s authored cognitive state, not World Truth, a performed action or a user execution Goal. Only active, source-current intentions selected as current describe current plans. Conflict and deferred are unresolved alternatives; stale, expired, paused and cancelled plans do not authorize continuation. These statuses describe only the named plan; a missing current entry does not prove that this Actor has no other plans or desires. A goalId or commitment reference grants no Task, tool or World effect and proves no Goal completion. Do not make the player act, infer a new intention from retrieval, or reveal cognition beyond the independent display grant.',
         } : {}),
@@ -616,7 +619,7 @@ function commitmentItems(state, target, branchScope) {
     return { included, rejected };
 }
 
-function memoryItems(memoryEvidence, snapshot, rejectedMemoryIds = new Set()) {
+function memoryItems(memoryEvidence, snapshot, rejectedMemoryIds = new Set(), information = null) {
     const result = [];
     for (const [index, raw] of (Array.isArray(memoryEvidence) ? memoryEvidence : []).entries()) {
         const memoryId = text(raw?.memoryId || raw?.id) || 'memory-' + index;
@@ -633,7 +636,8 @@ function memoryItems(memoryEvidence, snapshot, rejectedMemoryIds = new Set()) {
             authority: KNOWLEDGE_AUTHORITY.memoryEvidence.id,
             authorityRank: KNOWLEDGE_AUTHORITY.memoryEvidence.rank,
             priority: Number(raw?.priority ?? raw?.score ?? 0) || 0,
-            content,
+            content: information ? JSON.stringify({ content, applicability: memoryEvidenceApplicability(snapshot, information, raw),
+                displayGrant: { viewId: information.disclosure?.viewId ?? null, item: null } }) : content,
             sourceRefs: sourceRefs.length ? sourceRefs : [{
                 kind: 'memory',
                 memoryId,
@@ -967,9 +971,10 @@ export class SessionContextCompiler {
             const memory = information.memory ? (Array.isArray(options.memoryEvidence) ? options.memoryEvidence.slice(0, 128) : []).filter(item => {
                 const refs = item.sourceRefs ?? item.source?.sourceRefs;
                 return Array.isArray(refs) && refs.length > 0 && refs.length <= 64 && refs.every(ref => ref.kind === 'timeline'
-                    && visibleMessages.has(ref.messageId) && ref.branchId === snapshot.revision.branchId && ref.revisionId === snapshot.revision.revisionId);
+                    && visibleMessages.has(ref.messageId) && ref.branchId === snapshot.revision.branchId && ref.revisionId === snapshot.revision.revisionId)
+                    && ['legacy', 'applicable'].includes(memoryEvidenceApplicability(snapshot, information, item).status);
             }) : [];
-            candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds)];
+            candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds, information)];
         }
         candidates.push(...actorIdentityItems(snapshot, target, information), ...informationCognitionItems(snapshot, information), ...dynamicItems, ...persona.items.map(normalizeContextItem));
         const rejected = [...preRejected];

@@ -1,6 +1,7 @@
 import { queryHistory } from './native-history-runtime.js';
 import { INFORMATION_LIMITS, informationInteger } from './native-information-contract.js';
-import { isCognitionSource, assertCognitionValue, projectCognitionItems } from './native-cognition-runtime.js';
+import { isCognitionSource, assertCognitionValue, assertCognitionBasis, projectCognitionItems } from './native-cognition-runtime.js';
+import { hasInformationBasis, isManagedMemory, assertMemoryValue } from './native-memory-contract.js';
 
 export const informationDefinition = snapshot => snapshot?.manifest?.runtime?.experienceContract?.informationRuntime;
 const clone = value => structuredClone(value);
@@ -42,7 +43,8 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
     const cognitionValues = new Map();
     const append = item => {
         // Reserve the bounded derived status before adding a cognitive item.
-        const length = JSON.stringify(item).length + (isCognitionSource(item) ? item.semantic === 'theory_of_mind' ? 128 : 96 : 0);
+        const source = def.sources.find(source => source.id === item.sourceId);
+        const length = JSON.stringify(item).length + (hasInformationBasis(source) ? 256 : isCognitionSource(item) ? item.semantic === 'theory_of_mind' ? 128 : 96 : 0);
         if (result.items.length >= view.maxItems || characters + length > view.maxCharacters) { result.truncated = true; return; }
         characters += length; result.items.push(item);
     };
@@ -75,10 +77,12 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
             for (const path of source.fields) { const selected = read(value, path); if (selected !== undefined) data[path.join('.')] = clone(selected); }
             const itemId = source.id + ':' + record.id;
             if (isCognitionSource(source)) { assertCognitionValue(source, value); cognitionValues.set(itemId, value); }
+            if (hasInformationBasis(source)) { assertCognitionBasis(value); cognitionValues.set(itemId, value); }
             append({ id: itemId, sourceId: source.id, recordId: record.id, semantic: source.semantic, data,
                 ...(record.variantId ? { variantId: record.variantId } : {}),
                 ...(source.semantic === 'belief' ? { epistemicStatus: status, channel: value[source.channelField], actorId: value[source.actorField] } : {}),
                 ...(isCognitionSource(source) ? { actorId: value.actor, ...(['emotion', 'relationship', 'theory_of_mind'].includes(source.semantic) ? { appraisalStatus: value.status } : { intentStatus: value.status }) } : {}),
+                ...(hasInformationBasis(source) ? { actorId: value.actor } : {}),
                 ...(source.semantic === 'open_loop' ? { status: 'open' } : {}) });
         }
     }
@@ -189,6 +193,8 @@ export function validateInformationState(snapshot) {
                 || !['witnessed', 'direct_message', 'told_by', 'public_broadcast', 'surveillance', 'rumor', 'inference'].includes(value[source.channelField]))) throw new TypeError('Invalid epistemic record');
             if (source.semantic === 'open_loop' && !['open', 'closed', 'superseded'].includes(value[source.statusField])) throw new TypeError('Invalid Open Loop status');
             if (isCognitionSource(source)) assertCognitionValue(source, value);
+            if (hasInformationBasis(source)) assertCognitionBasis(value);
+            if (isManagedMemory(source)) assertMemoryValue(source, value);
         }
     }
 }
@@ -197,4 +203,30 @@ export function displayInformation(snapshot) {
     if (!informationDefinition(snapshot)) return {};
     return Object.fromEntries(informationDefinition(snapshot).views.filter(view => view.exposure.includes('display'))
         .map(view => [view.id, projectInformation(snapshot, view.id)]));
+}
+
+// Post-retrieval admission uses the exact consumer projection, never index hits
+// as cognitive updates. Legacy works without a Memory policy retain their path.
+export function memoryEvidenceApplicability(snapshot, information, packet) {
+    const def = informationDefinition(snapshot);
+    const view = def?.views.find(view => view.id === information?.projection?.viewId);
+    const managed = def?.sources.filter(source => view?.sources.includes(source.id) && isManagedMemory(source)) ?? [];
+    if (!managed.length) return { status: 'legacy', memories: [] };
+    const refs = packet.sourceRefs ?? [];
+    const items = information.projection.items;
+    const memories = items.filter(item => managed.some(source => source.id === item.sourceId));
+    const selected = [];
+    for (const ref of refs) {
+        const timelineIds = new Set(items.filter(item => item.recordId === ref.messageId
+            && def.sources.find(source => source.id === item.sourceId)?.kind === 'timeline').map(item => item.id));
+        const eligible = memories.filter(item => {
+            const source = managed.find(source => source.id === item.sourceId);
+            const value = snapshot.states.atri_lifecycle.domains[source.domainId].records.find(record => record.id === item.recordId)?.value;
+            return value?.basis.sourceRefs.some(basis => timelineIds.has(basis.itemId));
+        });
+        const current = eligible.filter(item => item.memory?.status === 'active' && item.memory.applicability === 'applicable' && item.memory.use && item.memory.use !== 'unavailable');
+        if (!current.length) return { status: eligible.some(item => item.memory?.applicability === 'inapplicable' || item.memory?.use === 'unavailable') ? 'inapplicable' : 'unknown', memories: [] };
+        selected.push(...current);
+    }
+    return { status: refs.length ? 'applicable' : 'unknown', memories: [...new Map(selected.map(item => [item.id, item])).values()] };
 }

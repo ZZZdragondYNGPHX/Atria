@@ -4,6 +4,7 @@ import { assertLifecycleJson } from './native-lifecycle-contract.js';
 import { isCognitionSource, assertCognitionSource } from './native-cognition-runtime.js';
 import { assertHypothesisPolicy } from './native-tom-contract.js';
 import { appraisalTargets } from './native-appraisal-contract.js';
+import { assertMemoryPolicy, assertInformationBasisSource, hasInformationBasis } from './native-memory-contract.js';
 
 export const INFORMATION_LIMITS = Object.freeze({ sources: 32, views: 16, records: 4096, items: 128, characters: 32768, depth: 4, edges: 256, rollups: 128 });
 export function informationList(value, limit, convert = value => value) {
@@ -26,14 +27,19 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     fields(value, ['schemaVersion', 'sources', 'views', 'actors', 'graphs', 'narration'], 'Information runtime');
     if (value.schemaVersion !== 1 || !lifecycle) throw new TypeError('Information runtime requires version 1 and lifecycle');
     const sources = informationList(value.sources, 32, source => {
-        fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField', 'hypothesisPolicy'], 'Information source');
+        fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField', 'hypothesisPolicy', 'memoryPolicy', 'causalBasis'], 'Information source');
         taskId(source.id); choice(source.kind, ['application', 'world', 'timeline', 'history']);
         choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative', 'desire', 'intention', 'emotion', 'relationship', 'theory_of_mind']);
         if ((source.semantic === 'theory_of_mind') !== (source.hypothesisPolicy !== undefined)) throw new TypeError('Hypothesis policy requires its own Information semantic');
         if (source.hypothesisPolicy) assertHypothesisPolicy(source.hypothesisPolicy);
+        if (source.memoryPolicy !== undefined) {
+            if (source.kind !== 'application' || source.semantic !== 'memory') throw new TypeError('Memory policy requires its own application source');
+            assertMemoryPolicy(source.memoryPolicy, lifecycle);
+        }
+        if (source.causalBasis !== undefined && (source.causalBasis !== true || source.kind !== 'application' || source.semantic !== 'truth')) throw new TypeError('Causal basis requires a formal application Truth source');
         if (!lifecycle.scopes.some(scope => scope.id === source.scopeId)) throw new TypeError('Unknown information scope');
         const paths = informationList(source.fields, 16, path => informationList(path, 8,
-            key => isCognitionSource(source) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt'].includes(key) ? key : taskId(key)));
+            key => (isCognitionSource(source) || hasInformationBasis(source)) && ['goalId', 'commitmentIds', 'conflictKey', 'expiresAt', 'recordedAt', 'exceptionRefs', 'sourceRefs', 'viewId', 'scopeEpochs', 'itemId'].includes(key) ? key : taskId(key)));
         if (!paths.length || paths.some(path => !path.length) || new Set(paths.map(path => path.join('.'))).size !== paths.length) throw new TypeError('Information fields must be unique nonempty paths');
         if (source.kind === 'history') {
             if (!lifecycle.history || source.semantic !== 'narrative' || paths.some(p => p.length !== 1 || !['summary', 'tick', 'year', 'refs', 'transaction'].includes(p[0]))
@@ -56,6 +62,7 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
             if (source.semantic === 'thread' && !source.participantsField) throw new TypeError('Thread requires participants');
             if (source.semantic === 'open_loop' && !source.statusField) throw new TypeError('Open Loop requires status');
             if (isCognitionSource(source)) assertCognitionSource(source, domain);
+            if (hasInformationBasis(source)) assertInformationBasisSource(source, domain);
         } else {
             if (['domainId', 'actorField', 'statusField', 'channelField', 'participantsField'].some(key => source[key] !== undefined)
                 || source.semantic !== (source.kind === 'world' ? 'truth' : 'narrative')) throw new TypeError('Invalid source semantics');
@@ -64,6 +71,10 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         }
         return { ...source, fields: paths };
     });
+    for (const source of sources.filter(hasInformationBasis)) {
+        if (sources.some(peer => peer !== source && peer.domainId === source.domainId && (peer.semantic !== source.semantic
+            || peer.causalBasis !== source.causalBasis || JSON.stringify(peer.memoryPolicy) !== JSON.stringify(source.memoryPolicy)))) throw new TypeError('Memory/causal aliases require the same policy');
+    }
     for (const source of sources.filter(source => source.semantic === 'theory_of_mind')) {
         const policy = source.hypothesisPolicy;
         for (const id of policy.behaviorSourceIds) {

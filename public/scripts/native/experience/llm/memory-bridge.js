@@ -1,5 +1,5 @@
 import { cloneGameLlmValue } from './clone.js';
-import { informationContext, informationSourceMessageIds } from '../../../../shared/native-information-runtime.js';
+import { informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../../shared/native-information-runtime.js';
 import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../retrieval-contracts.js';
 
 const MAX_QUERY_CHARS = 12000;
@@ -305,7 +305,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
                 .filter(id => id && visibleMessages.has(id)),
         )].slice(0, MAX_REFERENCES);
         if (!content || content.length > MAX_MEMORY_CONTENT_CHARS || !sourceMessageIds.length || sourceMessageIds.length !== new Set(item?.sourceMessageIds ?? []).size) continue;
-        evidence.push(deepFreeze({
+        const packet = {
             memoryId: 'package-turn:' + revisionId + ':' + String(item?.id || index),
             content,
             ...(item.atomicGroup ? { atomicGroup: item.atomicGroup } : {}),
@@ -316,7 +316,9 @@ export async function recallNativePackageTurnMemory(options = {}) {
                 revisionId,
             })),
             source: { kind: 'memory_graph', selectedId: String(item?.id || '') },
-        }));
+        };
+        if (!['legacy', 'applicable'].includes(memoryEvidenceApplicability(snapshot, information, packet).status)) continue;
+        evidence.push(deepFreeze(packet));
     }
     result?.assertCurrent?.();
     return Object.freeze({

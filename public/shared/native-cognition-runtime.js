@@ -1,6 +1,7 @@
 import { contentSha256 } from './content-sha256.js';
 import { fields } from './native-values.js';
 import { hypothesisShapeValid, hypothesisObservation } from './native-tom-contract.js';
+import { isManagedMemory, hasInformationBasis, assertMemoryValue, protectedMemoryRoles } from './native-memory-contract.js';
 
 export const isCognitionSource = source => ['desire', 'intention', 'emotion', 'relationship', 'theory_of_mind'].includes(source?.semantic);
 export const isAppraisalSource = source => ['emotion', 'relationship', 'theory_of_mind'].includes(source.semantic);
@@ -50,6 +51,11 @@ export function assertCognitionValue(source, value) {
         || !integer(value.expiresAt) || !Array.isArray(value.commitmentIds) || value.commitmentIds.length > 16
         || value.commitmentIds.some(id => typeof id !== 'string' || !id || id.length > 256) || new Set(value.commitmentIds).size !== value.commitmentIds.length) throw new TypeError('Invalid cognition record');
     }
+    assertCognitionBasis(value);
+}
+
+export function assertCognitionBasis(value) {
+    if (!/^actor_[a-f0-9]{32}$/.test(value.actor)) throw new TypeError('Invalid basis Actor');
     fields(value.basis, ['viewId', 'anchor', 'sourceRefs'], 'Cognition basis');
     const { anchor, sourceRefs } = value.basis;
     fields(anchor, ['sessionId', 'packageVersionId', 'revisionId', 'branchId', 'scopeEpochs'], 'Cognition anchor');
@@ -67,31 +73,57 @@ export function assertCognitionValue(source, value) {
 // Evaluate only the leaf items already granted to this exact consumer. A hash
 // never authorizes a hidden source read, nor does selection perform an action.
 export function projectCognitionItems(snapshot, projection, values) {
-    const leaves = new Map(projection.items.filter(item => !isCognitionSource(item)).map(item => [item.id, item]));
-    const fingerprints = new Map();
-    const fingerprint = id => {
-        if (!fingerprints.has(id)) fingerprints.set(id, informationItemFingerprint(leaves.get(id)));
-        return fingerprints.get(id);
-    };
-    for (const item of projection.items.filter(isCognitionSource)) {
+    const sources = new Map(snapshot.manifest.runtime.experienceContract.informationRuntime.sources.map(source => [source.id, source]));
+    const leaves = new Map(projection.items.map(item => [item.id, item]));
+    const evaluated = new Set(), visiting = new Set(), selections = new Map();
+    const usable = item => item && (!item.cognition || item.cognition.status === 'active' && (item.semantic !== 'intention' || item.cognition.selection === 'current'))
+        && (!item.memory || item.memory.status === 'active' && item.memory.applicability === 'applicable' && item.memory.use !== 'unavailable')
+        && (!item.causality || item.causality.sourceCurrent);
+    const evaluate = (item, depth = 0) => {
+        if (!item || depth > 4 || visiting.has(item.id)) return false;
+        if (evaluated.has(item.id)) return usable(item);
+        const source = sources.get(item.sourceId);
+        if (!isCognitionSource(item) && !hasInformationBasis(source)) return true;
+        visiting.add(item.id);
         const value = values.get(item.id), basis = value.basis;
         const current = ['sessionId', 'packageVersionId', 'branchId'].every(key => basis.anchor[key] === projection.anchor[key])
             && Object.entries(basis.anchor.scopeEpochs).every(([id, epoch]) => snapshot.states.atri_lifecycle.scopes[id]?.status === 'active' && snapshot.states.atri_lifecycle.scopes[id].epoch === epoch)
-            && basis.sourceRefs.every(ref => leaves.has(ref.itemId) && fingerprint(ref.itemId) === ref.fingerprint)
+            && basis.sourceRefs.every(ref => evaluate(leaves.get(ref.itemId), depth + 1) && informationItemFingerprint(leaves.get(ref.itemId)) === ref.fingerprint)
             && (value.commitmentIds ?? []).every(id => leaves.get(id)?.semantic === 'open_loop');
-        let status = ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status) ? value.status
-            : ['active', 'proposed'].includes(value.status) && value.expiresAt && snapshot.states.atri_lifecycle.logicalTime >= value.expiresAt ? 'expired' : !current ? 'stale' : value.status;
-        item.cognition = { status, sourceCurrent: current, selection: status === 'active' && item.semantic === 'intention' ? 'current' : 'none' };
-        if (item.semantic === 'theory_of_mind') {
-            const source = snapshot.manifest.runtime.experienceContract.informationRuntime.sources.find(source => source.id === item.sourceId);
-            const prediction = current && status === 'active' ? hypothesisObservation(source, value, leaves) : 'unknown';
-            if (prediction === 'contradicted') {
-                status = 'contradicted'; item.cognition.status = status;
-                if (Object.hasOwn(item.data, 'confidence')) item.data.confidence = Math.min(value.confidence, source.hypothesisPolicy.confidenceOnContradiction);
+        if (isManagedMemory(source)) {
+            assertMemoryValue(source, value);
+            const tick = snapshot.states.atri_lifecycle.clocks[source.memoryPolicy.clockId];
+            const faded = value.role === 'detail' && tick - value.recordedAt >= source.memoryPolicy.fadeAfter;
+            const exceptions = value.applicability.exceptionRefs;
+            const exception = exceptions.some(ref => leaves.has(ref.itemId) && informationItemFingerprint(leaves.get(ref.itemId)) !== ref.fingerprint);
+            const unknown = exceptions.some(ref => !leaves.has(ref.itemId));
+            const goal = value.applicability.goalId;
+            const goalCurrent = !goal || projection.items.some(plan => plan.semantic === 'intention' && plan.actorId === value.actor && plan.data.goalId === goal && evaluate(plan, depth + 1));
+            item.memory = { status: value.status === 'withdrawn' ? 'withdrawn' : current ? 'active' : 'stale', sourceCurrent: current,
+                applicability: !Object.hasOwn(item.data, 'applicability') ? 'unknown' : exception || value.applicability.until && tick >= value.applicability.until ? 'inapplicable' : unknown || !current || !goalCurrent ? 'unknown' : 'applicable',
+                ...(Object.hasOwn(item.data, 'clarity') && Object.hasOwn(item.data, 'role') && Object.hasOwn(item.data, 'recordedAt')
+                    ? { clarity: protectedMemoryRoles.includes(value.role) ? 'clear' : faded && value.clarity === 'clear' ? 'blurred' : value.clarity } : {}),
+                ...(Object.hasOwn(item.data, 'use') && Object.hasOwn(item.data, 'role') && Object.hasOwn(item.data, 'recordedAt')
+                    ? { use: protectedMemoryRoles.includes(value.role) ? 'willing' : faded && value.use === 'willing' ? 'reluctant' : value.use } : {}) };
+        } else if (source.causalBasis) {
+            item.causality = { sourceCurrent: current, status: current ? 'current' : 'stale' };
+        } else {
+            let status = ['paused', 'cancelled', 'abandoned', 'withdrawn'].includes(value.status) ? value.status
+                : ['active', 'proposed'].includes(value.status) && value.expiresAt && snapshot.states.atri_lifecycle.logicalTime >= value.expiresAt ? 'expired' : !current ? 'stale' : value.status;
+            item.cognition = { status, sourceCurrent: current, selection: status === 'active' && item.semantic === 'intention' ? selections.get(item.id) ?? 'current' : 'none' };
+            if (item.semantic === 'theory_of_mind') {
+                const prediction = current && status === 'active' ? hypothesisObservation(source, value, leaves) : 'unknown';
+                if (prediction === 'contradicted') {
+                    status = 'contradicted'; item.cognition.status = status;
+                    if (Object.hasOwn(item.data, 'confidence')) item.data.confidence = Math.min(value.confidence, source.hypothesisPolicy.confidenceOnContradiction);
+                }
+                item.cognition.prediction = prediction;
             }
-            item.cognition.prediction = prediction;
         }
-    }
+        visiting.delete(item.id); evaluated.add(item.id);
+        return usable(item);
+    };
+    for (const item of projection.items) evaluate(item);
     const groups = new Map();
     for (const item of projection.items.filter(item => item.semantic === 'intention' && item.cognition.status === 'active' && item.data.conflictKey)) {
         const key = item.actorId + ':' + item.data.conflictKey;
@@ -100,6 +132,12 @@ export function projectCognitionItems(snapshot, projection, values) {
     }
     for (const group of groups.values()) {
         const highest = Math.max(...group.map(item => item.data.priority)), tied = group.filter(item => item.data.priority === highest).length > 1;
-        for (const item of group) item.cognition.selection = item.data.priority < highest ? 'deferred' : tied ? 'conflict' : 'current';
+        for (const item of group) {
+            item.cognition.selection = item.data.priority < highest ? 'deferred' : tied ? 'conflict' : 'current';
+            selections.set(item.id, item.cognition.selection);
+        }
     }
+    // Apply the resolved intention competition to its downstream explanations.
+    evaluated.clear();
+    for (const item of projection.items) evaluate(item);
 }
