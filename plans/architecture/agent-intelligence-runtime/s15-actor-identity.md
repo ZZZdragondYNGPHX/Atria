@@ -1,6 +1,6 @@
 # S15：精确 Actor 身份与作者 profile 投影
 
-状态：实施契约准备；待 G06 所选技术矩阵验收后开始。M3可见范围与接管已按 [M3入口设计](m3-cognition-design.md) 明确。本文沿原 core.actor/project-source、immutable PackageVersion、Native Context 与旧 Session projection，不创建第二Actor或认知仓库。
+状态：2026-10-12实施开始；G06所选技术矩阵验收通过。M3可见范围与接管已按 [M3入口设计](m3-cognition-design.md) 明确。本文沿原 core.actor/project-source、immutable PackageVersion、Native Context 与旧 Session projection，不创建第二Actor或认知仓库。
 
 ## 有限物理投影与消费者
 

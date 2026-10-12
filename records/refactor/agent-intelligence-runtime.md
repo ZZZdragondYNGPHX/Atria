@@ -2390,3 +2390,10 @@ M3入口已准备具体可审阅设计；用户明确选择“采用原作者/�
 
 
 最后同bank prose仍按原模型有限观察修正而不循环重发已通过案例。style-v10三generation/direct9032，base/reuse/Invocation使用完全相同新author frame与原bank，8/19/27 jobs；reuse六维对base持平，Invocation因正文将具体蓝封面书/履约背景缩为泛指借书而continuity/voice/narrative各-1。两评分/direct5787及所有reported成本保留，知识/玩家守卫均全4，没有把其它守卫PASS抵消此表达退步。只补作者资源要求保留来源已有的对象识别细节/履约时机，style-v11同bank受影响配对准备中；不补事实、输出后处理或指导grader评分。v4离线audit归档累计56新发送/direct131964、原quota1724→1780；含初恢复共65 admissions/63HTTP200/direct154211，M8 actual156/direct387798，原两组unknown与上界完整保持。
+
+
+style-v11保持来源已有对象特征与履约时机，最后同bank三HTTP200/direct9113，base/reuse/Invocation完整正文均明确蓝封面书、下次询问时归还与当前记忆未知，没有人物位置/新增事件，逐臂8/19/27jobs、三settled model attempts、原packet/evidence保持。两必要匿名观察/direct5455均六维持平；不是独立来源或普遍叙事保证。`g06-continuation-audit-v5.json`零API通过，归档此前61新实际发送/direct146532、quota1724→1785/carry332与M1/HM1 pins不变。加初恢复组累计70 admissions/68HTTP200/direct168779/2TLS unknown upper46348；M8 reported actual161/direct402366，旧unknown2/upper17515/admission fetch0另列。所有七格式失败、World/hp/位置/事件否定失败、旧评分与软表达负差均留在分母，不退款或后处理。
+
+按delivery/compute/reuse的原有限支持范围，所选G06技术验收完成，路由与边界唯一见G06矩阵：实际消费者、共享bank/Source、分层质量和freshness、预算/失效/迁移、可知检索工作收益及时延分布都有对应有限证据。未测连接、native compaction/cache/货币净收益、controller/bootstrap未计量边界与不利NN长Timeline不升级为成功；unknown不是0，也不阻断其它技术消费者。没有新设胜场、绝对自然语言保证或要求所有品牌支持。source4160851ca/docs原分支，main未merge/deploy，完整M8/HM2集成仍单列。
+
+G06的S15前置和已明确的M3可见范围/接管满足，读取具体S15契约后开始原Actor/profile/Context consumer实现。S15文档在be4a5a2f3已push，首次push因TLS eof失败、必要重试成功；阶段commit或技术验收不是默认停止点，继续S15。

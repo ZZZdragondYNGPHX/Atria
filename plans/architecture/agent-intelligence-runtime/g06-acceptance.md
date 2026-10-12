@@ -1,6 +1,6 @@
 # G06：所选支持矩阵与验收证据
 
-本模块沿 [delivery §8](delivery.md#8-m8--生成与计算基础新增有限交付组)、[compute-policy §5](compute-policy.md#5-评价与观测)、[execution-reuse §7](execution-reuse.md#7-reusedecision评价与阶段路由) 汇总验收路由；实测版本、费用和失败原文唯一归同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。状态更新 2026-10-12；World位置归属的受影响结果尚在复验，完整 G06/M8/HM2 暂不宣称通过。
+本模块沿 [delivery §8](delivery.md#8-m8--生成与计算基础新增有限交付组)、[compute-policy §5](compute-policy.md#5-评价与观测)、[execution-reuse §7](execution-reuse.md#7-reusedecision评价与阶段路由) 汇总验收路由；实测版本、费用和失败原文唯一归同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。状态更新 2026-10-12；所选 G06 技术验收已完成，完整 M8/HM2 尚未集成 main。
 
 ## 1. 实际消费者和有限支持范围
 
@@ -21,7 +21,7 @@
 
 2026-10-12 先沿精确作者 style-v3 修正地点暗示天气，七原 H0-ZH-08 正文实际消费原 Memory authority；同主模型匿名六维观察的 hard prose不利已触发式修正。style-v4 hard 最初将未定义 hp 写成“体力”，最小生产 World interpretation policy 消费真实选定 World，不补字段/后处理正文；必要 actual Host、stable/dynamic fingerprint与scope反例本地验证后，新 hard输出及六维持平。
 
-原 H0-ZH-01/04/05 的受影响 Session pairs 与 Project reuse 只重发八必要 generation。承诺的过去/当前未知、寄信动机未知以及 Project只读来源/工具权限项通过；三 Session pair 各同bank8→19 jobs，原Project已通过base保留。五匿名观察中高影响Session reuse的“旁白不能…”出现风格负差；保留原评分，不以其事实守卫通过抵消叙事退步。后续仅该arm的作者资源修正，又观察到无依据的行动/会面否定；World policy补充“没有事件证据不能断言未发生”，历史两次坏输出保留。style-v6 未代玩家行动或断言事件发生/未发生，但最后观察knowledge/voice各-1；style-v7又把场景location赋给阿岚，保持失败。source4160851ca补场景字段归属规则；复核旧正文也发现若干“你身在港口”无明确World所有者支持，之前天气/时间通过不等于所有位置断言通过。以上五组style-v9九必要正文/真实compiler归属policy复验已完成；七匿名观察六组无负差，同bank reuse仅voice-1（相邻“借”重复），其事实守卫全4。只作作者表达自然短句小修后，保持新版本三臂相同，完成最后必要配对。
+原 H0-ZH-01/04/05 的受影响 Session pairs 与 Project reuse 只重发八必要 generation。承诺的过去/当前未知、寄信动机未知以及 Project只读来源/工具权限项通过；三 Session pair 各同bank8→19 jobs，原Project已通过base保留。五匿名观察中高影响Session reuse的“旁白不能…”出现风格负差；保留原评分，不以其事实守卫通过抵消叙事退步。后续仅该arm的作者资源修正，又观察到无依据的行动/会面否定；World policy补充“没有事件证据不能断言未发生”，历史两次坏输出保留。style-v6 未代玩家行动或断言事件发生/未发生，但最后观察knowledge/voice各-1；style-v7又把场景location赋给阿岚，保持失败。source4160851ca补场景字段归属规则；复核旧正文也发现若干“你身在港口”无明确World所有者支持，之前天气/时间通过不等于所有位置断言通过。以上五组style-v9九必要正文/真实compiler归属policy复验已完成；七匿名观察六组无负差，同bank reuse仅voice-1（相邻“借”重复），其事实守卫全4。style-v10去同词复出后reuse持平，Invocation因略去特定对象背景而continuity/voice/narrative各-1，保留原评分。最后style-v11只要求保留来源已有的对象特征/履约时机，同版本三臂重新实际消费；reuse/Invocation相对base六维全持平，未重发其它已通过案例。
 
 匿名观察采用原 JUDGE_RULE 与既有 rp.m1.information/project.m1.related 维度，完整合法事实/World/作者frame提供，算法、费用、版本和旧评分隐藏。格式必须 strict JSON；原七次 fenced JSON 失败全额保留，后续真实 outputContract进入wire response_format。该证据是同主模型有限工程观察，不是独立人类/第二模型评测或 M1 promotion。Project 的repair/related不存在时0=absent两侧同判，不据此虚构维修/正式Commit成功。
 
@@ -35,6 +35,10 @@
 
 所有已发送失败、grader、retry、probe与未知模型上界沿原quota/Run/Task保存；client准入unknown和bootstrap/controller未计量边界列出，不写为0。input/output/total原样取Provider报数；currency/upstream/cache/hidden attempts保持unknown，未知价格不阻断其它可推进技术工作，也不证明货币收益。不存在冻结的收益百分比或要求所有路径正收益的门槛。
 
-## 4. 下一出口
+## 4. 所选技术验收与下一消费者
 
-先完成归属缺口的受影响复验并归档最后观察、完整新账目和本地证据，再判断所选 G06 技术矩阵是否满足既有退出要求；原质量负差不能静默覆盖。M3只在 G06 验收与 [M3入口设计](m3-cognition-design.md) 的可见范围/接管明确后实施。main集成/deploy仍遵守当前用户授权，远端只保存原两个分支提交。未知外部能力不自动扩大本轮任务，也不当成全部已实现。
+所选 G06 技术矩阵通过：实际双入口/所选continuation消费者、原Source/作用域/迁移撤回、原共享bank与失败成本、分层正文/鲜活生成/规则出口、可知检索收益和时延分布均有对应证据；最后不利质量项已完成触发修正与必要配对。新累计账目由 `g06-continuation-audit-v5.json` 零API核对，所有历史格式/正文FAIL和unknown保留。
+
+此验收只归表中所选支持范围与对应producer，不升级真实未发布capability、未连接品牌、native compaction、Provider cache、货币净收益、全部CPU或总体独立质量。已知收益包含原固定输入少hash/本地时间和规则跳过可选工作的预算出口；原NN长Timeline不利耗时及一次repeat更慢保留。没有临时制定胜场/收益百分比或为价格unknown新增停工条件。
+
+G06为S15所需前置已满足；M3原作者/作品授权的可见范围与接管也已明确，按 [S15具体契约](s15-actor-identity.md) 继续。完整M8/HM2/main集成状态仍单列；当前不自行merge/deploy，远端只保存原两个分支提交。后续消费者只做最小相关本地验证，不将本验收外推或重跑已完成全仓/M1/HM1。

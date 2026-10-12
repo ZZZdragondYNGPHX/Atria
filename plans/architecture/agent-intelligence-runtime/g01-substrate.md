@@ -36,7 +36,7 @@
 | 已启用本地工作准入 — G05 | index insert/query/vector/list/delete/purge、Host count/render、按需 Skill read 及 `bf0ac797d` Context build/Prompt compile 已接原 localWork；`bc31bf963` 已接原 Native Narrator 初始 inventory/pin/always-load；`49036006a` 已接scoped Hybrid corpus/reuse入口unknown工作；`f3f967cbd` 已接client hash/rank/packing原unknown工作；`a63f21054` 已接Studio原Task Skill准备/工具；legacy无原Run/Task consumer入口和开端source/config读取仍明确有未计量部分 | 按真实启用的原消费者逐组在工作前准入、原 Run/Task 结算，拒绝前不读/推理、失败/取消保留成本；无预算旧路径兼容。每组固定输入/出口，CPU观察不冒充CPU硬cap或金额 | 所选有限 G05 工程出口完成；未计量边界见下表 |
 | 选定 H3/H4 consumer 收尾 — G03/G04/G05 / HM2 | 唯一 Hybrid 因果 rerank、source-valid corpus memo、原 delta index 已有有限消费者与反例；实际语义/冷暖收益未验收 | 保留 B3 简单基线；补对应实际消费者尚缺的本地准入/失效证据；B3–B6 的真实算法/复用收益与失败/unknown沿 G06 对照 | 所选本地工程出口完成；真实收益待G06 |
 | 同 bank 重复召回与必要生成 — G05/G06 | 本地原 H0 256 合法 corpus 复现 17 检索+5 Host+9 暖检索后，第二 Context build 被32-job bank拒绝；`5a80e156` 沿原 Invocation 用精确 source-valid corpus 和实际已装包的基础证据选择跳过重复可选 vector/hash/index | Session/Project 两次生成各30 jobs，原成本保留；冷/失效来源、覆盖缺口、显式rebuild、无本地限额维持原路径。此有限修复不保证任意连续调用必有余额，也不引入固定reserve | 有限所选修复及30相关检查通过；真实基础/复用/规则三臂见最新Record |
-| 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 原FAIL保留；World位置归属的新缺口受影响复验进行，完整质量/收益仍待G06 |
+| 双入口质量、gateway/cache/费用 — G04/G06 | RP/Project 原 receipt/UI及 loopback 协议证据已有；真实正文 quality FAIL，实际 semantic Embedding/rerank、cache hit/账单/可靠延迟收益缺证据 | 保留所有原始不利输出、unknown 与费用；实际可用且获准的精确路径作有限对照，质量与完整成本通过才验收 M8/HM2/main 集成；本地 fixture 不改真实 verified | 原FAIL保留；所选G06技术验收通过，完整集成与未支持收益单列 |
 | 可选未启用能力 / 后续依赖 | classifier/learned router、prewarm/prefetch、Local KV/decode/vector-LoRA 无当前启用消费者；H5 尚依赖 M2/M3/G06 | 不为清单新建平台或必做算法；后续具备 backend/许可/预算时另定有限组。H5 沿原依赖进入，不新增 Goal/Memory writer | 未启用后续；非当前 M8 自动必做 |
 
 原 H0 双入口基础/有效 corpus 复用/规则 Invocation 三臂已合法实际消费同入口的同一32-job bank（各27 jobs、3 settled model attempts），来源与packet逐臂一致，所有正文fresh生成。计入同bank的预热/校验开销不删除；这不是Provider cache命中或净费用收益。新6输出中Session两条添加了无当前World依据的“港口的风平浪静”，保留质量FAIL，沿原作者style资源做受影响诊断；Project三条只读历史/当前unknown有限项通过。完整G06/M8/HM2尚未验收，M3前置保持；货币及上游/cache仍unknown。
@@ -370,3 +370,5 @@ source `1e148cd8c`：52相关本地distinct PASS（其中4增强边界必要复�
 最小出口：typed Project Route才编译固定directive及stable segment/provenance；其它Source/role与原Memory数据角色不变。局部compiler与受影响Task durable/Studio restore/adaptive消费者检查，然后只在原H0/原Gemini路径复验改变compiler的实际Studio正文+冷恢复。任何新通过只归该producer/有限scope；原FAIL、费用unknown、尚未补齐的G06/G05矩阵及M3前置保持。
 
 2026-10-12 后续G06六维与World解释consumer进度见 [验收矩阵](g06-acceptance.md) / 最新Record。source4160851ca要求scene地点不能无归属地分配给Actor/玩家；此前有限天气通过不证明角色位置项通过，已有坏输出和评分不改写。原作者/作品授权M3可见范围与接管已明确，但G06未闭合前不实施S15。
+
+2026-10-12最新：World归属修复、style-v11同bank三臂与最后reuse/Invocation六维配对已完成，所选 [G06技术矩阵](g06-acceptance.md)验收通过；原FAIL/unknown和未计量范围保持。G06前置已满足，沿已明确的M3授权与[S15](s15-actor-identity.md)继续；完整M8/HM2尚未集成main，不把未测品牌/cache/金额收益标为通过。
