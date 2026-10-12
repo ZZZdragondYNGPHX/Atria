@@ -122,8 +122,8 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
     });
     test('narrative Skill context cannot implicitly expose private P6 facts or enter unrelated Tasks', async () => {
         const { host, request } = await hostFixture();
-        const skill = { name: 'procedural', scope: { kind: 'global' }, metadata: { 'atria-paths': 'narrative' } };
-        host.skillRepository = () => ({ list: async () => [skill] });
+        const skill = { name: 'procedural', scope: { kind: 'global' }, installedHash: '1'.repeat(64), metadata: { 'atria-paths': 'narrative' } };
+        host.skillRepository = () => ({ list: async () => [skill], pin: async ({ expectedHash }) => ({ version: expectedHash }) });
         host.extensions = { settings: async () => ({ value: { skills: {} } }) };
         const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true });
         const originalItems = preview.snapshot.contextPlan.items.filter(item => item.id !== 'atri.skills');
