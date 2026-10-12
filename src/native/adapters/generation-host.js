@@ -35,6 +35,15 @@ import { assertPredictionCapture, assertPredictionCaptureCurrent } from '../pred
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const predictionLanes = new WeakSet();
 
+function ordinaryBackgroundIntent(snapshot, intent, task, variant, payload) {
+    const lifecycle = snapshot.states.atri_lifecycle;
+    return Boolean(lifecycle?.ready && intent && !intent.simulation && !intent.appraisalEvent
+        && task.executionClass === 'background' && intent.kind === 'task' && intent.status === 'pending'
+        && intent.taskId === task.id && intent.variantId === variant.id
+        && lifecycle.scopes[intent.scopeId]?.status === 'active' && lifecycle.scopes[intent.scopeId].epoch === intent.scopeEpoch
+        && hashNativeDocument(intent.input) === hashNativeDocument(payload));
+}
+
 function executionTimeout(capture, requestLimit) {
     const routes = Object.values(capture.routes ?? {});
     const requestMs = Math.max(0, ...routes.map(route => route.policy.timeoutMs));
@@ -577,8 +586,10 @@ export class NativeGenerationHost {
                 result = await this.executeTask(handle, { sessionId: input.sessionId, revisionId: snapshot.revision.revisionId,
                     invocationId: item.invocationId, taskId: item.taskId, variantId: item.variantId, input: item.input, slotBindings: input.slotBindings }, signal, undefined, { lifecycleInvocation: true });
             } catch (error) {
-                const variant = snapshot.manifest.runtime.experienceContract.taskRuntime.tasks.find(task => task.id === item.taskId)?.variants.find(variant => variant.id === item.variantId);
-                if (variant?.resultBinding?.kind !== 'cognition.appraise' || !['native_generation_budget_exhausted', 'native_generation_background_not_due'].includes(error.code)) throw error;
+                const task = snapshot.manifest.runtime.experienceContract.taskRuntime.tasks.find(task => task.id === item.taskId);
+                const variant = task?.variants.find(variant => variant.id === item.variantId);
+                const ordinary = task && variant && ordinaryBackgroundIntent(snapshot, item, task, variant, item.input);
+                if ((!ordinary && variant?.resultBinding?.kind !== 'cognition.appraise') || !['native_generation_budget_exhausted', 'native_generation_background_not_due'].includes(error.code)) throw error;
                 return { snapshot, results, pending: { invocationId: item.invocationId, reason: error.code } };
             }
             snapshot = result.snapshot;
@@ -656,12 +667,24 @@ export class NativeGenerationHost {
                 || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_task_lifecycle_intent_required');
         }
         const captured = lanePlan ?? {};
+        let ordinaryLifecycle = false;
         if (evidenceCapture) captured.evidenceCapture = evidenceCapture;
         if (lifecycleInvocation && snapshot.manifest.runtime.experienceContract.generationBudget) {
             const intent = snapshot.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
-            if ((!intent?.simulation && !(appraisal && intent?.appraisalEvent)) || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
+            const ordinary = ordinaryBackgroundIntent(snapshot, intent, task, variant, payload);
+            ordinaryLifecycle = ordinary;
+            if ((!intent?.simulation && !(appraisal && intent?.appraisalEvent) && !ordinary) || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
                 || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_generation_budget_lane_denied');
             captured.budgetContext = { snapshot, background: true, anchor: { invocationId: intent.invocationId } };
+            if (ordinary) {
+                const control = await this.sessionCore.runs.status(handle, input.sessionId);
+                const operation = control?.operations[hashNativeDocument({ lane: 'background', anchor: { invocationId: intent.invocationId } })];
+                // Pending outbox alone is not permission to replay a send after
+                // interruption or failed adoption. Keep the original bank and
+                // require explicit Task control/rescheduling for uncertain work.
+                if (operation?.total > 0 || operation?.compute?.attempts.length) return { snapshot,
+                    pending: { invocationId: intent.invocationId, reason: 'native_task_outcome_unknown' } };
+            }
         }
         const appraisalWork = async (kind, value, operation) => {
             const context = captured.budgetContext;
@@ -700,6 +723,7 @@ export class NativeGenerationHost {
         const resources = lanePlan ? [] : await this.executionResources(handle, route, input.sessionId, captured);
         let taskWorker;
         const work = { owner: handle, anchor, kind: ['background', 'maintenance'].includes(task.executionClass) ? 'auxiliary_task' : 'model_task', executionClass: task.executionClass,
+            retry: !ordinaryLifecycle,
             timeoutMs: executionTimeout(captured, captured.budgetContext?.background ? snapshot.manifest.runtime.experienceContract.generationBudget.backgroundAttempts : undefined),
             resources,
             key: input.sessionId + ':' + (task.queuePolicy === 'latest' ? anchor.branchId + ':' + task.id + ':' + variant.id : input.invocationId),

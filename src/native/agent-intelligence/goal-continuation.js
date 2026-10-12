@@ -11,6 +11,7 @@ import { goalContextMessage } from '../../../public/shared/agent-goal-context.js
 
 const definition = goal => hashNativeDocument(Object.fromEntries(['subject', 'scope', 'anchor', 'intent', 'criteria', 'invariants', 'budget'].map(key => [key, goal[key]])));
 const eligible = goal => goal.subject.kind === 'user' && ['active', 'waiting'].includes(goal.status);
+const stoppedTask = task => ['review', 'blocked', 'completed', 'cancelled', 'taken_over', 'committing', 'conflict'].includes(task.status);
 export class GoalContinuationService {
     constructor({ host, chatRepo, scheduler = nativeTaskScheduler }) {
         Object.assign(this, { host, scheduler });
@@ -54,7 +55,7 @@ export class GoalContinuationService {
         goal = await this._verify(handle, goal);
         if (!eligible(goal)) return goal;
         const task = await this.host.agent.getTask(handle, goal.scope.projectId, goal.execution.taskId);
-        if (['review', 'blocked', 'completed', 'cancelled', 'taken_over', 'committing', 'conflict'].includes(task.status)) return goal;
+        if (stoppedTask(task)) return goal;
         await this.host.agent.queueGoalWake(handle, goal.scope.projectId, task.taskId, goal.goalId, input.eventId);
         return this.pump(handle, { goalId: goal.goalId });
     }
@@ -79,13 +80,17 @@ export class GoalContinuationService {
         const projectId = goal.scope.projectId, taskId = goal.execution.taskId;
         const task = await this.host.agent.getTask(handle, projectId, taskId);
         if (task.goalBinding?.goalId !== goal.goalId || task.goalBinding.definitionHash !== definition(goal)) throw new ConflictError('goal_execution_binding_conflict');
+        if (stoppedTask(task)) return { goal, task, continuation: 'stopped' };
         // A previous claim might already have sent. Never turn it into a free resend.
         if (task.goalBinding.wakes.some(wake => wake.status === 'running' || wake.status === 'unknown')) return { goal, task, continuation: 'unknown' };
         const wake = task.goalBinding.wakes.find(item => item.status === 'pending');
         if (!wake) return { goal, task, continuation: 'idle' };
         const operation = this.scheduler.submit({ owner: handle, anchor: { projectId, goalId: goal.goalId, taskId }, kind: 'auxiliary_task', executionClass: 'background',
             resources: [projectId, taskId], key: 'goal:' + goal.goalId, fingerprint: hashNativeDocument({ goal: definition(goal), eventId: wake.eventId }), retry: false,
-            fresh: async () => eligible(await this._verify(handle, await this.goals._stored(handle, { goalId: goal.goalId }))),
+            fresh: async () => {
+                const task = await this.host.agent.getTask(handle, projectId, taskId);
+                return !stoppedTask(task) && eligible(await this._verify(handle, await this.goals._stored(handle, { goalId: goal.goalId })));
+            },
             run: async ({ signal, operationId }) => {
                 await this.host.agent.claimGoalWake(handle, projectId, taskId, goal.goalId, wake.eventId, operationId);
                 try {
