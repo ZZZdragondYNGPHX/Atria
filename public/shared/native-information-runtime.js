@@ -125,11 +125,14 @@ export function queryInformationGraph(snapshot, graphId, startId, { depth, expec
 export function informationContext(snapshot, target, taskId, { onScan = null, includeRollups = true } = {}) {
     const def = informationDefinition(snapshot);
     if (!def) return null;
-    const view = def.views.find(view => view.exposure.includes('context') && (taskId ? view.audience === 'task' && view.taskId === taskId
+    const narration = !taskId && target.kind === 'narrator' ? def.narration : null;
+    const view = def.views.find(view => view.exposure.includes('context') && (!narration || view.id === narration.contextViewId) && (taskId ? view.audience === 'task' && view.taskId === taskId
         : view.audience === target.kind && (target.kind !== 'actor' || view.actorId === target.id)));
     if (!view) return { items: [], knowledge: false };
     const projection = projectInformation(snapshot, view.id, { purpose: 'context', onScan, includeRollups });
+    const disclosure = narration ? projectInformation(snapshot, narration.disclosureViewId, { purpose: 'display', onScan, includeRollups: false }) : null;
     return { knowledge: view.knowledge && (!view.actorId || projection.availability[0]?.available), memory: view.memory === true, actorId: view.actorId, projection,
+        ...(narration ? { narration: clone(narration), disclosure } : {}),
         items: projection.items.map(item => ({ contextItemId: 'projection:' + view.id + ':' + item.id,
             lane: item.semantic === 'open_loop' ? 'commitments' : item.semantic === 'memory' ? 'memory' : ['rollup', 'narrative'].includes(item.semantic) ? 'narrative_spine' : 'current_state_event',
             authority: item.semantic === 'truth' ? 'world_projection' : item.semantic === 'belief' ? 'actor_belief' : 'derived',

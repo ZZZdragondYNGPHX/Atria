@@ -316,6 +316,25 @@ function actorIdentityItems(snapshot, target, information) {
     })];
 }
 
+function informationCognitionItems(snapshot, information) {
+    if (!information?.projection || information.projection.availability.some(item => !item.available)) return [];
+    const policy = {
+        viewId: information.projection.viewId, actorId: information.actorId ?? null,
+        mode: information.narration?.mode ?? 'separate',
+        semantics: 'Belief is the named Actor\'s interpretation, not World Truth. Status and channel describe its epistemic source; hearing or inference does not prove truth. Exposure, belief adoption and disclosure are distinct events. Retrieval does not prove remembering, belief change or willingness to act. Narrator knowledge does not grant NPC knowledge or tool authority.',
+        ...(information.disclosure ? { disclosure: information.disclosure,
+            disclosureRule: 'Only the independently granted display projection authorizes revealing source facts to the player. Private context may inform narration without revealing its secrets or assigning them to NPC dialogue. Do not present a belief as established Truth.' } : {}),
+    };
+    return [normalizeContextItem({
+        contextItemId: 'projection:policy:cognition', lane: CONTEXT_LANES.currentState,
+        authority: 'information_policy', authorityRank: 100, required: true,
+        content: 'Native Information cognition/disclosure policy:\n' + JSON.stringify(policy),
+        sourceRefs: [{ kind: 'runtime', providerId: 'native.information-cognition',
+            contentIdentity: JSON.stringify([snapshot.manifest.packageVersionId, policy.viewId, information.narration ?? null]),
+            branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }],
+    })];
+}
+
 function currentStateItems(snapshot) {
     const states = snapshot?.states && typeof snapshot.states === 'object' ? snapshot.states : {};
     const result = [];
@@ -937,7 +956,7 @@ export class SessionContextCompiler {
             }) : [];
             candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds)];
         }
-        candidates.push(...actorIdentityItems(snapshot, target, information), ...dynamicItems, ...persona.items.map(normalizeContextItem));
+        candidates.push(...actorIdentityItems(snapshot, target, information), ...informationCognitionItems(snapshot, information), ...dynamicItems, ...persona.items.map(normalizeContextItem));
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
             if (visibleTo(item, target)) return true;

@@ -20,7 +20,7 @@ export function informationInteger(value, min, max) {
 const reference = value => { if (typeof value !== 'string' || !/^[a-z][A-Za-z0-9._:-]{0,127}$/.test(value)) throw new TypeError('Invalid information reference'); return value; };
 export function assertInformationRuntime(value, lifecycle, tasks) {
     value = assertLifecycleJson(value);
-    fields(value, ['schemaVersion', 'sources', 'views', 'actors', 'graphs'], 'Information runtime');
+    fields(value, ['schemaVersion', 'sources', 'views', 'actors', 'graphs', 'narration'], 'Information runtime');
     if (value.schemaVersion !== 1 || !lifecycle) throw new TypeError('Information runtime requires version 1 and lifecycle');
     const sources = informationList(value.sources, 32, source => {
         fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField'], 'Information source');
@@ -94,7 +94,19 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
         informationInteger(graph.maxDepth, 1, 4); informationInteger(graph.maxEdges, 1, 256);
         return graph;
     });
-    return json({ schemaVersion: 1, sources, views, actors, graphs });
+    let narration;
+    if (value.narration !== undefined) {
+        fields(value.narration, ['mode', 'contextViewId', 'disclosureViewId'], 'Information narration');
+        const mode = choice(value.narration.mode ?? 'separate', ['separate', 'limited', 'custom']);
+        taskId(value.narration.contextViewId); taskId(value.narration.disclosureViewId);
+        const context = views.find(view => view.id === value.narration.contextViewId);
+        const disclosure = views.find(view => view.id === value.narration.disclosureViewId);
+        if (context?.audience !== 'narrator' || !context.exposure.includes('context')
+            || (mode === 'limited' && !context.actorId)
+            || disclosure?.audience !== 'player' || !disclosure.exposure.includes('display')) throw new TypeError('Narration requires exact context and display grants');
+        narration = { mode, contextViewId: context.id, disclosureViewId: disclosure.id };
+    }
+    return json({ schemaVersion: 1, sources, views, actors, graphs, ...(narration ? { narration } : {}) });
 }
 
 export function assertInformationClosure(contract, manifest) {
