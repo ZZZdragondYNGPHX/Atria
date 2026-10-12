@@ -2424,3 +2424,14 @@ S16三批实际HTTP均200：v1 source4ddfcef68/direct5976，v2 source634b2494b/d
 私有 `s16-cognition-integrity-audit-v1.json`零API完整核对9raw request/response hashes、实际模型/normalized全文及snapshot、Provider total usage、原32-job limit、每案例1settled model attempt、World/Timeline/作者定义不变，三模式实际display grant与Exposure缺口一致。quota1785→1794/carry332与M1/HM1 hashes保持；原未知/token上界不改。自本设备恢复累计79 admissions/77HTTP200/direct186756及2TLS unknown upper46348；原M8 reported161/direct402366保留为其原组分母，S16新增9/direct17977另列，旧unknown2/upper17515/admission fetch0仍另列。价格/cache/upstream仍unknown，不退款失败或假定total=input+output。
 
 最终本地只做当前离线审计、相关docs links/diff、Git身份/干净与push核对，不重复已通过13+8 checks、M1/HM1、G06、整仓或浏览器。source634b2494b与origin一致，main3ee1332ef未merge/deploy；当前付费runner结束。按用户此时授权刷新唯一HANDOFF，完整当前private根留本地；旧RAR不能代替本设备新增证据。S17仅只读研究原Goal/source/lifecycle接点，未写计划或代码；下次先完成S16，不把讨论当实施。
+
+
+### 2026-10-12 S16：恢复后逐记录 Disclosure 绑定与有限正文出口
+
+先核对并拉取原 main、feat/agent-compute-runtime 与 docs（ff-only），均干净/Already up to date；读取原 HANDOFF → index → S16 → 最新 Record。没有重解压私有包、重跑已通过组、重问 M3、创建子 agent/Goal 或 merge/deploy main。source `d74de3efc4f55d01469b21d15c74800f6f50b31d` 从 `634b2494b` 修复实际 Exposure 传播：Information context 的每个原投影记录绑定独立 displayGrant，原 display 无此记录为 null；对应记录只准 display 已选字段/epistemic qualifiers，不由相似公共话题、context 阅读、rollup 或自然语言请求扩权。原 projection 和定义不改，Actor/Task/旧 schema 不加 marker；预算仍沿原 context count/render。正文解释覆盖每项断言、历史事件、Exposure、记忆和角色知道/不知道什么，禁止对 context-only 内容引用、改述或暗示。宽 context 保持原 A/B/C 来源，未以减少 narrator context、更改 display 或输出后处理制造通过。
+
+最小相关本地验证共6 distinct PASS：原3个实际installed Host 检查因policy/content变化增强并复验，3新增空display/截断/不可用检查，含 private Exposure null、C仅World真相grant、NPC私有belief null、原Task不消费新display marker、原状态不变和 required lane 预算。首 empty/truncated 测试编辑冻结manifest失败，其余4已PASS不重跑；改测试副本后只重跑两失败项。初lint有conditional expect，改为同等无条件断言后三改动文件lint/diff PASS；不再执行无变化产品组。旧schema/撤回/Save/Hybrid/FS-SQLite已通过且未改guard，本组不重跑。日志与夹具/lint失败私有保留。
+
+私有新runner `run-s16-disclosure-v4.mjs` 保持上一批精确作者正文，append-only `s16-cognition-preflight-v5.json` 三模式准备/HTTP0通过后，`s16-cognition-live-v4.json` 三HTTP200/direct7135（B2300/A2426/C2409），原raw request/response/normalized与settled成本保持。三条完整正文由repo agent非盲审读：未转述收到信/未署名/私有Exposure或沈墨被跟踪的belief；林舟只作为阿岚传闻，A/B未公开沈墨真相，C仅旁白揭示原获准沈墨真相；没有追加动作、物件外观、天气、位置或玩家行动。B“真实身份尚不明朗”沿公开传闻语境的未确证表达审读，不作为World真相未知或Actor私有不知的持久更新。不是独立质量评审或绝对泄漏保证；同一主模型有限正文 audit 与确定性投影授权检查分开报告。原9条 Disclosure FAIL 和scene/action FAIL不覆盖，S16有限出口据此完成，继续S17原依赖。
+
+`audit-s16-disclosure-v2.py`/`s16-disclosure-integrity-audit-v2.json` 只审计新增三发送（零API），核对raw→normalized全文/hash、实际model/usage、原32-job与每案例1settled modelattempt、原Exposure仍在context且displayGrant null、World/Timeline/definitions不变。quota1794→1797连续append/carry332与M1/HM1 pins不变。S16累计12 admissions/12HTTP200/direct25112；自本设备恢复累计82 admissions/80HTTP200/direct193891及2TLS unknown upper46348。原M8组reported161/direct402366、旧unknown2/upper17515/admission fetch0另列；价格/cache/upstream维持unknown，所有失败计入费用。本组私有材料保留在当前完整private根，不提交Git。source/docs原分支同步状态以真实refs为准，main仍3ee1332ef。
