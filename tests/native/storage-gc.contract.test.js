@@ -151,7 +151,9 @@ describe.each(CONTRACT_HARNESSES)('N1 Native revision GC — $name', ({ make }) 
             .rejects.toBeInstanceOf(ConflictError);
 
         expect(await savePointRepo.delete(handle, sessionId, saveId)).toBe(true);
-        expect(await sessionRepo.gcRevisions(handle, sessionId)).toEqual([savedRevisionId]);
+        const now = Date.now();
+        expect(await sessionRepo.gcRevisions(handle, sessionId, { now })).toEqual([]);
+        expect(await sessionRepo.gcRevisions(handle, sessionId, { now: now + 60001 })).toEqual([savedRevisionId]);
         expect(await sessionRepo.getRevision(handle, sessionId, savedRevisionId)).toBeNull();
         expect(await sessionRepo.getRevision(handle, sessionId, headRevisionId)).not.toBeNull();
     });

@@ -1,7 +1,7 @@
-import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { durableWrite, durableRemove, syncDirectory } from '../durable-file.js';
+import { durableWriteAsync, durableRemoveAsync, syncDirectoryAsync } from '../durable-file.js';
 import { isNativeStorageKind, normalizeNativeResourceKey, encodeNativeResourceKey, nativeResourceMatchesFilter, sortAndLimitNativeRecords } from './native-resource-key.js';
 
 const identity = key => key.kind + '\0' + encodeNativeResourceKey(key);
@@ -65,25 +65,27 @@ export class FsNativeJournal {
         }
     }
     async recover() {
-        if (fs.existsSync(this.file)) {
-            const journal = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+        let raw;
+        try { raw = await fsp.readFile(this.file, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+        if (raw !== undefined) {
+            const journal = JSON.parse(raw);
             if (journal.schemaVersion !== 1 || digest(journal.payload) !== journal.digest) throw new Error('Native commit journal integrity mismatch');
             await this.install(JSON.parse(journal.payload));
-            durableRemove(this.file);
+            await durableRemoveAsync(this.file);
         }
-        durableRemove(this.file + '.prepared');
+        await durableRemoveAsync(this.file + '.prepared');
     }
     async commit() {
         if (!this.writes.size) return;
         const items = [...this.writes.values()], payload = JSON.stringify(items);
         const prepared = this.file + '.prepared';
         await this.fault('prepare');
-        durableWrite(prepared, JSON.stringify({ schemaVersion: 1, payload, digest: digest(payload) }));
+        await durableWriteAsync(prepared, JSON.stringify({ schemaVersion: 1, payload, digest: digest(payload) }));
         await this.fault('dependencies');
-        fs.renameSync(prepared, this.file); syncDirectory(this.root);
+        await fsp.rename(prepared, this.file); await syncDirectoryAsync(this.root);
         await this.fault('publish');
         await this.install(items);
-        durableRemove(this.file);
+        await durableRemoveAsync(this.file);
         await this.fault('ack');
     }
 }

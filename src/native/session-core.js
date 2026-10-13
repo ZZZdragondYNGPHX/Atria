@@ -548,7 +548,7 @@ export class SessionCore {
         if (taskRecord?.kind === 'turn') {
             try { await this._saves.maybeAutomatic(handle, snapshot); } catch (error) { snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
         }
-        if (taskRecord?.kind === 'turn') requestSessionMaintenance(this._sessions, handle, session.sessionId);
+        if (taskRecord?.kind === 'turn') requestSessionMaintenance(this._sessions, handle, session.sessionId, this._packages._assetStore);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),

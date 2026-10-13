@@ -51,7 +51,7 @@ export class FsEngine {
     // Maintenance enumeration is speculative; the GC root generation is
     // revalidated under engine isolation before any deletion.
     async scanNativeCandidates(handle, filter) {
-        return new FsTransaction({ directoriesByHandle: this._directoriesByHandle }).listResources(filter);
+        return new FsTransaction({ directoriesByHandle: this._directoriesByHandle }).listResources({ ...filter, scan: true });
     }
 
     /**

@@ -196,6 +196,10 @@ export function mountAtriaPlayProduct({
             entries: snapshot.timeline.slice(fromSequence, fromSequence + limit) }),
         changed: () => render(), failed: error => { composerStatus.textContent = error.message; } });
     window.canShift = canShift;
+    const onPressure = () => { window.pressure(); clearSpeechControls(); };
+    const onVisibility = () => { if (documentRef.hidden) onPressure(); };
+    documentRef.addEventListener('visibilitychange', onVisibility);
+    documentRef.addEventListener('atria-memory-pressure', onPressure);
     const resizeRows = typeof ResizeObserver === 'function' ? new ResizeObserver(rows => {
         const viewport = conversation.getBoundingClientRect();
         const anchor = [...conversation.querySelectorAll('[data-atria-message-id]')].find(node => node.getBoundingClientRect().bottom >= viewport.top);
@@ -491,7 +495,10 @@ export function mountAtriaPlayProduct({
         },
         refresh: render,
         dispose() {
+            if (disposed) return;
             disposed = true;
+            documentRef.removeEventListener('visibilitychange', onVisibility);
+            documentRef.removeEventListener('atria-memory-pressure', onPressure);
             window.dispose(); resizeRows?.disconnect();
             clearSpeechControls(); picker?.close();
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);

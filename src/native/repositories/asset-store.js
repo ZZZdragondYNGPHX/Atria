@@ -1,3 +1,5 @@
+import { nativeTaskScheduler } from '../task-scheduler.js';
+import { validateMaintenanceBudget } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars, personaDocumentReferences } from '../persona-contract.js';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -14,6 +16,8 @@ import { getNativeDocument, listNativeDocuments, putImmutable, putMutable, hashN
 import { ILLUSTRATION_NAMESPACE } from '../../../public/shared/native-illustration-contract.js';
 import { readIllustrationState } from '../session-illustrations.js';
 const blobScopes = new AsyncLocalStorage();
+const blobReaders = new Map();
+const blobIdentity = (handle, hash) => JSON.stringify([handle, hash]);
 
 function toBuffer(value) {
     if (Buffer.isBuffer(value)) return value;
@@ -189,6 +193,25 @@ export class AssetStore {
     async openDelivery(handle, assetId) {
         const ref = await this.getRef(handle, assetId);
         if (!ref) return null;
+        return this.withBlobLease(handle, ref.contentHash, async () => {
+            const delivery = await this._openDelivery(handle, assetId);
+            if (!delivery) return null;
+            const key = blobIdentity(handle, ref.contentHash);
+            blobReaders.set(key, (blobReaders.get(key) ?? 0) + 1);
+            let closed = false;
+            return { ...delivery, close: async () => {
+                if (closed) return; closed = true;
+                try { await delivery.close(); } finally {
+                    const remaining = blobReaders.get(key) - 1;
+                    if (remaining) blobReaders.set(key, remaining); else blobReaders.delete(key);
+                }
+            } };
+        });
+    }
+
+    async _openDelivery(handle, assetId) {
+        const ref = await this.getRef(handle, assetId);
+        if (!ref) return null;
         let file;
         try {
             file = await fs.promises.open(this._blobPath(handle, ref.contentHash), 'r');
@@ -269,9 +292,18 @@ export class AssetStore {
         });
     }
 
-    async gcBlobs(handle, { retainHashes = [], now = Date.now(), graceMs = 60000, batchSize = 32 } = {}) {
+    async gcBlobs(handle, options = {}) {
         assertWritable();
+        const budget = { retainHashes: [], now: Date.now(), graceMs: 60000, batchSize: 32, scanLimit: 128, maxScanBytes: 65536, ...options };
+        validateMaintenanceBudget(budget);
+        for (const hash of budget.retainHashes) if (!/^[a-f0-9]{64}$/.test(hash)) throw new TypeError('Invalid retained Blob hash');
+        return withNativeResourceWrite(handle, 'maintenance:blobs', () => this._gcBlobs(handle, budget));
+    }
+
+    async _gcBlobs(handle, { retainHashes, now, graceMs, batchSize, scanLimit, maxScanBytes, signal }) {
         const key = { kind: NATIVE_RESOURCE_KINDS.maintenance, handle, scope: 'blobs' };
+        const pause = () => signal?.aborted || nativeTaskScheduler.hasForegroundWork(handle);
+        if (pause()) return [];
         const roots = async () => this._engine.withTransaction(handle, async tx => {
             const refs = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle });
             const versions = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageVersion, handle });
@@ -279,27 +311,53 @@ export class AssetStore {
         });
         const referenced = await roots(), generation = hashNativeDocument([...referenced].sort());
         const progress = await this._engine.withTransaction(handle, tx => getNativeDocument(tx, key));
-        if (!progress || progress.generation !== generation || progress.phase === 'complete') {
-            const candidates = [];
-            let directories;
-            try { directories = await fsp.readdir(this._blobRoot(handle), { withFileTypes: true }); } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
-            for (const directory of directories) {
-                if (!directory.isDirectory() || !/^[a-f0-9]{2}$/.test(directory.name)) continue;
-                for (const name of await fsp.readdir(path.join(this._blobRoot(handle), directory.name))) {
-                    if (!/^[a-f0-9]{64}$/.test(name) || !name.startsWith(directory.name) || referenced.has(name)) continue;
-                    candidates.push({ hash: name, quarantinedAt: progress?.candidates.find(item => item.hash === name)?.quarantinedAt ?? now });
-                }
+        const valid = progress?.generation === generation;
+        if (!valid || progress.phase === 'complete' || progress.phase === 'mark') {
+            const candidates = [], scan = valid && progress.phase === 'mark' ? progress.scan : { prefix: 0, after: '' };
+            // One hash directory and bounded names per slice. Directory entries
+            // are small metadata; payloads are never read by Blob maintenance.
+            let prefixes;
+            try { prefixes = (await fsp.readdir(this._blobRoot(handle))).filter(name => /^[a-f0-9]{2}$/.test(name)).sort(); } catch (error) { if (error.code !== 'ENOENT') throw error; return []; }
+            const prefix = prefixes.find(name => parseInt(name, 16) >= scan.prefix);
+            if (!prefix) {
+                await this._engine.withTransaction(handle, tx => putMutable(tx, key, { schemaVersion: 1, generation, candidates: [], cursor: 0, scan: { prefix: 256, after: '' }, phase: 'complete' }));
+                return [];
             }
-            await this._engine.withTransaction(handle, tx => putMutable(tx, key, { schemaVersion: 1, generation, candidates, cursor: 0, phase: candidates.length ? 'quarantine' : 'complete' }));
+            if (parseInt(prefix, 16) !== scan.prefix) scan.after = '';
+            scan.prefix = parseInt(prefix, 16);
+            let names = [];
+            try { names = (await fsp.readdir(path.join(this._blobRoot(handle), prefix))).filter(name => /^[a-f0-9]{64}$/.test(name) && name.startsWith(prefix)).sort(); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+            const limit = Math.min(scanLimit, Math.max(1, Math.floor(maxScanBytes / 128)));
+            const page = names.filter(name => name > scan.after).slice(0, limit);
+            for (const name of page) {
+                if (pause()) return [];
+                if (referenced.has(name)) continue;
+                const stat = await fsp.stat(this._blobPath(handle, name)).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+                if (!stat?.isFile()) continue;
+                const old = progress?.candidates.find(item => item.hash === name && item.mtimeMs === stat.mtimeMs);
+                candidates.push({ hash: name, mtimeMs: stat.mtimeMs, quarantinedAt: old?.quarantinedAt ?? now });
+            }
+            const after = page.at(-1) ?? scan.after;
+            const nextScan = names.some(name => name > after) ? { prefix: scan.prefix, after } : { prefix: scan.prefix + 1, after: '' };
+            const phase = candidates.length ? 'quarantine' : nextScan.prefix === 256 ? 'complete' : 'mark';
+            await this._engine.withTransaction(handle, tx => putMutable(tx, key, { schemaVersion: 1, generation, candidates, cursor: 0, scan: nextScan, phase }));
             return [];
         }
         if (progress.candidates.some(item => now - item.quarantinedAt < graceMs)) return [];
-        const deleted = [], end = Math.min(progress.candidates.length, progress.cursor + batchSize);
-        for (const item of progress.candidates.slice(progress.cursor, end)) await this.withBlobLease(handle, item.hash, async () => {
-            if ((await roots()).has(item.hash)) return;
-            if (await durableRemoveAsync(this._blobPath(handle, item.hash))) deleted.push(item.hash);
-        });
-        await this._engine.withTransaction(handle, tx => putMutable(tx, key, { ...progress, cursor: end, phase: end === progress.candidates.length ? 'complete' : 'sweep' }));
+        const deleted = []; let cursor = progress.cursor;
+        const end = Math.min(progress.candidates.length, cursor + batchSize);
+        for (; cursor < end && !pause(); cursor++) {
+            const item = progress.candidates[cursor];
+            if (blobReaders.has(blobIdentity(handle, item.hash))) break;
+            await this.withBlobLease(handle, item.hash, async () => {
+                if (pause() || blobReaders.has(blobIdentity(handle, item.hash)) || (await roots()).has(item.hash)) return;
+                const stat = await fsp.stat(this._blobPath(handle, item.hash)).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+                if (stat?.mtimeMs !== item.mtimeMs) return;
+                if (await durableRemoveAsync(this._blobPath(handle, item.hash))) deleted.push(item.hash);
+            });
+        }
+        const phase = cursor < progress.candidates.length ? 'sweep' : progress.scan.prefix === 256 ? 'complete' : 'mark';
+        await this._engine.withTransaction(handle, tx => putMutable(tx, key, { ...progress, cursor, phase }));
         return deleted;
     }
 }

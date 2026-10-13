@@ -14812,7 +14812,7 @@ jQuery(() => {
     });
 
 
-    for (const event of [NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED]) {
+    for (const event of [NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED]) {
         onNativeSessionLifecycle(event, () => { releaseMemorySourceScopes(); releaseMemoryCorpus(); });
     }
     for (const lifecycle of [

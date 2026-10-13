@@ -1004,6 +1004,20 @@ export function registerNativeResourceHandlers(tx) {
                     values.push(filter[field]);
                 }
             });
+            if (filter.scan) {
+                predicates.push('resource_key > ?'); values.push(filter.after ?? '');
+                values.push(filter.limit);
+                const rows = db.prepare(`SELECT resource_key, doc, integrity, updated_at, created_at
+                    FROM native_resources WHERE handle=? AND kind=? AND ${predicates.join(' AND ')}
+                    ORDER BY resource_key LIMIT ?`).iterate(...values);
+                const records = []; let bytes = 0, cursor = filter.after ?? '';
+                for (const row of rows) {
+                    cursor = row.resource_key; bytes += row.doc.length * 2;
+                    records.push(parseRow(filter.kind, filter.handle, row));
+                    if (bytes >= filter.maxBytes) break;
+                }
+                return { records, cursor, done: records.length < filter.limit && bytes < filter.maxBytes, bytes, scanned: records.length };
+            }
             const rows = predicates.length ? db.prepare(`SELECT resource_key, doc, integrity, updated_at, created_at
                 FROM native_resources WHERE handle=? AND kind=? AND ${predicates.join(' AND ')}`).all(...values)
                 : listStmt.all(filter.handle, filter.kind);

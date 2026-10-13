@@ -830,9 +830,14 @@ function registerNativeResourceHandlers(tx) {
             const dir = rootFor(normalizedFilter);
             const records = [];
             let files;
-            try { files = await fsp.readdir(dir, { recursive: true }); } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+            try { files = await fsp.readdir(dir, { recursive: true }); } catch (error) { if (error.code === 'ENOENT') return filter.scan ? { records: [], cursor: '', done: true } : []; throw error; }
+            files = files.filter(entry => entry.endsWith('.json')).sort();
+            let cursor = filter.after ?? '', scanned = 0, bytes = 0;
             for (const entry of files) {
-                if (!entry.endsWith('.json')) continue;
+                if (filter.scan && entry <= cursor) continue;
+                if (filter.scan && (scanned >= filter.limit || bytes >= filter.maxBytes)) break;
+                cursor = entry; scanned++;
+                if (filter.scan) bytes += (await fsp.stat(path.join(dir, entry))).size;
                 let envelope;
                 try {
                     envelope = JSON.parse(await fsp.readFile(path.join(dir, entry), 'utf-8'));
@@ -855,6 +860,7 @@ function registerNativeResourceHandlers(tx) {
                     createdAt: Number(envelope.createdAt || 0),
                 });
             }
+            if (filter.scan) return { records, cursor, done: !files.some(entry => entry > cursor), scanned, bytes };
             return sortAndLimitNativeRecords(records, normalizedFilter);
         },
     };

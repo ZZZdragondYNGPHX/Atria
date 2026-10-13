@@ -71,6 +71,28 @@ describe('A6 Atria-native Play product', () => {
         delete globalThis.Atria;
     });
 
+    test('repeated mount/close returns document listeners and product nodes to baseline', async () => {
+        const listeners = new Map(), add = document.addEventListener.bind(document), remove = document.removeEventListener.bind(document);
+        const adding = jest.spyOn(document, 'addEventListener').mockImplementation((type, listener, options) => {
+            if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(listener); add(type, listener, options);
+        });
+        const removing = jest.spyOn(document, 'removeEventListener').mockImplementation((type, listener, options) => {
+            listeners.get(type)?.delete(listener); remove(type, listener, options);
+        });
+        try {
+            for (let i = 0; i < 20; i++) {
+                const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+                    sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+                } });
+                await flush();
+                document.dispatchEvent(new Event('atria-memory-pressure')); await flush();
+                product.dispose(); product.dispose(); await flush();
+                expect(document.querySelectorAll('.atria-play-product')).toHaveLength(0);
+                for (const type of ['atria-native-play-draft', 'atria-native-runtime-error', 'visibilitychange', 'atria-memory-pressure']) expect(listeners.get(type)?.size).toBe(0);
+            }
+        } finally { adding.mockRestore(); removing.mockRestore(); }
+    });
+
     test('renders only committed Native Timeline data into the product Conversation', () => {
         const root = document.getElementById('host');
         const product = mountAtriaPlayProduct({

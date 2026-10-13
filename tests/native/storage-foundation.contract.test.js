@@ -258,6 +258,10 @@ describe.each(CONTRACT_HARNESSES)('N1 Native Storage Foundation — $name', ({ m
         expect((await assetStore.read(handle, assetA.assetId)).bytes.equals(bytes)).toBe(true);
         await assetStore.deleteRef(handle, assetA.assetId);
         await assetStore.deleteRef(handle, assetB.assetId);
-        expect(await assetStore.gcBlobs(handle)).toEqual([contentHash]);
+        const gcNow = Date.now();
+        let removed = [];
+        // Mark may traverse live hash directories before finding the orphan.
+        for (let i = 0; i < 20 && !removed.length; i++) removed = await assetStore.gcBlobs(handle, { now: gcNow + i * 60001 });
+        expect(removed).toEqual([contentHash]);
     });
 });

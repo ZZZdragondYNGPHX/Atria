@@ -499,3 +499,18 @@ describe('N5 Native memory source identity', () => {
         expect(context.chat[0].memory_os_source_id).toBeUndefined();
     });
 });
+
+test('repeated source scope mount/branch/close releases derived objects and revokes old reads', async () => {
+    const f = fixture(), samples = [];
+    for (let i = 0; i < 30; i++) {
+        await f.lifecycle.capture(f.context, [0, 1]);
+        const snapshot = await f.lifecycle.retrievalSnapshot(f.context);
+        f.lifecycle.releaseScope();
+        expect(() => snapshot.assertCurrent()).toThrow();
+        expect(f.lifecycle.resourceStats()).toMatchObject({ cache: 0, observed: 0, pending: 0, queues: 0 });
+        if ([9, 19, 29].includes(i)) samples.push(process.memoryUsage());
+    }
+    f.lifecycle.dispose(); f.lifecycle.dispose();
+    await expect(f.lifecycle.capture(f.context, [0])).rejects.toThrow();
+    console.info('E4 Node lifecycle memory (no forced GC; Heap/external/RSS)', samples.map(({ heapUsed, external, rss }) => ({ heapUsed, external, rss })));
+});

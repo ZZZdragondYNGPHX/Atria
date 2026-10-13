@@ -36,7 +36,7 @@ export class SqliteEngine {
             db.close(); throw new Error('SQLite durable commit configuration unavailable');
         }
         db.pragma('foreign_keys = ON');
-        db.pragma('wal_autocheckpoint = 0');
+        db.pragma('wal_autocheckpoint = 1000');
         initSchema(db);
         this._dbs.set(handle, db);
         return db;
@@ -182,8 +182,13 @@ export class SqliteEngine {
         try { return await run; } finally { if (this._txTail.get(handle) === tail) this._txTail.delete(handle); }
     }
     async checkpoint(handle) {
-        await this._txTail.get(handle);
-        return this._dbFor(handle).pragma('wal_checkpoint(PASSIVE)');
+        // Queue checkpoint on the same connection tail; never run inside BEGIN.
+        const run = (this._txTail.get(handle) ?? Promise.resolve()).then(() => this._dbFor(handle).pragma('wal_checkpoint(PASSIVE)'));
+        const tail = run.catch(() => {}); this._txTail.set(handle, tail);
+        try { return await run; } finally { if (this._txTail.get(handle) === tail) this._txTail.delete(handle); }
+    }
+    async scanNativeCandidates(handle, filter) {
+        return this.withTransaction(handle, tx => tx.listResources({ ...filter, scan: true }));
     }
 
     close() {

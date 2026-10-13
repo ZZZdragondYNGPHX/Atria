@@ -1122,6 +1122,8 @@ let dialogueCloseStop = false;
 /** @type {ChatMetadata} */
 export let chat_metadata = {};
 const chatSnapshotCache = new ChatSnapshotCache({ activeKey: () => getChatMessageSnapshotKey() });
+document.addEventListener('visibilitychange', () => { if (document.hidden) chatSnapshotCache.pressure(); });
+document.addEventListener('atria-memory-pressure', () => chatSnapshotCache.pressure());
 /** @type {StreamingProcessor} */
 export let streamingProcessor = null;
 let crop_data = undefined;

@@ -17,3 +17,20 @@ test('bounded pages cancel old Branch/Revision reads and dispose is idempotent',
     expect(view.heights.size).toBe(512);
     view.dispose(); view.dispose(); expect(view.entries).toHaveLength(0); expect(view.snapshot).toBeNull();
 });
+
+test('byte budget preserves latest and reading anchors, including synchronous fallback and pressure', () => {
+    const scroll = document.createElement('main');
+    const view = new ConversationWindow({ scroll, changed: () => {}, byteBudget: 4000 });
+    const snapshot = { session: { sessionId: 's' }, revision: { branchId: 'b', revisionId: 'r' },
+        timeline: Array.from({ length: 100 }, (_, sequence) => ({ sequence, messageId: String(sequence), content: 'x'.repeat(800) })) };
+    view.update(snapshot, true);
+    expect(view.entries.at(-1).sequence).toBe(99); expect(view.retainedBytes).toBeLessThanOrEqual(4000);
+    scroll.scrollTop = 30 * view.estimate;
+    view.load(24, true);
+    expect(view.entries.some(entry => entry.sequence === 30)).toBe(true);
+    view.pressure(); expect(view.entries.some(entry => entry.sequence === 30)).toBe(true);
+    view.latest(); expect(view.entries.at(-1).sequence).toBe(99);
+    view.canShift = () => false;
+    const before = [...view.entries]; view.pressure(); expect(view.entries).toEqual(before);
+    view.clear(); expect(view.retainedBytes).toBe(0); expect(view.total).toBe(0); view.dispose();
+});

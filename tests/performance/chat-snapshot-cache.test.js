@@ -76,3 +76,12 @@ describe('chat wire snapshot lifecycle', () => {
         expect(cache.size).toBe(0);
     });
 });
+
+test('pressure evicts inactive byte-heavy snapshots while active and queued writes stay protected', () => {
+    const cache = new ChatSnapshotCache({ activeKey: () => 'live', inactiveLimit: 4, byteBudget: 200 });
+    cache.set('live', 'messages', ['x'.repeat(100)]);
+    const release = cache.holdWrites();
+    cache.set('other', 'messages', ['y'.repeat(100)]);
+    cache.pressure(); expect(cache.size).toBe(2);
+    release(); expect(cache.size).toBe(1); expect(cache.get('live', 'messages')).toEqual(['x'.repeat(100)]);
+});

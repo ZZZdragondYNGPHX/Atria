@@ -1,3 +1,4 @@
+import { maintainSession, cancelSessionMaintenance } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure, retireRunOperations } from '../run-control.js';
@@ -42,9 +43,12 @@ const sessionWrites = new Map();
 const heldSessionWrites = new AsyncLocalStorage();
 export async function withSessionWrite(handle, sessionId, operation) {
     const key = JSON.stringify([handle, sessionId]);
-    if (heldSessionWrites.getStore()?.has(key)) return operation();
+    if (heldSessionWrites.getStore()?.get(key)?.open) return operation();
     const previous = sessionWrites.get(key) || Promise.resolve();
-    const next = previous.catch(() => {}).then(() => heldSessionWrites.run(new Set([...(heldSessionWrites.getStore() ?? []), key]), operation));
+    const next = previous.catch(() => {}).then(() => {
+        const scope = { open: true }, owners = new Map(heldSessionWrites.getStore() ?? []); owners.set(key, scope);
+        return heldSessionWrites.run(owners, async () => { try { return await operation(); } finally { scope.open = false; } });
+    });
     sessionWrites.set(key, next);
     try { return await next; } finally {
         if (sessionWrites.get(key) === next) sessionWrites.delete(key);
@@ -778,9 +782,9 @@ export class SessionRepo {
         })));
     }
 
-    async _reachableRevisions(tx, handle, sessionId) {
+    async _reachableRevisions(tx, handle, sessionId, retainRevisionIds = []) {
         const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
-        const pending = session?.headRevisionId ? [session.headRevisionId] : [];
+        const pending = [...retainRevisionIds, ...(session?.headRevisionId ? [session.headRevisionId] : [])];
         const presentationHeads = new Set([session?.illustrationHead, ...Object.values(session?.illustrationHeads ?? {})].filter(Boolean));
         for (const save of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId })) {
             pending.push(save.doc.revisionId);
@@ -827,14 +831,14 @@ export class SessionRepo {
         }));
     }
 
-    async reachabilitySnapshot(handle, sessionId) {
+    async reachabilitySnapshot(handle, sessionId, { retainRevisionIds = [] } = {}) {
         const tx = { getResource: key => this._engine.withTransaction(handle, tx => tx.getResource(key)),
             listResources: filter => this._engine.withTransaction(handle, tx => tx.listResources(filter)) };
         return (async () => {
             const sessionKey = this._sessionKey(handle, sessionId), session = await tx.getResource(sessionKey);
             if (!session) throw new NotFoundError('native session');
             const saves = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId });
-            const revisions = await this._reachableRevisions(tx, handle, sessionId);
+            const revisions = await this._reachableRevisions(tx, handle, sessionId, retainRevisionIds);
             const keys = new Map(), assets = new Set();
             const id = key => JSON.stringify(Object.keys(key).sort().map(field => [field, key[field]]));
             const findAssets = value => {
@@ -860,6 +864,11 @@ export class SessionRepo {
             for (const revisionId of revisions) {
                 await mark(this._revisionKey(handle, sessionId, revisionId));
                 const revision = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+                if (!revision.stateHeads[SESSION_CORE_NAMESPACE]) {
+                    const branchKey = this._branchKey(handle, sessionId, revision.branchId);
+                    if (await tx.getResource(branchKey)) await mark(branchKey);
+                    continue; // Low-level storage fixtures have no Core dependency closure.
+                }
                 for (const [namespace, head] of Object.entries({ ...revision.stateHeads, ['atri_knowledge']: revision.knowledgeHead })) await mark(this._stateKey(handle, sessionId, namespace, head));
                 const core = await getNativeDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, revision.stateHeads[SESSION_CORE_NAMESPACE]));
                 for (const node of core.branches) await mark(this._branchKey(handle, sessionId, node.branchId));
@@ -966,33 +975,10 @@ export class SessionRepo {
         }));
     }
 
-    async gcRevisions(handle, sessionId, { retainRevisionIds = [] } = {}) {
+    async gcRevisions(handle, sessionId, options = {}) {
         assertWritable();
-        const retained = new Set(retainRevisionIds);
-        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
-            const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
-            if (session?.headRevisionId) retained.add(session.headRevisionId);
-            for (const savePoint of await tx.listResources({
-                kind: NATIVE_RESOURCE_KINDS.savePoint,
-                handle,
-                sessionId,
-            })) {
-                if (savePoint.doc?.revisionId) retained.add(savePoint.doc.revisionId);
-            }
-
-            for (const revisionId of await this._reachableRevisions(tx, handle, sessionId)) retained.add(revisionId);
-            const deleted = [];
-            for (const record of await tx.listResources({
-                kind: NATIVE_RESOURCE_KINDS.sessionRevision,
-                handle,
-                sessionId,
-            })) {
-                const revisionId = record.key.revisionId;
-                if (retained.has(revisionId)) continue;
-                if (await tx.deleteResource(record.key)) deleted.push(revisionId);
-            }
-            return deleted;
-        }));
+        const result = await maintainSession(this, handle, sessionId, options);
+        return result.deleted.filter(key => key.kind === NATIVE_RESOURCE_KINDS.sessionRevision).map(key => key.revisionId);
     }
 
     async deleteBranch(handle, sessionId, branchId) {
@@ -1016,6 +1002,7 @@ export class SessionRepo {
 
     async delete(handle, sessionId, { expectedRevisionId } = {}) {
         assertWritable();
+        cancelSessionMaintenance(this, handle, sessionId);
         const session = await this.get(handle, sessionId);
         if (!session) return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
             const control = await readRunControl(tx, handle, sessionId);

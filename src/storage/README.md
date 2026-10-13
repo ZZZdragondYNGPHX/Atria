@@ -368,3 +368,29 @@ These barriers describe the implemented software protocol. Process interruption
 tests demonstrate recovery, not physical S2 power-loss safety. Hardware/VFS
 evidence for CachyOS, Windows and Termux must be recorded separately; no engine
 or automatic fallback is certified S2 by configuration alone.
+
+### Native maintenance and format
+
+Native FS envelopes live under `atria-native/resources/<kind>/<sessionId>/` for
+Session resources (other kinds remain directly under `<kind>`). This dev format
+is a hard cut; old flat envelopes are not read or migrated. The redo journal
+continues to publish and recover the complete dependency set before readers
+enter. File and directory barriers use asynchronous filesystem operations.
+
+Session and Blob cleanup share the existing NativeTaskScheduler. Mark reads are
+speculative; root/save generation is checked again inside the publication and
+sweep transaction. `atri_maintenance` stores restartable scan/quarantine/sweep
+cursors outside game state. `gcRevisions` uses this same protocol. Retained
+Revision IDs protect their dependency closure; export/read and Blob publication
+leases delay reclamation. Only unreachable objects enter quarantine (initial
+candidate grace: 60 seconds). Foreground activity pauses at safe batch boundaries.
+A scan/sweep limits records and estimated bytes, with one indivisible record
+allowed to exceed the scan-byte candidate budget. Root traversal still examines
+the full reachable closure and can yield between reads.
+
+SQLite retains WAL/FULL and a 1000-page automatic checkpoint safety net; explicit
+PASSIVE checkpoints queue on the transaction connection tail. Logical deletion,
+WAL checkpoint, and physical database compaction are distinct. No automatic
+VACUUM or destructive history retention policy is introduced. These protocols
+and process interruption tests do not certify physical power-loss behavior on
+Windows, Termux or any device without separate evidence.

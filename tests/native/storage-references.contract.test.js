@@ -160,7 +160,11 @@ describe.each(CONTRACT_HARNESSES)('N1 Native reference/GC guards — $name', ({ 
         expect(await knowledgeRepo.deleteBinding(handle, knowledgeBindingId)).toBe(true);
         expect(await knowledgeRepo.delete(handle, knowledgeBaseId)).toBe(true);
         expect(await assetStore.deleteRef(handle, assetId)).toBe(true);
-        expect(await assetStore.gcBlobs(handle)).toEqual([assetRef.contentHash]);
+        const gcNow = Date.now();
+        let removed = [];
+        // Mark may traverse live hash directories before finding the orphan.
+        for (let i = 0; i < 20 && !removed.length; i++) removed = await assetStore.gcBlobs(handle, { now: gcNow + i * 60001 });
+        expect(removed).toEqual([assetRef.contentHash]);
     });
 
     test('KnowledgeRevision entry relations stay inside the immutable revision closure', async () => {
