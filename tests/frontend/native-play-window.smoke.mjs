@@ -5,8 +5,10 @@ import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { installFixture } from '../native/helpers/session-fixture.js';
+const sizes = (process.env.ATRIA_PLAY_WINDOW_SIZES ?? '100,1000,5000').split(',').map(Number);
+const widths = (process.env.ATRIA_PLAY_WINDOW_WIDTHS ?? '1440,390').split(',').map(Number);
 const root = resolve('public'), h = await makeTempFsEngineHarness(), f = await installFixture(h), snapshots = new Map(), samples = [];
-for (const size of [100, 1000, 5000]) {
+for (const size of sizes) {
     const first = await f.core.create(h.handle, f.start);
     const additions = Array.from({ length: size - 1 }, (_, i) => f.core._newEntry(first, { role: i % 2 ? 'assistant' : 'user',
         content: `Original ${i}\n\n` + 'A changing paragraph preserves the complete original story. '.repeat(1 + i % 20) }, i + 1));
@@ -32,7 +34,7 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
     browser = await chromium.launch({ headless: true });
-    for (const width of [1440, 390]) for (const size of [100, 1000, 5000]) {
+    for (const width of [1440, 390]) for (const size of sizes) {
         const page = await browser.newPage({ viewport: { width, height: 900 } }), errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto('http://127.0.0.1:' + server.address().port);

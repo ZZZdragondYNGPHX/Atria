@@ -19,6 +19,8 @@ const h = await makeTempFsEngineHarness(), dataRoot = path.dirname(h.dirs.root),
 const userRoot = path.join(dataRoot, 'default-user'); await fsp.rename(oldRoot, userRoot);
 for (const [key, value] of Object.entries(h.dirs)) h.dirs[key] = value.replace(oldRoot, userRoot);
 h.handle = 'default-user'; h.engine._directoriesByHandle = () => h.dirs;
+const settings = JSON.parse(await fsp.readFile('default/content/settings.json', 'utf8')); settings.firstRun = false;
+await fsp.writeFile(path.join(userRoot, 'settings.json'), JSON.stringify(settings));
 const configPath = path.join(temporary, 'config.yaml'); await fsp.copyFile('default/config.yaml', configPath);
 process.env.ATRIA_WEBPACK_CACHE_ROOT = process.env.ATRIA_STARTUP_BENCH_CACHE || path.join(temporary, 'bundles'); globalThis.DATA_ROOT = dataRoot; initConfig(configPath);
 const { SecretManager, SECRET_KEYS } = await import('../../src/endpoints/secrets.js');
@@ -81,7 +83,17 @@ try {
         assert.equal(providerRequests, 0, 'Readiness must not send inference');
         samples.push({ cache, navigationToObservedPlayReadyMs: performance.now() - navStart, sessionOpenToObservedPlayReadyMs: performance.now() - openStart,
             shellInteractiveMs: ready.shellInteractive, appReadyMs: ready.appReady, playReadyMs: ready.playReady, optionalReadyMs: ready.optionalReady, nodes: ready.nodes, errors });
-        assert.equal(errors.length, 0, errors.join('\n')); await page.close();
+        assert.equal(errors.length, 0, errors.join('\n'));
+        if (process.env.ATRIA_STARTUP_VERIFY_SUBMIT === '1' && cache === 'warm-browser') {
+            await page.locator('.atria-play-product textarea').fill('Local fixture action');
+            await page.locator('.atria-play-composer__send').click();
+            await page.waitForFunction(() => globalThis.Atria.nativeSessionRuntime.snapshot.timeline.some(entry => entry.content === 'Local fixture response.'), null, { timeout: 20000 });
+            assert.equal(providerRequests, 1);
+            const view = await fixture.core.load(h.handle, snapshot.session.sessionId);
+            assert.equal(view.timeline.filter(entry => entry.content === 'Local fixture action').length, 1);
+            assert.equal(view.timeline.filter(entry => entry.content === 'Local fixture response.').length, 1);
+        }
+        await page.close();
     }
     await context.close(); await stopServer();
     const second = await startServer(); await stopServer();

@@ -831,9 +831,14 @@ export class SessionRepo {
         }));
     }
 
-    async reachabilitySnapshot(handle, sessionId, { retainRevisionIds = [] } = {}) {
-        const tx = { getResource: key => this._engine.withTransaction(handle, tx => tx.getResource(key)),
-            listResources: filter => this._engine.withTransaction(handle, tx => tx.listResources(filter)) };
+    async reachabilitySnapshot(handle, sessionId, { retainRevisionIds = [], shouldPause = () => false } = {}) {
+        let reads = 0;
+        const tx = { getResource: async key => {
+            if (++reads % 32 === 0) await new Promise(resolve => setImmediate(resolve));
+            if (shouldPause()) throw Object.assign(new Error('Native maintenance paused'), { code: 'native_maintenance_paused' });
+            return this._engine.withTransaction(handle, tx => tx.getResource(key));
+        },
+        listResources: filter => this._engine.withTransaction(handle, tx => tx.listResources(filter)) };
         return (async () => {
             const sessionKey = this._sessionKey(handle, sessionId), session = await tx.getResource(sessionKey);
             if (!session) throw new NotFoundError('native session');
@@ -1033,6 +1038,7 @@ export class SessionRepo {
                     await tx.deleteResource(record.key);
                 }
             }
+            await tx.deleteResource({ kind: NATIVE_RESOURCE_KINDS.maintenance, handle, scope: 'session:' + sessionId });
             const removed = await tx.deleteResource(this._sessionKey(handle, sessionId));
             if (control?.mode === 'ironman') await writeRunControl(tx, handle, sessionId, { ...retireRunOperations(control), status: 'terminal', cleanup: 'complete', background: {} });
             return removed;

@@ -6,6 +6,7 @@ import { getNativeDocument, hashNativeDocument, putMutable, withNativeResourceWr
 import { encodeNativeResourceKey } from '../storage/engines/native-resource-key.js';
 
 const leases = new Map();
+const proofs = new WeakMap();
 const identity = key => key.kind + ':' + encodeNativeResourceKey(key);
 const leaseKey = (handle, sessionId) => JSON.stringify([handle, sessionId]);
 export function acquireSessionReadLease(handle, sessionId, revisionId) {
@@ -30,6 +31,29 @@ async function generation(tx, handle, sessionId) {
 }
 const kinds = [K.sessionRevision, K.sessionState, K.timelineEntry, K.timelineVariant, K.branch];
 
+async function retainedProof(repo, handle, sessionId, current, retention, retainRevisionIds, shouldPause) {
+    let cache = proofs.get(repo._engine);
+    if (!cache) proofs.set(repo._engine, cache = new Map());
+    const key = leaseKey(handle, sessionId), now = Date.now();
+    for (const [id, value] of cache) if (value.expiresAt < now) cache.delete(id);
+    const prior = cache.get(key);
+    if (prior?.generation === current && prior.retention === retention) {
+        cache.delete(key); cache.set(key, prior); return prior;
+    }
+    cache.delete(key);
+    const roots = await repo.reachabilitySnapshot(handle, sessionId, { retainRevisionIds, shouldPause });
+    const retained = new Set(roots.keys.map(identity));
+    const bytes = [...retained].reduce((n, id) => n + id.length * 2 + 64, 0);
+    const proof = { generation: roots.generation, retention, retained, bytes, expiresAt: now + 60000 };
+    // Only immutable reachability identities are retained, never history bodies.
+    // Each use still revalidates persistent roots inside the sweep transaction.
+    if (bytes <= 8 * 1024 * 1024) {
+        cache.set(key, proof);
+        while (cache.size > 8 || [...cache.values()].reduce((n, item) => n + item.bytes, 0) > 8 * 1024 * 1024) cache.delete(cache.keys().next().value);
+    }
+    return proof;
+}
+
 // Speculative reads release engine isolation between dependencies. Their proof
 // is accepted only if the root/save generation still matches inside publication.
 // Sweep shares that isolation with every root writer; leases are rechecked too.
@@ -51,8 +75,12 @@ async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scan
     const retention = hashNativeDocument([...new Set(retainRevisionIds)].sort());
     const valid = progress?.generation === current && progress.retention === retention;
     if (!valid || progress.phase === 'complete' || progress.phase === 'mark') {
-        const roots = await repo.reachabilitySnapshot(handle, sessionId, { retainRevisionIds });
-        const retained = new Set(roots.keys.map(identity)), candidates = [];
+        let roots;
+        try { roots = await retainedProof(repo, handle, sessionId, current, retention, retainRevisionIds, pause); } catch (error) {
+            if (error.code === 'native_maintenance_paused') return { phase: 'paused', deleted: [] };
+            throw error;
+        }
+        const retained = roots.retained, candidates = [];
         const scan = valid && progress.phase === 'mark' ? progress.scan : { kind: 0, after: '' };
         if (pause()) return { phase: 'paused', deleted: [] };
         const filter = { kind: kinds[scan.kind], handle, sessionId, after: scan.after, limit: scanLimit, maxBytes: maxScanBytes };
@@ -121,11 +149,11 @@ export function requestSessionMaintenance(repo, handle, sessionId, assetStore) {
         entry.timer = setTimeout(() => { entry.timer = null; entry.at = 0; requestSessionMaintenance(repo, handle, sessionId, assetStore); }, result.phase === 'quarantine' || result.phase === 'complete' ? 60001 : 1000);
         entry.timer.unref?.();
     }).catch(error => {
-        console.warn('[Native maintenance] Session cleanup failed', { sessionId, code: error.code ?? error.name });
+        if (!['operation_stale', 'operation_cancelled'].includes(error.code)) console.warn('[Native maintenance] Session cleanup failed', { sessionId, code: error.code ?? error.name });
         if (times.get(key) === entry) times.delete(key);
     });
 }
 export function cancelSessionMaintenance(repo, handle, sessionId) {
     const times = maintenanceTimes.get(repo._engine), key = leaseKey(handle, sessionId);
-    clearTimeout(times?.get(key)?.timer); times?.delete(key);
+    clearTimeout(times?.get(key)?.timer); times?.delete(key); proofs.get(repo._engine)?.delete(key);
 }

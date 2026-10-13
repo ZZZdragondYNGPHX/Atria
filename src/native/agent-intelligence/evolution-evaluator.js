@@ -20,6 +20,10 @@ export function evolutionEvaluatorRevision() {
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',
         '../model-prompt-runtime/contracts.js', '../model-prompt-runtime/resources.js', '../../skills/repository.js', '../../skills/versions.js',
         '../../../public/scripts/agents/orchestrator/director-runtime.js', '../../../public/scripts/agents/orchestrator/skill-resolution.js',
+        '../session-snapshot.js', '../session-maintenance.js', '../task-scheduler.js', '../timeline-index.js', '../state-delta.js', '../repositories/session-repo.js', '../adapters/native-session-context.js',
+        '../../../public/shared/native-independent-preparation.js', '../../../public/scripts/native/context-compiler.js', '../../../public/scripts/native/exact-token-count.js',
+        '../../../public/scripts/agents/memory/source-lifecycle.js', '../../../public/scripts/agents/memory/eligibility.js', '../../../public/scripts/agents/memory/index-reuse.js',
+        '../../../public/scripts/agents/memory/ranking-index.js', '../../../public/scripts/agents/memory/hybrid-retrieval.js', '../../../public/scripts/agents/memory/packing.js',
         '../../../public/scripts/message-takeover.js', '../../../public/scripts/native/studio-agent.js', '../../../public/shared/skill-invocation.js']
         .map(name => [name, readFileSync(new URL(name, import.meta.url), 'utf8')]));
 }

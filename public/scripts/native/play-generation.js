@@ -57,7 +57,8 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
             return result.timeline.at(-1)?.content ?? '';
         }
         if ([undefined, 'normal'].includes(originalType) && input.trim() && game?.isActive?.()
-            && game.getPackageState?.()?.descriptor?.experience?.mode === 'text') {
+            && game.getPackageState?.()?.descriptor?.experience?.mode === 'text'
+            && game.getPackageState?.()?.runtime?.game?.logic) {
             return await game.submitFreeText({ userInput: input, abortSignal: signal });
         }
         const messages = quietPrompt ? [{ role: 'user', content: quietPrompt }]

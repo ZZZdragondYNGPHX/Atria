@@ -93,6 +93,25 @@ describe('A6 Atria-native Play product', () => {
         } finally { adding.mockRestore(); removing.mockRestore(); }
     });
 
+    test('E7 a blocking modal prevents PlayReady until the visible Composer is usable', async () => {
+        const previousFetch = globalThis.fetch, previousTiming = globalThis.__atriaStartupTiming;
+        globalThis.__atriaStartupTiming = { initJsStart: 0 };
+        globalThis.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ prepared: true, revisionId: 'rev_1' }) }));
+        runtime.request = async () => ({ revisionId: 'rev_1', entries: runtime.snapshot.timeline });
+        globalThis.Atria.getContext = () => ({ generate: jest.fn(), getCapabilityApi: () => ({ isExperienceReady: () => true }) });
+        const dialog = document.createElement('dialog'); dialog.open = true; document.body.append(dialog);
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        product.textarea.getClientRects = () => [{}];
+        try {
+            await flush(); product.refresh();
+            expect(product.root.dataset.atriaPlayReadiness).toBe('blocked_dialog'); expect(globalThis.__atriaStartupTiming.playReady).toBeUndefined();
+            dialog.remove(); await flush();
+            expect(product.root.dataset.atriaPlayReadiness).toBe('ready'); expect(globalThis.__atriaStartupTiming.playReady).toBeGreaterThan(0);
+        } finally { product.dispose(); dialog.remove(); globalThis.fetch = previousFetch; globalThis.__atriaStartupTiming = previousTiming; }
+    });
+
     test('renders only committed Native Timeline data into the product Conversation', () => {
         const root = document.getElementById('host');
         const product = mountAtriaPlayProduct({

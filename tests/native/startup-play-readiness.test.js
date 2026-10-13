@@ -1,3 +1,4 @@
+import { runNativePlayGeneration } from '../../public/scripts/native/play-generation.js';
 import { jest } from '@jest/globals';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { installFixture } from './helpers/session-fixture.js';
@@ -20,4 +21,16 @@ test('Play preparation validates exact current Session, Route and Secret without
     await f.core.appendTimeline(h.handle, input.sessionId, { role: 'user', content: 'Changed' });
     await expect(host.preparePlay(h.handle, input)).rejects.toMatchObject({ code: 'native_generation_revision_conflict' });
     expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+
+test('a text Experience without authored Game logic uses the Native narrator commit path', async () => {
+    const runtime = { snapshot: { session: { sessionId: 's' }, revision: { branchId: 'b', revisionId: 'r' } },
+        prepareGeneration: async () => 'normal', persist: jest.fn(), finalizeStoppedGeneration: jest.fn() };
+    const submitFreeText = jest.fn(), execute = jest.fn(async () => ({ assistantText: 'Plain narration' }));
+    const host = { submitUser: jest.fn(), commitAssistant: jest.fn(), gameApi: () => ({ isActive: () => true,
+        getPackageState: () => ({ descriptor: { experience: { mode: 'text' } }, runtime: { game: {} } }), submitFreeText }) };
+    await expect(runNativePlayGeneration({ runtime, host, execute, input: 'Hello', type: 'normal' })).resolves.toBe('Plain narration');
+    expect(submitFreeText).not.toHaveBeenCalled(); expect(execute).toHaveBeenCalledTimes(1);
+    expect(host.commitAssistant).toHaveBeenCalledWith('normal', 'Plain narration');
 });

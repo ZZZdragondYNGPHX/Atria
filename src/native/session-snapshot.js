@@ -1,3 +1,4 @@
+import { prepareIndependent } from '../../public/shared/native-independent-preparation.js';
 import { NATIVE_RESOURCE_KINDS as K, assertBranch, assertSessionRevision, assertTimelineEntry, assertVariant } from './contracts.js';
 import { assertNativeId } from './identity.js';
 import { hashNativeDocument, getNativeDocument } from './repositories/common.js';
@@ -99,7 +100,9 @@ export async function readSessionSnapshot(tx, handle, session, value) {
         ancestors.add(ancestor.branchId);
         ancestor = byId.get(ancestor.branch.parentBranchId);
     }
-    for (const selection of timeline) {
+    const decoded = await prepareIndependent(timeline, async (selection, sequence) => {
+        const selectionVariants = [];
+        if (sequence % 32 === 0) await new Promise(resolve => setImmediate(resolve));
         if (messages.has(selection.messageId)) throw new TypeError('Duplicate Timeline message identity');
         messages.add(selection.messageId);
         if (!ancestors.has(selection.branchId)) throw new TypeError('Timeline entry is not on this Branch ancestry');
@@ -119,14 +122,16 @@ export async function readSessionSnapshot(tx, handle, session, value) {
                 throw new TypeError('Variant identity mismatch');
             }
             if (variantId === selection.activeVariantId) active = variant;
-            variants.push(variant);
+            selectionVariants.push(variant);
         }
         if (!active) throw new TypeError('Missing active Variant');
-        entries.push(assertTimelineEntry({
-            ...entry, sequence: entries.length, content: active.content,
+        return { entry: assertTimelineEntry({
+            ...entry, sequence, content: active.content,
             variantIds: selection.variantIds, activeVariantId: active.variantId,
-        }));
-    }
+        }), variants: selectionVariants };
+    }, { concurrency: 4 });
+    for (const item of decoded) { entries.push(item.entry); variants.push(...item.variants); }
+
     const last = entries.at(-1);
     const head = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
     if (hashNativeDocument(head) !== hashNativeDocument(revision.timelineHead)) throw new TypeError('Timeline HEAD mismatch');

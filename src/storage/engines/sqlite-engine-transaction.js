@@ -28,7 +28,10 @@ export class SqliteTransaction {
         registerNativeResourceHandlers(this);
     }
 
+    dispose() { this._closed = true; this._handlers.clear(); }
+
     _h(kind, method) {
+        if (this._closed) throw new Error('SQLite transaction connection is closed');
         const h = this._handlers.get(kind);
         if (!h) throw new Error(`SqliteTransaction.${method}: unsupported kind ${kind}`);
         return h;

@@ -403,9 +403,11 @@ export function mountAtriaPlayProduct({
         }
         const game = globalThis.Atria?.getContext?.()?.getCapabilityApi?.('game-runtime');
         const rangeReady = window.loadedIdentity === window.identity;
-        const ready = writable && !textarea.disabled && prepared && rangeReady && game?.isExperienceReady?.() === true;
-        product.dataset.atriaPlayReadiness = ready ? 'ready' : terminalArchive || runtime.history ? 'read_only' : preparationError ?? 'preparing';
-        if (ready && product.isConnected && textarea.getClientRects().length) markStartupReadiness('playReady', documentRef);
+        const blockedDialog = Boolean(documentRef.querySelector('dialog[open]'));
+        const presented = product.isConnected && textarea.getClientRects().length > 0 && !product.closest('[inert]');
+        const ready = writable && !textarea.disabled && prepared && rangeReady && presented && !blockedDialog && game?.isExperienceReady?.() === true;
+        product.dataset.atriaPlayReadiness = ready ? 'ready' : terminalArchive || runtime.history ? 'read_only' : blockedDialog ? 'blocked_dialog' : preparationError ?? 'preparing';
+        if (ready) markStartupReadiness('playReady', documentRef);
         recover.hidden = terminalArchive || (!runtime.failed && !runtime.history);
         recover.textContent = tl(runtime.failed ? 'Reload session' : 'Return to current story');
         composerStatus.textContent = tl(terminalArchive ? 'This story has ended. Its history is read-only.' : runtime.failed
@@ -480,6 +482,11 @@ export function mountAtriaPlayProduct({
 
     const lifecycleTypes = Object.values(NATIVE_SESSION_LIFECYCLE);
     const unsubscribers = lifecycleTypes.map(type => onNativeSessionLifecycle(type, render));
+    const readinessObserver = new MutationObserver(records => {
+        if (records.some(record => record.type === 'attributes' ? record.target.tagName === 'DIALOG'
+            : [...record.addedNodes, ...record.removedNodes].some(node => node.tagName === 'DIALOG' || node.querySelector?.('dialog')))) render();
+    });
+    readinessObserver.observe(documentRef.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
     const bodyObserver = new MutationObserver(render);
     bodyObserver.observe(documentRef.body, {
         attributes: true,
@@ -538,7 +545,7 @@ export function mountAtriaPlayProduct({
             clearSpeechControls(); picker?.close();
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);
             documentRef.removeEventListener('atria-native-runtime-error', showRuntimeError);
-            bodyObserver.disconnect();
+            bodyObserver.disconnect(); readinessObserver.disconnect();
             for (const unsubscribe of unsubscribers) unsubscribe();
             composer.removeEventListener('submit', submit);
             for (const body of conversation.querySelectorAll('.atria-play-message__body')) releaseIllustrationSurface(body);

@@ -15,6 +15,7 @@ export class SqliteEngine {
         this.kind = 'sqlite';
         this._directoriesByHandle = directoriesByHandle;
         this._dbs = new Map();
+        this._transactions = new WeakMap();
         // Per-handle async tail. `withTransaction` chains onto the previous
         // promise for the same handle, so two parallel HTTP requests on the
         // same user's DB don't both run `BEGIN IMMEDIATE` and trip
@@ -33,6 +34,7 @@ export class SqliteEngine {
         db.pragma('journal_mode = WAL');
         db.pragma('synchronous = FULL');
         if (db.pragma('synchronous', { simple: true }) !== 2 || db.pragma('journal_mode', { simple: true }) !== 'wal') {
+            this._transactions.get(db)?.dispose();
             db.close(); throw new Error('SQLite durable commit configuration unavailable');
         }
         db.pragma('foreign_keys = ON');
@@ -70,6 +72,7 @@ export class SqliteEngine {
     async deleteUser(handle) {
         const existing = this._dbs.get(handle);
         if (existing) {
+            this._transactions.get(existing)?.dispose();
             try { existing.close(); } catch { /* db may already be closed */ }
             this._dbs.delete(handle);
             this._txTail.delete(handle);
@@ -129,6 +132,7 @@ export class SqliteEngine {
     async restoreUser(handle, stream) {
         const existing = this._dbs.get(handle);
         if (existing) {
+            this._transactions.get(existing)?.dispose();
             try { existing.close(); } catch { /* best-effort */ }
             this._dbs.delete(handle);
             this._txTail.delete(handle);
@@ -156,7 +160,8 @@ export class SqliteEngine {
 
     async withTransaction(handle, fn) {
         const db = this._dbFor(handle);
-        const tx = new SqliteTransaction({ db, handle, directoriesByHandle: this._directoriesByHandle });
+        let tx = this._transactions.get(db);
+        if (!tx) { tx = new SqliteTransaction({ db, handle, directoriesByHandle: this._directoriesByHandle }); this._transactions.set(db, tx); }
         // Serialize transactions per-handle: chain onto the previous tail
         // and replace it with our own. Independent of `await`-scheduling
         // order across the event loop, only one BEGIN/COMMIT pair runs at
@@ -193,6 +198,7 @@ export class SqliteEngine {
 
     close() {
         for (const db of this._dbs.values()) {
+            this._transactions.get(db)?.dispose();
             db.close();
         }
         this._dbs.clear();
@@ -231,6 +237,7 @@ export class SqliteEngine {
     closeHandle(handle) {
         const db = this._dbs.get(handle);
         if (db) {
+            this._transactions.get(db)?.dispose();
             db.close();
             this._dbs.delete(handle);
         }

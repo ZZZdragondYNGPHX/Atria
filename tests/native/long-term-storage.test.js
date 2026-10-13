@@ -1,3 +1,4 @@
+import { maintainSession } from '../../src/native/session-maintenance.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { installFixture, services, sessionFixture } from './helpers/session-fixture.js';
 import { runFixture } from './helpers/run-fixture.js';
@@ -86,6 +87,10 @@ describe.each(CONTRACT_HARNESSES)('Lossless shared storage — $name', ({ make }
             expect(await iron.savePointRepo.get(h.handle, base.session.sessionId, oldSave.saveId)).not.toBeNull();
             await expect(iron.core.appendTimeline(h.handle, base.session.sessionId, { role: 'user', content: 'Revive' })).rejects.toThrow('terminal');
             await expect(iron.core.restoreSavePoint(h.handle, base.session.sessionId, oldSave.saveId)).rejects.toThrow('terminal');
+            const now = Date.now() + 1000;
+            for (let i = 0; i < 8; i++) await maintainSession(iron.sessionRepo, h.handle, base.session.sessionId, { now: now + i * 60001 });
+            expect((await services(h).core.load(h.handle, base.session.sessionId)).timeline).toEqual(dead.timeline);
+            expect(await iron.savePointRepo.get(h.handle, base.session.sessionId, oldSave.saveId)).not.toBeNull();
             const roots = await iron.sessionRepo.reachabilitySnapshot(h.handle, base.session.sessionId);
             expect(roots.terminal).toBe(true); expect(roots.revisionIds).toContain(base.revision.revisionId);
         } finally { await h.cleanup(); }
