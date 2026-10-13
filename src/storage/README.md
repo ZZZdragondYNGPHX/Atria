@@ -368,4 +368,3 @@ These barriers describe the implemented software protocol. Process interruption
 tests demonstrate recovery, not physical S2 power-loss safety. Hardware/VFS
 evidence for CachyOS, Windows and Termux must be recorded separately; no engine
 or automatic fallback is certified S2 by configuration alone.
-
