@@ -1,3 +1,4 @@
+import { translateShellText as tl } from '../atria-shell/localization.js';
 import { runtimeRequest } from './runtime-client.js';
 
 const statusText = { active: 'Ready', waiting: 'Waiting for evidence', blocked: 'Blocked', stale: 'Source changed', paused: 'Paused', cancelled: 'Cancelled', completed: 'Completed' };
@@ -10,7 +11,7 @@ export const goalRequest = (action, value) => runtimeRequest('/goals/' + action,
 export function mountAgentGoals({ slot, scope, task = null, request = goalRequest }) {
     const document = slot.ownerDocument;
     const root = document.createElement('details'); root.className = 'atria-agent-goals';
-    const heading = document.createElement('summary'); heading.textContent = 'Persistent goals'; root.append(heading);
+    const heading = document.createElement('summary'); heading.textContent = tl('Persistent goals'); root.append(heading);
     const body = document.createElement('div'); root.append(body); slot.append(root);
     const notice = document.createElement('p'); notice.setAttribute('role', 'status'); body.append(notice);
     const content = document.createElement('div'); body.append(content);
@@ -31,10 +32,10 @@ export function mountAgentGoals({ slot, scope, task = null, request = goalReques
         if (disposed || busy) return;
         const label = trigger?.textContent;
         const goalId = trigger?.closest('section')?.dataset.goalId;
-        busy = true; notice.textContent = 'Working…'; root.setAttribute('aria-busy', 'true');
+        busy = true; notice.textContent = tl('Working…'); root.setAttribute('aria-busy', 'true');
         for (const node of content.querySelectorAll('button')) node.disabled = true;
         try { await action(); await refresh(); if (!disposed) notice.textContent = ''; } catch {
-            if (!disposed) notice.textContent = 'Could not update this goal. Refresh to check the current state, then try again.';
+            if (!disposed) notice.textContent = tl('Could not update this goal. Refresh to check the current state, then try again.');
         } finally {
             busy = false;
             if (!disposed) {

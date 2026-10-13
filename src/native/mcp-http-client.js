@@ -55,8 +55,8 @@ export function createMcpHttpClient({ url, toolNames = [], resourceUris = [], he
                 while (!envelope) {
                     for await (const event of readServerEvents(response.body, { maxBytes: remaining, signal, onBytes: count => { remaining -= count; if (remaining < 0) throw failure('mcp_response_too_large', 'MCP stream exceeds its byte bound.', true); } })) {
                         if (event.id !== undefined) {
-                            if (!/^[\x21-\x7e]{1,256}$/.test(event.id)) throw failure('mcp_session_invalid', 'Invalid resume event identity.', true);
-                            cursor = event.id;
+                            if (event.id !== '' && !/^[\x21-\x7e]{1,256}$/.test(event.id)) throw failure('mcp_session_invalid', 'Invalid resume event identity.', true);
+                            cursor = event.id || undefined;
                         }
                         if (event.retry !== undefined) retry = event.retry;
                         if (!event.data) continue;
@@ -74,7 +74,7 @@ export function createMcpHttpClient({ url, toolNames = [], resourceUris = [], he
                         signal.throwIfAborted();
                         const next = await fetchImpl(parsed.href, { method: 'GET', redirect: 'error', signal,
                             headers: { ...headers, Accept: 'text/event-stream', 'MCP-Protocol-Version': MCP_PROTOCOL_VERSION,
-                                'Last-Event-ID': cursor, ...((sessionId || response.headers.get('mcp-session-id')) ? { 'Mcp-Session-Id': sessionId || response.headers.get('mcp-session-id') } : {}) } });
+                                'Last-Event-ID': cursor, ...((sessionId || initializeSessionId) ? { 'Mcp-Session-Id': sessionId || initializeSessionId } : {}) } });
                         if (!next.ok || !/^text\/event-stream(?:\s*;|$)/i.test(next.headers.get('content-type') || '')) {
                             await next.body?.cancel(); throw failure('mcp_stream_interrupted', 'MCP resume failed.', true);
                         }

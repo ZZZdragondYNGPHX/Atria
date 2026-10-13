@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { assertExecutionPolicy } from '../../src/native/model-prompt-runtime/contracts.js';
+import { assertExecutionPolicy, assertConnectionProfile } from '../../src/native/model-prompt-runtime/contracts.js';
 
 const model = 'model_' + 'a'.repeat(32), connection = 'conn_' + 'b'.repeat(32);
 const policy = () => ({ schemaVersion: 1, allowedModelProfileIds: [model] });
@@ -39,4 +39,11 @@ test('S31 A2A policy requires every exact field and permits no alternate authori
     }
     for (const value of [null, [], 'server', true]) expect(() => assertExecutionPolicy({ ...policy(), a2a: value })).toThrow(TypeError);
     expect(() => assertExecutionPolicy({ ...policy(), providerAdapter: 'provider.a2a' })).toThrow(TypeError);
+});
+
+test('protocol connections may omit authentication, while model connections retain required SecretRef', () => {
+    const base = { schemaVersion: 1, connectionProfileId: connection, displayName: 'Public protocol', scope: 'player', endpoint: 'https://example.test/rpc', transport: 'transport.http' };
+    expect(assertConnectionProfile({ ...base, providerAdapter: 'provider.a2a' })).not.toHaveProperty('secretRef');
+    expect(assertConnectionProfile({ ...base, providerAdapter: 'provider.mcp' })).not.toHaveProperty('secretRef');
+    expect(() => assertConnectionProfile({ ...base, providerAdapter: 'provider.openai-compatible' })).toThrow();
 });

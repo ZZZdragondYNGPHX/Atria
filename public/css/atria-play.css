@@ -219,3 +219,9 @@ dialog.atria-game-host-surface--transient::backdrop { background: var(--atri-scr
 .atria-play-message__avatar { position: relative; overflow: hidden; }
 .atria-play-message__avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .atria-play-composer [data-atria-persona-select] { grid-column: 1 / -1; justify-self: start; min-height: 44px; max-width: 100%; overflow-wrap: anywhere; }
+
+.atria-play-speech { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 12px; }
+.atria-play-speech button, .atria-play-speech select { min-height: 44px; padding: 8px 12px; max-width: 100%; font: inherit; }
+.atria-play-speech audio { max-width: 100%; }
+.atria-play-speech output { font-size: 0.875rem; }
+.atria-play-speech [hidden] { display: none; }

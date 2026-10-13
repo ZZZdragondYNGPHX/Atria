@@ -6,6 +6,7 @@ import { installCognitionFixture } from './helpers/cognition-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { SpeechService } from '../../src/native/speech-service.js';
 import { NativeTaskScheduler } from '../../src/native/task-scheduler.js';
+import { createEspeakProvider } from '../../src/native/adapters/espeak-provider.js';
 import { createWindowsSapiProvider } from '../../src/native/adapters/windows-sapi-provider.js';
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 
@@ -213,5 +214,33 @@ if (process.platform === 'win32') {
             const bank = await f.f.core.runs.status(f.h.handle, f.body.sessionId);
             expect(bank.retiredCompute).toMatchObject({ modelAttempts: 0, localJobs: 3 });
         } finally { await f.cleanup(); }
+    });
+}
+
+if (process.platform === 'linux') {
+    test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('basic %s actual eSpeak consumes disclosed text, exposes exact audio and keeps voice/cache/charges', async (_kind, harness) => {
+        const provider = createEspeakProvider(), voices = await provider.listVoices(), voice = voices.find(item => item.language === 'cmn') ?? voices[0];
+        const f = await fixture(harness, 32, provider);
+        try {
+            f.body.voiceId = voice.voiceId;
+            expect((await f.speech.describe(f.h.handle, { sessionId: f.body.sessionId, revisionId: f.body.revisionId })).items).toEqual(expect.arrayContaining([{ itemId: f.body.itemId, messageId: f.base.timeline.at(-1).messageId, actorId: f.f.actorId }]));
+            const started = await f.speech.start(f.h.handle, f.body), artifact = await f.scheduler.operations.get(started.operationId).handle.result;
+            expect(artifact.voice).toMatchObject({ provider: 'espeak.ng', voiceId: voice.voiceId });
+            expect(artifact.durationMs).toBeGreaterThan(0); expect(artifact.timing).toBe('total_duration_only');
+            const asset = await f.speech.assets.read(f.h.handle, artifact.asset.assetId);
+            expect(asset.bytes.toString('ascii', 0, 4)).toBe('RIFF'); expect(asset.bytes.length).toBeGreaterThan(44);
+            expect(asset.bytes.subarray(44).some(byte => byte !== 0)).toBe(true);
+            const bank = await f.f.core.runs.status(f.h.handle, f.body.sessionId);
+            expect(Object.values(bank.operations).flatMap(op => op.compute?.localWork ?? []).map(work => work.kind)).toEqual(['context_build', 'speech_synthesis', 'speech_publish']);
+            expect(await f.speech.start(f.h.handle, f.body)).toMatchObject({ cached: true, operationId: started.operationId });
+            expect(await f.f.core.runs.status(f.h.handle, f.body.sessionId)).toEqual(bank);
+            expect(await f.f.core.load(f.h.handle, f.body.sessionId)).toEqual(f.base);
+            await expect(f.speech.start(f.h.handle, { ...f.body, text: 'ungranted' })).rejects.toThrow();
+        } finally { await f.cleanup(); }
+    });
+    test('eSpeak exact voice allowlist and missing installation fail without shell/SSML fallback', async () => {
+        const provider = createEspeakProvider();
+        await expect(provider.synthesize({ text: '公开测试', voiceId: 'espeak:../../tmp/evil' })).rejects.toMatchObject({ code: 'native_speech_voice_unavailable' });
+        await expect(createEspeakProvider({ executable: '/atria-not-installed' }).listVoices()).rejects.toMatchObject({ code: 'native_speech_unavailable' });
     });
 }

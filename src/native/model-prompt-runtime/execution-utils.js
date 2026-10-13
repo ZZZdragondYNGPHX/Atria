@@ -1,3 +1,4 @@
+import { COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 // Request-owned values only: never freeze a caller's mutable configuration in place.
 export function immutable(value) {
     const copy = structuredClone(value);
@@ -19,7 +20,7 @@ export function containsSecret(value, secret) {
     return Boolean(encoded?.includes(secret) || encoded?.includes(JSON.stringify(secret).slice(1, -1)));
 }
 
-const ERROR_CODES = new Set([
+const ERROR_CODES = new Set([...COMPUTE_ADMISSION_CODES, 'native_generation_budget_unavailable',
     'generation_continuation_reset_required',
     'generation_target_policy_denied', 'generation_path_evidence_unavailable', 'generation_continuation_unavailable', 'generation_semantic_authority_changed',
     'native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied', 'native_generation_task_stopped', 'native_generation_revision_conflict',

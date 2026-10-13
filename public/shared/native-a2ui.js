@@ -122,7 +122,7 @@ export function parseA2uiComponent(source, file, policy, bridge = null) {
         visiting.delete(id); assertPresentationNode(node); return node;
     };
     let root = deleted ? { id: 'root', tag: 'p', attributes: {}, children: [policy.fallbackText] } : render('root');
-    if (!deleted && visited.size !== components.size) fail('unreachable component');
+    if (!deleted && policy.stream !== true && visited.size !== components.size) fail('unreachable component');
     if (uses.size) {
         const anyStatus = status => ({ op: 'or', args: [...uses].map(target => ({ op: 'eq', args: [{ get: 'bridge.' + target + '.status' }, status] })) });
         root = { id: 'atriaA2uiHost', tag: 'div', attributes: {}, children: [root,

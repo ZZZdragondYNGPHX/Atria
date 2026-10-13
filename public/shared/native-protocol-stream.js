@@ -18,7 +18,10 @@ export async function* readServerEvents(body, { maxBytes = 65536, signal, onByte
         if (field === 'data') event.data.push(content);
         if (field === 'event') event.type = content;
         if (field === 'id' && !content.includes('\0')) event.id = content;
-        if (field === 'retry' && /^\d+$/.test(content)) event.retry = Number(content);
+        if (field === 'retry' && /^\d+$/.test(content)) {
+            const retry = Number(content); if (!Number.isSafeInteger(retry) || retry > 2147483647) throw new RangeError('Invalid event retry');
+            event.retry = retry;
+        }
         return null;
     };
     try {

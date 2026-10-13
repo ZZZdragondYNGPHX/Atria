@@ -260,7 +260,7 @@ export class RunControl {
                 for (const [oldWindow, item] of Object.entries(value.background)) if (item.period < period) delete value.background[oldWindow];
             }
             const limits = request.compute?.limits ?? op.compute?.limits;
-            const compute = limits && request.compute ? chargeComputeAttempt(op, limits, request.compute.attempt) : null;
+            const compute = limits && request.compute ? chargeComputeAttempt(op, limits, request.compute.attempt, request.compute.options) : null;
             op.attempts[lane] = (op.attempts[lane] ?? 0) + 1; op.total++;
             // Persist before send. A process interruption is an unknown send,
             // not a refund or a new operation identity.

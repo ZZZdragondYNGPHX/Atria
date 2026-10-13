@@ -34,3 +34,11 @@ test('stream close/cancel prevents late delivery and preserves surface identity'
     expect(delivered).toBe(1);
     expect(() => p.push({ version: 'v0.9.1', createSurface: { surfaceId: 'other', catalogId: 'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json' } })).toThrow();
 });
+
+test('online surface can retire and restore visible controls without accepting new bindings', () => {
+    const { p } = projection();
+    const next = p.push({ version: 'v0.9.1', updateComponents: { surfaceId: 'notes', components: [{ id: 'root', component: 'Column', children: ['title', 'body'] }] } });
+    expect(next.ast.uses).toEqual([]);
+    const restored = p.push({ version: 'v0.9.1', updateComponents: { surfaceId: 'notes', components: [{ id: 'root', component: 'Column', children: ['title', 'body', 'confirm'] }] } });
+    expect(restored.ast.uses).toEqual(['save']);
+});

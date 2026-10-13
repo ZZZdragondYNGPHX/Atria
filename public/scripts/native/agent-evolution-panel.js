@@ -1,3 +1,4 @@
+import { translateShellText as tl } from '../atria-shell/localization.js';
 import { contentSha256 } from '../../shared/content-sha256.js';
 
 export async function evolutionRequest(group, action, value) {
@@ -13,7 +14,7 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
     const document = slot.ownerDocument;
     let disposed = false, busy = false, identity = null, state = null, experience = null, catalog = null;
     const root = document.createElement('details'); root.className = 'atria-agent-evolution';
-    const heading = document.createElement('summary'); heading.textContent = 'Feedback and local evolution'; root.append(heading);
+    const heading = document.createElement('summary'); heading.textContent = tl('Feedback and local evolution'); root.append(heading);
     const body = document.createElement('div'); root.append(body); slot.append(root);
     const error = document.createElement('p'); error.setAttribute('role', 'status'); body.append(error);
     const content = document.createElement('div'); body.append(content);

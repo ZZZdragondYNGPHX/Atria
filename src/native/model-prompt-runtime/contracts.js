@@ -266,11 +266,14 @@ export function assertExecutionPolicy(value) {
     let optionalWork;
     if (value.optionalWork !== undefined) {
         object(value.optionalWork, field + '.optionalWork');
-        only(value.optionalWork, ['mode', 'requiredCompute'], field + '.optionalWork');
+        only(value.optionalWork, ['mode', 'requiredCompute', 'roles'], field + '.optionalWork');
         if (value.optionalWork.mode !== 'preserve_required') throw new TypeError(field + '.optionalWork.mode unsupported');
+        const roles = value.optionalWork.roles;
+        if (roles !== undefined && (!Array.isArray(roles) || !roles.length || roles.length > 3 || new Set(roles).size !== roles.length
+            || roles.some(role => !['rerank', 'model_task', 'background'].includes(role)))) throw new TypeError(field + '.optionalWork.roles invalid');
         const required = value.optionalWork.requiredCompute;
         if (required !== undefined) only(required, ['maxRequests', 'maxTokens'], field + '.optionalWork.requiredCompute');
-        optionalWork = Object.freeze({ mode: 'preserve_required', ...(required === undefined ? {} : { requiredCompute: Object.freeze(assertComputeBudget(required)) }) });
+        optionalWork = Object.freeze({ mode: 'preserve_required', ...(roles === undefined ? {} : { roles: Object.freeze([...roles]) }), ...(required === undefined ? {} : { requiredCompute: Object.freeze(assertComputeBudget(required)) }) });
     }
     return Object.freeze({ schemaVersion: 1, allowedModelProfileIds: freezeArray(targets),
         verifiedRequirements: uniqueStrings(value.verifiedRequirements || [], field + '.verifiedRequirements', { namespacedValues: true }),
@@ -359,7 +362,8 @@ export function assertConnectionProfile(value) {
         transport: namespaced(value.transport, 'ConnectionProfile.transport'),
         endpoint: url.toString(),
         networkPolicy,
-        secretRef: assertSecretRef(value.secretRef, 'ConnectionProfile.secretRef'),
+        ...(value.secretRef === undefined && ['provider.mcp', 'provider.a2a'].includes(value.providerAdapter) ? {}
+            : { secretRef: assertSecretRef(value.secretRef, 'ConnectionProfile.secretRef') }),
         options,
     });
 }

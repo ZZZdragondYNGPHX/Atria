@@ -1,3 +1,4 @@
+import { mountSpeechControls } from './speech-controls.js';
 import { nativeAssetUrl } from './session-projection.js';
 import { openPersonaSelector } from './persona-ui.js';
 import { openHostExternal } from './frontend/external.js';
@@ -179,6 +180,8 @@ export function mountAtriaPlayProduct({
 
     let draftText = '';
     let renderedSession = null;
+    const speechControls = new Map();
+    const clearSpeechControls = () => { speechControls.forEach(control => control.dispose()); speechControls.clear(); };
     let following = true;
     const scrollToLatest = () => {
         following = true;
@@ -224,7 +227,7 @@ export function mountAtriaPlayProduct({
         const active = Boolean(snapshot && runtime?.active);
         product.hidden = !active;
         if (!active) {
-            renderedSession = null;
+            clearSpeechControls(); renderedSession = null;
             draftText = '';
             runtimeError.hidden = true;
             for (const body of conversation.querySelectorAll('.atria-play-message__body')) releaseIllustrationSurface(body);
@@ -249,6 +252,7 @@ export function mountAtriaPlayProduct({
 
         const sessionId = snapshot.session?.sessionId;
         if (renderedSession !== sessionId) {
+            clearSpeechControls();
             for (const body of conversation.querySelectorAll('.atria-play-message__body')) releaseIllustrationSurface(body);
             conversation.replaceChildren();
             renderedSession = sessionId;
@@ -275,6 +279,12 @@ export function mountAtriaPlayProduct({
             const id = text(entry.messageId);
             const node = existing.get(id) || messageNode(documentRef, snapshot, entry);
             existing.delete(id);
+            if (entry.role === 'assistant' && snapshot.manifest.runtime?.experienceContract?.informationRuntime?.narration?.expression) {
+                if (speechControls.has(id) && speechControls.get(id).actorId !== entry.actorId) { speechControls.get(id).dispose(); speechControls.delete(id); }
+                if (!speechControls.has(id)) speechControls.set(id, mountSpeechControls({ document: documentRef, container: node, runtime: activeRuntime, messageId: id, actorId: entry.actorId }));
+                speechControls.get(id).refresh();
+            }
+
             const body = node.querySelector('.atria-play-message__body');
             const displayContent = entry.displayContent ?? entry.content;
             if (body.dataset.canonicalText !== text(displayContent)) { renderSafeProse(body, text(displayContent), { openExternal: openHostExternal }); body.dataset.canonicalText = text(displayContent); }
@@ -295,7 +305,7 @@ export function mountAtriaPlayProduct({
             }
             if (conversation.children[index] !== node) conversation.insertBefore(node, conversation.children[index] || null);
         });
-        for (const node of existing.values()) { releaseIllustrationSurface(node.querySelector('.atria-play-message__body')); node.remove(); }
+        for (const node of existing.values()) { speechControls.get(node.dataset.atriaMessageId)?.dispose(); speechControls.delete(node.dataset.atriaMessageId); releaseIllustrationSurface(node.querySelector('.atria-play-message__body')); node.remove(); }
         provisionalNode.hidden = !generating() || !provisional;
         provisionalNode.textContent = provisional;
         provisionalNode.dataset.generationState = generation.state;
@@ -443,7 +453,7 @@ export function mountAtriaPlayProduct({
         },
         refresh: render,
         dispose() {
-            picker?.close();
+            clearSpeechControls(); picker?.close();
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);
             documentRef.removeEventListener('atria-native-runtime-error', showRuntimeError);
             bodyObserver.disconnect();

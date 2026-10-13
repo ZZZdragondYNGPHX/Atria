@@ -1,3 +1,4 @@
+import { parseSpeechWav } from './speech-audio.js';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -13,27 +14,6 @@ const error = code => Object.assign(new Error(code), { code });
 const check = signal => { if (signal?.aborted) throw error('native_speech_cancelled'); };
 const helper = fileURLToPath(new URL('./windows-sapi.ps1', import.meta.url));
 
-function parseWav(bytes) {
-    if (bytes.length < 44 || bytes.toString('ascii', 0, 4) !== 'RIFF' || bytes.toString('ascii', 8, 12) !== 'WAVE'
-        || bytes.readUInt32LE(4) !== bytes.length - 8) throw error('native_speech_audio_invalid');
-    let offset = 12, format, dataBytes = 0;
-    while (offset + 8 <= bytes.length) {
-        const type = bytes.toString('ascii', offset, offset + 4), size = bytes.readUInt32LE(offset + 4), start = offset + 8;
-        if (start + size > bytes.length) throw error('native_speech_audio_invalid');
-        if (type === 'fmt ') {
-            if (format || size < 16 || bytes.readUInt16LE(start) !== 1) throw error('native_speech_audio_invalid');
-            format = { channels: bytes.readUInt16LE(start + 2), sampleRate: bytes.readUInt32LE(start + 4),
-                byteRate: bytes.readUInt32LE(start + 8), blockAlign: bytes.readUInt16LE(start + 12), bitsPerSample: bytes.readUInt16LE(start + 14) };
-        } else if (type === 'data') {
-            if (dataBytes || !size) throw error('native_speech_audio_invalid');
-            dataBytes = size;
-        }
-        offset = start + size + size % 2;
-    }
-    if (!format || !dataBytes || offset !== bytes.length || format.channels !== 1 || format.sampleRate !== 22050 || format.bitsPerSample !== 16
-        || format.blockAlign !== 2 || format.byteRate !== 44100 || dataBytes % format.blockAlign) throw error('native_speech_audio_invalid');
-    return { format, dataBytes, durationMs: dataBytes / format.byteRate * 1000 };
-}
 
 function subprocess(spawnImpl, input, signal, timeoutMs) {
     return new Promise((resolve, reject) => {
@@ -79,7 +59,7 @@ export function createWindowsSapiProvider({ spawnImpl = spawn, platform = proces
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60000 || !Number.isSafeInteger(maxBytes) || maxBytes < 44 || maxBytes > MAX_WAV_BYTES) throw error('native_speech_request_invalid');
     const available = signal => { check(signal); if (platform !== 'win32') throw error('native_speech_unavailable'); };
     return Object.freeze({
-        capabilities: WINDOWS_SAPI_CAPABILITIES,
+        id: 'windows.sapi', capabilities: WINDOWS_SAPI_CAPABILITIES,
         async listVoices({ signal } = {}) {
             available(signal);
             const result = await subprocess(spawnImpl, { action: 'listVoices' }, signal, timeoutMs);
@@ -118,7 +98,7 @@ export function createWindowsSapiProvider({ spawnImpl = spawn, platform = proces
                 if ((await stat(outputPath)).size > maxBytes) throw error('native_speech_audio_limit');
                 const bytes = await readFile(outputPath); check(signal);
                 if (bytes.length > maxBytes) throw error('native_speech_audio_limit');
-                const audio = parseWav(bytes);
+                const audio = parseSpeechWav(bytes);
                 output = Object.freeze({ bytes, mediaType: 'audio/wav', voiceId: result.voiceId, voiceName: result.voiceName, language: result.language,
                     durationMs: audio.durationMs, elapsedMs: result.elapsedMs, totalElapsedMs: performance.now() - started,
                     format: Object.freeze(audio.format), dataBytes: audio.dataBytes, capabilities: WINDOWS_SAPI_CAPABILITIES });

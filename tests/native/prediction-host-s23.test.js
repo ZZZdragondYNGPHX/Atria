@@ -89,6 +89,21 @@ describe('S23 original Host prediction lane (local synthetic provider only)', ()
         expect(requests).toHaveLength(1);
     });
 
+    test.each([['known', { maxRequests: 1, maxTokens: 1000 }, 'native_generation_required_budget_reserved'],
+        ['unknown', undefined, 'native_generation_required_budget_unknown']])('stored optional model task %s reserve refuses prediction before sending and leaves mandatory budget', async (_kind, requiredCompute, code) => {
+        const route = await seeded.persistence.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId);
+        await seeded.persistence.saveRuntimeRoute(h.handle, { ...route, executionPolicy: { ...route.executionPolicy,
+            optionalWork: { mode: 'preserve_required', roles: ['model_task'], ...(requiredCompute ? { requiredCompute } : {}) } } });
+        await expect(service.prepare(h.handle, request())).rejects.toMatchObject({ code });
+        expect(requests).toEqual([]);
+        expect((await ledger()).attempts).toEqual([]);
+        const operation = Object.values((await svc.core.runs.status(h.handle, base.session.sessionId)).operations).find(op => op.compute);
+        expect(operation.total).toBe(0);
+        await seeded.persistence.saveRuntimeRoute(h.handle, route);
+        await service.prepare(h.handle, request());
+        expect(requests).toHaveLength(1);
+    });
+
     test('preflight compiles the same narrow prompt and resolves capabilities without sending or charging', async () => {
         const before = await svc.core.runs.status(h.handle, base.session.sessionId);
         const generated = await service.preflight(h.handle, request());

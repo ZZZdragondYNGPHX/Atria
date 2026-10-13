@@ -1,5 +1,6 @@
 import { fields } from './native-values.js';
 
+export const COMPUTE_ADMISSION_CODES = Object.freeze(['native_generation_budget_exhausted', 'native_generation_required_budget_reserved', 'native_generation_required_budget_unknown']);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 export function assertComputeBudget(value) {
@@ -166,4 +167,10 @@ export function settleComputeAttempt(holder, attemptId, usage) {
     if (entry.status === 'settled' && JSON.stringify(entry.usage) !== JSON.stringify(observed)) fail('native_generation_attempt_conflict');
     entry.status = status; entry.usage = observed;
     return structuredClone(entry);
+}
+
+// Roles come from the stored exact Route; necessary narration is never optional.
+export function optionalComputeOptions(executionPolicy, role) {
+    const policy = executionPolicy?.optionalWork;
+    return policy && (policy.roles ?? ['rerank']).includes(role) ? { reserve: policy.requiredCompute ?? null } : {};
 }

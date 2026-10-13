@@ -1,3 +1,4 @@
+import { optionalComputeOptions } from '../../public/shared/native-compute-budget.js';
 import { expect, test } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
@@ -30,9 +31,9 @@ async function fixture(make, lane, { maxRequests = 2, maxTokens = 100, optionalW
         const bank = async () => lane === 'session'
             ? Object.values((await installed.core.runs.status(h.handle, base.session.sessionId))?.operations ?? {}).find(op => op.compute)?.compute
             : (await svc.agent.getTask(h.handle, context.projectId, context.taskId)).compute;
-        const mandatory = async tokens => lane === 'session'
-            ? installed.core.runs.chargeCompute(h.handle, base, { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, limits, attempt(tokens))
-            : svc.agent.chargeGeneration(h.handle, context.projectId, context.taskId, context.revision, limits, attempt(tokens), task.executionFingerprint);
+        const mandatory = async (tokens, options) => lane === 'session'
+            ? installed.core.runs.chargeCompute(h.handle, base, { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, limits, attempt(tokens), options)
+            : svc.agent.chargeGeneration(h.handle, context.projectId, context.taskId, context.revision, limits, attempt(tokens), task.executionFingerprint, options);
         return { ...h, ...args, base, compute, bank, mandatory, limits };
     } catch (error) { await h.cleanup(); throw error; }
 }
@@ -113,4 +114,25 @@ test('S26 Route schema retains opt-in unknown and validates finite required requ
         { mode: 'preserve_required', requiredCompute: { maxRequests: 1 } }, { mode: 'preserve_required', requiredCompute: { ...required, localWork: {} } }]) {
         expect(() => assertExecutionPolicy({ ...policy, optionalWork })).toThrow();
     }
+});
+
+test('optional role declaration rejects necessary narration, duplicates and unknown classes', () => {
+    const base = { schemaVersion: 1, allowedModelProfileIds: [createNativeId('modelProfile')], optionalWork: { mode: 'preserve_required', requiredCompute: required } };
+    expect(assertExecutionPolicy({ ...base, optionalWork: { ...base.optionalWork, roles: ['rerank', 'model_task', 'background'] } }).optionalWork.roles).toEqual(['rerank', 'model_task', 'background']);
+    for (const roles of [['narrator'], ['model_task', 'model_task'], ['unknown'], []]) expect(() => assertExecutionPolicy({ ...base, optionalWork: { ...base.optionalWork, roles } })).toThrow();
+});
+
+test.each(['session', 'project'])('opt-in %s model tasks share required allowance with mandatory work in the original writer', async lane => {
+    const f = await fixture(makeTempSqliteEngineHarness, lane, { optionalWork: { mode: 'preserve_required', roles: ['model_task', 'background'], requiredCompute: required } });
+    try {
+        const route = (await f.persistence.listRuntimeRoutes(f.handle)).find(item => item.role === (lane === 'session' ? 'role.narrator' : 'role.studio'));
+        const options = optionalComputeOptions(route.executionPolicy, 'model_task');
+        const admitted = await f.mandatory(40, options);
+        expect(admitted.compute.status).toBe('charged');
+        await expect(f.mandatory(40, options)).rejects.toMatchObject({ code: 'native_generation_required_budget_reserved' });
+        expect((await f.bank()).attempts).toHaveLength(1);
+        await f.mandatory(40);
+        expect((await f.bank()).attempts).toHaveLength(2);
+        expect(optionalComputeOptions(route.executionPolicy, 'narrator')).toEqual({});
+    } finally { await f.cleanup(); }
 });

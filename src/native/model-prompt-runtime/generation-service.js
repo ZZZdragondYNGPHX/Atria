@@ -1,3 +1,4 @@
+import { COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { assertEffectiveRequestSnapshot, assertPromptIR, assertRequestContextPlan } from './contracts.js';
 import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } from './ports.js';
 import { cancellable, checkCancellation, containsSecret as valueContainsSecret, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
@@ -145,7 +146,7 @@ export class GenerationService {
             throw new GenerationError('generation_fallback_exhausted');
         } catch (error) {
             // Never attach an adapter/secret exception, stack, payload, or cause to diagnostics.
-            if (error instanceof GenerationError) throw new GenerationError(error.code);
+            if (error instanceof GenerationError || COMPUTE_ADMISSION_CODES.includes(error.code)) throw new GenerationError(error.code);
             if (['prompt_parameter_option', 'prompt_parameter_unknown', 'prompt_parameter_type', 'prompt_parameter_required'].includes(error.code)) throw new GenerationError(error.code);
             throw new GenerationError('generation_execution_failed');
         }

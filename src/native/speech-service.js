@@ -8,7 +8,7 @@ import { createNativeId } from './identity.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
 import { immutable, checkCancellation } from './model-prompt-runtime/execution-utils.js';
 import { selectNativeRuntimeRoute } from './adapters/generation-host.js';
-import { createWindowsSapiProvider } from './adapters/windows-sapi-provider.js';
+import { createLocalSpeechProvider } from './adapters/speech-provider.js';
 
 const states = new WeakMap(), TTL = 600000;
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -16,7 +16,7 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 // An explicit auxiliary consumer of an existing public Timeline message.
 // It produces an owned AssetStore file, never a World/Task result publication.
 export class SpeechService {
-    constructor({ host, scheduler = nativeTaskScheduler, provider = createWindowsSapiProvider(), now = Date.now }) {
+    constructor({ host, scheduler = nativeTaskScheduler, provider = createLocalSpeechProvider(), now = Date.now }) {
         Object.assign(this, { host, scheduler, provider, now });
         this.assets = host.packageInstaller._assetStore;
         const engine = host.persistence?._engine ?? host.sessionCore._sessions._engine;
@@ -24,6 +24,23 @@ export class SpeechService {
         this.state = states.get(engine);
     }
     voices(signal) { return this.provider.listVoices({ signal }); }
+    async describe(handle, raw) {
+        fields(raw, ['sessionId', 'revisionId'], 'Speech description');
+        const base = await this.host.sessionCore.load(handle, raw.sessionId);
+        if (base.revision.revisionId !== raw.revisionId) fail('native_speech_revision_conflict');
+        let scanned = 0;
+        const onScan = count => { scanned += count; if (scanned > 4096) fail('native_speech_scan_limit'); };
+        const information = informationContext(base, { kind: 'narrator' }, undefined, { includeRollups: false, onScan });
+        const plan = deriveExpressionPlan(base, information, { onScan });
+        if (plan?.status !== 'ready') return { items: [], revisionId: raw.revisionId };
+        const items = [];
+        for (const item of plan.items) {
+            const captured = await this._capture(handle, { ...raw, itemId: item.id, voiceId: '', rate: 0, volume: 100 });
+            if (!captured.fallback) items.push({ itemId: item.id, messageId: item.recordId, actorId: plan.actorId });
+        }
+        return { items, revisionId: raw.revisionId };
+    }
+
     async _capture(handle, input) {
         const base = await this.host.sessionCore.load(handle, input.sessionId);
         if (base.revision.revisionId !== input.revisionId) fail('native_speech_revision_conflict');
@@ -90,7 +107,7 @@ export class SpeechService {
                 if (!await this._fresh(handle, input, captured)) fail('native_speech_source_stale');
                 return immutable({ schemaVersion: 1, kind: 'speech_audio', asset, text: captured.text, source: captured.plan.anchor,
                     sourceFingerprint: captured.fingerprint, itemId: input.itemId, actorId: captured.plan.actorId,
-                    voice: { provider: 'windows.sapi', voiceId: audio.voiceId, name: audio.voiceName, language: audio.language,
+                    voice: { provider: audio.providerId ?? this.provider.id ?? 'windows.sapi', voiceId: audio.voiceId, name: audio.voiceName, language: audio.language,
                         rate: input.rate ?? 0, volume: input.volume ?? 100 }, durationMs: audio.durationMs, capabilities: audio.capabilities,
                     timing: 'total_duration_only' });
             });
@@ -104,7 +121,7 @@ export class SpeechService {
         }
     }
     async start(handle, raw, signal) {
-        const input = assertJsonDeclaration(raw, 'Speech request', 8192);
+        const input = structuredClone(assertJsonDeclaration(raw, 'Speech request', 8192));
         fields(input, ['sessionId', 'revisionId', 'itemId', 'voiceId', 'rate', 'volume', 'routeRef'], 'Speech request');
         if (typeof input.itemId !== 'string' || input.itemId.length > 256 || typeof input.voiceId !== 'string' || !input.voiceId || input.voiceId.length > 1024
             || input.rate !== undefined && (!Number.isInteger(input.rate) || input.rate < -10 || input.rate > 10)
@@ -113,6 +130,7 @@ export class SpeechService {
             fields(input.routeRef, ['scope', 'runtimeRouteId'], 'Speech Route');
             if (input.routeRef.scope !== 'player') fail('native_speech_route_invalid');
         }
+        input.rate ??= 0; input.volume ??= 100;
         checkCancellation(signal); await this._prune();
         const captured = await this._capture(handle, input);
         if (captured.fallback) return captured.fallback;
@@ -131,7 +149,7 @@ export class SpeechService {
         const record = { owner: handle, fingerprint: captured.fingerprint, input, captured, scheduler: this.scheduler, expiresAt: this.now() + TTL, artifact: null };
         const operation = this.scheduler.submit({ owner: handle, kind: 'auxiliary_task', executionClass: 'interactive', retry: false, signal,
             key: this.state.id + ':speech:' + captured.fingerprint, fingerprint: captured.fingerprint,
-            resources: [this.state.id + ':speech:' + handle, 'provider:windows.sapi'],
+            resources: [this.state.id + ':speech:' + handle, 'provider:' + (this.provider.id ?? 'windows.sapi')],
             anchor: { sessionId: input.sessionId, branchId: captured.base.revision.branchId, revisionId: input.revisionId, speechStep: 'audio' },
             fresh: () => this._fresh(handle, input, captured),
             run: ({ signal: taskSignal }) => this._work(handle, captured, 'speech_synthesis', taskSignal,

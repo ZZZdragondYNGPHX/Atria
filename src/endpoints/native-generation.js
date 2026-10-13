@@ -1,3 +1,4 @@
+import { describeSessionProtocols } from '../native/session-public-work.js';
 import { createSkillRepository } from '../skills/repository.js';
 import { SpeechService } from '../native/speech-service.js';
 import { McpService } from '../native/mcp-service.js';
@@ -76,6 +77,15 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    router.post('/protocols/describe', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        try { response.json(await describeSessionProtocols(getHost(), handle, request.body)); } catch (error) {
+            const code = /^(native_protocol_|native_generation_|native_run_|native_story_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_protocol_failed';
+            response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
+        }
+    });
     for (const action of ['start', 'status', 'reconnect', 'cancel']) router.post('/a2a/' + action, async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -104,7 +114,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
         } finally { response.off('close', abort); }
     });
-    for (const action of ['voices', 'start', 'status', 'cancel']) router.post('/speech/' + action, async (request, response) => {
+    for (const action of ['voices', 'describe', 'start', 'status', 'cancel']) router.post('/speech/' + action, async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
         response.set('Cache-Control', 'no-store');

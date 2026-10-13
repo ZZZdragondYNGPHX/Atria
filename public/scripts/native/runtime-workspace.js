@@ -1,3 +1,4 @@
+import { mountProtocolControls } from './protocol-controls.js';
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { renderRetrievalWorkspace } from './retrieval-workspace.js';
 import { mountResourceSource } from './resource-source-editor.js';
@@ -229,8 +230,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         let serialize;
         if (section === 'connections') {
             let fields = group(form, 'Provider connection');
-            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI 官方图片'], ['provider.novelai-image-compatible', 'NovelAI 第三方兼容图片']]);
-            const endpoint = field(fields, 'Completions endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
+            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.mcp', 'MCP tools and resources'], ['provider.a2a', 'A2A agent'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI 官方图片'], ['provider.novelai-image-compatible', 'NovelAI 第三方兼容图片']]);
+            const endpoint = field(fields, 'Service endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
             const imageFields = node('div', undefined, fields);
             notice('Use https://image.novelai.net/ai/generate-image for NovelAI, or the full generation URL for a compatible provider. Only the NovelAI generate protocol is supported; relay protocols are not inferred.', imageFields);
             const imageCapabilities = field(imageFields, '第三方图片能力（按服务文档填写 JSON）', value.options?.imageCapabilities ? JSON.stringify(value.options.imageCapabilities, null, 2) : '', undefined, true);
@@ -258,6 +259,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('OpenAI-compatible messages use the full /v1/chat/completions endpoint, not /v1/completions.', fields);
             fields = group(form, 'Authentication');
             const secret = field(fields, 'Stored Secret', value.secretRef?.secretId, [['', 'Choose…']]); secret.required = true;
+            const syncAuthentication = () => {
+                secret.required = !['provider.mcp', 'provider.a2a'].includes(adapter.value);
+                if (secret.options[0]) secret.options[0].textContent = translateShellText(secret.required ? 'Choose…' : 'No authentication');
+            };
+            adapter.addEventListener('change', syncAuthentication); syncAuthentication();
             const feedback = node('div', undefined, fields);
             let inventoryVersion = 0;
             const inventory = async () => {
@@ -272,9 +278,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                         const option = node('option', undefined, secret); option.value = item.secretId;
                         option.textContent = item.label + (item.secretId ? ' · ' + item.secretId.slice(-8) : '');
                     }
-                    secret.value = selected;
+                    secret.value = selected; syncAuthentication();
                     feedback.replaceChildren();
-                    if (!entries.length) notice('No stored Secrets. Create one to connect your provider.', feedback);
+                    if (!entries.length && secret.required) notice('No stored Secrets. Create one to connect your provider.', feedback);
                     else if (selected && !secret.value) notice('The previously selected Secret is unavailable. Select or create another.', feedback, true);
                 } catch {
                     if (disposed || editorToken !== editorSequence || version !== inventoryVersion) return;
@@ -313,7 +319,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             void inventory();
             notice('Credentials stay in the Secret store. Gemini uses the API base URL; other transports use the full generation endpoint.', fields);
             serialize = () => {
-                if (creating || !secret.value) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
+                if (creating || !secret.value && !['provider.mcp', 'provider.a2a'].includes(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
                 const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'minimumOutputTokens']) delete options[key];
                 delete options.imageCapabilities;
                 if (NOVELAI_IMAGE_ADAPTERS.includes(adapter.value)) {
@@ -329,7 +335,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     if (!Number.isSafeInteger(minimum) || minimum < 0) throw Object.assign(new Error('Invalid output budget'), { code: 'generation_adapter_output_budget' });
                     if (minimum) options.minimumOutputTokens = minimum;
                 }
-                return { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
+                const result = { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value };
+                if (!secret.value && ['provider.mcp', 'provider.a2a'].includes(adapter.value)) delete result.secretRef;
+                else result.secretRef = { scope: 'player', secretId: secret.value };
+                return result;
             };
             const probeStatus = node('div', undefined, fields);
             const probe = button('Test connection', async () => {
@@ -345,11 +354,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     }
                 } catch (error) { if (!disposed && editorToken === editorSequence) { probeStatus.replaceChildren(); failure(error, probeStatus); } } finally { probe.disabled = false; probe.removeAttribute('aria-busy'); }
             }, fields);
-            const syncProbe = () => { probe.hidden = NOVELAI_IMAGE_ADAPTERS.includes(adapter.value); };
+            const syncProbe = () => { probe.hidden = [...NOVELAI_IMAGE_ADAPTERS, 'provider.mcp', 'provider.a2a'].includes(adapter.value); };
             adapter.addEventListener('change', syncProbe); syncProbe();
         } else if (section === 'models') {
             let fields = group(form, 'Model connection');
-            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections.filter(item => !NOVELAI_IMAGE_ADAPTERS.includes(item.providerAdapter)), ids.connections)); connection.required = true;
+            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections.filter(item => ![...NOVELAI_IMAGE_ADAPTERS, 'provider.mcp', 'provider.a2a'].includes(item.providerAdapter)), ids.connections)); connection.required = true;
             button('Manage connections', () => host.openRuntimeSection('connections'), fields);
             const remote = field(fields, 'Remote model ID', value.remoteModelId); remote.required = true;
             const discovery = node('div', undefined, fields); discovery.className = 'atri-runtime-group';
@@ -495,13 +504,48 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const syncBudget = () => { for (const input of [requests, tokens]) { input.disabled = !enabled.checked; input.required = enabled.checked; } };
             enabled.addEventListener('change', syncBudget); syncBudget();
             notice('这是发送次数和 Token 估计占用限制。价格及网关隐藏重试不可知时，金额仍未知。取消设置不会退还同一任务已发生的消费。', fields);
+            const localEnabled = field(fields, 'Enable local work budget'); localEnabled.type = 'checkbox'; localEnabled.checked = Boolean(value.executionPolicy?.computeBudget?.localWork);
+            const localJobs = number(fields, 'Local work count', value.executionPolicy?.computeBudget?.localWork?.maxJobs ?? 32, 1, 32);
+            const localItems = number(fields, 'Local work items', value.executionPolicy?.computeBudget?.localWork?.maxItems ?? 10000, 1, 10000);
+            const localBytes = number(fields, 'Local work input bytes', value.executionPolicy?.computeBudget?.localWork?.maxInputBytes ?? 16777216, 1, 16777216);
+            const syncLocalBudget = () => {
+                localEnabled.disabled = !enabled.checked;
+                for (const input of [localJobs, localItems, localBytes]) { input.disabled = !enabled.checked || !localEnabled.checked; input.required = enabled.checked && localEnabled.checked; }
+            };
+            enabled.addEventListener('change', syncLocalBudget); localEnabled.addEventListener('change', syncLocalBudget); syncLocalBudget();
+            const optionalFields = group(form, 'Required work reserve');
+            const reserveEnabled = field(optionalFields, 'Reserve required work'); reserveEnabled.type = 'checkbox'; reserveEnabled.checked = Boolean(value.executionPolicy?.optionalWork);
+            const reserveRequests = number(optionalFields, 'Required work requests', value.executionPolicy?.optionalWork?.requiredCompute?.maxRequests ?? '', 1, 32);
+            const reserveTokens = number(optionalFields, 'Required work token upper bound', value.executionPolicy?.optionalWork?.requiredCompute?.maxTokens ?? '', 1);
+            const optionalRoles = [['rerank', 'Optional rerank'], ['model_task', 'Optional model tasks'], ['background', 'Optional Native background tasks']].map(([id, label]) => {
+                const input = field(optionalFields, label); input.type = 'checkbox'; input.checked = (value.executionPolicy?.optionalWork?.roles ?? ['rerank']).includes(id); return { id, input };
+            });
+            const protocolFields = group(form, 'External services');
+            const split = input => input.value.split(',').map(value => value.trim()).filter(Boolean);
+            const mcpConnection = field(protocolFields, 'MCP connection', value.executionPolicy?.mcp?.connectionProfileId ?? '', options(data.connections.filter(item => item.providerAdapter === 'provider.mcp'), ids.connections));
+            const mcpTools = field(protocolFields, 'MCP tools', value.executionPolicy?.mcp?.toolNames?.join(', ') ?? '');
+            const mcpResources = field(protocolFields, 'MCP resources', value.executionPolicy?.mcp?.resourceUris?.join('\n') ?? '', undefined, true);
+            const mcpAuth = field(protocolFields, 'MCP authentication', value.executionPolicy?.mcp?.auth ?? 'none', [['none', 'No authentication'], ['secret', 'Stored Secret']]);
+            const a2aConnection = field(protocolFields, 'A2A connection', value.executionPolicy?.a2a?.connectionProfileId ?? '', options(data.connections.filter(item => item.providerAdapter === 'provider.a2a'), ids.connections));
+            const a2aSkills = field(protocolFields, 'A2A skills', value.executionPolicy?.a2a?.skillIds?.join(', ') ?? '');
+            const a2aAuth = field(protocolFields, 'A2A authentication', value.executionPolicy?.a2a?.auth ?? 'none', [['none', 'No authentication'], ['secret', 'Stored Secret']]);
             serialize = () => {
                 let executionPolicy = value.executionPolicy ? clone(value.executionPolicy) : undefined;
+                if (enabled.checked || reserveEnabled.checked || mcpConnection.value || a2aConnection.value) executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [model.value] };
                 if (enabled.checked) {
                     executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [model.value] };
                     executionPolicy.computeBudget = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value),
-                        ...(value.executionPolicy?.computeBudget?.localWork ? { localWork: value.executionPolicy.computeBudget.localWork } : {}) });
+                        ...(localEnabled.checked ? { localWork: { maxJobs: Number(localJobs.value), maxItems: Number(localItems.value), maxInputBytes: Number(localBytes.value) } } : {}) });
                 } else if (executionPolicy) delete executionPolicy.computeBudget;
+                if (executionPolicy) {
+                    if (reserveEnabled.checked) executionPolicy.optionalWork = { mode: 'preserve_required', roles: optionalRoles.filter(row => row.input.checked).map(row => row.id),
+                        ...(reserveRequests.value && reserveTokens.value ? { requiredCompute: { maxRequests: Number(reserveRequests.value), maxTokens: Number(reserveTokens.value) } } : {}) };
+                    else delete executionPolicy.optionalWork;
+                    if (mcpConnection.value) executionPolicy.mcp = { protocolVersion: '2025-11-25', connectionProfileId: mcpConnection.value, toolNames: split(mcpTools), resourceUris: mcpResources.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean), auth: mcpAuth.value };
+                    else delete executionPolicy.mcp;
+                    if (a2aConnection.value) executionPolicy.a2a = { protocolVersion: '1.0', connectionProfileId: a2aConnection.value, skillIds: split(a2aSkills), auth: a2aAuth.value };
+                    else delete executionPolicy.a2a;
+                }
                 return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, modelProfileRef: { scope: 'player', modelProfileId: model.value }, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, generationProfileRef: JSON.parse(generation.value), promptProgramRef: JSON.parse(prompt.value), fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
             };
         }
@@ -574,7 +618,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
     }
     function diagnostics() {
-        root.replaceChildren(); heading('Diagnostics', 'Compile the exact route against a pinned Native context. Preview never sends, resolves a Secret, or writes Session state.');
+        root.replaceChildren(); heading('Diagnostics', 'Inspect the current Native context, preview routes, and use configured external services.');
+        if (nativeSessionRuntime.active) mountProtocolControls({ document: doc, container: root, runtime: () => nativeSessionRuntime, signal: controller.signal });
         const latest = getRuntimeEvidence(); if (latest?.snapshot) evidence(latest, node('div'));
         const session = nativeSessionRuntime.snapshot;
         if (session) {

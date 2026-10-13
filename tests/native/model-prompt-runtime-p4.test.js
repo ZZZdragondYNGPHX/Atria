@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { authorityTurnFixture } from './helpers/authority-turn-fixture.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { skillEntryKey } from '../../public/shared/extension-contract.js';
@@ -433,16 +434,16 @@ test('Skill narrative Host budgets always content and runs scoped reference roun
             { id: 'ref', type: 'function', function: { name: 'atri_skill_read', arguments: JSON.stringify({ name: 'guide', path: 'ref.md', offset: 2, limit: 1 }) } },
         ] } : { content: 'Final prose' } }] }));
     } });
-    const guide = { name: 'guide', scope: { kind: 'global' }, installedHash: 'stable' };
+    const guide = { name: 'guide', scope: { kind: 'global' }, installedHash: createHash('sha256').update('Always guidance\nScoped reference').digest('hex') };
     const readFile = jest.fn(async ({ path }) => ({ content: path === 'SKILL.md' ? 'Always guidance' : 'Scoped reference', totalLines: 3 }));
-    f.host.skillRepository = handle => { expect(handle).toBe(f.h.handle); return { list: async () => [guide], get: async () => guide, readFile }; };
+    f.host.skillRepository = handle => { expect(handle).toBe(f.h.handle); return { list: async () => [guide], get: async () => guide, pin: async ({ expectedHash }) => { expect(expectedHash).toBe(guide.installedHash); return { version: expectedHash }; }, readFile }; };
     f.host.extensions = { settings: async () => ({ value: { skills: { [skillEntryKey(guide)]: { paths: { narrative: 'always' } } } } }) };
     const onChunk = jest.fn();
     const result = await f.host.execute(f.h.handle, f.request, undefined, onChunk);
     expect(result.response.text).toBe('Final prose');
     expect(result.skillRounds).toHaveLength(2);
     expect(result.skillRounds[0].contextPlan.items.find(item => item.id === 'atri.skills').content).toContain('Always guidance');
-    expect(readFile).toHaveBeenLastCalledWith({ name: 'guide', scope: guide.scope, path: 'ref.md', offset: 2, limit: 1 });
+    expect(readFile).toHaveBeenLastCalledWith({ name: 'guide', scope: guide.scope, path: 'ref.md', offset: 2, limit: 1, version: guide.installedHash });
     const messages = f.requests[1].body.messages;
     expect(messages.at(-1)).toMatchObject({ role: 'tool', tool_call_id: 'ref' });
     expect(messages.filter(item => item.content === 'Selected task')).toHaveLength(1);

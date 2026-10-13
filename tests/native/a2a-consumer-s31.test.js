@@ -11,6 +11,7 @@ import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage
 import { installCognitionFixture } from './helpers/cognition-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { NativeTaskScheduler, nativeTaskScheduler } from '../../src/native/task-scheduler.js';
+import { describeSessionProtocols } from '../../src/native/session-public-work.js';
 import { A2aService } from '../../src/native/a2a-service.js';
 import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 
@@ -282,3 +283,18 @@ for (const [kind, harness, Engine] of [['FS', makeTempFsEngineHarness, FsEngine]
         } finally { engine?.close?.(); await f.cleanup(); }
     });
 }
+
+test('protocol inventory exposes only disclosed public choices and durable acquired task references', async () => {
+    const f = await fixture();
+    try {
+        const input = { sessionId: f.body.sessionId, revisionId: f.body.revisionId };
+        const before = await describeSessionProtocols(f.host, f.h.handle, input);
+        expect(before.services).toEqual([{ protocol: 'a2a', skillId: 'stats', label: 'A2A · stats' }]);
+        expect(before.items).toEqual(expect.arrayContaining([expect.objectContaining({ viewId: 'player', itemId: f.body.itemId })]));
+        expect(JSON.stringify(before)).not.toMatch(/secretRef|Authorization|PRIVATE/); expect(before.tasks).toEqual([]);
+        const started = await f.service.start(f.h.handle, f.body); await f.result(started);
+        const retained = await describeSessionProtocols(f.host, f.h.handle, input);
+        expect(retained.tasks).toEqual([{ sessionId: input.sessionId, operationId: started.operationId, label: 'stats' }]);
+        expect(retained).not.toHaveProperty('endpoint');
+    } finally { await f.cleanup(); }
+});

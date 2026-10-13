@@ -1,3 +1,4 @@
+import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPackageContextDerivation } from '../context-computation.js';
 import { randomUUID } from 'node:crypto';
@@ -1163,7 +1164,9 @@ export class NativeGenerationHost {
                                 await provider.assertRequestCurrent?.(rendered);
                                 checkCancellation(boundary.signal);
                                 const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
-                                const compute = limits || input.sessionId || input.taskId ? { limits, attempt: { attemptId: randomUUID(), requestId: input.requestId,
+                                const computeOptions = optionalComputeOptions(resolved.route.executionPolicy, lanePlan?.budgetContext?.background === true ? 'background' : taskPlan || projectTaskEvidence ? 'model_task' : input.role);
+                                if ('reserve' in computeOptions && !limits) throw new GenerationError('native_generation_budget_unavailable');
+                                const compute = limits || input.sessionId || input.taskId ? { limits, options: computeOptions, attempt: { attemptId: randomUUID(), requestId: input.requestId,
                                     targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
                                 let receipt;
                                 if (budget) {
@@ -1174,10 +1177,10 @@ export class NativeGenerationHost {
                                     }
                                 } else if (compute && input.sessionId) {
                                     receipt = await this.sessionCore.runs.chargeCompute(handle, snapshot,
-                                        { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, compute.attempt);
+                                        { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, compute.attempt, computeOptions);
                                 } else if (compute) {
                                     if (!input.taskId || !this.agent) throw new GenerationError('native_generation_budget_lane_denied');
-                                    receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt, projectTaskEvidence.ref.slice(-64));
+                                    receipt = await this.agent.chargeGeneration(handle, input.projectId, input.taskId, input.revision, limits, compute.attempt, projectTaskEvidence.ref.slice(-64), computeOptions);
                                 }
                                 sendAdmitted = true;
                                 if (receipt?.compute) {
@@ -1198,7 +1201,7 @@ export class NativeGenerationHost {
                             // A refused original budget admission has performed
                             // no send/reset. Preserve an existing valid checkpoint;
                             // retries after any attempted send still discard on failure.
-                                retainOnBudgetRejection = error.code === 'native_generation_budget_exhausted' && !sendAdmitted;
+                                retainOnBudgetRejection = COMPUTE_ADMISSION_CODES.includes(error.code) && !sendAdmitted;
                                 await settleAttempt(null);
                                 attempt.status = 'failed';
                                 capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });

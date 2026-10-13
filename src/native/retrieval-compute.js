@@ -1,3 +1,4 @@
+import { optionalComputeOptions } from '../../public/shared/native-compute-budget.js';
 import { randomUUID } from 'node:crypto';
 import { fields } from '../../public/shared/native-values.js';
 import { hashNativeDocument } from './repositories/common.js';
@@ -35,7 +36,7 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
     const limits = route.executionPolicy?.computeBudget;
     // This policy comes only from the selected stored Route. Client context has
     // no allocation fields; the same original writer checks it during charge.
-    const optionalWork = profile.mode === 'rerank' ? route.executionPolicy?.optionalWork : null;
+    const computeOptions = profile.mode === 'rerank' ? optionalComputeOptions(route.executionPolicy, 'rerank') : {};
     const path = hashNativeDocument({ owner: handle, profile, purpose: profile.mode === 'embed' ? 'retrieval.embedding' : 'retrieval.rerank' });
     let base, task;
     if (context.kind === 'session') {
@@ -88,7 +89,7 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
             else await agent.settleLocalWork(handle, context.projectId, context.taskId, job.attemptId, usage);
         },
         async beforeSend(body) {
-            const options = optionalWork ? { reserve: optionalWork.requiredCompute ?? null } : {};
+            const options = computeOptions;
             const attemptId = randomUUID();
             const attempt = { attemptId, requestId: 'retrieval:' + randomUUID(), targetFingerprint: path,
                 estimatedTokens: Math.max(1, Buffer.byteLength(JSON.stringify(body), 'utf8')) };
