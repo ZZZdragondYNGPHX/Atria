@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { protocolEndpoint } from './protocol-endpoint.js';
+import { readServerEvents } from '../../public/shared/native-protocol-stream.js';
+import { setTimeout as delay } from 'node:timers/promises';
 
 export const MCP_PROTOCOL_VERSION = '2025-11-25';
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -7,13 +10,12 @@ function failure(code, message, dispatched = false, cause) {
     return Object.assign(new Error(message, { cause }), { code, dispatched, outcome: dispatched ? 'unknown' : 'failed' });
 }
 
-/** Fixed-revision, bounded JSON-only MCP client. Authority remains with its caller. */
-export function createMcpHttpClient({ url, toolNames = [], resourceUris = [], headers = {}, fetchImpl = globalThis.fetch, maxResponseBytes = 65536, maxRequestBytes = 16384 }) {
-    const parsed = new URL(url);
-    const literal = /^http:\/\/(127\.0\.0\.1|\[::1\])(?::[0-9]+)?(?:\/|$)/.test(url);
-    if (!literal || parsed.protocol !== 'http:' || parsed.username || parsed.password || parsed.hash) throw failure('mcp_endpoint_denied', 'MCP requires a literal loopback HTTP endpoint.');
+/** Fixed-revision, bounded JSON/SSE MCP client. Authority remains with its caller. */
+export function createMcpHttpClient({ url, toolNames = [], resourceUris = [], headers = {}, fetchImpl = globalThis.fetch, maxResponseBytes = 65536, maxRequestBytes = 16384, timeoutMs = 30000, maxReconnects = 2 }) {
+    const parsed = protocolEndpoint(url, 'mcp');
     if (!object(headers) || Object.keys(headers).some(key => key.toLowerCase() !== 'authorization') || Object.values(headers).some(value => typeof value !== 'string' || /[\r\n]/.test(value))) throw failure('mcp_headers_denied', 'Only an explicit authorization header is supported.');
     if (![maxRequestBytes, maxResponseBytes].every(value => Number.isSafeInteger(value) && value > 0 && value <= 1048576)) throw failure('mcp_bounds_invalid', 'Invalid MCP byte bounds.');
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60000 || !Number.isSafeInteger(maxReconnects) || maxReconnects < 0 || maxReconnects > 16) throw failure('mcp_bounds_invalid', 'Invalid MCP stream limits.');
     const tools = new Set(toolNames);
     const resources = new Set(resourceUris);
     let sequence = 0;
@@ -25,7 +27,8 @@ export function createMcpHttpClient({ url, toolNames = [], resourceUris = [], he
         return options.aroundRequest ? options.aroundRequest({ method }, operation) : operation();
     }
     async function dispatch(method, params, options = {}, notification = false) {
-        const { signal, beforeRequest } = options;
+        const signal = AbortSignal.any([...(options.signal ? [options.signal] : []), AbortSignal.timeout(timeoutMs)]);
+        const { beforeRequest } = options;
         signal?.throwIfAborted();
         const request = { jsonrpc: '2.0', ...(notification ? {} : { id: ++sequence }), method, ...(params === undefined ? {} : { params }) };
         const body = JSON.stringify(request);
@@ -43,20 +46,56 @@ export function createMcpHttpClient({ url, toolNames = [], resourceUris = [], he
                 await response.body?.cancel();
                 return { evidence: { protocolVersion: MCP_PROTOCOL_VERSION, method, requestFingerprint: fingerprint(request) } };
             }
-            if (!/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) throw failure('mcp_media_unsupported', 'Only JSON MCP responses are supported.', true);
-            const chunks = [];
-            let size = 0;
-            for await (const chunk of response.body) {
-                size += chunk.byteLength;
-                if (size > maxResponseBytes) throw failure('mcp_response_too_large', 'MCP response exceeds its byte bound.', true);
-                chunks.push(Buffer.from(chunk));
-            }
-            const envelope = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)));
+            const initializeSessionId = method === 'initialize' ? response.headers.get('mcp-session-id') : null;
+            if (initializeSessionId && !/^[\x21-\x7e]{1,256}$/.test(initializeSessionId)) throw failure('mcp_session_invalid', 'Invalid MCP session identifier.', true);
+            const media = response.headers.get('content-type') || '';
+            let envelope;
+            if (/^text\/event-stream(?:\s*;|$)/i.test(media)) {
+                let cursor, retry = 0, resumes = 0, remaining = maxResponseBytes;
+                while (!envelope) {
+                    for await (const event of readServerEvents(response.body, { maxBytes: remaining, signal, onBytes: count => { remaining -= count; if (remaining < 0) throw failure('mcp_response_too_large', 'MCP stream exceeds its byte bound.', true); } })) {
+                        if (event.id !== undefined) {
+                            if (!/^[\x21-\x7e]{1,256}$/.test(event.id)) throw failure('mcp_session_invalid', 'Invalid resume event identity.', true);
+                            cursor = event.id;
+                        }
+                        if (event.retry !== undefined) retry = event.retry;
+                        if (!event.data) continue;
+                        const value = JSON.parse(event.data);
+                        if (object(value) && value.jsonrpc === '2.0' && value.id === request.id && !('method' in value)) { envelope = value; break; }
+                        // Notifications carry no local authority. Server requests
+                        // are unsupported rather than automatically executed.
+                        if (!object(value) || value.jsonrpc !== '2.0' || 'id' in value || typeof value.method !== 'string') throw failure('mcp_envelope_invalid', 'Unsupported stream message.', true);
+                    }
+                    if (envelope) break;
+                    if (!cursor || resumes++ >= maxReconnects) throw failure('mcp_stream_interrupted', 'MCP stream ended without its response.', true);
+                    await delay(retry, undefined, { signal });
+                    const resume = async () => {
+                        await beforeRequest?.({ method: 'stream/resume' });
+                        signal.throwIfAborted();
+                        const next = await fetchImpl(parsed.href, { method: 'GET', redirect: 'error', signal,
+                            headers: { ...headers, Accept: 'text/event-stream', 'MCP-Protocol-Version': MCP_PROTOCOL_VERSION,
+                                'Last-Event-ID': cursor, ...((sessionId || response.headers.get('mcp-session-id')) ? { 'Mcp-Session-Id': sessionId || response.headers.get('mcp-session-id') } : {}) } });
+                        if (!next.ok || !/^text\/event-stream(?:\s*;|$)/i.test(next.headers.get('content-type') || '')) {
+                            await next.body?.cancel(); throw failure('mcp_stream_interrupted', 'MCP resume failed.', true);
+                        }
+                        return next;
+                    };
+                    response = options.aroundRequest ? await options.aroundRequest({ method: 'stream/resume' }, resume) : await resume();
+                }
+            } else if (/^application\/json(?:\s*;|$)/i.test(media)) {
+                const chunks = []; let size = 0;
+                for await (const chunk of response.body) {
+                    size += chunk.byteLength;
+                    if (size > maxResponseBytes) throw failure('mcp_response_too_large', 'MCP response exceeds its byte bound.', true);
+                    chunks.push(Buffer.from(chunk));
+                }
+                envelope = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)));
+            } else throw failure('mcp_media_unsupported', 'Expected JSON or SSE MCP response.', true);
             if (!object(envelope) || envelope.jsonrpc !== '2.0' || envelope.id !== request.id || 'method' in envelope || ('result' in envelope) === ('error' in envelope)) throw failure('mcp_envelope_invalid', 'Unsupported MCP response envelope or server request.', true);
             if ('error' in envelope) throw Object.assign(failure('mcp_remote_error', 'MCP server returned an error.', true), { outcome: 'failed' });
             if (!object(envelope.result)) throw failure('mcp_result_invalid', 'MCP result must be an object.', true);
             if (method === 'initialize') {
-                const id = response.headers.get('mcp-session-id');
+                const id = initializeSessionId;
                 if (id && (!/^[\x21-\x7e]{1,256}$/.test(id))) throw failure('mcp_session_invalid', 'Invalid MCP session identifier.', true);
                 sessionId = id || undefined;
             }

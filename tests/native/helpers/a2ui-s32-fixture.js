@@ -16,7 +16,7 @@ export function a2uiMessages() {
     ];
 }
 
-export function a2uiFixture({ interactive = true, deleted = false, mutate = () => {} } = {}) {
+export function a2uiFixture({ interactive = true, deleted = false, streaming = false, mutate = () => {} } = {}) {
     const f = bridgeFixture();
     const messages = a2uiMessages();
     if (deleted) messages.push({ version: A2UI_VERSION, deleteSurface: { surfaceId: 'notes' } });
@@ -24,7 +24,7 @@ export function a2uiFixture({ interactive = true, deleted = false, mutate = () =
     const files = new Map([...f.files].filter(([path]) => !path.startsWith('runtime/')));
     const index = JSON.parse(files.get('frontend.json'));
     index.components = [{ id: 'Main', source: 'Main.aui' }, { id: 'External', source: 'External.a2ui.json',
-        a2ui: { actions: { confirm: 'save' }, interactive, fallbackText: '这张任务卡已关闭，请继续使用原文字界面。',
+        a2ui: { actions: { confirm: 'save' }, interactive, ...(streaming ? { stream: true } : {}), fallbackText: '这张任务卡已关闭，请继续使用原文字界面。',
             feedback: { pending: '正在确认…', failed: '确认未完成，请刷新后重试。' } } }];
     index.styles = [{ id: 'publicCard', source: 'public-card.css' }];
     files.set('frontend.json', Buffer.from(JSON.stringify(index)));

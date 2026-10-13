@@ -151,6 +151,24 @@ export class RunControl {
             return op.selection ? structuredClone(op.selection) : null;
         });
     }
+    async externalTask(handle, sessionId, anchor, operationId, record = undefined) {
+        const operation = hashNativeDocument({ lane: 'turn', anchor });
+        if (record === undefined) {
+            const control = await this.status(handle, sessionId);
+            return structuredClone(control?.operations[operation]?.externalTasks?.[operationId] ?? null);
+        }
+        return this.update(handle, sessionId, control => {
+            if (control.headRevisionId !== anchor.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            const op = control.operations[operation];
+            // Admission must already have charged the same original bank.
+            if (!op?.compute) throw runFailure('native_a2a_budget_unavailable');
+            op.externalTasks ??= {};
+            for (const [id, row] of Object.entries(op.externalTasks)) if (row.expiresAt <= Date.now()) delete op.externalTasks[id];
+            if (!op.externalTasks[operationId] && Object.keys(op.externalTasks).length >= 32) throw runFailure('native_a2a_retention_limit');
+            op.externalTasks[operationId] = structuredClone(record);
+            return structuredClone(record);
+        }, 'generate');
+    }
     async sessionTaskHistory(handle, snapshot, anchor, identity, append = null) {
         const operation = hashNativeDocument({ lane: 'turn', anchor }), id = hashNativeDocument(identity.invocationId);
         const select = control => selectSessionTaskHistory(control, snapshot, operation, id, identity);

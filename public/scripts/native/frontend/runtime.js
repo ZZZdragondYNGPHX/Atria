@@ -1,3 +1,4 @@
+import { A2uiProjection, consumeA2uiJsonLines } from '../../../shared/native-a2ui.js';
 import { updateIllustrationSurface, releaseIllustrationSurface } from '../illustration-surfaces.js';
 import { createMediaResolver } from './media.js';
 import { createScriptSupervisor } from './script.js';
@@ -22,7 +23,8 @@ export async function mountNativeFrontend(options) {
     const scheduler = createFrameScheduler(window, document);
     const canvasBudget = new Map();
     const scripts = createScriptSupervisor({ window, scheduler, onDiagnostic: options.onDiagnostic, workerFactory: options.scriptWorkerFactory });
-    const composing = new Set();
+    const composing = new Set(), a2uiStreams = new Map();
+    const stopA2uiStreams = () => { for (const controller of a2uiStreams.values()) controller.abort(); a2uiStreams.clear(); };
     const instances = new Map(), shared = {}, declarations = {}, views = [], overlays = [];
     let sequence = 0, disposed = false, renderCancel = null, rendering = false, rerender = false, navigation = 0, overlayRevision = 0, nodeCount = 0;
     const diagnostic = error => {
@@ -53,7 +55,7 @@ export async function mountNativeFrontend(options) {
         return options.hostServices.invoke(target, input, revision);
     } };
     const bridge = await createFrontendBridge({ descriptor: bridgeDescriptor, transport: options.bridgeTransport, hostServices,
-        onEpoch: () => { void recover().catch(diagnostic); }, onRevision: options.onBridgeRevision,
+        onEpoch: () => { stopA2uiStreams(); void recover().catch(diagnostic); }, onRevision: revision => { stopA2uiStreams(); options.onBridgeRevision?.(revision); },
         fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; });
     const bridgeTimer = options.bridgeTransport ? window.setInterval(() => { void bridge.refresh().catch(diagnostic); }, 1000) : null;
     const active = () => !disposed;
@@ -117,6 +119,10 @@ export async function mountNativeFrontend(options) {
                     : await instance.bridge[method](action.target, value ?? {}, { cursor });
                 if (!instance.disposed && !disposed && result.error?.code !== 'bridge_epoch_stale') {
                     instance.bridgeState[action.target] = result; requestRender();
+                    if (action.kind === 'action.invoke' && result.ok && instance.a2uiObserver && instance.a2uiEvents?.[id]) {
+                        const envelope = { version: 'v0.9.1', action: { ...instance.a2uiEvents[id], timestamp: new Date().toISOString(), context: clone(value ?? {}) } };
+                        try { await instance.a2uiObserver(envelope); } catch { announce(instance.ir.a2ui.policy.feedback?.failed ?? instance.ir.a2ui.policy.fallbackText); }
+                    }
                     if (action.kind === 'operation.start' && result.ok) instance.cleanups.add(instance.bridge.watchOperation(action.target, result.operationId, next => { if (!instance.disposed) { instance.bridgeState[action.target] = next; requestRender(); } }));
                 }
             } else if (action.kind === 'locale.set') setLocale(String(value));
@@ -219,6 +225,7 @@ export async function mountNativeFrontend(options) {
         instance.dispose = () => {
             if (instance.disposed) return;
             if (instance.mounted) { void lifecycle(instance, 'deactivate'); void lifecycle(instance, 'unmount'); }
+            a2uiStreams.get(instance.id)?.abort(); a2uiStreams.delete(instance.id);
             instance.disposed = true; instance.controller?.dispose(); instance.bridge.dispose();
             instance.cleanups.forEach(clean => clean()); instance.cleanups.clear();
             instance.handles.forEach(handle => handle.dispose()); instance.handles.clear(); instances.delete(instance.id); host.remove();
@@ -232,8 +239,29 @@ export async function mountNativeFrontend(options) {
             if (disposed || view.disposed) throw new Error('Stale Component load');
             block = await createBlock(ir.root, instance, undefined, shadow);
         } catch (error) { instance.dispose(); throw error; }
+        instance.replaceA2ui = async (parsed, current = () => {}) => {
+            if (disposed || instance.disposed || !instance.ir.a2ui) throw new Error('A2UI instance unavailable');
+            if (parsed.ast.uses.some(id => !ir.uses.includes(id))) throw new Error('A2UI binding denied');
+            const previous = { ir: instance.ir, contract: instance.contract, nodes: instance.nodes, handles: instance.handles, cleanups: instance.cleanups };
+            const focusId = shadow.activeElement?.dataset.nodeId, staging = document.createDocumentFragment();
+            instance.projectionBusy = true;
+            instance.ir = { ...ir, root: parsed.ast.root, presentation: parsed.ast.presentation };
+            instance.contract = assertPresentationContract(parsed.ast.presentation);
+            instance.nodes = new Map(); instance.handles = new Map(); instance.cleanups = new Set();
+            let next;
+            try {
+                next = await createBlock(parsed.ast.root, instance, undefined, staging); await next.update();
+                current(); if (disposed || instance.disposed) throw new Error('Stale A2UI projection');
+                const candidate = { ir: instance.ir, contract: instance.contract, nodes: instance.nodes, handles: instance.handles, cleanups: instance.cleanups };
+                Object.assign(instance, previous); block.dispose(); previous.cleanups.forEach(clean => clean()); previous.handles.forEach(handle => handle.dispose());
+                Object.assign(instance, candidate); shadow.append(staging); block = next;
+                instance.nodes.get(focusId)?.focus();
+            } catch (error) {
+                next?.dispose(); instance.cleanups.forEach(clean => clean()); Object.assign(instance, previous); throw error;
+            } finally { instance.projectionBusy = false; }
+        };
         instance.update = async input => {
-            if (instance.disposed) return;
+            if (instance.disposed || instance.projectionBusy) return;
             if (input && JSON.stringify(input) !== JSON.stringify(instance.props)) { instance.props = propsFor(contract, input); await lifecycle(instance, 'propsChanged'); await instance.controller?.invoke('update'); }
             await block.update();
         };
@@ -677,9 +705,35 @@ export async function mountNativeFrontend(options) {
         }).finally(() => { recovering = null; });
         return recovering;
     }
+    async function streamA2ui(instanceId, body, { signal, onAction } = {}) {
+        const instance = instances.get(instanceId);
+        if (!instance?.ir.a2ui || instance.ir.a2ui.policy.stream !== true || disposed) throw new TypeError('A2UI stream not declared');
+        if (a2uiStreams.has(instanceId)) throw new TypeError('A2UI stream already active');
+        const controller = new AbortController(), abort = () => controller.abort();
+        signal?.throwIfAborted(); signal?.addEventListener('abort', abort, { once: true });
+        const epoch = bridge.epoch, revision = bridge.revision;
+        a2uiStreams.set(instanceId, controller);
+        const projection = new A2uiProjection(instance.ir.a2ui.messages, instance.ir.a2ui.policy, bridgeDescriptor);
+        const current = () => { controller.signal.throwIfAborted(); if (disposed || instance.disposed || epoch !== bridge.epoch || revision !== bridge.revision) throw new Error('Stale A2UI stream'); };
+        instance.a2uiObserver = onAction;
+        try {
+            return await consumeA2uiJsonLines(body, async message => {
+                await bridge.refresh(); current();
+                const parsed = projection.push(message);
+                if (parsed) {
+                    await instance.replaceA2ui(parsed, current);
+                    instance.a2uiEvents = Object.fromEntries((projection.messages.find(item => item.updateComponents)?.updateComponents.components ?? [])
+                        .filter(item => item.action?.event).map(item => ['a2ui.' + item.id, { name: item.action.event.name, surfaceId: parsed.protocol.surfaceId, sourceComponentId: item.id }]));
+                }
+            }, { signal: controller.signal });
+        } catch (error) {
+            if (!disposed && !instance.disposed && !controller.signal.aborted) announce(instance.ir.a2ui.policy.feedback?.failed ?? instance.ir.a2ui.policy.fallbackText);
+            throw error;
+        } finally { signal?.removeEventListener('abort', abort); if (a2uiStreams.get(instanceId) === controller) a2uiStreams.delete(instanceId); }
+    }
     try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; }
     return Object.freeze({ mode: options.mode, status: 'active', refresh() { requestRender(); return bridge.refresh(); }, getContributions: () => [], getRenderReceipts: () => [],
-        navigate, back, openOverlay, closeOverlay,
+        navigate, back, openOverlay, closeOverlay, streamA2ui,
         recover, setLocale, announce, issueMedia: media.issue, setRemoteMediaEnabled: media.setEnabled,
         getDiagnostics() {
             const result = clone(advisoryDiagnostics);
@@ -698,6 +752,6 @@ export async function mountNativeFrontend(options) {
         },
         getInstances() { return [...instances.values()].map(instance => ({ id: instance.id, componentId: instance.ir.id, ...(instance.ir.controller ? { script: instance.controller?.status ?? 'loading' } : {}) })); },
         scheduler: Object.freeze({ frame: scheduler.frame }),
-        dispose() { if (disposed) return; recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
+        dispose() { if (disposed) return; stopA2uiStreams(); recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
     });
 }

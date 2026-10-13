@@ -3,6 +3,10 @@ import express from 'express';
 import request from 'supertest';
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { FsEngine } from '../../src/storage/engines/fs-engine.js';
+import { SqliteEngine } from '../../src/storage/engines/sqlite-engine.js';
+import { services } from './helpers/session-fixture.js';
+import { NativeModelPromptPersistence } from '../../src/native/model-prompt-runtime/persistence.js';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 import { installCognitionFixture } from './helpers/cognition-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
@@ -85,7 +89,7 @@ test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarne
         const bank = await f.f.core.runs.status(f.h.handle, f.body.sessionId), work = Object.values(bank.operations).flatMap(value => value.compute?.localWork ?? []);
         expect(work.map(row => row.kind)).toEqual(['context_build', ...Array(6).fill('a2a_protocol')]);
         expect(work.every(row => row.usage.outcome === 'completed')).toBe(true);
-        expect((await rebuilt.status(f.h.handle, { operationId: started.operationId })).recovery).toBe('transient_operation_only');
+        expect((await rebuilt.status(f.h.handle, { operationId: started.operationId })).recovery).toBe('durable_identity');
     } finally { await f.cleanup(); }
 });
 
@@ -242,7 +246,7 @@ test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarne
         expect(f.remote.calls).toHaveLength(before);
         const projected = await post('status', operation);
         expect(projected.status).toBe(200); expect(projected.body.artifact).toEqual(initial);
-        expect(projected.body).toMatchObject({ current: true, canReconnect: true, recovery: 'transient_operation_only' });
+        expect(projected.body).toMatchObject({ current: true, canReconnect: true, recovery: 'durable_identity' });
         const reconnected = await post('reconnect', operation);
         expect(reconnected.status).toBe(200); expect(reconnected.body.action).toBe('get');
         expect((await f.result(reconnected.body)).result.status.state).toBe('TASK_STATE_COMPLETED');
@@ -255,3 +259,26 @@ test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarne
         expect(await f.f.core.load(f.h.handle, f.body.sessionId)).toEqual(f.base);
     } finally { await f.cleanup(); }
 });
+
+for (const [kind, harness, Engine] of [['FS', makeTempFsEngineHarness, FsEngine], ['SQLite', makeTempSqliteEngineHarness, SqliteEngine]]) {
+    test(`A2A ${kind} cold engine and scheduler restore exact remote identity without SendMessage replay`, async () => {
+        const f = await fixture(harness); let engine;
+        try {
+            const started = await f.service.start(f.h.handle, f.body); await f.result(started);
+            const before = await f.f.core.runs.status(f.h.handle, f.body.sessionId);
+            engine = new Engine({ directoriesByHandle: handle => { if (handle !== f.h.handle) throw new Error('owner denied'); return f.h.dirs; } });
+            const cold = services(f.h, engine), scheduler = new NativeTaskScheduler();
+            const host = { ...f.host, sessionCore: cold.core, persistence: new NativeModelPromptPersistence({ engine }), packageInstaller: cold.packageInstaller };
+            const rebuilt = new A2aService({ host, scheduler }), input = { operationId: started.operationId, sessionId: f.body.sessionId };
+            expect(await rebuilt.status(f.h.handle, input)).toMatchObject({ status: 'interrupted', canReconnect: true, artifact: null, recovery: 'durable_identity' });
+            expect(await cold.core.runs.status(f.h.handle, f.body.sessionId)).toEqual(before);
+            const connected = await rebuilt.reconnect(f.h.handle, input), result = await scheduler.operations.get(connected.operationId).handle.result;
+            expect(result.result.status.state).toBe('TASK_STATE_COMPLETED');
+            expect(f.remote.calls.filter(row => row.method === 'SendMessage')).toHaveLength(1);
+            expect(f.remote.calls.filter(row => row.method === 'GetTask')).toHaveLength(1);
+            expect((await cold.core.runs.status(f.h.handle, f.body.sessionId)).operations).not.toEqual(before.operations);
+            await expect(rebuilt.reconnect(f.h.handle, { operationId: started.operationId, sessionId: 'wrong' })).rejects.toMatchObject({ code: 'native_a2a_operation_missing' });
+            expect(await cold.core.load(f.h.handle, f.body.sessionId)).toEqual(f.base);
+        } finally { engine?.close?.(); await f.cleanup(); }
+    });
+}

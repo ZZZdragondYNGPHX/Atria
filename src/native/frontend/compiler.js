@@ -88,6 +88,10 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
             provenance.push({ kind: 'style', id, file, start: parsed.style.contentStart, end: parsed.style.end });
         }
         const ir = { format: 'atria-component-ir', version: 3, id: component.id, root: parsed.ast.root, uses: parsed.ast.uses, styles, presentation: parsed.ast.presentation };
+        if (component.a2ui?.stream === true) {
+            ir.a2ui = { messages: JSON.parse(readText(file)), policy: component.a2ui };
+            for (const target of Object.values(component.a2ui.actions ?? {})) if (!ir.uses.includes(target)) ir.uses.push(target);
+        }
         if (parsed.ast.controller) {
             const script = compileController(resolve(parsed.ast.controller.source), readText);
             emit('script:' + component.id, 'script', script);

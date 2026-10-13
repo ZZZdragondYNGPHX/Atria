@@ -72,7 +72,8 @@ export function assertFrontendSourceIndex(value) {
     const components = list(value.components, item => {
         fields(item, ['id', 'source', 'a2ui']); identifier(item.id); resourcePath(item.source);
         if (item.source.endsWith('.a2ui.json')) {
-            fields(item.a2ui, ['actions', 'fallbackText', 'interactive', 'feedback'], 'A2UI import policy');
+            fields(item.a2ui, ['actions', 'fallbackText', 'interactive', 'feedback', 'stream'], 'A2UI import policy');
+            if (item.a2ui.stream !== undefined && typeof item.a2ui.stream !== 'boolean') throw new TypeError('Invalid A2UI stream policy');
             fields(item.a2ui.actions ?? {}, Object.keys(item.a2ui.actions ?? {}), 'A2UI action map');
             if (Object.keys(item.a2ui.actions ?? {}).length > 32) throw new TypeError('A2UI action budget');
             for (const [event, target] of Object.entries(item.a2ui.actions ?? {})) { identifier(event); identifier(target); }

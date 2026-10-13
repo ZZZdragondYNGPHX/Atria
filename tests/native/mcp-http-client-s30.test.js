@@ -46,7 +46,7 @@ test('exact initialization, allowlist discovery, content and per-operation hooks
     assert.equal(calls.length, 6);
 });
 
-for (const endpoint of ['http://localhost/mcp', 'http://127.1/mcp', 'http://2130706433/mcp', 'http://0x7f000001/mcp', 'https://127.0.0.1/mcp', 'http://user@127.0.0.1/mcp', 'http://127.0.0.1.evil/mcp', 'http://127.0.0.1/mcp#x']) {
+for (const endpoint of ['http://localhost/mcp', 'http://127.1/mcp', 'http://2130706433/mcp', 'http://0x7f000001/mcp', 'http://user@127.0.0.1/mcp', 'http://127.0.0.1.evil/mcp', 'http://127.0.0.1/mcp#x']) {
     test(`reject endpoint ${endpoint}`, () => assert.throws(() => createMcpHttpClient({ url: endpoint }), { code: 'mcp_endpoint_denied' }));
 }
 test('reject protocol fallback before initialized notification', async () => {
@@ -55,7 +55,7 @@ test('reject protocol fallback before initialized notification', async () => {
     assert.equal(calls.length, 1);
 });
 for (const [name, response, code] of [
-    ['SSE', () => new Response('event: message', { headers: { 'content-type': 'text/event-stream' } }), 'mcp_media_unsupported'],
+    ['truncated SSE', () => new Response('event: message', { headers: { 'content-type': 'text/event-stream' } }), 'mcp_transport_unknown'],
     ['HTML', () => new Response('<html>', { headers: { 'content-type': 'text/html' } }), 'mcp_media_unsupported'],
     ['callback', () => new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'sampling/createMessage' }), { headers: { 'content-type': 'application/json' } }), 'mcp_envelope_invalid'],
     ['batch', () => new Response('[]', { headers: { 'content-type': 'application/json' } }), 'mcp_envelope_invalid'],
@@ -105,10 +105,10 @@ test('invalid UTF-8 is not silently replaced', async () => {
     const { client } = fixture({ response: () => new Response(Buffer.from([0xff]), { headers: { 'content-type': 'application/json' } }) });
     await assert.rejects(client.initialize(), { code: 'mcp_transport_unknown', outcome: 'unknown' });
 });
-test('unsupported streaming response body is cancelled', async () => {
+test('unsupported streamed server request is cancelled', async () => {
     let cancelled = false;
-    const { client } = fixture({ response: () => new Response(new ReadableStream({ cancel() { cancelled = true; } }), { headers: { 'content-type': 'text/event-stream' } }) });
-    await assert.rejects(client.initialize(), { code: 'mcp_media_unsupported' });
+    const { client } = fixture({ response: () => new Response(new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('data: {"jsonrpc":"2.0","id":1,"method":"sampling/createMessage"}\n\n')); }, cancel() { cancelled = true; } }), { headers: { 'content-type': 'text/event-stream' } }) });
+    await assert.rejects(client.initialize(), { code: 'mcp_envelope_invalid' });
     assert.equal(cancelled, true);
 });
 test('external metadata is projected out of tool and resource output', async () => {

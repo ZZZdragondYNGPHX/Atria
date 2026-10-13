@@ -1,3 +1,4 @@
+import { parseA2uiComponent } from '../../../public/shared/native-a2ui.js';
 import { ASSET_TYPES, assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
 import { validateScriptArtifact } from './script-compiler.js';
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
@@ -8,12 +9,18 @@ import { validateCompiledStyle } from './styles.js';
 import { assertPresentationContract, valuePath } from '../../../public/shared/native-frontend-presentation.js';
 
 export function componentDependencies(ir, bridge) {
-    fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles', 'presentation', 'controller']);
+    fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles', 'presentation', 'controller', 'a2ui']);
     const presentation = assertPresentationContract(ir.presentation);
     if (ir.format !== 'atria-component-ir' || ir.version !== 3) throw new TypeError('Invalid Component IR');
     identifier(ir.id);
     const uses = list(ir.uses, identifier, id => id);
     for (const id of uses) if (!bridge.bindings.some(binding => binding.id === id)) throw new TypeError('Unknown Component Binding: ' + id);
+    if (ir.a2ui) {
+        fields(ir.a2ui, ['messages', 'policy']);
+        const checked = parseA2uiComponent(JSON.stringify(ir.a2ui.messages), 'installed.a2ui.json', ir.a2ui.policy, bridge);
+        if (ir.a2ui.policy.stream !== true || canonicalJson(checked.ast.root) !== canonicalJson(ir.root)
+            || Object.values(ir.a2ui.policy.actions ?? {}).some(id => !uses.includes(id))) throw new TypeError('Invalid installed A2UI stream authority');
+    }
     const deps = new Set(['bridge']);
     if (ir.controller) {
         fields(ir.controller, ['resource', 'required']);

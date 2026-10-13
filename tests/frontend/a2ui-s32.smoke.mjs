@@ -21,12 +21,19 @@ const server = createServer(async (req, res) => {
         const json = value => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(value)); };
         if (url.pathname === '/') { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><html lang="zh-CN"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:16px system-ui;background:#fafafa;color:#171717}</style><div id="surface"></div></html>'); return; }
         if (url.pathname === '/fixture') {
-            const f = a2uiFixture({ interactive: !url.searchParams.has('text'), deleted: url.searchParams.has('deleted') });
+            const f = a2uiFixture({ interactive: !url.searchParams.has('text'), deleted: url.searchParams.has('deleted'), streaming: url.searchParams.has('stream') });
             await svc.packageInstaller.install(h.handle, buildAtriaPackageContainer({ manifest: f.manifest, sourceFiles: f.files }).archive);
             const base = await svc.core.create(h.handle, { packageId: f.manifest.packageId, packageVersionId: f.manifest.packageVersionId, entryPointId: f.entryPointId });
             fixtures.set(base.session.sessionId, { f, base, requests: [] });
             json({ sessionId: base.session.sessionId, revision: base.revision.revisionId, entry: f.compiled.entry,
                 files: Object.fromEntries([...f.compiled.files].map(([path, bytes]) => [path, bytes.toString('base64')])) }); return;
+        }
+        if (url.pathname === '/stream') {
+            res.setHeader('Content-Type', 'application/x-ndjson');
+            res.write(JSON.stringify({ version: 'v0.9.1', updateDataModel: { surfaceId: 'notes', path: '/title', value: '实时公开任务卡' } }) + '\n');
+            await new Promise(done => setTimeout(done, 100));
+            res.end(JSON.stringify(url.searchParams.has('bad') ? { version: 'v0.9.1', updateComponents: { surfaceId: 'notes', components: [{ id: 'root', component: 'Script' }] } }
+                : { version: 'v0.9.1', updateDataModel: { surfaceId: 'notes', path: '/note', value: '来自在线任务卡' } }) + '\n'); return;
         }
         if (url.pathname === '/audit') {
             const record = fixtures.get(url.searchParams.get('sessionId'));
@@ -100,6 +107,28 @@ try {
         assert.equal(stale.error.code, 'bridge_revision_stale'); assert.equal((await audit()).revision, after.revision);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         await page.screenshot({ path: join(output, `interactive-${width}.png`), fullPage: true });
+        await mount('?stream=1');
+        await page.getByRole('button', { name: '确认公开备注' }).focus();
+        await page.evaluate(async () => {
+            const instance = window.runtime.getInstances().find(value => value.componentId === 'External');
+            window.onlineActions = [];
+            await window.runtime.streamA2ui(instance.id, (await fetch('/stream')).body, { onAction: action => { window.onlineActions.push(action); } });
+        });
+        await expect(page.getByRole('heading', { name: '实时公开任务卡' })).toBeVisible();
+        await expect(page.getByRole('button', { name: '确认公开备注' })).toBeFocused();
+        await page.getByRole('button', { name: '确认公开备注' }).click();
+        await expect(page.locator('[data-node-id="notesList"]')).toContainText('来自在线任务卡');
+        const online = await audit(); assert.equal(online.writes.length, 1); assert.deepEqual(online.writes[0].input, { label: '来自在线任务卡' });
+        const envelopes = await page.evaluate(() => window.onlineActions);
+        assert.equal(envelopes.length, 1); assert.equal(envelopes[0].version, 'v0.9.1');
+        assert.equal(envelopes[0].action.surfaceId, 'notes'); assert.deepEqual(envelopes[0].action.context, { label: '来自在线任务卡' });
+        await page.evaluate(async () => {
+            const instance = window.runtime.getInstances().find(value => value.componentId === 'External');
+            try { await window.runtime.streamA2ui(instance.id, (await fetch('/stream?bad=1')).body); } catch { window.streamRejected = true; }
+        });
+        assert.equal(await page.evaluate(() => window.streamRejected), true);
+        await expect(page.getByRole('heading', { name: '实时公开任务卡' })).toBeVisible();
+        assert.equal((await audit()).writes.length, 1);
         await mount('?text=1');
         await expect(page.getByRole('button', { name: '确认公开备注' })).toHaveCount(0);
         await expect(page.getByText('确认公开备注', { exact: true })).toBeVisible();
@@ -108,7 +137,7 @@ try {
         await mount('?deleted=1'); await expect(page.getByText('这张任务卡已关闭，请继续使用原文字界面。')).toBeVisible();
         assert.equal((await audit()).writes.length, 0);
         assert.deepEqual(external, []); assert.deepEqual(errors, []); assert.deepEqual(await page.evaluate(() => window.diagnostics), []);
-        await page.evaluate(() => window.runtime.dispose()); await page.close(); summaries.push({ width, interaction: true, revision: true, staleRejected: true, textFallback: true, deletedFallback: true });
+        await page.evaluate(() => window.runtime.dispose()); await page.close(); summaries.push({ width, interaction: true, revision: true, staleRejected: true, textFallback: true, deletedFallback: true, onlineStream: true, eventReturn: true, focusPreserved: true, invalidUpdateRetained: true });
     }
     console.log(JSON.stringify({ stage: 'S32', status: 'browser_passed', externalRequests: 0, checks: summaries, screenshots: output }));
 } finally { await browser.close(); server.closeAllConnections(); await new Promise(done => server.close(done)); host.dispose(); await h.cleanup(); }

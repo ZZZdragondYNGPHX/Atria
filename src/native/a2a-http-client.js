@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { protocolEndpoint } from './protocol-endpoint.js';
 
 export const A2A_PROTOCOL_VERSION = '1.0';
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -44,8 +45,7 @@ function task(value, identity) {
 
 /** Finite A2A 1.0 JSON-RPC subset; caller owns local permission and task identities. */
 export function createA2aHttpClient({ url, skillIds = [], headers = {}, fetchImpl = globalThis.fetch, maxRequestBytes = 16384, maxResponseBytes = 65536 }) {
-    const endpoint = new URL(url);
-    if (!/^http:\/\/(127\.0\.0\.1|\[::1\])(?::[0-9]+)?(?:\/|$)/.test(url) || endpoint.username || endpoint.password || endpoint.hash || endpoint.search) throw fail('a2a_endpoint_denied', 'A2A requires literal loopback HTTP.');
+    const endpoint = protocolEndpoint(url, 'a2a', { query: false });
     if (!object(headers) || Object.keys(headers).some(key => key.toLowerCase() !== 'authorization') || Object.values(headers).some(value => typeof value !== 'string' || !/^Bearer [\x21-\x7e]+$/.test(value))) throw fail('a2a_auth_unsupported', 'Only explicit bearer authentication is supported.');
     if (![maxRequestBytes, maxResponseBytes].every(value => Number.isSafeInteger(value) && value > 0 && value <= 1048576)) throw fail('a2a_bounds_invalid', 'Invalid A2A byte bounds.');
     if (!Array.isArray(skillIds) || !skillIds.length || skillIds.length > 8 || skillIds.some(value => !id(value)) || new Set(skillIds).size !== skillIds.length) throw fail('a2a_skill_denied', 'Invalid exact skill allowlist.');

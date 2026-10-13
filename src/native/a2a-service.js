@@ -10,10 +10,11 @@ const states = new WeakMap(), terminal = new Set(['completed', 'failed', 'cancel
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 
 // Remote tasks are external evidence. Acquired identities live only in the
-// original owner/Engine operation; process restart recovery remains unsupported.
+// original RunControl bank; restart never resends an uncertain SendMessage.
 export class A2aService {
-    constructor({ host, scheduler = nativeTaskScheduler, clientFactory = createA2aHttpClient, now = Date.now }) {
-        Object.assign(this, { host, scheduler, clientFactory, now });
+    constructor({ host, scheduler = nativeTaskScheduler, clientFactory = createA2aHttpClient, now = Date.now, retentionMs = 7 * 86400000 }) {
+        if (!Number.isSafeInteger(retentionMs) || retentionMs < 1 || retentionMs > 30 * 86400000) fail('native_a2a_retention_invalid');
+        Object.assign(this, { host, scheduler, clientFactory, now, retentionMs });
         const engine = host.persistence?._engine ?? host.sessionCore._sessions._engine;
         if (!states.has(engine)) states.set(engine, { id: randomUUID(), records: new Map() });
         this.state = states.get(engine);
@@ -25,11 +26,31 @@ export class A2aService {
             if ((!operation || terminal.has(operation.view.status) && !record.scheduler.running.has(operation)) && record.expiresAt <= this.now()) this.state.records.delete(id);
         }
     }
-    _record(handle, raw) {
-        fields(raw, ['operationId'], 'A2A operation'); this._prune();
-        const record = this.state.records.get(raw.operationId);
-        if (!record || record.owner !== handle || record.scheduler !== this.scheduler) fail('native_a2a_operation_missing');
-        return record;
+    async _record(handle, raw) {
+        fields(raw, ['operationId', 'sessionId'], 'A2A operation'); this._prune();
+        let record = this.state.records.get(raw.operationId);
+        if (record) {
+            if (record.owner !== handle || record.scheduler !== this.scheduler || raw.sessionId && raw.sessionId !== record.input.sessionId) fail('native_a2a_operation_missing');
+            return record;
+        }
+        if (typeof raw.sessionId !== 'string' || !raw.sessionId) fail('native_a2a_operation_missing');
+        const base = await this.host.sessionCore.load(handle, raw.sessionId);
+        const retained = await this.host.sessionCore.runs.externalTask(handle, raw.sessionId,
+            { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, raw.operationId);
+        if (!retained || retained.expiresAt <= this.now()) fail('native_a2a_operation_missing');
+        const captured = await this.publicWork.capture(handle, retained.input);
+        if (captured.fallback || captured.fingerprint !== retained.fingerprint) fail('native_a2a_source_stale');
+        record = { owner: handle, scheduler: this.scheduler, input: retained.input, captured, identity: retained.identity,
+            artifact: null, failure: retained.status !== 'completed' ? { code: 'native_a2a_restart_unknown', outcome: 'unknown', dispatched: true, remoteOutcome: 'unknown', remoteRollbackConfirmed: false } : null,
+            expiresAt: retained.expiresAt, latestOperationId: raw.operationId, durableStatus: retained.status, dispatched: retained.status !== 'queued', aliases: new Set([raw.operationId]) };
+        this.state.records.set(raw.operationId, record); return record;
+    }
+    async _persist(record, status) {
+        const retained = { protocol: 'a2a', input: record.input, fingerprint: record.captured.fingerprint,
+            identity: record.identity, status, expiresAt: record.expiresAt };
+        for (const operationId of record.aliases) await this.host.sessionCore.runs.externalTask(record.owner, record.input.sessionId,
+            { branchId: record.captured.base.revision.branchId, revisionId: record.input.revisionId }, operationId, retained);
+        record.durableStatus = status;
     }
     async start(handle, raw, signal) {
         const input = assertJsonDeclaration(raw, 'A2A request', 4096);
@@ -46,10 +67,10 @@ export class A2aService {
         if (this.state.records.size >= 128) fail('native_a2a_retention_limit');
         await this.publicWork.work(handle, input, captured, signal, async () => {}, 'context_build');
         const record = { owner: handle, scheduler: this.scheduler, input, captured, identity: null, artifact: null, failure: null,
-            expiresAt: this.now() + 600000, latestOperationId: null, dispatched: false };
+            expiresAt: this.now() + this.retentionMs, latestOperationId: null, dispatched: false, aliases: new Set() };
         return this._submit(record, 'send', signal);
     }
-    _submit(record, action, signal) {
+    async _submit(record, action, signal) {
         const { owner: handle, input, captured } = record;
         const current = this.scheduler.operations.get(record.latestOperationId);
         if (current && (!terminal.has(current.view.status) || this.scheduler.running.has(current))) fail('native_a2a_operation_busy');
@@ -61,6 +82,8 @@ export class A2aService {
             fresh: () => this.publicWork.fresh(handle, input, captured),
             run: async ({ signal: taskSignal }) => {
                 try {
+                    await record.admission;
+                    await this._persist(record, 'dispatched');
                     let headers = {}, secret;
                     if (captured.policy.auth === 'secret') {
                         secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal });
@@ -85,7 +108,7 @@ export class A2aService {
                     const task = action === 'send' ? output.result.task : output.result;
                     if (task) record.identity = immutable({ id: task.id, contextId: task.contextId });
                     return immutable({ schemaVersion: 1, kind: 'a2a_external_data', action, result: output.result,
-                        remoteRollbackConfirmed: false, recovery: 'transient_operation_only',
+                        remoteRollbackConfirmed: false, recovery: 'durable_identity',
                         provenance: { external: true, connectionProfileId: captured.connection.connectionProfileId, profileFingerprint: hash(captured.connection),
                             protocolVersion: captured.policy.protocolVersion, source: captured.source, sourceFingerprint: captured.fingerprint,
                             inputFingerprint: hash(action === 'send' ? { skillId: input.skillId, text: captured.text } : record.identity),
@@ -95,33 +118,38 @@ export class A2aService {
                     const dispatched = error.dispatched === true || record.dispatched;
                     record.failure = { code: /^native_a2a_[a-z_]+$/.test(error.code ?? '') ? error.code : 'native_a2a_failed',
                         outcome: dispatched ? 'unknown' : 'failed', dispatched, remoteOutcome: dispatched ? 'unknown' : 'not_dispatched', remoteRollbackConfirmed: false };
+                    try { await this._persist(record, dispatched ? 'unknown' : 'failed'); } catch { /* Existing charge/queued proof remains unknown, never resend. */ }
                     throw error;
                 }
             },
             finalize: async artifact => {
                 if (!await this.publicWork.fresh(handle, input, captured)) fail('native_a2a_source_stale');
-                record.artifact = artifact; return artifact;
+                await this._persist(record, 'completed'); record.artifact = artifact; return artifact;
             },
         });
         record.latestOperationId = operation.operationId;
+        record.aliases.add(operation.operationId);
+        record.admission = this._persist(record, 'queued');
+        try { await record.admission; } catch (error) { this.scheduler.cancel(handle, operation.operationId); throw error; }
         this.state.records.set(operation.operationId, record);
-        return { status: 'queued', operationId: operation.operationId, action, remoteRollbackConfirmed: false };
+        return { sessionId: input.sessionId, status: 'queued', operationId: operation.operationId, action, remoteRollbackConfirmed: false };
     }
     async reconnect(handle, raw, signal) {
-        const record = this._record(handle, raw);
+        const record = await this._record(handle, raw);
         if (!record.identity) fail('native_a2a_identity_unavailable');
         checkCancellation(signal);
         if (!await this.publicWork.fresh(handle, record.input, record.captured)) fail('native_a2a_source_stale');
         return this._submit(record, 'get', signal);
     }
     async status(handle, raw) {
-        const record = this._record(handle, raw), current = await this.publicWork.fresh(handle, record.input, record.captured);
-        const operation = this.scheduler.project(handle, record.latestOperationId);
+        const record = await this._record(handle, raw), current = await this.publicWork.fresh(handle, record.input, record.captured);
+        const operation = this.scheduler.operations.has(record.latestOperationId) ? this.scheduler.project(handle, record.latestOperationId)
+            : { operationId: record.latestOperationId, status: 'interrupted', reason: 'native_a2a_process_restarted' };
         return immutable({ ...operation, current, artifact: current && operation.status === 'completed' ? record.artifact : null,
-            failure: record.failure, canReconnect: current && Boolean(record.identity), recovery: 'transient_operation_only' });
+            failure: record.failure, canReconnect: current && Boolean(record.identity), recovery: 'durable_identity' });
     }
     async cancel(handle, raw, signal) {
-        const record = this._record(handle, raw);
+        const record = await this._record(handle, raw);
         const operation = this.scheduler.operations.get(record.latestOperationId);
         if (operation && (!terminal.has(operation.view.status) || this.scheduler.running.has(operation))) {
             return { cancelled: this.scheduler.cancel(handle, record.latestOperationId), remoteRollbackConfirmed: false, remoteOutcome: 'unknown' };

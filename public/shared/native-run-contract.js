@@ -82,7 +82,31 @@ export function assertRunContinuation(value) {
         || !value.background || Array.isArray(value.background) || Object.keys(value.background).length > 1000) throw new TypeError('Invalid continuation ledger');
     for (const [id, op] of Object.entries(value.operations)) {
         if (!/^[a-f0-9]{64}$/.test(id)) throw new TypeError('Invalid operation identity');
-        fields(op, ['lane', 'anchor', 'fingerprint', 'selection', 'attempts', 'total', 'compute', 'taskHistories'], 'Run operation');
+        fields(op, ['lane', 'anchor', 'fingerprint', 'selection', 'attempts', 'total', 'compute', 'taskHistories', 'externalTasks'], 'Run operation');
+        if (op.externalTasks !== undefined) {
+            fields(op.externalTasks, Object.keys(op.externalTasks), 'External tasks');
+            if (Object.keys(op.externalTasks).length > 32) throw new TypeError('External task capacity');
+            for (const [operationId, record] of Object.entries(op.externalTasks)) {
+                if (typeof operationId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(operationId)) throw new TypeError('External operation identity');
+                fields(record, ['protocol', 'input', 'fingerprint', 'identity', 'status', 'expiresAt'], 'External task');
+                if (record.protocol !== 'a2a' || !/^[a-f0-9]{64}$/.test(record.fingerprint)
+                    || !['queued', 'dispatched', 'completed', 'unknown', 'failed'].includes(record.status)) throw new TypeError('External task evidence');
+                integer(record.expiresAt, 0, Number.MAX_SAFE_INTEGER);
+                fields(record.input, ['sessionId', 'revisionId', 'viewId', 'itemId', 'skillId', 'routeRef'], 'External task input');
+                for (const field of ['sessionId', 'revisionId', 'viewId', 'itemId', 'skillId']) {
+                    if (typeof record.input[field] !== 'string' || !record.input[field] || record.input[field].length > 256) throw new TypeError('External task source');
+                }
+                if (record.input.routeRef !== undefined) {
+                    fields(record.input.routeRef, ['scope', 'runtimeRouteId'], 'External Route');
+                    if (record.input.routeRef.scope !== 'player' || typeof record.input.routeRef.runtimeRouteId !== 'string') throw new TypeError('External Route');
+                }
+                if (record.identity !== null) {
+                    fields(record.identity, ['id', 'contextId'], 'External acquired identity');
+                    for (const field of ['id', 'contextId']) if (typeof record.identity[field] !== 'string' || !record.identity[field] || record.identity[field].length > 256) throw new TypeError('External acquired identity');
+                }
+                assertJsonDeclaration(record, 'External task', 8192);
+            }
+        }
         if (op.taskHistories !== undefined) {
             if (!op.taskHistories || Array.isArray(op.taskHistories) || Object.keys(op.taskHistories).length > sessionTaskHistoryLimits.tasks) throw new TypeError('Task history capacity');
             for (const [key, history] of Object.entries(op.taskHistories)) {

@@ -36,7 +36,7 @@ test('fixed 1.0 card, SendMessage and exact task/context methods with full hooks
     assert.equal(calls[1].options.redirect, 'error');
     assert.match(sent.evidence.responseFingerprint, /^[a-f0-9]{64}$/);
 });
-for (const url of ['http://localhost/rpc', 'http://127.1/rpc', 'http://2130706433/rpc', 'https://127.0.0.1/rpc', 'http://user@127.0.0.1/rpc', 'http://127.0.0.1.evil/rpc', 'http://127.0.0.1/rpc#x', 'http://127.0.0.1/rpc?token=x']) {
+for (const url of ['http://localhost/rpc', 'http://127.1/rpc', 'http://2130706433/rpc', 'http://user@127.0.0.1/rpc', 'http://127.0.0.1.evil/rpc', 'http://127.0.0.1/rpc#x', 'http://127.0.0.1/rpc?token=x']) {
     test(`deny endpoint ${url}`, () => assert.throws(() => createA2aHttpClient({ url, skillIds: ['stats'] }), { code: 'a2a_endpoint_denied' }));
 }
 for (const [name, change] of [
