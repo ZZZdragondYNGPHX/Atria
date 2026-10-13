@@ -50,6 +50,19 @@
 - [`src/native/repositories/session-repo.js` L308-L348](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L308-L348)：已有 `readTimelineRange`。实施时应剖析生产调用，区分仅渲染窗口、全文编译及需要完整权威校验的操作。
 - [`src/native/repositories/asset-store.js` L196-L285](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/asset-store.js#L196-L285)：资产引用检查涉及多个资源类别；清理必须以有效引用、未完成提交及备份恢复策略为边界。
 
+### C5. 现有 Chronicle Checkpoint 是有损的，而非完整历史归档
+
+- [`src/native/history-authority.js` L30-L40](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/history-authority.js#L30-L40)：Chronicle 将 hot→warm→cold→archive 并合并为摘要，属于**叙事/语义压缩**，不保留完整原始文本。
+- [同文件 `checkpointHistory` L197-L231](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/history-authority.js#L197-L231) 明确重写 Task/receipt 记录、清空部分 runtime events，并将**新 HEAD Timeline 压到最近一条 assistant（或空）**；同时新 Core 的 parentRevisionId 被截断为 null。因此该机制**不能作为无损对话存储归档**。旧原文在其他保留的 Revision/SavePoint/Branch 中可能仍可找到，但不能默认保证持续可达。
+- [`src/native/session-core.js` L509-L531](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L509-L531)：普通新 Revision 构造 `[TIMELINE_NAMESPACE]: timeline.map(timelineSelection)`，即每次复制完整 Timeline 选择数组，再按内容哈希写入状态。若连续 N 次提交都未截断/分段，每次独立记录一个长度递增的数组，则**累计选择记录数量理论上可接近 O(N²)**；是否实际成为瓶颈须做磁盘/CPU 基准测试。
+- **开发期硬切换的工程机会**：完全可重新定义新的 Timeline/Revision 物理 schema，不必为现有截断型 Chronicle 或旧物理数组提供迁移兼容；但新格式下应把“玩家可回看的原文/变体”与“可丢弃/压缩的模型上下文或任务中间记录”明确拆开。
+
+### C6. SQLite 的 WAL/空间回收属于独立维护问题
+
+- [SQLite WAL 官方说明](https://www.sqlite.org/wal.html)：长读事务可能阻止 checkpoint 推进；达到阈值触发自动 checkpoint 的一次 COMMIT 也可能比普通提交慢；不能单靠 VACUUM 解决增长和尾延迟。
+- [SQLite PRAGMA 文档](https://www.sqlite.org/pragma.html#pragma_auto_vacuum)：`auto_vacuum=INCREMENTAL` 配合 `incremental_vacuum` 可逐步收缩数据库空闲页，但必须在数据库初建时设置或重建数据库后启用；开发期硬切换降低了 schema 兼容负担，**不等于应盲目默认开启**。
+- 清理流程须区分：逻辑对象可达性、DB 行删除、WAL checkpoint、数据库文件空间回收、FS Blob 回收；四者不能被当成一次简单“删除旧存档”。
+
 ## S2 提交协议的设计候选（待讨论）
 
 **用户可见语义候选**：
@@ -144,3 +157,4 @@
 - **2026-10-13 / 第 3 轮**：用户批准“核心游戏数据 S2”后建立此设计模块；上述 A/B/C、自动存档、具体 S2 协议为讨论候选，不属于已冻结决策。
 - **2026-10-13 / 第 4 轮开始**：第三轮方案 C 已批准，统一 S2 Durable Commit Contract 是正式设计原则；更新 A/B/C 表的决策状态，并添加自动 SavePoint、增量共享、无损历史分层、受保护 GC 候选，**未把这些候选写成已批准**。
 - **2026-10-13 / 第 4 轮补充**：用户明确开发期无外部已发布用户，不考虑旧数据兼容和跨 dev 版本迁移；取消旧格式迁移负担和由此衍生的 alias/双读双写等债务。新格式中的 S2 故障与数据安全承诺维持不变。
+- **2026-10-13 / 第 4 轮补充审计**：确认当前 Chronicle 压缩有损（不保留完整原始 Timeline），且 Revision 的 Timeline 物化数组潜在累计二次增长。依开发期硬切换约束，第四轮优先讨论新物理存储结构，而非修补旧语义兼容。
