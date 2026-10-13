@@ -34,31 +34,31 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
     browser = await chromium.launch({ headless: true });
-    for (const width of [1440, 390]) for (const size of sizes) {
+    for (const width of widths) for (const size of sizes) {
         const page = await browser.newPage({ viewport: { width, height: 900 } }), errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto('http://127.0.0.1:' + server.address().port);
         const result = await page.evaluate(async size => {
-            const { mountAtriaPlayProduct } = await import('/scripts/native/play-product.js');
+            const { mountAtriaPlayProduct } = await import('/scripts/native/play-window.product.js');
             const snapshot = await (await fetch('/fixture?size=' + size)).json(); let requests = 0;
             window.Atria = { nativeSessionRuntime: { active: true, snapshot,
                 request: async (_path, input, { signal }) => { requests++; return (await fetch('/timeline', { method: 'POST', body: JSON.stringify(input), signal })).json(); } } };
             const start = performance.now();
             window.product = mountAtriaPlayProduct({ root: document.querySelector('#host'), native: { sendForm: document.querySelector('#abi'), sendTextarea: document.querySelector('#input') } });
             await new Promise(resolve => setTimeout(resolve, 80));
-            return { mountMs: performance.now() - start, nodes: product.conversation.querySelectorAll('[data-atria-message-id]').length, requests };
+            return { mountMs: performance.now() - start, nodes: window.product.conversation.querySelectorAll('[data-atria-message-id]').length, requests };
         }, size);
         assert.equal(errors.length, 0, errors.join('\n')); assert.ok(result.nodes <= 64); assert.ok(result.requests > 0);
-        await page.evaluate(() => { product.conversation.scrollTop = 0; product.conversation.dispatchEvent(new Event('scroll')); });
-        await page.waitForFunction(() => product.conversation.querySelector('[data-atria-message-id]')?.dataset.sequence === '0');
+        await page.evaluate(() => { window.product.conversation.scrollTop = 0; window.product.conversation.dispatchEvent(new Event('scroll')); });
+        await page.waitForFunction(() => window.product.conversation.querySelector('[data-atria-message-id]')?.dataset.sequence === '0');
         const anchor = await page.evaluate(() => {
-            const node = product.conversation.querySelector('[data-atria-message-id]'), id = node.dataset.atriaMessageId;
+            const node = window.product.conversation.querySelector('[data-atria-message-id]'), id = node.dataset.atriaMessageId;
             document.body.dataset.generating = 'true'; document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: 'Uncommitted draft' } }));
-            return { id, top: product.conversation.scrollTop, same: node === product.conversation.querySelector('[data-atria-message-id]') };
+            return { id, top: window.product.conversation.scrollTop, same: node === window.product.conversation.querySelector('[data-atria-message-id]') };
         });
         assert.ok(anchor.same); assert.ok(anchor.top < 100);
         assert.ok(await page.locator('[data-atria-message-id]').count() <= 64);
-        await page.evaluate(() => product.dispose()); await page.close();
+        await page.evaluate(() => window.product.dispose()); await page.close();
         samples.push({ width, size, ...result });
     }
     console.log(JSON.stringify({ browser: browser.version(), samples, physicalDevice: false }, null, 2));
