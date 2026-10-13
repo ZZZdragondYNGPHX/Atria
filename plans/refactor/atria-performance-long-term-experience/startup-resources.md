@@ -1,4 +1,4 @@
-# Atria 性能与长期体验 — P4 冷热启动、资源加载与 Android/Termux 启动路径
+# Atria 性能与长期体验 — P4 冷热启动、资源加载与三端本地 Node 运行路径
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
 - **状态**：第十二轮分层启动方案 C **已经用户批准**；具体模块 DAG、启动预算及端侧实现仍需实测与工程设计，尚未修改产品代码。
@@ -6,9 +6,15 @@
 - **只读源码基线**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`；真正实施前先复核集成后的 `main`。尚未执行 APK/Termux 真机或浏览器基准。
 - **边界**：不为旧 dev 数据兼容保留额外引导流程，不修改正在开发的产品代码；保护当前受支持格式的 S2 提交、RunControl/SavePoint 与授权规则。长期会话流畅度和数据安全权重高于单纯的开屏跑分。
 
+## 本轮生效平台与暂停清单（2026-10-13）
+
+以 [index.md](index.md) 的最新范围为准，**主目标是 CachyOS、Windows、Android Termux 三端的本地 Node `server.js` + 系统浏览器**。E6 分别测首次安装/更新后的依赖与 Bundle 预构建、进程冷/热启动、浏览器导航、`ServerReachable → ShellInteractive → PlayReady` 和前后台/失败恢复。对 Windows 单独观察原生模块、路径与启动进程；对 Termux 区分本地 Node 服务启动和浏览器复用，保留快私有存储的 Webpack 缓存。
+
+**暂缓执行**：独立 Android APK 的 Kotlin/Gradle/nodejs-mobile/内嵌 WebView 打包与签名、APK 资产展开/Manifest 问题，以及云端或远程服务器部署。以下 S5–S8、Kotlin 3/Node 5 Bundle 不一致、R8/Baseline Profile、APK 就绪判据内容为此前审计/历史备选，**不属于本轮 E6.1/E6.3 验收或阻塞项**；保留资料，不宣称它们已修复。三端本地 Node 服务和 FS/SQLite S2 不暂停。
+
 ## Responsibility
 
-精确划分进程启动、HTTP Ready、WebView 主帧、Shell 可见、APP_READY、Native Session 已验证可读、正文可交互/可发送、S2 断电恢复可用等不同阶段。针对浏览器/Node、Android APK 内嵌 Node.js Mobile + WebView、Termux 本地 Node + 浏览器、外部端点 WebView 的差异建立测量与合理资源路径；不通过提前隐藏遮罩/降低合法状态校验伪造启动提速。
+精确划分本地 Node 进程启动、HTTP Ready、浏览器主帧、Shell 可见、APP_READY、Native Session 已验证可读、正文可交互/可发送、S2 断电恢复可用等阶段。分别测量 CachyOS、Windows 与 Termux 的本机 Node + 浏览器路径，不通过提前隐藏遮罩或降低合法状态校验伪造启动提速；此前 APK/WebView 与远程端点审计保留为历史证据。
 
 ## 第十二轮源码审计：已实现优化与待证风险
 
@@ -60,8 +66,8 @@
 
 ## 验收与最小测试方案（待 P0 量化）
 
-- 同一设备、同一 Project/Session、同一缓存冷/热状态；报告 T0→T1→T2→T3 的 P50/P95、各阶段 Trace span、APK 解包文件数/字节、Bundle 预建命中率、Webpack 回退原因、CPU 与 Node/WebView 内存峰值。
-- 建议优先做高成本真实路径的**小范围专项验证**：Kotlin 与 JS Bundle Manifest 一致性单测或构建时核验、首玩 Native readiness 的联动测试、Termux server-only/browser-only 分段启动测量；改到哪一块验证哪一块，不要求每小改都跑全量 CI 或多日 Soak。
+- 对 CachyOS、Windows、Termux 分别在同一设备/Project/Session/缓存状态下报告 T0→T1→T2→T3 的 P50/P95、Trace span、Bundle 预建命中率、Webpack 回退原因、CPU 与本地 Node/浏览器内存峰值。
+- 建议优先做高成本真实路径的**小范围专项验证**：Linux/Windows/Termux 预构建 Bundle 缓存完整性、Windows Node 原生依赖加载、Termux server-only/browser-only 分段启动、首玩 Native readiness；改到哪一块验证哪一块，不要求每小改都跑全量 CI 或多日 Soak。
 - 安卓真机区分冷/温/热与首装/升级。使用 Macrobenchmark 的 TTID/TTFD/自定义业务 `PlayReady` 时序，并报告具体机型、SDK 和 WebView 版本。Chromium 移动视口仅可验证 Web 组件，不能证明 Node.js Mobile/APK 真实启动。
 - 可考虑 Baseline/Startup Profiles 与 R8，但只能作为 Kotlin/DEX 独立 A/B：它们不会替代 Node 模块编译、Webpack 预构建或 WebView JS 性能优化；必须根据 Android 实测决定，不能用第三方声称的提速百分比作为 Atria 成果。
 - S2 与用户安全回归：启动失败不可虚报最新 HEAD 已恢复；用户操作权限与铁人终局只读归档在启动链路不降级；持久化数据不可在加快解包/清缓存时被擦除。
@@ -80,7 +86,10 @@
 
 **仍需 P0 与实施证据**：Android/Kotlin/Node 构建清单统一策略、实际应用启动 CPU/磁盘耗时和准确瓶颈、App/Android WebView 就绪消息协议、首玩模型资源加载时机、启动延迟目标及未使用功能按需激活清单。R8/Baseline Profile、APK Bundle 分片打包方案只是备选实验，非已批准强制新架构。
 
+**历史范围标注**：以上早期 Kotlin、APK、R8、WebView 方案继续留作后续恢复 APK 时的参考，不代表本轮批准执行；目前以三端本地浏览器和 Node 的 PlayReady/S2 验收为准。
+
 ## Material design changes
 
 - **2026-10-13 / 第十二轮**：用户批准 P5 内存生命周期 C 后建立本模块；结合前端/Node/Android/Termux 实际源码与官方资料提出 P4 A/B/C；确认 Kotlin 3 / Server 5 项预构建 Manifest 不一致、APK onPageFinished 隐藏遮罩的判定语义、Termux 已有 200ms 健康轮询；所有性能结果仍待实测，方案 C 已获批准，具体延迟和技术实现仍待 P0 实测。
 - **2026-10-13 / 第十三轮开端**：用户批准第十二轮方案 C；冻结 T0–T4 分层启动及**真实 PlayReady**、安全关键路径、统一 Android 构建/Kotlin/Node 预构建产物清单、多平台冷热路径分开评估。S5 清单不一致仍只是已经确认的源码风险，未测得运行时回退；尚未改动产品代码。
+- **2026-10-13 / 生效平台更新**：CachyOS、Windows、Android Termux（本地 Node + 浏览器）为 E6 三端目标；独立 Android APK 和远程服务器部署暂缓，先前的 APK 方案保留为历史候选。
