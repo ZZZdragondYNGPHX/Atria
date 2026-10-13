@@ -2729,3 +2729,15 @@ S21新增连续场景最终PASS：6真实正式executeTurn均applied并有author
 按用户暂停要求收齐现有子代理，均停止写入，无待执行请求/受控测试进程；root再次实查shared quota lock不存在。source最终 `f4815c7277adc02d36860f45dcf12f43f64453e2` 已commit/push/ls-remote一致，含S25 a5c42f537及S26/S21脚本，工作区干净。main3ee1332ef干净未改，用户要求的暂停优先于原集成流程。新HANDOFF仅因本次用户明确要求建立；当前剩余是所选范围最后核对、main集成/同步/工作区清理，不重跑已通过模型。实际请求本轮共45/163503tokens，历史失败和未知成本边界保持。私有新增向量连接仅在原Git外目录，无凭据进Git；无关Experience草稿未动。
 
 2026-10-13 用户明确要求将上述5个公开测试临时目录移入回收站。核验每个目标均为本机Temp内精确路径、真实Directory且非reparse后，Windows SendToRecycleBin全部成功，逐个原路径不存在；未永久删除或清空回收站。交接清理状态已同步，任务继续保持暂停。
+
+### 2026-10-13 最终范围核对、main 集成与收尾（当前已选交付完成）
+
+用户要求拉取远端 Atria 并进行最后收尾。恢复时本机 main `3ee1332ef`、source `9736eabd5`、docs `1042680aa` 均无未提交改动；fetch 后 main 无新提交，source fast-forward 至 `f4815c7277adc02d36860f45dcf12f43f64453e2`、docs 至 `fa982c61f`。消费最新用户暂停交接，按其入口核对当前 Plan/本 Record，不恢复旧暂停为执行限制，也未派发子代理。
+
+当前交付范围为同一任务已选 S11–S34 / G01–G06 有限消费者及前节记录的必要实际出口；逐项实现、兼容/权限/失效边界与检查证据沿原阶段保持。最终核对确认所选 G06 技术矩阵、S21 保存恢复连续场景、S23 typed provider、S24 双域正式 receipt、S25/S26 有限对照、S27 单样本表达及 S28–S34 所选实际消费者均有对应记录，不重复测试补不存在的泛化证据。S34 两域 tie/awaiting_review/eligible=false/未发布、S25 无质量收益、S26 充分预算无成本改善、旧失败与 unknown 成本、历史原始材料精简后的证据限制保持。完整 M4–M8 / HM2–HM3 的广义收益和未选远程 OAuth/Apps/stream、训练/本地推理优化、语音质量/细粒度时序等仍未宣称验收；当前有限交付完成不等于整个研究池完成。
+
+main 是 source 的祖先，本地 fast-forward 从 `3ee1332ef113d4c57c65d9577222ba88d5171101` 至 `f4815c7277adc02d36860f45dcf12f43f64453e2`，内容与原 source 精确相同，无冲突或新增实现；main 已 push，origin/main 与本地 HEAD 一致。产品源码最终交付包含该分支 104 个提交、233 个变更文件；没有把独立 docs/package/plugin/skills 分支合入 main，没有部署或等待 Actions/PR。
+
+最小本地验证：集成前 source/main 工作区干净、祖先关系成立、`git diff --check main...HEAD` 通过；集成后 HEAD 精确一致、`git diff --exit-code f4815c727 HEAD` 通过、main 工作区干净。package.json/package-lock.json 未变，变更路径不包含连接配置/私有 quota/raw/cache。没有新的产品变化，按 Governance §12 未重跑已通过单元/浏览器/API，不执行全仓 test/lint/build；本轮新增模型请求为 0。文档只核对变更内容、相对文件链接、Git 差异与状态。
+
+清理前核对本任务 source 仅有两个 ignored 依赖软链接，分别指向 main 的 node_modules 与 tests/node_modules；只 unlink 这两个链接，共享依赖保持。随后正常 `git worktree remove` 与 `git branch -d` 清理已集成的 source/本地 `feat/agent-compute-runtime`，远端同名分支已删除；其它任务工作树/分支、长期工作空间、main 原 ignored 数据/产物、Git 外私有资料均保留。更新 Plan 当前状态与有限集成边界，删除已消费的本任务 live HANDOFF；恢复入口改为按需读取存在的 HANDOFF，不保留失效链接或创建交接副本。当前 Record 与 Plan 随 docs 提交同步保存。

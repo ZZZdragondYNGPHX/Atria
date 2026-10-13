@@ -48,7 +48,7 @@
 
 不得放置产品实现、Package 资产、独立工具或 AI Skill 资产。
 
-产品使用/开发文档与站点资产在 `main:docs/`；设计和实施历史只在本分支保留。阅读入口：[Plans](plans/README.md)、[Records](records/README.md)、当前 [HANDOFF](HANDOFF.md)。
+产品使用/开发文档与站点资产在 `main:docs/`；设计和实施历史只在本分支保留。阅读入口：[Plans](plans/README.md)、[Records](records/README.md)；用户要求中断时的恢复入口为存在的 `HANDOFF.md`。
 
 ### `package`
 

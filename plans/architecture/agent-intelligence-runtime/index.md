@@ -4,11 +4,11 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: M1 / HM1 已集成 main；当前 `feat/agent-compute-runtime` 已交付 S21–S34 的有限工程消费者，S31–S34 最新工程提交 `40ce8f8d3` 已推送。S23 原 Host 实际 provider 出口通过，S24 双域原 authority 对照已有实际 receipt；S34双域原隔离评价已完成有限真实pilot且均tie；S27真实单样本语义出口通过；S25/S26有限真实对照已完成；S21连续场景也已通过；最新source f4815c727已推送，按用户要求暂停并交接，main集成待续。逐项状态见下方当前状态表，历史失败与费用见同一 Record；尚未宣称完整 M4–M7 或 main 集成完成。
+- Status: 当前已选有限交付与收尾完成；main 已从 `3ee1332ef` 快进集成至 `f4815c727`。S11–S34、G01–G06 的所选消费者及必要实际出口按同一 Record 的有限证据交付；S34 双域 pilot 均 tie、未发布，S25 无质量收益、S26 未证明成本改善。当前集成不等于完整 M4–M8 / HM2–HM3 的泛化收益或所有可选能力验收；逐项边界见下方状态表与 Record 最终收尾节。
 - Updated: 2026-10-13
 - Private storage checkpoint (2026-10-12): 按当前用户批准完成本地私有资料精简；历史逐次原始材料/迁移副本已移出工作目录，仅保留当前连接、极小滚动限流状态与阶段摘要。后续测试保留规则只归 [Governance §13.1](../../../README.md#131-api-测试执行规则)，实际清理与证据限制见 Record 最新节；该历史清理不改变后续实际交付，也不为补已删除原始材料重跑历史阶段。
-- Latest checkpoint: source `5a80e1563b1e9db4150da98d0096bdc61704d3f9` 与远端一致，已恢复当前完整私有 RAR。沿原作者 `system.style` 隔离 revision v3 完成 Session 三臂及四既有 frame 最小复验：7 HTTP200 的有限无依据场景/时间/玩家自主权项通过，2 TLS transport unknown/旧天气 FAIL 保留；原bank、authority 与产品源码未改。Session原三臂累计27 jobs，完整G06/M8/HM2与M3前置不变；叙事六维/独立盲评、真实语义/费用收益未宣称通过。最新实际证据见Record，不重跑已完成Session Task冷恢复或M1/HM1。
-- Current G06 consumer checkpoint (2026-10-12): source `4160851ca` 已push；World解释policy保留字段定义、未知事件和位置归属，不把scene位置分配给Actor/玩家。原六维/格式失败/新ownership不利结果及全部费用保持，当前受影响质量项已完成修正与配对，所选G06技术验收通过，完整M8/HM2尚未集成main；见 [G06矩阵](g06-acceptance.md) 与最新Record。M3已采用原作者/作品授权可见范围与接管，入口设计见 [M3](m3-cognition-design.md)，S15按 [具体契约](s15-actor-identity.md)交付有限身份消费者，S16有限消费者与三模式Disclosure正文出口通过，原9条失败与费用保留；S17有限Desire/Intention与原Goal/commitment关联已交付（source186c449fa）；S18有限共享事件appraisal已交付（sourcefbe0f5b7a），15新增/4受影响本地PASS及两实际HTTP200/direct7236；后续正文为明确本地重放consumer、原完整appraisal normalized快照缺失保留，详见 [S18](s18-event-appraisal.md)/最新Record。S19有限一阶/二阶ToM及同Session行为反例后正文出口完成（sourcee39a425a9），19新增/2受影响本地PASS；2HTTP200/direct8593与1HTTP400/unknown upper6261全部保留，见 [S19](s19-theory-of-mind.md)/Record。S20有限因果轨迹/Memory applicability/轻度默认与深度可选遗忘出口完成（source9736eabd5），12新增/2受影响本地PASS与一次HTTP200/direct5955；见 [S20](s20-memory-applicability.md)/Record。S21起的后续交付见下方当前状态表。
+- Historical checkpoint (2026-10-12): source `5a80e1563b1e9db4150da98d0096bdc61704d3f9` 与远端一致，已恢复当前完整私有 RAR。沿原作者 `system.style` 隔离 revision v3 完成 Session 三臂及四既有 frame 最小复验：7 HTTP200 的有限无依据场景/时间/玩家自主权项通过，2 TLS transport unknown/旧天气 FAIL 保留；原bank、authority 与产品源码未改。Session原三臂累计27 jobs，完整G06/M8/HM2与M3前置不变；叙事六维/独立盲评、真实语义/费用收益未宣称通过。最新实际证据见Record，不重跑已完成Session Task冷恢复或M1/HM1。
+- Historical G06 consumer checkpoint (2026-10-12): source `4160851ca` 已push；World解释policy保留字段定义、未知事件和位置归属，不把scene位置分配给Actor/玩家。原六维/格式失败/新ownership不利结果及全部费用保持，当前受影响质量项已完成修正与配对，所选G06技术验收通过，完整M8/HM2尚未集成main；见 [G06矩阵](g06-acceptance.md) 与最新Record。M3已采用原作者/作品授权可见范围与接管，入口设计见 [M3](m3-cognition-design.md)，S15按 [具体契约](s15-actor-identity.md)交付有限身份消费者，S16有限消费者与三模式Disclosure正文出口通过，原9条失败与费用保留；S17有限Desire/Intention与原Goal/commitment关联已交付（source186c449fa）；S18有限共享事件appraisal已交付（sourcefbe0f5b7a），15新增/4受影响本地PASS及两实际HTTP200/direct7236；后续正文为明确本地重放consumer、原完整appraisal normalized快照缺失保留，详见 [S18](s18-event-appraisal.md)/最新Record。S19有限一阶/二阶ToM及同Session行为反例后正文出口完成（sourcee39a425a9），19新增/2受影响本地PASS；2HTTP200/direct8593与1HTTP400/unknown upper6261全部保留，见 [S19](s19-theory-of-mind.md)/Record。S20有限因果轨迹/Memory applicability/轻度默认与深度可选遗忘出口完成（source9736eabd5），12新增/2受影响本地PASS与一次HTTP200/direct5955；见 [S20](s20-memory-applicability.md)/Record。S21起的后续交付见下方当前状态表。
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
 - S03 implementation / Tested HEAD: `78acfb65da6b1afa1dee1c2f35482af215832c74`；沿用同一任务分支，已 push，main 未变化。
@@ -31,9 +31,9 @@
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
 - D4 source docs HEAD: `1c2502dae8ac1bcb7a0bb1dfb1e18d9f01b984b8`；研究源提交 `aa4d2d2fe`，S03 产品 HEAD 与 main 未变化。
 - D5 source / integration start docs HEAD: `13d09ccac68b2c4f71f84a8ae2a405f3eb53577b`；HCM-01–08 最终决定已冻结，本轮只整合 docs，产品 refs 与 M1 历史不变。
-- M8 current checkpoint: 从 main `3ee1332ef` 在 `feat/agent-compute-runtime` 推进；G01 基础 `c62ecc937`、G02 编译绑定 `37273d4ca`、G03 Artifact/Plan proof `c6979abda`、G04 Responses/stream `09ef28452`、原生私有 envelope/Host retry `47575e344`、G05 shared send `9599dad35`、gateway counters `acd2d563f` 与原Studio Task lineage消费者 `9369f3b0a`，未集成，完整 M8/HM2 尚未验收。实施矩阵见 [G01 substrate](g01-substrate.md)，持续按 G01→G06→HM2 依赖推进。
+- M8 historical checkpoint: 从 main `3ee1332ef` 在 `feat/agent-compute-runtime` 推进；G01 基础 `c62ecc937`、G02 编译绑定 `37273d4ca`、G03 Artifact/Plan proof `c6979abda`、G04 Responses/stream `09ef28452`、原生私有 envelope/Host retry `47575e344`、G05 shared send `9599dad35`、gateway counters `acd2d563f` 与原Studio Task lineage消费者 `9369f3b0a`，未集成，完整 M8/HM2 尚未验收。实施矩阵见 [G01 substrate](g01-substrate.md)，持续按 G01→G06→HM2 依赖推进。
 - Record: [阶段记录](../../../records/refactor/agent-intelligence-runtime.md)
-- M2 local checkpoint: S11 `9b0ad933f` / S12 `3ee22238e` / S13 Project `fdea2011b` / S14 scoped RP events and shared pane `0c50438f6` 已 push。有限双入口 Source 完成、原 bank 和用户控制已验证；RP 不从 Goal 文本创建隐藏 Task/Run，关闭应用期间无系统唤醒。实际支持及证据边界见 [S13](s13-goal-continuation.md) / [S14](s14-goal-experience.md) 和最新 Record。M8/HM2 的 G06 真实出口仍未验收，M3 前置保持。
+- M2 historical checkpoint: S11 `9b0ad933f` / S12 `3ee22238e` / S13 Project `fdea2011b` / S14 scoped RP events and shared pane `0c50438f6` 已 push。有限双入口 Source 完成、原 bank 和用户控制已验证；RP 不从 Goal 文本创建隐藏 Task/Run，关闭应用期间无系统唤醒。实际支持及证据边界见 [S13](s13-goal-continuation.md) / [S14](s14-goal-experience.md) 和最新 Record。M8/HM2 的 G06 真实出口仍未验收，M3 前置保持。
 
 ## 目标与当前结论
 
@@ -136,6 +136,8 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 
 ## 当前状态
 
+当前集成 HEAD 为 main `f4815c727`；以下 source 提交与检查数字为各阶段的实际证据，顶部历史 checkpoint 不恢复为当前状态。未选扩展和未证明的收益保持原边界，不影响本次有限交付收尾。
+
 | Checkpoint | 状态 | 产物 |
 | --- | --- | --- |
 | D0 — 重新调研 | 已完成本轮架构覆盖；进入讨论 | 代码审计、一手资料复核、34 阶段讨论稿 |
@@ -158,7 +160,7 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S11 | 有限持久/控制出口已交付 | [s11-goals](s11-goals.md)，S12证据、S13持久续跑和S14体验已接；有限范围见各入口与Record |
 | S12 | 有限criteria/完成证据与失效出口已交付 | [s12-goal-evidence](s12-goal-evidence.md)，14新增/12受影响既有distinct本地PASS；Actor认知完成留S17 |
 | S13–S14 | 有限用户/作品事件出口已交付 | [s13-goal-continuation](s13-goal-continuation.md)、[s14-goal-experience](s14-goal-experience.md)，同Task bank/恢复、显式RP事件和共享pane；非应用关闭唤醒或Actor欲望验收 |
-| G01–G06 | 有限消费者陆续交付；M8完整验收未完成 | 当前入口[g01-substrate](g01-substrate.md)及[g05-transformers-embedding](g05-transformers-embedding.md)；`84fca4a73`补原Session声明Task native冷恢复及完成工作解释、原Gemini实测同bank通过；原source/预算/复用、本地语义、SSE观察已补，原FAIL和完整费用/收益缺口保留 |
+| G01–G06 | 所选技术矩阵与有限消费者已集成；完整M8收益未验收 | 当前入口[g01-substrate](g01-substrate.md)及[g05-transformers-embedding](g05-transformers-embedding.md)；`84fca4a73`补原Session声明Task native冷恢复及完成工作解释、原Gemini实测同bank通过；原source/预算/复用、本地语义、SSE观察已补，原FAIL和完整费用/收益缺口保留 |
 | S15 | 有限身份与profile投影交付 | [s15-actor-identity](s15-actor-identity.md)，8新增/4受影响既有本地检查；精确Host/模型切换/安装版本/分支恢复消费 |
 | S16 | 有限消费者与正文Disclosure出口通过 | [s16-belief-disclosure](s16-belief-disclosure.md)，原13新增/8受影响及当前6本地检查PASS；原9正文FAIL保持，修复后3模式正文有限通过/新增direct7135 |
 | S17 | 有限Desire/Intention与Goal/commitment关联交付 | [s17-desire-intention](s17-desire-intention.md)，22新增/7受影响本地PASS；4正文/direct12762包含保留不利，最终两状态有限通过；Actor Goal不升级用户执行成功 |
@@ -180,7 +182,7 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S33 | 元数据导出与离线CLI完成 | [离线轨迹](s33-learning-export.md)；source `40ce8f8d3`，38新增/增强及HTTP新2旧2PASS；原双域authority、derived诊断、expiry/CAS、冷CLI真实文件分析 |
 | S34 | 原Prompt optimizer接线与有限真实pilot完成 | [优化后端](s34-native-optimizer.md)；source `40ce8f8d3`，14新增/4受影响及后续8隔离/身份检查PASS；修复c5447144a，review/当前轨迹重验/原候选评价和回退，双域真实pilot均tie/未发布，初次失败费用保留，完整M7晋升未验收 |
 | HM1 / H0–H2 | Complete；main `3ee1332ef` | B0 保留，B1–B3 / 三路径 / Context 完整组 / 主模型正文观察与相关本地验证通过；限制见 Record |
-| HM2–HM3 / H3–H5 | 有限HM2工作进行中；整体未验收，HM3未交付 | 原合法corpus/hash派生复用与有限本地Embedding已有实际消费者；delta/candidate cache、启用算法收益与cognition/forgetting仍按各组出口交付 |
+| HM2–HM3 / H3–H5 | 所选有限消费者已集成；完整组未验收 | 原合法corpus/hash派生复用与有限本地Embedding已有实际消费者；delta/candidate cache、启用算法收益与cognition/forgetting仍按各组出口交付 |
 
 以下为历史阶段摘要，当前交付状态以上表和同一 Record 最新节为准。S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。S09 已交付有限策略候选，详见 s09-strategies。S10 已交付保守的局部自动发布与审阅路径，详见 s10-evolution；下一工作补齐 M1 验收证据与集成前置条件。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
