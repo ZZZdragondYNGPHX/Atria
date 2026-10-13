@@ -141,6 +141,16 @@
 
 **与第十轮 C 的区别**：第十轮冻结的是整体三层缓存与前台优先 GC；第十一轮候选 C 着重让内存生命周期的释放与诊断可证明有效。是否采用第十一轮 C 仍待用户答复，不预先固化任何内存上限或 Soak 小时数。
 
+### 第十一轮补充的细粒度源码核对
+
+- [`public/scripts/agents/memory/source-lifecycle.js` L88-L120](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/agents/memory/source-lifecycle.js#L88-L120) 的 `createSourceLifecycle()` 在闭包中保存 `queues/cache/observed/pending/epochs` 五个 Map；[L509-L533](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/agents/memory/source-lifecycle.js#L509-L533) 对外方法中没有总量化 `dispose()/clearScope()`。**这只说明生命周期释放接口有缺口，不能单凭这一点宣称已经发生泄漏**；需检查实例实际创建/退役频率、键的数量增长与是否被替换。
+- [`public/scripts/native/play-product.js` L445-L455](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/play-product.js#L445-L455) 已会注销 document 监听、断开 MutationObserver、取消生命周期订阅、释放消息插画节点并删除产品 DOM。虽然局部独立子节点仍绑定事件，但**若 DOM/闭包没有被其它对象保留，GC 可以正常回收**；需通过 Retaining Path 而非静态监听计数确认泄漏。
+- [`public/scripts/native/frontend/runtime.js` L218-L224](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/frontend/runtime.js#L218-L224) 已有幂等组件 dispose 与作用域资源解除，及 [L701](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/frontend/runtime.js#L701) 的 Runtime dispose。优先补充它们的重复 Mount/Unmount 测试，不应直接另建统一组件引擎。
+- [`src/native/task-scheduler.js` L112-L126](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/task-scheduler.js#L112-L126) 在 finalize 边界禁止中途取消，最终清理 timer/abort listener 并释放 running 引用；并发任务 operation 保留另受限额管理。内存剖析应区分主动保留的近期操作回执与泄漏。
+- [Node.js process.memoryUsage()](https://nodejs.org/api/process.html#processmemoryusage) 区分 V8 Heap、external、ArrayBuffer 和 RSS；Linux/glibc 还可能因 allocator 碎片造成 RSS 上升但 V8 Heap 稳定。监控不能仅看单个 `rss` 数字或强制 GC 后 RSS 是否下降。
+- [Chrome Heap Snapshot](https://developer.chrome.com/docs/devtools/memory-problems/heap-snapshots) 提供 Retained Size 与 Detached DOM 引用链比较；测试工具本身有开销，属于明确授权的诊断模式，不默认对真实游玩长期开启全量快照。
+- [Android `ComponentCallbacks2` 当前平台 API](https://developer.android.com/reference/android/content/ComponentCallbacks2) 按系统通知释放可重建内存；部分早期 TRIM_MEMORY_RUNNING_* level 在新 Android API 中已废弃/不再通知，**不可把是否收到某一个具体 level 当作 Android 14+ 的必要条件**，仍须覆盖前后台/实际进程回收与 S2 续接。
+
 ## 外部技术依据
 
 1. [web.dev：INP / 主线程长任务](https://web.dev/codelabs/understanding-inp) — 用户交互耗时包括输入排队、事件执行及渲染，并可用分段任务降低长尾。
@@ -151,5 +161,6 @@
 
 ## Material design changes
 
-- 2026-10-13 / 第十轮：新增 P5 模块，把内存/缓存与后台任务统一化候选建立在已批准的 S2、不可变历史、存读档驱动、铁人终局只读根之上；确认源码已有 scheduler、缓存与清理机制，不能重复发明平行子系统。具体三层资源调度策略与阈值仍待本轮定案。
+- 2026-10-13 / 第十轮：新增 P5 模块，把内存/缓存与后台任务统一化候选建立在已批准的 S2、不可变历史、存读档驱动、铁人终局只读根之上；确认源码已有 scheduler、缓存与清理机制，不能重复发明平行子系统。方案 C 随后于第十一轮开端得到用户批准，阈值仍待 P0 实测。
 - **2026-10-13 / 第十一轮开端**：用户批准第十轮资源治理 C，冻结三层有界缓存、现有 TaskScheduler 的前台优先预算、Mark→Quarantine→Revalidate→Sweep 的可恢复 GC。新增十一轮泄漏分类、作用域释放与跨设备长时间测量的 A/B/C 方案，具体阈值和候选 C 仍待定案。
+- **2026-10-13 / 第十一轮补充审计**：SourceLifecycle 闭包 Map 缺少总量退出钩子，但不能据此认定泄漏；Play/Presentation 已存在 Dispose 契约。引用 Chrome Retained Size、Node JS/external/RSS 的不同含义与 Android 新 API 的 trim memory 差异，完善分项测量；第十一轮方案 C 仍未批准。
