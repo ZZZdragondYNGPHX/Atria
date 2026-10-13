@@ -4,7 +4,7 @@
 - **Primary Workspace**: `main`（未来产品实施）；本次企划归档于长期 `docs` 工作空间
 - **状态**: Draft（方案讨论中，尚未授权实施）
 - **起草日期**: 2026-10-13
-- **当前讨论**: 第 7 轮；第六轮已冻结自适应段、局部 COW 索引、回放成本物化与 commitId+CAS 的 S2 提交恢复组合；同步核查旧 SillyTavern Swipe/Delete/Hide 楼层操作，讨论由 Save/Load/Branch 取代的产品边界
+- **当前讨论**: 第 8 轮；第七轮已冻结严格存读档驱动方案 A，讨论 SavePoint 设置与自动触发、读档派生分支、生成失败恢复和绕过存档点的权限边界
 - **实施起点**: 等当前 `feat/agent-compute-runtime` 功能开发结束并集成后，重新核实 `main` HEAD 和基线，再创建独立 `refactor/*` 实施分支
 - **首次静态审计快照**: `feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，同期 `main@3ee1332ef113d4c57c65d9577222ba88d5171101`；此为代码证据，不是性能测量
 
@@ -22,23 +22,24 @@
 6. **第四轮长期存储整体方案已批准**：对当前支持的新数据格式，每次正式 Turn Commit 均独立达到 S2 可恢复提交（不是每次新建 SavePoint）；使用增量提交与历史段/Revision 共享，避免反复物理复制整个 Timeline。默认定期创建可配置的轻量自动 SavePoint；手动 SavePoint/置顶保留点不自动覆盖或清除。长期有效的原始剧情、原始游戏历史、结构化世界状态历史与有效分支/变体默认**无损保留**，热区/冷归档只改变编码与读取方式；模型上下文可做有损摘要，但不得取代可回溯的原始记录。后台 GC 仅清理经引用可达性、安全宽限、提交边界确认可以回收的缓存、孤立中间数据与过期自动保存锚点；不可通过过期自动锚点间接清除仍属于有效历史的数据。用户可显式删除历史/分支，且须明确告知后果。自动存档间隔、保留数量及物理索引结构仍待第 5 轮具体设计。
 7. **第五轮物理架构 C 已批准**：下一代 Native Session 采用**不可变分段事件日志 + 跨 Revision/Branch 的共享索引与根引用 + 周期性物化的结构化世界状态**。事件/正文/有效 Variant 与世界状态原始变化无损保留；分叉后的 Branch 复用祖先段和索引节点，不按回合重写整个 Timeline；物化快照只负责限界重放和快速读写，不得替代可还原的原始权威历史。该物理架构 C 与第三轮统一 S2 Durable Commit Contract C 为两个独立层次，均已冻结；段尺寸、压缩算法、快照触发阈值、索引具体实现及故障恢复协议仍待第六轮与实测定案。
 8. **第六轮持久化细节组合已批准**：采用有界且每回合达 S2 的活动尾段 + 自适应不可变封存；按 Revision/Branch 共享的有序分段索引与局部 COW；按回放成本/增量规模决定周期性物化状态；每次提交以唯一 commitId、expectedHead CAS、耐久依赖与 RevisionRoot/receipt 原子发布实现 S2，客户端在不确定返回时查询而非重复执行。后台维护不得阻塞交互关键路径，GC 遵守引用可达性与安全宽限。段字节上限、压缩算法、默认触发阈值和索引节点参数由 P0 实测决定，未冻结任意常数。
-9. **正确性不得换速度**：不得破坏 Native Session/Revision、Branch/Variant、世界状态权威、存档可恢复性、记忆来源与权限边界；不得通过静默丢数据、缩短历史或关闭校验伪造性能收益。
-10. **实测决定实施顺序**：`P0` 先建立基线，再排序具体热点；静态代码风险不等于已证实的实际故障。
-11. **独立后续迭代**：当前功能分支完成之前仅调研和讨论，不夹带产品代码改动。
-12. **轻量且真实的验证**：只验证实际改动涉及的模块及关键不变量；需要真机才能确定的结论明确标为待证，不假称已测试。
+9. **第七轮正式游玩交互方案 A 已批准**：从正式 Play 及对外玩家操作中移除 SillyTavern 旧楼层 Swipe/Delete/Hide，以及绕过 SavePoint 的原生 Retry Reply、Restart From Here、Re-enter Turn、任意 Fork from Revision 快捷入口；用明确创建的 SavePoint / Load SavePoint / Switch Branch 管理剧情回溯与路线分化。Load SavePoint 从相应持久化 Revision 派生独立 Branch，保留既有分支及其完整世界状态，不通过删除已提交的楼层来伪造回退。继续提供只读历史查看、主动存档、现有路线切换、未提交失败/取消生成的安全恢复与项目/Session/存档等独立资源管理；媒体左右翻页、Native 权威 Variant 结构不属于旧回复 Swipe，不应误删。正式 Play 不得通过公开 API、快捷键、Slash Command 或事后任意创建历史 SavePoint 等途径绕开这一边界；Studio/调试所需权限另行明确讨论，默认不提供例外。不兼容旧 dev 数据、不保留旧楼层突变兼容 API；底层清理须保护仍在使用的 Native 隐藏生成 ABI。
+10. **正确性不得换速度**：不得破坏 Native Session/Revision、Branch/Variant、世界状态权威、存档可恢复性、记忆来源与权限边界；不得通过静默丢数据、缩短历史或关闭校验伪造性能收益。
+11. **实测决定实施顺序**：`P0` 先建立基线，再排序具体热点；静态代码风险不等于已证实的实际故障。
+12. **独立后续迭代**：当前功能分支完成之前仅调研和讨论，不夹带产品代码改动。
+13. **轻量且真实的验证**：只验证实际改动涉及的模块及关键不变量；需要真机才能确定的结论明确标为待证，不假称已测试。
 
 ## 模块地图
 
 | 模块 | 权威内容 | 依赖与状态 |
 | --- | --- | --- |
 | [`measurement-and-evidence.md`](measurement-and-evidence.md) | 静态审计证据、P0 指标与负载矩阵、性能/持久化验收设计、待讨论问题 | **已建立；第二轮必读** |
-| [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、SillyTavern 楼层 Swipe/Delete/Hide 退出审计、Save/Load/Branch 替代方案 | **第 7 轮已建立；入口退役的具体边界待讨论**，依赖 P0/P2 |
+| [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、SillyTavern 楼层 Swipe/Delete/Hide 退出审计、Save/Load/Branch 替代方案 | **第 7 轮严格方案 A 已冻结；第 8 轮讨论 SavePoint/Load 细则**，依赖 P0/P2 |
 | [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 持久化提交、FS/SQLite、原生资产、自动存档/GC 架构选项 | **已建立；第六轮提交/分段细节已冻结，第七轮聚焦后台负载和旧楼层操作**，依赖 P0 |
 | `agent-compute.md` | P3 记忆检索、上下文编译、缓存、任务调度的质量与性能 | 待讨论后按需建立，依赖 P0 |
 | `startup-resources.md` | P4 首屏、资源图、模块加载、Android APK/Termux 启动 | 待讨论后按需建立，依赖 P0 |
 | `stability-recovery.md` | P5 内存/文件增长、恢复、清理、压力运行与观测 | 待讨论后按需建立，依赖 P0/P2 |
 
-其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 调查 Swipe/Delete/Hide 旧楼层操作的代码状态，拟移除旧楼层的 Swipe/Delete/Hide 并以 Save/Load/Branch 为剧情分叉权威；仍需决定是否同时退出 Native 的 Retry Reply、Restart From Here、Re-enter Turn、Fork from Revision UI 快捷入口。必须区分玩家楼层突变、Native 只读历史/有效分支、以及资源管理删除。跨模块不重复写一套规则。
+其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮继续明确 SavePoint 自动触发、读档分支及如何避免绕过 SavePoint 的旁路。跨模块不重复写一套规则。
 
 ## 阶段与读取路由
 
@@ -65,7 +66,7 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 ## 当前待定事项
 
 1. 长期使用负载的目标档次（例如 1k / 5k / 20k 消息；只是样本候选，不是当前硬门槛）。
-2. 已确认 S2、统一持久化契约 C、每回合增量提交与长期无损保留、分段不可变日志和共享根物理布局 C，**以及第六轮自适应活动尾段、局部 COW 共享索引、回放预算物化、commitId/CAS/receipt 恢复组合**。待定仅为实际算法选择与默认数值、各引擎实测证据；并新增第七轮旧楼层 Swipe/Delete/Hide 是否移除与替代交互的产品讨论。
+2. 已确认 S2、统一持久化契约 C、每回合增量与无损历史、混合分段物理布局 C、第六轮提交/恢复组合，及第七轮**严格存读档驱动方案 A**。待定的是自动 SavePoint 与重要节点的触发策略、读档后分支命名/选择、未提交失败恢复及正式玩法的存档权限边界；算法/阈值仍由 P0 实测。
 3. 质量与性能权重如何转化为基准指标；桌面、Android APK、Termux 是否使用统一底线与分平台预算。
 4. 初始基线采集是先聚焦 Native Play + FS，还是同步覆盖其他后端；依据现实用户路径分层。
 5. 允许 dev 期存储格式直接硬切换，**不做旧数据兼容/迁移**；仍需确定新格式 S2 提交与恢复协议，并区分旧 dev 数据不兼容和当前格式下的异常丢失。
@@ -87,3 +88,4 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 - **2026-10-13 / 第 6 轮开端**：用户明确认同第五轮物理架构 C，正式冻结「不可变分段事件日志 + 共享 Timeline/Revision 索引/根引用 + 周期结构化世界状态物化」；分段大小、冷热压缩算法、触发策略、索引树细节与 S2 恢复序列均仍待本轮讨论及 P0 性能验证。
 - **2026-10-13 / 第 7 轮开端**：用户认可第六轮完整技术组合。另提出产品新需求：审查 SillyTavern 旧楼层 Swipe/Delete/Hide 的存量代码与实际入口，倾向去除这些单楼层操作，以 Native Save/Load 与 Branch 为主要剧情路线管理方式；先审计实际存在与能力边界，再讨论替代方案，未在本轮直接修改代码。
 - **2026-10-13 / 第 7 轮审计**：发现旧 SillyTavern 消息模板与操作实现尚存，但当前 Native Play 使用隐藏生成 ABI 和独立显示层，旧 Swipe/Delete 被提交保护阻拦；Native 自身仍提供 Restart/Re-enter/Retry/Fork 等绕过 SavePoint 的回溯入口。新增 [`client-interaction.md`](client-interaction.md) 并将「全面转为存读档与分支控制」的严格程度列为第七轮待选方案；尚未改动产品代码。
+- **2026-10-13 / 第 8 轮开端**：用户认同第七轮严格方案 A：正式 Play 清退旧 SillyTavern Swipe/Delete/Hide，连同 Native Retry Reply、Restart From Here、Re-enter Turn 和任意 Fork from Revision 的玩家快捷入口；剧情路线仅通过保存/加载和切换 Branch 管理。仅保留只读历史、未提交生成安全恢复和独立资源管理，不把媒体 swipe 或权威 Variant 数据结构误删。第八轮讨论存档策略与绕过入口，尚未实施。
