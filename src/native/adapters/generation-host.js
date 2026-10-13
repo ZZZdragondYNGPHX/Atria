@@ -1,3 +1,4 @@
+import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
 import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPackageContextDerivation } from '../context-computation.js';
@@ -410,23 +411,24 @@ export class NativeGenerationHost {
         }
         const stages = [];
         const provenance = [];
-        const invoke = async (id, payload, suffix) => {
+        const invoke = async (id, payload, suffix, preparationSignal = signal) => {
             const task = runtime.tasks.find(item => item.id === id);
             const result = await this.executeTask(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
                 taskId: id, variantId: input.variants?.[id] ?? task.variants[0].id, input: payload,
-                slotBindings: input.slotBindings, invocationId: input.invocationId + ':' + suffix }, signal, undefined, { transient: true, scheduled: true, lanePlan });
+                slotBindings: input.slotBindings, invocationId: input.invocationId + ':' + suffix }, preparationSignal, undefined, { transient: true, scheduled: true, lanePlan });
             const { payload: _payload, execution: _execution, ...evidence } = result.record;
-            provenance.push(evidence);
-            return result;
+            return { ...result, turnProvenance: evidence };
         };
-        for (const [index, id] of runtime.turn.stages.entries()) {
-            const stage = await invoke(id, input.stageInputs?.[id] ?? {}, 'stage' + index);
-            stages.push(stage.record.payload);
-        }
+        // Each transient turn_context stage has explicit stageInputs, reads the
+        // same pinned state, and cannot consume or publish another stage output.
+        const preparedStages = await prepareIndependent(runtime.turn.stages,
+            (id, index, preparationSignal) => invoke(id, input.stageInputs?.[id] ?? {}, 'stage' + index, preparationSignal), { signal });
+        for (const stage of preparedStages) { stages.push(stage.record.payload); provenance.push(stage.turnProvenance); }
         checkCancellation(signal);
         let draft, knowledgeProof;
         if (runtime.turn.narratorTaskId) {
             const result = await invoke(runtime.turn.narratorTaskId, { stages }, 'narrator');
+            provenance.push(result.turnProvenance);
             knowledgeProof = result.knowledgeProof;
             draft = typeof result.record.payload === 'string'
                 ? { schemaVersion: 1, narrative: result.record.payload, outcomes: [], diagnostics: [] } : result.record.payload;
@@ -457,6 +459,7 @@ export class NativeGenerationHost {
         if (runtime.turn.policy === 'narrative-outcome') {
             const task = runtime.tasks.find(item => item.id === runtime.turn.interpreterTaskId);
             const interpreted = await invoke(task.id, { narrative, stages }, 'interpreter');
+            provenance.push(interpreted.turnProvenance);
             outcomes.push({ requestId: task.interpretation.id, interpretation: interpreted.record.payload });
         }
         checkCancellation(signal);
@@ -899,6 +902,7 @@ export class NativeGenerationHost {
             ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
         const nativeContext = !prediction && snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
             options: {
+                tokenScope: JSON.stringify([handle, snapshot.session.sessionId, snapshot.revision.branchId]),
                 tokenizerFor: resolved => resolver.provider(resolved.connection.providerAdapter).contextTokenizer?.(resolved),
                 deriveContext: contextPackage ? createPackageContextDerivation(snapshot, contextPackage) : undefined,
                 processContext: contextPackage ? (text, sourceId) => processPackageText(contextPackage, snapshot.manifest.runtime.experienceContract.processingRuntime, 'context', text, sourceId) : undefined,

@@ -1,3 +1,4 @@
+import { contextTokenCounter } from './exact-token-count.js';
 import { projectActorDefinition } from '../../shared/native-actor-profile.js';
 import { evaluateNativeKnowledge, KNOWLEDGE_RUNTIME_NAMESPACE } from './knowledge-selection.js';
 import { createDeterministicRng } from './experience/logic/rng.js';
@@ -910,13 +911,14 @@ export class SessionContextCompiler {
             return computed ? { ...item, priority: computed.priority ?? item.priority,
                 entry: { ...item.entry, ...(computed.eligible === false ? { enabled: false } : {}) } } : item;
         }) };
+        const countTokens = contextTokenCounter(typeof options.countTokens === 'function' ? options.countTokens : defaultCountTokens, options.tokenScope);
         const knowledge = await knowledgeItems(snapshot, knowledgeTarget, options.memoryEvidence, {
             eligiblePlan: evaluatedKnowledge,
             messages: information ? information.items.map(item => item.content) : snapshot.timeline.map(entry => options.promptContentByMessageId?.[entry.messageId] ?? entry.content ?? ''),
             turn: snapshot.timeline.filter(entry => entry.role === 'assistant').length,
             state: snapshot.states[KNOWLEDGE_RUNTIME_NAMESPACE]?.targets?.[knowledgeTargetKey] ?? snapshot.states[KNOWLEDGE_RUNTIME_NAMESPACE],
             budget: Math.min(promptBudget, Number.isFinite(caps[CONTEXT_LANES.knowledge]) ? caps[CONTEXT_LANES.knowledge] : promptBudget),
-            countTokens: typeof options.countTokens === 'function' ? options.countTokens : defaultCountTokens,
+            countTokens,
             random: createDeterministicRng((snapshot.session?.sessionId ?? '') + ':' + snapshot.revision.branchId + ':' + snapshot.revision.revisionId).float,
             render: (text, item, variant) => {
                 const value = dynamicKnowledge.get(item.knowledgeEntryId);
@@ -1013,7 +1015,6 @@ export class SessionContextCompiler {
             return false;
         });
 
-        const countTokens = typeof options.countTokens === 'function' ? options.countTokens : defaultCountTokens;
         if (snapshot.manifest?.runtime?.experienceContract?.processingRuntime?.processors.some(item => item.stage === 'context')) {
             if (typeof options.processContext !== 'function') throw new TypeError('Context Processing host unavailable');
             let processingCharacters = 0;

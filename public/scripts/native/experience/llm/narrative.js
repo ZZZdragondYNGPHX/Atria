@@ -195,6 +195,7 @@ export function createNarrativeCoordinator(options = {}) {
 
     return Object.freeze({
         async produce(turnContext, input = {}) {
+            input.assertContextCurrent?.();
             let turn = turnContext;
             const mode = String(input.orchestrationMode || '').trim().toLowerCase();
             const producer = chooseNarrativeProducer(mode);
@@ -206,6 +207,7 @@ export function createNarrativeCoordinator(options = {}) {
                     throw new Error('Director takeover requires Orchestrator bridge');
                 }
                 const contract = buildNarrativeContract(turn);
+                input.assertContextCurrent?.();
                 const directed = await orchestratorBridge.runDirector(turn, {
                     contract,
                     abortSignal: input.abortSignal,
@@ -253,6 +255,7 @@ export function createNarrativeCoordinator(options = {}) {
                 }
             }
 
+            input.assertContextCurrent?.();
             const contract = buildNarrativeContract(turn);
             const narrated = await narrator.narrate(turn, {
                 contract,

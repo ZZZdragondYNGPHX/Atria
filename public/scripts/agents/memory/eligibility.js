@@ -11,7 +11,7 @@ export function memoryEligibleSnapshotProof(snapshot) {
     if (!proof || snapshot.state !== proof.state || snapshot.chat !== proof.chat || snapshot.key !== proof.key || snapshot.eligibility !== proof.eligibility) return null;
     proof.eligibility.assertCurrent();
     const identity = memorySourceSnapshotProof(proof.parent);
-    return identity ? { identity, domain: proof.domain } : null;
+    return identity ? { identity, domain: proof.domain, partition: proof.partition } : null;
 }
 
 const denied = () => Object.assign(new Error('Memory source exposure unavailable'), { code: 'memory_exposure_denied' });
@@ -104,6 +104,8 @@ export function eligibleMemorySnapshot(snapshot, eligibility) {
     const projected = { ...snapshot, state: freezeMemoryData(state), chat: freezeMemoryData(snapshot.chat.map(message => ids.has(sourceMessageId(message)) ? message : {})),
         eligibility, assertCurrent, recordAccess: async selected => { assertCurrent(); await snapshot.recordAccess?.(selected); assertCurrent(); } };
     if (eligibilityProofs.has(eligibility)) scopedProofs.set(projected, { parent: snapshot, eligibility, state: projected.state, chat: projected.chat, key: projected.key,
-        domain: JSON.stringify([eligibility.identity, eligibility.sourceMessageIds, eligibility.atomicGroups]) });
+        domain: JSON.stringify([eligibility.identity, eligibility.sourceMessageIds, eligibility.atomicGroups]),
+        partition: JSON.stringify([eligibility.identity.kind, eligibility.identity.requester, eligibility.identity.at,
+            eligibility.identity.anchor?.sessionId, eligibility.identity.anchor?.branchId, eligibility.identity.viewId]) });
     return projected;
 }

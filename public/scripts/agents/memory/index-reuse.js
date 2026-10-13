@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { prepareMemoryRanking, attachMemoryRanking } from './ranking-index.js';
 import { freezeMemoryData, memorySourceSnapshotProof } from './source-lifecycle.js';
 import { memoryEligibleSnapshotProof } from './eligibility.js';
 
@@ -10,24 +11,27 @@ export function memoryCorpusReuse(snapshot, at, build) {
     const scoped = memoryEligibleSnapshotProof(snapshot);
     const identity = scoped?.identity ?? memorySourceSnapshotProof(snapshot);
     if (!identity) return { corpus: build(), decision: { status: 'miss', reason: 'authority_proof_unavailable' }, fingerprints: null };
-    const domain = JSON.stringify([snapshot.key, scoped?.domain ?? 'conversation', at, 'memory-corpus.v2']);
+    const domain = JSON.stringify([snapshot.key, scoped?.domain ?? 'conversation', at, 'memory-corpus.v3']);
+    const partition = JSON.stringify([snapshot.key, scoped?.partition ?? 'conversation', at, 'memory-ranking.v1']);
     for (const [key, entry] of entries) {
         if (entry.identity !== identity || entry.domain !== domain) continue;
         entries.delete(key); entries.set(key, entry);
-        return { corpus: { ...entry.corpus, documents: entry.corpus.documents.slice() }, fingerprints: entry.fingerprints,
+        return { corpus: attachMemoryRanking({ ...entry.corpus, documents: entry.corpus.documents.slice() }, entry.ranking), fingerprints: entry.fingerprints,
             decision: { status: 'valid_hit', reason: 'exact_source_authority', savedDocuments: entry.corpus.documents.length } };
     }
     const corpus = build();
-    const bytes = new TextEncoder().encode(JSON.stringify(corpus)).length;
-    if (bytes > MAX_ENTRY_BYTES || corpus.documents.length > 10000) return { corpus, fingerprints: null,
+    const previous = [...entries.values()].reverse().find(entry => entry.partition === partition);
+    const ranking = prepareMemoryRanking(corpus, previous?.ranking);
+    const bytes = new TextEncoder().encode(JSON.stringify(corpus)).length + ranking.bytes;
+    if (bytes > MAX_ENTRY_BYTES) return { corpus, fingerprints: null,
         decision: { status: 'miss', reason: 'derived_cache_capacity', requiredBytes: bytes, maxBytes: MAX_ENTRY_BYTES } };
     while (entries.size >= MAX_ENTRIES || retainedBytes + bytes > MAX_BYTES) {
         const key = entries.keys().next().value; retainedBytes -= entries.get(key).bytes; entries.delete(key);
     }
     const frozen = freezeMemoryData(corpus);
     const fingerprints = new WeakMap();
-    entries.set(++serial, { scope: snapshot.key, identity, domain, corpus: frozen, bytes, fingerprints }); retainedBytes += bytes;
-    return { corpus: { ...frozen, documents: frozen.documents.slice() }, fingerprints, decision: { status: 'miss', reason: 'dependency_not_cached' } };
+    entries.set(++serial, { scope: snapshot.key, identity, domain, partition, ranking, corpus: frozen, bytes, fingerprints }); retainedBytes += bytes;
+    return { corpus: attachMemoryRanking({ ...frozen, documents: frozen.documents.slice() }, ranking), fingerprints, decision: { status: 'miss', reason: 'dependency_not_cached', preparedDocuments: ranking.prepared, reusedDocuments: ranking.reused } };
 }
 export function releaseMemoryCorpus(scope) {
     for (const [key, entry] of entries) if (scope === undefined || entry.scope === scope) { retainedBytes -= entry.bytes; entries.delete(key); }

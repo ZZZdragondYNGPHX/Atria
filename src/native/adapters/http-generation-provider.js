@@ -114,12 +114,16 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         if (promptIr.outputContract) body.response_format = { type: 'json_schema', json_schema: wireOutput(promptIr.outputContract, outputSchemaMode) };
         return body;
     };
+    const contextTokenizers = new Map();
     return Object.freeze({
         contextTokenizer(resolved) {
             const encoding = resolved.model.tokenizer?.encoding;
             if (!['cl100k_base', 'o200k_base'].includes(encoding)) throw new GenerationError('generation_adapter_control_unsupported');
-            const encoder = getEncoding(encoding);
-            return text => encoder.encode(String(text)).length;
+            if (!contextTokenizers.has(encoding)) {
+                const encoder = getEncoding(encoding);
+                contextTokenizers.set(encoding, text => encoder.encode(String(text)).length);
+            }
+            return contextTokenizers.get(encoding);
         },
         resolveCapabilities: async () => supported.map(capability => ({ capability, state: 'supported', provenance: [{ kind: 'adapter-metadata', source: `native.${format}` }] })),
         countTokens({ resolved, promptIr, contextPlan }) {

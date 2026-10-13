@@ -120,3 +120,12 @@ describe('A3 Memory recall bridge', () => {
             .rejects.toThrow(/branch changed from 'branch_root' to 'branch_retry'/);
     });
 });
+
+
+test('E5 same-Branch revision changes after openSession abort before requesting memory', async () => {
+    let current = identity(); const recallMemory = jest.fn();
+    const bridge = createMemoryRecallBridge({ getCurrentBranchIdentity: () => current,
+        memoryApi: { openSession: async () => { current = identity({ revisionId: 'changed' }); return { recallMemory }; } } });
+    await expect(bridge.recall(makeTurn())).rejects.toMatchObject({ name: 'AbortError' });
+    expect(recallMemory).not.toHaveBeenCalled();
+});

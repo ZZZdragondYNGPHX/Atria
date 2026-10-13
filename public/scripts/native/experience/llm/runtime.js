@@ -362,6 +362,7 @@ export function createGameLlmRuntime(options = {}) {
 
         return Object.freeze({
             status: recalled.status,
+            assertCurrent: recalled.assertCurrent,
             turn,
             memory: clone(packet),
             query: recalled.query,
@@ -512,12 +513,18 @@ export function createGameLlmRuntime(options = {}) {
         }
 
         let turn = baseResult.turn;
+        const pinned = JSON.stringify([worldSession.getSessionId(), worldSession.getBranchId(), worldSession.getRevisionId(), worldSession.getState(), worldSession.getJournal()]);
+        const assertContextCurrent = () => {
+            if (input.abortSignal?.aborted || pinned !== JSON.stringify([worldSession.getSessionId(), worldSession.getBranchId(), worldSession.getRevisionId(), worldSession.getState(), worldSession.getJournal()])) throw Object.assign(new Error('Game Turn context changed'), { name: 'AbortError' });
+        };
         input.transition?.('recalling');
+        assertContextCurrent();
         const recalled = await recallMemory(turn, {
             ...(input.memory || {}),
             signal: input.abortSignal,
         });
         turn = recalled.turn;
+        assertContextCurrent(); recalled.assertCurrent?.();
 
         const orchestrationMode = String(
             input.orchestrationMode
@@ -533,7 +540,9 @@ export function createGameLlmRuntime(options = {}) {
             producer: orchestrationMode === 'director' ? 'director' : 'narrator',
         });
 
+        assertContextCurrent(); recalled.assertCurrent?.();
         const narrative = await narrativeCoordinator.produce(turn, {
+            assertContextCurrent: () => { assertContextCurrent(); recalled.assertCurrent?.(); },
             orchestrationMode,
             abortSignal: input.abortSignal,
         });

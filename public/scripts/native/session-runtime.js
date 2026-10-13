@@ -926,7 +926,9 @@ export class NativeSessionRuntime {
 
     async prepareContext(options = {}) {
         if (!this.active) return null;
-        const plan = await compileNativeContextPlan(this.snapshot, options);
+        const source = this.snapshot;
+        const plan = await compileNativeContextPlan(source, options);
+        if (this.snapshot !== source || !this.active || options.signal?.aborted) throw Object.assign(new Error('Native Context anchor changed'), { name: 'AbortError' });
         this.lastContextPlan = plan;
         return plan;
     }

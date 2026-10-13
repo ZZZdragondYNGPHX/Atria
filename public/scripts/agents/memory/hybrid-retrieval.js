@@ -9,6 +9,7 @@ import { buildCollectionId } from './vector-index-core.js';
 import { memoryQuerySeeds, memorySemanticHints } from './query-plan.js';
 import { memoryEvidenceGroups, memoryEvidenceRecord, memoryEvidenceHeader, composeMemoryCoverage } from './packing.js';
 import { memoryInvocationDecision } from './invocation-policy.js';
+import { memoryTerms as terms, memoryBag, memoryRankingIndex } from './ranking-index.js';
 import { memoryCorpusReuse } from './index-reuse.js';
 import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../native/retrieval-contracts.js';
 
@@ -18,11 +19,6 @@ export const RETRIEVAL_DEFAULTS = Object.freeze({ tokenBudget: 2400, maxDepth: 2
 const normalized = value => String(value || '').normalize('NFKC').toLowerCase();
 const unit = value => Math.max(0, Math.min(1, Number(value) || 0));
 const tokens = text => normalized(text).match(/[a-z0-9_]+|\p{Script=Han}/gu) || [];
-const terms = text => {
-    const words = tokens(text);
-    return words.flatMap((word, index) => /\p{Script=Han}/u.test(word) && /\p{Script=Han}/u.test(words[index + 1] || '')
-        ? [word, word + words[index + 1]] : [word]);
-};
 const evidenceIds = (record, check) => [...new Set((record.supports || [])
     .filter(check).flatMap(ref => ref.episodeIds))];
 
@@ -164,15 +160,16 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
     const queryTerms = [...new Set(terms(plan.seedText))];
     const originalTerms = new Set(terms(plan.userInput));
     const documentFrequency = new Map(queryTerms.map(term => [term, 0]));
-    const bags = documents.map(doc => {
-        const words = terms(doc.text);
-        const counts = new Map();
-        for (const word of words) counts.set(word, (counts.get(word) || 0) + 1);
-        for (const term of queryTerms) {
-            if (counts.has(term)) documentFrequency.set(term, documentFrequency.get(term) + 1);
+    const prepared = memoryRankingIndex(corpus);
+    const currentIds = new Set(documents.map(doc => doc.id));
+    const bags = documents.map(doc => prepared?.bags.get(doc.id)?.bag ?? memoryBag(doc.text));
+    if (prepared) {
+        for (const term of queryTerms) for (const id of prepared.postings.get(term) ?? []) {
+            if (currentIds.has(id)) documentFrequency.set(term, documentFrequency.get(term) + 1);
         }
-        return { length: words.length, counts };
-    });
+    } else for (const bag of bags) for (const term of queryTerms) {
+        if (bag.counts.has(term)) documentFrequency.set(term, documentFrequency.get(term) + 1);
+    }
     const average = bags.reduce((sum, bag) => sum + bag.length, 0) / (bags.length || 1) || 1;
     const lexical = documents.map((doc, index) => ({ id: doc.id, score: queryTerms.reduce((sum, term) => {
         const count = bags[index].counts.get(term) || 0;
@@ -186,8 +183,12 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
     // stable-sort tie behavior for equal status/confidence edges.
     const relationOrder = new Map();
     const adjacency = new Map();
-    relations.forEach((relation, index) => {
-        relationOrder.set(relation.id, index);
+    relations.forEach((relation, index) => relationOrder.set(relation.id, index));
+    if (prepared) {
+        for (const [entityId, ids] of prepared.adjacency) {
+            adjacency.set(entityId, ids.filter(id => relationOrder.has(id)).map(id => documentById.get(id)));
+        }
+    } else relations.forEach(relation => {
         for (const entityId of [relation.sourceEntityId, relation.targetEntityId]) {
             if (!adjacency.has(entityId)) adjacency.set(entityId, []);
             adjacency.get(entityId).push(relation);

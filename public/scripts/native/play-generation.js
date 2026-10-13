@@ -33,13 +33,20 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
             if (originalType === 'continue') throw new Error('Package Turn continuation requires an explicit new Turn');
             const context = host.context?.() ?? globalThis.Atria?.getContext?.();
             const turn = runtime.snapshot.manifest.runtime.experienceContract.taskRuntime.turn;
+            const sourceSnapshot = runtime.snapshot;
+            const assertContextCurrent = () => {
+                if (signal?.aborted || runtime.snapshot !== sourceSnapshot) throw Object.assign(new Error('Native Turn context changed'), { name: 'AbortError' });
+            };
             const memory = await recallNativePackageTurnMemory({
+                assertCurrent: assertContextCurrent,
                 context,
                 snapshot: runtime.snapshot,
                 userInput: input,
                 signal,
                 informationTaskId: turn.narratorTaskId || null,
             });
+            assertContextCurrent();
+            memory.assertCurrent?.();
             runtime.markProvisionalTurn();
             const slotBindings = context?.capabilitySettings?.atri_task_bindings?.[runtime.snapshot.session.packageId] ?? {};
             const result = await executeOperation('turn', { slotBindings, userInput: input,

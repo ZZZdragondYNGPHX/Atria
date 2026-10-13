@@ -13,7 +13,7 @@ export function createNativeSessionContextAdapter({ readSnapshot, options = {} }
         const stages = flattenPromptProgram(resolved).stages;
         const consumer = stages.some(stage => stage.contextConsumers?.includes('player_persona') && (!request.prompt?.stageIds || request.prompt.stageIds.includes(stage.stageId)));
         const plan = await compileNativeContextPlan(immutable(snapshot), {
-            ...config, countTokens, tokenizerFor, deriveContext, processContext, providers: contextPorts,
+            ...config, countTokens: tokenizerFor?.(resolved) ?? countTokens, deriveContext, processContext, providers: contextPorts,
             playerPersona: { enabled: config.personaAllowed === true && consumer, blockedReason: config.personaBlockedReason },
             memoryEvidence: config.memoryEvidence ?? [],
             modelContextLimit: resolved.model.limits.contextTokens,

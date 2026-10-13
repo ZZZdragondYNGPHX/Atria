@@ -14,7 +14,7 @@ import { informationSnapshot } from './helpers/information-fixture.js';
 
 afterEach(() => resetNativeSessionLifecycleForTesting());
 
-test.each(['native_generation_revision_conflict', 'native_run_terminal', 'storage_read_only'])(
+test.each(['native_generation_revision_conflict', 'native_run_terminal', 'storage_read_only', 'memory_exposure_denied'])(
     'G06 final Package Play consumer preserves %s instead of starting a Turn without Memory', async code => {
         const snapshot = memorySnapshot(true);
         snapshot.manifest.runtime.experienceContract.taskRuntime = { schemaVersion: 1, slots: [], tasks: [], turn: { policy: 'authority-first', stages: [] } };

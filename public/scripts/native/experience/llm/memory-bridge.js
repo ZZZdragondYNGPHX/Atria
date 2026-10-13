@@ -168,7 +168,13 @@ export function createMemoryRecallBridge(options = {}) {
                 throw new Error('Memory Recall Bridge requires Turn Context');
             }
 
-            assertTurnBranchCurrent(turnContext, getCurrentBranchIdentity());
+            const pinned = getCurrentBranchIdentity();
+            const assertCurrent = () => {
+                assertTurnBranchCurrent(turnContext, getCurrentBranchIdentity());
+                if (getCurrentBranchIdentity().revisionId !== pinned.revisionId) throw Object.assign(new Error('Memory recall Native revision changed'), { name: 'AbortError' });
+                if (input.signal?.aborted) throw Object.assign(new Error('Memory recall aborted'), { name: 'AbortError' });
+            };
+            assertCurrent();
 
             const memoryApi = resolveMemoryApi();
             if (!memoryApi || typeof memoryApi.openSession !== 'function') {
@@ -180,6 +186,7 @@ export function createMemoryRecallBridge(options = {}) {
             }
 
             const session = await memoryApi.openSession(context);
+            assertCurrent();
             if (!session || typeof session.recallMemory !== 'function') {
                 return Object.freeze({
                     status: 'unavailable',
@@ -210,16 +217,17 @@ export function createMemoryRecallBridge(options = {}) {
             if (typeof result?.assertCurrent === 'function') {
                 result.assertCurrent();
             }
-            assertTurnBranchCurrent(turnContext, getCurrentBranchIdentity());
+            assertCurrent();
 
             const packet = normalizeMemoryRecallPacket(result, turnContext, query);
 
             if (typeof result?.assertCurrent === 'function') {
                 result.assertCurrent();
             }
-            assertTurnBranchCurrent(turnContext, getCurrentBranchIdentity());
+            assertCurrent();
 
             return Object.freeze({
+                assertCurrent: () => { assertCurrent(); result?.assertCurrent?.(); },
                 status: packet.content || packet.references.length > 0
                     ? 'recalled'
                     : 'empty',
@@ -254,6 +262,7 @@ function nativeTurnMemoryQuery(snapshot, userInput, information) {
  */
 export async function recallNativePackageTurnMemory(options = {}) {
     const snapshot = options.snapshot;
+    options.assertCurrent?.();
     if (!snapshot?.session || !snapshot?.revision || !Array.isArray(snapshot.timeline)) {
         throw new Error('Native Package Turn Memory recall requires a Session snapshot');
     }
@@ -273,6 +282,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
     }
     const session = await memoryApi.openSession(context);
+    options.assertCurrent?.();
     if (!session || typeof session.recallMemory !== 'function') {
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
     }
@@ -284,6 +294,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
         if (options.signal?.aborted || error?.name === 'AbortError' || NATIVE_RETRIEVAL_SCOPE_ERRORS.includes(error?.code)) throw error;
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
     }
+    options.assertCurrent?.();
     result?.assertCurrent?.();
 
     const visibleMessages = new Set(informationSourceMessageIds(snapshot, information));
@@ -320,8 +331,10 @@ export async function recallNativePackageTurnMemory(options = {}) {
         if (!['legacy', 'applicable'].includes(memoryEvidenceApplicability(snapshot, information, packet).status)) continue;
         evidence.push(deepFreeze(packet));
     }
+    options.assertCurrent?.();
     result?.assertCurrent?.();
     return Object.freeze({
+        assertCurrent: () => { options.assertCurrent?.(); result?.assertCurrent?.(); },
         status: evidence.length ? 'recalled' : (String(result?.text ?? result?.content ?? '').trim() ? 'unproven' : 'empty'),
         evidence: Object.freeze(evidence),
         query,

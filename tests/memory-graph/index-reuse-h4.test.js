@@ -101,3 +101,18 @@ test('H4 native Information Actor/Branch domain isolates corpus proof and grant 
     f.snapshot.manifest.runtime.experienceContract.informationRuntime.views.find(view => view.id === 'actor').memory = false;
     await expect(retrieveMemory(fresh, '秘密', opts)).rejects.toMatchObject({ name: 'AbortError' });
 });
+
+
+test('E5 new committed source reuses stable lexical documents while correction removes stale evidence immediately', async () => {
+    const f = fixture(), opts = { ...f.opts, service: undefined };
+    const initial = await retrieveMemory(await f.lifecycle.retrievalSnapshot(f.context), '港口', opts);
+    expect(initial.reuse).toMatchObject({ preparedDocuments: 20, reusedDocuments: 0 });
+    f.context.chat.push({ memory_os_source_id: 'new-source', mes: 'New committed promise at the harbor.' });
+    await f.lifecycle.capture(f.context, [20]);
+    const changed = await retrieveMemory(await f.lifecycle.retrievalSnapshot(f.context), 'committed promise', opts);
+    expect(changed.reuse).toMatchObject({ preparedDocuments: 1, reusedDocuments: 20 });
+    expect(changed.sourceMessageIds).toContain('new-source');
+    f.context.chat[20].mes = 'Withdrawn'; f.lifecycle.observeMutation(f.context, 20);
+    const corrected = await retrieveMemory(await f.lifecycle.retrievalSnapshot(f.context), 'committed promise', opts);
+    expect(corrected.sourceMessageIds).not.toContain('new-source');
+});
