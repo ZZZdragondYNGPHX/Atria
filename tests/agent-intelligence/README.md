@@ -438,13 +438,17 @@ their inputs and make no provider requests.
 ```sh
 node tests/agent-intelligence/m4-live.js --local
 node tests/agent-intelligence/s23-live.mjs --live
+node tests/agent-intelligence/s25-live.js --live
 node tests/agent-intelligence/s27-live.js --live
 node tests/agent-intelligence/s34-live.js --live
 ```
 
 M4 compares two valid deterministic alternatives through real Session authority
 and Studio Review/Git receipts; it does not measure independently sampled agent
-decisions. S27 compares the original undeclared text path with an authored
+decisions. S25 compares an ordinary direct turn with an authored background Task
+whose advisory is consumed through the original projection, and reports the
+actual quality floor and additional cost without assuming a slow-path gain.
+S27 compares the original undeclared text path with an authored
 ExpressionPlan and reports a blind model observation. S34 runs one development
 pair per domain through the original optimizer and isolated worker. Its report
 does not satisfy the independent production promotion gate, fabricate human
