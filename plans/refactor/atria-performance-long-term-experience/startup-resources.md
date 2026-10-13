@@ -1,7 +1,7 @@
 # Atria 性能与长期体验 — P4 冷热启动、资源加载与 Android/Termux 启动路径
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
-- **状态**：第十二轮静态审计与 A/B/C 设计候选；**未获批准，不代表实现或实测结果**。
+- **状态**：第十二轮分层启动方案 C **已经用户批准**；具体模块 DAG、启动预算及端侧实现仍需实测与工程设计，尚未修改产品代码。
 - **权威前提**：[index.md](index.md)；P0 性能观测在 [measurement-and-evidence.md](measurement-and-evidence.md)，P1/Play 在 [client-interaction.md](client-interaction.md)，P2/S2 数据恢复在 [runtime-storage.md](runtime-storage.md)，P5 生命周期/缓存预算在 [stability-recovery.md](stability-recovery.md)。
 - **只读源码基线**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`；真正实施前先复核集成后的 `main`。尚未执行 APK/Termux 真机或浏览器基准。
 - **边界**：不为旧 dev 数据兼容保留额外引导流程，不修改正在开发的产品代码；保护当前受支持格式的 S2 提交、RunControl/SavePoint 与授权规则。长期会话流畅度和数据安全权重高于单纯的开屏跑分。
@@ -39,15 +39,15 @@
 
 **测量样本族须分开**：首次安装/升级后的资产解压启动；已有完整 APK Runtime 的进程冷启；同进程 Activity 重建或 WebView 重载；热切换 Session；Termux 已运行服务仅打开浏览器 vs Node 全停后启动；独立 Node 服务/外部远端端点。不同场景不能混合计算一个「冷启动 P95」。
 
-## 第十二轮方案比较（均未批准）
+## 第十二轮架构比较（**已选择 C，保留历史候选**）
 
 | 选项 | 主要方向 | 收益 | 缺点 |
 | --- | --- | --- | --- |
 | A — 全链路原样启动，局部提速 | 保持所有模块在启动时加载，逐个缩短耗时的函数 | 行为变化小、工程容易分割 | 不必要模块依旧在关键路径，复杂长会话恢复仍可能阻塞首玩 |
 | B — 激进 UI 先绘制 | 尽快把 Shell/首屏显示出来，其它后台任务尽量延后 | 视觉启动可能更快 | 容易形成「看起来已就绪却不能玩」的假启动，还可能抢占首个游戏输入或触发竞态 |
-| **C — 端到端测量驱动的分层启动（推荐）** | 已有里程碑继续完善 T0–T4，把首玩所需的安全模块和 S2 状态保留在关键路径，其余资源按产品路由惰性激活；APK/Termux 校验预构建资源且区分首次解压/缓存命中 | 同时优化真实可用时间与资源成本，不以隐藏遮罩、降低校验或常驻后台换速度 | 需要真实消费者图、Native Player 首玩 readiness、APK/Termux 多环境样本，分层任务有正确性与诊断成本 |
+| **C — 端到端测量驱动的分层启动（第十二轮已批准）** | 已有里程碑继续完善 T0–T4，把首玩所需的安全模块和 S2 状态保留在关键路径，其余资源按产品路由惰性激活；APK/Termux 校验预构建资源且区分首次解压/缓存命中 | 同时优化真实可用时间与资源成本，不以隐藏遮罩、降低校验或常驻后台换速度 | 需要真实消费者图、Native Player 首玩 readiness、APK/Termux 多环境样本，分层任务有正确性与诊断成本 |
 
-### 方案 C 技术候选（未获用户选择）
+### 方案 C 已选的方向（实现细节、阈值未冻结）
 
 1. **梳理关键依赖 DAG**：按 T0→T1→T2→T3→T4 标记必要/可延后依赖。首玩前只加载 Native Shell/Play、用户身份/权限、当前 Project/Session manifest、最新已提交 S2 Revision、必要资产、已生效上下文/模型可调用准备条件；不提前完整初始化未进入的 Studio/编辑/诊断/所有旧模型路由和全量历史，涉及安全与事实完整性的检查必须保留。
 2. **已有优化基础不能推倒**：复用 `init.js` 并行模块树、`script.js` 可见后预取、`server-main` 并行预设阶段、Server 端 Lazy Router、Webpack 内容寻址缓存和 Termux 安装时预构建。应让实际 Trace 决定拆分目标，避免散乱大量小 import 造成请求与解释器压力。
@@ -74,10 +74,13 @@
 4. [web.dev: Optimize resource loading](https://web.dev/learn/performance/optimize-resource-loading)；[Chrome DevTools Performance](https://developer.chrome.com/docs/devtools/performance/overview) — 关键渲染路径及脚本执行 Trace。
 5. [Node.js CLI CPU profiling](https://nodejs.org/api/cli.html#--cpu-prof)、[Node perf_hooks](https://nodejs.org/api/perf_hooks.html) — 启动 CPU 剖析与分阶段观测。
 
-## 本轮待用户决定
+## 第十二轮确认结果与后续实施问题
 
-第十二轮是否选择 **C：分层就绪 + 关键路径依赖裁剪 + 预构建产物严格校验 + APK/Termux 专项冷热启动优化**。其中最重要的是冻结**真实 PlayReady（可恢复/可输入）**作为用户感知启动的独立验收口径，而不是只看 Splash/APP_READY 或 `/api/ping`。
+**已经选择 C**：以真实 PlayReady（当前支持格式的 S2 历史/权限/必要依赖被验证，能够继续并正常提交新操作）作为启动与玩家可用性的独立指标，区别于 HTTP 就绪、Shell 可见、`APP_READY`。保留安全依赖的同时优化关键路径；Android APK、Termux、浏览器分别测量冷热路径并以一致的完整 Bundle manifest 防止隐性编译回退。
+
+**仍需 P0 与实施证据**：Android/Kotlin/Node 构建清单统一策略、实际应用启动 CPU/磁盘耗时和准确瓶颈、App/Android WebView 就绪消息协议、首玩模型资源加载时机、启动延迟目标及未使用功能按需激活清单。R8/Baseline Profile、APK Bundle 分片打包方案只是备选实验，非已批准强制新架构。
 
 ## Material design changes
 
-- **2026-10-13 / 第十二轮**：用户批准 P5 内存生命周期 C 后建立本模块；结合前端/Node/Android/Termux 实际源码与官方资料提出 P4 A/B/C；确认 Kotlin 3 / Server 5 项预构建 Manifest 不一致、APK onPageFinished 隐藏遮罩的判定语义、Termux 已有 200ms 健康轮询；所有性能结果仍待实测，候选 C 尚未获批。
+- **2026-10-13 / 第十二轮**：用户批准 P5 内存生命周期 C 后建立本模块；结合前端/Node/Android/Termux 实际源码与官方资料提出 P4 A/B/C；确认 Kotlin 3 / Server 5 项预构建 Manifest 不一致、APK onPageFinished 隐藏遮罩的判定语义、Termux 已有 200ms 健康轮询；所有性能结果仍待实测，方案 C 已获批准，具体延迟和技术实现仍待 P0 实测。
+- **2026-10-13 / 第十三轮开端**：用户批准第十二轮方案 C；冻结 T0–T4 分层启动及**真实 PlayReady**、安全关键路径、统一 Android 构建/Kotlin/Node 预构建产物清单、多平台冷热路径分开评估。S5 清单不一致仍只是已经确认的源码风险，未测得运行时回退；尚未改动产品代码。
