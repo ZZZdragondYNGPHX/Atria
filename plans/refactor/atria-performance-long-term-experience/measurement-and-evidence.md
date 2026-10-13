@@ -21,6 +21,27 @@
 - 远端只读文件树与重点实现审计；**未执行**本地/CI Benchmark、浏览器性能测试、APK/Termux 真机测量、长时间 soak test。
 - 源码静态数量：`public/index.html` 约 796KB，`public/script.js` 约 906KB；原始源码体积不代表网络传输体积、运行内存或真实首屏耗时。
 
+## E0 轻量预审补充（2026-10-13；尚非正式 E0）
+
+本节为对同一源码快照的**进一步远端静态核查**，没有真实 P50/P95、Node CPU Profiler、Android/Termux 实机、进程/断电注入或跨版本兼容性结果。既有 E0/E1/E2 优先级仍为 S2 持久化安全和长会话正确性/流畅度；不应因「混合内核」研究推迟这些主链任务。
+
+| 范围 | 可核实的源码事实 | 待证结论/实施建议 |
+| --- | --- | --- |
+| 服务器运行时 | [`main:package.json`](https://github.com/ZZZdragondYNGPHX/Atria/blob/3ee1332ef113d4c57c65d9577222ba88d5171101/package.json) 声明 `engines.node >=20`，`@types/node ^18.19.84`，使用 Express 4、Webpack 5 和 `better-sqlite3`。 | Node 24 LTS 作为**优先验证的统一基线候选**，而非未经测试的即刻全平台硬切；对齐类型声明、锁定构建/CI Node 版本，核验原生模块 ABI、安全和回退需求。 |
+| Android 内嵌 Node | [`fetch-nodejs-mobile.mjs`](https://github.com/ZZZdragondYNGPHX/Atria/blob/3ee1332ef113d4c57c65d9577222ba88d5171101/android-app/scripts/fetch-nodejs-mobile.mjs) 默认要求 Node major >=24，但允许配置覆盖；APK 仍由 Node.js Mobile + Android WebView 组成。 | 编译规则不等于实际 APK 二进制版本。记录 `libnode.so`/V8、ABI、WebView Provider 的**实际运行版本**，再判定升级和兼容矩阵。 |
+| 桌面与隔离脚本 | [`src/electron/package.json`](https://github.com/ZZZdragondYNGPHX/Atria/blob/3ee1332ef113d4c57c65d9577222ba88d5171101/src/electron/package.json) 声明 `electron ^41.1.1`；[`package-computation.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/3ee1332ef113d4c57c65d9577222ba88d5171101/src/native/package-computation.js) 使用 QuickJS、独立 Context、堆/栈/时间限额。 | 桌面发行实际 Electron 版本及 QuickJS 兼容需分别查；**保留既有脚本隔离边界**，不因换计算语言而给予 Package 任意宿主权限。 |
+| 前端长会话与 Snapshot | [`play-product.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/play-product.js) 的节点全集协调和 [`session-snapshot.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-snapshot.js) 的全量历史依赖仍存在，已有 Range API 不能说明消费者完成窗口化。 | 首选 Range/增量数据结构/正文虚拟窗口与生命周期，单纯 Node 升级或 Rust/WASM **不会自动消除 DOM/全量访问成本**。 |
+| FS/SQLite S2 | [`fs-engine.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/3ee1332ef113d4c57c65d9577222ba88d5171101/src/storage/engines/fs-engine.js) 的 `withTransaction` 是回调包装，不能据此推断跨文件原子性；[`sqlite-engine.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/engines/sqlite-engine.js) 使用 WAL + synchronous=NORMAL。 | E1 S2 commit/root/依赖屏障优先；不以内核升级、SQL 单表事务、缓存或 Worker 代替断电与跨资源验证。 |
+| 记忆 CPU 候选 | [`hybrid-retrieval.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/agents/memory/hybrid-retrieval.js) 的 `rankMemory` 仍会按查询建立词袋/DF 和关系邻接；[`index-reuse.js`](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/agents/memory/index-reuse.js) 已有有界来源语料复用，不是完整排名索引复用。 | 先做源证明约束的增量索引/缓存命中验证，再以真实 CPU Profile 决定是否将纯计算任务卸载到 Worker 或 WASM；不能复用未经当前权限/时间核验的结果。 |
+| Android Bundle | [`AtriaRuntimeManager.kt`](https://github.com/ZZZdragondYNGPHX/Atria/blob/3ee1332ef113d4c57c65d9577222ba88d5171101/android-app/app/src/main/java/com/atria/app/AtriaRuntimeManager.kt) 校验 3 个预构建 Bundle，[Node middleware](https://github.com/ZZZdragondYNGPHX/Atria/blob/3ee1332ef113d4c57c65d9577222ba88d5171101/src/middleware/webpack-serve.js) 要求 5 个。 | 是已证实清单契约差异，但**未复现实机 fallback/启动时延**；优先修合约并定量核验，不应被新内核研究替代。 |
+
+**E0 候选比较及 Gate（不新增阶段，不预先冻结引擎选型）**
+
+1. **版本基线**：Node 24 LTS 优先作为受支持基线候选；Node 26 或其它更新路线须按当时 LTS 状态和平台能力重新核验。与 `@types/node`、`better-sqlite3`、Android Node.js Mobile ABI、Electron、WebView 和 QuickJS 分开记录版本/安装/打包/原生加载的成败，不把 package 声明当成实装版本。
+2. **计算卸载顺序**：同设备同语料同输出，先比较原始 JS 热点 vs 增量索引后的 JS，再测 Worker Threads / Web Worker（限适用宿主）；只有**增量优化后依然显著 CPU 密集**，才加 Rust/WASM 试验。测量 CPU P50/P95、事件循环/主线程阻塞、峰值内存、Worker 启停与跨线程复制、WASM 初始化及打包体积、冷/热启动与设备差异。
+3. **正确性硬约束**：权限/Information Grant/SourceProof/Revision/Branch/Epoch、已确认 S2 提交与故障恢复、精确 Token 收口、RP/Project 质量基线不得弱化；执行器只能处理已经授权的输入并返回可验证派生结果，不能形成第二套游戏权威、业务内核、持久化系统或隐式写入。
+4. **决策**：如果 Worker/Rust/WASM 没有可复现的整体净收益（含序列化/启动/集成维护成本），保持 Node/V8 + QuickJS 现有执行划分。实验失败不是要求重构底层；不得声称已经测得加速百分比、S2 合格或 APK 真机通过。
+
 ## 候选热点：直接代码证据与待证假设
 
 | ID | 代码证据 | 风险假设 | 首要测量 |
