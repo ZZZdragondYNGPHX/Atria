@@ -1,3 +1,4 @@
+import { markStartupReadiness } from './scripts/native/startup-readiness.js';
 import { nativeSessionRuntime } from './scripts/native/session-runtime.js';
 import { runNativePlayGeneration } from './scripts/native/play-generation.js';
 import { createLogger } from './scripts/logging/logger.js';
@@ -1767,6 +1768,9 @@ export async function pingServer() {
     }
 }
 
+document.addEventListener('atria-startup-readiness', event => {
+    if (event.detail?.name === 'playReady') reportClientStartupTiming('ready');
+});
 const CLIENT_STARTUP_TIMING_KEY = '__atriaStartupTiming';
 const clientStartupLogger = createLogger('startup');
 const clientUiLogger = createLogger('ui');
@@ -2033,6 +2037,7 @@ async function firstLoadInit() {
     }
     await fixViewport();
     await yieldToBrowser();
+    markStartupReadiness('shellInteractive');
     reportClientStartupTiming('visible');
 
     // The UI has painted. Start classic Select2 loading now so its parse/eval
@@ -2107,10 +2112,8 @@ async function firstLoadInit() {
     await runStartupTasks([
         () => initWorldInfo(),
         () => initHorde(),
-        () => initRossMods(),
-        () => initStats(),
         () => initCfg(),
-        () => initLogprobs(),
+        () => initRossMods(),
         () => loadPostVisibleStartupModules().then(({ initInputMarkdown }) => initInputMarkdown()),
         () => loadPostVisibleStartupModules().then(({ initServerHistory }) => initServerHistory()),
         () => loadPostVisibleStartupModules().then(({ initSettingsSearch }) => initSettingsSearch()),
@@ -2161,6 +2164,11 @@ async function firstLoadInit() {
     clientUiLogger.info('app.ready', 'Atria UI reached APP_READY', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     console.debug('[init] firstLoadInit complete');
     markClientStartupTiming('appReady');
+    setTimeout(() => {
+        void runStartupTasks([() => initStats(), () => initLogprobs()])
+            .then(() => markStartupReadiness('optionalReady'))
+            .catch(error => console.warn('[init] optional panels failed to initialize', error));
+    }, 0);
     performance.mark('[init] complete');
     reportClientStartupTiming('ready');
     void loadPostVisibleStartupModules()

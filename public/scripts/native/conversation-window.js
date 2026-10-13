@@ -55,7 +55,7 @@ export class ConversationWindow {
             if (page.revisionId !== snapshot.revision.revisionId || page.branchId !== snapshot.revision.branchId) throw new Error('Native Timeline Range identity mismatch');
             this.from = from;
             this.entries = page.entries; this.variants = page.variants ?? this.variants;
-            this.trim(); this.changed();
+            this.trim(); this.loadedIdentity = this.identity; this.changed();
         }).catch(error => { if (!this.disposed && epoch === this.epoch && !controller.signal.aborted) this.failed?.(error); });
     }
     measure(position, height) {
@@ -80,7 +80,7 @@ export class ConversationWindow {
     }
     pressure() { if (this.canShift && !this.canShift()) return; this.byteBudget = Math.max(1, Math.floor(this.byteBudget / 2)); this.size = Math.max(8, Math.floor(this.size / 2)); this.load(this.keepLatest ? Math.max(0, this.total - this.size) : Math.max(0, this.anchor - 4), true); }
     clear() {
-        this.controller?.abort(); this.epoch++; this.snapshot = null; this.identity = null; this.scope = null;
+        this.controller?.abort(); this.epoch++; this.snapshot = null; this.identity = null; this.loadedIdentity = null; this.scope = null;
         this.entries = []; this.variants = []; this.heights.clear(); this.retainedBytes = 0; this.total = 0; this.from = 0;
         (globalThis.cancelAnimationFrame ?? clearTimeout)(this.frame); this.frame = null;
     }

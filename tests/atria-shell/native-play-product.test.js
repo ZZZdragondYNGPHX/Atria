@@ -88,7 +88,7 @@ describe('A6 Atria-native Play product', () => {
                 document.dispatchEvent(new Event('atria-memory-pressure')); await flush();
                 product.dispose(); product.dispose(); await flush();
                 expect(document.querySelectorAll('.atria-play-product')).toHaveLength(0);
-                for (const type of ['atria-native-play-draft', 'atria-native-runtime-error', 'visibilitychange', 'atria-memory-pressure']) expect(listeners.get(type)?.size).toBe(0);
+                for (const type of ['atria-native-play-draft', 'atria-native-runtime-error', 'visibilitychange', 'atria-memory-pressure', 'atria-native-experience-prepared']) expect(listeners.get(type)?.size).toBe(0);
             }
         } finally { adding.mockRestore(); removing.mockRestore(); }
     });

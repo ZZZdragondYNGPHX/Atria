@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { hasCompleteWebpackOutput, migrateLegacyWebpackOutput } from '../src/middleware/webpack-serve.js';
+import { inspectWebpackOutput, writeWebpackManifest } from '../src/middleware/webpack-manifest.js';
 import getPublicLibConfig, { getWebpackCacheVersion, getWebpackRootInfo, isTermuxRuntime } from '../webpack.config.js';
 
 describe('Webpack warm-start output detection', () => {
@@ -86,6 +87,7 @@ describe('Webpack warm-start output detection', () => {
                 fs.writeFileSync(path.join(legacyOutput, `${entryName}.js`), `legacy-${entryName}`);
             }
 
+            writeWebpackManifest({ ...target, output: { ...target.output, path: legacyOutput } });
             const source = migrateLegacyWebpackOutput(target);
             expect(source).toBe(legacyOutput);
             expect(hasCompleteWebpackOutput(target)).toBe(true);
@@ -153,4 +155,23 @@ describe('Webpack warm-start output detection', () => {
         expect(hasCompleteWebpackOutput({})).toBe(false);
         expect(hasCompleteWebpackOutput({ output: { path: '/tmp' }, entry: {} })).toBe(false);
     });
+});
+
+
+test('E6 manifest rejects missing, partial, stale and corrupt prebuilt bundles', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-manifest-'));
+    const config = { entry: { 'one.bundle': './one.js', 'two.bundle': './two.js' }, output: { path: root } };
+    try {
+        fs.writeFileSync(path.join(root, 'one.bundle.js'), 'one'); fs.writeFileSync(path.join(root, 'two.bundle.js'), 'two');
+        expect(inspectWebpackOutput(config)).toMatchObject({ valid: false, reason: 'manifest_unavailable' });
+        const manifest = writeWebpackManifest(config);
+        expect(inspectWebpackOutput(config).valid).toBe(true);
+        fs.writeFileSync(path.join(root, 'two.bundle.js'), 'bad');
+        expect(inspectWebpackOutput(config)).toMatchObject({ valid: false, reason: 'bundle_integrity_mismatch' });
+        fs.writeFileSync(path.join(root, 'two.bundle.js'), 'two');
+        fs.writeFileSync(path.join(root, 'atria-bundles.json'), JSON.stringify({ ...manifest, inputFingerprint: 'wrong' }));
+        expect(inspectWebpackOutput(config)).toMatchObject({ valid: false, reason: 'input_fingerprint_changed' });
+        writeWebpackManifest(config); fs.rmSync(path.join(root, 'two.bundle.js'));
+        expect(inspectWebpackOutput(config)).toMatchObject({ valid: false, reason: 'bundle_missing' });
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

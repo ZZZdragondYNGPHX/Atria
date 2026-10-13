@@ -39,14 +39,14 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
     function beginLoad() {
         cancel();
         const token = { identity: identity(runtime.snapshot), revisionId: runtime.snapshot?.revision?.revisionId,
-            controller: new AbortController(), ready: false, pending: null, busy: false, pumping: null, packageState: null };
+            controller: new AbortController(), ready: false, completed: false, pending: null, busy: false, pumping: null, packageState: null };
         scope = token;
         token.timer = setTimeout(() => token.controller.abort(failure('native_experience_ready_timeout')), timeoutMs);
         return Object.freeze({ signal: token.controller.signal,
             assertCurrent: () => current(token, { initial: !token.ready }),
             wait: promise => race(token, promise),
             prepare: packageState => prepare(token, packageState),
-            ready: () => ready(token),
+            ready: () => completeReady(token),
             client: Object.freeze({ getSnapshot: () => current(token),
                 command: action => command(token, action),
                 continuityCommand: action => command(token, action, 'continuity'),
@@ -164,6 +164,17 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
             .finally(() => { token.pumping = null; });
         return token.pumping;
     }
+    async function completeReady(token) {
+        if (token.completed) return current(token);
+        if (token.completing) return token.completing;
+        token.completing = ready(token).then(snapshot => {
+            current(token);
+            if (!snapshot.externalEffects?.some(effect => effect.status === 'prepared')) token.completed = true;
+            globalThis.document?.dispatchEvent(new CustomEvent('atria-native-experience-prepared'));
+            return snapshot;
+        }).finally(() => { token.completing = null; });
+        return token.completing;
+    }
     async function ready(token) {
         const snapshot = current(token, { initial: !token.ready });
         if (!token.packageState) throw failure('native_lifecycle_not_prepared');
@@ -217,7 +228,7 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         queryInformationGraph: (graphId, startId, options) => queryInformationGraph(current(scope), graphId, startId, options),
         getActorAvailability: actorId => actorAvailability(current(scope), actorId),
         get acceptingSnapshot() { return accepting; },
-        get ready() { return Boolean(scope?.ready && !scope.controller.signal.aborted && runtime.active && identity(runtime.snapshot) === scope.identity); },
+        get ready() { return Boolean(scope?.completed && !scope.controller.signal.aborted && runtime.active && identity(runtime.snapshot) === scope.identity); },
         get busy() { return Boolean(scope?.busy || scope?.pumping); },
         getSnapshot: () => runtime.snapshot,
         command: action => command(scope, action),

@@ -18,22 +18,31 @@ const require = createRequire(import.meta.url);
 // package-lock, Webpack version or the explicit bundle schema version produce a
 // new fingerprint. Cache-routing/logging edits must not invalidate bundle bytes.
 const webpackVersion = require('webpack/package.json').version;
-const WEBPACK_BUNDLE_SCHEMA_VERSION = '1';
-const WEBPACK_BUNDLE_INPUT_FILES = Object.freeze([
-    path.join(serverDirectory, 'package-lock.json'),
-    path.join(serverDirectory, 'public/lib-bundle-core.js'),
-    path.join(serverDirectory, 'public/lib-bundle-optional.js'),
-    path.join(serverDirectory, 'public/lib-bundle-codemirror.js'),
-    path.join(serverDirectory, 'public/lib-bundle-webllm.js'),
-    path.join(serverDirectory, 'public/scripts/native/frontend/script-worker.js'),
-    path.join(serverDirectory, 'public/scripts/native/frontend/script-vm.js'),
-    path.join(serverDirectory, 'public/shared/native-frontend-script.js'),
-    path.join(serverDirectory, 'public/shared/native-frontend-contract.js'),
-    path.join(serverDirectory, 'public/shared/native-frontend-media.js'),
-]);
-
+const WEBPACK_BUNDLE_SCHEMA_VERSION = '2';
+export const WEBPACK_BUNDLE_ENTRIES = Object.freeze({
+    'atria-script.bundle': 'public/scripts/native/frontend/script-worker.js',
+    'lib.core.bundle': 'public/lib-bundle-core.js',
+    'lib.optional.bundle': 'public/lib-bundle-optional.js',
+    'lib.webllm.bundle': 'public/lib-bundle-webllm.js',
+    'codemirror.bundle': 'public/lib-bundle-codemirror.js',
+});
+export const WEBPACK_BUNDLE_FILES = Object.freeze(Object.keys(WEBPACK_BUNDLE_ENTRIES).map(name => name + '.js'));
+// Follow repository-local literals in the five entry graphs. Dependencies in
+// node_modules are pinned by package-lock; transitive local inputs are not.
 export function getWebpackBundleInputFiles() {
-    return [...WEBPACK_BUNDLE_INPUT_FILES];
+    const visited = new Set([path.join(serverDirectory, 'package-lock.json')]);
+    const pending = Object.values(WEBPACK_BUNDLE_ENTRIES).map(file => path.join(serverDirectory, file));
+    while (pending.length) {
+        const file = pending.pop(); if (visited.has(file)) continue; visited.add(file);
+        const source = fs.readFileSync(file, 'utf8');
+        const imports = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*|\bnew\s+URL\s*\(\s*)['"](\.[^'"]+)['"]/g;
+        for (const match of source.matchAll(imports)) {
+            const dependency = path.resolve(path.dirname(file), match[1]);
+            if (!dependency.startsWith(serverDirectory + path.sep)) throw new Error('Bundle input escapes repository');
+            pending.push(dependency);
+        }
+    }
+    return [...visited].sort((a, b) => a.localeCompare(b));
 }
 
 let cachedWebpackCacheVersion = null;
@@ -53,8 +62,8 @@ export function getWebpackCacheVersion() {
     const hash = crypto.createHash('shake256', { outputLength: 8 });
     hash.update(`webpack:${webpackVersion}\0bundle-schema:${WEBPACK_BUNDLE_SCHEMA_VERSION}\0`);
 
-    for (const filePath of WEBPACK_BUNDLE_INPUT_FILES) {
-        hash.update(path.relative(serverDirectory, filePath));
+    for (const filePath of getWebpackBundleInputFiles()) {
+        hash.update(path.relative(serverDirectory, filePath).split(path.sep).join('/'));
         hash.update('\0');
         hash.update(fs.readFileSync(filePath));
         hash.update('\0');
@@ -181,13 +190,7 @@ export default function getPublicLibConfig({ forceDist = false, pruneCache = fal
 
     return {
         mode: 'production',
-        entry: {
-            'atria-script.bundle': path.join(serverDirectory, 'public/scripts/native/frontend/script-worker.js'),
-            'lib.core.bundle': path.join(serverDirectory, 'public/lib-bundle-core.js'),
-            'lib.optional.bundle': path.join(serverDirectory, 'public/lib-bundle-optional.js'),
-            'lib.webllm.bundle': path.join(serverDirectory, 'public/lib-bundle-webllm.js'),
-            'codemirror.bundle': path.join(serverDirectory, 'public/lib-bundle-codemirror.js'),
-        },
+        entry: Object.fromEntries(Object.entries(WEBPACK_BUNDLE_ENTRIES).map(([name, file]) => [name, path.join(serverDirectory, file)])),
         cache: {
             type: 'filesystem',
             cacheDirectory: cacheDirectory,

@@ -55,3 +55,24 @@ These optimizations take effect automatically during daily use. If you migrate f
 - [Incremental Sync](/improvements/incremental-sync) — Incremental saving mechanism for chat data
 - [Backend Storage](/improvements/backend-storage) — Backend storage architecture improvements
 - [WebSocket Proxy](/improvements/ws-proxy) — Network transmission optimization
+
+### Verified frontend bundles and Play readiness
+
+`npm run frontend:prebuild-cache` creates all five production entries and an
+`atria-bundles.json` manifest. The manifest binds the repository-local dependency
+graph, dependency lock and Webpack version to each bundle's size and SHA-256.
+Startup verifies that manifest before serving a prebuilt or cached output;
+missing, partial, stale or corrupt outputs produce a specific cache-miss reason
+and use the compiler. Compilation failures prevent frontend-ready success. This
+contract also applies to an explicit `ATRIA_PREBUILT_BUNDLES_DIR`; copying only
+JavaScript files is insufficient. Termux continues to use its private cache.
+
+Startup telemetry distinguishes `shellInteractive`, `appReady`, `optionalReady`
+and `playReady`. Play readiness requires a validated current Session, a verified
+Range response, completed Experience setup, an enabled visible Composer, and
+read-only Host preflight of current routes/resources and local Secrets. Preflight
+sends no model request and does not promise provider availability. Historical
+and terminal Sessions remain readable without reporting send readiness. HTTP
+reachability, including the Termux launcher's health check, measures the server
+boundary. Windows/Termux startup and physical power-loss behavior require their
+own device evidence; Linux browser measurements do not certify them.

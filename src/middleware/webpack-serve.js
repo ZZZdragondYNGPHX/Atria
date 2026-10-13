@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import getPublicLibConfig, { getWebpackBundleInputFiles, getWebpackRootInfo } from '../../webpack.config.js';
+import getPublicLibConfig, { getWebpackRootInfo, WEBPACK_BUNDLE_FILES } from '../../webpack.config.js';
+import { inspectWebpackOutput, writeWebpackManifest, WEBPACK_MANIFEST_FILE } from './webpack-manifest.js';
 import { markStartupMilestone } from '../startup-timing.js';
 
 // Pre-built bundles shipped by the packager (Android APK, etc.) skip the
 // in-process Webpack compile entirely. The directory must contain all expected
 // entry bundles listed below; any missing file falls back to the normal
 // compile path so a partial bundle ship never silently serves a stale lib.
-const PREBUILT_BUNDLE_FILES = ['lib.core.bundle.js', 'lib.optional.bundle.js', 'codemirror.bundle.js', 'lib.webllm.bundle.js', 'atria-script.bundle.js'];
+const PREBUILT_BUNDLE_FILES = WEBPACK_BUNDLE_FILES;
 
 /**
  * Returns true when every bundle expected by the current Webpack config
@@ -43,37 +44,6 @@ function getOutputFileNames(config) {
     return Object.keys(config.entry || {}).map((entryName) => `${entryName}.js`);
 }
 
-function getNewestInputMtimeMs() {
-    let newest = 0;
-    for (const filePath of getWebpackBundleInputFiles()) {
-        try {
-            newest = Math.max(newest, fs.statSync(filePath).mtimeMs);
-        } catch {
-            return Number.POSITIVE_INFINITY;
-        }
-    }
-    return newest;
-}
-
-function isOutputFreshForCurrentInputs(config) {
-    if (!hasCompleteWebpackOutput(config)) return false;
-    const outputPath = config.output.path;
-    const newestInput = getNewestInputMtimeMs();
-    let oldestOutput = Number.POSITIVE_INFINITY;
-
-    for (const name of getOutputFileNames(config)) {
-        try {
-            oldestOutput = Math.min(oldestOutput, fs.statSync(path.join(outputPath, name)).mtimeMs);
-        } catch {
-            return false;
-        }
-    }
-
-    // Allow coarse filesystem timestamp resolution while still rejecting
-    // outputs that clearly predate an entry/package-lock change.
-    return oldestOutput + 1000 >= newestInput;
-}
-
 /**
  * Copy a still-fresh legacy DATA_ROOT/_webpack output into the automatic
  * Termux-private cache. This avoids one final 10-20s rebuild when upgrading
@@ -101,7 +71,7 @@ export function migrateLegacyWebpackOutput(targetConfig) {
                     output: { ...targetConfig.output, path: outputPath },
                 };
                 let newestBundleMtime = 0;
-                if (isOutputFreshForCurrentInputs(candidate)) {
+                if (inspectWebpackOutput(candidate).valid) {
                     for (const name of getOutputFileNames(candidate)) {
                         newestBundleMtime = Math.max(newestBundleMtime, fs.statSync(path.join(outputPath, name)).mtimeMs);
                     }
@@ -116,34 +86,22 @@ export function migrateLegacyWebpackOutput(targetConfig) {
         if (!source) return null;
 
         fs.mkdirSync(targetConfig.output.path, { recursive: true });
-        for (const name of getOutputFileNames(targetConfig)) {
+        for (const name of [...getOutputFileNames(targetConfig), WEBPACK_MANIFEST_FILE]) {
             fs.copyFileSync(
                 path.join(source.outputPath, name),
                 path.join(targetConfig.output.path, name),
             );
         }
 
-        return hasCompleteWebpackOutput(targetConfig) ? source.outputPath : null;
+        return inspectWebpackOutput(targetConfig).valid ? source.outputPath : null;
     } catch (error) {
         console.warn('[startup] frontend-cache legacy migration skipped:', error?.message || error);
         return null;
     }
 }
 
-// Resolved once at module load: ATRIA_PREBUILT_BUNDLES_DIR is set by the
-// packager before server.js is imported and never changes at runtime. Caching
-// avoids 4 fs.existsSync syscalls per bundle request on slow Android flash.
-const prebuiltBundleDir = (() => {
-    const raw = process.env.ATRIA_PREBUILT_BUNDLES_DIR;
-    if (!raw) return null;
-    const trimmed = String(raw).trim();
-    if (!trimmed) return null;
-    if (!fs.existsSync(trimmed)) return null;
-    const allPresent = PREBUILT_BUNDLE_FILES.every((name) => fs.existsSync(path.join(trimmed, name)));
-    return allPresent ? trimmed : null;
-})();
-
 export default function getWebpackServeMiddleware() {
+    let prebuiltBundleDir = null, verifiedOutputPath = null;
     /**
      * A very spartan recreation of webpack-dev-middleware.
      * @param {import('express').Request} req Request object.
@@ -162,7 +120,7 @@ export default function getWebpackServeMiddleware() {
         }
 
         const publicLibConfig = getPublicLibConfig();
-        const outputPath = publicLibConfig.output?.path;
+        const outputPath = verifiedOutputPath;
         const outputFiles = new Set(Object.keys(publicLibConfig.entry || {}).map((entryName) => `${entryName}.js`));
         const requestedPath = outputPath && requestedFile
             ? path.join(outputPath, requestedFile)
@@ -184,12 +142,20 @@ export default function getWebpackServeMiddleware() {
      * @returns {Promise<void>}
      */
     devMiddleware.runWebpackCompiler = async ({ forceDist = false, pruneCache = false, forceCompile = false } = {}) => {
+        prebuiltBundleDir = null; verifiedOutputPath = null;
+        const prebuilt = String(process.env.ATRIA_PREBUILT_BUNDLES_DIR ?? '').trim();
+        if (prebuilt && !forceCompile) {
+            const config = getPublicLibConfig({ forceDist });
+            const inspection = inspectWebpackOutput({ ...config, output: { ...config.output, path: prebuilt } });
+            if (inspection.valid) prebuiltBundleDir = path.resolve(prebuilt);
+            else console.warn('[startup] frontend-cache prebuilt rejected reason=' + inspection.reason);
+        }
         if (prebuiltBundleDir && !forceCompile) {
             console.log();
             console.log(`[startup] frontend-cache source=prebuilt root=${prebuiltBundleDir} hit=true`);
             console.log(`Using pre-built frontend bundles from ${prebuiltBundleDir}`);
             markStartupMilestone('frontend.cache.ready', 'source=prebuilt');
-            return;
+            return { source: 'prebuilt', outputPath: prebuiltBundleDir };
         }
 
         const publicLibConfig = getPublicLibConfig({ forceDist, pruneCache });
@@ -197,24 +163,27 @@ export default function getWebpackServeMiddleware() {
         const cacheVersionDir = outputPath ? path.dirname(outputPath) : '';
         const cacheKey = cacheVersionDir ? path.basename(cacheVersionDir) : 'unknown';
         const cacheRootInfo = getWebpackRootInfo({ forceDist });
-        let cacheHit = !forceCompile && hasCompleteWebpackOutput(publicLibConfig);
+        const inspection = inspectWebpackOutput(publicLibConfig);
+        let cacheHit = !forceCompile && inspection.valid;
         let migratedFrom = null;
 
         if (!cacheHit && !forceCompile && cacheRootInfo.source === 'termux-private') {
             migratedFrom = migrateLegacyWebpackOutput(publicLibConfig);
-            cacheHit = Boolean(migratedFrom) && hasCompleteWebpackOutput(publicLibConfig);
+            cacheHit = Boolean(migratedFrom) && inspectWebpackOutput(publicLibConfig).valid;
         }
 
         console.log();
-        console.log(`[startup] frontend-cache source=${cacheRootInfo.source} root=${cacheRootInfo.root} key=${cacheKey} hit=${cacheHit}`);
+        console.log(`[startup] frontend-cache source=${cacheRootInfo.source} root=${cacheRootInfo.root} key=${cacheKey} hit=${cacheHit} reason=${inspection.reason}`);
         if (migratedFrom) {
             console.log(`[startup] frontend-cache migrated-from=${migratedFrom}`);
         }
-        markStartupMilestone('frontend.cache.checked', `source=${cacheRootInfo.source} hit=${cacheHit}`);
+        markStartupMilestone('frontend.cache.checked', `source=${cacheRootInfo.source} hit=${cacheHit} reason=${inspection.reason}`);
 
         if (cacheHit) {
             console.log(`Using cached frontend bundles from ${publicLibConfig.output.path}`);
-            return;
+            verifiedOutputPath = outputPath;
+            markStartupMilestone('frontend.cache.ready', 'source=cache');
+            return { source: 'cache', cacheKey, outputPath };
         }
 
         console.log();
@@ -229,8 +198,8 @@ export default function getWebpackServeMiddleware() {
         const compiler = webpack(publicLibConfig);
         const compilerRunStartedAt = Date.now();
 
-        return new Promise((resolve) => {
-            compiler.run((_error, stats) => {
+        return new Promise((resolve, reject) => {
+            compiler.run((error, stats) => {
                 console.log(`[startup] phase webpack.compiler-run ${Date.now() - compilerRunStartedAt}ms`);
                 const output = stats?.toString(publicLibConfig.stats);
                 if (output) {
@@ -238,10 +207,13 @@ export default function getWebpackServeMiddleware() {
                     console.log();
                 }
                 const compilerCloseStartedAt = Date.now();
-                compiler.close(() => {
+                compiler.close(closeError => {
                     console.log(`[startup] phase webpack.compiler-close ${Date.now() - compilerCloseStartedAt}ms`);
+                    if (error || closeError || !stats || stats.hasErrors()) { reject(error ?? closeError ?? new Error('Frontend bundle compilation failed')); return; }
+                    try { writeWebpackManifest(publicLibConfig); } catch (cause) { reject(cause); return; }
+                    verifiedOutputPath = outputPath;
                     markStartupMilestone('frontend.cache.ready', 'source=compiled');
-                    resolve();
+                    resolve({ source: 'compiled', cacheKey, outputPath });
                 });
             });
         });

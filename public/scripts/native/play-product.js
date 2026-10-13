@@ -1,3 +1,5 @@
+import { markStartupReadiness } from './startup-readiness.js';
+import { runtimeRequest, onRuntimeConfigurationChanged } from './runtime-client.js';
 import { mountSpeechControls } from './speech-controls.js';
 import { ConversationWindow } from './conversation-window.js';
 import { nativeAssetUrl } from './session-projection.js';
@@ -185,6 +187,28 @@ export function mountAtriaPlayProduct({
     const speechControls = new Map();
     const clearSpeechControls = () => { speechControls.forEach(control => control.dispose()); speechControls.clear(); };
     let following = true;
+    let playScope, playEpoch = 0, prepared = false, preparationError, preparing, prepareController;
+    const resetPreparation = () => { playEpoch++; prepareController?.abort(); prepared = false; preparationError = null; preparing = null; playScope = null; };
+    const unsubscribeConfiguration = onRuntimeConfigurationChanged(() => { resetPreparation(); render(); });
+    const checkPreparation = snapshot => {
+        const scope = snapshot.session.sessionId + ':' + snapshot.revision.branchId;
+        if (playScope !== scope) { resetPreparation(); playScope = scope; }
+        if (prepared || preparing || preparationError || typeof activeRuntime()?.request !== 'function') return;
+        const runtime = activeRuntime(), epoch = playEpoch, source = snapshot;
+        prepareController = new AbortController();
+        const context = globalThis.Atria?.getContext?.();
+        const slotBindings = context?.capabilitySettings?.atri_task_bindings?.[snapshot.session.packageId] ?? {};
+        preparing = runtimeRequest('/play/prepare', { method: 'POST', signal: prepareController.signal,
+            body: { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId, slotBindings } }).then(result => {
+            if (disposed || epoch !== playEpoch) return;
+            if (runtime.snapshot !== source) { preparing = null; render(); return; }
+            prepared = result.prepared === true && result.revisionId === source.revision.revisionId && result.branchId === source.revision.branchId;
+            render();
+        }).catch(error => {
+            if (!disposed && epoch === playEpoch && !prepareController.signal.aborted) { preparationError = error.code ?? 'prepare_failed'; render(); }
+        });
+    };
+
     const topSpace = documentRef.createElement('div'), bottomSpace = documentRef.createElement('div');
     for (const spacer of [topSpace, bottomSpace]) { spacer.setAttribute('aria-hidden', 'true'); spacer.className = 'atria-play-window-spacer'; }
     const canShift = () => documentRef.getSelection?.()?.isCollapsed !== false
@@ -200,6 +224,7 @@ export function mountAtriaPlayProduct({
     const onVisibility = () => { if (documentRef.hidden) onPressure(); };
     documentRef.addEventListener('visibilitychange', onVisibility);
     documentRef.addEventListener('atria-memory-pressure', onPressure);
+    documentRef.addEventListener('atria-native-experience-prepared', render);
     const resizeRows = typeof ResizeObserver === 'function' ? new ResizeObserver(rows => {
         const viewport = conversation.getBoundingClientRect();
         const anchor = [...conversation.querySelectorAll('[data-atria-message-id]')].find(node => node.getBoundingClientRect().bottom >= viewport.top);
@@ -256,6 +281,8 @@ export function mountAtriaPlayProduct({
         const active = Boolean(snapshot && runtime?.active);
         product.hidden = !active;
         if (!active) {
+            resetPreparation();
+            product.dataset.atriaPlayReadiness = 'inactive';
             window.clear(); resizeRows?.disconnect();
             clearSpeechControls(); renderedSession = null;
             draftText = '';
@@ -293,6 +320,7 @@ export function mountAtriaPlayProduct({
             runtimeError.hidden = true;
         }
         window.update(snapshot, following && canShift());
+        checkPreparation(snapshot);
         if (topSpace.parentNode !== conversation) conversation.append(topSpace, bottomSpace);
         // Reconcile projection nodes; streaming must not replace committed prose,
         // disrupt a text selection, or drag a reader away from an earlier turn.
@@ -373,6 +401,11 @@ export function mountAtriaPlayProduct({
             send.title = tl(action);
             send.replaceChildren(createAtriaIcon(documentRef, action.toLowerCase()));
         }
+        const game = globalThis.Atria?.getContext?.()?.getCapabilityApi?.('game-runtime');
+        const rangeReady = window.loadedIdentity === window.identity;
+        const ready = writable && !textarea.disabled && prepared && rangeReady && game?.isExperienceReady?.() === true;
+        product.dataset.atriaPlayReadiness = ready ? 'ready' : terminalArchive || runtime.history ? 'read_only' : preparationError ?? 'preparing';
+        if (ready && product.isConnected && textarea.getClientRects().length) markStartupReadiness('playReady', documentRef);
         recover.hidden = terminalArchive || (!runtime.failed && !runtime.history);
         recover.textContent = tl(runtime.failed ? 'Reload session' : 'Return to current story');
         composerStatus.textContent = tl(terminalArchive ? 'This story has ended. Its history is read-only.' : runtime.failed
@@ -499,6 +532,8 @@ export function mountAtriaPlayProduct({
             disposed = true;
             documentRef.removeEventListener('visibilitychange', onVisibility);
             documentRef.removeEventListener('atria-memory-pressure', onPressure);
+            documentRef.removeEventListener('atria-native-experience-prepared', render);
+            resetPreparation(); unsubscribeConfiguration();
             window.dispose(); resizeRows?.disconnect();
             clearSpeechControls(); picker?.close();
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);

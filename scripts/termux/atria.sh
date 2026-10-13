@@ -157,7 +157,7 @@ start_server() {
       exit 1
     fi
     if http_ready; then
-      log "Ready: ${URL}"
+      log "Server reachable: ${URL}; the browser checks Play readiness."
       log_launcher_event "ready-detected"
       open_browser
       return

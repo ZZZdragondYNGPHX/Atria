@@ -526,6 +526,34 @@ export class NativeGenerationHost {
             ready: slots.every(slot => !slot.error) && turnRoutes.every(route => !route.error), slots, turnRoutes };
     }
 
+    async preparePlay(handle, input) {
+        if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'slotBindings'].includes(key))) fail('native_play_prepare_invalid');
+        const base = await this.sessionCore.load(handle, input.sessionId);
+        await this.sessionCore.runs.assert(handle, input.sessionId, 'generate');
+        if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        await this.prepareLifecycle(handle, input);
+        const turn = base.manifest.runtime?.experienceContract?.taskRuntime?.turn;
+        const prepared = [];
+        for (const role of turn ? requiredTurnRoles(base.manifest, base.entryPoint) : ['narrator']) prepared.push(await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
+            requestId: 'preflight:play:' + role, role }, undefined, undefined,
+        { scheduled: true, preflight: true, preflightPackage: { manifest: base.manifest }, preflightSnapshot: base }));
+        const routes = await this.persistence.listRuntimeRoutes(handle);
+        const taskIds = turn ? [...turn.stages, turn.narratorTaskId, turn.interpreterTaskId].filter(Boolean) : [];
+        for (const taskId of taskIds) {
+            const task = base.manifest.runtime.experienceContract.taskRuntime.tasks.find(item => item.id === taskId);
+            const route = routes.find(item => item.runtimeRouteId === input.slotBindings?.[task.bindingSlotId]?.runtimeRouteId);
+            if (!route) fail('native_task_binding_missing');
+            prepared.push({ connection: await this.persistence.getConnectionProfile(handle, route.connectionProfileRef.connectionProfileId) });
+        }
+        // Read local configuration/Secrets only; no provider network request.
+        for (const resolved of prepared) {
+            if (resolved.model) this.providers[resolved.connection.providerAdapter]?.contextTokenizer?.(resolved);
+            if (!await this.secretPort.resolveSecret(resolved.connection.secretRef, { handle })) fail('generation_secret_unavailable');
+        }
+        if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        return { sessionId: input.sessionId, revisionId: input.revisionId, branchId: base.revision.branchId, prepared: true };
+    }
+
     async prepareLifecycle(handle, input) {
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'slotBindings'].includes(key))) fail('native_lifecycle_request_invalid');
         const base = await this.sessionCore.load(handle, input.sessionId);

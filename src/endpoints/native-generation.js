@@ -271,6 +271,13 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.status(400).json({ error: error.code || 'native_task_binding_preflight_failed' });
         }
     });
+    router.post('/play/prepare', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await getHost().preparePlay(handle, req.body)); } catch (error) {
+            res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_play_prepare_failed' });
+        }
+    });
     router.post('/lifecycle/prepare', async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

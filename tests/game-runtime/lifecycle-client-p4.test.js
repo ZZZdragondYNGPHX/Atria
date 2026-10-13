@@ -238,3 +238,13 @@ test('stale read-only Task preflight result cannot pass Ready Barrier', async ()
     await expect(load.prepare(f.packageState)).rejects.toThrow('stale'); await expect(load.ready()).rejects.toThrow('not_prepared');
     expect(f.emit).not.toHaveBeenCalled();
 });
+
+
+test('E6 local readiness stays false while required durable Ready/pump is pending', async () => {
+    const f = fixture(); const load = f.client.beginLoad(); await load.prepare(f.packageState);
+    let resume; const gate = new Promise(resolve => { resume = resolve; });
+    const original = f.transport.getMockImplementation();
+    f.transport.mockImplementation(async (...args) => { await gate; return original(...args); });
+    const pending = load.ready(); await Promise.resolve(); await Promise.resolve();
+    expect(f.client.ready).toBe(false); resume(); await pending; expect(f.client.ready).toBe(true);
+});

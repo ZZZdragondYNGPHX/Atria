@@ -308,3 +308,14 @@ describe('R5 Orchestrator and Narrative Contract bridge', () => {
         expect(contract.producerPolicy.exactlyOneFinalBody).toBe(true);
     });
 });
+
+
+test('E5 Context Join rechecks revoked source after optional guidance before Narrator', async () => {
+    let current = true; const narrate = jest.fn();
+    const coordinator = createNarrativeCoordinator({ narrator: { narrate }, getWorldState: () => ({}), getJournal: () => ({}),
+        orchestratorBridge: { runGuidance: async () => { current = false; return {}; } } });
+    await expect(coordinator.produce(makeTurn(), { orchestrationMode: 'spec', assertContextCurrent: () => {
+        if (!current) throw Object.assign(new Error('revoked'), { name: 'AbortError' });
+    } })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(narrate).not.toHaveBeenCalled();
+});

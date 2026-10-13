@@ -27,6 +27,6 @@ globalThis.DATA_ROOT = path.isAbsolute(configuredDataRoot)
     : path.resolve(process.cwd(), configuredDataRoot);
 
 const middleware = getWebpackServeMiddleware();
-await middleware.runWebpackCompiler({ pruneCache: true });
+const result = await middleware.runWebpackCompiler({ pruneCache: true });
 
-console.log(`Frontend bundle cache ready under ${path.join(globalThis.DATA_ROOT, '_webpack')}`);
+console.log(`Frontend bundle cache verified source=${result.source} output=${result.outputPath}`);
