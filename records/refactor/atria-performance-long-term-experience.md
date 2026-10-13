@@ -4,7 +4,7 @@
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
 - Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0 完成，继续 E1；E1–E7 尚未完成。
+- 当前状态：E0 完成、E1 软件协议/本机定向验证完成，继续 E2；E1 平台物理 S2 证明仍待证，E2–E7 尚未完成。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -29,3 +29,13 @@
 - 实际最小验证：上述基准完整运行、`node --check`、`git diff --check`。未执行全仓测试/CI。
 - 待证：浏览器 T0–T4/输入/滚动/DOM、Windows、Termux、物理断电、真实 Provider 费用/RP 质量和小时级内存。进程故障测试不能冒充 S2 设备证明。
 - 下一 checkpoint：E1 durable 合同、SQLite FULL、FS journal/原子发布/恢复、资产目录屏障与幂等提交。
+
+## E1 — durable contract / 两引擎 / 回执（E1.1–E1.4）
+
+- Start HEAD：`885916c45`；End HEAD：`a21143dfa`，已推送。
+- FS Native 事务改为用户根作用域串行隔离、内存 staging、checksummed prepared journal → 文件/目录同步 → 原子发布 redo journal → 全部依赖安装 → ACK。重启在读者进入前完成已发布 journal；未发布事务回滚。单服务器进程限制明确保留。不是给旧回调包装改名；Session/RunControl/SavePoint 等 Native 资源均参与原子协议，旧非 Native 资源不冒称 ACID。
+- SQLite 强制 WAL + FULL 并回读配置；Native 列表按字段在 SQL 中过滤。Blob 文件及新建父目录先 durable，再发布引擎引用。同步原语失败抛错，不静默降级。损坏 Native envelope / Blob / journal 校验失败关闭。
+- Session root、Revision、必要 RunControl 和 commit receipt 在同一引擎事务内完成；唯一 commitId/fingerprint、expectedRevision CAS；新增回执查询 HTTP API，append 可依提交 ID 处理 ACK 丢失，不重复 Turn。冲突 ID 拒绝。
+- 本地验证：SessionCore FS/SQLite 22 用例通过；durable-commit、旧 commit-last 改为新 staging rollback、storage-foundation 三套共 12 用例通过。独立子进程在 prepare/dependencies/publish/install/ack 五个切点退出后，旧或新完整状态恢复、原世界一致、回执重试一次；这只证明 **S1/协议恢复**。针对全部修改 JS 的 ESLint 与 diff check 通过；坏 envelope 额外本地断言通过。首次额外断言误用非 atri_* namespace 被契约拒绝，纠正夹具后通过。
+- 默认引擎未改：缺跨平台物理证据时不凭跑分做默认替换，也不认证任意引擎/后备 S2。CachyOS 文件/目录屏障实际执行成功；Windows、Termux VFS/硬件断电待证。官方 SQLite/Node 文档仅支持协议设计依据，不替代 Atria 设备测试。
+- 下一 checkpoint：E2 分段共享 Timeline/State、无损 Chronicle 历史、SavePoint/Branch/终局引用根。
