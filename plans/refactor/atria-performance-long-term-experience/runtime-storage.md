@@ -136,6 +136,14 @@
 - 用 100/1k/5k 消息、深分支/多 Variant 与资产规模增长场景比较 FS/SQLite 的完成确认 P50/P95、事件循环阻塞、磁盘空间/文件数、恢复耗时。
 - S2 验证限定受支持的实际平台/文件系统和明确的测试方法；硬件损坏、违反 flush 保证的设备、被覆盖的备份属于 S3 或外部故障域，不宣称绝对零风险。
 
+### 第 5 轮外部设计比较（用于约束候选，非架构定案）
+
+- [Martin Fowler — What do you mean by Event-Driven?](https://martinfowler.com/articles/201701-event-driven.html)：事件日志与可读的物化工作视图应分离，历史回放不应要求每个调用方扫描完整事件源；快照可避免每次从头重放。
+- [Martin Fowler — Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)：历史状态重放有价值，但与外部系统互动的副作用需隔离。Atria 的模型调用、插件操作、网络请求**不得因只读重建/历史浏览而重新执行**；应重放已持久化的权威结果或声明的纯计算。
+- [Git — pack-format](https://git-scm.com/docs/pack-format.html)：不可变内容对象可在物理存储层采用引用与增量表示以减少重复；不意味着 Atria 应实现 Git 协议或依赖 Git 作为实时数据库。
+- [RocksDB Tuning Guide](https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide)：同时测量写入放大、读取放大与空间放大；更频繁 compaction 或更大压缩段可能牺牲互动时延，不宜单看压缩率选择设计。这里只借鉴性能指标，不默认引入 RocksDB。
+- [SQLite — WAL](https://www.sqlite.org/wal.html)：长时间读事务和 checkpoint 相互制约；后台维护与前台延迟目标需分别监测，不能假设批量清理就即时缩小磁盘文件。
+
 ## 外部依据
 
 1. [SQLite: PRAGMA synchronous](https://www.sqlite.org/pragma.html#pragma_synchronous) — WAL+NORMAL 与 FULL 的持久性差别。
