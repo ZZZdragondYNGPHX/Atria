@@ -1,7 +1,7 @@
 # Atria 性能与长期体验 — P3 记忆检索、上下文编译及 Agent 计算
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
-- **状态**：第十五轮讨论稿；第十三轮证明驱动增量计算 C、**第十四轮分层权威 Cache Key/S2 Delta Overlay/准确 Token/质量+成本双门槛 C 均已获批**。运行时编排、并发与失败回退仍待第十五轮定案；未授权修改产品代码。
+- **状态**：第十三—十五轮 P3 方案 C 均已获批；第十六轮正与 P0–P5 收束，运行时物理接口、数值配额与目标硬门槛仍待 P0/工程实现，未授权改动产品代码。
 - **冻结依据**：[index.md](index.md) 为唯一跨模块决策记录；[runtime-storage.md](runtime-storage.md) 管 Native Session/S2/可达性；[stability-recovery.md](stability-recovery.md) 管缓存、生命周期和调度；[measurement-and-evidence.md](measurement-and-evidence.md) 管 P0 基线与验证。
 - **只读源码锚点**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，2026-10-13。特别注意本分支**正是 Agent Compute / M1 等能力开发所在分支**：不能在现阶段直接按静态快照改写这些功能，必须待功能分支集成 `main` 后复核真实实现，再独立立项/创建 refactor 分支。
 - **范围**：只调研热路径和资源成本；不引入旧 dev / ST 数据适配层，不减少已冻结的 RP 认知/世界状态权威，不把「减少模型调用数」单独当成优化成功。
@@ -151,7 +151,7 @@
 - 最小验证必须包含 **同时**：新 Turn 后立即回忆该条事实（read-your-writes）；Branch/SavePoint 切换后的授权隔离；已撤销/过期/竞争证据不被缓存重新放出；分词边界/模型 Tokenizer 改变；向量同步部分失败/重启；Provider 超时与失败计费；质量评估的独立来源/费用账目。
 - 上述候选仅针对新 dev 支持格式。严禁为了旧 SillyTavern swipe_id、旧 Schema、旧 MemoryOS 数据格式做额外迁移/兼容双读写；当前隐藏 Native ABI 真正仍需使用的依赖必须审计清楚才可移除。
 
-## 第十五轮：ContextPlan 与 Memory Recall 编排、并发、异常恢复及 RP 情境预算（**讨论稿，尚未批准**）
+## 第十五轮：ContextPlan 与 Memory Recall 编排、并发、异常恢复及 RP 情境预算（**已选 C，具体参数待设计**）
 
 ### 1. 先承认现有调用链不只有一种
 
@@ -168,7 +168,7 @@
 
 - **A — 全部串行**：权威世界/人物状态→知识过滤→记忆完整 Lexical/Vector/Rerank→ContextPlan→模型调用→记忆提交。容易跟踪，但在不需要高级检索的回合也为非必要阶段付费，P95 和 TTFT 可能过长。
 - **B — 乐观全并行**：一收到玩家输入就同时启动世界命令、NPC 记忆、上下文与 narrator，先到先用。TTFT 表面很快，但**命令尚未落地、Actor 尚未获得授权、完整证据尚未打包就生成文本**，存在防全知/世界状态失配及外部费用重试问题，不建议采用。
-- **C — 固定 S2/Grant 的依赖 DAG + 合法准备工作的有界并发 + 生成前证据屏障 + 情境化预算**（**推荐、尚未批准**）：只将真正独立且在合法 Scope 内的纯读/可重建索引准备并行；ContextPlan/模型实际生成仍受权威快照、完整证据、准确 Token 和 Cost/Quality 的最终屏障约束。
+- **C — 固定 S2/Grant 的依赖 DAG + 合法准备工作的有界并发 + 生成前证据屏障 + 情境化预算**（**第十五轮已选**）：只将真正独立且在合法 Scope 内的纯读/可重建索引准备并行；ContextPlan/模型实际生成仍受权威快照、完整证据、准确 Token 和 Cost/Quality 的最终屏障约束。
 
 ### 3. 推荐的逻辑状态机（候选，不意味着实现了新 API）
 
@@ -236,12 +236,12 @@ S2 PUBLICATION + RECEIPT / POST-TURN DERIVATION
 
 预算需要**二维衡量**：`质量风险/证据必要度` 与 `延迟/Token/费用/长期累计预算`，并把未能查到来源、权限拒绝、预算不足、Provider 不可用区分诊断。不能预设具体“日常 1 次、大剧情 3 次”的硬常数；先用 P0/RP 真实回归找质量-延迟-成本的可接受折中。
 
-### 7. 第十五轮 A/B/C 选择（待用户定案）
+### 7. 第十五轮 A/B/C 决议（已选择 C）
 
 - **A：完整串行 + 所有增强检索按固定流水线必跑**。简单但不区分用户真正需要什么，长期 RP 的 P95 可能偏高。
 - **B：激进并行 + 早发 Narrator + 任意阶段出错均降级空记忆**。容易产生快但不一致、全知 NPC 和失败后双重副作用，不能满足前轮冻结约束。
-- **C：依赖 DAG + 可证明独立阶段有界并发 + Context Join/Authority 屏障 + 结构化失败回退 + 场景/质量预算分层**（**推荐、尚未批准**）。
-- 第十六轮候选方向：评估本次企划是否已覆盖全部主要模块，补齐风险优先级、阶段拆解、集成边界与 P0 验收/移交计划；如仍有用户关心的缺口，再增加专项讨论。**不预设无限新轮次或在当前功能分支上动手实现**。
+- **C：依赖 DAG + 可证明独立阶段有界并发 + Context Join/Authority 屏障 + 结构化失败回退 + 场景/质量预算分层**（**第十五轮已选，具体接口/数值待 P0 与实施设计**）。
+- **第十六轮工作方向已启动**：汇总 P0–P5 的冻结决策/未定指标、风险优先级、阶段拆解、集成边界与 P0 验收/移交计划；若未发现影响架构正确性的重大缺口，转为正式可执行开发计划。**当前产品分支仍不得改动**。
 
 ### 8. 第十五轮最小验证集合（未来实现时）
 
@@ -285,3 +285,4 @@ S2 PUBLICATION + RECEIPT / POST-TURN DERIVATION
 - **2026-10-13 / 第十四轮研究稿**：在已冻结 P3 C 上补充分层 Cache Key、sourceGeneration/IndexGeneration 水位、Base+Delta Overlay、纠错撤销传播、Tokenizer 精确收口和 Provider/Agent 费用/质量双约束 A/B/C 选项；这些属于待用户讨论的新细节，不将候选算法或数字冒充已批准。
 - **2026-10-13 / 第十五轮开端**：用户批准第十四轮 C，正式冻结分层安全 Cache Key/来源与授权隔离、已确认 S2 Delta Overlay/索引代际校验/Read-Your-Writes、最终完整 Token 精确容量校验，以及 Agent/Provider 质量和费用双门槛；A/B 候选仅留作历史比较。第十五轮开始分析 ContextPlan 与 Memory Recall 的执行时机、并发与失败回退，不预先冻结实际阈值或新接口形状。
 - **2026-10-13 / 第十五轮研究稿**：在已批准第十四轮权威缓存/Delta Overlay/准确 Token/模型预算 C 上，结合 Package Turn、Game LLM/Memory Bridge、Native Context compiler、GenerationService 的真实调用顺序提出第十五轮 DAG/Join Barrier/分类回退/情境预算 A/B/C 备选。第十五轮选项与默认阈值尚未批准；未修改产品实现。
+- **2026-10-13 / 第十六轮开端**：用户认同第十五轮方案 C，批准依赖 DAG/有限并行/正式 Narrator 前 Context Join 权威屏障、分等级错误回退、不同 RP 情境下的额外检索/模型预算；不得绕过权限/时态/硬保留、重复提交玩家操作或取消必要的 Agent/RP 质量评价。进入 P0–P5 施工路线汇总，未实测也未修改产品代码。
