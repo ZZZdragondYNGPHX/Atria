@@ -202,6 +202,10 @@ export class PackageInstaller {
     }
 
     async install(handle, archive, { grantedPermissions = [], setCurrent = true } = {}) {
+        return this._assetStore.withBlobLease(handle, digest(archive), () => this._installPinned(handle, archive, { grantedPermissions, setCurrent }));
+    }
+
+    async _installPinned(handle, archive, { grantedPermissions, setCurrent }) {
         const preflight = this.preflight(archive);
         const granted = new Set(grantedPermissions);
         const missing = preflight.requiredPermissions.filter(permission => !granted.has(permission));

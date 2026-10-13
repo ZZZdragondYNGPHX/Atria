@@ -61,6 +61,7 @@ export class SessionRepo {
     }
 
     withRunLock(handle, sessionId, operation) { return withSessionWrite(handle, sessionId, operation); }
+    withoutRunLockContext(operation) { return heldSessionWrites.exit(operation); }
 
     async prepareTimelineIndex(handle, sessionId, root, additions) {
         assertWritable();
@@ -827,7 +828,9 @@ export class SessionRepo {
     }
 
     async reachabilitySnapshot(handle, sessionId) {
-        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
+        const tx = { getResource: key => this._engine.withTransaction(handle, tx => tx.getResource(key)),
+            listResources: filter => this._engine.withTransaction(handle, tx => tx.listResources(filter)) };
+        return (async () => {
             const sessionKey = this._sessionKey(handle, sessionId), session = await tx.getResource(sessionKey);
             if (!session) throw new NotFoundError('native session');
             const saves = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId });
@@ -869,7 +872,7 @@ export class SessionRepo {
             for (const head of new Set([session.doc.illustrationHead, ...Object.values(session.doc.illustrationHeads ?? {}), ...saves.map(item => item.doc.illustrationHead)].filter(Boolean))) await mark(this._stateKey(handle, sessionId, 'atri_illustrations', head));
             return { schemaVersion: 1, sessionId, generation: hashNativeDocument({ root: session.integrity, saves: saves.map(item => item.integrity).sort() }),
                 revisionIds: [...revisions], keys: [...keys.values()], assetIds: [...assets], terminal: session.doc.headRevisionId === (await readRunControl(tx, handle, sessionId))?.deathRevisionId };
-        }));
+        })();
     }
 
     async isCommittedRevision(handle, sessionId, revisionId) {
@@ -1032,6 +1035,7 @@ export class SessionRepo {
             if (continuity?.state.intents.some(intent => intent.sessionId === sessionId && intent.status === 'prepared')) throw new ConflictError('native_transfer_pending');
             for (const kind of [
                 NATIVE_RESOURCE_KINDS.savePoint,
+                NATIVE_RESOURCE_KINDS.commitReceipt,
                 NATIVE_RESOURCE_KINDS.sessionRevision,
                 NATIVE_RESOURCE_KINDS.sessionState,
                 NATIVE_RESOURCE_KINDS.timelineVariant,

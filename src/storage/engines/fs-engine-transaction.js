@@ -1,11 +1,12 @@
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { resolveUserDirectory } from '../../constants.js';
 
 import _ from 'lodash';
 import sanitizeFilename from 'sanitize-filename';
 import { sync as writeFileAtomic } from 'write-file-atomic';
-import { durableWrite, durableRemove } from '../durable-file.js';
+import { durableWriteAsync, durableRemoveAsync } from '../durable-file.js';
 
 import { SIDECAR_INFIX, buildSidecarFilename, parseSidecarFilename } from './sidecar-naming.js';
 import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
@@ -761,17 +762,18 @@ function registerNativeResourceHandlers(tx) {
     const rootFor = (key) => path.join(
         resolveUserDirectory(tx._directoriesByHandle(key.handle), 'nativeResources'),
         key.kind,
+        ...(key.sessionId ? [key.sessionId] : []),
     );
     const filePath = (key) => path.join(rootFor(key), `${nativeResourceFileId(key)}.json`);
 
-    const readEnvelope = (key) => {
+    const readEnvelope = async (key) => {
         const normalized = normalizeNativeResourceKey(key);
         const fp = filePath(normalized);
-        if (!fs.existsSync(fp)) return null;
         let envelope;
         try {
-            envelope = JSON.parse(fs.readFileSync(fp, 'utf-8'));
-        } catch {
+            envelope = JSON.parse(await fsp.readFile(fp, 'utf-8'));
+        } catch (error) {
+            if (error.code === 'ENOENT') return null;
             throw new Error('Native resource envelope integrity mismatch');
         }
         if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) throw new Error('Invalid Native resource envelope');
@@ -801,9 +803,9 @@ function registerNativeResourceHandlers(tx) {
         get(key) {
             return readEnvelope(key);
         },
-        put(key, record) {
+        async put(key, record) {
             const normalized = normalizeNativeResourceKey(key);
-            const existing = readEnvelope(normalized);
+            const existing = await readEnvelope(normalized);
             const now = Date.now();
             const envelope = {
                 key: normalized,
@@ -813,28 +815,27 @@ function registerNativeResourceHandlers(tx) {
                 createdAt: Number(record.createdAt ?? existing?.createdAt ?? now),
             };
             const fp = filePath(normalized);
-            durableWrite(fp, JSON.stringify(envelope));
+            await durableWriteAsync(fp, JSON.stringify(envelope));
         },
-        delete(key) {
+        async delete(key) {
             const normalized = normalizeNativeResourceKey(key);
             const fp = filePath(normalized);
-            if (!fs.existsSync(fp)) return false;
-            durableRemove(fp);
-            return true;
+            return durableRemoveAsync(fp);
         },
-        list(filter) {
+        async list(filter) {
             if (!filter || !NATIVE_STORAGE_KINDS.includes(filter.kind)) {
                 throw new Error('FsTransaction native list requires a Native resource kind');
             }
             const normalizedFilter = { ...filter, handle: String(filter.handle || '') };
             const dir = rootFor(normalizedFilter);
-            if (!fs.existsSync(dir)) return [];
             const records = [];
-            for (const entry of fs.readdirSync(dir)) {
+            let files;
+            try { files = await fsp.readdir(dir, { recursive: true }); } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+            for (const entry of files) {
                 if (!entry.endsWith('.json')) continue;
                 let envelope;
                 try {
-                    envelope = JSON.parse(fs.readFileSync(path.join(dir, entry), 'utf-8'));
+                    envelope = JSON.parse(await fsp.readFile(path.join(dir, entry), 'utf-8'));
                 } catch {
                     continue;
                 }

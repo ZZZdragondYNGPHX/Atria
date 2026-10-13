@@ -4,6 +4,7 @@ import { PERSONA_NAMESPACE, assertPersonaState, personaIdentity, personaFailure 
 import { RunControl, runFailure, runPublicationProof } from './run-control.js';
 import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-contract.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
+import { requestSessionMaintenance } from './session-maintenance.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure, authorityCatalog, authoritySelection } from './authority-turn.js';
 import { prepareAuthorityPublications, createAuthorityPublicationBudget } from './authority-transaction.js';
@@ -547,6 +548,7 @@ export class SessionCore {
         if (taskRecord?.kind === 'turn') {
             try { await this._saves.maybeAutomatic(handle, snapshot); } catch (error) { snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
         }
+        if (taskRecord?.kind === 'turn') requestSessionMaintenance(this._sessions, handle, session.sessionId);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),

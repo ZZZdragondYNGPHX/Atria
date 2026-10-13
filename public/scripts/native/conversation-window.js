@@ -1,8 +1,9 @@
 // One View owns a bounded page, measured heights and cancellable Range reads.
 export class ConversationWindow {
-    constructor({ scroll, read, changed, failed, size = 64, estimate = 240 }) {
+    constructor({ scroll, read, changed, failed, size = 64, estimate = 240, byteBudget = 4 * 1024 * 1024 }) {
         Object.assign(this, { scroll, read, changed, failed, size, estimate });
         this.entries = []; this.variants = []; this.heights = new Map(); this.from = 0; this.total = 0; this.epoch = 0; this.disposed = false;
+        this.byteBudget = byteBudget;
         this.onScroll = () => {
             if (this.frame || this.disposed) return;
             const schedule = globalThis.requestAnimationFrame ?? (callback => setTimeout(callback, 0));
@@ -44,7 +45,8 @@ export class ConversationWindow {
         Promise.resolve(this.read(snapshot, from, this.size, controller.signal)).then(page => {
             if (this.disposed || epoch !== this.epoch || controller.signal.aborted) return;
             if (page.revisionId !== snapshot.revision.revisionId || page.branchId !== snapshot.revision.branchId) throw new Error('Native Timeline Range identity mismatch');
-            this.entries = page.entries; this.variants = page.variants ?? this.variants; this.changed();
+            this.entries = page.entries; this.variants = page.variants ?? this.variants;
+            this.trim(); this.changed();
         }).catch(error => { if (!this.disposed && epoch === this.epoch && !controller.signal.aborted) this.failed?.(error); });
     }
     measure(position, height) {
@@ -55,6 +57,16 @@ export class ConversationWindow {
         return this.offset(this.from) - before;
     }
     latest() { this.load(Math.max(0, this.total - this.size)); }
+    trim() {
+        let bytes = JSON.stringify([this.entries, this.variants]).length * 2;
+        while (bytes > this.byteBudget && this.entries.length > 1) {
+            this.entries.pop(); const ids = new Set(this.entries.map(item => item.activeVariantId));
+            this.variants = this.variants.filter(item => ids.has(item.variantId));
+            bytes = JSON.stringify([this.entries, this.variants]).length * 2;
+        }
+        this.retainedBytes = bytes;
+    }
+    pressure() { this.byteBudget = Math.max(65536, Math.floor(this.byteBudget / 2)); this.size = Math.max(8, Math.floor(this.size / 2)); this.load(this.from, true); }
     clear() {
         this.controller?.abort(); this.epoch++; this.snapshot = null; this.identity = null; this.scope = null;
         this.entries = []; this.variants = []; this.heights.clear();

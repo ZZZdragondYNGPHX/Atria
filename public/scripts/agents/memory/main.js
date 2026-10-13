@@ -1,3 +1,5 @@
+import { releaseMemorySourceScopes } from './source-lifecycle.js';
+import { releaseMemoryCorpus } from './index-reuse.js';
 import { clearNativePresetNames } from '../../native/agent-settings.js';
 import { normalizeMemoryRetrieval } from '../../native/retrieval-contracts.js';
 import { memoryRouteOptions, normalizeMemoryRoutes } from './native-routing.js';
@@ -14809,6 +14811,10 @@ jQuery(() => {
         console.warn(`[${MODULE_NAME}] Failed to mount floor-state singleton`, error);
     });
 
+
+    for (const event of [NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED]) {
+        onNativeSessionLifecycle(event, () => { releaseMemorySourceScopes(); releaseMemoryCorpus(); });
+    }
     for (const lifecycle of [
         NATIVE_SESSION_LIFECYCLE.SESSION_LOADED,
         NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,

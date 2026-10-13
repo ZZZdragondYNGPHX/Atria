@@ -36,6 +36,7 @@ export class SqliteEngine {
             db.close(); throw new Error('SQLite durable commit configuration unavailable');
         }
         db.pragma('foreign_keys = ON');
+        db.pragma('wal_autocheckpoint = 0');
         initSchema(db);
         this._dbs.set(handle, db);
         return db;
@@ -176,8 +177,13 @@ export class SqliteEngine {
         });
         // Swallow rejection on the tail so a failed tx doesn't poison the
         // next caller's promise chain.
-        this._txTail.set(handle, run.catch(() => {}));
-        return run;
+        const tail = run.catch(() => {});
+        this._txTail.set(handle, tail);
+        try { return await run; } finally { if (this._txTail.get(handle) === tail) this._txTail.delete(handle); }
+    }
+    async checkpoint(handle) {
+        await this._txTail.get(handle);
+        return this._dbFor(handle).pragma('wal_checkpoint(PASSIVE)');
     }
 
     close() {

@@ -17,6 +17,13 @@ export class NativeTaskScheduler {
         return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.sessionId === sessionId
             && (!terminal.has(operation.view.status) || this.running.has(operation)));
     }
+    hasForegroundWork(owner) {
+        return [...this.running, ...this.queue].some(item => (owner === undefined || item.owner === owner)
+            && ['turn_blocking', 'interactive'].includes(item.view.executionClass));
+    }
+    releaseOperation(operation) {
+        for (const field of ['run', 'finalize', 'fresh', 'onChunk', 'resolve', 'reject', 'handle', 'controller', 'cleanup', 'timer', 'signal']) delete operation[field];
+    }
     project(owner, id) {
         const operation = this.operations.get(id);
         if (!operation || operation.owner !== owner) throw failure('operation_not_found');
@@ -29,7 +36,7 @@ export class NativeTaskScheduler {
         operation.view.status = status;
         operation.view.provisionalPresentation = '';
         operation.controller.abort(); operation.reject(failure('operation_' + status));
-        if (!this.running.has(operation)) operation.cleanup();
+        if (!this.running.has(operation)) { operation.cleanup(); this.releaseOperation(operation); }
         this.queue = this.queue.filter(item => item !== operation); this.drain(); return true;
     }
     submit({ owner, anchor, kind = 'model_task', executionClass, resources, key, fingerprint, supersede = false, retry = true, timeoutMs = this.timeoutMs, signal, run, finalize, fresh, onChunk }) {
@@ -69,8 +76,9 @@ export class NativeTaskScheduler {
     }
     drain() {
         const priority = { turn_blocking: 0, interactive: 1, background: 2, maintenance: 3 };
-        this.queue.sort((a, b) => (priority[a.view.executionClass] - Math.floor((Date.now() - a.queuedAt) / 5000))
-            - (priority[b.view.executionClass] - Math.floor((Date.now() - b.queuedAt) / 5000)) || a.sequence - b.sequence);
+        const weight = item => priority[item.view.executionClass] < 2 ? priority[item.view.executionClass]
+            : Math.max(2, priority[item.view.executionClass] - Math.floor((Date.now() - item.queuedAt) / 5000));
+        this.queue.sort((a, b) => weight(a) - weight(b) || a.sequence - b.sequence);
         while (this.running.size < this.concurrency) {
             const index = this.queue.findIndex(item => item.resources.every(resource => [...this.running].filter(active => active.resources.includes(resource)).length < this.perResource));
             if (index < 0) return;
@@ -121,7 +129,7 @@ export class NativeTaskScheduler {
             if (/^(?:native_illustration_|native_speech_|native_mcp_|native_a2a_|native_generation_|generation_|operation_|prompt_)[a-z_]{1,100}$/.test(error.code ?? '')) view.errorCode = error.code;
             view.provisionalPresentation = ''; operation.reject(error);
         } finally {
-            clearTimeout(timer); operation.cleanup(); this.running.delete(operation); this.drain();
+            clearTimeout(timer); operation.cleanup(); this.running.delete(operation); this.releaseOperation(operation); this.drain();
         }
     }
 }

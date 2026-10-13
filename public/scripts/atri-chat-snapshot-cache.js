@@ -9,16 +9,21 @@ export class ChatSnapshotCache {
     #writeHolds = 0;
     #activeKey;
     #inactiveLimit;
+    #byteBudget;
 
-    constructor({ activeKey, inactiveLimit = 1 }) {
+    constructor({ activeKey, inactiveLimit = 1, byteBudget = 16 * 1024 * 1024 }) {
         if (!Number.isInteger(inactiveLimit) || inactiveLimit < 0) {
             throw new RangeError('inactiveLimit must be a non-negative integer');
         }
         this.#activeKey = activeKey;
         this.#inactiveLimit = inactiveLimit;
+        if (!Number.isSafeInteger(byteBudget) || byteBudget < 1) throw new RangeError('Invalid snapshot byte budget');
+        this.#byteBudget = byteBudget;
     }
 
     get size() { return this.#entries.size; }
+    get retainedBytes() { return [...this.#entries.values()].reduce((n, entry) => n + entry._estimatedBytes, 0); }
+    pressure() { this.#byteBudget = Math.max(1, Math.floor(this.#byteBudget / 2)); this.prune(); }
 
     get(key, kind) {
         const entry = this.#entries.get(key);
@@ -32,6 +37,7 @@ export class ChatSnapshotCache {
         if (!key) return;
         const entry = this.#entries.get(key) ?? {};
         entry[kind] = value;
+        entry._estimatedBytes = JSON.stringify(Object.fromEntries(Object.entries(entry).filter(([field]) => field !== '_estimatedBytes'))).length * 2;
         this.#entries.delete(key);
         this.#entries.set(key, entry);
         this.prune();
@@ -42,7 +48,8 @@ export class ChatSnapshotCache {
         const entry = this.#entries.get(key);
         if (!entry) return false;
         delete entry[kind];
-        if (Object.keys(entry).length === 0) this.#entries.delete(key);
+        if (Object.keys(entry).filter(field => field !== '_estimatedBytes').length === 0) this.#entries.delete(key);
+        else entry._estimatedBytes = JSON.stringify(entry).length * 2;
         return true;
     }
 
@@ -62,7 +69,7 @@ export class ChatSnapshotCache {
         const active = this.#activeKey();
         let inactive = this.#entries.size - Number(this.#entries.has(active));
         for (const key of this.#entries.keys()) {
-            if (inactive <= this.#inactiveLimit) break;
+            if (inactive <= this.#inactiveLimit && this.retainedBytes <= this.#byteBudget) break;
             if (key === active) continue;
             this.#entries.delete(key);
             inactive--;

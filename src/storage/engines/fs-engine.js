@@ -23,7 +23,7 @@ export class FsEngine {
     // the engine contract takes (handle, fn) uniformly.
     async withTransaction(handle, fn) {
         const root = this._directoriesByHandle(handle).root;
-        if (active.getStore()?.root === root) return fn(active.getStore().tx);
+        if (active.getStore()?.open && active.getStore()?.root === root) return fn(active.getStore().tx);
         const previous = tails.get(root) ?? Promise.resolve();
         const next = previous.catch(() => {}).then(() => this._withTransaction(handle, root, fn));
         tails.set(root, next);
@@ -41,14 +41,18 @@ export class FsEngine {
         const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle });
         const journal = new FsNativeJournal(tx, root, handle, this._durabilityFault);
         await journal.recover();
-        return active.run({ root, tx: journal.tx }, async () => {
-            const result = await fn(journal.tx);
-            await journal.commit();
-            return result;
+        const scope = { root, tx: journal.tx, open: true };
+        return active.run(scope, async () => {
+            try { const result = await fn(journal.tx); await journal.commit(); return result; } finally { scope.open = false; }
         });
     }
 
     async ping(handle) { /* nothing to do */ }
+    // Maintenance enumeration is speculative; the GC root generation is
+    // revalidated under engine isolation before any deletion.
+    async scanNativeCandidates(handle, filter) {
+        return new FsTransaction({ directoriesByHandle: this._directoriesByHandle }).listResources(filter);
+    }
 
     /**
      * No-op by design: the fs engine has no engine-internal rows to wipe —

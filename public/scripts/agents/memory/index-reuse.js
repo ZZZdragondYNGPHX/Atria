@@ -26,6 +26,10 @@ export function memoryCorpusReuse(snapshot, at, build) {
     }
     const frozen = freezeMemoryData(corpus);
     const fingerprints = new WeakMap();
-    entries.set(++serial, { identity, domain, corpus: frozen, bytes, fingerprints }); retainedBytes += bytes;
+    entries.set(++serial, { scope: snapshot.key, identity, domain, corpus: frozen, bytes, fingerprints }); retainedBytes += bytes;
     return { corpus: { ...frozen, documents: frozen.documents.slice() }, fingerprints, decision: { status: 'miss', reason: 'dependency_not_cached' } };
 }
+export function releaseMemoryCorpus(scope) {
+    for (const [key, entry] of entries) if (scope === undefined || entry.scope === scope) { retainedBytes -= entry.bytes; entries.delete(key); }
+}
+export function memoryCorpusResourceStats() { return { entries: entries.size, retainedBytes, byteBudget: MAX_BYTES }; }

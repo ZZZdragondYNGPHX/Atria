@@ -1,16 +1,19 @@
 import { PERSONA_NAMESPACE, personaAvatars, personaDocumentReferences } from '../persona-contract.js';
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { durableWrite } from '../../storage/durable-file.js';
+import { durableWriteAsync, durableRemoveAsync } from '../../storage/durable-file.js';
 import { resolveUserDirectory } from '../../constants.js';
 
 import { NATIVE_RESOURCE_KINDS, assertAssetRef } from '../contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
-import { getNativeDocument, listNativeDocuments, putImmutable, withNativeResourceWrite } from './common.js';
+import { getNativeDocument, listNativeDocuments, putImmutable, putMutable, hashNativeDocument, withNativeResourceWrite } from './common.js';
 import { ILLUSTRATION_NAMESPACE } from '../../../public/shared/native-illustration-contract.js';
 import { readIllustrationState } from '../session-illustrations.js';
+const blobScopes = new AsyncLocalStorage();
 
 function toBuffer(value) {
     if (Buffer.isBuffer(value)) return value;
@@ -81,10 +84,21 @@ export class AssetStore {
         assertWritable();
         const bytes = toBuffer(bytesValue);
         const contentHash = digest(bytes);
-        const blobPath = this._blobPath(handle, contentHash);
-        if (!fs.existsSync(blobPath)) durableWrite(blobPath, bytes);
-        else if (digest(fs.readFileSync(blobPath)) !== contentHash) throw new Error('Native Blob integrity mismatch');
-        return contentHash;
+        return this.withBlobLease(handle, contentHash, async () => {
+            const blobPath = this._blobPath(handle, contentHash);
+            if (!fs.existsSync(blobPath)) await durableWriteAsync(blobPath, bytes);
+            else if (digest(await fsp.readFile(blobPath)) !== contentHash) throw new Error('Native Blob integrity mismatch');
+            return contentHash;
+        });
+    }
+
+    async withBlobLease(handle, contentHash, operation) {
+        const key = JSON.stringify([handle, contentHash]);
+        if (blobScopes.getStore()?.get(key)?.open) return operation();
+        return withNativeResourceWrite(handle, 'blob:' + contentHash, () => {
+            const scope = { open: true }, owners = new Map(blobScopes.getStore() ?? []); owners.set(key, scope);
+            return blobScopes.run(owners, async () => { try { return await operation(); } finally { scope.open = false; } });
+        });
     }
 
     async hasBlob(handle, contentHash) {
@@ -138,14 +152,16 @@ export class AssetStore {
 
         // Blob first, logical reference last. A crash between these operations
         // leaves only an unreferenced content-addressed blob, which GC can reap.
-        await this.putBlob(handle, bytes);
+        return this.withBlobLease(handle, contentHash, async () => {
+            await this.putBlob(handle, bytes);
 
-        await this._engine.withTransaction(handle, tx => putImmutable(
-            tx,
-            this._refKey(handle, ref.assetId),
-            ref,
-        ));
-        return ref;
+            await this._engine.withTransaction(handle, tx => putImmutable(
+                tx,
+                this._refKey(handle, ref.assetId),
+                ref,
+            ));
+            return ref;
+        });
     }
 
     async read(handle, assetId) {
@@ -253,35 +269,37 @@ export class AssetStore {
         });
     }
 
-    async gcBlobs(handle, { retainHashes = [] } = {}) {
+    async gcBlobs(handle, { retainHashes = [], now = Date.now(), graceMs = 60000, batchSize = 32 } = {}) {
         assertWritable();
-        const referenced = new Set(retainHashes);
-        for (const ref of await this.listRefs(handle)) referenced.add(ref.contentHash);
-
-        for (const record of await this._engine.withTransaction(handle, tx => tx.listResources({
-            kind: NATIVE_RESOURCE_KINDS.packageVersion,
-            handle,
-        }))) {
-            if (record.doc?.packageContentHash) referenced.add(record.doc.packageContentHash);
-        }
-
-        const root = this._blobRoot(handle);
-        if (!fs.existsSync(root)) return [];
-        const deleted = [];
-        for (const prefix of fs.readdirSync(root)) {
-            const dir = path.join(root, prefix);
-            let stat;
-            try { stat = fs.statSync(dir); } catch { continue; }
-            if (!stat.isDirectory()) continue;
-            for (const name of fs.readdirSync(dir)) {
-                if (!/^[a-f0-9]{64}$/.test(name) || referenced.has(name)) continue;
-                fs.rmSync(path.join(dir, name), { force: true });
-                deleted.push(name);
+        const key = { kind: NATIVE_RESOURCE_KINDS.maintenance, handle, scope: 'blobs' };
+        const roots = async () => this._engine.withTransaction(handle, async tx => {
+            const refs = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle });
+            const versions = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageVersion, handle });
+            return new Set([...retainHashes, ...refs.map(item => item.doc.contentHash), ...versions.map(item => item.doc.packageContentHash)]);
+        });
+        const referenced = await roots(), generation = hashNativeDocument([...referenced].sort());
+        const progress = await this._engine.withTransaction(handle, tx => getNativeDocument(tx, key));
+        if (!progress || progress.generation !== generation || progress.phase === 'complete') {
+            const candidates = [];
+            let directories;
+            try { directories = await fsp.readdir(this._blobRoot(handle), { withFileTypes: true }); } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+            for (const directory of directories) {
+                if (!directory.isDirectory() || !/^[a-f0-9]{2}$/.test(directory.name)) continue;
+                for (const name of await fsp.readdir(path.join(this._blobRoot(handle), directory.name))) {
+                    if (!/^[a-f0-9]{64}$/.test(name) || !name.startsWith(directory.name) || referenced.has(name)) continue;
+                    candidates.push({ hash: name, quarantinedAt: progress?.candidates.find(item => item.hash === name)?.quarantinedAt ?? now });
+                }
             }
-            try {
-                if (fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
-            } catch { /* best-effort empty directory cleanup */ }
+            await this._engine.withTransaction(handle, tx => putMutable(tx, key, { schemaVersion: 1, generation, candidates, cursor: 0, phase: candidates.length ? 'quarantine' : 'complete' }));
+            return [];
         }
+        if (progress.candidates.some(item => now - item.quarantinedAt < graceMs)) return [];
+        const deleted = [], end = Math.min(progress.candidates.length, progress.cursor + batchSize);
+        for (const item of progress.candidates.slice(progress.cursor, end)) await this.withBlobLease(handle, item.hash, async () => {
+            if ((await roots()).has(item.hash)) return;
+            if (await durableRemoveAsync(this._blobPath(handle, item.hash))) deleted.push(item.hash);
+        });
+        await this._engine.withTransaction(handle, tx => putMutable(tx, key, { ...progress, cursor: end, phase: end === progress.candidates.length ? 'complete' : 'sweep' }));
         return deleted;
     }
 }

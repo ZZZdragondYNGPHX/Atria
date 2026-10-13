@@ -47,6 +47,7 @@ function provenanceOptions(context, target) {
 
 let configuredLifecycle = null;
 export function configureSourceLifecycle(options) {
+    configuredLifecycle?.dispose();
     configuredLifecycle = createSourceLifecycle(options);
     return configuredLifecycle;
 }
@@ -84,6 +85,7 @@ export function writeMemoryBatch(context, batch, ticket) {
 export function getMemoryRetrievalSnapshot(context, options) {
     return configuredLifecycle.retrievalSnapshot(context, options);
 }
+export function releaseMemorySourceScopes() { configuredLifecycle?.releaseScope(); }
 
 /** Runtime I/O is injected so lifecycle/race tests use the same production path. */
 export function createSourceLifecycle({
@@ -101,8 +103,16 @@ export function createSourceLifecycle({
     const observed = new Map();
     const pending = new Map();
     const epochs = new Map();
+    let disposed = false, generation = 0, activeScope = null;
+    function releaseScope(key) {
+        generation++;
+        for (const map of [cache, pending, epochs]) { if (key) map.delete(key); else map.clear(); }
+        for (const id of observed.keys()) if (!key || id.startsWith(key + ':')) observed.delete(id);
+        onInvalidation();
+    }
 
     function observeMutation(context, floor) {
+        if (disposed) return;
         const key = resolveScope(context)?.key;
         const id = sourceMessageId(context.chat?.[floor]);
         if (!key || !id) return;
@@ -127,9 +137,13 @@ export function createSourceLifecycle({
 
     function session(context) {
         const scope = resolveScope(context);
+        if (activeScope && activeScope !== scope?.key) releaseScope(activeScope);
+        activeScope = scope?.key;
+        const epoch = generation;
         if (!scope?.key || !scope.target) throw abort();
         const chat = context.chat;
         const assertLive = () => {
+            if (disposed || generation !== epoch) throw abort();
             const live = getContext();
             if (resolveScope(live)?.key !== scope.key || live.chat !== chat) throw abort();
         };
@@ -509,6 +523,9 @@ export function createSourceLifecycle({
     }
 
     return {
+        releaseScope,
+        dispose() { if (disposed) return; disposed = true; releaseScope(); },
+        resourceStats: () => ({ cache: cache.size, observed: observed.size, pending: pending.size, queues: queues.size, generation }),
         capture,
         assertTicket,
         bind,

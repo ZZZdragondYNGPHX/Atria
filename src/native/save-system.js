@@ -24,6 +24,7 @@ import { hashNativeDocument } from './repositories/common.js';
 import { ILLUSTRATION_NAMESPACE, assertIllustrationState, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
 import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
 import { timelineIndexClosure } from './timeline-index.js';
+import { acquireSessionReadLease } from './session-maintenance.js';
 
 const NON_PORTABLE_STATE_PATTERNS = Object.freeze([
     /^atri_embeddings(?:_|$)/,
@@ -267,7 +268,8 @@ export class NativeSaveSystem {
     }
 
     async _buildSave(handle, sessionId, options) {
-        return this._sessions.withRunLock(handle, sessionId, () => this._buildSaveLocked(handle, sessionId, options));
+        const release = acquireSessionReadLease(handle, sessionId, options.saveId ?? 'head');
+        try { return await this._sessions.withRunLock(handle, sessionId, () => this._buildSaveLocked(handle, sessionId, options)); } finally { release(); }
     }
 
     async _buildSaveLocked(handle, sessionId, { scope, saveId = null }) {

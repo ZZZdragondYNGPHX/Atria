@@ -18,6 +18,7 @@ import { PackageInstaller } from '../native/package-composition.js';
 import { createNativeId, assertNativeId } from '../native/identity.js';
 import { resolveNativeRuntimePackage, readFrontendRuntimeResource } from '../native/runtime-descriptor.js';
 import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo, getSettingsRepo } from '../storage/index.js';
+import { scheduleSessionMaintenance } from '../native/session-maintenance.js';
 
 function services() {
     const assets = getAssetStore();
@@ -133,6 +134,10 @@ export function createNativeSessionRouter(getServices = services) {
         fields(req.body, ['sessionId', 'expectedRevisionId', 'autoSavePolicy', 'branchId', 'displayName', 'archived']);
         const { sessionId, ...options } = req.body;
         res.json(await sessionRepo.setExperienceMetadata(handle, sessionId, options));
+    }));
+    router.post('/maintenance', route(async (req, res, { sessionRepo }, handle) => {
+        fields(req.body, ['sessionId']);
+        res.json(await scheduleSessionMaintenance(sessionRepo, handle, req.body.sessionId));
     }));
     router.post('/illustrations/read', route(async (req, res, { sessionRepo }, handle) => {
         fields(req.body, ['sessionId', 'branchId']);
