@@ -4,7 +4,7 @@
 - **Primary Workspace**: `main`（未来产品实施）；本次企划归档于长期 `docs` 工作空间
 - **状态**: Draft（方案讨论中，尚未授权实施）
 - **起草日期**: 2026-10-13
-- **当前讨论**: 第 12 轮；第十一轮生命周期治理、适应性驱逐和稳态往返验证方案 C 已批准，讨论冷/热启动、首屏资源、Node、Android APK 和 Termux 启动链路
+- **当前讨论**: 第 13 轮；第十二轮分层启动方案 C 已批准：真实 PlayReady、关键路径裁剪及 APK/Termux 预构建一致性，讨论 P3 记忆检索、上下文编译与 Agent 计算缓存的性能和质量边界
 - **实施起点**: 等当前 `feat/agent-compute-runtime` 功能开发结束并集成后，重新核实 `main` HEAD 和基线，再创建独立 `refactor/*` 实施分支
 - **首次静态审计快照**: `feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，同期 `main@3ee1332ef113d4c57c65d9577222ba88d5171101`；此为代码证据，不是性能测量
 
@@ -26,10 +26,11 @@
 10. **第九轮路线管理及运行模式已批准**：SavePoint 读档派生的 Branch 自动生成可辨认的来源名称与唯一路线编号、允许用户重命名展示标签但不改不可变 Branch ID/来源 Revision；历史路线默认保留、可折叠归档和按需检索，主动删除整个路线须引用完整性检查。普通 RP/标准游戏通过 SavePoint 读档创建新 Branch，且可切换现有分支。铁人模式禁止历史读档和旧 Branch 切换，允许在技术故障后**只续接最新合法已提交 HEAD**；铁人死亡后变为不可继续的**只读终局档案**，保留有效原始剧情/结构化历史作为只读回顾，严禁通过该档案恢复进行中的游戏或规避终局规则。自动 SavePoint 与玩家可选择的回档点按模式分权；项目/Session/整条路线的用户主动删除仍属资源管理，与旧楼层 Delete 不同。详细数据模型、默认标签、权限粒度与 GC 机制按后续讨论/验证确定，绝不视为已实施。
 11. **第十轮资源治理方案 C 已批准**：冷热三层缓存（当前交互热层、近期可重建温层、磁盘无损权威冷层）均须建立清晰作用域和基于字节/对象规模的有界驻留；复用或整合现有 NativeTaskScheduler，保障用户输入、正文滚动、生成、读档与必须完成的 S2 提交优先于可暂停的预取、无损压缩、检索索引维护与 GC。GC 实施版本化根、Mark→Quarantine→Revalidate→分批 Sweep，可中断并从重启恢复，确保新旧 Branch、SavePoint、铁人只读终局档案和在途提交的依赖不被错误回收。压力/设备预算由 P0 实测，不引入第二套平行调度器，不保证缓存永久常驻、不靠删除正式游戏历史降内存。
 12. **第十一轮内存生命周期治理方案 C 已批准**：各热/温缓存、UI/组件、Worker 和异步任务须有可检查的 Owner/Scope、Revision/Branch/Generation Epoch 与幂等 dispose/abort/release 边界；Session/Branch/View 退出时及时取消或拒绝过期结果，按缓存字节/对象配额及设备压力自适应驱逐，而非依赖全量刷新或强制 GC。通过反复相同场景、稳态 Live Heap/Retaining Paths、Detached DOM、Worker/Timer/FD 与 Node RSS/external 的分项证据区分正常增长、缓存预热、allocator 保留和真实泄漏；后台回收沿用第十轮 C，严禁危及 S2 提交和无损历史。具体预算、Soak 时长、可接受趋势阈值须通过 P0 量化，尚未冻结。
-13. **正确性不得换速度**：不得破坏 Native Session/Revision、Branch/Variant、世界状态权威、存档可恢复性、记忆来源与权限边界；不得通过静默丢数据、缩短历史或关闭校验伪造性能收益。
-14. **实测决定实施顺序**：`P0` 先建立基线，再排序具体热点；静态代码风险不等于已证实的实际故障。
-15. **独立后续迭代**：当前功能分支完成之前仅调研和讨论，不夹带产品代码改动。
-16. **轻量且真实的验证**：只验证实际改动涉及的模块及关键不变量；需要真机才能确定的结论明确标为待证，不假称已测试。
+13. **第十二轮分层启动方案 C 已批准**：以 T0 进程/导航起点、T1 ServerReachable、T2 ShellInteractive、T3 **真实 PlayReady（可恢复当前受支持格式的已确认 S2 状态、校验权限/必需资产并能正式操作与发送）**、T4 非必需功能就绪为独立里程碑；仅将首玩所需、包括必要安全校验的依赖纳入启动关键路径，Studio/可选工具/非活跃资源经消费者核实后按需加载。保留并行初始化、既有启动遥测和 Termux 缓存，严格统一 Android 构建/Kotlin 展开/Node 端的预构建 Bundle 清单与完整性；区分首次安装/升级资产展开、热冷进程、WebView 及远程端点。不能把 onPageFinished、loaderHidden、APP_READY 或 /api/ping 当成 PlayReady；不提前冻结性能数字、原生 R8/Profile 与具体分包算法，需多平台实测与安全回归。
+14. **正确性不得换速度**：不得破坏 Native Session/Revision、Branch/Variant、世界状态权威、存档可恢复性、记忆来源与权限边界；不得通过静默丢数据、缩短历史或关闭校验伪造性能收益。
+15. **实测决定实施顺序**：`P0` 先建立基线，再排序具体热点；静态代码风险不等于已证实的实际故障。
+16. **独立后续迭代**：当前功能分支完成之前仅调研和讨论，不夹带产品代码改动。
+17. **轻量且真实的验证**：只验证实际改动涉及的模块及关键不变量；需要真机才能确定的结论明确标为待证，不假称已测试。
 
 ## 第八轮已冻结：混合自动存档 C
 
@@ -42,11 +43,11 @@
 | [`measurement-and-evidence.md`](measurement-and-evidence.md) | 静态审计证据、P0 指标与负载矩阵、性能/持久化验收设计、待讨论问题 | **已建立；第二轮必读** |
 | [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、SillyTavern 楼层 Swipe/Delete/Hide 退出审计、Save/Load/Branch 替代方案 | **第九轮分支管理与铁人只读终局档案已冻结；第十轮聚焦资源与缓存治理**，依赖 P0/P2 |
 | [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 持久化提交、FS/SQLite、原生资产、自动存档/GC 架构选项 | **已建立；第六轮提交/分段细节已冻结，第七轮聚焦后台负载和旧楼层操作**，依赖 P0 |
-| `agent-compute.md` | P3 记忆检索、上下文编译、缓存、任务调度的质量与性能 | 待讨论后按需建立，依赖 P0 |
-| [`startup-resources.md`](startup-resources.md) | P4 浏览器/Node/Android/Termux 冷热启动、资源关键路径、预构建一致性、后台恢复 | **第十二轮已建立审计与方案 A/B/C，尚未选择**，依赖 P0/P5 |
+| [`agent-compute.md`](agent-compute.md) | P3 记忆检索、上下文编译、质量门槛与 Agent 计算缓存 | **第十三轮专题审计与 A/B/C 讨论中**，依赖 P0/P2/P5 |
+| [`startup-resources.md`](startup-resources.md) | P4 浏览器/Node/Android/Termux 冷热启动、资源关键路径、预构建一致性、后台恢复 | **第十二轮分层启动 C 已冻结；实际性能增益与参数仍待 P0**，依赖 P0/P5 |
 | [`stability-recovery.md`](stability-recovery.md) | P5 冷热缓存、后台 GC、任务预算/生命周期、长期稳定与恢复 | **第十轮与第十一轮 C 均已冻结；第十二轮与 P4 联动**，依赖 P0/P1/P2 |
 
-其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮混合自动 SavePoint C 已确认；第九轮已批准：分支自动命名可重命名、路线可归档、普通玩法通过 SavePoint 分叉，铁人仅可续接最新状态并在终局保留只读原始历史。第十轮前台优先三层缓存与预算化安全 GC 方案 C 已获批准并在 `stability-recovery.md` 冻结；第十一轮进一步批准 Scope/Owner/Epoch 幂等释放、自适应驱逐与稳态反复验证 C，仍不冻结无实测的内存阈值；第十二轮已建立 `startup-resources.md` 专题，审计浏览器/Node/Android APK/Termux 并讨论分层启动 A/B/C（未决）。跨模块不重复写一套规则。
+其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮混合自动 SavePoint C 已确认；第九轮已批准：分支自动命名可重命名、路线可归档、普通玩法通过 SavePoint 分叉，铁人仅可续接最新状态并在终局保留只读原始历史。第十轮前台优先三层缓存与预算化安全 GC 方案 C 已获批准并在 `stability-recovery.md` 冻结；第十一轮进一步批准 Scope/Owner/Epoch 幂等释放、自适应驱逐与稳态反复验证 C，仍不冻结无实测的内存阈值；第十二轮已批准 P4 分层启动 C，区分真实 PlayReady 与 Shell/Server 各阶段、加强预构建 Bundle 完整性并分平台测量；第十三轮讨论 P3 检索/上下文编译与 Agent 计算（尚未选方案）。跨模块不重复写一套规则。
 
 ## 阶段与读取路由
 
@@ -55,7 +56,7 @@
 | **P0 — 基线与性能画像** | 分离首屏、交互、长会话、存储、检索、Android 与稳定性成本 | `index.md` → `measurement-and-evidence.md` |
 | **P1 — Native Play 与界面交互** | 长聊天消息渲染、流式更新、滚动、焦点/阅读位置 | `index.md` → `client-interaction.md` → P0/P2 结果 |
 | **P2 — 会话与存储** | 会话读取、Revision/Variant、文件系统/数据库、增量索引与安全提交 | `index.md` → `runtime-storage.md` → P0 结果 |
-| **P3 — 记忆与智能体计算** | 避免重复计算，保持检索精度、认知边界和来源 | `index.md` → `agent-compute.md`（待建）→ P0 结果 |
+| **P3 — 记忆与智能体计算** | 避免重复计算，保持检索精度、认知边界和来源 | `index.md` → `agent-compute.md` → P0/P2/P5 结果 |
 | **P4 — 启动与资源交付** | 浏览器/Node/Android/Termux 的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md` → P0/P5 结果 |
 | **P5 — 长期稳定与恢复** | 长时间运行、回收与崩溃恢复、容量变化、退化检测 | `index.md` → `stability-recovery.md` → P0/P1/P2 结果 |
 
@@ -73,7 +74,7 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 ## 当前待定事项
 
 1. 长期使用负载的目标档次（例如 1k / 5k / 20k 消息；只是样本候选，不是当前硬门槛）。
-2. 已确认 S2 契约、分段与共享根、严格存读档、混合自动保存、分支/铁人终局归档、第十轮三层有界缓存与前台优先安全 GC C、以及第十一轮**生命周期 Owner/Scope/Epoch + 自适应驱逐 + 稳态往返泄漏验证 C**。本轮改为浏览器/Node/Android APK/Termux 冷热启动与资源关键路径设计。各平台延迟和内存预算仍待 P0 实测。
+2. 已确认 S2、无损增量历史、严格存读档、混合自动保存、铁人终局只读史、P5 三层缓存/生命周期 C，以及**第十二轮真实 PlayReady 驱动的分层启动 C**。当前新增 P3 讨论：检索/上下文编译的增量计算、候选缓存、来源/时间/权限/认知边界和 Agent/模型预算；P0 质量与延迟实测前不冻结算法、吞吐与缓存上限。
 3. 质量与性能权重如何转化为基准指标；桌面、Android APK、Termux 是否使用统一底线与分平台预算。
 4. 初始基线采集是先聚焦 Native Play + FS，还是同步覆盖其他后端；依据现实用户路径分层。
 5. 允许 dev 期存储格式直接硬切换，**不做旧数据兼容/迁移**；仍需确定新格式 S2 提交与恢复协议，并区分旧 dev 数据不兼容和当前格式下的异常丢失。
@@ -102,3 +103,4 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 - **2026-10-13 / 第十一轮开端**：用户认可第十轮方案 C，冻结三层有界缓存、复用 TaskScheduler 的前台优先预算调度、GC 的 Mark/Quarantine/Revalidate/Sweep 与可暂停恢复边界。具体水位、批量数和 Soak 验收门槛仍未冻结；下一轮讨论长期内存泄漏诊断及自动回收，不改产品分支。
 - **2026-10-13 / 第十二轮开端**：用户正式确认第十一轮方案 C：内存所有权/作用域与生命周期幂等释放、过期异步结果隔离、按设备压力自适应驱逐，以及重复往返/Retaining Paths/内存分项数据确认真正泄漏。避免通过 RSS 单一数字、频繁刷新或强制 GC 冒充修复；预算与 Soak 门槛留待实测。转入 P4 冷热启动、资源加载和多平台差异专项讨论，尚未实施产品代码。
 - **2026-10-13 / 第十二轮 P4 专项建档**：新增 [`startup-resources.md`](startup-resources.md)，确认前端/Node 启动已有并行、延后与埋点优化；发现 Android Kotlin 只校验 3 个预构建 Bundle，但 Node Webpack 要求 5 个，属于已证实的代码契约差异，实际 APK 回退风险尚需重现；`onPageFinished` 隐藏遮罩不等于 Native Play 可以发送。第十二轮建议测量驱动、分层 Ready 的方案 C，尚未获批。
+- **2026-10-13 / 第十三轮开端**：用户确认第十二轮 P4 方案 C：以真正可继续游戏的 PlayReady 为目标，分层测量 Server/Shell/Play，保留强一致 S2/权限校验，按需激活非关键模块，统一 Android Kotlin/构建/Node 的 Bundle 清单，并针对 Android/Termux 独立优化冷热启动。第十三轮转向 P3 记忆/上下文/Agent 计算性能与 RP 质量；尚未修改产品代码。
