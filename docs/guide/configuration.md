@@ -237,3 +237,15 @@ globalExtensionsPath: ./public/scripts/extensions/third-party
 
 - `serverPluginsPath`: Server-side plugin directory
 - `globalExtensionsPath`: Global frontend extension directory (where third-party extensions are installed)
+
+## Native external services, speech and optional work
+
+In **Runtime → Connections**, choose MCP or A2A and save the service endpoint. Remote services use HTTPS; literal loopback services can use HTTP. Public services can omit authentication. For authenticated services, select a stored Secret and choose authentication in the route.
+
+In **Runtime → Routes**, configure the exact MCP tools/resources or A2A skills and enable a local work budget. In an active Native session, **Runtime → Diagnostics → External services** lets you select disclosed public content and run the configured service. Saved A2A task references can be queried again after a restart while their original source and configuration remain valid. Unknown sends are not automatically repeated.
+
+For packages that declare an ExpressionPlan with disclosed Timeline messages, **Read aloud** appears on the assistant message. Choose a voice, generate the audio, then use the audio player's controls to play or stop it. Windows uses SAPI. Linux/Unix requires `espeak-ng` on the server's PATH; a custom installation can use `ATRIA_ESPEAK_EXECUTABLE` and `ATRIA_ESPEAK_DATA_PATH`. Missing providers retain the text view. Audio reports total duration, not phoneme timing.
+
+The route's **Required work reserve** can retain request/token allowance before optional rerank, model tasks or Native background tasks run. Necessary narration keeps the ordinary admission path. Missing required-work bounds refuse the selected optional work; changing a policy preserves already incurred costs.
+
+Authors can opt a `.a2ui.json` component into live public updates with `a2ui.stream: true`. The Host's `streamA2ui(instanceId, response.body, {signal, onAction})` consumes JSONL under the installed component/event policy; successful user actions still use the original Bridge. Invalid updates preserve the last valid view, and changed revisions or closed views stop further updates.

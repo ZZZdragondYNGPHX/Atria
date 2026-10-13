@@ -237,3 +237,15 @@ globalExtensionsPath: ./public/scripts/extensions/third-party
 
 - `serverPluginsPath`：服务端插件目录
 - `globalExtensionsPath`：全局前端扩展目录（第三方扩展安装位置）
+
+## Native 外部服务、语音和可选计算
+
+在 **Runtime → 连接** 中选择 MCP 或 A2A，保存服务端点。远程服务使用 HTTPS，字面 loopback 地址可以使用 HTTP。公开服务可选择无需认证；需要认证时选择已保存的 Secret，并在路由中设置认证方式。
+
+在 **Runtime → 路由** 中配置明确允许的 MCP 工具／资源或 A2A 技能，并启用本地工作额度。打开 Native 会话后，**Runtime → 诊断 → 外部服务** 可以选择已披露的公开内容并调用服务。已保存的 A2A 任务引用可在重启后重新查询，原来源和配置仍须有效；结果未知的发送不会自动重发。
+
+作品声明 ExpressionPlan 并授权披露 Timeline 消息时，助手消息上会出现**朗读**。选择声音、生成音频，再用音频控件播放或停止。Windows 使用 SAPI；Linux／Unix 的服务端 PATH 需要提供 `espeak-ng`，自定义安装可设置 `ATRIA_ESPEAK_EXECUTABLE` 和 `ATRIA_ESPEAK_DATA_PATH`。缺少可用提供方时保留正文；音频记录总时长，不提供音素级时间轴。
+
+路由的**必要工作留额**可以在可选重排、模型任务或 Native 后台任务执行前保留请求／Token 额度。必要正文沿原准入执行；必要工作上界未知时拒绝所选可选计算，修改策略也会保留已发生的消费。
+
+作者可以在 `.a2ui.json` 组件声明中设置 `a2ui.stream: true`。Host 的 `streamA2ui(instanceId, response.body, {signal, onAction})` 按已安装的组件／事件许可消费 JSONL；用户交互仍走原 Bridge。非法更新保留最后有效界面，版本变化或关闭视图会停止后续更新。
