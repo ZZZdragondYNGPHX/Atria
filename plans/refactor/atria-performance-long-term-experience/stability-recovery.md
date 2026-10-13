@@ -1,7 +1,7 @@
 # Atria 性能与长期体验 — P5 缓存、后台维护与长时间稳定性
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
-- **状态**：第十轮讨论模块，**技术组合与阈值尚未批准**。
+- **状态**：第十一轮讨论模块；**第十轮资源治理 C 已批准**，本轮泄漏判定、具体生命周期回收和测量验收尚未批准。
 - **设计入口**：[index.md](index.md)；P1 玩家交互见 [client-interaction.md](client-interaction.md)，P2 S2/历史可达性和存储提交见 [runtime-storage.md](runtime-storage.md)，P0 测量口径见 [measurement-and-evidence.md](measurement-and-evidence.md)。
 - **审计源码快照**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`。设计实施时先对实际已集成的 `main` 复核；本轮只有静态审计与文档，不代表已运行 Soak Test、性能基准或 Android 真机。
 - **范围**：新版本无旧数据兼容，不能通过持久缓存旧格式和双写增加长期技术债。任何资源预算不得削弱已经冻结的 S2 提交、无损历史和铁人终局只读档案保护。
@@ -24,13 +24,13 @@
 | Chat 快照已有有界缓存 | [`public/scripts/atri-chat-snapshot-cache.js` L1-L71](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/atri-chat-snapshot-cache.js#L1-L71) 保持活动目标和至多一份非活动快照 | 不要重复建设单独的全局聊天缓存；优先保证其它新缓存都有正确的可见性、生命周期与内存上限 |
 | 现有移动端测试不等于真机 | [`tests/frontend/memory-os-performance.smoke.mjs` L1-L48](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/tests/frontend/memory-os-performance.smoke.mjs#L1-L48) 明确使用 Chromium 移动视口、CPU 限速与真实 Worker，但不是 Android APK | 可以用于相应热路径回归，无法证明 Node.js Mobile/WebView/Android 的后台管理和系统回收行为 |
 
-## 第十轮架构候选（**未批准**）
+## 第十轮架构方案对照（**已选 C，保留历史候选**）
 
 | 方案 | 内存/缓存与维护策略 | 优点 | 风险 |
 | --- | --- | --- | --- |
 | A — 简单固定上限 | 所有缓存设置固定条目上限和定时清理；定期同步 GC | 快速落地、简单 | 数据大小差异大、定时执行与用户操作撞车、同步大任务阻塞 |
 | B — 完全手动维护 | 仅显式点击「清理/压缩」，运行中尽量不执行 GC | 降低前台意外卡顿 | 文件与 WAL 不断增长、长期运行退化和存储配额风险 |
-| **C — 前台优先的预算化后台维护（推荐）** | 分层缓存、按资源压力自适应预算，维护按优先级/分批/可中断边界执行，重启可续；持久对象只靠 S2 根与引用判断 | 与 S2/无损历史/多平台/长会话目标相容，并可扩展到 Android 生命周期 | 需要统一测量口径、避免重复调度器和复杂度膨胀 |
+| **C — 前台优先的预算化后台维护（第十轮已选）** | 分层缓存、按资源压力自适应预算，维护按优先级/分批/可中断边界执行，重启可续；持久对象只靠 S2 根与引用判断 | 与 S2/无损历史/多平台/长会话目标相容，并可扩展到 Android 生命周期 | 需要统一测量口径、避免重复调度器和复杂度膨胀 |
 
 ### 1. 三层缓存，缓存失效不等于核心数据删除
 
@@ -87,13 +87,59 @@
 
 性能预算/缓存上限/每批删除量/GC 宽限期/是否需独立 Worker 均**待 P0 实测**。最小相关验证不自动升级为全量测试、所有平台 E2E 或无穷 soak。
 
-## 第十轮建议选择
+## 第十轮已冻结的技术组合
 
-- **A：固定缓存上限 + 周期 GC**，简单但易周期性卡顿。
-- **B：长期只人工维护**，延迟最可控却存在无限增长风险。
-- **C：按压力有界的三层缓存 + 前台优先的统一预算调度 + 分批/可恢复/二次核验 GC**（**推荐，尚待用户决定**）。
+- **已选择 C**：按压力有界的热/温/冷三层缓存；复用 NativeTaskScheduler 的前台优先预算维护；Mark→Quarantine→Revalidate→分批 Sweep 的可恢复 GC。
+- **已否决 A/B 作为主方案**：固定周期大批量清理易导致卡顿；全部手工清理会长期积累空间和维护债务。
+- 所有可靠性约束沿用 [index.md](index.md)；缓存与普通运行内存回收不等于删除无损原文、S2 Commit 或只读终局档案。
+- **仍待 P0**：RAM/JS Heap/Node RSS 的水位、每批可运行时间、压缩/缓存字节配额、GC 宽限、独立 Worker 是否必要。
 
 需要明确的是：方案 C 不是要求引入新的调度框架、数据库或 Mux，优先复用 TaskScheduler 与 Native 的生命周期协议。正确性属于 S2 和无损历史的既定要求，不能作为「可以降低性能阈值」的借口。
+
+## 第十一轮：判断内存泄漏与选择自动回收机制（**讨论稿，未批准**）
+
+### 1. 先区分四种现象，禁止靠 RSS 一条曲线下结论
+
+| 现象 | 典型表现 | 正确验证与动作 |
+| --- | --- | --- |
+| 正常数据增长 | 新增正文、State、Branch 与媒体后，冷存储变大；当前窗口内有上限的热缓存保持稳定 | 使用相同的输入规模/相同活动窗口重新测试；允许持久化历史增长，但不能假定所有原文都必须驻留内存 |
+| 合法缓存预热 | 首次访问内存上涨，达到缓存预算后平台化，切换/关闭作用域后按策略回落 | 记录命中率、字节/对象预算、驱逐次数、缓存生命周期；不会为提高「回落率」无限清缓存 |
+| 真正的引用泄漏 | 反复打开/关闭同一资源、进入退出 Stage、创建销毁组件后，明明不再使用的对象仍由 Map、监听器、Timer、Promise、Worker、DOM/Blob URL 等引用 | 同一场景重复多轮，比较稳定后的 Live Object、Retaining Paths、Detached DOM、Worker/FD 数；先定位保留链与拥有者，再修复释放契约 |
+| 内存池保留 / 碎片 / 原生内存 | JS Live Heap 已稳定但进程 RSS 可能保持高位；Buffer/external/ArrayBuffer/WebView/GPU 与 JS Heap 不同步 | 分开记录 `heapUsed/heapTotal/external/arrayBuffers/rss` 与浏览器 JS Heap、图片/GPU 等可获得指标；不能把 RSS 未下降直接判为内存泄漏 |
+
+**验收不变量**：相同基线、相同仍在活动的对象集合，在完成若干次充分隔离的生命周期往返并经过合理的空闲/系统 GC 稳定阶段后，`可达的无效对象数` 不应持续无界增长；必须通过多轮趋势与 Retaining Path 确认，而非单次峰值判断。生产代码不依赖强制 `global.gc()` 或频繁刷新页面来粉饰泄漏，测试进程允许有控制地辅助触发 GC 作定位，需注明测试条件。
+
+### 2. 生命周期清理契约（推荐候选）
+
+- 给当前需要保留的热/温缓存明确 Owner：`SessionId + RevisionRoot/BranchId + View/ComponentId + GenerationEpoch` 等实际必要键。关闭 Session、切换 Branch/Revision、Stage 卸载、组件销毁及 Run 终结时，明确谁取消在途任务/请求、释放各类资源；**同一组件多次 Mount/Unmount 不能产生新一份永久订阅**。
+- 缓存设置可观察的 `byteBudget + entryBudget`，包含大对象的估算实际驻留成本；LRU/TTL 是可选驱逐策略，不等于引用正确性。一个对象既超时又被当前活跃事务需要时，不得作为无保护垃圾驱逐。
+- 使用 epoch/generation 或 AbortSignal 防止「旧分支请求返回后重新把已释放数据塞回缓存」；拒绝更新 stale projections，保证不会破坏来源认知、Revision 与命名绑定。
+- 组件与媒体清理含 EventListener/MutationObserver/ResizeObserver/Timer/Worker/Blob URL/Canvas/WebGL/图片 Decoder；Node 侧含任务 operation Map、listener、FD、file handles、native Buffer；内部退出回调应可重复调用（idempotent）。
+- 内存压力分级：先释放温层未使用 Revision/图片/向量投影，再缩减热层预取和窗口缓存；若压力仍高，暂停新后台工作与过量生成，显示明确错误或资源状态。**绝不取消处于不可中断 S2 提交原子区间的任务，也不清理持久化游戏史作为「优化」。**
+- 按非强制统一接口 `dispose()/abort()/release()` 建立易查的拥有者释放约定，避免新抽象层过度增长；优先在已有 Session Runtime、Native Play Host、Presentation Runtime、TaskScheduler 与 MemoryOS Scope 内加短而明确的资源生命周期约束。
+
+### 3. 长时间压力测试最小证据矩阵（候选）
+
+| 测试族 | 过程 | 需要观察 |
+| --- | --- | --- |
+| 稳态往返 | 多次开启关闭**同一** Session/Branch/History Drawer、组件/Hybrid Surface，固定活动信息量 | 各轮空闲后 Live Heap、Retained DOM/Listener、Worker 数是否趋稳；不能只看峰值 |
+| 负载增长 | 100→1k→5k→可选 20k 回合、许多保存点和分叉、相同活跃窗口尺寸 | 原始磁盘增长与热/温缓存驻留分离；长会话滚动/打字/流式显示 P50/P95，DOM 保持有界 |
+| 运行/记忆交叉 | 记忆检索、世界状态改变、跨 Branch 切换与任务并发 | pending Map、epoch scope、失效请求回收、重复订阅、Worker/Socket/FD，以及认知与 S2 权威不变量 |
+| 后台竞争 | 一边生成/存读档，一边索引构建/无损段封存/GC/SQLite WAL checkpoint | 前台长任务/帧卡顿、Node EventLoopDelay、GC 让路与最终完成率；强制中断/重启后数据仍可达 |
+| 移动长期运行 | Android APK WebView + Node 移动进程真实前后台/低内存回收；Termux 分离测 | 系统回收后合法 HEAD 恢复；各进程 RSS/Java Native Memory/JVM/JS 内存尽可能分项，不能把移动视口模拟当作真机 |
+| 只读终局档案 | 大量铁人终局档案只读查看、归档、永久删除某一个 Session | 终局档案仍可读但不可继续；GC 不误删其共享依赖，用户主动删除后安全回收 |
+
+测量控制：固定平台版本/引擎/数据集/主动缓存预算与后台工作量；记录冷启动、热启动、稳态、峰值和空闲后的同类样本，输出 P50/P95、长任务和泄漏保留链。采样、Heap Snapshot/CPU Profiling 自身会增加开销，应在受控诊断跑中开启，不能默认长期采集全量大型快照。
+
+### 4. 备选实施策略（第十一轮待用户定案）
+
+| 方案 | 核心 | 风险/适用 |
+| --- | --- | --- |
+| A — 阈值触发统一清理 | 一旦 RSS 超线清所有非活跃缓存，必要时刷新 UI/重启服务 | 容易错误区分 RSS 保留与泄漏，毁掉缓存命中率，也可能打断未确认的提交 |
+| B — 完全依赖 Runtime GC | 不做主动作用域释放和生命周期测试，寄希望 V8/浏览器自动回收 | GC 无法回收仍被引用的对象；事件监听器、Map、Worker/FD 等可持续泄漏 |
+| **C — 生命周期契约 + 自适应驱逐 + 稳态往返证据** | Owner/epoch、明确释放与预算，跨分支/组件退役时驱逐可重建缓存；通过多轮重复的 Heap/retainer/FD/任务证据定位真泄漏，后台受既定 TaskScheduler 限流 | **推荐**；保留平台原生 GC，避免额外通用内存管理框架；参数依 P0 实测 |
+
+**与第十轮 C 的区别**：第十轮冻结的是整体三层缓存与前台优先 GC；第十一轮候选 C 着重让内存生命周期的释放与诊断可证明有效。是否采用第十一轮 C 仍待用户答复，不预先固化任何内存上限或 Soak 小时数。
 
 ## 外部技术依据
 
@@ -106,3 +152,4 @@
 ## Material design changes
 
 - 2026-10-13 / 第十轮：新增 P5 模块，把内存/缓存与后台任务统一化候选建立在已批准的 S2、不可变历史、存读档驱动、铁人终局只读根之上；确认源码已有 scheduler、缓存与清理机制，不能重复发明平行子系统。具体三层资源调度策略与阈值仍待本轮定案。
+- **2026-10-13 / 第十一轮开端**：用户批准第十轮资源治理 C，冻结三层有界缓存、现有 TaskScheduler 的前台优先预算、Mark→Quarantine→Revalidate→Sweep 的可恢复 GC。新增十一轮泄漏分类、作用域释放与跨设备长时间测量的 A/B/C 方案，具体阈值和候选 C 仍待定案。
