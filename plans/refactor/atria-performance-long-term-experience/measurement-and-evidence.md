@@ -38,7 +38,7 @@
 - [Native Frontend 帧调度与组件虚拟列表](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/frontend/runtime.js)（不代表 Native Play 聊天已经虚拟化）；
 - [FS 聊天范围读取与补丁恢复日志](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/engines/fs-chat-range.js)；
 - [世界书/记忆基准](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/tests/performance/worldbook-performance-bench.mjs) 与 [移动视口烟雾测试](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/tests/frontend/memory-os-performance.smoke.mjs)（后者并非 Android 真机）；
-- [FS/SQLite/MySQL/PostgreSQL 存储说明](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/README.md)，当前默认 FS，替换存储需独立评估迁移安全。
+- [FS/SQLite/MySQL/PostgreSQL 存储说明](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/README.md)，审计版本默认 FS；dev 期允许直接替换并废弃旧数据格式，**不设跨版本迁移验收要求**，但仍应测量新格式的 S2 正确性。
 
 ## P0 负载族（候选，不是冻结验收门槛）
 
@@ -65,7 +65,7 @@
 
 **仍未验证的引擎事实**：FS 的原子写入是否在各平台、各资源/提交路径拥有足以覆盖 S2 的完整 fsync/目录持久化屏障；不要因为存在 write-file-atomic 就直接认定无断电丢失风险。
 
-**讨论取舍**：将 S1 定为默认强约束、将 S2 纳入关键游戏数据的目标，还是对所有已确认写入统一要求 S2？实际承诺必须以工程与故障注入证据为前提。S3 另列备份/迁移级别。
+**现行决定**：正式核心数据以 S2 为目标，缓存和可重建索引不必同级；实际承诺须以各引擎/设备的故障注入证据为前提，S3 单独考虑备份/设备损坏恢复。dev 期旧版本数据兼容与迁移不纳入目标。
 
 ## 观测口径
 
@@ -79,7 +79,7 @@
 ## 验收设计与边界
 
 - 生产实际路径（Native Play + Native Session）优先；单元 Fixture 是早期诊断，不足以证明完整 UX。
-- 保留版本/快照/事务/CAS、SourceRef、Checkpoint、存档和垃圾回收的不变量，任何格式或存储迁移须单独设计和批准。
+- 保留**当前受支持格式**的快照、事务/CAS、SourceRef、Checkpoint、存档和垃圾回收安全不变量；新开发版本可硬切换存储 schema，不要求兼容旧 dev 数据、历史迁移或双读双写。
 - 同设备同数据前后对照，报告 P50/P95、样本量、冷/热条件及回归。
 - 检查只覆盖实际修改部分与必要安全不变量，不以全项目构建/全平台矩阵作为每个小修改的默认门槛。
 - 需 Android 真机验证时才给出真机结论；没有就写待验证。
@@ -105,3 +105,8 @@
 ## Material design changes
 
 - 2026-10-13：新增 P0 模块；建立源码证据、假设、规模样本与可恢复性讨论入口。
+
+## 第 4 轮边界补充
+
+- 用户确认 Atria 尚未对外发布：dev 版允许直接弃用旧数据格式，不以历史兼容和迁移成本约束架构评估；性能比较可使用新架构基线与新数据集。
+- 这不削弱新版本 **S2** 目标：在同一受支持数据格式/版本下，被系统明确确认提交的核心资料必须按契约完成持久化与恢复。
