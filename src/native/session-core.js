@@ -191,6 +191,7 @@ export class SessionCore {
         assertNativeId(sessionId, 'session');
         if (options.revisionId) assertNativeId(options.revisionId, 'revision');
         const snapshot = await this._sessions.loadSnapshot(handle, sessionId, options);
+        if (snapshot.states[RUN_NAMESPACE]?.mode === 'ironman' && snapshot.states[RUN_NAMESPACE].status === 'dead') options = { ...options, skipPackageEdits: true };
         const { session } = snapshot;
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
         validateTaskRecords({ ...snapshot, manifest: installed.manifest });
@@ -358,7 +359,7 @@ export class SessionCore {
         assertNativeId(sessionId, 'session');
         const control = await this.runs.status(handle, sessionId);
         if (!control && !await this._sessions.get(handle, sessionId)) throw new NotFoundError('native session', { sessionId });
-        if (control?.status === 'terminal' && control.cleanup === 'pending') {
+        if (control?.status === 'terminal' && control.cleanup === 'pending' && !control.deathRevisionId) {
             try { await this._sessions.delete(handle, sessionId); } catch { /* The tombstone remains authoritative. */ }
         }
         const current = await this.runs.status(handle, sessionId);
@@ -511,12 +512,17 @@ export class SessionCore {
         validateHistory({ ...base, states });
         if (runAction === 'rewind' && branchId !== base.revision.branchId) states = rebindCognitionBranch(base,
             { ...base, states, timeline, revision: { ...base.revision, revisionId, branchId } });
-        const core = { schemaVersion: 1, parentRevisionId: checkpoint ? null : base.session.headRevisionId,
+        const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
             branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
                 headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
+        const appendOnly = timeline.length >= base.timeline.length && base.timeline.every((item, index) => {
+            const next = timeline[index]; return item.messageId === next.messageId && item.activeVariantId === next.activeVariantId;
+        });
+        const timelineRoot = await this._sessions.prepareTimelineIndex(handle, base.session.sessionId,
+            appendOnly ? base.timelineRoot : null, (appendOnly ? timeline.slice(base.timeline.length) : timeline).map(timelineSelection));
         const documents = { ...states,
             [SESSION_CORE_NAMESPACE]: core,
-            [TIMELINE_NAMESPACE]: timeline.map(timelineSelection),
+            [TIMELINE_NAMESPACE]: timelineRoot,
             [KNOWLEDGE_NAMESPACE]: validateKnowledgeBindingSet(knowledge, base.manifest, base.entryPoint),
         };
         const stateHeads = Object.fromEntries(Object.entries(documents)
@@ -536,7 +542,10 @@ export class SessionCore {
             for (const operation of nativeTaskScheduler.operations.values()) if (operation.owner === handle && operation.view.anchor?.sessionId === session.sessionId && operation.view.status !== 'finalizing') {
                 nativeTaskScheduler.cancel(handle, operation.view.operationId, 'cancelled');
             }
-            try { await this._sessions.delete(handle, session.sessionId); } catch { /* Durable terminal marker blocks access while cleanup remains pending. */ }
+            // Terminal ironman Sessions remain durable read-only history roots.
+        }
+        if (taskRecord?.kind === 'turn') {
+            try { await this._saves.maybeAutomatic(handle, snapshot); } catch (error) { snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
         }
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
@@ -1014,15 +1023,6 @@ export class SessionCore {
         const save = await this._saves.get(handle, sessionId, saveId);
         if (!save) throw new NotFoundError('native save point', { saveId });
         const current = await this._current(handle, sessionId, expectedRevisionId);
-        if (
-            current.session.headRevisionId === save.revisionId
-            && current.session.activeBranchId === save.branchId
-            && (current.session.illustrationHead ?? null) === (save.illustrationHead ?? null)
-        ) {
-            invalidateFrontendEpoch(handle, sessionId);
-            return current;
-        }
-
         // Loading a historical Save is non-destructive. The saved Revision is
         // an immutable source root; continuing publishes a new derived Branch
         // and leaves every pre-existing Branch HEAD untouched.
@@ -1036,7 +1036,9 @@ export class SessionCore {
             parentBranchId: source.revision.branchId,
             forkPoint,
             createdAt: Date.now(),
-            ...(save.displayName === undefined ? {} : { displayName: save.displayName }),
+            routeNumber: current.graph.length + 1,
+            sourceSaveId: save.saveId,
+            displayName: `${save.displayName ?? 'SavePoint'} · Route ${current.graph.length + 1}`,
         };
         return this._publish(handle, { ...source, session: current.session }, {
             branchId,

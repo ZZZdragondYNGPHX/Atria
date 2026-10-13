@@ -63,6 +63,10 @@ export async function prepareAuthorityTurn(core, owner, base, installed, selecti
     const source = player ? { ...base, timeline: [...base.timeline, player.entry], variants: [...base.variants, player.variant] } : base;
     const request = { ...selection, anchor: buildAuthorityObservation(source).anchor, playerMessageId: source.timeline.at(-1)?.messageId };
     const prepared = await prepareAuthorityTransaction(source, installed, request);
+    const { logic } = await createTaskWorld(base, installed);
+    if (logic.transactions.find(item => item.id === selection.transactionId)?.savePointBefore && base.states.atri_run?.mode !== 'ironman') {
+        await core.createSavePoint(owner, base.session.sessionId, { expectedRevisionId: base.revision.revisionId, kind: 'auto', displayName: 'Before choice' });
+    }
     const proof = Object.freeze({});
     preparations.set(proof, { core, owner, baseRevisionId: base.revision.revisionId, prepared, player, selection });
     return Object.freeze({ proof, prepared });

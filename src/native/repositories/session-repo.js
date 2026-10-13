@@ -6,6 +6,8 @@ import { normalizeSessionTitle } from '../../../public/scripts/native/session-ti
 import { ILLUSTRATION_NAMESPACE, assertIllustrationState, illustrationAnchorMatches } from '../../../public/shared/native-illustration-contract.js';
 import { readIllustrationState, validateIllustrationDependencies, illustrationContentHash } from '../session-illustrations.js';
 import { ContinuityRepo } from './continuity-repo.js';
+import { appendTimelineIndex, readTimelineIndex } from '../timeline-index.js';
+import { putWorldState } from '../state-delta.js';
 import {
     NATIVE_RESOURCE_KINDS,
     assertBranch,
@@ -59,6 +61,11 @@ export class SessionRepo {
     }
 
     withRunLock(handle, sessionId, operation) { return withSessionWrite(handle, sessionId, operation); }
+
+    async prepareTimelineIndex(handle, sessionId, root, additions) {
+        assertWritable();
+        return this._engine.withTransaction(handle, tx => appendTimelineIndex(tx, handle, sessionId, root, additions));
+    }
 
     _sessionKey(handle, sessionId) {
         return { kind: NATIVE_RESOURCE_KINDS.session, handle, sessionId };
@@ -141,6 +148,24 @@ export class SessionRepo {
             const next = { ...existing.doc, updatedAt: Math.max(Date.now(), existing.doc.updatedAt || 0) };
             if (title) next.displayTitle = title; else delete next.displayTitle;
             return putMutable(tx, key, assertSession(next), { expectedIntegrity: existing.integrity });
+        }));
+    }
+
+    async setExperienceMetadata(handle, sessionId, { expectedRevisionId, autoSavePolicy, branchId, displayName, archived }) {
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
+            assertWritable(); await assertRunAccess(tx, handle, sessionId, 'inspect');
+            const key = this._sessionKey(handle, sessionId), record = await tx.getResource(key);
+            if (!record || record.doc.headRevisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict');
+            const next = { ...record.doc };
+            if (autoSavePolicy !== undefined) next.autoSavePolicy = autoSavePolicy;
+            if (branchId) {
+                if (!await tx.getResource(this._branchKey(handle, sessionId, branchId))) throw new NotFoundError('native branch');
+                if (displayName !== undefined && (typeof displayName !== 'string' || !displayName.trim() || displayName.length > 256)) throw new TypeError('Invalid Branch name');
+                if (archived !== undefined && typeof archived !== 'boolean') throw new TypeError('Invalid Branch archive state');
+                next.branchMetadata = { ...next.branchMetadata, [branchId]: { ...next.branchMetadata?.[branchId],
+                    ...(displayName === undefined ? {} : { displayName: displayName.trim() }), ...(archived === undefined ? {} : { archived }) } };
+            }
+            return putMutable(tx, key, assertSession(next), { expectedIntegrity: record.integrity });
         }));
     }
 
@@ -239,6 +264,7 @@ export class SessionRepo {
     }
 
     async _readTimelineProjection(tx, handle, sessionId, revisionId = null) {
+        await assertRunAccess(tx, handle, sessionId, 'inspect', revisionId || undefined);
         const session = assertSession(await readCheckedDocument(tx, this._sessionKey(handle, sessionId)));
         if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
         const target = revisionId || session.headRevisionId;
@@ -259,7 +285,7 @@ export class SessionRepo {
             TIMELINE_NAMESPACE,
             timelineHead,
         ));
-        if (hashNativeDocument(selections) !== timelineHead || !Array.isArray(selections)) {
+        if (hashNativeDocument(selections) !== timelineHead || selections.schemaVersion !== 2) {
             throw new Error('Timeline state head integrity mismatch');
         }
         return { session, revision, selections };
@@ -333,7 +359,7 @@ export class SessionRepo {
                 end === null ? selections.length : end,
                 start + boundedLimit,
             );
-            const selected = selections.slice(start, stop).map((item, index) => ({ ...item, sequence: start + index }));
+            const selected = (await readTimelineIndex(tx, handle, sessionId, selections, start, stop)).map((item, index) => ({ ...item, sequence: start + index }));
             return {
                 sessionId,
                 revisionId: revision.revisionId,
@@ -363,7 +389,7 @@ export class SessionRepo {
                 sessionId,
                 revisionId,
             );
-            const selected = selections.map((item, sequence) => ({ ...item, sequence }))
+            const selected = (await readTimelineIndex(tx, handle, sessionId, selections)).map((item, sequence) => ({ ...item, sequence }))
                 .filter(item => requested.has(item.messageId));
             const found = new Set(selected.map(item => item.messageId));
             const missingMessageIds = [...requested].filter(id => !found.has(id));
@@ -434,11 +460,9 @@ export class SessionRepo {
             await new RunControl(this).assert(handle, sessionId, 'write');
             assertWritable();
             const doc = cloneNativeDocument(value, 'SessionState');
-            return this._engine.withTransaction(handle, tx => putImmutable(
-                tx,
-                this._stateKey(handle, sessionId, namespace, head),
-                doc,
-            ));
+            return this._engine.withTransaction(handle, tx => namespace === 'atri_world_state'
+                ? putWorldState(tx, this._stateKey(handle, sessionId, namespace, head), doc)
+                : putImmutable(tx, this._stateKey(handle, sessionId, namespace, head), doc));
         });
     }
 
@@ -574,11 +598,16 @@ export class SessionRepo {
                 await putImmutable(tx, this._timelineKey(handle, session.sessionId, entry.branchId, entry.messageId), entry);
             }
             for (const [namespace, value] of Object.entries(states)) {
-                await putImmutable(tx, this._stateKey(handle, session.sessionId, namespace, hashNativeDocument(value)), value);
+                const stateKey = this._stateKey(handle, session.sessionId, namespace, hashNativeDocument(value));
+                if (namespace === 'atri_world_state') {
+                    const previousRevision = existing?.doc.headRevisionId && await getNativeDocument(tx, this._revisionKey(handle, session.sessionId, existing.doc.headRevisionId));
+                    await putWorldState(tx, stateKey, value, previousRevision?.stateHeads.atri_world_state);
+                } else await putImmutable(tx, stateKey, value);
             }
             // Mutable presentation metadata belongs to the current Session root,
             // not the generation/restore draft captured before a concurrent rename.
             const published = { ...session, updatedAt: Math.max(session.updatedAt, existing?.doc.updatedAt || 0) };
+            for (const field of ['autoSavePolicy', 'branchMetadata']) if (existing?.doc[field] !== undefined) published[field] = existing.doc[field];
             if (existing) { if (existing.doc.displayTitle == null) delete published.displayTitle; else published.displayTitle = existing.doc.displayTitle; }
             const branchHeads = { ...existing?.doc.illustrationHeads };
             if (existing?.doc.illustrationHead) branchHeads[existing.doc.activeBranchId] = existing.doc.illustrationHead;
@@ -595,7 +624,7 @@ export class SessionRepo {
                 const history = snapshot.states.atri_lifecycle?.history;
                 const previousRevision = (await tx.getResource(this._revisionKey(handle, session.sessionId, expectedRevisionId)))?.doc;
                 const previous = previousRevision && (await tx.getResource(this._stateKey(handle, session.sessionId, 'atri_lifecycle', previousRevision.stateHeads.atri_lifecycle)))?.doc;
-                if (!existing || snapshot.core.parentRevisionId !== null || snapshot.timeline.length > 1 || snapshot.timeline.some(entry => entry.role !== 'assistant') || !history
+                if (!existing || snapshot.core.parentRevisionId !== expectedRevisionId || !history
                     || history.checkpoint !== history.transactions || history.checkpoint <= (previous?.history?.checkpoint ?? 0)) throw new TypeError('Invalid History checkpoint');
             } else if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
             await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
@@ -605,11 +634,6 @@ export class SessionRepo {
             const updated = await readRunControl(tx, handle, session.sessionId);
             if (updated) {
                 await writeRunControl(tx, handle, session.sessionId, updated);
-                if (updated.mode === 'ironman') {
-                    for (const saved of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId: session.sessionId })) {
-                        if (saved.doc.revisionId !== session.headRevisionId) await tx.deleteResource(saved.key);
-                    }
-                }
             }
             return snapshot;
         })));
@@ -705,7 +729,9 @@ export class SessionRepo {
                 if (hashNativeDocument(record.data) !== head) {
                     throw new ConflictError('native_session_import_state_integrity', { namespace, head });
                 }
-                await putImmutable(tx, this._stateKey(handle, sessionId, namespace, head), record.data);
+                const stateKey = this._stateKey(handle, sessionId, namespace, head);
+                if (namespace === 'atri_world_state') await putWorldState(tx, stateKey, record.data);
+                else await putImmutable(tx, stateKey, record.data);
             }
             for (const revision of revisions) {
                 if (revision.sessionId !== sessionId) throw new TypeError('Imported Revision Session mismatch');
@@ -739,6 +765,7 @@ export class SessionRepo {
                 ...(control ?? { schemaVersion: 1, operations: {}, background: {}, highWaterTurn: 0 }),
                 ...(!control && runContinuation ? runContinuation : {}),
                 ...(run ? { mode: run.mode, status: run.status === 'dead' && run.mode === 'ironman' ? 'terminal' : run.status, sequence: Math.max(control?.sequence ?? 0, run.sequence),
+                    ...(run.mode === 'ironman' && run.status === 'dead' ? { deathRevisionId: session.headRevisionId, cleanup: 'archived' } : {}),
                     origin: { packageId: session.packageId, packageVersionId: session.packageVersionId, entryPointId: session.entryPointId, packageContentHash: session.packageContentHash } } : {}),
                 headRevisionId: session.headRevisionId,
                 ...(resume ? { ...resume.control, resumeSourceRevisionId: resume.sourceRevisionId } : {}),
@@ -794,6 +821,52 @@ export class SessionRepo {
                 branches.push({ ...branch, headRevisionId: node.headRevisionId, forkRevisionId: node.forkRevisionId });
             }
             return { sessionId, activeBranchId: session.activeBranchId, headRevisionId: session.headRevisionId, branches, revisions };
+        }));
+    }
+
+    async reachabilitySnapshot(handle, sessionId) {
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
+            const sessionKey = this._sessionKey(handle, sessionId), session = await tx.getResource(sessionKey);
+            if (!session) throw new NotFoundError('native session');
+            const saves = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId });
+            const revisions = await this._reachableRevisions(tx, handle, sessionId);
+            const keys = new Map(), assets = new Set();
+            const id = key => JSON.stringify(Object.keys(key).sort().map(field => [field, key[field]]));
+            const findAssets = value => {
+                if (!value || typeof value !== 'object') return;
+                if (typeof value.assetId === 'string') assets.add(value.assetId);
+                for (const child of Object.values(value)) findAssets(child);
+            };
+            const mark = async key => {
+                if (keys.has(id(key))) return;
+                const record = await tx.getResource(key);
+                if (!record || hashNativeDocument(record.doc) !== record.integrity) throw new Error('Reachable Native dependency missing or corrupt');
+                keys.set(id(key), key); findAssets(record.doc);
+                if (key.kind === NATIVE_RESOURCE_KINDS.sessionState) {
+                    if (key.namespace === 'atri_timeline_index' && record.doc.level) for (const child of record.doc.children) await mark({ ...key, head: child.head });
+                    if (key.namespace === TIMELINE_NAMESPACE && record.doc.tree) await mark({ ...key, namespace: 'atri_timeline_index', head: record.doc.tree.head });
+                    if (key.namespace === 'atri_world_state' && record.doc.kind === 'delta') await mark({ ...key, head: record.doc.baseHead });
+                }
+            };
+            await mark(sessionKey);
+            const controlKey = { kind: NATIVE_RESOURCE_KINDS.runControl, handle, sessionId };
+            if (await tx.getResource(controlKey)) await mark(controlKey);
+            for (const save of saves) await mark(save.key);
+            for (const revisionId of revisions) {
+                await mark(this._revisionKey(handle, sessionId, revisionId));
+                const revision = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+                for (const [namespace, head] of Object.entries({ ...revision.stateHeads, ['atri_knowledge']: revision.knowledgeHead })) await mark(this._stateKey(handle, sessionId, namespace, head));
+                const core = await getNativeDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, revision.stateHeads[SESSION_CORE_NAMESPACE]));
+                for (const node of core.branches) await mark(this._branchKey(handle, sessionId, node.branchId));
+                const root = await getNativeDocument(tx, this._stateKey(handle, sessionId, TIMELINE_NAMESPACE, revision.stateHeads[TIMELINE_NAMESPACE]));
+                for (const selection of await readTimelineIndex(tx, handle, sessionId, root)) {
+                    await mark(this._timelineKey(handle, sessionId, selection.branchId, selection.messageId));
+                    for (const variantId of selection.variantIds) await mark(this._variantKey(handle, sessionId, selection.messageId, variantId));
+                }
+            }
+            for (const head of new Set([session.doc.illustrationHead, ...Object.values(session.doc.illustrationHeads ?? {}), ...saves.map(item => item.doc.illustrationHead)].filter(Boolean))) await mark(this._stateKey(handle, sessionId, 'atri_illustrations', head));
+            return { schemaVersion: 1, sessionId, generation: hashNativeDocument({ root: session.integrity, saves: saves.map(item => item.integrity).sort() }),
+                revisionIds: [...revisions], keys: [...keys.values()], assetIds: [...assets], terminal: session.doc.headRevisionId === (await readRunControl(tx, handle, sessionId))?.deathRevisionId };
         }));
     }
 

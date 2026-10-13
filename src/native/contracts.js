@@ -1,5 +1,6 @@
 import { PERSONA_NAMESPACE, assertPersonaState, assertPersonaIdentity, personaIdentity, personaAvatars } from './persona-contract.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
+import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 export { assertMessageProjection, assertTurnEnvelope, assertConversationThread } from '../../public/shared/native-message-contract.js';
@@ -354,6 +355,16 @@ export function assertProject(value) {
 }
 
 export function assertSession(value) {
+    if (value.branchMetadata !== undefined) {
+        plain(value.branchMetadata, 'Session.branchMetadata');
+        if (Object.keys(value.branchMetadata).length > 2048) throw new TypeError('Too many Branch labels');
+        for (const [id, metadata] of Object.entries(value.branchMetadata)) {
+            assertNativeId(id, 'branch'); plain(metadata, 'Branch metadata');
+            if (Object.keys(metadata).some(field => !['displayName', 'archived'].includes(field))
+                || (metadata.archived !== undefined && typeof metadata.archived !== 'boolean')) throw new TypeError('Invalid Branch metadata');
+            if (metadata.displayName !== undefined) text(metadata.displayName, 'Branch label', { maxLength: 256 });
+        }
+    }
     noLegacyIdentity(value, 'Session');
     const illustrationHeads = {};
     if (value.illustrationHeads !== undefined) {
@@ -373,6 +384,8 @@ export function assertSession(value) {
             ? null
             : assertNativeId(value.headRevisionId, 'revision', 'Session.headRevisionId'),
         ...(value.displayTitle == null ? {} : { displayTitle: text(value.displayTitle, 'Session.displayTitle', { maxLength: 256 }) }),
+        ...(value.autoSavePolicy === undefined ? {} : { autoSavePolicy: assertAutoSavePolicy(value.autoSavePolicy) }),
+        ...(value.branchMetadata === undefined ? {} : { branchMetadata: cloneJson(value.branchMetadata, 'Session.branchMetadata') }),
         ...(value.illustrationHead == null ? {} : { illustrationHead: assertIllustrationHead(value.illustrationHead) }),
         ...(Object.keys(illustrationHeads).length ? { illustrationHeads } : {}),
         createdAt: timestamp(value.createdAt, 'Session.createdAt'),
@@ -381,6 +394,7 @@ export function assertSession(value) {
 }
 
 export function assertBranch(value) {
+    if (value.routeNumber !== undefined && (!Number.isSafeInteger(value.routeNumber) || value.routeNumber < 1)) throw new TypeError('Invalid route number');
     noLegacyIdentity(value, 'Branch');
     let forkPoint = null;
     if (value.forkPoint != null) {
@@ -400,6 +414,8 @@ export function assertBranch(value) {
             : assertNativeId(value.parentBranchId, 'branch', 'Branch.parentBranchId'),
         forkPoint,
         ...(value.displayName == null ? {} : { displayName: text(value.displayName, 'Branch.displayName', { maxLength: 256 }) }),
+        ...(value.routeNumber === undefined ? {} : { routeNumber: value.routeNumber }),
+        ...(value.sourceSaveId === undefined ? {} : { sourceSaveId: assertNativeId(value.sourceSaveId, 'savePoint') }),
         createdAt: timestamp(value.createdAt, 'Branch.createdAt'),
     });
 }
@@ -494,6 +510,13 @@ export function assertSavePoint(value) {
         ...(value.illustrationHead == null ? {} : { illustrationHead: assertIllustrationHead(value.illustrationHead) }),
         createdAt: timestamp(value.createdAt, 'SavePoint.createdAt'),
     });
+}
+
+export function assertAutoSavePolicy(value) {
+    if (!value || typeof value.enabled !== 'boolean' || !Number.isSafeInteger(value.intervalMs) || value.intervalMs < 1000
+        || !Number.isSafeInteger(value.retain) || value.retain < 1 || value.retain > 1000
+        || Object.keys(value).some(field => !['enabled', 'intervalMs', 'retain'].includes(field))) throw new TypeError('Invalid automatic SavePoint policy');
+    return { enabled: value.enabled, intervalMs: value.intervalMs, retain: value.retain };
 }
 
 export function assertAssetRef(value) {
@@ -845,6 +868,15 @@ export function assertAtriaSave(value) {
     const saveById = new Map(savePoints.map(item => [item.saveId, item]));
     const assetIds = new Set(assetRefs.map(item => item.assetId));
     const stateKeys = new Set(stateRecords.map(item => item.namespace + '\0' + item.head));
+    const stateMap = new Map(stateRecords.map(item => [item.namespace + '\0' + item.head, item.data]));
+    const readSelections = revision => {
+        const root = stateMap.get('atri_timeline\0' + revision.stateHeads.atri_timeline);
+        return timelineSelections(root, head => {
+            const node = stateMap.get(TIMELINE_INDEX_NAMESPACE + '\0' + head);
+            if (!node || hashNativeDocument(node) !== head) throw new TypeError('Missing or corrupt Timeline index closure');
+            return node;
+        });
+    };
 
     if (!branchIds.has(session.activeBranchId)) throw new TypeError('Session.activeBranchId is missing from .atriasave closure');
     if (!revisionById.has(root.revisionId)) throw new TypeError('root.revisionId is missing from .atriasave closure');
@@ -930,7 +962,7 @@ export function assertAtriaSave(value) {
                 || item.promptVersions?.some(version => version.requestSnapshot.contextPlan.source.sessionId !== session.sessionId)) throw new TypeError('Invalid illustration context session in save');
             const { anchor } = item;
             const variant = variantById.get(anchor.variantId), revision = revisionById.get(anchor.revisionId);
-            const timeline = revision && stateRecords.find(item => item.namespace === 'atri_timeline' && item.head === revision.stateHeads.atri_timeline)?.data;
+            const timeline = revision && readSelections(revision);
             if (variant?.messageId !== anchor.messageId || !illustrationAnchorMatches(anchor, variant.content)
                 || illustrationContentHash(variant.content) !== anchor.contentHash
                 || !timeline?.some(item => item.messageId === anchor.messageId && item.activeVariantId === anchor.variantId)) throw new TypeError('Invalid illustration source in save');
@@ -973,7 +1005,9 @@ export function assertAtriaSave(value) {
             || core?.branches?.length !== 1 || core.branches[0].headRevisionId !== root.revisionId || core.branches[0].forkRevisionId) throw new TypeError('Invalid ironman head-only resume closure');
         const requiredStates = new Set([...Object.entries(revision.stateHeads).map(([namespace, head]) => namespace + '\0' + head), 'atri_knowledge\0' + revision.knowledgeHead]);
         if (session.illustrationHead) requiredStates.add(ILLUSTRATION_NAMESPACE + '\0' + session.illustrationHead);
-        const timeline = stateRecords.find(item => item.namespace === 'atri_timeline' && item.head === revision.stateHeads.atri_timeline)?.data;
+        const timeline = readSelections(revision);
+        // Index nodes are authoritative members of the current root closure.
+        for (const record of stateRecords) if (record.namespace === TIMELINE_INDEX_NAMESPACE) requiredStates.add(record.namespace + '\0' + record.head);
         const selectedMessages = new Set(timeline?.map(item => item.messageId));
         const selectedVariants = new Set(timeline?.flatMap(item => item.variantIds));
         if (!Array.isArray(timeline) || stateRecords.length !== requiredStates.size || stateRecords.some(item => !requiredStates.has(item.namespace + '\0' + item.head))

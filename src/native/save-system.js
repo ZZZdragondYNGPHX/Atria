@@ -22,6 +22,8 @@ import {
 import { validateKnowledgeBindingSet } from './session-knowledge.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { ILLUSTRATION_NAMESPACE, assertIllustrationState, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
+import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
+import { timelineIndexClosure } from './timeline-index.js';
 
 const NON_PORTABLE_STATE_PATTERNS = Object.freeze([
     /^atri_embeddings(?:_|$)/,
@@ -174,12 +176,16 @@ export class NativeSaveSystem {
             }
 
             const timelineHead = revision.stateHeads[TIMELINE_NAMESPACE];
-            const timeline = timelineHead
+            const timelineRoot = timelineHead
                 ? states.get(TIMELINE_NAMESPACE + '\0' + timelineHead)?.data
                 : null;
-            if (!Array.isArray(timeline)) {
+            if (!timelineRoot) {
                 throw new NativeDependencyError('native_save_timeline_missing', { sessionId, revisionId });
             }
+            const indexNodes = await timelineIndexClosure(timelineRoot,
+                head => this._sessions.getState(handle, sessionId, TIMELINE_INDEX_NAMESPACE, head));
+            for (const [head, data] of indexNodes) states.set(TIMELINE_INDEX_NAMESPACE + '\0' + head, { namespace: TIMELINE_INDEX_NAMESPACE, head, data });
+            const timeline = timelineSelections(timelineRoot, head => indexNodes.get(head));
             for (const selection of timeline) {
                 if (!entries.has(selection.messageId)) {
                     const entry = await this._sessions.getTimelineEntry(
@@ -266,7 +272,7 @@ export class NativeSaveSystem {
 
     async _buildSaveLocked(handle, sessionId, { scope, saveId = null }) {
         const control = await this._core.runs.assert(handle, sessionId, 'export');
-        if (control?.mode === 'ironman') scope = 'resume';
+        if (control?.mode === 'ironman' && control.status !== 'terminal') scope = 'resume';
         const current = await this._sessions.get(handle, sessionId);
         if (!current) throw new NativeDependencyError('native_save_session_missing', { sessionId });
 

@@ -1,9 +1,10 @@
 import { NATIVE_RESOURCE_KINDS as K, assertBranch, assertSessionRevision, assertTimelineEntry, assertVariant } from './contracts.js';
 import { assertNativeId } from './identity.js';
-import { hashNativeDocument } from './repositories/common.js';
+import { hashNativeDocument, getNativeDocument } from './repositories/common.js';
 import { NotFoundError } from '../storage/errors.js';
 import { ILLUSTRATION_NAMESPACE, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
 import { readIllustrationState } from './session-illustrations.js';
+import { readTimelineIndex } from './timeline-index.js';
 
 export const SESSION_CORE_NAMESPACE = 'atri_session_core';
 export const TIMELINE_NAMESPACE = 'atri_timeline';
@@ -16,7 +17,7 @@ export async function readCheckedDocument(tx, key) {
     const record = await tx.getResource(key);
     if (!record) throw new NotFoundError('native session dependency', { key });
     if (hashNativeDocument(record.doc) !== record.integrity) throw new Error('Native Session resource integrity mismatch');
-    return record.doc;
+    return key.kind === K.sessionState && key.namespace === 'atri_world_state' ? getNativeDocument(tx, key) : record.doc;
 }
 
 export async function readSessionSnapshot(tx, handle, session, value) {
@@ -30,8 +31,9 @@ export async function readSessionSnapshot(tx, handle, session, value) {
         states[namespace] = state;
     }
     const core = states[SESSION_CORE_NAMESPACE];
-    const timeline = states[TIMELINE_NAMESPACE];
-    if (core?.schemaVersion !== 1 || !Array.isArray(core.branches) || !Array.isArray(timeline)) {
+    const timelineRoot = states[TIMELINE_NAMESPACE];
+    const timeline = await readTimelineIndex(tx, handle, sessionId, timelineRoot);
+    if (core?.schemaVersion !== 1 || !Array.isArray(core.branches)) {
         throw new TypeError('Missing Native Session Core snapshot');
     }
     if (core.parentRevisionId !== null) assertNativeId(core.parentRevisionId, 'revision');
@@ -66,7 +68,9 @@ export async function readSessionSnapshot(tx, handle, session, value) {
                 throw new Error('Fork Timeline integrity mismatch');
             }
             const point = node.branch.forkPoint;
-            const matches = point === null ? forkTimeline.length === 0 : forkTimeline.some(item =>
+            const forkSelections = await readTimelineIndex(tx, handle, sessionId, forkTimeline,
+                Math.max(0, forkTimeline.length - 1), forkTimeline.length);
+            const matches = point === null ? forkTimeline.length === 0 : forkSelections.some(item =>
                 item.messageId === point.messageId && item.variantIds.includes(point.variantId));
             if (fork.sessionId !== sessionId || fork.branchId !== node.branch.parentBranchId || !matches) {
                 throw new TypeError('Branch fork point mismatch');
@@ -130,5 +134,5 @@ export async function readSessionSnapshot(tx, handle, session, value) {
     for (const namespace of [SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE]) delete states[namespace];
     const illustrationHead = revision.branchId === session.activeBranchId ? session.illustrationHead : session.illustrationHeads?.[revision.branchId];
     const illustrations = illustrationHead ? selectIllustrations(await readIllustrationState(tx, handle, sessionId, illustrationHead), variants) : null;
-    return { session, revision, graph, timeline: entries, variants, states, knowledge, core, ...(illustrations ? { illustrations } : {}) };
+    return { session, revision, graph, timeline: entries, timelineRoot, variants, states, knowledge, core, ...(illustrations ? { illustrations } : {}) };
 }

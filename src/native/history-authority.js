@@ -224,8 +224,7 @@ export function checkpointHistory(base, states, timeline, taskRecord) {
         retireInvocation(h, r.idempotencyKey); return false;
     });
     if (states.atri_game_runtime) states.atri_game_runtime.events = [];
-    // Keep the latest approved reply readable, but not its user/pre-action
-    // anchor. Retry explicitly expires across this boundary; new turns can retry.
-    // Earlier raw dialogue is represented by Chronicle, not replayable transcript.
-    return { timeline: timeline.at(-1)?.role === 'assistant' ? [timeline.at(-1)] : [], parentRevisionId: null };
+    // Compact derived model/task state only. Original dialogue and Revision
+    // ancestry remain authoritative, lossless, and reachable through GC.
+    return { timeline, parentRevisionId: base.session.headRevisionId };
 }

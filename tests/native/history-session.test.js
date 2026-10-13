@@ -45,7 +45,7 @@ function fixture() {
 }
 const envelope = { schemaVersion: 1, narrative: 'The authorized note change is recorded.', outcomes: [], diagnostics: [] };
 describe.each(CONTRACT_HARNESSES)('History checkpoint / SaveSystem - $name', ({ make }) => {
-    test('CAS, portable checkpoint, archived replay refusal, restore and later Retry', async () => {
+    test('CAS, lossless checkpoint, archived replay refusal and SavePoint restore', async () => {
         const source = await make(), target = await make();
         try {
             const { f, archive } = fixture(), svc = services(source), next = services(target);
@@ -70,7 +70,7 @@ describe.each(CONTRACT_HARNESSES)('History checkpoint / SaveSystem - $name', ({ 
                 return service.core.finalizeTurn(handle, state.session.sessionId, { invocationId: 'history-' + n, authorityProof: p.proof, envelope }, { expectedRevisionId: state.revision.revisionId });
             };
             for (let i = 1; i <= 16; i++) s = await act(svc, source.handle, s, i);
-            expect(s.timeline).toHaveLength(1); expect(s.core.parentRevisionId).toBeNull();
+            expect(s.timeline).toHaveLength(beforeRefusal.timeline.length + 32); expect(s.core.parentRevisionId).not.toBeNull();
             expect(s.states.atri_lifecycle.history.turns).toBe(16);
             expect(s.states.atri_task_results.records).toHaveLength(0);
             expect(s.states.atri_lifecycle.taskTombstones).toEqual([expect.objectContaining({ invocationId: advice.invocationId, fingerprint: advice.fingerprint })]);
@@ -80,8 +80,6 @@ describe.each(CONTRACT_HARNESSES)('History checkpoint / SaveSystem - $name', ({ 
             let restored = await next.saveSystem.importSave(target.handle, exported.archive);
             expect(restored.states).toEqual(s.states); expect(restored.timeline).toEqual(s.timeline);
             await expect(next.core.recordTaskResult(target.handle, restored.session.sessionId, advice, { expectedRevisionId: restored.revision.revisionId })).rejects.toThrow('compacted');
-            const archived = await next.core.inspectReplyRetry(target.handle, restored.session.sessionId);
-            expect(archived.eligible).toBe(false); expect(archived.reason).toContain('checkpoint');
             expect((await next.core.load(target.handle, restored.session.sessionId)).revision).toEqual(restored.revision);
             await expect(next.core.finalizeTurn(target.handle, restored.session.sessionId, { invocationId: 'history-1', envelope }, { expectedRevisionId: restored.revision.revisionId })).rejects.toThrow('Archived');
             restored = await act(next, target.handle, restored, 17);
@@ -90,9 +88,7 @@ describe.each(CONTRACT_HARNESSES)('History checkpoint / SaveSystem - $name', ({ 
                 { type: 'lifecycle', invocationId: 'host-clock', action: { kind: 'clock.advance', commandId: 'advance', ticks: 1 } }, { expectedRevisionId: restored.revision.revisionId });
             expect(restored.states.atri_lifecycle.history.turns).toBe(17);
             expect(restored.states.atri_lifecycle.history.hot.at(-1).origin).toBe('host');
-            const messageId = restored.timeline.at(-1).messageId;
-            expect(await next.core.inspectReplyRetry(target.handle, restored.session.sessionId, { messageId })).toMatchObject({ messageId, eligible: true });
-            const retry = await next.core.retryReply(target.handle, restored.session.sessionId, { messageId, expectedRevisionId: restored.revision.revisionId });
+            const retry = await next.core.restoreSavePoint(target.handle, restored.session.sessionId, save.saveId, { expectedRevisionId: restored.revision.revisionId });
             expect(retry.states.atri_lifecycle.history.turns).toBe(16);
             expect((await next.core.getHistory(target.handle, restored.session.sessionId, { kind: 'fact', limit: 1 })).items).toHaveLength(1);
         } finally { await source.cleanup(); await target.cleanup(); }

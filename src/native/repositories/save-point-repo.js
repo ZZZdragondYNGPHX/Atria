@@ -1,6 +1,7 @@
 import { SessionRepo, withSessionWrite } from './session-repo.js';
 import { assertRunAccess } from '../run-control.js';
-import { NATIVE_RESOURCE_KINDS, assertSavePoint } from '../contracts.js';
+import { NATIVE_RESOURCE_KINDS, assertSavePoint, assertAutoSavePolicy } from '../contracts.js';
+import { createNativeId } from '../identity.js';
 import { NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { getNativeDocument, listNativeDocuments, putImmutable } from './common.js';
@@ -41,6 +42,19 @@ export class SavePointRepo {
         }));
     }
 
+    async maybeAutomatic(handle, snapshot, { now = Date.now() } = {}) {
+        const policy = assertAutoSavePolicy(snapshot.session.autoSavePolicy ?? { enabled: true, intervalMs: 300000, retain: 12 });
+        if (!policy.enabled || snapshot.states.atri_run?.status === 'dead' || snapshot.states.atri_run?.mode === 'pending') return null;
+        const saves = await this.list(handle, snapshot.session.sessionId);
+        const automatic = saves.filter(item => item.kind === 'auto');
+        if (automatic.some(item => now - item.createdAt < policy.intervalMs)) return null;
+        const save = await this.create(handle, { sessionId: snapshot.session.sessionId, saveId: createNativeId('savePoint'),
+            branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, kind: 'auto', createdAt: now });
+        // Only expire automatic anchors. Revision ancestry preserves the raw history.
+        for (const item of automatic.slice(policy.retain - 1)) await this.delete(handle, snapshot.session.sessionId, item.saveId);
+        return save;
+    }
+
     async create(handle, value) {
         assertWritable();
         const savePoint = assertSavePoint(value);
@@ -48,7 +62,7 @@ export class SavePointRepo {
             throw new NotFoundError('committed native session revision', { revisionId: savePoint.revisionId });
         }
         return withSessionWrite(handle, savePoint.sessionId, () => this._engine.withTransaction(handle, async (tx) => {
-            const control = await assertRunAccess(tx, handle, savePoint.sessionId, 'save', savePoint.revisionId);
+            await assertRunAccess(tx, handle, savePoint.sessionId, 'save', savePoint.revisionId);
             const revision = await getNativeDocument(tx, {
                 kind: NATIVE_RESOURCE_KINDS.sessionRevision,
                 handle,
@@ -64,11 +78,6 @@ export class SavePointRepo {
             if (savePoint.illustrationHead) await validateIllustrationDependencies(tx, handle, savePoint.sessionId,
                 await readIllustrationState(tx, handle, savePoint.sessionId, savePoint.illustrationHead));
             const created = await putImmutable(tx, this._key(handle, savePoint.sessionId, savePoint.saveId), savePoint);
-            if (control?.mode === 'ironman') {
-                for (const old of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId: savePoint.sessionId })) {
-                    if (old.doc.saveId !== savePoint.saveId) await tx.deleteResource(old.key);
-                }
-            }
             return created;
         }));
     }

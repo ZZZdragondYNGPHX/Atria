@@ -69,7 +69,7 @@ export async function readRunControl(tx, handle, sessionId) {
                 entryPointId: session.entryPointId, packageContentHash: session.packageContentHash },
             mode: run.mode, status: run.status === 'dead' && run.mode === 'ironman' ? 'terminal' : run.status,
             sequence: Math.max(control.sequence ?? 0, run.sequence), headRevisionId: session.headRevisionId,
-            ...(run.status === 'dead' && run.mode === 'ironman' ? { deathRevisionId: session.headRevisionId, cleanup: 'pending' } : {}),
+            ...(run.status === 'dead' && run.mode === 'ironman' ? { deathRevisionId: session.headRevisionId, cleanup: 'archived' } : {}),
         };
     }
     if (control && !run && session?.headRevisionId && session.headRevisionId !== control.headRevisionId) {
@@ -89,10 +89,10 @@ export async function readRunControl(tx, handle, sessionId) {
 export async function assertRunAccess(tx, handle, sessionId, action, revisionId = undefined) {
     const control = await readRunControl(tx, handle, sessionId);
     if (!control) return null;
-    if (control.status === 'terminal' && !['status', 'cleanup'].includes(action)) throw runFailure('native_run_terminal');
+    if (control.status === 'terminal' && (!control.deathRevisionId || !['inspect', 'export'].includes(action)) && !['status', 'cleanup'].includes(action)) throw runFailure('native_run_terminal');
     if (control.status === 'dead' && !['status', 'inspect', 'rewind', 'save', 'export', 'import'].includes(action)) throw runFailure('native_run_dead');
     if (control.status === 'pending' && !['status', 'inspect', 'ready', 'start', 'persona'].includes(action)) throw runFailure('native_story_not_started');
-    if (control.mode === 'ironman' && (action === 'rewind' || (revisionId && revisionId !== control.headRevisionId))) throw runFailure('native_run_rewind_denied');
+    if (control.mode === 'ironman' && (action === 'rewind' || (revisionId && revisionId !== control.headRevisionId && control.status !== 'terminal'))) throw runFailure('native_run_rewind_denied');
     return control;
 }
 export async function writeRunControl(tx, handle, sessionId, control) {
