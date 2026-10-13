@@ -28,12 +28,12 @@
 | --- | --- | --- |
 | [`measurement-and-evidence.md`](measurement-and-evidence.md) | 静态审计证据、P0 指标与负载矩阵、性能/持久化验收设计、待讨论问题 | **已建立；第二轮必读** |
 | `client-interaction.md` | P1 长聊天渲染、流式刷新、输入/滚动/组件生命周期 | 待讨论后按需建立，依赖 P0 |
-| `runtime-storage.md` | P2 会话加载、Snapshot、Revision、FS/DB、索引和持久化边界 | 待讨论后按需建立，依赖 P0 |
+| [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 持久化提交、FS/SQLite、原生资产、自动存档/GC 架构选项 | **已建立；第 3 轮讨论稿（选项未冻结）**，依赖 P0 |
 | `agent-compute.md` | P3 记忆检索、上下文编译、缓存、任务调度的质量与性能 | 待讨论后按需建立，依赖 P0 |
 | `startup-resources.md` | P4 首屏、资源图、模块加载、Android APK/Termux 启动 | 待讨论后按需建立，依赖 P0 |
 | `stability-recovery.md` | P5 内存/文件增长、恢复、清理、压力运行与观测 | 待讨论后按需建立，依赖 P0/P2 |
 
-尚未建立的模块仅表示未来路由，不表示其详细设计已批准。跨模块不重复写一套规则。
+其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中 A/B/C 与自动存档策略仍待用户决定。跨模块不重复写一套规则。
 
 ## 阶段与读取路由
 
@@ -41,7 +41,7 @@
 | --- | --- | --- |
 | **P0 — 基线与性能画像** | 分离首屏、交互、长会话、存储、检索、Android 与稳定性成本 | `index.md` → `measurement-and-evidence.md` |
 | **P1 — Native Play 与界面交互** | 长聊天消息渲染、流式更新、滚动、焦点/阅读位置 | `index.md` → `client-interaction.md`（待建）→ P0 结果 |
-| **P2 — 会话与存储** | 会话读取、Revision/Variant、文件系统/数据库、增量索引与安全提交 | `index.md` → `runtime-storage.md`（待建）→ P0 结果 |
+| **P2 — 会话与存储** | 会话读取、Revision/Variant、文件系统/数据库、增量索引与安全提交 | `index.md` → `runtime-storage.md` → P0 结果 |
 | **P3 — 记忆与智能体计算** | 避免重复计算，保持检索精度、认知边界和来源 | `index.md` → `agent-compute.md`（待建）→ P0 结果 |
 | **P4 — 启动与资源交付** | 浏览器/Node/Android 的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md`（待建）→ P0 结果 |
 | **P5 — 长期稳定与恢复** | 长时间运行、回收与崩溃恢复、容量变化、退化检测 | `index.md` → `stability-recovery.md`（待建）→ P0/P2 结果 |
@@ -74,4 +74,4 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 ## 重要设计变化
 
 - **2026-10-13 / 第 2 轮**：确定方向 C，同时提高“长会话流畅度”和“持久化安全”优先级；建立大型 Plan Bundle，P0 指标、负载与安全边界进入后续讨论。
-- **2026-10-13 / 第 3 轮**：用户批准核心游戏数据 S2 断电持久性目标；承诺范围限于明确确认完成的提交，并以跨存储引擎和设备的实际故障验证为交付必要证据。提交粒度与实现架构尚待第三轮讨论。
+- **2026-10-13 / 第 3 轮**：用户批准核心游戏数据 S2 断电持久性目标；承诺范围限于明确确认完成的提交，并以跨存储引擎和设备的实际故障验证为交付必要证据。创建 `runtime-storage.md` 收录 FS/SQLite/Blob/RunControl 审计及未决 A/B/C 方案、自动存档与增量提交设计。
