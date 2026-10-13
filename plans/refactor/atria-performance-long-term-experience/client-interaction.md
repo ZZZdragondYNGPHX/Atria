@@ -1,7 +1,7 @@
 # Atria 长会话与产品交互 — Native Play / 旧楼层操作退出
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
-- **状态**：第 7 轮源码审计及新产品设计讨论；**不在此文件授权执行产品删除操作**。
+- **状态**：第 8 轮讨论稿。第七轮**严格存读档驱动方案 A**已获用户批准，尚未执行产品代码删改。自动 SavePoint、读档体验、异常恢复等细节仍待讨论。
 - **源码快照**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`；后续实施须以实际集成后的 `main` 复核。
 - **相关权威**：[index.md](index.md) 为 S2/硬切换/增量历史/阶段路由的冻结原则；[runtime-storage.md](runtime-storage.md) 为 Revision、存档和无损保留的底层契约。
 
@@ -9,7 +9,7 @@
 
 本模块负责 P1 长会话/Native Play 的 UI 交互范围，以及第七轮用户新提议：**退出 SillyTavern 旧「单条消息/楼层 Swipe、Delete、Hide」产品操作，剧情路线主要通过 SavePoint/Load/Branch 管理**。
 
-用户已经明确倾向将这些旧操作彻底移除，特别是 **Delete 及 Swipe 均由存读档机制替代**，每次从历史存档继续应代表可能分化的新路线。此为明确产品方向；是否连 Native `Restart From Here`/`Re-enter Turn`/`Retry Reply`/`Fork from Revision` 的公开入口一起移除，属于第七轮待细化边界，不能擅自猜测已经获批。
+用户已批准**严格方案 A**：玩家正式游玩阶段移除旧楼层 Swipe/Delete/Hide，并且同时移除 Native `Restart From Here`、`Re-enter Turn`、`Retry Reply`、任意 `Fork from Revision` 玩家快捷入口；从明确的 SavePoint 加载派生新 Branch，已有分支允许切换。游戏路线可因此分化，但不强制每次读档生成不同文本。
 
 ## 实际源码核对（不是实时 UI/真机验证）
 
@@ -34,28 +34,59 @@
 - 这项设计只清理**玩家剧情正文的旧楼层突变**，并不授权删除项目/会话/存档管理、媒体切换、已提交历史的只读浏览、生成前草稿编辑，也不应删除数据库中的合法 `Variant` / `Branch` 语义。
 - 项目仍处 dev 阶段，无需旧格式、旧楼层操作的双读写或兼容层；但实施时应追踪旧 API、快捷键、Slash Commands、插件宿主以及 Native hidden ABI 的消费关系，避免在移除旧功能时破坏实际生成和投影链。
 
-## 第七轮需要明确的产品边界（**尚未冻结**）
+## 第七轮产品边界（**用户已批准方案 A，尚未实施**）
 
-**设计 A：严格存读档驱动（推荐与用户当前意图最一致）**
+**设计 A：严格存读档驱动（第七轮正式定案）**
 
 - 产品界面移除旧 Swipe/Delete/Hide，以及 Native 层绕过 SavePoint 的 `Retry Reply`、`Restart From Here`、`Re-enter Turn` 和任意 `Fork from Revision` 快捷入口。
 - 保留 `Inspect History`（只读）、`Load SavePoint`（从保存根创建新分支）、`Switch Branch`（选择现有路线）；需要新路线先生成/选择明确的 SavePoint，再从那里继续。
 - 保留“仅对**未提交失败生成**重试”的正常错误恢复，避免把真正失败重试也当成 Swipe 删除。
 - 存档默认为定期创建且可配置；允许玩家手动存档和置顶，明确区分“每回合已经 S2 落盘”与“是否方便从此点开始一条新路线”。
 
-**设计 B：清理旧 Swipe/Delete/Hide，但保留显式原生 Fork/Retry**
+**设计 B：清理旧 Swipe/Delete/Hide，但保留显式原生 Fork/Retry（已否决，仅供历史对照）**
 
 - 对比 A：仍可直接在任意 Revision 创建新 Branch；不丢历史，技术上安全，但玩家不需要预先放置 SavePoint，可能弱化存读档的游戏玩法语义。
 
-**设计 C：用户模式/权限约束两者**
+**设计 C：用户模式/权限约束两者（未选，不作为现阶段产品要求）**
 
 - 标准游玩仅允许 SavePoint 加载；制作/调试模式允许直接 Fork 具体 Revision。需要新增模式/权限边界、UI 解释和测试，不能自动假设这种复杂度值得引入。
 
-**需要区分的额外问题**：
-1. Swipe 移除后，只读 `Reply Variants` 预览是否继续保留？若只反映真实分支历史，则它不是旧 Swipe，但可能因命名与 UX 混淆而需要统一到 Branch/Timeline。
-2. Hide 可能涉及“临时调试 Prompt 内容”；建议将合法的上下文内容纳入显式编译策略或 Studio 调试层，而不是保留单条消息自由隐藏入口。
-3. 整个 Session/Branch/Project 删除（释放磁盘空间）应保留独立资源管理能力，不与删除单层楼混淆。
-4. 若玩家两次从同一 SavePoint 继续，新 Branch 的状态/权威根应分别独立；是否自动改变随机种子确保生成差异，不在此轮先拍板。
+**实施时须区分的能力边界（严格 A 下的关键要求）**：
+1. Swipe 移除后，原生只读 `Reply Variants` 预览不得再暴露或暗示可直接切换到另一楼层；只读真实分支历史可以保留并统一命名为 Branch/Timeline。
+2. Hide 对应的上下文控制不得改写已确认 Timeline 记录（旧 `is_system`）；合法的上下文排除/压缩应放在 Native Context 编译与 Studio 诊断规则中，不要留下楼层突变 API。
+3. 整个 Session/Branch/Project/SavePoint 删除（释放磁盘或管理玩家自己创建的资源）仍是独立资源管理，不能因为去掉逐楼层 Delete 而误删；手动存档不被自动 GC 覆盖与用户主动删除它并不矛盾。
+4. 两次从同一 SavePoint 读档应分别产生有效分支和相互独立的后续状态；文本结果可能相同，不应默认修改随机种子以强制不同走向。
+
+## 第八轮：存档入口、操作权限与生成失败恢复（**方案候选，未冻结**）
+
+### D1. 防止从任意 Revision 变相重新开放 Swipe/Retry
+
+- 正式 Play 的 Save/Load UI 应以受支持的 **SavePoint** 为恢复来源：新建手动 SavePoint 默认为当前持久 HEAD；Load 从明确保存的 Revision 派生 Branch（若已经处于该存档 root，可直接使用当前 Branch 而不重复派生）。
+- 目前底层 `SessionCore.createSavePoint` 支持传入 `revisionId`，这是一个**潜在的绕过入口**。严格 A 意味着正式 Play 不能提供事后从任何历史 Revision 铸造 SavePoint、进而任意回溯的公共入口；当前 HEAD 的保存和已有 SavePoint 的加载不受影响。具体如何约束 API、CLI/Slash、插件权限与原生内部服务需在实施前做消费者审计。
+- 不将只读历史预览、源数据定位、当前提交崩溃后自动续接解释为用户「选择任意历史分叉」的许可。
+
+### D2. 自动存档的产品触发（待选）
+
+- **A — 固定周期**：每 N 次正式提交创建一份轻量自动 SavePoint。容易解释和测试，但故事选择节点可能落在两个存档点之间。
+- **B — 关键抉择触发**：每当明确的故事决策、战斗/交易或玩家可撤销选择出现时自动保存。与玩家期望一致，但识别需要游戏/Runtime 结构化事件，不能依赖 LLM 猜测，也可能频繁创建存档。
+- **C — 双触发、无实时过度存档（讨论推荐）**：固定低频底线 + **在受游戏结构化协议明确标记的重大选择前**创建恢复锚点，玩家随时可手动存档；即使漏判也不丢 S2 的每回合提交。自动保留数量/频次按 P0 实测，并与模式规则（例如铁人模式禁止 rewind）相容。
+- **时间点语义必须明确**：存档如果要允许重新选这一步，必须锚定抉择前的可信 Revision，而不是动作效果已提交之后的状态；后台存档不能抬升当前游戏状态。
+
+### D3. Crash Resume / Load SavePoint / Failed Draft 分离
+
+| 情形 | 推荐行为 | 禁止的误解 |
+| --- | --- | --- |
+| 进程/断电重启 | 自动恢复最近一个已确认且 S2 持久的当前 HEAD，继续同一条路线 | 不把崩溃续接当成玩家主动读档分支 |
+| 玩家主动 Load SavePoint | 读取指定 S2 SavePoint，派生新 Branch；保留旧 Branch | 不直接删除后续原始回合或篡改世界状态 |
+| 流式生成取消/失败且**未正式提交** | 丢弃失败 Draft，可按相同 `commitId`/请求状态确定是否真的已提交后安全重试；仅允许未提交 Draft 的正常重试 | 不允许对已经成功确认的旧回复做一键重生 |
+| 回复已成功提交但客户端未收到 ACK | 查询原提交回执并重载对应 Revision，不重放模型外部副作用 | 不能把网络超时当成「一定失败」来重复生成 |
+
+### D4. 后续仍需讨论
+
+1. 自动存档选固定周期 A、关键选择 B，还是**固定周期 + 结构化关键选择 C**。
+2. 关键选择前预存档的时间点/授权边界：是否仅 Game Runtime 发出的结构化 decision boundary，或普通 Narrative 模式也为用户输入之前做可选轻量锚点。
+3. 当前 Run/Gameplay 模式（包括 Ironman/无回退玩法）是否允许自动保留存档但禁止 Load；是否有必要区分显示与管理权限。
+4. 多次从同一存档加载的 Branch 命名、排序、可视化和缓存恢复；不将备选具体 UI/参数提前冻结。
 
 ## 需要的最小验证（未来实施才执行）
 
@@ -68,3 +99,4 @@
 ## Material design changes
 
 - 2026-10-13 / 第七轮：根据用户明确诉求新增模块并登记审计，待讨论「严格存读档驱动 / 保留显式 Fork / 模式分级」三种产品边界；未修改产品代码，未做浏览器真机验证。
+- 2026-10-13 / 第八轮开端：用户正式批准第七轮严格方案 A，确认退役旧 Swipe/Delete/Hide 及 Native Retry/Restart/Re-enter/Fork 的正式 Play 入口，只保留 Save/Load/Branch、只读历史、未提交生成恢复及独立资源管理。第八轮新增自动 SavePoint 的选项及公开权限绕过审计要求；尚未实施代码改动。
