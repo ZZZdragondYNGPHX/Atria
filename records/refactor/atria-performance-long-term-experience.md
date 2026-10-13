@@ -4,7 +4,7 @@
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
 - Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0–E6 本地实施完成；E6 完成 HEAD `45961b4a2`。连续推进 E7；平台物理 S2、Windows/Termux 与长时设备内存仍待证，未合并 main。
+- 当前状态：E0–E7 的 30 单元本地实施/相关验收完成；产品 End HEAD `7e1045ab8`，准备按已授权流程集成 main。平台物理 S2、Windows/Termux 与长时设备内存仍待证；本机完整 Runtime Load/Append 与全历史 ABI 成本保留，不能声称所有性能指标都改善。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -71,7 +71,7 @@
 - 四项失败均为原夹具期待 `gcBlobs()` 第一次调用立即删除 Blob，但草稿第一步只隔离，返回 `[]`。续接应保留保护引用的断言，并新增隔离期、推进测试时钟、重启恢复、重新引用及租约竞争验证；不能简单恢复立即删除或仅改期望绕过安全验证。
 - 待完成 / 优先风险：`SessionRepo.gcRevisions` 旧立即删除路径仍在；`atri_gc_progress` 需审计保留命名空间保护；Blob GC 的批参数、候选扫描预算、并发维护与前台调度尚未收束；Session Mark 跨读让出后需验证 generation 和并发 SavePoint；目前 Turn 自动维护失败被静默捕获；窗口 trim 弹出尾项可能误排除最新正文，压力 API 未接实际 View/后台事件，fallback/clear 的预算与释放待验证；租约、批次/重启专项测试、重复生命周期内存证据尚未补齐。关闭 WAL autocheckpoint 后的实际维护覆盖也待证。
 - 新模块 `src/native/session-maintenance.js` 尚无专项测试，不能用已有 durable/Scheduler 用例替代其安全证明。测试未执行全仓、CI、Provider 或真机。当前停止依据仅为用户明确交接请求，普通失败由下一对话继续解决。
-- 下一 checkpoint：按 [HANDOFF](../../HANDOFF.md) 从真实 Git 恢复 E4，先补 GC/租约/并发相关验证并修复上述缺口，再按冻结路线完成 E4→E5→E6→E7；仅全部相关验收完成后合并 main 并清理。
+- 下一 checkpoint：按当时活跃 HANDOFF 从真实 Git 恢复 E4（完成后删除 live 交接文件），先补 GC/租约/并发相关验证并修复上述缺口，再按冻结路线完成 E4→E5→E6→E7；仅全部相关验收完成后合并 main 并清理。
 
 
 ## E4 — 续接完成：资源预算、安全维护与生命周期（E4.1–E4.4）
@@ -118,7 +118,7 @@
 - 沿用现有 `__atriaStartupTiming` 和 startup store，分别记录 shellInteractive、appReady、optionalReady、playReady 与相应间隔；不把先移遮罩当成全部可玩。无需新增外部模型调用来判就绪，Provider 在线可用性仍不能由本地 preflight 保证。
 - 最小本地验证：Bundle 7 项通过（manifest 丢失/部分/指纹变化/内容损坏/Termux resolver 等）；原 UI/Lifecycle/启动遥测 5 套 59 项通过；新 Host 准备+Lifecycle 中途 false+E5 optional guidance 后撤销 Join，共 3 套 44 项通过；startup store + 修改后的 Play listener 往返 20 项通过。ESLint/diff check、Termux shell syntax 通过。没有全仓 build/test；仅五个 Bundle 的必要生产预构建。
 - 本机 Webpack 5.106.1 首次 targeted compile 11978 ms、close 1917 ms，包含导入/屏障准备到 compiled milestone 约 14.23s；第二次诊断生成相同 Bundle（11906/1864ms），后续问题排查沿用已验证缓存。正式成功浏览器跑的 warm manifest 验证 8.67ms，首次缓存进入 13.68ms。完整性 SHA 校验没有退化成只看 stat。
-- 真实 CachyOS Node24.21.0 本地 `server.js`，隔离 FS/默认用户/明确 text Experience Package/已配置本地 Runtime/Secret，Chromium141；显式在 APP_READY 后打开 Session，两个单样本不是 P95/SLA：
+- CachyOS Node24.21.0 本地 `server.js`，隔离 FS/默认用户/明确 text Experience Package/已配置本地 Runtime/Secret，Chromium141；显式在 APP_READY 后打开 Session。以下为 E6 初始 marker 单样本：**E7 真实点击发现 onboarding 对话框遮挡，因此这里的 marker 不能称最终 PlayReady；以 E7 加入 modal/可见性保护后的结果为准**，保留原始测量事实：
 
 | 条件 | ShellInteractive（导航 ms） | APP_READY ms | PlayReady ms | 显式 Session open→观察到 Ready ms | pageerror / 正文节点 |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -128,3 +128,38 @@
 - 进程 start→HTTP 观察可达两次 3371.87 / 1913.67ms（50ms polling；已构建缓存、第二次文件暖缓存，非 OS 硬冷启）。观察到 PlayReady 的完整导航耗时 2563.40 / 2315.87ms；本地假 Provider 收到 **0** 推理请求。
 - 初次浏览器检查失败：Storage-only Session fixture 没有 formal Experience runtime，runtime/resolve 正确返回400、没有冒报 PlayReady；改为正式 text Experience fixture 后真实流程通过。期间 config 初始化与默认用户 harness 映射两项夹具错误也已修正；未降低产品检查。
 - Windows、真实 Termux Node/SQLite ABI/浏览器/后台恢复及自动 Session resume 首玩时间仍缺设备证据。默认 Node/引擎与缓存/GC 候选参数不凭本机单样本冻结；APK/Kotlin/远程部署未扩展。下一 checkpoint：E7 可达性/回执/终局/GC 横切、关键用户价值复测及主线集成。
+
+
+## E7 — 横切验收、回归诊断与集成准备（E7.1–E7.3）
+
+- Start HEAD：`45961b4a2`；End/Tested content：`7e1045ab8`（`8465e782f` 核心修复 + smoke scope/globals 定向静态修正）；产品提交已推送。验证在对应未提交内容上执行后固化到这些提交，不把命令输出的前序 HEAD 冒充提交后的重复运行。
+- E7.1：新增 FS/SQLite 根/租约/SavePoint/Branch/ACK uncertainty 交错，旧 ACK 请求在 GC 后只产生一次正文，Session 全删同时释放维护进度。真实子进程在 GC publish/install 两切点退出，重启先完成 journal，正文/世界根、SavePoint、commit receipt 和 cursor 均完整，幂等重试一致。这是 S1/协议恢复，**不是物理 S2**。铁人 death 根经过完整维护轮次仍保留正文和旧 SavePoint，只读禁止复活。
+- 测量发现 E4 Mark 为每个对象新建 SQLite Transaction/PreparedStatements，5k GC P95 6360.46ms、整轮 RSS 3446489088 bytes；修复为每连接复用语句 owner，close/restore/delete/closeHandle 显式 dispose，事务仍走同一 serial tail。FS snapshot 用同一固定事务下最多 4 并发读取，保持原顺序/身份/完整性，失败等待所有 sibling；SQLite/Mark 每 32 读让出 macrotask，队列事件可以暂停长 Mark，不用 async/microtask 假称非阻塞。
+- 重复 Mark 的不可变可达身份证明采用 engine/owner/session + root/save generation + retain fingerprint 的短时预算缓存（最多 8 scopes/8MiB/60s），不保留原文；新根/SavePoint/retain 变化或重启必重建，Sweep 仍在事务内二次验证 generation/租约。隔离/删除 cursor 继续持久化。预期 stale/cancel 不再误报维护失败，真实异常仍诊断；没有第二套 GC 权威。
+- SQLite 5k 修复中间样本 Load/Append/GC P95 424.96/844.14/800.53ms、整轮 RSS 665907200 bytes；最终增加有界 proof/macro-yield 后，三个暖样本结果如下。GC P95 含首次全闭包 Mark，P50 表示后续复用切片，不能与 E0 旧“无需处理”的立即 GC 0.63ms 混作同工作量：
+
+| Engine / 5k | Load P50/P95 ms | Range20 P50/P95 ms | Append P50/P95 ms | GC slice P50/P95 ms | 轮末 Heap / external / RSS bytes |
+| --- | --- | --- | --- | --- | --- |
+| FS | 776.76 / 859.68 | 5.19 / 11.36 | 1613.23 / 1621.97 | 12.84 / 1942.58 | 310055616 / 23178121 / 542404608 |
+| SQLite | 452.17 / 493.55 | 2.50 / 2.51 | 938.76 / 995.69 | 3.57 / 786.23 | 234282992 / 22093821 / 586543104 |
+
+- 原 E0 5k Range P95 FS31.05/SQLite33.22ms，最终仍明显下降；FS 从 E4 回归 1013.51/1883.81ms 改善，但比 E2 完整 Load546.31/Append1118.46ms 仍慢，SQLite 完整路径也没有全面胜过早期基线。完整 Runtime/隐藏 generation ABI 历史驻留与全量校验仍是后续热点，没有缩短正文/上下文或改默认引擎隐藏成本。最终 bench event-loop P95/max 14.20/996.67ms 包含批量 fixture/完整提交/GC/分配，不冒称用户输入 INP；大批 CPU 工作尚不能说全部达成帧预算。
+- E7.2：实际浏览器点击揭示并修复两点：open onboarding dialog 覆盖 Composer 时不允许 PlayReady（可见性/inert/modal 和释放 observer）；没有 authored Game logic 的正式 text Package 走原 Native narrator 提交，不误用未建立的 Game LLM，声明 Game logic 的 Package 仍走其权威链。旧 E6 marker 表已明确降级为初始候选事实。
+- **最终可交互 startup**：同 Node24/Chromium141，隔离的已有用户设置 `firstRun=false`、正式 text Experience、实际 FS/Core/Route/Secret 和真实本地服务器；APP_READY 后显式 open，准备时 **0** 推理调用，warm-browser 后实际 Composer click 使用本地假 Provider **1** 请求，用户消息/assistant 正文各且仅 1 次持久保存；不是外部模型/API 质量试验：
+
+| 条件 | Shell / APP_READY / PlayReady（导航 ms） | Session open→观察到 Ready ms | 导航→观察到 Ready ms | pageerror / nodes |
+| --- | --- | ---: | ---: | --- |
+| cold-browser | 1254.0 / 2097.1 / 2429.2 | 355.09 | 2456.94 | 0 / 1 |
+| warm-browser | 1077.0 / 1769.4 / 2095.4 | 344.41 | 2116.48 | 0 / 1 |
+
+- 同跑进程→HTTP 3416.13/1855.01ms；warm bundle integrity 10.80ms。单样本/50ms HTTP polling/已缓存产物，不报为硬冷启或 P95。E7 首次 click 被 onboarding 拦住，修复判据并采用已有用户夹具后通过；没有强制 click 穿透弹窗来伪造可用性。
+- 真实 FS Range + Browser 长正文：1440/390×100/1k/5k 六组均 64 DOM、历史滚动/stream 节点保留/dispose 无 pageerror；新 modal observer 后只补受影响的 5k 两视口（仍各64），mount 105.6/99.4ms 含固定80ms等待，不当 PlayReady。smoke 增加可选 sizes/widths，初次缩范围发现 widths 未实际消费；静态修正为真实可选 scope，浏览器全局改为明确 window.product，最终 ESLint 通过。
+- 最小相关本地验收：Core/maintenance/durable-commit 43 项；新增横切 + maintenance + long-term storage 24 项，之后添加长 Mark pause 再对两专项 20 项；generation/publication/storage 5 套 53 项；最终可点击判据 + narrator path 19 项；SQLite close/settings + 扩展 evaluator source pin 17 项通过。新 index/Token/DAG/Context 来源代码加入 evaluatorRevision，源码变化拒绝旧评价报告，RP/Project 六维、独立审查与真实费用规则不被准备缓存冒充。全部修改产品 JS/新测试 ESLint、diff check 通过；没有全仓 lint/test/build、CI 等待或新外部 Provider 调用。
+- E7.3：冻结的 E0(4)+E1(4)+E2(4)+E3(4)+E4(4)+E5(4)+E6(3)+E7(3)=**8 阶段 / 30 单元**核对完毕，沿用同一分支/Record。性能候选数值仍未认证为三端最佳。全部可独立取得的本地验收完成；下述待证不伪装通过，也不增加整任务停工门槛。
+
+## 保留的证据边界与后续候选
+
+- Windows / 真正 Android Termux 的 Node/V8/SQLite ABI、FS/VFS 同步能力、浏览器冷/热启/更新和低内存后台恢复尚无设备证据；Chromium 390px 只证明 Web 窗口行为。APK 与远程部署仍按方案暂缓。
+- 物理断电/OS 崩溃的 S2 设备证明未取得；进程故障只证明当前协议恢复。默认引擎未替换，不认证 optional 引擎或静默 S2 后备。
+- 小规模反复 scope/DOM/listener/lease/object 释放已有证据；小时级 Heap/External/RSS、浏览器 Retaining Path/FD/GPU 与 Android 回收未测。没有生产强制 GC。
+- Source-authorized 离线排名、来源/认知隔离、Context Join 与预算/回执可追溯；真实同模型 RP/Project 六维结果、provider cache usage/Token/价格收益尚无新增证据。无远端可信水位时 vector listHashes 仍对账。不能说完整 Recall O(delta)、整个活动历史内存有界或所有 Load/Append 提速。
