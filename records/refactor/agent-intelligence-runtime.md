@@ -2757,3 +2757,27 @@ A2A已获身份与公开输入引用/hash写入原RunControl的同anchor operati
 S32解析器迁入shared，原compiler兼容导入；作者显式stream:true的固定card policy及初始公开消息作为exact IR资源，原graph重验event mapping/uses。Host运行实例消费真实JSONL Body，支持有界component替换与公开data子路径；staged DOM更新、保留焦点/最后有效视图，epoch/revision/取消/关闭拒晚到更新。点击只走原Bridge，成功后可由Host回传标准v0.9.1 action envelope，公开context不读Native/private状态。没有自动取得remote endpoint或脚本/目录权限。
 
 最终最小验证：Node旧adapter55PASS/1原可选SDKskip；新增protocol6PASS（含真实SSE恢复/证书TLS）、原MCP consumer14PASS、A2A原19+新增FS/SQLite冷恢复2共21PASS；S32原24PASS、新stream4PASS。真实Chromium1280/390验证在线更新、焦点保留、原真实action/revision、标准event回传、非法更新保留、旧文字/删除降级，外网0；最后revision刷新变化后仅浏览器相关复验。归属文件ESLint/diff-check PASS；初轮runner/旧拒绝断言/brace lint失败保留，未增加模型请求。source已本地提交，main未改，继续表达/计算/学习闭环，不将本checkpoint当任务结束。
+
+#### 基本版表达、规则计算与日常使用入口（source `507ece8f7`）
+
+Windows SAPI保留并复用同一严格PCM校验；新增本地eSpeak NG provider及平台选择，公开文字经stdin、实际voice枚举与exact voiceId、超时/取消等待close、有界WAV及临时清理。当前CachyOS在用户级隔离缓存构建eSpeak NG 1.52.0并提供用户级命令，未改系统软件包数据库、未提交二进制/机器路径；发行使用已安装CLI或服务端环境配置。真实中文WAV首个诊断127854bytes/2898.19ms，非零PCM/22050Hz/16bit/mono；不把总时长或浏览器解码称音质/音素时序验收。
+
+原SpeechService新增只返回公开Timeline引用的describe；缺省rate/volume先复制不可变JSON再正规化，修复旧可选字段导致hash/不可变对象错误。Play消息在作者ExpressionPlan/Disclosure存在时提供选声/生成/原AssetStore音频控件/停止；生成后不自动播放，同Actor沿用户选声复用；陈旧revision、取消和退出清除音频并保留正文。公开来源、预算、失败费用与asset精确hash沿原服务。
+
+S26可选留额从rerank推广至作者明确配置的model_task及Native background，缺roles兼容原rerank规则；必要narrator不能列为可选。Native原Turn/后台bank及Project原Task writer在同一锁内检查required reserve，unknown拒绝所选可选发送；拒绝准入不消耗模型请求/不丢合法checkpoint，准备CPU仍保留。原GenerationError/Core现在只透传统一白名单预算代码，不暴露raw原因；evaluator source pin补原RunControl、compute budget、execution utils直接依赖，旧报告失效。学习后端仍走原双Prompt target/current trajectory/独立评价/review/publish/rollback，不新增权重训练或无审阅晋升。
+
+新增原SessionPublicWork的公开服务清单与已获A2A引用投影，capture复用相同可用性判定；Context-only/private/失效来源不列入可发送项。Runtime诊断提供公开内容/所选MCP工具资源或A2A技能调用、结果文字、安全重新查询/取消以及从原bank恢复任务引用；Source/owner/配置由原服务再次检查。连接/路由编辑器可配置MCP/A2A、明确工具/资源/技能与认证、本地工作额度、required reserve和可选角色。协议连接可无SecretRef，模型连接仍要求原Secret；选择Secret认证而未绑定Secret在capture前拒绝。协议连接从普通模型选项排除。输出为非正式外部数据，保持原World/Goal/认知权限。
+
+最小本地检查事实：原Speech模拟4PASS（Windows实机1skip，历史Windows真实证据保持），Speech consumer原8/新增Linux3共11PASS，FS/SQLite真实公开消息→WAV→AssetStore/cache/费用/拒自由text；新增scope/协议检查按名字过滤22PASS，不把43个未运行项算PASS。S26原10、新schema1及双writer2、原S23 7与新增已知/unknown留额2逐项通过；新model admission有零发送及随后必要请求实际消费。学习/隔离Skill-work/Project异步/原HTTP reserve相关4suites20PASS；evaluator identity最终5PASS。原P4实际HTTP/core38PASS，旧Skill测试installedHash='stable'/缺pin FAIL修为实际64位fixture版本和pin消费者后该项1PASS（共39 distinct，不重跑已过38）。全产品本地化检查先发现15处旧文案缺失，补中文/4处固定文案翻译后5PASS；未因此跑全仓build/test/lint。
+
+真实Chromium1280/390链路最终通过：实际WAV解码（headless静音）、无自动播放、播放/停止、Actor选声复用、旧revision清除；真实MCP统计、A2A新任务/原bank引用重新查询/取消、结果不执行HTML，外网0。另390连接/路由编辑器通过原认证API保存无认证MCP并精确保存可选计算/外部服务策略。归属JS targeted ESLint及Git diff-check通过。原S32桌面/窄屏在线更新/原Bridge/焦点与降级已通过，后续stream替换隐藏/恢复controls新增1项PASS。SSE最后固定原initialize session、接受空event-id取消resume及有界retry，相关最终protocol6/schema29共35PASS。
+
+失败保持：镜像403/404/timeout后改用上游源码本地依赖构建；测试初次把describe多条公开项断言为单条、browser fixture配置时序/Router签名/缺Studio服务等均修正；真实界面暴露Speech不可变default错误和连接编辑器旧强制Secret/重复probe变量，修复后实际链路复验；新预算初次误用不存在context变量和错误被遮蔽，补正确私有lane分类/统一安全错误白名单后零发送/必要工作复验通过。新文件末尾空行在cached diff检查失败后正规化，原本地提交amend；不把这些失败隐藏或当模型收益。最后源码字节以 `507ece8f7` 为准；本轮API模型请求为0、原unknown费用/不利结果保持，无新增配额/子代理/Goal/HANDOFF。
+
+#### 最终基本版集成与交付
+
+基本版出口见Plan completion.md，功能、恢复、权限、日常入口和原评价/回退链路已核对。source最终 `73c7913b22daae98b6348fad0f3eee1cfce1f080` 包含上述两工程提交与英/中文产品配置指南；共3提交、53文件、1544增/274删。fetch未发现并行远端main变化，本地main从 `f4815c727` fast-forward至同一HEAD，无冲突/新实现，diff-check与精确内容/干净状态核对通过。main已push与origin/main一致，不等待Actions/PR，不部署。docs同一Record/Plan更新后同步；本轮临时分支/worktree按已集成状态清理，保留其它活跃任务、长期工作空间与私有资料。
+
+本轮完成的是基本产品闭环；OAuth/任意Apps脚本、未选权重训练/KV研究及普遍质量/成本/语音自然度保证没有被改写为已验收。原S34两域tie/未晋升、S25额外成本无质量收益、S26充分预算无成本改善继续保持；“默认保守路径/不合格候选不晋升”是本次有效产品行为，后续数据驱动改进仍按原验收。
+
+交付清理已实际完成：main `73c7913b2` 与origin/main精确一致且干净；本轮source只有两个ignored依赖软链接，只unlink链接后正常移除worktree/空任务目录并用 `git branch -d` 删除已合入本地分支。该临时分支本轮未单独push，远端无需删除；其它活跃task、docs/package/plugin/skills和原私有资料保留。文档最终只做路径/新增链接/diff检查并push；没有阶段HANDOFF或部署。

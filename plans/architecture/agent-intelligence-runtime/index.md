@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: 用户要求继续推进到基本完成；从 main `f4815c727` 重开 `feat/agent-runtime-completion` 补齐原有限实现缺口。当前执行入口为 [基本完成补齐](completion.md)，同一 Record 持续记录；整体补齐及集成尚未完成。历史阶段事实与不利结果保持。
+- Status: 基本版功能闭环与收尾完成；main 已集成并推送至 `73c7913b2`。原有限实现的主要缺口按 [基本完成补齐](completion.md) 补齐：HTTPS/SSE、持久任务引用、在线UI、Linux语音、日常配置/调用入口与双入口规则留额；原评价/审阅/撤回保持。研究池与普遍收益不扩写为已验收，详见同一Record最终基本版节。
 - Updated: 2026-10-13
 - Private storage checkpoint (2026-10-12): 按当前用户批准完成本地私有资料精简；历史逐次原始材料/迁移副本已移出工作目录，仅保留当前连接、极小滚动限流状态与阶段摘要。后续测试保留规则只归 [Governance §13.1](../../../README.md#131-api-测试执行规则)，实际清理与证据限制见 Record 最新节；该历史清理不改变后续实际交付，也不为补已删除原始材料重跑历史阶段。
 - Historical checkpoint (2026-10-12): source `5a80e1563b1e9db4150da98d0096bdc61704d3f9` 与远端一致，已恢复当前完整私有 RAR。沿原作者 `system.style` 隔离 revision v3 完成 Session 三臂及四既有 frame 最小复验：7 HTTP200 的有限无依据场景/时间/玩家自主权项通过，2 TLS transport unknown/旧天气 FAIL 保留；原bank、authority 与产品源码未改。Session原三臂累计27 jobs，完整G06/M8/HM2与M3前置不变；叙事六维/独立盲评、真实语义/费用收益未宣称通过。最新实际证据见Record，不重跑已完成Session Task冷恢复或M1/HM1。
@@ -136,7 +136,7 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 
 ## 当前状态
 
-当前集成 HEAD 为 main `f4815c727`；以下 source 提交与检查数字为各阶段的实际证据，顶部历史 checkpoint 不恢复为当前状态。未选扩展和未证明的收益保持原边界，不影响本次有限交付收尾。
+当前基本版集成 HEAD 为 main `73c7913b2`；以下 source 提交与检查数字为各阶段的实际证据，顶部历史 checkpoint 不恢复为当前状态。未选扩展和未证明的收益保持原边界，不影响本次有限交付收尾。
 
 | Checkpoint | 状态 | 产物 |
 | --- | --- | --- |
@@ -172,15 +172,15 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S23 | 有限真实 provider 出口已验证 | [文本结构化预测](s23-model-prediction.md)；原Host单次HTTP200、typed预测/公开refs/费用与不发布PASS，实际1272tokens；双域决策收益另归S24/Record |
 | S24 | 双域有限工程与确定性实际对照完成 | [候选比较](s24-candidate-comparison.md)；source `886aa3566`，33新增distinct本地PASS；服务器owned候选/proposal/正式receipt、原Task与恢复保护；S23实际provider已验证；双域实际receipt与有限改动收益见最新Record |
 | S25 | 普通路径工程与有限真实对照完成，无收益观察 | [异步普通认知](s25-async-cognition.md)；source `e2adac4bb`，24新增/5受影响PASS；原author-explicit Task/outbox/RunControl；实际3请求/5343tokens，两臂5项底线通过，slow额外成本无质量收益 |
-| S26 | 有限规则工程与真实留额对照完成 | [可选计算分配](s26-optional-allocation.md)；source `cedf44330`，12新增与原回归检查通过，旧lint诊断保持；真实8请求/12751tokens，留额保住必要正文；充分预算两臂质量通过但无成本改善，预测/learned未启用 |
+| S26 | 基本规则分配与双入口留额完成 | [可选计算分配](s26-optional-allocation.md)；基本版 `507ece8f7`，rerank/model_task/Native background显式留额、Native/Project原writer与零发送/必要工作验证，日常路由配置可用；旧真实对照无一般成本改善保持 |
 | S27 | 有限文字工程与单样本语义出口完成 | [表达计划](s27-expression-plan.md)；source `4fe3a172a`，16新增/12受影响distinct PASS；原公开projection→ExpressionPlan→prose；真实3请求/6703tokens、声明组7维模型观察通过，非人工偏好 |
-| S28 | 有限Windows本地API消费者完成 | [本地语音](s28-local-speech.md)；source `43a1505e2`，18新增/4受影响PASS；真实WAV/取消/原Scheduler、bank与exactAsset，音质/细粒度时序pending |
+| S28 | Windows/Linux语音与玩家控件基本闭环完成 | [本地语音](s28-local-speech.md)；基本版 `507ece8f7`，保留SAPI并新增eSpeak NG，FS/SQLite真实WAV/公开消息/资产/cache/费用与玩家选声/播放/停止/失效通过；自然音质/音素时序不冒称 |
 | S29 | 原renderer有限工程消费者完成 | [公开表达展示](s29-native-expression-view.md)；source `293653079`，4新增backend/6真实浏览器组合与8受影响PASS；原bridge/素材/降级，模型语义收益pending |
-| S30 | 有限本地READ工程消费者完成 | [本地MCP](s30-local-mcp.md)；source `e93672e3c`，43新增/2受影响PASS，真实SDK工具/resource经原Service/FS/SQLite/HTTP；远程/OAuth/Apps pending |
-| S31 | 有限本地协议消费者完成 | [本地A2A](s31-local-a2a.md)；source `40ce8f8d3`，真实loopback/FS/SQLite/四action认证HTTP、预算/owner/unknown与secret回显拒绝；进程重启持久identity不在本范围 |
-| S32 | 有限A2UI导入与原交互完成 | [公开任务卡导入](s32-a2ui-adapter.md)；source `40ce8f8d3`，24新增/65受影响PASS、Edge1280/390真实交互与降级；在线stream/远端回发未实现 |
+| S30 | HTTPS/JSON/SSE与日常READ入口基本完成 | [MCP](s30-local-mcp.md)；基本版 `877564dfa`/`507ece8f7`，TLS证书验证/SSE GET恢复/原预算与来源、UI配置/公开内容调用通过；OAuth/任意Apps未选 |
+| S31 | HTTPS/持久身份/查询取消基本完成 | [A2A](s31-local-a2a.md)；基本版 `877564dfa`/`507ece8f7`，原RunControl持久身份、FS/SQLite冷恢复无SendMessage重发、日常保存引用重新查询与取消/secret/owner/source通过 |
+| S32 | 有界A2UI导入/在线更新/原交互基本完成 | [任务卡](s32-a2ui-adapter.md)；基本版 `877564dfa`/`507ece8f7`，JSONL增量/公开路径/原renderer与Bridge、focus/失败保留、action envelope与两宽度实际交互通过；多surface/Apps未选 |
 | S33 | 元数据导出与离线CLI完成 | [离线轨迹](s33-learning-export.md)；source `40ce8f8d3`，38新增/增强及HTTP新2旧2PASS；原双域authority、derived诊断、expiry/CAS、冷CLI真实文件分析 |
-| S34 | 原Prompt optimizer接线与有限真实pilot完成 | [优化后端](s34-native-optimizer.md)；source `40ce8f8d3`，14新增/4受影响及后续8隔离/身份检查PASS；修复c5447144a，review/当前轨迹重验/原候选评价和回退，双域真实pilot均tie/未发布，初次失败费用保留，完整M7晋升未验收 |
+| S34 | 原Prompt优化/评价/人审/撤回基本闭环完成 | [优化后端](s34-native-optimizer.md)；轨迹/原candidate-evaluator lifecycle与源码失效检查通过，基本版源pin `507ece8f7`；旧双域真实tie/未晋升和失败费用保持，未声明权重训练或一般优化收益 |
 | HM1 / H0–H2 | Complete；main `3ee1332ef` | B0 保留，B1–B3 / 三路径 / Context 完整组 / 主模型正文观察与相关本地验证通过；限制见 Record |
 | HM2–HM3 / H3–H5 | 所选有限消费者已集成；完整组未验收 | 原合法corpus/hash派生复用与有限本地Embedding已有实际消费者；delta/candidate cache、启用算法收益与cognition/forgetting仍按各组出口交付 |
 

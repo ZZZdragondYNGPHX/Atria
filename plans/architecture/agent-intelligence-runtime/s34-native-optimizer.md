@@ -1,5 +1,7 @@
 # S34：原 Prompt optimizer 的轨迹准入与回归评价
 
+2026-10-13 基本版补齐 source `507ece8f7`：原学习→current trajectory→candidate/evaluator→review/publish/rollback基本产品链路保留；补预算/RunControl/execution utils源pin，源码变化拒旧报告。双域旧真实tie不晋升与人审/价格约束保持，权重训练未选。具体日常入口与实际检查见 completion.md/同一Record最终基本版节。下方首批范围说明保留历史，不将旧“仅Windows/仅rerank”的支持矩阵恢复为当前限制。
+
 首批后端为已有 `EvolutionEvaluator` / `AgentEvolutionService`，固定 adapter ID `native-prompt-optimizer-v1`。只接原 `workspace-prompt` 与 `project-prompt` 声明字段、原 `review` 模式；不新增训练平台、模型权重 writer、独立发布器或新费用账本。依赖 [S33](s33-learning-export.md) 的元数据轨迹以及 S08/S10 原候选、评价、发布、撤回权威。
 
 2026-10-13 双域有限真实pilot完成：修复隔离Studio Skill入口后，21次HTTP200共报告84484tokens；连首轮失败累计23次/89950tokens。两域各一个development pair的原Host输出、隔离和target消费通过，模型观察均tie，未观察到改善；候选保持awaiting_review、原晋升gate拒绝、未发布。该pilot验证真实adapter和保守评价出口，不构成完整M7独立晋升验收。

@@ -1,5 +1,7 @@
 # S28：Windows SAPI 的有限本地文字语音
 
+2026-10-13 基本版补齐 source `507ece8f7`：Windows SAPI保留，Linux/Unix新增本地eSpeak NG（缺依赖typed文字降级）；原公开Timeline/AssetStore/预算和玩家选声/播放/停止、陈旧取消形成基本闭环。真实Linux FS/SQLite及两种浏览器宽度已验；自然音质和音素时间轴不冒称。具体日常入口与实际检查见 completion.md/同一Record最终基本版节。下方首批范围说明保留历史，不将旧“仅Windows/仅rerank”的支持矩阵恢复为当前限制。
+
 状态：2026-10-13 有限本地API消费者完成，source `43a1505e2`。依赖[S27](s27-expression-plan.md)，不需要新增外部连接、凭据或素材发送。选Windows SAPI已有voice，不设机器专属默认voice、不自动播放。其它平台/缺voice明确unavailable并保留文字fallback；自然prosody、phoneme时序及通用远程TTS不在首批范围。
 
 首批只朗读原ExpressionPlan中已经公开、绑定该Actor的原Timeline assistant消息，必须由作品原context/display源声明选中content/actorId，保持精确message/variant引用，不接受caller自由文本或复制private认知字段。对既有原文字输出做可选辅助消费，不把音频合成当角色行动、World结果或Goal完成。
