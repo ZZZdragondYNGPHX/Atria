@@ -6,10 +6,17 @@
 
 本模块负责 P0 的静态审计证据、验证假设、观测指标、负载样本及后续阶段依赖的测量产物。跨模块冻结原则及阶段路由以 [index.md](index.md) 为唯一权威。
 
+## 本轮三端 E0 验收范围（2026-10-13 新决定）
+
+- 实际 E0/E7 应分别采集 **CachyOS + 本机 Node + 浏览器、Windows + 本机 Node + 浏览器、Android Termux + 手机浏览器** 的版本、CPU、内存、启动 T0–T4、长聊天、FS/SQLite、S1/S2 故障恢复和本地原生依赖。可共用夹具，不可混算三端 P95。
+- CachyOS/Windows 使用各自操作系统上的原生 Node；Windows 专门留意路径、文件锁、SQLite/原子写入与目录同步语义；Termux 留意 `nodejs-lts` 实装版本、`better-sqlite3` 本机编译、Android 后台进程回收与设备 I/O。仓库 `engines.node >=20` **不代表**三端实际都是 Node 20。
+- **本轮不测、不宣称通过**：Android APK 的 nodejs-mobile/Kotlin/WebView 打包与启动，或云/远程部署、远程数据库配置和网络多端协作。对应历史静态审计保留作为未来恢复依据，本轮不作为 Gate；Termux 仍必须测 `server.js` 的本地 Node 后端与 S2。
+- 先保持已冻结的 S2 安全和长会话性能优先级；对混合计算和 Node 24 仅做证据驱动的候选对照，不预设升级与加速结论。
+
 ## Scope
 
 - 区分“源码确认的代码路径”“风险推断”“实测性能问题”；性能实测前不杜撰数字。
-- 浏览器、Node 服务端、Linux、Android APK、Termux，以及 FS/SQLite 后端在冷/热启动、长会话、记忆检索、运行恢复等方面的成本。
+- 本轮优先 CachyOS、Windows、Android Termux 三端的本地 Node 服务 + 浏览器，以及 FS/SQLite 在各端冷/热启动、长会话、记忆检索、运行恢复等方面的成本；APK/远程部署仅存历史静态证据。
 - 以真实用户体验为目标，以可重复的性能画像与持久化不变量约束后续优化。
 - 当前为企划调研，不修改正在开发的 `feat/agent-compute-runtime` 产品代码。
 
@@ -37,7 +44,7 @@
 
 **E0 候选比较及 Gate（不新增阶段，不预先冻结引擎选型）**
 
-1. **版本基线**：Node 24 LTS 优先作为受支持基线候选；Node 26 或其它更新路线须按当时 LTS 状态和平台能力重新核验。与 `@types/node`、`better-sqlite3`、Android Node.js Mobile ABI、Electron、WebView 和 QuickJS 分开记录版本/安装/打包/原生加载的成败，不把 package 声明当成实装版本。
+1. **版本基线**：Node 24 LTS 优先作为 CachyOS、Windows、Termux 三端的受支持基线候选；Node 26 或其它路线须按当时 LTS 和平台能力再核验。记录三端实际 Node/V8、`@types/node`、`better-sqlite3` 编译和原生加载的成败；APK 内嵌 Node/WebView、Electron 与远程部署不属于本轮 Gate，不把 package 声明当成实装版本。
 2. **计算卸载顺序**：同设备同语料同输出，先比较原始 JS 热点 vs 增量索引后的 JS，再测 Worker Threads / Web Worker（限适用宿主）；只有**增量优化后依然显著 CPU 密集**，才加 Rust/WASM 试验。测量 CPU P50/P95、事件循环/主线程阻塞、峰值内存、Worker 启停与跨线程复制、WASM 初始化及打包体积、冷/热启动与设备差异。
 3. **正确性硬约束**：权限/Information Grant/SourceProof/Revision/Branch/Epoch、已确认 S2 提交与故障恢复、精确 Token 收口、RP/Project 质量基线不得弱化；执行器只能处理已经授权的输入并返回可验证派生结果，不能形成第二套游戏权威、业务内核、持久化系统或隐式写入。
 4. **决策**：如果 Worker/Rust/WASM 没有可复现的整体净收益（含序列化/启动/集成维护成本），保持 Node/V8 + QuickJS 现有执行划分。实验失败不是要求重构底层；不得声称已经测得加速百分比、S2 合格或 APK 真机通过。
@@ -72,7 +79,7 @@
 | 历史复杂性 | 多 Branch/Variant/SavePoint、较深 Revision 链 | 读写、GC、恢复和完整性 |
 | 知识与记忆 | 500/3k/10k 条等效可溯源事实、关系/世界书条目 | 检索/编译延迟、召回质量、CPU/内存 |
 | 长时间运行 | 数小时连续生成、切换、关闭/打开、异常进程退出 | 内存回落、资源句柄、数据增长、恢复 |
-| 环境 | Linux + Node + 浏览器；Android APK；Termux | 分环境性能预算；模拟器/移动视口不等于真机 |
+| 环境 | CachyOS + Node + 浏览器；Windows + Node + 浏览器；Android Termux + 本机 Node + 手机浏览器 | 分端性能预算；手机浏览器移动视口不等于 Termux 真机实测 |
 
 数字仅是实验采样点，尚无“支持 N 条会话”的承诺。每次基准均需记录 CPU/内存、浏览器/WebView/Node 版本、存储引擎、缓存冷/热状态、资产规模与网络条件。
 
@@ -105,7 +112,7 @@
 - 保留**当前受支持格式**的快照、事务/CAS、SourceRef、Checkpoint、存档和垃圾回收安全不变量；新开发版本可硬切换存储 schema，不要求兼容旧 dev 数据、历史迁移或双读双写。
 - 同设备同数据前后对照，报告 P50/P95、样本量、冷/热条件及回归。
 - 检查只覆盖实际修改部分与必要安全不变量，不以全项目构建/全平台矩阵作为每个小修改的默认门槛。
-- 需 Android 真机验证时才给出真机结论；没有就写待验证。
+- Termux 的真实性能与后台恢复须有 Android 真机输出；CachyOS/Windows 的本机与 S2 证据也必须逐端具备。独立 APK 专项暂缓，不以 APK 真机或远程部署作为当前 Gate。
 - 具体绝对耗时、存储规模、最长会话和可容忍回归数值由后续讨论确定；目前不应伪造量化目标。
 
 ## 外部调研参考（不是 Atria 实测证据）
@@ -134,3 +141,4 @@
 - 用户确认 Atria 尚未对外发布：dev 版允许直接弃用旧数据格式，不以历史兼容和迁移成本约束架构评估；性能比较可使用新架构基线与新数据集。
 - 这不削弱新版本 **S2** 目标：在同一受支持数据格式/版本下，被系统明确确认提交的核心资料必须按契约完成持久化与恢复。
 - **2026-10-13 / 第十六轮总审**：明示 P0 尚未形成实际性能基线，历史第二轮的 S2 待决文字归入已解决的方案史；本模块不将未来 E0 的测试数值与设备能力预先写成事实，原始证据由 E0/E7 阶段记录产生。
+- **2026-10-13 / 三端范围调整**：E0/E7 限定 CachyOS、Windows、Android Termux 三种本地 Node + 浏览器主平台；延后独立 Android APK 和远程托管部署，不取消本地服务和 S2 验证。
