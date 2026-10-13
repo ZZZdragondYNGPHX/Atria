@@ -2727,3 +2727,5 @@ S26四臂零发送preflight及8次本地loopback通路通过；本地检查先�
 S21新增连续场景最终PASS：6真实正式executeTurn均applied并有authorityReceipt/Task capture completed，每轮相同invocation重放不再发送。第3回合FS manualSave/exportSnapshot→SQLite importSave，timeline/cognition及18645tokens/15jobs精确保留，后3回合继续原提交。HTTP200共7，正文4497/6556/7592/7743/8388/8985=43761tokens，独立整体观察3723，共47484；模型unknown0，distinct localJobs35（source15已包含于restored30，不重复相加）。六段各7维观察及restoredContinuity全true。只证明作者事件沿原writer推进的6回合场景：传闻澄清、未完成→正式归还、light记忆模糊、公开边界/玩家自主/声音/恢复连续性，不称500实际生成、自主appraisal或一般长期收益。本地初始fixture超预算上限、Buffer误用JSON hash、light非法forgotten与judge wire双层嵌套在真实发送前修正；local全链、syntax/ESLint通过，未弱化产品契约。
 
 按用户暂停要求收齐现有子代理，均停止写入，无待执行请求/受控测试进程；root再次实查shared quota lock不存在。source最终 `f4815c7277adc02d36860f45dcf12f43f64453e2` 已commit/push/ls-remote一致，含S25 a5c42f537及S26/S21脚本，工作区干净。main3ee1332ef干净未改，用户要求的暂停优先于原集成流程。新HANDOFF仅因本次用户明确要求建立；当前剩余是所选范围最后核对、main集成/同步/工作区清理，不重跑已通过模型。实际请求本轮共45/163503tokens，历史失败和未知成本边界保持。私有新增向量连接仅在原Git外目录，无凭据进Git；无关Experience草稿未动。
+
+2026-10-13 用户明确要求将上述5个公开测试临时目录移入回收站。核验每个目标均为本机Temp内精确路径、真实Directory且非reparse后，Windows SendToRecycleBin全部成功，逐个原路径不存在；未永久删除或清空回收站。交接清理状态已同步，任务继续保持暂停。

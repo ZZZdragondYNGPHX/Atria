@@ -34,7 +34,7 @@
 
 所有新live脚本用原private-test-run共享2000/日、20RPM与临时清理，配置文件白名单已支持retrieval；不可并行争用锁或重置累计状态。真实临时正文已清理。
 
-自动审批以 `blocked by policy` 拒绝清理5个公开测试临时目录：`atria-s31-mcp-sdk`、S32三目录`atria-s32-evidence-ngsH1M`/`O570Pw`/`pjK4lN`、`atria-s26-local-Yx7jQ4`，都在本机Temp、不在Git、不含真实私有模型正文或凭据。已保留且不绕过；不要换删除方式规避该拒绝。
+此前永久删除5个公开测试临时目录被自动审批以 `blocked by policy` 拒绝。2026-10-13 用户随后明确要求移入回收站；已核验Temp内精确路径、真实目录且非reparse，通过Windows SendToRecycleBin成功移入回收站，并确认5个原路径均不存在：`atria-s31-mcp-sdk`、`atria-s32-evidence-ngsH1M`、`atria-s32-evidence-O570Pw`、`atria-s32-evidence-pjK4lN`、`atria-s26-local-Yx7jQ4`。未清空回收站；任务仍按用户要求暂停。
 
 ## 新聊天续接提示词
 
