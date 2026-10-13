@@ -1,0 +1,111 @@
+# Atria 性能与长期体验 — P2 Native Runtime、存储和持久化
+
+- **Task ID**: `refactor/atria-performance-long-term-experience`
+- **状态**：第 3 轮讨论稿；除了 [index.md](index.md) 已冻结的 S2 目标，本模块内具体实现选项均 **未批准**。
+- **源码审计锚点**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`；任何实施需先对实际集成后 `main` 复核。
+- **当前范围**：设计/讨论；没有改动产品分支、存储格式、默认引擎或迁移用户数据。
+
+## Responsibility
+
+本模块负责 P2 的 Native Session/Revision/Timeline/SavePoint 提交语义、FS/SQLite 与可选数据库的持久化路径、不可变资产、长期数据规模、事务恢复和安全前提。性能负载与 P0 的通用测量口径详见 [measurement-and-evidence.md](measurement-and-evidence.md)。
+
+## 已批准的设计约束（引用总纲）
+
+- **S2 是核心游戏数据正式安全目标**：用户可见的“已保存/已完成”必须具备断电或 OS 崩溃后可以恢复到该已确认提交的设计与实测证据；任何低层设备/OS 同步原语失效或硬件损坏属于无法绝对保证的例外。
+- 保护 Timeline、Revision、Branch/Variant、World State、SavePoint、关键资产依赖和与其对应的关键控制/权限记录，不允许出现“仅半回合/仅一半状态”被确认为保存成功。
+- 可重建缓存、二级索引与临时计算可以弱持久化，但必须验证其失效不会破坏核心状态。
+- 不能关闭来源、Revision/CAS、一致性校验或直接删除历史来换取性能；未确认的草稿、模型流式内容必须与已确认的核心提交明确区分。
+- 是否改默认存储引擎、是否全自动存档、改文件格式与迁移，全部为 **待讨论**；当前不预先落地。
+
+## 现有真实源码事实（非完成 S2 的证据）
+
+### C1. FS 的“事务”与提交标记
+
+- [`src/storage/engines/fs-engine.js` L18-L27](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/engines/fs-engine.js#L18-L27)：`withTransaction` 构建 `FsTransaction` 并执行回调，不提供多文件统一回滚。
+- [`src/storage/README.md` L118-L120](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/README.md#L118-L120) 明确 FS 不支持跨资源事务与跨进程并发写入线性化。
+- [`src/native/repositories/session-repo.js` L515-L604](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L515-L604)：先写不可变依赖，再写 Revision 与可变 Session HEAD 作为发布标记；**但 HEAD 后仍有 RunControl 的写入及 ironman SavePoint 删除**。需要审视崩溃窗口、写入依赖序列、可恢复性及是否能明确单一 durable commit point。
+- [`src/storage/engines/fs-engine-transaction.js` L759-L863](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/engines/fs-engine-transaction.js#L759-L863)：原生资源以 `write-file-atomic` 替换单文件；`get/list` 使用同步磁盘 IO，`list` 扫描整个 Native kind 目录、解析文件后再匹配过滤条件。这不是跨资源原子事务。
+- `write-file-atomic` 默认会同步临时文件本身，但其 API 所承诺的“atomic replace”本身不足以证明目录项、多个文件及整个事务在所有平台上的断电可恢复性。目录 fsync、异常写失败行为等要补独立证据。
+
+### C2. SQLite 提供真实事务，但当前配置不满足 S2 目标
+
+- [`src/storage/engines/sqlite-engine.js` L26-L35](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/engines/sqlite-engine.js#L26-L35)：`journal_mode=WAL`、`synchronous=NORMAL`。
+- [同文件 L153-L178](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/engines/sqlite-engine.js#L153-L178)：`BEGIN IMMEDIATE` → 回调 → `COMMIT`，出错时 `ROLLBACK`；这是多行 SQL 数据提交一致性的现有基础。
+- [SQLite 官方 synchronous 说明](https://www.sqlite.org/pragma.html#pragma_synchronous)：WAL + NORMAL 在 OS 崩溃/断电下可能丢失最近的已提交事务；WAL + FULL 为每次 COMMIT 增加 WAL 同步，改善已确认事务的断电持久性（仍依赖 VFS/操作系统与存储设备兑现同步）。
+- [`src/storage/engines/sqlite-engine-transaction.js` L905-L1008](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/storage/engines/sqlite-engine-transaction.js#L905-L1008)：Native 列表先按 `handle,kind` 读取全部记录，再在 JS 中解析、按目标过滤，因此仅“切 SQLite”不能消除所有长会话扫描瓶颈。
+- [SQLite WAL 文档](https://www.sqlite.org/wal.html)：WAL 文件及 checkpoint 的保留和增长须监控；不能只复制主 `.sqlite` 文件并忽略活跃 WAL。
+
+### C3. 核心资产可能跨越数据库与外部文件
+
+- [`src/native/repositories/asset-store.js` L75-L147](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/asset-store.js#L75-L147)：内容寻址 `nativeBlobs` 实体字节先写文件，再写引擎中的 AssetRef；这是“先依赖后发布”的基础，但并非单一 SQLite SQL 事务。即使 SQLite 全部调成 FULL，仍需确保文件持久可见、目录项和 Ref/Session 发布顺序符合 S2。
+- [`src/native/repositories/session-repo.js` L528-L554](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L528-L554)：提交前会验证 Persona 资产引用与相关快照，仍需测试磁盘崩溃窗口。
+- [`src/native/repositories/save-point-repo.js` L44-L71](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/save-point-repo.js#L44-L71)：SavePoint 独立创建，针对 ironman 有旧存档删除逻辑；自动/手动存档与每回合提交是两个语义，不得混用确认状态。
+- [`src/native/save-system.js` L95-L105](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/save-system.js#L95-L105)：`autoSave`、`quickSave`、`manualSave` API 已存在；**尚未证明默认每回合自动触发**。
+
+### C4. 长期成本热点
+
+- [`src/native/session-snapshot.js` L22-L135](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-snapshot.js#L22-L135)：完整会话快照逐项取回并验证 Timeline/Variant/多个 State。
+- [`src/native/repositories/session-repo.js` L308-L348](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L308-L348)：已有 `readTimelineRange`。实施时应剖析生产调用，区分仅渲染窗口、全文编译及需要完整权威校验的操作。
+- [`src/native/repositories/asset-store.js` L196-L285](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/asset-store.js#L196-L285)：资产引用检查涉及多个资源类别；清理必须以有效引用、未完成提交及备份恢复策略为边界。
+
+## S2 提交协议的设计候选（待讨论）
+
+**用户可见语义候选**：
+
+1. `UNCOMMITTED`：草稿或流式生成，可即时展示，但必须可辨别为未保存。
+2. `PREPARED`：已经建立不可变 Timeline/State/Blob/Revision 候选并校验依赖；即便崩溃，也不能被误认为已正式生效。
+3. `DURABLE_COMMITTED`：所有核心依赖以及最终统一的可见提交标记已越过相关引擎/设备所需的耐久屏障；**此后** UI 才可确认为“已保存”。
+4. `RECOVERING`：重启后恢复到最近一个可信的 durable commit；对于不确定是否完成的提交，用唯一请求/提交 ID 查询状态并保证重复调用不产生第二个正式回合。恢复期间保护已经确认的历史，不删除尚可能被恢复引用的依赖。
+
+**待解风险**：
+- FS 多文件无统一 ACID 事务，文件本身 fsync 不等于其父目录 rename 已同步；需确认跨资源原子发布与顺序落盘方案。
+- SQLite 真实事务 + FULL 仍不足以覆盖外部 `nativeBlobs` 文件，也无法消除 I/O 硬件失约风险。
+- `commitSnapshot` 的 Session HEAD 后更新 RunControl/ironman 清理路径需要审计：哪些是必需状态、哪些是可重建尾处理、怎样避免崩溃后不一致。
+- GC 和历史裁剪必须避开持久提交仍引用的数据与正在准备的候选资源；中断再启动可重试且不能误删有效存档。
+- 批量/group commit 可考虑提高吞吐，但任何用户可见“已保存”都必须等待自身对应的 durable barrier；不允许异步缓冲结束前就宣称 S2 达成。
+
+## 存储引擎策略候选（**未决**）
+
+| 方案 | 主要思想 | 优点 | 风险 / 成本 |
+| --- | --- | --- | --- |
+| **A — FS 强化** | 保持 FS 默认，建立可靠的多文件提交协议、目录屏障及恢复记录；SQLite 等仍需升级 S2 | 少动默认部署，不强迫用户迁移；适合独立文件和便携性 | 多文件 S2 工程复杂；目录/平台差异以及长期扫描问题都需解决 |
+| **B — SQLite 优先** | 核心元数据/事务改由 SQLite WAL+FULL 优先，文件系统仅负责内容寻址 Blob；FS 改成受限可选/迁移源 | 已有真正跨行事务，核心逻辑可能更简单 | 现有 FS 用户数据需安全迁移；Android Node.js Mobile 的 better-sqlite3 ABI/打包必须验证；Blob 仍跨边界，DB 查询索引仍需改 |
+| **C — 统一 Durable Commit Contract** | 先冻结 S2 写入/确认/恢复契约；FS 与 SQLite 分别实现该契约；上线默认模式由 P0 性能、安全验证和平台能力决定 | 不先拍脑袋换引擎；兼顾多环境和可恢复性 | 初期工程面更广，必须防止只有统一 API 却没有真实落盘保证 |
+
+**暂拟工程推荐**：先按 C 定义可验证的契约，再用已具备真实事务的 SQLite + WAL FULL 作为一组 S2 参考实现，FS 需要自己的 durable publication/recovery 实现；**不得在 FS 尚未达到 S2 时将其称为已达标或默默降级**。是否更换新装默认引擎与如何迁移需后续批准，不能提前视为决策。
+
+## 自动存档与增量提交（讨论候选）
+
+- **每回合提交 ≠ 每回合创建一个独立 SavePoint 文件/记录**。前者是每次完成游戏动作时的可恢复权威提交；后者是用户显式或按策略保留的历史恢复锚点。
+- 提交过程中使用不可变依赖、内容地址、Revision HEAD 与受控写屏障；减少全量读/写时必须维持相同逻辑语义，不随意丢弃被引用的旧历史。
+- **自动存档**候选：在已经 durable committed 的 Revision 上定期建立 SavePoint，支持用户可配置数量/容量/时间上限；未达容量阈值前不应为了性能裁剪有独立引用的历史。
+- **后台 GC**：不在输入/渲染关键路径同步扫描全仓，按可达性与版本化回收；先记引用、再候选、确认后安全清理。GC 的性能和数据安全独立计量。
+- **数据分层**：Core Snapshot/Revision/Timeline/SavePoint 和关联必要状态属于强一致持久层；Cache/索引/临时任务中间计算属于有界可重建层；无法分类的记录默认不得无审计地丢弃。
+
+## 建议的最小故障注入测试（待定量）
+
+- 在依赖写入、Blob 写入、Revision/RunControl、HEAD 标记、COMMIT 返回、SavePoint 替换、GC 等关键点注入异常/kill 进程，重启读取并核对是否处于完整“旧版本”或完整“新版本”。
+- 分开执行进程 `kill -9` 等 S1 实验与具备合规条件的 OS/VM/虚拟磁盘电源中断/S2 实验；**仅 kill 进程不能证明 S2**。
+- 同一提交 ID 重试只产生一次正式 Timeline/世界状态变更；“请求结果丢失”时可查询结果而不必重复生成回合。
+- Blob 及其 AssetRef、Package 版本、World/知识快照、RunControl 与 SavePoint 的重启可达性/完整性；GC 不能删除可恢复状态需要的内容。
+- 用 100/1k/5k 消息、深分支/多 Variant 与资产规模增长场景比较 FS/SQLite 的完成确认 P50/P95、事件循环阻塞、磁盘空间/文件数、恢复耗时。
+- S2 验证限定受支持的实际平台/文件系统和明确的测试方法；硬件损坏、违反 flush 保证的设备、被覆盖的备份属于 S3 或外部故障域，不宣称绝对零风险。
+
+## 外部依据
+
+1. [SQLite: PRAGMA synchronous](https://www.sqlite.org/pragma.html#pragma_synchronous) — WAL+NORMAL 与 FULL 的持久性差别。
+2. [SQLite: Write-Ahead Logging](https://www.sqlite.org/wal.html) — WAL sidecar/Checkpoint、长读事务与空间增长。
+3. [SQLite: Atomic Commit](https://www.sqlite.org/atomiccommit.html) — 依赖 VFS/硬件同步原语，崩溃注入思路。
+4. [Node.js: Don't Block Event Loop](https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop) — 同步 I/O 在 Node 共享线程上的响应影响。
+5. [write-file-atomic README](https://github.com/npm/write-file-atomic) — 文件级临时写、rename 与默认 fsync（不能推导多文件事务与目录项同步）。
+6. [PostgreSQL: WAL and synchronous_commit](https://www.postgresql.org/docs/current/runtime-config-wal.html) 以及 [MySQL InnoDB durability](https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html) — 可选数据库有各自的同步策略；S2 是部署条件，不只是 API 契约。
+
+## 本轮需要用户确定
+
+1. A / B / C 哪个是主方案？尤其是否保留 FS 作为未来支持 S2 的正式可选引擎。
+2. 每回合确认提交是否视作可恢复点，还是只有显式 SavePoint 才是强承诺？推荐前者，同时另留 SavePoint 负责方便玩家回档。
+3. 后续自动 SavePoint 是默认打开、有数量/容量配额，还是保持用户显式操作？建议先设计可配置策略，默认阈值由实际数据增长实验决定。
+
+## Material design changes
+
+- **2026-10-13 / 第 3 轮**：用户批准“核心游戏数据 S2”后建立此设计模块；上述 A/B/C、自动存档、具体 S2 协议为讨论候选，不属于已冻结决策。
