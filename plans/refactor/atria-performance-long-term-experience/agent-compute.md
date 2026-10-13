@@ -1,7 +1,7 @@
 # Atria 性能与长期体验 — P3 记忆检索、上下文编译及 Agent 计算
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
-- **状态**：第十四轮讨论稿；**第十三轮证明驱动增量计算方案 C 已批准**，缓存键、失效、增量同步、Token 与模型预算细节仍待本轮用户取舍及 P0 量化。尚未授权修改产品代码。
+- **状态**：第十五轮讨论稿；第十三轮证明驱动增量计算 C、**第十四轮分层权威 Cache Key/S2 Delta Overlay/准确 Token/质量+成本双门槛 C 均已获批**。运行时编排、并发与失败回退仍待第十五轮定案；未授权修改产品代码。
 - **冻结依据**：[index.md](index.md) 为唯一跨模块决策记录；[runtime-storage.md](runtime-storage.md) 管 Native Session/S2/可达性；[stability-recovery.md](stability-recovery.md) 管缓存、生命周期和调度；[measurement-and-evidence.md](measurement-and-evidence.md) 管 P0 基线与验证。
 - **只读源码锚点**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，2026-10-13。特别注意本分支**正是 Agent Compute / M1 等能力开发所在分支**：不能在现阶段直接按静态快照改写这些功能，必须待功能分支集成 `main` 后复核真实实现，再独立立项/创建 refactor 分支。
 - **范围**：只调研热路径和资源成本；不引入旧 dev / ST 数据适配层，不减少已冻结的 RP 认知/世界状态权威，不把「减少模型调用数」单独当成优化成功。
@@ -73,9 +73,9 @@
 
 **第十四轮待讨论**：具体 Source/Policy/Time/Branch 缓存键、增量更新事件和一致性水位、Exact Token 计数提速、Provider 侧缓存与模型/Agent 预算策略，均不事先设定无依据的数值上限。
 
-## 第十四轮讨论：Cache Key、事件失效、增量索引与模型预算（**候选，未批准**）
+## 第十四轮缓存键、失效、增量索引与预算设计（**原则方案 C 已批准，字段与参数待定**）
 
-### A. 首先分清四种不同的缓存
+### A. 缓存职责边界（第十四轮 C 原则已确认）
 
 | 层次 | 允许复用的数据 | 不能直接复用的结果 |
 | --- | --- | --- |
@@ -86,17 +86,17 @@
 
 第十三轮只批准总体增量复用；K0–K3 是第十四轮的候选实施分层，**不是新建四套独立缓存服务**。优先扩展已有 `memoryCorpusReuse`、Prompt Segment、TaskScheduler 和 P5 缓存预算/作用域接口。
 
-### B. Cache Key 方案与失效边界
+### B. Cache Key 方案与失效边界（已选 C）
 
 - **候选 A「Revision 全键」**：每个 Cache Key 都包含整段 RevisionRoot。容易保守失效，但每新回合多数稳定静态特征也被重建，复用率较低。
 - **候选 B「只有内容哈希」**：跨 Branch、Actor、权限乃至用户共享所有结果。看似复用率最高，但合法可见性、时态与 NPC 知情边界可能严重错误，**不推荐**。
-- **候选 C「分层身份 + 权威证明 + 当前 Query 投影」**（推荐）：
+- **候选 C「分层身份 + 权威证明 + 当前 Query 投影」**（第十四轮已选）：
   - **K0/K1 的安全存储分区**：owner/tenant、Project 作用域、不可变 Source ID/ContentHash、Corpus/Index Schema 版本、Tokenizer/Embedding Profile 与配置版本，以及 S2 来源/投影证明。分支公共祖先的相同不可变内容可按合法安全分区复用，**不会跨用户无授权共享原文/索引**。
   - **K2 的请求身份**：Session、Branch、RevisionRoot、requester kind/actorId、Information grant/view fingerprint、目标游戏时间（含时态域）、当前 World/Actor State Head、查询与场景指纹、检索 Policy/Prompt 路由版本、Context Token budget/Tokenizer ID、Request Epoch。不能靠仅 `BranchId` 或仅 `ContentHash` 代替最新权限证明。
   - **物理共享与授权结果分离**：底层可共享不可变段/索引，查询必须在读取原文/生成外部 Embedding/Rerank/Prompt 之前根据当前 Information 权限筛出合法 IDs；即使排序分数/日志，也不向当前请求泄漏拒绝的内容和存在性。每次命中仍执行可验证的 `assertCurrent`/grant 校验，不因缓存命中跳过鉴权。
   - **不能缓存最后答案/晋级结果当作新证据**：排序还依赖当前意图、状态、Recency/Access 计数、时态、成本准入与模型能力。确切版本、权限或时间不明时直接 miss 或显式 unavailable，不猜。
 
-### C. 失效事件与读到最新提交（Read-Your-Writes）
+### C. 已提交 Delta 与读到最新结果（第十四轮 C 已选）
 
 | 触发 | 必须失效/重验的范围 | 可保留的复用 |
 | --- | --- | --- |
@@ -123,7 +123,7 @@
 - Index 本身可重建，授权与 S2 仍在权威层；`IndexGeneration + sourceWatermark` 等数据必须准确指示索引覆盖范围，不能把缓存文件最新时间当作来源权威证据。
 - Provider Embedding/向量集合差量同步先比对已验证的内容指纹和模型配置；只有需要新 Embedding 且获预算准入才发请求，原文/身份不得泄露给未经授权的 Provider。远端集合对账可以按已验证 generation 限流，更新一致性要有可测试的异常/重启策略。
 
-### E. Token 计算提速但不能产生错误预算
+### E. Token 安全计数原则（已确认最终完整精确计数）
 
 1. 对 `TokenizerEngine/ModelVersion + 完整规范化内容 + 格式/角色边界` 完全相同的**确定性字符串** memo 精确计数；静态 Prompt Segment 与证据记录可被缓存，受到 P5 容量/生命周期约束。
 2. 可采用粗略上限估算、延迟批量计数和候选组预筛选减少明显无效的重复计算；但**最终序列化的完整 Prompt/ContextPlan** 必须由对应模型可靠 Tokenizer/Provider 计数重新验证，不允许依赖 UTF-8 字节数冒充精准 Token 数。
@@ -131,23 +131,23 @@
 4. 若真 Tokenizer 不可用，只能按明确的保守预算/能力降级策略处理并标记诊断；对不能保证容量的任务需限制上下文或失败提示，不能静默跳过硬保留的 World 权威或原子证据。
 5. ContextPlan 权威校验与安全 Hash/Provenance 仍要保留；性能指标包含 Counting CPU/P95、重复调用数、跨模型误用率、最终 Token Overrun、硬保留失败与最终 Evidence Coverage。
 
-### F. 模型、向量与 Agent 调用预算：三种候选
+### F. 模型、向量与 Agent 调用预算：三种比较（已选 C）
 
 - **A — 按回合固定调用矩阵**：每回合无论证据质量都执行 Embedding/Rerank/Agent，成本可预测但长篇 RP 可能大幅浪费。
 - **B — 极限节约**：近似从不做可选向量与质量复核，把“模型调用更少”视作成功。可能严重伤害剧情、NPC 记忆/承诺与 Agent 自迭代有效性，**不推荐**。
-- **C — 质量与成本双约束的分层准入（推荐，未定案）**：
+- **C — 质量与成本双约束的分层准入（第十四轮已选；预算数值未定）**：
   - **必须执行的权威检查**：当前 Revision/世界状态、NPC 合法知情与权限、原子证据、Prompt/Token 边界，不得通过成本配置豁免；尽可能使用确定性本地计算。
   - **本地检索优先**：已有 `memoryInvocationDecision` 能在合法词法/图检索有充分依据时跳过可选 Vector；仅在缺口、关键冲突或特定任务证据不足且预算许可时尝试 Embedding/Rerank；诊断明确区分 `source_unavailable`、`budget_blocked`、`quality_gap`，不伪造使用过的工具。
   - **预算轴分离**：本回合 CPU/响应时延、Token/上下文硬限制、额外 Provider 调用与估算费用，及 Session/Project/Agent 长期累计费用分别保有可观察账目。任务准入需绑定调用身份、Source/Revision、模型路由、请求 Fingerprint、重试次数和已支付/待对账记录；失败或超时不自动等于零成本。
   - **原生质量闸门**：RP/Project Evolution 必要的配对试验、独立评估、人工审批/费用核验不能省略；当余额或明确授权的硬预算不足时暂停辅助自迭代/提示原因，而不是虚构通过或悄悄降品质。用户可配置费用/速度偏好，但须保持已冻结的安全与质量底线。
   - **Provider Prefix Cache**：按真实提供商的支持情况、完整前缀指纹、模型/工具配置与 TTL 决定是否有利，核查实际 `cache_read/cache_write/input/output` 使用量、费用与命中率；不得保证所有模型或代理层提供相同缓存收益，更不能将稳定前缀 Cache 当作来源授权缓存。
 
-### G. 第十四轮决策组合与验证问题
+### G. 第十四轮正式结论与仍需验证的问题
 
 - **方案 A：粗粒度全 Revision Key + 全量重建 + 固定 Provider 矩阵**。正确性较好解释，但几乎无法复用长期游戏中稳定的知识/工具与同源索引。
 - **方案 B：内容哈希全局缓存 + 乐观异步索引 + 极简 Provider 调用**。吞吐可能高，但跨授权域/分支泄漏、最新状态缺失与 RP 质量退化风险不可接受。
-- **方案 C：分层来源证明 Key + 已确认 Commit 驱动的版本化增量索引/Delta Overlay + Exact Token 最终校验 + 质量预算双门槛**（**推荐、尚未冻结**）。
-- 如果选择 C，第十五轮建议讨论 ContextPlan 与 Memory Recall 的具体调度时机、增量更新后的读写并发协议、Token/调用预算的可配置档位和失败回退 UX；所有成本、阈值、召回 P95/质量回归门槛仍依 P0 实测选定。
+- **方案 C：分层来源证明 Key + 已确认 Commit 驱动的版本化增量索引/Delta Overlay + Exact Token 最终校验 + 质量预算双门槛**（**第十四轮已正式冻结原则组合，具体参数/协议仍待实施设计**）。
+- **已经选择 C**。第十五轮讨论 ContextPlan 与 Memory Recall 的调度时机、读写并发/失效边界、Token/调用预算的情境化配置档位与失败回退 UX；所有成本、阈值、召回 P95/质量回归门槛仍依 P0 实测选定。
 - 最小验证必须包含 **同时**：新 Turn 后立即回忆该条事实（read-your-writes）；Branch/SavePoint 切换后的授权隔离；已撤销/过期/竞争证据不被缓存重新放出；分词边界/模型 Tokenizer 改变；向量同步部分失败/重启；Provider 超时与失败计费；质量评估的独立来源/费用账目。
 - 上述候选仅针对新 dev 支持格式。严禁为了旧 SillyTavern swipe_id、旧 Schema、旧 MemoryOS 数据格式做额外迁移/兼容双读写；当前隐藏 Native ABI 真正仍需使用的依赖必须审计清楚才可移除。
 
@@ -180,3 +180,4 @@
 - **2026-10-13 / 第十三轮审计**：在第十二轮分层启动 C 冻结之后建立 P3 专项，确认当前已有 SourceProof+16MiB bounded Corpus reuse、RRF 混合检索、分组证据与预算准入、Native ContextPlan 车道权威、Prompt segment fingerprints、RP/Project 质量评估及 Agent 后台 Scheduler。提出 A/B/C 方案，推荐 C 但**尚未冻结**；未修改产品代码、未跑性能基准或现实 LLM 调用。
 - **2026-10-13 / 第十四轮开端**：用户批准第十三轮方案 C，正式冻结来源/权限证明驱动的增量派生索引、每轮合法性和动态 ContextPlan、原子证据/精确 Token 预算与 RP/Project 质量门槛；第十四轮继续缓存键/失效、读到最新提交、Token 和调用预算细节讨论，产品代码未改。
 - **2026-10-13 / 第十四轮研究稿**：在已冻结 P3 C 上补充分层 Cache Key、sourceGeneration/IndexGeneration 水位、Base+Delta Overlay、纠错撤销传播、Tokenizer 精确收口和 Provider/Agent 费用/质量双约束 A/B/C 选项；这些属于待用户讨论的新细节，不将候选算法或数字冒充已批准。
+- **2026-10-13 / 第十五轮开端**：用户批准第十四轮 C，正式冻结分层安全 Cache Key/来源与授权隔离、已确认 S2 Delta Overlay/索引代际校验/Read-Your-Writes、最终完整 Token 精确容量校验，以及 Agent/Provider 质量和费用双门槛；A/B 候选仅留作历史比较。第十五轮开始分析 ContextPlan 与 Memory Recall 的执行时机、并发与失败回退，不预先冻结实际阈值或新接口形状。
