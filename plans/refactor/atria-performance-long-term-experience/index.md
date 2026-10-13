@@ -32,20 +32,20 @@
 | 模块 | 权威内容 | 依赖与状态 |
 | --- | --- | --- |
 | [`measurement-and-evidence.md`](measurement-and-evidence.md) | 静态审计证据、P0 指标与负载矩阵、性能/持久化验收设计、待讨论问题 | **已建立；第二轮必读** |
-| `client-interaction.md` | P1 长聊天渲染、流式刷新、输入/滚动/组件生命周期 | 待讨论后按需建立，依赖 P0 |
+| [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、SillyTavern 楼层 Swipe/Delete/Hide 退出审计、Save/Load/Branch 替代方案 | **第 7 轮已建立；入口退役的具体边界待讨论**，依赖 P0/P2 |
 | [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 持久化提交、FS/SQLite、原生资产、自动存档/GC 架构选项 | **已建立；第六轮提交/分段细节已冻结，第七轮聚焦后台负载和旧楼层操作**，依赖 P0 |
 | `agent-compute.md` | P3 记忆检索、上下文编译、缓存、任务调度的质量与性能 | 待讨论后按需建立，依赖 P0 |
 | `startup-resources.md` | P4 首屏、资源图、模块加载、Android APK/Termux 启动 | 待讨论后按需建立，依赖 P0 |
 | `stability-recovery.md` | P5 内存/文件增长、恢复、清理、压力运行与观测 | 待讨论后按需建立，依赖 P0/P2 |
 
-其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮按用户新要求检查 Swipe/Delete/Hide 旧楼层操作的真实代码状态，提出删除并以 Save/Load/Branch 取代的方案，需区分 UI/兼容代码/Native 合法的管理操作。跨模块不重复写一套规则。
+其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 调查 Swipe/Delete/Hide 旧楼层操作的代码状态，拟移除旧楼层的 Swipe/Delete/Hide 并以 Save/Load/Branch 为剧情分叉权威；仍需决定是否同时退出 Native 的 Retry Reply、Restart From Here、Re-enter Turn、Fork from Revision UI 快捷入口。必须区分玩家楼层突变、Native 只读历史/有效分支、以及资源管理删除。跨模块不重复写一套规则。
 
 ## 阶段与读取路由
 
 | 阶段 | 目标 | 需读取的模块 |
 | --- | --- | --- |
 | **P0 — 基线与性能画像** | 分离首屏、交互、长会话、存储、检索、Android 与稳定性成本 | `index.md` → `measurement-and-evidence.md` |
-| **P1 — Native Play 与界面交互** | 长聊天消息渲染、流式更新、滚动、焦点/阅读位置 | `index.md` → `client-interaction.md`（待建）→ P0 结果 |
+| **P1 — Native Play 与界面交互** | 长聊天消息渲染、流式更新、滚动、焦点/阅读位置 | `index.md` → `client-interaction.md` → P0/P2 结果 |
 | **P2 — 会话与存储** | 会话读取、Revision/Variant、文件系统/数据库、增量索引与安全提交 | `index.md` → `runtime-storage.md` → P0 结果 |
 | **P3 — 记忆与智能体计算** | 避免重复计算，保持检索精度、认知边界和来源 | `index.md` → `agent-compute.md`（待建）→ P0 结果 |
 | **P4 — 启动与资源交付** | 浏览器/Node/Android 的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md`（待建）→ P0 结果 |
@@ -86,3 +86,4 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 - **2026-10-13 / 第 5 轮开端**：用户正式批准第四轮整体方案：开发期格式硬切换、当前正式回合 S2 增量提交、定期可配置轻量自动 SavePoint、原始对话/世界状态/有效分支的默认无损保留、模型上下文独立摘要、仅清理可安全回收对象的后台 GC。下一轮讨论物理结构和阈值，不将其当作已批准。
 - **2026-10-13 / 第 6 轮开端**：用户明确认同第五轮物理架构 C，正式冻结「不可变分段事件日志 + 共享 Timeline/Revision 索引/根引用 + 周期结构化世界状态物化」；分段大小、冷热压缩算法、触发策略、索引树细节与 S2 恢复序列均仍待本轮讨论及 P0 性能验证。
 - **2026-10-13 / 第 7 轮开端**：用户认可第六轮完整技术组合。另提出产品新需求：审查 SillyTavern 旧楼层 Swipe/Delete/Hide 的存量代码与实际入口，倾向去除这些单楼层操作，以 Native Save/Load 与 Branch 为主要剧情路线管理方式；先审计实际存在与能力边界，再讨论替代方案，未在本轮直接修改代码。
+- **2026-10-13 / 第 7 轮审计**：发现旧 SillyTavern 消息模板与操作实现尚存，但当前 Native Play 使用隐藏生成 ABI 和独立显示层，旧 Swipe/Delete 被提交保护阻拦；Native 自身仍提供 Restart/Re-enter/Retry/Fork 等绕过 SavePoint 的回溯入口。新增 [`client-interaction.md`](client-interaction.md) 并将「全面转为存读档与分支控制」的严格程度列为第七轮待选方案；尚未改动产品代码。
