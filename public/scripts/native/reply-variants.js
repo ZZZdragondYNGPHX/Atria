@@ -120,7 +120,7 @@ export function deriveReplyVariants(model, { messageId: id, revisionId = model.h
  * Host must invalidate after lifecycle commits. No callback ever selects a birth Variant.
  */
 export function createReplyVariantFacade({ sessionId, loadHistory = id => nativeProductClient.getSessionHistory(id),
-    getContext = () => ({}), onInspect, onSwitchBranch, onRetry, onFork, timeoutMs = 15000 } = {}) {
+    getContext = () => ({}), onInspect, onSwitchBranch, timeoutMs = 15000 } = {}) {
     let model = null, pending = null, version = 0, disposed = false, busy = false, contextRevision;
     const assertLive = () => { if (disposed) throw new Error('History view is closed.'); };
     const invalidate = () => { version++; model = null; pending = null; };
@@ -136,17 +136,13 @@ export function createReplyVariantFacade({ sessionId, loadHistory = id => native
         let exact; try { exact = targetFor(target); } catch { return {}; }
         const context = getContext() || {};
         const ready = !busy && !context.busy && (!context.sessionId || context.sessionId === sessionId);
-        const current = context.revisionId === model.headRevisionId && context.branchId === model.activeBranchId && !context.isHistory;
-        return { inspect: Boolean(onInspect && ready), switch: Boolean(onSwitchBranch && ready && (exact.branchId !== model.activeBranchId || context.isHistory)),
-            fork: Boolean(onFork && ready && (context.canFork ?? context.canWrite)),
-            retry: Boolean(onRetry && ready && current && context.canWrite && context.tailMessageId === exact.messageId
-                && model.messages.get(exact.messageId)?.role === 'assistant' && model.activeLineage.has(model.births.get(exact.messageId)?.revisionId)) };
+        return { inspect: Boolean(onInspect && ready), switch: Boolean(onSwitchBranch && ready && context.canWrite && (exact.branchId !== model.activeBranchId || context.isHistory)), fork: false, retry: false };
     };
     const run = async (kind, target, callback) => {
         const exact = targetFor(target);
         if (!capabilities(exact)[kind]) throw new Error('This history action is unavailable.');
         busy = true;
-        try { return await callback(kind === 'retry' ? { ...exact, revisionId: model.headRevisionId, branchId: model.activeBranchId } : exact); } finally { busy = false; if (kind !== 'inspect') invalidate(); }
+        try { return await callback(exact); } finally { busy = false; if (kind !== 'inspect') invalidate(); }
     };
     return {
         get model() { return model; },
@@ -177,8 +173,6 @@ export function createReplyVariantFacade({ sessionId, loadHistory = id => native
         capabilities,
         inspect: target => run('inspect', target, exact => onInspect(exact)),
         switchBranch: target => run('switch', target, exact => onSwitchBranch(exact.branchId, exact)),
-        retry: target => run('retry', target, exact => onRetry(exact)),
-        fork: target => run('fork', target, exact => onFork(exact)),
     };
 }
 
@@ -189,10 +183,10 @@ export function createReplyVariantFacade({ sessionId, loadHistory = id => native
  * Previous/next only preview; explicit switch restores the complete branch via runtime.
  */
 export function createReplyVariantController({ document: doc = globalThis.document, getContext, loadHistory,
-    onInspect, onSwitchBranch, onRetry, onFork, onPreview } = {}) {
+    onInspect, onSwitchBranch, onPreview } = {}) {
     const sessions = new Map(), mounts = new Set(); let disposed = false;
     const sessionFacade = sessionId => {
-        if (!sessions.has(sessionId)) sessions.set(sessionId, createReplyVariantFacade({ sessionId, getContext, loadHistory, onInspect, onSwitchBranch, onRetry, onFork }));
+        if (!sessions.has(sessionId)) sessions.set(sessionId, createReplyVariantFacade({ sessionId, getContext, loadHistory, onInspect, onSwitchBranch }));
         return sessions.get(sessionId);
     };
     const controller = {
@@ -240,8 +234,6 @@ export function createReplyVariantController({ document: doc = globalThis.docume
                 };
                 if (onInspect) action(doc, commands, 'Inspect revision', execute('inspect'), { disabled: !capabilities.inspect });
                 if (onSwitchBranch) action(doc, commands, 'Switch branch', execute('switchBranch'), { disabled: !capabilities.switch });
-                if (onRetry) action(doc, commands, 'Retry reply', execute('retry'), { disabled: !capabilities.retry || replies.detached || selectedMessageId !== anchor.messageId });
-                if (onFork) action(doc, commands, 'Fork from revision', execute('fork'), { disabled: !capabilities.fork });
                 el(doc, 'p', 'atri-library-meta', tl('Switching restores the branch head, including its narrative and state. Preview does not switch branches.'), body);
             };
             const load = async () => {

@@ -1,4 +1,5 @@
 import { mountSpeechControls } from './speech-controls.js';
+import { ConversationWindow } from './conversation-window.js';
 import { nativeAssetUrl } from './session-projection.js';
 import { openPersonaSelector } from './persona-ui.js';
 import { openHostExternal } from './frontend/external.js';
@@ -21,7 +22,7 @@ function activeRuntime() {
 }
 
 function actorName(snapshot, entry) {
-    if (entry?.role === 'user') return snapshot.timeline.find(item => item.messageId === entry.messageId)?.metadata?.atri_player_identity?.name || tl('You');
+    if (entry?.role === 'user') return entry?.metadata?.atri_player_identity?.name || tl('You');
     if (entry?.role === 'system') return tl('System');
     const actor = (snapshot?.manifest?.actors || []).find(item => item.actorId === entry?.actorId);
     return actor?.displayName || snapshot?.manifest?.name || 'Narrator';
@@ -41,7 +42,7 @@ function messageNode(documentRef, snapshot, entry) {
     avatar.className = 'atria-play-message__avatar';
     avatar.setAttribute('aria-hidden', 'true');
     avatar.textContent = name.textContent.slice(0, 1);
-    const identity = snapshot.timeline.find(item => item.messageId === entry.messageId)?.metadata?.atri_player_identity;
+    const identity = entry.metadata?.atri_player_identity;
     if (identity?.avatar) {
         const image = documentRef.createElement('img'); image.alt = ''; image.src = nativeAssetUrl(identity.avatar.assetId);
         image.addEventListener('error', () => image.remove(), { once: true }); avatar.append(image);
@@ -178,13 +179,36 @@ export function mountAtriaPlayProduct({
         return Boolean(runtime?.active && !runtime.history && !runtime.failed);
     }
 
+    let disposed = false;
     let draftText = '';
     let renderedSession = null;
     const speechControls = new Map();
     const clearSpeechControls = () => { speechControls.forEach(control => control.dispose()); speechControls.clear(); };
     let following = true;
+    const topSpace = documentRef.createElement('div'), bottomSpace = documentRef.createElement('div');
+    for (const spacer of [topSpace, bottomSpace]) { spacer.setAttribute('aria-hidden', 'true'); spacer.className = 'atria-play-window-spacer'; }
+    const canShift = () => documentRef.getSelection?.()?.isCollapsed !== false
+        && !(conversation.contains(documentRef.activeElement) && documentRef.activeElement !== conversation);
+    const window = new ConversationWindow({ scroll: conversation,
+        read: (snapshot, fromSequence, limit, signal) => activeRuntime()?.request?.('timeline', {
+            sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId, fromSequence, limit,
+        }, { signal }) ?? Promise.resolve({ revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId,
+            entries: snapshot.timeline.slice(fromSequence, fromSequence + limit) }),
+        changed: () => render(), failed: error => { composerStatus.textContent = error.message; } });
+    window.canShift = canShift;
+    const resizeRows = typeof ResizeObserver === 'function' ? new ResizeObserver(rows => {
+        const viewport = conversation.getBoundingClientRect();
+        const anchor = [...conversation.querySelectorAll('[data-atria-message-id]')].find(node => node.getBoundingClientRect().bottom >= viewport.top);
+        const before = anchor?.getBoundingClientRect().top;
+        for (const row of rows) window.measure(Number(row.target.dataset.sequence), row.target.getBoundingClientRect().height);
+        topSpace.style.height = window.offset(window.from) + 'px';
+        bottomSpace.style.height = Math.max(0, window.offset(window.total) - window.offset(window.from + window.entries.length)) + 'px';
+        if (following) conversation.scrollTop = conversation.scrollHeight;
+        else if (anchor && before !== undefined) conversation.scrollTop += anchor.getBoundingClientRect().top - before;
+    }) : null;
     const scrollToLatest = () => {
         following = true;
+        window.latest();
         conversation.scrollTop = conversation.scrollHeight;
         latest.hidden = true;
     };
@@ -221,12 +245,14 @@ export function mountAtriaPlayProduct({
 
 
     function render() {
+        if (disposed) return;
         const runtime = activeRuntime();
         if (!generating()) draftText = '';
         const snapshot = runtime?.snapshot || null;
         const active = Boolean(snapshot && runtime?.active);
         product.hidden = !active;
         if (!active) {
+            window.clear(); resizeRows?.disconnect();
             clearSpeechControls(); renderedSession = null;
             draftText = '';
             runtimeError.hidden = true;
@@ -247,7 +273,8 @@ export function mountAtriaPlayProduct({
             snapshot.manifest?.name,
             snapshot.manifest?.version,
         ].filter(Boolean).join(' · ');
-        state.textContent = tl(runtime.history ? 'History' : runtime.failed ? 'Recovery required' : 'Live');
+        const terminalArchive = snapshot.states?.atri_run?.status === 'dead' && snapshot.states.atri_run.mode === 'ironman';
+        state.textContent = tl(terminalArchive ? 'Story ended' : runtime.history ? 'History' : runtime.failed ? 'Recovery required' : 'Live');
         state.dataset.tone = runtime.failed ? 'danger' : runtime.history ? 'neutral' : 'success';
 
         const sessionId = snapshot.session?.sessionId;
@@ -261,15 +288,19 @@ export function mountAtriaPlayProduct({
             resizeInput();
             runtimeError.hidden = true;
         }
+        window.update(snapshot, following && canShift());
+        if (topSpace.parentNode !== conversation) conversation.append(topSpace, bottomSpace);
         // Reconcile projection nodes; streaming must not replace committed prose,
         // disrupt a text selection, or drag a reader away from an earlier turn.
         let entries;
-        try { entries = headless.presentationMessages(); } catch {
-            entries = headless.messages();
+        try { entries = headless.presentationMessages(window.entries, window.variants); } catch {
+            entries = headless.messages(window.entries, window.variants);
             showRuntimeError({ detail: { message: tl('Presentation Processing failed. Showing the original message.'), target: 'diagnostics' } });
         }
-        const messageBlocks = headless.blocks();
-        const committedEntries = new Map(snapshot.timeline.map(entry => [entry.messageId, entry]));
+        const messageBlocks = headless.blocks(undefined, window.entries, window.variants);
+        const committedEntries = new Map(window.entries.map(entry => [entry.messageId, entry]));
+        const blocksByMessage = new Map();
+        for (const block of messageBlocks) { if (!blocksByMessage.has(block.messageId)) blocksByMessage.set(block.messageId, []); blocksByMessage.get(block.messageId).push(block); }
         const generation = headless.generation();
         const provisional = generation.text || draftText;
         const existing = new Map([...conversation.querySelectorAll('[data-atria-message-id]')]
@@ -277,7 +308,9 @@ export function mountAtriaPlayProduct({
         conversation.querySelector('.atria-play-conversation__empty')?.remove();
         entries.forEach((entry, index) => {
             const id = text(entry.messageId);
-            const node = existing.get(id) || messageNode(documentRef, snapshot, entry);
+            const node = existing.get(id) || messageNode(documentRef, snapshot, { ...committedEntries.get(id), ...entry });
+            node.dataset.sequence = String(entry.sequence ?? window.from + index);
+            node.setAttribute('aria-posinset', String(Number(node.dataset.sequence) + 1)); node.setAttribute('aria-setsize', String(window.total));
             existing.delete(id);
             if (entry.role === 'assistant' && snapshot.manifest.runtime?.experienceContract?.informationRuntime?.narration?.expression) {
                 if (speechControls.has(id) && speechControls.get(id).actorId !== entry.actorId) { speechControls.get(id).dispose(); speechControls.delete(id); }
@@ -290,7 +323,7 @@ export function mountAtriaPlayProduct({
             if (body.dataset.canonicalText !== text(displayContent)) { renderSafeProse(body, text(displayContent), { openExternal: openHostExternal }); body.dataset.canonicalText = text(displayContent); }
             updateIllustrationSurface(body, { sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry: committedEntries.get(entry.messageId), state: snapshot.illustrations, controlsTop: () => composerComponent.getBoundingClientRect().top });
             if (!node.querySelector('[data-atria-message-blocks]')) {
-                const blocks = messageBlocks.filter(block => block.messageId === entry.messageId);
+                const blocks = blocksByMessage.get(entry.messageId) ?? [];
                 const blockRoot = documentRef.createElement('section'); blockRoot.dataset.atriaMessageBlocks = 'true';
                 for (const block of blocks) {
                     const card = documentRef.createElement('article'), title = documentRef.createElement('h4'), data = documentRef.createElement('dl');
@@ -303,9 +336,14 @@ export function mountAtriaPlayProduct({
                 }
                 node.append(blockRoot);
             }
-            if (conversation.children[index] !== node) conversation.insertBefore(node, conversation.children[index] || null);
+            if (conversation.children[index + 1] !== node) conversation.insertBefore(node, conversation.children[index + 1] || bottomSpace);
+            resizeRows?.observe(node);
         });
-        for (const node of existing.values()) { speechControls.get(node.dataset.atriaMessageId)?.dispose(); speechControls.delete(node.dataset.atriaMessageId); releaseIllustrationSurface(node.querySelector('.atria-play-message__body')); node.remove(); }
+        for (const node of existing.values()) { resizeRows?.unobserve(node); speechControls.get(node.dataset.atriaMessageId)?.dispose(); speechControls.delete(node.dataset.atriaMessageId); releaseIllustrationSurface(node.querySelector('.atria-play-message__body')); node.remove(); }
+        conversation.append(bottomSpace);
+        topSpace.style.height = window.offset(window.from) + 'px';
+        bottomSpace.style.height = Math.max(0, window.offset(window.total) - window.offset(window.from + entries.length)) + 'px';
+        conversation.setAttribute('aria-live', following ? 'polite' : 'off');
         provisionalNode.hidden = !generating() || !provisional;
         provisionalNode.textContent = provisional;
         provisionalNode.dataset.generationState = generation.state;
@@ -320,7 +358,7 @@ export function mountAtriaPlayProduct({
             conversation.append(empty);
         }
 
-        const writable = runtimeWritable(runtime);
+        const writable = runtimeWritable(runtime) && snapshot.states?.atri_run?.status !== 'dead';
         textarea.disabled = !writable || generating() || submitting;
         persona.disabled = !writable || generating() || submitting || Boolean(runtime.generation);
         persona.textContent = runtime.snapshot.states?.atri_player_persona?.solo?.snapshot.name || tl('Choose Persona');
@@ -331,13 +369,13 @@ export function mountAtriaPlayProduct({
             send.title = tl(action);
             send.replaceChildren(createAtriaIcon(documentRef, action.toLowerCase()));
         }
-        recover.hidden = !runtime.failed && !runtime.history;
+        recover.hidden = terminalArchive || (!runtime.failed && !runtime.history);
         recover.textContent = tl(runtime.failed ? 'Reload session' : 'Return to current story');
-        composerStatus.textContent = tl(runtime.failed
+        composerStatus.textContent = tl(terminalArchive ? 'This story has ended. Its history is read-only.' : runtime.failed
             ? 'This session needs recovery before you can continue.'
             : runtime.history ? 'Historical revisions are read-only.' : generating() ? 'Generating…' : '');
         queueMicrotask(() => {
-            if (following) scrollToLatest();
+            if (!disposed && following) scrollToLatest();
         });
     }
 
@@ -453,6 +491,8 @@ export function mountAtriaPlayProduct({
         },
         refresh: render,
         dispose() {
+            disposed = true;
+            window.dispose(); resizeRows?.disconnect();
             clearSpeechControls(); picker?.close();
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);
             documentRef.removeEventListener('atria-native-runtime-error', showRuntimeError);

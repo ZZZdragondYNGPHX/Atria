@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
+import { readTimelineIndex } from './timeline-index.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { ILLUSTRATION_NAMESPACE, emptyIllustrations, assertIllustrationState, illustrationAnchorMatches } from '../../public/shared/native-illustration-contract.js';
 
@@ -20,8 +21,9 @@ export async function validateIllustrationDependencies(tx, handle, sessionId, st
         const variant = (await tx.getResource({ kind: K.timelineVariant, handle, sessionId, messageId: anchor.messageId, variantId: anchor.variantId }))?.doc;
         const revision = (await tx.getResource({ kind: K.sessionRevision, handle, sessionId, revisionId: anchor.revisionId }))?.doc;
         const timeline = revision && (await tx.getResource({ kind: K.sessionState, handle, sessionId, namespace: 'atri_timeline', head: revision.stateHeads.atri_timeline }))?.doc;
+        const selections = timeline && await readTimelineIndex(tx, handle, sessionId, timeline);
         if (!variant || !illustrationAnchorMatches(anchor, variant.content) || illustrationContentHash(variant.content) !== anchor.contentHash
-            || !timeline?.some(entry => entry.messageId === anchor.messageId && entry.activeVariantId === anchor.variantId)) throw new TypeError('Illustration anchor dependency mismatch');
+            || !selections?.some(entry => entry.messageId === anchor.messageId && entry.activeVariantId === anchor.variantId)) throw new TypeError('Illustration anchor dependency mismatch');
     }
     for (const image of state.images) {
         if (image.requestSnapshot && image.requestSnapshot.source.sessionId !== sessionId) throw new TypeError('Illustration image belongs to another session');

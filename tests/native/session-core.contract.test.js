@@ -2,6 +2,18 @@ import { CONTRACT_HARNESSES, makeTempFsEngineHarness } from '../storage/harness/
 import { createNativeId, isNativeId, NATIVE_RESOURCE_KINDS } from '../../src/native/index.js';
 import { sessionFixture, installFixture, services, knowledgeSnapshot, bindingFor, publishKnowledge } from './helpers/session-fixture.js';
 
+
+// Branch fixtures explicitly create durable SavePoints; retired player Fork/Retry APIs do not exist.
+async function savedFork(core, handle, sessionId, options = {}) {
+    const current = await core.load(handle, sessionId);
+    let source = options.revisionId ? await core.load(handle, sessionId, { revisionId: options.revisionId }) : current;
+    if (options.messageId) source = await core._findTimelineBoundary(handle, sessionId, source, options.messageId);
+    const save = await core._saves.create(handle, { saveId: createNativeId('savePoint'), sessionId,
+        branchId: source.revision.branchId, revisionId: source.revision.revisionId, kind: 'manual', createdAt: Date.now(),
+        ...(options.displayName ? { displayName: options.displayName } : {}) });
+    return core.restoreSavePoint(handle, sessionId, save.saveId, { expectedRevisionId: options.expectedRevisionId });
+}
+
 describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) => {
     let h;
     let f;
@@ -20,12 +32,12 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
     test('readable history exposes committed parent/fork relationships but excludes orphan revisions', async () => {
         const first = await f.core.create(h.handle, f.start);
         const second = await f.core.appendTimeline(h.handle, first.session.sessionId, { role: 'user', content: 'Branch here' });
-        const fork = await f.core.forkBranch(h.handle, first.session.sessionId, { displayName: 'Alternate' });
+        const fork = await savedFork(f.core, h.handle, first.session.sessionId, { displayName: 'Alternate' });
         const orphanId = createNativeId('revision'); await f.sessionRepo.putRevision(h.handle, { ...first.revision, revisionId: orphanId });
         const history = await f.sessionRepo.getHistory(h.handle, first.session.sessionId);
         expect(history.headRevisionId).toBe(fork.revision.revisionId); expect(history.revisions).toHaveLength(3);
         expect(history.revisions.find(item => item.revisionId === second.revision.revisionId).parentRevisionId).toBe(first.revision.revisionId);
-        expect(history.branches.find(item => item.branchId === fork.session.activeBranchId)).toMatchObject({ displayName: 'Alternate', parentBranchId: first.session.activeBranchId, forkRevisionId: second.revision.revisionId });
+        expect(history.branches.find(item => item.branchId === fork.session.activeBranchId)).toMatchObject({ displayName: 'Alternate · Route 2', parentBranchId: first.session.activeBranchId, forkRevisionId: second.revision.revisionId });
         expect(history.revisions.some(item => item.revisionId === orphanId)).toBe(false);
     });
 
@@ -42,7 +54,7 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         expect(view.knowledge.bindings[0].source.knowledgeRevisionId).toBe(f.knowledge.revision.knowledgeRevisionId);
         view = await core.appendTimeline(h.handle, sessionId, { role: 'user', content: 'Explore' });
         const rootMessageId = view.timeline[1].messageId;
-        view = await core.forkBranch(h.handle, sessionId, { displayName: 'Alternate' });
+        view = await savedFork(core, h.handle, sessionId, { displayName: 'Alternate' });
         const childBranchId = view.revision.branchId;
         expect(view.timeline.map(entry => entry.messageId)).toEqual([openingId, rootMessageId]);
         expect(view.graph.find(node => node.branchId === childBranchId).branch.parentBranchId).toBe(rootBranchId);
@@ -89,7 +101,7 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         view = await f.core.appendTimeline(h.handle, sessionId, { role: 'user', content: 'Later root turn' });
         expect(view.timeline.every(entry => entry.variantIds.length === 1)).toBe(true);
 
-        const child = await f.core.forkBranch(h.handle, sessionId, {
+        const child = await savedFork(f.core, h.handle, sessionId, {
             revisionId: oldRevisionId,
             displayName: 'Revision fork',
             expectedRevisionId: view.revision.revisionId,
@@ -178,14 +190,14 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         const empty = await installFixture(h, fixture);
         let view = await empty.core.create(h.handle, empty.start);
         expect(view.revision.timelineHead).toBeNull();
-        view = await empty.core.forkBranch(h.handle, view.session.sessionId);
-        view = await empty.core.forkBranch(h.handle, view.session.sessionId);
+        view = await savedFork(empty.core, h.handle, view.session.sessionId);
+        view = await savedFork(empty.core, h.handle, view.session.sessionId);
         expect(view.graph).toHaveLength(3);
         expect((await services(h).core.load(h.handle, view.session.sessionId)).timeline).toEqual([]);
     });
     test('Native resource round-trip into a fresh FS engine preserves the entire committed Session', async () => {
         let view = await f.core.create(h.handle, f.start);
-        view = await f.core.forkBranch(h.handle, view.session.sessionId);
+        view = await savedFork(f.core, h.handle, view.session.sessionId);
         view = await f.core.appendTimeline(h.handle, view.session.sessionId, { role: 'user', content: 'Round-trip' });
         const save = await f.core.createSavePoint(h.handle, view.session.sessionId);
         const target = await makeTempFsEngineHarness();
@@ -254,7 +266,7 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         }, { expectedRevisionId: coherentRevisionId });
         expect(view.states.atri_variables.values.route).toBe('B');
 
-        const forked = await f.core.forkBranch(h.handle, sessionId, {
+        const forked = await savedFork(f.core, h.handle, sessionId, {
             revisionId: coherentRevisionId,
             expectedRevisionId: view.revision.revisionId,
         });
@@ -285,66 +297,8 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
     });
 
 
-    test('N5 Retry and message-scoped Fork use the exact Timeline boundary, not later state-only revisions', async () => {
-        let view = await f.core.create(h.handle, f.start);
-        const sessionId = view.session.sessionId;
-
-        view = await f.core.applyRuntimeCommit(h.handle, sessionId, {
-            commands: [{ type: 'append', draft: { role: 'user', content: 'Boundary user' } }],
-            statePatch: {
-                atri_variables: { schemaVersion: 1, values: { phase: 'post-user' } },
-                atri_memory_graph: { marker: 'post-user' },
-            },
-        }, { expectedRevisionId: view.revision.revisionId });
-        const exactPostUserRevisionId = view.revision.revisionId;
-        const userMessageId = view.timeline.at(-1).messageId;
-
-        view = await f.core.updateState(h.handle, sessionId, {
-            atri_variables: { schemaVersion: 1, values: { phase: 'late-state-only' } },
-            atri_memory_graph: { marker: 'late-state-only' },
-        }, { expectedRevisionId: view.revision.revisionId });
-        const lateStateRevisionId = view.revision.revisionId;
-        expect(view.revision.timelineHead.messageId).toBe(userMessageId);
-
-        view = await f.core.applyRuntimeCommit(h.handle, sessionId, {
-            commands: [{
-                type: 'append',
-                draft: {
-                    role: 'assistant',
-                    actorId: view.entryPoint.primaryActorId ?? view.entryPoint.actorIds[0],
-                    content: 'Answer after late state',
-                },
-            }],
-            statePatch: {
-                atri_variables: { schemaVersion: 1, values: { phase: 'assistant' } },
-            },
-        }, { expectedRevisionId: lateStateRevisionId });
-        const assistantMessageId = view.timeline.at(-1).messageId;
-
-        const retry = await f.core.retryReply(h.handle, sessionId, {
-            messageId: assistantMessageId,
-            expectedRevisionId: view.revision.revisionId,
-        });
-        expect(retry.timeline.at(-1).messageId).toBe(userMessageId);
-        expect(retry.states.atri_variables.values.phase).toBe('post-user');
-        expect(retry.states.atri_memory_graph.marker).toBe('post-user');
-        expect(retry.graph.at(-1).forkRevisionId).toBe(exactPostUserRevisionId);
-
-        const retryHead = retry.revision.revisionId;
-        const childLate = await f.core.updateState(h.handle, sessionId, {
-            atri_variables: { schemaVersion: 1, values: { phase: 'child-late' } },
-        }, { expectedRevisionId: retryHead });
-        expect(childLate.revision.timelineHead.messageId).toBe(userMessageId);
-
-        const forked = await f.core.forkBranch(h.handle, sessionId, {
-            messageId: userMessageId,
-            expectedRevisionId: childLate.revision.revisionId,
-        });
-        expect(forked.timeline.at(-1).messageId).toBe(userMessageId);
-        expect(forked.states.atri_variables.values.phase).toBe('post-user');
-        // The nearest ancestry block is the Retry fork boundary, not the
-        // state-only child revision that followed it.
-        expect(forked.graph.at(-1).forkRevisionId).toBe(retryHead);
+    test('retired direct Retry and Fork seams are absent', () => {
+        expect(f.core.retryReply).toBeUndefined(); expect(f.core.forkBranch).toBeUndefined();
     });
 
 

@@ -3,8 +3,9 @@ import { bridgeFailure } from '../../../shared/native-frontend-bridge.js';
 
 // Host adapter over the one existing Session runtime and generation entrypoint.
 // No Timeline writes, alternate scheduler, or durable state lives here.
-export function createHeadlessConversation({ runtime, composer, generate, stop, actions = {} }) {
+export function createHeadlessConversation({ runtime, composer, stop, actions = {} }) {
     const current = () => typeof runtime === 'function' ? runtime() : runtime;
+    const view = (entries, variants) => entries ? { ...current().snapshot, timeline: entries, variants: variants ?? current().snapshot.variants } : current().snapshot;
     const guard = revision => {
         const value = current();
         if (!value?.active || value.snapshot.revision.revisionId !== revision) throw bridgeFailure('bridge_revision_stale');
@@ -17,9 +18,9 @@ export function createHeadlessConversation({ runtime, composer, generate, stop, 
             if (!entry || entry.content !== content || !['user', 'assistant'].includes(entry.role)) return null;
             return { sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry, state: snapshot.illustrations };
         },
-        messages: () => current()?.snapshot ? projectConversation(current().snapshot) : [],
-        presentationMessages: () => current()?.snapshot ? projectPresentation(current().snapshot) : [],
-        blocks: type => current()?.snapshot ? projectMessageBlocks(current().snapshot, type) : [],
+        messages: (entries, variants) => current()?.snapshot ? projectConversation(view(entries, variants)) : [],
+        presentationMessages: (entries, variants) => current()?.snapshot ? projectPresentation(view(entries, variants)) : [],
+        blocks: (type, entries, variants) => current()?.snapshot ? projectMessageBlocks(view(entries, variants), type) : [],
         generation: () => ({ ...(current()?.generationProjection ?? { state: 'idle', text: '', error: '' }) }),
         async invoke(target, input, revision) {
             const value = guard(revision), key = target.service + '.' + target.method;
@@ -42,10 +43,7 @@ export function createHeadlessConversation({ runtime, composer, generate, stop, 
             if (key === 'host.conversation.cancel') { if (!stop) throw bridgeFailure('bridge_host_unavailable'); stop(); return {}; }
             if (key === 'host.composer.submit') { if (value.failed || value.history) throw bridgeFailure('bridge_session_readonly'); value.assertWritable?.(); await draft().submit({ revision }); return {}; }
             if (key === 'host.conversation.regenerate') {
-                if (value.failed || value.history) throw bridgeFailure('bridge_session_readonly'); value.assertWritable?.();
-                if (value.snapshot.timeline.at(-1)?.messageId !== input.messageId || value.snapshot.timeline.at(-1)?.role !== 'assistant') throw bridgeFailure('bridge_target_invalid');
-                if (!generate) throw bridgeFailure('bridge_host_unavailable');
-                await generate('regenerate'); return {};
+                throw bridgeFailure('bridge_policy_denied');
             }
             if (['host.session.reload', 'host.session.recover'].includes(key)) { await value.reload(); return {}; }
             if (key === 'host.session.exit') { if (!actions.exitExperience) throw bridgeFailure('bridge_host_unavailable'); await actions.exitExperience(); return {}; }

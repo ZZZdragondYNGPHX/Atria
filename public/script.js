@@ -3469,7 +3469,7 @@ export async function showMoreMessages(messagesToLoad = null) {
 export async function printMessages() {
     manualTruncationOverride = false;
     let startIndex = 0;
-    let count = power_user.chat_truncation || Number.MAX_SAFE_INTEGER;
+    let count = nativeSessionRuntime.active ? 64 : power_user.chat_truncation || Number.MAX_SAFE_INTEGER;
 
     if (chat.length > count || chatServerState.hasMore) {
         startIndex = chat.length - count;
@@ -5320,7 +5320,7 @@ export function addOneMessage(mes, { type = 'normal', insertAfter = null, scroll
         && !manualTruncationOverride
         && !(this_edit_mes_id >= 0)
     ) {
-        const cap = Number(power_user.chat_truncation);
+        const cap = nativeSessionRuntime.active ? 64 : Number(power_user.chat_truncation);
         if (cap > 0) {
             const excess = chatElement.children('.mes').length - cap;
             if (excess > 0) {
@@ -22302,40 +22302,9 @@ export async function openNativeSession(sessionId, options = {}) {
     return nativeSessionRuntime.open(sessionId, options);
 }
 
-export async function retryNativeReply() {
-    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
-    return Generate('regenerate');
-}
-
-export async function reenterNativeTurn(index) {
-    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
-    const draft = await nativeSessionRuntime.reenterTurn(index);
-    const composer = document.getElementById('send_textarea');
-    if (!composer) throw new Error('Native composer is unavailable');
-    composer.value = draft.content;
-    composer.dispatchEvent(new Event('input', { bubbles: true }));
-    const productComposer = globalThis.Atria?.shell?.getPlayHost?.()?.product?.textarea;
-    if (productComposer?.isConnected) {
-        productComposer.value = draft.content;
-        productComposer.dispatchEvent(new Event('input', { bubbles: true }));
-        productComposer.focus();
-    } else {
-        composer.focus();
-    }
-    return draft;
-}
-
-export async function restartNativeFrom(index) {
-    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
-    return nativeSessionRuntime.restartFrom(index);
-}
-
 if (globalThis.Atria) {
     globalThis.Atria.openNativeSession = openNativeSession;
     globalThis.Atria.nativeSessionRuntime = nativeSessionRuntime;
-    globalThis.Atria.retryNativeReply = retryNativeReply;
-    globalThis.Atria.reenterNativeTurn = reenterNativeTurn;
-    globalThis.Atria.restartNativeFrom = restartNativeFrom;
 }
 
 export { nativeSessionRuntime };

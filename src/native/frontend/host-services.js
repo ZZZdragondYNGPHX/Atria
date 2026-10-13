@@ -28,7 +28,6 @@ export async function readFixedHost(core, owner, state, base, binding, input) {
     if (service === 'host.expression' && method === 'status') return expressionStatus(base);
     if (method === 'status') return projectSession(base);
     if (service === 'host.session' && method === 'saves') return (await core.listSavePoints(owner, state.sessionId)).map(projectSave);
-    if (service === 'host.conversation' && method === 'retryStatus') return core.inspectReplyRetry(owner, state.sessionId, input);
     if (method === 'messages') return projectConversation(base);
     if (service === 'host.conversation' && method === 'presentation') return projectPresentation(base);
     if (service === 'host.conversation' && method === 'recent') {
@@ -57,9 +56,7 @@ export async function writeFixedHost(core, owner, state, binding, input, revisio
     const { service, method } = binding.target, options = { expectedRevisionId: revision };
     if (fixedHostTarget(binding.target).local) throw bridgeFailure('bridge_host_local_required');
     let snapshot;
-    if (service === 'host.conversation' && method === 'retry') snapshot = await core.retryReply(owner, state.sessionId, { ...input, ...options });
-    else if (service === 'host.conversation' && method === 'fork') snapshot = await core.forkBranch(owner, state.sessionId, { ...input, ...options });
-    else if (service === 'host.conversation' && method === 'switch') snapshot = await core.switchBranch(owner, state.sessionId, input.branchId, options);
+    if (service === 'host.conversation' && method === 'switch') snapshot = await core.switchBranch(owner, state.sessionId, input.branchId, options);
     else if (service === 'host.session' && method === 'begin') {
         let value;
         try { value = JSON.parse(input.inputJson); } catch { throw new TypeError('Invalid story start input'); }

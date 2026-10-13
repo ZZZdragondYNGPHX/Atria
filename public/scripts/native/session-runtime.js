@@ -98,6 +98,7 @@ export class NativeSessionRuntime {
         const previous = this.snapshot;
         const nextSession = { ...previous.session };
         if (session.displayTitle == null) delete nextSession.displayTitle; else nextSession.displayTitle = session.displayTitle;
+        for (const field of ['branchMetadata', 'autoSavePolicy']) if (session[field] !== undefined) nextSession[field] = copy(session[field]);
         this.snapshot = { ...previous, session: nextSession };
         await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_METADATA_CHANGED, this.snapshot, previous);
     }
@@ -287,11 +288,12 @@ export class NativeSessionRuntime {
         });
     }
 
-    async request(path, body) {
+    async request(path, body, { signal } = {}) {
         const response = await fetch(`/api/native/session/${path}`, {
             method: 'POST',
             headers: this.host.headers(),
             body: JSON.stringify(body),
+            signal,
         });
         if (!response.ok) {
             let payload = null;
@@ -304,8 +306,14 @@ export class NativeSessionRuntime {
         return response.json();
     }
 
+    async setExperienceMetadata(options) {
+        const session = await this.request('experience-metadata', { sessionId: this.snapshot.session.sessionId,
+            expectedRevisionId: this.snapshot.revision.revisionId, ...options });
+        await this.applySessionMetadata(session); return session;
+    }
+
     assertWritable() {
-        if (!this.active || this.history || this.failed) {
+        if (!this.active || this.history || this.failed || this.snapshot.states?.atri_run?.status === 'dead') {
             throw new Error('Native Session is not writable; open/reload current HEAD first');
         }
     }
@@ -440,6 +448,7 @@ export class NativeSessionRuntime {
     async prepareGeneration(type) {
         if (!this.active) return type;
         this.assertWritable();
+        if (type === 'regenerate') throw committedTimelineMutation('Load an existing SavePoint to begin another route');
 
         // Recursive auto-continue belongs to the same uncommitted generation
         // Draft. Do not mint a second Native lifecycle operation.
@@ -447,37 +456,8 @@ export class NativeSessionRuntime {
 
         // A user turn is a committed boundary before assistant generation.
         // This guarantees Retry can later locate an exact post-user Revision.
-        const requestedRevision = this.snapshot.revision.revisionId;
         await this.persist();
         this._assertBarrier();
-        if (type === 'regenerate' && this.snapshot.revision.revisionId !== requestedRevision) throw new Error('Native retry revision changed');
-
-        if (type === 'regenerate') {
-            const target = this.snapshot.timeline.at(-1);
-            if (!target || target.role !== 'assistant') {
-                throw this._report(committedTimelineMutation('Native Retry Reply requires a committed assistant reply'));
-            }
-            try {
-                const next = await this.request('command', {
-                    sessionId: this.snapshot.session.sessionId,
-                    expectedRevisionId: this.snapshot.revision.revisionId,
-                    command: { type: 'retry', messageId: target.messageId },
-                });
-                const previous = this.snapshot;
-                this.snapshot = next;
-                this.history = false;
-                await this.host.install(projectNativeSession(next));
-                await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'retry' });
-                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'retry' });
-                this.generation = { kind: 'retry', sourceMessageId: target.messageId };
-                // The retry branch ends at the post-user revision, so the
-                // existing generator can run its ordinary append path.
-                return 'normal';
-            } catch (error) {
-                throw this._report(error, { fatal: true });
-            }
-        }
-
         if (type === 'continue') {
             const sourceIndex = this.snapshot.timeline.length - 1;
             const source = this.snapshot.timeline[sourceIndex];
@@ -712,86 +692,6 @@ export class NativeSessionRuntime {
             });
         }
         return true;
-    }
-
-    async forkRevision(revisionId = this.snapshot?.revision?.revisionId, { displayName } = {}) {
-        if (!this.active || this.failed || this.generation || this.host?.isGenerating?.()) throw new Error('Native Session is not ready to fork');
-        if (this.history) this._assertBarrier(); else await this.persist();
-        const previous = this.snapshot;
-        const next = await this.request('command', {
-            sessionId: previous.session.sessionId,
-            expectedRevisionId: previous.session.headRevisionId,
-            command: {
-                type: 'fork',
-                revisionId,
-                ...(displayName === undefined ? {} : { displayName }),
-            },
-        });
-        this.snapshot = next;
-        this.history = false;
-        this.generation = null;
-        this.generationProjection = { state: 'idle', text: '', error: '' };
-        await this.host.install(projectNativeSession(next));
-        await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'runtime-attempt' });
-        await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'runtime-attempt' });
-        return next;
-    }
-
-    async fork(index, { swipeId = null } = {}) {
-        if (swipeId !== null) {
-            throw this._report(committedTimelineMutation('Native Branch cannot select a committed Swipe/Variant'));
-        }
-        if (!this.history) await this.persist();
-        else this._assertBarrier();
-        if (this.failed) throw new Error('Reload required before branching');
-        const message = this.snapshot.timeline[index];
-        if (!message) throw new Error('Invalid Native fork message');
-        const previous = this.snapshot;
-        const next = await this.request('command', {
-            sessionId: previous.session.sessionId,
-            expectedRevisionId: previous.session.headRevisionId,
-            command: {
-                type: 'fork',
-                revisionId: previous.revision.revisionId,
-                messageId: message.messageId,
-            },
-        });
-        this.snapshot = next;
-        this.history = false;
-        this.generation = null;
-        this.generationProjection = { state: 'idle', text: '', error: '' };
-        await this.host.install(projectNativeSession(next));
-        await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'fork' });
-        await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'fork' });
-        return next.revision.branchId;
-    }
-
-    async reenterTurn(index) {
-        this.assertWritable();
-        const targetIndex = Number(index);
-        const target = this.snapshot.timeline[targetIndex];
-        if (!Number.isInteger(targetIndex) || !target || target.role !== 'user') {
-            throw new Error('Native Re-enter Turn requires a committed user Timeline entry');
-        }
-        if (targetIndex <= 0) {
-            throw new Error('Native Re-enter Turn requires a predecessor Timeline boundary');
-        }
-        const draft = {
-            content: String(target.content ?? ''),
-            metadata: copy(target.metadata ?? {}),
-            sourceMessageId: target.messageId,
-        };
-        await this.fork(targetIndex - 1);
-        return draft;
-    }
-
-    async restartFrom(index) {
-        const targetIndex = Number(index);
-        if (!Number.isInteger(targetIndex) || !this.snapshot?.timeline?.[targetIndex]) {
-            throw new Error('Native Restart From Here requires a committed Timeline entry');
-        }
-        await this.fork(targetIndex);
-        return this.snapshot;
     }
 
     async switchBranch(branchId) {

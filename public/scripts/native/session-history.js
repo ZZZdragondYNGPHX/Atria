@@ -8,11 +8,11 @@ export function buildSessionHistoryModel(history, options) {
 
 /** Returns the existing details element; atriaHistory exposes refresh/dispose/facade for hosts. */
 export function mountSessionHistory({ document: doc, root, sessionId, onInspect, onPreview,
-    onSwitchBranch, onRetry, onFork, getContext, loadHistory } = {}) {
+    onSwitchBranch, onMetadata, getContext, loadHistory } = {}) {
     const section = disclosure(doc, root, 'Branches & revisions'); section.dataset.atriaSessionHistory = 'true';
     const body = el(doc, 'div', 'atri-library-section', undefined, section); body.style.overflowWrap = 'anywhere';
     const facade = createReplyVariantFacade({ sessionId, loadHistory, getContext,
-        onInspect: onInspect ? target => onInspect(target.revisionId) : undefined, onSwitchBranch, onRetry, onFork });
+        onInspect: onInspect ? target => onInspect(target.revisionId) : undefined, onSwitchBranch });
     const capabilityButtons = new Map();
     const track = (button, target, capability) => { capabilityButtons.set(button, { target, capability }); return button; };
     const syncCapabilities = () => {
@@ -56,12 +56,15 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
         const toolbar = el(doc, 'div', 'atri-library-actions', undefined, body);
         action(doc, toolbar, 'Refresh history', () => load(true));
         const search = field(doc, body, 'Find branch', '', 'search');
+        const archiveLabel = el(doc, 'label', '', tl('Show archived branches'), body);
+        const showArchived = el(doc, 'input', '', undefined, archiveLabel); showArchived.type = 'checkbox';
         const branchList = el(doc, 'div', 'atri-library-grouped-list', undefined, body);
         const branchPages = el(doc, 'nav', 'atri-library-actions', undefined, body); branchPages.setAttribute('aria-label', tl('Branch pages'));
         let branchPage = 0;
         const renderBranches = () => {
             const query = search.value.trim().toLocaleLowerCase();
-            const branches = model.branches.filter(branch => branchName(branch.branchId).toLocaleLowerCase().includes(query));
+            const branches = model.branches.filter(branch => (showArchived.checked || !branch.archived)
+                && branchName(branch.branchId).toLocaleLowerCase().includes(query));
             branchPage = Math.min(branchPage, Math.max(0, Math.ceil(branches.length / 25) - 1));
             branchList.replaceChildren();
             for (const branch of branches.slice(branchPage * 25, (branchPage + 1) * 25)) {
@@ -72,6 +75,12 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
                 name.append(doc.createTextNode(branchName(branch.branchId)));
                 if (branch.isCurrent) marker(row, 'Current branch');
                 if (branch.isOrigin) marker(row, 'Original story branch');
+                if (branch.sourceSaveId) el(doc, 'p', 'atri-library-meta', fmt('Source SavePoint: ${0}', [branch.sourceSaveId]), row);
+                if (onMetadata) {
+                    const name = field(doc, row, 'Branch name', branchName(branch.branchId), 'text');
+                    action(doc, row, 'Rename branch', async () => { await onMetadata({ branchId: branch.branchId, displayName: name.value }); await load(true); });
+                    action(doc, row, branch.archived ? 'Unarchive branch' : 'Archive branch', async () => { await onMetadata({ branchId: branch.branchId, archived: !branch.archived }); await load(true); });
+                }
                 if (branch.issues.length) marker(row, 'Incomplete history');
                 el(doc, 'p', 'atri-library-meta', branch.parentBranchId ? fmt('Forked from ${0} at ${1}', [branchName(branch.parentBranchId), revisionName(branch.forkRevisionId)]) : tl('Beginning'), row);
                 el(doc, 'p', 'atri-library-meta', fmt('Branch head: ${0}', [revisionName(branch.headRevisionId)]), row);
@@ -86,6 +95,7 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
         const branchCount = el(doc, 'span', 'atri-library-meta', '', branchPages); branchCount.setAttribute('role', 'status'); branchCount.setAttribute('aria-atomic', 'true');
         const nextBranches = pageAction(branchPages, 'Next branches', () => { branchPage++; renderBranches(); });
         search.addEventListener('input', () => { branchPage = 0; renderBranches(); });
+        showArchived.addEventListener('change', () => { branchPage = 0; renderBranches(); });
 
         const preview = el(doc, 'section', 'atri-library-section', undefined, body); preview.dataset.atriaHistoryPreview = 'true'; preview.setAttribute('aria-label', tl('Revision preview'));
         const showPreview = async (target, focus = false) => {
@@ -95,11 +105,11 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
             el(doc, 'p', 'atri-library-meta', branchName(value.branchId), preview); markers(el(doc, 'div', 'atri-library-actions', undefined, preview), value.revision);
             el(doc, 'p', '', value.message?.preview || tl('No reply preview available.'), preview);
             const replies = facade.replies(value);
-            const navigation = el(doc, 'nav', 'atri-library-actions', undefined, preview); navigation.setAttribute('aria-label', tl('Reply variants'));
-            action(doc, navigation, 'Previous reply', () => showPreview(replies.previous, true), { disabled: !replies.previous });
+            const navigation = el(doc, 'nav', 'atri-library-actions', undefined, preview); navigation.setAttribute('aria-label', tl('Branch history'));
+            action(doc, navigation, 'Previous revision', () => showPreview(replies.previous, true), { disabled: !replies.previous });
             const count = el(doc, 'span', 'atri-library-meta', fmt('Reply ${0} of ${1}', [replies.index + 1, replies.count]), navigation);
             count.setAttribute('role', 'status'); count.setAttribute('aria-atomic', 'true');
-            action(doc, navigation, 'Next reply', () => showPreview(replies.next, true), { disabled: !replies.next });
+            action(doc, navigation, 'Next revision', () => showPreview(replies.next, true), { disabled: !replies.next });
             navigation.hidden = !replies.count;
             const commands = el(doc, 'div', 'atri-library-actions', undefined, preview);
             const permissions = facade.capabilities(value);
@@ -111,8 +121,6 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
                 if (error) feedback(doc, body, libraryError(error), true);
             };
             if (onSwitchBranch) track(action(doc, commands, 'Switch branch', mutate('switchBranch'), { disabled: !permissions.switch }), value, 'switch');
-            if (onRetry) track(action(doc, commands, 'Retry reply', mutate('retry'), { disabled: !permissions.retry }), value, 'retry');
-            if (onFork) track(action(doc, commands, 'Fork from revision', mutate('fork'), { disabled: !permissions.fork }), value, 'fork');
             el(doc, 'p', 'atri-library-meta', tl('Switching restores the branch head, including its narrative and state. Preview does not switch branches.'), preview);
             if (focus) heading.focus();
             if (onPreview) await onPreview(value);

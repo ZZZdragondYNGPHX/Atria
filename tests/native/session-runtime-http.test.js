@@ -23,6 +23,17 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
 
     afterEach(async () => { await h.cleanup(); });
 
+    test('historical SavePoint creation is closed and Branch metadata preserves authoritative identity', async () => {
+        const before = view;
+        view = await f.core.appendTimeline(h.handle, view.session.sessionId, { role: 'user', content: 'Later' });
+        await expect(f.core.createSavePoint(h.handle, view.session.sessionId, { revisionId: before.revision.revisionId })).rejects.toThrow('current committed HEAD');
+        const response = await request(app).post('/experience-metadata').send({ sessionId: view.session.sessionId, expectedRevisionId: view.revision.revisionId,
+            branchId: view.revision.branchId, displayName: 'Named route', archived: true });
+        expect(response.status).toBe(200); expect(response.body.headRevisionId).toBe(view.revision.revisionId);
+        expect((await f.sessionRepo.getHistory(h.handle, view.session.sessionId)).branches[0]).toMatchObject({ displayName: 'Named route', archived: true });
+        expect((await f.core.load(h.handle, view.session.sessionId)).states).toEqual(view.states);
+    });
+
     test('illustration HTTP operations keep the committed timeline intact and reject foreign source and unknown fields', async () => {
         const entry = view.timeline.at(-1), sessionId = view.session.sessionId;
         const body = { sessionId, revisionId: view.revision.revisionId, messageId: entry.messageId, variantId: entry.activeVariantId,
@@ -150,7 +161,7 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
         }
     });
 
-    test('Retry Reply forks from exact post-user revision rather than adding a Variant', async () => {
+    test('Retired Retry Reply cannot alter a committed revision', async () => {
         const user = await request(app).post('/command').send({
             sessionId: view.session.sessionId,
             expectedRevisionId: view.revision.revisionId,
@@ -187,23 +198,10 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
             expectedRevisionId: assistant.body.revision.revisionId,
             command: { type: 'retry', messageId: assistantMessage.messageId },
         });
-        expect(retry.status).toBe(200);
-        expect(retry.body.revision.branchId).not.toBe(oldBranchId);
-        expect(retry.body.timeline.at(-1).messageId).toBe(userMessageId);
-        expect(retry.body.timeline.some(item => item.messageId === assistantMessage.messageId)).toBe(false);
-
-        const postUser = await f.core.load(h.handle, view.session.sessionId, { revisionId: userRevisionId });
-        expect(postUser.timeline.at(-1).messageId).toBe(userMessageId);
-        const oldHead = await f.core.load(h.handle, view.session.sessionId, {
-            revisionId: assistant.body.revision.revisionId,
-        });
-        expect(oldHead.revision.branchId).toBe(oldBranchId);
-        expect(oldHead.timeline.at(-1)).toMatchObject({
-            messageId: assistantMessage.messageId,
-            content: 'First reply',
-        });
+        expect(retry.status).toBe(400);
+        expect((await f.core.load(h.handle, view.session.sessionId)).revision.branchId).toBe(oldBranchId);
+        expect((await f.core.load(h.handle, view.session.sessionId)).timeline.at(-1).messageId).toBe(assistantMessage.messageId);
     });
-
     test('Native attachment upload/read and append retention never require legacy files', async () => {
         const upload = await request(app).post('/attachment').send({
             sessionId: view.session.sessionId,

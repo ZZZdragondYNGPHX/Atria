@@ -129,6 +129,11 @@ export function createNativeSessionRouter(getServices = services) {
         fields(req.body, ['sessionId', 'commitId']);
         res.set('Cache-Control', 'private, no-store').json(await sessionRepo.getCommitReceipt(handle, req.body.sessionId, req.body.commitId));
     }));
+    router.post('/experience-metadata', route(async (req, res, { sessionRepo }, handle) => {
+        fields(req.body, ['sessionId', 'expectedRevisionId', 'autoSavePolicy', 'branchId', 'displayName', 'archived']);
+        const { sessionId, ...options } = req.body;
+        res.json(await sessionRepo.setExperienceMetadata(handle, sessionId, options));
+    }));
     router.post('/illustrations/read', route(async (req, res, { sessionRepo }, handle) => {
         fields(req.body, ['sessionId', 'branchId']);
         res.json(await sessionRepo.getIllustrations(handle, req.body.sessionId, { branchId: req.body.branchId }));
@@ -214,16 +219,6 @@ export function createNativeSessionRouter(getServices = services) {
         } else if (command?.type === 'restore') {
             if (typeof command.saveId !== 'string') throw new TypeError('Native restore requires saveId');
             res.json(await core.restoreSavePoint(handle, sessionId, command.saveId, { expectedRevisionId }));
-        } else if (command?.type === 'fork') {
-            if (command.variantId !== undefined || command.swipeId !== undefined) {
-                throw new TypeError('Native Branch cannot select a committed Variant');
-            }
-            res.json(await core.forkBranch(handle, sessionId, { ...command, expectedRevisionId }));
-        } else if (command?.type === 'retry') {
-            res.json(await core.retryReply(handle, sessionId, {
-                messageId: command.messageId,
-                expectedRevisionId,
-            }));
         } else if (command?.type === 'switch') {
             res.json(await core.switchBranch(handle, sessionId, command.branchId, { expectedRevisionId }));
         } else throw new TypeError('Unsupported Native runtime command');

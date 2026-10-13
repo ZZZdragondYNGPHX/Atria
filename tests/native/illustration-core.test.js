@@ -148,7 +148,8 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
     test('late image can finalize on its original branch after the reader switches branches', async () => {
         const marked = await f.illustrations.createAnnotation(h.handle, f.sessionId, selection(view));
         const branchId = view.revision.branchId;
-        view = await f.core.forkBranch(h.handle, f.sessionId, { revisionId: view.revision.revisionId, expectedRevisionId: view.revision.revisionId });
+        const sourceSave = await f.core.createSavePoint(h.handle, f.sessionId);
+        view = await f.core.restoreSavePoint(h.handle, f.sessionId, sourceSave.saveId, { expectedRevisionId: view.revision.revisionId });
         await image(f, h, marked.state.annotations[0].annotationId, { branchId });
         const current = await f.core.load(h.handle, f.sessionId);
         expect(current.illustrations.images).toHaveLength(0);
@@ -160,9 +161,9 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const marked = await f.illustrations.createAnnotation(h.handle, f.sessionId, selection(view));
         const annotationId = marked.state.annotations[0].annotationId;
         const original = await image(f, h, annotationId);
-        await f.core.forkBranch(h.handle, f.sessionId, { revisionId: view.revision.revisionId, expectedRevisionId: view.revision.revisionId });
+        const saved = await f.saveSystem.manualSave(h.handle, f.sessionId);
+        await f.core.restoreSavePoint(h.handle, f.sessionId, saved.saveId, { expectedRevisionId: view.revision.revisionId });
         await image(f, h, annotationId);
-        const saved = await f.saveSystem.manualSave(h.handle, f.sessionId, { revisionId: view.revision.revisionId });
         expect(saved.illustrationHead).toBe(original.head);
         const exported = await f.saveSystem.exportSnapshot(h.handle, f.sessionId, saved.saveId);
         expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.images).toHaveLength(1);

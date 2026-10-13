@@ -40,13 +40,9 @@ const targets = {
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),
     'host.conversation.alternatives': read(hostObject({ ...MESSAGE_SCHEMA.properties, alternativeBranchId: id }), false, true),
     'host.conversation.inspect': { ...read(rows(MESSAGE_SCHEMA)), inputSchema: hostObject({ revisionId: id }) },
-    'host.conversation.retryStatus': { ...read(hostObject({ messageId: id, eligible: { type: 'boolean' }, reason: string(512) })), inputSchema: hostObject({ messageId: id }, []) },
-    'host.conversation.retry': action(hostObject({ messageId: id })),
-    'host.conversation.fork': action(hostObject({ revisionId: id, messageId: id }, ['revisionId'])),
     'host.conversation.switch': action(hostObject({ branchId: id })),
     'host.conversation.generation': read(GENERATION_SCHEMA, true),
     'host.conversation.cancel': action(HOST_EMPTY, true),
-    'host.conversation.regenerate': action(hostObject({ messageId: id }), true),
     'host.composer.get': read(hostObject({ text }), true),
     'host.composer.set': action(hostObject({ text }), true),
     'host.composer.append': action(hostObject({ text }), true),
@@ -62,7 +58,6 @@ const targets = {
     'host.session.reload': action(HOST_EMPTY, true),
     'host.session.recover': action(HOST_EMPTY, true),
     'host.session.exit': action(HOST_EMPTY, true),
-    'host.session.restart': action(HOST_EMPTY, true),
     'host.session.diagnostics': read(hostObject({ ...SESSION_SCHEMA.properties, failed: { type: 'boolean' }, historical: { type: 'boolean' } }), true),
 };
 export function fixedHostTarget(target, blockSchema) {
@@ -76,7 +71,7 @@ export function fixedHostTarget(target, blockSchema) {
     return structuredClone(targets[key]);
 }
 export function projectConversation(snapshot) {
-    return (snapshot.timeline ?? []).map((entry, sequence, all) => ({ messageId: entry.messageId, sequence, role: entry.role,
+    return (snapshot.timeline ?? []).map((entry, sequence, all) => ({ messageId: entry.messageId, sequence: entry.sequence ?? sequence, role: entry.role,
         content: entry.content, actorId: entry.actorId ?? '', predecessorId: all[sequence - 1]?.messageId ?? '',
         branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }));
 }

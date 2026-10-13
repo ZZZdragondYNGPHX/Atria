@@ -269,7 +269,7 @@ export class SessionRepo {
         if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
         const target = revisionId || session.headRevisionId;
         if (!target) throw new NotFoundError('committed native session revision', { sessionId });
-        if (revisionId && !(await this._reachableRevisions(tx, handle, sessionId)).has(revisionId)) {
+        if (revisionId && revisionId !== session.headRevisionId && !(await this._reachableRevisions(tx, handle, sessionId)).has(revisionId)) {
             throw new NotFoundError('committed native session revision', { sessionId, revisionId });
         }
         const revision = assertSessionRevision(await readCheckedDocument(
@@ -291,7 +291,7 @@ export class SessionRepo {
         return { session, revision, selections };
     }
 
-    async _materializeTimelineSelections(tx, handle, sessionId, selections) {
+    async _materializeTimelineSelections(tx, handle, sessionId, selections, variants = []) {
         const result = [];
         for (const selection of selections) {
             const entry = assertTimelineEntry(await readCheckedDocument(tx, this._timelineKey(
@@ -325,6 +325,7 @@ export class SessionRepo {
                 variantIds: [...selection.variantIds],
                 activeVariantId: variant.variantId,
             }));
+            variants.push(variant);
         }
         return result;
     }
@@ -360,6 +361,7 @@ export class SessionRepo {
                 start + boundedLimit,
             );
             const selected = (await readTimelineIndex(tx, handle, sessionId, selections, start, stop)).map((item, index) => ({ ...item, sequence: start + index }));
+            const variants = [], entries = await this._materializeTimelineSelections(tx, handle, sessionId, selected, variants);
             return {
                 sessionId,
                 revisionId: revision.revisionId,
@@ -367,7 +369,7 @@ export class SessionRepo {
                 totalEntries: selections.length,
                 fromSequence: start,
                 toSequence: stop,
-                entries: await this._materializeTimelineSelections(tx, handle, sessionId, selected),
+                entries, variants,
             };
         });
     }
@@ -818,7 +820,7 @@ export class SessionRepo {
             const branches = [];
             for (const node of branchNodes.values()) {
                 const branch = assertBranch(await readCheckedDocument(tx, this._branchKey(handle, sessionId, node.branchId)));
-                branches.push({ ...branch, headRevisionId: node.headRevisionId, forkRevisionId: node.forkRevisionId });
+                branches.push({ ...branch, ...session.branchMetadata?.[node.branchId], headRevisionId: node.headRevisionId, forkRevisionId: node.forkRevisionId });
             }
             return { sessionId, activeBranchId: session.activeBranchId, headRevisionId: session.headRevisionId, branches, revisions };
         }));

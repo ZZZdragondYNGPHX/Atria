@@ -154,9 +154,6 @@ describe('N9 Native Play product controls', () => {
         expect(controls.landing.hidden).toBe(true);
         expect(sheld.style.display).toBe('');
         for (const label of [
-            'Retry Reply',
-            'Re-enter Turn',
-            'Restart From Here',
             'Save',
             'Quick Save',
             'Load',
@@ -169,14 +166,10 @@ describe('N9 Native Play product controls', () => {
         const more = controls.root.querySelector('.atria-play-more');
         more.open = true;
         more.querySelector('summary').dispatchEvent(new window.FocusEvent('focusout', {
-            bubbles: true, relatedTarget: findButton(controls.root, 'Re-enter Turn'),
+            bubbles: true, relatedTarget: findButton(controls.root, 'Load'),
         }));
         await flush();
         expect(more.open).toBe(true);
-        findButton(controls.root, 'Re-enter Turn').click();
-        await flush();
-        expect(globalThis.Atria.reenterNativeTurn).toHaveBeenCalledWith(1);
-        expect(more.open).toBe(false);
         more.open = true;
         more.querySelector('summary').dispatchEvent(new window.FocusEvent('focusout', {
             bubbles: true, relatedTarget: document.body,
@@ -201,18 +194,10 @@ describe('N9 Native Play product controls', () => {
         expect(controls.drawer.querySelector('[data-atria-save-id]')).not.toBeNull();
         expect(controls.drawer.querySelector('[data-atria-embedded-knowledge]')).not.toBeNull();
         expect(findButton(controls.drawer, 'Save to my Library')).toBeTruthy();
-        expect(findButton(controls.drawer, 'Restart From Here')).toBeTruthy();
-
-        const restart = findButton(controls.drawer, 'Restart From Here');
-        document.body.dataset.generating = 'true'; await flush();
-        expect(restart.disabled).toBe(true);
-        restart.dispatchEvent(new MouseEvent('click', { bubbles: true })); await flush();
-        expect(globalThis.Atria.restartNativeFrom).not.toHaveBeenCalled();
-        document.body.dataset.generating = 'false'; runtime.history = true; controls.sync();
-        expect(restart.disabled).toBe(true);
-        runtime.history = false; runtime.snapshot = { ...runtime.snapshot }; controls.sync();
-        expect(restart.disabled).toBe(true);
-        delete document.body.dataset.generating;
+        for (const label of ['Retry Reply', 'Re-enter Turn', 'Restart From Here', 'Fork from revision']) {
+            expect(findButton(controls.root, label)).toBeUndefined();
+            expect(findButton(controls.drawer, label)).toBeUndefined();
+        }
 
         controls.dispose();
     });

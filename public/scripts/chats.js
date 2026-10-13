@@ -183,6 +183,7 @@ function getConverter(type) {
  * @returns {Promise<void>}
  */
 export async function hideChatMessageRange(start, end, unhide, nameFitler = null) {
+    globalThis.Atria?.nativeSessionRuntime?.denyCommittedAction('Hide/Unhide');
     if (isNaN(start)) return;
     if (!end) end = start;
     const hide = !unhide;

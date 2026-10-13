@@ -44,14 +44,6 @@ function currentSessionId() {
     return activeRuntime()?.snapshot?.session?.sessionId || null;
 }
 
-function latestIndex(role) {
-    const timeline = activeRuntime()?.snapshot?.timeline || [];
-    for (let index = timeline.length - 1; index >= 0; index--) {
-        if (timeline[index]?.role === role) return index;
-    }
-    return -1;
-}
-
 function downloadBase64(documentRef, payload) {
     const binary = atob(payload.data);
     const bytes = new Uint8Array(binary.length);
@@ -103,7 +95,7 @@ export function mountNativePlayControls({
     let experiencePanel = null;
     let historyPanel = null;
     const drawerWrites = new Map();
-    const writable = () => Boolean(activeRuntime()?.active && !activeRuntime()?.history && !activeRuntime()?.failed && !busy && documentRef.body.dataset.generating !== 'true');
+    const writable = () => Boolean(activeRuntime()?.active && !activeRuntime()?.history && !activeRuntime()?.failed && activeRuntime()?.snapshot?.states?.atri_run?.status !== 'dead' && !busy && documentRef.body.dataset.generating !== 'true');
     let unsubscribeNavigation = null;
     let inspectorWasOpen = false;
     let drawerSessionId = null;
@@ -229,6 +221,17 @@ export function mountNativePlayControls({
             )));
             drawerBody.append(portableActions);
             mountSessionRename({ document: documentRef, root: drawerBody, session: detail.snapshot.session });
+            const automatic = documentRef.createElement('details'), summary = documentRef.createElement('summary');
+            summary.textContent = tl('Automatic saves'); automatic.append(summary);
+            const policy = base.session.autoSavePolicy ?? { enabled: true, intervalMs: 300000, retain: 12 };
+            const interval = documentRef.createElement('input'), retain = documentRef.createElement('input'), enabled = documentRef.createElement('input');
+            enabled.type = 'checkbox'; enabled.checked = policy.enabled; enabled.setAttribute('aria-label', tl('Enable automatic saves'));
+            interval.type = 'number'; interval.min = '1'; interval.value = String(policy.intervalMs / 60000); interval.setAttribute('aria-label', tl('Save interval in minutes'));
+            retain.type = 'number'; retain.min = '1'; retain.max = '1000'; retain.value = String(policy.retain); retain.setAttribute('aria-label', tl('Automatic save count'));
+            automatic.append(enabled, interval, retain, writeButton('Save settings', () => mutate('Saving', async () => {
+                await runtime.setExperienceMetadata({ autoSavePolicy: { enabled: enabled.checked, intervalMs: Math.round(Number(interval.value) * 60000), retain: Number(retain.value) } });
+                await showTimeline();
+            }))); drawerBody.append(automatic);
             appendPortableImport(drawerBody);
 
             const savesTitle = documentRef.createElement('h4');
@@ -275,26 +278,16 @@ export function mountNativePlayControls({
             const timelineTitle = documentRef.createElement('h4');
             timelineTitle.textContent = tl('Story timeline');
             drawerBody.append(timelineTitle);
-            const timeline = base.timeline || [];
+            const timeline = (base.timeline || []).slice(-50);
             timeline.forEach((entry, index) => {
                 const row = documentRef.createElement('article');
                 row.className = 'atria-native-play-timeline-row';
                 row.dataset.atriaTimelineMessageId = entry.messageId;
                 const content = documentRef.createElement('div');
                 content.className = 'atria-native-play-timeline-row__content';
-                content.textContent = `${index + 1}. ${entry.role}: ${preview(entry.content)}`;
+                content.textContent = `${entry.sequence + 1 || index + 1}. ${entry.role}: ${preview(entry.content)}`;
                 const rowActions = documentRef.createElement('div');
                 rowActions.className = 'atria-native-play-timeline-row__actions';
-                rowActions.append(writeButton('Restart From Here', () => mutate('Restarting', async () => {
-                    await globalThis.Atria.restartNativeFrom(index);
-                    hideDrawer();
-                })));
-                if (entry.role === 'user' && index > 0) {
-                    rowActions.append(writeButton('Re-enter Turn', () => mutate('Re-entering turn', async () => {
-                        await globalThis.Atria.reenterNativeTurn(index);
-                        hideDrawer();
-                    })));
-                }
                 row.append(content, rowActions);
                 drawerBody.append(row);
             });
@@ -303,11 +296,11 @@ export function mountNativePlayControls({
                 getContext: () => ({ sessionId: currentSessionId(), revisionId: activeRuntime()?.snapshot?.revision?.revisionId,
                     branchId: activeRuntime()?.snapshot?.revision?.branchId, isHistory: activeRuntime()?.history,
                     busy: busy || documentRef.body.dataset.generating === 'true' || activeRuntime()?.failed,
-                    canWrite: writable(), canFork: Boolean(activeRuntime()?.active && !activeRuntime()?.failed && !busy && documentRef.body.dataset.generating !== 'true'),
+                    canWrite: writable(), canFork: Boolean(activeRuntime()?.active && !activeRuntime()?.failed && activeRuntime()?.snapshot?.states?.atri_run?.status !== 'dead' && !busy && documentRef.body.dataset.generating !== 'true'),
                     tailMessageId: activeRuntime()?.snapshot?.timeline?.at(-1)?.messageId }),
+                onMetadata: options => runtime.setExperienceMetadata(options),
                 onSwitchBranch: async branchId => { await runtime.switchBranch(branchId); hideDrawer(); },
-                onFork: async target => { await runtime.forkRevision(target.revisionId); hideDrawer(); },
-                onRetry: async () => { await globalThis.Atria.retryNativeReply(); hideDrawer(); }, onInspect: async revisionId => {
+                onInspect: async revisionId => {
                     await globalThis.Atria.openNativeSession(detail.snapshot.session.sessionId, { revisionId }); hideDrawer();
                 } });
         } catch (error) {
@@ -437,20 +430,6 @@ export function mountNativePlayControls({
         }
     }
 
-    const retry = actionButton(documentRef, 'Retry Reply', () => run('Retrying reply', () => (
-        globalThis.Atria.retryNativeReply()
-    )));
-    const reenter = actionButton(documentRef, 'Re-enter Turn', () => {
-        const index = latestIndex('user');
-        if (index <= 0) {
-            status.textContent = tl('No re-enterable committed user turn is available.');
-            return;
-        }
-        void run('Re-entering turn', () => globalThis.Atria.reenterNativeTurn(index));
-    });
-    const restart = actionButton(documentRef, 'Restart From Here', () => {
-        void showTimeline();
-    });
     const save = actionButton(documentRef, 'Save', async () => {
         const base = activeRuntime()?.snapshot; const sessionId = base?.session.sessionId;
         if (!sessionId || !writable()) return;
@@ -499,7 +478,7 @@ export function mountNativePlayControls({
         if (draft && !documentRef.defaultView.confirm(tl('Leave this workspace and discard unsaved changes? Cancel to keep editing.'))) return;
         await run('Closing session', async () => { await runtime.close(); hideDrawer(); });
     });
-    moreActions.append(health, sharing, retry, reenter, restart, quickSave, load, leave);
+    moreActions.append(health, sharing, quickSave, load, leave);
     moreActions.addEventListener('click', () => {
         more.open = false;
         if (moreActions.contains(documentRef.activeElement)) moreLabel.focus();
@@ -574,9 +553,6 @@ export function mountNativePlayControls({
         const canWrite = writable();
         for (const [button, allowed] of drawerWrites) button.disabled = !allowed();
         historyPanel?.atriaHistory?.syncCapabilities();
-        retry.disabled = !canWrite || latestIndex('assistant') < 0;
-        reenter.disabled = !canWrite || latestIndex('user') <= 0;
-        restart.disabled = !canWrite || !(runtime?.snapshot?.timeline?.length);
         save.disabled = !canWrite;
         quickSave.disabled = !canWrite;
         load.disabled = !active;
