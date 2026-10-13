@@ -4,7 +4,7 @@
 - **Primary Workspace**: `main`（未来产品实施）；本次企划归档于长期 `docs` 工作空间
 - **状态**: Draft（方案讨论中，尚未授权实施）
 - **起草日期**: 2026-10-13
-- **当前讨论**: 第 8 轮；第七轮已冻结严格存读档驱动方案 A，讨论 SavePoint 设置与自动触发、读档派生分支、生成失败恢复和绕过存档点的权限边界
+- **当前讨论**: 第 9 轮；第八轮自动存档混合触发方案 C 已批准，本轮讨论读档分支命名、路线管理与特殊玩法权限
 - **实施起点**: 等当前 `feat/agent-compute-runtime` 功能开发结束并集成后，重新核实 `main` HEAD 和基线，再创建独立 `refactor/*` 实施分支
 - **首次静态审计快照**: `feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，同期 `main@3ee1332ef113d4c57c65d9577222ba88d5171101`；此为代码证据，不是性能测量
 
@@ -28,18 +28,22 @@
 12. **独立后续迭代**：当前功能分支完成之前仅调研和讨论，不夹带产品代码改动。
 13. **轻量且真实的验证**：只验证实际改动涉及的模块及关键不变量；需要真机才能确定的结论明确标为待证，不假称已测试。
 
+## 第八轮已冻结：混合自动存档 C
+
+低频周期自动 SavePoint、Game Runtime 结构化重要抉择发生前创建 SavePoint、玩家手动存档三者组合；重要抉择的锚点必须指向抉择执行前已 S2 提交的 Revision。纯文字 Narrative 主要采用周期与手动存档，不由模型凭空猜测重要选择。每回合 S2 提交与 SavePoint 不同；具体间隔、保留量与游戏模式权限仍未确定。
+
 ## 模块地图
 
 | 模块 | 权威内容 | 依赖与状态 |
 | --- | --- | --- |
 | [`measurement-and-evidence.md`](measurement-and-evidence.md) | 静态审计证据、P0 指标与负载矩阵、性能/持久化验收设计、待讨论问题 | **已建立；第二轮必读** |
-| [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、SillyTavern 楼层 Swipe/Delete/Hide 退出审计、Save/Load/Branch 替代方案 | **第 7 轮严格方案 A 已冻结；第 8 轮讨论 SavePoint/Load 细则**，依赖 P0/P2 |
+| [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、SillyTavern 楼层 Swipe/Delete/Hide 退出审计、Save/Load/Branch 替代方案 | **第八轮混合自动存档方案 C 已冻结；第九轮讨论读档分支和权限**，依赖 P0/P2 |
 | [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 持久化提交、FS/SQLite、原生资产、自动存档/GC 架构选项 | **已建立；第六轮提交/分段细节已冻结，第七轮聚焦后台负载和旧楼层操作**，依赖 P0 |
 | `agent-compute.md` | P3 记忆检索、上下文编译、缓存、任务调度的质量与性能 | 待讨论后按需建立，依赖 P0 |
 | `startup-resources.md` | P4 首屏、资源图、模块加载、Android APK/Termux 启动 | 待讨论后按需建立，依赖 P0 |
 | `stability-recovery.md` | P5 内存/文件增长、恢复、清理、压力运行与观测 | 待讨论后按需建立，依赖 P0/P2 |
 
-其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮继续明确 SavePoint 自动触发、读档分支及如何避免绕过 SavePoint 的旁路。跨模块不重复写一套规则。
+其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮混合自动 SavePoint C 已确认；第九轮讨论读档分支命名与权限边界。跨模块不重复写一套规则。
 
 ## 阶段与读取路由
 
@@ -89,3 +93,4 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 - **2026-10-13 / 第 7 轮开端**：用户认可第六轮完整技术组合。另提出产品新需求：审查 SillyTavern 旧楼层 Swipe/Delete/Hide 的存量代码与实际入口，倾向去除这些单楼层操作，以 Native Save/Load 与 Branch 为主要剧情路线管理方式；先审计实际存在与能力边界，再讨论替代方案，未在本轮直接修改代码。
 - **2026-10-13 / 第 7 轮审计**：发现旧 SillyTavern 消息模板与操作实现尚存，但当前 Native Play 使用隐藏生成 ABI 和独立显示层，旧 Swipe/Delete 被提交保护阻拦；Native 自身仍提供 Restart/Re-enter/Retry/Fork 等绕过 SavePoint 的回溯入口。新增 [`client-interaction.md`](client-interaction.md) 并将「全面转为存读档与分支控制」的严格程度列为第七轮待选方案；尚未改动产品代码。
 - **2026-10-13 / 第 8 轮开端**：用户认同第七轮严格方案 A：正式 Play 清退旧 SillyTavern Swipe/Delete/Hide，连同 Native Retry Reply、Restart From Here、Re-enter Turn 和任意 Fork from Revision 的玩家快捷入口；剧情路线仅通过保存/加载和切换 Branch 管理。仅保留只读历史、未提交生成安全恢复和独立资源管理，不把媒体 swipe 或权威 Variant 数据结构误删。第八轮讨论存档策略与绕过入口，尚未实施。
+- **2026-10-13 / 第九轮开端**：用户批准第八轮自动存档方案 C（固定低频周期 + 结构化关键选择前 + 手动）；保留 S2 抉择前一致性，具体触发常数与铁人等玩法权限尚待定案。
