@@ -67,6 +67,12 @@
 - Agent 外部任务复用 `NativeTaskScheduler` 的 `turn_blocking/interactive/background/maintenance`，长耗时的非阻塞计算让位于剧情回复和 S2 Commit。局部多跳可以 Worker/限时分批，是否值得引入取决于平台开销实测。
 
 
+## 第十三轮正式结论与第十四轮边界
+
+**第十三轮已正式选择 C**：只复用有确切权威证明的稳定准备工作，查询时继续做最新的视角/权限/时间/World State 审查与动态 ContextPlan；向量、Rerank、Agent 调用须经既有成本与质量预算审查，不能把旧排序、旧检索答案或旧晋级结论直接当作新回合的权威内容。
+
+**第十四轮待讨论**：具体 Source/Policy/Time/Branch 缓存键、增量更新事件和一致性水位、Exact Token 计数提速、Provider 侧缓存与模型/Agent 预算策略，均不事先设定无依据的数值上限。
+
 ## 第十四轮讨论：Cache Key、事件失效、增量索引与模型预算（**候选，未批准**）
 
 ### A. 首先分清四种不同的缓存
@@ -166,12 +172,8 @@
 2. [Lost in the Middle（Liu 等，TACL 2024）](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00638/119630/Lost-in-the-Middle-How-Language-Models-Use-Long) — 超长上下文不保证信息等比例被有效使用；应测量关键来源信息的位置与召回利用率，不凭“塞得更多”宣称质量提高。
 3. [Claude Prompt Caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) 与 [Google Gemini Context Caching](https://ai.google.dev/gemini-api/docs/caching) — Provider 前缀/显式缓存能力依服务、Token 长度、命中、TTL 与计费；不能把 Atria 的 `cacheability:'candidate'` 当成 Provider 已实际缓存的证据。
 4. [NVIDIA RAG Evaluation](https://docs.nvidia.com/rag/latest/evaluate.html) — Recall、Context Relevancy、Groundedness/Answer Accuracy 可用作通用质量指标，RP 仍必须加 Player Agency、承诺、视角、文风、状态连续性等领域评价，不能仅靠 RAG 指标判断文学表现。
-
-## 第十三轮正式结论与第十四轮边界
-
-**第十三轮已正式选择 C**：只复用有确切权威证明的稳定准备工作，查询时继续做最新的视角/权限/时间/World State 审查与动态 ContextPlan；向量、Rerank、Agent 调用须经既有成本与质量预算审查，不能把旧排序、旧检索答案或旧晋级结论直接当作新回合的权威内容。
-
-**第十四轮待讨论**：具体 Source/Policy/Time/Branch 缓存键、增量更新事件和一致性水位、Exact Token 计数提速、Provider 侧缓存与模型/Agent 预算策略，均不事先设定无依据的数值上限。
+5. [Apache Lucene — Near Realtime Search](https://cwiki.apache.org/confluence/spaces/LUCENEJAVA/pages/120735094/NearRealtimeSearch) 与 [IndexWriter API](https://lucene.apache.org/core/10_3_1/core/org/apache/lucene/index/IndexWriter.html) — 增量索引、已提交/可见代际及读者生命周期的工程类比；**并不决定让 Atria 引入 Lucene**，尤其不允许把尚未 S2 确认的内存更新冒充游戏权威提交。
+6. [Claude 官方 Prompt Caching（中文）](https://platform.claude.com/docs/zh-CN/build-with-claude/prompt-caching) — 区分 cache read / cache creation / uncached input Token 和不同 TTL 成本；Provider 价格和支持范围变化，实际预算以当前 Route/Usage 回执为准。
 
 ## Material design changes
 
