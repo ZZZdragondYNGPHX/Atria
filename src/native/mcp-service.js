@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { fields, assertJsonDeclaration } from '../../public/shared/native-values.js';
 import { hashNativeDocument as hash } from './repositories/common.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
-import { immutable, checkCancellation } from './model-prompt-runtime/execution-utils.js';
+import { immutable, checkCancellation, containsSecret } from './model-prompt-runtime/execution-utils.js';
 import { SessionPublicWork } from './session-public-work.js';
 import { createMcpHttpClient } from './mcp-http-client.js';
 
@@ -54,17 +54,21 @@ export class McpService {
             fresh: () => this._fresh(handle, input, captured),
             run: async ({ signal: taskSignal }) => {
                 try {
-                    let headers = {};
+                    let headers = {}, secret;
                     if (captured.policy.auth === 'secret') {
-                        const secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal });
-                        if (!secret) fail('native_mcp_secret_unavailable');
+                        secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal });
+                        if (typeof secret !== 'string' || !secret) fail('native_mcp_secret_unavailable');
                         headers = { Authorization: 'Bearer ' + secret };
                     }
                     const client = this.clientFactory({ url: captured.connection.endpoint, headers,
                         toolNames: captured.policy.toolNames, resourceUris: captured.policy.resourceUris });
                     const options = { signal: taskSignal, aroundRequest: ({ method }, operation) => this._work(handle, input, captured,
                         method === 'notifications/cancelled' ? undefined : taskSignal, async () => {
-                            try { const result = await operation(); record.dispatched = true; return result; } catch (error) {
+                            try {
+                                const result = await operation(); record.dispatched = true;
+                                if (containsSecret(result, secret)) fail('native_mcp_response_contains_secret');
+                                return result;
+                            } catch (error) {
                                 if (error.dispatched) record.dispatched = true;
                                 throw error;
                             }

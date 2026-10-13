@@ -1,4 +1,5 @@
 import { open } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { hashNativeDocument } from '../repositories/common.js';
 import { fields } from './contracts.js';
 import { assertFeedbackInput } from './experience-repository.js';
@@ -10,12 +11,19 @@ const missingReason = key => key === 'reward' ? 'not_numeric_human_reward'
     : key === 'preference' ? 'not_explicit_human_preference' : 'not_exposed_by_source';
 
 // Metadata only: intentionally do not copy notes, prompts, task intent or trace payloads.
-export function learningRecord(scope, item, document) {
+export function learningRecord(scope, item, document, diagnoses = []) {
+    const { applicability, ...feedback } = item;
+    const feedbackHash = hashNativeDocument(feedback);
+    const derivedDiagnoses = diagnoses.filter(diagnosis => diagnosis.feedbackRefs.some(ref => ref.id === item.id && ref.revision === item.revision
+        && ref.integrity === feedbackHash)).map(diagnosis => ({
+        id: hashNativeDocument({ id: diagnosis.id, batchHash: diagnosis.batchHash }),
+        origin: diagnosis.origin, direction: diagnosis.direction, derived: true,
+    }));
     const project = item.source.kind === 'project_task';
     const preference = item.kind === 'explicit' && item.origin === 'user'
         ? { signal: item.signal, dimension: item.dimension, origin: 'user' } : null;
     const record = {
-        id: hashNativeDocument({ id: item.id, revision: item.revision, source: item.source.integrity }),
+        id: hashNativeDocument({ id: item.id, revision: item.revision, source: item.source.integrity, diagnoses: derivedDiagnoses }),
         family: hashNativeDocument(scope),
         observation: { sourceKind: item.source.kind, sourceHash: item.source.integrity },
         action: { kind: project ? 'project_task' : 'captured_run', status: document.status },
@@ -27,6 +35,7 @@ export function learningRecord(scope, item, document) {
         reward: null,
         label: { kind: item.kind, origin: item.origin, signal: item.signal, dimension: item.dimension,
             derived: item.kind !== 'explicit' },
+        diagnoses: derivedDiagnoses,
         missing: [],
         missingReasons: {},
     };
@@ -52,7 +61,7 @@ export function assertLearningExport(value) {
     if (integrity !== hashNativeDocument(content)) throw new TypeError('Learning integrity mismatch');
     const ids = new Set();
     for (const record of value.records) {
-        fields(record, ['id', 'family', ...keys, 'label', 'missing', 'missingReasons'], 'Learning record');
+        fields(record, ['id', 'family', ...keys, 'label', 'diagnoses', 'missing', 'missingReasons'], 'Learning record');
         digest(record.id); digest(record.family);
         if (record.family !== value.scopeHash || ids.has(record.id)) throw new TypeError('Learning family/identity mismatch');
         ids.add(record.id);
@@ -87,19 +96,33 @@ export function assertLearningExport(value) {
         if (record.reward !== null || JSON.stringify(record.missing) !== JSON.stringify(keys.filter(key => record[key] === null))) throw new TypeError('Learning missing/reward mismatch');
         fields(record.missingReasons, record.missing, 'Learning missing reasons');
         if (record.missing.some(key => record.missingReasons[key] !== missingReason(key))) throw new TypeError('Learning missing reason mismatch');
+        if (!Array.isArray(record.diagnoses) || record.diagnoses.length > 64) throw new TypeError('Invalid learning diagnoses');
+        const diagnoses = new Set();
+        for (const diagnosis of record.diagnoses) {
+            fields(diagnosis, ['id', 'origin', 'direction', 'derived'], 'Learning diagnosis'); digest(diagnosis.id);
+            if (diagnoses.has(diagnosis.id) || !['user_hypothesis', 'model_hypothesis'].includes(diagnosis.origin) || diagnosis.derived !== true
+                || !['skill', 'prompt', 'orchestration', 'undetermined'].includes(diagnosis.direction)) throw new TypeError('Invalid learning diagnosis origin');
+            diagnoses.add(diagnosis.id);
+        }
     }
     return value;
 }
 
 export function analyzeLearningExports(exports) {
     if (!Array.isArray(exports) || !exports.length || exports.length > 32) throw new TypeError('Bounded exports required');
-    const records = new Map(), owners = new Set(), coverage = Object.fromEntries(keys.map(key => [key, 0]));
+    const records = new Map(), owners = new Set(), diagnoses = new Map(), coverage = Object.fromEntries(keys.map(key => [key, 0]));
     for (const value of exports) {
         assertLearningExport(value); owners.add(value.ownerHash);
         for (const record of value.records) {
             const previous = records.get(record.id);
             if (previous && hashNativeDocument(previous) !== hashNativeDocument(record)) throw new TypeError('Conflicting offline record');
             records.set(record.id, record);
+            for (const diagnosis of record.diagnoses) {
+                const previous = diagnoses.get(diagnosis.id);
+                const current = { ...diagnosis, family: record.family };
+                if (previous && hashNativeDocument(previous) !== hashNativeDocument(current)) throw new TypeError('Conflicting offline diagnosis');
+                diagnoses.set(diagnosis.id, current);
+            }
         }
     }
     if (owners.size !== 1) throw new TypeError('Mixed offline owners');
@@ -111,15 +134,17 @@ export function analyzeLearningExports(exports) {
         // Split whole scope families; never split individual feedback or corrected versions.
         splits[parseInt(record.family.slice(0, 8), 16) % 5 === 0 ? 'evaluation' : 'development'].push(record.id);
     }
-    return { format: 'atria-learning-analysis', schemaVersion: 1, records: records.size, derivedLabels: derived, coverage, splits,
-        limitations: ['metadata_only', 'not_training_or_promotion', 'split_not_independent_acceptance_qualification', 'downloaded_copies_not_revocable'] };
+    for (const ids of Object.values(splits)) ids.sort();
+    return { format: 'atria-learning-analysis', schemaVersion: 1, records: records.size, derivedLabels: derived, derivedDiagnoses: diagnoses.size, coverage, splits,
+        limitations: ['metadata_only', 'integrity_is_not_authenticity', 'not_training_or_promotion', 'split_not_independent_acceptance_qualification', 'downloaded_copies_not_revocable'] };
 }
 
 export async function analyzeLearningFiles(paths) {
     if (!Array.isArray(paths) || !paths.length || paths.length > 32) throw new TypeError('Bounded files required');
     const exports = [];
     for (const path of paths) {
-        const file = await open(path, 'r');
+        if (typeof path !== 'string' || !path.trim()) throw new TypeError('Local file path required');
+        const file = await open(path, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
         try {
             const before = await file.stat();
             if (!before.isFile() || before.size > fileLimit) throw new TypeError('Offline file budget exceeded');

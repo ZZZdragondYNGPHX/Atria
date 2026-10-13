@@ -96,6 +96,16 @@ test('S30 deny free text/private view/unlisted tool and no policy defaults to no
     } finally { await f.cleanup(); }
 });
 
+test.each([123, { token: 'synthetic' }])('S30 malformed secret value %# never reaches a remote request', async secret => {
+    const f = await fixture(); f.host.secretPort = { resolveSecret: async () => secret };
+    try {
+        await f.host.persistence.saveRuntimeRoute(f.h.handle, { ...f.route, executionPolicy: { ...f.route.executionPolicy, mcp: { ...f.route.executionPolicy.mcp, auth: 'secret' } } });
+        const started = await f.service.start(f.h.handle, f.body);
+        await expect(f.scheduler.operations.get(started.operationId).handle.result).rejects.toMatchObject({ code: 'native_mcp_secret_unavailable' });
+        expect(f.calls).toEqual([]);
+    } finally { await f.cleanup(); }
+});
+
 test('S30 exhausted local budget prevents the next protocol operation without refund', async () => {
     const f = await fixture(2);
     try {
@@ -185,7 +195,7 @@ test('S30 engine isolation and suspended scope deny output without creating a se
     } finally { await first.cleanup(); await second.cleanup(); }
 });
 
-async function sdkFixture() {
+async function sdkFixture({ echo } = {}) {
     const root = process.env.ATRIA_MCP_SDK_ROOT, sdk = path.join(root, 'node_modules', '@modelcontextprotocol', 'sdk');
     expect(JSON.parse(await readFile(path.join(sdk, 'package.json'), 'utf8')).version).toBe('1.30.1');
     const { McpServer } = await import(pathToFileURL(path.join(sdk, 'dist/esm/server/mcp.js')).href);
@@ -201,9 +211,11 @@ async function sdkFixture() {
             let transport = sessions.get(req.headers['mcp-session-id']);
             if (!transport && body.method === 'initialize') {
                 const server = new McpServer({ name: 'public-consumer-fixture', version: '1' });
+                const echoed = req.headers.authorization?.slice('Bearer '.length);
                 server.registerTool('public_count', { inputSchema: { text: z.string().max(4096) }, annotations: { readOnlyHint: true } },
-                    async ({ text }) => ({ content: [{ type: 'text', text: JSON.stringify({ characters: text.length, words: text.trim().split(/\s+/).length }) }] }));
-                server.registerResource('public', 'public://fixture', { mimeType: 'text/plain' }, async uri => ({ contents: [{ uri: uri.href, mimeType: 'text/plain', text: await readFile(file, 'utf8') }] }));
+                    async ({ text }) => ({ content: [{ type: 'text', text: echo === 'text' ? echoed : JSON.stringify({ characters: text.length, words: text.trim().split(/\s+/).length }) }],
+                        ...(echo === 'json' ? { structuredContent: { nested: [echoed] } } : {}) }));
+                server.registerResource('public', 'public://fixture', { mimeType: 'text/plain' }, async uri => ({ contents: [{ uri: uri.href, mimeType: 'text/plain', text: echo === 'resource' ? echoed : await readFile(file, 'utf8') }] }));
                 transport = new StreamableHTTPServerTransport({ sessionIdGenerator: randomUUID, enableJsonResponse: true,
                     onsessioninitialized: id => sessions.set(id, transport) });
                 servers.push(server); await server.connect(transport);
@@ -221,6 +233,28 @@ async function sdkFixture() {
 }
 
 if (process.env.ATRIA_MCP_SDK_ROOT) {
+    test.each(['text', 'json', 'resource'])('S30 real SDK %s secret echo never becomes public and retains failed work', async echo => {
+        const provider = await sdkFixture({ echo }), f = await fixture();
+        const secret = 'synthetic-"review\\secret';
+        f.host.secretPort = { resolveSecret: async () => secret };
+        try {
+            const connection = await f.host.persistence.getConnectionProfile(f.h.handle, f.route.executionPolicy.mcp.connectionProfileId);
+            await f.host.persistence.saveConnectionProfile(f.h.handle, { ...connection, endpoint: provider.endpoint });
+            await f.host.persistence.saveRuntimeRoute(f.h.handle, { ...f.route, executionPolicy: { ...f.route.executionPolicy, mcp: { ...f.route.executionPolicy.mcp, auth: 'secret' } } });
+            const service = new McpService({ host: f.host, scheduler: f.scheduler });
+            const body = { ...f.body };
+            if (echo === 'resource') { delete body.toolName; body.resourceUri = 'public://fixture'; }
+            const started = await service.start(f.h.handle, body);
+            await expect(f.scheduler.operations.get(started.operationId).handle.result).rejects.toMatchObject({ code: 'native_mcp_response_contains_secret', message: 'native_mcp_response_contains_secret' });
+            const status = await service.status(f.h.handle, { operationId: started.operationId });
+            expect(status).toMatchObject({ status: 'failed', artifact: null, errorCode: 'native_mcp_response_contains_secret' });
+            expect(JSON.stringify(status)).not.toContain(JSON.stringify(secret).slice(1, -1));
+            const bank = await f.f.core.runs.status(f.h.handle, f.body.sessionId), work = Object.values(bank.operations).flatMap(value => value.compute?.localWork ?? []);
+            expect(work.map(row => row.usage.outcome)).toEqual(['completed', 'completed', 'completed', 'completed', 'failed']);
+            expect(provider.calls).toEqual(['initialize', 'notifications/initialized', echo === 'resource' ? 'resources/list' : 'tools/list', echo === 'resource' ? 'resources/read' : 'tools/call']);
+        } finally { await f.cleanup(); await provider.cleanup(); }
+    });
+
     test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('S30 real SDK %s original service and HTTP consume tools/resources with bounded external provenance', async (_kind, harness) => {
         const provider = await sdkFixture(), f = await fixture(32, undefined, harness);
         let httpOperationId;

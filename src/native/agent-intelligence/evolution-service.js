@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { AgentEvolutionRepository, EVOLUTION_RULE, evolutionHash as hash, evolutionFields as fields, evolutionInteger as integer, sameEvolutionValue as same, onEvolutionInvalidation } from './evolution-repository.js';
 import { AgentExperienceService, supportsDirection } from './experience-service.js';
+import { prepareLearningOptimizer } from './learning-optimizer.js';
+import { assertJsonDeclaration } from '../../../public/shared/native-values.js';
 import { EvolutionTargets } from './evolution-targets.js';
 import { EvolutionEvaluator, assertEvolutionPrice, promotionDecision } from './evolution-evaluator.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
@@ -145,17 +147,27 @@ export class AgentEvolutionService {
         await this._sourceFresh(handle, doc, job);
         return { doc, job };
     }
-    async start(handle, input, { automatic = false } = {}) {
+    async startLearning(handle, raw) {
+        const input = assertJsonDeclaration(raw, 'Learning optimizer request', 270336);
+        fields(input, ['scope', 'subject', 'expectedSequence', 'backend', 'purpose', 'trajectory']);
+        integer(input.expectedSequence, 0, Number.MAX_SAFE_INTEGER);
+        return this.start(handle, { scope: input.scope, subject: input.subject, expectedSequence: input.expectedSequence },
+            { learning: () => prepareLearningOptimizer(this.experience, handle, input) });
+    }
+    async start(handle, input, { automatic = false, learning = null } = {}) {
         fields(input, ['scope', 'subject', 'diagnosisId', 'expectedSequence']); assertWritable();
         const old = await this.repository.get(handle, input.scope, input.subject);
         if (!old?.policy || !['review', 'auto'].includes(old.policy.mode) || automatic && old.policy.mode !== 'auto') conflict('agent_evolution_paused');
         if (!(await this.repository.owner(handle))?.limits) conflict('agent_evolution_budget_required');
         const batch = await this._batch(handle, input.scope, input.subject, input.diagnosisId || null);
         const target = old.policy.target, capture = await this.targets.capture(handle, input.scope, input.subject, target), targetPin = hash(capture);
+        if (learning && (old.policy.mode !== 'review' || !['workspace-prompt', 'project-prompt'].includes(target.kind))) conflict('learning_optimizer_review_prompt_required');
         if (targetPin !== old.policy.targetPin) conflict('agent_evolution_authorized_base_changed');
         if (batch.diagnosis && batch.diagnosis.direction !== direction(target)) conflict('agent_evolution_target_diagnosis_mismatch');
+        const learningPin = learning ? await learning() : null;
         const id = hash([old.scopeId, batch.batchHash, old.policy.fingerprint, targetPin]);
         const previous = old.jobs.find(j => j.id === id);
+        if (previous && learningPin && !same(previous.learning ?? null, learningPin)) conflict('learning_optimizer_job_provenance_conflict');
         if (previous) return { jobId: id, operationId: previous.operationId, status: previous.status, deduplicated: true };
         const now = this.now();
         if (old.policy.lastJobAt && now - old.policy.lastJobAt < EVOLUTION_RULE.intervalMs) conflict('agent_evolution_debounced');
@@ -165,7 +177,8 @@ export class AgentEvolutionService {
             // Finite journals fail closed; never discard an active receipt to
             // make room or reset a cumulative budget on a new scope.
             doc.jobs.push({ id, batchHash: batch.batchHash, diagnosisId: batch.diagnosis?.id || null, dependencies: batch.dependencies,
-                policyFingerprint: doc.policy.fingerprint, target, targetPin, status: 'queued', operationId: null, createdAt: now, candidates: [], reason: null });
+                policyFingerprint: doc.policy.fingerprint, target, targetPin, status: 'queued', operationId: null, createdAt: now, candidates: [], reason: null,
+                ...(learningPin ? { learning: learningPin } : {}) });
         }, input.expectedSequence ?? old.sequence);
         const fresh = () => this._fresh(handle, input.scope, input.subject, id);
         const operation = this.scheduler.submit({ owner: handle, anchor: { scopeId: old.scopeId, jobId: id }, kind: 'auxiliary_task', executionClass: 'background',

@@ -1,4 +1,4 @@
-// Disposable S23 fixture. Only --preflight is currently authorized for execution.
+// Disposable S23 fixture. Explicit --live uses the shared private test quota.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';

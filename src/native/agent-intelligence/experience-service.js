@@ -367,16 +367,22 @@ export class AgentExperienceService {
         const view = await this.inspect(handle, { scope: input.scope, subject: input.subject });
         if (!view || view.sequence !== input.expectedSequence) throw new ConflictError('learning_sequence_conflict');
         const expectedHash = hashNativeDocument(withoutApplicability(view));
-        const records = [], sources = [];
-        for (const item of view.feedback.filter(item => item.status === 'active' && item.applicability === 'current')) {
-            const target = await this._target(handle, { kind: item.source.kind, id: item.source.id, integrity: item.source.integrity, scope: view.scope });
+        const records = [], sources = new Map();
+        const selected = view.feedback.filter(item => item.status === 'active' && item.applicability === 'current');
+        const diagnoses = view.diagnoses.filter(item => item.status === 'active' && item.applicability === 'current');
+        for (const item of selected) {
+            const identity = hashNativeDocument(item.source);
+            const target = sources.get(identity)?.target ?? await this._target(handle, { kind: item.source.kind, id: item.source.id, integrity: item.source.integrity, scope: view.scope });
             if (!target.current) throw new ConflictError('learning_source_changed');
-            records.push(learningRecord(view.scope, item, target.document)); sources.push(item.source);
+            records.push(learningRecord(view.scope, item, target.document, diagnoses));
+            sources.set(identity, { source: item.source, target });
         }
         // Recheck both feedback CAS and exact source authorities after all reads.
-        for (const source of sources) if (await this._valid(handle, view.scope, source) !== 'current') throw new ConflictError('learning_source_changed');
+        for (const { source } of sources.values()) if (await this._valid(handle, view.scope, source) !== 'current') throw new ConflictError('learning_source_changed');
         const final = await this.repository.get(handle, view.scope, view.subject);
         if (!final || hashNativeDocument(final) !== expectedHash) throw new ConflictError('learning_sequence_conflict');
-        return learningExport(handle, view.scope, view.sequence, this.now(), records);
+        const exportedAt = this.now();
+        if ([...selected, ...diagnoses].some(item => item.expiresAt <= exportedAt)) throw new ConflictError('learning_expired');
+        return learningExport(handle, view.scope, view.sequence, exportedAt, records);
     }
 }

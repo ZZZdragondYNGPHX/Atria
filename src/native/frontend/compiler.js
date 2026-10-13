@@ -6,6 +6,7 @@ import { frontendDiagnostics } from './diagnostics.js';
 import { compileController } from './script-compiler.js';
 import { assertFrontendExperience, assertFrontendSourceIndex, FRONTEND_LIMITS, resourcePath } from '../../../public/shared/native-frontend-contract.js';
 import { parseAui } from './aui-parser.js';
+import { parseA2uiComponent } from './a2ui-adapter.js';
 import { canonicalJson, compileBridge, hash } from './bridge.js';
 import { validateStyle, compileStyle, linkStyle } from './styles.js';
 import { validateFrontendGraph, componentDependencies } from './graph.js';
@@ -73,7 +74,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     for (const component of index.components) {
         const file = resolve(component.source);
         let parsed;
-        try { parsed = parseAui(readText(file), file); } catch (error) {
+        try { parsed = component.a2ui ? parseA2uiComponent(readText(file), file, component.a2ui, bridge) : parseAui(readText(file), file); } catch (error) {
             const wrapped = new TypeError(file + ': ' + error.message, { cause: error });
             wrapped.source = error.source || { file, start: 0, end: readText(file).length };
             throw wrapped;
@@ -111,7 +112,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
         }
         emit('component:' + component.id, 'component', ir, dependencies); compiledComponents.push(ir);
         provenance.push({ kind: 'component', id: component.id, file, start: 0, end: parsed.cst.source.length });
-        provenance.push(...parsed.spans.map(span => ({ ...span, componentId: component.id })));
+        provenance.push(...parsed.spans.map(({ readOnly: _readOnly, ...span }) => ({ ...span, componentId: component.id })));
     }
     for (const view of index.views) {
         if (['hybrid', 'full'].includes(mode) && view.surface !== 'app.root') throw new TypeError('Stage View must use app.root');

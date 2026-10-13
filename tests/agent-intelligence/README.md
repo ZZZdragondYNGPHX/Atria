@@ -392,3 +392,39 @@ The S06 Project evaluator fixture now installs its instructions through the real
 Skill repository and reads the same pinned version through its restricted bridge.
 Historical model reports retain their original source identities. S07 makes no
 new model requests and does not change their ineligible promotion state.
+
+## Local learning metadata and prompt optimization
+
+`POST /experience/export-learning` uses the authenticated Generation router and
+accepts `{scope, subject, expectedSequence, purpose: "offline-analysis"}`. It
+returns `atria-learning-trajectory` v1 metadata, without conversation text,
+feedback notes, private reasoning or credentials. A current export is required:
+source changes, withdrawals, deletion, expiry and concurrent edits invalidate
+the old sequence. Downloaded copies cannot be revoked by the application.
+
+Analyze downloaded files without starting Atria:
+
+```sh
+node scripts/analyze-learning.js -- export.json another-export.json
+```
+
+The CLI accepts 1–32 local files of at most 256 KiB each. It checks schema and
+integrity, reports missing coverage and derived labels, and keeps a whole source
+family in one deterministic split. Integrity is not source authentication; this
+split is not evidence of independent acceptance and does not authorize training
+or publication.
+
+`POST /evolution/start-learning` separately requires `purpose:
+"prompt-optimization"`, backend `native-prompt-optimizer-v1`, the trajectory,
+scope, subject and the current Evolution `expectedSequence`. The server compares
+the complete metadata against current owner-authorized Experience. Only existing
+`review` policies for `workspace-prompt` and `project-prompt` are supported.
+The original optimizer reads the original sources, then creates and evaluates a
+candidate using the existing budget, source invalidation and publication rules.
+Downloaded JSON cannot introduce prompt bodies, labels, owners or new authority.
+An ordinary completed job is never retroactively marked as a learning job.
+Existing inspect, label, publish and rollback endpoints retain their meanings.
+
+Relevant local tests are `learning-trajectory.test.js`, `learning-cli.test.js`,
+`learning-optimizer.test.js` and the S33 HTTP cases in `feedback.test.js`.
+Synthetic evaluators in these tests prove lifecycle behavior, not model quality.

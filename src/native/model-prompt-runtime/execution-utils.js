@@ -11,6 +11,14 @@ export function immutable(value) {
     return freeze(copy);
 }
 
+// Check only the current send's resolved secret, including its JSON-escaped form.
+// Keep the value in the request frame; diagnostics must never carry the input.
+export function containsSecret(value, secret) {
+    if (typeof secret !== 'string' || !secret) return false;
+    const encoded = JSON.stringify(value);
+    return Boolean(encoded?.includes(secret) || encoded?.includes(JSON.stringify(secret).slice(1, -1)));
+}
+
 const ERROR_CODES = new Set([
     'generation_continuation_reset_required',
     'generation_target_policy_denied', 'generation_path_evidence_unavailable', 'generation_continuation_unavailable', 'generation_semantic_authority_changed',

@@ -2,6 +2,7 @@ import { assertFrontendSourceIndex, resourcePath, FRONTEND_LIMITS, fields, front
 import { validateFrontendCapabilities } from '../experience-validation.js';
 import { mediaOrigins } from '../../../public/shared/native-frontend-media.js';
 import { parseAui } from './aui-parser.js';
+import { parseA2uiComponent } from './a2ui-adapter.js';
 import { frontendTransactions } from './authority.js';
 import { compileFrontend } from './compiler.js';
 import { hash } from './bridge.js';
@@ -50,9 +51,9 @@ export function inspectFrontend({ source, files, ownerId = 'package' }) {
         index.views.forEach(view => add('view', view.id, path, { value: view, root: view.root }));
         for (const component of index.components) {
             const file = resolve(component.source);
-            add('component', component.id, file);
+            add('component', component.id, file, component.a2ui ? { readOnly: true } : {});
             try {
-                const parsed = parseAui(read(files, file), file);
+                const parsed = component.a2ui ? parseA2uiComponent(read(files, file), file, component.a2ui) : parseAui(read(files, file), file);
                 entries.at(-1).value = JSON.parse(parsed.cst.blocks.find(block => block.kind === 'contract')?.content || '{}');
                 entries.at(-1).uses = parsed.ast.uses;
                 const contract = entries.at(-1).value;
@@ -61,7 +62,7 @@ export function inspectFrontend({ source, files, ownerId = 'package' }) {
                 const visit = node => { if (typeof node === 'string') return; nodes.set(node.id, node); node.children.forEach(visit); }; visit(parsed.ast.root);
                 for (const span of parsed.spans.filter(span => span.kind === 'node')) {
                     const node = nodes.get(span.id);
-                    add('node', span.id, file, { componentId: component.id, value: { tag: node.tag, text: node.children.filter(child => typeof child === 'string').join(''), attributes: node.attributes }, source: location(file, parsed.cst.source, span.start, span.end) });
+                    add('node', span.id, file, { componentId: component.id, ...(span.readOnly ? { readOnly: true } : {}), value: { tag: node.tag, text: node.children.filter(child => typeof child === 'string').join(''), attributes: node.attributes }, source: location(file, parsed.cst.source, span.start, span.end) });
                 }
                 if (parsed.style) add('style', component.id, file, { componentId: component.id, value: parsed.style.content });
                 if (parsed.ast.controller) add('controller', component.id, resolve(parsed.ast.controller.source));

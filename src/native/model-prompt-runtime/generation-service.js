@@ -1,6 +1,6 @@
 import { assertEffectiveRequestSnapshot, assertPromptIR, assertRequestContextPlan } from './contracts.js';
 import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } from './ports.js';
-import { cancellable, checkCancellation, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
+import { cancellable, checkCancellation, containsSecret as valueContainsSecret, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
 import { prepareExecutionPlan, assertExecutionEvidenceCurrent, continuityRequirements } from './execution-evidence.js';
 import { compiledRequestBinding } from './compiled-binding.js';
 import { hashNativeDocument } from '../repositories/common.js';
@@ -163,10 +163,7 @@ export class GenerationService {
         }
         checkCancellation(signal);
         if (typeof secret !== 'string' || !secret) throw new GenerationError('generation_secret_unavailable');
-        const containsSecret = value => {
-            const encoded = JSON.stringify(value);
-            return encoded?.includes(secret) || encoded?.includes(JSON.stringify(secret).slice(1, -1));
-        };
+        const containsSecret = value => valueContainsSecret(value, secret);
         if (containsSecret(snapshot) || containsSecret(rendered)) throw new GenerationError('generation_config_contains_secret');
         assertExecutionEvidenceCurrent(resolved, this.now(), snapshot.diagnostics.executionPlan.policy);
         const controller = new AbortController();

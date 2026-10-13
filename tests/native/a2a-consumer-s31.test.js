@@ -1,11 +1,14 @@
 import { expect, test } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 import { installCognitionFixture } from './helpers/cognition-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
-import { NativeTaskScheduler } from '../../src/native/task-scheduler.js';
+import { NativeTaskScheduler, nativeTaskScheduler } from '../../src/native/task-scheduler.js';
 import { A2aService } from '../../src/native/a2a-service.js';
+import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
 
 async function remoteFixture(hook = async () => {}) {
     const calls = [], tasks = new Map(); let endpoint;
@@ -14,7 +17,7 @@ async function remoteFixture(hook = async () => {}) {
             const chunks = []; for await (const chunk of req) chunks.push(chunk);
             const body = req.method === 'GET' ? { method: 'GetAgentCard' } : JSON.parse(Buffer.concat(chunks).toString());
             calls.push({ method: body.method, params: body.params, authorization: req.headers.authorization });
-            await hook({ body, req, res, tasks }); if (res.destroyed) return;
+            await hook({ body, req, res, tasks }); if (res.destroyed || res.writableEnded) return;
             res.setHeader('content-type', 'application/json');
             if (body.method === 'GetAgentCard') {
                 res.end(JSON.stringify({ name: 'Public synthetic statistics', description: 'Local fixture', version: '1',
@@ -40,7 +43,7 @@ async function remoteFixture(hook = async () => {}) {
     return { endpoint, calls, tasks, cleanup: async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } };
 }
 
-async function fixture(harness = makeTempFsEngineHarness, maxJobs = 32, hook) {
+async function fixture(harness = makeTempFsEngineHarness, maxJobs = 32, hook, scheduler = new NativeTaskScheduler()) {
     const remote = await remoteFixture(hook), h = await harness();
     const f = await installCognitionFixture(h, 'limited', undefined, ({ contract }) => {
         contract.informationRuntime.sources.push({ id: 'public-lines', kind: 'timeline', semantic: 'narrative', scopeId: 'session', fields: [['content']] });
@@ -53,7 +56,7 @@ async function fixture(harness = makeTempFsEngineHarness, maxJobs = 32, hook) {
         a2a: { protocolVersion: '1.0', connectionProfileId: seeded.connection.connectionProfileId, skillIds: ['stats'], auth: 'none' },
         computeBudget: { maxRequests: 1, maxTokens: 4096, localWork: { maxJobs, maxItems: 10000, maxInputBytes: 16777216 } } } };
     await seeded.persistence.saveRuntimeRoute(h.handle, route);
-    const host = { ...seeded, sessionCore: f.core, packageInstaller: f.packageInstaller }, scheduler = new NativeTaskScheduler();
+    const host = { ...seeded, sessionCore: f.core, packageInstaller: f.packageInstaller };
     const service = new A2aService({ host, scheduler });
     const body = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, viewId: 'player', itemId: 'public-lines:' + base.timeline.at(-1).messageId, skillId: 'stats' };
     const result = async started => scheduler.operations.get(started.operationId).handle.result;
@@ -129,6 +132,40 @@ test('S31 auth resolves only the owner exact SecretRef and never publishes its v
     } finally { await f.cleanup(); }
 });
 
+test.each(['text', 'json', 'identity'])('S31 actual remote %s secret echo is refused before identity/publication and preserves failed work', async kind => {
+    const secret = 'synthetic-"review\\secret';
+    const f = await fixture(makeTempFsEngineHarness, 32, async ({ body, req, res }) => {
+        if (body.method !== 'SendMessage') return;
+        const echoed = req.headers.authorization.slice('Bearer '.length);
+        const task = { id: kind === 'identity' ? echoed : 'public-task', contextId: 'public-context', status: { state: 'TASK_STATE_COMPLETED' },
+            artifacts: [{ artifactId: 'public-artifact', parts: [kind === 'json' ? { data: { nested: [echoed] } } : { text: kind === 'text' ? echoed : 'public result' }] }] };
+        res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { task } }));
+    });
+    f.host.secretPort = { resolveSecret: async () => secret };
+    try {
+        await f.host.persistence.saveRuntimeRoute(f.h.handle, { ...f.route, executionPolicy: { ...f.route.executionPolicy, a2a: { ...f.route.executionPolicy.a2a, auth: 'secret' } } });
+        const started = await f.service.start(f.h.handle, f.body);
+        await expect(f.result(started)).rejects.toMatchObject({ code: 'native_a2a_response_contains_secret', message: 'native_a2a_response_contains_secret' });
+        const status = await f.service.status(f.h.handle, { operationId: started.operationId });
+        expect(status).toMatchObject({ status: 'failed', artifact: null, canReconnect: false, errorCode: 'native_a2a_response_contains_secret' });
+        expect(JSON.stringify(status)).not.toContain(JSON.stringify(secret).slice(1, -1));
+        await expect(f.service.reconnect(f.h.handle, { operationId: started.operationId })).rejects.toThrow(/identity_unavailable/);
+        const bank = await f.f.core.runs.status(f.h.handle, f.body.sessionId), work = Object.values(bank.operations).flatMap(value => value.compute?.localWork ?? []);
+        expect(work.map(row => row.usage.outcome)).toEqual(['completed', 'completed', 'failed']);
+        expect(f.remote.calls.map(row => row.method)).toEqual(['GetAgentCard', 'SendMessage']);
+    } finally { await f.cleanup(); }
+});
+
+test.each([123, { token: 'synthetic' }])('S31 malformed secret value %# never reaches a remote request', async secret => {
+    const f = await fixture(); f.host.secretPort = { resolveSecret: async () => secret };
+    try {
+        await f.host.persistence.saveRuntimeRoute(f.h.handle, { ...f.route, executionPolicy: { ...f.route.executionPolicy, a2a: { ...f.route.executionPolicy.a2a, auth: 'secret' } } });
+        const started = await f.service.start(f.h.handle, f.body);
+        await expect(f.result(started)).rejects.toMatchObject({ code: 'native_a2a_secret_unavailable' });
+        expect(f.remote.calls).toEqual([]);
+    } finally { await f.cleanup(); }
+});
+
 test('S31 dropped dispatched response remains unknown and never resends or invents identity', async () => {
     const f = await fixture(makeTempFsEngineHarness, 32, async ({ body, req }) => { if (body.method === 'SendMessage') req.socket.destroy(); });
     try {
@@ -176,4 +213,45 @@ test('S31 local cancel aborts actual pending request without claiming remote rol
         const status = await f.service.status(f.h.handle, { operationId: started.operationId });
         expect(status.artifact).toBeNull(); expect(status.failure.remoteOutcome).toBe('unknown');
     } finally { release?.(); await f.cleanup(); }
+});
+
+test.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('S31 authenticated %s HTTP starts, projects, reconnects and cancels only the owner acquired task', async (_kind, harness) => {
+    const f = await fixture(harness, 32, undefined, nativeTaskScheduler);
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { if (req.headers['x-synthetic-owner']) req.user = { profile: { handle: req.headers['x-synthetic-owner'] } }; next(); });
+    app.use(createNativeGenerationRouter(() => f.host));
+    const post = (action, body, owner = f.h.handle) => request(app).post('/a2a/' + action).set('x-synthetic-owner', owner).send(body);
+    try {
+        for (const action of ['start', 'status', 'reconnect', 'cancel']) {
+            expect((await request(app).post('/a2a/' + action).send(action === 'start' ? f.body : { operationId: 'absent' })).status).toBe(401);
+        }
+        expect((await post('start', { ...f.body, text: 'forbidden caller input' })).status).toBe(400);
+        expect((await post('start', { ...f.body, viewId: 'pov' })).status).toBe(400);
+        expect(f.remote.calls).toHaveLength(0);
+        const started = await post('start', f.body);
+        expect(started.status).toBe(200); expect(started.headers['cache-control']).toBe('private, no-store');
+        expect(started.body).toMatchObject({ status: 'queued', action: 'send', remoteRollbackConfirmed: false });
+        const initial = await f.result(started.body), operation = { operationId: started.body.operationId };
+        expect(initial.result.task.artifacts[0].parts[0].data.words).toBe(3);
+        const before = f.remote.calls.length;
+        for (const action of ['status', 'reconnect', 'cancel']) {
+            const denied = await post(action, operation, 'other-owner');
+            expect(denied.status).toBe(400); expect(denied.body.error).toBe('native_a2a_operation_missing');
+            expect((await post(action, { ...operation, id: 'caller-remote-task', contextId: 'caller-context' })).status).toBe(400);
+        }
+        expect(f.remote.calls).toHaveLength(before);
+        const projected = await post('status', operation);
+        expect(projected.status).toBe(200); expect(projected.body.artifact).toEqual(initial);
+        expect(projected.body).toMatchObject({ current: true, canReconnect: true, recovery: 'transient_operation_only' });
+        const reconnected = await post('reconnect', operation);
+        expect(reconnected.status).toBe(200); expect(reconnected.body.action).toBe('get');
+        expect((await f.result(reconnected.body)).result.status.state).toBe('TASK_STATE_COMPLETED');
+        const cancelled = await post('cancel', operation);
+        expect(cancelled.status).toBe(200); expect(cancelled.body.action).toBe('cancel');
+        expect((await f.result(cancelled.body)).result.status.state).toBe('TASK_STATE_CANCELED');
+        const final = await post('status', operation);
+        expect(final.body.artifact.remoteRollbackConfirmed).toBe(false);
+        expect(f.remote.calls.map(row => row.method)).toEqual(['GetAgentCard', 'SendMessage', 'GetAgentCard', 'GetTask', 'GetAgentCard', 'CancelTask']);
+        expect(await f.f.core.load(f.h.handle, f.body.sessionId)).toEqual(f.base);
+    } finally { await f.cleanup(); }
 });

@@ -70,8 +70,19 @@ export function assertFrontendSourceIndex(value) {
     fields(value, ['format', 'version', 'primaryView', 'views', 'components', 'styles', 'assets', 'bridge', 'media', 'localization']);
     if (value.format !== 'atria-frontend-source' || value.version !== 3) throw new TypeError('Invalid Frontend Source Index');
     const components = list(value.components, item => {
-        fields(item, ['id', 'source']); identifier(item.id); resourcePath(item.source);
-        if (!item.source.endsWith('.aui')) throw new TypeError('Component source must be .aui');
+        fields(item, ['id', 'source', 'a2ui']); identifier(item.id); resourcePath(item.source);
+        if (item.source.endsWith('.a2ui.json')) {
+            fields(item.a2ui, ['actions', 'fallbackText', 'interactive', 'feedback'], 'A2UI import policy');
+            fields(item.a2ui.actions ?? {}, Object.keys(item.a2ui.actions ?? {}), 'A2UI action map');
+            if (Object.keys(item.a2ui.actions ?? {}).length > 32) throw new TypeError('A2UI action budget');
+            for (const [event, target] of Object.entries(item.a2ui.actions ?? {})) { identifier(event); identifier(target); }
+            if (typeof item.a2ui.fallbackText !== 'string' || !item.a2ui.fallbackText.trim() || item.a2ui.fallbackText.length > 4096
+                || item.a2ui.interactive !== undefined && typeof item.a2ui.interactive !== 'boolean') throw new TypeError('Invalid A2UI fallback');
+            if (item.a2ui.feedback !== undefined) {
+                fields(item.a2ui.feedback, ['pending', 'failed'], 'A2UI interaction feedback');
+                if (['pending', 'failed'].some(key => typeof item.a2ui.feedback[key] !== 'string' || !item.a2ui.feedback[key].trim() || item.a2ui.feedback[key].length > 256)) throw new TypeError('Invalid A2UI interaction feedback');
+            }
+        } else if (!item.source.endsWith('.aui') || item.a2ui !== undefined) throw new TypeError('Component source must be .aui or declared .a2ui.json');
         return { ...item };
     });
     const views = list(value.views, item => {

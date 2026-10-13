@@ -1,6 +1,7 @@
 import { createSkillRepository } from '../skills/repository.js';
 import { SpeechService } from '../native/speech-service.js';
 import { McpService } from '../native/mcp-service.js';
+import { A2aService } from '../native/a2a-service.js';
 import { ExtensionsStore } from '../native/extensions-store.js';
 import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
@@ -75,6 +76,20 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    for (const action of ['start', 'status', 'reconnect', 'cancel']) router.post('/a2a/' + action, async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        const controller = new AbortController(), abort = () => { if (!response.writableEnded) controller.abort(); };
+        response.on('close', abort);
+        try {
+            const result = await new A2aService({ host: getHost() })[action](handle, request.body, action === 'status' ? undefined : controller.signal);
+            if (!controller.signal.aborted) response.json(result);
+        } catch (error) {
+            const code = /^(native_a2a_|native_generation_|operation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_a2a_failed';
+            if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
+        } finally { response.off('close', abort); }
+    });
     for (const action of ['start', 'status', 'cancel']) router.post('/mcp/' + action, async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -178,7 +193,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });
         }
     });
-    for (const action of ['target', 'submit', 'outcome', 'collect', 'checkQuality', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
+    for (const action of ['target', 'submit', 'outcome', 'collect', 'checkQuality', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'export-learning', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
@@ -186,18 +201,18 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const host = getHost();
             const evolution = new AgentEvolutionService({ host, chatRepo: getChats() });
             const service = evolution.experience;
-            const result = await service[action](handle, req.body);
+            const result = await service[action === 'export-learning' ? 'exportLearning' : action](handle, req.body);
             if (['submit', 'outcome', 'collect', 'checkQuality', 'diagnose'].includes(action) && result?.scope && result?.subject) void evolution.wake(handle, result.scope, result.subject).catch(() => {});
             return res.json(result);
         } catch (error) {
             return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_experience_unavailable' });
         }
     });
-    for (const action of ['inspect', 'catalog', 'declare', 'budget', 'configure', 'start', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export', 'workspace']) router.post('/evolution/' + action, async (req, res) => {
+    for (const action of ['inspect', 'catalog', 'declare', 'budget', 'configure', 'start', 'start-learning', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export', 'workspace']) router.post('/evolution/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
-        try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() })[action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
+        try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() })[action === 'start-learning' ? 'startLearning' : action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
     });
     router.get('/illustration-images', (req, res) => {
         const handle = req.user?.profile?.handle;

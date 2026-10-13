@@ -99,9 +99,31 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         });
         await expect(service.exportLearning(h.handle, request(doc))).rejects.toThrow('learning_source_changed');
     });
+    test('feedback expiring during source reads cannot leave an expired export', async () => {
+        const original = service._target.bind(service);
+        jest.spyOn(service, '_target').mockImplementationOnce(async (...args) => {
+            const target = await original(...args); now = doc.feedback[0].expiresAt; return target;
+        });
+        await expect(service.exportLearning(h.handle, request(doc))).rejects.toThrow('learning_expired');
+        doc = await service.inspect(h.handle, { scope, subject: doc.subject });
+        expect((await service.exportLearning(h.handle, request(doc))).records).toEqual([]);
+    });
+    test('exact current diagnosis metadata stays derived and withdrawal removes it', async () => {
+        const batch = await service.reflection(h.handle, { scope, subject: doc.subject });
+        doc = await service.diagnose(h.handle, { scope, subject: doc.subject, expectedSequence: doc.sequence, batchHash: batch.batchHash,
+            rationale: 'PRIVATE DIAGNOSIS', conditions: ['PRIVATE CONDITION'], counterexamples: ['PRIVATE COUNTEREXAMPLE'], direction: 'undetermined' });
+        const exported = await service.exportLearning(h.handle, request(doc));
+        expect(exported.records[0].diagnoses).toEqual([{ id: expect.stringMatching(/^[a-f0-9]{64}$/), origin: 'user_hypothesis', direction: 'undetermined', derived: true }]);
+        expect(exported.records[0].preference).toEqual({ origin: 'user', signal: 'correction', dimension: 'behavior' });
+        expect(exported.records[0].reward).toBeNull();
+        expect(JSON.stringify(exported)).not.toMatch(/PRIVATE|rationale|conditions|counterexamples/);
+        expect(analyzeLearningExports([exported])).toMatchObject({ derivedLabels: 0, derivedDiagnoses: 1 });
+        doc = await service.withdrawDiagnosis(h.handle, { ...change(doc), id: doc.diagnoses[0].id });
+        expect((await service.exportLearning(h.handle, request(doc))).records[0].diagnoses).toEqual([]);
+    });
     test('real original Project task export keeps derived observation separate from preference', async () => {
-        const { studio, agent } = services(h), created = await studio.createProject(h.handle, projectSource());
-        const task = await agent.createTask(h.handle, created.project.projectId, { intent: 'PRIVATE INTENT', baseRevision: created.revision.revision });
+        const { studio, agent } = services(h), source = projectSource(), created = await studio.createProject(h.handle, source);
+        const task = await agent.createTask(h.handle, source.project.projectId, { intent: 'PRIVATE INTENT', baseRevision: created.revision.revision });
         const project = new AgentExperienceService({ engine: h.engine, studio, agent, now: () => now });
         const pscope = { domain: 'project', projectId: task.projectId };
         const pdoc = await project.submit(h.handle, { target: { kind: 'project_task', id: task.taskId, integrity: hashNativeDocument(task), scope: pscope },
@@ -113,5 +135,20 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const forged = structuredClone(exported); forged.records[0].label.origin = 'user';
         const { integrity, ...content } = forged; forged.integrity = hashNativeDocument(content);
         expect(() => assertLearningExport(forged)).toThrow('origin mismatch');
+    });
+    test('original Project commit receipt is hashed metadata, never numeric reward', async () => {
+        const { studio, agent } = services(h), source = projectSource(), created = await studio.createProject(h.handle, source);
+        let task = await agent.createTask(h.handle, source.project.projectId, { intent: 'PRIVATE INTENT', baseRevision: created.revision.revision });
+        task = await agent.setPlan(h.handle, task.projectId, task.taskId, { summary: 'PRIVATE PLAN', steps: [{ id: 'rename', title: 'PRIVATE STEP', impact: 'low' }] });
+        await agent.executeTool(h.handle, task.projectId, task.taskId, { name: 'atri_agent_project_save', args: { source, stepId: 'rename' } });
+        await agent.prepareReview(h.handle, task.projectId, task.taskId);
+        task = await agent.commit(h.handle, task.projectId, task.taskId);
+        const project = new AgentExperienceService({ engine: h.engine, studio, agent, now: () => now });
+        const pscope = { domain: 'project', projectId: task.projectId };
+        const pdoc = await project.outcome(h.handle, { target: { kind: 'project_task', id: task.taskId, integrity: hashNativeDocument(task), scope: pscope }, expectedSequence: null });
+        const exported = await project.exportLearning(h.handle, request(pdoc));
+        expect(exported.records[0]).toMatchObject({ action: { status: 'completed' }, outcome: { status: 'completed', origin: 'host' },
+            receipt: [{ hash: expect.stringMatching(/^[a-f0-9]{64}$/) }], preference: null, reward: null, label: { kind: 'technical', derived: true } });
+        expect(JSON.stringify(exported)).not.toMatch(/PRIVATE|changeSetId|resultingRevision/);
     });
 });

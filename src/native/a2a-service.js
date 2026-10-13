@@ -3,7 +3,7 @@ import { fields, assertJsonDeclaration } from '../../public/shared/native-values
 import { hashNativeDocument as hash } from './repositories/common.js';
 import { SessionPublicWork } from './session-public-work.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
-import { immutable, checkCancellation } from './model-prompt-runtime/execution-utils.js';
+import { immutable, checkCancellation, containsSecret } from './model-prompt-runtime/execution-utils.js';
 import { createA2aHttpClient } from './a2a-http-client.js';
 
 const states = new WeakMap(), terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
@@ -61,15 +61,19 @@ export class A2aService {
             fresh: () => this.publicWork.fresh(handle, input, captured),
             run: async ({ signal: taskSignal }) => {
                 try {
-                    let headers = {};
+                    let headers = {}, secret;
                     if (captured.policy.auth === 'secret') {
-                        const secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal });
-                        if (!secret) fail('native_a2a_secret_unavailable');
+                        secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal });
+                        if (typeof secret !== 'string' || !secret) fail('native_a2a_secret_unavailable');
                         headers = { Authorization: 'Bearer ' + secret };
                     }
                     const client = this.clientFactory({ url: captured.connection.endpoint, headers, skillIds: captured.policy.skillIds });
                     const options = { signal: taskSignal, aroundRequest: (_descriptor, request) => this.publicWork.work(handle, input, captured, taskSignal, async () => {
-                        try { const output = await request(); record.dispatched = true; return output; } catch (error) {
+                        try {
+                            const output = await request(); record.dispatched = true;
+                            if (containsSecret(output, secret)) fail('native_a2a_response_contains_secret');
+                            return output;
+                        } catch (error) {
                             if (error.dispatched) record.dispatched = true;
                             throw error;
                         }

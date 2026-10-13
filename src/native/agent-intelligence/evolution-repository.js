@@ -3,6 +3,7 @@ import { cloneNativeDocument, hashNativeDocument, putMutable, withNativeResource
 import { experienceIdentity } from './experience-repository.js';
 import { ConflictError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
+import { assertLearningOptimizerPin } from './learning-optimizer.js';
 
 export const EVOLUTION_RULE = Object.freeze({ revision: 'atri-evolution-1', cases: 3, repetitions: 3,
     candidateWins: 6, maxTokenRatio: 1, maxCostRatio: 1, intervalMs: 86400000, candidates: 2 });
@@ -67,7 +68,8 @@ function scopeDocument(value) {
     }
     const jobs = new Set();
     for (const job of d.jobs) {
-        evolutionFields(job, ['id', 'batchHash', 'diagnosisId', 'dependencies', 'policyFingerprint', 'target', 'targetPin', 'status', 'operationId', 'createdAt', 'candidates', 'reason']);
+        evolutionFields(job, ['id', 'batchHash', 'diagnosisId', 'dependencies', 'policyFingerprint', 'target', 'targetPin', 'status', 'operationId', 'createdAt', 'candidates', 'reason', 'learning']);
+        if (job.learning !== undefined && assertLearningOptimizerPin(job.learning).scopeHash !== evolutionHash(d.scope)) throw new TypeError('Learning optimizer scope mismatch');
         evolutionText(job.id); if (jobs.has(job.id) || !Array.isArray(job.candidates) || job.candidates.length > 2) throw new TypeError('Invalid evolution job');
         if (!['queued', 'running', 'evaluating', 'awaiting_review', 'published', 'failed', 'cancelled', 'invalidated', 'superseded'].includes(job.status)) throw new TypeError('Invalid job state');
         evolutionInteger(job.createdAt, 0, Number.MAX_SAFE_INTEGER);
