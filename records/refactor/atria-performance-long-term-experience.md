@@ -4,7 +4,7 @@
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
 - Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0–E2 本地实施完成，继续 E3；平台物理 S2 证明仍待证，E3–E7 尚未完成。
+- 当前状态：E0–E3 本地实施完成，继续 E4；平台物理 S2 证明仍待证，E4–E7 尚未完成。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -51,3 +51,14 @@
 - 实际定向验证：SessionCore + SaveSystem 35 用例；新增 FS/SQLite 长历史/Delta/自动保留/重大选择/终局 6 用例；调整有损旧期望后的 HistorySession 2 用例；ESLint/diff check。5k Range 20 读取少于 60 次资源访问；独立 10k 索引完整与尾部 Range 一致（depth 3，tail 16）。原先 HistorySession 期待只留一条/无 parent，被新冻结语义淘汰；保留 replay refusal、全原文和 SavePoint 恢复验证。
 - 同机同夹具 3 次暖样本 P95：FS 5k Range **31.05→2.83 ms**，SQLite **33.22→3.07 ms**；100/1k/5k 的 Range 约 2.4–3.1 ms。5k Load FS 531.82→546.31、SQLite 413.73→440.13；Append FS 1084.05→1118.46、SQLite 927.78→981.75 ms。新增强持久性与校验后完整 Runtime 路径尚未加速，明确保留这一成本，不掩盖回归；E3 消费端范围化/E4 I/O/E5 计算继续处理。
 - 待证：跨设备参数、物理断电与真机后台回收。下一 checkpoint：E3 正文窗口、Range 消费、旧楼层入口闭口与存读档路线 UX。
+
+## E3 — Range / 正文窗口 / Play 边界（E3.1–E3.4）
+
+- Start HEAD：`565b77a48`；End HEAD：本阶段 `refactor(play): window long conversations and retire arbitrary history mutations`，已推送。
+- Native Play 消费带 Revision/Branch 身份的 Range API，64 条正文窗口、动态测量/稀疏有界高度表、旧请求 abort/epoch、顶部/底部占位、回到最新、选区/焦点保护、草稿独立展示、卸载插画/语音/观察器。Range 直接返回权威出生 Variant 的投影；不把投影挪入存储 Entry。当前 HEAD 查询不再扫描全历史可达链。
+- 追踪隐藏 ABI：`openNativeSession` 的 generation `chat` 和 `printMessages` 仍服务生成，因此保留 ABI 和完整上下文数据，隐藏 DOM 单独限制 64；不以清除生成依赖降低质量。当前活动 Runtime 全文快照成本仍存在，不能声称全部内存已与历史规模无关。
+- 删除正式 HTTP Fork/Retry 分发、固定 Host targets、Runtime/Core 任意 Fork/Retry 方法、全局 Restart/Re-enter/Retry、历史面板旁路；旧 Hide/Unhide 在 Native 前拒绝。媒体翻页与资源删除保留。新手动 SavePoint 必须是当前已提交 HEAD；既有 SavePoint 能派生独立路线。
+- 现有历史视图继续搜索/分页，增加来源 SavePoint、Branch 展示改名/归档筛选、自动存档配置；终局界面禁止编辑/发送并解释只读。终局读取不自动套用当前外部 Continuity/Realm 去改历史状态。
+- 实际本地验证：PlayProduct/PlayControls/SessionHistory 20 用例；SessionCore 22 用例；HTTP 11 + Window Epoch 1；插图 19 用例。旧测试里的任意 Fork/Retry/历史 Save 构造改为明确 SavePoint；没有为产品保留兼容 shim。发现插图直接使用旧数组，修复后再通过。
+- 浏览器：`native-play-window.smoke.mjs` 使用真实 FS/SessionRepo Range + Chromium `141.0.7390.37`，1440/390px × 100/1k/5k 六组均 64 DOM 正文节点、实际 Range 请求、历史滚动/流式节点保留、dispose；无 pageerror。记录的 settled mount 约 91–96 ms **包含固定 80ms 观察等待**，不能当成真实启动 T3/P95。移动视口不是 Termux 真机。
+- 最小 ESLint/语法/diff check 通过。下一 checkpoint：E4 Scope 释放、字节预算、可恢复隔离 GC 和前台优先维护。
