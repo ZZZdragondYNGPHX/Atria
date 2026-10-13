@@ -9,6 +9,10 @@
 - **开始实施硬条件**：先结束当前 `feat/agent-compute-runtime` 并集成到稳定 `main`，核对最新 HEAD 后，且**用户明确授权进入实施**时，才从当时 `main` 创建独立临时 `refactor/atria-performance-long-term-experience`。此前只允许更新 `docs` 企划；不得因本方案已冻结就自行创建开发分支或修改产品代码。
 - **后续修改规范**：只改受影响模块、只跑对应单元/关键边界验证、每个已完成小阶段/一组相关任务提交并推送；不默认长等 CI、全仓测试、Android 真机截图。确实需要设备断电/Android 日志/密钥/权限的验证应诚实标记“待设备证据”，不假称通过。阶段 Record 在正式开工时新建**一份**累计覆盖更新，避免每个阶段散落新交接文档。
 
+## 当前实施平台：CachyOS / Windows / Android Termux（2026-10-13）
+
+本轮严格按 [企划总纲](index.md#当前正式目标平台2026-10-13-调整优先级覆盖历史并行平台描述) 执行 **CachyOS、Windows 与 Android Termux 三端本地 Node 服务 + 浏览器** 的功能/性能/存储安全验收。三个本地服务器均是 Atria `server.js`；**暂停远程托管部署不等于暂停 Node 后端、FS/SQLite、S2、Native Session、HTTP API 或 Agent**。独立 APK（Kotlin/nodejs-mobile/内嵌 WebView）与远程托管服务器配置/部署专项暂缓，现有代码和静态审计证据保留，不列本轮 Gate。原 E0–E7 **8 阶段、30 单元**和任务依赖不变，E6.1 只改平台目标，不增加单元数；历史含 APK 的条款由此更新范围覆盖。
+
 ## 总体结论：P0–P5 六域均有设计，但不是六个平行随便开发的分支
 
 | 域 | 已批准且需落实的核心 | 当前尚不能称为已实现/已实测 | 施工位置 |
@@ -17,7 +21,7 @@
 | **P1** Play/交互 | 长篇正文流畅、严格 Save/Load/Branch；移除单层 Swipe/Delete/Hide 及 Native 任意重试/重开捷径 | Native Play 尚未证明可变高度窗口化；隐藏旧 `#sheld` 仍服务生成 ABI，移除入口前要查消费者；读档/铁人终局新 UX 尚未实现 | E3（依赖 E1/E2 新存储和 S2 根契约） |
 | **P2** 数据/存储 | 统一 S2 durable contract；增量不可变 Segment/Revision 共享，周期物化；自动存档/分支；原始历史默认无损 | FS 多文件提交与 SQLite WAL+FULL/外部 Blob 的断电原子证明尚缺；默认引擎未选、段/快照/存档/GC 阈值待测，旧 Chronicle History checkpoint 有损 | **E1/E2（最高正确性优先级）**，GC 由 E4 完成 |
 | **P3** Memory/Agent | 来源证明驱动的增量索引、实时防全知授权、S2 Delta Overlay、Context Join、情境预算与 RP/Project 质量闸门 | cache identity 内部表示、索引水位/合并、Token 精确计数加速、模型实际缓存/费用收益未实测；M1 开发中不能直接重构 | E5（在 E1/E2 和 P5 生命周期契约稳定后） |
-| **P4** 启动 | 独立 T0–T4，真实 PlayReady；关键路径裁剪；Android/Termux 资源预构建一致性 | Kotlin 预建 Bundle 清单 3 项 vs Node 5 项已证实代码不一致，但是否实际退回编译未复现；WebView `onPageFinished` 并非 PlayReady；冷热启真机 P95 未测 | E6（可将 Bundle Manifest 小修提前到 E0 后独立提交） |
+| **P4** 启动 | 三端本地 Node + 浏览器分别 T0–T4 与真实 PlayReady；关键路径裁剪、前端 Bundle 预构建/缓存一致性 | CachyOS/Windows/Termux 未完成实测；历史 APK Kotlin 3/Node 5 清单差异保留但暂缓，不作为本轮失败 Gate | E6（三端预构建完整性可 E0 后提前） |
 | **P5** 资源稳定 | 热温冷缓存、Scope/Epoch 释放、前台优先统一调度；分批可恢复 GC；保留铁人只读档案 | 同步文件/DB 清理未证明全纳预算；Mark/Gc Roots/Quarantine/SQLite checkpoint 并发安全与小时级泄漏曲线未测 | E4（依赖 E2 的稳定共享根；生命周期基础可提前） |
 
 **审计重要界限**：S2 只对当前受支持格式下已确认的游戏提交提供目标与证据要求；**不做旧 dev/SillyTavern 数据兼容、迁移、双读写或旧 API shim**。S3 磁盘损坏、设备丢失、云端备份不属于本次已经批准的 S2 契约，不把 S3 偷渡为阻塞里程碑；若要正式支持另立专项。
@@ -28,9 +32,9 @@
 
 ### E0 — 主线准入、再审计与 P0 最小基线（4 单元，复杂度中）
 
-- **E0.1 合并门槛**：等待功能分支合入 `main`；记录真实 HEAD、运行环境、Node/Android 版本、FS/SQLite 当前能力；附带盘点 Node/V8、`engines`/`@types/node`、Android Node.js Mobile 实际二进制、Electron、WebView Provider 与 QuickJS 版本/原生模块 ABI。只读重核已失效的行号与依赖，不将 2026-10-13 的静态快照当最终产品。
+- **E0.1 合并门槛**：等待功能分支合入 `main`；记录真实 HEAD 和 CachyOS/Windows/Termux 的 Node/V8、`engines`/`@types/node`、浏览器、`better-sqlite3` 本地 ABI/编译、FS/SQLite 能力。Node 24 LTS 为候选验证线；独立 Android APK 的 nodejs-mobile/Kotlin/WebView 与远程部署版本暂缓，不当作本轮 Gate。只读重核已失效的行号与依赖。
 - **E0.2 基准夹具**：在新格式下生成可重现的 100/1k/5k 对话与深分支、SavePoint/World/Knowledge/大 Memory/资产集；可选 20k 只作极限探索。不保留旧数据兼容器。
-- **E0.3 独立指标**：启动 T0–T4、长聊天输入/流式/滚动 P50/P95、Node 事件循环、RangeRead/Commit/GC、内存稳态、召回质量、RPC/Token/费用、S1/S2 恢复区分；额外标出真实 CPU 热点及同步 I/O/全量 DOM/索引重算来源，记录客户端、Node、Android/Termux 的宿主差异。沿用现有遥测和测试夹具而非新建平行系统。
+- **E0.3 独立指标**：对 CachyOS、Windows、Termux 各自本地 Node + 浏览器分别测启动 T0–T4、长聊天输入/流式/滚动 P50/P95、Node 事件循环、RangeRead/Commit/GC、内存稳态、召回质量、RPC/Token/费用及 S1/S2 恢复；额外标出 CPU 热点、同步 I/O、全量 DOM/索引重算来源。三端不可混算，沿用现有遥测和夹具。
 - **E0.4 决策基线**：生成问题清单、真实耗时排序、验收相对回归边界和 S2 故障注入试验计划；记录 Node 24 LTS 统一基线/Worker/Rust-WASM 作为**有条件技术候选**，仅指定 E5/E6 对照测试，不新增工程阶段或第二套状态权威。**没有 P0 证据时不冻结引擎选择、压缩块大小、缓存阈值或混合计算方案**。
 
 **Gate E0**：新 `main` 源码与可复现 baseline/质量夹具可用；无实测项明确列为后续待证，而非伪造通过。
@@ -40,7 +44,7 @@
 - **E1.1 提交合同**：规范 `prepare → durable dependencies → publish root/commit receipt (CAS) → ACK`；`commitId/requestId` 幂等及断电后的确定恢复，确认时需要保护的 Blob、State、RevisionRoot 和 RunControl 状态集合。
 - **E1.2 SQLite 参考引擎**：事务和持久性配置、覆盖 WAL+FULL 的实际 VFS 平台证明；索引式按键/范围查询；外部内容寻址 Blob 必须先 fsync 文件/目录再提交 DB Root，不能把 SQL COMMIT 等同全域 S2。
 - **E1.3 FS 独立引擎**：多文件 prepare/manifest/journal/durable 发布与目录耐久屏障，不得继续用只有回调包装的 `withTransaction` 声称多资源 ACID；与 SQLite 满足同样可恢复的可见根契约。
-- **E1.4 故障定位与默认引擎**：插入多个 `fsync/commit/publish/ACK` 崩溃切点，检验旧 root 或新 root 可还原且不会重复 Turn；FS/SQLite 分别出具证据，按 P0/Android/Termux 情况选择默认，不达 S2 的引擎不得静默标注合规或作无提示后备。
+- **E1.4 故障定位与默认引擎**：插入多个 `fsync/commit/publish/ACK` 崩溃切点，检验旧 root 或新 root 可还原且不会重复 Turn；FS/SQLite 在 CachyOS、Windows、Termux 上分别出具可达 S2 的证据并据此选择默认引擎，不达 S2 的引擎不得静默标注合规或作无提示后备。
 
 **Gate E1**：同一 Turn/State/Blob Root 在声明支持的平台达到可重复 S2 证明；外部硬件断电仍需真机/设备证据时必须列明，不能以单进程 kill 冒充。
 
@@ -67,7 +71,7 @@
 - **E4.1 Scope/Epoch Owner**：Session/Branch/View/MemoryOS/Native UI/Worker/Timer/Listener/BlobURL 的显式幂等释放，防止过期异步回填；使用现有 NativeTaskScheduler、Chat Snapshot/Presentation Runtime 基础。
 - **E4.2 热温冷缓存预算**：当前正文窗口/近期 Revision/持久 Segment 分层，字节与对象数上限，活动任务租约与高优先级 Turn/交互优先；不要新建第二套调度器，不能强行中断 S2 原子发布。
 - **E4.3 安全 GC 与物理压缩**：从 E2 引用根做 `Mark→Quarantine→Revalidate→分批 Sweep`，保存 GC Progress，支持重启/读者租约/并发 SavePoint；FS 异步批量 IO、SQLite WAL checkpoint 与逻辑删除独立调度，避免同步事件循环扫描冻结前台。
-- **E4.4 内存与停机压力**：反复打开/关闭、切分支、后台索引/GC、Node/浏览器/Android WebView 的内存回落与 S2 安全联合测试；区分 JS Heap/External/RSS 及真正有 Retaining Path 的泄漏，不强制生产 `global.gc()` 伪造改善。
+- **E4.4 内存与停机压力**：反复打开/关闭、切分支、后台索引/GC、CachyOS/Windows/Termux 的 Node/浏览器内存回落与 S2 安全联合测试；Termux 须纳入 Android 低内存后台回收，区分 JS Heap/External/RSS 及真正有 Retaining Path 的泄漏，不强制生产 `global.gc()` 伪造改善。
 
 **Gate E4**：后台整理可暂停并能继续，用户输入/保存不被不合理抢占，可达历史无误删；重复生命周期稳态资源可解释，设备低内存下保留正式 S2 数据。
 
@@ -82,16 +86,16 @@
 
 ### E6 — P4 启动与资源交付（3 单元，复杂度中）
 
-- **E6.1 Android Manifest 合约**：修复 Kotlin 要求 3 个 Bundle 与 Node 要求 5 个的源清单不一致，确保打包→展开→预构建 Resolver 只在资源真实完整时命中；这是可以在 E0 后独立完成的高置信小项。
+- **E6.1 三端 Bundle 预构建合约**：针对 CachyOS、Windows、Termux 验证生产 Bundle 清单、内容指纹、构建输出和缓存 Resolver 完整性；重点保证 Termux 安装/更新预构建与三端启动时无误判、可诊断实时编译回退。可在 E0 后独立实现。历史 APK Kotlin 3/Node 5 Manifest 差异保留为暂缓事项，不纳入本轮 Gate。
 - **E6.2 浏览器/Node 关键路径**：沿用 `init.js` 模块并行、已有 `startup-timing` 和 Lazy Router，测量明确必要依赖，ShellInteractive/PlayReady/OptionalReady 分开，Studio/非活跃功能按消费者证明后延后。
-- **E6.3 APK/Termux 路径**：首装/升级资产展开与日常热启分别测，WebView `onPageFinished` 不当作真实 PlayReady；Termux Node Server Ready 与浏览器真实 PlayReady 分开，安卓本地/远程端点独立。列出 Node 24 LTS 候选基线、Android Node.js Mobile 实装版本/ABI、Electron/WebView/QuickJS 与原生依赖的兼容矩阵，以对应平台启动、打包/加载、安全和回归证据决定是否统一版本；不因新版 Node 可用而直接视为 Android 通过。必要时做真机目标性能验证，不假定 Chromium 移动视口等于 APK。
+- **E6.3 CachyOS/Windows/Termux 启动路径**：三端分别测本地 Node 服务冷/热启、更新依赖/预构建、浏览器导航与真实 PlayReady；Windows 测原生 Node/SQLite 加载和路径，CachyOS 测本地发行版 Node/依赖，Termux 区分 `server.js` 启动、后台恢复与手机浏览器复用。核对 Node 24 LTS 候选基线在三端的原生依赖兼容性；不预设它们实际已升级，也不以 HTTP Ready 代替可玩。APK/远程部署专项暂缓。
 
-**Gate E6**：预构建资源清单一致，无隐性实时编译伪命中；客户端可用性按实际 PlayReady 测量，不能降低 S2/权限检查换更短开屏动画。
+**Gate E6**：CachyOS/Windows/Termux 的 Bundle 构建/缓存完整性与启动性能各有证据；客户端按真实 PlayReady 测量，不能降低 S2/权限检查换取更短开屏；独立 APK/远程部署结果不是本轮阻塞项。
 
 ### E7 — 横切回归、质量比较与合并移交（3 单元，复杂度中高）
 
 - **E7.1 S2/可达性联动**：基于 E1–E4 的新格式做断电、部分写入、进程中断、S2 Receipt 不确定返回、合法分支/铁人终局/GC 交错等**专项**恢复验证；设备测试能力不足时写明待证，不冒充保证。
-- **E7.2 用户价值回归**：长会话消息与分支增多时 P50/P95、DOM/Memory 稳态、检索证据质量、Provider 成本、PlayReady/Android/Termux 目标分开出对照；挑关键跨域用例验证，不强制每组完整 CI。
+- **E7.2 用户价值回归**：长会话消息与分支增多时 P50/P95、DOM/Memory 稳态、检索证据质量、Provider 成本、PlayReady 在 CachyOS、Windows、Termux 三端分别出对照；挑关键跨域用例验证，不强制每组完整 CI 或 APK/远程部署构建。
 - **E7.3 整理合并**：对照全部冻结决策逐项确认，删除已解决问题/临时日志，更新同一份 Record/HANDOFF；在主线门槛满足的条件下合并 `main`，删除已完成临时 `refactor/*` 分支；`docs` 长期方案保留。
 
 **Gate E7**：性能与质量有可追溯前后对照；S2 在宣称支持的平台有对应证据；未证实平台单独列待办而不是强行阻塞所有其它合法验收。
@@ -121,7 +125,7 @@ E6 P4 启动（E0 后可独立小组推进；最终需与 E2/E3 的 PlayReady �
 ```
 
 - E0 → E1 → E2 是主要正确性关键路径；E3 与 E4 在 E2 的稳定数据/根协议之后可以按修改区域分组推进；E5 依赖 E2/E4 的索引水位、Scope 生命周期与 Run budget。
-- E6.1 的 Android Bundle 清单一致性可在 E0 后作为低耦合小修提前提交；其它 E6 依赖 E3 的真实 PlayReady 消费者。
+- E6.1 的三端 Bundle/缓存完整性可在 E0 后作为低耦合小修提前提交；旧 Android APK Kotlin Manifest 差异暂缓，其他 E6 依赖 E3 的真实 PlayReady 消费者。
 - 如果 E0 的实测证明 Play 长会话窗口化比存储改造更急，可先独立做不改变权威持久化的 E3.1/3.2 前置优化；**不得先上线绕过 E1/E2 约束的旧式任意楼层重试或不安全数据提交**。
 - 优先级按**持久化正确性/真实长会话瓶颈/权威一致性**排，不按源码文件大小或某个模块有多少 TODO 决定。
 - **人力/工作量性质**：E1、E2 是整体架构风险最高的核心重构；E3、E4、E5 需要大量关联接口和回归；E0、E6、E7 可以拆成相对独立的短任务。这里不凭空给开发天数。
@@ -137,7 +141,7 @@ E6 P4 启动（E0 后可独立小组推进；最终需与 E2/E3 的 PlayReady �
 | 废弃 Swipe/Delete/Hide 连带破坏 Native 生成 ABI | 先穷尽真实调用方/宿主/插件/命令入口，原生替换后再断开旧路径；保留媒体滑动与资源管理 | E3 |
 | 新分支使用旧 Memory/World 结果 | 校验 Source/Grant/Branch/Revision/Epoch/时间，失败任务不得发布，delta read-your-writes | E5 |
 | 长正文内存随历史无限增长 | 动态高度窗口化、资源释放，保留全文分页，不能靠截断原文或关闭校验伪装增长变慢 | E3/E4 |
-| Android 加载动画结束不代表可玩 | WebView 主帧、Shell Ready、PlayReady 分开测，不能把 onPageFinished 或 HTTP ping 当终点 | E6 |
+| 三端浏览器打开/本地 HTTP 可达不代表可玩 | 将 Node HTTP Ready、ShellInteractive、PlayReady 分开测；不把浏览器 load 事件或 HTTP ping 当作游戏可用 | E6 |
 | 强制全面验证导致阶段无法及时推送 | **只做修改部分 + 必须的跨域安全契约验证**；不能凭省略相关 S2/权限/数据不变量来节省验证，但无需无关联全量测试 | 全阶段 |
 
 ## 定量参数的决策归口（现在全部未冻结）
@@ -150,7 +154,7 @@ E6 P4 启动（E0 后可独立小组推进；最终需与 E2/E3 的 PlayReady �
 | DOM 窗口数/预渲染范围、图片缓存与阈值 | E3/E4 的动态高度正文、图片与移动端输入/滚动 P95 |
 | GC 每批 IO、宽限代际/时间、内存热温预算、后台限流 | E4 的 Node event loop/前台延迟/空间水位与中断测试 |
 | 检索索引合并窗口、Token 缓存、Vector/Rerank 情境触发、Agent 月/次预算 | E5 的 Recall/ContextPlan P95、Evidence Recall、认知边界和 Provider 实际费用 |
-| PlayReady 的 P95 目标、首屏可延后列表、APK 打包取舍 | E6 的桌面/Termux/Android 真机冷/温/热对照 |
+| PlayReady 的 P95 目标、首屏可延后列表、Node/浏览器启动与缓存取舍 | E6 的 CachyOS、Windows、Termux 三端冷/温/热对照 |
 
 任何具体数值都应记录**测量设备、数据集、引擎、是否冷启动、样本量和回归上下界**。不把实验样本档位 5k/20k 当作已经宣布支持的产品上限。
 
@@ -162,7 +166,7 @@ E6 P4 启动（E0 后可独立小组推进；最终需与 E2/E3 的 PlayReady �
 > **不要重开已经冻结的 A/B/C 选择。**
 > 以当前合入后的 `main` HEAD 为准创建 `refactor/atria-performance-long-term-experience`；先做 E0 再按 Gate 和依赖推进。
 > 不兼容旧 dev/SillyTavern 数据，不加迁移、双读/双写或 alias；当前格式已确认 Turn Commit 必须满足 S2，可见旧剧情/分支默认无损保留，Play 的路线回溯统一用 SavePoint/Load/Branch。
-> 每次只完成当前相关最小任务或一组可独立推送的改动，验证修改到的模块及关键 S2/权限/数据关联边界，提交并推送后继续。**不要强制全仓测试/截图/等 CI**；真实断电、Android 真机、密钥/权限无法完成的部分如实记录，不假装通过。保留一个阶段累计 Record，每阶段实质进展后覆盖更新并登记 HEAD/测试/剩余阻塞，不重复造大量汇报文件。
+> 本轮平台仅 CachyOS、Windows、Android Termux 的本地 Node + 浏览器；独立 Android APK 与远程托管部署专项暂缓，不暂停 `server.js` 本地后端。每次只完成当前相关最小任务或一组可独立推送的改动，验证修改到的模块及关键 S2/权限/数据关联边界，提交并推送后继续。**不要强制全仓测试/截图/等 CI**；真实断电、Termux 真机、密钥/权限无法完成的部分如实记录，不假装通过。保留一个阶段累计 Record，每阶段实质进展后覆盖更新并登记 HEAD/测试/剩余阻塞，不重复造大量汇报文件。
 > 如果集成源与历史企划静态审计冲突，先提供具体最新代码证据并据此最小修订方案，不使用旧兼容变通或偷偷降低可靠性。任务确实需要用户提供权限/设备/Secret 时再停止。
 
 ## 第十六轮批准记录：方案 C 正式冻结
@@ -181,3 +185,4 @@ E6 P4 启动（E0 后可独立小组推进；最终需与 E2/E3 的 PlayReady �
 
 - **2026-10-13 / 第十六轮总审起稿**：用户批准第十五轮 P3 编排/回退/预算 C 后建立本文件；汇总六个技术域，补充跨域遗漏风险、E0–E7 共 30 个最小任务、Gate、Codex 接手模板、数据硬切/S2/只验证改动/设备真实性纪律。
 - **2026-10-13 / 第十六轮正式冻结**：用户明确认同最终阶段方案 C，冻结 E0–E7（8 阶段、30 最小单元）及关卡依赖；A/B 作为未选历史方案保留。企划状态进入 Plan Frozen v1.0 / Pending Implementation，**并不授权立即执行**；必须等待当前功能分支合并并取得实施授权。
+- **2026-10-13 / 三端目标定案**：CachyOS、Windows、Android Termux（均本地 Node + 浏览器）为当前施工与验收范围，APK/远程托管部署专项暂缓；保留 E0–E7/30 单元及已冻结安全/体验原则，调整 E6.1/6.3 对应平台内容。
