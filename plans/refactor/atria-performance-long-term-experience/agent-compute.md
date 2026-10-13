@@ -1,7 +1,7 @@
 # Atria 性能与长期体验 — P3 记忆检索、上下文编译及 Agent 计算
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
-- **状态**：第十三轮源码审计及优化架构 A/B/C **待选**，未获用户批准或产品实施授权。
+- **状态**：第十四轮讨论稿；**第十三轮证明驱动增量计算方案 C 已批准**，缓存键、失效、增量同步、Token 与模型预算细节仍待本轮用户取舍及 P0 量化。尚未授权修改产品代码。
 - **冻结依据**：[index.md](index.md) 为唯一跨模块决策记录；[runtime-storage.md](runtime-storage.md) 管 Native Session/S2/可达性；[stability-recovery.md](stability-recovery.md) 管缓存、生命周期和调度；[measurement-and-evidence.md](measurement-and-evidence.md) 管 P0 基线与验证。
 - **只读源码锚点**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，2026-10-13。特别注意本分支**正是 Agent Compute / M1 等能力开发所在分支**：不能在现阶段直接按静态快照改写这些功能，必须待功能分支集成 `main` 后复核真实实现，再独立立项/创建 refactor 分支。
 - **范围**：只调研热路径和资源成本；不引入旧 dev / ST 数据适配层，不减少已冻结的 RP 认知/世界状态权威，不把「减少模型调用数」单独当成优化成功。
@@ -36,15 +36,15 @@
 5. **质量闸门**：Agent 自迭代不能只看调用成本；RP 的已有六项核心质量维度均为当前源码明确的保障。新增文学表达、视角一致/叙事节奏等可作为后续**单独质量评估方案**，不可在性能迭代中自称已有全面覆盖。
 6. **S2 与 RunControl**：当前及历史数据来自可靠 Revision/State/SavePoint；过期缓存不能写回已确认游戏状态，缓存淘汰与重建不得影响正式游戏历史。Stale Agent Work 不得越权发布。
 
-## 第十三轮方案 A/B/C（尚未批准）
+## 第十三轮架构比较（**C 已获批准**）
 
 | 方案 | 做法 | 表面优势 | 主要风险 |
 | --- | --- | --- | --- |
 | A — 激进结果缓存 / 减少调用 | 在近期对话复用最终 Recall/Prompt/Agent 输出，降低刷新与 LLM 预算 | 可能显著降时延和费用 | 极易引发跨角色视角、时间与 Branch 的旧事实泄漏，降低叙事适应性；评估重用易假性晋级 |
 | B — 每回合全量重算 + 多模型校验 | 为每个回合重建索引、强制所有 Vector/Rerank/Judge 耗时路径，以“完整”为目标 | 容易理解每轮独立性 | 成本和等待随 Session 增长、使长篇 RP 体验恶化；实际上全量并不能自动提高质量 |
-| **C — 权威证明驱动的增量派生计算 + 分车道动态组装 + 质量门槛（推荐）** | 静态 Corpus/词法倒排/图邻接/文档指纹增量缓存，**按请求实时做权限/时间过滤、当前状态/检索意图排序与准确 Token 装包**；仅在必要时按已准入的预算调用 Vector/Rerank/Agent；原有评估质量闸门与 S2 均不变 | 有望显著减少可避免的 CPU/Token/向量 RPC，同时保留当轮语义 | Cache-Key/失效证明必须设计清楚，需要 P0 的同场景质量和时延双目标证据 |
+| **C — 权威证明驱动的增量派生计算 + 分车道动态组装 + 质量门槛（第十三轮已选）** | 静态 Corpus/词法倒排/图邻接/文档指纹增量缓存，**按请求实时做权限/时间过滤、当前状态/检索意图排序与准确 Token 装包**；仅在必要时按已准入的预算调用 Vector/Rerank/Agent；原有评估质量闸门与 S2 均不变 | 有望显著减少可避免的 CPU/Token/向量 RPC，同时保留当轮语义 | Cache-Key/失效证明必须设计清楚，需要 P0 的同场景质量和时延双目标证据 |
 
-### 推荐 C 的三层计算复用边界（未冻结）
+### 已批准 C 的三层计算复用职责（具体缓存算法仍待讨论）
 
 **L1：稳定且可重建的派生索引（优先优化）**
 
@@ -88,12 +88,13 @@
 3. [Claude Prompt Caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) 与 [Google Gemini Context Caching](https://ai.google.dev/gemini-api/docs/caching) — Provider 前缀/显式缓存能力依服务、Token 长度、命中、TTL 与计费；不能把 Atria 的 `cacheability:'candidate'` 当成 Provider 已实际缓存的证据。
 4. [NVIDIA RAG Evaluation](https://docs.nvidia.com/rag/latest/evaluate.html) — Recall、Context Relevancy、Groundedness/Answer Accuracy 可用作通用质量指标，RP 仍必须加 Player Agency、承诺、视角、文风、状态连续性等领域评价，不能仅靠 RAG 指标判断文学表现。
 
-## 第十三轮建议与待确认
+## 第十三轮正式结论与第十四轮边界
 
-建议选择 **C：权威证明驱动的增量派生计算 + 每轮动态 ContextPlan/证据过滤 + Prompt Segment 条件缓存 + Agent 质量门槛不降级**。这不是“把每轮结果全部缓存”，而是将相同来源上稳定且安全的准备工作缓存，动态权限、时间、世界权威及实际生成始终基于当前请求。
+**第十三轮已正式选择 C**：只复用有确切权威证明的稳定准备工作，查询时继续做最新的视角/权限/时间/World State 审查与动态 ContextPlan；向量、Rerank、Agent 调用须经既有成本与质量预算审查，不能把旧排序、旧检索答案或旧晋级结论直接当作新回合的权威内容。
 
-尚待讨论：具体 Source/Policy/Time/Branch 缓存键、增量更新事件来源、词法/图谱索引哪部分确有 P95 热点、Provider 缓存是否值得启用、Agent 预算与响应质量的可量化 Pareto 验收。
+**第十四轮待讨论**：具体 Source/Policy/Time/Branch 缓存键、增量更新事件和一致性水位、Exact Token 计数提速、Provider 侧缓存与模型/Agent 预算策略，均不事先设定无依据的数值上限。
 
 ## Material design changes
 
 - **2026-10-13 / 第十三轮审计**：在第十二轮分层启动 C 冻结之后建立 P3 专项，确认当前已有 SourceProof+16MiB bounded Corpus reuse、RRF 混合检索、分组证据与预算准入、Native ContextPlan 车道权威、Prompt segment fingerprints、RP/Project 质量评估及 Agent 后台 Scheduler。提出 A/B/C 方案，推荐 C 但**尚未冻结**；未修改产品代码、未跑性能基准或现实 LLM 调用。
+- **2026-10-13 / 第十四轮开端**：用户批准第十三轮方案 C，正式冻结来源/权限证明驱动的增量派生索引、每轮合法性和动态 ContextPlan、原子证据/精确 Token 预算与 RP/Project 质量门槛；第十四轮继续缓存键/失效、读到最新提交、Token 和调用预算细节讨论，产品代码未改。
