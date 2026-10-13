@@ -1,6 +1,6 @@
 # S24：有界候选比较与正式结果绑定
 
-状态：2026-10-13 Native与Project有限工程消费者完成。依赖 [S22](s22-hypothetical-preview.md)、[S23](s23-model-prediction.md)、S19及 [architecture §8](architecture.md#8-counterfactual-与-metacognition)。S23真实provider、RP决策收益及Project高影响方案收益仍pending；本地工程不替代这些证据。
+状态：2026-10-13 Native与Project有限工程消费者及双域确定性实际对照完成。依赖 [S22](s22-hypothetical-preview.md)、[S23](s23-model-prediction.md)、S19及 [architecture §8](architecture.md#8-counterfactual-与-metacognition)。S23真实provider已验证；双域同目标的两种合法方案均经原authority提交，比较方案各减少一处改动，同时增加本地比较开销。此有限结果不代表独立Agent决策质量、语义预测收益或一般高影响任务收益，细项与费用见同一Record。
 
 首批比较是服务器自己准备的有界声明action与 exact Player projection。用户显式指定已有公开item/data field的期望值；固定规则先匹配目标，再选公开delta最小的候选，无法满足则不选择。不以未校准confidence当客观成功概率，不推导未声明的价值标准或玩家动作。可选模型预测沿原PredictionService逐候选执行，不信任客户端上传prediction artifact的producer身份。
 
@@ -14,4 +14,4 @@ Project独立消费者复用原planning Task、localWork与Workspace串行evalua
 
 恢复最多两次并验证源及文件hash；中断后修复成功仍报告失败并保留费用，持续失败阻止原Task及Git同步。Git恢复marker与原Task.recovery中的服务器源identity共同保证重建Studio不自动把临时候选提交成用户修改；双marker写入失败时依赖原Task CAS持久化，连Task持久化失败也明确报错，不承诺不存在的durability。精确原HEAD/源恢复后只清活动阻断identity，原blocked状态、费用及历史保留供显式Task控制。ProjectStore拒绝大小写变体.git路径。临时comparison按原storage authority及owner隔离；丢失token不可从caller重建。
 
-最小本地验证包括真实installed Session、候选公开/私有隔离、typed目标/选择与abstain、费用/容量/stale、选中proposal再次正式receipt与公开字段误差、未选未来不污染、model artifact伪造拒绝。实际双域决策收益需同任务/配置/质量底线的真实对照，缺外部发送范围或资料时保持pending。
+最小本地验证包括真实installed Session、候选公开/私有隔离、typed目标/选择与abstain、费用/容量/stale、选中proposal再次正式receipt与公开字段误差、未选未来不污染、model artifact伪造拒绝。实际双域对照复用同任务/配置/质量底线；预先声明的宽改动基线不是独立抽样的Agent决策，不能将确定性最少改动选择推导为模型收益。

@@ -1,6 +1,6 @@
 # S27：原文字消费者的有界 ExpressionPlan
 
-状态：2026-10-13 有限文字工程消费者完成，source `4fe3a172a`。依赖原S18/S25工程消费者；M4真实provider与收益pending不升级完成。M5首批深化现有Native prose/message文字链路，S28已取得Windows SAPI静默WAV本地输出证据、待完整消费者，S29待原renderer实际画面证据；不默认新增外部发送或自动播放声音。
+状态：2026-10-13 有限文字工程消费者及真实单样本语义对照完成；工程source `4fe3a172a`，live脚本 `c5447144a`。两臂同原foundation Prompt，声明ExpressionPlan组的7维模型观察均通过；旧路径在角色话语与安抚意图两项未通过，其余通过。3次HTTP200共6703tokens，不声称统计收益或人工偏好。依赖原S18/S25工程消费者；M4的实际provider出口与更广泛收益分别记录。S28的Windows本地语音消费者与S29原renderer实际画面已验证，各自范围见对应模块和Record；不自动播放声音。
 
 作品在原Information narration中显式声明可选expression：绑定已有Actor、有限communicative intent（inform/ask/reassure/decline/reflect）及已有context和display view共同选择的source。不新增Library资源、心理state writer、ExpressionTask、自动推断用户意图或每回合默认模型调用。现有Actor表达资源和Narration Prompt仍是语言/文风authority。
 

@@ -2667,3 +2667,49 @@ S31 adapter固定官方v1.0.0 proto与1.0 JSONRPC：30非loopback distinct PASS�
 S33 source三文件包含exportLearning、strict metadata轨迹/真实文件分析函数与tests；root最终ESLint PASS。missingReasons/有界读取/fatal UTF8/合法Project状态/native receipt缺失/CAS/split限定修复已保存，补充边界cases、真实测试、HTTP入口和CLI仍未完成。两次Jest启动EPERM无测试执行，未执行的审批请求被中断；没有consumer PASS或训练验收。10文件WIP cached diff-check PASS后明确chore保存，不把WIP作为工程验收提交。
 
 唯一HANDOFF按用户要求重建，记录上述缺口与恢复次序。隐私迁移只打包当前四配置、原最小滚动quota和README阶段摘要；不恢复旧备份/raw账本/cache，不打印凭据，不在Git保存隐私archive。carry148不重加/不清零，素材producer/judge/诊断外发暂停、夜间不播放、无merge/deploy/main修改保持。本聊天完成交接包核验后退出写入；新设备唯一主执行者沿实际Git/同一Plan/Record继续，未完成验收不改写为通过。
+
+### 2026-10-13 续接 S31–S34 与真实出口补齐（进行中）
+
+恢复实际 source `dc2b2c2b9` / docs `920a73c9c`，main `3ee1332ef`；source 初始干净，docs 无关未跟踪 Experience 草稿保留。沿当前用户“持续推进到任务结束”接续；用户换设备快照已消费，后续进度只写本 Record，不刷新阶段 HANDOFF。S31、S33 并行补齐，S32 复用原 frontend compiler/bridge，S34 选择原 Prompt optimizer 后端；具体修改和最终 tested commit 在本节后续追加。
+
+核对原始续接指令与前轮聊天后，旧“新增素材外发待单独确认”来自前轮 Agent 自行推断（当时明确写“尚未找到单独明确新增素材外传范围”），未找到用户设置该暂停的直接指令。按现有 Governance §8/§13.1 和当前任务授权恢复必要的公开合成模型测试；不把该历史推断当新增审批条件。原始失败和当时未执行事实保持。仅使用当前连接与原 private-test-run 限流/临时清理，不新增费用/正文账本、不重置 carry148。
+
+S23 原 `s23-live.mjs --live` 当前实际 1 请求 HTTP200：typed prediction、公开 support refs、原 Host/Task/RunControl 费用与不发布均 PASS。返回 totalTokens **1272**（provider 子项 input694/output130 与总数不相等，按原报告保留，不伪造 token 对账），knownAttempts1/unknown0/localJobs6；Session revision/World/Clock/Memory/Timeline/outbox/Task results 不变，旧成本保留。outputHash `664519c464a761aec0b57f663a06df1ea41770e8b406b720048faa3a62e67da1`、requestSnapshotHash `f3cc6b4feb9bb854d8510a03bedd5972629a4db2a0f9e4b43c472f64211bf5e1`。临时材料 finally 清理，仅此元数据结果保存。该有限真实 provider 出口不等于 M4 双域质量—成本收益、真实 outcome 或置信度校准。
+
+S31 初次复验：adapter31（含真实loopback）、原consumer12+认证HTTP2、strict policy28、scheduler4 与受shared helper影响MCP14/原scheduler2共93 distinct PASS；交接前真实loopback失败本轮未复现，旧失败不抹去。独立审查随后真实loopback复现远端 artifact 回显 Authorization 泄露，触发 A2A/MCP 与原 GenerationService 共用 secret检测的修复和针对性复验；最终结果待本节后续。
+
+S33 当前38新增/增强 distinct PASS（trajectory22、CLI16），原认证 HTTP 新2/受影响旧2 PASS，FS/SQLite双域实际导出与冷CLI已执行。首轮HTTP跨owner预期409实际原边界400及Project fixture取值错误为测试断言/fixture问题，按原隔离语义和真实返回修正后通过。诊断仍是派生元数据，下载hash不证明真实性，不声明训练或晋升。
+
+#### S31–S34 工程提交与独立审查
+
+工程 source `40ce8f8d33f449783a8e5e5a2fc5a82d993f670a` 已 commit/push，ls-remote一致。30个任务文件，cached diff-check PASS；main未改。后续S34实际pilot脚本仍单独WIP，不包含在此工程提交，不把其失败或未验证运行宣称通过。
+
+S31 最终本组 **138 distinct PASS**（上述93 + 新secret相关10 + 原GenerationCore35）。独立真实loopback复现A2A text/嵌套JSON/task ID回显密钥；修复复用原Generation的containsSecret，在原localWork结算前拒绝整个响应，禁止identity和公开artifact进入后续消费者，并保留已发生失败费用。MCP同一修复通过真实SDK text/JSON/resource回显案例；畸形SecretPort非字符串拒绝，正常auth路径复验。原Generation函数抽取语义保持，35相关检查通过。最初2项conditional-expect lint修复后相关4检查重跑PASS；最终相关lint/diff-check PASS。旧loopback失败当前31全套含真实HTTP通过，未倒改历史原因。
+
+S32 **24新增/65受影响 distinct PASS**；原Source Index `.a2ui.json`→正式compiler→原Native v3 IR/安装/Bridge/runtime。固定官方A2UI v0.9.1消息/原v0_9 catalog身份，公开Text/Column/Button及作者另行声明event→binding。真实Edge1280/390两组验证键盘、44px按钮、busy禁用、真实command/revision、陈旧错误、文字/删除降级，外网0。root实际读取最终390截图，确认公开备注与失败状态、无溢出。截图只作临时QA，不提交。初次局部CSS无法覆盖子组件按钮，按既有global styles机制修正后QA；一次lint brace修正通过。online AG-UI/A2UI stream、远端action envelope回发、MCP Apps/OAuth未冒称完成。
+
+S33 **42 distinct PASS**（38学习/CLI + HTTP新2旧2）；导出原feedback关联的派生诊断只含hashed身份/origin/direction，不包含rationale；读取期间expiresAt再次核验，源读取去重。CLI冷进程无服务启动，文件上限/UTF8/目录/错误脱敏、同源family切分与不可撤回限制已验。初次.mjs lint因本仓配置未包含module override失败，依现有scripts JS约定改为 `scripts/analyze-learning.js` 后静态/16CLI相关复验PASS。
+
+S34 **14新增/4原Prompt生命周期 distinct PASS**。认证start-learning显式purpose/backend、下载轨迹与当前owner/scope/sequence/完整labels重验，仅review的两类Prompt target；原Job可选learning hash provenance，持久pin类型/scope校验。独立审查复现普通Job被dedup冒认学习Job，已改精确pin冲突且双存储复现回归通过；HTTP实际queued后在提炼前本地停止、fetch0/费用0/失败状态持久化，不把此测试算真实模型出口。原candidate/evaluator/人审publish/rollback及source失效权威保持；测试里的合成评价不声明质量提升。所有归属工程文件targeted ESLint已执行通过。
+
+本组本地工程检查累计287 distinct，另2种真实浏览器宽度；此总数不包含重复复验或真实模型请求。S34真实首轮另有2HTTP200：RP提炼length失败total4111，Project提炼total1355后隔离评价路由拒绝；尚未作为通过，继续诊断与补测。M4/S27实际有限对照也继续推进，不以工程提交暂停任务。
+
+环境清理限制：自动审批检查拒绝删除本轮公开SDK临时目录 `atria-s31-mcp-sdk`，只给 `blocked by policy`。没有绕过，保留公开npm依赖；目录含SDK1.30.1、不含私有测试正文或凭据，不在Git。该限制不影响协议验证或继续工作。
+
+#### 后续实际对照与评价修复
+
+S24 `tests/agent-intelligence/m4-live.js --local` 双域实际对照 PASS：Session两臂原authority transaction均committed且同一公开时间目标达标，直接方案2处公开改动、比较方案1处，并由正式receipt取得exactMatch；Project两臂原Review/package validation、真实runStudioScenario及Git receipt均passed，直接方案2文件、比较方案1文件。两臂同源/同配置，比较额外localJobs分别2/3，provider请求0。固定比较器本就最小化改动，预先声明的宽改动baseline不是独立Agent决策，不声明模型/一般高影响决策或时延收益。过程CPU/壁钟仅观察，非所有原authority工作均有localWork细项。增强断言曾因正式工具重建operationId而失败，改为核对receipt操作语义和实际文件前后值后通过；失败summary保留已发生正式receipt与原成本。脚本ESLint/diff-check通过，临时fixture已清理。
+
+S34真实Project隔离评价失败定位到Studio已改用准确 `/api/native/generation/skill-work`，原isolated adapter未接该入口。只委托原prepareRetrievalCompute/executeProjectSkillWork，同Task/revision/scope与操作字段验证，未知路由继续拒绝；真实冻结worker沿原Route预算。新增2项及原Project来源3项、原production project-prompt worker1项共6 distinct PASS，相关静态通过。RP提炼容量改用既有私有M1测试输出port，不修改生产1024 guard。后续实际复测费用和结果另记，不覆盖首轮5466tokens。
+
+环境清理限制补充：S32三个公开UI QA临时目录经精确路径/真实Directory/非reparse核验后，单一PowerShell删除也被自动审批以 `blocked by policy` 拒绝。保留截图目录且未换工具绕过；同上述SDK均不在Git，也不含私有模型正文或凭据。
+
+S34修复后真实pilot已完成并释放quota：RP11 HTTP200/47875tokens，Project10 HTTP200/36609tokens，共21/84484；连首次2请求失败累计23 HTTP200/89950tokens。每域原host_evaluator各1个development pair；RP player_agency delta0、Project intent_completion delta0，模型偏好均tie。两臂output hash不同、error均null、原hard checks/isolation/target_consumed全true；human均null、Job awaiting_review、eligible=false、未发布且有效base保持。只证明真实提炼/独立于提炼输入的开发评价与review gate，不把tie说成优化提升或完整M7验收。全部API费用已知，unknownAttempts0，货币价和上游retry未知。live fixture未配置local executionPolicy预算，不能把新增本地测试中的3笔Skill localWork计量冒充live的费用数值；真实live只证明原Skill-work通道实际执行。临时材料finally清理。
+
+用户随后说明将提供向量模型，并允许需要时暂停等待。当前仅发现聊天连接配置，真实rerank后端尚未确认；尚未向服务发起模型列表/能力探测。根按用户指令暂停后续模型调用，已在途有限run安全收尾、保存已验证修改后等待配置；不创建新HANDOFF，不把外部证据缺失宣称任务整体完成。
+
+上述在途S27现正常结束：3HTTP200，共6703tokens（旧路径1988、ExpressionPlan2252、blind judge2463），unknown0，原localJobs共15。双臂同原foundation Prompt/问题，公开plan/未声明旧路径、零发送preview、state不变和费用保留均PASS。表达组7维模型观察全部true；旧路径公开来源/传闻/私密隔离/玩家自主/中文通过，actorVoice与communicativeIntentAppropriate未通过。只作为一个合成配对样本的模型观察，不宣称统计质量提升或人工偏好；未播放声音。脚本syntax/ESLint PASS，临时正文已清理。
+
+随后用户已提供新的Embedding与rerank连接，恢复任务。配置只保存本机Git外私有目录，不在此记录endpoint/key。共享private-test-run允许固定新配置文件名，原成功/失败清理与quota保留2增强测试PASS、ESLint PASS；未新建限流或费用账本。S25先沿原主模型，S26随后沿所给向量/重排模型串行推进。
+
+source `c5447144afff7a3585e9f51628f5c6a22f97a0fb` 已提交推送并ls-remote一致（11文件）。包含隔离Skill-work修复、actual evaluator revision增加两个直接执行依赖、2个源码身份变动拒旧报告测试，以及M4/S27/S34可复现临时脚本和共享配置读取增强。最终新增revision pin只做相关2本地检查，未重跑已通过的模型；真实pilot绑定当时实际bytes，不将后续hash改动伪作再次模型通过。本轮工程检查累计297 distinct（原287 + 后续隔离6/身份2/私有helper2），另列真实模型与浏览器结果。main仍未变化。
