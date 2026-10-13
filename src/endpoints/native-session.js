@@ -125,6 +125,10 @@ export function createNativeSessionRouter(getServices = services) {
     router.post('/run', route(async (req, res, { core }, handle) => {
         res.json(await core.runStatus(handle, req.body.sessionId));
     }));
+    router.post('/commit-receipt', route(async (req, res, { sessionRepo }, handle) => {
+        fields(req.body, ['sessionId', 'commitId']);
+        res.set('Cache-Control', 'private, no-store').json(await sessionRepo.getCommitReceipt(handle, req.body.sessionId, req.body.commitId));
+    }));
     router.post('/illustrations/read', route(async (req, res, { sessionRepo }, handle) => {
         fields(req.body, ['sessionId', 'branchId']);
         res.json(await sessionRepo.getIllustrations(handle, req.body.sessionId, { branchId: req.body.branchId }));

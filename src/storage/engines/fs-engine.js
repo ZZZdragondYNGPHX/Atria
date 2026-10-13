@@ -1,14 +1,20 @@
 import { recoverFsChatPatchJournals } from './fs-chat-range.js';
 import { FsTransaction } from './fs-engine-transaction.js';
+import { FsNativeJournal } from './fs-native-journal.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+const tails = new Map();
+const active = new AsyncLocalStorage();
 
 export class FsEngine {
-    constructor({ directoriesByHandle }) {
+    constructor({ directoriesByHandle, durabilityFault = () => {} }) {
         if (typeof directoriesByHandle !== 'function') {
             throw new TypeError('FsEngine requires { directoriesByHandle: (handle) => dirs }');
         }
         this.kind = 'fs';
         this._directoriesByHandle = directoriesByHandle;
         this._recoveredPatchJournals = new Set();
+        this._durabilityFault = durabilityFault;
     }
 
     // `handle` is accepted but unused by FsTransaction — its per-kind handlers
@@ -16,6 +22,15 @@ export class FsEngine {
     // *does* need it to pick the per-user DB before the transaction begins, so
     // the engine contract takes (handle, fn) uniformly.
     async withTransaction(handle, fn) {
+        const root = this._directoriesByHandle(handle).root;
+        if (active.getStore()?.root === root) return fn(active.getStore().tx);
+        const previous = tails.get(root) ?? Promise.resolve();
+        const next = previous.catch(() => {}).then(() => this._withTransaction(handle, root, fn));
+        tails.set(root, next);
+        try { return await next; } finally { if (tails.get(root) === next) tails.delete(root); }
+    }
+
+    async _withTransaction(handle, root, fn) {
         // Whole-message local patches are protected by transient journals.
         // Sweep once per user/process before the first Repo transaction so a
         // crash cannot leave a partially rewritten JSONL visible to storage.
@@ -24,7 +39,13 @@ export class FsEngine {
             this._recoveredPatchJournals.add(handle);
         }
         const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle });
-        return fn(tx);
+        const journal = new FsNativeJournal(tx, root, handle, this._durabilityFault);
+        await journal.recover();
+        return active.run({ root, tx: journal.tx }, async () => {
+            const result = await fn(journal.tx);
+            await journal.commit();
+            return result;
+        });
     }
 
     async ping(handle) { /* nothing to do */ }

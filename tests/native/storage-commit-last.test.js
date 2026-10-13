@@ -31,7 +31,7 @@ function failPublishEngine(baseEngine, publishKind, errorMessage) {
     };
 }
 
-describe('N1 FS commit-last failure semantics', () => {
+describe('FS staged Native publication rollback', () => {
     let h;
 
     beforeEach(async () => {
@@ -42,7 +42,7 @@ describe('N1 FS commit-last failure semantics', () => {
         await h.cleanup();
     });
 
-    test('failed Session HEAD publish leaves only an uncommitted immutable revision', async () => {
+    test('failed Session HEAD publish rolls back unpublished dependencies', async () => {
         const handle = h.handle;
         const sessionId = createNativeId('session');
         const branchId = createNativeId('branch');
@@ -89,11 +89,11 @@ describe('N1 FS commit-last failure semantics', () => {
         await expect(repo.commitRevision(handle, revision))
             .rejects.toThrow('injected session-head publish failure');
 
-        expect(await baseRepo.getRevision(handle, sessionId, revisionId)).toEqual(revision);
+        expect(await baseRepo.getRevision(handle, sessionId, revisionId)).toBeNull();
         expect((await baseRepo.get(handle, sessionId)).headRevisionId).toBeNull();
     });
 
-    test('failed World current-pointer publish leaves an orphan immutable WorldRevision only', async () => {
+    test('failed World current-pointer publish rolls back unpublished WorldRevision', async () => {
         const handle = h.handle;
         const worldId = createNativeId('world');
         const revisionId = createNativeId('worldRevision');
@@ -125,11 +125,11 @@ describe('N1 FS commit-last failure semantics', () => {
         await expect(repo.commitRevision(handle, revision))
             .rejects.toThrow('injected world-pointer publish failure');
 
-        expect(await baseRepo.getRevision(handle, worldId, revisionId)).toEqual(revision);
+        expect(await baseRepo.getRevision(handle, worldId, revisionId)).toBeNull();
         expect((await baseRepo.get(handle, worldId)).currentRevisionId).toBeNull();
     });
 
-    test('failed Knowledge current-pointer publish leaves immutable entries/revision without publishing it', async () => {
+    test('failed Knowledge current-pointer publish rolls back unpublished Knowledge dependencies', async () => {
         const handle = h.handle;
         const knowledgeBaseId = createNativeId('knowledgeBase');
         const knowledgeRevisionId = createNativeId('knowledgeRevision');
@@ -166,8 +166,8 @@ describe('N1 FS commit-last failure semantics', () => {
         await expect(repo.commitRevision(handle, revision, [entry]))
             .rejects.toThrow('injected knowledge-pointer publish failure');
 
-        expect(await baseRepo.getRevision(handle, knowledgeBaseId, knowledgeRevisionId)).toEqual(revision);
-        expect(await baseRepo.getEntry(handle, knowledgeBaseId, knowledgeRevisionId, entryId)).toEqual(entry);
+        expect(await baseRepo.getRevision(handle, knowledgeBaseId, knowledgeRevisionId)).toBeNull();
+        expect(await baseRepo.getEntry(handle, knowledgeBaseId, knowledgeRevisionId, entryId)).toBeNull();
         expect((await baseRepo.get(handle, knowledgeBaseId)).currentRevisionId).toBeNull();
     });
 });

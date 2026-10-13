@@ -5,6 +5,7 @@ import { resolveUserDirectory } from '../../constants.js';
 import _ from 'lodash';
 import sanitizeFilename from 'sanitize-filename';
 import { sync as writeFileAtomic } from 'write-file-atomic';
+import { durableWrite, durableRemove } from '../durable-file.js';
 
 import { SIDECAR_INFIX, buildSidecarFilename, parseSidecarFilename } from './sidecar-naming.js';
 import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
@@ -771,21 +772,21 @@ function registerNativeResourceHandlers(tx) {
         try {
             envelope = JSON.parse(fs.readFileSync(fp, 'utf-8'));
         } catch {
-            return null;
+            throw new Error('Native resource envelope integrity mismatch');
         }
-        if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) return null;
+        if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) throw new Error('Invalid Native resource envelope');
         let storedKey;
         try {
             storedKey = normalizeNativeResourceKey(envelope.key);
         } catch {
-            return null;
+            throw new Error('Invalid Native resource identity');
         }
         if (
             storedKey.kind !== normalized.kind
             || storedKey.handle !== normalized.handle
             || encodeNativeResourceKey(storedKey) !== encodeNativeResourceKey(normalized)
         ) {
-            return null;
+            throw new Error('Native resource identity mismatch');
         }
         return {
             key: storedKey,
@@ -812,14 +813,13 @@ function registerNativeResourceHandlers(tx) {
                 createdAt: Number(record.createdAt ?? existing?.createdAt ?? now),
             };
             const fp = filePath(normalized);
-            fs.mkdirSync(path.dirname(fp), { recursive: true });
-            writeFileAtomic(fp, JSON.stringify(envelope));
+            durableWrite(fp, JSON.stringify(envelope));
         },
         delete(key) {
             const normalized = normalizeNativeResourceKey(key);
             const fp = filePath(normalized);
             if (!fs.existsSync(fp)) return false;
-            fs.unlinkSync(fp);
+            durableRemove(fp);
             return true;
         },
         list(filter) {

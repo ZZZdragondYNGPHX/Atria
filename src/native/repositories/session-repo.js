@@ -32,7 +32,7 @@ import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, readCheckedDocument, readSessionSnapshot,
 } from '../session-snapshot.js';
 
-// FS transactions are commit-last, not rollback transactions. Serialize publication
+// Serialize domain publication before entering the engine's durable transaction.
 // across repo/engine instances in the server process, then perform HEAD CAS. SQL
 // also retains its native transaction/CAS protection. Multi-process FS writers are
 // not supported by the storage engine.
@@ -513,7 +513,8 @@ export class SessionRepo {
     // N3 coherent publication. Every dependency is immutable and checked before
     // publishing the revision manifest; the Session record is the final commit marker.
     async commitSnapshot(handle, { session: sessionValue, revision: revisionValue,
-        branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false, runProof = null, runAction = 'write', illustrationHead = undefined }) {
+        branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false, runProof = null, runAction = 'write', illustrationHead = undefined,
+        commitId = revisionValue.revisionId, requestFingerprint = null }) {
         assertWritable();
         const session = assertSession(sessionValue);
         const revision = assertSessionRevision(revisionValue);
@@ -522,6 +523,15 @@ export class SessionRepo {
         }
         const avatars = personaAvatars(states[PERSONA_NAMESPACE]);
         return withSessionWrite(handle, session.sessionId, () => withNativeResourceWrites(handle, avatars.map(ref => 'asset:' + ref.assetId), () => this._engine.withTransaction(handle, async tx => {
+            const receiptKey = { kind: NATIVE_RESOURCE_KINDS.commitReceipt, handle, sessionId: session.sessionId, commitId };
+            const fingerprint = requestFingerprint ?? hashNativeDocument({ session, revision, states, branches, entries, variants, expectedRevisionId });
+            const prior = await getNativeDocument(tx, receiptKey);
+            if (prior) {
+                if (prior.fingerprint !== fingerprint) throw new ConflictError('native_commit_id_conflict');
+                await assertRunAccess(tx, handle, session.sessionId, 'inspect', prior.revisionId);
+                const root = await readCheckedDocument(tx, this._sessionKey(handle, session.sessionId));
+                return readSessionSnapshot(tx, handle, root, await readCheckedDocument(tx, this._revisionKey(handle, session.sessionId, prior.revisionId)));
+            }
             for (const avatar of avatars) {
                 const ref = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.assetRef, handle, assetId: avatar.assetId });
                 if (!ref || hashNativeDocument(ref) !== hashNativeDocument(avatar)) throw new TypeError('Missing Persona avatar');
@@ -590,6 +600,8 @@ export class SessionRepo {
             } else if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
             await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
             await putMutable(tx, key, published, { expectedIntegrity: existing?.integrity ?? null });
+            await putImmutable(tx, receiptKey, { schemaVersion: 1, commitId, fingerprint, sessionId: session.sessionId,
+                revisionId: revision.revisionId, branchId: revision.branchId, expectedRevisionId, status: 'committed' });
             const updated = await readRunControl(tx, handle, session.sessionId);
             if (updated) {
                 await writeRunControl(tx, handle, session.sessionId, updated);
@@ -601,6 +613,17 @@ export class SessionRepo {
             }
             return snapshot;
         })));
+    }
+
+    async getCommitReceipt(handle, sessionId, commitId) {
+        return this._engine.withTransaction(handle, async tx => {
+            await assertRunAccess(tx, handle, sessionId, 'inspect');
+            const key = { kind: NATIVE_RESOURCE_KINDS.commitReceipt, handle, sessionId, commitId };
+            const record = await tx.getResource(key);
+            if (!record) return null;
+            if (hashNativeDocument(record.doc) !== record.integrity) throw new Error('Native commit receipt integrity mismatch');
+            return record.doc;
+        });
     }
 
     async importClosure(handle, closure, { resume = null, runContinuation = null } = {}) {

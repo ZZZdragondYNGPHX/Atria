@@ -2,7 +2,7 @@ import { PERSONA_NAMESPACE, personaAvatars, personaDocumentReferences } from '..
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { sync as writeFileAtomic } from 'write-file-atomic';
+import { durableWrite } from '../../storage/durable-file.js';
 import { resolveUserDirectory } from '../../constants.js';
 
 import { NATIVE_RESOURCE_KINDS, assertAssetRef } from '../contracts.js';
@@ -82,8 +82,8 @@ export class AssetStore {
         const bytes = toBuffer(bytesValue);
         const contentHash = digest(bytes);
         const blobPath = this._blobPath(handle, contentHash);
-        fs.mkdirSync(path.dirname(blobPath), { recursive: true });
-        if (!fs.existsSync(blobPath)) writeFileAtomic(blobPath, bytes);
+        if (!fs.existsSync(blobPath)) durableWrite(blobPath, bytes);
+        else if (digest(fs.readFileSync(blobPath)) !== contentHash) throw new Error('Native Blob integrity mismatch');
         return contentHash;
     }
 

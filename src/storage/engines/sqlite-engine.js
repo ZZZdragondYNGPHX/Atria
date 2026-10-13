@@ -31,7 +31,10 @@ export class SqliteEngine {
         const dbPath = path.join(root, 'atria-storage.sqlite');
         const db = new Database(dbPath);
         db.pragma('journal_mode = WAL');
-        db.pragma('synchronous = NORMAL');
+        db.pragma('synchronous = FULL');
+        if (db.pragma('synchronous', { simple: true }) !== 2 || db.pragma('journal_mode', { simple: true }) !== 'wal') {
+            db.close(); throw new Error('SQLite durable commit configuration unavailable');
+        }
         db.pragma('foreign_keys = ON');
         initSchema(db);
         this._dbs.set(handle, db);

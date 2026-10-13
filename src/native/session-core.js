@@ -427,7 +427,7 @@ export class SessionCore {
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined, commitId, requestFingerprint } = {}) {
         const control = await this.runs.assert(handle, base.session.sessionId, runAction);
         if (states[RUN_NAMESPACE]) {
             const run = assertRunState(states[RUN_NAMESPACE]);
@@ -529,7 +529,7 @@ export class SessionCore {
         const session = assertSession({ ...base.session, activeBranchId: branchId, headRevisionId: revisionId,
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
-            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead });
+            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead, commitId, requestFingerprint });
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
             invalidateFrontendEpoch(handle, session.sessionId);
@@ -583,10 +583,18 @@ export class SessionCore {
         return boundary;
     }
 
-    async appendTimeline(handle, sessionId, draft, { expectedRevisionId } = {}) {
+    async appendTimeline(handle, sessionId, draft, { expectedRevisionId, commitId } = {}) {
+        const requestFingerprint = commitId ? hashNativeDocument({ draft, expectedRevisionId: expectedRevisionId ?? null }) : undefined;
+        if (commitId) {
+            const receipt = await this._sessions.getCommitReceipt(handle, sessionId, commitId);
+            if (receipt) {
+                if (receipt.fingerprint !== requestFingerprint) throw new ConflictError('native_commit_id_conflict');
+                return this.load(handle, sessionId, { revisionId: receipt.revisionId });
+            }
+        }
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const { entry, variant } = this._newEntry(base, draft);
-        return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant] });
+        return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant], commitId, requestFingerprint });
     }
 
     async applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId, hostProof = null } = {}) {

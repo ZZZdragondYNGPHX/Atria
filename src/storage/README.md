@@ -348,3 +348,24 @@ In db modes (sqlite / mysql / postgres), the resources below live in the engine.
 - **Single-file scoped artifacts** (secrets, settings snapshots, chat backups): live on disk because their lifecycle (rotation, backup, admin-visible) is naturally per-file, and they don't benefit from cross-user querying.
 
 A backup ZIP in db mode includes `_engine_dump.bin` + `_engine_meta.json` for the engine rows, plus the on-disk files above. A restore in matching engine kind round-trips both halves. Cross-engine restore must go through `scripts/storage-migrate.js` first to convert.
+# Native durable commit contract
+
+Native FS writes use an isolated staged transaction and a checksummed redo
+journal. The prepared journal is synced before an atomic rename publishes it;
+recovery installs the entire committed journal before admitting a reader. Native
+files and directory entries cross synchronous durability barriers before ACK.
+Legacy non-Native FS resources retain their existing semantics. FS requires a
+single server process per data root; missing directory-sync support fails the
+write rather than silently reducing its durability.
+
+SQLite requires WAL with synchronous FULL. External content-addressed Blobs are
+synced, including newly created directories, before publishing database refs.
+Session root, Revision, commit receipt and RunControl publish in one engine
+transaction. `/api/native/session/commit-receipt` resolves uncertain responses;
+reusing a commit ID with another fingerprint fails closed.
+
+These barriers describe the implemented software protocol. Process interruption
+tests demonstrate recovery, not physical S2 power-loss safety. Hardware/VFS
+evidence for CachyOS, Windows and Termux must be recorded separately; no engine
+or automatic fallback is certified S2 by configuration alone.
+

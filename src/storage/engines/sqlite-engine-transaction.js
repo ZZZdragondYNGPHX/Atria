@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -995,7 +996,17 @@ export function registerNativeResourceHandlers(tx) {
             return deleteStmt.run(p.key.handle, p.key.kind, p.resourceKey).changes > 0;
         },
         list(filter) {
-            const rows = listStmt.all(filter.handle, filter.kind);
+            const fields = getNativeResourceKeyFields(filter.kind).filter(field => field !== 'handle');
+            const predicates = [], values = [filter.handle, filter.kind];
+            fields.forEach((field, index) => {
+                if (filter[field] !== undefined) {
+                    predicates.push(`json_extract(resource_key, '$[${index}]') = ?`);
+                    values.push(filter[field]);
+                }
+            });
+            const rows = predicates.length ? db.prepare(`SELECT resource_key, doc, integrity, updated_at, created_at
+                FROM native_resources WHERE handle=? AND kind=? AND ${predicates.join(' AND ')}`).all(...values)
+                : listStmt.all(filter.handle, filter.kind);
             const records = rows
                 .map(row => parseRow(filter.kind, filter.handle, row))
                 .filter(Boolean)
