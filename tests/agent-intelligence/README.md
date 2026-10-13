@@ -428,3 +428,25 @@ Existing inspect, label, publish and rollback endpoints retain their meanings.
 Relevant local tests are `learning-trajectory.test.js`, `learning-cli.test.js`,
 `learning-optimizer.test.js` and the S33 HTTP cases in `feedback.test.js`.
 Synthetic evaluators in these tests prove lifecycle behavior, not model quality.
+
+The disposable live consumers below use `private-test-run.js` and the configured
+local `atria.private.directory`. Model runs share its quota lock and must run
+serially. They print metadata and retain failed costs, then remove temporary
+fixtures and raw model material. Without `--live`, the model scripts only prepare
+their inputs and make no provider requests.
+
+```sh
+node tests/agent-intelligence/m4-live.js --local
+node tests/agent-intelligence/s23-live.mjs --live
+node tests/agent-intelligence/s27-live.js --live
+node tests/agent-intelligence/s34-live.js --live
+```
+
+M4 compares two valid deterministic alternatives through real Session authority
+and Studio Review/Git receipts; it does not measure independently sampled agent
+decisions. S27 compares the original undeclared text path with an authored
+ExpressionPlan and reports a blind model observation. S34 runs one development
+pair per domain through the original optimizer and isolated worker. Its report
+does not satisfy the independent production promotion gate, fabricate human
+labels or publish a candidate. Run the relevant consumer when its inputs or
+implementation change; these commands are not a mandatory repeated full suite.

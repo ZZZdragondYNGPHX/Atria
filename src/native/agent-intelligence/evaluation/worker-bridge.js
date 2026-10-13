@@ -8,6 +8,8 @@ import { createHttpGenerationProvider } from '../../adapters/http-generation-pro
 import { hash } from './cases.js';
 import { createNativeId } from '../../identity.js';
 import { collectVersionedModelPromptResourceRefs } from '../../model-prompt-runtime/resources.js';
+import { prepareRetrievalCompute } from '../../retrieval-compute.js';
+import { executeProjectSkillWork } from '../../skill-invocation.js';
 
 export async function createFrozenEvaluationBridge(config, send) {
     const store = await createEvaluationStore(), { engine, handle } = store;
@@ -42,6 +44,12 @@ export async function createFrozenEvaluationBridge(config, send) {
     return {
         identity: { configurationHash: hash(config), promptHash: hash(config.resources), modelHash: hash(config.model) },
         cleanup: () => store.cleanup(),
+        async projectSkillWork({ studio, agent, repository, settings, request, signal }) {
+            const compute = await prepareRetrievalCompute({ handle, context: request.computeContext, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
+                persistence, agent, studio });
+            return executeProjectSkillWork({ ...request, compute, repository, settings,
+                projectId: request.computeContext.projectId, signal });
+        },
         async rp({ requestId, trialId, fixtureHash, messages, tools, signal, onSend, kind = 'model' }) {
             if (active) throw new Error('evaluation_serial_transport_required');
             active = { trialId, kind, onSend };

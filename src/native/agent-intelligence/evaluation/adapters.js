@@ -14,6 +14,8 @@ import { hash, canonical } from './cases.js';
 import { skillEntryKey } from '../../../../public/shared/extension-contract.js';
 import { boundedSkillReadOptions } from '../../../../public/shared/skill-invocation.js';
 import { projectFixtureSource as projectSource } from './fixture-source.js';
+import { fields } from '../../../../public/shared/native-values.js';
+import { executeProjectSkillWork } from '../../skill-invocation.js';
 
 const response = (payload, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => payload });
 const call = (id, name, args = {}) => ({ id, name, args });
@@ -259,6 +261,25 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
         globalThis.fetch = async (url, options = {}) => {
             const route = String(url); const body = options.body ? JSON.parse(options.body) : null;
             const method = options.method || 'GET';
+            if (method === 'POST' && route === '/api/native/generation/skill-work') {
+                fields(body, ['computeContext', 'operation', 'input'], 'Isolated Skill work');
+                if (hash(body.computeContext) !== hash({ kind: 'project', projectId: source.project.projectId, taskId: task.taskId, revision: originalRevision })) {
+                    throw Object.assign(new Error('isolated_route_denied'), { code: 'isolated_route_denied' });
+                }
+                if (['pin', 'read', 'files'].includes(body.operation) && (hash(body.input?.scope) !== hash(skillScope) || body.input?.name !== skill.name)
+                    || body.operation === 'list' && body.input?.context?.projectId !== source.project.projectId) {
+                    throw Object.assign(new Error('isolated_route_denied'), { code: 'isolated_route_denied' });
+                }
+                const settings = { skills: evaluation ? { [skillEntryKey(skill)]: { paths: { studio: 'always' } } } : {} };
+                if (evaluation?.bridge?.projectSkillWork) return response(await evaluation.bridge.projectSkillWork({ studio, agent, repository: skillRepo,
+                    settings, request: body, signal: options.signal }));
+                // Script-only fixtures have no configured model route or compute budget.
+                // Real frozen workers always delegate above through their original stored Route.
+                const current = await agent.getContext(h.handle, source.project.projectId, task.taskId);
+                const compute = { assertCurrent: () => agent.assertLocalIndexCurrent(h.handle, source.project.projectId, task.taskId, originalRevision, current.task.executionFingerprint),
+                    beforeLocalWork: async () => null, settleLocalWork: async () => {} };
+                return response(await executeProjectSkillWork({ ...body, compute, repository: skillRepo, settings, projectId: source.project.projectId, signal: options.signal }));
+            }
             if (method === 'GET' && route === '/api/skills?scope=all') return response(evaluation ? [skill] : []);
             if (method === 'GET' && route === '/api/native/extensions/settings') return response({ value: { skills: evaluation ? { [skillEntryKey(skill)]: { paths: { studio: 'always' } } } : {} } });
             const skillBase = `/api/skills/${encodeURIComponent('project/' + source.project.projectId)}/${skill.name}`;

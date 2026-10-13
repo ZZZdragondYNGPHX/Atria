@@ -18,7 +18,7 @@ export async function withPrivateTestRun(directory, run) {
         scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-private-test-'));
         return await run({ directory: scratch, quota,
             connection(name = 'api-primary.json') {
-                if (!['api-primary.json', 'api-secondary.json', 'api-minimax-temporary.json',
+                if (!['api-primary.json', 'api-secondary.json', 'api-retrieval.json', 'api-minimax-temporary.json',
                     'minimax-subscription-key.json'].includes(name)) throw new Error('invalid_private_connection_name');
                 return JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8'));
             } });
