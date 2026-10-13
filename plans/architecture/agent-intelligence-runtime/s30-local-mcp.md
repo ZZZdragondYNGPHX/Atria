@@ -1,3 +1,9 @@
+# S30：MCP Tool/Data 基本版
+
+2026-10-13 基本版补齐 source `877564dfa`：显式保存配置的 HTTPS 及字面 loopback HTTP；固定2025-11-25的JSON/SSE Streamable HTTP，GET cursor断流恢复、session、取消、timeout、有界解码与每次网络工作原预算/来源复验。TLS不关闭校验，redirect/端点替换拒绝；不重发结果未知的POST。真实TLS/SSE与原公开消费验证见同一Record基本版节。OAuth、任意Apps脚本和第三方业务账户不是当前默认能力。
+
+以下保留首批实现说明；其中loopback-only/JSON-only为当时支持矩阵，当前传输范围以上述基本版和completion.md为准。
+
 # S30：有限本地 MCP Tool/Data 消费者
 
 状态：2026-10-13 有限本地READ工程出口已交付，source `e93672e3c` 已push并核对远端；43新增与2原Scheduler受影响检查PASS，包含真实SDK1.30.1的原Service/FS/SQLite/认证HTTP消费。依赖原S02/S13工程消费者；M4/M5未取得的模型语义/质量收益不改写完成。本组只接由owner原ConnectionProfile/Route显式配置的loopback HTTP MCP服务，使用临时公开fixture的真实SDK工具计算和资源读取验证。不启动连接用户资料的Atria plugin，不增加外部模型/素材发送、OAuth范围、stdio命令执行或MCP Apps脚本/HTML执行。

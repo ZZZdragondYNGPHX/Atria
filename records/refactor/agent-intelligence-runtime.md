@@ -2741,3 +2741,19 @@ main 是 source 的祖先，本地 fast-forward 从 `3ee1332ef113d4c57c65d957722
 最小本地验证：集成前 source/main 工作区干净、祖先关系成立、`git diff --check main...HEAD` 通过；集成后 HEAD 精确一致、`git diff --exit-code f4815c727 HEAD` 通过、main 工作区干净。package.json/package-lock.json 未变，变更路径不包含连接配置/私有 quota/raw/cache。没有新的产品变化，按 Governance §12 未重跑已通过单元/浏览器/API，不执行全仓 test/lint/build；本轮新增模型请求为 0。文档只核对变更内容、相对文件链接、Git 差异与状态。
 
 清理前核对本任务 source 仅有两个 ignored 依赖软链接，分别指向 main 的 node_modules 与 tests/node_modules；只 unlink 这两个链接，共享依赖保持。随后正常 `git worktree remove` 与 `git branch -d` 清理已集成的 source/本地 `feat/agent-compute-runtime`，远端同名分支已删除；其它任务工作树/分支、长期工作空间、main 原 ignored 数据/产物、Git 外私有资料均保留。更新 Plan 当前状态与有限集成边界，删除已消费的本任务 live HANDOFF；恢复入口改为按需读取存在的 HANDOFF，不保留失效链接或创建交接副本。当前 Record 与 Plan 随 docs 提交同步保存。
+
+### 2026-10-13 基本完成补齐（进行中）
+
+用户指出若干阶段只有有限实现，随后明确要求继续推进到基本完成、再合并与推送。原上一节完成的是有限代码集成/清理，不能代表完整企划；本轮从实际 main `f4815c727` 创建 `feat/agent-runtime-completion`，仍沿同一 Task ID/Record。具体缺口与基本版出口见 Plan `completion.md`，不把最小验证解释为少实现功能；未创建子代理/Goal/HANDOFF。main/docs初始干净，fetch未出现新远端提交，其它工作树与私有资料保持。
+
+协议补齐开发中：MCP增加保存配置HTTPS、增量SSE/GET cursor恢复；A2A增加HTTPS并将获准任务身份接入原RunControl bank，冷恢复设计不自动重发。初次误将两个node:test文件交给Jest导致runner失败，旧HTTPS/SSE拒绝断言按新契约更新；正确Node runner55PASS/1原SDK可选skip，新增5项Jest PASS（实际HTTP SSE/恢复、session/每次网络hook、UTF8分片/关闭、大小/截断/错id）。原消费者MCP14PASS，A2A15PASS/4旧recovery标签断言FAIL，正在补冷存储验证，不把当前WIP作为完整阶段通过。
+
+#### 基本版协议、恢复与在线 UI（source `877564dfa`）
+
+补齐保存配置的 HTTPS MCP/A2A，HTTP 只保留字面 loopback；endpoint固定、TLS校验由默认fetch承担，不跟redirect或Card换endpoint，不把远端声明当本地许可。MCP接受JSON/SSE，增量UTF8/CRLF/有界读取，响应id精确匹配；通知只作数据，server request仍拒绝。断流仅使用原cursor的GET恢复，不重发POST；每个恢复请求走原publicWork/RunControl费用与freshness，session header、retry/取消/timeout和失效保持。真实TLS fixture采用临时CA验证而非关闭证书校验；不声称取得第三方业务服务证据。
+
+A2A已获身份与公开输入引用/hash写入原RunControl的同anchor operation（不是第二预算/任务authority）。7天默认有界保留，冷Engine+新Scheduler恢复仅显示interrupted并允许显式GetTask/CancelTask；caller不能自行提供remote identity，unknown SendMessage不能重发，公开source/owner/配置/当前revision重验。保留已发生费用，不把remote完成当本地Goal/World完成；原portable continuation schema接受有界外部证据，跨scope仍由exact引用拒绝。
+
+S32解析器迁入shared，原compiler兼容导入；作者显式stream:true的固定card policy及初始公开消息作为exact IR资源，原graph重验event mapping/uses。Host运行实例消费真实JSONL Body，支持有界component替换与公开data子路径；staged DOM更新、保留焦点/最后有效视图，epoch/revision/取消/关闭拒晚到更新。点击只走原Bridge，成功后可由Host回传标准v0.9.1 action envelope，公开context不读Native/private状态。没有自动取得remote endpoint或脚本/目录权限。
+
+最终最小验证：Node旧adapter55PASS/1原可选SDKskip；新增protocol6PASS（含真实SSE恢复/证书TLS）、原MCP consumer14PASS、A2A原19+新增FS/SQLite冷恢复2共21PASS；S32原24PASS、新stream4PASS。真实Chromium1280/390验证在线更新、焦点保留、原真实action/revision、标准event回传、非法更新保留、旧文字/删除降级，外网0；最后revision刷新变化后仅浏览器相关复验。归属文件ESLint/diff-check PASS；初轮runner/旧拒绝断言/brace lint失败保留，未增加模型请求。source已本地提交，main未改，继续表达/计算/学习闭环，不将本checkpoint当任务结束。

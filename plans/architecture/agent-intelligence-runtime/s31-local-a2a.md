@@ -1,3 +1,9 @@
+# S31：A2A协议与持久身份基本版
+
+2026-10-13 补齐 source `877564dfa`：允许原保存配置的HTTPS，固定JSONRPC/1.0与原公开source/skill/auth契约；已获Task/context身份在原RunControl同anchor operation中持久化。默认保留7天；FS/SQLite冷Engine+新Scheduler恢复有实际GetTask证据，只允许显式查询/取消，不重发未知SendMessage。恢复请求增加原sessionId，owner/source/revision/配置重验；不把远端完成当本地正式结果。API start返回sessionId，status/reconnect/cancel在冷恢复时携带sessionId+operationId。
+
+以下首批快照中的loopback-only与transient-only已由此基本版替代，历史失败保留在Record。
+
 # S31：固定 A2A 1.0 的有限本地远端任务
 
 首批依赖 S30 的原 owner ConnectionProfile/Route、公开 source、Scheduler/RunControl 与 S12 本地 evidence 权威。固定 [A2A 1.0.0 schema/proto](https://github.com/a2aproject/A2A/tree/v1.0.0/specification)及[规范说明](https://a2a-protocol.org/latest/specification/)的 `1.0` wire version 和 JSON-RPC binding，仅字面 loopback HTTP、显式原 Route 配置与公开合成验证。默认不发送；不启动连接用户数据的服务，不增加外部业务 Agent、OAuth、push callback 或任意文件下载。

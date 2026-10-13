@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: 当前已选有限交付与收尾完成；main 已从 `3ee1332ef` 快进集成至 `f4815c727`。S11–S34、G01–G06 的所选消费者及必要实际出口按同一 Record 的有限证据交付；S34 双域 pilot 均 tie、未发布，S25 无质量收益、S26 未证明成本改善。当前集成不等于完整 M4–M8 / HM2–HM3 的泛化收益或所有可选能力验收；逐项边界见下方状态表与 Record 最终收尾节。
+- Status: 用户要求继续推进到基本完成；从 main `f4815c727` 重开 `feat/agent-runtime-completion` 补齐原有限实现缺口。当前执行入口为 [基本完成补齐](completion.md)，同一 Record 持续记录；整体补齐及集成尚未完成。历史阶段事实与不利结果保持。
 - Updated: 2026-10-13
 - Private storage checkpoint (2026-10-12): 按当前用户批准完成本地私有资料精简；历史逐次原始材料/迁移副本已移出工作目录，仅保留当前连接、极小滚动限流状态与阶段摘要。后续测试保留规则只归 [Governance §13.1](../../../README.md#131-api-测试执行规则)，实际清理与证据限制见 Record 最新节；该历史清理不改变后续实际交付，也不为补已删除原始材料重跑历史阶段。
 - Historical checkpoint (2026-10-12): source `5a80e1563b1e9db4150da98d0096bdc61704d3f9` 与远端一致，已恢复当前完整私有 RAR。沿原作者 `system.style` 隔离 revision v3 完成 Session 三臂及四既有 frame 最小复验：7 HTTP200 的有限无依据场景/时间/玩家自主权项通过，2 TLS transport unknown/旧天气 FAIL 保留；原bank、authority 与产品源码未改。Session原三臂累计27 jobs，完整G06/M8/HM2与M3前置不变；叙事六维/独立盲评、真实语义/费用收益未宣称通过。最新实际证据见Record，不重跑已完成Session Task冷恢复或M1/HM1。

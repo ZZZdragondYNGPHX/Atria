@@ -2,6 +2,10 @@
 
 执行与验证只归 [Governance](../../../README.md)，阶段依赖和完整出口见 [delivery §7](delivery.md#7-m5--m6--m7--后续可替换能力)。本页管理一个有限 A2UI 消费者；不将其扩大为完整 AG-UI、在线流式 UI 或远程 MCP Apps 支持。
 
+## 基本版在线消费（2026-10-13）
+
+source `877564dfa`：Source Index的a2ui声明可选stream:true；exact IR保留作者原actions、初始public surface和降级信息。Host使用原runtime.streamA2ui(instanceId, response.body, {signal,onAction})消费JSONL，不把Body/回调交给Package脚本。支持component更新、data子路径、重建同surface/删除；每次projection沿原允许组件/Bridge schema，公开信息不能读取Native/private状态。原renderer分阶段替换DOM、保留焦点和最后有效视图；取消/dispose/epoch/revision使晚到更新失效。成功用户点击仍走原Bridge，并可回传标准v0.9.1 action envelope。真实Chromium1280/390全链已验证，外网0；客户端不自行选择remote endpoint/Secret。下方首批矩阵中JSONL/增量路径/event回传的未支持项由本节替代，OAuth/Apps/多surface仍不声明。
+
 ## 当前用途与边界
 
 作者将一份公开 A2UI 任务卡消息批次作为 `.a2ui.json` 组件源加入现有 Native Source Index。正式 Project Build / Studio Preview 使用同一 `compileFrontend`，降为原 Native v3 IR；安装与运行仍由原 Package validator、FrontendBridgeService 和 Native runtime 管理。
