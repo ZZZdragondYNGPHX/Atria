@@ -1,6 +1,6 @@
 # S26：普通路径的可选计算分配
 
-状态：2026-10-13 有限普通规则工程出口完成（source `cedf44330`），实际quality-cost收益pending。依赖原 G05/G06、S25普通异步路径与 [compute-policy](compute-policy.md)；预测branch/critic、learned/classifier策略不由本组启用，另依赖S24及真实收益证据。
+状态：2026-10-13 有限普通规则工程及实际质量—成本对照完成，工程source `cedf44330`。用户提供的真实rerank/Embedding已验证：紧预算固定策略用尽请求后无法生成正文，留额策略保留全部合法来源并完成正文；充分预算两策略均完成原rerank/正文，5维模型观察通过，未观察成本改善。8实际请求报告12751tokens；37项本地工作中的12项unknown保留。此有限证据证明所选留额机制，不宣称一般检索/Embedding收益。依赖原 G05/G06、S25普通异步路径与 [compute-policy](compute-policy.md)；预测branch/critic、learned/classifier策略不由本组启用，另依赖S24及真实收益证据。
 
 首批深化现有 optional Memory rerank：仍由合法候选覆盖、独立因果来源与currentness规则决定是否有价值，再由服务器实际 RuntimeRoute 的可选 `executionPolicy.optionalWork` 分配共享预算。缺该policy保留固定策略；显式 `mode:preserve_required` 没有 `requiredCompute` 时视为必要工作上界未知，拒绝该可选发送并回退合法基础检索。
 

@@ -2,6 +2,8 @@
 
 状态：2026-10-12 所选有限消费者出口完成，source `c73bad012`。依赖 [S20](s20-memory-applicability.md)、[M3](m3-cognition-design.md) 与所选 G06；实际结果、首组正文失败和有限评价只归同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。完整 HM3/任务不由单阶段升级，不重跑未受影响的历史阶段。
 
+2026-10-13 source `f4815c727` 补完一个真实连续场景：6个正式Turn，第3回合后FS保存并portable导入SQLite，再续写3回合；原历史、公开认知和费用保持，exact replay不重发。7次HTTP200共47484tokens，六段各7维模型观察和恢复连续性均通过。场景由作者沿原writer推进，light记忆保持模糊；只证明这条有限连续链路，不等于500次真实生成、自主appraisal或一般长期收益。
+
 认知继续保存在原 Lifecycle domains，由 Session writer/CAS 裁决。恢复或 fork 只从原 immutable coherent Revision 复制状态；在新分支内按原 exact Actor/Task view、当前 source fingerprint 和有界依赖顺序重新绑定有效 basis。失效、撤回、过期和不可见证据不被修复；历史 Revision、World Truth、行为、费用和作者设定不改写。branch/source/scope guard 保留，旧在途 Task 不因认知 basis 恢复获得新提交资格。
 
 原 Save closure 继续携带 cognition、Clock、来源和历史。ordinary version 3 Save 可携带原 RunContinuation 的 foreground/background/retiredCompute，跨干净存储恢复 known/unknown 和 local work；同机独立花费不能被旧 archive 覆盖。旧无费用的 Save 保持兼容，缺失历史费用仍为缺失，不反推或补造。此产品运行数据与开发私有测试资料保留规则分别由原 Save authority 和 Governance 管理。

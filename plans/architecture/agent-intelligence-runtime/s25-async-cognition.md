@@ -1,6 +1,6 @@
 # S25：普通规则路径与异步认知
 
-状态：2026-10-13 普通路径工程出口完成（source `e2adac4bb`），实际收益pending。依赖原 S13、G05/G06 与 [compute-policy](compute-policy.md)，本模块不启用依赖 S24 的预测策略。真实结果归同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。
+状态：2026-10-13 普通路径工程出口及有限真实对照完成，工程source `e2adac4bb`。同输入/配置的RP路线决策中，两臂5项事实/文本底线均通过；slow额外1请求/1571tokens/5localJobs/约7615ms，未观察质量收益，默认fast保持。原后台Task→声明writer→公开投影→正式Turn receipt实际执行；该单例不代表Project slow或完整语义收益。依赖原 S13、G05/G06 与 [compute-policy](compute-policy.md)，本模块不启用依赖 S24 的预测策略。真实结果归同一 [Record](../../../records/refactor/agent-intelligence-runtime.md)。
 
 普通 fast path 沿现有确定性状态、Memory invocation/reuse/必要guard与正文执行，不新增默认classifier、critic或每轮后台模型。slow path 首批限定作品已显式声明的普通 background Task及原 lifecycle outbox intent；不建立新的timer、scheduler、psychology writer或全局默认自主演化。
 

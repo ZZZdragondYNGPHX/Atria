@@ -1,9 +1,9 @@
 # 40 个候选阶段：交付、依赖与验收
 
-> M1 范围已冻结；S01–S09 与 S10 工程交付完成。S06 真实比较仍 ineligible；M1 的独立真实案例改善与集成前置条件待验收。后续阶段未进入。
+> M1 与 HM1 已验收并集成；后续所选消费者的当前交付、真实对照和集成状态以 [index](index.md#当前状态) 与同一 Record 最新节为准。历史候选 ineligible 与不利结果保留，不恢复为当前阶段限制。
 > D2 保留 S01–S34，新增 M8 的 G01–G06；不重编号已有阶段。阶段数服务于可独立审阅与验证。
 > D4 将 Execution Reuse / Cache Locality / Adaptive Invocation 的 A–F 逻辑顺序映射既有阶段与后续研究池，不新增正式阶段或扩张 M1。
-> D5 将 HCM-01–08 纳入正式架构；H0–H5 是三个有限交付组的工作包（§8.2），HM1 已完成，HM2/HM3 未实施，不增列 S/G 或改写 M1 结果。
+> D5 将 HCM-01–08 纳入正式架构；H0–H5 是三个有限交付组的工作包（§8.2），不增列 S/G 或改写 M1 结果。HM2/HM3 的实际范围由当前消费者证据管理，不将未选算法或泛化收益当作已完成。
 
 ## 1. 建议的交付组
 
@@ -19,13 +19,13 @@
 | M8 — 生成与计算基础 | G01–G06 | 创作 / Behavior 与 Context 分层、按预算解析模型 / 网关、稀疏调用与全部费用可检查 | 双入口真实请求消费；迁移与撤回；可用 gateway integration 与质量—成本对照 |
 
 先完成 M1，首批包含有预算与回滚约束的局部自动启用；首批详细设计见 [m1-evolution.md](m1-evolution.md)。
-建议保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation；M3 开始前要求 G06 完成。M1 不等待 M8。S01–S10 工程链路已交付，S10 的原局部 authority / 有限预算 / 隔离评测 / publication / rollback / 双入口 UI 见 s10-evolution。真实六槽基线与六对比较保留，候选仍 ineligible；本轮假 provider 不证明实际质量 / 成本收益。下一工作补齐 M1 验收证据与集成前置条件；不合并 main、不进入 S11 / G。
+建议保持 M1 → M2 的产品顺序，再交付 M8，随后 M3 / M4。M8 只依赖 M1，不依赖 M2 的 Goal continuation；M3 开始前要求 G06 完成。M1 不等待 M8。S10 的原局部 authority / 有限预算 / 隔离评测 / publication / rollback / 双入口 UI 见 s10-evolution。M1 已完成的真实验收不重跑，后续交付按自身当前范围与证据推进；早期六槽基线和不利候选保留在 Record，不作为后续阶段的停止条件。
 
 可以为 Goal 增加早期只读目标关联，但不把 M2 的自动 continuation 混进第一个学习闭环。
 
 Hybrid Memory 后续按 [§8.2](#82-hybrid-memory有限交付组与依赖) 交付：M1 验收 / 集成后从最新 main 开始 HM1（H0–H2）；HM2（H3/H4）消费 M8；HM3（H5）纳入 M2/M3 与已有 World Simulation。H0 的只读基准设计可以独立准备，但新 Memory 能力不是当前 M1 的准入或退出前置。
 
-M1 原反馈 / 评价补充工作包 F0–F3 及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，当前主模型准入归 m1-acceptance §1/§2/§14，测试执行归 Governance §13.1。F1/F2 前置与首次 F3 development 已有实际结果，M1 仍 pending；继续位置见 index 与同一 Record 最新节，不将早期 F2 路由恢复为当前状态。
+M1 原反馈 / 评价补充工作包 F0–F3 及退出唯一归属 [m1-feedback-evaluation](m1-feedback-evaluation.md)，主模型验收归 m1-acceptance，测试执行归 Governance §13.1。F1/F2 和各次 F3 的历史结果保留；继续位置见 index 与同一 Record 最新节，不将早期 pending 或 F2 路由恢复为当前状态。
 M5–M7 的具体 provider 和范围在进入对应交付组前重新确定；资料引用不能替代设备、模型或服务可用性。
 
 ## 2. D0 / D1

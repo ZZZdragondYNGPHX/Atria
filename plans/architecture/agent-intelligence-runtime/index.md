@@ -4,7 +4,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: M1 / HM1 已集成 main；当前 `feat/agent-compute-runtime` 已交付 S21–S34 的有限工程消费者，S31–S34 最新工程提交 `40ce8f8d3` 已推送。S23 原 Host 实际 provider 出口通过，S24 双域原 authority 对照已有实际 receipt；S34双域原隔离评价已完成有限真实pilot且均tie；S27真实单样本语义出口通过；S25/S26质量—成本继续补齐。逐项状态见下方当前状态表，历史失败与费用见同一 Record；尚未宣称完整 M4–M7 或 main 集成完成。
+- Status: M1 / HM1 已集成 main；当前 `feat/agent-compute-runtime` 已交付 S21–S34 的有限工程消费者，S31–S34 最新工程提交 `40ce8f8d3` 已推送。S23 原 Host 实际 provider 出口通过，S24 双域原 authority 对照已有实际 receipt；S34双域原隔离评价已完成有限真实pilot且均tie；S27真实单样本语义出口通过；S25/S26有限真实对照已完成；S21连续场景也已通过；最新source f4815c727已推送，按用户要求暂停并交接，main集成待续。逐项状态见下方当前状态表，历史失败与费用见同一 Record；尚未宣称完整 M4–M7 或 main 集成完成。
 - Updated: 2026-10-13
 - Private storage checkpoint (2026-10-12): 按当前用户批准完成本地私有资料精简；历史逐次原始材料/迁移副本已移出工作目录，仅保留当前连接、极小滚动限流状态与阶段摘要。后续测试保留规则只归 [Governance §13.1](../../../README.md#131-api-测试执行规则)，实际清理与证据限制见 Record 最新节；该历史清理不改变后续实际交付，也不为补已删除原始材料重跑历史阶段。
 - Latest checkpoint: source `5a80e1563b1e9db4150da98d0096bdc61704d3f9` 与远端一致，已恢复当前完整私有 RAR。沿原作者 `system.style` 隔离 revision v3 完成 Session 三臂及四既有 frame 最小复验：7 HTTP200 的有限无依据场景/时间/玩家自主权项通过，2 TLS transport unknown/旧天气 FAIL 保留；原bank、authority 与产品源码未改。Session原三臂累计27 jobs，完整G06/M8/HM2与M3前置不变；叙事六维/独立盲评、真实语义/费用收益未宣称通过。最新实际证据见Record，不重跑已完成Session Task冷恢复或M1/HM1。
@@ -165,12 +165,12 @@ D5 的 HM1（H0–H2）在 M1 原验收 / 集成后作为有限 Memory 重构，
 | S18 | 有限共享事件appraisal交付 | [s18-event-appraisal](s18-event-appraisal.md)，15新增/4受影响本地PASS；两实际发送/direct7236；下游正文为保留response的本地重放消费，原完整normalized快照缺失归Record |
 | S19 | 有限一阶/二阶ToM出口完成 | [s19-theory-of-mind](s19-theory-of-mind.md)，19新增/2受影响本地PASS；同Session实际共享Task与反例后正文/direct8593，HTTP400 unknown6261保留；不升级为真实他者mind或校准概率 |
 | S20 | 有限因果轨迹/Memory applicability/遗忘出口完成 | [s20-memory-applicability](s20-memory-applicability.md)，12新增/2受影响本地PASS；同Session原连接正文direct5955，原失败/费用保留；不强制行为/不改变World历史 |
-| S21 | 有限消费者出口完成 | [认知恢复设计](s21-cognition-recovery.md)；source `c73bad012`，44新增/3受影响本地distinct PASS，7实际请求含保留失败及修复后正文对照；完整 HM3/任务不冒称完成 |
+| S21 | 有限消费者出口完成 | [认知恢复设计](s21-cognition-recovery.md)；source `c73bad012`，44新增/3受影响本地distinct PASS，旧7实际请求保留；新增6正式Turn跨FS/SQLite连续场景+整体观察7请求/47484tokens通过，非普遍自主收益 |
 | S22 | 有限确定性消费者出口完成 | [确定性预演设计](s22-hypothetical-preview.md)；source `c73bad012`，12 distinct PASS；exact snapshot、原 Simulation/transaction 私有 candidate、获准投影与 stale 复验 |
 | S23 | 有限真实 provider 出口已验证 | [文本结构化预测](s23-model-prediction.md)；原Host单次HTTP200、typed预测/公开refs/费用与不发布PASS，实际1272tokens；双域决策收益另归S24/Record |
 | S24 | 双域有限工程与确定性实际对照完成 | [候选比较](s24-candidate-comparison.md)；source `886aa3566`，33新增distinct本地PASS；服务器owned候选/proposal/正式receipt、原Task与恢复保护；S23实际provider已验证；双域实际receipt与有限改动收益见最新Record |
-| S25 | 普通路径工程出口完成，收益pending | [异步普通认知](s25-async-cognition.md)；source `e2adac4bb`，24新增/5受影响PASS；原author-explicit Task/outbox/RunControl，预测路径另依赖S24 |
-| S26 | 有限普通规则工程出口完成，收益pending | [可选计算分配](s26-optional-allocation.md)；source `cedf44330`，12新增与原回归检查通过，旧lint诊断保持；真实quality-cost与预测/learned路径未验收 |
+| S25 | 普通路径工程与有限真实对照完成，无收益观察 | [异步普通认知](s25-async-cognition.md)；source `e2adac4bb`，24新增/5受影响PASS；原author-explicit Task/outbox/RunControl；实际3请求/5343tokens，两臂5项底线通过，slow额外成本无质量收益 |
+| S26 | 有限规则工程与真实留额对照完成 | [可选计算分配](s26-optional-allocation.md)；source `cedf44330`，12新增与原回归检查通过，旧lint诊断保持；真实8请求/12751tokens，留额保住必要正文；充分预算两臂质量通过但无成本改善，预测/learned未启用 |
 | S27 | 有限文字工程与单样本语义出口完成 | [表达计划](s27-expression-plan.md)；source `4fe3a172a`，16新增/12受影响distinct PASS；原公开projection→ExpressionPlan→prose；真实3请求/6703tokens、声明组7维模型观察通过，非人工偏好 |
 | S28 | 有限Windows本地API消费者完成 | [本地语音](s28-local-speech.md)；source `43a1505e2`，18新增/4受影响PASS；真实WAV/取消/原Scheduler、bank与exactAsset，音质/细粒度时序pending |
 | S29 | 原renderer有限工程消费者完成 | [公开表达展示](s29-native-expression-view.md)；source `293653079`，4新增backend/6真实浏览器组合与8受影响PASS；原bridge/素材/降级，模型语义收益pending |

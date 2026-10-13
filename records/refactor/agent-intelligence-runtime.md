@@ -2713,3 +2713,17 @@ S34修复后真实pilot已完成并释放quota：RP11 HTTP200/47875tokens，Proj
 随后用户已提供新的Embedding与rerank连接，恢复任务。配置只保存本机Git外私有目录，不在此记录endpoint/key。共享private-test-run允许固定新配置文件名，原成功/失败清理与quota保留2增强测试PASS、ESLint PASS；未新建限流或费用账本。S25先沿原主模型，S26随后沿所给向量/重排模型串行推进。
 
 source `c5447144afff7a3585e9f51628f5c6a22f97a0fb` 已提交推送并ls-remote一致（11文件）。包含隔离Skill-work修复、actual evaluator revision增加两个直接执行依赖、2个源码身份变动拒旧报告测试，以及M4/S27/S34可复现临时脚本和共享配置读取增强。最终新增revision pin只做相关2本地检查，未重跑已通过的模型；真实pilot绑定当时实际bytes，不将后续hash改动伪作再次模型通过。本轮工程检查累计297 distinct（原287 + 后续隔离6/身份2/私有helper2），另列真实模型与浏览器结果。main仍未变化。
+
+S25有限真实对照完成：同一已安装Package、公开路线约束、原Narrator Prompt/model/budget，fast原executeTurn；slow先原lifecycle background Task→declared app writer→completed outbox，再由原projection将建议实际发送给同Narrator。两臂5/5预定事实/文本底线通过，实际正式Turn receipt已验，fast保持pending outbox且无后台发送。3次HTTP200 stop，总5343tokens：fast1886tokens/1attempt/5localJobs/约9927ms，slow3457/2/10/约17542ms。差额+1请求/+1571tokens/+5localJobs/+7615ms，qualityGain=false；未发现额外slow收益，默认fast不变。没有unknown费用或failed localWork。真实场景只验证一个合成RP决策与原异步消费者，不冒称完整语义、人类偏好、Project slow或统计时延收益。脚本preflight双臂0发送/0费用及同input/config hash、syntax/ESLint/diff-check PASS；本地fixture契约修复在API前完成，未产生失败请求。
+
+完成范围独立复核发现：G06所选矩阵已有真实出口，不重复旧500预载/六维与Provider检查；S21原恢复/认知/Tick已分别验证，但用户要求的长期RP场景尚需将历史进展、原Host正文、保存恢复续写连接为一个有限真实连续场景。继续只补该连接，不把500预载视为500实际生成，不扩展未选研究池或重跑已过恢复矩阵。
+
+S26真实对照完成：8实际请求/12751tokens，模型unknown0；其中chat4次明确HTTP200，3rerank与1Embedding原adapter成功并校验输出/usage，只记成功2xx，不伪造精确status。3rerank各345tokens，Embedding61，3正文3147/3264/3450，judge1794。紧fixed重排完成后原正文budget_exhausted且零发送；紧reserve拒绝可选重排并保留全部合法来源，正文通过。充分fixed为3609tokens、充分reserve3795（+186），不宣称成本改善；三份实际正文5维模型观察均通过。各正式请求原bank估计7374/7411/7388与相应preview reserve相等，发送前同revision与真实上界校验通过。37localJobs含12unknown，原退休账localUnknownJobs投影漏报经独立审查修正，未清零未知成本。原World/认知/WorldClock不变，正式Turn仅正常publication logicalTime+1及Timeline发表。原Embedding adapter3个输入返回768维有效向量、61tokens/约10.33s，仅可用性证据。货币价/上游retry未知。
+
+S26四臂零发送preflight及8次本地loopback通路通过；本地检查先修undefined证据hash、User前缀judge解析、正常publicationCounter与认知写入区分，未把合成结果写成真实收益。最终syntax/ESLint通过；live后只加强local fake server异常清理，未重跑已过模型。真实私有临时目录正常清理；此前纯合成本地目录atria-s26-local-Yx7jQ4精确核验后仍被自动审批以blocked by policy拒删，保留且未绕过。
+
+用户随后明确账户额度将尽，要求不再派发子代理、等待现有任务完成后及时暂停并准备交接。根立即停止新派发，只有已经开始的S21连续场景run安全收尾；不启动新模型轮次或main集成，保留当前已验证提交与剩余工作。交接快照将按本次用户明确要求建立。
+
+S21新增连续场景最终PASS：6真实正式executeTurn均applied并有authorityReceipt/Task capture completed，每轮相同invocation重放不再发送。第3回合FS manualSave/exportSnapshot→SQLite importSave，timeline/cognition及18645tokens/15jobs精确保留，后3回合继续原提交。HTTP200共7，正文4497/6556/7592/7743/8388/8985=43761tokens，独立整体观察3723，共47484；模型unknown0，distinct localJobs35（source15已包含于restored30，不重复相加）。六段各7维观察及restoredContinuity全true。只证明作者事件沿原writer推进的6回合场景：传闻澄清、未完成→正式归还、light记忆模糊、公开边界/玩家自主/声音/恢复连续性，不称500实际生成、自主appraisal或一般长期收益。本地初始fixture超预算上限、Buffer误用JSON hash、light非法forgotten与judge wire双层嵌套在真实发送前修正；local全链、syntax/ESLint通过，未弱化产品契约。
+
+按用户暂停要求收齐现有子代理，均停止写入，无待执行请求/受控测试进程；root再次实查shared quota lock不存在。source最终 `f4815c7277adc02d36860f45dcf12f43f64453e2` 已commit/push/ls-remote一致，含S25 a5c42f537及S26/S21脚本，工作区干净。main3ee1332ef干净未改，用户要求的暂停优先于原集成流程。新HANDOFF仅因本次用户明确要求建立；当前剩余是所选范围最后核对、main集成/同步/工作区清理，不重跑已通过模型。实际请求本轮共45/163503tokens，历史失败和未知成本边界保持。私有新增向量连接仅在原Git外目录，无凭据进Git；无关Experience草稿未动。
