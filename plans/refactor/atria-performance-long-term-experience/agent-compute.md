@@ -151,6 +151,109 @@
 - 最小验证必须包含 **同时**：新 Turn 后立即回忆该条事实（read-your-writes）；Branch/SavePoint 切换后的授权隔离；已撤销/过期/竞争证据不被缓存重新放出；分词边界/模型 Tokenizer 改变；向量同步部分失败/重启；Provider 超时与失败计费；质量评估的独立来源/费用账目。
 - 上述候选仅针对新 dev 支持格式。严禁为了旧 SillyTavern swipe_id、旧 Schema、旧 MemoryOS 数据格式做额外迁移/兼容双读写；当前隐藏 Native ABI 真正仍需使用的依赖必须审计清楚才可移除。
 
+## 第十五轮：ContextPlan 与 Memory Recall 编排、并发、异常恢复及 RP 情境预算（**讨论稿，尚未批准**）
+
+### 1. 先承认现有调用链不只有一种
+
+| 路径 | 已确认执行顺序（静态审计快照） | 为什么不能直接凭空全部并行 |
+| --- | --- | --- |
+| Native Package Turn | [`public/scripts/native/play-generation.js` L20-L50](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/play-generation.js#L20-L50)：普通输入可能先 `host.submitUser` 与 `runtime.persist`，再调用 `recallNativePackageTurnMemory`，将 `hostMemoryEvidence` 交给 `executeOperation('turn')`；[Memory Bridge L250-L325](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/experience/llm/memory-bridge.js#L250-L325) 先取得 Information Grant，再做 Recall/证据合法性过滤 | 上游用户输入可能已经 S2 提交，失败重试不能重复追加用户消息；证据依赖有效 Task/Actor Grant，不能在授权之前做任意检索或让旧 Reply 泄漏 |
+| Game LLM 自由文本/命令 | [`public/scripts/native/experience/llm/runtime.js` L418-L500](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/experience/llm/runtime.js#L418-L500) 可能先解释玩家意图并执行命令；[L508-L555](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/experience/llm/runtime.js#L508-L555) 依次 `recallMemory -> narrativeCoordinator.produce -> finalizeMemory` | Recall 的查询可能依赖命令结果、新 World 状态与本回合事件；如果太早运行会检索到尚未发生动作之前的事实。后续入记忆与最终正文/事件顺序也须保持可追溯 |
+| ContextPlan / Prompt 编译 | [`public/scripts/native/context-compiler.js` L935-L1123](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/context-compiler.js#L935-L1123) 已有 Memory deferred lane / Hard Reserve / 原子组；[`session-runtime.js` L1027-L1045](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/session-runtime.js#L1027-L1045) 可 `prepareContext` 并 `recordContextLane`；[Native GenerationService L51-L88](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/model-prompt-runtime/generation-service.js#L51-L88) 先构造 ContextPlan、PromptIR、准确 Token 才发送 | ContextPlan 的最新世界事实、权限、来源、模型上下文预算均须在派生 Memory 进入后最终确认；deferred 槽位只是预留，不意味着外部 Recall 已完成或已验证 |
+| 调度与失败退路 | [`src/native/task-scheduler.js` L9-L130](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/task-scheduler.js#L9-L130) 已区分 foreground/background/maintenance 及不可中断 finalize；[GenerationService L19-L151](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/model-prompt-runtime/generation-service.js#L19-L151) 已有 `disabled/confirm/automatic` Route fallback 及语义/工具能力约束 | 不能另起一套 Scheduler 或把「Memory 检索可选退化」当成「任意切换生成 Provider」；部分异步/流式超时即使 Abort，也不保证外部调用未产生费用 |
+
+**额外核查**：[`memory-bridge.js` L48-L63](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/experience/llm/memory-bridge.js#L48-L63) 的外层 `assertTurnBranchCurrent` 只比较 Session/Branch；内部结果的 `assertCurrent` 在可用时进一步检查来源。新的统一运行时契约需要**无条件固定精确 Revision/State/Grant/Request Epoch**，不能因为外层守卫只检查 Branch 就允许同 Branch 内新提交覆盖旧来源。这里是契约审计点，不代表已复现污染。
+
+### 2. 方案 A/B/C：真正值得并行的内容是什么？
+
+- **A — 全部串行**：权威世界/人物状态→知识过滤→记忆完整 Lexical/Vector/Rerank→ContextPlan→模型调用→记忆提交。容易跟踪，但在不需要高级检索的回合也为非必要阶段付费，P95 和 TTFT 可能过长。
+- **B — 乐观全并行**：一收到玩家输入就同时启动世界命令、NPC 记忆、上下文与 narrator，先到先用。TTFT 表面很快，但**命令尚未落地、Actor 尚未获得授权、完整证据尚未打包就生成文本**，存在防全知/世界状态失配及外部费用重试问题，不建议采用。
+- **C — 固定 S2/Grant 的依赖 DAG + 合法准备工作的有界并发 + 生成前证据屏障 + 情境化预算**（**推荐、尚未批准**）：只将真正独立且在合法 Scope 内的纯读/可重建索引准备并行；ContextPlan/模型实际生成仍受权威快照、完整证据、准确 Token 和 Cost/Quality 的最终屏障约束。
+
+### 3. 推荐的逻辑状态机（候选，不意味着实现了新 API）
+
+```text
+PIN / ADMIT
+  锚定 current S2 RevisionRoot, Branch, World State Heads, Actor/Task Grant, RequestEpoch, ComputeBudget
+      |
+DETERMINISTIC AUTHORITY
+  解析玩家输入/命令 -> 如有正式 World/Event 变更先得到明确合法状态与事件结果
+      |
+PARALLEL PREPARE (bounded)
+  [确定性知识/静态 Prompt 特征] [授权 Scope 内的 Memory Corpus/Query 特征]
+  [已确认 Delta Overlay 覆盖]       [预算/Token/工具需求准备]
+      |
+MEMORY RECALL
+  基础 Lexical/Graph -> 源覆盖判定 -> 经授权的可选 Vector/Rerank
+      |
+CONTEXT JOIN BARRIER
+  最新 State + Information Grant + Memory 证据组 + Context Lanes + 必需 Hard Reserve
+  重验 Revision/Grant/Epoch -> 最终完整 Token Count -> 可调用 Route/Tool/Policy
+      |
+NARRATE / STREAM (provisional)
+  只把未确认文本作为 Draft；本回合生成失败不会修改已经确认的旧回复
+      |
+S2 PUBLICATION + RECEIPT / POST-TURN DERIVATION
+  提交合法的权威剧情/状态，再触发有来源证明和幂等标识的派生记忆入账
+```
+
+**务必区分两条现有线路**：Package 路径可能先 S2 保存玩家输入再 Recall；Game Runtime 可能先执行世界命令再 Recall。此图是跨路径建议契约，不主张强行将它们改写为一套同样的物理调用顺序。任意已确认的用户输入/命令、事件和正文都必须有真实 Commit/Operation Identity；错误恢复只重试尚未完成的 Work，不重复生成旧已提交世界副作用。
+
+### 4. 何时必须等待 Recall，何时能有限退化？
+
+| 情况 | 候选行为 | 不变量 |
+| --- | --- | --- |
+| Context/Information Grant 不合法、Revision stale、来源撤销 | 立即取消/拒绝该 Request，必要时用户重新基于新 Head 发起 | **Fail Closed**，不得无授权地改用整篇原始历史、不允许用旧 ContextPlan 生成 |
+| 当前 World State、执行后果、硬保留、必需记忆证据组无法验证 | 不启动正式 Narrator / 不发布新结论，提示需要修复/重试 | 不能因为预算或超时让 NPC 凭空获知、失去未履行承诺或编造已完成事实 |
+| Optional Vector/Rerank 超时/预算拒绝，但 Lexical/Graph + 当前合法证据满足任务 | 明确记录 `vector_unavailable / rerank_unavailable`，按降级后的合法结果编排 | 退化到**有证据的基线**，不是退化到全知或未经校验的上轮 Recall |
+| Memory 模块未配置/无证据且此场景不要求记忆 | 可使用当前合法 World/近期输入和明确 Unknown 继续；给出适当状态诊断 | 不暗示已成功召回不可见或不存在的历史，情境需要必备记忆时不能静默继续 |
+| 最终 Tokenizer 不可用/准确计数失败、硬保留溢出 | 不发送超预算 Prompt；使用同能力可验证的安全路由/减少**可选**来源，或返回容量错误 | 不能省掉必需工具/World State/原子证据来凑 Token |
+| 生成 Provider 超时/连接中断 | 沿用既有 `disabled / confirm / automatic` Fallback Policy，重验能力、费用、Prompt 的语义绑定 | 不擅自改变模型/工具/权限，不重复执行已确认的剧情提交 |
+| 已确认玩家输入，但 Recall/模型生成失败 | 保留该合法已提交输入，用明确 Run/Request/Commit 状态恢复缺失的后半流程 | 不能重新 append 同一玩家楼层，也不重新开放第七轮已删除的旧 `Retry Reply` 正式入口 |
+| Narration 已发布，但派生 Memory 入账/向量索引失败 | 保留原始 S2 Event/Timeline；为派生任务生成可幂等续处理的状态/Outbox/诊断，下一次查询通过已确认 Delta 仍能取得最新合法事实 | 派生记忆延迟不准悄悄导致已确认剧情永久失忆；是否在 ACK 前要求哪些派生完成由权威范围决定 |
+
+**失败处理优先级**：授权与当前性错误最高且不能降级；本回合需要的权威材料不能丢；纯派生 Vector/Rerank 超时可在合法基础检索覆盖时退化；最后才是模型 Provider 的显式降级策略。不要用单个 `catch { return emptyMemory }` 吞掉身份/授权/溯源错误。
+
+### 5. 并发纪律与取消安全
+
+- 单个回合使用**固定的 S2 Anchor + Run/RequestEpoch**，并发准备由当前 `NativeTaskScheduler` 及 P5 Owner/Scope 管理；并发数/CPU/Provider 额度由 P0 和设备预算决定，不能为了“每轮并行”增加临时 Worker 池。
+- 纯只读查询可以在同一已验证快照上受限并行；世界命令、Actor 认知更新、正式故事提交、Model/Tool 外部副作用需按实际依赖串行或事务屏障执行。大计算任务应在合法切片点让出前台，但不能把**S2 发布区间**当作任意可取消区域。
+- 每次异步边界后核查 Scope/Branch/Revision/Grant/Epoch，旧分支结果不能写入新 ContextPlan、Cache 或 S2 Root。外部中途取消即使通知已发出，Provider 仍可能实际收取费用，结算状态应持久化为未知/待核对而非零费用。
+- JavaScript `Promise.all()` 是失败快速传播，**不是兄弟任务自动取消协议**；若启动相互独立的多个请求，需共享 AbortSignal，失败时主动 abort/等待安全清理，避免未使用结果继续占用计算或污染缓存。对于多项独立诊断可使用 `Promise.allSettled`，不能因它能够容纳失败就允许权威任务“任意跳过”。
+- 与现有 `commitId` 查询/RunControl/Agent Ledger 对齐；新 Request 中生成最终正文前必须重验法定预算/授权。原生代码中 `GenerationService` 已有 Provider Fallback，项目不再新建第二个“自动重试全回合”的平行引擎。
+
+### 6. 情境化模型预算：提高 RP 质量，而不是一刀切
+
+以下是**分配策略候选，不是固定数值**。最低不变量：每回合合法状态/视角/必要证据和响应 S2 永远有自己的不可绕过的执行/费用边界。玩家设置可调的是*额外的* Vector/Rerank/Agent、预取和模型资源，不可以通过“省钱模式”禁用 NPC 非全知的检查。
+
+| 场景 | 额外计算优先级 | 理由 |
+| --- | --- | --- |
+| 普通日常 RP / 近期对话连续 | 低：准确当前 World、最近对话+可复用 Lexical/Graph；无缺口跳过向量和 Rerank | 保持低 TTFT 和良好文笔，不为每个寒暄调多个模型 |
+| 远古剧情回调 / 重要承诺重现 | 中高：扩展合法历史 Recall、证据覆盖与原子来源组；基础遗漏时提高 Vector 重要性 | 数千回合后仍认得人物、承诺和事件，不靠旧世界摘要假造履约 |
+| NPC 私密对话 / 防全知 / 来源冲突 | **权限和证据检查不可选**；仅在合法竞争证据确实需要时启用 Rerank | 多花 Token/时间也不能把角色不知道的信息引入 Prompt；冲突应保持 Unknown |
+| 重大剧情抉择 / 关键世界状态转换 | 增强跨时态和多跳召回完整性，必要时给可信状态/承诺较高 Context Lane 优先级 | 防止关键道具、死亡、交易、承诺因普通低预算遗漏，**不允许由计算层擅自代替玩家行动** |
+| 背景 NPC/Memory 日志与 Project/RP Agent 自迭代 | 独立后台预算与并发配额，低于互动剧情；正式自迭代晋级仍执行完整试验与独立质量门槛 | 不让后台 Agent 吃光用户当回合的等待和费用预算，也不能靠取消必须的测试虚报优化 |
+
+预算需要**二维衡量**：`质量风险/证据必要度` 与 `延迟/Token/费用/长期累计预算`，并把未能查到来源、权限拒绝、预算不足、Provider 不可用区分诊断。不能预设具体“日常 1 次、大剧情 3 次”的硬常数；先用 P0/RP 真实回归找质量-延迟-成本的可接受折中。
+
+### 7. 第十五轮 A/B/C 选择（待用户定案）
+
+- **A：完整串行 + 所有增强检索按固定流水线必跑**。简单但不区分用户真正需要什么，长期 RP 的 P95 可能偏高。
+- **B：激进并行 + 早发 Narrator + 任意阶段出错均降级空记忆**。容易产生快但不一致、全知 NPC 和失败后双重副作用，不能满足前轮冻结约束。
+- **C：依赖 DAG + 可证明独立阶段有界并发 + Context Join/Authority 屏障 + 结构化失败回退 + 场景/质量预算分层**（**推荐、尚未批准**）。
+- 第十六轮候选方向：评估本次企划是否已覆盖全部主要模块，补齐风险优先级、阶段拆解、集成边界与 P0 验收/移交计划；如仍有用户关心的缺口，再增加专项讨论。**不预设无限新轮次或在当前功能分支上动手实现**。
+
+### 8. 第十五轮最小验证集合（未来实现时）
+
+1. 具有本回合新 World 命令的 Memory Recall 必须看到合法结果；输入消息可能先被持久提交的 Package 路径，失败重试不重复加入 User Floor；普通 Game LLM 的 Recall 不可跑在未执行命令前的旧状态。
+2. 进行 Recall 时切 Branch/Revision、撤销 NPC Information Grant、修改当前 World State：所有晚到结果被丢弃；不会继续发送模型，且不泄漏来源内容。
+3. Vector/Rerank 超时但合法 Lexical/Graph 已覆盖：可有诊断地继续；如果缺必需承诺/权威材料，正确暂停或失败，而非编造。
+4. Provider 失败/替代路由不改必要权限/工具/预算，费用含超时/待对账；在 Route 与用户授权许可内使用既有模式。
+5. 正文已 S2 完成但派生 Memory Outbox/Index 中断或重启：原始正文无损；下一回合最新合法事实可通过覆盖水位/Delta 或被明确标记不可用，不能悄悄旧事实继续。
+6. TTFT、ContextPlan/Recall 各阶段 P50/P95、独立/并行计算峰值、Provider Token/费用和 RP 六项质量尺度同数据对照；只运行变更涉及的相关测试，不做与改动无关的全仓完整验证。
+
+**外部并发语义参考**：[MDN Promise.all](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all)、[MDN Promise.allSettled](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled)、[MDN AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)，均仅指导取消与并发行为，不授权外部调用越过 Atria S2 / 权限屏障。
+
 ## P0 验收矩阵建议（真实目标与采样点待定）
 
 | 负载/场景 | 延迟和资源指标 | 不可退化的语义指标 |
@@ -181,3 +284,4 @@
 - **2026-10-13 / 第十四轮开端**：用户批准第十三轮方案 C，正式冻结来源/权限证明驱动的增量派生索引、每轮合法性和动态 ContextPlan、原子证据/精确 Token 预算与 RP/Project 质量门槛；第十四轮继续缓存键/失效、读到最新提交、Token 和调用预算细节讨论，产品代码未改。
 - **2026-10-13 / 第十四轮研究稿**：在已冻结 P3 C 上补充分层 Cache Key、sourceGeneration/IndexGeneration 水位、Base+Delta Overlay、纠错撤销传播、Tokenizer 精确收口和 Provider/Agent 费用/质量双约束 A/B/C 选项；这些属于待用户讨论的新细节，不将候选算法或数字冒充已批准。
 - **2026-10-13 / 第十五轮开端**：用户批准第十四轮 C，正式冻结分层安全 Cache Key/来源与授权隔离、已确认 S2 Delta Overlay/索引代际校验/Read-Your-Writes、最终完整 Token 精确容量校验，以及 Agent/Provider 质量和费用双门槛；A/B 候选仅留作历史比较。第十五轮开始分析 ContextPlan 与 Memory Recall 的执行时机、并发与失败回退，不预先冻结实际阈值或新接口形状。
+- **2026-10-13 / 第十五轮研究稿**：在已批准第十四轮权威缓存/Delta Overlay/准确 Token/模型预算 C 上，结合 Package Turn、Game LLM/Memory Bridge、Native Context compiler、GenerationService 的真实调用顺序提出第十五轮 DAG/Join Barrier/分类回退/情境预算 A/B/C 备选。第十五轮选项与默认阈值尚未批准；未修改产品实现。
