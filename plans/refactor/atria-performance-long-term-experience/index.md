@@ -1,11 +1,11 @@
 # Atria 性能与长期使用体验优化 — Plan Index
 
 - **Task ID**: `refactor/atria-performance-long-term-experience`
-- **Primary Workspace**: `main`（未来产品实施）；本次企划归档于长期 `docs` 工作空间
-- **状态**: **Plan Frozen v1.0（架构及实施路线均已批准；尚未开始施工）**
+- **Primary Workspace**: `main`（已集成产品）；企划与累计 Record 归档于长期 `docs` 工作空间
+- **状态**: **Plan Frozen v1.0（架构/8阶段30单元不变；本地实施与主线集成已完成）**；事实与待证见 [累计 Record](../../../records/refactor/atria-performance-long-term-experience.md)
 - **起草日期**: 2026-10-13
-- **当前阶段**: **第 16 轮已完成并正式冻结**；P0–P5 全部设计领域与 E0–E7 / 30 最小实施任务已归档，后续仅在功能分支合入 main、重新测量并取得实施授权后开展工程
-- **实施起点**: 等当前 `feat/agent-compute-runtime` 功能开发结束并集成后，重新核实 `main` HEAD 和基线；**在用户明确授权施工后**才创建独立临时 `refactor/atria-performance-long-term-experience`，先执行 E0。当前不得修改产品分支
+- **当前阶段**: **E0–E7 已实施并集成 `main@7e1045ab8`**；P0–P5 冻结设计保留，平台/物理 S2/模型及长期证据边界以同一 Record 为准
+- **实施起点**: E0 已核对功能分支合入 `main@73c7913b2`，按用户明确授权沿独立临时施工分支执行；最终集成后该分支已清理。下文静态审计的“待施工/未实测”描述属于冻结时快照，实际结果优先读取累计 Record
 - **首次静态审计快照**: `feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，同期 `main@3ee1332ef113d4c57c65d9577222ba88d5171101`；此为代码证据，不是性能测量
 
 ## 当前正式目标平台（2026-10-13 调整；优先级覆盖历史并行平台描述）
@@ -86,7 +86,7 @@
 | **P4 — 启动与资源交付** | CachyOS/Windows/Termux 本地 Node + 浏览器的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md` → P0/P5 结果 |
 | **P5 — 长期稳定与恢复** | 长时间运行、回收与崩溃恢复、容量变化、退化检测 | `index.md` → `stability-recovery.md` → P0/P1/P2 结果 |
 
-P0–P5 是六个技术领域；第十六轮已经**正式批准并冻结** [实施路线 v1.0](implementation-roadmap.md)：E0–E7 **8 个工程执行阶段、30 个最小任务单元**，正确性 Gate + 低耦合小项可提前。实际实施仍须功能分支先合入 `main`、用户明确授权，再由 E0 重新采集基线。**当前未开工、不创建实施 Record 或 HANDOFF**；冻结的是产品目标、架构方向和阶段边界，不是未经测量的数字。
+P0–P5 是六个技术领域；第十六轮已经**正式批准并冻结** [实施路线 v1.0](implementation-roadmap.md)：E0–E7 **8 个工程执行阶段、30 个最小任务单元**，正确性 Gate + 低耦合小项可提前。实际实施仍须功能分支先合入 `main`、用户明确授权，再由 E0 重新采集基线。**工程执行已完成并保存同一累计 Record，live HANDOFF 已清理**；冻结的是产品目标、架构方向和阶段边界，不是未经测量的数字。
 
 ## 验收框架
 

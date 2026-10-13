@@ -2,9 +2,9 @@
 
 - Task ID：`refactor/atria-performance-long-term-experience`
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
-- Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
+- Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`（完成后已清理）
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0–E7 的 30 单元本地实施/相关验收完成；产品 End HEAD `7e1045ab8`，准备按已授权流程集成 main。平台物理 S2、Windows/Termux 与长时设备内存仍待证；本机完整 Runtime Load/Append 与全历史 ABI 成本保留，不能声称所有性能指标都改善。
+- 当前状态：**完成**。E0–E7 的 30 单元本地实施/相关验收完成；已快进集成并推送 `main@7e1045ab8`，本地/远端一致，临时分支/工作树已清理。平台物理 S2、Windows/Termux 与长时设备内存仍待证；本机完整 Runtime Load/Append 与全历史 ABI 成本保留，不能声称所有性能指标都改善。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -163,3 +163,11 @@
 - 物理断电/OS 崩溃的 S2 设备证明未取得；进程故障只证明当前协议恢复。默认引擎未替换，不认证 optional 引擎或静默 S2 后备。
 - 小规模反复 scope/DOM/listener/lease/object 释放已有证据；小时级 Heap/External/RSS、浏览器 Retaining Path/FD/GPU 与 Android 回收未测。没有生产强制 GC。
 - Source-authorized 离线排名、来源/认知隔离、Context Join 与预算/回执可追溯；真实同模型 RP/Project 六维结果、provider cache usage/Token/价格收益尚无新增证据。无远端可信水位时 vector listHashes 仍对账。不能说完整 Recall O(delta)、整个活动历史内存有界或所有 Load/Append 提速。
+
+
+## 最终集成与清理
+
+- 本地 `main` 从 `73c7913b22daae98b6348fad0f3eee1cfce1f080` 快进到 `7e1045ab836c22cafbc92c5de056ad701f56e723`，与已验证产品提交内容完全相同，没有冲突或新产品变化；按 Governance §12 只核对 HEAD、diff、clean status 与同步，不重跑已通过检查。
+- `main` 已推送；`main` / `origin/main` HEAD 相等，产品工作树 clean。开发分支的祖先/已合并检查通过后，删除本地及远端 `refactor/atria-performance-long-term-experience` 与对应工作树；只解除本任务两个指向稳定 main 的忽略依赖 symlink，稳定 main 依赖不删除。
+- 本任务独有的隔离测试数据/本地假 Secret/Provider/服务器/浏览器均清理；临时 `/tmp/atria-performance-startup-cache` 与空 task 父目录删除。其它活跃 `feat/atria-project-skill-routing` 与长期 docs/package/plugin 工作空间保留。
+- 本任务 live HANDOFF 删除；原交接的有价值事实已在本累计 Record 保留。Plan Index/Roadmap 路由更新为已实施，不改变冻结设计、阶段/30 单元或将设备待证伪写为通过。`docs` 保持独立，不合入 main。

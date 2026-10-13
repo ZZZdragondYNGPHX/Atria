@@ -1,12 +1,12 @@
 # Atria 性能与长期体验优化 — 已冻结的 E0–E7 工程实施路线
 
 - **Task ID**：`refactor/atria-performance-long-term-experience`
-- **状态**：**Plan Frozen v1.0（第十六轮方案 C 已获用户批准）**；工程实施尚未开始，**方案批准不等于立即授权施工**。
+- **状态**：**Plan Frozen v1.0（第十六轮方案 C 已获用户批准）**；用户随后已明确授权并完成 E0–E7 / 30 单元，本地验收后集成 `main@7e1045ab8`；执行事实与待证见 [累计 Record](../../../records/refactor/atria-performance-long-term-experience.md)。
 - **冻结日期**：2026-10-13；**执行总量**：E0–E7 共 8 个工程阶段、30 个最小任务单元，具体真实工期与数值阈值不预先承诺。
 - **企划总纲**：[index.md](index.md)（跨模块冻结决策的唯一权威）；本文件负责将 P0–P5 映射到可验证、可交接的实施单元，**不另起一套冲突的技术规范**。
 - **审计日期**：2026-10-13。
 - **当次源码参照**：`feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`、`main@3ee1332ef113d4c57c65d9577222ba88d5171101`；本轮只读，未测真实 P50/P95，也未通过电源故障验证。
-- **开始实施硬条件**：先结束当前 `feat/agent-compute-runtime` 并集成到稳定 `main`，核对最新 HEAD 后，且**用户明确授权进入实施**时，才从当时 `main` 创建独立临时 `refactor/atria-performance-long-term-experience`。此前只允许更新 `docs` 企划；不得因本方案已冻结就自行创建开发分支或修改产品代码。
+- **开始实施硬条件（已在 E0 满足；以下为开工前约束）**：先结束当前 `feat/agent-compute-runtime` 并集成到稳定 `main`，核对最新 HEAD 后，且**用户明确授权进入实施**时，才从当时 `main` 创建独立临时 `refactor/atria-performance-long-term-experience`。此前只允许更新 `docs` 企划；不得因本方案已冻结就自行创建开发分支或修改产品代码。
 - **后续修改规范**：只改受影响模块、只跑对应单元/关键边界验证、每个已完成小阶段/一组相关任务提交并推送；不默认长等 CI、全仓测试、Android 真机截图。确实需要设备断电/Android 日志/密钥/权限的验证应诚实标记“待设备证据”，不假称通过。阶段 Record 在正式开工时新建**一份**累计覆盖更新，避免每个阶段散落新交接文档。
 
 ## 当前实施平台：CachyOS / Windows / Android Termux（2026-10-13）
