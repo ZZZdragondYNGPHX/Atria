@@ -437,17 +437,26 @@ their inputs and make no provider requests.
 
 ```sh
 node tests/agent-intelligence/m4-live.js --local
+node tests/agent-intelligence/s21-longitudinal-live.js --live
 node tests/agent-intelligence/s23-live.mjs --live
 node tests/agent-intelligence/s25-live.js --live
+node tests/agent-intelligence/s26-live.js --live
 node tests/agent-intelligence/s27-live.js --live
 node tests/agent-intelligence/s34-live.js --live
 ```
 
+S21 longitudinal commits six real turns, saves after the third, imports the save
+into SQLite and continues with the inherited history and compute ledger. Its
+model observation covers one authored sequence, not general long-term autonomy.
 M4 compares two valid deterministic alternatives through real Session authority
 and Studio Review/Git receipts; it does not measure independently sampled agent
 decisions. S25 compares an ordinary direct turn with an authored background Task
 whose advisory is consumed through the original projection, and reports the
 actual quality floor and additional cost without assuming a slow-path gain.
+S26 uses the optional private `api-retrieval.json` connection for actual rerank
+and Embedding, compares fixed and reserved request budgets, and preserves unknown
+local work. A tight-budget exhaustion control is separate from the valid paired
+comparison with sufficient budget; Embedding availability is not a benefit claim.
 S27 compares the original undeclared text path with an authored
 ExpressionPlan and reports a blind model observation. S34 runs one development
 pair per domain through the original optimizer and isolated worker. Its report
