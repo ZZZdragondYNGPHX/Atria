@@ -42,9 +42,9 @@
 | [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 持久化提交、FS/SQLite、原生资产、自动存档/GC 架构选项 | **已建立；第六轮提交/分段细节已冻结，第七轮聚焦后台负载和旧楼层操作**，依赖 P0 |
 | `agent-compute.md` | P3 记忆检索、上下文编译、缓存、任务调度的质量与性能 | 待讨论后按需建立，依赖 P0 |
 | `startup-resources.md` | P4 首屏、资源图、模块加载、Android APK/Termux 启动 | 待讨论后按需建立，依赖 P0 |
-| `stability-recovery.md` | P5 内存/文件增长、恢复、清理、压力运行与观测 | 第十轮开始建立模块，依赖 P0/P1/P2 |
+| [`stability-recovery.md`](stability-recovery.md) | P5 冷热缓存、后台 GC、任务预算/生命周期、长期稳定与恢复 | **第十轮已建立源码证据与 A/B/C 备选，尚待用户定案**，依赖 P0/P1/P2 |
 
-其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮混合自动 SavePoint C 已确认；第九轮已批准：分支自动命名可重命名、路线可归档、普通玩法通过 SavePoint 分叉，铁人仅可续接最新状态并在终局保留只读原始历史。第十轮开展冷热缓存、后台 GC、资源回收与长期流畅度方案讨论。跨模块不重复写一套规则。
+其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮混合自动 SavePoint C 已确认；第九轮已批准：分支自动命名可重命名、路线可归档、普通玩法通过 SavePoint 分叉，铁人仅可续接最新状态并在终局保留只读原始历史。第十轮建立 `stability-recovery.md`，讨论冷热缓存、后台 GC、资源回收与长期流畅度，建议方案 C（前台优先+预算化维护），尚待用户决定。跨模块不重复写一套规则。
 
 ## 阶段与读取路由
 
@@ -55,7 +55,7 @@
 | **P2 — 会话与存储** | 会话读取、Revision/Variant、文件系统/数据库、增量索引与安全提交 | `index.md` → `runtime-storage.md` → P0 结果 |
 | **P3 — 记忆与智能体计算** | 避免重复计算，保持检索精度、认知边界和来源 | `index.md` → `agent-compute.md`（待建）→ P0 结果 |
 | **P4 — 启动与资源交付** | 浏览器/Node/Android 的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md`（待建）→ P0 结果 |
-| **P5 — 长期稳定与恢复** | 长时间运行、回收与崩溃恢复、容量变化、退化检测 | `index.md` → `stability-recovery.md`（待建）→ P0/P2 结果 |
+| **P5 — 长期稳定与恢复** | 长时间运行、回收与崩溃恢复、容量变化、退化检测 | `index.md` → `stability-recovery.md` → P0/P1/P2 结果 |
 
 P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取舍为准；当前只是讨论框架。未进入实施，不建立实施 Record 或 HANDOFF。
 
@@ -96,3 +96,4 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 - **2026-10-13 / 第 8 轮开端**：用户认同第七轮严格方案 A：正式 Play 清退旧 SillyTavern Swipe/Delete/Hide，连同 Native Retry Reply、Restart From Here、Re-enter Turn 和任意 Fork from Revision 的玩家快捷入口；剧情路线仅通过保存/加载和切换 Branch 管理。仅保留只读历史、未提交生成安全恢复和独立资源管理，不把媒体 swipe 或权威 Variant 数据结构误删。第八轮讨论存档策略与绕过入口，尚未实施。
 - **2026-10-13 / 第九轮开端**：用户批准第八轮自动存档方案 C（固定低频周期 + 结构化关键选择前 + 手动）；保留 S2 抉择前一致性，具体触发常数与铁人等玩法权限尚待定案。
 - **2026-10-13 / 第十轮开端**：用户确认第九轮推荐组合：分支自动命名并允许重命名；路线默认保留可归档；普通游戏从 SavePoint 读档派生新 Branch；铁人不允许回档，仅能续接最新合法已确认进度，死亡后转为不可继续的只读终局档案并默认保留完整原始历史。具体实现与资源预算未冻结、产品代码未修改；第十轮讨论缓存、后台 GC 与前台响应保护。
+- **2026-10-13 / 第十轮研究**：新建 [`stability-recovery.md`](stability-recovery.md)；针对全消息渲染、旧 FS 同步 GC/Native Revision 遍历、MemoryOS SourceScope、Checkpoint、已有 TaskScheduler 与 Android 内存信号提出 P5 三层缓存、维护任务优先级、两阶段并发安全 GC 的 A/B/C 选项。此阶段是静态审计+文档，不是实测性能或已批准方案。
