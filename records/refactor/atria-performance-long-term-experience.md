@@ -4,7 +4,7 @@
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
 - Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0–E3 本地实施完成，继续 E4；平台物理 S2 证明仍待证，E4–E7 尚未完成。
+- 当前状态：E0–E3 本地实施完成；E4 未完成草稿已保存为交接检查点 `0433bc10c`。用户明确要求换新对话续接，当前暂停；平台物理 S2 证明仍待证，E4–E7 尚未完成，未合并 main。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -42,7 +42,7 @@
 
 ## E2 — 无损共享历史 / 增量世界 / SavePoint（E2.1–E2.4）
 
-- Start HEAD：`a21143dfa`；End HEAD：见本阶段产品提交 `refactor(storage): preserve lossless shared timelines state deltas and terminal archives`，已推送。
+- Start HEAD：`a21143dfa`；End HEAD：`565b77a48`，已推送。
 - Timeline 当前格式硬切为 v2：有界活动尾段、不可变段/原文 Variant、8 路局部 COW 有序索引；Revision 根共享祖先。范围读取按区间定位，不解析完整选择数组；支持存档闭包导出/导入索引节点。没有旧数组兼容读取/双写/迁移。
 - 初始物理策略 64 selections / 16 KiB 尾段、fanout 8 经 100/1k/5k 和 10k 索引样本验证；属于本机候选参数，不是三端已验证上限。未加未经证明净收益的压缩算法。World State v2 保存完整初始物化 + 可校验递归 Delta，增量占比/累计重放字节达到完整状态成本或深度达 32 时重新物化；原始增量通过历史 Revision 仍可达。
 - Chronicle 仅压缩派生模型/任务工作状态，保留完整原文及 parentRevision ancestry。铁人死亡发布终局根，取消未完成操作并保留 Session/SavePoint 原文为只读；续玩/读档/活跃存档导入仍由权威 RunControl 拒绝。
@@ -54,7 +54,7 @@
 
 ## E3 — Range / 正文窗口 / Play 边界（E3.1–E3.4）
 
-- Start HEAD：`565b77a48`；End HEAD：本阶段 `refactor(play): window long conversations and retire arbitrary history mutations`，已推送。
+- Start HEAD：`565b77a48`；End HEAD：`6e26bca41`，已推送。
 - Native Play 消费带 Revision/Branch 身份的 Range API，64 条正文窗口、动态测量/稀疏有界高度表、旧请求 abort/epoch、顶部/底部占位、回到最新、选区/焦点保护、草稿独立展示、卸载插画/语音/观察器。Range 直接返回权威出生 Variant 的投影；不把投影挪入存储 Entry。当前 HEAD 查询不再扫描全历史可达链。
 - 追踪隐藏 ABI：`openNativeSession` 的 generation `chat` 和 `printMessages` 仍服务生成，因此保留 ABI 和完整上下文数据，隐藏 DOM 单独限制 64；不以清除生成依赖降低质量。当前活动 Runtime 全文快照成本仍存在，不能声称全部内存已与历史规模无关。
 - 删除正式 HTTP Fork/Retry 分发、固定 Host targets、Runtime/Core 任意 Fork/Retry 方法、全局 Restart/Re-enter/Retry、历史面板旁路；旧 Hide/Unhide 在 Native 前拒绝。媒体翻页与资源删除保留。新手动 SavePoint 必须是当前已提交 HEAD；既有 SavePoint 能派生独立路线。
@@ -62,3 +62,13 @@
 - 实际本地验证：PlayProduct/PlayControls/SessionHistory 20 用例；SessionCore 22 用例；HTTP 11 + Window Epoch 1；插图 19 用例。旧测试里的任意 Fork/Retry/历史 Save 构造改为明确 SavePoint；没有为产品保留兼容 shim。发现插图直接使用旧数组，修复后再通过。
 - 浏览器：`native-play-window.smoke.mjs` 使用真实 FS/SessionRepo Range + Chromium `141.0.7390.37`，1440/390px × 100/1k/5k 六组均 64 DOM 正文节点、实际 Range 请求、历史滚动/流式节点保留、dispose；无 pageerror。记录的 settled mount 约 91–96 ms **包含固定 80ms 观察等待**，不能当成真实启动 T3/P95。移动视口不是 Termux 真机。
 - 最小 ESLint/语法/diff check 通过。下一 checkpoint：E4 Scope 释放、字节预算、可恢复隔离 GC 和前台优先维护。
+
+## E4 — 用户要求交接时的未完成检查点
+
+- Start HEAD：`6e26bca41`；草稿 / Tested HEAD：`0433bc10c`，产品分支检查点提交；**不是 E4 完成提交，不满足合并门槛**。用户撤回误发的 main.c 问题，明确要求在恰当位置停止并提供新对话提示词；因此保存草稿和恢复快照，未开始 E5–E7。
+- 草稿内容：异步 durable 文件屏障和 Native FS 会话分目录读取；事务 ALS 生命周期封闭；Scheduler 释放结束任务的执行闭包、维护不压过前台；Memory Source Scope/Corpus 释放；Chat Snapshot/正文窗口字节预算；Session GC 引用根代际、隔离候选、读者租约、批次与持久 cursor；Save 导出租约；Turn 后复用既有 Scheduler 发起维护；SQLite PASSIVE checkpoint；Blob 发布租约及持久隔离清理。
+- 交接前最小本地验证：全部 18 个修改 / 新增 JS 的 ESLint、`git diff --check` 通过。Jest 6 套 **58 passed / 4 failed**，6.79 秒：`source-lifecycle`、`chat-snapshot-cache`、`durable-commit`、`lifecycle-scheduler-p4` 通过；`storage-foundation.contract` 和 `storage-references.contract` 各在 FS / SQLite 下失败一项。
+- 四项失败均为原夹具期待 `gcBlobs()` 第一次调用立即删除 Blob，但草稿第一步只隔离，返回 `[]`。续接应保留保护引用的断言，并新增隔离期、推进测试时钟、重启恢复、重新引用及租约竞争验证；不能简单恢复立即删除或仅改期望绕过安全验证。
+- 待完成 / 优先风险：`SessionRepo.gcRevisions` 旧立即删除路径仍在；`atri_gc_progress` 需审计保留命名空间保护；Blob GC 的批参数、候选扫描预算、并发维护与前台调度尚未收束；Session Mark 跨读让出后需验证 generation 和并发 SavePoint；目前 Turn 自动维护失败被静默捕获；窗口 trim 弹出尾项可能误排除最新正文，压力 API 未接实际 View/后台事件，fallback/clear 的预算与释放待验证；租约、批次/重启专项测试、重复生命周期内存证据尚未补齐。关闭 WAL autocheckpoint 后的实际维护覆盖也待证。
+- 新模块 `src/native/session-maintenance.js` 尚无专项测试，不能用已有 durable/Scheduler 用例替代其安全证明。测试未执行全仓、CI、Provider 或真机。当前停止依据仅为用户明确交接请求，普通失败由下一对话继续解决。
+- 下一 checkpoint：按 [HANDOFF](../../HANDOFF.md) 从真实 Git 恢复 E4，先补 GC/租约/并发相关验证并修复上述缺口，再按冻结路线完成 E4→E5→E6→E7；仅全部相关验收完成后合并 main 并清理。
