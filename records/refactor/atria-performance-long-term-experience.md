@@ -4,7 +4,7 @@
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
 - Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0–E4 本地实施完成；续接沿用 `0433bc10c`，E4 完成 HEAD `fb8aa9273`。连续推进 E5–E7；平台物理 S2、Windows/Termux 与长时设备内存仍待证，未合并 main。
+- 当前状态：E0–E5 本地实施完成；E4 完成 HEAD `fb8aa9273`，E5 完成 HEAD `5d53b4204`。连续推进 E6–E7；平台物理 S2、Windows/Termux 与长时设备内存仍待证，未合并 main。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -86,3 +86,24 @@
 - 新窗口测试首次暴露整条边界 reading anchor 偏移，修正二分比较后通过；delivery 首次测试未遍历 Package hash 目录，修正为实际隔离游标遍历后通过。针对修改产品 JS/新增维护测试的 ESLint、diff check 通过；既有 source-lifecycle 测试第 59–61 行含原有 conditional-expect lint，未无关修改。
 - 生命周期证据：20 次相同 Play mount/pressure/dispose，document listeners 与产品节点均回到零；30 次 Memory scope 往返 cache/observed/pending/queues 均为零、旧 snapshot 撤销。Jest 进程未强制 GC 的 10/20/30 轮 heapUsed 205890840/208917992/211947560 bytes，external 均 86886428、RSS 均 521441280；这是短时分项采样和显式对象释放证据，不能声称小时级 Heap 稳态或完成浏览器 Retaining Path/真实 Termux 低内存证明。
 - 候选值仍为本机实现参数（4/16 MiB、32 sweep、128 scan、60s grace）；设备物理 S2、Windows/Termux、小时级内存/Android 后台回收仍如实待证。下一 checkpoint：E5 来源证明驱动增量准备、精确 Token 与两条 Turn 链的 Context Join。
+
+
+## E5 — 来源证明增量准备、精确计数与 Context Join（E5.1–E5.4）
+
+- Start HEAD：`fb8aa9273`；End/Tested HEAD：`5d53b4204`，已推送。
+- 继承现有 Corpus 16MiB/16-entry 缓存，预算包含词袋、倒排和图邻接；移除额外 10000 document 限制，以真实估算字节限制为准。新合法 Corpus 建立后，仅在同 Owner/Session/Branch/requester/view/at 分区复用同 ID/文本的确定性词袋；完整命中仍依确切 Source/Eligibility 私有证明。每次排名仍重选当前状态/时态/覆写候选，DF 仅计算当前合法 ID 集，图边仅取当前关系，不缓存排名或答案。
+- 已确认来源通过现有 ledger/S2 Native Timeline 投影进入 Base+Delta 合法候选；新增 source 回合复用 20 个稳定 document、准备 1 个新 document，当即召回新承诺；来源修改/撤回下一次查询排除旧证据。向量保留 profile/content fingerprint 和查询结果二次核验；没有可靠远端 generation 通知时仍做 listHashes 对账，不凭本地缓存猜测远端水位。没有重新嵌入未变化文档，原有实际工作/成本准入保持。
+- Context 计数标量在确定 Tokenizer function 与 owner/session/branch scope 下有界复用（每 scope 64KiB/256 fragments，每 counter 16 scopes）；纯数字复用发生在合法来源筛选之后。原 Knowledge 与候选计数共用本次 wrapper；后端实际接入 Route 配置的 tokenizer（此前 adapter 传入 tokenizerFor 却未调用）。OpenAI-compatible provider 复用同 encoding tokenizer 实例。完整 Provider wire Prompt 仍在 GenerationService 独立重新计数和预算检查，不把片段相加当作精确最终值；缺 exact Tokenizer 的 provider 保留原有保守计数说明。
+- 两条链路：Package Turn 的最多 4 个 transient turn_context stages 只有显式输入、共享同一 pin、不能消费其它 stage 输出，因此在既有 Turn Scheduler owner 内最多 2 并发；失败 abort/等待 sibling 结束，输出与 provenance 保持声明顺序，所有 stage Join 后才 Narrator。Authority commands/正式发布仍有顺序与 CAS 屏障。Game LLM 保持 Command commit → refreshed World/Journal → Recall → Narration，新增本回合 World/Branch/Revision currentness 与 Recall guard，在 Join/可选 orchestration 后重验。
+- Play Package Recall 与 Context compiler 的晚到结果拒绝回填旧 Runtime；same Branch/new Revision 在 Memory openSession 后即中止；Information/Memory exposure 拒绝沿 scope error 传播，不能降级空 Memory。Vector/Rerank 的可选服务失败仍可诊断地保留合法基础召回；Provider 超时/成本未知状态沿用现有持久 ledger、fallback/receipt，不重发已确认输入。
+- 最小本地验证：第一组 6 套 70 项通过（Corpus/Hybrid/Context/Package bridge/Game bridge/Game Runtime）；新增增量、权限、same-Branch stale、精确非线性计数与真实 Package preparation Join 的覆盖，第二组 7 套首次 78通过/1失败，失败是测试直接写冻结 manifest；clone manifest 后 preparation 4 项通过。Generation local-work 40、wire/context binding 4、orchestrator narrative 8、更新的 bridge/reuse 23 项通过；evaluation-revision 5、recovery-budget 4 项通过。产品修改 JS/新测试 ESLint、diff check 通过。
+- 同机离线夹具 3 暖样本，完整 rank 对象逐项相等，Person42 的第一结果均 relation:r42；这些为小样本诊断而非 SLA：
+
+| 事实规模 / documents | Raw rank P95 ms | Prepared rank P95 ms | 首次准备 ms | Worker+序列化 P95 ms | 估算缓存 bytes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 100 / 300 | 3.15 | 1.28 | 1.44 | 48.11 | 282951 |
+| 1k / 3k | 13.91 | 9.62 | 13.29 | 48.81 | 2869551 |
+| 5k / 15k | 62.95 | 41.39 | 57.50 | 251.58 | 14537551 |
+
+- Worker 首个样本包含启动，其余仍包含完整传输与准备；本机已准备 JS 的端到端净收益更好，未引入 Worker 常驻池或 Rust/WASM，没有明确净收益证据时不增加维护与跨端成本。首次 Corpus 构建/状态证明、远端对账和最终排名仍有成本，不声称整个 Recall 已变成 O(delta)。
+- 没有外部模型调用；六维 RP/Project 评价与人工晋级/独立证据/费用规则未削弱，但本阶段只证明离线证据等价、预算与拒绝行为，真实同模型 RP 文学质量、Provider cache-hit/Token/费用改善仍待证，不把 scalar/cache 标签冒充模型节约。下一 checkpoint：E6 Bundle 指纹与真实 PlayReady。
