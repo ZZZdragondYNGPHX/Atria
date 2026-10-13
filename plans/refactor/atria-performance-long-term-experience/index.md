@@ -43,12 +43,14 @@
 
 | 模块 | 权威内容 | 依赖与状态 |
 | --- | --- | --- |
-| [`measurement-and-evidence.md`](measurement-and-evidence.md) | 静态审计证据、P0 指标与负载矩阵、性能/持久化验收设计、待讨论问题 | **已建立；第二轮必读** |
-| [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、SillyTavern 楼层 Swipe/Delete/Hide 退出审计、Save/Load/Branch 替代方案 | **第九轮分支管理与铁人只读终局档案已冻结；第十轮聚焦资源与缓存治理**，依赖 P0/P2 |
-| [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 持久化提交、FS/SQLite、原生资产、自动存档/GC 架构选项 | **已建立；第六轮提交/分段细节已冻结，第七轮聚焦后台负载和旧楼层操作**，依赖 P0 |
+| [`measurement-and-evidence.md`](measurement-and-evidence.md) | P0 性能/安全基线、测试工作负载与源码证据 | **第十六轮实施路线 E0 的前置模块；真实基线尚未执行** |
+| [`client-interaction.md`](client-interaction.md) | P1 长会话/Native Play 交互、旧 Swipe/Delete/Hide 退役、Save/Load/Branch 替代方案 | **第七—九轮产品方案已冻结，E3 阶段实施候选**，依赖 E1/E2 与 P0 |
+| [`runtime-storage.md`](runtime-storage.md) | P2 会话/Revision、S2 FS/SQLite、原生资产、分段无损历史和存档 | **第三—六轮方案冻结，E1/E2 工程阶段候选**，依赖 P0 |
 | [`agent-compute.md`](agent-compute.md) | P3 记忆检索、上下文编译、质量门槛与 Agent 计算缓存 | **第十三—十五轮 C 均已冻结；第十六轮收束并拆解执行计划**，依赖 P0/P2/P5 |
 | [`startup-resources.md`](startup-resources.md) | P4 浏览器/Node/Android/Termux 冷热启动、资源关键路径、预构建一致性、后台恢复 | **第十二轮分层启动 C 已冻结；实际性能增益与参数仍待 P0**，依赖 P0/P5 |
-| [`stability-recovery.md`](stability-recovery.md) | P5 冷热缓存、后台 GC、任务预算/生命周期、长期稳定与恢复 | **第十轮与第十一轮 C 均已冻结；第十二轮与 P4 联动**，依赖 P0/P1/P2 |
+| [`stability-recovery.md`](stability-recovery.md) | P5 冷热缓存、后台 GC、任务预算/生命周期、长期稳定与恢复 | **第十—十一轮 C 已冻结，E4 工程阶段候选**，依赖 P0/P1/P2 |
+
+| [`implementation-roadmap.md`](implementation-roadmap.md) | **第十六轮 P0–P5 总审、工程依赖、8 阶段 30 单元、阶段 Gate 与 Codex 接手模板** | **第十六轮方案 C 候选，尚未获用户批准，更非产品实施授权** |
 
 其他尚未建立的模块仅表示未来路由，不表示其详细设计已批准。`runtime-storage.md` 中第三轮 S2 契约 C、第四轮长期无损保留、第五轮物理布局 C、**第六轮提交/段/索引/物化组合**均已批准；段大小等参数仍待 P0 测量。第七轮已通过 `client-interaction.md` 核查楼层旧操作并获用户确认严格方案 A：正式 Play 退役 Swipe/Delete/Hide 与 Native Retry/Restart/Re-enter/任意 Fork 快捷入口，Save/Load/Branch 成为剧情回溯的统一入口；保留只读历史及已提交数据不可变、未提交失败恢复和独立资源管理。第八轮混合自动 SavePoint C 已确认；第九轮已批准：分支自动命名可重命名、路线可归档、普通玩法通过 SavePoint 分叉，铁人仅可续接最新状态并在终局保留只读原始历史。第十轮前台优先三层缓存与预算化安全 GC 方案 C 已获批准并在 `stability-recovery.md` 冻结；第十一轮进一步批准 Scope/Owner/Epoch 幂等释放、自适应驱逐与稳态反复验证 C，仍不冻结无实测的内存阈值；第十二轮已批准 P4 分层启动 C，区分真实 PlayReady 与 Shell/Server 各阶段、加强预构建 Bundle 完整性并分平台测量；第十三轮 P3 增量派生计算 C 已获批准，第十四轮也批准分层权威 Cache Key、已确认 S2 Delta 索引与 Read-Your-Writes、最终完整精确 Token 校验和质量/成本双预算 C。第十五轮批准 P3 执行时序 C：依赖 DAG、生成前的来源/权限/证据/Token Context Join 屏障、有限并行及分类回退和情境化费用/质量预算；第十六轮总检 P0–P5 并产出阶段实施草案，仍未授权施工。跨模块不重复写一套规则。
 
@@ -63,7 +65,7 @@
 | **P4 — 启动与资源交付** | 浏览器/Node/Android/Termux 的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md` → P0/P5 结果 |
 | **P5 — 长期稳定与恢复** | 长时间运行、回收与崩溃恢复、容量变化、退化检测 | `index.md` → `stability-recovery.md` → P0/P1/P2 结果 |
 
-P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取舍为准；当前只是讨论框架。未进入实施，不建立实施 Record 或 HANDOFF。
+P0–P5 是技术领域；第十六轮新增 [实施路线讨论稿](implementation-roadmap.md) 给出**8 个 E0–E7 工程执行阶段、共 30 个最小任务单元**（正确性 Gate + 低耦合任务可提前）。该工程顺序**尚待用户批准**，实际实施须先以功能分支集成后的 `main` 和 E0 基线复核。当前未进入实施，不新建实施 Record 或 HANDOFF。
 
 ## 验收框架
 
@@ -77,7 +79,7 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 ## 当前待定事项
 
 1. 长期使用负载的目标档次（例如 1k / 5k / 20k 消息；只是样本候选，不是当前硬门槛）。
-2. 已确认 S2、无损增量历史、严格存读档、SavePoint/Branch 与铁人只读终局、P5 资源/生命周期 C、P4 PlayReady C、P3 增量证明计算 C 与分层缓存键/Read-Your-Writes C，以及**第十五轮有界依赖 DAG + 生成前 Context Join 屏障 + 分类失败回退 + 情境费用/质量预算 C**。第十六轮需要确定实施优先级、阶段边界、定向测试与交接制度；模型预算、缓存/GC 和性能指标的数值仍由 P0 实测决定。
+2. 已冻结技术原则：S2/无损增量历史、Save/Load/Branch 主流程与铁人终局只读、P5 资源与生命周期 C、P4 PlayReady C、P3 记忆/上下文第十三—十五轮 C。第十六轮已整理 **E0–E7 八阶段 30 单元、依赖 Gate、Codex 定向验证/交接** 的候选实施路线；尚待用户确认且**不等于获准修改产品代码**。模型预算、缓存/GC、存档/压缩和性能数字仍待 P0。
 3. 质量与性能权重如何转化为基准指标；桌面、Android APK、Termux 是否使用统一底线与分平台预算。
 4. 初始基线采集是先聚焦 Native Play + FS，还是同步覆盖其他后端；依据现实用户路径分层。
 5. 允许 dev 期存储格式直接硬切换，**不做旧数据兼容/迁移**；仍需确定新格式 S2 提交与恢复协议，并区分旧 dev 数据不兼容和当前格式下的异常丢失。
@@ -111,3 +113,4 @@ P1–P4 的具体实施先后与是否合并，以 P0 实测和用户后续取�
 - **2026-10-13 / 第十四轮开端**：用户明确认同第十三轮 P3 方案 C；冻结有权威证明的确定性派生计算增量复用、每回合最新合法来源/视角/时间/世界状态过滤、Token 车道与原子证据、质量及 Agent 预算不降级。第十四轮讨论缓存键、失效协议、索引增量重建、Token 计数与 Provider 调用费用约束；尚未修改产品代码。
 - **2026-10-13 / 第十五轮开端**：用户正式认同第十四轮 P3 方案 C，冻结分层 Source/Policy/Revision/Actor/Time 身份、只按 S2 已确认事件推进的 IndexGeneration 与 Delta Overlay、立即可读新提交的 Read-Your-Writes、最终精确 Token 安全校验，以及受已证明质量与真实费用约束的可选模型/Agent 调用；具体阈值/API/调度尚未定案。第十五轮讨论召回与上下文编排、并发/失败回退和情境预算。
 - **2026-10-13 / 第十六轮开端**：用户正式批准第十五轮 P3 方案 C：只并行互不依赖且已授权的准备工作，固定本回合 S2 Anchor/Request Epoch，生成前汇合 Memory/World/权限/原子证据/精确 Token 与模型 Route 预算；授权/当前性错误不可软降级，可选向量/Rerank 在合法基线充分时分类退化，已持久提交的玩家输入/故事不允许重复生成或丢失，后台记忆派生故障可幂等补偿。不同 RP 场景通过真实质量与成本联合预算控制。第十六轮总审 P0–P5、规划施工波次及交接；仍未实施产品代码。
+- **2026-10-13 / 第十六轮整体收束研究稿**：总审 P0–P5，新增 [`implementation-roadmap.md`](implementation-roadmap.md)：八个工程阶段 E0–E7、共 30 个可独立验证的最小单元，原则上先集成现有功能分支→P0→S2/增量历史→Native Play/P5→P3→P4→联动验证；P4 预构建 Bundle 小修允许 E0 后提前。固化每阶段仅验证改动模块与关键安全边界、推送后更新同一 Record，P0 未知参数不造数；**工程路线 C 只是本轮建议，尚未获批准，未动产品代码**。
