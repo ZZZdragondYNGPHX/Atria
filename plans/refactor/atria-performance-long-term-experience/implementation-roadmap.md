@@ -28,10 +28,10 @@
 
 ### E0 — 主线准入、再审计与 P0 最小基线（4 单元，复杂度中）
 
-- **E0.1 合并门槛**：等待功能分支合入 `main`；记录真实 HEAD、运行环境、Node/Android 版本、FS/SQLite 当前能力。只读重核已失效的行号与依赖，不将 2026-10-13 的静态快照当最终产品。
+- **E0.1 合并门槛**：等待功能分支合入 `main`；记录真实 HEAD、运行环境、Node/Android 版本、FS/SQLite 当前能力；附带盘点 Node/V8、`engines`/`@types/node`、Android Node.js Mobile 实际二进制、Electron、WebView Provider 与 QuickJS 版本/原生模块 ABI。只读重核已失效的行号与依赖，不将 2026-10-13 的静态快照当最终产品。
 - **E0.2 基准夹具**：在新格式下生成可重现的 100/1k/5k 对话与深分支、SavePoint/World/Knowledge/大 Memory/资产集；可选 20k 只作极限探索。不保留旧数据兼容器。
-- **E0.3 独立指标**：启动 T0–T4、长聊天输入/流式/滚动 P50/P95、Node 事件循环、RangeRead/Commit/GC、内存稳态、召回质量、RPC/Token/费用、S1/S2 恢复区分，沿用现有遥测和测试夹具而非新建平行系统。
-- **E0.4 决策基线**：生成问题清单、真实耗时排序、验收相对回归边界和 S2 故障注入试验计划。**没有 P0 证据时不冻结引擎选择、压缩块大小或缓存阈值**。
+- **E0.3 独立指标**：启动 T0–T4、长聊天输入/流式/滚动 P50/P95、Node 事件循环、RangeRead/Commit/GC、内存稳态、召回质量、RPC/Token/费用、S1/S2 恢复区分；额外标出真实 CPU 热点及同步 I/O/全量 DOM/索引重算来源，记录客户端、Node、Android/Termux 的宿主差异。沿用现有遥测和测试夹具而非新建平行系统。
+- **E0.4 决策基线**：生成问题清单、真实耗时排序、验收相对回归边界和 S2 故障注入试验计划；记录 Node 24 LTS 统一基线/Worker/Rust-WASM 作为**有条件技术候选**，仅指定 E5/E6 对照测试，不新增工程阶段或第二套状态权威。**没有 P0 证据时不冻结引擎选择、压缩块大小、缓存阈值或混合计算方案**。
 
 **Gate E0**：新 `main` 源码与可复现 baseline/质量夹具可用；无实测项明确列为后续待证，而非伪造通过。
 
@@ -76,7 +76,7 @@
 - **E5.1 增量检索**：继承已有 SourceProof 有界 Corpus 缓存，优化 Lexical/DF/图邻接/向量水位，依 S2 Commit 更新 Delta Overlay；撤销/纠错传播，**新回合 Read-Your-Writes**。不能用全局内容哈希绕过 NPC/分支授权。
 - **E5.2 ContextPlan/Token**：静态 Prompt/原子来源片段准确计数复用，最终完整 Prompt 重新校验 Token、HardReserve、World State、Actor Information Grant；保留原生 Runtime 权限与未知事实表述。
 - **E5.3 DAG 编排和失败恢复**：对已有 Package Turn 和 Game LLM 两条调用链分别补合法依赖调度；独立准备工作有限并行，正式 Narrator 前 Context Join 屏障；错误按权限失效、必需证据不足、可选 Vector 超时、Provider/费用失败分开回退，重复提交问题以 E1 receipt 查询解决。
-- **E5.4 Agent 预算及质量验收**：按场景必要性而非固定每轮次数调用 Embedding/Rerank/Provider，核对真实 Token/费用回执及长期预算；RP 已有六维和 Project 六维质量不退化，晋级必需的独立审查、人工/费用账目不被缓存冒充。
+- **E5.4 Agent 预算及质量验收**：按场景必要性而非固定每轮次数调用 Embedding/Rerank/Provider，核对真实 Token/费用回执及长期预算；RP 已有六维和 Project 六维质量不退化，晋级必需的独立审查、人工/费用账目不被缓存冒充。对真正 CPU 密集的确定性派生计算，先比较增量化 JS 与 Worker 的端到端净收益；仍有明确瓶颈才对比 Rust/WASM（含序列化、启动、内存、包体积、跨平台和维护成本）；不迁移 SourceProof/授权/S2 或 Session 权威。
 
 **Gate E5**：合法来源即时可见、NPC 不全知、跨 Branch/Time 不泄漏，RP 质量与现有来源验证相容；同数据同模型成本和 P95 有依据的改善，不能靠跳过质量测试获取。
 
@@ -84,7 +84,7 @@
 
 - **E6.1 Android Manifest 合约**：修复 Kotlin 要求 3 个 Bundle 与 Node 要求 5 个的源清单不一致，确保打包→展开→预构建 Resolver 只在资源真实完整时命中；这是可以在 E0 后独立完成的高置信小项。
 - **E6.2 浏览器/Node 关键路径**：沿用 `init.js` 模块并行、已有 `startup-timing` 和 Lazy Router，测量明确必要依赖，ShellInteractive/PlayReady/OptionalReady 分开，Studio/非活跃功能按消费者证明后延后。
-- **E6.3 APK/Termux 路径**：首装/升级资产展开与日常热启分别测，WebView `onPageFinished` 不当作真实 PlayReady；Termux Node Server Ready 与浏览器真实 PlayReady 分开，安卓本地/远程端点独立。必要时做真机目标性能验证，不假定 Chromium 移动视口等于 APK。
+- **E6.3 APK/Termux 路径**：首装/升级资产展开与日常热启分别测，WebView `onPageFinished` 不当作真实 PlayReady；Termux Node Server Ready 与浏览器真实 PlayReady 分开，安卓本地/远程端点独立。列出 Node 24 LTS 候选基线、Android Node.js Mobile 实装版本/ABI、Electron/WebView/QuickJS 与原生依赖的兼容矩阵，以对应平台启动、打包/加载、安全和回归证据决定是否统一版本；不因新版 Node 可用而直接视为 Android 通过。必要时做真机目标性能验证，不假定 Chromium 移动视口等于 APK。
 
 **Gate E6**：预构建资源清单一致，无隐性实时编译伪命中；客户端可用性按实际 PlayReady 测量，不能降低 S2/权限检查换更短开屏动画。
 
@@ -176,6 +176,8 @@ E6 P4 启动（E0 后可独立小组推进；最终需与 E2/E3 的 PlayReady �
 **执行状态**：企划讨论至此结束；等待功能分支完成并合入 `main`，以及明确实施授权。尚未创建实施 Record、开发分支或进行 E0，绝不能把这份路线的 Gate 当作已经验证通过。
 
 ## Material design changes
+
+- **2026-10-13 / E0 轻量静态预审附记（非正式 E0，不新增冻结决定）**：将运行时版本/ABI 矩阵纳入 E0/E6，将 JS→Worker→条件性 Rust/WASM 的 CPU 热点对照纳入 E0/E5；优先度不高于 S2 和长会话正确性。延续 E0–E7 八阶段、30 单元及批准的实施 Gate，详见 [P0 E0 轻量预审](measurement-and-evidence.md#e0-轻量预审补充2026-10-13尚非正式-e0)。
 
 - **2026-10-13 / 第十六轮总审起稿**：用户批准第十五轮 P3 编排/回退/预算 C 后建立本文件；汇总六个技术域，补充跨域遗漏风险、E0–E7 共 30 个最小任务、Gate、Codex 接手模板、数据硬切/S2/只验证改动/设备真实性纪律。
 - **2026-10-13 / 第十六轮正式冻结**：用户明确认同最终阶段方案 C，冻结 E0–E7（8 阶段、30 最小单元）及关卡依赖；A/B 作为未选历史方案保留。企划状态进入 Plan Frozen v1.0 / Pending Implementation，**并不授权立即执行**；必须等待当前功能分支合并并取得实施授权。
