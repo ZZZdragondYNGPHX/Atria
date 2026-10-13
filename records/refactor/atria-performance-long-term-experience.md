@@ -4,7 +4,7 @@
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
 - Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0–E3 本地实施完成；E4 未完成草稿已保存为交接检查点 `0433bc10c`。用户明确要求换新对话续接，当前暂停；平台物理 S2 证明仍待证，E4–E7 尚未完成，未合并 main。
+- 当前状态：E0–E4 本地实施完成；续接沿用 `0433bc10c`，E4 完成 HEAD `fb8aa9273`。连续推进 E5–E7；平台物理 S2、Windows/Termux 与长时设备内存仍待证，未合并 main。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -72,3 +72,17 @@
 - 待完成 / 优先风险：`SessionRepo.gcRevisions` 旧立即删除路径仍在；`atri_gc_progress` 需审计保留命名空间保护；Blob GC 的批参数、候选扫描预算、并发维护与前台调度尚未收束；Session Mark 跨读让出后需验证 generation 和并发 SavePoint；目前 Turn 自动维护失败被静默捕获；窗口 trim 弹出尾项可能误排除最新正文，压力 API 未接实际 View/后台事件，fallback/clear 的预算与释放待验证；租约、批次/重启专项测试、重复生命周期内存证据尚未补齐。关闭 WAL autocheckpoint 后的实际维护覆盖也待证。
 - 新模块 `src/native/session-maintenance.js` 尚无专项测试，不能用已有 durable/Scheduler 用例替代其安全证明。测试未执行全仓、CI、Provider 或真机。当前停止依据仅为用户明确交接请求，普通失败由下一对话继续解决。
 - 下一 checkpoint：按 [HANDOFF](../../HANDOFF.md) 从真实 Git 恢复 E4，先补 GC/租约/并发相关验证并修复上述缺口，再按冻结路线完成 E4→E5→E6→E7；仅全部相关验收完成后合并 main 并清理。
+
+
+## E4 — 续接完成：资源预算、安全维护与生命周期（E4.1–E4.4）
+
+- Start HEAD：`0433bc10c`（E4 草稿）；End/Tested HEAD：`fb8aa9273`；前序草稿和失败事实保留。
+- Session GC 统一 `gcRevisions` 与维护权威；`retainRevisionIds` 保护完整依赖闭包。进度移入独立 `atri_maintenance`，旧 `atri_gc_progress` 保留为禁止游戏写入的命名空间。Mark 分散读的结果仅在事务内 root/save generation 一致时发布；Sweep 与写根共享隔离，并重新检查读者租约、对象 integrity/更新时间。读锁 ALS scope 增加 open 生命周期，避免已结束上下文借用重入权限。
+- FS/SQLite 候选扫描按持久 kind/cursor、记录数与估算字节限额分片；隔离、宽限、重启后扫描/删除游标可恢复。Blob 扫描按 hash 目录/cursor，进度与并发维护串行；同 hash 发布/Package install 租约和重新引用检查保护发布，打开 delivery 的读者租约保护到 close。单个不可分割记录允许超过候选字节预算；可达根遍历仍需全闭包，但逐读释放引擎事务。
+- 复用 NativeTaskScheduler：前台/abort 在安全边界暂停；短维护 slice 后由可取消、unref、有界续扫 timer 继续，不创建第二套执行调度器。Turn 后维护失败只输出非敏感诊断，不将已确认 Turn 变成重复提交。Session 删除取消待续扫 timer。Blob 与 PASSIVE checkpoint 纳入维护。SQLite PASSIVE 操作排入同连接事务 tail；保留 1000 页 automatic checkpoint 安全网，避免停用 autocheckpoint 后未进入 Turn 的其它写入使 WAL 无界增长；没有自动 VACUUM。
+- FS journal 的文件/目录屏障及恢复转为异步 I/O，完整依赖安装仍先于读者/ACK。Session envelope 分目录 dev 硬切说明写入产品 `src/storage/README.md`，没有旧平铺兼容读取。
+- 正文预算同时覆盖同步 fallback 和异步 Range；裁剪保留连续阅读/最新锚点，单个超大正文或选区/焦点保护可暂时超过预算，不损失全文。后台 visibility/显式压力事件接入正文与 Chat Snapshot；clear/dispose 清除预算、scope、frame、DOM/listener。Memory Source/Corpus 在加载/关闭/切分支时释放；Scheduler 终态只保留有限投影，解除执行闭包。
+- 最小本地验证：新增维护 14 项（FS/SQLite 各 7）全部通过，含真实 engine close/reopen、有限批次 cursor、根变化/并发 SavePoint、retain 闭包、读者/导出与 delivery 租约、重新引用/同 hash 发布竞争、并发维护、前台/abort 与 PASSIVE；原 Storage 三套 12 项通过，四项旧立即 Blob 删除失败已改为隔离宽限协议。Window 2 + PlayProduct 16 + durable-commit 7 共 25 项通过；Memory Source 生命周期 35、Chat Snapshot 7、Scheduler 7 通过（已通过且未受后续修改影响者未重复运行）。Journal 五进程切点仍为 S1，非物理 S2。
+- 新窗口测试首次暴露整条边界 reading anchor 偏移，修正二分比较后通过；delivery 首次测试未遍历 Package hash 目录，修正为实际隔离游标遍历后通过。针对修改产品 JS/新增维护测试的 ESLint、diff check 通过；既有 source-lifecycle 测试第 59–61 行含原有 conditional-expect lint，未无关修改。
+- 生命周期证据：20 次相同 Play mount/pressure/dispose，document listeners 与产品节点均回到零；30 次 Memory scope 往返 cache/observed/pending/queues 均为零、旧 snapshot 撤销。Jest 进程未强制 GC 的 10/20/30 轮 heapUsed 205890840/208917992/211947560 bytes，external 均 86886428、RSS 均 521441280；这是短时分项采样和显式对象释放证据，不能声称小时级 Heap 稳态或完成浏览器 Retaining Path/真实 Termux 低内存证明。
+- 候选值仍为本机实现参数（4/16 MiB、32 sweep、128 scan、60s grace）；设备物理 S2、Windows/Termux、小时级内存/Android 后台回收仍如实待证。下一 checkpoint：E5 来源证明驱动增量准备、精确 Token 与两条 Turn 链的 Context Join。
