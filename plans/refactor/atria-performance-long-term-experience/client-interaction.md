@@ -113,6 +113,16 @@
 
 **以上为第九轮待选产品边界，不属于已批准规则。** 尤其铁人/禁止回退玩法须区分“生存用的最新恢复点”和“玩家可自选的历史回溯点”；可能需要用受限 Latest Resume 取代常规 SavePoint 列表。严禁用事后回写/隐性删除等方式伪造旧历史消失。
 
+### 第九轮补充的源码证据与需要澄清的冲突
+
+- [`src/native/session-core.js` L1004-L1044](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L1004-L1044)：读 SavePoint 现在直接用 `save.displayName` 作为派生 Branch 的名称；同一个存档多次读入，界面可能看到若干重名分支。需要独立的、稳定的 Branch 身份与可修改的**展示元数据**，不能仅复制存档名。
+- [`src/native/repositories/session-repo.js` L208-L218](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L208-L218)：核心 Native Session 的 Branch 记录使用 `putImmutable`；不能为了支持重命名直接篡改已提交的不可变 Branch 身份。可考虑独立的可变展示层元数据，保持历史可验证。
+- [`public/scripts/native/session-history.js` L47-L88](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/public/scripts/native/session-history.js#L47-L88)：已经具备 Branch 搜索、深度缩进与 25 项分页，后续应优化按需检索，而不是又构建平行的 Branch 管理器；当前模型可能仍先加载全部元数据。
+- [`src/native/run-control.js` L89-L99](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/run-control.js#L89-L99)：`ironman` 已拒绝 `rewind`（以及非当前 Head 保存）；应保留服务器端的权威限制，不能仅在 UI 灰掉 Load 按钮。
+- [`src/native/repositories/save-point-repo.js` L44-L71](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/save-point-repo.js#L44-L71) 与 [`src/native/repositories/session-repo.js` L595-L602](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L595-L602)：现有铁人模式会替换/删除旧 SavePoint；这与普通玩法的“手动保存长期保护”不能用同一个无差别保留策略。
+- [`src/native/session-core.js` L531-L544](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/session-core.js#L531-L544) 与 [`src/native/repositories/session-repo.js` L918-L950](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/src/native/repositories/session-repo.js#L918-L950)：当前铁人死亡时尝试删除整个 Session 与 Revision/Timeline/SavePoint 数据，保留终局控制墓碑。**这与此前默认无损保留游戏原始历史的产品目标存在需要明确处理的冲突**：建议将“游戏终局禁止恢复游玩”和“是否保存只读纪念档/回放历史”解耦，而非让删除原文成为防止作弊的唯一方法。实施前必须另行冻结终局历史生命周期及 S2 保护边界。
+- [`tests/native/run-policy-p2.test.js` L112-L150](https://github.com/ZZZdragondYNGPHX/Atria/blob/f4815c7277adc02d36860f45dcf12f43f64453e2/tests/native/run-policy-p2.test.js#L112-L150)：已有针对铁人模式拒绝 rewind 和只导出当前续玩快照的回归测试。第九轮讨论的新规则需要改相关验证，但不默认运行整个测试矩阵。
+
 ### 第九轮需要的取舍
 
 1. 选自动命名+可重命名（C）还是强制玩家手动命名。
@@ -133,3 +143,4 @@
 - 2026-10-13 / 第七轮：根据用户明确诉求新增模块并登记审计，待讨论「严格存读档驱动 / 保留显式 Fork / 模式分级」三种产品边界；未修改产品代码，未做浏览器真机验证。
 - 2026-10-13 / 第八轮开端：用户正式批准第七轮严格方案 A，确认退役旧 Swipe/Delete/Hide 及 Native Retry/Restart/Re-enter/Fork 的正式 Play 入口，只保留 Save/Load/Branch、只读历史、未提交生成恢复及独立资源管理。第八轮新增自动 SavePoint 的选项及公开权限绕过审计要求；尚未实施代码改动。
 - 2026-10-13 / 第九轮开端：用户确认第八轮混合自动存档 C，固定周期、结构化关键选择之前与手动三种触发源已冻结；第九轮新增 Branch 自动命名/重命名、分组管理与普通/有状态/铁人模式权限候选，均未批准。
+- 2026-10-13 / 第九轮静态审计补充：现有读档派生分支复制 SavePoint displayName，Native Branch 身份不可变；铁人 mode 有真实 server-side rewind 拒绝与终局删除 Session 历史的行为。终局“是否留只读纪念/回放档”的设计尚未批准，不应默默把原文销毁当作唯一保护手段。
