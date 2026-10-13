@@ -8,15 +8,29 @@
 - **实施起点**: 等当前 `feat/agent-compute-runtime` 功能开发结束并集成后，重新核实 `main` HEAD 和基线；**在用户明确授权施工后**才创建独立临时 `refactor/atria-performance-long-term-experience`，先执行 E0。当前不得修改产品分支
 - **首次静态审计快照**: `feat/agent-compute-runtime@f4815c7277adc02d36860f45dcf12f43f64453e2`，同期 `main@3ee1332ef113d4c57c65d9577222ba88d5171101`；此为代码证据，不是性能测量
 
+## 当前正式目标平台（2026-10-13 调整；优先级覆盖历史并行平台描述）
+
+**本轮明确以三种本地运行环境为产品优化和验收目标**，同样运行 Atria 的本地 `node server.js` 与 Native Runtime，并通过各自系统浏览器访问 localhost：
+
+| 平台 | 服务端运行方式 | 客户端/UI 与本轮主要验证 |
+| --- | --- | --- |
+| **CachyOS（Arch Linux 系）** | 本机 Node.js | Linux 浏览器；Native Play、S2 文件系统/SQLite、安装启动/性能/内存 |
+| **Windows** | 本机原生 Node.js（不依赖 Docker/WSL） | Windows 浏览器；原生依赖 ABI、路径/文件锁与 S2 落盘/恢复、启动/性能 |
+| **Android Termux** | Termux 提供的 `nodejs-lts`/本机 Node.js，运行 Atria `server.js` | 手机浏览器访问 `http://127.0.0.1:8000`；Termux 原生 SQLite 编译、后台恢复、手机真实长会话/存储安全 |
+
+- **当前明确暂缓**：单独打包的 Android APK（Kotlin、内嵌 nodejs-mobile/WebView、APK 签名/发布/打包启动）和**远程托管服务器部署**专项。保留现有代码与旧审计，不以 APK 构建、Kotlin Bundle 清单或远程网络/服务部署的结果阻塞本轮 E0–E7；未来可另行恢复。
+- **绝不暂缓本地 Node 后端**：三个目标平台都依赖本机 Node 服务、HTTP API、FS/SQLite、S2、Session/World/Revision/Branch 与模型/Agent 调用。暂缓的是远程服务器部署模式，不是删除或冻结 Node 服务端代码。
+- **执行不扩大规模**：仍为 E0–E7 **八阶段、30 单元**，E0/E6/E7 采样/验收转向三端；E6.1 将范围限定为三端前端 Bundle 构建/缓存一致性，独立 APK 的 3/5 Manifest 差异记入暂缓清单。历史冻结产品目标（S2/无损原始历史/SavePoint、长会话与 RP 质量等）不变。Node 24 LTS 仅为三端共同验证的候选基线，实际安装版本需逐平台核实。
+
 ## E0 轻量静态预审补充（2026-10-13；非正式 E0 验收）
 
 - 本次仅复核 `main@3ee1332e` 与 `feat/agent-compute-runtime@f4815c72` 的部分远端源码、构建声明和既有 P0 研究；未运行真实性能基准、设备/断电测试，也没有实施产品代码。审计事实与候选实验统一见 [P0 测量与证据](measurement-and-evidence.md#e0-轻量预审补充2026-10-13尚非正式-e0)。
-- **新增待验证方向，不重开既有冻结方案**：优先评估 Node.js 24 LTS 统一运行时基线（含 Android 内嵌版本/原生依赖/类型定义）；先对真实 CPU 热点试验 JS Worker，再仅对可复现且净收益明确的热点比较 Rust/WASM。保留 QuickJS 限额隔离执行；不引入第二套 Session/World/Revision、存档权威或游戏业务内核。
+- **新增待验证方向，不重开既有冻结方案**：优先评估 CachyOS、Windows、Termux 三端 Node.js 24 LTS 统一运行时基线（包含各自原生依赖/类型定义）；先对真实 CPU 热点试验 JS Worker，再仅对可复现且净收益明确的热点比较 Rust/WASM。APK 内嵌版本暂缓；保留 QuickJS 限额隔离执行，不引入第二套 Session/World/Revision、存档权威或游戏业务内核。
 - 仍沿用 **E0–E7 共 8 阶段、30 单元**：E0 收集版本/CPU/跨平台基线，E5 纳入计算卸载对照，E6 纳入运行时/宿主升级兼容矩阵，E7 按证据收口。升级版本、采用 Worker/Rust/WASM 均**尚未批准为必做实现**，不预设性能增幅或新增阶段。实施前置条件、S2 和长会话优先级不变。
 
 ## 目标
 
-使 Atria 在日常打开、切换与交互时轻快，同时在长篇 RP、不断增加的世界状态、记忆、历史分支、资源与存档中维持响应速度、数据完整性和恢复能力。优化范围包括浏览器/桌面、Termux、Android APK、服务端 Node.js、Native Runtime、FS/可选数据库以及智能体检索与计算链路。
+使 Atria 在 CachyOS、Windows 与 Android Termux 三个本地 Node + 浏览器运行环境中，日常打开、切换与交互时轻快，同时在长篇 RP、持续增长的世界状态、记忆、历史分支、资源与存档中维持响应速度、数据完整性和恢复能力。覆盖本地 Node 服务、Native Runtime、FS/SQLite、前端、检索和智能体计算；独立 APK 与远程托管部署专项暂缓。
 
 ## 已冻结的跨阶段核心决策
 
@@ -65,11 +79,11 @@
 
 | 阶段 | 目标 | 需读取的模块 |
 | --- | --- | --- |
-| **P0 — 基线与性能画像** | 分离首屏、交互、长会话、存储、检索、Android 与稳定性成本 | `index.md` → `measurement-and-evidence.md` |
+| **P0 — 基线与性能画像** | 分离 CachyOS、Windows、Termux 的首屏、交互、长会话、存储、检索与稳定性成本 | `index.md` → `measurement-and-evidence.md` |
 | **P1 — Native Play 与界面交互** | 长聊天消息渲染、流式更新、滚动、焦点/阅读位置 | `index.md` → `client-interaction.md` → P0/P2 结果 |
 | **P2 — 会话与存储** | 会话读取、Revision/Variant、文件系统/数据库、增量索引与安全提交 | `index.md` → `runtime-storage.md` → P0 结果 |
 | **P3 — 记忆与智能体计算** | 避免重复计算，保持检索精度、认知边界和来源 | `index.md` → `agent-compute.md` → P0/P2/P5 结果 |
-| **P4 — 启动与资源交付** | 浏览器/Node/Android/Termux 的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md` → P0/P5 结果 |
+| **P4 — 启动与资源交付** | CachyOS/Windows/Termux 本地 Node + 浏览器的冷启动、热启动与依赖加载 | `index.md` → `startup-resources.md` → P0/P5 结果 |
 | **P5 — 长期稳定与恢复** | 长时间运行、回收与崩溃恢复、容量变化、退化检测 | `index.md` → `stability-recovery.md` → P0/P1/P2 结果 |
 
 P0–P5 是六个技术领域；第十六轮已经**正式批准并冻结** [实施路线 v1.0](implementation-roadmap.md)：E0–E7 **8 个工程执行阶段、30 个最小任务单元**，正确性 Gate + 低耦合小项可提前。实际实施仍须功能分支先合入 `main`、用户明确授权，再由 E0 重新采集基线。**当前未开工、不创建实施 Record 或 HANDOFF**；冻结的是产品目标、架构方向和阶段边界，不是未经测量的数字。
@@ -123,3 +137,4 @@ P0–P5 是六个技术领域；第十六轮已经**正式批准并冻结** [实
 - **2026-10-13 / 第十六轮整体收束研究稿**：总审 P0–P5，新增 [`implementation-roadmap.md`](implementation-roadmap.md)：八个工程阶段 E0–E7、共 30 个可独立验证的最小单元，原则上先集成现有功能分支→P0→S2/增量历史→Native Play/P5→P3→P4→联动验证；P4 预构建 Bundle 小修允许 E0 后提前。固化每阶段仅验证改动模块与关键安全边界、推送后更新同一 Record，P0 未知参数不造数；**工程路线 C 只是本轮建议，尚未获批准，未动产品代码**。
 - **2026-10-13 / 第十六轮正式封板（Plan Frozen v1.0）**：用户明确认同 E0–E7 八阶段、30 最小任务单元及依赖 Gate 的最终实施方案 C；统一冻结之前 1–15 轮全部已批准产品/架构原则与第十六轮执行路线，讨论收束。未来 Codex 按 [implementation-roadmap.md](implementation-roadmap.md) 接手；必须先完成并合并当前功能分支、以新 main/E0 建基线且获得实施授权；不添加旧 dev/SillyTavern 数据迁移，不伪造 S2/Android/性能结果。当前仅 docs 修改，未动产品分支，也未创建实施 Record。
 - **2026-10-13 / E0 轻量预审补充（非新一轮冻结）**：将运行时版本统一、Worker 优先与 Rust/WASM 条件性对照作为 E0/E5/E6 的可验证候选；仅补研究证据和 Gate，不改变 S2/Play/P3 原有冻结目标、E0–E7 数量或实施授权边界。
+- **2026-10-13 / 三端实施范围确认**：当前正式目标为 CachyOS、Windows 和 Android Termux（均本地 Node + 浏览器）；独立 APK 和远程托管部署专项暂缓，Node 本地服务与 S2 权威保留；E0–E7/30 单元总量不变。
