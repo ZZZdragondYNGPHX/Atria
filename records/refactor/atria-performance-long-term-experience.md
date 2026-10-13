@@ -4,7 +4,7 @@
 - Plan：[冻结总纲](../../plans/refactor/atria-performance-long-term-experience/index.md) / [E0–E7 路线](../../plans/refactor/atria-performance-long-term-experience/implementation-roadmap.md)
 - Primary Workspace：产品 `main`；施工分支 `refactor/atria-performance-long-term-experience`
 - 授权：2026-10-13 用户明确要求连续实施全部 8 阶段 / 30 任务，最终合并、验证和清理。
-- 当前状态：E0–E5 本地实施完成；E4 完成 HEAD `fb8aa9273`，E5 完成 HEAD `5d53b4204`。连续推进 E6–E7；平台物理 S2、Windows/Termux 与长时设备内存仍待证，未合并 main。
+- 当前状态：E0–E6 本地实施完成；E6 完成 HEAD `45961b4a2`。连续推进 E7；平台物理 S2、Windows/Termux 与长时设备内存仍待证，未合并 main。
 
 ## E0 — 主线准入与本地基线（E0.1–E0.4）
 
@@ -107,3 +107,24 @@
 
 - Worker 首个样本包含启动，其余仍包含完整传输与准备；本机已准备 JS 的端到端净收益更好，未引入 Worker 常驻池或 Rust/WASM，没有明确净收益证据时不增加维护与跨端成本。首次 Corpus 构建/状态证明、远端对账和最终排名仍有成本，不声称整个 Recall 已变成 O(delta)。
 - 没有外部模型调用；六维 RP/Project 评价与人工晋级/独立证据/费用规则未削弱，但本阶段只证明离线证据等价、预算与拒绝行为，真实同模型 RP 文学质量、Provider cache-hit/Token/费用改善仍待证，不把 scalar/cache 标签冒充模型节约。下一 checkpoint：E6 Bundle 指纹与真实 PlayReady。
+
+
+## E6 — Bundle 合同与真实 PlayReady（E6.1–E6.3）
+
+- Start HEAD：`5d53b4204`；End/Tested HEAD：`45961b4a2`，已推送。
+- 五个 production Bundle 的入口清单统一在 webpack.config；输入指纹跟随 repository-local import/export/literal dynamic import/URL 依赖图、lockfile 和 Webpack/schema 版本，路径规范化为跨端一致分隔符。`frontend:prebuild-cache` 与服务器使用同一 `atria-bundles.json`，核对当前指纹、精确产物集合、大小/SHA-256；损坏/过期/缺失显式报告 reason，拒绝仅“文件存在”缓存。编译 error/Stats failure 不再 resolve frontend-ready；仅验证通过的目录可由 Bundle middleware 交付。旧缓存搬运须同样具备当前 manifest，不再凭 mtime 猜测来源。
+- 保留 init.js 并行模块树、Server Lazy Router 和 Termux private cache；仅将 Stats 点击/调试注册与 Logprobs 面板观察器延后到 APP_READY 后，CFG 与安全/身份/Tokenizer/Capability 初始化仍在原必要边界。启动预构建输出报告实际 resolver source/path；Termux 的 HTTP 提示改为 Server reachable。APK/远程部署暂缓，未改其打包合同；显式外置 Bundle 必须同时带当前 manifest。
+- PlayReady 独立于 HTTP/APP_READY：Host `play/prepare` 只读核对当前 Core/Run、Task/Route/Prompt/Model 与本地 Secret，不发送模型；View 同时要求最新实际 Range、完成 Experience Ready/pump、可写且可见 Composer。Late preflight、切 scope 与 Runtime 配置变更释放 controller/epoch；Terminal/History 只读不报可发送。Lifecycle public ready 仅在必要异步 command/pump 完成后为真，补齐此前中途 ready=true 缺口。
+- 沿用现有 `__atriaStartupTiming` 和 startup store，分别记录 shellInteractive、appReady、optionalReady、playReady 与相应间隔；不把先移遮罩当成全部可玩。无需新增外部模型调用来判就绪，Provider 在线可用性仍不能由本地 preflight 保证。
+- 最小本地验证：Bundle 7 项通过（manifest 丢失/部分/指纹变化/内容损坏/Termux resolver 等）；原 UI/Lifecycle/启动遥测 5 套 59 项通过；新 Host 准备+Lifecycle 中途 false+E5 optional guidance 后撤销 Join，共 3 套 44 项通过；startup store + 修改后的 Play listener 往返 20 项通过。ESLint/diff check、Termux shell syntax 通过。没有全仓 build/test；仅五个 Bundle 的必要生产预构建。
+- 本机 Webpack 5.106.1 首次 targeted compile 11978 ms、close 1917 ms，包含导入/屏障准备到 compiled milestone 约 14.23s；第二次诊断生成相同 Bundle（11906/1864ms），后续问题排查沿用已验证缓存。正式成功浏览器跑的 warm manifest 验证 8.67ms，首次缓存进入 13.68ms。完整性 SHA 校验没有退化成只看 stat。
+- 真实 CachyOS Node24.21.0 本地 `server.js`，隔离 FS/默认用户/明确 text Experience Package/已配置本地 Runtime/Secret，Chromium141；显式在 APP_READY 后打开 Session，两个单样本不是 P95/SLA：
+
+| 条件 | ShellInteractive（导航 ms） | APP_READY ms | PlayReady ms | 显式 Session open→观察到 Ready ms | pageerror / 正文节点 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| cold-browser | 1330.4 | 2209.4 | 2539.4 | 348.97 | 0 / 1 |
+| warm-browser | 1251.1 | 1964.4 | 2291.6 | 347.58 | 0 / 1 |
+
+- 进程 start→HTTP 观察可达两次 3371.87 / 1913.67ms（50ms polling；已构建缓存、第二次文件暖缓存，非 OS 硬冷启）。观察到 PlayReady 的完整导航耗时 2563.40 / 2315.87ms；本地假 Provider 收到 **0** 推理请求。
+- 初次浏览器检查失败：Storage-only Session fixture 没有 formal Experience runtime，runtime/resolve 正确返回400、没有冒报 PlayReady；改为正式 text Experience fixture 后真实流程通过。期间 config 初始化与默认用户 harness 映射两项夹具错误也已修正；未降低产品检查。
+- Windows、真实 Termux Node/SQLite ABI/浏览器/后台恢复及自动 Session resume 首玩时间仍缺设备证据。默认 Node/引擎与缓存/GC 候选参数不凭本机单样本冻结；APK/Kotlin/远程部署未扩展。下一 checkpoint：E7 可达性/回执/终局/GC 横切、关键用户价值复测及主线集成。
