@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 / D-008 / D-009 / D-010 / D-011 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 / D-008 / D-009 / D-010 / D-011 / D-012 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -58,7 +58,7 @@ Director 可在正文尚未提交时直接调外部生图后端；正文结束�
 
 1. **视觉单位**：文本选段标注、完整 Scene、自动镜头卡、角色肖像是否拥有相同或不同的 VisualIntent 类型；与 Annotation 的引用方向。
 2. **身份与连续性**：三层权威与 Branch/Revision 隔离由 D-005 冻结；混合证据更新、硬门禁/冲突审查及按用途筛选由 D-006 冻结；**待议**的是具体视觉事件模型、判定阈值、参考权重/强度及跨 Chapter 生命周期，参见 [visual-continuity.md](visual-continuity.md)。
-3. **后端与模型能力**：NovelAI V5、ComfyUI、SD/Forge、图像云 API/RunningHub；何者首批，如何声明可用参数/上传图像/异步进度。
+3. **后端与模型能力**：D-004 已冻结 P0/P1 顺序，D-012 已冻结模型/Workflow 能力矩阵、Required/Preferred/Optional 显式降级与 L1/L2/L3 验证；**实际用户端点/特定型号/工作流的能力仍需验证**，下阶段讨论 Native Schema/UI 与交付路由。
 4. **操作自主性**：D-007/D-008 已确认分级判断、评分、默认关闭的自动模式、初始可调预算和待审批费用门禁；**待议**的是用户实际 UI 的审阅/取消/暂停/费用展示交互和 Provider 特殊结算行为。
 5. **图像衍生**：D-009 确定 Media Studio/DAG/编辑操作类别；D-010 冻结可逆 Mask、跨 Provider/授权执行、版本先入历史、分级删除/引用 GC、SavePoint/参考晋升架构；**Round 11 D-011** 已冻结 Mask 坐标/混合草稿、能力声明契约、Gallery 默认视图、双阶段 GC 与导入验收；**Round 12 待议**实际 Provider/工作流支持矩阵、Vibe/LoRA/ControlNet 组合、降级/实测；视频是否纳入仍未定。
 6. **性能可靠性**：长会话图片加载、缓存失效、Provider 重试、幂等费用和恢复历史的一致性。
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001 ～ D-011** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略、**分层 Media Studio/不可变 DAG/可逆编辑及 D-011 精确 Mask/草稿、目标能力声明、Gallery/GC/SavePoint 导入验收原则**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 12 待议**：D-011 中立协议已定；需确认各 Provider 的 Img2Img/Inpaint/Upscale/Reference/Vibe/LoRA/ControlNet 模型/工作流能力矩阵、可组合性、明确降级权限和真实协议执行验证。详细 D-011 契约见 [media-precision.md](media-precision.md)。
+- **D-001 ～ D-012** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略、**分层 Media Studio/不可变 DAG/可逆编辑，D-011 精确 Mask/草稿、Gallery/GC/SavePoint 导入验收，以及 D-012 的跨 Provider 能力矩阵/显式降级/三级验收原则**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
+- **Round 13 待议**：统一 Native Image API/IR/Job/Media/SavePoint 的 Schema，三层配置设置 UI、跨平台交互、明确分期/子阶段和验收收口；具体 Provider 实际 L3 需要合规用户授权，不能把静态文档当已通过。D-012 详见 [provider-editing-matrix.md](provider-editing-matrix.md)。
 - 其他未决议题：自动模式 UI/授权表单、Provider 实际报价/编辑能力/Mask 字段、参考图/Vibe 原生参数、视频功能矩阵、媒体与 Job 精确数据库表/迁移、SavePoint/GC 导入恢复的具体接口与 Provider 对账。
