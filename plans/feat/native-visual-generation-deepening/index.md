@@ -35,6 +35,7 @@
 | [provider-protocol.md](provider-protocol.md) | 已冻结 D-003 分层及 D-004 Provider P0/P1/P2、三层配置/覆盖；精确 Schema 待议 | Provider/图片编译/请求证据、模型能力、S1/S2 |
 | [visual-continuity.md](visual-continuity.md) | D-005 三层视觉权威、D-006 混合证据更新与参考图仲裁原则；实现细节待进一步设计 | 角色视觉关联、参考图/风格、信息披露与 S3；冲突/参考选择相关阶段必读 |
 | [visual-director.md](visual-director.md) | D-007 分级 Director + D-008 已冻结 Scene/Shot、评分/节奏/可调预算默认、持久 Job/幂等/恢复 | Visual Director 场景/镜头/预算/Job，S4；实现相关时必读 |
+| [media-editing-gallery.md](media-editing-gallery.md) | Round 9 再生成、Img2Img/Inpaint、Upscale、不可变衍生图谱与画廊的 A/B/C **候选，未冻结** | Round 9 必读，S5 将按未来 D-009 定案 |
 
 后续如确定 Provider、参考图、视觉身份、媒体编辑或缓存等独立大模块，应只新增对应模块，不在 `index.md` 重复详细规格。
 
@@ -54,12 +55,12 @@
 
 | 阶段（暂定） | 目标 | 必读 |
 | --- | --- | --- |
-| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 9: 后续编辑/画廊模块；技术依赖按需读 `visual-director.md` / `provider-protocol.md` / `visual-continuity.md`）；涉及源码基线再读 `baseline-and-reference.md` |
+| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 9: `media-editing-gallery.md`；技术依赖按需读 `visual-director.md` / `provider-protocol.md` / `visual-continuity.md`）；涉及源码基线再读 `baseline-and-reference.md` |
 | S1：中立协议/资产证据 | 拆除当前图片记录对 NovelAI 渲染的硬绑定，保留版本及存档权威 | `index.md` → `provider-protocol.md`，以及后续确定的资产/持久化模块 |
 | S2：多后端适配 | 按 D-004 P0 NovelAI/ComfyUI/OpenAI Images → P1 Gemini/SD/Forge/RunningHub 交付；其他兼容协议为 P2 扩展点 | `index.md` → `provider-protocol.md`，以及后续各 Provider 子模块 |
 | S3：角色/世界视觉连续性 | 角色身份、外观、服饰/状态、场景、参考图和出处；不创建第二剧情权威 | `index.md` → `visual-continuity.md`；需调用图片后端时再读 `provider-protocol.md` |
 | S4：Visual Director 与触发 | 三种模式共用 D-007/D-008 分级事件调度、跨回合分割、评分/节奏、预算默认、持久作业 | `index.md` → `visual-director.md`；时序及模式约束再读 `architecture.md` |
-| S5：编辑/画廊/交互 | Round 9 待选的再生成、衍生编辑、Upscale、画廊与长期资产版本 | `index.md` → 后续媒体编辑/画廊模块；相关数据权威再读 `provider-protocol.md` |
+| S5：编辑/画廊/交互 | Round 9 待选的再生成、衍生编辑、Upscale、画廊与长期资产版本 | `index.md` → `media-editing-gallery.md`；相关 Provider/资产权威按需读 `provider-protocol.md` |
 | S6：集成与回归 | 存档/分支/资产/成本/任务隔离、跨平台可用性 | `index.md` → 当前被改动模块、对应 Record |
 
 这些只是 **candidate stage routing**：阶段范围、先后和拆分都可随讨论变化，未经最终批准不能当成 Codex 的实施承诺。视频生成、视频素材、独立虚拟助手是否纳入需另行讨论。
@@ -94,7 +95,7 @@
 - Round 6: **C 证据驱动的混合视觉更新与冲突仲裁 — 已确认**；冻结证据/硬门禁/参考图筛选与能力检查原则，见 [decisions.md](decisions.md) D-006 与 [visual-continuity.md](visual-continuity.md) §5。
 - Round 7: **C 分级事件驱动 + 场景价值筛选 + 隔离预算 + 持久可靠作业 — 已确认**，见 [decisions.md](decisions.md) D-007 与 [visual-director.md](visual-director.md) §6。
 - Round 8: **C 场景感知自适应导演 — 已确认**；跨回合 Scene/Shot，默认权重 30/25/20/15/10、75/55 分层，自动默认关闭、平衡节奏、独立可调预算与 Job Ledger 恢复；详见 [decisions.md](decisions.md) D-008 和 [visual-director.md](visual-director.md) §7。
-- Round 9: **再生成、Img2Img、Inpaint、Upscale、画廊和版本资产管理 — 待讨论/未冻结**。
+- Round 9: **再生成、Img2Img、Inpaint、Upscale、画廊和版本资产管理 — 待讨论/未冻结**；备选详见 [media-editing-gallery.md](media-editing-gallery.md)。
 - 尚未定案：精确 Provider/数据库/API Schema、真实报价与能力/远端状态细节、评分权重与阈值的后续实测校准、自动模式 UI 授权交互、视觉状态/参考图/Vibe 的精确阈值和 Provider 差异、媒体编辑/画廊/批量/缓存/GC 细则、视频、完整验收细项。
 - **禁止先行创建产品开发分支**；用户要求讨论完、设计冻结后由本对话创建正式 `feat/*` 分支供 Codex 开工。
 
