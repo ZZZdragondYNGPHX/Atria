@@ -6,7 +6,7 @@
 
 - 源码核查基线：`main`，`9241325a7290e613e0fdaaa1870409105c161c89`（2026-10-14）。本模块以已核实的前端功能盘点为索引，以下源码引用提供可复核的事实入口；实施前以真实 Git 复核变化。
 - 满意的视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。它是独立演示，未连接产品服务、真实项目、会话、账户或模型请求。
-- 当前讨论稿：[discussion-preview-v0.4.html](references/discussion-preview-v0.4.html)。§3/§4 已更新为 Play/Library 的本次范围，§6 保留 v0.3 Runtime/Agents 范围；其余领域仍以 v0.1 为盘点。演示流程不等于产品实现。
+- 当前讨论稿：[discussion-preview-v0.5.html](references/discussion-preview-v0.5.html)。§3/§4 沿用 Play/Library v0.4 并增加 Prompt/Persona，§7 增加 Settings；§6 保留 v0.3 Runtime/Agents 范围，其余领域仍以 v0.1 为盘点。演示流程不等于产品实现。
 - [功能呈现文档](references/function-presentation.md)、[设计规范](references/frontend-guidelines.md)与桌面/移动参考均是设计输入，其与当前决定或源码的差异按 [decisions.md](decisions.md)处理。参考稿不包含某个按钮，不代表删除该用户任务；参考稿画出某个入口，也不证明产品已有该能力。
 - **交互演示**：对应版本可操作的模拟流程。**代表布局**：已有视觉构图或部分表单/状态，没有完整流程。**入口示意**：仅菜单、描述、简单反馈或占位详情。**待展开**：没有具体界面。下列等级均不表示产品实现或验收完成。
 
@@ -31,25 +31,27 @@
 | 会话工具 | History & saves、Context、Prompt choices、Save；More 包含健康、共享、Quick Save、Load、返回 | 分组工具、Save/Quick Save、重命名与条件禁用；健康/共享保留示意 | 真实存档与共享/健康完整流程 |
 | 历史、分支与存档 | Inspect/Preview 精确修订只读；Switch Branch 恢复目标分支 HEAD；Load SavePoint 从保存修订创建新 derived Branch，旧分支 HEAD 保留；自动保存策略、重命名、导入导出 `.atriasave` | 分支/修订、只读Inspect/返回当前保留草稿、HEAD切换、Load依赖/确认/新分支、自动保存配置、预置导入/导出入口 | 实际文件/密码、自动保存调度与持久回执；全量分支数据 |
 | Context / Prompt choices | 上下文纳入/排除摘要与详情；Prompt choices 归当前 Runtime Route、跨会话生效，保存覆盖/恢复作者默认；不属于历史修订或 Session 草稿 | 代表上下文来源、共享Route选项/默认反馈与权限说明 | 未生成、完整来源/排除原因、真实参数合同与费用 |
-| Persona | 会话内搜索/选择或无 Persona；不可写时禁止切换 | 选择器、禁用、演示状态修订 | Library Persona完整管理/默认关系与实际精确资源绑定 |
+| Persona | 会话内搜索/选择或无 Persona；不可写时禁止切换 | v0.5 接入 Library 精确身份与新会话默认捕获；既有状态身份保留，管理备注不进快照 | 实际精确资源绑定、生成上下文与权限合同 |
 | 作品专属 UI | component/hybrid/full 可复用组件或接管 Stage，Host 保留恢复能力 | 默认阅读视图有演示；接管待展开 | 一处作品自定义呈现，覆盖 Exit/Stop/Save/Persona/Diagnostics/Reload 可达性 |
 
 事实入口：`main:public/scripts/native/play-product.js:86-178,276-480`、`play-controls.js:192-305,331-561`、`session-history.js:46-173`、`persona-ui.js:21-150,198-265`、`prompt-runtime-controls.js:6-87`、`experience/ui/full-host.js:49-145`。
 
 ## 4. Library
 
-| 页面/区域 | 已有产品能力与语义 | v0.4 讨论稿覆盖 | 剩余 HTML / 产品验证 |
+| 页面/区域 | 已有产品能力与语义 | v0.5 讨论稿覆盖（作品/World/Knowledge 沿用 v0.4） | 剩余 HTML / 产品验证 |
 | --- | --- | --- | --- |
 | Works / My Games | 搜索、版本/可用性、安装更新 `.atria`、继续 Session；管理导出/重命名/删除 | 原封面/画廊与搜索保留；安装权限示例预检、存档独立预检、删除依赖阻碍 | 真实包/存档/密码、导出/重命名与卸载回执 |
 | Work 详情 | 选择起点/会话标题、Start New/Continue、精确版本、World/Knowledge 绑定与用途缺项修复 | 起点/标题、精确版本/依赖、固定Session联动；旧版缺失禁Continue而新故事可用当前版；Runtime缺项禁生成 | 实际安装/修复后返回、真实会话与资源服务 |
 | Worlds & Knowledge | 导入/导出、Library 可编辑副本、Package World 原件只读；当前安装版本的 Package Knowledge 有既存编辑路径；不可变修订与精确绑定 | Package World只读→独立World/Knowledge副本；Library新修订/历史/引用；World Source草稿/校验/未知字段保留，删除阻碍 | Package Knowledge原件编辑、实际导入导出与合同/引用查询 |
 | Knowledge 条目 | 添加/编辑/启停/删除条目、绑定与来源 | Library条目编辑/启停→草稿→审查→新修订，保留来源metadata与旧引用 | 添加/删除条目、全量搜索/来源定位及实际保存 |
-| Prompt Presets | Program/Modules/Generation/Preset Regex、结构化/Source、保存精确修订 | 列表/概念详情有交互演示；Studio 的 Prompt 编辑是另一场景 | Library Prompt 完整详情、模块维护、Source、引用关系与新修订反馈 |
-| Personas | 新建/编辑/复制/归档、设置默认；与会话选择器同一资源 | 分类/列表与会话选择器有交互演示 | Persona 详情、新建/编辑、默认与归档流程 |
+| Prompt Presets | Preset拥有Program/Modules/Generation/Regex；结构化/Source与精确修订。Preset内模块修改/移除会维护当前Program引用；独立Library Module删除按Used By阻碍，旧闭包保持 | Preset 分组、Program阶段/模块引用、Module/Generation代表表单、完整Source、草稿校验/审查/发布；新资源/复制、只读历史、Used By阻碍、Regex代表规则；Module更新当前闭包，旧Route不漂移；过期草稿提示/确认重载 | Preset分类删除/模块移除、Regex全字段、多规则排序、文件导入导出；完整合同/编译与真实持久化 |
+| Personas | 新建/另存修订/复制/归档与恢复、设置或清空精确默认；简介允许空，管理备注不进生成；旧默认/Session不随新head漂移，归档不删快照 | 新建/编辑/复制、精确历史/另存、默认/清空、归档/恢复、Used By与永久删除阻碍；名字/UTF-8限额、取消保留草稿、旧默认/会话与最新Library修订分离 | 头像真实上传/移除回执、服务CAS/引用查询、刷新后持久恢复与实际生成上下文 |
 
 事实入口：`main:public/scripts/atria-shell/library-runtime-workspaces.js:23-29,79-122`、`public/scripts/native/library-workspaces.js:40-428`、`prompt-presets.js:192-305`、`prompt-authoring.js:167-320`、`persona-ui.js:21-150`。
 
 v0.4 复核：Package Knowledge 的当前安装版本编辑分支见 `main:public/scripts/native/package-library-resources.js` 中 `editPackageKnowledge` 调用；不能因视觉稿的「只读原件」概括删掉此路径。本次代表原型重点是 Package World 与 Library Knowledge，Package Knowledge 特例仍需完整界面验证。
+
+v0.5 复核：Persona 内容采用严格合同，不加入任意 Source 键；历史可作为另存新修订的编辑来源，保存仍由当前 root CAS 决定。默认保存精确 ref，归档默认影响未来默认捕获的可用性而不改已有 Session。事实入口：`main:public/scripts/native/persona-ui.js:35-133`、`main:src/native/persona-contract.js`。Installed Work Prompt 原件按精确 Package Program/Generation 呈现；演示集合不代表新增 Package Preset 管理 API。
 
 ## 5. Build / Atria Studio
 
@@ -88,9 +90,9 @@ v0.1 的 `OpenAI compatible + localhost:1234/v1 + 无需认证` 是说明性示�
 
 ## 7. 全局工具与条件能力
 
-| 区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| 区域 | 已有产品能力与语义 | 当前讨论稿覆盖（Settings 为 v0.5，其余沿前版） | 剩余 HTML / 产品验证 |
 | --- | --- | --- | --- |
-| Settings | Appearance/Language/Interface/Accessibility；主题、字体、输入/滚动、减动；高级颜色/Custom CSS 与主题导入导出 | 减动与少数偏好 sheet 有交互演示，其它待展开 | 分组设置、长表单与原生偏好控件；按只浅色范围呈现，旧主题数据/导入/自定义的兼容表达仍需设计，不自动恢复暗色选项 |
+| Settings | Appearance/Language/Interface/Accessibility；主题、字号、输入/滚动、减动；高级颜色/Custom CSS 与主题导入导出 | 独立分组工作纸、字号/阅读样例、语言样例、输入/滚动与离开确认样例、系统/手动减动、减少模糊；字号/Enter/跟随同步Play；设置即时演示并保留返回原场景 | 全部真实偏好/持久保存，语言刷新、旧主题数据/导入/导出和高级颜色/Custom CSS兼容流程；仍仅浅色设计 |
 | Account | 身份/头像/名称/密码、Settings snapshot、Backup/Storage、Danger Zone；现新页缺可见 Logout | Account 菜单与退出入口示意，非真实登录退出 | Profile、多账户退出/返回选择、存储、明确的重置确认 |
 | Backup & sync | 手动 ZIP 归档、预检、合并/覆盖/恢复、取消回退/恢复点、LAN；旧备份与快照清理策略 | 入口示意 | 一次导入预检→选择→确认，失败/取消与恢复；云 Provider 仅占位 |
 | Extensions | Skills 安装/导入/编辑、scope；Plugins 安装/启停/代码/配置，Package 原件只读 | 入口示意 | Skills/Plugins 分类、详情、scope、官方设置与草稿保护 |
@@ -101,6 +103,8 @@ v0.1 的 `OpenAI compatible + localhost:1234/v1 + 无需认证` 是说明性示�
 | 消息朗读 | 声明 narration expression 的 assistant 消息才挂载声线、准备、播放/停止 | 待展开 | 一条符合条件的消息、声线选择、准备/失败/停止；不扩成全局语音聊天 |
 
 事实入口：`main:public/scripts/atria-shell/utility-workspaces.js:102-334`、`public/scripts/templates/userProfile.html:1-40`、`public/scripts/user.js:589-627`、`public/scripts/backup-sync-center.js:630-1007`、`public/scripts/native/extensions-workspace.js:23-192`、`public/scripts/logging/workspace.js:117-314`、`public/scripts/native/official-illustration.js:68-300`、`visual-gallery-ui.js:5-32`、`visual-director-ui.js:4-25`、`media-studio-ui.js:7-87`、`shared-session-ui.js:21-134`、`speech-controls.js:8-72`。
+
+Settings 沿用既存事件和即时应用/防抖保存，不新建统一 Apply 流程。原界面无独立字体 family 选择器；字号范围为0.5–1.5，滑条释放后应用。Enter行为保留AUTO/DISABLED/ENABLED及Ctrl/Cmd、Shift/Alt和IME边界。原生化仍连接现有偏好权威；初稿的语言回执和输入/离开样例是审阅设施。具体事实见 `main:public/scripts/atria-shell/utility-workspaces.js:219-223` 与 `power-user.js`。
 
 ## 8. 全流程状态覆盖
 
@@ -120,13 +124,13 @@ v0.1 的 `OpenAI compatible + localhost:1234/v1 + 无需认证` 是说明性示�
 
 ## 9. 下一轮 HTML 的展开顺序
 
-v0.3 已展开本模块 §6 的 Runtime/Agents 代表流程，v0.4 已按 §3/§4 展开 Play 与 Library 的日常使用代表路径。下面是后续视图的建议顺序；各版讨论稿仍等待反馈，不自动替换已接受视觉基线。
+v0.3 已展开 Runtime/Agents，v0.4 已展开 Play/Library 日常代表路径。当前 v0.5 按 §4/§7 展开 Prompt、Persona 和浅色设置页；各讨论稿仍等待反馈，不自动替换已接受视觉基线。下面是其余后续视图的建议顺序。
 
 建议按能验证视觉系统承载复杂度的代表任务展开，而非一口气增加全部占位页面：
 
-1. 按反馈调整v0.4 Play/Library；继续Library Prompt/Persona完整编辑与Package Knowledge原件编辑。
+1. 按反馈调整v0.4/v0.5 Play/Library；继续Package Knowledge原件编辑与Prompt剩余专业流程。
 2. Runtime 的复杂依赖修复、删除阻碍和原任务返回；v0.3 已有的配置主路径按反馈调整。
 3. Studio 非 Prompt 资源编辑、ChangeSet 冲突/验证失败；Agents 各编排模式的完整编辑与维护任务细节，沿 v0.3 四页继续完善。
-4. 登录/引导、Settings/Account/Backup/Extensions/Diagnostics；一处作品接管与一处条件媒体流程。
+4. 登录/引导、Account/Backup/Extensions/Diagnostics；Settings剩余高级兼容流程；一处作品接管与一处条件媒体流程。
 
 此顺序是设计工作建议，不是冻结实施阶段。旧控件、潜在新能力、已确认边界与用户待讨论取舍只归 [decisions.md](decisions.md)，不由旧 DOM 或参考稿自动推导。

@@ -8,9 +8,9 @@
 
 当前视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。文件是首轮满意初稿的完整快照；桌面以 Studio 三纸工作台展示，手机为分区切换，同时包括 Play、Library 与部分 Agents/Runtime 示意。
 
-当前讨论稿：[discussion-preview-v0.4.html](references/discussion-preview-v0.4.html)。沿用 v0.1 的纸墨、衬线标题、悬浮 Dock 与工作纸体系，加入 Play 最近会话/只读历史/存档分支与 Library Work/World/Knowledge 详情和编辑代表流程。阅读正文保留桌面20px/740px、手机17px的比例；Composer 与阅读列对齐并按实际占高预留滚动空间。
+当前讨论稿：[discussion-preview-v0.5.html](references/discussion-preview-v0.5.html)。沿用 v0.1 的纸墨、衬线标题、悬浮 Dock 与工作纸体系，加入 Library Prompt/Persona 编辑与浅色 Settings 工作纸。Settings 桌面以分组纸张配右侧阅读样例，手机先显示 Appearance，再显示样例与其余分组。阅读默认比例仍为桌面20px/740px、手机17px；字号演示偏好会同步到 Play。
 
-历史讨论稿 [v0.2](references/discussion-preview-v0.2.html) 仅纠正 OpenAI-compatible 样例地址与认证语义；[v0.3](references/discussion-preview-v0.3.html) 展开 Runtime 配置与 Agents 四页，v0.4 沿用这些页面。各讨论稿的配置、事件、知识及操作结果均为内存演示，不冻结为产品支持范围，也未获得新一轮视觉接受。
+历史讨论稿 [v0.2](references/discussion-preview-v0.2.html) 仅纠正 OpenAI-compatible 样例地址与认证语义；[v0.3](references/discussion-preview-v0.3.html) 展开 Runtime 配置与 Agents 四页；[v0.4](references/discussion-preview-v0.4.html) 展开 Play 最近会话/只读历史/存档分支与 Library Work/World/Knowledge。v0.5 沿用这些页面。各讨论稿的配置、事件、知识及操作结果均为内存演示，不冻结为产品支持范围，也未获得新一轮视觉接受。
 
 原始 [桌面稿](references/desktop-reference.html)、[手机稿](references/mobile-reference.html) 和 [手机设计说明](references/mobile-design-notes.png) 继续提供视觉气质与布局依据。原始 Markdown 是待核实设计输入，其中 React/Vue 重写、选文重生成等内容的处置由当前决策决定。
 
@@ -50,8 +50,10 @@
 
 ## Current discussion focus
 
-当前已接受的是视觉方向与代表工作台的效果。下一步按 `coverage.md` 补全 Runtime/Agents、登录引导、全局工具与异常/只读/恢复状态的 HTML；具体内容需讨论，不能声称 v0.1 已覆盖完整产品。
+当前已接受的是 v0.1 的视觉方向与代表工作台效果。下一步按 `coverage.md` 补全剩余专业编辑、登录引导、全局工具与条件能力的 HTML；具体内容需讨论，不能声称当前原型已覆盖完整产品。
 
 v0.3 已展开 Runtime 缺项与配置路径、Agents 默认时间线及证据详情。初次配置与运行信息层级按 `decisions.md` §8/§9。
 
-本次 v0.4 展开 Play 的最近会话、只读历史/返回当前和存档恢复依赖，以及 Library 的 Work/World/Knowledge 详情、精确修订与原件/副本权限呈现。保留已接受的叙事正文/Composer 和画廊封面比例，使用共享工作纸/Sheet 承载新增详情。默认入口按 `decisions.md` §10 回到上次阅读；原型只模拟已有任务，参考稿中的新能力不能自动加入。
+v0.4 已展开 Play 与 Library 的日常代表任务，默认入口按 `decisions.md` §10 回到上次阅读。
+
+v0.5 已展开 Library Prompt/Persona 编辑与浅色 Settings。资源列表继续沿用画廊域，编辑使用共享工作纸/Sheet，专业字段采用分组与逐步展开；长设置页为从账户菜单进入的工具工作纸，不增加一级 Dock 域。所有新页复用现有色彩、文字、控件和动效体系，只模拟已经存在的任务。主题管理与 Custom CSS 保留说明入口，完整兼容流程仍待设计。
