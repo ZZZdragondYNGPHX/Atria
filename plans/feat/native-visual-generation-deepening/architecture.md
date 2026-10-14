@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 / D-008 / D-009 / D-010 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 / D-008 / D-009 / D-010 / D-011 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -16,7 +16,7 @@
 
 **Image Job + Budget（D-007/D-008）**：按稳定 Intent / ImageJob / Attempt 分层，在可靠账目中预留许可/额度，使用原子 claim、lease 与 fencing 防止并发重复；远端 ID 对账、提交不确定停止盲重试、已到字节幂等发布/失败补偿，保持旧 Branch/SavePoint 与 AssetStore 安全。Planner/Image 分账并具用户可调的滚动初始额度；云端自动付费默认 0/需明确授权。精确存储 Schema 与 Provider 计费协议后续定案，见 [visual-director.md](visual-director.md) §7。
 
-**Image Asset, Native Media Studio & Presentation（D-009/D-010）**：不可变 ImageArtifact/MediaOperation 多父 DAG 保存原图、再生成、Img2Img/Inpaint/Mask/Upscale 的输入、结果版本与证据；可逆 Canonical Mask 草稿在编辑界面独立于冻结提交的 Mask 资产，跨 Provider 编辑需 Capability Negotiation/费用许可且经 ImageJob 提交。Gallery 只改变分支/标注展示指针，迟到异步结果默认进入历史而不抢占；AssetStore 引用与 SavePoint/Reference 闭包保护删除/GC，不修改叙事。详细见 [media-editing-gallery.md](media-editing-gallery.md) §6。
+**Image Asset, Native Media Studio & Presentation（D-009/D-010）**：不可变 ImageArtifact/MediaOperation 多父 DAG 保存原图、再生成、Img2Img/Inpaint/Mask/Upscale 的输入、结果版本与证据；可逆 Canonical Mask 草稿在编辑界面独立于冻结提交的 Mask 资产，跨 Provider 编辑需 Capability Negotiation/费用许可且经 ImageJob 提交。Gallery 只改变分支/标注展示指针，迟到异步结果默认进入历史而不抢占；AssetStore 引用与 SavePoint/Reference 闭包保护删除/GC，不修改叙事。D-011 的 Mask 像素坐标/草稿、能力声明、Gallery、GC 和 SavePoint/导入验收精确中立规范见 [media-precision.md](media-precision.md)；整体编辑架构见 [media-editing-gallery.md](media-editing-gallery.md)。
 
 ## 2. Round 2 已冻结：方案 A — Post-Commit Visual Director
 
@@ -60,7 +60,7 @@ Director 可在正文尚未提交时直接调外部生图后端；正文结束�
 2. **身份与连续性**：三层权威与 Branch/Revision 隔离由 D-005 冻结；混合证据更新、硬门禁/冲突审查及按用途筛选由 D-006 冻结；**待议**的是具体视觉事件模型、判定阈值、参考权重/强度及跨 Chapter 生命周期，参见 [visual-continuity.md](visual-continuity.md)。
 3. **后端与模型能力**：NovelAI V5、ComfyUI、SD/Forge、图像云 API/RunningHub；何者首批，如何声明可用参数/上传图像/异步进度。
 4. **操作自主性**：D-007/D-008 已确认分级判断、评分、默认关闭的自动模式、初始可调预算和待审批费用门禁；**待议**的是用户实际 UI 的审阅/取消/暂停/费用展示交互和 Provider 特殊结算行为。
-5. **图像衍生**：D-009 确定 Media Studio/DAG/编辑操作类别；D-010 冻结可逆 Mask、跨 Provider/授权执行、版本先入历史、分级删除/引用 GC、SavePoint/参考晋升架构；**Round 11 待议**精确 Mask 坐标/草稿持久化、Provider 能力矩阵、Gallery UI、GC 宽限、导入验收；视频是否纳入仍未定。
+5. **图像衍生**：D-009 确定 Media Studio/DAG/编辑操作类别；D-010 冻结可逆 Mask、跨 Provider/授权执行、版本先入历史、分级删除/引用 GC、SavePoint/参考晋升架构；**Round 11 D-011** 已冻结 Mask 坐标/混合草稿、能力声明契约、Gallery 默认视图、双阶段 GC 与导入验收；**Round 12 待议**实际 Provider/工作流支持矩阵、Vibe/LoRA/ControlNet 组合、降级/实测；视频是否纳入仍未定。
 6. **性能可靠性**：长会话图片加载、缓存失效、Provider 重试、幂等费用和恢复历史的一致性。
 
 ## 4. Candidate contracts (illustrative only)
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001 ～ D-010** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略、**分层 Media Studio/不可变 DAG 以及可逆 Mask/跨 Provider 编辑/资产 GC/SavePoint/晋升安全原则**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 11 待议**：D-009/D-010 已确认编辑与生命周期架构；当前讨论 Mask 坐标/草稿协议、Provider 能力矩阵、Gallery 默认交互与版本操作、GC 安全回收、SavePoint 导出/导入验收细则，候选见 [media-editing-gallery.md](media-editing-gallery.md) §8；其它冻结设计参考各对应模块。
+- **D-001 ～ D-011** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略、**分层 Media Studio/不可变 DAG/可逆编辑及 D-011 精确 Mask/草稿、目标能力声明、Gallery/GC/SavePoint 导入验收原则**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
+- **Round 12 待议**：D-011 中立协议已定；需确认各 Provider 的 Img2Img/Inpaint/Upscale/Reference/Vibe/LoRA/ControlNet 模型/工作流能力矩阵、可组合性、明确降级权限和真实协议执行验证。详细 D-011 契约见 [media-precision.md](media-precision.md)。
 - 其他未决议题：自动模式 UI/授权表单、Provider 实际报价/编辑能力/Mask 字段、参考图/Vibe 原生参数、视频功能矩阵、媒体与 Job 精确数据库表/迁移、SavePoint/GC 导入恢复的具体接口与 Provider 对账。
