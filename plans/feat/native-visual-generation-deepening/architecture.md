@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；除 [decisions.md](decisions.md) 已冻结的 D-001/D-002 外，下述全部是候选设计，不能据此提前开工。**
+> **状态：Draft；除 [decisions.md](decisions.md) 已冻结的 D-001 外，下述全部是候选设计，不能据此提前开工。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -68,6 +68,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- D-001/D-002：已确认，详见 [decisions.md](decisions.md)。
+- D-001：已确认，详见 [decisions.md](decisions.md)。
 - **Next user choice**：在方案 A/B/C 中选择 Visual Director 的触发时机，或提出调整。
 - 本议题冻结后，下一轮优先确认**图片语义意图 / 后端适配协议的隔离粒度**，然后再谈 Model/Provider 优先级。
