@@ -107,17 +107,31 @@
 - **可靠性/预算**：用户明确执行的编辑走 D-008 的持久 ImageJob/Attempt/远端对账/幂等发布，单次再生成生成新的明确意图；打开画廊或编辑器不触发隐藏收费请求。手动编辑可绕过自动选图节奏，但仍须满足模型能力、授权、全局付费额度和隐私/时点硬门禁；不允许静默更换付费 Provider。
 - **Reason**：避免多轮 RP 中分支图片被覆盖、复杂局部编辑丢失原图/Mask、历史版本无法追溯、图片参考和存档资产被误清理；使不同图像后端共用正规衍生资产图谱和 UI 而非复制逻辑。
 - **Affected modules**：[media-editing-gallery.md](media-editing-gallery.md) §4 为详细权威；[provider-protocol.md](provider-protocol.md) 为后端能力约束；[visual-director.md](visual-director.md) 为作业/预算；[visual-continuity.md](visual-continuity.md) 为角色/参考图权限。
-- **Scope limit**：第九轮冻结**完整编辑操作类别及 Media Studio/DAG/Gallery 的架构方向和必须保留的安全边界**；**尚未冻结**第十轮的 Mask 工具/UI 手势、跨 Provider 编辑流程的交互/回退、具体版本操作与删除/GC 规则、存档闭包和参考图晋升细节、各后端特殊协议。高级视频剪辑、成熟 DCC 图层系统、未经授权的第三方素材及所有高级模型特性不因此自动纳入。
+- **Scope limit**：第九轮冻结完整编辑操作类别及 Media Studio/DAG/Gallery 的架构方向；**第十轮 D-010 随后冻结了 Mask 工作台、跨 Provider 编辑、版本选择、引用安全 GC、SavePoint 闭包与参考图晋升的架构原则**。具体 Mask 字节/坐标/草稿协议、UI/Provider 矩阵、GC 宽限期/导入验收仍需第十一轮确定。高级视频剪辑、成熟 DCC 图层系统、未经授权的第三方素材及所有高级模型特性不因此自动纳入。
+
+## D-010（2026-10-14，Round 10）— 能力感知的可逆编辑工作台与引用安全生命周期
+
+- **Decision**：用户选择 **方案 C：能力感知的可逆 Native Media Studio**。在 D-009 分层 Core/Editing Workflow/Gallery 和不可变图片 DAG 基础上，冻结**独立 Canonical Mask 草稿、跨 Provider 的明确编辑与付费许可、预览后版本选择、不同删除语义、引用可达的资产回收、SavePoint 媒体闭包与显式参考晋升**等架构原则。详细权威为 [media-editing-gallery.md](media-editing-gallery.md) §6。
+- **Mask 编辑**：画布采用与 Provider 无关的原图几何/规范化 Mask 编辑草稿，支持可逆操作、预览与跨 PC/触屏的一致坐标语义。用户提交生成时将**源图片身份/内容哈希、提交 Mask 的不可变版本、编辑指令与参数**冻结；未提交草稿和已经发出的 Job 隔离。具体灰度/Alpha/原点/缩放/Mask 坐标序列化、自动保存频率与具体工具集留给第十一轮。
+- **跨 Provider 编辑**：允许从某一 Provider 生成的图片，经用户明确选择另一已支持的 Image Target 执行 Img2Img/Inpaint/Upscale 等生成新衍生；Provider Adapter 负责 Mask 格式/反相/resize/crop/输入格式、节点与 API 转换，事前验证此模型/Workflow 的真实能力。必需能力缺失时**停止并说明**，不得静默将局部编辑改成文生图、丢源图/Mask 或擅自换付费后端。
+- **版本与显示**：新编辑结果首先作为**独立的不可变版本**进入 DAG；默认预览/历史待用户选择，而不是迟到 Job 抢占当前版本。用户选择展示版本应绑定正确 Session/Branch/Annotation/Scene，独立 CAS 管理；明确允许的“完成后自动使用”必须检查用户期间未另行修改选中版本。任意合法历史版本可以再次作为编辑源，不重写旧版本或剧情。
+- **删除/GC**：`hide`、`remove_from_collection`、`soft_delete` 与最终 `physical_gc` 是不同操作，隐藏/取消展示不等于直接删除 Blob。GC 只能在对 Source Branch/Session/Revision、SavePoint、Media DAG 父子图/Mask、Reference 库、持久 Job/等待恢复任务及其他合法资源进行**完整可达性审计**后安全回收，不能为响应一个删除按钮自动连带破坏可达依赖。具体宽限期、算法及异常回滚留待第十一轮。
+- **SavePoint 与导入**：存档应能明确区分**展示级**和**完整可编辑级**的媒体依赖承诺；可编辑级闭包应包含合法引用的父图、Mask、编辑血缘/参数与参考资源。恢复历史 SavePoint 必须保留当时的 Branch/Revision、展示选择和资产归属，不引用当前新分支状态。关键素材缺失、未经许可或校验失败应显式报错，不默默冒充无损导入。
+- **显式晋升参考资产**：图片仅在用户/作者明确批准用途（角色身份/服装/场景/画风等）及可用作用域（Session/作品/合法共享）后，才成为持续 Reference；检查来源、披露和跨分支权限，不能让剧情截图的旧衣物/伤口或未来秘密自动升级为标准视觉真相。撤销晋升只解除所授范围绑定，仍受其它资产引用保护。
+- **预算、可追溯与产品安全**：打开编辑器、预览 Mask、浏览 Gallery 不引发潜在收费的请求。显式执行需 D-008 的持久 Job/Attempt/非秘密 Evidence/费用额度、D-005/D-006 的身份/时点/显示权限，并不能修改 Narrative/World/Memory。图片编辑可能改变 Mask 外像素，禁止声称任意模型天然无损；可选本地原像素合成必须另外记载其来源/潜在接缝风险。
+- **Reason**：保证跨模型的编辑体验、长会话无损历史、用户选中版本的稳定性以及存档/参考库/父图依赖不被误删；避免 UI 或云接口差异侵入 Native 历史权威。
+- **Affected modules**：[media-editing-gallery.md](media-editing-gallery.md) §6（D-010 专项详细权威）、[provider-protocol.md](provider-protocol.md)（适配/Capability Negotiation）、[visual-director.md](visual-director.md)（Job/预算）、[visual-continuity.md](visual-continuity.md)（身份/权限/引用）。
+- **Scope limit**：**第十轮冻结架构与安全原则，而非具体数字/协议的实现签收。** 未冻结第十一轮 Mask 精确坐标/草稿持久化格式、编辑能力矩阵、Gallery 控件与默认查询、物理 GC 时机、存档包格式/ID 迁移和导入验收；这些方案待第十一轮审议。现有 `main` 代码未因文档提交而自动具备这些功能。
 
 ## 基线与合规约束（非单独由用户冻结的架构方案）
 
 - Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
 - st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
-- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威。具体 API/数据库 Schema、Provider 特例及交互/清理细节仍待议。
+- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则。具体 API/数据库 Schema、Provider 能力矩阵及第十一轮交互/清理/导入细节仍待议。
 
 ## Unresolved; **not** decisions
 
-- D-009 已冻结再生成、Img2Img、局部重绘、Upscale、Media Studio 与不可变血缘/Gallery 的架构与功能类别；**Round 10 待定** Mask 绘制/坐标/修订交互、跨 Provider 具体执行、版本隐藏/删除/GC、存档闭包与参考资产晋升等精确规则，不能把范围批准误报为代码已实现。
+- D-009/D-010 已冻结 Media Studio/DAG/再生成-编辑-放大功能类别，以及可逆 Mask、显式跨 Provider 编辑、版本先入历史、不同删除语义、可达性 GC、SavePoint 闭包和参考晋升的架构原则；**Round 11 待定** Canonical Mask 的坐标/灰度/草稿存储、能力矩阵、Gallery UI、GC 时机与导入验收规范。此处均为设计批准，**非代码已实现**。
 
 - D-002/D-007/D-008 已冻结 Commit 后启动、跨回合 Scene/Shot、分级检测、可解释自适应评分、默认关闭的自动模式及软性节奏；**待定**：视觉画廊操作、产品 UI 的具体授权交互与运行数据校准。
 - D-005/D-006 已冻结三层视觉权威、证据驱动混合更新、硬门禁/冲突审查与参考图按用途选择原则；精确阈值、状态持续/失效细节、Vibe/Reference 强度和特定 Provider 功能矩阵仍未定案。
