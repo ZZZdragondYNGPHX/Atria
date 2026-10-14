@@ -606,7 +606,7 @@ export class SessionCore {
         return boundary;
     }
 
-    async appendTimeline(handle, sessionId, draft, { expectedRevisionId, commitId } = {}) {
+    async appendTimeline(handle, sessionId, draft, { expectedRevisionId, commitId, effectPolicy } = {}) {
         const requestFingerprint = commitId ? hashNativeDocument({ draft, expectedRevisionId: expectedRevisionId ?? null }) : undefined;
         if (commitId) {
             const receipt = await this._sessions.getCommitReceipt(handle, sessionId, commitId);
@@ -615,9 +615,10 @@ export class SessionCore {
                 return this.load(handle, sessionId, { revisionId: receipt.revisionId });
             }
         }
-        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const base = effectPolicy === 'no-background-model' ? await this.observe(handle, sessionId) : await this._current(handle, sessionId, expectedRevisionId);
+        if (effectPolicy === 'no-background-model' && base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict');
         const { entry, variant } = this._newEntry(base, draft);
-        return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant], commitId, requestFingerprint });
+        return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant], commitId, requestFingerprint, effectPolicy });
     }
 
     async applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId, hostProof = null } = {}) {
@@ -698,9 +699,9 @@ export class SessionCore {
         return prepareAuthorityTurn(this, handle, base, installed, selection, player);
     }
 
-    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null, knowledgeProof = null }, { expectedRevisionId } = {}) {
+    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null, knowledgeProof = null }, { expectedRevisionId, effectPolicy } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Turn anchor and invocation required');
-        const base = await this.load(handle, sessionId);
+        const base = await this[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, sessionId);
         let envelope = assertTurnEnvelope(raw);
         const fingerprint = hashNativeDocument(envelope);
         const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId)
@@ -735,7 +736,7 @@ export class SessionCore {
             const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope }, candidate.timeline.length, true);
             return this._publish(handle, base, { states: candidate.states, timeline: [...candidate.timeline, entry],
                 entries: [...(player ? [player.entry] : []), entry], variants: [...(player ? [player.variant] : []), variant],
-                authorityPrepared: true, actionRequest: { ...request, assistantMessageId: entry.messageId },
+                authorityPrepared: true, effectPolicy, actionRequest: { ...request, assistantMessageId: entry.messageId },
                 taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
                     outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId, authorityId: prepared.identity, inputHash: prepared.inputHash } } });
         }
@@ -743,7 +744,7 @@ export class SessionCore {
         const patch = envelope.outcomes.some(item => item.interpretation.decision !== 'no_change')
             ? await prepareTaskAuthority(base, installed, { outcomes: envelope.outcomes }) : {};
         const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope }, base.timeline.length, true);
-        return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, { ...base.states, ...patch }, knowledgeProof), timeline: [...base.timeline, entry], entries: [entry], variants: [variant],
+        return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, { ...base.states, ...patch }, knowledgeProof), timeline: [...base.timeline, entry], entries: [entry], variants: [variant], effectPolicy,
             taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
                 outcomes: envelope.outcomes, status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId } } });
     }
@@ -842,9 +843,10 @@ export class SessionCore {
         statePatch = {},
         deleteNamespaces = [],
         actionRequest = null,
-    } = {}, { expectedRevisionId } = {}) {
+    } = {}, { expectedRevisionId, effectPolicy } = {}) {
         const request = actionRequest === null ? null : assertActionRequest(actionRequest);
-        const base = await this._current(handle, sessionId, request ? undefined : expectedRevisionId);
+        const base = effectPolicy === 'no-background-model' ? await this.observe(handle, sessionId) : await this._current(handle, sessionId, request ? undefined : expectedRevisionId);
+        if (effectPolicy === 'no-background-model' && !request && base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict');
         if (request) {
             const receipts = actionReceipts(base);
             const existing = receipts.find(receipt => receipt.idempotencyKey === request.idempotencyKey);
@@ -880,6 +882,7 @@ export class SessionCore {
             variants: timelineChanges.variants,
             states,
             actionRequest: request,
+            effectPolicy,
         });
     }
 

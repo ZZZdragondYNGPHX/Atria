@@ -48,14 +48,17 @@ export class AgentEvidenceRepository {
         if (doc.evidenceId !== evidenceId) throw new TypeError('Evidence key mismatch');
         return doc;
     }
-    async begin(handle, { scope, rootRunId, origin, sources = null }) {
+    async begin(handle, { scope, rootRunId, origin, sources = null }, { requireNew = false } = {}) {
         text(handle, 'Authenticated owner');
         const evidenceId = evidenceIdentity(scope, rootRunId);
         const doc = assertEvidenceRecord({ schemaVersion: 1, evidenceId, scope, rootRunId, origin, sources,
             sequence: 0, status: 'capturing', trace: { schemaVersion: 1, events: [], missing: 1, reasons: ['events_missing'] }, outcome: null, outputRef: null });
         return withNativeResourceWrite(handle, 'evidence:' + evidenceId, () => {
             assertWritable();
-            return this.engine.withTransaction(handle, tx => putImmutable(tx, key(handle, evidenceId), doc));
+            return this.engine.withTransaction(handle, async tx => {
+                if (requireNew && await tx.getResource(key(handle, evidenceId))) throw new ConflictError('native_turn_attempt_already_claimed');
+                return putImmutable(tx, key(handle, evidenceId), doc);
+            });
         });
     }
     async update(handle, evidenceId, { sequence, status, trace, sources, outcome = null, outputRef = null, expectedSequence }, origin) {

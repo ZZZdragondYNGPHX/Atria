@@ -560,6 +560,26 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_lifecycle_execution_failed' });
         }
     });
+    router.post('/execution/preflight', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await getHost().executionPreflight(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_generation_preflight_failed' }); }
+    });
+    router.post('/turn/controlled/preflight', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await getHost().preflightControlledTurn(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_turn_preflight_failed' }); }
+    });
+    router.post('/turn/controlled/start', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const result = await getHost().executeControlledTurn(handle, req.body, undefined, chunk => {
+                if (!res.headersSent && chunk.operationId) res.status(202).json({ operationId: chunk.operationId });
+            });
+            if (!res.headersSent) res.json({ sessionId: result.session.sessionId, revisionId: result.revision.revisionId, branchId: result.revision.branchId });
+        } catch (error) { if (!res.headersSent) res.status(error.name === 'ConflictError' || error.code?.includes('conflict') || error.code?.includes('stale') ? 409 : 400).json({ error: error.code || 'native_turn_controlled_failed' }); }
+    });
     router.post(['/task/start', '/turn/start'], async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

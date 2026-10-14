@@ -1,8 +1,8 @@
 import { createEvidenceTrace } from '../../../public/shared/agent-evidence-trace.js';
 import { hashNativeDocument } from '../repositories/common.js';
 
-export async function beginHostCapture(repository, handle, scope, rootRunId, invocationId = rootRunId, lane = 'foreground', parentInvocationId = null) {
-    const marker = await repository.begin(handle, { scope, rootRunId, origin: 'host' });
+export async function beginHostCapture(repository, handle, scope, rootRunId, invocationId = rootRunId, lane = 'foreground', parentInvocationId = null, { requireNew = false } = {}) {
+    const marker = await repository.begin(handle, { scope, rootRunId, origin: 'host' }, { requireNew });
     const trace = createEvidenceTrace();
     let sequence = 0;
     const append = event => trace.append({ runId: rootRunId, lane, ...event });

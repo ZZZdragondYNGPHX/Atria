@@ -190,7 +190,7 @@ export function createNativeSessionRouter(getServices = services) {
         if (typeof commitId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(commitId)) throw new TypeError('Stable caller commitId required');
         fields(draft, ['role', 'content']);
         if (draft.role !== 'user' || typeof draft.content !== 'string' || !draft.content.trim() || draft.content.length > 32000) throw new TypeError('Native input append requires bounded user content');
-        res.set('Cache-Control', 'private, no-store').json(await core.appendTimeline(handle, sessionId, draft, { expectedRevisionId, commitId }));
+        res.set('Cache-Control', 'private, no-store').json(await core.appendTimeline(handle, sessionId, draft, { expectedRevisionId, commitId, effectPolicy: 'no-background-model' }));
     }));
     router.post('/load', route(async (req, res, { core }, handle) => {
         res.json(await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId }));

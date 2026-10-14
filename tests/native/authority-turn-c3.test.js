@@ -121,9 +121,10 @@ describe.each(CONTRACT_HARNESSES)('C3 authority Turn - $name', ({ make }) => {
         expect(() => request.select({ toolCalls: [] })).toThrow();
         expect(() => request.select({ toolCalls: [{ name: 'unknown', args: {} }] })).toThrow();
     });
-    test('Branch Retry forks pre-effect authority, leaving the committed branch unchanged', async () => {
+    test('Save restoration derives pre-effect authority while the committed branch remains immutable', async () => {
+        const save = await f.core.createSavePoint(h.handle, f.base.session.sessionId, { expectedRevisionId: f.base.revision.revisionId, displayName: 'Before Turn' });
         const committed = await f.host.executeTurn(h.handle, f.input);
-        const retry = await f.core.retryReply(h.handle, f.base.session.sessionId, { messageId: committed.timeline.at(-1).messageId, expectedRevisionId: committed.revision.revisionId });
+        const retry = await f.core.restoreSavePoint(h.handle, f.base.session.sessionId, save.saveId, { expectedRevisionId: committed.revision.revisionId });
         expect(retry.revision.branchId).not.toBe(committed.revision.branchId);
         expect(retry.states.atri_lifecycle.clocks.world).toBe(0);
         expect(retry.timeline.at(-1).role).toBe('user');

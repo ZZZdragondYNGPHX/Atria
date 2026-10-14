@@ -5,6 +5,7 @@ import { prepareIndependent } from '../../../public/shared/native-independent-pr
 import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPreviewSkillRepository } from '../model-prompt-runtime/preview-skills.js';
+import { CredentialTargetAuthority } from '../model-prompt-runtime/credential-targets.js';
 import { createPackageContextDerivation } from '../context-computation.js';
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
@@ -225,43 +226,141 @@ export class NativeGenerationHost {
         return resources;
     }
 
-    async executeTurn(handle, input, signal, onChunk, { transaction = null } = {}) {
-        if (!this.persistence._engine) return this._executeTurn(handle, input, signal, onChunk, { transaction });
-        const identity = hashNativeDocument({ handle, kind: 'turn', input, transaction: transaction ? authorityValue(transaction) : null });
+    async _turnLanes(handle, base, input, transaction = null) {
+        const runtime = base.manifest.runtime?.experienceContract?.taskRuntime;
+        if (!runtime?.turn) fail('native_turn_contract_required');
+        const routes = await this.persistence.listRuntimeRoutes(handle), lanes = [], authority = hasAuthorityTransactions(base);
+        if (!runtime.turn.narratorTaskId) lanes.push(selectNativeRuntimeRoute(routes, 'role.narrator', input.routeRef));
+        if (!transaction && !(authority && base.timeline.at(-1)?.metadata?.atri_authority_retry) && runtime.turn.policy === 'authority-first'
+            && (authority || input.userInput?.trim()) && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectNativeRuntimeRoute(routes, 'role.intent_resolver'));
+        for (const id of [...runtime.turn.stages, runtime.turn.narratorTaskId, runtime.turn.interpreterTaskId].filter(Boolean)) {
+            const task = runtime.tasks.find(item => item.id === id), ref = input.slotBindings?.[task.bindingSlotId];
+            const lane = ref?.scope === 'player' && routes.find(item => item.runtimeRouteId === ref.runtimeRouteId);
+            if (!lane) fail('native_task_binding_missing');
+            lanes.push(lane);
+        }
+        return lanes;
+    }
+
+    async _controlledTurnConfiguration(handle, base, input) {
+        const lanes = await this._turnLanes(handle, { ...base, timeline: [{ role: 'user', content: input.userInput }] }, input), capture = {};
+        for (const lane of lanes) await this.executionResources(handle, lane, input.sessionId, capture);
+        const credentialAuthority = new CredentialTargetAuthority({ persistence: this.persistence });
+        const credentialTargets = await Promise.all(Object.values(capture.connections).map(connection => credentialAuthority.inspect(handle,
+            { connectionProfileId: connection.connectionProfileId })));
+        return { selectedRouteIds: lanes.map(route => route.runtimeRouteId), ...capture, credentialTargets,
+            taskRuntime: base.manifest.runtime.experienceContract.taskRuntime, generationBudget: base.manifest.runtime.experienceContract.generationBudget ?? null,
+            packageContentHash: base.session.packageContentHash, packageVersionId: base.session.packageVersionId, entryPointId: base.session.entryPointId,
+            runtimeFingerprint: hashNativeDocument({ runtime: base.manifest.runtime, entryPointRuntime: base.entryPoint.runtime ?? null }) };
+    }
+
+    _controlledTurnInput(input) {
+        if (!input || Object.keys(input).some(key => !['sessionId', 'expectedRevisionId', 'commitId', 'invocationId', 'userInput', 'routeRef', 'slotBindings'].includes(key))
+            || typeof input.userInput !== 'string' || !input.userInput.trim() || input.userInput.length > 32000
+            || typeof input.commitId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(input.commitId)
+            || typeof input.invocationId !== 'string' || !/^[A-Za-z0-9._:-]{1,96}$/.test(input.invocationId)) fail('native_turn_request_invalid');
+        if (input.routeRef && (Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)) || input.routeRef.scope !== 'player')) fail('native_turn_request_invalid');
+        if (input.slotBindings !== undefined && (!input.slotBindings || typeof input.slotBindings !== 'object' || Array.isArray(input.slotBindings))) fail('native_turn_request_invalid');
+        for (const ref of Object.values(input.slotBindings ?? {})) if (!ref || Object.keys(ref).some(key => !['scope', 'runtimeRouteId'].includes(key)) || ref.scope !== 'player') fail('native_turn_request_invalid');
+        return input;
+    }
+
+    async preflightControlledTurn(handle, value) {
+        const input = this._controlledTurnInput(value), base = await this.sessionCore.observe(handle, input.sessionId);
+        if (base.revision.revisionId !== input.expectedRevisionId) fail('native_generation_revision_conflict');
+        const configuration = await this._controlledTurnConfiguration(handle, base, input);
+        return { source: { sessionId: input.sessionId, revisionId: input.expectedRevisionId, branchId: base.revision.branchId,
+            packageVersionId: base.session.packageVersionId, packageContentHash: base.session.packageContentHash },
+        requestFingerprint: hashNativeDocument({ draft: { role: 'user', content: input.userInput }, expectedRevisionId: input.expectedRevisionId }),
+        turnInputFingerprint: hashNativeDocument(input), configurationFingerprint: hashNativeDocument(configuration), configuration,
+        automaticResend: 'disabled', backgroundModel: 'suppressed', backgroundSimulation: 'not_started', observation: 'pure_committed_snapshot' };
+    }
+
+    async executeControlledTurn(handle, value, signal, onChunk) {
+        if (!value || Object.keys(value).some(key => !['input', 'committedRevisionId', 'approvedReview'].includes(key))) fail('native_turn_request_invalid');
+        const input = this._controlledTurnInput(value.input), review = value.approvedReview;
+        if (!review || Object.keys(review).some(key => !['turnInputFingerprint', 'configurationFingerprint', 'requestFingerprint'].includes(key))
+            || !['turnInputFingerprint', 'configurationFingerprint', 'requestFingerprint'].every(key => /^[a-f0-9]{64}$/.test(review[key] ?? ''))
+            || hashNativeDocument(input) !== review.turnInputFingerprint) fail('native_generation_review_stale');
+        const parent = await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.expectedRevisionId });
+        const base = await this.sessionCore.observe(handle, input.sessionId);
+        const receipt = await this.sessionCore._sessions.getCommitReceipt(handle, input.sessionId, input.commitId);
+        const requestFingerprint = hashNativeDocument({ draft: { role: 'user', content: input.userInput }, expectedRevisionId: input.expectedRevisionId });
+        if (!receipt || receipt.status !== 'committed' || receipt.sessionId !== input.sessionId || receipt.expectedRevisionId !== input.expectedRevisionId
+            || receipt.commitId !== input.commitId || receipt.revisionId !== value.committedRevisionId || receipt.branchId !== parent.revision.branchId
+            || receipt.fingerprint !== requestFingerprint || requestFingerprint !== review.requestFingerprint
+            || base.revision.revisionId !== value.committedRevisionId || base.core.parentRevisionId !== input.expectedRevisionId
+            || base.timeline.at(-1)?.role !== 'user' || base.timeline.at(-1)?.content !== input.userInput) fail('native_turn_commit_receipt_conflict');
+        const checked = { ...review, input, branchId: parent.revision.branchId };
+        await this._assertControlledTurn(handle, base, checked);
+        return this.executeTurn(handle, { sessionId: input.sessionId, revisionId: value.committedRevisionId, invocationId: input.invocationId,
+            userInput: input.userInput, ...(input.routeRef ? { routeRef: input.routeRef } : {}), ...(input.slotBindings ? { slotBindings: input.slotBindings } : {}) }, signal, onChunk,
+        { controlledReview: checked });
+    }
+
+    async _assertControlledTurn(handle, base, review) {
+        const configuration = await this._controlledTurnConfiguration(handle, base, review.input);
+        if (configuration.credentialTargets.some(target => !target.authorized)) throw new GenerationError('native_credential_target_approval_required');
+        if (base.revision.branchId !== review.branchId || hashNativeDocument(configuration) !== review.configurationFingerprint)
+            throw new GenerationError('native_generation_review_stale');
+    }
+
+    async executionPreflight(handle, input) {
+        if (!input || Object.keys(input).some(key => !['sessionId', 'revisionId', 'role', 'routeRef'].includes(key)) || input.role !== 'orchestrator') fail('native_generation_role_invalid');
+        const base = await this.sessionCore.observe(handle, input.sessionId);
+        if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        const configuration = { routes: await this.persistence.listRuntimeRoutes(handle), models: await this.persistence.listModelProfiles(handle), connections: await this.persistence.listConnectionProfiles(handle) };
+        const route = selectNativeRuntimeRoute(configuration.routes, 'role.orchestrator', input.routeRef);
+        if (!route.executionPolicy?.computeBudget) fail('native_generation_budget_unavailable');
+        const model = configuration.models.find(value => value.modelProfileId === route.modelProfileRef.modelProfileId);
+        const connection = configuration.connections.find(value => value.connectionProfileId === route.connectionProfileRef.connectionProfileId);
+        const credentialTarget = await new CredentialTargetAuthority({ persistence: this.persistence }).inspect(handle, { connectionProfileId: connection.connectionProfileId });
+        return { source: { sessionId: input.sessionId, revisionId: input.revisionId, branchId: base.revision.branchId, packageVersionId: base.session.packageVersionId },
+            route, model, connection, configurationFingerprint: hashNativeDocument(configuration), budget: route.executionPolicy.computeBudget,
+            credentialTarget, economics: 'unknown', backgroundModel: 'suppressed', automaticResend: 'disabled' };
+    }
+
+    async executeTurn(handle, input, signal, onChunk, { transaction = null, controlledReview = null } = {}) {
+        if (!this.persistence._engine) return this._executeTurn(handle, input, signal, onChunk, { transaction, controlledReview });
+        const identity = hashNativeDocument({ handle, kind: 'turn', input, transaction: transaction ? authorityValue(transaction) : null, controlledReview });
         this.evidenceOperations ??= new Map();
         // Share the observer for an exact concurrent scheduler request. Scheduling,
         // cancellation and finalization remain owned by NativeTaskScheduler.
         if (this.evidenceOperations.has(identity)) return this.evidenceOperations.get(identity);
-        const pending = Promise.resolve().then(() => this._captureTurn(handle, input, signal, onChunk, { transaction }));
+        const pending = Promise.resolve().then(() => this._captureTurn(handle, input, signal, onChunk, { transaction, controlledReview }));
         this.evidenceOperations.set(identity, pending);
         try { return await pending; } finally { this.evidenceOperations.delete(identity); }
     }
 
-    async _captureTurn(handle, input, signal, onChunk, { transaction = null } = {}) {
+    async _captureTurn(handle, input, signal, onChunk, { transaction = null, controlledReview = null } = {}) {
         const engine = this.persistence._engine;
         // Authenticate and validate the original Session authority before saving a marker.
-        const base = await this.sessionCore.load(handle, input.sessionId);
+        const base = await this.sessionCore[controlledReview ? 'observe' : 'load'](handle, input.sessionId);
         const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId);
-        if (previous) return this._executeTurn(handle, input, signal, onChunk, { transaction });
+        if (previous) return this._executeTurn(handle, input, signal, onChunk, { transaction, controlledReview });
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)) fail('native_turn_request_invalid');
         const capture = await beginHostCapture(new AgentEvidenceRepository({ engine }), handle,
-            { domain: 'rp_session', sessionId: input.sessionId }, 'turn:' + input.invocationId + ':' + randomUUID(), input.invocationId);
+            { domain: 'rp_session', sessionId: input.sessionId }, controlledReview
+                ? 'controlled-turn:' + hashNativeDocument({ owner: handle, sessionId: input.sessionId, commitId: controlledReview.input.commitId, invocationId: input.invocationId })
+                : 'turn:' + input.invocationId + ':' + randomUUID(), input.invocationId, 'foreground', null, { requireNew: Boolean(controlledReview) });
         let result;
-        try { result = await this._executeTurn(handle, input, signal, onChunk, { transaction, evidenceCapture: capture }); } catch (error) { await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error; }
+        try { result = await this._executeTurn(handle, input, signal, onChunk, { transaction, evidenceCapture: capture, controlledReview }); } catch (error) { await capture.fail(signal?.aborted || error.code === 'operation_cancelled'); throw error; }
         // Formal result already exists. Capture failure must never cause its replay.
         let evidenceCapture;
-        try { evidenceCapture = await capture.finish(result, new AgentEvidenceService({ sessionCore: this.sessionCore })); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
+        const evidenceCore = controlledReview ? Object.create(this.sessionCore) : this.sessionCore;
+        if (controlledReview) evidenceCore.load = (...args) => this.sessionCore.observe(...args);
+        try { evidenceCapture = await capture.finish(result, new AgentEvidenceService({ sessionCore: evidenceCore })); } catch { evidenceCapture = { status: 'failed', missing: 1 }; }
         return { ...result, evidenceCapture };
     }
 
-    async _executeTurn(handle, input, signal, onChunk, { transaction = null, evidenceCapture = null } = {}) {
+    async _executeTurn(handle, input, signal, onChunk, { transaction = null, evidenceCapture = null, controlledReview = null } = {}) {
         input = immutable(input);
         transaction = transaction ? immutable(authorityValue(transaction)) : null;
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)
             || Object.keys(input).some(key => !['sessionId', 'revisionId', 'invocationId', 'requestId', 'userInput', 'stageInputs', 'variants', 'slotBindings', 'routeRef', 'hostMemoryEvidence'].includes(key))) fail('native_turn_request_invalid');
         const { requestId: _requestId, ...turnRequest } = input;
         const requestHash = hashNativeDocument(transaction ? { ...turnRequest, transaction } : turnRequest);
-        const base = await this.sessionCore.load(handle, input.sessionId);
+        const base = await this.sessionCore[controlledReview ? 'observe' : 'load'](handle, input.sessionId);
         const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(item => item.invocationId === input.invocationId);
         if (previous) {
@@ -276,34 +375,30 @@ export class NativeGenerationHost {
         const authority = hasAuthorityTransactions(base);
         if (transaction && !authority) fail('native_authority_capability_required');
         if (authority && runtime.turn.policy !== 'authority-first') fail('native_authority_turn_policy_required');
-        const routes = await this.persistence.listRuntimeRoutes(handle);
-        const lanes = [];
-        if (!runtime.turn.narratorTaskId) lanes.push(selectNativeRuntimeRoute(routes, 'role.narrator', input.routeRef));
-        if (!transaction && !(authority && base.timeline.at(-1)?.metadata?.atri_authority_retry) && runtime.turn.policy === 'authority-first' && (authority || input.userInput?.trim()) && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectNativeRuntimeRoute(routes, 'role.intent_resolver'));
-        for (const id of [...runtime.turn.stages, runtime.turn.narratorTaskId, runtime.turn.interpreterTaskId].filter(Boolean)) {
-            const task = runtime.tasks.find(item => item.id === id);
-            const ref = input.slotBindings?.[task.bindingSlotId];
-            const lane = ref?.scope === 'player' && routes.find(item => item.runtimeRouteId === ref.runtimeRouteId);
-            if (!lane) fail('native_task_binding_missing');
-            lanes.push(lane);
-        }
-        const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction, evidenceCapture };
+        if (controlledReview) await this._assertControlledTurn(handle, base, controlledReview);
+        const lanes = await this._turnLanes(handle, base, input, transaction);
+        const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction, evidenceCapture,
+            ...(controlledReview ? { effectPolicy: 'no-background-model', controlledTurn: { check: async () => this._assertControlledTurn(handle, await this.sessionCore.observe(handle, input.sessionId), controlledReview) } } : {}) };
         const resources = (await Promise.all(lanes.map(lane => this.executionResources(handle, lane, input.sessionId, lanePlan)))).flat();
         let expectedRevisionId = input.revisionId;
         const operation = nativeTaskScheduler.submit({ owner: handle, kind: 'turn',
             timeoutMs: executionTimeout(lanePlan, base.manifest.runtime.experienceContract.generationBudget?.turnAttempts
                 ?? Math.max(1, lanes.length) * (1 + Math.max(0, ...Object.values(lanePlan.routes).map(route => route.policy.maxFallbackAttempts)))),
             anchor: { sessionId: input.sessionId, branchId: base.revision.branchId, revisionId: input.revisionId },
-            executionClass: 'turn_blocking', resources, key: input.sessionId + ':' + input.invocationId + ':turn', fingerprint: requestHash, retry: false, signal, onChunk,
-            fresh: async () => (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId === expectedRevisionId,
+            executionClass: 'turn_blocking', resources, key: input.sessionId + ':' + input.invocationId + ':turn', fingerprint: controlledReview ? hashNativeDocument({ requestHash, controlledReview }) : requestHash, retry: false, signal, onChunk,
+            fresh: async () => {
+                if (controlledReview) await lanePlan.controlledTurn.check();
+                return (await this.sessionCore[controlledReview ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId === expectedRevisionId;
+            },
             run: boundary => this.prepareTurn(handle, input, boundary.signal, boundary.onChunk, revisionId => { expectedRevisionId = revisionId; }, lanePlan),
-            finalize: prepared => this.sessionCore.finalizeTurn(handle, input.sessionId, { ...prepared, requestHash }, { expectedRevisionId }),
+            finalize: prepared => this.sessionCore.finalizeTurn(handle, input.sessionId, { ...prepared, requestHash }, { expectedRevisionId,
+                ...(controlledReview ? { effectPolicy: 'no-background-model' } : {}) }),
         });
         evidenceCapture?.append({ type: 'operation.queued', eventId: operation.operationId + '/queued', effectId: operation.operationId, status: 'queued' });
         try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
         const result = await operation.result;
         if (authority) this.authoritySelections.delete(handle + ':' + base.session.sessionId + ':' + base.revision.branchId + ':' + base.revision.revisionId);
-        this.queueSimulation(handle, result, input.slotBindings);
+        if (!controlledReview) this.queueSimulation(handle, result, input.slotBindings);
         return result;
     }
 
@@ -392,7 +487,8 @@ export class NativeGenerationHost {
     }
 
     async prepareTurn(handle, input, signal, onChunk, onAnchor, lanePlan) {
-        let base = await this.sessionCore.load(handle, input.sessionId);
+        let base = await this.sessionCore[lanePlan?.controlledTurn ? 'observe' : 'load'](handle, input.sessionId);
+        await lanePlan?.controlledTurn?.check();
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         const runtime = base.manifest.runtime.experienceContract.taskRuntime;
         let authorityTurn = null;
@@ -404,7 +500,8 @@ export class NativeGenerationHost {
             const installed = await this.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId);
             const { world, candidate } = await createTaskWorld(base, { ...installed, entryPoint: base.entryPoint }, async (patch, revisionId) => {
                 checkCancellation(signal);
-                const next = await this.sessionCore.applyRuntimeCommit(handle, input.sessionId, { statePatch: patch }, { expectedRevisionId: revisionId });
+                const next = await this.sessionCore.applyRuntimeCommit(handle, input.sessionId, { statePatch: patch }, { expectedRevisionId: revisionId,
+                    ...(lanePlan.effectPolicy ? { effectPolicy: lanePlan.effectPolicy } : {}) });
                 onAnchor(next.revision.revisionId);
                 return next;
             });
@@ -674,7 +771,7 @@ export class NativeGenerationHost {
         input = immutable(input);
         if (input.invocationId?.startsWith('lc:') && !lifecycleInvocation) fail('native_task_reserved_invocation');
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'taskId', 'variantId', 'input', 'slotBindings', 'invocationId', 'requestId', 'fallbackMode'].includes(key))) fail('native_task_request_invalid');
-        const snapshot = lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId);
+        const snapshot = lanePlan?.authorityContext?.snapshot ?? await this.sessionCore[lanePlan?.effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId);
         const task = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === input.taskId);
         const variant = task?.variants.find(item => item.id === input.variantId);
         if (!variant) fail('native_task_variant_missing');
@@ -736,7 +833,7 @@ export class NativeGenerationHost {
             const start = performance.now(), cpu = process.cpuUsage(); let outcome = 'failed';
             try {
                 checkCancellation(signal);
-                if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+                if ((await this.sessionCore[lanePlan?.effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
                 const result = await operation(); outcome = 'completed'; return result;
             } finally {
                 if (receipt) {
@@ -808,6 +905,7 @@ export class NativeGenerationHost {
     }
 
     async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null } = {}) {
+        effectPolicy ??= lanePlan?.effectPolicy ?? null;
         const input = immutable(value);
         const prediction = predictionLanes.has(lanePlan) ? lanePlan.prediction : null;
         if (lanePlan?.prediction && !prediction) fail('native_prediction_capture_required');
@@ -830,7 +928,8 @@ export class NativeGenerationHost {
         let snapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation;
         if (input.sessionId) {
             snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot
-                ?? (preview ? await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.revisionId }) : await this.sessionCore.load(handle, input.sessionId)));
+                ?? (preview ? await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.revisionId })
+                    : await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
             if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
             source = illustrationPlan?.source ?? { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
@@ -868,7 +967,7 @@ export class NativeGenerationHost {
             const operation = nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources, retry: false, retainResult,
                 timeoutMs: executionTimeout(captured),
                 key: (input.sessionId ?? input.projectId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(input), signal, onChunk,
-                fresh: async () => input.sessionId ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId === input.revisionId
+                fresh: async () => input.sessionId ? (await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId === input.revisionId
                     : (await this.studio.getProject(handle, input.projectId)).revision.revision === input.revision,
                 run: boundary => {
                     worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured, effectPolicy, approvedReview });
@@ -961,7 +1060,7 @@ export class NativeGenerationHost {
             checkCancellation(signal);
             if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
             if (input.sessionId) return this.sessionCore.runs.repo.withRunLock(handle, input.sessionId, async () => {
-                if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) throw new GenerationError('native_generation_revision_conflict');
+                if ((await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId !== input.revisionId) throw new GenerationError('native_generation_revision_conflict');
                 await this.sessionCore.runs.assert(handle, input.sessionId, 'write');
             });
             if (projectTaskEvidence) return this.agent.publishLocalIndex(handle, input.projectId, input.taskId, input.revision, projectTaskEvidence.ref.slice(-64), () => {});
@@ -1123,7 +1222,9 @@ export class NativeGenerationHost {
         const budgetedResolver = { resolve: request => localWork('route_resolve', { resolved: { effectiveExecutionPolicy: route.executionPolicy,
             pathFingerprint: hashNativeDocument(route) } }, () => resolver.resolve(request), { route, request }), provider: id => resolver.provider(id) };
         const service = new GenerationService({ resolver: budgetedResolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
-            beforeSend: approvedReview ? async ({ snapshot }) => {
+            beforeSend: approvedReview || lanePlan?.controlledTurn ? async ({ snapshot }) => {
+                await lanePlan?.controlledTurn?.check();
+                if (!approvedReview) return;
                 const { createdAt: _time, ...stableSnapshot } = snapshot;
                 const configuration = { routes: await this.persistence.listRuntimeRoutes(handle), models: await this.persistence.listModelProfiles(handle),
                     connections: await this.persistence.listConnectionProfiles(handle) };
@@ -1263,7 +1364,7 @@ export class NativeGenerationHost {
                                 attempt.status = 'failed';
                                 capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
                                 if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
-                                if (approvedReview || !(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
+                                if (approvedReview || lanePlan?.controlledTurn || !(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                             }
                         }
                     } };
@@ -1286,7 +1387,7 @@ export class NativeGenerationHost {
                 persist: () => persistTaskHistory?.(),
                 roundCount: () => sessionTaskRoundCount(taskHistory, skillTranscript),
                 fresh: async () => {
-                    const current = snapshot ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId
+                    const current = snapshot ? (await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId
                         : (await this.studio.getProject(handle, input.projectId)).revision.revision;
                     if (current !== (snapshot ? input.revisionId : input.revision)) fail('native_generation_revision_conflict');
                 },
