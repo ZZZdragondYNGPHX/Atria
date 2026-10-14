@@ -70,7 +70,7 @@ try {
     await bundle.body?.cancel();
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('ATRIA_')));
     const transport = new StdioClientTransport({ command: process.execPath,
-        args: [join(toolRoot, 'src', 'cli.js'), '--repo', catalog.root, '--url', origin, '--policy', policyPath, ...(process.env.ATRIA_TEST_BROWSER_CHANNEL ? ['--browser-channel', process.env.ATRIA_TEST_BROWSER_CHANNEL] : [])], env, stderr: 'pipe' });
+        args: [join(toolRoot, 'src', 'cli.js'), '--repo', catalog.root, '--url', origin, '--policy', policyPath, '--state-dir', join(scratch, 'mcp-journals'), ...(process.env.ATRIA_TEST_BROWSER_CHANNEL ? ['--browser-channel', process.env.ATRIA_TEST_BROWSER_CHANNEL] : [])], env, stderr: 'pipe' });
     transport.stderr.on('data', bytes => { stderr += bytes; });
     client = new Client({ name: 'atria-real-product-smoke', version: '1.0.0' }, { capabilities: { elicitation: { form: {} } } });
     const approvalRequests = [];

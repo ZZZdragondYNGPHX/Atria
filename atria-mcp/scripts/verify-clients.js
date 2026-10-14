@@ -10,7 +10,7 @@ import { redact } from '../src/policy.js';
 // Optional installed-client checks. No model turn or provider request is sent.
 export async function verifyClients({ repo, origin, scratch, artifacts }) {
     const root = fileURLToPath(new URL('../', import.meta.url));
-    const args = [join(root, 'src/cli.js'), '--repo', repo, '--url', origin,
+    const args = [join(root, 'src/cli.js'), '--repo', repo, '--url', origin, '--state-dir', join(scratch, 'mcp-client-journals'),
         ...(process.env.ATRIA_TEST_BROWSER_CHANNEL ? ['--browser-channel', process.env.ATRIA_TEST_BROWSER_CHANNEL] : [])];
     const result = { humanApproval: 'not tested; requires actual interactive client user', claude: { status: 'not requested' }, codex: { status: 'not requested' } };
     if (process.env.ATRIA_VERIFY_CLAUDE_EXE) {
