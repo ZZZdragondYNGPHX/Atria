@@ -50,6 +50,8 @@ test('startup waits for settings persistence; a failed write keeps the story uns
     start.mockClear(); flush.mockRejectedValueOnce(new Error('offline'));
     await setup({ force: true }); buttons('Save and continue').click(); await settled();
     expect(start).not.toHaveBeenCalled(); expect(root.textContent).toContain('Could not complete model setup');
+    flush.mockResolvedValueOnce(false);
+    buttons('Save and continue').click(); await settled(); expect(start).not.toHaveBeenCalled();
 });
 test('route deleted while editing is rejected before writing bindings or starting', async () => {
     await setup(); change('[aria-label="Use one route for all purposes"]', route.runtimeRouteId); routes = [];

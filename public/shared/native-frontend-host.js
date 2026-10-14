@@ -46,6 +46,7 @@ const targets = {
     'host.conversation.messages': read(MESSAGE_SCHEMA, false, true),
     'host.conversation.presentation': read(MESSAGE_PRESENTATION_SCHEMA, false, true),
     'host.conversation.recent': { ...read({ type: 'array', items: MESSAGE_SCHEMA, maxItems: 32 }), inputSchema: hostObject({ beforeSequence: number }, []) },
+    'host.tasks.presentation': { ...read({ type: 'array', maxItems: 32, items: hostObject({ invocationId: id, taskId: string(64), payloadJson: text }) }), inputSchema: hostObject({ taskId: string(64) }) },
     'host.conversation.status': read(SESSION_SCHEMA),
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),
     'host.conversation.alternatives': read(hostObject({ ...MESSAGE_SCHEMA.properties, alternativeBranchId: id }), false, true),

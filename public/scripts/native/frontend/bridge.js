@@ -110,7 +110,7 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                     if (binding.target?.transactionId) onCommit(result.revision);
                     if (binding.target?.service && ['restore', 'switch', 'fork', 'retry', 'reload', 'recover'].includes(binding.target.method)) { invalidate(); return structuredClone(result); }
                     await refresh();
-                } else if (method === 'operation.get' && result.status === 'completed') result.data = bridgeValue(result.data, binding.outputSchema);
+                } else if (method === 'operation.get' && result.status === 'completed') { result.data = bridgeValue(result.data, binding.outputSchema); await refresh(); }
                 return current() ? structuredClone(result) : failure('bridge_epoch_stale', id);
             } catch (error) { return failure(current() ? publicBridgeError(error) : 'bridge_epoch_stale', id); }
         }

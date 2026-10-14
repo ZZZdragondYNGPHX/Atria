@@ -90,7 +90,7 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             for (const slot of next.slots) setTaskBinding(packageId, slot.id, slot.binding);
             // Frontend actions resolve bindings on the server. Finish the same
             // settings write before mounting, instead of racing its debounce.
-            try { await globalThis.Atria.getContext().saveSettings(); } catch (error) {
+            try { if (await globalThis.Atria.getContext().saveSettings() === false) throw new Error('Settings were not persisted'); } catch (error) {
                 globalThis.Atria.getContext().capabilitySettings.atri_task_bindings[packageId] = previous;
                 throw error;
             }
