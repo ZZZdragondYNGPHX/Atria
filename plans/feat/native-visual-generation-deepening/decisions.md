@@ -123,15 +123,28 @@
 - **Affected modules**：[media-editing-gallery.md](media-editing-gallery.md) §6（D-010 专项详细权威）、[provider-protocol.md](provider-protocol.md)（适配/Capability Negotiation）、[visual-director.md](visual-director.md)（Job/预算）、[visual-continuity.md](visual-continuity.md)（身份/权限/引用）。
 - **Scope limit**：**第十轮冻结架构与安全原则，而非具体数字/协议的实现签收。** 未冻结第十一轮 Mask 精确坐标/草稿持久化格式、编辑能力矩阵、Gallery 控件与默认查询、物理 GC 时机、存档包格式/ID 迁移和导入验收；这些方案待第十一轮审议。现有 `main` 代码未因文档提交而自动具备这些功能。
 
+## D-011（2026-10-14，Round 11）— Canonical Mask、混合草稿检查点、能力声明与安全媒体闭包
+
+- **Decision**：用户选择第十一轮**方案 C：混合检查点 + 不可变 Mask + 安全媒体闭包**。在 D-009/D-010 的可逆 Media Studio 上，冻结中立 Mask 规范、草稿恢复、Provider 编辑能力清单、Gallery 默认 UI、引用安全 GC、正式 SavePoint/导入验收原则；详见 [media-precision.md](media-precision.md)（唯一技术细节权威）。
+- **Mask 坐标和像素**：源图先归一化解码方向，以**左上原图像素空间**为坐标权威；Canonical Mask 为**8-bit 单通道灰度：0=保留、255=希望修改、中间值=羽化权重**，与 source ImageVersion/Base SHA、宽高与 Mask SHA 强绑定。屏幕 CSS/缩放坐标仅视图变换，Adapter 根据真实模型的 Alpha/极性/Mask 约定进行有证据的转换。Outpaint 必须显式标记新画布几何，不能悄悄改变原图尺寸。
+- **可恢复草稿**：使用有界编辑命令与压缩 Raster Checkpoint 结合；默认约**2 秒空闲自动保存、每 50 条命令生成 Checkpoint**（均为可调产品初始值，连续编辑也要有有界保护）。草稿带源图/Branch/owner、版本 CAS/哈希；多端过时写入不得覆盖另一端，冲突可分叉。生成前固定不可变 MaskAsset，之后修改草稿不会影响已提交的 MediaOperation/Job。
+- **能力声明规范**：按**连接 + 模型版本或 Workflow/节点指纹 + 服务版本**声明每项 text-to-image、img2img、inpaint/outpaint/upscale、参考图/Vibe、LoRA、ControlNet 等 supported/unsupported/unknown，含来源/TTL/输入输出/MIME/数量/尺寸/Mask 转换、组合约束、进度/异步取消及费用可见度。unknown 或不支持的**必需能力或能力组合**不能自动执行/付费试探；实际 Provider 支持情况留给第十二轮逐项核验，不能仅凭厂商名称推断。
+- **Gallery 默认**：只展示当前作品/Session/Branch 且获允许的图片，按 Scene/Shot 顺序分页、按需缩略图；高级面板展开 DAG、Mask、Provider/Job/引用。生成/编辑的异步结果**默认入历史，不自动抢占当前展示**；明确的完成即使用必须通过 Branch/Annotation/原选择 CAS。隐藏、从集合移除、软删和物理 GC 是不同操作，危险删除须展示依赖和授权。
+- **引用安全 GC**：两阶段 Mark-and-Sweep，从所有历史 Session/Branch/SavePoint、DAG/Mask/Reference、草稿、可恢复/状态不确定 Job、导入导出租约及其它合法 Native 资产 Root 扫描；首次隔离标记、宽限到期后二次在锁/CAS 下核对，只有仍不可达才能删除。**初始默认**软删历史版本**30 天**、未正式引用的失败临时文件至少**7 天**，可按产品配置调整；宽限结束也不能删仍被引用的资产。
+- **SavePoint 与导入验收**：正式 Atria SavePoint 默认是**完整可编辑媒体闭包**，包括有效原图/父子 DAG、Mask、编辑证据和合法参考资产；另允许明确标注限制的**展示级紧凑导出**。沿用/按需升级 .atriasave 的完整性、路径/容量/哈希保护；导入先预检媒体/DAG 无环/Mask 坐标与依赖/权限/ID 映射，后 staged atomic/CAS publish 或可补偿回滚。严禁缺父图却声称编辑级成功、跨分支串图、误携 Secret 或导入自动付费。至少覆盖 FS/SQLite、完整与展示级来回导入、GC 并发、SavePoint、无效引用/恶意输入、晚到 Job CAS、PC 与移动端编辑验证（模拟事件不冒充真机）。
+- **Reason**：防止跨设备编辑草稿丢失、Mask 极性反转、跨 Provider 失真、历史图/Mask 被 GC 误删，以及读档后图片虽能显示却失去可编辑来源。
+- **Affected modules**：[media-precision.md](media-precision.md) D-011；[media-editing-gallery.md](media-editing-gallery.md) D-009/D-010；[provider-protocol.md](provider-protocol.md) 的编辑能力声明与执行证据。
+- **Scope limit**：此轮冻结中立协议与默认值/验收责任，**并未**批准 P0/P1 各具体模型/Workflow 的功能事实、Vibe/LoRA/ControlNet 的可组合性、任何隐式降级/跨收费 Provider fallback，或声称真实后端已经通过执行测试；这些在 Round 12 决定。
+
 ## 基线与合规约束（非单独由用户冻结的架构方案）
 
 - Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
 - st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
-- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则。具体 API/数据库 Schema、Provider 能力矩阵及第十一轮交互/清理/导入细节仍待议。
+- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则，D-011 冻结 Mask/草稿/Gallery/GC/SavePoint 的具体中立协议、可调默认与验收；实际 Provider 编辑能力/参数、费用与降级策略仍待议。
 
 ## Unresolved; **not** decisions
 
-- D-009/D-010 已冻结 Media Studio/DAG/再生成-编辑-放大功能类别，以及可逆 Mask、显式跨 Provider 编辑、版本先入历史、不同删除语义、可达性 GC、SavePoint 闭包和参考晋升的架构原则；**Round 11 待定** Canonical Mask 的坐标/灰度/草稿存储、能力矩阵、Gallery UI、GC 时机与导入验收规范。此处均为设计批准，**非代码已实现**。
+- D-009/D-010/D-011 已冻结 Media Studio/DAG/各编辑类别、Canonical Mask 像素与草稿恢复、目标级能力声明规范、Gallery 分层视图、两阶段 GC 和 SavePoint 导入验收；**Round 12 待定**具体 Provider img2img/Inpaint/Upscale/参考图/Vibe/LoRA/ControlNet 的实际能力矩阵、组合限制、降级/付费许可及真实协议验收。当前仍是设计，**非代码已实现**。
 
 - D-002/D-007/D-008 已冻结 Commit 后启动、跨回合 Scene/Shot、分级检测、可解释自适应评分、默认关闭的自动模式及软性节奏；**待定**：视觉画廊操作、产品 UI 的具体授权交互与运行数据校准。
 - D-005/D-006 已冻结三层视觉权威、证据驱动混合更新、硬门禁/冲突审查与参考图按用途选择原则；精确阈值、状态持续/失效细节、Vibe/Reference 强度和特定 Provider 功能矩阵仍未定案。
