@@ -77,3 +77,15 @@
 - Local verification: media 17/17 (FS/SQLite and NAI four model editing L1/L2); P0 adapter 7/7 (independent Comfy/OpenAI); illustration core 19/19; renderer 3/3; unchanged durable slice 10/10 earlier S4 run; affected ESLint/diff check passed. First renderer run failed because its helper imported the expanded server persistence graph in jsdom without structuredClone; changed helper to direct SHA. Protocol fixture transport omission fixed. Existing conditional test lint assertions corrected.
 - CI/L3: `not_run`, no paid API. Strict model Mask preservation remains unsupported where unverified; explicit composite has seam/geometry limitations. Vibe encoding is unknown and refused, not silently paid. Whole-history materialization/browser layout/actual platform evidence are S6 acceptance work. No display-only compact export masquerades as a full editable SavePoint.
 - Next: S5 Gemini, WebUI/Forge, RunningHub, plus Adapter extensibility; then S6 cross-platform/security/performance/final acceptance.
+
+## S5 — P1 families / extension ports (completed)
+
+- Start HEAD: `5985d3ddfbf1decf1991c3db0dfd12c13109f6fe`; End HEAD: `5c8131e67c380d07a699bb6fc4c75414d417af3d`.
+- S5.1 Gemini: documented native GenerateContent image models/inputs/result parser, semantic edit, model-specific limits; required Canonical Mask/strict Mask/upscale safely unsupported. No ordinary text Route masquerades as image generation.
+- S5.2 SD WebUI and Forge: independent Connection Adapter names, actual read-only models/samplers/upscalers/scripts/OpenAPI discovery; installed LoRA/ControlNet catalogs/combination gates, opaque white-edit masks and Img2Img/Upscale. Optional Basic Secret auth. No global interrupt.
+- S5.3 RunningHub: frozen full typed Workflow with explicit bindings, upload/create/outputs, durable remote task ID/reconcile, owner-specific cancel receipt, restricted no-credential CDN fetch. HTTP status now recovers known jobs; transient query failures do not resubmit. P2 extensibility uses the same validated unique registry ports.
+- Checks: independent P1 22/22 (FS/SQLite each family, editing, LoRA/ControlNet, upload/polarity, failure/sanitization, no retry, cancel/recovery/unsafe URL); kernel 9/9; P0 7/7. Changed product ESLint/diff check passed. One lint pass found formatting only, automatically fixed. Protocol catalog does not prove artistic/model compatibility or L3.
+- Total input byte guard added at preview: 24 MiB, Gemini 14 MiB to bound base64 request size. Head-specific P1 minimal verification is being completed; result appended below.
+- L3/remote CI `not_run`, no provider charge. RunningHub official main documentation pages intermittently timed out; official pre.runninghub.ai pages and current outputs/upload/error references provided exact protocol evidence. No third-party code copied.
+- Next: S6 desktop/mobile responsive control plane, minimum browser and performance/security acceptance, full closure invariant review, final delivery and Governance merge.
+- Head-specific minimal retest at `5c8131e67`: P1 22/22 passed after adding the aggregate-input guard.
