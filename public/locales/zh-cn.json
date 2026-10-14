@@ -9756,5 +9756,6 @@
     "Regenerated image": "重新生成的图片",
     "Composite version": "合成版本",
     "Upscale": "放大",
-    "This file is not a valid Atria save. Choose an intact .atriasave file and try again.": "这个文件不是有效的 Atria 存档。请重新选择完整的 .atriasave 文件。"
+    "This file is not a valid Atria save. Choose an intact .atriasave file and try again.": "这个文件不是有效的 Atria 存档。请重新选择完整的 .atriasave 文件。",
+    "Enable remote images from ${0}? These sites can observe your IP address, image choices and request timing.": "允许加载来自 ${0} 的外部图片吗？这些网站可以看到你的 IP 地址、访问的图片和请求时间。"
 }

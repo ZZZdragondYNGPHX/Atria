@@ -21,6 +21,12 @@ test('coverage ignores style elements but still audits similarly named visible e
     ]);
 });
 
+test('browser permission prompts require translated copy, including optional calls and dynamic origins', () => {
+    const issues = auditProductSource('window.confirm?.(\'Enable images from \' + origin); doc.defaultView.alert(\'Try again\');', 'public/scripts/native/example.js', [{}]);
+    expect(issues.map(item => item.reason)).toEqual(['raw browser dialog copy', 'raw browser dialog copy']);
+    expect(auditProductSource('window.confirm?.(fmt(\'Enable ${0}?\', [origin]));', 'example.js', [{ 'Enable ${0}?': '允许 ${0} 吗？' }])).toEqual([]);
+});
+
 test('Native, Shell, Agents, Skills and retained Global Plugin copy has Simplified Chinese and matching placeholders', () => {
     expect(auditProductLocalization()).toEqual([]);
 });

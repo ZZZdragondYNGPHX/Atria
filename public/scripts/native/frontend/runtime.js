@@ -39,7 +39,7 @@ export async function mountNativeFrontend(options) {
     };
     const media = await createMediaResolver({ resources, window, fetchImage: options.fetchImage, enabled: options.remoteMediaEnabled === true, changed: () => { instances.forEach(instance => instance.revokeScriptMedia?.()); requestRender(); } });
     if (media.required && !media.enabled && media.origins.length) {
-        const consent = await (options.confirmRemoteMedia?.(media.origins) ?? window.confirm?.('Enable remote images from ' + media.origins.join(', ') + '? These sites can observe your IP address, image choices and request timing.'));
+        const consent = await (options.confirmRemoteMedia?.(media.origins) ?? window.confirm?.(fmt('Enable remote images from ${0}? These sites can observe your IP address, image choices and request timing.', [media.origins.join(', ')])));
         if (!consent) { scripts.dispose(); scheduler.dispose(); resources.dispose(); media.dispose(); throw new Error('media_permission_denied'); }
         media.setEnabled(true);
     }

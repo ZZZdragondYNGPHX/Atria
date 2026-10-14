@@ -48,6 +48,13 @@ export function auditProductSource(source, filename, catalogs = locales) {
             },
             CallExpression(node) {
                 const name = node.callee.name;
+                const receiver = node.callee.object;
+                if (['confirm', 'alert', 'prompt'].includes(node.callee.property?.name)
+                    && (['window', 'globalThis'].includes(receiver?.name) || receiver?.property?.name === 'defaultView')) {
+                    for (const leaf of leaves(node.arguments[0])) if (visible(literal(leaf))
+                        || ['BinaryExpression', 'TemplateLiteral'].includes(leaf?.type) && /[A-Za-z]{2,}/.test(source.slice(leaf.start, leaf.end)))
+                        findings.push({ line: leaf.loc.start.line, reason: 'raw browser dialog copy', text: source.slice(leaf.start, leaf.end) });
+                }
                 let index = ['tl', 't', 'translate', 'translateShellText', 'fmt', 'formatShellText', 'formatProductText', 'i18n', 'i18nFormat'].includes(name) ? 0 : null;
                 if (filename.endsWith('/login.js') && name === 'displayError') index = 0;
                 if (filename.endsWith('/login.js') && name === 'setEntryText') index = 1;
