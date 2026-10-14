@@ -136,19 +136,34 @@
 - **Affected modules**：[media-precision.md](media-precision.md) D-011；[media-editing-gallery.md](media-editing-gallery.md) D-009/D-010；[provider-protocol.md](provider-protocol.md) 的编辑能力声明与执行证据。
 - **Scope limit**：此轮冻结中立协议与默认值/验收责任，**并未**批准 P0/P1 各具体模型/Workflow 的功能事实、Vibe/LoRA/ControlNet 的可组合性、任何隐式降级/跨收费 Provider fallback，或声称真实后端已经通过执行测试；这些在 Round 12 决定。
 
+## D-012（2026-10-14，Round 12）— 各 Provider 编辑/参考矩阵、分级约束与 L1/L2/L3 验收
+
+- **Decision**：用户选择 **方案 C：分级约束协商（Required/Preferred/Optional） + 明确授权的降级 + 三级执行验收（L1/L2/L3）**。建立**两层矩阵**：官方文档与协议家族的研究事实、绑定实际 Connection + Model/Workflow + 版本/扩展的 Effective Target Capability。文档显示某厂商拥有 Inpaint/Reference/LoRA 等工具，不等于某个已配置的 Atria Target 自动 verified supported。
+- **Provider 与功能范围矩阵**：按照 D-004 的 **P0 NovelAI V3/V4/V4.5/V5、ComfyUI、OpenAI Images** 与 **P1 Gemini Native Image、SD WebUI/A1111/Forge、RunningHub** 各自维护 Img2Img、Inpaint/Outpaint、Upscale、多图、Identity/Outfit/Style/Vibe、LoRA、ControlNet/Structure 等操作的**逐模型/工作流三态能力清单、组合限制、文档/fixture/live 证据与费用**。在没有实际验证的 Target 上保留 `unknown`，不冒充真实服务已通过测试。详细家族研究矩阵及来源见 [provider-editing-matrix.md](provider-editing-matrix.md) §1。
+- **已知差异必须被具体表达**：NovelAI Precise Reference 官方限 V4.5 且不能与 Vibe 同用，Vibe/Precise 有附加费用；ComfyUI 的参考、LoRA、ControlNet/Mask 能力依赖工作流、已安装节点和模型；OpenAI Images 的多图/透明 Mask 编辑与对像素保真的硬保证不是一回事；Gemini 的自然语言语义编辑不能在无确切接口时冒充 Canonical 精准 Mask；SD WebUI/Forge 的 LoRA/ControlNet 依赖实际运行版本和扩展；RunningHub 的编辑/结构控制由具体 Workflow 和远端 Task 能力决定。这些是**研究与协商约束**，不是对全部型号宣布 supported。
+- **必需/偏好/可选三个约束层级**：`required`（正式 Actor/Branch/Revision/玩家显示权限/素材合法授权、用户坚持的 Source/精确 Mask/角色参考、全局成本硬上限等）**绝不静默降级**；目标 unsupported/unknown 则 fail closed，可让用户明确修改任务或换到已验证的目标后产生新授权/意图。`preferred` 仅在用户已审阅并明确允许**具体范围、替代方式、费用上限**时允许降级；`optional` 可按本任务授权策略省略，但应审计记录实际省略原因。不能以文字化替换精确 Mask、悄悄抛弃身份图、无许可跨 Provider 收费或把图片错误反写 World Truth。
+- **分级协商时序与证据**：来源/身份/时点/分支/披露/版权硬门禁 → ImagePromptIR/实际参考图用途 → Target 单项及**组合能力**和 Mask/Workflow 校验 → 展示原要求/最终可实现要求/费用与画面风险 → 用户已有明确授权/此刻审批 → D-008 持久预算 CAS 与 ImageJob 发送。非秘密快照必须保存 `original/effective/omitted` 约束、目标能力/配置指纹、版本、Mask/引用转换、用户授权与实际请求指纹；上述是逻辑槽位，具体数据库与 API 字段留待 Round 13。
+- **三级验收**：**L1** 模型/工作流声明、请求/Mask/图片格式编译与非法参数静态协议检查；**L2** 分 Provider Fixture/Mock 的执行、Job 取消/恢复/预算/权限/DAG/SavePoint/GC 验证；**L3** 在用户明确授权、提供真实端点/秘钥与可接受费用后，针对**确切型号与工作流**验证实际生成/编辑结果、远端状态、成本和可用性。**L1/L2 不能冒充 L3**；没有真实凭据/余额/环境时 L3 明记 `not_run`，不能伪造通过，也不能未经授权发起消费性探测。P0 的真实/Mock 验证不能替代 P1 的逐家族测试。
+- **交付原则**：该实施阶段的每项 Adapter/已批准操作必须提供可自动执行的 L1/L2 证据并报告覆盖；L3 按实际用户授权与端点能力执行或如实标记不可执行/未测试。持久 Job/AssetStore 的真实成本、崩溃/不确定提交与取消不得违反 D-008；用户不能被迫为了进行普通代码开发而先提供付费 Secret。
+- **Reason**：让 P0/P1 多家族支持覆盖真实功能而不伪装为同质图片接口，保障角色/Mask 与 SavePoint 的一致性、费用可控性和真实验收可信度。
+- **Affected modules**：[provider-editing-matrix.md](provider-editing-matrix.md) 为 D-012 的详细权威；[provider-protocol.md](provider-protocol.md) 为 Adapter/Target 声明、[media-precision.md](media-precision.md) 为 Canonical Mask 和媒体验收、[visual-continuity.md](visual-continuity.md) 为不可降级视觉/叙事权威。
+- **Scope limit**：本轮冻结**能力矩阵的判定粒度与已知文档差异、分级降级/预算边界、L1/L2/L3 验收责任**。没有批准精确 ImagePromptIR/Capability/Media/Job 的持久 Schema、HTTP 端点、设置/跨平台 UI 布局、任何尚未经验证模型的实际支持状态，也没有宣称任何 Live 付费测试通过。**第十三轮再讨论 API/Schema、UI 与开发/验收收口**。
+
 ## 基线与合规约束（非单独由用户冻结的架构方案）
 
 - Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
 - st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
-- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则，D-011 冻结 Mask/草稿/Gallery/GC/SavePoint 的具体中立协议、可调默认与验收；实际 Provider 编辑能力/参数、费用与降级策略仍待议。
+- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则，D-011 冻结 Mask/草稿/Gallery/GC/SavePoint 的中立协议、可调默认与验收；D-012 冻结 Provider 家族/Target 能力矩阵、分级约束降级许可、三级验收责任。精确 Native API/Schema、实际某 Target 支持结论和跨平台 UI/开发收口仍待议。
 
 ## Unresolved; **not** decisions
 
-- D-009/D-010/D-011 已冻结 Media Studio/DAG/各编辑类别、Canonical Mask 像素与草稿恢复、目标级能力声明规范、Gallery 分层视图、两阶段 GC 和 SavePoint 导入验收；**Round 12 待定**具体 Provider img2img/Inpaint/Upscale/参考图/Vibe/LoRA/ControlNet 的实际能力矩阵、组合限制、降级/付费许可及真实协议验收。当前仍是设计，**非代码已实现**。
+- **Round 13 待定**：统一 Native Image API/资源 Schema、设置 UI/Provider Profiles、CachyOS/Windows/Termux 的跨平台交互、最终 feat 阶段/子阶段安排、性能/安全/验收矩阵及实施前收口。未获用户批准前不把候选当开发合同。
+
+- D-009/D-010/D-011/D-012 已冻结 Media Studio/DAG/编辑类别与 Mask/草稿/Gallery/GC/SavePoint、中立能力与家族差异矩阵、Required/Preferred/Optional 显式降级规则和 L1/L2/L3 验收；**各个用户实际 Target 的具体 verified/live 支持状态仍以连接及实测为准，当前没有执行真实后端测试**。
 
 - D-002/D-007/D-008 已冻结 Commit 后启动、跨回合 Scene/Shot、分级检测、可解释自适应评分、默认关闭的自动模式及软性节奏；**待定**：视觉画廊操作、产品 UI 的具体授权交互与运行数据校准。
 - D-005/D-006 已冻结三层视觉权威、证据驱动混合更新、硬门禁/冲突审查与参考图按用途选择原则；精确阈值、状态持续/失效细节、Vibe/Reference 强度和特定 Provider 功能矩阵仍未定案。
-- D-003 已冻结语义统一/Adapter/能力协商的分层原则；**实际请求/响应 Schema、能力配置及降级策略尚未冻结**。
+- D-003/D-011/D-012 已冻结语义 IR/Adapter/三态能力清单与分级降级原则；**Round 13 待定**精确 Native 请求/响应与能力声明 Schema、内部资源/持久数据 API、版本/迁移路线和最终验证矩阵。
 - Round 4 后端家族、P0/P1/P2 优先级、三层配置与四级选择覆盖已由 D-004 冻结；**具体模型 IDs、协议参数、能力探测与默认生图 Profile** 未冻结。
-- Img2Img/Inpaint/Upscale 功能类别已由 D-009 纳入本企划，**精确到各 Provider/模型/工作流的能力及编辑默认操作尚待细化**；Vibe/参考图专有特性、视频和批量生成的完整功能矩阵及进入阶段尚待分别决定。
+- Img2Img/Inpaint/Upscale、Reference/Vibe/LoRA/ControlNet 的跨家族功能矩阵与未知/冲突规则已由 D-012 冻结；**逐模型真实兼容性及专有 API 参数仍需 Adapter 开发与 L3 验证**。视频、批量生成是否进入当前工程及用户实际 UI 仍待决定。
 - D-007/D-008 已冻结 Planner/Image 双账、滚动窗口默认、云自动付费默认零授权、持久队列租约/fencing/状态不确定不重发/幂等发布等策略；**待定**：确切表/字段与存储事务实现、Provider 特有请求对账和实际收费、资产 GC 的完整 Schema、后续可测校准。
