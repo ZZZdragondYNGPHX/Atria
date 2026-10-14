@@ -4,6 +4,7 @@
 - Primary Workspace: `package`
 - Status: P5 候选交付 — `1.0.0-rc.4` 已构建；MiniMax 中国区连接及六次真实游戏样本通过
 - Current stage: P5 — 规则/媒体/宿主和有限真实模型样本已验证，三天全部剧情的模型体验尚未完整验收
+- Distribution: 已按用户要求作为 Atria 初始游戏内置，`main@2686aa40a`；制作源码与历史发布仍归 package
 - Record: [制作记录](../../../records/package/foglight-inn.md)
 - Product baseline: `main@9241325a7`（2026-10-14 的代码核查基线；正式实施重查实际 Git）
 - Plan entrypoint: `docs:plans/package/foglight-inn/index.md`

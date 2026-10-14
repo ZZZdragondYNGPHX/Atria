@@ -109,3 +109,19 @@ Lifecycle 保存正式游戏与只读投影，Authority Transaction 执行闭合
 新发布 `package:foglight-inn/releases/foglight-inn-1.0.0-rc.4.atria`：20105982 字节，SHA-256 `1627fe497920c66f7a323826f94ded818a3dda841603bc60d00043539c13bf18`；旧候选保留。该实际归档的完整媒体安装、精确依赖、干净存储快照导入、损坏存档拒绝并保留有效进度、完整进程导出五组检查通过（模型在存档检查中明确模拟，快照 8285 字节）。相关 JS 语法与差异空白检查通过；没有重跑不受影响的全量测试或宣称新一轮浏览器验收。
 
 本轮不修改产品 main。各隔离 Session 存储已释放，原始请求/响应仅临时用于诊断并未另存；共享滚动限流及当前私有配置保留。
+
+## 2026-10-15 07:59 +08:00 — 作为 Atria 初始游戏分发
+
+按用户新增要求，`main@2686aa40a` 已内置实际发布的 `1.0.0-rc.4.atria`，并同步远端。产品位于 `default/content/games/` 的归档与 package 发布文件完全相同：20105982 字节，SHA-256 仍为 `1627fe497920c66f7a323826f94ded818a3dda841603bc60d00043539c13bf18`。这是用户明确要求的产品分发副本；游戏制作源码、原始媒体、历史发布和迭代工具继续归独立 package，未将 package 分支合进 main。
+
+复用现有默认内容索引与每用户 `content.log`，增加 Native archive sink。安装使用现有 PackageInstaller、PackageRepo、AssetStore 及同一资源写锁，先核对固定归档哈希；只接受 generation 权限，其他必需或可选权限均拒绝。初始化只安装作品，不创建 Session、不填模型配置、不发生成请求。已有同 ID 作品一律保留其选择版本与已有进度；普通重启不重复安装，也不复活已删除作品。失败不写成功标记，修复后可重新尝试。既有 `skipContentCheck` 设置继续生效。
+
+实际验证：
+
+- FS / SQLite 共 22 项相关 Jest 检查通过（新增 Native 初始游戏 14 项、既有内容初始化回归 8 项）：每用户独立安装、跨重启持久化、不产生 Session 或 fetch、保留已有版本和 SavePoint、删除后不重装、哈希失败及修复重试、并发去重、拒绝超出权限。未运行 MySQL/Postgres 或全量产品套件。
+- 首次 SQLite 检查因本机 better-sqlite3 原生绑定缺失而失败；执行该依赖自带安装脚本恢复 12.10.0 预编译驱动后，以上相关检查全部通过。没有为绕过失败修改 SQLite 引擎或忽略断言。
+- 隔离全新数据根启动完整 Atria，实际 Chrome 完成身份引导；Play 首屏已出现《雾灯旅舍》，可直接打开 Library 详情，版本 rc.4、四人物与灯岬岛正确，尚无进度。GET 正式作品列表返回 ready 及相同内容哈希。点击 Start New 进入已有三用途配置，空模型配置会正常引导 Runtime，未调用模型。
+- npm 发行 dry-run 确认包含完整 `.atria` 与 native seeder；当前 npm 默认拒绝目录包元数据，使用仅本次命令的 `--allow-directory=all --ignore-scripts --dry-run` 完成列表检查，未发布 npm 包。Docker 既有 COPY / ignore 配置亦未排除该资产。
+- 相关 ESLint 与 `git diff --check` 通过。首启测试服务器、浏览器、独立用户数据与配置已清理；临时产品分支/工作树已删除，其他任务工作空间未动。
+
+此项完成内置分发，不扩展上一节真实模型样本的质量结论；游戏仍保持候选版本。游玩沿玩家自己配置的 Persona、模型路由及正常存档流程。
