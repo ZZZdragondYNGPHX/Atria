@@ -1,4 +1,3 @@
-import { compileNativeContextPlan } from '../../public/scripts/native/context-compiler.js';
 import { informationContext } from '../../public/shared/native-information-runtime.js';
 import { illustrationAnchorMatches, assertIllustrationPromptContext } from '../../public/shared/native-illustration-contract.js';
 import { illustrationContentHash } from './session-illustrations.js';
@@ -39,7 +38,7 @@ export async function captureIllustrationContext(core, handle, sessionId, anchor
     const body = snapshot.timeline[index].content;
     const paragraphs = [...body.matchAll(/[^\r\n]+(?:\r?\n(?!\r?\n)[^\r\n]+)*/g)];
     const touched = paragraphs.map((part, i) => part.index < anchor.end && part.index + part[0].length > anchor.start ? i : -1).filter(i => i >= 0);
-    const neighbors = touched.length ? paragraphs.slice(Math.max(0, touched[0] - 1), touched.at(-1) + 2).map(part => part[0]).join('\n\n') : '';
+    const neighbors = touched.length ? body.slice(paragraphs[Math.max(0, touched[0] - 1)].index, anchor.end) : '';
     const groups = [];
     const information = informationContext(snapshot, { kind: 'narrator' });
     const visibleMessages = information ? new Set((information.projection?.items ?? []).filter(entry => entry.variantId).map(entry => entry.recordId)) : null;
@@ -52,10 +51,8 @@ export async function captureIllustrationContext(core, handle, sessionId, anchor
         { role: 'user', content: group.map(entry => entry.role + ': ' + entry.content).join('\n') }, group.map(entry => ({ source: 'native.context-source', ref: JSON.stringify({ kind: 'timeline', messageId: entry.messageId, variantId: entry.activeVariantId, branchId: source.branchId, revisionId: source.revisionId }) }))));
     // Existing selection authority supplies relevant knowledge and scene facts.
     // Do not scan raw world/actor/knowledge catalogs into a parallel context.
-    const selected = await compileNativeContextPlan(snapshot, { modelContextLimit: 65536, responseReserve: 512 });
-    const facts = selected.included.filter(entry => ['knowledge', 'current_state_event', 'target_agent'].includes(entry.lane)
-        || entry.contextItemId.startsWith('projection:')).map(entry => item(entry.contextItemId, 'context.fact', entry.content,
-        (entry.sourceRefs ?? []).map(ref => ({ source: 'native.context-source', ref: JSON.stringify(ref) }))));
+    const facts = (information?.disclosure?.items ?? []).map(entry => item('visual-display:' + entry.id, 'context.fact', JSON.stringify(entry),
+        [{ source: 'native.information.display', ref: information.disclosure.viewId + ':' + entry.id }]));
     return assertIllustrationPromptContext({ schemaVersion: 1, source, items: [...history, ...(neighbors ? [item('illustration-paragraphs', 'context.fact', neighbors)] : []), ...facts] });
 }
 

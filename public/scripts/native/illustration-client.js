@@ -74,6 +74,12 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
             }
             return result;
         },
+        async visual(scope, domain, action, input, signal) {
+            if (!['director', 'media', 'gallery', 'mask', 'reference', 'gc'].includes(domain) || !/^[a-z-]+$/.test(action)) throw new TypeError('Unknown visual domain');
+            if (runtime.snapshot?.session.sessionId !== scope.sessionId || runtime.snapshot.revision.branchId !== scope.branchId || runtime.history) throw new Error('atri_extension_disposed');
+            runtime.assertWritable();
+            return generationRequest('/visual/' + domain + '/' + action, { method: 'POST', body: { ...input, sessionId: scope.sessionId, branchId: scope.branchId }, signal });
+        },
         image(scope, action, input, signal) { return this.prompt(scope, action, input, signal, 'images'); },
         command(scope, command, input, signal) {
             const captured = structuredClone(input);

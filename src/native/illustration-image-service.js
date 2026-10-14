@@ -1,3 +1,5 @@
+import { composeIllustrationPrompt } from '../../public/shared/illustration-plugin-contract.js';
+import { VisualContinuity } from './visual-continuity.js';
 import { assertNativeId, createNativeId } from './identity.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { IllustrationService } from './illustration-service.js';
@@ -62,12 +64,15 @@ export class IllustrationImageService {
         const target = (await this.resources.getCurrent(handle, 'core.image-target', targetId))?.snapshot;
         if (!target) visualError('target_missing');
         const connection = await this.host.persistence.getConnectionProfile(handle, target.connectionProfileId);
-        const source = { kind: 'session', sessionId, branchId, revisionId: annotation.anchor.revisionId, annotationId, anchor: annotation.anchor, timeKind: 'present' };
+        const source = { kind: 'session', sessionId, branchId, revisionId: annotation.anchor.revisionId, annotationId, anchor: annotation.anchor, timeKind: annotation.timeKind ?? 'present',
+            ...(annotation.sceneId ? { sceneId: annotation.sceneId, shotId: annotation.shotId } : {}) };
         await resolveVisualSource(this.host.sessionCore, handle, source);
         const draft = annotation.draft;
-        const ir = { schemaVersion: 2, source, operation: input.operation ?? 'txt2img', authoring: 'raw', prompt: draft.prompt,
-            negativePrompt: rendering?.negativePrompt ?? draft.preset.negativePrompt, scene: draft.scene, style: rendering?.style ?? draft.preset.style,
-            participants: [], references: input.references ?? [], constraints: [...(rendering?.constraints ?? [])] };
+        const projection = await new VisualContinuity({ host: this.host }).project(handle, source, draft);
+        if (projection.conflicts.length) visualError('state_conflict');
+        const ir = { schemaVersion: 2, source, operation: input.operation ?? 'txt2img', authoring: draft.prompt === composeIllustrationPrompt(draft) ? 'structured' : 'raw', prompt: draft.prompt,
+            negativePrompt: rendering?.negativePrompt ?? draft.preset.negativePrompt, scene: draft.scene, style: rendering ? [rendering.style, rendering.quality].filter(Boolean).join(', ') : [draft.preset.style, draft.preset.quality].filter(Boolean).join(', '),
+            participants: projection.participants, references: input.references ?? [], constraints: [...(rendering?.constraints ?? [])] };
         // Editing and references are validated by the Media/Visual authority;
         // an unsupported operation cannot leak through the generation route.
         if (ir.references.length || input.mask || input.parentImageVersionIds?.length) visualError('media_prepare_required');
@@ -96,7 +101,8 @@ export class IllustrationImageService {
         for (const omission of prepared.evidence.constraints.omitted) if (omission.tier === 'preferred' && !approval.omittedPreferred.includes(omission.capability)) visualError('degradation_unauthorized');
         return { amount: cost.kind === 'free' ? 0 : cost.upperBound ?? approval.maxCost, currency: cost.kind === 'free' ? '' : approval.currency };
     }
-    async start(handle, input) {
+    start(handle, input) { return this._submit(handle, input, 'manual'); }
+    async _submit(handle, input, mode) {
         visualObject(input, ['prepareId', 'approval']); assertWritable(); assertNativeId(input.prepareId, 'visualIntent');
         const prepared = (await this.store.read(handle, 'prepared', input.prepareId)).value;
         if (!prepared) visualError('prepare_missing');
@@ -107,11 +113,15 @@ export class IllustrationImageService {
         if (presentation.head !== prepared.expectedHead) visualError('head_conflict');
         await this.host.sessionCore.runs.assert(handle, prepared.source.sessionId, 'generate');
         await resolveVisualSource(this.host.sessionCore, handle, prepared.source);
-        const { amount, currency } = this.authorize(prepared, input.approval, 'manual');
+        if (mode === 'automatic') {
+            const config = (await this.host.extensions.illustrationSettings(handle)).value.director;
+            if (config.mode !== 'automatic' || !config.autoApproval || config.autoApproval.targetFingerprint !== prepared.targetFingerprint) visualError('automatic_unauthorized');
+        }
+        const { amount, currency } = this.authorize(prepared, input.approval, mode);
         const mediaOperation = { schemaVersion: 2, mediaOperationId: createNativeId('mediaOperation'), kind: prepared.evidence.ir.operation,
             source: prepared.source, parentImageVersionIds: [], inputAssets: [], mask: null, geometry: null };
-        const job = await this.store.reserve(handle, newImageJob({ source: prepared.source, intentKey: input.prepareId, fingerprint: prepared.evidence.requestHash,
-            mode: 'manual', connection: prepared.connection, target: prepared.target, compiled: prepared.compiled, evidence: prepared.evidence,
+        const job = await this.store.reserve(handle, newImageJob({ source: prepared.source, intentKey: mode === 'automatic' ? 'auto:' + visualFingerprint({ sessionId: prepared.source.sessionId, variantId: prepared.source.anchor.variantId, start: prepared.source.anchor.start, end: prepared.source.anchor.end }) : input.prepareId, fingerprint: prepared.evidence.requestHash,
+            mode, connection: prepared.connection, target: prepared.target, compiled: prepared.compiled, evidence: prepared.evidence,
             approval: { ...input.approval, authorizedAt: Date.now() }, amount, currency, mediaOperation }));
         this.worker.dispatch(handle, job); return { operationId: job.jobId, head: prepared.expectedHead };
     }

@@ -1,3 +1,6 @@
+import { VisualStore } from '../visual-store.js';
+import { VisualDirector } from '../visual-director.js';
+import { registerVisualWake } from '../visual-events.js';
 import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
 import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
@@ -134,6 +137,10 @@ function startupTaskVariants(contract) {
 export class NativeGenerationHost {
     constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions }) {
         Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions });
+        if (extensions && persistence?._engine && sessionCore) registerVisualWake(persistence._engine, async (handle, sessionId) => {
+            const settings = await extensions.illustrationSettings(handle);
+            if (settings.value.director?.mode !== 'manual') await new VisualDirector({ host: this }).scan(handle, sessionId);
+        });
     }
 
     get authoritySelections() { return authoritySelectionCache(this.sessionCore); }
@@ -1225,6 +1232,8 @@ export class NativeGenerationHost {
                                     requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
                                     agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
                                 if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
+                                if (input.role === 'illustration_prompt' && this.persistence._engine) await new VisualStore({ engine: this.persistence._engine }).reservePlanner(handle,
+                                    { reservationId: attemptId + ':' + retry, tokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens });
                                 const response = await provider.send(rendered, boundary);
                                 attempt.status = 'success';
                                 capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });

@@ -1,9 +1,9 @@
+import { mountVisualDirector } from './visual-director-ui.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters, composeIllustrationPrompt } from '../../shared/illustration-plugin-contract.js';
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 import { renderIllustrationPreset, mountIllustrationSettings } from './illustration-settings-ui.js';
 import { nativeAssetUrl } from './session-projection.js';
-import { novelaiConnectionCapabilities, renderNovelaiIllustration } from '../../shared/novelai-illustration.js';
 
 export async function activate(sdk) {
     const doc = globalThis.document;
@@ -28,7 +28,7 @@ export async function activate(sdk) {
     const terminal = new Set(['completed', 'failed', 'cancelled', 'stale', 'uncertain_submission']);
     const promptErrors = { native_generation_route_missing: '请先创建“绘图提示词”用途的模型路线，并在插图配置中选择。', native_generation_route_ambiguous: '有多条提示词模型路线，请在插图配置中明确选择。', generation_secret_unavailable: '提示词模型连接的密钥不可用，请检查该连接。', native_illustration_source_unavailable: '此旧存档缺少原始历史上下文；可以直接填写提示词。', generation_context_budget_exceeded: '选文与角色描述超过模型容量，请选择容量更大的提示词模型。', native_illustration_prompt_invalid: '模型输出格式不正确，请重试提示词步骤。' };
     const taskLabels = { queued: '等待提示词模型', running: '正在生成提示词', streaming: '正在生成提示词', retrying: '正在重试提示词', finalizing: '正在保存提示词版本', completed: '提示词版本已保存', failed: '提示词生成失败，可重试本步骤', cancelled: '提示词任务已取消', stale: '标注已删除或不可用，结果未写入' };
-    const imageLabels = { queued: '图片任务排队中', running: '正在生成图片', finalizing: '正在保存图片版本', completed: '图片版本已保存', failed: '图片生成失败，可重试本步骤', cancelled: '图片任务已取消', stale: '图片归属已不可用，结果未写入' };
+    const imageLabels = { submitting: '正在提交图片', submitted: '远端已接受图片任务', result_received: '图片已接收，等待发布', uncertain_submission: '发送状态不确定，请核对供应商；不会自动重发', queued: '图片任务排队中', running: '正在生成图片', finalizing: '正在保存图片版本', completed: '图片版本已保存', failed: '图片生成失败，可重试本步骤', cancelled: '图片任务已取消', stale: '图片归属已不可用，结果未写入' };
     const imageErrors = { native_illustration_connection_missing: '请先在插图配置选择图片连接。', native_illustration_connection_invalid: '请检查 NovelAI 图片连接类型和完整接口地址。', native_illustration_capabilities_invalid: '第三方连接需要按服务文档填写图片能力。', native_illustration_prompt_empty: '请先确认或填写图片提示词。', native_illustration_model_unsupported: '图片连接未声明支持此模型，请检查参数与连接能力。', native_illustration_parameters_unsupported: '图片尺寸、采样器或参数超出连接声明的能力。', native_illustration_characters_unsupported: '此模型最多支持六个独立角色提示词。', native_illustration_image_authentication_failed: '图片服务拒绝了所选密钥，请检查图片连接。', native_illustration_image_rate_limited: '图片服务限流，请稍后重试图片步骤。', native_illustration_image_response_invalid: '图片响应不符合所选协议或不是有效 PNG，请检查连接能力。', native_illustration_image_unreachable: '图片服务暂时无法连接，可重试图片步骤。', generation_secret_unavailable: '所选连接的密钥不可用，请检查连接。' };
     function watch(operation, submitted, step = 'prompt') {
         const id = operation.operationId;
@@ -120,6 +120,11 @@ export async function activate(sdk) {
     // canonical range and leaves native selection handles under browser control.
     sdk.events.listen(create, 'mousedown', event => event.preventDefault());
     button(doc, toolbar, '标注与历史', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
+    button(doc, toolbar, '镜头候选', run(async () => {
+        readDraft(); panel.replaceChildren(); panel.hidden = false;
+        button(doc, panel, '关闭候选', () => panel.hidden = true);
+        await mountVisualDirector({ document: doc, parent: panel, sdk, report: error => notify(error.message, true) });
+    }));
     button(doc, toolbar, '插图配置', run(() => {
         if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return;
         readDraft(); readDraft = () => {}; configEditor?.dispose(); panel.replaceChildren(); panel.hidden = false;
@@ -239,25 +244,9 @@ export async function activate(sdk) {
         }));
         const preview = node(doc, editor, 'details'); node(doc, preview, 'summary', '预览最终图片输入');
         const previewText = node(doc, preview, 'pre');
-        let previewConnection;
-        const previewInput = () => {
-            try {
-                previewText.textContent = JSON.stringify(previewConnection ? { ...renderNovelaiIllustration(draft, novelaiConnectionCapabilities(previewConnection), 0), seedNote: '未指定或 -1 的 seed 在提交时随机生成，实际值保存在图片历史。' }
-                    : { prompt: draft.prompt, negativePrompt: draft.preset.negativePrompt, parameters: draft.preset.parameters }, null, 2);
-            } catch (error) { previewText.textContent = imageErrors[error.code] ?? error.message; }
-        };
-        editor.addEventListener('input', () => { if (preview.open) previewInput(); });
-        previewInput(); preview.addEventListener('toggle', () => { if (preview.open) { try { readDraft(); previewInput(); } catch (error) { notify(error.message, true); } } });
-        preview.addEventListener('toggle', async () => {
-            if (!preview.open) return;
-            try {
-                const latestSettings = (await sdk.illustrations.settings.read()).value;
-                const connections = await sdk.illustrations.configuration();
-                if (disposed || !preview.isConnected) return;
-                const connectionId = latestSettings.works[sdk.context.packageId]?.imageConnectionId || latestSettings.imageConnectionId;
-                previewConnection = connections.connections.find(item => item.connectionProfileId === connectionId); previewInput();
-            } catch { if (!disposed && preview.isConnected) previewText.textContent = '图片连接暂不可读取；请检查插图配置。'; }
-        });
+        const previewInput = () => { previewText.textContent = JSON.stringify({ authoring: 'raw', prompt: draft.prompt, negativePrompt: draft.preset.negativePrompt, style: draft.preset.style }, null, 2); };
+        editor.addEventListener('input', () => { if (preview.open) previewInput(); }); previewInput();
+        preview.addEventListener('toggle', () => { if (preview.open) { try { readDraft(); previewInput(); } catch (error) { notify(error.message, true); } } });
         const promptHistory = node(doc, card, 'details'); promptHistory.dataset.section = 'prompts'; promptHistory.open = openDetails.has('prompts'); node(doc, promptHistory, 'summary', '提示词历史');
         for (const version of [...(annotation.promptVersions ?? [])].reverse()) {
             const row = node(doc, promptHistory, 'article');

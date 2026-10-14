@@ -1,5 +1,5 @@
 import { visualObject, visualError, nonSecretVisualJson } from '../../../public/shared/native-visual-contract.js';
-import { protocolManifest } from '../image-registry.js';
+import { protocolManifest, imageSemanticPrompt } from '../image-registry.js';
 import { imageRoute, imageJson, imageFetch, boundedImageBytes, normalizeImage, imagePollDelay, readImageInput, canonicalMaskPng } from './image-transport.js';
 
 export function validateComfyWorkflow(workflow, nodeTypes) {
@@ -60,12 +60,14 @@ export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {
             validateComfyWorkflow(target.workflow, info);
             schemas.set(target.imageTargetId + '@' + target.revision, info);
             const semantic = new Set(target.workflow.bindings.map(b => b.semantic));
+            const builtin = new Set(['CheckpointLoaderSimple', 'CLIPTextEncode', 'EmptyLatentImage', 'KSampler', 'KSamplerAdvanced', 'VAEDecode', 'VAEEncode', 'VAEEncodeForInpaint', 'SaveImage', 'LoadImage', 'ImageScale', 'ImageUpscaleWithModel', 'UpscaleModelLoader', 'LoraLoader', 'ControlNetLoader', 'ControlNetApply', 'ControlNetApplyAdvanced']);
+            const local = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(connection.endpoint).hostname) && Object.values(target.workflow.graph).every(node => builtin.has(node.class_type));
             return protocolManifest(fingerprint, { txt2img: 'supported', img2img: semantic.has('base') ? 'supported' : 'unsupported',
-                inpaint: semantic.has('base') && semantic.has('mask') ? 'supported' : 'unsupported', upscale: 'unknown', identity: 'unknown', lora: 'unknown', controlnet: 'unknown' });
+                inpaint: semantic.has('base') && semantic.has('mask') ? 'supported' : 'unsupported', upscale: 'unknown', identity: 'unknown', lora: 'unknown', controlnet: 'unknown' }, { cost: local ? { kind: 'free', currency: '', upperBound: 0 } : { kind: 'unknown', currency: '', upperBound: null } });
         },
         compile({ ir, target, connection, seed }) {
             const graph = validateComfyWorkflow(target.workflow, schemas.get(target.imageTargetId + '@' + target.revision) ?? target.workflow.nodeTypes);
-            const values = { prompt: ir.prompt, negativePrompt: ir.negativePrompt, seed, width: target.nativeParameters.width ?? 832, height: target.nativeParameters.height ?? 1216 };
+            const values = { prompt: imageSemanticPrompt(ir), negativePrompt: ir.negativePrompt, seed, width: target.nativeParameters.width ?? 832, height: target.nativeParameters.height ?? 1216 };
             const inputs = [];
             for (const binding of target.workflow.bindings) {
                 if (['base', 'mask'].includes(binding.semantic)) {

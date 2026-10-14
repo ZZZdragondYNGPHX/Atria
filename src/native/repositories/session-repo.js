@@ -639,6 +639,10 @@ export class SessionRepo {
             await putMutable(tx, key, published, { expectedIntegrity: existing?.integrity ?? null });
             await putImmutable(tx, receiptKey, { schemaVersion: 1, commitId, fingerprint, sessionId: session.sessionId,
                 revisionId: revision.revisionId, branchId: revision.branchId, expectedRevisionId, status: 'committed' });
+            // Non-narrative durable discovery marker. Consumers prove the
+            // revision reachable from a committed Branch before using it.
+            await putImmutable(tx, { kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle, resourceType: 'atri.visual.commit', resourceId: revision.revisionId },
+                { sessionId: session.sessionId, branchId: revision.branchId, revisionId: revision.revisionId, createdAt: revision.createdAt });
             const updated = await readRunControl(tx, handle, session.sessionId);
             if (updated) {
                 await writeRunControl(tx, handle, session.sessionId, updated);

@@ -1,3 +1,4 @@
+import { requestVisualWake } from './visual-events.js';
 import { captureTaskProduction } from './task-artifact-authority.js';
 import { adoptKnowledge } from './knowledge-authority.js';
 import { PERSONA_NAMESPACE, assertPersonaState, personaIdentity, personaFailure } from './persona-contract.js';
@@ -537,6 +538,7 @@ export class SessionCore {
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead, commitId, requestFingerprint });
+        requestVisualWake(this, handle, session.sessionId);
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
             invalidateFrontendEpoch(handle, session.sessionId);

@@ -2,7 +2,7 @@
 export const OFFICIAL_ILLUSTRATION_ID = 'atri_official_illustration';
 export const OFFICIAL_PROMPT_TEMPLATE = '根据选文与历史上下文整理绘图提示词。固定外观由程序保留；只补充场景、构图及每个出场角色的动作、表情和剧情服装。不要加入未出场角色。';
 export const defaultIllustrationPreset = () => ({ style: '', quality: '', negativePrompt: '', parameters: { width: 832, height: 1216 } });
-export const defaultIllustrationSettings = () => ({ schemaVersion: 2, enabled: false, characters: [], works: {}, preset: defaultIllustrationPreset(), imageTargetId: '', imageRenderingId: '', promptRouteId: '', template: OFFICIAL_PROMPT_TEMPLATE });
+export const defaultIllustrationSettings = () => ({ schemaVersion: 2, enabled: false, characters: [], works: {}, preset: defaultIllustrationPreset(), imageTargetId: '', imageRenderingId: '', director: { mode: 'manual', density: 'balanced', routeId: '', autoApproval: null }, promptRouteId: '', template: OFFICIAL_PROMPT_TEMPLATE });
 function object(value, keys) {
     if (!value || Object.prototype.toString.call(value) !== '[object Object]' || Reflect.ownKeys(value).some(key => !keys.includes(key) || !Object.hasOwn(Object.getOwnPropertyDescriptor(value, key), 'value'))) throw new TypeError('Invalid illustration preferences');
 }
@@ -26,7 +26,7 @@ export function assertDrawingCharacter(value) {
     return { id: identity(value.id), name: value.name, aliases: [...new Set(value.aliases)], fixedPrompt: text(value.fixedPrompt), defaultClothing: text(value.defaultClothing), enabled: value.enabled, storyActorId: text(value.storyActorId, 128) };
 }
 export function assertIllustrationSettings(value) {
-    object(value, ['schemaVersion', 'enabled', 'characters', 'works', 'preset', 'imageTargetId', 'imageRenderingId', 'promptRouteId', 'template']);
+    object(value, ['schemaVersion', 'enabled', 'characters', 'works', 'preset', 'imageTargetId', 'imageRenderingId', 'director', 'promptRouteId', 'template']);
     if (value.schemaVersion !== 2 || typeof value.enabled !== 'boolean' || !Array.isArray(value.characters) || value.characters.length > 1024) throw new TypeError('Invalid illustration settings');
     const characters = value.characters.map(assertDrawingCharacter), ids = new Set(characters.map(item => item.id));
     if (ids.size !== characters.length) throw new TypeError('Duplicate drawing character');
@@ -39,7 +39,15 @@ export function assertIllustrationSettings(value) {
         works[key] = { characterIds: [...work.characterIds], ...(work.preset ? { preset: assertIllustrationPreset(work.preset) } : {}),
             ...(work.imageTargetId === undefined ? {} : { imageTargetId: text(work.imageTargetId, 128) }), ...(work.imageRenderingId === undefined ? {} : { imageRenderingId: text(work.imageRenderingId, 128) }), ...(work.promptRouteId === undefined ? {} : { promptRouteId: text(work.promptRouteId, 128) }) };
     }
-    const settings = { schemaVersion: 2, enabled: value.enabled, characters, works, preset: assertIllustrationPreset(value.preset), imageTargetId: text(value.imageTargetId, 128), imageRenderingId: text(value.imageRenderingId, 128), promptRouteId: text(value.promptRouteId, 128), template: text(value.template) };
+    object(value.director, ['mode', 'density', 'routeId', 'autoApproval']);
+    if (!['manual', 'semi', 'automatic'].includes(value.director.mode) || !['restrained', 'balanced', 'immersive'].includes(value.director.density)) throw new TypeError('Invalid visual director settings');
+    text(value.director.routeId, 128);
+    if (value.director.autoApproval !== null) {
+        object(value.director.autoApproval, ['targetFingerprint', 'maxCost', 'currency', 'externalAssetIds', 'omittedPreferred']);
+        if (!/^[a-f0-9]{64}$/.test(value.director.autoApproval.targetFingerprint) || !Number.isFinite(value.director.autoApproval.maxCost) || value.director.autoApproval.maxCost < 0
+            || typeof value.director.autoApproval.currency !== 'string' || !Array.isArray(value.director.autoApproval.externalAssetIds) || !Array.isArray(value.director.autoApproval.omittedPreferred)) throw new TypeError('Invalid automatic authorization');
+    }
+    const settings = { schemaVersion: 2, enabled: value.enabled, characters, works, preset: assertIllustrationPreset(value.preset), imageTargetId: text(value.imageTargetId, 128), imageRenderingId: text(value.imageRenderingId, 128), director: structuredClone(value.director), promptRouteId: text(value.promptRouteId, 128), template: text(value.template) };
     if (JSON.stringify(settings).length > 4 * 1024 * 1024) throw new TypeError('Illustration settings exceed budget');
     return settings;
 }

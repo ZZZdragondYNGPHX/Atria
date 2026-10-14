@@ -1,5 +1,6 @@
+import { resolveVisualSource } from './visual-source.js';
 import { assertIllustrationDraft } from '../../public/shared/illustration-plugin-contract.js';
-import { createNativeId } from './identity.js';
+import { createNativeId, assertNativeId } from './identity.js';
 import { illustrationContentHash } from './session-illustrations.js';
 import { assertIllustrationImage, assertIllustrationAnchor } from '../../public/shared/native-illustration-contract.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
@@ -11,13 +12,15 @@ import { captureIllustrationContext } from './illustration-context.js';
 export class IllustrationService {
     constructor({ sessionRepo, sessionCore }) { this.sessions = sessionRepo; this.core = sessionCore; }
 
-    async createAnnotation(handle, sessionId, { revisionId, messageId, variantId, start, end, quote, draft, expectedHead, branchId }) {
+    async createAnnotation(handle, sessionId, { revisionId, messageId, variantId, start, end, quote, draft, expectedHead, branchId, annotationId = createNativeId('annotation'), sceneId, shotId, timeKind = 'present' }) {
         const snapshot = await this.sessions.loadSnapshot(handle, sessionId, { revisionId });
         const entry = snapshot.timeline.find(item => item.messageId === messageId && item.activeVariantId === variantId);
         if (!entry || !['assistant', 'user'].includes(entry.role)) throw new TypeError('Illustration requires committed narrative');
-        if (branchId !== undefined && branchId !== snapshot.revision.branchId) throw new ConflictError('native_illustration_branch_conflict');
+        if (branchId !== undefined && branchId !== snapshot.revision.branchId && !this.core) throw new ConflictError('native_illustration_branch_conflict');
         const anchor = assertIllustrationAnchor({ revisionId, messageId, variantId, start, end, quote, contentHash: illustrationContentHash(entry.content) });
-        const annotation = { annotationId: createNativeId('annotation'), anchor, selectedImageVersionId: null, createdAt: Date.now(), ...(draft === undefined ? {} : { draft: assertIllustrationDraft(draft) }) };
+        assertNativeId(annotationId, 'annotation');
+        if (this.core && branchId && branchId !== snapshot.revision.branchId) await resolveVisualSource(this.core, handle, { kind: 'session', sessionId, branchId, revisionId, annotationId, anchor, timeKind });
+        const annotation = { annotationId, anchor, ...(sceneId ? { sceneId, shotId, timeKind } : {}), selectedImageVersionId: null, createdAt: Date.now(), ...(draft === undefined ? {} : { draft: assertIllustrationDraft(draft) }) };
         if (this.core) {
             try { annotation.promptContext = await captureIllustrationContext(this.core, handle, sessionId, anchor); } catch (error) {
                 // A legacy head-only save can lack this source's history. Manual
@@ -25,7 +28,7 @@ export class IllustrationService {
                 if (error.code !== 'native_illustration_source_unavailable') throw error;
             }
         }
-        return this.sessions.updateIllustrations(handle, sessionId, state => ({ ...state, annotations: [...state.annotations, annotation] }), { expectedHead, branchId: snapshot.revision.branchId });
+        return this.sessions.updateIllustrations(handle, sessionId, state => state.annotations.some(item => item.annotationId === annotationId) ? state : ({ ...state, annotations: [...state.annotations, annotation] }), { expectedHead, branchId: branchId ?? snapshot.revision.branchId });
     }
 
     _annotation(state, annotationId) {

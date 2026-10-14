@@ -83,10 +83,10 @@ export function assertIllustrationState(value) {
     if (value.schemaVersion !== 1 || !Array.isArray(value.annotations) || value.annotations.length > 2048
         || !Array.isArray(value.images) || value.images.length > 8192) throw new TypeError('Invalid illustration state');
     const annotations = value.annotations.map(item => {
-        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft', 'promptVersions', 'promptContext']);
+        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft', 'promptVersions', 'promptContext', 'sceneId', 'shotId', 'timeKind']);
         return { annotationId: id(item.annotationId, 'ann'), anchor: assertIllustrationAnchor(item.anchor),
             selectedImageVersionId: item.selectedImageVersionId === null ? null : id(item.selectedImageVersionId, 'imgv'),
-            createdAt: integer(item.createdAt), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }),
+            createdAt: integer(item.createdAt), ...(item.sceneId === undefined ? {} : { sceneId: id(item.sceneId, 'scene'), shotId: id(item.shotId, 'shot'), timeKind: ['present', 'flashback', 'dream'].includes(item.timeKind) ? item.timeKind : (() => { throw new TypeError('Invalid visual frame'); })() }), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }),
             ...(item.promptVersions === undefined ? {} : { promptVersions: assertIllustrationPromptVersions(item.promptVersions) }),
             ...(item.promptContext === undefined ? {} : { promptContext: assertIllustrationPromptContext(item.promptContext) }),
             ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };

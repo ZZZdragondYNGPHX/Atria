@@ -64,6 +64,10 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
             if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
             return illustrationApi.prompt(context, action, input, controller.signal);
         }),
+        visual: illustrationCall((domain, action, input = {}) => {
+            if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
+            return illustrationApi.visual(context, domain, action, input, controller.signal);
+        }),
         image: illustrationCall((action, input = {}) => {
             if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
             return illustrationApi.image(context, action, input, controller.signal);

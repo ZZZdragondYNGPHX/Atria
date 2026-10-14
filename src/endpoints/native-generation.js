@@ -1,3 +1,6 @@
+import { createImageRegistry, imageTargetFingerprint } from '../native/image-registry.js';
+import { VisualDirector } from '../native/visual-director.js';
+import { VisualContinuity } from '../native/visual-continuity.js';
 import { VisualConfiguration } from '../native/visual-configuration.js';
 import { describeSessionProtocols } from '../native/session-public-work.js';
 import { createSkillRepository } from '../skills/repository.js';
@@ -224,6 +227,33 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() })[action === 'start-learning' ? 'startLearning' : action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
+    });
+    for (const action of ['scan', 'list', 'prepare', 'submit', 'skip', 'analyze']) router.post('/visual/director/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const director = new VisualDirector({ host: getHost() }), input = req.body;
+            const result = action === 'scan' ? await director.scan(handle, input.sessionId)
+                : action === 'list' ? await director.list(handle, input.sessionId, input.branchId)
+                    : action === 'submit' ? await director.submit(handle, input.shotId, input.approval)
+                        : action === 'skip' ? await director.skip(handle, input.shotId, input.expectedRevision)
+                            : action === 'analyze' ? await director.analyze(handle, input.shotId, AbortSignal.timeout(120000)) : await director.prepare(handle, input.shotId);
+            res.json(result);
+        } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_director_failed' }); }
+    });
+    router.post('/visual/state/propose', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try { res.json(await new VisualContinuity({ host: getHost() }).propose(handle, req.body)); } catch (error) { res.status(400).json({ error: error.code || 'native_visual_state_failed' }); }
+    });
+    router.post('/visual/targets/describe', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try {
+            const host = getHost(), configuration = new VisualConfiguration({ host });
+            const target = (await configuration.resources.getCurrent(handle, 'core.image-target', req.body.imageTargetId))?.snapshot;
+            if (!target) throw new TypeError('Target unavailable');
+            const connection = await host.persistence.getConnectionProfile(handle, target.connectionProfileId), fingerprint = imageTargetFingerprint(target, connection);
+            res.json({ targetFingerprint: fingerprint, capabilities: await createImageRegistry().get(connection.providerAdapter).describe({ target, connection, fingerprint }) });
+        } catch (error) { res.status(400).json({ error: error.code || 'native_visual_capability_failed' }); }
     });
     router.get('/visual/configuration', async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);

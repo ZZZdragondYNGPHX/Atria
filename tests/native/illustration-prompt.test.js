@@ -76,7 +76,8 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const started = await start(annotation); await sent.promise;
         const duplicate = await start(annotation); expect(duplicate.operationId).toBe(started.operationId);
         view = await f.core.appendTimeline(h.handle, view.session.sessionId, { role: 'user', content: 'later plot' });
-        view = await f.core.forkBranch(h.handle, view.session.sessionId, { revisionId: view.revision.revisionId, expectedRevisionId: view.revision.revisionId });
+        const save = await f.core.createSavePoint(h.handle, view.session.sessionId, { kind: 'manual' });
+        view = await f.core.restoreSavePoint(h.handle, view.session.sessionId, save.saveId, { expectedRevisionId: view.revision.revisionId });
         const edited = structuredClone(annotation.draft); edited.prompt = 'user edit';
         await illustrations.updateAnnotation(h.handle, view.session.sessionId, { annotationId: annotation.annotationId, draft: edited, branchId: originalBranch });
         settings.preset.style = 'changed'; settings.characters[0].fixedPrompt = 'changed appearance';
@@ -108,7 +109,9 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const model = (await host.persistence.listModelProfiles(h.handle))[0];
         await host.persistence.saveModelProfile(h.handle, { ...model, remoteModelId: 'new-model-after-submit' });
         const original = structuredClone(view);
-        view = await f.core.forkBranch(h.handle, view.session.sessionId, { revisionId: view.revision.revisionId, expectedRevisionId: view.revision.revisionId });
+        const save = await f.core.createSavePoint(h.handle, view.session.sessionId, { kind: 'manual' });
+        view = await f.core.restoreSavePoint(h.handle, view.session.sessionId, save.saveId, { expectedRevisionId: view.revision.revisionId });
+        // The historical prompt context loader is bounded by its original anchor, and refuses a newer fork Revision.
         await expect(f.sessionRepo.loadSnapshot(h.handle, view.session.sessionId, { revisionId: view.revision.revisionId, illustrationAnchor: annotation.anchor })).rejects.toThrow('ancestry');
         hold.resolve(); await blocker.result; await sent.promise;
         const result = await finish(started.operationId);

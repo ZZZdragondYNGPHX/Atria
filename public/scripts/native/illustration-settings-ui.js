@@ -60,6 +60,19 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         }
         if (showEnabled) field(doc, content, '启用官方插图插件', value.enabled, enabled => value.enabled = enabled, { type: 'checkbox' });
         node(doc, content, 'p', '角色库与默认配置的修改只影响新标注；已有提示词保持原样。');
+        select(doc, content, '视觉生成模式', value.director.mode, [['manual', '手动'], ['semi', '半自动：审阅候选后生成'], ['automatic', '全自动：授权与预算内']], mode => value.director.mode = mode);
+        select(doc, content, '自动画面密度', value.director.density, [['restrained', '节制'], ['balanced', '平衡'], ['immersive', '沉浸']], density => value.director.density = density);
+        select(doc, content, '视觉导演模型路线（按需）', value.director.routeId, [['', '低成本规则，不调用模型'], ...(configurationData.routes ?? []).filter(r => r.role === 'role.illustration_prompt').map(r => [r.runtimeRouteId, r.displayName])], route => value.director.routeId = route);
+        let autoLimit = String(value.director.autoApproval?.maxCost ?? 0), autoCurrency = value.director.autoApproval?.currency ?? 'USD';
+        field(doc, content, '自动单任务金额上限', autoLimit, text => autoLimit = text, { type: 'number' });
+        field(doc, content, '自动金额币种', autoCurrency, text => autoCurrency = text);
+        button(doc, content, '检查并确认当前自动目标许可', run(async () => {
+            if (!value.imageTargetId) throw new Error('请先选择全局图片目标');
+            const result = await runtimeRequest('/visual/targets/describe', { method: 'POST', body: { imageTargetId: value.imageTargetId } });
+            if (result.capabilities.cost.kind === 'unknown') throw new Error('此目标费用缺少可确认上界，不能自动发送；可使用半自动审阅');
+            value.director.autoApproval = { targetFingerprint: result.targetFingerprint, maxCost: Number(autoLimit), currency: autoCurrency, externalAssetIds: [], omittedPreferred: [] };
+            status.textContent = '许可已加入当前草稿；保存配置后生效。全局预算仍独立限制发送。'; markDirty();
+        }));
         const library = node(doc, content, 'details'); library.dataset.section = 'characters'; library.open = libraryOpen; node(doc, library, 'summary', '全局绘图角色库');
         select(doc, library, '编辑绘图角色', selectedCharacter, [['', '选择角色'], ...value.characters.map(item => [item.id, item.name + ' · ' + item.id])], id => { try { readPreset(); selectedCharacter = id; render(); } catch (error) { fail(error); } });
         const actions = node(doc, library, 'div', undefined, 'atri-illustration-actions');

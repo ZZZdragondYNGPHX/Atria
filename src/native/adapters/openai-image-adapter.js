@@ -1,5 +1,5 @@
 import { visualObject, visualError } from '../../../public/shared/native-visual-contract.js';
-import { protocolManifest } from '../image-registry.js';
+import { protocolManifest, imageSemanticPrompt } from '../image-registry.js';
 import { imageEndpoint, imageRoute, imageJson, imageBase64, normalizeImage, canonicalMaskPng, readImageInput } from './image-transport.js';
 
 const models = new Set(['gpt-image-1', 'gpt-image-1-mini', 'gpt-image-1.5', 'gpt-image-2', 'gpt-image-2-2026-04-21',
@@ -32,7 +32,7 @@ export function createOpenaiImageAdapter({ fetchImpl = fetch } = {}) {
             const edit = images.length > 0;
             if (p.input_fidelity && !edit) visualError('parameters_unsupported');
             return { endpoint: imageRoute(connection.endpoint, edit ? 'images/edits' : 'images/generations'),
-                body: { model: target.model, prompt: ir.prompt, n: 1, size, output_format: 'png', ...p,
+                body: { model: target.model, prompt: imageSemanticPrompt(ir), n: 1, size, output_format: 'png', ...p,
                     ...(edit ? { images: images.map(ref => ({ assetId: ref.assetId, contentHash: ref.contentHash })) } : {}),
                     ...(mask ? { mask: { assetId: mask.assetId, contentHash: mask.contentHash } } : {}) },
                 transforms: mask ? [{ kind: 'gray8-to-inverse-alpha', semantics: 'mask guides edit; no provider pixel-preservation guarantee' }] : [] };
