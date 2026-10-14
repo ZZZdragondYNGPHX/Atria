@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮路线 C 已冻结；第二轮能力矩阵与 P0 可靠性细则待讨论/冻结。**未进入实现阶段**。
+- **状态**：讨论中；第一轮路线 C 与第二轮路线 B 已冻结。第三轮 Studio / Project Agent 语义与工作流待讨论。**尚未进入实现阶段**。
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`。后续执行前必须重新验证实际 HEAD，不能把审计 HEAD 当作未来生产状态。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
@@ -24,15 +24,15 @@
 7. **开发阶段可主动调整接口**：不为尚未发布的旧接口保留多余兼容层；但 breaking changes 必须在方案冻结后附客户端/测试迁移依据，不能造成隐性权限退化。
 8. **证据与验收分层**：静态源码审计、合同/单元测试、真实产品联测、浏览器/人机交互及真实客户端验证分别记录；不以其中一层代替另一层。未运行测试不得写“通过”。
 
-**此处冻结的是补强目标、次序和边界，而不是 P0 的实现细节**。P0 控制面、锁粒度、后台作业和回执持久化等选择由第二轮讨论并在确认后固化。
+**第一轮只冻结补强范围与治理边界；第二轮已冻结 P0 的目标架构与必要不变量**。并发度、持久化实现媒介、恢复保留期和具体 SDK API 使用仍按 [P0 模块](p0-reliability.md) 的待细化项设计、实测，不视为已经实现。
 
 ## 3. 模块路由与权威性
 
 | 文件 | 内容范围 | 当前状态 |
 | --- | --- | --- |
 | [`audit-baseline.md`](audit-baseline.md) | 第一轮 main / plugin 核查范围、观察到的实现、P0/P1 候选缺口、证据限制 | 已记录，随代码 HEAD 重新验证 |
-| `p0-reliability.md` | **待创建**：第二轮可靠性架构、控制/工作面、调度、生命周期、恢复、具体验收 | 待第二轮选定后建立 |
-| `capability-matrix.md` | **待创建**：Atria 权威能力 × MCP 暴露 × 风险 × 缺口与阶段 | 第二轮讨论，选定后建立 |
+| [`p0-reliability.md`](p0-reliability.md) | **P0 权威**：四类通道、调度、任务/回执状态与安全恢复、MCP v2 协商、P0 验收 | 第二轮已冻结方向，实施参数待细化 |
+| [`capability-matrix.md`](capability-matrix.md) | **能力矩阵权威**：产品 Authority × MCP Registry × 风险 × 覆盖级别 × 候选优先级 | 第二轮已冻结规划分类；具体 action 合同逐域核实 |
 | `domain-*.md` | **按需再建**：Studio/Agent、Session/Memory、UI/Media 等后续域模块 | 尚未设计 |
 | `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
 
@@ -42,21 +42,29 @@
 
 | 轮次 | 讨论对象 | 本轮前应读取 |
 | --- | --- | --- |
-| 第一轮 | Atria 与 MCP 代码审计、选择 C | 产品与工具实际代码；审计记录见 `audit-baseline.md` |
-| **第二轮（当前）** | 现状/目标能力矩阵；P0 控制面、调度/并发、Lease/Receipt/恢复、客户端验证与优先级 | 本 `index.md` + `audit-baseline.md`；确认后更新本目录对应模块 |
-| 第三轮及以后 | 按用户选择依次深入 Studio / Project Agent / Runtime / Memory / UI / 安全 / 验收 | 先 index，再只读当前议题模块；冻结后更新 |
+| 第一轮（已冻结） | Atria 与 MCP 代码审计、方案 C | `index.md`、`audit-baseline.md` |
+| 第二轮（已冻结） | 能力矩阵；分层调度、任务/回执恢复、MCP v2 兼容方向、P0 验收；方案 B | `capability-matrix.md`、`p0-reliability.md` |
+| **第三轮（当前讨论）** | Studio / Project Agent 语义动作、创作闭环、AI 与人工 Review/Commit 权限 | `index.md` + `capability-matrix.md` 的 Studio/Project Agent 行；按需读取主程序项目 Agent 与 Studio 契约 |
+| 后续轮次 | Session / Memory / Goals / Evolution / UI / Media、跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
 
 不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
 
-## 5. P0 待决题（尚未冻结）
+## 5. 第二轮已冻结的 P0 与优先顺序
 
-- **执行通道**：如何让 `status/cancel/diagnose` 不被长任务/用户审批阻塞？读、控制、变更是否分队列？如何避免并发写竞态？
-- **任务模型**：同步短操作、持久异步作业、后台生成与浏览器长等待的边界；`operationId`、状态、取消、重连、超时的真值来源。
-- **不确定结果**：MCP 进程重启/网络超时/客户端断开后如何安全恢复并核对外部写入？哪些对象可以幂等去重，哪些绝不可自动重发？
-- **授权语义**：长任务、批处理、Agent child action 是否需要独立审批快照、租约、预算/成本上限和有效期？不得把 Policy Ceiling 等同于授权。
-- **性能**：Source/Server/Browser 身份与路由发现的快照/缓存应如何分离？哪些缓存失效证据不足时只能返回 `UNVERIFIABLE`？
-- **客户端矩阵**：不同客户端是否支持可信 form elicitation；不支持时保持 fail-closed，同时明确只读/观察功能可用。
-- **主程序改动阈值**：已有 Product Authority 是否足够？缺口先证实，再考虑安全的专用服务端入口。
+- **第二轮选择方案 B**：分层调度 + 精确资源隔离 + 安全恢复 + MCP v2/2026-07-28 能力协商，详见 [`p0-reliability.md`](p0-reliability.md)。
+- P0 先实现：控制面不被长任务或审批阻塞、源权威并发防线、可查询的操作/回执与不确定结果核对、可信审批与跨客户端协议适配、大型 Package 传输容量闭环。
+- P1 继续：Studio/Project Agent、Session/Memory/Goals/Experience/Evolution、Model/Prompt/Runtime、Package/Library 与 UI 语义能力按矩阵推进。
+- P2：深度图像/语音/技能扩展以及仓库性能/Discovery 迭代，仍须兼顾新接口不会退化 P0。
+- 2026-07-28 协议的 MRTR 为新版核心能力，**Tasks 为独立扩展**，不可将 Tasks 可用性或客户端支持视为必然；SDK v2 迁移与启用新版协议是两个不同步骤。优先适配 2025 旧连接，2026 新连接只在协商确认后使用；无可信审批通道时写操作 fail-closed。
+
+## 5.1 下一轮待决题
+
+- Studio 与 Project Agent：以正式 A1/A2 Workspace/Source Graph/Task/Review 为权威，要开放哪些明确 action、如何组织从需求到方案、草稿、评估、Review、Commit 的端到端流程？
+- Studio 临时 evaluation、Preview 与真实 UI 证据的各自责任及可重入/回收规则。
+- 大型工程 source/asset 编辑与读写分页边界，以及 AI 与人工接管/审阅的最小授权粒度。
+- Project Agent 和 Orchestrator delegated-node 是否应该用统一发现入口但不同任务身份与执行边界？
+- 完整创作闭环中哪些动作 READ、INTERACT、MUTATE、DESTRUCTIVE，哪些必须保留人工审批和原生事务？
+- P0 中保留为待实现细化的磁盘 journal 形式、任务默认保留期、锁实现和具体并发限制，仍在该 P0 模块中统一维护。
 
 ## 6. 实施和验证边界
 
