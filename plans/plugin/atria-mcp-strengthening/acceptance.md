@@ -4,10 +4,10 @@
 
 | 能力域 / 阶段 | 最小行为闭环 | 关联威胁 | 证据要求 |
 | --- | --- | --- | --- |
-| Control / E1 | 挂起审批/长任务时 status/cancel/diagnose 可达；READ 有界；同目标串行、不同目标并行 | S03–S06 | 调度单元 + 并发 stdio + Native 双客户端 |
+| Control / E1 | 挂起审批/长任务时 status/cancel/diagnose 可达；READ 有界；同目标串行、不同目标并行 | S03–S06/S15 | 调度单元 + 并发 stdio + Native 双客户端 + 恶意长文本时限 |
 | Journal / E1 | dispatch 前原子记录，异常重启后 unknown、不重放，Lease 不恢复 | S06/S13 | 断线/进程重启/损坏/隐私故障测试 |
 | Protocol / E2 | 2025 Form、2026 MRTR 真实 wire；篡改/重放/降级拒绝；Tasks 可选 | S02 | SDK wire；真实客户端与人工分别记录 |
-| Binary / E3 | 大于 1 MiB 正式包传输/预检/独立 Review/Install，分块/Hash/权限 | S09 | 单元 + 隔离真实产品大包 + 故障 |
+| Binary / E3 | 大于 1 MiB 正式包传输/预检/独立 Review/Install，分块/Hash/权限；合法 Skills/Extension 容量完整可达 | S09/S15 | 单元 + 隔离真实产品大包 + 最大原生容量 + 故障 |
 | Studio / E4 | 直接 Workspace 与 Project Task 两条路径，Review/Commit 独立，CAS/recovery | S03/S05/S06 | 原生单元/合同 + 产品 Preview/ChangeSet |
 | Session / E4 | Save/Restore 新 Branch、旧历史保留、错误 fork/retry 退役、commit receipt | S03/S06/S07 | 原生存储比较、MCP 真实流程 |
 | Generation / E4–5 | input/admission/send/usage/finalize 分层；长会话与停止不盲重发 | S06/S14 | 本地注入 Provider + Native ledger/receipt |

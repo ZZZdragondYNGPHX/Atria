@@ -99,6 +99,7 @@ Atria `src/skills/{repository,versions,url-import}.js` 和 `src/endpoints/skills
 - Skill 脚本或自然语言“指令”都不视为权限、Secret/Host Code 执行许可或用户 Approval。外部 AI 不能通过安装恶意 Skill 改变自己的 MCP Ceiling。
 - Skill URL 导入目前 HTTPS + 下载后 Frontmatter/Size 检查不构成完整 SSRF/Egress 防线，MCP 开放前须补目标 URI、DNS、Redirect、内网/Metadata 和流式大小/ContentType 校验，产品端可能需要新增小型正式安全 Authority。
 - Atria 玩家 Runtime Skills ≠ 长期 `skills` 分支中给仓库 Agent 用的 Skill 副本。
+- 容量收口：支持原生每文件 4 MiB、每 Skill 16 MiB、100 个文件及 `SKILL.md` 512 KiB 上限。大 payload 从允许的开发产物文件进入固定 `skill-payload-upload` Binary Lane；先独立 staging，再纯 preflight 与独立正式 Install。JSON 编码容量不替代原生解码后大小检查。候选只返回 immutable metadata/hash，before/after 完整差异和文件内容分页获取；单条超长文本不能令完整审查不可达，列表带完整 inventory Hash 与游标。
 
 ## 7. Browser Extensions 与 Host Plugins 两级代码执行信任
 
@@ -110,6 +111,7 @@ Atria `src/skills/{repository,versions,url-import}.js` 和 `src/endpoints/skills
 - 批准绑定 Git origin、**确切 Commit/内容 Hash**、Manifest/入口、目标 Work/Preset/Session Scope、变更 Diff、第三方网络/DOM 权限、代码更新和原生 Revision；不能以“曾允许上一版本运行”批准新的 Git HEAD。
 - 外部 Git clone 的 HTTPS、Manifest/文件深度和 Symlink 检查不足以宣称运行代码隔离，需供应链/Redirect/SSRF/Hash 漂移/仓库更新检查。没有足够来源证明时只能观察/预检，不能给模型一键执行任意代码。
 - 禁用后仍应重新观察前端 Epoch/实际激活状态，不声称能撤销第三方代码已经产生的外部效果或远端网络传输。
+- 本地 Extension 源码按 UTF-8 字节保留 4 MiB 原生上限，使用共享池的固定 `extension-source-upload` 用途分块，绑定 owner/client/boot、完整 source Hash 与 metadata Hash，最终惯用原锁内 CAS。staging/prepare 仅形成 inert source，Review/Install/Enable 仍各走原独立权限。大型输入审批展示专用有界源码摘要，完整输入 Hash 仍进入 Lease/MRTR 绑定；完整内容通过 preparation source 分页审阅，不在回执或 Journal 复制源码。
 
 ### 7.2 Host Plugins 与 Package Runtime Plugins
 
@@ -128,7 +130,7 @@ Atria `src/skills/{repository,versions,url-import}.js` 和 `src/endpoints/skills
 - **MCP Journal 只记录关联**：最小 `operationId/target/hash/approval summary/source/receipt/unknown`，不成为第二套 Package、图像、Skill、Plugin、Secret 的状态库。
 - **入侵/提示注入风险**：页面 HTML、Skill 文本、Extension 源、Package Manifest、Provider 响应与文件路径都只是低信任数据。模型不能从这些内容获取更高工具权限，二进制资产、敏感截图和私人对话不通过普通文本输出泄露。
 
-## 9. 第八轮验收要求（规划，未执行）
+## 9. 第八轮冻结验收目标
 
 | 测试域 | 必须证明 |
 | --- | --- |
@@ -142,11 +144,8 @@ Atria `src/skills/{repository,versions,url-import}.js` 和 `src/endpoints/skills
 | Host/Package Plugin | Manifest、Dependency、Permission Grant、Host/Package Contribution 不混同；没有原生授权不向 AI 暴露服务器执行 |
 | 全链路 | Studio → Binary Asset/Media → Build → Package Permission Review → Install → Native Receipt，每阶段独立审批/费用/身份，HTTP 响应丢失不会盲重发 |
 
-本轮仅做静态代码审阅/文档设计，不声明 Node、浏览器或真实客户端验收通过。
+本模块定义冻结目标；执行事实与未验边界统一见 [本任务 Record](../../../records/plugin/atria-mcp-strengthening.md)。
 
-## 10. 第九轮待决（尚未冻结）
+## 10. 第九轮实施收口路由
 
-- 全域 Action×Authority×Effect×Threat 验收矩阵；P0/P1/P2 依赖与最小可复现证据。
-- MCP 2025/2026 协议、旧 Form 与新版 MRTR、可选 Tasks 扩展，真实 Codex/Claude Code 版本差异与 fail-closed。
-- 多 MCP 实例、跨 Owner/Session、错过回执、Secret→Endpoint 泄露、恶意页面/Skill/Git Extension/Archive、Bundle/媒体二进制/Journal 注入等威胁模型。
-- 正式分阶段实施计划、必要产品端 Authority 增量、双长期分支治理/Record、真实客户端/跨平台验收边界与收尾。第九轮用户选定后在同一 Plan Bundle 中冻结阶段；此前不自行确定最终交付批次。
+第八轮初次冻结时列出的第九轮事项，现由本次开工指令授权的 E0 收口；不是此前单独选择的追认。阶段依赖见 [implementation](implementation.md)，全域验收见 [acceptance](acceptance.md)，威胁与故障矩阵见 [security](security.md)。

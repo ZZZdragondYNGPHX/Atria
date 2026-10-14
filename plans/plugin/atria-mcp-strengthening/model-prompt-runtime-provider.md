@@ -92,6 +92,7 @@
 - 协议下的模型执行与 Scene/Session 正式写入分别计入各自生命周期：`/execute` 的结果不等于 Timeline 已 commit；`/turn`、`/task` 等经 Native RunControl/Revision 正式路径提交；Project Task 必须带精确 Attempt/Task authority。
 - 若模型路由或预期成本缺失、Provider 能力 unknown/unsupported、输出合同无法满足或需要同意网络凭据发送，则 fail closed / 请求明确选择；不凭猜测降级到其他模型。
 - 同一约束适用于 `chat.send`、Project Agent 和旧 Orchestrator `agent.run.start(delegated-node)`：每次原生发送都必须核对原审批的 configuration fingerprint、目标与预算，不能用已获准的 Secret→Endpoint 绑定替代此次模型费用审批。Orchestrator 保留现有 Runtime；受控 delegated 请求复用 reviewed Native execute，不建立第二套运行时。MCP 默认关闭该次执行的自动 retry/fallback 与自动学习；需要替代 Route 时先产生独立可审查意图。
+- 产品 Connection 编辑器提供独立的目标审查/授权入口，与 MCP 共用 Native CredentialTargetAuthority。保存配置本身不 mint permit；仅已保存且未变更的配置可审查，展示 opaque SecretRef 与 exact endpoint/target/config fingerprints，本地目标另需明确确认。草稿或原生配置变化使原审查失效；拒绝不会授权或触发 Probe。
 
 ### 7.2 Fallback 边界
 

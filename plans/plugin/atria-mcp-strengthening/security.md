@@ -18,5 +18,6 @@
 | S12 | 截图 stale/跨任务 page/跨 owner/敏感内容 | 单页隔离、截图前后身份主动核对；缺失明确不确定，最小采集 | Browser、产品 UI |
 | S13 | Journal 注入/路径穿越/Secret/正文/原子落盘失败 | 字段允许表、实例/checkout/origin 隔离、私有权限、损坏拒绝，不重放 | 单元、文件故障 |
 | S14 | cancel 被误报 rollback/refund，Speech/Image 恢复混用 | 明确 intent/confirmed/unknown，区分各原生 ledger 与任务耐久度 | 单元、Native 故障 |
+| S15 | 超长源码/Skill 文本拖垮脱敏或审批控制面 | 脱敏线性扫描，域专用摘要绑定完整输入 Hash；完整差异分页，不丢审查能力 | 恶意长文本子进程时限、真实大资源 |
 
 不得在测试中使用真实私有数据、真实付费 Provider 或安装执行不可信代码。攻击 fixture 为本地无秘密数据；模拟审批只证明协议逻辑，不能升级为人的批准。

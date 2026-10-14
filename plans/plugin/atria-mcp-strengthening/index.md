@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：实施中；前八轮冻结范围保持。2026-10-14 当前开工指令授权以“完整工程连续推进、分层验收”完成 E0 并直接编码；第九轮此前未单独冻结，来源详见 [实施收口](implementation.md)。
+- **状态**：工程实现、主线集成及本机可执行的分层验收已完成；真人审批、其它平台与真实付费 Provider 等外部证据仍待验，实际边界见 [唯一 Record](../../../records/plugin/atria-mcp-strengthening.md)。前八轮冻结范围保持；第九轮由 2026-10-14 本次开工指令授权 E0 收口，并非此前单独选择，来源详见 [实施收口](implementation.md)。
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
