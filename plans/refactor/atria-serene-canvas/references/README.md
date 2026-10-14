@@ -21,7 +21,7 @@ v0.1 Runtime 的免认证 OpenAI-compatible 样例不是当前源码支持的配
 
 v0.2 讨论稿 SHA-256：`2056f0f1e4c471c43cf2fafaeb1316ffb6e0f82d476209ef2d4d251f522e58df`。
 
-v0.3 讨论稿 SHA-256：`f9247e6703c261fa782d0ffebc6449165576df5ac4059c196249d3a899d23022`。
+v0.3 讨论稿 SHA-256：`0fd21aacc0613263195404077d1bca279cf14bd83f3eac11464c91e5cd04de9b`。
 
 HTML 包含样例内容、内存交互、部分占位与 Google Fonts 引用；网络字体不可用时使用字体栈回退。它是视觉输入，不是产品服务或持久化实现。
 
