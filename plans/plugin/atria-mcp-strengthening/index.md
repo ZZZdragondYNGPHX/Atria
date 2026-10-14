@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B、第六轮 B、第七轮 B、第八轮 B 已冻结。**第九轮全域验收、安全威胁模型、真实客户端兼容与实施分期正在讨论。尚未进入实现阶段。**
+- **状态**：实施中；前八轮冻结范围保持。2026-10-14 当前开工指令授权以“完整工程连续推进、分层验收”完成 E0 并直接编码；第九轮此前未单独冻结，来源详见 [实施收口](implementation.md)。
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
@@ -39,8 +39,9 @@
 | [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) | **第六轮权威**：分层 Session、Save/Restore/Branch、旧 fork/retry 合同淘汰、自动存档、长会话、RunControl/Scheduler 回执与 GC | 第六轮方案 B 已冻结方向，具体 Action schema 待实施核实 |
 | [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md) | **第七轮权威**：Evidence 与 Semantic UI 两通道、固定 Surface/Component 交互、Screenshot Proof、Preview/Experience Epoch、身份/隐私/取消及真实客户端验收 | 第七轮 B 已冻结；UI Action schema/运行测试待实施 |
 | [`package-library-media-skills-extensions.md`](package-library-media-skills-extensions.md) | **第八轮权威**：Package/Library/Resource Graph、统一 Binary Asset Lane、Visual/Mask/Gallery/Speech、Skill 版本、Browser Extensions/HostPlugins 权限、预算与恢复 | 第八轮 B 已冻结；确切 Schema/实施验证待核实 |
-| `domain-*.md` | **按需再建**：全域验收、安全威胁模型、实施分期等后续模块 | 尚未设计 |
-| `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
+| [`implementation.md`](implementation.md) | 当期契约差异、实施依赖、E0–E7 路由与来源 | 当前开工授权下收口 |
+| [`security.md`](security.md) | 全域威胁、信任边界与故障矩阵 | E0 收口 |
+| [`acceptance.md`](acceptance.md) | 全域分层验收、真实客户端/平台证据 | E0 收口，结果在 Record |
 
 单条详细规则仅写入一个权威模块。index 只管理全局冻结原则、依赖和讨论/实施路由，不复制域内设计；现有旧 Plan 仅作历史链接，不直接作为本轮新增范围的执行授权。
 
@@ -56,10 +57,10 @@
 | 第六轮（已冻结） | 方案 B：完整 Session / Save / Timeline / Branch、旧 fork/retry Action 退役、长会话 Context、分层 Generation、停止/恢复、原生 GC | [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) |
 | 第七轮（已冻结） | 方案 B：Browser Evidence Lane + 受控 Semantic UI Lane、截图 Proof、Epoch/Preview、隐私/隔离/取消及真客户端验收 | [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md) |
 | 第八轮（已冻结） | 方案 B：Package/Library/Media/Speech/Skills/Extensions 全域控制、Binary Lane、原生账本/权限与安全恢复 | [`package-library-media-skills-extensions.md`](package-library-media-skills-extensions.md) |
-| **第九轮（当前讨论）** | 全域验收矩阵、威胁模型、真实客户端协议/平台、分阶段开发路线 | `index.md` + [`p0-reliability.md`](p0-reliability.md) + [`capability-matrix.md`](capability-matrix.md)；按需要读第八轮域模块和 `plugin` 的测试/验收脚本 |
+| **第九轮（本次授权收口）** | 全域验收矩阵、威胁模型、真实客户端协议/平台、分阶段开发路线 | `index.md` + [`p0-reliability.md`](p0-reliability.md) + [`capability-matrix.md`](capability-matrix.md)；按需要读第八轮域模块和 `plugin` 的测试/验收脚本 |
 | 后续轮次 | 完整方案收口、实际实施前阶段规划与验收门槛确认 | 先 `index.md`，再读具体权威模块；仅在用户决策冻结后调整 |
 
-不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
+实施依赖与必读模块见 [implementation.md](implementation.md) 的 E0–E7；本表保留讨论路由，不构成逐阶段暂停规则。
 
 ## 5. 第二轮已冻结的 P0 与优先顺序
 
@@ -121,16 +122,16 @@
 - **Skills 与运行代码不同信任级**：Skill 为不可信指令资料，可版本化管理但不带工具授权；Browser Extension 是页面内执行的非沙箱 JS，安装默认 disabled、启用需另审；HostPluginBoundary 不是服务端代码隔离沙箱，禁止给 MCP 任意 `import/eval/shell`；Package Runtime Plugin 不得获得 Host 权限。
 - **预算/回执**：Image/Speech/Native Model/Package/Skill/Plugin 分别保留自己的预算/版本与恢复权威；MCP Journal 只做有限关联，不复制资产仓库。默认不开启自动生图、自动安装或第三方代码更新。
 
-## 5.7 第九轮待讨论（尚未冻结）
+## 5.7 第九轮在本次开工授权下收口
 
 - 全域 Action × Authority × Effect × Threat 的正式验收矩阵，以及哪些核心安全问题是 P0，哪些覆盖工作可进入后续交付阶段。
 - 两代 MCP 协议和 Client 实际 Capability：2025 Form、2026 MRTR、可选 Tasks；Codex/Claude Code 真实版本的审批、状态、取消、图片/二进制接入、跨平台变化与降级方式。
 - Prompt Injection、SecretRef→恶意 Endpoint、第三方 Git/Plugin/Skill/Archive/URL、跨 Owner/Scope、stale Revision/Epoch、持久 Journal/unknown 与回执篡改等威胁的可复现阻断和恢复测试。
-- Plugin 与必要 Main Native Authority 改动的依赖顺序、阶段提交/唯一 Record、最小相关验证、最终验收和收尾治理。待第九轮决策确认后在同一 Plan Bundle 冻结实际实施阶段图。
+- Plugin 与必要 Main Native Authority 改动的依赖顺序、阶段提交/唯一 Record、最小相关验证、最终验收和收尾治理。实际阶段图见 [implementation.md](implementation.md)，验收见 [acceptance.md](acceptance.md)，威胁见 [security.md](security.md)。
 
 ## 6. 实施和验证边界
 
-- 当前仅企划；不修改 `main` 或 `plugin`，不启动产品/真机，也不创建开发任务分支。
+- 当前已获开发授权，依 [implementation.md](implementation.md) 持续推进。必要产品权威增量先证明缺口，再使用临时任务分支；保护并行前端重构。
 - 进入实现时，遵守 [Repository Governance](../../../README.md)；与现有旧 Plan/Record 的历史执行事实分开维护本任务的 **同一份**正式 Record，阶段结果需有真实证据。
 - 保留其他任务的 `docs:HANDOFF.md`，没有用户专门要求交接就不触碰它。
 - 目标客户端/平台支持与测试可行性在后续验收模块明示，不把未经验证的平台承诺写成已完成。
