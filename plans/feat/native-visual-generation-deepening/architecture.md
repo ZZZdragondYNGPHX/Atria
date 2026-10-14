@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；除 [decisions.md](decisions.md) 已冻结的 D-001 / D-002 外，其余内容均为候选设计，不能据此提前开工。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 已冻结；其余待议。Image Prompt IR、Adapter、Capabilities 详细模块见 [provider-protocol.md](provider-protocol.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -12,7 +12,7 @@
 
 **Visual Context Compiler**：只读选定 Revision 的可见角色、状态、场景、时间和视觉档案；锁定角色身份/画风/负面约束，标记不确定来源。
 
-**Image Prompt IR**：与特定 Provider 无关的语义意图/视觉约束，经过 `ProviderCapabilities` 和适配器翻译成 NovelAI、ComfyUI 工作流、OpenAI/Cloud 等具体请求。用户手填 prompt 应作为明确输入，不能被 AI 无提示覆盖。
+**Image Prompt IR（D-003 已冻结原则）**：与特定 Provider 无关的视觉语义，通过独立的 Capability Negotiation + Provider Adapter 编译成后端请求。用户手填 Raw Prompt 是明确的另一输入形式，不被 AI 静默覆盖。具体结构见 [provider-protocol.md](provider-protocol.md)。
 
 **Image Job + Budget**：以 Native 资源/场景/请求意图作为去重和权限边界，编排 Provider 请求与取消；明确“已计划”“已批准”“已付费发出”“完成/失败”“结果已保存”不同状态。
 
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001**：分层混合架构已确认；**D-002**：正式剧情 Commit 后 Director 决策已确认，详见 [decisions.md](decisions.md)。
-- **Round 3 未冻结**：Image Prompt IR、Provider Adapter 与模型能力协议的结构化分层与边界；讨论将在企划更新与提交后进行。
+- **D-001**：分层混合架构；**D-002**：正式剧情 Commit 后 Director 决策；**D-003**：结构化语义 IR + Provider Adapter + Capability Negotiation。三项已确认，详见 [decisions.md](decisions.md)。
+- **Round 4 未冻结**：实际支持的 Provider、优先级、模型/连接/工作流配置和切换策略，参见 [provider-protocol.md](provider-protocol.md)。
 - 其他未决议题：模型/供应商支持顺序、角色视觉连续性、自动授权与预算、编辑/参考图/视频、持久任务恢复。
