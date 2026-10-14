@@ -176,11 +176,18 @@ export class VersionedJsonResourceHandler {
             throw new TypeError('Unsupported versioned model/prompt resourceType: ' + resourceType);
         }
         return this._engine.withTransaction(handle, async (tx) => {
-            const roots = await listNativeDocuments(tx, {
+            const records = await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.versionedJsonResource,
                 handle,
                 ...(resourceType === null ? {} : { resourceType }),
                 orderBy: 'updatedAt',
+            });
+            // Other authorities share this physical kind. A document's own
+            // resourceType field cannot promote it into the Runtime Library.
+            const roots = records.filter(record => VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(record.key.resourceType)).map(record => {
+                const root = record.doc;
+                if (root.resourceType !== record.key.resourceType || root.resourceId !== record.key.resourceId) throw new TypeError('Runtime Library resource identity mismatch');
+                return root;
             });
             return Object.freeze(roots
                 .filter(root => resourceType === null || root.resourceType === resourceType)

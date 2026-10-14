@@ -7,6 +7,29 @@ import {
 } from '../../src/native/index.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
+import { NATIVE_RESOURCE_KINDS } from '../../src/native/contracts.js';
+import { nativeRecord } from '../../src/native/repositories/common.js';
+import express from 'express';
+import request from 'supertest';
+import { createNativeGenerationRouter } from '../../src/endpoints/native-generation.js';
+
+test('runtime Library inventory isolates shared document kinds by authoritative resource-type keys', async () => {
+    const h = await makeTempFsEngine();
+    try {
+        const persistence = new NativeModelPromptPersistence({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
+        const module = moduleResource(); await library.commit(h.handle, 'core.prompt-module', module);
+        await h.engine.withTransaction(h.handle, async tx => {
+            await tx.putResource({ kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle: h.handle, resourceType: 'atri.extensions.settings', resourceId: 'account' }, nativeRecord({ schemaVersion: 1, skills: {}, folders: [] }));
+            await tx.putResource({ kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle: h.handle, resourceType: 'atri.foreign.document', resourceId: 'forged' }, nativeRecord({ resourceType: 'core.prompt-module', resourceId: 'forged', displayName: 'Not a Model/Prompt resource' }));
+        });
+        const roots = await library.list(h.handle); expect(roots.map(item => item.resourceId)).toEqual([module.promptModuleId]);
+        expect((await library.listWithRevisions(h.handle))[0].revisions).toEqual([module.revision]);
+        const app = express(); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle } }; next(); });
+        app.use(createNativeGenerationRouter(() => ({ persistence, library })));
+        const response = await request(app).get('/configuration');
+        expect(response.status).toBe(200); expect(response.body.resources).toHaveLength(1);
+    } finally { await h.cleanup(); }
+});
 
 test('runtime configuration optional fingerprint rejects stale create/update inside the write queue', async () => {
     const h = await makeTempFsEngine();
