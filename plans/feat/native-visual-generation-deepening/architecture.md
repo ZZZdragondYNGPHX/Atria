@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 已冻结；其余待议。Image Prompt IR、Adapter、Capabilities 详细模块见 [provider-protocol.md](provider-protocol.md)。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 已冻结；其余待议。Image Prompt IR、Adapter、Capabilities、已选 Provider 范围/三层配置详见 [provider-protocol.md](provider-protocol.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001**：分层混合架构；**D-002**：正式剧情 Commit 后 Director 决策；**D-003**：结构化语义 IR + Provider Adapter + Capability Negotiation。三项已确认，详见 [decisions.md](decisions.md)。
-- **Round 4 未冻结**：实际支持的 Provider、优先级、模型/连接/工作流配置和切换策略，参见 [provider-protocol.md](provider-protocol.md)。
-- 其他未决议题：模型/供应商支持顺序、角色视觉连续性、自动授权与预算、编辑/参考图/视频、持久任务恢复。
+- **D-001**：分层混合架构；**D-002**：正式剧情 Commit 后 Director 决策；**D-003**：结构化语义 IR + Provider Adapter + Capability Negotiation；**D-004**：跨 Provider 家族按 P0/P1/P2 分期、三层 Profile 及四级覆盖。四项已确认，见 [decisions.md](decisions.md) 和 [provider-protocol.md](provider-protocol.md)。
+- **Round 5 待议**：角色视觉身份、图片/风格参考、Vibe、服装与世界状态的权威归属和跨分支连续性。
+- 其他未决议题：自动授权与预算、精确 Provider API、编辑/参考图/视频功能矩阵、持久任务恢复。
