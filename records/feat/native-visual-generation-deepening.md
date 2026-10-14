@@ -20,3 +20,15 @@
 - End/Tested HEAD: `5b7b21edd`（完整 SHA 见 Git）。
 - Final local checks: visual-contract + illustration-image 共 25/25（含 FS/SQLite、真实本地 mock HTTP、save/import/secret）；受影响产品文件 ESLint、git diff --check 通过。
 - Next: S1 三层配置/持久 Job/预算/媒体闭包。
+
+## S1 — neutral kernel (completed)
+
+- Start HEAD: `5b7b21edd`; End/Tested HEAD: `8cdc38bb6`.
+- S1.1: Adapter Registry / Target fingerprint / independent four-level selection / versioned Target and Rendering; Native Connection/Secret unchanged.
+- S1.2: Persistent Native Job/Attempt, atomic admission with image/global-money/auto-money and independent Planner ledger, lease/fence, frozen receipt, uncertain-submission recovery, conservative cancellation. Scheduler only executes.
+- S1.3: Immutable media operation/multi-parent DAG and canonical gray8 Mask dependency, AssetStore locks/roots expanded to Native jobs/drafts/references/leases.
+- S1.4: Save closure includes Mask/reference inputs; import checks hashes, DAG, Mask/base geometry. Idempotent publisher port and stored result recovery prepared for S2.1 integration.
+- Local checks: 9/9 kernel tests FS/SQLite; 22/22 existing image tests in prior combined run. Initial kernel 2 failures were single-owner test harness refusing unknown owner; negative test corrected to assert refusal. Changed product files ESLint + diff check passed.
+- CI/L3: `not_run`. No remote Actions, API credentials or paid requests.
+- Limitation: Durable worker integration into the production image entrypoint is next in S2.1; full Mask UI/GC grace policy remains S4 by plan. No claim of live Target availability.
+- Next: NovelAI vertical slice on one new kernel, then ComfyUI/OpenAI Images.
