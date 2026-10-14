@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { ActionRegistry, PolicyCeiling, RiskExecutor, fingerprint } from '../src/kernel.js';
 import { registerCognitionActions } from '../src/cognition-actions.js';
+import { redact } from '../src/policy.js';
 
-function fixture() {
+function fixture(readData = null) {
     const calls = [], boot = randomUUID(), scope = { domain: 'project', projectId: 'p' };
     let mode = 'review', prompts = 0, writes = 0;
     const doc = () => ({ sequence: 3, scope, policy: { mode, fingerprint: 'policy' }, jobs: [{ id: 'job', candidates: [{ candidateId: 'candidate', report: { exact: true } }] }], feedback: [{ id: 'feedback' }] });
@@ -16,6 +17,7 @@ function fixture() {
         runtimeIdentity: async () => ({ serverBootId: boot, mutationGuards: 1 }), context: { request: {
             get: async () => response({ token: 'csrf' }), fetch: async (url, options) => {
                 calls.push({ url, ...options });
+                if (readData !== null) return response(readData);
                 if (url.endsWith('/evolution/preflight')) return response(preflight());
                 if (url.endsWith('/evolution/observe')) return response({ scope: doc(), validity: 'not_reconciled', owner: { limits: { maxRequests: 1 } } });
                 if (url.endsWith('/experience/observe') || url.endsWith('/goals/snapshot') || url.endsWith('/evidence/snapshot')) return response({ document: doc(), validity: 'not_reconciled' });
@@ -37,6 +39,37 @@ test('cognitive READ surfaces use persisted observation endpoints and never reco
     assert.equal(f.writes, 0); assert.equal(f.prompts, 0);
     for (const input of [{ scope: { ...f.scope, handle: 'foreign' }, subject: 'p' }, { scope: f.scope, subject: 'p', method: 'publish' }])
         await assert.rejects(f.executor.execute('READ', { action: 'evolution.observe', input }));
+});
+
+test('large cognitive READ documents paginate only after complete redaction and keep Native payloads exact', async () => {
+    const data = { document: { text: '汉字😀-'.repeat(9000) + ' password=fixture-private-value END', token: 'private-token' }, validity: 'not_reconciled' };
+    const expected = JSON.stringify(redact(data));
+    for (const [action, input] of [
+        ['goal.snapshot', { goalId: 'goal' }], ['evidence.snapshot', { evidenceId: 'a'.repeat(64) }],
+        ['experience.observe', { scope: { domain: 'project', projectId: 'p' }, subject: 'p' }],
+        ['evolution.observe', { scope: { domain: 'project', projectId: 'p' }, subject: 'p' }],
+    ]) {
+        const f = fixture(data), fragments = []; let offset = 0;
+        do {
+            const result = await f.executor.execute('READ', { action, input: { ...input, outputOffset: offset, outputLimit: 1999 } });
+            assert.equal(result.data.encoding, 'hex-utf16le'); assert.equal(result.page.contentHash, fingerprint(redact(data)));
+            assert.equal(result.page.totalChars, expected.length); assert.equal(result.page.offset, offset);
+            fragments.push(Buffer.from(result.data.encodedText, 'hex').toString('utf16le')); offset = result.page.nextOffset;
+        } while (offset !== null);
+        assert.equal(fragments.join(''), expected); assert.doesNotMatch(fragments.join(''), /fixture-private-value|private-token/);
+        for (const call of f.calls) assert.deepEqual(call.data, input);
+        assert.equal(f.prompts, 0); assert.equal(f.writes, 0);
+        const schema = f.registry.get(action).detail.inputSchema;
+        assert.equal(schema.additionalProperties, false); assert.ok(schema.properties.outputOffset); assert.ok(schema.properties.outputLimit);
+    }
+});
+
+test('cognitive pagination rejects invalid bounds and never expands mutation schemas', async () => {
+    const f = fixture();
+    for (const page of [{ outputOffset: -1 }, { outputOffset: 0.5 }, { outputLimit: 0 }, { outputLimit: 24001 }, { arbitraryPage: 1 }])
+        await assert.rejects(f.executor.execute('READ', { action: 'goal.snapshot', input: { goalId: 'goal', ...page } }));
+    await assert.rejects(f.executor.execute('INTERACT', { action: 'goal.control', input: { goalId: 'goal', expectedSequence: 3, action: 'pause', outputOffset: 0 } }));
+    assert.equal(f.calls.length, 0);
 });
 
 test('automatic Evolution policy requires its independent action and exact preflight, while mode is injected by trusted handler', async () => {

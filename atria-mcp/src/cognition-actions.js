@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fingerprint } from './kernel.js';
 import { requestAuthority } from './read-authority.js';
 import { redact } from './policy.js';
+import { jsonTextFragment } from './json-fragment.js';
 
 const base = '/api/native/generation';
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/), hash = z.string().regex(/^[a-f0-9]{64}$/), sequence = z.number().int().nonnegative();
@@ -34,8 +35,12 @@ const evolutionTarget = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('project-prompt'), presetId: id, runtimeRouteId: id, moduleRef: z.strictObject({ scope: z.literal('library'), resourceType: z.literal('core.prompt-module'), resourceId: id, revision: id }) }),
     z.strictObject({ kind: z.literal('project-strategy'), taskId: id, field: z.literal('maxRepairRounds') }),
 ]);
-const bounded = (action, response) => {
+const outputPage = { outputOffset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0), outputLimit: z.number().int().min(1).max(24000).default(12000) };
+const bounded = (action, response, page = null) => {
     const data = redact(response.data), encoded = JSON.stringify(data);
+    if (page) return { action, status: response.status, ok: response.ok, serverBootId: response.serverBootId,
+        data: page.outputOffset === 0 && encoded.length <= page.outputLimit ? data : jsonTextFragment(encoded, page.outputOffset, page.outputLimit),
+        page: { contentHash: fingerprint(data), totalChars: encoded.length, offset: page.outputOffset, nextOffset: page.outputOffset + page.outputLimit < encoded.length ? page.outputOffset + page.outputLimit : null } };
     const summary = data && typeof data === 'object' ? Object.fromEntries(['observationFingerprint', 'sourceSetFingerprint', 'goalDefinitionFingerprint',
         'taskId', 'taskFingerprint', 'sourceFingerprint', 'configurationFingerprint', 'budget', 'execution', 'validity'].filter(key => data[key] !== undefined).map(key => [key, data[key]])) : {};
     if (data?.goal) summary.goal = { goalId: data.goal.goalId, sequence: data.goal.sequence, scope: data.goal.scope };
@@ -52,7 +57,10 @@ export function registerCognitionActions(registry, browser) {
         domain: action.split('.')[0], title: action, risk, authority: 'Native scoped cognitive authority', adapter: 'fixed-http', externalEffects: effects,
         guards: risk === 'READ' ? [] : ['current-server-boot', 'exact-owner-scope-sequence', 'before-and-after-approval-authority'],
         approval: risk === 'READ' ? 'none' : 'trusted-approval-required', availability: { available: true, reason: 'Exact owning Native store and sequence; no second cognitive database' } },
-    z.strictObject(shape), z.json(), async (i, context = {}) => bounded(action, await request('POST', path, payload(i), context.before ?? {})),
+    z.strictObject({ ...shape, ...(risk === 'READ' ? outputPage : {}) }), z.json(), async (i, context = {}) => {
+        const { outputOffset, outputLimit, ...nativeInput } = i;
+        return bounded(action, await request('POST', path, payload(risk === 'READ' ? nativeInput : i), context.before ?? {}), risk === 'READ' ? { outputOffset, outputLimit } : null);
+    },
     guard && (async i => { if ((await browser.runtimeIdentity())?.mutationGuards !== 1) throw new Error('Native mutation guards unavailable'); return guard(i); }));
 
     add('goal.snapshot', 'READ', { goalId: id }, '/goals/snapshot');

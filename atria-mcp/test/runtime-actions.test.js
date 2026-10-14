@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { ActionRegistry, PolicyCeiling, RiskExecutor, fingerprint } from '../src/kernel.js';
 import { registerRuntimeActions } from '../src/runtime-actions.js';
+import { redact } from '../src/policy.js';
 
-function fixture() {
+function fixture(readData = null) {
     const boot = randomUUID(), calls = [], connection = { connectionProfileId: 'conn', endpoint: 'https://example.com/v1/chat/completions', secretRef: { secretId: 'opaque' } };
     let authorized = false, prompts = 0, probes = 0, clock = 1000;
     const target = { endpoint: connection.endpoint, secretRef: connection.secretRef };
@@ -15,6 +16,7 @@ function fixture() {
             get: async () => response({ token: 'fixture-csrf' }), fetch: async (url, options) => {
                 calls.push({ url, ...options });
                 const path = new URL(url).pathname;
+                if (readData !== null) return response(readData);
                 if (path.endsWith('/configuration')) return response({ connections: [connection], models: [], routes: [] });
                 if (path.endsWith('/credential-target/inspect')) return response(view());
                 if (path.endsWith('/credential-target/authorize')) { authorized = true; return response(view()); }
@@ -38,6 +40,42 @@ test('Runtime exact schema rejects arbitrary URLs/paths, misplaced approval and 
     assert.equal(f.calls.length, 0);
     assert.equal(f.registry.get('runtime.connection.probe').detail.risk, 'INTERACT');
     assert.equal(f.registry.get('runtime.prompt.preview').detail.risk, 'READ');
+});
+
+test('large Runtime READ results remain fully reachable after whole-document redaction without forwarding pagination', async () => {
+    const data = { text: '汉字😀-'.repeat(10000) + ' api_key=fixture-private-value END', password: 'private-password' }, expected = JSON.stringify(redact(data));
+    for (const [action, input] of [
+        ['runtime.generation.result', { operationId: 'operation' }],
+        ['runtime.resource.exact', { scope: 'library', resourceType: 'core.prompt-module', resourceId: 'module', revision: 'r1' }],
+        ['runtime.context.preview', { requestId: 'r', role: 'narrator', routeRef: { scope: 'player', runtimeRouteId: 'route' }, projectId: 'p', revision: 'r1' }],
+    ]) {
+        const f = fixture(data), fragments = []; let offset = 0, contentHash;
+        do {
+            const result = await f.executor.execute('READ', { action, input: { ...input, outputOffset: offset, outputLimit: 1999 } });
+            assert.equal(result.data.encoding, 'hex-utf16le'); assert.equal(result.page.totalChars, expected.length);
+            assert.equal(result.page.contentHash, fingerprint(redact(data))); contentHash ??= result.page.contentHash;
+            assert.equal(result.page.contentHash, contentHash); assert.equal(result.page.offset, offset);
+            fragments.push(Buffer.from(result.data.encodedText, 'hex').toString('utf16le')); offset = result.page.nextOffset;
+        } while (offset !== null);
+        assert.equal(fragments.join(''), expected); assert.doesNotMatch(fragments.join(''), /fixture-private-value|private-password/);
+        assert.equal(f.prompts, 0);
+        for (const call of f.calls) {
+            assert.equal(new URL(call.url).search, '');
+            assert.equal(call.data?.outputOffset, undefined); assert.equal(call.data?.outputLimit, undefined);
+            if (call.method === 'POST') assert.deepEqual(call.data, input);
+        }
+        const schema = f.registry.get(action).detail.inputSchema;
+        assert.equal(schema.additionalProperties, false); assert.ok(schema.properties.outputOffset); assert.ok(schema.properties.outputLimit);
+        if (action === 'runtime.context.preview') await assert.rejects(f.executor.execute('READ', { action, input: { ...input, sessionId: 's', revisionId: 'r' } }));
+    }
+});
+
+test('Runtime pagination bounds are strict and unavailable to mutations', async () => {
+    const f = fixture();
+    for (const page of [{ outputOffset: -1 }, { outputOffset: 0.5 }, { outputLimit: 0 }, { outputLimit: 24001 }, { arbitraryPage: 1 }])
+        await assert.rejects(f.executor.execute('READ', { action: 'runtime.generation.result', input: { operationId: 'operation', ...page } }));
+    await assert.rejects(f.executor.execute('INTERACT', { action: 'runtime.generation.stop', input: { operationId: 'operation', outputOffset: 0 } }));
+    assert.equal(f.calls.length, 0);
 });
 
 test('reviewed generation ignores preview timestamps but binds stable request/configuration at the Native start boundary', async () => {

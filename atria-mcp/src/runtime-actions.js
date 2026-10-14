@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fingerprint } from './kernel.js';
 import { requestAuthority } from './read-authority.js';
 import { redact } from './policy.js';
+import { jsonTextFragment } from './json-fragment.js';
 
 const base = '/api/native/generation';
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/), digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -15,10 +16,11 @@ const preview = z.strictObject({ requestId: id, role: z.enum(['narrator', 'studi
     prompt: z.strictObject({ parameters: z.record(id, z.json()).optional(), locals: z.record(id, z.json()).optional() }).optional(),
     previewRefs: z.strictObject({ promptProgramRef: ref.optional(), generationProfileRef: ref.optional() }).optional(),
 }).refine(exactSource, 'One exact Session or Project revision required');
+const outputPage = { outputOffset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0), outputLimit: z.number().int().min(1).max(24000).default(12000) };
 const bounded = (action, response) => {
-    const value = redact(response.data), text = JSON.stringify(value);
+    const value = redact(response.data);
     return { action, authority: 'Native Model/Prompt/Runtime', status: response.status, ok: response.ok, serverBootId: response.serverBootId,
-        data: text.length <= 24000 ? value : { contentHash: fingerprint(value), omitted: 'Large Native result; inspect a smaller exact resource' } };
+        data: value };
 };
 
 export function registerRuntimeActions(registry, browser) {
@@ -28,7 +30,13 @@ export function registerRuntimeActions(registry, browser) {
         risk, authority: 'Native Model/Prompt/Runtime', adapter: 'fixed-http', externalEffects: effects,
         guards: risk === 'READ' ? [] : ['current-server-boot', 'exact-native-configuration', 'before-and-after-approval-authority'],
         approval: risk === 'READ' ? 'none' : 'trusted-approval-required', availability: { available: true, reason: 'Authenticated fixed Native authority; no arbitrary endpoint or credential values' } },
-    schema, z.json(), handler, guard && (async i => { if ((await browser.runtimeIdentity())?.mutationGuards !== 1) throw new Error('Native mutation guards unavailable'); return guard(i); }));
+    risk === 'READ' ? schema.safeExtend(outputPage) : schema, z.json(), async (input, context) => {
+        const { outputOffset, outputLimit, ...nativeInput } = input;
+        const result = await handler(risk === 'READ' ? nativeInput : input, context), value = result.data, text = JSON.stringify(value);
+        if (risk !== 'READ') return { ...result, data: text.length <= 24000 ? value : { contentHash: fingerprint(value), omitted: 'Large Native result; inspect the corresponding exact READ action' } };
+        return { ...result, data: outputOffset === 0 && text.length <= outputLimit ? value : jsonTextFragment(text, outputOffset, outputLimit),
+            page: { contentHash: fingerprint(value), totalChars: text.length, offset: outputOffset, nextOffset: outputOffset + outputLimit < text.length ? outputOffset + outputLimit : null } };
+    }, guard && (async i => { if ((await browser.runtimeIdentity())?.mutationGuards !== 1) throw new Error('Native mutation guards unavailable'); return guard(i); }));
     for (const [kind, key] of [['connection', 'connections'], ['model', 'models'], ['route', 'routes']]) {
         add(`runtime.${kind}.list`, 'READ', z.strictObject({}), async () => {
             const r = await request('GET', '/configuration'); if (r.ok) r.data = r.data[key]; return bounded(`runtime.${kind}.list`, r);
