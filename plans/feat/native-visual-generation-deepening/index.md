@@ -38,6 +38,7 @@
 | [media-editing-gallery.md](media-editing-gallery.md) | D-009 分层 Media Studio/DAG/编辑类别 + D-010 可逆编辑/引用生命周期，历史候选留存 | 媒体架构、S5 |
 | [media-precision.md](media-precision.md) | **D-011 已冻结** Mask 8-bit 语义/像素坐标、命令+Checkpoint 草稿、模型/Workflow 能力声明、Gallery 默认、两阶段 GC/30/7 日宽限、完整 SavePoint/导入验收 | 媒体协议/存档/GC、Round 12 依赖、S5/S6 |
 | [provider-editing-matrix.md](provider-editing-matrix.md) | **D-012 已冻结** P0/P1 文档矩阵/Target 实际能力分离、操作与组合三态、Required/Preferred/Optional 显式降级及 L1/L2/L3 分层验收 | Provider Adapter/模型能力/预算/测试，S2/S6；实施时必读 |
+| [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) | **Round 13 候选，未冻结** Native Image 统一资源/API/设置/跨平台 UI、S0–S6 工程阶段与 A/B/C 交付路线 | Round 13 必读；后续工程实施/验收收口 |
 
 后续如确定 Provider、参考图、视觉身份、媒体编辑或缓存等独立大模块，应只新增对应模块，不在 `index.md` 重复详细规格。
 
@@ -57,7 +58,7 @@
 
 | 阶段（暂定） | 目标 | 必读 |
 | --- | --- | --- |
-| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 13: 后续统一 Native 契约/设置/工程阶段模块；以 `provider-protocol.md` + `provider-editing-matrix.md` + `visual-director.md` + `media-precision.md` 为前置）；涉及源码基线再读 `baseline-and-reference.md` |
+| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 13: `native-contracts-ui-delivery.md`；以 `provider-protocol.md` + `provider-editing-matrix.md` + `visual-director.md` + `media-precision.md` 为前置）；涉及源码基线再读 `baseline-and-reference.md` |
 | S1：中立协议/资产证据 | 拆除当前图片记录对 NovelAI 渲染的硬绑定，保留版本及存档权威 | `index.md` → `provider-protocol.md`，以及后续确定的资产/持久化模块 |
 | S2：多后端适配 | 按 D-004 P0 NovelAI/ComfyUI/OpenAI Images → P1 Gemini/SD/Forge/RunningHub 交付；D-012 按每 Target 的实际能力与组合声明、L1/L2/L3 分层验证 | `index.md` → `provider-protocol.md` + `provider-editing-matrix.md`；后续各 Provider 子模块 |
 | S3：角色/世界视觉连续性 | 角色身份、外观、服饰/状态、场景、参考图和出处；不创建第二剧情权威 | `index.md` → `visual-continuity.md`；需调用图片后端时再读 `provider-protocol.md` |
@@ -101,7 +102,7 @@
 - Round 10: **C 能力感知的可逆 Media Studio — 已确认**；Canonical Mask 草稿/提交隔离、显式跨 Provider 编辑/许可、异步版本默认先入历史、引用安全 GC、SavePoint 可编辑闭包与参考晋升，见 [decisions.md](decisions.md) D-010 与 [media-editing-gallery.md](media-editing-gallery.md) §6。
 - Round 11: **C Canonical Raster Mask + 混合草稿检查点 + 安全媒体闭包 — 已确认**；0 保留/255 编辑、原图像素空间、默认空闲 2 秒/50 命令 Checkpoint、目标级能力声明、当前分支 Gallery、30/7 天可调 GC 宽限、SavePoint 完整可编辑和安全导入验收。见 [decisions.md](decisions.md) D-011 与 [media-precision.md](media-precision.md)。
 - Round 12: **C 分级约束协商 + 显式降级 + L1/L2/L3 验收 — 已确认**；P0/P1 文档家族矩阵与 Target 三态分离，真实可用性按连接/型号或 Workflow 验证，见 [decisions.md](decisions.md) D-012 与 [provider-editing-matrix.md](provider-editing-matrix.md)。
-- Round 13: **Native API/资源 Schema、三层配置及跨平台 UI、开发阶段/子阶段与最终验收收口 — 讨论中/未冻结**。
+- Round 13: **Native API/资源 Schema、三层配置及跨平台 UI、开发阶段/子阶段与最终验收收口 — 讨论中/未冻结**；A/B/C 候选详见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)。
 - 尚未定案：Native 模块数据/资源 Schema 与 HTTP/SDK API、模型具体费用/返回格式及需授权的真实 L3 测试、Setting/Provider/Target/Rendering 的交互与授权 UI、PC/Windows/CachyOS/Termux 跨端布局、视觉状态/引用强度的性能校准、正式开发阶段/子阶段与工作量/验收收口、批量/视频是否属于本工程的明确范围。D-011/D-012 已确定媒体安全协议、能力三态/降级约束和分层验收原则。
 - **禁止先行创建产品开发分支**；用户要求讨论完、设计冻结后由本对话创建正式 `feat/*` 分支供 Codex 开工。
 
