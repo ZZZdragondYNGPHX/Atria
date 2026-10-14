@@ -1,8 +1,8 @@
-# Atria Native Media Studio / Mask / Gallery / Asset Lifecycle — D-009 / D-010
+# Atria Native Media Studio / Mask / Gallery / Asset Lifecycle — D-009 / D-010 / D-011
 
 - Task ID: `atria-native-visual-generation-deepening`
-- **Status**: **D-009（Round 9）和 D-010（Round 10）方案 C 均已批准**。D-009 冻结分层 Media Studio + 不可变媒体衍生 DAG + Regenerate/Img2Img/Inpaint/Upscale/Gallery 的功能类别。D-010 冻结**能力感知的可逆编辑工作台、编辑授权、版本选择与引用安全生命周期**。**Round 11** 才讨论精确 Mask 坐标/草稿协议、Provider 编辑矩阵、Gallery UI、GC 和存档导入验收细则，尚未冻结那些字段、数字及后端实际能力。
-- Canonical cross-module decisions: [decisions.md](decisions.md) D-001～D-010。D-009/D-010 的编辑/生命周期约束由本文负责；其他模块只链接，不重复详细规范。
+- **Status**: **D-009、D-010、D-011 三轮方案 C 均已批准**。本文件负责 Media Studio 与可逆/安全生命周期分层；**Round 11 的精确 Mask/草稿/Gallery/GC/SavePoint/能力声明契约另见 [media-precision.md](media-precision.md)**，第十二轮实际 Provider/Workflow 功能、Vibe/LoRA/ControlNet、fallback/真实验收尚未冻结。
+- Canonical cross-module decisions: [decisions.md](decisions.md) D-001～D-011。D-009/D-010 的分层/生命周期归此模块；D-011 的精确中立协议归 [media-precision.md](media-precision.md)，不重复维护。
 - Data authority: [provider-protocol.md](provider-protocol.md)（ImagePromptIR、Provider 能力与证据），[visual-continuity.md](visual-continuity.md)（角色/状态/参考权威），[visual-director.md](visual-director.md)（Scene/Shot、Job 和费用）。
 - Audited baseline: Atria `main@7e1045ab836c22cafbc92c5de056ad701f56e723` (GitHub 代码静态阅读；**本轮没有运行测试或真实编辑 API**）。
 
@@ -155,9 +155,13 @@ Invariants: **Blob immutable; an edit creates a derivative**. Selected display v
 
 **C · 能力感知的可逆工作台 + 引用安全生命周期（已确认 D-010）**：Canvas/Mask Draft 与后端 Native Mask 输出分离，经 Capability Negotiation 后由 Adapter 编译成实际编辑请求；操作历史无损、分支选择独立、引用闭包保护、用户主动批准的参考图晋升。**本节作为选择记录，详细规则请读 §6。**
 
-## 8. Round 11 待讨论：精确协议、矩阵与验收（**not frozen**）
+## 8. Round 11 已定案：方案 C — 精确规范详见 media-precision.md
 
-下面三种为**实现精度方案候选**，均不改变 D-009/D-010 已冻结的“可逆/非破坏、分层、权限和收费硬门禁”。
+**正式 D-011 已冻结**：Canonical 8-bit Mask（0 保留/255 编辑、源图像素坐标）、可恢复草稿命令与 Checkpoint、按 Connection+Model/Workflow 的 supported/unsupported/unknown 能力声明、按当前分支/Scene 的分层 Gallery、30/7 天可调宽限的双扫描 GC，以及正式 SavePoint 可编辑闭包/导入验收。完整规范请读 [media-precision.md](media-precision.md)，不在这里复制表/字段。**Round 12 的真实 Provider 能力、组合限制、付费降级与联测未批准**。
+
+### 当时 A/B/C 候选的历史记录（不是继续表决）
+
+以下三种是第十一轮审议时的历史备选；**已选择 C，A/B 不再是有效的实施候选**。
 
 - **A：简化二进制 Mask + 最小历史 UI**。提交时将绘制层直接转成与原图同尺寸的 8-bit Mask 位图并存成新的 Mask Artifact；草稿仅需周期保存单份 Snapshot；Provider Adapter 通过明确的通用输入函数转换。Gallery 只做基础列表/选中/历史，GC 始终按完整引用扫描。方案简洁，但笔画级撤销与多设备冲突精度有限。
 - **B：结构化笔触日志 + 强编辑工具**。持久化 Stroke Commands（笔触、填充、图形、变换、Undo/Redo）与完整 GUI，提交前可重放生成 Canonical Raster Mask；Gallery 默认显示完整血缘树、详细引用操作和存档包依赖。高度可编辑，但超长 Stroke 日志、平台差异、重放稳定性、压缩与存储复杂度更大。
@@ -171,7 +175,7 @@ Invariants: **Blob immutable; an edit creates a derivative**. Selected display v
 4. **GC 与 Reference**：资产 Root 集、历史 SavePoint/失败 Job/待恢复 Mask/参考晋升/下载导出占用、回收宽限、审计报告、孤儿 Blob 处理。
 5. **Save import/export**：两类存档承诺的最小闭包/Manifest/哈希/ID 冲突处理、缺失依赖/恶意媒体、部分失败回滚、跨平台 FS/SQLite 和手机 Web 操作验证。
 
-**正式决策在用户选择 Round 11 后才更新 docs D-011。** 完成整套设计之前不得提前创建 `feat/*` 开发分支，不为现在的候选细节冒充已批准代码合同。
+**D-011 已正式写入 docs**。进入 Round 12 实际 Provider 编辑功能矩阵、Reference/Vibe/LoRA/ControlNet 组合与降级/联测，未讨论完成之前不创建正式开发分支。
 
 ## 9. Static evidence and acceptance constraints
 
