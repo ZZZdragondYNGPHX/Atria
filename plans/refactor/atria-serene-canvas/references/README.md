@@ -8,7 +8,8 @@
 | --- | --- | --- |
 | [accepted-preview-v0.1.html](accepted-preview-v0.1.html) | 首轮独立交互初稿，原样纳入方案 | 已收到满意反馈；当前视觉基线 |
 | [discussion-preview-v0.2.html](discussion-preview-v0.2.html) | 第二轮早期讨论稿，修正 Runtime 样例地址与认证语义 | 历史讨论版本；视觉沿用 v0.1 |
-| [discussion-preview-v0.3.html](discussion-preview-v0.3.html) | Runtime 配置路径与 Agents 四页的交互初稿 | 最新讨论版本；等待反馈，未替换已接受基线 |
+| [discussion-preview-v0.3.html](discussion-preview-v0.3.html) | Runtime 配置路径与 Agents 四页的交互初稿 | 历史讨论版本；未替换已接受基线 |
+| [discussion-preview-v0.4.html](discussion-preview-v0.4.html) | Play 会话/历史/存档与 Library 详情/资源编辑的交互初稿 | 最新讨论版本；等待反馈，未替换已接受基线 |
 | [desktop-reference.html](desktop-reference.html) | 用户提供的 `atria-serene-canvas.html` | 桌面视觉气质、布局与精致程度参考 |
 | [mobile-reference.html](mobile-reference.html) | 用户提供的 `atria-mobile-serene.html` | 手机布局与材质参考 |
 | [frontend-guidelines.md](frontend-guidelines.md) | 用户提供的视觉规范 | 设计输入；冲突以当前决策解决 |
@@ -22,6 +23,8 @@ v0.1 Runtime 的免认证 OpenAI-compatible 样例不是当前源码支持的配
 v0.2 讨论稿 SHA-256：`2056f0f1e4c471c43cf2fafaeb1316ffb6e0f82d476209ef2d4d251f522e58df`。
 
 v0.3 讨论稿 SHA-256：`0fd21aacc0613263195404077d1bca279cf14bd83f3eac11464c91e5cd04de9b`。
+
+v0.4 讨论稿 SHA-256：`d92552ee518fa4fe48ceeff13a78d745b6283b63625589b7a3b9821e14e4f026`。
 
 HTML 包含样例内容、内存交互、部分占位与 Google Fonts 引用；网络字体不可用时使用字体栈回退。它是视觉输入，不是产品服务或持久化实现。
 
@@ -52,6 +55,19 @@ HTML 包含样例内容、内存交互、部分占位与 Google Fonts 引用；�
 - 四份独立初稿脚本 `node --check` 通过；上述浏览器检查未出现 console error/warn。明确调用 review-animations 与 web-design-guidelines 静态复审，已报告问题均修复。
 
 v0.3 尚未验证：全量业务合同、所有 adapter/编排模式、真实文件导入导出、后端/凭据请求、真实移动键盘和手势设备、产品级性能。初稿中「示例状态」「演示反馈」是审阅设施，正式 UI 不保留这些模拟开关。Play/Library/Studio 沿用前版，完整剩余功能按 `../coverage.md` 继续讨论。
+
+### v0.4 actual prototype checks
+
+- 真实 Chromium 查看1440px阅读、390px Work Sheet、320px资源/历史 Sheet及900px重排；检查320px Play阅读/首页和Library四类列表，无页面级横向溢出。正文保留桌面20px/740px、手机17px，三张Gallery封面DOM与前版一致；320px Composer与Dock之间有12px间隔。
+- Inspect精确修订只读→返回当前恢复输入，未发送草稿保留；Load缺精确版本禁确认，满足后创建单条新分支，重复确认被锁定、旧main HEAD保持。
+- 长正文的流式示例中向上阅读停用跟随，位置保持、Jump latest可达；Stop后未提交回复丢弃、再次发送与停止可操作。准备/缺配置/恢复失败/Ironman终局输入均锁定。
+- 最近会话首页可达，Dock重进回阅读；同Work StartNew之后Continue仍进入原Session ID与精确版本，非Florence示例使用对应作品正文；Runtime缺项仍可读、输入禁止生成。
+- World原件只读→独立副本→Source错误保持原文→退出后恢复草稿→审查/新修订，未知metadata保留；Knowledge空标题校验、修正保存、旧r8仍可读取，旧引用不迁移。
+- World A/B共享Knowledge K，删除A后B仍阻碍删除K；重复删除只生效一次，原有Knowledge保留。`.atria`示例预检需要权限授予，`.atriasave`缺精确依赖禁确认，两个入口分开。
+- 实际键盘检查History/Saves与branch Arrow导航、焦点保留、Escape关闭。浏览器发现多分支手机Grid撑宽，修正后320px四分支时弹层宽/scrollWidth均320px，仅272px路线列表横滚，滚动条沿视觉体系隐藏。
+- 新模块及合并脚本语法检查通过；相关浏览器流程无console error/warn。明确调用review-animations与web-design-guidelines静态审查，已报问题修复；最后的Grid修复另以浏览器复测。
+
+v0.4 尚未验证：真实Session/模型/资源服务、持久化/版本修复回执、真实文件/密码/权限合同、全量上下文与参数、Package Knowledge编辑、真实手机软键盘/手势和性能trace。Studio/Agents/Runtime沿前版，剩余页面只见 `../coverage.md`。
 
 ## Material libraries
 

@@ -58,6 +58,12 @@
 - **Reason:** 运行过程和证据应先可阅读，再按需要进入拓扑与技术细节。
 - **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
 
+### 10. Play 默认回到上次阅读
+
+- **Decision:** Dock 的 Play 入口优先回到有效的最近会话阅读，保留可发现的最近会话首页入口；没有可恢复会话或缺少精确 Work 版本时显示首页与修复去向，不自动新建故事。
+- **Reason:** 持续阅读应保持位置和上下文，最近会话与新作品探索仍需可达。
+- **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
+
 ## Scope state
 
 首轮视觉讨论已结束；当前为第二轮完整企划讨论。尚未收到“开始重构”，产品实施未开始。

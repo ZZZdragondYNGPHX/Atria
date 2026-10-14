@@ -79,7 +79,7 @@ Native Composer
 ### Studio、Library、Runtime
 
 - Studio 人工编辑继续经 Workspace/ChangeSet inspection、Apply、validation、resultingRevision；Project Agent 提议与人 Commit 分开。Preview/Simulation 使用精确修订，界面不能把聊天文字或当前选中资源当权威保存。
-- Library 不可变资源修订、精确绑定、Package 原件只读与引用阻碍继续生效。表单重排不改变用户数据引用与已安装 Work/Session 的版本。
+- Library 不可变资源修订、精确绑定、引用阻碍与各资源的原件权限继续生效；具体只读/可编辑分支只见 [coverage.md](coverage.md)。表单重排不改变用户数据引用与已安装 Work/Session 的版本。
 - Runtime 继续使用现有 Connection/Model/Route/Prompt/Generation/Retrieval 权威；Secret 不进入共享页面、源码、截图或方案。就绪性与修复导航依据实际 adapter 和用途，而不是原型上的示例组合。
 - Account 操作由现有 user authority 处理；将可见退出/切换补回原生入口，不复制身份状态或另造登录接口。
 - 工作区路由、Command Registry、搜索来源、Inspector、草稿保护和错误恢复继续复用现有壳能力，视觉导航改变不删掉相应用户任务。

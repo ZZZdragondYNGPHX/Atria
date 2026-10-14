@@ -6,7 +6,7 @@
 
 - 源码核查基线：`main`，`9241325a7290e613e0fdaaa1870409105c161c89`（2026-10-14）。本模块以已核实的前端功能盘点为索引，以下源码引用提供可复核的事实入口；实施前以真实 Git 复核变化。
 - 满意的视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。它是独立演示，未连接产品服务、真实项目、会话、账户或模型请求。
-- 当前讨论稿：[discussion-preview-v0.3.html](references/discussion-preview-v0.3.html)。§6 已更新为本次 Runtime/Agents 演示范围，其余领域仍以 v0.1 为覆盖盘点；演示流程不等于产品实现。
+- 当前讨论稿：[discussion-preview-v0.4.html](references/discussion-preview-v0.4.html)。§3/§4 已更新为 Play/Library 的本次范围，§6 保留 v0.3 Runtime/Agents 范围；其余领域仍以 v0.1 为盘点。演示流程不等于产品实现。
 - [功能呈现文档](references/function-presentation.md)、[设计规范](references/frontend-guidelines.md)与桌面/移动参考均是设计输入，其与当前决定或源码的差异按 [decisions.md](decisions.md)处理。参考稿不包含某个按钮，不代表删除该用户任务；参考稿画出某个入口，也不证明产品已有该能力。
 - **交互演示**：对应版本可操作的模拟流程。**代表布局**：已有视觉构图或部分表单/状态，没有完整流程。**入口示意**：仅菜单、描述、简单反馈或占位详情。**待展开**：没有具体界面。下列等级均不表示产品实现或验收完成。
 
@@ -24,30 +24,32 @@
 
 ## 3. Play
 
-| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| 页面/区域 | 已有产品能力与语义 | v0.4 讨论稿覆盖 | 剩余 HTML / 产品验证 |
 | --- | --- | --- | --- |
-| Play 首页 | 最近 Session/Work、Browse Library、导入存档；缺精确 Work 版本不能 Continue | 直接展示活跃会话，首页待展开 | 最近会话与首次使用；缺版本的修复入口 |
-| 阅读与 Composer | 原生 Timeline、输入、Send/Stop、Jump to latest；可写/历史/终局/恢复状态 | 叙事排版、输入/模拟回复/停止有交互演示 | 准备中、服务缺项、长时间流式输出、滚动跟随与主动阅读、故事结束 |
-| 会话工具 | History & saves、Context、Prompt choices、Save；More 包含健康、共享、Quick Save、Load、返回 | 工具入口与少数 sheet 有交互演示 | 主/次级操作层级、生成中禁用条件、Save/Load 的真实步骤 |
-| 历史、分支与存档 | 查看只读修订、切换分支/回到当前、Load/Export；自动保存策略、重命名、导入导出 `.atriasave` | 时间线与存档 sheet 有交互演示，实际存档/分支流程待展开 | 分支/修订选择、只读说明、恢复当前、存档导入依赖与确认 |
-| Context / Prompt choices | 上下文纳入/排除摘要与详情；当前 Route 动态参数、保存覆盖/恢复作者默认 | 摘要与参数 sheet 有交互演示 | 未生成、明细、参数校验、精确 Route 来源与恢复默认反馈 |
-| Persona | 会话内搜索/选择或无 Persona；不可写时禁止切换 | 选择器有交互演示 | 搜索、默认/当前区别、不可写解释；与 Library 资源详情衔接 |
+| Play 首页 | 最近 Session/Work、Browse Library、导入存档；缺精确 Work 版本不能 Continue | 最近会话/作品与无会话示例；缺精确版本说明/修复；Dock 默认回阅读 | 真实持久化恢复、最近阅读位置与依赖回执 |
+| 阅读与 Composer | 原生 Timeline、输入、Send/Stop、Jump to latest；可写/历史/终局/恢复状态 | 窄幅正文、输入草稿、流式/Stop；主动阅读不抢滚动、Jump；准备/缺配置/恢复失败/Ironman终局示例 | 真实运行与恢复合同、非Ironman终局差异、真实设备键盘/手势 |
+| 会话工具 | History & saves、Context、Prompt choices、Save；More 包含健康、共享、Quick Save、Load、返回 | 分组工具、Save/Quick Save、重命名与条件禁用；健康/共享保留示意 | 真实存档与共享/健康完整流程 |
+| 历史、分支与存档 | Inspect/Preview 精确修订只读；Switch Branch 恢复目标分支 HEAD；Load SavePoint 从保存修订创建新 derived Branch，旧分支 HEAD 保留；自动保存策略、重命名、导入导出 `.atriasave` | 分支/修订、只读Inspect/返回当前保留草稿、HEAD切换、Load依赖/确认/新分支、自动保存配置、预置导入/导出入口 | 实际文件/密码、自动保存调度与持久回执；全量分支数据 |
+| Context / Prompt choices | 上下文纳入/排除摘要与详情；Prompt choices 归当前 Runtime Route、跨会话生效，保存覆盖/恢复作者默认；不属于历史修订或 Session 草稿 | 代表上下文来源、共享Route选项/默认反馈与权限说明 | 未生成、完整来源/排除原因、真实参数合同与费用 |
+| Persona | 会话内搜索/选择或无 Persona；不可写时禁止切换 | 选择器、禁用、演示状态修订 | Library Persona完整管理/默认关系与实际精确资源绑定 |
 | 作品专属 UI | component/hybrid/full 可复用组件或接管 Stage，Host 保留恢复能力 | 默认阅读视图有演示；接管待展开 | 一处作品自定义呈现，覆盖 Exit/Stop/Save/Persona/Diagnostics/Reload 可达性 |
 
 事实入口：`main:public/scripts/native/play-product.js:86-178,276-480`、`play-controls.js:192-305,331-561`、`session-history.js:46-173`、`persona-ui.js:21-150,198-265`、`prompt-runtime-controls.js:6-87`、`experience/ui/full-host.js:49-145`。
 
 ## 4. Library
 
-| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| 页面/区域 | 已有产品能力与语义 | v0.4 讨论稿覆盖 | 剩余 HTML / 产品验证 |
 | --- | --- | --- | --- |
-| Works / My Games | 搜索、版本/可用性、安装更新 `.atria`、继续 Session；管理导出/重命名/删除 | 画廊、搜索/无结果、卡片详情有交互演示 | 最近进度、缺版本、管理菜单；安装包预检/权限与存档导入分开 |
-| Work 详情 | 选择起点/会话标题、Start New/Continue、精确版本、World/Knowledge 绑定与用途缺项修复 | 说明、版本与开始/继续有交互演示 | 起点选择、用途缺项、版本详情/依赖、删除阻碍 |
-| Worlds & Knowledge | 导入/导出、Library 可编辑副本、Package 原件只读；不可变修订与精确绑定 | 分类与资源行/简述详情有交互演示 | 资源详情、修订历史/引用、只读与 Fork/复制、删除前引用阻碍 |
-| Knowledge 条目 | 添加/编辑/启停/删除条目、绑定与来源 | 待展开 | 条目编辑纸、列表筛选、启停、绑定证据与空状态 |
+| Works / My Games | 搜索、版本/可用性、安装更新 `.atria`、继续 Session；管理导出/重命名/删除 | 原封面/画廊与搜索保留；安装权限示例预检、存档独立预检、删除依赖阻碍 | 真实包/存档/密码、导出/重命名与卸载回执 |
+| Work 详情 | 选择起点/会话标题、Start New/Continue、精确版本、World/Knowledge 绑定与用途缺项修复 | 起点/标题、精确版本/依赖、固定Session联动；旧版缺失禁Continue而新故事可用当前版；Runtime缺项禁生成 | 实际安装/修复后返回、真实会话与资源服务 |
+| Worlds & Knowledge | 导入/导出、Library 可编辑副本、Package World 原件只读；当前安装版本的 Package Knowledge 有既存编辑路径；不可变修订与精确绑定 | Package World只读→独立World/Knowledge副本；Library新修订/历史/引用；World Source草稿/校验/未知字段保留，删除阻碍 | Package Knowledge原件编辑、实际导入导出与合同/引用查询 |
+| Knowledge 条目 | 添加/编辑/启停/删除条目、绑定与来源 | Library条目编辑/启停→草稿→审查→新修订，保留来源metadata与旧引用 | 添加/删除条目、全量搜索/来源定位及实际保存 |
 | Prompt Presets | Program/Modules/Generation/Preset Regex、结构化/Source、保存精确修订 | 列表/概念详情有交互演示；Studio 的 Prompt 编辑是另一场景 | Library Prompt 完整详情、模块维护、Source、引用关系与新修订反馈 |
 | Personas | 新建/编辑/复制/归档、设置默认；与会话选择器同一资源 | 分类/列表与会话选择器有交互演示 | Persona 详情、新建/编辑、默认与归档流程 |
 
 事实入口：`main:public/scripts/atria-shell/library-runtime-workspaces.js:23-29,79-122`、`public/scripts/native/library-workspaces.js:40-428`、`prompt-presets.js:192-305`、`prompt-authoring.js:167-320`、`persona-ui.js:21-150`。
+
+v0.4 复核：Package Knowledge 的当前安装版本编辑分支见 `main:public/scripts/native/package-library-resources.js` 中 `editPackageKnowledge` 调用；不能因视觉稿的「只读原件」概括删掉此路径。本次代表原型重点是 Package World 与 Library Knowledge，Package Knowledge 特例仍需完整界面验证。
 
 ## 5. Build / Atria Studio
 
@@ -118,11 +120,11 @@ v0.1 的 `OpenAI compatible + localhost:1234/v1 + 无需认证` 是说明性示�
 
 ## 9. 下一轮 HTML 的展开顺序
 
-当前 v0.3 迭代重点为本模块 §6：Runtime 缺项/Connection→Model→Route→Compile preview，与 Agents Timeline/Graph/节点证据、预设编辑和记忆来源。呈现层级已由 `decisions.md` §8/§9 确定；下面是其余后续视图的建议顺序。
+v0.3 已展开本模块 §6 的 Runtime/Agents 代表流程，v0.4 已按 §3/§4 展开 Play 与 Library 的日常使用代表路径。下面是后续视图的建议顺序；各版讨论稿仍等待反馈，不自动替换已接受视觉基线。
 
 建议按能验证视觉系统承载复杂度的代表任务展开，而非一口气增加全部占位页面：
 
-1. Play 首页与只读历史/分支/存档，World/Knowledge 详情与引用，Library Prompt/Persona 编辑。
+1. 按反馈调整v0.4 Play/Library；继续Library Prompt/Persona完整编辑与Package Knowledge原件编辑。
 2. Runtime 的复杂依赖修复、删除阻碍和原任务返回；v0.3 已有的配置主路径按反馈调整。
 3. Studio 非 Prompt 资源编辑、ChangeSet 冲突/验证失败；Agents 各编排模式的完整编辑与维护任务细节，沿 v0.3 四页继续完善。
 4. 登录/引导、Settings/Account/Backup/Extensions/Diagnostics；一处作品接管与一处条件媒体流程。
