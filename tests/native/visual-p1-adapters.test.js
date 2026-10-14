@@ -68,7 +68,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         await expect(x.images.start(h.handle, { prepareId: edit.prepareId, approval: x.approval(edit) })).rejects.toThrow('external_transfer_unauthorized');
         const task = await x.images.start(h.handle, { prepareId: edit.prepareId, approval: { ...x.approval(edit), externalAssetIds: edit.externalAssetIds } }); await x.images.wait(h.handle, task.operationId);
         expect(JSON.parse(transport.calls.at(-1).options.body).contents[0].parts[1].inlineData.data).toBe(visualPng.toString('base64'));
-        const draft = await media.createDraft(h.handle, scope), mask = await media.freezeMask(h.handle, { draftId: draft.value.draftId, expectedRevision: draft.revision }), count = transport.calls.length;
+        const draft = await media.createDraft(h.handle, scope), mask = await media.freezeMask(h.handle, { ...scope, draftId: draft.value.draftId, expectedRevision: draft.revision }), count = transport.calls.length;
         await expect(media.prepare(h.handle, { ...scope, operation: 'inpaint', maskArtifactId: mask.maskArtifactId, referenceIds: [] })).rejects.toThrow('capability_unsupported');
         expect(transport.calls).toHaveLength(count);
     });
@@ -132,7 +132,7 @@ test('RunningHub editing L2 freezes the entire typed workflow, uploads base/mask
         Save: { input: { required: { image: ['IMAGE', {}] } }, output: [], output_node: true } };
     const wf = { id: '123456', graph: { '1': { class_type: 'Load', inputs: { image: 'base' } }, '2': { class_type: 'Load', inputs: { image: 'mask' } },
         '3': { class_type: 'Edit', inputs: { base: ['1', 0], mask: ['2', 0], text: 'edit' } }, '4': { class_type: 'Save', inputs: { image: ['3', 0] } } },
-        bindings: [{ nodeId: '1', input: 'image', semantic: 'base', type: 'image' }, { nodeId: '2', input: 'image', semantic: 'mask', type: 'image' }, { nodeId: '3', input: 'text', semantic: 'prompt', type: 'string' }], outputNodes: ['4'], nodeTypes: schema };
+    bindings: [{ nodeId: '1', input: 'image', semantic: 'base', type: 'image' }, { nodeId: '2', input: 'image', semantic: 'mask', type: 'image' }, { nodeId: '3', input: 'text', semantic: 'prompt', type: 'string' }], outputNodes: ['4'], nodeTypes: schema };
     const calls = [], adapter = createImageRegistry({ fetchImpl: async (url, options) => {
         calls.push({ url, options });
         if (url.endsWith('/upload')) return Response.json({ code: 0, data: { fileName: 'api/' + calls.length + '.png' } });

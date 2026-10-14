@@ -4,6 +4,13 @@ import { assertCompilationEvidence, assertVisualSourceRef, visualFingerprint } f
 // Presentation data only: an illustration never changes committed narrative.
 export const ILLUSTRATION_NAMESPACE = 'atri_illustrations';
 export const emptyIllustrations = () => ({ schemaVersion: 2, annotations: [], images: [], references: [] });
+export function assertIllustrationImageSelection(value) {
+    record(value, ['imageTargetId', 'imageRenderingId']);
+    return {
+        imageTargetId: value.imageTargetId == null ? null : id(value.imageTargetId, 'imgtarget'),
+        imageRenderingId: value.imageRenderingId == null ? null : id(value.imageRenderingId, 'imgrender'),
+    };
+}
 
 function record(value, keys) {
     if (!value || Object.prototype.toString.call(value) !== '[object Object]') throw new TypeError('Invalid illustration record');
@@ -83,12 +90,13 @@ export function assertIllustrationState(value) {
     if (value.schemaVersion !== 2 || !Array.isArray(value.annotations) || value.annotations.length > 2048
         || !Array.isArray(value.images) || value.images.length > 8192) throw new TypeError('Invalid illustration state');
     const annotations = value.annotations.map(item => {
-        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft', 'promptVersions', 'promptContext', 'sceneId', 'shotId', 'timeKind', 'originalAnchor', 'sourceProof']);
+        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft', 'promptVersions', 'promptContext', 'sceneId', 'shotId', 'timeKind', 'originalAnchor', 'sourceProof', 'imageSelection']);
         return { annotationId: id(item.annotationId, 'ann'), anchor: assertIllustrationAnchor(item.anchor),
             selectedImageVersionId: item.selectedImageVersionId === null ? null : id(item.selectedImageVersionId, 'imgv'),
             createdAt: integer(item.createdAt), ...(item.originalAnchor === undefined ? {} : { originalAnchor: assertIllustrationAnchor(item.originalAnchor), sourceProof: requestEvidence(item.sourceProof) }), ...(item.sceneId === undefined ? {} : { sceneId: id(item.sceneId, 'scene'), shotId: id(item.shotId, 'shot'), timeKind: ['present', 'flashback', 'dream'].includes(item.timeKind) ? item.timeKind : (() => { throw new TypeError('Invalid visual frame'); })() }), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }),
             ...(item.promptVersions === undefined ? {} : { promptVersions: assertIllustrationPromptVersions(item.promptVersions) }),
             ...(item.promptContext === undefined ? {} : { promptContext: assertIllustrationPromptContext(item.promptContext) }),
+            ...(item.imageSelection === undefined ? {} : { imageSelection: assertIllustrationImageSelection(item.imageSelection) }),
             ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };
     });
     const images = value.images.map(assertIllustrationImage);

@@ -52,11 +52,11 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
             if (action === 'prepare' && step === 'images') result = await generationRequest(path + '/prepare', { method: 'POST', body: { ...input, sessionId: scope.sessionId, branchId: scope.branchId }, signal });
             else if (action === 'start') result = await generationRequest(path, { method: 'POST', body: step === 'images' ? input : { sessionId: scope.sessionId, branchId: scope.branchId, annotationId: input.annotationId }, signal });
             else if (action === 'list') result = await generationRequest(path + '?sessionId=' + encodeURIComponent(scope.sessionId) + '&branchId=' + encodeURIComponent(scope.branchId), { signal });
-            else if (action === 'status' || action === 'cancel') result = await generationRequest((action === 'status' || step === 'images' ? path + '/' : '/operations/') + encodeURIComponent(input.operationId), { method: action === 'cancel' ? 'DELETE' : 'GET', signal });
+            else if (action === 'status' || action === 'cancel') result = await generationRequest((action === 'status' || step === 'images' ? path + '/' : '/operations/') + encodeURIComponent(input.operationId) + (action === 'status' && step === 'images' ? '?summary=1' : ''), { method: action === 'cancel' ? 'DELETE' : 'GET', signal });
             else throw new TypeError('Unknown illustration prompt action');
             if (action === 'status') {
                 if (result.operation.anchor.sessionId !== scope.sessionId || result.operation.anchor.branchId !== scope.branchId) throw new Error('atri_illustration_operation_mismatch');
-                if (result.state && !signal?.aborted && runtime.snapshot?.session.sessionId === scope.sessionId && runtime.snapshot.revision.branchId === scope.branchId && !runtime.history) {
+                if ((result.state || result.presentationChanged) && !signal?.aborted && runtime.snapshot?.session.sessionId === scope.sessionId && runtime.snapshot.revision.branchId === scope.branchId && !runtime.history) {
                     // Fetch current presentation after terminal delivery so a slow
                     // status response cannot overwrite a more recent card edit.
                     const refresh = queue.catch(() => {}).then(async () => {

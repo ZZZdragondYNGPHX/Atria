@@ -12,8 +12,8 @@ import { installFixture } from './session-fixture.js';
 
 export const visualPng = PNG.sync.write({ width: 1, height: 1, data: Buffer.from([30, 90, 150, 255]) });
 export const deferredVisual = () => { let resolve; const promise = new Promise(yes => resolve = yes); return { promise, resolve }; };
-export async function setupVisual(h, { registry, provider, model = 'nai-diffusion-5-full', endpoint = 'http://127.0.0.1:1/generate', adapter = 'provider.novelai-image-compatible', parameters = {}, workflow = null } = {}) {
-    const f = await installFixture(h), view = await f.core.create(h.handle, f.start);
+export async function setupVisual(h, { registry, provider, initial, model = 'nai-diffusion-5-full', endpoint = 'http://127.0.0.1:1/generate', adapter = 'provider.novelai-image-compatible', parameters = {}, workflow = null } = {}) {
+    const f = initial?.f ?? await installFixture(h), view = initial?.view ?? await f.core.create(h.handle, f.start);
     const persistence = new NativeModelPromptPersistence({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine }), extensions = new ExtensionsStore({ engine: h.engine });
     const connection = { schemaVersion: 1, scope: 'player', connectionProfileId: createNativeId('connectionProfile'), displayName: 'image fixture', providerAdapter: adapter,
         transport: 'transport.http', endpoint, secretRef: { scope: 'player', secretId: 'fixture-secret-ref' }, networkPolicy: {}, options: adapter === 'provider.novelai-image-compatible' ? { imageCapabilities: officialNovelaiCapabilities() } : {} };

@@ -60,13 +60,18 @@ async function resourceSetupAssetReferences(tx, handle, assetId) {
             if (worlds?.some(world => world.revision?.assetIds?.includes(assetId))) references.push({ ...record.key, kind: kind === NATIVE_RESOURCE_KINDS.sessionState ? 'session-world-snapshot' : 'work-resource-default' });
         }
     }
-    // Durable jobs (including uncertain submission), mask drafts, references
-    // and import/export leases are Native GC roots. GC quarantine markers are
-    // excluded: a marker is not an ownership reference.
+    // Durable in-flight/uncertain jobs and recent temporary edits are roots.
+    // Completed jobs and abandoned drafts retain a recovery grace, while
+    // published media remains rooted by Session/SavePoint presentation.
+    // GC quarantine markers are never ownership references.
     const holds = value => value === assetId || value && typeof value === 'object' && Object.values(value).some(holds);
     for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle })) {
-        if (record.key.resourceType.startsWith('atri.visual.') && record.key.resourceType !== 'atri.visual.gc'
-            && !(record.key.resourceType === 'atri.visual.prepared' && record.doc.expiresAt < Date.now()) && holds(record.doc)) references.push({ kind: record.key.resourceType, resourceId: record.key.resourceId });
+        const type = record.key.resourceType, age = Date.now() - (record.doc.updatedAt ?? record.doc.publishedAt ?? record.doc.createdAt ?? 0);
+        if (!type.startsWith('atri.visual.') || type === 'atri.visual.gc' || type === 'atri.visual.prepared' && record.doc.expiresAt < Date.now()
+            || type === 'atri.visual.draft' && age > 30 * 86400000
+            || type === 'atri.visual.mask' && record.doc.createdAt && age > 7 * 86400000
+            || type === 'atri.visual.job' && ['published', 'failed', 'cancelled', 'stale'].includes(record.doc.status) && age > 7 * 86400000) continue;
+        if (holds(record.doc)) references.push({ kind: type, resourceId: record.key.resourceId });
     }
     return references;
 }

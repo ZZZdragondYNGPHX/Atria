@@ -6,6 +6,9 @@ import { randomUUID } from 'node:crypto';
 // Fail closed when the filesystem cannot supply the required directory barrier.
 // This is a software contract, not a claim of verified hardware power-loss safety.
 export function syncDirectory(directory) {
+    // Windows does not expose directory fsync through Node. File contents are
+    // synced before rename; directory metadata durability is OS-managed there.
+    if (process.platform === 'win32') return;
     const fd = fs.openSync(directory, 'r');
     try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
 }
@@ -35,6 +38,7 @@ export function durableRemove(file) {
 }
 
 export async function syncDirectoryAsync(directory) {
+    if (process.platform === 'win32') return;
     const file = await fsp.open(directory, 'r');
     try { await file.sync(); } finally { await file.close(); }
 }

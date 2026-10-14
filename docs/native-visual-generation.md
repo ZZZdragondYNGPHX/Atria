@@ -111,6 +111,27 @@ limits. Single result only; return-count mismatch is rejected. Adapter registrat
 requires describe/compile/generate and unique explicit names. Third-party protocols
 must supply those ports and Source/Capability/Job/Asset validation remains shared.
 
+Platform setup
+--------------
+On Windows, install Node.js 24 and dependencies in the Windows worktree with
+`npm ci` and `npm --prefix tests ci`. The Native SQLite module needs its install
+script; if the local npm policy suppresses scripts, rebuild it explicitly with
+`npm rebuild better-sqlite3 --ignore-scripts=false --foreground-scripts`.
+Native file writes sync file content before atomic rename. Node cannot sync
+directory handles on Windows, so Windows power-loss directory metadata durability
+is OS-managed rather than claimed as verified by Atria.
+
+The same responsive browser UI is used on desktop and mobile. A browser on a
+phone cannot reach a ComfyUI/WebUI service on the desktop through `localhost`:
+configure its Connection endpoint with a reachable LAN hostname/IP and the
+service's own access controls. A Termux-hosted service may use `127.0.0.1` only
+when the browser and service run on the same Android device. Keep Runtime
+Connection URLs and Secrets in the authenticated profile; do not place them in
+Target/Rendering JSON or a SavePoint. An API-format ComfyUI workflow can be
+imported in the image Target editor, then its semantic input and output slots
+must be mapped and validated against the installed node catalog. RunningHub
+requires its numeric Workflow ID and typed node catalog as well.
+
 Official protocol sources checked 2026-10-14 (read-only; no L3):
 - https://ai.google.dev/gemini-api/docs/generate-content/image-generation
 - https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/master/modules/api/models.py

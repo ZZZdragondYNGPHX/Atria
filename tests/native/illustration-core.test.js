@@ -6,6 +6,9 @@ import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 import { installFixture, services } from './helpers/session-fixture.js';
 import { runFixture } from './helpers/run-fixture.js';
+import { setupVisual, visualPng } from './helpers/visual-fixture.js';
+import { MediaStudio } from '../../src/native/media-studio.js';
+import { VisualStore } from '../../src/native/visual-store.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7N0AAAAASUVORK5CYII=', 'base64');
 
@@ -65,7 +68,9 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const annotationId = initial.state.annotations[0].annotationId;
         const branchId = view.revision.branchId;
         draft.prompt = 'hand edited'; draft.scene = 'at the window';
-        const edited = await f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, expectedHead: initial.head, branchId });
+        const imageSelection = { imageTargetId: createNativeId('imageTarget'), imageRenderingId: createNativeId('imageRendering') };
+        const edited = await f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, imageSelection, expectedHead: initial.head, branchId });
+        expect(edited.state.annotations[0].imageSelection).toEqual(imageSelection);
         await expect(f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, expectedHead: initial.head, branchId })).rejects.toThrow('head_conflict');
         const loaded = await f.core.load(h.handle, f.sessionId);
         expect(loaded.revision).toEqual(view.revision); expect(loaded.variants).toEqual(view.variants);
@@ -74,6 +79,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         await f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, expectedHead: edited.head, branchId });
         const exported = await f.saveSystem.exportSnapshot(h.handle, f.sessionId, saved.saveId);
         expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.annotations[0].draft.prompt).toBe('hand edited');
+        expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.annotations[0].imageSelection).toEqual(imageSelection);
         const target = await makeHarness();
         try {
             const other = services(target); await other.packageInstaller.install(target.handle, await f.assetStore.readBlob(h.handle, view.session.packageContentHash));
@@ -213,5 +219,39 @@ test('ironman resume preserves pictures with only the current reachable narrativ
         const imported = await other.saveSystem.importSave(target.handle, exported.archive);
         expect(imported.illustrations.images).toHaveLength(1);
         expect((await other.assetStore.read(target.handle, generated.ref.assetId)).bytes).toEqual(PNG);
+    } finally { await h.cleanup(); await target.cleanup(); }
+});
+
+test('ironman generated image and Mask edit remain editable after export/import', async () => {
+    const h = await makeTempFsEngineHarness(), target = await makeTempFsEngineHarness();
+    try {
+        const f = await runFixture(h, 'http://127.0.0.1:1/unused');
+        const view = await f.begin('ironman');
+        const x = await setupVisual(h, { initial: { f, view }, provider: { generate: async () => ({ bytes: visualPng, width: 1, height: 1 }) } });
+        const first = await x.prepare(), started = await x.images.start(h.handle, { prepareId: first.prepareId, approval: x.approval(first) });
+        await x.images.wait(h.handle, started.operationId);
+        const original = (await x.images.status(h.handle, started)).state.images[0];
+        const media = new MediaStudio({ host: x.host, images: x.images });
+        const scope = { sessionId: view.session.sessionId, branchId: view.revision.branchId, imageVersionId: original.imageVersionId };
+        const { imageVersionId: _sourceImageVersionId, ...draftScope } = scope;
+        const draft = await media.createDraft(h.handle, scope);
+        const painted = await media.saveDraft(h.handle, { ...draftScope, draftId: draft.value.draftId, commands: [{ kind: 'fill', value: 255 }], cursor: 1, expectedRevision: draft.revision });
+        const mask = await media.freezeMask(h.handle, { ...draftScope, draftId: draft.value.draftId, expectedRevision: painted.revision });
+        const edited = await media.prepare(h.handle, { ...scope, operation: 'inpaint', prompt: 'edit', maskArtifactId: mask.maskArtifactId, referenceIds: [] });
+        const editJob = await x.images.start(h.handle, { prepareId: edited.prepareId, approval: { ...x.approval(edited), externalAssetIds: edited.externalAssetIds } });
+        await x.images.wait(h.handle, editJob.operationId);
+        const published = (await x.images.status(h.handle, editJob)).state.images.at(-1);
+        await f.core._publish(h.handle, await f.core.load(h.handle, view.session.sessionId));
+        const exported = await f.saveSystem.exportSession(h.handle, view.session.sessionId);
+        expect(exported.save.scope).toBe('resume');
+        const other = services(target); await other.packageInstaller.install(target.handle, f.archive);
+        const imported = await other.saveSystem.importSave(target.handle, exported.archive);
+        expect(imported.illustrations.images.some(image => image.imageVersionId === published.imageVersionId)).toBe(true);
+        const reopened = new MediaStudio({ host: { sessionCore: other.core, packageInstaller: other.packageInstaller }, images: { store: new VisualStore({ engine: target.engine }) } });
+        const importedScope = { sessionId: imported.session.sessionId, branchId: imported.revision.branchId, imageVersionId: published.imageVersionId };
+        const { imageVersionId: _importedImageVersionId, ...importedDraftScope } = importedScope;
+        const nextDraft = await reopened.createDraft(target.handle, importedScope);
+        const nextPaint = await reopened.saveDraft(target.handle, { ...importedDraftScope, draftId: nextDraft.value.draftId, commands: [{ kind: 'fill', value: 255 }], cursor: 1, expectedRevision: nextDraft.revision });
+        expect((await reopened.freezeMask(target.handle, { ...importedDraftScope, draftId: nextDraft.value.draftId, expectedRevision: nextPaint.revision })).baseHash).toBe((await other.assetStore.getRef(target.handle, published.assetId)).contentHash);
     } finally { await h.cleanup(); await target.cleanup(); }
 });

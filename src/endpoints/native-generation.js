@@ -240,7 +240,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 const host = getHost(), media = new MediaStudio({ host }), gallery = new VisualGallery({ host }), gc = new VisualMediaGc({ host }), input = req.body;
                 let result;
                 if (domain === 'mask') result = action === 'create' ? await media.createDraft(handle, input)
-                    : action === 'find' ? await (async () => { await media.image(handle, input); return { items: (await media.store.list(handle, 'draft')).filter(draft => draft.source.sessionId === input.sessionId && draft.source.branchId === input.branchId && draft.imageVersionId === input.imageVersionId).map(draft => ({ draftId: draft.draftId, updatedAt: draft.updatedAt })) }; })() : action === 'read' ? await media.draft(handle, input.draftId) : action === 'save' ? await media.saveDraft(handle, input) : await media.freezeMask(handle, input);
+                    : action === 'find' ? await (async () => { await media.image(handle, input); return { items: (await media.store.list(handle, 'draft')).filter(draft => draft.source.sessionId === input.sessionId && draft.source.branchId === input.branchId && draft.imageVersionId === input.imageVersionId && Date.now() - draft.updatedAt <= 30 * 86400000).map(draft => ({ draftId: draft.draftId, updatedAt: draft.updatedAt })) }; })() : action === 'read' ? await media.draft(handle, input.draftId, input) : action === 'save' ? await media.saveDraft(handle, input) : await media.freezeMask(handle, input);
                 else if (domain === 'media') result = await media.prepare(handle, input);
                 else if (domain === 'gallery') result = await gallery[action](handle, input);
                 else if (domain === 'reference') result = await gallery[action](handle, input);
@@ -249,18 +249,19 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_media_failed' }); }
         });
     }
-    router.post('/visual/mask/checkpoint-with-commands', multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 16 * 1024 * 1024, fields: 1, fieldSize: 1024 * 1024 } }).single('checkpoint'), async (req, res) => {
+    const visualAuthentication = (req, res, next) => req.user?.profile?.handle ? next() : res.sendStatus(401);
+    router.post('/visual/mask/checkpoint-with-commands', visualAuthentication, multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 16 * 1024 * 1024, fields: 1, fieldSize: 1024 * 1024 } }).single('checkpoint'), async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
         try { res.json(await new MediaStudio({ host: getHost() }).checkpoint(handle, JSON.parse(req.body.metadata), req.file.buffer)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_checkpoint_failed' }); }
     });
-    router.post('/visual/mask/checkpoint', express.raw({ type: 'application/octet-stream', limit: '16mb' }), async (req, res) => {
+    router.post('/visual/mask/checkpoint', visualAuthentication, express.raw({ type: 'application/octet-stream', limit: '16mb' }), async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
         try { res.json(await new MediaStudio({ host: getHost() }).checkpoint(handle, req.query, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_checkpoint_failed' }); }
     });
     router.get('/visual/mask/raster/:id', async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
         try {
-            const media = new MediaStudio({ host: getHost() }), row = await media.draft(handle, req.params.id);
+            const media = new MediaStudio({ host: getHost() }), row = await media.draft(handle, req.params.id, req.query);
             res.set('Cache-Control', 'private, no-store').type('application/octet-stream').send(await media.raster(handle, { ...row.value, commands: [], cursor: 0 }));
         } catch (error) { res.status(400).json({ error: error.code || 'native_visual_mask_failed' }); }
     });
@@ -341,7 +342,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
     router.get('/illustration-images/:id', async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
-        try { res.json(await new IllustrationImageService({ host: getHost() }).status(handle, { operationId: req.params.id })); } catch { res.status(404).json({ error: 'native_illustration_operation_missing' }); }
+        try { res.json(await new IllustrationImageService({ host: getHost() }).status(handle, { operationId: req.params.id, summary: req.query.summary === '1' })); } catch { res.status(404).json({ error: 'native_illustration_operation_missing' }); }
     });
     router.get('/illustration-prompts', (req, res) => {
         const handle = req.user?.profile?.handle;

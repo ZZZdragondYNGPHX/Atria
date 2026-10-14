@@ -77,7 +77,13 @@ export class IllustrationImageService {
         const selection = resolveImageSelection({ task: input, annotation: annotation.imageSelection, work: settings.works[session.packageId], global: settings });
         let targetId = selection.imageTargetId;
         const rendering = selection.imageRenderingId ? (await this.resources.getCurrent(handle, 'core.image-rendering', selection.imageRenderingId))?.snapshot : null;
-        targetId ||= rendering?.defaultTargetId;
+        if (selection.imageRenderingId && !rendering) visualError('rendering_missing');
+        const priority = { task: 0, annotation: 1, work: 2, global: 3 };
+        if (rendering?.defaultTargetId && (!targetId || priority[selection.imageRenderingIdOrigin] < priority[selection.imageTargetIdOrigin])) {
+            targetId = rendering.defaultTargetId;
+            selection.imageTargetId = targetId;
+            selection.imageTargetIdOrigin = selection.imageRenderingIdOrigin + '-rendering-default';
+        }
         if (!targetId) visualError('target_missing');
         const target = (await this.resources.getCurrent(handle, 'core.image-target', targetId))?.snapshot;
         if (!target) visualError('target_missing');
@@ -153,14 +159,15 @@ export class IllustrationImageService {
             approval: { ...input.approval, authorizedAt: Date.now() }, amount, currency, mediaOperation }));
         this.worker.dispatch(handle, job); return { operationId: job.jobId, head: prepared.expectedHead };
     }
-    async status(handle, { operationId }) {
+    async status(handle, { operationId, summary = false }) {
         assertNativeId(operationId, 'imageJob');
         let job = (await this.store.read(handle, 'job', operationId)).value;
         if (!job) visualError('job_missing');
         await this.host.sessionCore.runs.assert(handle, job.source.sessionId, 'inspect');
         await this.worker.recover(handle, operationId);
         job = (await this.store.read(handle, 'job', operationId)).value;
-        return { operation: publicJob(job), ...(terminal.has(job.status) ? await this.host.sessionCore._sessions.getIllustrations(handle, job.source.sessionId, { branchId: job.source.branchId }) : {}) };
+        return { operation: publicJob(job), ...(terminal.has(job.status) ? summary ? { presentationChanged: true }
+            : await this.host.sessionCore._sessions.getIllustrations(handle, job.source.sessionId, { branchId: job.source.branchId }) : {}) };
     }
     async list(handle, { sessionId, branchId }) {
         assertNativeId(sessionId, 'session'); assertNativeId(branchId, 'branch');

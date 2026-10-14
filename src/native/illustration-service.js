@@ -2,7 +2,7 @@ import { resolveVisualSource } from './visual-source.js';
 import { assertIllustrationDraft } from '../../public/shared/illustration-plugin-contract.js';
 import { createNativeId, assertNativeId } from './identity.js';
 import { illustrationContentHash } from './session-illustrations.js';
-import { assertIllustrationImage, assertIllustrationAnchor } from '../../public/shared/native-illustration-contract.js';
+import { assertIllustrationImage, assertIllustrationAnchor, assertIllustrationImageSelection } from '../../public/shared/native-illustration-contract.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { assertIllustrationPromptVersions } from '../../public/shared/native-illustration-contract.js';
@@ -37,12 +37,13 @@ export class IllustrationService {
         return annotation;
     }
 
-    updateAnnotation(handle, sessionId, { annotationId, draft, expectedHead, branchId }) {
+    updateAnnotation(handle, sessionId, { annotationId, draft, imageSelection, expectedHead, branchId }) {
         const normalized = assertIllustrationDraft(draft);
+        const selection = imageSelection === undefined ? undefined : assertIllustrationImageSelection(imageSelection);
         return this.sessions.updateIllustrations(handle, sessionId, state => {
             const annotation = this._annotation(state, annotationId);
             if (annotation.deletedAt !== undefined) throw new ConflictError('native_illustration_deleted');
-            return { ...state, annotations: state.annotations.map(item => item !== annotation ? item : { ...item, draft: normalized }) };
+            return { ...state, annotations: state.annotations.map(item => item !== annotation ? item : { ...item, draft: normalized, ...(selection === undefined ? {} : { imageSelection: selection }) }) };
         }, { expectedHead, branchId });
     }
 

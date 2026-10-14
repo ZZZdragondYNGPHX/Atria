@@ -6,6 +6,8 @@ import { createNativeId } from './identity.js';
 import { visualObject, visualError, visualFingerprint } from '../../public/shared/native-visual-contract.js';
 import { withNativeResourceWrite } from './repositories/common.js';
 import { assertWritable } from '../storage/read-only-mode.js';
+import { resolveVisualSource } from './visual-source.js';
+import { assertVisualDisclosure } from './visual-continuity.js';
 
 export class VisualGallery {
     constructor({ host }) { this.host = host; this.media = new MediaStudio({ host }); this.store = this.media.store; this.assets = this.media.assets; }
@@ -17,18 +19,35 @@ export class VisualGallery {
         const presentation = await this.host.sessionCore._sessions.getIllustrations(handle, input.sessionId, { branchId: input.branchId });
         const all = presentation.state.images.filter(image => (!input.annotationId || image.annotationId === input.annotationId)
             && (!input.provider || image.requestSnapshot?.connection.providerAdapter === input.provider) && (!input.operation || image.mediaOperation?.kind === input.operation));
-        const metadata = await this.store.list(handle, 'gallery'), items = [], current = await this.host.sessionCore.load(handle, input.sessionId);
+        const metadata = new Map((await this.store.list(handle, 'gallery')).map(row => [row.id, row]));
+        const assets = new Set((await this.assets.listRefs(handle)).map(ref => ref.assetId));
+        const current = await this.host.sessionCore.load(handle, input.sessionId);
+        const actors = new Map(current.manifest.actors.map(actor => [actor.actorId, actor.displayName]));
+        const annotations = new Map(presentation.state.annotations.map(annotation => [annotation.annotationId, annotation]));
+        const reachable = new Map(), visible = [];
         for (const image of all.sort((a, b) => a.createdAt - b.createdAt || a.imageVersionId.localeCompare(b.imageVersionId))) {
-            const id = this.metadataId({ ...input, imageVersionId: image.imageVersionId }), state = metadata.find(row => row.id === id) ?? { id, hidden: false, removed: false, deletedAt: null };
+            const id = this.metadataId({ ...input, imageVersionId: image.imageVersionId }), state = metadata.get(id) ?? { id, hidden: false, removed: false, deletedAt: null };
             if ((!input.includeHidden && (state.hidden || state.removed)) || (!input.includeDeleted && state.deletedAt)) continue;
-            try { await this.media.image(handle, { ...input, imageVersionId: image.imageVersionId }); } catch { continue; }
-            items.push({ imageVersionId: image.imageVersionId, annotationId: image.annotationId, assetId: image.assetId, width: image.width, height: image.height,
-                alt: image.alt, createdAt: image.createdAt, sceneId: image.mediaOperation?.source.sceneId ?? null, shotId: image.mediaOperation?.source.shotId ?? null,
-                identities: (image.requestSnapshot?.ir.participants ?? []).map(p => ({ id: p.actorId ?? p.provisionalId, name: current.manifest.actors.find(a => a.actorId === p.actorId)?.displayName ?? p.provisionalId?.split(':').at(-1) ?? '角色' })),
-                operation: image.mediaOperation?.kind ?? 'txt2img', provider: image.requestSnapshot?.connection.providerAdapter ?? '',
-                metadataRevision: metadata.some(row => row.id === id) ? hashNativeDocument(state) : null, selected: presentation.state.annotations.find(a => a.annotationId === image.annotationId)?.selectedImageVersionId === image.imageVersionId, metadata: state });
+            if (!assets.has(image.assetId)) continue;
+            if (!reachable.has(image.annotationId)) {
+                const annotation = annotations.get(image.annotationId);
+                reachable.set(image.annotationId, (async () => {
+                    if (!annotation) return false;
+                    const anchor = annotation.originalAnchor ?? annotation.anchor;
+                    const source = { kind: 'session', sessionId: input.sessionId, branchId: input.branchId, revisionId: anchor.revisionId, annotationId: annotation.annotationId,
+                        anchor, timeKind: annotation.timeKind ?? 'present', ...(annotation.sceneId ? { sceneId: annotation.sceneId, shotId: annotation.shotId } : {}) };
+                    try { const resolved = await resolveVisualSource(this.host.sessionCore, handle, source); if (!resolved.frozen) assertVisualDisclosure(resolved.view, source); return true; } catch { return false; }
+                })());
+            }
+            if (!await reachable.get(image.annotationId)) continue;
+            visible.push({ image, id, state });
         }
-        return { head: presentation.head, total: items.length, items: items.slice(offset, offset + limit), nextOffset: offset + limit < items.length ? offset + limit : null };
+        const items = visible.slice(offset, offset + limit).map(({ image, id, state }) => ({ imageVersionId: image.imageVersionId, annotationId: image.annotationId, assetId: image.assetId, width: image.width, height: image.height,
+            alt: image.alt, createdAt: image.createdAt, sceneId: image.mediaOperation?.source.sceneId ?? null, shotId: image.mediaOperation?.source.shotId ?? null,
+            identities: (image.requestSnapshot?.ir.participants ?? []).map(p => ({ id: p.actorId ?? p.provisionalId, name: actors.get(p.actorId) ?? p.provisionalId?.split(':').at(-1) ?? '角色' })),
+            operation: image.mediaOperation?.kind ?? 'txt2img', provider: image.requestSnapshot?.connection.providerAdapter ?? '',
+            metadataRevision: metadata.has(id) ? hashNativeDocument(state) : null, selected: annotations.get(image.annotationId)?.selectedImageVersionId === image.imageVersionId, metadata: state }));
+        return { head: presentation.head, total: visible.length, items, nextOffset: offset + limit < visible.length ? offset + limit : null };
     }
     async history(handle, input) {
         const base = await this.media.image(handle, input);

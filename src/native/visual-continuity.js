@@ -75,13 +75,23 @@ export class VisualContinuity {
     }
     async references(handle, source, identity, purposes) {
         const { view, frozen } = await resolveVisualSource(this.host.sessionCore, handle, source); if (!frozen) assertVisualDisclosure(view, source);
-        const refs = (await this.host.sessionCore._sessions.getIllustrations(handle, source.sessionId, { branchId: source.branchId })).state.references ?? [], selected = [], excluded = [];
-        for (const ref of refs) {
+        const current = await this.host.sessionCore.load(handle, source.sessionId);
+        const branchIds = [...new Set(current.graph.map(node => node.branchId))];
+        const refs = new Map(), denied = new Set(), selected = [], excluded = [];
+        for (const branchId of branchIds) {
+            const state = (await this.host.sessionCore._sessions.getIllustrations(handle, source.sessionId, { branchId })).state;
+            for (const ref of state.references ?? []) {
+                if (branchId !== source.branchId && !(ref.standard && ref.purpose === 'identity' && ref.allowedBranches.includes(source.branchId))) continue;
+                if (branchId === source.branchId && ref.revoked) denied.add(ref.referenceId);
+                if (!refs.has(ref.referenceId) || branchId === ref.source.branchId) refs.set(ref.referenceId, ref);
+            }
+        }
+        for (const ref of refs.values()) {
             let reason = null;
-            if (ref.revoked || ref.sessionId !== source.sessionId || ref.identity !== identity || !purposes.includes(ref.purpose)) reason = 'scope_or_purpose';
+            if (ref.revoked || denied.has(ref.referenceId) || ref.sessionId !== source.sessionId || identity !== null && ref.identity !== identity || !purposes.includes(ref.purpose)) reason = 'scope_or_purpose';
             else if (ref.source.branchId !== source.branchId && !(ref.standard && ref.purpose === 'identity' && ref.allowedBranches.includes(source.branchId))) reason = 'branch';
             else {
-                try { await resolveVisualSource(this.host.sessionCore, handle, { ...ref.source, branchId: source.branchId }); } catch { reason = 'unreachable'; }
+                try { const resolved = await resolveVisualSource(this.host.sessionCore, handle, ref.source); if (!resolved.frozen) assertVisualDisclosure(resolved.view, ref.source); } catch { reason = 'unreachable'; }
             }
             (reason ? excluded : selected).push(reason ? { referenceId: ref.referenceId, reason } : ref);
         }

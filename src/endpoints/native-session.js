@@ -145,7 +145,7 @@ export function createNativeSessionRouter(getServices = services) {
     }));
     const illustrationCommands = {
         createAnnotation: ['revisionId', 'messageId', 'variantId', 'start', 'end', 'quote', 'draft', 'expectedHead', 'branchId'],
-        updateAnnotation: ['annotationId', 'draft', 'expectedHead', 'branchId'],
+        updateAnnotation: ['annotationId', 'draft', 'imageSelection', 'expectedHead', 'branchId'],
         deleteAnnotation: ['annotationId', 'expectedHead', 'branchId'],
         addImageVersion: ['annotationId', 'imageVersionId', 'assetId', 'width', 'height', 'alt', 'prompt', 'negativePrompt', 'parameters', 'expectedHead', 'branchId'],
         selectImageVersion: ['annotationId', 'imageVersionId', 'expectedHead', 'branchId'],

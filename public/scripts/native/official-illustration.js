@@ -5,6 +5,7 @@ import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacter
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 import { renderIllustrationPreset, mountIllustrationSettings } from './illustration-settings-ui.js';
 import { nativeAssetUrl } from './session-projection.js';
+import { runtimeRequest } from './runtime-client.js';
 
 export async function activate(sdk) {
     const doc = globalThis.document;
@@ -25,6 +26,7 @@ export async function activate(sdk) {
     toolbar.style.pointerEvents = panel.style.pointerEvents = 'auto';
     const status = node(doc, toolbar, 'span'); status.setAttribute('role', 'status');
     let mode = false, pending = null, selectedId = null, settings = (await sdk.illustrations.settings.read()).value, configEditor;
+    let visualConfiguration = await runtimeRequest('/visual/configuration');
     const drafts = new Map(), operations = new Map(), imageOperations = new Map(), watchers = new Map();
     const terminal = new Set(['completed', 'failed', 'cancelled', 'stale', 'uncertain_submission']);
     const promptErrors = { native_generation_route_missing: '请先创建“绘图提示词”用途的模型路线，并在插图配置中选择。', native_generation_route_ambiguous: '有多条提示词模型路线，请在插图配置中明确选择。', generation_secret_unavailable: '提示词模型连接的密钥不可用，请检查该连接。', native_illustration_source_unavailable: '此旧存档缺少原始历史上下文；可以直接填写提示词。', generation_context_budget_exceeded: '选文与角色描述超过模型容量，请选择容量更大的提示词模型。', native_illustration_prompt_invalid: '模型输出格式不正确，请重试提示词步骤。' };
@@ -115,12 +117,13 @@ export async function activate(sdk) {
         const { draft } = createIllustrationDraft(selection.quote, settings, sdk.context.packageId);
         const result = await sdk.illustrations.command('createAnnotation', { ...selection, draft, expectedHead: previous.head });
         selectedId = result.state.annotations.at(-1).annotationId; pending = null;
+        visualConfiguration = await runtimeRequest('/visual/configuration');
         notify('标注已保存。'); capture(); renderCard();
     })); create.disabled = true; create.hidden = true;
     // Keep desktop selection on the explicit action. Touch uses its captured
     // canonical range and leaves native selection handles under browser control.
     sdk.events.listen(create, 'mousedown', event => event.preventDefault());
-    button(doc, toolbar, '标注与历史', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
+    button(doc, toolbar, '标注与历史', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); visualConfiguration = await runtimeRequest('/visual/configuration'); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
     button(doc, toolbar, 'Gallery / Media Studio', run(async () => {
         readDraft(); galleryEditor?.dispose(); panel.replaceChildren(); panel.hidden = false; panel.style.width = 'min(980px, calc(100vw - 32px))';
         button(doc, panel, '关闭 Gallery', () => { if (!confirmAtriaDraftLeave(doc, panel)) return; galleryEditor?.dispose(); galleryEditor = null; panel.style.width = ''; panel.hidden = true; });
@@ -136,7 +139,7 @@ export async function activate(sdk) {
     button(doc, toolbar, '插图配置', run(() => {
         if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return;
         readDraft(); readDraft = () => {}; configEditor?.dispose(); panel.replaceChildren(); panel.hidden = false;
-        button(doc, panel, '关闭配置', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; panel.hidden = true; }));
+        button(doc, panel, '关闭配置', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; visualConfiguration = await runtimeRequest('/visual/configuration'); panel.hidden = true; }));
         configEditor = mountIllustrationSettings({ document: doc, parent: panel, client: sdk.illustrations.settings, packageId: sdk.context.packageId, showEnabled: false });
     }));
     sdk.events.listen(doc, 'selectionchange', capture);
@@ -189,17 +192,25 @@ export async function activate(sdk) {
         field(doc, editor, '图片提示词（可直接填写）', draft.prompt, text => draft.prompt = text, { multiline: true });
         const preset = node(doc, editor, 'details'); preset.dataset.section = 'preset'; preset.open = openDetails.has('preset'); node(doc, preset, 'summary', '单标注预设与参数');
         const parsePreset = renderIllustrationPreset(doc, preset, draft.preset);
+        const imageSelection = { imageTargetId: annotation.imageSelection?.imageTargetId ?? null, imageRenderingId: annotation.imageSelection?.imageRenderingId ?? null };
+        const targetChoices = [['', '继承上层目标'], ...visualConfiguration.targets.map(item => [item.imageTargetId, item.displayName])];
+        const renderingChoices = [['', '继承上层画风'], ...visualConfiguration.renderings.map(item => [item.imageRenderingId, item.displayName])];
+        select(doc, editor, '此标注的图片目标', imageSelection.imageTargetId ?? '', targetChoices, value => imageSelection.imageTargetId = value || null);
+        select(doc, editor, '此标注的画风配置', imageSelection.imageRenderingId ?? '', renderingChoices, value => imageSelection.imageRenderingId = value || null);
+        let taskTargetId = '', taskRenderingId = '';
+        select(doc, editor, '仅本次生成的目标', '', targetChoices, value => taskTargetId = value);
+        select(doc, editor, '仅本次生成的画风', '', renderingChoices, value => taskRenderingId = value);
         readDraft = () => { parsePreset(); assertIllustrationDraft(draft); };
         const actions = node(doc, editor, 'div', undefined, 'atri-illustration-actions');
         button(doc, actions, '保存卡片', run(async () => {
-            readDraft(); await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft, expectedHead: snapshot.head });
+            readDraft(); await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft, imageSelection, expectedHead: snapshot.head });
             drafts.delete(annotation.annotationId); notify('卡片已保存。'); renderCard();
         }));
         const operation = operations.get(annotation.annotationId);
         const active = operation && !terminal.has(operation.status);
         const promptButton = button(doc, actions, active ? '提示词生成中' : '生成提示词', run(async () => {
             readDraft(); const submitted = structuredClone(draft);
-            await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, expectedHead: sdk.illustrations.snapshot().head });
+            await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, imageSelection, expectedHead: sdk.illustrations.snapshot().head });
             const started = await sdk.illustrations.prompt('start', { annotationId: annotation.annotationId });
             const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
             operations.set(annotation.annotationId, operation); watch(operation, JSON.stringify(submitted));
@@ -213,10 +224,12 @@ export async function activate(sdk) {
         const imageOperation = imageOperations.get(annotation.annotationId), imageActive = imageOperation && !terminal.has(imageOperation.status);
         const imageButton = button(doc, actions, imageActive ? '图片生成中' : '生成图片', run(async () => {
             readDraft(); const submitted = structuredClone(draft);
-            const saved = await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, expectedHead: sdk.illustrations.snapshot().head });
-            const preview = await sdk.illustrations.image('prepare', { annotationId: annotation.annotationId, expectedHead: saved.head });
+            const saved = await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, imageSelection, expectedHead: sdk.illustrations.snapshot().head });
+            const preview = await sdk.illustrations.image('prepare', { annotationId: annotation.annotationId, expectedHead: saved.head,
+                ...(taskTargetId ? { imageTargetId: taskTargetId } : {}), ...(taskRenderingId ? { imageRenderingId: taskRenderingId } : {}) });
             const approvalBox = node(doc, actions, 'fieldset'); node(doc, approvalBox, 'legend', '确认图片任务');
             node(doc, approvalBox, 'p', preview.target.name + ' · ' + preview.target.model + ' · ' + (preview.cost.kind === 'unknown' ? '费用未知' : preview.cost.kind === 'free' ? '无 API 金额' : '预计最高 ' + preview.cost.upperBound + ' ' + preview.cost.currency));
+            node(doc, approvalBox, 'p', '目标来源：' + (preview.selection.imageTargetIdOrigin ?? '画风默认') + '；画风来源：' + (preview.selection.imageRenderingIdOrigin ?? '默认'));
             node(doc, approvalBox, 'p', '生成结果将进入历史；选择版本后才改变正文显示。');
             let maxCost = String(preview.cost.upperBound ?? 0), currency = preview.cost.currency || 'USD', allowUnknownCost = false;
             field(doc, approvalBox, '本次金额上限', maxCost, text => maxCost = text, { type: 'number' });
@@ -253,14 +266,14 @@ export async function activate(sdk) {
         const preview = node(doc, editor, 'details'); node(doc, preview, 'summary', '预览最终图片输入');
         const previewText = node(doc, preview, 'pre');
         const previewInput = () => { previewText.textContent = JSON.stringify({ authoring: 'raw', prompt: draft.prompt, negativePrompt: draft.preset.negativePrompt, style: draft.preset.style }, null, 2); };
-        editor.addEventListener('input', () => { if (preview.open) previewInput(); }); previewInput();
+        editor.addEventListener('input', () => { if (preview.open) previewInput(); });
         preview.addEventListener('toggle', () => { if (preview.open) { try { readDraft(); previewInput(); } catch (error) { notify(error.message, true); } } });
         const promptHistory = node(doc, card, 'details'); promptHistory.dataset.section = 'prompts'; promptHistory.open = openDetails.has('prompts'); node(doc, promptHistory, 'summary', '提示词历史');
         for (const version of [...(annotation.promptVersions ?? [])].reverse()) {
             const row = node(doc, promptHistory, 'article');
             node(doc, row, 'p', new Date(version.createdAt).toLocaleString()); node(doc, row, 'pre', version.draft.prompt);
             const evidence = node(doc, row, 'details'); node(doc, evidence, 'summary', '生成时的上下文、角色与模型路线');
-            node(doc, evidence, 'pre', JSON.stringify({ characters: version.draft.characters, preset: version.draft.preset, template: version.template, request: version.requestSnapshot }, null, 2));
+            evidence.addEventListener('toggle', () => { if (evidence.open && !evidence.querySelector('pre')) node(doc, evidence, 'pre', JSON.stringify({ characters: version.draft.characters, preset: version.draft.preset, template: version.template, request: version.requestSnapshot }, null, 2)); });
             const apply = button(doc, row, '应用此提示词版本', run(() => { readDraft(); drafts.set(annotation.annotationId, structuredClone(version.draft)); renderCard(); notify('版本已载入编辑区，保存卡片后生效。'); })); apply.disabled = !writable || deleted;
         }
         if (!annotation.promptVersions?.length) node(doc, promptHistory, 'p', '暂无提示词生成版本。');
@@ -279,7 +292,7 @@ export async function activate(sdk) {
             img.src = nativeAssetUrl(image.assetId); img.alt = image.alt || annotation.anchor.quote; img.width = image.width; img.height = image.height; img.loading = 'lazy'; img.decoding = 'async';
             node(doc, version, 'p', image.imageVersionId === annotation.selectedImageVersionId ? '当前展示版本' : '历史版本');
             const details = node(doc, version, 'details'); node(doc, details, 'summary', '实际提示词与参数');
-            node(doc, details, 'pre', JSON.stringify({ prompt: image.prompt, negativePrompt: image.negativePrompt, parameters: image.parameters, ...(image.requestSnapshot ? { requestSnapshot: image.requestSnapshot } : {}) }, null, 2));
+            details.addEventListener('toggle', () => { if (details.open && !details.querySelector('pre')) node(doc, details, 'pre', JSON.stringify({ prompt: image.prompt, negativePrompt: image.negativePrompt, parameters: image.parameters, ...(image.requestSnapshot ? { requestSnapshot: image.requestSnapshot } : {}) }, null, 2)); });
             const choose = button(doc, version, '展示此版本', run(async () => {
                 readDraft(); await sdk.illustrations.command('selectImageVersion', { annotationId: annotation.annotationId, imageVersionId: image.imageVersionId, expectedHead: snapshot.head }); renderCard();
             })); choose.disabled = !writable || deleted || image.imageVersionId === annotation.selectedImageVersionId;

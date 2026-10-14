@@ -36,10 +36,13 @@ export class MediaStudio {
         await this.assets.put(handle, ref, compressed);
         return { assetId: ref.assetId, contentHash: ref.contentHash, rasterHash: digest(bytes), pixels: bytes.length };
     }
-    async draft(handle, draftId) {
+    async draft(handle, draftId, scope = null) {
         assertNativeId(draftId, 'maskDraft');
         const row = await this.store.read(handle, 'draft', draftId); if (!row.value) visualError('draft_missing');
-        const value = row.value, base = await this.image(handle, { sessionId: value.source.sessionId, branchId: value.source.branchId, imageVersionId: value.imageVersionId });
+        const value = row.value;
+        if (scope && (scope.sessionId !== value.source.sessionId || scope.branchId !== value.source.branchId)) visualError('draft_scope_conflict');
+        if (Date.now() - value.updatedAt > 30 * 86400000) visualError('draft_expired');
+        const base = await this.image(handle, { sessionId: value.source.sessionId, branchId: value.source.branchId, imageVersionId: value.imageVersionId });
         if (base.asset.contentHash !== value.baseHash || base.image.width !== value.width || base.image.height !== value.height) visualError('draft_base_conflict');
         return row;
     }
@@ -72,12 +75,14 @@ export class MediaStudio {
         return this.store.write(handle, 'draft', draft.draftId, { ...draft, checkpoint, commands, cursor, recentCommandCount: 0, recentCheckpoint: null, updatedAt: Date.now() }, row.revision);
     }
     async freezeMask(handle, input) {
-        const row = await this.draft(handle, input.draftId); if (row.revision !== input.expectedRevision) visualError('draft_conflict');
+        visualObject(input, ['sessionId', 'branchId', 'imageVersionId', 'draftId', 'expectedRevision']);
+        const row = await this.draft(handle, input.draftId, input); if (row.revision !== input.expectedRevision) visualError('draft_conflict');
         const draft = row.value, bytes = await this.raster(handle, draft), ref = { assetId: createNativeId('asset'), contentHash: digest(bytes), size: bytes.length, mediaType: 'application/x-atria-mask-gray8' };
+        if (input.imageVersionId !== undefined && input.imageVersionId !== draft.imageVersionId) visualError('draft_scope_conflict');
         await this.assets.put(handle, ref, bytes);
         const mask = { maskArtifactId: createNativeId('maskArtifact'), assetId: ref.assetId, contentHash: ref.contentHash, baseHash: draft.baseHash,
             width: draft.width, height: draft.height, semantic: 'gray8-0-preserve-255-edit' };
-        await this.store.write(handle, 'mask', mask.maskArtifactId, { ...mask, source: draft.source, imageVersionId: draft.imageVersionId }, null);
+        await this.store.write(handle, 'mask', mask.maskArtifactId, { ...mask, source: draft.source, imageVersionId: draft.imageVersionId, createdAt: Date.now() }, null);
         return mask;
     }
     async prepare(handle, input) {
@@ -89,17 +94,18 @@ export class MediaStudio {
         let mask = null;
         if (input.operation === 'inpaint') {
             const stored = (await this.store.read(handle, 'mask', input.maskArtifactId)).value;
-            if (!stored || stored.imageVersionId !== base.image.imageVersionId || stored.source.branchId !== input.branchId || stored.source.sessionId !== input.sessionId || stored.baseHash !== base.asset.contentHash
+            if (!stored || stored.createdAt && Date.now() - stored.createdAt > 7 * 86400000 || stored.imageVersionId !== base.image.imageVersionId || stored.source.branchId !== input.branchId || stored.source.sessionId !== input.sessionId || stored.baseHash !== base.asset.contentHash
                 || stored.width !== base.image.width || stored.height !== base.image.height) visualError('mask_base_conflict');
-            const { source: _source, imageVersionId: _image, ...artifact } = stored; mask = artifact;
+            const { source: _source, imageVersionId: _image, createdAt: _createdAt, ...artifact } = stored; mask = artifact;
             references.push({ assetId: mask.assetId, contentHash: mask.contentHash, purpose: 'mask', source: base.source, externalConnectionIds: [] }); inputAssets.push({ assetId: mask.assetId, contentHash: mask.contentHash, purpose: 'mask' });
         }
         if (!Array.isArray(input.referenceIds ?? []) || (input.referenceIds ?? []).length > 16) visualError('reference_invalid');
+        const eligibleReferences = input.referenceIds?.length ? (await new VisualContinuity({ host: this.host }).references(handle, base.source, null, ['identity', 'outfit', 'style', 'structure', 'vibe'])).selected : [];
+        const participantIds = new Set((base.image.requestSnapshot?.ir.participants ?? []).map(participant => participant.actorId ?? participant.provisionalId));
         for (const referenceId of input.referenceIds ?? []) {
-            const reference = base.presentation.state.references.find(ref => ref.referenceId === referenceId);
-            if (!reference || reference.revoked) visualError('reference_unavailable');
-            const eligible = await new VisualContinuity({ host: this.host }).references(handle, base.source, reference.identity, [reference.purpose]);
-            if (!eligible.selected.some(r => r.referenceId === referenceId)) visualError('reference_unauthorized');
+            const reference = eligibleReferences.find(ref => ref.referenceId === referenceId);
+            if (!reference) visualError('reference_unauthorized');
+            if (['identity', 'outfit'].includes(reference.purpose) && !participantIds.has(reference.identity)) visualError('reference_identity_invalid');
             references.push({ assetId: reference.assetId, contentHash: reference.contentHash, purpose: reference.purpose, source: reference.source, externalConnectionIds: reference.externalConnectionIds });
             inputAssets.push({ assetId: reference.assetId, contentHash: reference.contentHash, purpose: reference.purpose });
         }

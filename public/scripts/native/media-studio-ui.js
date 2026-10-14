@@ -22,7 +22,7 @@ export async function mountMediaStudio({ document: doc, parent, sdk, imageVersio
         saving = true; status.textContent = '正在同步草稿…';
         const commands = structuredClone(model.commands), cursor = model.cursor;
         try {
-            if (model.commands.length >= 100 && model.cursor >= 50) {
+            if (commands.length >= 100 && cursor >= 50) {
                 const compact = model.compact(50), form = new FormData();
                 form.append('checkpoint', new Blob([compact.checkpoint], { type: 'application/octet-stream' }), 'mask.gray8');
                 form.append('metadata', JSON.stringify({ ...scoped, draftId: record.value.draftId, expectedRevision: record.revision, commands: compact.commands, cursor: compact.cursor }));
@@ -41,16 +41,17 @@ export async function mountMediaStudio({ document: doc, parent, sdk, imageVersio
         const drafts = await sdk.illustrations.visual('mask', 'find', { imageVersionId });
         record = drafts.items.length ? await sdk.illustrations.visual('mask', 'read', { draftId: drafts.items.sort((a, b) => b.updatedAt - a.updatedAt)[0].draftId })
             : await sdk.illustrations.visual('mask', 'create', { imageVersionId });
-        const checkpoint = new Uint8Array(await (await binary('/visual/mask/raster/' + record.value.draftId)).arrayBuffer());
+        const checkpoint = new Uint8Array(await (await binary('/visual/mask/raster/' + record.value.draftId + '?' + new URLSearchParams(scoped))).arrayBuffer());
         model = new MaskCommandModel({ ...record.value, checkpoint });
         canvas = mountMaskCanvas({ document: doc, parent: root, baseUrl: nativeAssetUrl(history.image.assetId), model, changed });
         const selectedReferences = new Set();
         const references = node(doc, root, 'details'); node(doc, references, 'summary', '本次参考图');
         for (const ref of history.referenceBindings ?? []) field(doc, references, ref.purpose + ' · ' + (ref.identity || '画风/结构'), false, enabled => enabled ? selectedReferences.add(ref.referenceId) : selectedReferences.delete(ref.referenceId), { type: 'checkbox' });
-        let operation = 'inpaint', prompt = history.image.prompt, imageTargetId = '', preserveOutsideMask = true;
+        let operation = 'inpaint', prompt = history.image.prompt, imageTargetId = '', imageRenderingId = '', preserveOutsideMask = true;
         const configuration = await runtimeRequest('/visual/configuration');
         select(doc, root, '编辑操作', operation, [['regenerate', '再生成'], ['img2img', 'Img2Img'], ['inpaint', 'Inpaint'], ['upscale', 'Upscale（可能改变细节）']], value => operation = value);
         select(doc, root, '本次图片目标', imageTargetId, [['', '继承当前默认目标'], ...configuration.targets.map(t => [t.imageTargetId, t.displayName + ' · ' + t.model])], value => imageTargetId = value);
+        select(doc, root, '本次画风配置', imageRenderingId, [['', '继承当前画风'], ...configuration.renderings.map(item => [item.imageRenderingId, item.displayName])], value => imageRenderingId = value);
         field(doc, root, '编辑提示词', prompt, value => prompt = value, { multiline: true });
         field(doc, root, '另存合成版本，保留 Mask 外原图像素', preserveOutsideMask, value => preserveOutsideMask = value, { type: 'checkbox' });
         node(doc, root, 'p', '原始模型结果与合成版本分别进入历史；合成可能出现接缝。打开编辑器、绘制和预览不发送生图请求。');
@@ -58,17 +59,21 @@ export async function mountMediaStudio({ document: doc, parent, sdk, imageVersio
         button(doc, root, '创建草稿分叉', async () => {
             try {
                 const next = await sdk.illustrations.visual('mask', 'create', { imageVersionId }), form = new FormData();
-                form.append('checkpoint', new Blob([model.pixels()], { type: 'application/octet-stream' }), 'mask.gray8');
+                const pixels = model.pixels(), commands = structuredClone(model.commands), cursor = model.cursor;
+                form.append('checkpoint', new Blob([pixels], { type: 'application/octet-stream' }), 'mask.gray8');
                 form.append('metadata', JSON.stringify({ ...scoped, draftId: next.value.draftId, expectedRevision: next.revision, commands: [], cursor: 0 }));
                 record = await (await binary('/visual/mask/checkpoint-with-commands', { method: 'POST', body: form })).json();
-                model.checkpoint = model.pixels(); model.commands = []; model.cursor = 0; dirty = false; conflicted = false; root.dataset.atriaDraftDirty = 'false'; status.textContent = '草稿分叉已保存';
+                if (JSON.stringify({ commands: model.commands, cursor: model.cursor }) !== JSON.stringify({ commands, cursor })) {
+                    dirty = true; conflicted = true; root.dataset.atriaDraftDirty = 'true';
+                    status.textContent = '分叉保存期间出现新笔画；当前编辑保留，请再次创建分叉。';
+                } else { model.checkpoint = pixels; model.commands = []; model.cursor = 0; dirty = false; conflicted = false; root.dataset.atriaDraftDirty = 'false'; status.textContent = '草稿分叉已保存'; }
             } catch (error) { report(error); }
         });
         button(doc, root, '预览编辑任务', async () => {
             try {
                 await save(); if (dirty || saving) throw new Error('请先完成草稿同步。');
                 const mask = operation === 'inpaint' ? await sdk.illustrations.visual('mask', 'freeze', { draftId: record.value.draftId, expectedRevision: record.revision }) : null;
-                const preview = await sdk.illustrations.visual('media', 'prepare', { imageVersionId, operation, prompt, ...(imageTargetId ? { imageTargetId } : {}),
+                const preview = await sdk.illustrations.visual('media', 'prepare', { imageVersionId, operation, prompt, ...(imageTargetId ? { imageTargetId } : {}), ...(imageRenderingId ? { imageRenderingId } : {}),
                     ...(mask ? { maskArtifactId: mask.maskArtifactId } : {}), referenceIds: [...selectedReferences], preserveOutsideMask: operation === 'inpaint' && preserveOutsideMask });
                 visualApproval({ document: doc, parent: root, preview, externalAssetIds: preview.externalAssetIds, report,
                     submit: async approval => { const started = await sdk.illustrations.image('start', { prepareId: preview.prepareId, approval }); status.textContent = '编辑任务已提交；可以继续绘制草稿。'; onJob?.(started); } });
