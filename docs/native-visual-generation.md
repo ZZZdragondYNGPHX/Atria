@@ -45,3 +45,40 @@ Provider protocol sources (checked 2026-10-14):
 
 A protocol fixture establishes L1/L2 only. Live model IDs, account capability,
 workflow installation and actual pricing remain separate L3 evidence.
+
+Media Studio and persistence (schema 2)
+--------------------------------------
+`atri_illustrations` is a content-addressed presentation manifest containing
+annotations, explicit reference bindings, and `{imageVersionId, head}` references.
+Each immutable ImageVersion/evidence/DAG document is independently stored in
+`atri_visual_image`. The API materializes that projection; Native runtime writes
+cannot bypass either reserved namespace. No schema-1 migration channel exists.
+
+Mask drafts use original top-left pixel coordinates, gray8 `0=preserve,255=edit`,
+compressed base/recent checkpoints and at most 100 commands. Saves use CAS; idle
+synchronization is 2 seconds, periodic synchronization 10 seconds. Undo/redo remain
+local and persisted; compaction retains the latest 50 commands. Frozen MaskArtifact
+bytes/hash/base geometry are independent of further draft edits. A conflict keeps
+local edits and offers an explicit fork. Canonical masks are translated per Adapter.
+
+Gallery defaults to current branch, 12 thumbnails per page. Full image/evidence
+loads on demand. Results enter history; selecting a display version is a separate
+CAS write. References are promoted explicitly by purpose/identity/branch and external
+Connection grant. Hide/collection/soft delete are separate metadata actions. GC
+quarantines unreachable temporary refs for at least 7 days (soft-deleted refs 30),
+then rescans Native roots under the asset lock before removing refs. Shared blobs
+retain the existing lease-aware GC contract.
+
+Formal SavePoint and ordinary exports retain editable parents, evidence, masks,
+reference inputs/bindings and hashes. Import checks DAG, base dimensions, mask byte
+length and attachment closure. Ironman exports remain head-only for narrative:
+immutable visual SourceRef is preserved through a checked presentation anchor alias
+and frozen public visual packets; the alias never permits a missing historical World
+read. No compact/display-only export is offered as a full editable SavePoint.
+
+Provider mask guidance does not promise untouched pixels. The explicit “preserve
+outside mask” option stores the provider result and a separate composite derivative;
+compositing requires identical base/result geometry and can leave visible seams.
+NovelAI precise references are V4.5-scoped and reject Vibe combinations. Vibe encoding
+is still unknown and cannot trigger an implicit paid request. ComfyUI capabilities
+come from reachable typed nodes/bindings, not a Provider brand or editable manifest.

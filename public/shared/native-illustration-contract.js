@@ -1,9 +1,9 @@
 import { assertMediaOperation, assertMediaDag } from './native-media-contract.js';
 import { assertIllustrationDraft } from './illustration-plugin-contract.js';
-import { assertCompilationEvidence, visualFingerprint } from './native-visual-contract.js';
+import { assertCompilationEvidence, assertVisualSourceRef, visualFingerprint } from './native-visual-contract.js';
 // Presentation data only: an illustration never changes committed narrative.
 export const ILLUSTRATION_NAMESPACE = 'atri_illustrations';
-export const emptyIllustrations = () => ({ schemaVersion: 1, annotations: [], images: [] });
+export const emptyIllustrations = () => ({ schemaVersion: 2, annotations: [], images: [], references: [] });
 
 function record(value, keys) {
     if (!value || Object.prototype.toString.call(value) !== '[object Object]') throw new TypeError('Invalid illustration record');
@@ -79,14 +79,14 @@ function assertImageRequestSnapshot(value, image) {
     return snapshot;
 }
 export function assertIllustrationState(value) {
-    record(value, ['schemaVersion', 'annotations', 'images']);
-    if (value.schemaVersion !== 1 || !Array.isArray(value.annotations) || value.annotations.length > 2048
+    record(value, ['schemaVersion', 'annotations', 'images', 'references']);
+    if (value.schemaVersion !== 2 || !Array.isArray(value.annotations) || value.annotations.length > 2048
         || !Array.isArray(value.images) || value.images.length > 8192) throw new TypeError('Invalid illustration state');
     const annotations = value.annotations.map(item => {
-        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft', 'promptVersions', 'promptContext', 'sceneId', 'shotId', 'timeKind']);
+        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft', 'promptVersions', 'promptContext', 'sceneId', 'shotId', 'timeKind', 'originalAnchor', 'sourceProof']);
         return { annotationId: id(item.annotationId, 'ann'), anchor: assertIllustrationAnchor(item.anchor),
             selectedImageVersionId: item.selectedImageVersionId === null ? null : id(item.selectedImageVersionId, 'imgv'),
-            createdAt: integer(item.createdAt), ...(item.sceneId === undefined ? {} : { sceneId: id(item.sceneId, 'scene'), shotId: id(item.shotId, 'shot'), timeKind: ['present', 'flashback', 'dream'].includes(item.timeKind) ? item.timeKind : (() => { throw new TypeError('Invalid visual frame'); })() }), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }),
+            createdAt: integer(item.createdAt), ...(item.originalAnchor === undefined ? {} : { originalAnchor: assertIllustrationAnchor(item.originalAnchor), sourceProof: requestEvidence(item.sourceProof) }), ...(item.sceneId === undefined ? {} : { sceneId: id(item.sceneId, 'scene'), shotId: id(item.shotId, 'shot'), timeKind: ['present', 'flashback', 'dream'].includes(item.timeKind) ? item.timeKind : (() => { throw new TypeError('Invalid visual frame'); })() }), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }),
             ...(item.promptVersions === undefined ? {} : { promptVersions: assertIllustrationPromptVersions(item.promptVersions) }),
             ...(item.promptContext === undefined ? {} : { promptContext: assertIllustrationPromptContext(item.promptContext) }),
             ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };
@@ -97,13 +97,34 @@ export function assertIllustrationState(value) {
     const byImage = new Map(images.map(item => [item.imageVersionId, item]));
     if (byAnnotation.size !== annotations.length || byImage.size !== images.length) throw new TypeError('Duplicate illustration identity');
     for (const image of images) if (!byAnnotation.has(image.annotationId)) throw new TypeError('Missing illustration annotation');
-    for (const image of images) if (image.requestSnapshot && image.requestSnapshot.source.revisionId !== byAnnotation.get(image.annotationId).anchor.revisionId) throw new TypeError('Image source mismatch');
+    for (const image of images) if (image.requestSnapshot && image.requestSnapshot.source.revisionId !== (byAnnotation.get(image.annotationId).originalAnchor ?? byAnnotation.get(image.annotationId).anchor).revisionId) throw new TypeError('Image source mismatch');
     for (const item of annotations) {
+        if (item.originalAnchor) {
+            record(item.sourceProof, ['kind', 'originalBranchId', 'presentationRevisionId', 'originalAnchorHash']);
+            if (item.sourceProof.kind !== 'native-checkpoint-alias' || item.sourceProof.presentationRevisionId !== item.anchor.revisionId
+                || item.sourceProof.originalAnchorHash !== visualFingerprint(item.originalAnchor)
+                || ['messageId', 'variantId', 'contentHash', 'start', 'end', 'quote'].some(key => item.anchor[key] !== item.originalAnchor[key])) throw new TypeError('Invalid immutable source checkpoint alias');
+            id(item.sourceProof.originalBranchId, 'br');
+        }
+
         if (item.selectedImageVersionId && byImage.get(item.selectedImageVersionId)?.annotationId !== item.annotationId) throw new TypeError('Illustration image belongs to another annotation');
         if (item.deletedAt !== undefined && item.selectedImageVersionId !== null) throw new TypeError('Deleted annotation cannot display an image');
     }
-    const state = { schemaVersion: 1, annotations, images };
-    if (JSON.stringify(state).length > 8 * 1024 * 1024) throw new TypeError('Illustration state exceeds budget');
+    const references = requestEvidence(value.references ?? []);
+    if (!Array.isArray(references) || references.length > 1024) throw new TypeError('Invalid visual reference catalog');
+    for (const ref of references) {
+        record(ref, ['referenceId', 'source', 'imageVersionId', 'assetId', 'contentHash', 'sessionId', 'identity', 'purpose', 'standard', 'allowedBranches', 'externalConnectionIds', 'revoked', 'createdAt']);
+        assertVisualSourceRef(ref.source); id(ref.sessionId, 'ses'); text(ref.identity, 2048); integer(ref.createdAt);
+        for (const branch of ref.allowedBranches ?? []) id(branch, 'br');
+        for (const connection of ref.externalConnectionIds ?? []) id(connection, 'conn');
+        if (ref.sessionId !== ref.source.sessionId) throw new TypeError('Reference source mismatch');
+        id(ref.referenceId, 'vref'); id(ref.imageVersionId, 'imgv'); id(ref.assetId, 'asset'); assertIllustrationHead(ref.contentHash);
+        if (!images.some(image => image.imageVersionId === ref.imageVersionId && image.assetId === ref.assetId) || !Array.isArray(ref.allowedBranches) || !Array.isArray(ref.externalConnectionIds)
+            || !['identity', 'outfit', 'style', 'structure', 'vibe'].includes(ref.purpose) || typeof ref.standard !== 'boolean' || typeof ref.revoked !== 'boolean') throw new TypeError('Invalid visual reference binding');
+    }
+    if (new Set(references.map(ref => ref.referenceId)).size !== references.length) throw new TypeError('Duplicate visual reference binding');
+    const state = { schemaVersion: 2, annotations, images, references };
+    if (JSON.stringify({ annotations, imageVersionIds: images.map(image => image.imageVersionId), references }).length > 8 * 1024 * 1024) throw new TypeError('Illustration state exceeds budget');
     return state;
 }
 
@@ -173,5 +194,5 @@ export function selectIllustrations(state, variants) {
         return variant?.messageId === item.anchor.messageId && illustrationAnchorMatches(item.anchor, variant.content);
     });
     const ids = new Set(annotations.map(item => item.annotationId));
-    return { schemaVersion: 1, annotations, images: state.images.filter(item => ids.has(item.annotationId)) };
+    return { schemaVersion: 2, annotations, images: state.images.filter(item => ids.has(item.annotationId)), references: (state.references ?? []).filter(ref => state.images.some(image => image.imageVersionId === ref.imageVersionId && ids.has(image.annotationId))) };
 }

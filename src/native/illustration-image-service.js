@@ -1,3 +1,5 @@
+import { PNG } from 'pngjs';
+import { createHash } from 'node:crypto';
 import { composeIllustrationPrompt } from '../../public/shared/illustration-plugin-contract.js';
 import { VisualContinuity } from './visual-continuity.js';
 import { assertNativeId, createNativeId } from './identity.js';
@@ -37,14 +39,30 @@ export class IllustrationImageService {
             publish: async (handle, job) => {
                 const { source, result, evidence } = job;
                 const state = (await host.sessionCore._sessions.getIllustrations(handle, source.sessionId, { branchId: source.branchId })).state;
-                if (state.images.some(image => image.imageVersionId === job.imageVersionId)) return;
-                await this.illustrations.addImageVersion(handle, source.sessionId, { annotationId: source.annotationId, branchId: source.branchId,
+                if (!state.images.some(image => image.imageVersionId === job.imageVersionId)) await this.illustrations.addImageVersion(handle, source.sessionId, { annotationId: source.annotationId, branchId: source.branchId,
                     imageVersionId: job.imageVersionId, assetId: result.ref.assetId, width: result.width, height: result.height,
                     alt: source.anchor.quote.slice(0, 2048), prompt: evidence.ir.prompt, negativePrompt: evidence.ir.negativePrompt,
                     parameters: evidence.target.executionParameters, requestSnapshot: evidence, mediaOperation: job.mediaOperation });
+                if (job.compiled.preserveOutsideMask && !state.images.some(image => image.imageVersionId === job.compositeImageVersionId)) {
+                    const preservation = job.compiled.preserveOutsideMask;
+                    const base = await this.assets.read(handle, preservation.base.assetId), mask = await this.assets.read(handle, preservation.mask.assetId), output = await this.assets.read(handle, result.ref.assetId);
+                    const original = PNG.sync.read(base.bytes, { checkCRC: true }), generated = PNG.sync.read(output.bytes, { checkCRC: true });
+                    if (original.width !== generated.width || original.height !== generated.height || mask.bytes.length !== original.width * original.height) visualError('composite_geometry_mismatch');
+                    const data = Buffer.from(original.data);
+                    for (let pixel = 0; pixel < mask.bytes.length; pixel++) for (let channel = 0; channel < 4; channel++) {
+                        const weight = mask.bytes[pixel] / 255, offset = pixel * 4 + channel;
+                        data[offset] = Math.round(original.data[offset] * (1 - weight) + generated.data[offset] * weight);
+                    }
+                    const bytes = PNG.sync.write({ width: original.width, height: original.height, data }), ref = { assetId: job.compositeAssetId, contentHash: createHash('sha256').update(bytes).digest('hex'), size: bytes.length, mediaType: 'image/png' };
+                    await this.assets.put(handle, ref, bytes);
+                    const operation = { ...job.mediaOperation, mediaOperationId: createNativeId('mediaOperation'), kind: 'composite', parentImageVersionIds: [...job.mediaOperation.parentImageVersionIds, job.imageVersionId] };
+                    await this.illustrations.addImageVersion(handle, source.sessionId, { annotationId: source.annotationId, branchId: source.branchId,
+                        imageVersionId: job.compositeImageVersionId, assetId: ref.assetId, width: original.width, height: original.height, alt: 'Mask composite: ' + source.anchor.quote.slice(0, 2000),
+                        prompt: evidence.ir.prompt, negativePrompt: evidence.ir.negativePrompt, parameters: { method: 'canonical-gray8-alpha-composite', providerResultVersion: job.imageVersionId }, mediaOperation: operation });
+                }
             } });
     }
-    async prepare(handle, input) {
+    async prepare(handle, input, { media = null } = {}) {
         visualObject(input, ['sessionId', 'branchId', 'annotationId', 'expectedHead', 'imageTargetId', 'imageRenderingId', 'operation', 'parentImageVersionIds', 'mask', 'references', 'omittedPreferred']);
         const { sessionId, branchId, annotationId } = input;
         assertNativeId(sessionId, 'session'); assertNativeId(branchId, 'branch'); assertNativeId(annotationId, 'annotation');
@@ -64,19 +82,23 @@ export class IllustrationImageService {
         const target = (await this.resources.getCurrent(handle, 'core.image-target', targetId))?.snapshot;
         if (!target) visualError('target_missing');
         const connection = await this.host.persistence.getConnectionProfile(handle, target.connectionProfileId);
-        const source = { kind: 'session', sessionId, branchId, revisionId: annotation.anchor.revisionId, annotationId, anchor: annotation.anchor, timeKind: annotation.timeKind ?? 'present',
+        const source = { kind: 'session', sessionId, branchId, revisionId: (annotation.originalAnchor ?? annotation.anchor).revisionId, annotationId, anchor: annotation.originalAnchor ?? annotation.anchor, timeKind: annotation.timeKind ?? 'present',
             ...(annotation.sceneId ? { sceneId: annotation.sceneId, shotId: annotation.shotId } : {}) };
         await resolveVisualSource(this.host.sessionCore, handle, source);
         const draft = annotation.draft;
         const projection = await new VisualContinuity({ host: this.host }).project(handle, source, draft);
         if (projection.conflicts.length) visualError('state_conflict');
-        const ir = { schemaVersion: 2, source, operation: input.operation ?? 'txt2img', authoring: draft.prompt === composeIllustrationPrompt(draft) ? 'structured' : 'raw', prompt: draft.prompt,
+        const ir = { schemaVersion: 2, source, operation: input.operation ?? 'txt2img', authoring: draft.prompt === composeIllustrationPrompt(draft) ? 'structured' : 'raw', prompt: media?.prompt ?? draft.prompt,
             negativePrompt: rendering?.negativePrompt ?? draft.preset.negativePrompt, scene: draft.scene, style: rendering ? [rendering.style, rendering.quality].filter(Boolean).join(', ') : [draft.preset.style, draft.preset.quality].filter(Boolean).join(', '),
-            participants: projection.participants, references: input.references ?? [], constraints: [...(rendering?.constraints ?? [])] };
+            participants: projection.participants, references: media?.references ?? input.references ?? [], constraints: [...(rendering?.constraints ?? [])] };
         // Editing and references are validated by the Media/Visual authority;
         // an unsupported operation cannot leak through the generation route.
-        if (ir.references.length || input.mask || input.parentImageVersionIds?.length) visualError('media_prepare_required');
+        if (!media && (ir.references.length || input.mask || input.parentImageVersionIds?.length || !['txt2img', 'regenerate'].includes(ir.operation))) visualError('media_prepare_required');
+        for (const ref of ir.references) if (!['base', 'mask'].includes(ref.purpose) && !ir.constraints.some(c => c.capability === ref.purpose)) ir.constraints.push({ capability: ref.purpose, tier: 'required' });
+        if (media) ir.authoring = 'raw';
         const plan = await this.registry.prepare({ ir, target, rendering, connection, approval: { omittedPreferred: input.omittedPreferred ?? [] } });
+        if (media?.mediaOperation.mask) plan.compiled.maskGeometry = { width: media.mediaOperation.mask.width, height: media.mediaOperation.mask.height };
+        if (media?.preserveOutsideMask) plan.compiled.preserveOutsideMask = { base: media.references.find(r => r.purpose === 'base'), mask: media.references.find(r => r.purpose === 'mask'), width: media.mediaOperation.mask?.width, height: media.mediaOperation.mask?.height };
         const imageVersionId = createNativeId('imageVersion'), executionParameters = plan.compiled.body.parameters ?? plan.compiled.body;
         const evidence = assertCompilationEvidence({ schemaVersion: 2, requestId: imageVersionId, source,
             connection: { connectionProfileId: connection.connectionProfileId, displayName: connection.displayName, providerAdapter: connection.providerAdapter, fingerprint: hashNativeDocument(connection) },
@@ -84,16 +106,17 @@ export class IllustrationImageService {
             request: plan.compiled.body, requestHash: visualFingerprint(plan.compiled.body), irHash: visualFingerprint(ir), transforms: plan.compiled.transforms ?? [] });
         const prepareId = createNativeId('visualIntent');
         const prepared = { prepareId, source, selection, connection, target, rendering, compiled: plan.compiled, evidence,
-            targetFingerprint: plan.fingerprint, expectedHead: presentation.head, expiresAt: Date.now() + 300000 };
+            targetFingerprint: plan.fingerprint, mediaOperation: media?.mediaOperation ?? null, expectedHead: presentation.head, expiresAt: Date.now() + 300000 };
         await this.store.write(handle, 'prepared', prepareId, prepared, null);
         return { prepareId, targetFingerprint: plan.fingerprint, requestHash: evidence.requestHash, source, selection, target: { id: targetId, model: target.model, name: target.displayName },
-            capabilities: plan.manifest, constraints: plan.constraints, cost: plan.manifest.cost, prompt: ir.prompt, expiresAt: prepared.expiresAt };
+            capabilities: plan.manifest, constraints: plan.constraints, cost: plan.manifest.cost, externalAssetIds: plan.effectiveReferences.map(ref => ref.assetId), prompt: ir.prompt, expiresAt: prepared.expiresAt };
     }
     authorize(prepared, approval, mode) {
         visualObject(approval, ['targetFingerprint', 'requestHash', 'maxCost', 'currency', 'allowUnknownCost', 'externalAssetIds', 'omittedPreferred']);
         if (approval.targetFingerprint !== prepared.targetFingerprint || approval.requestHash !== prepared.evidence.requestHash) visualError('approval_conflict');
         if (!Number.isFinite(approval.maxCost) || approval.maxCost < 0 || typeof approval.currency !== 'string' || typeof approval.allowUnknownCost !== 'boolean'
             || !Array.isArray(approval.externalAssetIds) || !Array.isArray(approval.omittedPreferred)) visualError('approval_invalid');
+        for (const ref of prepared.compiled.inputAssetRefs ?? prepared.evidence.ir.references) if (!approval.externalAssetIds.includes(ref.assetId)) visualError('external_transfer_unauthorized');
         const cost = prepared.evidence.capabilities.cost;
         if (mode === 'automatic' && prepared.connection.providerAdapter.startsWith('provider.novelai-image')) visualError('human_initiation_required');
         if (cost.kind === 'unknown' && (mode === 'automatic' || !approval.allowUnknownCost || approval.maxCost <= 0)) visualError('cost_unauthorized');
@@ -118,7 +141,7 @@ export class IllustrationImageService {
             if (config.mode !== 'automatic' || !config.autoApproval || config.autoApproval.targetFingerprint !== prepared.targetFingerprint) visualError('automatic_unauthorized');
         }
         const { amount, currency } = this.authorize(prepared, input.approval, mode);
-        const mediaOperation = { schemaVersion: 2, mediaOperationId: createNativeId('mediaOperation'), kind: prepared.evidence.ir.operation,
+        const mediaOperation = prepared.mediaOperation ?? { schemaVersion: 2, mediaOperationId: createNativeId('mediaOperation'), kind: prepared.evidence.ir.operation,
             source: prepared.source, parentImageVersionIds: [], inputAssets: [], mask: null, geometry: null };
         const job = await this.store.reserve(handle, newImageJob({ source: prepared.source, intentKey: mode === 'automatic' ? 'auto:' + visualFingerprint({ sessionId: prepared.source.sessionId, variantId: prepared.source.anchor.variantId, start: prepared.source.anchor.start, end: prepared.source.anchor.end }) : input.prepareId, fingerprint: prepared.evidence.requestHash,
             mode, connection: prepared.connection, target: prepared.target, compiled: prepared.compiled, evidence: prepared.evidence,

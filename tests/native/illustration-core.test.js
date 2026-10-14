@@ -116,7 +116,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const saved = await f.saveSystem.manualSave(h.handle, f.sessionId);
         const second = await image(f, h, annotationId);
         const exported = await f.saveSystem.exportSnapshot(h.handle, f.sessionId, saved.saveId);
-        expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.images).toHaveLength(1);
+        expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.imageRefs).toHaveLength(1);
         expect(exported.save.closure.assetRefs.map(item => item.assetId)).toContain(first.ref.assetId);
         expect(exported.save.closure.assetRefs.map(item => item.assetId)).not.toContain(second.ref.assetId);
         const originalBranch = view.revision.branchId;
@@ -166,7 +166,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         await image(f, h, annotationId);
         expect(saved.illustrationHead).toBe(original.head);
         const exported = await f.saveSystem.exportSnapshot(h.handle, f.sessionId, saved.saveId);
-        expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.images).toHaveLength(1);
+        expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.imageRefs).toHaveLength(1);
     });
 
     test('an old save retains image references after current history is explicitly cleared', async () => {

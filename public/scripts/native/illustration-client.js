@@ -78,7 +78,12 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
             if (!['director', 'media', 'gallery', 'mask', 'reference', 'gc'].includes(domain) || !/^[a-z-]+$/.test(action)) throw new TypeError('Unknown visual domain');
             if (runtime.snapshot?.session.sessionId !== scope.sessionId || runtime.snapshot.revision.branchId !== scope.branchId || runtime.history) throw new Error('atri_extension_disposed');
             runtime.assertWritable();
-            return generationRequest('/visual/' + domain + '/' + action, { method: 'POST', body: { ...input, sessionId: scope.sessionId, branchId: scope.branchId }, signal });
+            const result = await generationRequest('/visual/' + domain + '/' + action, { method: 'POST', body: { ...input, sessionId: scope.sessionId, branchId: scope.branchId }, signal });
+            if (result.state && !signal?.aborted && runtime.snapshot?.session.sessionId === scope.sessionId && runtime.snapshot.revision.branchId === scope.branchId && !runtime.history) {
+                const latest = await runtime.request('illustrations/read', { sessionId: scope.sessionId, branchId: scope.branchId });
+                runtime.snapshot.illustrations = latest.state; runtime.snapshot.session.illustrationHead = latest.head; repaintIllustrationSurfaces(scope, latest.state);
+            }
+            return result;
         },
         image(scope, action, input, signal) { return this.prompt(scope, action, input, signal, 'images'); },
         command(scope, command, input, signal) {

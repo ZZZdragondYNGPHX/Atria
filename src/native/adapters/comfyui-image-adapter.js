@@ -29,15 +29,18 @@ export function validateComfyWorkflow(workflow, nodeTypes) {
     };
     nodes.forEach(visit);
     for (const id of workflow.outputNodes) if (!graph[id] || !nodeTypes[graph[id].class_type]?.output_node) visualError('workflow_output_invalid');
+    const reachable = new Set();
+    const reach = id => { if (reachable.has(id)) return; reachable.add(id); for (const value of Object.values(graph[id].inputs)) if (Array.isArray(value) && value.length === 2 && typeof value[0] === 'string') reach(value[0]); };
+    workflow.outputNodes.forEach(reach);
     const slots = new Set();
     for (const binding of workflow.bindings) {
         const node = graph[binding.nodeId], schema = nodeTypes[node?.class_type], definition = { ...schema?.input?.required, ...schema?.input?.optional }[binding.input];
-        if (!node || !Object.hasOwn(node.inputs, binding.input) || !definition || slots.has(binding.nodeId + ':' + binding.input)
+        if (!node || !reachable.has(binding.nodeId) || !Object.hasOwn(node.inputs, binding.input) || !definition || slots.has(binding.nodeId + ':' + binding.input)
             || (binding.type === 'number' ? !['INT', 'FLOAT'].includes(definition[0]) : definition[0] !== 'STRING' && !Array.isArray(definition[0]))) visualError('workflow_binding_invalid');
         slots.add(binding.nodeId + ':' + binding.input);
     }
-    if (!workflow.bindings.some(b => b.semantic === 'prompt')) visualError('workflow_binding_invalid');
-    return graph;
+    if (!workflow.bindings.some(b => ['prompt', 'base'].includes(b.semantic))) visualError('workflow_binding_invalid');
+    return Object.fromEntries(Object.entries(graph).filter(([id]) => reachable.has(id)));
 }
 export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {}) {
     const schemas = new Map();
@@ -57,20 +60,24 @@ export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {
     return {
         async describe({ target, connection, fingerprint }) {
             const info = await imageJson(fetchImpl, imageRoute(connection.endpoint, 'object_info'), { signal: AbortSignal.timeout(15000) });
-            validateComfyWorkflow(target.workflow, info);
+            const graph = validateComfyWorkflow(target.workflow, info);
             schemas.set(target.imageTargetId + '@' + target.revision, info);
             const semantic = new Set(target.workflow.bindings.map(b => b.semantic));
-            const builtin = new Set(['CheckpointLoaderSimple', 'CLIPTextEncode', 'EmptyLatentImage', 'KSampler', 'KSamplerAdvanced', 'VAEDecode', 'VAEEncode', 'VAEEncodeForInpaint', 'SaveImage', 'LoadImage', 'ImageScale', 'ImageUpscaleWithModel', 'UpscaleModelLoader', 'LoraLoader', 'ControlNetLoader', 'ControlNetApply', 'ControlNetApplyAdvanced']);
-            const local = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(connection.endpoint).hostname) && Object.values(target.workflow.graph).every(node => builtin.has(node.class_type));
-            return protocolManifest(fingerprint, { txt2img: 'supported', img2img: semantic.has('base') ? 'supported' : 'unsupported',
-                inpaint: semantic.has('base') && semantic.has('mask') ? 'supported' : 'unsupported', upscale: 'unknown', identity: 'unknown', lora: 'unknown', controlnet: 'unknown' }, { cost: local ? { kind: 'free', currency: '', upperBound: 0 } : { kind: 'unknown', currency: '', upperBound: null } });
+            const classes = new Set(Object.values(graph).map(node => node.class_type));
+            const upscale = semantic.has('base') && ['ImageScale', 'ImageScaleBy', 'ImageUpscaleWithModel'].some(name => classes.has(name));
+            const lora = classes.has('LoraLoader') || classes.has('LoraLoaderModelOnly');
+            const controlnet = semantic.has('structure') && classes.has('ControlNetLoader') && ['ControlNetApply', 'ControlNetApplyAdvanced'].some(name => classes.has(name));
+            const builtin = new Set(['CheckpointLoaderSimple', 'CLIPTextEncode', 'EmptyLatentImage', 'KSampler', 'KSamplerAdvanced', 'VAEDecode', 'VAEEncode', 'VAEEncodeForInpaint', 'SaveImage', 'LoadImage', 'ImageScale', 'ImageScaleBy', 'ImageUpscaleWithModel', 'UpscaleModelLoader', 'LoraLoader', 'ControlNetLoader', 'ControlNetApply', 'ControlNetApplyAdvanced']);
+            const local = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(connection.endpoint).hostname) && Object.values(graph).every(node => builtin.has(node.class_type));
+            return protocolManifest(fingerprint, { txt2img: semantic.has('prompt') && !semantic.has('base') ? 'supported' : 'unsupported', img2img: semantic.has('base') && semantic.has('prompt') ? 'supported' : 'unsupported',
+                inpaint: semantic.has('base') && semantic.has('mask') ? 'supported' : 'unsupported', upscale: upscale ? 'supported' : 'unsupported', identity: semantic.has('identity') ? 'supported' : 'unknown', outfit: semantic.has('outfit') ? 'supported' : 'unknown', style: semantic.has('style') ? 'supported' : 'unknown', structure: controlnet ? 'supported' : 'unknown', lora: lora ? 'supported' : 'unknown', controlnet: controlnet ? 'supported' : 'unknown' }, { combinations: lora && controlnet ? [{ features: ['lora', 'controlnet'], state: 'supported', evidence: 'typed nodes and links validated against object_info; image quality not live verified' }] : [], cost: local ? { kind: 'free', currency: '', upperBound: 0 } : { kind: 'unknown', currency: '', upperBound: null } });
         },
         compile({ ir, target, connection, seed }) {
             const graph = validateComfyWorkflow(target.workflow, schemas.get(target.imageTargetId + '@' + target.revision) ?? target.workflow.nodeTypes);
             const values = { prompt: imageSemanticPrompt(ir), negativePrompt: ir.negativePrompt, seed, width: target.nativeParameters.width ?? 832, height: target.nativeParameters.height ?? 1216 };
             const inputs = [];
             for (const binding of target.workflow.bindings) {
-                if (['base', 'mask'].includes(binding.semantic)) {
+                if (['base', 'mask', 'identity', 'outfit', 'style', 'structure', 'vibe'].includes(binding.semantic)) {
                     const reference = ir.references.find(r => r.purpose === binding.semantic); if (!reference) visualError('input_missing');
                     inputs.push({ ...binding, reference }); graph[binding.nodeId].inputs[binding.input] = 'atria-upload-' + binding.semantic;
                 } else graph[binding.nodeId].inputs[binding.input] = values[binding.semantic];

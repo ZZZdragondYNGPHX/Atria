@@ -54,5 +54,9 @@ export const ILLUSTRATION_CSS = `
 ::highlight(atri-illustration) { background:var(--atri-accent-soft); text-decoration:underline; text-decoration-color:var(--atri-accent-text); }
 .atri-illustration-history img { display:block; max-width:100%; height:auto; border-radius:8px; }
 .atri-illustration-panel > .atri-illustration-actions { position:sticky; top:-16px; background:var(--atri-surface-1); z-index:1; margin:-16px -16px 0; padding:12px 16px; border-bottom:1px solid var(--atri-separator); }
+.atri-visual-gallery { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:16px; }
+.atri-visual-gallery article { min-width:0; padding:12px; border:1px solid var(--atri-separator); border-radius:12px; }
+.atri-visual-gallery img { display:block; max-width:100%; height:auto; border-radius:8px; }
+.atri-mask-viewport { border:1px solid var(--atri-separator-strong); border-radius:8px; margin:12px 0; }
 .atri-illustration-panel > button:first-child { position:sticky; top:0; z-index:1; }
 `;

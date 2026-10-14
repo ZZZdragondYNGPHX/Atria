@@ -65,7 +65,8 @@ async function resourceSetupAssetReferences(tx, handle, assetId) {
     // excluded: a marker is not an ownership reference.
     const holds = value => value === assetId || value && typeof value === 'object' && Object.values(value).some(holds);
     for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle })) {
-        if (record.key.resourceType.startsWith('atri.visual.') && record.key.resourceType !== 'atri.visual.gc' && holds(record.doc)) references.push({ kind: record.key.resourceType, resourceId: record.key.resourceId });
+        if (record.key.resourceType.startsWith('atri.visual.') && record.key.resourceType !== 'atri.visual.gc'
+            && !(record.key.resourceType === 'atri.visual.prepared' && record.doc.expiresAt < Date.now()) && holds(record.doc)) references.push({ kind: record.key.resourceType, resourceId: record.key.resourceId });
     }
     return references;
 }

@@ -23,7 +23,8 @@ export function assertVisualDisclosure(view, source) {
 export class VisualContinuity {
     constructor({ host }) { this.host = host; this.store = new VisualStore({ engine: host.persistence._engine }); }
     async project(handle, source, draft) {
-        const { view, entry } = await resolveVisualSource(this.host.sessionCore, handle, source);
+        const { view, entry, frozen } = await resolveVisualSource(this.host.sessionCore, handle, source);
+        if (frozen) return { source, participants: frozen.packets.at(-1)?.requestSnapshot.ir.participants ?? [], conflicts: [], disclosure: { defined: true, itemIds: [], frozenPacket: true }, fingerprint: visualFingerprint(frozen.sourceProof) };
         const disclosure = assertVisualDisclosure(view, source), conflicts = [], participants = [];
         const changes = await this.store.list(handle, 'state-change');
         for (const item of draft.characters) {
@@ -62,7 +63,7 @@ export class VisualContinuity {
     }
     async propose(handle, input, { verified = false } = {}) {
         visualObject(input, ['source', 'identity', 'field', 'value', 'start', 'end', 'quote', 'confidence', 'persistent']);
-        const { view, entry } = await resolveVisualSource(this.host.sessionCore, handle, input.source); assertVisualDisclosure(view, input.source);
+        const { view, entry } = await resolveVisualSource(this.host.sessionCore, handle, input.source); if (!view) visualError('source_state_unavailable'); assertVisualDisclosure(view, input.source);
         if (!['clothing', 'injury', 'equipment', 'hairstyle', 'expression', 'pose'].includes(input.field) || !Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1
             || !Number.isInteger(input.start) || !Number.isInteger(input.end) || input.start < 0 || input.end <= input.start || input.end > input.source.anchor.end
             || entry.content.slice(input.start, input.end) !== input.quote || typeof input.persistent !== 'boolean') visualError('state_evidence_invalid');
@@ -73,8 +74,8 @@ export class VisualContinuity {
         return this.store.write(handle, 'state-change', changeId, value, null);
     }
     async references(handle, source, identity, purposes) {
-        const { view } = await resolveVisualSource(this.host.sessionCore, handle, source); assertVisualDisclosure(view, source);
-        const refs = await this.store.list(handle, 'reference'), selected = [], excluded = [];
+        const { view, frozen } = await resolveVisualSource(this.host.sessionCore, handle, source); if (!frozen) assertVisualDisclosure(view, source);
+        const refs = (await this.host.sessionCore._sessions.getIllustrations(handle, source.sessionId, { branchId: source.branchId })).state.references ?? [], selected = [], excluded = [];
         for (const ref of refs) {
             let reason = null;
             if (ref.revoked || ref.sessionId !== source.sessionId || ref.identity !== identity || !purposes.includes(ref.purpose)) reason = 'scope_or_purpose';

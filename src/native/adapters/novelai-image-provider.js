@@ -56,7 +56,7 @@ export function createNovelaiImageProvider({ fetchImpl = fetch } = {}) {
                     const data = JSON.parse(bytes.toString('utf8'));
                     if (!Array.isArray(data.images) || data.images.length !== 1 || typeof data.images[0]?.image !== 'string'
                         || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data.images[0].image)) fail('image_response_invalid');
-                    if (data.images[0].seed !== undefined && data.images[0].seed !== body.parameters.seed) fail('image_response_invalid');
+                    if (data.images[0].seed !== undefined && data.images[0].seed !== body.parameters?.seed) fail('image_response_invalid');
                     bytes = Buffer.from(data.images[0].image, 'base64');
                 }
                 if (signal?.aborted) fail('image_cancelled');

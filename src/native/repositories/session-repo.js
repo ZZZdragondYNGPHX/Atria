@@ -1,3 +1,4 @@
+import { illustrationManifest, materializeIllustrations, IMAGE_VERSION_NAMESPACE } from '../../../public/shared/native-illustration-storage.js';
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { maintainSession, cancelSessionMaintenance } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
@@ -209,8 +210,10 @@ export class SessionRepo {
             return withNativeResourceWrites(handle, illustrationAssetIds(state).map(assetId => 'asset:' + assetId), () => this._engine.withTransaction(handle, async tx => {
                 await assertRunAccess(tx, handle, sessionId, 'write');
                 await validateIllustrationDependencies(tx, handle, sessionId, state);
-                const head = hashNativeDocument(state);
-                await putImmutable(tx, this._stateKey(handle, sessionId, ILLUSTRATION_NAMESPACE, head), state);
+                const manifest = illustrationManifest(state);
+                for (const image of state.images) await putImmutable(tx, this._stateKey(handle, sessionId, IMAGE_VERSION_NAMESPACE, hashNativeDocument(image)), image);
+                const head = hashNativeDocument(manifest);
+                await putImmutable(tx, this._stateKey(handle, sessionId, ILLUSTRATION_NAMESPACE, head), manifest);
                 await putMutable(tx, key, assertSession({ ...existing.doc,
                     ...(targetBranch === existing.doc.activeBranchId ? { illustrationHead: head } : {}),
                     illustrationHeads: { ...existing.doc.illustrationHeads, [targetBranch]: head },
@@ -218,6 +221,10 @@ export class SessionRepo {
                 return { head, state };
             }));
         });
+    }
+
+    async getIllustrationsAtHead(handle, sessionId, head) {
+        return this._engine.withTransaction(handle, tx => readIllustrationState(tx, handle, sessionId, head));
     }
 
     async getBranch(handle, sessionId, branchId) {
@@ -682,7 +689,7 @@ export class SessionRepo {
         }
 
         const illustrationAssets = [...stateRecords.filter(item => item.namespace === PERSONA_NAMESPACE).flatMap(item => personaAvatars(item.data).map(avatar => 'asset:' + avatar.assetId)), ...stateRecords.filter(item => item.namespace === ILLUSTRATION_NAMESPACE)
-            .flatMap(item => illustrationAssetIds(assertIllustrationState(item.data)).map(assetId => 'asset:' + assetId))];
+            .flatMap(item => illustrationAssetIds(materializeIllustrations(item.data, head => stateRecords.find(record => record.namespace === IMAGE_VERSION_NAMESPACE && record.head === head)?.data)).map(assetId => 'asset:' + assetId))];
         return withSessionWrite(handle, sessionId, () => withNativeResourceWrites(handle, illustrationAssets, () => this._engine.withTransaction(handle, async (tx) => {
             const sessionKey = this._sessionKey(handle, sessionId);
             const control = await assertRunAccess(tx, handle, sessionId, 'import');
@@ -864,6 +871,7 @@ export class SessionRepo {
                 if (key.kind === NATIVE_RESOURCE_KINDS.sessionState) {
                     if (key.namespace === 'atri_timeline_index' && record.doc.level) for (const child of record.doc.children) await mark({ ...key, head: child.head });
                     if (key.namespace === TIMELINE_NAMESPACE && record.doc.tree) await mark({ ...key, namespace: 'atri_timeline_index', head: record.doc.tree.head });
+                    if (key.namespace === ILLUSTRATION_NAMESPACE) for (const ref of record.doc.imageRefs ?? []) await mark({ ...key, namespace: IMAGE_VERSION_NAMESPACE, head: ref.head });
                     if (key.namespace === 'atri_world_state' && record.doc.kind === 'delta') await mark({ ...key, head: record.doc.baseHead });
                 }
             };

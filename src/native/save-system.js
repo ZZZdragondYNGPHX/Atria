@@ -1,3 +1,4 @@
+import { illustrationManifest, IMAGE_VERSION_NAMESPACE } from '../../public/shared/native-illustration-storage.js';
 import { PERSONA_NAMESPACE, personaAvatars } from './persona-contract.js';
 import { runFailure } from './run-control.js';
 import {
@@ -21,7 +22,7 @@ import {
 } from './session-snapshot.js';
 import { validateKnowledgeBindingSet } from './session-knowledge.js';
 import { hashNativeDocument } from './repositories/common.js';
-import { ILLUSTRATION_NAMESPACE, assertIllustrationState, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
+import { ILLUSTRATION_NAMESPACE, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
 import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
 import { timelineIndexClosure } from './timeline-index.js';
 import { acquireSessionReadLease } from './session-maintenance.js';
@@ -122,9 +123,9 @@ export class NativeSaveSystem {
         for (const head of new Set(illustrationHeads.filter(Boolean))) {
             const data = await this._sessions.getState(handle, sessionId, ILLUSTRATION_NAMESPACE, head);
             if (!data || hashNativeDocument(data) !== head) throw new NativeDependencyError('native_save_illustration_state_missing', { head });
-            const state = assertIllustrationState(data);
+            const state = await this._sessions.getIllustrationsAtHead(handle, sessionId, head);
             presentations.set(head, state);
-            if (!headOnly) for (const item of state.annotations) pending.push(item.anchor.revisionId);
+            if (!headOnly) { for (const item of state.annotations) pending.push(item.anchor.revisionId); for (const ref of state.references) pending.push(ref.source.revisionId); }
         }
 
         while (pending.length) {
@@ -225,10 +226,13 @@ export class NativeSaveSystem {
 
         for (const [originalHead, original] of presentations) {
             const selected = headOnly ? selectIllustrations(original, [...variants.values()]) : original;
-            const data = headOnly ? { ...selected, annotations: selected.annotations.map(item => ({ ...item, anchor: { ...item.anchor, revisionId: rootRevisionIds[0] } })) } : selected;
-            const head = hashNativeDocument(data);
+            const data = headOnly ? { ...selected, annotations: selected.annotations.map(item => ({ ...item, originalAnchor: item.originalAnchor ?? item.anchor,
+                sourceProof: { kind: 'native-checkpoint-alias', originalBranchId: item.sourceProof?.originalBranchId ?? revisions.get(rootRevisionIds[0]).branchId, presentationRevisionId: rootRevisionIds[0], originalAnchorHash: hashNativeDocument(item.originalAnchor ?? item.anchor) },
+                anchor: { ...item.anchor, revisionId: rootRevisionIds[0] } })) } : selected;
+            const manifest = illustrationManifest(data), head = hashNativeDocument(manifest);
             presentationHeads.set(originalHead, head);
-            states.set(ILLUSTRATION_NAMESPACE + '\0' + head, { namespace: ILLUSTRATION_NAMESPACE, head, data });
+            states.set(ILLUSTRATION_NAMESPACE + '\0' + head, { namespace: ILLUSTRATION_NAMESPACE, head, data: manifest });
+            for (const image of data.images) { const imageHead = hashNativeDocument(image); states.set(IMAGE_VERSION_NAMESPACE + '\0' + imageHead, { namespace: IMAGE_VERSION_NAMESPACE, head: imageHead, data: image }); }
             const byAnnotation = new Map(data.annotations.map(item => [item.annotationId, item]));
             for (const image of data.images) {
                 const anchor = byAnnotation.get(image.annotationId).anchor;
@@ -239,6 +243,11 @@ export class NativeSaveSystem {
                     attachments.set(attachmentKey(dependency), dependency);
                 }
             }
+        }
+
+        for (const state of presentations.values()) for (const reference of state.references ?? []) {
+            const attachment = { assetId: reference.assetId, messageId: reference.source.anchor.messageId, variantId: reference.source.anchor.variantId };
+            attachments.set(attachmentKey(attachment), attachment);
         }
 
         for (const attachment of attachments.values()) {

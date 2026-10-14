@@ -1,3 +1,4 @@
+import { materializeIllustrations, IMAGE_VERSION_NAMESPACE } from '../../public/shared/native-illustration-storage.js';
 import { PERSONA_NAMESPACE, assertPersonaState, assertPersonaIdentity, personaIdentity, personaAvatars } from './persona-contract.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
@@ -10,7 +11,7 @@ import { assertExperienceDataClosure } from '../../public/shared/native-experien
 import { assertFrontendExperience } from '../../public/shared/native-frontend-contract.js';
 import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertNativeId } from './identity.js';
-import { assertIllustrationHead, assertIllustrationState, illustrationAnchorMatches, ILLUSTRATION_NAMESPACE } from '../../public/shared/native-illustration-contract.js';
+import { assertIllustrationHead, illustrationAnchorMatches, ILLUSTRATION_NAMESPACE } from '../../public/shared/native-illustration-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { illustrationContentHash } from './session-illustrations.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
@@ -956,7 +957,7 @@ export function assertAtriaSave(value) {
     for (const head of presentationHeads) {
         const record = stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE && item.head === head);
         if (!record || hashNativeDocument(record.data) !== head) throw new TypeError('Missing or corrupt illustration state');
-        const state = assertIllustrationState(record.data);
+        const state = materializeIllustrations(record.data, head => stateMap.get(IMAGE_VERSION_NAMESPACE + '\0' + head));
         const annotations = new Map(state.annotations.map(item => [item.annotationId, item]));
         for (const item of state.annotations) {
             if ((item.promptContext && item.promptContext.source.sessionId !== session.sessionId)
@@ -1015,7 +1016,11 @@ export function assertAtriaSave(value) {
             || branches[0].parentBranchId || branches[0].forkPoint || core?.parentRevisionId || core?.forkRevisionId
             || core?.branches?.length !== 1 || core.branches[0].headRevisionId !== root.revisionId || core.branches[0].forkRevisionId) throw new TypeError('Invalid ironman head-only resume closure');
         const requiredStates = new Set([...Object.entries(revision.stateHeads).map(([namespace, head]) => namespace + '\0' + head), 'atri_knowledge\0' + revision.knowledgeHead]);
-        if (session.illustrationHead) requiredStates.add(ILLUSTRATION_NAMESPACE + '\0' + session.illustrationHead);
+        if (session.illustrationHead) {
+            requiredStates.add(ILLUSTRATION_NAMESPACE + '\0' + session.illustrationHead);
+            const manifest = stateMap.get(ILLUSTRATION_NAMESPACE + '\0' + session.illustrationHead);
+            for (const ref of manifest?.imageRefs ?? []) requiredStates.add(IMAGE_VERSION_NAMESPACE + '\0' + ref.head);
+        }
         const timeline = readSelections(revision);
         // Index nodes are authoritative members of the current root closure.
         for (const record of stateRecords) if (record.namespace === TIMELINE_INDEX_NAMESPACE) requiredStates.add(record.namespace + '\0' + record.head);

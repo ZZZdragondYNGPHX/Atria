@@ -16,7 +16,7 @@ export function assertImageTarget(value) {
         if (!Array.isArray(value.workflow.bindings) || !Array.isArray(value.workflow.outputNodes)) visualError('workflow_invalid');
         for (const binding of value.workflow.bindings) {
             visualObject(binding, ['nodeId', 'input', 'semantic', 'type']);
-            if (!['prompt', 'negativePrompt', 'seed', 'width', 'height', 'base', 'mask'].includes(binding.semantic) || !['string', 'number', 'image'].includes(binding.type)) visualError('workflow_invalid');
+            if (!['prompt', 'negativePrompt', 'seed', 'width', 'height', 'base', 'mask', 'identity', 'outfit', 'style', 'structure', 'vibe'].includes(binding.semantic) || !['string', 'number', 'image'].includes(binding.type)) visualError('workflow_invalid');
             visualText(binding.nodeId, 128); visualText(binding.input, 128);
         }
     }

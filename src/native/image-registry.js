@@ -1,10 +1,8 @@
+import { createNovelaiVisualAdapter } from './adapters/novelai-visual-adapter.js';
 import { createComfyImageAdapter } from './adapters/comfyui-image-adapter.js';
 import { createOpenaiImageAdapter } from './adapters/openai-image-adapter.js';
 import { randomInt } from 'node:crypto';
 import { assertImageTarget, assertImageRendering } from './visual-contracts.js';
-import { composeIllustrationPrompt } from '../../public/shared/illustration-plugin-contract.js';
-import { renderNovelaiIllustration, novelaiConnectionCapabilities } from '../../public/shared/novelai-illustration.js';
-import { createNovelaiImageProvider } from './adapters/novelai-image-provider.js';
 import { visualFingerprint, assertCapabilityManifest, negotiateImageConstraints, visualError } from '../../public/shared/native-visual-contract.js';
 
 export function imageSemanticPrompt(ir) {
@@ -30,9 +28,10 @@ export class ImageAdapterRegistry {
         const manifest = assertCapabilityManifest(await adapter.describe({ target, connection, fingerprint }));
         if (manifest.targetFingerprint !== fingerprint) visualError('capability_stale');
         const constraints = negotiateImageConstraints(ir, manifest, { omittedPreferred: approval?.omittedPreferred ?? [] });
-        const effectiveIr = { ...ir, constraints: ir.constraints.filter(c => !constraints.omitted.some(o => o.capability === c.capability)) };
+        const effectiveIr = { ...ir, references: ir.references.filter(ref => !constraints.omitted.some(c => c.capability === ref.purpose)), constraints: ir.constraints.filter(c => !constraints.omitted.some(o => o.capability === c.capability)) };
         const compiled = await adapter.compile({ ir: effectiveIr, target, rendering, connection, seed: randomInt(4294967296) });
-        return { adapter, target, manifest, constraints, compiled, fingerprint };
+        compiled.inputAssetRefs = effectiveIr.references.map(ref => ({ assetId: ref.assetId, contentHash: ref.contentHash, purpose: ref.purpose }));
+        return { adapter, target, manifest, constraints, compiled, fingerprint, effectiveReferences: effectiveIr.references };
     }
 }
 export function resolveImageSelection({ task = {}, annotation = {}, work = {}, global = {} }) {
@@ -48,22 +47,8 @@ export function protocolManifest(fingerprint, features, { combinations = [], cos
         level, features: Object.fromEntries(Object.entries(features).map(([name, state]) => [name, { state, evidence: 'adapter protocol declaration; live Target not verified' }])), combinations, cost };
 }
 export function createImageRegistry({ fetchImpl = fetch } = {}) {
-    const registry = new ImageAdapterRegistry(), provider = createNovelaiImageProvider({ fetchImpl });
-    registry.register(['provider.novelai-image', 'provider.novelai-image-compatible'], {
-        describe: ({ connection, target, fingerprint }) => {
-            const capabilities = novelaiConnectionCapabilities(connection);
-            if (!capabilities.models.some(m => m.id === target.model)) visualError('model_unsupported');
-            return protocolManifest(fingerprint, { txt2img: 'supported', img2img: 'unknown', inpaint: 'unknown', upscale: 'unsupported', identity: 'unknown', vibe: 'unknown' });
-        },
-        compile: ({ ir, target, connection, seed }) => {
-            if (!['txt2img', 'regenerate'].includes(ir.operation)) visualError('operation_unsupported');
-            const draft = { characters: ir.authoring === 'structured' ? ir.participants.map((p, index) => ({ character: { id: 'visual_' + index, name: p.actorId ?? p.provisionalId, aliases: [], fixedPrompt: p.identity, defaultClothing: '', enabled: true, storyActorId: p.actorId ?? '' }, dynamicPrompt: p.state, clothing: '' })) : [], scene: ir.scene, prompt: ir.prompt, preset: { style: ir.style, quality: '', negativePrompt: ir.negativePrompt,
-                parameters: { ...target.nativeParameters, model: target.model } } };
-            if (ir.authoring === 'structured') draft.prompt = composeIllustrationPrompt(draft);
-            return { endpoint: connection.endpoint, ...renderNovelaiIllustration(draft, novelaiConnectionCapabilities(connection), seed) };
-        },
-        generate: (request, options) => provider.generate(request, options),
-    });
+    const registry = new ImageAdapterRegistry();
+    registry.register(['provider.novelai-image', 'provider.novelai-image-compatible'], createNovelaiVisualAdapter({ fetchImpl }));
     registry.register(['provider.comfyui-image'], createComfyImageAdapter({ fetchImpl }));
     registry.register(['provider.openai-images'], createOpenaiImageAdapter({ fetchImpl }));
     return registry;

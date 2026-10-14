@@ -49,9 +49,9 @@ export class IllustrationPromptService {
         const key = sessionId + ':' + branchId + ':' + annotationId + ':illustration_prompt';
         const active = [...this.scheduler.operations.values()].find(entry => entry.owner === handle && entry.key === key && !completed.has(entry.view.status));
         if (active) return { operationId: active.view.operationId, head: head ?? null };
-        const sourceRef = { kind: 'session', sessionId, branchId, revisionId: annotation.anchor.revisionId, annotationId, anchor: annotation.anchor, timeKind: annotation.timeKind ?? 'present' };
+        const sourceRef = { kind: 'session', sessionId, branchId, revisionId: (annotation.originalAnchor ?? annotation.anchor).revisionId, annotationId, anchor: annotation.originalAnchor ?? annotation.anchor, timeKind: annotation.timeKind ?? 'present' };
         const visualSource = await resolveVisualSource(this.host.sessionCore, handle, sourceRef);
-        assertVisualDisclosure(visualSource.view, sourceRef);
+        if (!visualSource.frozen) assertVisualDisclosure(visualSource.view, sourceRef);
         const settings = await this.host.extensions.illustrationSettings(handle);
         const routeId = settings.value.works[state.session.packageId]?.promptRouteId || settings.value.promptRouteId;
         const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.illustration_prompt', routeId ? { runtimeRouteId: routeId } : undefined);

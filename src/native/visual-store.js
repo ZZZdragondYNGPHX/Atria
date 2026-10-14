@@ -48,7 +48,7 @@ export class VisualStore {
             const duplicate = jobs.find(item => item.intentKey === job.intentKey);
             if (duplicate) return duplicate;
             const budget = await getNativeDocument(tx, visualKey(handle, 'budget', 'account')) ?? defaultVisualBudget();
-            const occupied = jobs.filter(item => !item.reservation.released && this.now() - item.createdAt < 86400000);
+            const occupied = jobs.filter(item => !item.reservation.released && (['queued', 'submitting', 'submitted', 'running', 'result_received', 'uncertain_submission'].includes(item.status) || this.now() - item.createdAt < 86400000));
             const automatic = occupied.filter(item => item.mode === 'automatic');
             if (job.mode === 'automatic' && (automatic.length >= budget.imageDay || automatic.filter(item => this.now() - item.createdAt < 3600000).length >= budget.imageHour
                 || jobs.filter(item => item.mode === 'automatic' && ['queued', 'submitting', 'submitted', 'running', 'uncertain_submission'].includes(item.status)).length >= budget.autoConcurrency)) visualError('budget_exceeded');

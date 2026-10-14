@@ -2,12 +2,13 @@
 import { createNativeId } from '../../src/native/identity.js';
 import { compileSafeProse, renderSafeProse, canonicalProseSelection } from '../../public/shared/native-safe-prose.js';
 import { renderNarrativeIllustrations } from '../../public/scripts/native/illustration-renderer.js';
-import { illustrationContentHash } from '../../src/native/session-illustrations.js';
+import { createHash } from 'node:crypto';
+const illustrationContentHash = content => createHash('sha256').update(content).digest('hex');
 
 function fixture(content = '**Alice** at the window.\n\nBob waits.') {
     const entry = { messageId: createNativeId('message'), activeVariantId: createNativeId('variant'), content };
     const root = document.createElement('div'); renderSafeProse(root, content);
-    const state = { schemaVersion: 1, annotations: [], images: [] };
+    const state = { schemaVersion: 2, annotations: [], images: [] };
     const add = (start, end) => {
         const annotationId = createNativeId('annotation'), imageVersionId = createNativeId('imageVersion');
         state.annotations.push({ annotationId, anchor: { messageId: entry.messageId, variantId: entry.activeVariantId,

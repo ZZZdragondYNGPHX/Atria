@@ -1,3 +1,4 @@
+import { normalizeImage } from './adapters/image-transport.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { createNativeId } from './identity.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
@@ -34,14 +35,17 @@ export class ImageJobWorker {
             heartbeat = setInterval(() => { void this.store.fenced(handle, jobId, fence, j => { j.lease.until = this.store.now() + 60000; return j; }).catch(() => {}); }, 15000);
             heartbeat.unref?.();
             const adapter = this.registry.get(job.connection.providerAdapter);
-            const result = await adapter.generate(job.compiled, { secret, signal, jobId, readAsset: assetId => this.assets.read(handle, assetId),
+            const result = await adapter.generate(job.compiled, { secret, signal, jobId, readAsset: assetId => { if (!job.compiled.inputAssetRefs.some(ref => ref.assetId === assetId)) visualError('input_unauthorized'); return this.assets.read(handle, assetId); },
                 onRemote: async receipt => {
                     job = await this.store.fenced(handle, jobId, fence, j => { if (j.status === 'cancelled') visualError('cancelled'); j.status = 'submitted'; j.remote = receipt; return j; });
                 } });
             if (signal.aborted) visualError('cancelled');
             job = (await this.store.read(handle, 'job', jobId)).value;
             if (job.status === 'cancelled') visualError('cancelled');
-            const ref = { assetId: job.outputAssetId, contentHash: createHash('sha256').update(result.bytes).digest('hex'), size: result.bytes.length, mediaType: result.mediaType ?? 'image/png' };
+            const normalized = await normalizeImage(result.bytes);
+            if (normalized.width !== result.width || normalized.height !== result.height) visualError('result_geometry_invalid');
+            result.bytes = normalized.bytes;
+            const ref = { assetId: job.outputAssetId, contentHash: createHash('sha256').update(result.bytes).digest('hex'), size: result.bytes.length, mediaType: 'image/png' };
             await this.assets.put(handle, ref, result.bytes);
             job = await this.store.fenced(handle, jobId, fence, j => { if (j.status === 'cancelled') visualError('cancelled'); j.status = 'result_received'; j.result = { ref, width: result.width, height: result.height }; return j; });
             await this.complete(handle, job, fence);
@@ -81,9 +85,12 @@ export class ImageJobWorker {
                     // Reconcile the existing remote ID only. No recovery path
                     // may call submit/generate for an already sent job.
                     const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
-                    const result = await adapter.reconcile(job.compiled, job.remote, { secret, signal: new AbortController().signal, readAsset: assetId => this.assets.read(handle, assetId) });
+                    const result = await adapter.reconcile(job.compiled, job.remote, { secret, signal: AbortSignal.timeout(30000), readAsset: assetId => { if (!job.compiled.inputAssetRefs.some(ref => ref.assetId === assetId)) visualError('input_unauthorized'); return this.assets.read(handle, assetId); } });
                     if (!result) continue;
-                    const ref = { assetId: job.outputAssetId, contentHash: createHash('sha256').update(result.bytes).digest('hex'), size: result.bytes.length, mediaType: result.mediaType ?? 'image/png' };
+                    const normalized = await normalizeImage(result.bytes);
+                    if (normalized.width !== result.width || normalized.height !== result.height) visualError('result_geometry_invalid');
+                    result.bytes = normalized.bytes;
+                    const ref = { assetId: job.outputAssetId, contentHash: createHash('sha256').update(result.bytes).digest('hex'), size: result.bytes.length, mediaType: 'image/png' };
                     await this.assets.put(handle, ref, result.bytes);
                     job = await this.store.updateJob(handle, job.jobId, j => { j.status = 'result_received'; j.fence += 1; j.lease = { workerId: this.workerId, until: this.store.now() + 60000 }; j.result = { ref, width: result.width, height: result.height }; return j; });
                     await this.complete(handle, job, job.fence);
@@ -104,6 +111,7 @@ export class ImageJobWorker {
 export function newImageJob({ source, intentKey, fingerprint, mode, connection, target, compiled, evidence, approval, amount, currency, mediaOperation }) {
     return { schemaVersion: 2, jobId: createNativeId('imageJob'), intentId: createNativeId('visualIntent'), intentKey, fingerprint, source, mode,
         connection, target, compiled, evidence, approval, mediaOperation, imageVersionId: evidence.requestId, outputAssetId: createNativeId('asset'),
+        compositeImageVersionId: compiled.preserveOutsideMask ? createNativeId('imageVersion') : null, compositeAssetId: compiled.preserveOutsideMask ? createNativeId('asset') : null,
         status: 'queued', createdAt: Date.now(), fence: 0, lease: null, nextAttemptId: createNativeId('imageAttempt'), attempts: [], remote: null,
         reservation: { amount, currency, released: false }, result: null };
 }

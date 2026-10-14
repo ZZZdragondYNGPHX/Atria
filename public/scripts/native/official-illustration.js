@@ -1,3 +1,4 @@
+import { mountVisualGallery } from './visual-gallery-ui.js';
 import { mountVisualDirector } from './visual-director-ui.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters, composeIllustrationPrompt } from '../../shared/illustration-plugin-contract.js';
@@ -61,7 +62,7 @@ export async function activate(sdk) {
         };
         void poll();
     }
-    let readDraft = () => {}, busy = false, disposed = false;
+    let readDraft = () => {}, busy = false, disposed = false, galleryEditor = null;
     const navigation = globalThis.Atria?.shell?.getNavigation?.();
     const syncVisibility = () => {
         const route = navigation?.getRoute();
@@ -120,6 +121,13 @@ export async function activate(sdk) {
     // canonical range and leaves native selection handles under browser control.
     sdk.events.listen(create, 'mousedown', event => event.preventDefault());
     button(doc, toolbar, '标注与历史', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
+    button(doc, toolbar, 'Gallery / Media Studio', run(async () => {
+        readDraft(); galleryEditor?.dispose(); panel.replaceChildren(); panel.hidden = false; panel.style.width = 'min(980px, calc(100vw - 32px))';
+        button(doc, panel, '关闭 Gallery', () => { if (!confirmAtriaDraftLeave(doc, panel)) return; galleryEditor?.dispose(); galleryEditor = null; panel.style.width = ''; panel.hidden = true; });
+        galleryEditor = await mountVisualGallery({ document: doc, parent: panel, sdk, report: error => notify(error.message, true),
+            onJob: started => { const operation = { operationId: started.operationId, status: 'queued', anchor: {} }; watch(operation, undefined, 'image'); } });
+    }));
+    sdk.onDispose(() => galleryEditor?.dispose());
     button(doc, toolbar, '镜头候选', run(async () => {
         readDraft(); panel.replaceChildren(); panel.hidden = false;
         button(doc, panel, '关闭候选', () => panel.hidden = true);

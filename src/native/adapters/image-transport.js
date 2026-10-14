@@ -32,7 +32,7 @@ export async function imageFetch(fetchImpl, endpoint, { secret, signal, body, me
 }
 export async function imageJson(fetchImpl, endpoint, options) {
     const response = await imageFetch(fetchImpl, endpoint, options);
-    const bytes = await boundedImageBytes(response, options?.signal, 8 * 1024 * 1024);
+    const bytes = await boundedImageBytes(response, options?.signal, options?.jsonLimit ?? 8 * 1024 * 1024);
     try { return JSON.parse(bytes.toString('utf8')); } catch { visualError('response_invalid'); }
 }
 export async function normalizeImage(bytesValue) {
@@ -48,7 +48,9 @@ export async function normalizeImage(bytesValue) {
             const image = await Jimp.read(bytes); bytes = await image.getBuffer('image/png');
         }
     } catch { visualError('response_invalid'); }
-    return { bytes, width, height, mediaType: 'image/png' };
+    const normalized = imageSize(bytes);
+    if (normalized.width * normalized.height > 16777216) visualError('response_invalid');
+    return { bytes, width: normalized.width, height: normalized.height, mediaType: 'image/png' };
 }
 export function imageBase64(value) {
     if (typeof value !== 'string' || value.length > 44 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) visualError('response_invalid');

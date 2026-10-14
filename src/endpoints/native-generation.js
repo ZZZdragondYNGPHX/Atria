@@ -1,5 +1,9 @@
+import multer from 'multer';
 import { createImageRegistry, imageTargetFingerprint } from '../native/image-registry.js';
 import { VisualDirector } from '../native/visual-director.js';
+import { MediaStudio } from '../native/media-studio.js';
+import { VisualGallery, VisualMediaGc } from '../native/visual-gallery.js';
+import { PNG } from 'pngjs';
 import { VisualContinuity } from '../native/visual-continuity.js';
 import { VisualConfiguration } from '../native/visual-configuration.js';
 import { describeSessionProtocols } from '../native/session-public-work.js';
@@ -227,6 +231,48 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() })[action === 'start-learning' ? 'startLearning' : action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
+    });
+    for (const [domain, actions] of [['mask', ['create', 'find', 'read', 'save', 'freeze']], ['media', ['prepare']], ['gallery', ['query', 'history', 'select', 'mark']], ['reference', ['promote', 'revoke']], ['gc', ['preview', 'mark', 'sweep']]]) {
+        for (const action of actions) router.post('/visual/' + domain + '/' + action, async (req, res) => {
+            const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+            res.set('Cache-Control', 'private, no-store');
+            try {
+                const host = getHost(), media = new MediaStudio({ host }), gallery = new VisualGallery({ host }), gc = new VisualMediaGc({ host }), input = req.body;
+                let result;
+                if (domain === 'mask') result = action === 'create' ? await media.createDraft(handle, input)
+                    : action === 'find' ? await (async () => { await media.image(handle, input); return { items: (await media.store.list(handle, 'draft')).filter(draft => draft.source.sessionId === input.sessionId && draft.source.branchId === input.branchId && draft.imageVersionId === input.imageVersionId).map(draft => ({ draftId: draft.draftId, updatedAt: draft.updatedAt })) }; })() : action === 'read' ? await media.draft(handle, input.draftId) : action === 'save' ? await media.saveDraft(handle, input) : await media.freezeMask(handle, input);
+                else if (domain === 'media') result = await media.prepare(handle, input);
+                else if (domain === 'gallery') result = await gallery[action](handle, input);
+                else if (domain === 'reference') result = await gallery[action](handle, input);
+                else result = action === 'preview' ? await gc.preview(handle, input) : action === 'mark' ? await gc.mark(handle, input.assetId, input) : await gc.sweep(handle, input.assetId);
+                res.json(result);
+            } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_media_failed' }); }
+        });
+    }
+    router.post('/visual/mask/checkpoint-with-commands', multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 16 * 1024 * 1024, fields: 1, fieldSize: 1024 * 1024 } }).single('checkpoint'), async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try { res.json(await new MediaStudio({ host: getHost() }).checkpoint(handle, JSON.parse(req.body.metadata), req.file.buffer)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_checkpoint_failed' }); }
+    });
+    router.post('/visual/mask/checkpoint', express.raw({ type: 'application/octet-stream', limit: '16mb' }), async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try { res.json(await new MediaStudio({ host: getHost() }).checkpoint(handle, req.query, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_checkpoint_failed' }); }
+    });
+    router.get('/visual/mask/raster/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try {
+            const media = new MediaStudio({ host: getHost() }), row = await media.draft(handle, req.params.id);
+            res.set('Cache-Control', 'private, no-store').type('application/octet-stream').send(await media.raster(handle, { ...row.value, commands: [], cursor: 0 }));
+        } catch (error) { res.status(400).json({ error: error.code || 'native_visual_mask_failed' }); }
+    });
+    router.get('/visual/gallery/thumbnail', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try {
+            const media = new MediaStudio({ host: getHost() }), base = await media.image(handle, req.query), asset = await media.assets.read(handle, base.asset.assetId);
+            const input = PNG.sync.read(asset.bytes, { checkCRC: true }), scale = Math.min(1, 320 / input.width, 320 / input.height);
+            const width = Math.max(1, Math.round(input.width * scale)), height = Math.max(1, Math.round(input.height * scale)), data = Buffer.alloc(width * height * 4);
+            for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) { const source = (Math.min(input.height - 1, Math.floor(y / scale)) * input.width + Math.min(input.width - 1, Math.floor(x / scale))) * 4; input.data.copy(data, (y * width + x) * 4, source, source + 4); }
+            res.set('Cache-Control', 'private, max-age=86400').type('image/png').send(PNG.sync.write({ width, height, data }));
+        } catch { res.status(404).json({ error: 'native_visual_thumbnail_unavailable' }); }
     });
     for (const action of ['scan', 'list', 'prepare', 'submit', 'skip', 'analyze']) router.post('/visual/director/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
