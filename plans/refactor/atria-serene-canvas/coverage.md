@@ -138,3 +138,11 @@ v0.3 已展开 Runtime/Agents，v0.4 已展开 Play/Library 日常路径，v0.5 
 4. 登录/引导、Account/Backup/Extensions/Diagnostics；Settings剩余高级兼容流程；一处作品接管与一处条件媒体流程。
 
 此顺序是设计工作建议，不是冻结实施阶段。旧控件、潜在新能力、已确认边界与用户待讨论取舍只归 [decisions.md](decisions.md)，不由旧 DOM 或参考稿自动推导。
+
+## 10. v0.7 补充与实施进展
+
+[v0.7](references/discussion-preview-v0.7.html) 补上项目首页的空/搜索/失败入口、Project Agent 任务状态与人工审查代表流程、Source 文件列表、登录、账户、扩展、条件媒体与宿主的代表布局。v0.6 完整页面继续可阅览。全局工具尚未获得完整业务操作覆盖；不要将布局示例标作产品验收。
+
+产品目前已有登录双语与隔离登录测试；Studio 首页真实加载/重试/搜索/新建，以及 Main→frontend→Main 文件切换保持草稿的浏览器证据。任务状态来自原有 Project Agent 服务，Source 依实际文件列表与既存审查服务，迟到文件读取不能覆盖当前选择。完整 Task 成功提交、其余集合/文件事务和专业页面仍按上表推进。结果与实际验证只归 [Record](../../../records/refactor/atria-serene-canvas.md)。
+
+Runtime readiness 已在产品中按共享 adapter 认证规则修正；上述 §6 的旧缺口是盘点基线，不代表此问题仍未实施。其余用途/删除依赖/返回任务还需继续验收。

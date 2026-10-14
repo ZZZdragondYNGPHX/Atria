@@ -11,7 +11,8 @@
 | [discussion-preview-v0.3.html](discussion-preview-v0.3.html) | Runtime 配置路径与 Agents 四页的交互初稿 | 历史讨论版本；未替换已接受基线 |
 | [discussion-preview-v0.4.html](discussion-preview-v0.4.html) | Play 会话/历史/存档与 Library 详情/资源编辑的交互初稿 | 历史讨论版本；未替换已接受基线 |
 | [discussion-preview-v0.5.html](discussion-preview-v0.5.html) | Library Prompt/Persona 与浅色 Settings 的交互初稿 | 历史讨论版本；未替换已接受基线 |
-| [discussion-preview-v0.6.html](discussion-preview-v0.6.html) | Studio Actors、EntryPoints、UI/Assets 编辑与 ChangeSet 冲突/失败恢复 | 最新讨论版本；等待反馈，未替换已接受基线 |
+| [discussion-preview-v0.6.html](discussion-preview-v0.6.html) | Studio Actors、EntryPoints、UI/Assets 编辑与 ChangeSet 冲突/失败恢复 | 完整前版；未替换已接受基线 |
+| [discussion-preview-v0.7.html](discussion-preview-v0.7.html) | 入口、Project Agent、Source 文件列表及全局工具代表布局 | 最新补充稿；未替换已接受基线，全局工具仍需完整操作展开 |
 | [desktop-reference.html](desktop-reference.html) | 用户提供的 `atria-serene-canvas.html` | 桌面视觉气质、布局与精致程度参考 |
 | [mobile-reference.html](mobile-reference.html) | 用户提供的 `atria-mobile-serene.html` | 手机布局与材质参考 |
 | [frontend-guidelines.md](frontend-guidelines.md) | 用户提供的视觉规范 | 设计输入；冲突以当前决策解决 |
@@ -131,3 +132,10 @@ v0.6 尚未验证：真实Inspect/Execute/文件事务与持久恢复、全量�
 | [Animata](https://animata.design/) | idle/loading/success 状态按钮 |
 
 v0.6补充读取[Motion Primitives Dialog源码](https://github.com/ibelick/motion-primitives/blob/main/components/core/dialog.tsx)、[Animate UI AlertDialog](https://animate-ui.com/docs/primitives/radix/alert-dialog)及[Radix异步受控示例](https://www.radix-ui.com/primitives/docs/components/alert-dialog#close-after-asynchronous-form-submission)：采用关闭意图→退出→native close的生命周期，以及异步提交由状态决定关闭的机制。Motion Primitives该示例未提供完整trigger焦点保存，继续沿Atria已有焦点归还；不照搬默认变体或添加React依赖。高频树/Source/差异行不增加入场动画。
+
+### v0.7 actual prototype checks
+
+- 独立脚本语法检查通过。真实 Chromium 检查 18 个页面/语言/尺寸组合：英文 1440px 八页、简中 900px Agent/Files、简中 320px 八页；无页面级或纸内横向溢出，没有 pageerror。
+- 演示 Task 创建→继续→审查取消→人工提交回执；Source 关闭保留原文，冲突禁应用；均通过。手机文件名用省略号保留扩展名阅读，中宽纸面不保留空占位高度。
+- 浮层读取当前可见值后取消旧动画，键盘即时、减动仅透明度；原生 dialog 约束焦点并归还入口。
+- 这些是原型证据。账户、扩展、媒体与宿主目前只有代表布局，完整文件、权限、恢复与业务合同未由这份原型证明。Agent/Files 的样例状态不能复制到正式产品。
