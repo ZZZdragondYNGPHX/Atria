@@ -1,48 +1,48 @@
 # Atria MCP 补强 — P0 可靠性架构（第二轮冻结）
 
-**Task ID** \`plugin/atria-mcp-strengthening\` · **方案 B 已批准** · 创建/冻结：2026-10-14 · 尚未实现。产品/工具审计基线与现有问题见 [audit-baseline.md](audit-baseline.md)，能力分期见 [capability-matrix.md](capability-matrix.md)。
+**Task ID** `plugin/atria-mcp-strengthening` · **方案 B 已批准** · 创建/冻结：2026-10-14 · 尚未实现。产品/工具审计基线与现有问题见 [audit-baseline.md](audit-baseline.md)，能力分期见 [capability-matrix.md](capability-matrix.md)。
 
 ## 1. 冻结目标与严格非目标
 
 目标：保持既有 MCP ActionRegistry/Policy Ceiling/Lease/Receipt 语义，为长耗时浏览器、Agent、生成、安装流程提供 **始终可达的控制通道、受权威校验的并行能力、明确的操作状态与安全恢复**。支持 MCP SDK v2 迁移与新版协议的可协商能力，同时继续服务旧客户端。
 
-**非目标**：从零构建另一个完整 Agent/workflow runtime、把 MCP Journal 当 Atria 产品数据库、绕过 Native 权威、自动重新发送不确定的外部写入、允许普通模型文本/布尔值充当用户批准、通过泛化 Browser/JS/HTTP/shell 绕过风险分级。原已冻结的 18 顶层工具原则暂时保留；若确需新增控制 action，应先判断放在 \`atri_read/atri_interact\` 的语义 namespace 或 MCP 扩展，不能未经讨论扩大可执行 surface。
+**非目标**：从零构建另一个完整 Agent/workflow runtime、把 MCP Journal 当 Atria 产品数据库、绕过 Native 权威、自动重新发送不确定的外部写入、允许普通模型文本/布尔值充当用户批准、通过泛化 Browser/JS/HTTP/shell 绕过风险分级。原已冻结的 18 顶层工具原则暂时保留；若确需新增控制 action，应先判断放在 `atri_read/atri_interact` 的语义 namespace 或 MCP 扩展，不能未经讨论扩大可执行 surface。
 
 ## 2. 分层执行与资源隔离（冻结）
 
-1. **Control Lane**：\`status\`、\`cancel\`、\`diagnostic\`、\`reconcile\`、\`health\` 之类查询/控制不通过会等待审批或生成结束的全局 FIFO；控制通道依然经过 owner、operation identity、access、redaction 和速率限制，不能作为写入旁门。控制请求本身应短时有界，可观察慢/超时而不被长期任务排队。取消是 **意图**，不保证已执行的产品写入撤销。
+1. **Control Lane**：`status`、`cancel`、`diagnostic`、`reconcile`、`health` 之类查询/控制不通过会等待审批或生成结束的全局 FIFO；控制通道依然经过 owner、operation identity、access、redaction 和速率限制，不能作为写入旁门。控制请求本身应短时有界，可观察慢/超时而不被长期任务排队。取消是 **意图**，不保证已执行的产品写入撤销。
 2. **Read Lane**：可并发但有界；区分纯本地只读、产品 HTTP read、可能 network/cost 的“名义 READ”。有外部费用的读取要具备可见成本声明与调用限额，不能隐式合并到零成本快照。
-3. **Mutation Lane**：审批等待与产品写事务分离；对同一 \`(owner, authority, scope/target)\` 序列化冲突写操作，运行时仍在实际 Native endpoint/repo 进行 CAS/版本一致性校验。不同目标允许安全并发，但全局资源预算有上限。局部 MCP 锁不构成跨多个 MCP 进程的一致性证明。
+3. **Mutation Lane**：审批等待与产品写事务分离；对同一 `(owner, authority, scope/target)` 序列化冲突写操作，运行时仍在实际 Native endpoint/repo 进行 CAS/版本一致性校验。不同目标允许安全并发，但全局资源预算有上限。局部 MCP 锁不构成跨多个 MCP 进程的一致性证明。
 4. **Browser Lane**：同一页导航、作用域变更、截图和交互有独立串行性/epoch；禁止两个任务在同一 page 上并发导航和将彼此的 UI 证据误归属。页面等待不能阻塞 Control Lane；长 UI 验证应有异步句柄。
-5. **Execution admission**：资源、用户/目标、系统预算、队列上限和排队超时必须显式拒绝而非无限挂起；默认采用公平/有界调度。不要为“并发”删除当前 \`RiskExecutor.#running\` 而失去 guard。
+5. **Execution admission**：资源、用户/目标、系统预算、队列上限和排队超时必须显式拒绝而非无限挂起；默认采用公平/有界调度。不要为“并发”删除当前 `RiskExecutor.#running` 而失去 guard。
 6. **双重权威保障**：MCP 锁用于本进程执行编排；最终写入总由 Atria 的原生事务、revision/OCC、Server Boot guard、权限边界决定。多个 stdio MCP 实例无法凭内存全局互斥，不能共享未验证的 approval/lease。
 
 **后续实施参数待细化**：各 lane 并发数、队列上限、CPU/IO 配额、优先级衰减、专用 worker 还是 in-process、是否存在独立 browser context。不得把尚未实测的数字固化为用户验收门槛。
 
 ## 3. Operation / Product authority / Receipt 三层身份（冻结）
 
-- **MCP Invocation**：一个客户端请求及风险 action/规范化 input hash，短同步调用可以直接返回；耗时调用返回明确的 \`operationId\`，不得仅用 tool request id 表示持久作业。
-- **Product Operation**：若 Atria 有正式 \`operationId\`、Project revision/Workspace/ChangeSet、Session revision/commit receipt、Save id、PackageVersion/asset hash 等，建立映射与来源；来源实体及 Native 状态是最终真值。
-- **MCP Receipt**：仅报告 \`action, target, inputFingerprint, approvedAuthority, before/after, timestamps, source, status\` 等有界审计记录。不伪造产品已完成/已回滚；现有 Receipt Store 可继续保留短期响应缓存，不能单独承担当作业恢复来源。
+- **MCP Invocation**：一个客户端请求及风险 action/规范化 input hash，短同步调用可以直接返回；耗时调用返回明确的 `operationId`，不得仅用 tool request id 表示持久作业。
+- **Product Operation**：若 Atria 有正式 `operationId`、Project revision/Workspace/ChangeSet、Session revision/commit receipt、Save id、PackageVersion/asset hash 等，建立映射与来源；来源实体及 Native 状态是最终真值。
+- **MCP Receipt**：仅报告 `action, target, inputFingerprint, approvedAuthority, before/after, timestamps, source, status` 等有界审计记录。不伪造产品已完成/已回滚；现有 Receipt Store 可继续保留短期响应缓存，不能单独承担当作业恢复来源。
 - 对于短只读或无不确定性的纯本地计算，不强制持久作业化。长生成/浏览器等待/付费工作、两阶段变更与远端外部调用需要可查询生命周期与可取消入口。
 
 ### 3.1 状态与守恒规则
 
-任务状态标准化为 \`queued → awaiting_approval → ready → running → reconciling → completed|failed|cancelled|stale|unknown\`（具体代码枚举可在实现中细化）；在批准之前任何副作用都不得发生。
+任务状态标准化为 `queued → awaiting_approval → ready → running → reconciling → completed|failed|cancelled|stale|unknown`（具体代码枚举可在实现中细化）；在批准之前任何副作用都不得发生。
 
-- \`completed\`：有对应产品/拥有方权威的确认，不以收到 HTTP 202 或本地脚本返回值替代正式业务完成。
-- \`failed\`：确知未提交或权威明确拒绝；“连接失败”不自动构成失败。
-- \`cancelled\`：本地调度停止或权威确认取消；若已 dispatch 且远端状态未知必须另行标 \`unknown\` 或 \`cancel_requested/unknown\`，不宣称 rollback。
-- \`stale\`：原 scope/version/boot/epoch 不再成立，旧审批不能重新套用。
-- \`unknown\`：写入可能发生而本地无可靠结果；不得自动重放任何有实际副作用的动作。
+- `completed`：有对应产品/拥有方权威的确认，不以收到 HTTP 202 或本地脚本返回值替代正式业务完成。
+- `failed`：确知未提交或权威明确拒绝；“连接失败”不自动构成失败。
+- `cancelled`：本地调度停止或权威确认取消；若已 dispatch 且远端状态未知必须另行标 `unknown` 或 `cancel_requested/unknown`，不宣称 rollback。
+- `stale`：原 scope/version/boot/epoch 不再成立，旧审批不能重新套用。
+- `unknown`：写入可能发生而本地无可靠结果；不得自动重放任何有实际副作用的动作。
 - 对同一 operation 的多次 status/read 不得引发新的 side effect；在超时、关闭、重启后不能把不确定结果升级为“未执行”。
 
 ## 4. 最小持久化 Journal 与恢复（冻结）
 
 采用 **轻量、隐私最小化的 MCP Operation Journal**，不创建第二套 Game/Project/Session 事实数据库。内容最多包含以下经逐字段允许的类型：
 
-- \`operationId, actionId, risk, serverBootId, clientInstanceId, mcpInstanceId\`、归属 scope/target 的不可敏感 ID、规范化请求摘要/hash、审批审核摘要、作业提交阶段及时间；
-- 已知的产品 \`operationId/revisionId/commitId/receiptId/previewId/saveId\`、外部请求是否已 dispatch、权威响应摘要/status、最近一次核对时间、持久化版本；
+- `operationId, actionId, risk, serverBootId, clientInstanceId, mcpInstanceId`、归属 scope/target 的不可敏感 ID、规范化请求摘要/hash、审批审核摘要、作业提交阶段及时间；
+- 已知的产品 `operationId/revisionId/commitId/receiptId/previewId/saveId`、外部请求是否已 dispatch、权威响应摘要/status、最近一次核对时间、持久化版本；
 - 恢复提示和具体权威查询步骤；不保存 Secret/cookie/session token、完整 Prompt/聊天正文、图像与音频、完整响应正文、私人文件内容。
 
 Journal 必须有原子更新、意外退出不损坏已确认记录、owner 隔离、权限保护与有界 GC；存储目录位于独立 MCP 私有 state 路径，不直接放入产品的 user dataRoot，更不写回产品 Git 版本目录。跨实例访问必须采用可验证的锁/事务或每实例隔离的 ownership；**不同 MCP 客户端产生的执行凭证/Lease 不可互认**。
@@ -50,11 +50,11 @@ Journal 必须有原子更新、意外退出不损坏已确认记录、owner 隔
 恢复路径：
 
 1. MCP 重新启动加载 Journal，只恢复 **身份/历史/待核对** 状态，不能自动重放 request。
-2. 首先重新认证 product owner 和新的 \`serverBootId\`，比较持久 target 与权威 Revision/History/Receipt。
-3. 对有 Product operation/status 入口的作业，只使用对应权威 read/reconcile；无法核实时保持 \`unknown\` 并展示下一步只读排查建议。
+2. 首先重新认证 product owner 和新的 `serverBootId`，比较持久 target 与权威 Revision/History/Receipt。
+3. 对有 Product operation/status 入口的作业，只使用对应权威 read/reconcile；无法核实时保持 `unknown` 并展示下一步只读排查建议。
 4. 对无原生 durable-run 能力的任务，MCP 重启不表示恢复计算本身。需先证明目标产品存在安全、权限隔离的恢复能力，才能开放继续运行；否则只允许观察，恢复决策重新审批。
 5. 恢复前必须拒绝过期、不同作用域、不同用户、不同 checkout/origin/runtime 和变化的批准绑定；不能用旧 lease 自动执行或授权。
-6. 对长期 \`unknown\`，不得默默从 Journal 删除并伪装成功；提供明显的历史清理/保留期策略，清理与执行恢复应当独立。
+6. 对长期 `unknown`，不得默默从 Journal 删除并伪装成功；提供明显的历史清理/保留期策略，清理与执行恢复应当独立。
 
 具体 WAL/SQLite 或原子文件落盘技术、record TTL、跨实例锁键的编码、可配置私有路径，作为实现期受控工程参数，保留后续按证据选择空间；不允许改变以上恢复语义。
 
@@ -68,14 +68,14 @@ Journal 必须有原子更新、意外退出不损坏已确认记录、owner 隔
 
 ## 6. MCP v2 / 2026-07-28 协议方向（冻结）
 
-现有 \`plugin:atria-mcp/package.json\` 使用 \`@modelcontextprotocol/sdk@1.30.1\`；规划升级 **TypeScript SDK v2 stable 分拆包**，但明确区分两件事：A) **v1 → v2 SDK 迁移**，B) **在 v2 SDK 上选择并协商 2026-07-28 协议**。不能认为装了 v2 就自动使用新版 wire 协议。2026-10-14 官方发布线的 v2 release 为 2.3.x（最新发布页 2026-10-05 v2.3.1，具体锁版在实施时复核）。
+现有 `plugin:atria-mcp/package.json` 使用 `@modelcontextprotocol/sdk@1.30.1`；规划升级 **TypeScript SDK v2 stable 分拆包**，但明确区分两件事：A) **v1 → v2 SDK 迁移**，B) **在 v2 SDK 上选择并协商 2026-07-28 协议**。不能认为装了 v2 就自动使用新版 wire 协议。2026-10-14 官方发布线的 v2 release 为 2.3.x（最新发布页 2026-10-05 v2.3.1，具体锁版在实施时复核）。
 
 - 同一 MCP 逻辑必须兼容已部署的 **2025-11-25** 连接与可协商的 **2026-07-28**。切换以客户端协议/能力协商结果为准，不根据 User-Agent、客户端品牌或声明“支持 v2”推断。
-- 2026-07-28 使用无状态 Core 与 Multi Round-Trip Requests（MRTR）；可信审批通过 \`resultType: input_required\` 和客户端 \`inputResponses\` 往返。必须强校验 sealed/signed \`requestState\`、本次 input/target/boot/有效期/nonce，检查拒绝、取消、重放、不同客户端/实例窜用。该 \`requestState\` 为传回的不可信字符串，不能直接信任。
-- 2025 连接继续使用经过验证的 form elicitation，v2 可通过官方 legacy shim 承载两套 handler（是否选择 shim 以实现期真实测试为准），审批语义必须一致；若客户端不支持任何可信渠道，不得退回 \`confirm=true\`。
-- **Tasks 不属于 2026-07-28 核心必备能力**：2025-era experimental Tasks wire 在 SDK v2 中已废弃；新版为可协商的 \`io.modelcontextprotocol/tasks\` 扩展。只有客户端与稳定扩展实现同时支持时才暴露 tasks/get/update/cancel 等协议级 Task；未协商时仍以固定 ActionRegistry 内的语义 \`operationId\` + status/cancel/reconcile 提供等价可靠的观察/控制，不假装扩展已协商。
-- \`main\` 的 **内置 MCP Consumer** 与外部 Server 独立升级，不因本企划的 SDK 迁移改变 Native Consumer 的固定 2025-11-25 协议。若以后需联动，必须单独审查其 ReadOnly、budget、allowlist、SSE 与 cancellation invariants。
-- \`stdio\` 保持基线传输；不默认开启 HTTP 暴露服务。是否提供额外 HTTP transport 需独立网络安全评估。
+- 2026-07-28 使用无状态 Core 与 Multi Round-Trip Requests（MRTR）；可信审批通过 `resultType: input_required` 和客户端 `inputResponses` 往返。必须强校验 sealed/signed `requestState`、本次 input/target/boot/有效期/nonce，检查拒绝、取消、重放、不同客户端/实例窜用。该 `requestState` 为传回的不可信字符串，不能直接信任。
+- 2025 连接继续使用经过验证的 form elicitation，v2 可通过官方 legacy shim 承载两套 handler（是否选择 shim 以实现期真实测试为准），审批语义必须一致；若客户端不支持任何可信渠道，不得退回 `confirm=true`。
+- **Tasks 不属于 2026-07-28 核心必备能力**：2025-era experimental Tasks wire 在 SDK v2 中已废弃；新版为可协商的 `io.modelcontextprotocol/tasks` 扩展。只有客户端与稳定扩展实现同时支持时才暴露 tasks/get/update/cancel 等协议级 Task；未协商时仍以固定 ActionRegistry 内的语义 `operationId` + status/cancel/reconcile 提供等价可靠的观察/控制，不假装扩展已协商。
+- `main` 的 **内置 MCP Consumer** 与外部 Server 独立升级，不因本企划的 SDK 迁移改变 Native Consumer 的固定 2025-11-25 协议。若以后需联动，必须单独审查其 ReadOnly、budget、allowlist、SSE 与 cancellation invariants。
+- `stdio` 保持基线传输；不默认开启 HTTP 暴露服务。是否提供额外 HTTP transport 需独立网络安全评估。
 
 参考源（写入方案以便实施阶段重新确认）：
 
@@ -87,7 +87,7 @@ Journal 必须有原子更新、意外退出不损坏已确认记录、owner 隔
 
 ## 7. 大型 Package / 响应容量可靠性（冻结）
 
-目前固定 Authority HTTP 客户端响应上限 **1 MiB**，而 \`PackageArtifacts\` 可保留 **16 MiB** 包体；正式 \`Studio.buildProject\` 返回 base64 \`.atria\` 数据，导致原始压缩包接近 750 KiB 时 JSON 响应即可逼近 1 MiB 上限。此容量裂缝纳入 **P0**，不只是 P2 性能优化。
+目前固定 Authority HTTP 客户端响应上限 **1 MiB**，而 `PackageArtifacts` 可保留 **16 MiB** 包体；正式 `Studio.buildProject` 返回 base64 `.atria` 数据，导致原始压缩包接近 750 KiB 时 JSON 响应即可逼近 1 MiB 上限。此容量裂缝纳入 **P0**，不只是 P2 性能优化。
 
 实施方向：采用有界同源资产传输 + 完整性哈希校验 + 来源/owner/Project/Version/expiry 绑定的中间句柄。优先评估专用产品 artifact read/stream authority、临时 file handle 或分块读取，**不开放任意 URL/目录/path 下载**。传输中不经大段 LLM 文本/Receipt 复制 raw bytes；校验整个 archive 哈希后方可进入 Preflight → Review → Install。分块错误/网络断开不确定时不能安装部分 archive。所有限额以实际 Atria 压缩包场景测试，不简单把全局 1 MiB 上限盲目调到 16 MiB。
 
