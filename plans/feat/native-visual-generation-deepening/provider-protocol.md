@@ -118,8 +118,8 @@ Tasks/fields are illustrative only. In particular, **scope of non-narrative imag
 - Adapters validate image format/dimensions and hostile payload limits, HTTPS/local endpoint boundaries, SSRF/secret handling, cancellation and retry logic for their actual transport.
 - No external API/real image/UI testing has yet been performed in this design round.
 
-## 7. Next design checkpoint: Round 13 (not frozen)
+## 7. Latest checkpoint: D-013 confirmed, E0 interface gaps registered
 
-D-012 已批准各 Provider 家族/实际 Target 能力矩阵、Required/Preferred/Optional 约束协商和 L1/L2/L3 逐阶段验证，不代表真实模型已通过 L3。具体约束/后端文档见 [provider-editing-matrix.md](provider-editing-matrix.md)，Mask 与 Gallery/SavePoint 见 [media-precision.md](media-precision.md)。
+D-012 已批准各 Provider 家族/实际 Target 能力矩阵、Required/Preferred/Optional 约束协商和 L1/L2/L3 逐阶段验证，不代表真实模型已通过 L3。详见 [provider-editing-matrix.md](provider-editing-matrix.md)，Mask 与 Gallery/SavePoint 见 [media-precision.md](media-precision.md)。
 
-**Round 13 待议**：将冻结的 ImagePromptIR、Connection/Target/Rendering Profile、ImageJob/MediaOperation、AssetStore/SavePoint 等约束收束成一组明确 Native API/资源 Schema，讨论 Runtime 连接 UI、作品/单次覆盖、跨平台编辑，以及 P0/P1 阶段/子阶段与最终验收路由。精确字段与路由仍是候选。
+**Round 13 D-013 已冻结** ImagePromptIR/Connection/Target/Rendering/Job/Media/SavePoint 的 Native API 与数据**职责边界**、三层设置与 Windows/CachyOS/Termux 三端 UI、S0～S6/25 子阶段，详见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)。**字段/URL/DB/CAS 的精确 Schema 仍列在 [e0-closure-audit.md](e0-closure-audit.md) 作为 S0 合同项**；本文件不为此复制另一套接口定义。
