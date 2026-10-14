@@ -375,10 +375,11 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
         if (!req.body || Object.keys(req.body).some(key => !['baseRevision', 'clientInstanceId'].includes(key))
             || typeof req.body.baseRevision !== 'string' || !req.body.baseRevision || typeof req.body.clientInstanceId !== 'string' || !req.body.clientInstanceId) throw new TypeError('Exact build artifact binding required');
         const result = await studio.buildProject(handle, req.params.projectId, { baseRevision: req.body.baseRevision });
-        if (result.revision !== req.body.baseRevision) throw new TypeError('Build source revision mismatch');
-        const artifact = artifacts.captureBuild(handle, req.body.clientInstanceId, req.params.projectId, result.revision, result.built.archive);
+        const revision = result.revision.revision;
+        if (revision !== req.body.baseRevision) throw new TypeError('Build source revision mismatch');
+        const artifact = artifacts.captureBuild(handle, req.body.clientInstanceId, req.params.projectId, revision, result.built.archive);
         const manifest = result.built.manifest;
-        res.set('Cache-Control', 'private, no-store').json({ projectId: req.params.projectId, revision: result.revision,
+        res.set('Cache-Control', 'private, no-store').json({ projectId: req.params.projectId, revision,
             manifest: { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, name: manifest.name,
                 version: manifest.version, capabilities: manifest.capabilities, permissions: manifest.permissions },
             packageVersion: result.built.packageVersion, preflight: result.built.preflight, artifact });

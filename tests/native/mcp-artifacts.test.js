@@ -8,11 +8,33 @@ import { NativeProductService } from '../../src/native/product-service.js';
 import { buildAtriaPackageContainer } from '../../src/native/package-container.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { services, sessionFixture } from './helpers/session-fixture.js';
+import { projectSource, services as projectServices } from '../agent-intelligence/project-fixture.js';
+import { createNativeId } from '../../src/native/identity.js';
+import { inspectAtriaPackageContainer } from '../../src/native/package-container.js';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const clientInstanceId = 'fixture-client', owner = 'fixture-owner';
 const begin = (store, bytes = Buffer.from('abcdefgh')) => store.begin(owner, { clientInstanceId, contentHash: hash(bytes), totalBytes: bytes.length });
 const query = (ref, extra = {}) => ({ ...ref, artifactId: undefined, ...extra });
+
+test('real StudioService build publishes metadata bound to its actual ProjectRevision and multi-megabyte asset bytes', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const current = projectServices(h), source = projectSource(), bytes = randomBytes(2 * 1024 * 1024 + 1), assetId = createNativeId('asset');
+        source.assetFiles = [{ assetId, path: 'assets/capacity.bin', mediaType: 'application/octet-stream' }];
+        const created = await current.studio.createProject(h.handle, source, { files: new Map([['assets/capacity.bin', bytes]]) });
+        const artifacts = new NativeMcpArtifacts(), app = express(); app.use(express.json());
+        app.use((req, res, next) => { req.user = { profile: { handle: h.handle } }; res.set('x-atria-server-boot-id', artifacts.bootId); next(); });
+        app.use(createNativeStudioRouter(() => current, artifacts));
+        const response = await request(app).post('/projects/' + source.project.projectId + '/build-artifact').send({ baseRevision: created.revision.revision, clientInstanceId });
+        expect(response.status).toBe(200); expect(response.body.revision).toBe(created.revision.revision);
+        expect(response.body.artifact.artifactRef.totalBytes).toBeGreaterThan(2 * 1024 * 1024); expect(JSON.stringify(response.body).length).toBeLessThan(12000);
+        await artifacts.withBytes(h.handle, response.body.artifact.artifactRef, archive => {
+            const inspected = inspectAtriaPackageContainer(archive), asset = inspected.manifest.assets.find(item => item.assetId === assetId);
+            expect(asset.contentHash).toBe(hash(bytes)); expect(inspected.assets.get(assetId).equals(bytes)).toBe(true);
+        });
+    } finally { await h.cleanup(); }
+});
 
 test('temporary staging binds exact owner, client, boot, revision, size and hash', () => {
     const store = new NativeMcpArtifacts(), bytes = Buffer.from('abcdefgh'), stage = begin(store, bytes), ref = stage.artifactRef;
@@ -78,7 +100,7 @@ test('real HTTP metadata, bounded binary download/upload and exact-reference ins
         saveSystem: svc.saveSystem, sessionCore: svc.core, projectStore: {} });
     const studio = { async buildProject(handle, projectId, options) {
         expect(handle).toBe(harness.handle); expect(projectId).toBe('project-1'); expect(options.baseRevision).toBe('revision-1');
-        return { revision: options.baseRevision, built: { ...built, preflight: svc.packageInstaller.preflight(built.archive) } };
+        return { revision: { projectId, revision: options.baseRevision, parentRevision: null, createdAt: 1 }, built: { ...built, preflight: svc.packageInstaller.preflight(built.archive) } };
     } };
     const app = express(); app.use(express.json({ limit: '1mb' }));
     app.use((req, res, next) => { if (req.headers['x-user']) req.user = { profile: { handle: req.headers['x-user'] } }; res.set('x-atria-server-boot-id', store.bootId); next(); });
