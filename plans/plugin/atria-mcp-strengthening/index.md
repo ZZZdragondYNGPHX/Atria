@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B 已冻结。第五轮 Model / Prompt / Runtime / Provider 的接口方案待讨论。**尚未进入实现阶段**。
+- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B 已冻结。第六轮 Session / Save / 长会话 / Generation 生命周期讨论中。**尚未进入实现阶段**。
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
@@ -35,7 +35,8 @@
 | [`capability-matrix.md`](capability-matrix.md) | **能力矩阵权威**：产品 Authority × MCP Registry × 风险 × 覆盖级别 × 候选优先级 | 第二轮已冻结规划分类；具体 action 合同逐域核实 |
 | [`studio-project-agent.md`](studio-project-agent.md) | **第三轮权威**：Studio 直接路径、Project Agent Task、外部/内置模型分工、Review/Commit 和原生恢复 | 第三轮方案 B 已冻结方向，具体 Action schema 后续确定 |
 | [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) | **第四轮权威**：Memory、Goals、Evidence、Experience、Evolution 的分域语义接口、跨域工作流、预算与来源/恢复/失效边界 | 第四轮方案 B 已冻结方向；精确 Action Schema 待实施核实 |
-| `domain-*.md` | **按需再建**：Model/Prompt/Runtime/Provider、Session、UI/Media 等后续域模块 | 尚未设计 |
+| [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) | **第五轮权威**：完整 Native Model/Prompt/Runtime/Provider Bridge、Secret/Endpoint 审查、版本化编辑、零副作用 Preview、付费执行与 Fallback/恢复 | 第五轮方案 B 已冻结方向；准确 Action schema/协议联测待实施 |
+| `domain-*.md` | **按需再建**：Session / Save / Generation 生命周期、UI/Media 等后续域模块 | 尚未设计 |
 | `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
 
 单条详细规则仅写入一个权威模块。index 只管理全局冻结原则、依赖和讨论/实施路由，不复制域内设计；现有旧 Plan 仅作历史链接，不直接作为本轮新增范围的执行授权。
@@ -48,8 +49,9 @@
 | 第二轮（已冻结） | 能力矩阵；分层调度、任务/回执恢复、MCP v2 兼容方向、P0 验收；方案 B | `capability-matrix.md`、`p0-reliability.md` |
 | 第三轮（已冻结） | 方案 B：Studio 直接 Workspace + Project Agent Task；外部 AI 默认主导；原生模型显式委托；独立 Review/Commit | [`studio-project-agent.md`](studio-project-agent.md) |
 | 第四轮（已冻结） | 方案 B：Memory / Goals / Evidence / Experience / Evolution 分域权威，受控跨域工作流，来源、预算、审批与安全恢复 | [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) |
-| **第五轮（当前讨论）** | Model / Prompt / Runtime / Provider 语义接口、版本、预览、执行、模型路由与预算 | `index.md` + `capability-matrix.md` 的 Model/Prompt 行，并按需读取当前 `main:src/native/model-prompt-runtime/`、`native-generation.js`、`plugin:atria-mcp` 固定 adapter |
-| 后续轮次 | Session / UI / Media、跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
+| 第五轮（已冻结） | 方案 B：完整 Native Model/Prompt/Runtime/Provider Bridge、版本化资源、端点/Secret 审查、无副作用 Preview、付费执行及恢复 | [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) |
+| **第六轮（当前讨论）** | Session/Save/Timeline/Branch、长会话 Context、生成任务生命周期、停止与跨重启恢复 | `index.md` + `capability-matrix.md` 的 Session 行 + [`p0-reliability.md`](p0-reliability.md)、[`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md)；按需读取当前 `main:src/native/session-core.js` / `save-system.js` / `task-scheduler.js` / `native-generation.js` |
+| 后续轮次 | UI / Media / Package、安全跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
 
 不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
 
@@ -79,13 +81,22 @@
 - `Evolution.inspect` 当前可能产生 reconcile 副作用；MCP 应分离纯观察和受控 reconcile，不能标注为无副作用 READ。
 - 来源变更/Session 读档换支/删除/Retention 到期需沿已有依赖标失效、暂停或冲突；MCP Operation Journal 只存跨域步骤关联，不重复保存认知状态。
 
-## 5.3 第五轮待讨论（尚未冻结）
+## 5.3 第五轮已冻结的 Native Model/Prompt/Runtime/Provider Bridge
 
-- Connection / Model / RuntimeRoute / PromptProgram / GenerationProfile / Preset 等权威对象与精确资源版本如何对 MCP 暴露；不允许通过名称猜选活跃版本或明文 Secret。
-- Provider model discovery、连接探测、transport/options 能力差异、Role 路由/RouteRef、Fallback Policy、cost/network/预算的检查与回执。
-- Prompt 编译与 Context Preview 在不调用付费 Provider 时能提供哪些诊断；哪些操作只能归为 INTERACT，哪些必须有确切用户批准和 Provider effect 声明。
-- 模型生成、工具回合、SSE/后台 operation、stop/reconcile/status 的幂等与持久化结果边界；不能把 HTTP 202 当做最终完成。
-- MCP 如何在不新增独立模型路由/Secret 存储的前提下支持直接调用原生 Runtime、编辑 Prompt 资源与受控 Agent 委托。
+- **第五轮选择 B：完整原生 Runtime Bridge**，详见 [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md)。MCP 不另建模型网关、Provider SecretStore、Prompt 版本库或费用总账；只通过原生 Runtime Authority 完成全部语义能力。
+- **版本化资源**：Connection/Model/Route 经精确 owner 与 fingerprint CAS；PromptModule/PromptProgram/GenerationProfile 的 Library Revision 不可变；PromptPreset/Candidate 的 Prepare/Check/Review/Apply 与精确 Route rebinding 分步完成，不静默更新已安装 Package。
+- **Endpoint 与 SecretRef 双重风险**：即使明文不外泄，也必须防止变更网络目标而继续复用旧 SecretRef 造成间接泄露；Probe/真实 Provider Send 使用精确授权的 credential → origin 绑定，并复核网络/能力证据与路径变更。
+- **无副作用 Preview 是目标必达契约**：不得发送 Provider、解析 Secret、占用付费预算或由 `prepareEvolutionProject → reconcile` 间接写持久态；当前 `/preview` 未证明纯 READ，不提前误分类。
+- **显式付费执行**：仅用户明确要求时由 Native 执行模型；继续沿用 Role/Route/Context、Fallback disabled/automatic/confirm、原生 Compute/Ledger、Usage 观测与独立审批；成本无法实证时标 unknown。
+- **结果核对**：Provider Send/Response、Usage Settle 与 Session/Project Commit 分层确认，Native Task/Checkpoint 是真实来源；未知远端结果不自动在 MCP 重发，Stop 不等于上游撤销或持久结果回滚。
+
+## 5.4 第六轮待讨论（尚未冻结）
+
+- Session、Conversation Revision、Branch、Timeline 与 Save Snapshot 的主从权威关系；区分临时生成投影与已提交历史，严禁将“删除楼层/Swipe/Hide”改造成绕过 Save/Restore 的旁路。
+- Session Send / Regenerate / Stop 的精确前置条件、可信授权、回复丢失后的 Native Commit/Receipt reconcile、历史分支和重新生成的身份规则。
+- 长会话 Prompt / Retrieval / Context 压缩与 Native RuntimeCheckpoint/Provider continuation 的边界，避免重复写入、无界存储和 Context 失真。
+- 交互式 Turn、后台 Task、模型请求、AutoSave、Save/Restore、branch switch 并行时的调度资源与冲突/取消/超时处理。
+- Host/MCP 重启后可恢复的持久意图、仅可读状态及不能自动恢复的执行中工作，及 Archive/GC/保存点保留规则。
 
 ## 6. 实施和验证边界
 
