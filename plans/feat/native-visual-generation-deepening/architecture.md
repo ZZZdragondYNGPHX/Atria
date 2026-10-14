@@ -83,5 +83,5 @@ VisualOutput:
 ## 5. Decision checkpoint
 
 - **D-001 ～ D-006** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、**证据驱动混合状态更新和参考图冲突仲裁原则**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 7 待议**：Visual Director 的全自动场景触发与价值评估、画面选择/跳过、频率上限、预算授权和可靠失败恢复；精确视觉冲突阈值与参考图强度另议。
+- **Round 7 待议**：Visual Director 的全自动场景触发与价值评估、画面选择/跳过、频率上限、预算授权和可靠失败恢复；方案对比见 [visual-director.md](visual-director.md)（**候选未冻结**）。精确视觉冲突阈值与参考图强度另议。
 - 其他未决议题：自动授权与预算、精确 Provider API、编辑/参考图/视频功能矩阵、持久任务恢复。
