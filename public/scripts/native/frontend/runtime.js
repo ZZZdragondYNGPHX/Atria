@@ -3,6 +3,7 @@ import { translateShellText as tl, formatShellText as fmt } from '../../atria-sh
 import { A2uiProjection, consumeA2uiJsonLines } from '../../../shared/native-a2ui.js';
 import { updateIllustrationSurface, releaseIllustrationSurface } from '../illustration-surfaces.js';
 import { createMediaResolver } from './media.js';
+import { createAudioHost } from './audio.js';
 import { createScriptSupervisor } from './script.js';
 import { createCanvasSurface } from './canvas.js';
 import { createLocalization } from '../../../shared/native-frontend-localization.js';
@@ -43,8 +44,10 @@ export async function mountNativeFrontend(options) {
         media.setEnabled(true);
     }
     let recovering = null, recoveryFailure = null;
+    const audio = createAudioHost({ window, document, media, storage: options.stateStorage });
     const bridgeDescriptor = await resources.json('bridge', 'bridge');
     const hostServices = { supports: target => ['host.media', 'host.presentation'].includes(target.service) || Boolean(options.hostServices), async invoke(target, input, revision) {
+        if (target.service === 'host.media' && target.method !== 'resolve') return audio.invoke(target.method, input, revision);
         if (target.service === 'host.media' && target.method === 'resolve') {
             const result = await media.resolve(input.ref, input.type); result.release?.();
             return { ref: clone(input.ref), status: result.status, reasonCode: result.reasonCode };
@@ -58,8 +61,8 @@ export async function mountNativeFrontend(options) {
         return options.hostServices.invoke(target, input, revision);
     } };
     const bridge = await createFrontendBridge({ descriptor: bridgeDescriptor, transport: options.bridgeTransport, hostServices,
-        onEpoch: () => { stopA2uiStreams(); void recover().catch(diagnostic); }, onRevision: revision => { stopA2uiStreams(); options.onBridgeRevision?.(revision); },
-        fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; });
+        onEpoch: () => { audio.reset(); stopA2uiStreams(); void recover().catch(diagnostic); }, onCommit: revision => audio.commit(revision), onRevision: revision => { stopA2uiStreams(); options.onBridgeRevision?.(revision); },
+        fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { audio.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; });
     const bridgeTimer = options.bridgeTransport ? window.setInterval(() => { void bridge.refresh().catch(diagnostic); }, 1000) : null;
     const active = () => !disposed;
     const context = (instance, item, event = {}) => ({ ...Object.fromEntries(['ui', 'draft', 'prefs'].map(scope => [scope, shared[scope] ?? {}])),
@@ -323,7 +326,13 @@ export async function mountNativeFrontend(options) {
         function listen(event, handler) { node.addEventListener(event, handler); disposers.push(() => node.removeEventListener(event, handler)); }
         if (definition.tag === 'form') listen('submit', event => event.preventDefault());
         if (definition.tag === 'a') listen('click', event => event.preventDefault());
+        const eventTarget = event => {
+            const target = event.target?.closest?.('[data-node-id]');
+            return target && node.contains(target) ? target : node;
+        };
         const eventValue = event => Object.freeze({ value: typeof node.value === 'string' ? node.value.slice(0, 65536) : '', checked: Boolean(node.checked),
+            targetNode: String(eventTarget(event).dataset.nodeId ?? '').slice(0, 128),
+            targetValue: String(eventTarget(event).dataset.value ?? eventTarget(event).value ?? '').slice(0, 65536),
             key: String(event.key ?? '').slice(0, 64), pointerId: Number(event.pointerId) || 0,
             altKey: Boolean(event.altKey), ctrlKey: Boolean(event.ctrlKey), metaKey: Boolean(event.metaKey), shiftKey: Boolean(event.shiftKey),
             button: Math.max(0, Math.min(4, event.button ?? 0)), pointerType: ['mouse', 'touch', 'pen'].includes(event.pointerType) ? event.pointerType : '',
@@ -454,7 +463,15 @@ export async function mountNativeFrontend(options) {
                         node.src = result.url; node.dataset.mediaStatus = definition.tag === 'img' && result.status === 'available' ? 'loading' : result.status;
                         node.dataset.mediaReason = result.reasonCode;
                         if (definition.tag === 'img') { node.referrerPolicy = 'no-referrer'; node.loading = 'lazy'; }
-                    } catch (error) { mediaKey = null; if (gone || instance.disposed) return; if (!key.startsWith(media.epoch + ':')) { requestRender(); return; } throw error; }
+                    } catch (error) {
+                        if (gone || instance.disposed) return;
+                        if (!key.startsWith(media.epoch + ':')) { mediaKey = null; requestRender(); return; }
+                        if (definition.tag !== 'img') { mediaKey = null; throw error; }
+                        // An unavailable image must not disable the surrounding
+                        // controls or keep a picture from a different location.
+                        imageState = null; node.removeAttribute('src');
+                        node.dataset.mediaStatus = 'unavailable'; node.dataset.mediaReason = 'media_asset_unavailable';
+                    }
                 }
             } else if (mediaKey) { ++mediaRequest; imageState = null; mediaRelease?.(); mediaRelease = null; mediaKey = null; node.removeAttribute('src'); }
             for (const [id, expr] of Object.entries(definition.styles ?? {})) {
@@ -625,7 +642,7 @@ export async function mountNativeFrontend(options) {
         content.style.paddingBottom = 'var(--atria-keyboard-inset, 0px)';
         content.style.scrollPaddingBottom = 'calc(var(--atria-keyboard-inset, 0px) + 16px)';
         if (overlay) {
-            frame.style.cssText += ';position:absolute;inset:0;pointer-events:auto;background:Canvas;color:CanvasText';
+            frame.style.cssText += ';position:absolute;inset:0;pointer-events:auto;background:rgb(15 30 42 / .32);color:CanvasText';
             frame.setAttribute('role', 'dialog'); frame.setAttribute('aria-modal', 'true'); frame.setAttribute('aria-label', id); frame.tabIndex = -1;
             previous.overlayRoot.append(frame); previous.content.inert = true;
         } else mount.container.append(frame);
@@ -688,7 +705,7 @@ export async function mountNativeFrontend(options) {
         if (recovering) return recovering;
         recovering = (async () => {
             const id = views.at(-1)?.id ?? resources.index.primaryView.slice(5);
-            ++navigation; ++overlayRevision; media.reset(); composing.clear();
+            ++navigation; ++overlayRevision; audio.reset(); media.reset(); composing.clear();
             [...overlays, ...views].reverse().forEach(disposeView); overlays.length = 0; views.length = 0;
             for (const key of Object.keys(shared)) delete shared[key];
             for (const key of Object.keys(declarations)) delete declarations[key];
@@ -737,7 +754,7 @@ export async function mountNativeFrontend(options) {
             throw error;
         } finally { signal?.removeEventListener('abort', abort); if (a2uiStreams.get(instanceId) === controller) a2uiStreams.delete(instanceId); }
     }
-    try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; }
+    try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); audio.dispose(); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; }
     const mcpIdentity = () => ({ mode: options.mode, epoch: bridge.epoch, revisionId: bridge.revision,
         descriptorDigest: bridge.descriptorDigest, navigation, overlayRevision, presentationRevision, disposed,
         source: clone(options.mcpSource?.() ?? null) });
@@ -786,6 +803,6 @@ export async function mountNativeFrontend(options) {
         },
         getInstances() { return [...instances.values()].map(instance => ({ id: instance.id, componentId: instance.ir.id, ...(instance.ir.controller ? { script: instance.controller?.status ?? 'loading' } : {}) })); },
         scheduler: Object.freeze({ frame: scheduler.frame }),
-        dispose() { if (disposed) return; mcpSurface.dispose(); stopA2uiStreams(); recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
+        dispose() { if (disposed) return; mcpSurface.dispose(); audio.dispose(); stopA2uiStreams(); recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); audio.dispose(); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
     });
 }

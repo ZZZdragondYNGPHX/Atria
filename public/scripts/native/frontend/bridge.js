@@ -12,7 +12,7 @@ export function frontendHttpTransport({ sessionId, fetchImpl = globalThis.fetch,
 
 // No raw services, DOM or target selectors escape these scoped handles. Every
 // caller (declarative now; Script later) receives exactly this compiled API.
-export async function createFrontendBridge({ descriptor, transport, onEpoch = () => {}, onRevision = () => {}, fixed = {}, hostServices = null }) {
+export async function createFrontendBridge({ descriptor, transport, onEpoch = () => {}, onRevision = () => {}, onCommit = () => {}, fixed = {}, hostServices = null }) {
     let epoch = null, revision = null, disposed = false, revoked = false, generation = 0, refreshPromise = null;
     const localReceipts = new Map();
     const aborts = new Set(), scopes = new Set(), descriptorDigest = await bridgeDescriptorDigest(descriptor);
@@ -77,7 +77,8 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                 if (localTarget?.local && hostServices && (!hostServices.supports || hostServices.supports(binding.target))) {
                     if ((kind === 'read' && method !== 'read.snapshot') || (kind === 'action' && method !== 'action.invoke')) return failure('bridge_method_denied', id);
                     const status = await exchange('request', { epoch, method: 'host.authorize', componentId, bindingId: id, input, revision: capturedRevision });
-                    if (!current() || status.epoch !== epoch || status.error?.code === 'bridge_epoch_stale') { invalidate(); return failure('bridge_epoch_stale', id); }
+                    if (!current()) return failure('bridge_epoch_stale', id);
+                    if (status.epoch !== epoch || status.error?.code === 'bridge_epoch_stale') { invalidate(); return failure('bridge_epoch_stale', id); }
                     if (!status.ok) return status;
                     if (status.schemaDigest !== binding.schemaDigest || status.bindingId !== id) return failure('bridge_schema_invalid', id);
                     if (status.revision !== capturedRevision || (options.revision && options.revision !== capturedRevision)) return failure('bridge_revision_stale', id);
@@ -106,9 +107,10 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                     result.data = bridgeValue(result.data, binding.collection ? { type: 'array', items: binding.outputSchema, maxItems: binding.collection.pageSize } : binding.outputSchema);
                 } else if (method === 'action.invoke') {
                     result.data = bridgeValue(result.data, binding.outputSchema);
+                    if (binding.target?.transactionId) onCommit(result.revision);
                     if (binding.target?.service && ['restore', 'switch', 'fork', 'retry', 'reload', 'recover'].includes(binding.target.method)) { invalidate(); return structuredClone(result); }
                     await refresh();
-                } else if (method === 'operation.get' && result.status === 'completed') result.data = bridgeValue(result.data, binding.outputSchema);
+                } else if (method === 'operation.get' && result.status === 'completed') { result.data = bridgeValue(result.data, binding.outputSchema); await refresh(); }
                 return current() ? structuredClone(result) : failure('bridge_epoch_stale', id);
             } catch (error) { return failure(current() ? publicBridgeError(error) : 'bridge_epoch_stale', id); }
         }

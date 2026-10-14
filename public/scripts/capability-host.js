@@ -27,7 +27,7 @@ const defaultCapabilitySettings = () => ({
     note: { default: '', chara: [], wiAddition: [] }, variables: { global: {} }, attachments: [], character_attachments: {}, disabled_attachments: [],
 });
 export const capabilitySettings = defaultCapabilitySettings();
-const retainedKeys = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools']);
+const retainedKeys = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools', 'atri_task_bindings']);
 export function primeCapabilitySettings(settings) {
     // Retain already-authored Atria capabilities once; never hydrate retired extension settings.
     const source = structuredClone(settings.atri_capabilities || settings.extension_settings || {});

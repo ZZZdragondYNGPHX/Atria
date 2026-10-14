@@ -106,7 +106,9 @@ describe('Full Game UI host recovery shell', () => {
         const stage = document.getElementById('atria-stage');
         const recoveryLayer = document.getElementById('atria-test-recovery');
         const playHost = mountNativePlayHost({ document, stage });
-        const shell = { slots: { stage, recovery: recoveryLayer } };
+        let dockOpen = true;
+        const shell = { slots: { stage, recovery: recoveryLayer },
+            isDockOpen: () => dockOpen, setDockOpen: value => { dockOpen = value; } };
         const shellFoundation = {
             getShell: () => shell,
             getPlayHost: () => playHost,
@@ -128,12 +130,15 @@ describe('Full Game UI host recovery shell', () => {
         expect(host.root.hidden).toBe(false);
         expect(playHost.getStageOwner()).toBe('game-runtime:full');
         expect(playHost.root.style.display).toBe('none');
+        expect(dockOpen).toBe(false);
+        expect(parseInt(host.root.style.paddingTop)).toBeGreaterThanOrEqual(48);
         expect(document.getElementById('top-bar').style.display).toBe('');
         expect(document.getElementById('top-settings-holder').style.display).toBe('');
 
         host.dispose();
 
         expect(playHost.getStageOwner()).toBeNull();
+        expect(dockOpen).toBe(true);
         expect(playHost.root.style.display).toBe('');
         expect(document.getElementById('atria-game-full-root')).toBeNull();
         expect(document.getElementById('atria-game-full-recovery')).toBeNull();

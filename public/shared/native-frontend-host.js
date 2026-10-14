@@ -20,6 +20,11 @@ const saveSchema = hostObject({ saveId: id, revisionId: id, branchId: id, displa
 const rows = items => ({ type: 'array', items, maxItems: 10000 });
 const read = (outputSchema, local = false, collection = false) => ({ kind: 'read', inputSchema: HOST_EMPTY, outputSchema, local, collection });
 const action = (inputSchema = HOST_EMPTY, local = false, outputSchema = HOST_EMPTY) => ({ kind: 'action', inputSchema, outputSchema, local });
+const gain = { type: 'number', minimum: 0, maximum: 1 };
+const exactAudio = hostObject({ kind: { ...string(16), enum: ['exact'] }, id: string(64) });
+export const AUDIO_PREFERENCES_SCHEMA = hostObject({ muted: { type: 'boolean' }, ambience: gain, effects: gain });
+export const AUDIO_STATUS_SCHEMA = hostObject({ state: { ...string(16), enum: ['locked', 'ready', 'muted', 'hidden', 'blocked', 'failed'] }, enabled: { type: 'boolean' }, ...AUDIO_PREFERENCES_SCHEMA.properties, playing: { type: 'integer', minimum: 0, maximum: 8 }, reason: string(128) });
+export const AUDIO_SCENE_SCHEMA = hostObject({ ambience: { type: 'array', maxItems: 3, items: hostObject({ ref: exactAudio, gain }) }, events: { type: 'array', maxItems: 8, items: hostObject({ id: string(96), ref: exactAudio, gain }) }, transitionMs: { type: 'integer', minimum: 0, maximum: 2000 } });
 // Closed Host-owned target catalogue. These are capabilities, never arbitrary
 // method dispatch; both authoring and installed graph validation use this table.
 const targets = {
@@ -30,12 +35,18 @@ const targets = {
     'host.history.query': { ...read(CHRONICLE_PAGE), inputSchema: CHRONICLE_QUERY },
     'host.chronology.interval': { ...read(INTERVAL_RESULT), inputSchema: INTERVAL_QUERY },
     'host.media.resolve': { ...read(hostObject({ ref: MEDIA_REF_SCHEMA, status: { ...string(16), enum: ['available', 'denied', 'unavailable'] }, reasonCode: string(128) }), true), inputSchema: hostObject({ ref: MEDIA_REF_SCHEMA, type: { ...string(8), enum: ['image', 'audio', 'video'] } }) },
+    'host.media.audioStatus': read(AUDIO_STATUS_SCHEMA, true),
+    'host.media.enableAudio': action(HOST_EMPTY, true, AUDIO_STATUS_SCHEMA),
+    'host.media.setAudioPreferences': action(AUDIO_PREFERENCES_SCHEMA, true, AUDIO_STATUS_SCHEMA),
+    'host.media.setAudioScene': action(AUDIO_SCENE_SCHEMA, true, AUDIO_STATUS_SCHEMA),
+    'host.media.stopAudio': action(HOST_EMPTY, true, AUDIO_STATUS_SCHEMA),
     'host.presentation.locale': read(localeSchema, true),
     'host.presentation.setLocale': action(hostObject({ locale: string(64) }), true, localeSchema),
     'host.presentation.announce': action(hostObject({ text: string(4096) }), true),
     'host.conversation.messages': read(MESSAGE_SCHEMA, false, true),
     'host.conversation.presentation': read(MESSAGE_PRESENTATION_SCHEMA, false, true),
     'host.conversation.recent': { ...read({ type: 'array', items: MESSAGE_SCHEMA, maxItems: 32 }), inputSchema: hostObject({ beforeSequence: number }, []) },
+    'host.tasks.presentation': { ...read({ type: 'array', maxItems: 32, items: hostObject({ invocationId: id, taskId: string(64), payloadJson: text }) }), inputSchema: hostObject({ taskId: string(64) }) },
     'host.conversation.status': read(SESSION_SCHEMA),
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),
     'host.conversation.alternatives': read(hostObject({ ...MESSAGE_SCHEMA.properties, alternativeBranchId: id }), false, true),

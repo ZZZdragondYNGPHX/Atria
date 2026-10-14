@@ -26,6 +26,16 @@ export async function readFixedHost(core, owner, state, base, binding, input) {
     if (service === 'host.session' && method === 'run') return core.runStatus(owner, state.sessionId);
     if (service === 'host.persona' && method === 'status') return projectPersonaStatus(base);
     if (service === 'host.expression' && method === 'status') return expressionStatus(base);
+    if (service === 'host.tasks' && method === 'presentation') {
+        const task = base.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === input.taskId);
+        if (task?.resultPolicy.resultClass !== 'presentation' || task.resultPolicy.sink !== 'artifact') throw bridgeFailure('bridge_binding_denied');
+        return (base.states.atri_task_results?.records ?? []).filter(record => record.kind === 'task' && record.taskId === task.id
+            && record.resultClass === 'presentation' && record.status === 'completed').slice(-32).map(record => {
+            const payloadJson = JSON.stringify(record.payload);
+            if (payloadJson.length > 65536) throw bridgeFailure('bridge_budget_exceeded');
+            return { invocationId: record.invocationId, taskId: task.id, payloadJson };
+        });
+    }
     if (method === 'status') return projectSession(base);
     if (service === 'host.session' && method === 'saves') return (await core.listSavePoints(owner, state.sessionId)).map(projectSave);
     if (method === 'messages') return projectConversation(base);

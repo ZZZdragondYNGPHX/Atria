@@ -90,6 +90,16 @@ export function predicate(value, context) {
     if (expression(value, context) !== 'boolean') throw new TypeError('Transaction predicate must be boolean');
 }
 export function template(value, schema, context) {
+    // Computation produces already bounded, typed JSON. An explicit reference
+    // can copy that exact type, including arrays, without widening formulas or
+    // allowing a private read to be copied into an effect wholesale.
+    if (value && typeof value === 'object' && !Array.isArray(value) && Object.hasOwn(value, 'computed')) {
+        fields(value, ['computed'], 'Computed value reference');
+        if (!context.computed || typeof value.computed !== 'string') throw new TypeError('Computed reference requires computation');
+        const selected = schemaAt(context.computed, fieldPath(value.computed));
+        if (JSON.stringify(compileDataSchema(selected)) !== JSON.stringify(compileDataSchema(schema))) throw new TypeError('Computed reference schema mismatch');
+        return;
+    }
     if (value && typeof value === 'object' && !Array.isArray(value) && Object.hasOwn(value, 'formula')) {
         fields(value, ['formula'], 'Transaction expression');
         const type = expression(value.formula, context);

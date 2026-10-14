@@ -86,7 +86,14 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             // Revalidate against current configuration before writing any settings.
             const next = await check(draft); if (!current()) return;
             if (!next.ready) { draw(next); heading.focus(); return; }
+            const previous = getTaskBindings(packageId);
             for (const slot of next.slots) setTaskBinding(packageId, slot.id, slot.binding);
+            // Frontend actions resolve bindings on the server. Finish the same
+            // settings write before mounting, instead of racing its debounce.
+            try { if (await globalThis.Atria.getContext().saveSettings() === false) throw new Error('Settings were not persisted'); } catch (error) {
+                globalThis.Atria.getContext().capabilitySettings.atri_task_bindings[packageId] = previous;
+                throw error;
+            }
             status.textContent = t('Starting experience…');
             await onReady();
             if (current()) { controller.abort(); panel.remove(); }

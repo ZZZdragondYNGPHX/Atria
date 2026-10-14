@@ -15898,7 +15898,7 @@ async function saveSettingsInternal(loopCounter = 0, options = {}) {
     if (!settingsReady) {
         console.warn('Settings not ready, scheduling another save');
         saveSettingsDebounced();
-        return;
+        return false;
     }
 
     const MAX_RETRIES = 3;
@@ -15906,7 +15906,7 @@ async function saveSettingsInternal(loopCounter = 0, options = {}) {
         if (loopCounter < MAX_RETRIES) {
             console.warn('Response length is currently being overridden, scheduling another save');
             saveSettingsDebounced(++loopCounter, options);
-            return;
+            return false;
         }
         console.error('Response length is currently being overridden, but the save loop has reached the maximum number of retries');
         TempResponseLength.restore(null);
@@ -15956,9 +15956,11 @@ async function saveSettingsInternal(loopCounter = 0, options = {}) {
         settings = payload;
         rememberSettingsSnapshot(payload);
         await eventSource.emit(event_types.SETTINGS_UPDATED);
+        return true;
     } catch (error) {
         console.error('Error saving settings:', error);
         toastr.error(t`Check the server connection and reload the page to prevent data loss.`, t`Settings could not be saved`);
+        return false;
     }
 }
 
@@ -15972,17 +15974,19 @@ export async function saveSettings(loopCounter = 0, options = null) {
     }
 
     settingsSaveInFlight = (async () => {
+        let saved = false;
         try {
-            await saveSettingsInternal(loopCounter, normalizedOptions);
+            saved = await saveSettingsInternal(loopCounter, normalizedOptions);
         } finally {
             settingsSaveInFlight = null;
             if (settingsSaveQueued) {
                 const queuedOptions = settingsSaveQueuedOptions;
                 settingsSaveQueued = false;
                 settingsSaveQueuedOptions = null;
-                await saveSettings(0, queuedOptions);
+                saved = await saveSettings(0, queuedOptions) && saved;
             }
         }
+        return saved;
     })();
 
     return settingsSaveInFlight;
