@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；除 [decisions.md](decisions.md) 已冻结的 D-001 外，下述全部是候选设计，不能据此提前开工。**
+> **状态：Draft；除 [decisions.md](decisions.md) 已冻结的 D-001 / D-002 外，其余内容均为候选设计，不能据此提前开工。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -18,7 +18,21 @@
 
 **Image Asset & Presentation**：存储 bytes、格式、参数证据、外部响应标识、来源图/参考图/编辑衍生，绑定原 Session/Branch/Revision/Annotation，选中展示版本不改变叙事。
 
-## 2. Round 2 decision: 何时生成视觉意图？何时可以真实生图？
+## 2. Round 2 已冻结：方案 A — Post-Commit Visual Director
+
+用户于 2026-10-14 明确选择**方案 A**，是已批准的 D-002（见 [decisions.md](decisions.md)），不是下方三种方案的开放投票。
+
+**Current binding sequence**：
+
+1. Narrative Runtime 成功提交正文，取得稳定的 Session/Branch/Revision/Variant 与消息身份；流式 token 不属于可生图的正式来源。
+2. Director 读取该历史 Revision 的可见剧情、角色/世界状态，提出视觉候选；候选引用其原始 sourceRef。
+3. 手动/半自动/全自动模式分别按后续批准的用户控制与预算规则确定是否发送图片请求。**提交剧情不等于无条件自动付费**。
+4. Provider 请求、产生的图片和历史资产必须绑定原 sourceRef，切换 HEAD 不应造成跨分支串图。
+5. 若提交失败/中断/取消，不能发布基于该未提交正文的正式候选，也不能触发真实生图。
+
+**Not implemented or approved here**：B 的流式 speculative hint 和 C 的未提交即请求图片。将来若重新选择 B 必须单独更新 D-002；不因“未来预留”默认实现流式预测、提前调用 LLM、花费或缓存。
+
+### 保留备选方案的比较记录（仅作历史研究，非当前实施要求）
 
 第 1 轮已经决定有手动、半自动、全自动三种模式；第 2 轮需解决 **模型可能正在流式生成正文、用户随时可能取消/改写/恢复存档时，Visual Director 对什么内容作决定，以及哪些输出可进入真实付费调用**。
 
@@ -38,7 +52,7 @@
 
 Director 可在正文尚未提交时直接调外部生图后端；正文结束后再绑定或抛弃图片。可能产生大量无效费用、错角色/错分支、剧透与无权威来源，尤其不适合长期剧情存档。若选择必须另设临时资产隔离/结算与无效结果 GC。
 
-**第一阶段建议**：方案 **A**，用后续优化路线的接口容纳未来的 B；不要把 C 作为默认。该建议不是已批准的设计。
+**定案说明**：采用上文 D-002 方案 A；方案 B/C 的文本仅记录审议时权衡，不构成实施授权。
 
 ## 3. Cross-cutting choices to resolve later
 
@@ -68,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- D-001：已确认，详见 [decisions.md](decisions.md)。
-- **Next user choice**：在方案 A/B/C 中选择 Visual Director 的触发时机，或提出调整。
-- 本议题冻结后，下一轮优先确认**图片语义意图 / 后端适配协议的隔离粒度**，然后再谈 Model/Provider 优先级。
+- **D-001**：分层混合架构已确认；**D-002**：正式剧情 Commit 后 Director 决策已确认，详见 [decisions.md](decisions.md)。
+- **Round 3 未冻结**：Image Prompt IR、Provider Adapter 与模型能力协议的结构化分层与边界；讨论将在企划更新与提交后进行。
+- 其他未决议题：模型/供应商支持顺序、角色视觉连续性、自动授权与预算、编辑/参考图/视频、持久任务恢复。
