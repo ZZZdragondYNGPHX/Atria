@@ -2,9 +2,9 @@
 
 温暖、克制、带轻悬疑的海岛群像冒险。你临时代管旅舍三天，为四位客人安排可靠的去处。人物采用二次元动漫立绘，场景、图片与环境音随作品提供。
 
-本目录包含完整游戏源码、27 张选用插画及 PNG 制作原件、19 项声音、构建与验证工具。真实模型连接按用户要求暂缓；现有自动化中的旁白、意图理解和闲聊明确使用模拟输出，不能据此认定模型自然度通过。
+本目录包含完整游戏源码、27 张选用插画及 PNG 制作原件、19 项声音、构建与验证工具。2026-10-15 已恢复真实模型联测：MiniMax 中国区连接可用，开局旁白、一次意图识别和四名人物边界回应的最终六次调用通过结构与状态隔离检查，并作文字复核。三天全部剧情的模型自然度仍未完整验收；其余标记为模拟的检查不作为真实模型证据。
 
-当前候选为 [1.0.0-rc.3](releases/foglight-inn-1.0.0-rc.3.atria)，约 20 MB；历史候选包保留。配套产品已合入 `main@493ed814b`。版本、校验值与验证边界见 [发布记录](releases/README.md)。
+当前候选为 [1.0.0-rc.4](releases/foglight-inn-1.0.0-rc.4.atria)，约 20 MB；历史候选包保留。配套产品已合入 `main@493ed814b`。版本、校验值与验证边界见 [发布记录](releases/README.md)。
 
 ## 安装与游玩
 
@@ -30,7 +30,8 @@ node tools/build.mjs --core <Atria-source> --out releases/<new-version>.atria
 node tools/verify-rules.mjs --core <Atria-source>
 node tools/verify-story.mjs
 node tools/verify-portable.mjs --core <Atria-source>
-node tools/verify-portable.mjs --core <Atria-source> --archive releases/foglight-inn-1.0.0-rc.3.atria
+node tools/verify-portable.mjs --core <Atria-source> --archive releases/foglight-inn-1.0.0-rc.4.atria
+node tools/verify-model.mjs --core <Atria-source> --api-config <private-config.json> --quota <shared-rolling-quota.json> --archive releases/foglight-inn-1.0.0-rc.4.atria
 node tools/serve.mjs --core <Atria-source> --port 18741
 node tools/verify-ui.mjs --playwright <Playwright-module> --chrome <Chrome-executable> --url http://127.0.0.1:18741
 ```
