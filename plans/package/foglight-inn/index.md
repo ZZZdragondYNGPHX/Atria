@@ -2,8 +2,9 @@
 
 - Task ID: `package/foglight-inn`
 - Primary Workspace: `package`
-- Status: Final Design v1.0 — 三份前端参考已归档并整合，正式制作基线与启动请求已齐备
-- Current stage: P3 完成 — 用户在新对话发起正式制作后进入 P4
+- Status: P5 候选交付 — `1.0.0-rc.3` 已构建；真实模型联测按用户要求暂缓
+- Current stage: P5 — 独立制作、规则/媒体/宿主检查已交付，真实模型体验尚未验收
+- Record: [制作记录](../../../records/package/foglight-inn.md)
 - Product baseline: `main@9241325a7`（2026-10-14 的代码核查基线；正式实施重查实际 Git）
 - Plan entrypoint: `docs:plans/package/foglight-inn/index.md`
 - Updated: 2026-10-15
@@ -33,7 +34,7 @@
 - 三天、四名核心 NPC、五个可访问地点；紧凑的行动预算与三条完整结局路线，具体规则归 [gameplay.md](gameplay.md)。
 - 人物、旧事、异常与分日事件归 [story.md](story.md)，其中包含作者保密内容。
 - 单人普通模式。首版不加入实时操作战斗、无限经营、大型地图、多人或跨局继承；不以运行期生图和外部 MCP/A2A 为通关依赖。
-- 正式交付为独立游戏 `.atria` 及其必要媒体。当前完成企划、参考整合与正式制作启动请求；产品实现、正式图片与音频尚未制作，由用户新对话启动。
+- 正式交付为独立游戏 `.atria` 及其必要媒体。正式制作已在本对话启动，当前实施与验证事实见制作记录。
 
 ## 4. 模块权威与阅读路由
 
@@ -62,8 +63,8 @@
 | P1 — 企划细化与需求包 | 已完成；完整游戏结构、公开设计输入和可转交任务 | `index.md` → `story.md` / `gameplay.md` → `media-and-runtime.md` → 需求包三文件 |
 | P2 — 外部设计整合 | 已完成；三原件归档、浏览器审阅、差异与完整功能呈现整合 | `index.md` → `frontend-integration.md` → 三原件及原需求清单 |
 | P3 — 终稿与启动提示词 | 已完成；v1.0 制作基线和可复制启动请求，正式制作由用户新对话发起 | `index.md` → `implementation-prompt.md` → `delivery.md` |
-| P4 — 正式制作 | 尚未开始；媒体与玩法小样、最小音频宿主能力、完整游戏流程 | 本入口的正式制作必读顺序；按当前任务加载内容模块 |
-| P5 — 验收交付 | 规则、信息、媒体、恢复与真实模型完整体验；构建作品包 | `index.md` → `delivery.md` 的验收矩阵 → 对应模块 |
+| P4 — 正式制作 | 已实现；媒体与玩法、最小音频宿主能力、完整游戏流程及分项验收 | 本入口的正式制作必读顺序；按当前任务加载内容模块 |
+| P5 — 验收交付 | 候选包已交付；真实模型完整体验按用户要求待补 | `index.md` → `delivery.md` 的验收矩阵 → 对应模块 |
 
 当前阶段的完成不会被写成游戏已实现或通过运行验收。未来产品变更使用语义源码分支，游戏资产属于独立 `package` 工作空间；治理和 API 测试规则只归 [Repository Governance](../../../README.md)。
 

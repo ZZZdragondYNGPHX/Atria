@@ -10,7 +10,7 @@
 
 外部三项参考已回归，原稿保存在 [HTML 样稿](frontend-reference/foglight-inn-concept.html)、[功能表现说明](frontend-reference/feature-presentation.md) 和 [前端指导](frontend-reference/frontend-guidelines.md)；采用、补足与覆盖决策归 [前端整合说明](frontend-integration.md)。采用大场景、稳定透明人物主立绘与浅色半透明底部 ADV 阅读区，保持旧式海岛的温暖与轻悬疑。
 
-正式美术采用柔和叙事插画和写实人物比例，场景通过木材、织物、纸张与旧设备等生活材质建立场所感。样稿中的 Unsplash 照片、海上背景和现代摄影人物仅供布局示意，不作为最终美术资产或人物外貌依据。
+正式美术采用柔和叙事插画；人物风格按用户制作期明确要求及 [前端整合说明](frontend-integration.md) 执行。场景通过木材、织物、纸张与旧设备等生活材质建立场所感。样稿中的 Unsplash 照片、海上背景和现代摄影人物仅供布局示意，不作为最终美术资产或人物外貌依据。
 
 M0 优先用两张场景与一名人物小样验证风格、透明合成和裁切，再扩展媒体；当前正式图片尚未生成。正式制作按整合后的美术规则批量产出。
 
