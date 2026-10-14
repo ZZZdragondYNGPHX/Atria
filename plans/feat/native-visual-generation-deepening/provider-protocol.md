@@ -3,7 +3,7 @@
 - Task: `atria-native-visual-generation-deepening`
 - Authority: 本文定义 **Round 3 已冻结的架构分界**，而非 Provider 的最终接口字段；跨模块冻结决策以 [decisions.md](decisions.md) D-003 为准。
 - Source baseline: [2026-10-14 静态源码审计](baseline-and-reference.md)。代码实现前重新核对目标 main HEAD、Provider 官方协议与能力声明。
-- Status: **D-003/D-004 的中立 Provider 协议/目标清单及 D-005/D-006 的视觉参考权威已批准**；D-009/D-010 进一步冻结 Provider 编辑必须走 Capability Negotiation、原图/Mask 输入与不可变版本证据（详见 [media-editing-gallery.md](media-editing-gallery.md)）。D-011 已冻结编辑能力**声明规范/三态/组合检查与 Mask 中立像素协议**（见 [media-precision.md](media-precision.md)），但 Round 12 具体 Provider 版本/Workflow 的能力事实、原生上传/Mask 极性/费用/可降级策略**未冻结**。
+- Status: **D-003/D-004 的中立 Provider 协议/目标清单及 D-005/D-006 的视觉参考权威已批准**；D-009/D-010 进一步冻结 Provider 编辑必须走 Capability Negotiation、原图/Mask 输入与不可变版本证据（详见 [media-editing-gallery.md](media-editing-gallery.md)）。D-011 已冻结编辑能力**声明规范/三态/组合检查与 Mask 中立像素协议**（见 [media-precision.md](media-precision.md)），但 Round 12 具体 Provider 版本/Workflow 的能力事实、原生上传/Mask 极性/费用/可降级策略**未冻结**。相关公开文档证据、候选实现及 A/B/C 取舍另见 [provider-editing-matrix.md](provider-editing-matrix.md)，不能用文档存在冒充连接已实测。
 
 ## 1. Frozen architectural separation (D-003; Round 3 方案 C)
 
