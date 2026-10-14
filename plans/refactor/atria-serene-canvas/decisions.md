@@ -46,6 +46,18 @@
 - **Reason:** 具体稿件可固定布局、比例、材质与交互关系，防止仅凭文字自由发挥。
 - **Affected modules:** `visual.md`, `coverage.md`, `validation.md`。
 
+### 8. Runtime 缺项引导与完整编辑并存
+
+- **Decision:** 首次/未就绪时显示当前用途的缺项与明确下一步，跳转到真实 Connection、Model、Prompt/Generation、Route 配置页；熟练用户可直接进入完整编辑。
+- **Reason:** 初次配置需要清楚的去向，高级配置仍需完整表达。引导不自动创建整套资源，也不假定所有 adapter 都需要 Secret。
+- **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
+
+### 9. Agents 默认时间线，保留 Graph
+
+- **Decision:** 运行页默认时间线，点击事件检查节点、工具调用、记忆与来源证据；同时保留 Graph 切换。手机优先时间线，详情使用同体系 Bottom Sheet。
+- **Reason:** 运行过程和证据应先可阅读，再按需要进入拓扑与技术细节。
+- **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
+
 ## Scope state
 
 首轮视觉讨论已结束；当前为第二轮完整企划讨论。尚未收到“开始重构”，产品实施未开始。

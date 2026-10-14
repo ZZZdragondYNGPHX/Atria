@@ -8,7 +8,9 @@
 
 当前视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。文件是首轮满意初稿的完整快照；桌面以 Studio 三纸工作台展示，手机为分区切换，同时包括 Play、Library 与部分 Agents/Runtime 示意。
 
-当前讨论稿：[discussion-preview-v0.2.html](references/discussion-preview-v0.2.html)。v0.2 仅修正 Runtime 的 OpenAI-compatible 样例：完整 `/v1/chat/completions` 地址与 Stored Secret 引用，避免把该 adapter 演示为免认证；构图、配色与工作台布局保持 v0.1 基线。配置字段是演示数据，不冻结为产品支持范围。
+当前讨论稿：[discussion-preview-v0.3.html](references/discussion-preview-v0.3.html)。沿用 v0.1 的纸墨、衬线标题、悬浮 Dock 与工作纸体系，展开 Runtime 的缺项引导/完整配置和 Agents 的预设、Run、Memory、Diagnostics。桌面事件证据为右侧纸张，手机为 Bottom Sheet；Timeline 默认，Graph 在两端均保留。
+
+历史讨论稿 [v0.2](references/discussion-preview-v0.2.html) 仅纠正 OpenAI-compatible 样例地址与认证语义。v0.3 配置、事件、知识及操作结果均为内存演示，不冻结为产品支持范围，也未获得新一轮视觉接受。
 
 原始 [桌面稿](references/desktop-reference.html)、[手机稿](references/mobile-reference.html) 和 [手机设计说明](references/mobile-design-notes.png) 继续提供视觉气质与布局依据。原始 Markdown 是待核实设计输入，其中 React/Vue 重写、选文重生成等内容的处置由当前决策决定。
 
@@ -49,3 +51,5 @@
 ## Current discussion focus
 
 当前已接受的是视觉方向与代表工作台的效果。下一步按 `coverage.md` 补全 Runtime/Agents、登录引导、全局工具与异常/只读/恢复状态的 HTML；具体内容需讨论，不能声称 v0.1 已覆盖完整产品。
+
+本次 v0.3 优先展开 Runtime 缺项与配置路径、Agents 默认时间线及证据详情。初次配置与运行信息层级按 `decisions.md` §8/§9；其余颜色、排版、纸张与导航继续使用已接受基线。

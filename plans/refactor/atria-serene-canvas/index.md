@@ -4,7 +4,8 @@
 - Primary Workspace: `main`（产品任务；方案与视觉输入归 `docs`）
 - Status: Draft — v0.1 视觉基线已接受，完整功能企划仍在讨论。
 - Current stage: 第二轮讨论，先建立方案，再继续完善功能呈现与原生化设计。
-- Latest discussion HTML: [discussion-preview-v0.2.html](references/discussion-preview-v0.2.html)。
+- Current iteration: v0.3 讨论稿已完成，等待视觉与功能呈现反馈；展开 Runtime 配置路径与 Agents 时间线/Graph/证据页面。
+- Latest discussion HTML: [discussion-preview-v0.3.html](references/discussion-preview-v0.3.html)。
 - Implementation authorization: 尚未收到“开始重构”。
 - Source audit baseline: `main@9241325a7290e613e0fdaaa1870409105c161c89`。
 
@@ -66,3 +67,4 @@
 ## Material routing/design changes
 
 - 2026-10-14：首轮 v0.1 初稿获得满意反馈，进入第二轮，建立本 Bundle 并保存完全一致的视觉快照。
+- 2026-10-14：确定 Runtime 缺项引导 + 完整编辑、Agents 时间线默认 + Graph 切换；详细决定只见 `decisions.md`。

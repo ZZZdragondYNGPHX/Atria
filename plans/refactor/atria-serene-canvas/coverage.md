@@ -6,9 +6,9 @@
 
 - 源码核查基线：`main`，`9241325a7290e613e0fdaaa1870409105c161c89`（2026-10-14）。本模块以已核实的前端功能盘点为索引，以下源码引用提供可复核的事实入口；实施前以真实 Git 复核变化。
 - 满意的视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。它是独立演示，未连接产品服务、真实项目、会话、账户或模型请求。
-- 当前讨论稿：[discussion-preview-v0.2.html](references/discussion-preview-v0.2.html)。其在保持构图的基础上纠正 Runtime 示例语义；下表仍以 v0.1 为覆盖盘点，字段纠正不表示新增完整流程。
+- 当前讨论稿：[discussion-preview-v0.3.html](references/discussion-preview-v0.3.html)。§6 已更新为本次 Runtime/Agents 演示范围，其余领域仍以 v0.1 为覆盖盘点；演示流程不等于产品实现。
 - [功能呈现文档](references/function-presentation.md)、[设计规范](references/frontend-guidelines.md)与桌面/移动参考均是设计输入，其与当前决定或源码的差异按 [decisions.md](decisions.md)处理。参考稿不包含某个按钮，不代表删除该用户任务；参考稿画出某个入口，也不证明产品已有该能力。
-- **交互演示**：v0.1 可操作的模拟流程。**代表布局**：已有视觉构图或部分表单/状态，没有完整流程。**入口示意**：仅菜单、描述、简单反馈或占位详情。**待展开**：没有具体界面。下列等级均不表示产品实现或验收完成。
+- **交互演示**：对应版本可操作的模拟流程。**代表布局**：已有视觉构图或部分表单/状态，没有完整流程。**入口示意**：仅菜单、描述、简单反馈或占位详情。**待展开**：没有具体界面。下列等级均不表示产品实现或验收完成。
 
 ## 2. 全局、登录与引导
 
@@ -63,18 +63,18 @@
 
 ## 6. Agents 与 Runtime
 
-| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| 页面/区域 | 已有产品能力与语义 | v0.3 讨论稿覆盖 | 剩余 HTML / 产品验证 |
 | --- | --- | --- | --- |
-| Agents Orchestration | Loop/Spec/Agenda/Director/Single Agent、模板/复制、编辑/Save/Validate、工具权限、图/Source、范围绑定 | 编排纸、简单流程图与详情是代表布局 | 一个预设编辑流程、内置只读/复制、权限/图、范围绑定与校验失败 |
-| Agents Run | Graph/Timeline、节点 Inspector、指标/工具/记忆证据、Stop Run | Tab 与状态/简述为代表布局 | 运行中/停止中/失败/无运行，Graph↔Timeline、节点证据 |
-| Agents Memory | Overview/Knowledge/Sources/Maintenance；开关、来源、检索、重建/Reset current chat memory | Tab/概念状态为代表布局 | 知识与来源纸、维护危险操作、当前 Session 范围 |
-| Agent Diagnostics | 健康/检查点/上下文 Token/事件；Export Trace/Import replay/Return to live | 入口/概念状态为代表布局 | live/replay 区别、导出/回放、恢复检查点 |
-| Runtime 就绪引导 | 依实际用途检查 Connection/Model/精确 Prompt/Generation/Route；部分 adapter 允许免认证 | Connections 一处示意；完整引导待展开 | 无配置、最先缺项、跨 Library/Runtime 修复并返回原任务 |
-| Connections | Provider/Endpoint/Secret、测试；MCP/A2A 与图片服务同属此区；认证按 adapter | 表单、测试/保存反馈为代表布局，不发送请求 | 真实类型/Endpoint/认证分支、Secret 选择/创建、测试失败/重试 |
-| Models | Connection、模型 ID、Fetch models、发现元数据、限额与能力覆盖 | 代表布局/入口示意 | 发现→选择→确认能力/限额；未有 Connection、发现失败 |
-| Routes | 用途/角色、Model 与精确 Prompt/Generation、fallback 顺序、重试/超时/额度、Source | 代表布局/入口示意 | Route 编辑、精确引用、fallback、用途缺项/歧义与删除引用阻碍 |
-| Retrieval | Embedding/Rerank 精确修订、测试/诊断 | 代表布局/入口示意 | 检索配置与空状态，Memory 相关来源与诊断 |
-| Runtime Diagnostics | 精确 Route + 项目/Session 上下文、Compile preview、Prompt choices、请求证据；预览不发送请求 | 代表布局/入口示意 | 编译预览结果、上下文选择/失败、来源与费用未知状态 |
+| Agents Orchestration | Loop/Spec/Agenda/Director/Single Agent、模板/复制、编辑/Save/Validate、工具权限、图/Source、范围绑定 | 内置只读→复制编辑→空名校验→确认提交；模式/权限与 Session/Default 范围；Source 只读示意 | 各模式完整定义编辑、真实合同校验/保存；Native 无角色卡绑定时 Character 禁用，不新增 Work binding |
+| Agents Run | Graph/Timeline、节点 Inspector、指标/工具/记忆证据、Stop Run | Timeline 默认、Graph 两端可达；事件纸/Sheet；运行中、停止中、已停止、失败、无运行示例 | 真实事件与工具证据、停止完成/失败；无独立 Start/Pause/Resume |
+| Agents Memory | Overview/Knowledge/Sources/Maintenance；开关、来源、检索、重建/Reset current chat memory | 五开关、知识搜索/分类、来源引用、维护入口、RESET 确认；当前 Session 范围 | 真实维护任务/进度/失败与来源跳转 |
+| Agent Diagnostics | 健康/检查点/上下文 Token/事件；Export Trace/Import replay/Return to live | 上下文/健康/检查点状态，Trace 入口与预置只读 replay；返回原 live 状态 | 真实元数据 JSONL 文件导入导出；检查点仅显示，不增加恢复动作 |
+| Runtime 就绪引导 | 依实际用途检查 Connection/Model/精确 Prompt/Generation/Route；部分 adapter 允许免认证 | 空/部分/就绪状态；下一缺项进入完整编辑，完成编译可返回作品 | 各用途缺项/歧义、跨 Library 修复与原任务恢复；真实 readiness 的认证过滤修正 |
+| Connections | Provider/Endpoint/Secret、测试；MCP/A2A 与图片服务同属此区；认证按 adapter | 服务分支与完整 Endpoint、Secret 演示引用、测试/取消/失败/保存；改输入使进行中结果失效 | 真实连接/Secret 服务与各 adapter 合同、删除依赖保护 |
+| Models | Connection、模型 ID、Fetch models、发现元数据、限额与能力覆盖 | 发现→选择→确认元数据→保存；失败/取消/手填；更改 ID 清除旧发现数据 | 真实 provider discovery、显式覆盖来源与能力冲突 |
+| Routes | 用途/角色、Model 与精确 Prompt/Generation、fallback 顺序、重试/超时/额度、Source | 用途、精确资源、同角色 fallback/排序、策略与额度、Source 编辑 | 删除引用阻碍、真实引用缺失/冲突、服务校验 |
+| Retrieval | 创建检索资源/新修订、Embedding/Rerank 配置与 Source；旧绑定不自动切换 | 创建/新修订、Embedding/Rerank 与 Source；旧演示修订保留，新项可再次打开 | 真实修订与 Memory 绑定；不补画此页尚未有的测试、测速、删除操作 |
+| Runtime Diagnostics | 精确 Route + 项目/Session 上下文、Compile preview、Prompt choices、请求证据；预览不发送请求 | Route/上下文选择、编译/取消/失败、精确引用和请求元数据、费用未知状态 | 实际编译合同、来源定位、上下文过期与刷新恢复 |
 
 事实入口：`main:public/scripts/agents/orchestrator/workspace/shell.js:3-114`、`orchestration/page.js:497-713`、`panel.js:181-280,336-391`、`memory/page.js:5-10,75-110,253-487`、`diagnostics/page.js:37-184`；`main:public/scripts/native/runtime-readiness.js:2-19`、`runtime-workspace.js:128-162,231-549,608-713`。
 
@@ -82,7 +82,7 @@
 
 v0.1 的 `OpenAI compatible + localhost:1234/v1 + 无需认证` 是说明性示意，不是基线产品支持的组合。当前 UI 要求 OpenAI-compatible 使用完整 `/v1/chat/completions` URL，并要求 Secret；MCP/A2A、ComfyUI、SD WebUI、Forge 等 adapter 可选择无认证。v0.2 已将该示例改为完整 `/v1/chat/completions` 与 Stored Secret 引用，并移除 OpenAI 默认免认证表述；v0.1 原样保留作为已接受的视觉基线。后续展开按真实服务分支呈现。当前 `runtimeReadiness` 将所有 Connection 按 Secret 存在性过滤，仍需依据真实用途与 adapter 纠正，避免免认证服务被错误判为未就绪。
 
-事实入口：`main:public/scripts/native/runtime-workspace.js:259-266`、`runtime-readiness.js:3-18`。独立 Secret 轮换/删除页面目前不是可见产品能力，不能作为现有功能补画。
+事实入口：`main:public/scripts/native/runtime-workspace.js:259-266`、`runtime-readiness.js:3-18`、`retrieval-workspace.js:14-75`。独立 Secret 轮换/删除页面目前不是可见产品能力，不能作为现有功能补画。Run 不增加独立 Start/Pause/Resume，Trace replay 保持只读；检查点只呈现已有状态与版本，不增加一键恢复动作。
 
 ## 7. 全局工具与条件能力
 
@@ -118,11 +118,13 @@ v0.1 的 `OpenAI compatible + localhost:1234/v1 + 无需认证` 是说明性示�
 
 ## 9. 下一轮 HTML 的展开顺序
 
+当前 v0.3 迭代重点为本模块 §6：Runtime 缺项/Connection→Model→Route→Compile preview，与 Agents Timeline/Graph/节点证据、预设编辑和记忆来源。呈现层级已由 `decisions.md` §8/§9 确定；下面是其余后续视图的建议顺序。
+
 建议按能验证视觉系统承载复杂度的代表任务展开，而非一口气增加全部占位页面：
 
 1. Play 首页与只读历史/分支/存档，World/Knowledge 详情与引用，Library Prompt/Persona 编辑。
-2. Runtime 真实 Connection→Model→Route 与 Compile preview，补齐依赖修复和失败返回。
-3. Studio 非 Prompt 资源编辑、ChangeSet 冲突/验证失败；Agents 的 Run/Memory/预设编辑。
+2. Runtime 的复杂依赖修复、删除阻碍和原任务返回；v0.3 已有的配置主路径按反馈调整。
+3. Studio 非 Prompt 资源编辑、ChangeSet 冲突/验证失败；Agents 各编排模式的完整编辑与维护任务细节，沿 v0.3 四页继续完善。
 4. 登录/引导、Settings/Account/Backup/Extensions/Diagnostics；一处作品接管与一处条件媒体流程。
 
 此顺序是设计工作建议，不是冻结实施阶段。旧控件、潜在新能力、已确认边界与用户待讨论取舍只归 [decisions.md](decisions.md)，不由旧 DOM 或参考稿自动推导。
