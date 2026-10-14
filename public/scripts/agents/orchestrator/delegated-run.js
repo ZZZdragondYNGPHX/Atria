@@ -26,7 +26,7 @@ export function createDelegatedRunApi({ getPreset, getScope, getContext, generat
             active.runtime.cancelRun(runId);
             return { runId, status: 'cancelled' };
         },
-        async runDelegated(input, executeOperation) {
+        async runDelegated(input, executeOperation, controlledGeneration = null) {
             if (active) throw new Error('Delegated run already active');
             const current = inspect(input);
             if (!current.scope.sessionId) throw new Error('Loaded Session required for delegated run');
@@ -35,6 +35,7 @@ export function createDelegatedRunApi({ getPreset, getScope, getContext, generat
                 || !Number.isInteger(input.maxSteps) || input.maxSteps < 1 || input.maxSteps > 8
                 || !Number.isInteger(input.contextBudget) || input.contextBudget < 256 || input.contextBudget > 16000
                 || !Number.isInteger(input.timeoutMs) || input.timeoutMs < 1000 || input.timeoutMs > 60000) throw new Error('Invalid delegated envelope');
+            if (input.controlledNative !== undefined && input.controlledNative !== true || input.controlledNative && typeof controlledGeneration !== 'function') throw new Error('Controlled Native model port required');
             if (input.operations.some(o => !current.definition.tools.includes(o.toolName))) throw new Error('Preset denied delegated tool');
             const definition = { ...current.definition, instructions: current.definition.instructions + '\n' + JSON.stringify({
                 protocol: 'Return JSON only: {type:"complete",output:string} or {type:"tool",toolName:"operation_N",args:{}}. Exact reviewed operations, once each. No other tools or nested agents.',
@@ -54,9 +55,18 @@ export function createDelegatedRunApi({ getPreset, getScope, getContext, generat
                     memory: { async recall() { assertFresh(); return { content: '', references: [], assertCurrent: assertFresh }; } },
                     model: { async request(effect) {
                         assertFresh();
-                        const response = await generate({ effect, definition, operations: input.operations });
+                        let response;
+                        if (input.controlledNative) {
+                            const cancel = () => { void controlledGeneration({ kind: 'cancel', runId: input.runId, effectId: effect.effectId, stepId: effect.stepId }).catch(() => {}); };
+                            effect.signal?.addEventListener('abort', cancel, { once: true });
+                            try { response = await controlledGeneration({ kind: 'request', runId: input.runId, effectId: effect.effectId, stepId: effect.stepId, messages: effect.messages }); } finally { effect.signal?.removeEventListener('abort', cancel); }
+                        } else response = await generate({ effect, definition, operations: input.operations });
+                        evidence.modelCalls.push({ stepId: effect.stepId, modelProfile: definition.modelProfile, usage: response.usage ?? null,
+                            ...(response.nativeOperationId ? { nativeOperationId: response.nativeOperationId } : {}),
+                            ...(response.nativeRequestId ? { nativeRequestId: response.nativeRequestId } : {}),
+                            ...(response.error ? { failure: response.error, dispatchState: response.dispatchState, accounting: response.accounting } : {}) });
                         assertFresh();
-                        evidence.modelCalls.push({ stepId: effect.stepId, modelProfile: definition.modelProfile, usage: response.usage ?? null });
+                        if (response.error) throw new Error(response.error);
                         if (response.usage) {
                             evidence.tokens ||= { byCall: [] };
                             evidence.tokens.byCall.push(response.usage);
