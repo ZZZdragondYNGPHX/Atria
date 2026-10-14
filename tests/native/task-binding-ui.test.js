@@ -5,7 +5,7 @@ import { ensureTaskBindings } from '../../public/scripts/native/task-binding-ui.
 const packageId = 'pkg_' + 'a'.repeat(32), packageVersionId = 'pkgv_' + 'b'.repeat(32);
 const route = { runtimeRouteId: 'route_' + 'c'.repeat(32), displayName: 'My route', compatible: true };
 const ref = { scope: 'player', runtimeRouteId: route.runtimeRouteId };
-let dom, document, root, settings, save, start, routes, fetchImpl, host, turnRoutes;
+let dom, document, root, settings, save, flush, start, routes, fetchImpl, host, turnRoutes;
 const manifest = { runtime: { experienceContract: { taskRuntime: { tasks: [{ id: 'narrator' }] } } } };
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 async function settled() { for (let i = 0; i < 12; i++) await tick(); }
@@ -13,8 +13,8 @@ const buttons = name => [...root.querySelectorAll('button')].find(node => node.t
 const change = (selector, value) => { const node = root.querySelector(selector); node.value = value; node.dispatchEvent(new dom.window.Event('change')); };
 beforeEach(() => {
     dom = new JSDOM('<!doctype html><main></main>'); document = dom.window.document; root = document.querySelector('main');
-    turnRoutes = []; settings = {}; save = jest.fn(); start = jest.fn(); routes = [route]; host = { openRuntimeSection: jest.fn() };
-    globalThis.Atria = { getContext: () => ({ capabilitySettings: settings, saveSettingsDebounced: save }) };
+    turnRoutes = []; settings = {}; save = jest.fn(); flush = jest.fn(async () => {}); start = jest.fn(); routes = [route]; host = { openRuntimeSection: jest.fn() };
+    globalThis.Atria = { getContext: () => ({ capabilitySettings: settings, saveSettingsDebounced: save, saveSettings: flush }) };
     fetchImpl = jest.fn(async (_path, { body }) => {
         const { slotBindings } = JSON.parse(body);
         const slots = ['narrative', 'structured'].map(id => {
@@ -39,6 +39,17 @@ test('first start lists two purposes, explicit routes only; shared selection per
     change('[aria-label="Use one route for all purposes"]', route.runtimeRouteId);
     expect(save).not.toHaveBeenCalled(); buttons('Save and continue').click(); await settled();
     expect(settings.atri_task_bindings[packageId]).toEqual({ narrative: ref, structured: ref }); expect(save).toHaveBeenCalledTimes(2); expect(start).toHaveBeenCalledTimes(1);
+});
+
+test('startup waits for settings persistence; a failed write keeps the story unstarted', async () => {
+    let finish;
+    flush.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    await setup(); change('[aria-label="Use one route for all purposes"]', route.runtimeRouteId);
+    buttons('Save and continue').click(); await settled(); expect(start).not.toHaveBeenCalled();
+    finish(); await settled(); expect(start).toHaveBeenCalledTimes(1);
+    start.mockClear(); flush.mockRejectedValueOnce(new Error('offline'));
+    await setup({ force: true }); buttons('Save and continue').click(); await settled();
+    expect(start).not.toHaveBeenCalled(); expect(root.textContent).toContain('Could not complete model setup');
 });
 test('route deleted while editing is rejected before writing bindings or starting', async () => {
     await setup(); change('[aria-label="Use one route for all purposes"]', route.runtimeRouteId); routes = [];

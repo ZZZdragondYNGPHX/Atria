@@ -112,13 +112,19 @@ export function selectNativeRuntimeRoute(routeList, role, routeRef) {
 }
 
 
-function requiredTurnRoles(manifest, entryPoint) {
+function requiredTurnRoles(manifest, entryPoint, sourceFiles) {
     const turn = manifest.runtime?.experienceContract?.taskRuntime?.turn;
     if (!turn) return [];
     const roles = turn.narratorTaskId ? [] : ['narrator'];
     const hasLogic = entryPoint ? (entryPoint.runtime?.game?.logic ?? manifest.runtime?.game?.logic)
         : manifest.runtime?.game?.logic || manifest.entryPoints?.some(entry => entry.runtime?.game?.logic);
-    if (turn.policy === 'authority-first' && hasLogic) roles.push('intent_resolver');
+    const logicPath = entryPoint?.runtime?.game?.logic ?? manifest.runtime?.game?.logic;
+    const bytes = sourceFiles?.get(logicPath);
+    // Exact Frontend actions do not invoke the generic tool resolver. A Package
+    // with only closed Authority intents must not require a fourth, unused route.
+    const exposed = manifest.runtime?.experienceContract?.authorityRuntime && bytes
+        ? JSON.parse(Buffer.from(bytes).toString('utf8')).transactions?.some(transaction => transaction.intent?.expose !== false) !== false : true;
+    if (turn.policy === 'authority-first' && hasLogic && exposed) roles.push('intent_resolver');
     return roles;
 }
 
@@ -573,7 +579,8 @@ export class NativeGenerationHost {
 
     async preflightTurnRoutes(handle, opened, snapshot) {
         const checks = [];
-        for (const role of requiredTurnRoles(opened.manifest, snapshot?.entryPoint)) {
+        const exact = opened.sourceFiles ? opened : snapshot ? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId) : opened;
+        for (const role of requiredTurnRoles(opened.manifest, snapshot?.entryPoint, exact?.sourceFiles)) {
             let error = null;
             try {
                 await this.execute(handle, { role, requestId: 'preflight:turn:' + role,
@@ -639,7 +646,8 @@ export class NativeGenerationHost {
         await this.prepareLifecycle(handle, input);
         const turn = base.manifest.runtime?.experienceContract?.taskRuntime?.turn;
         const prepared = [];
-        for (const role of turn ? requiredTurnRoles(base.manifest, base.entryPoint) : ['narrator']) prepared.push(await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
+        const installed = turn ? await this.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId) : null;
+        for (const role of turn ? requiredTurnRoles(base.manifest, base.entryPoint, installed?.sourceFiles) : ['narrator']) prepared.push(await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
             requestId: 'preflight:play:' + role, role }, undefined, undefined,
         { scheduled: true, preflight: true, preflightPackage: { manifest: base.manifest }, preflightSnapshot: base }));
         const routes = await this.persistence.listRuntimeRoutes(handle);

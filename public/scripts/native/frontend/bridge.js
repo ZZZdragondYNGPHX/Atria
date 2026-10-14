@@ -77,7 +77,8 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                 if (localTarget?.local && hostServices && (!hostServices.supports || hostServices.supports(binding.target))) {
                     if ((kind === 'read' && method !== 'read.snapshot') || (kind === 'action' && method !== 'action.invoke')) return failure('bridge_method_denied', id);
                     const status = await exchange('request', { epoch, method: 'host.authorize', componentId, bindingId: id, input, revision: capturedRevision });
-                    if (!current() || status.epoch !== epoch || status.error?.code === 'bridge_epoch_stale') { invalidate(); return failure('bridge_epoch_stale', id); }
+                    if (!current()) return failure('bridge_epoch_stale', id);
+                    if (status.epoch !== epoch || status.error?.code === 'bridge_epoch_stale') { invalidate(); return failure('bridge_epoch_stale', id); }
                     if (!status.ok) return status;
                     if (status.schemaDigest !== binding.schemaDigest || status.bindingId !== id) return failure('bridge_schema_invalid', id);
                     if (status.revision !== capturedRevision || (options.revision && options.revision !== capturedRevision)) return failure('bridge_revision_stale', id);
