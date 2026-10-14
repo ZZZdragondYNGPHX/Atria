@@ -13,8 +13,8 @@ import {
     createAtriaStatusChip,
 } from './primitives.js';
 import { formatShellText, translateShellText } from './localization.js';
+import { createAtriaPaperTransition } from './paper-transition.js';
 
-const SIDEBAR_UTILITIES = Object.freeze(['learning', 'plugins', 'diagnostics', 'settings']);
 const MENU_UTILITIES = Object.freeze(['learning', 'settings', 'plugins', 'diagnostics', 'account']);
 const SHEET_STATES = Object.freeze(['peek', 'half', 'full']);
 
@@ -83,15 +83,6 @@ function makeNavButton(documentRef, domain, translate, variant) {
     return button;
 }
 
-function makeUtilityButton(documentRef, utility, translate) {
-    const label = translateLabel(translate, utility.label);
-    const button = buttonElement(documentRef, 'atria-shell-utility-button', label);
-    button.dataset.atriaUtility = utility.id;
-    const icon = element(documentRef, 'span', 'atria-shell-nav-icon');
-    icon.append(createAtriaIcon(documentRef, utility.glyph || utility.id, { size: 20 }));
-    button.append(icon, element(documentRef, 'span', 'atria-shell-utility-label', label));
-    return button;
-}
 
 function setNodeContent(node, content) {
     node.replaceChildren();
@@ -176,6 +167,7 @@ export function createAtriaAppShell({
     const brandImage = element(documentRef, 'img', 'atria-brand-mark__image');
     brandImage.src = 'img/logo.png';
     brandImage.alt = '';
+    brandImage.width = 34; brandImage.height = 34;
     brandImage.decoding = 'async';
     brandMark.append(brandImage);
     brand.append(brandMark, element(documentRef, 'span', 'atria-brand-wordmark', 'Atria'));
@@ -222,16 +214,17 @@ export function createAtriaAppShell({
         element(documentRef, 'span', 'atria-toolbar-search__label', tl('Search')),
         searchKey,
     );
-    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('Primary navigation'));
+    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('Account'));
     menuButton.setAttribute('aria-haspopup', 'menu');
     menuButton.setAttribute('aria-expanded', 'false');
-    menuButton.append(createAtriaIcon(documentRef, 'grid', { size: 22 }));
+    menuButton.append(createAtriaIcon(documentRef, 'account', { size: 20 }));
     const inspectorToggle = buttonElement(documentRef, 'atria-icon-button atria-toolbar__inspector', tl('Show inspector'));
     inspectorToggle.setAttribute('aria-pressed', 'false');
     inspectorToggle.setAttribute('aria-controls', 'atria-context-dock');
     inspectorToggle.hidden = true;
     inspectorToggle.append(createAtriaIcon(documentRef, 'inspector', { size: 20 }));
-    contextBar.append(contextActions, runtimeChip, searchButton, inspectorToggle, menuButton);
+    contextBar.append(contextActions, runtimeChip, inspectorToggle);
+    railFooter.append(searchButton, menuButton);
     globalBar.append(toolbarLeading, contextBar);
 
     // Focus area: Stage (Play) and Workspace (every other surface).
@@ -239,6 +232,9 @@ export function createAtriaAppShell({
         tag: 'main',
         ariaLabel: tl('Atria focus area'),
     });
+    focus.id = 'atria-main'; focus.tabIndex = -1;
+    const skipLink = element(documentRef, 'a', 'atria-skip-link', tl('Skip to workspace'));
+    skipLink.href = '#atria-main';
     const stage = createAtriaPrimitive(documentRef, 'Stage', {
         tag: 'section',
         ariaLabel: tl('Play stage'),
@@ -301,7 +297,7 @@ export function createAtriaAppShell({
     const sheetScrim = buttonElement(documentRef, 'atria-sheet-scrim', tl('Close sheet'));
     sheetScrim.tabIndex = -1;
     const sheetPanel = element(documentRef, 'div', 'atria-sheet-panel');
-    const sheetGrip = element(documentRef, 'div', 'atria-sheet-grip');
+    const sheetGrip = buttonElement(documentRef, 'atria-sheet-grip', tl('Resize sheet'));
     const sheetHandle = element(documentRef, 'div', 'atria-sheet-handle');
     sheetHandle.setAttribute('aria-hidden', 'true');
     sheetGrip.append(sheetHandle);
@@ -366,10 +362,19 @@ export function createAtriaAppShell({
     menuLayer.append(menuScrim, menu);
     transientLayer.append(menuLayer);
 
-    root.append(rail, globalBar, focus, dock, bottomNavigation, transientLayer, recovery);
+    root.append(skipLink, rail, globalBar, focus, dock, bottomNavigation, transientLayer, recovery);
     documentRef.body.append(root);
 
     const environment = createAtriaShellEnvironment(root, { window: windowRef });
+    let keyboardInteraction = false;
+    const onPointerInteraction = () => { keyboardInteraction = false; };
+    documentRef.addEventListener('pointerdown', onPointerInteraction, true);
+    const motionOptions = {
+        reducedMotion: () => environment.get().reducedMotion || documentRef.body.classList.contains('reduced-motion'),
+        instant: () => keyboardInteraction,
+    };
+    const sheetMotion = createAtriaPaperTransition({ ...motionOptions, root: sheet, panel: sheetPanel, scrim: sheetScrim, closedTransform: () => 'translateY(100%)' });
+    const menuMotion = createAtriaPaperTransition({ ...motionOptions, root: menuLayer, panel: menu, scrim: menuScrim, closedTransform: () => isCompact() ? 'translateY(100%)' : 'scale(.97)' });
     const ownsNavigation = !navigation;
     const navigationAuthority = navigation || createAtriaNavigationAuthority({
         window: windowRef,
@@ -389,6 +394,25 @@ export function createAtriaAppShell({
     let disposed = false;
     let lastRouteSignature = '';
     let sheetDrag = null;
+    let suppressGripClick = false;
+    let sheetReturnFocus = null;
+    const isolated = new Map();
+    function syncModalIsolation() {
+        const contextOpen = isCompact() && navigationAuthority.getContext().open;
+        const active = commandOpen || menuOpen || contextOpen;
+        commandSurface.inert = menuOpen;
+        menuLayer.inert = false;
+        sheet.inert = !contextOpen || commandOpen || menuOpen;
+        for (const node of root.children) {
+            if (node === transientLayer) continue;
+            if (active) {
+                if (!isolated.has(node)) isolated.set(node, Boolean(node.inert));
+                node.inert = true;
+            } else if (isolated.has(node)) {
+                node.inert = isolated.get(node); isolated.delete(node);
+            }
+        }
+    }
 
     if (!navigationAuthority.getContext().initialized) {
         navigationAuthority.setContext({
@@ -437,7 +461,7 @@ export function createAtriaAppShell({
         const domainLabel = tl(domain?.label || route.domain);
         const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === utilityId);
         const childLabel = route.child
-            ? route.child.kind === 'detail' ? String(route.child.label || route.child.id) : tl(route.child.label || route.breadcrumb.at(-1) || route.child.id)
+            ? route.child.kind === 'detail' ? route.child.label === route.child.id && route.domain === 'build' ? tl('Project') : String(route.child.label || route.child.id) : tl(route.child.label || route.breadcrumb.at(-1) || route.child.id)
             : '';
         let titleText = domainLabel;
         let back = null;
@@ -464,7 +488,9 @@ export function createAtriaAppShell({
         root.dataset.atriaDomain = route.domain;
         root.dataset.atriaRouteKind = utility ? 'utility' : route.child?.kind || 'root';
         for (const item of menuItems) {
-            const selected = item.dataset.atriaPrimaryShortcut === route.domain && !utilityId;
+            const selected = item.dataset.atriaUtilityShortcut
+                ? item.dataset.atriaUtilityShortcut === utilityId
+                : item.dataset.atriaPrimaryShortcut === route.domain && !utilityId;
             item.setAttribute('aria-current', selected ? 'page' : 'false');
         }
 
@@ -496,7 +522,7 @@ export function createAtriaAppShell({
         railButton.addEventListener('click', () => navigate(domain.id, { reason: 'rail' }));
         bottomButton.addEventListener('click', () => navigate(domain.id, { reason: 'bottom-navigation' }));
         railItems.append(railButton);
-        bottomNavigation.append(bottomButton);
+        if (!['agents', 'runtime'].includes(domain.id)) bottomNavigation.append(bottomButton);
         navButtons.set(domain.id, [railButton, bottomButton]);
     }
 
@@ -516,6 +542,8 @@ export function createAtriaAppShell({
         viewport = environment.get(),
     ) {
         const compact = isCompact(viewport);
+        if (compact) bottomNavigation.append(searchButton, menuButton);
+        else railFooter.append(searchButton, menuButton);
         const contextTitle = tl(contextState.title);
         dock.dataset.atriaOpen = String(contextState.open);
         dockTitle.textContent = contextTitle;
@@ -525,23 +553,37 @@ export function createAtriaAppShell({
         if (compact) {
             dock.hidden = true;
             if (contextState.open) {
+                if (sheet.hidden) sheetReturnFocus = documentRef.activeElement;
+                const previousState = sheet.dataset.atriaSheetState;
+                const previousHeight = sheetPanel.getBoundingClientRect().height;
+                const resize = !sheet.hidden && previousState !== contextState.sheetState;
+                const liveTransform = resize ? sheetMotion.freeze() : null;
                 if (dockBody.parentNode !== sheetBody) {
                     sheetBody.replaceChildren();
                     sheetBody.append(dockBody);
                 }
                 sheet.setAttribute('aria-label', tl(contextState.title || 'Context sheet'));
                 sheet.dataset.atriaSheetState = contextState.sheetState;
-                sheet.hidden = false;
+                if (resize && !motionOptions.reducedMotion() && !keyboardInteraction) {
+                    const matrix = typeof windowRef.DOMMatrixReadOnly === 'function' ? new windowRef.DOMMatrixReadOnly(liveTransform === 'none' ? undefined : liveTransform) : null;
+                    sheetPanel.style.transform = `translateY(${(matrix?.m42 || 0) + sheetPanel.getBoundingClientRect().height - previousHeight}px)`;
+                }
+                sheetMotion.present(true, { retarget: resize });
+                queueMicrotask(() => { if (!sheet.hidden && !sheet.inert && !sheet.contains(documentRef.activeElement)) sheetClose.focus(); });
             } else {
-                sheet.hidden = true;
-                if (dockBody.parentNode !== dock) dock.append(dockBody);
+                sheetMotion.present(false);
+                if (sheet.contains(documentRef.activeElement) && sheetReturnFocus?.isConnected) {
+                    syncModalIsolation(); sheetReturnFocus.focus({ preventScroll: true });
+                }
             }
+            syncModalIsolation();
             return;
         }
 
         if (dockBody.parentNode !== dock) dock.append(dockBody);
-        sheet.hidden = true;
+        sheetMotion.present(false, { immediate: true });
         dock.hidden = !contextState.open;
+        syncModalIsolation();
     }
 
     function setDockOpen(value) {
@@ -621,7 +663,7 @@ export function createAtriaAppShell({
         const reading = route.domain === 'play' && !activeUtilityId(route)
             && Boolean(stage.dataset.atriaStageOwner || stage.querySelector('[data-atria-product-play="true"]:not([hidden])'));
         root.dataset.atriaReading = String(reading);
-        bottomNavigation.hidden = !isCompact() || reading;
+        bottomNavigation.hidden = !isCompact();
     }
     const readingObserver = typeof dockObserverType === 'function'
         ? new dockObserverType(updateReadingPresentation) : null;
@@ -631,7 +673,7 @@ export function createAtriaAppShell({
         const compact = isCompact(state);
         rail.hidden = compact;
         updateReadingPresentation();
-        menuButton.hidden = !compact;
+        menuButton.hidden = false;
         if (!compact) closeMenu();
         commandSurface.dataset.atriaCommandPresentation = compact ? 'sheet' : 'palette';
         commandPanel.dataset.atriaPrimitive = compact ? 'CommandSheet' : 'CommandPalette';
@@ -780,6 +822,7 @@ export function createAtriaAppShell({
         if (!preserveError) commandError = '';
         commandReturnFocus = documentRef.activeElement;
         commandSurface.hidden = false;
+        syncModalIsolation();
         documentRef.dispatchEvent(new windowRef.CustomEvent('atria-command-open', { detail: { refresh: !preserveError } }));
         renderCommands();
         queueMicrotask(() => commandInput.focus());
@@ -790,6 +833,7 @@ export function createAtriaAppShell({
         if (!commandOpen) return false;
         commandOpen = false;
         commandSurface.hidden = true;
+        syncModalIsolation();
         commandInput.removeAttribute('aria-activedescendant');
         const target = commandReturnFocus;
         commandReturnFocus = null;
@@ -843,7 +887,13 @@ export function createAtriaAppShell({
         if (menuOpen) return false;
         closeCommand({ restoreFocus: false });
         menuOpen = true;
-        menuLayer.hidden = false;
+        const anchor = menuButton.getBoundingClientRect();
+        const top = Math.max(24, Math.min(anchor.bottom - 340, environment.get().height - 540));
+        menu.style.left = isCompact() ? '0' : `${anchor.right + 20}px`;
+        menu.style.top = isCompact() ? 'auto' : `${top}px`;
+        menu.style.transformOrigin = isCompact() ? 'bottom center' : `left ${Math.max(0, anchor.top + anchor.height / 2 - top)}px`;
+        syncModalIsolation();
+        menuMotion.present(true);
         menuButton.setAttribute('aria-expanded', 'true');
         queueMicrotask(() => menuItems.find(item => !item.disabled)?.focus());
         return true;
@@ -852,17 +902,22 @@ export function createAtriaAppShell({
     function closeMenu({ restoreFocus = false } = {}) {
         if (!menuOpen) return false;
         menuOpen = false;
-        menuLayer.hidden = true;
+        menuMotion.present(false);
         menuButton.setAttribute('aria-expanded', 'false');
+        syncModalIsolation();
         if (restoreFocus) menuButton.focus?.();
         return true;
     }
 
-    menuButton.addEventListener('click', () => {
+    menuButton.addEventListener('click', event => {
+        event.stopPropagation();
         if (menuOpen) closeMenu();
         else openMenu();
     });
     menuScrim.addEventListener('click', () => closeMenu({ restoreFocus: true }));
+    // This layer contains only Shell-owned controls. Legacy delegated chat
+    // selectors have no consumers here and must not run on every menu click.
+    menuLayer.addEventListener('click', event => event.stopPropagation());
     menu.addEventListener('keydown', event => {
         const available = menuItems.filter(item => !item.disabled);
         const index = available.indexOf(documentRef.activeElement);
@@ -888,6 +943,16 @@ export function createAtriaAppShell({
 
     sheetScrim.addEventListener('click', closeSheet);
     sheetClose.addEventListener('click', closeSheet);
+    sheetGrip.addEventListener('click', () => {
+        if (suppressGripClick) { suppressGripClick = false; return; }
+        const current = navigationAuthority.getContext().sheetState;
+        navigationAuthority.setContext({ sheetState: current === 'full' ? 'peek' : SHEET_STATES[SHEET_STATES.indexOf(current) + 1] }, { reason: 'context-sheet-resize' });
+    });
+    sheetGrip.addEventListener('keydown', event => {
+        if (event.isComposing || !['Enter', ' ', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === 'Enter' || event.key === ' ') { suppressGripClick = false; sheetGrip.click(); } else stepSheet(event.key === 'ArrowUp' ? 1 : -1);
+    });
     sheetPanel.addEventListener('keydown', event => {
         if (event.key !== 'Tab') return;
         const nodes = [...sheetPanel.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary, a[href], [tabindex="0"]')]
@@ -914,9 +979,15 @@ export function createAtriaAppShell({
     }
 
     function onSheetPointerDown(event) {
+        if (sheetDrag || !isCompact()) return;
         if (event.pointerType === 'mouse' && event.button !== 0) return;
-        if (event.target?.closest?.('button')) return;
-        sheetDrag = { pointerId: event.pointerId, startY: event.clientY, delta: 0 };
+        const pressedButton = event.target?.closest?.('button');
+        if (pressedButton && pressedButton !== sheetGrip) return;
+        suppressGripClick = false;
+        const live = sheetMotion.freeze();
+        const matrix = typeof windowRef.DOMMatrixReadOnly === 'function' ? new windowRef.DOMMatrixReadOnly(live === 'none' ? undefined : live) : null;
+        sheetDrag = { pointerId: event.pointerId, startY: event.clientY, delta: 0, offset: matrix?.m42 || 0, lastY: event.clientY, lastTime: event.timeStamp, velocity: 0, bodyInert: Boolean(sheetBody.inert) };
+        sheetBody.inert = true;
         sheet.dataset.atriaSheetDragging = 'true';
         sheetPanel.setPointerCapture?.(event.pointerId);
     }
@@ -924,19 +995,26 @@ export function createAtriaAppShell({
     function onSheetPointerMove(event) {
         if (!sheetDrag || event.pointerId !== sheetDrag.pointerId) return;
         sheetDrag.delta = event.clientY - sheetDrag.startY;
+        const elapsed = event.timeStamp - sheetDrag.lastTime;
+        if (elapsed > 0) sheetDrag.velocity = (event.clientY - sheetDrag.lastY) / elapsed;
+        sheetDrag.lastY = event.clientY; sheetDrag.lastTime = event.timeStamp;
         const offset = sheetDrag.delta < 0 ? Math.max(sheetDrag.delta, -48) / 3 : sheetDrag.delta;
-        sheetPanel.style.transform = `translateY(${offset}px)`;
+        sheetPanel.style.transform = `translateY(${sheetDrag.offset + offset}px)`;
     }
 
     function onSheetPointerUp(event) {
         if (!sheetDrag || event.pointerId !== sheetDrag.pointerId) return;
-        const { delta } = sheetDrag;
+        const { delta, velocity, lastTime, bodyInert } = sheetDrag;
+        suppressGripClick = Math.abs(delta) > 4;
+        const releaseVelocity = event.timeStamp - lastTime > 80 ? 0 : velocity;
         sheetDrag = null;
+        sheetBody.inert = bodyInert;
         delete sheet.dataset.atriaSheetDragging;
-        sheetPanel.style.transform = '';
         sheetPanel.releasePointerCapture?.(event.pointerId);
-        if (delta > 72) stepSheet(-1);
-        else if (delta < -48) stepSheet(1);
+        if (event.type === 'pointercancel' || event.type === 'lostpointercapture') { sheetMotion.settle(0); return; }
+        if (delta > 72 || delta > 10 && releaseVelocity > .5) stepSheet(-1);
+        else if (delta < -48 || delta < -10 && releaseVelocity < -.5) stepSheet(1);
+        if (navigationAuthority.getContext().open) sheetMotion.settle(releaseVelocity * 1000);
     }
 
     for (const handle of [sheetGrip, sheetHeader]) {
@@ -945,6 +1023,7 @@ export function createAtriaAppShell({
     sheetPanel.addEventListener('pointermove', onSheetPointerMove);
     sheetPanel.addEventListener('pointerup', onSheetPointerUp);
     sheetPanel.addEventListener('pointercancel', onSheetPointerUp);
+    sheetPanel.addEventListener('lostpointercapture', onSheetPointerUp);
 
     function openSheet(content, {
         state = 'half',
@@ -1002,6 +1081,7 @@ export function createAtriaAppShell({
     }
 
     function onKeyDown(event) {
+        keyboardInteraction = true;
         if (isCommandShortcut(event)) {
             event.preventDefault();
             if (commandOpen) closeCommand();
@@ -1018,6 +1098,11 @@ export function createAtriaAppShell({
             playMore.querySelector('summary')?.focus();
             event.preventDefault();
             event.stopImmediatePropagation();
+            return;
+        }
+        if (!isCompact() && navigationAuthority.getContext().open && dock.contains(documentRef.activeElement)) {
+            setDockOpen(false);
+            event.preventDefault(); event.stopImmediatePropagation();
             return;
         }
 
@@ -1050,20 +1135,6 @@ export function createAtriaAppShell({
         if (typeof handler === 'function') handler(api);
     }
 
-    for (const utilityId of [...SIDEBAR_UTILITIES, 'account']) {
-        const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === utilityId);
-        if (!utility) continue;
-        const button = makeUtilityButton(documentRef, utility, translate);
-        if (utilityId === 'account') button.classList.add('atria-sidebar__account');
-        if (typeof utilities[utility.id] === 'function') {
-            button.addEventListener('click', () => runUtility(utility));
-        } else {
-            button.disabled = true;
-            button.title = `${tl(utility.label)} — ${tl('Unavailable')}`;
-        }
-        railFooter.append(button);
-        utilityButtons.set(utility.id, button);
-    }
 
     const domainHeading = element(documentRef, 'div', 'atria-shell-menu__heading', tl('Workspaces'));
     menu.append(domainHeading);
@@ -1202,6 +1273,8 @@ export function createAtriaAppShell({
         navigateUp,
         hasEscapePriorityLayer,
         destroy() {
+            sheetMotion.dispose(); menuMotion.dispose();
+            documentRef.removeEventListener('pointerdown', onPointerInteraction, true);
             if (disposed) return;
             disposed = true;
             closeMenu();

@@ -18,6 +18,7 @@ import {
     extension_prompt_roles,
     extractMessageFromData,
     Generate,
+    GenerateNative,
     generateQuietPrompt,
     getCharacters,
     getCurrentChatId,
@@ -129,13 +130,13 @@ import {
     writeExtensionFieldBulk,
 } from './capability-host.js';
 import { groups, openGroupChat, selected_group, unshallowGroupMembers } from './group-chats.js';
-import { addLocaleData, getCurrentLocale, t, translate } from './i18n.js';
+import { addLocaleData, getCurrentLocale, setUiLanguage, t, translate } from './i18n.js';
 import { hideLoader, showLoader } from './loader.js';
 import { loader } from './action-loader.js';
 import { MacrosParser } from './macros.js';
 import { getChatCompletionModel, oai_settings, openai_settings, openai_setting_names, sendOpenAIRequest, proxies, ZAI_ENDPOINT, stripOpenAIConnectionFieldsFromPreset, saveOpenAIPreset, hasUnsavedOpenAIPresetChanges, promptManager, applyPresetByName } from './openai.js';
 import { callGenericPopup, Popup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
-import { power_user, registerDebugFunction, performFuzzySearch } from './power-user.js';
+import { power_user, updateAtriaPreference, registerDebugFunction, performFuzzySearch } from './power-user.js';
 import { getPresetManager } from './preset-manager.js';
 import { persistPreset } from './preset-persistence.js';
 import * as characterPresets from './character/presets.js';
@@ -2523,6 +2524,7 @@ export function getContext() {
         getMessage,
         getMessageCount,
         generate: Generate,
+        generateNative: GenerateNative,
         sendStreamingRequest,
         sendGenerationRequest,
         stopGeneration,
@@ -2657,6 +2659,8 @@ export function getContext() {
         t,
         translate,
         getCurrentLocale,
+        setUiLanguage,
+        updateAtriaPreference,
         addLocaleData,
         tags,
         tagMap: tag_map,

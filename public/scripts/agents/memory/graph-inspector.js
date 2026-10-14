@@ -1,3 +1,4 @@
+import { translateShellText as t, formatShellText } from '../../atria-shell/localization.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ENTITY_TYPES } from './temporal-graph.js';
 import { computeInspector, openMemoryDiagnostics } from './inspector-compute.js';
@@ -58,42 +59,42 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     if (!document.querySelector('link[data-memory-os-inspector]')) {
         const css = node('link', undefined, document.head); css.rel = 'stylesheet'; css.href = new URL('./graph-inspector.css', import.meta.url).href; css.dataset.memoryOsInspector = '';
     }
-    node('h3', 'Memory OS · 世界图谱', root);
+    node('h3', t('Memory OS · World graph'), root);
     const toolbar = node('div', undefined, root); toolbar.className = 'mos-toolbar';
     const status = node('p', '', root); status.setAttribute('role', 'status');
     const filters = node('div', undefined, root); filters.className = 'mos-toolbar';
-    const searchLabel = node('label', '搜索名称 / 别名', filters); const search = node('input', undefined, searchLabel); search.type = 'search';
-    const type = select(filters, '实体类型', [['', '全部'], ...ENTITY_TYPES.map(value => [value, value])]);
-    const predicate = select(filters, '关系类型', [['', '全部']]);
-    const history = select(filters, '状态', [['', '当前'], ['history', '含历史 / 失效']]);
-    const center = select(filters, '图谱范围', [['', '全局图谱']]);
-    const hops = select(filters, '局部深度', [['1', '1 hop'], ['2', '2 hops'], ['3', '3 hops']]);
+    const searchLabel = node('label', t('Search names and aliases'), filters); const search = node('input', undefined, searchLabel); search.type = 'search';
+    const type = select(filters, t('Entity type'), [['', t('All')], ...ENTITY_TYPES.map(value => [value, value])]);
+    const predicate = select(filters, t('Relation type'), [['', t('All')]]);
+    const history = select(filters, t('Status'), [['', t('Current')], ['history', t('Include history and inactive records')]]);
+    const center = select(filters, t('Graph scope'), [['', t('Full graph')]]);
+    const hops = select(filters, t('Local depth'), [['1', '1 hop'], ['2', '2 hops'], ['3', '3 hops']]);
     const content = node('div', undefined, root); content.className = 'mos-content';
-    const canvas = node('div', undefined, content); canvas.className = 'mos-canvas'; canvas.setAttribute('aria-label', '实体关系图（下方列表可键盘操作）');
+    const canvas = node('div', undefined, content); canvas.className = 'mos-canvas'; canvas.setAttribute('aria-label', t('Entity graph. The list below supports keyboard navigation.'));
     const inspector = node('aside', undefined, content); inspector.className = 'mos-detail';
     const listing = node('div', undefined, root); listing.className = 'mos-list';
-    const review = node('details', undefined, root); node('summary', '待审核 / 事实 / 外部状态', review);
+    const review = node('details', undefined, root); node('summary', t('Review, facts and external state'), review);
     const reviewBody = node('div', undefined, review);
-    const editor = node('details', undefined, root); node('summary', '手工修正（仅 Memory OS）', editor);
+    const editor = node('details', undefined, root); node('summary', t('Manual corrections in Memory OS only'), editor);
     const form = node('form', undefined, editor); form.className = 'mos-form';
-    const action = select(form, '操作', [
-        ['entity', '新建实体'], ['rename', '修改实体名称'], ['alias', '添加别名'], ['remove_alias', '删除别名'],
-        ['merge_entity', '合并 source → target'], ['split_entity', '撤销 target 的合并'], ['relation', '新建关系'], ['edit_relation', '替换关系'],
-        ['reject_relation', '拒绝 / 使关系失效'], ['reject_fact', '删除错误事实 / 推断'], ['resolve_pending', '接受实体消歧'],
-        ['reject_pending', '拒绝实体消歧'], ['resolve_conflict', '接受关系并裁决冲突'],
+    const action = select(form, t('Action'), [
+        ['entity', t('New entity')], ['rename', t('Rename entity')], ['alias', t('Add alias')], ['remove_alias', t('Delete alias')],
+        ['merge_entity', t('Merge source into target')], ['split_entity', t('Undo target merge')], ['relation', t('New relation')], ['edit_relation', t('Replace relation')],
+        ['reject_relation', t('Reject or invalidate relation')], ['reject_fact', t('Delete incorrect fact or inference')], ['resolve_pending', t('Resolve entity ambiguity')],
+        ['reject_pending', t('Reject entity resolution')], ['resolve_conflict', t('Accept relation and resolve conflicts')],
     ]);
     const fields = node('div', undefined, form); fields.className = 'mos-form';
-    const save = node('button', '保存修正', form); save.type = 'submit'; save.className = 'menu_button';
+    const save = node('button', t('Save correction'), form); save.type = 'submit'; save.className = 'menu_button';
     let snapshot, view, facts, cy, disposed = false, busy = false, generation = 0;
     let selected = null; let computation = null;
-    const fail = error => { status.textContent = `未完成：${error.message}。来源变化时请刷新。`; };
+    const fail = error => { status.textContent = formatShellText('Not completed: ${0}. Refresh if the source changed.', [error.message]); };
     const guarded = run => async () => { try { snapshot.assertCurrent(); await run(); } catch (error) { fail(error); } };
     const display = (record, kind) => {
         try { snapshot.assertCurrent(); } catch (error) { fail(error); return; }
         record = { ...snapshot.state[{ entity: 'entities', relation: 'relations', fact: 'facts', pending: 'entityPending' }[kind]]?.[record.id], ...record };
         selected = { record, kind }; inspector.replaceChildren();
         node('h4', record.canonicalName || record.text || record.predicate || record.name, inspector);
-        if (kind === 'entity') button(inspector, '以此实体查看局部图谱', () => { center.value = record.id; render(); });
+        if (kind === 'entity') button(inspector, t('Explore this entity’s local graph'), () => { center.value = record.id; render(); });
         const data = structuredClone(record);
         node('pre', JSON.stringify(data, null, 2), inspector);
         onInspect?.(record, inspector);
@@ -102,16 +103,16 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
         for (const id of ids) {
             const episode = snapshot.state.episodes[id];
             if (!episode) continue;
-            const section = node('details', undefined, inspector); node('summary', `来源 ${id} · Message ${episode.sourceFloor} · ${episode.status}`, section);
+            const section = node('details', undefined, inspector); node('summary', formatShellText('Source ${0} · Message ${1} · ${2}', [id, episode.sourceFloor, episode.status]), section);
             node('pre', episode.content, section);
-            button(section, '定位已加载的来源消息', guarded(() => {
+            button(section, t('Locate the loaded source message'), guarded(() => {
                 const message = document.querySelector(`#chat .mes[mesid="${Number(episode.sourceFloor)}"]`);
-                if (message) { message.scrollIntoView({ block: 'center' }); status.textContent = '已定位聊天中的来源；关闭图谱即可查看。'; } else status.textContent = '原始楼层尚未加载；此处已显示来源正文。';
+                if (message) { message.scrollIntoView({ block: 'center' }); status.textContent = t('Source located in the story. Close the graph to view it.'); } else status.textContent = t('The original message is not loaded. Its source text is shown here.');
             }));
         }
-        for (const id of new Set(refs.map(ref => ref.manualId).filter(Boolean))) node('pre', `用户修正来源\n${JSON.stringify(snapshot.state.corrections?.[id], null, 2)}`, inspector);
+        for (const id of new Set(refs.map(ref => ref.manualId).filter(Boolean))) node('pre', formatShellText('User correction source\n${0}', [JSON.stringify(snapshot.state.corrections?.[id], null, 2)]), inspector);
         if (kind === 'entity') {
-            node('h4', '关联关系', inspector);
+            node('h4', t('Related relations'), inspector);
             view.relations.filter(edge => edge.sourceEntityId === record.id || edge.targetEntityId === record.id).slice(0, 100)
                 .forEach(edge => button(inspector, `${edge.predicate} · ${edge.status}`, () => display(edge, 'relation')));
         }
@@ -128,26 +129,26 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
         const entities = [...view.entities.filter(entity => prioritized.includes(entity.id)), ...view.entities.filter(entity => !prioritized.includes(entity.id)).slice(0, 500)].map(entity => [entity.id, `${entity.canonicalName} · ${entity.type} · ${entity.id.slice(0, 8)}`]);
         const relations = [...view.relations.filter(edge => edge.id === record.id), ...view.relations.filter(edge => edge.id !== record.id).slice(0, 500)].map(edge => [edge.id, `${edge.predicate} · ${edge.status} · ${edge.id.slice(0, 8)}`]);
         const pending = view.pending.filter(item => item.status === 'pending').slice(0, 500).map(item => [item.id, item.name]);
-        if (['rename', 'alias', 'remove_alias', 'merge_entity', 'split_entity', 'resolve_pending', 'relation', 'edit_relation'].includes(a)) input('targetId', '目标实体 target', record.targetEntityId || record.id || '', entities);
-        if (['merge_entity', 'relation', 'edit_relation'].includes(a)) input('sourceId', '来源实体 source', record.sourceEntityId || '', entities);
-        if (['entity', 'rename', 'alias', 'remove_alias'].includes(a)) input('name', '名称 / 别名', a === 'rename' ? record.canonicalName || '' : '');
-        if (a === 'entity') input('type', '实体类型', 'Character', ENTITY_TYPES.map(value => [value, value]));
+        if (['rename', 'alias', 'remove_alias', 'merge_entity', 'split_entity', 'resolve_pending', 'relation', 'edit_relation'].includes(a)) input('targetId', t('Target entity'), record.targetEntityId || record.id || '', entities);
+        if (['merge_entity', 'relation', 'edit_relation'].includes(a)) input('sourceId', t('Source entity'), record.sourceEntityId || '', entities);
+        if (['entity', 'rename', 'alias', 'remove_alias'].includes(a)) input('name', t('Name or alias'), a === 'rename' ? record.canonicalName || '' : '');
+        if (a === 'entity') input('type', t('Entity type'), 'Character', ENTITY_TYPES.map(value => [value, value]));
         if (['relation', 'edit_relation'].includes(a)) {
-            input('predicate', '语义谓词（snake_case）', record.predicate || '');
-            input('text', '关系事实（用户陈述）', '');
-            input('validFrom', '开始时间（可选，数字或故事时间）', record.validFrom ?? '');
-            input('validUntil', '结束时间（可选）', '');
+            input('predicate', t('Relation predicate in snake_case'), record.predicate || '');
+            input('text', t('Relation fact stated by the user'), '');
+            input('validFrom', t('Start time, optional number or story time'), record.validFrom ?? '');
+            input('validUntil', t('End time, optional'), '');
         }
-        if (['edit_relation', 'resolve_conflict'].includes(a)) input('relationId', '关系 / 冲突胜者', record.id || '', relations);
+        if (['edit_relation', 'resolve_conflict'].includes(a)) input('relationId', t('Relation to keep in a conflict'), record.id || '', relations);
         if (a === 'resolve_conflict') {
-            const losers = input('loserIds', '冲突败者（可多选）', '', relations); losers.multiple = true;
+            const losers = input('loserIds', t('Conflicting relations to reject, multiple selection'), '', relations); losers.multiple = true;
             [...losers.options].forEach(option => { option.selected = (record.conflictIds || []).includes(option.value); });
         }
-        if (a === 'reject_relation') input('targetId', '关系', record.id || '', relations);
-        if (a === 'reject_fact') input('targetId', '事实 / 推断', record.id || '', facts.map(fact => [fact.id, fact.text.slice(0, 100)]));
-        if (a === 'resolve_pending') input('pendingId', '待消歧实体', record.id || '', pending);
-        if (a === 'reject_pending') input('targetId', '待消歧实体', record.id || '', pending);
-        input('reason', '修正原因（独立用户来源，不改写聊天或外部状态）');
+        if (a === 'reject_relation') input('targetId', t('Relation'), record.id || '', relations);
+        if (a === 'reject_fact') input('targetId', t('Fact or inference'), record.id || '', facts.map(fact => [fact.id, fact.text.slice(0, 100)]));
+        if (a === 'resolve_pending') input('pendingId', t('Unresolved entity'), record.id || '', pending);
+        if (a === 'reject_pending') input('targetId', t('Unresolved entity'), record.id || '', pending);
+        input('reason', t('Correction reason, stored separately from story messages and external state'));
     };
     const render = () => {
         if (!view || disposed) return;
@@ -157,16 +158,16 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
         const anchor = view.entities.find(entity => entity.id === previousCenter);
         if (anchor && !choices.includes(anchor)) choices.unshift(anchor);
         center.replaceChildren();
-        for (const [value, label] of [['', '全局图谱'], ...choices.map(entity => [entity.id, entity.canonicalName])]) { const option = node('option', label, center); option.value = value; }
+        for (const [value, label] of [['', t('Full graph')], ...choices.map(entity => [entity.id, entity.canonicalName])]) { const option = node('option', label, center); option.value = value; }
         center.value = previousCenter;
         const graph = selectGraph(view, { query: search.value, type: type.value, predicate: predicate.value, history: Boolean(history.value), center: center.value, hops: hops.value });
-        status.textContent = `显示 ${graph.entities.length}/${graph.total} 实体，${graph.relations.length}/${graph.totalRelations} 关系。上限 250 / 600；请搜索或缩小局部范围。`;
+        status.textContent = formatShellText('Showing ${0}/${1} entities and ${2}/${3} relations. Limits are 250 and 600. Search or narrow the local scope.', [graph.entities.length, graph.total, graph.relations.length, graph.totalRelations]);
         cy?.elements().remove();
         cy?.add([...graph.entities.map(entity => ({ data: { id: `n:${entity.id}`, label: entity.canonicalName, record: entity, kind: 'entity', status: entity.status } })),
             ...graph.relations.map(edge => ({ data: { id: `e:${edge.id}`, source: `n:${edge.sourceEntityId}`, target: `n:${edge.targetEntityId}`, label: edge.predicate, record: edge, kind: 'relation', status: edge.status } }))]);
         cy?.layout({ name: 'circle', animate: false, fit: true, padding: 30 }).run();
         listing.replaceChildren();
-        node('span', '键盘列表：', listing);
+        node('span', t('Keyboard navigation list:'), listing);
         [...graph.entities.map(record => [record, 'entity']), ...graph.relations.map(record => [record, 'relation'])].slice(0, 100)
             .forEach(([record, kind]) => button(listing, `${record.canonicalName || record.predicate} · ${record.status}`, () => display(record, kind)));
     };
@@ -179,34 +180,34 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
         snapshot = next; snapshot.assertCurrent(); selected = null;
         view = computed.graph; facts = computed.facts;
         const refill = (element, entries) => { const previous = element.value; element.replaceChildren(); entries.forEach(([value, label]) => { const option = node('option', label, element); option.value = value; }); element.value = entries.some(([value]) => value === previous) ? previous : ''; };
-        refill(predicate, [['', '全部'], ...[...new Set(view.relations.map(edge => edge.predicate))].sort().map(value => [value, value])]);
-        refill(center, [['', '全局图谱'], ...view.entities.slice(0, 500).map(entity => [entity.id, entity.canonicalName])]);
-        inspector.replaceChildren(); node('p', '点击实体或关系查看详情、来源及审计记录。', inspector);
+        refill(predicate, [['', t('All')], ...[...new Set(view.relations.map(edge => edge.predicate))].sort().map(value => [value, value])]);
+        refill(center, [['', t('Full graph')], ...view.entities.slice(0, 500).map(entity => [entity.id, entity.canonicalName])]);
+        inspector.replaceChildren(); node('p', t('Choose an entity or relation to inspect its details, sources and audit history.'), inspector);
         reviewBody.replaceChildren();
         const pending = view.pending.filter(item => item.status === 'pending'); const disputed = view.relations.filter(edge => edge.status === 'disputed');
-        node('p', `${pending.length} 个实体待消歧，${disputed.length} 条关系待裁决。下面最多各显示 100 条。`, reviewBody);
-        pending.slice(0, 100).forEach(record => button(reviewBody, `待消歧：${record.name}`, () => { display(record, 'pending'); action.value = 'resolve_pending'; editor.open = true; renderFields(); }));
-        disputed.slice(0, 100).forEach(record => button(reviewBody, `待裁决：${record.predicate}`, () => { display(record, 'relation'); action.value = 'resolve_conflict'; editor.open = true; renderFields(); }));
-        const factSection = node('details', undefined, reviewBody); node('summary', `事实 / 推断 (${facts.length})`, factSection);
+        node('p', formatShellText('${0} unresolved entities and ${1} disputed relations. Up to 100 of each are shown below.', [pending.length, disputed.length]), reviewBody);
+        pending.slice(0, 100).forEach(record => button(reviewBody, formatShellText('Unresolved: ${0}', [record.name]), () => { display(record, 'pending'); action.value = 'resolve_pending'; editor.open = true; renderFields(); }));
+        disputed.slice(0, 100).forEach(record => button(reviewBody, formatShellText('Disputed: ${0}', [record.predicate]), () => { display(record, 'relation'); action.value = 'resolve_conflict'; editor.open = true; renderFields(); }));
+        const factSection = node('details', undefined, reviewBody); node('summary', formatShellText('Facts and inferences (${0})', [facts.length]), factSection);
         facts.slice(0, 100).forEach(record => button(factSection, `${record.text.slice(0, 100)} · ${record.status}`, () => display(record, 'fact')));
         const providers = projectProviders(snapshot.state, snapshot.chat);
-        node('h4', '外部状态与字段映射 · 只读', reviewBody);
-        node('p', '普通文字卡无需外部状态。此处展示 MVU / LoreState 的提供者状态、字段路径及映射；修正操作不会写入它们。', reviewBody);
+        node('h4', t('External state and field mapping · Read only'), reviewBody);
+        node('p', t('Plain text cards do not require external state. This view shows MVU and LoreState provider state, field paths and mappings. Corrections do not write to them.'), reviewBody);
         node('pre', JSON.stringify(providers, null, 2).slice(0, 32000), reviewBody);
-        const audit = node('details', undefined, reviewBody); node('summary', '用户修正记录（最近 100 条）', audit);
+        const audit = node('details', undefined, reviewBody); node('summary', t('Latest 100 user corrections'), audit);
         node('pre', JSON.stringify(Object.values(snapshot.state.corrections || {}).slice(-100), null, 2).slice(0, 32000), audit);
         renderFields(); render();
     };
-    button(toolbar, '刷新', () => { refresh().catch(fail); });
-    button(toolbar, '记忆诊断', guarded(() => openMemoryDiagnostics(context, snapshot)));
-    button(toolbar, '适应视图', () => cy?.fit(undefined, 30));
-    if (openLegacy) button(toolbar, '旧版节点图', () => { Promise.resolve().then(openLegacy).catch(fail); });
-    if (openHistory) button(toolbar, '历史构建 / 回滚', () => { Promise.resolve().then(openHistory).then(refresh).catch(fail); });
+    button(toolbar, t('Refresh'), () => { refresh().catch(fail); });
+    button(toolbar, t('Memory diagnostics'), guarded(() => openMemoryDiagnostics(context, snapshot)));
+    button(toolbar, t('Fit graph'), () => cy?.fit(undefined, 30));
+    if (openLegacy) button(toolbar, t('Legacy node graph'), () => { Promise.resolve().then(openLegacy).catch(fail); });
+    if (openHistory) button(toolbar, t('History extraction and rollback'), () => { Promise.resolve().then(openHistory).then(refresh).catch(fail); });
     for (const element of [search, type, predicate, history, center, hops]) element.addEventListener('change', render);
     action.addEventListener('change', renderFields);
     form.addEventListener('submit', async event => {
         event.preventDefault(); if (busy || disposed) return;
-        busy = true; save.disabled = true; status.textContent = '正在保存修正…';
+        busy = true; save.disabled = true; status.textContent = t('Saving correction…');
         try {
             snapshot.assertCurrent();
             const command = { action: action.value, ...Object.fromEntries(new FormData(form)) };
@@ -216,7 +217,7 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
                 if (!command[key]) delete command[key];
                 else if (Number.isFinite(Number(command[key]))) command[key] = Number(command[key]);
             }
-            await correct(command, snapshot); await refresh(); status.textContent = '修正已保存；已保留用户来源和历史记录。';
+            await correct(command, snapshot); await refresh(); status.textContent = t('Correction saved. User sources and history are preserved.');
         } catch (error) { fail(error); } finally { busy = false; save.disabled = false; }
     });
     if (container) container.append(root);

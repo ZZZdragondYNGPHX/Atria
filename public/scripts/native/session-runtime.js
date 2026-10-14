@@ -6,6 +6,7 @@ import {
     projectNativeSession,
     runtimeMetadata,
     timelineIntents,
+    nativeMessageDraft,
 } from './session-projection.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
@@ -75,10 +76,11 @@ function bindCommittedRuntimeObject(target, canonical) {
     target.atri_native = copy(canonical.atri_native);
 }
 
-/** One active downstream projection. Generation/rendering remain owned by the existing ST host. */
+/** One active Session authority adapter with a downstream compatibility projection. */
 export class NativeSessionRuntime {
     constructor() {
         this.snapshot = null;
+        this.projectionEpoch = 0;
         this.host = null;
         this.queue = Promise.resolve();
         this.failed = false;
@@ -306,6 +308,50 @@ export class NativeSessionRuntime {
         return response.json();
     }
 
+    appendDraft(message, { signal, assertCurrent, onAccepted } = {}) {
+        this.assertWritable();
+        const sessionId = this.snapshot.session.sessionId;
+        const revisionId = this.snapshot.revision.revisionId;
+        const branchId = this.snapshot.revision.branchId;
+        const epoch = this.projectionEpoch;
+        const draft = nativeMessageDraft(this.snapshot, copy(message));
+        if (this.generation?.kind === 'continue' && draft.role === 'assistant') {
+            const source = this.generation;
+            if (source.sourceActorId) draft.actorId = source.sourceActorId;
+            draft.metadata.provenance = { continuationOf: source.sourceMessageId, kind: 'continuation' };
+        }
+        return this._queue(async () => {
+            if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
+            assertCurrent?.();
+            this.assertWritable();
+            if (this.projectionEpoch !== epoch || this.snapshot.session.sessionId !== sessionId
+                || this.snapshot.revision.branchId !== branchId || this.snapshot.revision.revisionId !== revisionId) {
+                throw committedTimelineMutation('Native Draft scope changed before commit');
+            }
+            this._assertBarrier();
+            const previous = this.snapshot;
+            const generation = this.generation;
+            const statePatch = this._runtimeStatePatch();
+            try {
+                const next = await this.request('command', { sessionId, expectedRevisionId: revisionId,
+                    command: { type: 'runtime', commands: [{ type: 'append', draft }], statePatch } });
+                this.snapshot = next;
+                this._clearStagedStates();
+                this.generation = draft.role === 'user' ? generation : null;
+                try { onAccepted?.({ sessionId, branchId, revisionId: next.revision.revisionId, messageId: next.timeline.at(-1)?.messageId }); } catch { /* A presentation observer cannot invalidate the committed receipt. */ }
+                const projection = projectNativeSession(next);
+                if (this.host.publish) await this.host.publish(projection);
+                else await this.host.install(projection);
+                const appended = next.timeline.slice(previous.timeline.length).map(item => item.messageId);
+                await this._emit(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, next, previous, { messageIds: appended });
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { messageIds: appended, stateNamespaces: Object.keys(statePatch) });
+                return next;
+            } catch (error) {
+                throw this._report(error, { fatal: true });
+            }
+        });
+    }
+
     async setExperienceMetadata(options) {
         const session = await this.request('experience-metadata', { sessionId: this.snapshot.session.sessionId,
             expectedRevisionId: this.snapshot.revision.revisionId, ...options });
@@ -357,6 +403,7 @@ export class NativeSessionRuntime {
         if (acceptGuard && !acceptGuard()) throw new Error('Native operation scope changed before projection install');
         this.queue = Promise.resolve();
         this.snapshot = snapshot;
+        this.projectionEpoch += 1;
         this._clearStagedStates();
         this.history = revisionId !== undefined;
         this.failed = false;
@@ -393,7 +440,7 @@ export class NativeSessionRuntime {
         this.generation.provisionalTurn = true;
     }
 
-    async open(sessionId, { revisionId } = {}) {
+    async open(sessionId, { revisionId, acceptGuard } = {}) {
         if (this.host.isGenerating()) throw new Error('Stop generation before switching Native Session');
         if (this.active) {
             if (this.failed) throw new Error('Reload the current Native Session before switching');
@@ -401,7 +448,7 @@ export class NativeSessionRuntime {
             else await this.persist();
         }
         await this.queue.catch(() => {});
-        return this._loadProjection(sessionId, { revisionId });
+        return this._loadProjection(sessionId, { revisionId, acceptGuard });
     }
 
     async synchronizeFrontendEpoch({ stopGeneration } = {}) {
@@ -435,6 +482,7 @@ export class NativeSessionRuntime {
         else this._assertBarrier();
         await this.queue;
         this.snapshot = null;
+        this.projectionEpoch += 1;
         this.failed = false;
         this.history = false;
         this.generation = null;

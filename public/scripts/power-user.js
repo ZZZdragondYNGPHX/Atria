@@ -1090,22 +1090,45 @@ function switchMessageActions() {
     $('.extraMesButtons, .extraMesButtonsHint').removeAttr('style');
 }
 
+let reducedMotionQuery;
 function switchReducedMotion() {
-    const osReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (osReduced) {
-        power_user.reduced_motion = true;
+    if (!reducedMotionQuery) {
+        reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        reducedMotionQuery.addEventListener?.('change', switchReducedMotion);
     }
-    jQuery.fx.off = power_user.reduced_motion;
-    const overrideDuration = power_user.reduced_motion ? 0 : ANIMATION_DURATION_DEFAULT;
+    const osReduced = reducedMotionQuery.matches;
+    const effective = osReduced || power_user.reduced_motion;
+    jQuery.fx.off = effective;
+    const overrideDuration = effective ? 0 : ANIMATION_DURATION_DEFAULT;
     setAnimationDuration(overrideDuration);
-    $('#reduced_motion').prop('checked', power_user.reduced_motion);
+    $('#reduced_motion').prop('checked', effective);
     $('#reduced_motion').prop('disabled', osReduced);
     $('#reduced_motion').closest('label').attr('title',
         osReduced
             ? t`Controlled by your operating system's reduced motion setting`
             : t`Disable animations and transitions`,
     );
-    $('body').toggleClass('reduced-motion', power_user.reduced_motion);
+    $('body').toggleClass('reduced-motion', effective);
+}
+
+/** Native controls write to the same preference and persistence authority. */
+export function updateAtriaPreference(key, value) {
+    const booleans = ['auto_scroll_chat_to_bottom', 'auto_save_msg_edits', 'confirm_message_delete', 'reduced_motion', 'fast_ui_mode'];
+    if (booleans.includes(key)) {
+        if (typeof value !== 'boolean') throw new TypeError('Invalid preference value');
+    } else if (key === 'font_scale') {
+        if (!Number.isFinite(value) || value < .5 || value > 1.5) throw new TypeError('Font scale must be between 0.5 and 1.5');
+    } else if (key === 'send_on_enter') {
+        if (![-1, 0, 1].includes(value)) throw new TypeError('Invalid Enter preference');
+    } else if (key === 'before_unload_guard_mode') {
+        if (!['off', 'smart', 'always'].includes(value)) throw new TypeError('Invalid leave preference');
+    } else throw new TypeError('Unsupported Native preference');
+    power_user[key] = value;
+    if (key === 'font_scale') applyFontScale('forced');
+    if (key === 'reduced_motion') switchReducedMotion();
+    if (key === 'fast_ui_mode') switchUiMode();
+    saveSettingsDebounced();
+    document.dispatchEvent(new CustomEvent('atria-preference-changed', { detail: { key } }));
 }
 
 function switchCompactInputArea() {

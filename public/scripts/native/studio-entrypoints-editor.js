@@ -65,7 +65,7 @@ export function mountStudioEntryPointsEditor({ document: doc, root, value, proje
             if (typeof draft[key] !== 'string') return;
             const label = doc.createElement('label'); label.className = 'atria-studio-field';
             const caption = doc.createElement('span'); caption.textContent = t(title);
-            const input = doc.createElement('input'); input.name = key; input.setAttribute('aria-label', key); input.value = draft[key]; input.autocomplete = 'off';
+            const input = doc.createElement('input'); input.name = key; input.setAttribute('aria-label', t(title)); input.value = draft[key]; input.autocomplete = 'off';
             input.addEventListener('input', () => { draft[key] = input.value; input.removeAttribute('aria-invalid'); input.removeAttribute('aria-describedby'); });
             label.append(caption, input); parent.append(label);
         }

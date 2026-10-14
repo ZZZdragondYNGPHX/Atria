@@ -11,13 +11,14 @@ const locales = localeIds.map(lang => JSON.parse(fs.readFileSync(path.join(root,
 const linter = new eslint.Linter();
 const literal = node => node?.type === 'Literal' && typeof node.value === 'string' ? node.value : null;
 const leaves = node => node?.type === 'ConditionalExpression' ? [...leaves(node.consequent), ...leaves(node.alternate)] : [node];
-const visible = value => /[A-Za-z]/.test(value || '') && !technical.has(value);
+const visible = value => /[A-Za-z\u4e00-\u9fff]/.test(value || '') && !technical.has(value);
 const placeholders = value => [...String(value).matchAll(/\$\{(\d+)\}/g)].map(match => match[1]).sort().join(',');
 
 export function auditProductSource(source, filename, catalogs = locales) {
     const findings = [];
     const missing = (node, text, key) => {
         if (!visible(text)) return;
+        if (/[\u4e00-\u9fff]/.test(text)) findings.push({ line: node.loc.start.line, text, reason: 'English fallback required' });
         const id = key || SHELL_TEXT_KEYS[text] || text;
         for (let index = 0; index < catalogs.length; index++) {
             if (!catalogs[index][id]) findings.push({ line: node.loc.start.line, text, locale: index, reason: 'missing translation' });
@@ -26,13 +27,24 @@ export function auditProductSource(source, filename, catalogs = locales) {
     };
     linter.defineRule('product-copy', { create(context) {
         return {
+            Property(node) {
+                if (filename.endsWith('/native/runtime-client.js') && node.value?.type === 'ArrayExpression') {
+                    const text = literal(node.value.elements[0]);
+                    if (text) missing(node, text);
+                }
+            },
             CallExpression(node) {
                 const name = node.callee.name;
                 let index = ['tl', 't', 'translateShellText', 'fmt', 'formatShellText', 'formatProductText', 'i18n', 'i18nFormat'].includes(name) ? 0 : null;
                 if (name === 'node' && filename.endsWith('runtime-workspace.js') || name === 'node' && filename.endsWith('retrieval-workspace.js')) index = 1;
                 if (['button', 'notice'].includes(name) && /(?:runtime|retrieval)-workspace.js$/.test(filename)) index = 0;
                 if (['action', 'field', 'disclosure'].includes(name) && source.includes('from \'./library-ui.js\'')) index = 2;
+                if (source.includes('from \'./illustration-ui.js\'')) {
+                    if (name === 'node') index = 3;
+                    if (['button', 'field', 'select'].includes(name)) index = 2;
+                }
                 if (['button', 'heading', 'field'].includes(name) && filename.endsWith('studio-workspace.js')) index = 1;
+                if (['textInput', 'selectInput'].includes(name) && filename.endsWith('studio-workspace.js')) index = 3;
                 if (filename.includes('/orchestrator/workspace/') && !filename.endsWith('/shell.js') && ['el', 'button'].includes(name)) index = 1;
                 if (index !== null) {
                     const explicitKey = ['fmt', 'formatShellText', 'formatProductText'].includes(name) ? literal(node.arguments[3]) : null;

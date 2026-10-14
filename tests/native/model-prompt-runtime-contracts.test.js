@@ -137,6 +137,12 @@ function packageManifest(runtime) {
 }
 
 describe('P0 core model / prompt / runtime contracts', () => {
+    test.each(['mcp', 'a2a', 'comfyui-image', 'sd-webui-image', 'forge-image'])('allows declared optional authentication for %s without weakening model adapters', adapter => {
+        const connection = { schemaVersion: 1, connectionProfileId: CONNECTION_ID, scope: 'player', displayName: 'Local service',
+            providerAdapter: 'provider.' + adapter, transport: 'transport.http', endpoint: 'http://127.0.0.1:8188/' };
+        expect(assertConnectionProfile(connection).secretRef).toBeUndefined();
+        expect(() => assertConnectionProfile({ ...connection, providerAdapter: 'provider.openai-compatible' })).toThrow();
+    });
     test('freezes Connection Profile without embedding secret values', () => {
         const parsed = assertConnectionProfile({
             schemaVersion: 1,

@@ -60,7 +60,7 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
                 const note = doc.createElement('p'); note.textContent = t('No fields yet. Use Source to add structured data.'); parent.append(note);
             }
         } else {
-            const input = doc.createElement('textarea'); input.value = JSON.stringify(current); input.setAttribute('aria-label', label);
+            const input = doc.createElement('textarea'); input.value = JSON.stringify(current); input.setAttribute('aria-label', t(label));
             input.addEventListener('input', () => { try { set(JSON.parse(input.value)); input.setCustomValidity(''); } catch { input.setCustomValidity(t('Enter valid JSON.')); } });
             parent.append(input);
         }
@@ -77,7 +77,7 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
         toggle.textContent = t(advanced ? 'Fields' : 'Source'); toggle.setAttribute('aria-pressed', String(advanced));
         if (advanced) {
             const editor = doc.createElement('textarea'); editor.className = 'atria-studio-editor__textarea';
-            editor.value = sourceText; editor.setAttribute('aria-label', label); editor.spellcheck = false;
+            editor.value = sourceText; editor.setAttribute('aria-label', t(label)); editor.dataset.atriaStudioSource = 'true'; editor.spellcheck = false;
             editor.addEventListener('input', () => { sourceText = editor.value; }); content.append(editor);
         } else if (renderFields) renderFields({ parent: content, draft, renderValue, rerender: render });
         else renderValue(content, draft, '', next => { draft = next; });

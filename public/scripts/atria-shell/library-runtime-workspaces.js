@@ -74,6 +74,14 @@ function buildDomainFrame(documentRef, {
     root.dataset.atriaDomainWorkspace = domain;
     applyAtriaPattern(root, domain === 'library' ? 'master-detail' : 'runtime-status');
 
+    const header = documentRef.createElement('header');
+    header.className = 'atria-domain-workspace__header';
+    const title = documentRef.createElement('h1');
+    title.textContent = translateShellText(domain === 'library' ? 'Library' : 'Runtime');
+    title.dataset.atriaLargeTitle = 'true';
+    header.append(title);
+    root.append(header);
+
     const nav = documentRef.createElement('nav');
     nav.className = 'atria-domain-workspace__nav';
     nav.setAttribute('aria-label', translateShellText(domain === 'library' ? 'Library sections' : 'Runtime sections'));
@@ -82,23 +90,6 @@ function buildDomainFrame(documentRef, {
     body.className = 'atria-domain-workspace__body';
 
     let compactSection;
-    if (domain === 'library' || domain === 'runtime') {
-        const label = documentRef.createElement('label');
-        label.className = domain === 'library' ? 'atri-library-section-picker' : 'atri-runtime-section-picker';
-        const caption = documentRef.createElement('span');
-        caption.className = 'atri-library-section-label'; caption.textContent = translateShellText(domain === 'library' ? 'Library section' : 'Runtime section');
-        label.append(caption);
-        compactSection = documentRef.createElement('select');
-        compactSection.setAttribute('aria-label', translateShellText(domain === 'library' ? 'Library section' : 'Runtime section'));
-        for (const item of sections) {
-            const option = documentRef.createElement('option');
-            option.value = item.id; option.textContent = translateShellText(item.label);
-            compactSection.append(option);
-        }
-        compactSection.value = activeSection;
-        compactSection.addEventListener('change', () => onNavigate(compactSection.value));
-        label.append(compactSection); root.append(label);
-    }
 
     for (const item of sections) {
         const button = documentRef.createElement('button');

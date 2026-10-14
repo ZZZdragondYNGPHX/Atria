@@ -52,6 +52,7 @@ describe('A6 Native Play Product Host', () => {
         expect(formSheld.parentElement).toBe(sheld);
         expect(sendForm.parentElement).toBe(formSheld);
         expect(sheld.classList.contains('atria-native-play-abi')).toBe(true);
+        expect(sheld.inert).toBe(true);
         expect(sheld.getAttribute('aria-hidden')).toBe('true');
         expect(host.product.root.id).toBe('atria-play-product');
         expect(host.product.conversation.id).toBe('atria-play-conversation');

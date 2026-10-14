@@ -7,6 +7,7 @@ import { openPersonaSelector } from './persona-ui.js';
 import { openHostExternal } from './frontend/external.js';
 import { createHeadlessConversation } from './frontend/conversation.js';
 import { renderSafeProse } from '../../shared/native-safe-prose.js';
+import { nativePlayGenerationBusy } from './play-generation.js';
 import { updateIllustrationSurface, releaseIllustrationSurface } from './illustration-surfaces.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
@@ -77,10 +78,10 @@ function createSurface(documentRef, id) {
 export function mountAtriaPlayProduct({
     document: documentRef = globalThis.document,
     root,
-    native,
+    navigation,
 } = {}) {
-    if (!documentRef?.createElement || !root || !native?.sendTextarea || !native?.sendForm) {
-        throw new Error('Atria Play Product requires the Play host and Native generation ABI');
+    if (!documentRef?.createElement || !root) {
+        throw new Error('Atria Play Product requires a document and Play host');
     }
 
     const product = documentRef.createElement('section');
@@ -251,7 +252,7 @@ export function mountAtriaPlayProduct({
         textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
     };
     textarea.addEventListener('input', resizeInput);
-    const generating = () => documentRef.body.dataset.generating === 'true';
+    const generating = () => nativePlayGenerationBusy(activeRuntime());
     const updateDraft = event => {
         draftText = String(event.detail?.text || '');
         render();
@@ -279,7 +280,7 @@ export function mountAtriaPlayProduct({
         if (!generating()) draftText = '';
         const snapshot = runtime?.snapshot || null;
         const active = Boolean(snapshot && runtime?.active);
-        product.hidden = !active;
+        product.hidden = !active || navigation?.getRoute()?.child?.id === 'recent-stories';
         if (!active) {
             resetPreparation();
             product.dataset.atriaPlayReadiness = 'inactive';
@@ -394,7 +395,8 @@ export function mountAtriaPlayProduct({
         textarea.disabled = !writable || generating() || submitting;
         persona.disabled = !writable || generating() || submitting || Boolean(runtime.generation);
         persona.textContent = runtime.snapshot.states?.atri_player_persona?.solo?.snapshot.name || tl('Choose Persona');
-        send.disabled = !writable || (submitting && !generating());
+        send.disabled = !writable || (submitting && !generating()) || generation.state === 'cancelling';
+        send.setAttribute('aria-busy', String(generation.state === 'cancelling'));
         const action = generating() ? 'Stop' : 'Send';
         if (send.getAttribute('aria-label') !== tl(action)) {
             send.setAttribute('aria-label', tl(action));
@@ -410,9 +412,13 @@ export function mountAtriaPlayProduct({
         if (ready) markStartupReadiness('playReady', documentRef);
         recover.hidden = terminalArchive || (!runtime.failed && !runtime.history);
         recover.textContent = tl(runtime.failed ? 'Reload session' : 'Return to current story');
-        composerStatus.textContent = tl(terminalArchive ? 'This story has ended. Its history is read-only.' : runtime.failed
+        const statusText = tl(terminalArchive ? 'This story has ended. Its history is read-only.' : runtime.failed
             ? 'This session needs recovery before you can continue.'
-            : runtime.history ? 'Historical revisions are read-only.' : generating() ? 'Generating…' : '');
+            : runtime.history ? 'Historical revisions are read-only.'
+                : generation.state === 'preparing' ? 'Preparing reply…'
+                    : generation.state === 'cancelling' ? 'Stopping…'
+                        : generation.state === 'finalizing' ? 'Saving reply…' : generating() ? 'Generating…' : '');
+        if (composerStatus.textContent !== statusText) composerStatus.textContent = statusText;
         queueMicrotask(() => {
             if (!disposed && following) scrollToLatest();
         });
@@ -426,24 +432,25 @@ export function mountAtriaPlayProduct({
         const value = originalDraft.trim();
         if (submitting || generating()) throw new Error(tl('Generation is already running.'));
         if (!value || !runtimeWritable(runtime)) throw new Error(tl('Native Composer is not ready.'));
-        const generate = globalThis.Atria?.getContext?.()?.generate;
+        const generate = globalThis.Atria?.getContext?.()?.generateNative;
         if (typeof generate !== 'function') throw new Error(tl('Native generation entrypoint is unavailable.'));
         submitting = true;
-        native.sendTextarea.value = value;
-        native.sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
         textarea.value = ''; resizeInput(); following = true;
         runtimeError.hidden = true; composerStatus.textContent = tl('Generating…');
         const sessionId = runtime.snapshot.session.sessionId;
         const baseRevision = runtime.snapshot.revision.revisionId;
+        const epoch = runtime.projectionEpoch;
         render();
-        try { return await generate('normal'); } catch (error) {
+        const scope = { sessionId, branchId: runtime.snapshot.revision.branchId, revisionId: baseRevision };
+        let accepted = false;
+        try { return await generate('normal', { input: value, scope, onInputAccepted: () => { accepted = true; } }); } finally {
             // Restore only unaccepted input. A committed user turn must never be sent twice.
-            if (activeRuntime() === runtime && runtime.snapshot.session.sessionId === sessionId
-                && runtime.snapshot.revision.revisionId === baseRevision && !textarea.value) {
+            if (!accepted && activeRuntime() === runtime && runtime.snapshot.session.sessionId === sessionId
+                && runtime.snapshot.revision.branchId === scope.branchId && runtime.projectionEpoch === epoch && !textarea.value) {
                 textarea.value = originalDraft; resizeInput();
             }
-            throw error;
-        } finally { submitting = false; render(); }
+            submitting = false; render();
+        }
     }
     async function submitCommitted(snapshot) {
         const runtime = activeRuntime();
@@ -452,13 +459,12 @@ export function mountAtriaPlayProduct({
             || runtime.snapshot.session.sessionId !== snapshot?.session?.sessionId
             || runtime.snapshot.revision.revisionId !== snapshot?.revision?.revisionId
             || tail?.role !== 'user') throw new Error('Committed Opening input is no longer current');
-        const generate = globalThis.Atria?.getContext?.()?.generate;
+        const generate = globalThis.Atria?.getContext?.()?.generateNative;
         if (typeof generate !== 'function') throw new Error(tl('Native generation entrypoint is unavailable.'));
         submitting = true;
-        native.sendTextarea.value = '';
-        native.sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
         textarea.value = ''; resizeInput(); following = true;
-        try { return await generate('normal'); } finally { submitting = false; render(); }
+        const scope = { sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
+        try { return await generate('normal', { input: '', scope }); } finally { submitting = false; render(); }
     }
     function submit(event) {
         event.preventDefault();
@@ -488,6 +494,7 @@ export function mountAtriaPlayProduct({
     });
     readinessObserver.observe(documentRef.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
     const bodyObserver = new MutationObserver(render);
+    const unsubscribeRoute = navigation?.subscribe(render);
     bodyObserver.observe(documentRef.body, {
         attributes: true,
         attributeFilter: ['data-atria-native-session-active', 'data-generating'],
@@ -512,9 +519,9 @@ export function mountAtriaPlayProduct({
         clearDraft() { textarea.value = ''; resizeInput(); },
         focus() { textarea.focus(); }, submit: submitDraft, submitCommitted,
     });
-    const headless = createHeadlessConversation({ runtime: activeRuntime, composer: composerApi, generate: type => globalThis.Atria?.getContext?.()?.generate?.(type), stop: () => globalThis.Atria?.getContext?.()?.stopGeneration?.(), actions: { openPersonaSelector: openPicker } });
+    const headless = createHeadlessConversation({ runtime: activeRuntime, composer: composerApi, stop: () => globalThis.Atria?.getContext?.()?.stopGeneration?.(), actions: { openPersonaSelector: openPicker } });
     const provisionalNode = documentRef.createElement('aside');
-    provisionalNode.dataset.atriaGenerationProjection = 'true'; provisionalNode.setAttribute('role', 'status');
+    provisionalNode.dataset.atriaGenerationProjection = 'true'; provisionalNode.setAttribute('aria-live', 'off');
     conversationComponent.append(provisionalNode);
     render();
 
@@ -541,6 +548,7 @@ export function mountAtriaPlayProduct({
             documentRef.removeEventListener('atria-memory-pressure', onPressure);
             documentRef.removeEventListener('atria-native-experience-prepared', render);
             resetPreparation(); unsubscribeConfiguration();
+            unsubscribeRoute?.();
             window.dispose(); resizeRows?.disconnect();
             clearSpeechControls(); picker?.close();
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);

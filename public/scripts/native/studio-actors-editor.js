@@ -66,7 +66,7 @@ export function mountStudioActorsEditor({ document: doc, root, value, projectSou
         function textField(parent, key, title, object, multiline = false, update) {
             const row = doc.createElement('label'); row.className = 'atria-studio-field';
             const caption = doc.createElement('span'); caption.textContent = t(title);
-            const input = doc.createElement(multiline ? 'textarea' : 'input'); input.name = key; input.setAttribute('aria-label', key); input.autocomplete = 'off';
+            const input = doc.createElement(multiline ? 'textarea' : 'input'); input.name = key; input.setAttribute('aria-label', t(title)); input.autocomplete = 'off';
             input.value = object ?? ''; if (multiline) input.rows = 4;
             input.addEventListener('input', () => { update(input.value); input.removeAttribute('aria-invalid'); input.removeAttribute('aria-describedby'); });
             row.append(caption, input); parent.append(row);

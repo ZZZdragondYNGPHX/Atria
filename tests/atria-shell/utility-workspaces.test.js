@@ -75,7 +75,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         controller.dispose();
     });
 
-    test('Settings moves preference-only controls and never exposes generation authority, even under Advanced', async () => {
+    test('Settings uses native controls and preserves advanced theme adapters without exposing generation authority', async () => {
         const slot = document.getElementById('slot');
         const settingsRoot = document.getElementById('user-settings-block');
         const language = document.getElementById('ui_language_select');
@@ -87,7 +87,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         expect(slot.querySelector('[data-atria-settings-primary="true"]')).not.toBeNull();
         expect(slot.contains(settingsRoot)).toBe(false);
         expect(slot.querySelector('#enableLabMode')).toBeNull();
-        expect(slot.querySelector('#reduced_motion')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-preference="reduced_motion"]')).not.toBeNull();
         expect(document.getElementById('ui_language_select')).toBe(language);
         expect(document.querySelectorAll('#ui_language_select')).toHaveLength(1);
         expect(settingsRoot.dataset.atriaWorkspaceEmbedded).toBeUndefined();
@@ -186,7 +186,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         const old = await pending;
         old.dispose();
         expect(slot.firstChild).toBe(settings.root);
-        expect(slot.querySelector('#reduced_motion')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-preference="reduced_motion"]')).not.toBeNull();
         settings.dispose();
     });
 

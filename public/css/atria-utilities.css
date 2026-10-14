@@ -23,6 +23,7 @@
 }
 
 .atria-utility-workspace__header h2 {
+    font-family: var(--atri-font-serif); font-weight: 400;
     margin: 0;
     font-size: var(--atri-text-large-title);
     letter-spacing: -.025em;
@@ -97,7 +98,19 @@
 
 .atria-preference-groups {
     display: grid;
-    gap: 32px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
+    gap: 24px;
+}
+
+.atria-preference-group { grid-column: 1; min-width: 0; }
+.atria-preference-group h3 { font: 400 var(--atri-text-title-2)/1.3 var(--atri-font-serif); margin: 0 0 16px; }
+.atria-reading-sample { grid-column: 2; grid-row: 1 / span 4; align-self: start; position: sticky; top: 0; padding: 32px; background: #fff; border-radius: 24px; box-shadow: var(--atri-shadow-1); }
+.atria-reading-sample h3 { margin: 0 0 24px; font: 400 var(--atri-text-title-2)/1.3 var(--atri-font-serif); }
+.atria-reading-sample p { font: 400 var(--atri-text-reading)/var(--atri-leading-reading) var(--atri-font-serif); }
+@media (max-width: 719px) {
+    .atria-preference-groups { grid-template-columns: minmax(0, 1fr); }
+    .atria-reading-sample { grid-column: 1; grid-row: 2; position: static; padding: 24px; }
+    .atria-preference-group[data-atria-settings-section="appearance"] { grid-row: 1; }
 }
 
 .atria-preference-rows,.atria-account-rows,.atria-account-facts {
@@ -186,7 +199,7 @@
 }
 
 .atria-utility-workspace input[type=checkbox]:checked {
-    background: var(--atri-accent);
+    background: var(--atri-ink);
 }
 
 .atria-utility-workspace input[type=checkbox]:checked::before {

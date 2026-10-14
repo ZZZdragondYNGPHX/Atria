@@ -4,8 +4,9 @@ import { createAtriaIcon } from './icons.js';
 import { el, action, disclosure, feedback } from '../native/library-ui.js';
 import { permissionRow } from '../native/package-permissions.js';
 import { nativeProductClient } from '../native/product-client.js';
+import { mountAtriaPreferenceControls } from './preference-controls.js';
 
-export const ATRIA_THEME_CSS_EXAMPLE = ':root:root {\n  --atri-accent: #7c6aef;\n  --atri-canvas: #15131c;\n  --atri-surface-1: #201d29;\n  --atri-text-primary: #f5f3ff;\n}';
+export const ATRIA_THEME_CSS_EXAMPLE = ':root:root {\n  --atri-accent: #ff5a36;\n  --atri-canvas: #f9f8f6;\n  --atri-surface-1: #ffffff;\n  --atri-text-primary: #1c1c1e;\n}';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
     return createAtriaStatePanel(documentRef, kind, {
@@ -214,13 +215,12 @@ export async function mountPluginsUtility({
     return { root: frame.root, dispose() { disposed = true; for (const remove of listeners) remove(); for (const [node, placement] of placements) restorePlacement(node, placement); frame.root.remove(); } };
 }
 
-// Preference-only host bridge: move existing controls with their event handlers and
-// persistence, never the unfiltered User Settings drawer or generation controls.
+// Only advanced theme compatibility controls need their existing DOM adapter.
 export const PREFERENCE_CONTROLS = Object.freeze({
-    appearance: ['UI-presets-block', 'color-picker-block', 'customCSS', 'font_scale'],
-    language: ['UI-language-block'],
-    interface: ['send_on_enter', 'auto_scroll_chat_to_bottom', 'auto_save_msg_edits', 'confirm_message_delete', 'before_unload_guard_mode'],
-    accessibility: ['reduced_motion', 'fast_ui_mode'],
+    appearance: ['UI-presets-block', 'color-picker-block', 'customCSS'],
+    language: [],
+    interface: [],
+    accessibility: [],
 });
 
 export function mountSettingsUtility({ document: documentRef = globalThis.document, slot, body = slot, host } = {}) {
@@ -232,6 +232,10 @@ export function mountSettingsUtility({ document: documentRef = globalThis.docume
     grid.className = 'atria-preference-groups';
     grid.dataset.atriaSettingsPrimary = 'true';
     const placements = [];
+    const nativeControls = [];
+    const samplePaper = el(documentRef, 'aside', 'atria-reading-sample', undefined, grid);
+    el(documentRef, 'h3', '', translateShellText('Reading preview'), samplePaper);
+    const sample = el(documentRef, 'p', '', translateShellText('Morning light falls across the stone steps. Somewhere beyond the doorway, a page turns.'), samplePaper);
     const titles = { appearance: 'Appearance', language: 'Language', interface: 'Interface & behavior', accessibility: 'Accessibility' };
     for (const [id, controlIds] of Object.entries(PREFERENCE_CONTROLS)) {
         const group = documentRef.createElement('section');
@@ -242,6 +246,7 @@ export function mountSettingsUtility({ document: documentRef = globalThis.docume
         const controls = documentRef.createElement('div');
         controls.className = 'atria-preference-rows';
         group.append(title, controls);
+        nativeControls.push(mountAtriaPreferenceControls({ document: documentRef, group: controls, section: id, sample }));
         for (const controlId of controlIds) {
             const control = documentRef.getElementById(controlId);
             if (!control) continue;
@@ -250,12 +255,12 @@ export function mountSettingsUtility({ document: documentRef = globalThis.docume
             const placement = savePlacement(documentRef, node);
             if (!placement) continue;
             placements.push([node, placement]);
-            const row = documentRef.createElement(['color-picker-block', 'customCSS'].includes(controlId) ? 'details' : 'div');
+            const row = documentRef.createElement('details');
             row.className = 'atria-preference-row';
-            if (['color-picker-block', 'customCSS'].includes(controlId)) {
+            if (row.tagName === 'DETAILS') {
                 row.dataset.atriaSettingsCompatibility = 'preferences-only';
                 const summary = documentRef.createElement('summary');
-                summary.textContent = translateShellText(controlId === 'customCSS' ? 'Custom CSS' : 'Advanced appearance controls');
+                summary.textContent = translateShellText(controlId === 'customCSS' ? 'Custom CSS' : controlId === 'UI-presets-block' ? 'Theme compatibility' : 'Advanced appearance controls');
                 row.append(summary);
                 if (controlId === 'customCSS') {
                     const help = documentRef.createElement('p');
@@ -297,6 +302,7 @@ export function mountSettingsUtility({ document: documentRef = globalThis.docume
     frame.body.append(grid, destinations);
     body.replaceChildren(frame.root);
     return { root: frame.root, dispose() {
+        for (const controls of nativeControls) controls.dispose();
         for (const [node, placement] of placements.reverse()) restorePlacement(node, placement);
         frame.root.remove();
     } };

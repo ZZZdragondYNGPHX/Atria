@@ -1,6 +1,6 @@
 import { markStartupReadiness } from './scripts/native/startup-readiness.js';
 import { nativeSessionRuntime } from './scripts/native/session-runtime.js';
-import { runNativePlayGeneration } from './scripts/native/play-generation.js';
+import { createNativeGenerationController } from './scripts/native/generation-controller.js';
 import { createLogger } from './scripts/logging/logger.js';
 import { ChatSnapshotCache } from './scripts/atri-chat-snapshot-cache.js';
 import { createWorldInfoDispatchAttribution, markWorldInfoDispatch } from './scripts/atri-world-info-provenance.js';
@@ -7457,6 +7457,33 @@ function applyFinalizedAuthorsNoteInjections(anBefore = [], anAfter = []) {
     );
 }
 
+let nativeGenerationController;
+export async function GenerateNative(type, options) {
+    nativeGenerationController ||= createNativeGenerationController({
+        runtime: nativeSessionRuntime,
+        host: (requestSignal, assertCurrent, onAccepted) => ({
+            started: async generationType => {
+                generation_started = new Date();
+                deactivateSendButtons();
+                await eventSource.emit(event_types.GENERATION_STARTED, generationType, { signal: requestSignal }, false);
+            },
+            submitUser: text => sendMessageAsUser(text, undefined, null, false, name1, user_avatar, { signal: requestSignal, assertCurrent, onAccepted }),
+            commitAssistant: (generationType, text) => saveReply({ type: generationType, getMessage: text, publication: { signal: requestSignal, assertCurrent } }),
+            impersonate: text => Atria.shell?.getPlayHost?.()?.product?.composerApi?.setDraft(text),
+            gameApi: () => Atria.getContext()?.getCapabilityApi?.('game-runtime'),
+            orchestratorApi: () => Atria.getContext()?.getCapabilityApi?.('orchestrator'),
+            context: () => Atria.getContext(),
+            onChunk: chunk => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: chunk.text } })),
+            onState: projection => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: projection })),
+            ended: generationType => {
+                document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: '' } }));
+                unblockGeneration(generationType);
+            },
+        }),
+    });
+    try { return await nativeGenerationController.generate(type, options); } catch (error) { if (error.code === 'generation_cancelled' || error.name === 'AbortError') return; throw error; }
+}
+
 /**
  * MARK:Generate()
  * Runs a generation using the current chat context.
@@ -7468,37 +7495,11 @@ function applyFinalizedAuthorsNoteInjections(anBefore = [], anAfter = []) {
 export async function Generate(type, { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage, quietName, jsonSchema = null, depth = 0 } = {}, dryRun = false) {
     if (nativeSessionRuntime.active) {
         if (dryRun) throw new Error('Native prompt previews use the Native compiler, not the legacy prompt builder.');
-        abortController = new AbortController();
-        const requestSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
         const input = typeof pendingUserInputText === 'string' ? pendingUserInputText : String($('#send_textarea').val() || '');
         pendingUserInputText = null;
-        return runNativePlayGeneration({ runtime: nativeSessionRuntime, type, signal: requestSignal, input, quietPrompt: quiet_prompt,
-            host: {
-                started: async generationType => {
-                    generation_started = new Date();
-                    deactivateSendButtons();
-                    await eventSource.emit(event_types.GENERATION_STARTED, generationType, { signal: requestSignal }, false);
-                },
-                submitUser: async text => {
-                    await sendMessageAsUser(text);
-                    $('#send_textarea').val('').trigger('input');
-                },
-                commitAssistant: (generationType, text) => saveReply({ type: generationType, getMessage: text }),
-                impersonate: text => $('#send_textarea').val(text).trigger('input'),
-                gameApi: () => Atria.getContext()?.getCapabilityApi?.('game-runtime'),
-                orchestratorApi: () => Atria.getContext()?.getCapabilityApi?.('orchestrator'),
-                context: () => Atria.getContext(),
-                onChunk: chunk => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: chunk.text } })),
-                ended: generationType => {
-                    document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: '' } }));
-                    unblockGeneration(generationType);
-                },
-            },
-        }).catch(error => {
-            // Stop is a completed UI action; Core still rejects cancellation.
-            if (requestSignal.aborted) return;
-            throw error;
-        });
+        const scope = { sessionId: nativeSessionRuntime.snapshot.session.sessionId, branchId: nativeSessionRuntime.snapshot.revision.branchId, revisionId: nativeSessionRuntime.snapshot.revision.revisionId };
+        let accepted = false;
+        try { return await GenerateNative(type, { input, scope, signal, quietPrompt: quiet_prompt, onInputAccepted: () => { accepted = true; } }); } finally { if (accepted && String($('#send_textarea').val() || '') === input) $('#send_textarea').val('').trigger('input'); }
     }
     const nativeGenerationIntent = nativeSessionRuntime.active && !dryRun ? type : null;
     if (nativeSessionRuntime.active && !dryRun) {
@@ -9654,6 +9655,11 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
  * Stops the generation and any streaming if it is currently running.
  */
 export function stopGeneration() {
+    if (nativeGenerationController?.isRunning()) {
+        const stopped = nativeGenerationController.cancel('Clicked stop button');
+        if (stopped) void eventSource.emit(event_types.GENERATION_STOPPED);
+        return stopped;
+    }
     clearMessageProgressNotification();
 
     let stopped = false;
@@ -10014,9 +10020,10 @@ export function removeMacros(str) {
  * @param {boolean} [compact] Send as a compact display message.
  * @param {string} [name] Name of the user sending the message. Defaults to name1.
  * @param {string} [avatar] Avatar of the user sending the message. Defaults to user_avatar.
+ * @param {object} [publication] Native operation signal and scope guard.
  * @returns {Promise<any>} A promise that resolves to the message when it is inserted.
  */
-export async function sendMessageAsUser(messageText, messageBias, insertAt = null, compact = false, name = name1, avatar = user_avatar) {
+export async function sendMessageAsUser(messageText, messageBias, insertAt = null, compact = false, name = name1, avatar = user_avatar, publication = {}) {
     messageText = getRegexedString(messageText, regex_placement.USER_INPUT);
 
     const message = {
@@ -10044,7 +10051,15 @@ export async function sendMessageAsUser(messageText, messageBias, insertAt = nul
         message.mes = removeMacros(message.mes);
     }
 
-    await populateFileAttachment(message);
+    if (!nativeSessionRuntime.active) await populateFileAttachment(message);
+    publication.assertCurrent?.();
+    if (nativeSessionRuntime.active && insertAt === null) {
+        await nativeSessionRuntime.appendDraft(message, publication);
+        const index = nativeSessionRuntime.snapshot.timeline.length - 1;
+        await eventSource.emit(event_types.MESSAGE_SENT, index);
+        await eventSource.emit(event_types.USER_MESSAGE_RENDERED, index);
+        return chat[index];
+    }
     if (!nativeSessionRuntime.active) statMesProcess(message, 'user', characters, this_chid, '');
 
     chat_metadata.tainted = true;
@@ -11073,7 +11088,26 @@ function applyPostGenerationText(text, isImpersonate, isContinue) {
     return out;
 }
 
-export async function saveReply({ type, getMessage, fromStreaming = false, title = '', swipes = [], reasoning = '', imageUrls = [], reasoningSignature = null, reasoningBlocks = null, reasoningDetails = null, suppressEmit = false }) {
+export async function saveReply({ type, getMessage, fromStreaming = false, title = '', swipes = [], reasoning = '', imageUrls = [], reasoningSignature = null, reasoningBlocks = null, reasoningDetails = null, suppressEmit = false, publication = {} }) {
+    publication.assertCurrent?.();
+    if (nativeSessionRuntime.active && ['normal', 'continue', undefined].includes(type)) {
+        const message = { name: name2, is_user: false, is_system: false,
+            mes: power_user.trim_spaces ? getMessage.trim() : getMessage,
+            send_date: getMessageTimeStamp(), gen_started: generation_started, gen_finished: new Date(),
+            extra: { api: getGeneratingApi(), model: getGeneratingModel(), reasoning: reasoning || '', reasoning_duration: null, reasoning_signature: reasoningSignature } };
+        if (reasoningBlocks?.length) message.extra.reasoning_blocks = reasoningBlocks;
+        if (reasoningDetails?.length) message.extra.reasoning_details = reasoningDetails;
+        await processImageAttachment(message, { imageUrls });
+        if (power_user.message_token_count_enabled) message.extra.token_count = await resolveAssistantTokenCount((reasoning || '') + message.mes);
+        publication.assertCurrent?.();
+        await nativeSessionRuntime.appendDraft(message, publication);
+        const index = nativeSessionRuntime.snapshot.timeline.length - 1;
+        if (!fromStreaming && !suppressEmit) {
+            await eventSource.emit(event_types.MESSAGE_RECEIVED, index, type);
+            await eventSource.emit(event_types.CHARACTER_MESSAGE_RENDERED, index, type);
+        }
+        return chat[index];
+    }
     // Backward compatibility
     if (arguments.length > 1 && typeof arguments[0] !== 'object') {
         console.trace('saveReply called with positional arguments. Please use an object instead.');
@@ -22257,7 +22291,7 @@ export async function openNativeSession(sessionId, options = {}) {
     nativeSessionRuntime.configure({
         headers: getRequestHeaders,
         messages: () => chat,
-        isGenerating: () => is_send_press || is_group_generating,
+        isGenerating: () => is_send_press || is_group_generating || Boolean(nativeGenerationController?.isRunning()),
         error: (error, { fatal = true } = {}) => {
             if (fatal) stopGeneration();
             toastr.error(error.message, fatal ? 'Native Session write failed' : 'Native committed Timeline is immutable');
@@ -22272,6 +22306,13 @@ export async function openNativeSession(sessionId, options = {}) {
         revision: projection => {
             chat_metadata.integrity = projection.revisionId;
             chat_metadata.variables = cloneJsonValue(projection.metadata?.variables ?? {}) ?? {};
+        },
+        publish: projection => {
+            const canonical = projection.chat.map((message, index) => chat[index]?.atri_native?.messageId === message.atri_native?.messageId ? chat[index] : message);
+            chat.splice(0, chat.length, ...canonical);
+            chat_metadata.integrity = projection.revisionId;
+            chat_metadata.variables = cloneJsonValue(projection.metadata?.variables ?? {}) ?? {};
+            setChatServerState({ totalMessages: chat.length });
         },
         install: async projection => {
             document.body.dataset.atriaNativeSessionActive = 'true';

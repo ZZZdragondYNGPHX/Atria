@@ -83,7 +83,7 @@
     color: var(--atri-text-primary);
     font-family: var(--atri-font-display);
     font-size: var(--atri-text-large-title);
-    font-weight: 700;
+    font-weight: 400;
     letter-spacing: var(--atri-tracking-display);
     line-height: 1.12;
     overflow-wrap: anywhere;
@@ -188,8 +188,9 @@
     margin: 0;
     padding: 0 var(--atri-space-3-5, 14px);
     border: 0;
-    border-radius: var(--atri-radius-sm);
-    background: var(--atri-fill-hover);
+    border: 1px solid var(--atri-separator);
+    border-radius: var(--atri-radius-pill);
+    background: transparent;
     color: var(--atri-text-primary);
     font-family: var(--atri-font-sans);
     font-size: var(--atri-text-callout);
@@ -212,7 +213,8 @@
     background: var(--atri-fill-pressed);
 }
 
-.atria-button:active:not(:disabled) {
+.atria-button:active:not(:disabled):not(:focus-visible) {
+    transform: scale(.97);
     background: var(--atri-fill-strong);
 }
 
@@ -234,17 +236,17 @@
 }
 
 .atria-button[data-variant="primary"] {
-    background: var(--atri-accent);
+    background: var(--atri-ink);
     color: var(--atri-text-on-accent);
     font-weight: 600;
 }
 
 .atria-button[data-variant="primary"]:hover:not(:disabled) {
-    background: var(--atri-accent-hover);
+    background: #39393b;
 }
 
 .atria-button[data-variant="primary"]:active:not(:disabled) {
-    background: var(--atri-accent-pressed);
+    background: #141416;
 }
 
 .atria-button[data-variant="tinted"] {
@@ -1161,12 +1163,12 @@ button.atria-list-row__main:focus-visible {
 
 body.reduced-motion .atria-spinner,
 [data-atria-reduced-motion="true"] .atria-spinner {
-    animation-duration: 2.4s !important;
+    animation: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .atria-spinner {
-        animation-duration: 2.4s;
+    .atria-spinner, .atria-skeleton {
+        animation: none;
     }
 }
 
@@ -1174,16 +1176,33 @@ body.reduced-motion .atria-spinner,
     display: block;
     border-radius: var(--atri-radius-sm);
     background: linear-gradient(90deg, var(--atri-fill) 0%, var(--atri-fill-hover) 50%, var(--atri-fill) 100%);
-    background-size: 200% 100%;
-    animation: atria-shimmer 1.4s ease-in-out infinite;
+    animation: atria-loading-pulse 1.4s linear infinite alternate;
 }
 
-@keyframes atria-shimmer {
-    from { background-position: 100% 0; }
-    to { background-position: -100% 0; }
+@keyframes atria-loading-pulse {
+    from { opacity: .55; }
+    to { opacity: 1; }
 }
 
 /* ── Runtime card primitive ────────────────────────────────────────────── */
+
+/* Restore visible native checks inside the product frame. Legacy theme checks
+ * use generated glyphs; the new preference switches have their own treatment. */
+.atria-app-shell input[type="checkbox"]:not([role="switch"]),
+.atri-runtime input[type="checkbox"] {
+    appearance: auto;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    padding: 0;
+    border: initial;
+    background: initial;
+    box-shadow: none;
+    accent-color: var(--atri-ink);
+}
+.atria-app-shell input[type="checkbox"]:not([role="switch"])::before,
+.atri-runtime input[type="checkbox"]::before { content: none; }
 
 .atria-runtime-card {
     min-width: 0;

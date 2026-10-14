@@ -49,6 +49,8 @@ function restoreAttribute(element, name, previousValue) {
 export function mountNativePlayHost({
     document: documentRef = globalThis.document,
     stage,
+    navigation,
+    accountStorage,
 } = {}) {
     if (!documentRef?.body || typeof documentRef.createElement !== 'function') {
         throw new Error('A6 Native Play Host requires a document');
@@ -78,6 +80,7 @@ export function mountNativePlayHost({
     const origin = documentRef.createComment('atria-native-play-host-origin');
     const previousSheldMarker = native.sheld.getAttribute('data-atria-native-play-mounted');
     const previousSheldClass = native.sheld.getAttribute('class');
+    const previousSheldInert = native.sheld.getAttribute('inert');
     const previousSheldAriaHidden = native.sheld.getAttribute('aria-hidden');
     const previousStageMarker = stage.getAttribute('data-atria-native-play-mounted');
 
@@ -95,6 +98,7 @@ export function mountNativePlayHost({
     stage.replaceChildren(root);
     native.sheld.classList.add('atria-native-play-abi');
     native.sheld.setAttribute('aria-hidden', 'true');
+    native.sheld.inert = true;
     native.sheld.dataset.atriaNativePlayMounted = 'true';
     root.appendChild(native.sheld);
 
@@ -102,8 +106,9 @@ export function mountNativePlayHost({
         document: documentRef,
         root,
         native,
+        navigation,
     });
-    const productControls = mountNativePlayControls({ document: documentRef, root });
+    const productControls = mountNativePlayControls({ document: documentRef, root, navigation, accountStorage });
     stage.dataset.atriaNativePlayMounted = 'true';
 
     let mounted = true;
@@ -283,6 +288,8 @@ export function mountNativePlayHost({
             restoreAttribute(native.sheld, 'data-atria-native-play-mounted', previousSheldMarker);
             restoreAttribute(native.sheld, 'class', previousSheldClass);
             restoreAttribute(native.sheld, 'aria-hidden', previousSheldAriaHidden);
+            native.sheld.inert = previousSheldInert !== null;
+            restoreAttribute(native.sheld, 'inert', previousSheldInert);
             restoreAttribute(stage, 'data-atria-native-play-mounted', previousStageMarker);
             stage.replaceChildren(...originalStageChildren);
             root.remove();

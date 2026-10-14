@@ -103,6 +103,8 @@ export function createAtriaShellEnvironment(root, { window: windowRef = globalTh
     windowRef.addEventListener?.('resize', scheduleRefresh);
     windowRef.addEventListener?.('orientationchange', scheduleRefresh);
     windowRef.visualViewport?.addEventListener?.('resize', scheduleRefresh);
+    const motionQuery = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
+    motionQuery?.addEventListener?.('change', scheduleRefresh);
     windowRef.document?.addEventListener?.('focusin', scheduleRefresh);
     windowRef.document?.addEventListener?.('focusout', scheduleRefresh);
 
@@ -121,6 +123,7 @@ export function createAtriaShellEnvironment(root, { window: windowRef = globalTh
             windowRef.removeEventListener?.('resize', scheduleRefresh);
             windowRef.removeEventListener?.('orientationchange', scheduleRefresh);
             windowRef.visualViewport?.removeEventListener?.('resize', scheduleRefresh);
+            motionQuery?.removeEventListener?.('change', scheduleRefresh);
             windowRef.document?.removeEventListener?.('focusin', scheduleRefresh);
             windowRef.document?.removeEventListener?.('focusout', scheduleRefresh);
         },

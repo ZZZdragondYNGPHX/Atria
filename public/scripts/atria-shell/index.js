@@ -91,6 +91,8 @@ export function initializeAtriaShellFoundation({
             playHost = mountNativePlayHost({
                 document: documentRef,
                 stage: shell.slots.stage,
+                navigation,
+                accountStorage,
             });
             workspaceHost = createAtriaWorkspaceHost({
                 document: documentRef,

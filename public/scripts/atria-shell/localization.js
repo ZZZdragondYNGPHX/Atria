@@ -809,7 +809,7 @@ export const SHELL_TEXT_KEYS = Object.freeze({
     'Loading plugins from your installed works…': 'atria.utilities.plugins.loading',
     '${0} contributions': 'atria.utilities.contributions',
     'Declared contributions': 'atria.utilities.declared.contributions',
-    'Plugins included with your installed works will appear here.': 'atria.utilities.plugins.empty',
+    'Plugins included with your installed works will appear here.': 'atria.utilities.plugins.emptyDescription',
     'Saving…': 'atria.utilities.saving',
     'Advanced · Legacy extensions': 'atria.utilities.advanced.legacy.extensions',
     'Native Plugins': 'atria.utilities.native.plugins',

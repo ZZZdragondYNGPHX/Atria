@@ -45,7 +45,7 @@ for (const language of ['zh-cn']) test(language + ' formats copy, preserves lite
     const registry = createCommandRegistry();
     registry.register({ id: 'owned', title: 'Open Library', run() {} });
     registry.register({ id: 'user', title: 'Save', literalTitle: true, run() {} });
-    expect(registry.search('打开书库').map(item => item.id)).toEqual(['owned']);
+    expect(registry.search('打开资源库').map(item => item.id)).toEqual(['owned']);
     expect(registry.get('user').title).toBe('Save');
     expect(registry.search('保存').map(item => item.id)).not.toContain('user');
 });

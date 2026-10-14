@@ -131,6 +131,38 @@ describe('N9 Native Play product controls', () => {
         expect(findButton(controls.landing, 'Try again')).toBeTruthy(); controls.dispose();
     });
 
+    test('Play resumes the remembered available story and guards the delayed install', async () => {
+        let route = { domain: 'play', child: null }, changed;
+        const navigation = { getRoute: () => route, subscribe: listener => { changed = listener; return () => {}; } };
+        const accountStorage = { getItem: () => 'remembered', setItem: jest.fn() };
+        globalThis.fetch = jest.fn(async path => response(path.endsWith('/sessions') ? [
+            { sessionId: 'latest', dependency: { status: 'ready' } },
+            { sessionId: 'remembered', dependency: { status: 'ready' } },
+        ] : []));
+        const controls = mountNativePlayControls({ document, root: document.getElementById('root'), navigation, accountStorage });
+        await flush();
+        expect(Atria.openNativeSession).toHaveBeenCalledWith('remembered', expect.objectContaining({ acceptGuard: expect.any(Function) }));
+        const guard = Atria.openNativeSession.mock.calls[0][1].acceptGuard;
+        expect(guard()).toBe(true);
+        route = { domain: 'library', child: null }; changed();
+        expect(guard()).toBe(false);
+        controls.dispose();
+    });
+
+    test('a missing exact work never resumes its story or creates a replacement', async () => {
+        const navigation = { getRoute: () => ({ domain: 'play', child: null }), subscribe: () => () => {} };
+        globalThis.fetch = jest.fn(async path => response(path.endsWith('/sessions') ? [
+            { sessionId: 'unavailable', dependency: { status: 'missing' } },
+        ] : []));
+        const controls = mountNativePlayControls({ document, root: document.getElementById('root'), navigation,
+            accountStorage: { getItem: () => 'unavailable' } });
+        await flush();
+        expect(Atria.openNativeSession).not.toHaveBeenCalled();
+        expect(controls.landing.hidden).toBe(false);
+        expect(findButton(controls.landing, 'Continue').disabled).toBe(true);
+        controls.dispose();
+    });
+
     test('active Native Session exposes product actions, Timeline and Context diagnostics', async () => {
         const root = document.getElementById('root');
         const sheld = document.getElementById('sheld');

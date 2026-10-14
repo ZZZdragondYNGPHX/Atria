@@ -143,6 +143,7 @@ function selectInput(documentRef, value, values, label) {
     const select = documentRef.createElement('select');
     select.className = 'text_pole';
     select.setAttribute('aria-label', t(label));
+    select.name = label;
     for (const item of values) {
         const option = documentRef.createElement('option');
         option.value = item;
@@ -228,7 +229,7 @@ function projectListCard(documentRef, record, host, onDeleted) {
 async function renderProjectList(documentRef, root, host) {
     let projects = await nativeStudioClient.listProjects({ summary: true });
     root.dataset.atriaBuildProjects = 'true';
-    root.append(heading(documentRef, 'Build Projects', 'Create and refine your interactive works.'));
+    root.append(heading(documentRef, 'Studio projects', 'Create and refine your interactive works.'));
     const creation = documentRef.createElement('details'); creation.className = 'atri-studio-details';
     const newProject = documentRef.createElement('summary'); newProject.textContent = t('New Project');
     const name = textInput(documentRef, '', 'Project name'); name.required = true; name.maxLength = 160;
@@ -368,12 +369,12 @@ function renderActorsEditor(documentRef, body, state, stageProject) {
         button(documentRef, 'Actor fields', () => {
             if (!state.confirmEditorLeave()) return;
             state.actorCollection = false; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="Actors resource"]')?.focus();
+            workspaceRoot.querySelector('[name="Actors resource"]')?.focus();
         }, { active: !collection, disabled: !actors.length || duplicateIds || !collection }),
         button(documentRef, 'Collection Source', () => {
             if (!state.confirmEditorLeave()) return;
             state.actorCollection = true; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="Actors collection JSON"]')?.focus();
+            workspaceRoot.querySelector('[data-atria-studio-source]')?.focus();
         }, { active: collection, disabled: collection }),
     ));
     if (!actors.length) body.append(panel(documentRef, 'empty', 'No Actors', 'Use collection Source to define project Actors. An empty collection is valid.'));
@@ -388,7 +389,7 @@ function renderActorsEditor(documentRef, body, state, stageProject) {
             state.collectionSelection.actors = actors.findIndex(item => item.actorId === chooser.value);
             state.selectedGraphNode = null;
             state.renderEditor(); void state.renderInspector();
-            workspaceRoot.querySelector('[aria-label="Actors resource"]')?.focus();
+            workspaceRoot.querySelector('[name="Actors resource"]')?.focus();
         });
         body.append(field(documentRef, 'Actor', chooser));
         state.collectionSelection.actors = actors.findIndex(item => item.actorId === state.actorSelection);
@@ -410,12 +411,12 @@ function renderEntryPointsEditor(documentRef, body, state, stageProject) {
         button(documentRef, 'EntryPoint fields', () => {
             if (!state.confirmEditorLeave()) return;
             state.entryPointCollection = false; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="EntryPoints resource"]')?.focus();
+            workspaceRoot.querySelector('[name="EntryPoints resource"]')?.focus();
         }, { active: !collection, disabled: !entries.length || duplicateIds || !collection }),
         button(documentRef, 'Collection Source', () => {
             if (!state.confirmEditorLeave()) return;
             state.entryPointCollection = true; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="EntryPoints collection JSON"]')?.focus();
+            workspaceRoot.querySelector('[data-atria-studio-source]')?.focus();
         }, { active: collection, disabled: collection }),
     ));
     if (!entries.length) body.append(panel(documentRef, 'empty', 'No EntryPoints', 'Repair collection Source with at least one EntryPoint before review.'));
@@ -430,7 +431,7 @@ function renderEntryPointsEditor(documentRef, body, state, stageProject) {
             state.collectionSelection.entrypoints = entries.findIndex(item => item.entryPointId === chooser.value);
             state.selectedGraphNode = null;
             state.renderEditor(); void state.renderInspector();
-            workspaceRoot.querySelector('[aria-label="EntryPoints resource"]')?.focus();
+            workspaceRoot.querySelector('[name="EntryPoints resource"]')?.focus();
         });
         body.append(field(documentRef, 'EntryPoint', chooser));
         state.collectionSelection.entrypoints = entries.findIndex(item => item.entryPointId === state.entryPointSelection);
@@ -459,12 +460,12 @@ function renderLibraryContentEditor(documentRef, body, state, stageProject, view
         button(documentRef, isWorld ? 'World fields' : 'Knowledge fields', () => {
             if (!state.confirmEditorLeave()) return;
             state[collectionKey] = false; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="' + title + ' resource"]')?.focus();
+            workspaceRoot.querySelector('[name="' + title + ' resource"]')?.focus();
         }, { active: !collection, disabled: !worlds.length || ambiguous || !collection }),
         button(documentRef, 'Collection Source', () => {
             if (!state.confirmEditorLeave()) return;
             state[collectionKey] = true; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="' + title + ' collection JSON"]')?.focus();
+            workspaceRoot.querySelector('[data-atria-studio-source]')?.focus();
         }, { active: collection, disabled: collection }),
     ));
     if (!worlds.length) body.append(panel(documentRef, 'empty', 'No project-owned resources', 'Use Source below to define this collection, or attach an available Library resource.'));
@@ -477,7 +478,7 @@ function renderLibraryContentEditor(documentRef, body, state, stageProject, view
             if (!state.confirmEditorLeave()) { chooser.value = state[selectionKey]; return; }
             state[selectionKey] = chooser.value; state.selectedGraphNode = null;
             state.renderEditor(); void state.renderInspector();
-            workspaceRoot.querySelector('[aria-label="' + title + ' resource"]')?.focus();
+            workspaceRoot.querySelector('[name="' + title + ' resource"]')?.focus();
         });
         body.append(field(documentRef, isWorld ? 'World' : 'Knowledge', chooser));
         state.collectionSelection[view] = worlds.findIndex(item => identity(item) === state[selectionKey]);
@@ -552,6 +553,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     shell.dataset.atriaStudioWorkspace = projectId;
     root.replaceChildren(shell);
     const environment = createAtriaShellEnvironment(shell);
+    state.aiOpen = environment.get().mode === 'expanded';
     let inspectorSequence = 0;
 
     const topbar = documentRef.createElement('header');

@@ -176,26 +176,23 @@ export function projectNativeSession(snapshot) {
  */
 export function timelineIntents(snapshot, messages) {
     const committedLength = assertCommittedProjection(snapshot, messages);
-    const commands = [];
-    for (const message of messages.slice(committedLength)) {
-        if (message?.atri_native?.messageId) {
-            throw committedTimelineMutation('Committed Native Timeline messages cannot be reordered or reinserted');
-        }
-        if (message.atri_native?.envelope && message.atri_native?.projection) throw new Error('Draft must not mix Turn Envelope and projection');
-        const envelope = message.atri_native?.envelope ? assertTurnEnvelope(message.atri_native.envelope) : null;
-        if (envelope && envelope.narrative !== (message.mes ?? '')) throw new Error('Turn Envelope narrative differs from Draft content');
-        commands.push({
-            type: 'append',
-            draft: {
-                role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant',
-                ...(!message.is_user && !message.is_system && snapshot.entryPoint.actorIds.length
-                    ? { actorId: snapshot.entryPoint.primaryActorId ?? snapshot.entryPoint.actorIds[0] }
-                    : {}),
-                ...(envelope ? { envelope } : { content: message.mes ?? '',
-                    ...(message.atri_native?.projection ? { projection: assertMessageProjection(message.atri_native.projection, message.mes ?? '') } : {}) }),
-                metadata: runtimeMetadata(message),
-            },
-        });
+    return messages.slice(committedLength).map(message => ({ type: 'append', draft: nativeMessageDraft(snapshot, message) }));
+}
+
+export function nativeMessageDraft(snapshot, message) {
+    if (message?.atri_native?.messageId) {
+        throw committedTimelineMutation('Committed Native Timeline messages cannot be reordered or reinserted');
     }
-    return commands;
+    if (message.atri_native?.envelope && message.atri_native?.projection) throw new Error('Draft must not mix Turn Envelope and projection');
+    const envelope = message.atri_native?.envelope ? assertTurnEnvelope(message.atri_native.envelope) : null;
+    if (envelope && envelope.narrative !== (message.mes ?? '')) throw new Error('Turn Envelope narrative differs from Draft content');
+    return {
+        role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant',
+        ...(!message.is_user && !message.is_system && snapshot.entryPoint.actorIds.length
+            ? { actorId: snapshot.entryPoint.primaryActorId ?? snapshot.entryPoint.actorIds[0] }
+            : {}),
+        ...(envelope ? { envelope } : { content: message.mes ?? '',
+            ...(message.atri_native?.projection ? { projection: assertMessageProjection(message.atri_native.projection, message.mes ?? '') } : {}) }),
+        metadata: runtimeMetadata(message),
+    };
 }

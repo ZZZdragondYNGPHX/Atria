@@ -126,7 +126,7 @@ describe('R7G WorkspaceHost', () => {
         host.openSkill({ kind: 'package', packageId: 'p', packageVersionId: 'v1' }, 'name/a'); await flushWorkspace();
         expect(navigation.getRoute().domain).toBe('play');
         expect(host.getActiveWorkspace().kind).toBe('plugins');
-        expect(shell.root.querySelector('[data-atria-utility="plugins"]')?.getAttribute('aria-current')).toBe('page');
+        expect(shell.root.querySelector('[data-atria-utility-shortcut="plugins"]')?.getAttribute('aria-current')).toBe('page');
         expect(JSON.parse(decodeURIComponent(navigation.getRoute().child.id.slice(7)))).toEqual({ scope: { kind: 'package', packageId: 'p', packageVersionId: 'v1' }, name: 'name/a' });
         host.openOrchestration('preset:1', 'Preset'); await flushWorkspace();
         expect(routeDescriptor(navigation.getRoute())).toMatchObject({ kind: 'agents', section: 'orchestration', presetId: 'preset:1' });

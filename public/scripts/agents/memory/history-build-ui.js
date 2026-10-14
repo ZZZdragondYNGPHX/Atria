@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { historyFloors } from './history-build.js';
+import { translateShellText as t, formatShellText } from '../../atria-shell/localization.js';
 
 export async function openHistoryBuildPopup(context, builder) {
     const root = document.createElement('section'); root.className = 'memory-os-history';
     // All dynamic data below is rendered with textContent, never HTML.
-    root.innerHTML = `<h3>Memory OS · 历史构建</h3>
-        <p>分批抽取事实与关系，全部成功后一次保存。关闭窗口会取消运行。重建替换自动记忆，保留用户修正及其依赖；原聊天与外部状态不改写。</p>
+    const html = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' })[char]);
+    root.innerHTML = `<h3>${html(t('Memory OS · History extraction'))}</h3>
+        <p>${html(t('Facts and relations are extracted in batches and saved only when every batch succeeds. Closing cancels the task. Rebuilding replaces automatic memory and preserves user corrections and their dependencies. Story messages and external state are preserved.'))}</p>
         <form>
-            <label>范围 <select name="range" aria-label="历史范围"><option value="50">最近 50 条</option><option value="100">最近 100 条</option><option value="500">最近 500 条</option><option value="all">全部</option><option value="custom">自定义</option></select></label>
-            <div><label>起始楼层（从 0 开始） <input name="from" type="number" min="0" value="0"></label>
-            <label>结束楼层（包含） <input name="to" type="number" min="0"></label></div>
-            <label>方式 <select name="mode" aria-label="构建方式"><option value="append">补建（跳过已处理来源）</option><option value="rebuild">重建自动记忆（保留用户修正）</option></select></label>
-            <p>使用当前记忆抽取连接与预设；可能发起多次模型请求。任一批失败则不发布本轮抽取结果。</p>
-            <button class="menu_button" type="submit">开始构建</button>
-            <button class="menu_button" type="button" data-cancel disabled>取消构建</button>
-            <button class="menu_button" type="button" data-rollback>回滚最近一次构建</button>
+            <label>${html(t('Range'))} <select name="range" aria-label="${html(t('History range'))}"><option value="50">${html(t('Last 50 messages'))}</option><option value="100">${html(t('Last 100 messages'))}</option><option value="500">${html(t('Last 500 messages'))}</option><option value="all">${html(t('All'))}</option><option value="custom">${html(t('Custom'))}</option></select></label>
+            <div><label>${html(t('First message index, starting at 0'))} <input name="from" type="number" min="0" value="0"></label>
+            <label>${html(t('Last message index, inclusive'))} <input name="to" type="number" min="0"></label></div>
+            <label>${html(t('Method'))} <select name="mode" aria-label="${html(t('Extraction method'))}"><option value="append">${html(t('Add missing sources'))}</option><option value="rebuild">${html(t('Rebuild automatic memory, preserving user corrections'))}</option></select></label>
+            <p>${html(t('Uses the current extraction connection and preset. This may send several model requests. If any batch fails, none of this task’s extracted results are published.'))}</p>
+            <button class="menu_button" type="submit">${html(t('Start extraction'))}</button>
+            <button class="menu_button" type="button" data-cancel disabled>${html(t('Cancel extraction'))}</button>
+            <button class="menu_button" type="button" data-rollback>${html(t('Roll back latest extraction'))}</button>
         </form>
-        <progress max="1" value="0" aria-label="历史构建进度"></progress><p role="status">尚未开始</p><pre></pre>
-        <p>回滚保留已分配的来源 ID 和 Episode。若构建后新增或修改了事实／图谱／用户修正，回滚会拒绝覆盖这些修改。</p>`;
+        <progress max="1" value="0" aria-label="${html(t('History extraction progress'))}"></progress><p role="status">${html(t('Not started'))}</p><pre></pre>
+        <p>${html(t('Rollback preserves assigned source IDs and episodes. It refuses to overwrite facts, graph changes or user corrections made after extraction.'))}</p>`;
     const form = root.querySelector('form'); const status = root.querySelector('[role="status"]'); const details = root.querySelector('pre');
     root.style.textAlign = 'left'; form.style.display = 'grid'; form.style.gap = '10px'; details.style.whiteSpace = 'pre-wrap'; details.style.overflowWrap = 'anywhere';
     for (const label of root.querySelectorAll('label')) { label.style.display = 'flex'; label.style.flexDirection = 'column'; label.style.gap = '4px'; }
@@ -34,10 +36,10 @@ export async function openHistoryBuildPopup(context, builder) {
     };
     const onProgress = report => {
         if (disposed) return;
-        const labels = { capturing: '准备来源', extracting: '抽取中', committing: '保存中', completed: '已完成', unchanged: '无新增来源', cancelled: '已取消', failed: '失败，未发布抽取结果' };
-        status.textContent = `${labels[report.status] || report.status} · ${report.completed}/${report.total} 批 · 跳过 ${report.skipped} 条 · 错误 ${report.errors.length}`;
+        const labels = { capturing: t('Preparing sources'), extracting: t('Extracting'), committing: t('Saving'), completed: t('Completed'), unchanged: t('No new sources'), cancelled: t('Cancelled'), failed: t('Failed. Extracted results were not published.') };
+        status.textContent = formatShellText('${0} · ${1}/${2} batches · ${3} skipped · ${4} errors', [labels[report.status] || report.status, report.completed, report.total, report.skipped, report.errors.length]);
         progress.max = Math.max(1, report.total); progress.value = report.completed;
-        details.textContent = [...report.errors.map(error => `${error.batch ? `批次 ${error.batch}: ` : ''}${error.message}`), report.reason || ''].filter(Boolean).join('\n');
+        details.textContent = [...report.errors.map(error => `${error.batch ? formatShellText('Batch ${0}: ', [error.batch]) : ''}${error.message}`), report.reason || ''].filter(Boolean).join('\n');
     };
     form.addEventListener('submit', async event => {
         event.preventDefault(); if (busy) return;
@@ -48,11 +50,11 @@ export async function openHistoryBuildPopup(context, builder) {
             await builder.run(context, { floors, mode, signal: controller.signal, onProgress });
         } catch (error) { if (!disposed) status.textContent = error.message; } finally { if (!disposed) setBusy(false); }
     });
-    cancel.addEventListener('click', () => { controller?.abort(); cancel.disabled = true; status.textContent = '正在取消…'; });
+    cancel.addEventListener('click', () => { controller?.abort(); cancel.disabled = true; status.textContent = t('Cancelling…'); });
     root.querySelector('[data-rollback]').addEventListener('click', async () => {
         if (busy) return;
         setBusy(true);
-        try { await builder.rollback(context); if (!disposed) status.textContent = '最近一次构建已回滚'; } catch (error) { if (!disposed) status.textContent = error.message; } finally { if (!disposed) setBusy(false); }
+        try { await builder.rollback(context); if (!disposed) status.textContent = t('Latest extraction rolled back'); } catch (error) { if (!disposed) status.textContent = error.message; } finally { if (!disposed) setBusy(false); }
     });
     try { await context.callGenericPopup(root, context.POPUP_TYPE.TEXT, '', { wide: true, allowVerticalScrolling: true }); } finally { disposed = true; controller?.abort(); }
 }

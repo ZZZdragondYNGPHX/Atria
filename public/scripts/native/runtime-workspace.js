@@ -16,10 +16,11 @@ import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
 import { assertComputeBudget } from '../../shared/native-compute-budget.js';
 import { mountCredentialTargetReview } from './credential-target-review.js';
+import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
 
 const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
-const roleLabels = { illustration_prompt: '绘图提示词', intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
+const roleLabels = { illustration_prompt: 'Illustration prompt', intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
 const roles = ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search', 'illustration_prompt'];
@@ -158,10 +159,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }
             if (!disposed && panel.isConnected) button('Check setup again', () => refresh(), content);
         };
-        let checked = false;
-        panel.addEventListener('toggle', () => {
-            if (panel.open && !checked) { checked = true; void refresh(true); }
-        });
+        // Inspect dependencies on entry so the first missing item is visible.
+        void refresh(true);
     }
     function renderList() {
         editorSequence += 1;
@@ -231,15 +230,15 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         let serialize;
         if (section === 'connections') {
             let fields = group(form, 'Provider connection');
-            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.mcp', 'MCP tools and resources'], ['provider.a2a', 'A2A agent'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI 官方图片'], ['provider.novelai-image-compatible', 'NovelAI 第三方兼容图片'], ['provider.comfyui-image', 'ComfyUI 图片工作流'], ['provider.openai-images', 'OpenAI Images API'], ['provider.gemini-image', 'Gemini 原生图片'], ['provider.sd-webui-image', 'SD WebUI 图片'], ['provider.forge-image', 'Forge 图片'], ['provider.runninghub-image', 'RunningHub 图片工作流']]);
+            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.mcp', 'MCP tools and resources'], ['provider.a2a', 'A2A agent'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI images'], ['provider.novelai-image-compatible', 'NovelAI-compatible images'], ['provider.comfyui-image', 'ComfyUI image workflows'], ['provider.openai-images', 'OpenAI Images API'], ['provider.gemini-image', 'Gemini images'], ['provider.sd-webui-image', 'SD WebUI images'], ['provider.forge-image', 'Forge images'], ['provider.runninghub-image', 'RunningHub image workflows']]);
             const endpoint = field(fields, 'Service endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
             const imageFields = node('div', undefined, fields);
             notice('Use https://image.novelai.net/ai/generate-image for NovelAI, or the full generation URL for a compatible provider. Only the NovelAI generate protocol is supported; relay protocols are not inferred.', imageFields);
-            const imageCapabilities = field(imageFields, '第三方图片能力（按服务文档填写 JSON）', value.options?.imageCapabilities ? JSON.stringify(value.options.imageCapabilities, null, 2) : '', undefined, true);
-            const officialRelay = button('采用官方协议透传配置', () => { imageCapabilities.value = JSON.stringify(officialNovelaiCapabilities(), null, 2); }, imageFields);
+            const imageCapabilities = field(imageFields, 'Image capabilities (JSON from your provider documentation)', value.options?.imageCapabilities ? JSON.stringify(value.options.imageCapabilities, null, 2) : '', undefined, true);
+            const officialRelay = button('Use official protocol forwarding', () => { imageCapabilities.value = JSON.stringify(officialNovelaiCapabilities(), null, 2); }, imageFields);
             notice('Use this configuration when the relay forwards official NovelAI requests unchanged. If it transforms responses or limits models or parameters, follow its documentation.', imageFields);
             notice('responseFormat: zip / json (images[].image base64) / png. Declare model IDs, characterPrompts, sm, maxPixels, maxSteps, samplers and noiseSchedules in models.', imageFields);
-            const imageExample = node('details', undefined, imageFields); node('summary', '能力格式示例（不代表你的服务支持）', imageExample);
+            const imageExample = node('details', undefined, imageFields); node('summary', 'Capability format example (check provider support)', imageExample);
             node('pre', JSON.stringify({ responseFormat: 'zip', models: [officialNovelaiCapabilities().models[0]] }, null, 2), imageExample);
             const compatibility = node('div', undefined, fields);
             const schemaMode = field(compatibility, 'Tool schema compatibility', value.options?.toolSchemaMode || 'json-schema',
@@ -261,7 +260,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             fields = group(form, 'Authentication');
             const secret = field(fields, 'Stored Secret', value.secretRef?.secretId, [['', 'Choose…']]); secret.required = true;
             const syncAuthentication = () => {
-                secret.required = !['provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image'].includes(adapter.value);
+                secret.required = connectionRequiresSecret(adapter.value);
                 if (secret.options[0]) secret.options[0].textContent = translateShellText(secret.required ? 'Choose…' : 'No authentication');
             };
             adapter.addEventListener('change', syncAuthentication); syncAuthentication();
@@ -337,7 +336,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     if (minimum) options.minimumOutputTokens = minimum;
                 }
                 const result = { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value };
-                if (!secret.value && ['provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image'].includes(adapter.value)) delete result.secretRef;
+                if (!secret.value && !connectionRequiresSecret(adapter.value)) delete result.secretRef;
                 else result.secretRef = { scope: 'player', secretId: secret.value };
                 return result;
             };
@@ -501,13 +500,13 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const attempts = number(fields, 'Maximum fallback attempts', value.policy?.maxFallbackAttempts ?? 0, 0);
             notice('Fallback mode is chosen per request: automatic, confirm or disabled. Game Runtime requests automatic; other callers default to disabled. Zero attempts disables fallback.', fields);
             const requirements = field(fields, 'Required capabilities (comma separated)', value.requirements?.join(', ') || '');
-            fields = group(form, '共享计算额度', '同一 Run 操作或 Project Task 的实际发送共用额度，重试和 rerank 也计入。费用未知的已发送请求保留估计占用。');
-            const enabled = field(fields, '启用共享发送额度'); enabled.type = 'checkbox'; enabled.checked = Boolean(value.executionPolicy?.computeBudget);
-            const requests = number(fields, '最大发送次数', value.executionPolicy?.computeBudget?.maxRequests ?? '', 1, 32); requests.step = '1';
-            const tokens = number(fields, 'Token 占用上限', value.executionPolicy?.computeBudget?.maxTokens ?? '', 1); tokens.step = '1';
+            fields = group(form, 'Shared compute limits', 'Requests in one run or project task share these limits, including retries and reranking. Sent requests retain their estimated usage when cost is unknown.');
+            const enabled = field(fields, 'Enable shared request limits'); enabled.type = 'checkbox'; enabled.checked = Boolean(value.executionPolicy?.computeBudget);
+            const requests = number(fields, 'Maximum request count', value.executionPolicy?.computeBudget?.maxRequests ?? '', 1, 32); requests.step = '1';
+            const tokens = number(fields, 'Token usage limit', value.executionPolicy?.computeBudget?.maxTokens ?? '', 1); tokens.step = '1';
             const syncBudget = () => { for (const input of [requests, tokens]) { input.disabled = !enabled.checked; input.required = enabled.checked; } };
             enabled.addEventListener('change', syncBudget); syncBudget();
-            notice('这是发送次数和 Token 估计占用限制。价格及网关隐藏重试不可知时，金额仍未知。取消设置不会退还同一任务已发生的消费。', fields);
+            notice('These limits track request counts and estimated tokens. Cost stays unknown when pricing or gateway retries are unreported. Cancelling configuration does not refund usage already incurred by this task.', fields);
             const localEnabled = field(fields, 'Enable local work budget'); localEnabled.type = 'checkbox'; localEnabled.checked = Boolean(value.executionPolicy?.computeBudget?.localWork);
             const localJobs = number(fields, 'Local work count', value.executionPolicy?.computeBudget?.localWork?.maxJobs ?? 32, 1, 32);
             const localItems = number(fields, 'Local work items', value.executionPolicy?.computeBudget?.localWork?.maxItems ?? 10000, 1, 10000);
@@ -613,10 +612,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const snapshot = result.snapshot;
         node('h3', result.preview ? 'Compiled preview — no request sent' : 'Latest effective request', parent);
         notice(fmt('Input: ${0} / ${1} tokens · reserved output: ${2}', [snapshot.diagnostics.inputTokens, snapshot.contextPlan.budget.maxTokens, snapshot.contextPlan.budget.reservedOutputTokens]), parent);
-        notice(result.preview ? '仅预览，未产生发送费用。' : '显示本次请求的实际发送记录；金额、上游身份或缓存命中未报告时保持未知。', parent);
-        for (const [title, value] of [['Effective Request', snapshot.diagnostics.effectiveConfig], ['能力与执行决定', { capabilities: snapshot.capabilities, execution: snapshot.diagnostics.executionPlan, recovery: snapshot.diagnostics.failurePlan }],
-            ['共享发送记录', result.routing?.compute ?? { configured: false, observationScope: 'unavailable', currencyStatus: 'unavailable' }],
-            ['Provider 观察', { observation: result.response?.observation ?? null, usage: result.response?.usage ?? null, upstreamIdentity: result.response?.observation?.upstreamIdentity ?? 'unknown' }],
+        notice(result.preview ? 'Preview only. No request was sent.' : 'Actual request records. Cost, upstream identity and cache hits stay unknown when unreported.', parent);
+        for (const [title, value] of [['Effective Request', snapshot.diagnostics.effectiveConfig], ['Capabilities and execution decisions', { capabilities: snapshot.capabilities, execution: snapshot.diagnostics.executionPlan, recovery: snapshot.diagnostics.failurePlan }],
+            ['Shared request records', result.routing?.compute ?? { configured: false, observationScope: 'unavailable', currencyStatus: 'unavailable' }],
+            ['Provider observations', { observation: result.response?.observation ?? null, usage: result.response?.usage ?? null, upstreamIdentity: result.response?.observation?.upstreamIdentity ?? 'unknown' }],
             ['Prompt provenance', { ref: snapshot.promptProgramRef, ir: snapshot.promptIr }], ['Context selection', snapshot.contextPlan], ['Fallback attempts', result.routing]]) {
             const details = node('details', undefined, parent); node('summary', title, details); node('pre', JSON.stringify(value, null, 2), details);
         }

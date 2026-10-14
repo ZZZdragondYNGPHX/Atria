@@ -1,3 +1,4 @@
+import { translateShellText } from '../atria-shell/localization.js';
 export function illustrationNode(doc, parent, tag, text, className = '') {
     const node = doc.createElement(tag); if (text !== undefined) node.textContent = text;
     if (className) node.className = className; parent?.append(node); return node;
@@ -17,7 +18,7 @@ export function illustrationSelect(doc, parent, label, value, choices, change) {
     illustrationNode(doc, wrapper, 'span', label);
     const input = illustrationNode(doc, wrapper, 'select'); input.setAttribute('aria-label', label);
     const rows = new Map(choices);
-    if (value && !rows.has(value)) rows.set(value, '当前不可用 · ' + value);
+    if (value && !rows.has(value)) rows.set(value, translateShellText('Unavailable ·') + value);
     for (const [id, name] of rows) { const option = illustrationNode(doc, input, 'option', name); option.value = id; }
     input.value = value;
     input.addEventListener('change', () => change(input.value)); return input;

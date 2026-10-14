@@ -160,7 +160,9 @@ describe('N9 Library / Runtime domain adapters', () => {
         const controller = mountRuntimeDomainWorkspace({ document, slot, route: { domain: 'runtime', child: null }, host: { openRuntimeSection: jest.fn() } });
         await flush();
         expect(slot.textContent).not.toContain('Loading Native Runtime');
-        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+        expect(globalThis.fetch.mock.calls.map(([url]) => url)).toEqual(expect.arrayContaining([
+            '/api/native/generation/configuration', '/api/native/generation/secrets', '/api/native/generation/resources',
+        ]));
         controller.dispose();
     });
 

@@ -1,6 +1,7 @@
 import { validatePromptParameters } from '../../../public/shared/prompt-parameters.js';
 import { assertNativeId } from '../identity.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
+import { connectionRequiresSecret } from '../../../public/shared/native-connection-auth.js';
 
 export const ATRIA_MODEL_PROMPT_SCHEMA_VERSION = 1;
 export const ATRIA_CAPABILITY_STATES = Object.freeze(['supported', 'unsupported', 'unknown']);
@@ -364,7 +365,7 @@ export function assertConnectionProfile(value) {
         transport: namespaced(value.transport, 'ConnectionProfile.transport'),
         endpoint: url.toString(),
         networkPolicy,
-        ...(value.secretRef === undefined && ['provider.mcp', 'provider.a2a'].includes(value.providerAdapter) ? {}
+        ...(value.secretRef === undefined && !connectionRequiresSecret(value.providerAdapter) ? {}
             : { secretRef: assertSecretRef(value.secretRef, 'ConnectionProfile.secretRef') }),
         options,
     });

@@ -3,7 +3,7 @@
 import { expect, test } from '@jest/globals';
 import { installAtriaAppearance, resolveAtriaAppearance } from '../../public/scripts/atria-shell/appearance.js';
 
-test('appearance follows the existing theme and restores chrome on disposal', async () => {
+test('Serene Canvas remains light without changing stored theme and restores chrome on disposal', async () => {
     const root = document.documentElement;
     root.style.setProperty('--SmartThemeBlurTintColor', 'rgb(20, 20, 20)');
     const meta = document.createElement('meta');
@@ -12,11 +12,12 @@ test('appearance follows the existing theme and restores chrome on disposal', as
     document.head.append(meta);
     const appearance = installAtriaAppearance({ document, window });
     try {
-        expect(appearance.get()).toBe('dark');
+        expect(appearance.get()).toBe('light');
+        expect(root.style.getPropertyValue('--SmartThemeBlurTintColor')).toBe('rgb(20, 20, 20)');
         root.style.setProperty('--SmartThemeBlurTintColor', 'rgb(255, 255, 255)');
         await new Promise(resolve => setTimeout(resolve, 0));
         expect(root.dataset.atriaAppearance).toBe('light');
-        expect(meta.content).toBe('#f6f6f8');
+        expect(meta.content).toBe('#f9f8f6');
     } finally {
         appearance.dispose();
         root.style.removeProperty('--SmartThemeBlurTintColor');

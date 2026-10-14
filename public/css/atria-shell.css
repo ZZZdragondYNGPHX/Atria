@@ -4,7 +4,7 @@
  * Layout authority for the Atria frame (sidebar / toolbar / content /
  * inspector / tab bar / transient layers) plus the host-level rules that keep
  * legacy compatibility DOM and the Native Play generation ABI in place.
- * Visual language: docs:plans/refactor/atria-product-frontend-redesign/DESIGN.md.
+ * Visual language: docs:plans/refactor/atria-serene-canvas/visual.md.
  */
 
 :root[data-atria-appearance] {
@@ -49,15 +49,15 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     min-height: 0;
     z-index: 3800;
     display: grid;
-    grid-template-columns: var(--atri-sidebar-width) minmax(0, 1fr) auto;
-    grid-template-rows: var(--atri-toolbar-height) minmax(0, 1fr);
+    grid-template-columns: 116px minmax(0, 1fr) auto;
+    grid-template-rows: 76px minmax(0, 1fr);
     grid-template-areas:
         "rail global global"
         "rail focus dock";
     gap: var(--atri-frame-gap);
     overflow: hidden;
     color: var(--atri-text-primary);
-    background: radial-gradient(ellipse at top right, var(--atri-accent-soft), transparent 60%), var(--atri-canvas);
+    background: radial-gradient(ellipse at 50% 0, #fff, transparent 60%), var(--atri-canvas);
     font-family: var(--atri-font-sans);
     font-size: var(--atri-text-body);
     line-height: var(--atri-leading-normal);
@@ -103,205 +103,55 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     display: block;
 }
 
-/* ── Sidebar (Expanded) / Rail (Medium) ────────────────────────────────── */
-
+/* ── Spatial Dock ───────────────────────────────────────────────────── */
 .atria-navigation-rail {
-    grid-area: rail;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: var(--atri-space-3);
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: none;
-    border-right: 1px solid var(--atri-separator);
-    background: var(--atri-material-solid-sidebar);
+    position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+    z-index: 20; width: 70px; max-height: calc(100% - 32px);
+    display: flex; flex-direction: column; align-items: center; gap: 22px;
+    padding: 24px 12px; overflow: visible;
+    background: var(--atri-material-sidebar); border-radius: var(--atri-radius-pill);
+    box-shadow: var(--atri-shadow-2); border: 1px solid var(--atri-separator);
 }
-
-.atria-navigation-rail::-webkit-scrollbar {
-    display: none;
+.atria-sidebar__brand { display: grid; place-items: center; height: 44px; flex: none; }
+.atria-brand-mark { display: grid; place-items: center; width: 31px; height: 31px; border: 7px solid var(--atri-ink); border-radius: 50%; }
+.atria-brand-mark__image, .atria-brand-wordmark { display: none; }
+.atria-sidebar__items, .atria-sidebar__footer { display: flex; flex-direction: column; align-items: center; gap: 19px; }
+.atria-sidebar__footer { padding-top: 12px; }
+.atria-shell-nav-button, .atria-shell-utility-button, .atria-icon-button { appearance: none; margin: 0; border: 0; background: transparent; cursor: pointer; }
+.atria-sidebar .atria-shell-nav-button, .atria-sidebar .atria-toolbar-search, .atria-sidebar .atria-toolbar__menu {
+    position: relative; display: grid; place-items: center; flex: none;
+    width: 44px; min-width: 44px; height: 44px; padding: 0;
+    border-radius: 50%; color: var(--atri-text-tertiary); background: transparent;
+    transition: color var(--atri-duration-fast), background-color var(--atri-duration-fast), transform var(--atri-duration-fast) var(--atri-ease-out);
 }
-
-.atria-sidebar__brand {
-    flex: none;
-    height: var(--atri-toolbar-height);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 var(--atri-space-2);
-    margin-bottom: var(--atri-space-2);
-    user-select: none;
+.atria-shell-nav-icon { width: 24px; height: 24px; display: grid; place-items: center; color: inherit; }
+.atria-sidebar .atria-shell-nav-label {
+    position: absolute; left: 58px; padding: 7px 11px; border-radius: 8px;
+    font-size: 12px; white-space: nowrap; background: var(--atri-elevated);
+    color: var(--atri-text-primary); box-shadow: var(--atri-shadow-1);
+    opacity: 0; pointer-events: none; transition: opacity 125ms;
 }
-
-/* The mark is a solid disc with the character cut out; it shows the surface
- * behind it, so dark appearance only needs the disc inverted. */
-.atria-brand-mark {
-    width: 26px;
-    height: 26px;
-    flex: none;
-    overflow: hidden;
-    border-radius: 50%;
+.atria-sidebar .atria-shell-nav-button:focus-visible .atria-shell-nav-label { opacity: 1; transition: none; }
+.atria-sidebar .atria-shell-nav-button.is-selected { background: var(--atri-ink); color: #fff; box-shadow: 0 4px 12px rgb(0 0 0 / .14); }
+.atria-sidebar .atria-toolbar__menu { background: #e7e5e1; color: var(--atri-text-secondary); }
+.atria-sidebar .atria-toolbar-search__label, .atria-sidebar .atria-toolbar-search__shortcut { display: none; }
+.atria-shell-utility-button:disabled { cursor: default; opacity: .4; }
+@media (hover: hover) and (pointer: fine) {
+    .atria-sidebar .atria-shell-nav-button:hover:not(.is-selected) { color: var(--atri-text-primary); background: var(--atri-fill); }
+    .atria-sidebar .atria-shell-nav-button:hover .atria-shell-nav-label { opacity: 1; }
 }
-
-.atria-brand-mark__image {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+@supports (backdrop-filter: blur(1px)) {
+    body:not(.no-blur) .atria-navigation-rail, body:not(.no-blur) .atria-bottom-navigation { backdrop-filter: var(--atri-material-filter); }
 }
-
-:root[data-atria-appearance="dark"] .atria-brand-mark__image {
-    filter: invert(1);
+.atria-app-shell[data-atria-viewport="medium"] { grid-template-columns: 90px minmax(0, 1fr); grid-template-areas: "rail global" "rail focus"; }
+.atria-app-shell[data-atria-viewport="medium"] .atria-navigation-rail { left: 14px; }
+@media (max-height: 760px) and (min-width: 720px) {
+    .atria-navigation-rail { gap: 12px; padding-block: 14px; }
+    .atria-sidebar__items, .atria-sidebar__footer { gap: 8px; }
 }
-
-.atria-brand-wordmark {
-    font-family: var(--atri-font-display);
-    font-size: calc(var(--atri-base) * 1.2);
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    color: var(--atri-text-primary);
-}
-
-.atria-sidebar__items {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.atria-sidebar__footer {
-    margin-top: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding-top: var(--atri-space-3);
-}
-
-.atria-shell-nav-button,
-.atria-shell-utility-button,
-.atria-icon-button {
-    appearance: none;
-    margin: 0;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-}
-
-.atria-sidebar .atria-shell-nav-button,
-.atria-sidebar .atria-shell-utility-button {
-    width: 100%;
-    min-height: 34px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 var(--atri-space-2-5);
-    border-radius: var(--atri-radius-sm);
-    color: var(--atri-text-secondary);
-    font-size: var(--atri-text-callout);
-    font-weight: 500;
-    line-height: 1.2;
-    text-align: start;
-    transition:
-        background-color var(--atri-duration-fast) var(--atri-ease-out),
-        color var(--atri-duration-fast) var(--atri-ease-out);
-}
-
-.atria-sidebar .atria-shell-nav-button {
-    min-height: 36px;
-    color: var(--atri-text-primary);
-}
-
-.atria-shell-nav-icon {
-    width: 22px;
-    height: 22px;
-    flex: none;
-    display: inline-grid;
-    place-items: center;
-    color: var(--atri-text-secondary);
-    transition: color var(--atri-duration-fast) var(--atri-ease-out);
-}
-
-.atria-sidebar .atria-shell-nav-button:hover:not(:disabled),
-.atria-sidebar .atria-shell-utility-button:hover:not(:disabled) {
-    background: var(--atri-fill);
-    color: var(--atri-text-primary);
-}
-
-.atria-sidebar .atria-shell-nav-button:active:not(:disabled),
-.atria-sidebar .atria-shell-utility-button:active:not(:disabled) {
-    background: var(--atri-fill-pressed);
-}
-
-.atria-sidebar .atria-shell-nav-button.is-selected,
-.atria-sidebar .atria-shell-utility-button.is-selected {
-    background: var(--atri-accent-soft);
-    color: var(--atri-text-primary);
-    font-weight: 600;
-}
-
-.atria-sidebar .is-selected .atria-shell-nav-icon {
-    color: var(--atri-accent-text);
-}
-
-.atria-shell-utility-button:disabled {
-    cursor: default;
-    opacity: 0.4;
-}
-
-.atria-sidebar__account {
-    margin-top: var(--atri-space-2);
-    padding-top: var(--atri-space-2);
-}
-
-.atria-app-shell[data-atria-viewport="medium"] {
-    grid-template-columns: var(--atri-rail-width) minmax(0, 1fr);
-    grid-template-areas:
-        "rail global"
-        "rail focus";
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-navigation-rail {
-    padding-inline: var(--atri-space-2);
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar__brand {
-    justify-content: center;
-    padding: 0;
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-brand-wordmark {
-    display: none;
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .atria-shell-nav-button,
-.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .atria-shell-utility-button {
-    min-height: 54px;
-    flex-direction: column;
-    justify-content: center;
-    gap: 3px;
-    padding: var(--atri-space-1-5) 2px;
-    border-radius: var(--atri-radius-md);
-    font-size: var(--atri-text-caption-2);
-    font-weight: 500;
-    text-align: center;
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .atria-shell-nav-button {
-    color: var(--atri-text-secondary);
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .is-selected {
-    color: var(--atri-accent-text);
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-shell-nav-label,
-.atria-app-shell[data-atria-viewport="medium"] .atria-shell-utility-label {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+@media (max-height: 560px) and (min-width: 720px) {
+    .atria-navigation-rail { overflow-y: auto; scrollbar-width: none; }
+    .atria-sidebar__brand { display: none; }
 }
 
 /* ── Toolbar ───────────────────────────────────────────────────────────── */
@@ -313,9 +163,9 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     align-items: center;
     justify-content: space-between;
     gap: var(--atri-space-3);
-    padding: 0 var(--atri-space-4) 0 var(--atri-space-5);
-    border-bottom: 1px solid var(--atri-separator);
-    background: var(--atri-material-solid-bar);
+    padding: 12px 54px 0;
+    border: 0;
+    background: transparent;
 }
 
 .atria-toolbar__leading {
@@ -500,14 +350,8 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 
 /* ── Focus area ────────────────────────────────────────────────────────── */
 
-.atria-navigation-rail,
-.atria-global-bar,
-.atria-focus-area,
-.atria-dock {
-    border: 1px solid var(--atri-separator);
-    border-radius: var(--atri-radius-xl);
-    box-shadow: var(--atri-highlight), var(--atri-shadow-1);
-}
+.atria-global-bar, .atria-focus-area { border: 0; border-radius: 0; box-shadow: none; }
+.atria-dock { border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-xl); box-shadow: var(--atri-shadow-1); }
 
 .atria-focus-area {
     overflow: hidden;
@@ -516,7 +360,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: var(--atri-canvas);
+    background: transparent;
 }
 
 .atri-learning-center { flex: 0 0 auto; max-height: 40dvh; overflow: auto; padding: 12px 20px; border-bottom: 1px solid var(--atri-separator); background: var(--atri-surface-1); color: var(--atri-text-primary); }
@@ -607,7 +451,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     border-radius: var(--atri-radius-lg);
     background: var(--atri-elevated);
     box-shadow: var(--atri-highlight), var(--atri-shadow-2);
-    animation: atria-inspector-in var(--atri-duration-base) var(--atri-ease-out);
+    animation: none;
 }
 
 .atria-workspace-context-summary {
@@ -629,138 +473,41 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     line-height: var(--atri-leading-normal);
 }
 
-/* ── Tab bar (Compact) ─────────────────────────────────────────────────── */
-
-.atria-bottom-navigation {
-    display: none;
-    grid-area: bottom;
-    align-items: stretch;
-    justify-content: space-around;
-    padding: 0 var(--atri-space-1) var(--atri-safe-area-bottom);
-    border-top: 1px solid var(--atri-separator);
-    background: var(--atri-material-solid-bar);
-}
-
-.atria-bottom-navigation .atria-shell-nav-button {
-    flex: 1 1 0;
-    min-width: 0;
-    height: var(--atri-tabbar-height);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    padding: var(--atri-space-1) 0 0;
-    color: var(--atri-text-tertiary);
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-}
-
-.atria-bottom-navigation .atria-shell-nav-icon {
-    width: 26px;
-    height: 26px;
-    color: inherit;
-}
-
-.atria-bottom-navigation .atria-shell-nav-button.is-selected {
-    color: var(--atri-accent-text);
-}
-
-.atria-bottom-navigation .atria-shell-nav-label {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* ── Compact composition ───────────────────────────────────────────────── */
-
+/* ── Compact Floating Dock ───────────────────────────────────────────── */
+.atria-bottom-navigation { display: none; }
 .atria-app-shell[data-atria-viewport="compact"] {
-    gap: var(--atri-space-2);
-    padding: 0 calc(var(--atri-space-2) + var(--atri-safe-area-right)) 0 calc(var(--atri-space-2) + var(--atri-safe-area-left));
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows:
-        calc(var(--atri-toolbar-height) + var(--atri-safe-area-top))
-        minmax(0, 1fr)
-        calc(var(--atri-tabbar-height) + var(--atri-safe-area-bottom));
-    grid-template-areas:
-        "global"
-        "focus"
-        "bottom";
+    padding: var(--atri-safe-area-top) var(--atri-safe-area-right) var(--atri-safe-area-bottom) var(--atri-safe-area-left);
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: 64px minmax(0, 1fr);
+    grid-template-areas: "global" "focus";
 }
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-navigation-rail {
-    display: none;
-}
-
+.atria-app-shell[data-atria-viewport="compact"] .atria-navigation-rail { display: none; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-bottom-navigation {
-    display: flex;
+    display: flex; position: absolute; bottom: calc(16px + var(--atri-safe-area-bottom));
+    left: 50%; transform: translateX(-50%); z-index: 20;
+    width: calc(100% - 32px - var(--atri-safe-area-left) - var(--atri-safe-area-right)); max-width: 400px;
+    justify-content: space-between; align-items: center; gap: 0; padding: 8px 16px;
+    background: var(--atri-material-bar); border: 1px solid var(--atri-separator);
+    border-radius: var(--atri-radius-pill); box-shadow: var(--atri-shadow-2);
 }
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-global-bar {
-    padding: var(--atri-safe-area-top) var(--atri-space-2) 0;
-    border-radius: 0 0 var(--atri-radius-lg) var(--atri-radius-lg);
+.atria-bottom-navigation .atria-shell-nav-button, .atria-bottom-navigation .atria-toolbar-search, .atria-bottom-navigation .atria-toolbar__menu {
+    position: relative; display: grid; place-items: center; flex: none;
+    height: 44px; width: 44px; min-width: 44px; padding: 0; border: 0;
+    background: transparent; color: var(--atri-text-tertiary); border-radius: 50%;
 }
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__title {
-    font-size: calc(var(--atri-base) * 1.133);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar-search {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    justify-content: center;
-    padding: 0;
-    background: transparent;
-    color: var(--atri-text-primary);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar-search__label,
-.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar-search__shortcut,
-.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__status {
-    display: none;
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__trailing .atria-icon-button {
-    width: 44px;
-    height: 44px;
-    color: var(--atri-text-primary);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-stage {
-    padding: var(--atri-space-4);
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-toolbar-search {
-    min-width: 150px;
-}
-
-.atria-app-shell[data-atria-keyboard="open"] .atria-bottom-navigation {
-    display: none;
-}
-
-.atria-app-shell[data-atria-viewport="compact"][data-atria-keyboard="open"],
-.atria-app-shell[data-atria-viewport="compact"][data-atria-reading="true"] {
-    grid-template-rows:
-        calc(var(--atri-toolbar-height) + var(--atri-safe-area-top))
-        minmax(0, 1fr);
-    grid-template-areas:
-        "global"
-        "focus";
-}
-
-.atria-app-shell[data-atria-keyboard="open"] .atria-sheet-panel,
-.atria-app-shell[data-atria-keyboard="open"] .atria-command-panel {
-    max-height: calc(var(--atri-viewport-height) - (2 * var(--atri-space-2)));
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__back { min-width: 44px; min-height: 44px; }
-.atria-app-shell[data-atria-viewport="compact"] input,
-.atria-app-shell[data-atria-viewport="compact"] textarea,
-.atria-app-shell[data-atria-viewport="compact"] select { font-size: max(16px, var(--atri-text-body)); }
-.atria-app-shell[data-atria-reading="true"] .atria-bottom-navigation { display: none; }
+.atria-bottom-navigation .atria-shell-nav-label, .atria-bottom-navigation .atria-toolbar-search__label, .atria-bottom-navigation .atria-toolbar-search__shortcut { display: none; }
+.atria-bottom-navigation .is-selected { color: var(--atri-ink); }
+.atria-bottom-navigation .is-selected::after { content: ''; position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--atri-ink); }
+.atria-bottom-navigation .atria-toolbar__menu::before { content: ''; position: absolute; inset: 6px; background: #e7e5e1; border-radius: 50%; z-index: -1; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-global-bar { padding: 4px 20px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__title { font-size: 17px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__back-label { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__status { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__trailing .atria-icon-button, .atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__back { width: 44px; height: 44px; min-width: 44px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-stage { padding: 0; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-workspace { padding-bottom: 100px; }
+.atria-app-shell[data-atria-keyboard="open"] .atria-bottom-navigation { display: none; }
+.atria-app-shell[data-atria-keyboard="open"] .atria-sheet-panel, .atria-app-shell[data-atria-keyboard="open"] .atria-command-panel { max-height: calc(var(--atri-viewport-height) - 16px); }
+.atria-app-shell[data-atria-viewport="compact"] input, .atria-app-shell[data-atria-viewport="compact"] textarea, .atria-app-shell[data-atria-viewport="compact"] select { font-size: max(16px, var(--atri-text-body)); }
 
 /* ── Transient layers ──────────────────────────────────────────────────── */
 
@@ -813,7 +560,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     border: 0;
     background: var(--atri-scrim);
     cursor: default;
-    animation: atria-fade-in var(--atri-duration-base) var(--atri-ease-out);
+    animation: none;
 }
 
 .atria-shell-menu-scrim {
@@ -836,14 +583,13 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     border-radius: var(--atri-radius-xl) var(--atri-radius-xl) 0 0;
     background: var(--atri-elevated);
     box-shadow: var(--atri-highlight), var(--atri-shadow-3);
-    transition:
-        max-height var(--atri-duration-slow) var(--atri-ease-sheet),
-        transform var(--atri-duration-base) var(--atri-ease-sheet);
-    animation: atria-sheet-in var(--atri-duration-slow) var(--atri-ease-sheet);
+    transition: none;
+    animation: none;
 }
 
 .atria-sheet[data-atria-sheet-dragging="true"] .atria-sheet-panel {
     transition: none;
+    user-select: none;
 }
 
 .atria-sheet[data-atria-sheet-state="peek"] .atria-sheet-panel {
@@ -863,10 +609,15 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     flex: none;
     display: grid;
     place-items: center;
-    height: 22px;
+    height: 44px;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
     touch-action: none;
     cursor: grab;
 }
+.atria-sheet-grip:active { transform: none; }
 
 .atria-sheet-handle {
     width: 38px;
@@ -925,16 +676,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     border-radius: var(--atri-radius-xl);
     background: var(--atri-elevated);
     box-shadow: var(--atri-highlight), var(--atri-shadow-3);
-    animation: atria-palette-in var(--atri-duration-base) var(--atri-ease-out);
-}
-
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    body:not(.no-blur) .atria-command-panel,
-    body:not(.no-blur) .atria-shell-menu {
-        background: color-mix(in srgb, var(--atri-elevated) 86%, transparent);
-        -webkit-backdrop-filter: var(--atri-material-filter);
-        backdrop-filter: var(--atri-material-filter);
-    }
+    animation: none;
 }
 
 .atria-command-field {
@@ -1127,7 +869,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     padding-left: var(--atri-safe-area-left);
     transform: none;
     border-radius: 0 0 var(--atri-radius-xl) var(--atri-radius-xl);
-    animation: atria-sheet-down var(--atri-duration-slow) var(--atri-ease-sheet);
+    animation: none;
 }
 
 .atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-field {
@@ -1162,8 +904,8 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     border-radius: var(--atri-radius-lg);
     background: var(--atri-elevated);
     box-shadow: var(--atri-highlight), var(--atri-shadow-3);
-    transform-origin: top right;
-    animation: atria-menu-in var(--atri-duration-base) var(--atri-ease-out);
+    transform-origin: bottom left;
+    animation: none;
 }
 
 .atria-shell-menu__item {
@@ -1184,7 +926,8 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 
 .atria-shell-menu__item:hover:not(:disabled),
 .atria-shell-menu__item:focus-visible {
-    outline: 0;
+    outline: 2px solid var(--atri-blue);
+    outline-offset: -2px;
     background: var(--atri-fill-hover);
 }
 
@@ -1241,8 +984,8 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 
 body.reduced-motion .atria-app-shell *,
 .atria-app-shell[data-atria-reduced-motion="true"] * {
-    animation-duration: 1ms !important;
-    transition-duration: 1ms !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
 }
 
 @media (hover: none) {
@@ -1562,21 +1305,27 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     height: 100%;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 0;
     overflow: hidden;
 }
+
+.atria-domain-workspace__header { padding: 4px 54px 26px; }
+.atria-domain-workspace__header h1 { margin: 0; font: 400 var(--atri-text-large-title)/1.12 var(--atri-font-serif); letter-spacing: -.02em; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__header { padding: 4px 20px 24px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__header h1 { font-size: calc(var(--atri-base) * 2.267); }
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__nav { padding-inline: 20px; gap: 24px; }
 
 .atria-domain-workspace__nav {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: var(--atri-space-1-5);
-    padding: var(--atri-space-2-5) var(--atri-page-gutter);
+    gap: 32px;
+    padding: 10px 54px 18px;
     overflow-x: auto;
     scrollbar-width: none;
-    border-bottom: 1px solid var(--atri-separator);
-    background: var(--atri-canvas);
+    border: 0;
+    background: transparent;
 }
 
 .atria-domain-workspace__nav::-webkit-scrollbar {
@@ -1610,7 +1359,8 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 }
 
 .atria-domain-workspace__tab.is-selected {
-    background: var(--atri-fill-strong);
+    border-bottom: 2px solid var(--atri-ink); border-radius: 0;
+    background: transparent;
     color: var(--atri-text-primary);
 }
 
@@ -2002,6 +1752,8 @@ body[data-atria-native-session-active="true"] #char_connections_button {
     margin-top: var(--atri-space-3);
 }
 /* Shared Native request feedback also appears in Play. */
+.atria-skip-link { position: fixed; top: calc(12px + var(--atri-safe-area-top)); left: 16px; z-index: 1000; padding: 12px 20px; border-radius: var(--atri-radius-pill); background: var(--atri-ink); color: var(--atri-text-on-accent); transform: translateY(-200%); }
+.atria-skip-link:focus-visible { transform: none; outline: 2px solid var(--atri-accent); outline-offset: 3px; }
 .atri-runtime-notice { padding: 12px 14px; margin: 8px 0; color: var(--atri-text-secondary); background: var(--atri-fill); line-height: 1.6; overflow-wrap: anywhere; }
 .atri-runtime-notice[role="alert"] { color: var(--atri-danger); }
 
@@ -2034,3 +1786,7 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 .atria-agent-goals button:disabled { opacity: .5; cursor: default; }
 .atria-agent-goals button:focus-visible, .atria-agent-goals summary:focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
 .atria-agent-goals[aria-busy="true"] { cursor: progress; }
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-shell-menu { left: 0; right: 0; top: auto; bottom: 0; width: 100%; max-height: calc(var(--atri-viewport-height) - 28px); padding: 20px 24px calc(24px + var(--atri-safe-area-bottom)); border-radius: 24px 24px 0 0; }
+body.no-blur :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: #fff; backdrop-filter: none; }
+@media (prefers-reduced-transparency: reduce) { :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: #fff; backdrop-filter: none !important; } }

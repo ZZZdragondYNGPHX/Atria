@@ -19,7 +19,7 @@ let scopeEpoch = 0;
 let ports = {}, open = false, disposePage;
 let hostMount = null;
 let requestedPresetId = null;
-let section = 'run', runView = 'graph', selection = {}, replay = null, updateMemory;
+let section = 'run', runView = 'timeline', selection = {}, replay = null, updateMemory;
 let renderIdentity = '', pageSequence = 0;
 const pageOffsets = new Map();
 

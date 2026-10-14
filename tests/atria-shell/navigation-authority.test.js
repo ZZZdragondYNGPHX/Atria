@@ -43,12 +43,12 @@ describe('R7D Navigation Authority', () => {
                 kind: 'detail',
             },
         });
-        expect(navigation.getRoute().breadcrumb).toEqual(['Build', 'Demo']);
+        expect(navigation.getRoute().breadcrumb).toEqual(['Studio', 'Demo']);
         expect(window.location.search).toContain('atriaChild=project%2Fdemo');
 
         navigation.clearChild({ history: 'replace' });
         expect(navigation.getRoute().child).toBeNull();
-        expect(navigation.getRoute().breadcrumb).toEqual(['Build']);
+        expect(navigation.getRoute().breadcrumb).toEqual(['Studio']);
 
         navigation.dispose();
     });

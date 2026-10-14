@@ -12,7 +12,7 @@ const next = (config, secrets, resources) => runtimeReadiness(config, secrets, r
 
 test('setup follows the dependency chain and checks references rather than counts', () => {
     const config = { connections: [], models: [], routes: [] }; const secrets = []; const resources = [];
-    expect(next(config, secrets, resources)).toBe('Secret');
+    expect(next(config, secrets, resources)).toBe('Connection');
     secrets.push({ secretId: 'secret' }); expect(next(config, secrets, resources)).toBe('Connection');
     config.connections.push(connection); expect(next(config, secrets, resources)).toBe('Model');
     config.models.push({ ...model, connectionProfileRef: { connectionProfileId: 'missing' } });
@@ -32,6 +32,13 @@ test('archived originals remain available to pinned routes but are not new setup
     expect(next(config, [{ secretId: 'secret' }], resources)).toBe('Prompt Program');
     config.routes.push(route);
     expect(next(config, [{ secretId: 'secret' }], resources)).toBeUndefined();
+});
+
+test.each(['provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image'])('anonymous %s does not require an invented Secret, but an explicit missing reference stays blocked', providerAdapter => {
+    const config = { connections: [{ connectionProfileId: 'conn', providerAdapter }], models: [model], routes: [route] };
+    expect(next(config, [], [{ ref: prompt }, { ref: generation }])).toBeUndefined();
+    config.connections[0].secretRef = { secretId: 'missing' };
+    expect(next(config, [], [{ ref: prompt }, { ref: generation }])).toBe('Secret');
 });
 
 test('setup refresh recovers from inventory failure and opens the canonical missing resource owner', async () => {

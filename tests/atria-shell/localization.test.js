@@ -46,7 +46,7 @@ describe('Atria Shell localization', () => {
             'atria.shell.command.search',
         ];
         for (const key of required) expect(locale[key]).toBeTruthy();
-        expect(locale['atria.shell.domain.play']).toBe('游玩');
+        expect(locale['atria.shell.domain.play']).toBe('阅读');
     });
 });
 

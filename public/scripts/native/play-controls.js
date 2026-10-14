@@ -13,6 +13,7 @@ import { createAtriaIcon } from '../atria-shell/icons.js';
 import { mountPlayPromptControls } from './prompt-runtime-controls.js';
 import { mountExperienceHealth } from './experience-health-ui.js';
 import { mountSharedSessionPanel } from './shared-session-ui.js';
+import { nativePlayGenerationBusy } from './play-generation.js';
 
 function actionButton(documentRef, label, handler) {
     const node = documentRef.createElement('button');
@@ -62,6 +63,8 @@ function downloadBase64(documentRef, payload) {
 export function mountNativePlayControls({
     document: documentRef = globalThis.document,
     root,
+    navigation,
+    accountStorage,
 } = {}) {
     if (!documentRef?.body || !root) throw new Error('Native Play controls require document and host root');
 
@@ -92,10 +95,19 @@ export function mountNativePlayControls({
     let returnFocus = null;
     let drawerRequest = 0;
     let disposed = false;
+    let resumeAttempted = false;
+    let rememberedSession = null;
+    let routeEpoch = 0;
+    const recentRoute = () => navigation?.getRoute()?.child?.id === 'recent-stories';
+    const readingRoute = () => navigation?.getRoute()?.domain === 'play' && !navigation.getRoute().child;
+    const returnToReading = () => navigation?.navigate('play', { child: null, reason: 'return-to-reading' });
+    const recentStories = actionButton(documentRef, 'Recent stories', () => {
+        navigation?.navigate('play', { child: { id: 'recent-stories', label: tl('Recent stories'), kind: 'workspace' }, reason: 'recent-stories' });
+    });
     let experiencePanel = null;
     let historyPanel = null;
     const drawerWrites = new Map();
-    const writable = () => Boolean(activeRuntime()?.active && !activeRuntime()?.history && !activeRuntime()?.failed && activeRuntime()?.snapshot?.states?.atri_run?.status !== 'dead' && !busy && documentRef.body.dataset.generating !== 'true');
+    const writable = () => Boolean(activeRuntime()?.active && !activeRuntime()?.history && !activeRuntime()?.failed && activeRuntime()?.snapshot?.states?.atri_run?.status !== 'dead' && !busy && !nativePlayGenerationBusy(activeRuntime()));
     let unsubscribeNavigation = null;
     let inspectorWasOpen = false;
     let drawerSessionId = null;
@@ -199,7 +211,7 @@ export function mountNativePlayControls({
             const detail = await nativeProductClient.getSession(base.session.sessionId);
             if (disposed || request !== drawerRequest || activeRuntime() !== runtime || runtime.snapshot !== base) return;
             const mutate = (label, operation) => run(label, async () => {
-                if (activeRuntime() !== runtime || runtime.snapshot !== base || !runtime.active || runtime.history || runtime.failed || documentRef.body.dataset.generating === 'true') throw new Error(tl('Historical revisions are read-only.'));
+                if (activeRuntime() !== runtime || runtime.snapshot !== base || !runtime.active || runtime.history || runtime.failed || nativePlayGenerationBusy(runtime)) throw new Error(tl('Historical revisions are read-only.'));
                 return operation();
             });
             const writeButton = (label, handler) => {
@@ -295,8 +307,8 @@ export function mountNativePlayControls({
             historyPanel = mountSessionHistory({ document: documentRef, root: drawerBody, sessionId: detail.snapshot.session.sessionId,
                 getContext: () => ({ sessionId: currentSessionId(), revisionId: activeRuntime()?.snapshot?.revision?.revisionId,
                     branchId: activeRuntime()?.snapshot?.revision?.branchId, isHistory: activeRuntime()?.history,
-                    busy: busy || documentRef.body.dataset.generating === 'true' || activeRuntime()?.failed,
-                    canWrite: writable(), canFork: Boolean(activeRuntime()?.active && !activeRuntime()?.failed && activeRuntime()?.snapshot?.states?.atri_run?.status !== 'dead' && !busy && documentRef.body.dataset.generating !== 'true'),
+                    busy: busy || nativePlayGenerationBusy(activeRuntime()) || activeRuntime()?.failed,
+                    canWrite: writable(), canFork: Boolean(activeRuntime()?.active && !activeRuntime()?.failed && activeRuntime()?.snapshot?.states?.atri_run?.status !== 'dead' && !busy && !nativePlayGenerationBusy(activeRuntime())),
                     tailMessageId: activeRuntime()?.snapshot?.timeline?.at(-1)?.messageId }),
                 onMetadata: options => runtime.setExperienceMetadata(options),
                 onSwitchBranch: async branchId => { await runtime.switchBranch(branchId); hideDrawer(); },
@@ -341,6 +353,7 @@ export function mountNativePlayControls({
         ));
         browse.classList.add('atria-play-primary');
         hero.append(title, description, browse);
+        if (activeRuntime()?.active) hero.append(actionButton(documentRef, 'Return to reading', returnToReading));
         landing.append(hero);
         const content = documentRef.createElement('div');
         content.className = 'atria-play-landing-content';
@@ -359,6 +372,27 @@ export function mountNativePlayControls({
             content.replaceChildren();
             const sessions = sessionResult.status === 'fulfilled' ? sessionResult.value : [];
             const works = workResult.status === 'fulfilled' ? workResult.value : [];
+            if (!resumeAttempted && readingRoute() && !activeRuntime()?.active) {
+                resumeAttempted = true;
+                let savedId;
+                try { savedId = accountStorage?.getItem('atriaLastReading'); } catch { /* Browser storage may be unavailable. */ }
+                const available = sessions.filter(item => item.dependency?.status === 'ready');
+                const last = available.find(item => item.sessionId === savedId) || available[0];
+                if (last) {
+                    const epoch = routeEpoch;
+                    try {
+                        await globalThis.Atria.openNativeSession(last.sessionId, {
+                            acceptGuard: () => !disposed && epoch === routeEpoch && readingRoute() && !activeRuntime()?.active,
+                        });
+                        if (!disposed && epoch === routeEpoch && activeRuntime()?.active) { sync(); return; }
+                    } catch (error) {
+                        if (!disposed && epoch === routeEpoch && readingRoute()) {
+                            const failure = documentRef.createElement('p'); failure.setAttribute('role', 'alert');
+                            failure.textContent = tl('Could not reopen your last story. Choose a story below to try again.'); content.append(failure);
+                        }
+                    }
+                }
+            }
             const section = (label, className) => {
                 const group = documentRef.createElement('section');
                 const heading = documentRef.createElement('h2'); heading.textContent = tl(label);
@@ -385,6 +419,7 @@ export function mountNativePlayControls({
                 meta.textContent = ready ? (session.updatedAt ? new Date(session.updatedAt).toLocaleString() : tl('Ready when you are')) : tl('The matching work needs to be installed.');
                 const open = actionButton(documentRef, 'Continue', () => run('Opening session', async () => {
                     await globalThis.Atria.openNativeSession(session.sessionId);
+                    returnToReading();
                 }));
                 open.disabled = !ready;
                 open.prepend(createAtriaIcon(documentRef, 'play', { size: 18 }));
@@ -473,7 +508,7 @@ export function mountNativePlayControls({
     });
     const leave = actionButton(documentRef, 'Back to Play', async () => {
         const runtime = activeRuntime();
-        if (!runtime?.active || runtime.failed || busy || documentRef.body.dataset.generating === 'true') return;
+        if (!runtime?.active || runtime.failed || busy || nativePlayGenerationBusy(runtime)) return;
         const draft = root.querySelector('.atria-play-composer__input')?.value;
         if (draft && !documentRef.defaultView.confirm(tl('Leave this workspace and discard unsaved changes? Cancel to keep editing.'))) return;
         await run('Closing session', async () => { await runtime.close(); hideDrawer(); });
@@ -500,7 +535,7 @@ export function mountNativePlayControls({
         // so the destination button can receive its click.
         if (!more.contains(event.relatedTarget)) more.open = false;
     });
-    toolbar.append(timeline, context, promptControls, save, more, status);
+    toolbar.append(recentStories, timeline, context, promptControls, save, more, status);
     root.prepend(landing);
     const sessionHeader = root.querySelector('[data-atria-play-session-header]');
     if (sessionHeader) sessionHeader.append(toolbar);
@@ -537,18 +572,22 @@ export function mountNativePlayControls({
         if (drawerSessionId && drawerSessionId !== currentSessionId()) { hideDrawer(); drawerSessionId = null; }
         syncBindings();
         const active = documentRef.body.dataset.atriaNativeSessionActive === 'true';
-        toolbar.hidden = !active;
-        landing.hidden = active;
-        if (!active) {
+        toolbar.hidden = !active || recentRoute();
+        landing.hidden = active && !recentRoute();
+        if (!landing.hidden) {
             drawer.hidden = true;
             status.textContent = '';
-            if (!landingRender && wasActive !== false) {
+            if (!landingRender && wasActive !== !landing.hidden) {
                 landingRender = renderLanding().finally(() => {
                     landingRender = null;
                 });
             }
         }
-        wasActive = active;
+        wasActive = !landing.hidden;
+        if (active && !activeRuntime()?.history && !activeRuntime()?.failed && rememberedSession !== currentSessionId()) {
+            rememberedSession = currentSessionId(); resumeAttempted = true;
+            try { accountStorage?.setItem('atriaLastReading', rememberedSession); } catch { /* Reading remains available without browser storage. */ }
+        }
         const runtime = activeRuntime();
         const canWrite = writable();
         for (const [button, allowed] of drawerWrites) button.disabled = !allowed();
@@ -558,7 +597,7 @@ export function mountNativePlayControls({
         load.disabled = !active;
         timeline.disabled = !active;
         context.disabled = !active;
-        leave.disabled = !runtime?.active || runtime.failed || busy || documentRef.body.dataset.generating === 'true';
+        leave.disabled = !runtime?.active || runtime.failed || busy || nativePlayGenerationBusy(runtime);
     }
 
     const observer = new MutationObserver(sync);
@@ -567,6 +606,12 @@ export function mountNativePlayControls({
         attributeFilter: ['data-atria-native-session-active', 'data-generating'],
     });
     const unsubscribers = Object.values(NATIVE_SESSION_LIFECYCLE).map(type => onNativeSessionLifecycle(type, sync));
+    documentRef.addEventListener('atria-native-play-draft', sync);
+    const unsubscribeRoute = navigation?.subscribe(() => {
+        routeEpoch += 1;
+        if (readingRoute() && !resumeAttempted && !activeRuntime()?.active) wasActive = null;
+        sync();
+    });
     sync();
 
     return Object.freeze({
@@ -580,9 +625,11 @@ export function mountNativePlayControls({
             drawerWrites.clear();
             disposed = true;
             documentRef.removeEventListener('pointerdown', dismissMore);
+            documentRef.removeEventListener('atria-native-play-draft', sync);
             root.removeEventListener('atria-play-action-error', reportActionError);
             drawer.removeEventListener('atria-play-action-error', reportActionError);
             unsubscribeNavigation?.();
+            unsubscribeRoute?.();
             drawerRequest++;
             for (const unsubscribe of unsubscribers) unsubscribe();
             observer.disconnect();

@@ -22,8 +22,8 @@ test.each([undefined, { maxJobs: 2, maxItems: 10, maxInputBytes: 4096 }])('G06 R
     });
     const body = document.createElement('div'); document.body.append(body);
     const view = mountNativeRuntimeWorkspace({ document, body, section: 'routes', route: { child: { id: 'routes:route-budget' } }, host: {} }); await flush();
-    const enabled = view.root.querySelector('[aria-label="启用共享发送额度"]');
-    const requests = view.root.querySelector('[aria-label="最大发送次数"]'), tokens = view.root.querySelector('[aria-label="Token 占用上限"]');
+    const enabled = view.root.querySelector('[aria-label="Enable shared request limits"]');
+    const requests = view.root.querySelector('[aria-label="Maximum request count"]'), tokens = view.root.querySelector('[aria-label="Token usage limit"]');
     if (!requests) throw new Error(view.root.textContent);
     expect(requests.disabled).toBe(!localWork); expect(tokens.value).toBe(localWork ? '64000' : '');
     enabled.checked = true; enabled.dispatchEvent(new Event('change'));
@@ -36,7 +36,7 @@ test.each([undefined, { maxJobs: 2, maxItems: 10, maxInputBytes: 4096 }])('G06 R
     const writes = () => globalThis.fetch.mock.calls.filter(([, options]) => options.method === 'PUT');
     expect(JSON.parse(writes()[0][1].body).executionPolicy).toEqual({ ...policy, computeBudget: { maxRequests: 2, maxTokens: 64000, ...(localWork ? { localWork } : {}) } });
     view.updateRoute({ child: { id: 'routes:route-budget' } }); await flush();
-    const reopened = view.root.querySelector('[aria-label="启用共享发送额度"]');
+    const reopened = view.root.querySelector('[aria-label="Enable shared request limits"]');
     expect(reopened.checked).toBe(true); reopened.checked = false; reopened.dispatchEvent(new Event('change'));
     view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
     expect(JSON.parse(writes()[1][1].body).executionPolicy).toEqual(policy);
@@ -103,11 +103,11 @@ test('NovelAI image connection uses the existing exact Secret store and persists
     adapter.value = 'provider.novelai-image'; adapter.dispatchEvent(new Event('change'));
     expect(view.root.querySelector('[aria-label="Service endpoint URL"]').value).toBe(NOVELAI_IMAGE_ENDPOINT);
     expect([...view.root.querySelectorAll('button')].find(button => button.textContent === 'Test connection').hidden).toBe(true);
-    const capabilities = view.root.querySelector('[aria-label="第三方图片能力（按服务文档填写 JSON）"]');
+    const capabilities = view.root.querySelector('[aria-label="Image capabilities (JSON from your provider documentation)"]');
     expect(capabilities.parentElement.hidden).toBe(true);
     adapter.value = 'provider.novelai-image-compatible'; adapter.dispatchEvent(new Event('change'));
     expect(capabilities.value).toBe('');
-    [...view.root.querySelectorAll('button')].find(button => button.textContent === '采用官方协议透传配置').click();
+    [...view.root.querySelectorAll('button')].find(button => button.textContent === 'Use official protocol forwarding').click();
     expect(JSON.parse(capabilities.value)).toEqual(officialNovelaiCapabilities());
     const endpoint = 'https://gateway.invalid/ai/generate-image';
     view.root.querySelector('[aria-label="Service endpoint URL"]').value = endpoint;

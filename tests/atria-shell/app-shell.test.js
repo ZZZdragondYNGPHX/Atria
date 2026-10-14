@@ -236,12 +236,12 @@ describe('A1 immersive navigation and search recovery', () => {
     beforeEach(() => {
         document.body.replaceChildren(); window.history.replaceState(null, '', '/'); setViewport(390, 844);
     });
-    test('reading hides tabs independently of keyboard and the top menu reaches every domain', async () => {
+    test('reading retains the floating Dock and its account menu reaches every domain', async () => {
         const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry() });
         const story = document.createElement('section'); story.dataset.atriaProductPlay = 'true'; shell.slots.stage.append(story);
         await new Promise(resolve => setTimeout(resolve, 0));
         expect(shell.root.dataset.atriaReading).toBe('true');
-        expect(shell.root.querySelector('.atria-bottom-navigation').hidden).toBe(true);
+        expect(shell.root.querySelector('.atria-bottom-navigation').hidden).toBe(false);
         const trigger = shell.root.querySelector('.atria-toolbar__menu'); trigger.click();
         expect(shell.root.querySelectorAll('[data-atria-primary-shortcut]')).toHaveLength(5);
         shell.root.querySelector('[data-atria-primary-shortcut="library"]').click();

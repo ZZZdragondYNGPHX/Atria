@@ -1,11 +1,9 @@
 /**
  * Atria appearance resolver.
  *
- * The existing theme authority (SmartTheme colors written onto the root
- * element by the theme controller) decides whether Atria renders its light or
- * dark palette. Atria does not persist a separate appearance preference; it
- * only derives `data-atria-appearance` from the active theme and follows live
- * theme changes.
+ * Serene Canvas renders in light appearance. Stored SmartTheme values remain
+ * owned by the existing theme controller and are restored in recovery mode.
+ * No separate appearance preference is persisted.
  */
 
 export const ATRIA_APPEARANCES = Object.freeze({
@@ -16,7 +14,7 @@ export const ATRIA_APPEARANCES = Object.freeze({
 /** Browser chrome color per appearance; mirrors --atri-canvas in atria-tokens.css. */
 export const ATRIA_CHROME_COLORS = Object.freeze({
     dark: '#0e0f12',
-    light: '#f6f6f8',
+    light: '#f9f8f6',
 });
 
 const HEX_PATTERN = /^#([0-9a-f]{3,8})$/i;
@@ -93,16 +91,6 @@ export function resolveAtriaAppearance({ tint, text } = {}) {
     return ATRIA_APPEARANCES.DARK;
 }
 
-function readThemeAppearance(documentRef, windowRef) {
-    const root = documentRef?.documentElement;
-    if (!root) return ATRIA_APPEARANCES.DARK;
-    const style = windowRef?.getComputedStyle?.(root);
-    return resolveAtriaAppearance({
-        tint: style?.getPropertyValue?.('--SmartThemeBlurTintColor') || root.style?.getPropertyValue?.('--SmartThemeBlurTintColor'),
-        text: style?.getPropertyValue?.('--SmartThemeBodyColor') || root.style?.getPropertyValue?.('--SmartThemeBodyColor'),
-    });
-}
-
 export function installAtriaAppearance({
     document: documentRef = globalThis.document,
     window: windowRef = globalThis.window,
@@ -128,7 +116,7 @@ export function installAtriaAppearance({
     function apply() {
         scheduled = false;
         if (disposed) return current;
-        const next = readThemeAppearance(documentRef, windowRef);
+        const next = ATRIA_APPEARANCES.LIGHT;
         if (next === current) return current;
         current = next;
         root.setAttribute('data-atria-appearance', next);

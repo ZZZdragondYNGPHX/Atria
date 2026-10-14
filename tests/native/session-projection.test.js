@@ -68,6 +68,62 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         return messages.at(-1);
     }
 
+    test('direct Native drafts publish through exact commands and preserve old history and staged state', async () => {
+        const first = runtime.snapshot;
+        await runtime.prepareGeneration('normal');
+        await runtime.appendDraft({ name: 'Player', is_user: true, is_system: false, mes: 'Read the map.', extra: {} });
+        const acceptedUser = runtime.snapshot;
+        expect(acceptedUser.timeline).toHaveLength(first.timeline.length + 1);
+        expect(runtime.generation?.kind).toBe('append');
+        runtime.stageState('atri_story_test', { clue: 'map' });
+        await runtime.appendDraft({ name: 'Narrator', is_user: false, is_system: false, mes: 'A faded line points inland.', extra: {} });
+        expect(runtime.snapshot.states.atri_story_test).toEqual({ clue: 'map' });
+        expect(runtime.snapshot.timeline.slice(0, acceptedUser.timeline.length)).toEqual(acceptedUser.timeline);
+        expect(runtime.generation).toBeNull();
+        expect(messages).toEqual(projectNativeSession(runtime.snapshot).chat);
+        const committed = runtime.snapshot.revision.revisionId;
+        await runtime.finalizeStoppedGeneration();
+        expect(runtime.snapshot.revision.revisionId).toBe(committed);
+    });
+
+    test('a queued direct draft cannot publish after a newer version replaces its scope', async () => {
+        let release;
+        runtime.queue = new Promise(resolve => { release = resolve; });
+        const request = runtime.appendDraft({ name: 'Player', is_user: true, mes: 'Old input', extra: {} });
+        runtime.projectionEpoch += 1;
+        release();
+        await expect(request).rejects.toThrow(/scope changed/);
+        expect(runtime.snapshot.timeline.some(item => item.content === 'Old input')).toBe(false);
+    });
+
+    test('an issued input commit has a receipt even when Stop and a projection failure follow', async () => {
+        const previous = runtime.snapshot;
+        const abort = new AbortController();
+        let receipt;
+        const request = runtime.request;
+        runtime.request = async (...args) => { const next = await request(...args); abort.abort(); return next; };
+        runtime.host.publish = () => { throw new Error('Projection unavailable'); };
+        await expect(runtime.appendDraft({ name: 'Player', is_user: true, mes: 'Accepted once', extra: {} }, {
+            signal: abort.signal, onAccepted: value => { receipt = value; },
+        })).rejects.toThrow('Projection unavailable');
+        expect(receipt).toEqual({ sessionId: previous.session.sessionId, branchId: previous.revision.branchId,
+            revisionId: runtime.snapshot.revision.revisionId, messageId: runtime.snapshot.timeline.at(-1).messageId });
+        const persisted = await f.core.load(h.handle, previous.session.sessionId);
+        expect(persisted.timeline.at(-1).content).toBe('Accepted once');
+        expect(persisted.revision.revisionId).toBe(receipt.revisionId);
+    });
+
+    test('Stop before a queued publication leaves the exact committed version intact', async () => {
+        const previous = runtime.snapshot;
+        const controller = new AbortController();
+        let release; runtime.queue = new Promise(resolve => { release = resolve; });
+        const pending = runtime.appendDraft({ name: 'Player', is_user: true, mes: 'Cancelled before submission', extra: {} }, { signal: controller.signal });
+        controller.abort(); release();
+        await expect(pending).rejects.toMatchObject({ code: 'generation_cancelled' });
+        expect(runtime.snapshot).toBe(previous);
+        expect((await f.core.load(h.handle, previous.session.sessionId)).revision.revisionId).toBe(previous.revision.revisionId);
+    });
+
     async function generateAssistant(text = 'The harbor is quiet.') {
         expect(await runtime.prepareGeneration('normal')).toBe('normal');
         messages.push({ name: 'Actor', is_user: false, is_system: false, mes: text, extra: {} });
@@ -84,7 +140,8 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         let stops = 0;
         await runtime.synchronizeFrontendEpoch({ stopGeneration: () => stops++ });
         expect(stops).toBe(0); expect(runtime.generationProjection.state).toBe('streaming');
-        const fork = await f.core.forkBranch(h.handle, old.session.sessionId, { expectedRevisionId: old.revision.revisionId });
+        const save = await f.core.createSavePoint(h.handle, old.session.sessionId, { revisionId: old.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, old.session.sessionId, save.saveId, { expectedRevisionId: old.revision.revisionId });
         await runtime.synchronizeFrontendEpoch({ stopGeneration: () => stops++ });
         expect(stops).toBe(1); expect(runtime.snapshot.revision.revisionId).toBe(fork.revision.revisionId);
         expect(runtime.generation).toBeNull(); expect(runtime.generationProjection.state).toBe('idle');
@@ -433,29 +490,21 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect(historical.timeline.at(-1)).toMatchObject({ messageId: assistantId, content: 'The harbor' });
     });
 
-    test('Retry Reply forks from exact post-user revision and appends a new assistant message', async () => {
+    test('manual regenerate is denied; loading a SavePoint creates a route while preserving the old branch', async () => {
         const originalBranch = runtime.snapshot.revision.branchId;
         const user = await appendUser('Ask again');
-        const postUserRevision = runtime.snapshot.revision.revisionId;
         const userId = user.atri_native.messageId;
+        const postUser = runtime.snapshot;
+        const save = await f.core.createSavePoint(h.handle, postUser.session.sessionId, { revisionId: postUser.revision.revisionId });
         const original = await generateAssistant('First answer');
         const originalMessageId = original.atri_native.messageId;
         const originalRevision = runtime.snapshot.revision.revisionId;
-
-        expect(await runtime.prepareGeneration('regenerate')).toBe('normal');
+        await expect(runtime.prepareGeneration('regenerate')).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
+        expect(runtime.snapshot.revision.revisionId).toBe(originalRevision);
+        await runtime.restoreSavePoint(save.saveId);
         expect(runtime.snapshot.revision.branchId).not.toBe(originalBranch);
         expect(runtime.snapshot.timeline.at(-1)).toMatchObject({ messageId: userId, content: 'Ask again' });
-        expect(runtime.snapshot.timeline.some(item => item.messageId === originalMessageId)).toBe(false);
-
-        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'Retry answer', extra: {} });
-        await runtime.persist();
-        const retry = runtime.snapshot.timeline.at(-1);
-        expect(retry.role).toBe('assistant');
-        expect(retry.content).toBe('Retry answer');
-        expect(retry.messageId).not.toBe(originalMessageId);
-
-        const postUser = await f.core.load(h.handle, runtime.snapshot.session.sessionId, { revisionId: postUserRevision });
-        expect(postUser.timeline.at(-1).messageId).toBe(userId);
+        await generateAssistant('Another answer');
         const oldReply = await f.core.load(h.handle, runtime.snapshot.session.sessionId, { revisionId: originalRevision });
         expect(oldReply.revision.branchId).toBe(originalBranch);
         expect(oldReply.timeline.at(-1)).toMatchObject({ messageId: originalMessageId, content: 'First answer' });
@@ -518,24 +567,17 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect((await f.core.load(h.handle, sessionId)).revision.revisionId).toBe(before);
     });
 
-    test('historical projection uses revision.branchId, stays read-only, and can fork without Variant switching', async () => {
-        const oldRevision = runtime.snapshot.revision;
-        const originalBranch = oldRevision.branchId;
+    test('historical projection retains its branch and is read-only after restoring a SavePoint', async () => {
+        const old = runtime.snapshot;
+        const save = await f.core.createSavePoint(h.handle, old.session.sessionId, { revisionId: old.revision.revisionId });
         await appendUser('Later');
-        const branch = await runtime.fork(0);
-
-        expect(runtime.snapshot.timeline).toHaveLength(1);
-        expect(runtime.snapshot.graph.at(-1).branch.forkPoint.messageId).toBe(messages[0].atri_native.messageId);
-
-        await runtime.open(runtime.snapshot.session.sessionId, { revisionId: oldRevision.revisionId });
-        expect(runtime.snapshot.session.activeBranchId).toBe(branch);
-        expect(projection.branchId).toBe(originalBranch);
-        expect(() => runtime.persist()).toThrow('not writable');
-
-        const historicalFork = await runtime.fork(0);
-        expect(historicalFork).not.toBe(branch);
-        await runtime.switchBranch(originalBranch);
-        expect(runtime.snapshot.timeline.at(-1).content).toBe('Later');
+        await runtime.restoreSavePoint(save.saveId);
+        const derived = runtime.snapshot.revision.branchId;
+        expect(derived).not.toBe(old.revision.branchId);
+        await runtime.open(old.session.sessionId, { revisionId: old.revision.revisionId });
+        expect(runtime.history).toBe(true);
+        expect(runtime.snapshot.revision.branchId).toBe(old.revision.branchId);
+        expect(() => runtime.appendDraft({ is_user: true, mes: 'History input', extra: {} })).toThrow();
     });
 
     test('P2 accepted Turn Envelope survives the runtime empty-Draft barrier', async () => {
@@ -553,19 +595,19 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         await runtime.persist();
     });
 
-    test('P2 exact revision facade forks inspected history without inheriting future state', async () => {
+    test('SavePoint recovery restores the saved state without inheriting a future turn', async () => {
         const original = runtime.snapshot;
+        const save = await f.core.createSavePoint(h.handle, original.session.sessionId, { revisionId: original.revision.revisionId });
         await appendUser('Future turn');
-        await runtime.open(original.session.sessionId, { revisionId: original.revision.revisionId });
-        expect(runtime.history).toBe(true);
-        const next = await runtime.forkRevision(original.revision.revisionId);
+        const future = runtime.snapshot;
+        const next = await runtime.restoreSavePoint(save.saveId);
         expect(runtime.history).toBe(false);
         expect(next.revision.branchId).not.toBe(original.revision.branchId);
         expect(next.timeline.map(entry => entry.messageId)).toEqual(original.timeline.map(entry => entry.messageId));
         expect(next.states.atri_world_state).toEqual(original.states.atri_world_state);
-        runtime.generation = { kind: 'append' };
-        await expect(runtime.forkRevision()).rejects.toThrow('not ready');
-        runtime.generation = null;
+        const stored = await f.core.load(h.handle, next.session.sessionId, { revisionId: future.revision.revisionId });
+        expect(stored.timeline.at(-1).content).toBe('Future turn');
+        expect(stored.revision.branchId).toBe(future.revision.branchId);
     });
 
     test('stale HEAD with a new Draft fails closed without legacy rebase/retry', async () => {

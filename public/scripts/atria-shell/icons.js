@@ -12,8 +12,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // `fill: true` marks a filled glyph element (no stroke).
 const ICONS = Object.freeze({
     play: [
-        ['circle', { cx: 12, cy: 12, r: 8.75 }],
-        ['path', { d: 'M10.1 8.6 15.6 12l-5.5 3.4Z', fill: true }],
+        ['path', { d: 'M6 4 20 12 6 20Z' }],
     ],
     library: [
         ['rect', { x: 3.75, y: 4, width: 4, height: 16, rx: 1.1 }],
@@ -21,8 +20,7 @@ const ICONS = Object.freeze({
         ['path', { d: 'M15.6 5.7 18.6 5l3.1 13.6-3 .7Z' }],
     ],
     build: [
-        ['path', { d: 'M12.15 4.78 19.22 11.86 16.68 14.4 9.61 7.32Z' }],
-        ['path', { d: 'M12.2 11.8 4.8 19.2' }],
+        ['path', { d: 'm12 3 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3L2.9 9.6l6.3-.9Z' }],
     ],
     agents: [
         ['path', { d: 'M11 3.5c.55 4 2.3 5.75 6.3 6.3-4 .55-5.75 2.3-6.3 6.3-.55-4-2.3-5.75-6.3-6.3 4-.55 5.75-2.3 6.3-6.3Z' }],

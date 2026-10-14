@@ -2,6 +2,7 @@
 import { projectTemporalGraph } from './temporal-graph.js';
 import { projectFacts } from './atomic-facts.js';
 import { inspectMemory } from './diagnostics.js';
+import { translateShellText as t } from '../../atria-shell/localization.js';
 
 export function inspectorPayload(snapshot, mode) {
     // Chat variable tables and rollback backups are not inputs to source validation.
@@ -67,11 +68,16 @@ export async function computeInspector(snapshot, { mode = 'graph', query = '', s
 
 export async function openMemoryDiagnostics(context, snapshot) {
     const root = document.createElement('section'); root.className = 'memory-os-diagnostics';
-    root.innerHTML = '<h3>Memory OS · 诊断</h3><p>本地词法与图谱检索；不调用模型或向量服务，不更新访问计数。</p><label>查询 <input class="text_pole" aria-label="诊断查询" maxlength="4000"></label><button class="menu_button" type="button">运行诊断</button><pre role="status"></pre>';
+    const heading = document.createElement('h3'); heading.textContent = t('Memory OS · Diagnostics');
+    const note = document.createElement('p'); note.textContent = t('Uses local lexical and graph retrieval. No model or vector requests are sent, and access counters are preserved.');
+    const label = document.createElement('label'); label.textContent = t('Query');
+    const input = document.createElement('input'); input.className = 'text_pole'; input.maxLength = 4000; input.setAttribute('aria-label', t('Diagnostics query')); label.append(input);
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'menu_button'; button.textContent = t('Run diagnostics');
+    const results = document.createElement('pre'); results.setAttribute('role', 'status'); root.append(heading, note, label, button, results);
     const output = root.querySelector('pre'); output.style.whiteSpace = 'pre-wrap'; output.style.overflowWrap = 'anywhere'; output.style.textAlign = 'left';
     let controller; let disposed = false;
     const run = async () => {
-        controller?.abort(); const current = new AbortController(); controller = current; output.textContent = '正在计算…';
+        controller?.abort(); const current = new AbortController(); controller = current; output.textContent = t('Computing…');
         try {
             const result = await computeInspector(snapshot, { mode: 'diagnostics', query: root.querySelector('input').value, signal: current.signal });
             if (!disposed && controller === current) output.textContent = JSON.stringify(result, null, 2);

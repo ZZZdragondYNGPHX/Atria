@@ -1,3 +1,4 @@
+import { translateShellText, formatShellText } from '../atria-shell/localization.js';
 import { mountVisualGallery } from './visual-gallery-ui.js';
 import { mountVisualDirector } from './visual-director-ui.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
@@ -17,22 +18,22 @@ export async function activate(sdk) {
         Object.assign(root.style, { position: 'absolute', inset: '0', zIndex: '5', pointerEvents: 'none' });
     }
     const toolbar = node(doc, root, 'div', undefined, 'atri-illustration-toolbar atri-illustration-actions');
-    toolbar.setAttribute('aria-label', '插图工具');
+    toolbar.setAttribute('aria-label', translateShellText('Illustration tools'));
     if (doc.defaultView.ResizeObserver) {
         const observer = new doc.defaultView.ResizeObserver(() => root.style.setProperty('--atri-illustration-toolbar-height', toolbar.getBoundingClientRect().height + 'px'));
         observer.observe(toolbar); sdk.onDispose(() => observer.disconnect());
     }
-    const panel = node(doc, root, 'aside', undefined, 'atri-illustration-panel'); panel.hidden = true; panel.setAttribute('aria-label', '标注卡片');
+    const panel = node(doc, root, 'aside', undefined, 'atri-illustration-panel'); panel.hidden = true; panel.setAttribute('aria-label', translateShellText('Annotation card'));
     toolbar.style.pointerEvents = panel.style.pointerEvents = 'auto';
     const status = node(doc, toolbar, 'span'); status.setAttribute('role', 'status');
     let mode = false, pending = null, selectedId = null, settings = (await sdk.illustrations.settings.read()).value, configEditor;
     let visualConfiguration = await runtimeRequest('/visual/configuration');
     const drafts = new Map(), operations = new Map(), imageOperations = new Map(), watchers = new Map();
     const terminal = new Set(['completed', 'failed', 'cancelled', 'stale', 'uncertain_submission']);
-    const promptErrors = { native_generation_route_missing: '请先创建“绘图提示词”用途的模型路线，并在插图配置中选择。', native_generation_route_ambiguous: '有多条提示词模型路线，请在插图配置中明确选择。', generation_secret_unavailable: '提示词模型连接的密钥不可用，请检查该连接。', native_illustration_source_unavailable: '此旧存档缺少原始历史上下文；可以直接填写提示词。', generation_context_budget_exceeded: '选文与角色描述超过模型容量，请选择容量更大的提示词模型。', native_illustration_prompt_invalid: '模型输出格式不正确，请重试提示词步骤。' };
-    const taskLabels = { queued: '等待提示词模型', running: '正在生成提示词', streaming: '正在生成提示词', retrying: '正在重试提示词', finalizing: '正在保存提示词版本', completed: '提示词版本已保存', failed: '提示词生成失败，可重试本步骤', cancelled: '提示词任务已取消', stale: '标注已删除或不可用，结果未写入' };
-    const imageLabels = { submitting: '正在提交图片', submitted: '远端已接受图片任务', result_received: '图片已接收，等待发布', uncertain_submission: '发送状态不确定，请核对供应商；不会自动重发', queued: '图片任务排队中', running: '正在生成图片', finalizing: '正在保存图片版本', completed: '图片版本已保存', failed: '图片生成失败，可重试本步骤', cancelled: '图片任务已取消', stale: '图片归属已不可用，结果未写入' };
-    const imageErrors = { native_illustration_connection_missing: '请先在插图配置选择图片连接。', native_illustration_connection_invalid: '请检查 NovelAI 图片连接类型和完整接口地址。', native_illustration_capabilities_invalid: '第三方连接需要按服务文档填写图片能力。', native_illustration_prompt_empty: '请先确认或填写图片提示词。', native_illustration_model_unsupported: '图片连接未声明支持此模型，请检查参数与连接能力。', native_illustration_parameters_unsupported: '图片尺寸、采样器或参数超出连接声明的能力。', native_illustration_characters_unsupported: '此模型最多支持六个独立角色提示词。', native_illustration_image_authentication_failed: '图片服务拒绝了所选密钥，请检查图片连接。', native_illustration_image_rate_limited: '图片服务限流，请稍后重试图片步骤。', native_illustration_image_response_invalid: '图片响应不符合所选协议或不是有效 PNG，请检查连接能力。', native_illustration_image_unreachable: '图片服务暂时无法连接，可重试图片步骤。', generation_secret_unavailable: '所选连接的密钥不可用，请检查连接。' };
+    const promptErrors = { native_generation_route_missing: translateShellText('Create an illustration prompt route, then select it in illustration settings.'), native_generation_route_ambiguous: translateShellText('Several prompt routes are available. Select one in illustration settings.'), generation_secret_unavailable: translateShellText('The prompt connection secret is unavailable. Check the connection.'), native_illustration_source_unavailable: translateShellText('This older save lacks the original context. You can enter a prompt directly.'), generation_context_budget_exceeded: translateShellText('The selection and character details exceed the model context limit. Choose a larger prompt model.'), native_illustration_prompt_invalid: translateShellText('The model returned an invalid format. Retry prompt generation.') };
+    const taskLabels = { queued: translateShellText('Waiting for the prompt model'), running: translateShellText('Generating a prompt'), streaming: translateShellText('Generating a prompt'), retrying: translateShellText('Retrying prompt generation'), finalizing: translateShellText('Saving the prompt version'), completed: translateShellText('Prompt version saved'), failed: translateShellText('Prompt generation failed. You can retry.'), cancelled: translateShellText('Prompt task cancelled'), stale: translateShellText('The annotation is unavailable. The result was not saved.') };
+    const imageLabels = { submitting: translateShellText('Submitting the image task'), submitted: translateShellText('The provider accepted the image task.'), result_received: translateShellText('Image received. Waiting to publish.'), uncertain_submission: translateShellText('Submission status is uncertain. Check the provider. This task will not be resent automatically.'), queued: translateShellText('Image task queued'), running: translateShellText('Generating an image'), finalizing: translateShellText('Saving the image version'), completed: translateShellText('Image version saved'), failed: translateShellText('Image generation failed. You can retry.'), cancelled: translateShellText('Image task cancelled'), stale: translateShellText('The image destination is unavailable. The result was not saved.') };
+    const imageErrors = { native_illustration_connection_missing: translateShellText('Select an image connection in illustration settings first.'), native_illustration_connection_invalid: translateShellText('Check the NovelAI image adapter and full endpoint URL.'), native_illustration_capabilities_invalid: translateShellText('Use the provider documentation to declare third-party image capabilities.'), native_illustration_prompt_empty: translateShellText('Confirm or enter an image prompt first.'), native_illustration_model_unsupported: translateShellText('The connection does not declare this model. Check its parameters and capabilities.'), native_illustration_parameters_unsupported: translateShellText('The image size, sampler or parameters exceed the declared connection capabilities.'), native_illustration_characters_unsupported: translateShellText('This model supports up to six separate character prompts.'), native_illustration_image_authentication_failed: translateShellText('The image provider rejected the selected secret. Check the connection.'), native_illustration_image_rate_limited: translateShellText('The image provider is rate limiting requests. Retry later.'), native_illustration_image_response_invalid: translateShellText('The image response does not match the protocol or is not a valid PNG. Check the connection capabilities.'), native_illustration_image_unreachable: translateShellText('The image provider is unreachable. You can retry.'), generation_secret_unavailable: translateShellText('The selected connection secret is unavailable. Check the connection.') };
     function watch(operation, submitted, step = 'prompt') {
         const id = operation.operationId;
         const labels = step === 'image' ? imageLabels : taskLabels, tasks = step === 'image' ? imageOperations : operations;
@@ -51,15 +52,15 @@ export async function activate(sdk) {
                     const local = drafts.get(annotationId);
                     if (step === 'prompt' && submitted && JSON.stringify(local) === submitted) drafts.delete(annotationId);
                     if (selectedId === annotationId && !panel.hidden && !configEditor) renderCard();
-                    const failureDetail = result.operation.errorCode === 'generation_context_budget_exceeded' ? '；选文与角色描述超过模型容量，请选择容量更大的提示词模型' : result.operation.errorCode === 'native_illustration_prompt_invalid' ? '；模型输出格式不正确，请重试提示词步骤' : '';
-                    notify(labels[result.operation.status] + (step === 'image' && result.operation.errorCode ? '；' + (imageErrors[result.operation.errorCode] ?? '请检查图片连接后重试。') : failureDetail) + (step === 'prompt' && result.operation.status === 'completed' && drafts.has(annotationId) ? '；当前编辑已保留，可从历史应用新版本。' : '。'), result.operation.status === 'failed');
+                    const failureDetail = result.operation.errorCode === 'generation_context_budget_exceeded' ? translateShellText('; the selection and characters exceed the model context limit. Choose a larger prompt model') : result.operation.errorCode === 'native_illustration_prompt_invalid' ? translateShellText('; the model returned an invalid format. Retry prompt generation') : '';
+                    notify(labels[result.operation.status] + (step === 'image' && result.operation.errorCode ? '；' + (imageErrors[result.operation.errorCode] ?? translateShellText('Check the image connection and retry.')) : failureDetail) + (step === 'prompt' && result.operation.status === 'completed' && drafts.has(annotationId) ? translateShellText('; your draft is preserved. Apply the new version from history.') : '。'), result.operation.status === 'failed');
                     return;
                 }
                 const indicator = panel.querySelector('[data-' + step + '-status="' + annotationId + '"]');
                 if (indicator) indicator.textContent = labels[result.operation.status];
                 watchers.set(id, setTimeout(poll, 750));
             } catch (error) {
-                watchers.delete(id); if (!disposed) notify('任务状态读取失败；重新打开卡片可恢复查看。', true);
+                watchers.delete(id); if (!disposed) notify(translateShellText('Could not load task status. Reopen the card to reconnect.'), true);
             }
         };
         void poll();
@@ -79,7 +80,7 @@ export async function activate(sdk) {
     const run = callback => async () => {
         if (busy || disposed) return;
         busy = true;
-        try { await callback(); } catch (error) { notify(error.status === 409 ? '标注已变化，编辑已保留。请重新打开卡片后合并。' : imageErrors[error.code] ?? promptErrors[error.code] ?? error.message, true); } finally { busy = false; }
+        try { await callback(); } catch (error) { notify(error.status === 409 ? translateShellText('The annotation changed. Your draft is preserved. Reopen the card and compare before saving.') : imageErrors[error.code] ?? promptErrors[error.code] ?? error.message, true); } finally { busy = false; }
     };
     // Reconnect to server-owned tasks. UI disposal only releases polling.
     async function refreshTasks() {
@@ -102,15 +103,15 @@ export async function activate(sdk) {
         const selection = sdk.illustrations.selection();
         if (selection) pending = selection;
         else if (!doc.getSelection()?.isCollapsed || !root.contains(doc.activeElement)) pending = null;
-        create.disabled = !pending || !writable; create.textContent = pending ? '为选文建立标注' : '选择正文后建立标注';
+        create.disabled = !pending || !writable; create.textContent = pending ? translateShellText('Annotate selection') : translateShellText('Select text to annotate');
     }
-    const toggle = button(doc, toolbar, '正文模式', run(() => {
-        readDraft(); mode = !mode; toggle.textContent = mode ? '生图模式' : '正文模式'; toggle.setAttribute('aria-pressed', String(mode));
+    const toggle = button(doc, toolbar, translateShellText('Reading mode'), run(() => {
+        readDraft(); mode = !mode; toggle.textContent = mode ? translateShellText('Illustration mode') : translateShellText('Reading mode'); toggle.setAttribute('aria-pressed', String(mode));
         sdk.illustrations.setSelectionMode(mode); create.hidden = !mode;
         if (!mode) { panel.hidden = true; pending = null; }
-        notify(mode ? '电脑框选；手机长按并调整原生选文范围。' : '正文模式'); capture();
+        notify(mode ? translateShellText('Select text with a mouse, or long press and adjust the selection on a phone.') : translateShellText('Reading mode')); capture();
     })); toggle.setAttribute('aria-pressed', 'false'); toggle.disabled = !writable;
-    const create = button(doc, toolbar, '选择正文后建立标注', run(async () => {
+    const create = button(doc, toolbar, translateShellText('Select text to annotate'), run(async () => {
         if (!pending) return;
         const selection = { ...pending }, previous = sdk.illustrations.snapshot();
         const nextSettings = await sdk.illustrations.settings.read(); settings = nextSettings.value;
@@ -118,28 +119,28 @@ export async function activate(sdk) {
         const result = await sdk.illustrations.command('createAnnotation', { ...selection, draft, expectedHead: previous.head });
         selectedId = result.state.annotations.at(-1).annotationId; pending = null;
         visualConfiguration = await runtimeRequest('/visual/configuration');
-        notify('标注已保存。'); capture(); renderCard();
+        notify(translateShellText('Annotation saved.')); capture(); renderCard();
     })); create.disabled = true; create.hidden = true;
     // Keep desktop selection on the explicit action. Touch uses its captured
     // canonical range and leaves native selection handles under browser control.
     sdk.events.listen(create, 'mousedown', event => event.preventDefault());
-    button(doc, toolbar, '标注与历史', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); visualConfiguration = await runtimeRequest('/visual/configuration'); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
-    button(doc, toolbar, 'Gallery / Media Studio', run(async () => {
+    button(doc, toolbar, translateShellText('Annotations and history'), run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); visualConfiguration = await runtimeRequest('/visual/configuration'); if (!mode && writable) { mode = true; toggle.textContent = translateShellText('Illustration mode'); toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
+    button(doc, toolbar, translateShellText('Gallery / Media Studio'), run(async () => {
         readDraft(); galleryEditor?.dispose(); panel.replaceChildren(); panel.hidden = false; panel.style.width = 'min(980px, calc(100vw - 32px))';
-        button(doc, panel, '关闭 Gallery', () => { if (!confirmAtriaDraftLeave(doc, panel)) return; galleryEditor?.dispose(); galleryEditor = null; panel.style.width = ''; panel.hidden = true; });
+        button(doc, panel, translateShellText('Close gallery'), () => { if (!confirmAtriaDraftLeave(doc, panel)) return; galleryEditor?.dispose(); galleryEditor = null; panel.style.width = ''; panel.hidden = true; });
         galleryEditor = await mountVisualGallery({ document: doc, parent: panel, sdk, report: error => notify(error.message, true),
             onJob: started => { const operation = { operationId: started.operationId, status: 'queued', anchor: {} }; watch(operation, undefined, 'image'); } });
     }));
     sdk.onDispose(() => galleryEditor?.dispose());
-    button(doc, toolbar, '镜头候选', run(async () => {
+    button(doc, toolbar, translateShellText('Image candidates'), run(async () => {
         readDraft(); panel.replaceChildren(); panel.hidden = false;
-        button(doc, panel, '关闭候选', () => panel.hidden = true);
+        button(doc, panel, translateShellText('Close candidates'), () => panel.hidden = true);
         await mountVisualDirector({ document: doc, parent: panel, sdk, report: error => notify(error.message, true) });
     }));
-    button(doc, toolbar, '插图配置', run(() => {
+    button(doc, toolbar, translateShellText('Illustration settings'), run(() => {
         if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return;
         readDraft(); readDraft = () => {}; configEditor?.dispose(); panel.replaceChildren(); panel.hidden = false;
-        button(doc, panel, '关闭配置', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; visualConfiguration = await runtimeRequest('/visual/configuration'); panel.hidden = true; }));
+        button(doc, panel, translateShellText('Close settings'), run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; visualConfiguration = await runtimeRequest('/visual/configuration'); panel.hidden = true; }));
         configEditor = mountIllustrationSettings({ document: doc, parent: panel, client: sdk.illustrations.settings, packageId: sdk.context.packageId, showEnabled: false });
     }));
     sdk.events.listen(doc, 'selectionchange', capture);
@@ -159,10 +160,10 @@ export async function activate(sdk) {
         const snapshot = sdk.illustrations.snapshot(), state = snapshot.state;
         const annotations = state.annotations;
         if (!annotations.some(item => item.annotationId === selectedId)) selectedId = annotations.find(item => item.deletedAt === undefined)?.annotationId ?? annotations[0]?.annotationId;
-        const heading = node(doc, panel, 'div', undefined, 'atri-illustration-actions'); node(doc, heading, 'h3', '单标注卡片');
-        button(doc, heading, '关闭卡片', run(() => { readDraft(); panel.hidden = true; toggle.focus(); }));
-        if (!annotations.length) { node(doc, panel, 'p', '开启生图模式，选择一段正文来创建标注。'); readDraft = () => {}; return; }
-        select(doc, panel, '当前标注', selectedId, annotations.map(item => [item.annotationId, (item.deletedAt === undefined ? '' : '已删除 · ') + item.anchor.quote.slice(0, 48)]), id => {
+        const heading = node(doc, panel, 'div', undefined, 'atri-illustration-actions'); node(doc, heading, 'h3', translateShellText('Annotation'));
+        button(doc, heading, translateShellText('Close card'), run(() => { readDraft(); panel.hidden = true; toggle.focus(); }));
+        if (!annotations.length) { node(doc, panel, 'p', translateShellText('Turn on illustration mode and select text to create an annotation.')); readDraft = () => {}; return; }
+        select(doc, panel, translateShellText('Current annotation'), selectedId, annotations.map(item => [item.annotationId, (item.deletedAt === undefined ? '' : translateShellText('Deleted · ')) + item.anchor.quote.slice(0, 48)]), id => {
             try { readDraft(); selectedId = id; renderCard(); } catch (error) { notify(error.message, true); }
         });
         const annotation = annotations.find(item => item.annotationId === selectedId);
@@ -171,133 +172,133 @@ export async function activate(sdk) {
         const deleted = annotation.deletedAt !== undefined;
         const draft = drafts.get(selectedId) ?? structuredClone(annotation.draft ?? createIllustrationDraft(annotation.anchor.quote, settings, sdk.context.packageId).draft);
         drafts.set(selectedId, draft);
-        const editor = node(doc, card, 'fieldset'); editor.disabled = !writable || deleted; node(doc, editor, 'legend', '提示词与角色');
+        const editor = node(doc, card, 'fieldset'); editor.disabled = !writable || deleted; node(doc, editor, 'legend', translateShellText('Prompt and characters'));
         const allowed = settings.characters.filter(item => item.enabled && settings.works[sdk.context.packageId]?.characterIds.includes(item.id));
         const matches = matchDrawingCharacters(annotation.anchor.quote, settings.characters, allowed.map(item => item.id));
-        for (const ambiguity of matches.ambiguous) node(doc, editor, 'p', '同名角色「' + ambiguity.name + '」有多个候选，请在添加角色中手动选择。');
-        const manual = select(doc, editor, '添加角色（也可补充代词指代）', '', [['', '选择绘图角色'], ...allowed.filter(item => !draft.characters.some(current => current.character.id === item.id)).map(item => [item.id, item.name + ' · ' + item.id])], () => {});
-        button(doc, editor, '添加所选角色', run(() => {
+        for (const ambiguity of matches.ambiguous) node(doc, editor, 'p', formatShellText('Several characters are named “${0}”. Choose the intended character below.', [ambiguity.name]));
+        const manual = select(doc, editor, translateShellText('Add a character, including pronoun references'), '', [['', translateShellText('Choose a drawing character')], ...allowed.filter(item => !draft.characters.some(current => current.character.id === item.id)).map(item => [item.id, item.name + ' · ' + item.id])], () => {});
+        button(doc, editor, translateShellText('Add selected character'), run(() => {
             readDraft(); const character = allowed.find(item => item.id === manual.value);
             if (!character || draft.characters.some(item => item.character.id === character.id)) return;
             draft.characters.push({ character: structuredClone(character), dynamicPrompt: '', clothing: character.defaultClothing }); renderCard();
         }));
         for (const item of draft.characters) {
             const group = node(doc, editor, 'fieldset'); node(doc, group, 'legend', item.character.name);
-            node(doc, group, 'p', '固定外观：' + (item.character.fixedPrompt || '未填写'));
-            field(doc, group, '服装 · ' + item.character.name, item.clothing, text => item.clothing = text);
-            field(doc, group, '动态描述 · ' + item.character.name, item.dynamicPrompt, text => item.dynamicPrompt = text, { multiline: true });
-            button(doc, group, '移除角色 · ' + item.character.name, run(() => { readDraft(); draft.characters = draft.characters.filter(current => current !== item); renderCard(); }));
+            node(doc, group, 'p', formatShellText('Fixed appearance: ${0}', [item.character.fixedPrompt || translateShellText('Not provided')]));
+            field(doc, group, formatShellText('Outfit · ${0}', [item.character.name]), item.clothing, text => item.clothing = text);
+            field(doc, group, formatShellText('Scene description · ${0}', [item.character.name]), item.dynamicPrompt, text => item.dynamicPrompt = text, { multiline: true });
+            button(doc, group, formatShellText('Remove character · ${0}', [item.character.name]), run(() => { readDraft(); draft.characters = draft.characters.filter(current => current !== item); renderCard(); }));
         }
-        field(doc, editor, '场景与构图', draft.scene, text => draft.scene = text, { multiline: true });
-        field(doc, editor, '图片提示词（可直接填写）', draft.prompt, text => draft.prompt = text, { multiline: true });
-        const preset = node(doc, editor, 'details'); preset.dataset.section = 'preset'; preset.open = openDetails.has('preset'); node(doc, preset, 'summary', '单标注预设与参数');
+        field(doc, editor, translateShellText('Scene and composition'), draft.scene, text => draft.scene = text, { multiline: true });
+        field(doc, editor, translateShellText('Image prompt, directly editable'), draft.prompt, text => draft.prompt = text, { multiline: true });
+        const preset = node(doc, editor, 'details'); preset.dataset.section = 'preset'; preset.open = openDetails.has('preset'); node(doc, preset, 'summary', translateShellText('Annotation preset and parameters'));
         const parsePreset = renderIllustrationPreset(doc, preset, draft.preset);
         const imageSelection = { imageTargetId: annotation.imageSelection?.imageTargetId ?? null, imageRenderingId: annotation.imageSelection?.imageRenderingId ?? null };
-        const targetChoices = [['', '继承上层目标'], ...visualConfiguration.targets.map(item => [item.imageTargetId, item.displayName])];
-        const renderingChoices = [['', '继承上层画风'], ...visualConfiguration.renderings.map(item => [item.imageRenderingId, item.displayName])];
-        select(doc, editor, '此标注的图片目标', imageSelection.imageTargetId ?? '', targetChoices, value => imageSelection.imageTargetId = value || null);
-        select(doc, editor, '此标注的画风配置', imageSelection.imageRenderingId ?? '', renderingChoices, value => imageSelection.imageRenderingId = value || null);
+        const targetChoices = [['', translateShellText('Use the inherited target')], ...visualConfiguration.targets.map(item => [item.imageTargetId, item.displayName])];
+        const renderingChoices = [['', translateShellText('Use the inherited style')], ...visualConfiguration.renderings.map(item => [item.imageRenderingId, item.displayName])];
+        select(doc, editor, translateShellText('Image target for this annotation'), imageSelection.imageTargetId ?? '', targetChoices, value => imageSelection.imageTargetId = value || null);
+        select(doc, editor, translateShellText('Image style for this annotation'), imageSelection.imageRenderingId ?? '', renderingChoices, value => imageSelection.imageRenderingId = value || null);
         let taskTargetId = '', taskRenderingId = '';
-        select(doc, editor, '仅本次生成的目标', '', targetChoices, value => taskTargetId = value);
-        select(doc, editor, '仅本次生成的画风', '', renderingChoices, value => taskRenderingId = value);
+        select(doc, editor, translateShellText('Target for this generation only'), '', targetChoices, value => taskTargetId = value);
+        select(doc, editor, translateShellText('Style for this generation only'), '', renderingChoices, value => taskRenderingId = value);
         readDraft = () => { parsePreset(); assertIllustrationDraft(draft); };
         const actions = node(doc, editor, 'div', undefined, 'atri-illustration-actions');
-        button(doc, actions, '保存卡片', run(async () => {
+        button(doc, actions, translateShellText('Save card'), run(async () => {
             readDraft(); await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft, imageSelection, expectedHead: snapshot.head });
-            drafts.delete(annotation.annotationId); notify('卡片已保存。'); renderCard();
+            drafts.delete(annotation.annotationId); notify(translateShellText('Card saved.')); renderCard();
         }));
         const operation = operations.get(annotation.annotationId);
         const active = operation && !terminal.has(operation.status);
-        const promptButton = button(doc, actions, active ? '提示词生成中' : '生成提示词', run(async () => {
+        const promptButton = button(doc, actions, active ? translateShellText('Generating prompt') : translateShellText('Generate prompt'), run(async () => {
             readDraft(); const submitted = structuredClone(draft);
             await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, imageSelection, expectedHead: sdk.illustrations.snapshot().head });
             const started = await sdk.illustrations.prompt('start', { annotationId: annotation.annotationId });
             const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
             operations.set(annotation.annotationId, operation); watch(operation, JSON.stringify(submitted));
-            notify('提示词任务已提交；可以继续阅读或编辑卡片。'); renderCard();
+            notify(translateShellText('Prompt task submitted. You can keep reading or editing the card.')); renderCard();
         })); promptButton.disabled = Boolean(active); promptButton.setAttribute('aria-busy', String(Boolean(active)));
         const taskStatus = node(doc, actions, 'span', operation ? taskLabels[operation.status] : '');
         taskStatus.dataset.promptStatus = annotation.annotationId; taskStatus.setAttribute('role', 'status');
-        if (active) button(doc, actions, '取消提示词任务', run(async () => {
-            await sdk.illustrations.prompt('cancel', { operationId: operation.operationId }); notify('已请求取消提示词任务。');
+        if (active) button(doc, actions, translateShellText('Cancel prompt task'), run(async () => {
+            await sdk.illustrations.prompt('cancel', { operationId: operation.operationId }); notify(translateShellText('Prompt cancellation requested.'));
         }));
         const imageOperation = imageOperations.get(annotation.annotationId), imageActive = imageOperation && !terminal.has(imageOperation.status);
-        const imageButton = button(doc, actions, imageActive ? '图片生成中' : '生成图片', run(async () => {
+        const imageButton = button(doc, actions, imageActive ? translateShellText('Generating image') : translateShellText('Generate image'), run(async () => {
             readDraft(); const submitted = structuredClone(draft);
             const saved = await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, imageSelection, expectedHead: sdk.illustrations.snapshot().head });
             const preview = await sdk.illustrations.image('prepare', { annotationId: annotation.annotationId, expectedHead: saved.head,
                 ...(taskTargetId ? { imageTargetId: taskTargetId } : {}), ...(taskRenderingId ? { imageRenderingId: taskRenderingId } : {}) });
-            const approvalBox = node(doc, actions, 'fieldset'); node(doc, approvalBox, 'legend', '确认图片任务');
-            node(doc, approvalBox, 'p', preview.target.name + ' · ' + preview.target.model + ' · ' + (preview.cost.kind === 'unknown' ? '费用未知' : preview.cost.kind === 'free' ? '无 API 金额' : '预计最高 ' + preview.cost.upperBound + ' ' + preview.cost.currency));
-            node(doc, approvalBox, 'p', '目标来源：' + (preview.selection.imageTargetIdOrigin ?? '画风默认') + '；画风来源：' + (preview.selection.imageRenderingIdOrigin ?? '默认'));
-            node(doc, approvalBox, 'p', '生成结果将进入历史；选择版本后才改变正文显示。');
+            const approvalBox = node(doc, actions, 'fieldset'); node(doc, approvalBox, 'legend', translateShellText('Confirm image task'));
+            node(doc, approvalBox, 'p', preview.target.name + ' · ' + preview.target.model + ' · ' + (preview.cost.kind === 'unknown' ? translateShellText('Cost unknown') : preview.cost.kind === 'free' ? translateShellText('No API charge') : translateShellText('Estimated maximum: ') + preview.cost.upperBound + ' ' + preview.cost.currency));
+            node(doc, approvalBox, 'p', translateShellText('Target source: ') + (preview.selection.imageTargetIdOrigin ?? translateShellText('Style default')) + translateShellText('; style source: ') + (preview.selection.imageRenderingIdOrigin ?? translateShellText('Default')));
+            node(doc, approvalBox, 'p', translateShellText('Results enter history first. Select a version to display it in the story.'));
             let maxCost = String(preview.cost.upperBound ?? 0), currency = preview.cost.currency || 'USD', allowUnknownCost = false;
-            field(doc, approvalBox, '本次金额上限', maxCost, text => maxCost = text, { type: 'number' });
-            field(doc, approvalBox, '币种', currency, text => currency = text);
-            if (preview.cost.kind === 'unknown') field(doc, approvalBox, '我接受供应商费用未知，按填写额度预留', false, value => allowUnknownCost = value, { type: 'checkbox' });
-            button(doc, approvalBox, '批准生成', run(async () => {
+            field(doc, approvalBox, translateShellText('Cost limit for this task'), maxCost, text => maxCost = text, { type: 'number' });
+            field(doc, approvalBox, translateShellText('Currency'), currency, text => currency = text);
+            if (preview.cost.kind === 'unknown') field(doc, approvalBox, translateShellText('I accept unknown provider costs and reserve the entered amount'), false, value => allowUnknownCost = value, { type: 'checkbox' });
+            button(doc, approvalBox, translateShellText('Approve generation'), run(async () => {
                 const started = await sdk.illustrations.image('start', { prepareId: preview.prepareId, approval: { targetFingerprint: preview.targetFingerprint,
                     requestHash: preview.requestHash, maxCost: Number(maxCost), currency, allowUnknownCost, externalAssetIds: [], omittedPreferred: [] } });
                 const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
                 imageOperations.set(annotation.annotationId, operation); watch(operation, undefined, 'image');
-                notify('图片任务已提交；可以继续阅读或编辑。'); renderCard();
+                notify(translateShellText('Image task submitted. You can keep reading or editing.')); renderCard();
             }));
-            button(doc, approvalBox, '取消', () => approvalBox.remove());
+            button(doc, approvalBox, translateShellText('Cancel'), () => approvalBox.remove());
             approvalBox.querySelector('input')?.focus();
         }));
         const syncImageButton = () => { imageButton.disabled = Boolean(imageActive) || !draft.prompt.trim(); imageButton.setAttribute('aria-busy', String(Boolean(imageActive))); };
         syncImageButton(); editor.addEventListener('input', syncImageButton);
         const imageStatus = node(doc, actions, 'span', imageOperation ? imageLabels[imageOperation.status] : '');
         imageStatus.dataset.imageStatus = annotation.annotationId; imageStatus.setAttribute('role', 'status');
-        if (imageActive) button(doc, actions, '取消图片任务', run(async () => {
-            await sdk.illustrations.image('cancel', { operationId: imageOperation.operationId }); notify('已请求取消图片任务。');
+        if (imageActive) button(doc, actions, translateShellText('Cancel image task'), run(async () => {
+            await sdk.illustrations.image('cancel', { operationId: imageOperation.operationId }); notify(translateShellText('Image cancellation requested.'));
         }));
-        node(doc, editor, 'p', '生成提示词会保存新版本；图片生成单独操作。也可直接填写提示词。');
-        button(doc, editor, '按当前分块组合提示词', run(() => { readDraft(); draft.prompt = composeIllustrationPrompt(draft); renderCard(); }));
-        button(doc, editor, '显式应用最新角色与预设', run(async () => {
+        node(doc, editor, 'p', translateShellText('Prompt generation saves a new version. Generate an image separately, or enter a prompt directly.'));
+        button(doc, editor, translateShellText('Compose prompt from current sections'), run(() => { readDraft(); draft.prompt = composeIllustrationPrompt(draft); renderCard(); }));
+        button(doc, editor, translateShellText('Apply latest characters and preset'), run(async () => {
             readDraft(); settings = (await sdk.illustrations.settings.read()).value;
             draft.characters = draft.characters.map(item => {
                 const character = settings.characters.find(current => current.id === item.character.id);
                 return character ? { ...item, character: structuredClone(character) } : item;
             });
             draft.preset = structuredClone(settings.works[sdk.context.packageId]?.preset ?? settings.preset);
-            notify('已更新角色与预设快照；完整提示词保留，可按分块重新组合。'); renderCard();
+            notify(translateShellText('Character and preset snapshots updated. The full prompt is preserved and can be recomposed from sections.')); renderCard();
         }));
-        const preview = node(doc, editor, 'details'); node(doc, preview, 'summary', '预览最终图片输入');
+        const preview = node(doc, editor, 'details'); node(doc, preview, 'summary', translateShellText('Preview image request'));
         const previewText = node(doc, preview, 'pre');
         const previewInput = () => { previewText.textContent = JSON.stringify({ authoring: 'raw', prompt: draft.prompt, negativePrompt: draft.preset.negativePrompt, style: draft.preset.style }, null, 2); };
         editor.addEventListener('input', () => { if (preview.open) previewInput(); });
         preview.addEventListener('toggle', () => { if (preview.open) { try { readDraft(); previewInput(); } catch (error) { notify(error.message, true); } } });
-        const promptHistory = node(doc, card, 'details'); promptHistory.dataset.section = 'prompts'; promptHistory.open = openDetails.has('prompts'); node(doc, promptHistory, 'summary', '提示词历史');
+        const promptHistory = node(doc, card, 'details'); promptHistory.dataset.section = 'prompts'; promptHistory.open = openDetails.has('prompts'); node(doc, promptHistory, 'summary', translateShellText('Prompt history'));
         for (const version of [...(annotation.promptVersions ?? [])].reverse()) {
             const row = node(doc, promptHistory, 'article');
             node(doc, row, 'p', new Date(version.createdAt).toLocaleString()); node(doc, row, 'pre', version.draft.prompt);
-            const evidence = node(doc, row, 'details'); node(doc, evidence, 'summary', '生成时的上下文、角色与模型路线');
+            const evidence = node(doc, row, 'details'); node(doc, evidence, 'summary', translateShellText('Generation context, characters and route'));
             evidence.addEventListener('toggle', () => { if (evidence.open && !evidence.querySelector('pre')) node(doc, evidence, 'pre', JSON.stringify({ characters: version.draft.characters, preset: version.draft.preset, template: version.template, request: version.requestSnapshot }, null, 2)); });
-            const apply = button(doc, row, '应用此提示词版本', run(() => { readDraft(); drafts.set(annotation.annotationId, structuredClone(version.draft)); renderCard(); notify('版本已载入编辑区，保存卡片后生效。'); })); apply.disabled = !writable || deleted;
+            const apply = button(doc, row, translateShellText('Use this prompt version'), run(() => { readDraft(); drafts.set(annotation.annotationId, structuredClone(version.draft)); renderCard(); notify(translateShellText('Version loaded into the editor. Save the card to apply it.')); })); apply.disabled = !writable || deleted;
         }
-        if (!annotation.promptVersions?.length) node(doc, promptHistory, 'p', '暂无提示词生成版本。');
-        button(doc, editor, '删除标注', run(async () => {
+        if (!annotation.promptVersions?.length) node(doc, promptHistory, 'p', translateShellText('No generated prompt versions yet.'));
+        button(doc, editor, translateShellText('Delete annotation'), run(async () => {
             await sdk.illustrations.command('deleteAnnotation', { annotationId: annotation.annotationId, expectedHead: snapshot.head });
-            drafts.delete(annotation.annotationId); notify('标注已删除，图片历史仍保留。'); renderCard();
+            drafts.delete(annotation.annotationId); notify(translateShellText('Annotation deleted. Image history is preserved.')); renderCard();
         }));
-        const history = node(doc, card, 'details', undefined, 'atri-illustration-history'); history.dataset.section = 'history'; history.open = openDetails.has('history'); node(doc, history, 'summary', '图片历史');
+        const history = node(doc, card, 'details', undefined, 'atri-illustration-history'); history.dataset.section = 'history'; history.open = openDetails.has('history'); node(doc, history, 'summary', translateShellText('Image history'));
         const images = state.images.filter(item => item.annotationId === annotation.annotationId);
-        if (!images.length) node(doc, history, 'p', '暂无图片版本。');
-        const hide = button(doc, history, '暂不展示图片', run(async () => {
+        if (!images.length) node(doc, history, 'p', translateShellText('No image versions yet.'));
+        const hide = button(doc, history, translateShellText('Hide the displayed image'), run(async () => {
             readDraft(); await sdk.illustrations.command('selectImageVersion', { annotationId: annotation.annotationId, imageVersionId: null, expectedHead: snapshot.head }); renderCard();
         })); hide.disabled = !writable || deleted || !annotation.selectedImageVersionId;
         for (const image of images) {
             const version = node(doc, history, 'article'); const img = node(doc, version, 'img');
             img.src = nativeAssetUrl(image.assetId); img.alt = image.alt || annotation.anchor.quote; img.width = image.width; img.height = image.height; img.loading = 'lazy'; img.decoding = 'async';
-            node(doc, version, 'p', image.imageVersionId === annotation.selectedImageVersionId ? '当前展示版本' : '历史版本');
-            const details = node(doc, version, 'details'); node(doc, details, 'summary', '实际提示词与参数');
+            node(doc, version, 'p', image.imageVersionId === annotation.selectedImageVersionId ? translateShellText('Displayed version') : translateShellText('Previous version'));
+            const details = node(doc, version, 'details'); node(doc, details, 'summary', translateShellText('Actual prompt and parameters'));
             details.addEventListener('toggle', () => { if (details.open && !details.querySelector('pre')) node(doc, details, 'pre', JSON.stringify({ prompt: image.prompt, negativePrompt: image.negativePrompt, parameters: image.parameters, ...(image.requestSnapshot ? { requestSnapshot: image.requestSnapshot } : {}) }, null, 2)); });
-            const choose = button(doc, version, '展示此版本', run(async () => {
+            const choose = button(doc, version, translateShellText('Display this version'), run(async () => {
                 readDraft(); await sdk.illustrations.command('selectImageVersion', { annotationId: annotation.annotationId, imageVersionId: image.imageVersionId, expectedHead: snapshot.head }); renderCard();
             })); choose.disabled = !writable || deleted || image.imageVersionId === annotation.selectedImageVersionId;
         }
-        if (deleted) node(doc, card, 'p', '此标注已删除，仅保留图片历史。');
+        if (deleted) node(doc, card, 'p', translateShellText('This annotation was deleted. Its image history is preserved.'));
     }
     return () => { disposed = true; for (const timer of watchers.values()) clearTimeout(timer); watchers.clear(); configEditor?.dispose(); drafts.clear(); };
 }

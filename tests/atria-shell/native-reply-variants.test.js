@@ -40,7 +40,7 @@ test('graph explores logical branch timelines and read-only previews, preserving
     expect([...section.querySelectorAll('[data-atria-history-revision]')].map(item => item.dataset.atriaHistoryRevision)).toEqual(['r4', 'r3', 'r1']);
     button(section.querySelector('[data-atria-history-revision="r4"]'), 'Preview revision').click(); await tick();
     const preview = section.querySelector('[data-atria-history-preview]');
-    expect(preview.textContent).toContain('Reply 2 of 2'); button(preview, 'Previous reply').click(); await tick();
+    expect(preview.textContent).toContain('Reply 2 of 2'); button(preview, 'Previous revision').click(); await tick();
     expect(preview.textContent).toContain('First reply'); expect(preview.querySelector('img')).toBeNull(); expect(onSwitchBranch).not.toHaveBeenCalled();
     button(preview, 'Inspect revision').click(); await tick(); expect(onInspect).toHaveBeenCalledWith('r2');
     expect(document.activeElement.tagName).toBe('H4');
@@ -75,7 +75,7 @@ test('loading/error/retry/empty and corrupt graph states remain bounded and read
     expect([...section.querySelectorAll('[data-atria-history-revision] button')].every(item => item.disabled)).toBe(true);
 });
 
-test('message mounts share one lazy session fetch and wire preview, inspect, switch, retry, fork', async () => {
+test('message mounts share one lazy session fetch and expose only preview, inspect and existing branch switch', async () => {
     const loadHistory = jest.fn(async () => history()), onPreview = jest.fn(), onInspect = jest.fn(), onSwitchBranch = jest.fn(), onRetry = jest.fn(), onFork = jest.fn();
     const controller = inline({ loadHistory, onPreview, onInspect, onSwitchBranch, onRetry, onFork });
     const first = document.createElement('article'), second = document.createElement('article'); document.body.append(first, second);
@@ -83,32 +83,31 @@ test('message mounts share one lazy session fetch and wire preview, inspect, swi
     expect(loadHistory).not.toHaveBeenCalled();
     await Promise.all([expand(first.querySelector('details')), expand(second.querySelector('details'))]);
     expect(loadHistory).toHaveBeenCalledTimes(1); expect(first.textContent).toContain('Reply 2 of 2');
-    button(first, 'Retry reply').click(); await tick();
-    expect(onRetry).toHaveBeenCalledWith({ sessionId: 'ses_test', branchId: 'child', revisionId: 'r4', messageId: 'two' });
-    expect(loadHistory).toHaveBeenCalledTimes(2);
+    expect(button(first, 'Retry reply')).toBeUndefined(); expect(button(first, 'Fork from revision')).toBeUndefined();
     button(first, 'Previous reply').click(); await tick();
     expect(onPreview).toHaveBeenCalledWith(expect.objectContaining({ revisionId: 'r2', branchId: 'main' }));
-    expect(first.querySelector('img')).toBeNull(); expect(button(first, 'Previous reply').disabled).toBe(true); expect(button(first, 'Retry reply').disabled).toBe(true);
+    expect(first.querySelector('img')).toBeNull(); expect(button(first, 'Previous reply').disabled).toBe(true);
     button(first, 'Inspect revision').click(); await tick(); expect(onInspect).toHaveBeenCalledWith(expect.objectContaining({ revisionId: 'r2' }));
     button(first, 'Switch branch').click(); await tick(); expect(onSwitchBranch).toHaveBeenCalledWith('main', expect.objectContaining({ revisionId: 'r2' }));
-    button(first, 'Fork from revision').click(); await tick(); expect(onFork).toHaveBeenCalledWith(expect.objectContaining({ revisionId: 'r2' }));
+    expect(loadHistory).toHaveBeenCalledTimes(2); expect(onRetry).not.toHaveBeenCalled(); expect(onFork).not.toHaveBeenCalled();
     mounted.dispose(); expect(first.childElementCount).toBe(0);
 });
 
-test('non-assistants are skipped and historical/busy reply mounts do not enable retry', async () => {
+test('non-assistants are skipped and historical/busy mounts preserve read-only inspection without retired writes', async () => {
     const state = { ...context(), isHistory: true, canWrite: false, canFork: true }, onRetry = jest.fn();
-    const controller = inline({ getContext: () => state, onRetry, onFork: jest.fn() });
+    const controller = inline({ getContext: () => state, onInspect: jest.fn(), onSwitchBranch: jest.fn(), onRetry, onFork: jest.fn() });
     const skipped = controller.mount(document.body, { ...anchor(), role: 'user' }); skipped.dispose(); expect(document.body.childElementCount).toBe(0);
     controller.mount(document.body, { ...anchor(), viewRevisionId: 'r2' }); await expand(document.querySelector('details'));
-    expect(button(document.body, 'Retry reply').disabled).toBe(true); expect(button(document.body, 'Fork from revision').disabled).toBe(false);
+    expect(button(document.body, 'Retry reply')).toBeUndefined(); expect(button(document.body, 'Fork from revision')).toBeUndefined();
+    expect(button(document.body, 'Inspect revision').disabled).toBe(false); expect(button(document.body, 'Switch branch').disabled).toBe(true);
     state.busy = true; await controller.invalidate('ses_test');
-    expect(button(document.body, 'Fork from revision').disabled).toBe(true); expect(onRetry).not.toHaveBeenCalled();
+    expect(button(document.body, 'Inspect revision').disabled).toBe(true); expect(onRetry).not.toHaveBeenCalled();
 });
 
 test('failed runtime actions stay visible and disposed mounts ignore late metadata', async () => {
-    const controller = inline({ onRetry: jest.fn(async () => { throw new Error('Runtime is busy'); }) });
+    const controller = inline({ onInspect: jest.fn(async () => { throw new Error('Runtime is busy'); }) });
     controller.mount(document.body, anchor()); await expand(document.querySelector('details'));
-    button(document.body, 'Retry reply').click(); await tick(); expect(document.querySelector('[role=alert]').textContent).toBe('Runtime is busy');
+    button(document.body, 'Inspect revision').click(); await tick(); expect(document.querySelector('[role=alert]').textContent).toBe('Runtime is busy');
     controller.dispose();
     let finish; const pending = inline({ loadHistory: () => new Promise(resolve => { finish = resolve; }) });
     const mounted = pending.mount(document.body, anchor()); await expand(document.querySelector('details')); mounted.dispose(); finish(history()); await tick();
@@ -122,11 +121,11 @@ test('inline metadata failure recovers once without extra full-snapshot reads', 
     expect(document.body.textContent).toContain('Reply 2 of 2'); expect(loadHistory).toHaveBeenCalledTimes(2);
 });
 
-test('active-tail retry remains enabled after a state-only revision refresh', async () => {
+test('read-only inspection remains available after a state-only revision refresh', async () => {
     const source = history(); source.headRevisionId = 'r5'; source.branches[1].headRevisionId = 'r5';
     source.revisions.push({ revisionId: 'r5', branchId: 'child', parentRevisionId: 'r4', timelineHead: { messageId: 'two', variantId: 'v2' }, createdAt: 5 });
-    const controller = inline({ loadHistory: async () => source, getContext: () => ({ ...context(), revisionId: 'r5' }), onRetry: jest.fn() });
+    const controller = inline({ loadHistory: async () => source, getContext: () => ({ ...context(), revisionId: 'r5' }), onInspect: jest.fn() });
     const element = document.createElement('article'); document.body.append(element); controller.mount(element, anchor());
     await expand(element.querySelector('details'));
-    expect(button(element, 'Retry reply').disabled).toBe(false);
+    expect(button(element, 'Inspect revision').disabled).toBe(false); expect(button(element, 'Retry reply')).toBeUndefined();
 });

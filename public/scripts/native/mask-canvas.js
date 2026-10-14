@@ -1,4 +1,6 @@
+import { translateShellText } from '../atria-shell/localization.js';
 import { replayMask, maskPixelFromScreen } from '../../shared/native-mask.js';
+import { translateShellText as tl } from '../atria-shell/localization.js';
 import { illustrationNode as node, illustrationButton as button, illustrationField as field, illustrationSelect as select } from './illustration-ui.js';
 
 export class MaskCommandModel {
@@ -17,12 +19,12 @@ export function mountMaskCanvas({ document: doc, parent, baseUrl, model, changed
     const root = node(doc, parent, 'section'), controls = node(doc, root, 'div', undefined, 'atri-illustration-actions');
     let tool = 'brush', radius = 16, scale = 1, offsetX = 0, offsetY = 0, gesture = null, frame = null;
     const pointers = new Map();
-    select(doc, controls, 'Mask 工具', tool, [['brush', '笔刷'], ['erase', '擦除'], ['rect', '矩形'], ['pan', '平移']], value => tool = value);
-    const radiusInput = field(doc, controls, '笔刷半径（原图像素）', radius, value => radius = Math.max(1, Math.min(256, Number(value))), { type: 'number' }); radiusInput.min = '1'; radiusInput.max = '256';
-    const viewport = node(doc, root, 'div', undefined, 'atri-mask-viewport'); viewport.tabIndex = 0; viewport.setAttribute('aria-label', 'Mask 编辑区域。可用下方矩形范围或键盘撤销。');
+    select(doc, controls, translateShellText('Mask tool'), tool, [['brush', translateShellText('Brush')], ['erase', translateShellText('Erase')], ['rect', translateShellText('Rectangle')], ['pan', translateShellText('Pan')]], value => tool = value);
+    const radiusInput = field(doc, controls, translateShellText('Brush radius in original pixels'), radius, value => radius = Math.max(1, Math.min(256, Number(value))), { type: 'number' }); radiusInput.min = '1'; radiusInput.max = '256';
+    const viewport = node(doc, root, 'div', undefined, 'atri-mask-viewport'); viewport.tabIndex = 0; viewport.setAttribute('aria-label', tl('Mask editor. Use the rectangle controls below or keyboard undo.'));
     Object.assign(viewport.style, { position: 'relative', overflow: 'hidden', height: 'min(55dvh, 420px)', touchAction: 'none', background: 'var(--atri-surface-2)' });
     const plane = node(doc, viewport, 'div'); Object.assign(plane.style, { position: 'absolute', transformOrigin: '0 0', width: model.width + 'px', height: model.height + 'px' });
-    const image = node(doc, plane, 'img'); image.src = baseUrl; image.alt = '局部编辑原图'; image.width = model.width; image.height = model.height; image.draggable = false;
+    const image = node(doc, plane, 'img'); image.src = baseUrl; image.alt = translateShellText('Original image for local editing'); image.width = model.width; image.height = model.height; image.draggable = false;
     Object.assign(image.style, { width: model.width + 'px', height: model.height + 'px', maxWidth: 'none' });
     const canvas = node(doc, plane, 'canvas'); canvas.width = model.width; canvas.height = model.height; Object.assign(canvas.style, { position: 'absolute', inset: '0', pointerEvents: 'none' });
     const context = canvas.getContext('2d'), applyView = () => plane.style.transform = 'translate(' + offsetX + 'px,' + offsetY + 'px) scale(' + scale + ')';
@@ -34,8 +36,8 @@ export function mountMaskCanvas({ document: doc, parent, baseUrl, model, changed
         context.putImageData(overlay, 0, 0);
     };
     const update = () => { paint(); changed(); };
-    button(doc, controls, '撤销', () => { model.undo(); update(); }); button(doc, controls, '重做', () => { model.redo(); update(); });
-    button(doc, controls, '清空 Mask', () => { model.add({ kind: 'fill', value: 0 }); update(); }); button(doc, controls, '适合窗口', resetView);
+    button(doc, controls, translateShellText('Undo'), () => { model.undo(); update(); }); button(doc, controls, translateShellText('Redo'), () => { model.redo(); update(); });
+    button(doc, controls, translateShellText('Clear mask'), () => { model.add({ kind: 'fill', value: 0 }); update(); }); button(doc, controls, translateShellText('Fit to window'), resetView);
     const point = event => maskPixelFromScreen(event.clientX, event.clientY, viewport.getBoundingClientRect(), { scale, offsetX, offsetY }, model.width, model.height);
     const midpoint = () => { const [a, b] = [...pointers.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) }; };
     const down = event => {
@@ -74,10 +76,10 @@ export function mountMaskCanvas({ document: doc, parent, baseUrl, model, changed
     viewport.addEventListener('pointercancel', event => { pointers.delete(event.pointerId); gesture = null; });
     viewport.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? model.redo() : model.undo(); update(); } });
     viewport.addEventListener('wheel', event => { if (!event.ctrlKey) return; event.preventDefault(); scale = Math.max(.1, Math.min(8, scale * Math.exp(-event.deltaY / 500))); applyView(); }, { passive: false });
-    const keyboard = node(doc, root, 'details'); node(doc, keyboard, 'summary', '按像素填写矩形区域');
+    const keyboard = node(doc, root, 'details'); node(doc, keyboard, 'summary', translateShellText('Rectangle coordinates in pixels'));
     const rectangle = { x: 0, y: 0, width: Math.min(64, model.width), height: Math.min(64, model.height) };
     for (const key of Object.keys(rectangle)) field(doc, keyboard, key, rectangle[key], text => rectangle[key] = Number(text), { type: 'number' });
-    button(doc, keyboard, '添加矩形区域', () => { model.add({ kind: 'rect', ...rectangle, value: 255 }); update(); });
+    button(doc, keyboard, translateShellText('Add rectangle'), () => { model.add({ kind: 'rect', ...rectangle, value: 255 }); update(); });
     frame = doc.defaultView.requestAnimationFrame(() => { resetView(); paint(); });
     return { paint, dispose: () => { doc.defaultView.cancelAnimationFrame(frame); root.remove(); } };
 }

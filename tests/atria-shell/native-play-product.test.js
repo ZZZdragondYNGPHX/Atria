@@ -20,8 +20,10 @@ describe('A6 Atria-native Play product', () => {
         await expect(api.submit()).rejects.toThrow(/ready/);
         api.setDraft('A'); api.appendDraft('B'); expect(api.getDraft()).toBe('AB');
         runtime.history = true; await expect(api.submit()).rejects.toThrow(/ready/); runtime.history = false;
-        document.body.dataset.generating = 'true'; await expect(api.submit()).rejects.toThrow(/running/); delete document.body.dataset.generating;
-        await api.submit(); expect(globalThis.Atria.getContext().generate).toHaveBeenCalledTimes(1);
+        runtime.generationProjection = { state: 'preparing' }; await expect(api.submit()).rejects.toThrow(/running/);
+        runtime.generationProjection = { state: 'idle' }; document.body.dataset.generating = 'true';
+        await api.submit(); expect(globalThis.Atria.getContext().generateNative).toHaveBeenCalledTimes(1);
+        delete document.body.dataset.generating;
         api.clearDraft(); expect(api.getDraft()).toBe('');
         expect(() => api.setDraft({ html: '<script>' })).toThrow(/Invalid/);
         product.dispose();
@@ -60,8 +62,8 @@ describe('A6 Atria-native Play product', () => {
                 ],
             },
         };
-        const generate = jest.fn(async () => 'Generated');
-        globalThis.Atria = { nativeSessionRuntime: runtime, getContext: () => ({ generate }) };
+        const generate = jest.fn(async (_, options) => { options.onInputAccepted?.({}); return 'Generated'; });
+        globalThis.Atria = { nativeSessionRuntime: runtime, getContext: () => ({ generateNative: generate }) };
         document.body.dataset.atriaNativeSessionActive = 'true';
     });
 
@@ -98,7 +100,7 @@ describe('A6 Atria-native Play product', () => {
         globalThis.__atriaStartupTiming = { initJsStart: 0 };
         globalThis.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ prepared: true, revisionId: 'rev_1' }) }));
         runtime.request = async () => ({ revisionId: 'rev_1', entries: runtime.snapshot.timeline });
-        globalThis.Atria.getContext = () => ({ generate: jest.fn(), getCapabilityApi: () => ({ isExperienceReady: () => true }) });
+        globalThis.Atria.getContext = () => ({ generateNative: jest.fn(), getCapabilityApi: () => ({ isExperienceReady: () => true }) });
         const dialog = document.createElement('dialog'); dialog.open = true; document.body.append(dialog);
         const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
             sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
@@ -181,8 +183,8 @@ describe('A6 Atria-native Play product', () => {
         await flush();
 
         expect(clicked).not.toHaveBeenCalled();
-        expect(globalThis.Atria.getContext().generate).toHaveBeenCalledWith('normal');
-        expect(abiTextarea.value).toBe('Take the northern path.');
+        expect(globalThis.Atria.getContext().generateNative).toHaveBeenCalledWith('normal', expect.objectContaining({ input: expect.any(String), scope: { sessionId: 'session_1', branchId: undefined, revisionId: 'rev_1' } }));
+        expect(abiTextarea.value).toBe('');
         expect(product.textarea.value).toBe('');
         expect(runtime.snapshot.timeline).toHaveLength(2);
 
@@ -216,14 +218,15 @@ describe('A6 Atria-native Play product', () => {
         Object.defineProperties(product.conversation, { scrollHeight: { value: 1000 }, clientHeight: { value: 200 } });
         product.conversation.scrollTop = 40;
         product.conversation.dispatchEvent(new Event('scroll'));
-        document.body.dataset.generating = 'true';
+        runtime.generationProjection = { state: 'streaming' };
         document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: 'An unfinished reply' } }));
         await flush();
         expect(product.conversation.firstElementChild).toBe(first);
         expect(product.conversation.scrollTop).toBe(40);
         expect(product.root.querySelector('[data-atria-generation-projection]').textContent).toContain('An unfinished reply');
         expect(runtime.snapshot.timeline).toHaveLength(2);
-        document.body.dataset.generating = 'false';
+        runtime.generationProjection = { state: 'idle' };
+        document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: '' } }));
         await flush();
         expect(product.conversation.querySelector('[data-atria-draft]')).toBeNull();
         expect(product.root.querySelector('[data-atria-generation-projection]').hidden).toBe(true);
@@ -243,8 +246,8 @@ describe('A6 Atria-native Play product', () => {
         expect(clicked).not.toHaveBeenCalled();
         product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
         expect(clicked).not.toHaveBeenCalled();
-        expect(globalThis.Atria.getContext().generate).toHaveBeenCalledWith('normal');
-        expect(document.getElementById('send_textarea').value).toBe('A choice');
+        expect(globalThis.Atria.getContext().generateNative).toHaveBeenCalledWith('normal', expect.objectContaining({ input: expect.any(String), scope: { sessionId: 'session_1', branchId: undefined, revisionId: 'rev_1' } }));
+        expect(document.getElementById('send_textarea').value).toBe('');
         product.dispose();
     });
 
@@ -268,7 +271,7 @@ describe('A6 Atria-native Play product', () => {
     test.each([-1, 0, 1])('Native preference %s respects Shift, modifiers, IME and keyCode 229', async preference => {
         const generate = jest.fn(async () => {});
         const settings = { send_on_enter: preference };
-        globalThis.Atria.getContext = () => ({ generate, powerUserSettings: settings });
+        globalThis.Atria.getContext = () => ({ generateNative: generate, powerUserSettings: settings });
         const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
             sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
         } });
@@ -296,14 +299,17 @@ describe('A6 Atria-native Play product', () => {
 
     test('failed unaccepted input keeps the draft; accepted input and another Session never receive it', async () => {
         const generate = jest.fn(async () => { throw new Error('Prepare failed'); });
-        globalThis.Atria.getContext = () => ({ generate });
+        globalThis.Atria.getContext = () => ({ generateNative: generate });
         const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
             sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
         } });
         product.composerApi.setDraft('Original input');
         await expect(product.composerApi.submit()).rejects.toThrow('Prepare failed');
         expect(product.textarea.value).toBe('Original input');
-        generate.mockImplementationOnce(async () => { runtime.snapshot.revision.revisionId = 'accepted'; throw new Error('Provider failed'); });
+        generate.mockImplementationOnce(async () => { runtime.snapshot.revision.revisionId = 'state-only'; });
+        await product.composerApi.submit();
+        expect(product.textarea.value).toBe('Original input');
+        generate.mockImplementationOnce(async (_, options) => { runtime.snapshot.revision.revisionId = 'accepted'; options.onInputAccepted({}); throw new Error('Provider failed'); });
         await expect(product.composerApi.submit()).rejects.toThrow('Provider failed');
         expect(product.textarea.value).toBe('');
         product.composerApi.setDraft('Old Session input');
@@ -326,8 +332,12 @@ describe('A6 Atria-native Play product', () => {
     test('one pending submit blocks duplicate sending while keeping the real Stop action available', async () => {
         let finish;
         const stopGeneration = jest.fn();
-        const generate = jest.fn(() => { document.body.dataset.generating = 'true'; return new Promise(resolve => { finish = resolve; }); });
-        globalThis.Atria.getContext = () => ({ generate, stopGeneration });
+        const generate = jest.fn(() => {
+            runtime.generationProjection = { state: 'preparing' };
+            document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: '' } }));
+            return new Promise(resolve => { finish = resolve; });
+        });
+        globalThis.Atria.getContext = () => ({ generateNative: generate, stopGeneration });
         const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
             sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
         } });
@@ -337,7 +347,7 @@ describe('A6 Atria-native Play product', () => {
         const stop = product.composer.querySelector('button[type=submit]');
         expect(stop.disabled).toBe(false); expect(stop.getAttribute('aria-label')).toBe('Stop');
         stop.click(); await flush(); expect(stopGeneration).toHaveBeenCalledTimes(1); expect(generate).toHaveBeenCalledTimes(1);
-        document.body.dataset.generating = 'false'; finish(); await pending;
+        runtime.generationProjection = { state: 'idle' }; finish(); await pending;
         delete document.body.dataset.generating; product.dispose();
     });
 });
