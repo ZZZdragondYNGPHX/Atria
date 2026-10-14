@@ -973,6 +973,16 @@ export function assertAtriaSave(value) {
             const ref = assetRefs.find(item => item.assetId === image.assetId), anchor = annotations.get(image.annotationId).anchor;
             if (!ref || !['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(ref.mediaType)
                 || !attachments.some(item => item.assetId === image.assetId && item.messageId === anchor.messageId && item.variantId === anchor.variantId)) throw new TypeError('Missing illustration asset in save');
+            for (const input of image.mediaOperation?.inputAssets ?? []) {
+                const dependency = assetRefs.find(item => item.assetId === input.assetId);
+                if (!dependency || dependency.contentHash !== input.contentHash || !attachments.some(item => item.assetId === input.assetId)) throw new TypeError('Missing editable media dependency in save');
+            }
+            if (image.mediaOperation?.mask) {
+                const mask = image.mediaOperation.mask, parent = state.images.find(item => item.imageVersionId === image.mediaOperation.parentImageVersionIds[0]);
+                const base = parent && assetRefs.find(item => item.assetId === parent.assetId), raster = assetRefs.find(item => item.assetId === mask.assetId);
+                if (!base || base.contentHash !== mask.baseHash || parent.width !== mask.width || parent.height !== mask.height || raster.size !== mask.width * mask.height
+                    || raster.mediaType !== 'application/x-atria-mask-gray8') throw new TypeError('Invalid saved Mask geometry');
+            }
         }
     }
     for (const attachment of attachments) {

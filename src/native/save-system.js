@@ -234,6 +234,10 @@ export class NativeSaveSystem {
                 const anchor = byAnnotation.get(image.annotationId).anchor;
                 const attachment = { assetId: image.assetId, messageId: anchor.messageId, variantId: anchor.variantId };
                 attachments.set(attachmentKey(attachment), attachment);
+                for (const input of image.mediaOperation?.inputAssets ?? []) {
+                    const dependency = { ...attachment, assetId: input.assetId };
+                    attachments.set(attachmentKey(dependency), dependency);
+                }
             }
         }
 

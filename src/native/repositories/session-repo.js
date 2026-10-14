@@ -1,3 +1,4 @@
+import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { maintainSession, cancelSessionMaintenance } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -205,7 +206,7 @@ export class SessionRepo {
             });
             // Acquire asset locks before entering a storage transaction. The
             // deletion path uses the same order, including on SQLite.
-            return withNativeResourceWrites(handle, state.images.map(item => 'asset:' + item.assetId), () => this._engine.withTransaction(handle, async tx => {
+            return withNativeResourceWrites(handle, illustrationAssetIds(state).map(assetId => 'asset:' + assetId), () => this._engine.withTransaction(handle, async tx => {
                 await assertRunAccess(tx, handle, sessionId, 'write');
                 await validateIllustrationDependencies(tx, handle, sessionId, state);
                 const head = hashNativeDocument(state);
@@ -677,7 +678,7 @@ export class SessionRepo {
         }
 
         const illustrationAssets = [...stateRecords.filter(item => item.namespace === PERSONA_NAMESPACE).flatMap(item => personaAvatars(item.data).map(avatar => 'asset:' + avatar.assetId)), ...stateRecords.filter(item => item.namespace === ILLUSTRATION_NAMESPACE)
-            .flatMap(item => assertIllustrationState(item.data).images.map(image => 'asset:' + image.assetId))];
+            .flatMap(item => illustrationAssetIds(assertIllustrationState(item.data)).map(assetId => 'asset:' + assetId))];
         return withSessionWrite(handle, sessionId, () => withNativeResourceWrites(handle, illustrationAssets, () => this._engine.withTransaction(handle, async (tx) => {
             const sessionKey = this._sessionKey(handle, sessionId);
             const control = await assertRunAccess(tx, handle, sessionId, 'import');

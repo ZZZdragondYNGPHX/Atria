@@ -1,3 +1,4 @@
+import { assertMediaOperation, assertMediaDag } from './native-media-contract.js';
 import { assertIllustrationDraft } from './illustration-plugin-contract.js';
 import { assertCompilationEvidence, visualFingerprint } from './native-visual-contract.js';
 // Presentation data only: an illustration never changes committed narrative.
@@ -62,11 +63,12 @@ function parameters(value) {
     return visit(value, 0);
 }
 export function assertIllustrationImage(value) {
-    record(value, ['imageVersionId', 'annotationId', 'assetId', 'width', 'height', 'alt', 'prompt', 'negativePrompt', 'parameters', 'requestSnapshot', 'createdAt']);
+    record(value, ['imageVersionId', 'annotationId', 'assetId', 'width', 'height', 'alt', 'prompt', 'negativePrompt', 'parameters', 'requestSnapshot', 'mediaOperation', 'createdAt']);
     return { imageVersionId: id(value.imageVersionId, 'imgv'), annotationId: id(value.annotationId, 'ann'), assetId: id(value.assetId, 'asset'),
         width: integer(value.width, 1, 32768), height: integer(value.height, 1, 32768), alt: text(value.alt, 2048),
         prompt: text(value.prompt), negativePrompt: text(value.negativePrompt), parameters: parameters(value.parameters),
-        ...(value.requestSnapshot === undefined ? {} : { requestSnapshot: assertImageRequestSnapshot(value.requestSnapshot, value) }), createdAt: integer(value.createdAt) };
+        ...(value.requestSnapshot === undefined ? {} : { requestSnapshot: assertImageRequestSnapshot(value.requestSnapshot, value) }),
+        ...(value.mediaOperation === undefined ? {} : { mediaOperation: assertMediaOperation(value.mediaOperation) }), createdAt: integer(value.createdAt) };
 }
 
 function assertImageRequestSnapshot(value, image) {
@@ -90,6 +92,7 @@ export function assertIllustrationState(value) {
             ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };
     });
     const images = value.images.map(assertIllustrationImage);
+    assertMediaDag(images);
     const byAnnotation = new Map(annotations.map(item => [item.annotationId, item]));
     const byImage = new Map(images.map(item => [item.imageVersionId, item]));
     if (byAnnotation.size !== annotations.length || byImage.size !== images.length) throw new TypeError('Duplicate illustration identity');

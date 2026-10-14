@@ -1,3 +1,4 @@
+import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { validateMaintenanceBudget } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars, personaDocumentReferences } from '../persona-contract.js';
@@ -46,7 +47,7 @@ async function resourceSetupAssetReferences(tx, handle, assetId) {
         for (const record of await tx.listResources({ kind, handle })) {
             for (const head of new Set([record.doc.illustrationHead, ...Object.values(record.doc.illustrationHeads ?? {})].filter(Boolean))) {
                 const state = await readIllustrationState(tx, handle, record.doc.sessionId, head);
-                if (state.images.some(item => item.assetId === assetId)) references.push({ kind: 'session-illustration', sessionId: record.doc.sessionId,
+                if (illustrationAssetIds(state).includes(assetId)) references.push({ kind: 'session-illustration', sessionId: record.doc.sessionId,
                     ...(record.doc.saveId ? { saveId: record.doc.saveId } : {}), namespace: ILLUSTRATION_NAMESPACE, head });
             }
         }
@@ -58,6 +59,13 @@ async function resourceSetupAssetReferences(tx, handle, assetId) {
                 : record.key.namespace?.startsWith('atri_resource_setup_') ? record.doc?.resolved?.worldSelection?.worlds : [];
             if (worlds?.some(world => world.revision?.assetIds?.includes(assetId))) references.push({ ...record.key, kind: kind === NATIVE_RESOURCE_KINDS.sessionState ? 'session-world-snapshot' : 'work-resource-default' });
         }
+    }
+    // Durable jobs (including uncertain submission), mask drafts, references
+    // and import/export leases are Native GC roots. GC quarantine markers are
+    // excluded: a marker is not an ownership reference.
+    const holds = value => value === assetId || value && typeof value === 'object' && Object.values(value).some(holds);
+    for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle })) {
+        if (record.key.resourceType.startsWith('atri.visual.') && record.key.resourceType !== 'atri.visual.gc' && holds(record.doc)) references.push({ kind: record.key.resourceType, resourceId: record.key.resourceId });
     }
     return references;
 }

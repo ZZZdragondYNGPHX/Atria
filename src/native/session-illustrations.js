@@ -29,5 +29,16 @@ export async function validateIllustrationDependencies(tx, handle, sessionId, st
         if (image.requestSnapshot && image.requestSnapshot.source.sessionId !== sessionId) throw new TypeError('Illustration image belongs to another session');
         const ref = (await tx.getResource({ kind: K.assetRef, handle, assetId: image.assetId }))?.doc;
         if (!ref || !['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(ref.mediaType)) throw new TypeError('Illustration image asset is unavailable');
+        for (const input of image.mediaOperation?.inputAssets ?? []) {
+            const asset = (await tx.getResource({ kind: K.assetRef, handle, assetId: input.assetId }))?.doc;
+            if (!asset || asset.contentHash !== input.contentHash) throw new TypeError('Media input asset integrity mismatch');
+        }
+        if (image.mediaOperation?.mask) {
+            const mask = image.mediaOperation.mask, parent = state.images.find(item => item.imageVersionId === image.mediaOperation.parentImageVersionIds[0]);
+            const base = parent && (await tx.getResource({ kind: K.assetRef, handle, assetId: parent.assetId }))?.doc;
+            const raster = (await tx.getResource({ kind: K.assetRef, handle, assetId: mask.assetId }))?.doc;
+            if (!base || base.contentHash !== mask.baseHash || mask.width !== parent.width || mask.height !== parent.height || raster.size !== mask.width * mask.height
+                || raster.mediaType !== 'application/x-atria-mask-gray8') throw new TypeError('Media Mask/base geometry mismatch');
+        }
     }
 }
