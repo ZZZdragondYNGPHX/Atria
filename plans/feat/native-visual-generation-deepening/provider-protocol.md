@@ -3,7 +3,7 @@
 - Task: `atria-native-visual-generation-deepening`
 - Authority: 本文定义 **Round 3 已冻结的架构分界**，而非 Provider 的最终接口字段；跨模块冻结决策以 [decisions.md](decisions.md) D-003 为准。
 - Source baseline: [2026-10-14 静态源码审计](baseline-and-reference.md)。代码实现前重新核对目标 main HEAD、Provider 官方协议与能力声明。
-- Status: **D-003 与 D-004 架构/后端阶段及三层配置已批准；精确 API/Schema、扩展功能矩阵仍未冻结**。Round 5 讨论视觉一致性与参考资产。
+- Status: **D-003/D-004 架构、后端与三层配置已批准；D-005 视觉身份—时点状态—参考图权威已冻结**（详见 [visual-continuity.md](visual-continuity.md)）。精确 API/Schema 与参考能力矩阵未冻结；Round 6 讨论更新与冲突/选择策略。
 
 ## 1. Frozen architectural separation (D-003; Round 3 方案 C)
 
@@ -27,7 +27,7 @@
 5. **No silent feature loss**. If an IR requirement cannot be represented on the selected backend, execution must fail with actionable explanation or follow an *explicitly approved* fallback/partial-result policy. Unapproved silent conversion (e.g. reference image discarded, target aspect changed without notice) is not allowed.
 6. **Request/evidence/version authority** is provider-neutral: immutable non-secret resolved request snapshot, actual provider/model/workflow identity or fingerprint, effective capability evidence, source Revision/Branch, provider-specific reproducibility parameters and image asset hash/versions. A Provider-specific verifier may validate its own wire payload; neutral validation owns source, identity, result and asset invariants. Secrets/tokens/authorization excluded.
 7. **One shared ImageJob / Result lifecycle** for hand-authored, assisted and automatic intents (D-001); tasks operate on committed/source-anchored intent (D-002), do not rebind to active HEAD when the user changes branches. Provider-specific asynchronous/polling/WebSocket behavior is hidden behind Adapter, with truthful cancellation, retry, timeout, and progress reports. Provider-side fees or refunds are never assumed from local cancel.
-8. **Preserve Atria data ownership**: no mutation of committed text, ref-checked AssetStore, ImageVersion history, SavePoint closure and GC. Rewrite or replace NovelAI-only request validation in a deliberate dev-stage contract transition if needed; avoid needless legacy compatibility scaffolding.
+8. **Preserve Atria data ownership**: no mutation of committed text, ref-checked AssetStore, ImageVersion history, SavePoint closure and GC. D-005 adds exact Actor or scoped provisional identity, Revision-scoped visual state and purpose-typed reference assets; compile only display-authorized material, never accept generated pixels as new World Truth. Detailed source and disclosure authority: [visual-continuity.md](visual-continuity.md). Rewrite or replace NovelAI-only request validation in a deliberate dev-stage contract transition if needed; avoid needless legacy compatibility scaffolding.
 
 ## 2. Static implementation gap (verified at current baseline; not runtime-tested)
 
@@ -118,8 +118,8 @@ Tasks/fields are illustrative only. In particular, **scope of non-narrative imag
 - Adapters validate image format/dimensions and hostile payload limits, HTTPS/local endpoint boundaries, SSRF/secret handling, cancellation and retry logic for their actual transport.
 - No external API/real image/UI testing has yet been performed in this design round.
 
-## 7. Next design checkpoint: Round 5 (not frozen)
+## 7. Next design checkpoint: Round 6 (not frozen)
 
-下一轮重点：**视觉身份权威、角色参考图、Vibe Transfer、服装/伤痕/场景与世界状态同步**。需要明确角色卡/Actor 固定外观与会话剧情状态的冲突优先级、跨分支图像参考是否可复用、Reference/Vibe 是可选风格还是必须精确的角色一致性约束、视觉素材的生命周期。此轮不会预先冻结方案。
+D-005 已确定 Visual Identity / State / References 的权威与分支/披露边界，详细见 [visual-continuity.md](visual-continuity.md)。第六轮继续讨论状态变更的自动感知及应用、固定外观/剧情变化/用户编辑冲突时如何仲裁，角色/服装/风格参考图与 Vibe 的用途、自动挑选与冲突处理。
 
-随后仍需分别完成 Provider 精确 Schema、Capabilities 探测、Cost/Fallback 策略、视觉 UI 与执行验收等议题；D-004 不替代这些后续决定。
+随后仍需分别完成 Provider 精确 Schema、Capabilities 探测、Cost/Fallback 策略、视觉 UI 与执行验收等议题；D-004/D-005 不替代这些后续决定。
