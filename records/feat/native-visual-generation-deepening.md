@@ -54,3 +54,26 @@
 - Native Runtime now offers ComfyUI/OpenAI image Connections. Editable capability JSON cannot override adapter capability/price authority.
 - Verification: ComfyUI/OpenAI independent L1/L2 6/6; NAI slice unaffected 10/10; affected product ESLint/diff check. L3/CI `not_run`.
 - Next: S3 exact Actor/State/disclosure/reference projection, reliable post-commit Director, scene/shot scores, modes/budgets.
+
+## S3 — continuity / Director (completed)
+
+- Start HEAD: `b8cbf6a2c`; initial implementation `1dd6e05da`; source/admission correction `33d602d85a2e401ad29e948f4ce5fe0d7235f298`.
+- S3.1: exact installed Actor or explicitly Session-scoped provisional identity; references independently scoped by identity/purpose/branch and explicit standard-image sharing.
+- S3.2: historical Source/State projections, anchored proposals and confidence/review separation; only independent display fields are read. Formal/narrative conflicts block automatic adoption; future spans and siblings excluded. Raw prompt preserved.
+- S3.3: Native Commit discovery markers cover commitSnapshot paths, restart-deduplicated scans, cross-turn Scene/Shot, present/dream/flashback, five default weights, thresholds and coverage penalties. Optional explicitly invoked Director LLM analysis is source bounded.
+- S3.4: manual/semi/automatic mode UI (default manual), density, exact target preauthorization, Image/Planner independent ledgers; real LLM sends/retries now reserve Planner tokens/calls. Unknown automated cloud cost and NovelAI non-human sends are blocked.
+- Checks: Director 7/7; prompt 17/17 FS/SQLite, P0 protocol 6/6 passed in related run. Product ESLint/diff check.
+- Failure/fix: two old forkBranch fixtures updated to real SavePoint restore. A queued historical prompt exposed a stale execution admission snapshot; fixed by refreshing admission only, keeping historical context/route frozen. Explicit narrator disclosure remains enforced; without a narration policy, committed Timeline retains its existing public source contract while World fields still require player display grants.
+- L3/CI `not_run`. Scene detection/scoring remain documented heuristics; no claim of perfect artistic quality or live model availability.
+- Next: S4 Mask commands/checkpoints/CAS, common editing jobs, Gallery/reference promotion and two-scan GC/full media save.
+
+## S4 — Media Studio / Gallery (completed)
+
+- Start HEAD: `33d602d85a2e401ad29e948f4ce5fe0d7235f298`; End/Tested HEAD: `5985d3ddfbf1decf1991c3db0dfd12c13109f6fe`.
+- S4.1: original-pixel gray8 mask, brush/erase/rectangle, pan/pinch/keyboard, persisted undo/redo command/checkpoint CAS, idle/periodic sync, immutable submitted masks and explicit conflict fork. Concurrent checkpoint/undo preserves local work.
+- S4.2: common regenerate/img2img/inpaint/upscale jobs; NAI V3/V4/V4.5/V5 operation wire formats, V4.5 precise reference scope/combination refusal; reachable typed Comfy graph upload/upscale; OpenAI inverse-alpha JSON edits. Raw model result and explicit server composite are separate immutable versions; no automatic display replacement.
+- S4.3: current-branch paginated/lazy Gallery, explicit selection CAS, history/comparison/lineage, separate hide/soft-delete/collection metadata, explicit reference promotion/grants. Reference authority lives in Native presentation snapshots, not a parallel provider catalog.
+- S4.4: normalized immutable ImageVersion documents/manifest refs eliminate repeated evidence copies; full editable SavePoint closure/import validates parent DAG/mask/base/refs/hashes; double-scan grace/lease GC. Ironman retains only current narrative with checked immutable visual packet aliases.
+- Local verification: media 17/17 (FS/SQLite and NAI four model editing L1/L2); P0 adapter 7/7 (independent Comfy/OpenAI); illustration core 19/19; renderer 3/3; unchanged durable slice 10/10 earlier S4 run; affected ESLint/diff check passed. First renderer run failed because its helper imported the expanded server persistence graph in jsdom without structuredClone; changed helper to direct SHA. Protocol fixture transport omission fixed. Existing conditional test lint assertions corrected.
+- CI/L3: `not_run`, no paid API. Strict model Mask preservation remains unsupported where unverified; explicit composite has seam/geometry limitations. Vibe encoding is unknown and refused, not silently paid. Whole-history materialization/browser layout/actual platform evidence are S6 acceptance work. No display-only compact export masquerades as a full editable SavePoint.
+- Next: S5 Gemini, WebUI/Forge, RunningHub, plus Adapter extensibility; then S6 cross-platform/security/performance/final acceptance.
