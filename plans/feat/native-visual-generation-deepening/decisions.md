@@ -95,21 +95,33 @@
 - **作业恢复**：区分可复用自动 `VisualIntent`、冻结请求的逻辑 `ImageJob` 和独立 `Attempt`；手动显式再生成有新的 Intent/版本，不被错误去重。持久化先于 Provider 外发；Worker 使用原子 claim、租约与 fencing epoch（建议初始心跳 15s、租约 60s，按实现可调整）保护并发/重启。状态按未提交、已有远端 Task ID 可对账、结果字节已到待发布、提交不确定、已发布分流；提交不确定且无远端幂等/查询证明时**自动停止重发**。AssetStore 与 ImageVersion 发布采用内容哈希、幂等 CAS 与 orphan 补偿清理，保留 SavePoint/分支/参考引用，不能把本地 cancel 当成远端退款或宣称不受 Provider 支持的 Exactly Once。
 - **Reason**：使长期 RP 的镜头数量随场景价值变化但保持透明、可控费用与硬可靠性，避免固定楼层触发、多图重复收费、读档串图、崩溃后重复提交。
 - **Affected modules**：[visual-director.md](visual-director.md) §7、[architecture.md](architecture.md)；未来 Scene/Shot Resolver、Director/Score、Budget/Job Ledger、Provider Reconciler、Session/AssetStore。
-- **Scope limit**：以上已冻结**算法框架与可调初始默认**，并非锁定永恒权重或真机/Provider 实测结论。精确数据库/IR/API Schema、Provider 特定计费与远端取消/幂等协商、运行后的评分校准和第九轮媒体编辑功能**未在此批准**。
+- **Scope limit**：以上已冻结**算法框架与可调初始默认**，并非锁定永恒权重或真机/Provider 实测结论。精确数据库/IR/API Schema、Provider 特定计费与远端取消/幂等协商、运行后的评分校准及媒体编辑细节**未由 D-008 批准**；媒体编辑架构范围随后由 D-009 另行冻结。
+
+## D-009（2026-10-14，Round 9）— 分层 Native Media Studio 与不可变图片衍生 DAG
+
+- **Decision**：用户选择**方案 C：分层 Native Media Studio + 不可变衍生图谱**，包含 B 的不可变 ImageArtifact/MediaOperation 来源/父子版本关系和 Gallery；在此之上将 Media Core、Provider 编辑执行、可视化 Media Studio/历史管理分为职责独立的模块，分阶段交付，不仅仅在现有 `Annotation.images[]` 填新字段。
+- **操作范围**：将 **Regenerate、Img2Img、Inpaint/局部重绘、Upscale** 和图像版本查看/切换作为本次深化的**正式功能范围**。再生成是明确的新 Intent/Job/版本，区别于自动请求的幂等重放；图生图保留原图输入与原生参数；局部重绘记录源图/Mask/编辑指令/坐标；Upscale 区分确定性重采样与可能改变内容的生成式超分。实际支持哪个 Provider/模型/Workflow 的哪个操作，必须走 D-003/D-004 的 Capability Negotiation 和各自协议适配，不承诺任意模型天然支持。
+- **非破坏性血缘**：原始 Blob/AssetRef 和每个衍生输出保持不可变；MediaOperation 记录 0..N 合法父图/引用图/Mask 等输入、实际 Target/Prompt IR/非秘密请求证据与对应 Job，形成不可变**有向无环图 DAG**，拒绝环和非法跨域引用。当前显示版本属于 Session/Branch/Annotation 的独立选择指针，不能因为编辑完成、读档或切换分支而覆写历史或正文。
+- **Native Media Studio / Gallery**：独立编辑工作台负责预览、输入参数/Mask、提交编辑和查看版本差异；画廊按作品、Session、Branch、Scene/Shot、Actor、Provider 和编辑历史组织可达图片及经用户批准的参考资产，使用懒加载/缩略图以保证长会话流畅，不创建新的剧情事实存储。标准角色/风格/服装参考应有明确审批和权威作用域，剧情截图不得自动升级为全分支参考。
+- **资产与存档权威**：复用并深化 Atria `AssetStore`、`ImageVersion`、Session/SavePoint 与 GC 引用，保护仍被原图/父子衍生、Mask、Reference、SavePoint、Branch、持久 Job 引用的资产；**隐藏、解除当前展示、软删除元数据和物理 GC** 是不同操作，不能仅因 UI 移除就删 Blob。图片编辑不修改已提交剧情、World/Memory/Actor 的事实。
+- **可靠性/预算**：用户明确执行的编辑走 D-008 的持久 ImageJob/Attempt/远端对账/幂等发布，单次再生成生成新的明确意图；打开画廊或编辑器不触发隐藏收费请求。手动编辑可绕过自动选图节奏，但仍须满足模型能力、授权、全局付费额度和隐私/时点硬门禁；不允许静默更换付费 Provider。
+- **Reason**：避免多轮 RP 中分支图片被覆盖、复杂局部编辑丢失原图/Mask、历史版本无法追溯、图片参考和存档资产被误清理；使不同图像后端共用正规衍生资产图谱和 UI 而非复制逻辑。
+- **Affected modules**：[media-editing-gallery.md](media-editing-gallery.md) §4 为详细权威；[provider-protocol.md](provider-protocol.md) 为后端能力约束；[visual-director.md](visual-director.md) 为作业/预算；[visual-continuity.md](visual-continuity.md) 为角色/参考图权限。
+- **Scope limit**：第九轮冻结**完整编辑操作类别及 Media Studio/DAG/Gallery 的架构方向和必须保留的安全边界**；**尚未冻结**第十轮的 Mask 工具/UI 手势、跨 Provider 编辑流程的交互/回退、具体版本操作与删除/GC 规则、存档闭包和参考图晋升细节、各后端特殊协议。高级视频剪辑、成熟 DCC 图层系统、未经授权的第三方素材及所有高级模型特性不因此自动纳入。
 
 ## 基线与合规约束（非单独由用户冻结的架构方案）
 
 - Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
 - st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
-- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；具体 API/数据库 Schema、Provider 特例和图像编辑范围仍待议。
+- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威。具体 API/数据库 Schema、Provider 特例及交互/清理细节仍待议。
 
 ## Unresolved; **not** decisions
 
-- **Round 9 待定**：图片再生成、图生图、局部重绘、Upscale、历史画廊与版本化资产引用/GC 的实际功能边界、UI 与交互；不能从 D-008 的 ImageJob 推导这些编辑功能已实现。
+- D-009 已冻结再生成、Img2Img、局部重绘、Upscale、Media Studio 与不可变血缘/Gallery 的架构与功能类别；**Round 10 待定** Mask 绘制/坐标/修订交互、跨 Provider 具体执行、版本隐藏/删除/GC、存档闭包与参考资产晋升等精确规则，不能把范围批准误报为代码已实现。
 
 - D-002/D-007/D-008 已冻结 Commit 后启动、跨回合 Scene/Shot、分级检测、可解释自适应评分、默认关闭的自动模式及软性节奏；**待定**：视觉画廊操作、产品 UI 的具体授权交互与运行数据校准。
 - D-005/D-006 已冻结三层视觉权威、证据驱动混合更新、硬门禁/冲突审查与参考图按用途选择原则；精确阈值、状态持续/失效细节、Vibe/Reference 强度和特定 Provider 功能矩阵仍未定案。
 - D-003 已冻结语义统一/Adapter/能力协商的分层原则；**实际请求/响应 Schema、能力配置及降级策略尚未冻结**。
 - Round 4 后端家族、P0/P1/P2 优先级、三层配置与四级选择覆盖已由 D-004 冻结；**具体模型 IDs、协议参数、能力探测与默认生图 Profile** 未冻结。
-- 图生图、局部重绘、Vibe、参考图、视频、批量生成的进入阶段与默认行为。
+- Img2Img/Inpaint/Upscale 功能类别已由 D-009 纳入本企划，**精确到各 Provider/模型/工作流的能力及编辑默认操作尚待细化**；Vibe/参考图专有特性、视频和批量生成的完整功能矩阵及进入阶段尚待分别决定。
 - D-007/D-008 已冻结 Planner/Image 双账、滚动窗口默认、云自动付费默认零授权、持久队列租约/fencing/状态不确定不重发/幂等发布等策略；**待定**：确切表/字段与存储事务实现、Provider 特有请求对账和实际收费、资产 GC 的完整 Schema、后续可测校准。
