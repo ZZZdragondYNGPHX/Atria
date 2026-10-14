@@ -62,7 +62,7 @@ Native Composer
 - 偏好：`main:public/scripts/atria-shell/utility-workspaces.js:217-302`；appearance：`appearance.js:4-8,96-156`。
 - 插件设置根：`main:public/scripts/atria-shell/utility-workspaces.js:140-214`、`public/scripts/native/extensions-workspace.js:23-192`。
 
-表中保留迁移前耦合作为责任清单。默认 Composer、单操作 controller、直接 Draft 提交、原生常用偏好和 Native busy 投影已实施；全部残留消费者的替代尚未完成。具体真实浏览器与合同证据归实施 Record，不能以接口存在推定全域验收。
+表中保留迁移前耦合作为责任清单。默认 Composer、单操作 controller、直接 Draft 提交、原生常用偏好、Native busy、内置设置和扩展挂载已实施并完成相关流程验证。旧聊天视图仅保留为 canonical snapshot 的兼容投影，主题/Custom CSS、既存插件设置和显式恢复岛继续沿原有服务；不把隐藏按钮当作默认产品 API。具体合同与浏览器证据归实施 Record，不以接口存在推定所有第三方组合已验收。
 
 ## 4. 原生化必须守住的权威
 

@@ -143,8 +143,19 @@ v0.3 已展开 Runtime/Agents，v0.4 已展开 Play/Library 日常路径，v0.5 
 
 [v0.7](references/discussion-preview-v0.7.html) 补上项目首页的空/搜索/失败入口、Project Agent 任务状态与人工审查代表流程、Source 文件列表、登录、账户、扩展、条件媒体与宿主的代表布局。备份补充四个分组、数据范围、预检/确认/运行锁定/取消和完成回执的内存演示，设备同步仍是已有入口，云服务显示尚未开放。v0.6 完整页面继续可阅览。全局工具尚未获得完整业务操作覆盖；不要将布局示例标作产品验收。
 
-产品目前已有登录双语与隔离登录测试；Studio 首页真实加载/重试/搜索/新建，以及 Main→frontend→Main 文件切换保持草稿的浏览器证据。任务状态来自原有 Project Agent 服务，Source 依实际文件列表与既存审查服务，迟到文件读取不能覆盖当前选择。完整 Task 成功提交、其余集合/文件事务和专业页面仍按上表推进。结果与实际验证只归 [Record](../../../records/refactor/atria-serene-canvas.md)。
+上表保留开始实施前的盘点与原型缺口；本节为当前进展。产品结果与实际验证详情只归 [Record](../../../records/refactor/atria-serene-canvas.md)，不把旧“待展开”文字当作当前 Git 状态。
 
 Runtime readiness 已在产品中按共享 adapter 认证规则修正；上述 §6 的旧缺口是盘点基线，不代表此问题仍未实施。其余用途/删除依赖/返回任务还需继续验收。
 
-Library 分类导航、Prompt Preset 编辑纸/精确保存回执、账户双纸、备份/快照/存储键盘操作已实施。真实 ZIP 导出→预检→恢复点→恢复、保留策略保存后重读失败、快照重试、退出失败恢复与成功退出均有隔离产品证据；不是 v0.7 演示结果。Skills 首次安装并发屏障已修复，手机扩展/官方插图设置复测通过。Package Knowledge 当前版本编辑及 World 只读在桌面/手机通过。本轮仍需完整 Agent 成功提交、Runtime 专业路径、条件媒体及作品宿主等剩余验收，详见 Record。
+| 当前范围 | 已实施及验证的代表流程 |
+| --- | --- |
+| Shell / 入口 / 引导 | 两种界面语言、学习路径、搜索与原生偏好；Dock/菜单/抽屉的键盘、IME、指针中断、减动和响应式 |
+| Play | 显式输入、准备/流式停止、已发出提交的真实回执、上次阅读返回、历史只读、分支切换、存档恢复与精确作品版本修复 |
+| Library | 手机分类可达；Prompt字段/Source/分类/模块/Regex/导入导出及保存后返回位置；Persona、Package Knowledge当前版编辑、World只读及独立副本 |
+| Studio | 三纸/手机分区；集合、逐文件草稿、Source/Review/Apply、验证失败、版本冲突、保存后刷新失败；真实 Project Agent Task→工具提议→人工单次 Commit→重载 |
+| Runtime / Agents | 认证规则、缺项引导、完整配置、发现、引用阻碍、指定版本绑定、诊断；编排预设/角色路由、Memory任务、过期会话保护；Run 默认时间线并保留 Graph |
+| Account / Backup / Diagnostics | 账户双纸、快照/存储键盘操作、退出恢复；真实 ZIP 导出/预检/恢复点/恢复、坏文件取消旧目标、策略写入和读取失败回执；诊断空/失败/重试 |
+| Extensions / 条件能力 | Skills初始化等待/瞬时目录锁恢复、脚本scope及清理、官方插图完整设置；图库/遮罩草稿/批准取消/仅本地供应端单次提交与持久化；条件朗读实际WAV/停止/迟到音频清除 |
+| 作品专属 UI | 真实构建安装的 Native@3 full Work：Host Save/Persona/Reload/Exit、IME与窄屏；component Preview与Scenario；不把作品自己的内容翻译成应用文案 |
+
+上述浏览器流程覆盖1440、900与320/390px代表尺寸，部分还验证跨档、大字、安全区与键盘视口；不是每个页面、每个数据量和每台手机的全组合证明。外部请求使用本地夹具，未证明真实模型规划质量、第三方费用/图像质量或实机GPU。SQLite原生绑定缺失、MySQL/PostgreSQL本地端口不可用的原有环境限制，以及具体通过/失败记录保留在 Record。v0.7尚未获得新视觉基线接受，不改变v0.1/v0.6的既定方向。
