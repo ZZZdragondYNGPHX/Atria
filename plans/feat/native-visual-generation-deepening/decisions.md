@@ -165,13 +165,13 @@
 
 - Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
 - st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
-- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则，D-011 冻结 Mask/草稿/Gallery/GC/SavePoint 的中立协议、可调默认与验收；D-012 冻结 Provider 家族/Target 能力矩阵、分级约束降级许可、三级验收责任；D-013 冻结 Native 逻辑 Schema/API、三层设置/三端响应式 UI、7 阶段/25 子阶段与验收/交付路线。**E0 审计未完成前具体数据表/API/实测缺口仍待清查**。
+- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003/D-004 确定 Provider 抽象、范围和配置骨架；D-005 确定角色身份—时点状态—参考图的三层权威，D-006 确定证据混合更新/仲裁原则，D-007 确定分级 Director 与独立预算/可靠作业原则，D-008 确定 Scene/Shot、可解释自适应评分、可调产品初始预算与作业恢复精细策略；D-009 确定 Media Studio、不可变衍生 DAG、主要编辑功能范围与画廊/资产权威；D-010 已确定 Mask/跨 Provider/版本/删除/存档/晋升的可逆与引用安全原则，D-011 冻结 Mask/草稿/Gallery/GC/SavePoint 的中立协议、可调默认与验收；D-012 冻结 Provider 家族/Target 能力矩阵、分级约束降级许可、三级验收责任；D-013 冻结 Native 逻辑 Schema/API、三层设置/三端响应式 UI、7 阶段/25 子阶段与验收/交付路线。**E0 静态审计已完成**，具体数据库/API/真实 Provider 证据缺口及最晚 S 阶段见 [e0-closure-audit.md](e0-closure-audit.md)；没有声称字段已冻结或 Live 已通过。
 
 ## Unresolved; **not** decisions
 
-- **E0 审计中/尚待冻结**：Native IR/Resource/HTTP JSON Schema 的精确字段、持久化边界和 CAS 事务、图像策略/预算/媒体数据 schema 互引规则、用户能否提供实际 Provider/三端测试、完整 Codex 阶段接手清单。审计结果必须与 Plan 分开标记“建议 vs 决定”，用户要求审计完成前不创建实现分支。
+- **E0 静态审计已完成；待 S0/S1 实现合同**：Native IR/Resource/HTTP JSON Schema 精确字段、CAS/Job/Budget/Media 写入事务、权限/SavePoint/GC，以及需逐 Target 的 L3/三端真实环境；共 15 项按最晚阶段/外部依赖分类，详见 [e0-closure-audit.md](e0-closure-audit.md)。未把工程可自行定案的字段变成用户额外审批。
 
-- **D-013 已冻结**统一 Native Image API/资源职责、三层设置/响应式三端 UI、S0～S6 的 25 子阶段与最终验收原则；**E0 收口审计接下来处理**精确 Schema、Native API 调用者/权限、Job/Budget 数据事务、场景身份、Provider 实测缺口、阶段阻塞与正式 Codex 交接。不把仍待定的接口名/表/路由当作批准事实。
+- **D-013 已冻结** Native Image API/资源职责、三层设置/响应式三端 UI、S0～S6 的 25 子阶段及验收；E0 已审计相关 Schema/权限/Job/预算/SourceRef/Provider 实测缺口、阶段依赖与 Codex 交接条件，归档于 [e0-closure-audit.md](e0-closure-audit.md)。**具体接口名/表/路由仍不属于已冻结决策**。
 
 - D-009/D-010/D-011/D-012 已冻结 Media Studio/DAG/编辑类别与 Mask/草稿/Gallery/GC/SavePoint、中立能力与家族差异矩阵、Required/Preferred/Optional 显式降级规则和 L1/L2/L3 验收；**各个用户实际 Target 的具体 verified/live 支持状态仍以连接及实测为准，当前没有执行真实后端测试**。
 
