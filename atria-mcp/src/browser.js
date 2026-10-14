@@ -16,6 +16,11 @@ export class AtriaBrowser {
     }
 
     async start() {
+        if (!this.starting) this.starting = this._start().catch(error => { this.starting = null; throw error; });
+        return this.starting;
+    }
+
+    async _start() {
         if (this.context) return;
         this.browser = await chromium.launch({ headless: !this.config.headed, channel: this.config.channel });
         try {
@@ -61,7 +66,7 @@ export class AtriaBrowser {
 
     async close() {
         try { await this.browser?.close(); }
-        finally { this.context = null; this.browser = null; this.page = null; this.loadedIdentity = null; this.scopedEvidence = {}; this.documentGeneration++; }
+        finally { this.starting = null; this.context = null; this.browser = null; this.page = null; this.loadedIdentity = null; this.scopedEvidence = {}; this.documentGeneration++; }
     }
 
     async readyPage() {

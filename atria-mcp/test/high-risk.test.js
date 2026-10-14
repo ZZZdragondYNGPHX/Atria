@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { ActionRegistry, PolicyCeiling, RiskExecutor, ReceiptStore, fingerprint } from '../src/kernel.js';
 import { PackageArtifacts, registerHighRiskActions } from '../src/high-risk.js';
@@ -8,9 +8,20 @@ import { registerAgentDelegation } from '../src/agent-delegation.js';
 import { AtriaBrowser } from '../src/browser.js';
 import { httpFixture } from './helpers.js';
 
+function stageFor(artifacts, bytes, boot = randomUUID()) {
+    return { artifactRef: { artifactId: randomUUID(), contentHash: createHash('sha256').update(bytes).digest('hex'), totalBytes: bytes.length,
+        sourceRevision: 'r1', clientInstanceId: artifacts.clientInstanceId, serverBootId: boot }, owner: 'fixture-owner',
+        source: { kind: 'studio-project', projectId: 'project', revision: 'r1' }, mediaType: 'application/octet-stream',
+        expiresAt: Date.now() + 900000, receivedBytes: bytes.length, state: 'complete', maxChunkBytes: 1048576 };
+}
+
 function fixture() {
     const boot = randomUUID(), artifacts = new PackageArtifacts(), bytes = Buffer.from('fixture archive');
-    const artifact = artifacts.put(bytes, { fixture: true });
+    const stage = { artifactRef: { artifactId: randomUUID(), contentHash: createHash('sha256').update(bytes).digest('hex'), totalBytes: bytes.length,
+        sourceRevision: 'r1', clientInstanceId: artifacts.clientInstanceId, serverBootId: boot }, owner: 'fixture-owner',
+        source: { kind: 'studio-project', projectId: 'project', revision: 'r1' }, mediaType: 'application/octet-stream',
+        expiresAt: Date.now() + 900000, receivedBytes: bytes.length, state: 'complete', maxChunkBytes: 1048576 };
+    const artifact = artifacts.put(bytes, { fixture: true }, stage);
     let base = null, safe = true, dependent = false, revision = 'r1', writes = 0, approvals = 0, uses = 1;
     const response = data => ({ ok: () => true, status: () => 200, headers: () => ({ 'content-type': 'application/json', 'x-atria-server-boot-id': boot }), body: async () => Buffer.from(JSON.stringify(data)), dispose: async () => {} });
     const browser = { config: { url: 'http://localhost', timeout: 1000, maxResponseBytes: 1048576 }, start: async () => {}, runtimeIdentity: async () => ({ serverBootId: boot, highRiskGuards: 1 }),
@@ -19,10 +30,14 @@ function fixture() {
                 permissions: [{ permission: 'web', required: true }], requiredPermissions: ['web'], capabilities: [], update: { previous: base ? { packageVersionId: base } : null, pinnedSessions: [] } });
             if (url.endsWith('/revision')) return response({ revision });
             if (options.method === 'DELETE') { writes++; return response({ deleted: true }); }
-            if (url.endsWith('/delete-safety')) return response({ safe, references: safe ? [] : ['consumer'] });
+            if (url.endsWith('/delete-safety')) {
+                assert.equal(options.data.resourceType, 'core.world'); assert.equal(options.data.resourceId, 'world');
+                assert.equal(options.data.ref, undefined);
+                return response({ safe, references: safe ? [] : ['consumer'] });
+            }
             if (url.endsWith('/works/pkg')) return response({ package: { currentVersionId: 'v1' } });
             if (url.includes('/sessions?')) return response(dependent ? [{ sessionId: 'dependent' }] : []);
-            if (url.endsWith('/install')) { assert.equal(options.data.baseVersionId, base); assert.equal(options.data.data, bytes.toString('base64')); assert.equal(options.headers['x-atria-expected-server-boot-id'], boot); writes++; base = 'v2'; return response({ installed: true }); }
+            if (url.endsWith('/install')) { assert.equal(options.data.baseVersionId, base); assert.deepEqual(options.data.artifactRef, stage.artifactRef); assert.equal(options.data.data, undefined); assert.equal(options.headers['x-atria-expected-server-boot-id'], boot); writes++; base = 'v2'; return response({ installed: true }); }
             throw Error(url);
         } } } };
     const registry = registerHighRiskActions(new ActionRegistry(), browser, {}, artifacts), receipts = new ReceiptStore();
@@ -68,8 +83,49 @@ test('Package handles and review bind bytes, base, permissions, preflight and in
     f.base = null; const installed = await f.executor.execute('MUTATE', install);
     assert.equal(installed.receipt.parentReceiptId, review.receipt.receiptId); assert.equal(installed.receipt.status, 'succeeded');
     assert.doesNotMatch(JSON.stringify(installed), /Zml4dHVyZSBhcmNoaXZl/);
-    let now = 0; const store = new PackageArtifacts({ now: () => now }); const a = store.put(Buffer.from('one'), {}); now = a.expiresAt;
+    let now = Date.now(); const store = new PackageArtifacts({ now: () => now });
+    const expiryBytes = Buffer.from('one');
+    const a = store.put(expiryBytes, {}, { ...stageFor(store, expiryBytes), expiresAt: now + 100 }); now = a.expiresAt;
     assert.throws(() => store.get(a.artifactId), /expired/); assert.throws(() => f.artifacts.get(a.artifactId), /Unknown/);
+});
+
+test('Native package build uses fixed bounded binary chunks and rejects corrupt proofs', async () => {
+    const artifacts = new PackageArtifacts(), boot = randomUUID(), bytes = Buffer.alloc(2 * 1024 * 1024 + 17, 0xa5), stage = stageFor(artifacts, bytes, boot);
+    const requests = []; let corrupt = false;
+    const response = (body, headers = {}, status = 200) => ({ ok: () => true, status: () => status,
+        headers: () => ({ 'content-type': 'application/json', 'x-atria-server-boot-id': boot, ...headers }),
+        body: async () => Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body)), dispose: async () => {} });
+    const browser = { config: { url: 'http://localhost', timeout: 1000, maxResponseBytes: 1048576 }, start: async () => {},
+        runtimeIdentity: async () => ({ serverBootId: boot, highRiskGuards: 1 }), context: { request: {
+            get: async () => response({ token: 'private' }), fetch: async (url, options) => {
+                requests.push({ url, options }); const path = new URL(url);
+                if (path.pathname.endsWith('/revision')) return response({ revision: 'r1' });
+                if (path.pathname.endsWith('/build-artifact')) {
+                    assert.deepEqual(options.data, { baseRevision: 'r1', clientInstanceId: artifacts.clientInstanceId });
+                    return response({ artifact: stage, manifest: { name: 'large fixture' } });
+                }
+                assert.equal(path.pathname, '/api/native/product/artifacts/' + stage.artifactRef.artifactId + '/chunk');
+                assert.equal(path.searchParams.get('contentHash'), stage.artifactRef.contentHash);
+                assert.equal(path.searchParams.get('clientInstanceId'), artifacts.clientInstanceId);
+                assert.equal(options.headers['x-atria-expected-server-boot-id'], boot);
+                const offset = Number(path.searchParams.get('offset')), length = Number(path.searchParams.get('length'));
+                assert.ok(length <= 1048576); const chunk = bytes.subarray(offset, offset + length);
+                return response(chunk, { 'content-type': 'application/octet-stream', 'content-length': String(length),
+                    'x-atria-chunk-sha256': corrupt ? '0'.repeat(64) : createHash('sha256').update(chunk).digest('hex'),
+                    etag: '"' + stage.artifactRef.contentHash + '"', 'content-range': `bytes ${offset}-${offset + length - 1}/${bytes.length}` }, 206);
+            },
+        } } };
+    const registry = registerHighRiskActions(new ActionRegistry(), browser, {}, artifacts);
+    const executor = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()), { approve: async () => ({ action: 'accept', content: { authorize: true } }) });
+    const input = { action: 'build.package.create', input: { projectId: 'project', baseRevision: 'r1' } };
+    const result = await executor.execute('INTERACT', input);
+    assert.equal(result.receipt.status, 'succeeded'); assert.equal(result.result.artifact.size, bytes.length);
+    assert.equal(requests.filter(item => new URL(item.url).pathname.endsWith('/chunk')).length, 3);
+    assert.ok(JSON.stringify(result).length < 12000); assert.doesNotMatch(JSON.stringify(result), /"data":\[|paWlpaWl/);
+    corrupt = true;
+    const failed = await executor.execute('INTERACT', input);
+    assert.notEqual(failed.receipt.status, 'succeeded');
+    artifacts.clear();
 });
 
 test('delegated children cannot exceed ceiling, payload or once-only envelope and link to parent', async () => {

@@ -7,7 +7,7 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
         headed: { type: 'boolean' }, 'browser-channel': { type: 'string' },
         'allow-remote': { type: 'boolean' },
         'storage-state': { type: 'string' }, help: { type: 'boolean', short: 'h' },
-        policy: { type: 'string' },
+        policy: { type: 'string' }, 'state-dir': { type: 'string' },
         version: { type: 'boolean' },
     } });
     if (values.help || values.version) return values;
@@ -35,6 +35,7 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
         dataRoots: values['data-root'] ? [resolve(values['data-root'])] : [],
         allowRemote, storageState: storageState ? resolve(storageState) : undefined,
         policyFile: values.policy ? resolve(values.policy) : undefined,
+        stateDirectory: values['state-dir'] ? resolve(values['state-dir']) : env.ATRIA_MCP_STATE_DIR ? resolve(env.ATRIA_MCP_STATE_DIR) : undefined,
         timeout: 15000, maxResponseBytes: 1024 * 1024,
     };
 }
@@ -49,6 +50,7 @@ export const HELP = `Atria MCP 0.2.0 — local stdio server (Node.js >=22)
   --data-root <path>         Additional runtime-owned directory to exclude from evidence
   --allow-remote             Permit an explicitly configured remote HTTPS origin
   --storage-state <file>     Explicit Playwright authentication state (never committed)
+  --state-dir <path>         Private MCP metadata journal (outside product/repository)
   --policy <file>            JSON {"version":1,"actionIds":[...]} eligibility, never approval
   --help / --version
 
