@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>《雾灯旅舍》ADV视觉小说演出版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 浅色唯美/Galgame 调色板 */
+            --bg-hud: rgba(255, 255, 255, 0.6);
+            --bg-adv-box: rgba(255, 255, 255, 0.85);
+            --text-main: #2C3E50;
+            --text-story: #1A252F;
+            --text-muted: #5D6D7E;
+            
+            --accent-primary: #5A98D6; /* 海蓝 */
+            --accent-warm: #E67E22;    /* 橘色资源高亮 */
+            
+            --font-story: 'Noto Serif SC', serif;
+            --font-ui: 'Nunito', -apple-system, sans-serif;
+            
+            --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.1);
+            --radius-md: 8px;
+            --radius-lg: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-ui);
+            color: var(--text-main);
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* 游戏主视窗 (全屏场景演出) */
+        .game-stage {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            /* 场景背景：旅舍内景 (带朦胧感) */
+            background-image: url('https://images.unsplash.com/photo-1498623116890-37e912163d5d?auto=format&fit=crop&q=80');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* 顶部经营 HUD */
+        .hud-layer {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 16px 32px;
+            z-index: 50;
+        }
+        
+        .hud-left {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            background: var(--bg-hud);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        
+        .info-item { font-weight: 600; font-size: 0.95rem; }
+        .info-time { color: var(--accent-primary); }
+        .info-action { color: var(--accent-warm); font-size: 0.85rem; padding-left: 12px; border-left: 1px solid rgba(0,0,0,0.1); }
+
+        .hud-right {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .res-pill {
+            background: var(--bg-hud);
+            backdrop-filter: blur(10px);
+            padding: 6px 16px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        /* 菜单按钮 (系统/日志/地图) */
+        .sys-menu {
+            position: absolute;
+            right: 32px;
+            top: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 50;
+        }
+        .sys-btn {
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.9);
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-float);
+            transition: all 0.2s;
+            font-size: 1.1rem;
+        }
+        .sys-btn:hover { background: #fff; transform: scale(1.1); color: var(--accent-primary); }
+
+        /* 人物立绘层 (Sprite) */
+        .sprite-layer {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        /* 模拟一张高质量人物立绘 */
+        .character-sprite {
+            height: 100%;
+            max-height: 800px;
+            object-fit: cover;
+            /* 使用一张透明背景感的图或利用mask遮罩，这里用图片示意 */
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));
+            animation: breathe 4s infinite ease-in-out;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* 底部 ADV 对话框与交互层 */
+        .bottom-ui {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 1000px;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* 选项与自由输入区 */
+        .action-area {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+        
+        .action-btn {
+            background: rgba(255,255,255,0.9);
+            border: 2px solid rgba(255,255,255,1);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow-float);
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+        .action-btn:hover { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
+
+        .input-bar {
+            display: flex;
+            background: rgba(255,255,255,0.9);
+            border-radius: 30px;
+            padding: 6px 6px 6px 20px;
+            box-shadow: var(--shadow-float);
+            width: 320px;
+            transition: width 0.3s, border 0.3s;
+            border: 2px solid transparent;
+        }
+        .input-bar:focus-within { width: 400px; border-color: var(--accent-primary); }
+        .input-bar input { flex: 1; border: none; outline: none; background: transparent; font-size: 0.95rem; }
+        .btn-send {
+            background: var(--accent-primary); color: white; border: none;
+            width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* ADV 文本主框 */
+        .adv-box {
+            position: relative;
+            background: var(--bg-adv-box);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.6);
+            border-top: 2px solid rgba(255,255,255,0.9);
+            border-radius: var(--radius-lg);
+            padding: 40px 48px;
+            box-shadow: var(--shadow-float);
+            min-height: 200px;
+        }
+
+        /* 角色名签 */
+        .name-tag {
+            position: absolute;
+            top: -20px;
+            left: 40px;
+            background: var(--accent-primary);
+            color: white;
+            font-family: var(--font-story);
+            font-weight: 700;
+            font-size: 1.2rem;
+            padding: 6px 24px;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(90,152,214,0.3);
+            border: 2px solid rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        /* 语音播放动画小图标 */
+        .voice-icon {
+            display: flex; gap: 2px; align-items: flex-end; height: 12px;
+        }
+        .voice-icon span { display: block; width: 3px; background: white; border-radius: 2px; animation: sound 1s infinite alternate; }
+        .voice-icon span:nth-child(2) { animation-delay: 0.2s; }
+        .voice-icon span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes sound {
+            0% { height: 4px; }
+            100% { height: 12px; }
+        }
+
+        .adv-text {
+            font-family: var(--font-story);
+            font-size: 1.35rem;
+            line-height: 1.8;
+            color: var(--text-story);
+            text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        /* Galgame 右下角控制栏 (Auto/Skip/Log) */
+        .adv-controls {
+            position: absolute;
+            bottom: 16px; right: 24px;
+            display: flex; gap: 16px;
+        }
+        .adv-ctrl-btn {
+            background: none; border: none; color: var(--text-muted);
+            font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: color 0.2s;
+        }
+        .adv-ctrl-btn:hover { color: var(--accent-primary); }
+        .adv-ctrl-btn.active { color: var(--accent-warm); }
+
+        /* S09 预览与确认的中心模态框 */
+        .modal-overlay {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(12px);
+            z-index: 100; display: none; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-card {
+            background: white; border-radius: var(--radius-lg); width: 480px; padding: 40px;
+            box-shadow: 0 32px 64px rgba(0,0,0,0.2); transform: scale(0.95); transition: transform 0.3s;
+        }
+        .modal-overlay.active .modal-card { transform: scale(1); }
+        .modal-title { font-size: 1.5rem; font-family: var(--font-story); margin-bottom: 24px; border-bottom: 2px solid #EEE; padding-bottom: 12px; }
+        .cost-row { display: flex; justify-content: space-between; margin-bottom: 12px; color: var(--text-main); font-weight: 600;}
+        .danger-text { color: var(--accent-warm); }
+        
+        .modal-btns { display: flex; justify-content: flex-end; gap: 16px; margin-top: 32px; }
+        .btn-cancel { background: #F4F6F8; border: none; padding: 10px 24px; border-radius: 30px; cursor: pointer; font-weight: 600; color: var(--text-muted); }
+        .btn-confirm { background: var(--accent-primary); color: white; border: none; padding: 10px 24px; border-radius: 30px; cursor: pointer; font-weight: 700; }
+
+        /* 响应式：移动端 */
+        @media (max-width: 768px) {
+            .hud-layer { padding: 12px; flex-direction: column; gap: 12px; height: auto; background: none; }
+            .sys-menu { top: 12px; right: 12px; flex-direction: row; }
+            .sprite-layer { height: 60vh; }
+            .bottom-ui { width: 95%; bottom: 16px; }
+            .adv-box { padding: 32px 24px; min-height: 160px; }
+            .name-tag { left: 16px; top: -16px; font-size: 1.1rem; padding: 4px 16px; }
+            .adv-text { font-size: 1.15rem; }
+            .action-area { flex-wrap: wrap; justify-content: center; }
+            .input-bar { width: 100%; }
+            .input-bar:focus-within { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-stage">
+    
+    <!-- 顶部 HUD (S06资源 / S03处境) -->
+    <header class="hud-layer">
+        <div class="hud-left">
+            <span class="info-item info-time">第 1 日 · 暮</span>
+            <span class="info-item" style="color: var(--text-muted);">📍 旅舍公共厅</span>
+            <span class="info-item info-action">还可行动 1 次</span>
+        </div>
+        <div class="hud-right">
+            <div class="res-pill" title="储粮">🍞 <span id="res-food">6</span></div>
+            <div class="res-pill" title="燃料">🪵 <span id="res-fuel">4</span></div>
+            <div class="res-pill" title="零件">⚙️ <span id="res-part">3</span></div>
+        </div>
+    </header>
+
+    <!-- 右侧系统菜单 (S04 地图 / S07 记事) -->
+    <div class="sys-menu">
+        <button class="sys-btn" title="查看地图" onclick="alert('展开全屏半透明的岛上简图面板')">🗺️</button>
+        <button class="sys-btn" title="旅舍记事" onclick="alert('打开记事本 (Log & Notes)')">📓</button>
+        <button class="sys-btn" title="系统设置" onclick="alert('打开音量、存档设置面板')">⚙️</button>
+    </div>
+
+    <!-- 立绘演出层 (结合图片与音效) -->
+    <div class="sprite-layer">
+        <!-- 这里使用一张抠好图的人物立绘（此处以含透明通道的PNG示意） -->
+        <img class="character-sprite" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80" style="clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); mask-image: linear-gradient(to top, transparent 0%, black 20%); -webkit-mask-image: linear-gradient(to top, transparent 0%, black 20%);">
+    </div>
+
+    <!-- 底部对话框与操作 (ADV Box) -->
+    <div class="bottom-ui">
+        <!-- 动作与输入 -->
+        <div class="action-area">
+            <button class="action-btn" onclick="alert('进入普通对话线。')">💬 与林岚谈谈</button>
+            <button class="action-btn" onclick="openPreview()">🛠️ 检修报务台</button>
+            <div class="input-bar">
+                <input type="text" placeholder="自由表达意图，如：看看窗外...">
+                <button class="btn-send">➜</button>
+            </div>
+        </div>
+
+        <!-- 对话文本框 -->
+        <div class="adv-box">
+            <div class="name-tag" id="speaker-name">
+                林岚
+                <div class="voice-icon"><span></span><span></span><span></span></div>
+            </div>
+            <div class="adv-text" id="adv-text-content">
+                “楼上的报务台，还想试试吗？零件够的话，今晚就能让它安静些。”
+            </div>
+            
+            <!-- ADV 控制器 -->
+            <div class="adv-controls">
+                <button class="adv-ctrl-btn" title="查看之前的对话">LOG</button>
+                <button class="adv-ctrl-btn" title="自动播放对话">AUTO</button>
+                <button class="adv-ctrl-btn" title="隐藏UI看图">HIDE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认模态框 (S09 行动预览) -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal-card">
+            <h2 class="modal-title">检修现用报务台</h2>
+            <p style="font-family: var(--font-story); font-size: 1.1rem; color: #444; margin-bottom: 24px; line-height: 1.8;">
+                清理接点并更换损坏部件，恢复现用报务台的基本通信。
+            </p>
+            
+            <div style="background: #F8F9FA; padding: 20px; border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid #E5E7EB;">
+                <div class="cost-row">
+                    <span style="color: #666;">已知代价</span>
+                    <span class="danger-text">行动 1 次，零件 1 份</span>
+                </div>
+                <div class="cost-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #CCC;">
+                    <span style="color: #666;">预计结算后余量</span>
+                    <span>行动 <span id="preview-act">0</span> 次，零件 <span id="preview-part">2</span> 份</span>
+                </div>
+            </div>
+
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+                * 现场条件允许检修；本次结束后将进入夜间交接。
+            </p>
+
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="closePreview()">先不修</button>
+                <button class="btn-confirm" onclick="confirmAction()">确认检修</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 简单交互脚本，演示 ADV 推进
+    function openPreview() {
+        document.getElementById('previewModal').classList.add('active');
+    }
+    function closePreview() {
+        document.getElementById('previewModal').classList.remove('active');
+    }
+    function confirmAction() {
+        closePreview();
+        
+        // 1. 更新顶部资源
+        document.getElementById('res-part').innerText = '2';
+        const actionText = document.querySelector('.info-action');
+        actionText.innerText = '已用完';
+        actionText.style.color = 'var(--text-muted)';
+        
+        // 2. ADV 文本演出更新 (系统反馈)
+        const nameTag = document.getElementById('speaker-name');
+        nameTag.innerHTML = '系统 <div class="voice-icon" style="opacity: 0;"><span></span></div>'; // 隐藏语音动画
+        nameTag.style.background = 'var(--text-muted)'; // 系统色
+        
+        const textContent = document.getElementById('adv-text-content');
+        // 模拟打字机效果
+        const newText = "林岚指着接线柱，你把最后一只接头拧紧。底噪降下来，一段清楚的船务播报终于从扬声器里传出。\n[报务台恢复基本通信，进入夜间交接]";
+        textContent.innerText = "";
+        let i = 0;
+        const typeWriter = setInterval(() => {
+            textContent.innerText += newText.charAt(i);
+            i++;
+            if(i >= newText.length) clearInterval(typeWriter);
+        }, 30);
+    }
+</script>
+</body>
+</html>
