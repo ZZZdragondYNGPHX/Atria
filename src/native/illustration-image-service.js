@@ -96,7 +96,12 @@ export class IllustrationImageService {
         if (!media && (ir.references.length || input.mask || input.parentImageVersionIds?.length || !['txt2img', 'regenerate'].includes(ir.operation))) visualError('media_prepare_required');
         for (const ref of ir.references) if (!['base', 'mask'].includes(ref.purpose) && !ir.constraints.some(c => c.capability === ref.purpose)) ir.constraints.push({ capability: ref.purpose, tier: 'required' });
         if (media) ir.authoring = 'raw';
-        const plan = await this.registry.prepare({ ir, target, rendering, connection, approval: { omittedPreferred: input.omittedPreferred ?? [] } });
+        const probeSecret = connection.secretRef && ['provider.sd-webui-image', 'provider.forge-image', 'provider.comfyui-image'].includes(connection.providerAdapter)
+            ? await this.host.secretPort.resolveSecret(connection.secretRef, { handle }) : null;
+        const plan = await this.registry.prepare({ ir, target, rendering, connection, secret: probeSecret, approval: { omittedPreferred: input.omittedPreferred ?? [] } });
+        let inputBytes = 0;
+        for (const input of plan.compiled.inputAssetRefs) { const ref = await this.assets.getRef(handle, input.assetId); if (!ref || ref.contentHash !== input.contentHash) visualError('input_integrity_invalid'); inputBytes += ref.size; }
+        if (inputBytes > (connection.providerAdapter === 'provider.gemini-image' ? 14 : 24) * 1024 * 1024) visualError('input_limit');
         if (media?.mediaOperation.mask) plan.compiled.maskGeometry = { width: media.mediaOperation.mask.width, height: media.mediaOperation.mask.height };
         if (media?.preserveOutsideMask) plan.compiled.preserveOutsideMask = { base: media.references.find(r => r.purpose === 'base'), mask: media.references.find(r => r.purpose === 'mask'), width: media.mediaOperation.mask?.width, height: media.mediaOperation.mask?.height };
         const imageVersionId = createNativeId('imageVersion'), executionParameters = plan.compiled.body.parameters ?? plan.compiled.body;
@@ -150,9 +155,11 @@ export class IllustrationImageService {
     }
     async status(handle, { operationId }) {
         assertNativeId(operationId, 'imageJob');
-        const job = (await this.store.read(handle, 'job', operationId)).value;
+        let job = (await this.store.read(handle, 'job', operationId)).value;
         if (!job) visualError('job_missing');
         await this.host.sessionCore.runs.assert(handle, job.source.sessionId, 'inspect');
+        await this.worker.recover(handle, operationId);
+        job = (await this.store.read(handle, 'job', operationId)).value;
         return { operation: publicJob(job), ...(terminal.has(job.status) ? await this.host.sessionCore._sessions.getIllustrations(handle, job.source.sessionId, { branchId: job.source.branchId }) : {}) };
     }
     async list(handle, { sessionId, branchId }) {

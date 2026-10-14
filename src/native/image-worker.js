@@ -37,7 +37,8 @@ export class ImageJobWorker {
             const adapter = this.registry.get(job.connection.providerAdapter);
             const result = await adapter.generate(job.compiled, { secret, signal, jobId, readAsset: assetId => { if (!job.compiled.inputAssetRefs.some(ref => ref.assetId === assetId)) visualError('input_unauthorized'); return this.assets.read(handle, assetId); },
                 onRemote: async receipt => {
-                    job = await this.store.fenced(handle, jobId, fence, j => { if (j.status === 'cancelled') visualError('cancelled'); j.status = 'submitted'; j.remote = receipt; return j; });
+                    job = await this.store.fenced(handle, jobId, fence, j => { if (j.status !== 'cancelled') j.status = 'submitted'; j.remote = receipt; return j; });
+                    if (job.status === 'cancelled') { await this.cancelRemote(handle, job, secret); visualError('cancelled'); }
                 } });
             if (signal.aborted) visualError('cancelled');
             job = (await this.store.read(handle, 'job', jobId)).value;
@@ -53,7 +54,8 @@ export class ImageJobWorker {
             await this.store.updateJob(handle, jobId, j => {
                 if (j.fence !== (fence ?? j.fence) || j.status === 'published' || j.status === 'cancelled' || j.status === 'result_received') return j;
                 const sent = j.attempts.length > 0;
-                j.status = sent ? 'uncertain_submission' : 'failed'; j.errorCode = /^native_[a-z_]+$/.test(error.code ?? '') ? error.code : 'native_visual_request_failed';
+                j.status = error.code === 'native_visual_remote_failed' ? 'failed' : j.remote ? 'submitted' : sent ? 'uncertain_submission' : 'failed';
+                j.errorCode = /^native_[a-z_]+$/.test(error.code ?? '') ? error.code : 'native_visual_request_failed';
                 if (!sent) j.reservation.released = true;
                 return j;
             });
@@ -70,31 +72,38 @@ export class ImageJobWorker {
             await this.publish(handle, j);
         });
     }
-    async recover(handle) {
-        const jobs = await this.store.list(handle, 'job');
+    async recover(handle, jobId = null) {
+        const jobs = (await this.store.list(handle, 'job')).filter(job => !jobId || job.jobId === jobId);
         for (let job of jobs) {
-            if (active.has(activeKey(handle, job.jobId)) || job.lease?.until > this.store.now()) continue;
-            if (job.status === 'queued') { this.dispatch(handle, job); continue; }
-            if (job.status === 'result_received') {
-                job = await this.store.updateJob(handle, job.jobId, j => { j.fence += 1; j.lease = { workerId: this.workerId, until: this.store.now() + 60000 }; return j; });
-                await this.complete(handle, job, job.fence); continue;
-            }
-            if (['submitting', 'submitted', 'running'].includes(job.status)) {
-                const adapter = this.registry.get(job.connection.providerAdapter);
-                if (job.remote && adapter.reconcile) {
+            try {
+                if (active.has(activeKey(handle, job.jobId)) || job.lease?.until > this.store.now()) continue;
+                if (job.status === 'queued') { this.dispatch(handle, job); continue; }
+                if (job.status === 'result_received') {
+                    job = await this.store.updateJob(handle, job.jobId, j => { j.fence += 1; j.lease = { workerId: this.workerId, until: this.store.now() + 60000 }; return j; });
+                    await this.complete(handle, job, job.fence); continue;
+                }
+                if (['submitting', 'submitted', 'running'].includes(job.status)) {
+                    const adapter = this.registry.get(job.connection.providerAdapter);
+                    if (job.remote && adapter.reconcile) {
                     // Reconcile the existing remote ID only. No recovery path
                     // may call submit/generate for an already sent job.
-                    const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
-                    const result = await adapter.reconcile(job.compiled, job.remote, { secret, signal: AbortSignal.timeout(30000), readAsset: assetId => { if (!job.compiled.inputAssetRefs.some(ref => ref.assetId === assetId)) visualError('input_unauthorized'); return this.assets.read(handle, assetId); } });
-                    if (!result) continue;
-                    const normalized = await normalizeImage(result.bytes);
-                    if (normalized.width !== result.width || normalized.height !== result.height) visualError('result_geometry_invalid');
-                    result.bytes = normalized.bytes;
-                    const ref = { assetId: job.outputAssetId, contentHash: createHash('sha256').update(result.bytes).digest('hex'), size: result.bytes.length, mediaType: 'image/png' };
-                    await this.assets.put(handle, ref, result.bytes);
-                    job = await this.store.updateJob(handle, job.jobId, j => { j.status = 'result_received'; j.fence += 1; j.lease = { workerId: this.workerId, until: this.store.now() + 60000 }; j.result = { ref, width: result.width, height: result.height }; return j; });
-                    await this.complete(handle, job, job.fence);
-                } else await this.store.updateJob(handle, job.jobId, j => { j.status = 'uncertain_submission'; return j; });
+                        job = await this.store.updateJob(handle, job.jobId, j => { if (j.lease?.until > this.store.now() || j.status === 'cancelled') visualError('lease_conflict'); j.fence += 1; j.lease = { workerId: this.workerId, until: this.store.now() + 60000 }; return j; });
+                        const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
+                        const result = await adapter.reconcile(job.compiled, job.remote, { secret, signal: AbortSignal.timeout(30000), readAsset: assetId => { if (!job.compiled.inputAssetRefs.some(ref => ref.assetId === assetId)) visualError('input_unauthorized'); return this.assets.read(handle, assetId); } });
+                        if (!result) { await this.store.fenced(handle, job.jobId, job.fence, j => { j.lease = null; return j; }); continue; }
+                        const normalized = await normalizeImage(result.bytes);
+                        if (normalized.width !== result.width || normalized.height !== result.height) visualError('result_geometry_invalid');
+                        result.bytes = normalized.bytes;
+                        const ref = { assetId: job.outputAssetId, contentHash: createHash('sha256').update(result.bytes).digest('hex'), size: result.bytes.length, mediaType: 'image/png' };
+                        await this.assets.put(handle, ref, result.bytes);
+                        job = await this.store.fenced(handle, job.jobId, job.fence, j => { if (j.status === 'cancelled') visualError('cancelled'); j.status = 'result_received'; j.result = { ref, width: result.width, height: result.height }; return j; });
+                        await this.complete(handle, job, job.fence);
+                    } else await this.store.updateJob(handle, job.jobId, j => { j.status = 'uncertain_submission'; return j; });
+                }
+            } catch (error) {
+                // Read-side recovery failures preserve remote IDs and never
+                // turn a transient query error into a second submission.
+                if (error.code !== 'native_visual_lease_conflict') await this.store.updateJob(handle, job.jobId, j => { if (j.fence === job.fence && !terminal.has(j.status)) { j.errorCode = /^native_[a-z_]+$/.test(error.code ?? '') ? error.code : 'native_visual_reconcile_failed'; j.lease = null; } return j; });
             }
         }
     }
@@ -105,7 +114,19 @@ export class ImageJobWorker {
             j.status = 'cancelled'; j.cancelReceipt = { local: true, remoteConfirmed: false, refund: 'unknown' }; return j;
         });
         const entry = active.get(activeKey(handle, jobId)); if (entry) this.scheduler.cancel(handle, entry.operationId);
-        return job;
+        if (job.remote) {
+            const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
+            await this.cancelRemote(handle, job, secret);
+        }
+        return (await this.store.read(handle, 'job', jobId)).value;
+    }
+    async cancelRemote(handle, job, secret) {
+        const adapter = this.registry.get(job.connection.providerAdapter);
+        if (!adapter.cancel || !job.remote) return;
+        try {
+            const receipt = await adapter.cancel(job.compiled, job.remote, { secret, signal: AbortSignal.timeout(10000) });
+            await this.store.updateJob(handle, job.jobId, j => { if (j.status === 'cancelled') j.cancelReceipt = { local: true, remoteConfirmed: receipt.remoteConfirmed === true, refund: 'unknown' }; return j; });
+        } catch { /* Local cancellation remains authoritative; remote fee unknown. */ }
     }
 }
 export function newImageJob({ source, intentKey, fingerprint, mode, connection, target, compiled, evidence, approval, amount, currency, mediaOperation }) {

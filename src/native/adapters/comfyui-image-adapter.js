@@ -58,8 +58,8 @@ export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {
         return normalizeImage(await boundedImageBytes(await imageFetch(fetchImpl, url, options), options.signal));
     };
     return {
-        async describe({ target, connection, fingerprint }) {
-            const info = await imageJson(fetchImpl, imageRoute(connection.endpoint, 'object_info'), { signal: AbortSignal.timeout(15000) });
+        async describe({ target, connection, fingerprint, secret }) {
+            const info = await imageJson(fetchImpl, imageRoute(connection.endpoint, 'object_info'), { secret, signal: AbortSignal.timeout(15000) });
             const graph = validateComfyWorkflow(target.workflow, info);
             schemas.set(target.imageTargetId + '@' + target.revision, info);
             const semantic = new Set(target.workflow.bindings.map(b => b.semantic));
@@ -82,6 +82,7 @@ export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {
                     inputs.push({ ...binding, reference }); graph[binding.nodeId].inputs[binding.input] = 'atria-upload-' + binding.semantic;
                 } else graph[binding.nodeId].inputs[binding.input] = values[binding.semantic];
             }
+            validateComfyWorkflow({ ...target.workflow, graph }, schemas.get(target.imageTargetId + '@' + target.revision) ?? target.workflow.nodeTypes);
             return { endpoint: connection.endpoint, body: { prompt: graph }, outputNodes: target.workflow.outputNodes, inputs };
         },
         async generate(compiled, options) {

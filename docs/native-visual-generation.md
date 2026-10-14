@@ -82,3 +82,40 @@ compositing requires identical base/result geometry and can leave visible seams.
 NovelAI precise references are V4.5-scoped and reject Vibe combinations. Vibe encoding
 is still unknown and cannot trigger an implicit paid request. ComfyUI capabilities
 come from reachable typed nodes/bindings, not a Provider brand or editable manifest.
+
+P1 adapters
+-----------
+Gemini uses the documented native GenerateContent image API, inline image inputs,
+image model/ratio/size constraints and x-goog-api-key through the Secret port. It
+supports semantic Img2Img/reference editing; Canonical Mask inpaint, strict Mask and
+upscale are unsupported. No hidden semantic substitution for a required Mask.
+
+WebUI/Forge discover sd-models, samplers, upscalers, scripts and OpenAPI before
+compilation. LoRA aliases and ControlNet model/module catalogs are checked if the
+actual extension exists. Optional Basic auth is a stored `username:password` Secret.
+Checkpoint overrides restore afterward; global interrupt is never called. The
+adapter cannot promise model family compatibility or output quality from catalog
+presence; L3 remains separate. Native raw prompt remains unchanged in IR; explicitly
+configured LoRA syntax is a recorded wire transform.
+
+RunningHub uses task/openapi create/upload/outputs/cancel with a frozen full typed
+Workflow, not a mutable cloud Workflow ID alone. The credential is injected only at
+send time. Native receipts contain only taskId, never netWssUrl/CDN signatures.
+Queries reconcile the existing task, without create retries. CDN download credentials
+are omitted, redirects refused, and result hosts restricted to the configured origin
+and known RunningHub image hosts. Remote cancel confirmation never claims a refund.
+
+Native media preview bounds total input bytes to 24 MiB (Gemini 14 MiB to leave
+base64/JSON room under its request limit), independently of descriptor and output
+limits. Single result only; return-count mismatch is rejected. Adapter registration
+requires describe/compile/generate and unique explicit names. Third-party protocols
+must supply those ports and Source/Capability/Job/Asset validation remains shared.
+
+Official protocol sources checked 2026-10-14 (read-only; no L3):
+- https://ai.google.dev/gemini-api/docs/generate-content/image-generation
+- https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/master/modules/api/models.py
+- https://github.com/Mikubill/sd-webui-controlnet/wiki/API
+- https://pre.runninghub.ai/runninghub-api-doc-en/api-425761093
+- https://www.runninghub.ai/runninghub-api-doc-en/api-425761034
+- https://www.runninghub.ai/runninghub-api-doc-en/api-425761099
+- https://www.runninghub.ai/runninghub-api-doc-en/doc-8287467

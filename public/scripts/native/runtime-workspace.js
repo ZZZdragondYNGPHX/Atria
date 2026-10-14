@@ -230,7 +230,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         let serialize;
         if (section === 'connections') {
             let fields = group(form, 'Provider connection');
-            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.mcp', 'MCP tools and resources'], ['provider.a2a', 'A2A agent'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI 官方图片'], ['provider.novelai-image-compatible', 'NovelAI 第三方兼容图片'], ['provider.comfyui-image', 'ComfyUI 图片工作流'], ['provider.openai-images', 'OpenAI Images API']]);
+            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.mcp', 'MCP tools and resources'], ['provider.a2a', 'A2A agent'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI 官方图片'], ['provider.novelai-image-compatible', 'NovelAI 第三方兼容图片'], ['provider.comfyui-image', 'ComfyUI 图片工作流'], ['provider.openai-images', 'OpenAI Images API'], ['provider.gemini-image', 'Gemini 原生图片'], ['provider.sd-webui-image', 'SD WebUI 图片'], ['provider.forge-image', 'Forge 图片'], ['provider.runninghub-image', 'RunningHub 图片工作流']]);
             const endpoint = field(fields, 'Service endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
             const imageFields = node('div', undefined, fields);
             notice('Use https://image.novelai.net/ai/generate-image for NovelAI, or the full generation URL for a compatible provider. Only the NovelAI generate protocol is supported; relay protocols are not inferred.', imageFields);
@@ -260,7 +260,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             fields = group(form, 'Authentication');
             const secret = field(fields, 'Stored Secret', value.secretRef?.secretId, [['', 'Choose…']]); secret.required = true;
             const syncAuthentication = () => {
-                secret.required = !['provider.mcp', 'provider.a2a', 'provider.comfyui-image'].includes(adapter.value);
+                secret.required = !['provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image'].includes(adapter.value);
                 if (secret.options[0]) secret.options[0].textContent = translateShellText(secret.required ? 'Choose…' : 'No authentication');
             };
             adapter.addEventListener('change', syncAuthentication); syncAuthentication();
@@ -317,9 +317,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const openCreate = button('Create Secret', () => { createBox.hidden = false; openCreate.hidden = true; secretValue.disabled = secretLabel.disabled = false; createFeedback.replaceChildren(); secretLabel.focus(); }, fields);
             createBox.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); create.click(); } });
             void inventory();
-            notice('Credentials stay in the Secret store. Gemini uses the API base URL; other transports use the full generation endpoint.', fields);
+            notice('Credentials stay in the Secret store. Gemini and image Workflow/WebUI providers use the API base URL. WebUI/Forge optional Basic credentials are stored as username:password in a Secret.', fields);
             serialize = () => {
-                if (creating || !secret.value && !['provider.mcp', 'provider.a2a', 'provider.comfyui-image'].includes(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
+                if (creating || !secret.value && !['provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image'].includes(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
                 const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'minimumOutputTokens']) delete options[key];
                 delete options.imageCapabilities;
                 if (NOVELAI_IMAGE_ADAPTERS.includes(adapter.value)) {
@@ -336,7 +336,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     if (minimum) options.minimumOutputTokens = minimum;
                 }
                 const result = { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value };
-                if (!secret.value && ['provider.mcp', 'provider.a2a', 'provider.comfyui-image'].includes(adapter.value)) delete result.secretRef;
+                if (!secret.value && ['provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image'].includes(adapter.value)) delete result.secretRef;
                 else result.secretRef = { scope: 'player', secretId: secret.value };
                 return result;
             };
@@ -358,7 +358,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             adapter.addEventListener('change', syncProbe); syncProbe();
         } else if (section === 'models') {
             let fields = group(form, 'Model connection');
-            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections.filter(item => ![...NOVELAI_IMAGE_ADAPTERS, 'provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.openai-images'].includes(item.providerAdapter)), ids.connections)); connection.required = true;
+            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections.filter(item => ![...NOVELAI_IMAGE_ADAPTERS, 'provider.mcp', 'provider.a2a', 'provider.comfyui-image', 'provider.openai-images', 'provider.gemini-image', 'provider.sd-webui-image', 'provider.forge-image', 'provider.runninghub-image'].includes(item.providerAdapter)), ids.connections)); connection.required = true;
             button('Manage connections', () => host.openRuntimeSection('connections'), fields);
             const remote = field(fields, 'Remote model ID', value.remoteModelId); remote.required = true;
             const discovery = node('div', undefined, fields); discovery.className = 'atri-runtime-group';

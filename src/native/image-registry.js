@@ -1,6 +1,9 @@
 import { createNovelaiVisualAdapter } from './adapters/novelai-visual-adapter.js';
 import { createComfyImageAdapter } from './adapters/comfyui-image-adapter.js';
 import { createOpenaiImageAdapter } from './adapters/openai-image-adapter.js';
+import { createGeminiImageAdapter } from './adapters/gemini-image-adapter.js';
+import { createWebuiImageAdapter } from './adapters/webui-image-adapter.js';
+import { createRunninghubImageAdapter } from './adapters/runninghub-image-adapter.js';
 import { randomInt } from 'node:crypto';
 import { assertImageTarget, assertImageRendering } from './visual-contracts.js';
 import { visualFingerprint, assertCapabilityManifest, negotiateImageConstraints, visualError } from '../../public/shared/native-visual-contract.js';
@@ -20,12 +23,13 @@ export class ImageAdapterRegistry {
         return this;
     }
     get(name) { const adapter = this.adapters.get(name); if (!adapter) visualError('adapter_unsupported'); return adapter; }
-    async prepare({ ir, target: input, rendering, connection, approval = null }) {
+    async prepare({ ir, target: input, rendering, connection, approval = null, secret = null }) {
         const target = assertImageTarget(input);
         if (rendering) assertImageRendering(rendering);
         if (connection.connectionProfileId !== target.connectionProfileId) visualError('target_conflict');
+        if (connection.transport !== 'transport.http' || Object.keys(connection.networkPolicy ?? {}).length) visualError('network_policy_unsupported');
         const adapter = this.get(connection.providerAdapter), fingerprint = imageTargetFingerprint(target, connection);
-        const manifest = assertCapabilityManifest(await adapter.describe({ target, connection, fingerprint }));
+        const manifest = assertCapabilityManifest(await adapter.describe({ target, connection, fingerprint, secret }));
         if (manifest.targetFingerprint !== fingerprint) visualError('capability_stale');
         const constraints = negotiateImageConstraints(ir, manifest, { omittedPreferred: approval?.omittedPreferred ?? [] });
         const effectiveIr = { ...ir, references: ir.references.filter(ref => !constraints.omitted.some(c => c.capability === ref.purpose)), constraints: ir.constraints.filter(c => !constraints.omitted.some(o => o.capability === c.capability)) };
@@ -51,5 +55,8 @@ export function createImageRegistry({ fetchImpl = fetch } = {}) {
     registry.register(['provider.novelai-image', 'provider.novelai-image-compatible'], createNovelaiVisualAdapter({ fetchImpl }));
     registry.register(['provider.comfyui-image'], createComfyImageAdapter({ fetchImpl }));
     registry.register(['provider.openai-images'], createOpenaiImageAdapter({ fetchImpl }));
+    registry.register(['provider.gemini-image'], createGeminiImageAdapter({ fetchImpl }));
+    registry.register(['provider.sd-webui-image', 'provider.forge-image'], createWebuiImageAdapter({ fetchImpl }));
+    registry.register(['provider.runninghub-image'], createRunninghubImageAdapter({ fetchImpl }));
     return registry;
 }

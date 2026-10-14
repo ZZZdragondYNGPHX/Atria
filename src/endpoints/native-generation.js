@@ -298,7 +298,8 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const target = (await configuration.resources.getCurrent(handle, 'core.image-target', req.body.imageTargetId))?.snapshot;
             if (!target) throw new TypeError('Target unavailable');
             const connection = await host.persistence.getConnectionProfile(handle, target.connectionProfileId), fingerprint = imageTargetFingerprint(target, connection);
-            res.json({ targetFingerprint: fingerprint, capabilities: await createImageRegistry().get(connection.providerAdapter).describe({ target, connection, fingerprint }) });
+            const secret = connection.secretRef && ['provider.sd-webui-image', 'provider.forge-image', 'provider.comfyui-image'].includes(connection.providerAdapter) ? await host.secretPort.resolveSecret(connection.secretRef, { handle }) : null;
+            res.json({ targetFingerprint: fingerprint, capabilities: await createImageRegistry().get(connection.providerAdapter).describe({ target, connection, fingerprint, secret }) });
         } catch (error) { res.status(400).json({ error: error.code || 'native_visual_capability_failed' }); }
     });
     router.get('/visual/configuration', async (req, res) => {
