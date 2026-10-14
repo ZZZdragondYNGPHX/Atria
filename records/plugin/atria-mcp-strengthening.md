@@ -38,3 +38,15 @@
 - 实际 Runtime/Cognition 6 suites 58/58；Goal S11/S12/S14 36 项、Scheduler 7 项；PromptPreset 5/5、PromptCandidate 20/20、MCP/A2A 6/6。Goal S13 unknown 重试旧断言按“不盲重试”迁移并定向 2/2，相关共享 runner 12 项通过。模型只调用隔离本地测试 Provider，未用真实付费账号。
 - 工具统一回归一轮 122/122（Edge）；其后新增 Session/Archive/Resource 等动作继续做针对测试并待最终全套。Skills Native HTTP 4/4、adapter 3/3；Extensions Native 26/26、adapter 4/4。这些不代替完整隔离 Atria 或真实人工审批验收。
 - Journal 已补父路径检查、容量/保留策略与无未知重放；5/5 调度/恢复测试通过。E6 继续完成 Bundle、已安装 Package 原字节导出与 Session Archive；E7 正在补生产 Renderer 的 Surface/ScreenshotProof 和真实隔离实例联调。
+
+## E6 与 E7 自动化 checkpoint — 2026-10-14
+
+- 产品 authority 已本地提交 `03ded8188e9958cf5d94bddcbce5be9993d57615`（临时任务分支，未集成 main）；Plugin 领域桥接已推送 `436a8d010`，其后容量与审计修复增量尚待提交。
+- E6：统一固定用途 Binary Lane 覆盖 Package、32 MiB Resource Bundle、Session Archive、图像/缩略图/音频/Mask。已安装 Package 原字节导出复用原 `PackageInstaller.open` 校验及 Asset Blob lease，不重建替换 Hash。Bundle 全映射 Hash/计数与 <=64 条分页审查支持 512 项长 Ref 极限，独立 Review/Import；unknown 仅同一 Token/映射、原 indeterminate receipt 的显式审批续接。
+- Session Archive 加密能力已补完专用 `atri_save_password` SecretManager key 与既有 UI 标签；MCP 只传 immutable opaque SecretRef，最终效果前按 owner/专用用途解析。预检零 Secret、空库存零创建；Provider Secret 不能替代密码，密码不能进入通用 Provider 库存/发送。FS/SQLite 及真实跨工作空间 MCP 加密导出/分块/预检/独立导入 5/5；磁盘 Journal/审批/Receipt 未含密码明文或可离线猜测的密码 SHA。
+- E7：compiled local Surface set/toggle、纯原生 Session Epoch 与小型 Preview identity；截图前后核 Native、document/source/viewport/region。注册 Surface 区域裁剪，Proof 元数据短期有界，原图不写 Journal。MCP Browser 阻止用户 Extension code 路径及跨 Origin 子资源，避免同页第三方代码伪造本地语义回调；这不是任意网页执行沙箱。active wait 支持分段取消，Control 可达，取消后下一页面任务独立运行，真实 Edge fixture 通过。
+- Project generation 最终审计补首次 Task sequence 与 resume 锁内 CAS，竞争 Native attempt 不被中断或冒认；9/9 通过。Project Commit guard 改用 Preview `/identity`，Session 删除 guard 改纯 `/observe`，避免大响应与观察写入。
+- 在产品提交 `03ded8188` 上执行 MCP 原生集合 **21 suites / 141 tests 全通过**，包含真正的 FS/SQLite、Native Router、跨工作空间 Adapter 与本地 Provider；现有 `mcp-http-client-s30` 为 node:test，单独正确 runner **25 pass / 1 skip**，未用 Jest empty-suite 失败冒称业务回归。第一次集合的跨 VM Binary binding 失败已修并用普通跨 realm/恶意原型测试及真实 Bundle Adapter 重验。
+- 当前工具完整回归 **134/134**（Windows Edge），check 覆盖全部 58 个 JS；产品本次所有修改的 src/public 源码 ESLint 通过。旧 `project-agent.test.js` 中 10 条原有 conditional-expect lint 提示未作无关重构；本次新测试及生产源码另验。
+- 真实隔离 Atria 联调已启动；第一轮运行中正好提交产品源码，原生 provenance 二次核验正确拒绝不同 HEAD，未执行该次写入。已固定提交并重启全链路验证，不将首次故障当验收完成。继续大于 2 MiB 实际 Studio 包、生产 Preview Proof、客户端和 main 集成。
+- 按原冻结边界，SavePoint 物理单删无原生 RunControl/CAS 安全端口、HostPlugin 无生产实例/运维 authority，明确 unsupported，不包装底层 Repo.delete 或伪造 active 状态。真实真人审批与 CachyOS/Termux 仍待实际设备/操作证据。
