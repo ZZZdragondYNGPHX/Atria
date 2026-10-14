@@ -1,8 +1,8 @@
-# Atria Native Media Studio、不可变衍生图谱与 Gallery — D-009 / Round 10
+# Atria Native Media Studio / Mask / Gallery / Asset Lifecycle — D-009 / D-010
 
 - Task ID: `atria-native-visual-generation-deepening`
-- **Status: Round 9 用户已批准方案 C（D-009）：分层 Native Media Studio + 不可变媒体衍生 DAG + 版本化 Gallery，含再生成、Img2Img、Inpaint 和 Upscale 作为分期交付的核心编辑操作。** 第十轮将讨论精确 Mask UI、跨 Provider 编辑工作流、版本操作、删除/GC、SavePoint 与参考图晋升；这些具体规则尚未冻结。
-- Canonical cross-module decisions: [decisions.md](decisions.md) D-001～D-009。D-009 的细分架构约束由本文负责；其他模块只链接，不重复详细规范。
+- **Status**: **D-009（Round 9）和 D-010（Round 10）方案 C 均已批准**。D-009 冻结分层 Media Studio + 不可变媒体衍生 DAG + Regenerate/Img2Img/Inpaint/Upscale/Gallery 的功能类别。D-010 冻结**能力感知的可逆编辑工作台、编辑授权、版本选择与引用安全生命周期**。**Round 11** 才讨论精确 Mask 坐标/草稿协议、Provider 编辑矩阵、Gallery UI、GC 和存档导入验收细则，尚未冻结那些字段、数字及后端实际能力。
+- Canonical cross-module decisions: [decisions.md](decisions.md) D-001～D-010。D-009/D-010 的编辑/生命周期约束由本文负责；其他模块只链接，不重复详细规范。
 - Data authority: [provider-protocol.md](provider-protocol.md)（ImagePromptIR、Provider 能力与证据），[visual-continuity.md](visual-continuity.md)（角色/状态/参考权威），[visual-director.md](visual-director.md)（Scene/Shot、Job 和费用）。
 - Audited baseline: Atria `main@7e1045ab836c22cafbc92c5de056ad701f56e723` (GitHub 代码静态阅读；**本轮没有运行测试或真实编辑 API**）。
 
@@ -97,26 +97,82 @@ GalleryIndex:
 
 Invariants: **Blob immutable; an edit creates a derivative**. Selected display version is a separate mutable projection/selection; source text remains immutable. Every asset referenced by reachable ImageVersion, MediaOperation, Mask, active Job, SavePoint or approved reusable reference remains protected; abandoned previews/orphans can be GC'ed only after a safe grace and reference scan.
 
-## 6. Round 10 precise UI and lifecycle decisions — **NOT FROZEN**
+## 6. Round 10 已冻结：能力感知的可逆 Media Studio（D-010；方案 C）
 
-1. **Editing workflow**: Image card → "Regenerate / Img2Img / Inpaint / Upscale" → Preview / adjust prompt or mask → Check effective Provider capabilities, cost and full lineage → user confirms → submit one durable Job → review/select derivative. No hidden remote charges merely for opening an editor.
-2. **History/Gallery**: per-Annotation version stack vs work/session/branch/Scene/Actor gallery, lineage view, thumbnails/lazy pagination, filter/compare/select, bulk hide vs actual deletion; no full-size eager load in long sessions.
-3. **Masks & editing**: in-browser drawing mask, coordinate transforms and alpha rules, resize/crop/outpaint support, reversible mask edits; invalid geometry/unsupported capabilities must fail explicitly.
-4. **Reference promotion**: a well-liked generated picture may be explicitly promoted to approved stable identity/style/outfit reference; ordinary plot-dependent image is not silently promoted and must not leak private/future scene facts.
-5. **Deletion & retention**: hide/remove-from-view/soft-delete, lineage cleanup and permanent asset deletion are different operations. The system cannot delete a parent that remains reachable through a child version, SavePoint, Branch or reference library.
-6. **Cost & recovery**: all edit jobs reuse D-008 persistent Job Ledger/idempotent publication; explicit regenerations create new generation intent; paid edits require appropriate user authorization and share the global hard cost cap.
-7. **Video, full layer editor, third-party proprietary templates, batch operations**: pending separate scope decisions, not implicitly included in options B/C.
+第十轮用户批准方案 C；在 D-009 的不可变资产和操作 DAG 上，明确以下**架构级行为约束**。这里未冻结 Mask 的逐字节格式、详细画布 UI 规格、Provider 特定的请求字段、GC 延迟天数、导入包格式，不能把下列方向误读为已经测试可用。
 
-## 7. Round 10 architecture detail options — **NOT FROZEN**
+### 6.1 Canonical Mask 编辑工作台与可逆草稿
 
-**方案 A · 简约编辑与手动清理**：基本笔刷 Mask（画/擦、撤销/重做）、每张图一个明确的 Provider 操作，简单线性版本历史；删除仅隐藏，空间清理依靠后台引用扫描。开发简单，但跨 Provider/复杂 Mask/长会话资产治理的解释能力不足。
+1. 编辑器采用**与 Provider 无关的 Canonical Mask / Edit Draft**：Mask 指向精确源 ImageArtifact/AssetRef 及原图几何，保留在原图像素/规范化变换空间的独立、可逆编辑数据；不能把鼠标 DOM 坐标、屏幕缩放倍率或某 Provider 的 PNG Alpha 语义当作永久权威。
+2. 支持可预览且可撤销的区域绘制/擦除/清空与编辑状态，桌面鼠标/键盘与触屏交互均使用同一基础坐标/草稿契约。笔刷、套索、矩形、平移缩放、撤销重做等产品工具可渐进完善，**精确必备工具、快捷键、笔压、Mask 几何/符号方向/序列化留到 Round 11**。
+3. 未提交草稿与**已提交生成请求冻结的 Mask 资产版本**分离。确认执行时固定 base-image hash、Mask content hash/变换及编辑指令；修改草稿不会影响已发出的 Job。草稿持久化的粒度、CAS 冲突与恢复策略下一轮决定。
+4. 打开编辑器、移动笔刷或生成本地 Mask 预览不得暗中发送收费图片请求。用户点击生成前须知道实际 Image Target、所选素材、模型能力与可能费用；由 D-008 的账本与 ImageJob 控制执行。
 
-**方案 B · 强交互编辑与用户管理**：内建 Mask 分层、矩形/套索/笔刷等工具、裁剪/缩放/预览、多 Provider 选择及显式重试；画廊具有 DAG 历史、批量隐藏/删除请求和参考晋升。支持度高，但 UI 与资产规则容易耦合。
+### 6.2 跨 Provider 编辑与能力真值
 
-**方案 C · 能力感知的可逆编辑工作台 + 引用安全生命周期（推荐候选）**：Native 编辑空间对原图/Mask/参考图与 Provider 原生适配解耦；用户先预览并明确确认成本/目标，再提交 D-008 ImageJob；DAG/多步编辑历史始终无损留存。删除细分取消展示、软删除记录、最终不可达 GC；SavePoint/引用晋升只记录经授权资产和可达性，支持历史版本返回和分支隔离。具体坐标/反相/Mask 校验、编辑 UI、自动放大与重试、清理与导入恢复的边界随后细化。
+1. **允许跨 Provider 衍生**：原图由 NovelAI 生成，合法用户操作可选择 ComfyUI/OpenAI Images/其他已接入 Target 进行 Img2Img、Inpaint 或 Upscale，生成独立的子 ImageArtifact；保存原父图、Mask、参考素材、编辑 Prompt、执行 Target/Model/Workflow、非秘密请求证据和新 Job/Attempt。
+2. **严格 capability/adaptation boundary**：统一 MediaOperation 的意图与输入，但 Mask 的 Alpha/反色/大小、裁剪与透明通道、图像上传/多图顺序、去噪强度、工作流节点、编辑 API 与产物解析均由该 Target 的 Provider Adapter 验证和编译；不能把兼容一个 Provider 视为支持所有编辑方法。
+3. 所选 Provider 无法满足**必需的局部修改、身份保留或输入约束**时清晰说明并暂停，不静默将 Inpaint 改成 txt2img、丢弃原图/Mask、自动更换收费 Provider。允许以后用户确认的显式降级，但不是 D-010 的默认行为。
+4. 模型生成输出并不保证 Mask 外未编辑的像素不变。若提供“合成保留原图未编辑区域”后处理，必须将合成操作及潜在接缝/色差作为独立可审计衍生，不能声称 Provider 原生精确无损。
+5. 多步骤处理与返回多张图片仍经不可变 DAG + D-008 Durable Job Ledger，不能为各 Provider 各建一个图片历史和账目。
 
-第十轮冻结前仍需选择 A/B/C 及其取舍；更精确的 UI 默认、GC 删除时机与不同 Provider 的编辑矩阵可按实际产品契约继续深入讨论。**用户目前只批准 D-009，不代表批准此处第十轮任一细化方案。**
+### 6.3 版本历史与当前展示指针
 
-## 8. Evidence and validation
+1. **产生版本 ≠ 自动切换展示**。原图、再生成、局部重绘、Upscale 全部保留，可按父子 DAG 浏览/对比并从任意合法历史节点重新分支编辑。展示选择独立绑定确切的 Session/Branch/Annotation/Scene（按最终产品契约），不写回剧情或其他分支。
+2. 异步编辑/生成完成后，**默认先入历史并提供预览/选择**；不应在用户已经切换版本/Branch/SavePoint 后让迟到结果抢占当前显示。以后若允许“一键生成并使用”，须以用户明确意图和目标选择版本的 expected-revision/CAS 防止竞态。
+3. 用户可隐藏当前展示、恢复曾选版本、审阅 DAG 关系和操作证据；具体 Gallery 按键、比较交互、批量选图与移动端布局在 Round 11 继续确定。历史不以聊天 swipe/delete 形式代替。
 
-本轮仅更改 `docs` 的设计文件。代码审计为远端静态阅读，没有运行 Atria、本地 Provider、Mask 编辑 UI、存档导入或图片生成实测。实施后应针对多父 DAG 校验、CAS/幂等发布、SavePoint/Branch/参考库对 Blob 的保留、Masked image coordinates、图片格式、权限及高并发切换进行最小相关本地验证。
+### 6.4 删除意图与引用安全 GC
+
+1. **分开语义**：`hide`（当前视图不展示）、`remove_from_collection`（取消某个 Gallery 索引/集合成员关系）、`soft_delete`（标记元数据待清理）、`physical_gc`（最后才回收不可达内容），这些不是等价操作。隐藏/取消选中**不代表**物理删除。
+2. **只有通过持久 Root/Dependency 图做完整可达性检查才可物理清理**。至少包含当前/历史 Session Revision 与 Branch、SavePoint、原图/衍生 DAG 父节点、Mask、编辑操作引用、活跃/可恢复 Job、用户晋升 Reference 与其他合法 Package/Library/Project 资源绑定。软删除不能让仍有依赖的父版本/Mask 消失。
+3. GC 与普通 UI 事务解耦，先作引用可达标记/预清理，给出引用阻断原因；清理必须具备对崩溃/并发/导出恢复的安全机制及可审计记录。具体宽限期、跨快照遍历算法、撤销窗口和缺失资源处理留待 Round 11。
+4. 用户要求彻底删除素材时应明确其可达阻断与可释放的持有者，**不能自动删除 SavePoint/其他分支/已批准参考库以完成请求**。
+
+### 6.5 SavePoint/export/import 的媒体闭包
+
+1. **存档必须明确声明承诺何种可恢复性**：只保证展示所选成品图片的“展示级”，或包含 DAG 父图、Mask、编辑参数及可合法携带参考资产的“完整可编辑级”。两种导出目标不能混淆；需要恢复编辑历史时，闭包必须覆盖所有引用的媒体依赖。
+2. 正式 Native SavePoint 恢复应还原其原分支、原 Revision、选中展示版本和所需引用，不能因为当前其他分支的最新版覆盖旧存档显示；操作 DAG/Mask/参考库的有效闭包纳入原有 AssetStore 安全保护。
+3. 导入/导出须按身份、哈希、尺寸、权限、来源分支/历史锚点校验，拒绝不安全或缺失的关键输入；如以后支持明确的展示级退化，必须告知“无法完整继续编辑”，不得悄悄称为无损导入。具体包格式、资产去重/冲突 ID 映射、导入事务和失败回滚在 Round 11 决定。
+4. 不应把用户本地的 Secret/API Key 混入可分享的存档或编辑证据；导入图片和 Mask 不意味着可对第三方重新分发不具许可的资料。
+
+### 6.6 从图片版本晋升为参考资产
+
+1. **晋升是显式、可审计的用户/作者操作**：选择 `character_identity`、`outfit`、`style/vibe`、`environment` 等用途，并选择当前 Session/作品/用户明确允许的共享范围。任何随机剧情图片、模型误画元素不能自动成为角色外观或正式世界事实。
+2. 晋升应检查图片来源、角色身份、当前或跨分支能见度与潜在剧透/私人细节，分离稳定身份特征与分支时点衣物/伤势；未经授权，不能将某分支秘密或未来图像升格成跨分支共享素材。
+3. 参考库持久绑定有效 ImageArtifact/AssetRef、版本/用途、来源与授权范围，参与 SavePoint/GC 保护；撤销晋升只解除授权绑定，不能在存在其他可达引用时毁坏图片。自动参考选择仍服从 D-005/D-006 的角色/状态/权限门禁。
+4. 具体审批 UI、预先裁切/生成身份标准图是否另收费用、同步导出规则及晋升与引用撤销时的事务语义在 Round 11 细化。
+
+### 6.7 D-010 明确排除的未获批准细项
+
+本轮**不冻结**：Mask 灰度方向、alpha/bit depth、坐标原点/裁剪/Outpaint 精确协议、草稿自动保存频率和存储 schema、完整 Provider 编辑能力矩阵、Gallery 分页/操作 UI 具体控件、GC 的默认宽限天数/回收算法实现、导入/导出包格式、参考晋升对话框、视频/图层 DCC 编辑器。D-009 已含的 Img2Img/Inpaint/Upscale 功能范围不代表每个 Provider 适配已经完成。具体细项留给 Round 11。
+
+## 7. Round 10 historical options — **C approved**
+
+**A · 简约编辑与手动清理**：基本笔刷 Mask、单个 Provider 操作、线性历史，删除主要是隐藏。实现轻但跨 Provider 和资产治理不足。
+
+**B · 强交互编辑与用户管理**：完整画布与 DAG 管理、手动批量操作，容易把 UI 与存储权威耦合。
+
+**C · 能力感知的可逆工作台 + 引用安全生命周期（已确认 D-010）**：Canvas/Mask Draft 与后端 Native Mask 输出分离，经 Capability Negotiation 后由 Adapter 编译成实际编辑请求；操作历史无损、分支选择独立、引用闭包保护、用户主动批准的参考图晋升。**本节作为选择记录，详细规则请读 §6。**
+
+## 8. Round 11 待讨论：精确协议、矩阵与验收（**not frozen**）
+
+下面三种为**实现精度方案候选**，均不改变 D-009/D-010 已冻结的“可逆/非破坏、分层、权限和收费硬门禁”。
+
+- **A：简化二进制 Mask + 最小历史 UI**。提交时将绘制层直接转成与原图同尺寸的 8-bit Mask 位图并存成新的 Mask Artifact；草稿仅需周期保存单份 Snapshot；Provider Adapter 通过明确的通用输入函数转换。Gallery 只做基础列表/选中/历史，GC 始终按完整引用扫描。方案简洁，但笔画级撤销与多设备冲突精度有限。
+- **B：结构化笔触日志 + 强编辑工具**。持久化 Stroke Commands（笔触、填充、图形、变换、Undo/Redo）与完整 GUI，提交前可重放生成 Canonical Raster Mask；Gallery 默认显示完整血缘树、详细引用操作和存档包依赖。高度可编辑，但超长 Stroke 日志、平台差异、重放稳定性、压缩与存储复杂度更大。
+- **C：Canonical Raster Mask + 可恢复草稿命令 + 分阶段检查点（推荐候选）**。画布命令只属于可撤销草稿层，按资源预算建立周期性 Mask Checkpoint；执行时锁定**原图像素空间的不可变 Raster Mask**与其哈希、基图哈希及非秘密编辑证据。Adapter 使用显式 capability map 转换 Mask/上传参数；Gallery 默认简单时间线与展开 DAG，可解释地隐藏/软删/GC；提供可校验的展示级与完整可编辑存档两种已声明的输出能力（实际默认范围需审议）。跨设备 CAS 和失败恢复不丢原图。此项细化复杂但较适合跨平台、长会话的 Atria。
+
+### Round 11 precision topics
+
+1. **Mask**：原图像素空间/坐标变换、Gray/Alpha 正反、笔刷与套索/裁剪/Outpaint、草稿自动保存、撤销/重做/跨设备冲突、原始图/Mask 的尺寸/hash/CAS 关联。
+2. **Provider matrix**：按 P0/P1 的实际 Model/Workflow 能力声明 txt2img/img2img/inpaint/upscale/多图/透明度/批量、上传限额、远端对账、计费观测；列清 supported/unsupported/unknown，严禁由厂商名推导。
+3. **Gallery**：工作台入口、跨作品/Session/Branch/Scene/Actor 的默认查询层级、缩略图懒加载、DAG 展开/比较/选择、批量隐藏与危险删除 UI，异步 Job 迟到的选择 CAS。
+4. **GC 与 Reference**：资产 Root 集、历史 SavePoint/失败 Job/待恢复 Mask/参考晋升/下载导出占用、回收宽限、审计报告、孤儿 Blob 处理。
+5. **Save import/export**：两类存档承诺的最小闭包/Manifest/哈希/ID 冲突处理、缺失依赖/恶意媒体、部分失败回滚、跨平台 FS/SQLite 和手机 Web 操作验证。
+
+**正式决策在用户选择 Round 11 后才更新 docs D-011。** 完成整套设计之前不得提前创建 `feat/*` 开发分支，不为现在的候选细节冒充已批准代码合同。
+
+## 9. Static evidence and acceptance constraints
+
+本轮只在 docs 编写设计，没有执行真实图像 API、Canvas/Mask UI、导出或 GC 测试。后续编码需要用最小相关测试验证 DAG 无环、Mask 与源图尺寸/hash 对齐、Adapter 上传输出校验、CAS 避免误选、Snapshot/Reference 完整闭包和 safe GC；不能把静态规划称为可用功能。
