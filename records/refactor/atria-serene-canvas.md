@@ -124,3 +124,17 @@ Score：`round(7 / 8 × 10) = 9/10`，仅限本轮已验证控件。
 `review-animations` 范围复审：本批保留原有可中断纸面生命周期，新增原生details仅转动chevron，不让表单/树/回执入场；按压只影响指针、键盘无位移、reduced-motion取消过渡，结论 **Approve（本批范围）**。`web-design-guidelines` 复审发现并修复角色覆盖、重复Enter、手机分类入口缺失和 hidden 按钮被全局display覆盖。控件有可见触发、busy/disabled、即时状态、错误恢复、明确模式与首次缺项路径；常用说明折入details，七项及长期提示收敛均在本批代表控件满足，microinteractions **8/8，10/10（代表范围）**。这不是所有条件页面或实机性能结论。
 
 v0.7备份12布局与内存演示证据只归 references/README.md。Runtime/Agents、完整 Project Agent 成功提交及条件能力仍在继续验收；数据库引擎和真实手机限制沿前述记录，不以阶段提交表示整体完成。
+
+## I3 / I4 — 精确配置与完整人工提交链（2026-10-15）
+
+产品提交 `0c6ea1a97`。Shell、Runtime、密钥表单、作品浮层等自有快捷键跳过 IME/229/已处理事件。兼容工具栏在正式 Shell 中 inert/aria-hidden，恢复旧界面时还原。中文“原生预设”改为“内置预设”，执行计划/引擎状态等按实际用户任务表达。Project Agent 人工提交等待立即显示保存状态。仿真页运行当前场景不再触发离开草稿确认，跨页草稿和提交锁仍检查。
+
+Runtime 12条浏览器任务累计通过：Source高级字段/坏JSON、缺项自动展开、引用阻碍/复制/删除、模型发现及来源、719px跨档/键盘视口/IME/离开取消、能力覆盖、Preset精确成对绑定且保存不重新绑定Route、fallback、三个诊断/大字/简中流程。旧测试曾收起自动展开面板、访问已退出的独立Generation页、假定共享夹具的Route从未变化；分别按现有合同修正，失败相关流程复测通过。没有恢复旧页面或降低精确绑定合同。
+
+Agents七条累计通过，包括两种实际Memory任务路由、Plan坏Source/关闭再开保留、精确角色路由、会话切换后拒绝过期重置；旧四种Memory任务假设及将Locator当字符串的测试错误已修正。Studio桌面/手机两条完整人工提交与390px二十视图/Attach/Update/Fork/Detach/保存后刷新失败通过：Task由UI创建，提议由真实Task工具和Studio服务验证/预览，提交前项目版本不变，双击只发一次人工Commit，刷新恢复Completed。没有外部模型，不能据此宣称模型规划质量。
+
+Studio仿真与真实Native@3预览1440/320px两条在修复场景草稿阻碍后通过；Play健康修复/共享固定座位一条通过。主题CRUD/导入导出失败恢复/刷新/双语一条通过，更新为原生Language控件及明确打开兼容分组。相关Runtime/Shell单元34条、Shell/Play/FullHost19条、兼容可访问性9条、Studio/Agent30条通过。静态双语覆盖与改动JS lint无错误、diff检查通过。
+
+条件媒体：新增图库/Media Studio隔离模块浏览器验证1440英文、900/320简中三条通过，真实FS/图片服务/遮罩草稿/请求批准服务；图片输出由本地供应端夹具产生，预览后取消，没有发出外部图片请求。现有speech-completion浏览器脚本在1280/390px通过实际WAV解码、无自动播放、停止、声线保留、过期音频清除、MCP控制、A2A重连和Runtime编辑，外部请求0。这些模块证据与完整Shell和真实第三方服务验收分开。
+
+`find-animation-opportunities` 本轮筛选：配置字段、Source、计划行和执行证据均保持即时；不为密集编辑增加入场。`review-animations`/`web-design-guidelines` 本轮范围复核维持纸面交互方案，修复IME、辅助树和稿件离开边界；尚需条件媒体布局与完整宿主对照。前一批microinteractions长期提示虽已折叠，但没有长期使用证据，分数校正为7/8、9/10；本批不扩大评分范围。
