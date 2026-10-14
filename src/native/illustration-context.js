@@ -41,7 +41,7 @@ export async function captureIllustrationContext(core, handle, sessionId, anchor
     const neighbors = touched.length ? body.slice(paragraphs[Math.max(0, touched[0] - 1)].index, anchor.end) : '';
     const groups = [];
     const information = informationContext(snapshot, { kind: 'narrator' });
-    const visibleMessages = information ? new Set((information.projection?.items ?? []).filter(entry => entry.variantId).map(entry => entry.recordId)) : null;
+    const visibleMessages = information?.narration ? new Set((information.disclosure?.items ?? []).filter(entry => entry.variantId).map(entry => entry.recordId)) : null;
     for (const entry of snapshot.timeline.slice(0, index)) {
         if (visibleMessages && !visibleMessages.has(entry.messageId)) continue;
         if (entry.role === 'user') groups.push([]);

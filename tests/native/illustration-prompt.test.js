@@ -113,7 +113,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         view = await f.core.restoreSavePoint(h.handle, view.session.sessionId, save.saveId, { expectedRevisionId: view.revision.revisionId });
         // The historical prompt context loader is bounded by its original anchor, and refuses a newer fork Revision.
         await expect(f.sessionRepo.loadSnapshot(h.handle, view.session.sessionId, { revisionId: view.revision.revisionId, illustrationAnchor: annotation.anchor })).rejects.toThrow('ancestry');
-        hold.resolve(); await blocker.result; await sent.promise;
+        hold.resolve(); await blocker.result; await Promise.race([sent.promise, prompts.scheduler.operations.get(started.operationId).handle.result]);
         const result = await finish(started.operationId);
         expect(result.operation.anchor.branchId).toBe(original.revision.branchId);
         expect(result.state.annotations[0].promptVersions[0].requestSnapshot.diagnostics.effectiveConfig.model.remoteModelId).toBe('p4-fixture');

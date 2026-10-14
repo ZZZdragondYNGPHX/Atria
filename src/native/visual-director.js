@@ -106,9 +106,10 @@ export class VisualDirector {
         const route = (await this.host.persistence.listRuntimeRoutes(handle)).find(r => r.runtimeRouteId === settings.director.routeId && r.role === 'role.illustration_prompt');
         if (!route) visualError('director_route_missing');
         await this.host.sessionCore.runs.assert(handle, shot.source.sessionId, 'generate');
-        const result = await this.host.execute(handle, { sessionId: shot.source.sessionId, revisionId: view.revision.revisionId, role: 'illustration_prompt',
+        const executionSnapshot = await this.host.sessionCore.load(handle, shot.source.sessionId);
+        const result = await this.host.execute(handle, { sessionId: shot.source.sessionId, revisionId: executionSnapshot.revision.revisionId, role: 'illustration_prompt',
             requestId: createNativeId('promptVersion'), routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId } }, signal, undefined,
-        { illustrationPlan: { snapshot: view, source: { kind: 'session', sessionId: shot.source.sessionId, branchId: view.revision.branchId, revisionId: view.revision.revisionId },
+        { illustrationPlan: { snapshot: executionSnapshot, source: { kind: 'session', sessionId: shot.source.sessionId, branchId: view.revision.branchId, revisionId: view.revision.revisionId },
             buildContext: async (request, resolved) => ({ schemaVersion: 1, requestId: request.requestId,
                 source: { kind: 'session', sessionId: shot.source.sessionId, branchId: view.revision.branchId, revisionId: view.revision.revisionId },
                 items: [{ id: 'visual-director-instruction', kind: 'context.directive', content: 'Return JSON {"prompt":"scene prompt","factors":{"importance":0,"clarity":0,"novelty":0,"continuity":0,"coverage":0},"changes":[]}. Factors range 0..100. Changes need exact actor identity, field, value, start/end offsets and verbatim quote inside the supplied span, confidence 0..1 and persistent boolean. Do not invent facts or use later/private information.', provenance: [] },

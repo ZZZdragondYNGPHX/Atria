@@ -1,3 +1,5 @@
+import { assertVisualDisclosure } from './visual-continuity.js';
+import { resolveVisualSource } from './visual-source.js';
 import { captureIllustrationContext, createIllustrationContext } from './illustration-context.js';
 import { createNativeId, assertNativeId } from './identity.js';
 import { hashNativeDocument } from './repositories/common.js';
@@ -47,6 +49,9 @@ export class IllustrationPromptService {
         const key = sessionId + ':' + branchId + ':' + annotationId + ':illustration_prompt';
         const active = [...this.scheduler.operations.values()].find(entry => entry.owner === handle && entry.key === key && !completed.has(entry.view.status));
         if (active) return { operationId: active.view.operationId, head: head ?? null };
+        const sourceRef = { kind: 'session', sessionId, branchId, revisionId: annotation.anchor.revisionId, annotationId, anchor: annotation.anchor, timeKind: annotation.timeKind ?? 'present' };
+        const visualSource = await resolveVisualSource(this.host.sessionCore, handle, sourceRef);
+        assertVisualDisclosure(visualSource.view, sourceRef);
         const settings = await this.host.extensions.illustrationSettings(handle);
         const routeId = settings.value.works[state.session.packageId]?.promptRouteId || settings.value.promptRouteId;
         const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.illustration_prompt', routeId ? { runtimeRouteId: routeId } : undefined);
@@ -67,9 +72,11 @@ export class IllustrationPromptService {
                 return current.state.annotations.some(entry => entry.annotationId === annotationId && entry.deletedAt === undefined);
             },
             run: async ({ signal }) => {
-                const result = await this.host.execute(handle, { sessionId, revisionId: snapshot.revision.revisionId,
+                const executionSnapshot = await this.host.sessionCore.load(handle, sessionId);
+                lanePlan.budgetContext = { snapshot: executionSnapshot, anchor: { branchId: executionSnapshot.revision.branchId, revisionId: executionSnapshot.revision.revisionId } };
+                const result = await this.host.execute(handle, { sessionId, revisionId: executionSnapshot.revision.revisionId,
                     role: 'illustration_prompt', requestId: versionId, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId } }, signal, undefined,
-                { scheduled: true, lanePlan, illustrationPlan: { snapshot, source: context.source, buildContext: createIllustrationContext({ context, anchor: annotation.anchor, draft, template: settings.value.template }) } });
+                { scheduled: true, lanePlan, illustrationPlan: { snapshot: executionSnapshot, source: context.source, buildContext: createIllustrationContext({ context, anchor: annotation.anchor, draft, template: settings.value.template }) } });
                 return { promptVersionId: versionId, createdAt: Date.now(), draft: parseIllustrationPrompt(result.response.text, draft),
                     requestSnapshot: result.snapshot, template: settings.value.template, settingsRevision: settings.revision };
             },

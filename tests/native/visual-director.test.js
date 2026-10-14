@@ -36,7 +36,8 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         draft.characters[0].character.storyActorId = 'actor_' + 'b'.repeat(32); await expect(continuity.project(h.handle, source, draft)).rejects.toThrow('actor_unavailable');
     });
     test('cloud automatic authorization fails closed without spending; NovelAI human initiation remains required', async () => {
-        const p = await x.prepare(); expect(() => x.images.authorize({ ...(null), targetFingerprint: p.targetFingerprint, evidence: { requestHash: p.requestHash, capabilities: p.capabilities, constraints: p.constraints }, connection: x.connection }, x.approval(p), 'automatic')).toThrow('human_initiation_required');
+        const p = await x.prepare(), prepared = (await x.images.store.read(h.handle, 'prepared', p.prepareId)).value;
+        expect(() => x.images.authorize(prepared, x.approval(p), 'automatic')).toThrow('human_initiation_required');
         const settings = structuredClone(x.settings); settings.director.mode = 'automatic';
         await x.host.extensions.saveIllustrationSettings(h.handle, settings, (await x.host.extensions.illustrationSettings(h.handle)).revision);
         await x.f.core.appendTimeline(h.handle, x.view.session.sessionId, { role: 'assistant', content: 'Location: tower\nA battle erupts as the group arrives at the tower, and the enemy reveals the bright glowing gate.' });

@@ -1,4 +1,4 @@
-import { informationContext } from '../../public/shared/native-information-runtime.js';
+import { informationContext, informationDefinition, projectInformation } from '../../public/shared/native-information-runtime.js';
 import { visualObject, visualError, visualFingerprint, visualText } from '../../public/shared/native-visual-contract.js';
 import { resolveVisualSource } from './visual-source.js';
 import { VisualStore } from './visual-store.js';
@@ -6,7 +6,13 @@ import { createNativeId } from './identity.js';
 
 export function visualDisclosure(view) {
     const info = informationContext(view, { kind: 'narrator' }, undefined, { includeRollups: false });
-    return info ? { defined: true, items: info.disclosure?.items ?? [] } : { defined: false, items: [] };
+    const definition = informationDefinition(view);
+    if (info?.narration) return { defined: true, items: info.disclosure?.items ?? [] };
+    // Without an explicit narration disclosure policy, committed Native
+    // Timeline text retains its existing public narrative contract. Private
+    // World/context data still requires an independent player display view.
+    const items = (definition?.views ?? []).filter(v => v.audience === 'player' && v.exposure.includes('display')).flatMap(v => projectInformation(view, v.id, { purpose: 'display', includeRollups: false }).items);
+    return { defined: false, items };
 }
 export function assertVisualDisclosure(view, source) {
     const disclosure = visualDisclosure(view);
