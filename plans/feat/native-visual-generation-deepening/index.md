@@ -2,12 +2,12 @@
 
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Primary Workspace**: `main`（Atria 产品源码）；`docs` 仅承载本 Plan
-- **Status**: **E0 静态收口审计已完成 / 后续产品开发尚未授权**（2026-10-14，Rounds 1–13 已冻结：C/A/C/B/C/C/C/C/C/C/C/C/C；S0～S6 七阶段/25 子阶段已规划，精确 API/DB Schema 待 S0 固化；本次未创建 feat 分支）
-- **Implementing Branch**: 尚未创建；待整个设计冻结后再创建 `feat/*` 工作分支交付 Codex
+- **Status**: **正式实施中**（2026-10-14，用户授权连续实施 S0～S6；D-001～D-013 和 E0 保持冻结）。
+- **Implementing Branch**: `feat/native-visual-generation-deepening`；独立任务 source worktree，产品不与 docs 合并。
 - **Verified code baseline (remote only)**: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`
 - **Reference**: [damoshen123/st-chatu8](https://github.com/damoshen123/st-chatu8)（读取其公开源码和行为作为研究材料，非 Atria 代码来源）
 - **Predecessor**: [已完成的 NovelAI 官方插画 Plan](../novelai-illustration/index.md)。本 Plan 是后续独立深化，不回写其历史冻结范围。
-- **Record**: 设计期无产品实施 Record；代码开发正式启动后创建 `records/feat/native-visual-generation-deepening.md` 并持续维护实际结果。
+- **Record**: [正式实施记录](../../../records/feat/native-visual-generation-deepening.md)。设计期未实施的说明是历史审计事实，不覆盖当前授权。
 
 ## 1. Goal
 
