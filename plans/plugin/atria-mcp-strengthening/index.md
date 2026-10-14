@@ -2,9 +2,9 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮路线 C 与第二轮路线 B 已冻结。第三轮 Studio / Project Agent 语义与工作流待讨论。**尚未进入实现阶段**。
+- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B 已冻结。第四轮 Memory / Goals / Experience / Evolution 深化讨论中。**尚未进入实现阶段**。
 - **创建日期**：2026-10-14。
-- **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`。后续执行前必须重新验证实际 HEAD，不能把审计 HEAD 当作未来生产状态。
+- **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
 
 ## 1. 定位与目标
@@ -33,7 +33,8 @@
 | [`audit-baseline.md`](audit-baseline.md) | 第一轮 main / plugin 核查范围、观察到的实现、P0/P1 候选缺口、证据限制 | 已记录，随代码 HEAD 重新验证 |
 | [`p0-reliability.md`](p0-reliability.md) | **P0 权威**：四类通道、调度、任务/回执状态与安全恢复、MCP v2 协商、P0 验收 | 第二轮已冻结方向，实施参数待细化 |
 | [`capability-matrix.md`](capability-matrix.md) | **能力矩阵权威**：产品 Authority × MCP Registry × 风险 × 覆盖级别 × 候选优先级 | 第二轮已冻结规划分类；具体 action 合同逐域核实 |
-| `domain-*.md` | **按需再建**：Studio/Agent、Session/Memory、UI/Media 等后续域模块 | 尚未设计 |
+| [`studio-project-agent.md`](studio-project-agent.md) | **第三轮权威**：Studio 直接路径、Project Agent Task、外部/内置模型分工、Review/Commit 和原生恢复 | 第三轮方案 B 已冻结方向，具体 Action schema 后续确定 |
+| `domain-*.md` | **按需再建**：Memory/Goals/Experience/Evolution、UI/Media 等后续域模块 | 尚未设计 |
 | `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
 
 单条详细规则仅写入一个权威模块。index 只管理全局冻结原则、依赖和讨论/实施路由，不复制域内设计；现有旧 Plan 仅作历史链接，不直接作为本轮新增范围的执行授权。
@@ -44,8 +45,9 @@
 | --- | --- | --- |
 | 第一轮（已冻结） | Atria 与 MCP 代码审计、方案 C | `index.md`、`audit-baseline.md` |
 | 第二轮（已冻结） | 能力矩阵；分层调度、任务/回执恢复、MCP v2 兼容方向、P0 验收；方案 B | `capability-matrix.md`、`p0-reliability.md` |
-| **第三轮（当前讨论）** | Studio / Project Agent 语义动作、创作闭环、AI 与人工 Review/Commit 权限 | `index.md` + `capability-matrix.md` 的 Studio/Project Agent 行；按需读取主程序项目 Agent 与 Studio 契约 |
-| 后续轮次 | Session / Memory / Goals / Evolution / UI / Media、跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
+| 第三轮（已冻结） | 方案 B：Studio 直接 Workspace + Project Agent Task；外部 AI 默认主导；原生模型显式委托；独立 Review/Commit | [`studio-project-agent.md`](studio-project-agent.md) |
+| **第四轮（当前讨论）** | Memory / Goals / Experience / Evolution 的语义接口、来源权威、预算、持久化/删除/恢复边界 | `index.md` + `capability-matrix.md` 中四域行；按需读取当前 `main` 原生 Memory、Goals、Experience、Evolution 与 `plugin:atria-mcp` 对接源码 |
+| 后续轮次 | Session / Runtime / UI / Media、跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
 
 不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
 
@@ -57,14 +59,21 @@
 - P2：深度图像/语音/技能扩展以及仓库性能/Discovery 迭代，仍须兼顾新接口不会退化 P0。
 - 2026-07-28 协议的 MRTR 为新版核心能力，**Tasks 为独立扩展**，不可将 Tasks 可用性或客户端支持视为必然；SDK v2 迁移与启用新版协议是两个不同步骤。优先适配 2025 旧连接，2026 新连接只在协商确认后使用；无可信审批通道时写操作 fail-closed。
 
-## 5.1 下一轮待决题
+## 5.1 第三轮已冻结的 Studio / Project Agent
 
-- Studio 与 Project Agent：以正式 A1/A2 Workspace/Source Graph/Task/Review 为权威，要开放哪些明确 action、如何组织从需求到方案、草稿、评估、Review、Commit 的端到端流程？
-- Studio 临时 evaluation、Preview 与真实 UI 证据的各自责任及可重入/回收规则。
-- 大型工程 source/asset 编辑与读写分页边界，以及 AI 与人工接管/审阅的最小授权粒度。
-- Project Agent 和 Orchestrator delegated-node 是否应该用统一发现入口但不同任务身份与执行边界？
-- 完整创作闭环中哪些动作 READ、INTERACT、MUTATE、DESTRUCTIVE，哪些必须保留人工审批和原生事务？
-- P0 中保留为待实现细化的磁盘 journal 形式、任务默认保留期、锁实现和具体并发限制，仍在该 P0 模块中统一维护。
+- **第三轮选 B：双路径、统一原生权威**，详见 [`studio-project-agent.md`](studio-project-agent.md)。简单编辑直接 Studio Workspace；复杂、长周期创作进入 Project Agent Task；最终统一通过 Native Studio/ChangeSet 权威。
+- **外部 AI 默认主导**，不因具备 MCP 就重复调用 Atria Studio 模型；用户明确要求内置模型时才显式委托，并使用原生模型路由/预算和任务证据。
+- **Review/Commit 两道不同授权**：任务内计划/提案/评估可在精确 envelope 内推进到 Review；正式 Commit 必须额外可信用户批准，绑定具体 Workspace/Task、Revision、变更指纹与 Preview/Validation 证据。
+- **恢复只靠原生权威**：Product Project Agent Task、Studio ChangeSet/Git revision、Commit Receipt 作为真值；MCP Journal 只关联，不再持久化另一份业务任务。错失回复时先 reconcile，不盲重发。
+- 原 `agent.run.start(delegated-node)` 属不同 Orchestrator Runtime；不要与 Project Agent 生命周期混淆。
+
+## 5.2 第四轮待讨论（尚未冻结）
+
+- Memory Graph 已加载浏览器范围与原生 Session-owned 记忆，以及 Goals/Experience/Evolution 之间是否共享或相互晋升；避免将其直接扁平化为“一个记忆数据库”。
+- 四个系统各自 READ / 可能付费读取 / MUTATE / DESTRUCTIVE 的精确语义 Action 与产品 Authority。
+- 持久来源、证据过期、分支/快照回退、压缩/删除、目标/能力演化发布和回滚的事务边界。
+- 外部 AI 直接观察及管理 vs 用户显式授权内置 Agent 自动学习/演化的预算、审批和恢复。
+- 跨重启稳定持久对象（Node/Goal/Feedback/Skill policy）与临时推理投影/缓存/候选及 MCP Operation Journal 之间的区分。
 
 ## 6. 实施和验证边界
 

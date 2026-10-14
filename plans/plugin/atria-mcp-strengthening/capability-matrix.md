@@ -44,7 +44,7 @@
 
 **Project Agent** 应区分 `ProjectAgent Task`（持久项目任务、工作区/正式 Review/Commit/Resume）与 `Orchestrator delegated-node`（客户端选定节点与受限子工具集合）。可共享 ActionRegistry 发现/Receipt，但不合并生命周期、审批或 Task identity。
 
-第三轮决策后，建议在当前 Plan Bundle 建立 `studio-project-agent.md`，不改动本矩阵已有范围分类。尚未冻结是否开放 Agent `commit` 的具体条件、细分 action 列表及自主执行粒度。
+**第三轮已经批准 B**，具体双路径/独立 Review-Commit/恢复见 [`studio-project-agent.md`](studio-project-agent.md)，本矩阵仍只保存覆盖状态与优先级。第四轮讨论 Memory/Goals/Experience/Evolution 的正式边界；目前不把四域的候选接口当作最终实现合同。
 
 ## 5. 验证要求（规划、未执行）
 
