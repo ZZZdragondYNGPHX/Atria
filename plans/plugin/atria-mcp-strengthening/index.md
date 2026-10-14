@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B 已冻结。第四轮 Memory / Goals / Experience / Evolution 深化讨论中。**尚未进入实现阶段**。
+- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B 已冻结。第五轮 Model / Prompt / Runtime / Provider 的接口方案待讨论。**尚未进入实现阶段**。
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
@@ -34,7 +34,8 @@
 | [`p0-reliability.md`](p0-reliability.md) | **P0 权威**：四类通道、调度、任务/回执状态与安全恢复、MCP v2 协商、P0 验收 | 第二轮已冻结方向，实施参数待细化 |
 | [`capability-matrix.md`](capability-matrix.md) | **能力矩阵权威**：产品 Authority × MCP Registry × 风险 × 覆盖级别 × 候选优先级 | 第二轮已冻结规划分类；具体 action 合同逐域核实 |
 | [`studio-project-agent.md`](studio-project-agent.md) | **第三轮权威**：Studio 直接路径、Project Agent Task、外部/内置模型分工、Review/Commit 和原生恢复 | 第三轮方案 B 已冻结方向，具体 Action schema 后续确定 |
-| `domain-*.md` | **按需再建**：Memory/Goals/Experience/Evolution、UI/Media 等后续域模块 | 尚未设计 |
+| [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) | **第四轮权威**：Memory、Goals、Evidence、Experience、Evolution 的分域语义接口、跨域工作流、预算与来源/恢复/失效边界 | 第四轮方案 B 已冻结方向；精确 Action Schema 待实施核实 |
+| `domain-*.md` | **按需再建**：Model/Prompt/Runtime/Provider、Session、UI/Media 等后续域模块 | 尚未设计 |
 | `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
 
 单条详细规则仅写入一个权威模块。index 只管理全局冻结原则、依赖和讨论/实施路由，不复制域内设计；现有旧 Plan 仅作历史链接，不直接作为本轮新增范围的执行授权。
@@ -46,8 +47,9 @@
 | 第一轮（已冻结） | Atria 与 MCP 代码审计、方案 C | `index.md`、`audit-baseline.md` |
 | 第二轮（已冻结） | 能力矩阵；分层调度、任务/回执恢复、MCP v2 兼容方向、P0 验收；方案 B | `capability-matrix.md`、`p0-reliability.md` |
 | 第三轮（已冻结） | 方案 B：Studio 直接 Workspace + Project Agent Task；外部 AI 默认主导；原生模型显式委托；独立 Review/Commit | [`studio-project-agent.md`](studio-project-agent.md) |
-| **第四轮（当前讨论）** | Memory / Goals / Experience / Evolution 的语义接口、来源权威、预算、持久化/删除/恢复边界 | `index.md` + `capability-matrix.md` 中四域行；按需读取当前 `main` 原生 Memory、Goals、Experience、Evolution 与 `plugin:atria-mcp` 对接源码 |
-| 后续轮次 | Session / Runtime / UI / Media、跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
+| 第四轮（已冻结） | 方案 B：Memory / Goals / Evidence / Experience / Evolution 分域权威，受控跨域工作流，来源、预算、审批与安全恢复 | [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) |
+| **第五轮（当前讨论）** | Model / Prompt / Runtime / Provider 语义接口、版本、预览、执行、模型路由与预算 | `index.md` + `capability-matrix.md` 的 Model/Prompt 行，并按需读取当前 `main:src/native/model-prompt-runtime/`、`native-generation.js`、`plugin:atria-mcp` 固定 adapter |
+| 后续轮次 | Session / UI / Media、跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
 
 不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
 
@@ -67,13 +69,23 @@
 - **恢复只靠原生权威**：Product Project Agent Task、Studio ChangeSet/Git revision、Commit Receipt 作为真值；MCP Journal 只关联，不再持久化另一份业务任务。错失回复时先 reconcile，不盲重发。
 - 原 `agent.run.start(delegated-node)` 属不同 Orchestrator Runtime；不要与 Project Agent 生命周期混淆。
 
-## 5.2 第四轮待讨论（尚未冻结）
+## 5.2 第四轮已冻结的认知与学习边界
 
-- Memory Graph 已加载浏览器范围与原生 Session-owned 记忆，以及 Goals/Experience/Evolution 之间是否共享或相互晋升；避免将其直接扁平化为“一个记忆数据库”。
-- 四个系统各自 READ / 可能付费读取 / MUTATE / DESTRUCTIVE 的精确语义 Action 与产品 Authority。
-- 持久来源、证据过期、分支/快照回退、压缩/删除、目标/能力演化发布和回滚的事务边界。
-- 外部 AI 直接观察及管理 vs 用户显式授权内置 Agent 自动学习/演化的预算、审批和恢复。
-- 跨重启稳定持久对象（Node/Goal/Feedback/Skill policy）与临时推理投影/缓存/候选及 MCP Operation Journal 之间的区分。
+- **第四轮选择 B：分域权威 + 受控跨域工作流**，详见 [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md)。Memory、Goals、Evidence、Experience、Evolution 保留不同的原生 Store/Scope/Sequence/Source/Publication 权威。
+- 允许明确授权的 Goal → Evidence/Experience → Evolution 多阶段编排，但不创建“万能记忆库”和跨域假事务；每一步以原生持久对象/回执与实际 source validity 为准。
+- Memory Graph 无头 Native Adapter 是拟实施能力；不得绕过 loaded source ticket/branch 与持久事务，也不能通过修改原始用户数据文件冒充完成。
+- 一次反馈或目标 Wake 可能连锁触发自动学习/模型费用；MCP 必须预先披露 Policy/预算/连锁效果，审批未覆盖时拒绝或经产品正规专用接口抑制额外触发。
+- 默认不由 MCP 开启 Evolution Auto，Human label/publish 不能由模型布尔值替代；正式发布/回滚依原生 Target Store 的 exact binding、Publication Intent、CAS 与安全恢复。
+- `Evolution.inspect` 当前可能产生 reconcile 副作用；MCP 应分离纯观察和受控 reconcile，不能标注为无副作用 READ。
+- 来源变更/Session 读档换支/删除/Retention 到期需沿已有依赖标失效、暂停或冲突；MCP Operation Journal 只存跨域步骤关联，不重复保存认知状态。
+
+## 5.3 第五轮待讨论（尚未冻结）
+
+- Connection / Model / RuntimeRoute / PromptProgram / GenerationProfile / Preset 等权威对象与精确资源版本如何对 MCP 暴露；不允许通过名称猜选活跃版本或明文 Secret。
+- Provider model discovery、连接探测、transport/options 能力差异、Role 路由/RouteRef、Fallback Policy、cost/network/预算的检查与回执。
+- Prompt 编译与 Context Preview 在不调用付费 Provider 时能提供哪些诊断；哪些操作只能归为 INTERACT，哪些必须有确切用户批准和 Provider effect 声明。
+- 模型生成、工具回合、SSE/后台 operation、stop/reconcile/status 的幂等与持久化结果边界；不能把 HTTP 202 当做最终完成。
+- MCP 如何在不新增独立模型路由/Secret 存储的前提下支持直接调用原生 Runtime、编辑 Prompt 资源与受控 Agent 委托。
 
 ## 6. 实施和验证边界
 
