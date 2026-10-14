@@ -60,3 +60,10 @@
 - 最终安全审计继续收口聊天 Turn 与旧 Orchestrator Delegation 的原生费用预检/每次发送配置核对，使用第二个独立临时产品工作树 `feat/mcp-turn-authority`，复用现有 Native runner，不在联调中修改 source。Skills 大型候选 before/after 合法文本合并响应可越过 1 MiB，已交独占子代理补 metadata/完整差异分页与小型 Hash guard，不以提高全局 JSON 限额规避。
 - 测试环境变动：子代理执行 Playwright 安装使共享缓存新增 Chromium 1243，并由其安装器清除旧 headless 1194；本任务验证仍指定现有 Microsoft Edge。未将环境变化隐去，也未更改产品依赖锁。
 - 当前仍实施中：等待上述缺口修复、最终全链路、提交/推送、产品 main 集成与任务临时资料清理。人工审批 UI、CachyOS/Termux、真实付费 Provider 尚无实证。
+
+## E7 隔离真实产品通过 — 2026-10-15
+
+- `npm run test:atria` 在干净产品任务 HEAD `482d3770b867856141add6388fba962be3693af1` 运行完成，376 个原生路由发现、READ 与 28 次明确配置的确定性测试审批通过。实际 Studio 产物 **4,200,900 bytes**，经固定 Native metadata/chunks、Hash、preflight、独立 Review/Install，stale 再安装拒绝；未把普通 JSON 上限放大。
+- Studio ChangeSet/Preview/Apply、Save/Restore/新 Branch、Branch metadata、Library revision、Connection CAS 与受审一次性删除完成。启动 Source/Runtime 身份为 EXACT；另工作树为 DIFFERENT_REVISION；Host 重启后原页面 STALE，显式重载后 CURRENT。此次未运行修改源码 fingerprint 的可选实验，不宣称该项新证据。
+- 实际生产 Renderer/Editor 由隔离测试页面挂载，Session 与桌面/窄屏 Preview 的 Proof 均核验 EXACT_CURRENT；本地语义操作成功且未写 Session revision。浏览器测试还验证 Memory 节点/边/编辑/compact/reload 与真实换支。此处不是全应用 Shell 导航或真人审批 UI 验收。收尾已删除测试 Session，所以最后空页面的 `memory.schema.scope/injection/recall.last` 明确 unavailable，未用这个结果声称有 loaded Memory。
+- 同轮真实 Codex app-server 工具/READ/JPEG 与 Claude CLI 连接证据成功；人类确认、真实付费 Provider、CachyOS/Termux 仍待验。正在继续最终 Turn/Delegation 与 Skills 容量安全补丁、针对回归和主线集成，尚不记整体完成。
