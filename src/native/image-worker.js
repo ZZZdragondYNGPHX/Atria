@@ -34,7 +34,7 @@ export class ImageJobWorker {
             heartbeat = setInterval(() => { void this.store.fenced(handle, jobId, fence, j => { j.lease.until = this.store.now() + 60000; return j; }).catch(() => {}); }, 15000);
             heartbeat.unref?.();
             const adapter = this.registry.get(job.connection.providerAdapter);
-            const result = await adapter.generate(job.compiled, { secret, signal, jobId,
+            const result = await adapter.generate(job.compiled, { secret, signal, jobId, readAsset: assetId => this.assets.read(handle, assetId),
                 onRemote: async receipt => {
                     job = await this.store.fenced(handle, jobId, fence, j => { if (j.status === 'cancelled') visualError('cancelled'); j.status = 'submitted'; j.remote = receipt; return j; });
                 } });
@@ -81,7 +81,7 @@ export class ImageJobWorker {
                     // Reconcile the existing remote ID only. No recovery path
                     // may call submit/generate for an already sent job.
                     const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
-                    const result = await adapter.reconcile(job.compiled, job.remote, { secret, signal: new AbortController().signal });
+                    const result = await adapter.reconcile(job.compiled, job.remote, { secret, signal: new AbortController().signal, readAsset: assetId => this.assets.read(handle, assetId) });
                     if (!result) continue;
                     const ref = { assetId: job.outputAssetId, contentHash: createHash('sha256').update(result.bytes).digest('hex'), size: result.bytes.length, mediaType: result.mediaType ?? 'image/png' };
                     await this.assets.put(handle, ref, result.bytes);

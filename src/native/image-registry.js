@@ -1,3 +1,5 @@
+import { createComfyImageAdapter } from './adapters/comfyui-image-adapter.js';
+import { createOpenaiImageAdapter } from './adapters/openai-image-adapter.js';
 import { randomInt } from 'node:crypto';
 import { assertImageTarget, assertImageRendering } from './visual-contracts.js';
 import { renderNovelaiIllustration, novelaiConnectionCapabilities } from '../../public/shared/novelai-illustration.js';
@@ -21,7 +23,7 @@ export class ImageAdapterRegistry {
         if (rendering) assertImageRendering(rendering);
         if (connection.connectionProfileId !== target.connectionProfileId) visualError('target_conflict');
         const adapter = this.get(connection.providerAdapter), fingerprint = imageTargetFingerprint(target, connection);
-        const manifest = assertCapabilityManifest(target.capabilities ?? await adapter.describe({ target, connection, fingerprint }));
+        const manifest = assertCapabilityManifest(await adapter.describe({ target, connection, fingerprint }));
         if (manifest.targetFingerprint !== fingerprint) visualError('capability_stale');
         const constraints = negotiateImageConstraints(ir, manifest, { omittedPreferred: approval?.omittedPreferred ?? [] });
         const effectiveIr = { ...ir, constraints: ir.constraints.filter(c => !constraints.omitted.some(o => o.capability === c.capability)) };
@@ -57,5 +59,7 @@ export function createImageRegistry({ fetchImpl = fetch } = {}) {
         },
         generate: (request, options) => provider.generate(request, options),
     });
+    registry.register(['provider.comfyui-image'], createComfyImageAdapter({ fetchImpl }));
+    registry.register(['provider.openai-images'], createOpenaiImageAdapter({ fetchImpl }));
     return registry;
 }
