@@ -37,6 +37,7 @@
 | [visual-director.md](visual-director.md) | D-007 分级 Director + D-008 已冻结 Scene/Shot、评分/节奏/可调预算默认、持久 Job/幂等/恢复 | Visual Director 场景/镜头/预算/Job，S4；实现相关时必读 |
 | [media-editing-gallery.md](media-editing-gallery.md) | D-009 分层 Media Studio/DAG/编辑类别 + D-010 可逆编辑/引用生命周期，历史候选留存 | 媒体架构、S5 |
 | [media-precision.md](media-precision.md) | **D-011 已冻结** Mask 8-bit 语义/像素坐标、命令+Checkpoint 草稿、模型/Workflow 能力声明、Gallery 默认、两阶段 GC/30/7 日宽限、完整 SavePoint/导入验收 | 媒体协议/存档/GC、Round 12 依赖、S5/S6 |
+| [provider-editing-matrix.md](provider-editing-matrix.md) | **Round 12 候选，未冻结** 各 P0/P1 后端的编辑/参考/LoRA/ControlNet 文档矩阵、约束降级 A/B/C 与 Live 验收分层 | Round 12 必读；Provider Adapter 验证/取舍讨论 |
 
 后续如确定 Provider、参考图、视觉身份、媒体编辑或缓存等独立大模块，应只新增对应模块，不在 `index.md` 重复详细规格。
 
@@ -56,7 +57,7 @@
 
 | 阶段（暂定） | 目标 | 必读 |
 | --- | --- | --- |
-| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 12: `provider-protocol.md` + `media-precision.md`；具体参考图能力按需读 `visual-continuity.md`，执行预算读 `visual-director.md`）；涉及源码基线再读 `baseline-and-reference.md` |
+| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 12: `provider-editing-matrix.md` → `provider-protocol.md` + `media-precision.md`；参考图权限再读 `visual-continuity.md`，预算再读 `visual-director.md`）；涉及源码基线再读 `baseline-and-reference.md` |
 | S1：中立协议/资产证据 | 拆除当前图片记录对 NovelAI 渲染的硬绑定，保留版本及存档权威 | `index.md` → `provider-protocol.md`，以及后续确定的资产/持久化模块 |
 | S2：多后端适配 | 按 D-004 P0 NovelAI/ComfyUI/OpenAI Images → P1 Gemini/SD/Forge/RunningHub 交付；其他兼容协议为 P2 扩展点 | `index.md` → `provider-protocol.md`，以及后续各 Provider 子模块 |
 | S3：角色/世界视觉连续性 | 角色身份、外观、服饰/状态、场景、参考图和出处；不创建第二剧情权威 | `index.md` → `visual-continuity.md`；需调用图片后端时再读 `provider-protocol.md` |
@@ -99,7 +100,7 @@
 - Round 9: **C 分层 Native Media Studio + 不可变衍生 DAG + Regenerate/Img2Img/Inpaint/Upscale/Gallery — 已确认**，见 [decisions.md](decisions.md) D-009 与 [media-editing-gallery.md](media-editing-gallery.md) §4。
 - Round 10: **C 能力感知的可逆 Media Studio — 已确认**；Canonical Mask 草稿/提交隔离、显式跨 Provider 编辑/许可、异步版本默认先入历史、引用安全 GC、SavePoint 可编辑闭包与参考晋升，见 [decisions.md](decisions.md) D-010 与 [media-editing-gallery.md](media-editing-gallery.md) §6。
 - Round 11: **C Canonical Raster Mask + 混合草稿检查点 + 安全媒体闭包 — 已确认**；0 保留/255 编辑、原图像素空间、默认空闲 2 秒/50 命令 Checkpoint、目标级能力声明、当前分支 Gallery、30/7 天可调 GC 宽限、SavePoint 完整可编辑和安全导入验收。见 [decisions.md](decisions.md) D-011 与 [media-precision.md](media-precision.md)。
-- Round 12: **各 Provider 的 Img2Img/Inpaint/Upscale/Reference/Vibe/LoRA/ControlNet 真正支持的模型/工作流、组合能力、明确的降级策略、协议和实际执行验收 — 未冻结/讨论中**。
+- Round 12: **各 Provider 的 Img2Img/Inpaint/Upscale/Reference/Vibe/LoRA/ControlNet 真正支持的模型/工作流、组合能力、明确降级策略、协议与实际执行验收 — 未冻结/讨论中**，对比候选见 [provider-editing-matrix.md](provider-editing-matrix.md)。
 - 尚未定案：精确 Provider/数据库/API Schema、真实报价与能力/远端状态细节、评分权重与阈值的后续实测校准、自动模式 UI 授权交互、视觉状态/参考图/Vibe 的精确阈值和 Provider 差异、Provider/Workflow 编辑、Reference/Vibe/LoRA/ControlNet 的真实功能矩阵与组合限制、付费降级/fallback、实际后端/API 联测与非秘密请求证据、具体 DB/IR Schema、参考晋升 UI、批量/缓存/视频和实施验收细节。D-011 已确定媒体中立协议和导入/GC 主要验收准则。
 - **禁止先行创建产品开发分支**；用户要求讨论完、设计冻结后由本对话创建正式 `feat/*` 分支供 Codex 开工。
 
