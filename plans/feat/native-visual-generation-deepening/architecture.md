@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 / D-008 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 / D-008 / D-009 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -16,7 +16,7 @@
 
 **Image Job + Budget（D-007/D-008）**：按稳定 Intent / ImageJob / Attempt 分层，在可靠账目中预留许可/额度，使用原子 claim、lease 与 fencing 防止并发重复；远端 ID 对账、提交不确定停止盲重试、已到字节幂等发布/失败补偿，保持旧 Branch/SavePoint 与 AssetStore 安全。Planner/Image 分账并具用户可调的滚动初始额度；云端自动付费默认 0/需明确授权。精确存储 Schema 与 Provider 计费协议后续定案，见 [visual-director.md](visual-director.md) §7。
 
-**Image Asset & Presentation**：存储 bytes、格式、参数证据、外部响应标识、来源图/参考图/编辑衍生，绑定原 Session/Branch/Revision/Annotation，选中展示版本不改变叙事。
+**Image Asset, Native Media Studio & Presentation（D-009）**：不可变 ImageArtifact/MediaOperation 多父 DAG 保存原图、再生成、Img2Img/Inpaint/Mask/Upscale 的有效输入与版本/证据；编辑工作流经过 Provider 能力协商后交给持久 ImageJob，Media Studio/Gallery 负责操作、历史/选中版本、引用资产展示。绑定原 Session/Branch/Revision/Annotation，选中显示版本独立于衍生历史，不修改叙事。详细见 [media-editing-gallery.md](media-editing-gallery.md)。
 
 ## 2. Round 2 已冻结：方案 A — Post-Commit Visual Director
 
@@ -60,7 +60,7 @@ Director 可在正文尚未提交时直接调外部生图后端；正文结束�
 2. **身份与连续性**：三层权威与 Branch/Revision 隔离由 D-005 冻结；混合证据更新、硬门禁/冲突审查及按用途筛选由 D-006 冻结；**待议**的是具体视觉事件模型、判定阈值、参考权重/强度及跨 Chapter 生命周期，参见 [visual-continuity.md](visual-continuity.md)。
 3. **后端与模型能力**：NovelAI V5、ComfyUI、SD/Forge、图像云 API/RunningHub；何者首批，如何声明可用参数/上传图像/异步进度。
 4. **操作自主性**：D-007/D-008 已确认分级判断、评分、默认关闭的自动模式、初始可调预算和待审批费用门禁；**待议**的是用户实际 UI 的审阅/取消/暂停/费用展示交互和 Provider 特殊结算行为。
-5. **图像衍生**：**Round 9 待议**原始图/再生/图生图/局部编辑/Upscale 的衍生关系、版本与画廊操作；视频是否进入本工程的范围仍未冻结。
+5. **图像衍生**：D-009 已冻结分层 Media Studio、不可变衍生 DAG、再生成/Img2Img/Inpaint/Upscale/Gallery 为分期功能范围；**Round 10 待议** Mask UI、跨 Provider 编辑执行、版本操作与引用安全删除/GC、存档闭包和参考图晋升；视频是否纳入仍未定。
 6. **性能可靠性**：长会话图片加载、缓存失效、Provider 重试、幂等费用和恢复历史的一致性。
 
 ## 4. Candidate contracts (illustrative only)
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001 ～ D-008** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、**跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 9 待议**：图片再生成、img2img、inpaint、upscale、画廊/历史与非破坏性资产衍生/版本管理；尚未批准某套编辑图谱。D-008 精确规则见 [visual-director.md](visual-director.md) §7；精确视觉冲突阈值与参考图强度另议。
-- 其他未决议题：自动模式的具体 UI/授权表单、Provider 实际报价与能力/编辑协议、参考图/Vibe 实参、视频功能矩阵、持久作业的确切数据库表/迁移与 Provider 对账接口。
+- **D-001 ～ D-009** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略、**分层 Media Studio + 不可变衍生 DAG/编辑/画廊**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
+- **Round 10 待议**：D-009 已确认图像衍生操作与 Media Studio 架构，现进一步讨论 Mask 编辑器、跨 Provider 编辑流程、图像版本隐藏/软删/GC、SavePoint 闭包和参考图晋升；候选见 [media-editing-gallery.md](media-editing-gallery.md) §7。D-008 精确调度见 [visual-director.md](visual-director.md) §7；精确视觉冲突阈值与参考图强度另议。
+- 其他未决议题：自动模式的具体 UI/授权表单、Provider 实际报价与模型编辑能力/Mask 协议、参考图/Vibe 实参、视频功能矩阵、媒体与 Job 的确切数据库表/迁移、SavePoint/GC 和 Provider 对账接口。
