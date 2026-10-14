@@ -2,7 +2,7 @@
 
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Primary Workspace**: `main`（Atria 产品源码）；`docs` 仅承载本 Plan
-- **Status**: **Draft / 多轮设计中**（2026-10-14，Round 1 C、Round 2 A、Round 3 C、Round 4 B、Round 5 C、Round 6 C 已冻结；Round 7 自主生图调度/预算/恢复待议）
+- **Status**: **Draft / 多轮设计中**（2026-10-14，Rounds 1–7 冻结：C/A/C/B/C/C/C；Round 8 场景/评分/频率/预算默认与任务恢复细则待议）
 - **Implementing Branch**: 尚未创建；待整个设计冻结后再创建 `feat/*` 工作分支交付 Codex
 - **Verified code baseline (remote only)**: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`
 - **Reference**: [damoshen123/st-chatu8](https://github.com/damoshen123/st-chatu8)（读取其公开源码和行为作为研究材料，非 Atria 代码来源）
@@ -23,7 +23,7 @@
 4. **参考实现与版权边界**：可研究 st-chatu8 的交互/功能/协议行为；不得直接拷贝其 AFPL v9 代码或派生代码进入 Atria，除非另行完成授权、兼容性审查并取得明确决定。
 5. **模型决定与用户控制分离**：不把“自动”解释为不可撤销地扣费或覆盖用户选择；手动生图、预览/编辑、取消和版本选择在方案设计中始终保留。实际默认值、自动执行时机与审批规则待后轮冻结。
 
-**确认边界**：Round 1 D-001 = 分层混合；Round 2 D-002 = Post-Commit Visual Director；Round 3 D-003 = 语义 IR + Adapter + Capabilities；Round 4 D-004 = P0/P1/P2 后端及 Connection/Target/Rendering Profile；Round 5 D-005 = 状态驱动的 Visual Identity / Visual State / Visual References 三层权威；Round 6 D-006 = **证据驱动的混合 Visual State 更新、冲突仲裁与按用途参考图筛选**。详见 [decisions.md](decisions.md)、[provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。第 2～4 条为 Native 基线/合规约束而非额外表决；第 5 条具体许可/预算未定案。精确请求 Schema、Provider 特有功能范围、默认模型、状态更新阈值/参考强度与第七轮自动调度预算规则仍未批准。
+**确认边界**：Round 1 D-001 = 分层混合；Round 2 D-002 = Post-Commit Visual Director；Round 3 D-003 = 语义 IR + Adapter + Capabilities；Round 4 D-004 = P0/P1/P2 后端及 Connection/Target/Rendering Profile；Round 5 D-005 = 状态驱动的 Visual Identity / Visual State / Visual References 三层权威；Round 6 D-006 = 证据驱动的混合 Visual State 更新、冲突仲裁与按用途参考图筛选；Round 7 D-007 = **分级事件驱动的自动场景价值筛选、预算隔离与持久可靠 ImageJob 原则**。详见 [decisions.md](decisions.md)、[provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。第 2～4 条为 Native 基线/合规约束而非额外表决；第 5 条具体许可/预算未定案。精确请求 Schema、Provider 特有功能范围、默认模型、状态更新阈值/参考强度、自动触发/评分/频率/预算默认数值及 Job 恢复协议的**具体规则**仍未批准；D-007 仅冻结原则。
 
 ## 3. Plan module map
 
@@ -34,7 +34,7 @@
 | [architecture.md](architecture.md) | 职责分层候选、已冻结的 Post-Commit 触发时序及后续编排待议边界 | 导演/模式/时序，跨模块决策以 decisions 为准 |
 | [provider-protocol.md](provider-protocol.md) | 已冻结 D-003 分层及 D-004 Provider P0/P1/P2、三层配置/覆盖；精确 Schema 待议 | Provider/图片编译/请求证据、模型能力、S1/S2 |
 | [visual-continuity.md](visual-continuity.md) | D-005 三层视觉权威、D-006 混合证据更新与参考图仲裁原则；实现细节待进一步设计 | 角色视觉关联、参考图/风格、信息披露与 S3；冲突/参考选择相关阶段必读 |
-| [visual-director.md](visual-director.md) | Round 7 全自动场景筛选/触发、预算和作业恢复的 A/B/C 备选；**未冻结** | Visual Director 调度/任务持久化、预算、S4；Round 7 必读 |
+| [visual-director.md](visual-director.md) | 已冻结 D-007 分级 Director、规划/生图预算隔离与可靠作业；Round 8 精确算法 A/B/C 候选**未冻结** | Visual Director 场景/镜头/预算/作业，S4；Round 8 必读 |
 
 后续如确定 Provider、参考图、视觉身份、媒体编辑或缓存等独立大模块，应只新增对应模块，不在 `index.md` 重复详细规格。
 
@@ -48,17 +48,17 @@
 → `AssetStore / Image Versions / Branch Save`
 → `Display / Review / Edit`.
 
-**已冻结**：正式提交后决策（D-002）；语义 IR + Adapter + Capabilities（D-003）；P0/P1/P2 与 Connection/Target/Rendering Profile（D-004）；**Visual Identity（稳定身份）+ Visual State（时点状态）+ Visual References（用途明确的参考图）分离**，不得跨分支污染叙事或泄露信息（D-005）；混合解析已提交正式状态与有锚点的叙事变化，经硬门禁/冲突审查、参考图用途过滤与 Provider 能力验证（D-006）。具体字段、阈值/强度、默认 Profile、费用批准及触发策略仍待后轮定案。
+**已冻结**：正式提交后决策（D-002）；语义 IR + Adapter + Capabilities（D-003）；P0/P1/P2 与 Connection/Target/Rendering Profile（D-004）；**Visual Identity（稳定身份）+ Visual State（时点状态）+ Visual References（用途明确的参考图）分离**，不得跨分支污染叙事或泄露信息（D-005）；混合解析已提交正式状态与有锚点的叙事变化，经硬门禁/冲突审查、参考图用途过滤与 Provider 能力验证（D-006）；分级 Director 发现价值候选，必要时使用 LLM，允许跳过，隔离文字/图片预算并以持久 ImageJob 防重复与恢复（D-007）。具体字段、算法/频率/预算默认值和操作许可仍待后轮定案。
 
 ## 5. Tentative stages and reading routes
 
 | 阶段（暂定） | 目标 | 必读 |
 | --- | --- | --- |
-| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 7: `visual-director.md`；如涉及视觉证据再读 `visual-continuity.md`）；涉及源码基线再读 `baseline-and-reference.md` |
+| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 8: `visual-director.md`；需证据/后端差异再读 `visual-continuity.md` / `provider-protocol.md`）；涉及源码基线再读 `baseline-and-reference.md` |
 | S1：中立协议/资产证据 | 拆除当前图片记录对 NovelAI 渲染的硬绑定，保留版本及存档权威 | `index.md` → `provider-protocol.md`，以及后续确定的资产/持久化模块 |
 | S2：多后端适配 | 按 D-004 P0 NovelAI/ComfyUI/OpenAI Images → P1 Gemini/SD/Forge/RunningHub 交付；其他兼容协议为 P2 扩展点 | `index.md` → `provider-protocol.md`，以及后续各 Provider 子模块 |
 | S3：角色/世界视觉连续性 | 角色身份、外观、服饰/状态、场景、参考图和出处；不创建第二剧情权威 | `index.md` → `visual-continuity.md`；需调用图片后端时再读 `provider-protocol.md` |
-| S4：Visual Director 与触发 | 手动、半自动、全自动共用的意图/批准/预算流程；Round 7 决定触发与恢复策略 | `index.md` → `visual-director.md`；时序及模式约束再读 `architecture.md` |
+| S4：Visual Director 与触发 | 三种模式共用 D-007 分级事件调度、独立预算与持久作业；Round 8 确定分割/排序/配置/恢复细则 | `index.md` → `visual-director.md`；时序及模式约束再读 `architecture.md` |
 | S5：编辑/画廊/交互 | 生成版本、衍生编辑、局部重绘及图像管理 | `index.md` → 后续编辑模块 |
 | S6：集成与回归 | 存档/分支/资产/成本/任务隔离、跨平台可用性 | `index.md` → 当前被改动模块、对应 Record |
 
@@ -92,8 +92,9 @@
 - Round 4: **B 跨家族分阶段完整覆盖 + 三层配置架构 — 已确认**，见 [decisions.md](decisions.md) D-004 与 [provider-protocol.md](provider-protocol.md) §5。
 - Round 5: **C 状态驱动的分层视觉权威 — 已确认**；区分 Identity / State / References，严格源 Revision/Branch/显示权限和非事实边界，见 [decisions.md](decisions.md) D-005 与 [visual-continuity.md](visual-continuity.md)。
 - Round 6: **C 证据驱动的混合视觉更新与冲突仲裁 — 已确认**；冻结证据/硬门禁/参考图筛选与能力检查原则，见 [decisions.md](decisions.md) D-006 与 [visual-continuity.md](visual-continuity.md) §5。
-- Round 7: **全自动生图触发、场景筛选、频率、模型/图片调用预算与失败恢复 — 待讨论/未冻结**，备选详见 [visual-director.md](visual-director.md)。
-- 尚未定案：Provider 精确协议/API 字段、自动生图触发/场景质量/费用许可、视觉状态判定阈值/过期算法、参考图/Vibe 精确强度与权重、后端高级功能矩阵、持久任务恢复/批量/缓存/GC、编辑与视频、验收细项。
+- Round 7: **C 分级事件驱动 + 场景价值筛选 + 隔离预算 + 持久可靠作业 — 已确认**，见 [decisions.md](decisions.md) D-007 与 [visual-director.md](visual-director.md) §6。
+- Round 8: **场景分割、镜头评分、节奏/预算默认策略与持久作业恢复精确规则 — 讨论中/未冻结**，备选详见 [visual-director.md](visual-director.md) §7。
+- 尚未定案：Provider 精确协议/API 字段、自动生图的具体场景边界/镜头权重/软频率/预算数字/自动模式授权 UI、视觉状态判定阈值/过期算法、参考图/Vibe 精确强度与权重、后端高级功能矩阵、持久队列租约与各 Provider 任务对账/批量/缓存/GC、编辑与视频、验收细项。
 - **禁止先行创建产品开发分支**；用户要求讨论完、设计冻结后由本对话创建正式 `feat/*` 分支供 Codex 开工。
 
 ## 9. Material routing/design changes
@@ -108,4 +109,6 @@
 
 2026-10-14：Round 5 用户批准方案 C，冻结 Visual Identity / Visual State / Visual References 三层权威、源 Revision/Branch 隔离、玩家显示授权和不从图片反写剧情事实（D-005）；新增 `visual-continuity.md`。
 
-2026-10-14：Round 6 用户批准方案 C，冻结混合证据更新、时序化视觉投影、硬门禁+冲突审查、用途化参考图选择和 Provider 能力验证原则（D-006）。更新视觉连续性模块及决策索引。Round 7 讨论自动生图触发、场景选择、频率、预算、任务失败恢复；不以企划代替实施 Record。
+2026-10-14：Round 6 用户批准方案 C，冻结混合证据更新、时序化视觉投影、硬门禁+冲突审查、用途化参考图选择和 Provider 能力验证原则（D-006）。
+
+2026-10-14：Round 7 用户批准方案 C，冻结事件驱动分级筛选、有条件 Director LLM、可跳过/去重、Planner/Image 双独立预算、用户授权、持久 ImageJob、远端对账、不确定提交不盲目重试与幂等版本发布（D-007）；仍未冻结具体评分/节奏/费用限额/作业 schema，Round 8 讨论这些规则。设计期不以 Plan 代替实施 Record。
