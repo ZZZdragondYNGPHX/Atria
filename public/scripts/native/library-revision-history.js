@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { resourceBundleExport } from './resource-bundle-controls.js';
 import { nativeProductClient as client } from './product-client.js';
@@ -49,7 +50,7 @@ export function mountLibraryRevisionHistory({ document: doc, root, detail, knowl
         const id = revision.worldRevisionId || revision.knowledgeRevisionId;
         const row = el(doc, 'article', 'atri-library-version', undefined, section); row.dataset.atriaRevisionId = id;
         el(doc, 'strong', '', tl(id === resource.currentRevisionId ? 'Current revision' : 'Earlier revision'), row);
-        el(doc, 'span', 'atri-library-meta', revision.createdAt ? new Date(revision.createdAt).toLocaleString() : '—', row);
+        el(doc, 'span', 'atri-library-meta', revision.createdAt ? formatAtriaDate(revision.createdAt) : '—', row);
         disclosure(doc, row, 'Exact revision details', revision);
         resourceBundleExport(doc, row, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId, revision: id }, resource.displayName);
         action(doc, row, 'Delete unused revision', async () => {

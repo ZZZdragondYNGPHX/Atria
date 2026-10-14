@@ -253,8 +253,12 @@ function handleGlobalKeyDown(event) {
             return;
 
         // Only count enter on this interactable if no modifier key is pressed
-        if (event.altKey || event.ctrlKey || event.shiftKey)
+        if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.altKey || event.ctrlKey || event.shiftKey || event.metaKey)
             return;
+
+        // Native controls already implement keyboard activation. The fallback
+        // must not dispatch an additional click or intercept text composition.
+        if (event.target.closest('button, a[href], input, select, textarea, summary, [contenteditable]:not([contenteditable="false"])')) return;
 
         // Traverse up the DOM tree to find the actual interactable element
         let target = event.target;

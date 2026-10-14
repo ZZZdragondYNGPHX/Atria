@@ -1,5 +1,5 @@
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
-import { translateShellText as tl } from '../atria-shell/localization.js';
+import { translateShellText as tl, formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { runtimeRequest } from './runtime-client.js';
 import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor } from './prompt-authoring.js';
 import { createStudioNativeId } from './studio-authoring.js';
@@ -29,6 +29,7 @@ export function removePresetCategory(preset, categoryId) {
 
 export function mountPromptPresets({ document: doc, body, host, route }) {
     let disposed = false, sequence = 0, preset = null, section = null;
+    let lastReceipt = null;
     let categoryFilter = 'all', listPosition = null, closeMenu = () => {};
     const editorFoldStates = new Map();
     const node = (tag, text, parent = body) => { const el = doc.createElement(tag); if (text !== undefined) el.textContent = tl(text); parent.append(el); return el; };
@@ -46,7 +47,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         const refresh = async () => {
             const saved = await runtimeRequest('/presets/' + receipt.presetId);
             if (disposed || token !== sequence) return;
-            preset = saved; renderDetail(); restoreListPosition();
+            preset = saved; lastReceipt = receipt; renderDetail(); restoreListPosition();
         };
         try {
             await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: next, expectedRevision: preset.revision }, onCommitted: async result => {
@@ -64,7 +65,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             button(body, 'Try again', refresh);
         }
     };
-    const open = async id => { const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
+    const open = async id => { const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; lastReceipt = null; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
     const exportPreset = value => {
         const data = { format: value.format, schemaVersion: 1, programId: value.programId, categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
@@ -197,6 +198,13 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         button(nav, 'Back to presets', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); });
         if (section) button(nav, 'Back to preset', () => { if (confirmAtriaDraftLeave(doc, body)) { section = null; renderDetail(); } });
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId).resource.displayName, root);
+        root.dataset.atriPresetRevision = preset.revision;
+        if (lastReceipt?.presetId === preset.presetId) {
+            const version = String(lastReceipt.revision);
+            const receipt = literal('p', formatProductText('Saved. Preset version ${0}.', [version.slice(0, 12)]), root);
+            receipt.title = version;
+            receipt.className = 'atri-library-feedback'; receipt.setAttribute('role', 'status');
+        }
         if (!section) {
             node('p', 'This preset owns its program, modules, generation settings and Regex rules. Changes affect only this preset.', root);
             const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';

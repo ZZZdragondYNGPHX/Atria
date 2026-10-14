@@ -58,7 +58,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
     const root = el(doc, 'section', 'atri-extension-plugins', undefined, body);
     const drafts = observeAtriaDrafts({ document: doc, root });
     let kind = 'external', disposed = false, sequence = 0, builtins, saving = false, receipt = null;
-    const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools'], ['official', '官方插件']], kind, async next => { if (saving || !confirmAtriaDraftLeave(doc, content)) return; kind = next; await load(); });
+    const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools'], ['official', 'Official plugins']], kind, async next => { if (saving || !confirmAtriaDraftLeave(doc, content)) return; kind = next; await load(); });
     const tools = el(doc, 'div', 'atria-utility-workspace__actions', undefined, root);
     const content = el(doc, 'div', 'atri-extension-list', undefined, root);
     const runtimeStatus = el(doc, 'p', '', undefined, root); runtimeStatus.setAttribute('role', 'status');

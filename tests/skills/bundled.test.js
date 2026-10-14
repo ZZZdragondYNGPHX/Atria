@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { importBundledSkills, ensureFreshInstallPopulate } from '../../src/skills/bundled.js';
 import { createSkillRepository } from '../../src/skills/repository.js';
 import { promises as fs } from 'node:fs';
@@ -20,6 +20,7 @@ describe('bundled skills', () => {
     });
 
     afterEach(async () => {
+        jest.restoreAllMocks();
         await fs.rm(userRoot, { recursive: true, force: true });
         await fs.rm(defaultRoot, { recursive: true, force: true });
     });
@@ -29,6 +30,33 @@ describe('bundled skills', () => {
         expect(result.installed + result.replaced).toBeGreaterThanOrEqual(1);
         const got = await repo.get('bundled-a', { kind: 'global' });
         expect(got).toBeTruthy();
+    });
+
+    test('concurrent fresh requests wait until the shared installation finishes', async () => {
+        let release, entered;
+        const gate = new Promise(resolve => { release = resolve; });
+        const installing = new Promise(resolve => { entered = resolve; });
+        const rename = fs.rename.bind(fs);
+        const spy = jest.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+            if (String(from).includes('.staging-') && String(to).endsWith('bundled-a')) {
+                entered();
+                await gate;
+            }
+            return rename(from, to);
+        });
+        const first = ensureFreshInstallPopulate({ defaultRoot, userRoot });
+        await installing;
+        let secondFinished = false;
+        const second = ensureFreshInstallPopulate({ defaultRoot, userRoot: join(userRoot, '.') })
+            .then(result => { secondFinished = true; return result; });
+        await new Promise(resolve => setImmediate(resolve));
+        expect(secondFinished).toBe(false);
+        release();
+        const results = await Promise.all([first, second]);
+        expect(results[0]).toEqual(results[1]);
+        expect(results[0].installed).toBe(1);
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect((await repo.get('bundled-a', { kind: 'global' })).description).toBe('bundled test');
     });
 
     test('ensureFreshInstallPopulate does nothing when user global already populated', async () => {

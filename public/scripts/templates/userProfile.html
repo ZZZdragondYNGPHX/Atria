@@ -1,10 +1,11 @@
 <section class="atria-account-profile">
+  <div class="atria-account-paper">
     <header class="atria-account-identity">
         <div class="atria-account-avatar">
             <div class="avatar"><img src="img/ai4.png" alt="Account avatar" width="80" height="80" data-i18n="[alt]Account avatar"></div>
             <div class="atria-account-avatar-actions">
-                <button type="button" class="userAvatarChange right_menu_button" title="Set your custom avatar." aria-label="Set your custom avatar" data-i18n="[aria-label]Set your custom avatar"><i class="fa-solid fa-image" aria-hidden="true"></i></button>
-                <button type="button" class="userAvatarRemove right_menu_button" title="Remove your custom avatar." aria-label="Remove your custom avatar" data-i18n="[aria-label]Remove your custom avatar"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                <button type="button" class="userAvatarChange right_menu_button" title="Set your custom avatar" aria-label="Set your custom avatar" data-i18n="[title]Set your custom avatar;[aria-label]Set your custom avatar"><i class="fa-solid fa-image" aria-hidden="true"></i></button>
+                <button type="button" class="userAvatarRemove right_menu_button" title="Remove your custom avatar" aria-label="Remove your custom avatar" data-i18n="[title]Remove your custom avatar;[aria-label]Remove your custom avatar"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
             </div>
             <form><input type="file" class="avatarUpload" accept="image/*" hidden></form>
         </div>
@@ -23,7 +24,10 @@
             <div><dt data-i18n="Password:">Password:</dt><dd><span class="hasPassword" data-i18n="Password protected">Password protected</span><span class="noPassword" data-i18n="No password set">No password set</span></dd></div>
         </dl>
         <button type="button" data-require-accounts class="userChangePasswordButton menu_button atria-account-row"><span data-i18n="Change Password">Change Password</span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+        <button type="button" data-require-accounts class="userLogoutButton menu_button atria-account-row"><span data-i18n="Sign out">Sign out</span><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></button>
     </section>
+  </div>
+  <div class="atria-account-paper">
     <section class="atria-account-group">
         <h3 data-i18n="Data & recovery">Data & recovery</h3>
         <div class="atria-account-rows">
@@ -40,4 +44,5 @@
             <button type="button" class="userResetAllButton menu_button atria-account-row"><span data-i18n="Reset Everything">Reset Everything</span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
         </div>
     </details>
+  </div>
 </section>

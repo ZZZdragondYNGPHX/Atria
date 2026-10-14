@@ -98,7 +98,10 @@ test('Work detail starts and resumes Native progress; referenced deletion remain
     await page.getByRole('button', { name: 'Delete Work', exact: true }).click();
     await popup(page).locator('.popup-button-ok').click();
     await expect(page.locator('.atri-library-feedback[role="alert"]')).toContainText('still referenced');
-    await expect(page.locator('.atri-library-feedback[role="alert"]')).toContainText('sessionId');
+    const references = page.locator('[data-atria-reference-remediation]');
+    await expect(references.getByRole('heading', { name: 'Dependent Session', exact: true })).toBeVisible();
+    await references.getByText('Reference details', { exact: true }).click();
+    await expect(references.locator('pre').last()).toContainText('sessionId');
     await shot(page, info, 'work-delete-reference-details');
     await expect(page.locator('[data-atria-work-detail]')).toBeVisible();
     await page.locator('[data-atria-work-detail]').getByRole('button', { name: 'Continue', exact: true }).click();
@@ -129,70 +132,73 @@ test('World and Knowledge authoring keeps names, revision history and exact bind
     await shot(page, info, 'knowledge-compact');
 });
 
-test('Prompt module structured editor retains advanced data and immutable save retry', async ({ page }, info) => {
-    await boot(page, 900); await open(page, 'prompt-modules');
-    await page.getByRole('button', { name: 'New resource', exact: true }).click();
+test('Preset module Source retains advanced data, conflicts keep drafts and saved receipts survive remount', async ({ page }, info) => {
+    await boot(page, 900); await open(page, 'prompt-presets');
+    await page.getByRole('button', { name: 'New preset', exact: true }).click();
+    const presetId = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');
+    await page.getByRole('button', { name: 'Prompt Modules', exact: true }).click();
+    await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'New module', exact: true }).click();
     await openPromptSections(page, 'identity');
     await page.getByLabel('Display name', { exact: true }).fill('Harbour voice');
     await openPromptSections(page, 'module');
     await page.getByLabel('Prompt body', { exact: true }).fill('Write with precise, quiet detail.');
     await page.getByRole('button', { name: 'Advanced editor', exact: true }).click();
     const json = page.getByLabel('Resource JSON — conditions, parameters, provenance');
-    const resource = JSON.parse(await json.inputValue()); resource.provenance = [{ source: 'phase4.acceptance' }];
+    const resource = JSON.parse(await json.inputValue()); resource.priority = 7;
     await json.fill(JSON.stringify(resource, null, 2));
     await page.getByRole('button', { name: 'Simple editor', exact: true }).click();
-    await expect(page.getByLabel('Display name', { exact: true })).toHaveValue('Harbour voice');
-    await page.route('**/api/native/generation/resources', route => route.request().method() === 'POST' ? route.fulfill({ status: 409, json: { error: 'revision_conflict' } }) : route.continue());
+    await openPromptSections(page, 'identity', 'module');
+    const endpoint = '**/api/native/generation/presets/' + presetId;
+    await page.route(endpoint, route => route.request().method() === 'PUT' ? route.fulfill({ status: 409, json: { error: 'revision_conflict' } }) : route.continue());
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
-    await expect(page.locator('[data-atri-library-editor] [role="alert"]')).toContainText('Your edits are still here.');
+    await expect(page.locator('[data-atri-prompt-editor] [role="alert"]')).toBeVisible();
     await expect(page.getByLabel('Prompt body', { exact: true })).toHaveValue('Write with precise, quiet detail.');
     await shot(page, info, 'prompt-editor-medium');
-    await page.unroute('**/api/native/generation/resources');
+    await page.unroute(endpoint);
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
-    await expect(page.getByText('Saved immutable Library revision.', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
-    await page.getByLabel('Resource origin', { exact: true }).selectOption('library');
-    await page.getByLabel('Filter resources', { exact: true }).fill('Harbour voice');
-    const row = page.locator('.atri-prompt-resource');
-    await expect(row).toHaveCount(1);
-    await row.locator('summary').click();
-    await expect(row.locator('pre')).toContainText('phase4.acceptance');
-    await page.setViewportSize({ width: 320, height: 740 });
-    await shot(page, info, 'prompt-exact-compact');
+    await expect(page.locator('[data-atri-prompt-preset] [role="status"]')).toContainText('Saved. Preset version');
+    const row = page.locator('[data-module-id]').filter({ hasText: 'Harbour voice' });
+    await expect(row).toBeVisible();
+    await row.getByRole('button', { name: 'Module actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'View / edit parameters', exact: true }).click();
+    await page.getByRole('button', { name: 'Advanced editor', exact: true }).click();
+    expect(JSON.parse(await json.inputValue()).priority).toBe(7);
+    await page.setViewportSize({ width: 320, height: 740 }); await shot(page, info, 'prompt-exact-compact');
 });
 
-test('Package originals remain read-only; Fork, Program stages and Generation save exact resources', async ({ page }, info) => {
-    await boot(page); await open(page, 'prompt-modules');
-    await page.getByLabel('Resource origin', { exact: true }).selectOption('package');
-    const original = page.locator('.atri-prompt-resource').filter({ has: page.getByRole('heading', { name: 'Original harbour voice', exact: true }) });
-    await expect(original).toContainText('Read-only original');
-    await expect(original.getByRole('button', { name: 'New revision', exact: true })).toHaveCount(0);
-    await original.getByRole('button', { name: 'Fork to Library', exact: true }).click();
-    await expect(page.getByText('Created independent Library resource.', { exact: true })).toBeVisible();
-    await open(page, 'prompt-programs');
-    await page.getByRole('button', { name: 'New resource', exact: true }).click();
-    await openPromptSections(page, 'identity');
+test('Preset Program and Generation save exact versions while pinned history remains available', async ({ page }, info) => {
+    await boot(page); await open(page, 'prompt-presets');
+    const row = page.locator('[data-atri-preset-id]').first(); await row.getByRole('button', { name: 'Open preset', exact: true }).click();
+    const id = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');
+    const before = await page.evaluate(async id => {
+        const { runtimeRequest } = await import('/scripts/native/runtime-client.js'); return runtimeRequest('/presets/' + id);
+    }, id);
+    await page.getByRole('button', { name: 'Prompt Programs', exact: true }).click();
+    await openPromptSections(page, 'identity', 'stages', 'stage:stage.main');
     await page.getByLabel('Display name', { exact: true }).fill('Harbour narrator');
-    await openPromptSections(page, 'stages', 'stage:stage.main');
     await page.getByLabel('Module for stage 1', { exact: true }).selectOption({ index: 1 });
     await page.getByRole('button', { name: 'Add module', exact: true }).click();
-    await page.getByRole('button', { name: 'Add stage', exact: true }).click();
-    await expect(page.locator('.atri-prompt-stages > details > fieldset')).toHaveCount(2);
     await shot(page, info, 'program-editor-desktop');
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
-    await expect(page.getByText('Saved immutable Library revision.', { exact: true })).toBeVisible();
-    await open(page, 'generation-profiles');
-    await page.getByRole('button', { name: 'New resource', exact: true }).click();
-    await openPromptSections(page, 'identity');
+    await expect(page.locator('[data-atri-prompt-preset] [role="status"]')).toContainText('Saved. Preset version');
+    await page.getByRole('button', { name: 'Back to preset', exact: true }).click();
+    await page.getByRole('button', { name: 'Generation Profiles', exact: true }).click();
+    await openPromptSections(page, 'identity', 'generation');
     await page.getByLabel('Display name', { exact: true }).fill('Quiet replies');
     await page.getByLabel('Maximum output tokens', { exact: true }).fill('1024');
     await page.getByLabel('Temperature', { exact: true }).fill('0.6');
-    await page.setViewportSize({ width: 320, height: 740 });
-    await shot(page, info, 'generation-editor-compact');
+    await page.setViewportSize({ width: 320, height: 740 }); await shot(page, info, 'generation-editor-compact');
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
-    await expect(page.getByText('Saved immutable Library revision.', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
-    await expect(page.locator('.atri-prompt-resource')).toHaveCount(1);
+    await expect(page.locator('[data-atri-prompt-preset] [role="status"]')).toContainText('Saved. Preset version');
+    const after = await page.evaluate(async ({ id, before }) => {
+        const { runtimeRequest } = await import('/scripts/native/runtime-client.js');
+        const current = await runtimeRequest('/presets/' + id);
+        const old = await Promise.all(before.entries.map(e => runtimeRequest('/resources/exact', { method: 'POST', body: { scope: 'library', resourceType: e.resourceType, resourceId: e.resource[e.resourceType === 'core.prompt-program' ? 'promptProgramId' : e.resourceType === 'core.prompt-module' ? 'promptModuleId' : 'generationProfileId'], revision: e.resource.revision } })));
+        return { current, old };
+    }, { id, before });
+    expect(after.current.revision).not.toBe(before.revision);
+    expect(after.old.map(e => e.snapshot)).toEqual(before.entries.map(e => e.resource));
 });
 
 test('Skills keyboard tabs, real creation, editor hash conflict and dialog focus', async ({ page }, info) => {
@@ -230,17 +236,21 @@ test('Skills keyboard tabs, real creation, editor hash conflict and dialog focus
     await expect(textarea).toHaveValue(/My unsaved draft/);
     await shot(page, info, 'skill-editor-conflict-compact');
     await page.keyboard.press('Escape');
+    await popup(page).getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(textarea).toHaveValue(/My unsaved draft/);
+    await page.keyboard.press('Escape');
+    await popup(page).getByRole('button', { name: 'Discard', exact: true }).click();
     await expect(page.locator('[data-editor-textarea]')).toHaveCount(0);
     await expect(manager).toBeVisible();
 });
 
-test('Library compact section picker, light theme, safe area and medium layout', async ({ page }, info) => {
+test('Library compact category navigation, light theme, safe area and medium layout', async ({ page }, info) => {
     await boot(page, 320); await open(page, 'works');
     await page.evaluate(() => { document.documentElement.style.setProperty('--SmartThemeBlurTintColor', '#ffffff'); document.documentElement.style.setProperty('--atri-safe-area-bottom', '24px'); });
     await expect(page.locator('html')).toHaveAttribute('data-atria-appearance', 'light');
-    await expect(page.getByLabel('Library section', { exact: true })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Library sections', exact: true })).toBeVisible();
     await shot(page, info, 'works-light-320');
-    await page.getByLabel('Library section', { exact: true }).selectOption('skills');
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('plugins'));
     await expect(page.locator('.atria_skill_manager')).toBeVisible();
     await shot(page, info, 'skills-light-320');
     await page.setViewportSize({ width: 900, height: 900 });

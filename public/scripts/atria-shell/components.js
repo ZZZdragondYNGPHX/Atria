@@ -377,7 +377,7 @@ export function createAtriaSpinner(documentRef, { label = '' } = {}) {
 function readLocale() {
     try {
         const stored = globalThis.localStorage?.getItem?.('language');
-        return String(stored || 'en');
+        return String(stored || 'en').toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
     } catch {
         return 'en';
     }
@@ -403,17 +403,17 @@ export function formatAtriaRelativeTime(timestamp, now = Date.now()) {
         }
         return formatter.format(0, 'second');
     } catch {
-        return new Date(value).toLocaleString();
+        return new Date(value).toISOString();
     }
 }
 
 export function formatAtriaDate(timestamp) {
-    const value = Number(timestamp);
+    const value = Number.isFinite(Number(timestamp)) ? Number(timestamp) : new Date(timestamp).getTime();
     if (!Number.isFinite(value) || value <= 0) return '';
     try {
         return new Intl.DateTimeFormat(readLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
     } catch {
-        return new Date(value).toLocaleString();
+        return new Date(value).toISOString();
     }
 }
 

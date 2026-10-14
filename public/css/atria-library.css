@@ -71,16 +71,14 @@
 .atri-library-section-picker { display: none; }
 [data-atria-domain-workspace="library"] :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--atri-accent-text); outline-offset: 3px; }
 @media (hover: hover) {
-    .atria-app-shell .atri-library-button:not(:disabled):hover { background: var(--atri-fill-hover); }
-    .atria-app-shell .atri-library-button--primary:not(:disabled):hover { background: var(--atri-ink-hover); }
+    .atria-app-shell .atri-library-button:not(:disabled):hover:not(:active) { background: var(--atri-fill-hover); }
+    .atria-app-shell .atri-library-button--primary:not(:disabled):hover:not(:active) { background: var(--atri-ink-hover); }
     .atri-library-work-open:hover .atri-library-cover { filter: brightness(1.08); }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_manager button:not(:disabled):hover { background: var(--atri-fill-hover); }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_manager .atria_skill_toolbar_btn_primary:not(:disabled):hover { background: var(--atri-ink-hover); }
 }
 .atria-app-shell[data-atria-viewport="medium"] .atri-library-posters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) [data-atria-domain-workspace="library"] > .atria-domain-workspace__nav { display: none; }
 .atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) .atri-library-section-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--atri-separator); font-size: var(--atri-text-footnote); }
-.atria-app-shell
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-section-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
 .atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body { padding: 24px 16px max(32px, var(--atri-safe-area-bottom)); }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-imports { grid-template-columns: 1fr; gap: 12px; }
@@ -109,7 +107,9 @@
 [data-atria-domain-workspace="library"] .atri-prompt-resource summary { color: var(--atri-text-secondary); cursor: pointer; padding-block: 8px; }
 [data-atria-domain-workspace="library"] .atri-prompt-library :is(input, select, textarea) { padding: 10px 12px; border-radius: var(--atri-radius-md); min-height: 40px; font-size: max(16px, var(--atri-text-body)); background: var(--atri-surface-2); }
 [data-atri-library-editor="true"] { max-width: 900px; gap: 24px; }
-[data-atri-library-editor="true"] > h3 { font-size: var(--atri-text-title-1); margin: 0; overflow-wrap: anywhere; }
+[data-atri-library-editor="true"] > h3 { font: 400 var(--atri-text-title-1)/1.3 var(--atri-font-serif); margin: 0; overflow-wrap: anywhere; }
+[data-atria-domain-workspace="library"] [data-atri-library-editor="true"] { margin-inline: auto; padding: 28px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-xl); background: var(--atri-surface-1); box-shadow: var(--atri-highlight), var(--atri-shadow-1); }
+.atria-app-shell [data-atri-library-editor="true"] :is(input, select, textarea) { background: var(--atri-surface-2); border: 1px solid transparent; border-radius: var(--atri-radius-md); }
 [data-atri-library-editor="true"] > p { color: var(--atri-text-secondary); line-height: 1.6; margin: 0; }
 [data-atri-library-editor="true"] .atri-prompt-identity { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding-block: 20px; border-block: 1px solid var(--atri-separator); }
 [data-atri-library-editor="true"] .atri-prompt-fields { display: grid; gap: 20px; }
@@ -121,7 +121,7 @@
 .atri-prompt-editor .atri-prompt-fold[open] > :not(summary) { margin-block: 12px; }
 .atri-prompt-editor .atri-prompt-stages > .atri-prompt-fold { margin-inline-start: 8px; }
 [data-atri-library-editor="true"] label { gap: 8px; }
-[data-atri-library-editor="true"] > button:last-child { justify-self: start; background: var(--atri-accent); color: var(--atri-text-on-accent); padding: 10px 18px; }
+[data-atri-library-editor="true"] > button:last-child { justify-self: start; padding: 10px 18px; }
 [data-atria-domain-workspace="library"] .atri-prompt-stages fieldset { border: 0; border-left: 2px solid var(--atri-separator-strong); padding: 12px 20px; }
 [data-atria-domain-workspace="library"] .atri-prompt-stages legend { font-weight: 600; }
 .atria-app-shell[data-atria-viewport="compact"] [data-atri-library-editor="true"] .atri-prompt-identity { grid-template-columns: 1fr; }
@@ -180,7 +180,10 @@
 .atri-skill-editor-title { font-family: var(--atri-font-sans); font-size: var(--atri-text-title-2); color: var(--atri-text-primary); overflow-wrap: anywhere; text-align: left; margin: 0 0 16px; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_editor { min-height: min(64dvh, 680px); gap: 20px; }
 .atria-app-shell [data-atri-library-editor="true"] label { margin-block: 0; }
-.atria-app-shell [data-atri-library-editor="true"] > button:last-child { background: var(--atri-accent); color: var(--atri-text-on-accent); border-color: transparent; }
+.atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary { background: var(--atri-ink); color: var(--atri-text-on-accent); border-color: transparent; }
+.atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary:not(:disabled):active { background: var(--atri-ink-pressed); }
+@media (hover: hover) { .atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary:not(:disabled):hover:not(:active) { background: var(--atri-ink-hover); } }
+@media (max-width: 719px) { [data-atria-domain-workspace="library"] [data-atri-library-editor="true"] { padding: 22px 18px; } }
 :is(.atria-skill-workspace-host, .popup) :is(.atria_skill_tab, .atria_skill_row_desc) { opacity: 1; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_row_actions_group { padding: 0; background: transparent; gap: 8px; }
 :is(.atria-skill-workspace-host, .popup) :is(.atria_skill_manager, .atria_skill_editor) :is(button, summary, select, textarea):focus-visible { outline: 2px solid var(--atri-accent-text); outline-offset: 2px; }

@@ -62,7 +62,7 @@
     height: 18px;
 }
 
-.atria-utility-action:active {
+.atria-utility-action:not(:disabled):active:not(:focus-visible) {
     transform: scale(.98);
 }
 
@@ -305,9 +305,33 @@
 
 .atria-account-profile {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 28px;
     text-align: start;
     min-width: 0;
+}
+
+.atria-account-paper {
+    min-width: 0;
+    padding: 28px;
+    background: var(--atri-surface-1);
+    border: 1px solid var(--atri-separator);
+    border-radius: var(--atri-radius-xl);
+    box-shadow: var(--atri-highlight), var(--atri-shadow-1);
+}
+.atria-account-paper > .atria-account-group { margin-top: 28px; }
+.atria-snapshot-heading { min-height: 56px; cursor: pointer; padding-block: 12px; }
+.atria-snapshot-heading > :first-child { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.atria-snapshot-heading button { flex: none; }
+.atria-snapshot-chevron { font-size: 12px; }
+details.snapshot[open] .atria-snapshot-chevron { transform: rotate(90deg); }
+.atria-snapshot-content textarea { width: 100%; min-width: 0; font-family: var(--atri-font-mono); }
+.atria-settings-snapshots .title_restorable { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; font: 400 var(--atri-text-title-2)/1.3 var(--atri-font-serif); }
+.atria-settings-snapshots .makeSnapshotButton { font: var(--atri-text-body)/1.4 var(--atri-font-sans); min-height: 44px; }
+.atria-settings-snapshots [hidden] { display: none !important; }
+@media (max-width: 1100px) {
+    .atria-account-profile { grid-template-columns: minmax(0, 1fr); }
+    .atria-account-paper { padding: 22px; }
 }
 
 .atria-account-identity {
@@ -315,6 +339,7 @@
     gap: 24px;
     align-items: center;
 }
+.atria-account-identity-copy h2 { font: 400 var(--atri-text-title-2)/1.3 var(--atri-font-serif); }
 
 .atria-account-avatar .avatar {
     width: 80px;
@@ -750,6 +775,8 @@ html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) {
     width: 100%;
 }
 html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) h3 {
+    font-family: var(--atri-font-serif);
+    font-weight: 400;
     font-size: var(--atri-text-title-2);
     margin-bottom: 12px;
 }
@@ -762,6 +789,23 @@ html[data-atria-appearance] :is(.backupSyncTabs,.storageManagementTabs) {
 html[data-atria-appearance] :is(.backupSyncTab,.storageManagementTab).active {
     outline: 0;
     background: var(--atri-fill-pressed);
+}
+html[data-atria-appearance] .storageInspectorEntryLabel:is(button) {
+    appearance: none;
+    border: 0;
+    border-radius: var(--atri-radius-sm);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0;
+    cursor: pointer;
+}
+html[data-atria-appearance] :is(.storageInspectorEntryLabel, .storageInspectorEntryActionButton):focus-visible {
+    outline: 2px solid var(--atri-accent-text);
+    outline-offset: 3px;
 }
 html[data-atria-appearance] :is(.backupRetentionCard,.backupManagedGroup,.backupProviderCard,.storageManagementSection) {
     border: 0;

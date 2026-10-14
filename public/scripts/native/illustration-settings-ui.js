@@ -12,7 +12,7 @@ export function renderIllustrationPreset(doc, parent, preset) {
     field(doc, parent, translateShellText('Quality prompt'), preset.quality, value => preset.quality = value, { multiline: true });
     field(doc, parent, translateShellText('Negative prompt'), preset.negativePrompt, value => preset.negativePrompt = value, { multiline: true });
     let parameters = JSON.stringify(preset.parameters, null, 2);
-    const input = field(doc, parent, translateShellText('Image size preferences'), parameters, value => parameters = value, { multiline: true });
+    const input = field(doc, parent, translateShellText('Image generation parameters JSON'), parameters, value => parameters = value, { multiline: true });
     const read = ({ silent = false } = {}) => { try { preset.parameters = JSON.parse(parameters); input.setCustomValidity(''); } catch { input.setCustomValidity(translateShellText('Enter valid JSON parameters.')); if (!silent) input.reportValidity(); throw new Error(translateShellText('Enter valid JSON parameters.')); } };
     return read;
 }

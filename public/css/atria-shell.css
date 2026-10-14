@@ -1335,7 +1335,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 .atria-domain-workspace__tab {
     appearance: none;
     flex: none;
-    height: 30px;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     margin: 0;

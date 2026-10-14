@@ -1,17 +1,17 @@
-<div class="padding5">
+<div class="padding5 atria-settings-snapshots">
     <h3 class="title_restorable">
         <span data-i18n="Settings Snapshots">Settings Snapshots</span>
-        <div class="makeSnapshotButton menu_button menu_button_icon" data-i18n="[title]Record a snapshot of your current settings." title="Record a snapshot of your current settings.">
+        <button type="button" class="makeSnapshotButton menu_button menu_button_icon" data-i18n="[title]Record a snapshot of your current settings." title="Record a snapshot of your current settings.">
             <i class="fa-fw fa-solid fa-camera"></i>
             <span data-i18n="Make a Snapshot">Make a Snapshot</span>
-        </div>
+        </button>
     </h3>
     <hr>
     <div class="snapshotList flex-container flexFlowColumn">
     </div>
     <div class="template_element snapshotTemplate">
-        <div class="snapshot inline-drawer wide100p">
-            <div class="inline-drawer-toggle inline-drawer-header flexGap10">
+        <details class="snapshot wide100p">
+            <summary class="atria-snapshot-heading flex-container alignItemsCenter flexGap10">
                 <div class="flex-container flexFlowColumn flexNoGap justifyLeft">
                     <span class="snapshotName"></span>
                     <div class="flex-container flexGap10">
@@ -20,12 +20,14 @@
                     </div>
                 </div>
                 <div class="expander"></div>
-                <div class="menu_button fa-solid fa-recycle snapshotRestoreButton" data-i18n="[title]Restore this snapshot" title="Restore this snapshot"></div>
-                <div class="fa-solid fa-circle-chevron-down inline-drawer-icon down"></div>
+                <button type="button" class="menu_button fa-solid fa-recycle snapshotRestoreButton" aria-label="Restore this snapshot" data-i18n="[title]Restore this snapshot;[aria-label]Restore this snapshot" title="Restore this snapshot"></button>
+                <i class="fa-solid fa-chevron-right atria-snapshot-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="atria-snapshot-content">
+                <p class="snapshotFeedback" role="status"></p>
+                <button type="button" class="snapshotRetryButton menu_button" hidden data-i18n="Try again">Try again</button>
+                <textarea class="text_pole textarea_compact fontsize80p snapshotContent" readonly aria-label="Snapshot contents" placeholder="Loading…" data-i18n="[placeholder]Loading…;[aria-label]Snapshot contents" rows="25"></textarea>
             </div>
-            <div class="inline-drawer-content">
-                <textarea class="text_pole textarea_compact fontsize80p snapshotContent" readonly placeholder="Loading..." rows="25"></textarea>
-            </div>
-        </div>
+        </details>
     </div>
 </div>

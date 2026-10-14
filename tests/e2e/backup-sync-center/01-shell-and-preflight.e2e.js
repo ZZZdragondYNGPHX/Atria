@@ -44,7 +44,7 @@ test.describe('Backup & Sync Center', () => {
         await expect(center.locator('.backupCloudProviders')).toContainText('Google Drive');
         await expect(center.locator('.backupCloudProviders')).toContainText('Microsoft OneDrive');
         await expect(center.locator('.backupCloudProviders')).toContainText('GitHub');
-        await expect(center.locator('.backupCloudProviders')).toContainText('尚未连接实现');
+        await expect(center.locator('.backupCloudProviders')).toContainText('Not available yet');
     });
 
     test('invalid local artifact fails mandatory preflight and cannot start restore', async ({ page }) => {
@@ -59,7 +59,7 @@ test.describe('Backup & Sync Center', () => {
         await center.locator('.backupArchiveInput').setInputFiles(invalidZip);
 
         await expect(center.locator('.backupPreflightReport')).toHaveAttribute('data-state', 'error', { timeout: 15_000 });
-        await expect(center.locator('.backupPreflightReport')).toContainText('预检失败');
+        await expect(center.locator('.backupPreflightReport')).toContainText('Preflight failed');
         await expect(center.locator('.backupRestoreStart')).toHaveClass(/disabled/);
     });
 
@@ -140,7 +140,7 @@ test.describe('Backup & Sync Center', () => {
         await confirm.locator('.popup-button-ok').click();
 
         await expect(center.locator('.backupRestoreProgress')).toHaveAttribute('data-state', 'ok');
-        await expect(center.locator('.backupRestoreProgress')).toContainText('恢复完成：3 项；失败 0 项。');
+        await expect(center.locator('.backupRestoreProgress')).toContainText('Last restore: 3 items restored; 0 failed.');
         await expect(center.locator('.backupRestoreStart')).toBeEnabled();
     });
 
@@ -227,13 +227,13 @@ test.describe('Backup & Sync Center', () => {
 
         await expect(secondCenter.locator('.backupSyncPanel[data-panel="archive"]')).toBeVisible();
         await expect(secondCenter.locator('.backupRestoreProgress')).toHaveAttribute('data-state', 'running');
-        await expect(secondCenter.locator('.backupRestoreProgress')).toContainText('后台运行');
+        await expect(secondCenter.locator('.backupRestoreProgress')).toContainText('running in the background');
         await expect(secondCenter.locator('.backupRecoveryRefresh')).toBeDisabled();
 
         releaseRestore();
 
         await expect(secondCenter.locator('.backupRestoreProgress')).toHaveAttribute('data-state', 'ok');
-        await expect(secondCenter.locator('.backupRestoreProgress')).toContainText('上次恢复完成：2 项；失败 0 项。');
+        await expect(secondCenter.locator('.backupRestoreProgress')).toContainText('Last restore: 2 items restored; 0 failed.');
         await expect(secondCenter.locator('.backupRecoveryRefresh')).toBeEnabled();
     });
 
@@ -326,11 +326,11 @@ test.describe('Backup & Sync Center', () => {
         await cancelRequested;
 
         await expect(cancelButton).toBeDisabled();
-        await expect(center.locator('.backupRestoreProgress')).toContainText('正在中断当前恢复并回退');
+        await expect(center.locator('.backupRestoreProgress')).toContainText('Cancelling this restore');
 
         releaseRestore();
 
-        await expect(center.locator('.backupRestoreProgress')).toContainText('恢复已中断，并已回退到开始前状态。');
+        await expect(center.locator('.backupRestoreProgress')).toContainText('Restore cancelled. The previous state has been restored.');
         await expect(cancelButton).toBeVisible();
         await expect(cancelButton).toBeDisabled();
         await expect(center.locator('.backupRecoveryRefresh')).toBeEnabled();
@@ -343,6 +343,6 @@ test.describe('Backup & Sync Center', () => {
 
         await expect(center.locator('.backupRecoveryRefresh')).toBeVisible();
         await center.locator('.backupRecoveryRefresh').click();
-        await expect(center.locator('.backupRecoveryList')).toContainText(/恢复点|暂无/);
+        await expect(center.locator('.backupRecoveryList')).toContainText(/recovery point|No archive/i);
     });
 });

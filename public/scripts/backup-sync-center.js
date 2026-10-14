@@ -1,4 +1,5 @@
-import { translateShellText as tl } from './atria-shell/localization.js';
+import { formatAtriaDate } from './atria-shell/components.js';
+import { translateShellText as tl, formatShellText as formatProductText } from './atria-shell/localization.js';
 import { displayPastChats, getRequestHeaders, importCharacterChat } from '../script.js';
 import { importGroupChat } from './group-chats.js';
 import { downloadFromServer } from './atria-download.js';
@@ -17,6 +18,7 @@ const RESTORE_STREAM_MIME = 'application/x-ndjson';
 
 let activeArchiveRestore = null;
 const archiveRestoreViews = new Set();
+let backupViewSequence = 0;
 
 function archiveRestoreRunning() {
     return activeArchiveRestore?.state === 'running' || activeArchiveRestore?.state === 'cancelling';
@@ -26,18 +28,22 @@ function activateArchivePanel(root) {
     const tab = root.querySelector('.backupSyncTab[data-tab="archive"]');
     if (!tab) return;
     root.querySelectorAll('.backupSyncTab').forEach(item => item.classList.toggle('active', item === tab));
+    root.querySelectorAll('.backupSyncTab').forEach(item => {
+        item.setAttribute('aria-selected', String(item === tab)); item.tabIndex = item === tab ? 0 : -1;
+    });
     root.querySelectorAll('.backupSyncPanel').forEach(panel => {
         panel.classList.toggle('displayNone', panel.dataset.panel !== 'archive');
+        panel.hidden = panel.dataset.panel !== 'archive';
     });
 }
 
-function setRestoreCancelState(root, { disabled = true, label = '中断并回退' } = {}) {
+function setRestoreCancelState(root, { disabled = true, label = tl('Cancel and roll back') } = {}) {
     const button = root.querySelector('.backupRestoreCancel');
     if (!button) return;
     button.classList.remove('displayNone');
     button.disabled = Boolean(disabled);
     button.setAttribute('aria-disabled', String(Boolean(disabled)));
-    button.title = disabled ? '仅在恢复进行中可用' : '中断当前恢复并回退到开始前状态';
+    button.title = disabled ? tl('Available only during a restore') : tl('Cancel this restore and return to the previous state');
     const text = button.querySelector('span');
     if (text) text.textContent = label;
     else button.innerHTML = `<i class="fa-fw fa-solid fa-rotate-left"></i><span>${label}</span>`;
@@ -51,8 +57,8 @@ function syncArchiveRestoreView(root) {
         const label = root.querySelector('.backupArchiveFileLabel');
         if (label && (session.state === 'running' || session.state === 'cancelling')) {
             label.textContent = session.state === 'cancelling'
-                ? `正在中断：${session.fileName}`
-                : `恢复中：${session.fileName}`;
+                ? formatProductText('Cancelling: ${0}', [session.fileName])
+                : formatProductText('Restoring: ${0}', [session.fileName]);
         }
     }
 
@@ -62,14 +68,14 @@ function syncArchiveRestoreView(root) {
         setRestoreStartEnabled(root, false);
         setRestoreCancelState(root, {
             disabled: session.state === 'cancelling',
-            label: session.state === 'cancelling' ? '正在中断并回退…' : '中断并回退',
+            label: session.state === 'cancelling' ? tl('Cancelling and rolling back…') : tl('Cancel and roll back'),
         });
         if (session.state === 'cancelling') {
-            renderRestoreTerminalState(root, '正在中断当前恢复并回退到开始前状态…', 'running');
+            renderRestoreTerminalState(root, tl('Cancelling this restore and returning to the previous state…'), 'running');
         } else if (session.progress) {
             renderRestoreProgress(root, session.progress);
         } else {
-            renderRestoreTerminalState(root, '恢复任务仍在后台运行…', 'running');
+            renderRestoreTerminalState(root, tl('The restore is still running in the background…'), 'running');
         }
         return;
     }
@@ -80,17 +86,17 @@ function syncArchiveRestoreView(root) {
     if (session.state === 'completed') {
         renderRestoreTerminalState(
             root,
-            `上次恢复完成：${Number(session.result?.restoredCount || 0)} 项；失败 ${Number(session.result?.failedCount || 0)} 项。`,
+            formatProductText('Last restore: ${0} items restored; ${1} failed.', [Number(session.result?.restoredCount || 0), Number(session.result?.failedCount || 0)]),
             'ok',
         );
     } else if (session.state === 'failed') {
-        renderRestoreTerminalState(root, `上次恢复失败：${session.error || '未知错误'}`, 'error');
+        renderRestoreTerminalState(root, formatProductText('Last restore failed: ${0}', [session.error || tl('Unknown error')]), 'error');
     } else if (session.state === 'cancelled') {
         renderRestoreTerminalState(
             root,
             session.result?.rolledBack
-                ? '恢复已中断，并已回退到开始前状态。'
-                : '恢复已中断；尚未写入数据，无需回退。',
+                ? tl('Restore cancelled. The previous state has been restored.')
+                : tl('Restore cancelled before any data was written.'),
             'idle',
         );
     }
@@ -129,7 +135,7 @@ function finishArchiveRestoreSession(session, state, payload = null) {
     session.state = state;
     if (state === 'completed' || state === 'cancelled') session.result = payload;
     if (state === 'failed') {
-        session.error = String(payload?.message || payload || '恢复失败');
+        session.error = String(payload?.message || payload || tl('Restore failed'));
         const stage = `restore.${String(session.progress?.phase || 'terminal')}`;
         const failure = payload instanceof Error ? payload : new Error(session.error);
         const correlation = { operationId: String(session.operationId || '') };
@@ -191,18 +197,18 @@ function renderRestoreProgress(root, event = {}) {
         : '';
 
     const phaseLabel = phase === 'stage'
-        ? '正在准备恢复文件'
+        ? tl('Preparing the restore file')
         : phase === 'analyze'
-            ? '正在检查归档'
+            ? tl('Checking the archive')
             : phase === 'snapshot'
-                ? '正在创建恢复点'
+                ? tl('Creating a recovery point')
                 : phase === 'extract'
-                    ? '正在写入恢复数据'
+                    ? tl('Writing restored data')
                     : phase === 'convert'
-                        ? '正在转换存储数据'
+                        ? tl('Converting stored data')
                         : phase === 'finalize'
-                            ? '正在校验并完成恢复'
-                            : '正在恢复';
+                            ? tl('Verifying the restored data')
+                            : tl('Restoring');
 
     const stage = event.stage ? ` · ${String(event.stage)}` : '';
     const entry = event.entry
@@ -252,7 +258,7 @@ async function readRestoreResponse(response, onProgress = () => {}) {
         try {
             payload = JSON.parse(trimmed);
         } catch {
-            throw new Error('恢复进度流包含无效数据。');
+            throw new Error(tl('The restore progress response contains invalid data.'));
         }
         if (payload?.type === 'progress') {
             onProgress(payload);
@@ -260,7 +266,7 @@ async function readRestoreResponse(response, onProgress = () => {}) {
         }
         if (payload?.type === 'error') {
             streamedError = {
-                message: String(payload.error || '恢复失败'),
+                message: String(payload.error || tl('Restore failed')),
                 code: payload.code || null,
                 rolledBack: Boolean(payload.rolledBack),
             };
@@ -294,7 +300,7 @@ async function readRestoreResponse(response, onProgress = () => {}) {
         throw error;
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    if (!result) throw new Error('恢复连接已结束，但服务器没有返回完成结果。');
+    if (!result) throw new Error(tl('The restore connection closed without a completion receipt.'));
     return result;
 }
 
@@ -335,7 +341,7 @@ async function postJson(url, body = {}) {
     });
     const data = await response.json().catch(() => null);
     if (!response.ok) {
-        throw new Error(data?.error?.message || data?.error || `HTTP ${response.status}`);
+        throw new Error(tl(data?.error?.message || data?.error || `HTTP ${response.status}`));
     }
     return data;
 }
@@ -343,15 +349,19 @@ async function postJson(url, body = {}) {
 function parseRetentionCard(root, type) {
     const card = root.querySelector(`[data-retention-type="${type}"]`);
     const readInt = (field) => {
-        const value = Number(card.querySelector(`[data-field="${field}"]`).value);
+        const input = card.querySelector(`[data-field="${field}"]`);
+        const value = Number(input.value);
         if (!Number.isSafeInteger(value) || value < -1) {
-            throw new Error(`${field} 必须是大于等于 -1 的整数。`);
+            const label = input.closest('label')?.textContent.trim() || field;
+            const message = formatProductText('${0} must be a whole number of -1 or higher.', [label]);
+            input.setCustomValidity(message); input.setAttribute('aria-invalid', 'true'); input.reportValidity(); input.focus();
+            throw new Error(message);
         }
         return value;
     };
     const sizeMiB = Number(card.querySelector('[data-field="maxTotalSizeMiB"]').value);
     if (!Number.isFinite(sizeMiB) || sizeMiB < -1) {
-        throw new Error('空间上限必须是大于等于 -1 的数字。');
+        throw new Error(tl('The storage limit must be -1 or higher.'));
     }
     return {
         enabled: card.querySelector('[data-field="enabled"]').checked,
@@ -371,7 +381,7 @@ function applyRetentionCard(root, type, policy, usage) {
     card.querySelector('[data-field="maxTotalSizeMiB"]').value = bytes < 0 ? '-1' : String(Math.round(bytes / MiB));
     const typed = usage?.[type] || {};
     card.querySelector('.backupRetentionUsage').textContent =
-        `${Number(typed.count || 0)} 个 · ${humanFileSize(Number(typed.bytes || 0))}`;
+        formatProductText('${0} items · ${1}', [Number(typed.count || 0), humanFileSize(Number(typed.bytes || 0))]);
 }
 
 async function refreshRetention(root) {
@@ -429,22 +439,22 @@ function renderPreflight(root, result) {
     const warnings = Array.isArray(report?.warnings) ? report.warnings : [];
     const plan = result?.restorePlan || {};
     const modeLabel = plan.mode === 'full'
-        ? '完整恢复'
+        ? tl('Full restore')
         : plan.mode === 'overwrite'
-            ? '替换所选类别'
-            : '合并恢复';
+            ? tl('Replace selected categories')
+            : tl('Merge restore');
     const parts = [
-        `模式：${modeLabel}`,
-        `来源引擎：${source}`,
-        `目标引擎：${dest}`,
-        `可恢复条目：${Number(report?.targetableEntries ?? result?.targetableEntries ?? 0)}`,
+        formatProductText('Mode: ${0}', [modeLabel]),
+        formatProductText('Source storage: ${0}', [source]),
+        formatProductText('Destination storage: ${0}', [dest]),
+        formatProductText('Restorable items: ${0}', [Number(report?.targetableEntries ?? result?.targetableEntries ?? 0)]),
         plan.stagedEngineRestore
-            ? (plan.crossModeRequired ? '执行 staging + 跨引擎转换' : '执行 staging + 按类别恢复')
-            : '直接文件恢复',
-        plan.recoveryPoint === 'required' ? '恢复点：必建' : '',
-        plan.verification === 'required' ? '恢复后校验：必做' : '',
+            ? (plan.crossModeRequired ? tl('Prepare data and convert between storage engines') : tl('Prepare data and restore selected categories'))
+            : tl('Restore files directly'),
+        plan.recoveryPoint === 'required' ? tl('Recovery point: required') : '',
+        plan.verification === 'required' ? tl('Verification after restore: required') : '',
         categoryStats,
-        warnings.length ? `警告：${warnings.join('；')}` : '',
+        warnings.length ? formatProductText('Warnings: ${0}', [warnings.join('; ')]) : '',
     ].filter(Boolean);
     box.dataset.state = 'ok';
     box.textContent = parts.join('\n');
@@ -453,14 +463,14 @@ function renderPreflight(root, result) {
 function renderPreflightError(root, error) {
     const box = root.querySelector('.backupPreflightReport');
     box.dataset.state = 'error';
-    box.textContent = `预检失败：${error.message}`;
+    box.textContent = formatProductText('Preflight failed: ${0}', [error.message]);
 }
 
 async function runPreflight(root, file, canManageGlobalExtensions) {
     const mode = root.querySelector('input[name="backupRestoreMode"]:checked')?.value || 'merge';
     const selection = effectiveRestoreSelection(root, canManageGlobalExtensions);
     if (!Object.values(selection).some(Boolean)) {
-        throw new Error('至少选择一个数据类别。');
+        throw new Error(tl('Select at least one data category.'));
     }
 
     const formData = new FormData();
@@ -477,7 +487,7 @@ async function runPreflight(root, file, canManageGlobalExtensions) {
         throw new Error(data?.error || `HTTP ${response.status}`);
     }
     if (data?.compatible === false) {
-        throw new Error(data?.reason || '此归档不能按当前选择恢复。');
+        throw new Error(data?.reason || tl('This archive cannot be restored with the current selection.'));
     }
     return { ...data, selection, mode };
 }
@@ -485,7 +495,7 @@ async function runPreflight(root, file, canManageGlobalExtensions) {
 async function requestScratchCreds(kind) {
     const label = kind === 'mysql' ? 'MySQL' : 'PostgreSQL';
     const value = await callGenericPopup(
-        `此归档来自 ${label}。请输入用于临时转换的 Scratch ${label} URL。`,
+        formatProductText('This archive uses ${0}. Enter the scratch ${1} URL for temporary conversion.', [label, label]),
         POPUP_TYPE.INPUT,
         '',
         { okButton: t`Use Connection`, cancelButton: t`Cancel`, rows: 1, wide: true },
@@ -497,13 +507,13 @@ async function requestScratchCreds(kind) {
 
 async function restoreArchive({ handle, file, preflight, onProgress = () => {} }) {
     const confirmText = preflight.mode === 'full'
-        ? '完整恢复会将所选范围视为归档中的账户状态，并在操作前创建恢复点。继续？'
+        ? tl('Full restore will replace the selected scope with the account state in this archive. A recovery point will be created first. Continue?')
         : preflight.mode === 'overwrite'
-            ? '替换所选类别会先创建恢复点，再以归档内容替换对应类别。继续？'
-            : '合并恢复也会创建恢复点；冲突路径将采用归档版本。继续？';
+            ? tl('A recovery point will be created before replacing the selected categories with this archive. Continue?')
+            : tl('Merge restore creates a recovery point. Conflicting paths will use the archive version. Continue?');
     const confirmed = await callGenericPopup(confirmText, POPUP_TYPE.CONFIRM, '', {
-        okButton: '开始恢复',
-        cancelButton: '取消',
+        okButton: tl('Start restore'),
+        cancelButton: tl('Cancel'),
         wide: true,
     });
     if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return null;
@@ -556,7 +566,7 @@ async function previewManagedBackup(name) {
     } else {
         textarea.value = String(payload.content || '');
     }
-    if (payload.truncated) textarea.value += '\n\n…预览已截断…';
+    if (payload.truncated) textarea.value += tl('\n\n…Preview truncated…');
     return callGenericPopup(textarea, POPUP_TYPE.TEXT, '', {
         okButton: t`Close`,
         wide: true,
@@ -582,7 +592,7 @@ async function restoreChatBackup(name) {
         headers: getRequestHeaders(),
         body: JSON.stringify({ name }),
     });
-    if (!response.ok) throw new Error('读取聊天备份失败。');
+    if (!response.ok) throw new Error(tl('Could not read the chat backup.'));
     const blob = await response.blob();
     const file = new File([blob], name, { type: 'application/octet-stream' });
     const context = Atria.getContext();
@@ -594,7 +604,7 @@ async function restoreChatBackup(name) {
     formData.set('character_name', context.name2);
     const importFn = context.groupId ? importGroupChat : importCharacterChat;
     const result = await importFn(formData, { refresh: false });
-    if (!Array.isArray(result) || result.length === 0) throw new Error('聊天备份导入失败。');
+    if (!Array.isArray(result) || result.length === 0) throw new Error(tl('Could not import the chat backup.'));
     await displayPastChats(result);
     return result;
 }
@@ -612,7 +622,7 @@ function renderManagedGroups(root, records, reload) {
         groups.set(record.entityKey, rows);
     }
     if (groups.size === 0) {
-        list.innerHTML = '<div class="menu_button_note">没有匹配的聊天备份。</div>';
+        list.innerHTML = tl('<div class="menu_button_note">No matching chat backups.</div>');
         return;
     }
 
@@ -624,7 +634,7 @@ function renderManagedGroups(root, records, reload) {
         const title = document.createElement('strong');
         title.textContent = entityKey.replace(/^chat_/, '');
         const count = document.createElement('span');
-        count.textContent = `${rows.length} 个版本`;
+        count.textContent = formatProductText('${0} versions', [rows.length]);
         header.append(title, count);
         const rowsEl = document.createElement('div');
         rowsEl.className = 'backupManagedRows';
@@ -634,8 +644,8 @@ function renderManagedGroups(root, records, reload) {
             row.className = 'backupManagedRow';
             const meta = document.createElement('div');
             meta.className = 'backupManagedRowMeta';
-            const when = new Date(Number(record.modifiedMs || 0)).toLocaleString();
-            meta.textContent = `${when} · ${humanFileSize(Number(record.size || 0))} · ${record.chat?.chat_items ?? '?'} 条消息`;
+            const when = formatAtriaDate(Number(record.modifiedMs || 0));
+            meta.textContent = formatProductText('${0} · ${1} · ${2} messages', [when, humanFileSize(Number(record.size || 0)), record.chat?.chat_items ?? '?']);
 
             const actions = document.createElement('div');
             actions.className = 'backupManagedRowActions';
@@ -658,16 +668,16 @@ function renderManagedGroups(root, records, reload) {
                 return button;
             };
             actions.append(
-                make('eye', '预览', () => previewManagedBackup(record.name)),
-                make('download', '下载', () => downloadManagedBackup(record.name)),
-                make('rotate-left', '恢复为新的聊天导入', async () => {
-                    const result = await callGenericPopup('将此备份导入到当前角色/群聊的聊天列表中？', POPUP_TYPE.CONFIRM);
+                make('eye', tl('Preview'), () => previewManagedBackup(record.name)),
+                make('download', tl('Download'), () => downloadManagedBackup(record.name)),
+                make('rotate-left', tl('Import as a new chat'), async () => {
+                    const result = await callGenericPopup(tl('Import this backup into the current character or group chat list?'), POPUP_TYPE.CONFIRM);
                     if (result !== POPUP_RESULT.AFFIRMATIVE) return;
                     await restoreChatBackup(record.name);
-                    toastr.success('聊天备份已导入。');
+                    toastr.success(tl('Chat backup imported.'));
                 }),
-                make('trash', '删除', async () => {
-                    const ok = await callGenericPopup(`删除备份 ${record.name}？`, POPUP_TYPE.CONFIRM);
+                make('trash', tl('Delete'), async () => {
+                    const ok = await callGenericPopup(formatProductText('Delete backup ${0}?', [record.name]), POPUP_TYPE.CONFIRM);
                     if (ok !== POPUP_RESULT.AFFIRMATIVE) return;
                     await postJson('/api/backups/managed/delete', { name: record.name });
                     await reload();
@@ -687,7 +697,7 @@ async function loadRestoreRecoveryPoints(root) {
     list.innerHTML = '';
     const points = Array.isArray(payload?.recoveryPoints) ? payload.recoveryPoints : [];
     if (points.length === 0) {
-        list.innerHTML = '<div class="menu_button_note">暂无归档恢复点。</div>';
+        list.innerHTML = tl('<div class="menu_button_note">No archive recovery points yet.</div>');
         return;
     }
 
@@ -698,20 +708,20 @@ async function loadRestoreRecoveryPoints(root) {
         const meta = document.createElement('div');
         meta.className = 'backupManagedRowMeta';
         const source = point.sourceRecoveryPoint
-            ? ` · 源恢复点 ${point.sourceRecoveryPoint}`
+            ? formatProductText(' · Source recovery point ${0}', [point.sourceRecoveryPoint])
             : '';
-        meta.textContent = `${new Date(point.createdAt).toLocaleString()} · ${point.restoreMode || point.purpose || 'restore'} · ${point.engineKind || 'fs'}${source}`;
+        meta.textContent = `${formatAtriaDate(point.createdAt)} · ${point.restoreMode || point.purpose || 'restore'} · ${point.engineKind || 'fs'}${source}`;
 
         const restore = document.createElement('button');
         restore.type = 'button';
         restore.className = 'menu_button menu_button_icon';
-        restore.innerHTML = '<i class="fa-fw fa-solid fa-rotate-left"></i><span>回滚到这里</span>';
+        restore.innerHTML = tl('<i class="fa-fw fa-solid fa-rotate-left" aria-hidden="true"></i><span>Restore this point</span>');
         restore.addEventListener('click', async () => {
             const confirmed = await callGenericPopup(
-                `回滚到账户恢复点 ${point.id}？应用前会先保存当前状态。`,
+                formatProductText('Restore account recovery point ${0}? The current state will be saved first.', [point.id]),
                 POPUP_TYPE.CONFIRM,
                 '',
-                { okButton: '回滚', cancelButton: '取消', wide: true },
+                { okButton: tl('Restore'), cancelButton: tl('Cancel'), wide: true },
             );
             if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
 
@@ -720,12 +730,12 @@ async function loadRestoreRecoveryPoints(root) {
                 const result = await postJson('/api/users/restore-backup/recovery/apply', { id: point.id });
                 toastr.success(
                     result?.undoRecoveryPoint
-                        ? `恢复点已应用；当前状态已保存为 ${result.undoRecoveryPoint}。`
-                        : '恢复点已应用。',
+                        ? formatProductText('Recovery point restored. The previous state was saved as ${0}.', [result.undoRecoveryPoint])
+                        : tl('Recovery point restored.'),
                 );
                 await loadRestoreRecoveryPoints(root);
             } catch (error) {
-                toastr.error(`恢复点应用失败：${error.message}`);
+                toastr.error(formatProductText('Could not restore the recovery point: ${0}', [error.message]));
             } finally {
                 if (restore.isConnected) restore.disabled = false;
             }
@@ -749,16 +759,9 @@ async function loadProviders(root) {
         title.textContent = provider.label;
         const badge = document.createElement('span');
         badge.className = 'backupProviderBadge';
-        badge.textContent = provider.available ? '可用' : '框架已就绪 · 尚未连接实现';
+        badge.textContent = provider.available ? tl('Available') : tl('Not available yet');
         header.append(title, badge);
-        const capabilities = Object.entries(provider.capabilities || {})
-            .filter(([, enabled]) => enabled)
-            .map(([name]) => name)
-            .join(' · ');
-        const cap = document.createElement('div');
-        cap.className = 'backupProviderCapabilities';
-        cap.textContent = capabilities || '—';
-        card.append(header, cap);
+        card.append(header);
         mount.appendChild(card);
     }
 }
@@ -781,6 +784,8 @@ export async function openBackupSyncCenter({
     let selectedArchive = null;
     let preflight = null;
     let preflightVersion = 0;
+    let archiveSelectionSequence = 0;
+    let retentionBusy = false;
     archiveRestoreViews.add(center);
 
     const reloadManaged = async () => {
@@ -817,46 +822,82 @@ export async function openBackupSyncCenter({
         }
     };
 
-    center.querySelectorAll('.backupSyncTab').forEach(button => {
+    const viewId = ++backupViewSequence;
+    const navigation = center.querySelector('.backupSyncTabs');
+    navigation.setAttribute('role', 'tablist'); navigation.setAttribute('aria-label', tl('Backup sections'));
+    const tabs = [...center.querySelectorAll('.backupSyncTab')];
+    for (const button of tabs) {
+        const panel = center.querySelector(`[data-panel="${button.dataset.tab}"]`);
+        button.id = `atria-backup-${viewId}-tab-${button.dataset.tab}`;
+        panel.id = `atria-backup-${viewId}-panel-${button.dataset.tab}`;
+        button.setAttribute('role', 'tab'); button.setAttribute('aria-controls', panel.id);
+        button.setAttribute('aria-selected', String(button.classList.contains('active'))); button.tabIndex = button.classList.contains('active') ? 0 : -1;
+        panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', button.id); panel.tabIndex = 0;
+        panel.hidden = !button.classList.contains('active');
+        button.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault(); const index = tabs.indexOf(button);
+            const target = tabs[event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowLeft' ? -1 : 1) + tabs.length) % tabs.length];
+            tabs.forEach(item => { item.tabIndex = item === target ? 0 : -1; }); target.focus();
+        });
         button.addEventListener('click', () => {
-            center.querySelectorAll('.backupSyncTab').forEach(item => item.classList.toggle('active', item === button));
+            tabs.forEach(item => { item.classList.toggle('active', item === button); item.setAttribute('aria-selected', String(item === button)); item.tabIndex = item === button ? 0 : -1; });
             center.querySelectorAll('.backupSyncPanel').forEach(panel => {
                 panel.classList.toggle('displayNone', panel.dataset.panel !== button.dataset.tab);
+                panel.hidden = panel.dataset.panel !== button.dataset.tab;
             });
         });
-    });
+    }
+
+    const retentionFeedback = document.createElement('p'); retentionFeedback.className = 'atri-library-feedback'; retentionFeedback.setAttribute('role', 'status');
+    center.querySelector('.backupRetentionSave').parentElement.after(retentionFeedback);
+    async function changeRetention(button, request, message, accept = () => {}) {
+        if (retentionBusy) return;
+        retentionBusy = true;
+        const controls = [...center.querySelectorAll('.backupRetentionGrid input, .backupRetentionSave, .backupRetentionCleanup, .backupRetentionReset, .backupManagedRefresh')].map(node => [node, node.disabled]);
+        retentionFeedback.textContent = tl('Saving…'); retentionFeedback.setAttribute('role', 'status');
+        let committed = false;
+        try {
+            const pending = request();
+            controls.forEach(([node]) => { node.disabled = true; }); button.setAttribute('aria-busy', 'true');
+            const payload = await pending; committed = true; accept(payload);
+            retentionFeedback.textContent = tl(message);
+            await refreshRetention(center); await reloadManaged();
+        } catch (error) {
+            retentionFeedback.textContent = committed ? tl('Saved, but the backup list could not refresh. Refresh the list to read the saved result.') : error.message;
+            retentionFeedback.setAttribute('role', committed ? 'status' : 'alert');
+        } finally {
+            retentionBusy = false; controls.forEach(([node, disabled]) => { node.disabled = disabled; }); button.removeAttribute('aria-busy');
+        }
+    }
+    center.querySelectorAll('.backupRetentionGrid input').forEach(input => input.addEventListener('input', () => {
+        input.setCustomValidity(''); input.removeAttribute('aria-invalid');
+    }));
 
     center.querySelector('.backupRetentionSave').addEventListener('click', async () => {
-        try {
-            const payload = await postJson('/api/backups/retention/settings', {
-                chat: parseRetentionCard(center, 'chat'),
-                settings: parseRetentionCard(center, 'settings'),
-            });
+        await changeRetention(center.querySelector('.backupRetentionSave'), () => postJson('/api/backups/retention/settings', {
+            chat: parseRetentionCard(center, 'chat'),
+            settings: parseRetentionCard(center, 'settings'),
+        }), 'Chat and settings backup retention saved.', payload => {
             applyRetentionCard(center, 'chat', payload.policy?.chat, payload.usage);
             applyRetentionCard(center, 'settings', payload.policy?.settings, payload.usage);
-            await reloadManaged();
-            toastr.success('聊天与设置备份保留策略已分别保存。');
-        } catch (error) {
-            toastr.error(error.message);
-        }
+        });
     });
     center.querySelector('.backupRetentionCleanup').addEventListener('click', async () => {
-        try {
-            await postJson('/api/backups/retention/cleanup');
-            await refreshRetention(center);
-            await reloadManaged();
-            toastr.success('备份清理完成。');
-        } catch (error) { toastr.error(error.message); }
+        await changeRetention(center.querySelector('.backupRetentionCleanup'), () => postJson('/api/backups/retention/cleanup'), 'Backup cleanup complete.');
     });
     center.querySelector('.backupRetentionReset').addEventListener('click', async () => {
-        try {
-            await postJson('/api/backups/retention/reset');
-            await refreshRetention(center);
-            await reloadManaged();
-            toastr.success('备份保留策略已恢复服务器默认值。');
-        } catch (error) { toastr.error(error.message); }
+        await changeRetention(center.querySelector('.backupRetentionReset'), () => postJson('/api/backups/retention/reset'), 'Backup retention restored to the server defaults.');
     });
-    center.querySelector('.backupManagedRefresh').addEventListener('click', () => void reloadManaged());
+    center.querySelector('.backupManagedRefresh').addEventListener('click', async () => {
+        const button = center.querySelector('.backupManagedRefresh');
+        if (button.disabled || retentionBusy) return;
+        button.disabled = true; button.setAttribute('aria-busy', 'true');
+        try {
+            await refreshRetention(center); await reloadManaged();
+            retentionFeedback.textContent = tl('Backup list refreshed.'); retentionFeedback.setAttribute('role', 'status');
+        } catch (error) { retentionFeedback.textContent = error.message; retentionFeedback.setAttribute('role', 'alert'); } finally { button.disabled = false; button.removeAttribute('aria-busy'); }
+    });
     center.querySelector('.backupManagedSearch').addEventListener('input', () => renderManagedGroups(center, managedRecords, reloadManaged));
     center.querySelector('.backupOpenSettingsSnapshots').addEventListener('click', () => openSettingsSnapshots?.());
 
@@ -879,7 +920,7 @@ export async function openBackupSyncCenter({
     center.querySelector('.backupArchiveDownload').addEventListener('click', async () => {
         const selection = collectSelection(center, canManageGlobalExtensions);
         if (!Object.values(selection).some(Boolean)) {
-            toastr.warning('至少选择一个数据类别。');
+            toastr.warning(tl('Select at least one data category.'));
             return;
         }
         try {
@@ -899,13 +940,19 @@ export async function openBackupSyncCenter({
     const archiveInput = center.querySelector('.backupArchiveInput');
     center.querySelector('.backupArchiveChoose').addEventListener('click', () => archiveInput.click());
     archiveInput.addEventListener('change', async () => {
+        if (archiveRestoreRunning()) return;
         const file = archiveInput.files?.[0] || null;
-        selectedArchive = file
-            ? await PROVIDERS.get('local-file').openArtifact(file)
-            : null;
-        if (!archiveRestoreRunning()) activeArchiveRestore = null;
-        center.querySelector('.backupArchiveFileLabel').textContent = selectedArchive?.name || '未选择文件';
-        await rerunPreflight();
+        const token = ++archiveSelectionSequence;
+        selectedArchive = null; preflight = null; preflightVersion++; setRestoreStartEnabled(center, false);
+        activeArchiveRestore = null;
+        center.querySelector('.backupArchiveFileLabel').textContent = file?.name || tl('No file selected');
+        try {
+            const archive = file ? await PROVIDERS.get('local-file').openArtifact(file) : null;
+            if (token !== archiveSelectionSequence || !center.isConnected || archiveRestoreRunning()) return;
+            selectedArchive = archive; await rerunPreflight();
+        } catch (error) {
+            if (token === archiveSelectionSequence && center.isConnected && !archiveRestoreRunning()) renderPreflightError(center, error);
+        }
     });
 
     center.querySelector('.backupRestoreCancel').addEventListener('click', async () => {
@@ -913,12 +960,12 @@ export async function openBackupSyncCenter({
         if (!session || session.state !== 'running') return;
 
         const confirmed = await callGenericPopup(
-            '中断当前恢复并回退到开始恢复前的状态？',
+            tl('Cancel this restore and return to the previous state?'),
             POPUP_TYPE.CONFIRM,
             '',
             {
-                okButton: '中断并回退',
-                cancelButton: '继续恢复',
+                okButton: tl('Cancel and roll back'),
+                cancelButton: tl('Continue restore'),
                 wide: true,
             },
         );
@@ -931,14 +978,14 @@ export async function openBackupSyncCenter({
         try {
             const result = await postJson('/api/users/restore-backup/cancel', { handle });
             if (!result?.cancelRequested) {
-                throw new Error('服务器没有接受中断请求。');
+                throw new Error(tl('The server did not accept the cancellation request.'));
             }
         } catch (error) {
             if (activeArchiveRestore === session && session.state === 'cancelling') {
                 session.state = 'running';
                 broadcastArchiveRestoreState();
             }
-            toastr.error(`中断恢复失败：${error.message}`);
+            toastr.error(formatProductText('Could not cancel the restore: ${0}', [error.message]));
         }
     });
     center.querySelector('.backupRestoreStart').addEventListener('click', async () => {
@@ -952,7 +999,7 @@ export async function openBackupSyncCenter({
         });
         setRestoreStartEnabled(center, false);
         setRestoreControlsBusy(center, true);
-        renderRestoreTerminalState(center, '正在准备安全恢复…', 'running');
+        renderRestoreTerminalState(center, tl('Preparing the restore…'), 'running');
 
         try {
             const result = await restoreArchive({
@@ -966,7 +1013,7 @@ export async function openBackupSyncCenter({
                 return;
             }
             finishArchiveRestoreSession(session, 'completed', result);
-            toastr.success(`恢复完成：${Number(result.restoredCount || 0)} 项；失败 ${Number(result.failedCount || 0)} 项。`);
+            toastr.success(formatProductText('Restore complete: ${0} items restored; ${1} failed.', [Number(result.restoredCount || 0), Number(result.failedCount || 0)]));
             await onRestored?.(result);
             if (center.isConnected) {
                 await refreshRetention(center);
@@ -979,13 +1026,13 @@ export async function openBackupSyncCenter({
                 });
                 toastr.success(
                     error.rolledBack
-                        ? '恢复已中断，并已回退到开始前状态。'
-                        : '恢复已中断；尚未写入数据，无需回退。',
+                        ? tl('Restore cancelled. The previous state has been restored.')
+                        : tl('Restore cancelled before any data was written.'),
                 );
                 return;
             }
             finishArchiveRestoreSession(session, 'failed', error);
-            toastr.error(`恢复失败：${error.message}`);
+            toastr.error(formatProductText('Restore failed: ${0}', [error.message]));
         } finally {
             if (center.isConnected) {
                 setRestoreControlsBusy(center, false);
@@ -995,14 +1042,14 @@ export async function openBackupSyncCenter({
     });
 
     center.querySelector('.backupRecoveryRefresh').addEventListener('click', () => {
-        void loadRestoreRecoveryPoints(center).catch(error => toastr.error(`读取恢复点失败：${error.message}`));
+        void loadRestoreRecoveryPoints(center).catch(error => toastr.error(formatProductText('Could not load recovery points: ${0}', [error.message])));
     });
     center.querySelector('.backupOpenLanSync').addEventListener('click', () => void PROVIDERS.get('lan-sync').open());
     await Promise.all([
-        refreshRetention(center).catch(error => toastr.error(`读取备份策略失败：${error.message}`)),
-        reloadManaged().catch(error => toastr.error(`读取聊天备份失败：${error.message}`)),
-        loadProviders(center).catch(error => toastr.error(`读取 Provider 失败：${error.message}`)),
-        loadRestoreRecoveryPoints(center).catch(error => toastr.error(`读取恢复点失败：${error.message}`)),
+        refreshRetention(center).catch(error => toastr.error(formatProductText('Could not load backup retention: ${0}', [error.message]))),
+        reloadManaged().catch(error => toastr.error(formatProductText('Could not load chat backups: ${0}', [error.message]))),
+        loadProviders(center).catch(error => toastr.error(formatProductText('Could not load sync services: ${0}', [error.message]))),
+        loadRestoreRecoveryPoints(center).catch(error => toastr.error(formatProductText('Could not load recovery points: ${0}', [error.message]))),
     ]);
     syncArchiveRestoreView(center);
 

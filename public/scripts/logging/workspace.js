@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { getRequestHeaders } from '../../script.js';
 import { isFrontendConsoleDebugLoggingEnabled } from './console-adapter.js';
 import { installFrontendLogging } from './bootstrap.js';
@@ -213,7 +214,7 @@ function renderIncidentList(root, incidents, selectedId, onSelect) {
             <i class="fa-solid ${severityIcon(incident.severity)}"></i>
             <span class="atriaLogsIncidentMain">
                 <strong>${htmlEscape(incident.summary || incident.type)}</strong>
-                <span>${htmlEscape(incident.primaryModule)} · ${htmlEscape(incident.stage)} · ${new Date(incident.createdAt).toLocaleString()}</span>
+                <span>${htmlEscape(incident.primaryModule)} · ${htmlEscape(incident.stage)} · ${formatAtriaDate(incident.createdAt)}</span>
             </span>
             <span class="atriaLogsOwnerBadge">${htmlEscape(ownershipLabel(incident.ownership))}</span>
         </button>

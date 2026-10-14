@@ -314,6 +314,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
             } catch (e) { if (root.isConnected) error(doc, status, e); } finally { submitting = false; root.inert = false; save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
+        if (librarySurface) save.classList.add('atri-library-button', 'atri-library-button--primary');
         save.disabled = submitted;
         title.focus();
     }

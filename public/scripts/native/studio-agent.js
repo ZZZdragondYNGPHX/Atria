@@ -12,7 +12,7 @@ import { projectAgentConversation, completeProjectAgentConversation, projectAgen
 const MAX_MODEL_ROUNDS = 12;
 const STOP_STATES = new Set(['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled']);
 const statusLabels = {
-    planning: 'Planning', planned: 'Plan ready', working: 'Working…', evaluating: 'Checking proposal…',
+    planning: 'Plan needed', planned: 'Plan ready', working: 'In progress', evaluating: 'Proposal check pending',
     repair: 'Needs correction', review: 'Ready for review', committing: 'Saving changes…',
     taken_over: 'Manual editing', conflict: 'Version conflict', blocked: 'Needs attention',
     completed: 'Completed', cancelled: 'Cancelled', pending: 'Pending', ready: 'Ready', passed: 'Passed', failed: 'Failed',
@@ -347,9 +347,10 @@ function actionButton(documentRef, label, handler, { primary = false, disabled =
     return button;
 }
 
-function formatTaskStatus(task) {
+function formatTaskStatus(task, running = false) {
     if (!task) return t('No active task');
-    const status = taskStatusText(task.status);
+    const status = running && task.status === 'planning' ? t('Planning')
+        : running && ['working', 'evaluating'].includes(task.status) ? t('Working…') : taskStatusText(task.status);
     return task.repairRound > 0 ? formatProductText('${0} · repair ${1}/${2}', [status, task.repairRound, task.maxRepairRounds]) : status;
 }
 
@@ -445,7 +446,7 @@ export function mountNativeStudioAgent({
         h3.textContent = t('Project Agent');
         const status = node(documentRef, 'span');
         status.setAttribute('role', 'status');
-        status.textContent = formatTaskStatus(activeTask);
+        status.textContent = formatTaskStatus(activeTask, running);
         title.append(h3, status);
         header.append(title);
 

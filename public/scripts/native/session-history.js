@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { el, action, disclosure, feedback, field, libraryError } from './library-ui.js';
 import { translateShellText as tl, formatShellText as fmt } from '../atria-shell/localization.js';
 import { buildBranchGraphModel, branchTimeline, createReplyVariantFacade } from './reply-variants.js';
@@ -144,7 +145,7 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
                 const row = el(doc, 'article', 'atri-library-version', undefined, list); row.dataset.atriaHistoryRevision = revision.revisionId;
                 el(doc, 'h5', '', revisionName(revision.revisionId), row); markers(row, revision);
                 el(doc, 'p', '', branchName(revision.branchId), row);
-                if (Number.isFinite(revision.createdAt)) el(doc, 'p', 'atri-library-meta', new Date(revision.createdAt).toLocaleString(), row);
+                if (Number.isFinite(revision.createdAt)) el(doc, 'p', 'atri-library-meta', formatAtriaDate(revision.createdAt), row);
                 el(doc, 'p', 'atri-library-meta', fmt('Previous revision: ${0}', [revisionName(revision.lineageParentId)]), row);
                 if (revision.edge === 'fork') marker(row, 'Branch fork');
                 if (revision.edge === 'switch') marker(row, 'Branch switch');

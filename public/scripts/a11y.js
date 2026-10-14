@@ -60,7 +60,7 @@ const tabItemSelectors = [
 /** @type {Record<string, (element: Element) => void>} */
 const a11yRules = {
     [buttonSelectors]: (element) => {
-        element.setAttribute('role', 'button');
+        if (!element.hasAttribute('role')) element.setAttribute('role', 'button');
     },
     [listSelectors]: (element) => {
         element.setAttribute('role', 'list');

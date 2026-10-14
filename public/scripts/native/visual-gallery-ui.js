@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { translateShellText, formatShellText } from '../atria-shell/localization.js';
 import { illustrationNode as node, illustrationButton as button, illustrationSelect as select, illustrationField as field } from './illustration-ui.js';
 import { mountMediaStudio } from './media-studio-ui.js';
@@ -15,7 +16,7 @@ export async function mountVisualGallery({ document: doc, parent, sdk, report, o
         for (const item of page.items) {
             const card = node(doc, list, 'article'), image = node(doc, card, 'img'); image.alt = item.alt; image.loading = 'lazy'; image.decoding = 'async'; image.width = 320; image.height = Math.max(1, Math.round(320 * item.height / item.width));
             image.src = '/api/native/generation/visual/gallery/thumbnail?' + new URLSearchParams({ sessionId: sdk.context.sessionId, branchId: sdk.context.branchId, imageVersionId: item.imageVersionId });
-            node(doc, card, 'p', item.operation + (item.selected ? translateShellText(' · displayed') : '') + ' · ' + new Date(item.createdAt).toLocaleString());
+            node(doc, card, 'p', item.operation + (item.selected ? translateShellText(' · displayed') : '') + ' · ' + formatAtriaDate(item.createdAt));
             button(doc, card, translateShellText('Use this version'), async () => { try { await sdk.illustrations.visual('gallery', 'select', { imageVersionId: item.imageVersionId, expectedHead: page.head }); await render(); } catch (error) { report(error); } });
             button(doc, card, translateShellText('Open Media Studio'), async () => {
                 try { if (editor && editor.root.dataset.atriaDraftDirty === 'true') { await editor.save(); if (editor.root.dataset.atriaDraftDirty === 'true') return; } editor?.dispose(); editor = await mountMediaStudio({ document: doc, parent: root, sdk, imageVersionId: item.imageVersionId, report, onJob }); } catch (error) { report(error); }

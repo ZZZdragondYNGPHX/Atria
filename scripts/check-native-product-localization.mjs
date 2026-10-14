@@ -12,7 +12,7 @@ const linter = new eslint.Linter();
 const literal = node => node?.type === 'Literal' && typeof node.value === 'string' ? node.value : null;
 const leaves = node => node?.type === 'ConditionalExpression' ? [...leaves(node.consequent), ...leaves(node.alternate)] : [node];
 const visible = value => /[A-Za-z\u4e00-\u9fff]/.test(value || '') && !technical.has(value);
-const placeholders = value => [...String(value).matchAll(/\$\{(\d+)\}/g)].map(match => match[1]).sort().join(',');
+const placeholders = value => [...String(value).matchAll(/\$\{\d+\}|%(?:\d+\$)?[sd]/g)].map(match => match[0]).sort().join(',');
 
 export function auditProductSource(source, filename, catalogs = locales) {
     const findings = [];
@@ -48,7 +48,7 @@ export function auditProductSource(source, filename, catalogs = locales) {
             },
             CallExpression(node) {
                 const name = node.callee.name;
-                let index = ['tl', 't', 'translateShellText', 'fmt', 'formatShellText', 'formatProductText', 'i18n', 'i18nFormat'].includes(name) ? 0 : null;
+                let index = ['tl', 't', 'translate', 'translateShellText', 'fmt', 'formatShellText', 'formatProductText', 'i18n', 'i18nFormat'].includes(name) ? 0 : null;
                 if (filename.endsWith('/login.js') && name === 'displayError') index = 0;
                 if (filename.endsWith('/login.js') && name === 'setEntryText') index = 1;
                 if (name === 'node' && filename.endsWith('runtime-workspace.js') || name === 'node' && filename.endsWith('retrieval-workspace.js')) index = 1;
@@ -62,7 +62,8 @@ export function auditProductSource(source, filename, catalogs = locales) {
                 if (['textInput', 'selectInput'].includes(name) && filename.endsWith('studio-workspace.js')) index = 3;
                 if (filename.includes('/orchestrator/workspace/') && !filename.endsWith('/shell.js') && ['el', 'button'].includes(name)) index = 1;
                 if (index !== null) {
-                    const explicitKey = ['fmt', 'formatShellText', 'formatProductText'].includes(name) ? literal(node.arguments[3]) : null;
+                    const explicitKey = name === 'translate' ? literal(node.arguments[1]) || literal(node.arguments[0])
+                        : ['fmt', 'formatShellText', 'formatProductText'].includes(name) ? literal(node.arguments[3]) : null;
                     for (const leaf of leaves(node.arguments[index])) {
                         const text = literal(leaf);
                         if (text !== null) missing(leaf, text, filename.includes('/native/') || filename.includes('/atria-shell/') ? explicitKey : text);
@@ -129,7 +130,7 @@ function sourceFiles(directory) {
 
 export function auditProductLocalization() {
     const findings = [];
-    for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js']) {
+    for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js', 'public/scripts/user.js', 'public/scripts/popup.js', 'public/scripts/backup-sync-center.js', 'public/scripts/storage-management.js', 'public/scripts/storage-inspector.js', 'public/scripts/browser-storage-inspector.js', 'public/scripts/lan-sync.js', 'public/scripts/logging/workspace.js']) {
         for (const issue of auditProductSource(fs.readFileSync(path.join(root, filename), 'utf8'), filename)) findings.push({ filename, ...issue });
     }
     const entryHtml = fs.readFileSync(path.join(root, 'public/login.html'), 'utf8');
@@ -157,9 +158,18 @@ export function auditProductLocalization() {
     for (const name of fs.readdirSync(path.join(root, regexDirectory)).filter(file => file.endsWith('.html'))) {
         const filename = regexDirectory + '/' + name;
         const source = fs.readFileSync(path.join(root, filename), 'utf8');
-        for (const match of source.matchAll(/data-i18n="([^"]+)"/g)) for (const raw of match[1].split(';')) {
+        for (const match of source.matchAll(/data-i18n="([^"]+)"/g)) for (const raw of match[1].replaceAll('&amp;', '&').replaceAll('&quot;', '"').split(';')) {
             const key = raw.replace(/^\[[^\]]+\]/, '');
             for (let index = 0; index < catalogs.length; index++) if (!catalogs[index][key]) findings.push({ filename, key, locale: index, reason: 'missing template translation' });
+        }
+    }
+    for (const name of ['backupSyncCenter.html', 'storageManagement.html', 'storageInspector.html', 'userProfile.html', 'snapshotsView.html', 'changePassword.html', 'changeName.html', 'userLanSync.html']) {
+        const filename = 'public/scripts/templates/' + name;
+        const source = fs.readFileSync(path.join(root, filename), 'utf8');
+        for (const match of source.matchAll(/data-i18n="([^"]+)"/g)) for (const raw of match[1].replaceAll('&amp;', '&').replaceAll('&quot;', '"').split(';')) {
+            const text = raw.replace(/^\[[^\]]+\]/, '');
+            const key = text;
+            for (let index = 0; index < locales.length; index++) if (!locales[index][key]) findings.push({ filename, key, locale: index, reason: 'missing template translation' });
         }
     }
     for (const [text, key] of Object.entries(SHELL_TEXT_KEYS)) {

@@ -4,6 +4,8 @@ import { renderTemplateAsync } from './templates.js';
 import { humanFileSize } from './utils.js';
 import { t, translate } from './i18n.js';
 
+const entryLabel = entry => ['category', 'character-sprites', 'quota-leaf'].includes(entry.kind) ? translate(entry.label) : String(entry.label);
+
 /**
  * 10 类 category 图标映射(fa-solid <X>)· CSS var 映射(--storage-cat-<X>).
  * 与 src/storage/inspector.js 的 CATEGORIES 保持一致.
@@ -276,7 +278,7 @@ class StorageInspector {
             swatch.className = 'storageInspectorLegendSwatch';
             swatch.style.background = this._colorFor(e);
             const label = document.createElement('span');
-            label.textContent = `${translate(e.label)} · ${humanFileSize(e.sizeBytes)}`;
+            label.textContent = `${entryLabel(e)} · ${humanFileSize(e.sizeBytes)}`;
             item.append(swatch, label);
             legend.appendChild(item);
         }
@@ -289,7 +291,7 @@ class StorageInspector {
         crumbs.forEach((c, i) => {
             const isLast = i === crumbs.length - 1;
             const el = document.createElement(isLast ? 'span' : 'a');
-            el.textContent = translate(c.label);
+            el.textContent = c.path.length <= 1 ? translate(c.label) : c.label;
             el.className = isLast
                 ? 'storageInspectorBreadcrumbCurrent'
                 : 'storageInspectorBreadcrumbCrumb';
@@ -340,14 +342,16 @@ class StorageInspector {
         icon.className = 'storageInspectorEntryIcon';
         const iconName = /^[a-z0-9-]+$/.test(entry.icon ?? '') ? entry.icon : 'file';
         const iconEl = document.createElement('i');
+        iconEl.setAttribute('aria-hidden', 'true');
         iconEl.classList.add('fa-fw', 'fa-solid', `fa-${iconName}`);
         icon.replaceChildren(iconEl);
         icon.style.color = this._colorFor(entry);
 
-        const label = document.createElement('span');
+        const label = document.createElement(canDrill ? 'button' : 'span');
+        if (canDrill) label.type = 'button';
         label.className = 'storageInspectorEntryLabel';
-        label.textContent = translate(entry.label) + (entry.labelSuffix ?? '');
-        if (entry.note) label.title = translate(entry.note);
+        label.textContent = entryLabel(entry) + (entry.labelSuffix ?? '');
+        if (entry.note) label.title = ['category', 'sensitive-blob', 'quota-leaf'].includes(entry.kind) ? translate(entry.note) : entry.note;
 
         const dots = document.createElement('span');
         dots.className = 'storageInspectorEntryDots';
@@ -376,7 +380,9 @@ class StorageInspector {
             button.className = `storageInspectorEntryActionButton menu_button menu_button_icon${warning ? ' warning' : ''}`;
             if (extraClass) button.classList.add(extraClass);
             button.title = title;
+            button.setAttribute('aria-label', title);
             const actionIcon = document.createElement('i');
+            actionIcon.setAttribute('aria-hidden', 'true');
             actionIcon.classList.add('fa-fw', 'fa-solid', `fa-${iconNameValue}`);
             button.appendChild(actionIcon);
             button.addEventListener('click', async (event) => {
@@ -451,6 +457,7 @@ class StorageInspector {
         const payload = await this.provider.readAtPath([...this.pathStack, entry.key], entry);
         const textarea = document.createElement('textarea');
         textarea.className = 'text_pole monospace';
+        textarea.setAttribute('aria-label', t`Stored value`);
         textarea.rows = 22;
         textarea.readOnly = true;
         textarea.value = payload?.content != null
@@ -535,7 +542,7 @@ class StorageInspector {
      * Confirm a destructive resource removal and refresh the current view.
      */
     async _confirmAndDelete(entry) {
-        const label = translate(entry.label) + (entry.labelSuffix ?? '');
+        const label = entryLabel(entry) + (entry.labelSuffix ?? '');
         const body = translate('Delete %s? A recovery point will be created when the provider supports it.').replace('%s', label);
         const confirmed = await callGenericPopup(body, POPUP_TYPE.CONFIRM, '', {
             okButton: t`Delete`,

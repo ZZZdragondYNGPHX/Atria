@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { nativeProductClient as client } from './product-client.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
@@ -43,7 +44,7 @@ export function mountKnowledgeBindingManager({ document: doc, root, detail, host
                 draft.source.knowledgeBaseId = value; draft.source.knowledgeRevisionId = ''; baseSelect.disabled = true;
                 try { selectedBase = await client.getKnowledge(value); render(); } catch (error) { selectedBase = { revisions: [] }; render(); feedback(doc, status, error.message, true); }
             }, 'text', bases.map(item => [item.knowledgeBase.knowledgeBaseId, item.knowledgeBase.displayName, true]));
-            input(form, 'Exact Knowledge revision', draft.source.knowledgeRevisionId, value => { draft.source.knowledgeRevisionId = value; }, 'text', [['', 'Choose a revision'], ...selectedBase.revisions.map(revision => [revision.knowledgeRevisionId, new Date(revision.createdAt).toLocaleString() + ' · ' + revision.knowledgeRevisionId])]);
+            input(form, 'Exact Knowledge revision', draft.source.knowledgeRevisionId, value => { draft.source.knowledgeRevisionId = value; }, 'text', [['', 'Choose a revision'], ...selectedBase.revisions.map(revision => [revision.knowledgeRevisionId, formatAtriaDate(revision.createdAt) + ' · ' + revision.knowledgeRevisionId])]);
             checkbox(form, 'Enabled', draft.enabled, value => { draft.enabled = value; });
             input(form, 'Binding mode', draft.mode, value => { draft.mode = value; }, 'text', ['augment', 'override']);
             input(form, 'Priority', draft.priority ?? 0, value => { draft.priority = value === '' ? NaN : Number(value); }, 'number').step = 'any';

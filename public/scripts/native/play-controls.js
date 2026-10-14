@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { ensureTaskBindings, isTaskBindingFailure } from './task-binding-ui.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { mountSessionHistory } from './session-history.js';
@@ -259,7 +260,7 @@ export function mountNativePlayControls({
                 row.className = 'atria-native-play-drawer__row';
                 row.dataset.atriaSaveId = save.saveId;
                 const label = documentRef.createElement('span');
-                label.textContent = `${save.displayName || save.kind} · ${new Date(save.createdAt).toLocaleString()}`;
+                label.textContent = `${save.displayName || save.kind} · ${formatAtriaDate(save.createdAt)}`;
                 const saveActions = documentRef.createElement('div');
                 saveActions.className = 'atria-native-play-timeline-row__actions';
                 const load = writeButton('Load', () => mutate('Loading save', async () => {
@@ -416,7 +417,7 @@ export function mountNativePlayControls({
                 label.textContent = session.displayTitle || works.find(work => work.package.packageId === session.packageId)?.package.displayName || tl('Untitled session');
                 const meta = documentRef.createElement('p');
                 const ready = !session.dependency || session.dependency.status === 'ready';
-                meta.textContent = ready ? (session.updatedAt ? new Date(session.updatedAt).toLocaleString() : tl('Ready when you are')) : tl('The matching work needs to be installed.');
+                meta.textContent = ready ? (session.updatedAt ? formatAtriaDate(session.updatedAt) : tl('Ready when you are')) : tl('The matching work needs to be installed.');
                 const open = actionButton(documentRef, 'Continue', () => run('Opening session', async () => {
                     await globalThis.Atria.openNativeSession(session.sessionId);
                     returnToReading();

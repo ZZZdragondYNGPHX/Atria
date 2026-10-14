@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { ensureTaskBindings } from './task-binding-ui.js';
 import { mountResourceSetup } from './resource-setup.js';
 import { sessionTitleField, mountSessionRename } from './session-naming.js';
@@ -16,7 +17,7 @@ import { arrayBufferToBase64, nativeProductClient as client } from './product-cl
 import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, referenceRemediation, worldParameterSummary } from './library-ui.js';
 
 const actions = (doc, parent) => el(doc, 'div', 'atri-library-actions', undefined, parent);
-const time = value => value ? new Date(value).toLocaleString() : '—';
+const time = value => value ? formatAtriaDate(value) : '—';
 function state(doc, root, kind, title, message) {
     const node = createAtriaStatePanel(doc, kind, { title: tl(title), message: tl(message) });
     root.append(node); return node;

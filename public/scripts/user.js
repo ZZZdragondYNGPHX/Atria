@@ -1,3 +1,5 @@
+import { formatAtriaDate } from './atria-shell/components.js';
+import { translateShellText as tl } from './atria-shell/localization.js';
 import { getRequestHeaders } from '../script.js';
 import { installFrontendLogging } from './logging/bootstrap.js';
 import { t } from './i18n.js';
@@ -95,7 +97,7 @@ async function getCurrentUser({ throwOnError = false } = {}) {
             headers: getRequestHeaders(),
         });
         if (!response.ok) {
-            throw new Error('Failed to get current user');
+            throw new Error(tl('Failed to get current user'));
         }
         currentUser = await response.json();
         $('#server_logs_button').show();
@@ -139,14 +141,14 @@ async function changePassword(handle, callback) {
         template.find('input[name="confirm"]').on('input', function () {
             confirmPassword = String($(this).val());
         });
-        const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', { okButton: 'Change', cancelButton: 'Cancel', wide: false, large: false });
+        const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', { okButton: tl('Change'), cancelButton: tl('Cancel'), wide: false, large: false });
         if (result === POPUP_RESULT.CANCELLED || result === POPUP_RESULT.NEGATIVE) {
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            toastr.error('Passwords do not match', 'Failed to change password');
-            throw new Error('Passwords do not match');
+            toastr.error(tl('Passwords do not match'), tl('Failed to change password'));
+            throw new Error(tl('Passwords do not match'));
         }
 
         const response = await fetch('/api/users/change-password', {
@@ -157,12 +159,12 @@ async function changePassword(handle, callback) {
 
         if (!response.ok) {
             const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to change password');
-            throw new Error('Failed to change password');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to change password'));
+            throw new Error(tl('Failed to change password'));
         }
 
-        toastr.success('Password changed successfully', 'Password Changed');
-        callback();
+        toastr.success(tl('Password changed successfully'), tl('Password Changed'));
+        await callback();
     } catch (error) {
         console.error('Error changing password:', error);
     }
@@ -181,7 +183,7 @@ async function resetSettings(handle, callback) {
         template.find('input[name="password"]').on('input', function () {
             password = String($(this).val());
         });
-        const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', { okButton: 'Reset', cancelButton: 'Cancel', wide: false, large: false });
+        const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', { okButton: tl('Reset'), cancelButton: tl('Cancel'), wide: false, large: false });
 
         if (result !== POPUP_RESULT.AFFIRMATIVE) {
             return;
@@ -195,12 +197,12 @@ async function resetSettings(handle, callback) {
 
         if (!response.ok) {
             const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to reset settings');
-            throw new Error('Failed to reset settings');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to reset settings'));
+            throw new Error(tl('Failed to reset settings'));
         }
 
-        toastr.success('Settings reset successfully', 'Settings Reset');
-        callback();
+        toastr.success(tl('Settings reset successfully'), tl('Settings Reset'));
+        await callback();
     } catch (error) {
         console.error('Error resetting settings:', error);
     }
@@ -209,7 +211,7 @@ async function resetSettings(handle, callback) {
 /** Persist a display name through the account authority, including single-user mode. */
 export async function saveAccountName(name, handle = getCurrentUserHandle()) {
     const normalized = String(name).replace(/\s+/g, ' ').trim();
-    if (!normalized) throw new Error(t`Enter a persona name to get started.`);
+    if (!normalized) throw new Error(t`Enter a display name.`);
     const response = await fetch('/api/users/change-name', {
         method: 'POST',
         headers: getRequestHeaders(),
@@ -228,7 +230,7 @@ export async function saveAccountName(name, handle = getCurrentUserHandle()) {
 async function changeName(handle, name, callback) {
     try {
         const template = $(await renderTemplateAsync('changeName'));
-        const result = await callGenericPopup(template, POPUP_TYPE.INPUT, name, { okButton: 'Change', cancelButton: 'Cancel', wide: false, large: false });
+        const result = await callGenericPopup(template, POPUP_TYPE.INPUT, name, { okButton: tl('Change'), cancelButton: tl('Cancel'), wide: false, large: false });
 
         if (!result) {
             return;
@@ -238,8 +240,8 @@ async function changeName(handle, name, callback) {
 
         await saveAccountName(name, handle);
 
-        toastr.success('Name changed successfully', 'Name Changed');
-        callback();
+        toastr.success(tl('Name changed successfully'), tl('Name Changed'));
+        await callback();
     } catch (error) {
         toastr.error(error.message, t`Failed to change name`);
         console.error('Error changing name:', error);
@@ -257,7 +259,7 @@ async function restoreSnapshot(name, callback) {
             `Are you sure you want to restore the settings from "${name}"?`,
             POPUP_TYPE.CONFIRM,
             '',
-            { okButton: 'Restore', cancelButton: 'Cancel', wide: false, large: false },
+            { okButton: tl('Restore'), cancelButton: tl('Cancel'), wide: false, large: false },
         );
 
         if (confirm !== POPUP_RESULT.AFFIRMATIVE) {
@@ -272,11 +274,11 @@ async function restoreSnapshot(name, callback) {
 
         if (!response.ok) {
             const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to restore snapshot');
-            throw new Error('Failed to restore snapshot');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to restore snapshot'));
+            throw new Error(tl('Failed to restore snapshot'));
         }
 
-        callback();
+        await callback();
     } catch (error) {
         console.error('Error restoring snapshot:', error);
     }
@@ -297,8 +299,8 @@ async function loadSnapshotContent(name) {
 
         if (!response.ok) {
             const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to load snapshot content');
-            throw new Error('Failed to load snapshot content');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to load snapshot content'));
+            throw new Error(tl('Failed to load snapshot content'));
         }
 
         return response.text();
@@ -324,8 +326,8 @@ async function getSnapshots() {
 
         if (!response.ok) {
             const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to get settings snapshots');
-            throw new Error('Failed to get settings snapshots');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to get settings snapshots'));
+            throw new Error(tl('Failed to get settings snapshots'));
         }
 
         const snapshots = await response.json();
@@ -350,12 +352,12 @@ async function makeSnapshot(callback) {
 
         if (!response.ok) {
             const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to make snapshot');
-            throw new Error('Failed to make snapshot');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to make snapshot'));
+            throw new Error(tl('Failed to make snapshot'));
         }
 
-        toastr.success('Snapshot created successfully', 'Snapshot Created');
-        callback();
+        toastr.success(tl('Snapshot created successfully'), tl('Snapshot Created'));
+        await callback();
     } catch (error) {
         console.error('Error making snapshot:', error);
     }
@@ -366,33 +368,61 @@ async function makeSnapshot(callback) {
  */
 async function viewSettingsSnapshots() {
     const template = $(await renderTemplateAsync('snapshotsView'));
+    let disposed = false, loading = false;
+    const list = template.find('.snapshotList');
+    const notice = $('<p>').attr('role', 'status'); list.before(notice);
+    const retry = $('<button type="button">').addClass('menu_button').text(tl('Try again')).hide(); notice.after(retry);
+    retry.on('click', () => void renderSnapshots());
     async function renderSnapshots() {
-        const snapshots = await getSnapshots();
-        template.find('.snapshotList').empty();
+        if (loading || disposed) return;
+        loading = true; notice.attr('role', 'status').text(tl('Loading…')); retry.hide();
+        try {
+            const snapshots = await getSnapshots();
+            if (disposed) return;
+            if (!Array.isArray(snapshots)) throw new Error(tl('Could not load settings snapshots. Try again.'));
+            list.empty(); notice.text(snapshots.length ? '' : tl('No settings snapshots yet.'));
 
-        for (const snapshot of snapshots.sort((a, b) => b.date - a.date)) {
-            const snapshotBlock = template.find('.snapshotTemplate .snapshot').clone();
-            snapshotBlock.find('.snapshotName').text(snapshot.name);
-            snapshotBlock.find('.snapshotDate').text(new Date(snapshot.date).toLocaleString());
-            snapshotBlock.find('.snapshotSize').text(humanFileSize(snapshot.size));
-            snapshotBlock.find('.snapshotRestoreButton').on('click', async (e) => {
-                e.stopPropagation();
-                restoreSnapshot(snapshot.name, () => location.reload());
-            });
-            snapshotBlock.find('.inline-drawer-toggle').on('click', async () => {
-                const contentBlock = snapshotBlock.find('.snapshotContent');
-                if (!contentBlock.val()) {
-                    const content = await loadSnapshotContent(snapshot.name);
-                    contentBlock.val(content);
-                }
-            });
-            template.find('.snapshotList').append(snapshotBlock);
-        }
+            for (const snapshot of snapshots.sort((a, b) => b.date - a.date)) {
+                const snapshotBlock = template.find('.snapshotTemplate .snapshot').clone();
+                snapshotBlock.find('.snapshotName').text(snapshot.name);
+                snapshotBlock.find('.snapshotDate').text(formatAtriaDate(snapshot.date));
+                snapshotBlock.find('.snapshotSize').text(humanFileSize(snapshot.size));
+                snapshotBlock.find('.snapshotRestoreButton').on('click', async (e) => {
+                    e.stopPropagation();
+                    restoreSnapshot(snapshot.name, () => location.reload());
+                });
+                let reading = false, loaded = false;
+                const read = async () => {
+                    if (reading || loaded || disposed) return;
+                    reading = true;
+                    const contentBlock = snapshotBlock.find('.snapshotContent');
+                    const feedback = snapshotBlock.find('.snapshotFeedback'), reload = snapshotBlock.find('.snapshotRetryButton');
+                    feedback.attr('role', 'status').text(tl('Loading…')); reload.prop('hidden', true);
+                    try {
+                        const content = await loadSnapshotContent(snapshot.name);
+                        if (disposed) return;
+                        if (content === undefined) throw new Error(tl('Could not load snapshot content. Try again.'));
+                        contentBlock.val(content); loaded = true; feedback.text('');
+                    } catch (error) {
+                        if (!disposed) { feedback.attr('role', 'alert').text(error.message); reload.prop('hidden', false); }
+                    } finally { reading = false; }
+                };
+                snapshotBlock.find('.snapshotRetryButton').on('click', () => void read());
+                snapshotBlock.on('toggle', () => {
+                    if (snapshotBlock.prop('open')) void read();
+                });
+                list.append(snapshotBlock);
+            }
+        } catch (error) { if (!disposed) { notice.attr('role', 'alert').text(error.message); retry.show(); } } finally { loading = false; }
     }
 
-    callGenericPopup(template, POPUP_TYPE.TEXT, '', { okButton: 'Close', wide: false, large: false, allowVerticalScrolling: true });
-    template.find('.makeSnapshotButton').on('click', () => makeSnapshot(renderSnapshots));
-    renderSnapshots();
+    template.find('.makeSnapshotButton').on('click', async function () {
+        if (this.disabled) return;
+        this.disabled = true; this.setAttribute('aria-busy', 'true');
+        try { await makeSnapshot(renderSnapshots); } finally { this.disabled = false; this.removeAttribute('aria-busy'); }
+    });
+    void renderSnapshots();
+    try { return await callGenericPopup(template, POPUP_TYPE.TEXT, '', { okButton: tl('Close'), wide: false, large: false, allowVerticalScrolling: true }); } finally { disposed = true; }
 }
 
 /**
@@ -408,8 +438,8 @@ async function resetEverything(callback) {
 
         if (!step1Response.ok) {
             const data = await step1Response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to reset');
-            throw new Error('Failed to reset everything');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to reset'));
+            throw new Error(tl('Failed to reset everything'));
         }
 
         let password = '';
@@ -426,7 +456,7 @@ async function resetEverything(callback) {
             template,
             POPUP_TYPE.CONFIRM,
             '',
-            { okButton: 'Reset', cancelButton: 'Cancel', wide: false, large: false },
+            { okButton: tl('Reset'), cancelButton: tl('Cancel'), wide: false, large: false },
         );
 
         if (confirm !== POPUP_RESULT.AFFIRMATIVE) {
@@ -441,12 +471,12 @@ async function resetEverything(callback) {
 
         if (!step2Response.ok) {
             const data = await step2Response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to reset');
-            throw new Error('Failed to reset everything');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to reset'));
+            throw new Error(tl('Failed to reset everything'));
         }
 
-        toastr.success('Everything reset successfully', 'Reset Everything');
-        callback();
+        toastr.success(tl('Everything reset successfully'), tl('Reset Everything'));
+        await callback();
     } catch (error) {
         console.error('Error resetting everything:', error);
     }
@@ -455,15 +485,25 @@ async function resetEverything(callback) {
 export async function openUserProfile({ container = null } = {}) {
     await getCurrentUser({ throwOnError: true });
     const template = $(await renderTemplateAsync('userProfile'));
+    const profileAction = (selector, callback) => template.find(selector).on('click', async function () {
+        if (this.disabled) return;
+        const hadFocus = document.activeElement === this;
+        this.disabled = true; this.setAttribute('aria-busy', 'true');
+        try { await callback(); } catch (error) { toastr.error(error.message); } finally {
+            this.disabled = false; this.removeAttribute('aria-busy');
+            if (hadFocus && this.isConnected && document.activeElement === document.body) this.focus();
+        }
+    });
     template.find('.userName').text(currentUser.name);
     template.find('.userHandle').text(currentUser.handle);
     template.find('.avatar img').attr('src', currentUser.avatar);
-    template.find('.userRole').text(currentUser.admin ? 'Admin' : 'User');
-    template.find('.userCreated').text(new Date(currentUser.created).toLocaleString());
+    template.find('.userRole').text(currentUser.admin ? t`Admin` : t`User`);
+    profileAction('.userLogoutButton', logout);
+    template.find('.userCreated').text(formatAtriaDate(currentUser.created));
     template.find('.hasPassword').toggle(currentUser.password);
     template.find('.noPassword').toggle(!currentUser.password);
-    template.find('.userSettingsSnapshotsButton').on('click', () => viewSettingsSnapshots());
-    template.find('.userBackupSyncButton').on('click', async () => {
+    profileAction('.userSettingsSnapshotsButton', () => viewSettingsSnapshots());
+    profileAction('.userBackupSyncButton', async () => {
         try {
             const { openBackupSyncCenter } = await loadBackupSyncCenterModule();
             await openBackupSyncCenter({
@@ -477,7 +517,7 @@ export async function openUserProfile({ container = null } = {}) {
             toastr.error(t`Failed to load Backup & Sync Center.`);
         }
     });
-    template.find('.userStorageManagementButton').on('click', async () => {
+    profileAction('.userStorageManagementButton', async () => {
         try {
             const { openStorageManagement } = await loadStorageManagementModule();
             await openStorageManagement();
@@ -486,17 +526,17 @@ export async function openUserProfile({ container = null } = {}) {
             toastr.error(t`Failed to load storage management.`);
         }
     });
-    template.find('.userChangeNameButton').on('click', async () => changeName(currentUser.handle, currentUser.name, async () => {
+    profileAction('.userChangeNameButton', async () => changeName(currentUser.handle, currentUser.name, async () => {
         await getCurrentUser();
         template.find('.userName').text(currentUser.name);
     }));
-    template.find('.userChangePasswordButton').on('click', () => changePassword(currentUser.handle, async () => {
+    profileAction('.userChangePasswordButton', () => changePassword(currentUser.handle, async () => {
         await getCurrentUser();
         template.find('.hasPassword').toggle(currentUser.password);
         template.find('.noPassword').toggle(!currentUser.password);
     }));
-    template.find('.userResetSettingsButton').on('click', () => resetSettings(currentUser.handle, () => location.reload()));
-    template.find('.userResetAllButton').on('click', () => resetEverything(() => location.reload()));
+    profileAction('.userResetSettingsButton', () => resetSettings(currentUser.handle, () => location.reload()));
+    profileAction('.userResetAllButton', () => resetEverything(() => location.reload()));
     template.find('.userAvatarChange').on('click', () => template.find('.avatarUpload').trigger('click'));
     template.find('.avatarUpload').on('change', async function () {
         if (!(this instanceof HTMLInputElement)) {
@@ -512,7 +552,7 @@ export async function openUserProfile({ container = null } = {}) {
         await getCurrentUser();
         template.find('.avatar img').attr('src', currentUser.avatar);
     });
-    template.find('.userAvatarRemove').on('click', async function () {
+    profileAction('.userAvatarRemove', async function () {
         await changeAvatar(currentUser.handle, '');
         await getCurrentUser();
         template.find('.avatar img').attr('src', currentUser.avatar);
@@ -530,7 +570,7 @@ export async function openUserProfile({ container = null } = {}) {
     }
 
     const popupOptions = {
-        okButton: 'Close',
+        okButton: tl('Close'),
         wide: false,
         large: false,
         allowVerticalScrolling: true,
@@ -574,7 +614,7 @@ async function changeAvatar(handle, avatar) {
 
         if (!response.ok) {
             const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to change avatar');
+            toastr.error(tl(data.error || 'Unknown error'), tl('Failed to change avatar'));
             return;
         }
     } catch (error) {
@@ -587,10 +627,11 @@ async function changeAvatar(handle, avatar) {
  * @returns {Promise<void>}
  */
 async function logout() {
-    await fetch('/api/users/logout', {
+    const response = await fetch('/api/users/logout', {
         method: 'POST',
         headers: getRequestHeaders({ omitContentType: true }),
     });
+    if (!response.ok) throw new Error(tl('Could not sign out. Try again.'));
 
     // On an explicit logout stop auto login
     // to allow user to change username even
@@ -614,7 +655,7 @@ async function extendUserSession() {
         });
 
         if (!response.ok) {
-            throw new Error('Ping did not succeed', { cause: response.status });
+            throw new Error(tl('Ping did not succeed'), { cause: response.status });
         }
     } catch (error) {
         console.error('Failed to extend user session', error);
@@ -623,7 +664,7 @@ async function extendUserSession() {
 
 jQuery(() => {
     $('#logout_button').on('click', () => {
-        logout();
+        void logout().catch(error => toastr.error(error.message));
     });
     $('#account_button').on('click', () => {
         openUserProfile();

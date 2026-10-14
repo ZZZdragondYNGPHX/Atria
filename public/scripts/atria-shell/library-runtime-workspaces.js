@@ -89,8 +89,6 @@ function buildDomainFrame(documentRef, {
     const body = documentRef.createElement('div');
     body.className = 'atria-domain-workspace__body';
 
-    let compactSection;
-
     for (const item of sections) {
         const button = documentRef.createElement('button');
         button.type = 'button';
@@ -104,11 +102,10 @@ function buildDomainFrame(documentRef, {
     }
 
     root.append(nav, body);
-    return { root, nav, body, compactSection };
+    return { root, nav, body };
 }
 
 function updateDomainTabs(frame, activeSection) {
-    if (frame.compactSection) frame.compactSection.value = activeSection;
     for (const button of frame.nav.querySelectorAll('[data-atria-domain-section]')) {
         const selected = button.dataset.atriaDomainSection === activeSection;
         button.classList.toggle('is-selected', selected);

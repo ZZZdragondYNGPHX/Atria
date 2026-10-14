@@ -323,8 +323,8 @@ export class Popup {
         if (animation) this.dlg.classList.add('popup--animation-' + animation);
 
         // If custom button captions are provided, we set them beforehand
-        this.okButton.textContent = typeof okButton === 'string' ? okButton : 'OK';
-        this.okButton.dataset.i18n = this.okButton.textContent;
+        this.okButton.textContent = typeof okButton === 'string' ? okButton : t`OK`;
+        this.okButton.dataset.i18n = typeof okButton === 'string' ? okButton : 'OK';
         this.cancelButton.textContent = typeof cancelButton === 'string' ? cancelButton : template.getAttribute('popup-button-cancel');
         this.cancelButton.dataset.i18n = this.cancelButton.textContent;
 
@@ -680,6 +680,7 @@ export class Popup {
         this.dlg.addEventListener('close', closeListener.bind(this));
 
         const keyListener = async (evt) => {
+            if (evt.defaultPrevented || evt.isComposing || evt.keyCode === 229) return;
             switch (evt.key) {
                 case 'Enter': {
                     // Native buttons own Enter/Space and custom action callbacks.
@@ -757,11 +758,11 @@ export class Popup {
                 if (!heading.id) heading.id = `atri-popup-title-${this.id}`;
                 this.dlg.setAttribute('aria-labelledby', heading.id);
             } else {
-                this.dlg.setAttribute('aria-label', 'Atria dialog');
+                this.dlg.setAttribute('aria-label', t`Atria dialog`);
             }
         }
         if (this.type === POPUP_TYPE.INPUT && !this.mainInput.labels?.length && !this.mainInput.hasAttribute('aria-label')) {
-            this.mainInput.setAttribute('aria-label', heading?.textContent || 'Your response');
+            this.mainInput.setAttribute('aria-label', heading?.textContent || t`Your response`);
         }
 
         // Run opening animation

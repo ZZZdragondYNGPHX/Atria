@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { translateShellText, formatShellText } from '../atria-shell/localization.js';
 import { mountVisualGallery } from './visual-gallery-ui.js';
 import { mountVisualDirector } from './visual-director-ui.js';
@@ -162,7 +163,7 @@ export async function activate(sdk) {
         if (!annotations.some(item => item.annotationId === selectedId)) selectedId = annotations.find(item => item.deletedAt === undefined)?.annotationId ?? annotations[0]?.annotationId;
         const heading = node(doc, panel, 'div', undefined, 'atri-illustration-actions'); node(doc, heading, 'h3', translateShellText('Annotation'));
         button(doc, heading, translateShellText('Close card'), run(() => { readDraft(); panel.hidden = true; toggle.focus(); }));
-        if (!annotations.length) { node(doc, panel, 'p', translateShellText('Turn on illustration mode and select text to create an annotation.')); readDraft = () => {}; return; }
+        if (!annotations.length) { node(doc, panel, 'p', mode ? translateShellText('Select text with a mouse, or long press and adjust the selection on a phone.') : translateShellText('Turn on illustration mode and select text to create an annotation.')); readDraft = () => {}; return; }
         select(doc, panel, translateShellText('Current annotation'), selectedId, annotations.map(item => [item.annotationId, (item.deletedAt === undefined ? '' : translateShellText('Deleted · ')) + item.anchor.quote.slice(0, 48)]), id => {
             try { readDraft(); selectedId = id; renderCard(); } catch (error) { notify(error.message, true); }
         });
@@ -272,7 +273,7 @@ export async function activate(sdk) {
         const promptHistory = node(doc, card, 'details'); promptHistory.dataset.section = 'prompts'; promptHistory.open = openDetails.has('prompts'); node(doc, promptHistory, 'summary', translateShellText('Prompt history'));
         for (const version of [...(annotation.promptVersions ?? [])].reverse()) {
             const row = node(doc, promptHistory, 'article');
-            node(doc, row, 'p', new Date(version.createdAt).toLocaleString()); node(doc, row, 'pre', version.draft.prompt);
+            node(doc, row, 'p', formatAtriaDate(version.createdAt)); node(doc, row, 'pre', version.draft.prompt);
             const evidence = node(doc, row, 'details'); node(doc, evidence, 'summary', translateShellText('Generation context, characters and route'));
             evidence.addEventListener('toggle', () => { if (evidence.open && !evidence.querySelector('pre')) node(doc, evidence, 'pre', JSON.stringify({ characters: version.draft.characters, preset: version.draft.preset, template: version.template, request: version.requestSnapshot }, null, 2)); });
             const apply = button(doc, row, translateShellText('Use this prompt version'), run(() => { readDraft(); drafts.set(annotation.annotationId, structuredClone(version.draft)); renderCard(); notify(translateShellText('Version loaded into the editor. Save the card to apply it.')); })); apply.disabled = !writable || deleted;

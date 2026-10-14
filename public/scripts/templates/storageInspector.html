@@ -2,12 +2,12 @@
     <div class="storageInspectorHeader flex-container alignItemsCenter spaceBetween">
         <nav class="storageInspectorBreadcrumbs flex-container alignItemsCenter"></nav>
         <div class="flex-container alignItemsCenter">
-            <div class="storageInspectorCreateButton menu_button menu_button_icon displayNone" title="Add">
+            <button type="button" class="storageInspectorCreateButton menu_button menu_button_icon displayNone" title="Add" aria-label="Add" data-i18n="[title]Add;[aria-label]Add">
                 <i class="fa-fw fa-solid fa-plus"></i>
-            </div>
-            <div class="storageInspectorRefreshButton menu_button menu_button_icon" title="Refresh" data-i18n="[title]Refresh">
+            </button>
+            <button type="button" class="storageInspectorRefreshButton menu_button menu_button_icon" title="Refresh" aria-label="Refresh" data-i18n="[title]Refresh;[aria-label]Refresh">
                 <i class="fa-fw fa-solid fa-rotate-right"></i>
-            </div>
+            </button>
         </div>
     </div>
 
@@ -30,8 +30,8 @@
     </div>
     <div class="storageInspectorError displayNone">
         <div class="storageInspectorErrorMessage"></div>
-        <div class="storageInspectorRetryButton menu_button">
+        <button type="button" class="storageInspectorRetryButton menu_button">
             <span data-i18n="Retry">Retry</span>
-        </div>
+        </button>
     </div>
 </div>

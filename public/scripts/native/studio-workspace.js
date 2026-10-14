@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { referenceRemediation } from './library-ui.js';
@@ -160,7 +161,7 @@ function clone(value) {
 
 function formatTime(value) {
     const timestamp = Number(value || 0);
-    return timestamp ? new Date(timestamp).toLocaleString() : '—';
+    return timestamp ? formatAtriaDate(timestamp) : '—';
 }
 
 function decodeUtf8(base64) {

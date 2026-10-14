@@ -1,3 +1,4 @@
+import { formatAtriaDate } from '../atria-shell/components.js';
 import { nativeProductClient as client } from './product-client.js';
 import { el, action, disclosure, feedback, libraryError } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
@@ -46,7 +47,7 @@ export async function mountResourceSetup({ document: doc, root, packageId, sessi
                 const revision = el(doc, 'select', '', undefined, revisionLabel); revision.setAttribute('aria-label', tl('Revision') + ' · ' + option.name);
                 revision.hidden = versions.length === 1; revision.disabled = !checkbox.checked;
                 for (const [index, value] of versions.entries()) {
-                    const item = el(doc, 'option', '', (value.current ? tl('Current revision') : tl('Historical revision')) + (value.createdAt ? ' · ' + new Date(value.createdAt).toLocaleString() : ' · ' + (value.ref.revision || '').slice(-8)), revision); item.value = String(index);
+                    const item = el(doc, 'option', '', (value.current ? tl('Current revision') : tl('Historical revision')) + (value.createdAt ? ' · ' + formatAtriaDate(value.createdAt) : ' · ' + (value.ref.revision || '').slice(-8)), revision); item.value = String(index);
                 }
                 revision.value = String(versions.indexOf(option));
                 const exact = disclosure(doc, row, 'Exact revision details', option.ref);

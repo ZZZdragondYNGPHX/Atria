@@ -180,7 +180,6 @@ export function setupPrivateEndpoints(app) {
         try {
             const handle = req.user?.profile?.handle;
             if (handle && !populatedUsers.has(handle)) {
-                populatedUsers.add(handle);
                 const defaultRoot = app.get('atriaDefaultRoot');
                 if (defaultRoot && req.user?.directories?.root) {
                     await ensureFreshInstallPopulate({
@@ -188,6 +187,7 @@ export function setupPrivateEndpoints(app) {
                         userRoot: req.user.directories.root,
                     });
                 }
+                populatedUsers.add(handle);
             }
         } catch (e) {
             // Don't block the request on populate failure; bundled skills are

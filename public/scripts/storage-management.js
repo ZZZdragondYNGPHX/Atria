@@ -1,3 +1,5 @@
+import { formatAtriaDate } from './atria-shell/components.js';
+import { translateShellText as tl, formatShellText as formatProductText } from './atria-shell/localization.js';
 import { getRequestHeaders } from '../script.js';
 import { BrowserMutator, BrowserProvider } from './browser-storage-inspector.js';
 import { t } from './i18n.js';
@@ -25,7 +27,7 @@ function renderRecoveryPoints(center, points, refreshInspector, reloadRecovery) 
     list.innerHTML = '';
     list.classList.remove('displayNone');
     if (!Array.isArray(points) || points.length === 0) {
-        list.innerHTML = '<div class="menu_button_note">暂无存储编辑/删除恢复点。</div>';
+        list.innerHTML = tl('<div class="menu_button_note">No recovery points for storage changes yet.</div>');
         return;
     }
 
@@ -34,23 +36,23 @@ function renderRecoveryPoints(center, points, refreshInspector, reloadRecovery) 
         row.className = 'backupManagedRow';
         const meta = document.createElement('div');
         meta.className = 'backupManagedRowMeta';
-        meta.textContent = `${new Date(point.createdAt).toLocaleString()} · ${point.action} · ${point.relativePath}`;
+        meta.textContent = `${formatAtriaDate(point.createdAt)} · ${point.action} · ${point.relativePath}`;
         const restore = document.createElement('button');
         restore.type = 'button';
         restore.className = 'menu_button menu_button_icon';
-        restore.innerHTML = '<i class="fa-fw fa-solid fa-rotate-left"></i><span>恢复</span>';
+        restore.innerHTML = tl('<i class="fa-fw fa-solid fa-rotate-left" aria-hidden="true"></i><span>Restore</span>');
         restore.addEventListener('click', async () => {
             const confirmed = await callGenericPopup(
-                `将 ${point.relativePath} 恢复到此恢复点？当前同路径内容会被替换。`,
+                formatProductText('Restore ${0} to this recovery point? The current content at this path will be replaced.', [point.relativePath]),
                 POPUP_TYPE.CONFIRM,
                 '',
-                { okButton: '恢复', cancelButton: '取消' },
+                { okButton: tl('Restore'), cancelButton: tl('Cancel') },
             );
             if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
             restore.disabled = true;
             try {
                 await postJson('/api/users/storage/recovery/restore', { id: point.id });
-                toastr.success('恢复点已应用。');
+                toastr.success(tl('Recovery point restored.'));
                 await refreshInspector();
                 await reloadRecovery();
             } catch (error) {
@@ -100,7 +102,7 @@ export async function openStorageManagement() {
         try {
             await reloadRecovery();
         } catch (error) {
-            toastr.error(`读取恢复点失败：${error.message}`);
+            toastr.error(formatProductText('Could not load recovery points: ${0}', [error.message]));
         }
     });
 

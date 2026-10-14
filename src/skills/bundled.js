@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createSkillRepository } from './repository.js';
 import { parseSkillFrontmatter } from './frontmatter-parser.js';
@@ -24,7 +24,21 @@ import { parseSkillFrontmatter } from './frontmatter-parser.js';
  * @param {string} opts.userRoot - user data root.
  * @returns {Promise<{populated:boolean, installed:number, replaced:number, alreadyInstalled:number}>}
  */
+const populationInFlight = new Map();
+
 export async function ensureFreshInstallPopulate({ defaultRoot, userRoot }) {
+    const key = resolve(userRoot);
+    if (populationInFlight.has(key)) return populationInFlight.get(key);
+    const population = populateFreshInstall({ defaultRoot, userRoot });
+    populationInFlight.set(key, population);
+    try {
+        return await population;
+    } finally {
+        populationInFlight.delete(key);
+    }
+}
+
+async function populateFreshInstall({ defaultRoot, userRoot }) {
     const userGlobal = join(userRoot, 'skills/global');
     const isDir = await fs.stat(userGlobal).then(s => s.isDirectory()).catch(() => false);
     if (isDir) {
