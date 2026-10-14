@@ -1,12 +1,33 @@
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { captureBackendIncident } from '../logging/runtime.js';
-import { ExtensionsStore, extensionSourceHash } from '../native/extensions-store.js';
+import { ExtensionsStore, extensionSourceHash, assertExtensionFiles } from '../native/extensions-store.js';
 import { readExternalExtension, ExtensionPreparationCache, extensionRemote } from '../native/extension-install.js';
 import { getStorageEngine } from '../storage/index.js';
 import { listAuthoringReferences, readAuthoringReference } from '../native/authoring-reference.js';
+import { hashNativeDocument, withNativeResourceWrite } from '../native/repositories/common.js';
+import { assertScriptTargets } from '../../public/shared/extension-contract.js';
+import { nativeMcpArtifacts } from '../native/mcp-artifacts.js';
 
-export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine() }), install = readExternalExtension, captureIncident = captureBackendIncident, preparations = new ExtensionPreparationCache() } = {}) {
+function localSourceMetadata(input, extraKeys = []) {
+    const keys = ['name', 'id', 'expectedRevision', 'targets', 'clientInstanceId'];
+    if (!input || Object.keys(input).sort().join(',') !== [...keys, ...extraKeys].sort().join(',')
+        || typeof input.name !== 'string' || !input.name.trim() || input.name.length > 100
+        || input.id !== null && (typeof input.id !== 'string' || !/^ext_[a-f0-9]{32}$/.test(input.id))
+        || input.expectedRevision !== null && (typeof input.expectedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(input.expectedRevision))
+        || input.id === null && input.expectedRevision !== null
+        || typeof input.clientInstanceId !== 'string' || !/^[A-Za-z0-9._:-]{1,256}$/.test(input.clientInstanceId)) throw new TypeError('Exact local source metadata required');
+    return { name: input.name, id: input.id, expectedRevision: input.expectedRevision, targets: assertScriptTargets(input.targets), clientInstanceId: input.clientInstanceId };
+}
+
+async function localSourceBase(api, handle, metadata) {
+    const previous = metadata.id ? await api.get(handle, metadata.id) : null;
+    if ((previous?.revision ?? null) !== metadata.expectedRevision) throw Object.assign(new Error('Local Extension revision conflict'), { name: 'ConflictError' });
+    if (previous && previous.kind !== 'local') throw new TypeError('Local preparation cannot replace external Git source');
+    return previous;
+}
+
+export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine() }), install = readExternalExtension, captureIncident = captureBackendIncident, preparations = new ExtensionPreparationCache(), artifacts = nativeMcpArtifacts } = {}) {
     const router = express.Router();
     router.use((req, res, next) => req.user?.profile?.handle ? next() : res.sendStatus(401));
     const route = fn => async (req, res) => {
@@ -45,6 +66,29 @@ export function createNativeExtensionsRouter({ store = () => new ExtensionsStore
         const candidate = await install(url);
         if (candidate.sourceUrl !== url) throw new TypeError('Extension download source changed');
         res.json(preparations.put(handle, input.clientInstanceId, candidate, { previous, targets: input.targets ?? previous?.targets ?? candidate.targets }));
+    }));
+    router.post('/local/staging', route(async (req, res, api, handle) => {
+        const metadata = localSourceMetadata(req.body, ['contentHash', 'totalBytes']);
+        await localSourceBase(api, handle, metadata);
+        res.json(artifacts.beginSource(handle, { clientInstanceId: metadata.clientInstanceId, contentHash: req.body.contentHash, totalBytes: req.body.totalBytes },
+            'extension-source-upload', hashNativeDocument(metadata)));
+    }));
+    router.post('/local/prepare-from-ref', route(async (req, res, api, handle) => {
+        const metadata = localSourceMetadata(req.body, ['artifactRef']);
+        if (req.body.artifactRef?.clientInstanceId !== metadata.clientInstanceId) throw new TypeError('Source client mismatch');
+        const result = await artifacts.withSource(handle, req.body.artifactRef, 'extension-source-upload', hashNativeDocument(metadata), bytes => {
+            if (bytes.length > 4 * 1024 * 1024) throw new TypeError('Plugin size limit');
+            const source = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+            const files = assertExtensionFiles({ 'index.js': source }, 'index.js');
+            return withNativeResourceWrite(handle, 'extensions', async () => {
+                const previous = await localSourceBase(api, handle, metadata);
+                const candidate = { name: metadata.name, kind: 'local', sourceUrl: null, sourceCommit: null, enabled: false,
+                    entrypoint: 'index.js', files, targets: metadata.targets };
+                candidate.contentHash = extensionSourceHash(candidate);
+                return preparations.put(handle, metadata.clientInstanceId, candidate, { previous });
+            });
+        });
+        res.json(result);
     }));
     router.post('/local/prepare', route(async (req, res, api, handle) => {
         const input = req.body;
