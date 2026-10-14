@@ -99,3 +99,9 @@
 - 环境核对：实际 CachyOS/KDE Wayland；Node FS/SQLite 验证已有证据，浏览器未启动。Windows/Termux 真机及 Provider L3 全部 `not_run`。
 - 本次暂停仅按用户指令；新对话明确恢复后沿原完整授权连续推进 S6，不重开分支、不重新实施 S0，不追加阶段审批。
 - Remote sync: S5 source 首次 push 遇 TLS EOF，重试成功；origin feat 已到 `5c8131e67c380d07a699bb6fc4c75414d417af3d`。
+
+## Windows machine-transfer preparation
+
+- 用户明确准备换到 Windows 新对话继续；保持暂停，只更新 live HANDOFF，不新增产品修改或合并。
+- HANDOFF 改用环境中立 workspace 名称，补从 origin 既有 feat/docs 建立 Windows worktree、Node 24.x/本机依赖准备、最小相关验证及新对话启动提示。Linux 依赖 symlink/原生 binaries 不迁移。
+- 原机私人数据/Secret 不构成开发 fixture 的恢复依赖；没有上传或读取真实 Secret。Windows 安装/运行/浏览器尚未执行，不预先标通过。

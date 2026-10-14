@@ -6,11 +6,11 @@
 - Repository: https://github.com/ZZZdragondYNGPHX/Atria
 - Primary Workspace: `main` 产品源码；Plan/Record/HANDOFF 在 `docs`，不得合并 docs 与 main。
 - 用户于本轮明确要求“找个合适的时机停下，我要打算新建对话继续”。停在 S5 已提交/已验证的节点；S6 只开始审查，没有新增代码。
-- Main worktree: `/home/henry/Projects/Atria`，`main@7e1045ab836c22cafbc92c5de056ad701f56e723`，本地干净。
-- Source worktree: `/home/henry/Projects/Atria-worktrees/tasks/atria-native-visual-generation-deepening/source`
+- Main workspace: `Atria/`，`main@7e1045ab836c22cafbc92c5de056ad701f56e723`，本地干净。
+- Source workspace: `Atria-worktrees/tasks/atria-native-visual-generation-deepening/source/`（按新机器实际根目录解析）
 - Source remote: 已确认 `origin/feat/native-visual-generation-deepening` 与本地 HEAD 一致；TLS EOF 后重试推送成功。
 - Source branch / HEAD: `feat/native-visual-generation-deepening@5c8131e67c380d07a699bb6fc4c75414d417af3d`，本地干净。
-- Docs worktree: `/home/henry/Projects/Atria-worktrees/docs`，branch `docs`。文档更新 HEAD 以本交接提交后的真实 Git 为准。
+- Docs workspace: `Atria-worktrees/docs/`，branch `docs`。文档更新 HEAD 以本交接提交后的真实 Git 为准。
 - Stage: S0–S5 已逐阶段实现和记录；S6 审查刚开始，最终冻结范围审计/验收/合并尚未完成。
 - Plan entrypoint: [index](plans/feat/native-visual-generation-deepening/index.md)
 - Frozen authority: [decisions](plans/feat/native-visual-generation-deepening/decisions.md), [E0](plans/feat/native-visual-generation-deepening/e0-closure-audit.md)
@@ -36,7 +36,7 @@
 - source 的 ignored node_modules、tests/node_modules 是指向 main 既有安装的 symlink；不得删除或修改实际 main dependencies。
 - L3 全部 `not_run`，没有真实合法 Provider 凭据/明确付费授权，也没有付费生图。fixture 使用 synthetic-secret，不能当 live 证据。
 - 当前机器 `/etc/os-release` 为 CachyOS；环境 `XDG_CURRENT_DESKTOP=KDE`、Wayland。Node/FS/SQLite 验证已在此主机运行。浏览器 UI 尚未运行；Windows 和 Android Termux 真机 `not_run`。
-- 已读 playwright-cli skill（`/home/henry/.agents/skills/playwright-cli/SKILL.md`），二进制 `/home/henry/.local/bin/playwright-cli` 可用，但本任务未启动浏览器/应用。新对话应用技能时按当前技能规则告知。
+- 原 Linux 环境已读 playwright-cli skill，工具可用，但本任务未启动浏览器/应用。Windows 新环境重新发现已安装 Skills/工具；不得依赖原机器绝对路径。新对话应用技能时按当前技能规则告知。
 - 交接时没有活跃 Jest/Provider/浏览器进程；仅 Git 同步可能短暂运行，完成状态需核对。
 
 ## Key decisions / invariants
@@ -75,6 +75,46 @@
 4. 不读取/打印实际 Secret、不自动付费、不把 fixtures 或已冻结设计文档当实际设备/模型通过。
 5. TLS EOF 曾导致 S5 source push 失败；普通网络错误可以重试，确认 origin feat 真 HEAD，不能按“已提交”推定“已推送”。
 
+## Windows 换机恢复
+
+用户准备换到 Windows 续接；任务保持暂停，本次只补交接。GitHub 上已有完整产品/文档提交，不需要复制原 Linux worktree 或依赖 symlink。
+
+在新机器安装 Git 和 Node.js 24.x（产品 getting-started 文档要求 >=24；package.json 的 >=20 下限较宽，开发按文档准备）。以下 PowerShell 命令用于**新目录**，在准备放置项目的父目录运行；若已有 Atria clone，由接手 Agent 先检查现有分支/未提交内容再复用，不覆盖已有工作。
+
+```powershell
+git clone --branch main https://github.com/ZZZdragondYNGPHX/Atria.git Atria
+git -C Atria fetch origin
+git -C Atria worktree add --track -b docs ../Atria-worktrees/docs origin/docs
+git -C Atria worktree add --track -b feat/native-visual-generation-deepening ../Atria-worktrees/tasks/atria-native-visual-generation-deepening/source origin/feat/native-visual-generation-deepening
+```
+
+这是从远端**现有任务分支**恢复本地分支；不得从 main 新起一个同名开发分支替换已做的 S0～S5。只需 main/docs/本任务 source；其它 package/plugin/skill-routing 工作树不必重建。
+
+打开 source 为新对话工作区。读取 docs 的 `HANDOFF.md`、`README.md`、Record/Plan；核对源 HEAD 应包含 `5c8131e67c380d07a699bb6fc4c75414d417af3d`，最新 docs 须包含本 Windows 交接补充。Git push 需要新机自己的已授权 GitHub 登录；不通过共享文件搬运 Git 凭据。
+
+从 source 安装 Windows 本机依赖：
+
+```powershell
+node --version
+npm --version
+git status --short
+git rev-parse HEAD
+npm ci
+npm --prefix tests ci
+```
+
+Linux node_modules、tests/node_modules symlink、原生二进制、浏览器缓存都不迁入 Windows。仓库 lockfiles 用于本机安装；记录任何真实安装失败，再按报错修复。开发运行 `npm start`；`Start.bat` 的安装逻辑使用 `--omit=dev`，不适合作为本任务测试依赖准备步骤。
+
+环境准备后仅执行所需的最小相关验证。例如 P1 Windows 基础验证可从 source 运行：
+
+```powershell
+node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/native/visual-p1-adapters.test.js
+```
+
+浏览器工具/Playwright 按新机可用安装准备；若使用 tests 中 Playwright，可按实际浏览器需要执行 `npm --prefix tests exec -- playwright install chromium`。不提前跑整套 e2e/全仓库测试。把真实 Windows Node/FS/SQLite/浏览器结果记入同一 S6 Record，原 CachyOS 证据保留，Termux/L3 未执行项仍明确标记。
+
+本任务开发 fixture 和临时 Native Session 已清理，不依赖原机实际玩家数据或 Secret。若用户另外需要迁移私人运行资料，须单独确认实际 data/config/Secret 存储位置并通过私有渠道迁移；不得提交到 Git。恢复开发不需要先迁移这些资料，也不需要付费 Provider 凭据。
+
 ## New-chat bootstrap prompt
 
-继续 Atria 完整任务 `atria-native-visual-generation-deepening`。先读 `/home/henry/Projects/Atria-worktrees/docs/HANDOFF.md`、Governance、Record 与冻结 Plan，检查实际 Git/工作树和远端 HEAD。复用现有 `feat/native-visual-generation-deepening` source worktree，当前产品 HEAD `5c8131e67c380d07a699bb6fc4c75414d417af3d`。S0～S5 已逐阶段实现/本地验证，S6 刚开始审查且尚未改代码。按 HANDOFF 的具体缺口继续完成 S6 和最终冻结范围审计，只做最小相关本地验证，L3/真机缺资源标 not_run，不自行付费。原用户授权连续推进仍有效，阶段间不等待确认。完成全部可取得验收后按 Governance 合并/push main、更新 docs Record，删除完成 feat/live HANDOFF；不合并 docs 与 main。
+在 Windows 上继续 Atria 完整任务 `atria-native-visual-generation-deepening`。先按本机实际路径找到 docs 分支 `HANDOFF.md`，读取其 Windows 换机恢复、Governance、Record 与冻结 Plan，检查实际 Git/worktrees/HEAD/未提交内容。从远端现有 `feat/native-visual-generation-deepening` 续接（产品 checkpoint `5c8131e67c380d07a699bb6fc4c75414d417af3d`），使用独立 source worktree，docs 不与 main 合并。依赖在 Windows 本机重新安装。S0～S5 已逐阶段实现并本地验证，S6 只开始审查、尚未改代码；按 HANDOFF 的具体缺口继续 S6 和最终全范围验收，优先取得真实 Windows 证据，只做最小相关本地验证。L3/其它真机缺资源标 not_run，不自行付费。原完整开发授权仍有效，恢复后连续推进、不逐阶段等待确认。全部可取得验收完成后按 Governance 合并/push main、更新 docs Record，删除完成 feat/live HANDOFF。
