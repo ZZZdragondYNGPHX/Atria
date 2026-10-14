@@ -33,7 +33,7 @@
 - Limitation: Durable worker integration into the production image entrypoint is next in S2.1; full Mask UI/GC grace policy remains S4 by plan. No claim of live Target availability.
 - Next: NovelAI vertical slice on one new kernel, then ComfyUI/OpenAI Images.
 
-## S2 — P0 backends (in progress)
+## S2 — P0 backends (completed)
 
 ### S2.1 NovelAI vertical slice (completed)
 
@@ -45,3 +45,12 @@
 - Failure/fix: first combined slice run had HTTP fixture supplying wrong router factory and a SQLite nested transaction deadlock in publication. Fixture fixed; publication now retains the ledger lock outside the storage transaction and finalizes with CAS. Related 10 tests all passed on retest.
 - Provider constraint: fetched official OpenAPI https://image.novelai.net/docs/doc.json requires human initiation. NovelAI automatic sends fail closed; manual/semi-auto remain available. Other permitted targets still use the automatic core. This is legal Target capability, not removal of D-007/D-008.
 - L3/CI `not_run`; no external paid generation. Next S2.2 ComfyUI, then S2.3 OpenAI Images.
+
+### S2.2 / S2.3 ComfyUI and OpenAI Images (completed)
+
+- End/Tested HEAD: `b8cbf6a2c`. S2.1 was integrated first at `4d9aaf979`.
+- ComfyUI: typed API graph, required slots/link/output/cycle checking, actual read-only object_info preflight, remote prompt ID, bounded history/view normalization and reconcile port. Shared global interrupt never sent.
+- OpenAI: dedicated Images generation/edit compiler, native model/size/quality/input fidelity constraints; JSON edit input descriptors and canonical inverse-alpha conversion. Mask is a provider guidance constraint, not falsely a pixel preservation guarantee. Media input authorization/UI is completed in S4.
+- Native Runtime now offers ComfyUI/OpenAI image Connections. Editable capability JSON cannot override adapter capability/price authority.
+- Verification: ComfyUI/OpenAI independent L1/L2 6/6; NAI slice unaffected 10/10; affected product ESLint/diff check. L3/CI `not_run`.
+- Next: S3 exact Actor/State/disclosure/reference projection, reliable post-commit Director, scene/shot scores, modes/budgets.
