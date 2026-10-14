@@ -51,4 +51,4 @@
 
 ## 7. Decision boundary and next discussion
 
-以上 Mask 数值语义/坐标、混合检查点草稿、能力声明和 unknown 守卫、Gallery 默认 UI、双扫描及 30/7 天初始保留、SavePoint 完整编辑闭包与导入验收原则构成 **D-011 已批准合同**。**D-012 已冻结** Provider/Reference/LoRA/ControlNet 的两层矩阵、Typed Constraints 与显式降级/三级验收；但具体连接的 Live 能力和收费仍须在用户授权的真实 Target 下验证。精确资源/数据库/API 字段及跨平台设置 UI 由 **Round 13** 讨论。开发分支暂不创建。
+以上 Mask 数值语义/坐标、混合检查点草稿、能力声明和 unknown 守卫、Gallery 默认 UI、双扫描及 30/7 天初始保留、SavePoint 完整编辑闭包与导入验收原则构成 **D-011 已批准合同**。**D-012 已冻结** Provider/Reference/LoRA/ControlNet 的两层矩阵、Typed Constraints 与显式降级/三级验收；但具体连接的 Live 能力和收费仍须在用户授权的真实 Target 下验证。**Round 13 D-013** 已冻结资源/API 的职责方向及三端设置 UI 与七阶段交付路线，详见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)；精确字段/DB/路由与外部验证缺口由 [e0-closure-audit.md](e0-closure-audit.md) 分类为工程/外部任务。本次没有创建开发分支。
