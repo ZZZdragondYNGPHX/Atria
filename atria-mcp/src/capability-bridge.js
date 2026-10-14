@@ -46,7 +46,7 @@ const adapters = Object.freeze({
 });
 
 export const BROWSER_ADAPTERS = Object.freeze(Object.entries(adapters).map(([id, adapter]) => Object.freeze({ id,
-    risk: 'READ', authority: adapter.authority, externalEffects: adapter.externalEffects ?? [], approval: 'none',
+    risk: adapter.externalEffects?.includes('mayIncurCost') ? 'INTERACT' : 'READ', authority: adapter.authority, externalEffects: adapter.externalEffects ?? [], approval: adapter.externalEffects?.includes('mayIncurCost') ? 'trusted-approval-required' : 'none',
     availability: 'MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected',
     inputSchema: z.toJSONSchema(adapter.input), outputSchema: z.toJSONSchema(adapter.output) })));
 

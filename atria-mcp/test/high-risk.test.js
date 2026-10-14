@@ -148,6 +148,33 @@ test('delegated children cannot exceed ceiling, payload or once-only envelope an
     assert.equal(fingerprint(input), fingerprint(structuredClone(input)));
 });
 
+test('installed Package export preserves exact immutable bytes and cannot accept another version/source proof', async () => {
+    const artifacts = new PackageArtifacts(), boot = randomUUID(), bytes = Buffer.alloc(1048593, 0x17), stage = stageFor(artifacts, bytes, boot), requests = [];
+    stage.source = { kind: 'installed-package', packageId: 'pkg', packageVersionId: 'pv1' }; stage.artifactRef.sourceRevision = 'pv1';
+    const version = { packageId: 'pkg', packageVersionId: 'pv1', packageContentHash: stage.artifactRef.contentHash };
+    const response = (body, headers = {}, status = 200) => ({ ok: () => status < 400, status: () => status,
+        headers: () => ({ 'content-type': 'application/json', 'x-atria-server-boot-id': boot, ...headers }), body: async () => Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body)), dispose: async () => {} });
+    const browser = { config: { url: 'http://localhost', timeout: 1000, maxResponseBytes: 1048576 }, start: async () => {}, runtimeIdentity: async () => ({ serverBootId: boot, highRiskGuards: 1 }),
+        context: { request: { get: async () => response({ token: 'fixture' }), fetch: async (url, options) => {
+            requests.push({ url, options }); const parsed = new URL(url);
+            if (parsed.pathname.endsWith('/identity')) return response({ packageVersion: version });
+            if (parsed.pathname.endsWith('/export-artifact')) { assert.deepEqual(options.data, { packageId: version.packageId, packageVersionId: version.packageVersionId, expectedContentHash: version.packageContentHash, clientInstanceId: artifacts.clientInstanceId }); return response(stage); }
+            const offset = Number(parsed.searchParams.get('offset')), length = Number(parsed.searchParams.get('length')), chunk = bytes.subarray(offset, offset + length);
+            return response(chunk, { 'content-type': 'application/octet-stream', 'content-length': String(length), 'x-atria-chunk-sha256': createHash('sha256').update(chunk).digest('hex'),
+                etag: '"' + stage.artifactRef.contentHash + '"', 'content-range': `bytes ${offset}-${offset + length - 1}/${bytes.length}` }, 206);
+        } } } };
+    const registry = registerHighRiskActions(new ActionRegistry(), browser, {}, artifacts), executor = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()),
+        { approve: async () => ({ action: 'accept', content: { authorize: true } }) });
+    const input = { packageId: 'pkg', packageVersionId: 'pv1', expectedContentHash: stage.artifactRef.contentHash };
+    const result = await executor.execute('INTERACT', { action: 'package.version.export', input });
+    assert.equal(result.receipt.status, 'succeeded'); assert.equal(result.result.artifact.contentHash, stage.artifactRef.contentHash);
+    assert.equal(artifacts.get(result.result.artifact.artifactId).binding.sourceAuthority, 'native.asset');
+    assert.equal(requests.filter(item => new URL(item.url).pathname.endsWith('/chunk')).length, 2);
+    await assert.rejects(executor.execute('INTERACT', { action: 'package.version.export', input: { ...input, expectedContentHash: '0'.repeat(64) } }), /hash required/);
+    stage.source.packageVersionId = 'other'; const changed = await executor.execute('INTERACT', { action: 'package.version.export', input });
+    assert.equal(changed.receipt.status, 'indeterminate'); artifacts.clear();
+});
+
 test('real browser delegation bridge checks callback scope and links exact semantic child receipts', async t => {
     const runtime = { version: 1, serverBootId: randomUUID(), processStartedAt: Date.now(), appVersion: 'test',
         source: { algorithm: 'atria-source-v1', revision: null, branch: null, workspaceId: null, fingerprint: null, reasons: [] } };

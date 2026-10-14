@@ -3,8 +3,13 @@ import { createHash, randomUUID } from 'node:crypto';
 const MiB = 1024 * 1024;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const hashPattern = /^[a-f0-9]{64}$/;
-const plain = value => value && typeof value === 'object' && !Array.isArray(value)
-    && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+const plain = value => {
+    if (!value || typeof value !== 'object' || Object.prototype.toString.call(value) !== '[object Object]' || Reflect.ownKeys(value).length !== Object.keys(value).length) return false;
+    const prototype = Object.getPrototypeOf(value);
+    const constructor = prototype && Object.getOwnPropertyDescriptor(prototype, 'constructor')?.value;
+    return prototype === null || Object.getPrototypeOf(prototype) === null
+        && typeof constructor === 'function' && constructor.name === 'Object' && constructor.prototype === prototype;
+};
 const fail = message => { throw new Error('Binary Asset: ' + message); };
 const text = (value, name, max = 256) => {
     if (typeof value !== 'string' || !value.length || value.length > max || /[\u0000-\u001f\u007f]/.test(value)) fail('invalid ' + name);
@@ -21,6 +26,10 @@ const exactKeys = (value, keys, name) => {
 // This catalog is an internal adapter contract, never caller-provided tool input.
 // Domain-specific limits come from Native Package, Resource Bundle and Mask APIs.
 export const BINARY_ASSET_CATALOG = Object.freeze({
+    'session-archive': Object.freeze({ maxBytes: 128 * MiB,
+        authorities: Object.freeze(['native.session-archive']),
+        operations: Object.freeze(['inspect', 'read', 'archive.preflight', 'archive.import']),
+        mediaTypes: Object.freeze(['application/octet-stream', 'application/x-atria-save']) }),
     'package-archive': Object.freeze({ maxBytes: 128 * MiB,
         authorities: Object.freeze(['native.studio.package', 'native.asset', 'dev.package']),
         operations: Object.freeze(['inspect', 'read', 'package.preflight', 'package.install']),
@@ -33,6 +42,16 @@ export const BINARY_ASSET_CATALOG = Object.freeze({
         authorities: Object.freeze(['native.asset', 'native.mask']),
         operations: Object.freeze(['inspect', 'read', 'mask.checkpoint']),
         mediaTypes: Object.freeze(['application/octet-stream', 'application/x-atria-mask-checkpoint', 'application/x-atria-mask-gray8']) }),
+    'mask-raster': Object.freeze({ maxBytes: 16 * MiB,
+        authorities: Object.freeze(['native.mask']), operations: Object.freeze(['inspect', 'read', 'mask.checkpoint']),
+        mediaTypes: Object.freeze(['application/x-atria-mask-gray8']) }),
+    'media-image': Object.freeze({ maxBytes: 32 * MiB,
+        authorities: Object.freeze(['native.asset']), operations: Object.freeze(['inspect', 'read']),
+        mediaTypes: Object.freeze(['image/png', 'image/jpeg', 'image/webp', 'image/avif']) }),
+    'media-thumbnail': Object.freeze({ maxBytes: MiB,
+        authorities: Object.freeze(['native.asset']), operations: Object.freeze(['inspect', 'read']), mediaTypes: Object.freeze(['image/png']) }),
+    'speech-audio': Object.freeze({ maxBytes: 16 * MiB,
+        authorities: Object.freeze(['native.asset']), operations: Object.freeze(['inspect', 'read']), mediaTypes: Object.freeze(['audio/wav']) }),
 });
 
 function bindingValue(value) {

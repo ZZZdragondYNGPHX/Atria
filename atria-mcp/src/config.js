@@ -40,7 +40,7 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
     };
 }
 
-export const HELP = `Atria MCP 0.2.0 — local stdio server (Node.js >=22)
+export const HELP = `Atria MCP 0.3.0 — local stdio server (Node.js >=22)
 
   node src/cli.js --repo <Atria product worktree> [options]
 
@@ -56,7 +56,7 @@ export const HELP = `Atria MCP 0.2.0 — local stdio server (Node.js >=22)
 
 Equivalent environment: ATRIA_REPO, ATRIA_URL, ATRIA_HEADED=1,
 ATRIA_BROWSER_CHANNEL, ATRIA_ALLOW_REMOTE=1,
-ATRIA_STORAGE_STATE. No Atria process is started and no personal browser is attached.
+ATRIA_STORAGE_STATE, ATRIA_MCP_STATE_DIR. No Atria process is started and no personal browser is attached.
 Install a browser once: npx playwright install chromium
 MCP protocol uses stdout exclusively; errors go to stderr.
 `;

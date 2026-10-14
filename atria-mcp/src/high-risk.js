@@ -23,10 +23,12 @@ export class PackageArtifacts {
     #begin(stage, source) {
         const parsed = stageSchema.parse(stage), ref = parsed.artifactRef;
         if (ref.clientInstanceId !== this.clientInstanceId || parsed.state !== 'complete' || parsed.receivedBytes !== ref.totalBytes
-            || parsed.source.kind === 'studio-project' && parsed.source.revision !== ref.sourceRevision) throw new Error('Native artifact client, source or completion mismatch.');
+            || parsed.source.kind === 'studio-project' && parsed.source.revision !== ref.sourceRevision
+            || parsed.source.kind === 'installed-package' && parsed.source.packageVersionId !== ref.sourceRevision) throw new Error('Native artifact client, source or completion mismatch.');
         const binding = { owner: parsed.owner, clientInstanceId: this.clientInstanceId, purpose: 'package-archive',
-            sourceAuthority: parsed.source.kind === 'studio-project' ? 'native.studio.package' : 'dev.package',
-            sourceScope: parsed.source.kind === 'studio-project' ? { projectId: parsed.source.projectId } : { contentHash: ref.contentHash },
+            sourceAuthority: parsed.source.kind === 'studio-project' ? 'native.studio.package' : parsed.source.kind === 'installed-package' ? 'native.asset' : 'dev.package',
+            sourceScope: parsed.source.kind === 'studio-project' ? { projectId: parsed.source.projectId } : parsed.source.kind === 'installed-package'
+                ? { packageId: parsed.source.packageId, packageVersionId: parsed.source.packageVersionId } : { contentHash: ref.contentHash },
             sourceRevision: ref.sourceRevision, allowedOperations: ['inspect', 'read', 'package.preflight', 'package.install'] };
         for (const [key, item] of this.#items) if (item.expiresAt <= this.now()) this.#items.delete(key);
         const handle = this.binary.begin({ binding, contentHash: ref.contentHash, totalBytes: ref.totalBytes,
@@ -75,12 +77,13 @@ export class PackageArtifacts {
 const nativeRefSchema = z.strictObject({ artifactId: z.string().uuid(), contentHash: digest, totalBytes: z.number().int().min(1).max(128 * 1024 * 1024),
     sourceRevision: id, clientInstanceId: id, serverBootId: z.string().uuid() });
 const stageSchema = z.strictObject({ artifactRef: nativeRefSchema, owner: z.string().min(1).max(256),
-    source: z.union([z.strictObject({ kind: z.literal('studio-project'), projectId: id, revision: id }), z.strictObject({ kind: z.literal('development-upload') })]),
+    source: z.union([z.strictObject({ kind: z.literal('studio-project'), projectId: id, revision: id }), z.strictObject({ kind: z.literal('development-upload') }),
+        z.strictObject({ kind: z.literal('installed-package'), packageId: id, packageVersionId: id })]),
     mediaType: z.literal('application/octet-stream'), expiresAt: z.number().int(), receivedBytes: z.number().int().min(0),
     state: z.enum(['receiving', 'complete']), maxChunkBytes: z.number().int().min(1).max(1024 * 1024) });
 
 // Private fixed transport. Never accepts a caller-controlled URL or emits bytes.
-async function artifactChunk(browser, stage, offset, length, bytes = null) {
+export async function artifactChunk(browser, stage, offset, length, bytes = null, metadataSchema = stageSchema) {
     const ref = nativeRefSchema.parse(stage.artifactRef);
     const url = new URL(`${product}/artifacts/${ref.artifactId}/chunk`, browser.config.url);
     for (const [key, value] of Object.entries(ref)) if (key !== 'artifactId') url.searchParams.set(key, String(value));
@@ -106,7 +109,7 @@ async function artifactChunk(browser, stage, offset, length, bytes = null) {
         const payload = await response.body(); if (payload.length > bound) throw new Error('Native artifact chunk exceeds bound.');
         if (bytes) {
             if (!(responseHeaders['content-type'] ?? '').includes('json')) throw new Error('Native staging response must be JSON metadata.');
-            const metadata = stageSchema.parse(JSON.parse(payload.toString()));
+            const metadata = metadataSchema.parse(JSON.parse(payload.toString()));
             if (fingerprint(metadata.artifactRef) !== fingerprint(ref) || metadata.receivedBytes !== offset + bytes.length) throw new Error('Native staging binding mismatch.');
             return metadata;
         }
@@ -216,6 +219,19 @@ export function registerHighRiskActions(registry, browser, repository, artifacts
         return { ok: true, artifact, manifest: redact(r.data.manifest), receiptEvidence: { after: artifact } };
     });
     add('package.artifact.inspect', 'READ', { artifactId: z.string().uuid() }, null, async i => { const { binding: _, nativeRef: __, ...metadata } = artifacts.get(i.artifactId); return metadata; });
+    add('package.version.export', 'INTERACT', { packageId: id, packageVersionId: id, expectedContentHash: digest }, async i => {
+        const response = await read('GET', `${product}/works/${i.packageId}/versions/${i.packageVersionId}/identity`), version = response.data.packageVersion;
+        if (!version || version.packageId !== i.packageId || version.packageVersionId !== i.packageVersionId || version.packageContentHash !== i.expectedContentHash) throw new Error('Exact installed PackageVersion hash required.');
+        return { target: { packageId: i.packageId, packageVersionId: i.packageVersionId }, serverBootId: response.serverBootId, contentHash: version.packageContentHash };
+    }, async (i, { before }) => {
+        const response = await call('POST', `${product}/packages/export-artifact`, { ...i, clientInstanceId: artifacts.clientInstanceId }, before), stage = stageSchema.parse(response.data);
+        if (!response.ok || response.serverBootId !== before.serverBootId || stage.artifactRef.serverBootId !== before.serverBootId
+            || stage.artifactRef.contentHash !== i.expectedContentHash || stage.source.kind !== 'installed-package' || stage.source.packageId !== i.packageId
+            || stage.source.packageVersionId !== i.packageVersionId) throw new Error('Native installed Package export binding changed.');
+        const artifact = await artifacts.fromNative(stage, { packageId: i.packageId, packageVersionId: i.packageVersionId, serverBootId: before.serverBootId },
+            (offset, length) => artifactChunk(browser, stage, offset, length));
+        return { ok: true, artifact, receiptEvidence: { after: artifact } };
+    }, ['native-exact-package-blob-lease', 'bounded-temporary-export', 'owned-binary-transfer']);
     const preflight = async i => {
         const artifact = artifacts.get(i.artifactId);
         const r = await read('POST', `${product}/packages/preflight`, { artifactRef: artifact.nativeRef });

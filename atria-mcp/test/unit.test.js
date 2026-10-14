@@ -28,6 +28,12 @@ test('API paths cannot escape Native, traverse, encode separators or access secr
         assert.throws(() => apiUrl(config, path), path);
     }
     assert.equal(apiUrl(config, '/api/native/studio/projects', { search: 'a&b', count: 1 }).search, '?search=a%26b&count=1');
+    for (const path of ['/api/native/product/sessions/session_one', '/api/native/product/works/pkg_one/resource-setup',
+        '/api/native/studio/projects/project_one/agent/tasks/task_one/context', '/api/native/generation/illustration-images',
+        '/api/native/generation/visual/gallery/thumbnail', '/api/native/generation/visual/mask/raster/mask_one', '/api/native/session/asset/asset_one']) {
+        assert.throws(() => apiUrl(config, path), /reconciliation/);
+    }
+    assert.equal(apiUrl(config, '/api/native/product/works/pkg_one/resource-setup/observe').pathname, '/api/native/product/works/pkg_one/resource-setup/observe');
     assert.throws(() => safeUrl('//evil.test', config.url));
     assert.equal(safeUrl('/#studio', config.url).origin, config.url);
 });

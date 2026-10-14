@@ -1,6 +1,17 @@
+import { registerRuntimeActions } from './runtime-actions.js';
+import { registerCognitionActions } from './cognition-actions.js';
+import { registerMediaActions } from './media-actions.js';
+import { registerNativeMemoryActions } from './native-memory-actions.js';
+import { registerSkillActions } from './skill-actions.js';
+import { registerSessionActions } from './session-actions.js';
+import { registerExtensionActions } from './extension-actions.js';
+import { registerSessionArchiveActions } from './session-archive-actions.js';
+import { registerResourceActions } from './resource-actions.js';
+import { registerSemanticUi, ScreenshotProofs, screenshotTargetSchema, screenshotWithProof } from './semantic-ui.js';
 import { McpServer } from '@modelcontextprotocol/server';
 import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
+import { registerProjectActions } from './project-actions.js';
 import { LaneScheduler } from './scheduler.js';
 import { OperationJournal, Operations, registerOperationActions } from './operations.js';
 import { createApprovalProtocol, isApprovalRequired } from './protocol.js';
@@ -17,13 +28,17 @@ import { registerAgentDelegation } from './agent-delegation.js';
 import { registerHighRiskActions, PackageArtifacts } from './high-risk.js';
 import { registerMemoryMutations } from './memory-mutations.js';
 
-export const GUIDE = `Atria MCP 0.2.0 — Phase 6 Integration and Security Verification.
+export const GUIDE = `Atria MCP 0.3.0 — Native authority workflows and isolated operations.
 Start with atri_status. Use atri_repo for tree/read/search, atri_git for read-only
 Git evidence and atri_artifact for bounded development artifacts. Discover Native
 APIs with atri_api operation=list/detail/read; only GET requests are available.
 Use atri_capabilities for exact READ descriptors/schemas and declared network/cost effects.
-Use atri_read for fixed semantic reads, including reviewed POST-shaped read authorities.
-Writes require exact startup Policy Ceiling IDs plus a trusted client form-elicitation round trip.
+Use atri_read for side-effect-free semantic reads, including fixed POST-shaped observation ports.
+Provider-capable retrieval/probes require INTERACT approval. Tasks extension is not advertised.
+Inspect operation.list/get/cancel/reconcile for invocation state; unknown results are never replayed.
+Project Agent Review and formal Commit, Package Review and Install are separate approvals.
+Use fixed-purpose binary handles for large archives/media; bytes never enter tool JSON.
+Writes require exact startup Policy Ceiling IDs plus a trusted negotiated client approval round trip (2025 form or 2026 MRTR).
 Default remains READ. A model boolean is never approval. Leases bind identical input/target/server
 boot, expire after five minutes, and have user-selected 1–20 uses. DESTRUCTIVE approvals have exactly one use, including receipt-owned cleanup.
 Prepare/inspect a Studio Workspace, evaluate it with approval, then apply using its exact receipt.
@@ -64,11 +79,23 @@ export async function createServer(config) {
         return { ...result, provenance: identity, evidenceInterval: captured === null ? 'NOT_MEASURED' : stable ? 'STABLE' : 'SCOPE_CHANGED_DURING_CAPTURE' };
     };
     const artifacts = new PackageArtifacts();
+    const screenshotProofs = new ScreenshotProofs();
     const scheduler = new LaneScheduler();
     const journal = await new OperationJournal({ directory: config.stateDirectory,
         owner: { repo: repository.root ?? config.repo, origin: config.url, authenticationProfile: config.storageState ?? 'default' } }).init({ forbiddenRoots: [config.repo, ...(config.dataRoots ?? [])] });
     const operations = new Operations({ journal });
     const registry = registerAgentDelegation(registerHighRiskActions(registerMemoryMutations(registerMutationActions(registerReadActions(new ActionRegistry(), browser), browser), browser), browser, repository, artifacts), browser);
+    registerProjectActions(registry, browser);
+    registerRuntimeActions(registry, browser);
+    registerCognitionActions(registry, browser);
+    registerMediaActions(registry, browser);
+    registerNativeMemoryActions(registry, browser);
+    registerSkillActions(registry, browser);
+    registerSessionActions(registry, browser);
+    registerExtensionActions(registry, browser);
+    registerSessionArchiveActions(registry, browser, repository);
+    registerResourceActions(registry, browser, repository);
+    registerSemanticUi(registry, browser, screenshotProofs);
     registerOperationActions(registry, operations, scheduler, { observeProduct: async record => {
         const response = await requestAuthority(browser, 'GET', '/api/native/generation/operations/' + record.productOperationId);
         if (!response.ok || response.serverBootId !== record.serverBootId) return { state: 'unknown', reason: 'Native operation unavailable or Host boot changed; inspect durable owning authority.' };
@@ -107,7 +134,7 @@ export async function createServer(config) {
     tool('atri_status', 'Configured source/server/browser provenance and separate observed Experience/Preview scopes.', {}, async (_, extra) => text(await status(extra)));
     tool('atri_capabilities', 'Search semantic registry or retrieve exact action descriptor/schema, authority, guards and external effects.', {
         action: bounded().optional(), query: z.string().max(200).default(''), domain: bounded().optional(), risk: z.enum(RISKS).optional(), ...page,
-    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 6 }));
+    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 'E1-E7' }));
     tool('atri_repo', 'Repository-wide tracked and safe non-ignored untracked tree/read/literal search. Product/user data and secrets denied independently of gitignore.', {
         operation: z.enum(['tree', 'read', 'search']), ...files,
     }, async args => text(await (args.operation === 'tree' ? repository.list(args) : args.operation === 'read' ? repository.read(args) : repository.search(args))));
@@ -160,12 +187,12 @@ export async function createServer(config) {
         return text(await observed(await browser[args.operation](args)));
     });
     tool('atri_browser_screenshot', 'Return bounded JPEG screenshot of viewport or selector/frame.', {
-        frame, selector: bounded().optional(), fullPage: z.boolean().default(false),
+        target: screenshotTargetSchema.optional(), frame, selector: bounded().optional(), fullPage: z.boolean().default(false),
     }, async args => {
         await browser.readyPage();
         const captured = JSON.stringify([browser.documentGeneration, browser.scopedEvidence]);
-        const image = await browser.screenshot(args);
-        return { content: [{ type: 'image', data: image.bytes.toString('base64'), mimeType: image.mimeType }, ...text(await observed({}, captured)).content] };
+        const { image, proof } = await screenshotWithProof(browser, provenance, args, screenshotProofs);
+        return { content: [{ type: 'image', data: image.bytes.toString('base64'), mimeType: image.mimeType }, ...text(await observed({ screenshotProof: proof }, captured)).content] };
     });
     tool('atri_browser_interact', 'Observation scrolling only; generic click/fill/press/select stay blocked to prevent semantic risk bypass.', {
         action: z.enum(['click', 'fill', 'press', 'select', 'scroll']), selector: bounded().optional(), value: z.string().max(12000).optional(), frame,
@@ -180,6 +207,6 @@ export async function createServer(config) {
     server.registerResource('atria-status', 'atria://status', { description: 'Configured source and unverified runtime identity', mimeType: 'application/json' }, async uri => ({ contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(redact(await status())) }] }));
     server.registerPrompt('atria_verify_change', { description: 'Inspect source and gather browser evidence without overstating provenance', argsSchema: { task: bounded(2000) } }, ({ task }) => ({ messages: [{ role: 'user', content: { type: 'text', text: `${GUIDE}\nUser task: ${task}` } }] }));
     return { server, catalog, browser, repository, registry, ceiling, receipts, executor, operations, scheduler, protocol, close: async () => {
-        await operations.close(); scheduler.close(); executor.clear(); receipts.clear(); artifacts.clear(); protocol.clear(); await browser.close(); await server.close();
+        await operations.close(); scheduler.close(); executor.clear(); receipts.clear(); artifacts.clear(); screenshotProofs.clear(); protocol.clear(); await browser.close(); await server.close();
     } };
 }

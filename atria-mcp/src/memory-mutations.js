@@ -5,7 +5,7 @@ import { redact } from './policy.js';
 
 const id = z.string().min(1).max(256);
 const fields = z.record(z.string().max(128), z.json()).refine(v => JSON.stringify(v).length <= 16000);
-const shapes = {
+export const MEMORY_MUTATION_SHAPES = {
     'memory.node.delete': { id },
     'memory.relation.delete': { source: z.strictObject({ id }), target: z.strictObject({ id }), relation: id, direction: z.enum(['outgoing', 'incoming', 'bidirectional']).optional() },
     'memory.node.create': { type: id, title: z.string().max(2000), fields },
@@ -13,6 +13,7 @@ const shapes = {
     'memory.relation.upsert': { source: z.strictObject({ id }), links: z.array(z.strictObject({ target: z.strictObject({ id }), relation: id, direction: z.enum(['outgoing', 'incoming', 'bidirectional']).optional() })).min(1).max(30) },
     'memory.compact': { type: id, childIds: z.array(id).min(1).max(30), summary: z.string().min(1).max(8000), fields },
 };
+const shapes = MEMORY_MUTATION_SHAPES;
 
 // Literal first-party capability calls only; all writes use the owning guarded session.
 async function bridge(browser, action, input = {}, expected = null) {

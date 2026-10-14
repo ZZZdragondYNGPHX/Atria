@@ -3,7 +3,8 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { AtriaBrowser } from '../src/browser.js';
 import { Provenance } from '../src/provenance.js';
-import { ActionRegistry, PolicyCeiling, RiskExecutor } from '../src/kernel.js';
+import { ActionRegistry, PolicyCeiling, RiskExecutor, fingerprint } from '../src/kernel.js';
+import { observeSemanticUi, screenshotWithProof } from '../src/semantic-ui.js';
 import { registerMemoryMutations } from '../src/memory-mutations.js';
 import { invokeBrowserAdapter } from '../src/capability-bridge.js';
 
@@ -99,7 +100,9 @@ export async function verifyNativeUi({ origin, repo, artifacts, projectId, baseR
             document.body.replaceChildren(root);
             await mountStudioPreviewUi(document, root, result.model, result.experience.mode,
                 item => { root.dataset.diagnostic = String(item.reasonCode || item.message); },
-                { entry: result.experience.frontend.entry, files: result.compiledFiles, bridgeProjections: result.bridgeProjections });
+                { entry: result.experience.frontend.entry, files: result.compiledFiles, bridgeProjections: result.bridgeProjections, identity: {
+                    kind: 'preview', projectId: result.projectId, previewId: result.previewId, packageVersionId: result.packageVersionId,
+                    packageContentHash: result.packageContentHash, baseRevision: result.baseRevision, workspaceId: result.workspaceId, operationsFingerprint: result.operationsFingerprint } });
             return { previewId: result.previewId, packageVersionId: result.packageVersionId, format: result.model.format };
         }, { previewId: evaluation.preview.previewId });
         assert.equal(exact.previewId, evaluation.preview.previewId);
@@ -111,8 +114,13 @@ export async function verifyNativeUi({ origin, repo, artifacts, projectId, baseR
             await browser.resize({ width, height });
             const snapshot = await browser.snapshot();
             assert.match(snapshot.accessibility, /MCP REVIEWED Fixture/);
-            await writeFile(join(artifacts, name + '.jpg'), (await browser.screenshot()).bytes);
-            captures.push({ name, snapshot, provenance: await settle() });
+            const surface = (await observeSemanticUi(browser)).find(item => item.identity.source?.previewId === evaluation.preview.previewId);
+            assert.ok(surface, 'Real compiled Preview must register its semantic surface');
+            const captured = await screenshotWithProof(browser, provenance, { target: { surfaceId: surface.surfaceId, expectedIdentityHash: fingerprint(surface.identity) } });
+            assert.equal(captured.proof.state, 'EXACT_CURRENT', JSON.stringify(captured.proof));
+            assert.equal(captured.proof.native.workspaceId, workspace.workspaceId);
+            await writeFile(join(artifacts, name + '.jpg'), captured.image.bytes);
+            captures.push({ name, snapshot, screenshotProof: captured.proof, provenance: await settle() });
         }
         // Exercise the actual Source Graph editor and its own formal evaluation.
         await page.evaluate(async ({ projectId, baseRevision }) => {

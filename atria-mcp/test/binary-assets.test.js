@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { runInNewContext } from 'node:vm';
 import { BinaryAssets, BINARY_ASSET_CATALOG } from '../src/binary-assets.js';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -9,6 +10,20 @@ const binding = { owner: 'fixture-owner', clientInstanceId: 'fixture-client', pu
     allowedOperations: ['inspect', 'read', 'package.preflight', 'package.install'] };
 const begin = (store, bytes = Buffer.from('abcdefgh'), changes = {}) => store.begin({ binding, contentHash: hash(bytes), totalBytes: bytes.length, mediaType: 'application/octet-stream', ...changes });
 const write = (store, handle, bytes, offset = 0, changes = {}) => store.writeChunk(handle.handleId, { binding, offset, bytes, chunkHash: hash(bytes), ...changes });
+
+test('cross-realm ordinary bindings are accepted without admitting class, exotic or polluted objects', () => {
+    const foreign = runInNewContext('JSON.parse(input)', { input: JSON.stringify(binding) }), store = new BinaryAssets(), bytes = Buffer.from('realm');
+    const handle = begin(store, bytes, { binding: foreign });
+    store.writeChunk(handle.handleId, { binding: foreign, offset: 0, bytes, chunkHash: hash(bytes) });
+    store.finalize(handle.handleId, { binding: foreign });
+    assert.equal(store.inspect(handle.handleId, { binding: foreign }).state, 'complete');
+    for (const candidate of [runInNewContext('new (class Binding { constructor(input) { Object.assign(this, JSON.parse(input)); } })(input)', { input: JSON.stringify(binding) }),
+        new Date(), [], Object.assign(Object.create({}), binding), { ...binding, sourceScope: { constructor: 'pollution' } },
+        { ...binding, sourceScope: JSON.parse('{"__proto__":"pollution"}') }, { ...binding, [Symbol('hidden')]: true }]) {
+        assert.throws(() => begin(new BinaryAssets(), bytes, { binding: candidate }), /invalid/);
+    }
+    store.clear();
+});
 
 test('fixed authority, purpose, scope and binary metadata never grant business permission', () => {
     const store = new BinaryAssets({ maxChunkBytes: 4 }), bytes = Buffer.from('abcdefgh'), handle = begin(store, bytes);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { z } from 'zod';
-import { mkdtemp, readFile, rm, realpath } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, realpath, access, mkdir, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname, basename } from 'node:path';
 import { LaneScheduler } from '../src/scheduler.js';
@@ -68,4 +68,25 @@ test('atomic private journal recovers dispatched unknown without inputs/leases a
     assert.throws(() => recovered.get('foreign-operation'), /Unknown/);
     await assert.rejects(journal.put({ ...operations.get(op.operationId), prompt: 'forbidden' }));
     await assert.rejects(new OperationJournal({ directory: root, owner }).init({ forbiddenRoots: [root] }), /outside/);
+});
+
+test('journal retention prunes only closed aged known outcomes and preserves unresolved history within hard limits', async t => {
+    const root = await mkdtemp(join(tmpdir(), 'atria-mcp-journal-retention-'));
+    t.after(async () => { const path = await realpath(root); assert.equal(dirname(path).toLowerCase(), (await realpath(tmpdir())).toLowerCase());
+        assert.ok(basename(path).startsWith('atria-mcp-journal-retention-')); await rm(path, { recursive: true, force: true }); });
+    let now = 1;
+    const owner = { repo: 'retention' }, first = await new OperationJournal({ directory: root, owner, now: () => now, retentionMs: 10 }).init();
+    const operations = new Operations({ journal: first, now: () => now });
+    const completed = await operations.create('fixture.write', 'MUTATE', fingerprint('one'));
+    await operations.update(completed.operationId, { state: 'completed', dispatched: true }); operations.release(completed.operationId); await operations.close();
+    now = 20;
+    const second = await new OperationJournal({ directory: root, owner, now: () => now, retentionMs: 10 }).init();
+    await assert.rejects(access(first.directory)); assert.equal(second.records.size, 0);
+    const next = new Operations({ journal: second, now: () => now }), unknown = await next.create('fixture.write', 'MUTATE', fingerprint('two'));
+    await next.update(unknown.operationId, { state: 'unknown', dispatched: true }); next.release(unknown.operationId); await next.close(); now = 100;
+    const third = await new OperationJournal({ directory: root, owner, now: () => now, retentionMs: 10 }).init();
+    assert.equal(third.records.get(unknown.operationId).state, 'unknown'); await third.close();
+    await assert.rejects(new OperationJournal({ directory: root, owner, maxInstances: 1 }).init(), /capacity/);
+    const actual = join(root, 'actual'), linked = join(root, 'linked'); await mkdir(actual); await symlink(actual, linked, process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(new OperationJournal({ directory: linked, owner: 'linked-owner' }).init(), /symlink/);
 });

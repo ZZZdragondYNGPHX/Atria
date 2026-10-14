@@ -35,6 +35,14 @@ export function apiUrl(config, path, query = {}) {
     }
     const url = safeUrl(path, config.url);
     if (/(?:^|\/)(?:secrets?|credentials)(?:\/|$)/i.test(url.pathname)) throw new Error('Secret and credential endpoints are not exposed.');
+    // Discovered GET is not automatically a pure observation authority.
+    if (/^\/api\/native\/product\/sessions\/[^/]+$/.test(path)
+        || /^\/api\/native\/product\/works\/[^/]+\/resource-setup$/.test(path)
+        || /^\/api\/native\/session\/asset\//.test(path)
+        || /^\/api\/native\/generation\/visual\/(?:mask\/raster|gallery\/thumbnail)(?:\/|$)/.test(path)
+        || /^\/api\/native\/studio\/projects\/[^/]+\/agent\/tasks(?:\/[^/]+(?:\/context)?)?$/.test(path)
+        || /^\/api\/native\/generation\/illustration-images(?:\/[^/]+)?$/.test(path))
+        throw new Error('Endpoint performs reconciliation; use the pure semantic observation action.');
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, String(value));
     return url;
 }

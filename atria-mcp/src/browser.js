@@ -31,12 +31,17 @@ export class AtriaBrowser {
             this.context.setDefaultTimeout(this.config.timeout);
             await this.context.route('**/*', async route => {
                 const request = route.request();
-                // Block cross-origin documents, including redirects, popups and network frames.
-                // Subresources still follow Atria's own behavior; this is not an egress sandbox.
-                if (request.isNavigationRequest() && new URL(request.url()).origin !== this.config.url) {
-                    this.record({ type: 'blocked-navigation', url: diagnosticUrl(request.url()) });
+                // Browser evidence stays on the configured origin, including subresources.
+                // Native Provider networking remains a separate owning authority.
+                if (new URL(request.url()).origin !== this.config.url) {
+                    this.record({ type: request.isNavigationRequest() ? 'blocked-navigation' : 'blocked-subresource', url: diagnosticUrl(request.url()) });
                     await route.abort('blockedbyclient');
                 } else await route.continue();
+            });
+            await this.context.routeWebSocket('**/*', socket => {
+                const url = new URL(socket.url()); url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
+                if (url.origin !== this.config.url) { this.record({ type: 'blocked-websocket', url: diagnosticUrl(socket.url()) }); socket.close(); }
+                else socket.connectToServer();
             });
             this.page = await this.context.newPage();
             this.page.on('request', request => {
@@ -78,6 +83,7 @@ export class AtriaBrowser {
 
     async open({ path = '/', reload = false, width, height, waitFor } = {}) {
         const url = safeUrl(path, this.config.url);
+        if (!['/', '/index.html', '/login', '/login.html'].includes(url.pathname)) throw new Error('Browser navigation is restricted to the Atria shell and manual login surfaces; use semantic Native actions for data.');
         await this.start();
         if (width || height) await this.page.setViewportSize({ width: width ?? this.page.viewportSize().width, height: height ?? this.page.viewportSize().height });
         this.loadedIdentity = null; this.scopedEvidence = {};
@@ -166,7 +172,7 @@ export class AtriaBrowser {
         return this.snapshot({ frame });
     }
 
-    async screenshot({ frame = 0, selector, fullPage = false } = {}) {
+    async screenshot({ frame = 0, selector, fullPage = false, clip } = {}) {
         await this.readyPage();
         if (fullPage) {
             const height = await this.page.evaluate(() => Math.max(document.body?.scrollHeight ?? 0, document.documentElement.scrollHeight));
@@ -176,7 +182,7 @@ export class AtriaBrowser {
         if (selector) bytes = await this.frame(frame).locator(selector).screenshot({ type: 'jpeg', quality: 75, timeout: this.config.timeout });
         else {
             if (frame !== 0) throw new Error('Frame screenshots require a selector (for example body).');
-            bytes = await this.page.screenshot({ type: 'jpeg', quality: 75, fullPage, timeout: this.config.timeout });
+            bytes = await this.page.screenshot({ type: 'jpeg', quality: 75, fullPage, ...(clip ? { clip } : {}), timeout: this.config.timeout });
         }
         if (bytes.length > 3 * 1024 * 1024) throw new Error('Screenshot exceeds 3 MiB. Use a smaller viewport or selector.');
         return { bytes, mimeType: 'image/jpeg', url: diagnosticUrl(this.page.url()) };
