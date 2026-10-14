@@ -3,7 +3,7 @@
 - Task: `atria-native-visual-generation-deepening`
 - Authority: 本文定义 **Round 3 已冻结的架构分界**，而非 Provider 的最终接口字段；跨模块冻结决策以 [decisions.md](decisions.md) D-003 为准。
 - Source baseline: [2026-10-14 静态源码审计](baseline-and-reference.md)。代码实现前重新核对目标 main HEAD、Provider 官方协议与能力声明。
-- Status: **D-003/D-004 的中立 Provider 协议/目标清单及 D-005/D-006 的视觉参考权威已批准**；D-009/D-010 进一步冻结 Provider 编辑必须走 Capability Negotiation、原图/Mask 输入与不可变版本证据（详见 [media-editing-gallery.md](media-editing-gallery.md)）。D-011 已冻结编辑能力**声明规范/三态/组合检查与 Mask 中立像素协议**（见 [media-precision.md](media-precision.md)），但 Round 12 具体 Provider 版本/Workflow 的能力事实、原生上传/Mask 极性/费用/可降级策略**未冻结**。相关公开文档证据、候选实现及 A/B/C 取舍另见 [provider-editing-matrix.md](provider-editing-matrix.md)，不能用文档存在冒充连接已实测。
+- Status: **D-003/D-004 的中立 Provider 协议/清单与三层配置已冻结**，D-009/D-011 的编辑/Mask/证据规则已冻结；**D-012 已冻结 P0/P1 文档能力矩阵与逐 Target 真实能力分离、Required/Preferred/Optional 显式降级许可、L1/L2/L3 验收**，详见 [provider-editing-matrix.md](provider-editing-matrix.md)。具体模型/Workflow Live 能力、真实费用及精确 Request/Capability Schema 未在本轮被证明；Round 13 待议统一数据/API/设置和工程阶段。
 
 ## 1. Frozen architectural separation (D-003; Round 3 方案 C)
 
@@ -99,7 +99,7 @@ Tasks/fields are illustrative only. In particular, **scope of non-narrative imag
 2. **Image Target Profile — 具体模型或工作流**：指向一条 Image Connection，选择模型 ID 和版本，或 ComfyUI/RunningHub 的已版本化 Workflow / 绑定清单；管理实际 Provider 原生参数（sampler/steps/CFG/LoRA、节点映射等）及经过校验的 Capability Manifest。**一条 Connection 可以拥有多个 Target Profile**；Target 的确切内容和能力指纹随生成请求冻结，后续编辑配置不篡改旧请求证据。
 3. **Image Rendering Profile — 绘图语义/风格与目标选择策略**：包含画风、画质偏好、角色参考/视觉约束、默认 Image Target 的选择，可全局定义、按作品覆盖；通用语义与 Provider-native 参数分别归 Image Prompt IR 和 Target，不能把后端专有 JSON 强塞为所有作品的统一视觉描述。
 
-**Effective Image Target / Rendering selection**：按 **单次任务 > 单标注 > 作品 > 全局默认** 的优先级解析；同一层可对 Rendering Profile、Target Profile 分别覆盖，缺项继承上级。提示词 LLM 使用已有独立的 `role.illustration_prompt` 文本 Runtime Route，而不是图片 Provider。手动生图可显式选单次模型；半自动与全自动应按后续预算/授权策略选择，**禁止因失败就未经许可自行换到其他收费 Provider**。目标不可用或能力不满足时显示原因并遵循后续批准的 fallback 策略，不默默选择非等价后端。
+**Effective Image Target / Rendering selection**：按 **单次任务 > 单标注 > 作品 > 全局默认** 的优先级解析；同一层可对 Rendering Profile、Target Profile 分别覆盖，缺项继承上级。提示词 LLM 使用已有独立的 `role.illustration_prompt` 文本 Runtime Route，而不是图片 Provider。手动生图可显式选单次模型；半自动/自动由 D-007/D-008 的预算与用户许可控制；**禁止因失败就未经许可自行换到其他收费 Provider**。能力不满足时遵循 D-012 的 Required 不降级、Preferred 仅明确授权范围内降级、Optional 有证据地省略；逐次确认有效约束/费用后才发送。
 
 **用户配置体验目标**：在 Runtime/视觉设置中管理连接、Target（模型/工作流）与 Rendering Profile；ComfyUI Workflow 应能导入 API JSON 并可视化地验证/映射节点输入，不要求普通玩家手写原始替换字符串。视觉 UI 的具体布局、自动探测手段、模板导入/导出与失败通知在后续 UI 轮次决定。
 
@@ -118,8 +118,8 @@ Tasks/fields are illustrative only. In particular, **scope of non-narrative imag
 - Adapters validate image format/dimensions and hostile payload limits, HTTPS/local endpoint boundaries, SSRF/secret handling, cancellation and retry logic for their actual transport.
 - No external API/real image/UI testing has yet been performed in this design round.
 
-## 7. Next design checkpoint: Round 6 (not frozen)
+## 7. Next design checkpoint: Round 13 (not frozen)
 
-D-005 已确定 Visual Identity / State / References 的权威与分支/披露边界，详细见 [visual-continuity.md](visual-continuity.md)。第六轮继续讨论状态变更的自动感知及应用、固定外观/剧情变化/用户编辑冲突时如何仲裁，角色/服装/风格参考图与 Vibe 的用途、自动挑选与冲突处理。
+D-012 已批准各 Provider 家族/实际 Target 能力矩阵、Required/Preferred/Optional 约束协商和 L1/L2/L3 逐阶段验证，不代表真实模型已通过 L3。具体约束/后端文档见 [provider-editing-matrix.md](provider-editing-matrix.md)，Mask 与 Gallery/SavePoint 见 [media-precision.md](media-precision.md)。
 
-随后仍需分别完成 Provider 精确 Schema、Capabilities 探测、Cost/Fallback 策略、视觉 UI 与执行验收等议题；D-004/D-005 不替代这些后续决定。
+**Round 13 待议**：将冻结的 ImagePromptIR、Connection/Target/Rendering Profile、ImageJob/MediaOperation、AssetStore/SavePoint 等约束收束成一组明确 Native API/资源 Schema，讨论 Runtime 连接 UI、作品/单次覆盖、跨平台编辑，以及 P0/P1 阶段/子阶段与最终验收路由。精确字段与路由仍是候选。
