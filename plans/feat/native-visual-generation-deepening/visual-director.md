@@ -167,7 +167,7 @@ or: skipped | blocked | failed | cancelled | stale | uncertain_submission
 
 D-008 已冻结上述 Scene/Shot 组织、评分框架、节奏档位、可调的初始默认、双账目/云费用授权门禁及 Durable ImageJob 分支恢复原则。**需要后续轮次继续细化**的内容：正式 IR/Job/预算数据库精确 Schema、Provider 不同的真实收费/额度协议、更多评分样本的校准、具体 UI 操作与图像编辑功能矩阵。评分权重和初始数字是可调起点，允许以实测为依据校准，不为达标设立新的用户审批或工程停工许可。
 
-## 8. Round 9 (open, not frozen): image derivations, edit workflows and gallery
+## 8. Round 9 历史展望（现已由 D-009～D-011 定案）：media derivations / gallery
 
 下一轮讨论图片再生成、img2img、inpaint/局部重绘、upscale、画廊与长期版本化资产管理。应重点权衡：
 - 重新生成是同一 Annotation 下的新 ImageVersion，还是所有操作都生成衍生图谱；画面/版本选择能否不改变已提交剧情或误选当前 Branch？
@@ -176,4 +176,4 @@ D-008 已冻结上述 Scene/Shot 组织、评分框架、节奏档位、可调�
 - 画廊如何按作品/Session/Branch/Scene/Actor/Provider/编辑历史查找、预览、选择版本与批量操作，同时保证 SourceRef/SavePoint/GC 的引用完整性。
 - 编辑预算是否从自动节奏额度分离，手动操作始终受全局收费权限控制；是否支持跨 Provider 的合法衍生而不自动丢失来源证据。
 
-**上述第九轮内容只作为讨论主题**，未冻结任何具体编辑功能/Provider 实现承诺。
+**本段是 D-008 当时的历史展望**；后续 D-009～D-011 已正式冻结编辑操作、Mask/Gallery/GC/SavePoint 的架构与中立协议，详见 [media-editing-gallery.md](media-editing-gallery.md) 和 [media-precision.md](media-precision.md)。D-013/API 具体合同与未决在 [e0-closure-audit.md](e0-closure-audit.md) 追踪，不能把旧展望当成仍未批准。
