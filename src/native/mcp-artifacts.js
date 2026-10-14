@@ -61,6 +61,18 @@ export class NativeMcpArtifacts {
         if (!exactKeys(input, ['clientInstanceId', 'contentHash', 'totalBytes'])) invalid();
         return this.#metadata(this.#reserve(owner, input.clientInstanceId, input.contentHash, input.totalBytes, input.contentHash, { kind: 'session-archive-upload' }));
     }
+    beginSource(owner, input, kind, bindingHash) {
+        const limits = { 'skill-payload-upload': 128 * MiB, 'extension-source-upload': 4 * MiB };
+        if (!Object.hasOwn(limits, kind) || !exactKeys(input, ['clientInstanceId', 'contentHash', 'totalBytes'])
+            || !/^[a-f0-9]{64}$/.test(bindingHash ?? '') || !integer(input.totalBytes, 1, limits[kind])) invalid();
+        return this.#metadata(this.#reserve(owner, input.clientInstanceId, input.contentHash, input.totalBytes, input.contentHash, { kind, bindingHash }));
+    }
+    async withSource(owner, ref, kind, bindingHash, consumer) {
+        const item = this.#get(owner, ref, true);
+        if (!['skill-payload-upload', 'extension-source-upload'].includes(kind) || item.source.kind !== kind || item.source.bindingHash !== bindingHash)
+            throw new ConflictError('native_artifact_purpose_conflict');
+        return this.withBytes(owner, ref, consumer);
+    }
     captureSessionArchive(owner, clientInstanceId, sessionId, revisionId, saveId, bytes) {
         if (!identifier(sessionId) || !identifier(revisionId) || saveId !== null && !identifier(saveId) || !Buffer.isBuffer(bytes)) invalid();
         const item = this.#reserve(owner, clientInstanceId, digest(bytes), bytes.length, revisionId, { kind: 'session-archive', sessionId, revisionId, saveId });
