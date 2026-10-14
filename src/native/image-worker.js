@@ -57,17 +57,13 @@ export class ImageJobWorker {
         } finally { clearInterval(heartbeat); }
     }
     async complete(handle, job, fence) {
-        return this.store.updateJob(handle, job.jobId, async j => {
-            if (j.status === 'published') return j;
-            if (j.fence !== fence || j.status !== 'result_received' || j.lease?.until < this.store.now()) visualError('lease_conflict');
+        return this.store.publishJob(handle, job.jobId, fence, async j => {
             await this.fresh(handle, j);
             await this.assets.getRef(handle, j.result.ref.assetId);
             // The same ledger lock serializes cancel against final publication.
             // The publisher is idempotent, so a crash after publication can
             // replay this finalization without creating another version.
             await this.publish(handle, j);
-            j.status = 'published'; j.publishedAt = this.store.now(); j.lease = null;
-            return j;
         });
     }
     async recover(handle) {

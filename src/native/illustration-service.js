@@ -68,11 +68,10 @@ export class IllustrationService {
         const image = assertIllustrationImage({ annotationId, imageVersionId, assetId, width, height, alt, prompt, negativePrompt, parameters,
             ...(requestSnapshot === undefined ? {} : { requestSnapshot }), ...(mediaOperation === undefined ? {} : { mediaOperation }), createdAt: Date.now() });
         return this.sessions.updateIllustrations(handle, sessionId, state => {
-            const annotation = this._annotation(state, annotationId);
+            this._annotation(state, annotationId);
             if (state.images.some(item => item.imageVersionId === imageVersionId)) throw new ConflictError('native_illustration_version_conflict');
-            // A late result may enter history, but never resurrect a deleted mark.
-            return { ...state, images: [...state.images, image], annotations: state.annotations.map(item => item !== annotation || item.deletedAt !== undefined
-                ? item : { ...item, selectedImageVersionId: imageVersionId }) };
+            // Async output enters history; display selection is a separate CAS command.
+            return { ...state, images: [...state.images, image] };
         }, { expectedHead, branchId });
     }
 

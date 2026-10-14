@@ -79,6 +79,23 @@ export class VisualStore {
             return job;
         });
     }
+    async publishJob(handle, jobId, fence, publish) {
+        // Keep cancellation serialized, without holding a SQLite transaction
+        // across SessionRepo/AssetStore transactions (which would deadlock).
+        return withNativeResourceWrite(handle, 'visual-ledger', async () => {
+            assertWritable();
+            const row = await this.read(handle, 'job', jobId), job = row.value;
+            if (job?.status === 'published') return job;
+            if (!job || job.fence !== fence || job.status !== 'result_received' || job.lease?.until < this.now()) visualError('lease_conflict');
+            await publish(job);
+            const next = { ...job, status: 'published', publishedAt: this.now(), lease: null };
+            await this.engine.withTransaction(handle, async tx => {
+                const result = await tx.putResourceIfMatch(visualKey(handle, 'job', jobId), row.revision, nativeRecord(next));
+                if (!result.updated) visualError('conflict');
+            });
+            return next;
+        });
+    }
     async fenced(handle, jobId, fence, update) {
         return this.updateJob(handle, jobId, job => {
             if (job.fence !== fence || job.lease?.until < this.now()) visualError('lease_conflict');

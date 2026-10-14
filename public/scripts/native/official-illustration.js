@@ -25,7 +25,7 @@ export async function activate(sdk) {
     const status = node(doc, toolbar, 'span'); status.setAttribute('role', 'status');
     let mode = false, pending = null, selectedId = null, settings = (await sdk.illustrations.settings.read()).value, configEditor;
     const drafts = new Map(), operations = new Map(), imageOperations = new Map(), watchers = new Map();
-    const terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
+    const terminal = new Set(['completed', 'failed', 'cancelled', 'stale', 'uncertain_submission']);
     const promptErrors = { native_generation_route_missing: '请先创建“绘图提示词”用途的模型路线，并在插图配置中选择。', native_generation_route_ambiguous: '有多条提示词模型路线，请在插图配置中明确选择。', generation_secret_unavailable: '提示词模型连接的密钥不可用，请检查该连接。', native_illustration_source_unavailable: '此旧存档缺少原始历史上下文；可以直接填写提示词。', generation_context_budget_exceeded: '选文与角色描述超过模型容量，请选择容量更大的提示词模型。', native_illustration_prompt_invalid: '模型输出格式不正确，请重试提示词步骤。' };
     const taskLabels = { queued: '等待提示词模型', running: '正在生成提示词', streaming: '正在生成提示词', retrying: '正在重试提示词', finalizing: '正在保存提示词版本', completed: '提示词版本已保存', failed: '提示词生成失败，可重试本步骤', cancelled: '提示词任务已取消', stale: '标注已删除或不可用，结果未写入' };
     const imageLabels = { queued: '图片任务排队中', running: '正在生成图片', finalizing: '正在保存图片版本', completed: '图片版本已保存', failed: '图片生成失败，可重试本步骤', cancelled: '图片任务已取消', stale: '图片归属已不可用，结果未写入' };
@@ -201,10 +201,23 @@ export async function activate(sdk) {
         const imageButton = button(doc, actions, imageActive ? '图片生成中' : '生成图片', run(async () => {
             readDraft(); const submitted = structuredClone(draft);
             const saved = await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, expectedHead: sdk.illustrations.snapshot().head });
-            const started = await sdk.illustrations.image('start', { annotationId: annotation.annotationId, expectedHead: saved.head });
-            const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
-            imageOperations.set(annotation.annotationId, operation); watch(operation, undefined, 'image');
-            notify('图片任务已提交；只使用此次确认的输入，可以继续阅读或编辑。'); renderCard();
+            const preview = await sdk.illustrations.image('prepare', { annotationId: annotation.annotationId, expectedHead: saved.head });
+            const approvalBox = node(doc, actions, 'fieldset'); node(doc, approvalBox, 'legend', '确认图片任务');
+            node(doc, approvalBox, 'p', preview.target.name + ' · ' + preview.target.model + ' · ' + (preview.cost.kind === 'unknown' ? '费用未知' : preview.cost.kind === 'free' ? '无 API 金额' : '预计最高 ' + preview.cost.upperBound + ' ' + preview.cost.currency));
+            node(doc, approvalBox, 'p', '生成结果将进入历史；选择版本后才改变正文显示。');
+            let maxCost = String(preview.cost.upperBound ?? 0), currency = preview.cost.currency || 'USD', allowUnknownCost = false;
+            field(doc, approvalBox, '本次金额上限', maxCost, text => maxCost = text, { type: 'number' });
+            field(doc, approvalBox, '币种', currency, text => currency = text);
+            if (preview.cost.kind === 'unknown') field(doc, approvalBox, '我接受供应商费用未知，按填写额度预留', false, value => allowUnknownCost = value, { type: 'checkbox' });
+            button(doc, approvalBox, '批准生成', run(async () => {
+                const started = await sdk.illustrations.image('start', { prepareId: preview.prepareId, approval: { targetFingerprint: preview.targetFingerprint,
+                    requestHash: preview.requestHash, maxCost: Number(maxCost), currency, allowUnknownCost, externalAssetIds: [], omittedPreferred: [] } });
+                const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
+                imageOperations.set(annotation.annotationId, operation); watch(operation, undefined, 'image');
+                notify('图片任务已提交；可以继续阅读或编辑。'); renderCard();
+            }));
+            button(doc, approvalBox, '取消', () => approvalBox.remove());
+            approvalBox.querySelector('input')?.focus();
         }));
         const syncImageButton = () => { imageButton.disabled = Boolean(imageActive) || !draft.prompt.trim(); imageButton.setAttribute('aria-busy', String(Boolean(imageActive))); };
         syncImageButton(); editor.addEventListener('input', syncImageButton);

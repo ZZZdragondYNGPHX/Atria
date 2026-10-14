@@ -1,3 +1,4 @@
+import { VisualConfiguration } from '../native/visual-configuration.js';
 import { describeSessionProtocols } from '../native/session-public-work.js';
 import { createSkillRepository } from '../skills/repository.js';
 import { SpeechService } from '../native/speech-service.js';
@@ -224,10 +225,34 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         res.set('Cache-Control', 'private, no-store');
         try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() })[action === 'start-learning' ? 'startLearning' : action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
     });
-    router.get('/illustration-images', (req, res) => {
+    router.get('/visual/configuration', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new VisualConfiguration({ host: getHost() }).read(handle)); } catch { res.status(400).json({ error: 'native_visual_configuration_failed' }); }
+    });
+    router.put('/visual/resources', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try { res.json(await new VisualConfiguration({ host: getHost() }).save(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') || error.name === 'ConflictError' ? 409 : 400).json({ error: error.code || 'native_visual_configuration_failed' }); }
+    });
+    router.put('/visual/budget', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        try { res.json(await new VisualConfiguration({ host: getHost() }).store.configureBudget(handle, req.body.value, req.body.expectedRevision)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_budget_failed' }); }
+    });
+    router.get('/illustration-images', async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
-        try { res.json(new IllustrationImageService({ host: getHost() }).list(handle, req.query)); } catch { res.status(400).json({ error: 'native_illustration_request_invalid' }); }
+        try { res.json(await new IllustrationImageService({ host: getHost() }).list(handle, req.query)); } catch { res.status(400).json({ error: 'native_illustration_request_invalid' }); }
+    });
+    router.post('/illustration-images/prepare', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new IllustrationImageService({ host: getHost() }).prepare(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_visual_prepare_failed' }); }
+    });
+    router.delete('/illustration-images/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await new IllustrationImageService({ host: getHost() }).cancel(handle, { operationId: req.params.id })); } catch (error) { res.status(400).json({ error: error.code || 'native_visual_cancel_failed' }); }
     });
     router.post('/illustration-images', async (req, res) => {
         const handle = req.user?.profile?.handle;

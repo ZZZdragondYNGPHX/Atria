@@ -31,3 +31,17 @@ unsupported, expired evidence, unauthorized external transfer/payment, budget
 exceeded and uncertain submission. Unknown remote submission is held for
 reconciliation; cancellation does not promise refunds. Provider L1/L2 evidence
 does not establish L3 availability.
+
+Provider protocol sources (checked 2026-10-14):
+
+- [NovelAI public OpenAPI](https://image.novelai.net/docs/doc.json),
+  [V5 models](https://docs.novelai.net/en/image/models/) and
+  [effort](https://docs.novelai.net/en/image/effort/). V5 has a separate compiler
+  declaration and parameter version. Medium effort is not inferred from V4.5.
+  NovelAI requires human initiation; automatic submission is refused.
+- [ComfyUI server routes](https://docs.comfy.org/development/comfyui-server/comms_routes).
+- [OpenAI Images generate](https://developers.openai.com/api/reference/resources/images/methods/generate)
+  and [edit](https://developers.openai.com/api/reference/resources/images/methods/edit).
+
+A protocol fixture establishes L1/L2 only. Live model IDs, account capability,
+workflow installation and actual pricing remain separate L3 evidence.

@@ -4,17 +4,18 @@ export const NOVELAI_IMAGE_ENDPOINT = 'https://image.novelai.net/ai/generate-ima
 export const NOVELAI_IMAGE_ADAPTERS = ['provider.novelai-image', 'provider.novelai-image-compatible'];
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const base = { maxPixels: 4194304, maxSteps: 50, samplers: ['k_euler', 'k_euler_ancestral', 'k_dpmpp_2s_ancestral', 'k_dpmpp_2m', 'k_dpmpp_sde', 'ddim_v3'], noiseSchedules: ['native', 'karras', 'exponential', 'polyexponential'] };
-// Deliberately scoped to the verified V3/V4/V4.5 text-to-image protocol.
+// Per-model protocol declarations; live availability is independently verified.
 export const officialNovelaiCapabilities = () => ({ responseFormat: 'zip', models: [
     { ...base, id: 'nai-diffusion-3', characterPrompts: false, sm: true },
     ...['nai-diffusion-4-curated-preview', 'nai-diffusion-4-full', 'nai-diffusion-4-5-curated', 'nai-diffusion-4-5-full'].map(id => ({ ...base, id, characterPrompts: true, sm: false })),
+    { ...base, id: 'nai-diffusion-5-full', characterPrompts: true, sm: false, protocolVersion: 5 },
 ] });
 export function assertNovelaiCapabilities(value) {
     if (!value || Object.keys(value).some(key => !['responseFormat', 'models'].includes(key)) || !['zip', 'json', 'png'].includes(value.responseFormat)
         || !Array.isArray(value.models) || !value.models.length || value.models.length > 64) fail('native_illustration_capabilities_invalid');
     const ids = new Set();
     for (const model of value.models) {
-        if (!model || Object.keys(model).some(key => !['id', 'characterPrompts', 'sm', 'maxPixels', 'maxSteps', 'samplers', 'noiseSchedules'].includes(key))
+        if (!model || Object.keys(model).some(key => !['id', 'characterPrompts', 'sm', 'maxPixels', 'maxSteps', 'samplers', 'noiseSchedules', 'protocolVersion'].includes(key))
             || typeof model.id !== 'string' || !/^[a-zA-Z0-9_.-]{1,128}$/.test(model.id) || ids.has(model.id)
             || typeof model.characterPrompts !== 'boolean' || typeof model.sm !== 'boolean'
             || !Number.isSafeInteger(model.maxPixels) || model.maxPixels < 4096 || model.maxPixels > 16777216
@@ -46,7 +47,7 @@ export function renderNovelaiIllustration(draft, capabilities, seed) {
     const model = authored.model || capabilities.models[0].id;
     const capability = capabilities.models.find(item => item.id === model);
     if (!capability) fail('native_illustration_model_unsupported');
-    const width = authored.width ?? 832, height = authored.height ?? 1216, steps = authored.steps ?? 28;
+    const width = authored.width ?? 832, height = authored.height ?? 1216, steps = authored.steps ?? (capability.protocolVersion === 5 ? 23 : 28);
     const sampler = authored.sampler || capability.samplers[0], noiseSchedule = authored.noiseSchedule || capability.noiseSchedules[0];
     if (width % 64 || height % 64 || width * height > capability.maxPixels || steps > capability.maxSteps
         || !capability.samplers.includes(sampler) || !capability.noiseSchedules.includes(noiseSchedule)
@@ -57,9 +58,10 @@ export function renderNovelaiIllustration(draft, capabilities, seed) {
     if (structured && draft.characters.length > 6) fail('native_illustration_characters_unsupported');
     const input = structured ? [draft.preset.style, draft.preset.quality, draft.scene].filter(Boolean).join(', ') : draft.prompt;
     const negative = draft.preset.negativePrompt;
-    const parameters = { params_version: 3, width, height, steps, scale: authored.scale ?? 5, seed: actualSeed,
+    const parameters = { params_version: capability.protocolVersion === 5 ? 4 : 3, width, height, steps, scale: authored.scale ?? 5, seed: actualSeed,
         sampler, noise_schedule: noiseSchedule, n_samples: 1, negative_prompt: negative, qualityToggle: false, ucPreset: 0,
         deliberate_euler_ancestral_bug: false, prefer_brownian: true, legacy: false, legacy_v3_extend: false };
+    if (capability.protocolVersion === 5) Object.assign(parameters, { tag_hint_qt: 0, tag_hint_uc_preset: 0, tag_hint_transparent_background: false });
     if (capability.sm) Object.assign(parameters, { sm: authored.sm ?? false, sm_dyn: authored.smDyn ?? false });
     if (capability.characterPrompts) {
         parameters.v4_prompt = { caption: { base_caption: input, char_captions: structured ? draft.characters.map(item => ({

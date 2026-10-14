@@ -49,10 +49,10 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
             let result;
             if (!['prompts', 'images'].includes(step)) throw new TypeError('Unknown illustration step');
             const path = '/illustration-' + step;
-            if (action === 'start') result = await generationRequest(path, { method: 'POST', body: { sessionId: scope.sessionId, branchId: scope.branchId, annotationId: input.annotationId,
-                ...(step === 'images' ? { expectedHead: input.expectedHead } : {}) }, signal });
+            if (action === 'prepare' && step === 'images') result = await generationRequest(path + '/prepare', { method: 'POST', body: { ...input, sessionId: scope.sessionId, branchId: scope.branchId }, signal });
+            else if (action === 'start') result = await generationRequest(path, { method: 'POST', body: step === 'images' ? input : { sessionId: scope.sessionId, branchId: scope.branchId, annotationId: input.annotationId }, signal });
             else if (action === 'list') result = await generationRequest(path + '?sessionId=' + encodeURIComponent(scope.sessionId) + '&branchId=' + encodeURIComponent(scope.branchId), { signal });
-            else if (action === 'status' || action === 'cancel') result = await generationRequest((action === 'status' ? path + '/' : '/operations/') + encodeURIComponent(input.operationId), { method: action === 'cancel' ? 'DELETE' : 'GET', signal });
+            else if (action === 'status' || action === 'cancel') result = await generationRequest((action === 'status' || step === 'images' ? path + '/' : '/operations/') + encodeURIComponent(input.operationId), { method: action === 'cancel' ? 'DELETE' : 'GET', signal });
             else throw new TypeError('Unknown illustration prompt action');
             if (action === 'status') {
                 if (result.operation.anchor.sessionId !== scope.sessionId || result.operation.anchor.branchId !== scope.branchId) throw new Error('atri_illustration_operation_mismatch');

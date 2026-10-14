@@ -1,9 +1,9 @@
+import { mountVisualConfiguration } from './visual-configuration-ui.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { defaultIllustrationPreset, OFFICIAL_PROMPT_TEMPLATE, assertIllustrationSettings } from '../../shared/illustration-plugin-contract.js';
 import { illustrationSettingsClient } from './illustration-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeProductClient } from './product-client.js';
-import { NOVELAI_IMAGE_ADAPTERS } from '../../shared/novelai-illustration.js';
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 
 export function renderIllustrationPreset(doc, parent, preset) {
@@ -11,13 +11,13 @@ export function renderIllustrationPreset(doc, parent, preset) {
     field(doc, parent, '质量词', preset.quality, value => preset.quality = value, { multiline: true });
     field(doc, parent, '负面提示词', preset.negativePrompt, value => preset.negativePrompt = value, { multiline: true });
     let parameters = JSON.stringify(preset.parameters, null, 2);
-    const input = field(doc, parent, 'NovelAI 参数', parameters, value => parameters = value, { multiline: true });
+    const input = field(doc, parent, '图像尺寸偏好', parameters, value => parameters = value, { multiline: true });
     const read = ({ silent = false } = {}) => { try { preset.parameters = JSON.parse(parameters); input.setCustomValidity(''); } catch { input.setCustomValidity('请填写有效 JSON 参数'); if (!silent) input.reportValidity(); throw new Error('请填写有效 JSON 参数'); } };
     return read;
 }
 
 export function mountIllustrationSettings({ document: doc = globalThis.document, parent, client = illustrationSettingsClient,
-    configuration = () => runtimeRequest('/configuration'), works = () => nativeProductClient.listWorks(), packageId, showEnabled = true } = {}) {
+    configuration = async () => ({ ...await runtimeRequest('/configuration'), ...await runtimeRequest('/visual/configuration') }), works = () => nativeProductClient.listWorks(), packageId, showEnabled = true } = {}) {
     const root = node(doc, parent, 'section', undefined, 'atri-illustration-ui');
     node(doc, root, 'style', ILLUSTRATION_CSS);
     node(doc, root, 'h3', 'Atria 官方插图');
@@ -102,14 +102,18 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         const preset = work?.preset ?? value.preset;
         readPreset = renderIllustrationPreset(doc, presetContainer, preset);
         presetContainer.disabled = Boolean(work && !work.preset);
-        const connectionChoices = [['', work ? '继承全局图片连接' : '未选择'], ...(configurationData.connections ?? []).filter(item => NOVELAI_IMAGE_ADAPTERS.includes(item.providerAdapter)).map(item => [item.connectionProfileId, item.displayName || item.connectionProfileId])];
-        node(doc, scope, 'p', '在 Runtime → Connections 创建 NovelAI 官方或第三方兼容图片连接，并选择已有密钥。兼容连接需按服务文档声明模型与响应格式。');
+        const targetChoices = [['', work ? '继承全局目标' : '未选择'], ...(configurationData.targets ?? []).map(item => [item.imageTargetId, item.displayName + ' · ' + item.model])];
+        const renderingChoices = [['', work ? '继承全局画风' : '使用标注画风'], ...(configurationData.renderings ?? []).map(item => [item.imageRenderingId, item.displayName])];
+        node(doc, scope, 'p', '连接在 Runtime 管理；图片目标绑定模型或工作流，画风配置独立于后端参数。');
         const routeChoices = [['', work ? '继承全局提示词路线' : '未选择'], ...(configurationData.routes ?? []).filter(item => item.role === 'role.illustration_prompt').map(item => [item.runtimeRouteId, item.displayName || item.runtimeRouteId])];
-        select(doc, scope, '默认图片连接', work?.imageConnectionId ?? (work ? '' : value.imageConnectionId), connectionChoices, id => (ownWork() ?? value).imageConnectionId = id);
+        select(doc, scope, '默认图片目标', work?.imageTargetId ?? (work ? '' : value.imageTargetId), targetChoices, id => (ownWork() ?? value).imageTargetId = id);
+        select(doc, scope, '默认画风配置', work?.imageRenderingId ?? (work ? '' : value.imageRenderingId), renderingChoices, id => (ownWork() ?? value).imageRenderingId = id);
         select(doc, scope, '提示词模型路线', work?.promptRouteId ?? (work ? '' : value.promptRouteId), routeChoices, id => (ownWork() ?? value).promptRouteId = id);
         const template = node(doc, content, 'details'); template.dataset.section = 'template'; template.open = templateOpen; node(doc, template, 'summary', '提示词整理模板');
         field(doc, template, '整理模板', value.template, text => value.template = text, { multiline: true });
         button(doc, template, '恢复官方模板', run(() => { readPreset(); value.template = OFFICIAL_PROMPT_TEMPLATE; render(); }));
+        if (configurationData.budget) mountVisualConfiguration({ document: doc, parent: content, connections: configurationData.connections ?? [], data: configurationData, report: fail,
+            refresh: async () => { configurationData = await configuration(); render(); } });
         const save = node(doc, content, 'div', undefined, 'atri-illustration-actions');
         button(doc, save, '恢复默认预设', run(() => { if (work) ownWork().preset = defaultIllustrationPreset(); else value.preset = defaultIllustrationPreset(); render(); }));
         button(doc, save, '保存配置', run(saveSettings));

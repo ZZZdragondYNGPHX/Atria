@@ -68,7 +68,7 @@ export class VersionedJsonResourceHandler {
         };
     }
 
-    async commit(handle, resourceType, value, { setCurrent = true } = {}) {
+    async commit(handle, resourceType, value, { setCurrent = true, expectedCurrentRevision = undefined } = {}) {
         assertWritable();
         const resource = assertVersionedModelPromptResource(resourceType, value);
         for (const ref of collectVersionedModelPromptResourceRefs(resourceType, resource)) {
@@ -81,6 +81,7 @@ export class VersionedJsonResourceHandler {
             assertWritable();
             const owned = await getNativeDocument(tx, this._rootKey(handle, resourceType, identity.resourceId));
             if (owned?.presetOwner) throw new TypeError('Edit this resource through its Prompt preset');
+            if (expectedCurrentRevision !== undefined && (owned?.currentRevision ?? null) !== expectedCurrentRevision) throw new ConflictError('native_resource_revision_conflict');
             for (const ref of collectVersionedModelPromptResourceRefs(resourceType, resource)) {
                 if (!await getNativeDocument(tx, this._revisionKey(handle, ref.resourceType, ref.resourceId, ref.revision))) throw new NotFoundError('Referenced exact Prompt resource', ref);
             }
