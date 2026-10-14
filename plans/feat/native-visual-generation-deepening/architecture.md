@@ -83,5 +83,5 @@ VisualOutput:
 ## 5. Decision checkpoint
 
 - **D-001 ～ D-012** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略、**分层 Media Studio/不可变 DAG/可逆编辑，D-011 精确 Mask/草稿、Gallery/GC/SavePoint 导入验收，以及 D-012 的跨 Provider 能力矩阵/显式降级/三级验收原则**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 13 待议**：统一 Native Image API/IR/Job/Media/SavePoint 的 Schema，三层配置设置 UI、跨平台交互、明确分期/子阶段和验收收口；具体 Provider 实际 L3 需要合规用户授权，不能把静态文档当已通过。D-012 详见 [provider-editing-matrix.md](provider-editing-matrix.md)。
+- **Round 13 待议**：统一 Native Image API/IR/Job/Media/SavePoint 的 Schema，三层配置与跨平台 UI，明确分期/子阶段及最终验收收口；A/B/C 候选见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)（**未冻结**）。具体 Provider 实际 L3 需要合法用户授权，不能把静态文档当已通过。D-012 见 [provider-editing-matrix.md](provider-editing-matrix.md)。
 - 其他未决议题：自动模式 UI/授权表单、Provider 实际报价/编辑能力/Mask 字段、参考图/Vibe 原生参数、视频功能矩阵、媒体与 Job 精确数据库表/迁移、SavePoint/GC 导入恢复的具体接口与 Provider 对账。
