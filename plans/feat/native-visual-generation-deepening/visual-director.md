@@ -1,7 +1,7 @@
-# Visual Director：自动场景选择、预算、作业可靠性（D-007 已冻结 / Round 8 讨论）
+# Visual Director：自动场景选择、预算、作业可靠性（D-007 / D-008 已冻结）
 
 - Task ID: `atria-native-visual-generation-deepening`
-- **Status: Round 7 用户已确认方案 C（D-007），分级事件驱动、价值筛选、预算隔离和持久可靠作业原则正式冻结。** 第八轮的具体场景分割、镜头打分、频率/费用默认值和数据库恢复协议全部**仍为候选**，不得提前实施为冻结策略。
+- **Status**: **Round 7 D-007 与 Round 8 D-008 均已冻结**：分级事件筛选、跨回合 Scene/Shot、可解释评分、可调的初始频率/预算、持久作业恢复。D-009/D-010 的明确再生成与跨 Provider 媒体编辑复用 ImageJob 账目，但具体 Mask/版本/Provider/资产方案详见 [media-editing-gallery.md](media-editing-gallery.md)。本模块的精确持久存储 Schema 与实际 Provider 计费协议仍待实施前确认。
 - Frozen dependencies: [decisions.md](decisions.md) D-001（手动/半自动/全自动共用底层）、D-002（剧情已提交后 Director 才动作）、D-003（ImagePromptIR / Capability Negotiation）、D-004（Provider Profiles 与手动覆盖）、D-005/D-006（视觉身份/状态与可见性、证据混合解析）、**D-007（分级 Director + 预算隔离 + 持久可靠作业）**。
 - Prior narrative/visual boundaries: [architecture.md](architecture.md)、[visual-continuity.md](visual-continuity.md)。
 - Code baseline: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`（只读 GitHub 源码；未运行测试）。
@@ -33,7 +33,7 @@
 
 先由低成本机制识别新增的**可见且有价值**的场景变化/候选，包括场景切换、角色重要出场、服装/视觉状态变化、剧情高潮、用户显式指定等；必要时才调 Director LLM 评估视觉内容/选择镜头。对候选去重、按视觉价值/新颖度/连贯性筛选；遵循模式与预算许可发布图片任务，保持长期 RP 的插画节奏。未满足条件允许明确跳过而不消耗图像费用。
 
-**定案：C 已批准**。A/B 仅为历史对比，不再是有效实施候选。**尚未冻结**触发阈值、分割/镜头评分公式、默认调用频率、一次生成数量、额度数值与自动模式默认开关。
+**定案：Round 7 的 C 已批准**。A/B 仅为历史对比；上文是在保留第七轮历史讨论文本，**Round 8 已通过 D-008 冻结初始评分、分割、频率、张数、额度与自动模式默认开关，具体规则以 §7 为准**。
 
 ## 3. Frozen directional pipeline (D-007; exact schemas/thresholds open)
 
