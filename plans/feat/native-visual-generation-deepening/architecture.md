@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 / D-008 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -8,13 +8,13 @@
 
 **Narrative Authority**：Atria Native Session/Revision/Branch/SavePoint，现有角色/世界/知识状态。这是叙事事实唯一正式来源。
 
-**Visual Intent / Director（D-007）**：正式 Commit 及已授权可见来源进入分级轻量场景筛选，必要时调独立 Director LLM 评估价值、新颖性与候选镜头；允许跳过。基于手动/半自动/全自动的许可与两类隔离预算，提交统一持久 ImageJob。Director 不阻塞剧情、不能直接修改正文，详见 [visual-director.md](visual-director.md)。
+**Visual Intent / Director（D-007/D-008）**：正式 Commit 后分级检测 Scene/Shot，跨回合 Scene 与同回合多镜头分别具有固定时点/来源；按五因素评分、重复度与覆盖度动态调节软节奏，允许跳过。根据三种模式用户许可和双预算提交持久 ImageJob，自动初始关闭。Director 不阻塞剧情、不能直接修改正文，详见 [visual-director.md](visual-director.md) §7。
 
 **Visual Context Compiler（D-005 已冻结权威分层）**：对已提交的源 Revision 解析 Visual Identity（正式 Actor ID 或明确作用域的临时身份）、Visual State（时点服装/伤势/场景）、Visual References（类型化参考图与 Vibe）。不得跨分支借状态或绕过玩家可见性/披露规则；视觉事实不写回叙事。证据驱动的混合状态候选、冲突硬门禁及参考图用途筛选已由 D-006 冻结，详见 [visual-continuity.md](visual-continuity.md) §5；精确阈值另议。
 
 **Image Prompt IR（D-003 已冻结原则）**：与特定 Provider 无关的视觉语义，通过独立的 Capability Negotiation + Provider Adapter 编译成后端请求。用户手填 Raw Prompt 是明确的另一输入形式，不被 AI 静默覆盖。具体结构见 [provider-protocol.md](provider-protocol.md)。
 
-**Image Job + Budget（D-007）**：以 Native 资源/场景/请求意图作为去重、持久化恢复和授权边界，独立核算 Director/Prompt LLM 与图片 Provider 的预算；远端作业可对账、提交不确定时不得盲目重发，图片结果发布幂等。精确状态 Schema、额度与租约细则在第八轮讨论。
+**Image Job + Budget（D-007/D-008）**：按稳定 Intent / ImageJob / Attempt 分层，在可靠账目中预留许可/额度，使用原子 claim、lease 与 fencing 防止并发重复；远端 ID 对账、提交不确定停止盲重试、已到字节幂等发布/失败补偿，保持旧 Branch/SavePoint 与 AssetStore 安全。Planner/Image 分账并具用户可调的滚动初始额度；云端自动付费默认 0/需明确授权。精确存储 Schema 与 Provider 计费协议后续定案，见 [visual-director.md](visual-director.md) §7。
 
 **Image Asset & Presentation**：存储 bytes、格式、参数证据、外部响应标识、来源图/参考图/编辑衍生，绑定原 Session/Branch/Revision/Annotation，选中展示版本不改变叙事。
 
@@ -59,8 +59,8 @@ Director 可在正文尚未提交时直接调外部生图后端；正文结束�
 1. **视觉单位**：文本选段标注、完整 Scene、自动镜头卡、角色肖像是否拥有相同或不同的 VisualIntent 类型；与 Annotation 的引用方向。
 2. **身份与连续性**：三层权威与 Branch/Revision 隔离由 D-005 冻结；混合证据更新、硬门禁/冲突审查及按用途筛选由 D-006 冻结；**待议**的是具体视觉事件模型、判定阈值、参考权重/强度及跨 Chapter 生命周期，参见 [visual-continuity.md](visual-continuity.md)。
 3. **后端与模型能力**：NovelAI V5、ComfyUI、SD/Forge、图像云 API/RunningHub；何者首批，如何声明可用参数/上传图像/异步进度。
-4. **操作自主性**：手动/半自动/全自动的明确控制规则、最低确认/预算限额，以及 Director 如何验证“值得画”。
-5. **图像衍生**：原始图、再生、局部编辑、风格迁移、视频的独立资产、原图追溯与版本选择。
+4. **操作自主性**：D-007/D-008 已确认分级判断、评分、默认关闭的自动模式、初始可调预算和待审批费用门禁；**待议**的是用户实际 UI 的审阅/取消/暂停/费用展示交互和 Provider 特殊结算行为。
+5. **图像衍生**：**Round 9 待议**原始图/再生/图生图/局部编辑/Upscale 的衍生关系、版本与画廊操作；视频是否进入本工程的范围仍未冻结。
 6. **性能可靠性**：长会话图片加载、缓存失效、Provider 重试、幂等费用和恢复历史的一致性。
 
 ## 4. Candidate contracts (illustrative only)
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001 ～ D-007** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、**分级场景价值筛选与独立预算/可靠 ImageJob**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 8 待议**：在 D-007 确定的方向下，选择 Scene/Shot 分割、镜头排序算法、软性节奏/硬预算、默认授权方式与持久作业恢复精确策略，备选见 [visual-director.md](visual-director.md) §7（**候选未冻结**）；精确视觉冲突阈值与参考图强度另议。
-- 其他未决议题：自动模式默认开关和预算数值、精确 Provider API、编辑/参考图/视频功能矩阵、持久任务恢复的具体数据库/租约协议。
+- **D-001 ～ D-008** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、**跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
+- **Round 9 待议**：图片再生成、img2img、inpaint、upscale、画廊/历史与非破坏性资产衍生/版本管理；尚未批准某套编辑图谱。D-008 精确规则见 [visual-director.md](visual-director.md) §7；精确视觉冲突阈值与参考图强度另议。
+- 其他未决议题：自动模式的具体 UI/授权表单、Provider 实际报价与能力/编辑协议、参考图/Vibe 实参、视频功能矩阵、持久作业的确切数据库表/迁移与 Provider 对账接口。
