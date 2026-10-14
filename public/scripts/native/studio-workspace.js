@@ -843,7 +843,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     async function runSimulation() {
-        if (!state.confirmEditorLeave() || state.refreshRequired) return;
+        if (state.refreshRequired || state.applying || state.inspecting
+            || (state.activeView !== 'simulation' && !state.confirmEditorLeave())) return;
         const editorToken = state.editorSequence, baseRevision = state.revision.revision;
         try {
             const result = await nativeStudioClient.simulate(projectId, {

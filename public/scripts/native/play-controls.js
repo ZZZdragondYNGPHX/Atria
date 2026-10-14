@@ -521,6 +521,7 @@ export function mountNativePlayControls({
     });
     more.append(moreLabel, moreActions);
     more.addEventListener('keydown', event => {
+        if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
         if (event.key === 'Escape' && more.open) {
             event.preventDefault(); event.stopPropagation();
             more.open = false; moreLabel.focus();

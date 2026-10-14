@@ -151,7 +151,7 @@ export async function activate(sdk) {
     sdk.events.listen(doc.defaultView, 'resize', capture);
     if (doc.defaultView.visualViewport) sdk.events.listen(doc.defaultView.visualViewport, 'resize', capture);
     capture();
-    sdk.events.listen(panel, 'keydown', event => { if (event.key === 'Escape') { readDraft(); panel.hidden = true; toggle.focus(); } });
+    sdk.events.listen(panel, 'keydown', event => { if (event.key === 'Escape' && !event.defaultPrevented && !event.isComposing && event.keyCode !== 229) { readDraft(); panel.hidden = true; toggle.focus(); } });
     sdk.illustrations.onSurfacesChanged(capture);
     function renderCard() {
         const sameCard = panel.querySelector('.atri-illustration-card')?.dataset.annotationId === selectedId;

@@ -155,7 +155,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     let disposed = false;
 
     const onEscape = event => {
-        if (!active || event.key !== 'Escape') return;
+        if (!active || event.key !== 'Escape' || event.isComposing || event.keyCode === 229) return;
         if (event.defaultPrevented) return;
         if (options.onBeforeEscape?.()) {
             event.preventDefault(); event.stopImmediatePropagation(); return;

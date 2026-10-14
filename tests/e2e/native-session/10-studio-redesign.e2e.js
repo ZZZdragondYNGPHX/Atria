@@ -48,6 +48,53 @@ async function seedProject(page, width) {
     return projectId;
 }
 
+for (const width of [1440, 320]) test(`Project Agent persisted proposal requires one human Commit at ${width}px`, async ({ page }, info) => {
+    test.setTimeout(150000); await boot(page, width);
+    const projectId = await seedProject(page, 'Agent ' + width);
+    const studio = page.locator('[data-atria-studio-workspace]');
+    const toolbar = studio.locator('.atria-studio-topbar');
+    const agent = studio.locator('[data-atria-studio-ai="agent"]');
+    if (!await agent.isVisible()) await toolbar.getByRole('button', { name: 'AI', exact: true }).click();
+    await agent.getByLabel('Project Agent intent').fill('Rename this project after reviewing the proposal');
+    await agent.getByLabel('Prepare without running', { exact: true }).check();
+    const created = page.waitForResponse(r => r.url().endsWith('/agent/tasks') && r.request().method() === 'POST');
+    await agent.getByRole('button', { name: 'Create Task', exact: true }).click();
+    const task = await (await created).json();
+    await expect(agent.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+    const before = await request(page, `projects/${projectId}`);
+    // Seed proposals through actual Task tools and Studio evaluation. No model or fake service result.
+    const ready = await page.evaluate(async ({ projectId, taskId, source }) => {
+        const { nativeStudioClient: client } = await import('/scripts/native/studio-client.js');
+        await client.executeAgentTool(projectId, taskId, { name: 'atri_agent_set_plan', args: { summary: 'Rename safely', steps: [{ id: 'rename', title: 'Rename the project', impact: 'low' }] } });
+        await client.executeAgentTool(projectId, taskId, { name: 'atri_agent_project_save', args: { source: { ...source, project: { ...source.project, displayName: 'Reviewed Agent project' } }, stepId: 'rename' } });
+        return client.executeAgentTool(projectId, taskId, { name: 'atri_agent_prepare_review', args: {} });
+    }, { projectId, taskId: task.taskId, source: before.source });
+    expect(ready.status).toBe('review'); expect(ready.validation.status).toBe('passed');
+    expect(ready.preview.persisted).toBe(false);
+    expect((await request(page, `projects/${projectId}`)).revision).toEqual(before.revision);
+    await agent.getByLabel('Project Tasks', { exact: true }).selectOption(task.taskId);
+    const commit = agent.getByRole('button', { name: 'Review & Commit', exact: true });
+    await expect(commit).toBeEnabled();
+    await agent.getByText('Task evidence and exact revision', { exact: true }).click();
+    await expect(agent.locator('pre').first()).toContainText(task.taskId);
+    await page.screenshot({ path: info.outputPath(`agent-review-${width}.png`), fullPage: true });
+    let commits = 0; page.on('request', r => { if (r.url().endsWith('/agent/tasks/' + task.taskId + '/commit') && r.method() === 'POST') commits++; });
+    await page.route('**/agent/tasks/' + task.taskId + '/commit', async route => { const response = await route.fetch(); await new Promise(resolve => setTimeout(resolve, 200)); await route.fulfill({ response }); });
+    const committed = page.waitForResponse(r => r.url().endsWith('/agent/tasks/' + task.taskId + '/commit'), { timeout: 60000 });
+    await commit.dblclick();
+    expect((await committed).ok()).toBe(true);
+    await expect(agent.locator('[role="status"]').first()).toContainText('Completed');
+    await expect(commit).toHaveCount(0); expect(commits).toBe(1);
+    expect((await request(page, `projects/${projectId}`)).source.project.displayName).toBe('Reviewed Agent project');
+    await page.reload(); await expect(studio).toBeVisible();
+    if (!await agent.isVisible()) await toolbar.getByRole('button', { name: 'AI', exact: true }).click();
+    await agent.getByLabel('Project Tasks', { exact: true }).selectOption(task.taskId);
+    await expect(agent.locator('[role="status"]').first()).toContainText('Completed');
+    await expect(commit).toHaveCount(0); expect(commits).toBe(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath(`agent-completed-${width}.png`), fullPage: true });
+});
+
 for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict and Agent at ${width}px`, async ({ page }, info) => {
     test.setTimeout(150000);
     const errors = []; page.on('pageerror', error => errors.push(error.message));

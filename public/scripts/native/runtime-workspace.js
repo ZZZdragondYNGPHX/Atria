@@ -99,6 +99,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function heading(title, description) { const header = node('header'); header.className = 'atri-runtime-heading'; node('h2', title, header); node('p', description, header).className = 'atri-runtime-description'; }
     function bindEditorKeyboard(back) {
         root.onkeydown = event => {
+            if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
             if (event.key === 'Tab' && root.getAttribute('role') === 'dialog') {
                 const controls = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary')].filter(control => control.getClientRects().length);
                 const first = controls[0]; const last = controls.at(-1);
@@ -315,7 +316,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const closeCreate = () => { secretValue.value = ''; secretLabel.value = ''; secretValue.disabled = secretLabel.disabled = true; createBox.hidden = true; openCreate.hidden = false; };
             const cancel = button('Cancel', () => { closeCreate(); openCreate.focus(); }, createBox);
             const openCreate = button('Create Secret', () => { createBox.hidden = false; openCreate.hidden = true; secretValue.disabled = secretLabel.disabled = false; createFeedback.replaceChildren(); secretLabel.focus(); }, fields);
-            createBox.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); create.click(); } });
+            createBox.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.defaultPrevented && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); event.stopPropagation(); create.click(); } });
             void inventory();
             notice('Credentials stay in the Secret store. Gemini and image Workflow/WebUI providers use the API base URL. WebUI/Forge optional Basic credentials are stored as username:password in a Secret.', fields);
             serialize = () => {

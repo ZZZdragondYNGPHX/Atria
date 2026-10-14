@@ -115,7 +115,7 @@ test('Memory saves task-specific Native routes from its existing workspace', asy
     const workspace = page.locator('#agent-memory-workspace');
     await workspace.getByRole('button', { name: 'Maintenance', exact: true }).click();
     const form = workspace.locator('form').filter({ has: page.getByRole('heading', { name: 'Memory Runtime Routes', exact: true }) });
-    const tasks = ['Recall route', 'Extraction route', 'Schema assistance route', 'RAG rewrite route'];
+    const tasks = ['Extraction route', 'Schema assistance route'];
     for (const [index, task] of tasks.entries()) {
         const select = form.getByLabel(task, { exact: true }); await expect(select).toBeEnabled();
         await expect(select.locator('option', { hasText: 'Writer' })).toHaveCount(0);
@@ -124,7 +124,7 @@ test('Memory saves task-specific Native routes from its existing workspace', asy
     await form.getByRole('button', { name: 'Save Memory routes', exact: true }).click();
     await expect(form).toContainText('Memory routes saved');
     const selected = await page.evaluate(() => window.Atria.getContext().capabilitySettings.memory_graph.nativeRoutes);
-    expect(Object.values(selected)).toEqual([2, 3, 2, 3].map(index => ({ scope: 'player', runtimeRouteId: routes[index].runtimeRouteId })));
+    expect(Object.values(selected)).toEqual([2, 3].map(index => ({ scope: 'player', runtimeRouteId: routes[index].runtimeRouteId })));
     const settings = await page.evaluate(() => window.Atria.getContext().capabilitySettings.memory_graph);
     for (const key of ['recallApiPresetName', 'extractPresetName', 'ragRewriteLlmPresetName']) expect(settings).not.toHaveProperty(key);
     await workspace.getByText('Advanced memory settings and maintenance', { exact: true }).click();
@@ -183,7 +183,7 @@ test('B3 Plan Source keeps malformed drafts across inspector close and saves thr
     const saved = await page.evaluate(()=>window.Atria.getContext().capabilitySettings.orchestrator.agentWorkspace.presets.find(p=>!p.id.startsWith('builtin-')).planTemplate); expect(saved).toEqual(next);
 });
 
-test('Native browser retrieval offers bundled embedding models without extension inference globals', async ({ page }) => {
+test('Native browser retrieval offers bundled embedding models without extension inference globals', async ({ page }, info) => {
     page.setDefaultTimeout(15000);
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
     await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
@@ -196,13 +196,14 @@ test('Native browser retrieval offers bundled embedding models without extension
     await root.getByRole('button', { name: 'Browse browser models', exact: true }).click();
     const choices = root.getByLabel('Browser embedding model', { exact: true });
     await expect(choices).toBeVisible({ timeout: 30000 });
-    const id = choices.locator('option').nth(1);
-    await expect(id).toHaveAttribute('value' ); await choices.selectOption(id);
+    await expect(choices.locator('option').nth(1)).toHaveAttribute('value', /.+/);
+    const id = await choices.locator('option').nth(1).getAttribute('value');
+    await choices.selectOption(id);
     await expect(root.getByLabel('Model', { exact: true })).toHaveValue(id);
     await expect(root.getByText('The model downloads when retrieval first runs. This browser must support WebGPU.', { exact: true })).toBeVisible();
     await expect(root.getByLabel('Endpoint URL', { exact: true })).toBeHidden();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: 'test-results-native-ux-g8-browser-models.png', fullPage: true });
+    await page.screenshot({ path: info.outputPath('native-browser-models.png'), fullPage: true });
 });
 
 

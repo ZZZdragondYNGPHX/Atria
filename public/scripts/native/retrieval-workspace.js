@@ -90,7 +90,7 @@ export async function renderRetrievalWorkspace(ui) {
                 notice('Secret stored. It will be referenced by this retrieval revision.', secretStatus);
             } catch { if (form.isConnected) notice('Could not store Secret. Check the label and value, then retry.', secretStatus, true); } finally { store.disabled = false; }
         }, create);
-        create.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); store.click(); } });
+        create.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.defaultPrevented && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); event.stopPropagation(); store.click(); } });
         const advanced = group(form, 'Provider options');
         const options = {};
         const optionDrafts = new Map(); let selectedProvider;

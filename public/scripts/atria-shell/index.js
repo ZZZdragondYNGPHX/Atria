@@ -56,6 +56,7 @@ export function initializeAtriaShellFoundation({
     let workspaceHost = null;
     let appearance = null;
     let learning = null;
+    let compatibilityVisibility = [];
     let recoveryMode = forceRecovery === undefined
         ? readRecoveryPreference(windowRef)
         : Boolean(forceRecovery);
@@ -115,6 +116,13 @@ export function initializeAtriaShellFoundation({
             throw error;
         }
         documentRef.body.dataset.atriaShellMounted = 'true';
+        compatibilityVisibility = ['top-bar', 'top-settings-holder'].flatMap(id => {
+            const node = documentRef.getElementById(id);
+            if (!node) return [];
+            const saved = { node, inert: node.inert, ariaHidden: node.getAttribute('aria-hidden') };
+            node.inert = true; node.setAttribute('aria-hidden', 'true');
+            return [saved];
+        });
         delete documentRef.body.dataset.atriaShellFailure;
         delete documentRef.body.dataset.atriaShellRecovery;
         return shell;
@@ -134,6 +142,11 @@ export function initializeAtriaShellFoundation({
         navigation?.dispose();
         navigation = null;
         delete documentRef.body.dataset.atriaShellMounted;
+        for (const { node, inert, ariaHidden } of compatibilityVisibility) {
+            node.inert = inert;
+            if (ariaHidden === null) node.removeAttribute('aria-hidden'); else node.setAttribute('aria-hidden', ariaHidden);
+        }
+        compatibilityVisibility = [];
         return true;
     }
 

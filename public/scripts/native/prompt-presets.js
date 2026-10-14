@@ -129,6 +129,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 if (danger) item.classList.add('atri-library-button--danger'); return item;
             });
             const keys = event => {
+                if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
                 if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); }
                 const index = items.indexOf(doc.activeElement);
                 if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {

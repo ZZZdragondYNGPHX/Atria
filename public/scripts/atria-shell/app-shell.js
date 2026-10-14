@@ -1081,6 +1081,7 @@ export function createAtriaAppShell({
     }
 
     function onKeyDown(event) {
+        if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
         keyboardInteraction = true;
         if (isCommandShortcut(event)) {
             event.preventDefault();

@@ -629,6 +629,7 @@ export async function mountNativeFrontend(options) {
             previous.overlayRoot.append(frame); previous.content.inert = true;
         } else mount.container.append(frame);
         view.keydown = event => {
+            if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
             if (!overlay || overlays.at(-1) !== view) return;
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeOverlay(); }
             if (event.key === 'Tab') {

@@ -349,8 +349,9 @@ function actionButton(documentRef, label, handler, { primary = false, disabled =
 
 function formatTaskStatus(task, running = false) {
     if (!task) return t('No active task');
-    const status = running && task.status === 'planning' ? t('Planning')
-        : running && ['working', 'evaluating'].includes(task.status) ? t('Working…') : taskStatusText(task.status);
+    const status = running && task.status === 'review' ? taskStatusText('committing')
+        : running && task.status === 'planning' ? t('Planning')
+            : running && ['working', 'evaluating'].includes(task.status) ? t('Working…') : taskStatusText(task.status);
     return task.repairRound > 0 ? formatProductText('${0} · repair ${1}/${2}', [status, task.repairRound, task.maxRepairRounds]) : status;
 }
 

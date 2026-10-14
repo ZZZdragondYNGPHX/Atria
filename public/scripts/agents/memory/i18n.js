@@ -367,7 +367,7 @@ export function registerLocaleData() {
         'Semantic Depth': '语义深度',
         'Semantic Rollup': '语义汇总',
         'View Raw JSON': '查看原始 JSON',
-        'Last Projection': '最近投影',
+        'Last Projection': '最近状态',
         'View': '查看',
         'Form Edit': '表单编辑',
         'Form editor for one node. Parent/child relationships and graph persistence are applied automatically.': '编辑这个节点。保存时会一并更新父子关系和记忆图。',

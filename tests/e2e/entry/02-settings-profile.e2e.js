@@ -27,9 +27,10 @@ test('onboarding account name, theme CRUD and two-language preferences persist',
     await page.evaluate(() => globalThis.Atria.shell.getWorkspaceHost().openUtility('account'));
     await expect(page.locator('[data-atria-account-primary] .userName')).toHaveText('Atria Reader');
     await page.evaluate(() => globalThis.Atria.shell.getWorkspaceHost().openUtility('settings'));
-    const settings = page.locator('[data-atria-settings-primary]');
-    await expect(settings.locator('#ui_language_select option')).toHaveCount(2);
-    await expect(settings.locator('#ui_language_select')).toHaveValue('en');
+    const settings = page.locator('[data-atria-utility-workspace="settings"]');
+    await expect(settings.getByLabel('Language', { exact: true }).locator('option')).toHaveCount(2);
+    await expect(settings.getByLabel('Language', { exact: true })).toHaveValue('en');
+    await settings.getByText('Theme compatibility', { exact: true }).click();
     await settings.getByText('Custom CSS', { exact: true }).click();
     await settings.locator('#customCSS').fill(':root:root { --atri-accent: #aabbcc; }');
     await settings.locator('#ui-preset-save-button').click();
@@ -55,6 +56,7 @@ test('onboarding account name, theme CRUD and two-language preferences persist',
     await page.reload();
     await expect(page.locator('#atria-app-shell')).toBeVisible({ timeout: 60000 });
     await page.evaluate(() => globalThis.Atria.shell.getWorkspaceHost().openUtility('settings'));
+    await settings.getByText('Theme compatibility', { exact: true }).click();
     await expect(settings.locator('#themes')).toHaveValue('Imported Theme');
     await expect(settings.locator('#customCSS')).toHaveValue(':root:root { --atri-accent: #ccddee; }');
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--atri-accent').trim())).toBe('#ccddee');
@@ -66,7 +68,7 @@ test('onboarding account name, theme CRUD and two-language preferences persist',
     await settings.locator('#ui-preset-delete-button').click();
     await page.locator('dialog[open] .popup-button-ok').click();
     await expect(settings.locator('#themes option[value="Imported Theme"]')).toHaveCount(0);
-    await settings.locator('#ui_language_select').selectOption('zh-cn');
+    await settings.getByLabel('Language', { exact: true }).selectOption('zh-cn');
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-cn');
     await page.evaluate(() => globalThis.Atria.shell.getWorkspaceHost().openUtility('account'));
     await expect(page.locator('[data-atria-account-primary] .userName')).toHaveText('Atria Reader');

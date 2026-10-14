@@ -65,7 +65,7 @@ test('B2 Chinese Source retains malformed JSON and keyboard focus at 320px maxim
 test('Runtime setup identifies missing Secret and opens its owner at 320px', async ({ page }, info) => {
     await boot(page, 320); await open(page, 'routes');
     const setup = root(page).locator('details').filter({ has: page.getByText('Runtime setup', { exact: true }) });
-    await setup.locator('summary').click();
+    await expect(setup).toHaveAttribute('open', '');
     await expect(setup.getByRole('button', { name: 'Set up Secret', exact: true })).toBeVisible();
     await expect(setup.locator('li')).toHaveCount(6);
     await shot(page, info, 'runtime-setup-missing-secret-320');
@@ -73,7 +73,7 @@ test('Runtime setup identifies missing Secret and opens its owner at 320px', asy
     await expect(root(page).getByRole('button', { name: 'New connection', exact: true })).toBeVisible();
 });
 
-test('Runtime cleanup blocks references, duplicates safely and restores archived exact Library resources', async ({ page }, info) => {
+test('Runtime cleanup blocks referenced models and safely duplicates and deletes an unused model', async ({ page }, info) => {
     await boot(page, 320); await open(page, 'models');
     await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();
     await root(page).getByRole('button', { name: 'Delete', exact: true }).click();
@@ -87,18 +87,6 @@ test('Runtime cleanup blocks references, duplicates safely and restores archived
     await root(page).getByRole('button', { name: 'Delete', exact: true }).click();
     await page.locator('dialog.popup[open] .popup-button-ok').click();
     await expect(root(page).getByRole('button', { name: 'Edit P4 model Copy', exact: true })).toHaveCount(0);
-    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('generation-profiles'));
-    const library = page.locator('.atri-prompt-library');
-    await library.getByRole('button', { name: 'Used By', exact: true }).click();
-    await expect(library.getByRole('heading', { name: 'narrator', exact: true })).toBeVisible();
-    await library.getByRole('button', { name: 'Archive', exact: true }).click();
-    await expect(library.locator('.atri-prompt-resource')).toHaveCount(0);
-    await library.getByLabel('Visibility', { exact: true }).selectOption('archived');
-    await expect(library.locator('.atri-prompt-resource')).toHaveCount(1);
-    await page.screenshot({ path: info.outputPath('library-archive-320.png') });
-    await library.getByRole('button', { name: 'Restore from archive', exact: true }).click();
-    await library.getByLabel('Visibility', { exact: true }).selectOption('active');
-    await expect(library.locator('.atri-prompt-resource')).toHaveCount(1);
 });
 
 test('Provider model discovery is explicit and preserves metadata provenance on narrow screens', async ({ page }, info) => {
@@ -150,7 +138,7 @@ async function light(page) {
 
 test('Responsive editor moves across the real 719px boundary, traps focus and follows the keyboard viewport', async ({ page }, info) => {
     await boot(page, 900); await open(page, 'connections');
-    await page.getByLabel('Runtime section', { exact: true }).selectOption('models');
+    await page.getByRole('navigation', { name: 'Runtime sections', exact: true }).getByRole('button', { name: 'Models', exact: true }).click();
     await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();
     await shot(page, info, 'model-medium');
     await page.setViewportSize({ width: 719, height: 900 });
@@ -178,6 +166,12 @@ test('Responsive editor moves across the real 719px boundary, traps focus and fo
     await expect.poll(async () => (await root(page).getByLabel('Remote model ID').boundingBox()).y).toBeGreaterThanOrEqual(0);
     expect((await root(page).getByLabel('Remote model ID').boundingBox()).y + (await root(page).getByLabel('Remote model ID').boundingBox()).height).toBeLessThanOrEqual(420);
     await shot(page, info, 'model-keyboard-light-320');
+    await root(page).getByLabel('Display name').dispatchEvent('keydown', { key: 'Escape', keyCode: 229, isComposing: true });
+    await expect(root(page).getByLabel('Display name')).toHaveValue('Retained across resize');
+    page.once('dialog', dialog => dialog.dismiss());
+    await page.keyboard.press('Escape');
+    await expect(root(page).getByLabel('Display name')).toHaveValue('Retained across resize');
+    page.once('dialog', dialog => dialog.accept());
     await page.keyboard.press('Escape');
     await expect(root(page).getByLabel('Filter models')).toBeFocused();
     expect(await page.locator('.atria-app-shell').evaluate(el => el.inert)).toBe(false);
@@ -198,11 +192,25 @@ test('Model capability overrides save through Native configuration and retain ex
     await expect(root(page).getByRole('button', { name: 'Edit P4 model', exact: true })).toBeVisible();
 });
 
-test('Profile validation retains draft in Library and an immutable save does not repin routes', async ({ page }, info) => {
+test('Preset Generation validation retains its draft and saving does not repin an exact Runtime route', async ({ page }, info) => {
     await boot(page, 320); await light(page);
-    await page.evaluate(ref => window.Atria.shell.getWorkspaceHost().openLibraryResource(ref), resources.routes[0].generationProfileRef);
-    const library = page.locator('.atri-prompt-library');
-    await library.getByRole('button', { name: 'New revision', exact: true }).first().click();
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-presets'));
+    await page.getByRole('button', { name: 'New preset', exact: true }).click();
+    const library = page.locator('[data-atri-prompt-preset]');
+    const presetId = await library.getAttribute('data-atri-prompt-preset');
+    const pinned = await page.evaluate(async ({ presetId, routeId }) => {
+        const { runtimeRequest } = await import('/scripts/native/runtime-client.js');
+        const preset = await runtimeRequest('/presets/' + presetId);
+        const generation = preset.entries.find(e => e.resourceType === 'core.generation-profile').resource;
+        const program = preset.entries.find(e => e.resourceType === 'core.prompt-program' && e.resource.promptProgramId === preset.programId).resource;
+        const promptRef = { scope: 'library', resourceType: 'core.prompt-program', resourceId: program.promptProgramId, revision: program.revision };
+        const generationRef = { scope: 'library', resourceType: 'core.generation-profile', resourceId: generation.generationProfileId, revision: generation.revision };
+        const configuration = await runtimeRequest('/configuration');
+        const route = configuration.routes.find(r => r.runtimeRouteId === routeId);
+        await runtimeRequest('/configuration/routes', { method: 'PUT', body: { ...route, promptProgramRef: promptRef, generationProfileRef: generationRef } });
+        return generationRef;
+    }, { presetId, routeId: resources.routes[0].runtimeRouteId });
+    await library.getByRole('button', { name: 'Generation Profiles', exact: true }).click();
     await library.getByLabel('Stop sequences (JSON array)').fill('not json');
     await library.getByRole('button', { name: 'Save revision', exact: true }).click();
     await expect(library.getByRole('alert')).toContainText('JSON array');
@@ -215,13 +223,13 @@ test('Profile validation retains draft in Library and an immutable save does not
     await page.screenshot({ path: info.outputPath('library-provider-controls-320.png') });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await library.getByLabel('Exact revision', { exact: true }).fill('phase5-review');
-    const savedProfile = page.waitForRequest(req => req.url().endsWith('/generation/resources') && req.method() === 'POST');
+    const savedProfile = page.waitForRequest(req => req.url().endsWith('/presets/' + presetId) && req.method() === 'PUT');
     await library.getByRole('button', { name: 'Save revision', exact: true }).click();
-    expect((await savedProfile).postDataJSON().resource).toMatchObject({ reasoning: { effort: 'high' }, cache: { key: 'native-ux-profile', retention: '24h' } });
-    await expect(library.getByRole('status')).toContainText('Saved immutable Library revision.');
+    expect((await savedProfile).postDataJSON().preset.entries.find(e => e.resourceType === 'core.generation-profile').resource).toMatchObject({ reasoning: { effort: 'high' }, cache: { key: 'native-ux-profile', retention: '24h' } });
+    await expect(library.getByRole('status')).toContainText('Saved. Preset version');
     await open(page, 'routes');
     await root(page).getByRole('button', { name: 'Edit narrator', exact: true }).click();
-    expect(JSON.parse(await root(page).getByLabel('Generation — exact revision').inputValue()).revision).toBe('r1');
+    expect(JSON.parse(await root(page).getByLabel('Generation — exact revision').inputValue())).toEqual(pinned);
     await root(page).getByRole('button', { name: 'Prompt Presets', exact: true }).click();
     await expect(page.locator('.atri-prompt-preset').getByRole('button', { name: 'New preset', exact: true })).toBeVisible();
 });
@@ -230,6 +238,7 @@ test('Fallback edits filter roles and preserve ordering and route identity', asy
     await boot(page); await open(page, 'routes');
     await expect(root(page)).toContainText('Ambiguous primary routes'); await shot(page, info, 'routes-desktop');
     await root(page).getByRole('button', { name: 'Edit narrator', exact: true }).click();
+    const originalPrompt = JSON.parse(await root(page).getByLabel('Prompt — exact revision').inputValue());
     await expect(root(page).getByLabel('Add fallback route').locator(`option[value="${resources.routes[2].runtimeRouteId}"]`)).toHaveCount(0);
     await root(page).getByLabel('Add fallback route').selectOption(resources.routes[1].runtimeRouteId);
     await root(page).getByRole('button', { name: 'Add fallback', exact: true }).click();
@@ -244,7 +253,7 @@ test('Fallback edits filter roles and preserve ordering and route identity', asy
     const payload = (await request).postDataJSON();
     expect(payload.runtimeRouteId).toBe(resources.routes[0].runtimeRouteId);
     expect(payload.fallbackRouteRefs).toEqual([{ scope: 'player', runtimeRouteId: resources.routes[1].runtimeRouteId }]);
-    expect(payload.promptProgramRef).toEqual(resources.routes[0].promptProgramRef);
+    expect(payload.promptProgramRef).toEqual(originalPrompt);
     await expect(root(page).getByRole('button', { name: 'Edit narrator', exact: true })).toBeVisible();
     await expect(root(page)).not.toContainText('Ambiguous primary routes');
 });

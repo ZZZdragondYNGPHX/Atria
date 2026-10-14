@@ -124,6 +124,8 @@ describe('R7A Atria AppShell foundation', () => {
 
         expect(foundation.isRecoveryMode()).toBe(false);
         expect(foundation.isMounted()).toBe(true);
+        expect(document.getElementById('top-bar').inert).toBe(true);
+        expect(document.getElementById('top-settings-holder').getAttribute('aria-hidden')).toBe('true');
         expect(foundation.getPlayHost().native.sheld).toBe(nativeSheld);
         expect(foundation.getPlayHost().native.chat).toBe(nativeChat);
         expect(foundation.getPlayHost().native.sendForm).toBe(nativeComposer);
@@ -134,6 +136,8 @@ describe('R7A Atria AppShell foundation', () => {
 
         foundation.setMountedForDebug(false);
         expect(foundation.isMounted()).toBe(false);
+        expect(document.getElementById('top-bar').inert).toBeFalsy();
+        expect(document.getElementById('top-settings-holder').hasAttribute('aria-hidden')).toBe(false);
         expect(foundation.getPlayHost()).toBeNull();
         expect(nativeSheld.parentElement).toBe(document.body);
         expect(document.getElementById('chat')).toBe(nativeChat);
@@ -211,6 +215,10 @@ describe('R7A Atria AppShell foundation', () => {
         });
         shell.setDockContent('context', { title: 'Context', open: true });
         shell.openCommand();
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, keyCode: 229, bubbles: true }));
+        expect(shell.root.querySelector('#atria-context-sheet').hidden).toBe(false);
+        expect(shell.isCommandOpen()).toBe(true);
 
         const commandInput = shell.root.querySelector('.atria-command-input');
         commandInput.dispatchEvent(new KeyboardEvent('keydown', {
