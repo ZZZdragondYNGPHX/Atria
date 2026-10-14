@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B、第六轮 B、第七轮 B 已冻结。**第八轮 Package / Library / Media / Skills / Extensions 完整 MCP 接口正在讨论。尚未进入实现阶段。**
+- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B、第六轮 B、第七轮 B、第八轮 B 已冻结。**第九轮全域验收、安全威胁模型、真实客户端兼容与实施分期正在讨论。尚未进入实现阶段。**
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
@@ -38,7 +38,8 @@
 | [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) | **第五轮权威**：完整 Native Model/Prompt/Runtime/Provider Bridge、Secret/Endpoint 审查、版本化编辑、零副作用 Preview、付费执行与 Fallback/恢复 | 第五轮方案 B 已冻结方向；准确 Action schema/协议联测待实施 |
 | [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) | **第六轮权威**：分层 Session、Save/Restore/Branch、旧 fork/retry 合同淘汰、自动存档、长会话、RunControl/Scheduler 回执与 GC | 第六轮方案 B 已冻结方向，具体 Action schema 待实施核实 |
 | [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md) | **第七轮权威**：Evidence 与 Semantic UI 两通道、固定 Surface/Component 交互、Screenshot Proof、Preview/Experience Epoch、身份/隐私/取消及真实客户端验收 | 第七轮 B 已冻结；UI Action schema/运行测试待实施 |
-| `domain-*.md` | **按需再建**：Package/Library/Media/Skills/Extensions、跨域验收等后续域模块 | 尚未设计 |
+| [`package-library-media-skills-extensions.md`](package-library-media-skills-extensions.md) | **第八轮权威**：Package/Library/Resource Graph、统一 Binary Asset Lane、Visual/Mask/Gallery/Speech、Skill 版本、Browser Extensions/HostPlugins 权限、预算与恢复 | 第八轮 B 已冻结；确切 Schema/实施验证待核实 |
+| `domain-*.md` | **按需再建**：全域验收、安全威胁模型、实施分期等后续模块 | 尚未设计 |
 | `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
 
 单条详细规则仅写入一个权威模块。index 只管理全局冻结原则、依赖和讨论/实施路由，不复制域内设计；现有旧 Plan 仅作历史链接，不直接作为本轮新增范围的执行授权。
@@ -54,8 +55,9 @@
 | 第五轮（已冻结） | 方案 B：完整 Native Model/Prompt/Runtime/Provider Bridge、版本化资源、端点/Secret 审查、无副作用 Preview、付费执行及恢复 | [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) |
 | 第六轮（已冻结） | 方案 B：完整 Session / Save / Timeline / Branch、旧 fork/retry Action 退役、长会话 Context、分层 Generation、停止/恢复、原生 GC | [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) |
 | 第七轮（已冻结） | 方案 B：Browser Evidence Lane + 受控 Semantic UI Lane、截图 Proof、Epoch/Preview、隐私/隔离/取消及真客户端验收 | [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md) |
-| **第八轮（当前讨论）** | Package / Library / Resource Graph、Build / Review / Install、Media / Visual / Speech、Skills / Extensions / Plugin | `index.md` + `capability-matrix.md` 对应行 + [`p0-reliability.md`](p0-reliability.md)；当前 `main` 的 Studio/Package/Media/Skills/Plugin Authority 与 `plugin:atria-mcp` 的 HighRisk/Library 适配器 |
-| 后续轮次 | 跨域安全/长期运行验收、客户端平台矩阵、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
+| 第八轮（已冻结） | 方案 B：Package/Library/Media/Speech/Skills/Extensions 全域控制、Binary Lane、原生账本/权限与安全恢复 | [`package-library-media-skills-extensions.md`](package-library-media-skills-extensions.md) |
+| **第九轮（当前讨论）** | 全域验收矩阵、威胁模型、真实客户端协议/平台、分阶段开发路线 | `index.md` + [`p0-reliability.md`](p0-reliability.md) + [`capability-matrix.md`](capability-matrix.md)；按需要读第八轮域模块和 `plugin` 的测试/验收脚本 |
+| 后续轮次 | 完整方案收口、实际实施前阶段规划与验收门槛确认 | 先 `index.md`，再读具体权威模块；仅在用户决策冻结后调整 |
 
 不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
 
@@ -110,12 +112,21 @@
 - 正式 `ScreenshotProof` 必须双向核对 Source/Server/Document、Session/Experience Epoch 或 Studio Preview/Project Version 等相关身份；旧 last-observed 证据不替代当前性。截图只证明画面，与编译、正式提交及人工满意是独立验收层。
 - 多任务页面隔离、异步 UI 操作取消、远端 subresource egress 风险、敏感画面处理及真实 Codex/Claude Code humanApproval UI 验收均为实施必须保持的要求；当前历史脚本只有部分自动化证据。
 
-## 5.6 第八轮待讨论（尚未冻结）
+## 5.6 第八轮已冻结的 Package / Library / Media / Skills / Extensions
 
-- Package / Library / Resource Graph 的 immutable revision/used-by/dependency closure、Build/Artifact 传输/Preflight/Review/Install 与版本发布边界。
-- Speech / Visual Director / Image Generation / Img2Img / Inpaint / Upscale / Gallery / Mask Draft、Session 参考资产等与独立生图深化企划的产品权威职责；费用/Provider/媒体二进制的审批与恢复。
-- Skills、Runtime Extensions、Host Plugin 的发现、能力绑定、启用/停用、权限与依赖审查；区分 `main:plugins/**` 与长期 `plugin` 开发工具工作空间。
-- MCP 的大型二进制上传/下载、复合任务预算、Secret/URI、人工批准与端到端版本回执，不重复造 Package Registry/Media Store/PluginHost。
+- **第八轮选 B：分域完整控制 + 统一安全 Binary Asset Lane**，见 [`package-library-media-skills-extensions.md`](package-library-media-skills-extensions.md)。第二轮 P0 的传输基础和可靠作业原则仍由 [`p0-reliability.md`](p0-reliability.md) 统一定义。
+- **资源与 Package**：ResourceGraph/Library exact revisions、Resource Bundle Hash/依赖审查/同一 Intent 安全续接；Studio Build、Preflight、独立 Package Permission Review、Install 和正式 Version Receipt；不替代原生 PackageRepo/InstalledVersion。
+- **二进制通道**：Owner/Purpose/Scope/Hash/TTL 绑定、分块完整性、有界/脱敏；共享字节流转能力，但 Package Install、Image Provider Send、Skill Import、Extension Enable 分别审批。
+- **Media/Visual/Speech**：复用 VisualStore 持久 Image Job/Lease/Reservation/Remote Reconcile；Director Scan/Prepare 可能写状态/收费不可假称 READ；Mask/CAS、Gallery/Reference/GC 完整调用原生 authority；Speech 进程内 Task 不伪造跨重启恢复。
+- **Skills 与运行代码不同信任级**：Skill 为不可信指令资料，可版本化管理但不带工具授权；Browser Extension 是页面内执行的非沙箱 JS，安装默认 disabled、启用需另审；HostPluginBoundary 不是服务端代码隔离沙箱，禁止给 MCP 任意 `import/eval/shell`；Package Runtime Plugin 不得获得 Host 权限。
+- **预算/回执**：Image/Speech/Native Model/Package/Skill/Plugin 分别保留自己的预算/版本与恢复权威；MCP Journal 只做有限关联，不复制资产仓库。默认不开启自动生图、自动安装或第三方代码更新。
+
+## 5.7 第九轮待讨论（尚未冻结）
+
+- 全域 Action × Authority × Effect × Threat 的正式验收矩阵，以及哪些核心安全问题是 P0，哪些覆盖工作可进入后续交付阶段。
+- 两代 MCP 协议和 Client 实际 Capability：2025 Form、2026 MRTR、可选 Tasks；Codex/Claude Code 真实版本的审批、状态、取消、图片/二进制接入、跨平台变化与降级方式。
+- Prompt Injection、SecretRef→恶意 Endpoint、第三方 Git/Plugin/Skill/Archive/URL、跨 Owner/Scope、stale Revision/Epoch、持久 Journal/unknown 与回执篡改等威胁的可复现阻断和恢复测试。
+- Plugin 与必要 Main Native Authority 改动的依赖顺序、阶段提交/唯一 Record、最小相关验证、最终验收和收尾治理。待第九轮决策确认后在同一 Plan Bundle 冻结实际实施阶段图。
 
 ## 6. 实施和验证边界
 
