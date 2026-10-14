@@ -1,10 +1,11 @@
 # Native visual generation deepening — Implementation Record
 
 - Task ID: `atria-native-visual-generation-deepening`
-- Plan: [index](../../../plans/feat/native-visual-generation-deepening/index.md)
+- Plan: [index](../../plans/feat/native-visual-generation-deepening/index.md)
 - Product branch: `feat/native-visual-generation-deepening`
 - Start main: `7e1045ab836c22cafbc92c5de056ad701f56e723`
 - Frozen design read: `docs@54c8949dccad402ca4471efad3c473bee7d60050`
+- Status: **paused at user request**，S5 已提交验证，S6 审查刚开始。恢复入口：[HANDOFF](../../HANDOFF.md)。
 - Authorization: 2026-10-14 用户正式授权连续完成 S0～S6、阶段提交推送、最终按 Governance 集成。
 - Initial local audit: main/docs/package/plugin/已有 skill-routing feat 均 clean；fetch origin 后 main 未变，docs 从 e9107ba4b fast-forward 到 54c8949dc。新任务独立 worktree；其它任务保留。
 - Verification policy: 每阶段只做最小相关本地验证。远端为提交存储；CI `not_run`，不启用 Actions。
@@ -85,7 +86,16 @@
 - S5.2 SD WebUI and Forge: independent Connection Adapter names, actual read-only models/samplers/upscalers/scripts/OpenAPI discovery; installed LoRA/ControlNet catalogs/combination gates, opaque white-edit masks and Img2Img/Upscale. Optional Basic Secret auth. No global interrupt.
 - S5.3 RunningHub: frozen full typed Workflow with explicit bindings, upload/create/outputs, durable remote task ID/reconcile, owner-specific cancel receipt, restricted no-credential CDN fetch. HTTP status now recovers known jobs; transient query failures do not resubmit. P2 extensibility uses the same validated unique registry ports.
 - Checks: independent P1 22/22 (FS/SQLite each family, editing, LoRA/ControlNet, upload/polarity, failure/sanitization, no retry, cancel/recovery/unsafe URL); kernel 9/9; P0 7/7. Changed product ESLint/diff check passed. One lint pass found formatting only, automatically fixed. Protocol catalog does not prove artistic/model compatibility or L3.
-- Total input byte guard added at preview: 24 MiB, Gemini 14 MiB to bound base64 request size. Head-specific P1 minimal verification is being completed; result appended below.
+- Total input byte guard added at preview: 24 MiB, Gemini 14 MiB to bound base64 request size. Head-specific P1 minimal verification completed; result appended below.
 - L3/remote CI `not_run`, no provider charge. RunningHub official main documentation pages intermittently timed out; official pre.runninghub.ai pages and current outputs/upload/error references provided exact protocol evidence. No third-party code copied.
 - Next: S6 desktop/mobile responsive control plane, minimum browser and performance/security acceptance, full closure invariant review, final delivery and Governance merge.
 - Head-specific minimal retest at `5c8131e67`: P1 22/22 passed after adding the aggregate-input guard.
+
+## User-requested pause / S6 review checkpoint
+
+- 用户明确要求在合适节点暂停，以新对话继续；停在 S5 HEAD `5c8131e67c380d07a699bb6fc4c75414d417af3d`。S6 只读审查，未新增产品改动。
+- source/main/docs 本地工作树在交接写入前均 clean；main 保持 `7e1045ab836c22cafbc92c5de056ad701f56e723`，没有合并或删除 feat。
+- S6 审查发现需继续处理：annotation/task Target/Rendering 覆盖实际 API/UI、Workflow 导入/映射体验、whole-history/Gallery 重复读取性能、standard-reference 分支授权与保存、Mask 保存竞争/上传认证、GC 临时 root 生命周期、generated ironman 编辑/导入闭环及实际传输/审批证据。具体恢复线索归 live HANDOFF；不把阶段标签当全范围最终验收。
+- 环境核对：实际 CachyOS/KDE Wayland；Node FS/SQLite 验证已有证据，浏览器未启动。Windows/Termux 真机及 Provider L3 全部 `not_run`。
+- 本次暂停仅按用户指令；新对话明确恢复后沿原完整授权连续推进 S6，不重开分支、不重新实施 S0，不追加阶段审批。
+- Remote sync: S5 source 首次 push 遇 TLS EOF，重试成功；origin feat 已到 `5c8131e67c380d07a699bb6fc4c75414d417af3d`。

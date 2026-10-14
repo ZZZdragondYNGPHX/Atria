@@ -2,7 +2,7 @@
 
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Primary Workspace**: `main`（Atria 产品源码）；`docs` 仅承载本 Plan
-- **Status**: **正式实施中**（2026-10-14，用户授权连续实施 S0～S6；D-001～D-013 和 E0 保持冻结）。
+- **Status**: **按用户请求暂停**（2026-10-14，S0～S5 已实现并记录；S6 审查刚开始，未新增产品修改；D-001～D-013 和 E0 保持冻结）。恢复入口：[HANDOFF](../../../HANDOFF.md)。
 - **Implementing Branch**: `feat/native-visual-generation-deepening`；独立任务 source worktree，产品不与 docs 合并。
 - **Verified code baseline (remote only)**: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`
 - **Reference**: [damoshen123/st-chatu8](https://github.com/damoshen123/st-chatu8)（读取其公开源码和行为作为研究材料，非 Atria 代码来源）
