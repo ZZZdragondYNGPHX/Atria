@@ -1,0 +1,128 @@
+# 功能覆盖与界面扩展
+
+本模块定义现有能力如何进入 Serene Canvas，以及下一轮 HTML 需要补齐哪些代表视图。已确认的取舍只见 [decisions.md](decisions.md)，视觉与控件规范只见 [visual.md](visual.md)，技术替代路径见 [migration.md](migration.md)，验收方法见 [validation.md](validation.md)。
+
+## 1. 事实基线与阅读方式
+
+- 源码核查基线：`main`，`9241325a7290e613e0fdaaa1870409105c161c89`（2026-10-14）。本模块以已核实的前端功能盘点为索引，以下源码引用提供可复核的事实入口；实施前以真实 Git 复核变化。
+- 满意的视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。它是独立演示，未连接产品服务、真实项目、会话、账户或模型请求。
+- 当前讨论稿：[discussion-preview-v0.2.html](references/discussion-preview-v0.2.html)。其在保持构图的基础上纠正 Runtime 示例语义；下表仍以 v0.1 为覆盖盘点，字段纠正不表示新增完整流程。
+- [功能呈现文档](references/function-presentation.md)、[设计规范](references/frontend-guidelines.md)与桌面/移动参考均是设计输入，其与当前决定或源码的差异按 [decisions.md](decisions.md)处理。参考稿不包含某个按钮，不代表删除该用户任务；参考稿画出某个入口，也不证明产品已有该能力。
+- **交互演示**：v0.1 可操作的模拟流程。**代表布局**：已有视觉构图或部分表单/状态，没有完整流程。**入口示意**：仅菜单、描述、简单反馈或占位详情。**待展开**：没有具体界面。下列等级均不表示产品实现或验收完成。
+
+## 2. 全局、登录与引导
+
+| 区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| --- | --- | --- | --- |
+| Shell 导航 | 五域、Utilities、返回、当前层级、按内容显示 Inspector；Compact/Medium/Expanded | Dock、域切换与移动入口有交互演示 | 返回/层级、上下文动作、Inspector 开合与无内容状态；确认每个移动入口可发现 |
+| 搜索与命令 | 页面/资源/命令搜索；来源异步失败、部分结果与重试；键盘选择 | 五域命令、过滤/无结果与关闭有交互演示 | 资源结果、来源/用途说明、载入与部分失败、键盘焦点往返 |
+| 公告与全局反馈 | critical 模态、warning 条幅、info 徽标/收件箱；危险确认与成功/失败反馈 | toast 与少数 sheet 有交互演示；公告待展开 | 低干扰公告、关键确认、失败后继续工作的恢复路径 |
+| 登录与账户选择 | 可配置多账户、handle/密码、OAuth、开放注册、恢复码 | 待展开；退出仅入口示意 | 独立登录页、账户选择、连接中/失败/重试；条件入口按实际部署显示 |
+| Learning center | 恢复课程、章节切换、跳到真实功能、完成/跳过/重做 | 入口示意 | 首次使用引导与返回学习入口；接入 Runtime 和开始作品的真实路径 |
+
+事实入口：`main:public/scripts/atria-shell/constants.js:1-45`、`environment.js:19-50`、`app-shell.js:161-366,631-838`、`workspace-host.js:60-113`、`public/scripts/announcements.js:120-332`、`public/login.html:39-75`、`public/scripts/atria-shell/learning-center.js:5-17,61-135`。
+
+## 3. Play
+
+| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| --- | --- | --- | --- |
+| Play 首页 | 最近 Session/Work、Browse Library、导入存档；缺精确 Work 版本不能 Continue | 直接展示活跃会话，首页待展开 | 最近会话与首次使用；缺版本的修复入口 |
+| 阅读与 Composer | 原生 Timeline、输入、Send/Stop、Jump to latest；可写/历史/终局/恢复状态 | 叙事排版、输入/模拟回复/停止有交互演示 | 准备中、服务缺项、长时间流式输出、滚动跟随与主动阅读、故事结束 |
+| 会话工具 | History & saves、Context、Prompt choices、Save；More 包含健康、共享、Quick Save、Load、返回 | 工具入口与少数 sheet 有交互演示 | 主/次级操作层级、生成中禁用条件、Save/Load 的真实步骤 |
+| 历史、分支与存档 | 查看只读修订、切换分支/回到当前、Load/Export；自动保存策略、重命名、导入导出 `.atriasave` | 时间线与存档 sheet 有交互演示，实际存档/分支流程待展开 | 分支/修订选择、只读说明、恢复当前、存档导入依赖与确认 |
+| Context / Prompt choices | 上下文纳入/排除摘要与详情；当前 Route 动态参数、保存覆盖/恢复作者默认 | 摘要与参数 sheet 有交互演示 | 未生成、明细、参数校验、精确 Route 来源与恢复默认反馈 |
+| Persona | 会话内搜索/选择或无 Persona；不可写时禁止切换 | 选择器有交互演示 | 搜索、默认/当前区别、不可写解释；与 Library 资源详情衔接 |
+| 作品专属 UI | component/hybrid/full 可复用组件或接管 Stage，Host 保留恢复能力 | 默认阅读视图有演示；接管待展开 | 一处作品自定义呈现，覆盖 Exit/Stop/Save/Persona/Diagnostics/Reload 可达性 |
+
+事实入口：`main:public/scripts/native/play-product.js:86-178,276-480`、`play-controls.js:192-305,331-561`、`session-history.js:46-173`、`persona-ui.js:21-150,198-265`、`prompt-runtime-controls.js:6-87`、`experience/ui/full-host.js:49-145`。
+
+## 4. Library
+
+| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| --- | --- | --- | --- |
+| Works / My Games | 搜索、版本/可用性、安装更新 `.atria`、继续 Session；管理导出/重命名/删除 | 画廊、搜索/无结果、卡片详情有交互演示 | 最近进度、缺版本、管理菜单；安装包预检/权限与存档导入分开 |
+| Work 详情 | 选择起点/会话标题、Start New/Continue、精确版本、World/Knowledge 绑定与用途缺项修复 | 说明、版本与开始/继续有交互演示 | 起点选择、用途缺项、版本详情/依赖、删除阻碍 |
+| Worlds & Knowledge | 导入/导出、Library 可编辑副本、Package 原件只读；不可变修订与精确绑定 | 分类与资源行/简述详情有交互演示 | 资源详情、修订历史/引用、只读与 Fork/复制、删除前引用阻碍 |
+| Knowledge 条目 | 添加/编辑/启停/删除条目、绑定与来源 | 待展开 | 条目编辑纸、列表筛选、启停、绑定证据与空状态 |
+| Prompt Presets | Program/Modules/Generation/Preset Regex、结构化/Source、保存精确修订 | 列表/概念详情有交互演示；Studio 的 Prompt 编辑是另一场景 | Library Prompt 完整详情、模块维护、Source、引用关系与新修订反馈 |
+| Personas | 新建/编辑/复制/归档、设置默认；与会话选择器同一资源 | 分类/列表与会话选择器有交互演示 | Persona 详情、新建/编辑、默认与归档流程 |
+
+事实入口：`main:public/scripts/atria-shell/library-runtime-workspaces.js:23-29,79-122`、`public/scripts/native/library-workspaces.js:40-428`、`prompt-presets.js:192-305`、`prompt-authoring.js:167-320`、`persona-ui.js:21-150`。
+
+## 5. Build / Atria Studio
+
+| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| --- | --- | --- | --- |
+| 项目首页 | 新建、搜索/打开、删除与依赖处理 | 直接进入项目，首页待展开 | 项目入口、无项目/无匹配、载入失败与重试 |
+| 资源树与编辑器 | 20 个视图：Overview、Experience、Prompt Authoring、Runtime Design、Actors、EntryPoints、Worlds、Knowledge、Game Logic、UI、Assets、Memory、Agents、Skills、Plugins、Metadata、Simulation、Preview、Build、Source | 三纸、分组/搜索、Prompt 分区、结构化/Source、移动五面板有交互演示；其它资源多为入口示意 | 以 Actors/EntryPoints 与 UI/Assets 各展示一处真实结构化任务；不要求把所有资源同时放在画面上 |
+| 编辑与 ChangeSet | 编辑形成草稿；Review → inspect Workspace → Apply → Validate → resultingRevision；冲突/回滚/保存后刷新失败 | 草稿、校验、diff 与演示 Apply 有交互演示；Source 模式保留未知字段 | 引用/修订冲突、保留/复制草稿、取消审查、验证失败与保存后刷新失败 |
+| Project Agent | Intent → Plan → Workspace/Operations → ChangeSet → Validate/Preview/Simulation → Review → 人显式 Commit | 任务/取消、提议与演示 Review & Commit 有交互演示 | Task 状态、计划、操作与证据；冲突/中断恢复，区分 AI 文字与权威修改状态 |
+| Preview / Simulation / Build | 预览精确项目修订；仿真、Preflight、生成 `.atria`；活动 Problems/Output/History/Changes | 预览、四类活动、折叠与切换有交互演示；构建仅入口示意 | 校验问题定位、仿真/构建结果、失败后返回资源、关闭预览 |
+
+事实入口：`main:public/scripts/native/studio-workspace.js:38-67,215-262,697-857,1229-1515`、`studio-agent.js:98-114,413-521,579-598`、`main:src/native/authoring/studio-service.js:922-990`、`main:src/native/project-agent.js:1207-1248`。
+
+## 6. Agents 与 Runtime
+
+| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| --- | --- | --- | --- |
+| Agents Orchestration | Loop/Spec/Agenda/Director/Single Agent、模板/复制、编辑/Save/Validate、工具权限、图/Source、范围绑定 | 编排纸、简单流程图与详情是代表布局 | 一个预设编辑流程、内置只读/复制、权限/图、范围绑定与校验失败 |
+| Agents Run | Graph/Timeline、节点 Inspector、指标/工具/记忆证据、Stop Run | Tab 与状态/简述为代表布局 | 运行中/停止中/失败/无运行，Graph↔Timeline、节点证据 |
+| Agents Memory | Overview/Knowledge/Sources/Maintenance；开关、来源、检索、重建/Reset current chat memory | Tab/概念状态为代表布局 | 知识与来源纸、维护危险操作、当前 Session 范围 |
+| Agent Diagnostics | 健康/检查点/上下文 Token/事件；Export Trace/Import replay/Return to live | 入口/概念状态为代表布局 | live/replay 区别、导出/回放、恢复检查点 |
+| Runtime 就绪引导 | 依实际用途检查 Connection/Model/精确 Prompt/Generation/Route；部分 adapter 允许免认证 | Connections 一处示意；完整引导待展开 | 无配置、最先缺项、跨 Library/Runtime 修复并返回原任务 |
+| Connections | Provider/Endpoint/Secret、测试；MCP/A2A 与图片服务同属此区；认证按 adapter | 表单、测试/保存反馈为代表布局，不发送请求 | 真实类型/Endpoint/认证分支、Secret 选择/创建、测试失败/重试 |
+| Models | Connection、模型 ID、Fetch models、发现元数据、限额与能力覆盖 | 代表布局/入口示意 | 发现→选择→确认能力/限额；未有 Connection、发现失败 |
+| Routes | 用途/角色、Model 与精确 Prompt/Generation、fallback 顺序、重试/超时/额度、Source | 代表布局/入口示意 | Route 编辑、精确引用、fallback、用途缺项/歧义与删除引用阻碍 |
+| Retrieval | Embedding/Rerank 精确修订、测试/诊断 | 代表布局/入口示意 | 检索配置与空状态，Memory 相关来源与诊断 |
+| Runtime Diagnostics | 精确 Route + 项目/Session 上下文、Compile preview、Prompt choices、请求证据；预览不发送请求 | 代表布局/入口示意 | 编译预览结果、上下文选择/失败、来源与费用未知状态 |
+
+事实入口：`main:public/scripts/agents/orchestrator/workspace/shell.js:3-114`、`orchestration/page.js:497-713`、`panel.js:181-280,336-391`、`memory/page.js:5-10,75-110,253-487`、`diagnostics/page.js:37-184`；`main:public/scripts/native/runtime-readiness.js:2-19`、`runtime-workspace.js:128-162,231-549,608-713`。
+
+### Runtime 参考差异与 v0.2 纠正
+
+v0.1 的 `OpenAI compatible + localhost:1234/v1 + 无需认证` 是说明性示意，不是基线产品支持的组合。当前 UI 要求 OpenAI-compatible 使用完整 `/v1/chat/completions` URL，并要求 Secret；MCP/A2A、ComfyUI、SD WebUI、Forge 等 adapter 可选择无认证。v0.2 已将该示例改为完整 `/v1/chat/completions` 与 Stored Secret 引用，并移除 OpenAI 默认免认证表述；v0.1 原样保留作为已接受的视觉基线。后续展开按真实服务分支呈现。当前 `runtimeReadiness` 将所有 Connection 按 Secret 存在性过滤，仍需依据真实用途与 adapter 纠正，避免免认证服务被错误判为未就绪。
+
+事实入口：`main:public/scripts/native/runtime-workspace.js:259-266`、`runtime-readiness.js:3-18`。独立 Secret 轮换/删除页面目前不是可见产品能力，不能作为现有功能补画。
+
+## 7. 全局工具与条件能力
+
+| 区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| --- | --- | --- | --- |
+| Settings | Appearance/Language/Interface/Accessibility；主题、字体、输入/滚动、减动；高级颜色/Custom CSS 与主题导入导出 | 减动与少数偏好 sheet 有交互演示，其它待展开 | 分组设置、长表单与原生偏好控件；按只浅色范围呈现，旧主题数据/导入/自定义的兼容表达仍需设计，不自动恢复暗色选项 |
+| Account | 身份/头像/名称/密码、Settings snapshot、Backup/Storage、Danger Zone；现新页缺可见 Logout | Account 菜单与退出入口示意，非真实登录退出 | Profile、多账户退出/返回选择、存储、明确的重置确认 |
+| Backup & sync | 手动 ZIP 归档、预检、合并/覆盖/恢复、取消回退/恢复点、LAN；旧备份与快照清理策略 | 入口示意 | 一次导入预检→选择→确认，失败/取消与恢复；云 Provider 仅占位 |
+| Extensions | Skills 安装/导入/编辑、scope；Plugins 安装/启停/代码/配置，Package 原件只读 | 入口示意 | Skills/Plugins 分类、详情、scope、官方设置与草稿保护 |
+| 全局 Diagnostics | Guided/Startup/Expert、报告/事件、刷新/重试，进阶日志与权限 | 入口示意 | 引导排错、报告、无日志/无权限、重试与恢复入口 |
+| 插图生成 | 官方插件默认关闭；启用且 Work 支持后，Play 插图工具可标注选文/生成/取消/采用或隐藏版本 | 待展开 | 一处已启用的条件工具与生成状态；图片服务配置仍归 Runtime |
+| Gallery / Visual Director / Media Studio | 插图流程子界面；版本比较/采用、镜头审查、遮罩/Img2Img/Inpaint/Upscale/预览批准 | 待展开 | 插图子流程中一处候选比较、一处编辑/批准；不增加新一级域 |
+| Shared session | Work 声明共享规则后，Host/参与者、Session ID/seat、连接/轮次与共享输入 | More 中入口示意 | 条件启用、ID/seat 连接、Host 控制与断连；不暗示已存在邀请链接 |
+| 消息朗读 | 声明 narration expression 的 assistant 消息才挂载声线、准备、播放/停止 | 待展开 | 一条符合条件的消息、声线选择、准备/失败/停止；不扩成全局语音聊天 |
+
+事实入口：`main:public/scripts/atria-shell/utility-workspaces.js:102-334`、`public/scripts/templates/userProfile.html:1-40`、`public/scripts/user.js:589-627`、`public/scripts/backup-sync-center.js:630-1007`、`public/scripts/native/extensions-workspace.js:23-192`、`public/scripts/logging/workspace.js:117-314`、`public/scripts/native/official-illustration.js:68-300`、`visual-gallery-ui.js:5-32`、`visual-director-ui.js:4-25`、`media-studio-ui.js:7-87`、`shared-session-ui.js:21-134`、`speech-controls.js:8-72`。
+
+## 8. 全流程状态覆盖
+
+状态是用户任务的一部分，不要求把所有组合铺成独立首页。下一稿用可切换的演示数据呈现主要差异，产品验收以 [validation.md](validation.md)为准。
+
+| 维度 | 必须呈现的状态/操作 | v0.1 实际范围与剩余工作 |
+| --- | --- | --- |
+| 控件 | hover、focus、pressed、disabled、loading、success、error | 已有按钮反馈、焦点、禁用、输入错误、部分演示成功；完整加载/错误状态需按真实控件扩展 |
+| 数据 | 首次使用、空列表、无结果、载入、部分结果、失败/重试 | 有 Library/资源搜索无结果；服务加载/部分失败、首次使用待展开 |
+| 权限/依赖 | 未登录、无权限、精确版本缺失、Secret/Model/Route 缺项、被引用、Package 只读 | 除少数说明外待展开；解释原因并提供修复去向 |
+| 编辑安全 | 未应用草稿、模式切换无数据丢失、离开确认、Review/取消/Apply、冲突、回滚/刷新失败 | Studio 有草稿/Source/Review 演示；离开/冲突/回滚/刷新失败待展开 |
+| Play 生命周期 | 准备、生成、停止中、只读历史、故事结束、恢复失败；取消后再发送 | 有模拟生成/取消；真实生命周期差异和恢复待展开 |
+| 重复/中断 | 快速点击、二次提交防护、连续开关、取消后重试、异步结果过期 | 有部分模拟防护与可中断 Sheet；资源/Route/Task 全流程待展开 |
+| 输入方式 | 鼠标/触摸/键盘、中文 IME、长文本、焦点归还、键盘导航 | 有代表性键盘/触屏演示；专业列表/树/Inspector/组合面板需扩展 |
+| 布局/辅助功能 | 三类视口、横竖屏、大字、safe-area、软键盘、reduced-motion | v0.1 有桌面/中宽/移动重排与减动；新增视图逐项纳入 |
+| 扩展/作品呈现 | 注入区为空/不可用/失败/自有视觉，Stage 接管与 Host 恢复 | 待展开，完整范围依 [migration.md](migration.md)中的兼容替代契约 |
+
+## 9. 下一轮 HTML 的展开顺序
+
+建议按能验证视觉系统承载复杂度的代表任务展开，而非一口气增加全部占位页面：
+
+1. Play 首页与只读历史/分支/存档，World/Knowledge 详情与引用，Library Prompt/Persona 编辑。
+2. Runtime 真实 Connection→Model→Route 与 Compile preview，补齐依赖修复和失败返回。
+3. Studio 非 Prompt 资源编辑、ChangeSet 冲突/验证失败；Agents 的 Run/Memory/预设编辑。
+4. 登录/引导、Settings/Account/Backup/Extensions/Diagnostics；一处作品接管与一处条件媒体流程。
+
+此顺序是设计工作建议，不是冻结实施阶段。旧控件、潜在新能力、已确认边界与用户待讨论取舍只归 [decisions.md](decisions.md)，不由旧 DOM 或参考稿自动推导。

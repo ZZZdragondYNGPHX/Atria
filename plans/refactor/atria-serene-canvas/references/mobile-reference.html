@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Atria Mobile Serene</title>
+    <style>
+        /* =========================================
+           ATRIA SERENE: MOBILE TOKENS
+           ========================================= */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+        :root {
+            --canvas-bg: #F9F8F6;
+            --sheet-bg: rgba(255, 255, 255, 0.85);
+            --sheet-solid: #FFFFFF;
+            
+            --ink-main: #1C1C1E;
+            --ink-muted: #8E8E93;
+            --ink-faint: #E5E5EA;
+            
+            --accent-primary: #FF5A36;
+            --accent-blue: #3273F6;
+            
+            --border-delicate: rgba(0, 0, 0, 0.05);
+            --border-focus: rgba(0, 0, 0, 0.12);
+            
+            --font-serif: 'Playfair Display', Georgia, serif;
+            --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            
+            --shadow-float: 0 12px 32px -8px rgba(0, 0, 0, 0.08);
+            --shadow-sheet: 0 -10px 40px rgba(0, 0, 0, 0.1);
+            
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-pill: 100px;
+            
+            --transition-smooth: 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background-color: var(--canvas-bg);
+            color: var(--ink-main);
+            font-family: var(--font-sans);
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(circle at 50% 0%, #FFFFFF 0%, transparent 60%);
+        }
+
+        button, input { outline: none; border: none; background: none; font-family: inherit; }
+        
+        /* =========================================
+           MOBILE FLOATING PILL (Bottom Nav)
+           ========================================= */
+        #mobile-dock {
+            position: fixed;
+            bottom: calc(16px + var(--safe-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 400px;
+            background: var(--sheet-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--border-delicate);
+            border-radius: var(--radius-pill);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            box-shadow: var(--shadow-float);
+            z-index: 1000;
+        }
+
+        .dock-item {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            color: var(--ink-muted);
+            transition: 0.3s;
+            position: relative;
+        }
+        .dock-item.active { color: var(--ink-main); }
+        .dock-item.active::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--ink-main); }
+        .dock-item svg { width: 22px; height: 22px; stroke-width: 1.5; stroke: currentColor; fill: none; }
+        
+        .dock-avatar { width: 32px; height: 32px; border-radius: 50%; background: #E5E5EA; border: 1px solid var(--border-delicate); }
+
+        /* =========================================
+           SCENES (Canvas Layers)
+           ========================================= */
+        #canvas { flex: 1; position: relative; width: 100%; height: 100%; }
+        
+        .scene { position: absolute; inset: 0; padding: 20px 20px calc(100px + var(--safe-bottom)) 20px; opacity: 0; transform: translateY(10px); pointer-events: none; transition: var(--transition-smooth); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .scene.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+        /* --- SCENE 1: PLAY (Immersive Reading) --- */
+        .mobile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding-top: env(safe-area-inset-top, 10px); position: sticky; top: 0; background: linear-gradient(to bottom, var(--canvas-bg) 60%, transparent); z-index: 10; padding-bottom: 16px; }
+        .header-title { font-family: var(--font-serif); font-size: 18px; font-weight: 600; }
+        .header-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-delicate); display: flex; justify-content: center; align-items: center; background: var(--sheet-solid); color: var(--ink-main); }
+
+        /* Story Typo for Mobile */
+        .story-block { margin-bottom: 32px; opacity: 0; animation: fadeUp 0.8s ease forwards; }
+        .story-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-muted); font-weight: 600; }
+        .story-meta .role-indicator { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-faint); }
+        .story-meta.player .role-indicator { background: var(--accent-primary); }
+        
+        .story-text { font-family: var(--font-serif); font-size: 17px; line-height: 1.7; color: var(--ink-main); }
+        .story-text.player { font-family: var(--font-sans); font-size: 15px; color: var(--ink-muted); font-weight: 500; border-left: 2px solid var(--border-delicate); padding-left: 12px; }
+        
+        /* Mobile Composer */
+        .mobile-composer { position: fixed; bottom: calc(72px + var(--safe-bottom)); left: 16px; right: 16px; background: var(--sheet-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid var(--border-focus); border-radius: var(--radius-pill); padding: 6px 6px 6px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-float); z-index: 900; transition: var(--transition-smooth); }
+        .mobile-composer:focus-within { transform: translateY(-8px); border-color: var(--ink-main); background: var(--sheet-solid); }
+        .composer-input { flex: 1; font-size: 15px; color: var(--ink-main); padding: 8px 0; }
+        .composer-input::placeholder { color: var(--ink-muted); }
+        .btn-send { width: 32px; height: 32px; border-radius: 50%; background: var(--ink-main); color: #fff; display: flex; justify-content: center; align-items: center; }
+
+        /* --- SCENE 2: LIBRARY (Cards) --- */
+        .lib-title { font-family: var(--font-serif); font-size: 32px; margin-bottom: 24px; padding-top: env(safe-area-inset-top, 10px); }
+        .lib-nav-scroll { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; scrollbar-width: none; border-bottom: 1px solid var(--border-delicate); }
+        .lib-nav-scroll::-webkit-scrollbar { display: none; }
+        .lib-tab { font-size: 14px; font-weight: 600; color: var(--ink-muted); white-space: nowrap; position: relative; }
+        .lib-tab.active { color: var(--ink-main); }
+        .lib-tab.active::after { content: ''; position: absolute; bottom: -13px; left: 0; width: 100%; height: 2px; background: var(--ink-main); }
+
+        .card-elegant { background: var(--sheet-solid); border: 1px solid var(--border-delicate); border-radius: var(--radius-md); overflow: hidden; margin-bottom: 24px; box-shadow: var(--shadow-float); }
+        .card-img { width: 100%; aspect-ratio: 16/9; background: linear-gradient(120deg, #FDFBFB 0%, #EBEDEE 100%); }
+        .card-body { padding: 16px; }
+        .card-title { font-family: var(--font-serif); font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .card-meta { font-size: 12px; color: var(--ink-muted); display: flex; justify-content: space-between; }
+
+        /* --- SCENE 3: BUILD STUDIO (Mobile Sheet Stack) --- */
+        .studio-selector { background: var(--sheet-solid); border: 1px solid var(--border-delicate); border-radius: var(--radius-pill); display: flex; padding: 4px; margin-bottom: 24px; }
+        .seg-btn { flex: 1; text-align: center; font-size: 13px; font-weight: 600; padding: 8px 0; border-radius: var(--radius-pill); color: var(--ink-muted); }
+        .seg-btn.active { background: var(--canvas-bg); color: var(--ink-main); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+        .editor-sheet { background: var(--sheet-solid); border: 1px solid var(--border-delicate); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-float); min-height: 400px; }
+        .editor-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-delicate); padding-bottom: 12px; margin-bottom: 16px; }
+        .editor-name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink-main); }
+        .code-block { font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: #4A4A4A; overflow-x: auto; }
+        .kw { color: #8F42F5; font-weight: 600; }
+        .str { color: #0C8255; }
+
+        /* =========================================
+           BOTTOM SHEET (Account / Action Menu)
+           ========================================= */
+        #bottom-sheet { position: fixed; inset: 0; background: rgba(0,0,0,0.2); z-index: 2000; opacity: 0; pointer-events: none; transition: 0.4s; display: flex; flex-direction: column; justify-content: flex-end; }
+        #bottom-sheet.active { opacity: 1; pointer-events: auto; }
+        .sheet-content { background: var(--sheet-solid); border-radius: 24px 24px 0 0; padding: 24px 24px calc(24px + var(--safe-bottom)) 24px; transform: translateY(100%); transition: var(--transition-smooth); box-shadow: var(--shadow-sheet); }
+        #bottom-sheet.active .sheet-content { transform: translateY(0); }
+        
+        .sheet-handle { width: 36px; height: 4px; background: var(--ink-faint); border-radius: 4px; margin: 0 auto 24px auto; }
+        .menu-user { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-delicate); }
+        .menu-user .name { font-size: 16px; font-weight: 600; }
+        .menu-user .handle { font-size: 13px; color: var(--ink-muted); }
+        
+        .menu-list { display: flex; flex-direction: column; gap: 8px; }
+        .menu-item { width: 100%; text-align: left; padding: 16px; border-radius: var(--radius-md); font-size: 15px; font-weight: 500; color: var(--ink-main); display: flex; align-items: center; gap: 16px; }
+        .menu-item:active { background: var(--canvas-bg); }
+        .menu-item.danger { color: var(--accent-primary); margin-top: 16px; background: rgba(255, 90, 54, 0.05); }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- CANVASES (Main Content) -->
+    <main id="canvas">
+        
+        <!-- SCENE 1: PLAY (Mobile Reading) -->
+        <div id="scene-play" class="scene active">
+            <div class="mobile-header">
+                <div class="header-title">Echoes of Florence</div>
+                <button class="header-btn" title="Context & History">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </button>
+            </div>
+            
+            <div class="story-block" style="animation-delay: 0.1s">
+                <div class="story-meta"><span class="role-indicator"></span> System · Scene I</div>
+                <div class="story-text">The morning light filters through the stained glass of the basilica. The manuscript is said to be hidden in the catacombs beneath.</div>
+            </div>
+            
+            <div class="story-block player" style="animation-delay: 0.3s">
+                <div class="story-meta player"><span class="role-indicator"></span> You</div>
+                <div class="story-text player">I carefully light my lantern and search behind the altar.</div>
+            </div>
+            
+            <div class="story-block" style="animation-delay: 0.5s">
+                <div class="story-meta"><span class="role-indicator"></span> Narrator</div>
+                <div class="story-text">Your fingers brush against cold stone. A hollow click resonates through the empty church. Slowly, the heavy altar shifts, revealing a narrow staircase descending into darkness.</div>
+            </div>
+        </div>
+
+        <!-- SCENE 2: LIBRARY (Mobile Cards) -->
+        <div id="scene-library" class="scene">
+            <h1 class="lib-title">Library</h1>
+            <div class="lib-nav-scroll">
+                <div class="lib-tab active">Works</div>
+                <div class="lib-tab">Worlds</div>
+                <div class="lib-tab">Prompts</div>
+                <div class="lib-tab">Personas</div>
+            </div>
+            
+            <div class="card-elegant">
+                <div class="card-img" style="background: linear-gradient(120deg, #E0C3FC 0%, #8EC5FC 100%);"></div>
+                <div class="card-body">
+                    <h3 class="card-title">The Neon Paradigm</h3>
+                    <div class="card-meta"><span>v2.0.1</span> <span style="color:var(--accent-blue)">Installed</span></div>
+                </div>
+            </div>
+            <div class="card-elegant">
+                <div class="card-img"></div>
+                <div class="card-body">
+                    <h3 class="card-title">Echoes of Florence</h3>
+                    <div class="card-meta"><span>v1.2.0</span> <span>Update</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCENE 3: BUILD STUDIO (Mobile Segmentation) -->
+        <div id="scene-build" class="scene" style="padding-top: env(safe-area-inset-top, 20px);">
+            <div class="studio-selector">
+                <button class="seg-btn">Files</button>
+                <button class="seg-btn active">Editor</button>
+                <button class="seg-btn">Agent</button>
+            </div>
+            
+            <div class="editor-sheet">
+                <div class="editor-head">
+                    <span class="editor-name">main_narrative.json</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                </div>
+                <div class="code-block">
+<pre><code>{
+  <span class="kw">"id"</span>: <span class="str">"narrator_core"</span>,
+  <span class="kw">"type"</span>: <span class="str">"system_prompt"</span>,
+  <span class="kw">"modules"</span>: [
+    {
+      <span class="kw">"name"</span>: <span class="str">"Literary Tone"</span>,
+      <span class="kw">"dynamic"</span>: true
+    }
+  ]
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FLOATING COMPOSER (Play Scene Only) -->
+    <div class="mobile-composer" id="composer">
+        <button style="color:var(--ink-muted);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></button>
+        <input type="text" class="composer-input" placeholder="Type your action...">
+        <button class="btn-send"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+    </div>
+
+    <!-- MOBILE FLOATING PILL (Dock) -->
+    <nav id="mobile-dock">
+        <button class="dock-item active" onclick="switchScene('scene-play')" title="Play">
+            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+        <button class="dock-item" onclick="switchScene('scene-library')" title="Library">
+            <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </button>
+        <button class="dock-item" onclick="switchScene('scene-build')" title="Studio">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        </button>
+        <button class="dock-item" title="Search">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <!-- Avatar triggers Account Bottom Sheet -->
+        <button class="dock-avatar" onclick="toggleMenu(true)"></button>
+    </nav>
+
+    <!-- ACCOUNT / LOGOUT BOTTOM SHEET (Fixing the old UI gap) -->
+    <div id="bottom-sheet" onclick="if(event.target===this) toggleMenu(false)">
+        <div class="sheet-content">
+            <div class="sheet-handle"></div>
+            <div class="menu-user">
+                <div class="dock-avatar" style="width:48px;height:48px"></div>
+                <div>
+                    <div class="name">Creator Alpha</div>
+                    <div class="handle">@alpha_atria</div>
+                </div>
+            </div>
+            <div class="menu-list">
+                <button class="menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Settings</button>
+                <button class="menu-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Backup & Sync</button>
+                <!-- Required explicit logout missing in old UI -->
+                <button class="menu-item danger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchScene(sceneId) {
+            document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.dock-item').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(sceneId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // Show/Hide composer based on scene
+            const composer = document.getElementById('composer');
+            if(sceneId === 'scene-play') {
+                composer.style.opacity = '1';
+                composer.style.pointerEvents = 'auto';
+                composer.style.transform = 'translateY(0)';
+            } else {
+                composer.style.opacity = '0';
+                composer.style.pointerEvents = 'none';
+                composer.style.transform = 'translateY(20px)';
+            }
+        }
+
+        function toggleMenu(show) {
+            const sheet = document.getElementById('bottom-sheet');
+            if(show) {
+                sheet.classList.add('active');
+            } else {
+                sheet.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>
