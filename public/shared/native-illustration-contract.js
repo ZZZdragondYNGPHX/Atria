@@ -1,5 +1,5 @@
 import { assertIllustrationDraft } from './illustration-plugin-contract.js';
-import { renderNovelaiIllustration } from './novelai-illustration.js';
+import { assertCompilationEvidence, visualFingerprint } from './native-visual-contract.js';
 // Presentation data only: an illustration never changes committed narrative.
 export const ILLUSTRATION_NAMESPACE = 'atri_illustrations';
 export const emptyIllustrations = () => ({ schemaVersion: 1, annotations: [], images: [] });
@@ -70,23 +70,10 @@ export function assertIllustrationImage(value) {
 }
 
 function assertImageRequestSnapshot(value, image) {
-    const snapshot = requestEvidence(value);
-    record(snapshot, ['schemaVersion', 'requestId', 'source', 'connection', 'capabilities', 'promptMode', 'request', 'draft']);
-    record(snapshot.source, ['kind', 'sessionId', 'branchId', 'revisionId', 'annotationId']);
-    record(snapshot.connection, ['connectionProfileId', 'displayName', 'providerAdapter', 'fingerprint']);
-    record(snapshot.request, ['action', 'input', 'model', 'parameters']);
-    if (snapshot.schemaVersion !== 1 || snapshot.requestId !== image.imageVersionId || snapshot.source.kind !== 'session'
-        || snapshot.source.annotationId !== image.annotationId || snapshot.request.action !== 'generate'
-        || !['characters', 'direct'].includes(snapshot.promptMode)) throw new TypeError('Invalid image request snapshot');
-    id(snapshot.source.sessionId, 'ses'); id(snapshot.source.branchId, 'br'); id(snapshot.source.revisionId, 'rev');
-    id(snapshot.connection.connectionProfileId, 'conn'); assertIllustrationHead(snapshot.connection.fingerprint);
-    text(snapshot.connection.displayName, 256); text(snapshot.connection.providerAdapter, 128);
-    text(snapshot.request.input); text(snapshot.request.model, 128);
-    const draft = assertIllustrationDraft(snapshot.draft);
-    const rendered = renderNovelaiIllustration(draft, snapshot.capabilities, snapshot.request.parameters.seed);
-    if (draft.prompt !== image.prompt || draft.preset.negativePrompt !== image.negativePrompt
-        || rendered.promptMode !== snapshot.promptMode || JSON.stringify(rendered.body) !== JSON.stringify(snapshot.request)
-        || JSON.stringify(parameters(snapshot.request.parameters)) !== JSON.stringify(parameters(image.parameters))) throw new TypeError('Image request evidence mismatch');
+    const snapshot = assertCompilationEvidence(value);
+    if (snapshot.requestId !== image.imageVersionId || snapshot.source.annotationId !== image.annotationId
+        || snapshot.ir.prompt !== image.prompt || snapshot.ir.negativePrompt !== image.negativePrompt
+        || visualFingerprint(snapshot.target.executionParameters) !== visualFingerprint(image.parameters)) throw new TypeError('Image request evidence mismatch');
     return snapshot;
 }
 export function assertIllustrationState(value) {

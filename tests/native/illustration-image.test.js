@@ -123,7 +123,8 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         expect(host.secretPort.resolveSecret).toHaveBeenCalledWith(profile.secretRef, { handle: h.handle });
         expect(new IllustrationPromptService({ host, scheduler: images.scheduler }).list(h.handle, { sessionId: view.session.sessionId, branchId: originalBranch })).toEqual([]);
         view = await f.core.appendTimeline(h.handle, view.session.sessionId, { role: 'user', content: 'continued plot' });
-        view = await f.core.forkBranch(h.handle, view.session.sessionId, { revisionId: view.revision.revisionId, expectedRevisionId: view.revision.revisionId });
+        const save = await f.core.createSavePoint(h.handle, view.session.sessionId, { kind: 'manual' });
+        view = await f.core.restoreSavePoint(h.handle, view.session.sessionId, save.saveId, { expectedRevisionId: view.revision.revisionId });
         const changed = structuredClone(annotation.draft); changed.prompt = 'later user edit';
         await illustrations.updateAnnotation(h.handle, view.session.sessionId, { annotationId: annotation.annotationId, draft: changed, branchId: originalBranch });
         await host.persistence.saveConnectionProfile(h.handle, { ...profile, displayName: 'changed config', endpoint: 'http://127.0.0.1:2/changed' });

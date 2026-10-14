@@ -30,6 +30,17 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     promptProgram: 'pprog',
     runtimeRoute: 'route',
     retrievalProfile: 'retr',
+    imageTarget: 'imgtarget',
+    imageRendering: 'imgrender',
+    visualIntent: 'vintent',
+    imageJob: 'imgjob',
+    imageAttempt: 'imgattempt',
+    scene: 'scene',
+    shot: 'shot',
+    mediaOperation: 'mediaop',
+    maskArtifact: 'mask',
+    maskDraft: 'maskdraft',
+    visualReference: 'vref',
 });
 
 const FAMILY_BY_PREFIX = Object.freeze(Object.fromEntries(

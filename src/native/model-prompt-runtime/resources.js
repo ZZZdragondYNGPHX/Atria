@@ -1,3 +1,4 @@
+import { assertImageTarget, assertImageRendering } from '../visual-contracts.js';
 import {
     assertExactResourceRef,
     assertGenerationProfile,
@@ -6,12 +7,16 @@ import {
 } from './contracts.js';
 
 export const VERSIONED_MODEL_PROMPT_RESOURCE_TYPES = Object.freeze([
+    'core.image-target',
+    'core.image-rendering',
     'core.prompt-module',
     'core.prompt-program',
     'core.generation-profile',
 ]);
 
 const DEFINITIONS = Object.freeze({
+    'core.image-target': Object.freeze({ idKind: 'imageTarget', idField: 'imageTargetId', validator: assertImageTarget }),
+    'core.image-rendering': Object.freeze({ idKind: 'imageRendering', idField: 'imageRenderingId', validator: assertImageRendering }),
     'core.prompt-module': Object.freeze({
         idKind: 'promptModule',
         idField: 'promptModuleId',

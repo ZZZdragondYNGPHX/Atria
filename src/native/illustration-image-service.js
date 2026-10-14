@@ -1,4 +1,5 @@
 import { randomInt, createHash } from 'node:crypto';
+import { resolveVisualSource } from './visual-source.js';
 import { assertNativeId, createNativeId } from './identity.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { IllustrationService } from './illustration-service.js';
@@ -7,6 +8,7 @@ import { immutable } from './model-prompt-runtime/execution-utils.js';
 import { createNovelaiImageProvider } from './adapters/novelai-image-provider.js';
 import { novelaiConnectionCapabilities, renderNovelaiIllustration } from '../../public/shared/novelai-illustration.js';
 import { assertIllustrationImage } from '../../public/shared/native-illustration-contract.js';
+import { visualFingerprint, negotiateImageConstraints } from '../../public/shared/native-visual-contract.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 
 const terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
@@ -46,11 +48,21 @@ export class IllustrationImageService {
         const secret = await this.host.secretPort.resolveSecret(connection.secretRef, { handle });
         if (!secret) fail('generation_secret_unavailable');
         const imageVersionId = createNativeId('imageVersion');
-        const requestSnapshot = { schemaVersion: 1, requestId: imageVersionId,
-            source: { kind: 'session', sessionId, branchId, revisionId: annotation.anchor.revisionId, annotationId },
+        const source = { kind: 'session', sessionId, branchId, revisionId: annotation.anchor.revisionId, annotationId,
+            anchor: annotation.anchor, timeKind: 'present' };
+        await resolveVisualSource(this.host.sessionCore, handle, source);
+        const ir = { schemaVersion: 2, source, operation: 'txt2img', authoring: 'raw', prompt: draft.prompt,
+            negativePrompt: draft.preset.negativePrompt, scene: draft.scene, style: draft.preset.style,
+            participants: [], references: [], constraints: [] };
+        const target = { model: rendered.body.model, executionParameters: rendered.body.parameters };
+        const manifest = { schemaVersion: 2, targetFingerprint: visualFingerprint(target), checkedAt: Date.now(), expiresAt: Date.now() + 3600000,
+            level: 'L1', features: { txt2img: { state: 'supported', evidence: 'NovelAI protocol compiler' } }, combinations: [],
+            cost: { kind: 'unknown', currency: '', upperBound: null } };
+        const requestSnapshot = { schemaVersion: 2, requestId: imageVersionId, source,
             connection: { connectionProfileId: connectionId, displayName: connection.displayName, providerAdapter: connection.providerAdapter,
-                fingerprint: hashNativeDocument(connection) },
-            capabilities, promptMode: rendered.promptMode, request: rendered.body, draft };
+                fingerprint: hashNativeDocument(connection) }, target, ir, capabilities: manifest,
+            constraints: negotiateImageConstraints(ir, manifest), request: rendered.body,
+            requestHash: visualFingerprint(rendered.body), irHash: visualFingerprint(ir), transforms: [] };
         // Validate evidence before spending a request or entering AssetStore.
         assertIllustrationImage({ imageVersionId, annotationId, assetId: createNativeId('asset'), width: 1, height: 1, alt: '', prompt: draft.prompt,
             negativePrompt: draft.preset.negativePrompt, parameters: rendered.body.parameters, requestSnapshot, createdAt: Date.now() });
