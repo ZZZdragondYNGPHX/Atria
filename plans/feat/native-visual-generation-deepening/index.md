@@ -2,7 +2,7 @@
 
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Primary Workspace**: `main`（Atria 产品源码）；`docs` 仅承载本 Plan
-- **Status**: **Draft / 多轮设计中**（2026-10-14，Round 1 C、Round 2 A、Round 3 C、Round 4 B 已冻结；Round 5 视觉一致性待议）
+- **Status**: **Draft / 多轮设计中**（2026-10-14，Round 1 C、Round 2 A、Round 3 C、Round 4 B、Round 5 C 已冻结；Round 6 视觉状态更新与参考图仲裁待议）
 - **Implementing Branch**: 尚未创建；待整个设计冻结后再创建 `feat/*` 工作分支交付 Codex
 - **Verified code baseline (remote only)**: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`
 - **Reference**: [damoshen123/st-chatu8](https://github.com/damoshen123/st-chatu8)（读取其公开源码和行为作为研究材料，非 Atria 代码来源）
@@ -23,7 +23,7 @@
 4. **参考实现与版权边界**：可研究 st-chatu8 的交互/功能/协议行为；不得直接拷贝其 AFPL v9 代码或派生代码进入 Atria，除非另行完成授权、兼容性审查并取得明确决定。
 5. **模型决定与用户控制分离**：不把“自动”解释为不可撤销地扣费或覆盖用户选择；手动生图、预览/编辑、取消和版本选择在方案设计中始终保留。实际默认值、自动执行时机与审批规则待后轮冻结。
 
-**确认边界**：Round 1 D-001 = 分层混合架构；Round 2 D-002 = Post-Commit Visual Director；Round 3 D-003 = 结构化 Image Prompt IR + Adapter + Capabilities；Round 4 D-004 = P0/P1/P2 跨家族分期覆盖及 Connection/Target/Rendering 三层配置与四级覆盖规则。详见 [decisions.md](decisions.md) 与 [provider-protocol.md](provider-protocol.md)。第 2～4 条为 Native 基线/合规约束而非额外表决；第 5 条具体许可/预算未定案。精确请求 Schema、Provider 特有功能范围、默认模型和自动生图频率仍未批准。
+**确认边界**：Round 1 D-001 = 分层混合；Round 2 D-002 = Post-Commit Visual Director；Round 3 D-003 = 语义 IR + Adapter + Capabilities；Round 4 D-004 = P0/P1/P2 后端及 Connection/Target/Rendering Profile；Round 5 D-005 = **状态驱动的 Visual Identity / Visual State / Visual References 三层权威与分支/显示权限隔离**。详见 [decisions.md](decisions.md)、[provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。第 2～4 条为 Native 基线/合规约束而非额外表决；第 5 条具体许可/预算未定案。精确请求 Schema、Provider 特有功能范围、默认模型、状态自动更新和参考图仲裁算法仍未批准。
 
 ## 3. Plan module map
 
@@ -33,6 +33,7 @@
 | [decisions.md](decisions.md) | 已冻结且跨模块生效的设计决策；与未决事项严格区分 | 每轮新增跨模块冻结决定时更新 |
 | [architecture.md](architecture.md) | 职责分层候选、已冻结的 Post-Commit 触发时序及后续编排待议边界 | 导演/模式/时序，跨模块决策以 decisions 为准 |
 | [provider-protocol.md](provider-protocol.md) | 已冻结 D-003 分层及 D-004 Provider P0/P1/P2、三层配置/覆盖；精确 Schema 待议 | Provider/图片编译/请求证据、模型能力、S1/S2 |
+| [visual-continuity.md](visual-continuity.md) | D-005 三层视觉权威、时点/分支与防剧透边界；Round 6 状态更新/冲突/参考图排序候选 | 角色视觉关联、参考图/风格、信息披露与 S3；Round 6 必读 |
 
 后续如确定 Provider、参考图、视觉身份、媒体编辑或缓存等独立大模块，应只新增对应模块，不在 `index.md` 重复详细规格。
 
@@ -46,16 +47,16 @@
 → `AssetStore / Image Versions / Branch Save`
 → `Display / Review / Edit`.
 
-**已冻结**：正式剧情提交后才发布 VisualIntent/Director 决策，流式阶段不做预判或真实生图（D-002）；语义 IR、Capability Negotiation、Provider Adapter 分离并统一历史证据（D-003）；P0/P1/P2 支持范围与 Image Connection → Target → Rendering Profile 及单次任务/标注/作品/全局覆盖（D-004）。具体字段、默认 Profile、Provider 高级子能力、费用批准及触发策略仍待后续轮次定案。
+**已冻结**：正式提交后决策（D-002）；语义 IR + Adapter + Capabilities（D-003）；P0/P1/P2 与 Connection/Target/Rendering Profile（D-004）；**Visual Identity（稳定身份）+ Visual State（时点状态）+ Visual References（目的明确的参考图）分离**，后两者不得跨分支污染叙事、泄露未获显示权限的信息（D-005）。具体字段、自动更新/参考图排序、默认 Profile、Provider 高级子能力、费用批准及触发策略仍待后轮定案。
 
 ## 5. Tentative stages and reading routes
 
 | 阶段（暂定） | 目标 | 必读 |
 | --- | --- | --- |
-| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 4: `provider-protocol.md`）；涉及源码基线再读 `baseline-and-reference.md` |
+| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 6: `visual-continuity.md`）；涉及源码基线再读 `baseline-and-reference.md` |
 | S1：中立协议/资产证据 | 拆除当前图片记录对 NovelAI 渲染的硬绑定，保留版本及存档权威 | `index.md` → `provider-protocol.md`，以及后续确定的资产/持久化模块 |
 | S2：多后端适配 | 按 D-004 P0 NovelAI/ComfyUI/OpenAI Images → P1 Gemini/SD/Forge/RunningHub 交付；其他兼容协议为 P2 扩展点 | `index.md` → `provider-protocol.md`，以及后续各 Provider 子模块 |
-| S3：角色/世界视觉连续性 | 角色身份、外观、服饰/状态、场景、参考图和出处 | `index.md` → 后续视觉身份模块 |
+| S3：角色/世界视觉连续性 | 角色身份、外观、服饰/状态、场景、参考图和出处；不创建第二剧情权威 | `index.md` → `visual-continuity.md`；需调用图片后端时再读 `provider-protocol.md` |
 | S4：Visual Director 与触发 | 手动、半自动、全自动共用的意图/批准/预算流程 | `index.md` → `architecture.md` 和后续 Director 模块 |
 | S5：编辑/画廊/交互 | 生成版本、衍生编辑、局部重绘及图像管理 | `index.md` → 后续编辑模块 |
 | S6：集成与回归 | 存档/分支/资产/成本/任务隔离、跨平台可用性 | `index.md` → 当前被改动模块、对应 Record |
@@ -88,8 +89,9 @@
 - Round 2: **A 已提交剧情后决策 — 已确认**；只冻结决策时点，授权/预算/频率仍待议，见 [decisions.md](decisions.md) 与 [architecture.md](architecture.md)。
 - Round 3: **C 结构化语义 IR + Provider Adapter + 能力协商 — 已确认**；冻结架构分层而非具体 Schema，见 [provider-protocol.md](provider-protocol.md) 和 [decisions.md](decisions.md)。
 - Round 4: **B 跨家族分阶段完整覆盖 + 三层配置架构 — 已确认**，见 [decisions.md](decisions.md) D-004 与 [provider-protocol.md](provider-protocol.md) §5。
-- Round 5: **角色视觉一致性 / 参考图 / Vibe / 服装与世界状态关联 — 待讨论**；下轮建立独立视觉身份模块。
-- 尚未定案：Provider 精确协议/API 字段、自动触发与费用授权、角色视觉权威/记忆、参考图与 Vibe 的规则、后端高级功能矩阵、批量与缓存策略、图片编辑与视频、验收细项。
+- Round 5: **C 状态驱动的分层视觉权威 — 已确认**；区分 Identity / State / References，严格源 Revision/Branch/显示权限和非事实边界，见 [decisions.md](decisions.md) D-005 与 [visual-continuity.md](visual-continuity.md)。
+- Round 6: **状态自动更新、冲突仲裁、角色/服装/场景/Vibe 参考的优先级与自动选择 — 讨论中/未冻结**。
+- 尚未定案：Provider 精确协议/API 字段、自动触发与费用授权、视觉状态如何从权威事件更新并失效、参考图/Vibe 的选取权重与冲突处理、后端高级功能矩阵、批量与缓存策略、图片编辑与视频、验收细项。
 - **禁止先行创建产品开发分支**；用户要求讨论完、设计冻结后由本对话创建正式 `feat/*` 分支供 Codex 开工。
 
 ## 9. Material routing/design changes
@@ -100,4 +102,6 @@
 
 2026-10-14：Round 3 用户批准方案 C，冻结中立的 Image Prompt IR、Provider Adapter、能力协商及统一证据/资产边界（D-003）；新增 `provider-protocol.md`。
 
-2026-10-14：Round 4 用户批准方案 B，冻结 P0/P1/P2 后端覆盖、交付优先级与 Connection/Target/Rendering 三层配置，及任务 > 标注 > 作品 > 全局的覆盖顺序（D-004）。Round 5 讨论视觉一致性、参考图、Vibe、服装与世界状态。后续只记录实质设计变化，不以企划代替实施 Record。
+2026-10-14：Round 4 用户批准方案 B，冻结 P0/P1/P2 后端覆盖、交付优先级与 Connection/Target/Rendering 三层配置，及任务 > 标注 > 作品 > 全局的覆盖顺序（D-004）。
+
+2026-10-14：Round 5 用户批准方案 C，冻结 Visual Identity / Visual State / Visual References 三层权威、源 Revision/Branch 隔离、玩家显示授权和不从图片反写剧情事实（D-005）；新增 `visual-continuity.md`，Round 6 讨论状态更新、冲突处理和参考图自动选择。后续只记录实质设计变化，不以企划代替实施 Record。
