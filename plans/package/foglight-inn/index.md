@@ -2,8 +2,8 @@
 
 - Task ID: `package/foglight-inn`
 - Primary Workspace: `package`
-- Status: P5 候选交付 — `1.0.0-rc.3` 已构建；真实模型联测按用户要求暂缓
-- Current stage: P5 — 独立制作、规则/媒体/宿主检查已交付，真实模型体验尚未验收
+- Status: P5 候选交付 — `1.0.0-rc.3` 已构建；用户恢复连接复测，现有三配置仍不可用
+- Current stage: P5 — 独立制作、规则/媒体/宿主检查已交付，真实模型体验待可用连接验证
 - Record: [制作记录](../../../records/package/foglight-inn.md)
 - Product baseline: `main@9241325a7`（2026-10-14 的代码核查基线；正式实施重查实际 Git）
 - Plan entrypoint: `docs:plans/package/foglight-inn/index.md`
