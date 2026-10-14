@@ -6,6 +6,8 @@
 
 当前候选为 [1.0.0-rc.4](releases/foglight-inn-1.0.0-rc.4.atria)，约 20 MB；历史候选包保留。配套产品已合入 `main@493ed814b`。版本、校验值与验证边界见 [发布记录](releases/README.md)。
 
+Atria `main@2686aa40a` 起已将此精确候选包作为初始游戏随应用提供。正常默认内容初始化会让新用户直接在 Play / Library 找到它，无需手动导入；仍需自行配置模型路由。已有同名作品、默认版本和存档保留，删除后普通重启不会重新安装。本目录继续保留制作源码、原件和历史发布，产品中仅分发选定归档。
+
 ## 安装与游玩
 
 1. 使用包含本作配套改动的 Atria 版本，支持 Native Frontend v3、`frontend-audio@1` 及类型化 Computation 结果引用。
