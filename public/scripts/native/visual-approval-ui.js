@@ -13,12 +13,13 @@ export function visualApproval({ document: doc, parent, preview, submit, report,
     const preferred = preview.constraints.omitted.filter(c => c.tier === 'preferred').map(c => c.capability);
     let degradation = !preferred.length;
     if (preferred.length) field(doc, box, translateShellText('Allow the listed preferences to be omitted for this task'), false, value => degradation = value, { type: 'checkbox' });
-    button(doc, box, translateShellText('Approve generation'), async () => {
+    const approve = button(doc, box, translateShellText('Approve generation'), async () => {
         try {
             if (!transfer || !degradation) throw new Error(translateShellText('Confirm asset transfer and preference changes for this task.'));
             await submit({ targetFingerprint: preview.targetFingerprint, requestHash: preview.requestHash, maxCost: Number(amount), currency,
                 allowUnknownCost: unknown, externalAssetIds: transfer ? externalAssetIds : [], omittedPreferred: preferred }); box.remove();
         } catch (error) { report(error); }
     });
+    approve.classList.add('atri-illustration-primary');
     button(doc, box, translateShellText('Cancel'), () => box.remove()); box.querySelector('input')?.focus(); return box;
 }

@@ -95,14 +95,22 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     };
     function rememberListPosition(moduleId = null) {
         const scroll = [];
-        for (let el = body; el; el = el.parentElement) scroll.push([el, el.scrollTop, el.scrollLeft]);
-        listPosition = { scroll, moduleId };
+        for (let el = body; el; el = el.parentElement) scroll.push([el, el.scrollTop, el.scrollLeft, el.scrollHeight > el.clientHeight && /^(auto|scroll)$/.test(doc.defaultView.getComputedStyle(el).overflowY)]);
+        const row = [...body.querySelectorAll('[data-module-id]')].find(el => el.dataset.moduleId === moduleId);
+        listPosition = { scroll, moduleId, rowTop: row?.getBoundingClientRect().top };
     }
     function restoreListPosition() {
         if (section !== MODULE || !listPosition) return;
         const row = [...body.querySelectorAll('[data-module-id]')].find(el => el.dataset.moduleId === listPosition.moduleId);
         (row?.querySelector('.atri-module-title') || body.querySelector('[data-category-filter]'))?.focus({ preventScroll: true });
         for (const [el, top, left] of listPosition.scroll) { el.scrollTop = top; el.scrollLeft = left; }
+        if (row && Number.isFinite(listPosition.rowTop)) {
+            let remaining = row.getBoundingClientRect().top - listPosition.rowTop;
+            for (const [el, , , scrollable] of listPosition.scroll) {
+                if (!scrollable || Math.abs(remaining) < .5) continue;
+                const before = el.scrollTop; el.scrollTop += remaining; remaining -= el.scrollTop - before;
+            }
+        }
     }
     function menu(parent, label, actions) {
         const trigger = node('button', undefined, parent); trigger.type = 'button'; trigger.className = 'atri-library-button atri-preset-menu-trigger';
@@ -123,7 +131,11 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             const outside = event => { if (!popup.contains(event.target) && !trigger.contains(event.target)) close(); };
             const focusOutside = event => { if (!popup.contains(event.target) && event.target !== trigger) close(); };
             const dismiss = () => close();
-            const scroll = event => { if (!popup.contains(event.target)) close(); };
+            const scroll = event => {
+                if (popup.contains(event.target)) return;
+                const current = trigger.getBoundingClientRect();
+                if (Math.abs(current.top - rect.top) > .5 || Math.abs(current.left - rect.left) > .5) close();
+            };
             const items = actions.map(([text, run, danger]) => {
                 const item = button(popup, text, async () => { close(true); await run(); }); item.setAttribute('role', 'menuitem');
                 if (danger) item.classList.add('atri-library-button--danger'); return item;

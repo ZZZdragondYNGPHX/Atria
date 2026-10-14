@@ -9,6 +9,17 @@ import { assertWritable } from '../storage/read-only-mode.js';
 
 const SKILL_MD = 'SKILL.md';
 
+async function renameInstallDirectory(from, to) {
+    for (let attempt = 0; ; attempt++) {
+        try { return await fs.rename(from, to); } catch (error) {
+            // Windows readers can briefly hold a directory open. Retrying this
+            // exact rename never removes or overwrites a competing destination.
+            if (!['EPERM', 'EBUSY'].includes(error.code) || attempt === 4) throw error;
+            await new Promise(resolve => setTimeout(resolve, 25 * 2 ** attempt));
+        }
+    }
+}
+
 const LIMITS = {
     perFile: 4 * 1024 * 1024,         // 4 MB
     perSkill: 16 * 1024 * 1024,       // 16 MB
@@ -279,11 +290,11 @@ export function createSkillRepository(dataRoot) {
                 await fs.writeFile(abs, f._buffer);
             }
             if (await fs.stat(targetDir).catch(() => null)) {
-                await fs.rename(targetDir, backupDir);
+                await renameInstallDirectory(targetDir, backupDir);
                 backedUp = true;
             }
-            try { await fs.rename(stagingDir, targetDir); } catch (error) {
-                if (backedUp) await fs.rename(backupDir, targetDir);
+            try { await renameInstallDirectory(stagingDir, targetDir); } catch (error) {
+                if (backedUp) await renameInstallDirectory(backupDir, targetDir);
                 throw error;
             }
             if (backedUp) await fs.rm(backupDir, { recursive: true, force: true });

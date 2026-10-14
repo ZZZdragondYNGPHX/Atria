@@ -4,6 +4,7 @@ import { describe, expect, jest, test } from '@jest/globals';
 
 import { createNativeProductRouter } from '../../src/endpoints/native-product.js';
 import { ConflictError } from '../../src/storage/errors.js';
+import { preflightAtriaSaveContainer } from '../../src/native/save-container.js';
 
 function makeProduct() {
     return {
@@ -55,6 +56,13 @@ function appFor(product, { authenticated = true } = {}) {
     app.use(createNativeProductRouter(() => ({ product })));
     return app;
 }
+
+test('malformed save bytes are a file validation failure instead of a server failure', async () => {
+    const product = makeProduct();
+    product.preflightSaveImport.mockImplementation(async (_handle, archive) => preflightAtriaSaveContainer(archive));
+    const result = await request(appFor(product)).post('/saves/preflight').send({ data: Buffer.from('invalid').toString('base64') });
+    expect(result.status).toBe(400); expect(result.body.error).toBe('native_save_container_invalid');
+});
 
 test('binding management HTTP preserves exact identities and concurrency tokens', async () => {
     const product = {

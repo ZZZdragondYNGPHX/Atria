@@ -240,6 +240,12 @@ function encodeEnvelope(header, payload, password) {
 }
 
 function decodeHeader(archiveInput) {
+    try { return readHeader(archiveInput); } catch (cause) {
+        throw Object.assign(new TypeError(cause.message, { cause }), { code: 'native_save_container_invalid' });
+    }
+}
+
+function readHeader(archiveInput) {
     const archive = toBuffer(archiveInput);
     if (archive.length < FIXED_PREFIX_BYTES + TAG_BYTES
         || archive.length > ATRIA_SAVE_CONTAINER_LIMITS.maxContainerBytes) {

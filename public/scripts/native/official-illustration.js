@@ -52,9 +52,9 @@ export async function activate(sdk) {
                     if (selectedId === annotationId) readDraft();
                     const local = drafts.get(annotationId);
                     if (step === 'prompt' && submitted && JSON.stringify(local) === submitted) drafts.delete(annotationId);
-                    if (selectedId === annotationId && !panel.hidden && !configEditor) renderCard();
+                    if (selectedId === annotationId && !panel.hidden && panelKind === 'annotations') renderCard();
                     const failureDetail = result.operation.errorCode === 'generation_context_budget_exceeded' ? translateShellText('; the selection and characters exceed the model context limit. Choose a larger prompt model') : result.operation.errorCode === 'native_illustration_prompt_invalid' ? translateShellText('; the model returned an invalid format. Retry prompt generation') : '';
-                    notify(labels[result.operation.status] + (step === 'image' && result.operation.errorCode ? '；' + (imageErrors[result.operation.errorCode] ?? translateShellText('Check the image connection and retry.')) : failureDetail) + (step === 'prompt' && result.operation.status === 'completed' && drafts.has(annotationId) ? translateShellText('; your draft is preserved. Apply the new version from history.') : '。'), result.operation.status === 'failed');
+                    notify(labels[result.operation.status] + (step === 'image' && result.operation.errorCode ? ': ' + (imageErrors[result.operation.errorCode] ?? translateShellText('Check the image connection and retry.')) : failureDetail) + (step === 'prompt' && result.operation.status === 'completed' && drafts.has(annotationId) ? translateShellText('; your draft is preserved. Apply the new version from history.') : ''), result.operation.status === 'failed');
                     return;
                 }
                 const indicator = panel.querySelector('[data-' + step + '-status="' + annotationId + '"]');
@@ -66,12 +66,20 @@ export async function activate(sdk) {
         };
         void poll();
     }
-    let readDraft = () => {}, busy = false, disposed = false, galleryEditor = null;
+    let readDraft = () => {}, busy = false, disposed = false, galleryEditor = null, panelKind = 'annotations';
+    const leavePanel = kind => {
+        if (!confirmAtriaDraftLeave(doc, panel)) return false;
+        readDraft(); readDraft = () => {};
+        galleryEditor?.dispose(); galleryEditor = null;
+        configEditor?.dispose(); configEditor = null;
+        panel.style.width = ''; panelKind = kind;
+        return true;
+    };
     const navigation = globalThis.Atria?.shell?.getNavigation?.();
     const syncVisibility = () => {
         const route = navigation?.getRoute();
         root.hidden = !sdk.context.sessionId || Boolean(route && (route.domain !== 'play' || route.child?.id?.startsWith('utility.') || route.child?.id?.startsWith('skills')));
-        if (root.hidden && configEditor) { configEditor.dispose(); configEditor = null; panel.hidden = true; }
+        if (root.hidden) panel.hidden = true;
     };
     const unsubscribeNavigation = navigation?.subscribe(syncVisibility);
     sdk.onDispose(() => unsubscribeNavigation?.()); syncVisibility();
@@ -114,6 +122,7 @@ export async function activate(sdk) {
     })); toggle.setAttribute('aria-pressed', 'false'); toggle.disabled = !writable;
     const create = button(doc, toolbar, translateShellText('Select text to annotate'), run(async () => {
         if (!pending) return;
+        if (!leavePanel('annotations')) return;
         const selection = { ...pending }, previous = sdk.illustrations.snapshot();
         const nextSettings = await sdk.illustrations.settings.read(); settings = nextSettings.value;
         const { draft } = createIllustrationDraft(selection.quote, settings, sdk.context.packageId);
@@ -125,22 +134,25 @@ export async function activate(sdk) {
     // Keep desktop selection on the explicit action. Touch uses its captured
     // canonical range and leaves native selection handles under browser control.
     sdk.events.listen(create, 'mousedown', event => event.preventDefault());
-    button(doc, toolbar, translateShellText('Annotations and history'), run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); visualConfiguration = await runtimeRequest('/visual/configuration'); if (!mode && writable) { mode = true; toggle.textContent = translateShellText('Illustration mode'); toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
+    button(doc, toolbar, translateShellText('Annotations and history'), run(async () => { if (!leavePanel('annotations')) return; await refreshTasks(); visualConfiguration = await runtimeRequest('/visual/configuration'); if (!mode && writable) { mode = true; toggle.textContent = translateShellText('Illustration mode'); toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
     button(doc, toolbar, translateShellText('Gallery / Media Studio'), run(async () => {
-        readDraft(); galleryEditor?.dispose(); panel.replaceChildren(); panel.hidden = false; panel.style.width = 'min(980px, calc(100vw - 32px))';
-        button(doc, panel, translateShellText('Close gallery'), () => { if (!confirmAtriaDraftLeave(doc, panel)) return; galleryEditor?.dispose(); galleryEditor = null; panel.style.width = ''; panel.hidden = true; });
-        galleryEditor = await mountVisualGallery({ document: doc, parent: panel, sdk, report: error => notify(error.message, true),
+        if (!leavePanel('gallery')) return;
+        panel.replaceChildren(); panel.hidden = false; panel.style.width = 'min(980px, calc(100vw - 32px))';
+        button(doc, panel, translateShellText('Close gallery'), () => { if (!leavePanel('none')) return; panel.hidden = true; });
+        const opened = await mountVisualGallery({ document: doc, parent: panel, sdk, report: error => notify(error.message, true),
             onJob: started => { const operation = { operationId: started.operationId, status: 'queued', anchor: {} }; watch(operation, undefined, 'image'); } });
+        if (disposed || panelKind !== 'gallery') { opened.dispose(); return; } galleryEditor = opened;
     }));
     sdk.onDispose(() => galleryEditor?.dispose());
     button(doc, toolbar, translateShellText('Image candidates'), run(async () => {
-        readDraft(); panel.replaceChildren(); panel.hidden = false;
+        if (!leavePanel('director')) return;
+        panel.replaceChildren(); panel.hidden = false;
         button(doc, panel, translateShellText('Close candidates'), () => panel.hidden = true);
         await mountVisualDirector({ document: doc, parent: panel, sdk, report: error => notify(error.message, true) });
     }));
     button(doc, toolbar, translateShellText('Illustration settings'), run(() => {
-        if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return;
-        readDraft(); readDraft = () => {}; configEditor?.dispose(); panel.replaceChildren(); panel.hidden = false;
+        if (!leavePanel('settings')) return;
+        panel.replaceChildren(); panel.hidden = false;
         button(doc, panel, translateShellText('Close settings'), run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; visualConfiguration = await runtimeRequest('/visual/configuration'); panel.hidden = true; }));
         configEditor = mountIllustrationSettings({ document: doc, parent: panel, client: sdk.illustrations.settings, packageId: sdk.context.packageId, showEnabled: false });
     }));
@@ -154,6 +166,7 @@ export async function activate(sdk) {
     sdk.events.listen(panel, 'keydown', event => { if (event.key === 'Escape' && !event.defaultPrevented && !event.isComposing && event.keyCode !== 229) { readDraft(); panel.hidden = true; toggle.focus(); } });
     sdk.illustrations.onSurfacesChanged(capture);
     function renderCard() {
+        if (disposed || panelKind !== 'annotations') return;
         const sameCard = panel.querySelector('.atri-illustration-card')?.dataset.annotationId === selectedId;
         const openDetails = new Set(sameCard ? [...panel.querySelectorAll('details[open][data-section]')].map(item => item.dataset.section) : []);
         configEditor?.dispose(); configEditor = null;
@@ -301,5 +314,5 @@ export async function activate(sdk) {
         }
         if (deleted) node(doc, card, 'p', translateShellText('This annotation was deleted. Its image history is preserved.'));
     }
-    return () => { disposed = true; for (const timer of watchers.values()) clearTimeout(timer); watchers.clear(); configEditor?.dispose(); drafts.clear(); };
+    return () => { disposed = true; for (const timer of watchers.values()) clearTimeout(timer); watchers.clear(); configEditor?.dispose(); galleryEditor?.dispose(); drafts.clear(); };
 }

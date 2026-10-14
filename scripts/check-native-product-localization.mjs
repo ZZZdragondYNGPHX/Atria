@@ -133,6 +133,9 @@ export function auditProductLocalization() {
     for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js', 'public/scripts/user.js', 'public/scripts/popup.js', 'public/scripts/backup-sync-center.js', 'public/scripts/storage-management.js', 'public/scripts/storage-inspector.js', 'public/scripts/browser-storage-inspector.js', 'public/scripts/lan-sync.js', 'public/scripts/logging/workspace.js']) {
         for (const issue of auditProductSource(fs.readFileSync(path.join(root, filename), 'utf8'), filename)) findings.push({ filename, ...issue });
     }
+    for (const filename of ['public/scripts/native/frontend/runtime.js', 'public/scripts/native/experience/ui/full-host.js', 'public/scripts/native/experience/ui/host-surfaces.js']) {
+        for (const issue of auditProductSource(fs.readFileSync(path.join(root, filename), 'utf8'), filename)) findings.push({ filename, ...issue });
+    }
     const entryHtml = fs.readFileSync(path.join(root, 'public/login.html'), 'utf8');
     for (const match of entryHtml.matchAll(/data-entry-(?:text|label|description)="([^"]+)"/g)) {
         const text = match[1].replaceAll('&quot;', '"').replaceAll('&amp;', '&');

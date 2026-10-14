@@ -22,8 +22,10 @@ const button = label => [...document.querySelectorAll('button')].find(item => it
 const input = label => document.querySelector('[aria-label="' + label + '"]');
 const plugin = { id: OFFICIAL_ILLUSTRATION_ID, kind: 'official', revision: 's2', enabled: true, entrypoint: 'official-illustration.js', targets: { global: true, works: [], presets: [] } };
 let cleanup;
-afterEach(async () => { await cleanup?.(); cleanup = null; document.getSelection().removeAllRanges(); document.body.replaceChildren(); });
+const originalFetch = globalThis.fetch;
+afterEach(async () => { await cleanup?.(); cleanup = null; globalThis.fetch = originalFetch; document.getSelection().removeAllRanges(); document.body.replaceChildren(); });
 async function fixture() {
+    globalThis.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ targets: [], renderings: [], budget: {} }) }));
     const content = '**Alice** at the window.\n\nBob waits.';
     const entry = { messageId: createNativeId('message'), activeVariantId: createNativeId('variant'), content, role: 'assistant' };
     const context = { sessionId: createNativeId('session'), branchId: createNativeId('branch'), packageId: 'book', ready: true };
@@ -53,40 +55,40 @@ function selectProse(prose) {
 }
 test('cross-paragraph selection creates one independent card, preserves prose and edited prompt on mode/card changes', async () => {
     const f = await fixture(), leaf = f.prose.querySelector('strong').firstChild;
-    button('正文模式').click(); await flush(); selectProse(f.prose);
-    button('为选文建立标注').click(); await flush(); await flush();
+    button('Reading mode').click(); await flush(); selectProse(f.prose);
+    button('Annotate selection').click(); await flush(); await flush();
     expect(f.runtime.snapshot.illustrations.annotations).toHaveLength(1);
     expect(f.runtime.snapshot.illustrations.annotations[0].anchor.quote).toBe('Alice** at the window.\n\nBob');
     expect(f.runtime.request.mock.calls[0][1].branchId).toBe(f.context.branchId);
     expect(f.prose.querySelector('strong').firstChild).toBe(leaf);
-    expect(input('服装 · Alice').value).toBe('coat');
-    expect(button('生成提示词').disabled).toBe(false); expect(button('生成图片').disabled).toBe(true);
-    input('图片提示词（可直接填写）').value = 'my prompt'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input'));
-    button('关闭卡片').click(); await flush(); button('标注与历史').click(); await flush();
-    expect(input('图片提示词（可直接填写）').value).toBe('my prompt');
-    button('保存卡片').click(); await flush(); await flush();
+    expect(input('Outfit · Alice').value).toBe('coat');
+    expect(button('Generate prompt').disabled).toBe(false); expect(button('Generate image').disabled).toBe(true);
+    input('Image prompt, directly editable').value = 'my prompt'; input('Image prompt, directly editable').dispatchEvent(new Event('input'));
+    button('Close card').click(); await flush(); button('Annotations and history').click(); await flush();
+    expect(input('Image prompt, directly editable').value).toBe('my prompt');
+    button('Save card').click(); await flush(); await flush();
     expect(f.runtime.snapshot.illustrations.annotations[0].draft.prompt).toBe('my prompt');
     expect(f.runtime.request.mock.calls[1][0]).toBe('illustrations/updateAnnotation');
-    button('生图模式').click(); await flush(); expect(f.prose.classList.contains('atri-illustration-selectable')).toBe(false);
+    button('Illustration mode').click(); await flush(); expect(f.prose.classList.contains('atri-illustration-selectable')).toBe(false);
     await f.host.reconcile([{ ...plugin, enabled: false }], f.context);
     expect(document.querySelector('[data-atria-official-illustration]')).toBeNull();
     expect(f.runtime.snapshot.illustrations.annotations[0].draft.prompt).toBe('my prompt');
 });
 test('cross-message selection is rejected; deleted marks keep readable image history', async () => {
-    const f = await fixture(); button('正文模式').click(); await flush(); selectProse(f.prose);
+    const f = await fixture(); button('Reading mode').click(); await flush(); selectProse(f.prose);
     const outside = document.createElement('p'); outside.textContent = 'another message'; document.body.append(outside);
     const range = document.createRange(); range.setStart(f.prose.querySelector('strong').firstChild, 0); range.setEnd(outside.firstChild, 4);
     document.getSelection().removeAllRanges(); document.getSelection().addRange(range); document.dispatchEvent(new Event('selectionchange'));
-    expect(button('选择正文后建立标注').disabled).toBe(true);
-    selectProse(f.prose); button('为选文建立标注').click(); await flush(); await flush();
+    expect(button('Select text to annotate').disabled).toBe(true);
+    selectProse(f.prose); button('Annotate selection').click(); await flush(); await flush();
     const state = f.runtime.snapshot.illustrations, annotation = state.annotations[0];
     const image = { imageVersionId: createNativeId('imageVersion'), annotationId: annotation.annotationId, assetId: createNativeId('asset'), width: 512, height: 768, alt: 'At the window', prompt: 'actual prompt', negativePrompt: '', parameters: {}, createdAt: 1 };
     state.images.push(image); annotation.selectedImageVersionId = image.imageVersionId;
-    button('标注与历史').click(); await flush();
+    button('Annotations and history').click(); await flush();
     expect(f.prose.querySelector('strong')).not.toBeNull();
-    button('删除标注').click(); await flush(); await flush();
+    button('Delete annotation').click(); await flush(); await flush();
     expect(f.runtime.snapshot.illustrations.images).toHaveLength(1); expect(document.querySelector('.atri-illustration-history img').alt).toBe('At the window');
-    expect(button('展示此版本').disabled).toBe(true);
+    expect(button('Display this version').disabled).toBe(true);
     expect(document.querySelector('.atri-illustration-card fieldset').disabled).toBe(true);
 });
 test('Package prose surface requires an exact committed message identity', () => {
@@ -116,13 +118,13 @@ test('settings conflict keeps edits; work defaults and official template restore
     const value = defaultIllustrationSettings(); value.template = 'custom';
     const client = { read: async () => ({ value, revision: 'r1' }), save: jest.fn(async () => { throw Object.assign(new Error('conflict'), { status: 409 }); }) };
     const editor = mountIllustrationSettings({ document, parent: document.body, client, configuration: async () => ({ connections: [], routes: [] }), works: async () => [], packageId: 'book' }); cleanup = () => editor.dispose(); await editor.ready;
-    input('覆盖作品预设').checked = true; input('覆盖作品预设').dispatchEvent(new Event('input'));
-    input('风格词').value = 'work style'; input('风格词').dispatchEvent(new Event('input'));
-    button('恢复官方模板').click(); await flush(); expect(input('整理模板').value).toBeDefined(); expect(input('整理模板').value).toBe(OFFICIAL_PROMPT_TEMPLATE);
-    button('保存配置').click(); await flush();
-    expect(input('风格词').value).toBe('work style'); expect(client.save.mock.calls[0][0].preset.style).toBe('');
+    input('Use a separate preset for this work').checked = true; input('Use a separate preset for this work').dispatchEvent(new Event('input'));
+    input('Style prompt').value = 'work style'; input('Style prompt').dispatchEvent(new Event('input'));
+    button('Restore the official template').click(); await flush(); expect(input('Formatting template').value).toBeDefined(); expect(input('Formatting template').value).toBe(OFFICIAL_PROMPT_TEMPLATE);
+    button('Save settings').click(); await flush();
+    expect(input('Style prompt').value).toBe('work style'); expect(client.save.mock.calls[0][0].preset.style).toBe('');
     expect(client.save.mock.calls[0][0].works.book.preset.style).toBe('work style'); expect(client.save.mock.calls[0][1]).toBe('r1');
-    expect(document.querySelector('[role=alert]').textContent).toContain('编辑已保留');
+    expect(document.querySelector('[role=alert]').textContent).toContain('draft is preserved');
 });
 
 test('queued illustration writes retain source scope and disposed queued calls never reach HTTP', async () => {
@@ -155,8 +157,8 @@ test('unavailable official preferences do not prevent independent extensions fro
 });
 
 test('prompt task is separate, preserves in-flight edits, supports explicit composition/config/history and releases only UI subscription', async () => {
-    const f = await fixture(); button('正文模式').click(); await flush(); selectProse(f.prose);
-    button('为选文建立标注').click(); await flush(); await flush();
+    const f = await fixture(); button('Reading mode').click(); await flush(); selectProse(f.prose);
+    button('Annotate selection').click(); await flush(); await flush();
     const annotation = f.runtime.snapshot.illustrations.annotations[0];
     const operationId = 'task-fixture'; let complete = false;
     const operation = { operationId, status: 'running', anchor: { sessionId: f.context.sessionId, branchId: f.context.branchId, annotationId: annotation.annotationId } };
@@ -165,10 +167,10 @@ test('prompt task is separate, preserves in-flight edits, supports explicit comp
         if (options.method === 'DELETE') return { cancelled: true };
         return { operation: { ...operation, status: complete ? 'completed' : 'running' }, ...(complete ? { state: f.runtime.snapshot.illustrations, head: 'a'.repeat(64) } : {}) };
     });
-    button('生成提示词').click(); await flush(); await flush();
-    expect(button('提示词生成中').disabled).toBe(true); expect(button('生成图片').disabled).toBe(true);
-    expect(button('取消提示词任务')).toBeTruthy();
-    input('图片提示词（可直接填写）').value = 'edit during request'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input'));
+    button('Generate prompt').click(); await flush(); await flush();
+    expect(button('Generating prompt').disabled).toBe(true); expect(button('Generate image').disabled).toBe(true);
+    expect(button('Cancel prompt task')).toBeTruthy();
+    input('Image prompt, directly editable').value = 'edit during request'; input('Image prompt, directly editable').dispatchEvent(new Event('input'));
     const generated = structuredClone(annotation.draft); generated.scene = 'generated scene'; generated.prompt = 'generated prompt';
     f.runtime.snapshot.illustrations.annotations[0].draft = generated;
     const promptVersionId = createNativeId('promptVersion');
@@ -176,16 +178,16 @@ test('prompt task is separate, preserves in-flight edits, supports explicit comp
         requestSnapshot: { schemaVersion: 1, requestId: promptVersionId, modelProfileId: createNativeId('modelProfile'), connectionProfileId: createNativeId('connectionProfile'), runtimeRouteId: createNativeId('runtimeRoute'),
             contextPlan: { schemaVersion: 1, requestId: promptVersionId, source: { kind: 'session', sessionId: f.context.sessionId, branchId: f.context.branchId, revisionId: f.runtime.snapshot.revision.revisionId } }, promptIr: { schemaVersion: 1, requestId: promptVersionId } }, template: 'fixture', settingsRevision: 'a'.repeat(64) }];
     complete = true; await new Promise(resolve => setTimeout(resolve, 820)); await flush();
-    expect(input('图片提示词（可直接填写）').value).toBe('edit during request');
-    button('应用此提示词版本').click(); await flush(); expect(input('图片提示词（可直接填写）').value).toBe('generated prompt');
+    expect(input('Image prompt, directly editable').value).toBe('edit during request');
+    button('Use this prompt version').click(); await flush(); expect(input('Image prompt, directly editable').value).toBe('generated prompt');
     f.settings.characters[0].fixedPrompt = 'updated fixed'; f.settings.preset.style = 'updated style';
-    button('显式应用最新角色与预设').click(); await flush(); await flush();
-    expect(input('图片提示词（可直接填写）').value).toBe('generated prompt');
-    button('按当前分块组合提示词').click(); await flush();
-    expect(input('图片提示词（可直接填写）').value).toContain('updated fixed');
-    expect(input('图片提示词（可直接填写）').value).toContain('updated style');
-    button('保存卡片').click(); await flush(); await flush();
-    button('生成提示词').click(); await flush(); await flush();
+    button('Apply latest characters and preset').click(); await flush(); await flush();
+    expect(input('Image prompt, directly editable').value).toBe('generated prompt');
+    button('Compose prompt from current sections').click(); await flush();
+    expect(input('Image prompt, directly editable').value).toContain('updated fixed');
+    expect(input('Image prompt, directly editable').value).toContain('updated style');
+    button('Save card').click(); await flush(); await flush();
+    button('Generate prompt').click(); await flush(); await flush();
     await f.host.dispose();
     expect(f.generationRequest.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(0);
     expect(f.generationRequest.mock.calls.some(([, options]) => options?.signal?.aborted)).toBe(true);
@@ -201,38 +203,48 @@ test('terminal prompt refresh waits for queued edits and rejects another branch 
 });
 
 test('image click saves confirmed edits without LLM, keeps independent status/cancel/history and reconnects after UI disposal', async () => {
-    const f = await fixture(); button('正文模式').click(); await flush(); selectProse(f.prose);
-    button('为选文建立标注').click(); await flush(); await flush();
+    const f = await fixture(); button('Reading mode').click(); await flush(); selectProse(f.prose);
+    button('Annotate selection').click(); await flush(); await flush();
     const annotation = f.runtime.snapshot.illustrations.annotations[0];
     const operation = { operationId: 'image-task', status: 'running', anchor: { sessionId: f.context.sessionId, branchId: f.context.branchId, annotationId: annotation.annotationId, illustrationStep: 'image' } };
     let complete = false;
     f.generationRequest.mockImplementation(async (path, options = {}) => {
         if (path === '/illustration-images') return { operationId: operation.operationId };
+        if (path === '/illustration-images/prepare') return { prepareId: 'prepared-image', target: { name: 'Local image', model: 'fixture' }, cost: { kind: 'free', upperBound: 0, currency: 'USD' }, selection: {}, targetFingerprint: 'exact-target', requestHash: 'exact-request' };
+        if (path === '/visual/gallery/query') return { items: [], total: 0, nextOffset: null, head: 'b'.repeat(64) };
         if (path.startsWith('/illustration-prompts?')) return [];
         if (path.startsWith('/illustration-images?')) return [operation];
         if (options.method === 'DELETE') return { cancelled: true };
         return { operation: { ...operation, status: complete ? 'completed' : 'running' }, ...(complete ? { state: f.runtime.snapshot.illustrations, head: 'a'.repeat(64) } : {}) };
     });
-    input('图片提示词（可直接填写）').value = 'direct confirmed input'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input', { bubbles: true }));
-    expect(button('生成图片').disabled).toBe(false);
-    button('生成图片').click(); await flush(); await flush();
+    input('Image prompt, directly editable').value = 'direct confirmed input'; input('Image prompt, directly editable').dispatchEvent(new Event('input', { bubbles: true }));
+    expect(button('Generate image').disabled).toBe(false);
+    button('Generate image').click(); await flush(); await flush();
+    expect(f.generationRequest.mock.calls.some(([path]) => path === '/illustration-images')).toBe(false);
+    button('Approve generation').click(); await flush(); await flush();
     const submitted = f.generationRequest.mock.calls.find(([path]) => path === '/illustration-images');
-    expect(submitted[1].body).toMatchObject({ annotationId: annotation.annotationId, expectedHead: expect.any(String) });
+    expect(submitted[1].body).toMatchObject({ prepareId: 'prepared-image', approval: { targetFingerprint: 'exact-target', requestHash: 'exact-request' } });
     expect(f.runtime.snapshot.illustrations.annotations[0].draft.prompt).toBe('direct confirmed input');
-    expect(button('图片生成中').disabled).toBe(true); expect(button('生成提示词').disabled).toBe(false);
+    expect(button('Generating image').disabled).toBe(true); expect(button('Generate prompt').disabled).toBe(false);
     expect(f.generationRequest.mock.calls.some(([path, options]) => path === '/illustration-prompts' && options.method === 'POST')).toBe(false);
-    button('取消图片任务').click(); await flush();
-    expect(f.generationRequest.mock.calls.find(([, options]) => options?.method === 'DELETE')[0]).toBe('/operations/image-task');
-    input('图片提示词（可直接填写）').value = 'unsaved later edit'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input', { bubbles: true }));
+    button('Cancel image task').click(); await flush();
+    expect(f.generationRequest.mock.calls.find(([, options]) => options?.method === 'DELETE')[0]).toBe('/illustration-images/image-task');
+    input('Image prompt, directly editable').value = 'unsaved later edit'; input('Image prompt, directly editable').dispatchEvent(new Event('input', { bubbles: true }));
     const image = { imageVersionId: createNativeId('imageVersion'), annotationId: annotation.annotationId, assetId: createNativeId('asset'), width: 832, height: 1216,
         alt: annotation.anchor.quote, prompt: 'direct confirmed input', negativePrompt: '', parameters: { seed: 42 }, createdAt: 1 };
     f.runtime.snapshot.illustrations.images.push(image); annotation.selectedImageVersionId = image.imageVersionId;
     complete = true; await new Promise(resolve => setTimeout(resolve, 820)); await flush();
-    expect(input('图片提示词（可直接填写）').value).toBe('unsaved later edit');
+    expect(input('Image prompt, directly editable').value).toBe('unsaved later edit');
     expect(document.querySelector('.atri-illustration-history img').alt).toBe(annotation.anchor.quote);
+    document.querySelector('.atri-illustration-history article details').open = true; await flush();
     expect(document.querySelector('.atri-illustration-history pre').textContent).toContain('42');
-    expect(button('生成图片').disabled).toBe(false);
-    complete = false; button('生成图片').click(); await flush(); await flush();
+    expect(button('Generate image').disabled).toBe(false);
+    complete = false; button('Generate image').click(); await flush(); await flush();
+    button('Approve generation').click(); await flush(); await flush();
+    button('Gallery / Media Studio').click(); await flush(); await flush();
+    complete = true; await new Promise(resolve => setTimeout(resolve, 820)); await flush();
+    expect(document.querySelector('.atri-illustration-panel h3').textContent).toBe('Current branch gallery');
+    complete = false;
     const cancelsBefore = f.generationRequest.mock.calls.filter(([, options]) => options?.method === 'DELETE').length;
     await f.host.dispose();
     expect(f.generationRequest.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(cancelsBefore);
@@ -240,8 +252,8 @@ test('image click saves confirmed edits without LLM, keeps independent status/ca
     const reconnected = createExtensionRuntime({ document, illustrationApi: f.api, importModule: async () => ({ activate }) });
     const previousCleanup = cleanup; cleanup = async () => { await reconnected.dispose(); await previousCleanup(); };
     await reconnected.reconcile([plugin], f.context);
-    button('标注与历史').click(); await flush(); await flush();
-    expect(button('图片生成中').disabled).toBe(true); expect(button('取消图片任务')).toBeTruthy();
+    button('Annotations and history').click(); await flush(); await flush();
+    expect(button('Generating image').disabled).toBe(true); expect(button('Cancel image task')).toBeTruthy();
 });
 
 test('image SDK refuses terminal state from another branch and disposed UI writes', async () => {
@@ -258,5 +270,5 @@ test('B4 full settings Source retains malformed JSON, advanced parameters, chara
     const value = defaultIllustrationSettings(); value.preset.parameters = { ...value.preset.parameters, seed:-1,sampler:'k_euler',noiseSchedule:'native',sm:true,smDyn:false }; value.works.book = { characterIds:[],preset:structuredClone(value.preset) };
     const client = { read:async()=>({ revision:'r1',value }),save:jest.fn(async next=>({ revision:'r2',value:next })) }; const editor = mountIllustrationSettings({ document,parent:document.body,client,configuration:async()=>({}),works:async()=>[],packageId:'book' });cleanup = ()=>editor.dispose();await editor.ready;
     button('Source').click();const source = input('Illustration settings JSON');const valid = source.value;source.value = '{ invalid';source.dispatchEvent(new Event('input',{ bubbles:true }));button('Fields').click();await flush();expect(source.value).toBe('{ invalid');expect(editor.root.dataset.atriaDraftDirty).toBe('true');
-    source.value = valid;source.dispatchEvent(new Event('input',{ bubbles:true }));button('Fields').click();await flush();button('Source').click();expect(JSON.parse(input('Illustration settings JSON').value)).toEqual(value);button('保存配置').click();await flush();expect(client.save).toHaveBeenCalledWith(value,'r1');expect(editor.root.dataset.atriaDraftDirty).toBe('false');
+    source.value = valid;source.dispatchEvent(new Event('input',{ bubbles:true }));button('Fields').click();await flush();button('Source').click();expect(JSON.parse(input('Illustration settings JSON').value)).toEqual(value);button('Save settings').click();await flush();expect(client.save).toHaveBeenCalledWith(value,'r1');expect(editor.root.dataset.atriaDraftDirty).toBe('false');
 });

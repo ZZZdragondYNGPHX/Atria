@@ -272,7 +272,7 @@ test('portable saves keep preflight and history is read-only; generation errors 
     await page.locator('[data-atria-native-play-drawer]').getByRole('button', { name: 'Import save', exact: true }).click();
     const portable = page.locator('[data-atria-native-save-import]');
     await portable.locator('input').setInputFiles({ name: 'invalid.atriasave', mimeType: 'application/octet-stream', buffer: Buffer.from('invalid') });
-    await expect(portable.getByRole('alert')).toContainText('Check the required fields');
+    await expect(portable.getByRole('alert')).toContainText('not a valid Atria save');
     await portable.locator('input').setInputFiles({ name: 'harbour.atriasave', mimeType: 'application/octet-stream', buffer: Buffer.from(saved.payload.data, 'base64') });
     await expect(portable.locator('[data-atria-save-preflight="ready"]')).toBeVisible();
     await portable.getByRole('button', { name: 'Import Save', exact: true }).click();
@@ -286,7 +286,7 @@ test('portable saves keep preflight and history is read-only; generation errors 
     }, saved);
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('import-save'));
     const landingImport = page.locator('[data-atria-native-save-import]');
-    await landingImport.locator('input').setInputFiles({ name: 'harbour.atriasave', mimeType: 'application/octet-stream', buffer: Buffer.from(saved.payload.data, 'base64') });
+    await landingImport.locator('input[type="file"]').setInputFiles({ name: 'harbour.atriasave', mimeType: 'application/octet-stream', buffer: Buffer.from(saved.payload.data, 'base64') });
     await landingImport.getByRole('button', { name: 'Import Save', exact: true }).click();
     await expect(landingImport).toContainText('Save imported.');
     await landingImport.getByRole('button', { name: 'Open Session', exact: true }).click();
@@ -312,34 +312,38 @@ test('Chinese landing, large text and landscape remain usable', async ({ page },
 });
 
 
-test('A2 exact history can fork and switch through Runtime; historical and busy controls stay read-only', async ({ page }, info) => {
+test('A2 exact history restores a save into a branch and switches through Runtime; historical and busy controls stay read-only', async ({ page }, info) => {
     await boot(page); await story(page);
     const original = await page.evaluate(() => ({ ...window.Atria.nativeSessionRuntime.snapshot.revision }));
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const saveDialog = page.locator('dialog.popup[open]');
+    await saveDialog.locator('.popup-input').fill('Exact branch origin');
+    await saveDialog.locator('.popup-button-ok').click();
+    await expect(page.locator('[data-atria-native-play-actions]').getByRole('status')).toHaveText('Saved');
     await page.getByRole('button', { name: 'History & saves', exact: true }).click();
     const drawer = page.locator('[data-atria-native-play-drawer]');
     const history = drawer.locator('[data-atria-session-history]');
-    await history.locator(':scope > summary').click();
-    await history.getByRole('button', { name: 'Fork from revision', exact: true }).click();
+    await drawer.locator('[data-atria-save-id]').filter({ hasText: 'Exact branch origin' }).getByRole('button', { name: 'Load', exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.revision.branchId)).not.toBe(original.branchId);
-    await page.getByRole('button', { name: 'History & saves', exact: true }).click();
+    // Save restore refreshes the current history drawer; it keeps the old branch intact.
     await history.locator(':scope > summary').click();
     await history.locator('[data-atria-history-revision]').last().getByRole('button', { name: 'Inspect revision', exact: true }).click();
     await expect(page.locator('.atria-play-composer__input')).toBeDisabled();
     await page.getByRole('button', { name: 'History & saves', exact: true }).click();
     await expect(drawer.getByRole('status').first()).toContainText('Historical revisions');
-    await expect(drawer.locator('[data-atria-timeline-message-id]').first().getByRole('button', { name: 'Restart From Here' })).toBeDisabled();
+    await expect(drawer.locator('[data-atria-save-id]').first().getByRole('button', { name: 'Load', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await page.getByRole('button', { name: 'Return to current story', exact: true }).click();
     await page.getByRole('button', { name: 'History & saves', exact: true }).click();
     await history.locator(':scope > summary').click();
-    await history.locator(`[data-atria-history-branch="${original.branchId}"]`).getByRole('button').click();
+    await history.locator(`[data-atria-history-branch="${original.branchId}"]`).getByRole('button', { name: 'Explore branch', exact: true }).click();
     await history.locator(`[data-atria-history-revision="${original.revisionId}"]`).getByRole('button', { name: 'Preview revision', exact: true }).click();
     await history.getByRole('button', { name: 'Switch branch', exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.revision.branchId)).toBe(original.branchId);
     await page.getByRole('button', { name: 'History & saves', exact: true }).click();
-    await page.evaluate(() => { document.body.dataset.generating = 'true'; });
-    await expect(drawer.locator('[data-atria-timeline-message-id]').first().getByRole('button', { name: 'Restart From Here' })).toBeDisabled();
-    await page.evaluate(() => { document.body.dataset.generating = 'false'; });
+    await page.evaluate(() => { window.Atria.nativeSessionRuntime.generationProjection = { state: 'preparing', text: '', error: '' }; document.body.dataset.generating = 'true'; });
+    await expect(drawer.locator('[data-atria-save-id]').first().getByRole('button', { name: 'Load', exact: true })).toBeDisabled();
+    await page.evaluate(() => { window.Atria.nativeSessionRuntime.generationProjection = { state: 'idle', text: '', error: '' }; document.body.dataset.generating = 'false'; });
     await shot(page, info, 'a2-exact-history');
     await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await page.locator('.atria-play-composer__input').fill('Keep this draft');

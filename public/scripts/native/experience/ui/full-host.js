@@ -118,7 +118,12 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     recovery.append(recoveryPanel);
     const buttons = new Map(), pending = new Set();
     const allowed = action => options.getCapabilities?.()?.[action] !== false;
-    const sync = () => { for (const [action, button] of buttons) button.disabled = pending.has(action) || !allowed(action); };
+    const sync = () => {
+        for (const [action, button] of buttons) {
+            button.disabled = pending.has(action) || !allowed(action);
+            if (pending.has(action)) button.setAttribute('aria-busy', 'true'); else button.removeAttribute('aria-busy');
+        }
+    };
     for (const [action, label, handler] of actions) {
         if (typeof handler !== 'function') continue;
         const button = makeButton(documentRef, action, label);
@@ -126,12 +131,13 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
             event.preventDefault();
             event.stopPropagation();
             if (pending.has(action) || !allowed(action)) return;
-            pending.add(action); sync(); recoveryStatus.textContent = '';
+            pending.add(action); sync(); recoveryStatus.dataset.state = 'pending'; recoveryStatus.textContent = action === 'save' ? tl('Saving…') : '';
             try {
                 await handler();
-                if (action === 'save') recoveryStatus.textContent = tl('Saved');
+                if (action === 'save') { recoveryStatus.dataset.state = 'success'; recoveryStatus.textContent = tl('Saved'); }
             } catch (error) {
-                recoveryStatus.textContent = error?.message || 'The action could not be completed. Try again.';
+                recoveryStatus.dataset.state = 'error';
+                recoveryStatus.textContent = error?.message || tl('The action could not be completed. Try again.');
                 console.error('[game-runtime] Full UI recovery action failed', {
                     action,
                     error,

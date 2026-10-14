@@ -33,10 +33,10 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
     };
     for (const utility of ['settings', 'plugins', 'account', 'diagnostics']) {
         await page.evaluate(id => window.Atria.shell.getWorkspaceHost().openUtility(id), utility);
-        await expect(page.locator(utility === 'diagnostics' ? '.atriaLogsWorkspace' : `[data-atria-utility-workspace="${utility}"]`)).toBeVisible();
+        await expect(page.locator(utility === 'diagnostics' ? '.atriaLogsWorkspace' : `[data-atria-utility-workspace="${utility === 'plugins' ? 'extensions' : utility}"]`)).toBeVisible();
         if (utility === 'settings') {
             const settings = page.locator('[data-atria-utility-workspace=settings]');
-            const reduced = settings.locator('#reduced_motion');
+            const reduced = settings.getByRole('switch', { name: 'Reduce motion', exact: true });
             const original = await reduced.isChecked();
             await reduced.setChecked(!original);
             await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('plugins'));
@@ -44,24 +44,24 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
             await expect(reduced).toBeChecked({ checked: !original });
             await reduced.setChecked(original);
             await settings.evaluate(node => { node.scrollTop = 0; });
+            await expect(settings.getByRole('slider', { name: 'Reading size', exact: true })).toBeVisible();
+            await settings.getByText('Theme compatibility', { exact: true }).click();
             await expect(settings.locator('#themes')).toBeVisible();
-            await expect(settings.locator('#font_scale')).toBeVisible();
         }
         if (utility === 'plugins') {
-            const plugins = page.locator('[data-atria-utility-workspace=plugins]');
-            await expect(plugins.locator('.atria-domain-workspace__actions button').first()).toBeEnabled();
-            await plugins.locator('[data-atria-legacy-plugins] > summary').click();
-            await shot('plugins-legacy');
-            await plugins.locator('[data-atria-plugin-compatibility] > summary').click();
-            await plugins.locator('.atria-plugin-compatibility__body').scrollIntoViewIfNeeded();
-            await shot('plugins-compatibility');
+            const plugins = page.locator('[data-atria-utility-workspace=extensions]');
+            await plugins.locator('[data-extension-tab=plugins]').click();
+            await expect(plugins.getByLabel('HTTPS repository URL')).toBeVisible();
+            await shot('plugins-external');
+            await plugins.getByRole('button', { name: 'Built-in tools', exact: true }).click();
+            await shot('plugins-builtins');
+            await plugins.locator('[data-atria-global-plugin-settings=regex] > summary').click();
             const drawer = plugins.locator('.inline-drawer-header[role=button]').first();
             await drawer.focus();
             await page.keyboard.press('Enter');
             await expect(drawer).toHaveAttribute('aria-expanded', 'true');
             await page.keyboard.press('Enter');
             await expect(drawer).toHaveAttribute('aria-expanded', 'false');
-            await plugins.locator('[data-atria-legacy-plugins] > summary').click();
             await plugins.evaluate(node => { node.scrollTop = 0; });
         }
         if (utility === 'account') {
@@ -107,7 +107,8 @@ for (const width of [1440, 900, 320]) test(`Utilities and Agents at ${width}px`,
         await shot(utility);
     }
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgents('home'));
-    await expect(page.locator('[data-atria-agents-hub]')).toBeVisible();
+    await expect(page.locator('#agent-memory-workspace')).toBeVisible();
+    await expect(page.locator('#agent-memory-workspace .atria-workspace-nav [data-section=run]')).toHaveAttribute('aria-current', 'page');
     await page.screenshot({ path: info.outputPath(`agents-${width}.png`), fullPage: true, animations: 'disabled' });
     for (const section of ['orchestration', 'run', 'memory', 'diagnostics']) {
         await page.evaluate(section => window.Atria.shell.getWorkspaceHost().openAgentSection(section), section);
@@ -200,13 +201,16 @@ test('Utilities loading, service failures and recovery on a narrow screen', asyn
     await page.unroute('**/api/diagnostics/incidents/list');
     await page.locator('.atriaLogsRefresh').click();
     await expect(page.locator('.atriaLogsFeedback')).toBeHidden();
-    await page.route('**/api/native/product/works', route => route.fulfill({ status: 503, json: { error: 'Plugin list unavailable' } }));
+    await page.route('**/api/native/extensions/plugins', route => route.fulfill({ status: 503, json: { error: 'Plugin list unavailable' } }));
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('plugins'));
-    await expect(page.locator('[data-atria-plugin-surface=native]')).toContainText('503');
+    const extensions = page.locator('[data-atria-utility-workspace=extensions]');
+    await extensions.locator('[data-extension-tab=plugins]').click();
+    await extensions.getByRole('button', { name: 'Local scripts', exact: true }).click();
+    await expect(extensions.getByRole('alert')).toContainText('Plugin list unavailable');
     await page.screenshot({ path: info.outputPath('plugins-error-320.png') });
-    await page.unroute('**/api/native/product/works');
-    await page.locator('[data-atria-utility-workspace=plugins]').getByRole('button', { name: 'Refresh' }).click();
-    await expect(page.locator('[data-atria-plugin-surface=native]')).not.toContainText('503');
+    await page.unroute('**/api/native/extensions/plugins');
+    await extensions.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await expect(extensions.getByRole('alert')).toHaveCount(0);
 });
 
 test('Chinese utilities, light appearance, large text and keyboard', async ({ page }, info) => {
@@ -225,10 +229,10 @@ test('Chinese utilities, light appearance, large text and keyboard', async ({ pa
     await expect(page.locator('html')).toHaveAttribute('data-atria-appearance', 'light');
     for (const id of ['settings', 'account', 'plugins', 'diagnostics']) {
         await page.evaluate(id => window.Atria.shell.getWorkspaceHost().openUtility(id), id);
-        await expect(page.locator(id === 'diagnostics' ? '.atriaLogsWorkspace' : `[data-atria-utility-workspace="${id}"]`)).toBeVisible();
+        await expect(page.locator(id === 'diagnostics' ? '.atriaLogsWorkspace' : `[data-atria-utility-workspace="${id === 'plugins' ? 'extensions' : id}"]`)).toBeVisible();
         if (id === 'account') await expect(page.locator('.userName')).not.toBeEmpty();
         if (id === 'diagnostics') await expect(page.locator('.atriaLogsWorkspace')).toHaveAttribute('aria-busy', 'false');
-        if (id === 'plugins') await expect(page.locator('[data-atria-plugin-surface=native]')).toContainText('暂无 Native 插件');
+        if (id === 'plugins') await expect(page.locator('[data-atria-utility-workspace=extensions]')).toContainText('扩展');
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await expect(page.locator('html')).toHaveAttribute('data-atria-appearance', 'light');
         await page.screenshot({ path: info.outputPath(`zh-light-${id}-320.png`), animations: 'disabled' });

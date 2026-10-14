@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { createNativeId } from '../../../src/native/identity.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
+import { CredentialTargetAuthority } from '../../../src/native/model-prompt-runtime/credential-targets.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 import { seedNativeSessionDataRoot, createAndOpenNativeSession, disableNarrativeSkills } from './_helpers.js';
@@ -31,7 +32,12 @@ test.beforeAll(async () => {
     seeded = await seedNativeSessionDataRoot({ suffix: 'p4-generation' });
     const root = resolve(seeded.dataRoot, seeded.handle);
     const engine = new FsEngine({ directoriesByHandle: () => ({ root, assets: resolve(root, 'assets') }) });
-    await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: `http://127.0.0.1:${provider.address().port}/v1/chat/completions`, roles: ['narrator', 'studio'], streaming: true });
+    const profiles = await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: `http://127.0.0.1:${provider.address().port}/v1/chat/completions`, roles: ['narrator', 'studio'], streaming: true });
+    const authority = new CredentialTargetAuthority({ persistence: profiles.persistence });
+    const target = await authority.inspect(seeded.handle, { connectionProfileId: profiles.connection.connectionProfileId });
+    await authority.authorize(seeded.handle, { connectionProfileId: profiles.connection.connectionProfileId,
+        expectedFingerprint: target.connectionFingerprint, expectedTargetFingerprint: target.targetFingerprint,
+        expectedPermitFingerprint: target.permitFingerprint, allowLocal: true });
     await engine.close();
     writeFileSync(resolve(root, 'secrets.json'), JSON.stringify({ api_key_custom: [{ id: 'p4-synthetic-key', value: 'p4-test-only', active: true, label: 'P4 test' }], _migrated: true }));
 
@@ -62,7 +68,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
         await expect(page.locator('[data-atria-conversation="native"]')).toContainText('Native P4 reply');
         const directory = info.outputPath('visual'); mkdirSync(directory, { recursive: true });
         await page.screenshot({ path: resolve(directory, `play-${viewport.width}.png`), fullPage: true });
-        await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+        await page.getByRole('button', { name: 'History & saves', exact: true }).click();
         await expect(page.locator('[data-atria-native-play-drawer="true"]')).toBeVisible();
         await page.screenshot({ path: resolve(directory, `timeline-${viewport.width}.png`), fullPage: true });
         await page.locator('.atria-dock__close:visible, .atria-sheet-close:visible').click();

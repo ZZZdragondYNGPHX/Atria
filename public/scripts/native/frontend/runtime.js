@@ -1,4 +1,5 @@
 import { registerMcpSurface } from './mcp-surface.js';
+import { translateShellText as tl, formatShellText as fmt } from '../../atria-shell/localization.js';
 import { A2uiProjection, consumeA2uiJsonLines } from '../../../shared/native-a2ui.js';
 import { updateIllustrationSurface, releaseIllustrationSurface } from '../illustration-surfaces.js';
 import { createMediaResolver } from './media.js';
@@ -33,7 +34,7 @@ export async function mountNativeFrontend(options) {
         if (disposed) return;
         options.onDiagnostic?.({ reasonCode: 'frontend_presentation_failed', message: 'Presentation could not be completed.' });
         const view = overlays.at(-1) ?? views.at(-1);
-        if (view) { view.failure.hidden = false; view.failureText.textContent = 'Presentation could not be completed.'; }
+        if (view) { view.failure.hidden = false; view.failureText.textContent = tl('Presentation could not be completed.'); }
     };
     const media = await createMediaResolver({ resources, window, fetchImage: options.fetchImage, enabled: options.remoteMediaEnabled === true, changed: () => { instances.forEach(instance => instance.revokeScriptMedia?.()); requestRender(); } });
     if (media.required && !media.enabled && media.origins.length) {
@@ -166,7 +167,7 @@ export async function mountNativeFrontend(options) {
             snapshot: () => ({ props: instance.props, state: instance.state, env: instance.view.environment.get(), time: Date.now() }),
             failure: error => {
                 if (!error.scriptFatal && instance.failBoundary) instance.failBoundary(error);
-                else { instance.view.failure.hidden = false; instance.view.failureText.textContent = 'Required Controller unavailable. Reload presentation to recover.'; }
+                else { instance.view.failure.hidden = false; instance.view.failureText.textContent = tl('Required Controller unavailable. Reload presentation to recover.'); }
             }, revoked: () => { revoke(); instance.handles.forEach(handle => handle.dispose()); instance.handles.clear(); },
             capability: async (method, args) => {
                 if (disposed || instance.disposed) throw new Error('script_revoked');
@@ -204,7 +205,7 @@ export async function mountNativeFrontend(options) {
             options.onDiagnostic?.({ category: 'script', reasonCode: 'script_unavailable', sourceId: instance.ir.id, message: 'Controller resource or capacity unavailable.' });
             if (instance.ir.controller.required) {
                 if (instance.failBoundary) instance.failBoundary(error);
-                else { instance.view.failure.hidden = false; instance.view.failureText.textContent = 'Required Controller unavailable. Reload presentation to recover.'; }
+                else { instance.view.failure.hidden = false; instance.view.failureText.textContent = tl('Required Controller unavailable. Reload presentation to recover.'); }
             }
             return { status: 'unavailable', dispose() {}, invoke() {} };
         });
@@ -463,7 +464,7 @@ export async function mountNativeFrontend(options) {
             if (definition.read || definition.action) {
                 const result = instance.bridgeState[definition.read ?? definition.action];
                 node.dataset.bridgeStatus = result?.status ?? 'loading';
-                if (definition.read && !definition.bindings?.text && !definition.children.length) node.textContent = result?.ok ? (typeof result.data === 'object' ? JSON.stringify(result.data) : String(result.data)) : result?.error?.code ?? 'Loading…';
+                if (definition.read && !definition.bindings?.text && !definition.children.length) node.textContent = result?.ok ? (typeof result.data === 'object' ? JSON.stringify(result.data) : String(result.data)) : result?.error?.code ?? tl('Loading…');
                 if (definition.action && 'disabled' in node) node.disabled = result?.status === 'running';
             }
             if (['audio', 'video'].includes(definition.tag) && (document.hidden || instance.view.content.inert || node.closest('[hidden]'))) node.pause();
@@ -491,8 +492,8 @@ export async function mountNativeFrontend(options) {
         const report = () => {
             if (gone || instance.disposed) return;
             ++epoch; failed = true; pending = false; cleanup(); node.dataset.boundaryStatus = 'error';
-            surface.hidden = false; surface.setAttribute('role', 'alert'); surface.textContent = definition.attributes['boundary-error'] ?? 'This section is unavailable. ';
-            const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = definition.attributes['boundary-retry'] ?? 'Retry section';
+            surface.hidden = false; surface.setAttribute('role', 'alert'); surface.textContent = definition.attributes['boundary-error'] ?? tl('This section is unavailable.');
+            const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = definition.attributes['boundary-retry'] ?? tl('Retry section');
             retry.onclick = () => { void start(); }; surface.append(retry);
             options.onDiagnostic?.({ category: 'presentation', reasonCode: 'frontend_boundary_failed', retryable: true, sourceId: instance.ir.id + ':' + definition.id, diagnosticRef: definition.id, message: 'This section could not be displayed.' });
         };
@@ -500,7 +501,7 @@ export async function mountNativeFrontend(options) {
             if (gone || pending || instance.disposed) return;
             const revision = ++epoch; pending = true; failed = false;
             if (definition.read) instance.bridgeState[definition.read] = null;
-            surface.hidden = false; surface.setAttribute('role', 'status'); surface.textContent = definition.attributes['boundary-loading'] ?? 'Loading…'; node.dataset.boundaryStatus = 'loading';
+            surface.hidden = false; surface.setAttribute('role', 'status'); surface.textContent = definition.attributes['boundary-loading'] ?? tl('Loading…'); node.dataset.boundaryStatus = 'loading';
             try {
                 const next = await createBlock(definition, scoped, item, content, true);
                 if (gone || revision !== epoch || instance.disposed) { next.dispose(); return; }
@@ -595,11 +596,11 @@ export async function mountNativeFrontend(options) {
         const failure = document.createElement('div'), failureText = document.createElement('span'), retry = document.createElement('button');
         failure.hidden = true; failure.setAttribute('role', 'alert');
         failure.style.cssText = 'position:absolute;inset:0 auto auto 0;z-index:2;background:Canvas;color:CanvasText;padding:12px;max-width:100%;box-sizing:border-box';
-        retry.type = 'button'; retry.textContent = 'Reload presentation';
+        retry.type = 'button'; retry.textContent = tl('Reload presentation');
         retry.onclick = () => { void recover().catch(diagnostic); };
         failure.append(failureText, retry);
         for (const [label, handler] of [['Stop', options.hostActions?.stopGeneration], ['Diagnostics', options.hostActions?.openDiagnostics], ['Exit', options.hostActions?.exitExperience]]) {
-            if (!handler) continue; const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+            if (!handler) continue; const button = document.createElement('button'); button.type = 'button'; button.textContent = tl(label);
             button.onclick = () => { void Promise.resolve().then(handler).catch(diagnostic); }; failure.append(button);
         }
         shell.append(failure);
@@ -617,8 +618,8 @@ export async function mountNativeFrontend(options) {
             permission.dir = document.documentElement.dir || 'ltr'; permission.lang = document.documentElement.lang || 'en';
             permission.style.cssText = 'flex:none;max-height:35%;overflow:auto;padding:8px;box-sizing:border-box;background:Canvas;color:CanvasText';
             label.style.cssText = 'width:max-content;max-width:55%;cursor:pointer'; toggle.style.minHeight = '44px';
-            label.textContent = 'Remote images'; description.textContent = media.origins.join(', ') + '. These sites can observe your IP address, image choices and request timing. You can disable remote images at any time.';
-            toggle.type = 'button'; const sync = () => { toggle.textContent = media.enabled ? 'Disable remote images' : 'Enable remote images'; }; sync();
+            label.textContent = tl('Remote images'); description.textContent = fmt('${0}. These sites can observe your IP address, image choices and request timing. You can disable remote images at any time.', [media.origins.join(', ')]);
+            toggle.type = 'button'; const sync = () => { toggle.textContent = tl(media.enabled ? 'Disable remote images' : 'Enable remote images'); }; sync();
             toggle.onclick = () => { media.setEnabled(!media.enabled); sync(); }; permission.append(label, description, toggle); shell.prepend(permission);
         }
         content.style.paddingBottom = 'var(--atria-keyboard-inset, 0px)';
@@ -638,7 +639,7 @@ export async function mountNativeFrontend(options) {
             }
         };
         frame.addEventListener('keydown', view.keydown, true);
-        content.textContent = 'Loading…';
+        content.textContent = tl('Loading…');
         try {
             content.replaceChildren();
             view.root = await createInstance(ir.root, view, {}, null, null, content); if (disposed) throw new Error('Stale View load');
@@ -648,7 +649,7 @@ export async function mountNativeFrontend(options) {
             return view;
         } catch (error) {
             if (disposed || view.disposed) { disposeView(view); throw error; }
-            content.replaceChildren(); view.failure.hidden = false; view.failureText.textContent = 'This View could not be displayed. ';
+            content.replaceChildren(); view.failure.hidden = false; view.failureText.textContent = tl('This View could not be displayed.');
             options.onDiagnostic?.({ category: 'presentation', reasonCode: 'frontend_view_failed', retryable: true, sourceId: id, message: 'This View could not be displayed.' });
             return view;
         }
@@ -699,9 +700,9 @@ export async function mountNativeFrontend(options) {
                 const view = await resources.json('view:' + resources.index.primaryView.slice(5), 'view');
                 recoveryFailure = options.surfaceHost.mount(view.surface, 'native-v3.failure');
                 const panel = document.createElement('section'); panel.setAttribute('role', 'alert');
-                panel.textContent = 'Presentation recovery failed. ';
+                panel.textContent = tl('Presentation recovery failed.');
                 for (const [label, handler] of [['Reload presentation', recover], ['Stop', options.hostActions?.stopGeneration], ['Diagnostics', options.hostActions?.openDiagnostics], ['Exit', options.hostActions?.exitExperience]]) {
-                    if (!handler) continue; const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+                    if (!handler) continue; const button = document.createElement('button'); button.type = 'button'; button.textContent = tl(label);
                     button.onclick = () => { void Promise.resolve().then(handler).catch(diagnostic); }; panel.append(button);
                 }
                 recoveryFailure.container.append(panel);

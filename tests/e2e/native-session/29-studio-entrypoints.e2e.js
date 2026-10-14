@@ -68,7 +68,7 @@ test('EntryPoints UI → real FS/HTTP/canonical Build preserves full structure a
     const chooser = center.getByLabel('EntryPoints resource', { exact: true }); await expect(chooser).toHaveValue(first.entryPointId);
     await chooser.selectOption(second.entryPointId); await expect(center.locator('.atri-studio-action-target')).toContainText(first.entryPointId);
     await chooser.selectOption(first.entryPointId);
-    await center.getByLabel('displayName', { exact: true }).fill('Renamed');
+    await center.getByLabel('Name', { exact: true }).fill('Renamed');
     await center.locator('summary').filter({ hasText: /^1$/ }).click();
     await center.getByLabel('initialTimeline.0.content', { exact: true }).fill('New opening');
     await center.getByRole('button', { name: 'Source', exact: true }).click();
@@ -80,7 +80,7 @@ test('EntryPoints UI → real FS/HTTP/canonical Build preserves full structure a
     await activity.getByRole('button', { name: 'Cancel', exact: true }).click(); await expect(editor).toHaveValue(JSON.stringify(draft));
     await center.getByRole('button', { name: 'Review Changes', exact: true }).click();
     await activity.getByRole('button', { name: 'Apply ChangeSet' }).click(); await expect(activity.getByRole('button', { name: 'Apply ChangeSet' })).toHaveCount(0);
-    await expect(center.getByLabel('displayName', { exact: true })).toHaveValue('Renamed');
+    await expect(center.getByLabel('Name', { exact: true })).toHaveValue('Renamed');
     await center.getByRole('button', { name: 'Collection Source' }).click(); const collection = center.getByLabel('EntryPoints collection JSON', { exact: true });
     for (const invalid of [[], [draft, draft], [{ ...draft, metadata: { unknown: true } }], [{ ...draft, actorIds: [createNativeId('actor')] }]]) {
         await collection.fill(JSON.stringify(invalid)); await center.getByRole('button', { name: 'Review Changes', exact: true }).click();
@@ -131,17 +131,17 @@ test('EntryPoints Chinese 320px maximum text/keyboard/real 409 preserves Source 
     const first = entry(), second = entry(), project = source([first, second]); await open(page, project);
     const studio = page.locator('[data-atria-studio-workspace]'), center = studio.locator('.atria-studio-center'), activity = studio.locator('.atria-studio-activity'), nav = studio.locator('.atria-studio-mobile-nav');
     await nav.getByRole('button', { name: '项目', exact: true }).click(); await studio.locator('.atria-studio-resource-tree').getByRole('button', { name: '入口', exact: true }).click();
-    const name = center.getByLabel('displayName', { exact: true }); await name.focus(); await page.keyboard.press('Tab'); await expect(center.locator('summary').filter({ hasText: /^角色$/ })).toBeFocused();
+    const name = center.getByLabel('名称', { exact: true }); await name.focus(); await page.keyboard.press('Tab'); await expect(center.locator('summary').filter({ hasText: /^角色$/ })).toBeFocused();
     await page.keyboard.press('Shift+Tab'); await expect(name).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath('entrypoints-zh-320-fields.png'), fullPage: true });
-    await name.fill('冲突草稿：入口原文'); await center.getByRole('button', { name: '审阅更改', exact: true }).click();
+    await name.fill('冲突草稿：入口原文'); await center.getByRole('button', { name: '审查更改', exact: true }).click();
     const current = await api(page, `studio/projects/${project.project.projectId}`);
     await page.evaluate(async ({ id, revision }) => {
         const response = await fetch(`/api/native/studio/projects/${id}/source`, { method: 'PUT', headers: window.Atria.getContext().getRequestHeaders(), body: JSON.stringify({ path: 'entry-concurrent.txt', content: 'Other editor', baseRevision: revision, origin: { kind: 'human', id: 'entry-other-editor' } }) });
         if (!response.ok) throw new Error(await response.text());
     }, { id: project.project.projectId, revision: current.revision.revision });
-    await activity.getByRole('button', { name: '应用更改集', exact: true }).click(); await expect(activity).toContainText('修订冲突');
+    await activity.getByRole('button', { name: '应用更改集', exact: true }).click(); await expect(activity).toContainText('版本冲突');
     await activity.getByRole('button', { name: '复制入口草稿', exact: true }).click(); const copied = activity.getByLabel('入口草稿 Source');
     expect(JSON.parse(await copied.inputValue())).toEqual({ ...first, displayName: '冲突草稿：入口原文' }); await expect(copied).toBeFocused();
     page.once('dialog', dialog => dialog.dismiss()); await activity.getByRole('button', { name: '重新载入最新版', exact: true }).click(); await expect(copied).toBeVisible();

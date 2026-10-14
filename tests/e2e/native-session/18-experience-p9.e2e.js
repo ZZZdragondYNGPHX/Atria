@@ -19,6 +19,47 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server, { removeData: true }); });
 
+for (const [width, language] of [[1440, 'en'], [320, 'zh-cn']]) test(`Built full Work keeps real Host save Persona reload and Exit at ${width}px`, async ({ page }, info) => {
+    test.setTimeout(150000); await page.setViewportSize({ width, height: 1000 });
+    await page.addInitScript(language => localStorage.setItem('language', language), language);
+    await page.route('**/api/horde/**', route => route.fulfill({ json: [] })); await awaitMainUI(page, server.baseURL);
+    const source = { format: 'atria-project-source', schemaVersion: 1,
+        project: { projectId: createNativeId('project'), packageId: createNativeId('package'), displayName: 'Harbour Ledger', createdAt: 10, updatedAt: 10 },
+        package: { name: 'Harbour Ledger', version: '1.0.0', actors: [], capabilities: ['narrative', 'game-runtime'], permissions: [],
+            runtime: { experience: { mode: 'full', frontend: { kind: 'native', version: 3, source: 'frontend.json' } } },
+            entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'The gate', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
+        resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] } };
+    const ui = { format: 'atria-frontend-source', version: 3, primaryView: 'main', views: [{ id: 'main', root: 'Main', surface: 'app.root' }], components: [{ id: 'Main', source: 'Main.aui' }] };
+    const sessionId = await page.evaluate(async ({ source, ui }) => {
+        const { nativeStudioClient: studio } = await import('/scripts/native/studio-client.js');
+        const created = await fetch('/api/native/studio/projects', { method: 'POST', headers: window.Atria.getContext().getRequestHeaders(), body: JSON.stringify({ source, files: [{ path: 'frontend.json', content: JSON.stringify(ui) }, { path: 'Main.aui', content: '<template><main node-id="root"><h1 node-id="title">Harbour Ledger</h1><p node-id="text">A quiet harbour beyond the gate.</p></main></template>' }] }) });
+        if (!created.ok) throw new Error(await created.text());
+        const detail = await studio.getProject(source.project.projectId);
+        const built = await studio.build(source.project.projectId, detail.revision.revision);
+        const headers = window.Atria.getContext().getRequestHeaders();
+        const installed = await fetch('/api/native/product/packages/install', { method: 'POST', headers, body: JSON.stringify({ data: built.data, grantedPermissions: [] }) });
+        if (!installed.ok) throw new Error(await installed.text());
+        const { nativeProductClient: product } = await import('/scripts/native/product-client.js');
+        const session = await product.startWork(source.project.packageId); await window.Atria.openNativeSession(session.session.sessionId); return session.session.sessionId;
+    }, { source, ui });
+    const full = page.locator('#atria-game-full-root'); await expect(full.getByRole('heading', { name: 'Harbour Ledger', exact: true })).toBeVisible();
+    const recovery = page.locator('#atria-game-full-recovery'); await recovery.locator('summary').click();
+    await expect(recovery.locator('[data-atria-game-recovery-action="stop"]')).toBeDisabled();
+    let saves = 0; page.on('request', request => { if (request.url().endsWith('/sessions/' + sessionId + '/save') && request.method() === 'POST') saves++; });
+    const saved = page.waitForResponse(response => response.url().endsWith('/sessions/' + sessionId + '/save'));
+    await recovery.locator('[data-atria-game-recovery-action="save"]').dblclick(); expect((await saved).ok()).toBe(true);
+    await expect(recovery.locator('[role="status"]')).toContainText(language === 'en' ? 'Saved' : '已保存'); expect(saves).toBe(1);
+    await recovery.locator('[data-atria-game-recovery-action="persona"]').click();
+    await expect(page.locator('dialog[open]')).toBeVisible(); await page.keyboard.press('Escape'); await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(full).toBeVisible();
+    await recovery.locator('[data-atria-game-recovery-action="recovery"]').click(); await expect(full.getByRole('heading', { name: 'Harbour Ledger' })).toBeVisible();
+    await full.dispatchEvent('keydown', { key: 'Escape', keyCode: 229, isComposing: true }); await expect(full).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath('full-work-host.png'), fullPage: true });
+    await recovery.locator('[data-atria-game-recovery-action="exit"]').click(); await expect(full).toHaveCount(0);
+    await expect(page.locator('#atria-play-product')).toBeVisible();
+});
+
 test('P9 Play Health repair and authenticated fixed-seat Shared Host controls', async ({ page }, info) => {
     test.setTimeout(150000);
     await page.setViewportSize({ width: 390, height: 1000 });

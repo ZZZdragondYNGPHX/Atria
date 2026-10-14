@@ -191,7 +191,8 @@ dialog.atria-game-host-surface--transient::backdrop { background: var(--atri-scr
 .atria-game-recovery-panel summary { padding: 12px 16px; min-height: 44px; font-size: var(--atri-text-callout); cursor: pointer; }
 .atria-game-recovery-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 12px 12px; }
 .atria-game-recovery-actions .atria-game-recovery-action { border: 0; box-shadow: none; border-radius: var(--atri-radius-pill); min-height: 44px; font: inherit; font-size: var(--atri-text-callout); background: var(--atri-fill); color: var(--atri-text-primary); }
-.atria-game-recovery-panel p { max-width: 260px; margin: 0; padding: 12px; color: var(--atri-danger); }
+.atria-game-recovery-panel p { max-width: 260px; margin: 0; padding: 12px; color: var(--atri-text-secondary); }
+.atria-game-recovery-panel p[data-state="error"] { color: var(--atri-danger); }
 .atria-game-recovery-panel p:empty { display: none; }
 .atria-game-recovery-panel summary:focus-visible,
 .atria-game-recovery-action:focus-visible,

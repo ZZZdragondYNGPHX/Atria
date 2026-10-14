@@ -1168,9 +1168,10 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     cursor: pointer;
 }
 
-.atria-game-recovery-action:hover {
+.atria-game-recovery-action:hover:not(:disabled) {
     background: var(--atri-color-surface-hover);
 }
+.atria-game-recovery-action:disabled { opacity: .45; cursor: default; }
 
 .atria-app-shell[data-atria-viewport="compact"] #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"] {
     top: calc(var(--atri-safe-area-top) + var(--atri-space-1)) !important;

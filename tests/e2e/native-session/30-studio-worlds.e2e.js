@@ -103,10 +103,10 @@ test('Worlds Chinese 320px keyboard and real conflict retain Source until explic
     const name = center.getByLabel('世界名称', { exact: true }); await name.focus(); await page.keyboard.press('Tab'); await expect(center.getByText('世界初始状态', { exact: true })).toBeFocused();
     await page.keyboard.press('Shift+Tab'); await expect(name).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await page.screenshot({ path: info.outputPath('worlds-zh-320-fields.png'), fullPage: true });
-    await name.fill('冲突草稿：世界'); await center.getByRole('button', { name: '审阅更改', exact: true }).click();
+    await name.fill('冲突草稿：世界'); await center.getByRole('button', { name: '审查更改', exact: true }).click();
     const current = await api(page, `studio/projects/${project.project.projectId}`);
     await page.evaluate(async ({ id, revision }) => { const response = await fetch(`/api/native/studio/projects/${id}/source`, { method: 'PUT', headers: window.Atria.getContext().getRequestHeaders(), body: JSON.stringify({ path: 'world-concurrent.txt', content: 'Other editor', baseRevision: revision, origin: { kind: 'human', id: 'world-other' } }) }); if (!response.ok) throw new Error(await response.text()); }, { id: project.project.projectId, revision: current.revision.revision });
-    await activity.getByRole('button', { name: '应用更改集', exact: true }).click(); await expect(activity).toContainText('修订冲突');
+    await activity.getByRole('button', { name: '应用更改集', exact: true }).click(); await expect(activity).toContainText('版本冲突');
     await activity.getByRole('button', { name: '复制世界草稿', exact: true }).click(); const copied = activity.getByLabel('世界草稿 Source');
     expect(JSON.parse(await copied.inputValue())).toEqual({ ...first, world: { ...first.world, displayName: '冲突草稿：世界' } }); await expect(copied).toBeFocused();
     page.once('dialog', dialog => dialog.dismiss()); await activity.getByRole('button', { name: '重新载入最新版' }).click(); await expect(copied).toBeVisible();

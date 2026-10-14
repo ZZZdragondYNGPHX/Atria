@@ -57,8 +57,8 @@ test('Actors old source → UI → canonical FS/save/build preserves arbitrary J
     const studio = page.locator('[data-atria-studio-workspace]'), center = studio.locator('.atria-studio-center'), activity = studio.locator('.atria-studio-activity');
     await studio.locator('.atria-studio-resource-tree').getByRole('button', { name: 'Actors', exact: true }).click();
     await expect(center.getByLabel('Actors resource', { exact: true })).toHaveValue(first.actorId);
-    await center.getByLabel('displayName', { exact: true }).fill('Renamed');
-    await center.getByLabel('profile.personality', { exact: true }).fill('Still quiet');
+    await center.getByLabel('Name', { exact: true }).fill('Renamed');
+    await center.getByLabel('Personality', { exact: true }).fill('Still quiet');
     await center.getByRole('button', { name: 'Remove role', exact: true }).click();
     await center.getByRole('button', { name: 'Source', exact: true }).click();
     const actorSource = center.getByLabel('Actors resource JSON', { exact: true });
@@ -70,7 +70,7 @@ test('Actors old source → UI → canonical FS/save/build preserves arbitrary J
     expect((await api(page, `studio/projects/${project.project.projectId}`)).source.package.actors[0]).toEqual(assertActor(first));
     await activity.getByRole('button', { name: 'Cancel', exact: true }).click(); await expect(actorSource).toHaveValue(JSON.stringify(draft));
     await center.getByRole('button', { name: 'Review Changes', exact: true }).click();
-    await activity.getByRole('button', { name: 'Apply ChangeSet' }).click(); await expect(activity.getByRole('button', { name: 'Apply ChangeSet' })).toHaveCount(0); await expect(center.getByLabel('displayName', { exact: true })).toHaveValue('Renamed');
+    await activity.getByRole('button', { name: 'Apply ChangeSet' }).click(); await expect(activity.getByRole('button', { name: 'Apply ChangeSet' })).toHaveCount(0); await expect(center.getByLabel('Name', { exact: true })).toHaveValue('Renamed');
     const after = await api(page, `studio/projects/${project.project.projectId}`);
     expect(after.source.package).toEqual({ ...project.package, actors: [assertActor(draft), assertActor(second)] });
     for (const key of ['resources', 'worlds', 'knowledge', 'knowledgeBindings', 'assetFiles', 'dependencies']) expect(after.source[key]).toEqual(project[key]);
@@ -105,20 +105,20 @@ test('Actors empty/Chinese 320px/maximum text/keyboard/conflict uses real projec
     await nav.getByRole('button', { name: '项目', exact: true }).click(); await studio.locator('.atria-studio-resource-tree').getByRole('button', { name: '角色', exact: true }).click();
     await expect(center).toContainText('暂无角色');
     const actor = { actorId: createNativeId('actor'), displayName: '长名称：跨越星空的观测者', profile: { description: '故事中的角色', personality: false, plugin: { unknown: [null, false, 2] } }, metadata: {} };
-    const collection = center.getByLabel('Actors collection JSON'); await collection.fill(JSON.stringify([actor])); await center.getByRole('button', { name: '审阅更改', exact: true }).click();
+    const collection = center.getByLabel('角色集合 JSON'); await collection.fill(JSON.stringify([actor])); await center.getByRole('button', { name: '审查更改', exact: true }).click();
     await activity.getByRole('button', { name: '应用更改集', exact: true }).click(); await expect(activity.getByRole('button', { name: '应用更改集', exact: true })).toHaveCount(0); await nav.getByRole('button', { name: '编辑', exact: true }).click();
     await expect(center.getByRole('button', { name: '角色字段', exact: true })).toBeDisabled();
-    const name = center.getByLabel('displayName', { exact: true }); await expect(name).toBeVisible(); await name.focus();
-    await page.keyboard.press('Tab'); await expect(center.getByLabel('role', { exact: true })).toBeFocused(); await page.keyboard.press('Shift+Tab'); await expect(name).toBeFocused();
+    const name = center.getByLabel('名称', { exact: true }); await expect(name).toBeVisible(); await name.focus();
+    await page.keyboard.press('Tab'); await expect(center.getByLabel('角色定位（可选）', { exact: true })).toBeFocused(); await page.keyboard.press('Shift+Tab'); await expect(name).toBeFocused();
     await page.screenshot({ path: info.outputPath('actors-zh-320-identity.png'), fullPage: true });
     await name.fill('冲突草稿：保留原文');
-    await center.getByRole('button', { name: '审阅更改', exact: true }).click();
+    await center.getByRole('button', { name: '审查更改', exact: true }).click();
     const current = await api(page, `studio/projects/${project.project.projectId}`);
     await page.evaluate(async ({ id, revision }) => {
         const response = await fetch(`/api/native/studio/projects/${id}/source`, { method: 'PUT', headers: window.Atria.getContext().getRequestHeaders(), body: JSON.stringify({ path: 'concurrent.txt', content: 'Another editor', baseRevision: revision, origin: { kind: 'human', id: 'actors-other-editor' } }) });
         if (!response.ok) throw new Error(await response.text());
     }, { id: project.project.projectId, revision: current.revision.revision });
-    await activity.getByRole('button', { name: '应用更改集', exact: true }).click(); await expect(activity).toContainText('修订冲突');
+    await activity.getByRole('button', { name: '应用更改集', exact: true }).click(); await expect(activity).toContainText('版本冲突');
     await activity.getByRole('button', { name: '复制角色草稿', exact: true }).click(); const exported = activity.getByLabel('角色草稿 Source');
     expect(JSON.parse(await exported.inputValue())).toEqual({ ...actor, displayName: '冲突草稿：保留原文' }); await expect(exported).toBeFocused();
     page.once('dialog', dialog => dialog.dismiss()); await activity.getByRole('button', { name: '重新载入最新版', exact: true }).click(); await expect(exported).toBeVisible();

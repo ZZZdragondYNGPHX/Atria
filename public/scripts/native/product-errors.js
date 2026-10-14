@@ -14,6 +14,7 @@ const messages = {
     native_save_package_mismatch: 'This save requires a different exact Package version. Install that version before importing.',
     native_save_library_revision_conflict: 'An existing Library revision has different content. Keep the original and resolve the conflicting import.',
     native_save_password_required: 'Enter the password for this encrypted save, then try importing again.',
+    native_save_container_invalid: 'This file is not a valid Atria save. Choose an intact .atriasave file and try again.',
     native_save_authentication_failed: 'The save could not be unlocked. Check its password and file integrity, then retry.',
     native_immutable_conflict: 'An immutable revision already exists with different content. Create a new revision instead.',
     native_write_conflict: 'The item changed while you were editing. Refresh and review its current revision before retrying.',

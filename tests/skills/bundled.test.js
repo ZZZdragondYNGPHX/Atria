@@ -32,6 +32,18 @@ describe('bundled skills', () => {
         expect(got).toBeTruthy();
     });
 
+    test('a transient directory lock retries the same rename and preserves the installed payload', async () => {
+        const rename = fs.rename.bind(fs); let attempts = 0;
+        jest.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+            attempts++;
+            if (attempts < 3) throw Object.assign(new Error('Temporary directory lock'), { code: 'EPERM' });
+            return rename(from, to);
+        });
+        const result = await ensureFreshInstallPopulate({ defaultRoot, userRoot });
+        expect(result.installed).toBe(1); expect(attempts).toBe(3);
+        expect((await repo.get('bundled-a', { kind: 'global' })).description).toBe('bundled test');
+    });
+
     test('concurrent fresh requests wait until the shared installation finishes', async () => {
         let release, entered;
         const gate = new Promise(resolve => { release = resolve; });

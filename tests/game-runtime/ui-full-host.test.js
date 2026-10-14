@@ -30,9 +30,13 @@ describe('Full Game UI host recovery shell', () => {
         capabilities.save = true; document.body.dataset.generating = 'false';
         await new Promise(resolve => setTimeout(resolve, 0));
         button.click(); button.click(); expect(save).toHaveBeenCalledTimes(1);
+        expect(button.getAttribute('aria-busy')).toBe('true');
+        expect(host.recovery.querySelector('[role=status]').textContent).toBe('Saving…');
         capabilities.save = false; finish(); await new Promise(resolve => setTimeout(resolve, 0));
         expect(button.disabled).toBe(true);
         expect(host.recovery.querySelector('[role=status]').textContent).toBe('Saved');
+        expect(host.recovery.querySelector('[role=status]').dataset.state).toBe('success');
+        expect(button.hasAttribute('aria-busy')).toBe(false);
         expect(host.recovery.isConnected).toBe(true);
         host.dispose(); delete document.body.dataset.generating;
     });

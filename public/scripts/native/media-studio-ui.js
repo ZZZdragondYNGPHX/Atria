@@ -6,7 +6,7 @@ import { visualApproval } from './visual-approval-ui.js';
 import { MaskCommandModel, mountMaskCanvas } from './mask-canvas.js';
 
 export async function mountMediaStudio({ document: doc, parent, sdk, imageVersionId, report, onJob }) {
-    const root = node(doc, parent, 'section'); root.dataset.atriaDraftDirty = 'false'; node(doc, root, 'h3', translateShellText('Media Studio'));
+    const root = node(doc, parent, 'section', undefined, 'atri-media-studio'); root.dataset.atriaDraftDirty = 'false'; node(doc, root, 'h3', translateShellText('Media Studio'));
     const status = node(doc, root, 'p', translateShellText('Loading image and draft…')); status.setAttribute('role', 'status');
     const controller = new AbortController(); let timer = null, saving = false, dirty = false, disposed = false, conflicted = false, record, model, canvas;
     const context = sdk.context;

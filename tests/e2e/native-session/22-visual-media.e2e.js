@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
 import express from 'express';
+import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { setConfigFilePath } from '../../../src/util.js';
 import { createImageRegistry } from '../../../src/native/image-registry.js';
 import { makeTempFsEngineHarness } from '../../storage/harness/contract-harness.js';
 import { setupVisual, visualPng } from '../../native/helpers/visual-fixture.js';
 
-let harness, fixture, listener, baseURL;
+let harness, fixture, listener, baseURL, provider, providerCalls = 0;
 test.describe.configure({ mode: 'serial' });
 test.use({ actionTimeout: 12000 });
 
@@ -14,7 +15,13 @@ test.beforeAll(async () => {
     setConfigFilePath(fileURLToPath(new URL('../../../default/config.yaml', import.meta.url)));
     const { createNativeGenerationRouter } = await import('../../../src/endpoints/native-generation.js');
     harness = await makeTempFsEngineHarness();
-    fixture = await setupVisual(harness, { registry: createImageRegistry({ fetchImpl: async () => Response.json({ data: [{ b64_json: visualPng.toString('base64') }] }) }), adapter: 'provider.openai-images', model: 'gpt-image-1' });
+    provider = createServer(async (req, res) => {
+        for await (const _bytes of req) { /* Consume only this fixture's synthetic image request. */ }
+        providerCalls++;
+        res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ data: [{ b64_json: visualPng.toString('base64') }] }));
+    });
+    await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
+    fixture = await setupVisual(harness, { registry: createImageRegistry(), adapter: 'provider.openai-images', model: 'gpt-image-1', endpoint: 'http://127.0.0.1:' + provider.address().port + '/v1' });
     const prepared = await fixture.prepare();
     const started = await fixture.images.start(harness.handle, { prepareId: prepared.prepareId, approval: fixture.approval(prepared) });
     await fixture.images.wait(harness.handle, started.operationId);
@@ -30,7 +37,7 @@ test.beforeAll(async () => {
         const style=document.createElement('style');style.textContent=ILLUSTRATION_CSS;document.head.append(style);
         const context=${JSON.stringify({ sessionId: fixture.view.session.sessionId, branchId: fixture.view.revision.branchId })};
         window.errors=[];window.jobs=[];
-        const sdk={context,illustrations:{visual:async(domain,action,input={})=>{const r=await fetch('/api/native/generation/visual/'+domain+'/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...context,...input})});const value=await r.json();if(!r.ok)throw Object.assign(new Error(value.error),{status:r.status});return value;}}};
+        const sdk={context,illustrations:{visual:async(domain,action,input={})=>{const r=await fetch('/api/native/generation/visual/'+domain+'/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...context,...input})});const value=await r.json();if(!r.ok)throw Object.assign(new Error(value.error),{status:r.status});return value;},image:async(action,input)=>{if(action!=='start')throw Error('Unsupported fixture action');const r=await fetch('/api/native/generation/illustration-images',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});const value=await r.json();if(!r.ok)throw Object.assign(new Error(value.error),{status:r.status});return value;}}};
         window.gallery=await mountVisualGallery({document,parent:document.querySelector('main'),sdk,report:e=>window.errors.push(e.message),onJob:j=>window.jobs.push(j)});
         </script></html>`));
     app.use(express.static(fileURLToPath(new URL('../../../public/', import.meta.url))));
@@ -38,7 +45,7 @@ test.beforeAll(async () => {
     baseURL = 'http://127.0.0.1:' + listener.address().port;
 });
 
-test.afterAll(async () => { listener?.closeAllConnections(); if (listener) await new Promise(resolve => listener.close(resolve)); await harness?.cleanup(); });
+test.afterAll(async () => { listener?.closeAllConnections(); if (listener) await new Promise(resolve => listener.close(resolve)); provider?.closeAllConnections(); if (provider) await new Promise(resolve => provider.close(resolve)); await harness?.cleanup(); });
 
 for (const [width, language] of [[1440, 'en'], [900, 'zh-cn'], [320, 'zh-cn']]) test(`Gallery and Media Studio real FS drafts and approval at ${width}px ${language}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
@@ -57,6 +64,14 @@ for (const [width, language] of [[1440, 'en'], [900, 'zh-cn'], [320, 'zh-cn']]) 
     await expect(main).toContainText(en ? 'Draft synced' : '草稿已同步');
     await main.getByRole('button', { name: en ? 'Preview edit task' : '预览编辑任务', exact: true }).click();
     await expect(main.getByRole('button', { name: en ? 'Approve generation' : '确认生成', exact: true })).toBeVisible();
+    const approve = main.getByRole('button', { name: en ? 'Approve generation' : '确认生成', exact: true });
+    await approve.hover();
+    const bounds = await approve.boundingBox();
+    await page.mouse.down();
+    await expect.poll(() => approve.evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgb(17, 17, 17)');
+    await page.mouse.move(bounds.x - 4, bounds.y - 4); await page.mouse.up();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await approve.evaluate(node => getComputedStyle(node).transitionDuration)).toBe('0s');
     expect(await page.evaluate(() => window.jobs)).toEqual([]);
     await page.screenshot({ path: info.outputPath('media-approval.png'), fullPage: true });
     await main.getByRole('button', { name: en ? 'Cancel' : '取消', exact: true }).click();
@@ -68,4 +83,29 @@ for (const [width, language] of [[1440, 'en'], [900, 'zh-cn'], [320, 'zh-cn']]) 
     await expect(main.getByLabel(en ? 'Edit prompt' : '编辑提示词', { exact: true })).toBeVisible();
     const drafts = await fixture.images.store.list(harness.handle, 'draft');
     expect(drafts.some(draft => draft.commands.length > 0)).toBe(true);
+});
+
+test('approved Media Studio edit submits once, publishes through the real service and survives reload', async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.goto(baseURL + '/fixture');
+    const main = page.locator('main');
+    await main.getByRole('button', { name: 'Open Media Studio', exact: true }).click();
+    await main.getByRole('button', { name: 'Preview edit task', exact: true }).click();
+    await main.getByLabel('Cost limit for this task', { exact: true }).fill('1');
+    await main.getByLabel('I accept unknown costs and approve this submission', { exact: true }).check();
+    await main.getByLabel('Allow these assets and the mask to be sent to this target', { exact: true }).check();
+    const before = providerCalls;
+    await main.getByRole('button', { name: 'Approve generation', exact: true }).dblclick();
+    await expect(main).toContainText('Edit task submitted. You can continue drawing.');
+    expect(await page.evaluate(() => window.jobs.length)).toBe(1);
+    const job = await page.evaluate(() => window.jobs[0]);
+    await expect.poll(async () => (await fixture.images.status(harness.handle, { operationId: job.operationId })).operation.status).toBe('completed');
+    expect(providerCalls - before).toBe(1);
+    await main.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await expect(main.getByRole('button', { name: 'Use this version', exact: true })).toHaveCount(3);
+    await page.screenshot({ path: info.outputPath('media-edit-published.png'), fullPage: true });
+    await page.reload();
+    await expect(main.getByRole('button', { name: 'Use this version', exact: true })).toHaveCount(3);
+    expect(await page.evaluate(() => window.errors)).toEqual([]);
 });

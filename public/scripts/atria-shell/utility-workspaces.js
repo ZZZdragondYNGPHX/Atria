@@ -155,7 +155,7 @@ export async function mountPluginsUtility({
                 const sync = () => header.setAttribute('aria-expanded', String(Boolean(header.querySelector('.inline-drawer-icon.up, .fa-circle-chevron-up'))));
                 header.setAttribute('role', 'button'); header.tabIndex = 0; sync();
                 const observer = new MutationObserver(sync); observer.observe(header, { subtree: true, attributes: true, attributeFilter: ['class'] });
-                const keydown = event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); header.click(); } };
+                const keydown = event => { if (!event.defaultPrevented && !event.isComposing && event.keyCode !== 229 && ['Enter', ' '].includes(event.key)) { event.preventDefault(); header.click(); } };
                 header.addEventListener('keydown', keydown);
                 listeners.push(() => { observer.disconnect(); header.removeEventListener('keydown', keydown); for (const [name, value] of attributes) { if (value === null) header.removeAttribute(name); else header.setAttribute(name, value); } });
             }

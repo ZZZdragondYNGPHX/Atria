@@ -43,6 +43,8 @@ test('Global → Preset → Game execution, editable owners, duplicate import an
     });
     const openRegex = async () => {
         await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('plugins'));
+        await page.locator('[data-extension-tab="plugins"]').click();
+        await page.getByRole('button', { name: 'Built-in tools', exact: true }).click();
         await page.locator('[data-atria-global-plugin-settings="regex"] > summary').click();
         await page.locator('#regex_container .regex_settings > .inline-drawer > .inline-drawer-header').click();
     };
@@ -138,6 +140,13 @@ test('Global → Preset → Game execution, editable owners, duplicate import an
     await page.evaluate(async () => (await import('/script.js')).saveSettings(0, { directSave: true }));
     await awaitMainUI(page, server.baseURL);
     await page.evaluate(async id => (await import('/script.js')).openNativeSession(id), session.sessionId);
+    const reloadedScope = await page.evaluate(async () => {
+        const { getNativeRegexScopeStatus } = await import('/scripts/native/regex-scopes.js');
+        const { runtimeRequest } = await import('/scripts/native/runtime-client.js');
+        const current = getNativeRegexScopeStatus(), actual = await runtimeRequest('/regex-scopes');
+        return { error: current.errorMessage, cachedPreset: current.preset?.presetId ?? null, actualPreset: actual.preset?.presetId ?? null };
+    });
+    expect(reloadedScope).toEqual({ error: '', cachedPreset: presetId, actualPreset: presetId });
     await expect.poll(execute).toBe('scope-edited');
     await page.evaluate(async () => (await import('/scripts/native/session-runtime.js')).nativeSessionRuntime.close());
     await expect.poll(execute).toBe('scope-preset');

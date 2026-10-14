@@ -4,15 +4,26 @@ import { nativeSessionRuntime } from './session-runtime.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { registerNativeRegexScope, SCRIPT_TYPES, notifyRuntimeRegexScriptsChanged } from '../extensions/regex/engine.js';
 
-let preset = null, game = null, sequence = 0, initialized = false;
+let preset = null, game = null, sequence = 0, initialized = false, refreshing = null;
 let errorMessage = '';
 export function getNativeRegexScopeStatus() {
     return { preset, game, errorMessage, gameWritable: Boolean(game && !nativeSessionRuntime.history && !nativeSessionRuntime.host?.isGenerating()) };
 }
 
 export async function refreshNativeRegexScopes() {
-    const token = ++sequence;
-    const packageId = nativeSessionRuntime.snapshot?.session?.packageId;
+    const current = readNativeRegexScopes(++sequence, nativeSessionRuntime.snapshot?.session?.packageId);
+    refreshing = current;
+    await current;
+    // A scope change can supersede this read while a session is opening. The
+    // caller must wait for that newer scope, rather than merely discard ours.
+    while (refreshing !== current) {
+        const latest = refreshing;
+        await latest;
+        if (latest === refreshing) return;
+    }
+}
+
+async function readNativeRegexScopes(token, packageId) {
     try {
         const [scopes, currentGame] = await Promise.all([
             runtimeRequest('/regex-scopes'),

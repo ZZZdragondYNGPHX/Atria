@@ -74,11 +74,12 @@ export function mountMaskCanvas({ document: doc, parent, baseUrl, model, changed
     };
     viewport.addEventListener('pointerdown', down); viewport.addEventListener('pointermove', move); viewport.addEventListener('pointerup', up);
     viewport.addEventListener('pointercancel', event => { pointers.delete(event.pointerId); gesture = null; });
-    viewport.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? model.redo() : model.undo(); update(); } });
+    viewport.addEventListener('keydown', event => { if (!event.defaultPrevented && !event.isComposing && event.keyCode !== 229 && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? model.redo() : model.undo(); update(); } });
     viewport.addEventListener('wheel', event => { if (!event.ctrlKey) return; event.preventDefault(); scale = Math.max(.1, Math.min(8, scale * Math.exp(-event.deltaY / 500))); applyView(); }, { passive: false });
     const keyboard = node(doc, root, 'details'); node(doc, keyboard, 'summary', translateShellText('Rectangle coordinates in pixels'));
     const rectangle = { x: 0, y: 0, width: Math.min(64, model.width), height: Math.min(64, model.height) };
-    for (const key of Object.keys(rectangle)) field(doc, keyboard, key, rectangle[key], text => rectangle[key] = Number(text), { type: 'number' });
+    const coordinateLabels = { x: 'X coordinate', y: 'Y coordinate', width: 'Rectangle width', height: 'Rectangle height' };
+    for (const key of Object.keys(rectangle)) field(doc, keyboard, translateShellText(coordinateLabels[key]), rectangle[key], text => rectangle[key] = Number(text), { type: 'number' });
     button(doc, keyboard, translateShellText('Add rectangle'), () => { model.add({ kind: 'rect', ...rectangle, value: 255 }); update(); });
     frame = doc.defaultView.requestAnimationFrame(() => { resetView(); paint(); });
     return { paint, dispose: () => { doc.defaultView.cancelAnimationFrame(frame); root.remove(); } };

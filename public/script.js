@@ -2156,6 +2156,8 @@ async function firstLoadInit() {
     // Keep activation outside the boot barrier; recovery mode skips this host.
     void import('./scripts/native/extensions-host.js').then(module => module.initializeNativeExtensions())
         .catch(error => console.warn('[Atria Extensions] startup failed', error));
+    void import('./scripts/native/regex-scopes.js').then(module => module.initializeNativeRegexScopes())
+        .catch(error => console.warn('[Atria Regex] startup failed', error));
     // APP_READY is the final authority for the initial boot cover. The
     // static preloader must never survive beyond this boundary even if a
     // legacy loader handle was already cleaned up through another path.
@@ -7463,6 +7465,8 @@ export async function GenerateNative(type, options) {
         runtime: nativeSessionRuntime,
         host: (requestSignal, assertCurrent, onAccepted) => ({
             started: async generationType => {
+                await (await import('./scripts/native/regex-scopes.js')).initializeNativeRegexScopes();
+                requestSignal.throwIfAborted(); assertCurrent();
                 generation_started = new Date();
                 deactivateSendButtons();
                 await eventSource.emit(event_types.GENERATION_STARTED, generationType, { signal: requestSignal }, false);
@@ -22288,6 +22292,7 @@ jQuery(async function () {
 
 /** N4 explicit Native Session seam; the R7 host subtree and existing conversation engine stay intact. */
 export async function openNativeSession(sessionId, options = {}) {
+    await (await import('./scripts/native/regex-scopes.js')).initializeNativeRegexScopes();
     nativeSessionRuntime.configure({
         headers: getRequestHeaders,
         messages: () => chat,
