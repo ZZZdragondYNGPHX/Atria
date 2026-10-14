@@ -4,7 +4,7 @@
 
 ## 1. 现状与迁移方向
 
-核查基线为 `main` 的 `9241325a7290e613e0fdaaa1870409105c161c89`。当前产品前端使用浏览器 ES modules、直接 DOM 与 CSS，旧 jQuery、模板和样式仍是部分兼容设施；Node ≥20 / Express 提供服务，Webpack 编译前端库包。已有 CodeMirror 6、Cytoscape、Atria 原生 UI/桥接能力。React 素材只借鉴适合当前架构的设计/交互方法；依赖选择遵循 [decisions.md](decisions.md)，不迁移整体框架。
+历史盘点基线为 `main@9241325a`；本轮实施重新核查 `main@cc5e90eac`，当前变化与验证归 [实施 Record](../../../records/refactor/atria-serene-canvas.md)。产品前端使用浏览器 ES modules、直接 DOM 与 CSS，旧 jQuery、模板和样式仍是部分兼容设施；Node ≥20 / Express 提供服务，Webpack 编译前端库包。已有 CodeMirror 6、Cytoscape、Atria 原生 UI/桥接能力。React 素材只借鉴适合当前架构的设计/交互方法；依赖选择遵循 [decisions.md](decisions.md)，不迁移整体框架。
 
 迁移目标是让默认 Atria UI 直接使用原生的 Generation、Composer、Session、偏好和扩展接口。旧控件是否保留不由其 DOM 存在决定；确有必要的兼容责任要逐项变成原生设施，再收缩旧层。复用现有后端服务、资源/修订模型与持久层，不建立另一套生成调度器、会话状态或数据权威。
 
@@ -18,17 +18,17 @@
 
 当前可见 Conversation/Composer 来自 `public/scripts/native/play-product.js`；它真实实例化 `createHeadlessConversation`，向作品暴露消息、生成状态、Composer 及取消/Persona/诊断等能力。这个 bridge 是既有 runtime 的 adapter，没有另一套 Timeline 或持久状态。
 
-当前发送链：
+本轮已实施的默认发送链：
 
 ```text
 Native Composer
-  → hidden send_textarea 写值
-  → getContext().generate('normal')
-  → script.js Generate 的 Native 分支
+  → getContext().generateNative('normal', { input, scope, onInputAccepted })
+  → 单操作 Generation controller / scope / AbortSignal
   → runNativePlayGeneration({ runtime, input, signal, host })
   → Native generation-client / Turn / Orchestration
   → submitUser / commitAssistant callbacks
-  → NativeSessionRuntime Draft / persist / Revision
+  → NativeSessionRuntime.appendDraft / 原有 runtime command / CAS
+  → canonical snapshot / 提交回执 / 兼容投影与事件
 ```
 
 可直接复用的原生核心：
@@ -62,7 +62,7 @@ Native Composer
 - 偏好：`main:public/scripts/atria-shell/utility-workspaces.js:217-302`；appearance：`appearance.js:4-8,96-156`。
 - 插件设置根：`main:public/scripts/atria-shell/utility-workspaces.js:140-214`、`public/scripts/native/extensions-workspace.js:23-192`。
 
-表中原生 controller 与显式 Draft 方法是拟定替代接口，不应误称已存在完整 API；已有的生成核心、command 服务、runtime 与 bridge 才是实施复用对象。
+表中保留迁移前耦合作为责任清单。默认 Composer、单操作 controller、直接 Draft 提交、原生常用偏好和 Native busy 投影已实施；全部残留消费者的替代尚未完成。具体真实浏览器与合同证据归实施 Record，不能以接口存在推定全域验收。
 
 ## 4. 原生化必须守住的权威
 

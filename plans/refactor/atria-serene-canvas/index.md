@@ -2,12 +2,13 @@
 
 - Task ID: `refactor/atria-serene-canvas`
 - Primary Workspace: `main`（产品任务；方案与视觉输入归 `docs`）
-- Status: Draft — v0.1 视觉基线已接受，完整功能企划仍在讨论。
-- Current stage: 第二轮讨论，先建立方案，再继续完善功能呈现与原生化设计。
-- Current iteration: v0.6 讨论稿已保存，展开 Studio Actors、EntryPoints、UI/Assets 的代表编辑及 ChangeSet 冲突/失败恢复。各讨论稿等待反馈；产品实施仍未开始。
+- Status: Implementing — 已接受视觉与已确定功能开始实施；欠覆盖页面继续以 HTML 讨论。
+- Current stage: I1 — 视觉基础、Shell 与原生设施；按依赖持续推进后续阶段。
+- Current iteration: v0.6 为最新代表交互依据；原型内存状态不作为产品服务实现。
 - Latest discussion HTML: [discussion-preview-v0.6.html](references/discussion-preview-v0.6.html)。
-- Implementation authorization: 尚未收到“开始重构”。
-- Source audit baseline: `main@9241325a7290e613e0fdaaa1870409105c161c89`。
+- Implementation authorization: 2026-10-15 收到明确“开始重构”；重大新能力或视觉改向仍须讨论。
+- Source audit baseline: `main@cc5e90eac`，实施分支 `refactor/atria-serene-canvas`。历史盘点入口仍需逐项复核。
+- Implementation record: [records/refactor/atria-serene-canvas.md](../../../records/refactor/atria-serene-canvas.md)。
 
 ## Goal
 
@@ -32,7 +33,7 @@
 
 ## Stage routing
 
-### D2 — 完整企划与 HTML 继续迭代（当前）
+### D2 — 完整企划与 HTML 继续迭代（欠覆盖页面）
 
 必读：`index.md` → `decisions.md` → `visual.md` → `coverage.md`。
 
