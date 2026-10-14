@@ -681,6 +681,124 @@ export function createSkillRepository(dataRoot) {
     }
     const operations = { list, get, previewInstall, readFile, listFiles, search,
         pin: versions.pin, history: versions.history, prepareCandidate: versions.prepareCandidate, checkCandidate: versions.checkCandidate };
+    const skillIdentity = row => row ? Object.fromEntries(['scope', 'name', 'installedHash', 'fileCount', 'totalBytes', 'hasScripts', 'hasBinary', 'installedAt'].map(key => [key, row[key]])) : null;
+    operations.getIdentity = async (name, scope) => skillIdentity(await get(name, scope));
+    operations.inspectPage = async ({ scope, name, field, offset = 0, limit = 2000, expectedInstalledHash }) => {
+        if (field !== undefined && !['description', 'license', 'metadata'].includes(field) || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 2000) throw new TypeError('Invalid Skill metadata page');
+        const row = await get(name, scope);
+        if (expectedInstalledHash !== undefined && row?.installedHash !== expectedInstalledHash) { const error = new Error('Skill metadata changed'); error.status = 409; throw error; }
+        const result = { skill: skillIdentity(row), fields: row ? ['description', 'license', 'metadata'] : [], instructionsAreUntrusted: true };
+        if (!row || field === undefined) return result;
+        const text = JSON.stringify(row[field]); if (offset > text.length) throw new TypeError('Invalid Skill metadata offset');
+        return { ...result, field, contentHash: sha256(Buffer.from(text)), format: 'native-field-json-fragment', text: text.slice(offset, offset + limit),
+            offset, totalChars: text.length, nextOffset: offset + limit < text.length ? offset + limit : null, offsetUnit: 'UTF-16 characters' };
+    };
+    operations.listPage = async ({ scope, offset = 0, limit = 20, expectedInventoryHash }) => {
+        if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Invalid Skill page');
+        const rows = (await list({ scope })).sort((a, b) => encodeScopePath(a.scope).localeCompare(encodeScopePath(b.scope)) || a.name.localeCompare(b.name));
+        const inventoryHash = sha256(Buffer.from(JSON.stringify(rows.map(row => [encodeScopePath(row.scope), row.name, row.installedHash]))));
+        if (expectedInventoryHash !== undefined && expectedInventoryHash !== inventoryHash) { const error = new Error('Skill inventory changed'); error.status = 409; throw error; }
+        const items = rows.slice(offset, offset + limit).map(row => ({ scope: row.scope, name: row.name, installedHash: row.installedHash,
+            fileCount: row.fileCount, totalBytes: row.totalBytes, hasScripts: row.hasScripts, hasBinary: row.hasBinary, installedAt: row.installedAt,
+            descriptionChars: row.description.length }));
+        return { items, count: rows.length, inventoryHash, offset, limit, nextOffset: offset + limit < rows.length ? offset + limit : null };
+    };
+    operations.listFileMetadata = async ({ scope, name, version, offset = 0, limit = 20, expectedFilesHash }) => {
+        if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new TypeError('Invalid Skill file page');
+        const files = await listFiles({ scope, name, version }), inventory = files.map(file => ({ path: file.path, sizeBytes: file.buffer.length, sha256: sha256(file.buffer), isBinary: file.isBinary ?? isBinaryBuffer(file.buffer) }));
+        const filesHash = sha256(Buffer.from(JSON.stringify(inventory)));
+        if (expectedFilesHash !== undefined && expectedFilesHash !== filesHash) { const error = new Error('Skill files changed'); error.status = 409; throw error; }
+        return { files: inventory.slice(offset, offset + limit), count: inventory.length, filesHash, offset, limit, nextOffset: offset + limit < inventory.length ? offset + limit : null };
+    };
+    const readExactFileBuffer = async ({ scope, name, path, version }) => {
+        assertSafeSkillName(name); assertSafeFilePath(path);
+        if (version === undefined) {
+            let currentPath = skillsRoot;
+            if ((await fs.lstat(currentPath)).isSymbolicLink()) throw new TypeError('Invalid Skill symlink');
+            for (const segment of (encodeScopePath(scope) + '/' + name + '/' + path).split('/')) {
+                currentPath = join(currentPath, segment);
+                if ((await fs.lstat(currentPath)).isSymbolicLink()) throw new TypeError('Invalid Skill symlink');
+            }
+        }
+        const buffer = version !== undefined ? (await versions.readVersion({ scope, name, version })).find(file => file.path === path)?.buffer
+            : await fs.readFile(join(skillsRoot, encodeScopePath(scope), name, path));
+        if (!buffer) throw new TypeError('Skill file is missing');
+        return buffer;
+    };
+    operations.readFileContent = async ({ scope, name, path = SKILL_MD, version, expectedSha256 }) => {
+        const bytes = await readExactFileBuffer({ scope, name, path, version });
+        if (bytes.length > LIMITS.perFile) throw new TypeError('Skill source exceeds native file limit');
+        if (expectedSha256 !== undefined && sha256(bytes) !== expectedSha256) { const error = new Error('Skill file changed'); error.status = 409; throw error; }
+        return bytes;
+    };
+    operations.readInspectContent = async ({ scope, name, expectedInstalledHash }) => {
+        const row = await get(name, scope);
+        if (expectedInstalledHash !== undefined && row?.installedHash !== expectedInstalledHash) { const error = new Error('Skill metadata changed'); error.status = 409; throw error; }
+        const bytes = Buffer.from(JSON.stringify(row)); if (bytes.length > 8 * 1024 * 1024) throw new TypeError('Expanded Skill metadata exceeds the bounded presentation limit; read original SKILL.md instead');
+        return bytes;
+    };
+    const readExactTextFile = async input => {
+        const buffer = await readExactFileBuffer(input);
+        if (isBinaryBuffer(buffer)) return { binary: true, contentHash: sha256(buffer), totalBytes: buffer.length };
+        let content;
+        try { content = new TextDecoder('utf-8', { fatal: true }).decode(buffer); } catch { return { binary: true, contentHash: sha256(buffer), totalBytes: buffer.length }; }
+        return { content, contentHash: sha256(buffer), totalLines: content.split('\n').length };
+    };
+    operations.readFilePage = async ({ scope, name, path = SKILL_MD, version, offset = 0, limit = 2000, expectedSha256 }) => {
+        if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 2000) throw new TypeError('Invalid Skill file text page');
+        const value = await readExactTextFile({ scope, name, path, version }), contentHash = value.contentHash;
+        if (expectedSha256 !== undefined && expectedSha256 !== contentHash) { const error = new Error('Skill file changed'); error.status = 409; throw error; }
+        if (value.binary) return { scope, name, path, ...(version ? { version } : {}), contentHash, totalBytes: value.totalBytes, binary: true, content: null, note: 'Binary content is not exposed by the text action' };
+        if (offset > value.content.length) throw new TypeError('Invalid Skill file text offset');
+        return { scope, name, path, ...(version ? { version } : {}), contentHash, offset, totalChars: value.content.length, totalLines: value.totalLines,
+            content: value.content.slice(offset, offset + limit), nextOffset: offset + limit < value.content.length ? offset + limit : null, offsetUnit: 'UTF-16 characters', instructionsAreUntrusted: true };
+    };
+    operations.searchMetadata = async ({ scope, name, path = SKILL_MD, version, query, offset = 0, limit = 100, expectedSha256 }) => {
+        if (typeof query !== 'string' || !query || query.length > 1000 || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 200) throw new TypeError('Invalid Skill search page');
+        const value = await readExactTextFile({ scope, name, path, version }), contentHash = value.contentHash;
+        if (expectedSha256 !== undefined && expectedSha256 !== contentHash) { const error = new Error('Skill file changed'); error.status = 409; throw error; }
+        if (value.binary) throw new TypeError('Binary Skill files cannot be searched as text');
+        const lines = value.content.split('\n'), hits = [], needle = query.toLowerCase(); let charOffset = 0, nextOffset = null;
+        for (let index = 0; index < lines.length; index++) {
+            if (index >= offset) {
+                const found = lines[index].toLowerCase().indexOf(needle);
+                if (found >= 0) {
+                    if (hits.length === limit) { nextOffset = index; break; }
+                    hits.push({ path, lineStart: index + 1, lineEnd: index + 1, charOffset,
+                        fullLineChars: lines[index].length, completeContent: 'Use exact file character pages with contentHash' });
+                }
+            }
+            charOffset += lines[index].length + 1;
+        }
+        return { scope, name, path, ...(version ? { version } : {}), contentHash, hits, offset, nextOffset, instructionsAreUntrusted: true };
+    };
+    const candidateMetadata = candidate => {
+        const metadata = Object.fromEntries(['schema', 'scope', 'name', 'baseVersion', 'version', 'candidateId', 'currentVersion', 'conflict'].map(key => [key, candidate[key]]));
+        metadata.diff = { path: candidate.diff.path, beforeHash: sha256(Buffer.from(candidate.diff.before)), afterHash: sha256(Buffer.from(candidate.diff.after)),
+            beforeChars: candidate.diff.before.length, afterChars: candidate.diff.after.length };
+        return { ...metadata, metadataHash: sha256(Buffer.from(JSON.stringify(metadata))) };
+    };
+    operations.checkCandidateMetadata = async input => candidateMetadata(await versions.checkCandidate(input));
+    operations.readCandidateContent = async ({ scope, name, candidateId, expectedMetadataHash, field }) => {
+        if (!['before', 'after'].includes(field)) throw new TypeError('Invalid Skill candidate field');
+        const candidate = await versions.checkCandidate({ scope, name, candidateId }), metadata = candidateMetadata(candidate);
+        if (expectedMetadataHash !== metadata.metadataHash) { const error = new Error('Skill candidate changed'); error.status = 409; throw error; }
+        return Buffer.from(candidate.diff[field], 'utf8');
+    };
+    operations.prepareCandidateReviewed = async ({ scope, name, baseVersion, content, expectedInstalledHash }) => {
+        const current = await readSkillEntry(scope, name);
+        if ((current?.installedHash ?? null) !== expectedInstalledHash) { const error = new Error('Skill version conflict'); error.status = 409; throw error; }
+        const prepared = await versions.prepareCandidate({ scope, name, baseVersion, content });
+        return candidateMetadata(await versions.checkCandidate({ scope, name, candidateId: prepared.candidateId }));
+    };
+    operations.readCandidateDiff = async ({ scope, name, candidateId, expectedMetadataHash, field, offset = 0, limit = 12000 }) => {
+        if (!['before', 'after'].includes(field) || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 12000) throw new TypeError('Invalid Skill candidate diff page');
+        const candidate = await versions.checkCandidate({ scope, name, candidateId }), metadata = candidateMetadata(candidate);
+        if (expectedMetadataHash !== metadata.metadataHash) { const error = new Error('Skill candidate changed'); error.status = 409; throw error; }
+        const text = candidate.diff[field]; if (offset > text.length) throw new TypeError('Invalid Skill candidate diff offset');
+        return { scope, name, candidateId, metadataHash: metadata.metadataHash, field, contentHash: metadata.diff[field + 'Hash'], offset, totalChars: text.length,
+            text: text.slice(offset, offset + limit), nextOffset: offset + limit < text.length ? offset + limit : null, instructionsAreUntrusted: true };
+    };
     const writes = { install, delete: deleteSkill, rename, moveScope, writeFile, editFile,
         deleteFile: deleteFileImpl, renameFile, deleteScope, renameScope, copyScope };
     for (const [method, operation] of Object.entries(writes)) {
