@@ -1,7 +1,7 @@
 # Native Image API / 数据契约 / 跨平台 UI / 分阶段交付 — D-013（Round 13 C）
 
 - Task: `atria-native-visual-generation-deepening`
-- **Status: Round 13 已选择方案 C，D-013 已冻结以下统一 Native 职责/API 分层、三层设置与跨端 Web UI、S0～S6 七大阶段/25 子阶段以及 L1/L2/L3 + 三端验收原则。** 精确字段/URL/迁移 SQL/Provider 实测仍待 E0 审计，未批准创建 feat 开发分支；文档冻结不等于代码实现。
+- **Status: Round 13 已选择方案 C，D-013 已冻结统一 Native 职责/API 分层、三层设置与跨端 Web UI、S0～S6 七大阶段/25 子阶段和 L1/L2/L3 + 三端验收原则。** 精确字段/URL/迁移 SQL/Provider 实测**仍未实现或验证**，并已在 [e0-closure-audit.md](e0-closure-audit.md) 分类为 S0/后续阶段/真实外部证据；本任务未创建 feat 开发分支。
 - Frozen prerequisites: [decisions.md](decisions.md) D-001～D-013，尤其 D-003 ImagePromptIR+Adapter、D-004 Connection/Target/Rendering 三层配置、D-007/D-008 Durable Job/Budget、D-009～D-011 Media Studio/Mask/Save/GC、D-012 Target 三态/typed degrade/L1-L2-L3。以这些决策为规范，不重新表决。
 - Baseline: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`（仅 GitHub 静态源码审计；未跑 UI、FS/SQLite、跨平台或真实模型）。
 - Proposed implementation branch: **E0 审计完成、阻塞设计收口和正式交接得到下一步指令前不创建 `feat/*`**。候选 `feat/native-visual-generation-deepening`，本轮不创建。
@@ -96,8 +96,8 @@
 - **B 一次性全重写后验收**：放弃。风险集中在跨 Provider、存档/预算/界面与长会话末端。
 - **C 强契约 Core-first + dev-stage hard cutover + P0 垂直切片 + 七阶段完整交付**：**用户正式选定 D-013**。统一 Native 来源/数据/接口职责，不保留无意义的旧版双协议；按照 §5 的 S0～S6/25 子阶段实现并持续验证/记录。
 
-## 7. E0 设计审计状态（紧随 D-013 后进行，不属于此轮提前批准的代码）
+## 7. E0 审计已完成（静态收口，不属于产品代码）
 
-用户要求**先写 D-013 并提交，再审计前十三轮**：审计须复核 D-001～D-013 的彼此一致性、代码锚点、精确 schema/API/权限/预算/媒体/恢复尚缺的关键细节、Provider L3 和三端证据缺口、阶段依赖与正式 Codex 交接要求；产物留在同一 Plan Bundle 的审计模块并在索引链接。
+用户要求**先写 D-013 并提交，再审计前十三轮**：该静态 E0 收口已经独立提交，详见 [e0-closure-audit.md](e0-closure-audit.md)，包含 D-001～D-013 一致性、源码差距、15 项接口/安全/验收缺口、S0～S6 依赖及 Codex 正式交接条件。无需此处重复详细表格。
 
-**在 E0 结束且下一步实施指令明确前，不建立 feat 分支**。本文的“已冻结”只表示方案批准，不代表已完成实现或外部 API/真实设备验证。
+**E0 静态收口已完成；本次没有建立 feat 分支**。未来只有用户下达正式实施指令后才按 Governance 创建同一任务分支。本文件的“已冻结”只表示方案批准，不代表已完成代码、CI、真实 Provider L3 或真实设备验证。
