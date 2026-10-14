@@ -122,7 +122,7 @@ ResolvedVisualAppearance:
 - 与 `role.illustration_prompt`、Image Prompt IR、Provider Adapter 和 AssetStore 的接口有可审计来源；图片再生成不会改变正文已提交内容。
 - 提供同名角色、同名临时 NPC、多图冲突、存档恢复、旧图片参考失效、未知状态和不同 Provider 不支持参考约束的测试样本。
 
-## 7. Deferred precision and Round 7 next topic
+## 7. D-006 之后遗留的视觉状态实现精度（历史待办；D-007/D-008 已定案）
 
 1. **视觉状态实现精度（D-006 已选择混合）**：确认投影更新的稳定身份绑定、增量来源、非关键候选采用的阈值，及“未提及不复位”如何通过契约测试。
 2. **冲突仲裁优先级**：固定身份、已提交结构化状态、叙事显式描述、玩家手动校正、上一张图的观感、参考图包含的旧衣物相互冲突时谁先谁后？硬冲突阻止还是提示？
@@ -130,4 +130,4 @@ ResolvedVisualAppearance:
 4. **分支与复用**：通用素材与分支时点素材各自的缓存键、生命周期、GC 引用；存档分叉与时间回退不能泄漏未来状态。
 5. **角色范围与权限**：正式 Actor、自由 RP 的临时身份与玩家角色如何统一；Image Provider 接收私人图像资料的授权是否另设规则？
 
-以上是 **D-006 的实现精度待办项**，不得被解释成重新开启已冻结的混合更新方向。第七轮先确认 Visual Director 的生成触发条件、场景评分与选择、频率、预算和可靠任务恢复；轮次定案后先更新 docs Plan，再讨论下一议题。
+以上是 **D-006 的实现精度待办项**，不得解释为重新开启已冻结的混合更新方向。**D-007/D-008** 已冻结 Visual Director、评分/频率/预算/可靠恢复，详情见 [visual-director.md](visual-director.md)；精确视觉投影/Actor 绑定与引用缓存合同已登记为 [e0-closure-audit.md](e0-closure-audit.md) 的 S0/S3 工作项。
