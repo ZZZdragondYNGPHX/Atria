@@ -12,12 +12,11 @@
 - **Affected modules**：`architecture.md`；未来 Provider、Director、Prompt、Reference、UI、Scheduler、AssetStore 模块。
 - **Scope limit**：模式的默认值、自动执行许可/付费阈值、触发时点、数据结构、独立 LLM Route、目标后端尚未定案；不能从“全自动模式存在”推导“任意自动扣费”。
 
-## D-002（2026-10-14，Round 1 约束）— Native 产品独立实现
+## 基线与合规约束（非单独由用户冻结的架构方案）
 
-- **Decision**：在 Atria 当前 Native Session / 插画呈现 / AssetStore / Task Scheduler 基线之上深化；不恢复旧 ST SD 插件作为主执行体系，也不直接搬运 st-chatu8 的 AFPL 代码。
-- **Reason**：避免重复存储与旧插件耦合，并遵守第三方代码的分发许可限制。
-- **Affected modules**：所有产品实现模块、Provider 适配与用户界面。
-- **Scope limit**：具体怎样重构现有合同和哪些旧模块淘汰，仍需技术方案确认。
+- Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
+- st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
+- 这些是现有事实、工程约束与版权边界，**不等于 Round 1 用户另行批准了一个 D-002 架构提案**。改造范围、Provider 抽象及产品边界留待后续轮次明确批准。
 
 ## Unresolved; **not** decisions
 
