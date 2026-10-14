@@ -2,7 +2,7 @@
 
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Primary Workspace**: `main`（Atria 产品源码）；`docs` 仅承载本 Plan
-- **Status**: **Draft / 多轮设计中**（2026-10-14，Rounds 1–12 已冻结：C/A/C/B/C/C/C/C/C/C/C/C；Round 13 统一 Native API/Schema、设置/跨平台 UI、工程阶段与最终验收待议）
+- **Status**: **Draft / E0 收口审计中**（2026-10-14，Rounds 1–13 已冻结：C/A/C/B/C/C/C/C/C/C/C/C/C；D-013 七大阶段/25 子阶段已批准，尚未创建产品开发分支）
 - **Implementing Branch**: 尚未创建；待整个设计冻结后再创建 `feat/*` 工作分支交付 Codex
 - **Verified code baseline (remote only)**: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`
 - **Reference**: [damoshen123/st-chatu8](https://github.com/damoshen123/st-chatu8)（读取其公开源码和行为作为研究材料，非 Atria 代码来源）
@@ -21,9 +21,9 @@
 2. **不改写已提交剧情**。插图属于 Native Session 的呈现及媒体衍生数据；对应原文、版本和分支独立可追溯。模型不得靠生成插图反向改写剧情事实。
 3. **以现有 Native 系统为基线重构**：优先演进 `atri_illustrations`、现有绘图提示词 Route、任务调度、密钥与 AssetStore，避免依赖已退役的 SillyTavern SD 扩展/DOM 写入路径。
 4. **参考实现与版权边界**：可研究 st-chatu8 的交互/功能/协议行为；不得直接拷贝其 AFPL v9 代码或派生代码进入 Atria，除非另行完成授权、兼容性审查并取得明确决定。
-5. **模型决定与用户控制分离**：不把“自动”解释为不可撤销地扣费或覆盖用户选择；手动生图、预览/编辑、取消和版本选择在方案设计中始终保留。实际默认值、自动执行时机与审批规则待后轮冻结。
+5. **模型决定与用户控制分离**：D-002 已冻结 Commit 后判断；D-007/D-008 已冻结自动默认关闭、可调额度/审批/预算硬门禁，D-012 已冻结分级降级及明确授权；手动/半自动/自动仍保留预览、取消、编辑与版本选择。不得把“自动”解释成无限额扣费。
 
-**确认边界**：Round 1 D-001 = 分层混合；Round 2 D-002 = Post-Commit Visual Director；Round 3 D-003 = 语义 IR + Adapter + Capabilities；Round 4 D-004 = P0/P1/P2 后端及 Connection/Target/Rendering Profile；Round 5 D-005 = 状态驱动的 Visual Identity / Visual State / Visual References 三层权威；Round 6 D-006 = 证据驱动的混合 Visual State 更新、冲突仲裁与按用途参考图筛选；Round 7 D-007 = 分级事件驱动的自动场景价值筛选、预算隔离与持久 ImageJob 原则；Round 8 D-008 = 跨回合 Scene/Shot、可解释的自适应镜头评分、可调自动预算默认与持久作业恢复策略；Round 9 D-009 = 分层 Native Media Studio + 不可变图片衍生 DAG + Regenerate/Img2Img/Inpaint/Upscale/Gallery 功能范围；Round 10 D-010 = 能力感知的可逆 Mask/编辑、跨 Provider 显式执行、历史版本选择、可达 GC/存档闭包、参考晋升原则；Round 11 D-011 = Canonical Mask/草稿恢复、模型级编辑能力声明、分层 Gallery、双扫描 GC 和 SavePoint 编辑闭包及导入验收；Round 12 D-012 = **P0/P1 的协议家族/有效 Target 双层能力矩阵、Required/Preferred/Optional 显式降级授权、L1/L2/L3 三级验收责任**。详见 [decisions.md](decisions.md)、[provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。第 2～4 条为 Native 基线/合规约束而非额外表决；第 5 条一般的用户控制仍受 D-007/D-008 的产品默认与授权硬边界约束。**Round 8 已确定**评分框架/初始权重、软节奏、用户可调硬额度、云自动付费默认未授权、Job 恢复方向；精确请求/数据库 Schema、Provider 子能力与计费实现、状态/参考图阈值、**D-011 已冻结**上述 Mask/草稿/Gallery/GC/SavePoint 的中立协议及可调默认；**D-012 已冻结能力矩阵的表达、已知差异、约束降级原则和验收分层**；实际连接/模型/Workflow 的支持状态不能从文档推定，需逐 Target 验证，部分真实联测依赖用户授权。Round 13 API/数据 Schema、设置 UI、跨平台与工程分期尚未批准。
+**确认边界**：Round 1 D-001 = 分层混合；Round 2 D-002 = Post-Commit Visual Director；Round 3 D-003 = 语义 IR + Adapter + Capabilities；Round 4 D-004 = P0/P1/P2 后端及 Connection/Target/Rendering Profile；Round 5 D-005 = 状态驱动的 Visual Identity / Visual State / Visual References 三层权威；Round 6 D-006 = 证据驱动的混合 Visual State 更新、冲突仲裁与按用途参考图筛选；Round 7 D-007 = 分级事件驱动的自动场景价值筛选、预算隔离与持久 ImageJob 原则；Round 8 D-008 = 跨回合 Scene/Shot、可解释的自适应镜头评分、可调自动预算默认与持久作业恢复策略；Round 9 D-009 = 分层 Native Media Studio + 不可变图片衍生 DAG + Regenerate/Img2Img/Inpaint/Upscale/Gallery 功能范围；Round 10 D-010 = 能力感知的可逆 Mask/编辑、跨 Provider 显式执行、历史版本选择、可达 GC/存档闭包、参考晋升原则；Round 11 D-011 = Canonical Mask/草稿恢复、模型级编辑能力声明、分层 Gallery、双扫描 GC 和 SavePoint 编辑闭包及导入验收；Round 12 D-012 = P0/P1 的协议家族/有效 Target 双层能力矩阵、Required/Preferred/Optional 显式降级授权、L1/L2/L3 三级验收责任；Round 13 D-013 = **统一 Native 逻辑 API/数据权威、三层设置与三端响应式 UI、7 阶段/25 子阶段 Core-first/垂直切片交付及最终验收方向**。详见 [decisions.md](decisions.md)、[provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。第 2～4 条为 Native 基线/合规约束而非额外表决；第 5 条一般的用户控制仍受 D-007/D-008 的产品默认与授权硬边界约束。**Round 8 已确定**评分框架/初始权重、软节奏、用户可调硬额度、云自动付费默认未授权、Job 恢复方向；精确请求/数据库 Schema、Provider 子能力与计费实现、状态/参考图阈值、**D-011 已冻结**上述 Mask/草稿/Gallery/GC/SavePoint 的中立协议及可调默认；**D-012 已冻结能力矩阵的表达、已知差异、约束降级原则和验收分层**；实际连接/模型/Workflow 的支持状态不能从文档推定，需逐 Target 验证，部分真实联测依赖用户授权。**D-013 已冻结** API/Schema 领域与读写边界、三层配置/跨端 UX 和 S0～S6/25 子阶段的规划方向；精确字段/路由/DB 事务、Live Provider 证据与可能阻塞设计交接须由随后 E0 审计列明。
 
 ## 3. Plan module map
 
@@ -38,7 +38,7 @@
 | [media-editing-gallery.md](media-editing-gallery.md) | D-009 分层 Media Studio/DAG/编辑类别 + D-010 可逆编辑/引用生命周期，历史候选留存 | 媒体架构、S5 |
 | [media-precision.md](media-precision.md) | **D-011 已冻结** Mask 8-bit 语义/像素坐标、命令+Checkpoint 草稿、模型/Workflow 能力声明、Gallery 默认、两阶段 GC/30/7 日宽限、完整 SavePoint/导入验收 | 媒体协议/存档/GC、Round 12 依赖、S5/S6 |
 | [provider-editing-matrix.md](provider-editing-matrix.md) | **D-012 已冻结** P0/P1 文档矩阵/Target 实际能力分离、操作与组合三态、Required/Preferred/Optional 显式降级及 L1/L2/L3 分层验收 | Provider Adapter/模型能力/预算/测试，S2/S6；实施时必读 |
-| [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) | **Round 13 候选，未冻结** Native Image 统一资源/API/设置/跨平台 UI、S0–S6 工程阶段与 A/B/C 交付路线 | Round 13 必读；后续工程实施/验收收口 |
+| [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) | **D-013 已冻结** Native 统一资源与 API 职责域、Connection/Target/Rendering UI、Windows/CachyOS/Termux、S0～S6/25 子阶段及 L1/L2/L3 验收 | E0 审计与后续实现路由；精确字段待审计 |
 
 后续如确定 Provider、参考图、视觉身份、媒体编辑或缓存等独立大模块，应只新增对应模块，不在 `index.md` 重复详细规格。
 
@@ -52,21 +52,24 @@
 → `AssetStore / Image Versions / Branch Save`
 → `Display / Review / Edit`.
 
-**已冻结**：正式提交后决策（D-002）；语义 IR + Adapter + Capabilities（D-003）；P0/P1/P2 与 Connection/Target/Rendering Profile（D-004）；**Visual Identity（稳定身份）+ Visual State（时点状态）+ Visual References（用途明确的参考图）分离**，不得跨分支污染叙事或泄露信息（D-005）；混合解析已提交正式状态与有锚点的叙事变化，经硬门禁/冲突审查、参考图用途过滤与 Provider 能力验证（D-006）；分级 Director 发现价值候选、按需调用 LLM、允许跳过、预算分离与持久 ImageJob（D-007）；Scene/Shot 时序、可解释自适应评分、初始频率/额度、云端金额默认不授权及 Job 状态对账/幂等恢复（D-008）。分层 Media Studio、不可变 ImageArtifact/MediaOperation DAG、Regenerate/Img2Img/Inpaint/Upscale 和 Gallery 为统一媒体链路（D-009）；Canonical Mask 草稿与提交资产分离、显式跨 Provider 能力/费用检查、生成结果先入历史、删除分级与引用可达 GC、SavePoint 闭包/显式参考晋升（D-010）。Canonical Mask、混合草稿恢复、能力声明规范、默认 Gallery、GC 与 SavePoint/导入验收（D-011）。模型/Workflow 的**能力矩阵与约束分级、L1/L2/L3 验收合同已由 D-012 冻结**；各个真实连接的状态和实时付费需在实际 Target 验证，Native API/数据表 Schema 与设置 UI 待 Round 13。
+**已冻结**：正式提交后决策（D-002）；语义 IR + Adapter + Capabilities（D-003）；P0/P1/P2 与 Connection/Target/Rendering Profile（D-004）；**Visual Identity（稳定身份）+ Visual State（时点状态）+ Visual References（用途明确的参考图）分离**，不得跨分支污染叙事或泄露信息（D-005）；混合解析已提交正式状态与有锚点的叙事变化，经硬门禁/冲突审查、参考图用途过滤与 Provider 能力验证（D-006）；分级 Director 发现价值候选、按需调用 LLM、允许跳过、预算分离与持久 ImageJob（D-007）；Scene/Shot 时序、可解释自适应评分、初始频率/额度、云端金额默认不授权及 Job 状态对账/幂等恢复（D-008）。分层 Media Studio、不可变 ImageArtifact/MediaOperation DAG、Regenerate/Img2Img/Inpaint/Upscale 和 Gallery 为统一媒体链路（D-009）；Canonical Mask 草稿与提交资产分离、显式跨 Provider 能力/费用检查、生成结果先入历史、删除分级与引用可达 GC、SavePoint 闭包/显式参考晋升（D-010）。Canonical Mask、混合草稿恢复、能力声明规范、默认 Gallery、GC 与 SavePoint/导入验收（D-011）。模型/Workflow 的能力矩阵与约束分级、L1/L2/L3 验收合同由 D-012 冻结；D-013 已冻结统一 Native 资源/API 职责、三层设置、三端 UI 和七阶段交付方式。具体 JSON/SQL/HTTP 字段、权限事务与真实 Provider 证据在 E0 审计中标注未决；没有运行 L3 的 Target 仍不得称为可用。
 
-## 5. Tentative stages and reading routes
+## 5. D-013 已冻结的七阶段/25 子阶段与阅读路由
 
-| 阶段（暂定） | 目标 | 必读 |
+E0 是**设计收口审计**而非产品 S 阶段，按当前用户指令先审计剩余 Schema/接口/阻塞，明确下一次实施授权后才创建 `feat/*`。S0～S6 是**同一临时 feat 工作分支**中的连续产品开发阶段，主/子阶段划分已冻结；完整子阶段列表及验收说明见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) §5。
+
+| 阶段（子阶段数） | 已定案目标 | 必读 Plan 模块 |
 | --- | --- | --- |
-| E0：冻结方案 + 接口设计 | 确认 scope、契约和验收，非产品开发 | `index.md` → `decisions.md` → 当前议题模块（Round 13: `native-contracts-ui-delivery.md`；以 `provider-protocol.md` + `provider-editing-matrix.md` + `visual-director.md` + `media-precision.md` 为前置）；涉及源码基线再读 `baseline-and-reference.md` |
-| S1：中立协议/资产证据 | 拆除当前图片记录对 NovelAI 渲染的硬绑定，保留版本及存档权威 | `index.md` → `provider-protocol.md`，以及后续确定的资产/持久化模块 |
-| S2：多后端适配 | 按 D-004 P0 NovelAI/ComfyUI/OpenAI Images → P1 Gemini/SD/Forge/RunningHub 交付；D-012 按每 Target 的实际能力与组合声明、L1/L2/L3 分层验证 | `index.md` → `provider-protocol.md` + `provider-editing-matrix.md`；后续各 Provider 子模块 |
-| S3：角色/世界视觉连续性 | 角色身份、外观、服饰/状态、场景、参考图和出处；不创建第二剧情权威 | `index.md` → `visual-continuity.md`；需调用图片后端时再读 `provider-protocol.md` |
-| S4：Visual Director 与触发 | 三种模式共用 D-007/D-008 分级事件调度、跨回合分割、评分/节奏、预算默认、持久作业 | `index.md` → `visual-director.md`；时序及模式约束再读 `architecture.md` |
-| S5：编辑/画廊/交互 | D-009/D-010 编辑架构与 D-011 Mask、草稿、Gallery/GC/Save 验收中立规范均已冻结；Round 12 细化 Provider 真实执行能力 | `index.md` → `media-editing-gallery.md` → `media-precision.md`，具体模型再读 `provider-protocol.md` |
-| S6：集成与回归 | 存档/分支/资产/成本/任务隔离、跨平台可用性 | `index.md` → 当前被改动模块、对应 Record |
+| **E0 设计审计（非开发阶段）** | 冻结的 D-001～D-013 与真实 `main` 基线交叉核查、列出精确 API/Schema/阻塞/交接 | `index.md` → `decisions.md` → `native-contracts-ui-delivery.md` → E0 审计模块 |
+| **S0 契约与 hard cutover（3）** | SourceRef/IR/身份、Native 资源与 API 权威、单一协议替换旧 NovelAI 中立硬耦合 | `native-contracts-ui-delivery.md` → `provider-protocol.md` / `architecture.md` |
+| **S1 Job/Media 中立内核（4）** | Connection/Target/Rendering、持久 ImageJob/预算、Media DAG/AssetStore、SavePoint/GC 安全 | `provider-protocol.md` → `visual-director.md` → `media-precision.md` |
+| **S2 P0 后端（3）** | NovelAI 垂直薄切片，然后 ComfyUI、OpenAI Images 的生成/编辑/Workflow 能力 | `provider-editing-matrix.md` → `provider-protocol.md` → `native-contracts-ui-delivery.md` |
+| **S3 视觉连续性/导演（4）** | Actor/VisualState/References、Scene/Shot、导演评分/三种模式、审批/频率/预算 | `visual-continuity.md` → `visual-director.md` |
+| **S4 Media Studio/Gallery（4）** | Mask Checkpoint、四类编辑操作、Gallery/晋升、GC/可编辑 SavePoint | `media-editing-gallery.md` → `media-precision.md` → `provider-editing-matrix.md` |
+| **S5 P1 后端（3）** | Gemini Native Image、SD WebUI/Forge、RunningHub 与 P2 Adapter 扩展机制 | `provider-protocol.md` → `provider-editing-matrix.md` |
+| **S6 三端与最终验收（4）** | Windows、CachyOS/KDE、Android Termux/手机浏览器，性能/安全/CI/文档交付 | `native-contracts-ui-delivery.md` → `media-precision.md` → 各被改动模块 |
 
-这些只是 **candidate stage routing**：阶段范围、先后和拆分都可随讨论变化，未经最终批准不能当成 Codex 的实施承诺。视频生成、视频素材、独立虚拟助手是否纳入需另行讨论。
+开发流程按 [Governance](../../../README.md) 维护**同一份**正式 `records/feat/native-visual-generation-deepening.md`，每阶段记录真实 HEAD、自动/CI/外部验收与未运行项，不在阶段间反复创建/删除 feat 分支或要求人为重复批准。产品功能/Provider 范围受既有 D-004/D-009 限制，P1 不得成为未兑现的“可选未来”。视频、完整 DCC/视频剪辑及额外发行平台仍未纳入批准的当前实施范围。
 
 ## 6. Cross-module constraints
 
@@ -102,8 +105,9 @@
 - Round 10: **C 能力感知的可逆 Media Studio — 已确认**；Canonical Mask 草稿/提交隔离、显式跨 Provider 编辑/许可、异步版本默认先入历史、引用安全 GC、SavePoint 可编辑闭包与参考晋升，见 [decisions.md](decisions.md) D-010 与 [media-editing-gallery.md](media-editing-gallery.md) §6。
 - Round 11: **C Canonical Raster Mask + 混合草稿检查点 + 安全媒体闭包 — 已确认**；0 保留/255 编辑、原图像素空间、默认空闲 2 秒/50 命令 Checkpoint、目标级能力声明、当前分支 Gallery、30/7 天可调 GC 宽限、SavePoint 完整可编辑和安全导入验收。见 [decisions.md](decisions.md) D-011 与 [media-precision.md](media-precision.md)。
 - Round 12: **C 分级约束协商 + 显式降级 + L1/L2/L3 验收 — 已确认**；P0/P1 文档家族矩阵与 Target 三态分离，真实可用性按连接/型号或 Workflow 验证，见 [decisions.md](decisions.md) D-012 与 [provider-editing-matrix.md](provider-editing-matrix.md)。
-- Round 13: **Native API/资源 Schema、三层配置及跨平台 UI、开发阶段/子阶段与最终验收收口 — 讨论中/未冻结**；A/B/C 候选详见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)。
-- 尚未定案：Native 模块数据/资源 Schema 与 HTTP/SDK API、模型具体费用/返回格式及需授权的真实 L3 测试、Setting/Provider/Target/Rendering 的交互与授权 UI、PC/Windows/CachyOS/Termux 跨端布局、视觉状态/引用强度的性能校准、正式开发阶段/子阶段与工作量/验收收口、批量/视频是否属于本工程的明确范围。D-011/D-012 已确定媒体安全协议、能力三态/降级约束和分层验收原则。
+- Round 13: **C Core-first 强契约/端到端切片/七阶段完整交付 — 已确认**，冻结统一 API/数据领域、三层配置、三端响应式 UI、7 个大阶段/25 子阶段及 L1/L2/L3/跨端验收原则，见 [decisions.md](decisions.md) D-013 与 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)。
+- **E0 收口审计：执行中**。先审计 D-001～D-013 的接口/依赖/风险与正式交接；**审计完成前不创建 feat 分支**。
+- E0 需列明：尚未逐字段冻结的 IR/资源/数据库/HTTP SDK 接口、真实 Provider 费用/能力/L3 缺口、正式设置 UI 实现细节、各平台真实设备证据、Scene/Reference 来源映射与外部资产权限、自动恢复的事务细节；D-013 的阶段数与路线已冻结，功能安全原则不因未填字段而放宽。未另行批准的视频/成熟多层编辑/新平台**不属于**本工程。
 - **禁止先行创建产品开发分支**；用户要求讨论完、设计冻结后由本对话创建正式 `feat/*` 分支供 Codex 开工。
 
 ## 9. Material routing/design changes
@@ -130,4 +134,6 @@
 
 2026-10-14：Round 11 用户批准方案 C，冻结 8-bit 0 保留/255 编辑的原图像素 Mask、2 秒/50 命令混合草稿、模型/Workflow 级三态编辑能力及组合门禁、分层 Gallery/版本 CAS、30/7 天双扫描 GC、正式 SavePoint 完整可编辑闭包与 .atriasave 安全导入验收（D-011）。新增 [media-precision.md](media-precision.md)。
 
-2026-10-14：Round 12 用户批准方案 C，冻结 P0/P1 的文档协议家族/真实 Target 两层矩阵、操作/组合能力三态、Required/Preferred/Optional 明确授权降级、费用/身份硬门禁与 L1/L2/L3 独立执行验收（D-012）。更新 [provider-editing-matrix.md](provider-editing-matrix.md)，严格标记没有执行真实模型/Workflow/端点联测。Round 13 进入统一 Native API/Schema、设置 UI、跨平台与工程/最终验收收口。设计期不以 Plan 代替实施 Record。
+2026-10-14：Round 12 用户批准方案 C，冻结 P0/P1 的文档协议家族/真实 Target 两层矩阵、操作/组合能力三态、Required/Preferred/Optional 明确授权降级、费用/身份硬门禁与 L1/L2/L3 独立执行验收（D-012）。更新 [provider-editing-matrix.md](provider-editing-matrix.md)，严格标记没有执行真实模型/Workflow/端点联测。
+
+2026-10-14：Round 13 用户批准方案 C，冻结 Native Resource/API 领域与不可变/可变/CAS/可重建投影分层、Connection/Target/Rendering 三层设置与三端响应式 UI、S0～S6 七阶段/25 子阶段、P0 首个垂直切片和 L1/L2/L3/FS+SQLite/三端验收（D-013）。E0 完整收口审计随后单独提交，**此前不创建 feat 分支**。设计期不以 Plan 代替实施 Record。
