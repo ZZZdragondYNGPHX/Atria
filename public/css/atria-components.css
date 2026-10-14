@@ -242,11 +242,11 @@
 }
 
 .atria-button[data-variant="primary"]:hover:not(:disabled) {
-    background: #39393b;
+    background: var(--atri-ink-hover);
 }
 
 .atria-button[data-variant="primary"]:active:not(:disabled) {
-    background: #141416;
+    background: var(--atri-ink-pressed);
 }
 
 .atria-button[data-variant="tinted"] {

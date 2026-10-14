@@ -74,7 +74,7 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
         await expect(activity.getByRole('button', { name: 'Apply ChangeSet', exact: true })).toHaveCount(0);
         if (compact) await nav.getByRole('button', { name: 'Editor', exact: true }).click();
     };
-    await shot('overview-dark');
+    await shot('overview-serene');
     if (compact) await nav.getByRole('button', { name: 'Project', exact: true }).click();
     await studio.getByLabel('Filter project resources').fill('observatory');
     await expect(studio.locator('.atria-studio-resource-tree').getByRole('button', { name: 'Arrival at the observatory' })).toBeVisible();
@@ -82,7 +82,7 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     await expect(studio.locator('.atria-studio-resource-tree')).toContainText('No matching resources');
     await studio.getByLabel('Filter project resources').fill('');
     await navigate('EntryPoints');
-    await center.getByLabel('displayName', { exact: true }).fill('A new arrival');
+    await center.getByLabel('Name', { exact: true }).fill('A new arrival');
     const before = await request(page, `projects/${projectId}`);
     await center.getByRole('button', { name: 'Review Changes', exact: true }).click();
     await expect(activity).toContainText('Review the proposed operations');
@@ -110,6 +110,18 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     await expect(center.locator('.atria-studio-preview-canvas')).toContainText('The sky is clear.'); await shot('preview');
     await navigate('Source');
     await expect(center.getByLabel('Source editor', { exact: true })).toBeEnabled();
+    const selectFile = async path => {
+        if (compact) await nav.getByRole('button', { name: 'Project', exact: true }).click();
+        await studio.locator('.atria-studio-resource-tree').getByRole('button', { name: path, exact: true }).click();
+        await expect(center.getByLabel('Source file', { exact: true })).toHaveValue(path);
+        await expect(center.getByLabel('Source editor', { exact: true })).toBeEnabled();
+    };
+    await selectFile('Main.aui');
+    const fileText = await center.getByLabel('Source editor', { exact: true }).inputValue();
+    await center.getByLabel('Source editor', { exact: true }).fill(fileText + '\n<!-- Unsent draft -->');
+    await selectFile('frontend.json'); await selectFile('Main.aui');
+    await expect(center.getByLabel('Source editor', { exact: true })).toHaveValue(fileText + '\n<!-- Unsent draft -->');
+    await center.getByLabel('Source editor', { exact: true }).fill(fileText);
     expect((await center.getByLabel('Source editor', { exact: true }).boundingBox()).height).toBeGreaterThanOrEqual(compact ? 240 : 300);
     await page.route('**/api/native/studio/projects/*/source?*', route => route.fulfill({ status: 503, json: { message: 'Source is temporarily unavailable' } }));
     await center.getByRole('button', { name: 'Reload file' }).click();

@@ -124,6 +124,91 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect((await f.core.load(h.handle, previous.session.sessionId)).revision.revisionId).toBe(previous.revision.revisionId);
     });
 
+    test('a late issued commit keeps its receipt without replacing a newer authority projection', async () => {
+        const previous = runtime.snapshot;
+        let release, issued, receipt;
+        const committed = new Promise(resolve => { issued = resolve; });
+        const resume = new Promise(resolve => { release = resolve; });
+        const request = runtime.request;
+        runtime.request = async (path, body) => {
+            const next = await request(path, body);
+            if (path === 'command') { issued(next); await resume; }
+            return next;
+        };
+        const pending = runtime.appendDraft({ name: 'Player', is_user: true, mes: 'Saved to original authority', extra: {} }, { onAccepted: value => { receipt = value; } });
+        const saved = await committed;
+        const newer = await f.core.applyRuntimeCommit(h.handle, previous.session.sessionId, { commands: [], statePatch: { atri_story_test: { source: 'newer' } } }, { expectedRevisionId: saved.revision.revisionId });
+        await runtime.acceptOperationSnapshot(newer);
+        const current = runtime.snapshot;
+        release(); await expect(pending).rejects.toMatchObject({ code: 'native_generation_revision_conflict', committed: true, nonFatal: true });
+        expect(receipt.revisionId).toBe(saved.revision.revisionId);
+        expect(runtime.snapshot).toBe(current); expect(runtime.snapshot.states.atri_story_test).toEqual({ source: 'newer' });
+        expect(runtime.failed).toBe(false); expect(reported).toEqual([]);
+        expect((await f.core.load(h.handle, previous.session.sessionId)).revision.revisionId).toBe(newer.revision.revisionId);
+        expect(runtime.snapshot.timeline.filter(item => item.content === 'Saved to original authority')).toHaveLength(1);
+    });
+
+    test.each(['update', 'patch', 'persist', 'derived'])('a late %s state receipt cannot replace a newer projection', async kind => {
+        const previous = runtime.snapshot;
+        let release, issued;
+        const committed = new Promise(resolve => { issued = resolve; });
+        const resume = new Promise(resolve => { release = resolve; });
+        const request = runtime.request;
+        runtime.request = async (path, body) => {
+            const next = await request(path, body);
+            if (path === 'command') { issued(next); await resume; }
+            return next;
+        };
+        const value = { source: 'issued' };
+        let pending;
+        if (kind === 'update') pending = runtime.updateState('atri_story_test', () => value);
+        if (kind === 'patch') pending = runtime.commitStatePatch({ atri_story_test: value });
+        if (kind === 'persist') {
+            runtime.host.runtimeState = () => ({ atri_story_test: value });
+            pending = runtime.persist();
+        }
+        if (kind === 'derived') {
+            const source = previous.timeline[0];
+            pending = runtime.openCommitment({ commitmentId: 'issued-commitment', content: 'Keep the gate open.',
+                sourceRefs: [{ kind: 'timeline', messageId: source.messageId, branchId: source.branchId, revisionId: previous.revision.revisionId, sequence: source.sequence }] });
+        }
+        const saved = await Promise.race([committed, pending.then(() => { throw new Error('Expected an issued state commit'); })]);
+        const newer = await f.core.applyRuntimeCommit(h.handle, previous.session.sessionId,
+            { commands: [], statePatch: { atri_story_test: { source: 'newer' } } }, { expectedRevisionId: saved.revision.revisionId });
+        await runtime.acceptOperationSnapshot(newer);
+        const current = runtime.snapshot;
+        release();
+        const outcome = await pending.then(result => ({ result, rejected: false }), result => ({ result, rejected: true }));
+        expect(outcome.rejected).toBe(kind !== 'derived');
+        expect(outcome.result).toMatchObject({ committed: true, receipt: { revisionId: saved.revision.revisionId },
+            ...(kind === 'derived' ? { ok: false, published: true } : { nonFatal: true }) });
+        expect(runtime.snapshot).toBe(current);
+        expect(runtime.snapshot.states.atri_story_test).toEqual({ source: 'newer' });
+        expect(runtime.failed).toBe(false); expect(reported).toEqual([]);
+        expect((await f.core.load(h.handle, previous.session.sessionId)).revision.revisionId).toBe(newer.revision.revisionId);
+    });
+
+    test('a failed old state request does not fail a newly installed projection', async () => {
+        const previous = runtime.snapshot;
+        let release, issued;
+        const started = new Promise(resolve => { issued = resolve; });
+        const resume = new Promise(resolve => { release = resolve; });
+        const request = runtime.request;
+        runtime.request = async (path, body) => {
+            if (path !== 'command') return request(path, body);
+            issued(); await resume; throw new Error('Old transport failed');
+        };
+        const pending = runtime.commitStatePatch({ atri_story_test: { source: 'old' } });
+        await started;
+        const newer = await f.core.applyRuntimeCommit(h.handle, previous.session.sessionId,
+            { commands: [], statePatch: { atri_story_test: { source: 'newer' } } }, { expectedRevisionId: previous.revision.revisionId });
+        await runtime.acceptOperationSnapshot(newer);
+        const current = runtime.snapshot;
+        release(); await expect(pending).rejects.toThrow('Old transport failed');
+        expect(runtime.snapshot).toBe(current);
+        expect(runtime.failed).toBe(false); expect(reported).toEqual([]);
+    });
+
     async function generateAssistant(text = 'The harbor is quiet.') {
         expect(await runtime.prepareGeneration('normal')).toBe('normal');
         messages.push({ name: 'Actor', is_user: false, is_system: false, mes: text, extra: {} });

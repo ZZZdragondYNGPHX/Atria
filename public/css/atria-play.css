@@ -141,7 +141,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
     .atria-native-play-actions__button:not(:disabled):hover, .atria-play-more summary:hover { background: var(--atri-fill-hover); }
-    .atria-native-play-actions__button.atria-play-primary:hover { background: #39393b; }
+    .atria-native-play-actions__button.atria-play-primary:hover { background: var(--atri-ink-hover); }
 }
 .atria-native-play-actions__button:not(:disabled):active:not(:focus-visible), .atria-play-composer__send:not(:disabled):active:not(:focus-visible) { transform: scale(.97); }
 .atria-app-shell[data-atria-viewport="compact"] .atria-native-play-landing { padding: 28px 16px; }

@@ -41,18 +41,22 @@ export async function validateSourceText(info, text, { parseYaml, parseXml, vali
     if (validateStructured) await validateStructured(parsed, text);
 }
 
-export async function mountSourceEditor({ document: doc, root, projectId, stageOperations, client = nativeStudioClient, validateStructured = null }) {
+export async function mountSourceEditor({ document: doc, root, projectId, stageOperations, client = nativeStudioClient, validateStructured = null, initialPath, onSelection = () => {}, onReviewBusy = () => {} }) {
     const shell = el(doc, 'section', 'atri-source-editor', undefined, root); shell.dataset.atriaSourceEditor = 'true';
     const status = el(doc, 'p', '', tl('Reading project sources…'), shell); status.setAttribute('role', 'status');
     try {
         const sources = await client.listSources(projectId);
+        if (!shell.isConnected) return;
         if (!sources.length) { status.textContent = tl('This project currently contains only structured manifest resources.'); return; }
         const label = el(doc, 'label', 'atri-library-field', tl('File'), shell); const chooser = el(doc, 'select', '', undefined, label); chooser.setAttribute('aria-label', tl('Source file'));
         for (const source of sources) { const option = el(doc, 'option', '', source.path, chooser); option.value = source.path; }
+        if (sources.some(source => source.path === initialPath)) chooser.value = initialPath;
+        chooser.name = 'source-file';
         const editor = el(doc, 'textarea', 'text_pole atria-studio-editor__textarea', undefined, shell); editor.setAttribute('aria-label', tl('Source editor')); editor.spellcheck = false;
         const diffBox = el(doc, 'section', 'atri-source-diff', undefined, shell); el(doc, 'h4', '', tl('Proposed text changes'), diffBox);
         const diff = el(doc, 'pre', '', undefined, diffBox); const note = el(doc, 'p', '', undefined, diffBox);
-        let loaded = null, sequence = 0, busy = false; const drafts = new Map(); const originals = new Map();
+        let loaded = null, sequence = 0, busy = false, disposed = false; const drafts = new Map(); const originals = new Map();
+        const observe = (callback, value) => { if (!disposed && shell.isConnected) { try { callback(value); } catch { /* Presentation observers do not own drafts. */ } } };
         const markDirty = () => { shell.dataset.atriaDraftDirty = String([...drafts].some(([path, text]) => text !== originals.get(path))); };
         const review = el(doc, 'button', 'atri-library-button atri-library-button--primary', tl('Review Source Change'), shell); review.type = 'button'; review.disabled = true;
         function showDiff() {
@@ -62,13 +66,24 @@ export async function mountSourceEditor({ document: doc, root, projectId, stageO
         function remember() { if (loaded && !loaded.info.readOnly) { drafts.set(loaded.path, editor.value); markDirty(); } }
         async function load(reload = false) {
             remember(); const token = ++sequence, path = chooser.value; busy = true; loaded = null; editor.disabled = true; review.disabled = true; status.textContent = tl('Reading project sources…');
+            editor.value = drafts.get(path) ?? '';
+            observe(onSelection, path);
             try {
-                const file = await client.readSource(projectId, path); if (token !== sequence || !shell.isConnected) return;
+                const file = await client.readSource(projectId, path); if (disposed || token !== sequence || !shell.isConnected) return;
                 const info = sourceFileInfo(path, file.content); originals.set(path, info.text); loaded = { path, info }; if (reload) drafts.delete(path);
                 editor.value = info.readOnly ? '' : drafts.get(path) ?? info.text; editor.readOnly = info.readOnly; editor.disabled = info.readOnly;
                 status.textContent = `${tl(info.type)} · ${info.size} ${tl('bytes')}` + (info.readOnly ? ' · ' + tl(info.reason) : ' · ' + tl(['json', 'jsonl', 'yaml', 'yml', 'xml', 'svg'].includes(info.extension) ? 'Format validation runs before review.' : 'Plain text editing. Project validation runs when changes are applied.'));
                 shell.querySelector(':scope > .atri-library-feedback')?.remove(); diffBox.hidden = info.readOnly; markDirty(); showDiff(); review.disabled = info.readOnly;
-            } catch (error) { if (token === sequence) { status.textContent = tl('Could not load sources'); feedback(doc, shell, error.message, true); } } finally { if (token === sequence) busy = false; }
+            } catch (error) {
+                if (!disposed && token === sequence && shell.isConnected) {
+                    status.textContent = tl('Could not load sources');
+                    if (drafts.has(path)) {
+                        editor.value = drafts.get(path); editor.disabled = false; editor.readOnly = true;
+                        feedback(doc, shell, tl('Could not read this file. Your last draft is shown read-only so you can copy it. Reload to continue editing.') + ' ' + error.message, true);
+                        if (doc.activeElement === doc.body || shell.contains(doc.activeElement)) editor.focus();
+                    } else feedback(doc, shell, error.message, true);
+                }
+            } finally { if (token === sequence) busy = false; }
         }
         editor.addEventListener('input', () => { editor.removeAttribute('aria-invalid'); shell.querySelector(':scope > .atri-library-feedback')?.remove(); remember(); showDiff(); });
         chooser.addEventListener('change', () => void load());
@@ -76,14 +91,24 @@ export async function mountSourceEditor({ document: doc, root, projectId, stageO
             if (busy || !loaded || loaded.info.readOnly) return;
             const current = loaded, text = editor.value;
             busy = true; review.disabled = true; chooser.disabled = true; editor.disabled = true;
+            observe(onReviewBusy, true);
             try {
                 await validateSourceText(current.info, text, { validateStructured: validateStructured ? (value, text) => validateStructured(current.path, value, text) : null });
                 if (current.info.text === text) { feedback(doc, shell, tl('No text changes.')); return; }
-                if (!shell.isConnected || loaded !== current) return;
+                if (disposed || !shell.isConnected || loaded !== current) return;
                 showDiff(); await stageOperations([sourceWriteOperation(current.path, text)], tl('Review Source Change'));
-            } catch (error) { editor.setAttribute('aria-invalid', 'true'); feedback(doc, shell, tl('Check the file format. Your draft is still here.') + ' ' + error.message, true); } finally { busy = false; review.disabled = !loaded || loaded.info.readOnly; chooser.disabled = false; editor.disabled = !loaded || loaded.info.readOnly; }
+            } catch (error) { if (!disposed && shell.isConnected) { editor.setAttribute('aria-invalid', 'true'); feedback(doc, shell, tl('Check the file format. Your draft is still here.') + ' ' + error.message, true); } } finally { busy = false; review.disabled = !loaded || loaded.info.readOnly; chooser.disabled = false; editor.disabled = !loaded || loaded.info.readOnly; observe(onReviewBusy, false); }
         });
         action(doc, shell, 'Reload file', async () => { if (!busy && confirmAtriaDraftLeave(doc, shell)) await load(true); });
         await load();
+        return Object.freeze({
+            async selectFile(path) {
+                if (disposed || chooser.disabled || !sources.some(source => source.path === path)) return false;
+                if (busy && chooser.value === path) return false;
+                if (loaded?.path === path && chooser.value === path) return true;
+                chooser.value = path; await load(); return !disposed && loaded?.path === path;
+            },
+            dispose() { disposed = true; sequence += 1; },
+        });
     } catch (error) { status.textContent = tl('Could not load sources'); feedback(doc, shell, error.message, true); action(doc, shell, 'Retry', () => { shell.remove(); return mountSourceEditor({ document: doc, root, projectId, stageOperations, client, validateStructured }); }); }
 }

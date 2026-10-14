@@ -67,7 +67,7 @@
 [data-atria-viewport="compact"] .atri-runtime-section-picker > span { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
 @media (hover: hover) and (pointer: fine) {
     .atri-runtime button:not(:disabled):hover { background: var(--atri-fill-hover); }
-    .atri-runtime button[type="submit"]:hover:not(:disabled), .atri-runtime-toolbar > button:hover:not(:disabled) { background: #39393b; }
+    .atri-runtime button[type="submit"]:hover:not(:disabled), .atri-runtime-toolbar > button:hover:not(:disabled) { background: var(--atri-ink-hover); }
     .atri-runtime button:not(:disabled):active:not(:focus-visible) { transform: scale(.97); }
 }
 .atri-runtime[data-atria-reduced-motion="true"] button { transition: none; transform: none; }

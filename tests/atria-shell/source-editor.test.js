@@ -39,5 +39,36 @@ test('switching to binary disables writes and restores unsaved text on return; f
     ui.chooser.value = 'a.json'; ui.chooser.dispatchEvent(new Event('change')); await tick(); expect(ui.editor.value).toBe('{"a":2}');
     const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
     ui.client.readSource.mockRejectedValueOnce(new Error('offline')); ui.button('Reload file').click(); await tick(); expect(ui.button('Review Source Change').disabled).toBe(true);
+    expect(ui.editor.value).toBe('{"a":2}'); expect(ui.editor.readOnly).toBe(true); expect(ui.editor.disabled).toBe(false);
     ui.button('Reload file').click(); await tick(); expect(ui.editor.value).toBe('{"a":1}'); expect(ui.button('Review Source Change').disabled).toBe(false); confirm.mockRestore();
+});
+
+test('file tree selection shares the selector draft and late reads cannot replace a newer file', async () => {
+    const root = document.createElement('div'); document.body.replaceChildren(root);
+    let release;
+    const client = { listSources: async () => [{ path: 'a.json' }, { path: 'b.json' }], readSource: jest.fn(async (_, path) => ({ content: content(path === 'a.json' ? '{"a":1}' : '{"b":1}') })) };
+    const onSelection = jest.fn();
+    const controller = await mountSourceEditor({ document, root, projectId: 'project_a', client, stageOperations: jest.fn(), onSelection });
+    const editor = root.querySelector('textarea'); editor.value = '{"a":2}'; editor.dispatchEvent(new Event('input'));
+    client.readSource.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+    const old = controller.selectFile('b.json');
+    await expect(controller.selectFile('b.json')).resolves.toBe(false);
+    await expect(controller.selectFile('a.json')).resolves.toBe(true);
+    expect(editor.value).toBe('{"a":2}');
+    release({ content: content('{"b":99}') }); await expect(old).resolves.toBe(false);
+    expect(editor.value).toBe('{"a":2}'); expect(root.querySelector('select').value).toBe('a.json');
+    expect(onSelection.mock.calls.map(([path]) => path)).toEqual(['a.json', 'b.json', 'a.json']);
+    controller.dispose(); await expect(controller.selectFile('b.json')).resolves.toBe(false);
+});
+
+test('external selection is unavailable while a reviewed write is preparing and disposal blocks late staging', async () => {
+    const root = document.createElement('div'); document.body.replaceChildren(root); let finish;
+    const validateStructured = () => new Promise(resolve => { finish = resolve; });
+    const stageOperations = jest.fn(), onReviewBusy = jest.fn();
+    const client = { listSources: async () => [{ path: 'a.json' }, { path: 'b.json' }], readSource: async () => ({ content: content('{"a":1}') }) };
+    const controller = await mountSourceEditor({ document, root, projectId: 'project_a', client, stageOperations, validateStructured, onReviewBusy });
+    root.querySelector('textarea').value = '{"a":2}'; root.querySelector('textarea').dispatchEvent(new Event('input'));
+    [...root.querySelectorAll('button')].find(node => node.textContent === 'Review Source Change').click();
+    await expect(controller.selectFile('b.json')).resolves.toBe(false); expect(onReviewBusy).toHaveBeenCalledWith(true);
+    controller.dispose(); finish(); await tick(); expect(stageOperations).not.toHaveBeenCalled();
 });

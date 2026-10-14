@@ -11,6 +11,14 @@ import { projectAgentConversation, completeProjectAgentConversation, projectAgen
 
 const MAX_MODEL_ROUNDS = 12;
 const STOP_STATES = new Set(['review', 'blocked', 'conflict', 'taken_over', 'completed', 'committing', 'cancelled']);
+const statusLabels = {
+    planning: 'Planning', planned: 'Plan ready', working: 'Working…', evaluating: 'Checking proposal…',
+    repair: 'Needs correction', review: 'Ready for review', committing: 'Saving changes…',
+    taken_over: 'Manual editing', conflict: 'Version conflict', blocked: 'Needs attention',
+    completed: 'Completed', cancelled: 'Cancelled', pending: 'Pending', ready: 'Ready', passed: 'Passed', failed: 'Failed',
+};
+const taskStatusText = status => t(statusLabels[status] || status);
+const impactLabels = { low: 'Low impact', medium: 'Moderate impact', high: 'High impact' };
 
 function clone(value) {
     return value == null ? value : structuredClone(value);
@@ -341,7 +349,8 @@ function actionButton(documentRef, label, handler, { primary = false, disabled =
 
 function formatTaskStatus(task) {
     if (!task) return t('No active task');
-    return formatProductText('${0} · repair ${1}/${2}', [t(task.status), task.repairRound, task.maxRepairRounds]);
+    const status = taskStatusText(task.status);
+    return task.repairRound > 0 ? formatProductText('${0} · repair ${1}/${2}', [status, task.repairRound, task.maxRepairRounds]) : status;
 }
 
 function renderPlan(documentRef, task) {
@@ -359,7 +368,8 @@ function renderPlan(documentRef, task) {
     for (const step of task.plan.steps) {
         const item = node(documentRef, 'li');
         item.dataset.status = step.status;
-        item.textContent = `${step.title} · ${step.status} · ${step.impact}`;
+        const impact = impactLabels[step.impact] || step.impact;
+        item.textContent = `${step.title} · ${taskStatusText(step.status)} · ${t(impact)}`;
         list.append(item);
     }
     section.append(list);
@@ -373,7 +383,7 @@ function renderConversation(documentRef, messages) {
         if (message.role === 'tool') continue;
         const row = node(documentRef, 'div', 'atria-project-agent-message');
         row.dataset.role = message.role;
-        row.textContent = String(message.content || '').trim() || (message.tool_calls?.length ? 'Working with Project tools…' : '');
+        row.textContent = String(message.content || '').trim() || (message.tool_calls?.length ? t('Working with Project tools…') : '');
         if (row.textContent) section.append(row);
     }
     return section;
@@ -421,7 +431,7 @@ export function mountNativeStudioAgent({
         const selection = focused?.tagName === 'TEXTAREA' ? [focused.selectionStart, focused.selectionEnd] : null;
         const restoreFocus = () => {
             const target = [...slot.querySelectorAll('button,select,textarea')].find(item => !item.disabled && (focusLabel ? item.getAttribute('aria-label') === focusLabel : focusText && item.textContent === focusText));
-            target?.focus({ preventScroll: true });
+            if (focused) (target || slot.querySelector('h3'))?.focus({ preventScroll: true });
             if (selection && target?.tagName === 'TEXTAREA') target.setSelectionRange(...selection);
         };
         disposeEvolution?.(); disposeEvolution = null;
@@ -431,8 +441,10 @@ export function mountNativeStudioAgent({
         const header = node(documentRef, 'header', 'atria-project-agent-header');
         const title = node(documentRef, 'div');
         const h3 = node(documentRef, 'h3');
+        h3.tabIndex = -1;
         h3.textContent = t('Project Agent');
         const status = node(documentRef, 'span');
+        status.setAttribute('role', 'status');
         status.textContent = formatTaskStatus(activeTask);
         title.append(h3, status);
         header.append(title);
@@ -447,7 +459,7 @@ export function mountNativeStudioAgent({
         for (const task of tasks) {
             const option = node(documentRef, 'option');
             option.value = task.taskId;
-            option.textContent = `${task.intent.slice(0, 44)} · ${task.status}`;
+            option.textContent = `${task.intent.slice(0, 44)} · ${taskStatusText(task.status)}`;
             option.selected = task.taskId === activeTask?.taskId;
             taskSelect.append(option);
         }
@@ -554,14 +566,14 @@ export function mountNativeStudioAgent({
             })),
         }, null, 2);
         const summary = node(documentRef, 'p');
-        summary.textContent = formatProductText('${0} proposed operations · ${1}', [activeTask.operations?.length || 0, activeTask.validation?.status || 'Not validated']);
+        summary.textContent = formatProductText('${0} proposed operations · ${1}', [activeTask.operations?.length || 0, activeTask.validation?.status ? taskStatusText(activeTask.validation.status) : t('Not validated')]);
         const details = node(documentRef, 'details', 'atri-studio-details');
         const detailsTitle = node(documentRef, 'summary'); detailsTitle.textContent = t('Task evidence and exact revision');
         details.append(detailsTitle, pre);
         progress.append(progressTitle, summary, details);
         if (activeTask.status === 'review') {
             const notice = node(documentRef, 'p');
-            notice.textContent = activeTask.review?.highImpact ? 'High-impact changes require your review. Inspect Changes before committing.' : 'Ready for your review. No project changes are committed until you choose Review & Commit.';
+            notice.textContent = t(activeTask.review?.highImpact ? 'High-impact changes require your review. Inspect Changes before committing.' : 'Ready for your review. No project changes are committed until you choose Review & Commit.');
             progress.append(notice);
         }
         const conversation = node(documentRef, 'details', 'atri-studio-details');
@@ -658,7 +670,7 @@ export function mountNativeStudioAgent({
             messages = result.messages;
             tasks = await nativeStudioClient.listAgentTasks(projectId);
             notifyTask();
-            onLog('agent', formatProductText('Project Agent stopped at ${0}', [t(activeTask.status)]), activeTask);
+            onLog('agent', formatProductText('Project Agent stopped at ${0}', [taskStatusText(activeTask.status)]), activeTask);
         } catch (error) {
             if (!runController.signal.aborted) {
                 showError(error);

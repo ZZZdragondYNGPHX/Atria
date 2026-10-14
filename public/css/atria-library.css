@@ -13,6 +13,7 @@
 .atri-library-button:disabled { opacity: .5; cursor: default; }
 .atri-library-button[aria-busy="true"] { cursor: progress; }
 .atri-library-button:not(:disabled):active:not(:focus-visible) { transform: scale(.97); }
+.atria-app-shell .atri-library-button--primary:not(:disabled):active { background: var(--atri-ink-pressed); }
 .atri-library-field { display: grid; gap: 8px; font-size: var(--atri-text-callout); min-width: 0; }
 .atria-app-shell .atri-library-field > input, .atria-app-shell .atri-library-field > select, .atria-app-shell .atri-library-field > textarea,
 .atria-app-shell .atri-library-section-picker select { min-width: 0; max-width: 100%; width: 100%; background: var(--atri-surface-2); color: var(--atri-text-primary); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md); min-height: 40px; padding: 8px 12px; font: inherit; font-size: max(16px, var(--atri-text-body)); margin: 0; }
@@ -71,10 +72,10 @@
 [data-atria-domain-workspace="library"] :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--atri-accent-text); outline-offset: 3px; }
 @media (hover: hover) {
     .atria-app-shell .atri-library-button:not(:disabled):hover { background: var(--atri-fill-hover); }
-    .atria-app-shell .atri-library-button--primary:not(:disabled):hover { background: var(--atri-accent-hover); }
+    .atria-app-shell .atri-library-button--primary:not(:disabled):hover { background: var(--atri-ink-hover); }
     .atri-library-work-open:hover .atri-library-cover { filter: brightness(1.08); }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_manager button:not(:disabled):hover { background: var(--atri-fill-hover); }
-    :is(.atria-skill-workspace-host, .popup) .atria_skill_manager .atria_skill_toolbar_btn_primary:not(:disabled):hover { background: var(--atri-accent-hover); }
+    :is(.atria-skill-workspace-host, .popup) .atria_skill_manager .atria_skill_toolbar_btn_primary:not(:disabled):hover { background: var(--atri-ink-hover); }
 }
 .atria-app-shell[data-atria-viewport="medium"] .atri-library-posters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .atria-app-shell:is([data-atria-viewport="compact"], [data-atria-viewport="medium"]) [data-atria-domain-workspace="library"] > .atria-domain-workspace__nav { display: none; }

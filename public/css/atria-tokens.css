@@ -63,6 +63,8 @@
     --atri-shadow-3: 0 28px 72px rgb(0 0 0 / .12), 0 2px 8px rgb(0 0 0 / .04);
     --atri-cover-ink: #fff;
     --atri-ink: #1c1c1e;
+    --atri-ink-hover: #39393b;
+    --atri-ink-pressed: #141416;
     --atri-blue: #3273f6;
 
     /* Typography */

@@ -222,19 +222,25 @@ function projectListCard(documentRef, record, host, onDeleted) {
     const meta = documentRef.createElement('p'); meta.textContent = t('Updated') + ' ' + formatTime(project.updatedAt || project.createdAt);
     info.append(title, meta);
     row.append(info, button(documentRef, 'Open Project', () => host.openBuild(project.projectId, project.displayName), { primary: true }));
-    mountProjectDeletion({ document: documentRef, root: row, project, revision: record.revision?.revision, onDeleted: () => onDeleted(project.projectId) });
+    const management = documentRef.createElement('details'); management.className = 'atri-studio-project-management';
+    const manage = documentRef.createElement('summary'); manage.textContent = t('Manage'); management.append(manage); row.append(management);
+    mountProjectDeletion({ document: documentRef, root: management, project, revision: record.revision?.revision, onDeleted: () => onDeleted(project.projectId) });
     return row;
 }
 
 async function renderProjectList(documentRef, root, host) {
     let projects = await nativeStudioClient.listProjects({ summary: true });
     root.dataset.atriaBuildProjects = 'true';
-    root.append(heading(documentRef, 'Studio projects', 'Create and refine your interactive works.'));
+    const header = heading(documentRef, 'Studio projects', 'Create and refine your interactive works.');
+    const title = documentRef.createElement('h2'); title.textContent = header.firstElementChild.textContent; header.firstElementChild.replaceWith(title);
+    root.append(header);
+    const surface = documentRef.createElement('section'); surface.className = 'atri-studio-project-surface'; root.append(surface);
     const creation = documentRef.createElement('details'); creation.className = 'atri-studio-details';
     const newProject = documentRef.createElement('summary'); newProject.textContent = t('New Project');
     const name = textInput(documentRef, '', 'Project name'); name.required = true; name.maxLength = 160;
+    name.addEventListener('input', () => name.setCustomValidity(''));
     creation.append(newProject, field(documentRef, 'Project name', name), button(documentRef, 'Create Project', async () => {
-        if (!name.value.trim()) { name.focus(); name.reportValidity(); return; }
+        if (!name.value.trim()) { name.setCustomValidity(t('Enter a project name.')); name.focus(); name.reportValidity(); return; }
         const projectId = createStudioNativeId('project');
         const source = {
             format: 'atria-project-source', schemaVersion: 1,
@@ -242,13 +248,16 @@ async function renderProjectList(documentRef, root, host) {
             package: { name: name.value.trim(), version: '1.0.0', actors: [], capabilities: ['narrative'], permissions: [], entryPoints: [{ entryPointId: createStudioNativeId('entry'), displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
             resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] },
         };
-        await nativeStudioClient.createProject(source);
-        host.openBuild(projectId, source.project.displayName);
+        creation.inert = true;
+        try {
+            await nativeStudioClient.createProject(source);
+            host.openBuild(projectId, source.project.displayName);
+        } finally { creation.inert = false; }
     }, { primary: true }));
-    root.append(creation);
+    surface.append(creation);
     const search = textInput(documentRef, '', 'Search projects'); search.type = 'search';
-    root.append(field(documentRef, 'Search projects', search));
-    const list = documentRef.createElement('div'); list.className = 'atri-studio-project-list'; root.append(list);
+    surface.append(field(documentRef, 'Search projects', search));
+    const list = documentRef.createElement('div'); list.className = 'atri-studio-project-list'; surface.append(list);
     const fill = () => {
         list.replaceChildren();
         const found = projects.filter(record => (record.project || record).displayName.toLowerCase().includes(search.value.trim().toLowerCase()));
@@ -287,14 +296,23 @@ function createResourceTree(documentRef, state, selectView) {
         const needle = filterValue.trim().toLowerCase();
         for (const [id, label] of STUDIO_VIEWS) {
             const items = sourceSection(state.source, id);
+            const paths = id === 'source' ? (state.files || []).map(file => typeof file === 'string' ? file : file.path).filter(Boolean) : [];
             const sectionMatch = t(label).toLowerCase().includes(needle);
-            if (needle && !sectionMatch && !(items || []).some(item => displayNameFor(item, id).toLowerCase().includes(needle))) continue;
+            if (needle && !sectionMatch && !paths.some(path => path.toLowerCase().includes(needle)) && !(items || []).some(item => displayNameFor(item, id).toLowerCase().includes(needle))) continue;
             const row = button(documentRef, label, () => selectView(id), { active: state.activeView === id });
             row.className = 'atria-studio-resource-tree__item';
             row.dataset.atriaStudioResource = id;
             list.append(row);
 
             row.setAttribute('aria-current', state.activeView === id ? 'page' : 'false');
+            for (const path of paths) {
+                if (needle && !sectionMatch && !path.toLowerCase().includes(needle)) continue;
+                const selected = state.activeView === 'source' && state.sourceFileSelection === path;
+                const file = button(documentRef, '', () => selectView('source', undefined, undefined, path), { active: selected, disabled: state.sourceReviewing });
+                file.textContent = path; file.title = path;
+                file.className = 'atria-studio-resource-tree__item atria-studio-resource-tree__item--child atria-studio-resource-tree__item--file';
+                file.dataset.atriaStudioSourceFile = path; file.setAttribute('aria-current', selected ? 'page' : 'false'); list.append(file);
+            }
             if (!Array.isArray(items)) continue;
             const exactEntrySelection = id === 'entrypoints' && !state.entryPointCollection && new Set(items.map(item => item.entryPointId)).size === items.length;
             const exactKnowledgeSelection = id === 'knowledge' && !state.knowledgeCollection && new Set(items.map(item => item.knowledgeBase?.knowledgeBaseId)).size === items.length && !items.some(item => state.source.dependencies.knowledge.some(ref => ref.knowledgeBaseId === item.knowledgeBase?.knowledgeBaseId));
@@ -587,8 +605,20 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     const drafts = observeAtriaDrafts({ document: documentRef, root: shell });
     state.confirmEditorLeave = () => !state.applying && !state.inspecting && confirmAtriaDraftLeave(documentRef, center);
-    function resourceTreeSelect(view, index, pluginType) {
+    function resourceTreeSelect(view, index, pluginType, sourcePath) {
+        if (view === 'source' && !sourcePath && state.activeView === 'source' && state.sourceEditor) {
+            state.mobileView = 'editor'; updateMobile(); return true;
+        }
+        if (view === 'source' && sourcePath && state.activeView === 'source' && state.sourceEditor) {
+            state.mobileView = 'editor'; updateMobile();
+            return state.sourceEditor.selectFile(sourcePath).then(selected => {
+                if (!selected || state.disposed || state.activeView !== 'source' || state.sourceFileSelection !== sourcePath) return;
+                state.mobileView = 'editor'; updateMobile();
+                const h = center.querySelector('h3'); if (h) { h.tabIndex = -1; h.focus(); }
+            });
+        }
         if (!state.confirmEditorLeave()) return false;
+        if (view === 'source' && sourcePath) state.sourceFileSelection = sourcePath;
         if (index !== undefined) state.collectionSelection[view] = index;
         if (view === 'actors' && index !== undefined) { state.actorSelection = state.source.package.actors[index]?.actorId; state.actorCollection = false; }
         if (view === 'entrypoints' && index !== undefined) { state.entryPointSelection = state.source.package.entryPoints[index]?.entryPointId; state.entryPointCollection = false; }
@@ -1132,8 +1162,12 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     async function renderSource(body) {
         body.append(heading(documentRef, 'Source', 'Edit project files directly, then review the proposed changes before applying.'));
-        await mountSourceEditor({ document: documentRef, root: body, projectId, stageOperations,
+        const controller = await mountSourceEditor({ document: documentRef, root: body, projectId, stageOperations, initialPath: state.sourceFileSelection,
+            onSelection: path => { if (!state.disposed && body.isConnected) { state.sourceFileSelection = path; tree.render(); } },
+            onReviewBusy: busy => { if (!state.disposed && body.isConnected) { state.sourceReviewing = busy; tree.render(); } },
         });
+        if (state.disposed || !body.isConnected) { controller?.dispose(); return; }
+        state.sourceEditor = controller;
     }
 
     async function renderPreview(body) {
@@ -1229,6 +1263,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     function renderEditor() {
+        state.sourceEditor?.dispose(); state.sourceEditor = null; state.sourceReviewing = false;
         state.actorEditor = null;
         state.entryPointEditor = null;
         state.worldEditor?.dispose?.(); state.worldEditor = null;
@@ -1539,6 +1574,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         dismissTransient,
         dispose() {
             state.disposed = true;
+            state.sourceEditor?.dispose();
             drafts.dispose();
             state.structuredEditor?.dispose();
             state.previewMount?.dispose();

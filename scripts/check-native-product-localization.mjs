@@ -27,7 +27,20 @@ export function auditProductSource(source, filename, catalogs = locales) {
     };
     linter.defineRule('product-copy', { create(context) {
         return {
+            VariableDeclarator(node) {
+                if (filename.endsWith('/native/studio-agent.js') && ['statusLabels', 'impactLabels'].includes(node.id?.name)) {
+                    for (const property of node.init?.properties || []) { const text = literal(property.value); if (text) missing(property, text); }
+                }
+            },
+            NewExpression(node) {
+                if (/\/(?:login|entry-localization)\.js$/.test(filename) && node.callee.name === 'Error') {
+                    const text = literal(node.arguments[0]); if (text) missing(node, text);
+                }
+            },
             Property(node) {
+                if (filename.endsWith('/login.js') && node.key?.type === 'Identifier' && /^oauth_|unsupported_provider|provider_not_configured|discord_guild_check_failed/.test(node.key.name)) {
+                    const text = literal(node.value); if (text) missing(node, text);
+                }
                 if (filename.endsWith('/native/runtime-client.js') && node.value?.type === 'ArrayExpression') {
                     const text = literal(node.value.elements[0]);
                     if (text) missing(node, text);
@@ -36,6 +49,8 @@ export function auditProductSource(source, filename, catalogs = locales) {
             CallExpression(node) {
                 const name = node.callee.name;
                 let index = ['tl', 't', 'translateShellText', 'fmt', 'formatShellText', 'formatProductText', 'i18n', 'i18nFormat'].includes(name) ? 0 : null;
+                if (filename.endsWith('/login.js') && name === 'displayError') index = 0;
+                if (filename.endsWith('/login.js') && name === 'setEntryText') index = 1;
                 if (name === 'node' && filename.endsWith('runtime-workspace.js') || name === 'node' && filename.endsWith('retrieval-workspace.js')) index = 1;
                 if (['button', 'notice'].includes(name) && /(?:runtime|retrieval)-workspace.js$/.test(filename)) index = 0;
                 if (['action', 'field', 'disclosure'].includes(name) && source.includes('from \'./library-ui.js\'')) index = 2;
@@ -74,8 +89,10 @@ export function auditProductSource(source, filename, catalogs = locales) {
                     const init = scope?.set.get(node.left.object.name)?.defs?.[0]?.node?.init;
                     if (init?.type === 'CallExpression' && init.callee.property?.name === 'createElement' && literal(init.arguments[0]) === 'style') return;
                 }
-                const text = literal(node.right);
-                if (visible(text)) findings.push({ line: node.loc.start.line, reason: 'raw UI copy', text });
+                for (const leaf of leaves(node.right)) {
+                    const text = literal(leaf);
+                    if (visible(text)) findings.push({ line: node.loc.start.line, reason: 'raw UI copy', text });
+                }
             },
         };
     } });
@@ -112,6 +129,15 @@ function sourceFiles(directory) {
 
 export function auditProductLocalization() {
     const findings = [];
+    for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js']) {
+        for (const issue of auditProductSource(fs.readFileSync(path.join(root, filename), 'utf8'), filename)) findings.push({ filename, ...issue });
+    }
+    const entryHtml = fs.readFileSync(path.join(root, 'public/login.html'), 'utf8');
+    for (const match of entryHtml.matchAll(/data-entry-(?:text|label|description)="([^"]+)"/g)) {
+        const text = match[1].replaceAll('&quot;', '"').replaceAll('&amp;', '&');
+        const key = SHELL_TEXT_KEYS[text] || text;
+        for (let index = 0; index < locales.length; index++) if (!locales[index][key]) findings.push({ filename: 'public/login.html', key, locale: index, reason: 'missing entry translation' });
+    }
     for (const directory of ['public/scripts/native', 'public/scripts/atria-shell']) {
         for (const name of fs.readdirSync(path.join(root, directory)).filter(file => file.endsWith('.js'))) {
             if (name === 'localization.js') continue;

@@ -109,6 +109,31 @@ test('discreet login prevents duplicate requests', async ({ page }, testInfo) =>
     expect(requests).toBe(1);
 });
 
+test('Simplified Chinese login, registration and recovery preserve user input and localized errors', async ({ page }, testInfo) => {
+    await page.addInitScript(() => localStorage.setItem('language', 'zh-cn'));
+    await page.setViewportSize({ width: 320, height: 844 });
+    await login(page);
+    await expect(page.getByRole('heading', { name: '欢迎来到 Atria' })).toBeVisible();
+    await page.getByRole('button', { name: /Alex Morgan/ }).click();
+    await page.route('**/api/users/login', route => route.fulfill({ status: 403, json: { error: 'Incorrect password. Try again.' } }));
+    await page.locator('#loginForm').getByLabel('密码', { exact: true }).fill('test-only');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page.getByRole('alert')).toHaveText('密码不正确，请重试。');
+    await expect(page.locator('#loginForm').getByLabel('密码', { exact: true })).toHaveValue('test-only');
+    await page.route('**/api/users/recover-step1', route => route.fulfill({ json: {} }));
+    await page.getByRole('button', { name: '忘记密码？' }).click();
+    await expect(page.getByLabel('恢复码', { exact: true })).toBeFocused();
+    await page.getByRole('button', { name: '返回', exact: true }).click();
+    await page.getByRole('button', { name: '创建账户', exact: true }).click();
+    await page.getByLabel('显示名称', { exact: true }).fill('Reader');
+    await page.locator('#registerHandle').fill('reader');
+    await page.locator('#registerPassword').fill('test-only');
+    await page.getByLabel('再次输入密码', { exact: true }).fill('different');
+    await page.locator('#submitRegister').click();
+    await expect(page.getByRole('alert')).toHaveText('两次输入的密码不一致。');
+    await shot(page, testInfo, 'login-zh-register-320');
+});
+
 test('first run preserves persona authority and adapts at desktop, medium and narrow widths', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await shell(page, true);

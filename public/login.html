@@ -15,14 +15,13 @@
             background-color: #f9f8f6;
         }
     </style>
-    <link rel="preload" as="style" href="style.css">
+    <link rel="preload" as="font" type="font/ttf" href="webfonts/Serene/PlayfairDisplay%5Bwght%5D.ttf" crossorigin>
+    <link rel="preload" as="font" type="font/ttf" href="webfonts/Serene/PlusJakartaSans%5Bwght%5D.ttf" crossorigin>
     <link rel="apple-touch-icon" sizes="57x57" href="img/apple-icon-57x57.png" />
     <link rel="apple-touch-icon" sizes="72x72" href="img/apple-icon-72x72.png" />
     <link rel="apple-touch-icon" sizes="114x114" href="img/apple-icon-114x114.png" />
     <link rel="apple-touch-icon" sizes="144x144" href="img/apple-icon-144x144.png" />
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <link rel="stylesheet" type="text/css" href="css/st-tailwind.css">
     <link rel="stylesheet" href="css/atria-tokens.css">
     <link rel="stylesheet" href="css/login.css">
     <link rel="manifest" crossorigin="use-credentials" href="manifest.json">
@@ -31,42 +30,41 @@
     <link href="css/fontawesome.min.css" rel="stylesheet">
     <link href="css/solid.min.css" rel="stylesheet">
     <link href="css/brands.min.css" rel="stylesheet">
-    <link href="css/user.css" rel="stylesheet">
     <title>Atria</title>
 </head>
 
 <body class="login">
     <main class="atri-login" aria-labelledby="loginTitle">
-        <header class="atri-login-heading"><span class="atri-entry-mark" aria-hidden="true">A</span><h1 id="loginTitle">Welcome to Atria</h1><p>Your stories, ready when you are.</p></header>
-        <p id="loginStatus" role="status">Connecting to Atria…</p>
-        <button id="retryLogin" type="button" hidden>Try again</button>
-        <section id="userSelectBlock" hidden aria-label="Sign in">
-            <h2 id="normalLoginPrompt">Choose your account</h2>
-            <h2 id="discreetLoginPrompt" style="display:none">Sign in</h2>
+        <header class="atri-login-heading"><span class="atri-entry-mark" aria-hidden="true"></span><h1 id="loginTitle" data-entry-text="Welcome to Atria">Welcome to Atria</h1><p data-entry-text="Your stories, ready when you are.">Your stories, ready when you are.</p></header>
+        <p id="loginStatus" role="status" data-entry-text="Connecting to Atria…">Connecting to Atria…</p>
+        <button id="retryLogin" type="button" hidden data-entry-text="Try again">Try again</button>
+        <section id="userSelectBlock" hidden aria-label="Sign in" data-entry-label="Sign in">
+            <h2 id="normalLoginPrompt" data-entry-text="Choose your account">Choose your account</h2>
+            <h2 id="discreetLoginPrompt" style="display:none" data-entry-text="Sign in">Sign in</h2>
             <div id="userList"></div>
-            <p id="emptyAccounts" hidden>No accounts are available. Ask your administrator for access, or use an available sign-in option below.</p>
+            <p id="emptyAccounts" hidden data-entry-text="No accounts are available. Ask your administrator for access, or use an available sign-in option below.">No accounts are available. Ask your administrator for access, or use an available sign-in option below.</p>
             <form id="loginForm">
-                <div id="handleEntryBlock" style="display:none"><label for="userHandle">User handle</label><input name="userHandle" id="userHandle" spellcheck="false" type="text" autocomplete="username" aria-describedby="errorMessage" ></div>
+                <div id="handleEntryBlock" style="display:none"><label for="userHandle" data-entry-text="User handle">User handle</label><input name="userHandle" id="userHandle" spellcheck="false" type="text" autocomplete="username" aria-describedby="errorMessage" ></div>
                 <div id="passwordEntryBlock" style="display:none">
-                    <p id="selectedAccount"></p><label for="userPassword">Password</label><input name="userPassword" id="userPassword" type="password" autocomplete="current-password" aria-describedby="errorMessage" >
-                    <button id="loginButton" type="submit" class="atri-login-primary">Sign in</button>
-                    <button id="recoverPassword" type="button" class="atri-login-link">Forgot password?</button>
+                    <p id="selectedAccount"></p><label for="userPassword" data-entry-text="Password">Password</label><input name="userPassword" id="userPassword" type="password" autocomplete="current-password" aria-describedby="errorMessage" >
+                    <button id="loginButton" type="submit" class="atri-login-primary" data-entry-text="Sign in">Sign in</button>
+                    <button id="recoverPassword" type="button" class="atri-login-link" data-entry-text="Forgot password?">Forgot password?</button>
                 </div>
             </form>
-            <section id="oauthLoginBlock" style="display:none" aria-label="Other sign-in options">
-                <p>Or continue with</p><div class="atri-login-actions">
+            <section id="oauthLoginBlock" style="display:none" aria-label="Other sign-in options" data-entry-label="Other sign-in options">
+                <p data-entry-text="Or continue with">Or continue with</p><div class="atri-login-actions">
                     <a id="oauthGithubButton" href="#" style="display:none"><i class="fa-brands fa-github" aria-hidden="true"></i> GitHub</a>
                     <a id="oauthDiscordButton" href="#" style="display:none"><i class="fa-brands fa-discord" aria-hidden="true"></i> Discord</a>
                 </div>
             </section>
-            <div id="registerEntryBlock" style="display:none"><button id="openRegisterLink" type="button" class="atri-login-link">Create an account</button></div>
+            <div id="registerEntryBlock" style="display:none"><button id="openRegisterLink" type="button" class="atri-login-link" data-entry-text="Create an account">Create an account</button></div>
             <form id="registerBlock" style="display:none">
-                <h2>Create an account</h2><label for="registerName">Display name</label><input name="registerName" id="registerName" type="text" autocomplete="name" aria-describedby="errorMessage" ><label for="registerHandle">User handle</label><input name="registerHandle" id="registerHandle" type="text" autocomplete="username" aria-describedby="errorMessage" pattern="[a-z0-9-]+" aria-description="Lowercase letters, numbers and dashes"><small>Use lowercase letters, numbers and dashes.</small><label for="registerPassword">Password</label><input name="registerPassword" id="registerPassword" type="password" autocomplete="new-password" aria-describedby="errorMessage" ><label for="registerConfirm">Confirm password</label><input name="registerConfirm" id="registerConfirm" type="password" autocomplete="new-password" aria-describedby="errorMessage" >
-                <div class="atri-login-actions"><button id="cancelRegister" type="button">Back</button><button id="submitRegister" type="submit" class="atri-login-primary">Create account</button></div>
+                <h2 data-entry-text="Create an account">Create an account</h2><label for="registerName" data-entry-text="Display name">Display name</label><input name="registerName" id="registerName" type="text" autocomplete="name" aria-describedby="errorMessage" ><label for="registerHandle" data-entry-text="User handle">User handle</label><input name="registerHandle" id="registerHandle" type="text" autocomplete="username" aria-describedby="errorMessage" pattern="[a-z0-9-]+" aria-description="Lowercase letters, numbers and dashes" data-entry-description="Lowercase letters, numbers and dashes"><small data-entry-text="Use lowercase letters, numbers and dashes.">Use lowercase letters, numbers and dashes.</small><label for="registerPassword" data-entry-text="Password">Password</label><input name="registerPassword" id="registerPassword" type="password" autocomplete="new-password" aria-describedby="errorMessage" ><label for="registerConfirm" data-entry-text="Confirm password">Confirm password</label><input name="registerConfirm" id="registerConfirm" type="password" autocomplete="new-password" aria-describedby="errorMessage" >
+                <div class="atri-login-actions"><button id="cancelRegister" type="button" data-entry-text="Back">Back</button><button id="submitRegister" type="submit" class="atri-login-primary" data-entry-text="Create account">Create account</button></div>
             </form>
             <form id="passwordRecoveryBlock" style="display:none">
-                <h2>Reset your password</h2><p id="recoverMessage">Ask the server administrator for the recovery code from the server console.</p><label for="recoveryCode">Recovery code</label><input name="recoveryCode" id="recoveryCode" type="text" autocomplete="one-time-code" aria-describedby="errorMessage" ><label for="newPassword">New password</label><input name="newPassword" id="newPassword" type="password" autocomplete="new-password" aria-describedby="errorMessage" >
-                <div class="atri-login-actions"><button id="cancelRecovery" type="button">Back</button><button id="sendRecovery" type="submit" class="atri-login-primary">Reset password</button></div>
+                <h2 data-entry-text="Reset your password">Reset your password</h2><p id="recoverMessage" data-entry-text="Ask the server administrator for the recovery code from the server console.">Ask the server administrator for the recovery code from the server console.</p><label for="recoveryCode" data-entry-text="Recovery code">Recovery code</label><input name="recoveryCode" id="recoveryCode" type="text" autocomplete="one-time-code" aria-describedby="errorMessage" ><label for="newPassword" data-entry-text="New password">New password</label><input name="newPassword" id="newPassword" type="password" autocomplete="new-password" aria-describedby="errorMessage" >
+                <div class="atri-login-actions"><button id="cancelRecovery" type="button" data-entry-text="Back">Back</button><button id="sendRecovery" type="submit" class="atri-login-primary" data-entry-text="Reset password">Reset password</button></div>
             </form>
         </section>
         <p id="errorMessage" role="alert" tabindex="-1"></p>

@@ -1,6 +1,15 @@
 import { initAccessibility } from './a11y.js';
 import { installAtriaAppearance } from './atria-shell/appearance.js';
 import { createAtriaShellEnvironment } from './atria-shell/environment.js';
+import { loadEntryLocalization, applyEntryLocalization } from './entry-localization.js';
+
+let entryLocale = { locale: 'en', translate: value => value };
+function setEntryText(selector, text) {
+    const node = document.querySelector(selector);
+    node.dataset.entryText = text;
+    node.textContent = entryLocale.translate(text);
+    return $(node);
+}
 
 /**
  * CRSF token for requests.
@@ -225,7 +234,7 @@ async function runAccountRequest(action) {
     document.querySelector('.atri-login').setAttribute('aria-busy', 'true');
     const buttons = [...document.querySelectorAll('.atri-login button')];
     buttons.forEach(button => { button.disabled = true; });
-    $('#loginStatus').text('Please wait…').prop('hidden', false);
+    setEntryText('#loginStatus', 'Please wait…').prop('hidden', false);
     displayError('');
     try {
         await action();
@@ -297,7 +306,7 @@ async function onUserSelected(user) {
  * @param {string} message Error message
  */
 function displayError(message) {
-    $('#errorMessage').text(message);
+    setEntryText('#errorMessage', message);
     if (message) $('#errorMessage').trigger('focus');
 }
 
@@ -432,7 +441,7 @@ function configureNormalLogin(userList) {
     for (const user of userList) {
         const userBlock = $('<button type="button"></button>').addClass('userSelect').attr('aria-pressed', 'false');
         const avatarBlock = $('<div></div>').addClass('avatar');
-        avatarBlock.append($('<img>').attr({ src: user.avatar, alt: '', loading: 'lazy' }));
+        avatarBlock.append($('<img>').attr({ src: user.avatar, alt: '', loading: 'lazy', width: 40, height: 40 }));
         userBlock.append(avatarBlock);
         userBlock.append($('<span></span>').addClass('userName').text(user.name));
         userBlock.append($('<small></small>').addClass('userHandle').text(user.handle));
@@ -508,9 +517,11 @@ $('#retryLogin').on('click', initializeLogin);
 
 async function initializeLogin() {
     $('#retryLogin').prop('hidden', true);
-    $('#loginStatus').text('Connecting to Atria…').prop('hidden', false);
+    setEntryText('#loginStatus', 'Connecting to Atria…').prop('hidden', false);
     displayError('');
     try {
+        entryLocale = await loadEntryLocalization();
+        applyEntryLocalization(document, entryLocale);
         csrfToken = await getCsrfToken();
         const [userList, oauthPayload, registrationPayload] = await Promise.all([
             getUserList(), getOAuthProviders(), getRegistrationInfo(),

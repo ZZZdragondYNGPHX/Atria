@@ -193,13 +193,14 @@ export class NativeSessionRuntime {
                 return { ok: true, state: copy(current), updated: false };
             }
             const previous = this.snapshot;
+            const commitEpoch = this.projectionEpoch;
             try {
                 const next = await this.request('command', {
                     sessionId,
                     expectedRevisionId: previous.revision.revisionId,
                     command: { type: 'runtime', statePatch: { [key]: copy(nextValue) } },
                 });
-                this.snapshot = next;
+                this._acceptCommittedProjection(next, previous, commitEpoch);
                 this._clearStagedStates([key]);
                 this.host?.revision?.(projectNativeSession(next));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
@@ -207,7 +208,7 @@ export class NativeSessionRuntime {
                 });
                 return { ok: true, state: copy(next.states?.[key] ?? nextValue), updated: true };
             } catch (error) {
-                throw this._report(error, { fatal: true });
+                throw this._report(error, { fatal: true, ownerEpoch: commitEpoch });
             }
         });
     }
@@ -235,6 +236,7 @@ export class NativeSessionRuntime {
             }
             if (Object.keys(patch).length === 0 && deletes.length === 0 && !actionRequest) return this.snapshot;
             const previous = this.snapshot;
+            const commitEpoch = this.projectionEpoch;
             if (expectedRevisionId && expectedRevisionId !== previous.revision.revisionId) throw new Error('Native Action revision changed before commit');
             try {
                 const next = await this.request('command', {
@@ -247,7 +249,7 @@ export class NativeSessionRuntime {
                         ...(actionRequest ? { actionRequest: copy(actionRequest) } : {}),
                     },
                 });
-                this.snapshot = next;
+                this._acceptCommittedProjection(next, previous, commitEpoch);
                 this._clearStagedStates([...Object.keys(patch), ...deletes]);
                 this.host?.revision?.(projectNativeSession(next));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
@@ -256,7 +258,7 @@ export class NativeSessionRuntime {
                 });
                 return next;
             } catch (error) {
-                throw this._report(error, { fatal: true });
+                throw this._report(error, { fatal: true, ownerEpoch: commitEpoch });
             }
         });
     }
@@ -271,13 +273,14 @@ export class NativeSessionRuntime {
                 return { ok: true, updated: false };
             }
             const previous = this.snapshot;
+            const commitEpoch = this.projectionEpoch;
             try {
                 const next = await this.request('command', {
                     sessionId,
                     expectedRevisionId: previous.revision.revisionId,
                     command: { type: 'runtime', deleteNamespaces: [key] },
                 });
-                this.snapshot = next;
+                this._acceptCommittedProjection(next, previous, commitEpoch);
                 this._clearStagedStates([key]);
                 this.host?.revision?.(projectNativeSession(next));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
@@ -285,7 +288,7 @@ export class NativeSessionRuntime {
                 });
                 return { ok: true, updated: true };
             } catch (error) {
-                throw this._report(error, { fatal: true });
+                throw this._report(error, { fatal: true, ownerEpoch: commitEpoch });
             }
         });
     }
@@ -332,13 +335,16 @@ export class NativeSessionRuntime {
             const previous = this.snapshot;
             const generation = this.generation;
             const statePatch = this._runtimeStatePatch();
+            const ownsPublication = () => this.projectionEpoch === epoch && this.snapshot?.session?.sessionId === sessionId
+                && this.snapshot?.revision?.branchId === branchId;
             try {
                 const next = await this.request('command', { sessionId, expectedRevisionId: revisionId,
                     command: { type: 'runtime', commands: [{ type: 'append', draft }], statePatch } });
-                this.snapshot = next;
+                const receipt = { sessionId, branchId: next.revision.branchId, revisionId: next.revision.revisionId, messageId: next.timeline.at(-1)?.messageId };
+                try { onAccepted?.(receipt); } catch { /* A presentation observer cannot invalidate the committed receipt. */ }
+                this._acceptCommittedProjection(next, previous, epoch, receipt);
                 this._clearStagedStates();
                 this.generation = draft.role === 'user' ? generation : null;
-                try { onAccepted?.({ sessionId, branchId, revisionId: next.revision.revisionId, messageId: next.timeline.at(-1)?.messageId }); } catch { /* A presentation observer cannot invalidate the committed receipt. */ }
                 const projection = projectNativeSession(next);
                 if (this.host.publish) await this.host.publish(projection);
                 else await this.host.install(projection);
@@ -347,6 +353,7 @@ export class NativeSessionRuntime {
                 await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { messageIds: appended, stateNamespaces: Object.keys(statePatch) });
                 return next;
             } catch (error) {
+                if (!ownsPublication() || error.nonFatal) throw error;
                 throw this._report(error, { fatal: true });
             }
         });
@@ -364,7 +371,17 @@ export class NativeSessionRuntime {
         }
     }
 
-    _report(error, { fatal = false } = {}) {
+    _acceptCommittedProjection(next, previous, epoch, receipt = null) {
+        if (this.snapshot !== previous || this.projectionEpoch !== epoch) {
+            receipt ??= { sessionId: next.session.sessionId, branchId: next.revision.branchId, revisionId: next.revision.revisionId };
+            throw Object.assign(new Error(formatProductText('The result was saved to its original session. The view changed; reload that story to read the result.')),
+                { code: 'native_generation_revision_conflict', committed: true, receipt, nonFatal: true });
+        }
+        this.snapshot = next;
+    }
+
+    _report(error, { fatal = false, ownerEpoch } = {}) {
+        if (error.committed && error.nonFatal || ownerEpoch !== undefined && ownerEpoch !== this.projectionEpoch) return error;
         if (fatal) this.failed = true;
         this.host?.error?.(error, { fatal });
         return error;
@@ -592,14 +609,15 @@ export class NativeSessionRuntime {
             },
         };
 
+        const previous = this.snapshot;
+        const commitEpoch = this.projectionEpoch;
         try {
-            const previous = this.snapshot;
             const next = await this.request('command', {
                 sessionId: previous.session.sessionId,
                 expectedRevisionId: previous.revision.revisionId,
                 command: { type: 'runtime', commands: [command], statePatch: this._runtimeStatePatch() },
             });
-            this.snapshot = next;
+            this._acceptCommittedProjection(next, previous, commitEpoch);
             this.generation = null;
             this.generationProjection = { state: 'idle', text: '', error: '' };
             this._clearStagedStates();
@@ -609,7 +627,7 @@ export class NativeSessionRuntime {
             await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { messageIds: appended });
             return true;
         } catch (error) {
-            throw this._report(error, { fatal: true });
+            throw this._report(error, { fatal: true, ownerEpoch: commitEpoch });
         }
     }
 
@@ -669,18 +687,19 @@ export class NativeSessionRuntime {
                 return true;
             }
 
+            const previous = this.snapshot;
+            const commitEpoch = this.projectionEpoch;
             try {
                 const generationAtCommit = this.generation;
                 const keepAssistantDraftOpen = generationAtCommit?.kind === 'append'
                     && commands.every(command => command?.type === 'append' && command?.draft?.role !== 'assistant');
-                const previous = this.snapshot;
                 const committedLength = previous.timeline.length;
                 const next = await this.request('command', {
                     sessionId,
                     expectedRevisionId: previous.revision.revisionId,
                     command: { type: 'runtime', commands, statePatch },
                 });
-                this.snapshot = next;
+                this._acceptCommittedProjection(next, previous, commitEpoch);
                 this._clearStagedStates();
                 const projection = projectNativeSession(next);
                 // Existing committed objects already passed the barrier. Newly
@@ -704,7 +723,7 @@ export class NativeSessionRuntime {
                 });
                 return true;
             } catch (error) {
-                throw this._report(error, { fatal: true });
+                throw this._report(error, { fatal: true, ownerEpoch: commitEpoch });
             }
         };
         this.queue = this.queue.then(operation);
@@ -746,12 +765,13 @@ export class NativeSessionRuntime {
         if (!this.history) await this.persist();
         else this._assertBarrier();
         const previous = this.snapshot;
+        const commitEpoch = this.projectionEpoch;
         const next = await this.request('command', {
             sessionId: previous.session.sessionId,
             expectedRevisionId: previous.session.headRevisionId,
             command: { type: 'switch', branchId },
         });
-        this.snapshot = next;
+        this._acceptCommittedProjection(next, previous, commitEpoch);
         this.history = false;
         this.generation = null;
         this.generationProjection = { state: 'idle', text: '', error: '' };
@@ -764,12 +784,13 @@ export class NativeSessionRuntime {
         this.assertWritable();
         await this.persist();
         const previous = this.snapshot;
+        const commitEpoch = this.projectionEpoch;
         const next = await this.request('command', {
             sessionId: previous.session.sessionId,
             expectedRevisionId: previous.revision.revisionId,
             command: { type: 'restore', saveId },
         });
-        this.snapshot = next;
+        this._acceptCommittedProjection(next, previous, commitEpoch);
         this.history = false;
         this.generation = null;
         this.generationProjection = { state: 'idle', text: '', error: '' };
@@ -889,6 +910,7 @@ export class NativeSessionRuntime {
                 return { ok: true, published: false, updated: false, state: copy(current) };
             }
             const previous = this.snapshot;
+            const commitEpoch = this.projectionEpoch;
             try {
                 const next = await this.request('command', {
                     sessionId,
@@ -898,7 +920,7 @@ export class NativeSessionRuntime {
                         statePatch: { [CONTEXT_DERIVED_NAMESPACE]: copy(nextValue) },
                     },
                 });
-                this.snapshot = next;
+                this._acceptCommittedProjection(next, previous, commitEpoch);
                 this._clearStagedStates([CONTEXT_DERIVED_NAMESPACE]);
                 this.lastContextPlan = null;
                 this.host?.revision?.(projectNativeSession(next));
@@ -913,6 +935,7 @@ export class NativeSessionRuntime {
                     state: copy(next.states?.[CONTEXT_DERIVED_NAMESPACE] ?? nextValue),
                 };
             } catch (error) {
+                if (error.committed && error.nonFatal) return { ok: false, published: true, reason: 'stale_revision', committed: true, receipt: error.receipt };
                 if (error?.status === 409 || error?.code === 'native_session_head_conflict') {
                     return { ok: false, published: false, reason: 'stale_revision' };
                 }

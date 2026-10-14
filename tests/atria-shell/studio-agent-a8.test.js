@@ -400,7 +400,7 @@ describe('A8 Native Studio Project Agent client', () => {
         const select = slot.querySelector('select'); select.value = taskId; select.dispatchEvent(new Event('change')); await flush();
         [...slot.querySelectorAll('button')].find(node => node.textContent === 'Review & Commit').click(); await flush();
         expect(commit).toHaveBeenCalledTimes(1); expect(refresh).toHaveBeenCalledTimes(1);
-        expect(slot.textContent).toContain('completed'); expect(slot.querySelector('[role="alert"]').textContent).toBe('Refresh unavailable');
+        expect(slot.textContent).toContain('Completed'); expect(slot.querySelector('[role="alert"]').textContent).toBe('Refresh unavailable');
         expect([...slot.querySelectorAll('button')].some(node => node.textContent === 'Review & Commit')).toBe(false);
         controller.dispose();
     });
