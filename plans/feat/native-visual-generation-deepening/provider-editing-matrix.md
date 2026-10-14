@@ -101,3 +101,11 @@
 **Round 13 D-013 已冻结** ImagePromptIR / VisualIntent / Scene/Shot / ImageJob/Attempt / Capability / MediaOperation / Mask / Reference / SavePoint 的**职责边界**、三层配置与 Windows/CachyOS/Termux 的 Web UI、P0/P1 分期与 L1/L2/L3 验收路线，详见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)。具体实现字段/API/资源事务/外部验证缺口已列在 [e0-closure-audit.md](e0-closure-audit.md)，不重复创建另一份 Schema。
 
 D-012 不会提前替第十三轮冻结字段名、路由 URL、默认 UI 布局、版本迁移步骤或工程完成日期。
+
+## Implementation protocol finding (S2, 2026-10-14)
+
+The [official NovelAI OpenAPI](https://image.novelai.net/docs/doc.json) generation
+endpoint requires human initiation. The Adapter must reject unattended automatic
+sends for this provider; manual and human-approved semi-automatic jobs remain
+within the unified pipeline. D-007/D-008 automated Director and scheduler remain
+available for Targets whose service terms permit them. No live test was run.

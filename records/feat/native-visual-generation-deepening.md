@@ -32,3 +32,16 @@
 - CI/L3: `not_run`. No remote Actions, API credentials or paid requests.
 - Limitation: Durable worker integration into the production image entrypoint is next in S2.1; full Mask UI/GC grace policy remains S4 by plan. No claim of live Target availability.
 - Next: NovelAI vertical slice on one new kernel, then ComfyUI/OpenAI Images.
+
+## S2 — P0 backends (in progress)
+
+### S2.1 NovelAI vertical slice (completed)
+
+- Start HEAD: `8cdc38bb6`; End/Tested HEAD: `4d9aaf979`.
+- Production entrypoint now uses prepare/approval -> persistent Native Job -> Adapter -> AssetStore -> immutable ImageVersion/MediaOperation. Settings schema 2 selects Target/Rendering; no old connection-only execution route.
+- Manual raw prompt preserved. Image selection is separate from asynchronous history publication. Targets/renderings/budgets are configurable through Native authenticated UI/API and CAS.
+- V3/V4/V4.5 and explicit V5 Full protocol declarations; V5 native parameter version/tag hints/default steps handled separately. V5 Live/Medium effort not inferred.
+- Checks: 10/10 new vertical-slice FS/SQLite; 6/6 NovelAI protocol; 19/19 illustration core; 4/4 settings; 9/9 kernel (other suites passed before correction). Product ESLint passed.
+- Failure/fix: first combined slice run had HTTP fixture supplying wrong router factory and a SQLite nested transaction deadlock in publication. Fixture fixed; publication now retains the ledger lock outside the storage transaction and finalizes with CAS. Related 10 tests all passed on retest.
+- Provider constraint: fetched official OpenAPI https://image.novelai.net/docs/doc.json requires human initiation. NovelAI automatic sends fail closed; manual/semi-auto remain available. Other permitted targets still use the automatic core. This is legal Target capability, not removal of D-007/D-008.
+- L3/CI `not_run`; no external paid generation. Next S2.2 ComfyUI, then S2.3 OpenAI Images.
