@@ -44,7 +44,7 @@
 
 **Project Agent** 应区分 `ProjectAgent Task`（持久项目任务、工作区/正式 Review/Commit/Resume）与 `Orchestrator delegated-node`（客户端选定节点与受限子工具集合）。可共享 ActionRegistry 发现/Receipt，但不合并生命周期、审批或 Task identity。
 
-**第三轮已批准 B**：Studio/Project Agent 参见 [`studio-project-agent.md`](studio-project-agent.md)。**第四轮已批准 B**：认知与演化参见 [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md)。**第五轮已批准 B**：Runtime/Provider 全面 Bridge、版本化资源、Secret/Endpoint、纯 Preview 与付费执行/恢复参见 [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md)。本表仍只保存域覆盖状态和优先级，精确 Action Schema 依各权威模块；第六轮转入 Session/Save/长会话。
+**第三轮 B**：Studio/Project Agent，见 [`studio-project-agent.md`](studio-project-agent.md)；**第四轮 B**：认知/演化域，见 [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md)；**第五轮 B**：Runtime/Provider Bridge，见 [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md)；**第六轮 B**：Session/Save/Branch/Context/Generation 分层生命周期，见 [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md)。本表仍只管覆盖/优先级，不复制详细状态机。**第七轮**讨论 Browser/UI、Preview 和客户端验收。
 
 ## 5. 验证要求（规划、未执行）
 

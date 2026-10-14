@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B 已冻结。第六轮 Session / Save / 长会话 / Generation 生命周期讨论中。**尚未进入实现阶段**。
+- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B、第六轮 B 已冻结。**第七轮 Browser / UI 自动化、截图、Preview 与真实客户端体验正在讨论。尚未进入实现阶段。**
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
@@ -36,7 +36,8 @@
 | [`studio-project-agent.md`](studio-project-agent.md) | **第三轮权威**：Studio 直接路径、Project Agent Task、外部/内置模型分工、Review/Commit 和原生恢复 | 第三轮方案 B 已冻结方向，具体 Action schema 后续确定 |
 | [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) | **第四轮权威**：Memory、Goals、Evidence、Experience、Evolution 的分域语义接口、跨域工作流、预算与来源/恢复/失效边界 | 第四轮方案 B 已冻结方向；精确 Action Schema 待实施核实 |
 | [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) | **第五轮权威**：完整 Native Model/Prompt/Runtime/Provider Bridge、Secret/Endpoint 审查、版本化编辑、零副作用 Preview、付费执行与 Fallback/恢复 | 第五轮方案 B 已冻结方向；准确 Action schema/协议联测待实施 |
-| `domain-*.md` | **按需再建**：Session / Save / Generation 生命周期、UI/Media 等后续域模块 | 尚未设计 |
+| [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) | **第六轮权威**：分层 Session、Save/Restore/Branch、旧 fork/retry 合同淘汰、自动存档、长会话、RunControl/Scheduler 回执与 GC | 第六轮方案 B 已冻结方向，具体 Action schema 待实施核实 |
+| `domain-*.md` | **按需再建**：Browser/UI、Package/Media、跨域验收等后续域模块 | 尚未设计 |
 | `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
 
 单条详细规则仅写入一个权威模块。index 只管理全局冻结原则、依赖和讨论/实施路由，不复制域内设计；现有旧 Plan 仅作历史链接，不直接作为本轮新增范围的执行授权。
@@ -50,8 +51,9 @@
 | 第三轮（已冻结） | 方案 B：Studio 直接 Workspace + Project Agent Task；外部 AI 默认主导；原生模型显式委托；独立 Review/Commit | [`studio-project-agent.md`](studio-project-agent.md) |
 | 第四轮（已冻结） | 方案 B：Memory / Goals / Evidence / Experience / Evolution 分域权威，受控跨域工作流，来源、预算、审批与安全恢复 | [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) |
 | 第五轮（已冻结） | 方案 B：完整 Native Model/Prompt/Runtime/Provider Bridge、版本化资源、端点/Secret 审查、无副作用 Preview、付费执行及恢复 | [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) |
-| **第六轮（当前讨论）** | Session/Save/Timeline/Branch、长会话 Context、生成任务生命周期、停止与跨重启恢复 | `index.md` + `capability-matrix.md` 的 Session 行 + [`p0-reliability.md`](p0-reliability.md)、[`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md)；按需读取当前 `main:src/native/session-core.js` / `save-system.js` / `task-scheduler.js` / `native-generation.js` |
-| 后续轮次 | UI / Media / Package、安全跨域验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
+| 第六轮（已冻结） | 方案 B：完整 Session / Save / Timeline / Branch、旧 fork/retry Action 退役、长会话 Context、分层 Generation、停止/恢复、原生 GC | [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) |
+| **第七轮（当前讨论）** | Browser/UI 控制边界、语义化交互、截图/Preview、Experience Epoch、真实客户端体验验收 | `index.md` + `capability-matrix.md` 的 Browser/Studio 行、`p0-reliability.md`；读取 `plugin:atria-mcp/src/{browser,server,capability-bridge,provenance}.js` 与 `main` 的 Frontend Host Bridge / Preview/epoch 契约 |
+| 后续轮次 | Package / Media / Skills / Extensions、跨域安全验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
 
 不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
 
@@ -90,13 +92,21 @@
 - **显式付费执行**：仅用户明确要求时由 Native 执行模型；继续沿用 Role/Route/Context、Fallback disabled/automatic/confirm、原生 Compute/Ledger、Usage 观测与独立审批；成本无法实证时标 unknown。
 - **结果核对**：Provider Send/Response、Usage Settle 与 Session/Project Commit 分层确认，Native Task/Checkpoint 是真实来源；未知远端结果不自动在 MCP 重发，Stop 不等于上游撤销或持久结果回滚。
 
-## 5.4 第六轮待讨论（尚未冻结）
+## 5.4 第六轮已冻结的 Session / Save / Generation 生命周期
 
-- Session、Conversation Revision、Branch、Timeline 与 Save Snapshot 的主从权威关系；区分临时生成投影与已提交历史，严禁将“删除楼层/Swipe/Hide”改造成绕过 Save/Restore 的旁路。
-- Session Send / Regenerate / Stop 的精确前置条件、可信授权、回复丢失后的 Native Commit/Receipt reconcile、历史分支和重新生成的身份规则。
-- 长会话 Prompt / Retrieval / Context 压缩与 Native RuntimeCheckpoint/Provider continuation 的边界，避免重复写入、无界存储和 Context 失真。
-- 交互式 Turn、后台 Task、模型请求、AutoSave、Save/Restore、branch switch 并行时的调度资源与冲突/取消/超时处理。
-- Host/MCP 重启后可恢复的持久意图、仅可读状态及不能自动恢复的执行中工作，及 Archive/GC/保存点保留规则。
+- **第六轮方案 B：完整分层会话生命周期**，详情以 [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) 为唯一权威。Session/immutable Revision/Timeline/Branch/SavePoint 是业务真值，RunControl 是持久执行/预算管控，NativeScheduler 是 Host 内存队列，MCP Journal 仅最小关联。
+- **退役错误契约**：独立 MCP `mutations.js` 的 `chat.branch.fork`、`chat.retry.prepare`、`chat.regenerate/reenter`、`chat.restart.from/remove.from.active` 仍发送原 Native Router 未实现的 `fork/retry`；实现时移除该执行实现/过期宣告，仅映射真实 Save/Restore/Switch/正确原生 Reply authority，缺少语义等价接口则明确 unsupported。不得恢复旧 Swipe/Delete/Hide 对楼层的物理改写。
+- **存档与长会话**：SavePoint 仅锚定已提交 HEAD；Restore 新建 Branch、保留历史；AutoSave 只在已提交 Turn 后由原生策略决定；Context 编译与 History Checkpoint 是输入/派生摘要，不替代无损 Timeline。
+- **分层回执与停止**：区分 input commit、Scheduler admission、Provider send/stream、Usage settle 与 Native finalization/CommitReceipt。Stop 不撤销已提交结果；MCP/Host 重启后的 unknown 不自动重发。
+- **纯 READ 与 GC**：`SessionCore.load`/RunControl status 的某些路径有持久协调行为，必须分离真正只读快照；历史 GC 仅由原生 Reachability、读租约、Mark/Quarantine/Sweep 和依赖保护处理。
+
+## 5.5 第七轮待讨论（尚未冻结）
+
+- Browser 当前 ARIA/screenshot/diagnostics/scroll 的边界、`click/fill/press/select` 拒绝机制与可控 UI 行为的选择。
+- Browser page/view identity、URL/origin/auth、Experience Epoch、Native Session Revision/Branch、Studio Preview 与 Source HEAD 各自证据在真实交互中的绑定与失效。
+- UI 验证如何采用观察/截图/可访问性/响应式布局，并且不把图像观测当作 Native Compile/Validation、Save、Commit 或用户人工批准。
+- 允许引入哪些语义化 Frontend/Host Bridge 操作（如导航、选中、临时编辑/表单、Mask/Canvas 工具），并保持既有 Action Policy Ceiling/Guard/Receipt、Browser Lane 并发隔离。
+- 真实 Codex/Claude Code 对浏览器截图、approval form/MRTR、工具调用进度、操作取消和失败恢复的 E2E 验收；浏览器 fixture 只能证明自动化，不替代真正用户体验证据。
 
 ## 6. 实施和验证边界
 
