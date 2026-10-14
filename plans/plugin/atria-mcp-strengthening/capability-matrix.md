@@ -28,7 +28,7 @@
 | Package / Library / Resource | `src/native/package-*.js`、`resource-bundle.js`、`src/endpoints/native-{studio,product}.js` | Work/Package list、Library 精确读/Graph、Build、预检、安装 review、受控删除 | 大型产物无损传输、依赖闭包、版本/权限审阅、资产晋升与回滚；复用 Product 权威 | READ / INTERACT / MUTATE / DESTRUCTIVE | **P0 容量 + P1** |
 | Visual generation / Speech / Media | `src/native/illustration-*.js`、`speech-service.js`、`src/endpoints/native-generation.js` | 基本通用运行/Browser 观察，无对应完整语义控制面 | 图像请求/状态/历史/预算及语音任务连接；与正在讨论的独立生图企划保持边界，不抢先冻结媒体资产规格 | READ / INTERACT（付费）/ MUTATE / DESTRUCTIVE | P2 |
 | Skills / Extensions / Host plugins | `src/endpoints/skills.js`、`native-extensions.js`、`src/native/plugin-platform.js` | authoring reference、原生 GET discovery、部分间接状态观察 | 明确技能与插件资源生命周期、权限/贡献/引用检查；产品内部插件与独立 `plugin` 工作空间不混同 | READ / MUTATE / DESTRUCTIVE | P2 |
-| Browser / Frontend UX | `public/scripts/native/`、Frontend Host Bridge、Experience Epoch 和 Studio Preview UI | 独立 Playwright 浏览器、ARIA、截图/日志；交互只有 scroll | 实际 UI 回归、响应式、跨 epoch 证据；若开放交互必须语义化/受控且不绕过 Action ceiling；不能把“显示完成”当“正式提交” | READ / INTERACT，经同等审批 | **P1** |
+| Browser / Frontend UX | `public/scripts/native/`、Frontend Host Bridge、Experience Epoch 和 Studio Preview UI | 独立 Playwright 浏览器、ARIA、截图/日志；交互只有 scroll | 已冻结双 Lane：ARIA/截图 + 严格 Surface/Component 白名单交互、ScreenshotProof 双向身份/epoch 核对；原生提交/可信审批不可绕过 | READ / INTERACT，经同等审批 | **P1** |
 
 ## 3. P0 关键必修缺口（正式范围）
 
@@ -44,7 +44,7 @@
 
 **Project Agent** 应区分 `ProjectAgent Task`（持久项目任务、工作区/正式 Review/Commit/Resume）与 `Orchestrator delegated-node`（客户端选定节点与受限子工具集合）。可共享 ActionRegistry 发现/Receipt，但不合并生命周期、审批或 Task identity。
 
-**第三轮 B**：Studio/Project Agent，见 [`studio-project-agent.md`](studio-project-agent.md)；**第四轮 B**：认知/演化域，见 [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md)；**第五轮 B**：Runtime/Provider Bridge，见 [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md)；**第六轮 B**：Session/Save/Branch/Context/Generation 分层生命周期，见 [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md)。本表仍只管覆盖/优先级，不复制详细状态机。**第七轮**讨论 Browser/UI、Preview 和客户端验收。
+**第三轮 B**：Studio/Project Agent，见 [`studio-project-agent.md`](studio-project-agent.md)；**第四轮 B**：认知/演化域，见 [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md)；**第五轮 B**：Runtime/Provider Bridge，见 [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md)；**第六轮 B**：Session/Save/Branch/Context/Generation 分层生命周期，见 [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md)。本表仍只管覆盖/优先级，不复制详细状态机。**第七轮 B 已批准**：Browser Evidence + Semantic UI 两通道、Screenshot Proof、Preview/Experience Epoch、权限和真人客户端验收参见 [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md)；**第八轮**转向 Package/Library/Media/Skills/Extensions。
 
 ## 5. 验证要求（规划、未执行）
 

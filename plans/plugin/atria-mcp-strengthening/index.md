@@ -2,7 +2,7 @@
 
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
-- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B、第六轮 B 已冻结。**第七轮 Browser / UI 自动化、截图、Preview 与真实客户端体验正在讨论。尚未进入实现阶段。**
+- **状态**：讨论中；第一轮 C、第二轮 B、第三轮 B、第四轮 B、第五轮 B、第六轮 B、第七轮 B 已冻结。**第八轮 Package / Library / Media / Skills / Extensions 完整 MCP 接口正在讨论。尚未进入实现阶段。**
 - **创建日期**：2026-10-14。
 - **审计时源码基线**：`main@7e1045ab836c22cafbc92c5de056ad701f56e723`、`plugin@ee99b2b3d1c65502a971495a6016ccb7c195bf6d`；第三轮提交前 `main@9241325a7290e613e0fdaaa1870409105c161c89`（比旧审计基线新增 9 commits，见 Studio 模块局部差异核查）。每轮执行/实现以当时真实 HEAD 为准，不把静态审计称为实际验收。
 - **既有历史基线**：[旧 MCP Capability Expansion Plan](../atria-mcp-capability-expansion/index.md) / [Implementation Record](../../../records/plugin/atria-mcp-capability-expansion.md)。这是另一项有独立记录的旧任务；旧 Phase 6 未闭合的验收事项继续作为未验证证据，不在本企划中伪称完成，也不重复搬迁其历史文本。
@@ -37,7 +37,8 @@
 | [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) | **第四轮权威**：Memory、Goals、Evidence、Experience、Evolution 的分域语义接口、跨域工作流、预算与来源/恢复/失效边界 | 第四轮方案 B 已冻结方向；精确 Action Schema 待实施核实 |
 | [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) | **第五轮权威**：完整 Native Model/Prompt/Runtime/Provider Bridge、Secret/Endpoint 审查、版本化编辑、零副作用 Preview、付费执行与 Fallback/恢复 | 第五轮方案 B 已冻结方向；准确 Action schema/协议联测待实施 |
 | [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) | **第六轮权威**：分层 Session、Save/Restore/Branch、旧 fork/retry 合同淘汰、自动存档、长会话、RunControl/Scheduler 回执与 GC | 第六轮方案 B 已冻结方向，具体 Action schema 待实施核实 |
-| `domain-*.md` | **按需再建**：Browser/UI、Package/Media、跨域验收等后续域模块 | 尚未设计 |
+| [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md) | **第七轮权威**：Evidence 与 Semantic UI 两通道、固定 Surface/Component 交互、Screenshot Proof、Preview/Experience Epoch、身份/隐私/取消及真实客户端验收 | 第七轮 B 已冻结；UI Action schema/运行测试待实施 |
+| `domain-*.md` | **按需再建**：Package/Library/Media/Skills/Extensions、跨域验收等后续域模块 | 尚未设计 |
 | `acceptance.md` | **待创建**：最终风险/兼容/实机与客户端验收、已验证与未验证分类 | 尚未设计 |
 
 单条详细规则仅写入一个权威模块。index 只管理全局冻结原则、依赖和讨论/实施路由，不复制域内设计；现有旧 Plan 仅作历史链接，不直接作为本轮新增范围的执行授权。
@@ -52,8 +53,9 @@
 | 第四轮（已冻结） | 方案 B：Memory / Goals / Evidence / Experience / Evolution 分域权威，受控跨域工作流，来源、预算、审批与安全恢复 | [`memory-goals-experience-evolution.md`](memory-goals-experience-evolution.md) |
 | 第五轮（已冻结） | 方案 B：完整 Native Model/Prompt/Runtime/Provider Bridge、版本化资源、端点/Secret 审查、无副作用 Preview、付费执行及恢复 | [`model-prompt-runtime-provider.md`](model-prompt-runtime-provider.md) |
 | 第六轮（已冻结） | 方案 B：完整 Session / Save / Timeline / Branch、旧 fork/retry Action 退役、长会话 Context、分层 Generation、停止/恢复、原生 GC | [`session-save-generation-lifecycle.md`](session-save-generation-lifecycle.md) |
-| **第七轮（当前讨论）** | Browser/UI 控制边界、语义化交互、截图/Preview、Experience Epoch、真实客户端体验验收 | `index.md` + `capability-matrix.md` 的 Browser/Studio 行、`p0-reliability.md`；读取 `plugin:atria-mcp/src/{browser,server,capability-bridge,provenance}.js` 与 `main` 的 Frontend Host Bridge / Preview/epoch 契约 |
-| 后续轮次 | Package / Media / Skills / Extensions、跨域安全验收、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
+| 第七轮（已冻结） | 方案 B：Browser Evidence Lane + 受控 Semantic UI Lane、截图 Proof、Epoch/Preview、隐私/隔离/取消及真客户端验收 | [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md) |
+| **第八轮（当前讨论）** | Package / Library / Resource Graph、Build / Review / Install、Media / Visual / Speech、Skills / Extensions / Plugin | `index.md` + `capability-matrix.md` 对应行 + [`p0-reliability.md`](p0-reliability.md)；当前 `main` 的 Studio/Package/Media/Skills/Plugin Authority 与 `plugin:atria-mcp` 的 HighRisk/Library 适配器 |
+| 后续轮次 | 跨域安全/长期运行验收、客户端平台矩阵、实施分期 | 先 `index.md`，再按议题读取相关已建模块；冻结后增量更新 |
 
 不能从上表推断最终实现阶段数或工作量；待 P0 的依赖关系确定后在同一 index 固化可交付实施阶段与必要模块。
 
@@ -100,13 +102,20 @@
 - **分层回执与停止**：区分 input commit、Scheduler admission、Provider send/stream、Usage settle 与 Native finalization/CommitReceipt。Stop 不撤销已提交结果；MCP/Host 重启后的 unknown 不自动重发。
 - **纯 READ 与 GC**：`SessionCore.load`/RunControl status 的某些路径有持久协调行为，必须分离真正只读快照；历史 GC 仅由原生 Reachability、读租约、Mark/Quarantine/Sweep 和依赖保护处理。
 
-## 5.5 第七轮待讨论（尚未冻结）
+## 5.5 第七轮已冻结的 Browser/UI 与截图证据链
 
-- Browser 当前 ARIA/screenshot/diagnostics/scroll 的边界、`click/fill/press/select` 拒绝机制与可控 UI 行为的选择。
-- Browser page/view identity、URL/origin/auth、Experience Epoch、Native Session Revision/Branch、Studio Preview 与 Source HEAD 各自证据在真实交互中的绑定与失效。
-- UI 验证如何采用观察/截图/可访问性/响应式布局，并且不把图像观测当作 Native Compile/Validation、Save、Commit 或用户人工批准。
-- 允许引入哪些语义化 Frontend/Host Bridge 操作（如导航、选中、临时编辑/表单、Mask/Canvas 工具），并保持既有 Action Policy Ceiling/Guard/Receipt、Browser Lane 并发隔离。
-- 真实 Codex/Claude Code 对浏览器截图、approval form/MRTR、工具调用进度、操作取消和失败恢复的 E2E 验收；浏览器 fixture 只能证明自动化，不替代真正用户体验证据。
+- **第七轮选 B：Browser Evidence Lane + Semantic UI Lane**。所有详细 UI/截图、隔离、隐私、验收规则以 [`browser-ui-semantic-interaction.md`](browser-ui-semantic-interaction.md) 为唯一权威。
+- Browser Evidence 专司 ARIA/截图/布局/诊断和有界观察；Semantic UI 仅允许登记的 Surface/Component/Control/Action。**通用 CSS/XPath/DOM click/fill/press/select/脚本与输入凭据不开放**，不能以页面行为绕过 Registry/Policy Ceiling。
+- 任何真实 Session/Studio/Package/Memory/Media 持久操作都走原生 Semantic Authority、可信审批及 CAS/Receipt；Frontend Host Bridge `host.authorize` **不是** MCP 用户授权。
+- 正式 `ScreenshotProof` 必须双向核对 Source/Server/Document、Session/Experience Epoch 或 Studio Preview/Project Version 等相关身份；旧 last-observed 证据不替代当前性。截图只证明画面，与编译、正式提交及人工满意是独立验收层。
+- 多任务页面隔离、异步 UI 操作取消、远端 subresource egress 风险、敏感画面处理及真实 Codex/Claude Code humanApproval UI 验收均为实施必须保持的要求；当前历史脚本只有部分自动化证据。
+
+## 5.6 第八轮待讨论（尚未冻结）
+
+- Package / Library / Resource Graph 的 immutable revision/used-by/dependency closure、Build/Artifact 传输/Preflight/Review/Install 与版本发布边界。
+- Speech / Visual Director / Image Generation / Img2Img / Inpaint / Upscale / Gallery / Mask Draft、Session 参考资产等与独立生图深化企划的产品权威职责；费用/Provider/媒体二进制的审批与恢复。
+- Skills、Runtime Extensions、Host Plugin 的发现、能力绑定、启用/停用、权限与依赖审查；区分 `main:plugins/**` 与长期 `plugin` 开发工具工作空间。
+- MCP 的大型二进制上传/下载、复合任务预算、Secret/URI、人工批准与端到端版本回执，不重复造 Package Registry/Media Store/PluginHost。
 
 ## 6. 实施和验证边界
 
