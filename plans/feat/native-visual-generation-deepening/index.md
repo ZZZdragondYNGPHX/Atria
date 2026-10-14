@@ -2,7 +2,7 @@
 
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Primary Workspace**: `main`（Atria 产品源码）；`docs` 仅承载本 Plan
-- **Status**: **Draft / 多轮设计中**（2026-10-14，第一轮方案 C 已冻结，第二轮待定）
+- **Status**: **Draft / 多轮设计中**（2026-10-14，Round 1 方案 C、Round 2 方案 A 均已冻结；Round 3 待讨论）
 - **Implementing Branch**: 尚未创建；待整个设计冻结后再创建 `feat/*` 工作分支交付 Codex
 - **Verified code baseline (remote only)**: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`
 - **Reference**: [damoshen123/st-chatu8](https://github.com/damoshen123/st-chatu8)（读取其公开源码和行为作为研究材料，非 Atria 代码来源）
@@ -17,13 +17,13 @@
 
 ## 2. 已冻结选择、既有系统约束与待议原则
 
-1. **方向：C — 分层混合架构（Round 1 唯一由用户明确批准的架构选择）**。共享一条底层管线和一套版本/资产权威；在上层分别支持手动、半自动、全自动的产品模式，而不是维护三份生成实现。
+1. **方向：C — 分层混合架构（Round 1 已批准）**。共享一条底层管线和一套版本/资产权威；在上层分别支持手动、半自动、全自动的产品模式，而不是维护三份生成实现。
 2. **不改写已提交剧情**。插图属于 Native Session 的呈现及媒体衍生数据；对应原文、版本和分支独立可追溯。模型不得靠生成插图反向改写剧情事实。
 3. **以现有 Native 系统为基线重构**：优先演进 `atri_illustrations`、现有绘图提示词 Route、任务调度、密钥与 AssetStore，避免依赖已退役的 SillyTavern SD 扩展/DOM 写入路径。
 4. **参考实现与版权边界**：可研究 st-chatu8 的交互/功能/协议行为；不得直接拷贝其 AFPL v9 代码或派生代码进入 Atria，除非另行完成授权、兼容性审查并取得明确决定。
 5. **模型决定与用户控制分离**：不把“自动”解释为不可撤销地扣费或覆盖用户选择；手动生图、预览/编辑、取消和版本选择在方案设计中始终保留。实际默认值、自动执行时机与审批规则待后轮冻结。
 
-**确认边界**：第一轮用户明确批准的是第 1 条的方案 C；第 2～4 条来自现有 Native 实现约束与第三方许可/工程规则，不冒充独立的用户表决；第 5 条是尚待定案的用户控制原则。候选接口、分期、支持渠道、自动生图策略均未获批准。
+**确认边界**：Round 1 已批准第 1 条方案 C；Round 2 已批准 **D-002：Post-Commit Visual Director**，见 [decisions.md](decisions.md)。第 2～4 条为 Native 基线/合规约束而非额外表决；第 5 条的具体执行许可/预算规则尚未定案。候选接口、分期、支持渠道、自动生图频率均未获批准。
 
 ## 3. Plan module map
 
@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | [baseline-and-reference.md](baseline-and-reference.md) | Atria 与 st-chatu8 的静态代码现状、差距、版权边界、证据置信度 | E0/基线定位、所有 Provider 或持久化任务 |
 | [decisions.md](decisions.md) | 已冻结且跨模块生效的设计决策；与未决事项严格区分 | 每轮新增跨模块冻结决定时更新 |
-| [architecture.md](architecture.md) | 候选端到端职责分层、Visual Director、模式/触发时机的第二轮备选方案 | 架构与编排讨论；确认后更新为正式契约 |
+| [architecture.md](architecture.md) | 职责分层候选、已冻结的 Post-Commit 触发时序及后续编排待议边界 | 架构与编排讨论；跨模块决策以 decisions 为准 |
 
 后续如确定 Provider、参考图、视觉身份、媒体编辑或缓存等独立大模块，应只新增对应模块，不在 `index.md` 重复详细规格。
 
@@ -45,7 +45,7 @@
 → `AssetStore / Image Versions / Branch Save`
 → `Display / Review / Edit`.
 
-每层的具体权威归属、独立 Route 数量、何时可以预计算、哪些动作需要用户批准，依照后续轮次确定。
+**已冻结的时序**：正式剧情提交后才发布 VisualIntent/Director 决策；流式阶段不做预判或真实生图。每层接口权威、独立 Route、何时批准 Provider 支出及自动触发策略依后续轮次确定。
 
 ## 5. Tentative stages and reading routes
 
@@ -84,10 +84,13 @@
 ## 8. Current design checkpoint
 
 - Round 1: **C 分层混合架构 — 已确认**，见 [decisions.md](decisions.md)。
-- Round 2: **视觉意图的生成时机及 Visual Director 决策权/审批边界 — 待讨论**，见 [architecture.md](architecture.md)。
+- Round 2: **A 已提交剧情后决策 — 已确认**；只冻结决策时点，授权/预算/频率仍待议，见 [decisions.md](decisions.md) 与 [architecture.md](architecture.md)。
+- Round 3: **Image Prompt IR、Provider Adapter、Capabilities 中立协议 — 待讨论/未冻结**。
 - 尚未定案：后端范围与协议接口、自动触发阈值、角色视觉权威/记忆、参考图与 Vibe、批量与缓存策略、图片编辑与视频、验收细项。
 - **禁止先行创建产品开发分支**；用户要求讨论完、设计冻结后由本对话创建正式 `feat/*` 分支供 Codex 开工。
 
 ## 9. Material routing/design changes
 
-2026-10-14：新建此 Bundle；与旧 NovelAI 插画 Plan 独立，记录第一轮选定方向。后续轮次只记录实质设计变化和必要的模块路由更新，不以企划代替实施 Record。
+2026-10-14：新建此 Bundle；与旧 NovelAI 插画 Plan 独立，记录第一轮选定方向。
+
+2026-10-14：Round 2 用户批准方案 A，冻结 Post-Commit Visual Director，禁止现阶段将流式候选视为权威来源或提前向图片 Provider 发请求；更新 D-002 与阶段索引，Round 3 开放中立 Image Prompt IR/Provider 能力协议设计。后续只记录实质设计变化，不以企划代替实施 Record。
