@@ -8,9 +8,9 @@
 
 当前视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。文件是首轮满意初稿的完整快照；桌面以 Studio 三纸工作台展示，手机为分区切换，同时包括 Play、Library 与部分 Agents/Runtime 示意。
 
-当前讨论稿：[discussion-preview-v0.5.html](references/discussion-preview-v0.5.html)。沿用 v0.1 的纸墨、衬线标题、悬浮 Dock 与工作纸体系，加入 Library Prompt/Persona 编辑与浅色 Settings 工作纸。Settings 桌面以分组纸张配右侧阅读样例，手机先显示 Appearance，再显示样例与其余分组。阅读默认比例仍为桌面20px/740px、手机17px；字号演示偏好会同步到 Play。
+当前讨论稿：[discussion-preview-v0.6.html](references/discussion-preview-v0.6.html)。沿用 v0.1 的纸墨、衬线标题、悬浮 Dock 与三张工作纸，Studio 默认展示 Actors；EntryPoints、UI 与 Assets 从资源纸进入。编辑在同一中纸中切换结构化/Source，审查纸先列关键差异，再展开完整基线/当前/草稿证据；手机沿五分区和 Bottom Sheet 展开。
 
-历史讨论稿 [v0.2](references/discussion-preview-v0.2.html) 仅纠正 OpenAI-compatible 样例地址与认证语义；[v0.3](references/discussion-preview-v0.3.html) 展开 Runtime 配置与 Agents 四页；[v0.4](references/discussion-preview-v0.4.html) 展开 Play 最近会话/只读历史/存档分支与 Library Work/World/Knowledge。v0.5 沿用这些页面。各讨论稿的配置、事件、知识及操作结果均为内存演示，不冻结为产品支持范围，也未获得新一轮视觉接受。
+历史讨论稿 [v0.2](references/discussion-preview-v0.2.html) 仅纠正 OpenAI-compatible 样例地址与认证语义；[v0.3](references/discussion-preview-v0.3.html) 展开 Runtime 配置与 Agents 四页；[v0.4](references/discussion-preview-v0.4.html) 展开 Play/Library；[v0.5](references/discussion-preview-v0.5.html) 展开 Library Prompt/Persona 与浅色 Settings。v0.6 沿用这些页面。阅读默认比例仍为桌面20px/740px、手机17px；字号偏好在演示中同步到 Play。各讨论稿均为内存演示，未替换 v0.1 已接受基线。
 
 原始 [桌面稿](references/desktop-reference.html)、[手机稿](references/mobile-reference.html) 和 [手机设计说明](references/mobile-design-notes.png) 继续提供视觉气质与布局依据。原始 Markdown 是待核实设计输入，其中 React/Vue 重写、选文重生成等内容的处置由当前决策决定。
 
@@ -57,3 +57,5 @@ v0.3 已展开 Runtime 缺项与配置路径、Agents 默认时间线及证据�
 v0.4 已展开 Play 与 Library 的日常代表任务，默认入口按 `decisions.md` §10 回到上次阅读。
 
 v0.5 已展开 Library Prompt/Persona 编辑与浅色 Settings。资源列表继续沿用画廊域，编辑使用共享工作纸/Sheet，专业字段采用分组与逐步展开；长设置页为从账户菜单进入的工具工作纸，不增加一级 Dock 域。所有新页复用现有色彩、文字、控件和动效体系，只模拟已经存在的任务。主题管理与 Custom CSS 保留说明入口，完整兼容流程仍待设计。
+
+v0.6 已展开 Studio Actors、EntryPoints、UI/Assets 的代表编辑。资源纸、编辑纸和 Agent 纸沿已接受构图，UI 与 Assets 各有入口；关键差异先可读，完整原文折入证据，冲突时默认展开三方对照。冲突/失败/保存回执沿同一审查纸，阶段变化归顶，键盘和错误反馈定位状态标题。高频资源/模式切换与文字输入即时响应；复用共享 Sheet，不给 diff 各行加动画。Agent 提议和旧 Prompt 仍是前版示意，不与新的非 Prompt 人工工作区混成权威提交。仍只修改企划与独立 HTML。

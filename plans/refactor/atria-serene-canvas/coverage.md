@@ -6,7 +6,7 @@
 
 - 源码核查基线：`main`，`9241325a7290e613e0fdaaa1870409105c161c89`（2026-10-14）。本模块以已核实的前端功能盘点为索引，以下源码引用提供可复核的事实入口；实施前以真实 Git 复核变化。
 - 满意的视觉基线：[accepted-preview-v0.1.html](references/accepted-preview-v0.1.html)。它是独立演示，未连接产品服务、真实项目、会话、账户或模型请求。
-- 当前讨论稿：[discussion-preview-v0.5.html](references/discussion-preview-v0.5.html)。§3/§4 沿用 Play/Library v0.4 并增加 Prompt/Persona，§7 增加 Settings；§6 保留 v0.3 Runtime/Agents 范围，其余领域仍以 v0.1 为盘点。演示流程不等于产品实现。
+- 当前讨论稿：[discussion-preview-v0.6.html](references/discussion-preview-v0.6.html)。§5 增加 Studio 非 Prompt 编辑与冲突恢复；§3/§4/§6/§7 沿前版，其余领域仍以 v0.1 为盘点。演示流程不等于产品实现。
 - [功能呈现文档](references/function-presentation.md)、[设计规范](references/frontend-guidelines.md)与桌面/移动参考均是设计输入，其与当前决定或源码的差异按 [decisions.md](decisions.md)处理。参考稿不包含某个按钮，不代表删除该用户任务；参考稿画出某个入口，也不证明产品已有该能力。
 - **交互演示**：对应版本可操作的模拟流程。**代表布局**：已有视觉构图或部分表单/状态，没有完整流程。**入口示意**：仅菜单、描述、简单反馈或占位详情。**待展开**：没有具体界面。下列等级均不表示产品实现或验收完成。
 
@@ -55,15 +55,19 @@ v0.5 复核：Persona 内容采用严格合同，不加入任意 Source 键；�
 
 ## 5. Build / Atria Studio
 
-| 页面/区域 | 已有产品能力与语义 | v0.1 覆盖 | 下一轮 HTML 补齐 |
+| 页面/区域 | 已有产品能力与语义 | v0.6 讨论稿覆盖 | 剩余 HTML / 产品验证 |
 | --- | --- | --- | --- |
 | 项目首页 | 新建、搜索/打开、删除与依赖处理 | 直接进入项目，首页待展开 | 项目入口、无项目/无匹配、载入失败与重试 |
-| 资源树与编辑器 | 20 个视图：Overview、Experience、Prompt Authoring、Runtime Design、Actors、EntryPoints、Worlds、Knowledge、Game Logic、UI、Assets、Memory、Agents、Skills、Plugins、Metadata、Simulation、Preview、Build、Source | 三纸、分组/搜索、Prompt 分区、结构化/Source、移动五面板有交互演示；其它资源多为入口示意 | 以 Actors/EntryPoints 与 UI/Assets 各展示一处真实结构化任务；不要求把所有资源同时放在画面上 |
-| 编辑与 ChangeSet | 编辑形成草稿；Review → inspect Workspace → Apply → Validate → resultingRevision；冲突/回滚/保存后刷新失败 | 草稿、校验、diff 与演示 Apply 有交互演示；Source 模式保留未知字段 | 引用/修订冲突、保留/复制草稿、取消审查、验证失败与保存后刷新失败 |
-| Project Agent | Intent → Plan → Workspace/Operations → ChangeSet → Validate/Preview/Simulation → Review → 人显式 Commit | 任务/取消、提议与演示 Review & Commit 有交互演示 | Task 状态、计划、操作与证据；冲突/中断恢复，区分 AI 文字与权威修改状态 |
+| 资源树与编辑器 | 20 个视图：Overview、Experience、Prompt Authoring、Runtime Design、Actors、EntryPoints、Worlds、Knowledge、Game Logic、UI、Assets、Memory、Agents、Skills、Plugins、Metadata、Simulation、Preview、Build、Source | 三纸/搜索与手机五面板；Actor集合选择/名称/role/Profile、EntryPoint选择/名称/项目绑定/primary、UI节点文本与文件Source、Assets名称/mediaType/metadata；四域共享草稿/修订。旧Prompt布局沿v0.1 | 集合创建/删除与复杂资源关系；完整Source文件树、UI Source Graph/预览、Assets文件导入/替换/移动/删除。其余视图继续展开 |
+| 编辑与 ChangeSet | 编辑形成草稿；Review → inspect Workspace → Apply → Validate → resultingRevision；冲突/回滚/保存后刷新失败 | 非Prompt单一store，跨域保留坏Source；关键差异与完整三方证据、复制原文、Review/取消、基线冲突/确认重载、验证失败无新修订、提交前写入失败、保存后刷新失败仅重读；重复提交保护与提交前准备取消示例 | 真实Inspect/Execute/回执、完整合同/文件事务与不确定提交核实、持久恢复。旧Prompt固定提议尚未映射完整权威链 |
+| Project Agent | Intent → Plan → Workspace/Operations → ChangeSet → Validate/Preview/Simulation → Review → 人显式 Commit | 任务/取消和右纸沿前版示意；旧Prompt提议与新非Prompt人工草稿明确分开 | Task状态、计划、操作/证据、冲突与中断恢复；完整人工Commit权威 |
 | Preview / Simulation / Build | 预览精确项目修订；仿真、Preflight、生成 `.atria`；活动 Problems/Output/History/Changes | 预览、四类活动、折叠与切换有交互演示；构建仅入口示意 | 校验问题定位、仿真/构建结果、失败后返回资源、关闭预览 |
 
 事实入口：`main:public/scripts/native/studio-workspace.js:38-67,215-262,697-857,1229-1515`、`studio-agent.js:98-114,413-521,579-598`、`main:src/native/authoring/studio-service.js:922-990`、`main:src/native/project-agent.js:1207-1248`。
+
+v0.6 核查边界：Actor 与 Persona 分属不同合同。Actor/EntryPoint 顶层只接纳合同字段，profile/metadata 与已有嵌套配置可保留，不以“Source无损”宣称任意未知顶层字段有效。EntryPoint 的 actor/world/knowledge 绑定须指向项目声明，建议参数字段不自动证明消费者全部启用。UI 结构化补丁与文件 Source 写入分别沿 `frontend.patch`、`source.write`；Assets 文件操作与 manifest 修改同属一个 Workspace，不能只改可见列表而漏掉引用。事实入口补充：`main:public/scripts/native/studio-actors-editor.js`、`studio-entrypoints-editor.js`、`studio-frontend-editor.js` 及 `studio-workspace.js` 中 `renderAssets`。
+
+ChangeSet 的 Inspect 只产生待审查证据，完整 Validate 在 Execute 的临时修改后进行；失败恢复 snapshot 且 `resultingRevision=null`，成功提交后才形成新修订。刷新失败保留回执并锁定新写入，Reload 只读取已保存版。现合同不提供强制覆盖、自动合并或中途撤销已经发出的提交；原型中的故障控制只用于审阅状态。完整 Project Agent 提交链及旧 Prompt 代表编辑仍需分别展开。
 
 ## 6. Agents 与 Runtime
 
@@ -124,13 +128,13 @@ Settings 沿用既存事件和即时应用/防抖保存，不新建统一 Apply 
 
 ## 9. 下一轮 HTML 的展开顺序
 
-v0.3 已展开 Runtime/Agents，v0.4 已展开 Play/Library 日常代表路径。当前 v0.5 按 §4/§7 展开 Prompt、Persona 和浅色设置页；各讨论稿仍等待反馈，不自动替换已接受视觉基线。下面是其余后续视图的建议顺序。
+v0.3 已展开 Runtime/Agents，v0.4 已展开 Play/Library 日常路径，v0.5 展开 Prompt/Persona/Settings，v0.6 展开 Studio 非 Prompt 代表编辑与冲突恢复。各讨论稿等待反馈，不自动替换已接受基线。下面是剩余视图的建议顺序。
 
 建议按能验证视觉系统承载复杂度的代表任务展开，而非一口气增加全部占位页面：
 
 1. 按反馈调整v0.4/v0.5 Play/Library；继续Package Knowledge原件编辑与Prompt剩余专业流程。
 2. Runtime 的复杂依赖修复、删除阻碍和原任务返回；v0.3 已有的配置主路径按反馈调整。
-3. Studio 非 Prompt 资源编辑、ChangeSet 冲突/验证失败；Agents 各编排模式的完整编辑与维护任务细节，沿 v0.3 四页继续完善。
+3. Studio 剩余集合/文件与完整 Project Agent 提交链；Agents 各编排模式的完整编辑与维护任务细节。v0.6 的非 Prompt/冲突路径按反馈完善。
 4. 登录/引导、Account/Backup/Extensions/Diagnostics；Settings剩余高级兼容流程；一处作品接管与一处条件媒体流程。
 
 此顺序是设计工作建议，不是冻结实施阶段。旧控件、潜在新能力、已确认边界与用户待讨论取舍只归 [decisions.md](decisions.md)，不由旧 DOM 或参考稿自动推导。

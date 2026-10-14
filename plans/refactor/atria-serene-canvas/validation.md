@@ -26,6 +26,8 @@
 - Play 发送/停止、用户输入接受边界、Draft/Revision 发布、失败恢复与流式正文；历史只读、分支切换、存档导入导出和精确依赖。
 - Library 按 [coverage.md](coverage.md) 中实际资源类型验证原件的只读或编辑路径、不可变修订、引用阻碍与缺版本修复；安装权限/依赖预检和条件媒体的原有批准语义。
 - Studio 草稿保护、结构化/Source 无损切换、ChangeSet Review/Apply、冲突与失败、AI 提议与人的提交权威、预览/模拟/构建。
+
+Studio 本轮代表流程进一步检查：Actor/EntryPoint 的受支持结构与引用、UI 的 `frontend.patch`/文件 `source.write` 区别，以及 Assets 变更的文件/manifest 联动。Review 的检查信息不等同于完整 Validate 通过；服务验证失败时 `resultingRevision=null`，提交成功但刷新失败时保留新修订回执，锁定新写入并仅重读已提交版本。具体能力事实归 `coverage.md` §5，不从故障演示控件推导新接口。
 - Runtime 无认证连接、模型发现与选择、精确 Route 引用、fallback、Compile preview 不发请求。
 - Settings/Account/Extensions/backup 的配置与数据兼容、取消/失败回退、现有权限及恢复语义。
 - 原生化后使用真实生成、取消、会话和扩展行为验收替代已退出的 selector 假设；旧 DOM 存在与否不作为永久功能契约。

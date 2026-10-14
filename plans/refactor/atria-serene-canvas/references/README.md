@@ -10,7 +10,8 @@
 | [discussion-preview-v0.2.html](discussion-preview-v0.2.html) | 第二轮早期讨论稿，修正 Runtime 样例地址与认证语义 | 历史讨论版本；视觉沿用 v0.1 |
 | [discussion-preview-v0.3.html](discussion-preview-v0.3.html) | Runtime 配置路径与 Agents 四页的交互初稿 | 历史讨论版本；未替换已接受基线 |
 | [discussion-preview-v0.4.html](discussion-preview-v0.4.html) | Play 会话/历史/存档与 Library 详情/资源编辑的交互初稿 | 历史讨论版本；未替换已接受基线 |
-| [discussion-preview-v0.5.html](discussion-preview-v0.5.html) | Library Prompt/Persona 与浅色 Settings 的交互初稿 | 最新讨论版本；等待反馈，未替换已接受基线 |
+| [discussion-preview-v0.5.html](discussion-preview-v0.5.html) | Library Prompt/Persona 与浅色 Settings 的交互初稿 | 历史讨论版本；未替换已接受基线 |
+| [discussion-preview-v0.6.html](discussion-preview-v0.6.html) | Studio Actors、EntryPoints、UI/Assets 编辑与 ChangeSet 冲突/失败恢复 | 最新讨论版本；等待反馈，未替换已接受基线 |
 | [desktop-reference.html](desktop-reference.html) | 用户提供的 `atria-serene-canvas.html` | 桌面视觉气质、布局与精致程度参考 |
 | [mobile-reference.html](mobile-reference.html) | 用户提供的 `atria-mobile-serene.html` | 手机布局与材质参考 |
 | [frontend-guidelines.md](frontend-guidelines.md) | 用户提供的视觉规范 | 设计输入；冲突以当前决策解决 |
@@ -28,6 +29,8 @@ v0.3 讨论稿 SHA-256：`0fd21aacc0613263195404077d1bca279cf14bd83f3eac11464c91
 v0.4 讨论稿 SHA-256：`d92552ee518fa4fe48ceeff13a78d745b6283b63625589b7a3b9821e14e4f026`。
 
 v0.5 讨论稿 SHA-256：`aba50a83a243e90ec618e4c0a5f434e0cc10c39b96d409ebacd3bbc1bcfd08b5`。
+
+v0.6 讨论稿 SHA-256：`863ecb76c1072fc3121b84c187dede8eb52c8075296fffeaa7a02a849e9ed981`。
 
 HTML 包含样例内容、内存交互、部分占位与 Google Fonts 引用；网络字体不可用时使用字体栈回退。它是视觉输入，不是产品服务或持久化实现。
 
@@ -93,6 +96,26 @@ v0.4 尚未验证：真实Session/模型/资源服务、持久化/版本修复�
 
 v0.5 尚未验证：真实资源/偏好服务、持久化与完整合同、全量Preset删除/Regex/参数、头像及文件上传、语言真实刷新、高级主题/Custom CSS兼容、真实软键盘/触屏手势设备、性能trace。当前仅是D2设计讨论；没有产品重构实施，也没有新增依赖。Studio/Agents/Runtime沿前版，剩余界面按 `../coverage.md` 继续。
 
+### v0.6 actual prototype checks
+
+- 真实 Chromium / Codex 内置浏览器查看 Studio 1440px 桌面三纸、900px 两栏、390px 编辑与320px EntryPoints/UI/Assets/冲突纸。上述尺寸无页面级横向溢出；320px Sheet宽320px，正文clientWidth/scrollWidth均268px。审查先显示具体差异，完整原文折叠，冲突默认展开。
+- 连续编辑 Actor→EntryPoint→UI节点文本→Asset名称，四份草稿进入同一Review；旧嵌套Profile、mes_example和metadata保持。Actor空Source切Form拒绝、跨资源重开仍为空；本地检查阻止提交。Assets Source=[]独立审查被范围校验拒绝，不能借原文编辑隐式删除manifest。
+- 模拟另处修改后，基线/当前/草稿可比较，Apply禁用；取消重载保持姓名输入，明确确认才舍弃草稿并读当前项目。源代码中的正常拖拽/reduced拖拽各发一次关闭意图，回弹/取消不发，由实际函数定向检查。
+- 浏览器验证本地准备等待期间关闭，重开后基线未变、草稿保留；验证失败没有resultingRevision。四域同批提交的refresh-failed保留单条新修订，模式/Preview禁用；刷新只读取已保存版，恢复编辑且未再次Apply。此取消只发生在本地准备，已发出的Execute不提供撤销。
+- 实际键盘Escape回到Review触发器，Ctrl Enter打开错误纸时焦点定位状态标题；阶段更新的Sheet正文与面板scrollTop均0。Body、Mode与手机Preview入口的锁定/解锁跨Prompt切换由实际函数检查；重绘selector/file/Add后焦点恢复已定向复核。
+- 独立模块与最终合并脚本`node --check`通过。初始示例source通过实际`assertAtriaProjectSource`；UI patch的contentHash由基线文件实际SHA-256产生，Source写入用utf8。单一store定向检查覆盖坏null/[null]、Assets空/重复ID、提交前写入失败、重复Apply、关闭后的晚回执、刷新不重提交及未知提交结果持续阻挡。以上合同/状态检查不等于完整Native Validate或Frontend Graph通过。
+- 最后相关浏览器流程日志无error/warn。明确调用find-animation-opportunities、review-animations及web-design-guidelines并独立只读复审，结论Approve。微交互诊断为9/10（7/8项）：长期熟练使用的提示收敛未展开；正式设计可将重复说明保留在可展开资料，不据此新增持久化能力。当前没有产品重构或新增依赖。
+
+| Before | After | Why |
+| --- | --- | --- |
+| 正常滑动关闭绕过准备取消通知 | 关闭意图统一覆盖，反弹不通知 | 防止关闭中发出迟到提交 |
+| Preview入口可绕过锁、Mode禁用残留 | 所有入口同一守卫，disabled/inert随状态恢复 | 提交/刷新期间的编辑边界一致 |
+| 坏Source污染其他资源、Asset数组可隐式增删 | 展示用安全投影，原文仍校验；固定完整唯一ID集 | 保留输入与本轮metadata范围 |
+| 重绘丢焦点、结果留在旧滚动位置 | 控件焦点恢复，阶段归顶并定位状态 | 键盘和错误恢复可连续操作 |
+| 改稿可绕过未知提交结果阻挡 | 核实前持续阻挡；失败Reload不解除 | 防止重复提交 |
+
+v0.6 尚未验证：真实Inspect/Execute/文件事务与持久恢复、全量资源/引用合同、完整UI Source Graph/Native Preview、Project Agent提交链、真实手机软键盘/触屏手势、性能trace。指针/拖拽生命周期的函数证据不是实机手势证据；未取得产品级性能结论。旧Prompt/Agent示例及其它域沿前版，剩余范围见 `../coverage.md`。
+
 ## Material libraries
 
 研究已有七库官方页面与13份代表组件源码。它们用于选取按钮、状态、纸张浮层和过渡机制，不规定框架或自动增加依赖。
@@ -106,3 +129,5 @@ v0.5 尚未验证：真实资源/偏好服务、持久化与完整合同、全�
 | [Magic UI](https://magicui.design/) | 关键按钮强调与轻内容呈现 |
 | [Aceternity UI](https://ui.aceternity.com/) | Dock 编排、光影与空间层次 |
 | [Animata](https://animata.design/) | idle/loading/success 状态按钮 |
+
+v0.6补充读取[Motion Primitives Dialog源码](https://github.com/ibelick/motion-primitives/blob/main/components/core/dialog.tsx)、[Animate UI AlertDialog](https://animate-ui.com/docs/primitives/radix/alert-dialog)及[Radix异步受控示例](https://www.radix-ui.com/primitives/docs/components/alert-dialog#close-after-asynchronous-form-submission)：采用关闭意图→退出→native close的生命周期，以及异步提交由状态决定关闭的机制。Motion Primitives该示例未提供完整trigger焦点保存，继续沿Atria已有焦点归还；不照搬默认变体或添加React依赖。高频树/Source/差异行不增加入场动画。
