@@ -45,6 +45,7 @@
 2. 将用户意图重映射到**已经被产品权威支持且语义相符**的操作：SavePoint Restore（新 Branch）、existing Branch switch、在真正有已授权 typed Native reply variant authority 时的非破坏重试。**不存在正确原生接口时明确 unsupported**，不得偷偷选择附近一个 Save/Revision 并宣称“同等效果”。
 3. 用户要求“从某楼层重开”时，需先证明有可用的 committed boundary/Revision 和对应 SavePoint 或正式 fork authority；不允许任意截断当前 Timeline。为了常用场景新增权威能力也必须是不可变 Revision/新 Branch 的产品接口，并附 CAS/RunControl、历史保留与测试。
 4. `chat.send` 当前是“先提交用户 Timeline，再 `turn/start`”的两阶段操作，部分成功就应清楚返回 `input_committed, generation_unknown` 等分层结果。扩展正式 CommitId/InvocationId 和精确原生 Receipt 核对，不允许“失败 → 再追加一次用户楼层”。
+   实施收口：审批前通过纯 Native Turn preflight 固定 Session HEAD、Package contract、已选 Route/slot binding、模型/连接目标与预算；输入提交后由原 Commit Receipt 证明唯一 parent/user append，再进入受控 Turn start。每次真实 Send 前重核原批准配置；MCP 专用入口抑制未批准的 Visual/Simulation/自动学习模型级联，复用原生 Turn runner，不改变普通产品入口默认行为。成本与重试统一遵循 [Runtime 执行边界](model-prompt-runtime-provider.md#7-显式付费执行provider-fallback-与预算隔离冻结)。
 5. P0 中增加静态合同检查（已注册 Action → Route method/path + command type），检测任何 `plugin` 与 `main` 不一致、未注册 404 / 400 不可用却对外声明 available 的情况。
 
 ## 4. 第六轮 Session / Save 语义 Action 目标

@@ -91,6 +91,7 @@
 - 执行前声明 `source = {sessionId,revisionId} 或 {projectId,revision,taskId?}`、`role`、精确 `routeRef`（不可按名称猜选）、模型/连接/Endpoint/SecretRef 已经获准使用的绑定、有效 Prompt/Generation Profile、`fallbackMode`、工具/Output contract、Token/调用/可能费用预算及外部 Effects。
 - 协议下的模型执行与 Scene/Session 正式写入分别计入各自生命周期：`/execute` 的结果不等于 Timeline 已 commit；`/turn`、`/task` 等经 Native RunControl/Revision 正式路径提交；Project Task 必须带精确 Attempt/Task authority。
 - 若模型路由或预期成本缺失、Provider 能力 unknown/unsupported、输出合同无法满足或需要同意网络凭据发送，则 fail closed / 请求明确选择；不凭猜测降级到其他模型。
+- 同一约束适用于 `chat.send`、Project Agent 和旧 Orchestrator `agent.run.start(delegated-node)`：每次原生发送都必须核对原审批的 configuration fingerprint、目标与预算，不能用已获准的 Secret→Endpoint 绑定替代此次模型费用审批。Orchestrator 保留现有 Runtime；受控 delegated 请求复用 reviewed Native execute，不建立第二套运行时。MCP 默认关闭该次执行的自动 retry/fallback 与自动学习；需要替代 Route 时先产生独立可审查意图。
 
 ### 7.2 Fallback 边界
 

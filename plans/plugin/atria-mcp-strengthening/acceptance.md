@@ -22,6 +22,7 @@
 ## 客户端与平台策略
 
 - SDK v2 是依赖迁移，协议版本是协商结果。记录每次实际 negotiated protocol 与 capabilities；不凭客户端品牌推断。2026 MRTR 请求态强绑定；2025 客户端用 legacy form；两者均无可信通道时只开放合法纯 READ。
+- 2025 legacy form 兼容路径覆盖 `2025-06-18` 与 `2025-11-25`。本机 Codex 0.162.1 的实际 app-server 握手为前者；wire 合同与真实工具连接、真人审批仍分别取证，不用 SDK 默认版本替代真实协商值。
 - Tasks 扩展未经协商不公布 tasks 支持，使用固定 registry 的 operation status/cancel/reconcile。不为支持 Tasks 另建业务 runtime。
 - 真实 Codex 与 Claude Code 分别记录版本、连接/工具/图片/取消、审批允许/拒绝/超时。app-server 自动化可证明连接与工具展示，不能证明真人审查体验。
 - Windows 当前可执行的 Node/Browser/FS 验证可记录为实证；CachyOS、Termux 必须有对应环境才能声明通过。仅环境检查/兼容实现仍标待验。

@@ -50,3 +50,13 @@
 - 当前工具完整回归 **134/134**（Windows Edge），check 覆盖全部 58 个 JS；产品本次所有修改的 src/public 源码 ESLint 通过。旧 `project-agent.test.js` 中 10 条原有 conditional-expect lint 提示未作无关重构；本次新测试及生产源码另验。
 - 真实隔离 Atria 联调已启动；第一轮运行中正好提交产品源码，原生 provenance 二次核验正确拒绝不同 HEAD，未执行该次写入。已固定提交并重启全链路验证，不将首次故障当验收完成。继续大于 2 MiB 实际 Studio 包、生产 Preview Proof、客户端和 main 集成。
 - 按原冻结边界，SavePoint 物理单删无原生 RunControl/CAS 安全端口、HostPlugin 无生产实例/运维 authority，明确 unsupported，不包装底层 Repo.delete 或伪造 active 状态。真实真人审批与 CachyOS/Termux 仍待实际设备/操作证据。
+
+## E7 真实联调缺口修复 checkpoint — 2026-10-14
+
+- 产品任务分支新增 `36d6e0dfe840f106bae689e108f7d901da8b88c8` 与 `482d3770b867856141add6388fba962be3693af1`。前者修正共享 Document kind 下 Runtime Library 扫描混入 Memory/Extension 记录，按既有 storage key 的 resourceType 与文档身份限制；真实联调的 Connection guard 500 有定向重现，4 suites / 18 项回归通过。后者修正 StudioService 返回完整 ProjectRevision 而 MCP build-artifact 错按字符串比较的问题；新增真实 StudioService / ProjectStore、>2 MiB 随机资产与真实 PackageContainer 字节/Hash 核对，5/5 及 ESLint 通过。
+- 工具进一步区分 last-observed Frontend Epoch 与 Memory 自身 loaded source ticket/branch：不把心跳时间或延迟 Frontend 投影误当 Memory 换源；真正 Memory source/branch 变化仍拒绝。对应 READ/授权/UI 组合 15/15 通过。直接 Workspace 含 source.delete 的正式 Apply 必须走独立 `build.change.apply.destructive`。
+- 已获得真实 Codex 0.162.1 app-server 的 18 tools/schema/status/discovery/READ/JPEG 实测；实际协商 `2025-06-18`，已加入 legacy form 支持并通过 14/14 协议测试，不能记作客户端协商了 2026。Claude Code 2.1.296 的真实 `mcp get` 报 Connected，仅证明启动/连接；未冒称其工具调用或真人审批通过。临时 Codex/Claude 配置隔离，未调用付费 Provider。
+- 隔离真实 Atria 已取得生产 Session ScreenshotProof `EXACT_CURRENT`、compiled Preview 本地语义计数操作 succeeded、桌面/窄屏 Preview Proof `EXACT_CURRENT`、编辑器 Preview；这些是实际浏览器证据。全链路此前分别被源码变更、Runtime Library、Memory scope、Studio build 契约错误中断，失败如实保留于本摘要，不能以部分画面通过代替全链路完成；当前在固定 `482d3770b` 重跑。
+- 最终安全审计继续收口聊天 Turn 与旧 Orchestrator Delegation 的原生费用预检/每次发送配置核对，使用第二个独立临时产品工作树 `feat/mcp-turn-authority`，复用现有 Native runner，不在联调中修改 source。Skills 大型候选 before/after 合法文本合并响应可越过 1 MiB，已交独占子代理补 metadata/完整差异分页与小型 Hash guard，不以提高全局 JSON 限额规避。
+- 测试环境变动：子代理执行 Playwright 安装使共享缓存新增 Chromium 1243，并由其安装器清除旧 headless 1194；本任务验证仍指定现有 Microsoft Edge。未将环境变化隐去，也未更改产品依赖锁。
+- 当前仍实施中：等待上述缺口修复、最终全链路、提交/推送、产品 main 集成与任务临时资料清理。人工审批 UI、CachyOS/Termux、真实付费 Provider 尚无实证。
