@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 已冻结；其余待议。Image Prompt IR、Adapter、Capabilities、已选 Provider 范围/三层配置详见 [provider-protocol.md](provider-protocol.md)。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -10,7 +10,7 @@
 
 **Visual Intent / Director**：输入已授权的剧情证据与模式设置，提出一条或多条 `VisualIntent`（谁、在哪里、何种镜头、参考资料、是否该画、优先级）。Director 不直接修改剧情文字，也不直接调用特定 Provider。
 
-**Visual Context Compiler**：只读选定 Revision 的可见角色、状态、场景、时间和视觉档案；锁定角色身份/画风/负面约束，标记不确定来源。
+**Visual Context Compiler（D-005 已冻结权威分层）**：对已提交的源 Revision 解析 Visual Identity（正式 Actor ID 或明确作用域的临时身份）、Visual State（时点服装/伤势/场景）、Visual References（类型化参考图与 Vibe）。不得跨分支借状态或绕过玩家可见性/披露规则；视觉事实不写回叙事。具体更新与仲裁规则在 [visual-continuity.md](visual-continuity.md) 第六轮讨论。
 
 **Image Prompt IR（D-003 已冻结原则）**：与特定 Provider 无关的视觉语义，通过独立的 Capability Negotiation + Provider Adapter 编译成后端请求。用户手填 Raw Prompt 是明确的另一输入形式，不被 AI 静默覆盖。具体结构见 [provider-protocol.md](provider-protocol.md)。
 
@@ -57,7 +57,7 @@ Director 可在正文尚未提交时直接调外部生图后端；正文结束�
 ## 3. Cross-cutting choices to resolve later
 
 1. **视觉单位**：文本选段标注、完整 Scene、自动镜头卡、角色肖像是否拥有相同或不同的 VisualIntent 类型；与 Annotation 的引用方向。
-2. **身份与连续性**：角色固定视觉设定、剧情状态、服装、ReferenceImage/Vibe 的冲突解析优先级，跨 Chapter/Branch 的生命周期。
+2. **身份与连续性**：三层权威与 Branch/Revision 隔离已由 D-005 冻结；**待议**的是服装/伤痕自动更新、固定/动态设定冲突仲裁、Reference/Vibe 选择与跨 Chapter 的生命周期，参见 [visual-continuity.md](visual-continuity.md)。
 3. **后端与模型能力**：NovelAI V5、ComfyUI、SD/Forge、图像云 API/RunningHub；何者首批，如何声明可用参数/上传图像/异步进度。
 4. **操作自主性**：手动/半自动/全自动的明确控制规则、最低确认/预算限额，以及 Director 如何验证“值得画”。
 5. **图像衍生**：原始图、再生、局部编辑、风格迁移、视频的独立资产、原图追溯与版本选择。
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001**：分层混合架构；**D-002**：正式剧情 Commit 后 Director 决策；**D-003**：结构化语义 IR + Provider Adapter + Capability Negotiation；**D-004**：跨 Provider 家族按 P0/P1/P2 分期、三层 Profile 及四级覆盖。四项已确认，见 [decisions.md](decisions.md) 和 [provider-protocol.md](provider-protocol.md)。
-- **Round 5 待议**：角色视觉身份、图片/风格参考、Vibe、服装与世界状态的权威归属和跨分支连续性。
+- **D-001 ～ D-005** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、以及**Identity/State/References 分层视觉权威**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
+- **Round 6 待议**：视觉状态自动更新、角色/服装/场景参考图与 Vibe 的选取/冲突仲裁算法。
 - 其他未决议题：自动授权与预算、精确 Provider API、编辑/参考图/视频功能矩阵、持久任务恢复。
