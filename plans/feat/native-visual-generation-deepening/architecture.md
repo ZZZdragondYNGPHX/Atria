@@ -1,6 +1,6 @@
 # Atria 原生视觉生成系统深化 — 架构议题与候选方案
 
-> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
+> **状态：Draft；[decisions.md](decisions.md) 的 D-001 / D-002 / D-003 / D-004 / D-005 / D-006 / D-007 已冻结；其余待议。Image Prompt IR/Provider 见 [provider-protocol.md](provider-protocol.md)，视觉身份/时点/参考图权威见 [visual-continuity.md](visual-continuity.md)。**
 >
 > 参考阅读：[现有实现与差距](baseline-and-reference.md)。
 
@@ -8,13 +8,13 @@
 
 **Narrative Authority**：Atria Native Session/Revision/Branch/SavePoint，现有角色/世界/知识状态。这是叙事事实唯一正式来源。
 
-**Visual Intent / Director**：输入已授权的剧情证据与模式设置，提出一条或多条 `VisualIntent`（谁、在哪里、何种镜头、参考资料、是否该画、优先级）。Director 不直接修改剧情文字，也不直接调用特定 Provider。
+**Visual Intent / Director（D-007）**：正式 Commit 及已授权可见来源进入分级轻量场景筛选，必要时调独立 Director LLM 评估价值、新颖性与候选镜头；允许跳过。基于手动/半自动/全自动的许可与两类隔离预算，提交统一持久 ImageJob。Director 不阻塞剧情、不能直接修改正文，详见 [visual-director.md](visual-director.md)。
 
 **Visual Context Compiler（D-005 已冻结权威分层）**：对已提交的源 Revision 解析 Visual Identity（正式 Actor ID 或明确作用域的临时身份）、Visual State（时点服装/伤势/场景）、Visual References（类型化参考图与 Vibe）。不得跨分支借状态或绕过玩家可见性/披露规则；视觉事实不写回叙事。证据驱动的混合状态候选、冲突硬门禁及参考图用途筛选已由 D-006 冻结，详见 [visual-continuity.md](visual-continuity.md) §5；精确阈值另议。
 
 **Image Prompt IR（D-003 已冻结原则）**：与特定 Provider 无关的视觉语义，通过独立的 Capability Negotiation + Provider Adapter 编译成后端请求。用户手填 Raw Prompt 是明确的另一输入形式，不被 AI 静默覆盖。具体结构见 [provider-protocol.md](provider-protocol.md)。
 
-**Image Job + Budget**：以 Native 资源/场景/请求意图作为去重和权限边界，编排 Provider 请求与取消；明确“已计划”“已批准”“已付费发出”“完成/失败”“结果已保存”不同状态。
+**Image Job + Budget（D-007）**：以 Native 资源/场景/请求意图作为去重、持久化恢复和授权边界，独立核算 Director/Prompt LLM 与图片 Provider 的预算；远端作业可对账、提交不确定时不得盲目重发，图片结果发布幂等。精确状态 Schema、额度与租约细则在第八轮讨论。
 
 **Image Asset & Presentation**：存储 bytes、格式、参数证据、外部响应标识、来源图/参考图/编辑衍生，绑定原 Session/Branch/Revision/Annotation，选中展示版本不改变叙事。
 
@@ -82,6 +82,6 @@ VisualOutput:
 
 ## 5. Decision checkpoint
 
-- **D-001 ～ D-006** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、**证据驱动混合状态更新和参考图冲突仲裁原则**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 7 待议**：Visual Director 的全自动场景触发与价值评估、画面选择/跳过、频率上限、预算授权和可靠失败恢复；方案对比见 [visual-director.md](visual-director.md)（**候选未冻结**）。精确视觉冲突阈值与参考图强度另议。
-- 其他未决议题：自动授权与预算、精确 Provider API、编辑/参考图/视频功能矩阵、持久任务恢复。
+- **D-001 ～ D-007** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、**分级场景价值筛选与独立预算/可靠 ImageJob**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
+- **Round 8 待议**：在 D-007 确定的方向下，选择 Scene/Shot 分割、镜头排序算法、软性节奏/硬预算、默认授权方式与持久作业恢复精确策略，备选见 [visual-director.md](visual-director.md) §7（**候选未冻结**）；精确视觉冲突阈值与参考图强度另议。
+- 其他未决议题：自动模式默认开关和预算数值、精确 Provider API、编辑/参考图/视频功能矩阵、持久任务恢复的具体数据库/租约协议。
