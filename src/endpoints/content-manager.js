@@ -13,7 +13,8 @@ import { write } from '../character-card-parser.js';
 import { serverDirectory } from '../server-directory.js';
 import { Jimp, JimpMime } from '../jimp.js';
 import { DEFAULT_AVATAR_PATH } from '../constants.js';
-import { getWorldInfoRepo, getPresetRepo, getNamedDocRepo, getSettingsRepo } from '../storage/index.js';
+import { getWorldInfoRepo, getPresetRepo, getNamedDocRepo, getSettingsRepo, getPackageRepo, getAssetStore } from '../storage/index.js';
+import { seedBundledPackage } from '../native/bundled-package.js';
 
 const contentDirectory = path.join(serverDirectory, 'default/content');
 const scaffoldDirectory = path.join(serverDirectory, 'default/scaffold');
@@ -29,6 +30,7 @@ const USER_AGENT = 'Atria';
  * @property {string} type
  * @property {string} [name]
  * @property {string|null} [folder]
+ * @property {string} [sha256] Exact checksum for a bundled Native Package.
  */
 
 /**
@@ -37,6 +39,7 @@ const USER_AGENT = 'Atria';
  */
 export const CONTENT_TYPES = {
     SETTINGS: 'settings',
+    ATRIA_PACKAGE: 'atria_package',
     CHARACTER: 'character',
     SPRITES: 'sprites',
     BACKGROUND: 'background',
@@ -138,7 +141,12 @@ export function getDefaultPresetFile(filename) {
  * @typedef {Object} UnknownSink Sentinel: type has no defined target.
  * @property {'none'} kind
  *
- * @typedef {FsSink | RepoSink | UnknownSink} ContentSink
+ * @typedef {Object} ArchiveSink Native archive installer sink.
+ * @property {'archive'} kind
+ * @property {string} label
+ * @property {(bytes: Buffer) => Promise<boolean>} save True only for a new install.
+ *
+ * @typedef {FsSink | RepoSink | ArchiveSink | UnknownSink} ContentSink
  */
 
 /**
@@ -155,10 +163,19 @@ export function getDefaultPresetFile(filename) {
  * @param {string} basename Basename of the content file (no extension)
  * @param {import('../users.js').UserDirectoryList} directories User directories
  * @param {string} handle User handle (last path segment of directories.root)
+ * @param {ContentItem} contentItem Exact distribution entry
  * @returns {ContentSink}
  */
-function resolveContentSink(type, basename, directories, handle) {
+function resolveContentSink(type, basename, directories, handle, contentItem) {
     switch (type) {
+        case CONTENT_TYPES.ATRIA_PACKAGE:
+            return {
+                kind: 'archive',
+                label: 'PackageRepo',
+                save: bytes => seedBundledPackage(handle, bytes, {
+                    sha256: contentItem.sha256, packageRepo: getPackageRepo(), assetStore: getAssetStore(),
+                }),
+            };
         case CONTENT_TYPES.SETTINGS:
             return {
                 kind: 'repo',
@@ -292,6 +309,19 @@ async function seedContent(contentIndex, contentLogPath, resolveSink, forceCateg
             continue;
         }
 
+        if (sink.kind === 'archive') {
+            try {
+                const added = await sink.save(fs.readFileSync(contentPath));
+                contentLog.push(contentItem.filename);
+                anyContentAdded ||= added;
+                console.info(`Content file ${contentItem.filename} ${added ? 'installed' : 'already present'} via ${sink.label}`);
+            } catch (error) {
+                // Leave failed entries unmarked so a repaired bundle can retry.
+                console.warn(`Failed to seed ${contentItem.filename} via ${sink.label}`, error);
+            }
+            continue;
+        }
+
         if (sink.kind === 'repo') {
             // Guard the force-reseed path so a user-edited theme/preset/world
             // stored in the Repo is not silently overwritten with the default.
@@ -375,7 +405,7 @@ export async function seedContentForUser(contentIndex, directories, forceCategor
     return seedContent(
         contentIndex,
         contentLogPath,
-        (item) => resolveContentSink(item.type, path.parse(item.filename).name, directories, handle),
+        (item) => resolveContentSink(item.type, path.parse(item.filename).name, directories, handle, item),
         forceCategories,
     );
 }

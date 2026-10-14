@@ -4,6 +4,12 @@
         "type": "settings"
     },
     {
+        "filename": "games/foglight-inn-1.0.0-rc.4.atria",
+        "type": "atria_package",
+        "name": "雾灯旅舍",
+        "sha256": "1627fe497920c66f7a323826f94ded818a3dda841603bc60d00043539c13bf18"
+    },
+    {
         "filename": "themes/Dark Lite.json",
         "type": "theme"
     },
