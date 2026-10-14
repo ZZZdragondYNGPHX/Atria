@@ -1,10 +1,10 @@
 # Native Image API / 数据契约 / 跨平台 UI / 分阶段交付 — D-013（Round 13 C）
 
 - Task: `atria-native-visual-generation-deepening`
-- **Status: Round 13 已选择方案 C，D-013 已冻结统一 Native 职责/API 分层、三层设置与跨端 Web UI、S0～S6 七大阶段/25 子阶段和 L1/L2/L3 + 三端验收原则。** 精确字段/URL/迁移 SQL/Provider 实测**仍未实现或验证**，并已在 [e0-closure-audit.md](e0-closure-audit.md) 分类为 S0/后续阶段/真实外部证据；本任务未创建 feat 开发分支。
+- **Status: D-013 冻结设计。** 本文的代码锚点和候选实施分支描述记录 E0 当时的基线；S0～S6 后续实际实现、验证及未运行的 Provider L3/设备证据以 [Record](../../../records/feat/native-visual-generation-deepening.md) 为准。
 - Frozen prerequisites: [decisions.md](decisions.md) D-001～D-013，尤其 D-003 ImagePromptIR+Adapter、D-004 Connection/Target/Rendering 三层配置、D-007/D-008 Durable Job/Budget、D-009～D-011 Media Studio/Mask/Save/GC、D-012 Target 三态/typed degrade/L1-L2-L3。以这些决策为规范，不重新表决。
 - Baseline: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`（仅 GitHub 静态源码审计；未跑 UI、FS/SQLite、跨平台或真实模型）。
-- Proposed implementation branch: **E0 审计完成、阻塞设计收口和正式交接得到下一步指令前不创建 `feat/*`**。候选 `feat/native-visual-generation-deepening`，本轮不创建。
+- Historical implementation branch proposal at E0: `feat/native-visual-generation-deepening`；后续已建立、完成并集成到 main。
 
 ## 1. 当前代码锚点和必须消除的重复权威
 
