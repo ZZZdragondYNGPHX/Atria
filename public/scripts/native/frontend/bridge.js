@@ -12,7 +12,7 @@ export function frontendHttpTransport({ sessionId, fetchImpl = globalThis.fetch,
 
 // No raw services, DOM or target selectors escape these scoped handles. Every
 // caller (declarative now; Script later) receives exactly this compiled API.
-export async function createFrontendBridge({ descriptor, transport, onEpoch = () => {}, onRevision = () => {}, fixed = {}, hostServices = null }) {
+export async function createFrontendBridge({ descriptor, transport, onEpoch = () => {}, onRevision = () => {}, onCommit = () => {}, fixed = {}, hostServices = null }) {
     let epoch = null, revision = null, disposed = false, revoked = false, generation = 0, refreshPromise = null;
     const localReceipts = new Map();
     const aborts = new Set(), scopes = new Set(), descriptorDigest = await bridgeDescriptorDigest(descriptor);
@@ -106,6 +106,7 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                     result.data = bridgeValue(result.data, binding.collection ? { type: 'array', items: binding.outputSchema, maxItems: binding.collection.pageSize } : binding.outputSchema);
                 } else if (method === 'action.invoke') {
                     result.data = bridgeValue(result.data, binding.outputSchema);
+                    if (binding.target?.transactionId) onCommit(result.revision);
                     if (binding.target?.service && ['restore', 'switch', 'fork', 'retry', 'reload', 'recover'].includes(binding.target.method)) { invalidate(); return structuredClone(result); }
                     await refresh();
                 } else if (method === 'operation.get' && result.status === 'completed') result.data = bridgeValue(result.data, binding.outputSchema);

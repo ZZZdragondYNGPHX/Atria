@@ -27,6 +27,8 @@ export function validateFrontendResources(manifest, files, assets) {
 
 export function validateFrontendCapabilities(normalized, graph, files, permissions = []) {
     frontendFeatureAvailability(normalized.features);
+    if (graph.bridge.bindings.some(binding => binding.target.service === 'host.media' && binding.target.method !== 'resolve')
+        && !normalized.features?.some(feature => feature.id === 'frontend-audio' && feature.version === 1)) throw new TypeError('Audio controls require matching frontend-audio feature');
     const mediaRef = graph.resources.find(ref => ref.kind === 'media');
     if (graph.resources.some(ref => ref.kind === 'script')) {
         const feature = normalized.features?.find(item => item.id === 'frontend-script' && item.version === 1);

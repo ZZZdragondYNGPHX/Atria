@@ -92,6 +92,11 @@ function expression(source, context) {
 }
 export function template(raw, context) {
     if (raw && typeof raw === 'object') {
+        if (Object.hasOwn(raw, 'computed')) {
+            let value = context.computed;
+            for (const key of raw.computed.split('.')) value = value[key];
+            return structuredClone(value);
+        }
         if (Object.hasOwn(raw, 'formula')) return expression(raw.formula, context);
         if (Array.isArray(raw)) return raw.map(item => template(item, context));
         return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, template(value, context)]));
