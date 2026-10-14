@@ -255,3 +255,32 @@ test('Chinese utilities, light appearance, large text and keyboard', async ({ pa
     await expect(agents).toHaveAttribute('data-atria-viewport', 'medium');
     await page.screenshot({ path: info.outputPath('zh-agents-medium-720.png') });
 });
+
+test('an active Run opens in Timeline and retains keyboard-accessible Graph at 390px', async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/**', route => route.fulfill({ json: [] }));
+    await awaitMainUI(page, server.baseURL);
+    // Exercise the actual transient Run store, without sending a model request.
+    await page.evaluate(async () => {
+        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
+        window.runViewTest = store.startRun({ mode: 'spec', chatKey: null });
+        window.Atria.shell.getWorkspaceHost().openAgentSection('run');
+    });
+    const run = page.locator('#agent-memory-workspace');
+    const timeline = run.getByRole('button', { name: 'Timeline', exact: true });
+    const graph = run.getByRole('button', { name: 'Graph', exact: true });
+    await expect(timeline).toHaveAttribute('aria-pressed', 'true');
+    await expect(run.getByRole('heading', { name: 'Execution timeline', exact: true })).toBeVisible();
+    await graph.focus(); await page.keyboard.press('Enter');
+    await expect(graph).toHaveAttribute('aria-pressed', 'true');
+    await expect(run).toContainText('No Engine graph has been projected yet.');
+    await timeline.click(); await expect(timeline).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath('active-run-timeline-390.png'), fullPage: true });
+    await page.evaluate(async () => {
+        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
+        store.finishRun({ runId: window.runViewTest, status: 'completed' }); store.clearCurrentRun();
+    });
+    await expect(run.getByRole('heading', { name: 'No active run', exact: true })).toBeVisible();
+});
