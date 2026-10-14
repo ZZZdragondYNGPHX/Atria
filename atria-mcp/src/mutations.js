@@ -107,8 +107,20 @@ export function registerMutationActions(registry, browser) {
     add('chat.branch.rename', 'MUTATE', 'Native Session branch metadata', { ...sessionInput, branchId: id, displayName: z.string().min(1).max(256).refine(value => value.trim().length > 0) }, metadataGuard, metadataWrite);
     add('chat.branch.archive', 'MUTATE', 'Native Session branch visibility metadata (history retained)', { ...sessionInput, branchId: id, archived: z.boolean() }, metadataGuard, metadataWrite);
     const routeRef = z.strictObject({ scope: z.literal('player'), runtimeRouteId: id });
+    const turnGuard = async i => {
+        const guard = await sessionGuard(i), response = await read('POST', generation + '/turn/controlled/preflight', i), view = response.data;
+        if (response.serverBootId !== guard.serverBootId || view.source?.sessionId !== i.sessionId || view.source.revisionId !== i.expectedRevisionId
+            || view.source.branchId !== guard.identity.branchId) throw new Error('Controlled Turn source changed.');
+        if (!view.configuration?.credentialTargets?.length || view.configuration.credentialTargets.some(target => !target.authorized)) throw new Error('Independent Native credential destination approval required.');
+        return { ...guard, turnReview: { turnInputFingerprint: view.turnInputFingerprint, configurationFingerprint: view.configurationFingerprint, requestFingerprint: view.requestFingerprint },
+            generation: { selectedRouteIds: view.configuration.selectedRouteIds, routes: Object.values(view.configuration.routes), models: Object.values(view.configuration.models),
+                providerTargets: view.configuration.credentialTargets.map(target => ({ connectionProfileId: target.connectionProfileId, target: target.target,
+                    permitFingerprint: target.permitFingerprint })), generationBudget: view.configuration.generationBudget,
+                turnContractFingerprint: fingerprint(view.configuration.taskRuntime), turn: view.configuration.taskRuntime.turn,
+                automaticResend: view.automaticResend, backgroundModel: view.backgroundModel, backgroundSimulation: view.backgroundSimulation } };
+    };
     add('chat.send', 'MUTATE', 'Native Generation turn / immutable Session commit', { ...sessionInput, commitId: id, invocationId: id, userInput: text.min(1),
-        routeRef: routeRef.optional(), slotBindings: z.record(id, routeRef).optional() }, sessionGuard,
+        routeRef: routeRef.optional(), slotBindings: z.record(id, routeRef).optional() }, turnGuard,
     async (i, { before }) => {
         const draft = { role: 'user', content: i.userInput };
         const requestFingerprint = fingerprint({ draft, expectedRevisionId: i.expectedRevisionId });
@@ -139,8 +151,7 @@ export function registerMutationActions(registry, browser) {
         const committed = evidence.after.input;
         let response;
         try {
-            response = await request('POST', generation + '/turn/start', { sessionId: i.sessionId, revisionId: committed.revisionId, invocationId: i.invocationId,
-                userInput: i.userInput, routeRef: i.routeRef, slotBindings: i.slotBindings }, before);
+            response = await request('POST', generation + '/turn/controlled/start', { input: i, committedRevisionId: committed.revisionId, approvedReview: before.turnReview }, before);
         } catch {
             evidence.after.generation = { status: 'unknown', invocationId: i.invocationId };
             return { ...output({ ok: false, status: null, serverBootId: null, data: { error: 'Generation response unconfirmed; inspect owning authority.' } }, evidence), partial: true };
@@ -181,7 +192,7 @@ export function registerMutationActions(registry, browser) {
             equal(receipt.evaluation.binding, binding, 'Workspace/evaluation drift; re-evaluate.');
             if (receipt.evaluation.preview) {
                 const p = receipt.evaluation.preview;
-                const current = await read('GET', studio + '/previews/' + p.previewId + '/ui');
+                const current = await read('GET', studio + '/previews/' + p.previewId + '/identity');
                 if (current.data.packageVersionId !== p.packageVersionId) throw new Error('Evaluated Preview changed or closed.');
             }
         }
@@ -202,8 +213,11 @@ export function registerMutationActions(registry, browser) {
                     descriptorDigest: fingerprint(d.preview.descriptor) } : null }, after: { baseRevision: i.workspace.baseRevision, restoredBy: 'Native Studio evaluateWorkspace finally' } } : {};
             const result = output(r, evidence); if (d?.validation?.status !== 'passed') result.ok = false; return result;
         });
-    add('build.change.apply', 'MUTATE', 'Native Studio executeWorkspace / ChangeSet', { workspace, evaluationReceiptId: z.string().uuid() },
-        (i, c) => workspaceGuard(i, c, true), async (i, { before }) => {
+    for (const destructive of [false, true]) add(destructive ? 'build.change.apply.destructive' : 'build.change.apply', destructive ? 'DESTRUCTIVE' : 'MUTATE', 'Native Studio executeWorkspace / ChangeSet', { workspace, evaluationReceiptId: z.string().uuid() },
+        (i, c) => {
+            if (i.workspace.operations.some(op => op.operationType === 'source.delete') !== destructive) throw new Error('Source deletion requires the exact DESTRUCTIVE Apply action');
+            return workspaceGuard(i, c, true);
+        }, async (i, { before }) => {
             const r = await request('POST', projectPath(i.workspace) + '/workspaces/execute', i.workspace, before);
             const result = output(r, { after: r.data?.changeSet ?? null, changed: [{ kind: 'project', id: i.workspace.projectId }], recovery: 'Use Native Studio revision history; no physical history overwrite.' });
             if (!r.data?.changeSet?.resultingRevision || r.data?.changeSet?.validation?.status !== 'passed') result.ok = false; return result;
@@ -212,7 +226,7 @@ export function registerMutationActions(registry, browser) {
         (i, { before }) => write('POST', projectPath(i) + '/preview', { baseRevision: i.baseRevision, entryPointId: i.entryPointId }, before,
             data => ({ after: { previewId: data.preview.previewId, packageVersionId: data.preview.packageVersionId, entryPointId: data.preview.entryPointId }, recovery: 'build.preview.close' })));
     add('build.preview.close', 'INTERACT', 'Native Studio ephemeral Preview', { previewId: id, packageVersionId: id }, async i => {
-        const r = await read('GET', `${studio}/previews/${i.previewId}/ui`); equal(r.data.packageVersionId, i.packageVersionId, 'Preview identity conflict.');
+        const r = await read('GET', `${studio}/previews/${i.previewId}/identity`); equal(r.data.packageVersionId, i.packageVersionId, 'Preview identity conflict.');
         return { target: { previewId: i.previewId }, serverBootId: r.serverBootId, packageVersionId: i.packageVersionId };
     }, (i, { before }) => write('DELETE', `${studio}/previews/${i.previewId}`, {}, before));
     add('build.simulate', 'INTERACT', 'Native Studio isolated recorded/mock scenario', { ...projectInput, scenario: json }, projectGuard,

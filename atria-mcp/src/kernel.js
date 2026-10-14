@@ -14,12 +14,13 @@ const descriptorSchema = z.strictObject({
 });
 export class ActionRegistry {
     #actions = new Map();
-    register(descriptor, inputSchema, outputSchema, handler, guard = null) {
+    register(descriptor, inputSchema, outputSchema, handler, guard = null, reviewInput = null) {
         const parsed = descriptorSchema.parse(descriptor);
         if (this.#actions.has(parsed.id)) throw new Error('Duplicate action ID.');
         if (parsed.risk !== 'READ' && parsed.approval === 'none') throw new Error('Side effects require approval metadata.');
+        if (reviewInput !== null && typeof reviewInput !== 'function') throw new Error('Invalid trusted review projection.');
         const detail = { ...parsed, inputSchema: z.toJSONSchema(inputSchema), outputSchema: z.toJSONSchema(outputSchema) };
-        this.#actions.set(parsed.id, { detail: structuredClone(detail), inputSchema, outputSchema, handler, guard });
+        this.#actions.set(parsed.id, { detail: structuredClone(detail), inputSchema, outputSchema, handler, guard, reviewInput });
         return this;
     }
     get(id) { const item = this.#actions.get(id); if (!item) throw new Error('Unknown semantic action.'); return { ...item, detail: structuredClone(item.detail) }; }
@@ -131,8 +132,11 @@ export class RiskExecutor {
         if (leaseId && !valid(lease)) throw new Error('Invalid, expired, exhausted or mismatched Capability Lease.');
         if (!lease) {
             if (!this.approve && !context.delegated) throw new Error('Trusted client approval unavailable; no operation executed.');
+            const reviewInput = item.reviewInput ? { projection: z.json().parse(item.reviewInput(parsed)), inputFingerprint: fingerprint(parsed),
+                note: 'Registered bounded input summary; authorization still binds the complete normalized input. Inspect domain source pages before independent formal approval.' } : parsed;
+            if (item.reviewInput && JSON.stringify(reviewInput).length > 12000) throw new Error('Registered review summary exceeds bound.');
             const decision = context.delegated ? { action: 'accept', content: { authorize: true, uses: 1 } } : await this.approve(redact({ action, risk, authority: d.authority, externalEffects: d.externalEffects,
-                input: parsed, before, provenance, binding, scope: 'Exact action, normalized input, target and server boot only' }), context);
+                input: reviewInput, before, provenance, binding, scope: 'Exact action, normalized input, target and server boot only' }), context);
             if (decision?.action !== 'accept' || decision.content?.authorize !== true) throw new Error('User approval declined or cancelled.');
             const uses = decision.content?.uses ?? 1;
             if (!Number.isInteger(uses) || uses < 1 || uses > (risk === 'DESTRUCTIVE' ? 1 : 20)) throw new Error('Invalid trusted approval scope.');

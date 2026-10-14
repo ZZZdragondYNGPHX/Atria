@@ -21,12 +21,34 @@ export function denyMutation() {
 
 export function redactText(value) {
     if (/(?:api[_-]?key|password|passwd|token|secret|credential|authorization|cookie)["']?\s*:\s*(?:[>|]|\r?\n[ \t]+)/i.test(value)) return '[REDACTED SENSITIVE MULTILINE CONTENT]';
-    return value
+    return redactAssignments(value
         .replace(/-----BEGIN [^-]*(?:PRIVATE KEY|OPENSSH)[^-]*-----[\s\S]*?(?:-----END [^-]+-----|$)/g, '[REDACTED PRIVATE KEY]')
-        .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
-        .replace(/((?:[\w-]*(?:api[_-]?key|password|passwd|token|secret|credential|authorization|cookie)[\w-]*)["']?\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;\r\n}]+)/gi, '$1[REDACTED]')
+        .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]'))
         .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16})\b/g, '[REDACTED]')
-        .replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[REDACTED]@');
+        .replace(/[a-z][a-z0-9+.-]{0,63}:\/\/[^\s/"']+/gi, authority => {
+            const at = authority.lastIndexOf('@');
+            return at < 0 ? authority : authority.slice(0, authority.indexOf('://') + 3) + '[REDACTED]@' + authority.slice(at + 1);
+        });
+}
+
+// Consume each key token once. A leading greedy word matcher before a secret
+// keyword retries every suffix of long untrusted words and can block Control.
+function redactAssignments(value) {
+    const words = /[\w-]+/g, separator = /["']?\s*[:=]\s*/y;
+    const assigned = /"(?:[^"\\\r\n]|\\[^\r\n])*"|'(?:[^'\\\r\n]|\\[^\r\n])*'|[^\s,;\r\n}]+/y;
+    const sensitive = /api[_-]?key|password|passwd|token|secret|credential|authorization|cookie/i;
+    const output = []; let cursor = 0, match;
+    while ((match = words.exec(value))) {
+        if (!sensitive.test(match[0])) continue;
+        separator.lastIndex = words.lastIndex;
+        if (!separator.exec(value)) continue;
+        assigned.lastIndex = separator.lastIndex;
+        const assignment = assigned.exec(value); if (!assignment) continue;
+        const quote = assignment[0][0], quoted = (quote === '"' || quote === "'") && assignment[0].at(-1) === quote;
+        output.push(value.slice(cursor, separator.lastIndex), quoted ? quote + '[REDACTED]' + quote : '[REDACTED]');
+        cursor = words.lastIndex = assigned.lastIndex;
+    }
+    output.push(value.slice(cursor)); return output.join('');
 }
 
 export function apiUrl(config, path, query = {}) {

@@ -24,7 +24,7 @@ function fixture({ review = false, changeAfterApproval = false, missingPreview =
         context: { request: { get: async () => response({ token: 'csrf' }), fetch: async (url, options) => {
             if (url.endsWith('/revision')) return response({ revision: 'r1' });
             if (url.endsWith('/observation')) return response(task);
-            if (url.endsWith('/previews/preview_fixture/ui')) return missingPreview ? response({ error: 'Preview closed' }, 400) : response({ previewId: 'preview_fixture', packageVersionId: 'pkgv_fixture' });
+            if (url.endsWith('/previews/preview_fixture/identity')) return missingPreview ? response({ error: 'Preview closed' }, 400) : response({ previewId: 'preview_fixture', packageVersionId: 'pkgv_fixture' });
             writes.push({ url, body: options.data, method: options.method });
             assert.equal(options.headers['x-atria-expected-server-boot-id'], boot);
             if (url.endsWith('/agent/tasks') && options.method === 'POST') return response(task, 201);

@@ -260,7 +260,7 @@ test('complete Atria stdio entry negotiates modern protocol while preserving exa
     assert.equal(http.stats().writes, 0);
 });
 
-test('raw 2025 client receives legacy form requests and cannot replace approval with a model confirm field', async t => {
+for (const version of ['2025-06-18', '2025-11-25']) test('raw ' + version + ' client receives legacy form requests and cannot replace approval with a model confirm field', async t => {
     const child = spawn(process.execPath, ['--input-type=module', '-e', serverScript], {
         cwd: fileURLToPath(new URL('../', import.meta.url)), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -292,8 +292,8 @@ test('raw 2025 client receives legacy form requests and cannot replace approval 
         requests.set(id, { resolve, timer });
         child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
     });
-    const init = await rpc('initialize', { protocolVersion: '2025-11-25', clientInfo: { name: 'raw-legacy-client', version: '1' }, capabilities: { elicitation: { form: {} } } });
-    assert.equal(init.result.protocolVersion, '2025-11-25');
+    const init = await rpc('initialize', { protocolVersion: version, clientInfo: { name: 'raw-legacy-client', version: '1' }, capabilities: { elicitation: { form: {} } } });
+    assert.equal(init.result.protocolVersion, version);
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
     const forged = await rpc('tools/call', { name: 'write', arguments: { value: 'model-assertion', confirm: true } });
     assert.equal(forged.result.isError, true); assert.equal(approvals, 0);

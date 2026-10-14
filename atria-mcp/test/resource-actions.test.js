@@ -13,7 +13,8 @@ function fixture({ approve = true, corruption = false } = {}) {
     owner: 'fixture-owner', expiresAt: Date.now() + 300000, receivedBytes: bytes.length, state: 'complete', maxChunkBytes: 1024 * 1024,
     mediaType: 'application/json', root: ref, resourceCount: 1 };
     const token = { seed: 'a'.repeat(32), bundleHash: stage.bundleRef.bundleHash }, plan = { format: 'atria-resource-bundle', bundleHash: token.bundleHash, token,
-        root: target, canImport: true, conflicts: [], existingOrigins: [ref], reviewHash: 'b'.repeat(64), resources: [{ source: ref, ref: target, status: 'new', contentHash: 'c'.repeat(64) }] };
+        root: target, canImport: true, conflicts: [], existingOrigins: [ref], reviewHash: 'b'.repeat(64), resourceCount: 1, mappingHash: 'd'.repeat(64),
+        resources: [{ source: ref, ref: target, status: 'new', contentHash: 'c'.repeat(64) }] };
     const requests = [], chunks = []; let approvals = 0, imports = 0, interrupt = false;
     const browser = { runtimeIdentity: async () => ({ serverBootId: boot }) };
     const request = async (_browser, method, path, input, guard) => {
@@ -74,6 +75,10 @@ test('corrupted bytes, forged reviews, scope/hash drift and unavailable trusted 
     await assert.rejects(f.executor.execute('MUTATE', { action: 'library.bundle.import', input: { binaryHandleId: artifact.binaryHandleId, reviewReceiptId: randomUUID() } }), /Review required/);
     const reviewReceiptId = await reviewed(f, artifact); f.plan.reviewHash = 'd'.repeat(64);
     await assert.rejects(f.executor.execute('MUTATE', { action: 'library.bundle.import', input: { binaryHandleId: artifact.binaryHandleId, reviewReceiptId } }), /preflight changed/); assert.equal(f.imports, 0);
+    const mapping = fixture(), mappingArtifact = await exported(mapping), mappingReview = await reviewed(mapping, mappingArtifact);
+    mapping.plan.mappingHash = 'e'.repeat(64);
+    await assert.rejects(mapping.executor.execute('MUTATE', { action: 'library.bundle.import', input: { binaryHandleId: mappingArtifact.binaryHandleId, reviewReceiptId: mappingReview } }), /Review drift/);
+    assert.equal(mapping.imports, 0);
     const other = fixture(), captured = await exported(other); other.stage.bundleRef.clientInstanceId = 'foreign';
     await assert.rejects(other.executor.execute('READ', { action: 'library.bundle.inspect', input: { binaryHandleId: captured.binaryHandleId } }), /identity changed/);
 });

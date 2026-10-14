@@ -80,6 +80,15 @@ test('actual browser fixed Memory reads avoid write-session API, filter secrets 
     assert.doesNotMatch(JSON.stringify(result), /hidden/);
     assert.equal((await invokeBrowserAdapter(browser, 'agents.run.get')).value.runId, 'r');
     assert.deepEqual((await invokeBrowserAdapter(browser, 'memory.injection')).value.visibleIds, ['n1']);
+    browser.scopedEvidence.experience = { identity: { sessionId: 'scope-one', revisionId: 'revision-one' }, state: 'OBSERVED', observedAt: 'first' };
+    const evaluate = browser.page.evaluate.bind(browser.page);
+    browser.page.evaluate = async (...args) => { const value = await evaluate(...args); browser.scopedEvidence.experience = { ...browser.scopedEvidence.experience, observedAt: 'renewed' }; return value; };
+    assert.equal((await invokeBrowserAdapter(browser, 'agents.run.get')).value.runId, 'r', 'Passive heartbeat metadata does not invalidate unchanged owning identity');
+    browser.page.evaluate = async (...args) => { const value = await evaluate(...args); browser.scopedEvidence.experience = { ...browser.scopedEvidence.experience, identity: { sessionId: 'scope-other', revisionId: 'revision-one' } }; return value; };
+    await assert.rejects(invokeBrowserAdapter(browser, 'agents.run.get'), /Experience scope changed/);
+    browser.page.evaluate = async (...args) => { const value = await evaluate(...args); browser.scopedEvidence.experience = { identity: { sessionId: 'delayed-frontend', revisionId: 'last-observed' }, state: 'OBSERVED' }; return value; };
+    assert.deepEqual((await invokeBrowserAdapter(browser, 'memory.schema')).value.types, [], 'Memory is guarded by its loaded source, independently of delayed Frontend Epoch observations');
+    browser.page.evaluate = evaluate;
     await assert.rejects(invokeBrowserAdapter(browser, 'memory.search.keyword', { query: 'x' }), /scope changed/);
     await assert.rejects(invokeBrowserAdapter(browser, 'memory.schema', { method: 'deleteNode' }));
 });

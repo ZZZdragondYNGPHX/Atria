@@ -8,6 +8,7 @@ import { Provenance, readSourceIdentity } from '../src/provenance.js';
 import { registerSemanticUi, observeSemanticUi, screenshotWithProof } from '../src/semantic-ui.js';
 import { ActionRegistry, RiskExecutor, PolicyCeiling, fingerprint } from '../src/kernel.js';
 import { execFileSync } from 'node:child_process';
+import { LaneScheduler } from '../src/scheduler.js';
 
 test('real browser semantic manifest, exact screenshot interval, stale rejection and no generic DOM authority', async t => {
     const fixture = await productFixture(); t.after(fixture.cleanup);
@@ -46,10 +47,22 @@ export const changeIdentity=()=>count++;`;
     const applied = await executor.execute('INTERACT', { action: 'browser.ui.interact', input });
     assert.equal(applied.receipt.status, 'succeeded'); assert.equal(await browser.page.locator('output').innerText(), '1');
     await assert.rejects(executor.execute('INTERACT', { action: 'browser.ui.interact', input }), /identity changed/);
+    const deniedCode = await browser.page.evaluate(async () => {
+        try { await import('/api/native/extensions/files/ext_fixture/revision/index.js'); return false; } catch { return true; }
+    });
+    assert.equal(deniedCode, true); assert.ok(browser.events.some(event => event.type === 'blocked-third-party-code'));
     const now = (await observeSemanticUi(browser))[0], fresh = { surfaceId: now.surfaceId, expectedIdentityHash: fingerprint(now.identity) };
     const screenshot = browser.screenshot.bind(browser);
     browser.screenshot = async args => { const image = await screenshot(args); await browser.page.evaluate(async () => (await import('/scripts/native/frontend/mcp-surface.js')).changeIdentity()); return image; };
     assert.equal((await screenshotWithProof(browser, provenance, { target: fresh })).proof.state, 'CONTEXT_CHANGED_DURING_CAPTURE');
     assert.equal(businessWrites, 0);
+    const scheduler = new LaneScheduler(), controller = new AbortController(), started = Date.now();
+    const waiting = scheduler.run('browser', ['browser:page'], () => browser.wait({ selector: '#never-created', timeout: 5000, signal: controller.signal }));
+    const rejected = assert.rejects(waiting, /owned-wait-cancelled/);
+    const nextTask = scheduler.run('browser', ['browser:page'], () => browser.resize({ width: 390, height: 844 }));
+    await scheduler.run('control', [], () => controller.abort(Error('owned-wait-cancelled')));
+    await rejected; await nextTask;
+    assert.ok(Date.now() - started < 1500, 'Active cancelled wait releases its page lane after its bounded polling segment');
+    assert.deepEqual(browser.page.viewportSize(), { width: 390, height: 844 }); scheduler.close();
     await browser.close(); assert.deepEqual(await observeSemanticUi(browser), []);
 });

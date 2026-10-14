@@ -31,9 +31,16 @@ export class AtriaBrowser {
             this.context.setDefaultTimeout(this.config.timeout);
             await this.context.route('**/*', async route => {
                 const request = route.request();
+                const url = new URL(request.url());
+                // User-installed same-origin JavaScript could forge renderer manifests.
+                // It stays inert in this evidence context; product enable state is unchanged.
+                if (/^\/api\/native\/extensions\/files\//.test(url.pathname) || /^\/scripts\/extensions\/third-party\//.test(url.pathname)) {
+                    this.record({ type: 'blocked-third-party-code', url: diagnosticUrl(request.url()) });
+                    await route.abort('blockedbyclient'); return;
+                }
                 // Browser evidence stays on the configured origin, including subresources.
                 // Native Provider networking remains a separate owning authority.
-                if (new URL(request.url()).origin !== this.config.url) {
+                if (url.origin !== this.config.url) {
                     this.record({ type: request.isNavigationRequest() ? 'blocked-navigation' : 'blocked-subresource', url: diagnosticUrl(request.url()) });
                     await route.abort('blockedbyclient');
                 } else await route.continue();
@@ -83,7 +90,7 @@ export class AtriaBrowser {
 
     async open({ path = '/', reload = false, width, height, waitFor } = {}) {
         const url = safeUrl(path, this.config.url);
-        if (!['/', '/index.html', '/login', '/login.html'].includes(url.pathname)) throw new Error('Browser navigation is restricted to the Atria shell and manual login surfaces; use semantic Native actions for data.');
+        if (!['/', '/index.html', '/login', '/login.html'].includes(url.pathname) || url.search || url.hash) throw new Error('Browser navigation is restricted to the Atria shell and manual login surfaces without route parameters; use semantic Native actions for data.');
         await this.start();
         if (width || height) await this.page.setViewportSize({ width: width ?? this.page.viewportSize().width, height: height ?? this.page.viewportSize().height });
         this.loadedIdentity = null; this.scopedEvidence = {};
@@ -166,9 +173,17 @@ export class AtriaBrowser {
         return this.snapshot();
     }
 
-    async wait({ selector, state = 'visible', timeout = 30000, frame = 0 }) {
+    async wait({ selector, state = 'visible', timeout = 30000, frame = 0, signal }) {
         await this.readyPage();
-        await this.frame(frame).locator(selector).waitFor({ state, timeout });
+        const generation = this.documentGeneration, deadline = Date.now() + timeout;
+        while (true) {
+            signal?.throwIfAborted();
+            if (generation !== this.documentGeneration) throw Error('Browser document changed during wait');
+            try { await this.frame(frame).locator(selector).waitFor({ state, timeout: Math.max(1, Math.min(200, deadline - Date.now())) }); break; }
+            catch (error) { if (error.name !== 'TimeoutError' || Date.now() >= deadline) throw error; }
+        }
+        signal?.throwIfAborted();
+        if (generation !== this.documentGeneration) throw Error('Browser document changed during wait');
         return this.snapshot({ frame });
     }
 

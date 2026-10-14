@@ -5,7 +5,7 @@ import { acceptedContent, createRequestStateCodec, inputRequired, inputResponse,
 import { fingerprint } from './kernel.js';
 import { redact } from './policy.js';
 
-export const SUPPORTED_PROTOCOLS = Object.freeze(['2025-11-25', '2026-07-28']);
+export const SUPPORTED_PROTOCOLS = Object.freeze(['2025-06-18', '2025-11-25', '2026-07-28']);
 const INVOCATION = Symbol('Atria protocol invocation');
 const APPROVAL_KEY = 'atria_authorization';
 const decisionSchema = z.strictObject({ authorize: z.boolean(), uses: z.number().int().min(1).max(20) });

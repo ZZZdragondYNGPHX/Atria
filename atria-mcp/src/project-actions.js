@@ -69,7 +69,7 @@ export function registerProjectActions(registry, browser) {
             if (reviewHash !== input.expectedReviewHash) throw new Error('Project Task Review fingerprint conflict.');
             if (!destructiveCommit && task.workspace.operations.some(operation => operation.operationType === 'source.delete')) throw new Error('Source deletion requires agent.project.commit.destructive and one-use approval.');
             if (task.preview) {
-                const preview = await read('GET', '/api/native/studio/previews/' + id.parse(task.preview.previewId) + '/ui');
+                const preview = await read('GET', '/api/native/studio/previews/' + id.parse(task.preview.previewId) + '/identity');
                 if (preview.serverBootId !== observed.serverBootId || preview.data.previewId !== task.preview.previewId || preview.data.packageVersionId !== task.preview.packageVersionId) throw new Error('Project Task Preview changed or closed.');
             }
             result.review = { expectedReviewHash: reviewHash, highImpact: task.review.highImpact === true, workspaceId: task.workspace.workspaceId,

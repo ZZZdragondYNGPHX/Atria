@@ -99,6 +99,13 @@ test('Build evaluation receipt binds exact normalized operations, base, Preview 
     await assert.rejects(executor.execute('MUTATE', changed), /drift/); assert.equal(reviewCount, 1);
     revision = 'r2'; await assert.rejects(executor.execute('MUTATE', apply), /conflict/); revision = 'r1';
     assert.equal((await executor.execute('MUTATE', apply)).receipt.status, 'succeeded'); assert.equal(writes, 2);
+    const deletion = structuredClone(workspace); deletion.operations[0].operationType = 'source.delete'; deletion.operations[0].input = {};
+    const deletionReview = await executor.execute('INTERACT', { action: 'build.change.evaluate', input: { workspace: deletion } });
+    const deletionInput = { workspace: deletion, evaluationReceiptId: deletionReview.receipt.receiptId };
+    await assert.rejects(executor.execute('MUTATE', { action: 'build.change.apply', input: deletionInput }), /DESTRUCTIVE/);
+    await assert.rejects(executor.execute('MUTATE', { action: 'build.change.apply.destructive', input: deletionInput }), /risk mismatch/);
+    const deleted = await executor.execute('DESTRUCTIVE', { action: 'build.change.apply.destructive', input: deletionInput });
+    assert.equal(deleted.receipt.status, 'succeeded'); assert.equal(deleted.lease.remaining, 0); assert.equal(writes, 4);
     assert.equal(fingerprint({ a: 1, b: 2 }), fingerprint({ b: 2, a: 1 }));
 });
 

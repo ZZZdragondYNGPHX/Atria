@@ -59,7 +59,7 @@ Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、
 {"version":1,"actionIds":["build.frontend.evaluate","build.change.apply","build.preview.close"]}
 ```
 
-客户端必须实际协商可信审批：2025-11-25 使用 **form elicitation**，2026-07-28 使用 **MRTR**；请求经过官方 SDK 适配，并绑定单次 HMAC continuation。工具参数中的布尔值不算审批。不支持该通道时保持写入关闭，不依据客户端名称推断审批能力。表单展示准确输入、目标、authority、风险、成本/网络效果、guards 与独立 provenance。仅客户端返回 `accept` 且用户勾选授权才 mint Lease。
+客户端必须实际协商可信审批：2025-06-18 / 2025-11-25 使用 **form elicitation**，2026-07-28 使用 **MRTR**；请求经过官方 SDK 适配，并绑定单次 HMAC continuation。工具参数中的布尔值不算审批。不支持该通道时保持写入关闭，不依据客户端名称推断审批能力。表单展示准确输入、目标、authority、风险、成本/网络效果、guards 与独立 provenance。仅客户端返回 `accept` 且用户勾选授权才 mint Lease。实际 Codex 0.162.1 的 app-server 连接协商为 2025-06-18；自动连接与工具调用证据不代表真人审批 UI 已验收。
 
 Lease 绑定当前 MCP instance、精确 action、规范化输入、目标和 `serverBootId`，用户可选择 1–20 次，五分钟失效；默认为一次。调用方只可回传 opaque `leaseId`，不能写 grants、scope 或 expiry。没有跨 action/domain 的宽泛授权；重启清空 Lease/Receipt。产品需报告 `mutationGuards: 1`；不支持最终请求 boot guard 的旧产品只能观察。
 
@@ -94,9 +94,12 @@ Memory vector search/recall 与 `runtime.connection.probe` 可能联网或收费
 - Memory：无头 Native Graph 操作保留原 source ticket、branch/HEAD、graph fingerprint 与事务；不需要为写入制造浏览器会话。旧 browser bridge 仅在真正加载的作用域内使用。
 - Media：Image/Director/Gallery/Mask/Speech 保留各自原生 preparation、job、预算、CAS、GC 与取消语义。图像、音频与 Mask raster 经固定用途 BinaryAssets 句柄，业务发送/Checkpoint 另审；观察不会自动恢复 Worker 或清理持久状态。
 - Skills / Extensions：Skill 是不可信文本资料，版本与完整 supporting files Hash 受 Native 队列 CAS 保护；URL 下载和安装分别审批。Extension Git/local source 先准备 inert 内容并审查，安装默认为 disabled，enable 另审；不开放任意 Host import/eval/shell。
-- Browser：`browser.ui.surfaces/interact` 只允许当前 compiled manifest 中无脚本/Bridge/持久副作用的本地 set/toggle。截图可指定注册 Surface target；ScreenshotProof 对原生身份、源码、文档和可见区域作前后核对，只证明采集窗口内的画面来源，不代表编译、Commit 或真人同意。
+- Resource / Archive：Resource Bundle 完整映射按页审查，独立 Review/Import；已审 Token 的不确定导入只能显式续接同一意图。已安装 Package 可导出原字节；Session Archive 复用 Native SaveSystem，支持专用密码 SecretRef 加密导入/导出，预检不解析密码。密码在现有产品 Secret UI 中保存到独立用途，MCP 不接收密码明文，也不能把该用途的 Secret 作为 Provider 凭据。
+- Browser：`browser.ui.surfaces/interact` 只允许当前 compiled manifest 中无脚本/Bridge/持久副作用的本地 set/toggle。截图可指定注册 Surface target；ScreenshotProof 对原生身份、源码、文档和可见区域作前后核对，只证明采集窗口内的画面来源，不代表编译、Commit 或真人同意。MCP 证据页面阻止用户 Extension 代码与跨 Origin 子资源，避免第三方页面脚本伪造受控 Surface；产品的 Extension 启用状态仍由独立原生审批管理。
 
-Control、Read、Mutation、Browser 分 lane，有界队列与按目标隔离；同一页面的导航、截图和交互串行。审批等待不持有写锁，执行前在锁内再次核对授权和 Native CAS。`operation.list/get/scheduler/cancel/reconcile` 提供实例内控制与拥有方查询；取消不等于远端撤销或回滚。
+Control、Read、Mutation、Browser 分 lane，有界队列与按目标隔离；同一页面的导航、截图和交互串行。审批等待不持有写锁，执行前在锁内再次核对授权和 Native CAS。`operation.list/get/scheduler/cancel/reconcile` 提供实例内控制与拥有方查询；取消不等于远端撤销或回滚。含 source.delete 的直接 Workspace 正式提交必须使用 `build.change.apply.destructive` 并取得一次性 DESTRUCTIVE 审批。
+
+超长 JSON 元数据按字符分页时，fragment 使用 `encoding: "hex-utf16le"` 与 `encodedText`；先按 hex 解码成 UTF-16LE，再按游标拼接并核对完整 Hash。这样保留任意 Unicode 边界，避免外层重复脱敏改坏半截 JSON。正常结构化页仍直接返回；资产字节继续走独立 Binary Lane。Skills 大 payload 使用 `skill.payload.capture` 读取允许的开发 JSON 产物，再分别 preflight/install，支持原生 16 MiB 解码容量；本地 Extension 源码支持 4 MiB UTF-8 分块传输，准备阶段不执行代码。
 
 私有 Journal 只存 ID/Hash/状态/回执关联，原子写入并采用 Windows ACL 或 Unix 私有权限。已知结束记录保留七天后可回收；unknown 不自动删除或重放。每 owner 最多 1,000 条记录、128 个实例目录，超限 fail-closed；真实业务状态始终由 Native authority 核对。Lease、审批 continuation 和图片原字节不写 Journal，重启不恢复授权。
 
@@ -167,6 +170,7 @@ Build 仍是语义命名空间，Native Studio 是 owning authority；复用 Nat
 - 所有 DESTRUCTIVE 审批严格一次使用。`.owned` Session/Project cleanup 还要求同一 MCP 实例、同一 serverBootId、成功创建回执、精确对象 ID 和原始创建 revision。修改过的对象必须重新使用普通 one-shot 删除流程，不按名称推断所有权。旧 Phase 4 缺少创建 revision 的回执不能用于此窄范围清理。
 - Package 流程：`package.artifact.capture` 从已有安全 artifact roots 获取 `.atria`，或 `build.package.create` 经 Studio 生成 → `package.artifact.inspect` → `package.install.preflight` → `package.install.review` → `package.install`。review 与 install 都走可信审批，绑定同一 archive hash、版本、权限、preflight 和当前 baseVersion；漂移必须重新 review。archive bytes 仅在内部有界保存，最多 4 个/每个 128 MiB，15 分钟过期；Native Build 返回元数据，采用固定分块和整包 SHA 校验，不把大段 base64 放进普通工具 JSON。
 - `agent.delegation.inspect` 读取选定 preset/node；`agent.run.start` 仅在用户明确要求内部 Agent 工作流时使用。当前模式 `delegated-node` 运行一个显式选定节点，复用 AgentRuntime 和既有 durable checkpoint store，不隐式执行完整 preset 图。最多 8 个精确 Memory create/edit/relation-upsert/compact 操作，每个一次，preset 工具与产品 capability、MCP ceiling 和用户批准 envelope 取交集。拒绝 deletion、web、任意工具、参数替换及嵌套 Agent。
+- MCP 委托还需显式 Native Route、`expectedGenerationFingerprint` 与 `acceptModelCharges: true`；预检显示原生预算和已批准的凭据目标。每轮模型请求复核最初的配置指纹，经原 Native reviewed execute 发送，使用原 RunControl 费用记录；未知发送不 retry/fallback。普通 UI 工作流保持原调用方式。取消只请求本次委托的 Native Operation，失败与未知结果保留原 request/operation ID 供核对。
 - Agent 有 1–8 steps、256–16000 context budget、1–60 秒 deadline，MCP request cancellation 会停止 Runtime；没有金额预算承诺。model/tool/Memory evidence、每次 provider usage、可用时的 cost，以及 parent/child receipt + run/step/effect attribution 一并返回。未知 token/cost 明确为 null，不估作零；无自动 Memory recall。费用仍以 provider 实际计费为准。
 - Lease、回执、artifact handles 随 MCP 实例结束失效；Agent durable checkpoint 归原 Orchestrator 所有。无法确认的中间效果保留 indeterminate 回执且不自动重试。
 

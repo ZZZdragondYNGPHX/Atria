@@ -9,15 +9,15 @@ const scope = { global: false, presets: [], works: [] }, exact = row => ({ id: r
     expectedContentHash: row.contentHash, expectedSourceCommit: row.sourceCommit, expectedTargetsHash: row.targetsHash });
 function fixture() {
     const boot = randomUUID(), preparationId = randomUUID(), clientInstanceId = 'fixture-client', requests = [];
-    let approvals = 0, installs = 0, row;
+    let approvals = 0, installs = 0, disposed = 0, row;
     const stage = { preparationId, clientInstanceId, targetId: extensionId, expiresAt: Date.now() + 300000, state: 'prepared', sourceUrl: 'https://example.org/repo.git',
         sourceCommit, contentHash: hash, name: 'Inert fixture', entrypoint: 'index.js', targets: scope, targetsHash: fingerprint(scope), previous: null, receipt: null,
         files: [{ path: 'index.js', bytes: 40, contentHash: hash }], execution: 'inert source only' };
     const browser = { runtimeIdentity: async () => ({ serverBootId: boot }) };
     const request = async (_browser, method, path, input, guard) => {
         requests.push({ method, path, input, guard }); let data;
-        if (path.endsWith('/prepare')) { assert.equal(input.clientInstanceId, clientInstanceId);
-            if (path.endsWith('/local/prepare')) { stage.kind = 'local'; stage.sourceCommit = null; stage.sourceUrl = null; }
+        if (path.endsWith('/prepare') || path.endsWith('/prepare-from-ref')) { assert.equal(input.clientInstanceId, clientInstanceId);
+            if (path.endsWith('/local/prepare-from-ref')) { assert.equal(input.source, undefined); stage.kind = 'local'; stage.sourceCommit = null; stage.sourceUrl = null; }
             data = stage; }
         else if (path.endsWith('/preparations/' + preparationId)) { assert.equal(input.clientInstanceId, clientInstanceId); data = stage; }
         else if (path.endsWith('/preparations/' + preparationId + '/install')) {
@@ -35,9 +35,12 @@ function fixture() {
         else throw new Error('Unregistered Native path: ' + path);
         return { ok: true, status: 200, serverBootId: boot, data: structuredClone(data) };
     };
-    const registry = registerExtensionActions(new ActionRegistry(), browser, { request, clientInstanceId }), receipts = new ReceiptStore();
+    const registry = registerExtensionActions(new ActionRegistry(), browser, { request, clientInstanceId,
+        uploadSource: async (_browser, options) => { assert.equal(options.kind, 'extension-source-upload'); assert.equal(options.bindingHash, fingerprint(options.beginInput));
+            assert.equal(options.guards.sourceBytes, options.bytes.length); assert.equal(options.beginInput.source, undefined); return { artifactId: randomUUID() }; },
+        disposeSource: async () => { disposed++; } }), receipts = new ReceiptStore();
     const executor = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()), { receipts, approve: async () => { approvals++; return { action: 'accept', content: { authorize: true } }; } });
-    return { registry, executor, receipts, stage, requests, get row() { return row; }, get approvals() { return approvals; }, get installs() { return installs; } };
+    return { registry, executor, receipts, stage, requests, get row() { return row; }, get approvals() { return approvals; }, get installs() { return installs; }, get disposed() { return disposed; } };
 }
 const reviewInput = stage => ({ preparationId: stage.preparationId, expectedContentHash: stage.contentHash, expectedSourceCommit: stage.sourceCommit, expectedTargetsHash: stage.targetsHash });
 
@@ -91,8 +94,23 @@ test('local scripts remain inert and cannot inherit enable authorization from pr
     const f = fixture();
     const prepared = await f.executor.execute('INTERACT', { action: 'extension.local.prepare', input: { expectedRevision: null, name: 'Local fixture', source: 'globalThis.mustNotExecute = true;', targets: scope } });
     assert.equal(prepared.receipt.status, 'succeeded'); assert.equal(f.stage.sourceCommit, null); assert.equal(globalThis.mustNotExecute, undefined);
+    assert.equal(f.disposed, 1); assert.equal(f.requests.some(row => row.path.endsWith('/local/prepare')), false);
     const review = await f.executor.execute('INTERACT', { action: 'extension.install.review', input: reviewInput(f.stage) });
     const installed = await f.executor.execute('MUTATE', { action: 'extension.install', input: { preparationId: f.stage.preparationId, reviewReceiptId: review.receipt.receiptId } });
     assert.equal(installed.result.data.enabled, false); assert.equal(f.approvals, 3);
     await f.executor.execute('MUTATE', { action: 'extension.enable', input: exact(f.row) }); assert.equal(f.approvals, 4);
+});
+
+test('local source limit counts UTF-8 bytes and rejects invalid surrogates before approval or transport', async () => {
+    const f = fixture(), input = { expectedRevision: null, name: 'Bounded source', targets: scope };
+    for (const source of ['界'.repeat(1400000), '\ud800', '\0']) await assert.rejects(f.executor.execute('INTERACT', { action: 'extension.local.prepare', input: { ...input, source } }));
+    assert.equal(f.approvals, 0); assert.equal(f.requests.length, 0); assert.equal(f.disposed, 0);
+});
+
+test('legal maximum target inventory uses a compact exact-hash review while the full list stays bound to transfer', async () => {
+    const f = fixture(), entries = Array.from({ length: 128 }, (_, index) => 'scope_' + String(index).padStart(3, '0') + '_'.repeat(119));
+    const result = await f.executor.execute('INTERACT', { action: 'extension.local.prepare', input: { expectedRevision: null, name: 'All explicit targets', source: '/* inert */',
+        targets: { global: false, presets: entries, works: entries } } });
+    assert.equal(result.receipt.status, 'succeeded'); assert.equal(f.approvals, 1); assert.equal(f.disposed, 1);
+    assert.equal(f.requests.find(row => row.path.endsWith('/local/prepare-from-ref')).input.targets.presets.length, 128);
 });

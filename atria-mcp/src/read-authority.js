@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jsonTextFragment } from './json-fragment.js';
 import { redact, safeUrl } from './policy.js';
 import { runtimeSchema } from './provenance.js';
 import { BROWSER_ADAPTERS, browserAdapterSchema, invokeBrowserAdapter } from './capability-bridge.js';
@@ -105,7 +106,7 @@ function boundedOutput(action, authority, response, input) {
     const clean = redact(response.data ?? null), serialized = JSON.stringify(clean);
     const { outputOffset: offset, outputLimit: size } = input;
     return { action, authority, status: response.status, ok: response.ok, serverBootId: response.serverBootId ?? null, observedAt: response.observedAt,
-        data: offset === 0 && serialized.length <= size ? clean : { format: 'json-text-fragment', text: serialized.slice(offset, offset + size) },
+        data: offset === 0 && serialized.length <= size ? clean : jsonTextFragment(serialized, offset, size),
         page: { offset, totalChars: serialized.length, nextOffset: offset + size < serialized.length ? offset + size : null, contentHash: createHash('sha256').update(serialized).digest('hex') },
         evidence: 'single authority response; pagination across calls is not an atomic snapshot' };
 }

@@ -20,7 +20,7 @@ import { AtriaBrowser } from './browser.js';
 import { apiUrl, routeMatches, redact } from './policy.js';
 import { RepositoryObservation } from './repository.js';
 import { ActionRegistry, PolicyCeiling, RiskExecutor, ReceiptStore, RISKS } from './kernel.js';
-import { Provenance } from './provenance.js';
+import { Provenance, scopeIdentity } from './provenance.js';
 import { BROWSER_ADAPTERS } from './capability-bridge.js';
 import { registerReadActions, diagnosticSnapshot, requestAuthority } from './read-authority.js';
 import { registerMutationActions } from './mutations.js';
@@ -90,7 +90,7 @@ export async function createServer(config) {
     registerCognitionActions(registry, browser);
     registerMediaActions(registry, browser);
     registerNativeMemoryActions(registry, browser);
-    registerSkillActions(registry, browser);
+    registerSkillActions(registry, browser, repository);
     registerSessionActions(registry, browser);
     registerExtensionActions(registry, browser);
     registerSessionArchiveActions(registry, browser, repository);
@@ -108,7 +108,8 @@ export async function createServer(config) {
     const protocol = createApprovalProtocol({ getServer: () => server, instanceId: receipts.instanceId });
     server = new McpServer({ name: 'atria-mcp', version: '0.3.0' }, { instructions: GUIDE, ...protocol.serverOptions });
     const executor = new RiskExecutor(registry, ceiling, { receipts, scheduler, operations, provenance: async () => {
-        const { observedAt: _, ...identity } = await provenance.snapshot(); return identity;
+        const { observedAt: _, ...identity } = await provenance.snapshot();
+        return { ...identity, experience: scopeIdentity(identity.experience), preview: scopeIdentity(identity.preview) };
     }, approve: (review, extra) => protocol.approve(review, extra) });
     const tool = (name, description, shape, handler, risk = 'READ') => {
         const schema = z.strictObject(shape);
@@ -128,7 +129,7 @@ export async function createServer(config) {
     };
     const status = async (extra) => { const identity = await provenance.snapshot(); return { product: await catalog.status(), origin: config.url,
         browser: { started: Boolean(browser.context), headed: config.headed, channel: config.channel ?? 'chromium' },
-        policyCeiling: ceiling.describe(), phase: 'E1-E7', protocol: protocol.describe(extra), scheduler: scheduler.snapshot(), operations: operations.list({limit:10}), productMutationAvailable: Boolean(policy && protocol.describe(extra).trustedApprovalAvailable),
+        policyCeiling: ceiling.describe(), phase: 'E1-E7', protocol: protocol.describe(extra), scheduler: scheduler.snapshot(), operations: operations.list({limit:10}), productMutationAvailable: Boolean(policy && protocol.describe(extra).trustedApprovalAvailable && identity.server?.mutationGuards === 1),
         authenticationStateLoaded: Boolean(config.storageState), runtimeSourceMatch: identity.runtimeSourceMatch,
         provenance: identity, fixedBrowserAdapters: BROWSER_ADAPTERS, adaptersRegistered: true }; };
     tool('atri_status', 'Configured source/server/browser provenance and separate observed Experience/Preview scopes.', {}, async (_, extra) => text(await status(extra)));
@@ -182,9 +183,9 @@ export async function createServer(config) {
         operation: z.enum(['snapshot', 'wait', 'resize']).default('snapshot'), frame, selector: bounded().default('body'),
         state: z.enum(['visible', 'hidden', 'attached', 'detached']).default('visible'), timeout: z.number().int().min(1).max(60000).default(30000),
         width: z.number().int().min(280).max(2560).optional(), height: z.number().int().min(240).max(2160).optional(),
-    }, async args => {
+    }, async (args, extra) => {
         if (args.operation === 'resize' && (!args.width || !args.height)) throw new Error('Resize requires width and height.');
-        return text(await observed(await browser[args.operation](args)));
+        return text(await observed(await browser[args.operation]({ ...args, signal: extra.signal })));
     });
     tool('atri_browser_screenshot', 'Return bounded JPEG screenshot of viewport or selector/frame.', {
         target: screenshotTargetSchema.optional(), frame, selector: bounded().optional(), fullPage: z.boolean().default(false),

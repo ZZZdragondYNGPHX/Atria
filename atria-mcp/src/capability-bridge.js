@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { jsonTextFragment } from './json-fragment.js';
 import { createHash } from 'node:crypto';
 import { redact } from './policy.js';
-import { compareBrowser } from './provenance.js';
+import { compareBrowser, scopeIdentity } from './provenance.js';
 
 const empty = z.strictObject({});
 const name = z.string().max(256);
@@ -60,6 +61,10 @@ export async function invokeBrowserAdapter(browser, action, input = {}) {
     const generation = browser.documentGeneration;
     const provenance = { serverBootId: browser.loadedIdentity?.serverBootId ?? null,
         experience: structuredClone(browser.scopedEvidence?.experience ?? null), documentGeneration: generation };
+    // Memory owns its loaded Session/source ticket, checked inside the fixed
+    // bridge before and after the read. A delayed Frontend response is a
+    // different authority and cannot invalidate an unchanged Memory source.
+    const bindsExperience = !action.startsWith('memory.');
     let result;
     try {
         result = await browser.page.evaluate(async ({ action, input, timeout }) => {
@@ -164,16 +169,16 @@ export async function invokeBrowserAdapter(browser, action, input = {}) {
         }, { action, input: argumentsOnly, timeout: browser.config.timeout });
     } catch { throw new Error('Browser capability unavailable.'); }
     if (generation !== browser.documentGeneration) throw new Error('Browser document changed during adapter read.');
-    if (JSON.stringify(provenance.experience) !== JSON.stringify(browser.scopedEvidence?.experience ?? null)) throw new Error('Experience scope changed during adapter read.');
+    if (bindsExperience && JSON.stringify(scopeIdentity(provenance.experience)) !== JSON.stringify(scopeIdentity(browser.scopedEvidence?.experience))) throw new Error('Experience scope changed during adapter read.');
     if (result.unavailable) throw new Error('First-party browser capability unavailable.');
     if (result.scopeChanged) throw new Error('Browser-owned Session scope changed during read.');
     const parsed = adapter.output.safeParse(result.value);
     if (!parsed.success) throw new Error('Browser capability output failed its fixed schema.');
     const server = await browser.runtimeIdentity();
     if (generation !== browser.documentGeneration) throw new Error('Browser document changed during adapter read.');
-    if (JSON.stringify(provenance.experience) !== JSON.stringify(browser.scopedEvidence?.experience ?? null)) throw new Error('Experience scope changed during adapter read.');
+    if (bindsExperience && JSON.stringify(scopeIdentity(provenance.experience)) !== JSON.stringify(scopeIdentity(browser.scopedEvidence?.experience))) throw new Error('Experience scope changed during adapter read.');
     const clean = redact(parsed.data), serialized = JSON.stringify(clean);
     return { action, risk: 'READ', provenance: { ...provenance, scopedEvidenceStatus: 'last-observed; not current exact verification', observedAt: new Date().toISOString(), browserFreshness: compareBrowser(provenance, server), currentServerBootId: server?.serverBootId ?? null },
-        value: outputOffset === 0 && serialized.length <= outputLimit ? clean : { format: 'json-text-fragment', text: serialized.slice(outputOffset, outputOffset + outputLimit) },
+        value: outputOffset === 0 && serialized.length <= outputLimit ? clean : jsonTextFragment(serialized, outputOffset, outputLimit),
         page: { totalChars: serialized.length, nextOffset: outputOffset + outputLimit < serialized.length ? outputOffset + outputLimit : null, contentHash: createHash('sha256').update(serialized).digest('hex') } };
 }

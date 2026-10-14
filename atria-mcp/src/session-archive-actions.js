@@ -11,6 +11,7 @@ const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/), digest = z.s
 const sha = bytes => createHash('sha256').update(bytes).digest('hex'), root = '/api/native/product';
 const nativeRef = z.strictObject({ artifactId: z.string().uuid(), contentHash: digest, totalBytes: z.number().int().min(1).max(128 * 1024 * 1024),
     sourceRevision: id, clientInstanceId: id, serverBootId: z.string().uuid() });
+const passwordSecretRef = z.strictObject({ secretId: z.string().uuid(), scope: z.literal('player') });
 const stageSchema = z.strictObject({ artifactRef: nativeRef, owner: z.string().min(1).max(256),
     source: z.union([z.strictObject({ kind: z.literal('session-archive-upload') }), z.strictObject({ kind: z.literal('session-archive'), sessionId: id, revisionId: id, saveId: id.nullable() })]),
     mediaType: z.literal('application/octet-stream'), expiresAt: z.number().int(), receivedBytes: z.number().int().nonnegative(), state: z.enum(['receiving', 'complete']), maxChunkBytes: z.number().int().min(1).max(1024 * 1024) });
@@ -41,9 +42,17 @@ export function registerSessionArchiveActions(registry, browser, repository, { n
     const add = (suffix, risk, shape, guard, handler, effects = []) => registry.register({ version: 1, id: 'session.archive.' + suffix, domain: 'session', title: 'Native Session Archive ' + suffix,
         risk, authority: 'Original NativeSaveSystem / SessionRepo / RunControl / Package dependency closure', adapter: 'fixed-http', externalEffects: effects,
         guards: risk === 'READ' ? [] : ['current-server-boot', 'exact-owner-client-purpose-source', 'before-and-after-approval-authority', 'native-session-lock-cas'],
-        approval: risk === 'READ' ? 'none' : 'trusted-approval-required', availability: { available: true, reason: 'Native .atriasave format and bounded binary transport; passwords stay in trusted Native UI' } },
+        approval: risk === 'READ' ? 'none' : 'trusted-approval-required', availability: { available: true, reason: 'Native .atriasave format and bounded binary transport; dedicated immutable password SecretRefs resolve only inside Native Archive execution' } },
     z.strictObject(shape), z.json(), handler, risk === 'READ' ? null : guard);
-    const source = { sessionId: id, expectedRevisionId: id, saveId: id.optional() };
+    add('passwords', 'READ', {}, null, async () => redact(await read('GET', '/save-archives/password-references')));
+    const passwordGuard = async (ref, serverBootId) => {
+        if (ref === undefined) return null;
+        const inventory = await read('GET', '/save-archives/password-references');
+        if (inventory.serverBootId !== serverBootId || !inventory.data.passwordSecretRefs?.some(item => item.secretId === ref.secretId && item.scope === ref.scope))
+            throw new Error('Owned dedicated Archive password SecretRef unavailable.');
+        return ref;
+    };
+    const source = { sessionId: id, expectedRevisionId: id, saveId: id.optional(), passwordSecretRef: passwordSecretRef.optional() };
     const sourceGuard = async input => {
         if ((await browser.runtimeIdentity())?.mutationGuards !== 1) throw new Error('Product mutation guards unavailable.');
         const result = await read('GET', '/sessions/' + input.sessionId + '/observe');
@@ -51,7 +60,8 @@ export function registerSessionArchiveActions(registry, browser, repository, { n
         const save = input.saveId ? result.data.saves?.find(point => point.saveId === input.saveId) : null;
         if (input.saveId && !save) throw new Error('Session Archive SavePoint unavailable.');
         return { target: { sessionId: input.sessionId, ...(input.saveId ? { saveId: input.saveId } : {}) }, serverBootId: result.serverBootId,
-            expectedRevisionId: input.expectedRevisionId, save: save ? { saveId: save.saveId, revisionId: save.revisionId } : null };
+            expectedRevisionId: input.expectedRevisionId, save: save ? { saveId: save.saveId, revisionId: save.revisionId } : null,
+            passwordSecretRef: await passwordGuard(input.passwordSecretRef, result.serverBootId), encryption: input.passwordSecretRef ? 'password-scrypt-v1' : 'atria-portable-obfuscation-v1' };
     };
     add('export', 'INTERACT', source, sourceGuard, async (input, { before }) => {
         const result = await call('POST', '/save-archives/export', { ...input, clientInstanceId }, before);
@@ -91,17 +101,20 @@ export function registerSessionArchiveActions(registry, browser, repository, { n
     add('preflight', 'READ', { binaryHandleId: z.string().uuid() }, null, async input => {
         const { result } = await preflight(input); return { ...redact(result), preflightFingerprint: fingerprint(result.data) };
     });
-    add('import', 'MUTATE', { binaryHandleId: z.string().uuid(), expectedPreflightFingerprint: digest }, async input => {
+    add('import', 'MUTATE', { binaryHandleId: z.string().uuid(), expectedPreflightFingerprint: digest, passwordSecretRef: passwordSecretRef.optional() }, async input => {
         if ((await browser.runtimeIdentity())?.mutationGuards !== 1) throw new Error('Product mutation guards unavailable.');
         const { result, value } = await preflight(input);
         if (fingerprint(result.data) !== input.expectedPreflightFingerprint || result.data.preflight.dependency.status !== 'ready') throw new Error('Session Archive dependency or target changed.');
-        if (result.data.preflight.protection.requiresPassword) throw new Error('Encrypted Session Archive requires trusted Native UI unlocking.');
+        if (result.data.preflight.protection.requiresPassword && !input.passwordSecretRef) throw new Error('Encrypted Session Archive requires a dedicated Native password SecretRef.');
+        if (!result.data.preflight.protection.requiresPassword && input.passwordSecretRef) throw new Error('Unencrypted Session Archive does not accept a password SecretRef.');
         return { target: { sessionId: result.data.preflight.root.sessionId }, serverBootId: result.serverBootId, contentHash: value.contentHash,
-            preflight: result.data, preflightFingerprint: input.expectedPreflightFingerprint };
+            preflight: result.data, preflightFingerprint: input.expectedPreflightFingerprint,
+            passwordSecretRef: await passwordGuard(input.passwordSecretRef, result.serverBootId) };
     }, async (input, { before }) => {
         const value = item(input.binaryHandleId);
         binary.readChunk(value.handleId, { binding: value.binding, operation: 'archive.import', offset: 0, length: 1 });
-        const result = await call('POST', '/save-archives/import', { artifactRef: value.nativeRef, expectedPreflightFingerprint: input.expectedPreflightFingerprint }, before);
+        const result = await call('POST', '/save-archives/import', { artifactRef: value.nativeRef, expectedPreflightFingerprint: input.expectedPreflightFingerprint,
+            ...(input.passwordSecretRef ? { passwordSecretRef: input.passwordSecretRef } : {}) }, before);
         return { ...redact(result), receiptEvidence: { after: result.ok ? result.data : null, recovery: 'Observe exact Session and immutable Revision before any further import. Unknown results are never replayed.' } };
     }, ['native-session-closure-import', 'asset-dependency-adoption']);
     return registry;

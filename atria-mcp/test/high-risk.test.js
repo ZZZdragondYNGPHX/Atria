@@ -191,11 +191,11 @@ test('real browser delegation bridge checks callback scope and links exact seman
     registry.register({ version: 1, id: 'memory.node.edit', domain: 'memory', title: 'fixture edit', risk: 'MUTATE', authority: 'fixture', adapter: 'test', externalEffects: [], guards: ['exact'],
         approval: 'trusted-approval-required', availability: { available: true, reason: '' } }, z.strictObject({ value: z.literal('exact') }), z.json(), () => { writes++; if (uncertain) throw new Error('Transport lost after effect'); return { ok: true }; },
     () => ({ target: { sessionId: 'session' }, serverBootId: runtime.serverBootId }));
-    registerAgentDelegation(registry, browser);
+    registerAgentDelegation(registry, browser, { generation: { review: async () => ({ serverBootId: runtime.serverBootId, budget: { maxRequests: 2, maxTokens: 1000 }, configurationFingerprint: 'a'.repeat(64) }) } });
     const executor = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()), { approve: async () => ({ action: 'accept', content: { authorize: true } }) });
-    const observed = await executor.execute('READ', { action: 'agent.delegation.inspect', input: { presetId: 'p', nodeId: 'n' } });
+    const observed = await executor.execute('READ', { action: 'agent.delegation.inspect', input: { presetId: 'p', nodeId: 'n', runtimeRouteId: 'route_fixture' } });
     const input = { presetId: 'p', nodeId: 'n', mode: 'delegated-node', presetHash: observed.presetHash, task: 'fixture', maxSteps: 2, contextBudget: 2000, timeoutMs: 1000,
-        operations: [{ action: 'memory.node.edit', input: { value: 'exact' } }] };
+        operations: [{ action: 'memory.node.edit', input: { value: 'exact' } }], runtimeRouteId: 'route_fixture', expectedGenerationFingerprint: observed.generationFingerprint, acceptModelCharges: true };
     const result = await executor.execute('MUTATE', { action: 'agent.run.start', input });
     assert.equal(result.receipt.status, 'succeeded'); assert.equal(writes, 1); assert.equal(result.result.evidence.denied, 2);
     assert.equal(result.receipt.childReceiptIds.length, 1);

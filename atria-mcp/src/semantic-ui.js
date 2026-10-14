@@ -19,7 +19,8 @@ async function owningIdentity(browser, surface) {
     if (source.kind === 'session' && identity.epoch) {
         const r = await requestAuthority(browser, 'POST', '/api/native/session/frontend/observe', { epoch: identity.epoch });
         if (!r.ok || !r.data?.ok || r.data.epoch !== identity.epoch || r.data.revision !== source.revisionId || r.data.data?.sessionId !== source.sessionId
-            || r.data.data.branchId !== source.branchId || r.data.data.packageVersionId !== source.packageVersionId || r.data.data.descriptorDigest !== identity.descriptorDigest) return null;
+            || r.data.data.branchId !== source.branchId || r.data.data.packageVersionId !== source.packageVersionId || r.data.data.packageContentHash !== source.packageContentHash
+            || r.data.data.descriptorDigest !== identity.descriptorDigest) return null;
         return { serverBootId: r.serverBootId, epoch: r.data.epoch, revisionId: r.data.revision, ...r.data.data };
     }
     if (source.kind === 'preview' && id.safeParse(source.previewId).success) {

@@ -150,7 +150,7 @@ export function registerHighRiskActions(registry, browser, repository, artifacts
         return { target: { projectId: i.projectId }, serverBootId: r.serverBootId, baseRevision: i.baseRevision };
     };
     const sessionGuard = async i => {
-        const r = await read('GET', `${product}/sessions/${i.sessionId}`);
+        const r = await read('GET', `${product}/sessions/${i.sessionId}/observe`);
         if (r.data.session.headRevisionId !== i.expectedRevisionId) throw new Error('Session revision conflict.');
         return { target: { sessionId: i.sessionId }, serverBootId: r.serverBootId, expectedRevisionId: i.expectedRevisionId, contentHash: fingerprint(r.data) };
     };
