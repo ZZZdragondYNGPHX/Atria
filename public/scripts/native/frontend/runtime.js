@@ -1,3 +1,4 @@
+import { registerMcpSurface } from './mcp-surface.js';
 import { A2uiProjection, consumeA2uiJsonLines } from '../../../shared/native-a2ui.js';
 import { updateIllustrationSurface, releaseIllustrationSurface } from '../illustration-surfaces.js';
 import { createMediaResolver } from './media.js';
@@ -26,6 +27,7 @@ export async function mountNativeFrontend(options) {
     const composing = new Set(), a2uiStreams = new Map();
     const stopA2uiStreams = () => { for (const controller of a2uiStreams.values()) controller.abort(); a2uiStreams.clear(); };
     const instances = new Map(), shared = {}, declarations = {}, views = [], overlays = [];
+    let presentationRevision = 0;
     let sequence = 0, disposed = false, renderCancel = null, rendering = false, rerender = false, navigation = 0, overlayRevision = 0, nodeCount = 0;
     const diagnostic = error => {
         if (disposed) return;
@@ -62,6 +64,7 @@ export async function mountNativeFrontend(options) {
     const context = (instance, item, event = {}) => ({ ...Object.fromEntries(['ui', 'draft', 'prefs'].map(scope => [scope, shared[scope] ?? {}])),
         bridge: instance.bridgeState, component: instance.state, view: instance.view.state, props: instance.props, item, event, env: instance.view.environment.get(), form: instance.form });
     function requestRender() {
+        presentationRevision++;
         if (disposed) return;
         if (rendering) { rerender = true; return; }
         if (!renderCancel) renderCancel = scheduler.frame(() => { renderCancel = null; void render().catch(diagnostic); });
@@ -219,7 +222,7 @@ export async function mountNativeFrontend(options) {
         const host = document.createElement('atri-component'); host.style.display = 'block'; host.dataset.component = id;
         const shadow = host.attachShadow({ mode: 'open' }); attachTo?.append(host);
         const instance = { id: 'instance.' + (++sequence), ir, contract, view, host, shadow, props: propsFor(contract, props),
-            bridgeState: Object.fromEntries(ir.uses.map(id => [id, null])), state: clone(contract.state.component?.initial ?? {}), form: { dirty: {}, touched: {}, errors: {}, busy: false }, nodes: new Map(), handles: new Map(), pointers: new Set(), cleanups: new Set(), onEmit, failBoundary, disposed: false };
+            bridgeState: Object.fromEntries(ir.uses.map(id => [id, null])), state: clone(contract.state.component?.initial ?? {}), form: { dirty: {}, touched: {}, errors: {}, busy: false }, nodes: new Map(), mcpControls: new Map(), handles: new Map(), pointers: new Set(), cleanups: new Set(), onEmit, failBoundary, disposed: false };
         instance.bridge = bridge.scope(ir.id, ir.uses);
         instances.set(instance.id, instance);
         instance.dispose = () => {
@@ -289,6 +292,7 @@ export async function mountNativeFrontend(options) {
         };
         instance.cleanups.add(dispose);
         node.dataset.nodeId = definition.id;
+        instance.mcpControls.set(definition.id, definition.events ?? {});
         for (const [key, value] of Object.entries(definition.attributes)) {
             if (['disabled', 'checked', 'selected', 'multiple', 'required', 'hidden', 'open', 'controls', 'loop', 'muted', 'playsinline'].includes(key)) node[key === 'playsinline' ? 'playsInline' : key] = value === 'true' || value === '';
             else node.setAttribute(key, value);
@@ -732,6 +736,34 @@ export async function mountNativeFrontend(options) {
         } finally { signal?.removeEventListener('abort', abort); if (a2uiStreams.get(instanceId) === controller) a2uiStreams.delete(instanceId); }
     }
     try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; }
+    const mcpIdentity = () => ({ mode: options.mode, epoch: bridge.epoch, revisionId: bridge.revision,
+        descriptorDigest: bridge.descriptorDigest, navigation, overlayRevision, presentationRevision, disposed,
+        source: clone(options.mcpSource?.() ?? null) });
+    const mcpControls = () => {
+        if (disposed || media.origins.length || [...instances.values()].some(item => item.ir.controller || item.ir.a2ui || item.ir.uses.length)) return [];
+        const result = [];
+        for (const instance of instances.values()) for (const [controlId, events] of instance.mcpControls) {
+            if (!instance.nodes.get(controlId)?.isConnected) continue;
+            for (const actionId of new Set(Object.values(events))) {
+                const actions = instance.contract.interactions[actionId];
+                if (!actions?.length || !actions.every(action => ['set', 'toggle'].includes(action.kind) && /^(component|view|ui)\./.test(action.target))) continue;
+                result.push({ instanceId: instance.id, componentId: instance.ir.id, controlId, actionId });
+            }
+        }
+        return result.slice(0, 256);
+    };
+    const mcpSurface = registerMcpSurface({ identity: mcpIdentity, controls: mcpControls, region: () => {
+        const rects = [...instances.values()].filter(item => item.host.isConnected).map(item => item.host.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
+        if (!rects.length) return null;
+        const x = Math.max(0, Math.floor(Math.min(...rects.map(rect => rect.left)))), y = Math.max(0, Math.floor(Math.min(...rects.map(rect => rect.top))));
+        const right = Math.min(window.innerWidth, Math.ceil(Math.max(...rects.map(rect => rect.right)))), bottom = Math.min(window.innerHeight, Math.ceil(Math.max(...rects.map(rect => rect.bottom))));
+        return right > x && bottom > y ? { x, y, width: right - x, height: bottom - y } : null;
+    },
+    interact: async (control, event) => {
+        if (!event || Object.keys(event).some(key => !['value', 'checked'].includes(key)) || JSON.stringify(event).length > 4096) throw new TypeError('semantic_ui_event');
+        const instance = instances.get(control.instanceId); if (!instance || instance.disposed) throw new TypeError('semantic_ui_stale');
+        await run(instance, control.actionId, undefined, event);
+    } });
     return Object.freeze({ mode: options.mode, status: 'active', refresh() { requestRender(); return bridge.refresh(); }, getContributions: () => [], getRenderReceipts: () => [],
         navigate, back, openOverlay, closeOverlay, streamA2ui,
         recover, setLocale, announce, issueMedia: media.issue, setRemoteMediaEnabled: media.setEnabled,
@@ -752,6 +784,6 @@ export async function mountNativeFrontend(options) {
         },
         getInstances() { return [...instances.values()].map(instance => ({ id: instance.id, componentId: instance.ir.id, ...(instance.ir.controller ? { script: instance.controller?.status ?? 'loading' } : {}) })); },
         scheduler: Object.freeze({ frame: scheduler.frame }),
-        dispose() { if (disposed) return; stopA2uiStreams(); recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
+        dispose() { if (disposed) return; mcpSurface.dispose(); stopA2uiStreams(); recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
     });
 }

@@ -1165,7 +1165,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 body.append(canvas);
                 state.previewMount?.dispose();
                 const mounted = await mountStudioPreviewUi(documentRef, canvas, exact.model, exact.experience.mode, undefined,
-                    { entry: exact.experience.frontend?.entry, files: exact.compiledFiles, bridgeProjections: exact.bridgeProjections });
+                    { entry: exact.experience.frontend?.entry, files: exact.compiledFiles, bridgeProjections: exact.bridgeProjections, identity: { kind: 'preview', projectId: exact.projectId, previewId: exact.previewId, packageVersionId: exact.packageVersionId, packageContentHash: exact.packageContentHash, baseRevision: exact.baseRevision, workspaceId: exact.workspaceId, operationsFingerprint: exact.operationsFingerprint } });
                 if (state.disposed || state.preview?.previewId !== previewId || !canvas.isConnected) { mounted.dispose(); return; }
                 state.previewMount = mounted;
             } catch (error) {

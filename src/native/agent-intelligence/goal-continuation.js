@@ -3,9 +3,7 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { AgentGoalService } from './goal-service.js';
 import { fields, text } from './contracts.js';
 import { ConflictError } from '../../storage/errors.js';
-import { runNativeStudioAgentTask } from '../../../public/scripts/native/studio-agent.js';
-import { executeProjectSkillWork } from '../skill-invocation.js';
-import { prepareRetrievalCompute } from '../retrieval-compute.js';
+import { executeNativeProjectAgent } from '../project-agent-executor.js';
 import { randomUUID } from 'node:crypto';
 import { goalContextMessage } from '../../../public/shared/agent-goal-context.js';
 
@@ -16,6 +14,49 @@ export class GoalContinuationService {
     constructor({ host, chatRepo, scheduler = nativeTaskScheduler }) {
         Object.assign(this, { host, scheduler });
         this.goals = new AgentGoalService({ engine: host.persistence._engine, sessionCore: host.sessionCore, studio: host.studio, agent: host.agent, chatRepo });
+    }
+    async _controlledConfiguration(handle) {
+        const routes = (await this.host.persistence.listRuntimeRoutes(handle)).filter(route => route.role === 'role.studio');
+        const modelIds = new Set(routes.map(route => route.modelProfileRef.modelProfileId));
+        const connectionIds = new Set(routes.map(route => route.connectionProfileRef.connectionProfileId));
+        const models = (await this.host.persistence.listModelProfiles(handle)).filter(model => modelIds.has(model.modelProfileId));
+        for (const model of models) connectionIds.add(model.connectionProfileRef.connectionProfileId);
+        const connections = (await this.host.persistence.listConnectionProfiles(handle)).filter(connection => connectionIds.has(connection.connectionProfileId));
+        return { routes, models, connections };
+    }
+    async preflight(handle, input) {
+        fields(input, ['goalId', ...(input.taskId === undefined ? [] : ['taskId'])], 'Goal controlled preflight');
+        const goal = await this.goals._stored(handle, { goalId: input.goalId });
+        const taskId = input.taskId ?? goal.execution?.taskId;
+        if (taskId && (goal.scope.domain !== 'project' || goal.execution && goal.execution.taskId !== taskId)) throw new ConflictError('goal_execution_binding_conflict');
+        const task = taskId ? await this.host.agent.observeTask(handle, goal.scope.projectId, taskId) : null;
+        const configuration = task ? await this._controlledConfiguration(handle) : { routes: [], models: [], connections: [] };
+        const source = goal.scope.domain === 'project' ? await this.host.studio.getRevision(handle, goal.scope.projectId)
+            : goal.scope.domain === 'rp_session' ? (await this.host.sessionCore.observe(handle, goal.scope.sessionId)).revision : goal.anchor;
+        return { goal, goalDefinitionFingerprint: definition(goal), taskId: taskId ?? null, taskFingerprint: hashNativeDocument(task),
+            sourceFingerprint: hashNativeDocument(source), configurationFingerprint: hashNativeDocument(configuration), budget: goal.budget,
+            providerTargets: configuration.connections.map(c => ({ connectionProfileId: c.connectionProfileId, endpoint: c.endpoint, secretRef: c.secretRef ?? null,
+                providerAdapter: c.providerAdapter, transport: c.transport })),
+            execution: task ? 'explicit_background_model_under_native_budget' : 'evidence_only_no_background_model' };
+    }
+    async controlled(handle, input) {
+        fields(input, ['action', 'goalId', 'expectedSequence', 'expectedGoalDefinition', 'expectedTaskFingerprint', 'expectedSourceFingerprint',
+            'expectedConfigurationFingerprint', ...(input.eventId === undefined ? [] : ['eventId']), ...(input.taskId === undefined ? [] : ['taskId'])], 'Controlled Goal execution');
+        if (!['bind', 'wake', 'pump', 'resume'].includes(input.action)) throw new TypeError('Fixed controlled Goal action required');
+        const view = await this.preflight(handle, { goalId: input.goalId, ...(input.taskId ? { taskId: input.taskId } : {}) });
+        if (view.goal.sequence !== input.expectedSequence || view.goalDefinitionFingerprint !== input.expectedGoalDefinition
+            || view.taskFingerprint !== input.expectedTaskFingerprint || view.sourceFingerprint !== input.expectedSourceFingerprint
+            || view.configurationFingerprint !== input.expectedConfigurationFingerprint) throw new ConflictError('goal_controlled_preflight_stale');
+        const fence = async () => {
+            const goal = await this.goals._stored(handle, { goalId: input.goalId });
+            if (definition(goal) !== input.expectedGoalDefinition
+                || view.taskId && hashNativeDocument(await this._controlledConfiguration(handle)) !== input.expectedConfigurationFingerprint)
+                throw new ConflictError('goal_controlled_execution_stale');
+        };
+        if (input.action === 'bind') return this.bind(handle, { goalId: input.goalId, expectedSequence: input.expectedSequence, taskId: input.taskId });
+        if (input.action === 'resume') return this.control(handle, { goalId: input.goalId, expectedSequence: input.expectedSequence, action: 'resume' });
+        if (input.action === 'wake') return this.wake(handle, { goalId: input.goalId, eventId: input.eventId }, { fence });
+        return this.pump(handle, { goalId: input.goalId }, { fence });
     }
     async control(handle, input) {
         const goal = await this.goals.control(handle, input);
@@ -44,7 +85,7 @@ export class GoalContinuationService {
         if (goal.execution) return goal;
         return this.goals.repository.save(handle, { ...goal, execution: { kind: 'project_task', taskId: input.taskId }, sequence: goal.sequence + 1, updatedAt: Date.now() }, hashNativeDocument(goal));
     }
-    async wake(handle, input) {
+    async wake(handle, input, { fence = null } = {}) {
         fields(input, ['goalId', 'eventId'], 'Goal wake');
         text(input.eventId, 'Goal event');
         if (input.eventId.length > 160) throw new TypeError('Goal event bounds');
@@ -57,7 +98,7 @@ export class GoalContinuationService {
         const task = await this.host.agent.getTask(handle, goal.scope.projectId, goal.execution.taskId);
         if (stoppedTask(task)) return goal;
         await this.host.agent.queueGoalWake(handle, goal.scope.projectId, task.taskId, goal.goalId, input.eventId);
-        return this.pump(handle, { goalId: goal.goalId });
+        return this.pump(handle, { goalId: goal.goalId }, { fence });
     }
     async _verify(handle, goal) {
         const { agent } = this.host, projectId = goal.scope.projectId, taskId = goal.execution.taskId;
@@ -71,9 +112,10 @@ export class GoalContinuationService {
         if (ticket) await agent.settleLocalWork(handle, projectId, taskId, attemptId, null);
         return this.goals.evaluate(handle, { goalId: goal.goalId, expectedSequence: goal.sequence });
     }
-    async pump(handle, input) {
+    async pump(handle, input, { fence = null } = {}) {
         fields(input, ['goalId'], 'Goal pump');
         let goal = await this.goals._stored(handle, input);
+        await fence?.();
         if (!goal.execution || !eligible(goal)) return goal;
         goal = await this._verify(handle, goal);
         if (!eligible(goal)) return goal;
@@ -88,13 +130,14 @@ export class GoalContinuationService {
         const operation = this.scheduler.submit({ owner: handle, anchor: { projectId, goalId: goal.goalId, taskId }, kind: 'auxiliary_task', executionClass: 'background',
             resources: [projectId, taskId], key: 'goal:' + goal.goalId, fingerprint: hashNativeDocument({ goal: definition(goal), eventId: wake.eventId }), retry: false,
             fresh: async () => {
+                await fence?.();
                 const task = await this.host.agent.getTask(handle, projectId, taskId);
                 return !stoppedTask(task) && eligible(await this._verify(handle, await this.goals._stored(handle, { goalId: goal.goalId })));
             },
             run: async ({ signal, operationId }) => {
                 await this.host.agent.claimGoalWake(handle, projectId, taskId, goal.goalId, wake.eventId, operationId);
                 try {
-                    const result = await this._project(handle, goal, wake, signal);
+                    const result = await this._project(handle, goal, wake, signal, fence);
                     await this.host.agent.finishGoalWake(handle, projectId, taskId, goal.goalId, wake.eventId, operationId, 'done');
                     return result;
                 } catch (error) {
@@ -107,51 +150,19 @@ export class GoalContinuationService {
         void operation.result.catch(() => {});
         return { goal, task, operationId: operation.operationId, completion: operation.result };
     }
-    async _project(handle, goal, wake, signal) {
-        const { agent, studio } = this.host, projectId = goal.scope.projectId, taskId = goal.execution.taskId;
+    async _project(handle, goal, wake, signal, fence = null) {
+        const projectId = goal.scope.projectId, taskId = goal.execution.taskId;
         const check = async () => {
             signal.throwIfAborted();
+            await fence?.();
             const stored = await this.goals._stored(handle, { goalId: goal.goalId });
             if (!eligible(stored)) throw new ConflictError('goal_execution_stopped');
             const current = await this._verify(handle, stored);
             if (!eligible(current) || current.execution?.taskId !== taskId) throw new ConflictError('goal_execution_stopped');
         };
-        let contextFingerprint;
-        const client = {
-            getAgentContext: async (project, task) => {
-                const context = await agent.getContext(handle, project, task);
-                contextFingerprint = context.task.executionFingerprint;
-                return context;
-            },
-            getAgentTask: (project, task) => agent.getTask(handle, project, task),
-            resumeAgentTask: (project, task) => agent.resumeTask(handle, project, task),
-            preflight: (project, revision) => studio.preflightProject(handle, project, { baseRevision: revision }),
-            beginAgentGeneration: async (project, task) => {
-                await check();
-                const current = await agent.getTask(handle, project, task);
-                if (current.executionFingerprint !== contextFingerprint) throw new ConflictError('native_generation_task_stopped');
-                return agent.beginGeneration(handle, project, task, { expectedSequence: current.sequence });
-            },
-            finishAgentGeneration: (project, task, input) => agent.finishGeneration(handle, project, task, input),
-            executeAgentTool: async (project, task, input) => { await check(); return agent.executeTool(handle, project, task, input); },
-        };
-        let round = 0;
-        return runNativeStudioAgentTask({ projectId, taskId, abortSignal: signal, client,
-            request: async () => ({ routes: await this.host.persistence.listRuntimeRoutes(handle) }),
-            work: async (context, operation, input) => {
-                await check();
-                const compute = await prepareRetrievalCompute({ handle, context, profile: { mode: 'embed', purpose: 'studio.skill.v1' },
-                    persistence: this.host.persistence, core: this.host.sessionCore, agent, studio });
-                return executeProjectSkillWork({ operation, input, compute, repository: this.host.skillRepository(handle), projectId,
-                    settings: operation === 'list' ? (await this.host.extensions.settings(handle)).value : undefined, signal });
-            }, generate: async ({ source, ...request }) => {
-                await check();
-                const currentGoal = await this.goals.get(handle, { goalId: goal.goalId });
-                const contextMessage = goalContextMessage({ goals: [currentGoal] });
-                const result = await this.host.execute(handle, { ...source, role: request.role, messages: request.messages, tools: request.tools,
-                    ...(contextMessage ? { messages: [request.messages[0], contextMessage, ...request.messages.slice(1)] } : {}),
-                    requestId: 'goal:' + hashNativeDocument({ goalId: goal.goalId, eventId: wake.eventId, round: round++ }) }, signal);
-                return { ...result.response, snapshot: result.snapshot, routing: result.routing };
-            } });
+        return executeNativeProjectAgent({ host: this.host, handle, projectId, taskId, signal, check,
+            observeCheck: async () => { await fence?.(); if (!eligible(await this.goals._stored(handle, { goalId: goal.goalId }))) throw new ConflictError('goal_execution_stopped'); },
+            requestId: round => 'goal:' + hashNativeDocument({ goalId: goal.goalId, eventId: wake.eventId, round }),
+            contextMessage: async () => goalContextMessage({ goals: [await this.goals.get(handle, { goalId: goal.goalId })] }) });
     }
 }

@@ -9,6 +9,7 @@ export function mountStudioPreviewUi(document, root, model, mode, onDiagnostic =
         const descriptor = decode(model.resources.find(item => item.kind === 'bridge').path);
         const scopes = Object.fromEntries(model.resources.filter(item => item.kind === 'component').map(item => { const ir = decode(item.path); return [ir.id, ir.uses]; }));
         return mountNativeFrontend({ document, window: document.defaultView, mode, onDiagnostic, entry: artifacts.entry,
+            mcpSource: () => artifacts.identity ?? null,
             bridgeTransport: previewBridgeTransport({ descriptor, scopes, projections: artifacts.bridgeProjections }),
             loadBytes: async path => {
                 if (!Object.hasOwn(artifacts.files, path)) throw new TypeError('Undeclared Preview resource');

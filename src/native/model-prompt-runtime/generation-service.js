@@ -8,13 +8,14 @@ import { hashNativeDocument } from '../repositories/common.js';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
-    constructor({ resolver, contextProvider, preparePrompt, secretPort, providerFor, now = Date.now }) {
+    constructor({ resolver, contextProvider, preparePrompt, secretPort, providerFor, now = Date.now, beforeSend = null }) {
         this.resolver = assertRouteResolverPort(resolver);
         this.contextProvider = assertContextProviderPort(contextProvider);
         this.preparePrompt = preparePrompt;
         this.secretPort = assertSecretPort(secretPort);
         this.providerFor = providerFor ?? (id => resolver.provider(id));
         this.now = now;
+        this.beforeSend = beforeSend;
     }
 
     async execute({ signal, handle, onChunk, ...value }, { preview = false } = {}) {
@@ -154,13 +155,15 @@ export class GenerationService {
 
     async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk }) {
         checkCancellation(signal);
+        await this.beforeSend?.({ snapshot, resolved, handle, signal });
+        checkCancellation(signal);
         // Secret exists only in this send-boundary frame, never in config/render/snapshot.
         let secret;
         try {
-            secret = await cancellable(() => this.secretPort.resolveSecret(resolved.connection.secretRef, { handle, signal }), signal);
-        } catch {
+            secret = await cancellable(() => this.secretPort.resolveSecret(resolved.connection.secretRef, { handle, signal, connection: resolved.connection }), signal);
+        } catch (error) {
             checkCancellation(signal);
-            throw new GenerationError('generation_secret_unavailable');
+            throw new GenerationError(/^native_credential_[a-z_]+$/.test(error.code || '') ? error.code : 'generation_secret_unavailable');
         }
         checkCancellation(signal);
         if (typeof secret !== 'string' || !secret) throw new GenerationError('generation_secret_unavailable');

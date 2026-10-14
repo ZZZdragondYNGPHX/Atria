@@ -29,6 +29,12 @@ export class NativeTaskScheduler {
         if (!operation || operation.owner !== owner) throw failure('operation_not_found');
         return immutable(operation.view);
     }
+    result(owner, id) {
+        const operation = this.operations.get(id);
+        if (!operation || operation.owner !== owner) throw failure('operation_not_found');
+        if (operation.view.status !== 'completed' || operation.resultValue === undefined) throw failure('operation_result_unavailable');
+        return immutable(operation.resultValue);
+    }
     cancel(owner, id, status = 'cancelled') {
         const operation = this.operations.get(id);
         if (!operation || operation.owner !== owner) throw failure('operation_not_found');
@@ -39,7 +45,7 @@ export class NativeTaskScheduler {
         if (!this.running.has(operation)) { operation.cleanup(); this.releaseOperation(operation); }
         this.queue = this.queue.filter(item => item !== operation); this.drain(); return true;
     }
-    submit({ owner, anchor, kind = 'model_task', executionClass, resources, key, fingerprint, supersede = false, retry = true, timeoutMs = this.timeoutMs, signal, run, finalize, fresh, onChunk }) {
+    submit({ owner, anchor, kind = 'model_task', executionClass, resources, key, fingerprint, supersede = false, retry = true, timeoutMs = this.timeoutMs, signal, run, finalize, fresh, onChunk, projectResult = null, retainResult = false }) {
         if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2147483647) throw failure('operation_timeout_invalid');
         if (!['turn', 'model_task', 'auxiliary_task'].includes(kind)) throw failure('operation_kind_invalid');
         if (!['turn_blocking', 'interactive', 'background', 'maintenance'].includes(executionClass)) throw failure('operation_class_invalid');
@@ -62,7 +68,7 @@ export class NativeTaskScheduler {
         const result = new Promise((yes, no) => { resolve = yes; reject = no; });
         // Cancellation can precede the caller attaching a handler.
         result.catch(() => {});
-        const operation = { owner, key, fingerprint, retry, resources: [...new Set(resources)], controller, run, finalize, fresh, onChunk,
+        const operation = { owner, key, fingerprint, retry, resources: [...new Set(resources)], controller, run, finalize, fresh, onChunk, projectResult, retainResult,
             resolve, reject, sequence: this.serial++, queuedAt: Date.now(),
             view: { operationId, kind, anchor, executionClass, status: 'queued', attempt: 0, provisionalPresentation: '', deliveryReceipt: null } };
         const abort = () => this.cancel(owner, operationId);
@@ -123,6 +129,15 @@ export class NativeTaskScheduler {
             // Commit is an uninterruptible CAS boundary. Cancel never claims to undo it.
             view.status = 'finalizing'; clearTimeout(timer);
             const result = await operation.finalize(output, view.deliveryReceipt);
+            // Optional owner-scoped observations share this operation's bounded
+            // retention. No second journal, persistent result or implicit retry.
+            if (operation.projectResult) try {
+                const observation = operation.projectResult(result);
+                if (Buffer.byteLength(JSON.stringify(observation)) <= 65536) view.observation = immutable(observation);
+            } catch { /* Missing usage remains unknown; successful effects remain accepted. */ }
+            if (operation.retainResult) {
+                if (Buffer.byteLength(JSON.stringify(result)) <= 1048576) { operation.resultValue = immutable(result); view.resultAvailable = true; } else { view.resultAvailable = false; view.resultUnavailableReason = 'result_capacity_exceeded'; }
+            }
             view.status = 'completed'; view.provisionalPresentation = ''; operation.resolve(result);
         } catch (error) {
             if (!terminal.has(view.status)) view.status = error.code === 'native_session_head_conflict' ? 'stale' : 'failed';

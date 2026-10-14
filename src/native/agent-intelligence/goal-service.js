@@ -33,13 +33,23 @@ export class AgentGoalService {
         if (!chat) throw new NotFoundError('Goal chat');
         return {};
     }
-    async create(handle, input) {
-        assertWritable();
+    async _prepareCreate(handle, input) {
         fields(input, ['subject', 'scope', 'intent', 'criteria', 'invariants', 'budget'], 'Goal creation');
         const scope = assertEvidenceScope(input.scope);
         const anchor = await this._anchor(handle, scope, input.subject), at = this.now();
         const doc = assertGoal({ ...input, scope, anchor, schemaVersion: 1, sequence: 0,
             goalId: 'goal_' + randomUUID().replaceAll('-', ''), status: 'active', evidence: [], progress: [], blockers: [], createdAt: at, updatedAt: at });
+        return doc;
+    }
+    async previewCreate(handle, input) {
+        const doc = await this._prepareCreate(handle, input);
+        return { anchor: doc.anchor, anchorFingerprint: hashNativeDocument(doc.anchor),
+            definitionFingerprint: hashNativeDocument(input), budget: doc.budget, backgroundModel: 'not_started' };
+    }
+    async create(handle, input, { expectedAnchorFingerprint } = {}) {
+        assertWritable();
+        const doc = await this._prepareCreate(handle, input);
+        if (expectedAnchorFingerprint !== undefined && hashNativeDocument(doc.anchor) !== expectedAnchorFingerprint) throw new ConflictError('goal_source_changed_after_review');
         return this.repository.save(handle, doc, null);
     }
     async list(handle) { return Promise.all((await this.repository.list(handle)).map(doc => this._present(handle, doc))); }

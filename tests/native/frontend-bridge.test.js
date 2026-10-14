@@ -31,6 +31,16 @@ describe('Frontend Host Bridge v1 data plane', () => {
         base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: id, action: { kind: 'app.command', domainId: 'notes', recordId: id, commandId: 'save', args: { text: id } } }, { expectedRevisionId: base.revision.revisionId });
         opened.revision = base.revision.revisionId;
     }
+    test('MCP epoch observation uses only pure snapshot authority and never renews/reconciles the bridge', async () => {
+        const before = await svc.sessionRepo.get(h.handle, base.session.sessionId);
+        const current = jest.spyOn(host, 'current').mockImplementation(() => { throw Error('Mutable bridge current called'); });
+        const expiry = host.experiences.get(opened.epoch).expires;
+        const result = await host.observe(svc, h.handle, opened.epoch);
+        expect(result).toMatchObject({ ok: true, epoch: opened.epoch, revision: base.revision.revisionId, data: { readOnly: true, sessionId: base.session.sessionId } });
+        expect(current).not.toHaveBeenCalled(); expect(host.experiences.get(opened.epoch).expires).toBe(expiry);
+        expect(await svc.sessionRepo.get(h.handle, base.session.sessionId)).toEqual(before);
+        await expect(host.observe(svc, 'foreign-owner', opened.epoch)).rejects.toBeTruthy();
+    });
     test('compiled mappings, target digests and query policies are closed and scope is inferred', () => {
         const bridge = compileBridge({ version: 1, bindings: f.bindings }, f.contract);
         expect(() => validateCompiledBridge(bridge, f.contract)).not.toThrow();
@@ -120,7 +130,9 @@ describe('Frontend Host Bridge v1 data plane', () => {
     });
     test('branch switch and reload revoke handles, including away-and-back between reads', async () => {
         const original = base.revision.branchId;
-        const fork = await svc.core.forkBranch(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId });
+        const savePoint = await svc.core.createSavePoint(h.handle, base.session.sessionId);
+        await append('before-restore');
+        const fork = await svc.core.restoreSavePoint(h.handle, base.session.sessionId, savePoint.saveId, { expectedRevisionId: base.revision.revisionId });
         await svc.core.switchBranch(h.handle, base.session.sessionId, original, { expectedRevisionId: fork.revision.revisionId });
         expect((await call('read.snapshot', 'notes')).error.code).toBe('bridge_epoch_stale');
         opened = await host.open(svc, h.handle, base.session.sessionId);

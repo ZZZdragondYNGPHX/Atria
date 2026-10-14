@@ -16,7 +16,7 @@
 // pipelines that defer their own commit) get the legacy in-memory
 // semantics.
 
-import { applyExtractionOpsImpl, createRollupWithChildren } from './main.js';
+import { applyExtractionOpsImpl, createRollupWithChildren } from './graph-mutation-core.js';
 import { resolveInFlightAnchor } from './persistence.js';
 
 // Accept both the Layer-1 public shape `{ target: { id, ref }, relation, direction }`

@@ -19,12 +19,12 @@ const authorityKey = (scope, t) => hash(t.kind === 'skill' ? ['skill', t.scope, 
     : t.kind === 'project-strategy' ? ['task', scope.projectId, t.taskId] : ['project-prompt', scope.projectId, t.runtimeRouteId]);
 
 export class AgentEvolutionService {
-    constructor({ host, chatRepo, scheduler = nativeTaskScheduler, evaluator = null, targets = null, now = Date.now }) {
+    constructor({ host, chatRepo, scheduler = nativeTaskScheduler, evaluator = null, targets = null, now = Date.now, observationOnly = false }) {
         this.host = host; this.now = now; this.scheduler = scheduler;
         this.repository = new AgentEvolutionRepository({ engine: host.persistence._engine });
         this.experience = new AgentExperienceService({ engine: host.persistence._engine, chatRepo, sessionCore: host.sessionCore, studio: host.studio, agent: host.agent, now });
         this.targets = targets || new EvolutionTargets({ host }); this.evaluator = evaluator || new EvolutionEvaluator({ host, repository: this.repository });
-        onEvolutionInvalidation(host.persistence._engine, (handle, doc) => {
+        if (!observationOnly) onEvolutionInvalidation(host.persistence._engine, (handle, doc) => {
             this._cancel(handle, doc);
             // Original source repositories may hold their own write queue.
             // Pause is already durable; rollback runs after those writes settle.
@@ -47,6 +47,19 @@ export class AgentEvolutionService {
         return { choices: await this.targets.catalog(handle, input.scope, input.subject), routes: (await this.host.persistence.listRuntimeRoutes(handle))
             .filter(r => r.role === (input.scope.domain === 'project' ? 'role.studio' : 'role.orchestrator')).map(r => ({ routeId: r.runtimeRouteId, role: r.role })) };
     }
+    async preflight(handle, input) {
+        fields(input, ['scope', 'subject']);
+        const agent = Object.create(this.host.agent);
+        agent.listTasks = (...args) => this.host.agent.observeTasks(...args);
+        const observationHost = Object.create(this.host); observationHost.agent = agent;
+        const targets = new EvolutionTargets({ host: observationHost });
+        const choices = await targets.catalog(handle, input.scope, input.subject);
+        const configuration = { routes: await this.host.persistence.listRuntimeRoutes(handle),
+            models: await this.host.persistence.listModelProfiles(handle), connections: await this.host.persistence.listConnectionProfiles(handle) };
+        const state = await this.observe(handle, input), experience = await this.experience.observe(handle, input);
+        const observation = { choices, configuration, state, experience };
+        return { ...observation, observationFingerprint: hash(observation), validity: 'not_reconciled' };
+    }
     async declare(handle, input) {
         fields(input, ['scope', 'subject', 'target', 'expectedBaseHash']);
         await this.experience.inspect(handle, { scope: input.scope, subject: input.subject });
@@ -62,10 +75,15 @@ export class AgentEvolutionService {
         fields(input, ['scope', 'subject']);
         return { format: 'atria.agent-evolution', schemaVersion: 1, ...await this.inspect(handle, input) };
     }
-    async configure(handle, input) {
+    async configure(handle, input, { expectedObservationFingerprint = null } = {}) {
         fields(input, ['scope', 'subject', 'target', 'mode', 'routeId', 'price', 'expectedSequence']);
         if (!['review', 'auto'].includes(input.mode)) throw new TypeError('Choose review or local auto explicitly');
         integer(input.expectedSequence, 0, Number.MAX_SAFE_INTEGER); assertWritable();
+        const check = async () => {
+            if (expectedObservationFingerprint !== null && (await this.preflight(handle, { scope: input.scope, subject: input.subject })).observationFingerprint !== expectedObservationFingerprint)
+                conflict('agent_evolution_preflight_stale');
+        };
+        await check();
         await this._unstacked(handle, input.scope, input.target);
         // Subject is derived/validated by existing Experience evidence, not a
         // display name or client-supplied owner. New subjects remain review.
@@ -84,6 +102,7 @@ export class AgentEvolutionService {
         if (input.mode === 'auto' && !(await this.repository.owner(handle))?.limits) conflict('agent_evolution_budget_required');
         const old = await this.repository.get(handle, input.scope, input.subject);
         if (old) this._cancel(handle, old);
+        await check();
         return this.repository.mutate(handle, input.scope, input.subject, doc => {
             const pin = { revision: randomUUID(), target: input.target, targetPin, routeId: input.routeId, price };
             doc.policy = { ...pin, fingerprint: hash(pin), mode: input.mode, lastJobAt: doc.policy?.lastJobAt || 0, reason: null };
@@ -261,7 +280,7 @@ export class AgentEvolutionService {
         }
         try { return await this.start(handle, { scope, subject, expectedSequence: doc.sequence }, { automatic: true }); } catch (error) { return { status: 'idle', reason: error.code || 'not_ready' }; }
     }
-    async label(handle, input) {
+    async label(handle, input, { suppressAutomaticPublish = false } = {}) {
         fields(input, ['scope', 'subject', 'jobId', 'candidateId', 'pairHash', 'preference', 'deltas', 'expectedSequence']);
         integer(input.expectedSequence, 0, Number.MAX_SAFE_INTEGER);
         if (!['candidate', 'baseline', 'tie', 'uncertain'].includes(input.preference)) throw new TypeError('Invalid human preference');
@@ -277,7 +296,7 @@ export class AgentEvolutionService {
         const job = next.jobs.find(j => j.id === input.jobId), c = job.candidates.find(c => c.candidateId === input.candidateId);
         const owner = await this.repository.owner(handle), decision = promotionDecision(c.report, { policyFingerprint: next.policy.fingerprint, targetPin: job.targetPin, budgetBreached: owner.breached, ledger: owner, jobId: job.id });
         await this.repository.mutate(handle, input.scope, input.subject, d => { const entry = candidateEntry(d, input.jobId, input.candidateId); if (entry) entry.decision = decision; });
-        if (decision.eligible && next.policy.mode === 'auto') return this.publish(handle, { scope: input.scope, subject: input.subject, jobId: input.jobId, candidateId: input.candidateId, expectedReportHash: hash(c.report) }, { automatic: true });
+        if (!suppressAutomaticPublish && decision.eligible && next.policy.mode === 'auto') return this.publish(handle, { scope: input.scope, subject: input.subject, jobId: input.jobId, candidateId: input.candidateId, expectedReportHash: hash(c.report) }, { automatic: true });
         return { decision, reportHash: hash(c.report) };
     }
     async publish(handle, input, { automatic = false } = {}) {
@@ -403,10 +422,12 @@ export class AgentEvolutionService {
         if (doc.policy?.reason === 'source_or_budget_invalid' || doc.policy?.reason?.startsWith('experience_')) await this._rollbackInvalidated(handle, doc);
         return this.repository.get(handle, input.scope, input.subject);
     }
-    async rollback(handle, input) {
+    async rollback(handle, input, { expectedSequence, expectedPublicationFingerprint } = {}) {
         fields(input, ['scope', 'subject', 'publicationId']); assertWritable();
         const doc = await this.repository.get(handle, input.scope, input.subject); if (!doc) conflict();
-        await this.repository.mutate(handle, input.scope, input.subject, d => { if (d.policy) { d.policy.mode = 'paused'; d.policy.reason = 'rollback'; } });
+        if (expectedPublicationFingerprint !== undefined && hash(doc.publications.find(p => p.id === input.publicationId) ?? null) !== expectedPublicationFingerprint)
+            conflict('agent_evolution_publication_changed');
+        await this.repository.mutate(handle, input.scope, input.subject, d => { if (d.policy) { d.policy.mode = 'paused'; d.policy.reason = 'rollback'; } }, expectedSequence);
         this._cancel(handle, doc);
         return this._rollback(handle, input.scope, input.subject, input.publicationId);
     }
@@ -455,6 +476,15 @@ export class AgentEvolutionService {
                 });
             } catch { /* An active user choice / missing authority remains explicit in garbage and receipt. */ }
         }
+    }
+    /** No reconcile, publication, rollback, cleanup, model send or budget reservation. */
+    async observe(handle, input) {
+        fields(input, ['scope', 'subject']);
+        const doc = await this.repository.get(handle, input.scope, input.subject), owner = await this.repository.owner(handle);
+        return { scope: doc, owner: owner ? { sequence: owner.sequence, limits: owner.limits, totals: this.repository.totals(owner),
+            unsettled: owner.attempts.filter(a => a.status !== 'reported').length } : null,
+        bindingStates: (doc?.publications || []).map(p => ({ publicationId: p.id, current: null, validity: 'not_reconciled' })),
+        observation: 'persisted_snapshot', validity: 'not_reconciled', readOnly: isReadOnly() };
     }
     async inspect(handle, input) {
         fields(input, ['scope', 'subject']);

@@ -19,6 +19,7 @@ import { createNativeId, assertNativeId } from '../native/identity.js';
 import { resolveNativeRuntimePackage, readFrontendRuntimeResource } from '../native/runtime-descriptor.js';
 import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo, getSettingsRepo } from '../storage/index.js';
 import { scheduleSessionMaintenance } from '../native/session-maintenance.js';
+import { NativeSessionObservation } from '../native/session-observation.js';
 
 function services() {
     const assets = getAssetStore();
@@ -56,6 +57,10 @@ export function createNativeSessionRouter(getServices = services) {
         fields(req.body, ['sessionId', 'previous']);
         res.json(await frontendBridgeService.open(services, handle, req.body.sessionId, req.body.previous));
     }));
+    router.post('/frontend/observe', frontendRoute(async (req, res, services, handle) => {
+        fields(req.body, ['epoch']);
+        res.json(await frontendBridgeService.observe(services, handle, req.body.epoch));
+    }));
     router.post('/frontend/close', frontendRoute(async (req, res, _services, handle) => {
         fields(req.body, ['epoch']); frontendBridgeService.close(handle, req.body.epoch);
         res.json(bridgeReceipt());
@@ -72,6 +77,10 @@ export function createNativeSessionRouter(getServices = services) {
     }));
     router.post('/health', route(async (req, res, { core }, handle) => {
         res.set('Cache-Control', 'private, no-store').json(await inspectExperienceHealth(core, handle, req.body.sessionId));
+    }));
+    router.post('/health/observe', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId']);
+        res.set('Cache-Control', 'private, no-store').json(await inspectExperienceHealth(core, handle, req.body.sessionId, { observe: true }));
     }));
     router.post('/health/preview', route(async (req, res, { core }, handle) => {
         res.set('Cache-Control', 'private, no-store').json(await previewExperienceRepair(core, handle, req.body.sessionId, req.body.request));
@@ -131,13 +140,26 @@ export function createNativeSessionRouter(getServices = services) {
         res.set('Cache-Control', 'private, no-store').json(await sessionRepo.getCommitReceipt(handle, req.body.sessionId, req.body.commitId));
     }));
     router.post('/experience-metadata', route(async (req, res, { sessionRepo }, handle) => {
-        fields(req.body, ['sessionId', 'expectedRevisionId', 'autoSavePolicy', 'branchId', 'displayName', 'archived']);
+        fields(req.body, ['sessionId', 'expectedRevisionId', 'expectedMetadataFingerprint', 'autoSavePolicy', 'branchId', 'displayName', 'archived']);
         const { sessionId, ...options } = req.body;
         res.json(await sessionRepo.setExperienceMetadata(handle, sessionId, options));
     }));
     router.post('/maintenance', route(async (req, res, { sessionRepo }, handle) => {
         fields(req.body, ['sessionId']);
         res.json(await scheduleSessionMaintenance(sessionRepo, handle, req.body.sessionId));
+    }));
+    router.post('/maintenance/checked', route(async (req, res, { sessionRepo }, handle) => {
+        fields(req.body, ['sessionId', 'expectedRevisionId']);
+        assertNativeId(req.body.sessionId, 'session'); assertNativeId(req.body.expectedRevisionId, 'revision');
+        res.json(await scheduleSessionMaintenance(sessionRepo, handle, req.body.sessionId, undefined, { expectedRevisionId: req.body.expectedRevisionId }));
+    }));
+    for (const [path, method, allowed] of [
+        ['/history/observe', 'history', ['sessionId', 'revisionId', 'query']],
+        ['/history/metrics-observe', 'metrics', ['sessionId', 'revisionId']],
+        ['/revisions/observe', 'revision', ['sessionId', 'revisionId']],
+    ]) router.post(path, route(async (req, res, services, handle) => {
+        fields(req.body, allowed);
+        res.set('Cache-Control', 'private, no-store').json(await new NativeSessionObservation(services)[method](handle, req.body));
     }));
     router.post('/illustrations/read', route(async (req, res, { sessionRepo }, handle) => {
         fields(req.body, ['sessionId', 'branchId']);
@@ -157,6 +179,19 @@ export function createNativeSessionRouter(getServices = services) {
             res.json(await new IllustrationService({ sessionRepo, sessionCore: core })[command](handle, sessionId, input));
         }));
     }
+    router.post('/observe', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'revisionId']);
+        res.set('Cache-Control', 'private, no-store').json(await core.observe(handle, req.body.sessionId, { revisionId: req.body.revisionId }));
+    }));
+    router.post('/timeline/append', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'expectedRevisionId', 'commitId', 'draft']);
+        const { sessionId, expectedRevisionId, commitId, draft } = req.body;
+        assertNativeId(expectedRevisionId, 'revision');
+        if (typeof commitId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(commitId)) throw new TypeError('Stable caller commitId required');
+        fields(draft, ['role', 'content']);
+        if (draft.role !== 'user' || typeof draft.content !== 'string' || !draft.content.trim() || draft.content.length > 32000) throw new TypeError('Native input append requires bounded user content');
+        res.set('Cache-Control', 'private, no-store').json(await core.appendTimeline(handle, sessionId, draft, { expectedRevisionId, commitId }));
+    }));
     router.post('/load', route(async (req, res, { core }, handle) => {
         res.json(await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId }));
     }));
@@ -234,6 +269,14 @@ export function createNativeSessionRouter(getServices = services) {
     router.post('/continuity/graph', route(async (req, res, { core }, handle) => {
         res.json(await core.getContinuityGraph(handle, req.body.sessionId, req.body.limit));
     }));
+    router.post('/continuity/projection-observe', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'viewId', 'revisionId']);
+        res.set('Cache-Control', 'private, no-store').json(await core.observeContinuityProjection(handle, req.body.sessionId, req.body.viewId, { revisionId: req.body.revisionId }));
+    }));
+    router.post('/continuity/graph-observe', route(async (req, res, { core }, handle) => {
+        fields(req.body, ['sessionId', 'limit']);
+        res.set('Cache-Control', 'private, no-store').json(await core.observeContinuityGraph(handle, req.body.sessionId, req.body.limit));
+    }));
     async function resourceOwner(req, core, handle) {
         const owner = req.body?.sharedOwner ?? req.query?.sharedOwner;
         if (owner === undefined) return handle;
@@ -241,9 +284,11 @@ export function createNativeSessionRouter(getServices = services) {
         await new SharedAuthority(core).access(owner, req.body?.sessionId ?? req.query?.sessionId, handle);
         return owner;
     }
-    router.post('/runtime/resolve', route(async (req, res, { core, packageInstaller }, handle) => {
-        handle = await resourceOwner(req, core, handle);
-        const snapshot = await core.load(handle, req.body?.sessionId);
+    const resolveRuntime = observe => route(async (req, res, { core, packageInstaller }, handle) => {
+        // The MCP observer is owner-only and cannot invoke Shared access/recovery.
+        if (observe) fields(req.body, ['sessionId']);
+        else handle = await resourceOwner(req, core, handle);
+        const snapshot = observe ? await core.observe(handle, req.body.sessionId) : await core.load(handle, req.body?.sessionId);
         const opened = await packageInstaller.open(
             handle,
             snapshot.session.packageId,
@@ -254,11 +299,13 @@ export function createNativeSessionRouter(getServices = services) {
             throw new TypeError('Native Runtime PackageVersion content mismatch');
         }
         const resolved = resolveNativeRuntimePackage(opened, snapshot.session.entryPointId);
-        res.json({
+        res.set('Cache-Control', 'private, no-store').json({
             descriptor: resolved.descriptor,
             runtime: resolved.runtime,
         });
-    }));
+    });
+    router.post('/runtime/resolve', resolveRuntime(false));
+    router.post('/runtime/observe', resolveRuntime(true));
     router.post('/runtime/resource', route(async (req, res, { core, packageInstaller }, handle) => {
         handle = await resourceOwner(req, core, handle);
         const snapshot = await core.load(handle, req.body?.sessionId);

@@ -5,6 +5,7 @@ import { createGeminiImageAdapter } from './adapters/gemini-image-adapter.js';
 import { createWebuiImageAdapter } from './adapters/webui-image-adapter.js';
 import { createRunninghubImageAdapter } from './adapters/runninghub-image-adapter.js';
 import { randomInt } from 'node:crypto';
+import { credentialFetch } from './model-prompt-runtime/credential-fetch.js';
 import { assertImageTarget, assertImageRendering } from './visual-contracts.js';
 import { visualFingerprint, assertCapabilityManifest, negotiateImageConstraints, visualError } from '../../public/shared/native-visual-contract.js';
 
@@ -50,7 +51,7 @@ export function protocolManifest(fingerprint, features, { combinations = [], cos
     return { schemaVersion: 2, targetFingerprint: fingerprint, checkedAt: Date.now(), expiresAt: Date.now() + 3600000,
         level, features: Object.fromEntries(Object.entries(features).map(([name, state]) => [name, { state, evidence: 'adapter protocol declaration; live Target not verified' }])), combinations, cost };
 }
-export function createImageRegistry({ fetchImpl = fetch } = {}) {
+export function createImageRegistry({ fetchImpl = credentialFetch } = {}) {
     const registry = new ImageAdapterRegistry();
     registry.register(['provider.novelai-image', 'provider.novelai-image-compatible'], createNovelaiVisualAdapter({ fetchImpl }));
     registry.register(['provider.comfyui-image'], createComfyImageAdapter({ fetchImpl }));

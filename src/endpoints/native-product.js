@@ -19,6 +19,8 @@ import { ProjectStore } from '../native/project-store.js';
 import { NativeProductService } from '../native/product-service.js';
 import { NativeSaveSystem } from '../native/save-system.js';
 import { SessionCore } from '../native/session-core.js';
+import { nativeMcpArtifacts, artifactRefFromQuery } from '../native/mcp-artifacts.js';
+import { mountNativeSessionArchives } from './native-session-archives.js';
 
 const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
 
@@ -72,7 +74,7 @@ function services() {
     };
 }
 
-export function createNativeProductRouter(getServices = services) {
+export function createNativeProductRouter(getServices = services, artifacts = nativeMcpArtifacts) {
     const router = express.Router();
     router.use((request, response, next) => {
         if (!request.user?.profile?.handle) return response.sendStatus(401);
@@ -143,6 +145,9 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/works/:packageId/versions/:packageVersionId', route(async (req, res, { product }, handle) => {
         res.json(await product.getWorkVersion(handle, req.params.packageId, req.params.packageVersionId));
     }));
+    router.get('/works/:packageId/versions/:packageVersionId/identity', route(async (req, res, { product }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await product.getWorkVersionIdentity(handle, req.params.packageId, req.params.packageVersionId));
+    }));
     router.post('/works/:packageId/start', route(async (req, res, { product }, handle) => {
         res.json(await product.startWork(handle, req.params.packageId, req.body || {}));
     }));
@@ -150,15 +155,50 @@ export function createNativeProductRouter(getServices = services) {
         res.json({ deleted: await product.deleteWork(handle, req.params.packageId, { baseVersionId: req.body?.baseVersionId }) });
     }));
 
+    router.post('/artifacts/staging', route(async (req, res, _service, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(artifacts.begin(handle, req.body));
+    }));
+    router.put('/artifacts/:artifactId/chunk', express.raw({ type: 'application/octet-stream', limit: '1mb' }), route(async (req, res, _service, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(artifacts.write(handle, artifactRefFromQuery(req), Number(req.query.offset), req.body, req.headers['x-atria-chunk-sha256']));
+    }));
+    router.post('/artifacts/:artifactId/finalize', route(async (req, res, _service, handle) => {
+        if (req.body?.artifactRef?.artifactId !== req.params.artifactId) throw new TypeError('Artifact reference mismatch');
+        res.set('Cache-Control', 'private, no-store').json(artifacts.finalize(handle, req.body.artifactRef));
+    }));
+    router.get('/artifacts/:artifactId/chunk', route(async (req, res, _service, handle) => {
+        const result = artifacts.readChunk(handle, artifactRefFromQuery(req), Number(req.query.offset), Number(req.query.length));
+        res.status(206).set({ 'Cache-Control': 'private, no-store', 'Content-Type': 'application/octet-stream',
+            'X-Content-Type-Options': 'nosniff', 'Content-Length': String(result.bytes.length), 'X-Atria-Chunk-Sha256': result.contentHash,
+            'ETag': '"' + req.query.contentHash + '"', 'Content-Range': `bytes ${result.offset}-${result.offset + result.bytes.length - 1}/${result.totalBytes}` }).send(result.bytes);
+    }));
+    router.delete('/artifacts/:artifactId', route(async (req, res, _service, handle) => {
+        if (req.body?.artifactRef?.artifactId !== req.params.artifactId) throw new TypeError('Artifact reference mismatch');
+        res.json(artifacts.cancel(handle, req.body.artifactRef));
+    }));
+    const withArchive = (handle, body, consume) => {
+        if (body?.artifactRef) {
+            if (body.data !== undefined) throw new TypeError('Choose one archive source');
+            if (!['development-upload', 'studio-project', 'installed-package'].includes(artifacts.inspect(handle, body.artifactRef).source.kind)) throw new TypeError('Package artifact purpose required');
+            return artifacts.withBytes(handle, body.artifactRef, consume);
+        }
+        return consume(decodeArchive(body?.data));
+    };
     router.post('/packages/preflight', route(async (req, res, { product }, handle) => {
-        res.json(await product.preflightPackageUpdate(handle, decodeArchive(req.body?.data)));
+        res.json(await withArchive(handle, req.body, archive => product.preflightPackageUpdate(handle, archive)));
+    }));
+    router.post('/packages/export-artifact', route(async (req, res, { product }, handle) => {
+        if (!req.body || Object.keys(req.body).sort().join(',') !== ['clientInstanceId', 'expectedContentHash', 'packageId', 'packageVersionId'].sort().join(',')) throw new TypeError('Exact Package export source required');
+        const { clientInstanceId, packageId, packageVersionId, expectedContentHash } = req.body;
+        const opened = await product.exportPackageArchive(handle, packageId, packageVersionId, expectedContentHash);
+        res.set('Cache-Control', 'private, no-store').json(artifacts.capturePackage(handle, clientInstanceId, packageId, packageVersionId, expectedContentHash, opened.archive));
     }));
     router.post('/packages/install', route(async (req, res, { product }, handle) => {
-        res.json(await product.installPackage(handle, decodeArchive(req.body?.data), {
+        if (req.body?.artifactRef && !Object.hasOwn(req.body, 'baseVersionId')) throw new TypeError('Staged install requires exact baseVersionId');
+        res.json(await withArchive(handle, req.body, archive => product.installPackage(handle, archive, {
             grantedPermissions: req.body?.grantedPermissions || [],
             ...(req.body?.requiredPackage ? { requiredPackage: req.body.requiredPackage } : {}),
             ...(Object.hasOwn(req.body || {}, 'baseVersionId') ? { baseVersionId: req.body.baseVersionId } : {}),
-        }));
+        })));
     }));
     router.post('/community/install', route(async (req, res, { product }, handle) => {
         res.json(await product.installCommunity(handle, req.body.base, decodeArchive(req.body.data)));
@@ -227,6 +267,7 @@ export function createNativeProductRouter(getServices = services) {
         res.json({ deleted: await product.deleteKnowledgeBase(handle, req.params.knowledgeBaseId) });
     }));
 
+    mountNativeSessionArchives(router, route, artifacts);
     router.post('/saves/preflight', route(async (req, res, { product }, handle) => {
         res.json(await product.preflightSaveImport(handle, decodeArchive(req.body?.data)));
     }));
@@ -250,11 +291,17 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/works/:packageId/resource-setup', route(async (req, res, { product }, handle) => {
         res.json(await product.getResourceSetup(handle, req.params.packageId, { sessionId: req.query.sessionId, entryPointId: req.query.entryPointId }));
     }));
+    router.get('/works/:packageId/resource-setup/observe', route(async (req, res, { product }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await product.getResourceSetup(handle, req.params.packageId, { sessionId: req.query.sessionId, entryPointId: req.query.entryPointId, observe: true }));
+    }));
     router.put('/works/:packageId/resource-setup', route(async (req, res, { product }, handle) => {
         res.json(await product.saveResourceSetup(handle, req.params.packageId, req.body, req.body.sessionId));
     }));
     router.get('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
         res.json(await product.getSession(handle, req.params.sessionId));
+    }));
+    router.get('/sessions/:sessionId/observe', route(async (req, res, { product }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await product.observeSession(handle, req.params.sessionId));
     }));
     router.post('/sessions/:sessionId/export', route(async (req, res, { product }, handle) => {
         const archive = await product.exportSession(handle, req.params.sessionId, {

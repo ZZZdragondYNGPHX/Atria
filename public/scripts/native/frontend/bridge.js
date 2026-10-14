@@ -141,7 +141,7 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
             dispose() { dead = true; listeners.clear(); queries.clear(); operations.clear(); scopes.delete(local); },
         });
     }
-    return Object.freeze({ scope, refresh, get epoch() { return epoch; }, get revision() { return revision; },
+    return Object.freeze({ scope, refresh, get descriptorDigest() { return descriptorDigest; }, get epoch() { return epoch; }, get revision() { return revision; },
         async reload() { revoked = true; generation++; localReceipts.clear(); aborts.forEach(controller => controller.abort()); scopes.forEach(scope => scope.clear()); scopes.clear(); await open(); },
         dispose() { disposed = true; generation++; localReceipts.clear(); aborts.forEach(controller => controller.abort()); scopes.clear(); if (epoch) void transport?.close?.(epoch)?.catch(() => {}); },
     });

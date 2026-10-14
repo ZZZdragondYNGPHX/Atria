@@ -1,3 +1,4 @@
+import { observeMcpSurfaces, interactMcpSurface } from '../../public/scripts/native/frontend/mcp-surface.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { illustrationContentHash } from '../../src/native/session-illustrations.js';
 import { emptyIllustrations } from '../../public/shared/native-illustration-contract.js';
@@ -26,6 +27,21 @@ function editContract(fixture, transform) {
 }
 
 describe('Native Frontend v3 presentation', () => {
+    test('MCP semantic controls are compiled local actions and never prefs, navigation, emit or Host calls', async () => {
+        const fixture = presentationFixture(), build = fixture.compile(), env = environment();
+        const runtime = await mountNativeFrontend({ ...env, entry: build.entry, mode: 'component', loadBytes: async path => build.files.get(path) });
+        try {
+            const surface = observeMcpSurfaces().at(-1), control = surface.controls.find(item => item.controlId === 'increment');
+            expect(control).toBeTruthy(); expect(surface.controls.some(item => ['compact', 'next', 'dialog', 'increase'].includes(item.controlId))).toBe(false);
+            const initial = runtime.getState().ui.count;
+            await interactMcpSurface({ surfaceId: surface.surfaceId, ...control, expectedIdentity: surface.identity, event: {} });
+            expect(runtime.getState().ui.count).toBe(initial + 1);
+            await expect(interactMcpSurface({ surfaceId: surface.surfaceId, ...control, expectedIdentity: surface.identity, event: {} })).rejects.toThrow('stale');
+            const current = observeMcpSurfaces().at(-1);
+            await expect(interactMcpSurface({ surfaceId: current.surfaceId, ...control, actionId: 'compact', expectedIdentity: current.identity })).rejects.toThrow('unsupported');
+        } finally { runtime.dispose(); env.dom.window.close(); }
+        expect(observeMcpSurfaces()).toHaveLength(0);
+    });
     test.each(['component', 'hybrid', 'full'])('compiles semantic components and large bounded local lists in %s', mode => {
         expect(presentationFixture(mode).compile().files.size).toBeGreaterThan(10);
     });

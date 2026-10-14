@@ -101,6 +101,7 @@ export const NATIVE_RESOURCE_KINDS = Object.freeze({
     versionedJsonResource: 'atri_versioned_json_resource',
     versionedJsonResourceRevision: 'atri_versioned_json_resource_revision',
     connectionProfile: 'atri_connection_profile',
+    credentialTargetPermit: 'atri_credential_target_permit',
     modelProfile: 'atri_model_profile',
     runtimeRoute: 'atri_runtime_route',
     runtimeCheckpoint: 'atri_runtime_checkpoint',
@@ -1106,6 +1107,7 @@ const RESOURCE_KEY_SPECS = Object.freeze({
     [NATIVE_RESOURCE_KINDS.retrievalProfile]: [['handle', 'handle'], ['retrievalProfileId', 'retrievalProfile'], ['revision', 'token']],
     [NATIVE_RESOURCE_KINDS.runtimeRoute]: [['handle', 'handle'], ['runtimeRouteId', 'runtimeRoute']],
     [NATIVE_RESOURCE_KINDS.runtimeCheckpoint]: [['handle', 'handle'], ['checkpointId', 'hash']],
+    [NATIVE_RESOURCE_KINDS.credentialTargetPermit]: [['handle', 'handle'], ['connectionProfileId', 'connectionProfile']],
 });
 
 function assertResourceKeyField(value, type, field) {

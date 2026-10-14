@@ -61,7 +61,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(await h.service.list(h.handle)).toEqual([]);
             const goal = await h.service.create(h.handle, { ...h.input, scope, criteria });
             const paused = await h.service.control(h.handle, { goalId: goal.goalId, expectedSequence: 0, action: 'pause' });
-            const next = await h.installed.core.forkBranch(h.handle, scope.sessionId, { expectedRevisionId: h.session.revision.revisionId });
+            const next = await deriveSaveRoute(h, scope.sessionId, h.session.revision.revisionId);
             expect(next.revision.branchId).not.toBe(goal.anchor.branchId);
             await expect(h.service.control(h.handle, { goalId: goal.goalId, expectedSequence: 1, action: 'resume' })).rejects.toMatchObject({ code: 'goal_scope_stale' });
             expect(await h.service.get(h.handle, { goalId: goal.goalId })).toEqual(paused);
@@ -171,3 +171,8 @@ test('S11 SQLite actual dump/restore preserves Goal without creating a completio
         expect(await new AgentGoalService({ engine: destination.engine }).get(destination.handle, { goalId: goal.goalId })).toEqual(goal);
     } finally { await h.cleanup(); await destination.cleanup(); }
 }, 60000);
+
+async function deriveSaveRoute(h, sessionId, expectedRevisionId) {
+    const save = await h.installed.core.createSavePoint(h.handle, sessionId, { expectedRevisionId, displayName: 'Goal branch-isolation fixture' });
+    return h.installed.core.restoreSavePoint(h.handle, sessionId, save.saveId, { expectedRevisionId });
+}

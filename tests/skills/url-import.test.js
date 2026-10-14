@@ -42,70 +42,22 @@ describe('url-import (validation paths)', () => {
 // HTTPS server with a self-signed cert), so happy-path coverage is provided
 // by the integration smoke and manual testing.
 
-describe('url-import (body validation via fetch stub)', () => {
-    let tmpRoot, repo, originalFetch;
-
-    beforeEach(async () => {
-        tmpRoot = await fs.mkdtemp(join(tmpdir(), 'skill-url-stub-'));
-        repo = createSkillRepository(tmpRoot);
-        originalFetch = global.fetch;
+describe('url-import (bounded public-target reader)', () => {
+    let tmpRoot, repo;
+    beforeEach(async () => { tmpRoot = await fs.mkdtemp(join(tmpdir(), 'skill-url-stub-')); repo = createSkillRepository(tmpRoot); });
+    afterEach(async () => { await fs.rm(tmpRoot, { recursive: true, force: true }); });
+    const invoke = (text, extra = {}) => importFromUrl({ url: 'https://example.com/SKILL.md', targetScope: { kind: 'global' }, repository: repo,
+        readText: async () => ({ text, contentType: 'text/plain' }), ...extra });
+    test('rejects absent frontmatter, oversized UTF-8 bytes and HTML content type', async () => {
+        await expect(invoke('<html>not a Skill</html>')).rejects.toThrow(/frontmatter/);
+        await expect(invoke('---\nname: x\ndescription: y\n---\n' + '中'.repeat(180000))).rejects.toThrow(/exceeds/);
+        await expect(invoke('---\nname: x\ndescription: y\n---\n', { readText: async () => ({ text: '---\n', contentType: 'text/html' }) })).rejects.toThrow(/content type/);
     });
-
-    afterEach(async () => {
-        global.fetch = originalFetch;
-        await fs.rm(tmpRoot, { recursive: true, force: true });
-    });
-
-    test('rejects non-frontmatter body', async () => {
-        global.fetch = async () => ({
-            ok: true, status: 200,
-            text: async () => '<html>not a skill</html>',
-        });
-        await expect(importFromUrl({
-            url: 'https://example.com/x.md',
-            targetScope: { kind: 'global' },
-            repository: repo,
-        })).rejects.toThrow(/frontmatter/i);
-    });
-
-    test('rejects oversized body', async () => {
-        const huge = '---\nname: x\ndescription: y\n---\n' + 'x'.repeat(600 * 1024);
-        global.fetch = async () => ({
-            ok: true, status: 200,
-            text: async () => huge,
-        });
-        await expect(importFromUrl({
-            url: 'https://example.com/x.md',
-            targetScope: { kind: 'global' },
-            repository: repo,
-        })).rejects.toThrow(/exceeds/);
-    });
-
-    test('propagates non-2xx HTTP status', async () => {
-        global.fetch = async () => ({
-            ok: false, status: 404,
-            text: async () => 'not found',
-        });
-        await expect(importFromUrl({
-            url: 'https://example.com/missing.md',
-            targetScope: { kind: 'global' },
-            repository: repo,
-        })).rejects.toThrow(/HTTP 404/);
-    });
-
-    test('installs valid SKILL.md', async () => {
-        global.fetch = async () => ({
-            ok: true, status: 200,
-            text: async () => '---\nname: from-url\ndescription: imported\n---\nbody\n',
-        });
-        const result = await importFromUrl({
-            url: 'https://example.com/skill.md',
-            targetScope: { kind: 'global' },
-            repository: repo,
-        });
-        expect(result.name).toBe('from-url');
-        expect(result.conflict).toBe('new');
-        const got = await repo.get('from-url', { kind: 'global' });
-        expect(got).toBeTruthy();
+    test('installs exact content through native repository and rejects changed reviewed hash', async () => {
+        const text = '---\nname: from-url\ndescription: imported\n---\nbody\n';
+        await expect(invoke(text, { expectedContentHash: '0'.repeat(64) })).rejects.toThrow(/changed/);
+        const result = await invoke(text, { expectedInstalledHash: null });
+        expect(result).toMatchObject({ name: 'from-url', conflict: 'new' }); expect(result.contentHash).toMatch(/^[a-f0-9]{64}$/);
+        expect(await repo.get('from-url', { kind: 'global' })).toBeTruthy();
     });
 });

@@ -18,6 +18,7 @@ import { NativeGenerationHost } from '../../src/native/adapters/generation-host.
 import { Readable } from 'node:stream';
 import { rm } from 'node:fs/promises';
 import { mapVersionedModelPromptResourceRefs, assertPackageVersionedModelPromptResourceEnvelope } from '../../src/native/model-prompt-runtime/resources.js';
+import { projectSource, services } from '../agent-intelligence/project-fixture.js';
 
 const cleanup = [];
 afterEach(async () => { setReadOnly(false); for (const fn of cleanup.splice(0)) await fn(); });
@@ -79,8 +80,9 @@ test.each(['role.narrator', 'role.studio'])('%s original GenerationService snaps
     await f.candidates.apply(f.h.handle, f.saved.presetId, c.candidateId);
     const next = await service.execute({ ...request, requestId: 'req-new' });
     expect(next.snapshot.promptProgramRef).toEqual(c.changedRefs.find(r => r.resourceId === f.saved.presetId));
-    expect(next.snapshot.promptIr.directives).toEqual(['Required guard', 'Candidate style']);
-    expect(old.snapshot.promptIr.directives).toEqual(['Required guard', 'Original style']);
+    expect(next.snapshot.promptIr.directives.slice(0, 2)).toEqual(['Required guard', 'Candidate style']);
+    expect(old.snapshot.promptIr.directives.slice(0, 2)).toEqual(['Required guard', 'Original style']);
+    expect(next.snapshot.promptIr.directives.some(text => text.startsWith('Native Project evidence use:'))).toBe(role === 'role.studio');
     expect(JSON.stringify(send.mock.calls[0][0])).toContain('Candidate style');
     expect(send).toHaveBeenCalledTimes(1);
 });
@@ -94,6 +96,18 @@ test('two repository candidates race on whole Route CAS and preserve user edits'
     const current = await f.persistence.getRuntimeRoute(f.h.handle, f.route.runtimeRouteId);
     await f.persistence.saveRuntimeRoute(f.h.handle, { ...current, displayName: 'User edit' });
     await expect(f.candidates.apply(f.h.handle, f.saved.presetId, a.candidateId)).rejects.toMatchObject({ code: 'native_prompt_candidate_conflict' });
+});
+
+test('revoking evolvable modules preserves exact active candidate rollback and never permits re-application', async () => {
+    const f = await fixture(); await f.declare(); const c = await f.prepare();
+    await f.candidates.apply(f.h.handle, f.saved.presetId, c.candidateId);
+    await f.candidates.declare(f.h.handle, f.saved.presetId, { expectedRevision: f.saved.revision, moduleRefs: [] });
+    await expect(f.candidates.check(f.h.handle, f.saved.presetId, c.candidateId)).rejects.toMatchObject({ code: 'native_prompt_candidate_conflict' });
+    const checked = await f.candidates.checkRollback(f.h.handle, f.saved.presetId, c.candidateId);
+    expect(checked.alreadyApplied).toBe(true);
+    const result = await f.candidates.rollback(f.h.handle, f.saved.presetId, c.candidateId);
+    expect(result.rolledBack).toBe(true); expect(await f.persistence.getRuntimeRoute(f.h.handle, f.route.runtimeRouteId)).toEqual(f.route);
+    await expect(f.candidates.apply(f.h.handle, f.saved.presetId, c.candidateId)).rejects.toMatchObject({ code: 'native_prompt_candidate_conflict' });
 });
 
 test('inherited Program candidates retain the exact parent chain and unchanged guard module', async () => {
@@ -152,20 +166,26 @@ test('failed metadata or Route publication leaves no effective candidate; lost r
     const f = await fixture(); await f.declare();
     const transaction = f.h.engine.withTransaction.bind(f.h.engine);
     let fault = 'metadata';
-    const intercept = jest.spyOn(f.h.engine, 'withTransaction').mockImplementation((handle, fn) => transaction(handle, tx => fn(new Proxy(tx, {
-        get(target, method) {
-            if (method === 'putResource') return async (k, value) => {
-                if (fault === 'metadata' && k.kind === K.versionedJsonResource && value.doc?.promptEvolution?.candidates.length) throw new Error('metadata failure');
-                return target.putResource(k, value);
-            };
-            if (method === 'putResourceIfMatch') return async (k, expected, value) => {
-                const result = await target.putResourceIfMatch(k, expected, value);
-                if (fault === 'response' && k.kind === K.runtimeRoute) throw new Error('response lost');
-                return result;
-            };
-            const value = target[method]; return typeof value === 'function' ? value.bind(target) : value;
-        },
-    }))));
+    const intercept = jest.spyOn(f.h.engine, 'withTransaction').mockImplementation(async (handle, fn) => {
+        let routePublished = false;
+        const result = await transaction(handle, tx => fn(new Proxy(tx, {
+            get(target, method) {
+                if (method === 'putResource') return async (k, value) => {
+                    if (fault === 'metadata' && k.kind === K.versionedJsonResource && value.doc?.promptEvolution?.candidates.length) throw new Error('metadata failure');
+                    return target.putResource(k, value);
+                };
+                if (method === 'putResourceIfMatch') return async (k, expected, value) => {
+                    const result = await target.putResourceIfMatch(k, expected, value);
+                    if (fault === 'response' && k.kind === K.runtimeRoute) routePublished = true;
+                    return result;
+                };
+                const value = target[method]; return typeof value === 'function' ? value.bind(target) : value;
+            },
+        })));
+        // Inject response loss after the original transaction actually commits.
+        if (routePublished) throw new Error('response lost');
+        return result;
+    });
     await expect(f.prepare()).rejects.toThrow('metadata failure'); fault = null;
     expect((await f.candidates.inspect(f.h.handle, f.saved.presetId)).candidates).toEqual([]);
     const c = await f.prepare();
@@ -187,17 +207,19 @@ test('capacity, body-only fields, unknown declarations and package refs are reje
 
 test('actual Project Generation Host task consumes exact activated Prompt through scheduler and original compiler', async () => {
     const f = await fixture(makeTempFsEngineHarness, 'role.studio'); await f.declare(); const c = await f.prepare();
-    const projectId = createNativeId('project');
+    const source = projectSource(), { studio, agent } = services(f.h), projectId = source.project.projectId;
+    const project = await studio.createProject(f.h.handle, source);
+    const task = await agent.createTask(f.h.handle, projectId, { intent: 'Author fixture', baseRevision: project.revision.revision });
     const send = jest.fn(async () => ({ choices: [{ message: { content: 'ok' } }] }));
     const provider = createGenerationProviderAdapter({ format: 'openai-compatible', send, countTokens: async () => 20, parseStream: async v => v });
     const host = new NativeGenerationHost({ persistence: f.persistence, library: f.library, providers: { 'provider.fixture': provider },
-        studio: { getProject: async () => ({ source: { project: { projectId }, package: {}, resources: [] }, revision: { revision: 'r1' } }) },
-        agent: { getContext: async () => ({ task: { status: 'planned', baseRevision: 'r1' }, tools: [] }) },
+        studio, agent,
         secretPort: { resolveSecret: async () => 'synthetic-private-credential' } });
     await f.candidates.apply(f.h.handle, f.saved.presetId, c.candidateId);
-    const result = await host.execute(f.h.handle, { role: 'studio', projectId, revision: 'r1', taskId: 's08-task', requestId: 's08-project', messages: [{ role: 'user', content: 'Author fixture' }] });
+    const result = await host.execute(f.h.handle, { role: 'studio', projectId, revision: project.revision.revision, taskId: task.taskId, requestId: 's08-project', messages: [{ role: 'user', content: 'Author fixture' }] });
     expect(result.snapshot.promptProgramRef).toEqual(c.changedRefs.find(r => r.resourceId === f.saved.presetId));
-    expect(result.snapshot.promptIr.directives).toEqual(['Required guard', 'Candidate style']);
+    expect(result.snapshot.promptIr.directives.slice(0, 2)).toEqual(['Required guard', 'Candidate style']);
+    expect(result.snapshot.promptIr.directives.at(-1)).toContain('Native Project evidence use:');
     expect(result.snapshot.contextPlan.source.projectId).toBe(projectId);
     expect(JSON.stringify(send.mock.calls[0][0])).toContain('Candidate style');
 });

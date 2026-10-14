@@ -28,7 +28,7 @@ export class ImageJobWorker {
         let job = (await this.store.read(handle, 'job', jobId)).value, fence, heartbeat;
         try {
             await this.fresh(handle, job);
-            const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
+            const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle, connection: job.connection }) : null;
             if (job.connection.secretRef && !secret) visualError('secret_unavailable');
             if (signal.aborted) visualError('cancelled');
             job = await this.store.claim(handle, jobId, this.workerId); fence = job.fence;
@@ -88,7 +88,7 @@ export class ImageJobWorker {
                     // Reconcile the existing remote ID only. No recovery path
                     // may call submit/generate for an already sent job.
                         job = await this.store.updateJob(handle, job.jobId, j => { if (j.lease?.until > this.store.now() || j.status === 'cancelled') visualError('lease_conflict'); j.fence += 1; j.lease = { workerId: this.workerId, until: this.store.now() + 60000 }; return j; });
-                        const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
+                        const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle, connection: job.connection }) : null;
                         const result = await adapter.reconcile(job.compiled, job.remote, { secret, signal: AbortSignal.timeout(30000), readAsset: assetId => { if (!job.compiled.inputAssetRefs.some(ref => ref.assetId === assetId)) visualError('input_unauthorized'); return this.assets.read(handle, assetId); } });
                         if (!result) { await this.store.fenced(handle, job.jobId, job.fence, j => { j.lease = null; return j; }); continue; }
                         const normalized = await normalizeImage(result.bytes);
@@ -115,7 +115,7 @@ export class ImageJobWorker {
         });
         const entry = active.get(activeKey(handle, jobId)); if (entry) this.scheduler.cancel(handle, entry.operationId);
         if (job.remote) {
-            const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle }) : null;
+            const secret = job.connection.secretRef ? await this.secretPort.resolveSecret(job.connection.secretRef, { handle, connection: job.connection }) : null;
             await this.cancelRemote(handle, job, secret);
         }
         return (await this.store.read(handle, 'job', jobId)).value;

@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test, jest } from '@jest/globals';
 
 import { createGitClient } from '../../src/git/client.js';
 import {
@@ -100,6 +100,27 @@ async function plannedTask(agent, handle, source, baseRevision, options = {}) {
 }
 
 describe('A8 Project Agent authority', () => {
+    test('MCP observations never recover or persist stored tasks, and exact sequence rejects before recovery', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { studio, agent } = makeServices(h), source = projectSource();
+            const created = await studio.createProject(h.handle, source);
+            const task = await plannedTask(agent, h.handle, source, created.revision.revision);
+            const before = await agent._repository.get(h.handle, source.project.projectId, task.taskId);
+            const recover = jest.spyOn(agent, '_recover').mockImplementation(() => { throw Error('Unexpected recovery side effect'); });
+            const persist = jest.spyOn(agent, '_persist').mockImplementation(() => { throw Error('Unexpected persistence'); });
+            const observed = await agent.observeTask(h.handle, source.project.projectId, task.taskId);
+            expect(observed.sequence).toBe(task.sequence);
+            expect(observed.storedIntegrity).toMatch(/^[a-f0-9]{64}$/);
+            expect((await agent.observeTasks(h.handle, source.project.projectId))[0].taskId).toBe(task.taskId);
+            expect((await agent.observeContext(h.handle, source.project.projectId, task.taskId)).task.taskId).toBe(task.taskId);
+            expect(await agent._repository.get(h.handle, source.project.projectId, task.taskId)).toEqual(before);
+            await expect(agent.executeTool(h.handle, source.project.projectId, task.taskId, { expectedSequence: task.sequence + 1, name: 'atri_agent_set_plan', args: {} })).rejects.toMatchObject({ code: 'project_agent_sequence_conflict' });
+            await expect(agent.commit(h.handle, source.project.projectId, task.taskId, { expectedSequence: task.sequence, expectedReviewHash: 'wrong' })).rejects.toMatchObject({ code: 'project_agent_review_conflict' });
+            expect(recover).not.toHaveBeenCalled(); expect(persist).not.toHaveBeenCalled();
+        } finally { await h.cleanup(); }
+    });
+
     test.each([false, true])('G06 actual provider tool response requires frozen declarations (%s) and retains direct usage', async declared => {
         const h = await makeTempFsEngine(); let seen = 0;
         const server = createServer(async (req, res) => {
@@ -316,6 +337,22 @@ describe('A8 Project Agent authority', () => {
         } finally {
             await h.cleanup();
         }
+    });
+
+    test('formal commit rejects a closed review Preview without advancing Project revision', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { studio, agent } = makeServices(h), source = projectSource();
+            const created = await studio.createProject(h.handle, source);
+            let task = await plannedTask(agent, h.handle, source, created.revision.revision);
+            const next = structuredClone(source); next.project.displayName = 'Must not commit';
+            await agent.executeTool(h.handle, source.project.projectId, task.taskId, { name: 'atri_agent_project_save', args: { source: next, stepId: 'step_metadata' } });
+            task = await agent.executeTool(h.handle, source.project.projectId, task.taskId, { name: 'atri_agent_prepare_review', args: {} });
+            studio.closePreview(h.handle, task.preview.previewId);
+            await expect(agent.commit(h.handle, source.project.projectId, task.taskId)).rejects.toMatchObject({ code: 'project_agent_preview_stale' });
+            expect((await studio.getRevision(h.handle, source.project.projectId)).revision).toBe(created.revision.revision);
+            expect((await agent.observeTask(h.handle, source.project.projectId, task.taskId)).status).toBe('review');
+        } finally { await h.cleanup(); }
     });
 
     test('never silently rebases when a human advances the pinned baseRevision', async () => {

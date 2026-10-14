@@ -66,7 +66,13 @@ export class PromptCandidateStore {
             const active = flattenPromptProgram(envelope(preset), { validateBindings: false }).stages.flatMap(s => s.modules.filter(m => !m.disabled).map(m => m.ref));
             if (new Set(refs.map(r => r.resourceId)).size !== refs.length || refs.some(r => r.scope !== 'library' || !preset.refs.some(p => same(p, r)) || !active.some(p => same(p, r)))) throw new TypeError('Declare active exact modules from this Preset only');
             const declaration = { schemaVersion: 1, moduleRefs: refs };
-            await this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, rootRef(id)), { ...root, promptEvolution: { declaration, candidates: [] } }));
+            // Revoking future evolution must not erase the only exact rollback
+            // evidence for a candidate still bound to its Native Runtime Route.
+            const retained = [];
+            for (const candidate of root.promptEvolution?.candidates ?? []) {
+                try { if ((await this._check(handle, id, candidate, { rollback: true })).alreadyApplied) retained.push(candidate); } catch { /* A changed/deleted binding is never claimed as ours. */ }
+            }
+            await this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, rootRef(id)), { ...root, promptEvolution: { declaration, candidates: retained } }));
             return declaration;
         });
     }
@@ -187,6 +193,15 @@ export class PromptCandidateStore {
         });
     }
 
+    async checkRollback(handle, id, candidateId) {
+        return withRuntimeWrite(handle, async () => {
+            const { root } = await this._read(handle, id);
+            const candidate = root.promptEvolution?.candidates.find(c => c.candidateId === candidateId);
+            if (!candidate) throw new NotFoundError('Prompt candidate');
+            return this._check(handle, id, candidate, { rollback: true });
+        });
+    }
+
     async apply(handle, id, candidateId) {
         return withRuntimeWrite(handle, async () => {
             assertWritable();
@@ -202,6 +217,21 @@ export class PromptCandidateStore {
         });
     }
 
+    async rollback(handle, id, candidateId) {
+        return withRuntimeWrite(handle, async () => {
+            assertWritable();
+            const { root } = await this._read(handle, id);
+            const candidate = root.promptEvolution?.candidates.find(c => c.candidateId === candidateId);
+            if (!candidate) throw new NotFoundError('Prompt candidate');
+            const result = await this._check(handle, id, candidate, { rollback: true });
+            if (!result.alreadyRolledBack) await this.engine.withTransaction(handle, async tx => {
+                assertWritable();
+                await putMutable(tx, { kind: K.runtimeRoute, handle, runtimeRouteId: candidate.baseRoute.runtimeRouteId }, candidate.baseRoute,
+                    { expectedIntegrity: hashNativeDocument(result.desiredRoute) });
+            });
+            return { ...result, rolledBack: true };
+        });
+    }
     async project(handle, id, candidateId, projectId, action = 'check', { beforeCommit = async () => {} } = {}) {
         if (!['check', 'checkRollback', 'apply', 'rollback'].includes(action)) throw new TypeError('Invalid Project Prompt action');
         return withRuntimeWrite(handle, async () => {

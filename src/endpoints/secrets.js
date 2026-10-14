@@ -8,6 +8,7 @@ import { color, getConfigValue, uuidv4 } from '../util.js';
 export const SECRETS_FILE = 'secrets.json';
 export const SECRET_KEYS = {
     ATRIA_RUNTIME: 'atri_runtime',
+    ATRIA_SAVE_PASSWORD: 'atri_save_password',
     _MIGRATED: '_migrated',
     HORDE: 'api_key_horde',
     MANCER: 'api_key_mancer',
@@ -372,11 +373,13 @@ export class SecretManager {
     }
 
     // Native inventory never uses masking/exposure preferences or active selection.
-    listReferences() {
+    listReferences(key = null) {
         if (!fs.existsSync(this.filePath)) return [];
         const secrets = this._readSecretsFile();
-        return Object.values(SECRET_KEYS).flatMap(key => Array.isArray(secrets[key])
-            ? secrets[key].map(secret => ({ secretId: secret.id, label: secret.label })) : []);
+        const keys = key === null ? Object.values(SECRET_KEYS).filter(name => name !== SECRET_KEYS.ATRIA_SAVE_PASSWORD)
+            : Object.values(SECRET_KEYS).includes(key) ? [key] : [];
+        return keys.flatMap(name => Array.isArray(secrets[name])
+            ? secrets[name].map(secret => ({ secretId: secret.id, label: secret.label })) : []);
     }
 
     /**

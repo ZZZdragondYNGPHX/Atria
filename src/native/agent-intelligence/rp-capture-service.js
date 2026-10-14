@@ -5,16 +5,19 @@ const budget = { maxSources: 32, maxBytes: 131072, maxScanMessages: 8192 };
 /** Authenticated transport consumer; client observations cannot create Host receipts. */
 export class RpEvidenceCaptureService {
     constructor({ repository, service, experience = null }) { Object.assign(this, { repository, service, experience }); }
-    async begin(handle, input) {
+    async begin(handle, input, { expectedSourcesFingerprint } = {}) {
         fields(input, ['scope', 'rootRunId', 'selectors'], 'Evidence begin');
         if (!['rp_chat', 'rp_session'].includes(input.scope?.domain)) throw new TypeError('RP scope required');
         const sources = await this.service.capture(handle, input.scope, input.selectors, budget);
+        if (expectedSourcesFingerprint !== undefined && hashNativeDocument(sources) !== expectedSourcesFingerprint)
+            throw new TypeError('Evidence sources changed after review');
         return this.repository.begin(handle, { scope: input.scope, rootRunId: input.rootRunId, sources, origin: 'client_observation' });
     }
-    async update(handle, input) {
+    async update(handle, input, { expectedSequence } = {}) {
         fields(input, ['evidenceId', 'sequence', 'status', 'trace', 'output'], 'Evidence update');
         const previous = await this.repository.get(handle, input.evidenceId);
         if (!previous || previous.origin !== 'client_observation') throw new TypeError('Client evidence required');
+        if (expectedSequence !== undefined && previous.sequence !== expectedSequence) throw new TypeError('Reviewed Evidence sequence changed');
         let sources = previous.sources, outputBound = Boolean(previous.outputRef);
         if (input.output !== null) {
             if (previous.sources.references.some(ref => hashNativeDocument(ref.selector) === hashNativeDocument(input.output.selector)
@@ -25,7 +28,7 @@ export class RpEvidenceCaptureService {
             outputBound = true;
         }
         await this.repository.update(handle, input.evidenceId, { sequence: input.sequence, status: input.status, trace: input.trace, sources,
-            outputRef: input.output ?? previous.outputRef }, 'client_observation');
+            outputRef: input.output ?? previous.outputRef, expectedSequence }, 'client_observation');
         let collection = null;
         if (this.experience && input.status === 'completed' && previous.status !== 'completed' && outputBound) {
             try { collection = await this.experience.collect(handle, { kind: 'evidence', id: input.evidenceId, scope: previous.scope }); } catch { collection = { status: 'collection_unavailable', modelCalls: 0 }; }
@@ -36,8 +39,8 @@ export class RpEvidenceCaptureService {
         fields(input, ['evidenceId'], 'Evidence identity');
         return this.repository.inspect(handle, input.evidenceId, this.service, budget);
     }
-    async delete(handle, input) {
+    async delete(handle, input, { expectedIntegrity } = {}) {
         fields(input, ['evidenceId'], 'Evidence identity');
-        return { deleted: await this.repository.delete(handle, input.evidenceId) };
+        return { deleted: await this.repository.delete(handle, input.evidenceId, expectedIntegrity) };
     }
 }

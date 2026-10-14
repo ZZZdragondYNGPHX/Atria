@@ -114,15 +114,24 @@ async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scan
         return { phase, deleted };
     }));
 }
-export function scheduleSessionMaintenance(repo, handle, sessionId, assetStore) {
+export function scheduleSessionMaintenance(repo, handle, sessionId, assetStore, { expectedRevisionId } = {}) {
     return repo.withoutRunLockContext(() => nativeTaskScheduler.submit({ owner: handle, kind: 'auxiliary_task', executionClass: 'maintenance',
-        anchor: { sessionId }, resources: ['storage:' + handle], key: 'session-gc:' + sessionId, fingerprint: 'session-gc-v2', retry: false,
-        fresh: async () => Boolean(await repo.get(handle, sessionId)),
+        anchor: { sessionId }, resources: ['storage:' + handle], key: 'session-gc:' + sessionId, fingerprint: 'session-gc-v2:' + (expectedRevisionId ?? 'automatic'), retry: false,
+        fresh: async () => {
+            const session = await repo.get(handle, sessionId);
+            if (expectedRevisionId && session?.headRevisionId !== expectedRevisionId) throw Object.assign(new Error('native_session_head_conflict'), { code: 'native_session_head_conflict' });
+            return Boolean(session);
+        },
         run: async ({ signal }) => {
             let result;
             // A short safe slice; durable cursor resumes on the next request.
             for (let i = 0; i < 5; i++) {
-                result = await maintainSession(repo, handle, sessionId, { signal });
+                const slice = async () => {
+                    if (expectedRevisionId && (await repo.get(handle, sessionId))?.headRevisionId !== expectedRevisionId)
+                        throw Object.assign(new Error('native_session_head_conflict'), { code: 'native_session_head_conflict' });
+                    return maintainSession(repo, handle, sessionId, { signal });
+                };
+                result = await (expectedRevisionId ? repo.withRunLock(handle, sessionId, slice) : slice());
                 if (['complete', 'quarantine', 'paused', 'absent'].includes(result.phase)) break;
             }
             if (!signal.aborted && !nativeTaskScheduler.hasForegroundWork(handle)) {

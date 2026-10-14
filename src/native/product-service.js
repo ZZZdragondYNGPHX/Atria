@@ -221,6 +221,14 @@ export class NativeProductService {
         return { packageVersion: opened.packageVersion, manifest: opened.manifest, current: record?.currentVersionId === packageVersionId };
     }
 
+    async getWorkVersionIdentity(handle, packageId, packageVersionId) {
+        assertNativeId(packageId, 'package', 'packageId');
+        assertNativeId(packageVersionId, 'packageVersion', 'packageVersionId');
+        const version = await this._packages.getVersion(handle, packageId, packageVersionId);
+        if (!version) throw new NotFoundError('native package version', { packageId, packageVersionId });
+        return { packageVersion: version };
+    }
+
     async startWork(handle, packageId, options = {}) {
         const record = await this._packages.get(handle, packageId);
         if (!record) throw new NotFoundError('native package', { packageId });
@@ -244,8 +252,8 @@ export class NativeProductService {
         });
     }
 
-    async getResourceSetup(handle, packageId, { sessionId, entryPointId } = {}) {
-        const snapshot = sessionId ? await this._core.load(handle, sessionId) : null;
+    async getResourceSetup(handle, packageId, { sessionId, entryPointId, observe = false } = {}) {
+        const snapshot = sessionId ? await (observe ? this._core.observe(handle, sessionId) : this._core.load(handle, sessionId)) : null;
         const record = await this._packages.get(handle, packageId);
         if (!record || (snapshot && snapshot.session.packageId !== packageId)) throw new NotFoundError('native package', { packageId });
         const installed = await this._installer.open(handle, packageId, snapshot?.session.packageVersionId || record.currentVersionId);
@@ -330,6 +338,12 @@ export class NativeProductService {
 
     preflightPackage(archive) {
         return this._installer.preflight(archive);
+    }
+
+    exportPackageArchive(handle, packageId, packageVersionId, expectedContentHash) {
+        assertNativeId(packageId, 'package', 'packageId');
+        assertNativeId(packageVersionId, 'packageVersion', 'packageVersionId');
+        return this._installer.exportArchive(handle, packageId, packageVersionId, expectedContentHash);
     }
 
     async preflightPackageUpdate(handle, archive) {
@@ -739,7 +753,19 @@ export class NativeProductService {
         return { ...history, messages };
     }
 
-    async getSession(handle, sessionId) {
+    async observeSessionIdentity(handle, sessionId) {
+        const session = await this._sessions.get(handle, sessionId);
+        if (!session) throw new NotFoundError('native session', { sessionId });
+        return { session: { sessionId: session.sessionId, headRevisionId: session.headRevisionId, activeBranchId: session.activeBranchId,
+            packageId: session.packageId, packageVersionId: session.packageVersionId, packageContentHash: session.packageContentHash },
+        branchId: session.activeBranchId, readOnly: true };
+    }
+
+    async observeSession(handle, sessionId) {
+        return this.getSession(handle, sessionId, { observe: true });
+    }
+
+    async getSession(handle, sessionId, { observe = false } = {}) {
         const session = await this._sessions.get(handle, sessionId);
         if (!session) throw new NotFoundError('native session', { sessionId });
         const [dependency, saves, branches, revisions] = await Promise.all([
@@ -751,7 +777,7 @@ export class NativeProductService {
         return {
             session,
             dependency,
-            snapshot: dependency.status === 'ready' ? await this._core.load(handle, sessionId) : null,
+            snapshot: dependency.status === 'ready' ? await this._core[observe ? 'observe' : 'load'](handle, sessionId) : null,
             saves: [...saves].sort((left, right) => Number(right.createdAt) - Number(left.createdAt)),
             branches,
             revisions,

@@ -104,6 +104,12 @@ describe('A1 Native StudioService authoring boundary', () => {
             const created = await service.createProject(h.handle, source, { files: new Map([['frontend.json', Buffer.from(JSON.stringify(model))], ['Main.aui', Buffer.from('<template><p node-id="hello">Pinned</p></template>')]]) });
             const result = await service.previewProject(h.handle, source.project.projectId, { baseRevision: created.revision.revision });
             const snapshot = service.getPreviewUi(h.handle, result.preview.previewId);
+            const identity = service.getPreviewIdentity(h.handle, result.preview.previewId);
+            expect(identity).toMatchObject({ kind: 'preview', projectId: source.project.projectId, previewId: result.preview.previewId,
+                baseRevision: created.revision.revision, workspaceId: null, persisted: false, readOnly: true });
+            expect(identity.packageContentHash).toMatch(/^[a-f0-9]{64}$/);
+            expect(identity.descriptorDigest).toMatch(/^[a-f0-9]{64}$/);
+            expect(identity).not.toHaveProperty('compiledFiles');
             const pinned = snapshot.model;
             expect(pinned.format).toBe('atria-frontend-index');
             expect(Object.keys(snapshot.compiledFiles).sort()).toEqual([snapshot.experience.frontend.entry, ...new Set(pinned.resources.map(ref => ref.path))].sort());

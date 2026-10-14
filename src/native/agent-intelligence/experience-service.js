@@ -140,11 +140,18 @@ export class AgentExperienceService {
         const doc = await this.repository.get(handle, input.scope, input.subject);
         return doc ? this._reconcile(handle, doc) : null;
     }
-    async submit(handle, input) {
+    /** Persisted observation only; no retention, source reconciliation or learning wake. */
+    async observe(handle, input) {
+        fields(input, ['scope', 'subject'], 'Experience observation');
+        const doc = await this.repository.get(handle, input.scope, input.subject);
+        return { document: doc, validity: 'not_reconciled', observation: 'persisted_snapshot' };
+    }
+    async submit(handle, input, { expectedSubject } = {}) {
         fields(input, ['target', 'feedback', 'expectedSequence'], 'Feedback submit'); sequence(input.expectedSequence); assertWritable();
         assertFeedbackInput(input.feedback);
         if (input.feedback.kind === 'technical') throw new TypeError('Host outcome required');
         const target = await this._target(handle, input.target);
+        if (expectedSubject !== undefined && target.subject !== expectedSubject) throw new ConflictError('agent_feedback_subject_changed');
         if (target.scope.domain !== 'project' && !target.document.outputRef && target.document.outcome?.kind !== 'turn') throw new TypeError('Saved output required for user feedback');
         return this._append(handle, input.expectedSequence, target, input.feedback);
     }
@@ -323,9 +330,9 @@ export class AgentExperienceService {
         if (!doc || doc.sequence !== input.expectedSequence) throw new ConflictError('agent_experience_sequence_conflict');
         return this._reconcile(handle, doc);
     }
-    async purgeSources(handle, input) {
+    async _sourceRetentionCandidates(handle, input) {
         fields(input, ['scope', 'days', 'limit'], 'Source retention');
-        const scope = assertEvidenceScope(input.scope); assertWritable();
+        const scope = assertEvidenceScope(input.scope);
         if (!Number.isSafeInteger(input.days) || input.days < 1 || input.days > 365 || !Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 128) throw new TypeError('Invalid source retention limits');
         const kind = scope.domain === 'project' ? K.projectAgentTask : K.agentEvidence;
         const records = await this.repository.engine.withTransaction(handle, tx => tx.listResources({ kind, handle, ...(scope.domain === 'project' ? { projectId: scope.projectId } : {}) }));
@@ -333,6 +340,18 @@ export class AgentExperienceService {
         const candidates = records.filter(record => scope.domain === 'project'
             ? ['completed', 'cancelled', 'taken_over'].includes(record.doc.status) && record.doc.updatedAt <= cutoff
             : same(record.doc.scope, scope) && record.updatedAt <= cutoff);
+        return { scope, candidates };
+    }
+    async observeSourceRetention(handle, input) {
+        const { candidates } = await this._sourceRetentionCandidates(handle, input);
+        const selected = candidates.slice(0, input.limit).map(record => ({ key: record.key, integrity: record.integrity }));
+        return { selected, remaining: Math.max(0, candidates.length - input.limit), sourceSetFingerprint: hashNativeDocument(selected), validity: 'not_reconciled' };
+    }
+    async purgeSources(handle, input, { expectedSourceSetFingerprint } = {}) {
+        assertWritable();
+        const { scope, candidates } = await this._sourceRetentionCandidates(handle, input);
+        if (expectedSourceSetFingerprint !== undefined && hashNativeDocument(candidates.slice(0, input.limit).map(record => ({ key: record.key, integrity: record.integrity }))) !== expectedSourceSetFingerprint)
+            throw new ConflictError('source_retention_review_stale');
         let deleted = 0, conflicts = 0;
         for (const record of candidates.slice(0, input.limit)) {
             try {

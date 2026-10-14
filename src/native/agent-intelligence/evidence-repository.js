@@ -58,11 +58,12 @@ export class AgentEvidenceRepository {
             return this.engine.withTransaction(handle, tx => putImmutable(tx, key(handle, evidenceId), doc));
         });
     }
-    async update(handle, evidenceId, { sequence, status, trace, sources, outcome = null, outputRef = null }, origin) {
+    async update(handle, evidenceId, { sequence, status, trace, sources, outcome = null, outputRef = null, expectedSequence }, origin) {
         return withNativeResourceWrite(handle, 'evidence:' + evidenceId, async () => {
             assertWritable();
             const previous = await this.get(handle, evidenceId);
             if (!previous || previous.origin !== origin) throw new TypeError('Evidence origin mismatch');
+            if (expectedSequence !== undefined && previous.sequence !== expectedSequence) throw new ConflictError('agent_evidence_review_sequence_conflict');
             const doc = assertEvidenceRecord({ ...previous, sequence, status, trace, sources: sources === undefined ? previous.sources : sources, outcome, outputRef });
             if (sequence === previous.sequence && hashNativeDocument(doc) === hashNativeDocument(previous)) return previous;
             if (sequence <= previous.sequence || trace.events.length < previous.trace.events.length

@@ -51,7 +51,7 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
             previewRoot.hidden = false;
             previewMount = await mountStudioPreviewUi(doc, previewRoot, exact.model, exact.experience.mode,
                 item => feedback(doc, shell, item.reasonCode || item.message || String(item)),
-                { entry: exact.experience.frontend.entry, files: exact.compiledFiles, bridgeProjections: exact.bridgeProjections });
+                { entry: exact.experience.frontend.entry, files: exact.compiledFiles, bridgeProjections: exact.bridgeProjections, identity: { kind: 'preview', projectId: exact.projectId, previewId: exact.previewId, packageVersionId: exact.packageVersionId, packageContentHash: exact.packageContentHash, baseRevision: exact.baseRevision, workspaceId: exact.workspaceId, operationsFingerprint: exact.operationsFingerprint } });
             if (!alive(token)) { previewMount.dispose(); await client.closePreview(id); throw new Error(t('Source selection changed. Run Preview again.')); }
         } catch (error) { await client.closePreview(id); throw error; }
     }

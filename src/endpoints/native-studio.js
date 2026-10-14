@@ -13,6 +13,9 @@ import { VersionedJsonResourceHandler } from '../native/model-prompt-runtime/per
 import { StudioService } from '../native/authoring/studio-service.js';
 import { ProjectAgentService } from '../native/project-agent.js';
 import { runStudioScenario } from '../native/studio-scenario.js';
+import { nativeMcpArtifacts } from '../native/mcp-artifacts.js';
+import { NativeProjectAgentExecutor } from '../native/project-agent-executor.js';
+import { mountMcpResourceBundles } from '../native/mcp-resource-bundles.js';
 
 let studioService = null;
 let projectAgentService = null;
@@ -73,13 +76,14 @@ function workspaceFromBody(studio, projectId, body = {}) {
     });
 }
 
-export function createNativeStudioRouter(getServices = services) {
+export function createNativeStudioRouter(getServices = services, artifacts = nativeMcpArtifacts, getGenerationHost = null) {
     const router = express.Router();
 
     router.use((request, response, next) => {
         if (!request.user?.profile?.handle) return response.sendStatus(401);
         next();
     });
+    mountMcpResourceBundles(router, { getServices });
 
     const route = operation => async (request, response) => {
         try {
@@ -256,6 +260,15 @@ export function createNativeStudioRouter(getServices = services) {
         res.json(await studio.executeWorkspace(handle, workspace));
     }));
 
+    router.get('/projects/:projectId/agent/observations', route(async (req, res, { agent }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await agent.observeTasks(handle, req.params.projectId));
+    }));
+    router.get('/projects/:projectId/agent/tasks/:taskId/observation', route(async (req, res, { agent }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await agent.observeTask(handle, req.params.projectId, req.params.taskId));
+    }));
+    router.get('/projects/:projectId/agent/tasks/:taskId/context-observation', route(async (req, res, { agent }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await agent.observeContext(handle, req.params.projectId, req.params.taskId));
+    }));
     router.get('/projects/:projectId/agent/tasks', route(async (req, res, { agent }, handle) => {
         res.set('Cache-Control', 'no-store');
         res.json(await agent.listTasks(handle, req.params.projectId));
@@ -288,17 +301,31 @@ export function createNativeStudioRouter(getServices = services) {
     }));
 
     router.post('/projects/:projectId/agent/tasks/:taskId/commit', route(async (req, res, { agent }, handle) => {
-        res.json(await agent.commit(handle, req.params.projectId, req.params.taskId));
+        res.json(await agent.commit(handle, req.params.projectId, req.params.taskId, req.body || {}));
     }));
 
     router.post('/projects/:projectId/agent/tasks/:taskId/takeover', route(async (req, res, { agent }, handle) => {
-        res.json(await agent.takeOver(handle, req.params.projectId, req.params.taskId));
+        res.json(await agent.takeOver(handle, req.params.projectId, req.params.taskId, req.body || {}));
     }));
 
     router.post('/projects/:projectId/agent/tasks/:taskId/resume', route(async (req, res, { agent }, handle) => {
-        res.json(await agent.resumeTask(handle, req.params.projectId, req.params.taskId));
+        res.json(await agent.resumeTask(handle, req.params.projectId, req.params.taskId, req.body || {}));
     }));
 
+    const executor = async () => new NativeProjectAgentExecutor({ host: getGenerationHost ? getGenerationHost() : (await import('./native-generation.js')).getNativeGenerationHost() });
+    router.post('/projects/:projectId/agent/tasks/:taskId/generation/preflight', route(async (req, res, _, handle) => {
+        res.json(await (await executor()).preflight(handle, req.params.projectId, req.params.taskId, req.body));
+    }));
+    router.post('/projects/:projectId/agent/tasks/:taskId/generation/start', route(async (req, res, _, handle) => {
+        res.json(await (await executor()).start(handle, req.params.projectId, req.params.taskId, req.body));
+    }));
+    router.get('/projects/:projectId/agent/tasks/:taskId/generation/:operationId/status', route(async (req, res, _, handle) => {
+        res.json((await executor()).status(handle, req.params.projectId, req.params.taskId, req.params.operationId));
+    }));
+    router.post('/projects/:projectId/agent/tasks/:taskId/generation/:operationId/cancel', route(async (req, res, _, handle) => {
+        if (Object.keys(req.body || {}).length) throw new TypeError('Generation cancellation body must be empty');
+        res.json((await executor()).cancel(handle, req.params.projectId, req.params.taskId, req.params.operationId));
+    }));
     router.post('/projects/:projectId/agent/tasks/:taskId/generation/begin', route(async (req, res, { agent }, handle) => {
         res.json(await agent.beginGeneration(handle, req.params.projectId, req.params.taskId, req.body || {}));
     }));
@@ -308,7 +335,7 @@ export function createNativeStudioRouter(getServices = services) {
     }));
 
     router.delete('/projects/:projectId/agent/tasks/:taskId', route(async (req, res, { agent }, handle) => {
-        res.json({ deleted: await agent.deleteTask(handle, req.params.projectId, req.params.taskId) });
+        res.json({ deleted: await agent.deleteTask(handle, req.params.projectId, req.params.taskId, req.body?.expectedIntegrity) });
     }));
 
     router.get('/projects/:projectId/resources/closure', route(async (req, res, { studio }, handle) => {
@@ -344,6 +371,19 @@ export function createNativeStudioRouter(getServices = services) {
         res.json(await studio.preflightProject(handle, req.params.projectId, req.body || {}));
     }));
 
+    router.post('/projects/:projectId/build-artifact', route(async (req, res, { studio }, handle) => {
+        if (!req.body || Object.keys(req.body).some(key => !['baseRevision', 'clientInstanceId'].includes(key))
+            || typeof req.body.baseRevision !== 'string' || !req.body.baseRevision || typeof req.body.clientInstanceId !== 'string' || !req.body.clientInstanceId) throw new TypeError('Exact build artifact binding required');
+        const result = await studio.buildProject(handle, req.params.projectId, { baseRevision: req.body.baseRevision });
+        if (result.revision !== req.body.baseRevision) throw new TypeError('Build source revision mismatch');
+        const artifact = artifacts.captureBuild(handle, req.body.clientInstanceId, req.params.projectId, result.revision, result.built.archive);
+        const manifest = result.built.manifest;
+        res.set('Cache-Control', 'private, no-store').json({ projectId: req.params.projectId, revision: result.revision,
+            manifest: { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, name: manifest.name,
+                version: manifest.version, capabilities: manifest.capabilities, permissions: manifest.permissions },
+            packageVersion: result.built.packageVersion, preflight: result.built.preflight, artifact });
+    }));
+
     router.post('/projects/:projectId/build', route(async (req, res, { studio }, handle) => {
         const result = await studio.buildProject(handle, req.params.projectId, req.body || {});
         res.json({
@@ -372,6 +412,9 @@ export function createNativeStudioRouter(getServices = services) {
 
     router.get('/previews/:previewId/ui', route(async (req, res, { studio }, handle) => {
         res.set('Cache-Control', 'private, no-store').json(studio.getPreviewUi(handle, req.params.previewId));
+    }));
+    router.get('/previews/:previewId/identity', route(async (req, res, { studio }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(studio.getPreviewIdentity(handle, req.params.previewId));
     }));
 
     router.delete('/previews/:previewId', route(async (req, res, { studio }, handle) => {

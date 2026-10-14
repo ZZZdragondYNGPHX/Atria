@@ -302,7 +302,7 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
             let view = await f.core.create(source.handle, f.start);
             const sessionId = view.session.sessionId;
             const first = await f.saveSystem.autoSave(source.handle, sessionId);
-            view = await f.core.forkBranch(source.handle, sessionId, { displayName: 'Child' });
+            view = await f.core.restoreSavePoint(source.handle, sessionId, first.saveId, { expectedRevisionId: view.revision.revisionId });
             view = await f.core.appendTimeline(source.handle, sessionId, {
                 role: 'user',
                 content: 'child route',

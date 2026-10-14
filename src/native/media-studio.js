@@ -86,7 +86,7 @@ export class MediaStudio {
         return mask;
     }
     async prepare(handle, input) {
-        visualObject(input, ['sessionId', 'branchId', 'imageVersionId', 'operation', 'prompt', 'imageTargetId', 'imageRenderingId', 'maskArtifactId', 'referenceIds', 'omittedPreferred', 'preserveOutsideMask']);
+        visualObject(input, ['sessionId', 'branchId', 'imageVersionId', 'operation', 'prompt', 'imageTargetId', 'imageRenderingId', 'maskArtifactId', 'referenceIds', 'omittedPreferred', 'preserveOutsideMask', 'expectedTargetFingerprint', 'expectedConnectionFingerprint']);
         const base = await this.image(handle, input);
         if (!['regenerate', 'img2img', 'inpaint', 'upscale'].includes(input.operation)) visualError('operation_invalid');
         const references = [], inputAssets = [], parents = [base.image.imageVersionId];
@@ -113,6 +113,7 @@ export class MediaStudio {
             parentImageVersionIds: parents, inputAssets, mask, geometry: null };
         return this.images.prepare(handle, { sessionId: input.sessionId, branchId: input.branchId, annotationId: base.annotation.annotationId, expectedHead: base.presentation.head,
             ...(input.imageTargetId ? { imageTargetId: input.imageTargetId } : {}), ...(input.imageRenderingId ? { imageRenderingId: input.imageRenderingId } : {}), operation: input.operation,
+            ...(input.expectedTargetFingerprint ? { expectedTargetFingerprint: input.expectedTargetFingerprint } : {}), ...(input.expectedConnectionFingerprint ? { expectedConnectionFingerprint: input.expectedConnectionFingerprint } : {}),
             omittedPreferred: input.omittedPreferred ?? [] }, { media: { mediaOperation, references, prompt: input.prompt ?? base.image.prompt,
             preserveOutsideMask: input.preserveOutsideMask === true } });
     }

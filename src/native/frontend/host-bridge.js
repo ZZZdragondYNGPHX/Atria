@@ -52,6 +52,18 @@ export class FrontendBridgeService {
         this.experiences.set(epoch, state);
         return bridgeReceipt({ epoch, revision, data: { descriptorDigest: hash(canonicalJson(graph.bridge)) } });
     }
+    async observe(services, owner, epoch) {
+        const state = this.experiences.get(epoch);
+        if (!state || state.owner !== owner || state.revoked || state.expires < Date.now()) throw bridgeFailure('bridge_epoch_stale');
+        if (state.terminalRevision) throw bridgeFailure('bridge_epoch_stale');
+        const base = await services.core.observe(owner, state.sessionId);
+        if (base.revision.branchId !== state.branchId || base.session.packageContentHash !== state.packageHash) throw bridgeFailure('bridge_epoch_stale');
+        return bridgeReceipt({ epoch: state.epoch, revision: base.revision.revisionId, data: {
+            sessionId: state.sessionId, branchId: base.revision.branchId,
+            packageVersionId: base.session.packageVersionId, packageContentHash: base.session.packageContentHash,
+            descriptorDigest: hash(canonicalJson(state.graph.bridge)), readOnly: true,
+        } });
+    }
     async current(services, state) {
         if (state.revoked || state.expires < Date.now()) { this.close(state.owner, state.epoch); throw bridgeFailure('bridge_epoch_stale'); }
         const base = await services.core.load(state.owner, state.sessionId);

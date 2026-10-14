@@ -130,7 +130,7 @@ export class EvolutionEvaluator {
                 if (signal.aborted) cancel();
             });
             await fresh(); if (signal.aborted) throw new Error('evolution_cancelled');
-            const secret = await this.host.secretPort.resolveSecret(config.connection.secretRef, { handle });
+            const secret = await this.host.secretPort.resolveSecret(config.connection.secretRef, { handle, connection: config.connection });
             const response = await provider.send(payload.rendered, { secret, signal });
             raw = await provider.parseStream(response);
             usage = observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' });

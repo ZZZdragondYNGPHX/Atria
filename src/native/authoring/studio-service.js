@@ -703,6 +703,7 @@ export class StudioService {
                     const runtimePreview = this._previewHost.create({
                         projectId: workspace.projectId,
                         archive: built.archive,
+                        authoring: { baseRevision: workspace.baseRevision, workspaceId: workspace.workspaceId, operationsFingerprint: hashNativeDocument(workspace.operations) },
                         ...(entryPointId == null ? {} : { entryPointId }),
                     });
                     this._previewOwners.set(runtimePreview.previewId, handle);
@@ -1182,6 +1183,7 @@ export class StudioService {
             const preview = this._previewHost.create({
                 projectId,
                 archive: built.archive,
+                authoring: { baseRevision: revision.revision, workspaceId: null, operationsFingerprint: null },
                 ...(entryPointId == null ? {} : { entryPointId }),
             });
             this._previewOwners.set(preview.previewId, handle);
@@ -1235,8 +1237,21 @@ export class StudioService {
                 bridgeProjections[binding.id] = resource ? JSON.parse(Buffer.from(preview.assets.get(resource.assetId)).toString('utf8')) : [];
             }
         }
-        return { previewId, packageVersionId: preview.packageVersionId, experience,
+        return { ...this.getPreviewIdentity(handle, previewId), experience,
             model, ...(compiledFiles ? { compiledFiles, bridgeProjections, frontendDiagnostics: (() => { const ref = model.resources.find(item => item.kind === 'diagnostics'); return ref ? JSON.parse(Buffer.from(files.get(ref.path)).toString('utf8')) : []; })() } : {}) };
+    }
+
+    getPreviewIdentity(handle, previewId) {
+        if (this._previewOwners.get(previewId) !== handle) throw new TypeError('Preview unavailable');
+        const preview = this._previewHost.get(previewId);
+        if (!preview) throw new TypeError('Preview unavailable');
+        const files = new Map(preview.sourceFiles), entry = preview.runtime?.experience?.frontend?.entry;
+        const model = entry ? JSON.parse(Buffer.from(files.get(entry)).toString('utf8')) : null;
+        const bridge = model?.resources?.find(item => item.kind === 'bridge');
+        return { kind: 'preview', previewId, projectId: preview.projectId, packageVersionId: preview.packageVersionId,
+            packageContentHash: preview.packageContentHash, entryPointId: preview.entryPointId,
+            ...(preview.authoring ?? {}), descriptorDigest: bridge ? hashNativeDocument(JSON.parse(Buffer.from(files.get(bridge.path)).toString('utf8'))) : null,
+            persisted: false, readOnly: true };
     }
 
     closePreview(handle, previewId) {

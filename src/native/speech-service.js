@@ -24,9 +24,9 @@ export class SpeechService {
         this.state = states.get(engine);
     }
     voices(signal) { return this.provider.listVoices({ signal }); }
-    async describe(handle, raw) {
+    async describe(handle, raw, { observe = false } = {}) {
         fields(raw, ['sessionId', 'revisionId'], 'Speech description');
-        const base = await this.host.sessionCore.load(handle, raw.sessionId);
+        const base = await (observe ? this.host.sessionCore.observe(handle, raw.sessionId) : this.host.sessionCore.load(handle, raw.sessionId));
         if (base.revision.revisionId !== raw.revisionId) fail('native_speech_revision_conflict');
         let scanned = 0;
         const onScan = count => { scanned += count; if (scanned > 4096) fail('native_speech_scan_limit'); };
@@ -35,14 +35,15 @@ export class SpeechService {
         if (plan?.status !== 'ready') return { items: [], revisionId: raw.revisionId };
         const items = [];
         for (const item of plan.items) {
-            const captured = await this._capture(handle, { ...raw, itemId: item.id, voiceId: '', rate: 0, volume: 100 });
+            const captured = await this._capture(handle, { ...raw, itemId: item.id, voiceId: '', rate: 0, volume: 100 }, { observe });
             if (!captured.fallback) items.push({ itemId: item.id, messageId: item.recordId, actorId: plan.actorId });
         }
         return { items, revisionId: raw.revisionId };
     }
 
-    async _capture(handle, input) {
-        const base = await this.host.sessionCore.load(handle, input.sessionId);
+    observeDescription(handle, raw) { return this.describe(handle, raw, { observe: true }); }
+    async _capture(handle, input, { observe = false } = {}) {
+        const base = await (observe ? this.host.sessionCore.observe(handle, input.sessionId) : this.host.sessionCore.load(handle, input.sessionId));
         if (base.revision.revisionId !== input.revisionId) fail('native_speech_revision_conflict');
         await this.host.sessionCore.runs.assert(handle, input.sessionId, 'generate', input.revisionId);
         let scanned = 0;
@@ -167,6 +168,21 @@ export class SpeechService {
         return immutable({ ...operation, current, text: current ? record.captured.text : null,
             artifact: current && operation.status === 'completed' ? record.artifact : null,
             fallback: ['failed', 'cancelled', 'stale'].includes(operation.status) ? 'text' : null });
+    }
+    async observe(handle, raw) {
+        fields(raw, ['operationId'], 'Speech observation');
+        const record = this.state.records.get(raw.operationId);
+        if (!record || record.owner !== handle || record.scheduler !== this.scheduler || record.expiresAt <= this.now()) fail('native_speech_operation_missing');
+        const operation = this.scheduler.project(handle, raw.operationId);
+        let current = false;
+        try {
+            const captured = await this._capture(handle, { ...record.input, routeRef: { scope: 'player', runtimeRouteId: record.captured.route.runtimeRouteId } }, { observe: true });
+            current = !captured.fallback && captured.fingerprint === record.captured.fingerprint;
+        } catch { /* Stale or inaccessible sources disclose no text or artifact. */ }
+        return immutable({ ...operation, current, text: current ? record.captured.text : null,
+            artifact: current && operation.status === 'completed' ? record.artifact : null,
+            fallback: ['failed', 'cancelled', 'stale'].includes(operation.status) ? 'text' : null,
+            persistence: 'host process only; absent after restart is unknown, never resubmit automatically' });
     }
     cancel(handle, raw) {
         fields(raw, ['operationId'], 'Speech cancellation');

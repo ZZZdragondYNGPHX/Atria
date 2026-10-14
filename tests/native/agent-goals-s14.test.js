@@ -76,7 +76,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             const message = goalContextMessage(context); expect(message.role).toBe('user'); expect(message.content).toContain(goal.intent);
             expect(message.content).not.toContain(actor.intent);
             await expect(h.service.wake(h.handle, { goalId: actor.goalId, eventId: 'actor-event' })).rejects.toMatchObject({ code: 'goal_execution_unavailable' });
-            await h.installed.core.forkBranch(h.handle, scope.sessionId, { expectedRevisionId: h.session.revision.revisionId });
+            await deriveSaveRoute(h, scope.sessionId, h.session.revision.revisionId);
             const stale = await h.service.goals.context(h.handle, { scope });
             expect(stale.goals[0].status).toBe('stale'); expect(goalContextMessage(stale)).toBeNull();
             expect((await h.service.goals.repository.get(h.handle, goal.goalId)).status).toBe('active');
@@ -99,4 +99,9 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect((await h.service.goals.repository.get(h.handle, goal.goalId)).lastEvent).toBeUndefined();
         } finally { await h.cleanup(); }
     }, 60000);
+}
+
+async function deriveSaveRoute(h, sessionId, expectedRevisionId) {
+    const save = await h.installed.core.createSavePoint(h.handle, sessionId, { expectedRevisionId, displayName: 'Goal branch-isolation fixture' });
+    return h.installed.core.restoreSavePoint(h.handle, sessionId, save.saveId, { expectedRevisionId });
 }

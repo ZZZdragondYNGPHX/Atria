@@ -15,9 +15,9 @@ const anchors = base => ({ sessionId: base.session.sessionId, revisionId: base.r
     branchId: base.revision.branchId, packageVersionId: base.session.packageVersionId,
     playerRevisionId: base.continuityRevisionId ?? null, realmRevisionId: base.realmRevisionId ?? null });
 
-export async function inspectExperienceHealth(core, handle, sessionId) {
+export async function inspectExperienceHealth(core, handle, sessionId, { observe = false } = {}) {
     let base;
-    try { base = await core.load(handle, sessionId, { skipPackageEdits: true }); } catch {
+    try { base = observe ? await core.observe(handle, sessionId) : await core.load(handle, sessionId, { skipPackageEdits: true }); } catch {
         // Only an owned readable snapshot may disclose recovery metadata. Never
         // repair invalid authority by copying a projection or a raw state patch.
         const saved = await core._sessions.loadSnapshot(handle, sessionId);

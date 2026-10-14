@@ -18,7 +18,7 @@ export class StudioPreviewHost {
         this._previews = new Map();
     }
 
-    create({ projectId, archive, entryPointId = undefined }) {
+    create({ projectId, archive, entryPointId = undefined, authoring = null }) {
         assertNativeId(projectId, 'project', 'StudioPreview.projectId');
         const inspected = inspectAtriaPackageContainer(archive);
         validateExperienceResources(inspected.manifest, inspected.sourceFiles, inspected.assets);
@@ -55,6 +55,8 @@ export class StudioPreviewHost {
             packageId: inspected.manifest.packageId,
             packageVersionId: inspected.manifest.packageVersionId,
             entryPointId: entryPoint.entryPointId,
+            packageContentHash: createHash('sha256').update(archive).digest('hex'),
+            authoring: authoring == null ? null : structuredClone(authoring),
             descriptor: compiledRuntime?.descriptor ?? null,
             runtime: compiledRuntime?.runtime ?? null,
             persisted: false,

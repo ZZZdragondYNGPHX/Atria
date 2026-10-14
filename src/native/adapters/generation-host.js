@@ -4,6 +4,7 @@ import { registerVisualWake } from '../visual-events.js';
 import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
 import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public/shared/native-compute-budget.js';
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
+import { createPreviewSkillRepository } from '../model-prompt-runtime/preview-skills.js';
 import { createPackageContextDerivation } from '../context-computation.js';
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
@@ -555,7 +556,7 @@ export class NativeGenerationHost {
         // Read local configuration/Secrets only; no provider network request.
         for (const resolved of prepared) {
             if (resolved.model) this.providers[resolved.connection.providerAdapter]?.contextTokenizer?.(resolved);
-            if (!await this.secretPort.resolveSecret(resolved.connection.secretRef, { handle })) fail('generation_secret_unavailable');
+            if (!await this.secretPort.resolveSecret(resolved.connection.secretRef, { handle, connection: resolved.connection })) fail('generation_secret_unavailable');
         }
         if ((await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         return { sessionId: input.sessionId, revisionId: input.revisionId, branchId: base.revision.branchId, prepared: true };
@@ -806,7 +807,7 @@ export class NativeGenerationHost {
         });
     }
 
-    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null } = {}) {
+    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null } = {}) {
         const input = immutable(value);
         const prediction = predictionLanes.has(lanePlan) ? lanePlan.prediction : null;
         if (lanePlan?.prediction && !prediction) fail('native_prediction_capture_required');
@@ -814,7 +815,9 @@ export class NativeGenerationHost {
             await assertPredictionCaptureCurrent(prediction.capture);
             if (input.tools?.length || input.messages?.length || input.prompt || illustrationPlan || preflight) fail('native_prediction_context_denied');
         }
-        await prepareEvolutionProject(this, handle, input.projectId);
+        // Compilation is observation: reconciliation can publish/rollback and
+        // must remain confined to an explicitly executing invocation.
+        if (!preview && !preflight && effectPolicy !== 'no-background-model') await prepareEvolutionProject(this, handle, input.projectId);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
         if (input.role === 'illustration_prompt' && !illustrationPlan) fail('native_generation_context_required');
         // The HTTP host currently owns player routes only. Never reinterpret an
@@ -826,7 +829,8 @@ export class NativeGenerationHost {
         const role = 'role.' + input.role;
         let snapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation;
         if (input.sessionId) {
-            snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
+            snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot
+                ?? (preview ? await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.revisionId }) : await this.sessionCore.load(handle, input.sessionId)));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
             if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
             source = illustrationPlan?.source ?? { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
@@ -837,7 +841,8 @@ export class NativeGenerationHost {
             source = { kind: input.taskId ? 'task' : 'studio', projectId: input.projectId, revision: input.revision, ...(input.taskId ? { taskId: input.taskId } : {}) };
             runtime = project.source.package.runtime;
             if (input.taskId) {
-                const context = await this.agent.getContext(handle, input.projectId, input.taskId);
+                const context = preview ? await this.agent.observeContext(handle, input.projectId, input.taskId)
+                    : await this.agent.getContext(handle, input.projectId, input.taskId);
                 projectTaskEvidence = { source: 'native.project-task', ref: input.taskId + ':' + context.task.executionFingerprint };
                 projectConversation = context.task.conversation;
                 if (context.task.baseRevision !== input.revision || ['review', 'blocked', 'conflict', 'taken_over', 'completed'].includes(context.task.status)) fail('native_generation_task_stopped');
@@ -860,16 +865,20 @@ export class NativeGenerationHost {
             const captured = {};
             const resources = await this.executionResources(handle, route, input.sessionId, captured);
             let worker;
-            return nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources,
+            const operation = nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources, retry: false, retainResult,
                 timeoutMs: executionTimeout(captured),
                 key: (input.sessionId ?? input.projectId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(input), signal, onChunk,
                 fresh: async () => input.sessionId ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId === input.revisionId
                     : (await this.studio.getProject(handle, input.projectId)).revision.revision === input.revision,
                 run: boundary => {
-                    worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured });
+                    worker = this.execute(handle, input, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured, effectPolicy, approvedReview });
                     return worker;
                 },
-                finalize: async result => result }).result.catch(async error => {
+                projectResult: result => ({ usage: result.response?.usage ?? null, compute: result.routing?.compute ?? null,
+                    currencyCost: null, currencyStatus: 'unavailable', usageStatus: result.response?.usage ? 'observed' : 'missing' }),
+                finalize: async result => result });
+            try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
+            return operation.result.catch(async error => {
                 // The scheduler exposes cancellation promptly but keeps worker
                 // permits until settlement. Durable Task continuation must also
                 // finish usage settlement/private cleanup before this Host exits.
@@ -1003,7 +1012,7 @@ export class NativeGenerationHost {
             }
         };
         const skills = !prediction && !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
-            ? await prepareNarrativeSkills({ repository: this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
+            ? await prepareNarrativeSkills({ repository: preview ? createPreviewSkillRepository(this.skillRepository(handle)) : this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
                 work: (kind, descriptor, operation) => localWork(kind, { resolved: { effectiveExecutionPolicy: route.executionPolicy,
                     pathFingerprint: hashNativeDocument(route) } }, operation, descriptor),
                 context: snapshot ? { packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId,
@@ -1114,9 +1123,16 @@ export class NativeGenerationHost {
         const budgetedResolver = { resolve: request => localWork('route_resolve', { resolved: { effectiveExecutionPolicy: route.executionPolicy,
             pathFingerprint: hashNativeDocument(route) } }, () => resolver.resolve(request), { route, request }), provider: id => resolver.provider(id) };
         const service = new GenerationService({ resolver: budgetedResolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
+            beforeSend: approvedReview ? async ({ snapshot }) => {
+                const { createdAt: _time, ...stableSnapshot } = snapshot;
+                const configuration = { routes: await this.persistence.listRuntimeRoutes(handle), models: await this.persistence.listModelProfiles(handle),
+                    connections: await this.persistence.listConnectionProfiles(handle) };
+                if (hashNativeDocument(stableSnapshot) !== approvedReview.snapshotFingerprint || hashNativeDocument(configuration) !== approvedReview.configurationFingerprint)
+                    throw new GenerationError('native_generation_review_stale');
+            } : null,
             providerFor: (id, resolved) => {
                 const baseProvider = resolver.provider(id);
-                const provider = (projectTaskEvidence || sessionTaskEvidence) && this.persistence._engine && baseProvider.withRuntimeCheckpointStore
+                const provider = !preview && (projectTaskEvidence || sessionTaskEvidence) && this.persistence._engine && baseProvider.withRuntimeCheckpointStore
                     ? baseProvider.withRuntimeCheckpointStore(new RuntimeCheckpointStore({ engine: this.persistence._engine, handle,
                         publicConversation: projectConversation, sessionTask: Boolean(sessionTaskEvidence),
                         sessionTaskHistory: () => publicSessionTaskMessages(skillTranscript), sessionTaskCompaction: () => taskHistory?.compaction })) : baseProvider;
@@ -1247,7 +1263,7 @@ export class NativeGenerationHost {
                                 attempt.status = 'failed';
                                 capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
                                 if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
-                                if (!(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
+                                if (approvedReview || !(error instanceof ProviderFailure) || error.kind === 'application' || retry >= resolved.route.policy.maxRetries || boundary.signal.aborted) throw error;
                             }
                         }
                     } };
@@ -1299,7 +1315,7 @@ export class NativeGenerationHost {
                 projectTaskCapture = { status: 'captured' };
             } catch { projectTaskCapture = { status: 'failed' }; }
         }
-        if (!preview && input.projectId) { try { await observeEvolutionProject(this, handle, input, result); } catch { /* Observation failure does not change an accepted generation. */ } }
+        if (!preview && input.projectId && effectPolicy !== 'no-background-model') { try { await observeEvolutionProject(this, handle, input, result); } catch { /* Observation failure does not change an accepted generation. */ } }
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts,
             compute: { configured: Boolean(computeAttempts.length || localWorkAttempts.length || result.snapshot.diagnostics.executionPlan?.policy?.computeBudget),
                 scope: input.sessionId ? 'run_operation' : input.taskId ? 'project_task' : 'unavailable',

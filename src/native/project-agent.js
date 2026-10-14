@@ -394,7 +394,8 @@ export class ProjectAgentService {
         }
     }
 
-    async _operate(handle, projectId, id, operation, { write = true } = {}) {
+    async _operate(handle, projectId, id, operation, { write = true, expectedSequence, expectedReviewHash, effectPolicy } = {}) {
+        if (effectPolicy !== undefined && effectPolicy !== 'no-background-model') throw new TypeError('Invalid task effect policy');
         let collectOutcome = false;
         const outcomeHash = task => hashNativeDocument({ status: task.status, validation: task.validation, review: task.review, changeSets: task.changeSets });
         try {
@@ -403,6 +404,8 @@ export class ProjectAgentService {
                 await this._studio.getProject(handle, projectId);
                 const task = await this._repository.get(handle, projectId, id);
                 if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+                if (expectedSequence !== undefined && (!Number.isInteger(expectedSequence) || task.sequence !== expectedSequence)) throw new ConflictError('project_agent_sequence_conflict');
+                if (expectedReviewHash !== undefined && expectedReviewHash !== hashNativeDocument({ workspace: task.workspace, review: task.review, validation: task.validation })) throw new ConflictError('project_agent_review_conflict');
                 const before = outcomeHash(task);
                 this._tasks.set(this._key(handle, projectId, id), task);
                 this._integrities.set(this._key(handle, projectId, id), hashNativeDocument(task));
@@ -426,7 +429,7 @@ export class ProjectAgentService {
                 try {
                     const result = await new AgentExperienceService({ engine: this._repository.engine, studio: this._studio, agent: this }).collect(handle,
                         { kind: 'project_task', id, scope: { domain: 'project', projectId } });
-                    if (result.status === 'collected' && this._onExperienceCollected) await this._onExperienceCollected(handle, result);
+                    if (result.status === 'collected' && this._onExperienceCollected && effectPolicy !== 'no-background-model') await this._onExperienceCollected(handle, result);
                 } catch { console.warn('Project feedback collection unavailable; the saved Task remains authoritative.'); }
             }
         }
@@ -443,6 +446,32 @@ export class ProjectAgentService {
         const tasks = await this._repository.list(handle, projectId);
         const snapshots = await Promise.all(tasks.map(task => this.getTask(handle, projectId, task.taskId)));
         return Object.freeze(snapshots.sort((left, right) => right.updatedAt - left.updatedAt));
+    }
+
+    // Observe stored task state without recovery, persistence or outcome collection.
+    async observeTask(handle, projectId, id) {
+        return this._observe(handle, projectId, id, task => ({ ...this._snapshot(task), storedIntegrity: hashNativeDocument(task) }));
+    }
+
+    async observeTasks(handle, projectId) {
+        await this._studio.getProject(handle, projectId);
+        const tasks = await this._repository.list(handle, projectId);
+        return Object.freeze(tasks.map(task => this._snapshot(task)).sort((left, right) => right.updatedAt - left.updatedAt));
+    }
+
+    observeContext(handle, projectId, id) {
+        return this._observe(handle, projectId, id, () => this._getContext(handle, projectId, id));
+    }
+
+    async _observe(handle, projectId, id, operation) {
+        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+            await this._studio.getProject(handle, projectId);
+            const task = await this._repository.get(handle, projectId, id);
+            if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+            this._tasks.set(this._key(handle, projectId, id), task);
+            this._integrities.set(this._key(handle, projectId, id), hashNativeDocument(task));
+            return operation(task);
+        });
     }
 
     getTask(handle, projectId, id) {
@@ -501,17 +530,17 @@ export class ProjectAgentService {
         return this._operate(handle, projectId, id, () => this._prepareReview(handle, projectId, id, options));
     }
 
-    commit(handle, projectId, id) {
-        return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id));
+    commit(handle, projectId, id, options = {}) {
+        return this._operate(handle, projectId, id, () => this._commit(handle, projectId, id), options);
     }
 
-    takeOver(handle, projectId, id) {
-        return this._operate(handle, projectId, id, () => this._takeOver(handle, projectId, id));
+    takeOver(handle, projectId, id, options = {}) {
+        return this._operate(handle, projectId, id, () => this._takeOver(handle, projectId, id), options);
     }
 
     executeTool(handle, projectId, id, input = {}) {
         return this._operate(handle, projectId, id, async task => {
-            fields(input, ['name', 'args', 'attemptId', 'callId'], 'Project Agent tool request');
+            fields(input, ['name', 'args', 'attemptId', 'callId', 'expectedSequence', 'effectPolicy'], 'Project Agent tool request');
             let attempt;
             if (input.attemptId !== undefined || input.callId !== undefined) {
                 attempt = task.attempts.find(item => item.attemptId === input.attemptId && item.kind === 'generation' && item.status === 'started');
@@ -525,14 +554,14 @@ export class ProjectAgentService {
             const result = await this._executeTool(handle, projectId, id, input);
             if (attempt && !attempt.calls.some(item => item.callId === input.callId)) attempt.calls.push({ callId: input.callId, name: input.name, argsHash: hashNativeDocument(input.args || {}) });
             return result;
-        });
+        }, { expectedSequence: input.expectedSequence, effectPolicy: input.effectPolicy });
     }
 
-    resumeTask(handle, projectId, id) {
+    resumeTask(handle, projectId, id, options = {}) {
         return this._operate(handle, projectId, id, task => {
             for (const attempt of task.attempts.filter(item => item.kind === 'generation' && item.status === 'started')) this._finishAttempt(task, attempt, 'interrupted');
             return this._snapshot(task);
-        });
+        }, options);
     }
 
     beginGeneration(handle, projectId, id, input) {
@@ -1211,6 +1240,13 @@ export class ProjectAgentService {
         if (task.status !== 'review' || !task.workspace || task.review?.required !== true) {
             throw new ConflictError('project_agent_review_required', { taskId: id, status: task.status });
         }
+        const assertPreview = () => {
+            if (!task.preview?.previewId) return;
+            let current;
+            try { current = this._studio.getPreviewUi(handle, task.preview.previewId); } catch { throw new ConflictError('project_agent_preview_stale'); }
+            if (current.packageVersionId !== task.preview.packageVersionId) throw new ConflictError('project_agent_preview_stale');
+        };
+        assertPreview();
         await this._assertTaskBaseRevision(handle, task);
         const attempt = this._startAttempt(task, 'commit');
         task.commitIntent = { changeSetId: 'changeset_' + String(this._idFactory()).replaceAll('-', '').toLowerCase(), workspaceHash: hashNativeDocument(task.workspace) };
@@ -1221,6 +1257,7 @@ export class ProjectAgentService {
         try {
             result = await this._studio.executeWorkspace(handle, task.workspace, { changeSetId: task.commitIntent.changeSetId,
                 beforeCommit: receipt => {
+                    assertPreview();
                     const candidate = clone(task);
                     // Git SHA-1 IDs have the same length; this placeholder is never stored or consumed.
                     this._completeCommit(candidate, { ...receipt, resultingRevision: task.baseRevision });

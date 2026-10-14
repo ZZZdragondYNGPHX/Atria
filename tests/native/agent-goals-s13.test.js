@@ -125,12 +125,12 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
                 await new Promise(resolve => setTimeout(resolve, 5));
             }
             expect(state.wakes[0].status).toBe('unknown');
-            // The original Host policy permits one provider retry. Both remain charged;
-            // pumping the durable unknown wake must not start another Host request.
-            expect(state.compute.attempts).toHaveLength(2);
+            // Unknown Provider outcomes retain one charged attempt without automatic resend.
+            // Pumping the durable unknown wake must not start another Host request.
+            expect(state.compute.attempts).toHaveLength(1);
             expect(state.compute.attempts.every(row => row.status === 'unknown')).toBe(true);
             await supertest(apiServer).post('/goals/pump').send({ goalId: h.goal.goalId }).expect(200);
-            expect(h.seen).toHaveLength(2);
+            expect(h.seen).toHaveLength(1);
             expect(state.goal.status).toBe('waiting');
         } finally { apiServer.closeAllConnections(); await new Promise(resolve => apiServer.close(resolve)); await h.cleanup(); }
     }, 60000);

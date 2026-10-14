@@ -266,7 +266,16 @@ export class PackageInstaller {
         });
     }
 
-    async open(handle, packageId, packageVersionId) {
+    async exportArchive(handle, packageId, packageVersionId, expectedContentHash) {
+        if (typeof expectedContentHash !== 'string' || !/^[a-f0-9]{64}$/.test(expectedContentHash)) throw new TypeError('Exact Package content hash required');
+        return this._assetStore.withBlobLease(handle, expectedContentHash, async () => {
+            const opened = await this.open(handle, packageId, packageVersionId, { includeArchive: true });
+            if (!opened || opened.packageVersion.packageContentHash !== expectedContentHash) throw new TypeError('Exact installed PackageVersion required');
+            return { archive: Buffer.from(opened.archive), packageVersion: opened.packageVersion };
+        });
+    }
+
+    async open(handle, packageId, packageVersionId, { includeArchive = false } = {}) {
         const version = await this._packageRepo.getVersion(handle, packageId, packageVersionId);
         if (!version) return null;
         const archive = await this._assetStore.readBlob(handle, version.packageContentHash);
@@ -293,6 +302,7 @@ export class PackageInstaller {
             sourceFiles: inspected.sourceFiles,
             assets: inspected.assets,
             preflight: inspected.preflight,
+            ...(includeArchive ? { archive } : {}),
         });
     }
 

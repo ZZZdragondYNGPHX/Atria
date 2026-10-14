@@ -133,7 +133,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
                 criteria: [criterion({ kind: 'message', messageId: h.session.timeline[0].messageId }, ['content'], h.session.timeline[0].content)] });
             const capture = h.service.sources.capture.bind(h.service.sources);
             h.service.sources.capture = jest.fn(async (...args) => {
-                await h.installed.core.forkBranch(h.handle, h.session.session.sessionId, { expectedRevisionId: h.session.revision.revisionId });
+                await deriveSaveRoute(h, h.session.session.sessionId, h.session.revision.revisionId);
                 return capture(...args);
             });
             const result = await evaluate(h, goal);
@@ -150,7 +150,7 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             const save = h.service.repository.save.bind(h.service.repository);
             h.service.repository.save = jest.fn(async (...args) => {
                 const saved = await save(...args);
-                await h.installed.core.forkBranch(h.handle, h.session.session.sessionId, { expectedRevisionId: h.session.revision.revisionId });
+                await deriveSaveRoute(h, h.session.session.sessionId, h.session.revision.revisionId);
                 return saved;
             });
             const result = await evaluate(h, goal);
@@ -175,4 +175,9 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
             expect(await evaluate(h, cancelled)).toEqual(cancelled);
         } finally { await h.cleanup(); }
     }, 60000);
+}
+
+async function deriveSaveRoute(h, sessionId, expectedRevisionId) {
+    const save = await h.installed.core.createSavePoint(h.handle, sessionId, { expectedRevisionId, displayName: 'Goal branch-isolation fixture' });
+    return h.installed.core.restoreSavePoint(h.handle, sessionId, save.saveId, { expectedRevisionId });
 }

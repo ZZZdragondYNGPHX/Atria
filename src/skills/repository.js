@@ -753,6 +753,48 @@ export function createSkillRepository(dataRoot) {
         if (candidate.currentVersion !== candidate.baseVersion) { await beforeCommit(); await writeFile({ scope, name, path: SKILL_MD, content: candidate.diff.before }); }
         return { name, version: candidate.baseVersion, alreadyRolledBack: candidate.currentVersion === candidate.baseVersion };
     };
+    // Native reviewed writes run in the same queue as every UI Skill operation.
+    // The precondition covers supporting files as well as SKILL.md.
+    operations.writeReviewed = async ({ scope, name, expectedInstalledHash, command }) => {
+        const current = name ? await readSkillEntry(scope, name) : null;
+        if (scope.kind === 'package') { const error = new Error('Package Skill originals are read-only'); error.status = 403; throw error; }
+        if (name && ((current?.installedHash ?? null) !== expectedInstalledHash)) { const error = new Error('Skill version conflict'); error.status = 409; throw error; }
+        if (!command || typeof command !== 'object') throw new TypeError('Reviewed Skill command required');
+        const input = command.input ?? {};
+        switch (command.kind) {
+            case 'install': return operations.install({ ...input, scope, expectedInstalledHash });
+            case 'rename': return operations.rename({ scope, fromName: name, toName: input.toName });
+            case 'move': return operations.moveScope({ name, fromScope: scope, toScope: input.toScope });
+            case 'file.write': return operations.writeFile({ ...input, scope, name });
+            case 'file.edit': return operations.editFile({ ...input, scope, name });
+            case 'file.rename': return operations.renameFile({ ...input, scope, name });
+            case 'file.delete': return operations.deleteFile({ scope, name, path: input.path });
+            case 'delete': await operations.delete(name, scope); return { deleted: true };
+            default: throw new TypeError('Unsupported reviewed Skill command');
+        }
+    };
+    operations.observeScope = async scope => {
+        const entries = await listScope(scope);
+        const inventory = entries.map(row => [row.name, row.installedHash]).sort(([a], [b]) => a.localeCompare(b));
+        return { count: inventory.length, inventoryHash: createHash('sha256').update(JSON.stringify(inventory)).digest('hex') };
+    };
+    operations.writeScopeReviewed = async ({ scope, expectedInventoryHash, command, toScope }) => {
+        if (scope.kind === 'package' || toScope?.kind === 'package') { const error = new Error('Package Skill originals are read-only'); error.status = 403; throw error; }
+        const current = await operations.observeScope(scope);
+        if (current.inventoryHash !== expectedInventoryHash) { const error = new Error('Skill scope version conflict'); error.status = 409; throw error; }
+        switch (command) {
+            case 'delete': await operations.deleteScope(scope); return { deleted: true, ...current };
+            case 'copy': await operations.copyScope(scope, toScope); return { copied: true, ...current };
+            case 'rename': {
+                if (!toScope || toScope.kind !== scope.kind) throw new TypeError('Matching destination scope required');
+                const destination = scope.kind === 'orch-preset' ? { mode: toScope.mode, name: toScope.name }
+                    : scope.kind === 'preset' ? toScope.name : scope.kind === 'character' ? toScope.characterFile : null;
+                if (!destination) throw new TypeError('Scope does not support rename');
+                await operations.renameScope(scope, destination); return { renamed: true, ...current };
+            }
+            default: throw new TypeError('Unsupported Skill scope command');
+        }
+    };
     return Object.fromEntries(Object.entries(operations).map(([method, operation]) =>
         [method, (...args) => orderSkillOperation(dataRoot, () => operation(...args))]));
 }

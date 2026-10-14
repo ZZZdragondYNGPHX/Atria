@@ -7,7 +7,7 @@ import { listAuthoringReferences, readAuthoringReference } from '../../src/nativ
 import { buildProjectAgentTools } from '../../src/native/project-agent.js';
 import { compileFrontend } from '../../src/native/frontend/compiler.js';
 import { assertStudioScenario } from '../../src/native/studio-scenario.js';
-import { ExtensionsStore } from '../../src/native/extensions-store.js';
+import { ExtensionsStore, extensionSourceHash } from '../../src/native/extensions-store.js';
 import { readExternalExtension } from '../../src/native/extension-install.js';
 import { createNativeExtensionsRouter } from '../../src/endpoints/native-extensions.js';
 import { skillEntryKey, skillInvocationMode, scriptMatches } from '../../public/shared/extension-contract.js';
@@ -69,15 +69,17 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine
         const h = await makeHarness();
         try {
             const store = new ExtensionsStore({ engine: h.engine });
-            const external = { ...script(), kind: 'external', sourceUrl: 'https://example.com/plugin.git', enabled: true,
+            const external = { ...script(), kind: 'external', sourceUrl: 'https://example.com/plugin.git', sourceCommit: 'a'.repeat(40), enabled: true,
                 files: { 'index.js': 'export function activate() {}', 'parts/helper.js': 'export const value = 1;', 'style.css': 'p { color: red; }' } };
-            const saved = await store.save(h.handle, external);
+            external.contentHash = extensionSourceHash(external);
+            const saved = await store.save(h.handle, external, null, { verifiedSource: true });
             let candidate = { ...external, files: { '../bad.js': 'bad' } };
             const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle } }; next(); });
             app.use(createNativeExtensionsRouter({ store: () => store, install: async () => candidate }));
             await request(app).post('/install').send({ id: saved.id, expectedRevision: saved.revision }).expect(400);
             expect(await store.get(h.handle, saved.id)).toEqual(saved);
             candidate = { ...external, files: { ...external.files, 'parts/helper.js': 'export const value = 2;' } };
+            candidate.contentHash = extensionSourceHash(candidate);
             await request(app).post('/install').send({ id: saved.id, expectedRevision: 'stale' }).expect(409);
             expect((await store.get(h.handle, saved.id)).revision).toBe(saved.revision);
             await request(app).get(`/files/${saved.id}/${saved.revision}/parts/helper.js`).expect(200).expect('Content-Type', /javascript/);
@@ -105,7 +107,7 @@ test.each([false, true])('Native extension failure correlates install/update=%s 
 
 test('repository install imports inert files, defaults disabled and cleans its temporary root', async () => {
     let root;
-    const result = await readExternalExtension('https://example.com/plugin.git', { clone: async (_url, dir) => {
+    const result = await readExternalExtension('https://example.com/plugin.git', { resolveCommit: async () => 'a'.repeat(40), clone: async (_url, dir) => {
         root = dir;
         await fs.writeFile(path.join(dir, 'atria.extension.json'), JSON.stringify({ schemaVersion: 1, apiVersion: 1, name: 'Demo', entrypoint: 'index.js' }));
         await fs.writeFile(path.join(dir, 'index.js'), 'throw new Error("must never execute on server")');
@@ -118,7 +120,7 @@ test('repository install imports inert files, defaults disabled and cleans its t
 test('invalid manifest/encoding never publishes a candidate and always removes cloned files', async () => {
     for (const invalid of ['manifest', 'encoding']) {
         let root;
-        await expect(readExternalExtension('https://example.com/plugin.git', { clone: async (_url, dir) => {
+        await expect(readExternalExtension('https://example.com/plugin.git', { resolveCommit: async () => 'a'.repeat(40), clone: async (_url, dir) => {
             root = dir;
             await fs.writeFile(path.join(dir, 'atria.extension.json'), JSON.stringify({ schemaVersion: 1, apiVersion: invalid === 'manifest' ? 99 : 1, name: 'Demo', entrypoint: 'index.js' }));
             await fs.writeFile(path.join(dir, 'index.js'), Buffer.from([0xff, 0xfe]));

@@ -1,3 +1,5 @@
+import { createNativeMemoryRouter } from './endpoints/native-memory.js';
+import { router as nativeSkillsRouter } from './endpoints/native-skills.js';
 import { router as nativeSessionRouter } from './endpoints/native-session.js';
 import { router as nativeGenerationRouter } from './endpoints/native-generation.js';
 import { router as nativeProductRouter } from './endpoints/native-product.js';
@@ -90,6 +92,8 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/files', filesRouter);
     app.use('/api/characters', charactersRouter);
     app.use('/api/chats', chatsRouter);
+    app.use('/api/native/memory', createNativeMemoryRouter());
+    app.use('/api/native/skills', nativeSkillsRouter);
     app.use('/api/native/session', nativeSessionRouter);
     app.use('/api/native/generation', nativeGenerationRouter);
     app.use('/api/native/product', nativeProductRouter);

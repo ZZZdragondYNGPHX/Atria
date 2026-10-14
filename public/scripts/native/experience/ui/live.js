@@ -73,6 +73,12 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         try {
             runtime = await mountNativeFrontend({ ...options, document: documentRef, window: options.window ?? documentRef.defaultView,
                 mode, surfaceHost, entry: experience.frontend.entry,
+                mcpSource: () => {
+                    const snapshot = options.getSnapshot?.() ?? globalThis.Atria?.nativeSessionRuntime?.snapshot;
+                    return snapshot?.session?.sessionId === packageState.sessionId ? { kind: 'session', sessionId: packageState.sessionId,
+                        branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId,
+                        packageVersionId: snapshot.session.packageVersionId, packageContentHash: snapshot.session.packageContentHash } : null;
+                },
                 hostServices: options.hostServices ?? createHeadlessConversation({ runtime: () => globalThis.Atria?.nativeSessionRuntime, composer: options.composer ?? nativePlayHost?.product?.composerApi, generate: type => globalThis.Atria?.getContext?.()?.generate?.(type), stop: options.hostActions?.stopGeneration, actions: options.hostActions }),
                 bridgeTransport: options.bridgeTransport ?? frontendHttpTransport({ sessionId: packageState.sessionId, fetchImpl: options.fetchImpl, headers: options.headers }),
                 stateStorage: options.createStateStorage?.({ stateVersion: 3 }, packageState),

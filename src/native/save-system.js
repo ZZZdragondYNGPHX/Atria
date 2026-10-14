@@ -481,12 +481,17 @@ export class NativeSaveSystem {
         return assertAtriaSave(save);
     }
 
-    async importSave(handle, archive, { password = undefined } = {}) {
+    async importSave(handle, archive, { password = undefined, expectedSessionFingerprint, effectPolicy } = {}) {
+        if (effectPolicy !== undefined && effectPolicy !== 'no-background-model') throw new TypeError('Invalid Save import effect policy');
         const inspected = inspectAtriaSaveContainer(archive, { password });
-        return this._sessions.withRunLock(handle, inspected.save.root.sessionId, () => this._importSaveLocked(handle, inspected));
+        return this._sessions.withRunLock(handle, inspected.save.root.sessionId, async () => {
+            if (expectedSessionFingerprint !== undefined && hashNativeDocument(await this._sessions.get(handle, inspected.save.root.sessionId)) !== expectedSessionFingerprint)
+                throw new ConflictError('native_save_target_conflict');
+            return this._importSaveLocked(handle, inspected, { observe: effectPolicy === 'no-background-model' });
+        });
     }
 
-    async _importSaveLocked(handle, inspected) {
+    async _importSaveLocked(handle, inspected, { observe = false } = {}) {
         const installed = await this._requirePackage(handle, inspected.save.package);
         const save = this._embedImportedLibraryKnowledge(
             inspected.save,
@@ -499,7 +504,7 @@ export class NativeSaveSystem {
         if (save.resume && existingSession) {
             if (save.root.revisionId !== existingSession.headRevisionId || control?.mode !== 'ironman' || control.sequence !== save.resume.sequence
                 || (control.resumeSourceRevisionId ?? control.headRevisionId) !== save.resume.sourceRevisionId) throw runFailure('native_run_resume_stale');
-            return this._core.load(handle, save.root.sessionId);
+            return observe ? this._core.observe(handle, save.root.sessionId) : this._core.load(handle, save.root.sessionId);
         }
         const newlyAdded = [];
         try {
@@ -517,7 +522,7 @@ export class NativeSaveSystem {
             throw error;
         }
 
-        return this._core.load(handle, save.root.sessionId);
+        return observe ? this._core.observe(handle, save.root.sessionId) : this._core.load(handle, save.root.sessionId);
     }
 
     async promoteEmbeddedKnowledge(handle, sessionId, {

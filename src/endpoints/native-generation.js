@@ -50,32 +50,39 @@ import { AgentExperienceService } from '../native/agent-intelligence/experience-
 import { getChatRepo } from '../storage/index.js';
 import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
 import { AgentEvolutionService } from '../native/agent-intelligence/evolution-service.js';
+import { CredentialTargetAuthority, createCredentialSecretPort } from '../native/model-prompt-runtime/credential-targets.js';
+import { credentialFetch } from '../native/model-prompt-runtime/credential-fetch.js';
+import { mountMcpMediaAssets } from '../native/mcp-media-assets.js';
+import { hashNativeDocument } from '../native/repositories/common.js';
 import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
     const { studio, agent } = getNativeStudioServices();
+    const persistence = new NativeModelPromptPersistence({ engine: getStorageEngine() });
+    const credentials = new CredentialTargetAuthority({ persistence });
     return new NativeGenerationHost({
-        persistence: new NativeModelPromptPersistence({ engine: getStorageEngine() }),
+        persistence,
         library: new VersionedJsonResourceHandler({ engine: getStorageEngine() }),
         sessionCore: core, packageInstaller, studio, agent,
         skillRepository: handle => createSkillRepository(getUserDirectories(handle).root),
         extensions: new ExtensionsStore({ engine: getStorageEngine() }),
         providers: {
-            'provider.openai-compatible': createHttpGenerationProvider(),
-            'provider.raw-text': createHttpGenerationProvider({ format: 'raw-text' }),
-            'provider.openai-responses': createResponsesGenerationProvider(),
-            'provider.anthropic': createNativeMessagesProvider({ format: 'anthropic' }),
-            'provider.gemini': createNativeMessagesProvider({ format: 'gemini' }),
+            'provider.openai-compatible': createHttpGenerationProvider({ fetchImpl: credentialFetch }),
+            'provider.raw-text': createHttpGenerationProvider({ format: 'raw-text', fetchImpl: credentialFetch }),
+            'provider.openai-responses': createResponsesGenerationProvider({ fetchImpl: credentialFetch }),
+            'provider.anthropic': createNativeMessagesProvider({ format: 'anthropic', fetchImpl: credentialFetch }),
+            'provider.gemini': createNativeMessagesProvider({ format: 'gemini', fetchImpl: credentialFetch }),
         },
-        secretPort: { resolveSecret: async (ref, { handle }) => {
+        secretPort: createCredentialSecretPort({ authority: credentials, resolveSecret: async (ref, { handle }) => {
             // Native refs identify one exact Secret ID. Never resolve the active key.
             for (const key of Object.values(SECRET_KEYS)) {
+                if (key === SECRET_KEYS.ATRIA_SAVE_PASSWORD) continue;
                 const value = readSecret(getUserDirectories(handle), key, ref.secretId);
                 if (value) return value;
             }
             return '';
-        } },
+        } }),
     });
 }
 
@@ -85,6 +92,7 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    mountMcpMediaAssets(router, { getHost });
     router.post('/protocols/describe', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -122,7 +130,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
         } finally { response.off('close', abort); }
     });
-    for (const action of ['voices', 'describe', 'start', 'status', 'cancel']) router.post('/speech/' + action, async (request, response) => {
+    for (const action of ['voices', 'describe', 'describe-observation', 'observe', 'start', 'status', 'cancel']) router.post('/speech/' + action, async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
         response.set('Cache-Control', 'no-store');
@@ -131,7 +139,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         try {
             const speech = new SpeechService({ host: getHost() });
             const result = action === 'voices' ? await speech.voices(controller.signal)
-                : await speech[action](handle, request.body, action === 'start' ? controller.signal : undefined);
+                : await speech[action === 'describe-observation' ? 'observeDescription' : action](handle, request.body, action === 'start' ? controller.signal : undefined);
             if (!controller.signal.aborted) response.json(result);
         } catch (error) {
             const code = /^(native_speech_|native_generation_|operation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_speech_failed';
@@ -172,13 +180,57 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
         } finally { response.off('close', abort); }
     });
-    for (const action of ['create', 'list', 'get', 'control', 'evaluate', 'context', 'associations', 'bind', 'wake', 'pump', 'inspect']) router.post('/goals/' + action, async (req, res) => {
+    for (const action of ['create-preflight', 'create-checked']) router.post('/goals/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const host = getHost(), core = host.sessionCore ? Object.create(host.sessionCore) : null;
+            if (core) core.load = (owner, id) => host.sessionCore.observe(owner, id);
+            const service = new AgentGoalService({ engine: host.persistence._engine, sessionCore: core, studio: host.studio, agent: host.agent, chatRepo: getChats() });
+            if (action === 'create-preflight') return res.json(await service.previewCreate(handle, req.body));
+            fields(req.body, ['definition', 'expectedAnchorFingerprint'], 'Reviewed Goal creation');
+            if (!/^[a-f0-9]{64}$/.test(req.body.expectedAnchorFingerprint || '')) throw new TypeError('Exact Goal anchor required');
+            res.json(await service.create(handle, req.body.definition, { expectedAnchorFingerprint: req.body.expectedAnchorFingerprint }));
+        } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_goal_creation_failed' }); }
+    });
+    for (const action of ['preflight', 'controlled']) router.post('/goals/' + action, async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const result = await new GoalContinuationService({ host: getHost(), chatRepo: getChats() })[action](handle, req.body);
+            if (result?.completion) { const { completion: _completion, ...ack } = result; return res.json(ack); }
+            res.json(result);
+        } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_goal_controlled_failed' }); }
+    });
+    router.post('/evidence/preflight', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['scope', 'selectors'], 'Evidence preflight');
+            const host = getHost(), sessionCore = host.sessionCore ? Object.create(host.sessionCore) : null;
+            if (sessionCore) sessionCore.load = (owner, id) => host.sessionCore.observe(owner, id);
+            const agent = host.agent ? Object.create(host.agent) : null;
+            if (agent) agent.getTask = async (owner, project, task) => {
+                const { storedIntegrity: _integrity, ...snapshot } = await host.agent.observeTask(owner, project, task);
+                return snapshot;
+            };
+            const service = new AgentEvidenceService({ chatRepo: getChats(), sessionCore, studio: host.studio, agent });
+            res.json(await service.capture(handle, req.body.scope, req.body.selectors, { maxSources: 32, maxBytes: 131072, maxScanMessages: 8192 }));
+        } catch { res.status(400).json({ error: 'agent_evidence_preflight_failed' }); }
+    });
+    for (const action of ['create', 'list', 'get', 'snapshot', 'snapshots', 'control', 'evaluate', 'context', 'associations', 'bind', 'wake', 'pump', 'inspect']) router.post('/goals/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
             if (action === 'list') fields(req.body, [], 'Goal list');
             const host = getHost();
+            if (['snapshot', 'snapshots'].includes(action)) {
+                const service = new AgentGoalService({ engine: host.persistence._engine });
+                fields(req.body, action === 'snapshot' ? ['goalId'] : [], 'Goal snapshot');
+                const document = action === 'snapshot' ? await service.repository.get(handle, req.body.goalId) : await service.repository.list(handle);
+                return res.json({ document, validity: 'not_reconciled', observation: 'persisted_snapshot' });
+            }
             if (['bind', 'wake', 'pump', 'inspect', 'control'].includes(action)) {
                 const continuation = new GoalContinuationService({ host, chatRepo: getChats() });
                 const result = await continuation[action](handle, req.body);
@@ -192,12 +244,17 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 .json({ error: error?.name === 'ConflictError' ? error.code : 'agent_goal_unavailable' });
         }
     });
-    for (const action of ['begin', 'update', 'inspect', 'delete']) router.post('/evidence/' + action, async (req, res) => {
+    for (const action of ['begin', 'update', 'inspect', 'snapshot', 'delete']) router.post('/evidence/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
             const host = getHost();
+            if (action === 'snapshot') {
+                fields(req.body, ['evidenceId'], 'Evidence snapshot');
+                return res.json({ document: await new AgentEvidenceRepository({ engine: host.persistence._engine }).get(handle, req.body.evidenceId),
+                    validity: 'not_reconciled', observation: 'persisted_snapshot' });
+            }
             const repository = new AgentEvidenceRepository({ engine: host.persistence._engine });
             const service = new AgentEvidenceService({ chatRepo: getChats(), sessionCore: host.sessionCore });
             const capture = new RpEvidenceCaptureService({ repository, service, experience: new AgentExperienceService({ engine: host.persistence._engine, chatRepo: getChats(), sessionCore: host.sessionCore }) });
@@ -211,12 +268,47 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_evidence_' + (error?.status || 'unavailable') });
         }
     });
-    for (const action of ['target', 'submit', 'outcome', 'collect', 'checkQuality', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'export-learning', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
+    router.post('/evidence/controlled', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['action', 'input', ...(req.body.expectedSourcesFingerprint === undefined ? [] : ['expectedSourcesFingerprint']),
+                ...(req.body.expectedSequence === undefined ? [] : ['expectedSequence']), ...(req.body.expectedRecordFingerprint === undefined ? [] : ['expectedRecordFingerprint'])], 'Controlled Evidence');
+            const { action, input } = req.body;
+            if (!['begin', 'update', 'inspect', 'delete'].includes(action)) throw new TypeError('Fixed Evidence action required');
+            const host = getHost(), repository = new AgentEvidenceRepository({ engine: host.persistence._engine });
+            const service = new AgentEvidenceService({ chatRepo: getChats(), sessionCore: host.sessionCore });
+            if (action === 'begin' && !/^[a-f0-9]{64}$/.test(req.body.expectedSourcesFingerprint || '')) throw new TypeError('Reviewed source fingerprint required');
+            if (action === 'update' && (!Number.isSafeInteger(req.body.expectedSequence) || req.body.expectedSequence < 0)) throw new TypeError('Reviewed sequence required');
+            if (action === 'delete' && !/^[a-f0-9]{64}$/.test(req.body.expectedRecordFingerprint || '')) throw new TypeError('Reviewed record fingerprint required');
+            const result = await new RpEvidenceCaptureService({ repository, service })[action](handle, input,
+                action === 'begin' ? { expectedSourcesFingerprint: req.body.expectedSourcesFingerprint }
+                    : action === 'update' ? { expectedSequence: req.body.expectedSequence } : action === 'delete' ? { expectedIntegrity: req.body.expectedRecordFingerprint } : undefined);
+            res.json({ result, automaticExperienceCollection: 'suppressed', automaticEvolutionWake: 'suppressed' });
+        } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_evidence_controlled_failed' }); }
+    });
+    router.post('/experience/controlled', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['action', 'input', ...(req.body.expectedSubject === undefined ? [] : ['expectedSubject']), ...(req.body.expectedSourceSetFingerprint === undefined ? [] : ['expectedSourceSetFingerprint'])], 'Controlled Experience');
+            const { action, input } = req.body;
+            if (!['target', 'submit', 'outcome', 'collect', 'checkQuality', 'inspect', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'exportLearning', 'retention', 'purge', 'purgeSources', 'deleteScope'].includes(action)) throw new TypeError('Fixed Experience action required');
+            const host = getHost(), service = new AgentExperienceService({ engine: host.persistence._engine, chatRepo: getChats(), sessionCore: host.sessionCore, studio: host.studio, agent: host.agent });
+            const result = action === 'diagnose' ? await service.diagnose(handle, input, { origin: 'model_hypothesis' })
+                : action === 'submit' ? await service.submit(handle, input, { expectedSubject: req.body.expectedSubject })
+                    : action === 'purgeSources' ? await service.purgeSources(handle, input, { expectedSourceSetFingerprint: req.body.expectedSourceSetFingerprint }) : await service[action](handle, input);
+            res.json({ result, automaticEvolutionWake: 'suppressed' });
+        } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_experience_controlled_failed' }); }
+    });
+    for (const action of ['target', 'submit', 'outcome', 'collect', 'checkQuality', 'inspect', 'observe', 'observeSourceRetention', 'correct', 'withdraw', 'delete', 'diagnose', 'withdrawDiagnosis', 'deleteDiagnosis', 'reflection', 'export', 'export-learning', 'retention', 'purge', 'purgeSources', 'deleteScope']) router.post('/experience/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
             const host = getHost();
+            if (['observe', 'observeSourceRetention'].includes(action)) return res.json(await new AgentExperienceService({ engine: host.persistence._engine,
+                chatRepo: getChats(), sessionCore: host.sessionCore, studio: host.studio, agent: host.agent })[action](handle, req.body));
             const evolution = new AgentEvolutionService({ host, chatRepo: getChats() });
             const service = evolution.experience;
             const result = await service[action === 'export-learning' ? 'exportLearning' : action](handle, req.body);
@@ -226,11 +318,40 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: 'agent_experience_unavailable' });
         }
     });
-    for (const action of ['inspect', 'catalog', 'declare', 'budget', 'configure', 'start', 'start-learning', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export', 'workspace']) router.post('/evolution/' + action, async (req, res) => {
+    router.post('/evolution/controlled-configure', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['input', 'expectedObservationFingerprint'], 'Controlled Evolution configuration');
+            if (!/^[a-f0-9]{64}$/.test(req.body.expectedObservationFingerprint)) throw new TypeError('Exact preflight fingerprint required');
+            res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() }).configure(handle, req.body.input,
+                { expectedObservationFingerprint: req.body.expectedObservationFingerprint }));
+        } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_evolution_controlled_configure_failed' }); }
+    });
+    router.post('/evolution/controlled-rollback', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['scope', 'subject', 'publicationId', 'expectedSequence', 'expectedPublicationFingerprint'], 'Controlled Evolution rollback');
+            const { expectedSequence, expectedPublicationFingerprint, ...input } = req.body;
+            if (!Number.isSafeInteger(expectedSequence) || expectedSequence < 0 || !/^[a-f0-9]{64}$/.test(expectedPublicationFingerprint)) throw new TypeError('Exact publication and sequence required');
+            res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() }).rollback(handle, input,
+                { expectedSequence, expectedPublicationFingerprint }));
+        } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_evolution_controlled_rollback_failed' }); }
+    });
+    router.post('/evolution/controlled-label', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const result = await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() }).label(handle, req.body, { suppressAutomaticPublish: true });
+            res.json({ ...result, automaticPublication: 'suppressed' });
+        } catch (error) { res.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'agent_evolution_controlled_label_failed' }); }
+    });
+    for (const action of ['inspect', 'observe', 'preflight', 'catalog', 'declare', 'budget', 'configure', 'start', 'start-learning', 'mode', 'label', 'publish', 'rollback', 'reconcile', 'export', 'workspace']) router.post('/evolution/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
-        try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats() })[action === 'start-learning' ? 'startLearning' : action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
+        try { return res.json(await new AgentEvolutionService({ host: getHost(), chatRepo: getChats(), observationOnly: ['observe', 'preflight'].includes(action) })[action === 'start-learning' ? 'startLearning' : action](handle, req.body)); } catch (error) { return res.status(error?.name === 'ConflictError' ? 409 : error?.code === 'storage_read_only' ? 503 : 400).json({ error: error?.name === 'ConflictError' ? error.message : 'agent_evolution_unavailable' }); }
     });
     for (const [domain, actions] of [['mask', ['create', 'find', 'read', 'save', 'freeze']], ['media', ['prepare']], ['gallery', ['query', 'history', 'select', 'mark']], ['reference', ['promote', 'revoke']], ['gc', ['preview', 'mark', 'sweep']]]) {
         for (const action of actions) router.post('/visual/' + domain + '/' + action, async (req, res) => {
@@ -299,8 +420,12 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const target = (await configuration.resources.getCurrent(handle, 'core.image-target', req.body.imageTargetId))?.snapshot;
             if (!target) throw new TypeError('Target unavailable');
             const connection = await host.persistence.getConnectionProfile(handle, target.connectionProfileId), fingerprint = imageTargetFingerprint(target, connection);
-            const secret = connection.secretRef && ['provider.sd-webui-image', 'provider.forge-image', 'provider.comfyui-image'].includes(connection.providerAdapter) ? await host.secretPort.resolveSecret(connection.secretRef, { handle }) : null;
-            res.json({ targetFingerprint: fingerprint, capabilities: await createImageRegistry().get(connection.providerAdapter).describe({ target, connection, fingerprint, secret }) });
+            fields(req.body, ['imageTargetId', 'expectedTargetFingerprint', 'expectedConnectionFingerprint'], 'Image Target description');
+            if (req.body.expectedTargetFingerprint !== undefined && req.body.expectedTargetFingerprint !== hashNativeDocument(target)
+                || req.body.expectedConnectionFingerprint !== undefined && req.body.expectedConnectionFingerprint !== hashNativeDocument(connection))
+                throw Object.assign(new Error('Image Target changed'), { code: 'native_visual_target_conflict' });
+            const secret = connection.secretRef && ['provider.sd-webui-image', 'provider.forge-image', 'provider.comfyui-image'].includes(connection.providerAdapter) ? await host.secretPort.resolveSecret(connection.secretRef, { handle, connection }) : null;
+            res.json({ targetFingerprint: fingerprint, capabilities: await createImageRegistry({ fetchImpl: credentialFetch }).get(connection.providerAdapter).describe({ target, connection, fingerprint, secret }) });
         } catch (error) { res.status(400).json({ error: error.code || 'native_visual_capability_failed' }); }
     });
     router.get('/visual/configuration', async (req, res) => {
@@ -320,6 +445,26 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         try { res.json(await new IllustrationImageService({ host: getHost() }).list(handle, req.query)); } catch { res.status(400).json({ error: 'native_illustration_request_invalid' }); }
+    });
+    router.get('/illustration-image-observations', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new IllustrationImageService({ host: getHost() }).observeList(handle, req.query)); } catch { res.status(400).json({ error: 'native_illustration_observation_invalid' }); }
+    });
+    router.get('/illustration-images/:id/observation', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new IllustrationImageService({ host: getHost() }).observe(handle, { operationId: req.params.id, summary: true })); } catch { res.status(404).json({ error: 'native_illustration_operation_missing' }); }
+    });
+    router.post('/illustration-images/reconcile', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new IllustrationImageService({ host: getHost() }).reconcile(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_illustration_reconcile_failed' }); }
+    });
+    router.post('/illustration-images/prepared/observe', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await new IllustrationImageService({ host: getHost() }).observePrepared(handle, req.body)); } catch { res.status(400).json({ error: 'native_illustration_prepared_observation_invalid' }); }
     });
     router.post('/illustration-images/prepare', async (req, res) => {
         const handle = req.user?.profile?.handle;
@@ -362,6 +507,26 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
     router.get('/operations/:id', (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(nativeTaskScheduler.project(req.user.profile.handle, req.params.id)); } catch { res.sendStatus(404); }
+    });
+    router.get('/operations/:id/result', (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(nativeTaskScheduler.result(req.user.profile.handle, req.params.id)); } catch (error) { res.status(error.code === 'operation_not_found' ? 404 : 409).json({ error: error.code }); }
+    });
+    router.post('/execute/start', async (req, res) => {
+        const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            fields(req.body, ['input', 'approvedReview'], 'Reviewed Native execution');
+            fields(req.body.approvedReview, ['snapshotFingerprint', 'configurationFingerprint'], 'Exact generation review');
+            if (![req.body.approvedReview.snapshotFingerprint, req.body.approvedReview.configurationFingerprint]
+                .every(value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value))) throw new TypeError('Exact generation review required');
+            await getHost().execute(handle, req.body.input, undefined, chunk => {
+                if (!res.headersSent && chunk.operationId) res.status(202).json({ operationId: chunk.operationId, recovery: 'Observe the same Native operation; never resend an unknown Provider request' });
+            }, { effectPolicy: 'no-background-model', retainResult: true, approvedReview: req.body.approvedReview });
+        } catch (error) {
+            if (!res.headersSent) res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: /^(?:native_|generation_|operation_)[a-z_]+$/.test(error.code ?? '') ? error.code : 'native_generation_failed' });
+        }
     });
     router.delete('/operations/:id', (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
@@ -412,13 +577,13 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
-    for (const action of ['inspect', 'declare', 'prepare', 'check', 'apply']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
+    for (const action of ['inspect', 'declare', 'prepare', 'check', 'checkRollback', 'apply', 'rollback']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
             const store = new PromptCandidateStore({ engine: getHost().library._engine });
-            const input = ['check', 'apply'].includes(action) ? req.body.candidateId : req.body;
+            const input = ['check', 'checkRollback', 'apply', 'rollback'].includes(action) ? req.body.candidateId : req.body;
             res.json(await store[action](handle, req.params.id, input));
         } catch (error) {
             res.status(error.name === 'ConflictError' ? 409 : error.name === 'NotFoundError' ? 404 : error.code === 'storage_read_only' ? 503 : 400).json({ error: 'native_prompt_candidate_unavailable' });
@@ -570,6 +735,11 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             response.json(references);
         } catch { response.status(400).json({ error: 'native_resource_references_failed' }); }
     });
+    for (const action of ['inspect', 'authorize']) router.post('/connections/credential-target/' + action, async (request, response) => {
+        const handle = request.user?.profile?.handle; if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        try { response.json(await new CredentialTargetAuthority({ persistence: getHost().persistence })[action](handle, request.body)); } catch (error) { response.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: /^native_credential_[a-z_]+$/.test(error.code || '') ? error.code : 'native_credential_authorization_failed' }); }
+    });
     router.post('/connections/probe', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -580,12 +750,15 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const host = getHost();
             const connection = assertConnectionProfile(request.body);
             prepareProviderDiscovery(connection);
-            const secret = await host.secretPort.resolveSecret(connection.secretRef, { handle });
+            // Even injected Hosts must prove that a saved profile's independently
+            // approved destination is exact before resolving its credential.
+            await new CredentialTargetAuthority({ persistence: host.persistence }).assertConnection(handle, connection);
+            const secret = await host.secretPort.resolveSecret(connection.secretRef, { handle, connection });
             if (!secret) throw Object.assign(new Error('Missing Secret'), { code: 'generation_secret_unavailable' });
-            response.json(await discoverProviderModels(connection, { secret, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }));
+            response.json(await discoverProviderModels(connection, { secret, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]), fetchImpl: credentialFetch }));
         } catch (error) {
             const code = error.code;
-            response.status(400).json({ error: typeof code === 'string' && (code.startsWith('native_provider_') || code === 'generation_secret_unavailable') ? code : 'native_provider_probe_invalid' });
+            response.status(400).json({ error: typeof code === 'string' && (code.startsWith('native_provider_') || code.startsWith('native_credential_') || code === 'generation_secret_unavailable') ? code : 'native_provider_probe_invalid' });
         } finally { response.off('close', abort); }
     });
     router.get('/secrets', (request, response) => {
@@ -607,6 +780,42 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const secretId = new SecretManager(getUserDirectories(handle)).writeSecret(SECRET_KEYS.ATRIA_RUNTIME, value, label.trim(), { activate: false });
             response.status(201).json({ secretId, label: label.trim() });
         } catch { response.status(400).json({ error: 'native_secret_create_failed' }); }
+    });
+    router.post('/routes/resolve', async (request, response) => {
+        const handle = request.user?.profile?.handle; if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        try {
+            fields(request.body, ['routeRef', 'role', 'requirements'], 'Route resolution');
+            const host = getHost(), resolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
+            response.json(await resolver.resolve({ handle, ...request.body }));
+        } catch (error) { response.status(400).json({ error: /^generation_[a-z_]+$/.test(error.code || '') ? error.code : 'native_route_resolution_failed' }); }
+    });
+    router.post('/resources/exact', async (request, response) => {
+        const handle = request.user?.profile?.handle; if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        try {
+            const ref = assertExactResourceRef(request.body);
+            if (ref.scope !== 'library' || !VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(ref.resourceType)) throw new TypeError('Exact Library resource required');
+            response.json(await getHost().library.getExact(handle, ref));
+        } catch { response.status(404).json({ error: 'native_resource_exact_unavailable' }); }
+    });
+    router.post('/resources/current', async (request, response) => {
+        const handle = request.user?.profile?.handle; if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        try {
+            fields(request.body, ['resourceType', 'resourceId'], 'Current Library resource');
+            if (!VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(request.body.resourceType)) throw new TypeError('Unsupported resource');
+            response.json(await getHost().library.getCurrent(handle, request.body.resourceType, request.body.resourceId));
+        } catch { response.status(404).json({ error: 'native_resource_current_unavailable' }); }
+    });
+    router.post('/resources/revision', async (request, response) => {
+        const handle = request.user?.profile?.handle; if (!handle) return response.sendStatus(401);
+        try {
+            fields(request.body, ['resourceType', 'resource', 'expectedCurrentRevision'], 'Library revision publication');
+            const { resourceType, resource, expectedCurrentRevision } = request.body;
+            if (!VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(resourceType) || expectedCurrentRevision !== null && typeof expectedCurrentRevision !== 'string') throw new TypeError('Exact current Revision required');
+            response.json(await getHost().library.commit(handle, resourceType, resource, { expectedCurrentRevision }));
+        } catch (error) { response.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'native_resource_revision_conflict' }); }
     });
     router.get('/configuration', async (request, response) => {
         const handle = request.user?.profile?.handle;

@@ -86,7 +86,7 @@ export class A2aService {
                     await this._persist(record, 'dispatched');
                     let headers = {}, secret;
                     if (captured.policy.auth === 'secret') {
-                        secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal });
+                        secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal, connection: captured.connection });
                         if (typeof secret !== 'string' || !secret) fail('native_a2a_secret_unavailable');
                         headers = { Authorization: 'Bearer ' + secret };
                     }

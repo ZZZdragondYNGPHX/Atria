@@ -189,6 +189,16 @@ export class SessionCore {
         return { ...installed, entryPoint };
     }
 
+    /** Observe one committed Revision without synchronizing current Package edits. */
+    async observe(handle, sessionId, { revisionId } = {}) {
+        assertNativeId(sessionId, 'session');
+        if (revisionId !== undefined) assertNativeId(revisionId, 'revision');
+        // Resolve HEAD once through the owning repository, then keep load on its
+        // historical/read path. Never toggle the process-wide read-only flag.
+        const snapshot = await this._sessions.loadSnapshot(handle, sessionId, revisionId ? { revisionId } : {});
+        return this.load(handle, sessionId, { revisionId: snapshot.revision.revisionId, skipPackageEdits: true });
+    }
+
     async load(handle, sessionId, options = {}) {
         assertNativeId(sessionId, 'session');
         if (options.revisionId) assertNativeId(options.revisionId, 'revision');
@@ -430,7 +440,7 @@ export class SessionCore {
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined, commitId, requestFingerprint } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined, commitId, requestFingerprint, effectPolicy } = {}) {
         const control = await this.runs.assert(handle, base.session.sessionId, runAction);
         if (states[RUN_NAMESPACE]) {
             const run = assertRunState(states[RUN_NAMESPACE]);
@@ -538,7 +548,7 @@ export class SessionCore {
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead, commitId, requestFingerprint });
-        requestVisualWake(this, handle, session.sessionId);
+        if (effectPolicy !== 'no-background-model') requestVisualWake(this, handle, session.sessionId);
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
             invalidateFrontendEpoch(handle, session.sessionId);
@@ -657,6 +667,18 @@ export class SessionCore {
 
     async getContinuityGraph(handle, sessionId, limit) {
         const base = await this.load(handle, sessionId);
+        if (!continuityDefinition(base)) throw new TypeError('Continuity contract required');
+        return this._continuity.graph(handle, base.session.packageId, limit);
+    }
+
+    async observeContinuityProjection(handle, sessionId, viewId, { revisionId = null } = {}) {
+        const base = await this.observe(handle, sessionId);
+        // revisionId names the Player Continuity ledger, not a Session Revision.
+        return projectContinuity(this._continuity, handle, base, viewId, revisionId);
+    }
+
+    async observeContinuityGraph(handle, sessionId, limit) {
+        const base = await this.observe(handle, sessionId);
         if (!continuityDefinition(base)) throw new TypeError('Continuity contract required');
         return this._continuity.graph(handle, base.session.packageId, limit);
     }

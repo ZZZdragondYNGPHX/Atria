@@ -158,11 +158,15 @@ export class SessionRepo {
         }));
     }
 
-    async setExperienceMetadata(handle, sessionId, { expectedRevisionId, autoSavePolicy, branchId, displayName, archived }) {
+    async setExperienceMetadata(handle, sessionId, { expectedRevisionId, expectedMetadataFingerprint, autoSavePolicy, branchId, displayName, archived }) {
         return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
             assertWritable(); await assertRunAccess(tx, handle, sessionId, 'inspect');
             const key = this._sessionKey(handle, sessionId), record = await tx.getResource(key);
             if (!record || record.doc.headRevisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict');
+            if (expectedMetadataFingerprint !== undefined && (!/^[a-f0-9]{64}$/.test(expectedMetadataFingerprint)
+                || expectedMetadataFingerprint !== hashNativeDocument({ autoSavePolicy: record.doc.autoSavePolicy ?? null, branchMetadata: record.doc.branchMetadata ?? {} }))) {
+                throw new ConflictError('native_session_metadata_conflict');
+            }
             const next = { ...record.doc };
             if (autoSavePolicy !== undefined) next.autoSavePolicy = autoSavePolicy;
             if (branchId) {

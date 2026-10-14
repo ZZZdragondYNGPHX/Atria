@@ -63,7 +63,7 @@ export class IllustrationImageService {
             } });
     }
     async prepare(handle, input, { media = null } = {}) {
-        visualObject(input, ['sessionId', 'branchId', 'annotationId', 'expectedHead', 'imageTargetId', 'imageRenderingId', 'operation', 'parentImageVersionIds', 'mask', 'references', 'omittedPreferred']);
+        visualObject(input, ['sessionId', 'branchId', 'annotationId', 'expectedHead', 'imageTargetId', 'imageRenderingId', 'operation', 'parentImageVersionIds', 'mask', 'references', 'omittedPreferred', 'expectedTargetFingerprint', 'expectedConnectionFingerprint']);
         const { sessionId, branchId, annotationId } = input;
         assertNativeId(sessionId, 'session'); assertNativeId(branchId, 'branch'); assertNativeId(annotationId, 'annotation');
         const sessions = this.host.sessionCore._sessions;
@@ -88,6 +88,8 @@ export class IllustrationImageService {
         const target = (await this.resources.getCurrent(handle, 'core.image-target', targetId))?.snapshot;
         if (!target) visualError('target_missing');
         const connection = await this.host.persistence.getConnectionProfile(handle, target.connectionProfileId);
+        if (input.expectedTargetFingerprint !== undefined && input.expectedTargetFingerprint !== hashNativeDocument(target)
+            || input.expectedConnectionFingerprint !== undefined && input.expectedConnectionFingerprint !== hashNativeDocument(connection)) visualError('target_conflict');
         const source = { kind: 'session', sessionId, branchId, revisionId: (annotation.originalAnchor ?? annotation.anchor).revisionId, annotationId, anchor: annotation.originalAnchor ?? annotation.anchor, timeKind: annotation.timeKind ?? 'present',
             ...(annotation.sceneId ? { sceneId: annotation.sceneId, shotId: annotation.shotId } : {}) };
         await resolveVisualSource(this.host.sessionCore, handle, source);
@@ -103,7 +105,7 @@ export class IllustrationImageService {
         for (const ref of ir.references) if (!['base', 'mask'].includes(ref.purpose) && !ir.constraints.some(c => c.capability === ref.purpose)) ir.constraints.push({ capability: ref.purpose, tier: 'required' });
         if (media) ir.authoring = 'raw';
         const probeSecret = connection.secretRef && ['provider.sd-webui-image', 'provider.forge-image', 'provider.comfyui-image'].includes(connection.providerAdapter)
-            ? await this.host.secretPort.resolveSecret(connection.secretRef, { handle }) : null;
+            ? await this.host.secretPort.resolveSecret(connection.secretRef, { handle, connection }) : null;
         const plan = await this.registry.prepare({ ir, target, rendering, connection, secret: probeSecret, approval: { omittedPreferred: input.omittedPreferred ?? [] } });
         let inputBytes = 0;
         for (const input of plan.compiled.inputAssetRefs) { const ref = await this.assets.getRef(handle, input.assetId); if (!ref || ref.contentHash !== input.contentHash) visualError('input_integrity_invalid'); inputBytes += ref.size; }
@@ -168,6 +170,41 @@ export class IllustrationImageService {
         job = (await this.store.read(handle, 'job', operationId)).value;
         return { operation: publicJob(job), ...(terminal.has(job.status) ? summary ? { presentationChanged: true }
             : await this.host.sessionCore._sessions.getIllustrations(handle, job.source.sessionId, { branchId: job.source.branchId }) : {}) };
+    }
+    async observe(handle, input) {
+        visualObject(input, ['operationId', 'summary']);
+        assertNativeId(input.operationId, 'imageJob');
+        const row = await this.store.read(handle, 'job', input.operationId), job = row.value;
+        if (!job) visualError('job_missing');
+        await this.host.sessionCore.runs.assert(handle, job.source.sessionId, 'inspect');
+        return { operation: publicJob(job), revision: row.revision, recovery: 'not performed; use explicit reconcile',
+            ...(terminal.has(job.status) ? input.summary ? { presentationChanged: true }
+                : await this.host.sessionCore._sessions.getIllustrations(handle, job.source.sessionId, { branchId: job.source.branchId }) : {}) };
+    }
+    async observeList(handle, input) {
+        visualObject(input, ['sessionId', 'branchId']);
+        assertNativeId(input.sessionId, 'session'); assertNativeId(input.branchId, 'branch');
+        await this.host.sessionCore.runs.assert(handle, input.sessionId, 'inspect');
+        return (await this.store.list(handle, 'job')).filter(job => job.source.sessionId === input.sessionId && job.source.branchId === input.branchId).map(publicJob);
+    }
+    async observePrepared(handle, input) {
+        visualObject(input, ['prepareId']); assertNativeId(input.prepareId, 'visualIntent');
+        const row = await this.store.read(handle, 'prepared', input.prepareId), prepared = row.value;
+        if (!prepared) visualError('prepare_missing');
+        await this.host.sessionCore.runs.assert(handle, prepared.source.sessionId, 'inspect');
+        return { prepareId: prepared.prepareId, source: prepared.source, expectedHead: prepared.expectedHead,
+            revision: row.revision, expiresAt: prepared.expiresAt, expired: prepared.expiresAt <= Date.now(),
+            targetFingerprint: prepared.targetFingerprint, requestHash: prepared.evidence.requestHash,
+            cost: prepared.evidence.capabilities.cost, externalAssetIds: prepared.compiled.inputAssetRefs.map(ref => ref.assetId),
+            omittedPreferred: prepared.evidence.constraints.omitted.filter(item => item.tier === 'preferred').map(item => item.capability),
+            connection: { connectionProfileId: prepared.connection.connectionProfileId, providerAdapter: prepared.connection.providerAdapter,
+                fingerprint: hashNativeDocument(prepared.connection), endpoint: prepared.connection.baseUrl ?? prepared.connection.endpoint ?? null, secretRef: prepared.connection.secretRef ?? null } };
+    }
+    async reconcile(handle, input) {
+        visualObject(input, ['operationId']);
+        await this.observe(handle, { operationId: input.operationId, summary: true });
+        await this.worker.recover(handle, input.operationId);
+        return this.observe(handle, { operationId: input.operationId, summary: true });
     }
     async list(handle, { sessionId, branchId }) {
         assertNativeId(sessionId, 'session'); assertNativeId(branchId, 'branch');

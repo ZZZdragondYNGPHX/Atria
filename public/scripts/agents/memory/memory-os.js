@@ -4,10 +4,7 @@ import * as legacyVectorIndex from './vector-index.js';
 
 // User-level opt-in controlled by the Workspace Memory OS switch. Keep this
 // separate from orchestration and automatic legacy memory processing.
-export const MEMORY_SOURCE_WRITES_DEFAULT_ENABLED = false;
-
-export function isHybridMemoryEnabled(settings) { return settings?.enabled !== false; }
-export function isMemorySourceWriteEnabled(settings) { return settings?.sourceWritesEnabled === true; }
+export { MEMORY_SOURCE_WRITES_DEFAULT_ENABLED, isHybridMemoryEnabled, isMemorySourceWriteEnabled } from './source-policy.js';
 
 /**
  * Provider-independent boundary over the existing node index. Scope, profile,
