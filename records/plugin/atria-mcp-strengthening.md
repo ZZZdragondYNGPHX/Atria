@@ -27,3 +27,14 @@
 - 原生 Binary HTTP 测试跨 1 MiB JSON 限额传输 >2 MiB bytes，真实 PackageContainer/Installer/Repository 安装与旧 baseVersion 409；Studio build 在该测试中注入 fixture，**尚非真实运行 Atria Studio 的全链路证明**。
 - 协议 13 项包含实际 stdio 两代服务、raw-wire 篡改/重放、挂起审批时观察与取消、完整 Atria CLI modern surface；自动批准仅为合同证据，不声称真人审批通过。Codex CLI 本机 0.162.1、Claude Code 2.1.296 的真实人类交互、CachyOS/Termux、真实付费 Provider 仍待验。
 - 未完成：Journal 更长期保留/GC、真实产品并发与故障联调、Project Agent/Runtime/认知/媒体/技能/扩展及Semantic UI。继续 E4–E7，不将本 checkpoint 当整体完成。
+
+## E4–E5 原生领域验证 checkpoint — 2026-10-14
+
+- 当前实际 HEAD 仍为产品任务树 `9241325a7290e613e0fdaaa1870409105c161c89`、工具 `c690d26fba1e5a10e759bd4263f79850ec97e0ac` 加本任务未提交实现；以下是该独立工作树增量的测试证据，尚非已集成 main/不可变提交的最终证明。前端重构文档修改仍由其他任务独立维护。
+- Project Agent：无头纯 Task/Context 观察、sequence/Review Hash CAS、typed proposals、独立 Review/Commit、删除提案保持 DESTRUCTIVE、已关闭 Preview 拒绝 Commit；显式内置模型使用共享原生 runner、Scheduler、Route/Provider许可与 Compute 记录，不重复创建 Agent Runtime。未知结果禁止自动模型重试。新 generation FS/SQLite 6/6，加真实 MCP Adapter→Native→loopback Provider→Review→独立 Commit 1/1；ACK 丢失不重复发送。
+- Session：纯 snapshot/health/runtime/Continuity、完整 Chronicle/metrics/revision/commit receipt 观察，元数据同 HEAD CAS；维护在原生 runLock 内核 HEAD，保留 Reachability/读租约/Quarantine。新 History FS/SQLite 4/4、现有维护可用 FS/SQLite/GC 子进程 20/20。MySQL 53306/PostgreSQL 55432 不可连接的 18 项未验，不报告全平台通过。Resource setup 的 Session 读取另迁移纯 observe，事务写拦截测试通过。
+- Runtime：真正纯 Preview 禁止 Secret/Provider/Checkpoint/自动 Evolution reconcile；credential-target permit 在 Secret 解析和实际发送处核对 Endpoint，公共 URL 采用 public DNS/socket pinning、redirect 拒绝与流式大小/30 秒时限。独立 generation start/status/result/usage/stop 复用 Native Scheduler，结果限额与 owner 检查，不复制运行表。
+- Cognition：Goals/Evidence/Experience/Evolution 分域权威、来源/预算/Sequence CAS；human label 不暗中自动发布，自动配置、付费学习、正式 publish/rollback 独立审查。Prompt Candidate 撤销 declaration 后保留现有绑定的 rollback 证据，禁止重新 apply。
+- 实际 Runtime/Cognition 6 suites 58/58；Goal S11/S12/S14 36 项、Scheduler 7 项；PromptPreset 5/5、PromptCandidate 20/20、MCP/A2A 6/6。Goal S13 unknown 重试旧断言按“不盲重试”迁移并定向 2/2，相关共享 runner 12 项通过。模型只调用隔离本地测试 Provider，未用真实付费账号。
+- 工具统一回归一轮 122/122（Edge）；其后新增 Session/Archive/Resource 等动作继续做针对测试并待最终全套。Skills Native HTTP 4/4、adapter 3/3；Extensions Native 26/26、adapter 4/4。这些不代替完整隔离 Atria 或真实人工审批验收。
+- Journal 已补父路径检查、容量/保留策略与无未知重放；5/5 调度/恢复测试通过。E6 继续完成 Bundle、已安装 Package 原字节导出与 Session Archive；E7 正在补生产 Renderer 的 Surface/ScreenshotProof 和真实隔离实例联调。

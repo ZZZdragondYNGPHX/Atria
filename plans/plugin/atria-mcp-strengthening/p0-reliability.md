@@ -110,3 +110,11 @@ Journal 必须有原子更新、意外退出不损坏已确认记录、owner 隔
 建议按照 **P0-A 控制通道和有界调度 → P0-B 操作回执/Journal 与权威 reconcile → P0-C SDK v2/2026 协商和可信审批 → P0-D 大资产传输/多客户端验收** 分为工程子块；依赖交叉时可调整，只要保留冻结的最终性质。允许未来在 P1 域实现前完成核心 P0 基础，不能为了临时“加工具”先绕过审批或资源身份。
 
 **实施细节尚待证实/决定**：Lane 默认并发数与队列优先级、具体 Journal 引擎/GC 保留期、跨进程锁/幂等键格式、是否启用 Tasks 扩展、SDK 固定小版本与真实客户端支持、Asset 传输 API 形状、Worker 隔离方式。若实测与该设计目标冲突，更新同一 Plan 模块解释原因后再实现，不另建并行权威方案。
+
+### 当前实施参数（2026-10-14）
+
+Control/Read/Mutation/Browser 默认并发为 8/4/4/1，队列按 lane 有界，排队上限 30 秒；审批在资源锁外等待，正式执行在目标锁内重核。原生 OCC/事务仍处理跨 MCP 进程竞态，MCP 锁不冒充产品全局锁。
+
+Journal 使用私有目录的原子 JSON 元数据，Windows ACL 或 Unix 0700/0600；拒绝父路径 symlink/junction、源码与产品数据Root。已确认结束记录七天后可回收，unknown 不自动删除或重放；每 owner 最多 1,000 条记录、128 个保留实例目录，超限 fail-closed。活进程标记只用于保守阻止 GC，不证明原生业务正在运行。操作正文、Secret、Lease、审批 continuation 和资产字节不进入 Journal。
+
+SDK server/client/core 精确 2.3.1；实际 wire 测试覆盖两代 stdio。Tasks 扩展保持未宣告，以固定 operation Actions 提供状态与取消；真实客户端人类审批、平台支持必须另有证据。Binary Lane 固定用途与元数据/分块端口取代扩大普通 JSON 响应上限。
