@@ -2,7 +2,7 @@
 
 - Task ID: atria-native-visual-generation-deepening
 - **Status: D-011 / Round 11 C — 已冻结**。从 [decisions.md](decisions.md) 读取跨模块权威，D-009/D-010 的编辑/资产分层见 [media-editing-gallery.md](media-editing-gallery.md)。
-- **Not code**: 以下是新开发必须满足的协议/可调产品默认，而非现有 Native 插画、Canvas 或外部 API 已通过测试。Round 12 才确定各 Provider 实际编辑能力、Vibe/LoRA/ControlNet 的组合与降级/联测。
+- **Not code**: 以下是新开发必须满足的协议/可调产品默认，而非现有 Native 插画、Canvas 或外部 API 已通过测试。D-012 已确定各 Provider 的研究矩阵、模型/Workflow 级三态声明与 Reference/Vibe/LoRA/ControlNet 分级降级和 L1/L2/L3 验收边界；**真正的 Live 能力仍依赖逐 Target 实测**。详见 [provider-editing-matrix.md](provider-editing-matrix.md)。
 - Baseline: main@7e1045ab836c22cafbc92c5de056ad701f56e723；2026-10-14 GitHub 远端静态审计。
 
 ## 1. Canonical Mask 坐标、像素及提交不可变性
@@ -51,4 +51,4 @@
 
 ## 7. Decision boundary and next discussion
 
-以上 Mask 数值语义/坐标、混合检查点草稿、能力声明和 unknown 守卫、Gallery 默认 UI、双扫描及 30/7 天初始保留、SavePoint 完整编辑闭包与导入验收原则构成 **D-011 已批准合同**。具体字段名/数据表/Provider 真正支持哪些模型及 Vibe/LoRA/ControlNet、上传/编辑限制、费用、用户确认降级与真实联测**必须在 Round 12 或后续另行冻结**。开发分支暂不创建。
+以上 Mask 数值语义/坐标、混合检查点草稿、能力声明和 unknown 守卫、Gallery 默认 UI、双扫描及 30/7 天初始保留、SavePoint 完整编辑闭包与导入验收原则构成 **D-011 已批准合同**。**D-012 已冻结** Provider/Reference/LoRA/ControlNet 的两层矩阵、Typed Constraints 与显式降级/三级验收；但具体连接的 Live 能力和收费仍须在用户授权的真实 Target 下验证。精确资源/数据库/API 字段及跨平台设置 UI 由 **Round 13** 讨论。开发分支暂不创建。
