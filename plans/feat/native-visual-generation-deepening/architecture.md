@@ -83,5 +83,5 @@ VisualOutput:
 ## 5. Decision checkpoint
 
 - **D-001 ～ D-013** 已确认：混合模式、Commit 后生成、语义 IR/Adapter/能力协商、跨家族分期与三层 Profile、Identity/State/References 分层视觉权威、证据驱动混合状态更新与参考图仲裁、分级场景价值筛选与隔离预算/可靠 ImageJob、跨回合 Scene/Shot 和自适应评分/预算默认/恢复精细策略、**分层 Media Studio/不可变 DAG/可逆编辑，D-011 精确 Mask/草稿、Gallery/GC/SavePoint，D-012 的跨 Provider 三态能力/显式降级/三级验收，以及 D-013 Native API/数据边界/三层设置/三端 UI 和七阶段 25 子阶段完整交付路线**。权威摘要在 [decisions.md](decisions.md)，实现约束分别在 [provider-protocol.md](provider-protocol.md) 和 [visual-continuity.md](visual-continuity.md)。
-- **Round 13 已冻结，E0 审计进行中**：方案 C 已确认 Native 逻辑 API/IR/Job/Media/SavePoint 职责、三层配置与跨平台 UI、S0～S6/25 子阶段及最终验收原则，见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)。剩余具体请求/数据库/API Schema、外部 L3 环境/权限和交接工作清单须经 E0 审计分类，不能把静态文档当可执行代码或实测证据。
-- 其他未决议题：UI 的具体控件/表单、Provider 实际报价与已配置 Target Live 能力、参考图/Vibe 原生参数、媒体与 Job 精确数据库表/迁移/HTTP 路由、SavePoint/GC 真实事务与 Provider 对账；视频和成熟多层编辑未纳入当前范围。E0 审计将分类处理。
+- **Round 13 已冻结，E0 静态审计已完成**：方案 C 确认 Native 逻辑 API/IR/Job/Media/SavePoint 职责、三层配置与跨平台 UI、S0～S6/25 子阶段及最终验收原则，见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md)。精确 Schema、外部 L3/三端证据及 Codex 交接已按阶段/类型收录在 [e0-closure-audit.md](e0-closure-audit.md)；静态审计不等于代码或 Live 通过。
+- 其他未决议题：UI 的具体控件/表单、Provider 实际报价与已配置 Target Live 能力、参考图/Vibe 原生参数、媒体与 Job 精确数据库表/迁移/HTTP 路由、SavePoint/GC 真实事务与 Provider 对账；视频和成熟多层编辑未纳入当前范围。详见 [e0-closure-audit.md](e0-closure-audit.md) 的 E0-01～15 分类，不重复定义第二套合同。
