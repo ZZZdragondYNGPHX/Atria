@@ -31,19 +31,32 @@
 - **Image Evidence**：每一生成版本保持非秘密的冻结 IR/编译结果指纹、Provider 模型/工作流身份、有效能力/实际参数与来源分支快照，保留历史可追溯性与 AssetStore、SavePoint/分支安全。不能继续在通用图片校验层硬调用 NovelAI 专用渲染器。
 - **Reason**：可实现 NovelAI/ComfyUI/SD/云图像 API 的真实能力差异，同时避免角色/世界视觉连续性重复实现、图片历史锁死于某家 Provider。
 - **Affected modules**：[provider-protocol.md](provider-protocol.md)（本决定的详细分层约束）；未来 image compiler、provider registry、capability manifest、image-job、asset/evidence、设置 UI。
-- **Scope limit**：只冻结**架构分层与能力/历史不变量**；并**未**批准具体字段/接口名、具体的 Provider 接入名单与优先级、默认模型、账号/密钥策略、支持图生图/Vibe/视频的首发范围。第四轮再决定后端路线与选择配置。
+- **Scope limit**：架构分层与能力/历史不变量已冻结；Provider 范围、顺序与三层配置遵循 D-004。精确 IR/API 字段、默认模型、自动调用许可、图生图/Vibe/视频等细化范围仍待议。
+
+## D-004（2026-10-14，Round 4）— 多后端分期完整覆盖与三层配置
+
+- **Decision**：用户选择 **方案 B：跨家族分阶段完整覆盖**。逐家族实现同一 Image Prompt IR / Capability Negotiation / ImageJob / AssetStore 体系。
+- **P0（首批）**：NovelAI 官方及明确协议兼容接口（V3、V4、V4.5、V5；V5 需要独立能力与协议校验）；ComfyUI 自部署 Workflow API；OpenAI 官方 Images API。
+- **P1（后续纳入本企划范围）**：Gemini 原生图像生成（含当时可用 Nano Banana 类模型）、SD WebUI / A1111 / Forge 兼容 API、RunningHub Workflow API。
+- **P2（可扩展机制，不承诺任意通用兼容）**：后续经过明确协议验证的其他图片 Provider，可复用 Adapter 注册体系增量加入。
+- **三层配置**：`Image Connection`（服务连接、Endpoint、Secret）；`Image Target Profile`（具体模型/版本或 Workflow、Provider-native 参数与实际能力清单）；`Image Rendering Profile`（画风/风格约束与默认 Target 策略）。一条 Connection 可关联多个模型/Workflow Target，渲染语义不能与 Provider-native 参数混为一层。
+- **配置覆盖顺序**：**单次任务 > 单标注 > 作品 > 全局默认**，缺省逐级继承；用户可显式按作品、标注或任务选目标。提示词 LLM Runtime Route 与图片 Connection/Target 分离。
+- **执行边界**：工作流按节点类型校验映射，不能在 JSON 中任意字符串替换；真实请求固定 Target/Connection/参数指纹与非秘密证据。未经后续批准不得静默丢弃必要能力，亦不得因为失败就自动切换收费 Provider。默认模型/预算/fallback 策略未在本轮批准。
+- **Reason**：同时覆盖角色插画、工作流本地部署与云端自然语言生图，又不把所有后端强行归一成同一套 steps/sampler 或同一张账号设置表。P0/P1 是交付先后而非永久排除 P1。
+- **Affected modules**：[provider-protocol.md](provider-protocol.md) §5；未来 Provider Registry、Target/Rendering 配置与 UI、资产/请求证据和任务调度。
+- **Scope limit**：本轮冻结的是 **后端家族、开发优先级与三层配置及覆盖关系**，不等于已完成任何接入，也**不等于**获准一次性实现所有 Provider 特有的图生图/参考图/Vibe/视频/控制插件；这些需后续逐项定案。
 
 ## 基线与合规约束（非单独由用户冻结的架构方案）
 
 - Atria 当前 Native Session、插画呈现、AssetStore、Task Scheduler 是应审查并优先复用的已存在实现；“完全恢复旧 SD 插件作为主体系”并不是已选择的开发方向。
 - st-chatu8 以 AFPL v9 分发，不得未经许可直接复制代码、预设与素材进入 Atria；可独立借鉴需求/交互。见 [静态审计](baseline-and-reference.md)。
-- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。第三轮 D-003 已确定 Provider 抽象原则，但具体改造范围、Provider 名单及功能边界仍待后续明确批准。
+- 这些是现有事实、工程约束与版权边界，**不等于用户额外批准了某项架构提案**。D-003 / D-004 已确定 Provider 抽象、范围、优先级与配置骨架，但具体 API、子功能矩阵及视觉一致性边界仍待议。
 
 ## Unresolved; **not** decisions
 
 - Round 2 的触发时机已由 D-002 冻结；Visual Director 的**决策策略、频率、默认模式、自动请求授权/审批边界**仍待定。
-- 视觉角色/世界状态的权威与跨分支视觉连续性。
+- Round 5 待定：视觉角色身份/固定外观、服装和剧情状态权威、跨存档分支一致性、参考图、Vibe Transfer 的使用与冲突边界。
 - D-003 已冻结语义统一/Adapter/能力协商的分层原则；**实际请求/响应 Schema、能力配置及降级策略尚未冻结**。
-- Round 4 待定：NovelAI V5、ComfyUI、SD/Forge、RunningHub、Cloud Image API 的支持范围、落地顺序及模型/连接/Workflow 选择配置。
+- Round 4 后端家族、P0/P1/P2 优先级、三层配置与四级选择覆盖已由 D-004 冻结；**具体模型 IDs、协议参数、能力探测与默认生图 Profile** 未冻结。
 - 图生图、局部重绘、Vibe、参考图、视频、批量生成的进入阶段与默认行为。
 - 自动预算、任务持久化/续接、缓存键、失败处理及删除/GC 策略。
