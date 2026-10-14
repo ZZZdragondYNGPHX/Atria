@@ -116,6 +116,15 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     recoveryStatus.setAttribute('role', 'status');
     recoveryPanel.append(recoveryTitle, recoveryActions, recoveryStatus);
     recovery.append(recoveryPanel);
+    // Reserve the collapsed Host toolbar even when the package fills the Stage.
+    // Expanded recovery remains an intentional overlay, independent of package UI.
+    const reserveRecoverySpace = () => {
+        root.style.paddingTop = `${Math.ceil(recoveryTitle.getBoundingClientRect().height || 48) + 16}px`;
+    };
+    const recoveryResize = typeof globalThis.ResizeObserver === 'function'
+        ? new globalThis.ResizeObserver(reserveRecoverySpace) : null;
+    recoveryResize?.observe(recoveryTitle);
+    reserveRecoverySpace();
     const buttons = new Map(), pending = new Set();
     const allowed = action => options.getCapabilities?.()?.[action] !== false;
     const sync = () => { for (const [action, button] of buttons) button.disabled = pending.has(action) || !allowed(action); };
@@ -151,6 +160,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     const hidden = [];
     let returnFocus = null;
     let stageOwnership = null;
+    let restoreDockOpen = false;
     let active = false;
     let disposed = false;
 
@@ -184,6 +194,8 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
 
         if (shellScoped) {
             stageOwnership = nativePlayHost.acquireStageOwnership('game-runtime:full');
+            restoreDockOpen = shell.isDockOpen?.() === true;
+            shell.setDockOpen?.(false);
             root.hidden = false;
         } else {
             for (const id of HIDDEN_TARGET_IDS) {
@@ -198,6 +210,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         documentRef.addEventListener('keydown', onEscape, true);
         documentRef.body.dataset.atriaGameFullActive = 'true';
         active = true;
+        reserveRecoverySpace();
         recoveryTitle.focus({ preventScroll: true });
         return true;
     }
@@ -206,6 +219,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         if (disposed) return;
         disposed = true;
         observer.disconnect(); for (const unsubscribe of unsubscribers) unsubscribe();
+        recoveryResize?.disconnect();
         active = false;
         documentRef.removeEventListener('keydown', onEscape, true);
 
@@ -214,6 +228,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         }
         stageOwnership?.release?.();
         stageOwnership = null;
+        if (restoreDockOpen) shell.setDockOpen?.(true);
 
         delete documentRef.body.dataset.atriaGameFullActive;
         const restoreFocus = recovery.contains(documentRef.activeElement) || root.contains(documentRef.activeElement);
