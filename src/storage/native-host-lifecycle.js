@@ -1,0 +1,170 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { NativeHostOwner } from './native-host-owner.js';
+import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
+import { hashNativeDocument, putMutable } from '../native/repositories/common.js';
+
+const active = new AsyncLocalStorage();
+const error = () => Object.assign(new Error('Native Host fence is no longer current'), { code: 'native_orchestration_writer_unavailable' });
+
+/** Attach once to the original Engine, before any repository, recovery or schema write. */
+export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoot = null, hostOwner = null }) {
+    if (engine.nativeHostLifecycle) throw new TypeError('Native Host lifecycle is already attached');
+    const owner = hostOwner ?? new NativeHostOwner();
+    const transaction = engine.withTransaction.bind(engine), closeEngine = engine.close.bind(engine);
+    const ready = new Map(), fences = new Map(), minimumGenerations = new Map(), operations = new Set(), blocked = new Set();
+    let accepting = true, databaseReady, closing;
+
+    function assertActive(handle) {
+        owner.assertActive();
+        if (!accepting || blocked.has(handle)) throw error();
+    }
+
+    async function ensureDatabase() {
+        owner.assertActive();
+        if (dataRoot !== null) await owner.acquireLocal(dataRoot);
+        if (['mysql', 'postgres'].includes(engine.kind)) {
+            databaseReady ??= owner.acquireDatabase(engine);
+            await databaseReady;
+        }
+    }
+
+    async function ensure(handle) {
+        assertActive(handle);
+        if (!ready.has(handle)) {
+            const pending = (async () => {
+                // Local roots (including SQL installations) share the same
+                // identity/guard protocol. Obtain ownership before recovery.
+                const identity = await owner.acquireLocal(directoriesByHandle(handle).root);
+                await ensureDatabase();
+                const fenceKey = { kind: NATIVE_RESOURCE_KINDS.hostFence, handle };
+                const fence = await transaction(handle, async tx => {
+                    owner.assertActive();
+                    const previous = await tx.getResource(fenceKey);
+                    if (previous && (hashNativeDocument(previous.doc) !== previous.integrity || previous.doc.schemaVersion !== 1
+                        || !Number.isSafeInteger(previous.doc.generation) || previous.doc.generation < 1)) throw error();
+                    const generation = Math.max(previous?.doc.generation ?? 0, minimumGenerations.get(handle) ?? 0) + 1;
+                    if (!Number.isSafeInteger(generation)) throw error();
+                    const next = { schemaVersion: 1, generation, hostBootId: owner.hostBootId, ownerInstanceId: identity.instanceId };
+                    await putMutable(tx, fenceKey, next, { expectedIntegrity: previous?.integrity ?? null });
+                    owner.assertActive();
+                    return next;
+                }, { retryMode: 'known_rollback_only' });
+                fences.set(handle, fence);
+                minimumGenerations.set(handle, fence.generation);
+            })();
+            ready.set(handle, pending);
+            // Failure is sticky for this boot. Never reconnect under old authority.
+        }
+        await ready.get(handle);
+        assertActive(handle);
+    }
+
+    async function checkFence(handle, tx) {
+        owner.assertActive();
+        const expected = fences.get(handle);
+        if (!expected) throw error();
+        // Session-scoped SQL Owner and a shared fence row lock are distinct:
+        // takeover must wait for all old write transactions to finish.
+        if (typeof tx.lockNativeHostFence === 'function') await tx.lockNativeHostFence(handle);
+        const record = await tx.getResource({ kind: NATIVE_RESOURCE_KINDS.hostFence, handle });
+        if (!record || hashNativeDocument(record.doc) !== record.integrity || hashNativeDocument(expected) !== record.integrity) throw error();
+        return expected;
+    }
+
+    function track(handle, operation) {
+        assertActive(handle);
+        const entry = { handle, promise: Promise.resolve().then(operation) };
+        operations.add(entry);
+        return entry.promise.finally(() => operations.delete(entry));
+    }
+
+    const lifecycle = {
+        hostBootId: owner.hostBootId,
+        async assertWriter(handle, tx) {
+            const scope = active.getStore();
+            if (!scope?.open || scope.lifecycle !== lifecycle || scope.handle !== handle || scope.tx !== tx) throw error();
+            return checkFence(handle, tx);
+        },
+        assertActive: () => { owner.assertActive(); if (!accepting) throw error(); },
+        // Correlated workers consult this permit; they never receive Engine ownership.
+        invalidate: () => owner.invalidate(),
+    };
+    Object.defineProperty(engine, 'nativeHostLifecycle', { value: Object.freeze(lifecycle) });
+
+    engine.withTransaction = async (handle, fn, options = {}) => {
+        const scope = active.getStore();
+        if (scope?.open && scope.lifecycle === lifecycle && scope.handle === handle) {
+            owner.assertActive();
+            return fn(scope.tx);
+        }
+        return track(handle, async () => {
+            await ensure(handle);
+            return transaction(handle, async tx => {
+                await checkFence(handle, tx);
+                const state = { lifecycle, handle, tx: null, open: true };
+                const scoped = new Proxy(tx, { get(target, field) {
+                    const value = target[field];
+                    if (typeof value !== 'function') return value;
+                    return (...args) => {
+                        owner.assertActive();
+                        if (!state.open) throw error();
+                        return value.apply(target, args);
+                    };
+                } });
+                state.tx = scoped;
+                try {
+                    const result = await active.run(state, () => fn(scoped));
+                    await checkFence(handle, tx);
+                    return result;
+                } finally { state.open = false; }
+            }, { ...options, retryMode: 'known_rollback_only' });
+        });
+    };
+
+    for (const method of ['ping', 'dumpUser', 'scanNativeCandidates']) {
+        if (typeof engine[method] !== 'function') continue;
+        const original = engine[method].bind(engine);
+        engine[method] = async (handle, ...args) => track(handle, async () => {
+            if (handle != null) await ensure(handle); else await ensureDatabase();
+            return original(handle, ...args);
+        });
+    }
+
+    for (const method of ['deleteUser', 'restoreUser']) {
+        const original = engine[method].bind(engine);
+        engine[method] = async (handle, ...args) => {
+            assertActive(handle);
+            if (active.getStore()?.open) throw error();
+            // Block new operations first; await existing transactions before
+            // replacing/deleting the database. The lifetime guard stays held.
+            blocked.add(handle);
+            const previous = [...operations].filter(entry => entry.handle === handle);
+            const entry = { handle, promise: (async () => {
+                try {
+                    await Promise.allSettled(previous.map(entry => entry.promise));
+                    owner.assertActive();
+                    await ensureDatabase();
+                    await owner.acquireLocal(directoriesByHandle(handle).root);
+                    const result = await original(handle, ...args);
+                    ready.delete(handle); fences.delete(handle);
+                    return result;
+                } catch (failure) { owner.invalidate(); throw failure; } finally { blocked.delete(handle); }
+            })() };
+            operations.add(entry);
+            return entry.promise.finally(() => operations.delete(entry));
+        };
+    }
+
+    engine.close = () => {
+        closing ??= (async () => {
+            accepting = false;
+            await Promise.allSettled([...operations].map(entry => entry.promise));
+            // If Engine close fails keep ownership until process exit. A new
+            // Host must never enter while the old Engine may still write.
+            await closeEngine();
+            await owner.close();
+        })();
+        return closing;
+    };
+    return lifecycle;
+}

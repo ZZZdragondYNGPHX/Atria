@@ -79,6 +79,7 @@ async function clearSelectedEngineCategories(engine, handle, selection) {
         if (categories.native) {
             await engine.withTransaction(handle, async tx => {
                 for (const kind of NATIVE_STORAGE_KINDS) {
+                    if (kind === NATIVE_RESOURCE_KINDS.hostFence) continue;
                     if (PERSONA_BACKUP_KINDS.includes(kind)) continue;
                     for (const record of await tx.listResources({ kind, handle })) await tx.deleteResource(record.key);
                 }

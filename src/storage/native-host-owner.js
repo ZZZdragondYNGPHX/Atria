@@ -17,6 +17,7 @@ export class NativeHostOwner {
     #pending = new Map();
     #valid = true;
     #closing = false;
+    #releases = [];
 
     constructor() {
         this.hostBootId = randomUUID();
@@ -24,6 +25,17 @@ export class NativeHostOwner {
 
     assertActive() {
         if (!this.#valid || this.#closing) throw unavailable();
+    }
+
+    invalidate() { this.#valid = false; }
+
+    async acquireDatabase(engine) {
+        this.assertActive();
+        if (typeof engine.acquireNativeHostOwnership !== 'function') throw unavailable();
+        let release;
+        try { release = await engine.acquireNativeHostOwnership(() => this.invalidate()); } catch (error) { throw unavailable(error); }
+        this.#releases.push(release);
+        this.assertActive();
     }
 
     async acquireLocal(root) {
@@ -88,6 +100,7 @@ export class NativeHostOwner {
     async close() {
         this.#closing = true;
         await Promise.allSettled([...this.#pending.values()]);
+        await Promise.allSettled(this.#releases.splice(0).map(release => release()));
         await Promise.all([...this.#guards.values()].map(({ server }) => new Promise(resolve => server.close(resolve))));
         this.#guards.clear();
         this.#valid = false;

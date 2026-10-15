@@ -1,5 +1,6 @@
 import { PersonaRepo } from '../native/repositories/persona-repo.js';
 import { FsEngine } from './engines/fs-engine.js';
+import { attachNativeHostLifecycle } from './native-host-lifecycle.js';
 import { SqliteEngine } from './engines/sqlite-engine.js';
 import { MysqlEngine } from './engines/mysql-engine.js';
 import { PgEngine } from './engines/postgres-engine.js';
@@ -39,6 +40,8 @@ let _personaRepo = null;
 
 export function initStorage({
     mode = 'fs',
+    dataRoot = null,
+    hostOwner = null,
     directoriesByHandle,
     mysql,
     postgres,
@@ -72,6 +75,7 @@ export function initStorage({
     } else {
         throw new Error(`initStorage: unknown storage mode "${mode}" (expected 'fs', 'sqlite', 'mysql', or 'postgres')`);
     }
+    attachNativeHostLifecycle(_engine, { directoriesByHandle, dataRoot, hostOwner });
     _chatRepo = new ChatRepo({ engine: _engine });
     _settingsRepo = new SettingsRepo({ engine: _engine });
     _presetRepo = new PresetRepo({ engine: _engine });

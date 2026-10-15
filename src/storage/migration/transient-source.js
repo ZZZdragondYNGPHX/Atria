@@ -132,14 +132,20 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
     for (const kind of NATIVE_STORAGE_KINDS) {
         const root = path.join(scratchDirs.nativeResources, kind);
         if (!fs.existsSync(root)) continue;
-        for (const file of fs.readdirSync(root)) {
-            if (!file.endsWith('.json')) continue;
-            const target = path.join(root, file);
-            const envelope = JSON.parse(fs.readFileSync(target, 'utf8'));
-            const key = normalizeNativeResourceKey(envelope.key);
-            if (key.kind !== kind || file !== nativeResourceFileId(key) + '.json') throw new Error('Invalid Native backup resource identity');
-            envelope.key = { ...key, handle: scratchHandle };
-            fs.writeFileSync(target, JSON.stringify(envelope));
+        const pending = [root];
+        while (pending.length) {
+            const directory = pending.pop();
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+                const target = path.join(directory, entry.name);
+                if (entry.isDirectory()) { pending.push(target); continue; }
+                if (!entry.isFile() || !entry.name.endsWith('.json')) throw new Error('Invalid Native backup resource file');
+                const envelope = JSON.parse(fs.readFileSync(target, 'utf8'));
+                const key = normalizeNativeResourceKey(envelope.key);
+                const expected = path.join(root, ...(key.sessionId ? [key.sessionId] : []), nativeResourceFileId(key) + '.json');
+                if (key.kind !== kind || target !== expected) throw new Error('Invalid Native backup resource identity');
+                envelope.key = { ...key, handle: scratchHandle };
+                fs.writeFileSync(target, JSON.stringify(envelope));
+            }
         }
     }
 

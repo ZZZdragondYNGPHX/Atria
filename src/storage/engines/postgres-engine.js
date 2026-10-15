@@ -3,7 +3,9 @@ import { StringDecoder } from 'node:string_decoder';
 import pg from 'pg';
 import { PgTransaction } from './postgres-engine-transaction.js';
 import { initSchema } from './postgres-schema.js';
-import { withRetry } from '../retry.js';
+import { withRetry, isKnownRollbackError } from '../retry.js';
+import { StorageCommitUnknownError } from '../errors.js';
+import { createHash } from 'node:crypto';
 import { logEngineError } from '../engine-logger.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
@@ -68,6 +70,7 @@ export class PgEngine {
             throw new TypeError('PgEngine requires { url: "postgresql://user:pass@host:port/db" }');
         }
         this.kind = 'postgres';
+        this._nativeOwnerUrl = url;
         this._retries = retries;
         // pg.Pool keyed on connection-string + max. Max caps concurrent
         // leases so withTransaction queues past the limit instead of opening
@@ -121,8 +124,23 @@ export class PgEngine {
         }
     }
 
-    async withTransaction(handle, fn) {
+    async acquireNativeHostOwnership(onLost) {
+        const client = new pg.Client({ connectionString: this._nativeOwnerUrl });
+        client.on('error', onLost);
+        client.on('end', onLost);
+        try {
+            await client.connect();
+            const digest = createHash('sha256').update('atria.native-host-owner.v1').digest();
+            const { rows } = await client.query('SELECT pg_try_advisory_lock($1, $2) AS acquired', [digest.readInt32BE(0), digest.readInt32BE(4)]);
+            if (rows[0]?.acquired !== true) throw new Error('Native database already has a Host owner');
+            return async () => { await client.end(); };
+        } catch (error) { await client.end().catch(() => {}); throw error; }
+    }
+
+    async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
+        if (retryMode !== 'known_rollback_only') throw new TypeError('Unsupported storage retryMode');
         await this._ensureSchema();
+        const retryableFailures = new WeakSet();
         try {
             return await withRetry(async () => {
                 const client = await this._pool.connect();
@@ -131,16 +149,20 @@ export class PgEngine {
                     const tx = new PgTransaction({ client, handle });
                     try {
                         const result = await fn(tx);
-                        await client.query('COMMIT');
+                        try { await client.query('COMMIT'); } catch (error) {
+                            if (isKnownRollbackError(error)) throw error;
+                            throw new StorageCommitUnknownError(error);
+                        }
                         return result;
                     } catch (err) {
                         try { await client.query('ROLLBACK'); } catch { /* engine may already have rolled back */ }
+                        if (isKnownRollbackError(err)) retryableFailures.add(err);
                         throw err;
                     }
                 } finally {
                     client.release();
                 }
-            }, { retries: this._retries.transient });
+            }, { retries: this._retries.transient, isRetryable: err => retryableFailures.has(err) });
         } catch (err) {
             logEngineError(this.kind, 'tx', handle, err);
             throw err;

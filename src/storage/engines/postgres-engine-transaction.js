@@ -58,6 +58,9 @@ export class PgTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async lockNativeHostFence(handle) {
+        await this._client.query('SELECT integrity FROM native_resources WHERE handle = $1 AND kind = $2 AND resource_key = $3 FOR SHARE', [handle, 'atri_host_fence', '[]']);
+    }
     async getChatRange(key, options = {}) {
         if (key?.kind !== 'chat') throw new Error('PgTransaction.getChatRange: chat resource required');
         return this._h(key.kind, 'getChatRange').range(key, options);

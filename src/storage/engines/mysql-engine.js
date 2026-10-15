@@ -3,7 +3,9 @@ import { StringDecoder } from 'node:string_decoder';
 import mysql from 'mysql2/promise';
 import { MysqlTransaction } from './mysql-engine-transaction.js';
 import { initSchema } from './mysql-schema.js';
-import { withRetry } from '../retry.js';
+import { withRetry, isKnownRollbackError } from '../retry.js';
+import { StorageCommitUnknownError } from '../errors.js';
+import { createHash } from 'node:crypto';
 import { logEngineError } from '../engine-logger.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
@@ -109,6 +111,7 @@ export class MysqlEngine {
             throw new TypeError('MysqlEngine requires { url: "mysql://user:pass@host:port/db" }');
         }
         this.kind = 'mysql';
+        this._nativeOwnerUrl = url;
         this._acquireTimeoutMs = acquireTimeoutMs;
         this._retries = retries;
         // mysql2/promise pool. charset=utf8mb4 keeps inserts consistent with
@@ -163,8 +166,26 @@ export class MysqlEngine {
         }
     }
 
-    async withTransaction(handle, fn) {
+    async acquireNativeHostOwnership(onLost) {
+        // Never take the lifetime lock from the business pool (including max=1).
+        const conn = await mysql.createConnection(this._nativeOwnerUrl);
+        conn.on('error', onLost);
+        conn.on('end', onLost);
+        try {
+            const [databaseRows] = await conn.query('SELECT DATABASE() AS databaseName');
+            const database = databaseRows[0]?.databaseName;
+            if (!database) throw new Error('Native Owner requires an actual database');
+            const lockName = 'atria.native-host.' + createHash('sha256').update(database).digest('hex').slice(0, 40);
+            const [rows] = await conn.execute('SELECT GET_LOCK(?, 0) AS acquired', [lockName]);
+            if (rows[0]?.acquired !== 1) throw new Error('Native database already has a Host owner');
+            return async () => { await conn.end(); };
+        } catch (error) { await conn.end().catch(() => {}); throw error; }
+    }
+
+    async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
+        if (retryMode !== 'known_rollback_only') throw new TypeError('Unsupported storage retryMode');
         await this._ensureSchema();
+        const retryableFailures = new WeakSet();
         try {
             return await withRetry(async () => {
                 const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
@@ -173,16 +194,21 @@ export class MysqlEngine {
                     const tx = new MysqlTransaction({ conn, handle });
                     try {
                         const result = await fn(tx);
-                        await conn.commit();
+                        try { await conn.commit(); } catch (error) {
+                            if (isKnownRollbackError(error)) throw error;
+                            throw new StorageCommitUnknownError(error);
+                        }
                         return result;
                     } catch (err) {
-                        try { await conn.rollback(); } catch { /* engine may already have rolled back */ }
+                        let rolledBack = false;
+                        try { await conn.rollback(); rolledBack = true; } catch { /* unknown COMMIT stays unknown */ }
+                        if (isKnownRollbackError(err) && (rolledBack || err.code === 'ER_LOCK_DEADLOCK')) retryableFailures.add(err);
                         throw err;
                     }
                 } finally {
                     conn.release();
                 }
-            }, { retries: this._retries.transient });
+            }, { retries: this._retries.transient, isRetryable: err => retryableFailures.has(err) });
         } catch (err) {
             logEngineError(this.kind, 'tx', handle, err);
             throw err;
