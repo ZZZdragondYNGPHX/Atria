@@ -914,8 +914,10 @@ export class NativeGenerationHost {
 
     async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null, orchestrationSend = null } = {}) {
         const sendBank = orchestrationSend?.bank;
+        const scopedContext = orchestrationSend?.context;
         if (value.orchestrationSend !== undefined) fail('native_generation_host_readonly');
         if (orchestrationSend && (!sendBank || preview || preflight || taskPlan || illustrationPlan || lanePlan?.budgetContext)) fail('native_generation_budget_lane_denied');
+        if (scopedContext && (value.messages?.length || value.prompt || value.tools?.length)) fail('native_generation_context_denied');
         if (sendBank) {
             effectPolicy = 'no-background-model';
             await sendBank.assertCurrent();
@@ -955,7 +957,7 @@ export class NativeGenerationHost {
             source = { kind: input.taskId ? 'task' : 'studio', projectId: input.projectId, revision: input.revision, ...(input.taskId ? { taskId: input.taskId } : {}) };
             runtime = project.source.package.runtime;
             if (input.taskId) {
-                const context = preview ? await this.agent.observeContext(handle, input.projectId, input.taskId)
+                const context = preview || sendBank ? await this.agent.observeContext(handle, input.projectId, input.taskId)
                     : await this.agent.getContext(handle, input.projectId, input.taskId);
                 projectTaskEvidence = { source: 'native.project-task', ref: input.taskId + ':' + context.task.executionFingerprint };
                 projectConversation = context.task.conversation;
@@ -972,6 +974,7 @@ export class NativeGenerationHost {
             runtime = preflightPackage.manifest.runtime;
         } else fail('native_generation_context_required');
         const budget = illustrationPlan ? null : runtime?.experienceContract?.generationBudget;
+        if (scopedContext) scopedContext.port.assertSource(handle, { context: scopedContext.compiled, source });
         if (sendBank) {
             const authority = sendBank.authorityRef;
             if (budget || (input.sessionId ? authority.domain !== 'session' || authority.sessionId !== input.sessionId
@@ -1153,7 +1156,9 @@ export class NativeGenerationHost {
             ? { source: 'native.session-task', ref: input.requestId + ':' + taskPlan.executionFingerprint } : null;
         const taskProvenance = () => [sessionTaskEvidence, ...(taskHistory?.compaction
             ? [{ source: 'native.session-task-compaction', ref: '1:' + hashNativeDocument(taskHistory.compaction) }] : [])];
+        const scopedProvider = scopedContext?.port.provider(handle, { context: scopedContext.compiled, source });
         const buildContext = async (request, resolved) => {
+            if (scopedProvider) return scopedProvider.buildRequestContextPlan(request, resolved);
             if (prediction) {
                 await assertPredictionCaptureCurrent(prediction.capture);
                 return { schemaVersion: 1, requestId: request.requestId, source,
@@ -1387,7 +1392,9 @@ export class NativeGenerationHost {
                                 if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
                                 if (input.role === 'illustration_prompt' && this.persistence._engine) await new VisualStore({ engine: this.persistence._engine }).reservePlanner(handle,
                                     { reservationId: attemptId + ':' + retry, tokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens });
+                                await orchestrationSend?.beforeSend?.({ receipt, prepared, resolved });
                                 if (sendBank) await sendBank.assertCurrent();
+                                if (scopedContext) await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'send' });
                                 const response = await provider.send(rendered, boundary);
                                 attempt.status = 'success';
                                 capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
@@ -1436,6 +1443,7 @@ export class NativeGenerationHost {
             throw error;
         }
         if (authorityContext?.mode === 'narrator' && (result.response.toolCalls?.length || result.response.tool_calls?.length)) fail('native_narrator_outcome_denied');
+        if (scopedContext) await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'consume' });
         if (prediction) {
             await assertPredictionCaptureCurrent(prediction.capture);
             if (result.response?.toolCalls?.length || result.response?.tool_calls?.length) fail('native_prediction_tools_denied');

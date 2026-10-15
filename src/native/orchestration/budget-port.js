@@ -18,6 +18,12 @@ export function sendAttemptId(effectId, providerSendOrdinal) {
     return hashNativeDocument({ effectId, providerSendOrdinal });
 }
 
+export function localWorkAttemptId(effectId, localWorkOrdinal) {
+    assertNativeId(effectId, 'orchestrationEffect');
+    if (!Number.isSafeInteger(localWorkOrdinal) || localWorkOrdinal < 0 || localWorkOrdinal > 1023) fail('native_orchestration_send_ordinal_invalid');
+    return hashNativeDocument({ effectId, localWorkOrdinal });
+}
+
 export function assertBudgetAuthorityRef(ref) {
     if (ref?.authority === 'project_task') {
         fields(ref, ['authority', 'projectId', 'taskId', 'operationId'], 'Project budget authority');
@@ -36,6 +42,13 @@ export function assertBudgetAuthorityRef(ref) {
 }
 
 export function assertBudgetAttemptRef(ref) {
+    if (ref?.kind === 'local_work') {
+        fields(ref, ['kind', 'authorityRef', 'effectId', 'localWorkOrdinal', 'attemptId', 'reservationId'], 'Local budget attempt reference');
+        assertBudgetAuthorityRef(ref.authorityRef);
+        if (ref.attemptId !== localWorkAttemptId(ref.effectId, ref.localWorkOrdinal)
+            || (ref.reservationId !== null && (typeof ref.reservationId !== 'string' || !ref.reservationId))) fail('native_orchestration_budget_attempt_invalid');
+        return ref;
+    }
     fields(ref, ['authorityRef', 'effectId', 'providerSendOrdinal', 'attemptId', 'reservationId'], 'Budget attempt reference');
     assertBudgetAuthorityRef(ref.authorityRef);
     if (ref.attemptId !== sendAttemptId(ref.effectId, ref.providerSendOrdinal)) fail('native_orchestration_budget_attempt_invalid');
@@ -58,7 +71,7 @@ export class BudgetPort {
         }
         if (source?.domain === 'project') {
             if (!this.projectAgent) fail('native_orchestration_budget_unavailable');
-            const { task } = await this.projectAgent.getContext(handle, source.projectId, source.taskId);
+            const { task } = await this.projectAgent.observeContext(handle, source.projectId, source.taskId);
             return { authority: 'project_task', projectId: source.projectId, taskId: source.taskId, operationId: this.#projectOperation(source, task) };
         }
         if (source?.domain === 'rp_chat') {
@@ -66,6 +79,7 @@ export class BudgetPort {
             fields(source, ['domain', 'controlId', 'source'], 'RP budget source');
             const ref = { authority: 'run_control', domain: 'rp_chat', controlId: source.controlId, source: structuredClone(source.source),
                 operationId: hashNativeDocument({ controlId: source.controlId, input: source.source.input, purpose: source.source.purpose, outputSlot: source.source.outputSlot }) };
+            await this.rpControl.context(handle, source.controlId, source.source);
             return assertBudgetAuthorityRef(ref);
         }
         fail('native_orchestration_budget_unavailable');
@@ -84,7 +98,7 @@ export class BudgetPort {
     }
 
     async #project(handle, ref) {
-        const { task } = await this.projectAgent.getContext(handle, ref.projectId, ref.taskId);
+        const { task } = await this.projectAgent.observeContext(handle, ref.projectId, ref.taskId);
         if (this.#projectOperation(ref, task) !== ref.operationId) throw new ConflictError('native_generation_revision_conflict');
         return task;
     }
@@ -122,6 +136,15 @@ export class BudgetPort {
     // Observation/settlement follow the frozen operation identity, not current source.
     async observeAttempt(handle, budgetAttemptRef) {
         const { authorityRef: ref, attemptId } = assertBudgetAttemptRef(budgetAttemptRef);
+        if (budgetAttemptRef.kind === 'local_work') {
+            const engine = ref.domain === 'session' ? this.sessionCore.runs.repo._engine : ref.authority === 'project_task' ? this.projectRepository.engine : this.rpControl._engine;
+            return engine.withTransaction(handle, async tx => {
+                const ledger = await this.#ledger(handle, tx, ref);
+                const row = ledger?.localWork?.find(item => item.attemptId === attemptId);
+                if (!row || (row.reservationId ?? null) !== budgetAttemptRef.reservationId) fail('native_generation_attempt_conflict');
+                return structuredClone(row);
+            });
+        }
         const row = ref.domain === 'session' ? (await this.sessionCore.runs.observeCompute(handle, ref.sessionId, ref.operationId, attemptId)).compute
             : ref.authority === 'project_task' ? (await this.projectAgent.observeCompute(handle, ref.projectId, ref.taskId, attemptId)).compute
                 : (await this.rpControl.observeCompute(handle, ref.controlId, ref.operationId, attemptId)).compute;
@@ -130,6 +153,7 @@ export class BudgetPort {
 
     async settleAttempt(handle, budgetAttemptRef, usage) {
         const { authorityRef: ref, attemptId } = assertBudgetAttemptRef(budgetAttemptRef);
+        if (budgetAttemptRef.kind === 'local_work') return this.settleLocalWork(handle, ref, attemptId, usage);
         if (ref.domain === 'session') return this.sessionCore.runs.settleCompute(handle, ref.sessionId, ref.operationId, attemptId, usage);
         if (ref.authority === 'project_task') return this.projectAgent.settleGeneration(handle, ref.projectId, ref.taskId, attemptId, usage);
         return this.rpControl.settleCompute(handle, ref.controlId, ref.operationId, attemptId, usage);
@@ -164,6 +188,19 @@ export class BudgetPort {
         return this.rpControl.settleLocalWork(handle, authorityRef.controlId, authorityRef.operationId, attemptId, usage);
     }
 
+    async assertCurrent(handle, authorityRef) {
+        assertBudgetAuthorityRef(authorityRef);
+        if (authorityRef.domain === 'session') await this.#session(handle, authorityRef);
+        else if (authorityRef.authority === 'project_task') await this.#project(handle, authorityRef);
+        else await this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
+    }
+
+    async #ledger(handle, tx, authority) {
+        if (authority.domain === 'session') return (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute;
+        if (authority.authority === 'project_task') return (await this.projectRepository.get(handle, authority.projectId, authority.taskId))?.compute;
+        return (await this.rpControl.status(handle, authority.controlId))?.operations[authority.operationId]?.compute;
+    }
+
     /**
      * EffectController hook, called inside the Host transaction. It reads the
      * original bank in the same Engine transaction without taking domain locks
@@ -173,11 +210,9 @@ export class BudgetPort {
         const ref = assertBudgetAttemptRef(budgetAttemptRef), authority = ref.authorityRef;
         if (hashNativeDocument(authority) !== hashNativeDocument(root.budgetAuthorityRef)) fail('native_orchestration_budget_authority_mismatch');
         if (ref.effectId !== intent.effectId) fail('native_orchestration_budget_attempt_invalid');
-        let ledger;
-        if (authority.domain === 'session') ledger = (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute;
-        else if (authority.authority === 'project_task') ledger = (await this.projectRepository.get(handle, authority.projectId, authority.taskId))?.compute;
-        else ledger = (await this.rpControl.status(handle, authority.controlId))?.operations[authority.operationId]?.compute;
-        const row = ledger?.attempts.find(item => item.attemptId === ref.attemptId);
+        if (root.parentRef && ref.reservationId !== root.runId) fail('native_orchestration_budget_reservation_mismatch');
+        const ledger = await this.#ledger(handle, tx, authority);
+        const row = (ref.kind === 'local_work' ? ledger?.localWork : ledger?.attempts)?.find(item => item.attemptId === ref.attemptId);
         if (!row || !ADMITTED.has(row.status) || (row.reservationId ?? null) !== ref.reservationId) fail('native_orchestration_budget_attempt_missing');
         return { status: row.status };
     }
@@ -186,13 +221,17 @@ export class BudgetPort {
     sendBank(handle, { authorityRef, reservationId = null, limits, effectId, firstOrdinal, assertCurrent }) {
         assertBudgetAuthorityRef(authorityRef);
         let ordinal = firstOrdinal;
+        let rpPrefixDigest = null;
         const admitted = new Map();
         return {
             authorityRef,
             assertCurrent: async () => {
-                if (authorityRef.domain === 'session') await this.#session(handle, authorityRef);
-                else if (authorityRef.authority === 'project_task') await this.#project(handle, authorityRef);
-                else await this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
+                await this.assertCurrent(handle, authorityRef);
+                if (authorityRef.domain === 'rp_chat') {
+                    const context = await this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
+                    if (rpPrefixDigest !== null && rpPrefixDigest !== context.prefixDigest) throw new ConflictError('native_generation_revision_conflict');
+                    rpPrefixDigest = context.prefixDigest;
+                }
                 await assertCurrent?.();
             },
             rpContext: () => {
@@ -201,7 +240,19 @@ export class BudgetPort {
             },
             admit: async ({ requestId, targetFingerprint, inputFingerprint, upperBound, reserve, limits: routeLimits }) => {
                 const providerSendOrdinal = ordinal++;
-                const result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: routeLimits ?? limits, reserve });
+                let result;
+                try {
+                    result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: routeLimits ?? limits, reserve });
+                } catch (error) {
+                    if (error.code !== 'storage_commit_unknown') throw error;
+                    const budgetAttemptRef = { authorityRef: structuredClone(authorityRef), effectId, providerSendOrdinal,
+                        attemptId: sendAttemptId(effectId, providerSendOrdinal), reservationId };
+                    // Observation is evidence only. Even a found admission cannot
+                    // turn an unknown durable ACK into a fresh send permission.
+                    let budgetObservation = null;
+                    try { budgetObservation = await this.observeAttempt(handle, budgetAttemptRef); } catch { /* Owner loss or missing facts remain unresolved. */ }
+                    throw Object.assign(new ConflictError('native_orchestration_budget_reconcile_required'), { budgetAttemptRef, budgetObservation });
+                }
                 // A replay returns the original fact; it is never a second send permit.
                 if (result.replayed) throw new ConflictError('native_orchestration_send_replayed');
                 admitted.set(result.budgetAttemptRef.attemptId, result.budgetAttemptRef);

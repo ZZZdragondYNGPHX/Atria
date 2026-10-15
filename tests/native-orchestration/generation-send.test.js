@@ -30,7 +30,7 @@ async function fixture(make, domain) {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     await prepareControllerOwnerRoot(h.dirs.root);
     attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
-    let source, request, port, move;
+    let source, request, port, move, moveHistory;
     const dependencies = {};
     if (domain === 'session') {
         const f = await installFixture(h), base = await f.core.create(h.handle, f.start);
@@ -50,11 +50,15 @@ async function fixture(make, domain) {
     } else {
         const chats = new ChatRepo({ engine: h.engine }), rpControl = new RpRunControl({ engine: h.engine });
         const locator = { charDir: 'Actor', name: 'main', isGroup: false, groupId: null };
-        await chats.save(h.handle, 'Actor', 'main', {}, [{ name: 'User', is_user: true, mes: 'Host-owned RP input', swipe_id: 0, memory_os_source_id: 'm1' }], null);
+        await chats.save(h.handle, 'Actor', 'main', {}, [
+            { name: 'User', is_user: true, mes: 'Earlier source', swipe_id: 0, memory_os_source_id: 'm0' },
+            { name: 'User', is_user: true, mes: 'Host-owned RP input', swipe_id: 0, memory_os_source_id: 'm1' },
+        ], null);
         const { controlId } = await rpControl.bind(h.handle, locator), chat = await chats.get(h.handle, 'Actor', 'main');
-        source = { domain: 'rp_chat', controlId, source: { input: rpOperationInput(chat.body[0], 0), purpose: 'narration', outputSlot: 'assistant' } };
+        source = { domain: 'rp_chat', controlId, source: { input: rpOperationInput(chat.body[1], 1), purpose: 'narration', outputSlot: 'assistant' } };
         port = new BudgetPort({ rpControl }); request = {};
-        move = async () => { const c = await chats.get(h.handle, 'Actor', 'main'); await chats.save(h.handle, 'Actor', 'main', c.header, [{ ...c.body[0], mes: 'Changed' }], c.integrity); };
+        const edit = async floor => { const c = await chats.get(h.handle, 'Actor', 'main'); c.body[floor].mes = 'Changed'; await chats.save(h.handle, 'Actor', 'main', c.header, c.body, c.integrity); };
+        move = () => edit(1); moveHistory = () => edit(0);
     }
     request = { ...request, requestId: 'v04', role: domain === 'project' ? 'studio' : 'narrator', fallbackMode: 'automatic' };
     const seeded = await seedGenerationProfiles({ ...h, roles: [request.role], endpoint: `http://127.0.0.1:${server.address().port}/v1/chat/completions` });
@@ -69,7 +73,7 @@ async function fixture(make, domain) {
     const authorityRef = await port.authorityFor(h.handle, source), effectId = createNativeId('orchestrationEffect'), childRunId = createNativeId('orchestrationRun');
     await port.reserveChild(h.handle, { authorityRef, parentReservationId: null, childRunId, ceiling: limits, limits });
     const bank = () => port.sendBank(h.handle, { authorityRef, reservationId: childRunId, limits, effectId, firstOrdinal: 0 });
-    return { ...h, host, request, bank, seen, errors, port, effectId, authorityRef, childRunId, move,
+    return { ...h, host, request, bank, seen, errors, port, effectId, authorityRef, childRunId, move, moveHistory,
         status: fn => { status = fn; }, usage: flag => { usage = flag; }, beforeSend: fn => { beforeSend = fn; },
         ref: ordinal => ({ authorityRef, effectId, providerSendOrdinal: ordinal, attemptId: sendAttemptId(effectId, ordinal), reservationId: childRunId }),
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.engine.close?.(); await h.cleanup(); } };
@@ -129,6 +133,17 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
                 { orchestrationSend: { bank: f.bank() } })).rejects.toMatchObject({ code: 'native_generation_context_denied' });
             await expect(f.host.execute(f.handle, { ...f.request, orchestrationSend: {} })).rejects.toMatchObject({ code: 'native_generation_host_readonly' });
             expect(f.seen).toHaveLength(1);
+        } finally { await f.cleanup(); }
+    });
+
+    test('RP revoking an earlier context message refuses send even when the operation input is unchanged', async () => {
+        const f = await fixture(make, 'rp_chat');
+        try {
+            const bank = f.bank(), admit = bank.admit;
+            bank.admit = async args => { const receipt = await admit(args); await f.moveHistory(); return receipt; };
+            await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: { bank } })).rejects.toThrow();
+            expect(f.seen).toHaveLength(0);
+            expect(await f.port.observeAttempt(f.handle, f.ref(0))).toMatchObject({ status: 'unknown' });
         } finally { await f.cleanup(); }
     });
 });

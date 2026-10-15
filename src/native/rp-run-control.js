@@ -133,9 +133,11 @@ export class RpRunControl {
         return this._engine.withTransaction(handle, async tx => {
             const { control } = await this._source(tx, handle, controlId, source);
             const chat = await tx.getResource(chatKey(handle, control.locator));
-            return { messages: chat.body.slice(0, source.input.floor + 1).map(message => ({
-                role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant', content: String(message.mes ?? ''),
-            })) };
+            const prefix = chat.body.slice(0, source.input.floor + 1);
+            return { prefixDigest: hashNativeDocument(prefix.map(message => ({ messageId: sourceMessageId(message), content: sourceContent(message) }))),
+                messages: prefix.map(message => ({
+                    role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant', content: String(message.mes ?? ''),
+                })) };
         });
     }
 
