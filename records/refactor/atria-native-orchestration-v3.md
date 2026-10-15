@@ -293,3 +293,10 @@
 - 最新新文件15/15：13个原共用reducer反例/正例，2个真实FS/SQLite原Session/RunControl案例（兄弟CAS、输入重放、model+local未知保留、旧Source拒绝、Engine重开、实际观测及retired totals）。原retirement5/5此前相关版本通过。原G05检索/Embedding/rerank/Narrator130/130全文件复查通过，local reservation接线后相关8/8定向再测通过，其余122为name-filter skip，不计N/A。生产定向ESLint/diff check通过。Provider响应/usage均为隔离synthetic HTTP或明确测试数值，不声称真实收费、端到端V3 Send或SQL通过。
 - 首轮两个失败已收口：released child追加前应拒绝为attempt_conflict，已前置校验并验证不落半行；原检索测试调用当前不存在的forkBranch并在synthetic HTTP回调未捕获异常导致timeout，改用真实restoreSavePoint产生derived Branch、检查branch变化/回调无错，fixture错误显式500后重跑完整130通过。未恢复旧API兼容层。其它尚未运行的原测试若仍引用该旧Native API，须在对应消费/验收阶段核对，不以本文件修正声称全仓测试已清理。
 - P1/P2仍IN_PROGRESS；P3仅共用银行/原Session局部子工作IN_PROGRESS，Project/RP、角色/后台配额、Source/Audience/父子Run授权、实际BudgetPort/GenerationHost Effect+ordinal、活动额度导入失效/保留根未完成；P4–P8未开始。新SQL案例因Docker不可用BLOCKED/NOT_RUN，三端/真实批准/费用/质量未通过，main未集成。工作区无关CLAUDE.md删除未纳入本组。
+
+## 2026-10-16 — W04/P3第二组：原Project Task银行子额度
+
+- Source `74a2ac24a` → `d56159678`已提交推送。原ProjectAgentService在Task自身compute记录上增加reserve/admit/observe/release，复用原_operate CAS与no-background-model effect policy；新准入前共同核对Studio revision与executionFingerprint，settle/observe在来源变化及Engine重开后仍可用，未知费用不被恢复清零。缺limits拒绝为budget_unavailable，携带子reservation但无local budget同样拒绝，不成为免计工作。未新增银行、价格表或metadata kind。
+- 新文件compute-reservations-project FS/SQLite 4/4通过：兄弟CAS仅一方成功、reserve/admit重放、输入指纹冲突、旧revision/停止执行拒绝、unknown观察、Engine重开后迟到实际结算、未结算拒绝释放、释放重放，以及缺银行/缺local预算拒绝。临时删除admit的来源核对后2项失败，恢复后通过，确认用例有效。相关原optional-budget-s26、project-comparison-s24、compute-reservations全部通过；生产/测试定向ESLint与diff check通过。usage为测试数值，不是真实Provider收费。
+- 同轮运行task-runtime-p3：FS/SQLite 4项失败（2×forkBranch不存在，2×native_generation_revision_conflict），在`7ab0abeec`临时worktree与`74a2ac24a`上相同失败，非本组引入；属既有旧fixture/API漂移，留待对应consumer阶段处理，不计通过。其MySQL/Pg 20项及compute-reservations-storage的2项SQL案例因Docker不可用ECONNREFUSED，BLOCKED/NOT_RUN。
+- P1/P2仍IN_PROGRESS；P3已覆盖Session与Project两域银行局部，普通RP银行、角色/后台配额、Source/Audience/父子Run授权、实际BudgetPort/GenerationHost Effect+ordinal接线仍未完成；P4–P8未开始。三端/真实批准/费用/质量未通过，main未集成。工作区无关CLAUDE.md删除未纳入。
