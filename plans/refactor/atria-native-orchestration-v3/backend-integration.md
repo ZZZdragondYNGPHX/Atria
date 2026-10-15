@@ -32,13 +32,13 @@ Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 n
 
 原`/api/native/generation/turn`与`/turn/start`已在有限Native profile消费真实Binding（接口§17.29–§17.30、§17.33），沿原请求/排程/结果接口，不新增V3 Run启动协议。普通Narrator及原authorityRuntime显式typed transaction继续精确Narrator→output图；含原generationBudget的free-text Authority增加精确resolver→Narrator→output三节点链，原角色quota/compute共用Turn bank。原selection复用只接受已有V3保留事实，缺失或无quota的free-text Package仍明确unavailable。精确Binding不支持或过期即拒绝，不回退默认；Task/stages/interpreter和后台未接。安全native_orchestration_*错误保持脱敏，unavailable为503、冲突/过期为409，detached结果由原operation读取；不能将这一有限入口显示为任意Graph/Actor/Tool可运行。
 
-**尚无产品 HTTP**：Run start/get/cancel/resume、GraphPatch、Effect dispatch、RunProjection/long-poll、Approval approve。不得为 UI 接入猜造这些路径。原 authoring 对generation.send仅支持原精确Narrator Route的有限机制证据（接口§17.26）；未接原 capability authority 的能力继续 unknown。可发布机制不是运行grant；publish 不能通过前端布尔值解除。设计原型可以使用明确的无副作用数据，但未接真实接口的产品功能必须显示其实际 unavailable 状态。
+**尚无产品 HTTP**：Run start/get/cancel/resume、GraphPatch、Effect dispatch、RunProjection/long-poll、Approval approve。不得为 UI 接入猜造这些路径。原 authoring 对generation.send支持原精确Narrator/intent_resolver/studio Route的有限机制证据（接口§17.26、§17.33、§17.35）；未接原 capability authority 的能力继续 unknown。可发布机制不是运行grant；publish 不能通过前端布尔值解除。设计原型可以使用明确的无副作用数据，但未接真实接口的产品功能必须显示其实际 unavailable 状态。
 
 ## 3. 当前内部 Host 组合
 
 `src/native/orchestration/execution-service.js` 提供 `createOrchestrationExecutionService`，组合原 `SourcePort/BudgetPort/RunRepository/EffectController/DelegateController`。实际send的最终compiled/render绑定与原bank三字段复核见接口§17.25；它不授予运行权限。真实 GenerationHost 只接受 Host 内部可信 `execute` options 的 `orchestrationSend`；公共 input 同名字段拒绝。Browser 不持有 bank、dispatch token、授权或审批 proof，不承担 runner/恢复/发费 authority。
 
-三域 Source 为 Native Session、Project Task、普通 RP 的原控制记录；bank、稳定 Effect+ordinal attempt、unknown observe/settle 均复用原服务。Delegate 先持久化子 Run 身份，再在原银行预约，观察并确认后才能执行；跨树逻辑计数及整树活动 Attempt 容量防止新子 Run 重置父上限。带 agent.delegate 的节点必须显式填写 allowedPlanPinIds（空集合禁止委派），指向本节点 port=plan 的精确原 PlanRevision pin；前端需按共享 validator 编辑，不得用请求参数绕过父允许集合，详见接口§17.20。Context 目前只有 Native Session 原 Audience compiler；Project/RP 缺原 adapter 时拒绝。Tool 只走原 Skill/MCP/A2A 与 CredentialTarget，MCP/Skill 的原实际完成证明可保存既有 EffectReceipt（接口§17.24），缺 proof/receipt 的结果保留 unknown；A2A 已可通过原持久回执确认精确 SendMessage 受理事实，不能宣称远端任务完成或消费正文。R3/需批准动作在可信通道接通前拒绝。
+三域 Source 为 Native Session、Project Task、普通 RP 的原控制记录；bank、稳定 Effect+ordinal attempt、unknown observe/settle 均复用原服务。Delegate 先持久化子 Run 身份，再在原银行预约，观察并确认后才能执行；跨树逻辑计数及整树活动 Attempt 容量防止新子 Run 重置父上限。带 agent.delegate 的节点必须显式填写 allowedPlanPinIds（空集合禁止委派），指向本节点 port=plan 的精确原 PlanRevision pin；前端需按共享 validator 编辑，不得用请求参数绕过父允许集合，详见接口§17.20。Context 复用原 Native Session Audience compiler及有限Project单轮请求组装（§17.35）；RP缺原adapter时拒绝。Tool 只走原 Skill/MCP/A2A 与 CredentialTarget，MCP/Skill 的原实际完成证明可保存既有 EffectReceipt（接口§17.24），缺 proof/receipt 的结果保留 unknown；A2A 已可通过原持久回执确认精确 SendMessage 受理事实，不能宣称远端任务完成或消费正文。R3/需批准动作在可信通道接通前拒绝。
 
 Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate 的 `authorizeDelegation`、Context 的 `authorizeContext` 是必需原领域接线，测试中的受控 callback 不是实际产品 grant。后续原消费者须证明精确 Plan/Node/Source/Scope/childPlanRef，再由这些内部入口使用；不能把它们暴露成 Browser 可填写的“允许”对象。
 
@@ -49,6 +49,8 @@ Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate �
 第二十三组复用同一ModelPort增加原intent_resolver固定producer与内部authority_intent Context；原catalog/Observation只在原bank准入后编译，两个既有request形态分别严格核工具和控制字段，私有tools不成为通用Tool grant。原Attempt settlement→Transition计边连接Narrator；selection reuse是原事实引用，无模型收据/费用。具体支持边界及本地实际证据归接口§17.33和同一Record，不提升Run终态或P3 Gate。
 
 第二十四组补原Project Task→同实例Studio队列的消费边界及预算tx纯读（接口§17.34），复用原Repository与可提交状态权威，不新增业务writer。它是后续Project Model/Context生产组合的前置；当前尚不能将Project展示为可执行的完整V3 consumer，RP也不能借RPControl锁宣称ChatRepo已受保护。
+
+第二十五组接原Project交互Executor/Scheduler的单轮Model/Context生产组合（接口§17.35），复用原Task bank、原提示词builder和ModelPort。仅精确studio agent→json output、maxModelRounds=1、无continuity/reuse/retry/fallback；Scope来自实际原operation和started generation，JSON/preflight复制无权运行。当前generation.send-only图遇模型工具调用明确拒绝，不执行Task提案/Skill。完整多轮、Task Tool、Review/Commit、正式OutputClaim/Result及API仍未完成。原runner的提示词组装抽为`public/shared/project-agent-prompt.js`并新增内部hook，是原Native后端共用runtime接线，无页面布局重做；并行前端任务整合这两个路径时应保留实际付费后构建与私有请求校验。
 
 ## 4. 并入统一前端的范围
 
@@ -62,7 +64,7 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 | 项目 | 当前事实和下一归属 |
 | --- | --- |
-| 领域 grant 与正式 runtime API | P3/P4 尚需将实际 Plan/Source/Context/Effect/Delegate 权限组合及原消费者装配，之后才开放受控 API。第二十二组原Session消费围栏见§17.32；第二十四组原Project Source围栏/预算tx读见§17.34，Project完整Model/Context正文及RP adapter仍未接。内部工厂已存在不等于产品 endpoint 已存在。 |
+| 领域 grant 与正式 runtime API | P3/P4 尚需完整 Plan/Source/Context/Effect/Delegate 权限及原消费者。原Session围栏见§17.32；原Project围栏/预算tx读见§17.34，有限单轮交互Model/Context见§17.35；Project多轮/Task Tool与RP adapter仍待接。内部工厂已存在不等于Run/Projection endpoint已存在。 |
 | Session role/background quota | 固定Narrator及含原generationBudget的free-text authority resolver已接原quota/compute同CAS（§17.30、§17.33）；后台lifecycle outbox等producer、无quota/缺V3保留事实的free-text来源仍待接，不接受caller role，不增加第二计数器。 |
 | Scheduler/Handoff/Result/Disclosure | 原固定Turn的active operation/attempt/资源/signal已绑定；Model/Skill与原Run树控制写的消费顺序见§17.31，P4正式提交围栏仍待接。完整Delegate/Task permits、Handoff、子结果消费、跨Agent分享仍待接。 |
 | RP/Game、Project/Evolution | P4 原唯一正文 slot、World/Command/Project Review/Commit 与 Eval/target 仍需正式 consumer；Run completed 不代表业务已提交。 |
@@ -75,6 +77,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十四组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十五组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。
