@@ -42,6 +42,18 @@ describe.each(CONTRACT_HARNESSES)('$name Host authoring', ({ make }) => {
         expect(validateDependencies).toHaveBeenCalledTimes(1);
     });
 
+    test('incomplete authoring drafts save durably but invalid validation never publishes a revision', async () => {
+        const input = planFixture();
+        input.definition.nodes = []; input.definition.entryNodeIds = []; input.definition.outputContract.ownerNodeId = null;
+        const root = await repository.create(h.handle, commandId(), input);
+        expect(await repository.get(h.handle, root.planId)).toEqual(root);
+        const report = await repository.validate(h.handle, expected(root));
+        expect(report).toMatchObject({ status: 'invalid', issues: [expect.objectContaining({ code: 'native_orchestration_graph_invalid', severity: 'blocking' })] });
+        await expect(repository.publish(h.handle, commandId(), { ...expected(root), validationDigest: validationDigest(report) })).rejects.toMatchObject({ code: 'native_orchestration_validation_stale' });
+        expect(validateDependencies).not.toHaveBeenCalled();
+        expect(await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: K.orchestrationRevision, handle: h.handle }))).toEqual([]);
+    });
+
     test('concurrent publication has one winner; immutable revision survives later draft edits', async () => {
         const input = planFixture(), root = await repository.create(h.handle, commandId(), input);
         const report = await repository.validate(h.handle, expected(root));

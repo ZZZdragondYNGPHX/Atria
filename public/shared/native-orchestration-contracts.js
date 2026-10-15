@@ -85,7 +85,7 @@ export function assertDependencyPins(pins) {
     return pins;
 }
 
-export function assertPlanDefinition(value, pins) {
+export function assertPlanDefinition(value, pins, { draft = false } = {}) {
     assertObject(value, ['nodes', 'edges', 'entryNodeIds', 'capabilityCeiling', 'graphChangePolicy', 'limits', 'outputContract'], 'definition');
     assertObject(value.limits, ORCHESTRATION_LIMIT_FIELDS, 'limits');
     for (const field of ORCHESTRATION_LIMIT_FIELDS) assertCounter(value.limits[field], 'limits.' + field, ['maxNodes', 'maxSteps', 'maxAttempts', 'maxConcurrency', 'deadlineMs'].includes(field) ? 1 : 0);
@@ -101,7 +101,7 @@ export function assertPlanDefinition(value, pins) {
     for (const op of array(value.graphChangePolicy.allowedOperations, 'allowedOperations')) member(op, ORCHESTRATION_PATCH_OPERATIONS, 'patch operation');
     for (const kind of array(value.graphChangePolicy.allowedNodeKinds, 'allowedNodeKinds')) member(kind, ORCHESTRATION_NODE_KINDS, 'node kind');
     const nodes = array(value.nodes, 'nodes'), edges = array(value.edges, 'edges');
-    if (!nodes.length || nodes.length > value.limits.maxNodes || edges.length > value.limits.maxEdges) throw new TypeError('graph exceeds explicit node/edge limits');
+    if (!draft && (!nodes.length || nodes.length > value.limits.maxNodes || edges.length > value.limits.maxEdges)) throw new TypeError('graph exceeds explicit node/edge limits');
     const byId = new Map();
     for (const node of nodes) {
         assertObject(node, ['nodeId', 'kind', 'label', 'inputs', 'outputs', 'dependencyPinIds', 'capabilities', 'policy'], 'node');
@@ -118,9 +118,15 @@ export function assertPlanDefinition(value, pins) {
                 names.add(port.name);
             }
         }
-        for (const pin of array(node.dependencyPinIds, 'node.dependencyPinIds')) if (!pinIds.has(pin)) throw new TypeError('node references missing dependency pin');
-        for (const capability of array(node.capabilities, 'node.capabilities')) if (!capabilities.has(capability)) throw new TypeError('node exceeds capability ceiling');
-        assertNodePolicy(node);
+        for (const pin of array(node.dependencyPinIds, 'node.dependencyPinIds')) {
+            assertToken(pin, 'dependencyPinId');
+            if (!draft && !pinIds.has(pin)) throw new TypeError('node references missing dependency pin');
+        }
+        for (const capability of array(node.capabilities, 'node.capabilities')) {
+            assertToken(capability, 'capability');
+            if (!draft && !capabilities.has(capability)) throw new TypeError('node exceeds capability ceiling');
+        }
+        assertNodePolicy(node, draft);
         byId.set(node.nodeId, node);
     }
     const edgeIds = new Set(), incoming = new Set(), adjacency = new Map(nodes.map(node => [node.nodeId, []]));
@@ -131,30 +137,36 @@ export function assertPlanDefinition(value, pins) {
         edgeIds.add(edge.edgeId);
         member(edge.condition, ['always', 'success', 'failure'], 'edge.condition');
         assertCounter(edge.maxVisits, 'edge.maxVisits', 1);
-        if (edge.maxVisits > value.limits.maxEdgeVisits) throw new TypeError('edge exceeds visit limit');
-        for (const end of ['from', 'to']) assertObject(edge[end], ['nodeId', 'port'], 'edge.' + end);
+        if (!draft && edge.maxVisits > value.limits.maxEdgeVisits) throw new TypeError('edge exceeds visit limit');
+        for (const end of ['from', 'to']) {
+            assertObject(edge[end], ['nodeId', 'port'], 'edge.' + end);
+            assertOrchestrationId(edge[end].nodeId, 'onode', 'edge.' + end + '.nodeId');
+            assertToken(edge[end].port, 'edge.' + end + '.port');
+        }
         const from = byId.get(edge.from.nodeId)?.outputs.find(port => port.name === edge.from.port);
         const to = byId.get(edge.to.nodeId)?.inputs.find(port => port.name === edge.to.port);
-        if (!from || !to || from.type !== to.type) throw new TypeError('edge has missing or incompatible typed ports');
-        adjacency.get(edge.from.nodeId).push(edge.to.nodeId);
+        if (!draft && (!from || !to || from.type !== to.type)) throw Object.assign(new TypeError('edge has missing or incompatible typed ports'), { edgeId: edge.edgeId, fieldPath: 'edges' });
+        if (byId.has(edge.from.nodeId) && byId.has(edge.to.nodeId)) adjacency.get(edge.from.nodeId).push(edge.to.nodeId);
         incoming.add(edge.to.nodeId + ':' + edge.to.port);
     }
     const entryIds = array(value.entryNodeIds, 'entryNodeIds');
-    if (!entryIds.length || new Set(entryIds).size !== entryIds.length || entryIds.some(id => !byId.has(id))) throw new TypeError('graph entry IDs are missing or duplicate');
-    const seen = new Set(), pending = [...entryIds];
+    for (const id of entryIds) assertOrchestrationId(id, 'onode', 'entryNodeId');
+    if (!draft && (!entryIds.length || new Set(entryIds).size !== entryIds.length || entryIds.some(id => !byId.has(id)))) throw new TypeError('graph entry IDs are missing or duplicate');
+    const seen = new Set(), pending = entryIds.filter(id => byId.has(id));
     while (pending.length) {
         const id = pending.pop();
         if (seen.has(id)) continue;
         seen.add(id); pending.push(...adjacency.get(id));
     }
-    if (seen.size !== nodes.length) throw new TypeError('graph contains unreachable nodes');
+    if (!draft && seen.size !== nodes.length) throw new TypeError('graph contains unreachable nodes');
     for (const node of nodes) for (const port of node.inputs) {
-        if (port.required && !incoming.has(node.nodeId + ':' + port.name) && !entryIds.includes(node.nodeId)) throw new TypeError('required input is unconnected');
+        if (!draft && port.required && !incoming.has(node.nodeId + ':' + port.name) && !entryIds.includes(node.nodeId)) throw Object.assign(new TypeError('required input is unconnected'), { nodeId: node.nodeId, fieldPath: 'inputs.' + port.name });
     }
     assertObject(value.outputContract, ['kind', 'ownerNodeId', 'slot', 'allowPartial'], 'outputContract');
     member(value.outputContract.kind, ['rp_narration', 'project_review', 'result'], 'outputContract.kind');
     assertToken(value.outputContract.slot, 'outputContract.slot'); boolean(value.outputContract.allowPartial, 'outputContract.allowPartial');
-    if (byId.get(value.outputContract.ownerNodeId)?.kind !== 'output' || nodes.filter(node => node.kind === 'output').length !== 1) throw new TypeError('graph must have exactly one output owner');
+    if (value.outputContract.ownerNodeId !== null) assertOrchestrationId(value.outputContract.ownerNodeId, 'onode', 'outputContract.ownerNodeId');
+    if (!draft && (byId.get(value.outputContract.ownerNodeId)?.kind !== 'output' || nodes.filter(node => node.kind === 'output').length !== 1)) throw new TypeError('graph must have exactly one output owner');
     // Every node needs an exit to the output. Bounded visits alone must not
     // admit a disconnected strongly connected component with no final result.
     const exits = new Set([value.outputContract.ownerNodeId]);
@@ -162,11 +174,11 @@ export function assertPlanDefinition(value, pins) {
         changed = false;
         for (const edge of edges) if (exits.has(edge.to.nodeId) && !exits.has(edge.from.nodeId)) { exits.add(edge.from.nodeId); changed = true; }
     }
-    if (exits.size !== nodes.length) throw new TypeError('graph contains nodes without an output path');
+    if (!draft && exits.size !== nodes.length) throw new TypeError('graph contains nodes without an output path');
     return value;
 }
 
-function assertNodePolicy(node) {
+function assertNodePolicy(node, draft) {
     const policy = node.policy;
     const fields = {
         agent: ['agentPinId'], planner: ['agentPinId'], judge: ['agentPinId'], review: ['agentPinId', 'maxRounds'],
@@ -174,7 +186,10 @@ function assertNodePolicy(node) {
         join: ['strategy', 'quorum', 'deadlineMs'], wait: ['timeoutMs'], approval: ['timeoutMs'], output: [],
     }[node.kind];
     assertObject(policy, fields, 'node.policy');
-    for (const field of ['agentPinId', 'actionPinId']) if (fields.includes(field) && !node.dependencyPinIds.includes(policy[field])) throw new TypeError('node policy requires an exact dependency pin');
+    for (const field of ['agentPinId', 'actionPinId']) if (fields.includes(field)) {
+        if (!(draft && policy[field] === null)) assertToken(policy[field], 'node.policy.' + field);
+        if (!draft && !node.dependencyPinIds.includes(policy[field])) throw new TypeError('node policy requires an exact dependency pin');
+    }
     for (const field of ['maxRounds', 'maxConcurrency', 'quorum', 'deadlineMs', 'timeoutMs']) if (fields.includes(field)) assertCounter(policy[field], 'node.policy.' + field, 1);
     if (node.kind === 'router') member(policy.selection, ['first_success', 'all_matching'], 'router.selection');
     if (node.kind === 'join') member(policy.strategy, ['all-success', 'all-settled', 'any-success', 'count-quorum', 'deadline'], 'join.strategy');

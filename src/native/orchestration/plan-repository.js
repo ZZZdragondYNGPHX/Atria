@@ -1,4 +1,5 @@
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
+import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
@@ -33,11 +34,13 @@ export class PlanRepository {
     }
 
     async #command(handle, commandId, operation, body, resourceIds, apply) {
+        assertWritable();
         assertNativeId(commandId, 'orchestrationCommand');
         const request = cloneNativeDocument({ operation, body });
         const payloadHash = hashNativeDocument(request);
         const commandKey = key(K.orchestrationCommand, handle, { commandId });
         return withNativeResourceWrites(handle, [commandId, ...resourceIds], () => this.engine.withTransaction(handle, async tx => {
+            assertWritable();
             await this.assertWriter(handle, tx);
             await this.authorize({ handle, operation, body: request.body, tx });
             const previous = await checkedRecord(tx, commandKey);
@@ -46,6 +49,7 @@ export class PlanRepository {
                 return cloneNativeDocument(previous.doc.outcome);
             }
             const outcome = await apply(tx, request.body);
+            assertWritable();
             await putImmutable(tx, commandKey, { schemaVersion: 1, commandId, payloadHash, operation, target: resourceIds, outcome });
             return outcome;
         }));
@@ -54,7 +58,7 @@ export class PlanRepository {
     async create(handle, commandId, body) {
         assertObject(body, ['definition', 'dependencyPins', 'viewState'], 'create');
         cloneNativeDocument(body);
-        assertPlanDefinition(body.definition, body.dependencyPins);
+        assertPlanDefinition(body.definition, body.dependencyPins, { draft: true });
         const planId = createNativeId('orchestrationPlan'), timestamp = this.now();
         return this.#command(handle, commandId, 'plans.create', body, [], async (tx, input) => {
             const root = {
@@ -72,7 +76,7 @@ export class PlanRepository {
         assertObject(body, ['planId', 'expectedDraftVersion', 'expectedDefinitionHash', 'definition', 'dependencyPins', 'viewState'], 'save');
         assertNativeId(body.planId, 'orchestrationPlan');
         assertCounter(body.expectedDraftVersion, 'expectedDraftVersion'); assertDigest(body.expectedDefinitionHash, 'expectedDefinitionHash');
-        cloneNativeDocument(body); assertPlanDefinition(body.definition, body.dependencyPins);
+        cloneNativeDocument(body); assertPlanDefinition(body.definition, body.dependencyPins, { draft: true });
         const timestamp = this.now();
         return this.#command(handle, commandId, 'plans.save', body, [body.planId], async (tx, input) => {
             const resourceKey = key(K.orchestrationPlan, handle, { planId: input.planId });
@@ -165,10 +169,15 @@ export class PlanRepository {
         const record = await checkedRecord(tx, resourceKey);
         if (!record) throw new NotFoundError('orchestration_plan');
         const root = record.doc;
+        assertObject(root, ['schemaVersion', 'planId', 'ownerRef', 'draftVersion', 'basePlanRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'currentPlanRevisionId', 'viewState', 'archived', 'createdAt', 'updatedAt'], 'PlanRoot');
+        assertObject(root.ownerRef, ['handle'], 'ownerRef');
+        if (typeof root.archived !== 'boolean') throw new TypeError('PlanRoot.archived must be boolean');
+        for (const field of ['createdAt', 'updatedAt']) assertCounter(root[field], field);
+        for (const field of ['basePlanRevisionId', 'currentPlanRevisionId']) if (root[field] !== null) assertNativeId(root[field], 'orchestrationRevision');
         if (root.schemaVersion !== 1 || root.planId !== resourceKey.planId || root.ownerRef?.handle !== resourceKey.handle
             || root.definitionHash !== planDefinitionHash(root.definition, root.dependencyPins)) throw new TypeError('Invalid PlanRoot');
         assertCounter(root.draftVersion, 'draftVersion');
-        assertPlanDefinition(root.definition, root.dependencyPins);
+        assertPlanDefinition(root.definition, root.dependencyPins, { draft: true });
         return record;
     }
 
@@ -180,6 +189,10 @@ export class PlanRepository {
         const record = await checkedRecord(tx, key(K.orchestrationRevision, handle, { planId: planRef.planId, planRevisionId: planRef.planRevisionId }));
         if (!record) throw new NotFoundError('orchestration_plan_revision');
         const doc = record.doc;
+        assertObject(doc, ['schemaVersion', 'planId', 'planRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'authorRef', 'validationDigest', 'publishedAt'], 'PlanRevision');
+        assertObject(doc.authorRef, ['handle'], 'authorRef');
+        if (doc.authorRef.handle !== handle) throw new TypeError('PlanRevision author mismatch');
+        assertDigest(doc.validationDigest, 'validationDigest'); assertCounter(doc.publishedAt, 'publishedAt');
         if (doc.schemaVersion !== 1 || doc.planId !== planRef.planId || doc.planRevisionId !== planRef.planRevisionId
             || doc.definitionHash !== planRef.definitionHash || doc.definitionHash !== planDefinitionHash(doc.definition, doc.dependencyPins)) throw new ConflictError('native_orchestration_revision_mismatch');
         assertPlanDefinition(doc.definition, doc.dependencyPins);
@@ -187,7 +200,13 @@ export class PlanRepository {
     }
 
     async #validate(handle, tx, root) {
-        assertPlanDefinition(root.definition, root.dependencyPins);
+        try { assertPlanDefinition(root.definition, root.dependencyPins); } catch (error) {
+            if (!(error instanceof TypeError)) throw error;
+            return { schemaVersion: 1, planId: root.planId, draftVersion: root.draftVersion, definitionHash: root.definitionHash,
+                dependencyDigest: hashNativeDocument(root.dependencyPins), status: 'invalid', checkedAt: this.now(),
+                issues: [{ code: 'native_orchestration_graph_invalid', severity: 'blocking', fieldPath: error.fieldPath ?? 'definition',
+                    ...(error.nodeId ? { nodeId: error.nodeId } : {}), ...(error.edgeId ? { edgeId: error.edgeId } : {}), message: error.message }] };
+        }
         // This adapter is a pure original-authority read/check. It must not
         // call Providers, Tools, Secrets or wait for approvals inside the tx.
         const evidence = cloneNativeDocument(await this.validateDependencies({ handle, tx, definition: root.definition, dependencyPins: root.dependencyPins }));
