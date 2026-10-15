@@ -13,6 +13,7 @@ import {
     createAtriaStatusChip,
 } from './primitives.js';
 import { formatShellText, translateShellText } from './localization.js';
+import { createAtriaEdgeDock } from './edge-dock.js';
 import { createAtriaPaperTransition } from './paper-transition.js';
 
 const MENU_UTILITIES = Object.freeze(['learning', 'settings', 'plugins', 'diagnostics', 'account']);
@@ -374,7 +375,7 @@ export function createAtriaAppShell({
         instant: () => keyboardInteraction,
     };
     const sheetMotion = createAtriaPaperTransition({ ...motionOptions, root: sheet, panel: sheetPanel, scrim: sheetScrim, closedTransform: () => 'translateY(100%)' });
-    const menuMotion = createAtriaPaperTransition({ ...motionOptions, root: menuLayer, panel: menu, scrim: menuScrim, closedTransform: () => isCompact() ? 'translateY(100%)' : 'scale(.97)' });
+    const menuMotion = createAtriaPaperTransition({ ...motionOptions, root: menuLayer, panel: menu, scrim: menuScrim, closedTransform: () => navigationDock?.getEdge() === 'bottom' ? 'translateY(6px)' : navigationDock?.getEdge() === 'right' ? 'translateX(6px)' : 'translateX(-6px)' });
     const ownsNavigation = !navigation;
     const navigationAuthority = navigation || createAtriaNavigationAuthority({
         window: windowRef,
@@ -391,6 +392,7 @@ export function createAtriaAppShell({
     let searchOrigin = null;
     let searchDestination = null;
     let menuOpen = false;
+    let navigationDock = null;
     let disposed = false;
     let lastRouteSignature = '';
     let sheetDrag = null;
@@ -503,6 +505,7 @@ export function createAtriaAppShell({
     function navigate(domainId, options = {}) {
         closeMenu();
         const route = navigationAuthority.navigate(domainId, options);
+        navigationDock?.navigated();
         return route.domain;
     }
 
@@ -799,7 +802,9 @@ export function createAtriaAppShell({
                     try {
                         await registry.execute(command.id, commandContext());
                         searchDestination = navigationAuthority.getRoute();
-                        if (JSON.stringify(searchDestination) !== JSON.stringify(searchOrigin)) title.focus({ preventScroll: true });
+                        if (command.id === 'navigation.reveal') {
+                            searchOrigin = null; searchDestination = null;
+                        } else if (JSON.stringify(searchDestination) !== JSON.stringify(searchOrigin)) title.focus({ preventScroll: true });
                         else openCommand({ preserveError: true });
                     } catch (error) {
                         commandError = `${tl('Could not open result. Refresh this source or choose another result.')} ${String(error?.message || error)}`;
@@ -825,7 +830,7 @@ export function createAtriaAppShell({
         syncModalIsolation();
         documentRef.dispatchEvent(new windowRef.CustomEvent('atria-command-open', { detail: { refresh: !preserveError } }));
         renderCommands();
-        queueMicrotask(() => commandInput.focus());
+        queueMicrotask(() => { if (commandOpen && !disposed) commandInput.focus(); });
         return true;
     }
 
@@ -887,15 +892,19 @@ export function createAtriaAppShell({
         if (menuOpen) return false;
         closeCommand({ restoreFocus: false });
         menuOpen = true;
-        const anchor = menuButton.getBoundingClientRect();
-        const top = Math.max(24, Math.min(anchor.bottom - 340, environment.get().height - 540));
-        menu.style.left = isCompact() ? '0' : `${anchor.right + 20}px`;
-        menu.style.top = isCompact() ? 'auto' : `${top}px`;
-        menu.style.transformOrigin = isCompact() ? 'bottom center' : `left ${Math.max(0, anchor.top + anchor.height / 2 - top)}px`;
+        navigationDock?.show();
         syncModalIsolation();
         menuMotion.present(true);
+        const anchor = menuButton.getBoundingClientRect();
+        const edge = navigationDock?.getEdge() || 'left';
+        const bounds = menu.getBoundingClientRect();
+        const x = edge === 'left' ? anchor.right + 12 : edge === 'right' ? anchor.left - bounds.width - 12 : anchor.right - bounds.width;
+        const y = edge === 'bottom' ? anchor.top - bounds.height - 12 : anchor.bottom - bounds.height;
+        menu.style.left = Math.max(12, Math.min(environment.get().width - bounds.width - 12, x)) + 'px';
+        menu.style.top = Math.max(12, Math.min(environment.get().height - bounds.height - 12, y)) + 'px';
+        menu.style.transformOrigin = edge === 'bottom' ? 'bottom center' : edge === 'right' ? 'right center' : 'left center';
         menuButton.setAttribute('aria-expanded', 'true');
-        queueMicrotask(() => menuItems.find(item => !item.disabled)?.focus());
+        queueMicrotask(() => { if (menuOpen && !disposed) menuItems.find(item => !item.disabled)?.focus(); });
         return true;
     }
 
@@ -919,9 +928,13 @@ export function createAtriaAppShell({
     // selectors have no consumers here and must not run on every menu click.
     menuLayer.addEventListener('click', event => event.stopPropagation());
     menu.addEventListener('keydown', event => {
+        if (event.isComposing || event.keyCode === 229) return;
         const available = menuItems.filter(item => !item.disabled);
         const index = available.indexOf(documentRef.activeElement);
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        if (event.key === 'Home' || event.key === 'End') {
+            event.preventDefault();
+            available[event.key === 'Home' ? 0 : available.length - 1]?.focus();
+        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
             const step = event.key === 'ArrowDown' ? 1 : -1;
             available[(index + step + available.length) % available.length]?.focus();
@@ -1091,6 +1104,9 @@ export function createAtriaAppShell({
         }
 
         if (event.key !== 'Escape') return;
+        if (navigationDock?.isDragging()) {
+            navigationDock.escape();event.preventDefault();event.stopImmediatePropagation();return;
+        }
         // Native modal frames own their Escape before the inspector or routes.
         if (documentRef.querySelector('dialog[open]')) return;
         const playMore = root.querySelector('.atria-play-more[open], .atria-game-recovery-panel[open]');
@@ -1125,6 +1141,10 @@ export function createAtriaAppShell({
             return;
         }
         if (dismissChildRouteForBack('detail')) {
+            consumeEscape();
+            return;
+        }
+        if (navigationDock?.escape()) {
             consumeEscape();
         }
     }
@@ -1190,6 +1210,7 @@ export function createAtriaAppShell({
             lastRouteSignature = routeSignature;
             closeMenu();
             updateDomainPresentation(state.route);
+            navigationDock?.navigated();
             if (searchOrigin && searchDestination && JSON.stringify(state.route) === JSON.stringify(searchOrigin)) {
                 searchOrigin = null; searchDestination = null;
                 queueMicrotask(() => { if (!disposed) openCommand(); });
@@ -1202,6 +1223,15 @@ export function createAtriaAppShell({
     lastRouteSignature = JSON.stringify(initialNavigationState.route);
     updateDomainPresentation(initialNavigationState.route);
     updateContextPresentation(initialNavigationState.context, environment.get());
+
+    navigationDock = createAtriaEdgeDock({
+        document: documentRef, window: windowRef, root, rail, bottomNavigation, environment, menu,
+        tl, getInputMode: () => keyboardInteraction ? 'keyboard' : 'pointer',
+        isBlocked: () => commandOpen || menuOpen || (isCompact() && navigationAuthority.getContext().open) || Boolean(documentRef.querySelector('dialog[open]')),
+        closeMenu: () => closeMenu(),
+    });
+    menuItems.push(...navigationDock.positionButtons);
+    commandDisposers.push(registry.register({ id: 'navigation.reveal', title: tl('Show navigation'), group: 'Navigation', keywords: ['dock', 'navigation'], run: () => navigationDock.reveal() }));
 
     const api = Object.freeze({
         root,
@@ -1274,6 +1304,7 @@ export function createAtriaAppShell({
         navigateUp,
         hasEscapePriorityLayer,
         destroy() {
+            navigationDock?.dispose();
             sheetMotion.dispose(); menuMotion.dispose();
             documentRef.removeEventListener('pointerdown', onPointerInteraction, true);
             if (disposed) return;

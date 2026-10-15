@@ -125,6 +125,9 @@ async function openShell(page, viewport) {
         const diagnostics = await collectDomDiagnostics(page);
         throw new Error(`Atria R7B shell mounted but is not visible: ${JSON.stringify(diagnostics)}`, { cause: error });
     }
+    // Navigation starts hidden; these host regressions exercise its revealed controls.
+    await root.locator('.atria-edge-dock-reveal').focus();
+    await page.keyboard.press('Enter');
     return root;
 }
 
@@ -214,7 +217,8 @@ test.describe('R7B Native Play Host', () => {
         await expect(command.locator('[data-atria-command-id="navigate.runtime"]')).toBeVisible();
         await command.locator('[data-atria-command-id="navigate.runtime"]').click();
 
-        await expect(root.locator('[data-atria-domain="runtime"].is-selected')).toHaveCount(2);
+        await expect(page).toHaveURL(/atriaRoute=runtime/);
+        await expect(root.locator('[data-atria-primary-shortcut="runtime"]')).toHaveAttribute('aria-current', 'page');
         await expect(root.locator('#atria-shell-title')).toContainText('Runtime');
     });
 

@@ -1,0 +1,60 @@
+/* Approved v0.8 edge navigation; presentation only, no page reflow. */
+.atria-app-shell[data-atria-edge-dock=true],
+.atria-app-shell[data-atria-edge-dock=true][data-atria-viewport=medium],
+.atria-app-shell[data-atria-edge-dock=true][data-atria-viewport=compact] {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "global global" "focus dock";
+}
+.atria-edge-dock-viewport { position:absolute; inset:0; overflow:clip; pointer-events:none; z-index:20; isolation:isolate; }
+#atria-app-shell .atria-edge-dock {
+    position:absolute; left:0; top:0; right:auto; bottom:auto; margin:0;
+    width:max-content; max-width:calc(100% - 24px); max-height:calc(100% - 24px);
+    display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 10px;
+    background:transparent; border:0; border-radius:36px; box-shadow:none; backdrop-filter:none;
+    pointer-events:auto; overflow:visible; visibility:hidden;
+}
+#atria-app-shell .atria-edge-dock[data-edge=bottom] { flex-direction:row; padding:10px 12px; }
+#atria-app-shell .atria-edge-dock[data-state=hidden] { pointer-events:none; }
+.atria-edge-dock-skin { position:absolute; inset:0; border-radius:36px; background:var(--atri-surface-1); border:1px solid var(--atri-separator); box-shadow:var(--atri-shadow-2); z-index:-1; pointer-events:none; }
+#atria-app-shell .atria-edge-dock .atria-sidebar__items,
+#atria-app-shell .atria-edge-dock .atria-sidebar__footer { display:contents; }
+#atria-app-shell .atria-edge-dock .atria-sidebar__brand { width:44px; height:44px; margin:0; }
+#atria-app-shell .atria-edge-dock button { position:relative; display:grid; place-items:center; flex:none; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; border:0; border-radius:50%; background:transparent; color:var(--atri-text-secondary); }
+#atria-app-shell .atria-edge-dock button:active { transform:none; background:var(--atri-fill); }
+#atria-app-shell .atria-edge-dock button.is-selected { background:var(--atri-ink); color:var(--atri-surface-1); }
+#atria-app-shell .atria-edge-dock button.is-selected::after { display:none; }
+#atria-app-shell .atria-edge-dock .atria-toolbar__menu { background:var(--atri-fill); }
+#atria-app-shell .atria-edge-dock .atria-toolbar__menu::before { display:none; }
+#atria-app-shell .atria-edge-dock .atria-shell-nav-label { display:block; position:absolute; left:calc(100% + 18px); right:auto; top:50%; bottom:auto; transform:translateY(-50%); padding:7px 11px; border-radius:8px; font-size:12px; white-space:nowrap; background:var(--atri-elevated); color:var(--atri-text-primary); box-shadow:var(--atri-shadow-1); opacity:0; pointer-events:none; }
+#atria-app-shell .atria-edge-dock[data-edge=right] .atria-shell-nav-label { left:auto; right:calc(100% + 18px); }
+#atria-app-shell .atria-edge-dock[data-edge=bottom] .atria-shell-nav-label { left:50%; right:auto; top:auto; bottom:calc(100% + 18px); transform:translateX(-50%); }
+#atria-app-shell .atria-edge-dock .atria-shell-nav-button:focus-visible .atria-shell-nav-label { opacity:1; }
+#atria-app-shell .atria-edge-dock .atria-edge-dock-grip { cursor:grab; color:var(--atri-text-tertiary); font-size:16px; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+#atria-app-shell .atria-edge-dock .atria-edge-dock-grip:active { cursor:grabbing; color:var(--atri-ink); }
+.atria-edge-dock-handle { position:absolute; display:grid; place-items:center; width:44px; height:88px; min-height:44px; padding:0; background:transparent; border:0; border-radius:18px; pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.atria-edge-dock-handle::before { content:''; width:4px; height:34px; background:var(--atri-text-tertiary); opacity:.48; border-radius:999px; box-shadow:0 0 0 1px var(--atri-surface-1); }
+.atria-edge-dock-handle[data-edge=left] { left:var(--atri-safe-area-left); top:calc(50% - 44px); }
+.atria-edge-dock-handle[data-edge=right] { right:var(--atri-safe-area-right); top:calc(50% - 44px); }
+.atria-edge-dock-handle[data-edge=bottom] { width:88px; height:44px; left:calc(50% - 44px); bottom:max(8px,var(--atri-safe-area-bottom)); }
+.atria-edge-dock-handle[data-edge=bottom]::before { width:34px; height:4px; }
+.atria-edge-dock-handle[data-captured=true] { opacity:0; }
+#atria-app-shell .atria-edge-dock-handle:active { transform:none; background:transparent; }
+.atria-edge-dock-guide { position:absolute; pointer-events:none; border:1px dashed var(--atri-text-tertiary); border-radius:30px; background:var(--atri-fill); opacity:0; transition:opacity 120ms var(--atri-ease-out); }
+.atria-edge-dock-guide[data-selected=true] { opacity:.65; }
+.atria-edge-dock-guide[data-edge=left] { left:10px; top:calc(50% - 100px); width:56px; height:200px; }
+.atria-edge-dock-guide[data-edge=right] { right:10px; top:calc(50% - 100px); width:56px; height:200px; }
+.atria-edge-dock-guide[data-edge=bottom] { bottom:max(12px,var(--atri-safe-area-bottom)); left:calc(50% - 110px); width:220px; height:56px; }
+.atria-edge-dock-hint { position:absolute; top:30%; left:50%; transform:translateX(-50%); max-width:calc(100% - 48px); padding:8px 16px; border-radius:var(--atri-radius-pill); background:var(--atri-surface-1); box-shadow:var(--atri-shadow-1); font-size:12px; text-align:center; color:var(--atri-text-secondary); }
+.atria-edge-dock-safe { position:absolute; visibility:hidden; pointer-events:none; padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px); }
+#atria-app-shell .atria-edge-dock-reveal { left:160px; top:8px; }
+#atria-app-shell[data-atria-edge-dock=true] .atria-shell-menu { right:auto; bottom:auto; width:min(272px,calc(100% - 24px)); max-height:calc(var(--atri-viewport-height) - 24px); padding:10px; border-radius:22px; }
+.atria-shell-menu-layer { --atri-duration-slow:180ms; --atri-ease-sheet:var(--atri-ease-out); }
+#atria-app-shell .atria-shell-menu [aria-checked=true] { background:var(--atri-fill); color:var(--atri-ink); }
+#atria-app-shell[data-atria-dock-input=touch] .atria-edge-dock { gap:4px; padding:10px 8px; }
+#atria-app-shell[data-atria-dock-input=touch] .atria-edge-dock[data-edge=bottom] { padding:8px 10px; }
+#atria-app-shell[data-atria-dock-input=touch] .atria-edge-dock :is(.atria-sidebar__brand,[data-atria-domain=agents],[data-atria-domain=runtime]) { display:none; }
+@media(max-width:359px) { #atria-app-shell[data-atria-dock-input=touch] .atria-edge-dock { gap:2px; padding:8px; } }
+@media(hover:hover) and (pointer:fine) { #atria-app-shell .atria-edge-dock button:hover:not(.is-selected) { background:var(--atri-fill); color:var(--atri-ink); } #atria-app-shell .atria-edge-dock button:hover .atria-shell-nav-label { opacity:1; } }
+@media(prefers-reduced-motion:reduce) { .atria-edge-dock-guide { transition:none; } }
+body.reduced-motion .atria-edge-dock-guide { transition:none; }
+@media(max-height:470px) and (min-width:720px) { #atria-app-shell .atria-edge-dock:not([data-edge=bottom]) { overflow-y:auto; scrollbar-width:none; background:var(--atri-surface-1); box-shadow:var(--atri-shadow-1); } }

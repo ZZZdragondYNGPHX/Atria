@@ -9757,5 +9757,22 @@
     "Composite version": "合成版本",
     "Upscale": "放大",
     "This file is not a valid Atria save. Choose an intact .atriasave file and try again.": "这个文件不是有效的 Atria 存档。请重新选择完整的 .atriasave 文件。",
-    "Enable remote images from ${0}? These sites can observe your IP address, image choices and request timing.": "允许加载来自 ${0} 的外部图片吗？这些网站可以看到你的 IP 地址、访问的图片和请求时间。"
+    "Enable remote images from ${0}? These sites can observe your IP address, image choices and request timing.": "允许加载来自 ${0} 的外部图片吗？这些网站可以看到你的 IP 地址、访问的图片和请求时间。",
+    "atria.shell.edgeDock.0": "展开导航",
+    "atria.shell.edgeDock.1": "收起导航；长按可移动",
+    "atria.shell.edgeDock.2": "拖动导航换边",
+    "atria.shell.edgeDock.3": "拖到边缘换位置；键盘可按左、右或下方向键。",
+    "atria.shell.edgeDock.4": "展开导航；长按可移动",
+    "atria.shell.edgeDock.5": "导航位置",
+    "atria.shell.edgeDock.6": "左侧",
+    "atria.shell.edgeDock.7": "右侧",
+    "atria.shell.edgeDock.8": "底部",
+    "atria.shell.edgeDock.9": "左侧",
+    "atria.shell.edgeDock.10": "右侧",
+    "atria.shell.edgeDock.11": "底部",
+    "atria.shell.edgeDock.12": "导航已移到",
+    "atria.shell.edgeDock.13": "松手停靠到",
+    "atria.shell.edgeDock.14": " · Esc 取消",
+    "atria.shell.edgeDock.15": "移动导航，靠近边缘后松手；Esc 可取消。",
+    "atria.shell.edgeDock.16": "已取消移动，导航回到原位。"
 }

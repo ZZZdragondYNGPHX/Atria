@@ -67,6 +67,37 @@ describe('R7A Atria AppShell foundation', () => {
         expect(document.getElementById('chat')).toBe(originalChat);
     });
 
+    test('edge reveal pending work is cancelled on shell disposal and hidden navigation stays inert', () => {
+        jest.useFakeTimers();
+        try {
+            const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry() });
+            const nav = shell.root.querySelector('.atria-edge-dock');
+            expect(nav.inert).toBe(true);
+            expect(nav.getAttribute('aria-hidden')).toBe('true');
+            document.dispatchEvent(new MouseEvent('pointermove', { clientX: 2, clientY: 400, bubbles: true }));
+            jest.advanceTimersByTime(149);
+            expect(nav.getAttribute('aria-hidden')).toBe('true');
+            shell.destroy();
+            jest.advanceTimersByTime(1000);
+            expect(nav.getAttribute('aria-hidden')).toBe('true');
+            document.dispatchEvent(new MouseEvent('pointermove', { clientX: 2, clientY: 400, bubbles: true }));
+            jest.advanceTimersByTime(1000);
+            expect(document.getElementById('atria-app-shell')).toBeNull();
+            expect(nav.getAttribute('aria-hidden')).toBe('true');
+        } finally { jest.useRealTimers(); }
+    });
+
+    test('the navigation search command closes search and leaves focus in the revealed Dock', async () => {
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry() });
+        shell.openCommand();
+        shell.root.querySelector('[data-atria-command-id="navigation.reveal"]').click();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(shell.isCommandOpen()).toBe(false);
+        expect(shell.root.querySelector('.atria-edge-dock').inert).toBe(false);
+        expect(document.activeElement.dataset.atriaDomain).toBe('play');
+        shell.destroy();
+    });
+
     test('switches navigation chrome between Expanded and Compact on one DOM tree', () => {
         const shell = createAtriaAppShell({
             document,
