@@ -294,3 +294,5 @@ R02/R03/R04/R05/R07均有确定方案和失败出口，没有只靠标签转移�
 ## 12. 正式开发授权生效（2026-10-15）
 
 当前用户明确授权正式开发，R08由NOT_AUTHORIZED更新为AUTHORIZED。§11的设计核销继续成立，先前未授权条款保留为历史时点。开发基线main@5eb3bc765，较审计基线增加Settings/Themes四提交；不改变原Native authority，Shell/Settings接线归P4–P6。已建同任务分支，P1 IN_PROGRESS；产品验收NOT_RUN/BLOCKED不因授权改成PASS，P7通过前不集成main。
+
+后续main delta：`73557f809`新增Storage Center的quota/recovery/事务组合，已在任务分支`0d799fc28`同步并修复组合边界；工程落点/实证见interface §17.8及同一Record。单Native Host/原领域权威与零旧编排兼容决定未变，不重开已冻结方向；原E0附件仍明确旧扫描SHA，P6必须按实际新主链重核消费者闭包。P1/P2仍IN_PROGRESS，未取得的真实Domain/三端验收仍NOT_RUN/BLOCKED。

@@ -5,7 +5,7 @@
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。
-- 当前开发基线：`main@5eb3bc765`（2026-10-15 fetch核对）。相对E0基线`60aca6957`的4个提交为Settings/Themes；仅Shell/Settings接线需随P4–P6适配，未改变Native权威/物理合同。E0扫描附件保留原准确SHA，不冒充当前动态闭包。
+- 当前开发基线：`main@73557f809`（2026-10-15 fetch核对，Storage Center已合入）；已于任务分支`0d799fc28`完成main→任务同步，原quota/recovery/transaction scope与V3 Owner/unknown语义组合，见[接口§17.8](interface-contracts.md#178-同步storage-center后的原权威组合)及同一Record。最初分支基线`5eb3bc765`的Settings/Themes适配仍归P4–P6；E0附件保留准确旧SHA，不冒充最新消费闭包。没有将V3集成回main。
 - 第三轮状态：**D3 已冻结：G2 不可变 Plan + Host 受控动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复与有界循环**。
 - 第四轮状态：**D4 已冻结：C2 Audience-scoped Context；统一 Hybrid Recall，按 Actor/Source/Time/Branch 授权，跨 Agent 通过有来源 Result 引用分享，Disclosure 与长会话压缩独立校验**。
 - 第五轮状态：**D5 已冻结：F2 Evidence-driven Adaptive Compute；按实际证据与任务质量选择性准入、原 Native Route/Compute 预算和三层缓存/执行复用**。

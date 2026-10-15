@@ -406,7 +406,7 @@ JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,decisionS
 
 ### 17.6 原Storage维护入口与Engine交接
 
-`NativeHostOwner`按参与的原Engine保留生命周期；每个Engine先停止准入/drain/关闭，再释放自己的参与引用，最后一个Engine退出后才释放root guards和专用SQL Owner sessions。原`nativeHostLifecycle.attachStorageEngine`在同一Host内附接迁移destination/replacement，不创建第二Host。相同SQL连接配置的专用Owner session按不含明文配置的hash key合并；该缓存只避免同Host重入，并不证明未知proxy/multi-primary拓扑安全，也不把不同配置别名自动合并。保守保留已持SQL guard直到最后参与Engine关闭。
+`NativeHostOwner`按参与的原Engine保留生命周期；每个Engine先停止准入/drain/关闭，再释放自己的参与引用。每个local root guard在最后一个使用它的Engine关闭后释放，启动显式持有的dataRoot guard与专用SQL Owner sessions保留到最后参与Engine关闭；预期退休临时root不会误判为Owner丢失。原`nativeHostLifecycle.attachStorageEngine`在同一Host内附接迁移destination/replacement，不创建第二Host。相同SQL连接配置的专用Owner session按不含明文配置的hash key合并；该缓存只避免同Host重入，并不证明未知proxy/multi-primary拓扑安全，也不把不同配置别名自动合并。
 
 原HTTP存储迁移以`withMaintenance`暂停source外部准入，排空已有事务后才copy；维护许可限本次async scope，不传播成后续通用权限。失败恢复source准入；全员copy成功先退休source，再附接新live Engine并关闭old/destination，read-only覆盖整个copy/swap。更高原Storage generation使旧fence失效；已有Run恢复仍需明确epoch/source/receipt复核，不因存储切换自动执行。
 
@@ -417,3 +417,13 @@ JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,decisionS
 Darwin分支使用内置`osascript`执行固定Foundation代码，canonical path只作为argv，不拼入脚本或shell；读取`NSURLVolumeIsLocalKey`，未知/远程/失败都writer-unavailable。依据[Apple本地卷属性](https://developer.apple.com/documentation/foundation/urlresourcekey/volumeislocalkey)与[原NSURL resourceValuesForKeys:error:](https://developer.apple.com/documentation/foundation/nsurl/resourcevalues%28forkeys%3A%29?language=objc)，不是实机通过证据。目录创建/realpath/OS探测错误统一同一unavailable出口；已持root继续核对固定identity，Windows卷类型缓存只属于本Owner，不能跨Host重开沿用旧探测。
 
 所有适配都要求运行期间挂载/文件系统与OS network namespace保持受支持的本地独占条件；只查本地FS类型或volume属性无法证明任意共享块设备/跨namespace安全。当前真实测试环境为Windows 11 Pro `10.0.26200`、Node `v24.18.0`；Darwin探测代码、CachyOS与Android/Termux均尚无真实客户端/本地卷实测，保持NOT_RUN/BLOCKED，不以Foundation规范或Windows测试替代。
+
+### 17.8 同步Storage Center后的原权威组合
+
+`main@73557f809`已有原Storage Center：`account-quota`、recovery roots/lifecycle、account file writer、SQL account locks与TransactionScope。V3复用这些实现，不建立第二份quota/回收站/事务组合服务；Model/Prompt原可重入write authority仍只在提取的runtime-write模块一份定义。原account bytes quota与D5 Compute费用银行职责不同。
+
+调用顺序为Host Owner/StorageFence→原quota/recovery business transaction→原Engine commit；有界基础fence在业务quota之外初始化，使零quota仍可观察/回收，业务Plan/Run/command增长照常服从原quota，同事务拒绝不留碎片。原quota的SQL account lock和FS/SQLite account file publication也纳入同一Host admission/drain；不能在Owner之前建SQL schema或发布文件。quota wrapper传递原retryMode，COMMIT未知不因account unlock失败变成可重试网络错误；损坏连接不归还pool。原account lease有open范围，脱离旧async scope的任务重新取得准入。
+
+同类SQL备份复用数据库Owner，但私有scratch handle不是原用户账户：converter用同Host附接的原Engine实现和严格scratch目录，不扩大getUserDirectories/原账户quota语义。结束后清自身scratch rows/fence、关闭私有Engine并释放临时root，live Owner继续持有；SQL dump不输出HostFence，restore不覆盖目标fence。真实用户原领域收据/数据仍沿原备份恢复协议，不能借此恢复旧Orchestrator执行权。
+
+同步后的局部实证归同一Record；新增原服务不使未知SQL topology/跨namespace或P3–P8自动通过，也不以现有Storage回收闭包替代V3原Source/Result/unknown引用根的后续审计。

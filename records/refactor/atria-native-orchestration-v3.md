@@ -226,3 +226,11 @@
 - Source `99da3eadb` → `da4c38e90`已提交推送。补Darwin本地卷探测，固定Foundation代码读取原OS `NSURLVolumeIsLocalKey`，路径经argv传入；没有执行root拼接脚本。未知/远程/异常fail-closed。目录创建/realpath错误也统一writer-unavailable；Windows正向卷类型缓存改为每Owner，重开Host不能沿用旧缓存。
 - 实测环境确认：Windows 11 Pro `10.0.26200`、Node `v24.18.0`。本组四Engine metadata/Owner与生命周期两文件43/43（15+28），新增root父路径为既有普通文件时拒绝且保留原文件；ESLint、node --check与diff check通过。没有macOS执行环境，Darwin仅代码/规范核对，实机NOT_RUN；不得以这43项冒称Darwin/Linux/Termux本地卷或硬件断电通过。
 - P1/P2仍IN_PROGRESS；继续原预算/Graph控制流与未封闭的SQL拓扑/引用保留根。三端真实客户端、Domain Ports/费用/批准与P3–P8未通过，main未集成。
+
+## 2026-10-15 — 同步最新main Storage Center并组合P1权威
+
+- Source `da4c38e90` + 最新`main@73557f809` → 任务分支merge commit `0d799fc28`，已推送；这只是main→任务同步，没有V3→main集成。保留上游全部Storage Center quota/recovery/事务与现有领域服务；六处冲突按实际权威组合，没有用整文件覆盖丢弃任一侧合同。
+- 修复Owner先于原SQL account lock/原文件发布、零quota基础fence与业务quota分层、quota传递never-retry、原事务scope与COMMIT unknown组合。Account unlock错误保留primary unknown且丢弃损坏lease，脱离旧scope的延迟工作重新取锁。相同数据源私有SQL转换Engine共享Host Owner，scratch不冒充用户；临时root按参与Engine释放，live Owner不丢失，SQL备份不导出HostFence。
+- 合并期间六个V3定向文件181/181：authoring16、Run32、Graph20、Effect/Approval44、Join68、Windows installed Host1；另12个非FS的FS journal case明确N/A skip。随后临时guard引用细化后的四文件77/77：生命周期32、registration15、quota/Host组合12、Native备份18。原quota accounting40/40（2个文件Engine的SQL专属项N/A）、SQL commit传输double10/10、SQL admin6/6、transient source10/10也已在对应修复后通过。定向ESLint/diff check通过；未执行全量产品测试或新UI浏览器验收。
+- 失败诊断：全kinds fixture原ID字段推断不支持V3，补明确映射；SQL同类恢复原live Engine拒绝私有handle引发失败/rollback unavailable，改为同Owner私有converter后十对备份/恢复及安全case18/18通过。首次accounting Pg仍缺测试env，按已有容器进程环境修正后通过。Pg8仍有queued client.query deprecation warning；当前受测路径通过，不称零warning或Pg9通过。
+- 当前main delta没有改变D1–D9/HCM/单Host/零旧编排兼容方向，属于原authority新增后的接线修复；E0旧附件SHA不改写成新消费闭包。P1/P2仍IN_PROGRESS；未知SQL proxy/multi-primary拒绝配置、完整V3保留根、Delegate/Handoff/循环/Review/reconcile、P3 Ports与后续阶段继续。Windows仅有部分Host/API/存储实证，CachyOS/Termux/Darwin与真实外部/批准/质量仍NOT_RUN/BLOCKED。
