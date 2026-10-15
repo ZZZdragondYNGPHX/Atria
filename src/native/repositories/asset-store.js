@@ -1,4 +1,7 @@
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
+import { withAccountFileGrowth, withAccountQuota } from '../../storage/account-quota.js';
+import { retainedBlobHashes, recoveryReferences } from '../recovery-roots.js';
+import { assertAccountPath } from '../../storage/path-boundary.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { validateMaintenanceBudget } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars, personaDocumentReferences } from '../persona-contract.js';
@@ -95,7 +98,7 @@ export class AssetStore {
     }
 
     _blobPath(handle, contentHash) {
-        return path.join(this._blobRoot(handle), contentHash.slice(0, 2), contentHash);
+        return assertAccountPath(this._directoriesByHandle(handle).root, path.join(this._blobRoot(handle), contentHash.slice(0, 2), contentHash));
     }
 
     async putBlob(handle, bytesValue) {
@@ -104,7 +107,7 @@ export class AssetStore {
         const contentHash = digest(bytes);
         return this.withBlobLease(handle, contentHash, async () => {
             const blobPath = this._blobPath(handle, contentHash);
-            if (!fs.existsSync(blobPath)) await durableWriteAsync(blobPath, bytes);
+            if (!fs.existsSync(blobPath)) await withAccountFileGrowth(handle, bytes.length, () => durableWriteAsync(blobPath, bytes), this._engine);
             else if (digest(await fsp.readFile(blobPath)) !== contentHash) throw new Error('Native Blob integrity mismatch');
             return contentHash;
         });
@@ -117,6 +120,28 @@ export class AssetStore {
             const scope = { open: true }, owners = new Map(blobScopes.getStore() ?? []); owners.set(key, scope);
             return blobScopes.run(owners, async () => { try { return await operation(); } finally { scope.open = false; } });
         });
+    }
+
+    async withBlobPublication(handle, payloads, operation) {
+        const hashes = [...new Set(payloads.map(bytes => digest(toBuffer(bytes))))].sort();
+        const lock = index => index < hashes.length ? this.withBlobLease(handle, hashes[index], () => lock(index + 1))
+            : withAccountQuota(this._engine, handle, async () => {
+                const created = [];
+                for (const hash of hashes) if (!await this.hasBlob(handle, hash)) created.push(hash);
+                try { return await this._engine.withTransaction(handle, () => operation()); } catch (error) {
+                    // A failed quota/metadata commit has no newly published
+                    // refs. Recover a committed FS journal before deciding;
+                    // never remove a blob that its recovered commit retained.
+                    const roots = await this._engine.withTransaction(handle, async tx => new Set([
+                        ...await retainedBlobHashes(tx, handle),
+                        ...(await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle })).map(row => row.doc.contentHash),
+                        ...(await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageVersion, handle })).map(row => row.doc.packageContentHash),
+                    ]));
+                    for (const hash of created) if (!roots.has(hash) && !blobReaders.has(blobIdentity(handle, hash))) await durableRemoveAsync(this._blobPath(handle, hash));
+                    throw error;
+                }
+            });
+        return lock(0);
     }
 
     async hasBlob(handle, contentHash) {
@@ -170,7 +195,7 @@ export class AssetStore {
 
         // Blob first, logical reference last. A crash between these operations
         // leaves only an unreferenced content-addressed blob, which GC can reap.
-        return this.withBlobLease(handle, contentHash, async () => {
+        return this.withBlobPublication(handle, [bytes], async () => {
             await this.putBlob(handle, bytes);
 
             await this._engine.withTransaction(handle, tx => putImmutable(
@@ -254,6 +279,7 @@ export class AssetStore {
         assertWritable();
         return this._engine.withTransaction(handle, async (tx) => {
             const references = await resourceSetupAssetReferences(tx, handle, assetId);
+            references.push(...await recoveryReferences(tx, handle, this._refKey(handle, assetId)));
             for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.timelineVariant, handle })) {
                 if (record.doc?.metadata?.attachments?.some(item => item.assetId === assetId)) {
                     references.push({ kind: 'session-variant', sessionId: record.doc.sessionId,
@@ -306,6 +332,33 @@ export class AssetStore {
         });
     }
 
+    async inspectGarbageBlob(handle, contentHash, now = Date.now()) {
+        if (!/^[a-f0-9]{64}$/.test(contentHash)) throw new TypeError('Invalid Blob hash');
+        return this._engine.withTransaction(handle, async tx => {
+            const progress = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.maintenance, handle, scope: 'blobs' });
+            const candidate = progress?.candidates?.find(item => item.hash === contentHash);
+            if (!candidate || now - candidate.quarantinedAt < 60000) throw new ConflictError('native_blob_quarantine_active');
+            const roots = new Set([...await retainedBlobHashes(tx, handle),
+                ...(await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle })).map(row => row.doc.contentHash),
+                ...(await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageVersion, handle })).map(row => row.doc.packageContentHash)]);
+            if (roots.has(contentHash) || blobReaders.has(blobIdentity(handle, contentHash))) throw new ConflictError('native_blob_referenced');
+            const stat = await fsp.stat(this._blobPath(handle, contentHash));
+            if (!stat.isFile() || stat.mtimeMs !== candidate.mtimeMs) throw new ConflictError('storage_preview_stale');
+            return { hash: contentHash, bytes: stat.size, version: hashNativeDocument(candidate),
+                reason: 'unreferenced-blob-past-quarantine', recoverable: false };
+        });
+    }
+
+    async cleanGarbageBlob(handle, contentHash, expectedVersion) {
+        assertWritable();
+        return withNativeResourceWrite(handle, 'maintenance:blobs', () => this.withBlobLease(handle, contentHash, async () => {
+            const checked = await this.inspectGarbageBlob(handle, contentHash);
+            if (checked.version !== expectedVersion) throw new ConflictError('storage_preview_stale');
+            const removed = await durableRemoveAsync(this._blobPath(handle, contentHash));
+            return { cleaned: removed, processedBytes: removed ? checked.bytes : 0, physicalBytesReleased: removed ? checked.bytes : 0 };
+        }));
+    }
+
     async gcBlobs(handle, options = {}) {
         assertWritable();
         const budget = { retainHashes: [], now: Date.now(), graceMs: 60000, batchSize: 32, scanLimit: 128, maxScanBytes: 65536, ...options };
@@ -321,7 +374,7 @@ export class AssetStore {
         const roots = async () => this._engine.withTransaction(handle, async tx => {
             const refs = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle });
             const versions = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageVersion, handle });
-            return new Set([...retainHashes, ...refs.map(item => item.doc.contentHash), ...versions.map(item => item.doc.packageContentHash)]);
+            return new Set([...retainHashes, ...await retainedBlobHashes(tx, handle), ...refs.map(item => item.doc.contentHash), ...versions.map(item => item.doc.packageContentHash)]);
         });
         const referenced = await roots(), generation = hashNativeDocument([...referenced].sort());
         const progress = await this._engine.withTransaction(handle, tx => getNativeDocument(tx, key));

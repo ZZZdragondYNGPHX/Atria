@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ConflictError } from '../../storage/errors.js';
 import { readWorldState } from '../state-delta.js';
@@ -108,9 +109,14 @@ export async function listNativeDocuments(tx, filter) {
 // FS transactions publish commit-last but do not isolate concurrent operations.
 // Keep each Native resource's repository writes ordered across repository instances.
 const resourceWrites = new Map();
+const heldResourceWrites = new AsyncLocalStorage();
 export async function withNativeResourceWrite(handle, resourceId, operation) {
     const key = JSON.stringify([handle, resourceId]);
-    const next = (resourceWrites.get(key) || Promise.resolve()).catch(() => {}).then(operation);
+    if (heldResourceWrites.getStore()?.get(key)?.open) return operation();
+    const next = (resourceWrites.get(key) || Promise.resolve()).catch(() => {}).then(() => {
+        const scope = { open: true }, held = new Map(heldResourceWrites.getStore() ?? []); held.set(key, scope);
+        return heldResourceWrites.run(held, async () => { try { return await operation(); } finally { scope.open = false; } });
+    });
     resourceWrites.set(key, next);
     try { return await next; } finally { if (resourceWrites.get(key) === next) resourceWrites.delete(key); }
 }

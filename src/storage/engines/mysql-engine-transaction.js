@@ -26,6 +26,11 @@ import {
 //   - chats.integrity is a STORED GENERATED column, populated automatically
 //     by MySQL from the JSON path the schema declares
 export class MysqlTransaction {
+    async listAccountContent(handle) {
+        if (handle !== this._handle) throw new TypeError('Transaction account mismatch');
+        const { listSqlAccountContent } = await import('./account-content.js');
+        return listSqlAccountContent(handle, async (table, owner) => (await this._conn.query(`SELECT * FROM ${table} WHERE handle=?`, [owner]))[0]);
+    }
     constructor({ conn, handle }) {
         this._conn = conn;
         this._handle = handle;
@@ -1017,8 +1022,7 @@ export function registerNativeResourceHandlers(tx) {
     };
     const parseRow = (kind, handle, resourceKey, row) => {
         if (!row) return null;
-        const doc = coerceJson(row.doc);
-        if (doc === null) return null;
+        const doc = typeof row.doc === 'string' ? JSON.parse(row.doc) : row.doc;
         return {
             key: decodeNativeResourceKey(kind, handle, resourceKey),
             doc,

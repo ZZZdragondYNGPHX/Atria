@@ -852,6 +852,7 @@ function registerNativeResourceHandlers(tx) {
                     continue;
                 }
                 if (!nativeResourceMatchesFilter(key, normalizedFilter)) continue;
+                if (path.normalize(entry) !== path.relative(dir, filePath(key))) continue;
                 records.push({
                     key,
                     doc: envelope.doc,

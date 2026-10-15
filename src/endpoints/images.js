@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeAccountFile } from '../storage/account-file-write.js';
 import { Buffer } from 'node:buffer';
 
 import express from 'express';
@@ -69,9 +70,10 @@ router.post('/upload', async (request, response) => {
 
         ensureDirectoryExistence(pathToNewFile);
         const imageBuffer = Buffer.from(image, 'base64');
-        await fs.promises.writeFile(pathToNewFile, new Uint8Array(imageBuffer));
+        await writeAccountFile(request.user.profile.handle, pathToNewFile, imageBuffer);
         response.send({ path: clientRelativePath(request.user.directories.root, pathToNewFile) });
     } catch (error) {
+        if (error.code === 'storage_quota_exceeded') return response.status(413).json({ error: error.code, details: error.details });
         console.error(error);
         response.status(500).send({ error: 'Failed to save the image' });
     }

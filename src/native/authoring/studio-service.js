@@ -197,6 +197,10 @@ export class StudioService {
         return run;
     }
 
+    withProjectWrite(handle, projectId, operation) {
+        return this._queue(projectId, () => this._projects.withLifecycle(handle, projectId, operation));
+    }
+
     get storageEngine() {
         return this._worlds._engine;
     }
@@ -208,6 +212,7 @@ export class StudioService {
     }
 
     async _ensureHistory(handle, projectId) {
+        await this._projects.recoverHistory(handle, projectId);
         const directory = this._projects.getProjectDirectory(handle, projectId);
         const markerPath = path.join(directory, '.git', 'atria-evaluation-recovery.json');
         const recoveryKey = JSON.stringify([handle, projectId]);
@@ -246,16 +251,14 @@ export class StudioService {
         for (const file of markerFiles) fs.unlinkSync(file);
         this._evaluationRecovery.delete(recoveryKey);
         const source = await this._project(handle, projectId);
-        if (!fs.existsSync(path.join(directory, '.git'))) {
-            await this._git.init(directory);
-            await this._git.setConfig(directory, 'user.name', HISTORY_AUTHOR.name);
-            await this._git.setConfig(directory, 'user.email', HISTORY_AUTHOR.email);
-        }
-        await this._git.commitIfChanged(
-            directory,
-            'Atria Studio: synchronize project source',
-            HISTORY_AUTHOR,
-        );
+        await this._projects.commitHistory(handle, projectId, async historyDirectory => {
+            if (!fs.existsSync(path.join(historyDirectory, '.git'))) {
+                await this._git.init(historyDirectory);
+                await this._git.setConfig(historyDirectory, 'user.name', HISTORY_AUTHOR.name);
+                await this._git.setConfig(historyDirectory, 'user.email', HISTORY_AUTHOR.email);
+            }
+            return this._git.commitIfChanged(historyDirectory, 'Atria Studio: synchronize project source', HISTORY_AUTHOR);
+        });
         const history = await this._git.log(directory, 2);
         if (!history.length) throw new Error('Atria Studio failed to initialize project history');
         return { source, directory, history };
@@ -350,6 +353,7 @@ export class StudioService {
     }
 
     async deleteProject(handle, projectId, expectedRevision) {
+        if (this.storageCenterLifecycle) return this.storageCenterLifecycle(handle, { type: 'project', id: projectId }, { baseRevision: expectedRevision });
         return this._queue(projectId, async () => {
             await this._assertBaseRevision(handle, projectId, expectedRevision);
             const deleted = await this._projects.delete(handle, projectId);
@@ -962,7 +966,6 @@ export class StudioService {
                     });
                 }
 
-                const directory = this._projects.getProjectDirectory(handle, workspace.projectId);
                 const semanticOrigin = workspace.origin.kind === 'agent' && workspace.origin.id
                     ? ` · Task ${workspace.origin.id}`
                     : '';
@@ -971,12 +974,12 @@ export class StudioService {
                 await beforeCommit?.(assertAuthoringChangeSet({ changeSetId, workspaceId: workspace.workspaceId, projectId: workspace.projectId,
                     baseRevision: base.revision, operations: workspace.operations, validation, resultingRevision: null }));
                 commitStarted = true;
-                await this._git.commitIfChanged(
-                    directory,
+                await this._projects.commitHistory(handle, workspace.projectId, historyDirectory => this._git.commitIfChanged(
+                    historyDirectory,
                     `Atria Studio ChangeSet ${changeSetId}${semanticOrigin}\n\nAtria-Receipt: ${JSON.stringify(marker)}`,
                     HISTORY_AUTHOR,
                     { allowEmpty: true },
-                );
+                ));
                 const changeSet = await this._workspaceReceiptUnlocked(handle, workspace, changeSetId);
                 if (!changeSet) throw new ConflictError('project_agent_receipt_conflict');
                 this._resourceGraph.invalidate(handle);

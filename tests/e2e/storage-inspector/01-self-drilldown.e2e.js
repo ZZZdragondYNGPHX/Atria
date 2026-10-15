@@ -25,7 +25,6 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 import { seedFixtureUser } from './_helpers.js';
 
-const SCREENSHOT_DIR = resolve(import.meta.dirname, '../../../docs/public/images/storage-inspector');
 
 let server;
 
@@ -60,7 +59,9 @@ test.describe('Storage Inspector · self drill-down', () => {
             void mod.openStorageManagement();
         });
 
-        const inspector = page.locator('dialog.popup[open]').last().locator('.storageManagementServerMount .storageInspectorContainer');
+        const panel = page.locator('.storage-center-dialog');
+        await panel.getByRole('button', { name: 'Advanced tools', exact: true }).click();
+        const inspector = panel.locator('.storageInspectorContainer');
         await inspector.waitFor({ state: 'visible', timeout: 10_000 });
 
         // Wait for the L1 fetch to settle — loading skeleton disappears.
@@ -76,7 +77,7 @@ test.describe('Storage Inspector · self drill-down', () => {
 
         // Screenshot 01 — L1 view (stacked bar + entry list visible).
         await page.screenshot({
-            path: resolve(SCREENSHOT_DIR, '01-self-l1.png'),
+            path: test.info().outputPath('01-self-l1.png'),
             fullPage: false,
         });
 
@@ -108,7 +109,7 @@ test.describe('Storage Inspector · self drill-down', () => {
 
         // Screenshot 02 — L2 chats view showing per-character rows.
         await page.screenshot({
-            path: resolve(SCREENSHOT_DIR, '02-self-chats-drilldown.png'),
+            path: test.info().outputPath('02-self-chats-drilldown.png'),
             fullPage: false,
         });
 
@@ -129,7 +130,7 @@ test.describe('Storage Inspector · self drill-down', () => {
 
         // Screenshot 03 — L4 chat file view (metadata + messages + sidecars).
         await page.screenshot({
-            path: resolve(SCREENSHOT_DIR, '03-self-chat-file.png'),
+            path: test.info().outputPath('03-self-chat-file.png'),
             fullPage: false,
         });
 

@@ -3,12 +3,11 @@
  * center. The provider exposes capability metadata; the shared inspector
  * decides which view/edit/delete/create controls are rendered.
  */
-import { callGenericPopup, POPUP_TYPE } from './popup.js';
-import { createStorageInspector } from './storage-inspector.js';
 import { t, translate } from './i18n.js';
 
-const MAX_IDB_ROWS = 200;
 const MAX_CACHE_BODY_CHARS = 256 * 1024;
+const MANAGEMENT_KEY = 'atria_storage_center_tasks_v1';
+const assertUserKey = (category, key) => { if (category === 'sessionStorage' && key === MANAGEMENT_KEY) throw makeErr('E_READ_ONLY', t`Operation history is managed by the resource center.`); };
 
 const BROWSER_CATEGORIES = Object.freeze([
     { key: 'localStorage', label: 'localStorage' },
@@ -22,6 +21,56 @@ function makeErr(code, message) {
     const err = new Error(message);
     err.code = code;
     return err;
+}
+
+export function encodeCacheRequest(request) {
+    return encodeURIComponent(JSON.stringify({ url: request.url, method: request.method, headers: [...request.headers.entries()].sort() }));
+}
+function decodeCacheRequest(token) {
+    const decoded = decodeURIComponent(token);
+    if (!decoded.startsWith('{')) return new Request(decoded);
+    const { url, method, headers } = JSON.parse(decoded);
+    return new Request(url, { method, headers });
+}
+
+async function digestValue(value, seen = new Map()) {
+    if (value === null || typeof value !== 'object') return [typeof value, String(value)];
+    if (seen.has(value)) return ['cycle', seen.get(value)];
+    seen.set(value, seen.size);
+    if (value instanceof Blob) return ['blob', value.type, await digestBytes(await value.arrayBuffer())];
+    if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+        const bytes = value instanceof ArrayBuffer ? value : value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+        return [value.constructor.name, await digestBytes(bytes)];
+    }
+    if (value instanceof Date) return ['date', value.toISOString()];
+    if (value instanceof Map) return ['map', await Promise.all([...value].map(async ([key, item]) => [await digestValue(key, seen), await digestValue(item, seen)]))];
+    if (value instanceof Set) return ['set', await Promise.all([...value].map(item => digestValue(item, seen)))];
+    if (Array.isArray(value)) return ['array', await Promise.all(value.map(item => digestValue(item, seen)))];
+    return ['object', await Promise.all(Object.keys(value).sort().map(async key => [key, await digestValue(value[key], seen)]))];
+}
+async function digestBytes(bytes) {
+    return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export async function fingerprintBrowserResource(pathArr) {
+    const [category, ...rest] = pathArr;
+    let value;
+    if (['localStorage', 'sessionStorage'].includes(category) && rest.length === 1) {
+        value = window[category].getItem(rest[0]);
+        if (value === null) throw makeErr('E_NOT_FOUND', 'Browser resource no longer exists.');
+    } else if (category === 'indexeddb' && rest.length === 3) value = (await readIdbRecord(...rest)).value;
+    else if (category === 'cachestorage' && rest.length === 2) {
+        if (!(await caches.keys()).includes(rest[0])) throw makeErr('E_NOT_FOUND', 'Browser resource no longer exists.');
+        const response = await (await caches.open(rest[0])).match(decodeCacheRequest(rest[1]));
+        if (!response || response.type === 'opaque') throw makeErr('E_UNAVAILABLE', 'This cache response cannot be verified.');
+        value = { status: response.status, headers: [...response.headers.entries()].sort(), body: await response.arrayBuffer() };
+    } else if (category === 'indexeddb' && [1, 2].includes(rest.length) || category === 'cachestorage' && rest.length === 1) {
+        if (category === 'cachestorage' && !(await caches.keys()).includes(rest[0])) throw makeErr('E_NOT_FOUND', 'Browser resource no longer exists.');
+        const response = await new BrowserProvider().fetch(pathArr);
+        value = [];
+        for (const entry of [...response.entries].sort((a, b) => a.key.localeCompare(b.key))) value.push([entry.key, await fingerprintBrowserResource([...pathArr, entry.key])]);
+    } else throw makeErr('E_INVALID_PATH', 'Select individual browser records for a fixed operation.');
+    return digestBytes(new TextEncoder().encode(JSON.stringify(await digestValue(value))));
 }
 
 function capabilities(overrides = {}) {
@@ -42,20 +91,20 @@ export function estimateEntryBytes(key, value) {
 
 async function estimateQuota() {
     try {
-        if (!navigator.storage?.estimate) return { usedBytes: 0, quotaBytes: null, over: false };
-        const { usage = 0, quota = null } = await navigator.storage.estimate();
-        return { usedBytes: usage, quotaBytes: quota, over: quota != null && usage > quota };
-    } catch {
-        return { usedBytes: 0, quotaBytes: null, over: false };
+        if (!navigator.storage?.estimate) return { usedBytes: null, quotaBytes: null, over: false, method: 'unavailable' };
+        const { usage = null, quota = null } = await navigator.storage.estimate();
+        return { usedBytes: usage, quotaBytes: quota, over: usage != null && quota != null && usage > quota, method: 'origin-estimate' };
+    } catch (error) {
+        return { usedBytes: null, quotaBytes: null, over: false, method: 'unavailable', reason: error.message };
     }
 }
 
 async function safeListDatabases() {
     try {
-        if (!indexedDB.databases) return [];
+        if (!indexedDB.databases) throw makeErr('E_UNAVAILABLE', 'IndexedDB enumeration is unavailable.');
         return await indexedDB.databases();
-    } catch {
-        return [];
+    } catch (error) {
+        throw makeErr('E_UNAVAILABLE', error.message);
     }
 }
 
@@ -63,8 +112,8 @@ async function safeCacheKeys() {
     try {
         if (!('caches' in window)) return [];
         return await caches.keys();
-    } catch {
-        return [];
+    } catch (error) {
+        throw makeErr('E_UNAVAILABLE', error.message);
     }
 }
 
@@ -215,7 +264,7 @@ async function readStoreRows(dbName, storeName) {
             req.onerror = () => reject(makeErr('E_UNKNOWN', req.error?.message || 'Failed to enumerate IndexedDB records'));
             req.onsuccess = () => {
                 const cursor = req.result;
-                if (!cursor || rows.length >= MAX_IDB_ROWS) {
+                if (!cursor) {
                     resolve();
                     return;
                 }
@@ -324,7 +373,7 @@ export class BrowserProvider {
 
         if (category === 'cachestorage' && rest.length === 2) {
             const [cacheName, requestToken] = rest;
-            const url = decodeURIComponent(requestToken);
+            const url = decodeCacheRequest(requestToken);
             const cache = await caches.open(cacheName);
             const response = await cache.match(url);
             if (!response) throw makeErr('E_NOT_FOUND', 'Cached response not found.');
@@ -337,7 +386,7 @@ export class BrowserProvider {
                 body = '[binary or unreadable response body]';
             }
             const details = {
-                requestUrl: url,
+                requestUrl: url.url,
                 response: {
                     status: response.status,
                     statusText: response.statusText,
@@ -428,6 +477,7 @@ export class BrowserProvider {
         const entries = [];
         for (let index = 0; index < storage.length; index++) {
             const key = storage.key(index);
+            const editable = !(kind === 'sessionStorage' && key === MANAGEMENT_KEY);
             const value = storage.getItem(key) ?? '';
             entries.push({
                 key,
@@ -437,9 +487,9 @@ export class BrowserProvider {
                 sizeBytes: estimateEntryBytes(key, value),
                 mtimeMs: null,
                 canDrill: false,
-                canDelete: true,
+                canDelete: editable,
                 note: value.length > 100 ? `${value.slice(0, 100)}…` : value,
-                capabilities: capabilities({ view: true, viewContent: true, edit: true, delete: true }),
+                capabilities: capabilities({ view: true, viewContent: true, edit: editable, delete: editable }),
             });
         }
         entries.sort((a, b) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0));
@@ -463,16 +513,16 @@ export class BrowserProvider {
             const entries = [];
             for (const info of dbs) {
                 if (!info.name) continue;
-                let storeCount = 0;
+                let storeCount = null, failure = null;
                 try {
                     const db = await openDatabase(info.name);
                     storeCount = db.objectStoreNames.length;
                     db.close();
-                } catch { /* unavailable DB */ }
+                } catch (error) { failure = error.message; }
                 entries.push({
                     key: info.name,
                     label: info.name,
-                    labelSuffix: ` (${storeCount} ${translate('stores')})`,
+                    labelSuffix: storeCount == null ? '' : ` (${storeCount} ${translate('stores')})`,
                     icon: 'database',
                     kind: 'idb-db',
                     sizeBytes: null,
@@ -480,7 +530,7 @@ export class BrowserProvider {
                     childCount: storeCount,
                     canDrill: storeCount > 0,
                     canDelete: true,
-                    note: null,
+                    note: failure,
                     capabilities: capabilities({ delete: true }),
                 });
             }
@@ -504,8 +554,7 @@ export class BrowserProvider {
             try {
                 const entries = [];
                 for (const name of Array.from(db.objectStoreNames)) {
-                    let count = 0;
-                    try { count = await countStore(db, name); } catch { /* keep 0 */ }
+                    const count = await countStore(db, name);
                     entries.push({
                         key: name,
                         label: name,
@@ -562,15 +611,15 @@ export class BrowserProvider {
             const names = await safeCacheKeys();
             const entries = [];
             for (const name of names) {
-                let requestCount = 0;
+                let requestCount = null, failure = null;
                 try {
                     const cache = await caches.open(name);
                     requestCount = (await cache.keys()).length;
-                } catch { /* leave 0 */ }
+                } catch (error) { failure = error.message; }
                 entries.push({
                     key: name,
                     label: name,
-                    labelSuffix: ` (${requestCount} ${translate('requests')})`,
+                    labelSuffix: requestCount == null ? '' : ` (${requestCount} ${translate('requests')})`,
                     icon: 'file-lines',
                     kind: 'cache',
                     sizeBytes: null,
@@ -578,7 +627,7 @@ export class BrowserProvider {
                     childCount: requestCount,
                     canDrill: requestCount > 0,
                     canDelete: true,
-                    note: null,
+                    note: failure,
                     capabilities: capabilities({ delete: true }),
                 });
             }
@@ -601,7 +650,7 @@ export class BrowserProvider {
         const cache = await caches.open(cacheName);
         const requests = await cache.keys();
         const entries = requests.map(request => ({
-            key: encodeURIComponent(request.url),
+            key: encodeCacheRequest(request),
             label: request.url,
             labelSuffix: '',
             icon: 'link',
@@ -665,9 +714,11 @@ export class BrowserMutator {
             throw makeErr('E_INVALID_PATH', 'Create is supported only inside localStorage/sessionStorage.');
         }
         const [category] = pathArr;
+        assertUserKey(category, String(key));
         if (category !== 'localStorage' && category !== 'sessionStorage') {
             throw makeErr('E_INVALID_PATH', 'This browser storage category does not support create.');
         }
+        if (window[category].getItem(String(key)) !== null) throw makeErr('E_CONFLICT', 'A storage entry with this name already exists.');
         window[category].setItem(String(key), String(value));
         return { ok: true };
     }
@@ -677,6 +728,7 @@ export class BrowserMutator {
             throw makeErr('E_INVALID_PATH', 'Storage write path is incomplete.');
         }
         const [category, ...rest] = pathArr;
+        assertUserKey(category, rest[0]);
         if (category === 'localStorage' || category === 'sessionStorage') {
             if (rest.length !== 1) throw makeErr('E_INVALID_PATH', `${category} path must be [category, key].`);
             window[category].setItem(rest[0], String(content));
@@ -698,7 +750,15 @@ export class BrowserMutator {
             try {
                 const tx = db.transaction(storeName, 'readwrite');
                 const committed = transactionResult(tx, 'E_WRITE_FAILED');
+                committed.catch(() => {});
                 const store = tx.objectStore(storeName);
+                if (store.keyPath != null) {
+                    const extract = item => item.split('.').reduce((current, field) => current?.[field], value);
+                    const nextKey = Array.isArray(store.keyPath) ? store.keyPath.map(extract) : extract(store.keyPath);
+                    let same = false;
+                    try { same = indexedDB.cmp(nextKey, key) === 0; } catch { /* missing or invalid inline key */ }
+                    if (!same) { tx.abort(); throw makeErr('E_CONFLICT', 'Editing an IndexedDB primary key requires a separate create operation.'); }
+                }
                 const request = store.keyPath == null ? store.put(value, key) : store.put(value);
                 await requestResult(request, 'E_WRITE_FAILED');
                 await committed;
@@ -715,6 +775,7 @@ export class BrowserMutator {
             throw makeErr('E_INVALID_PATH', `Path must have at least [category, key]: got ${JSON.stringify(pathArr)}`);
         }
         const [category, ...rest] = pathArr;
+        assertUserKey(category, rest[0]);
         switch (category) {
             case 'localStorage':
             case 'sessionStorage':
@@ -742,7 +803,7 @@ export class BrowserMutator {
                 }
                 if (rest.length === 2) {
                     const cache = await caches.open(rest[0]);
-                    await cache.delete(decodeURIComponent(rest[1]));
+                    await cache.delete(decodeCacheRequest(rest[1]));
                     return { ok: true };
                 }
                 throw makeErr('E_INVALID_PATH', 'Cache Storage path depth invalid');
@@ -781,7 +842,8 @@ export class BrowserMutator {
         const db = await openDatabase(dbName);
         try {
             const tx = db.transaction(storeName, 'readwrite');
-            await requestResult(tx.objectStore(storeName).clear());
+            const committed = transactionResult(tx); committed.catch(() => {});
+            await requestResult(tx.objectStore(storeName).clear()); await committed;
         } finally {
             db.close();
         }
@@ -791,7 +853,8 @@ export class BrowserMutator {
         const db = await openDatabase(dbName);
         try {
             const tx = db.transaction(storeName, 'readwrite');
-            await requestResult(tx.objectStore(storeName).delete(decodeIdbKey(token)));
+            const committed = transactionResult(tx); committed.catch(() => {});
+            await requestResult(tx.objectStore(storeName).delete(decodeIdbKey(token))); await committed;
         } finally {
             db.close();
         }
@@ -799,19 +862,5 @@ export class BrowserMutator {
 }
 
 export async function openBrowserStorageInspector() {
-    const container = document.createElement('div');
-    container.classList.add('storageInspectorContainerWrapper');
-    const inspector = createStorageInspector({
-        provider: new BrowserProvider(),
-        mutator: new BrowserMutator(),
-        container,
-    });
-    await inspector.init();
-    return callGenericPopup(container, POPUP_TYPE.DISPLAY, '', {
-        wide: true,
-        wider: true,
-        large: true,
-        allowVerticalScrolling: true,
-        okButton: t`Close`,
-    });
+    return (await import('./storage-management.js')).openStorageManagement({ initialScope: 'browser' });
 }

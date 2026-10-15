@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runMigrations } from './schema-runner.js';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 // MySQL 8 schema mirroring sqlite-schema.js. Key dialect choices:
 //   - VARCHAR(128) on PK string columns. The plan called for VARCHAR(128)
@@ -14,7 +14,8 @@ export const CURRENT_SCHEMA_VERSION = 2;
 //     also plenty for chat / world / preset names we observe in practice.
 //   - utf8mb4_bin collation: case-sensitive comparisons mirror Linux fs
 //     semantics so WorldInfo tolerant-resolver tests keep parity.
-//   - JSON column for `doc`: native binary-stored JSON in MySQL 8.
+//   - LONGTEXT JSON content from v3: preserve JSON numbers and Native hashes
+//     exactly; MySQL binary JSON can round high precision doubles on output.
 //   - integrity is GENERATED ALWAYS AS ... STORED from doc; JSON_UNQUOTE is
 //     required because JSON_EXTRACT returns a quoted JSON string ("abc"),
 //     not the bare value.

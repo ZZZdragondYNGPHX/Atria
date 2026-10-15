@@ -510,6 +510,17 @@ export class NativeSessionRuntime {
         await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, null, null);
     }
 
+    async invalidateStorageState(sessionId) {
+        if (this.snapshot?.session.sessionId !== sessionId) return;
+        // The authoritative resource has changed or left the live namespace.
+        // Discard staged projections instead of saving stale data on close.
+        this.projectionEpoch++; this.snapshot = null; this.failed = false; this.history = false;
+        this.generation = null; this.generationProjection = { state: 'idle', text: '', error: '' };
+        this.lastContextPlan = null; this._clearStagedStates();
+        await this.host.clear();
+        await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, null, null, { reason: 'storage-lifecycle' });
+    }
+
     async prepareGeneration(type) {
         if (!this.active) return type;
         this.assertWritable();

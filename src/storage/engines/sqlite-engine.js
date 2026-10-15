@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import Database from 'better-sqlite3';
 import { SqliteTransaction } from './sqlite-engine-transaction.js';
 import { initSchema } from './sqlite-schema.js';
+import { TransactionScope } from './transaction-scope.js';
 
 export class SqliteEngine {
     constructor({ directoriesByHandle }) {
@@ -13,6 +14,7 @@ export class SqliteEngine {
             throw new TypeError('SqliteEngine requires { directoriesByHandle: (handle) => dirs }');
         }
         this.kind = 'sqlite';
+        this._transactionScope = new TransactionScope();
         this._directoriesByHandle = directoriesByHandle;
         this._dbs = new Map();
         this._transactions = new WeakMap();
@@ -159,6 +161,8 @@ export class SqliteEngine {
     }
 
     async withTransaction(handle, fn) {
+        const active = this._transactionScope.get(handle);
+        if (active) return fn(active);
         const db = this._dbFor(handle);
         let tx = this._transactions.get(db);
         if (!tx) { tx = new SqliteTransaction({ db, handle, directoriesByHandle: this._directoriesByHandle }); this._transactions.set(db, tx); }
@@ -172,7 +176,7 @@ export class SqliteEngine {
             // await an async closure, so drive BEGIN/COMMIT/ROLLBACK manually.
             db.exec('BEGIN IMMEDIATE');
             try {
-                const result = await fn(tx);
+                const result = await this._transactionScope.run(handle, tx, () => fn(tx));
                 db.exec('COMMIT');
                 return result;
             } catch (err) {

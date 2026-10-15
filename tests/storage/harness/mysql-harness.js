@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
 import { MysqlEngine } from '../../../src/storage/engines/mysql-engine.js';
+import { USER_DIRECTORY_TEMPLATE } from '../../../src/constants.js';
 
 // Local dev container default. Override with ATRIA_TEST_MYSQL_ROOT_URL if the
 // docker-compose port mapping changes.
@@ -27,7 +28,7 @@ const USER_DIR_KEYS = Object.freeze([
 
 function buildStubDirs(rootDir) {
     const dirs = {};
-    for (const key of USER_DIR_KEYS) dirs[key] = path.join(rootDir, key);
+    for (const key of USER_DIR_KEYS) dirs[key] = path.join(rootDir, 'u', USER_DIRECTORY_TEMPLATE[key]);
     return dirs;
 }
 
@@ -51,6 +52,7 @@ export async function makeTempMysqlEngineHarness() {
     return {
         engine,
         kind: 'mysql',
+        url,
         handle: 'u',
         dbName,
         dataRoot: stubRoot,

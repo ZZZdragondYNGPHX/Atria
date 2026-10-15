@@ -8,6 +8,7 @@ import { listAuthoringReferences, readAuthoringReference } from '../native/autho
 import { hashNativeDocument, withNativeResourceWrite } from '../native/repositories/common.js';
 import { assertScriptTargets } from '../../public/shared/extension-contract.js';
 import { nativeMcpArtifacts } from '../native/mcp-artifacts.js';
+import { recycleNativeResource } from '../storage/center-instance.js';
 
 function localSourceMetadata(input, extraKeys = []) {
     const keys = ['name', 'id', 'expectedRevision', 'targets', 'clientInstanceId'];
@@ -27,11 +28,11 @@ async function localSourceBase(api, handle, metadata) {
     return previous;
 }
 
-export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine() }), install = readExternalExtension, captureIncident = captureBackendIncident, preparations = new ExtensionPreparationCache(), artifacts = nativeMcpArtifacts } = {}) {
+export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine(), lifecycle: recycleNativeResource }), install = readExternalExtension, captureIncident = captureBackendIncident, preparations = new ExtensionPreparationCache(), artifacts = nativeMcpArtifacts } = {}) {
     const router = express.Router();
     router.use((req, res, next) => req.user?.profile?.handle ? next() : res.sendStatus(401));
     const route = fn => async (req, res) => {
-        try { res.set('Cache-Control', 'private, no-store'); await fn(req, res, store(), req.user.profile.handle); } catch (error) { res.status(error.name === 'ConflictError' ? 409 : error.name === 'NotFoundError' ? 404 : 400).json({ error: error.code ?? error.message }); }
+        try { res.set('Cache-Control', 'private, no-store'); await fn(req, res, store(), req.user.profile.handle); } catch (error) { res.status(error.status || (error.name === 'ConflictError' ? 409 : error.name === 'NotFoundError' ? 404 : 400)).json({ error: error.code ?? error.message }); }
     };
     router.get('/official/illustration', route(async (_req, res, api, handle) => res.json(await api.illustrationSettings(handle))));
     router.put('/official/illustration', route(async (req, res, api, handle) => res.json(await api.saveIllustrationSettings(handle, req.body.value, req.body.expectedRevision))));

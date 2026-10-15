@@ -1,6 +1,9 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { assertAccountPath } from './path-boundary.js';
+import { accountEngineForDirectory, withAccountFileGrowth } from './account-quota.js';
+import { fileResourceBytes, listAccountFiles } from './resource-accounting.js';
 
 const TEXT_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml', '.css', '.js']);
 const EDITABLE_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml']);
@@ -68,6 +71,10 @@ function ensureInsideRoot(root, candidate) {
     return path.resolve(candidate);
 }
 
+function assertNoLinkedPath(root, candidate) {
+    assertAccountPath(root, candidate);
+}
+
 function matchesSettingsBackup(name) {
     return /^settings_.+\.json$/i.test(name);
 }
@@ -85,6 +92,7 @@ function isProtectedRelativePath(relPath) {
     const normalized = relPath.split(path.sep).join('/');
     const base = path.basename(normalized);
     return normalized === 'secrets.json'
+        || ['atria-native', 'projects', 'assets', 'groups', 'characters'].includes(normalized.split('/')[0])
         || isStorageDatabaseName(base)
         || base === '_engine_dump.bin'
         || base === '_engine_meta.json';
@@ -146,6 +154,7 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
         absolutePath = path.join(userRoot, SIMPLE_DIRS[category], rest[0]);
     } else if (category === 'presets' && rest[0] === 'main-settings') {
         if (rest.length !== 2) throw error('E_INVALID_PATH', 'Main settings resource path depth is invalid.');
+        if (rest[1] !== 'settings.json') throw error('E_INVALID_PATH', 'Unknown main settings resource.');
         absolutePath = path.join(userRoot, rest[1]);
     } else if (Object.hasOwn(GROUPED_DIRS, category)) {
         if (rest.length !== 2) throw error('E_INVALID_PATH', `${category} resource path depth is invalid.`);
@@ -165,6 +174,7 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
     }
 
     absolutePath = ensureInsideRoot(userRoot, absolutePath);
+    assertNoLinkedPath(userRoot, absolutePath);
     const relativePath = path.relative(path.resolve(userRoot), absolutePath);
     const protectedResource = isProtectedRelativePath(relativePath);
     const stat = fs.existsSync(absolutePath) ? fs.statSync(absolutePath) : null;
@@ -175,18 +185,20 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
         && EDITABLE_EXTENSIONS.has(extension)
         && stat.size <= MAX_EDIT_BYTES
         && !protectedResource
+        && relativePath !== 'settings.json'
         && kind !== 'chat-metadata'
         && kind !== 'chat-messages',
     );
 
     // High-level identity resources are deliberately not deletable through
     // the generic manager. Their domain workflows own cascades/references.
-    const identityProtected = ['character-card', 'character-group'].includes(kind)
+    const identityProtected = relativePath.split(path.sep)[0] === 'characters'
         || relativePath === 'settings.json';
     const canDelete = Boolean(stat && !protectedResource && !identityProtected
         && kind !== 'chat-metadata' && kind !== 'chat-messages');
 
     return {
+        userRoot: path.resolve(userRoot),
         absolutePath,
         relativePath,
         kind,
@@ -264,13 +276,7 @@ export async function createStorageRecoveryPoint({ recoveryRoot, handle, resourc
     const id = recoveryId();
     const root = path.join(recoveryRoot, handle, id);
     const payloadPath = path.join(root, 'payload');
-    await fs.promises.mkdir(root, { recursive: true });
     const stat = await fs.promises.stat(resource.absolutePath);
-    if (stat.isDirectory()) {
-        await fs.promises.cp(resource.absolutePath, payloadPath, { recursive: true });
-    } else {
-        await fs.promises.copyFile(resource.absolutePath, payloadPath);
-    }
     const manifest = {
         id,
         handle,
@@ -280,7 +286,15 @@ export async function createStorageRecoveryPoint({ recoveryRoot, handle, resourc
         isDirectory: stat.isDirectory(),
         createdAt: new Date().toISOString(),
     };
-    await fs.promises.writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+    const listing = stat.isDirectory() ? await listAccountFiles(resource.absolutePath) : { files: [{ bytes: stat.size }], errors: [] };
+    if (listing.errors.length) throw error('E_INVALID_PATH', 'Recovery source contains unreadable or linked paths.');
+    const manifestText = JSON.stringify(manifest, null, 2) + '\n';
+    await withAccountFileGrowth(handle, listing.files.reduce((sum, file) => sum + file.bytes, Buffer.byteLength(manifestText)), async () => {
+        await fs.promises.mkdir(root, { recursive: true });
+        if (stat.isDirectory()) await fs.promises.cp(resource.absolutePath, payloadPath, { recursive: true });
+        else await fs.promises.copyFile(resource.absolutePath, payloadPath);
+        await fs.promises.writeFile(path.join(root, 'manifest.json'), manifestText, 'utf8');
+    }, accountEngineForDirectory(handle, resource.userRoot));
     return manifest;
 }
 
@@ -303,7 +317,9 @@ export async function writeStorageResource({ resource, content, recoveryRoot, ha
         // Re-read and validate bytes before the atomic rename.
         const persisted = await fs.promises.readFile(temp, 'utf8');
         validateTextContent(path.extname(resource.absolutePath).toLowerCase(), persisted);
-        await fs.promises.rename(temp, resource.absolutePath);
+        const delta = fileResourceBytes(resource.relativePath.split(path.sep).join('/'), Buffer.from(text)).bytes
+            - fileResourceBytes(resource.relativePath.split(path.sep).join('/'), await fs.promises.readFile(resource.absolutePath)).bytes;
+        await withAccountFileGrowth(handle, delta, () => fs.promises.rename(temp, resource.absolutePath), accountEngineForDirectory(handle, resource.userRoot));
     } catch (cause) {
         await fs.promises.rm(temp, { force: true }).catch(() => {});
         throw cause;
@@ -341,14 +357,17 @@ export async function restoreStorageRecoveryPoint({ recoveryRoot, handle, userRo
     const manifest = JSON.parse(await fs.promises.readFile(path.join(root, 'manifest.json'), 'utf8'));
     if (manifest.handle !== handle) throw error('E_RECOVERY_INVALID', 'Recovery point handle mismatch.');
     const target = ensureInsideRoot(userRoot, path.join(userRoot, manifest.relativePath));
+    assertNoLinkedPath(userRoot, target);
+    if (isProtectedRelativePath(manifest.relativePath) || manifest.relativePath === 'settings.json') throw error('E_READ_ONLY', 'This path requires its domain recovery service.');
     const payload = path.join(root, 'payload');
-    await fs.promises.rm(target, { recursive: true, force: true }).catch(() => {});
+    if (fs.existsSync(target)) throw error('E_CONFLICT', 'Recovery never overwrites an existing resource.');
     await fs.promises.mkdir(path.dirname(target), { recursive: true });
-    if (manifest.isDirectory) {
-        await fs.promises.cp(payload, target, { recursive: true });
-    } else {
-        await fs.promises.copyFile(payload, target);
-    }
+    const listing = manifest.isDirectory ? await listAccountFiles(payload) : { files: [{ bytes: (await fs.promises.stat(payload)).size }], errors: [] };
+    if (listing.errors.length) throw error('E_INVALID_PATH', 'Recovery payload contains unreadable or linked paths.');
+    await withAccountFileGrowth(handle, listing.files.reduce((sum, file) => sum + file.bytes, 0), async () => {
+        if (manifest.isDirectory) await fs.promises.cp(payload, target, { recursive: true });
+        else await fs.promises.copyFile(payload, target);
+    }, accountEngineForDirectory(handle, userRoot));
     return manifest;
 }
 

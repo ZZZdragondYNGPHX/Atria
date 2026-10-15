@@ -1,10 +1,13 @@
 import { Readable } from 'node:stream';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash } from 'node:crypto';
 import { StringDecoder } from 'node:string_decoder';
 import mysql from 'mysql2/promise';
 import { MysqlTransaction } from './mysql-engine-transaction.js';
 import { initSchema } from './mysql-schema.js';
 import { withRetry } from '../retry.js';
 import { logEngineError } from '../engine-logger.js';
+import { TransactionScope } from './transaction-scope.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -109,6 +112,8 @@ export class MysqlEngine {
             throw new TypeError('MysqlEngine requires { url: "mysql://user:pass@host:port/db" }');
         }
         this.kind = 'mysql';
+        this._transactionScope = new TransactionScope();
+        this._accountLease = new AsyncLocalStorage();
         this._acquireTimeoutMs = acquireTimeoutMs;
         this._retries = retries;
         // mysql2/promise pool. charset=utf8mb4 keeps inserts consistent with
@@ -163,16 +168,32 @@ export class MysqlEngine {
         }
     }
 
+    async withAccountLock(handle, operation) {
+        await this._ensureSchema();
+        if (this._accountLease.getStore()?.handle === handle) return operation();
+        const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
+        const [[{ db }]] = await conn.query('SELECT DATABASE() AS db');
+        const name = createHash('sha256').update('atria:account:' + db + ':' + handle).digest('hex');
+        try {
+            const [[{ acquired }]] = await conn.query('SELECT GET_LOCK(?, 30) AS acquired', [name]);
+            if (acquired !== 1) throw new Error('Account storage admission lock unavailable');
+            try { return await this._accountLease.run({ handle, conn }, operation); } finally { await conn.query('SELECT RELEASE_LOCK(?)', [name]); }
+        } finally { conn.release(); }
+    }
+
     async withTransaction(handle, fn) {
+        const active = this._transactionScope.get(handle);
+        if (active) return fn(active);
         await this._ensureSchema();
         try {
             return await withRetry(async () => {
-                const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
+                const leased = this._accountLease.getStore();
+                const conn = leased?.handle === handle ? leased.conn : await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
                 try {
                     await conn.beginTransaction();
                     const tx = new MysqlTransaction({ conn, handle });
                     try {
-                        const result = await fn(tx);
+                        const result = await this._transactionScope.run(handle, tx, () => fn(tx));
                         await conn.commit();
                         return result;
                     } catch (err) {
@@ -180,7 +201,7 @@ export class MysqlEngine {
                         throw err;
                     }
                 } finally {
-                    conn.release();
+                    if (conn !== leased?.conn) conn.release();
                 }
             }, { retries: this._retries.transient });
         } catch (err) {

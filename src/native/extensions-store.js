@@ -29,7 +29,32 @@ export function assertExtensionFiles(files, entrypoint) {
     return files;
 }
 export class ExtensionsStore {
-    constructor({ engine }) { this.engine = engine; }
+    constructor({ engine, lifecycle = null }) { this.engine = engine; this.lifecycle = lifecycle; }
+    async removeResource(handle, resourceType, resourceId) {
+        if (resourceType === 'atri.extensions.plugin') {
+            const row = await this.get(handle, resourceId);
+            return this.remove(handle, resourceId, row.revision);
+        }
+        const type = resourceType === 'atri.extensions.official' && resourceId === 'illustration' ? 'official'
+            : resourceType === 'atri.extensions.settings' && resourceId === 'account' ? 'settings' : null;
+        if (!type) throw new TypeError('Unsupported Extension settings resource');
+        return withNativeResourceWrite(handle, 'extensions', () => this.engine.withTransaction(handle, tx => {
+            assertWritable(); return tx.deleteResource(key(handle, type, resourceId));
+        }));
+    }
+    async restoreResource(handle, resourceType, resourceId, doc) {
+        return withNativeResourceWrite(handle, 'extensions', async () => {
+            if (resourceType === 'atri.extensions.plugin') {
+                const { id: _id, revision: _revision, ...input } = doc;
+                return this.save(handle, { ...input, enabled: false }, null, { createId: resourceId, verifiedSource: true });
+            }
+            if (resourceType === 'atri.extensions.official' && resourceId === 'illustration') {
+                return this.saveIllustrationSettings(handle, { ...doc, enabled: false, director: { ...doc.director, mode: 'manual' } }, (await this.illustrationSettings(handle)).revision);
+            }
+            if (resourceType === 'atri.extensions.settings' && resourceId === 'account') return this.saveSettings(handle, doc, (await this.settings(handle)).revision);
+            throw new TypeError('Unsupported Extension settings resource');
+        });
+    }
     async illustrationSettings(handle) {
         const value = await this.engine.withTransaction(handle, tx => getNativeDocument(tx, key(handle, 'official', 'illustration'))) ?? defaultIllustrationSettings();
         return { value, revision: hashNativeDocument(value) };
@@ -102,6 +127,7 @@ export class ExtensionsStore {
         assertWritable();
         return withNativeResourceWrite(handle, 'extensions', async () => {
             const old = await this.get(handle, id); if (old.revision !== expectedRevision) throw new ConflictError('atri_extensions_conflict');
+            if (this.lifecycle) { await this.lifecycle(handle, { type: 'versioned', resourceType: 'atri.extensions.plugin', id, expectedRevision }); return { id, deleted: true }; }
             await this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, 'plugin', id), { id, deleted: true }));
             return { id, deleted: true };
         });
@@ -126,6 +152,10 @@ export class ExtensionsStore {
                 || hashNativeDocument(old.targets) !== input.expectedTargetsHash) throw new ConflictError('atri_extensions_review_conflict');
             if (command === 'enable' && old.kind === 'external' && !old.sourceCommit) throw new ConflictError('atri_extensions_source_unverified_conflict');
             if (command === 'delete') {
+                if (this.lifecycle) {
+                    await this.lifecycle(handle, { type: 'versioned', resourceType: 'atri.extensions.plugin', id, expectedRevision: old.revision });
+                    return { id, deleted: true, previousRevision: old.revision, contentHash: old.contentHash };
+                }
                 await this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, 'plugin', id), { id, deleted: true }));
                 return { id, deleted: true, previousRevision: old.revision, contentHash: old.contentHash };
             }

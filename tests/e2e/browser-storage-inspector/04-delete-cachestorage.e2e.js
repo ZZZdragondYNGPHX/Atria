@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector } from './_helpers.js';
+import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector, confirmBrowserDeletion } from './_helpers.js';
 
 let server;
 
@@ -32,7 +32,7 @@ test.describe('Browser Storage Inspector · delete Cache Storage', () => {
 
         // Delete tts-cache
         await inspector.locator('.storageInspectorEntry[data-key="tts-cache"] .storageInspectorEntryDeleteButton').click();
-        await page.locator('dialog.popup[open]').last().locator('.popup-button-ok').click();
+        await confirmBrowserDeletion(page, ['cachestorage']);
         await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
 
         // UI · tts-cache gone

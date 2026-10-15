@@ -74,6 +74,7 @@ export function mountSettingsUtility({ document: doc = globalThis.document, slot
     const links = el(doc, 'div', 'atria-settings-related', undefined, sidebar);
     el(doc, 'p', '', tl('Related settings'), links);
     for (const [label, id] of [['Account & backups', 'account'], ['Extensions', 'plugins'], ['Diagnostics', 'diagnostics']]) action(doc, links, label, () => host?.openUtility(id));
+    action(doc, links, 'Resource usage & safe cleanup', async () => (await import('../storage-management.js')).openStorageManagement());
     action(doc, links, 'Learning center', () => globalThis.Atria?.shell?.getLearningCenter()?.open());
     function navigate(id, setting = '', history = 'push') {
         const currentRoute = navigation?.getRoute?.() || route || { domain: 'play' };
