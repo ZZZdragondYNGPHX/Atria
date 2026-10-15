@@ -279,3 +279,9 @@
 - 原cross-mode测试先出现RangeError但Jest仍PASS，不能计作可靠故障证据：原fixture直接改复用tx.putResource导致递归，改用不污染原tx的Proxy，并断言指定chat/settings注入实际触发后，两文件14/14无递归异常通过。不可达SQL URL反例现显式提供测试部署声明，确实走原driver连接拒绝，不用unknown配置拒绝冒充网络实证。
 - 生产新增/变更模块定向ESLint/diff check通过；users-private完整lint仍报2处既有atria/no-raw-fs-in-endpoint错误，已对HEAD原文stdin复核同两处（原1977/2072，现1987/2082），本组未新增或关闭该rule。其余rules定向通过；不声称该文件完整lint通过。后续最终门槛仍须处理/核对这些既有项。
 - P1/P2仍IN_PROGRESS，全部raw消费者/V3引用保留根与后续P2–P8继续；SQL真实服务/三端/批准/费用/质量未通过，main未集成。
+
+## 2026-10-16 — 同步最新main的原Storage Center UI
+
+- fetch实际核对`origin/main@695acf3bcad1d42e331459189532a76056278bec`，相比已组合的73557f809仅六个文件：原Storage Center drawer/management/CSS/中文文案及两份浏览器测试。`414902e90` + 最新main → 任务分支merge `7ab0abeecc79455727194a095068173f028a76ea`，无冲突，已推送；没有V3→main集成。
+- 两份产品JS执行node --check通过；对该增量产品JS/CSS的orchestration/agent-runtime/agent-workspace/director文本依赖检查无命中，diff check及Git状态干净。不把此局部增量核对替代P6 AST/真实consumer全闭包，也未重跑上游UI浏览器用例或将其计作V3前端通过。
+- Git HTTPS握手曾临时失败，普通重试后源码及前一docs组均推送成功；未关闭证书验证或修改全局网络配置。P1/P2与NOT_RUN/BLOCKED清单不变，继续同一任务实现。
