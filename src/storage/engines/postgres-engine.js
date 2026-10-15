@@ -6,6 +6,7 @@ import { PgTransaction } from './postgres-engine-transaction.js';
 import { initSchema } from './postgres-schema.js';
 import { withRetry } from '../retry.js';
 import { logEngineError } from '../engine-logger.js';
+import { TransactionScope } from './transaction-scope.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -69,6 +70,7 @@ export class PgEngine {
             throw new TypeError('PgEngine requires { url: "postgresql://user:pass@host:port/db" }');
         }
         this.kind = 'postgres';
+        this._transactionScope = new TransactionScope();
         this._accountLease = new AsyncLocalStorage();
         this._retries = retries;
         // pg.Pool keyed on connection-string + max. Max caps concurrent
@@ -135,6 +137,8 @@ export class PgEngine {
     }
 
     async withTransaction(handle, fn) {
+        const active = this._transactionScope.get(handle);
+        if (active) return fn(active);
         await this._ensureSchema();
         try {
             return await withRetry(async () => {
@@ -144,7 +148,7 @@ export class PgEngine {
                     await client.query('BEGIN');
                     const tx = new PgTransaction({ client, handle });
                     try {
-                        const result = await fn(tx);
+                        const result = await this._transactionScope.run(handle, tx, () => fn(tx));
                         await client.query('COMMIT');
                         return result;
                     } catch (err) {

@@ -19,7 +19,7 @@ describe('resource center contracts', () => {
         expect(classifyNativeRecord({ key: { kind: 'future-kind' }, doc: {} })).toBe('advanced');
         const key = { kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, resourceType: 'atri.visual.job' };
         expect(classifyNativeRecord({ key, doc: {} })).toBe('advanced');
-        expect(classifyNativeRecord({ key, doc: { value: { sessionId: 'stored-owner' } } })).toBe('sessions');
+        expect(classifyNativeRecord({ key, doc: { source: { sessionId: 'stored-owner' } } })).toBe('sessions');
         expect(classifyNativeRecord({ key: { ...key, resourceType: 'core.prompt-module' }, doc: {} })).toBe('settings');
     });
     test('agent scope alone never changes ownership or grants deletion', () => {

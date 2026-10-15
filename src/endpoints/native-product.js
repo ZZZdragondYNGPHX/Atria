@@ -93,7 +93,7 @@ export function createNativeProductRouter(getServices = services, artifacts = na
                 request.user.profile.handle,
             );
         } catch (error) {
-            const status = error?.code === 'native_persona_scope_denied' ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error?.name === 'ConflictError' || String(error?.code || '').includes('conflict')
+            const status = error?.code === 'storage_quota_exceeded' ? 413 : error?.code === 'storage_usage_unavailable' ? 503 : error?.code === 'native_persona_scope_denied' ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error?.name === 'ConflictError' || String(error?.code || '').includes('conflict')
                 || String(error?.code || '').includes('referenced')
                 ? 409
                 : error?.name === 'NotFoundError'

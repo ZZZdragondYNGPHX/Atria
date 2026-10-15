@@ -1,5 +1,5 @@
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
-import { withAccountFileGrowth } from '../../storage/account-quota.js';
+import { withAccountFileGrowth, withAccountQuota } from '../../storage/account-quota.js';
 import { retainedBlobHashes, recoveryReferences } from '../recovery-roots.js';
 import { assertAccountPath } from '../../storage/path-boundary.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
@@ -122,6 +122,28 @@ export class AssetStore {
         });
     }
 
+    async withBlobPublication(handle, payloads, operation) {
+        const hashes = [...new Set(payloads.map(bytes => digest(toBuffer(bytes))))].sort();
+        const lock = index => index < hashes.length ? this.withBlobLease(handle, hashes[index], () => lock(index + 1))
+            : withAccountQuota(this._engine, handle, async () => {
+                const created = [];
+                for (const hash of hashes) if (!await this.hasBlob(handle, hash)) created.push(hash);
+                try { return await this._engine.withTransaction(handle, () => operation()); } catch (error) {
+                    // A failed quota/metadata commit has no newly published
+                    // refs. Recover a committed FS journal before deciding;
+                    // never remove a blob that its recovered commit retained.
+                    const roots = await this._engine.withTransaction(handle, async tx => new Set([
+                        ...await retainedBlobHashes(tx, handle),
+                        ...(await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle })).map(row => row.doc.contentHash),
+                        ...(await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageVersion, handle })).map(row => row.doc.packageContentHash),
+                    ]));
+                    for (const hash of created) if (!roots.has(hash) && !blobReaders.has(blobIdentity(handle, hash))) await durableRemoveAsync(this._blobPath(handle, hash));
+                    throw error;
+                }
+            });
+        return lock(0);
+    }
+
     async hasBlob(handle, contentHash) {
         if (!/^[a-f0-9]{64}$/.test(String(contentHash || ''))) {
             throw new TypeError('AssetStore contentHash must be a lowercase SHA-256 digest');
@@ -173,7 +195,7 @@ export class AssetStore {
 
         // Blob first, logical reference last. A crash between these operations
         // leaves only an unreferenced content-addressed blob, which GC can reap.
-        return this.withBlobLease(handle, contentHash, async () => {
+        return this.withBlobPublication(handle, [bytes], async () => {
             await this.putBlob(handle, bytes);
 
             await this._engine.withTransaction(handle, tx => putImmutable(

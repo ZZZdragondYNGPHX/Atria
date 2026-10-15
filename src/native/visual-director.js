@@ -76,7 +76,7 @@ export class VisualDirector {
                         }
                     }
                 }
-                await this.store.write(handle, 'director-scan', eventKey, { revisionId: event.revisionId, branchId: current.revision.branchId }, null);
+                await this.store.write(handle, 'director-scan', eventKey, { sessionId, revisionId: event.revisionId, branchId: current.revision.branchId }, null);
             }
             return this.list(handle, sessionId, current.revision.branchId);
         });

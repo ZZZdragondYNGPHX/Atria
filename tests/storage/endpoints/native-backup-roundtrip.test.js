@@ -14,6 +14,11 @@ import { AssetStore, ProjectStore, createNativeId } from '../../../src/native/in
 import { NativeRecoveryService } from '../../../src/native/recovery-service.js';
 import { nativeRecord } from '../../../src/native/repositories/common.js';
 import { STORAGE_CENTER_PROTOCOL } from '../../../src/storage/resource-catalog.js';
+import { makeTempMysqlEngineHarness } from '../harness/mysql-harness.js';
+import { makeTempPgEngineHarness } from '../harness/pg-harness.js';
+import { runFixture } from '../../native/helpers/run-fixture.js';
+import { installAccountQuota } from '../../../src/storage/account-quota.js';
+import { measureAccount } from '../../../src/storage/resource-accounting.js';
 
 const nativeOnly = Object.fromEntries(Object.keys(USER_BACKUP_SELECTION_DEFAULTS).map(key => [key, key === 'native']));
 const otherValues = { scopeId: 'a'.repeat(64), evidenceId: 'b'.repeat(64), sourceDigest: 'c'.repeat(64), checkpointId: 'd'.repeat(64), scope: 'backup-probe', taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', namespace: 'atri_backup', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'pmod-test', revision: 'rev-1' };
@@ -59,7 +64,7 @@ async function seed(h) {
         const doc = { marker: kind, exact: key, value: 'unchanged 中文' };
         if (kind === NATIVE_RESOURCE_KINDS.assetRef) Object.assign(doc, { contentHash: hash, size: bytes.length });
         if (kind === NATIVE_RESOURCE_KINDS.packageVersion) doc.packageContentHash = hash;
-        const record = { key, doc, integrity: 'exact-integrity', createdAt: 1000, updatedAt: 2000 };
+        const record = { key, ...nativeRecord(doc, { createdAt: 1000, updatedAt: 2000 }) };
         await engine.withTransaction(h.handle, tx => tx.putResource(key, record));
         records.push(record);
     }
@@ -84,10 +89,12 @@ async function seed(h) {
     return { records, hash, bytes, projectId, retained, retainedHash, retainedBytes, retainedAssetId };
 }
 
-describe.each([['fs', 'fs'], ['fs', 'sqlite'], ['sqlite', 'fs'], ['sqlite', 'sqlite']])('Native backup %s → %s', (sourceMode, targetMode) => {
-    let current;
+const backupPairs = [['fs', 'fs'], ['fs', 'sqlite'], ['sqlite', 'fs'], ['sqlite', 'sqlite'], ['fs', 'mysql'], ['mysql', 'fs'], ['mysql', 'mysql'], ['sqlite', 'postgres'], ['postgres', 'sqlite'], ['postgres', 'postgres']]
+    .filter(pair => !(process.env.ATRIA_DISABLE_MYSQL_TESTS && pair.includes('mysql') || process.env.ATRIA_DISABLE_POSTGRES_TESTS && pair.includes('postgres')));
+describe.each(backupPairs)('Native backup %s → %s', (sourceMode, targetMode) => {
+    let current, scratch;
     const originalRoot = globalThis.DATA_ROOT;
-    afterEach(async () => { if (current) await current.cleanup(); globalThis.DATA_ROOT = originalRoot; });
+    afterEach(async () => { if (current) await current.cleanup(); if (scratch) await scratch.cleanup(); globalThis.DATA_ROOT = originalRoot; });
 
     test('backup survives loss of source and restores non-Persona Native kinds, exact metadata, projects and blobs', async () => {
         current = await harness(sourceMode);
@@ -95,10 +102,13 @@ describe.each([['fs', 'fs'], ['fs', 'sqlite'], ['sqlite', 'fs'], ['sqlite', 'sql
         const archive = await download(current);
         await current.cleanup();
         current = await harness(targetMode);
-        const response = await request(current.app).post('/api/users/restore-backup')
-            .field('handle', current.handle).field('mode', 'merge').field('selection', JSON.stringify(nativeOnly))
-            .attach('avatar', archive, 'native.zip');
-        expect(response.status).toBe(200);
+        let restore = request(current.app).post('/api/users/restore-backup').field('handle', current.handle).field('mode', 'merge').field('selection', JSON.stringify(nativeOnly));
+        if (sourceMode !== targetMode && ['mysql', 'postgres'].includes(sourceMode)) {
+            scratch = await (sourceMode === 'mysql' ? makeTempMysqlEngineHarness() : makeTempPgEngineHarness());
+            restore = restore.field(sourceMode === 'mysql' ? 'scratchMysqlUrl' : 'scratchPostgresUrl', scratch.url);
+        }
+        const response = await restore.attach('avatar', archive, 'native.zip');
+        expect({ status: response.status, body: response.body }).toMatchObject({ status: 200 });
         expect(response.body.verification?.ok).toBe(true);
         const engine = getStorageEngine();
         for (const record of data.records) {
@@ -128,6 +138,30 @@ describe.each(['fs', 'sqlite'])('Native backup safety on %s', mode => {
     const originalRoot = globalThis.DATA_ROOT;
     beforeEach(async () => { current = await harness(mode); });
     afterEach(async () => { await current.cleanup(); globalThis.DATA_ROOT = originalRoot; });
+
+    test('an older account archive cannot replace a permanent Ironman terminal authority', async () => {
+        const engine = getStorageEngine(), f = await runFixture({ ...current, engine }, 'http://127.0.0.1:1/unused');
+        const started = await f.begin('ironman'), sessionId = started.session.sessionId;
+        const archive = await download(current);
+        await f.sessionRepo.delete(current.handle, sessionId);
+        expect(await f.core.runStatus(current.handle, sessionId)).toMatchObject({ mode: 'ironman', status: 'terminal' });
+        const response = await request(current.app).post('/api/users/restore-backup')
+            .field('handle', current.handle).field('mode', 'overwrite').field('selection', JSON.stringify(nativeOnly)).attach('avatar', archive, 'older.zip');
+        expect({ status: response.status, body: response.body }).toMatchObject({ status: 200 });
+        expect(await f.core.runStatus(current.handle, sessionId)).toMatchObject({ mode: 'ironman', status: 'terminal' });
+        await expect(f.core.beginStory(current.handle, sessionId, { input: { mode: 'ironman', name: 'Ada' }, invocationId: 'revive', expectedRevisionId: started.revision.revisionId })).rejects.toMatchObject({ code: 'native_run_terminal' });
+    });
+
+    test('account file restore quota failure rolls back the live files', async () => {
+        const file = path.join(current.dirs.assets, 'quota.txt'); fs.mkdirSync(current.dirs.assets, { recursive: true }); fs.writeFileSync(file, 'x'.repeat(2000));
+        const selection = { ...nativeOnly, native: false, assets: true }, archive = await download(current, selection);
+        fs.writeFileSync(file, 'kept');
+        const engine = getStorageEngine(), used = await measureAccount({ engine, handle: current.handle, directories: current.dirs });
+        installAccountQuota(engine, { directoriesByHandle: () => current.dirs, limit: async () => used.totalBytes + 100 });
+        const response = await request(current.app).post('/api/users/restore-backup')
+            .field('handle', current.handle).field('mode', 'overwrite').field('selection', JSON.stringify(selection)).attach('avatar', archive, 'quota.zip');
+        expect(response.status).toBeGreaterThanOrEqual(400); expect(fs.readFileSync(file, 'utf8')).toBe('kept');
+    });
 
     test('a missing required blob fails without losing existing resources or project sources', async () => {
         const data = await seed(current);

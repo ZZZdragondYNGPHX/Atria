@@ -128,7 +128,11 @@ export class VersionedJsonResourceHandler {
             if (owned?.presetOwner) throw new TypeError('Manage this resource through its Prompt preset');
             const blockers = await references({ scope: 'library', resourceType: ref.resourceType, resourceId: ref.resourceId });
             if (blockers.length) throw new ConflictError('native_resource_referenced', { references: blockers });
-            if (this.lifecycle) return this.lifecycle(handle, { type: 'versioned', id: ref.resourceId, resourceType: ref.resourceType });
+            if (this.lifecycle) {
+                const revisions = await this.listRevisions(handle, ref.resourceType, ref.resourceId);
+                await this.lifecycle(handle, { type: 'versioned', id: ref.resourceId, resourceType: ref.resourceType });
+                return { deleted: true, revisions: revisions.length };
+            }
             return this._engine.withTransaction(handle, async tx => {
                 assertWritable();
                 const revisions = await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision, handle, resourceType: ref.resourceType, resourceId: ref.resourceId });
@@ -422,7 +426,7 @@ export class NativeModelPromptPersistence {
                     || (kind === 'routes' && route.fallbackRouteRefs.some(ref => ref.runtimeRouteId === id))) add('routes', route, 'runtimeRouteId');
             }
             if (usedBy.length) throw new ConflictError('native_runtime_referenced', { usedBy });
-            if (this.lifecycle) return this.lifecycle(handle, { type: { connections: 'connection', models: 'model', routes: 'route' }[kind], id });
+            if (this.lifecycle) { await this.lifecycle(handle, { type: { connections: 'connection', models: 'model', routes: 'route' }[kind], id }); return { deleted: true }; }
             for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle })) {
                 if (row.doc.binding?.runtimeResourceRefs?.[idField] === id) await tx.deleteResource(row.key);
             }

@@ -26,6 +26,10 @@ export async function recycleNativeResource(handle, target, expected = {}) {
     const result = await center.run(handle, preview.id);
     const item = result.items[0];
     if (item.status !== 'succeeded') {
+        if (['storage_quota_exceeded', 'storage_usage_unavailable'].includes(item.reason)) {
+            const { AccountQuotaError } = await import('./account-quota.js');
+            throw new AccountQuotaError(item.reason);
+        }
         const { ConflictError } = await import('./errors.js');
         throw new ConflictError(item.reason || 'native_delete_failed');
     }

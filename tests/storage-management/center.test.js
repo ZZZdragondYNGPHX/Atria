@@ -2,7 +2,9 @@ import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { services } from '../native/helpers/session-fixture.js';
 import { WorldRepo, PersonaRepo, ProjectStore, createNativeId } from '../../src/native/index.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
-import { nativeRecord } from '../../src/native/repositories/common.js';
+import { nativeRecord, hashNativeDocument } from '../../src/native/repositories/common.js';
+import { RuntimeCheckpointStore, runtimeCheckpointLimits } from '../../src/native/model-prompt-runtime/runtime-checkpoint-store.js';
+import { AgentExperienceRepository } from '../../src/native/agent-intelligence/experience-repository.js';
 import { installAccountQuota } from '../../src/storage/account-quota.js';
 import { ResourceCenterService } from '../../src/storage/resource-center.js';
 import { importedManagementRecord } from '../../src/storage/migration/management-state.js';
@@ -23,6 +25,38 @@ describe.each(CONTRACT_HARNESSES)('persistent resource operations — $name', ({
         await h.engine.withTransaction(h.handle, tx => tx.putResource(key, nativeRecord({ worldId: id, displayName: name, currentRevisionId: null })));
         return { type: 'world', id };
     }
+    test('safe cleanup admits only authenticated expired Runtime checkpoints and rechecks the fixed record', async () => {
+        const binding = { schemaVersion: 1, ownerFingerprint: hashNativeDocument(h.handle), pathFingerprint: hashNativeDocument('path'), executionScope: { kind: 'task', projectId: 'project', taskId: 'task' }, continuity: 'task' };
+        const state = { schemaVersion: 1, checkpointId: 'a'.repeat(64), bindingFingerprint: hashNativeDocument(binding), text: '', calls: [] };
+        const entry = { binding, bindingFingerprint: state.bindingFingerprint, sequence: [], content: [], text: '', calls: [] };
+        const expired = new RuntimeCheckpointStore({ engine: h.engine, handle: h.handle, now: () => Date.now() - runtimeCheckpointLimits.ttlMs - 1000 });
+        await expired.save(state, entry);
+        const live = new RuntimeCheckpointStore({ engine: h.engine, handle: h.handle });
+        // save() itself prunes expired rows. Seed a second already-persisted
+        // valid row without invoking that independent cleanup path.
+        const source = await h.engine.withTransaction(h.handle, tx => tx.getResource(expired.key(state.checkpointId)));
+        const createdAt = Date.now(), record = nativeRecord({ ...source.doc, checkpointId: 'b'.repeat(64), createdAt, expiresAt: createdAt + runtimeCheckpointLimits.ttlMs });
+        expect(live.valid(record)).toBe(true);
+        await h.engine.withTransaction(h.handle, tx => tx.putResource(live.key(record.doc.checkpointId), record));
+        const snapshot = await center.snapshot(h.handle); expect(snapshot.suggestions).toHaveLength(1);
+        const preview = await center.preview(h.handle, 'clean', snapshot.suggestions.map(item => item.target));
+        expect(preview.items[0].status).toBe('pending');
+        const result = await center.run(h.handle, preview.id); expect(result.items[0].status).toBe('succeeded');
+        expect(await h.engine.withTransaction(h.handle, tx => tx.getResource(live.key(state.checkpointId)))).toBeNull();
+        expect(await h.engine.withTransaction(h.handle, tx => tx.getResource(live.key('b'.repeat(64))))).not.toBeNull();
+    });
+    test('validated project-owned experience is grouped with its project and fixed selections deduplicate owned children', async () => {
+        const projectId = createNativeId('project'), repo = new AgentExperienceRepository({ engine: h.engine });
+        const doc = await repo.mutate(h.handle, { domain: 'project', projectId }, 'authoring', null, value => { value.retentionDays = 31; });
+        const { measureAccount } = await import('../../src/storage/resource-accounting.js');
+        const snapshot = await measureAccount({ engine: h.engine, handle: h.handle, directories: h.dirs });
+        expect(snapshot.units.find(item => item.key?.scopeId === doc.scopeId)).toMatchObject({ category: 'projects', owner: { type: 'project', id: projectId } });
+        const parent = { type: 'project', id: projectId }, child = { type: 'experience', id: doc.scopeId };
+        const inspect = center.recovery.inspect.bind(center.recovery);
+        center.recovery.inspect = async (handle, target) => target.type === 'project' ? { version: 'parent', bytes: 10, allowed: true, ownedTargets: [child] } : inspect(handle, target);
+        const preview = await center.preview(h.handle, 'trash', [child, parent, parent]);
+        expect(preview.items.map(item => item.target)).toEqual([parent]); expect(preview.deduplicatedCount).toBe(2);
+    });
     test('fixed preview survives filter changes, continues independent conflicts, and never repeats success', async () => {
         const one = await world('One'), two = await world('Two');
         const task = await center.preview(h.handle, 'trash', [one, two, two]);

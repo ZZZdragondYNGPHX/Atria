@@ -15,6 +15,11 @@ import { runFixture } from '../native/helpers/run-fixture.js';
 import { seedGenerationProfiles } from '../native/helpers/generation-fixture.js';
 import { ExtensionsStore } from '../../src/native/extensions-store.js';
 import { withRecoveryPublication } from '../../src/native/recovery-roots.js';
+import { importedManagementRecord } from '../../src/storage/migration/management-state.js';
+import { AgentExperienceRepository } from '../../src/native/agent-intelligence/experience-repository.js';
+import { installNativeLifecycle } from '../../src/storage/native-lifecycle.js';
+import { VisualStore, visualKey } from '../../src/native/visual-store.js';
+import { newImageJob } from '../../src/native/image-worker.js';
 
 describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => {
     let h, svc, recovery, limit;
@@ -29,6 +34,59 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
     });
     afterEach(async () => { await h.cleanup(); });
     const measure = () => measureAccount({ engine: h.engine, handle: h.handle, directories: h.dirs });
+    test('default repository lifecycle adapter retains the original closure for non-HTTP consumers', async () => {
+        installNativeLifecycle(h.engine, { sessions: recovery.sessions, packages: recovery.packages, worlds: recovery.worlds,
+            knowledge: recovery.knowledge, personas: recovery.personas }, async (handle, target) => {
+            const review = await recovery.inspect(handle, target);
+            return recovery.trash(handle, target, review.version, 'repository-delete');
+        });
+        const id = createNativeId('world'), target = { type: 'world', id };
+        await h.engine.withTransaction(h.handle, tx => tx.putResource(recovery.rootKey(h.handle, target), nativeRecord({ worldId: id, displayName: 'Repository world', currentRevisionId: null })));
+        expect(await recovery.worlds.delete(h.handle, id)).toBe(true);
+        expect(await recovery.worlds.get(h.handle, id)).toBeNull();
+        const [item] = await recovery.list(h.handle);
+        expect(item.target).toEqual(target);
+        const review = await recovery.preflightRestore(h.handle, item.id);
+        await recovery.restore(h.handle, item.id, review.version);
+        expect((await recovery.worlds.get(h.handle, id)).displayName).toBe('Repository world');
+        await expect(recovery.personas.delete(h.handle, { personaId: createNativeId('persona'), expectedFingerprint: 'invalid', unknown: true })).rejects.toMatchObject({ code: 'native_persona_invalid' });
+    });
+
+    test('visual jobs protect their source Session while running and join its exact recovery closure after completion', async () => {
+        const f = await installFixture(h, undefined, svc), opened = await svc.core.create(h.handle, f.start);
+        const target = { type: 'session', id: opened.session.sessionId }, store = new VisualStore({ engine: h.engine });
+        const job = newImageJob({ source: { sessionId: target.id, revisionId: opened.revision.revisionId }, intentKey: 'recovery-visual', fingerprint: 'visual-fingerprint', mode: 'manual',
+            connection: {}, target: {}, compiled: {}, evidence: { requestId: createNativeId('imageVersion') }, approval: {}, amount: 0, currency: 'USD', mediaOperation: {} });
+        await store.reserve(h.handle, job);
+        expect((await recovery.inspect(h.handle, target)).reason).toBe('native_resource_running');
+        await store.updateJob(h.handle, job.jobId, doc => ({ ...doc, status: 'cancelled', reservation: { ...doc.reservation, released: true } }));
+        const scan = { revisionId: opened.revision.revisionId, branchId: opened.revision.branchId, sessionId: target.id };
+        await store.write(h.handle, 'director-scan', 'scan', scan, null);
+        const checked = await recovery.inspect(h.handle, target), item = await recovery.trash(h.handle, target, checked.version, 'visual-session');
+        expect((await store.read(h.handle, 'job', job.jobId)).value).toBeNull();
+        expect((await store.read(h.handle, 'director-scan', 'scan')).value).toBeNull();
+        await expect(store.write(h.handle, 'scene', 'late-scene', { source: { sessionId: target.id } }, null)).rejects.toMatchObject({ code: 'native_resource_in_recycle_bin' });
+        const review = await recovery.preflightRestore(h.handle, item.id);
+        await recovery.restore(h.handle, item.id, review.version);
+        expect((await store.read(h.handle, 'job', job.jobId)).value.status).toBe('cancelled');
+        expect((await h.engine.withTransaction(h.handle, tx => tx.getResource(visualKey(h.handle, 'director-scan', 'scan')))).doc).toEqual(scan);
+    });
+    test('imported incomplete file recovery remains paused until a fresh review; reviewed restore and purge are idempotent', async () => {
+        for (const phase of ['restoring', 'purging']) {
+            fs.mkdirSync(h.dirs.backups, { recursive: true });
+            const target = { type: 'backup', id: phase + '.zip' }; fs.writeFileSync(path.join(h.dirs.backups, target.id), phase);
+            const checked = await recovery.inspect(h.handle, target), retained = await recovery.trash(h.handle, target, checked.version, phase);
+            const row = await h.engine.withTransaction(h.handle, tx => tx.getResource(recoveryKey(h.handle, retained.id)));
+            const imported = importedManagementRecord(nativeRecord({ ...row.doc, state: phase }), h.handle);
+            await h.engine.withTransaction(h.handle, tx => tx.putResource(recoveryKey(h.handle, retained.id), imported));
+            expect(await recovery.repair(h.handle)).toEqual([]);
+            expect((await recovery.list(h.handle)).find(item => item.id === retained.id).state).toBe('paused-review');
+            const review = await recovery.preflightRepair(h.handle, retained.id); expect(review.allowed).toBe(true);
+            const result = await recovery.repairReviewed(h.handle, retained.id, review.version, 'review-' + phase);
+            expect(await recovery.repairReviewed(h.handle, retained.id, review.version, 'review-' + phase)).toEqual(result);
+            expect(fs.existsSync(path.join(h.dirs.backups, target.id))).toBe(phase === 'restoring');
+        }
+    });
 
     test('Runtime reference protection, deletion tombstones and original configuration recovery share the domain authority', async () => {
         const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/unused' });
@@ -111,6 +169,24 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
         expect(await recovery.list(h.handle)).toEqual([]);
     });
 
+    test('an exact dependency with missing or altered content blocks restore without changing its recovery source', async () => {
+        const f = await installFixture(h, undefined, svc), opened = await svc.core.create(h.handle, f.start);
+        const target = { type: 'session', id: opened.session.sessionId }, checked = await recovery.inspect(h.handle, target);
+        const item = await recovery.trash(h.handle, target, checked.version, 'dependency-session');
+        const key = { kind: K.packageVersion, handle: h.handle, packageId: f.manifest.packageId, packageVersionId: f.manifest.packageVersionId };
+        const original = await h.engine.withTransaction(h.handle, tx => tx.getResource(key));
+        await withRecoveryPublication(() => h.engine.withTransaction(h.handle, tx => tx.putResource(key, nativeRecord({ ...original.doc, fixtureTamper: true }))));
+        expect((await recovery.preflightRestore(h.handle, item.id)).reason).toBe('native_recovery_dependency_missing');
+        await withRecoveryPublication(() => h.engine.withTransaction(h.handle, tx => tx.deleteResource(key)));
+        expect((await recovery.preflightRestore(h.handle, item.id)).reason).toBe('native_recovery_dependency_missing');
+        expect(await svc.sessionRepo.get(h.handle, target.id)).toBeNull();
+        expect((await recovery.list(h.handle))[0].expiresAt).toBe(item.expiresAt);
+        await withRecoveryPublication(() => h.engine.withTransaction(h.handle, tx => tx.putResource(key, original)));
+        const review = await recovery.preflightRestore(h.handle, item.id);
+        expect(review.allowed).toBe(true); await recovery.restore(h.handle, item.id, review.version);
+        expect((await svc.core.load(h.handle, target.id)).session.sessionId).toBe(target.id);
+    });
+
     test('quota failure keeps the complete original, and failed restore keeps its recovery source', async () => {
         const id = createNativeId('world'), target = { type: 'world', id };
         const key = { kind: K.world, handle: h.handle, worldId: id };
@@ -149,6 +225,26 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
         await recovery.projects.commitHistory(h.handle, projectId, location => git.commitIfChanged(location, 'Accepted chapter'));
         const acceptedHead = (await git.log(directory, 1))[0].fullHash;
         expect(acceptedHead).not.toBe(originalHead);
+        await recovery.projects.writeFile(h.handle, projectId, 'crash.txt', 'Verified local history');
+        const transaction = h.engine.withTransaction.bind(h.engine); let interrupted = false;
+        h.engine.withTransaction = (handle, operation) => transaction(handle, tx => operation(new Proxy(tx, { get(object, method) {
+            if (method === 'deleteResource') return key => {
+                if (key.scope === 'storage-center:history:' + projectId && !interrupted) { interrupted = true; throw new Error('Interrupted history ACK'); }
+                return object.deleteResource(key);
+            };
+            const value = object[method]; return typeof value === 'function' ? value.bind(object) : value;
+        } })));
+        await expect(recovery.projects.commitHistory(h.handle, projectId, location => git.commitIfChanged(location, 'Durable interrupted commit'))).rejects.toThrow('Interrupted history ACK');
+        h.engine.withTransaction = transaction;
+        const historyKey = { kind: K.maintenance, handle: h.handle, scope: 'storage-center:history:' + projectId };
+        const history = await h.engine.withTransaction(h.handle, tx => tx.getResource(historyKey));
+        await h.engine.withTransaction(h.handle, tx => tx.putResource(historyKey, importedManagementRecord(history, h.handle)));
+        await expect(recovery.projects.recoverHistory(h.handle, projectId)).rejects.toMatchObject({ code: 'native_project_history_requires_review' });
+        const review = await recovery.projects.inspectHistory(h.handle, projectId); expect(review.allowed).toBe(true);
+        const repaired = await recovery.projects.resumeHistory(h.handle, projectId, review.version, 'history-review');
+        expect(await recovery.projects.resumeHistory(h.handle, projectId, review.version, 'history-review')).toEqual(repaired);
+        const recoveredHead = (await git.log(directory, 1))[0].fullHash;
+        const experience = await new AgentExperienceRepository({ engine: h.engine }).mutate(h.handle, { domain: 'project', projectId }, 'authoring', null, value => { value.retentionDays = 31; });
         const evidenceKey = { kind: K.agentEvidence, handle: h.handle, evidenceId: 'c'.repeat(64) };
         await h.engine.withTransaction(h.handle, tx => tx.putResource(evidenceKey, nativeRecord({ scope: { domain: 'project', projectId }, source: projectId })));
         const target = { type: 'project', id: projectId }, checked = await recovery.inspect(h.handle, target);
@@ -157,10 +253,12 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
         expect(await recovery.projects.get(h.handle, projectId)).toBeNull();
         await expect(recovery.projects.writeFile(h.handle, projectId, 'chapter.txt', 'stale')).rejects.toMatchObject({ code: 'native_resource_in_recycle_bin' });
         expect(await h.engine.withTransaction(h.handle, tx => tx.getResource(evidenceKey))).not.toBeNull();
+        expect(await h.engine.withTransaction(h.handle, tx => tx.getResource({ kind: K.agentExperience, handle: h.handle, scopeId: experience.scopeId }))).toBeNull();
         const preflight = await recovery.preflightRestore(h.handle, item.id);
         await recovery.restore(h.handle, item.id, preflight.version);
         expect((await recovery.projects.get(h.handle, projectId)).project.projectId).toBe(projectId);
-        expect((await git.log(directory, 2)).map(item => item.fullHash)).toEqual([acceptedHead, originalHead]);
+        expect((await git.log(directory, 3)).map(item => item.fullHash)).toEqual([recoveredHead, acceptedHead, originalHead]);
+        expect(await new AgentExperienceRepository({ engine: h.engine }).get(h.handle, experience.scope, experience.subject)).toEqual(experience);
         expect((await recovery.projects.readFile(h.handle, projectId, 'chapter.txt')).toString()).toBe('Source 中文');
     });
 
@@ -187,7 +285,9 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
         await svc.assetStore.gcBlobs(h.handle, { now: Date.now() + 200000 });
         expect(await svc.assetStore.hasBlob(h.handle, hash)).toBe(true);
         await expect(recovery.purge(h.handle, item.id, item.version, { expiredOnly: true })).rejects.toMatchObject({ code: 'native_recovery_retention_active' });
-        await recovery.purge(h.handle, item.id, item.version);
+        await expect(recovery.purge(h.handle, item.id, item.version, { expiredOnly: true, now: item.expiresAt - 1 })).rejects.toMatchObject({ code: 'native_recovery_retention_active' });
+        expect((await recovery.list(h.handle))[0].expiresAt).toBe(item.expiresAt);
+        await recovery.purge(h.handle, item.id, item.version, { expiredOnly: true, now: item.expiresAt });
         // The metadata row deletion does not pretend physical GC has happened.
         expect(await svc.assetStore.hasBlob(h.handle, hash)).toBe(true);
     });

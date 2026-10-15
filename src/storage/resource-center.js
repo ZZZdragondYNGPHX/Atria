@@ -10,6 +10,7 @@ import { RuntimeCheckpointStore } from '../native/model-prompt-runtime/runtime-c
 const taskKey = (handle, id) => ({ kind: K.maintenance, handle, scope: 'storage-center:task:' + id });
 const targetId = target => resourceFingerprint({ type: target.type, id: target.id, ...(target.resourceType ? { resourceType: target.resourceType } : {}), ...(target.revision ? { revision: target.revision } : {}) });
 const rowTarget = row => {
+    if (row.doc?.protocol === STORAGE_CENTER_PROTOCOL && row.doc.type === 'recovery') return { type: 'recovery', id: row.doc.id };
     for (const [type, [kind, field]] of Object.entries(RECOVERABLE_DESCRIPTORS)) {
         if (row.key.kind === kind) return { type, id: row.key[field],
             ...(type === 'versioned' ? { resourceType: row.key.resourceType } : {}),
@@ -25,6 +26,8 @@ function ownerTarget(row) {
     if (key.personaId) return { type: 'persona', id: key.personaId };
     if (key.worldId) return { type: 'world', id: key.worldId };
     if (key.knowledgeBaseId) return { type: 'knowledge', id: key.knowledgeBaseId };
+    if (key.connectionProfileId) return { type: 'connection', id: key.connectionProfileId };
+    if (key.kind === K.maintenance && key.scope?.startsWith('storage-center:recovery:')) return { type: 'recovery', id: key.scope.slice('storage-center:recovery:'.length) };
     if ([K.package, K.packageVersion, K.packageState].includes(key.kind)) return { type: 'package', id: key.packageId };
     if (key.resourceType) return { type: 'versioned', id: key.resourceId, resourceType: key.resourceType };
     if ([K.agentExperience, K.agentEvolution].includes(key.kind)) return { type: 'experience', id: key.scopeId };
@@ -40,47 +43,48 @@ export class ResourceCenterService {
     }
     async snapshot(handle) {
         const snapshot = await measureAccount({ engine: this.engine, handle, directories: this.directoriesByHandle(handle) });
-        const { native } = await this.engine.withTransaction(handle, tx => readAccountContent(tx, handle));
-        const nativeByKey = new Map(native.map(row => [resourceFingerprint(row.key), row]));
+        const { native, errors: contentErrors } = await this.engine.withTransaction(handle, tx => readAccountContent(tx, handle));
+        snapshot.errors.push(...contentErrors);
         const unitOwners = new Map(snapshot.units.filter(unit => unit.owner).map(unit => [resourceFingerprint(unit.key), unit.owner]));
         const objects = new Map();
         for (const row of native) {
             if (row.doc == null) continue;
             if (unitOwners.has(resourceFingerprint(row.key))) continue;
-            if ([K.versionedJsonResource, K.versionedJsonResourceRevision].includes(row.key.kind) && row.key.resourceType.startsWith('atri.visual.')
-                && (row.doc?.sessionId || row.doc?.value?.sessionId)) continue;
             const target = rowTarget(row);
             if (!target) continue;
             const category = classifyNativeRecord(row);
             objects.set(targetId(target), { id: targetId(target), target, name: row.doc.displayName || row.doc.displayTitle || row.doc.name || target.id,
-                category, bytes: 0, units: 0, updatedAt: row.updatedAt, managed: true });
+                category, bytes: 0, units: 0, updatedAt: row.updatedAt, managed: target.type !== 'recovery', businessObject: true });
         }
-        for (const project of await this.recovery.projects.list(handle)) {
+        let projects = [];
+        try { projects = await this.recovery.projects.list(handle); } catch (error) { snapshot.errors.push({ source: 'projects', reason: error.code || error.message }); }
+        for (const project of projects) {
             const target = { type: 'project', id: project.projectId };
             objects.set(targetId(target), { id: targetId(target), target, name: project.displayName || project.projectId, category: 'projects', bytes: 0, units: 0, updatedAt: project.updatedAt, managed: true });
         }
         for (const unit of snapshot.units) {
-            let owner = null;
-            if (unit.key) {
-                const record = nativeByKey.get(resourceFingerprint(unit.key));
-                const sessionId = unit.key.resourceType?.startsWith('atri.visual.') && (record?.doc?.sessionId || record?.doc?.value?.sessionId);
-                owner = sessionId ? { type: 'session', id: sessionId } : ownerTarget(unit);
-            } else if (unit.relative?.startsWith('projects/')) owner = { type: 'project', id: unit.relative.split('/')[1] };
+            let owner = unit.owner || null;
+            if (unit.key) owner = ownerTarget(unit);
+            else if (unit.relative?.startsWith('projects/')) owner = { type: 'project', id: unit.relative.split('/')[1] };
             const object = owner && objects.get(targetId(owner));
             if (object) { object.bytes += unit.bytes; object.units++; } else if (/^backups\/[^/]+\.(jsonl?|zip|tar|gz)$/i.test(unit.relative || '')) {
                 const target = { type: 'backup', id: unit.relative.slice(8) };
                 objects.set(targetId(target), { id: targetId(target), target, name: target.id, category: 'recovery', bytes: unit.bytes, units: 1, updatedAt: unit.updatedAt, managed: true });
             } else objects.set(unit.id, { id: unit.id, name: unit.relative || unit.key?.kind || 'Legacy stored content', category: unit.category,
                 bytes: unit.bytes, units: 1, updatedAt: unit.updatedAt, managed: false,
-                reason: unit.source === 'legacy' || unit.category === 'advanced' ? 'advanced-inspection' : 'owned-version-or-maintenance-data' });
+                reason: unit.relative?.startsWith('account-snapshots/') ? 'account-backup-center'
+                    : [K.realm, K.realmRevision, K.playerContinuity, K.playerContinuityRevision].includes(unit.key?.kind) ? 'persistent-progress'
+                        : [K.personaDefault, K.personaMigration].includes(unit.key?.kind) ? 'selected-persona'
+                            : unit.key?.kind === K.runtimeCheckpoint ? 'runtime-state'
+                                : unit.source === 'legacy' || unit.category === 'advanced' ? 'advanced-inspection' : 'owned-version-or-maintenance-data' });
         }
         const resources = [...objects.values()].sort((a, b) => b.bytes - a.bytes || a.id.localeCompare(b.id));
-        for (const [category, total] of Object.entries(snapshot.categories)) total.objectCount = resources.filter(resource => resource.category === category).length;
+        for (const [category, total] of Object.entries(snapshot.categories)) total.objectCount = resources.filter(resource => resource.category === category && (resource.managed || resource.businessObject)).length;
         const { units: _units, ...summary } = snapshot;
         const suggestions = [];
         const checkpoints = new RuntimeCheckpointStore({ engine: this.engine, handle });
         for (const row of native.filter(row => row.key.kind === K.runtimeCheckpoint && checkpoints.expired(row))) {
-            suggestions.push({ ...await checkpoints.inspectExpired(row.key.checkpointId), target: { type: 'expired-checkpoint', id: row.key.checkpointId }, safe: true });
+            try { suggestions.push({ ...await checkpoints.inspectExpired(row.key.checkpointId), target: { type: 'expired-checkpoint', id: row.key.checkpointId }, safe: true }); } catch (error) { if (!(error instanceof ConflictError)) summary.errors.push({ source: 'runtime-checkpoint', reason: error.code || error.message }); }
         }
         const progress = native.find(row => row.key.kind === K.maintenance && row.key.scope === 'blobs')?.doc;
         for (const candidate of progress?.candidates ?? []) {
@@ -89,8 +93,14 @@ export class ResourceCenterService {
                 suggestions.push({ ...checked, target: { type: 'garbage-blob', id: candidate.hash }, name: candidate.hash, safe: true });
             } catch (error) { if (!(error instanceof ConflictError) && error.code !== 'ENOENT') summary.errors.push({ source: 'blob-gc', reason: error.code || error.message }); }
         }
-        return { ...summary, quotaBytes: await this.quotaLimit(handle), resources, suggestions,
-            recovery: await this.recovery.list(handle), safeCleanupBytes: suggestions.reduce((sum, item) => sum + item.bytes, 0) };
+        let recovery = [], recoveryUnavailable = false, quotaBytes = null;
+        try { recovery = await this.recovery.list(handle); } catch (error) { recoveryUnavailable = true; summary.errors.push({ source: 'recovery', reason: error.code || error.message }); }
+        try { quotaBytes = await this.quotaLimit(handle); } catch (error) { summary.errors.push({ source: 'quota', reason: error.code || error.message }); }
+        if (summary.errors.length) { summary.completeness = 'partial'; summary.totalBytes = null; summary.unknownBytes = null; }
+        const historyReviews = native.filter(row => row.doc?.protocol === STORAGE_CENTER_PROTOCOL && row.doc.type === 'file-publication' && row.doc.status === 'paused-review')
+            .map(row => ({ target: { type: 'history', id: row.doc.projectId }, name: row.doc.projectId, createdAt: row.doc.createdAt }));
+        return { ...summary, quotaBytes, resources, suggestions, recovery, recoveryUnavailable, historyReviews,
+            safeCleanupBytes: suggestions.reduce((sum, item) => sum + item.bytes, 0) };
     }
     async detail(handle, target) { return this.recovery.inspect(handle, target); }
     async tasks(handle) {
@@ -108,18 +118,19 @@ export class ResourceCenterService {
         return doc;
     }
     async preview(handle, action, targets) {
-        if (!['trash', 'restore', 'purge', 'clean'].includes(action) || !Array.isArray(targets) || !targets.length) throw new TypeError('Invalid storage preview');
+        if (!['trash', 'restore', 'purge', 'clean', 'repair', 'history'].includes(action) || !Array.isArray(targets) || !targets.length) throw new TypeError('Invalid storage preview');
         const unique = new Map(targets.map(target => [targetId(target), target]));
         const items = [];
         for (const target of unique.values()) {
             try {
-                const checked = action === 'clean' && target.type === 'expired-checkpoint' ? await new RuntimeCheckpointStore({ engine: this.engine, handle }).inspectExpired(target.id)
-                    : action === 'clean' && target.type === 'garbage-blob' ? await this.recovery.assets.inspectGarbageBlob(handle, target.id)
-                        : action === 'trash' ? await this.recovery.inspect(handle, target) : await this.recovery.preflightRestore(handle, target.id);
+                const checked = action === 'history' ? await this.recovery.projects.inspectHistory(handle, target.id)
+                    : action === 'clean' && target.type === 'expired-checkpoint' ? await new RuntimeCheckpointStore({ engine: this.engine, handle }).inspectExpired(target.id)
+                        : action === 'clean' && target.type === 'garbage-blob' ? await this.recovery.assets.inspectGarbageBlob(handle, target.id)
+                            : action === 'trash' ? await this.recovery.inspect(handle, target) : action === 'repair' ? await this.recovery.preflightRepair(handle, target.id) : await this.recovery.preflightRestore(handle, target.id);
                 const allowed = action === 'clean' ? ['garbage-blob', 'expired-checkpoint'].includes(target.type) : action === 'purge' ? checked.state === 'retained' : checked.allowed;
                 items.push({ target, version: checked.version, name: checked.name || target.id, bytes: checked.bytes,
                     status: allowed ? 'pending' : 'blocked', reason: allowed ? null : checked.reason || 'native_recovery_not_ready',
-                    consequences: checked.consequences || [], ownedTargets: checked.ownedTargets || [] });
+                    consequences: checked.consequences || [], ...(checked.resumePhase ? { resumePhase: checked.resumePhase } : {}), ownedTargets: checked.ownedTargets || [] });
             } catch (error) {
                 if (!(error instanceof ConflictError) && !(error instanceof NotFoundError) && !(error instanceof TypeError)) throw error;
                 items.push({ target, version: null, name: target.id, bytes: null, status: 'blocked', reason: error.code || error.message, consequences: [] });
@@ -160,12 +171,14 @@ export class ResourceCenterService {
             if (item.status !== 'pending') continue;
             const operationId = task.id + '_' + index;
             try {
-                const result = task.action === 'clean' ? item.target.type === 'expired-checkpoint'
-                    ? await new RuntimeCheckpointStore({ engine: this.engine, handle }).cleanExpired(item.target.id, item.version)
-                    : await this.recovery.assets.cleanGarbageBlob(handle, item.target.id, item.version) : task.action === 'trash'
-                    ? await this.recovery.trash(handle, item.target, item.version, operationId)
-                    : task.action === 'restore' ? await this.recovery.restore(handle, item.target.id, item.version, operationId)
-                        : await this.recovery.purge(handle, item.target.id, item.version);
+                const result = task.action === 'history' ? await this.recovery.projects.resumeHistory(handle, item.target.id, item.version, operationId)
+                    : task.action === 'clean' ? item.target.type === 'expired-checkpoint'
+                        ? await new RuntimeCheckpointStore({ engine: this.engine, handle }).cleanExpired(item.target.id, item.version)
+                        : await this.recovery.assets.cleanGarbageBlob(handle, item.target.id, item.version) : task.action === 'trash'
+                        ? await this.recovery.trash(handle, item.target, item.version, operationId)
+                        : task.action === 'repair' ? await this.recovery.repairReviewed(handle, item.target.id, item.version, operationId)
+                            : task.action === 'restore' ? await this.recovery.restore(handle, item.target.id, item.version, operationId)
+                                : await this.recovery.purge(handle, item.target.id, item.version);
                 item.status = 'succeeded'; item.result = result;
                 task.processedBytes += item.bytes || 0;
             } catch (error) {

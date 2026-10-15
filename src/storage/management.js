@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertAccountPath } from './path-boundary.js';
+import { accountEngineForDirectory, withAccountFileGrowth } from './account-quota.js';
+import { fileResourceBytes, listAccountFiles } from './resource-accounting.js';
 
 const TEXT_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml', '.css', '.js']);
 const EDITABLE_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml']);
@@ -196,6 +198,7 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
         && kind !== 'chat-metadata' && kind !== 'chat-messages');
 
     return {
+        userRoot: path.resolve(userRoot),
         absolutePath,
         relativePath,
         kind,
@@ -273,13 +276,7 @@ export async function createStorageRecoveryPoint({ recoveryRoot, handle, resourc
     const id = recoveryId();
     const root = path.join(recoveryRoot, handle, id);
     const payloadPath = path.join(root, 'payload');
-    await fs.promises.mkdir(root, { recursive: true });
     const stat = await fs.promises.stat(resource.absolutePath);
-    if (stat.isDirectory()) {
-        await fs.promises.cp(resource.absolutePath, payloadPath, { recursive: true });
-    } else {
-        await fs.promises.copyFile(resource.absolutePath, payloadPath);
-    }
     const manifest = {
         id,
         handle,
@@ -289,7 +286,15 @@ export async function createStorageRecoveryPoint({ recoveryRoot, handle, resourc
         isDirectory: stat.isDirectory(),
         createdAt: new Date().toISOString(),
     };
-    await fs.promises.writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+    const listing = stat.isDirectory() ? await listAccountFiles(resource.absolutePath) : { files: [{ bytes: stat.size }], errors: [] };
+    if (listing.errors.length) throw error('E_INVALID_PATH', 'Recovery source contains unreadable or linked paths.');
+    const manifestText = JSON.stringify(manifest, null, 2) + '\n';
+    await withAccountFileGrowth(handle, listing.files.reduce((sum, file) => sum + file.bytes, Buffer.byteLength(manifestText)), async () => {
+        await fs.promises.mkdir(root, { recursive: true });
+        if (stat.isDirectory()) await fs.promises.cp(resource.absolutePath, payloadPath, { recursive: true });
+        else await fs.promises.copyFile(resource.absolutePath, payloadPath);
+        await fs.promises.writeFile(path.join(root, 'manifest.json'), manifestText, 'utf8');
+    }, accountEngineForDirectory(handle, resource.userRoot));
     return manifest;
 }
 
@@ -312,7 +317,9 @@ export async function writeStorageResource({ resource, content, recoveryRoot, ha
         // Re-read and validate bytes before the atomic rename.
         const persisted = await fs.promises.readFile(temp, 'utf8');
         validateTextContent(path.extname(resource.absolutePath).toLowerCase(), persisted);
-        await fs.promises.rename(temp, resource.absolutePath);
+        const delta = fileResourceBytes(resource.relativePath.split(path.sep).join('/'), Buffer.from(text)).bytes
+            - fileResourceBytes(resource.relativePath.split(path.sep).join('/'), await fs.promises.readFile(resource.absolutePath)).bytes;
+        await withAccountFileGrowth(handle, delta, () => fs.promises.rename(temp, resource.absolutePath), accountEngineForDirectory(handle, resource.userRoot));
     } catch (cause) {
         await fs.promises.rm(temp, { force: true }).catch(() => {});
         throw cause;
@@ -355,11 +362,12 @@ export async function restoreStorageRecoveryPoint({ recoveryRoot, handle, userRo
     const payload = path.join(root, 'payload');
     if (fs.existsSync(target)) throw error('E_CONFLICT', 'Recovery never overwrites an existing resource.');
     await fs.promises.mkdir(path.dirname(target), { recursive: true });
-    if (manifest.isDirectory) {
-        await fs.promises.cp(payload, target, { recursive: true });
-    } else {
-        await fs.promises.copyFile(payload, target);
-    }
+    const listing = manifest.isDirectory ? await listAccountFiles(payload) : { files: [{ bytes: (await fs.promises.stat(payload)).size }], errors: [] };
+    if (listing.errors.length) throw error('E_INVALID_PATH', 'Recovery payload contains unreadable or linked paths.');
+    await withAccountFileGrowth(handle, listing.files.reduce((sum, file) => sum + file.bytes, 0), async () => {
+        if (manifest.isDirectory) await fs.promises.cp(payload, target, { recursive: true });
+        else await fs.promises.copyFile(payload, target);
+    }, accountEngineForDirectory(handle, userRoot));
     return manifest;
 }
 

@@ -17,6 +17,8 @@ export class NativeTaskScheduler {
         return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.sessionId === sessionId
             && (!terminal.has(operation.view.status) || this.running.has(operation)));
     }
+    hasOwnerWork(owner) { return [...this.operations.values()].some(operation => operation.owner === owner && (!terminal.has(operation.view.status) || this.running.has(operation))); }
+    hasProjectWork(owner, projectId) { return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.projectId === projectId && (!terminal.has(operation.view.status) || this.running.has(operation))); }
     hasForegroundWork(owner) {
         return [...this.running, ...this.queue].some(item => (owner === undefined || item.owner === owner)
             && ['turn_blocking', 'interactive'].includes(item.view.executionClass));

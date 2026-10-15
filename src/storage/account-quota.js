@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { assertRecoveryWrite, assertRecoveryDelete } from '../native/recovery-roots.js';
+import { assertRecoveryWrite, assertRecoveryDelete, recoveryRecords } from '../native/recovery-roots.js';
 import { measureAccount } from './resource-accounting.js';
 import { resourceContentBytes } from './resource-catalog.js';
 import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
@@ -22,13 +22,15 @@ export class AccountQuotaError extends Error {
 }
 
 const contentBytes = record => record == null ? 0 : resourceContentBytes(record.doc !== undefined ? record.doc
-    : record.header && record.body ? { header: record.header, body: record.body } : record);
+    : record.header && record.body ? { header: { ...record.header, chat_metadata: { ...record.header.chat_metadata, integrity: record.integrity } }, body: record.body } : record);
 
 /** Serialize admission and commit, using engine isolation for the actual data.
  * No speculative reservation survives the transaction: FS redo/SQL commit is
  * the durable boundary. Reads and decreasing writes remain usable over quota.
  */
 export function installAccountQuota(engine, { directoriesByHandle, limit, makeDefault = false }) {
+    const installed = authorities.get(engine);
+    if (installed) { installed.directoriesByHandle = directoriesByHandle; installed.limit = limit; if (makeDefault) defaultEngine = engine; return engine; }
     const original = engine.withTransaction.bind(engine);
     const authority = { engine, directoriesByHandle, limit, tails: new Map(), original };
     authorities.set(engine, authority);
@@ -38,10 +40,12 @@ export function installAccountQuota(engine, { directoriesByHandle, limit, makeDe
         if (active?.open && active.engine === engine && active.handle === handle && active.tx) return operation(active.tx);
         return withAccountQuota(engine, handle, async scope => original(handle, async tx => {
             let initialUsed = null, netNative = 0;
+            let roots = null;
+            const loadRoots = async () => roots ??= await recoveryRecords(tx, handle);
             const finite = Number.isFinite(scope.limit) && scope.limit >= 0;
             const measure = async () => {
                 if (scope.used == null) {
-                    const measured = await measureAccount({ engine, tx, handle, directories: directoriesByHandle(handle) });
+                    const measured = await measureAccount({ engine, tx, handle, directories: authority.directoriesByHandle(handle) });
                     if (measured.totalBytes == null) throw new AccountQuotaError('storage_usage_unavailable', { errors: measured.errors });
                     scope.used = measured.totalBytes;
                 }
@@ -60,8 +64,9 @@ export function installAccountQuota(engine, { directoriesByHandle, limit, makeDe
                 };
                 if (!['putResource', 'putResourceIfMatch', 'deleteResource'].includes(name)) return typeof value === 'function' ? value.bind(target) : value;
                 return async (key, ...args) => {
-                    if (name !== 'deleteResource') await assertRecoveryWrite(target, key, args[name === 'putResourceIfMatch' ? 1 : 0]);
-                    else await assertRecoveryDelete(target, key);
+                    if (name !== 'deleteResource') await assertRecoveryWrite(target, key, args[name === 'putResourceIfMatch' ? 1 : 0], loadRoots);
+                    else await assertRecoveryDelete(target, key, loadRoots);
+                    if (key.kind === NATIVE_RESOURCE_KINDS.maintenance) roots = null;
                     if (!finite) return value.call(target, key, ...args);
                     await measure();
                     if (initialUsed == null) initialUsed = scope.used;

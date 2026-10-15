@@ -1,5 +1,6 @@
 import { PersonaRepo } from '../native/repositories/persona-repo.js';
 import { installAccountQuota } from './account-quota.js';
+import { installNativeLifecycle } from './native-lifecycle.js';
 import { FsEngine } from './engines/fs-engine.js';
 import { SqliteEngine } from './engines/sqlite-engine.js';
 import { MysqlEngine } from './engines/mysql-engine.js';
@@ -89,6 +90,7 @@ export function initStorage({
     _savePointRepo = new SavePointRepo({ engine: _engine });
     _assetStore = new AssetStore({ engine: _engine, directoriesByHandle });
     _personaRepo = new PersonaRepo({ engine: _engine, assetStore: _assetStore, handles: async () => (await import('../users.js')).getAllUserHandles() });
+    installNativeLifecycle(_engine, { sessions: _sessionRepo, packages: _packageRepo, worlds: _worldRepo, knowledge: _knowledgeRepo, personas: _personaRepo });
 }
 
 export function getChatRepo() {

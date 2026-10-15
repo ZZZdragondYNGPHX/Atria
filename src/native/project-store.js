@@ -3,7 +3,7 @@ import { withAccountFileGrowth, accountEngineForDirectory } from '../storage/acc
 import { withNativeResourceWrite } from './repositories/common.js';
 import { recoveryRecords } from './recovery-roots.js';
 import { ConflictError } from '../storage/errors.js';
-import { commitProjectHistory, recoverProjectHistory } from './project-history-publication.js';
+import { commitProjectHistory, recoverProjectHistory, inspectProjectHistory, resumeProjectHistory } from './project-history-publication.js';
 import { assertAccountPath } from '../storage/path-boundary.js';
 import path from 'node:path';
 import { sync as writeFileAtomic } from 'write-file-atomic';
@@ -69,6 +69,8 @@ export class ProjectStore {
     withLifecycle(handle, projectId, operation) { return withNativeResourceWrite(handle, 'project:' + projectId, operation); }
     commitHistory(handle, projectId, operation) { return commitProjectHistory(this, handle, projectId, operation); }
     recoverHistory(handle, projectId) { return recoverProjectHistory(this, handle, projectId); }
+    inspectHistory(handle, projectId) { return inspectProjectHistory(this, handle, projectId); }
+    resumeHistory(handle, projectId, version, operationId) { return resumeProjectHistory(this, handle, projectId, version, operationId); }
     async assertActive(handle, projectId) {
         const engine = this.quotaEngine(handle);
         if (!engine) return;

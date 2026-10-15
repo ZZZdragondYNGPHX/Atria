@@ -728,7 +728,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         if (!handle) return response.sendStatus(401);
         try { response.json(await getHost().persistence.deleteProfile(handle, request.params.kind, request.params.id)); } catch (error) {
             if (error.code === 'native_runtime_referenced') return response.status(409).json({ error: error.code, details: error.details });
-            response.status(400).json({ error: 'native_runtime_delete_failed' });
+            response.status(error.status || (error.name === 'ConflictError' ? 409 : 400)).json({ error: error.code || 'native_runtime_delete_failed' });
         }
     });
     router.post('/resources/archive', async (request, response) => {

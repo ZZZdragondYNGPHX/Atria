@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
 import { serializeNativeDocument } from '../native/repositories/common.js';
+import { visualSessionOwner } from '../native/visual-store.js';
 
 // Business categories are independent of the engine and of the legacy inspector.
 export const RESOURCE_CATEGORIES = Object.freeze([
@@ -60,7 +61,7 @@ export function classifyNativeRecord(record) {
         const type = key.resourceType ?? doc?.resourceType;
         if (settingsTypes.has(type)) return 'settings';
         if (type === 'atri.visual.gc') return 'media';
-        if (visualTypes.has(type)) return doc?.sessionId || doc?.value?.sessionId ? 'sessions' : 'advanced';
+        if (visualTypes.has(type)) return visualSessionOwner(record) ? 'sessions' : type === 'atri.visual.planner' ? 'cache' : 'advanced';
         return 'advanced';
     }
     return base;

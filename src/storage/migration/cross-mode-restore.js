@@ -44,7 +44,10 @@ import { USER_DIRECTORY_TEMPLATE, resolveUserDirectory } from '../../constants.j
 import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
 import { AssetStore } from '../../native/repositories/asset-store.js';
 import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
-import { retainedBlobHashes } from '../../native/recovery-roots.js';
+import { retainedBlobHashes, withRecoveryPublication } from '../../native/recovery-roots.js';
+import { nativeTaskScheduler } from '../../native/task-scheduler.js';
+import { accountQuotaLimit, AccountQuotaError } from '../account-quota.js';
+import { measureAccount } from '../resource-accounting.js';
 import { assertAccountPath } from '../path-boundary.js';
 import {
     CrossModeScratchCredsRequiredError,
@@ -77,12 +80,15 @@ async function clearSelectedEngineCategories(engine, handle, selection) {
     const categories = selectionToRunnerCategories(selection);
     const repos = buildRepos(engine);
 
-    await withReadOnlyBypass(async () => {
+    await withReadOnlyBypass(() => withRecoveryPublication(async () => {
         if (categories.native) {
             await engine.withTransaction(handle, async tx => {
                 for (const kind of NATIVE_STORAGE_KINDS) {
                     if (PERSONA_BACKUP_KINDS.includes(kind)) continue;
-                    for (const record of await tx.listResources({ kind, handle })) await tx.deleteResource(record.key);
+                    for (const record of await tx.listResources({ kind, handle })) {
+                        if (kind === NATIVE_RESOURCE_KINDS.runControl && record.doc?.mode === 'ironman' && record.doc.status === 'terminal') continue;
+                        await tx.deleteResource(record.key);
+                    }
                 }
             });
         }
@@ -147,7 +153,7 @@ async function clearSelectedEngineCategories(engine, handle, selection) {
             await engine.withTransaction(handle, (tx) =>
                 tx.deleteResource({ kind: 'stats', handle }));
         }
-    });
+    }));
 }
 
 async function clearSelectedFsTreeCategories(dirs, selection, includeGlobalExtensions) {
@@ -201,6 +207,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
     }
 
     const handle = path.basename(dirs.root);
+    if (nativeTaskScheduler.hasOwnerWork(handle)) throw Object.assign(new Error('Finish current Native work before restoring an account backup'), { code: 'native_resource_running' });
     const backupRoot = path.join(dataRoot, '_restore-recovery');
     fs.mkdirSync(backupRoot, { recursive: true });
 
@@ -241,6 +248,10 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
     let cleanupWarning = null;
     try {
+        const quotaBytes = await accountQuotaLimit(currentEngine, handle);
+        const initialUsage = quotaBytes >= 0 ? await measureAccount({ engine: currentEngine, handle, directories: dirs }) : null;
+        if (initialUsage?.totalBytes === null) throw new AccountQuotaError('storage_usage_unavailable');
+        const terminalControls = selection.native ? await currentEngine.withTransaction(handle, async tx => (await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runControl, handle })).filter(row => row.doc?.mode === 'ironman' && row.doc.status === 'terminal')) : [];
         // 1. Snapshot the full live destination before every restore. Merge
         //    can mutate both engine rows and filesystem categories, so it must
         //    have the same rollback guarantee as replace/full restores.
@@ -330,6 +341,9 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
                 Boolean(opts.includeGlobalExtensions),
             );
         }
+        await withReadOnlyBypass(() => currentEngine.withTransaction(handle, async tx => {
+            for (const row of terminalControls) await tx.putResource(row.key, row);
+        }));
 
         // 3. MigrationRunner: scratch source → live destination.
         const sourceRepos = buildRepos(transient.engine);
@@ -350,7 +364,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
         });
 
         throwIfRestoreCancelled(signal);
-        const migrationStats = await runner.migrateUser(scratchHandle, {
+        const migrationStats = await withRecoveryPublication(() => runner.migrateUser(scratchHandle, {
             destHandle: handle,
             onProgress: (event) => {
                 throwIfRestoreCancelled(signal);
@@ -359,7 +373,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
                     onProgress({ phase: 'convert', stage: event.stage, counts: event.counts }); // banned-words-allow
                 } catch { /* sink errors */ }
             },
-        });
+        }));
 
         // 4. Extract fs-tree categories straight into the live user's dirs.
         throwIfRestoreCancelled(signal);
@@ -384,6 +398,11 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
         // 5. Success: retain the snapshot as the user's recovery point and
         // tear down the transient source.
+        if (quotaBytes >= 0) {
+            const finalUsage = await measureAccount({ engine: currentEngine, handle, directories: dirs });
+            if (finalUsage.totalBytes === null) throw new AccountQuotaError('storage_usage_unavailable');
+            if (finalUsage.totalBytes > quotaBytes && finalUsage.totalBytes > initialUsage.totalBytes) throw new AccountQuotaError('storage_quota_exceeded', { usedBytes: initialUsage.totalBytes, quotaBytes, requestedBytes: finalUsage.totalBytes - initialUsage.totalBytes });
+        }
         try {
             await transient.cleanup();
         } catch (err) {

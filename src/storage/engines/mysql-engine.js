@@ -7,6 +7,7 @@ import { MysqlTransaction } from './mysql-engine-transaction.js';
 import { initSchema } from './mysql-schema.js';
 import { withRetry } from '../retry.js';
 import { logEngineError } from '../engine-logger.js';
+import { TransactionScope } from './transaction-scope.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -111,6 +112,7 @@ export class MysqlEngine {
             throw new TypeError('MysqlEngine requires { url: "mysql://user:pass@host:port/db" }');
         }
         this.kind = 'mysql';
+        this._transactionScope = new TransactionScope();
         this._accountLease = new AsyncLocalStorage();
         this._acquireTimeoutMs = acquireTimeoutMs;
         this._retries = retries;
@@ -180,6 +182,8 @@ export class MysqlEngine {
     }
 
     async withTransaction(handle, fn) {
+        const active = this._transactionScope.get(handle);
+        if (active) return fn(active);
         await this._ensureSchema();
         try {
             return await withRetry(async () => {
@@ -189,7 +193,7 @@ export class MysqlEngine {
                     await conn.beginTransaction();
                     const tx = new MysqlTransaction({ conn, handle });
                     try {
-                        const result = await fn(tx);
+                        const result = await this._transactionScope.run(handle, tx, () => fn(tx));
                         await conn.commit();
                         return result;
                     } catch (err) {

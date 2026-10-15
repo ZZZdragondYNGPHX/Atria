@@ -12,6 +12,8 @@ import { NativeModelPromptPersistence, VersionedJsonResourceHandler, withRuntime
 import { VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from './model-prompt-runtime/resources.js';
 import { ExtensionsStore } from './extensions-store.js';
 import { RuntimeCheckpointStore } from './model-prompt-runtime/runtime-checkpoint-store.js';
+import { visualSessionOwner } from './visual-store.js';
+import { pauseRecoveredRecord } from './recovery-effects.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { resourceFingerprint, resourceContentBytes, RECOVERY_RETENTION_MS } from '../storage/resource-catalog.js';
@@ -34,6 +36,7 @@ const recordId = row => resourceFingerprint(row.key);
 const conflict = code => { throw new ConflictError(code); };
 const sessionKinds = new Set([K.session, K.runControl, K.branch, K.timelineEntry, K.timelineVariant, K.sessionState, K.sessionRevision, K.savePoint, K.commitReceipt, K.sharedAccess, K.sharedAccessRevision]);
 const packageKinds = new Set([K.package, K.packageVersion, K.packageState]);
+const exactDependencies = new Set([K.packageVersion, K.worldRevision, K.knowledgeRevision, K.personaRevision, K.versionedJsonResourceRevision, K.assetRef]);
 
 /** Native business-object lifecycle. The storage manager supplies identities;
  * this authority constructs closures and delegates existing domain constraints.
@@ -111,8 +114,7 @@ export class NativeRecoveryService {
             records = native.filter(row => {
                 if (target.type === 'session') return sessionKinds.has(row.key.kind) && row.key.sessionId === target.id
                     || row.key.kind === K.maintenance && row.key.scope === 'session:' + target.id
-                    || [K.versionedJsonResource, K.versionedJsonResourceRevision].includes(row.key.kind)
-                        && row.key.resourceType.startsWith('atri.visual.') && (row.doc?.sessionId === target.id || row.doc?.value?.sessionId === target.id);
+                    || visualSessionOwner(row, native) === target.id;
                 if (target.type === 'package') return packageKinds.has(row.key.kind) && row.key.packageId === target.id;
                 if (target.type === 'world') return [K.world, K.worldRevision].includes(row.key.kind) && row.key.worldId === target.id;
                 if (target.type === 'knowledge') return [K.knowledgeBase, K.knowledgeRevision, K.knowledgeEntry].includes(row.key.kind) && row.key.knowledgeBaseId === target.id;
@@ -139,7 +141,16 @@ export class NativeRecoveryService {
         };
         for (const record of [...records, ...native.filter(row => dependencies.some(key => resourceFingerprint(key) === recordId(row)))]) visit(record.doc);
         const version = resourceFingerprint({ records, files });
-        return { target, records, files, dependencies, hashes: [...hashes], version,
+        const describe = row => ({ kind: row.key.kind, name: String(row.doc?.displayName || row.doc?.displayTitle || row.doc?.name
+            || Object.entries(row.key).find(([field]) => !['kind', 'handle'].includes(field))?.[1] || row.key.kind) });
+        const references = root.key ? native.filter(row => !owned.has(recordId(row)) && row.key.kind !== K.maintenance && documentReferencesKey(row.doc, root.key)).map(describe) : [];
+        const dependencyDetails = native.filter(row => dependencies.some(key => resourceFingerprint(key) === recordId(row))).map(describe);
+        const dependencyChecks = native.filter(row => exactDependencies.has(row.key.kind) && dependencies.some(key => resourceFingerprint(key) === recordId(row)))
+            .map(row => ({ key: row.key, integrity: row.integrity }));
+        const personaRevision = target.type === 'persona' && records.find(row => row.key.kind === K.personaRevision && row.key.revisionId === root.doc.currentRevisionId);
+        return { target, records, files, dependencies, dependencyChecks, hashes: [...hashes], version,
+            references, dependencyDetails, currentRevision: root.doc.currentRevision,
+            personaRef: personaRevision ? { personaId: target.id, revisionId: personaRevision.key.revisionId, contentIdentity: personaRevision.integrity } : undefined,
             name: root.doc.displayName || root.doc.displayTitle || root.doc.name || target.id,
             bytes: records.reduce((sum, row) => sum + resourceContentBytes(row.doc), 0) + files.reduce((sum, file) => sum + file.size, 0) };
     }
@@ -155,6 +166,8 @@ export class NativeRecoveryService {
         return { target: closure.target, name: closure.name, version: closure.version, bytes: closure.bytes,
             recordCount: closure.records.length, fileCount: closure.files.length, dependencyCount: closure.dependencies.length,
             recoverable: true, retentionDays: 30, estimatedPhysicalRelease: null,
+            references: closure.references, dependencies: closure.dependencyDetails, relatedMediaBytes: closure.relatedMediaBytes,
+            currentRevision: closure.currentRevision, personaRef: closure.personaRef,
             ownedTargets: closure.records.flatMap(row => Object.entries(descriptors).filter(([, [kind]]) => row.key.kind === kind).map(([type, [, field]]) => ({ type, id: row.key[field], ...(type === 'versioned' ? { resourceType: row.key.resourceType } : {}), ...(type === 'retrieval' ? { revision: row.key.revision } : {}) }))),
             consequences: closure.records.some(row => row.key.kind === K.runControl && row.doc.mode === 'ironman') ? ['ironman-remains-terminal'] : [] };
     }
@@ -162,14 +175,19 @@ export class NativeRecoveryService {
     async checkDelete(tx, handle, closure) {
         const { target, records } = closure;
         if (target.type === 'session' && nativeTaskScheduler.hasSessionWork(handle, target.id)) conflict('native_resource_running');
+        if (target.type === 'session' && records.some(row => row.key.resourceType === 'atri.visual.job'
+            && !['published', 'failed', 'cancelled', 'stale'].includes(row.doc.status))) conflict('native_resource_running');
         if (target.type === 'project' && records.some(row => row.key.kind === K.projectAgentTask
             && ['planning', 'working', 'evaluating', 'repair', 'committing'].includes(row.doc.status))) conflict('native_project_running');
+        if (target.type === 'project' && nativeTaskScheduler.hasProjectWork(handle, target.id)) conflict('native_project_running');
         if (target.type === 'persona') {
             const result = await this.personas.usedBy(handle, { personaId: target.id });
             if (result.references.length) conflict('native_persona_referenced');
         }
         const root = ['project', 'backup'].includes(target.type) ? null : this.rootKey(handle, target);
-        if (root && (await recoveryReferences(tx, handle, root)).length) conflict('native_resource_retained_for_recovery');
+        const retained = await recoveryRecords(tx, handle);
+        if (root && (await recoveryReferences(tx, handle, root, retained)).length) conflict('native_resource_retained_for_recovery');
+        for (const record of records) if ((await recoveryReferences(tx, handle, record.key, retained)).length) conflict('native_resource_retained_for_recovery');
         if (this.graph) {
             const types = { package: 'core.package', world: 'core.world', knowledge: 'core.knowledge', binding: 'core.knowledge-binding', asset: 'core.asset' };
             const resourceType = target.type === 'versioned' ? target.resourceType : types[target.type];
@@ -186,7 +204,12 @@ export class NativeRecoveryService {
         if (root && all.some(row => !owned.has(recordId(row)) && row.key.kind !== K.maintenance
             && !(row.key.kind === K.runtimeCheckpoint && checkpoints.expired(row))
             && documentReferencesKey(row.doc, root))) conflict('native_resource_referenced');
-        for (const hash of closure.hashes) if (!await this.assets.readBlob(handle, hash)) conflict('native_recovery_dependency_missing');
+        closure.relatedMediaBytes = 0;
+        for (const hash of closure.hashes) {
+            const bytes = await this.assets.readBlob(handle, hash);
+            if (!bytes) conflict('native_recovery_dependency_missing');
+            closure.relatedMediaBytes += bytes.length;
+        }
     }
 
     async trash(handle, target, expectedVersion, id = randomUUID()) {
@@ -201,30 +224,32 @@ export class NativeRecoveryService {
             const now = Date.now();
             const doc = { protocol: RECOVERY_PROTOCOL, type: 'recovery', id, owner: handle, state: 'retained',
                 target, name: closure.name, records: closure.records, files: closure.files,
-                dependencies: closure.dependencies, hashes: closure.hashes, version: closure.version,
+                dependencies: closure.dependencies, dependencyChecks: closure.dependencyChecks, hashes: closure.hashes, version: closure.version,
                 createdAt: now, expiresAt: now + RECOVERY_RETENTION_MS, effectPolicy: 'no-background-model' };
             // One engine commit holds both the closed recovery source and the
             // removal. FsNativeJournal durably publishes both before ACK.
-            if (target.type === 'session') await this.sessions.delete(handle, target.id, { expectedRevisionId: closure.records.find(row => row.key.kind === K.session).doc.headRevisionId });
-            else if (target.type === 'package') await this.packages.delete(handle, target.id);
-            else if (target.type === 'world') await this.worlds.delete(handle, target.id);
-            else if (target.type === 'knowledge') await this.knowledge.delete(handle, target.id);
-            else if (target.type === 'binding') await this.knowledge.deleteBinding(handle, target.id);
-            else if (target.type === 'persona') {
-                const current = await this.personas.get(handle, { personaId: target.id });
-                await this.personas.delete(handle, { personaId: target.id, expectedFingerprint: current.expectedFingerprint });
-            } else if (target.type === 'asset') await this.assets.deleteRef(handle, target.id);
-            else if (target.type === 'experience') {
-                const root = closure.records.find(row => row.key.kind === K.agentExperience).doc;
-                await new AgentExperienceRepository({ engine: this.engine }).deleteScope(handle, root.scope, root.subject, root.sequence);
-            } else if (['connection', 'model', 'route'].includes(target.type)) await this.runtime.deleteProfile(handle, { connection: 'connections', model: 'models', route: 'routes' }[target.type], target.id);
-            else if (target.type === 'versioned') {
-                if (target.resourceType.startsWith('atri.extensions.')) await this.extensions.removeResource(handle, target.resourceType, target.id);
-                else {
-                    const root = closure.records.find(row => row.key.kind === K.versionedJsonResource);
-                    await this.library.delete(handle, { scope: 'library', resourceType: target.resourceType, resourceId: target.id, revision: root.doc.currentRevision }, () => []);
+            await withRecoveryPublication(async () => {
+                if (target.type === 'session') await this.sessions.delete(handle, target.id, { expectedRevisionId: closure.records.find(row => row.key.kind === K.session).doc.headRevisionId });
+                else if (target.type === 'package') await this.packages.delete(handle, target.id);
+                else if (target.type === 'world') await this.worlds.delete(handle, target.id);
+                else if (target.type === 'knowledge') await this.knowledge.delete(handle, target.id);
+                else if (target.type === 'binding') await this.knowledge.deleteBinding(handle, target.id);
+                else if (target.type === 'persona') {
+                    const current = await this.personas.get(handle, { personaId: target.id });
+                    await this.personas.delete(handle, { personaId: target.id, expectedFingerprint: current.expectedFingerprint });
+                } else if (target.type === 'asset') await this.assets.deleteRef(handle, target.id);
+                else if (target.type === 'experience') {
+                    const root = closure.records.find(row => row.key.kind === K.agentExperience).doc;
+                    await new AgentExperienceRepository({ engine: this.engine }).deleteScope(handle, root.scope, root.subject, root.sequence);
+                } else if (['connection', 'model', 'route'].includes(target.type)) await this.runtime.deleteProfile(handle, { connection: 'connections', model: 'models', route: 'routes' }[target.type], target.id);
+                else if (target.type === 'versioned') {
+                    if (target.resourceType.startsWith('atri.extensions.')) await this.extensions.removeResource(handle, target.resourceType, target.id);
+                    else {
+                        const root = closure.records.find(row => row.key.kind === K.versionedJsonResource);
+                        await this.library.delete(handle, { scope: 'library', resourceType: target.resourceType, resourceId: target.id, revision: root.doc.currentRevision }, () => []);
+                    }
                 }
-            }
+            });
             for (const row of closure.records) {
                 // Terminal Ironman control is a permanent anti-rollback authority.
                 if (row.key.kind === K.runControl && row.doc.mode === 'ironman') continue;
@@ -249,6 +274,7 @@ export class NativeRecoveryService {
     }
 
     async validateRestore(tx, handle, doc) {
+        await recoveryRecords(tx, handle);
         if (doc.protocol !== RECOVERY_PROTOCOL || doc.state !== 'retained') conflict('native_recovery_not_ready');
         if (resourceFingerprint({ records: doc.records, files: doc.files }) !== doc.version) conflict('native_recovery_integrity');
         for (const row of doc.records) {
@@ -258,6 +284,10 @@ export class NativeRecoveryService {
                 && !(row.key.kind === K.runControl && current.doc.mode === 'ironman' && current.doc.status === 'terminal')) conflict('native_recovery_identity_conflict');
         }
         for (const key of doc.dependencies) if (!await tx.getResource(key)) conflict('native_recovery_dependency_missing');
+        for (const dependency of doc.dependencyChecks ?? []) {
+            const row = await tx.getResource(dependency.key);
+            if (!row || row.integrity !== dependency.integrity || row.integrity !== resourceFingerprint(row.doc)) conflict('native_recovery_dependency_missing');
+        }
         for (const hash of doc.hashes) if (!await this.assets.readBlob(handle, hash)) conflict('native_recovery_dependency_missing');
         if (['project', 'backup'].includes(doc.target.type)) {
             if (await this.exists(this.sourceLocation(handle, doc.target))) conflict('native_recovery_identity_conflict');
@@ -267,11 +297,61 @@ export class NativeRecoveryService {
 
     async preflightRestore(handle, id) {
         return this.engine.withTransaction(handle, async tx => {
+            await recoveryRecords(tx, handle);
             const row = await tx.getResource(recoveryKey(handle, id));
             if (!row) throw new NotFoundError('Recovery record');
             const result = this.publicRecord(row.doc);
             try { await this.validateRestore(tx, handle, row.doc); return { ...result, allowed: true, reason: null }; } catch (error) { if (!(error instanceof ConflictError)) throw error; return { ...result, allowed: false, reason: error.code }; }
         });
+    }
+
+    async preflightRepair(handle, id) {
+        return this.engine.withTransaction(handle, async tx => {
+            const doc = (await recoveryRecords(tx, handle)).find(row => row.doc.id === id)?.doc;
+            if (!doc) throw new NotFoundError('Recovery record');
+            const checked = { ...this.publicRecord(doc), resumePhase: doc.resumePhase, allowed: false, reason: 'native_recovery_not_ready' };
+            if (doc.state !== 'paused-review' || !['preparing', 'restoring', 'purging'].includes(doc.resumePhase)
+                || !['project', 'backup'].includes(doc.target.type)) return checked;
+            try {
+                if (resourceFingerprint({ records: doc.records, files: doc.files }) !== doc.version) conflict('native_recovery_integrity');
+                const sourceExists = await this.exists(this.sourceLocation(handle, doc.target)), payloadExists = await this.exists(this.payloadLocation(handle, doc));
+                if (sourceExists && payloadExists) conflict('native_recovery_identity_conflict');
+                if (doc.resumePhase !== 'purging') {
+                    if (!sourceExists && !payloadExists) conflict('native_recovery_dependency_missing');
+                    if (sourceExists) await this.verifySourceFiles(handle, doc); else await this.verifyProjectFiles(handle, doc);
+                    for (const record of doc.records) {
+                        const live = await tx.getResource(record.key);
+                        if (live && (doc.resumePhase === 'restoring' || live.integrity !== record.integrity)) conflict('native_recovery_identity_conflict');
+                    }
+                    for (const hash of doc.hashes) if (!await this.assets.readBlob(handle, hash)) conflict('native_recovery_dependency_missing');
+                }
+                return { ...checked, allowed: true, reason: null, consequences: doc.resumePhase === 'purging' ? ['permanent-deletion'] : [] };
+            } catch (error) { if (!(error instanceof ConflictError)) throw error; return { ...checked, reason: error.code }; }
+        });
+    }
+
+    async repairReviewed(handle, id, expectedVersion, operationId = null) {
+        assertWritable();
+        if (operationId) {
+            const receipt = await this.engine.withTransaction(handle, tx => tx.getResource(this.receiptKey(handle, operationId)));
+            if (receipt) return receipt.doc.result;
+        }
+        const initial = (await this.engine.withTransaction(handle, tx => tx.getResource(recoveryKey(handle, id))))?.doc;
+        if (!initial) throw new NotFoundError('Recovery record');
+        return this.lock(handle, initial.target, async () => {
+            const review = await this.preflightRepair(handle, id);
+            if (review.version !== expectedVersion) conflict('storage_preview_stale');
+            if (!review.allowed) conflict(review.reason);
+            const doc = await this.engine.withTransaction(handle, async tx => {
+                const current = (await tx.getResource(recoveryKey(handle, id))).doc;
+                const next = { ...current, state: current.resumePhase, repairOperationId: operationId,
+                    ...(current.resumePhase === 'restoring' ? { restoreOperationId: operationId } : {}) }; delete next.resumePhase;
+                await tx.putResource(recoveryKey(handle, id), nativeRecord(next)); return next;
+            });
+            if (doc.state === 'preparing') return this.finishProjectRemoval(handle, doc);
+            if (doc.state === 'restoring') return this.finishProjectRestore(handle, doc);
+            return doc;
+        }).then(result => result?.state === 'purging' ? this.purgeProject(handle, result, null, { expiredOnly: false, now: Date.now() }) : result);
     }
 
     receiptKey(handle, operationId) { return { kind: K.maintenance, handle, scope: 'storage-center:receipt:' + operationId }; }
@@ -301,19 +381,9 @@ export class NativeRecoveryService {
                 for (const record of doc.records) {
                     if (record.key.kind === K.runControl) {
                         const current = await tx.getResource(record.key);
-                        const control = structuredClone(current?.doc.mode === 'ironman' ? current.doc : record.doc);
-                        control.background = {};
-                        for (const operation of Object.values(control.operations ?? {})) for (const task of Object.values(operation.externalTasks ?? {})) {
-                            if (['queued', 'dispatched'].includes(task.status)) task.status = 'unknown';
-                        }
-                        await tx.putResource(record.key, nativeRecord(control, { existing: record }));
-                    } else if (record.key.kind === K.agentGoal) {
-                        const goal = structuredClone(record.doc); goal.status = 'paused'; goal.sequence++;
-                        await tx.putResource(record.key, nativeRecord(goal, { existing: record }));
-                    } else if (record.key.kind === K.agentEvolution) {
-                        const evolution = structuredClone(record.doc);
-                        if (evolution.policy) { evolution.policy.mode = 'paused'; evolution.policy.reason = 'restored'; }
-                        await tx.putResource(record.key, nativeRecord(evolution, { existing: record }));
+                        await tx.putResource(record.key, pauseRecoveredRecord(record, current));
+                    } else if ([K.agentGoal, K.agentEvolution].includes(record.key.kind)) {
+                        await tx.putResource(record.key, pauseRecoveredRecord(record));
                     } else if (record.key.kind === K.projectAgentTask) {
                         await tx.putResource(record.key, this.pausedProjectTask(record));
                     } else if ([K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(record.key.kind)) {
@@ -334,6 +404,7 @@ export class NativeRecoveryService {
         const initial = await this.engine.withTransaction(handle, tx => tx.getResource(recoveryKey(handle, id)));
         if (initial && ['project', 'backup'].includes(initial.doc.target.type)) return this.purgeProject(handle, initial.doc, expectedVersion, { expiredOnly, now });
         return this.engine.withTransaction(handle, async tx => {
+            await recoveryRecords(tx, handle);
             const row = await tx.getResource(recoveryKey(handle, id));
             if (!row) return { purged: true };
             if (row.doc.state !== 'retained') conflict('native_recovery_not_ready');
@@ -345,10 +416,7 @@ export class NativeRecoveryService {
     }
 
     pausedProjectTask(record) {
-        const task = structuredClone(record.doc);
-        if (['planned', 'planning', 'working', 'evaluating', 'repair', 'committing'].includes(task.status)) task.status = 'blocked';
-        for (const wake of task.goalBinding?.wakes ?? []) if (['pending', 'running'].includes(wake.status)) { wake.status = 'unknown'; wake.updatedAt = Date.now(); }
-        return nativeRecord(task, { existing: record });
+        return pauseRecoveredRecord(record);
     }
 
     projectPayload(handle, id) {
@@ -397,7 +465,7 @@ export class NativeRecoveryService {
                     const now = Date.now();
                     const doc = { protocol: RECOVERY_PROTOCOL, type: 'recovery', id, owner: handle, state: 'preparing', target,
                         name: closure.name, records: closure.records, files: closure.files, dependencies: closure.dependencies,
-                        hashes: closure.hashes, version: closure.version, createdAt: now, expiresAt: now + RECOVERY_RETENTION_MS,
+                        dependencyChecks: closure.dependencyChecks, hashes: closure.hashes, version: closure.version, createdAt: now, expiresAt: now + RECOVERY_RETENTION_MS,
                         effectPolicy: 'no-background-model' };
                     await tx.putResource(recoveryKey(handle, id), nativeRecord(doc));
                     return { doc };
@@ -419,11 +487,13 @@ export class NativeRecoveryService {
             await syncDirectoryAsync(path.dirname(source)); await syncDirectoryAsync(path.dirname(destination));
         }
         await this.verifyProjectFiles(handle, doc);
-        return this.engine.withTransaction(handle, async tx => {
+        return this.engine.withTransaction(handle, tx => withRecoveryPublication(async () => {
             const current = await tx.getResource(recoveryKey(handle, doc.id));
             if (current?.doc.state === 'retained') return this.publicRecord(current.doc);
             if (current?.doc.state !== 'preparing') conflict('native_recovery_not_ready');
+            const retainedRecords = await recoveryRecords(tx, handle);
             for (const record of doc.records) {
+                if ((await recoveryReferences(tx, handle, record.key, retainedRecords)).some(reference => reference.recoveryId !== doc.id)) conflict('native_resource_retained_for_recovery');
                 const live = await tx.getResource(record.key);
                 if (live && resourceFingerprint(live.doc) !== resourceFingerprint(record.doc)) conflict('storage_preview_stale');
                 await tx.deleteResource(record.key);
@@ -432,8 +502,8 @@ export class NativeRecoveryService {
             const retained = { ...doc, state: 'retained', createdAt: now, expiresAt: now + RECOVERY_RETENTION_MS };
             await tx.putResource(recoveryKey(handle, doc.id), nativeRecord(retained));
             this.graph?.invalidate(handle);
-            return this.publicRecord(retained);
-        });
+            return this.receipt(tx, handle, doc.repairOperationId, this.publicRecord(retained));
+        }));
     }
 
     async restoreProject(handle, initial, expectedVersion, operationId) {
@@ -468,9 +538,7 @@ export class NativeRecoveryService {
             await tx.deleteResource(recoveryKey(handle, doc.id));
             for (const record of doc.records) {
                 if (record.key.kind === K.agentEvolution) {
-                    const evolution = structuredClone(record.doc);
-                    if (evolution.policy) { evolution.policy.mode = 'paused'; evolution.policy.reason = 'restored'; }
-                    await tx.putResource(record.key, nativeRecord(evolution, { existing: record }));
+                    await tx.putResource(record.key, pauseRecoveredRecord(record));
                 } else if (record.key.kind === K.projectAgentTask) await tx.putResource(record.key, this.pausedProjectTask(record));
                 else await tx.putResource(record.key, record);
             }
@@ -481,7 +549,9 @@ export class NativeRecoveryService {
 
     async purgeProject(handle, initial, expectedVersion, { expiredOnly, now }) {
         return this.lock(handle, initial.target, async () => {
-            const current = await this.engine.withTransaction(handle, tx => tx.getResource(recoveryKey(handle, initial.id)));
+            const current = await this.engine.withTransaction(handle, async tx => {
+                await recoveryRecords(tx, handle); return tx.getResource(recoveryKey(handle, initial.id));
+            });
             if (!current) return { purged: true };
             let doc = current.doc;
             if (doc.state === 'retained') {
@@ -492,8 +562,10 @@ export class NativeRecoveryService {
             }
             if (doc.state !== 'purging') conflict('native_recovery_not_ready');
             await fsp.rm(this.projectPayload(handle, doc.id), { recursive: true, force: true });
-            await this.engine.withTransaction(handle, tx => tx.deleteResource(recoveryKey(handle, doc.id)));
-            return { purged: true, physicalBytesReleased: null };
+            return this.engine.withTransaction(handle, async tx => {
+                await tx.deleteResource(recoveryKey(handle, doc.id));
+                return this.receipt(tx, handle, doc.repairOperationId, { purged: true, physicalBytesReleased: null });
+            });
         });
     }
 

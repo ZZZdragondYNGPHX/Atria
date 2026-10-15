@@ -12,6 +12,7 @@ import { ConflictError } from '../storage/errors.js';
 import { assertAccountPath } from '../storage/path-boundary.js';
 
 const keyFor = (handle, projectId) => ({ kind: K.maintenance, handle, scope: 'storage-center:history:' + projectId });
+const receiptKey = (handle, id) => ({ kind: K.maintenance, handle, scope: 'storage-center:receipt:' + id });
 async function tree(directory) {
     const listing = await listAccountFiles(directory);
     if (listing.errors.length) throw new Error('Project history contains unreadable or linked files');
@@ -26,6 +27,37 @@ function operationRoot(store, handle, id) {
     if (!/^[a-f0-9-]{36}$/.test(id)) throw new TypeError('Invalid file publication identity');
     const root = store._directoriesByHandle(handle).root;
     return assertAccountPath(root, path.join(root, 'atria-native', 'file-publications', id));
+}
+
+export async function inspectProjectHistory(store, handle, projectId) {
+    const engine = store.quotaEngine(handle);
+    const row = engine && await engine.withTransaction(handle, tx => tx.getResource(keyFor(handle, projectId)));
+    if (!row || row.doc.protocol !== STORAGE_CENTER_PROTOCOL || row.doc.type !== 'file-publication'
+        || row.doc.projectId !== projectId || row.integrity !== resourceFingerprint(row.doc)) throw new ConflictError('native_project_history_conflict');
+    const doc = row.doc, root = operationRoot(store, handle, doc.id);
+    const live = await tree(path.join(store.getProjectDirectory(handle, projectId), '.git')), next = await tree(path.join(root, 'next')), previous = await tree(path.join(root, 'previous'));
+    const allowed = live.signature === doc.after.signature || live.signature === doc.before.signature
+        || !await exists(path.join(store.getProjectDirectory(handle, projectId), '.git')) && previous.signature === doc.before.signature;
+    return { target: { type: 'history', id: projectId }, name: projectId, version: resourceFingerprint(doc), bytes: Math.max(0, doc.after.bytes - doc.before.bytes),
+        allowed, reason: allowed ? null : 'native_project_history_conflict',
+        consequences: [next.signature === doc.after.signature ? 'publish-verified-local-history' : 'retain-verified-local-history'] };
+}
+
+export async function resumeProjectHistory(store, handle, projectId, version, operationId) {
+    return store.withLifecycle(handle, projectId, async () => {
+        const engine = store.quotaEngine(handle);
+        const receipt = operationId && await engine.withTransaction(handle, tx => tx.getResource(receiptKey(handle, operationId)));
+        if (receipt) return receipt.doc.result;
+        const checked = await inspectProjectHistory(store, handle, projectId);
+        if (checked.version !== version || !checked.allowed) throw new ConflictError('storage_preview_stale');
+        await engine.withTransaction(handle, async tx => {
+            const row = await tx.getResource(keyFor(handle, projectId));
+            await tx.putResource(row.key, nativeRecord({ ...row.doc, status: 'pending', ...(operationId ? { reviewOperationId: operationId } : {}) }, { existing: row }));
+        });
+        await recoverProjectHistory(store, handle, projectId);
+        const result = { repaired: true, target: { type: 'project', id: projectId }, backgroundModel: 'not-started' };
+        return result;
+    });
 }
 
 /** Complete/roll back a committed local file intent before exposing Git history. */
@@ -53,7 +85,11 @@ export async function recoverProjectHistory(store, handle, projectId) {
         }
     }
     await fsp.rm(root, { recursive: true, force: true });
-    await engine.withTransaction(handle, tx => tx.deleteResource(keyFor(handle, projectId)));
+    await engine.withTransaction(handle, async tx => {
+        await tx.deleteResource(keyFor(handle, projectId));
+        if (doc.reviewOperationId) await tx.putResource(receiptKey(handle, doc.reviewOperationId), nativeRecord({ protocol: STORAGE_CENTER_PROTOCOL, type: 'receipt', operationId: doc.reviewOperationId,
+            result: { repaired: true, target: { type: 'project', id: projectId }, backgroundModel: 'not-started' } }));
+    });
 }
 
 export async function commitProjectHistory(store, handle, projectId, operation) {

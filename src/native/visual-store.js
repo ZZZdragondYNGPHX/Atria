@@ -4,6 +4,18 @@ import { assertWritable } from '../storage/read-only-mode.js';
 import { visualError, visualInteger } from '../../public/shared/native-visual-contract.js';
 
 export const visualKey = (handle, type, id) => ({ kind: K.versionedJsonResource, handle, resourceType: 'atri.visual.' + type, resourceId: id });
+const sessionTypes = new Set(['prepared', 'job', 'commit', 'scene', 'shot', 'state-change', 'director-scan', 'draft', 'mask', 'gallery']);
+export function visualSessionOwner(record, records = []) {
+    if (![K.versionedJsonResource, K.versionedJsonResourceRevision].includes(record?.key?.kind)) return null;
+    const type = record.key.resourceType?.replace(/^atri\.visual\./, '');
+    if (!sessionTypes.has(type)) return null;
+    const doc = record.doc, owner = doc?.source?.sessionId || doc?.sessionId;
+    if (owner) return owner;
+    // Older receipts resolve their exact revision through the existing keys.
+    if (type === 'director-scan') return records.find(row => row.key.kind === K.sessionRevision
+        && row.key.revisionId === doc?.revisionId && row.doc.branchId === doc?.branchId)?.key.sessionId ?? null;
+    return null;
+}
 export const defaultVisualBudget = () => ({ schemaVersion: 2, imageHour: 2, imageDay: 8, autoConcurrency: 1,
     plannerHour: 8, plannerDay: 24, plannerTokensDay: 30000, currency: 'USD', moneyDay: 0, autoMoneyDay: 0 });
 export class VisualStore {

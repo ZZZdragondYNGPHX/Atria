@@ -8,6 +8,9 @@ import { measureAccount } from '../../src/storage/resource-accounting.js';
 import { resourceContentBytes } from '../../src/storage/resource-catalog.js';
 import { installAccountQuota } from '../../src/storage/account-quota.js';
 import { writeAccountFile } from '../../src/storage/account-file-write.js';
+import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
+import { services, sessionFixture } from '../native/helpers/session-fixture.js';
+import { buildAtriaPackageContainer } from '../../src/native/package-container.js';
 
 const hash = 'a'.repeat(64);
 const fields = { scopeId: hash, evidenceId: hash, sourceDigest: hash, taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', checkpointId: hash, scope: 'probe', namespace: 'atri_probe', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'probe-resource', revision: 'v1' };
@@ -17,11 +20,37 @@ function fixtureKey(kind, handle) {
     ])]);
 }
 
-describe.each(CONTRACT_HARNESSES)('resource accounting — $name', ({ make }) => {
+describe.each(CONTRACT_HARNESSES)('resource accounting — $name', ({ make, name }) => {
     let h;
     beforeEach(async () => { h = await make(); });
     afterEach(async () => { await h.cleanup(); });
     const measure = () => measureAccount({ engine: h.engine, handle: h.handle, directories: h.dirs });
+    test('package and media quota failures roll back newly introduced blobs and all metadata', async () => {
+        const svc = services(h), fixture = sessionFixture();
+        const { archive } = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles: new Map(), assetPayloads: new Map() });
+        let limit = archive.length;
+        installAccountQuota(h.engine, { directoriesByHandle: () => h.dirs, limit: async () => limit });
+        await expect(svc.packageInstaller.install(h.handle, archive)).rejects.toMatchObject({ code: 'storage_quota_exceeded' });
+        expect(await svc.packageRepo.list(h.handle)).toEqual([]); expect((await measure()).totalBytes).toBe(0);
+        const bytes = Buffer.from('Media quota fixture'), crypto = await import('node:crypto'), contentHash = crypto.createHash('sha256').update(bytes).digest('hex');
+        limit = bytes.length;
+        await expect(svc.assetStore.put(h.handle, { assetId: createNativeId('asset'), contentHash, size: bytes.length, mediaType: 'application/octet-stream' }, bytes)).rejects.toMatchObject({ code: 'storage_quota_exceeded' });
+        expect(await svc.assetStore.hasBlob(h.handle, contentHash)).toBe(false); expect((await measure()).totalBytes).toBe(0);
+        limit = -1; await svc.packageInstaller.install(h.handle, archive); expect(await svc.packageRepo.list(h.handle)).toHaveLength(1);
+    });
+    test('legacy chat append and structured file writes use canonical final bytes; shrinking remains possible over quota', async () => {
+        let limit = 10000;
+        installAccountQuota(h.engine, { directoriesByHandle: () => h.dirs, limit: async () => limit });
+        const repo = new ChatRepo({ engine: h.engine });
+        const saved = await repo.save(h.handle, 'Quota', 'chat', {}, [{ mes: 'x'.repeat(200) }]);
+        const before = (await measure()).totalBytes; limit = before;
+        await expect(repo.append(h.handle, 'Quota', 'chat', [{ mes: 'does not fit' }], saved.integrity)).rejects.toMatchObject({ code: 'storage_quota_exceeded' });
+        expect((await repo.get(h.handle, 'Quota', 'chat')).body).toHaveLength(1);
+        limit = 0; await repo.save(h.handle, 'Quota', 'chat', {}, []); expect((await measure()).totalBytes).toBeLessThan(before);
+        limit = (await measure()).totalBytes + resourceContentBytes({ enabled: true });
+        await writeAccountFile(h.handle, path.join(h.dirs.root, 'settings.json'), Buffer.from('  {\n "enabled": true\n }  '), h.engine);
+        expect((await measure()).totalBytes).toBe(limit);
+    });
     test('all Native kinds, project Git, deduplicated blobs, backups and unknown files reconcile', async () => {
         let expected = 0;
         await h.engine.withTransaction(h.handle, async tx => {
@@ -100,8 +129,7 @@ describe.each(CONTRACT_HARNESSES)('resource accounting — $name', ({ make }) =>
         expect((await measure()).totalBytes).toBe(resourceContentBytes(doc));
         expect(await h.engine.withTransaction(h.handle, tx => tx.getResource(one))).toBeNull();
     });
-    test('independent shared-database engines serialize quota admission with a single-connection pool', async () => {
-        if (!['mysql', 'postgres'].includes(h.kind)) return;
+    if (/Mysql|Pg/.test(name)) test('independent shared-database engines serialize quota admission with a single-connection pool', async () => {
         const other = new h.engine.constructor({ url: h.url, poolSize: 1 });
         try {
             await other.ping(h.handle);
@@ -113,4 +141,5 @@ describe.each(CONTRACT_HARNESSES)('resource accounting — $name', ({ make }) =>
             expect((await measure()).totalBytes).toBe(resourceContentBytes(doc));
         } finally { await other.close(); }
     });
+    else test.skip('shared database advisory locks do not apply to a file-backed engine', () => {});
 });
