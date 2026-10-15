@@ -9,7 +9,7 @@
 - **收敛方向**：统一原生执行内核。D1 曾提及“旧模式变为模板”，该部分已被 D2 直接否决：不保留旧模式、模板及兼容路径。
 - **边界：无新增 World/Memory/Session/Project/模型调用收费权威**。Agent 的提案与正式事实严格分离；相应原有计划中的领域契约继续有效。
 - **流程：讨论期间先更新并提交 `docs` 的同一份 Bundle，再进入后续轮次；本轮不修改 `main` 产品代码**。
-- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2 均已冻结；D6 工具安全权威、物理 Schema、实现和实际验收待议。
+- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2 已冻结；D7 叙事与 Project Agent 质量、物理 Schema、产品实现及验收尚未冻结。
 
 ## D2 — 已冻结：T2 Native Host + 旧编排零兼容硬切（2026-10-15）
 
@@ -66,16 +66,29 @@ D3 各操作的详细方向、不变量与需要测试的失败窗口只由 [gra
 9. **可观测评价**：发送前记录触发/跳过理由、quality floor、source proof/ReuseDecision、route、实际 reservation 与估算；响应后记录真实 EffectReceipt/usage、unknown、cache read/write/observed、TTFT/E2E/费用、队列尾延迟与正式业务结果。正确性/Actor/Disclosure/玩家自主权与 Project 产物优先，之后比较调用、Token、实际费用、延迟、错误复用；estimated savings 与实际 charge 不混淆。无实测不宣称 SLO/模型收益或精确成本封顶。
 10. **权威范围**：F2 的 V3 连接细则以 [adaptive-compute.md](adaptive-compute.md) 为唯一详细模块，原 Native [Compute Policy](../../architecture/agent-intelligence-runtime/compute-policy.md)、[Model Routing](../../architecture/agent-intelligence-runtime/model-routing.md)、[Execution Reuse](../../architecture/agent-intelligence-runtime/execution-reuse.md) 为各自领域详细权威。遵守 D1–D4、HCM-01–08、Native Host 唯一执行、旧编排零兼容硬切；此轮仅更新 `docs`，不改 `main`。
 
-## D6 — 第六轮待冻结
+## D6 — 已冻结：S2 Native Effect Authorization Gate（2026-10-15）
 
-Tool/Skill/MCP/A2A 的 capability discovery/授予、Token/Secret/Context 边界、用户/作者/Project 权限主体、操作风险分级与耐久审批、外部不可逆副作用的 EffectIntent/Receipt/reconcile/unknown、Prompt Injection/工具描述投毒和 Windows/Linux/Termux 恢复交互待深入讨论。**具体安全拓扑、默认审批、API/Schema 未选择，不冻结**。
+1. **Host 的受控动作准入**：采用 S2。Tool/Skill/MCP/A2A 动作需按 **Discovery → 原 Capability Grant 与 Policy Ceiling → 精确参数/后果/外发风险 → 可信审批（如需）→ Durable EffectIntent → 原 Native Port → EffectReceipt/原 DomainCommitReceipt** 进行，不新增第二写入/计费/Secret/MCP 权威。Tool 名字在 allowlist 里或任务已有预算，不代表该具体操作获授权。
+2. **发现与授予分离**：Tool Descriptor/annotations、Skill 指令、MCP metadata、A2A Card 与模型文本均为有限可信度的信息，不能自授权限；Owner、Author/Project/Session、Plan/Run、父子 Agent grants、目标工具/endpoint、原领域政策取合法交集。GraphPatch/Delegate/Handoff 不自动扩大 tool/schema/egress 权限。
+3. **操作风险分级**：逻辑类别 R0 纯本地有界无副作用读取、R1 外部读取/数据外发/收费、R2 修改/可发布业务行为、R3 删除/不可逆/Host 代码/插件执行等高影响效果。**以实际 Effect 与参数后果划分风险**；名叫 read/preview 的隐藏收费/写入不能列 R0。已知窄域许可内 R0 可自动；R1 要有独立外发/服务/费用许可；R2 经原业务授权与要求的 review/approval；R3 默认无授权，只在实际领域可控且得到可信精确批准、具备原生保护时执行。具体 UI/物理枚举后议。
+4. **可信审批**：批准绑定用户/作者实际身份、operation+target+规范化参数/Hash、Run/NodeAttempt/Effect、Source/Revision/Boot/epoch、endpoint/egress/预算 envelope、有限有效期与一次性作用域。模型宣称、Client 伪布尔值、Browser host.authorize、失效 Lease 均不构成人工批准；等待审批为可持久/可取消状态，期间控制面仍可响应；发出前重新核验 CAS/权限/输入/路由，失效则重新审批/拒绝。
+5. **Secret 与数据外发**：SecretRef 由原 Host SecretPort 在发送边界按 owner+origin+Connection+用途解析，不进入 Agent Context、日志/回执/投影。Endpoint 变化、redirect、代理、DNS/SSRF/内网/TLS、数据范围改变需要重验；**拥有 Context 的读权限不等于可以把私人 Actor/Narrator 内容发给外部服务**，D4 的 audience+Disclosure 与本次 external egress grant 分别成立。
+6. **Prompt Injection / Skill 边界**：网页、外部工具响应、MCP Tool 描述、A2A 卡、Skill、Package/Plugin 内容、项目源码与第三方文档属于低信任输入，不允许改系统指令、能力列表、Tool schema、原业务 scope 或批准记录。Skill 是方法资料，不是 Code/Host 执行许可；Browser Extension、Host Plugin、Package runtime 各有独立信任级，没有可验证沙箱与明示批准就不开任意 shell/JS/网络代码执行。
+7. **跨协议持久效果**：EffectIntent 必须在副作用前以稳定 ID 持久登记，EffectReceipt 记录 sent/not-sent/confirmed/failed/stale/unknown、来源/原业务回执/审批信息。独立 `plugin:atria-mcp` 的 ActionRegistry/PolicyCeiling/Lease/Journal 归其外部客户端工具；V3 Host RunLedger 归内部编排，原 Native Session/Project/RunControl 归业务真值。身份可关联，不能互相复制成为第二个事实数据库。
+8. **恢复不盲重发**：已发外部 MCP/A2A/正式写入而结果未知时使用原 operationId/taskId/status/DomainReceipt 查询与 reconciliation；不能仅因网络错误换 EffectId 重发非幂等动作。取消不等于远端 rollback 或退款；Host 重启、Session restore/branch switch/Grant 撤销/批准过期后 reauth、版本和预算重验，迟到结果不越权发布。无法证明安全时保持 unknown/waiting_review/blocked。
+9. **内置与独立 MCP 明确区分**：`main:src/native/mcp-service.js` 是受限外部数据消费端，工具名白名单不能证明 Tool 只读且当前记录偏进程内；`main:src/native/a2a-service.js` 有部分原 RunControl 持久任务身份/查询恢复；独立 [MCP 补强企划](../../plugin/atria-mcp-strengthening/index.md) 位于长期 `plugin`，对外 Codex/Claude Code 等的 Registry、审批、Journal 是另一层，不取代 V3 或 Native authority，不因为同时叫 MCP 便统一升级权限。
+10. **范围/验收**：D6 具体设计、不变量、反例仅由 [effect-authorization.md](effect-authorization.md) 管理。继承 D1–D5、HCM-01–08、T2 Native Host、旧 Single/Spec/Agenda/Loop/Director/旧 UI 零兼容硬切；本轮只更新 `docs` Plan+同一 Record，物理 API、审批 UI 和三端 Tool 安全/恢复均未实施/未验收。
+
+## D7 — 第七轮待冻结
+
+RP Narrator 和角色表达/行为控制、旁白与 NPC 认知分离/反全知、玩家自主权、持续剧情与多角色协作、Project Agent 任务/Review/Commit、Judge/Review 的质量评估与局部重做、全新 Native Graph 产品入口与创作体验。应引用已有 Actor/HCM/Behavior、Studio Project 和 World 正式权威，不将 D7 未选的叙事模式或质量评价阈值提前写成冻结产品合同。
 
 ## 后续未定（不要提前冻结）
 
 - D3 已冻结的动态 Graph/Join/Review 方向见 [graph-control.md](graph-control.md)；物理字段、模型质量/真实成本收益和工程验收仍未确定。
 - D4 Context/Hybrid/Actor/Source 的已冻结设计仅以 [context-sharing.md](context-sharing.md) 为准；物理字段、落地代码和实测收益尚未冻结。
 - D5 Adaptive/Model Routing/并行预算/三层 Cache 已冻结，接口与反例见 [adaptive-compute.md](adaptive-compute.md)；物理字段、阈值/实际收益后续验证。
-- MCP/A2A/Skill/Web/Code 的权限、外部副作用幂等性和审批。
+- D6 Tool/Skill/MCP/A2A 授权、审批与危险 Effect 方向已冻结，详细边界见 [effect-authorization.md](effect-authorization.md)；工具覆盖、具体审批 UI 与真实客户端兼容后续验收。
 - RP 叙事质量、作者意图/防全知、自动编排粒度与 Eval。
 - UX、跨平台客户端、可视化 Editor、诊断与正式验收/实施序列。
 
@@ -85,4 +98,4 @@ Tool/Skill/MCP/A2A 的 capability discovery/授予、Token/Secret/Context 边界
 - 「浏览器 IndexedDB Checkpoint」不等于「Native 持久 Session/Task Ledger」。
 - 「模型调用完成」不等于「正式游戏事件已提交」。
 - 「外部 Agent/MCP/A2A 返回成功」不等于「Atria 权威状态已更新」。
-- D1–D4 已确认的**设计**不授权本轮修改 `main`、保留旧编排、伪造 UI/真机或真实模型测试通过。
+- D1–D6 已确认的**设计**不授权本轮修改 `main`、复活旧编排或冒称审批、真实客户端/CI/模型/实机已通过。

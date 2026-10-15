@@ -27,3 +27,12 @@
 - 文档变化：`index.md` 新增 D5 模块路由/第六轮入口，`decisions.md` 冻结 D5；新增 `adaptive-compute.md`（D5 的 V3 唯一细则），保留原 Native Compute/Model/Reuse 各自详细权威。
 - 本阶段实际检查：阅读 GitHub docs/main 相关源；审查文档路径与引用、创建文档提交并核验远端 Ref 和文件差异。未执行产品 Node 单测、CI、Provider API、用户浏览器、Linux/Windows/Termux 运行。设计达成不构成质量/费用/缓存收益已通过。
 - 仍需实施证明：端到端父子并行原子预约、网关未知上游费用边界、Provider/Local Cache 能力、准确 SLO、重启收费恢复等。D6 Tool/Skill/MCP/A2A 权限、审批和危险副作用将在下一轮选择。
+
+## 2026-10-15 — D6 S2 Native Effect Authorization Gate 设计冻结
+
+- Start docs HEAD: `4e209bc9ebd522ab345cf4ccd9375c83602142e9`；`main@2686aa40a00c8bfccdc47c55d2b236b4878b022a` 为本轮静态核对基线（最终重新核实其当前值）；本阶段只改文档。
+- 用户明确冻结 S2：Tool/Skill/MCP/A2A discovery 与 Capability Grant 分离，Native Host 基于实际 Effect/风险（R0–R3 逻辑类别）和可信精确审批进行权限准入；Endpoint/SecretRef/Source/Audience/Egress 相互独立保护，Prompt Injection 与 Skill/Plugin 提权被拒；写前 durable EffectIntent、执行结果/未知 EffectReceipt 与原 Native DomainCommit 分层。
+- 现有代码/Plan核对：内置 `src/native/mcp-service.js` 主要受限外部读取且进程记录，`a2a-service.js` 具有有限原 RunControl Task identity/reconnect，`skill-invocation.js` 限界文件读取而不赋权；独立 [MCP 补强 Plan](../../plans/plugin/atria-mcp-strengthening/index.md) 负责外部客户端 ActionRegistry/Ceiling/Lease/Journal，不成为 V3 内核或第二业务数据库。
+- 更新同一 Plan [index](../../plans/refactor/atria-native-orchestration-v3/index.md) 的 D6 决定/第七轮路由、[decisions](../../plans/refactor/atria-native-orchestration-v3/decisions.md) 的 D6 与新 [effect-authorization](../../plans/refactor/atria-native-orchestration-v3/effect-authorization.md) 详细模块。其余领域合同继续引用原权威，无并行重复维护。
+- 实际验证仅 GitHub 静态读、文档结构/链接/差异/refs 核查和远端提交。未更改 `main` 产品代码，也未运行 Node tests/CI、真实付费 Provider 或 MCP/A2A 写调用、可信人工批准、Windows/Linux/Termux 实机/浏览器验收。不存在这些项目已通过的主张。
+- Remaining: 具体 schema/风险默认策略的细粒度参数、可信跨端 Approval UI、MCP 新旧协议端侧兼容、沙箱实证及远端 Effect reconciliation 都未实施/实测。下一轮讨论 D7 RP Narrator/Actor/Project Agent/Quality/Creator UX，用户选择前不得冻结。

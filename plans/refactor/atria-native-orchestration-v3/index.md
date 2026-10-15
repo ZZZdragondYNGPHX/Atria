@@ -9,7 +9,8 @@
 - 第三轮状态：**D3 已冻结：G2 不可变 Plan + Host 受控动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复与有界循环**。
 - 第四轮状态：**D4 已冻结：C2 Audience-scoped Context；统一 Hybrid Recall，按 Actor/Source/Time/Branch 授权，跨 Agent 通过有来源 Result 引用分享，Disclosure 与长会话压缩独立校验**。
 - 第五轮状态：**D5 已冻结：F2 Evidence-driven Adaptive Compute；按实际证据与任务质量选择性准入、原 Native Route/Compute 预算和三层缓存/执行复用**。
-- 第六轮状态：**正在讨论 Tool/Skill/MCP/A2A 能力授予、审批、危险副作用、安全隔离与恢复；D6 尚未冻结**。
+- 第六轮状态：**D6 已冻结：S2 Native Effect Authorization Gate；按实际动作/后果授权、分级审批、Secret/Egress 保护、Prompt Injection 隔离及持久 EffectIntent/Receipt 安全恢复**。
+- 第七轮状态：**待讨论 RP Narrator、多角色认知、反全知与玩家自主权、Project Agent、Judge/Review 质量评价与原生创作体验；D7 尚未冻结**。
 - 文档性质：设计与架构冻结阶段；本轮仅提交 `docs`，不建立实现分支、不修改 `main`，不宣称任何新实现已验证。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -38,12 +39,13 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [graph-control.md](graph-control.md) | **D3 冻结**：动态图 Patch / GraphRevision、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复、循环控制 | 第三轮及后续图控制流 |
 | [context-sharing.md](context-sharing.md) | **D4 冻结**：C2 按 Audience 编译、唯一 Hybrid Memory、Actor/Source/Time/Branch、Result/Disclosure、压缩/失效与验收 | 第四轮及后续 Context/Memory 接入 |
 | [adaptive-compute.md](adaptive-compute.md) | **D5 冻结**：F2 稀疏/自适应调用、模型路由、并行父子额度/实际计费、三层缓存、Fallback/Continuation、质量成本评价 | 第五轮及后续 Compute/Model 接入 |
+| [effect-authorization.md](effect-authorization.md) | **D6 冻结**：Tool/Skill/MCP/A2A 发现与能力授权、R0–R3 风险、可信审批、Secret/Egress、Prompt Injection、持久 Effect/未知恢复 | D6 与后续 Effect 安全接入 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
 
 已存在的其他方案只是依赖，不复制详细契约：
 - [Agent Intelligence Runtime](../../architecture/agent-intelligence-runtime/index.md)：Memory/Cognition、Experience/Eval/Evolution、Sparse Compute、Execution Reuse、Model Routing 的领域契约。
 - [Game Runtime Architecture](../game-runtime-architecture/index.md)：World/Command 的唯一事实与写入边界。
-- MCP 补强或 Native Visual 等若影响实际 Tool Port，仅作为后续依赖接口，不在本 Plan 重建插件或媒体权威。
+- [独立 MCP 补强企划](../../plugin/atria-mcp-strengthening/index.md)（长期 `plugin` 工作空间）负责外部客户端到 Atria 的 Tool/Action Registry、Approval Lease、Operation Journal；V3 仅接原生受控 Port 和结果，不另建 MCP Server 或第二套产品权限。Native Visual/Media 同理引用自身现存领域 Authority。
 
 ## 轮次路线（建议，非提前冻结）
 
@@ -54,13 +56,13 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | **3 已完成** | 动态图、Delegate/Handoff、并行 Join、Planner/Judge/Review、重试/失败/有界循环 | **D3 = G2 有界动态图** |
 | **4 已完成** | Context/Hybrid Memory/Actor/Source 权限隔离与分级多 Agent 上下文共享 | **D4 = C2 Audience-scoped Context** |
 | **5 已完成** | Sparse/Adaptive Invocation、Model Routing、并行预算、缓存与执行复用 | **D5 = F2 Evidence-driven Adaptive Compute** |
-| **6 当前** | Tool/Skill/MCP/A2A 能力授予、审批、危险副作用与跨协议恢复 | D6 尚待讨论 |
-| 7 | RP 叙事/反全知/多角色、Narrator 与批评回路、Project Agent | 产品使用模式与质量保障 |
+| **6 已完成** | Tool/Skill/MCP/A2A 能力授予、审批、危险副作用与跨协议恢复 | **D6 = S2 Native Effect Authorization Gate** |
+| **7 当前** | RP Narrator、Actor Cognition/防全知/玩家自主权、Project Agent、Judge/Review 与原生创作体验 | D7 待讨论、未冻结 |
 | 8 | 图形化编辑、预设、可解释 Run/Diagnostics、跨平台交互 | UX/Observability |
 | 9 | 代码清退、分阶段切换、验证矩阵/用户验收 | 实施清单与验收入口 |
 
-每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再进行当轮新问题的讨论。D2 Host 权威见 [architecture.md](architecture.md)，D3 Graph 见 [graph-control.md](graph-control.md)，D4 Context/Memory 见 [context-sharing.md](context-sharing.md)，**D5 计算/路由/预算/复用的编排衔接只由 [adaptive-compute.md](adaptive-compute.md) 详细管理**；原 Compute/Model/Reuse 领域契约仍以 Agent Intelligence Runtime 为唯一权威。第六轮不提前冻结 D6。
+每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再讨论后续轮次。D2 Host 权威见 [architecture.md](architecture.md)，D3 Graph/Agent 见 [graph-control.md](graph-control.md)，D4 Context/Memory 见 [context-sharing.md](context-sharing.md)，D5 计算/路由/预算见 [adaptive-compute.md](adaptive-compute.md)，**D6 Tool/Skill/MCP/A2A 安全执行只由 [effect-authorization.md](effect-authorization.md) 详细管理**；独立 MCP 权威仍归 [MCP 补强企划](../../plugin/atria-mcp-strengthening/index.md)，不在 V3 复制 MCP ActionRegistry/Journal。D7 方案未经用户选择不可标记冻结。
 
-## 第六轮阅读与切入
+## 第七轮阅读与切入
 
-先读本 `index.md`、[decisions.md](decisions.md) 的 D1–D5、[architecture.md](architecture.md) 的 Effect/Receipt 边界；再按问题阅读 [graph-control.md](graph-control.md) 的委派/恢复、[context-sharing.md](context-sharing.md) 的传播权限、[adaptive-compute.md](adaptive-compute.md) 的预算/模型准入。检查既有 Native Tool/Skill/MCP/A2A 消费者及 MCP 补强计划，再讨论 capability grant、审批、Secret/Prompt Injection、外部未知副作用、恢复及三端交互。**D6 只讨论，未选择前不冻结，也不修改 `main`**。
+先读本 `index.md`、[decisions.md](decisions.md) 的 D1–D6；按实际问题阅读 [architecture.md](architecture.md) 的 Authority/Output、[graph-control.md](graph-control.md) 的 Planner/Judge/Review、[context-sharing.md](context-sharing.md) 的 Actor/Disclosure、[adaptive-compute.md](adaptive-compute.md) 的稀疏调用以及 [effect-authorization.md](effect-authorization.md) 的授权。随后仅按需阅读 [Agent Intelligence Runtime](../../architecture/agent-intelligence-runtime/index.md) 中 Actor/Cognition/Behavior/Experience/Project Agent 与 [Game Runtime](../game-runtime-architecture/index.md) 的正式世界/玩家行为合同。第七轮讨论 RP、Project、Agent 协作质量与用户创作体验，**D7 尚未冻结，不复刻旧编排模式、不修改 `main`**。
