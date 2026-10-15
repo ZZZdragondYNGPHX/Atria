@@ -1,4 +1,4 @@
-import { PlanRepository } from './plan-repository.js';
+import { PlanRepository, readPlanRevision } from './plan-repository.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../model-prompt-runtime/persistence.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
@@ -19,7 +19,7 @@ export function createOrchestrationAuthoringService(engine) {
             if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner required');
             if (operation.startsWith('bindings.')) throw Object.assign(new Error('Original source authority is not connected'), { code: 'native_orchestration_source_unavailable' });
         },
-        validateDependencies: async ({ handle, dependencyPins, definition }) => {
+        validateDependencies: async ({ handle, tx, dependencyPins, definition }) => {
             const evidence = [], issues = [];
             for (const capability of definition.capabilityCeiling) {
                 issues.push({ code: 'native_orchestration_capability_authority_unavailable', severity: 'unknown', fieldPath: 'capabilityCeiling.' + capability });
@@ -29,7 +29,9 @@ export function createOrchestrationAuthoringService(engine) {
                 const ref = pin.resourceRef;
                 try {
                     let value;
-                    if (['context', 'model', 'narrative', 'evaluation'].includes(pin.port) && ref.scope === 'library') {
+                    if (pin.port === 'plan') {
+                        value = await readPlanRevision(tx, handle, ref);
+                    } else if (['context', 'model', 'narrative', 'evaluation'].includes(pin.port) && ref.scope === 'library') {
                         const normalized = assertExactResourceRef(ref);
                         if (hashNativeDocument(normalized) !== hashNativeDocument(ref)) throw new TypeError('Unexpected fields in original resource reference');
                         value = (await library.getExact(handle, normalized)).snapshot;
@@ -47,7 +49,7 @@ export function createOrchestrationAuthoringService(engine) {
                 } catch (error) {
                     // Malformed/missing references cannot be published. Actual
                     // storage/transport faults must retain their failure status.
-                    if (!(error instanceof TypeError) && error.name !== 'NotFoundError') throw error;
+                    if (!(error instanceof TypeError) && error.name !== 'NotFoundError' && error.code !== 'native_orchestration_revision_mismatch') throw error;
                     evidence.push({ pinId: pin.pinId, status: 'invalid' });
                     issues.push({ code: 'native_orchestration_dependency_invalid', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
                 }

@@ -4,7 +4,7 @@ import { assertNativeId } from '../identity.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertObject, assertToken, assertPlanRef, assertPlanDefinition, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertComputeAllocation } from '../../../public/shared/native-compute-budget.js';
-import { checkedRecord, planDefinitionHash } from './plan-repository.js';
+import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, holdsConcurrencySlot, readAttempt } from './controller-common.js';
 import { assertRunRoot, childBudgetReceiptId, initialTreeProgress, TREE_LOGICAL_COUNTERS } from './run-repository.js';
 
@@ -28,6 +28,16 @@ export class DelegateController {
             || decision.sourceBindingDigest !== args.parent.sourceBinding.bindingDigest) fail('native_orchestration_delegation_denied');
     }
 
+    async #allowedPlan(handle, tx, parent, node, childPlanRef, parentPlan) {
+        const blueprint = parentPlan ?? await readPlanRevision(tx, handle, parent.planRef);
+        const allowed = blueprint.dependencyPins.filter(pin => pin.port === 'plan' && node.policy.allowedPlanPinIds.includes(pin.pinId)
+            && node.dependencyPinIds.includes(pin.pinId) && hashNativeDocument(pin.resourceRef) === hashNativeDocument(childPlanRef));
+        if (!allowed.length) fail('native_orchestration_child_plan_not_allowed');
+        const child = await readPlanRevision(tx, handle, childPlanRef);
+        if (!allowed.some(pin => pin.integrity === hashNativeDocument(child))) fail('native_orchestration_child_plan_pin_stale');
+        return child;
+    }
+
     async delegate(handle, input) {
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'parentAttemptId', 'delegationId', 'childPlanRef', 'inputRefs', 'inputDigest', 'effectiveGrantDigest', 'returnContract', 'budgetCeiling'], 'delegate');
         const { parentAttemptId, delegationId, childPlanRef, inputRefs, inputDigest, effectiveGrantDigest, returnContract, budgetCeiling, ...guard } = cloneNativeDocument(input);
@@ -46,16 +56,14 @@ export class DelegateController {
             seen.add(observed.runId); ancestorIds.push(observed.runId);
         }
         const detail = { parentAttemptId, delegationId, childPlanRef, inputRefs, inputDigest, effectiveGrantDigest, returnContract, budgetCeiling };
-        return this.runs.control(handle, controlCommandId('run.delegate', childRunId), { ...guard, operation: 'run.delegate', detail }, async ({ tx, root: parent, fence, now }) => {
+        return this.runs.control(handle, controlCommandId('run.delegate', childRunId), { ...guard, operation: 'run.delegate', detail }, async ({ tx, root: parent, plan, fence, now }) => {
             const { doc: parentAttempt } = await readAttempt(tx, handle, parent, parentAttemptId);
             const node = parent.graph.nodes.find(item => item.nodeId === parentAttempt.nodeId);
             if (parent.cancelRequested || parent.status !== 'running' || parentAttempt.status !== 'running' || parentAttempt.epoch !== parent.epoch
                 || parentAttempt.sourceBindingDigest !== parent.sourceBinding.bindingDigest || !node.capabilities.includes('agent.delegate')
                 || !['agent', 'router', 'planner', 'judge', 'review'].includes(node.kind)
                 || hashNativeDocument(parentAttempt.budgetRef) !== hashNativeDocument(parent.budgetAuthorityRef)) fail('native_orchestration_delegation_not_admitted');
-            const revision = (await checkedRecord(tx, { kind: K.orchestrationRevision, handle, planId: childPlanRef.planId, planRevisionId: childPlanRef.planRevisionId }))?.doc;
-            if (!revision || revision.definitionHash !== childPlanRef.definitionHash
-                || planDefinitionHash(revision.definition, revision.dependencyPins) !== childPlanRef.definitionHash) fail('native_orchestration_revision_mismatch');
+            const revision = await this.#allowedPlan(handle, tx, parent, node, childPlanRef, plan);
             assertPlanDefinition(revision.definition, revision.dependencyPins);
             const definition = revision.definition;
             if (definition.outputContract.kind !== 'result' || hashNativeDocument(returnContract) !== hashNativeDocument(definition.outputContract)
@@ -133,7 +141,9 @@ export class DelegateController {
             if (root.cancelRequested || root.status !== 'admitted') fail('native_orchestration_child_authority_invalid');
             const parent = (await checkedRecord(tx, key(handle, root.parentRef.parentRunId)))?.doc;
             const { doc: parentAttempt } = await readAttempt(tx, handle, parent, root.parentRef.nodeAttemptId);
-            await this.#scope({ handle, tx, parent, parentAttempt, childPlan: root.planRef, inputRefs: root.parentRef.inputRefs,
+            const node = parent.graph.nodes.find(item => item.nodeId === parentAttempt.nodeId);
+            const childPlan = await this.#allowedPlan(handle, tx, parent, node, root.planRef);
+            await this.#scope({ handle, tx, parent, parentAttempt, childPlan, inputRefs: root.parentRef.inputRefs,
                 effectiveGrantDigest: root.parentRef.effectiveGrantDigest, budgetCeiling: root.parentRef.budgetCeiling, phase: 'confirm_budget' }, root.parentRef.effectiveGrantDigest);
             // This callback may only observe the original bank. A lost reserve
             // ACK never creates another root bank or another child identity.

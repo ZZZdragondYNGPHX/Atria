@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { createOrchestrationExecutionService } from '../../src/native/orchestration/execution-service.js';
-import { PlanRepository, validationDigest } from '../../src/native/orchestration/plan-repository.js';
+import { PlanRepository, validationDigest, readPlanRevision } from '../../src/native/orchestration/plan-repository.js';
 import { AttemptController } from '../../src/native/orchestration/attempt-controller.js';
 import { runGuard } from '../../src/native/orchestration/controller-common.js';
 import { sendAttemptId, localWorkAttemptId } from '../../src/native/orchestration/budget-port.js';
@@ -59,13 +59,20 @@ async function setup(make, { prepareEffect = true } = {}) {
         validateDependencies: async () => ({ status: 'valid', issues: [], dependencyDigest: hashNativeDocument([]) }) });
     const fixture = planFixture(), output = fixture.definition.nodes[0], nodeId = id('Node');
     fixture.definition.nodes = [{ nodeId, kind: 'agent', label: 'Original model task', inputs: [], outputs: [{ name: 'body', type: 'text.body', required: false }],
-        dependencyPinIds: ['route'], capabilities: ['generation.send', 'agent.delegate'], policy: { agentPinId: 'route' } },
+        dependencyPinIds: ['route'], capabilities: ['generation.send', 'agent.delegate'], policy: { agentPinId: 'route', allowedPlanPinIds: [] } },
     { ...output, inputs: [{ name: 'body', type: 'text.body', required: true }] }];
     fixture.definition.edges = [{ edgeId: id('Edge'), from: { nodeId, port: 'body' }, to: { nodeId: output.nodeId, port: 'body' }, condition: 'always', maxVisits: 1, loopBack: false }];
     fixture.definition.entryNodeIds = [nodeId]; fixture.definition.capabilityCeiling = ['generation.send', 'agent.delegate'];
     fixture.dependencyPins = [{ pinId: 'route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId },
         integrity: hashNativeDocument(await seeded.persistence.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId)) }];
     fixture.definition.limits.maxSteps = 50;
+    const childDraft = await plans.create(h.handle, id('Command'), structuredClone(fixture));
+    const childExpected = { planId: childDraft.planId, expectedDraftVersion: childDraft.draftVersion, expectedDefinitionHash: childDraft.definitionHash };
+    const childReport = await plans.validate(h.handle, childExpected);
+    const { planRef: childPlanRef } = await plans.publish(h.handle, id('Command'), { ...childExpected, validationDigest: validationDigest(childReport) });
+    const childRevision = await h.engine.withTransaction(h.handle, tx => readPlanRevision(tx, h.handle, childPlanRef));
+    fixture.dependencyPins.push({ pinId: 'child', port: 'plan', resourceRef: childPlanRef, integrity: hashNativeDocument(childRevision) });
+    fixture.definition.nodes[0].dependencyPinIds.push('child'); fixture.definition.nodes[0].policy.allowedPlanPinIds = ['child'];
     const plan = await plans.create(h.handle, id('Command'), fixture), expected = { planId: plan.planId, expectedDraftVersion: plan.draftVersion, expectedDefinitionHash: plan.definitionHash };
     const report = await plans.validate(h.handle, expected), { planRef } = await plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) });
     const root = await service.runs.start(h.handle, id('Command'), { planRef, sourceRequest, retentionPolicyRef: { policyId: 'test' } });
@@ -77,7 +84,7 @@ async function setup(make, { prepareEffect = true } = {}) {
     if (prepareEffect) await service.effects.prepare(h.handle, { ...runGuard(await service.runs.get(h.handle, root.runId)), effectId, nodeAttemptId: attemptId, proposal });
     const host = new NativeGenerationHost({ ...seeded, sessionCore: f.core, providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
     const ref = { authorityRef: root.budgetAuthorityRef, effectId, providerSendOrdinal: 0, attemptId: sendAttemptId(effectId, 0), reservationId: null };
-    return { ...h, ...service, root, effectId, ref, request, host, seen, nodeId, attemptId, proposal, authority, core: f.core, revoke: () => { revoked = true; },
+    return { ...h, ...service, root, childPlanRef, effectId, ref, request, host, seen, nodeId, attemptId, proposal, authority, core: f.core, revoke: () => { revoked = true; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.engine.close?.(); await h.cleanup(); } };
 }
 
@@ -86,7 +93,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const f = await setup(make, { prepareEffect: false });
         try {
             const delegated = await f.delegates.delegate(f.handle, { ...runGuard(await f.runs.get(f.handle, f.root.runId)), parentAttemptId: f.attemptId,
-                delegationId: 'model-child', childPlanRef: f.root.planRef, inputRefs: [], inputDigest: hashNativeDocument([]),
+                delegationId: 'model-child', childPlanRef: f.childPlanRef, inputRefs: [], inputDigest: hashNativeDocument([]),
                 effectiveGrantDigest: (await f.authority.authorize()).grantDigest, returnContract: f.root.graph.outputContract, budgetCeiling: limits });
             const childRunId = delegated.outcome.childRunId;
             await expect(f.reserveChild(f.handle, { parentRunId: f.root.runId, childRunId, ceiling: { ...limits, maxRequests: 3 }, limits }))
@@ -151,7 +158,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
                 providerSendOrdinal: 0, requestId: 'foreign', targetFingerprint: 'a'.repeat(64), inputFingerprint: 'b'.repeat(64), upperBound: 100, limits });
             await expect(f.effects.ready(f.handle, { ...runGuard(await f.runs.get(f.handle, f.root.runId)), effectId: f.effectId, budgetAttemptRef })).rejects.toMatchObject({ code: 'native_orchestration_budget_attempt_invalid' });
             const attemptId = localWorkAttemptId(f.effectId, 0);
-            await f.budgetPort.chargeLocalWork(f.handle, { authorityRef: f.root.budgetAuthorityRef, limits,
+            await f.budgetPort.chargeLocalWork(f.handle, { authorityRef: f.root.budgetAuthorityRef, limits, effectId: f.effectId, localWorkOrdinal: 0,
                 attempt: { attemptId, requestId: 'local', kind: 'mcp_protocol', estimatedItems: 1, estimatedInputBytes: 10, targetFingerprint: 'c'.repeat(64) } });
             const localRef = { kind: 'local_work', authorityRef: f.root.budgetAuthorityRef, effectId: f.effectId, localWorkOrdinal: 0, attemptId, reservationId: null };
             expect(await f.budgetPort.observeAttempt(f.handle, localRef)).toMatchObject({ status: 'charged' });

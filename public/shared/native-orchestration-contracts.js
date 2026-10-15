@@ -76,11 +76,12 @@ export function assertDependencyPins(pins) {
         assertToken(pin.pinId, 'dependencyPin.pinId');
         if (ids.has(pin.pinId)) throw new TypeError('duplicate dependencyPin.pinId');
         ids.add(pin.pinId);
-        member(pin.port, ['context', 'model', 'tool', 'narrative', 'project', 'evaluation'], 'dependencyPin.port');
+        member(pin.port, ['context', 'model', 'tool', 'narrative', 'project', 'evaluation', 'plan'], 'dependencyPin.port');
         // Original resource authorities validate the exact reference union.
         // It must be pinned data, never executable code or a credential value.
         if (!pin.resourceRef || Object.prototype.toString.call(pin.resourceRef) !== '[object Object]') throw new TypeError('dependencyPin.resourceRef must be an original resource reference');
         assertDigest(pin.integrity, 'dependencyPin.integrity');
+        if (pin.port === 'plan') assertPlanRef(pin.resourceRef);
     }
     return pins;
 }
@@ -127,7 +128,7 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
             if (!draft && !capabilities.has(capability)) throw new TypeError('node exceeds capability ceiling');
         }
         if (['fanout', 'join'].includes(node.kind) && node.capabilities.length) throw new TypeError('deterministic fanout/join cannot execute effects');
-        assertNodePolicy(node, draft);
+        assertNodePolicy(node, draft, pins);
         byId.set(node.nodeId, node);
     }
     const edgeIds = new Set(), incoming = new Set(), adjacency = new Map(nodes.map(node => [node.nodeId, []]));
@@ -203,14 +204,27 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
     return value;
 }
 
-function assertNodePolicy(node, draft) {
+function assertNodePolicy(node, draft, pins) {
     const policy = node.policy;
     const fields = {
         agent: ['agentPinId'], planner: ['agentPinId'], judge: ['agentPinId'], review: ['agentPinId', 'maxRounds'],
         effect: ['actionPinId'], router: ['selection'], fanout: ['maxConcurrency', 'failurePolicy'],
         join: ['strategy', 'quorum', 'deadlineMs'], wait: ['timeoutMs'], approval: ['timeoutMs'], output: [],
     }[node.kind];
+    if (node.capabilities.includes('agent.delegate')) {
+        if (!['agent', 'planner', 'judge', 'review', 'router'].includes(node.kind)) throw new TypeError('Node cannot delegate');
+        fields.push('allowedPlanPinIds');
+    }
     assertObject(policy, fields, 'node.policy');
+    if (fields.includes('allowedPlanPinIds')) {
+        const allowed = array(policy.allowedPlanPinIds, 'allowedPlanPinIds'), seen = new Set();
+        for (const pinId of allowed) {
+            assertToken(pinId, 'allowedPlanPinId');
+            if (seen.has(pinId)) throw new TypeError('Duplicate allowed Plan pin');
+            seen.add(pinId);
+            if (!draft && (!node.dependencyPinIds.includes(pinId) || pins.find(pin => pin.pinId === pinId)?.port !== 'plan')) throw new TypeError('Delegation requires a declared exact Plan dependency pin');
+        }
+    }
     for (const field of ['agentPinId', 'actionPinId']) if (fields.includes(field)) {
         if (!(draft && policy[field] === null)) assertToken(policy[field], 'node.policy.' + field);
         if (!draft && !node.dependencyPinIds.includes(policy[field])) throw new TypeError('node policy requires an exact dependency pin');

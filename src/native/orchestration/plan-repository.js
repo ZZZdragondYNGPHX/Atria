@@ -21,6 +21,22 @@ export async function checkedRecord(tx, resourceKey) {
     return record;
 }
 
+/** Same original immutable Plan authority for publication and execution pins. */
+export async function readPlanRevision(tx, handle, planRef) {
+    assertPlanRef(planRef);
+    const record = await checkedRecord(tx, key(K.orchestrationRevision, handle, { planId: planRef.planId, planRevisionId: planRef.planRevisionId }));
+    if (!record) throw new NotFoundError('orchestration_plan_revision');
+    const doc = record.doc;
+    assertObject(doc, ['schemaVersion', 'planId', 'planRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'authorRef', 'validationDigest', 'publishedAt'], 'PlanRevision');
+    assertObject(doc.authorRef, ['handle'], 'authorRef');
+    if (doc.authorRef.handle !== handle) throw new TypeError('PlanRevision author mismatch');
+    assertDigest(doc.validationDigest, 'validationDigest'); assertCounter(doc.publishedAt, 'publishedAt');
+    if (doc.schemaVersion !== 1 || doc.planId !== planRef.planId || doc.planRevisionId !== planRef.planRevisionId
+        || doc.definitionHash !== planRef.definitionHash || doc.definitionHash !== planDefinitionHash(doc.definition, doc.dependencyPins)) throw new ConflictError('native_orchestration_revision_mismatch');
+    assertPlanDefinition(doc.definition, doc.dependencyPins);
+    return doc;
+}
+
 /** Host-only repository; original authority adapters are mandatory, never permissive defaults. */
 export class PlanRepository {
     constructor({ engine, authorize, validateDependencies, assertWriter, now = Date.now }) {
@@ -227,17 +243,7 @@ export class PlanRepository {
     }
 
     async #revision(tx, handle, planRef) {
-        const record = await checkedRecord(tx, key(K.orchestrationRevision, handle, { planId: planRef.planId, planRevisionId: planRef.planRevisionId }));
-        if (!record) throw new NotFoundError('orchestration_plan_revision');
-        const doc = record.doc;
-        assertObject(doc, ['schemaVersion', 'planId', 'planRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'authorRef', 'validationDigest', 'publishedAt'], 'PlanRevision');
-        assertObject(doc.authorRef, ['handle'], 'authorRef');
-        if (doc.authorRef.handle !== handle) throw new TypeError('PlanRevision author mismatch');
-        assertDigest(doc.validationDigest, 'validationDigest'); assertCounter(doc.publishedAt, 'publishedAt');
-        if (doc.schemaVersion !== 1 || doc.planId !== planRef.planId || doc.planRevisionId !== planRef.planRevisionId
-            || doc.definitionHash !== planRef.definitionHash || doc.definitionHash !== planDefinitionHash(doc.definition, doc.dependencyPins)) throw new ConflictError('native_orchestration_revision_mismatch');
-        assertPlanDefinition(doc.definition, doc.dependencyPins);
-        return doc;
+        return readPlanRevision(tx, handle, planRef);
     }
 
     async #validate(handle, tx, root) {

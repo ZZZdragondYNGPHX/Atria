@@ -1,6 +1,6 @@
 import { DelegateController, delegatedRunId } from '../../src/native/orchestration/delegate-controller.js';
 import { RunRepository } from '../../src/native/orchestration/run-repository.js';
-import { PlanRepository, validationDigest } from '../../src/native/orchestration/plan-repository.js';
+import { PlanRepository, validationDigest, readPlanRevision } from '../../src/native/orchestration/plan-repository.js';
 import { AttemptController } from '../../src/native/orchestration/attempt-controller.js';
 import { GraphController, graphPatchHash } from '../../src/native/orchestration/graph-controller.js';
 import { admitGraphEdges } from '../../src/native/orchestration/graph-costs.js';
@@ -10,7 +10,7 @@ import { runGuard } from '../../src/native/orchestration/controller-common.js';
 import { readRunControl } from '../../src/native/run-control.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
-import { hashNativeDocument } from '../../src/native/repositories/common.js';
+import { hashNativeDocument, putMutable } from '../../src/native/repositories/common.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { installFixture } from '../native/helpers/session-fixture.js';
 import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
@@ -24,9 +24,9 @@ const childCeiling = { maxRequests: 4, maxTokens: 4000, localWork: { maxJobs: 4,
 // the default original FS/SQLite coverage.
 const harnesses = CONTRACT_HARNESSES.filter(item => ['FsEngine', 'SqliteEngine'].includes(item.name) || process.env.ATRIA_TEST_DELEGATE_SQL === '1');
 describe.each(harnesses)('$name guarded child Run and original bank', ({ make }) => {
-    let h, original, base, runs, plans, attempts, delegates, budget, source, root, parentAttemptId, childPlanRef, childPlan, allowed;
+    let h, original, base, runs, plans, attempts, delegates, budget, source, root, parentAttemptId, childPlanRef, childPlan, allowed, scopeCalls;
     beforeEach(async () => {
-        h = await make(); allowed = true; await prepareControllerOwnerRoot(h.dirs.root);
+        h = await make(); allowed = true; scopeCalls = 0; await prepareControllerOwnerRoot(h.dirs.root);
         const lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         original = await installFixture(h); base = await original.core.create(h.handle, original.start);
         budget = new BudgetPort({ sessionCore: original.core }); source = new SourcePort({ budgetPort: budget, sessionCore: original.core });
@@ -36,6 +36,7 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         attempts = new AttemptController({ runs, authorizeAttempt: async ({ root }) => source.revalidate(h.handle, root.sourceBinding) });
         delegates = new DelegateController({ runs,
             authorizeDelegation: async ({ parent, parentAttempt, effectiveGrantDigest }) => {
+                scopeCalls++;
                 await source.revalidate(h.handle, parent.sourceBinding);
                 return { allowed, parentGrantDigest: parentAttempt.effectiveGrantDigest, effectiveGrantDigest,
                     budgetCeilingDigest: hashNativeDocument(childCeiling), sourceBindingDigest: parent.sourceBinding.bindingDigest };
@@ -44,32 +45,46 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         await setup();
     });
     afterEach(async () => { await h?.engine.close(); await h?.cleanup(); });
-    async function publish(overrides = {}, extraCapability) {
-        const fixture = planFixture(), output = fixture.definition.nodes[0], nodeId = createNativeId('orchestrationNode');
+    async function publish(overrides = {}, extraCapability, children = [], template, stalePin = false) {
+        const fixture = planFixture(), output = template?.nodes.at(-1) ?? fixture.definition.nodes[0], nodeId = template?.entryNodeIds[0] ?? createNativeId('orchestrationNode');
         const capabilities = ['agent.delegate', 'graph.patch', ...(extraCapability ? [extraCapability] : [])];
-        const extraId = createNativeId('orchestrationNode');
+        const extraId = template?.nodes[1].nodeId ?? createNativeId('orchestrationNode');
         const agentNode = { nodeId, kind: 'agent', label: 'Delegating Agent', inputs: [], outputs: [{ name: 'next', type: 'task.result', required: false }],
-            capabilities, dependencyPinIds: ['route'], policy: { agentPinId: 'route' } };
+            capabilities, dependencyPinIds: ['route', ...children.map((_child, index) => 'child-' + index)], policy: { agentPinId: 'route', allowedPlanPinIds: children.map((_child, index) => 'child-' + index) } };
         fixture.definition.nodes = [agentNode, { ...agentNode, nodeId: extraId, inputs: [{ name: 'in', type: 'task.result', required: true }] },
             { ...output, inputs: [{ name: 'in', type: 'task.result', required: true }] }];
         fixture.definition.entryNodeIds = [nodeId]; fixture.definition.capabilityCeiling = capabilities;
+        if (template) fixture.definition.outputContract = structuredClone(template.outputContract);
         fixture.definition.graphChangePolicy.allowedOperations = ['setPendingPriority', 'requestReplan'];
         fixture.definition.edges = [[nodeId, extraId], [extraId, output.nodeId]].map(([from, to]) => ({ edgeId: createNativeId('orchestrationEdge'),
             from: { nodeId: from, port: 'next' }, to: { nodeId: to, port: 'in' }, condition: 'always', loopBack: false, maxVisits: 1 }));
         Object.assign(fixture.definition.limits, { maxConcurrency: 4, maxDelegates: 3, maxDepth: 3 }, overrides);
         fixture.dependencyPins = [{ pinId: 'route', port: 'model', resourceRef: { runtimeRouteId: createNativeId('runtimeRoute'), scope: 'player' }, integrity: 'b'.repeat(64) }];
+        for (const [index, child] of children.entries()) fixture.dependencyPins.push({ pinId: 'child-' + index, port: 'plan', resourceRef: child.planRef, integrity: stalePin ? '0'.repeat(64) : hashNativeDocument(child.revision) });
         const draft = await plans.create(h.handle, command(), fixture), expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
-        const report = await plans.validate(h.handle, expected), { planRef } = await plans.publish(h.handle, command(), { ...expected, validationDigest: validationDigest(report) });
-        return { planRef, definition: fixture.definition };
+        const report = await plans.validate(h.handle, expected);
+        if (report.status !== 'valid') throw new Error('Plan fixture validation: ' + JSON.stringify(report.issues));
+        const { planRef } = await plans.publish(h.handle, command(), { ...expected, validationDigest: validationDigest(report) });
+        const revision = await h.engine.withTransaction(h.handle, tx => readPlanRevision(tx, h.handle, planRef));
+        return { planRef, definition: fixture.definition, revision };
     }
-    async function setup(overrides = {}) {
-        const parent = await publish(overrides), child = await publish(overrides);
+    async function setup(overrides = {}, childOverrides = overrides) {
+        const leaf = await publish(childOverrides), middle = await publish(childOverrides, undefined, [leaf], leaf.definition);
+        const child = await publish(childOverrides, undefined, [middle], leaf.definition), parent = await publish(overrides, undefined, [child]);
         childPlanRef = child.planRef; childPlan = child.definition;
-        root = await runs.start(h.handle, command(), { planRef: parent.planRef, sourceRequest: { domain: 'native_session', sessionId: base.session.sessionId, branchId: base.revision.branchId, revisionId: base.revision.revisionId }, retentionPolicyRef: { policyId: 'test-explicit' } });
-        parentAttemptId = await begin(root, parent.definition.entryNodeIds[0]);
+        await start(parent.planRef);
+    }
+    async function start(planRef) {
+        root = await runs.start(h.handle, command(), { planRef, sourceRequest: { domain: 'native_session', sessionId: base.session.sessionId, branchId: base.revision.branchId, revisionId: base.revision.revisionId }, retentionPolicyRef: { policyId: 'test-explicit' } });
+        parentAttemptId = await begin(root, root.graph.entryNodeIds[0]);
         await attempts.activate(h.handle, { ...runGuard(await current()), attemptId: parentAttemptId });
     }
     const current = () => runs.get(h.handle, root.runId);
+    async function nextPlan(runId) {
+        const run = await runs.get(h.handle, runId);
+        const revision = await h.engine.withTransaction(h.handle, tx => readPlanRevision(tx, h.handle, run.planRef));
+        return revision.dependencyPins.find(pin => pin.port === 'plan').resourceRef;
+    }
     async function begin(run, nodeId) {
         const inputRefs = run.parentRef?.inputRefs ?? [], effectiveGrantDigest = run.parentRef?.effectiveGrantDigest ?? grant;
         return (await runs.beginAttempt(h.handle, command(), { ...runGuard(run), nodeId, inputRefs, inputDigest: hashNativeDocument(inputRefs), effectiveGrantDigest, budgetRef: run.budgetAuthorityRef })).attemptId;
@@ -159,11 +174,39 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         await expect(delegates.delegate(h.handle, await body())).rejects.toMatchObject({ code: 'native_orchestration_delegation_denied' });
         allowed = true;
         const elevated = await publish({}, 'tool.invoke');
-        await expect(delegates.delegate(h.handle, await body({ childPlanRef: elevated.planRef, returnContract: elevated.definition.outputContract }))).rejects.toMatchObject({ code: 'native_orchestration_child_authority_invalid' });
+        await expect(delegates.delegate(h.handle, await body({ childPlanRef: elevated.planRef, returnContract: elevated.definition.outputContract }))).rejects.toMatchObject({ code: 'native_orchestration_child_plan_not_allowed' });
         await original.core.appendTimeline(h.handle, base.session.sessionId, { role: 'user', content: 'Moved Source' });
         await expect(delegates.delegate(h.handle, await body())).rejects.toMatchObject({ code: 'native_orchestration_source_stale' });
         expect((await current()).progress.delegates).toBe(0);
         await expect(runs.get(h.handle, delegatedRunId(root.runId, parentAttemptId, 'child-one'))).rejects.toThrow();
+    });
+
+    test('an empty allowed Plan list denies delegation before the controlled scope callback', async () => {
+        const empty = await publish(); await start(empty.planRef);
+        await expect(delegates.delegate(h.handle, await body())).rejects.toMatchObject({ code: 'native_orchestration_child_plan_not_allowed' });
+        expect(scopeCalls).toBe(0); expect((await current()).progress.delegates).toBe(0);
+    });
+
+    test('a different exact Plan ref cannot borrow the declared child pin', async () => {
+        const unlisted = await publish();
+        await expect(delegates.delegate(h.handle, await body({ childPlanRef: unlisted.planRef, returnContract: unlisted.definition.outputContract })))
+            .rejects.toMatchObject({ code: 'native_orchestration_child_plan_not_allowed' });
+        expect(scopeCalls).toBe(0);
+    });
+
+    test('a stale full-revision integrity pin cannot be laundered by an allowing scope callback', async () => {
+        const revision = await h.engine.withTransaction(h.handle, tx => readPlanRevision(tx, h.handle, childPlanRef));
+        const stale = await publish({}, undefined, [{ planRef: childPlanRef, revision }], undefined, true); await start(stale.planRef);
+        await expect(delegates.delegate(h.handle, await body())).rejects.toMatchObject({ code: 'native_orchestration_child_plan_pin_stale' });
+        expect(scopeCalls).toBe(0);
+    });
+
+    test('foreign author metadata is refused by the original Plan reader before any scope callback', async () => {
+        const revision = await h.engine.withTransaction(h.handle, tx => readPlanRevision(tx, h.handle, childPlanRef));
+        await h.engine.withTransaction(h.handle, tx => putMutable(tx, { kind: K.orchestrationRevision, handle: h.handle,
+            planId: childPlanRef.planId, planRevisionId: childPlanRef.planRevisionId }, { ...revision, authorRef: { handle: 'foreign-owner' } }));
+        await expect(delegates.delegate(h.handle, await body())).rejects.toThrow('PlanRevision author mismatch');
+        expect(scopeCalls).toBe(0);
     });
 
     test('nested delegates share root bank and cumulative root delegate/depth limits', async () => {
@@ -172,7 +215,7 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         const childAttemptId = await begin(child, childPlan.entryNodeIds[0]);
         await attempts.activate(h.handle, { ...runGuard(await runs.get(h.handle, child.runId)), attemptId: childAttemptId });
         child = await runs.get(h.handle, child.runId);
-        const nested = await delegates.delegate(h.handle, { ...runGuard(child), parentAttemptId: childAttemptId, delegationId: 'grandchild', childPlanRef,
+        const nested = await delegates.delegate(h.handle, { ...runGuard(child), parentAttemptId: childAttemptId, delegationId: 'grandchild', childPlanRef: await nextPlan(child.runId),
             inputRefs: [], inputDigest: hashNativeDocument([]), effectiveGrantDigest: grant, returnContract: childPlan.outputContract, budgetCeiling: childCeiling });
         const grandchild = await runs.get(h.handle, nested.outcome.childRunId);
         expect(grandchild.rootRunId).toBe(root.runId); expect(grandchild.parentRef.depth).toBe(2); expect(grandchild.budgetAuthorityRef).toEqual(root.budgetAuthorityRef);
@@ -187,24 +230,23 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         const childAttemptId = await begin(child, childPlan.entryNodeIds[0]);
         await attempts.activate(h.handle, { ...runGuard(await runs.get(h.handle, child.runId)), attemptId: childAttemptId });
         child = await runs.get(h.handle, child.runId);
-        await expect(delegates.delegate(h.handle, { ...runGuard(child), parentAttemptId: childAttemptId, delegationId: 'over-limit', childPlanRef,
+        await expect(delegates.delegate(h.handle, { ...runGuard(child), parentAttemptId: childAttemptId, delegationId: 'over-limit', childPlanRef: await nextPlan(child.runId),
             inputRefs: [], inputDigest: hashNativeDocument([]), effectiveGrantDigest: grant, returnContract: childPlan.outputContract, budgetCeiling: childCeiling })).rejects.toMatchObject({ code: 'native_orchestration_delegation_limit_exhausted' });
         expect((await current()).progress.delegates).toBe(1);
     });
 
     test.each([{ maxDelegates: 1 }, { maxConcurrency: 2 }])('narrow intermediate ancestor %j remains binding across grandchildren', async ceiling => {
-        const narrow = await publish(ceiling);
-        childPlanRef = narrow.planRef; childPlan = narrow.definition;
+        await setup({}, ceiling);
         const first = await delegates.delegate(h.handle, await body()); await fund(first.outcome.childRunId);
         const childId = first.outcome.childRunId;
         const childAttempt = await begin(await runs.get(h.handle, childId), childPlan.entryNodeIds[0]);
         await attempts.activate(h.handle, { ...runGuard(await runs.get(h.handle, childId)), attemptId: childAttempt });
-        const nestedInput = { ...await body(), ...runGuard(await runs.get(h.handle, childId)), parentAttemptId: childAttempt, delegationId: 'grandchild' };
+        const nestedInput = { ...await body(), ...runGuard(await runs.get(h.handle, childId)), parentAttemptId: childAttempt, delegationId: 'grandchild', childPlanRef: await nextPlan(childId) };
         const nested = await delegates.delegate(h.handle, nestedInput), grandchildId = nested.outcome.childRunId;
         await fund(grandchildId, childId);
         const grandchildAttempt = await begin(await runs.get(h.handle, grandchildId), childPlan.entryNodeIds[0]);
         await attempts.activate(h.handle, { ...runGuard(await runs.get(h.handle, grandchildId)), attemptId: grandchildAttempt });
-        await expect(delegates.delegate(h.handle, { ...await body(), ...runGuard(await runs.get(h.handle, grandchildId)), parentAttemptId: grandchildAttempt, delegationId: 'great-grandchild' }))
+        await expect(delegates.delegate(h.handle, { ...await body(), ...runGuard(await runs.get(h.handle, grandchildId)), parentAttemptId: grandchildAttempt, delegationId: 'great-grandchild', childPlanRef: await nextPlan(grandchildId) }))
             .rejects.toMatchObject({ code: 'native_orchestration_delegation_limit_exhausted' });
         expect((await current()).treeProgress.delegates).toBe(2);
         expect((await runs.get(h.handle, childId)).progress.delegates).toBe(1);
@@ -237,11 +279,11 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
     });
 
     test('actual grandchild Attempts cannot consume a narrow ancestor concurrency slot twice', async () => {
-        const narrow = await publish({ maxConcurrency: 2 }); childPlanRef = narrow.planRef; childPlan = narrow.definition;
+        await setup({}, { maxConcurrency: 2 });
         const first = await delegates.delegate(h.handle, await body()); await fund(first.outcome.childRunId);
         const childId = first.outcome.childRunId, childAttempt = await begin(await runs.get(h.handle, childId), childPlan.entryNodeIds[0]);
         await attempts.activate(h.handle, { ...runGuard(await runs.get(h.handle, childId)), attemptId: childAttempt });
-        const nested = await delegates.delegate(h.handle, { ...await body(), ...runGuard(await runs.get(h.handle, childId)), parentAttemptId: childAttempt, delegationId: 'grandchild' });
+        const nested = await delegates.delegate(h.handle, { ...await body(), ...runGuard(await runs.get(h.handle, childId)), parentAttemptId: childAttempt, delegationId: 'grandchild', childPlanRef: await nextPlan(childId) });
         await fund(nested.outcome.childRunId, childId);
         const grandchildAttempt = await begin(await runs.get(h.handle, nested.outcome.childRunId), childPlan.entryNodeIds[0]);
         await attempts.activate(h.handle, { ...runGuard(await runs.get(h.handle, nested.outcome.childRunId)), attemptId: grandchildAttempt });
@@ -300,7 +342,7 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         await setup({ maxSteps: 3 });
         const first = await delegates.delegate(h.handle, await body()); await fund(first.outcome.childRunId);
         const childRef = await pending(first.outcome.childRunId); await activate(childRef);
-        const nested = await delegates.delegate(h.handle, { ...await body(), ...runGuard(await runs.get(h.handle, childRef.runId)), parentAttemptId: childRef.attemptId, delegationId: 'grandchild' });
+        const nested = await delegates.delegate(h.handle, { ...await body(), ...runGuard(await runs.get(h.handle, childRef.runId)), parentAttemptId: childRef.attemptId, delegationId: 'grandchild', childPlanRef: await nextPlan(childRef.runId) });
         await fund(nested.outcome.childRunId, childRef.runId);
         const grandchild = await runs.get(h.handle, nested.outcome.childRunId);
         expect(grandchild.parentRef.logicalCeiling.steps).toBe(1);
