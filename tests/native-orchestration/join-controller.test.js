@@ -8,6 +8,8 @@ import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecyc
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { ConflictError } from '../../src/storage/errors.js';
+import { admitGraphEdges } from '../../src/native/orchestration/graph-costs.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { planFixture } from './fixtures.js';
 
@@ -28,7 +30,7 @@ describe.each(CONTRACT_HARNESSES)('$name frozen Join barriers with controlled Po
     });
     afterEach(async () => { await h?.engine.close(); await h?.cleanup(); });
 
-    async function setup(policy = 'any-success', { quorum = 1, allowPartial = true, freeze = true } = {}) {
+    async function setup(policy = 'any-success', { quorum = 1, allowPartial = true, freeze = true, maxEdgeVisits = 10 } = {}) {
         const lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         const authorize = async () => {}, assertWriter = (handle, tx) => lifecycle.assertWriter(handle, tx);
         const plans = new PlanRepository({ engine: h.engine, authorize, assertWriter, validateDependencies: async () => ({ status: 'valid', issues: [], dependencyDigest: hashNativeDocument([]) }) });
@@ -42,6 +44,8 @@ describe.each(CONTRACT_HARNESSES)('$name frozen Join barriers with controlled Po
         ];
         fixture.definition.edges = [...branchNodeIds.flatMap(nodeId => [edge(fanoutNodeId, nodeId), edge(nodeId, joinNodeId)]), edge(joinNodeId, output.nodeId)];
         fixture.definition.entryNodeIds = [fanoutNodeId]; fixture.definition.limits.maxSteps = 100;
+        fixture.definition.limits.maxEdgeVisits = maxEdgeVisits;
+        for (const edge of fixture.definition.edges) edge.maxVisits = Math.min(edge.maxVisits, maxEdgeVisits);
         fixture.definition.outputContract.allowPartial = allowPartial;
         const plan = await plans.create(h.handle, id('Command'), fixture);
         const expected = { planId: plan.planId, expectedDraftVersion: plan.draftVersion, expectedDefinitionHash: plan.definitionHash };
@@ -99,6 +103,7 @@ describe.each(CONTRACT_HARNESSES)('$name frozen Join barriers with controlled Po
         const result = await settle(), receipt = result.outcome.joinReceipt;
         expect(receipt).toMatchObject({ outcome: 'completed', memberAttemptIds: [...members].sort(), excluded: [] });
         expect(receipt.acceptedResultRefs).toHaveLength(3); expect(receipt.memberReceiptRefs).toHaveLength(3);
+        expect(receipt.edgeAdmissionRefs).toHaveLength(3); expect((await current()).progress.edgeVisits).toBe(3);
         expect(receipt.decisionSeq).toBe(receipt.cutoffSeq + 1);
         expect(await read('join', joinId)).toEqual(receipt);
         expect((await read('receipt', attemptReceiptId(runId, joinAttemptId))).resultRefs).toEqual(receipt.acceptedResultRefs);
@@ -238,5 +243,29 @@ describe.each(CONTRACT_HARNESSES)('$name frozen Join barriers with controlled Po
         revoked = false; await runs.cancel(h.handle, id('Command'), { ...runGuard(await current()), reasonCode: 'user_cancelled' });
         await expect(settle()).rejects.toMatchObject({ code: 'native_orchestration_join_not_admitted' });
         expect(await read('join', joinId)).toBeUndefined();
+    });
+
+    test('insufficient edge budget cannot partially publish incoming-edge receipts or a Join decision', async () => {
+        await setup('all-success', { maxEdgeVisits: 2 }); await branch(0); await branch(1); await branch(2);
+        const before = await current();
+        await expect(settle()).rejects.toMatchObject({ code: 'native_orchestration_limit_exhausted' });
+        expect(await current()).toEqual(before); expect(await read('join', joinId)).toBeUndefined();
+        const rows = await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: K.orchestrationRecord, handle: h.handle, runId, recordType: 'receipt' }));
+        expect(rows.filter(row => row.doc.receiptKind === 'edge_admission')).toHaveLength(0);
+    });
+
+    test('a correlated existing edge admission is reused across Host control decisions without a second cost', async () => {
+        await setup('all-success'); await branch(0); await branch(1); await branch(2);
+        const receipt = (await settle()).outcome.joinReceipt, before = await current();
+        const transfers = [];
+        for (const ref of receipt.edgeAdmissionRefs) {
+            const row = await read('receipt', ref);
+            transfers.push({ edgeId: row.edgeId, producerAttemptId: row.producerAttemptId, nodeAttemptId: row.nodeAttemptId });
+        }
+        const audited = await runs.control(h.handle, id('Command'), { ...runGuard(before), operation: 'loop.advance', detail: { auditRefs: receipt.edgeAdmissionRefs } }, async ({ tx, root, now }) => {
+            const refs = await admitGraphEdges({ tx, handle: h.handle, root, transfers, now });
+            return { root, eventType: 'edge_admission_audited', reasonCode: null, outcome: { refs } };
+        });
+        expect(audited.outcome.refs).toEqual(receipt.edgeAdmissionRefs); expect((await current()).progress).toEqual(before.progress);
     });
 });

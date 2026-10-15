@@ -37,9 +37,14 @@ export class GraphController {
         }, async ({ tx, root, plan, now }) => {
             const stepCost = patch.operations.length;
             if (root.progress.steps + stepCost > root.limits.maxSteps || now >= root.progress.deadlineAt) throw issue('native_orchestration_limit_exhausted');
-            const candidate = cloneNativeDocument(root), issues = [], updates = [], requests = { finalize: false, replan: false };
+            const candidate = cloneNativeDocument(root), issues = [], updates = new Map(), requests = { finalize: false, replan: false };
             const producerRecord = await readAttempt(tx, handle, root, patch.producerAttemptId), producer = producerRecord.doc;
             const semanticHash = hashNativeDocument({ producerAttemptId: producer.attemptId, inputDigest: producer.inputDigest, sourceBindingDigest: producer.sourceBindingDigest, operations: patch.operations, reasonRefs: patch.reasonRefs });
+            const prior = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
+            for (const record of prior) {
+                if (record.integrity !== hashNativeDocument(record.doc) || record.doc.schemaVersion !== 1 || record.doc.runId !== root.runId
+                    || typeof record.doc.accepted !== 'boolean' || !Array.isArray(record.doc.appliedOperations)) throw Object.assign(new Error('Durable graph history requires integrity review'), { code: 'native_orchestration_graph_history_unavailable' });
+            }
             try {
                 const node = root.graph.nodes.find(item => item.nodeId === producer.nodeId);
                 if (root.cancelRequested || root.status !== 'running' || producer.status !== 'running' || producer.epoch !== root.epoch
@@ -47,7 +52,6 @@ export class GraphController {
                     || !node.capabilities.includes('graph.patch')) throw issue('native_orchestration_patch_denied');
                 await this.authorizePatch({ handle, tx, root, producer, patch });
                 if (root.progress.patches >= root.limits.maxPatches) throw issue('native_orchestration_limit_exhausted');
-                const prior = await tx.listResources({ kind: K.orchestrationRecord, handle, runId: root.runId, recordType: 'patch' });
                 if (prior.some(record => record.doc.semanticHash === semanticHash)) throw issue('native_orchestration_patch_no_progress');
                 for (const operation of patch.operations) {
                     if (!root.graph.graphChangePolicy.allowedOperations.includes(operation?.op)) throw issue('native_orchestration_patch_operation_denied');
@@ -77,7 +81,7 @@ export class GraphController {
                             const record = await readAttempt(tx, handle, root, attemptId), attempt = record.doc;
                             if (attempt.nodeId !== operation.nodeId) continue;
                             if (!['pending', 'reserved'].includes(attempt.status) || attempt.effectRefs.length) throw issue('native_orchestration_patch_not_pending', { nodeId: operation.nodeId });
-                            if (operation.op !== 'setPendingPriority') updates.push({ record, doc: { ...attempt, status: operation.op === 'cancelPending' ? 'cancelled' : 'blocked', endedAt: operation.op === 'cancelPending' ? now : null, reasonCode: 'graph_' + operation.op } });
+                            if (operation.op !== 'setPendingPriority') updates.set(attemptId, { record, doc: { ...attempt, status: operation.op === 'cancelPending' ? 'cancelled' : 'blocked', endedAt: operation.op === 'cancelPending' ? now : null, reasonCode: 'graph_' + operation.op } });
                         }
                         if (operation.op === 'setPendingPriority') { assertCounter(operation.priority, 'priority'); target.priority = operation.priority; } else { target.disposition = operation.op === 'cancelPending' ? 'cancelled' : 'blocked'; target.reasonCode = 'graph_' + operation.op; }
                     } else if (operation.op === 'requestFinalize') {
@@ -107,12 +111,14 @@ export class GraphController {
             next.progress.steps += stepCost;
             if (accepted) {
                 next.graphRevision++; next.progress.patches++;
-                for (const update of updates) {
+                for (const update of updates.values()) {
                     if (update.doc.status === 'cancelled') await writeAttemptSettlement({ tx, handle, root, record: update.record, outcome: 'cancelled', resultRefs: [], effectReceiptRefs: [], reasonCode: update.doc.reasonCode, now });
                     else await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', update.doc.attemptId), update.doc, { expectedIntegrity: update.record.integrity });
                 }
             }
             const receipt = { schemaVersion: 1, patchId: patch.patchId, runId: root.runId, payloadHash: patch.payloadHash, semanticHash, producerAttemptId: producer.attemptId,
+                previousGraphRevision: root.graphRevision, producerInputDigest: producer.inputDigest, sourceBindingDigest: producer.sourceBindingDigest, reasonRefs: patch.reasonRefs,
+                appliedOperations: accepted ? patch.operations : [],
                 accepted, newGraphRevision: next.graphRevision, issues, decisionSeq: root.eventSeq + 1, requests: accepted ? requests : { finalize: false, replan: false } };
             await putImmutable(tx, controlRecordKey(handle, root.runId, 'patch', patch.patchId), receipt);
             return { root: next, eventType: accepted ? 'graph_patch_accepted' : 'graph_patch_rejected', reasonCode: accepted ? null : issues[0].code, outcome: { patchReceipt: receipt } };

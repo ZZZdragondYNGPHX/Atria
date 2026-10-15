@@ -7,7 +7,7 @@ import { createNativeId } from '../../src/native/identity.js';
 import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { planFixture } from './fixtures.js';
+import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 const port = (name, required = false) => ({ name, type: 'task.result', required });
@@ -17,6 +17,7 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
     let h, runs, graph, producerId, plannerId, joinId, rootId;
     beforeEach(async () => {
         h = await make();
+        await prepareControllerOwnerRoot(h.dirs.root);
         const lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         const authorize = async () => {}, assertWriter = (handle, tx) => lifecycle.assertWriter(handle, tx);
         const plans = new PlanRepository({ engine: h.engine, authorize, assertWriter, validateDependencies: async () => ({ status: 'valid', issues: [], dependencyDigest: hashNativeDocument([]) }) });
@@ -65,6 +66,7 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         const branch = addBranch(), input = await proposal(branch.operations);
         const accepted = await graph.propose(h.handle, input);
         expect(accepted).toMatchObject({ replayed: false, outcome: { patchReceipt: { accepted: true, newGraphRevision: 1 } } });
+        expect(accepted.outcome.patchReceipt).toMatchObject({ previousGraphRevision: 0, appliedOperations: input.patch.operations, reasonRefs: input.patch.reasonRefs });
         const after = await current();
         expect(after.graph.nodes.some(node => node.nodeId === branch.nodeId)).toBe(true);
         const replay = await graph.propose(h.handle, input);
@@ -84,6 +86,23 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         expect(after.graph.nodes.some(node => node.nodeId === branch.nodeId)).toBe(false);
         expect(after.nodeControl).not.toHaveProperty(branch.nodeId);
         expect(after.progress.patches).toBe(0);
+    });
+
+    test('a rejected unvalidated node payload never enters the durable operation history', async () => {
+        const branch = addBranch(); branch.operations[0].node.unvalidatedField = 'not-a-durable-graph-field';
+        const input = await proposal(branch.operations), result = await graph.propose(h.handle, input);
+        expect(result.outcome.patchReceipt).toMatchObject({ accepted: false, appliedOperations: [] });
+        const stored = await h.engine.withTransaction(h.handle, tx => tx.getResource(controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId)));
+        expect(JSON.stringify(stored)).not.toContain('not-a-durable-graph-field');
+    });
+
+    test('corrupt durable graph history refuses the next proposal instead of guessing progress', async () => {
+        const branch = addBranch(), input = await proposal(branch.operations); await graph.propose(h.handle, input);
+        const key = controlRecordKey(h.handle, rootId, 'patch', input.patch.patchId);
+        await h.engine.withTransaction(h.handle, async tx => { const record = await tx.getResource(key); await tx.putResource(key, { ...record, integrity: '0'.repeat(64) }); });
+        const before = await current();
+        await expect(graph.propose(h.handle, await proposal([{ op: 'setPendingPriority', nodeId: branch.nodeId, priority: 4 }]))).rejects.toMatchObject({ code: 'native_orchestration_graph_history_unavailable' });
+        expect(await current()).toEqual(before);
     });
 
     test('active producer inputs, output owner and capability ceiling cannot be rewritten', async () => {
@@ -115,5 +134,15 @@ describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }
         expect(root.attemptRefs).toContain(pending.attemptId);
         const record = await h.engine.withTransaction(h.handle, tx => tx.getResource(controlRecordKey(h.handle, rootId, 'attempt', pending.attemptId)));
         expect(record.doc.status).toBe('cancelled');
+    });
+
+    test('multiple pending-state operations in one batch coalesce into one final Attempt write', async () => {
+        const branch = addBranch(); await graph.propose(h.handle, await proposal(branch.operations));
+        const root = await current();
+        const pending = await runs.beginAttempt(h.handle, id('Command'), { ...runGuard(root), nodeId: branch.nodeId, inputRefs: [], inputDigest: hashNativeDocument([]), effectiveGrantDigest: hashNativeDocument([]), budgetRef: root.budgetAuthorityRef });
+        const result = await graph.propose(h.handle, await proposal([{ op: 'markBlocked', nodeId: branch.nodeId }, { op: 'cancelPending', nodeId: branch.nodeId }]));
+        expect(result.outcome.patchReceipt.accepted).toBe(true);
+        const stored = await h.engine.withTransaction(h.handle, tx => tx.getResource(controlRecordKey(h.handle, rootId, 'attempt', pending.attemptId)));
+        expect(stored.doc.status).toBe('cancelled'); expect(stored.doc.reasonCode).toBe('graph_cancelPending');
     });
 });

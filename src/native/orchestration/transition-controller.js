@@ -4,6 +4,7 @@ import { assertObject, assertDigest } from '../../../public/shared/native-orches
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
+import { admitGraphEdges } from './graph-costs.js';
 
 /** Deterministic dependency/loop admission; original Ports supply references,
  * grant and an already-admitted budget identity. This never reserves or sends. */
@@ -45,7 +46,6 @@ export class TransitionController {
                 const matched = edge.condition === 'always' || edge.condition === 'success' && receipt.outcome === 'completed'
                     || edge.condition === 'failure' && ['failed', 'cancelled', 'stale'].includes(receipt.outcome);
                 if (!matched) throw new ConflictError('native_orchestration_transition_condition_unmet');
-                if ((root.progress.edgeVisitCounts[edge.edgeId] ?? 0) >= edge.maxVisits) throw new ConflictError('native_orchestration_edge_limit_exhausted');
                 producers.push({ edge, attempt, receipt });
             }
             const reserved = reservedAttemptId === null ? null : await readAttempt(tx, handle, root, reservedAttemptId);
@@ -65,9 +65,7 @@ export class TransitionController {
                 prior.push(doc);
             }
             if (reserved && reserved.doc.attemptNumber !== prior.length + 1) throw new TypeError('Reserved Attempt history mismatch');
-            const loopVisits = edges.filter(edge => edge.loopBack).length;
-            if (now >= root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps || (!reserved && root.progress.attempts >= root.limits.maxAttempts)
-                || root.progress.edgeVisits + edges.length > root.limits.maxEdgeVisits || root.progress.loopIterations + loopVisits > root.limits.maxLoopIterations) throw new ConflictError('native_orchestration_limit_exhausted');
+            if (now >= root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps || (!reserved && root.progress.attempts >= root.limits.maxAttempts)) throw new ConflictError('native_orchestration_limit_exhausted');
             // Read-only revalidation of typed source/result inputs and the
             // existing original reservation; no original-bank writes in CAS.
             const admission = cloneNativeDocument(await this.authorizeTransition({ handle, tx, root, target, attemptId, producers, reservedAttempt: reserved?.doc ?? null }));
@@ -78,16 +76,15 @@ export class TransitionController {
             const attempt = { schemaVersion: 1, runId: root.runId, nodeId: targetId, attemptId, attemptNumber: prior.length + 1, epoch: root.epoch, graphRevision: root.graphRevision,
                 inputState: 'prepared', reservationRef: reserved?.doc.reservationRef ?? null,
                 ...admission, sourceBindingDigest: root.sourceBinding.bindingDigest, status: 'pending', effectRefs: [], resultRefs: [], startedAt: null, endedAt: null, reasonCode: null };
+            if (reserved) await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), attempt, { expectedIntegrity: reserved.integrity });
+            else { await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), attempt); root.attemptRefs.push(attemptId); root.progress.attempts++; }
+            const edgeAdmissionRefs = await admitGraphEdges({ tx, handle, root, transfers: bindings.map(item => ({ edgeId: item.edgeId, producerAttemptId: item.producerAttemptId, nodeAttemptId: attemptId })), now });
             const receipt = { schemaVersion: 1, receiptKind: 'graph_transition', receiptId, runId: root.runId, epoch: root.epoch, graphRevision: root.graphRevision,
                 bindings, producerReceiptRefs: producers.map(producer => producer.receipt.receiptId), nodeAttemptId: attemptId, inputDigest: admission.inputDigest,
-                edgeVisits: Object.fromEntries(edges.map(edge => [edge.edgeId, (root.progress.edgeVisitCounts[edge.edgeId] ?? 0) + 1])), loopIterations: root.progress.loopIterations + loopVisits,
+                edgeAdmissionRefs, edgeVisits: Object.fromEntries(edges.map(edge => [edge.edgeId, root.progress.edgeVisitCounts[edge.edgeId]])), loopIterations: root.progress.loopIterations,
                 decisionSeq: root.eventSeq + 1, createdAt: now };
-            if (reserved) await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), attempt, { expectedIntegrity: reserved.integrity });
-            else await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), attempt);
             await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), receipt);
-            if (!reserved) { root.attemptRefs.push(attemptId); root.progress.attempts++; }
-            root.progress.steps++; root.progress.edgeVisits += edges.length; root.progress.loopIterations += loopVisits;
-            Object.assign(root.progress.edgeVisitCounts, receipt.edgeVisits);
+            root.progress.steps++;
             return { root, eventType: 'graph_transition_admitted', reasonCode: null, outcome: { attemptId, traversalReceipt: receipt } };
         });
     }

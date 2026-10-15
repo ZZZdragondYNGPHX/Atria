@@ -5,6 +5,7 @@ import { cloneNativeDocument, hashNativeDocument, putImmutable } from '../reposi
 import { checkedRecord } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, graphReachable, readAttempt } from './controller-common.js';
 import { readAttemptSettlement, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
+import { admitGraphEdges } from './graph-costs.js';
 
 export const joinIdForAttempt = attemptId => 'ojoin_' + hashNativeDocument({ nodeAttemptId: attemptId }).slice(0, 32);
 const barrierKey = (handle, runId, joinId) => controlRecordKey(handle, runId, 'join', 'barrier:' + joinId);
@@ -41,7 +42,7 @@ export class JoinController {
                 || fanout.sourceBindingDigest !== root.sourceBinding.bindingDigest || join.sourceBindingDigest !== root.sourceBinding.bindingDigest
                 || root.nodeControl[join.nodeId].disposition !== 'eligible') throw new ConflictError('native_orchestration_join_invalid_membership');
             if (joinNode.policy.quorum > memberAttemptIds.length || (joinNode.policy.strategy === 'deadline' && !root.graph.outputContract.allowPartial)) throw new TypeError('Join quorum/partial policy is not satisfiable');
-            const members = [];
+            const members = [], memberEdges = [];
             const nodeIds = new Set();
             for (const attemptId of memberAttemptIds) {
                 const { doc: member } = await readAttempt(tx, handle, root, attemptId);
@@ -50,13 +51,16 @@ export class JoinController {
                     || root.nodeControl[member.nodeId].disposition !== 'eligible'
                     || member.inputState === 'reserved' && member.reservationRef.producerAttemptId !== fanoutAttemptId
                     || !graphReachable(root.graph, fanout.nodeId, member.nodeId) || !graphReachable(root.graph, member.nodeId, join.nodeId)) throw new ConflictError('native_orchestration_join_invalid_membership');
+                const edges = root.graph.edges.filter(edge => edge.from.nodeId === member.nodeId && edge.to.nodeId === join.nodeId);
+                if (!edges.length) throw new ConflictError('native_orchestration_join_requires_direct_member');
+                memberEdges.push({ nodeAttemptId: attemptId, edgeIds: edges.map(edge => edge.edgeId).sort() });
                 nodeIds.add(member.nodeId); members.push(member);
             }
             // The original scheduler/bank Port verifies this invocation's
             // complete fan-out group and parent reservation, without charging.
             await this.authorizeMembership({ handle, tx, root, fanout, join, members });
             const barrier = { schemaVersion: 1, joinId, runId: root.runId, fanoutAttemptId, nodeAttemptId, epoch: root.epoch, graphRevision: root.graphRevision,
-                memberAttemptIds, sourceBindingDigest: root.sourceBinding.bindingDigest, parentBudgetRef: fanout.budgetRef,
+                memberAttemptIds, memberEdges, sourceBindingDigest: root.sourceBinding.bindingDigest, parentBudgetRef: fanout.budgetRef,
                 policy: joinNode.policy.strategy, quorum: joinNode.policy.quorum, deadlineAt: Math.min(now + joinNode.policy.deadlineMs, root.progress.deadlineAt),
                 frozenSeq: root.eventSeq + 1, createdAt: now };
             await putImmutable(tx, barrierKey(handle, root.runId, joinId), barrier);
@@ -74,7 +78,7 @@ export class JoinController {
             const stored = await checkedRecord(tx, barrierKey(handle, root.runId, joinId));
             if (!stored) throw new TypeError('Join membership was not frozen');
             const barrier = stored.doc;
-            assertObject(barrier, ['schemaVersion', 'joinId', 'runId', 'fanoutAttemptId', 'nodeAttemptId', 'epoch', 'graphRevision', 'memberAttemptIds', 'sourceBindingDigest', 'parentBudgetRef', 'policy', 'quorum', 'deadlineAt', 'frozenSeq', 'createdAt'], 'JoinBarrier');
+            assertObject(barrier, ['schemaVersion', 'joinId', 'runId', 'fanoutAttemptId', 'nodeAttemptId', 'epoch', 'graphRevision', 'memberAttemptIds', 'memberEdges', 'sourceBindingDigest', 'parentBudgetRef', 'policy', 'quorum', 'deadlineAt', 'frozenSeq', 'createdAt'], 'JoinBarrier');
             const joinRecord = await readAttempt(tx, handle, root, barrier.nodeAttemptId), join = joinRecord.doc;
             const joinNode = root.graph.nodes.find(node => node.nodeId === join.nodeId);
             if (barrier.schemaVersion !== 1 || barrier.joinId !== joinId || barrier.runId !== root.runId || joinIdForAttempt(join.attemptId) !== joinId
@@ -85,7 +89,16 @@ export class JoinController {
             if (joinNode.kind !== 'join' || barrier.policy !== joinNode.policy.strategy || barrier.quorum !== joinNode.policy.quorum || barrier.frozenSeq > root.eventSeq
                 || barrier.graphRevision > root.graphRevision || barrier.deadlineAt > root.progress.deadlineAt
                 || !Array.isArray(barrier.memberAttemptIds) || !barrier.memberAttemptIds.length || barrier.quorum > barrier.memberAttemptIds.length
-                || new Set(barrier.memberAttemptIds).size !== barrier.memberAttemptIds.length) throw new TypeError('Invalid persisted JoinBarrier');
+                || new Set(barrier.memberAttemptIds).size !== barrier.memberAttemptIds.length || !Array.isArray(barrier.memberEdges)
+                || barrier.memberEdges.length !== barrier.memberAttemptIds.length) throw new TypeError('Invalid persisted JoinBarrier');
+            const memberTransfers = [], mappedMembers = new Set();
+            for (const mapping of barrier.memberEdges) {
+                assertObject(mapping, ['nodeAttemptId', 'edgeIds'], 'Join member edges');
+                if (!barrier.memberAttemptIds.includes(mapping.nodeAttemptId) || mappedMembers.has(mapping.nodeAttemptId) || !Array.isArray(mapping.edgeIds) || !mapping.edgeIds.length
+                    || new Set(mapping.edgeIds).size !== mapping.edgeIds.length) throw new TypeError('Invalid frozen member edges');
+                mappedMembers.add(mapping.nodeAttemptId);
+                for (const edgeId of mapping.edgeIds) memberTransfers.push({ edgeId, producerAttemptId: mapping.nodeAttemptId, nodeAttemptId: join.attemptId });
+            }
             const members = [];
             for (const attemptId of barrier.memberAttemptIds) {
                 const { doc: attempt } = await readAttempt(tx, handle, root, attemptId);
@@ -123,10 +136,14 @@ export class JoinController {
             }
             if (outcome === null) throw new ConflictError('native_orchestration_join_not_ready');
             if (outcome === 'failed') selected = [];
+            // Closing the barrier accounts for each frozen dependency once,
+            // including an explicit absence/cancellation at the cutoff. This
+            // is logical control work, never evidence of an external send.
+            const edgeAdmissionRefs = await admitGraphEdges({ tx, handle, root, transfers: memberTransfers, now });
             const acceptedResultRefs = [...new Map(selected.flatMap(member => member.receipt.resultRefs).map(ref => [hashNativeDocument(ref), ref])).values()];
             const selectedIds = new Set(selected.map(member => member.attempt.attemptId));
             const receipt = { schemaVersion: 1, joinId, runId: root.runId, nodeAttemptId: join.attemptId, epoch: barrier.epoch, graphRevision: barrier.graphRevision,
-                memberAttemptIds: barrier.memberAttemptIds, memberReceiptRefs: members.filter(member => member.receipt).sort(compare).map(member => member.receipt.receiptId),
+                memberAttemptIds: barrier.memberAttemptIds, edgeAdmissionRefs, memberReceiptRefs: members.filter(member => member.receipt).sort(compare).map(member => member.receipt.receiptId),
                 barrierDigest: stored.integrity, policy: barrier.policy, quorum: barrier.quorum, deadlineAt: barrier.deadlineAt, cutoffSeq: root.eventSeq, decisionSeq: root.eventSeq + 1,
                 acceptedResultRefs, excluded: members.filter(member => !selectedIds.has(member.attempt.attemptId)).map(member => ({ nodeAttemptId: member.attempt.attemptId, reasonCode: !member.receipt ? 'unsettled_at_cutoff' : member.receipt.createdAt > barrier.deadlineAt ? 'after_deadline' : !member.valid && ['completed', 'partial'].includes(member.receipt.outcome) ? 'result_unavailable' : member.receipt.outcome === 'completed' ? 'not_selected' : member.receipt.outcome })),
                 reasons: reason === null ? [] : [reason], outcome };
