@@ -285,3 +285,10 @@
 - 同一 Claude 交接材料不再将 MCP/Skill 完成证明统称 unknown：仅原真实 proof 和账本验证可保存既有 EffectReceipt；MCP远端错误为 failed，不代表 rollback；Skill撤权/当前 intent 矛盾拒正文，cold receipt 不成为新授权。A2A 仍只证明受理，三类 receipt 均不自动授予正文/Memory/World 消费权。
 - 前端诊断新增最后实际 send snapshot、逻辑输入与最终银行三字段绑定的区分；不复制完整请求 writer。有限 generation.send publication 仅支持原 exact player narrator Route、显式预算且无 fallback 的机制证据；可发布/已选择/运行获准分开，其余能力保持真实 unknown。产品 HTTP 仍仅 Plan+Binding，无 Run/Projection/Approval。
 - E0 §8 当前事实更新，P3仍NOT_READY、完整 E0 未闭合；原 V3 继续其真实固定 Turn scope/quota/ModelPort 与其他后端。该任务测试的具体 Engine、最终定向重跑/未全跑与 SQL NOT_RUN 仍归其 Record，本轮不借记为本任务 PASS。未实际合并、未改 main、未实施前端；仅文档验证与提交。
+
+## 2026-10-16 — V3 第十七至十九组有限 Native Turn 接线同步
+
+- 实际 Git 为 V3 source `3587f0ff8`、docs `93e1c4c38`；读取原接口 §17.27–17.29、Record 第十七至十九组和整合入口。V3 工作树仅有原无关 CLAUDE.md 删除，本次不修改源码。
+- 统一 Claude 提示词新增原 turn/turn-start 消费 Binding 的有限固定 Narrator 路径、entryPoint 优先且不存在才默认、无效/过期不降级、最终正文受控返回而非 provisional 流、响应 confirmed 与 Run/业务完成分开。仅无 authority/stage/Task/interpreter 等支持 profile，其余真实 unavailable；无 Binding 原 Native 继续不是旧编排兼容。
+- 原 quota/compute 同 CAS 及字段顺序无关的 usage 重放底层已提交；实际 Package 依赖 authorityRuntime，candidate Context/真实 quota producer、预编译实际计费与 Scheduler active 身份仍归原 V3 后续实现。HTTP仍原 Plan+Binding及原生成入口，没有 Run/Projection/Approval 新接口，P3仍NOT_READY。
+- 原 ModelPort 四 Engine48、Binding工厂FS/SQLite32、producer按组/定向测试以及各自 SQL NOT_RUN/真实费用质量边界仅引用原 Record，不计为本轮测试。更新同一 E0/交接材料，不拆未完后端给 Claude，不合源码/main，保留并发改动；本轮只执行相关文档检查与提交。
