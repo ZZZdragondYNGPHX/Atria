@@ -30,7 +30,7 @@ HostBootId 变化返回 409 `native_orchestration_host_changed`；CAS/命令冲�
 
 Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 native_session/project/rp_chat 三种结构；nullable entryPointId/taskId 具有原合同语义，不以空值扩大执行权限。save 的 expectedVersion 首次为 null，后续是当前 version；planRef 必须是实际原不可变已发布 revision。Source 删除或撤权后相同命令重放也先拒绝，不能用历史选择授权执行。详细定义见接口§17.23。
 
-**尚无产品 HTTP**：Run start/get/cancel/resume、GraphPatch、Effect dispatch、RunProjection/long-poll、Approval approve。不得为 UI 接入猜造这些路径。原 authoring dependency validator 对未接原 capability authority 的能力返回 unknown；publish 不能通过前端布尔值解除。设计原型可以使用明确的无副作用数据，但未接真实接口的产品功能必须显示其实际 unavailable 状态。
+**尚无产品 HTTP**：Run start/get/cancel/resume、GraphPatch、Effect dispatch、RunProjection/long-poll、Approval approve。不得为 UI 接入猜造这些路径。原 authoring 对generation.send仅支持原精确Narrator Route的有限机制证据（接口§17.26）；未接原 capability authority 的能力继续 unknown。可发布机制不是运行grant；publish 不能通过前端布尔值解除。设计原型可以使用明确的无副作用数据，但未接真实接口的产品功能必须显示其实际 unavailable 状态。
 
 ## 3. 当前内部 Host 组合
 
@@ -65,6 +65,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第十五组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第十六组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。

@@ -421,3 +421,11 @@
 - BudgetPort三域FS/SQLite7/7，新增实际requestId/target/input三类错绑和local_work冒充provider反例。新增local fixture先因错误字段/类别不符原schema导致6fail，修正为原context_build及真实usage结构后通过，未为fixture放宽产品validator。删除expectedSend守卫实际捕获6fail，finally恢复后7/7；两个文件lint通过。
 - Host/Execution另五个mutants捕获4/2/2/2/4个预期fail：prepared旧hash、缺compiled比较、retry Secret漏查、返回旧snapshot、遗漏expectedSend调用。均协调窗口后finally原文恢复；七变更文件最终targeted ESLint、staged diff check通过。无关CLAUDE.md删除与其他组未混入。
 - 同一接口§17.25补足逻辑输入/实际请求双层绑定，未造request writer或把hash当grant。P3仍IN_PROGRESS/Gate NOT_READY，真实Native Turn principal/原quota组合及完整领域/产品消费者继续实施；未集成main。
+
+## 2026-10-16 — W04/P3第十六组：原Narrator机制的有限publication证据
+
+- Source b7c8a7eba → e6b4e552f 已提交推送。authoring新增model-capability-authority，generation.send仅对真实agent的精确player narrator Route pin，调用原RouteResolver读取原资源闭包/能力/path，要求原显式computeBudget及无fallback集合。未接capabilities、其他node角色/未知Provider、没有使用该cap的ceiling仍unknown；错role/stale pin/缺资源拒发布。生产router复用原GenerationHost服务提供的原persistence/library/providers，无Secret读取/模型发送/银行准入/新服务writer。
+- 这解决可复用Plan的“机制能否解释”校验，不授予运行grant；无Source/Actor/Task principal时仍不能启动或发费，真实产品scope随后独立接线。相同Route ref下原Connection路径变化改变dependencyDigest，旧validationDigest发布拒绝；没有Browser supported/approved布尔解除。未引入旧模式模板/别名/兼容层。
+- 新FS/SQLite模型机制矩阵最终24/24（5.424s），原factory/missing resolver/unknown cap/planner/空ceiling/精确role/stale/fallback/provider/resource/缺预算/path变化、无网络无Run均实测。此前与原Binding/authoring-http/plan-pins四suite合跑68PASS/8name-filter SKIP，其中含早期新22重复子集，不累加总数；最后补缺预算2例及role pin修正后新24复验，未冒称旧suite新增SQL证据。该新机制矩阵SQL NOT_RUN。
+- 五个真实mutant：去node kind、错用route自报role、忽略fallback、漏path fingerprint、缺预算伪supported，均各捕获FS/SQLite2fail并finally原文恢复；最终四文件targeted ESLint/staged diff check通过。原route/prompt validator不放宽；原source/费用记录不改变。
+- 同一Plan接口§17.26、backend整合及验收状态同步。P3仍IN_PROGRESS/Gate NOT_READY。原quota底层审查另发现stable admission若换quota role/后台anchor重放可能返回未真实计数的归属，已要求在原attempt绑定修正，未把该未提交底层标PASS或转交前端；正在继续真实固定Native Turn/ModelPort/消费闭包，未集成main。
