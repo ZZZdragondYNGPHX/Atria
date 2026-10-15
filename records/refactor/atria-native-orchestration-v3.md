@@ -220,3 +220,9 @@
 - 最新定向四文件50/50：四Engine生命周期28（含旧Engine关闭不提前放Owner、第二Host拒绝、维护drain/恢复/退休），真实Windows installed Host 1（原CSRF会话、FS→SQLite→FS、同Plan可读、同boot保持、三个CLI拒绝、第二HTTP端口拒绝），原HTTP迁移mock12，原initStorage9。相关真实SQL Owner loss 2、FS/SQLite进程kill6、Native registration14，合计22/22；ESLint/diff check通过。CLI参数/真实隔离ZIP回归13/13在本组前半通过；不是使用真实用户备份。
 - 失败均已定位：HTTP测试初版用了错误`/api/users/admin`前缀，按原router改为`/api/users`后通过；迁移单测旧mock缺当前Native Storage导出，补齐后12/12；initStorage Pg首轮用了不存在默认测试账户，沿已有隔离容器进程环境后9/9，不输出/提交凭据。
 - P1仍IN_PROGRESS：未知SQL proxy/multi-primary/共享namespace的拒绝边界、完整Run/unknown引用根与三端存储验收尚未全部取得；当前root adapter在Darwin尚无实现，属于最终集成前须处理的相邻平台回归，不能掩盖。P2剩余Delegate/Handoff/循环/Review/reconcile继续，P3–P8未完成。没有实际Provider费用/外部mutation/真实批准或三端客户端通过，main未集成。
+
+## 2026-10-15 — P1第七组：相邻平台与本地root失败出口
+
+- Source `99da3eadb` → `da4c38e90`已提交推送。补Darwin本地卷探测，固定Foundation代码读取原OS `NSURLVolumeIsLocalKey`，路径经argv传入；没有执行root拼接脚本。未知/远程/异常fail-closed。目录创建/realpath错误也统一writer-unavailable；Windows正向卷类型缓存改为每Owner，重开Host不能沿用旧缓存。
+- 实测环境确认：Windows 11 Pro `10.0.26200`、Node `v24.18.0`。本组四Engine metadata/Owner与生命周期两文件43/43（15+28），新增root父路径为既有普通文件时拒绝且保留原文件；ESLint、node --check与diff check通过。没有macOS执行环境，Darwin仅代码/规范核对，实机NOT_RUN；不得以这43项冒称Darwin/Linux/Termux本地卷或硬件断电通过。
+- P1/P2仍IN_PROGRESS；继续原预算/Graph控制流与未封闭的SQL拓扑/引用保留根。三端真实客户端、Domain Ports/费用/批准与P3–P8未通过，main未集成。

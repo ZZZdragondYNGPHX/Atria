@@ -411,3 +411,9 @@ JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,decisionS
 原HTTP存储迁移以`withMaintenance`暂停source外部准入，排空已有事务后才copy；维护许可限本次async scope，不传播成后续通用权限。失败恢复source准入；全员copy成功先退休source，再附接新live Engine并关闭old/destination，read-only覆盖整个copy/swap。更高原Storage generation使旧fence失效；已有Run恢复仍需明确epoch/source/receipt复核，不因存储切换自动执行。
 
 原`storage-migrate`、`audit-storage-names`和密码恢复CLI在`initUserStorage`前取得同一dataRoot Owner；前两者原Engine也接生命周期。名称审计不重写业务资源名，但原Engine bootstrap/recovery可能写控制元数据，故要求离线互斥。内部Evaluation/Studio scenario/transient-source的独占临时根仍是原Host受控scratch，不把这些raw Engine扩展成外部Run/发送权威。其P4消费者适配和完整raw调用闭包仍需按阶段复核。
+
+### 17.7 本地卷探测的相邻平台边界
+
+Darwin分支使用内置`osascript`执行固定Foundation代码，canonical path只作为argv，不拼入脚本或shell；读取`NSURLVolumeIsLocalKey`，未知/远程/失败都writer-unavailable。依据[Apple本地卷属性](https://developer.apple.com/documentation/foundation/urlresourcekey/volumeislocalkey)与[原NSURL resourceValuesForKeys:error:](https://developer.apple.com/documentation/foundation/nsurl/resourcevalues%28forkeys%3A%29?language=objc)，不是实机通过证据。目录创建/realpath/OS探测错误统一同一unavailable出口；已持root继续核对固定identity，Windows卷类型缓存只属于本Owner，不能跨Host重开沿用旧探测。
+
+所有适配都要求运行期间挂载/文件系统与OS network namespace保持受支持的本地独占条件；只查本地FS类型或volume属性无法证明任意共享块设备/跨namespace安全。当前真实测试环境为Windows 11 Pro `10.0.26200`、Node `v24.18.0`；Darwin探测代码、CachyOS与Android/Termux均尚无真实客户端/本地卷实测，保持NOT_RUN/BLOCKED，不以Foundation规范或Windows测试替代。
