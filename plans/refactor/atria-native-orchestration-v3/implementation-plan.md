@@ -1,6 +1,6 @@
 # D9 E1 — Native Orchestration V3 实施工作包、依赖与交接门槛（已冻结路线）
 
-> 2026-10-15 第九轮选择 **E1：内核先行、同一产品任务分支分阶段验证、最终统一零兼容硬切**。本模块独占正式实施阶段/工作包/每阶段退出门槛/创建开发分支的前置条件。接口方向见 [interface-contracts.md](interface-contracts.md)，旧消费者/阻塞静态证据见 [e0-audit.md](e0-audit.md)，验证矩阵唯一来源为 [acceptance-matrix.md](acceptance-matrix.md)。**本轮是 docs 阶段规划定案；E0_DESIGN_READY，当前设计核销见 e0-audit §11；正式开发仍 NOT_AUTHORIZED，不得建立实现分支或修改 main**。所有 Stage Gate 是未来真实工程完成条件，不宣称 PASS。
+> 2026-10-15 第九轮选择 **E1：内核先行、同一产品任务分支分阶段验证、最终统一零兼容硬切**。本模块独占正式实施阶段/工作包/每阶段退出门槛/创建开发分支的前置条件。接口方向见 [interface-contracts.md](interface-contracts.md)，旧消费者/阻塞静态证据见 [e0-audit.md](e0-audit.md)，验证矩阵唯一来源为 [acceptance-matrix.md](acceptance-matrix.md)。**E0_DESIGN_READY；2026-10-15用户明确授权正式开发，任务分支已基于main@5eb3bc765建立；P1 IN_PROGRESS，最终验收前不集成main**。所有 Stage Gate 是未来真实工程完成条件，不宣称 PASS。
 
 ## 1. E1 与零兼容的准确含义
 
@@ -18,8 +18,8 @@
 | Gate | 通过所需事实 | 明确不作为该 Gate 的前置 | 当前权限/结果 |
 | --- | --- | --- | --- |
 | **E0_DESIGN** | 最新 main 的静态消费者范围和未解析动态边界已列明；每项新合同都有原 authority/物理落点/状态机/失败出口/验收责任；没有会迫使实现重开产品方向或复制原服务的未决设计 | 尚不存在的 V3 代码/测试、真实运行trace、crash injection、图backend PoC、三端或MySQL/Pg服务实测 | R01–R07设计已闭合，当前DESIGN_READY，证据见e0-audit §11 |
-| **DEVELOPMENT_AUTHORIZATION** | 用户另行明确授权正式产品开发 | 不是测试、环境能力或 E0 设计状态；不能由 Agent 自动推导/设为通过 | **NOT_AUTHORIZED**；本轮仍只改docs、不建实现分支 |
-| **P1–P6 stage evidence** | 当阶段实现和对应 L1/L2/必要 L4 真实证据；问题诊断修复复测 | 后续阶段尚未产生的最终产品/三端证据不能倒挂为启动该阶段的要求 | 尚未实施：NOT_RUN；获授权后按依赖持续推进 |
+| **DEVELOPMENT_AUTHORIZATION** | 用户另行明确授权正式产品开发 | 不是测试、环境能力或 E0 设计状态；不能由 Agent 自动推导/设为通过 | **AUTHORIZED**；2026-10-15用户明确授权，任务实现分支已建立 |
+| **P1–P6 stage evidence** | 当阶段实现和对应 L1/L2/必要 L4 真实证据；问题诊断修复复测 | 后续阶段尚未产生的最终产品/三端证据不能倒挂为启动该阶段的要求 | P1 IN_PROGRESS，其余按依赖推进；尚未运行的验收NOT_RUN |
 | **P7/P8 release evidence** | 全部适用可靠性/安全/域行为、三端L3、四Engine及必要L4证据；当时tested SHA和治理集成条件 | 不以E0 DESIGN_READY、授权、文档提交或fixture替代真实产品验收 | 产品 NOT_VERIFIED / NOT_READY；未测项和真实环境阻塞继续保留 |
 
 **未来创建实现分支的必要且充分前置：E0_DESIGN=DESIGN_READY + 用户新的明确开发授权 + 当时 main delta 未引入新的未决设计。** 不要求先有该分支才能生成的V3实现或验证结果。若main变化只影响工程接线/测试，则更新对应责任项；若改变authority/安全/合同则先补相关设计，不能把所有已通过设计无条件重开。
@@ -30,7 +30,7 @@ E0的设计证据清单：
 2. Plan/Binding/Run/GraphPatch/Effect/Receipt/Approval/Result/Projection具备严格身份、原生key/存储/CAS/恢复/RPC和错误合同；原服务扩展位置明确，无第二World/Context/收费/Secret writer。
 3. Host排他、普通RP预算、Output原consumer幂等、Evolution发布、可信批准、SQL commit unknown、UI三端这些**工程设计本身**已有确定的实现策略或范围内默认拒绝策略，不能只写“以后决定”。
 4. 每个设计项映射到真实实施阶段、验收case、失败恢复/不开放条件；测试没有运行就保持NOT_RUN，设备/账号实际不可用则对应验收BLOCKED。
-5. 本轮允许设计审查/文档更新，不授予实现或破坏性清理权限。当前授权边界与E0结果分开记录，不再把R08当技术设计缺陷。
+5. 当前明确开发授权已满足；最终验收通过后才集成main。授权不改变数据保护/旧编排零兼容及未测不称PASS的约束。
 
 唯一详细接口仍归 [interface-contracts](interface-contracts.md)，R01–R08拆分、设计核销与最终结论归 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)。
 
@@ -67,13 +67,13 @@ E0的设计证据清单：
 
 ## 5. 分支与正式开发门槛
 
-Gate只由 §2 管理；此处不重复另一套前置。当前用户**未授权正式开发**，因此即使E0设计达到DESIGN_READY也不能创建实现分支/修改main。未来获授权后按原Governance在同一任务工作树推进P1–P8，阶段只组织验证，不逐阶段重新索权。
+Gate只由 §2 管理；此处不重复另一套前置。当前用户**已明确授权正式开发**，本任务在`refactor/atria-native-orchestration-v3`同一工作树连续推进P1–P8，不逐阶段重新索权；最终验收通过后才集成main。
 
 缺三端设备/外部账号/MySQL或Pg服务，影响对应实施验收的可执行性和交付，**不使已冻结设计倒退为E0 BLOCKED**；缺真正authority/无法定义失败出口才属于E0设计阻塞。若真实测试失败暴露合同缺陷，应在受影响阶段修设计/实现并复测，不伪称E0已验证该功能。
 
 ## 6. E0 收口后的依赖图与阶段增补
 
-本节把 §3–4 已冻结的 E1 路线落到物理接口 v1，不改变 P1–P8 顺序。当前 E0 设计状态见 e0-audit §11，**实施未获授权**。未来开发前先重读实际 main delta、同一 Record、[consumer inventory](e0-consumer-inventory.md) 与 [AST graph](e0-import-graph.md)，不能直接删除 151 文件。
+本节把 §3–4 已冻结的 E1 路线落到物理接口 v1，不改变 P1–P8 顺序。当前 E0 设计状态见 e0-audit §11，**实施已获授权，P1进行中**。未来开发前先重读实际 main delta、同一 Record、[consumer inventory](e0-consumer-inventory.md) 与 [AST graph](e0-import-graph.md)，不能直接删除 151 文件。
 
 ```mermaid
 flowchart LR
@@ -115,7 +115,7 @@ P2 不需要提前实作一套影子预算；P3 的预算接口合同在 P1/P2 �
 | W08 UI/Shell | W01 authoring + W02 projection + W05 trusted interaction + W06/W07 | Graph+Inspector/完整移动 List、Timeline 默认/Graph toggle、Source/Cost/Approval/Diagnostics、Search/deep-link/history/Back；旧 panel/CSS/labels 消除 | P5；原 Serene Canvas/Settings Theme 只引用不另建；真实功能等价后进 P6 |
 | W09 Hard Cut/Evidence | C01–C18、两个审计附件、所有工作包替代接口 | 逐路径处置核对、AST/语义零旧执行引用、测试适用性分类、三端/Store/服务 evidence manifest、main delta复核 | P6 清退→P7验证→P8集成；不得把 grep 无命中等同端到端通过 |
 
-已有测试复用入口见 acceptance §8；新 `tests/native-orchestration/` 只在未来获授权实现时建立。不能原样搬旧 mode/preset/recovery suite 后改名，必须验证新的 Host 权威和原 Domain receipt。
+已有测试复用入口见 acceptance §8；新 `tests/native-orchestration/` 在当前已授权任务分支建立。不能原样搬旧 mode/preset/recovery suite 后改名，必须验证新的 Host 权威和原 Domain receipt。
 
 ## 8. 同期领域方案边界与最终开发就绪复核
 
@@ -123,4 +123,4 @@ P2 不需要提前实作一套影子预算；P3 的预算接口合同在 P1/P2 �
 - [Settings/Themes](../atria-settings-and-themes/index.md) 与 Serene Canvas 管通用设置保存、主题和 Shell 视觉；它的通用兼容不恢复 D2 已废止的 Orchestrator subtree/mode/scope。V3 只清旧编排字段，新 Authoring 不重复实现 Settings 服务；当前主题更新不要求 V3 强制固定浅色。
 - 既有独立 MCP、Model/Memory、Game Runtime/Project、Experience/Eval 方案仍各持权威。未来 main 上同期改动先做精确 diff，不读取其它任务未提交草稿或把历史源基线当当前实现。
 
-本轮当前核销/设计就绪与实施证据分账见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)；§10保留先前尚未分账时的历史结论。即使 E0 设计闭合，**仍须用户另行明确授权正式开发**；本次授权不包括创建实现分支或修改 main。这里的交接结论是企划收口产物，不创建/刷新独立 HANDOFF，不将未完成验证转交为已完成。
+本轮当前核销/设计就绪与实施证据分账见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)；§10保留先前尚未分账时的历史结论。用户已于2026-10-15另行明确授权正式开发；E0设计和授权均满足，产品实现与验收仍独立留证。这里的交接结论是企划收口产物，不创建/刷新独立 HANDOFF，不将未完成验证转交为已完成。

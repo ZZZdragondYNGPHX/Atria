@@ -141,3 +141,10 @@
 - 产品实现/验收仍 **NOT_STARTED / NOT_RUN / NOT_READY**；真实环境证据未取得的CachyOS/Termux、SQL服务、外部Provider/Tool及可信批准配置等对应case保持BLOCKED。P1–P8的可靠性/权限/预算/质量/三端与四Engine最终要求没有降低，也没有把默认拒绝当应支持产品能力的永久占位。
 - 本轮只改同一docs Plan/Record，无产品模块执行/测试/付费服务/真机操作，无实现分支、main修改、破坏性操作或独立HANDOFF。已有Storage Record修改、未跟踪Evolution和Settings/Themes材料保留。
 - 最终实际文档校验：18份Bundle/Record、168个相对链接无缺失，Bundle内部fragment无失效；E1 Gate图9条边无环且明确E0→AUTH→P1，R01–R08当前表8项齐全（前7项DESIGN_CLOSED、R08 NOT_AUTHORIZED），六个编排kind唯一；git diff --check通过。这些是文档一致性检查，不是产品测试或安全/三端通过证据。
+
+## 2026-10-15 — 正式开发授权与P1启动
+
+- 用户本轮明确授权正式开发并按P1–P8连续推进，最终验收通过后才集成main；R08 AUTHORIZED，不再等待同一开发许可。
+- fetch核对最新main/origin/main为`5eb3bc765`；对比E0基线的4个Settings/Themes提交、37文件，原存储/收费/领域权威未改变。Shell/Settings接线使用其最新服务，归P4–P6跟进；扫描附件仍标原SHA。
+- 同一任务实现分支`refactor/atria-native-orchestration-v3`从origin/main建立，Start HEAD `5eb3bc765`。没有合入独立docs工作空间，也没有修改main。docs原有Storage提交与Evolution未跟踪企划保护不纳入本任务路径。
+- P1 IN_PROGRESS：原Native ID/key注册、Storage Host owner和Plan/Run基础开始实现。未完成Gate不称PASS；SQL真实服务/三端/Provider等仍NOT_RUN/BLOCKED。

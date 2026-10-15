@@ -290,3 +290,7 @@ R02/R03/R04/R05/R07均有确定方案和失败出口，没有只靠标签转移�
 最终交接结论：**设计具备进入“等待用户正式开发授权”的条件；产品没有完成或通过验收。** 下一次只有在用户明确授权后，才根据当时main delta局部复核并按P1→P8实现；不再要求先在docs-only阶段取得新V3实现/真实运行/三端证据。届时若测试暴露设计缺陷，在受影响阶段修设计/实现并复测，不把本次DESIGN_READY解释为安全证明或免检。
 
 本轮实际只读补证/文档检查及Git提交推送归同一 [Record](../../../records/refactor/atria-native-orchestration-v3.md)。无新的产品分支、无main修改、无破坏性操作、无独立HANDOFF，也不在本轮请求正式开发授权。
+
+## 12. 正式开发授权生效（2026-10-15）
+
+当前用户明确授权正式开发，R08由NOT_AUTHORIZED更新为AUTHORIZED。§11的设计核销继续成立，先前未授权条款保留为历史时点。开发基线main@5eb3bc765，较审计基线增加Settings/Themes四提交；不改变原Native authority，Shell/Settings接线归P4–P6。已建同任务分支，P1 IN_PROGRESS；产品验收NOT_RUN/BLOCKED不因授权改成PASS，P7通过前不集成main。
