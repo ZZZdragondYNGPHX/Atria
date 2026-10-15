@@ -10,7 +10,8 @@ export const ACCOUNT_CONTENT_TABLES = Object.freeze([
 export async function listSqlAccountContent(handle, query) {
     const native = [], legacy = [], errors = [];
     for (const table of ACCOUNT_CONTENT_TABLES) {
-        const rows = await query(table, handle);
+        let rows;
+        try { rows = await query(table, handle); } catch (error) { errors.push({ source: table, reason: 'unreadable-table', message: error.code || error.message }); continue; }
         for (const row of rows) {
             try {
                 const doc = typeof row.doc === 'string' ? JSON.parse(row.doc) : row.doc;

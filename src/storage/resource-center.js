@@ -5,9 +5,10 @@ import { nativeRecord } from '../native/repositories/common.js';
 import { measureAccount, readAccountContent } from './resource-accounting.js';
 import { classifyNativeRecord, resourceFingerprint, STORAGE_CENTER_PROTOCOL } from './resource-catalog.js';
 import { ConflictError, NotFoundError } from './errors.js';
+import { RuntimeCheckpointStore } from '../native/model-prompt-runtime/runtime-checkpoint-store.js';
 
 const taskKey = (handle, id) => ({ kind: K.maintenance, handle, scope: 'storage-center:task:' + id });
-const targetId = target => resourceFingerprint(target);
+const targetId = target => resourceFingerprint({ type: target.type, id: target.id, ...(target.resourceType ? { resourceType: target.resourceType } : {}), ...(target.revision ? { revision: target.revision } : {}) });
 const rowTarget = row => {
     for (const [type, [kind, field]] of Object.entries(RECOVERABLE_DESCRIPTORS)) {
         if (row.key.kind === kind) return { type, id: row.key[field],
@@ -18,6 +19,7 @@ const rowTarget = row => {
 };
 function ownerTarget(row) {
     const key = row.key;
+    if (row.owner) return row.owner;
     if (key.sessionId) return { type: 'session', id: key.sessionId };
     if (key.projectId) return { type: 'project', id: key.projectId };
     if (key.personaId) return { type: 'persona', id: key.personaId };
@@ -39,9 +41,14 @@ export class ResourceCenterService {
     async snapshot(handle) {
         const snapshot = await measureAccount({ engine: this.engine, handle, directories: this.directoriesByHandle(handle) });
         const { native } = await this.engine.withTransaction(handle, tx => readAccountContent(tx, handle));
+        const nativeByKey = new Map(native.map(row => [resourceFingerprint(row.key), row]));
+        const unitOwners = new Map(snapshot.units.filter(unit => unit.owner).map(unit => [resourceFingerprint(unit.key), unit.owner]));
         const objects = new Map();
         for (const row of native) {
             if (row.doc == null) continue;
+            if (unitOwners.has(resourceFingerprint(row.key))) continue;
+            if ([K.versionedJsonResource, K.versionedJsonResourceRevision].includes(row.key.kind) && row.key.resourceType.startsWith('atri.visual.')
+                && (row.doc?.sessionId || row.doc?.value?.sessionId)) continue;
             const target = rowTarget(row);
             if (!target) continue;
             const category = classifyNativeRecord(row);
@@ -54,8 +61,11 @@ export class ResourceCenterService {
         }
         for (const unit of snapshot.units) {
             let owner = null;
-            if (unit.key) owner = ownerTarget({ key: unit.key });
-            else if (unit.relative?.startsWith('projects/')) owner = { type: 'project', id: unit.relative.split('/')[1] };
+            if (unit.key) {
+                const record = nativeByKey.get(resourceFingerprint(unit.key));
+                const sessionId = unit.key.resourceType?.startsWith('atri.visual.') && (record?.doc?.sessionId || record?.doc?.value?.sessionId);
+                owner = sessionId ? { type: 'session', id: sessionId } : ownerTarget(unit);
+            } else if (unit.relative?.startsWith('projects/')) owner = { type: 'project', id: unit.relative.split('/')[1] };
             const object = owner && objects.get(targetId(owner));
             if (object) { object.bytes += unit.bytes; object.units++; } else if (/^backups\/[^/]+\.(jsonl?|zip|tar|gz)$/i.test(unit.relative || '')) {
                 const target = { type: 'backup', id: unit.relative.slice(8) };
@@ -68,6 +78,10 @@ export class ResourceCenterService {
         for (const [category, total] of Object.entries(snapshot.categories)) total.objectCount = resources.filter(resource => resource.category === category).length;
         const { units: _units, ...summary } = snapshot;
         const suggestions = [];
+        const checkpoints = new RuntimeCheckpointStore({ engine: this.engine, handle });
+        for (const row of native.filter(row => row.key.kind === K.runtimeCheckpoint && checkpoints.expired(row))) {
+            suggestions.push({ ...await checkpoints.inspectExpired(row.key.checkpointId), target: { type: 'expired-checkpoint', id: row.key.checkpointId }, safe: true });
+        }
         const progress = native.find(row => row.key.kind === K.maintenance && row.key.scope === 'blobs')?.doc;
         for (const candidate of progress?.candidates ?? []) {
             try {
@@ -99,19 +113,22 @@ export class ResourceCenterService {
         const items = [];
         for (const target of unique.values()) {
             try {
-                const checked = action === 'clean' && target.type === 'garbage-blob' ? await this.recovery.assets.inspectGarbageBlob(handle, target.id)
-                    : action === 'trash' ? await this.recovery.inspect(handle, target) : await this.recovery.preflightRestore(handle, target.id);
-                const allowed = action === 'clean' ? target.type === 'garbage-blob' : action === 'purge' ? checked.state === 'retained' : checked.allowed;
+                const checked = action === 'clean' && target.type === 'expired-checkpoint' ? await new RuntimeCheckpointStore({ engine: this.engine, handle }).inspectExpired(target.id)
+                    : action === 'clean' && target.type === 'garbage-blob' ? await this.recovery.assets.inspectGarbageBlob(handle, target.id)
+                        : action === 'trash' ? await this.recovery.inspect(handle, target) : await this.recovery.preflightRestore(handle, target.id);
+                const allowed = action === 'clean' ? ['garbage-blob', 'expired-checkpoint'].includes(target.type) : action === 'purge' ? checked.state === 'retained' : checked.allowed;
                 items.push({ target, version: checked.version, name: checked.name || target.id, bytes: checked.bytes,
                     status: allowed ? 'pending' : 'blocked', reason: allowed ? null : checked.reason || 'native_recovery_not_ready',
-                    consequences: checked.consequences || [] });
+                    consequences: checked.consequences || [], ownedTargets: checked.ownedTargets || [] });
             } catch (error) {
                 if (!(error instanceof ConflictError) && !(error instanceof NotFoundError) && !(error instanceof TypeError)) throw error;
                 items.push({ target, version: null, name: target.id, bytes: null, status: 'blocked', reason: error.code || error.message, consequences: [] });
             }
         }
+        const fixed = items.filter(item => !items.some(parent => parent !== item && parent.status === 'pending'
+            && parent.ownedTargets.some(target => targetId(target) === targetId(item.target))));
         const doc = { protocol: STORAGE_CENTER_PROTOCOL, type: 'task', id: randomUUID(), scope: 'server', handle, action,
-            status: 'preview', createdAt: Date.now(), updatedAt: Date.now(), stopRequested: false, items,
+            status: 'preview', createdAt: Date.now(), updatedAt: Date.now(), stopRequested: false, items: fixed, deduplicatedCount: targets.length - fixed.length,
             processedBytes: 0, estimatedPhysicalRelease: null,
             retentionDays: action === 'trash' ? 30 : null, recoverable: action === 'trash' };
         return this.saveTask(handle, doc);
@@ -143,7 +160,9 @@ export class ResourceCenterService {
             if (item.status !== 'pending') continue;
             const operationId = task.id + '_' + index;
             try {
-                const result = task.action === 'clean' ? await this.recovery.assets.cleanGarbageBlob(handle, item.target.id, item.version) : task.action === 'trash'
+                const result = task.action === 'clean' ? item.target.type === 'expired-checkpoint'
+                    ? await new RuntimeCheckpointStore({ engine: this.engine, handle }).cleanExpired(item.target.id, item.version)
+                    : await this.recovery.assets.cleanGarbageBlob(handle, item.target.id, item.version) : task.action === 'trash'
                     ? await this.recovery.trash(handle, item.target, item.version, operationId)
                     : task.action === 'restore' ? await this.recovery.restore(handle, item.target.id, item.version, operationId)
                         : await this.recovery.purge(handle, item.target.id, item.version);

@@ -11,6 +11,10 @@ import { recoveryKey } from '../../src/native/recovery-roots.js';
 import { nativeRecord } from '../../src/native/repositories/common.js';
 import { installAccountQuota } from '../../src/storage/account-quota.js';
 import { measureAccount } from '../../src/storage/resource-accounting.js';
+import { runFixture } from '../native/helpers/run-fixture.js';
+import { seedGenerationProfiles } from '../native/helpers/generation-fixture.js';
+import { ExtensionsStore } from '../../src/native/extensions-store.js';
+import { withRecoveryPublication } from '../../src/native/recovery-roots.js';
 
 describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => {
     let h, svc, recovery, limit;
@@ -25,6 +29,61 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
     });
     afterEach(async () => { await h.cleanup(); });
     const measure = () => measureAccount({ engine: h.engine, handle: h.handle, directories: h.dirs });
+
+    test('Runtime reference protection, deletion tombstones and original configuration recovery share the domain authority', async () => {
+        const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/unused' });
+        const connection = { type: 'connection', id: seeded.connection.connectionProfileId };
+        expect((await recovery.inspect(h.handle, connection)).allowed).toBe(false);
+        const route = { type: 'route', id: seeded.routes[0].runtimeRouteId }, before = await recovery.inspect(h.handle, route);
+        const key = recovery.rootKey(h.handle, route), previous = await h.engine.withTransaction(h.handle, tx => tx.getResource(key));
+        const item = await recovery.trash(h.handle, route, before.version, 'runtime-route');
+        expect(await seeded.persistence.getRuntimeRoute(h.handle, route.id)).toBeNull();
+        expect((await h.engine.withTransaction(h.handle, tx => tx.getResource(key))).doc).toBeNull();
+        const review = await recovery.preflightRestore(h.handle, item.id); expect(review.allowed).toBe(true);
+        await recovery.restore(h.handle, item.id, review.version);
+        expect(await seeded.persistence.getRuntimeRoute(h.handle, route.id)).toEqual(seeded.routes[0]);
+        expect((await h.engine.withTransaction(h.handle, tx => tx.getResource(key))).updatedAt).toBeGreaterThan(previous.updatedAt);
+    });
+
+    test('Extension source returns with its original identity and source, disabled until explicit activation', async () => {
+        const extensions = new ExtensionsStore({ engine: h.engine });
+        const plugin = await extensions.save(h.handle, { name: 'Local fixture', kind: 'local', enabled: true, targets: { global: true, presets: [], works: [] }, entrypoint: 'index.js', files: { 'index.js': 'export default {};' } });
+        const target = { type: 'versioned', resourceType: 'atri.extensions.plugin', id: plugin.id };
+        const checked = await recovery.inspect(h.handle, target), item = await recovery.trash(h.handle, target, checked.version, 'plugin');
+        await expect(extensions.get(h.handle, plugin.id)).rejects.toMatchObject({ name: 'NotFoundError' });
+        const review = await recovery.preflightRestore(h.handle, item.id); await recovery.restore(h.handle, item.id, review.version);
+        expect(await extensions.get(h.handle, plugin.id)).toMatchObject({ id: plugin.id, enabled: false, files: plugin.files, contentHash: plugin.contentHash });
+    });
+
+    test('identity collision and failed restore commit preserve both the occupant and recovery source', async () => {
+        const target = { type: 'world', id: createNativeId('world') }, key = recovery.rootKey(h.handle, target);
+        await h.engine.withTransaction(h.handle, tx => tx.putResource(key, nativeRecord({ worldId: target.id, displayName: 'Original', currentRevisionId: null })));
+        const checked = await recovery.inspect(h.handle, target), item = await recovery.trash(h.handle, target, checked.version, 'collision');
+        await withRecoveryPublication(() => h.engine.withTransaction(h.handle, tx => tx.putResource(key, nativeRecord({ worldId: target.id, displayName: 'Occupied', currentRevisionId: null }))));
+        expect((await recovery.preflightRestore(h.handle, item.id)).reason).toBe('native_recovery_identity_conflict');
+        expect((await recovery.worlds.get(h.handle, target.id)).displayName).toBe('Occupied');
+        expect(await recovery.list(h.handle)).toHaveLength(1);
+        await withRecoveryPublication(() => h.engine.withTransaction(h.handle, tx => tx.deleteResource(key)));
+        const transaction = h.engine.withTransaction.bind(h.engine);
+        h.engine.withTransaction = (handle, operation) => transaction(handle, tx => operation(new Proxy(tx, { get(object, name) {
+            if (name === 'putResource') return () => { throw new Error('Injected restore failure'); };
+            const value = object[name]; return typeof value === 'function' ? value.bind(object) : value;
+        } })));
+        await expect(recovery.restore(h.handle, item.id, item.version)).rejects.toThrow('Injected restore failure');
+        h.engine.withTransaction = transaction;
+        expect(await recovery.list(h.handle)).toHaveLength(1); expect(await recovery.worlds.get(h.handle, target.id)).toBeNull();
+    });
+
+    test('recycling and restoring an active Ironman session preserves its permanent terminal authority', async () => {
+        const f = await runFixture(h, 'http://127.0.0.1:1/unused'), started = await f.begin('ironman');
+        const target = { type: 'session', id: started.session.sessionId }, checked = await recovery.inspect(h.handle, target);
+        const item = await recovery.trash(h.handle, target, checked.version, 'ironman');
+        expect(await f.core.runStatus(h.handle, target.id)).toMatchObject({ mode: 'ironman', status: 'terminal' });
+        const review = await recovery.preflightRestore(h.handle, item.id); expect(review.allowed).toBe(true);
+        await recovery.restore(h.handle, item.id, review.version);
+        expect(await f.core.runStatus(h.handle, target.id)).toMatchObject({ mode: 'ironman', status: 'terminal' });
+        await expect(f.core.beginStory(h.handle, target.id, { input: { mode: 'ironman', name: 'Ada' }, invocationId: 'revive', expectedRevisionId: started.revision.revisionId })).rejects.toMatchObject({ code: 'native_run_terminal' });
+    });
 
     test('a real Session closure returns to SessionCore with the same identity, history and manual save', async () => {
         const f = await installFixture(h, undefined, svc);

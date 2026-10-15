@@ -6,6 +6,7 @@ import { Buffer } from 'node:buffer';
 import express from 'express';
 import sanitize from 'sanitize-filename';
 import { sync as writeFileAtomicSync } from 'write-file-atomic';
+import { writeAccountFile } from '../storage/account-file-write.js';
 import yaml from 'yaml';
 import _ from 'lodash';
 import mime from 'mime-types';
@@ -277,7 +278,7 @@ async function writeCharacterData(inputFile, data, outputFile, request, crop = u
             throw new Error(`Target character image is missing: ${outputImagePath}`);
         }
 
-        writeFileAtomicSync(outputImagePath, outputImage);
+        await writeAccountFile(request.user.profile.handle, outputImagePath, outputImage);
 
         // Refresh in-memory and disk caches with the newly written character payload.
         const outputCacheKey = getCacheKey(outputImagePath);
@@ -2171,7 +2172,7 @@ router.post('/state/get-batch', validateAvatarUrlMiddleware, function (request, 
     }
 });
 
-router.post('/state/set', validateAvatarUrlMiddleware, function (request, response) {
+router.post('/state/set', validateAvatarUrlMiddleware, async function (request, response) {
     try {
         const avatarUrl = sanitize(String(request.body?.avatar_url || '').trim());
         const namespace = normalizeCharacterStateNamespace(request.body?.namespace);
@@ -2196,7 +2197,7 @@ router.post('/state/set', validateAvatarUrlMiddleware, function (request, respon
         }
 
         fs.mkdirSync(path.dirname(stateFilePath), { recursive: true });
-        writeFileAtomicSync(stateFilePath, JSON.stringify(state), 'utf8');
+        await writeAccountFile(request.user.profile.handle, stateFilePath, Buffer.from(JSON.stringify(state)));
         return response.send({ ok: true });
     } catch (error) {
         console.error('Error writing character state sidecar:', error);
@@ -2204,7 +2205,7 @@ router.post('/state/set', validateAvatarUrlMiddleware, function (request, respon
     }
 });
 
-router.post('/state/patch', validateAvatarUrlMiddleware, function (request, response) {
+router.post('/state/patch', validateAvatarUrlMiddleware, async function (request, response) {
     try {
         const avatarUrl = sanitize(String(request.body?.avatar_url || '').trim());
         const namespace = normalizeCharacterStateNamespace(request.body?.namespace);
@@ -2250,7 +2251,7 @@ router.post('/state/patch', validateAvatarUrlMiddleware, function (request, resp
         }
 
         fs.mkdirSync(path.dirname(stateFilePath), { recursive: true });
-        writeFileAtomicSync(stateFilePath, JSON.stringify(next), 'utf8');
+        await writeAccountFile(request.user.profile.handle, stateFilePath, Buffer.from(JSON.stringify(next)));
         return response.send({
             ok: true,
             applied: operations.length,
@@ -2454,8 +2455,7 @@ function renameAllCharacterStateSidecars(sourceCharacterPath, targetCharacterPat
         if (fs.existsSync(targetFilePath)) {
             throw new Error(`Character state sidecar rename collision: ${targetFilePath}`);
         }
-        fs.copyFileSync(sourceFilePath, targetFilePath);
-        fs.unlinkSync(sourceFilePath);
+        fs.renameSync(sourceFilePath, targetFilePath);
     }
 }
 
@@ -2553,7 +2553,7 @@ router.post('/duplicate', validateAvatarUrlMiddleware, async function (request, 
 
         const newFilename = path.join(request.user.directories.characters, `${duplicateBaseName}${ext}`);
 
-        fs.copyFileSync(filename, newFilename);
+        await writeAccountFile(request.user.profile.handle, newFilename, await fs.promises.readFile(filename));
         console.info(`${filename} was copied to ${newFilename}`);
         response.send({ path: path.parse(newFilename).base });
     } catch (error) {

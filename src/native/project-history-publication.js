@@ -9,6 +9,7 @@ import { listAccountFiles } from '../storage/resource-accounting.js';
 import { resourceContentBytes, resourceFingerprint, STORAGE_CENTER_PROTOCOL } from '../storage/resource-catalog.js';
 import { syncDirectoryAsync, durableWriteAsync } from '../storage/durable-file.js';
 import { ConflictError } from '../storage/errors.js';
+import { assertAccountPath } from '../storage/path-boundary.js';
 
 const keyFor = (handle, projectId) => ({ kind: K.maintenance, handle, scope: 'storage-center:history:' + projectId });
 async function tree(directory) {
@@ -23,7 +24,8 @@ async function tree(directory) {
 async function exists(file) { try { await fsp.lstat(file); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } }
 function operationRoot(store, handle, id) {
     if (!/^[a-f0-9-]{36}$/.test(id)) throw new TypeError('Invalid file publication identity');
-    return path.join(store._directoriesByHandle(handle).root, 'atria-native', 'file-publications', id);
+    const root = store._directoriesByHandle(handle).root;
+    return assertAccountPath(root, path.join(root, 'atria-native', 'file-publications', id));
 }
 
 /** Complete/roll back a committed local file intent before exposing Git history. */

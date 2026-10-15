@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { assertAccountPath } from './path-boundary.js';
 
 const TEXT_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml', '.css', '.js']);
 const EDITABLE_EXTENSIONS = new Set(['.json', '.jsonl', '.txt', '.md', '.yaml', '.yml']);
@@ -69,12 +70,7 @@ function ensureInsideRoot(root, candidate) {
 }
 
 function assertNoLinkedPath(root, candidate) {
-    const relative = path.relative(path.resolve(root), path.resolve(candidate));
-    let current = path.resolve(root);
-    for (const part of relative.split(path.sep).filter(Boolean)) {
-        current = path.join(current, part);
-        if (fs.existsSync(current) && fs.lstatSync(current).isSymbolicLink()) throw error('E_INVALID_PATH', 'Linked storage paths require their domain manager.');
-    }
+    assertAccountPath(root, candidate);
 }
 
 function matchesSettingsBackup(name) {
@@ -187,6 +183,7 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
         && EDITABLE_EXTENSIONS.has(extension)
         && stat.size <= MAX_EDIT_BYTES
         && !protectedResource
+        && relativePath !== 'settings.json'
         && kind !== 'chat-metadata'
         && kind !== 'chat-messages',
     );

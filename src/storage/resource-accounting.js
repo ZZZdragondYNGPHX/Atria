@@ -2,6 +2,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
 import { nativeResourceFileId } from './engines/native-resource-key.js';
+import { projectExperienceOwner } from '../native/agent-intelligence/experience-repository.js';
 import {
     classifyNativeRecord, emptyResourceTotals, nativeResourceIdentity,
     resourceContentBytes, resourceFingerprint, resourceCapabilities,
@@ -12,6 +13,9 @@ const fileCategory = relative => relative.startsWith('projects/') ? 'projects'
     : relative.startsWith('assets/atria-native/blobs/') ? 'media'
         : relative.startsWith('backups/') ? 'recovery'
             : relative === 'secrets.json' || relative === 'settings.json' ? 'settings' : 'advanced';
+const structuredLegacyFile = relative => /^(settings\.json|stats\.json)$/.test(relative)
+    || /^(chats|group chats|worlds|groups|OpenAI Settings|NovelAI Settings|KoboldAI Settings|TextGen Settings|themes|movingUI|QuickReplies|instruct|context|sysprompt|reasoning)\/.*\.(json|jsonl)$/.test(relative)
+    || relative.startsWith('atria-native/resources/');
 
 /** No symlink traversal and no hidden filesystem recovery/repair on enumeration. */
 export async function listAccountFiles(root) {
@@ -55,12 +59,17 @@ export async function measureAccount({ engine, handle, directories, tx = null })
     fileErrors.push(...legacyRecovery.errors.map(error => ({ ...error, source: 'legacy-recovery/' + error.source })));
     const errors = [...content.errors, ...fileErrors], totals = emptyResourceTotals(), units = [], claimed = new Set();
     const add = unit => { units.push(unit); totals[unit.category].bytes += unit.bytes; totals[unit.category].count++; };
+    const projectScopes = new Map();
+    for (const record of content.native) {
+        try { const owner = projectExperienceOwner(record); if (owner) projectScopes.set(record.key.scopeId, owner); } catch (error) { errors.push({ source: record.key.kind, reason: error.message }); }
+    }
     for (const record of content.native) {
         try {
-            const category = classifyNativeRecord(record);
+            const owner = [NATIVE_RESOURCE_KINDS.agentExperience, NATIVE_RESOURCE_KINDS.agentEvolution].includes(record.key.kind) && projectScopes.get(record.key.scopeId);
+            const category = owner ? 'projects' : classifyNativeRecord(record);
             add({ id: nativeResourceIdentity(record.key), source: 'native', category,
                 bytes: resourceContentBytes(record.doc), version: resourceFingerprint(record.doc),
-                key: record.key, updatedAt: record.updatedAt, capabilities: resourceCapabilities({ view: true }),
+                key: record.key, owner: owner ? { type: 'project', id: owner } : undefined, updatedAt: record.updatedAt, capabilities: resourceCapabilities({ view: true }),
             });
             if (engine.kind === 'fs' && !record.key.encodedKey) {
                 claimed.add(`atria-native/resources/${record.key.kind}/${record.key.sessionId ? record.key.sessionId + '/' : ''}${nativeResourceFileId(record.key)}.json`);
@@ -90,7 +99,7 @@ export async function measureAccount({ engine, handle, directories, tx = null })
         let bytes = file.bytes, method = 'file-bytes';
         // Legacy structured file content follows the same canonical JSON rule
         // as its SQL counterpart. Project sources and backups remain raw files.
-        if (category !== 'projects' && category !== 'recovery' && !file.relative.startsWith('assets/')
+        if (structuredLegacyFile(file.relative) && category !== 'recovery'
             && /\.(json|jsonl)$/.test(file.relative)) {
             try {
                 const text = await fsp.readFile(file.absolute, 'utf8');

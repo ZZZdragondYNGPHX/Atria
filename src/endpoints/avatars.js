@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import express from 'express';
 import sanitize from 'sanitize-filename';
 import { Jimp } from '../jimp.js';
-import { sync as writeFileAtomicSync } from 'write-file-atomic';
+import { writeAccountFile } from '../storage/account-file-write.js';
 
 import { getImages, resolvePathWithinParent, tryParse } from '../util.js';
 import { getFileNameValidationFunction } from '../middleware/validateFileName.js';
@@ -54,10 +54,11 @@ router.post('/upload', getFileNameValidationFunction('overwrite_name'), async (r
 
         const filename = sanitize(request.body.overwrite_name || `${Date.now()}.png`);
         const pathToNewFile = path.join(request.user.directories.avatars, filename);
-        writeFileAtomicSync(pathToNewFile, image);
+        await writeAccountFile(request.user.profile.handle, pathToNewFile, image);
         fs.unlinkSync(pathToUpload);
         return response.send({ path: filename });
     } catch (err) {
+        if (err.code === 'storage_quota_exceeded') return response.status(413).json({ error: err.code, details: err.details });
         console.error('Error uploading user avatar:', err);
         return response.status(400).send('Is not a valid image');
     }

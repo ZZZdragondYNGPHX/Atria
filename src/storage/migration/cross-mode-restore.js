@@ -44,6 +44,8 @@ import { USER_DIRECTORY_TEMPLATE, resolveUserDirectory } from '../../constants.j
 import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
 import { AssetStore } from '../../native/repositories/asset-store.js';
 import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
+import { retainedBlobHashes } from '../../native/recovery-roots.js';
+import { assertAccountPath } from '../path-boundary.js';
 import {
     CrossModeScratchCredsRequiredError,
     CrossModeScratchConnectionError,
@@ -313,6 +315,8 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
                     throw new Error('Native backup has a missing or invalid asset blob');
                 }
             }
+            const retained = await transient.engine.withTransaction(scratchHandle, tx => retainedBlobHashes(tx, scratchHandle));
+            for (const hash of new Set(retained)) if (!await assets.readBlob(scratchHandle, hash)) throw new Error('Native backup has a missing retained recovery blob');
         }
 
         // Replacement modes remove only the selected logical categories.
@@ -640,6 +644,7 @@ export async function extractFsTreeCategories(zipPath, dirs, selection, opts = {
                         zipfile.readEntry();
                         return;
                     }
+                    assertAccountPath(dirs.root, target);
                     await fsPromises.mkdir(path.dirname(target), { recursive: true });
                     zipfile.openReadStream(entry, async (streamErr, readStream) => {
                         if (streamErr) return finish(streamErr);
@@ -690,6 +695,7 @@ function buildFsTreeRules(enabled, dirs) {
         for (const key of ['projects', 'nativeBlobs']) {
             rules.push({ prefix: USER_DIRECTORY_TEMPLATE[key] + '/', targetDir: path.resolve(resolveUserDirectory(dirs, key)), exact: false });
         }
+        for (const folder of ['recovery', 'file-publications']) rules.push({ prefix: USER_DIRECTORY_TEMPLATE.native + '/' + folder + '/', targetDir: path.resolve(resolveUserDirectory(dirs, 'native'), folder), exact: false });
     }
     if (enabled.has('secrets')) {
         rules.push({ prefix: 'secrets.json', targetPath: path.resolve(dirs.root, 'secrets.json'), exact: true });

@@ -1,4 +1,5 @@
 import { createNativeProductError } from './product-errors.js';
+import { notifyCurrentStorageChange } from './storage-change-events.js';
 
 function requestHeaders() {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
@@ -23,6 +24,9 @@ async function request(path, { method = 'GET', body = undefined } = {}) {
     if (!response.ok) {
         throw createNativeProductError(payload?.error, response.status, payload?.details);
     }
+    const deleted = method === 'DELETE' && /^(works|worlds|knowledge|knowledge-bindings|sessions|projects)\/([^/?]+)$/.exec(path);
+    const type = deleted && ({ works: 'package', worlds: 'world', knowledge: 'knowledge', 'knowledge-bindings': 'binding', sessions: 'session', projects: 'project' })[deleted[1]];
+    if (type || path === 'personas/delete') await notifyCurrentStorageChange([{ type: type || 'persona', id: deleted ? decodeURIComponent(deleted[2]) : body.personaId }]);
     return payload;
 }
 

@@ -2,11 +2,16 @@ import { randomUUID, createHash } from 'node:crypto';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { syncDirectoryAsync } from '../storage/durable-file.js';
+import { assertAccountPath } from '../storage/path-boundary.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { withSessionWrite } from './repositories/session-repo.js';
 import { withNativeResourceWrite, nativeRecord } from './repositories/common.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
 import { AgentExperienceRepository } from './agent-intelligence/experience-repository.js';
+import { NativeModelPromptPersistence, VersionedJsonResourceHandler, withRuntimeWrite } from './model-prompt-runtime/persistence.js';
+import { VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from './model-prompt-runtime/resources.js';
+import { ExtensionsStore } from './extensions-store.js';
+import { RuntimeCheckpointStore } from './model-prompt-runtime/runtime-checkpoint-store.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { resourceFingerprint, resourceContentBytes, RECOVERY_RETENTION_MS } from '../storage/resource-catalog.js';
@@ -36,6 +41,9 @@ const packageKinds = new Set([K.package, K.packageVersion, K.packageState]);
 export class NativeRecoveryService {
     constructor({ engine, directoriesByHandle, sessions, packages, worlds, knowledge, personas, assets, graph, projects, studio = null }) {
         Object.assign(this, { engine, directoriesByHandle, sessions, packages, worlds, knowledge, personas, assets, graph, projects, studio });
+        this.runtime = new NativeModelPromptPersistence({ engine });
+        this.library = new VersionedJsonResourceHandler({ engine });
+        this.extensions = new ExtensionsStore({ engine });
     }
 
     rootKey(handle, target) {
@@ -47,6 +55,8 @@ export class NativeRecoveryService {
     }
 
     async lock(handle, target, operation) {
+        if (['connection', 'model', 'route', 'retrieval'].includes(target.type) || target.type === 'versioned' && VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(target.resourceType)) return withRuntimeWrite(handle, operation);
+        if (target.type === 'versioned' && target.resourceType?.startsWith('atri.extensions.')) return withNativeResourceWrite(handle, 'extensions', operation);
         if (target.type === 'session') {
             const session = await this.sessions.get(handle, target.id);
             const packageId = session?.packageId ?? 'missing';
@@ -54,7 +64,7 @@ export class NativeRecoveryService {
         }
         if (target.type === 'project') return this.studio ? this.studio.withProjectWrite(handle, target.id, operation) : this.projects.withLifecycle(handle, target.id, operation);
         const lockId = target.type === 'persona' ? 'personas' : target.type === 'asset' ? 'asset:' + target.id
-            : target.type === 'experience' ? 'experience:' + target.id : target.id;
+            : ['experience', 'evidence', 'goal', 'package'].includes(target.type) ? target.type + ':' + target.id : target.id;
         return withNativeResourceWrite(handle, lockId, operation);
     }
 
@@ -86,10 +96,17 @@ export class NativeRecoveryService {
             const key = this.rootKey(handle, target);
             root = native.find(row => recordId(row) === resourceFingerprint(key));
             if (!root) throw new NotFoundError('Native resource');
+            if (root.doc == null || root.doc.deleted) throw new NotFoundError('Native resource');
+            if (target.type === 'versioned') {
+                if (root.doc.presetOwner) conflict('native_resource_owned_by_preset');
+                if (!VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(target.resourceType)
+                    && !['atri.extensions.plugin', 'atri.extensions.settings', 'atri.extensions.official'].includes(target.resourceType)) conflict('native_resource_requires_domain_editor');
+            }
             if (target.expectedRevisionId !== undefined && root.doc.headRevisionId !== target.expectedRevisionId
                 || target.baseVersionId !== undefined && root.doc.currentVersionId !== target.baseVersionId
                 || target.expectedIntegrity !== undefined && root.integrity !== target.expectedIntegrity
-                || target.expectedFingerprint !== undefined && root.integrity !== target.expectedFingerprint) conflict('storage_preview_stale');
+                || target.expectedFingerprint !== undefined && root.integrity !== target.expectedFingerprint
+                || target.expectedRevision !== undefined && root.doc.revision !== target.expectedRevision) conflict('storage_preview_stale');
             const [, field] = descriptors[target.type];
             records = native.filter(row => {
                 if (target.type === 'session') return sessionKinds.has(row.key.kind) && row.key.sessionId === target.id
@@ -138,6 +155,7 @@ export class NativeRecoveryService {
         return { target: closure.target, name: closure.name, version: closure.version, bytes: closure.bytes,
             recordCount: closure.records.length, fileCount: closure.files.length, dependencyCount: closure.dependencies.length,
             recoverable: true, retentionDays: 30, estimatedPhysicalRelease: null,
+            ownedTargets: closure.records.flatMap(row => Object.entries(descriptors).filter(([, [kind]]) => row.key.kind === kind).map(([type, [, field]]) => ({ type, id: row.key[field], ...(type === 'versioned' ? { resourceType: row.key.resourceType } : {}), ...(type === 'retrieval' ? { revision: row.key.revision } : {}) }))),
             consequences: closure.records.some(row => row.key.kind === K.runControl && row.doc.mode === 'ironman') ? ['ironman-remains-terminal'] : [] };
     }
 
@@ -164,9 +182,11 @@ export class NativeRecoveryService {
         const owned = new Set(records.map(recordId));
         // Includes independent Agent material and Runtime/library references not
         // represented by ResourceGraph. Scope labels alone are not a cascade.
+        const checkpoints = new RuntimeCheckpointStore({ engine: this.engine, handle });
         if (root && all.some(row => !owned.has(recordId(row)) && row.key.kind !== K.maintenance
+            && !(row.key.kind === K.runtimeCheckpoint && checkpoints.expired(row))
             && documentReferencesKey(row.doc, root))) conflict('native_resource_referenced');
-        for (const hash of closure.hashes) if (!await this.assets.hasBlob(handle, hash)) conflict('native_recovery_dependency_missing');
+        for (const hash of closure.hashes) if (!await this.assets.readBlob(handle, hash)) conflict('native_recovery_dependency_missing');
     }
 
     async trash(handle, target, expectedVersion, id = randomUUID()) {
@@ -194,9 +214,21 @@ export class NativeRecoveryService {
                 const current = await this.personas.get(handle, { personaId: target.id });
                 await this.personas.delete(handle, { personaId: target.id, expectedFingerprint: current.expectedFingerprint });
             } else if (target.type === 'asset') await this.assets.deleteRef(handle, target.id);
+            else if (target.type === 'experience') {
+                const root = closure.records.find(row => row.key.kind === K.agentExperience).doc;
+                await new AgentExperienceRepository({ engine: this.engine }).deleteScope(handle, root.scope, root.subject, root.sequence);
+            } else if (['connection', 'model', 'route'].includes(target.type)) await this.runtime.deleteProfile(handle, { connection: 'connections', model: 'models', route: 'routes' }[target.type], target.id);
+            else if (target.type === 'versioned') {
+                if (target.resourceType.startsWith('atri.extensions.')) await this.extensions.removeResource(handle, target.resourceType, target.id);
+                else {
+                    const root = closure.records.find(row => row.key.kind === K.versionedJsonResource);
+                    await this.library.delete(handle, { scope: 'library', resourceType: target.resourceType, resourceId: target.id, revision: root.doc.currentRevision }, () => []);
+                }
+            }
             for (const row of closure.records) {
                 // Terminal Ironman control is a permanent anti-rollback authority.
                 if (row.key.kind === K.runControl && row.doc.mode === 'ironman') continue;
+                if ([K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(row.key.kind)) continue;
                 await tx.deleteResource(row.key);
             }
             await tx.putResource(recoveryKey(handle, id), nativeRecord(doc));
@@ -222,10 +254,11 @@ export class NativeRecoveryService {
         for (const row of doc.records) {
             if (row.key.handle !== handle) conflict('native_recovery_account_mismatch');
             const current = await tx.getResource(row.key);
-            if (current && !(row.key.kind === K.runControl && current.doc.mode === 'ironman' && current.doc.status === 'terminal')) conflict('native_recovery_identity_conflict');
+            if (current && !(current.doc === null && [K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(row.key.kind))
+                && !(row.key.kind === K.runControl && current.doc.mode === 'ironman' && current.doc.status === 'terminal')) conflict('native_recovery_identity_conflict');
         }
         for (const key of doc.dependencies) if (!await tx.getResource(key)) conflict('native_recovery_dependency_missing');
-        for (const hash of doc.hashes) if (!await this.assets.hasBlob(handle, hash)) conflict('native_recovery_dependency_missing');
+        for (const hash of doc.hashes) if (!await this.assets.readBlob(handle, hash)) conflict('native_recovery_dependency_missing');
         if (['project', 'backup'].includes(doc.target.type)) {
             if (await this.exists(this.sourceLocation(handle, doc.target))) conflict('native_recovery_identity_conflict');
             await this.verifyProjectFiles(handle, doc);
@@ -270,7 +303,9 @@ export class NativeRecoveryService {
                         const current = await tx.getResource(record.key);
                         const control = structuredClone(current?.doc.mode === 'ironman' ? current.doc : record.doc);
                         control.background = {};
-                        for (const operation of Object.values(control.operations ?? {})) if (['pending', 'running', 'queued'].includes(operation.status)) operation.status = 'cancelled';
+                        for (const operation of Object.values(control.operations ?? {})) for (const task of Object.values(operation.externalTasks ?? {})) {
+                            if (['queued', 'dispatched'].includes(task.status)) task.status = 'unknown';
+                        }
                         await tx.putResource(record.key, nativeRecord(control, { existing: record }));
                     } else if (record.key.kind === K.agentGoal) {
                         const goal = structuredClone(record.doc); goal.status = 'paused'; goal.sequence++;
@@ -280,9 +315,12 @@ export class NativeRecoveryService {
                         if (evolution.policy) { evolution.policy.mode = 'paused'; evolution.policy.reason = 'restored'; }
                         await tx.putResource(record.key, nativeRecord(evolution, { existing: record }));
                     } else if (record.key.kind === K.projectAgentTask) {
-                        const task = structuredClone(record.doc);
-                        if (['planning', 'working', 'evaluating', 'repair', 'committing'].includes(task.status)) task.status = 'blocked';
-                        await tx.putResource(record.key, nativeRecord(task, { existing: record }));
+                        await tx.putResource(record.key, this.pausedProjectTask(record));
+                    } else if ([K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(record.key.kind)) {
+                        const current = await tx.getResource(record.key);
+                        await tx.putResource(record.key, nativeRecord(record.doc, { existing: record, updatedAt: Math.max(Date.now(), (current?.updatedAt || record.updatedAt) + 1) }));
+                    } else if (record.key.kind === K.versionedJsonResource && record.key.resourceType.startsWith('atri.extensions.')) {
+                        await this.extensions.restoreResource(handle, record.key.resourceType, record.key.resourceId, record.doc);
                     } else await tx.putResource(record.key, record);
                 }
                 this.graph?.invalidate(handle);
@@ -306,16 +344,25 @@ export class NativeRecoveryService {
         });
     }
 
+    pausedProjectTask(record) {
+        const task = structuredClone(record.doc);
+        if (['planned', 'planning', 'working', 'evaluating', 'repair', 'committing'].includes(task.status)) task.status = 'blocked';
+        for (const wake of task.goalBinding?.wakes ?? []) if (['pending', 'running'].includes(wake.status)) { wake.status = 'unknown'; wake.updatedAt = Date.now(); }
+        return nativeRecord(task, { existing: record });
+    }
+
     projectPayload(handle, id) {
         if (!/^[a-zA-Z0-9_-]{1,128}$/.test(id)) throw new TypeError('Invalid recovery identity');
-        return path.join(this.directoriesByHandle(handle).root, 'atria-native', 'recovery', id, 'payload');
+        const root = this.directoriesByHandle(handle).root;
+        return assertAccountPath(root, path.join(root, 'atria-native', 'recovery', id, 'payload'));
     }
     sourceLocation(handle, target) {
         if (target.type === 'project') return this.projects.getProjectDirectory(handle, target.id);
         if (target.type !== 'backup' || typeof target.id !== 'string' || path.basename(target.id) !== target.id
             || target.id.includes('..') || target.id.includes('\\') || !/\.(jsonl?|zip|tar|gz)$/i.test(target.id)
             || target.id.startsWith('_engine_')) throw new TypeError('Invalid account backup identity');
-        return path.join(this.directoriesByHandle(handle).backups || path.join(this.directoriesByHandle(handle).root, 'backups'), target.id);
+        const root = this.directoriesByHandle(handle).root;
+        return assertAccountPath(root, path.join(this.directoriesByHandle(handle).backups || path.join(root, 'backups'), target.id));
     }
     payloadLocation(handle, doc) {
         const directory = this.projectPayload(handle, doc.id);
@@ -424,7 +471,8 @@ export class NativeRecoveryService {
                     const evolution = structuredClone(record.doc);
                     if (evolution.policy) { evolution.policy.mode = 'paused'; evolution.policy.reason = 'restored'; }
                     await tx.putResource(record.key, nativeRecord(evolution, { existing: record }));
-                } else await tx.putResource(record.key, record);
+                } else if (record.key.kind === K.projectAgentTask) await tx.putResource(record.key, this.pausedProjectTask(record));
+                else await tx.putResource(record.key, record);
             }
             this.graph?.invalidate(handle);
             return this.receipt(tx, handle, doc.restoreOperationId, { restored: true, target: doc.target, effectPolicy: 'no-background-model' });

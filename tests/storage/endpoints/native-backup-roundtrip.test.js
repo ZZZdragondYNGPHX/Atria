@@ -11,6 +11,9 @@ import { getUserDirectories, USER_BACKUP_SELECTION_DEFAULTS } from '../../../src
 import { getStorageEngine } from '../../../src/storage/index.js';
 import { NATIVE_RESOURCE_KINDS, getNativeResourceKeyFields } from '../../../src/native/contracts.js';
 import { AssetStore, ProjectStore, createNativeId } from '../../../src/native/index.js';
+import { NativeRecoveryService } from '../../../src/native/recovery-service.js';
+import { nativeRecord } from '../../../src/native/repositories/common.js';
+import { STORAGE_CENTER_PROTOCOL } from '../../../src/storage/resource-catalog.js';
 
 const nativeOnly = Object.fromEntries(Object.keys(USER_BACKUP_SELECTION_DEFAULTS).map(key => [key, key === 'native']));
 const otherValues = { scopeId: 'a'.repeat(64), evidenceId: 'b'.repeat(64), sourceDigest: 'c'.repeat(64), checkpointId: 'd'.repeat(64), scope: 'backup-probe', taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', namespace: 'atri_backup', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'pmod-test', revision: 'rev-1' };
@@ -68,7 +71,17 @@ async function seed(h) {
         worlds: [], knowledge: [], knowledgeBindings: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [] }, assetFiles: [],
     };
     await new ProjectStore({ directoriesByHandle: () => h.dirs }).create(h.handle, project, { files: new Map([['source.txt', 'Source 中文']]) });
-    return { records, hash, bytes, projectId };
+    const recovery = new NativeRecoveryService({ engine, directoriesByHandle: () => h.dirs, assets });
+    const retainedBytes = Buffer.from('Retained only by recovery 中文'), retainedAssetId = createNativeId('asset');
+    const retainedHash = await assets.putBlob(h.handle, retainedBytes);
+    await assets.put(h.handle, { assetId: retainedAssetId, contentHash: retainedHash, size: retainedBytes.length, mediaType: 'application/octet-stream' }, retainedBytes);
+    const assetTarget = { type: 'asset', id: retainedAssetId }, assetReview = await recovery.inspect(h.handle, assetTarget);
+    const retained = await recovery.trash(h.handle, assetTarget, assetReview.version, 'backup-retained-asset');
+    fs.mkdirSync(h.dirs.backups, { recursive: true }); fs.writeFileSync(path.join(h.dirs.backups, 'retained.zip'), 'Recoverable backup file');
+    const backupTarget = { type: 'backup', id: 'retained.zip' }, backupReview = await recovery.inspect(h.handle, backupTarget);
+    await recovery.trash(h.handle, backupTarget, backupReview.version, 'backup-retained-file');
+    await engine.withTransaction(h.handle, tx => tx.putResource({ kind: NATIVE_RESOURCE_KINDS.maintenance, handle: h.handle, scope: 'storage-center:task:imported' }, nativeRecord({ protocol: STORAGE_CENTER_PROTOCOL, type: 'task', id: 'imported', handle: h.handle, status: 'running', items: [] })));
+    return { records, hash, bytes, projectId, retained, retainedHash, retainedBytes, retainedAssetId };
 }
 
 describe.each([['fs', 'fs'], ['fs', 'sqlite'], ['sqlite', 'fs'], ['sqlite', 'sqlite']])('Native backup %s → %s', (sourceMode, targetMode) => {
@@ -93,6 +106,17 @@ describe.each([['fs', 'fs'], ['fs', 'sqlite'], ['sqlite', 'fs'], ['sqlite', 'sql
         }
         const assets = new AssetStore({ engine, directoriesByHandle: () => current.dirs });
         expect(await assets.readBlob(current.handle, data.hash)).toEqual(data.bytes);
+        expect(await assets.readBlob(current.handle, data.retainedHash)).toEqual(data.retainedBytes);
+        const recovery = new NativeRecoveryService({ engine, directoriesByHandle: () => current.dirs, assets });
+        const retained = (await recovery.list(current.handle)).find(item => item.id === data.retained.id);
+        expect(retained.expiresAt).toBe(data.retained.expiresAt);
+        for (const item of await recovery.list(current.handle)) {
+            const review = await recovery.preflightRestore(current.handle, item.id);
+            expect(review.allowed).toBe(true); await recovery.restore(current.handle, item.id, review.version);
+        }
+        expect(await assets.read(current.handle, data.retainedAssetId)).toMatchObject({ bytes: data.retainedBytes });
+        expect(fs.readFileSync(path.join(current.dirs.backups, 'retained.zip'), 'utf8')).toBe('Recoverable backup file');
+        expect((await engine.withTransaction(current.handle, tx => tx.getResource({ kind: NATIVE_RESOURCE_KINDS.maintenance, handle: current.handle, scope: 'storage-center:task:imported' }))).doc.status).toBe('paused-review');
         const projects = new ProjectStore({ directoriesByHandle: () => current.dirs });
         expect((await projects.list(current.handle)).map(project => project.projectId)).toContain(data.projectId);
         expect(fs.readFileSync(path.join(projects._root(current.handle), data.projectId, 'source.txt'), 'utf8')).toBe('Source 中文');

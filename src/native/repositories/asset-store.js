@@ -1,6 +1,7 @@
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { withAccountFileGrowth } from '../../storage/account-quota.js';
 import { retainedBlobHashes, recoveryReferences } from '../recovery-roots.js';
+import { assertAccountPath } from '../../storage/path-boundary.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
 import { validateMaintenanceBudget } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars, personaDocumentReferences } from '../persona-contract.js';
@@ -97,7 +98,7 @@ export class AssetStore {
     }
 
     _blobPath(handle, contentHash) {
-        return path.join(this._blobRoot(handle), contentHash.slice(0, 2), contentHash);
+        return assertAccountPath(this._directoriesByHandle(handle).root, path.join(this._blobRoot(handle), contentHash.slice(0, 2), contentHash));
     }
 
     async putBlob(handle, bytesValue) {

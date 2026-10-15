@@ -22,3 +22,7 @@ export function installStorageChangeListener(handleReader) {
 export async function notifyStorageChange(handle, targets) {
     const detail = { handle, targets, at: Date.now() }; channel?.postMessage(detail); await applyChange(detail);
 }
+export async function notifyCurrentStorageChange(targets) {
+    const handle = getHandle?.();
+    if (handle) await notifyStorageChange(handle, targets);
+}

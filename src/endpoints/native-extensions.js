@@ -8,6 +8,7 @@ import { listAuthoringReferences, readAuthoringReference } from '../native/autho
 import { hashNativeDocument, withNativeResourceWrite } from '../native/repositories/common.js';
 import { assertScriptTargets } from '../../public/shared/extension-contract.js';
 import { nativeMcpArtifacts } from '../native/mcp-artifacts.js';
+import { recycleNativeResource } from '../storage/center-instance.js';
 
 function localSourceMetadata(input, extraKeys = []) {
     const keys = ['name', 'id', 'expectedRevision', 'targets', 'clientInstanceId'];
@@ -27,7 +28,7 @@ async function localSourceBase(api, handle, metadata) {
     return previous;
 }
 
-export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine() }), install = readExternalExtension, captureIncident = captureBackendIncident, preparations = new ExtensionPreparationCache(), artifacts = nativeMcpArtifacts } = {}) {
+export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine(), lifecycle: recycleNativeResource }), install = readExternalExtension, captureIncident = captureBackendIncident, preparations = new ExtensionPreparationCache(), artifacts = nativeMcpArtifacts } = {}) {
     const router = express.Router();
     router.use((req, res, next) => req.user?.profile?.handle ? next() : res.sendStatus(401));
     const route = fn => async (req, res) => {

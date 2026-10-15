@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 import express from 'express';
 import sanitize from 'sanitize-filename';
-import { sync as writeFileSyncAtomic } from 'write-file-atomic';
+import { writeAccountFile } from '../storage/account-file-write.js';
 
 import { validateAssetFileName } from '../file-name.js';
 import { clientRelativePath } from '../util.js';
@@ -41,11 +41,12 @@ router.post('/upload', async (request, response) => {
             return response.status(400).send(validation.message);
 
         const pathToUpload = path.join(request.user.directories.files, request.body.name);
-        writeFileSyncAtomic(pathToUpload, request.body.data, 'base64');
+        await writeAccountFile(request.user.profile.handle, pathToUpload, Buffer.from(request.body.data, 'base64'));
         const url = clientRelativePath(request.user.directories.root, pathToUpload);
         console.info(`Uploaded file: ${url} from ${request.user.profile.handle}`);
         return response.send({ path: url });
     } catch (error) {
+        if (error.code === 'storage_quota_exceeded') return response.status(413).json({ error: error.code, details: error.details });
         console.error(error);
         return response.sendStatus(500);
     }

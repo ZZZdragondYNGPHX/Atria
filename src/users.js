@@ -20,7 +20,7 @@ import { USER_DIRECTORY_TEMPLATE, resolveUserDirectory, DEFAULT_USER, PUBLIC_DIR
 import { selectionToDumpTables } from './storage/migration/selection-mapping.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './storage/migration/lock.js';
 import { isReadOnly, setReadOnly } from './storage/read-only-mode.js';
-import { getConfigValue, color, delay, generateTimestamp, invalidateFirefoxCache, formatBytes, resolvePathWithinParent, isPathUnderParent, setPermissionsSync } from './util.js';
+import { getConfigValue, color, delay, generateTimestamp, invalidateFirefoxCache, resolvePathWithinParent, isPathUnderParent, setPermissionsSync } from './util.js';
 import { readSecret, writeSecret, SECRETS_FILE } from './endpoints/secrets.js';
 import { getContentOfType } from './endpoints/content-manager.js';
 import { serverDirectory } from './server-directory.js';
@@ -1173,12 +1173,8 @@ export async function enforceUserQuotaMiddleware(request, response, next) {
         const { measureAccount } = await import('./storage/resource-accounting.js');
         const usage = await measureAccount({ engine: getStorageEngine(), handle, directories: request.user.directories });
         if (usage.totalBytes == null) return response.status(503).json({ error: 'storage_usage_unavailable' });
-        const usageBytes = usage.totalBytes;
-        if (usageBytes > quotaBytes) {
-            const message = 'Storage quota exceeded. Used ' + formatBytes(usageBytes) + ' of ' + formatBytes(quotaBytes) + '.';
-            return response.status(413).json({ error: message, usedBytes: usageBytes, quotaBytes: quotaBytes });
-        }
-
+        // Final Engine/file publication checks actual net growth. An early
+        // request-size/over-quota rejection would also reject shrinking writes.
         return next();
     } catch (error) {
         console.error('Failed to enforce storage quota:', error);

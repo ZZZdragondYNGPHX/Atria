@@ -983,8 +983,7 @@ export function registerNativeResourceHandlers(tx) {
     };
     const parseRow = (kind, handle, resourceKey, row) => {
         if (!row) return null;
-        const doc = coerceJson(row.doc);
-        if (doc === null) return null;
+        const doc = typeof row.doc === 'string' ? JSON.parse(row.doc) : row.doc;
         return {
             key: decodeNativeResourceKey(kind, handle, resourceKey),
             doc,

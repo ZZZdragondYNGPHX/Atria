@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import pg from 'pg';
 import { PgEngine } from '../../../src/storage/engines/postgres-engine.js';
+import { USER_DIRECTORY_TEMPLATE } from '../../../src/constants.js';
 
 // Local dev container default. The atria role (DB owner) can both create and
 // drop schemas inside the atria_test database, so we use it end-to-end rather
@@ -28,7 +29,7 @@ const USER_DIR_KEYS = Object.freeze([
 
 function buildStubDirs(rootDir) {
     const dirs = {};
-    for (const key of USER_DIR_KEYS) dirs[key] = path.join(rootDir, key);
+    for (const key of USER_DIR_KEYS) dirs[key] = path.join(rootDir, 'u', USER_DIRECTORY_TEMPLATE[key]);
     return dirs;
 }
 
@@ -63,6 +64,7 @@ export async function makeTempPgEngineHarness() {
     return {
         engine,
         kind: 'postgres',
+        url: urlWithSchema,
         handle: 'u',
         schemaName,
         dataRoot: stubRoot,

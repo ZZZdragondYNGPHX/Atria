@@ -7,6 +7,7 @@ import { nativeRecord } from '../../src/native/repositories/common.js';
 import { measureAccount } from '../../src/storage/resource-accounting.js';
 import { resourceContentBytes } from '../../src/storage/resource-catalog.js';
 import { installAccountQuota } from '../../src/storage/account-quota.js';
+import { writeAccountFile } from '../../src/storage/account-file-write.js';
 
 const hash = 'a'.repeat(64);
 const fields = { scopeId: hash, evidenceId: hash, sourceDigest: hash, taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', checkpointId: hash, scope: 'probe', namespace: 'atri_probe', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'probe-resource', revision: 'v1' };
@@ -77,5 +78,39 @@ describe.each(CONTRACT_HARNESSES)('resource accounting — $name', ({ make }) =>
         const restored = await h.engine.withTransaction(h.handle, tx => tx.getResource(key));
         expect(restored.doc).toEqual(doc); expect(restored.integrity).toBe(record.integrity);
         expect((await measure()).totalBytes).toBe(resourceContentBytes(doc));
+    });
+    test('file publication checks actual net bytes and serializes concurrent uploads', async () => {
+        let limit = 100;
+        installAccountQuota(h.engine, { directoriesByHandle: () => h.dirs, limit: async () => limit });
+        const files = ['one.bin', 'two.bin'].map(name => path.join(h.dirs.root, name));
+        const results = await Promise.allSettled(files.map(file => writeAccountFile(h.handle, file, Buffer.alloc(100), h.engine)));
+        expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+        const winner = files[results.findIndex(result => result.status === 'fulfilled')];
+        await writeAccountFile(h.handle, winner, Buffer.alloc(100, 1), h.engine);
+        expect((await measure()).totalBytes).toBe(100);
+        limit = 0;
+        await writeAccountFile(h.handle, winner, Buffer.alloc(50), h.engine);
+        expect((await measure()).totalBytes).toBe(50);
+    });
+    test('a complete Native transaction admits its final net growth regardless of write order', async () => {
+        const doc = { text: 'Retained data' }, one = fixtureKey(K.world, h.handle), two = fixtureKey(K.world, h.handle);
+        installAccountQuota(h.engine, { directoriesByHandle: () => h.dirs, limit: async () => resourceContentBytes(doc) });
+        await h.engine.withTransaction(h.handle, tx => tx.putResource(one, nativeRecord(doc)));
+        await h.engine.withTransaction(h.handle, async tx => { await tx.putResource(two, nativeRecord(doc)); await tx.deleteResource(one); });
+        expect((await measure()).totalBytes).toBe(resourceContentBytes(doc));
+        expect(await h.engine.withTransaction(h.handle, tx => tx.getResource(one))).toBeNull();
+    });
+    test('independent shared-database engines serialize quota admission with a single-connection pool', async () => {
+        if (!['mysql', 'postgres'].includes(h.kind)) return;
+        const other = new h.engine.constructor({ url: h.url, poolSize: 1 });
+        try {
+            await other.ping(h.handle);
+            const doc = { value: 'Only one writer fits' }, options = { directoriesByHandle: () => h.dirs, limit: async () => resourceContentBytes(doc) };
+            installAccountQuota(h.engine, options); installAccountQuota(other, options);
+            const results = await Promise.allSettled([h.engine, other].map(engine => engine.withTransaction(h.handle, tx => tx.putResource(fixtureKey(K.world, h.handle), nativeRecord(doc)))));
+            expect(results.filter(item => item.status === 'fulfilled')).toHaveLength(1);
+            expect(results.find(item => item.status === 'rejected').reason.code).toBe('storage_quota_exceeded');
+            expect((await measure()).totalBytes).toBe(resourceContentBytes(doc));
+        } finally { await other.close(); }
     });
 });

@@ -55,18 +55,19 @@ import { credentialFetch } from '../native/model-prompt-runtime/credential-fetch
 import { mountMcpMediaAssets } from '../native/mcp-media-assets.js';
 import { hashNativeDocument } from '../native/repositories/common.js';
 import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
+import { recycleNativeResource } from '../storage/center-instance.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
     const { studio, agent } = getNativeStudioServices();
-    const persistence = new NativeModelPromptPersistence({ engine: getStorageEngine() });
+    const persistence = new NativeModelPromptPersistence({ engine: getStorageEngine(), lifecycle: recycleNativeResource });
     const credentials = new CredentialTargetAuthority({ persistence });
     return new NativeGenerationHost({
         persistence,
-        library: new VersionedJsonResourceHandler({ engine: getStorageEngine() }),
+        library: new VersionedJsonResourceHandler({ engine: getStorageEngine(), lifecycle: recycleNativeResource }),
         sessionCore: core, packageInstaller, studio, agent,
         skillRepository: handle => createSkillRepository(getUserDirectories(handle).root),
-        extensions: new ExtensionsStore({ engine: getStorageEngine() }),
+        extensions: new ExtensionsStore({ engine: getStorageEngine(), lifecycle: recycleNativeResource }),
         providers: {
             'provider.openai-compatible': createHttpGenerationProvider({ fetchImpl: credentialFetch }),
             'provider.raw-text': createHttpGenerationProvider({ format: 'raw-text', fetchImpl: credentialFetch }),

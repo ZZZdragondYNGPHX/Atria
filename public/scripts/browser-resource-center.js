@@ -21,7 +21,8 @@ export class BrowserResourceCenter {
     save(task) {
         const list = this.tasks().filter(item => item.id !== task.id);
         // Terminal metadata is bounded; active work never disappears to make room.
-        sessionStorage.setItem(TASK_KEY, JSON.stringify([task, ...list].slice(0, 100)));
+        const all = [task, ...list], active = all.filter(item => ['preview', 'running', 'queued', 'interrupted'].includes(item.status));
+        sessionStorage.setItem(TASK_KEY, JSON.stringify([...active, ...all.filter(item => !active.includes(item)).slice(0, 100)]));
         return task;
     }
     async snapshot() {

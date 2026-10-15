@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { writeAccountFile } from '../storage/account-file-write.js';
 import path from 'node:path';
 
 import express from 'express';
@@ -262,7 +263,7 @@ async function backupUserSettings(handle, userDirectories, preventDuplicates) {
     }
 
     const backupFile = path.join(userDirectories.backups, `${getSettingsBackupFilePrefix(handle)}${generateTimestamp()}.json`);
-    fs.writeFileSync(backupFile, serialized, 'utf8');
+    await writeAccountFile(handle, backupFile, Buffer.from(serialized));
     removeOldBackups(userDirectories.backups, `settings_${handle}`);
 }
 

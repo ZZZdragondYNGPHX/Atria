@@ -19,7 +19,7 @@ export function getResourceCenter() {
 export async function recycleNativeResource(handle, target, expected = {}) {
     const center = getResourceCenter();
     const checked = { ...target };
-    for (const field of ['expectedRevisionId', 'baseVersionId', 'expectedIntegrity', 'expectedFingerprint', 'baseRevision']) {
+    for (const field of ['expectedRevisionId', 'baseVersionId', 'expectedIntegrity', 'expectedFingerprint', 'baseRevision', 'expectedRevision']) {
         if (expected?.[field] !== undefined) checked[field] = expected[field];
     }
     const preview = await center.preview(handle, 'trash', [checked]);

@@ -4,6 +4,7 @@ import { withNativeResourceWrite } from './repositories/common.js';
 import { recoveryRecords } from './recovery-roots.js';
 import { ConflictError } from '../storage/errors.js';
 import { commitProjectHistory, recoverProjectHistory } from './project-history-publication.js';
+import { assertAccountPath } from '../storage/path-boundary.js';
 import path from 'node:path';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { resolveUserDirectory } from '../constants.js';
@@ -87,7 +88,7 @@ export class ProjectStore {
 
     _projectDir(handle, projectId) {
         const id = assertNativeId(projectId, 'project', 'ProjectStore.projectId');
-        return path.join(this._root(handle), id);
+        return assertAccountPath(this._directoriesByHandle(handle).root, path.join(this._root(handle), id));
     }
 
     _manifestPath(handle, projectId) {
@@ -176,7 +177,7 @@ export class ProjectStore {
     async readFile(handle, projectId, relativePath) {
         const safePath = normalizeRelativePath(relativePath);
         const projectDir = this._projectDir(handle, projectId);
-        const filePath = path.join(projectDir, ...safePath.split('/'));
+        const filePath = assertAccountPath(projectDir, path.join(projectDir, ...safePath.split('/')));
         if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return null;
         return fs.readFileSync(filePath);
     }
@@ -188,7 +189,7 @@ export class ProjectStore {
         if (!fs.existsSync(this._manifestPath(handle, projectId))) {
             throw new Error('Studio Project does not exist: ' + projectId);
         }
-        const filePath = path.join(projectDir, ...safePath.split('/'));
+        const filePath = assertAccountPath(projectDir, path.join(projectDir, ...safePath.split('/')));
         const bytes = toBuffer(value);
         await withAccountFileGrowth(handle, () => bytes.length - (fs.existsSync(filePath) ? fs.statSync(filePath).size : 0), () => {
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -208,8 +209,8 @@ export class ProjectStore {
             throw new Error('Studio Project does not exist: ' + projectId);
         }
 
-        const sourcePath = path.join(projectDir, ...fromPath.split('/'));
-        const destinationPath = path.join(projectDir, ...toPath.split('/'));
+        const sourcePath = assertAccountPath(projectDir, path.join(projectDir, ...fromPath.split('/')));
+        const destinationPath = assertAccountPath(projectDir, path.join(projectDir, ...toPath.split('/')));
         if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
             throw new Error('Project source does not exist: ' + fromPath);
         }
@@ -225,7 +226,8 @@ export class ProjectStore {
     async deleteFile(handle, projectId, relativePath) {
         assertWritable();
         const safePath = normalizeRelativePath(relativePath);
-        const filePath = path.join(this._projectDir(handle, projectId), ...safePath.split('/'));
+        const directory = this._projectDir(handle, projectId);
+        const filePath = assertAccountPath(directory, path.join(directory, ...safePath.split('/')));
         if (!fs.existsSync(filePath)) return false;
         fs.rmSync(filePath, { force: true });
         return true;

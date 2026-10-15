@@ -44,8 +44,12 @@ export async function recoveryReferences(tx, handle, key) {
     ).map(row => ({ kind: 'recycle-bin', recoveryId: row.doc.id }));
 }
 
-export async function assertRecoveryWrite(tx, key) {
+export async function assertRecoveryWrite(tx, key, proposed = null) {
     if (publication.getStore() || key.kind === K.maintenance || !Object.values(K).includes(key.kind)) return;
+    if (key.kind === K.runControl && proposed?.doc?.mode === 'ironman' && proposed.doc.status === 'terminal') {
+        const current = await tx.getResource(key);
+        if (current?.doc?.status === 'terminal' && current.integrity === hashNativeDocument(proposed.doc)) return;
+    }
     for (const row of await recoveryRecords(tx, key.handle)) {
         if ((row.doc.records ?? []).some(record => {
             const original = record.key;

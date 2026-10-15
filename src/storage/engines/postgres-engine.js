@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { StringDecoder } from 'node:string_decoder';
 import pg from 'pg';
 import { PgTransaction } from './postgres-engine-transaction.js';
@@ -68,6 +69,7 @@ export class PgEngine {
             throw new TypeError('PgEngine requires { url: "postgresql://user:pass@host:port/db" }');
         }
         this.kind = 'postgres';
+        this._accountLease = new AsyncLocalStorage();
         this._retries = retries;
         // pg.Pool keyed on connection-string + max. Max caps concurrent
         // leases so withTransaction queues past the limit instead of opening
@@ -121,11 +123,23 @@ export class PgEngine {
         }
     }
 
+    async withAccountLock(handle, operation) {
+        await this._ensureSchema();
+        if (this._accountLease.getStore()?.handle === handle) return operation();
+        const client = await this._pool.connect();
+        const name = 'atria:account:' + handle;
+        try {
+            await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [name]);
+            try { return await this._accountLease.run({ handle, client }, operation); } finally { await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [name]); }
+        } finally { client.release(); }
+    }
+
     async withTransaction(handle, fn) {
         await this._ensureSchema();
         try {
             return await withRetry(async () => {
-                const client = await this._pool.connect();
+                const leased = this._accountLease.getStore();
+                const client = leased?.handle === handle ? leased.client : await this._pool.connect();
                 try {
                     await client.query('BEGIN');
                     const tx = new PgTransaction({ client, handle });
@@ -138,7 +152,7 @@ export class PgEngine {
                         throw err;
                     }
                 } finally {
-                    client.release();
+                    if (client !== leased?.client) client.release();
                 }
             }, { retries: this._retries.transient });
         } catch (err) {

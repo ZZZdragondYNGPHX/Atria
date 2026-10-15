@@ -4,6 +4,8 @@ import { assertWritable } from '../../storage/read-only-mode.js';
 import { withRuntimeWrite } from './persistence.js';
 import { GenerationError, immutable } from './execution-utils.js';
 import { projectAgentResumeMessages } from '../../../public/shared/project-agent-conversation.js';
+import { ConflictError } from '../../storage/errors.js';
+import { resourceContentBytes, resourceFingerprint } from '../../storage/resource-catalog.js';
 
 export const runtimeCheckpointLimits = Object.freeze({ count: 128, totalBytes: 16 * 1024 * 1024, entryBytes: 2 * 1024 * 1024, ttlMs: 600000 });
 const unavailable = () => { throw new GenerationError('generation_continuation_unavailable'); };
@@ -49,7 +51,7 @@ export class RuntimeCheckpointStore {
             return await withRuntimeWrite(this.handle, () => this.engine.withTransaction(this.handle, operation));
         } catch { return unavailable(); }
     }
-    valid(record) {
+    valid(record, { includeExpired = false } = {}) {
         try {
             const doc = record?.doc;
             return doc?.schemaVersion === 2 && /^[a-f0-9]{64}$/.test(doc.checkpointId)
@@ -57,12 +59,29 @@ export class RuntimeCheckpointStore {
                 && doc.bindingFingerprint === hashNativeDocument(doc.binding)
                 && record.integrity === hashNativeDocument(doc)
                 && Number.isSafeInteger(doc.createdAt) && Number.isSafeInteger(doc.expiresAt)
-                && doc.createdAt <= this.now() && doc.expiresAt > this.now()
+                && doc.createdAt <= this.now() && (includeExpired || doc.expiresAt > this.now())
                 && doc.expiresAt - doc.createdAt === runtimeCheckpointLimits.ttlMs
                 && Array.isArray(doc.sequence) && Array.isArray(doc.calls) && typeof doc.text === 'string'
                 && Buffer.byteLength(JSON.stringify(doc)) <= runtimeCheckpointLimits.entryBytes
                 && typeof doc.contentWire === 'string' && Array.isArray(JSON.parse(doc.contentWire));
         } catch { return false; }
+    }
+    expired(record) { return this.valid(record, { includeExpired: true }) && record.doc.expiresAt <= this.now(); }
+    async inspectExpired(checkpointId) {
+        return withRuntimeWrite(this.handle, () => this.engine.withTransaction(this.handle, async tx => {
+            const row = await tx.getResource(this.key(checkpointId));
+            if (!this.expired(row)) throw new ConflictError('native_checkpoint_not_expired');
+            return { bytes: resourceContentBytes(row.doc), version: resourceFingerprint(row), reason: 'expired-runtime-checkpoint', name: checkpointId };
+        }));
+    }
+    async cleanExpired(checkpointId, expectedVersion) {
+        return withRuntimeWrite(this.handle, () => this.engine.withTransaction(this.handle, async tx => {
+            assertWritable();
+            const checked = await this.inspectExpired(checkpointId);
+            if (checked.version !== expectedVersion) throw new ConflictError('storage_preview_stale');
+            await tx.deleteResource(this.key(checkpointId));
+            return { cleaned: true, processedBytes: checked.bytes, physicalBytesReleased: null };
+        }));
     }
     async save(state, entry) {
         const createdAt = this.now();
