@@ -398,7 +398,7 @@ Receipt按稳定observationId追加，不覆盖unknown或矛盾历史。原Port�
 
 `NodeAttemptReceipt`沿原`atri_orchestration_record/receipt`保存，封闭字段为`schemaVersion,receiptKind:'node_attempt',receiptId,runId,nodeAttemptId,epoch,graphRevision,sourceBindingDigest,inputState,inputDigest,outcome,resultRefs,effectReceiptRefs,decisionSeq,reasonCode,createdAt`。receiptId由Run+Attempt稳定推导；Attempt终态、不可变收据、Root/event/command同事务，不能靠可变status伪造分支成功。普通settle拒绝Join/Output节点；已准备或未知Effect未结清时不能终结Attempt。原Source/Result/费用收据验证Port为必填，不在V3影子实现。
 
-新增`ojoin_*`身份，沿原`record/join`分别保存`barrier:<joinId>`和`joinId`：前者是不可变`JoinBarrier`，后者是不可变`JoinReceipt`，不是新metadata kind或独立存储。Barrier字段为`schemaVersion,joinId,runId,fanoutAttemptId,nodeAttemptId,epoch,graphRevision,memberAttemptIds,memberEdges,sourceBindingDigest,parentBudgetRef,policy,quorum,deadlineAt,frozenSeq,createdAt`；稳定joinId绑定Join Attempt。`memberEdges:[{nodeAttemptId,edgeIds}]`冻结每个最终成员到Join的直接输入边；多步分支冻结最终成员的reserved身份，不跳过中间任务。原Fanout分组/parent reservation Port验证完整成员；冻结事务只接受同epoch/source的pending或reserved分支，已启动成员与冻结竞态必有一方拒绝，不能补录进旧屏障。原Scheduler permits/真实父子预算仍归P3。
+新增`ojoin_*`身份，沿原`record/join`分别保存`barrier:<joinId>`和`joinId`：前者是不可变`JoinBarrier`，后者是不可变`JoinReceipt`，不是新metadata kind或独立存储。Barrier字段为`schemaVersion,joinId,runId,fanoutAttemptId,nodeAttemptId,epoch,graphRevision,memberAttemptIds,memberEdges,fanoutFrameRef,sourceBindingDigest,parentBudgetRef,policy,quorum,deadlineAt,frozenSeq,createdAt`；稳定joinId绑定Join Attempt。`memberEdges:[{nodeAttemptId,edgeIds}]`冻结每个最终成员到Join的直接输入边；多步分支冻结最终成员的reserved身份，不跳过中间任务。`fanoutFrameRef:null|{receiptId,integrity}`绑定§17.12真实分组；有Frame时成员须精确覆盖该Frame中直接输入此Join的最终成员，不能用宽松Port截断屏障，settle重验Frame引用。独立核心测试尚可由必填原membership Port提供分组证据，生产原Scheduler仍须实际Frame/完整scope准入，不得借null免检。原Fanout分组/parent reservation Port验证完整成员；冻结事务只接受同epoch/source的pending或reserved分支，已启动成员与冻结竞态必有一方拒绝，不能补录进旧屏障。原Scheduler permits/真实父子预算仍归P3。
 
 JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,edgeAdmissionRefs,decisionSeq`；cutoffSeq是本次决策前已持久Root.eventSeq，decisionSeq=cutoffSeq+1。有效成功按成员不可变收据的decisionSeq/AttemptId稳定排序；any-success取首个，count-quorum取前quorum个。partial不计成功配额；all-success有失败不能complete，all-settled等待全部或显式deadline；不满足部分输出合同则failed。deadline只采纳不晚于冻结deadlineAt持久化的合法Result，截止后但结算前入库也排除。结果需原audience/source Port重新验证，缺证据拒绝/排除；收据列明未结算、失败、未采纳与迟到成员。
 
@@ -444,12 +444,24 @@ Fanout冻结多步分支时，最终成员的实际上游Result可能尚不存�
 
 内部`AttemptController.reserve`以Run+producer Attempt+node稳定身份，在Root/record/command同CAS预留一槽，计入attempt/step高水位；原fanout scope Port必填，只校验许可，不代表原资金reservation。Join Barrier可冻结这些身份；后续prepare不能换成员ID。真实依赖receipt已存在后，Transition带reservedAttemptId、复核原Source/Result/Grant/预算和creator epoch，原子填入准备快照并计edge/loop/step；槽位已计不再重复加attempts。相同请求重放不能擦除已准备输入，改变绑定也不能覆盖prepared成员。
 
-只有尚未prepared的reserved输入可按合法GraphPatch补依赖，prepared/终结快照保持冻结。取消未准备成员追加inputState=reserved、inputDigest=null的取消收据，禁止伪造结果、费用或退款；Join按未完成/取消事实结算。NodeAttemptReceipt保留inputState；source/epoch不匹配拒绝准备。完整fanout dispatch、隐式入口组/嵌套组及原scheduler/budget tree仍在P2/P3继续，不以预留身份冒充这些能力完成。当前Transition/Join共用边计数见§17.11，Fanout dispatch后续必须接同一入口。
+只有尚未prepared的reserved输入可按合法GraphPatch补依赖，prepared/终结快照保持冻结。取消未准备成员追加inputState=reserved、inputDigest=null的取消收据，禁止伪造结果、费用或退款；Join按未完成/取消事实结算。NodeAttemptReceipt保留inputState；source/epoch不匹配拒绝准备。完整Host调度、隐式入口组及原scheduler/budget tree仍在P2/P3继续，不以预留身份冒充这些能力完成。Transition/Join共享边计数见§17.11，显式Fanout及嵌套控制见§17.12。
 
 ### 17.11 共享边准入与可复核的GraphPatch历史
 
 内部`admitGraphEdges`在Run同CAS接收`transfers:[{edgeId,producerAttemptId,nodeAttemptId}]`；核对同Run/epoch/source的实际Attempt及edge端点，不准调用方伪造新的计费身份。`receiptKind:'edge_admission'`沿原record/receipt不可变保存，字段为`schemaVersion,receiptKind,receiptId,runId,epoch,graphRevision,edgeId,producerAttemptId,nodeAttemptId,sourceBindingDigest,edgeVisit,loopIteration,decisionSeq,createdAt`。身份由Run+transfer稳定推导，已存在时校验完整性/累计高水位并复用，不重复计数；全部新边先检查单边/全局edge/显式回边上限，后与Root/command/决策原子写入。不是Compute银行或发送许可。
 
-Transition收据增加`edgeAdmissionRefs`。Join关闭屏障时统一准入所有冻结memberEdges，包含截止时未完成/取消的显式缺席；这是屏障依赖的控制成本，不声称实际调用已经发出，不把缺席结果当success。已有对应准入可复用；余额不足不落半份Join收据/Attempt终态/edge tickets。Fanout的出边及完整组调度尚须后续接入此入口，不据此宣布整个G2完成。
+Transition收据增加`edgeAdmissionRefs`。Join关闭屏障时统一准入所有冻结memberEdges，包含截止时未完成/取消的显式缺席；这是屏障依赖的控制成本，不声称实际调用已经发出，不把缺席结果当success。已有对应准入可复用；余额不足不落半份Join收据/Attempt终态/edge tickets。显式Fanout出边也沿§17.12接此入口；完整Host/原Scheduler调度仍须后续完成，不据此宣布整个G2完成。
 
 GraphPatchReceipt增加`previousGraphRevision,producerInputDigest,sourceBindingDigest,reasonRefs,appliedOperations`。接受时保存经过完整校验的操作，供后续图修订复核；拒绝时appliedOperations显式空数组，只保留安全摘要，不存未知payload。读取既有patch历史先核对原record integrity、schema/Run/accepted/操作数组；损坏即`native_orchestration_graph_history_unavailable`，不能猜测no-progress或静默继续。单batch对同pending Attempt的状态操作合并为最终一次写入，不产生内部CAS自冲突。
+
+### 17.12 显式Fanout Frame、成员继承与逻辑并发
+
+Fanout Node policy封闭为`{maxConcurrency,failurePolicy:'continue'|'fail_fast'}`，随不可变Plan hash冻结，不为旧配置补默认值。Fanout/Join是确定性控制节点，capabilities必须空；它们的被动running不占执行资源并发槽，step/deadline/edge计数仍照常累计。因此单槽父Run与嵌套分组不会被等待中的Fanout自身堵死；实际执行许可仍需原NativeTaskScheduler，不在V3另造队列。
+
+`FanoutController.freeze`在Run同CAS接收`fanoutAttemptId,branches:[{entryAttemptId,memberAttemptIds,scopeNodeIds}]`，排序后的内容绑定稳定command；所有即时出边须由实际entry覆盖。Entry为真实prepared且未启动的Attempt，最终成员可prepared或reserved；scope必须为已存在非Output节点，member在同scope内从entry可达。原Group Port必填，只读复核Source/Audience/输入授权、完整分组和原parent reservation，不得在CAS回调预留费用或发调用。范围未知、已启动成员、截断即时分支、过期source/epoch或超限均拒绝整组。原始入口输入编译、隐式根分组、动态scope准入与真实Host scheduler仍需P2/P3接线，不把generic beginAttempt当生产依赖准入。
+
+`FanoutFrame`沿原record/receipt不可变保存，封闭字段为`schemaVersion,receiptKind:'fanout_frame',receiptId,runId,fanoutAttemptId,epoch,graphRevision,sourceBindingDigest,parentBudgetRef,branches,maxConcurrency,failurePolicy,edgeAdmissionRefs,decisionSeq,createdAt`；ID由Run+Fanout Attempt稳定推导。出边准入、Frame/成员关系、Root/event/command同事务，edge tickets沿§17.11复用，ACK丢失/重放不双计。并发为min(Node policy,Run ceiling)。
+
+成员关系也是原record/receipt中的不可变`fanout_membership`，字段为`schemaVersion,receiptKind,receiptId,runId,frameId,nodeAttemptId,epoch,sourceBindingDigest,decisionSeq,createdAt`；ID由Run+Frame+具体Attempt推导。初始entry/最终成员在freeze绑定，后续Transition从producer继承仍包含target的冻结scope，嵌套freeze也继承外层组；按真实Attempt票据计数，避免同名节点的后续尝试误占旧组。成员关系不含货币余额、Scheduler lease或Context正文。
+
+activate在同Run CAS核对所属组的执行中成员数；effect prepare/claim重查fail_fast，已ready兄弟Effect也不能在失败后领取发送claim。fail_fast以持久且完整性有效的非completed成员结算收据为证据，阻止后续准入；不声称远端已取消/费用已退。已发Effect的迟到真实收据继续append，unknown仍需原Port reconcile。continue保留失败但不阻断其它分支。原资源许可/收费/实际pre-send校验和停止派发、取消请求的Host调度器接线归P3，当前受控Port测试不等于这些实证。

@@ -256,3 +256,10 @@
 - 接受的GraphPatch保存校验后的操作、前后graph revision和producer/source证据；拒绝提案不存未知原payload。损坏的历史拒绝后续提案，不猜测进度。一个batch对同pending Attempt的多次状态操作合并成最终一次写入。
 - 最新定向证据：Join38/38、Transition28/28通过；修正Graph纯控制器fixture后Graph16/16与reservation17/17通过，1个SQLite上的FS专用窗口N/A。定向生产ESLint/diff check通过。首轮Graph一项因Windows保留端口49572在业务前失败；沿既有新隔离根fixture预置后通过，生产Owner固定port/拒绝策略未改。首个组合命令另有一个拼错的测试文件名，已用真实attempt-reservation.test.js执行纠正，不记作通过。
 - Docker故障仍在，修改后的MySQL/Pg用例BLOCKED/NOT_RUN；受控Source/Result/Budget Ports也不当原服务实证。P1/P2仍IN_PROGRESS，完整Fanout组/出边调度、Delegate/Handoff/Review/recovery与P3–P8继续；真实三端/批准/费用/质量没有通过，main未集成。
+
+## 2026-10-15 — P2第七组：显式Fanout与嵌套逻辑限额
+
+- Source `d90787f5f` → `d69222198`已提交推送。显式Fanout冻结真实prepared entry、最终reserved/prepared成员及scope，覆盖全部即时出边；Frame/实际Attempt成员票据/共享edge tickets/Root/command同CAS。Transition和嵌套分组按冻结scope继承真实成员身份，未新增queue、预算或metadata kind。Join绑定Frame并拒绝原Port宽松放行的成员截断。
+- Fanout policy必填failurePolicy=continue/fail_fast，随Plan冻结；Fanout/Join禁止Effect capabilities，其被动控制不占执行资源槽，单父槽与嵌套不会因等待自身死锁。Activate核对组逻辑并发；Effect prepare/claim复查持久失败，失败后已ready兄弟Effect不再领取发送claim，原budget ref保留，不冒称退款或远端取消。
+- 定向FS/SQLite证据：新Fanout28case全通过，随后新增受支持单父槽case定向2/2通过（其余28是name-filter skip，不是N/A）。三文件Fanout/Graph/Plan59/59；关联Join38、Transition28、reservation17（另1 SQLite上的FS窗口N/A）已通过；最终Effect/Approval22/22。生产定向ESLint/diff check通过。Effect首轮一项又因OS保留port49826在业务前EACCES，纯控制器fixture预置后22/22；生产固定Owner未改。新增单槽测试首稿误用schema禁止的0并发，在authoring就拒绝；改为冻结合同支持的1槽验证后通过，无放宽生产schema。
+- 当前仅受控Port控制实证。原Group完整性/Source/Audience/真实入口编译、隐式入口组、原NativeTaskScheduler permits和Compute bank、实际发送/批准未接通；完整P1/P2仍IN_PROGRESS，Delegate/Handoff/Review/recovery及P3–P8继续。MySQL/Pg新case因Docker不可用BLOCKED/NOT_RUN；三端真实客户端与最终质量未通过，main未集成。
