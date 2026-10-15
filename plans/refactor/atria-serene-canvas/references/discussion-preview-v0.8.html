@@ -277,7 +277,7 @@ function mountDockPreview() {
   function state() {
     document.body.dataset.dockInput=mode; dock.dataset.edge=edge; handle.dataset.edge=edge; placement.value=edge;
     dock.inert=!visible||gesture?.kind==='reveal'; dock.setAttribute('aria-hidden',String(!visible));
-    handle.hidden=!touch()||(visible&&!gesture); handle.dataset.captured=String(Boolean(gesture)); handle.setAttribute('aria-expanded',String(visible));
+    handle.hidden=!touch()||(visible&&!gesture&&!suppressedClick); handle.dataset.captured=String(Boolean(gesture||suppressedClick)); handle.setAttribute('aria-expanded',String(visible));
     reveal.setAttribute('aria-expanded',String(visible)); account.setAttribute('aria-expanded',String(menuOpen));
     measured={w:dock.offsetWidth,h:dock.offsetHeight};
   }
@@ -356,7 +356,7 @@ function mountDockPreview() {
       pose.x=g.hidden.x+(g.shown.x-g.hidden.x)*g.progress;pose.y=g.hidden.y+(g.shown.y-g.hidden.y)*g.progress;pose.vx=pose.vy=0;paint();
     }
   }
-  function release(g){clearTimeout(g.hold);gesture=null;guide(null);if(g.node.hasPointerCapture(g.id))g.node.releasePointerCapture(g.id);suppressedClick={id:g.id,x:g.x,y:g.y,until:performance.now()+600};state();}
+  function release(g){clearTimeout(g.hold);gesture=null;guide(null);if(g.node.hasPointerCapture(g.id))g.node.releasePointerCapture(g.id);suppressedClick={id:g.id,x:g.x,y:g.y,until:performance.now()+600};const token=suppressedClick;setTimeout(()=>{if(suppressedClick===token){suppressedClick=null;state();}},600);state();}
   function pointerUp(event){
     const g=gesture;if(!g||g.id!==event.pointerId)return;
     lastPointer={x:event.clientX,y:event.clientY};
@@ -417,7 +417,7 @@ function mountDockPreview() {
   dock.addEventListener('pointerleave',scheduleHide);dock.addEventListener('focusin',()=>{cancelTimers();if(!visible)show(true,{instant:true});});
   for(const el of [dock,menu])el.addEventListener('focusout',()=>queueMicrotask(()=>{if(inputMode==='keyboard'&&!focusWithin())scheduleHide();}));
   document.addEventListener('pointerdown',()=>{suppressedClick=null;},true);
-  document.addEventListener('click',event=>{const old=suppressedClick;suppressedClick=null;if(old&&performance.now()<old.until&&event.pointerId===old.id&&Math.hypot(event.clientX-old.x,event.clientY-old.y)<12){event.preventDefault();event.stopImmediatePropagation();}},true);
+  document.addEventListener('click',event=>{const old=suppressedClick;suppressedClick=null;if(old)state();if(old&&performance.now()<old.until&&event.pointerId===old.id&&Math.hypot(event.clientX-old.x,event.clientY-old.y)<12){event.preventDefault();event.stopImmediatePropagation();}},true);
   document.addEventListener('pointermove',pointerMoved,{passive:true});document.addEventListener('pointerdown',outside);document.addEventListener('keydown',keydown);
   document.addEventListener('pointerdown',event=>{if(gesture&&event.pointerId!==gesture.id)cancelGesture();});
   document.addEventListener('pointerleave',()=>{lastPointer={x:-100,y:-100};scheduleHide();});
@@ -428,7 +428,20 @@ function mountDockPreview() {
   input.addEventListener('change',configure);placement.addEventListener('change',()=>chooseEdge(placement.value,{instant:true}));
   reveal.addEventListener('click',event=>{show(true,{instant:event.detail===0});dock.querySelector('button[data-scene]')?.focus({preventScroll:true});});
   configure(); if(['left','right','bottom'].includes(params.get('edge'))){edge=params.get('edge');edges[mode]=edge;state();moveTo(targets(),true);syncLabels();}
-  return {syncLabels,bindFrame(frame){frame.addEventListener('load',()=>{try{const doc=frame.contentDocument,style=doc.createElement('style');style.textContent='.spatial-dock{display:none!important}#canvas{margin-left:0!important}';doc.head.append(style);doc.addEventListener('pointerdown',()=>{closeMenu();if(touch())show(false,{force:true});});doc.addEventListener('keydown',keydown);}catch{/* Same-origin preview only. */}});}};
+  return {syncLabels,bindFrame(frame){
+    const installed=new WeakSet();
+    function install(){
+      if(!frame.isConnected)return true;
+      try{
+        const doc=frame.contentDocument;if(!doc||doc.URL==='about:blank'||doc.readyState==='loading')return false;
+        if(installed.has(doc))return true;installed.add(doc);
+        const style=doc.createElement('style');style.textContent='.spatial-dock{display:none!important}#canvas{margin-left:0!important}';doc.head.append(style);
+        doc.addEventListener('pointermove',event=>{const rect=frame.getBoundingClientRect();pointerMoved({pointerType:event.pointerType,clientX:rect.left+event.clientX,clientY:rect.top+event.clientY});},{passive:true});
+        doc.addEventListener('pointerdown',()=>{closeMenu();if(touch())show(false,{force:true});else scheduleHide();});doc.addEventListener('keydown',keydown);return true;
+      }catch{return true; /* Same-origin preview only. */}
+    }
+    frame.addEventListener('load',install);function ready(){if(!install())requestAnimationFrame(ready);}ready();
+  }};
 }
 
 const dockPreview=mountDockPreview();

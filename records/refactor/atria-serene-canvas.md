@@ -189,3 +189,5 @@ v0.7仅补充代表布局与内存演示，未获得新视觉基线接受；v0.1
 实际执行：内联模块语法、Git diff检查；1440px三边唤出/收起、鼠标/键盘/菜单/取消/输入保持；390/320px触摸长按/短滑/取消/选择后收起/滚动不唤出/减动快速重复；900px构图与320px双语；高级域原型入口、快速反向、IME。失败均定位并修复后复测，具体原型证据与动效审查表只归 [references/README.md](../../plans/refactor/atria-serene-canvas/references/README.md#v08-dock-actual-prototype-checks)。本次没有产品API调用，pageerror为0；本机4倍CPU采样100帧间隔的p95为16.8ms，不能代替真机/完整trace。
 
 明确调用review-animations，结论Approve仅限v0.8新增范围；web-design-guidelines修复高级域入口、菜单单选语义与跳到正文路径。当前仅设计稿交付，等待交互反馈；产品接入、位置持久化、最终键盘入口和真实手机系统手势尚未验收。此前I4已完成产品结果保持，不把新原型当作产品新增功能验收。
+
+D2最终复查补充：修复旧稿iframe在字体等待期间未绑定Dock事件，以及触屏唤出后点击穿透到iframe引发的焦点误收起。桌面嵌入内容移动、手机唤出/点内容收起与减动快速重复已复测；详细证据仍归references/README.md。新增稿件混合换行在最终暂存检查中修正，v0.7保持原样。
