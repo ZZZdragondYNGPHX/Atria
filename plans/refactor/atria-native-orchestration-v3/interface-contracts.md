@@ -361,3 +361,9 @@ R01设计闭包限定在已锁定main的tracked源码/资产/路由/设置/API�
 R06技术基线冻结为现有ESM/DOM与单Draft reducer；手机List/Inspector覆盖完整编辑，桌面必须实现D8的可交互Graph。P5先验证原生SVG渲染/命中层+现有Pointer/Keyboard事件接线的局部实现，布局与绘制作为可替换**视图模块**；若目标规模实测不满足，再在同一Draft/View adapter后选择现有Cytoscape候选，不能引入第二Draft/SPA或用只读预览替代Graph编辑。哪个backend通过、具体节点规模/帧时延/内存阈值归P5实测后记录，不是待选产品方向，也不需要E0先完成PoC才能获准写PoC。
 
 三端L3与四Engine最终适用能力仍属P7硬验收，不删除失败项或把模拟viewport当Termux。未测性能/浏览器安全/协议/硬件只声明真实保证级别；当前所有这些V3实证NOT_RUN/BLOCKED，设计闭合不把其改为PASS。
+
+## 17. P1 authoring schema实施细化（2026-10-15）
+
+实现`a4d7b42e1`新增纯共享`native-orchestration-contracts.js`及Host PlanRepository。Definition使用封闭nodes/typed ports/edges/entryNodeIds/capabilityCeiling/graphChangePolicy/limits/outputContract；每edge显式maxVisits，每node kind独立policy白名单，所有node须从入口可达且有唯一Output路径。精确dependency pin包含pinId/原Domain port/resourceRef/integrity；原Domain adapter必须验证resourceRef的领域union/权限/当前性，单凭pin schema不授予权限。几何viewState与语义hash分离；validationDigest不含checkedAt，以免纯重验时间变化造成假冲突，仍绑定draftVersion/definitionHash/dependencyDigest/issues。
+
+Plan create/save/publish、PlanBinding和command outcome沿原Engine同事务CAS；发布重新取得当前原权威验证，unknown/变化拒绝。Repository构造强制要求authorize/validateDependencies/assertWriter，没有默认允许；本组测试显式fake原authority，仅证明仓库合同，未接生产HTTP或外部Effect。六个编排kinds与原HostFence/RPControl已自动进入四Engine通用Native handlers；SQL Owner、全站writer fencing和GC引用仍须后续P1接线。

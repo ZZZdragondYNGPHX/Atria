@@ -148,3 +148,12 @@
 - fetch核对最新main/origin/main为`5eb3bc765`；对比E0基线的4个Settings/Themes提交、37文件，原存储/收费/领域权威未改变。Shell/Settings接线使用其最新服务，归P4–P6跟进；扫描附件仍标原SHA。
 - 同一任务实现分支`refactor/atria-native-orchestration-v3`从origin/main建立，Start HEAD `5eb3bc765`。没有合入独立docs工作空间，也没有修改main。docs原有Storage提交与Evolution未跟踪企划保护不纳入本任务路径。
 - P1 IN_PROGRESS：原Native ID/key注册、Storage Host owner和Plan/Run基础开始实现。未完成Gate不称PASS；SQL真实服务/三端/Provider等仍NOT_RUN/BLOCKED。
+
+## 2026-10-15 — P1第一组：Native kinds、Plan事务与Owner原语
+
+- Start/Tested source：`5eb3bc765` → `a4d7b42e1`，已提交推送同一实现分支，main未改。
+- 原Native ID新增oplan/oprev/orun/onode/oattempt/oedge/opatch/oeffect/oreceipt/oapproval/oresult/ocmd/rpctl；六编排kind与两个原Storage/RunControl控制kind及封闭recordType注册，沿原四Engine Native handlers/journal/table/dump。新增纯Graph authoring validator、原canonical hash、不可变publish、Draft/Binding CAS、command去重/冲突及写前integrity检查。原authority adapters必须明确注入，不以fake证明产品权限。
+- Storage lifetime Owner原语在原Storage目录实现identity/exclusive loopback guard；真实Windows子进程相斥/强杀后重开通过，未接全站writer/fence/SQL Owner，不能称P1完成。
+- 实测：V3两文件按精确`--runTestsByPath`运行，FS/SQLite/真实本地MySQL/Postgres合计37/37通过；相关旧N1 foundation四Engine 4/4与FS↔SQLite roundtrip 1/1通过；定向ESLint与git diff --check通过。SQL负例日志是预期ConflictError，不是真实外部Effect证明。
+- 失败及修复：原Pg harness默认账号认证失败、第二次缺默认user也失败；只读本机测试容器配置并采用Postgres默认user/db后通过，无凭证写入或输出。一次短Jest筛选误匹配本任务工作树绝对路径导致范围扩大，已终止；改精确文件路径后重测，未将中断测试算PASS。后续只用精确路径。
+- P1仍IN_PROGRESS：RunLedger/恢复、全站Owner/fence/SQL commit unknown、RPC/授权/GC等未齐；审批/预算/消费者/UI/旧硬切/三端仍NOT_RUN，未开放新旧可选择产品入口。继续同一分支推进，不等待阶段许可。
