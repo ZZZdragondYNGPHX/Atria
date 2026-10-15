@@ -42,7 +42,7 @@ Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 n
 
 Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate 的 `authorizeDelegation`、Context 的 `authorizeContext` 是必需原领域接线，测试中的受控 callback 不是实际产品 grant。后续原消费者须证明精确 Plan/Node/Source/Scope/childPlanRef，再由这些内部入口使用；不能把它们暴露成 Browser 可填写的“允许”对象。
 
-有限真实Narrator工厂已从原Plan/Binding/Source形成内部grant并交ModelPort，原Provider响应和原bank逐项核实后才将正文交回原Native finalize。原authority candidate/固定Narrator实际quota、同bank编译计费、原Turn active permit已接（接口§17.30）；四Engine Model/计费完整矩阵已有证据。Effect响应confirmed不表示费用settled或V3 Run/World/Result已闭包；不能向UI推送未经最终复核的provisional模型正文。独立取消/consume线性化与成功retry多attempt仍NOT_RUN，下一窄组实测；P4正式提交前OutputClaim/取消围栏继续由本任务实施。
+有限真实Narrator工厂已从原Plan/Binding/Source形成内部grant并交ModelPort，原Provider响应和原bank逐项核实后才将正文交回原Native finalize。原authority candidate/固定Narrator实际quota、同bank编译计费、原Turn active permit已接（接口§17.30）；四Engine Model/计费完整矩阵已有证据。Model/Skill正文消费新增原Run全部祖先锁及末Effect/Receipt复核，同ALS取消/unknown事实先保存再拒正文；成功503→200的两个原attempt分别保留unknown/settled，详见接口§17.31及同一Record第二十一组的实际矩阵。缺同实例Run/Effect权威的Skill在执行前拒绝。Effect响应confirmed不表示费用settled或V3 Run/World/Result已闭包；不能向UI推送未经最终复核的provisional模型正文。P4正式提交前OutputClaim/取消围栏继续由本任务实施。
 
 ## 4. 并入统一前端的范围
 
@@ -56,9 +56,9 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 | 项目 | 当前事实和下一归属 |
 | --- | --- |
-| 领域 grant 与正式 runtime API | P3/P4 尚需将实际 Plan/Source/Context/Effect/Delegate 权限组合及原消费者装配，之后才开放受控 API。内部工厂已存在不等于产品 endpoint 已存在。 |
+| 领域 grant 与正式 runtime API | P3/P4 尚需将实际 Plan/Source/Context/Effect/Delegate 权限组合及原消费者装配，之后才开放受控 API。第二十一组另真实复现末await后的原Source/Binding变更仍可返回正文，下一窄组优先补原领域围栏；Run树锁不代替它。内部工厂已存在不等于产品 endpoint 已存在。 |
 | Session role/background quota | 固定Narrator已用合法authority Package真实candidate接原quota/compute同CAS（§17.30）；resolver与后台lifecycle outbox等producer尚未接，不接受caller role，不增加第二计数器。 |
-| Scheduler/Handoff/Result/Disclosure | 原固定Turn的active operation/attempt/资源/signal已绑定；完整Delegate/Task permits、Handoff、子结果消费、跨Agent分享仍待接。取消/消费线性化需下一窄组实证。 |
+| Scheduler/Handoff/Result/Disclosure | 原固定Turn的active operation/attempt/资源/signal已绑定；Model/Skill与原Run树控制写的消费顺序见§17.31，P4正式提交围栏仍待接。完整Delegate/Task permits、Handoff、子结果消费、跨Agent分享仍待接。 |
 | RP/Game、Project/Evolution | P4 原唯一正文 slot、World/Command/Project Review/Commit 与 Eval/target 仍需正式 consumer；Run completed 不代表业务已提交。 |
 | Tool/可信 Review | MCP/Skill已保存精确协议/本地read完成事实，冷读不成为新授权，正文消费仍独立复核；A2A 的 a2a_send_accepted 仅证明受理。真正 Review Origin/再认证仍缺，需批准动作 unavailable；不得删 guard“打通”。 |
 | Restore/GC | 当前保留原费用与引用，危险覆盖/merge 提前拒绝；完整可信 restore review、source 闭包恢复和历史释放尚未开放。 |
@@ -69,6 +69,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十一组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。
