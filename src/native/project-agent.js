@@ -16,7 +16,8 @@ import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { assertProjectAgentConversation } from '../../public/shared/project-agent-conversation.js';
 import { fields as allowedFields } from '../../public/shared/native-values.js';
 import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
-import { bindComputeBudget, chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../public/shared/native-compute-budget.js';
+import { bindComputeBudget, chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork,
+    reserveComputeChild, releaseComputeChild, admitComputeAttempt } from '../../public/shared/native-compute-budget.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
 
@@ -593,27 +594,60 @@ export class ProjectAgentService {
     }
 
     // Internal Generation Host observations. No HTTP endpoint accepts these fields.
+    async _assertComputeSource(handle, projectId, task, revision, executionFingerprint) {
+        this._ensureDraftMutable(task);
+        if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
+        if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+    }
+
     chargeGeneration(handle, projectId, id, revision, limits, attempt, executionFingerprint, options = {}) {
         return this._operate(handle, projectId, id, async task => {
             limits ??= task.compute?.limits;
             if (!limits) return null;
-            this._ensureDraftMutable(task);
-            if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
-            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
             const compute = chargeComputeAttempt(task, limits, attempt, options);
             return { compute, limits: clone(task.compute.limits) };
+        }, { effectPolicy: 'no-background-model' });
+    }
+
+    reserveComputeChild(handle, projectId, id, revision, limits, input, executionFingerprint) {
+        return this._operate(handle, projectId, id, async task => {
+            limits ??= task.compute?.limits;
+            if (!limits) throw new ConflictError('native_generation_budget_unavailable');
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
+            return { ...reserveComputeChild(task, limits, input), limits: clone(task.compute.limits) };
+        }, { effectPolicy: 'no-background-model' });
+    }
+
+    admitGeneration(handle, projectId, id, revision, limits, attempt, executionFingerprint, options = {}) {
+        return this._operate(handle, projectId, id, async task => {
+            limits ??= task.compute?.limits;
+            if (!limits) throw new ConflictError('native_generation_budget_unavailable');
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
+            const result = admitComputeAttempt(task, limits, attempt, options);
+            return { compute: result.attempt, replayed: result.replayed, limits: clone(task.compute.limits) };
+        }, { effectPolicy: 'no-background-model' });
+    }
+
+    releaseComputeChild(handle, projectId, id, reservationId) {
+        return this._operate(handle, projectId, id, task => releaseComputeChild(task, reservationId), { effectPolicy: 'no-background-model' });
+    }
+
+    observeCompute(handle, projectId, id, attemptId) {
+        return this._observe(handle, projectId, id, task => {
+            const compute = task.compute?.attempts.find(row => row.attemptId === attemptId);
+            if (!compute) throw new ConflictError('native_generation_attempt_conflict');
+            return clone({ compute, limits: task.compute.limits });
         });
     }
 
-    chargeLocalWork(handle, projectId, id, revision, limits, attempt, executionFingerprint) {
+    chargeLocalWork(handle, projectId, id, revision, limits, attempt, executionFingerprint, options = {}) {
         return this._operate(handle, projectId, id, async task => {
-            if (!limits?.localWork && !task.compute?.limits.localWork) return null;
+            if (!limits?.localWork && !task.compute?.limits.localWork) { if (options.reservationId != null) throw new ConflictError('native_generation_budget_unavailable'); return null; }
             assertWritable();
-            this._ensureDraftMutable(task);
-            if (task.baseRevision !== revision || (await this._studio.getRevision(handle, projectId)).revision !== revision) throw new ConflictError('native_generation_revision_conflict');
-            if (this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
-            return chargeLocalWork(task, limits, attempt);
-        }, { write: false });
+            await this._assertComputeSource(handle, projectId, task, revision, executionFingerprint);
+            return chargeLocalWork(task, limits, attempt, options);
+        }, { write: false, effectPolicy: 'no-background-model' });
     }
     bindGoal(handle, projectId, id, { goalId, definitionHash, intent, revision, limits }) {
         return this._operate(handle, projectId, id, async task => {
@@ -664,7 +698,7 @@ export class ProjectAgentService {
         });
     }
     settleLocalWork(handle, projectId, id, attemptId, usage) {
-        return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage));
+        return this._operate(handle, projectId, id, task => settleLocalWork(task, attemptId, usage), { effectPolicy: 'no-background-model' });
     }
 
     // A failed Studio evaluation restore cannot enter _operate: its initial
@@ -706,7 +740,7 @@ export class ProjectAgentService {
         });
     }
     settleGeneration(handle, projectId, id, attemptId, usage) {
-        return this._operate(handle, projectId, id, task => settleComputeAttempt(task, attemptId, usage));
+        return this._operate(handle, projectId, id, task => settleComputeAttempt(task, attemptId, usage), { effectPolicy: 'no-background-model' });
     }
 
     recordGenerationRequest(handle, projectId, id, attemptId, requestId) {
