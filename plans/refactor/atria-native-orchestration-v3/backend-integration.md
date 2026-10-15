@@ -30,7 +30,7 @@ HostBootId 变化返回 409 `native_orchestration_host_changed`；CAS/命令冲�
 
 Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 native_session/project/rp_chat 三种结构；nullable entryPointId/taskId 具有原合同语义，不以空值扩大执行权限。save 的 expectedVersion 首次为 null，后续是当前 version；planRef 必须是实际原不可变已发布 revision。Source 删除或撤权后相同命令重放也先拒绝，不能用历史选择授权执行。详细定义见接口§17.23。
 
-原`/api/native/generation/turn`与`/turn/start`已在有限Native Narrator profile消费真实Binding（接口§17.29–§17.30），沿原请求/排程/结果接口，不新增V3 Run启动协议。支持普通Narrator及原authorityRuntime显式typed transaction的真实candidate，均只执行精确Narrator Route的agent→output图；精确Binding不支持或过期即拒绝，不回退默认。resolver、Task/stages/interpreter和后台未接。安全native_orchestration_*错误保持脱敏，unavailable为503、冲突/过期为409，detached结果由原operation读取；不能将这一有限入口显示为任意Graph/Actor/Tool可运行。
+原`/api/native/generation/turn`与`/turn/start`已在有限Native profile消费真实Binding（接口§17.29–§17.30、§17.33），沿原请求/排程/结果接口，不新增V3 Run启动协议。普通Narrator及原authorityRuntime显式typed transaction继续精确Narrator→output图；含原generationBudget的free-text Authority增加精确resolver→Narrator→output三节点链，原角色quota/compute共用Turn bank。原selection复用只接受已有V3保留事实，缺失或无quota的free-text Package仍明确unavailable。精确Binding不支持或过期即拒绝，不回退默认；Task/stages/interpreter和后台未接。安全native_orchestration_*错误保持脱敏，unavailable为503、冲突/过期为409，detached结果由原operation读取；不能将这一有限入口显示为任意Graph/Actor/Tool可运行。
 
 **尚无产品 HTTP**：Run start/get/cancel/resume、GraphPatch、Effect dispatch、RunProjection/long-poll、Approval approve。不得为 UI 接入猜造这些路径。原 authoring 对generation.send仅支持原精确Narrator Route的有限机制证据（接口§17.26）；未接原 capability authority 的能力继续 unknown。可发布机制不是运行grant；publish 不能通过前端布尔值解除。设计原型可以使用明确的无副作用数据，但未接真实接口的产品功能必须显示其实际 unavailable 状态。
 
@@ -46,6 +46,8 @@ Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate �
 
 第二十二组进一步以原Run→Runtime→Session→Engine锁序和末来源复核关闭已实测的Source/Binding正文漏口，且不持锁跨Provider HTTP（接口§17.32）。它仍只是Port消费决定，正式OutputClaim/Result与取消提交围栏属于P4；Project/RP正文adapter缺失时明确unavailable。
 
+第二十三组复用同一ModelPort增加原intent_resolver固定producer与内部authority_intent Context；原catalog/Observation只在原bank准入后编译，两个既有request形态分别严格核工具和控制字段，私有tools不成为通用Tool grant。原Attempt settlement→Transition计边连接Narrator；selection reuse是原事实引用，无模型收据/费用。具体支持边界及本地实际证据归接口§17.33和同一Record，不提升Run终态或P3 Gate。
+
 ## 4. 并入统一前端的范围
 
 前端任务纳入 W08/P5 的 Plan Library、Graph Canvas+Inspector、同语义 Node/Edge List 与移动 Sheet、Draft/Validate/Publish 冲突处理；Run 默认 Timeline/Graph 切换、Source/Audience/成本/未知/错误和受控诊断；可信 Approval 展示与 Cancel/Status 可达；Shell Search/deep-link/history/Back 和移动键盘/IME/无障碍。
@@ -59,7 +61,7 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 | 项目 | 当前事实和下一归属 |
 | --- | --- |
 | 领域 grant 与正式 runtime API | P3/P4 尚需将实际 Plan/Source/Context/Effect/Delegate 权限组合及原消费者装配，之后才开放受控 API。第二十一组复现的Source/Binding末await缺口由第二十二组原Run→Runtime→Session锁及末域复核修复（§17.32），Project/RP正文消费adapter仍未接。内部工厂已存在不等于产品 endpoint 已存在。 |
-| Session role/background quota | 固定Narrator已用合法authority Package真实candidate接原quota/compute同CAS（§17.30）；resolver与后台lifecycle outbox等producer尚未接，不接受caller role，不增加第二计数器。 |
+| Session role/background quota | 固定Narrator及含原generationBudget的free-text authority resolver已接原quota/compute同CAS（§17.30、§17.33）；后台lifecycle outbox等producer、无quota/缺V3保留事实的free-text来源仍待接，不接受caller role，不增加第二计数器。 |
 | Scheduler/Handoff/Result/Disclosure | 原固定Turn的active operation/attempt/资源/signal已绑定；Model/Skill与原Run树控制写的消费顺序见§17.31，P4正式提交围栏仍待接。完整Delegate/Task permits、Handoff、子结果消费、跨Agent分享仍待接。 |
 | RP/Game、Project/Evolution | P4 原唯一正文 slot、World/Command/Project Review/Commit 与 Eval/target 仍需正式 consumer；Run completed 不代表业务已提交。 |
 | Tool/可信 Review | MCP/Skill已保存精确协议/本地read完成事实，冷读不成为新授权，正文消费仍独立复核；A2A 的 a2a_send_accepted 仅证明受理。真正 Review Origin/再认证仍缺，需批准动作 unavailable；不得删 guard“打通”。 |
@@ -71,6 +73,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十二组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十三组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。
