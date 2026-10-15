@@ -347,3 +347,11 @@
 - GenerationHost在可信context参数存在时，实际使用已按Audience编译的plan，跳过默认Narrator宽上下文和额外messages/prompt/tools；不是只验证一个旁路proof后发送另一份prompt。真实请求前及响应返回消费前重验，Source/权限撤销不变成合法新结果。Project/RP没有现存受控Audience compiler时明确domain_unavailable；跨Agent Result/Disclosure/真正Hybrid检索与Plan delegation有效grant组合仍待接线，不把受控scope callback当作完整领域授权已通过。
 - 四Engine ContextPort25/25，ContextSend真实本地HTTP20/20通过。原Context/Information/Disclosure相关4 suites109/109（新25+旧84）通过；随后与原Effect/Approval串行89/89再次核对。ContextPort五个guard mutant全部捕获并恢复；Host另外移除实际Actor plan选择、send撤权检查、consume检查分别2/2/2项失败，恢复后上述89全通过（consume mutation另2个source反例仍由已有守卫拒绝，不能声称全部依赖此单行）。
 - 接线前新HTTP测试曾6 fail/2 pass，揭示默认宽Context、撤权继续外发/消费，修复后四Engine20/20。usage和服务响应均为合成数值，不是自由文本质量/真实费用证据。新三个文件targeted ESLint与diff check通过；真实Windows/CachyOS/Termux客户端、可信审批、语义泄漏评价未执行。P3仍IN_PROGRESS，main未集成。
+
+## 2026-10-16 — W05/P3第八组：原Skill/MCP/A2A与Secret/Egress围栏
+
+- Source `18c22338e` → `072a4e1ef`已提交推送。ToolPort从持久Effect取action/target/input/grant，核对输入hash、当前dispatch token、原credential目标及精确egress/source/capability；只支持原Skill读操作和原Session公开信息MCP/A2A消费者。原SessionPublicWork/McpService/A2aService增加内部可信work参数，每个真实协议请求重新复核并使用原BudgetPort子额度local work，route与grant限额取交集。不新增协议服务、价格表、Secret或业务writer。
+- local step identity派生Effect+localWorkOrdinal，重放不产生新的send许可。A2A在原RunControl.externalTask记录typed orchestrationBinding，禁止移除/换绑；真实关闭重开Engine后，原独立reconnect/cancel入口不继承V3 grant，明确要求重新授权。ToolPort取消仅原本地scheduler，不假称远端CancelTask或回滚成功。
+- R3、需要批准的动作及任意HostJS/插件执行明确拒绝，未把Boolean、Tool自述或同源页面当可信Review。无原持久Effect关联receipt时execute/observe保留unknown且不自动重发。MCP仅原进程Map，A2A有原task identity但尚无完整Effect关联receipt；这些是P3/P7待收口产品能力，不能用queued/工具文本标confirmed。Project/RP外发无原受控consumer时拒绝。
+- 实测四Engine ToolPort40/40：真实隔离HTTP MCP/A2A、原Skill versioned repository、Secret target、子local额度、逐请求撤权、cold reopen绑定、route/grant收紧。关联原MCP/A2A/Skill/Credential四suite50/50通过。临时移除逐请求重验、精确grant绑定、持久binding、immutable guard、route cap均被反例捕获并finally恢复；R3分类mutant亦捕获，但另有风险门槛仍挡外发，只当拒绝分类证据。首轮Pg两个Host并发冲突，串行最终40全通过，未改Owner。七文件targeted ESLint/diff check通过。
+- 同文件预置原RunControl.restoreState校验及review_required准入guard，避免后续恢复清零费用或重启发送；原恢复路径/保留根在下一组记录，不将本组Tool用例当恢复证明。原可信Review Origin/完整业务receipt、真实账单/三端/质量未通过，P3仍IN_PROGRESS，main未集成。

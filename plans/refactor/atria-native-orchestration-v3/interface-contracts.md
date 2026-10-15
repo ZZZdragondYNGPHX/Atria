@@ -511,3 +511,9 @@ Model attempt增加可选`inputFingerprint`；新`admitComputeAttempt`要求该h
 GenerationHost在真实sub-send前完成原budget admission，再通过可信`beforeSend`提交同Effect的ready/claim，只有fresh claim持token；每次retry/fallback重验来源、Host/epoch、当前grant、实际send binding和新的原attempt。预算ACK未知时只`observeAttempt`同identity并抛reconcile_required，查到charged也不返回第二份发送permit。模型与local work分别使用providerSendOrdinal/localWorkOrdinal typed ref，在同原bank结算；子Run不能使用null或兄弟reservation。
 
 `ContextPort.compile(handle,{ownerRef,sourceBinding,audience,taskPurpose,grantDigest,inputRefs,tokenBudget})`复用原Session Context/Information/Actor编译，`provider(handle,{context,source})`直接提供实际RequestContextPlan；`revalidate(...,{phase:'send'|'consume'})`核对原scope回执、精确source及projection。GenerationHost可信`orchestrationSend.context={port,compiled}`使用该plan作为真正输入并在发送/消费前复核。当前仅Session有原受控Audience compiler；Project/RP不可借默认宽上下文替代，缺原adapter明确拒绝。受控grant callback测试不证明Plan/父子Run领域授权已完成；Hybrid实际检索、跨Agent Result及语义泄漏质量仍需各原authority实证。
+
+### 17.17 P3原Tool协议与恢复授权
+
+`ToolPort.execute(handle,{runId,effectId,dispatchToken})`由Host读取持久action/target/input，不能接受Browser提供的新动作或批准。原Skill/McpService/A2aService/SessionPublicWork接内部可信work adapter，逐真实请求重验dispatch、原scope/grant、egress、CredentialTarget并在原子额度内记localWork。权限/原route预算只能取交集。`observe`只查原operation；`requestCancel`仅原本地scheduler，远端取消是另一Effect。
+
+原`RunControl.externalTask`的可选typed `orchestrationBinding={schemaVersion,runId,effectId,sourceBindingDigest,grantDigest}`不可移除或换绑。重启后原A2A独立reconnect/cancel不得靠旧Session policy续用此授权，当前明确拒绝并要求新Effect。它不是新的task registry或预算kind。原MCP没有持久Effect关联receipt，A2A只有原task identity而无完整Effect receipt闭包，因此ToolPort当前返回unknown，不能自动重发或把工具文本升格为confirmed。R3/需要批准的动作在可信Review与原动作authority接通前保持unavailable；Project/RP没有原消费者时保持拒绝。
