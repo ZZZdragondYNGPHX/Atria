@@ -8,6 +8,11 @@ export const controlCommandId = (operation, identity) => 'ocmd_' + hashNativeDoc
 export const runGuard = root => ({ runId: root.runId, expectedEpoch: root.epoch, expectedStateVersion: root.stateVersion, expectedGraphRevision: root.graphRevision });
 export const controlRecordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
 
+// Passive fanout/join bookkeeping never holds an execution-resource slot.
+// Their immutable Plan schema forbids effect capabilities.
+export const holdsConcurrencySlot = (root, attempt) => ['running', 'waiting_effect', 'waiting_approval'].includes(attempt.status)
+    && !['fanout', 'join'].includes(root.graph.nodes.find(node => node.nodeId === attempt.nodeId)?.kind);
+
 export function graphReachable(graph, from, to) {
     const seen = new Set(), pending = [from];
     while (pending.length) {

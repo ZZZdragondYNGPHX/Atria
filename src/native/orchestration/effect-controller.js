@@ -6,6 +6,7 @@ import { assertObject, assertCounter, assertDigest } from '../../../public/share
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { assertEffectDecision, effectDecision, readEffect, readApproval, currentApprovalBinding } from './effect-contracts.js';
+import { assertFanoutAdmission } from './fanout-controller.js';
 
 const conflict = code => { throw new ConflictError(code); };
 const TERMINAL_EFFECT = new Set(['confirmed', 'failed', 'not_dispatched']);
@@ -41,6 +42,7 @@ export class EffectController {
             const attemptRecord = await readAttempt(tx, handle, root, nodeAttemptId), attempt = attemptRecord.doc;
             if (root.cancelRequested || !['running', 'waiting_approval'].includes(root.status) || attempt.status !== 'running' || attempt.epoch !== root.epoch
                 || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest) conflict('native_orchestration_effect_not_admitted');
+            await assertFanoutAdmission({ tx, handle, root, attempt, reserveSlot: false });
             const decision = cloneNativeDocument(await this.authorizeEffect({ handle, tx, root, attempt, proposal, phase: 'prepare' }));
             assertEffectDecision(decision);
             for (const field of ['actionRef', 'targetRef', 'inputRef', 'inputHash']) if (hashNativeDocument(decision[field]) !== hashNativeDocument(proposal[field])) throw new TypeError('Port changed the approved proposal');
@@ -81,6 +83,8 @@ export class EffectController {
             const record = await readEffect(tx, handle, root, effectId), intent = record.doc;
             this.#current(root, intent);
             if (intent.status !== 'ready' || !intent.budgetAttemptRef) conflict('native_orchestration_effect_not_ready');
+            const { doc: attempt } = await readAttempt(tx, handle, root, intent.nodeAttemptId);
+            await assertFanoutAdmission({ tx, handle, root, attempt, reserveSlot: false });
             await this.#revalidate(handle, tx, root, intent, 'claim');
             await this.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
             if (intent.requiresApproval) {

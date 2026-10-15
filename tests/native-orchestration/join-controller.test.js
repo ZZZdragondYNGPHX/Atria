@@ -11,7 +11,7 @@ import { ConflictError } from '../../src/storage/errors.js';
 import { admitGraphEdges } from '../../src/native/orchestration/graph-costs.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { planFixture } from './fixtures.js';
+import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 const port = name => ({ name, type: 'task.result', required: false });
@@ -26,6 +26,7 @@ describe.each(CONTRACT_HARNESSES)('$name frozen Join barriers with controlled Po
     const read = async (type, recordId) => (await h.engine.withTransaction(h.handle, tx => tx.getResource(controlRecordKey(h.handle, runId, type, recordId))))?.doc;
     beforeEach(async () => {
         h = await make(); clock = Date.now(); revoked = false;
+        await prepareControllerOwnerRoot(h.dirs.root);
         originalResults.clear(); unavailableResults.clear();
     });
     afterEach(async () => { await h?.engine.close(); await h?.cleanup(); });
@@ -37,7 +38,7 @@ describe.each(CONTRACT_HARNESSES)('$name frozen Join barriers with controlled Po
         const fixture = planFixture(), output = fixture.definition.nodes[0], fanoutNodeId = id('Node'), joinNodeId = id('Node');
         const branchNodeIds = [id('Node'), id('Node'), id('Node')];
         fixture.definition.nodes = [
-            { nodeId: fanoutNodeId, kind: 'fanout', label: 'Fanout', inputs: [], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { maxConcurrency: 2 } },
+            { nodeId: fanoutNodeId, kind: 'fanout', label: 'Fanout', inputs: [], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { maxConcurrency: 2, failurePolicy: 'continue' } },
             ...branchNodeIds.map(nodeId => ({ nodeId, kind: 'wait', label: 'Branch', inputs: [port('in')], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { timeoutMs: 1000 } })),
             { nodeId: joinNodeId, kind: 'join', label: 'Join', inputs: [port('in')], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { strategy: policy, quorum, deadlineMs: 5000 } },
             { ...output, inputs: [port('in')] },

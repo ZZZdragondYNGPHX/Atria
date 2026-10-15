@@ -2,10 +2,11 @@ import { ConflictError } from '../../storage/errors.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { controlCommandId, controlRecordKey, graphReachable, readAttempt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, holdsConcurrencySlot, readAttempt } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
+import { assertFanoutAdmission } from './fanout-controller.js';
 
 export class AttemptController {
     constructor({ runs, authorizeAttempt, verifySettlement, authorizeReservation }) {
@@ -58,9 +59,11 @@ export class AttemptController {
             let activeCount = 0;
             for (const id of root.attemptRefs) {
                 const { doc } = await readAttempt(tx, handle, root, id);
-                if (['running', 'waiting_effect', 'waiting_approval'].includes(doc.status)) activeCount++;
+                if (holdsConcurrencySlot(root, doc)) activeCount++;
             }
-            if (activeCount >= root.limits.maxConcurrency || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
+            if (holdsConcurrencySlot(root, { ...attempt, status: 'running' }) && activeCount >= root.limits.maxConcurrency
+                || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
+            await assertFanoutAdmission({ tx, handle, root, attempt });
             await this.authorizeAttempt({ handle, tx, root, attempt });
             await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), { ...attempt, status: 'running', startedAt: now }, { expectedIntegrity: record.integrity });
             root.status = 'running'; root.progress.steps++;

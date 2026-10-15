@@ -12,7 +12,7 @@ import { hashNativeDocument } from '../../src/native/repositories/common.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { planFixture } from './fixtures.js';
+import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 
@@ -25,6 +25,7 @@ describe.each(CONTRACT_HARNESSES)('$name S2 durable Effect/Approval core with co
         budgets.clear(); observations.clear(); challenges.clear();
         endpoint = 'original-endpoint-v1'; approvalRequired = false; revoked = false; accountVersion = hashNativeDocument({ account: 1 });
         h = await make();
+        await prepareControllerOwnerRoot(h.dirs.root);
         const lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         const authorize = async () => {}, assertWriter = (handle, tx) => lifecycle.assertWriter(handle, tx);
         const plans = new PlanRepository({ engine: h.engine, authorize, assertWriter, validateDependencies: async () => ({ status: 'valid', issues: [], dependencyDigest: hashNativeDocument([]) }) });

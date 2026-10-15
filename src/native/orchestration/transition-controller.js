@@ -5,6 +5,7 @@ import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } fro
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
 import { readAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
+import { inheritFanoutMembership } from './fanout-controller.js';
 
 /** Deterministic dependency/loop admission; original Ports supply references,
  * grant and an already-admitted budget identity. This never reserves or sends. */
@@ -78,6 +79,7 @@ export class TransitionController {
                 ...admission, sourceBindingDigest: root.sourceBinding.bindingDigest, status: 'pending', effectRefs: [], resultRefs: [], startedAt: null, endedAt: null, reasonCode: null };
             if (reserved) await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), attempt, { expectedIntegrity: reserved.integrity });
             else { await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), attempt); root.attemptRefs.push(attemptId); root.progress.attempts++; }
+            await inheritFanoutMembership({ tx, handle, root, producers: producers.map(item => item.attempt), targets: [attempt], now });
             const edgeAdmissionRefs = await admitGraphEdges({ tx, handle, root, transfers: bindings.map(item => ({ edgeId: item.edgeId, producerAttemptId: item.producerAttemptId, nodeAttemptId: attemptId })), now });
             const receipt = { schemaVersion: 1, receiptKind: 'graph_transition', receiptId, runId: root.runId, epoch: root.epoch, graphRevision: root.graphRevision,
                 bindings, producerReceiptRefs: producers.map(producer => producer.receipt.receiptId), nodeAttemptId: attemptId, inputDigest: admission.inputDigest,

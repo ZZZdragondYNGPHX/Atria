@@ -126,6 +126,7 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
             assertToken(capability, 'capability');
             if (!draft && !capabilities.has(capability)) throw new TypeError('node exceeds capability ceiling');
         }
+        if (['fanout', 'join'].includes(node.kind) && node.capabilities.length) throw new TypeError('deterministic fanout/join cannot execute effects');
         assertNodePolicy(node, draft);
         byId.set(node.nodeId, node);
     }
@@ -206,7 +207,7 @@ function assertNodePolicy(node, draft) {
     const policy = node.policy;
     const fields = {
         agent: ['agentPinId'], planner: ['agentPinId'], judge: ['agentPinId'], review: ['agentPinId', 'maxRounds'],
-        effect: ['actionPinId'], router: ['selection'], fanout: ['maxConcurrency'],
+        effect: ['actionPinId'], router: ['selection'], fanout: ['maxConcurrency', 'failurePolicy'],
         join: ['strategy', 'quorum', 'deadlineMs'], wait: ['timeoutMs'], approval: ['timeoutMs'], output: [],
     }[node.kind];
     assertObject(policy, fields, 'node.policy');
@@ -217,4 +218,5 @@ function assertNodePolicy(node, draft) {
     for (const field of ['maxRounds', 'maxConcurrency', 'quorum', 'deadlineMs', 'timeoutMs']) if (fields.includes(field)) assertCounter(policy[field], 'node.policy.' + field, 1);
     if (node.kind === 'router') member(policy.selection, ['first_success', 'all_matching'], 'router.selection');
     if (node.kind === 'join') member(policy.strategy, ['all-success', 'all-settled', 'any-success', 'count-quorum', 'deadline'], 'join.strategy');
+    if (node.kind === 'fanout') member(policy.failurePolicy, ['continue', 'fail_fast'], 'fanout.failurePolicy');
 }

@@ -6,6 +6,7 @@ import { checkedRecord } from './plan-repository.js';
 import { controlCommandId, controlRecordKey, graphReachable, readAttempt } from './controller-common.js';
 import { readAttemptSettlement, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { admitGraphEdges } from './graph-costs.js';
+import { readFanoutFrame } from './fanout-controller.js';
 
 export const joinIdForAttempt = attemptId => 'ojoin_' + hashNativeDocument({ nodeAttemptId: attemptId }).slice(0, 32);
 const barrierKey = (handle, runId, joinId) => controlRecordKey(handle, runId, 'join', 'barrier:' + joinId);
@@ -42,6 +43,16 @@ export class JoinController {
                 || fanout.sourceBindingDigest !== root.sourceBinding.bindingDigest || join.sourceBindingDigest !== root.sourceBinding.bindingDigest
                 || root.nodeControl[join.nodeId].disposition !== 'eligible') throw new ConflictError('native_orchestration_join_invalid_membership');
             if (joinNode.policy.quorum > memberAttemptIds.length || (joinNode.policy.strategy === 'deadline' && !root.graph.outputContract.allowPartial)) throw new TypeError('Join quorum/partial policy is not satisfiable');
+            const frame = await readFanoutFrame(tx, handle, root, fanoutAttemptId);
+            if (frame) {
+                if (frame.epoch !== root.epoch || frame.sourceBindingDigest !== root.sourceBinding.bindingDigest) throw new ConflictError('native_orchestration_join_invalid_membership');
+                const expected = [];
+                for (const id of frame.branches.flatMap(branch => branch.memberAttemptIds)) {
+                    const { doc } = await readAttempt(tx, handle, root, id);
+                    if (root.graph.edges.some(edge => edge.from.nodeId === doc.nodeId && edge.to.nodeId === join.nodeId)) expected.push(id);
+                }
+                if (hashNativeDocument(expected.sort()) !== hashNativeDocument(memberAttemptIds)) throw new ConflictError('native_orchestration_join_invalid_membership');
+            }
             const members = [], memberEdges = [];
             const nodeIds = new Set();
             for (const attemptId of memberAttemptIds) {
@@ -60,7 +71,8 @@ export class JoinController {
             // complete fan-out group and parent reservation, without charging.
             await this.authorizeMembership({ handle, tx, root, fanout, join, members });
             const barrier = { schemaVersion: 1, joinId, runId: root.runId, fanoutAttemptId, nodeAttemptId, epoch: root.epoch, graphRevision: root.graphRevision,
-                memberAttemptIds, memberEdges, sourceBindingDigest: root.sourceBinding.bindingDigest, parentBudgetRef: fanout.budgetRef,
+                memberAttemptIds, memberEdges, fanoutFrameRef: frame ? { receiptId: frame.receiptId, integrity: hashNativeDocument(frame) } : null,
+                sourceBindingDigest: root.sourceBinding.bindingDigest, parentBudgetRef: fanout.budgetRef,
                 policy: joinNode.policy.strategy, quorum: joinNode.policy.quorum, deadlineAt: Math.min(now + joinNode.policy.deadlineMs, root.progress.deadlineAt),
                 frozenSeq: root.eventSeq + 1, createdAt: now };
             await putImmutable(tx, barrierKey(handle, root.runId, joinId), barrier);
@@ -78,7 +90,12 @@ export class JoinController {
             const stored = await checkedRecord(tx, barrierKey(handle, root.runId, joinId));
             if (!stored) throw new TypeError('Join membership was not frozen');
             const barrier = stored.doc;
-            assertObject(barrier, ['schemaVersion', 'joinId', 'runId', 'fanoutAttemptId', 'nodeAttemptId', 'epoch', 'graphRevision', 'memberAttemptIds', 'memberEdges', 'sourceBindingDigest', 'parentBudgetRef', 'policy', 'quorum', 'deadlineAt', 'frozenSeq', 'createdAt'], 'JoinBarrier');
+            assertObject(barrier, ['schemaVersion', 'joinId', 'runId', 'fanoutAttemptId', 'nodeAttemptId', 'epoch', 'graphRevision', 'memberAttemptIds', 'memberEdges', 'fanoutFrameRef', 'sourceBindingDigest', 'parentBudgetRef', 'policy', 'quorum', 'deadlineAt', 'frozenSeq', 'createdAt'], 'JoinBarrier');
+            if (barrier.fanoutFrameRef !== null) {
+                assertObject(barrier.fanoutFrameRef, ['receiptId', 'integrity'], 'fanoutFrameRef');
+                const frame = await readFanoutFrame(tx, handle, root, barrier.fanoutAttemptId);
+                if (!frame || frame.receiptId !== barrier.fanoutFrameRef.receiptId || hashNativeDocument(frame) !== barrier.fanoutFrameRef.integrity) throw new TypeError('Join FanoutFrame reference is unavailable');
+            }
             const joinRecord = await readAttempt(tx, handle, root, barrier.nodeAttemptId), join = joinRecord.doc;
             const joinNode = root.graph.nodes.find(node => node.nodeId === join.nodeId);
             if (barrier.schemaVersion !== 1 || barrier.joinId !== joinId || barrier.runId !== root.runId || joinIdForAttempt(join.attemptId) !== joinId

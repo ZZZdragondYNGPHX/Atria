@@ -34,7 +34,7 @@ describe.each(CONTRACT_HARNESSES)('$name multi-step branch identity reservation'
         const wait = (nodeId, inputs) => ({ nodeId, kind: 'wait', label: 'Branch stage', inputs, outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { timeoutMs: 1000 } });
         fixture.definition.nodes = [
             { nodeId: plannerId, kind: 'planner', label: 'Planner', inputs: [], outputs: [port('next')], dependencyPinIds: ['route'], capabilities: ['graph.patch'], policy: { agentPinId: 'route' } },
-            { nodeId: fanoutId, kind: 'fanout', label: 'Fanout', inputs: [port('in')], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { maxConcurrency: 2 } },
+            { nodeId: fanoutId, kind: 'fanout', label: 'Fanout', inputs: [port('in')], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { maxConcurrency: 2, failurePolicy: 'continue' } },
             wait(entryId, [port('in')]), wait(finalId, [port('in', true), port('aux')]),
             { nodeId: joinId, kind: 'join', label: 'Join', inputs: [port('in')], outputs: [port('next')], dependencyPinIds: [], capabilities: [], policy: { strategy: 'all-settled', quorum: 1, deadlineMs: 60000 } },
             { ...output, inputs: [port('in')] },
