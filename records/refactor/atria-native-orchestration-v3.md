@@ -212,3 +212,11 @@
 - 最新四Engine定向三文件132/132：Join68/68、Graph20/20、Effect/Approval44/44。包含五策略/配额、真实事务内一致性、fresh并发settle一新一重放、本地遮蔽已提交ACK后重放、missing receipt拒绝、source revoke、同Host restore generation/epoch、迟到固定收据和未决Effect拒绝终态。定向生产ESLint及git diff --check通过。
 - 首轮SQL连接失败为Docker daemon未运行，不能算实现PASS；启动本机已有Docker和原两个隔离测试容器后四Engine复测通过。未创建/重置真实数据，没有模型/收费调用；ACK遮蔽不是真实网络COMMIT丢包。受控Result/预算/分组Port不等同原ResultEnvelope/Context/Scheduler准入完成。
 - P1/P2仍IN_PROGRESS。已定位维护脚本`storage-migrate.js`直接构造source/destination Engine而未持Host生命周期的缺口，继续修复；未知SQL拓扑拒绝边界、Delegate/Handoff/循环/Review/reconcile及P3–P8继续，三端真实客户端仍NOT_RUN/BLOCKED，main未集成。
+
+## 2026-10-15 — P1第六组：原维护CLI、迁移与Host交接
+
+- Source `cff1d2453` → `99da3eadb`，已提交推送。原维护CLI在用户初始化前持dataRoot Owner；migration source/destination及HTTP切换后的live Engine共享同一Owner，最后一个Engine drain/close后才释放guards/专用SQL sessions。同一SQL配置hash合并Owner session，不含明文凭据，也不将此缓存当拓扑安全证明。
+- 修复原HTTP迁移的并发边界：暂停外部Engine准入，排空已开始事务后copy；失败恢复，成功先退休source再换live Engine；全流程read-only，scope退出后维护许可失效。不是新的迁移系统，原MigrationRunner/原恢复仍持业务权威。
+- 最新定向四文件50/50：四Engine生命周期28（含旧Engine关闭不提前放Owner、第二Host拒绝、维护drain/恢复/退休），真实Windows installed Host 1（原CSRF会话、FS→SQLite→FS、同Plan可读、同boot保持、三个CLI拒绝、第二HTTP端口拒绝），原HTTP迁移mock12，原initStorage9。相关真实SQL Owner loss 2、FS/SQLite进程kill6、Native registration14，合计22/22；ESLint/diff check通过。CLI参数/真实隔离ZIP回归13/13在本组前半通过；不是使用真实用户备份。
+- 失败均已定位：HTTP测试初版用了错误`/api/users/admin`前缀，按原router改为`/api/users`后通过；迁移单测旧mock缺当前Native Storage导出，补齐后12/12；initStorage Pg首轮用了不存在默认测试账户，沿已有隔离容器进程环境后9/9，不输出/提交凭据。
+- P1仍IN_PROGRESS：未知SQL proxy/multi-primary/共享namespace的拒绝边界、完整Run/unknown引用根与三端存储验收尚未全部取得；当前root adapter在Darwin尚无实现，属于最终集成前须处理的相邻平台回归，不能掩盖。P2剩余Delegate/Handoff/循环/Review/reconcile继续，P3–P8未完成。没有实际Provider费用/外部mutation/真实批准或三端客户端通过，main未集成。

@@ -403,3 +403,11 @@ Receipt按稳定observationId追加，不覆盖unknown或矛盾历史。原Port�
 JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,decisionSeq`；cutoffSeq是本次决策前已持久Root.eventSeq，decisionSeq=cutoffSeq+1。有效成功按成员不可变收据的decisionSeq/AttemptId稳定排序；any-success取首个，count-quorum取前quorum个。partial不计成功配额；all-success有失败不能complete，all-settled等待全部或显式deadline；不满足部分输出合同则failed。deadline只采纳不晚于冻结deadlineAt持久化的合法Result，截止后但结算前入库也排除。结果需原audience/source Port重新验证，缺证据拒绝/排除；收据列明未结算、失败、未采纳与迟到成员。
 
 重放、并发settle和已提交回执丢失只返回同一结算，晚到分支不能重开旧Join；取消/恢复epoch也不能消费旧屏障。未完成分支仍保留实际身份/收据，不借Join失败声称远端取消或退款。P2当前使用受控原Port证据，不代表ResultEnvelope/Context/Scheduler或Domain Consumer已完成。
+
+### 17.6 原Storage维护入口与Engine交接
+
+`NativeHostOwner`按参与的原Engine保留生命周期；每个Engine先停止准入/drain/关闭，再释放自己的参与引用，最后一个Engine退出后才释放root guards和专用SQL Owner sessions。原`nativeHostLifecycle.attachStorageEngine`在同一Host内附接迁移destination/replacement，不创建第二Host。相同SQL连接配置的专用Owner session按不含明文配置的hash key合并；该缓存只避免同Host重入，并不证明未知proxy/multi-primary拓扑安全，也不把不同配置别名自动合并。保守保留已持SQL guard直到最后参与Engine关闭。
+
+原HTTP存储迁移以`withMaintenance`暂停source外部准入，排空已有事务后才copy；维护许可限本次async scope，不传播成后续通用权限。失败恢复source准入；全员copy成功先退休source，再附接新live Engine并关闭old/destination，read-only覆盖整个copy/swap。更高原Storage generation使旧fence失效；已有Run恢复仍需明确epoch/source/receipt复核，不因存储切换自动执行。
+
+原`storage-migrate`、`audit-storage-names`和密码恢复CLI在`initUserStorage`前取得同一dataRoot Owner；前两者原Engine也接生命周期。名称审计不重写业务资源名，但原Engine bootstrap/recovery可能写控制元数据，故要求离线互斥。内部Evaluation/Studio scenario/transient-source的独占临时根仍是原Host受控scratch，不把这些raw Engine扩展成外部Run/发送权威。其P4消费者适配和完整raw调用闭包仍需按阶段复核。
