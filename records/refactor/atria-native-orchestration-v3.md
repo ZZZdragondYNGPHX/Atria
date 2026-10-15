@@ -339,3 +339,11 @@
 - 本组FS/SQLite ExecutionService6/6、GenerationSend18/18通过；typed local观察新断言随后定向2/2通过。连同BudgetPort/RP原bank四文件39/39通过。临时移除生产budget verifier使2项foreign Effect反例错误ready，移除RP prefix guard使2项旧历史撤销反例错误send，均被捕获、finally还原。相关原Effect/Approval四Engine44/44、Context两文件45/45串行合计89/89通过；Context具体证据下一组归档。生产/测试定向ESLint及diff check通过。
 - 用户启动Docker后，启动原有隔离MySQL/Pg容器：原Session storage四Engine4/4、V3三域MySQL/Pg预算新6/6及原Project/RP12/12通过。Pg首轮认证失败由命令进程内读取原测试容器实际env纠正，未改数据库密码/持久配置，未输出Secret。Pg隔离schema共用database级Host锁，跨agent同时测试产生7项writer_unavailable；改为串行后相关44项全部通过，未放宽Owner。此前ECONNREFUSED保留为历史失败，不用新结果改写旧记录。
 - 并行后端子工作获用户明确授权；后续前端交给现有提示词预设/前端重构任务统合，再由其生成Claude Code提示词。P3与最终产品Gate仍NOT_READY，原Session角色/后台组合、完整父子授权、恢复/GC围栏及Tool/可信审批继续；不集成main。
+
+## 2026-10-16 — W04/P3第七组：Audience Context实际发送/消费边界
+
+- Source `06b6ea432` → `18c22338e`已提交推送。
+- ContextPort复用原compileNativeContextPlan、Information projector、Actor availability与RequestContextPlan bridge；不存在第二compiler/Memory writer。compile要求原scope/grant回执，send和consume均重读原source/audience/projection；context object仅当前Host可信持有，恢复后重新编译。assertSource拒绝把一个Session/Branch/Revision的Context用于另一个Host请求。
+- GenerationHost在可信context参数存在时，实际使用已按Audience编译的plan，跳过默认Narrator宽上下文和额外messages/prompt/tools；不是只验证一个旁路proof后发送另一份prompt。真实请求前及响应返回消费前重验，Source/权限撤销不变成合法新结果。Project/RP没有现存受控Audience compiler时明确domain_unavailable；跨Agent Result/Disclosure/真正Hybrid检索与Plan delegation有效grant组合仍待接线，不把受控scope callback当作完整领域授权已通过。
+- 四Engine ContextPort25/25，ContextSend真实本地HTTP20/20通过。原Context/Information/Disclosure相关4 suites109/109（新25+旧84）通过；随后与原Effect/Approval串行89/89再次核对。ContextPort五个guard mutant全部捕获并恢复；Host另外移除实际Actor plan选择、send撤权检查、consume检查分别2/2/2项失败，恢复后上述89全通过（consume mutation另2个source反例仍由已有守卫拒绝，不能声称全部依赖此单行）。
+- 接线前新HTTP测试曾6 fail/2 pass，揭示默认宽Context、撤权继续外发/消费，修复后四Engine20/20。usage和服务响应均为合成数值，不是自由文本质量/真实费用证据。新三个文件targeted ESLint与diff check通过；真实Windows/CachyOS/Termux客户端、可信审批、语义泄漏评价未执行。P3仍IN_PROGRESS，main未集成。

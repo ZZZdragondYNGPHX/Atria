@@ -503,3 +503,11 @@ Model attempt增加可选`inputFingerprint`；新`admitComputeAttempt`要求该h
 原Session RunControl增加内部`reserveComputeChild/admitCompute/releaseComputeChild/observeCompute`，沿原Session锁、Engine/Owner/fence、RunControl record和validator；原chargeLocalWork转交reservationId。新准入严格绑定当前branch/revision，换Source不能以重放名义再准入；审计observe与迟到settle仍可按原operation身份保留费用真相。未关闭reservation使原operation留存，不能被换HEAD的压缩抹去；关闭后原retiredCompute只累计一次实际费用/本地工作，未复制银行或费率。
 
 当前三个原bank、BudgetPort与GenerationHost稳定send已有FS/SQLite隔离实证，详见同一Record W04/P3第二至第五组。原Session角色/后台配额组合、V3父子Run/Source/Audience授权、Effect生产saga、原save/导入的活动额度失效与关联保留根仍须后续验证。没有新增Browser/插件预算dispatcher，也未向真实Provider收费。§13的权限/恢复/三域验收要求继续生效；合成HTTP/隔离存储不能替代实际账单或完整P3 Gate。
+
+### 17.16 P3原Source、Effect与Audience的接线边界
+
+`SourcePort.capture/revalidate`只观察原Session/Project/RP。SourceBinding冻结`sourceAuthority/sourceRef/sourceRequest/budgetAuthorityRef/bindingDigest`，RP额外绑定实际发送的完整聊天prefix digest。`createOrchestrationExecutionService`把原authorityFor接Run admission，Effect的budget verifier固定读原bank；领域authorize/verifySend/verifyObservation/verifyApproval均为mandatory可信adapter，不能提供默认批准。它是内部Host组合，尚未开放HTTP万能dispatcher。
+
+GenerationHost在真实sub-send前完成原budget admission，再通过可信`beforeSend`提交同Effect的ready/claim，只有fresh claim持token；每次retry/fallback重验来源、Host/epoch、当前grant、实际send binding和新的原attempt。预算ACK未知时只`observeAttempt`同identity并抛reconcile_required，查到charged也不返回第二份发送permit。模型与local work分别使用providerSendOrdinal/localWorkOrdinal typed ref，在同原bank结算；子Run不能使用null或兄弟reservation。
+
+`ContextPort.compile(handle,{ownerRef,sourceBinding,audience,taskPurpose,grantDigest,inputRefs,tokenBudget})`复用原Session Context/Information/Actor编译，`provider(handle,{context,source})`直接提供实际RequestContextPlan；`revalidate(...,{phase:'send'|'consume'})`核对原scope回执、精确source及projection。GenerationHost可信`orchestrationSend.context={port,compiled}`使用该plan作为真正输入并在发送/消费前复核。当前仅Session有原受控Audience compiler；Project/RP不可借默认宽上下文替代，缺原adapter明确拒绝。受控grant callback测试不证明Plan/父子Run领域授权已完成；Hybrid实际检索、跨Agent Result及语义泄漏质量仍需各原authority实证。
