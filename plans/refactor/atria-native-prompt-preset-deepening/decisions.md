@@ -1,6 +1,6 @@
 # 跨模块冻结决定与待选项
 
-说明：仅记录用户已明确选择的产品设计。D1–D7 已冻结；D8 所有备选 OPEN。文档冻结不表示代码实现、验收通过或可开始修改 main。
+说明：D1–D8 的功能与交互语义已由用户明确冻结；D8 不冻结视觉审美（由用户后续外部设计过程决定）。D9/E0 正在审计且未收口；设计文档不等于实现、验收或开发授权。
 
 ## D1 冻结，2026-10-15
 
@@ -84,11 +84,21 @@
 
 **冻结的是产品语义与未来验收要求，不是实施通过、模型表现已提升或 UI 已完成。** 领域细则归唯一 [D7 模块](quality-evolution.md)。
 
-## D8 讨论开放（见 [preset-studio-experience.md](preset-studio-experience.md)）
+## D8 已冻结 — W2 + R2 + P2 + I2 + M2（2026-10-15）
 
-- **W1/W2/W3**：原 Native Library、Studio、Play、V3 Graph/Run Inspector 间如何组织预设/创作控制与来源导航；不能新建第二套 Profile/Run/Prompt Authority。
-- **R1/R2/R3**：F2 已冻结的「结构化面板 + 完整自由作者文本」如何实现同步、无损、冲突提示、撤销和正式修订。
-- **P1/P2/P3**：静态 PromptIR/最终 Provider wire/Version Diff 预览的真实能力，如何区分本地预览与付费真实生成及运行中 Plan。
-- **I1/I2/I3**：文学/合法误拒/Agent 故障/权限/模型能力来源证据怎样分级展示而不泄漏私有 Context/Secret。
-- **M1/M2/M3**：Windows/CachyOS Linux/Android Termux 同一 Shell/Host 契约下的桌面和移动编辑、Inspector、可访问性与性能体验。
-- 五组全部 **OPEN**，不因列出推荐而提前定案；D8 冻结后先提交同一 Plan/Record，再进行 D9/E0 设计与实施准备审计。仅修改 `docs`，不创建实现分支、不修改 `main`。
+1. **W2 原生 Library/Studio/Play**：Library 管唯一版本化 Prompt Program/Module/Generation Resource 与引用/生命周期；Studio/Build/V3 Graph 管作品作者表达、Agent Node、Quality 与精确 Draft/Review/Publish；Play 只编辑本人受权 Runtime Choices/表达参数并呈现获准生效状态。三域共享原 Source/Route/Prompt/Plan 权威，不能出现第二 Preset/Run Store、Browser writer 或旧 Workspace 兼容。
+2. **R2 结构化 + 完整自由原文同一 Draft**：D2 F2 永久有效；结构化字段、自由作者原文、正反例及其有效范围映射**同一**原生版本化资源。完整原文不可静默改写、删除、归一化；无法无损解析的文本原样保留，表现为可检查差异/冲突/来源/不可逆编辑提醒。Undo/Redo、dirty/leave、CAS、Draft/Review/Publish 需真实权限和可靠失败出口，不根据自然语言自称 role 改 Host 授权。
+3. **P2 Authored/Effective/Provider Wire 预览和精确 Diff**：三视图分别展示原文字节/正式作者声明、可信 PromptCompiler + Source/Node/Route/Scene 得到的有效语义 IR 与 Module 来源、合法目标 Provider adapter 的 role/tool/output/Token 及脱敏最终 Wire。对同一组 exact Version/Source/Actor/Grant/Branch/Route/Provider/Compiler 证据进行 Diff；静态 Preview 与真实生成/收费/正式发布必须区分。**未发布 Draft Preview** 尚无经过验证的可信 Host 无发送编译入口，既有 production /preview 只允许正式受权 exact refs；不得以普通 Browser 预览覆盖 production /execute。
+4. **I2 来源 Inspector**：复用 V3 Host Projection、原 Compiler/Provider/Context/Experience/Eval/Evolution 的错误和实际回执，分硬阻塞、待作者处理、文风警告、模型明确拒绝/疑似无端回避、文学/Agent 分维度质量、来源过期、真实 Token/费用/缓存未知，以及 Candidate/CAS 状态；按原受众显示脱敏证据与可跳转 exact refs，不能泄漏 Secret、NPC 私密心智、Provider opaque reasoning。Observer/Judge 判断不能冒充 World Truth。
+5. **M2 Windows/CachyOS Linux/Android Termux 全功能**：Desktop/移动使用同一 Native Host/Source/CAS/Plan/Run/Effect/Result/Approval 合同并提供同等级完整编辑、Raw/Structured/Preview/Diff、资源导航、问题检查、Review/Publish。List/Sheet/Tab 只是手机与 Graph Canvas 功能等价的交互形态要求，不指定最终视觉布局/配色/字体/组件造型。实际键盘/触屏/Back/软键盘/无障碍/长文本性能以后续真实端侧证据验收。
+6. **审美由用户及后续外部设计资料裁定**：本助手不得以自己主观审美作为 Atria 前端视觉结论；本轮只批准**功能信息架构、安全、状态、交互合同**，不批准颜色、风格、排版美术、按钮造型、HTML 最终稿。现存 V3/Serene Canvas 等视觉文件仅视作代码与历史设计依赖，需要后续与用户提供的新方案讨论协调，不自动等于新前端重构视觉批准。
+7. **用户拟定的后续视觉方案流程，不是已完成产物**：等待本轮完整讨论后，用户让 Codex **全面审计前端**，清点必要按钮/Surface/核心页面/交互和状态并整理功能清单；用户再交给擅长前端审美的其他 AI 制作**非全功能、引导视觉方向的精致 HTML 示例**、**逐功能界面/交互说明文档**、**整体前端指导文档**，由用户把这些交回，再多轮讨论确认最终视觉企划。不得由本助手提前生成风格规范或偷换该流程；功能清单不是最终 UI 设计。
+8. **保留真实工程缺口**：D4 Node Program/Route、generation_semantic_authority_changed fallback；D5 context.fact/contextSlots/system 可信 Role 边界；D6 Source/Actor/Branch/WorldTick/Grant 失效和长会话证据；D7 requirePilotSources/source_unready、旧 workspace/Director 清退、V3 plan-prompt/PlanBinding CAS；D8 未发布 Draft Preview/有效 Prompt/Wire 可信预览与三端完整验证全部未实施或 NOT_RUN。V3 单 Native Host、HCM、Context/Model/RunControl/Experience/Eval/PromptCandidateStore 权威与正式重构零 ST/旧模式兼容保持。
+
+本轮的唯一详细功能与 UX 合同见 [preset-studio-experience.md](preset-studio-experience.md)。视觉设计决策待用户批准新的视觉参考与多轮讨论；不得将“功能冻结”写成“审美冻结”。
+
+## D9/E0 启动静态审计（NOT_CLOSED；见 [e0-audit.md](e0-audit.md)）
+
+- 检索/读取 main 与 V3 的真实消费者、动态 import/注册、Source/Prompt/Provider/Memory/Experience/Evolution/Studio/Play/Settings/普通 RP/测试入口；必须区分已定位与尚未闭合的引用。
+- 对跨合同缺口、实现阶段依赖、真实阻塞/未知、Source/权限/质量/Provider 失败出口提供原代码落点和验收责任；完整消费者和设计依赖闭包完成前不得宣称 E0 通过。
+- **E0 未收口前不创建实现分支，不修改 main**；即使设计 Gate 最终收口，也仍须用户另行明确授权正式开发。UI 视觉实施还必须等待用户自己的 Codex→外部视觉 AI→HTML/双文档→多轮确认过程。

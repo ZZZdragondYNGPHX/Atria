@@ -3,7 +3,7 @@
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
 - Primary Workspace：`main`（未来实现，当前未授权修改）。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1–D7 已冻结；D8 讨论草案已建，W/R/P/I/M 方案待用户选择；同一份 Record 持续追加后续轮次。
+- 当前阶段：D1–D8 的功能与交互语义已冻结；视觉审美未冻结，D9/E0 已启动静态审计且 NOT_CLOSED。本任务继续只使用同一份 Record。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -135,3 +135,28 @@
 - D8 尚未实现结构化/原文无损双编辑器、未发布 Draft 真实有效 Preview、Provider wire/semantic diff、Quality Inspector 和三端等价。现有 `/preview` 的受权 committed refs 不是通用未发布/可执行 Draft 端口；无权限不得暴露私有 Source、Secret 或隐含思维内容。
 - 本轮仅远端 Git 文档提交、更新后读取文档和 ref 的核验；**未运行** Node/test/build、CI、模型/Provider API、浏览器 E2E、Windows/CachyOS Linux/Android Termux 真机或真实调用/成本/质量测试；不做产品分支、更不触碰 main。
 - 下一 checkpoint：第八轮 W（Library/Studio/Play 信息架构）、R（F2 raw+structured 编辑）、P（有效 IR/Provider Preview/Diff）、I（质量与错误证据 Inspector）、M（PC/移动全功能对等）。建议 W2+R2+P2+I2+M2 **OPEN**；用户选后继续「先更新并提交同一 Plan/Record，然后 D9/E0 审计」原则，未收口不创建实现分支。
+
+## 2026-10-15 — D8 冻结 W2 + R2 + P2 + I2 + M2；D9/E0 静态首审与审美归属（docs-only）
+
+**用户已冻结 D8 功能与交互语义**
+- W2：Library/Studio/Play 现有三域原位协作，保留精确 Native Prompt/Route/Plan/资源归属；R2：同一 Draft 的结构化设置与完整自由作者原文可无损编辑，不能静默删除/改写；P2：Authored/Effective/Provider Wire 三视图、准确 Source/版本 Diff 与真正 Preview/Execute 区分；I2：有来源的质量/拒答/Host/Provider 故障 Inspector；M2：Windows/CachyOS Linux/Android Termux 可完成相同合法功能、移动触控和屏幕阅读支持。
+- 用户明确表示**不信任本助手的前端审美**，D8 **只冻结功能、状态和交互边界**，任何具体配色、布局美术、字体或按钮造型不由本助手决定。历史 Serene Canvas/V3 UI 仅作为已存在的代码/设计依赖，不是本次视觉重构获得的新视觉授权。
+- 用户**将来**计划在讨论完成后，让 Codex 全面检查前端源码，整理必需按钮/界面/控件及功能，并交给其他有前端审美的 AI 生成**不要求全功能、仅为引导审美的精致 HTML**、**逐功能应如何表现的说明文档**和**整体前端指导文档**。用户将这些结果再交回多轮讨论，单独确定最终 UI 视觉企划。当前无该 HTML/文档交付物，未委托本助手擅自画界面。
+
+**本轮真实静态核查**
+- 写入前确认远端 docs@e4719ad9b3b165f2f68ec2ac3743fb0e8d2ca210、main@5eb3bc7652cd9837ca8c555cf74976fab078932c、V3 refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805。
+- 读取 docs Governance v1.5、同一 Plan index/decisions/D8/本 Record、V3 自身的 E0/Interface/Implementation/Graph Editor 设计、main Native ModelPrompt README、原 Prompt Authoring/Presets/Runtime/Library Shell/Generation Endpoint、Quality/Evolution 与原编译器/Context Renderer、V3 当前 Node Contracts/PlanRepository/RunRepository/Authoring API 等文件，均为定向远端源阅读。
+- GitHub default-branch code search 以 promptProgramRef、workspace-prompt、getPresetBinding、PromptCandidateStore、contextSlots、requirePilotSources、mountPromptPresets、orchestrationMode、mountPromptEditor 等词定位主要 main 读写/调用链；多个查询最多只取 30 项，且搜索未覆盖独立 V3 分支及所有动态消费者。V3 controller.js 精确路径读取返回 NOT_FOUND，不因此声称运行控制器绝对不存在。
+- D9 初步静态台账涵盖 Library/Studio/Play/Settings、Native Compiler/Provider、普通 RP/旧 Workspace/Director、Memory/Context、Experience/Eval/Evolution、Package/Export/GC、V3 新 Host/Source/Plan、UI/测试参考。**不是全量可执行导入/路由/动态绑定闭包**。
+- 本轮仅在 docs 更新同一 index、decisions、preset-studio-experience，新增独立 D9 E0 模块 e0-audit.md，并更新这份唯一 Record；不创建额外 Record/HANDOFF、不修改既有 V3/HCM 方案或任何产品分支。
+
+**保留阻塞、缺口与后续 Gate**
+- D4：V3 agentPinId/dependencyPins 尚未证明独立 Node Prompt Program 经可信 Host 到最终 Provider；原 Route promptProgramRef 和 generation_semantic_authority_changed fallback 仍需接线/实测。
+- D5：context.fact → contextSlots → system 的 Source/Role 信任边界仍为 STATIC RISK/NOT_RUN，不称已发现可利用漏洞或已修复。D6：U2/E2/H2/V2 的 Source/Actor/Branch/WorldTick/Grant/long-session invalidation、压缩质量与 Provider continuation 未证实。
+- D7：原 Quality requirePilotSources 的 source_unready、旧 EvolutionTargets workspace-prompt/workspace-strategy/Director 未清、V3 plan-prompt/PlanRevision/PlanBinding CAS 端到端发布与独立 Promotion 真实数据仍未完成。D8：未发布 Draft Host-only Preview、三层真实有效 Diff、Provider Wire/Inspector 与三端操作未经测试。
+- D9/E0 当前为 **IN_PROGRESS/NOT_CLOSED**：完整代码消费者闭包、动态导入/设置读写/业务接口/导入导出/GC 与跨合同物理方案尚未闭合，不能宣称 E0_DESIGN_READY。用户明确要求 E0 收口前不创建实现分支、不修改 main；即使将来设计 Gate 完成仍需用户单独明确授权。
+- 当前完成的仅 GitHub 文档树原子提交和提交后文件/分支读取验证；本轮 **未执行** 本地 checkout、Node/Jest/build/CI、真实 Provider API、E2E/截图、Windows/CachyOS Linux/Android Termux、正式 Run/Source/费用/质量的真实验收。设计阶段不自创调用配额/硬性测试数量。
+- 下一工作重心：D9 查漏真实调用图/消费者、Host/Provider/Context/Quality/Preview/发布接口归属及实施依赖、G1/G2 设计 E0 收口前置，视觉审美等待用户后续外部材料而不抢先设计。
+
+
+**提交前并发分支核查补充（本轮 E0 仍 NOT_CLOSED）**：准备 Git 对象期间，docs 从 e4719ad9b3b165f2f68ec2ac3743fb0e8d2ca210 更新到 26667607066dd7ca27415f03fc63b01bc31ffdf2；compare 确认新 4 笔 Storage/V3 文档提交不涉及本任务五条路径。main 另由外部 Storage Center 合并推进至 73557f8098d2353f23777a35e25042e94742bec9，V3 另由 Join/Attempt 结算推进至 cff1d24530967e8eba8668530ac17ae0b66ec334，均**非本任务写入**。新 Storage/Source/GC/恢复与 V3 Join/Result 消费者需要追加 E0 全量引用与差分审查；本轮静态首审在旧版本读到的内容不得冒充新 HEAD 已完成动态审计。提交将基于实际新 docs HEAD，无强制覆盖。产品/Node/Provider/Windows/CachyOS Linux/Android Termux 验证仍未运行。

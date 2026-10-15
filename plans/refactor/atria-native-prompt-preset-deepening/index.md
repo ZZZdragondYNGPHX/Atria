@@ -11,8 +11,9 @@
 - **D5 已冻结（2026-10-15）**：**S2 Typed SemanticBlocks + L2 Capability-aware Provider Lowering + D2 分级可解释诊断 + K2 Stable/Dynamic Scoped Cache + T2 Context/Provider 双阶段 Token/Compute 预算**；详见 [semantic-ir-lowering.md](semantic-ir-lowering.md)。设计冻结不表示物理接口或质量已验收。
 - **D6 已冻结（2026-10-15）**：**U2 每消费者 Source-bound Context + E2 类型化认识地位 + H2 来源完整的长会话分层 + V2 Source-aware 定向失效及消费前复验**；仅消费现有 V3 C2 / HCM-01–08，不重建 Memory/Context/Actor/World 权威。详见 [context-memory-consumption.md](context-memory-consumption.md)。
 - **D7 已冻结（2026-10-15）**：**Q2 文学/角色/Agent 多维 QualityProfile 与不可抵消硬约束 + F2 原 Experience 来源/根因归属 + O2 合法成熟虚构 RP 过度拒答正反控制 + P2 条件反思候选/独立评价/Review/PlanRevision/PlanBinding CAS 发布**。这是设计取舍，实际来源及 V3 `plan-prompt` 闭环待实施；见 [quality-evolution.md](quality-evolution.md)。
-- **D8 正在讨论（OPEN）**：在原 Native Library/Play/Studio/Shell 与 V3 Graph/Run Inspector 中深化编辑、自由作者指令、真实编译预览/Diff、质量诊断与跨端交互，不另建第二 Prompt 状态权威；见 [preset-studio-experience.md](preset-studio-experience.md)。
-- 本轮核查基线：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs` 起点 `a1afa889780f67fc5fc930dd4ac8d17904f7bdfe`；V3 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。仅证明核查时远端存储状态，E0 须以实施时最新 refs 完成消费者闭包、失败、权限、预算、质量及真实端侧验证。
+- **D8 已冻结（2026-10-15）**：W2 原生 Library/Studio/Play 三域协作 + R2 单 Draft 结构化/完整原文无损双编辑 + P2 Authored/Effective/Provider Wire 真实预览与精确 Diff + I2 来源驱动质量/故障 Inspector + M2 Windows/CachyOS Linux/Android Termux 全功能交互等价；详见 [preset-studio-experience.md](preset-studio-experience.md)。**仅冻结功能/交互语义；视觉审美完全留待用户后续外部设计参考与多轮讨论，不由本助手决定。**
+- **D9/E0 正在审计（NOT_CLOSED）**：开始真实消费者、跨合同与实施依赖审查；初步证据与开发分支 Gate 见 [e0-audit.md](e0-audit.md)。
+- 本轮静态核查最初读取 main@5eb3bc7652cd9837ca8c555cf74976fab078932c、docs@e4719ad9b3b165f2f68ec2ac3743fb0e8d2ca210、V3@c04f36925189d4064a63bdd6b9ca345ff2bcf805；**提交前重新核对** main@73557f8098d2353f23777a35e25042e94742bec9、docs@26667607066dd7ca27415f03fc63b01bc31ffdf2、V3@cff1d24530967e8eba8668530ac17ae0b66ec334。并发修改属于 Storage Center 合并与 V3 Join 实现，不由本企划执行；新增消费者仍待 E0 重新审计。
 
 ## 核心目标与实施边界
 
@@ -44,10 +45,11 @@
 | [semantic-ir-lowering.md](semantic-ir-lowering.md) | **D5 已冻结**：S2/L2/D2/K2/T2、Role/Context 信任边界、Fallback、缓存与预算 | D5 / E0 |
 | [context-memory-consumption.md](context-memory-consumption.md) | **D6 已冻结**：U2/E2/H2/V2 的受众 Context 投影、认识地位、长会话证据与 Source-aware 失效 | D6 和实施相关接口 |
 | [quality-evolution.md](quality-evolution.md) | **D7 已冻结**：Q2/F2/O2/P2；受审文学/Agent 质量、来源归因、合法误拒、精确候选与受控发布 | D7 / E0 / 质量实施 |
-| [preset-studio-experience.md](preset-studio-experience.md) | **D8 讨论草案**：Library/Play/Studio 编辑、结构化与自由文本、Prompt 预览/Diff、质量 Inspector、跨端体验 | 第八轮 |
+| [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；审美未定，等待用户提供外部设计参考 | 第八轮/未来实现 |
+| [e0-audit.md](e0-audit.md) | **D9/E0 未收口**：真实消费者静态台账、跨合同缺口、实施依赖与分支前置 Gate | 第九轮/开发交接 |
 | [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |
 
-## 后续轮次（D1–D7 已冻结，D8 尚待选择）
+## 后续轮次（D1–D8 功能语义已冻结，D9/E0 未收口）
 
 | 轮次 | 核心议题 |
 | --- | --- |
@@ -58,9 +60,9 @@
 | **D5 已冻结** | **S2 + L2 + D2 + K2 + T2**：语义 IR、Lowering、诊断、缓存及双阶段预算 |
 | **D6 已冻结** | **U2 + E2 + H2 + V2**：合法受众投影、信息地位、长会话保真与定向失效 |
 | **D7 已冻结** | **Q2 + F2 + O2 + P2**；文学/Agent 评价、真实归因、合法误拒、精确候选/评审发布 |
-| **D8 正在讨论** | 现有 Native Library/Play/Studio 的编辑、真实编译预览/Diff、诊断与跨端 UX |
-| D9/E0 | 消费者闭包与 V3 最新实现审计、接口/实施 Gate、端侧最小验证 |
+| **D8 已冻结（仅功能/交互）** | W2 + R2 + P2 + I2 + M2；最终视觉审美与实际 HTML 参考尚未决定 |
+| **D9/E0 审计中** | 全量消费者闭包、跨合同缺口、实施依赖、开发授权前置 Gate；尚未收口 |
 
 ## 当前事实
 
-已完成 D1–D7 的**设计冻结**，创建 D8 待选草案；只定向读取远端代码/合同，没有产品代码变更或 Node/CI/Provider API/Browser/Windows/CachyOS Linux/Termux 实测。D4 Node/Route fallback、D5 ContextSlot Role 信任边界、D6 长会话来源失效、D7 `source_unready`/旧 Workspace 清退/`plan-prompt` 尚未接通，以及 D8 UI 设计均非已交付功能。
+D1–D8 的功能与交互语义已冻结，**视觉审美未冻结**。D9/E0 已进入静态审计但仍 NOT_CLOSED；并未改产品代码、创建实现分支、运行 Node/CI/Provider/Browser/三端实测。D4 Node/Route fallback、D5 ContextSlot Role、D6 长会话/来源失效、D7 source_unready/旧 Workspace 清退/plan-prompt 发布链、D8 未发布 Draft Preview 与真实三层 Diff 均须保留真实阻塞。仅有 GitHub 搜索/定向静态阅读，不能冒充全量引用审计或任何产品验收。
