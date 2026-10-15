@@ -46,7 +46,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [graph-editor-experience.md](graph-editor-experience.md) | **D8 冻结**：U2 Graph+Inspector、强类型 Node/Edge、Plan Draft/Publish、Run Timeline/Projection、审批/Diagnostics、Serene Canvas/移动端与性能 | 前端 V3 Authoring 与 Run UX 设计权威 |
 | [e0-audit.md](e0-audit.md) | **D9 E0 静态证据（E0 未通过）**：跨域依赖、旧代码清退风险、接口待定项、待清退消费者和未闭合审计项 | D9 E0 与实施方案讨论 |
 | [e0-consumer-inventory.md](e0-consumer-inventory.md) / [e0-import-graph.md](e0-import-graph.md) | 最新 main 全仓逐文件/行号、151 文件清退 manifest、AST 直接/间接依赖及动态表达式证据附件；处置仍归 e0-audit | E0 / P6 引用闭包复核 |
-| [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：5 kinds/key、对象字段/状态、CAS/事务/恢复、原预算 Port、RPC/Projection/审批/保留根；实现实证未通过 | E0 物理接口核查与实施 P1–P4 |
+| [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：6 kinds/key、对象字段/状态、CAS/事务/恢复、原预算 Port、RPC/Projection/审批/保留根；实现实证未通过 | E0 物理接口核查与实施 P1–P4 |
 | [implementation-plan.md](implementation-plan.md) | **D9 E1 正式路线**：E0 建分支前置、P1–P8 依赖/验收门槛、全域消费者硬切及工作包 | E0 审核、正式交接与实施期间 |
 | [acceptance-matrix.md](acceptance-matrix.md) | **D9 冻结验收目标**：L0–L4、Graph/Effect/预算/安全/RP/Studio/UI 与三端真实客户端 Gate | 每阶段/最终收口与 Record 证据 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
@@ -75,3 +75,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 ## E1 正式开发交接审查入口（NOT READY，E0 尚未闭合）
 
 必读本 `index.md` → [decisions.md](decisions.md) D9 → [e0-audit.md](e0-audit.md) 的**真实静态证据与已知阻塞** → [interface-contracts.md](interface-contracts.md) 的物理接口待审 → [implementation-plan.md](implementation-plan.md) 的 E0→P1 前置条件和工作包 → [acceptance-matrix.md](acceptance-matrix.md) 的验收 Gate。按需回查 D2–D8 与 HCM/Agent Intelligence、Game Runtime/Studio、Serene Canvas、独立 MCP 的唯一权威。审查时先重新锁定当时实际 main/docs HEAD，再完成旧 Browser Runtime、mode adapters、Native Game、Settings/Evolution、Serene Canvas UI、Memory/Model/Tool 的**全部**消费者、持久化/权限/真实故障窗口核对；未完成项按 BLOCKED 记录。**当前不创建工作分支、不修改 main、不宣称 E0 或三端已通过**。
+
+当前最终结论：**NOT READY / E0 BLOCKED**。完整结果、R01–R08 剩余阻塞、最终6 kinds/PlanBinding/Domain Ports及交接结论见 [e0-audit §10](e0-audit.md#10-最终开发就绪审查与交接结论)，物理字段/事务/RPC权威见 [interface-contracts §6–11](interface-contracts.md#6-物理落点与存储合同-v1)，实施顺序见 [implementation-plan §6–8](implementation-plan.md#6-e0-收口后的依赖图与阶段增补)，真实用例见 [acceptance §7–8](acceptance-matrix.md#7-三端真实客户端可执行方案与当前环境)。本次只完成已授权文档审计与就绪复核；正式开发必须等待用户另行明确授权。

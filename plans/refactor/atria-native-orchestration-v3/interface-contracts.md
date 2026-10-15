@@ -1,6 +1,6 @@
 # D9 E1 — Native V3 物理接口合同 v1（设计冻结，运行未验证）
 
-> 2026-10-15 第九轮用户选择 **E1**。本模块拥有 D9 **Plan/Run/Effect/Receipt/Result/Projection 跨层接口的冻结语义与 E0 前置清单**。D1–D8 的业务细则继续引用 [architecture](architecture.md)、[graph-control](graph-control.md)、[context-sharing](context-sharing.md)、[adaptive-compute](adaptive-compute.md)、[effect-authorization](effect-authorization.md)、[narrative-project-quality](narrative-project-quality.md)、[graph-editor-experience](graph-editor-experience.md)；静态旧代码证据见 [e0-audit](e0-audit.md)，工程阶段见 [implementation-plan](implementation-plan.md)。**逻辑边界与 §6–10 的物理合同 v1 已冻结为工程设计，存储表、RPC 未实现，E0 未完成**。
+> 2026-10-15 第九轮用户选择 **E1**。本模块拥有 D9 **Plan/Run/Effect/Receipt/Result/Projection 跨层接口的冻结语义与 E0 前置清单**。D1–D8 的业务细则继续引用 [architecture](architecture.md)、[graph-control](graph-control.md)、[context-sharing](context-sharing.md)、[adaptive-compute](adaptive-compute.md)、[effect-authorization](effect-authorization.md)、[narrative-project-quality](narrative-project-quality.md)、[graph-editor-experience](graph-editor-experience.md)；静态旧代码证据见 [e0-audit](e0-audit.md)，工程阶段见 [implementation-plan](implementation-plan.md)。**逻辑边界与 §6–11 的物理合同 v1 已冻结为工程设计，存储表、RPC 未实现，E0 未完成**。
 
 ## 1. T2 单 Host、原业务 Authority 与两类版本
 
@@ -62,6 +62,7 @@
 | kind（未来新增） | 其余有序 key fields | doc 与可变性 |
 | --- | --- | --- |
 | `atri_orchestration_plan` | `planId` | PlanRoot：Draft/authoring revision/current published pointer；CAS mutable |
+| `atri_orchestration_binding` | `bindingId` | 精确 source subject 的新 PlanBinding；CAS mutable，禁止旧 preset 映射 |
 | `atri_orchestration_plan_revision` | `planId, planRevisionId` | 完整 immutable PlanRevision；insert-if-absent，同 identity 不同 integrity 冲突 |
 | `atri_orchestration_run` | `runId` | RunRoot：stateVersion/eventSeq、graph、active attempts/record refs、epoch/limits/progress；CAS mutable |
 | `atri_orchestration_record` | `runId, recordType, recordId` | `attempt/patch/join/effect/receipt/approval/result/event/output`；各类型 validator 决定 immutable/mutable，禁止任意 JSON dump |
@@ -98,6 +99,7 @@ ID 在原 `identity.js` 扩展 UUID family：`oplan/oprev/orun/onode/oattempt/oe
 | 对象 | 字段（v1）与不变量 |
 | --- | --- |
 | `PlanRoot` | `schemaVersion,planId,ownerRef,draftVersion,basePlanRevisionId,definition,dependencyPins,definitionHash,currentPlanRevisionId,viewState,archived,createdAt,updatedAt`；ownerRef 为 Host 身份，Draft 不引用旧 preset |
+| `PlanBinding` | `schemaVersion,bindingId,sourceSelector,planRef,version,changedBy,changedAt`；bindingId 为原 canonical hash(sourceSelector)，sourceSelector 是原 RP/Session/Project 的精确 stable subject，Host 校验 owner/source 权限；planRef 精确钉 revision，缺 binding 不回退旧模式 |
 | `PlanRevision` | `schemaVersion,planId,planRevisionId,definition,dependencyPins,definitionHash,authorRef,validationDigest,publishedAt`；definition 含 nodes/typed ports/edges/agent refs/capability ceilings/graphChangePolicy/limits/outputContract；immutable |
 | `ValidationReport` | `schemaVersion,planId,draftVersion,definitionHash,dependencyDigest,status,issues,checkedAt`；status `valid/invalid/unknown`；issue 含 `code,severity,nodeId?,edgeId?,fieldPath?,sourceRef?,evidenceRef?`；missing/unknown required evidence 阻止 publish |
 | `SourceBinding` | tagged union：Session 使用原 sessionId/branchId/revisionId/scopeEpoch；普通 RP 使用原 Experience/SourceAdapter 的 chat/message/variant/hash anchor；Project 使用 projectId/taskId/baseRevision/sourceHash。完整嵌入原 `sourceRef`、`sourceAuthority` 与 bindingDigest；不是同名全局 revision，不为普通 RP 伪造 Session |
@@ -110,7 +112,7 @@ ID 在原 `identity.js` 扩展 UUID family：`oplan/oprev/orun/onode/oattempt/oe
 | `ApprovalRequest` | `schemaVersion,approvalId,effectId,runId,nodeAttemptId,bindingHash,actorRequirement,requestNonceHash,hostBootId,epoch,sourceBindingDigest,endpointBindingDigest,inputHash,budgetEnvelopeDigest,risk,expiresAt,status,decisionRef`；等待态可持久，nonce 原值只送可信交互通道 |
 | `ApprovalDecision` | `schemaVersion,decisionId,approvalId,bindingHash,principalRef,authenticationContextRef,decision,decidedAt,expiresAt,hostBootId,epoch`；`approve/reject`；一次使用与 Effect ready→dispatching 同事务标 consumed；Boot 改变旧批准失效 |
 | `ResultEnvelope` | `schemaVersion,resultId,runId,producerAttemptId,outputType,outputSchemaRef,payloadRef,sourceRefs,dependencyDigest,audienceConstraint,disclosureConstraint,qualityRefs,status,createdAt`；`complete/partial/unknown/unavailable`；接收方独立重新授权 |
-| `OutputClaim` | `schemaVersion,claimId,runId,nodeAttemptId,outputKey,sourceBindingDigest,resultRef,consumerRef,operationRef,status,domainReceiptRef`；原 consumer 使用稳定 operationRef；同一个 source turn/variant/output slot 恰一合法 owner；仅 runId 去重不足以防两个 Run 双正文 |
+| `OutputClaim` | `schemaVersion,claimId,runId,nodeAttemptId,outputKey,sourceBindingDigest,resultRef,consumerRef,operationRef,status,domainReceiptRef`；原 consumer 使用稳定 operationRef；outputKey 按原 hash 对 exact source input turn/message+variant+output slot 计算；同一个 source turn/variant/output slot 恰一合法 owner；仅 runId 去重不足以防两个 Run 双正文 |
 
 Run status：`admitted/running/waiting_approval/reconciling/blocked/completed/partial/failed/cancelled/stale`。`unknown` 是 Effect/Result 的知识状态；Run 有 unknown effect 时通常 `reconciling/blocked`，不能标完成。Effect status：`prepared/ready/dispatching/confirmed/failed/not_dispatched/unknown`；cancelRequested 单独布尔/事件，不能代替真实结果。Approval：`pending/approved/rejected/expired/invalidated/consumed`。所有跨状态转移由 controller validator 管，Browser 不能写 status。
 
@@ -172,6 +174,7 @@ Run status：`admitted/running/waiting_approval/reconciling/blocked/completed/pa
 | POST suffix | 关键 body / 权限 |
 | --- | --- |
 | `/plans/list`, `/plans/get`, `/plans/revisions` | owner/source scope；分页 cursor，不返回未经授权内容 |
+| `/bindings/get`, `/bindings/save` | exact sourceSelector/planRef；save 带 expectedVersion（首次 null），原 source authority 授权后 CAS，不接受旧 preset/bindingSubject 别名 |
 | `/plans/create`, `/plans/save` | definition/dependencyPins/viewState；save 带 planId/expectedDraftVersion/expectedDefinitionHash |
 | `/plans/validate` | planId/draftVersion/definitionHash；纯校验，零 Tool/Secret/Provider send |
 | `/plans/publish` | planId/expectedDraftVersion/definitionHash/validationDigest；Host 重验后 immutable publish |
@@ -197,3 +200,32 @@ Projection：`{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersi
 - 账号 backup/restore 包含受管新 kinds，恢复后增加 Host epoch、所有旧批准失效，Run 进入 blocked/reconciling；导入历史 Run/Projection/Trace 不能自动发送或以 restored budget 退款。保留原 RunControl/Project high-water 与正式收据，检测账本回退无法证明时拒绝恢复执行。
 - Session `.atriasave` 不是 V3 Run 的迁移格式；Save/fork/restore 必须让原 SourceBinding 失效，V3 不随其复制活动 Run/approval/预算额度。删除来源对象前原 authority 能看到 V3 references 或明确退休阻塞；不借 V3 GC 越过原完整闭包/回收站政策。
 - 首版不提供活动 Run 跨设备续跑或跨 Engine 的无停机迁移；原账户备份/迁移服务仍按其业务合同运行。元数据格式、失败状态与核对路线已冻结；真实恢复、GC、四 Engine 一致性仍 NOT_RUN/BLOCKED。
+
+## 11. Product Binding、Evolution 与原 Domain Ports 的最终衔接
+
+最终自审补足一个实际缺口：旧 API 不只有“运行 preset”，还有 `get/setPresetBinding` 与 Evolution publication；如果新合同只定义 Plan/Run、却没有原生 Plan 选择与发布指针，Settings/消费者仍可能回读旧配置。因此本 v1 使用第六个 `atri_orchestration_binding` kind（§6），由同一 Native PlanRepository 管理，不另建 preset/settings 系统。
+
+### 11.1 新 Plan 选择与 Evolution 目标
+
+- `sourceSelector` 采用原 SourceAdapter 的稳定 subject（普通 RP 的精确 chat/character/group 身份、Native Session 的精确 session/entry subject、Studio 的 project/task subject），source currentness 的 branch/variant/revision 仍在 RunAdmission 再验。selector v1 严格 union：`{domain:"rp_chat",charDir,name,isGroup,groupId}`、`{domain:"native_session",sessionId,entryPointId}`、`{domain:"project",projectId,taskId}`，不适用字段显式 null，值由原 source authority 校验；不作隐式父级选择。selector 不能用显示名称替代真正 ID，bindingId 由 Host 原 hash 算法推导；用户自行选择新 PlanRevision，**不从旧 preset/settings 自动生成 binding**。
+- Run/start 必须提交 exact planRef；有产品绑定的自动入口从受权 PlanBinding 取该 ref，并钉 `bindingId/version`。缺/过期/无权/无原预算 authority 返回 blocked；不能 fallback 旧 mode 或创建假 Session。原用户本轮手动明确选择的 Plan 可不持久设为默认，但同样需原 source grant。
+- Evolution 新目标物理 union：`{kind:'plan-prompt',bindingId,expectedBindingVersion,planRef,nodeId,promptModuleRef}` 与 `{kind:'plan-strategy',bindingId,expectedBindingVersion,planRef,nodeId,fieldPath}`。前者只指原 Native exact PromptModule；后者首版允许原 graph 合同内的 `reviewPolicy`、`limits`（自动候选只能收紧）、已获准的 exact `routeRef`。不开放任意 JSON path、capability/output owner/source grant/Secret 修改；增大额度或改变风险授权须新的原 authority 许可。
+- 原 `EvolutionTargets` 继续拥有 target catalog/authorize/capture/prepare/check/current/write/discard/evaluationSettings，新增两分支，删除旧 workspace 两分支；原 Skill/Project targets 仍在各原 service。Target pin 包括 binding version、exact PlanRevision/hash、node/field/module、source/grant/route fingerprints；原 evaluator/报告/promotion/price/usage 权威不另建。
+- Prompt candidate 由原 PromptCandidateStore/版本化资源 authority 产出新的 exact module ref；PlanRepository 发布**新的** immutable PlanRevision，最后 CAS 对应 PlanBinding。跨 store 使用原 Evolution publication journal 的阶段/operation refs 做 reconcile；新 module/Plan 已创建但 binding CAS 失败时记录冲突/保留候选，不覆盖用户并发变更，不假称跨 store 原子。
+- 原 Evolution rollback 只能在 publicationCurrent/精确 CAS 仍成立时将 binding 指回获准旧 **V3 PlanRevision**（或发布合规的新修订），不修改正在运行的 Plan，不回滚已消费预算/DomainCommit。这里的旧 V3 revision 是新原生版本历史，绝非旧 Orchestrator 数据兼容。旧 workspace target 的历史 publication/报告只读，不能自动映射新 target 或重新赋予发布资格。
+- Evaluation RP adapter 接受 frozen `planRef/sourceBinding/budgetAuthorityRef`、通过同一 Host Controller/Port 执行；worker 只持受限任务/证据，不载入旧 Director/Skill Resolver，不拿 Secret/生产 writer。`evolutionEvaluatorRevision()` 指纹列表替换为新 Controller/Contracts/Ports/Plan target 及仍有效原服务内容，原报告对新 evaluator 不合资格，不能靠保留旧文件维持旧指纹。
+
+### 11.2 原业务 Port，禁止第二 writer
+
+这些是 Orchestration 内部受信 adapter 方法，**不是 Browser 新增万能 mutation endpoint**。
+
+| Port / 真实源码 authority | v1 内部调用合同与结果 |
+| --- | --- |
+| `ContextPort` → 原 Native Context/Information/Hybrid | `compile({ownerRef,sourceBinding,audience,taskPurpose,grantDigest,inputRefs,tokenBudget})` → 原 Context plan/evidence refs/currentness proof；`revalidate` 在 send/consume 前调用；不另造 compiler/Memory |
+| `ModelPort` → GenerationHost/RouteResolver/GenerationService | `generate({effectId,attemptId,sourceBinding,routeRef,contextRef,outputSchemaRef,budgetAttemptRef,dispatchToken})` → 原 response/routing/actual attempt/usage refs；预算 identity 仅由可信 controller 注入，每次实际 sub-send 关联原收费 |
+| `ToolPort` → 原 SessionPublicWork/Skill/MCP/A2A/Native action authority | `execute({effectId,dispatchToken,actionRef,targetRef,inputRef,sourceBinding,grantDigest,approvalRef,budgetAttemptRef})`；`observe({operationRef})` / `requestCancel` 走原领域；returns confirmed/not_dispatched/unknown+原 operation/receipt refs，不以 Tool 文本决定正式事实 |
+| `NarrativeOutputPort` → Native SessionCore/RunControl 或原 ChatRepo | `claimAndCommit({outputKey,sourceBinding,resultRef,operationRef,expectedSourceDigest})`；Session 复用原 commitId/expectedRevisionId；普通 RP 的消息/variant/内容 hash CAS 和相同 operationRef 查询/去重扩展在**原 ChatRepo writer**。Browser 只呈现已获准输出，不能在 Host 之外再发独立 assistant commit；没有原 consumer 幂等/查询证据则 blocked |
+| `ProjectOutputPort` → ProjectAgentService/ProjectTaskRepository/StudioService | `submitForReview({projectId,taskId,baseRevision,resultRef,changeSetRef,operationRef})` → 原 review/task receipt；正式 `commit` 仍由原 Author/Review 用户命令与 Studio CAS 执行；Run completed 不等同 Project 已修改 |
+| `EvaluationPort` → 原 Experience/Eval/Evolution | `evaluate({case/profile/source refs,planRef,targetPin,budgetAuthorityRef})` → 原带身份/费用/provenance 的 report ref；publication/rollback 原 service 控制，不通过 Result 直接写 Plan/World |
+
+原源对象更新后，新的 SourceBinding 由原 authority 回执给下一节点，不能由模型、Browser 或 RunLedger 自增虚构世界 revision。若 Narrative/Project consumer 的正式 commit 成功但 EffectReceipt 丢失，只查原 receipt；找不到确证时停 unknown。C02 的旧 `host.commitAssistant` 产品路径在 P6 删除或改为纯显示，不允许与 Host OutputPort 双提交。

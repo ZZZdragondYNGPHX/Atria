@@ -2,6 +2,8 @@
 
 规则：此处**只保存跨模块用户选择的决策**。未经讨论的架构草案、源码推断与候选 API 均不得自动提升为冻结决定；所有产品实施另经后续正式收口。创建：2026-10-15。
 
+> **当前工程状态补记**：D1–D9 下的各轮“物理字段未定/定向审计”是当时事实，产品决定不变。本轮依据用户“核实并冻结物理接口”的授权，工程合同 v1 已收束于 [interface-contracts §6–11](interface-contracts.md#6-物理落点与存储合同-v1)，最新 `main@60aca6957` 取证/剩余阻塞和 NOT READY 结论归 [e0-audit §8–10](e0-audit.md#8-最新-main-全仓审计与零兼容处置矩阵)。真实运行闭包/故障/安全/三端证据尚未通过，不得把本文历史状态或工程定稿当成开工许可。
+
 ## D1 — 已冻结：选择方案 B（2026-10-15）
 
 - **目标：Atria Native Orchestration V3**。不是围绕旧 SillyTavern 模式打补丁，也不是直接引入外部 Agent 框架替代主 Runtime。
@@ -125,8 +127,8 @@ D9 接口方向详见 [interface-contracts.md](interface-contracts.md)，E0 已�
 
 ## 尚未闭合的 E0/开发前置（不是另一轮设计选择）
 
-- 现有 Native Storage/FS/SQLite/RunControl 的具体持久 CAS 与外部 Effect 写前意图一致性、所有 RPC/JSON Schema/错误码/Provider 预算原子预约，需要真实代码/故障证据。
-- `src/native/agent-intelligence/evolution-targets.js`、`settings-repo.js`、Native Game、Shell、Message Takeover 等**全部活消费者**的 import/动态运行/数据迁移边界仍须逐项确认并记录删除/保留/抽离映射。
+- 物理合同 v1、CAS/写前意图/RPC/错误码/原预算扩展设计已收束，但尚无 V3 实现与故障证据；单 Host 排他、普通 RP 预算、可信审批和高风险安全仍 BLOCKED。
+- 最新 main 的全仓 tracked/AST、API/设置/scope、Evolution/Evaluation、Native Game/Shell 共用依赖已有逐路径附件与 C01–C18 处置映射；真实动态注册/启动/业务消费与外部安装内容仍未证明，保持 BLOCKED，不称运行闭包穷尽。
 - 所需 Windows/Linux/Termux 真实平台、人工批准、外部 MCP/A2A/Provider 测试账号及成本上限、RP/Project 质量基线与无障碍/大图性能测量尚未完成。
 - 本轮不授予开始改 main 的权限，也不把 E1 选择认定为 E0 完成；后续需完整交接审查并取得新的明确开工授权。
 

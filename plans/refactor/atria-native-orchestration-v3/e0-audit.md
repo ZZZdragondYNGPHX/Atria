@@ -144,11 +144,11 @@
 
 ## 9. 存储、预算、权限证据与未闭合项
 
-下列是源码定位所得事实和工程结论，接口细节仅由 [interface-contracts §6–10](interface-contracts.md#6-物理落点与存储合同-v1) 持有。设计已经收束不等于实现/故障证据通过。
+下列是源码定位所得事实和工程结论，接口细节仅由 [interface-contracts §6–11](interface-contracts.md#6-物理落点与存储合同-v1) 持有。设计已经收束不等于实现/故障证据通过。
 
 | 证据 ID | 最新 main 源码证据 | 本轮解决的缺口 / 尚缺实证 |
 | --- | --- | --- |
-| E01 Native kind/布局 | `contracts.js:1066+` 封闭 key；`native-resource-key.js` hash/key；`fs-engine-transaction.js:761+` 通用 Native handler；SQL migration `0002-native-resources.sql` | 选择专用 5 kinds、复用原 Engine，不建 V3 数据库；不用 Model/Prompt 白名单 store。新注册/备份/恢复/GC 尚未实现 |
+| E01 Native kind/布局 | `contracts.js:1066+` 封闭 key；`native-resource-key.js` hash/key；`fs-engine-transaction.js:761+` 通用 Native handler；SQL migration `0002-native-resources.sql` | 选择专用 6 kinds、复用原 Engine，不建 V3 数据库；不用 Model/Prompt 白名单 store。新注册/备份/恢复/GC 尚未实现 |
 | E02 FS 事务 | `fs-engine.js:24–47` 同 root tail、ALS/recover；journal 的 prepare/dependencies/publish/install/ack fault hooks | 精确冻结 root+records+event 同事务；Host 对外 ACK 必在 journal commit 返回后；不再误称 FS 天生无 Native 跨资源事务。V3 fault hooks/kill/restart NOT_RUN |
 | E03 FS 排他与 Windows durability | `repositories/common.js` resourceWrites、FS tails 都是 process-local；`durable-file.js:9,46` Windows directory fsync no-op；搜索 startup/storage/native 只发现 migration lock，不是 Host 全寿命独占证明 | 将 single-writer lease/fencing 与 Windows 软件崩溃/真实掉电保证分开。不能拿 README single-process 假设当强制排他。第二 Host/旧进程仍发送时的安全证据 BLOCKED |
 | E04 SQL CAS **纠正泛化推断** | SQLite Native handler `putIfMatch:971`、MySQL `:1064`、Postgres `:1025`：insert-if-absent/conditional UPDATE integrity；generic fallback 才 read/compare/write。SQLite BEGIN IMMEDIATE/WAL/FULL；MySQL/Pg engine withRetry transaction | 单行 Native CAS 已有可复用实现；新根 CAS+所有 records 一笔原 tx，SQL retry body 仅做纯存储，绝不把网络 send 放入自动重试。不能说现有 SQL Native CAS 都不原子。真实并发/断连 commit outcome NOT_RUN/BLOCKED |
@@ -173,3 +173,45 @@
 | B6 UI/性能/清理 | 同一 Draft、原 DOM/ESM 与独立列表 fallback；清理精确作用域、不迁移；保留 roots/GC 合同已定 | 图编辑库 PoC、键盘/IME/Back/触控/大图控制延迟基线未测，不捏造 SLO；P5/P7 NOT_RUN |
 
 **E0 文档审计与开发许可的区分**：可在本轮完成的静态盘点、物理设计、失败出口和实施/验收路线已写入同一 Plan；不存在可以在未实现 V3 时冒称通过的 V3 crash/真实客户端证据。D9 建分支 Gate 不因本轮写完文档自动解除，E0 总状态保留 BLOCKED。当前 docs-only 授权下不能用实验代码或产品修改“补出”这些证据；不将它伪装成下一次用户必须选择的新产品方向。
+
+## 10. 最终开发就绪审查与交接结论
+
+**结论：NOT READY。E0 文档审计成果已收口并持续提交；E0 总 Gate 仍 BLOCKED，产品实施 NOT_STARTED/NOT_AUTHORIZED。** 本轮无实现分支、无 main 修改、无旧数据删除/迁移、无生产服务或外部写入。后续即使补齐 E0，也须用户新的明确开工授权；不能用本节交接结论自行启动开发。
+
+### 10.1 冻结约束逐项复核
+
+| 权威 | 本轮审查结果 |
+| --- | --- |
+| D1 原生 B / D2 单 Host、零兼容 | 新 PlanBinding/Plan/Run 元数据只在原 Native Engine；Browser 仅草稿/投影/显式命令；C01–C18 清旧执行器/配置/scope/入口，无模式迁移/模板化/shim |
+| D3 G2 | Whole-patch CAS、独立 GraphRevision/Attempt、Delegate/Handoff/Join/Review、bounded counters 持久；已提交副作用不回滚、不重复派发 |
+| D4 C2 / HCM-02/06 | 原 Source/Actor/Audience/Time/Branch 先授权→唯一 Hybrid→原 compiler；每次 send/consume 重新 guard，Result/projection 不洗白秘密；公开 stream seq 不暴露内部事件计数 |
+| D5 F2 / HCM-08 | 原 bank 唯一收费；stable attempt/reservation tree/unknown、缓存三层分开；普通RP无固定Planner/Judge；缺预算/source不以低延迟猜测通过 |
+| D6 S2 | intent-before-send、exact grant/approval/egress/Secret binding、未知远端不盲重试；原 Credential/MCP/A2A 复用；缺可信UI/沙箱时对应高风险拒绝 |
+| D7 N2 / HCM-01/03/04/05/07 | 原 World/Memory/Cognition/Project/Experience 权威不复制；叙事职责不等于固定五Agent；正式World Tick/事件驱动/角色遗忘按原域；本任务不重建旧Recall或迁移旧记忆；原正式历史和收据不删除 |
+| D8 U2 | Canvas+Inspector/List同Draft，Timeline默认/Graph可切换，移动完整编辑；延续原Shell/主题，无另一框架/Runtime；真实交互/性能尚未通过 |
+| D9 E1 | P1→P8同任务、P6统一硬切、每阶段真实Gate；文档合同不等于运行证据，不以原Plan选择或本轮push充当开工许可 |
+
+### 10.2 最终接口与实施顺序
+
+接口唯一详细来源：[interface-contracts](interface-contracts.md) §6–11。最终为 **6 个 Native kinds**（PlanRoot、PlanBinding、immutable PlanRevision、RunRoot、typed Record、Command dedup），不是第一版草案的5个；§11 补足 source→plan 选择和 Evolution publication pointer。对象合同覆盖 Plan/RunLedger/NodeAttempt/GraphPatch/Join/EffectIntent/Receipt/Approval/Result/Output/Projection；带原 hash/CAS/epoch/稳定 operation/预算 attempt/ref、source tagged union 和失败错误码。HTTP namespace `/api/native/orchestration` 属新合同，当前 main 未实现；真实写入依原 Context/Model/Tool/Narrative/Project/Evaluation Ports，绝无第二业务 writer。
+
+未来受权后顺序：W01/W02 的 Plan/Binding/Store/owner→W03 Graph 与 W05 Effect 状态机→W04 原预算/source/model 与 W05真实Ports→W06 RP/Game、W07 Project/Evolution/评测→W08 U2/Shell/可信审批→W09 全入口清退与证据→P7三端/安全/可靠性→P8集成。详见 [implementation-plan §6–8](implementation-plan.md#6-e0-收口后的依赖图与阶段增补)；不得先删旧目录再寻找其合法消费者。
+
+### 10.3 剩余阻塞（不重复列为待选产品方向）
+
+| 阻塞 | 当前实际状态与尚缺证据 | 不能声称 / 下一可用证据 |
+| --- | --- | --- |
+| R01 真实消费闭包 | tracked静态盘点/AST完成；boot/API/Shell/Game/Eval/Skills和外部动态代码运行 trace未执行 | 不能称全运行消费者已穷尽；需在真实新主链上跑 C01–C18/CL12 并核对旧client拒绝 |
+| R02 持久性/Host排他 | 当前 primitive可复用；V3 kinds/lease/records/command tx并不存在 | 无V3 crash-safe、多进程或掉电PASS；需V01/V03/V09真实Engine和子进程窗口，Windows掉电保证独立 |
+| R03 父子预算/普通RP | 原bank可定位，required headroom≠reservation tree；内部随机attempt尚未改接稳定identity | 不能称无超支/无双计/恢复不退款已证；需原RunControl/Project/普通RP领域预算和真实send identity证据 |
+| R04 输出/Evolution/原生权威 | SourceBinding、OutputKey、PlanBinding、Target/Ports合同已定；实现未验证 | 不能称唯一正文、无旧Eval引用、原Review/Commit完整；需V06/V07与实际domain receipt/source竞争反例 |
+| R05 可信批准/安全/外部未知 | exact binding与拒绝策略已定，原Credential可复用；V3审批和同源扩展隔离无实证 | 高风险有副作用路径保持blocked；需V05/CL04与获准外部L4，不能以CSRF或Tool只读标签替代 |
+| R06 U2/性能/三端 | 交互语义/真实步骤和证据格式已定；图backend PoC、长Run指标及真实客户端未测 | Windows仅宿主信息；CachyOS/Termux未连接；V10/CL01–12/性能基线仍NOT_RUN/BLOCKED |
+| R07 已支持其它Store | MySQL/Pg真实 Native conditional CAS可静态确认，new kinds与服务端测试未做 | 不能跳过后声称四Engine一致；需服务账号/真实tx/CAS/backup测试，缺能力在admission明确拒绝 |
+| R08 开发许可 | 当前用户只授权docs审计并禁止实现 | NOT_AUTHORIZED；E0即使未来全部闭合也必须等待另行明确授权，不主动建分支 |
+
+R02–R06 中针对“尚不存在的V3”的运行证据，无法在本次 docs-only 范围内制造；已把每个缺口落为唯一 authority 上的工程任务/安全退出/可执行验收，而非以文字补称PASS。外部连接/设备/可信人工动作只在它实际成为下一任务所需证据时取得，不在本次要求逐阶段审批或索要无关权限。
+
+### 10.4 本轮实际完成边界
+
+完成的是：最新 main 静态依赖取证与可复核附件、旧编排零兼容矩阵/数据边界、v1物理合同/原authority接入、E1依赖和三端验收方案、最终阻塞与开发就绪审查。产品实现、真实consumer trace、V3测试/故障注入、真实模型/Tool/审批/人工质量、Windows/CachyOS/Termux客户端均未执行。文档校验与Git同步事实由同一 [Record](../../../records/refactor/atria-native-orchestration-v3.md) 保存。

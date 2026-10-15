@@ -104,3 +104,12 @@
 - 实际环境只读检查：Windows 11 Pro 10.0.26200 x64、Node v24.18.0；可定位 wsl.exe/ssh.exe，adb 不在 PATH。没有 CachyOS/Termux 连接/设备版本证据，没有实际 Browser/V3 Host 流程；工具存在不等于三端已准备或通过。
 - 同期 authority 对齐：Storage Center 的 kinds/ref/回收根/恢复暂停，Settings/Themes 的原设置保存与主题，不复制服务、不恢复旧编排 subtree/scope。D1–D9/HCM/原 Domain 权威保持。
 - 本组实际文档校验：18 份 Bundle/Record 文档、162 个相对链接，缺失 0；151 文件 manifest 与 main tracked 四根逐路径一致（missing/extra 均 0），SHA-256 与附件一致；git diff --check 通过。这些只是文档/路径结果。
+
+## 2026-10-15 — E0 第四组：最终接口一致性与开发就绪结论
+
+- Start docs：`98fa478ee`；最终 fetch 再核对 main/origin/main 仍为 `60aca695726893e298b7d485f300c6efef3b79fd`，产品工作树 clean。没有产品测试/模块执行、实现分支或破坏性操作。
+- 最终自审修补：第一版5 kinds缺 source→Plan 选择/发布指针，补入第六个 `atri_orchestration_binding`，严格 sourceSelector/PlanBinding CAS、bindings RPC；Evolution 新 plan-prompt/plan-strategy target pin、原 candidate/publication/rollback saga、Eval worker/fingerprint；Context/Model/Tool/Narrative/Project/Evaluation 六类原Domain Ports。普通RP正式输出必须由原ChatRepo consumer的CAS/operation receipt处理，Browser只显示，不与旧commitAssistant双提交。预算authority及输出consumer缺真实实现证据继续BLOCKED。
+- 一致性修补：公开Projection使用独立view seq+opaque cursor，内部eventSeq不直接暴露；6 kinds计数同步当前接口/阶段/验收/入口；D1–D9历史语义完整保留，当前工程细节只在interface-contracts维护。前组记录的5 kinds是当时草案结果，本组以最终6 kinds收束，不改写历史。
+- 最终就绪审查位于同一 e0-audit §10：D1–D9/HCM约束逐项核对，R01–R08逐项列出剩余证据、拒绝/恢复出口和负责阶段；交接结论 **NOT READY / E0 BLOCKED / implementation NOT_STARTED and NOT_AUTHORIZED**。不新建HANDOFF，不把未完成运行验证包装为已交付产品。
+- 尚缺：真实consumer trace；V3 Store/Host排他/恢复/原预算稳定attempt；普通RP/NativeGame/Project/Evolution的真实DomainReceipt；可信审批/Secret/egress/未知远端；图backend/性能；CachyOS/Termux及Windows真实V3客户端；MySQL/Pg服务。无法在docs-only授权下制造这些实证，全部按NOT_RUN/BLOCKED保留。即使日后E0全部解除，仍等待用户新的明确正式开发授权。
+- 最终实际文档检查：18份文档、171个相对链接均可解析；6个物理kind唯一且与当前合同一致；git diff --check通过。151文件manifest此前已核对与未变化的main完全一致，本轮未重复执行产品测试。另一个任务新出现的Settings/Themes未跟踪Record与原Evolution草稿均保留，不纳入本任务提交。

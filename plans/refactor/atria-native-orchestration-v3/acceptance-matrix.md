@@ -113,7 +113,7 @@
 
 | v1 case group | 现有可复用证据/测试入口 | 必须新增或重接的关键断言 | 阶段 |
 | --- | --- | --- | --- |
-| V01 Plan/Store/Owner | `tests/storage/harness/contract-harness.js`，`tests/native/durable-commit.test.js`、`helpers/durable-commit-process.mjs` | 5 kinds、PlanRoot/revision/command 同 tx；same-ID different-payload 冲突；第二 Host拒绝；FS 5 fault stages；SQLite busy/commit；SQL 原 conditional CAS | P1 |
+| V01 Plan/Store/Owner | `tests/storage/harness/contract-harness.js`，`tests/native/durable-commit.test.js`、`helpers/durable-commit-process.mjs` | 6 kinds、PlanRoot/revision/command 同 tx；same-ID different-payload 冲突；第二 Host拒绝；FS 5 fault stages；SQLite busy/commit；SQL 原 conditional CAS | P1 |
 | V02 Graph/control | 旧 agent-runtime/kernel/races/parallel/policy-controller 测试的仍有效不变量 | whole patch atomicity、active effect不可改、bounded循环累计、Review依赖闭包、父子持久身份、五种Join与late cutoff | P2 |
 | V03 Effect/recovery | durable-commit harness + 新 V3 受控 Port | prepared/charge关联/dispatching/receipt/ACK-loss；取消、stale worker、已有Domain commit，remote未知不能重复发送 | P2/P3 |
 | V04 Budget | `tests/native/run-compute-retirement.test.js`、原 compute/Project 测试；不得把旧 evaluation 开发配额当产品限制 | root/child/sibling原子reservation、stable admit/observe、真正每次Provider send/fallback唯一charge；unknown/restore/GC不返额度；普通RP无authority拒绝 | P3 |
