@@ -66,3 +66,30 @@
 - **B6（未定实现）**：Graph 渲染/编辑库、性能硬指标、具体 resource/Effect/Result physical schema、原旧预设不迁移时的精确数据清理规则。
 
 第九轮已选择 **E1：Host 内核先行、单任务分阶段、最终统一硬切**；不允许恢复任何旧模式/数据/兼容层，也不能因为该选择就创建实现分支。E0 仍须补全上述 B1–B6 证据、跨域调用者/原生 Schema/权限/预算/崩溃与端侧检查，并在同一 Record 记录 Gate。具体开发分期与建分支条件统一由 [implementation-plan.md](implementation-plan.md) 冻结。
+
+## 7. E1 设计提交后的开发交接审查增量（E0 仍未通过）
+
+> 本节记录新一轮**真实源码证据**，不复述接口/阶段/验收详细规则；仍以 [interface-contracts](interface-contracts.md)、[implementation-plan](implementation-plan.md)、[acceptance-matrix](acceptance-matrix.md) 为唯一权威。核对产品源码基线为 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`。无运行测试、无 main 变更、无实现分支。
+
+| 审查项与实际文件 | 已发现的源码事实 | 开发前置结论 |
+| --- | --- | --- |
+| **FS Native Journal**：`src/storage/engines/fs-engine.js` + `fs-native-journal.js` | 当前 `FsEngine.withTransaction` 使用进程内按用户序列与 `FsNativeJournal`：针对**原生资源种类**写前准备`native-commit.journal`，commit 后按条目安装并在下次读取前执行 redo/recover。它不同于旧 `src/storage/README.md` 的粗略 FS 不具跨资源事务描述，也不等于跨进程/非原生资源全域原子性。 | E0 必须读取当前 Journal/Resource handlers 并跑崩溃注入：prepare、publish、部分 install、ACK、kill/restart、旧用户目录的恢复与多进程隔离。决定 V3 Run/Effect/Approval 如何使用受支持 Native keys 并证明 write-before-effect。**当前无法宣称通过**。 |
+| **SQLite 配置与旧文档差异**：`src/storage/engines/sqlite-engine.js` | 当前代码明确使用 `journal_mode=WAL`、`synchronous=FULL`、`BEGIN IMMEDIATE/COMMIT/ROLLBACK` 与 per-handle tail；旧 `src/storage/README.md` 的 `synchronous=NORMAL` 已与最新源码冲突，**以实际代码为准**。 | E0 精确验证 SQLite CAS/Lock、掉电窗口与原 RunControl/Project/Effect 交叉事务；不能因为打开 WAL/FULL 就跳过负例/数据损坏验收。 |
+| **四种存储模式与 Resource Key**：`src/native/contracts.js`、`src/storage/engines/native-resource-key.js`、各 FS/SQLite/MySQL/Pg Engine | Native Resource 种类和 Key fields 受 `NATIVE_RESOURCE_KINDS` / `RESOURCE_KEY_SPECS` 封闭校验；产品同时暴露 FS、SQLite、MySQL、Postgres Engine 与共用 Repo API。 | 选择新 Plan/Run/Effect/Approval 是新 `kind`、复用受管 `versionedJsonResource` 还是其它原生存储 contract，必须在 E0 固定、核对 migrations/dump/restore/delete/GC 与实际支持的四 Engine；如本轮只做本地三端，也须明确其它已支持模式的稳定退化/排除范围，不能默默破坏已有产品配置。 |
+| **现有 RuntimeCheckpointStore 是另一用途**：`src/native/model-prompt-runtime/runtime-checkpoint-store.js` | 当前有原生持久的**Provider/Model Reasoning Continuity** 私有 Checkpoint，带受限 binding/TTL/容量、源身份检验；这与长期 Orchestration RunLedger 的节点/GraphPatch/EffectIntent/审批/Receipt/GC 生命周期**不等价**。 | 只能复用已证实的存储/密封/Source 校验技巧；**不得把该模型续接 Checkpoint 直接改名为 V3 RunLedger**，更不能暴露私有不透明 reasoning 给 UI Trace。 |
+| **原预算/Charge identity**：`src/native/run-control.js` | `RunControl.charge`、`chargeCompute`、`chargeLocalWork`、`settleCompute` 以 Session/Revision/attempt 在原 Native Repository 执行有约束收支，正式 send 前先 charge、未知发送不退款；`project-task-repository.js` 属于独立 Project task。 | W02/W04 必须证明父 Run/子 Agent/并行 siblings 可对同一原预算获得原子**预留**、唯一真实 charge/unknown/reconcile；Session 和 Project 两类源的原权威不能被第二套 V3 费用账本替代。现有 API **不等于**全部跨父子 reservation 已实现。 |
+| **NativeTaskScheduler 是活跃投影**：`src/native/task-scheduler.js` | 有进程内 queue/running/operations、per-resource 许可、请求超时/重试与 cancel；不带一个完整持久化的 V3 Graph/Effect Run 账本。 | W02/W03 用现有 permits，但 Host RunLedger 承担独立持久恢复；不得因为 scheduler 有 operationId 就认为 crash 后可安全补发 Tool。 |
+| **Evolution 隐藏硬依赖**：`src/native/agent-intelligence/evolution-targets.js`、`evolution-service.js`、`src/storage/repositories/settings-repo.js` | `EvolutionTargets` 的 catalog/capture/prepare/check/write/discard/publicationCurrent/evaluationSettings 多处按旧 `workspace-prompt`/`workspace-strategy` 和 `boundedDirector`/Preset/Binds 访问；原 SettingsRepo 还以 `agentWorkspaceRevision` 做 CAS，Evolution Service 以这些正式结果处理 source/target/publication。 | W01/W07 **必须先替换整个旧目标生命周期和审批/Publication/rollback/用户来源的消费者**，不能只删除一处 import；沿原 Experience/Eval/Rubric/Target/Receipt 保留已证实的有效业务数据语义，但不迁移或兼容旧 Orchestrator 配置。严格检查 orphan 引用、dead module 与真实新 Target 的保留/发布资格。 |
+| **旧 Native Game 与 Shell 活入口**：`public/scripts/capability-host.js`、`native/play-generation.js`、`native/experience/index.js`、`experience/llm/narrative.js`、`atria-shell/workspace-host.js` | 仍加载 Browser Orchestrator，按 Director/Spec/Agenda/Loop 决定 Game Guidance/Final Prose/RunPanel；旧 `message-takeover.js` 也存在共享消费者。 | W06/W08/P6 要有完整直接/动态 import、启动/设置、Chat 事件/多平台真实消费者与精确替代路径清单；删**旧编排用途**，不误删正式 Native Game/Message/Serene Canvas 共享能力。 |
+| **旧测试资产不能一刀切**：`tests/orchestrator/*`、`tests/agent-runtime/*`、`tests/game-runtime/*`、`tests/frontend/*` | 部分是旧 modes/workspace/Browser Checkpoint；另有 World/Source/Recovery/Graph 断言仍有新内核适用价值。 | 清退旧模式专属测试并以新 V3 高风险反例替换；保留/升级仍属 World/Session/Memory/Project 的测试；真实 L1/L2/L3 运行结果在测试阶段再记录。 |
+
+### 7.1 当前工程就绪判断
+
+- **D9 设计和 E1 路线**：FROZEN（仅 Plan 选择）。
+- **E0 全消费者引用闭包**：BLOCKED — 目录/Code Search 有真实命中，但尚未做全量 Source→Sink、动态导入和所有设置/API 的严格映射。
+- **P1 物理 Store/RunLedger/Effect/Approval API**：BLOCKED — Native FS redo/SQLite FULL 有可复用基础，跨所有已支持 Store/多进程、收费和外部 unknown 未完成物理设计/故障证据。
+- **W07 Evolution/旧 Preset/Settings 清退**：BLOCKED — 旧 Target 的多个生命周期方法需逐一替换并确认原出版/纠错/回滚业务继续有效。
+- **L1/L2/L3/L4、三端及实际安全/质量**：NOT_RUN/BLOCKED — 尚无本轮测试实证、设备/受控授权/外部凭据与基线信息。
+- **工作分支创建**：NOT_AUTHORIZED — 当前用户明确禁止收口前创建，故不得因为 E1 已定就开始实现。
+
+**下一可执行工作仍是 E0 docs 审计补证**：按 [implementation-plan.md](implementation-plan.md) 的 W01/W02/W07 优先、再 W03–W09 核对原生接口和完整消费者；所有门槛成立且获得用户明确正式开工授权后，才可建立产品任务分支。`docs:HANDOFF.md` 不因本次普通开发就绪审查而创建。

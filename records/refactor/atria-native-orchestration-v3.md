@@ -70,3 +70,12 @@
 - 需特别保护的跨域依赖：`capability-host.js`、`native/play-generation.js`、`native/experience/llm`、`atria-shell/workspace-host.js`、`settings-repo.js`、`src/native/agent-intelligence/evolution-targets.js`；保留/替换/删除必须基于可核对消费者、真实 Native 权威及合同，而非仅按文件名或测试目录推断。
 - D9 的设计出口 **PASS 仅指书面方案已由用户选择**；E0 完整源码引用/物理 Store/预算/审批/未知远端写入/数据清理/Windows+Linux+Termux 真实环境的实施前置当前保持 **BLOCKED/NOT_RUN**。未运行任何本轮新 V3 Node/CI/E2E、真实模型、人工审批、故障注入、第三方工具或实机测试，不伪称它们通过。
 - 下一阶段为**正式开发交接审查**：再次读取远端 refs 与各关键源码/已有 Plan，填补依赖缺口和更细的 Source→Sink/Host Store/Schema/权限清单。只有 E0 完成、相关阻塞解除、开发合同可实现并取得用户新的明确开工要求，才可创建实现分支；当前无此许可。
+
+## 2026-10-15 — D9 正式开发就绪复核：Storage/预算/Evolution 新证据（NOT READY）
+
+- 源码基线：`main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`；D9 设计提交：`docs@c35e4e0c57c7cae4ad6d22499360964ddd6fd47b`。D9 E1 仅为路线冻结；此次继续在 docs 写审计证据。
+- **纠正文档/代码差异**：`src/storage/README.md` 对 FS 跨原生资源事务和 SQLite `synchronous=NORMAL` 的旧说法不完全符合当前源码。`src/storage/engines/fs-engine.js + fs-native-journal.js` 现使用 Native committed redo journal，`sqlite-engine.js` 明确 WAL + `synchronous=FULL`。这提供可复用基础，但**没有本次 V3 crash/multiprocess 测试，不能称 V3 Run/Effect durable 原子通过**。
+- **明确接口缺口**：原 `RuntimeCheckpointStore` 是 Model/Provider 私有 continuation 而非 Orchestration RunLedger；`NATIVE_RESOURCE_KINDS`/`RESOURCE_KEY_SPECS` 控制物理 keys，FS/SQLite/MySQL/Postgres 并存；`RunControl.chargeCompute/settle` 当前依 Session authority，与原 Project Task bank 的父子统一 reservation 尚无完整 E0 证明。
+- **清退风险新增证据**：`EvolutionTargets` 的 Workspace Prompt/Strategy/Director 引用贯穿 catalog/capture/prepare/check/write/discard/evaluationSettings 与原发布/回滚机制，替换要沿原 Experience/Eval 权威保护合法来源，不能删除目录导致未定义 import。旧 Native Game/Shell 等仍有引用；测试需要分域迁移。
+- [e0-audit](../../plans/refactor/atria-native-orchestration-v3/e0-audit.md) `7 补充以上现状、证据等级及阻塞，未改 D9 决策/已冻结实施路线。
+- **交接结论**：E0 仍 BLOCKED，未建立产品工作分支、未修改 main、未运行新 Node/CI/FS/SQLite crash 注入、真实 Tool/Provider/审批/UI 或 Windows/Linux/Termux 端侧验证。正式建分支须完成源→sink 审计、冻结可实施的物理接口与硬切依赖/原收费，具备真实 L1–L4 计划并取得明确新开工授权。
