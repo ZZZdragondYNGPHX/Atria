@@ -15,6 +15,7 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { selectNativeRuntimeRoute } from '../adapters/generation-host.js';
 import { authorityTurnProof } from '../authority-turn.js';
+import { assertRunAccess } from '../run-control.js';
 import { compileNativeContextMetered } from './generation-local-work.js';
 import { nativeSessionContextOptions, nativeContextCompilationOptions } from '../adapters/native-session-context.js';
 
@@ -108,7 +109,10 @@ export class NativeNarratorOrchestrationAuthority {
         this.#supported(base, input, transaction);
         const current = await this.sessionCore.observe(handle, base.session.sessionId);
         if (!equal(sourceOf(current), sourceOf(base)) || current.session.packageVersionId !== base.session.packageVersionId) fail('native_orchestration_source_stale');
-        await this.sessionCore.runs.assert(handle, base.session.sessionId, 'generate');
+        // This pure authority read also runs inside Effect/consume Engine
+        // transactions. Taking the Session write lock here would invert the
+        // original Session -> Engine order against a concurrent publication.
+        await this.engine.withTransaction(handle, tx => assertRunAccess(tx, handle, base.session.sessionId, 'generate'));
         if (!(this.modelResolver instanceof RouteResolver) || host.turnOrchestration !== this || host.sessionCore !== this.sessionCore || host.persistence._engine !== this.engine) fail('native_orchestration_model_authority_unavailable');
         this.plans ??= createOrchestrationAuthoringService(this.engine, { sessionCore: this.sessionCore, modelResolver: this.modelResolver }).plans;
         // getBinding uses the original domain authorization, independently of
@@ -260,9 +264,9 @@ export class NativeNarratorOrchestrationAuthority {
             const scope = Object.freeze({});
             modelScopes.set(scope, { host, handle, consumed: false, principal: { runId: root.runId, effectId, request: state.request, logicalInputRef: immutable(logicalInputRef), logicalInputHash: decision.inputHash,
                 nativeTurnPermit: producerIdentity.permit,
-                options: { scheduled: true, lanePlan, orchestrationSend }, revalidateConsume: async () => {
+                options: { scheduled: true, lanePlan, orchestrationSend }, revalidateConsume: async ({ tx } = {}) => {
                     await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
-                    await service.sourcePort.revalidate(handle, captured.sourceBinding);
+                    await service.sourcePort.revalidate(handle, captured.sourceBinding, tx ? { tx } : undefined);
                     await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                 } } });
             return scope;

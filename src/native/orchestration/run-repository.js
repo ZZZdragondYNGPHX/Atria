@@ -195,13 +195,14 @@ export class RunRepository {
     }
 
     /** Serialize ephemeral body consumption with the original Run command tree. */
-    async withConsumption(handle, runId, consume) {
-        if (typeof consume !== 'function') throw new TypeError('Run consumption requires a consumer');
+    async withConsumption(handle, runId, consume, { withAuthority = operation => operation() } = {}) {
+        if (typeof consume !== 'function' || typeof withAuthority !== 'function') throw new TypeError('Run consumption requires a consumer and authority boundary');
         const lineageIds = await this.#lineageIds(handle, runId);
         return withNativeResourceWrites(handle, lineageIds, async () => {
-            // Open a fresh snapshot only after acquiring every original ancestor
-            // lock. A second read in an already-open SQL snapshot is insufficient.
-            const result = await this.engine.withTransaction(handle, async tx => {
+            // Body Ports supply the original Source authority boundary here:
+            // Run ancestors -> Runtime -> Session -> Engine. A second read in
+            // an already-open SQL snapshot is insufficient.
+            const result = await withAuthority(() => this.engine.withTransaction(handle, async tx => {
                 const fence = await this.assertWriter(handle, tx);
                 await this.authorize({ handle, operation: 'runs.get', body: { runId }, tx });
                 const initial = [];
@@ -220,7 +221,7 @@ export class RunRepository {
                 // Reentrant, legitimate controller writes share this transaction.
                 // Commit their facts before refusing stale body consumption.
                 return { denied: stale || value === denied, value: stale || value === denied ? null : value };
-            });
+            }));
             if (result.denied) throw new ConflictError('native_orchestration_consumption_stale');
             return result.value;
         });

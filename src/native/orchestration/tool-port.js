@@ -12,9 +12,13 @@ import { checkedRecord } from './plan-repository.js';
 import { controlRecordKey, runGuard } from './controller-common.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
 import { EffectController } from './effect-controller.js';
+import { SourcePort } from './source-port.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const supported = { mcp: ['tool', 'resource'], a2a: ['send'], skill: ['list', 'pin', 'read', 'files', 'catalog'] };
+const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_tool_consume_denied',
+    'native_orchestration_tool_dispatch_denied', 'native_orchestration_tool_grant_denied', 'native_orchestration_tool_source_stale',
+    'native_run_restore_review_required', 'native_run_terminal', 'native_run_dead', 'native_story_not_started', 'native_run_rewind_denied']);
 
 // Policy intersection only; admission and accounting stay in the original bank.
 function workLimits(granted, route) {
@@ -29,10 +33,10 @@ function workLimits(granted, route) {
 export class ToolPort {
     #liveCompletions = new Map();
 
-    constructor({ mcpService, a2aService, skillAuthority, budgetPort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs, effects }) {
+    constructor({ mcpService, a2aService, skillAuthority, budgetPort, sourcePort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs, effects }) {
         if (![verifyDispatch, readInput, authorizeTool].every(fn => typeof fn === 'function') || !budgetPort)
             throw new TypeError('ToolPort requires original dispatch, input, grant and budget authorities');
-        Object.assign(this, { mcpService, a2aService, skillAuthority, budgetPort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs, effects });
+        Object.assign(this, { mcpService, a2aService, skillAuthority, budgetPort, sourcePort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs, effects });
     }
 
     #acceptanceBinding(intent) {
@@ -128,7 +132,11 @@ export class ToolPort {
             fail('native_orchestration_tool_approval_unavailable');
         if (action.protocol !== 'skill' && intent.risk !== 'R1') fail('native_orchestration_tool_risk_invalid');
         if (action.protocol === 'skill' && (!(this.runs instanceof RunRepository) || typeof this.runs.withConsumption !== 'function'
-            || !(this.effects instanceof EffectController) || this.effects.runs !== this.runs)) fail('native_orchestration_tool_consume_denied');
+            || !(this.effects instanceof EffectController) || this.effects.runs !== this.runs || !(this.sourcePort instanceof SourcePort)
+            || this.sourcePort.budgetPort !== this.budgetPort || this.sourcePort.sessionCore !== this.budgetPort.sessionCore
+            || this.sourcePort.sessionCore?._sessions?._engine !== this.runs.engine)) fail('native_orchestration_tool_consume_denied');
+        const withAuthority = action.protocol === 'skill' ? SourcePort.prototype.consumptionBoundary.call(this.sourcePort,
+            handle, root.sourceBinding, { engine: this.runs.engine }) : null;
         const input = await this.readInput({ handle, inputRef: intent.inputRef });
         if (hash(input) !== intent.inputHash) fail('native_orchestration_tool_input_stale');
         const service = action.protocol === 'mcp' ? this.mcpService : this.a2aService;
@@ -150,7 +158,7 @@ export class ToolPort {
                 fail('native_orchestration_tool_action_invalid');
         }
         const requiresSkillCompletion = action.protocol === 'skill' && ['read', 'files'].includes(action.operation) && this.runs && this.effects;
-        const authorize = async (phase = 'send', savedCompletion = null) => {
+        const authorize = async (phase = 'send', savedCompletion = null, { budget = true } = {}) => {
             const check = async tx => {
                 checkCancellation(signal);
                 const current = phase === 'consume' && this.runs ? await (async () => {
@@ -178,7 +186,7 @@ export class ToolPort {
                         await this.credentialAuthority.assertConnection(handle, captured.connection);
                     }
                 } else await skill.revalidate();
-                if (phase === 'consume') await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef);
+                if (phase === 'consume' && budget) await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef);
                 checkCancellation(signal);
                 return grant;
             };
@@ -244,6 +252,13 @@ export class ToolPort {
         const saved = work.onCompleted ? await this.observe(handle, { protocol: 'skill' }, { runId: intent.runId, effectId: intent.effectId }) : null;
         return this.runs.withConsumption(handle, intent.runId, async ({ tx, root: currentRoot, deny }) => {
             await authorize('consume', saved);
+            try {
+                await authorize('consume', saved, { budget: false });
+                await SourcePort.prototype.revalidate.call(this.sourcePort, handle, currentRoot.sourceBinding, { tx });
+            } catch (error) {
+                if (CONSUME_DENIALS.has(error.code)) return deny();
+                throw error;
+            }
             if (requiresSkillCompletion) {
                 const currentIntent = (await readEffect(tx, handle, currentRoot, intent.effectId)).doc;
                 const currentSaved = await this.#savedCompletion(handle, tx, currentRoot, currentIntent);
@@ -253,7 +268,7 @@ export class ToolPort {
             }
             // Non-body metadata actions do not claim a completion receipt.
             return { outcome: 'unknown', operationRef: null, receiptRef: null, result };
-        });
+        }, { withAuthority });
     }
 
     async #acceptedObservation({ handle, tx, root, intent, operationRef }) {

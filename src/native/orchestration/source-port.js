@@ -2,6 +2,8 @@ import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertRunAccess } from '../run-control.js';
+import { SessionRepo } from '../repositories/session-repo.js';
+import { withRuntimeWrite } from '../model-prompt-runtime/runtime-write.js';
 
 const conflict = () => { throw new ConflictError('native_orchestration_source_stale'); };
 
@@ -9,6 +11,25 @@ const conflict = () => { throw new ConflictError('native_orchestration_source_st
 export class SourcePort {
     constructor({ budgetPort, sessionCore, projectAgent, rpControl }) {
         Object.assign(this, { budgetPort, sessionCore, projectAgent, rpControl });
+    }
+
+    // An internal original-domain write boundary, not a permission decision.
+    // Constructing it is pure; RunRepository acquires its ancestry locks before
+    // invoking this Runtime/Session boundary and only then opens its transaction.
+    consumptionBoundary(handle, binding, { engine } = {}) {
+        const repo = this.sessionCore?.runs?.repo, sessionId = binding?.sourceRef?.sessionId;
+        const { bindingDigest, ...source } = binding ?? {};
+        if (typeof handle !== 'string' || !handle || !engine || typeof engine.withTransaction !== 'function'
+            || !(repo instanceof SessionRepo) || repo._engine !== engine || this.budgetPort?.sessionCore !== this.sessionCore
+            || binding?.sourceAuthority !== 'native_session' || binding.sourceRequest?.domain !== 'native_session'
+            || typeof sessionId !== 'string' || !sessionId || binding.sourceRequest.sessionId !== sessionId
+            || binding.budgetAuthorityRef?.domain !== 'session' || binding.budgetAuthorityRef.sessionId !== sessionId
+            || typeof bindingDigest !== 'string' || hashNativeDocument(source) !== bindingDigest)
+            throw new ConflictError('native_orchestration_consumption_authority_unavailable');
+        return operation => {
+            if (typeof operation !== 'function') throw new TypeError('Original domain consumption requires an operation');
+            return withRuntimeWrite(handle, () => SessionRepo.prototype.withRunLock.call(repo, handle, sessionId, operation));
+        };
     }
 
     async capture(handle, sourceRequest, { tx } = {}) {

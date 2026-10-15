@@ -11,12 +11,17 @@ import { controlRecordKey, runGuard } from './controller-common.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
 import { resolveNativeNarratorScope } from './native-turn-orchestration.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
+import { SourcePort } from './source-port.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = intent => hash({ runId: intent.runId, effectId: intent.effectId, epoch: intent.epoch,
     hostBootId: intent.hostBootId, hostGeneration: intent.hostGeneration,
     sourceBindingDigest: intent.sourceBindingDigest, decision: effectDecision(intent) });
 const key = (handle, intent) => hash({ handle, runId: intent.runId, effectId: intent.effectId });
+const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_binding_changed',
+    'native_orchestration_turn_selection_stale', 'native_orchestration_turn_grant_denied', 'native_orchestration_turn_route_mismatch',
+    'native_orchestration_context_source_stale', 'native_orchestration_context_denied', 'native_orchestration_context_audience_denied',
+    'native_run_restore_review_required', 'native_run_terminal', 'native_run_dead', 'native_story_not_started', 'native_run_rewind_denied']);
 
 /** Original sealed narrator consumer; hashes are facts, never another send grant. */
 export class ModelPort {
@@ -24,11 +29,13 @@ export class ModelPort {
     #responses = new WeakMap();
     #executeNative;
 
-    constructor({ host, runs, effects, budgetPort }) {
+    constructor({ host, runs, effects, budgetPort, sourcePort }) {
         if (!(host instanceof NativeGenerationHost) || !(runs instanceof RunRepository) || !(effects instanceof EffectController) || !(budgetPort instanceof BudgetPort)
-            || effects.runs !== runs || host.persistence._engine !== runs.engine) throw new TypeError('ModelPort requires the original Host and execution authorities');
+            || effects.runs !== runs || host.persistence._engine !== runs.engine || !(sourcePort instanceof SourcePort)
+            || sourcePort.budgetPort !== budgetPort || sourcePort.sessionCore !== host.sessionCore || budgetPort.sessionCore !== host.sessionCore
+            || sourcePort.sessionCore?._sessions?._engine !== runs.engine) throw new TypeError('ModelPort requires the original Host and execution authorities');
         this.#executeNative = NativeGenerationHost.prototype.execute;
-        Object.assign(this, { host, runs, effects, budgetPort });
+        Object.assign(this, { host, runs, effects, budgetPort, sourcePort });
     }
 
     async #observation({ handle, tx, root, intent, pending }) {
@@ -91,6 +98,7 @@ export class ModelPort {
             || typeof options.orchestrationSend.beforeSend !== 'function' || !options.scheduled)
             fail('native_orchestration_model_scope_invalid');
         const root = await this.runs.get(handle, runId);
+        const withAuthority = SourcePort.prototype.consumptionBoundary.call(this.sourcePort, handle, root.sourceBinding, { engine: this.runs.engine });
         permitExpected.anchor = { branchId: root.sourceBinding.sourceRef.branchId, revisionId: root.sourceBinding.sourceRef.revisionId };
         const assertPermit = () => assertNativeTurnPermit(nativeTurnPermit, permitExpected);
         assertPermit();
@@ -141,15 +149,19 @@ export class ModelPort {
                 const saved = await this.#saved(handle, tx, root, intent);
                 if (!saved || hash(saved.observation) !== hash(pending.observation)) fail('native_orchestration_model_consume_denied');
                 checkCancellation(signal);
-                await revalidateConsume();
+                await revalidateConsume({ tx });
                 await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef);
+                try { await revalidateConsume({ tx }); } catch (error) {
+                    if (CONSUME_DENIALS.has(error.code)) return deny();
+                    throw error;
+                }
                 const finalIntent = (await readEffect(tx, handle, root, effectId)).doc;
                 const finalSaved = await this.#saved(handle, tx, root, finalIntent);
                 if (pending.binding !== digest(finalIntent) || !finalSaved || hash(finalSaved.observation) !== hash(pending.observation)) return deny();
                 assertPermit();
                 checkCancellation(signal);
                 return { generated, receiptRef: saved.receiptRef };
-            });
+            }, { withAuthority });
         } finally {
             if (pending.generated) this.#responses.delete(pending.generated);
             this.#active.delete(activeKey);

@@ -93,7 +93,7 @@ export async function toolCompletionFixture(make, kind, { remoteError = false, s
             scheduler = new NativeTaskScheduler(); service = new McpService({ host: { ...seeded, persistence, sessionCore: core }, scheduler });
             port = new ToolPort({ mcpService: service, skillAuthority: async () => ({ repository, settings: {}, projectId: null, revalidate: async () => {
                 if ((await repository.get('guide', scope)).installedHash !== entry.installedHash) throw new Error('Skill source stale');
-            } }), budgetPort: exec.budgetPort, runs: exec.runs, effects: exec.effects, verifyDispatch: exec.assertDispatch,
+            } }), budgetPort: exec.budgetPort, sourcePort: exec.sourcePort, runs: exec.runs, effects: exec.effects, verifyDispatch: exec.assertDispatch,
             readInput: async () => input, authorizeTool: async ({ intent }) => {
                 if (grantRevoked) throw new Error('Controlled original grant revoked');
                 return { grantDigest: decision.grantDigest, egressDigest: decision.egressDigest,
