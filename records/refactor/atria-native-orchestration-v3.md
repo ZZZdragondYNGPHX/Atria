@@ -54,3 +54,11 @@
 - 当前代码及既有视觉参考：`main:public/scripts/agents/orchestrator/workspace/orchestration/page.js` 仍耦合历史模式/preset；`public/scripts/lib/agent-workspace/graph-view.js` 为有界 SVG 预览；既有 Atria ESM/DOM/Shell/Primitives/Patterns 与 Cytoscape 依赖并非图编辑 PoC 通过证据。`docs:plans/refactor/atria-serene-canvas/decisions.md` 已冻结温纸工作台、Agents Run Timeline 默认/Graph 切换与手机 Sheet，视觉详细权威仍归原 Serene Canvas。
 - 实际验证限 GitHub read、设计/路径/条目核对与远端 docs commit/HEAD/diff；未运行 Node 测试、CI、付费 Provider、真实审批/Browser UI、视觉回归、真实 Windows/Linux/Termux 设备，也未建立正式性能 SLO。
 - 后续 D9：E0 接口/消费者审计、彻底清理旧代码、实施分期、故障/权限/质量/性能与三端真实客户端最终收口。D9 尚未冻结、没有执行 main 改动。
+
+## 2026-10-15 — D9 E0 定向审计初步检查点（未冻结）
+
+- 起点：`docs@6c371ff24a9309ca76a3e5e740543993c53b38ff`；期间 docs 另有 2 个合法并发提交推进到 `559ddbb8a60ff2da9cc91587a9a014c5673f14b3`，经 GitHub diff 核对**只涉及 Serene Canvas 方案与原型/Record，没有覆盖 V3 Plan/Record**；本次在最新 HEAD 上安全追加、不强推、不回退其他任务。
+- 源码只读基线：`main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`。定向搜索核对 `capability-host.js`/`native/play-generation.js`/`native/experience/llm`/`atria-shell/workspace-host.js` 仍使用旧 Orchestrator；`src/storage/repositories/settings-repo.js` 管理旧 `agentWorkspace`；`src/native/agent-intelligence/evolution-targets.js` 仍导入旧 Workspace Preset/Host Profile 且约束旧 Director，清退不能直接全目录删除。公共 Message Takeover 与 Native 业务服务需保护其其他消费者。
+- 同一 Plan 新增 [e0-audit](../../plans/refactor/atria-native-orchestration-v3/e0-audit.md) 记录代码/依赖边界、接口阻塞、完整删除旧编排的候选步骤、原生消费者、P1–P8 候选及故障/安全/质量/三端真实验收；该文件明确标为**非冻结审计草案**，D9 选择尚未发生。
+- 本检查点执行的是 GitHub 文件/代码搜索与 docs 文档提交/差异核验。未做所有动态 import 的穷尽验证、API/FS/SQLite/运行时故障复测，未运行 Node/E2E/CI/收费模型/真实人工批准/Windows/Linux/Termux 实机；不宣称 E0 已通过或产品分支实现已开始。
+- 阻塞：RunLedger/Effect/Approval/Projection 的真实物理合同、Evolution 与 Session 等消费链迁移、新旧代码全部引用闭包、跨 Store 一致性/预算/外部未知 Effect、Serene Canvas/手机端实体验收都需后续用户 D9 设计决定与实施验证；`main` 完全未修改。

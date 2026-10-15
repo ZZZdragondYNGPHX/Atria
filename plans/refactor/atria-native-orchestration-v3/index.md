@@ -12,7 +12,7 @@
 - 第六轮状态：**D6 已冻结：S2 Native Effect Authorization Gate；按实际动作/后果授权、分级审批、Secret/Egress 保护、Prompt Injection 隔离及持久 EffectIntent/Receipt 安全恢复**。
 - 第七轮状态：**D7 已冻结：N2 分层叙事与条件质量回路，区分 Actor Cognition、Narrative Intent、Character Expression 与唯一 Narrator；反全知、玩家自主权、Project Review/Commit 和质量分层**。
 - 第八轮状态：**D8 已冻结：U2 Graph Canvas + Inspector 双向编辑、原生 Plan Draft/Validate/Publish、运行 Timeline 默认/Graph 切换、Host RunProjection/Diagnostics、可信审批及 PC/移动等价编辑能力**。
-- 第九轮状态：**正在讨论 E0 接口/依赖审计、旧编排代码清退、实施分期、安全/故障/质量与 Windows/Linux/Termux 真实验收；D9 尚未冻结**。
+- 第九轮状态：**E0 初步定向静态审计已定位 Native Game、EvolutionTargets、SettingsRepo、Shell 等旧编排跨域消费者，详见 [e0-audit.md](e0-audit.md)；D9/E0 尚未完成全消费者/运行验证，实施计划未冻结**。
 - 文档性质：设计与架构冻结阶段；本轮仅提交 `docs`，不建立实现分支、不修改 `main`，不宣称任何新实现已验证。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -44,6 +44,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [effect-authorization.md](effect-authorization.md) | **D6 冻结**：Tool/Skill/MCP/A2A 发现与能力授权、R0–R3 风险、可信审批、Secret/Egress、Prompt Injection、持久 Effect/未知恢复 | D6 与后续 Effect 安全接入 |
 | [narrative-project-quality.md](narrative-project-quality.md) | **D7 冻结**：N2 原生 RP/Project 双出口、Actor/Intent/Narrator、反全知/玩家自主权、Judge/Review 与作者语义 | 第七轮及后续质量/创作消费者 |
 | [graph-editor-experience.md](graph-editor-experience.md) | **D8 冻结**：U2 Graph+Inspector、强类型 Node/Edge、Plan Draft/Publish、Run Timeline/Projection、审批/Diagnostics、Serene Canvas/移动端与性能 | 前端 V3 Authoring 与 Run UX 设计权威 |
+| [e0-audit.md](e0-audit.md) | **D9 E0 静态审计草案（非冻结）**：跨域依赖、旧代码清退风险、接口待定项、开发分期候选与三端验收矩阵 | D9 E0 与实施方案讨论 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
 
 已存在的其他方案只是依赖，不复制详细契约：
@@ -70,3 +71,5 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 ## 第九轮 E0：审计与正式实施收口讨论入口
 
 读取本 `index.md`、[decisions.md](decisions.md) D1–D8，锁定当时实际 `main`/`docs` HEAD；按当前问题选择 [architecture.md](architecture.md)、[graph-control.md](graph-control.md)、[context-sharing.md](context-sharing.md)、[adaptive-compute.md](adaptive-compute.md)、[effect-authorization.md](effect-authorization.md)、[narrative-project-quality.md](narrative-project-quality.md)、[graph-editor-experience.md](graph-editor-experience.md) 的相关段落。E0 要核查旧 Browser Orchestrator、mode adapters、Browser Checkpoint/旧 UI、Graph renderer、原 Native Session/RunControl/Studio/MCP 的实际引用与消费者，建立不兼容硬切的删除与保留清单、阶段依赖和真实验收矩阵。还须对照 [Serene Canvas](../atria-serene-canvas/index.md)、[独立 MCP 补强](../../plugin/atria-mcp-strengthening/index.md) 与原 HCM/Agent Intelligence 权威。**D9 目前只是讨论，未冻结或授权修改 main，不以静态扫描宣称完整代码审计结束**。
+
+第九轮 E0 的已定位源码/消费者/风险和候选分期只见 [e0-audit.md](e0-audit.md)；当前属于静态初审，**非 D9 冻结、非 E0 完成、非开发许可**。此前 Serene Canvas 同一 docs 分支的其他作者并行提交必须继续保留，不得为了本 Plan 覆盖。
