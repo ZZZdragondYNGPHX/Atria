@@ -57,7 +57,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     gap: var(--atri-frame-gap);
     overflow: hidden;
     color: var(--atri-text-primary);
-    background: radial-gradient(ellipse at 50% 0, #fff, transparent 60%), var(--atri-canvas);
+    background: radial-gradient(ellipse at 50% 0, var(--atri-surface-1), transparent 60%), var(--atri-canvas);
     font-family: var(--atri-font-sans);
     font-size: var(--atri-text-body);
     line-height: var(--atri-leading-normal);
@@ -132,7 +132,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     opacity: 0; pointer-events: none; transition: opacity 125ms;
 }
 .atria-sidebar .atria-shell-nav-button:focus-visible .atria-shell-nav-label { opacity: 1; transition: none; }
-.atria-sidebar .atria-shell-nav-button.is-selected { background: var(--atri-ink); color: #fff; box-shadow: 0 4px 12px rgb(0 0 0 / .14); }
+.atria-sidebar .atria-shell-nav-button.is-selected { background: var(--atri-ink); color: var(--atri-text-on-ink); box-shadow: 0 4px 12px rgb(0 0 0 / .14); }
 .atria-sidebar .atria-toolbar__menu { background: #e7e5e1; color: var(--atri-text-secondary); }
 .atria-sidebar .atria-toolbar-search__label, .atria-sidebar .atria-toolbar-search__shortcut { display: none; }
 .atria-shell-utility-button:disabled { cursor: default; opacity: .4; }
@@ -813,7 +813,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 }
 
 .atria-command-result.is-active .atria-command-result__subtitle {
-    color: rgb(255 255 255 / 0.78);
+    color: inherit;
 }
 
 .atria-command-result__shortcut {
@@ -1753,7 +1753,7 @@ body[data-atria-native-session-active="true"] #char_connections_button {
     margin-top: var(--atri-space-3);
 }
 /* Shared Native request feedback also appears in Play. */
-.atria-skip-link { position: fixed; top: calc(12px + var(--atri-safe-area-top)); left: 16px; z-index: 1000; padding: 12px 20px; border-radius: var(--atri-radius-pill); background: var(--atri-ink); color: var(--atri-text-on-accent); transform: translateY(-200%); }
+.atria-skip-link { position: fixed; top: calc(12px + var(--atri-safe-area-top)); left: 16px; z-index: 1000; padding: 12px 20px; border-radius: var(--atri-radius-pill); background: var(--atri-ink); color: var(--atri-text-on-ink); transform: translateY(-200%); }
 .atria-skip-link:focus-visible { transform: none; outline: 2px solid var(--atri-accent); outline-offset: 3px; }
 .atri-runtime-notice { padding: 12px 14px; margin: 8px 0; color: var(--atri-text-secondary); background: var(--atri-fill); line-height: 1.6; overflow-wrap: anywhere; }
 .atri-runtime-notice[role="alert"] { color: var(--atri-danger); }
@@ -1789,5 +1789,5 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 .atria-agent-goals[aria-busy="true"] { cursor: progress; }
 
 .atria-app-shell[data-atria-viewport="compact"] .atria-shell-menu { left: 0; right: 0; top: auto; bottom: 0; width: 100%; max-height: calc(var(--atri-viewport-height) - 28px); padding: 20px 24px calc(24px + var(--atri-safe-area-bottom)); border-radius: 24px 24px 0 0; }
-body.no-blur :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: #fff; backdrop-filter: none; }
-@media (prefers-reduced-transparency: reduce) { :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: #fff; backdrop-filter: none !important; } }
+body.no-blur :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: var(--atri-material-solid-bar); backdrop-filter: none; }
+@media (prefers-reduced-transparency: reduce) { :is(.atria-navigation-rail, .atria-bottom-navigation, .atria-play-composer) { background: var(--atri-material-solid-bar); backdrop-filter: none !important; } }

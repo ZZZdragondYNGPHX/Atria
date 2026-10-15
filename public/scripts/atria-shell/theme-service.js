@@ -7,7 +7,7 @@ const fallback = () => ({ version: 1, mode: 'light', day: DEFAULT_DAY, night: DE
 /** Coordinates the existing settings authority and NamedDocRepo theme API.
  * Only preview and request status are transient; no second persistent store.
  */
-export function createAtriaThemeService({ prefs, documents = [], originals = [], settings = {}, saveSettings, writeAsset, deleteAsset, readState, notify = () => {} }) {
+export function createAtriaThemeService({ prefs, documents = [], originals = [], settings = {}, saveSettings, writeAsset, deleteAsset, readState, notify = () => {}, createId = () => globalThis.crypto.randomUUID() }) {
     let docs = copy(documents), saved = copy(prefs.atria_theme || fallback());
     let preview = null, busy = false, error = '', migration = null, notice = '';
     const listeners = new Set();
@@ -106,7 +106,7 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
             if (!preview?.theme) api.previewTheme(api.effective().theme.id);
             const theme = preview.theme;
             if (theme.id.startsWith('builtin:') || (patch.name !== undefined && patch.name !== theme.name && docs.some(doc => doc.id === theme.id))) {
-                theme.id = `custom:${globalThis.crypto.randomUUID()}`;
+                theme.id = `custom:${createId()}`;
                 theme.name = uniqueThemeName(`${theme.name} copy`, docs);
             }
             // Keep one stable asset identity across selection-save retries.
@@ -135,8 +135,8 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
         cancel() { if (busy) return false; preview = null; error = ''; emit(); return true; },
         importTheme(value) {
             return run(async () => {
-                const theme = parseThemeImport(value, { id: `custom:${globalThis.crypto.randomUUID()}` });
-                theme.id = `custom:${globalThis.crypto.randomUUID()}`;
+                const theme = parseThemeImport(value, { id: `custom:${createId()}` });
+                theme.id = `custom:${createId()}`;
                 theme.name = uniqueThemeName(theme.name, docs);
                 await verifyWrite(theme); notice = 'Theme imported. Select it to preview; your appearance has not changed.';
                 return theme;

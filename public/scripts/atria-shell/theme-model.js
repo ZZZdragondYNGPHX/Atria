@@ -26,7 +26,7 @@ export function createPalette({ appearance, canvas, surface, text, secondary, ac
         canvas, 'surface-1': surface, 'surface-2': mixColor(canvas, surface, .45), 'surface-3': mixColor(surface, text, .09), elevated: surface,
         'material-sidebar': surface, 'material-bar': surface, 'material-solid-sidebar': surface, 'material-solid-bar': canvas,
         'text-primary': text, 'text-secondary': secondary, 'text-tertiary': secondary, 'text-quaternary': mixColor(surface, text, .45),
-        'text-on-accent': onAccent, accent, 'accent-hover': mixColor(accent, text, .12), 'accent-pressed': mixColor(accent, text, .24),
+        'text-on-accent': onAccent, 'text-on-ink': canvas, accent, 'accent-hover': mixColor(accent, text, .12), 'accent-pressed': mixColor(accent, text, .24),
         'accent-text': accentText, 'accent-soft': mixColor(surface, accent, .12), 'accent-soft-strong': mixColor(surface, accent, .22),
         separator: mixColor(surface, text, .12), 'separator-strong': mixColor(surface, text, .5),
         fill: mixColor(surface, text, .04), 'fill-hover': mixColor(surface, text, .08), 'fill-pressed': mixColor(surface, text, .14), 'fill-strong': mixColor(surface, text, .2),

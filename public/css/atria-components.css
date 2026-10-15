@@ -237,7 +237,7 @@
 
 .atria-button[data-variant="primary"] {
     background: var(--atri-ink);
-    color: var(--atri-text-on-accent);
+    color: var(--atri-text-on-ink);
     font-weight: 600;
 }
 

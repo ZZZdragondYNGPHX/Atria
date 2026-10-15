@@ -4,7 +4,7 @@ import { createAtriaIcon } from './icons.js';
 import { el, action, disclosure, feedback } from '../native/library-ui.js';
 import { permissionRow } from '../native/package-permissions.js';
 import { nativeProductClient } from '../native/product-client.js';
-import { mountAtriaPreferenceControls } from './preference-controls.js';
+export { mountSettingsUtility } from './settings-workspace.js';
 
 export const ATRIA_THEME_CSS_EXAMPLE = ':root:root {\n  --atri-accent: #ff5a36;\n  --atri-canvas: #f9f8f6;\n  --atri-surface-1: #ffffff;\n  --atri-text-primary: #1c1c1e;\n}';
 
@@ -213,99 +213,6 @@ export async function mountPluginsUtility({
     }
     if (builtinsOnly) { works.remove(); frame.header.remove(); globals.querySelector('h3')?.remove(); } else { refresh.addEventListener('click', load); await load(); }
     return { root: frame.root, dispose() { disposed = true; for (const remove of listeners) remove(); for (const [node, placement] of placements) restorePlacement(node, placement); frame.root.remove(); } };
-}
-
-// Only advanced theme compatibility controls need their existing DOM adapter.
-export const PREFERENCE_CONTROLS = Object.freeze({
-    appearance: ['UI-presets-block', 'color-picker-block', 'customCSS'],
-    language: [],
-    interface: [],
-    accessibility: [],
-});
-
-export function mountSettingsUtility({ document: documentRef = globalThis.document, slot, body = slot, host } = {}) {
-    const frame = makeUtilityFrame(documentRef, {
-        id: 'settings', title: 'Settings', description: 'Make Atria feel right for you.',
-    });
-    const grid = documentRef.createElement('section');
-    action(documentRef, frame.actions, 'Learning center', () => globalThis.Atria?.shell?.getLearningCenter()?.open());
-    grid.className = 'atria-preference-groups';
-    grid.dataset.atriaSettingsPrimary = 'true';
-    const placements = [];
-    const nativeControls = [];
-    const samplePaper = el(documentRef, 'aside', 'atria-reading-sample', undefined, grid);
-    el(documentRef, 'h3', '', translateShellText('Reading preview'), samplePaper);
-    const sample = el(documentRef, 'p', '', translateShellText('Morning light falls across the stone steps. Somewhere beyond the doorway, a page turns.'), samplePaper);
-    const titles = { appearance: 'Appearance', language: 'Language', interface: 'Interface & behavior', accessibility: 'Accessibility' };
-    for (const [id, controlIds] of Object.entries(PREFERENCE_CONTROLS)) {
-        const group = documentRef.createElement('section');
-        group.className = 'atria-preference-group';
-        group.dataset.atriaSettingsSection = id;
-        const title = documentRef.createElement('h3');
-        title.textContent = translateShellText(titles[id]);
-        const controls = documentRef.createElement('div');
-        controls.className = 'atria-preference-rows';
-        group.append(title, controls);
-        nativeControls.push(mountAtriaPreferenceControls({ document: documentRef, group: controls, section: id, sample }));
-        for (const controlId of controlIds) {
-            const control = documentRef.getElementById(controlId);
-            if (!control) continue;
-            const node = control.matches('input, select') ? (control.closest('label') || control) : control;
-            if (placements.some(([old]) => old === node)) continue;
-            const placement = savePlacement(documentRef, node);
-            if (!placement) continue;
-            placements.push([node, placement]);
-            const row = documentRef.createElement('details');
-            row.className = 'atria-preference-row';
-            if (row.tagName === 'DETAILS') {
-                row.dataset.atriaSettingsCompatibility = 'preferences-only';
-                const summary = documentRef.createElement('summary');
-                summary.textContent = translateShellText(controlId === 'customCSS' ? 'Custom CSS' : controlId === 'UI-presets-block' ? 'Theme compatibility' : 'Advanced appearance controls');
-                row.append(summary);
-                if (controlId === 'customCSS') {
-                    const help = documentRef.createElement('p');
-                    help.id = 'atria-custom-theme-help';
-                    help.textContent = translateShellText('Edit Atria tokens below, then update the theme or save as a new theme.');
-                    const example = documentRef.createElement('pre');
-                    example.textContent = ATRIA_THEME_CSS_EXAMPLE;
-                    node.setAttribute('aria-label', translateShellText('Custom CSS'));
-                    node.setAttribute('aria-describedby', help.id);
-                    row.append(help, example);
-                }
-            }
-            if (node.matches('input, select')) {
-                const label = documentRef.createElement('label');
-                const text = documentRef.createElement('span');
-                text.textContent = translateShellText({ themes: 'Theme', font_scale: 'Font Scale', send_on_enter: 'Send on Enter', before_unload_guard_mode: 'Confirm before leaving' }[controlId] || controlId);
-                label.append(text, node); row.append(label);
-            } else row.append(node);
-            controls.append(row);
-        }
-        if (!controls.childElementCount) {
-            controls.append(createLocalizedStatePanel(documentRef, 'empty', { title: titles[id], message: 'Preference controls are not available yet. Reopen Settings after startup.' }));
-        }
-        grid.append(group);
-    }
-    const destinations = documentRef.createElement('nav');
-    destinations.className = 'atria-utility-related';
-    destinations.setAttribute('aria-label', translateShellText('Related settings'));
-    for (const [label, action] of [
-        ['Open Runtime Routes', () => host?.openRuntimeSection('routes')],
-        ['Prompt Programs', () => host?.openLibrarySection('prompt-programs')],
-        ['Storage & privacy', () => host?.openUtility('account')],
-        ['Diagnostics', () => host?.openUtility('diagnostics')],
-    ]) {
-        const button = makeButton(documentRef, label);
-        button.addEventListener('click', action);
-        destinations.append(button);
-    }
-    frame.body.append(grid, destinations);
-    body.replaceChildren(frame.root);
-    return { root: frame.root, dispose() {
-        for (const controls of nativeControls) controls.dispose();
-        for (const [node, placement] of placements.reverse()) restorePlacement(node, placement);
-        frame.root.remove();
-    } };
 }
 
 export async function mountAccountUtility({ document: documentRef = globalThis.document, slot, body = slot, accountAuthority } = {}) {

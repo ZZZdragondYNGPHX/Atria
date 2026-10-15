@@ -438,7 +438,7 @@ export function createAtriaAppShell({
     function activeUtilityId(route = navigationAuthority.getRoute()) {
         const childId = String(route.child?.id || '');
         if (childId === 'skills' || childId.startsWith('skills:')) return 'plugins';
-        return childId.startsWith('utility.') ? childId.slice('utility.'.length) : null;
+        return childId.startsWith('utility.') ? childId.slice('utility.'.length).split(':')[0] : null;
     }
 
     function updateDomainPresentation(route = navigationAuthority.getRoute()) {

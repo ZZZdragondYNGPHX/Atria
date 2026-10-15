@@ -16,7 +16,7 @@ export async function initializeAtriaThemes(settings) {
     let state;
     try { state = await request('list'); } catch { state = { themes, originals: [] }; }
     atriaThemes = createAtriaThemeService({ prefs: power_user, settings, documents: state.themes, originals: state.originals,
-        saveSettings: () => saveSettings(), writeAsset: theme => request('save', theme), deleteAsset: name => request('delete', { name }), readState: () => request('list'),
+        createId: uuidv4, saveSettings: () => saveSettings(), writeAsset: theme => request('save', theme), deleteAsset: name => request('delete', { name }), readState: () => request('list'),
         notify: () => document.dispatchEvent(new CustomEvent('atria-theme-changed')),
     });
     try { await atriaThemes.initialize(); } catch (error) { console.warn('Theme upgrade is pending:', error); }
@@ -83,7 +83,7 @@ import { initTokenizerSelects, isSelectableTokenizer, tokenizers } from './token
 import { BIAS_CACHE } from './logit-bias.js';
 import { renderTemplateAsync } from './templates.js';
 
-import { countOccurrences, debounce, delay, download, getFileText, getSanitizedFilename, getStringHash, isOdd, isTrueBoolean, onlyUnique, resetScrollHeight, shuffle, sortMoments, stringToRange, timestampToMoment } from './utils.js';
+import { countOccurrences, debounce, delay, download, getFileText, getSanitizedFilename, getStringHash, isOdd, isTrueBoolean, onlyUnique, resetScrollHeight, shuffle, sortMoments, stringToRange, timestampToMoment, uuidv4 } from './utils.js';
 import { FILTER_TYPES } from './filters.js';
 import { PARSER_FLAG, SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';

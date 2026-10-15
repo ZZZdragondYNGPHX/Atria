@@ -30,7 +30,7 @@
 .atria-studio-topbar__revision { font-family: var(--atri-font-mono); font-size: var(--atri-text-caption); color: var(--atri-text-secondary); }
 .atria-studio-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .atria-native-studio button { appearance: none; border: 0; border-radius: var(--atri-radius-md); background: var(--atri-fill); color: var(--atri-text-primary); padding: 8px 12px; min-height: 36px; cursor: pointer; font: inherit; font-size: var(--atri-text-callout); white-space: normal; text-shadow: none; transition: background var(--atri-duration-fast), transform var(--atri-duration-fast); }
-.atria-native-studio button[data-variant="primary"] { background: var(--atri-ink); color: var(--atri-text-on-accent); }
+.atria-native-studio button[data-variant="primary"] { background: var(--atri-ink); color: var(--atri-text-on-ink); }
 .atria-native-studio button[data-active="true"] { background: var(--atri-fill); color: var(--atri-text-primary); }
 .atria-native-studio button:disabled { opacity: .5; cursor: default; }
 .atria-native-studio [aria-busy="true"] { cursor: progress; }
@@ -126,7 +126,7 @@
 .atria-studio-workspace[data-atria-viewport="compact"][data-atria-studio-mobile-view="more"] .atria-studio-activity { display: grid; flex: 1; }
 .atria-studio-workspace[data-atria-viewport="compact"][data-atria-studio-mobile-view="more"] .atria-studio-layout { display: none; }
 .atria-studio-workspace[data-atria-viewport="compact"][data-atria-studio-mobile-view="more"] .atria-studio-activity__body { display: block; }
-.atria-studio-workspace[data-atria-viewport="compact"] .atria-studio-mobile-nav { display: grid; order: -1; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #fff; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-pill); padding: 6px; }
+.atria-studio-workspace[data-atria-viewport="compact"] .atria-studio-mobile-nav { display: grid; order: -1; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--atri-surface-1); border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-pill); padding: 6px; }
 .atria-studio-workspace[data-atria-viewport="compact"] .atria-studio-mobile-nav button { padding-inline: 2px; font-size: var(--atri-text-caption); }
 .atria-studio-workspace[data-atria-viewport="compact"] .atria-studio-editor-surface { padding: 20px 16px; }
 .atria-studio-workspace[data-atria-viewport="compact"] .atria-studio-field,

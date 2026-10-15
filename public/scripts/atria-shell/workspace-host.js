@@ -61,7 +61,7 @@ function routeDescriptor(route) {
     const childId = String(route?.child?.id || '').trim();
     if (childId === 'skills' || childId.startsWith('skills:')) return { key: 'extensions:' + childId, kind: 'plugins', title: 'Extensions' };
     if (childId.startsWith('utility.')) {
-        const utilityId = childId.slice('utility.'.length);
+        const utilityId = childId.slice('utility.'.length).split(':')[0];
         const title = UTILITY_LABELS[utilityId];
         if (title) {
             return Object.freeze({
