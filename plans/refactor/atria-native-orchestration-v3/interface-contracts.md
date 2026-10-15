@@ -106,7 +106,7 @@ ID 在原 `identity.js` 扩展 UUID family：`oplan/oprev/orun/onode/oattempt/oe
 | `ValidationReport` | `schemaVersion,planId,draftVersion,definitionHash,dependencyDigest,status,issues,checkedAt`；status `valid/invalid/unknown`；issue 含 `code,severity,nodeId?,edgeId?,fieldPath?,sourceRef?,evidenceRef?`；missing/unknown required evidence 阻止 publish |
 | `SourceBinding` | tagged union：Session 使用原 sessionId/branchId/revisionId/scopeEpoch；普通 RP 使用原ChatRepo分配的controlId与原Experience/SourceAdapter的chat/message/variant/hash anchor；Project 使用 projectId/taskId/baseRevision/sourceHash。完整嵌入原 `sourceRef`、`sourceAuthority` 与 bindingDigest；不是同名全局 revision，不为普通 RP 伪造 Session |
 | `RunRoot` | `schemaVersion,runId,ownerRef,planRef,sourceBinding,parentRef,rootRunId,budgetAuthorityRef,hostBootId,epoch,stateVersion,graphRevision,eventSeq,status,graph,attemptRefs,pendingEffectRefs,pendingApprovalRefs,resultRefs,outputClaims,progress,limits,retentionPolicyRef,createdAt,updatedAt`；parentRef 含 parentRunId/nodeAttemptId/delegationId/返回合同或 null；不保存真实余额 |
-| `NodeAttempt` | `schemaVersion,runId,nodeId,attemptId,attemptNumber,epoch,graphRevision,inputRefs,inputDigest,sourceBindingDigest,effectiveGrantDigest,budgetRef,status,effectRefs,resultRefs,startedAt,endedAt,reasonCode`；替换 attempt 不覆盖旧记录 |
+| `NodeAttempt` | `schemaVersion,runId,nodeId,attemptId,attemptNumber,epoch,graphRevision,inputState,reservationRef,inputRefs,inputDigest,sourceBindingDigest,effectiveGrantDigest,budgetRef,status,effectRefs,resultRefs,startedAt,endedAt,reasonCode`；prepared/reserved封闭union见§17.10；替换 attempt 不覆盖旧记录 |
 | `GraphPatch` | `schemaVersion,patchId,runId,producerAttemptId,expectedEpoch,expectedGraphRevision,operations,reasonRefs,payloadHash`；operation tagged union `addNode/addEdge/setPendingPriority/cancelPending/markBlocked/requestFinalize/requestReplan`；Host 验证整补丁后保存 immutable PatchReceipt `{patchId,accepted,newGraphRevision,issues,decisionSeq}`；重复相同 patch 返回原结果 |
 | `JoinReceipt` | `schemaVersion,joinId,runId,nodeAttemptId,graphRevision,memberAttemptIds,policy,quorum,deadlineAt,cutoffSeq,acceptedResultRefs,excluded,reasons,outcome`；membership 在 fanout 时冻结；成功不足不可 complete，迟到不能改收据 |
 | `EffectIntent` | `schemaVersion,effectId,runId,nodeAttemptId,epoch,graphRevision,actionRef,targetRef,endpointBindingDigest,inputRef,inputHash,sourceBindingDigest,grantDigest,risk,egressDigest,budgetAttemptRef,approvalRef,dispatchPolicy,status,dispatchToken,createdAt`；`risk=R0/R1/R2/R3`；dispatchPolicy 含 `idempotency=none/domain_key/remote_key`、真实 operation key、`reconcile=domain_status/remote_status/manual`；拒绝虚构第三方幂等能力 |
@@ -396,7 +396,7 @@ Receipt按稳定observationId追加，不覆盖unknown或矛盾历史。原Port�
 
 ### 17.5 Attempt结算与确定性Join的P2实现细化
 
-`NodeAttemptReceipt`沿原`atri_orchestration_record/receipt`保存，封闭字段为`schemaVersion,receiptKind:'node_attempt',receiptId,runId,nodeAttemptId,epoch,graphRevision,sourceBindingDigest,inputDigest,outcome,resultRefs,effectReceiptRefs,decisionSeq,reasonCode,createdAt`。receiptId由Run+Attempt稳定推导；Attempt终态、不可变收据、Root/event/command同事务，不能靠可变status伪造分支成功。普通settle拒绝Join/Output节点；已准备或未知Effect未结清时不能终结Attempt。原Source/Result/费用收据验证Port为必填，不在V3影子实现。
+`NodeAttemptReceipt`沿原`atri_orchestration_record/receipt`保存，封闭字段为`schemaVersion,receiptKind:'node_attempt',receiptId,runId,nodeAttemptId,epoch,graphRevision,sourceBindingDigest,inputState,inputDigest,outcome,resultRefs,effectReceiptRefs,decisionSeq,reasonCode,createdAt`。receiptId由Run+Attempt稳定推导；Attempt终态、不可变收据、Root/event/command同事务，不能靠可变status伪造分支成功。普通settle拒绝Join/Output节点；已准备或未知Effect未结清时不能终结Attempt。原Source/Result/费用收据验证Port为必填，不在V3影子实现。
 
 新增`ojoin_*`身份，沿原`record/join`分别保存`barrier:<joinId>`和`joinId`：前者是不可变`JoinBarrier`，后者是不可变`JoinReceipt`，不是新metadata kind或独立存储。Barrier字段为`schemaVersion,joinId,runId,fanoutAttemptId,nodeAttemptId,epoch,graphRevision,memberAttemptIds,sourceBindingDigest,parentBudgetRef,policy,quorum,deadlineAt,frozenSeq,createdAt`；稳定joinId绑定Join Attempt。原Fanout分组/parent reservation Port验证完整成员；冻结事务只接受同epoch/source的pending分支，已启动成员与冻结竞态必有一方拒绝，不能补录进旧屏障。原Scheduler permits/真实父子预算仍归P3。
 
@@ -432,8 +432,16 @@ Darwin分支使用内置`osascript`执行固定Foundation代码，canonical path
 
 未发布v1工程schema的每条edge补充required `loopBack:boolean`；删除所有显式回边后必须为DAG，且每个回边须闭合一条正向路径并有非零maxLoopIterations。不能仅填上限就隐式允许未标记环；Definition hash包含此语义字段，不为旧编排或中间实验数据提供转换/默认兼容。deadline Join若Plan不允许partial则在完整Validate/Publish阶段拒绝。
 
-内部`TransitionController.advance`输入为Run CAS guards与`bindings:[{edgeId,producerAttemptId}]`，不接受调用方自造transitionId。成员排序后的Run+bindings稳定推导command/Attempt/receipt身份。每个producer必须有同epoch/source的不可变NodeAttemptReceipt，edge须指向同一合法target，required input connections齐备且success/failure条件匹配；partial不当success。Join由自身屏障控制器结算，已发布Output不成为普通转移producer。
+内部`TransitionController.advance`输入为Run CAS guards、`bindings:[{edgeId,producerAttemptId}]`与显式`reservedAttemptId:null|AttemptId`（§17.10），不接受调用方自造transitionId。成员排序后的Run+bindings+reservedAttemptId稳定推导command/新Attempt/receipt身份。每个producer必须有同epoch/source的不可变NodeAttemptReceipt，edge须指向同一合法target，required input connections齐备且success/failure条件匹配；partial不当success。Join由自身屏障控制器结算，已发布Output不成为普通转移producer。
 
 必填原Port以`{handle,tx,root,target,attemptId,producers}`只读复核typed Result/Source/currentness/grant及原reservation，返回`{inputRefs,inputDigest,effectiveGrantDigest,budgetRef}`；inputDigest绑定实际引用。新pending Attempt、`receiptKind:'graph_transition'`不可变收据、Root/event/command同CAS；收据钉producer receipt refs、各edge累计、loopIterations及decisionSeq。step/attempt/edge/deadline与显式回边计数先限额再准入。maxLoopIterations的物理累计含每次marked back-edge crossing，从环中间入口开始也计数；恢复不清零。
 
 generic beginAttempt仅创建该node第一次准备身份；已有历史必须走受控transition/后续Review或recovery controller，不能换commandId绕开重做/循环计数。普通prepare不等于合法activation；Fanout/Join统一边计数、父子Run/预算和原Scheduler准入仍须对应P2/P3子工作，不以本控制器替代。没有生产HTTP dispatcher或真实发送。
+
+### 17.10 多步分支的身份预留不等于输入准入
+
+Fanout冻结多步分支时，最终成员的实际上游Result可能尚不存在。为避免伪造input/grant/budget，NodeAttempt增加封闭`inputState:'reserved'|'prepared'`与`reservationRef:null|{producerAttemptId}`。reserved必须绑定当前原Fanout/scope许可，inputRefs/inputDigest/effectiveGrantDigest/budgetRef均显式null，effects/results空、未started；仅允许reserved/blocked/cancelled/stale，不能activate、claim或产出成功Result。prepared必须是真实引用数组及其canonical hash、有效grant digest和原budget reference；不是默认允许的占位输入。
+
+内部`AttemptController.reserve`以Run+producer Attempt+node稳定身份，在Root/record/command同CAS预留一槽，计入attempt/step高水位；原fanout scope Port必填，只校验许可，不代表原资金reservation。Join Barrier可冻结这些身份；后续prepare不能换成员ID。真实依赖receipt已存在后，Transition带reservedAttemptId、复核原Source/Result/Grant/预算和creator epoch，原子填入准备快照并计edge/loop/step；槽位已计不再重复加attempts。相同请求重放不能擦除已准备输入，改变绑定也不能覆盖prepared成员。
+
+只有尚未prepared的reserved输入可按合法GraphPatch补依赖，prepared/终结快照保持冻结。取消未准备成员追加inputState=reserved、inputDigest=null的取消收据，禁止伪造结果、费用或退款；Join按未完成/取消事实结算。NodeAttemptReceipt保留inputState；source/epoch不匹配拒绝准备。完整fanout dispatch、统一边计数、隐式入口组/嵌套组及原scheduler/budget tree仍在P2/P3继续，不以预留身份冒充这些能力完成。

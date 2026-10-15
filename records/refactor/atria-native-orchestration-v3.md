@@ -242,3 +242,10 @@
 - 首轮SQLite一项在任何业务操作前因固定guard port49555的EACCES失败，已用Windows netsh确认其属于当时OS保留区间49523–49622。生产按冻结协议保留writer-unavailable，不换port/identity；纯控制器fixture在第一次写identity前预先选择可绑定端口，只对新隔离测试root生效。真实Owner创建/冲突证据仍归原storage-foundation，不将fixture预置当首次Owner初始化验收。
 - 本轮后半Docker daemon停止，按原安装尝试启动仍因Inference manager本地listener不可访问退出；没有reset factory、删缓存、重装或改全局配置。新增及本组修改后的MySQL/Pg controller case为BLOCKED/NOT_RUN，不能沿用上一组四Engine通过结论。继续FS/SQLite与不依赖该服务的工程工作。
 - 完整P2仍IN_PROGRESS：Fanout/Join统一边计数、Delegate/Handoff/Review、恢复/reconcile及原Scheduler；P3原Context/Grant/预算树尚未接线，P4–P8未完成。三端完整客户端/真实批准/质量证据不变，main未集成。
+
+## 2026-10-15 — P2第五组：多步分支先预留身份、后准备输入
+
+- Source `31bef9572` → `501b4d8b9`已提交推送。修补多步Fanout的物理缺口：最终成员身份可先以reserved/inputState union冻结，真实输入/grant/budget为空且不可执行；后续依赖收据齐备时同CAS准备该身份，槽位不双计、成员不替换。必填原scope/Source/Result Port，无原费用/发送实现。Prepared输入hash和原budget ref也在generic begin/read校验，不能存入不一致快照。
+- 最新FS/SQLite reservation17/17（1个SQLite的FS专用窗口N/A），包含未准备拒绝激活、成员冻结后填入同身份、满槽仍可完成既有准备、重放/取消/source revoke/epoch、reserved允许补依赖而prepared拒改、FS publish故障不拆Root/identity/command。相关Transition28、Join34、Effect/Approval22、Graph10、Run18已通过；新增generic输入篡改/缺预算负例随后定向2case通过。定向ESLint/diff check通过。
+- FS故障测试首版将测试hook置null，恢复时触发this.fault非函数；恢复为原接口要求的no-op函数后同窗口通过，不将fixture错误归为真实磁盘故障。该case为软件异常注入，不冒充进程kill或断电。
+- 原Docker启动故障仍在，本组MySQL/Pg与真实Port证据BLOCKED/NOT_RUN；没有重新启动/重置它。完整P2仍需Fanout/Join统一边计数、完整组调度、Delegate/Handoff/Review/recovery；P3原scheduler/上下文/权限/预算树及P4–P8继续，三端/真实批准/质量未过，main未集成。
