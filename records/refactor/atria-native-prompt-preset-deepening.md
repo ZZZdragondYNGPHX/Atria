@@ -1,9 +1,13 @@
 # Atria Native Prompt Preset Deepening — 唯一 Record
 
+## 2026-10-16 — 后端正式开工
+
+用户授权正式开始，确认包含 D2–D8 全部后端，前端实现交 Claude Code。读取实际 Git、同一 Plan/E0/Record 和外部设计三文件；不冻结 §8.4 提案。起点 main=695acf3bc，docs=5101c3b3e，V3=618a04ae1；V3 仍在并发开发，原 Authoring bindings/生产 Model/Context/Source 未接通。既有各工作树 CLAUDE.md 删除、docs 外部设计草稿/截图及 agent-experience-evolution 未跟踪目录保持。当前接口工程决定见同 Bundle backend-implementation；验收仍 NOT_RUN，不把授权写为 E0 PASS。
+
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
-- Primary Workspace：`main`（未来实现，当前未授权修改）。
+- Primary Workspace：`main`（产品）；当前实现分支 `refactor/atria-native-prompt-preset-deepening`，文档仍归 `docs`。2026-10-16 已授权正式后端实施，整体 E0 未收口，尚未集成 main。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1–D8 功能/交互语义已冻结；D9/E0 本地续审后仍 NOT_CLOSED。全产品前端研究与外部设计输入已整理，视觉未冻结、未开发；本任务继续只使用同一份 Record。
+- 当前阶段：D1–D8 功能/交互语义保持；2026-10-16 已实施可独立后端并提交 `760327891`。整体 D9/E0 仍 NOT_CLOSED；外部三份设计参考已收，前端由用户交 Claude Code，未由本任务实现或冻结审美。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -192,3 +196,60 @@
 - 这些是文档和证据完整性检查。**NOT_RUN**：产品测试/构建/CI、启动产品、Browser E2E、模型/Provider API、真实费用/质量/拒答评测、权限攻击/故障恢复、Windows产品端/CachyOS Linux/Android Termux/APK真机、读屏/性能。测试目录存在不算执行或通过。
 - 外部第三方插件源码、用户作品动态UI、真实服务和跨端行为保留UNKNOWN/NOT_RUN；没有声称完整动态消费者闭包。E0-01..08及C1–C6继续在同一E0台账维护。
 - 本轮交付止于研究/文档提交推送。G3本任务开发NOT_AUTHORIZED；G4仅完成设计输入，用户尚未提供外部三项成果并多轮确认；未冻结新视觉或正式开工。没有新建HANDOFF、实现分支或产品代码提交。
+
+## 2026-10-16 — 可独立后端交付与 Claude Code 前端交接
+
+### 实际提交、授权和并发保护
+
+- 当前用户明确授权正式开始，确认包含 D2–D8 全部后端，指定 Claude Code 负责前端；离线前又授权非破坏性自主操作与子代理。该指令更新上轮 docs-only/不建分支限制；不把源于历史的 NOT_AUTHORIZED 恢复成当前许可门槛。
+- Source 起点 `main@695acf3bcad1d42e331459189532a76056278bec`；创建同名 `refactor/atria-native-prompt-preset-deepening` 语义分支与独立源码工作树。实现提交 **`760327891149216dffdc1e3fa0c846496007a013`**（43 文件，2203 additions/148 deletions），已 push 同名远端分支。不是 main/V3 提交。
+- docs 起点 `5101c3b3e`，期间其他 V3 任务提交 `411cda16d`、`820517000`、`b51d90eae`、`6e8e6d48f` 等保持。V3 从 `618a04ae1` 继续推进；本任务只读核对其已提交对象，未写入它的 Tool/Context/恢复/引用根工作树。最终观测 SHA 另由本节末尾记录。
+- 全部无关 `CLAUDE.md` 删除、agent-experience-evolution 未跟踪企划、外部 HTML 的 `_build`/截图/Playwright 目录保持，不纳入本任务提交。本次只收录用户指定的三份设计交付文件和本任务研究/接口/交接文档。
+- **未改前端实现、未改 main、未合入活跃 V3。** 整体 E0 未收口，保留活跃语义分支供原端口组合，未删除其他任务或自称完整任务终结。
+
+### 完成的后端与真实消费者
+
+| 范围 | 实际结果与落点 |
+| --- | --- |
+| D2 F2 / D3 E2 | 原 Module 可选 literal/template、表达 layer/actorId；Compiler 无损保留 raw（含任意花括号、CRLF/Unicode），原 Candidate/Package freeze 保留该语义；分层顺序与实际 Provider scope label 可解释，不改 Actor identity/World/Grant |
+| D3 A2/K2/G1 | 唯一 Narrator 严格默认玩家自主权/表达与认知分离 policy；不增加模型调用。有限委托仍必须来自原真实授权，不能由 Prompt 自己申报；未声称模型行为已验证 |
+| D4 B2/C2 | 原 Host.execute 的可信 options → scheduler → Resolver/Compiler/Provider 已闭合，并保存 Route 原声明 ref 与实际 selected ref。实际 ContextPlan 交授权回调检查；Browser JSON 禁 programSelection。不同 Route fallback 锁 Program/作者语义/参数/输出/工具/网络/原预算；合法 Context/Memory 重选不被误判成换作者合同 |
+| D5 S2/L2/D2/K2/T2 | SemanticBlocks 与原 IR 投影一致校验，Host policy/author/evidence/dialogue/tool/input/prefill 分账；facts/Persona/Memory/检索证据不再通过 ContextSlot 升 system，caller system/developer task 文本无损降数据。原 Provider render/count/send 一致，不支持的 role 排序继续拒绝；compiledBinding 包含新语义，指纹不发权限或证明 cache hit |
+| D6 Source-aware | 原 Context currentness port 在 compile/send/preview 消费点调用；Host 重读原 Session/Project/Task，Secret 后与每个实际 send/retry 前再验。普通无 runtime Session 与暂存 World 投影回归问题已修，原背景/可选计算/计费权威保持 |
+| D8 Draft | 认证 `/preview/draft`、原 `/resources` 指纹、原 exact reader 上临时同身份草稿；现有 Library/当前 Project 三类资源、三层输出、同源 Diff/复验、无 send/Secret/write。原 Program/Route/发布没有被 Browser draft 替换 |
+| D8 私密 Inspector | 确认原 Narrator context 可含 private data 而 displayGrant.item=null；旧 Preview、新 Draft、execute JSON/SSE 和 retained result 均补独立 Browser consumer。私密/无法证明完整展示权的 Preview 拒绝；成功执行回受限摘要而不泄露 IR，也不改成失败诱发重复计费。保守不支持的 Knowledge/Memory/derivation/processing/expression Preview 明确报披露拒绝 |
+| D7 / R3 | 原 QualityProfile 增 rp.narrative/project.agent/rp.creative_refusal，硬维度不抵消，来源/怀疑/Host 验证分开；认证只读 `/quality-profiles` 暴露 true BLOCKED/source_unready。三原 Adapter 按官方明确字段识别协议拒绝，专用 code 保留 usage、禁止内容拒绝 fallback，不从普通“抱歉”推断 |
+| 原 Eval/Experience | 移除固定九对/六胜/1024 输出上限的评测消费者，按实际选择、原 Route 能力及来源资格验收，不降低独立证据和质量硬约束。修复 invalidation callback 与 reconcile 同 scope 重复 cleanup/CAS，晚到通知在同 Promise 从原 Journal 重读并 drain，失败可再恢复；不另建持久状态 |
+
+产品 API/错误/范围权威说明已随源码提交：[Native Prompt Backend](https://github.com/ZZZdragondYNGPHX/Atria/blob/760327891149216dffdc1e3fa0c846496007a013/src/native/model-prompt-runtime/README.md)。细节不在第二份文档重造 schema。
+
+### 实际验证和修复经过
+
+以下组别有重叠，**不相加冒充独立测试总数**。均为本地 Node/合成 HTTP/原服务与存储测试，不是付费模型质量或设备 UI 实测。
+
+| 实际组别 | 结果 |
+| --- | --- |
+| Compiler/contract/P4/P6/原 Candidate/Preset 与新 Binding/Source/Draft/Semantic，10 suites | **211 PASS** |
+| 综合新披露/拒答/Host selection/Source/Draft、Provider matrix、原 P4/local-work/background budget、Quality/Feedback，13 suites | 初次 **272 PASS / 2 FAIL**；两项是原 private Information fixture 还要求 Browser preview 成功，已按独立 display 权限改为拒绝并保留零 quota 断言 |
+| 上述预算重检 + Host selection + Semantic + invalidation，4 suites | **49 PASS**（含那两项已修断言）；未把之前失败覆盖成初次通过 |
+| 演化原服务与原 RP/Project/Skill Worker 消费者，2 suites | **47 PASS**；包括实际本地 Worker/原 Compiler/Provider/账本与发布/回滚，仍不是 V3 plan-prompt 或真实文学质量 |
+| 最终 Host Program 真实 ContextPlan 回调 + Binding，2 suites | **24 PASS** |
+| 原 Provider matrix + 新拒答，2 suites | **73 PASS**；四 Provider JSON/SSE、unknown/普通截断/自然语言、usage settle、automatic/confirm/disabled 不重发 |
+| 原 Info/S16 与新 disclosure，3 suites | **73 PASS**（InfoSession 最终限 FS/SQLite）；新 execute/retained JSON/SSE/来源撤销例已在综合组通过 |
+| 最终晚到 invalidation 竞争/失败重试 + 原 correcting-feedback FS/SQLite | **5 PASS**；此前真实 rollback_conflict 根因是后台 callback 与显式 reconcile 竞争，不再归咎源码指纹变化 |
+| 其他针对性验证 | 新 Draft 14、Semantic 16、Binding 21、Source 12、Host selection 3、Feedback/quality/sealed 26 等分别通过（与上表重叠）；全部修改 production JS ESLint、相关新测试 ESLint、JS syntax、git diff --check 通过 |
+| 研究/设计输入完整性 | 189 audit IDs 与全功能文档表行各一次，无 missing/extra/duplicate；HTML 内联脚本静态语法解析 1 份通过；三指定文件已核实际存在 |
+
+失败诊断保留：初轮旧测试曾要求 World current state 为 system，已改为 evidence 角色断言；IR 被篡改未更新 SemanticBlocks 现在明确拒绝。Source guard 首轮把无 runtime 的 undefined 当 JSON hash、把 provisional World 当 committed state，分别修 null 正规化与原 source capture 后复测通过。原 Provider 单元 fixture route:{} 没有合法 role，补 fixture 而未放宽 production hash。原 Studio/评测 system envelope 混合来源文本触发 history_authority，改正确数据边界后原消费者通过。初次默认 SQL 矩阵有 Pg 认证失败及旧 fixture API 漂移；未修改数据库或凭证，最终本任务存储证据限定 FS/SQLite，不能称 SQL 全矩阵通过。
+
+**NOT_RUN / 没有借用他人 PASS**：真实付费 Provider、文学/成熟合法虚构误拒/长期因果/风格收益、独立 promotion 材料校准、完整 V3 Node/Plan-prompt/Output/审批恢复、全产品浏览器、CachyOS/Android Termux/实机/读屏/性能/构建/CI。用户报告外部 HTML 在 headless Chrome 的检查不是本任务执行结果；本任务只做其静态脚本/功能映射检查。
+
+### 前端交接、剩余 Gate 与结束位置
+
+- 用户三文件收录在 [design-proposal](../../plans/architecture/atria-frontend-audit/design-proposal/atria-function-presentation.md)；可直接转交的 [Claude Code 提示词](../../plans/architecture/atria-frontend-audit/claude-code-frontend-prompt.md) 包含全产品范围、真实 API/状态、三端/测试要求和 Source/权限边界。没有修改它们的审美，也没有新建正式视觉 Plan 或第二 Record。
+- 功能架构项：旧 Agents 容器清退与有效挂载迁移、共享资源/草稿/反馈、深链与统一 Back/层栈、Library/Studio/Play 职责、Source/权限真实状态和多种恢复语义。颜色/字体/材质/造型/具体动效与布局审美留三参考及用户/Claude 讨论，不由本后端任务定稿。
+- **整体 E0 NOT_CLOSED**。仍缺 V3 真正 Node Program admission/受众/输出/投影、plan-prompt exact Candidate/PlanRevision/Binding CAS + 原 publication journal/reconcile/rollback 的生产消费者闭环，以及 reviewed development/独立 withheld promotion/长期质量来源。旧 Workspace/Director/评测消费者需随 V3 和前端同切清退；没有为赶工留兼容 shim，也没有把当前仍在运行的旧链写成已删。
+- 原 V3 集成时保留它新增的 orchestrationSend/Budget/Context/Tool/Source 接线，并组合本提交的 programSelection/currentness/Typed Compiler/Browser projection；不要择一覆盖 GenerationHost，也不要把同一请求准入/计费两次。其实际 Run/Binding/receipt 仍由原 V3 控制。
+- 本次停止于已提交的可独立后端和前端交接资料；未向 main 合入跨任务未闭合组合。保留当前分支，不以未完成的全任务名义删除它或其他活跃分支。当前不足是具体生产依赖/真实评价材料，不是另设模型数、样本数或审批。
+
+最终远端/本地 readback：实现 HEAD 与 origin/refactor/atria-native-prompt-preset-deepening 同为 `760327891149216dffdc1e3fa0c846496007a013`，源码工作树干净；main 仍 `695acf3bcad1d42e331459189532a76056278bec`；docs 提交基底已含并发 `6e8e6d48feacc6c4e037b5c11649afbb4c2837b4`。V3 最后观测 `4e0ce4bad896b45e6fd384554c13effd05790308`，新增 Tool/A2A/维护保留已提交，authoring bindings 与 production 路由边界补核后原 plan-prompt/Node 组合 Gate 仍未完成；不把另一任务的 SQL/Tool 测试写成本任务 PASS。docs 最终提交号从 Git 历史追溯，不预写自身 hash。

@@ -1,5 +1,7 @@
 # D9 / E0 审计：真实消费者、跨合同缺口与开发前 Gate
 
+> **2026-10-16 开工更新**：G3=AUTHORIZED，用户包含 D2–D8 全后端实施，前端交 Claude Code。C1–C6 工程落点见 [后端实施](backend-implementation.md)。此前只文档/不建分支是前轮限制；当前已授权实施。E0 整体仍 NOT_CLOSED，不把授权冒充生产 Port/质量来源/端侧验收。
+
 > **E0_IN_PROGRESS / NOT_CLOSED（2026-10-15，本轮本地续审）**。这是 Prompt Preset 深化的唯一 E0 台账；不是另一个 V3 E0，也不是前端视觉定稿。D1–D8 功能/交互语义不重开，视觉未冻结。实际历史继续记录在[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。本轮只写 docs，未建立本任务实现分支、未修改 main。
 
 ## 1. 本轮精确基线、方法与证据边界
@@ -81,18 +83,15 @@
 | **G0 既有设计** | D1–D8功能语义同一Plan/Record，单Host/原权威/零旧兼容/视觉开放边界清楚 | **功能冻结保持**，非产品验收 |
 | **G1 消费者E0** | main/V3固定HEAD的实际入口、动态/注册、配置、权限、读写/删除/恢复和测试consumer闭包；未穷尽者有具体未决责任 | **PARTIAL / NOT_CLOSED**；本地全域索引已取得，动态/Source/替代删除闭包仍未完成 |
 | **G2 跨合同E0** | C1–C6的原物理落点、输入identity、失败出口、复验与责任一致；实现后才可运行的测试单独列 | **BLOCKED / NOT_CLOSED**；不能把原Port未接通写成仅缺视觉 |
-| **G3 本Prompt任务开发授权** | 用户明确授权正式开发/创建实现分支并核当时基线 | **NOT_AUTHORIZED**；本轮只授权文档审计/提交；他人V3开发授权不转移 |
-| **G4 新前端视觉方案** | 源码功能审计输入→外部AI代表性HTML+全功能交互文档+整体指导→用户多轮讨论确认 | **审计输入已交付；外部三项成果待用户后续提供；视觉未冻结** |
-| **实施验收** | 真实Model/权限/故障/存储/UI/三端针对性证据 | **NOT_RUN**；不冒充G1/G2已通过，也不把未来实机验收当设计永远不能关闭的逻辑门槛 |
+| **G3 本Prompt任务开发授权** | 用户明确授权正式开发/创建实现分支并核当时基线 | **AUTHORIZED（2026-10-16）**；用户确认包含 D2–D8 全后端，允许非破坏性自主推进及子代理；本任务实际基于 main@695 建同名语义分支 |
+| **G4 前端参考与实施** | 源码功能审计、外部代表性 HTML/全功能表现/设计指导、真实能力边界 | **REFERENCE_RECEIVED / FRONTEND_DELEGATED**；三文件已收到，189 ID 各一次验证；用户指定 Claude Code 实现。§8.4 的未定产品提案与美术没有被本后端任务伪称冻结 |
+| **实施验收** | 按改动取得权限、编译、Provider、来源、恢复、UI/三端证据 | **后端定向本地验证已有 PASS；整体仍 PARTIAL**。实际组别/失败修复归同一 Record；真实模型质量、独立来源、完整 V3 和前端/三端仍 NOT_RUN/BLOCKED |
 
-**创建实现分支仍须 G1/G2 设计闭包 + G3 当前明确授权 + 当时实际Git检查。视觉UI重构还须G4用户批准。** 本轮完成研究文档，不关闭上述真实阻塞、不开发前端、不生成最终视觉稿。
+用户当前开工指令已更新此前仅研究限制；工程决定落在 [backend-implementation](backend-implementation.md)。G1/G2 的生产消费者/质量来源缺口仍不能靠开工或 UI 演示核销。没有把 V3 活跃分支、独立受审来源或前端实现交付冒充本任务已完成。
 
-## 6. 当前结果与下一次需要的具体工作
+## 6. 当前结果与剩余工作
 
-- 完成本轮全产品研究与外部设计输入；所有索引/状态都是审计材料，不是新Record或最终前端Plan。
-- E0仍NOT_CLOSED；保留Node/Route fallback、ContextSlot trust、Source-aware、source_unready、旧Workspace/Director、plan-prompt和未发布Draft Preview等真实阻塞。
-- 下一次E0讨论需围绕C1–C6的接口决定与消费者替代/删除证明；不能把“再泛读一遍”当Gate结论，也不应要求现在先开发验证尚未批准的接口。
-- 用户后续提供外部HTML与两份文档后，逐功能ID核覆盖、讨论布局/审美/新提案，用户确认后才可能冻结正式重构企划。
+2026-10-15 的 §1–4 静态事实仍绑定其旧固定 SHA；**当前实施增量以 §8 和同一 Record 为准**。E0 整体 NOT_CLOSED；不能继续把已实现的核心 Draft Preview/Typed lowering 全部称为“接口未定”，也不能把原 V3 生产、独立质量来源或旧消费者清退写成已通过。前端交接详见 [Claude Code 提示词](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)。
 
 ## 7. 历史首审与本轮并发变更
 
@@ -107,3 +106,29 @@
 - main由73557f809推进到695acf3bc：只有Storage Center UI/CSS/中文文案和相关E2E/helper变更。补读新的storage-center-drawer与storage-management完整控制链，增加C09/C10条目（drawer/Back/焦点/拖动/减动/IME刷新延期；不可逆清理二次确认）。未采用其视觉作为本任务新审美权威。
 - V3由0d799fc28推进到31bef9572：新增TransitionController，显式loopBack/forward DAG/maxVisits/maxLoopIterations及deadline Join部分输出许可；generic beginAttempt不再通过换commandId重复准入。只读authorizeTransition hook返回原Source/Result/Grant/Budget identity、durable producer receipts和transition CAS；控制器不reserve或send、没有新增生产HTTP dispatcher。已补O09和15份V3测试索引，Model/Context/Source/plan-prompt的既有阻塞不因此销账。
 - 本轮结构/行号/证据以最新固定main/V3重建；main新UI尚未合入该V3提交，两分支状态分别表述。source和docs并发变更均非本任务实现。
+
+## 8. 2026-10-16 后端实施增量与真实剩余 Gate
+
+实施使用 `refactor/atria-native-prompt-preset-deepening`，基线 `main@695acf3bc`。当前实际提交/验证与并发 SHA 只归同一 Record；下表替代 §3 中相应“尚未实现”的旧状态，未重写前一轮证据。产品实际接口说明在源码 `src/native/model-prompt-runtime/README.md`。
+
+| 项目 | 本任务取得的事实 | 剩余 Gate |
+| --- | --- | --- |
+| E0-01 / C1 | 原 Host.execute→scheduler→Resolver→Compiler→Provider 已接可信 internal `programSelection`，JSON 无权提交；实际 ContextPlan 交原授权回调复验。Fallback 逐路解析/编译/计数，锁有效 Program closure/作者语义/参数/工具/输出/网络/原预算，允许合法 Context 重选 | **CORE_TESTED / V3_CONSUMER_BLOCKED**。原 V3 Node pin/Plan admission 必须构造真实权限回调、提供 Audience Context 并写 Attempt/Receipt；单元注入不算正式 Node Run 上线 |
+| E0-02 / C2 | Typed SemanticBlocks 与 Inspector 字段双投影校验；事实/Persona 为 user evidence，Host policy/作者指令分账；提交的 system/developer task envelope 保留原文并降数据。Provider count/render/send 使用同一降低路径；不支持的中间 system 仍拒绝 | **CORE_TESTED**。不是对自然语言 Prompt Injection/角色串知的绝对保证；不同真实模型的文学/拒答表现 NOT_RUN |
+| D2/D3 F2/E2/A2 | Module 可选 literal/template（不补默认字段）；任意花括号、CRLF/Unicode 原文可无插值保留。global/scene/narrator/actor scope 在原 Module/Compiler/真实 wire 表达，作用域不是 grant；Narrator 严格自主权/身份与表达分离 policy | **CORE_TESTED / QUALITY_NOT_RUN**。原 Player/Source 没有已接通的有限委托 UI/授权链，不用 Prompt 伪造；审美、叙事质量不因 policy 文本存在而通过 |
+| E0-03 / C3 | 编译前、Secret 后发送前、实际重试、Preview 返回前复验原 Source。原 Session branch/revision/authority state 与 Project/Task fingerprint 变化阻止外发；暂存 World 用原 committed authority 比较。Browser 消费与 retained result 再独立复验 | **PARTIAL**。完整 V3 Source/Audience/Disclosure/Join、Provider continuation 和长会话来源保真/文学/成本全链仍需原生产消费者 |
+| E0-04 / C4 | 新 `/preview/draft` 在原 exact reader 上临时覆盖现有 Library/当前 Project Program/Module/Generation；同身份/基础 hash/closure/权限、未消费替换拒绝；三层+同源 Diff，无 Secret/send/write。公开资源指纹可用于 CAS 预览 | **CORE_TESTED / UI_NOT_RUN**。限现有 exact 基础资源；Package 原件先 Fork；不把新建身份或作品 Source Graph Preview 当受支持的 Prompt 草稿。三端编辑器还没接 |
+| D8 Inspector 披露 | 原 Information 的 model context≠player display。旧 Preview 与新 Draft 对私有/不能证明完整显示权限的 Context 拒绝；public-only 独立投影可放行。Execute JSON/SSE/retained 成功结果只返回受限摘要，不回传私密 IR/Context/raw hashes，也不把成功改失败 | **CORE_TESTED**。含 Knowledge/Memory/derivation/processing/expression 等缺完整 player 字段证明的 Preview 目前保守 BLOCKED；不能在前端显示空白后冒充完整 wire |
+| E0-05 / C5 | 原 QualityProfile 增文学/Agent/合法创作误拒，硬约束与来源等级独立；认证只读 `/quality-profiles` 提供真实 readiness。明确 Provider 协议拒绝得到专用 code/usage，不做内容拒绝 fallback；自然语言“抱歉”不冒充协议证据。移除自设固定评测数量/1024 输出上限；修反馈失效清理并发竞争 | **SOURCE_BLOCKED / source_unready**。未伪造 reviewed development、独立 withheld promotion、人工审阅/校准/质量收益。仍需真实材料与原评价消费者 |
+| E0-06 / C5/C6 | 原 Candidate、Library/Project/Package、Storage 没有第二 writer；已有原 Project/Skill 评测/候选/发布/回滚消费者保持并回归。旧 Workspace/Director→V3 方法级缺口已核 | **BLOCKED**。`plan-prompt` 的 immutable PlanRevision→PlanBinding CAS→publication journal/reconcile/rollback、Node/Source/Output/RunProjection 生产链与旧目标/入口同切尚未完成；不做迁移、别名、转换或兼容 fallback |
+| E0-07 / G4 | 三份外部文件已收到，189 个功能组在全功能文档各出现一次（无缺漏、额外或重复）；功能架构问题与视觉参考分开 | **REFERENCE_RECEIVED / FRONTEND_NOT_IMPLEMENTED**。HTML 的模拟能力、用户报告的浏览器检查不算本后端任务的产品验收 |
+
+### 并发 V3 的当前边界
+
+本轮已从初始 `618a04ae1` 只读复核到 `18c22338e`：新增原三银行 GenerationHost send、SourcePort、Effect dispatch 内部组合和 Audience ContextPort 的 compile/revalidate/provider。不能继续描述为“Source/Context 类完全不存在”。但该 SHA 的 production HTTP 仍只有 Plan Authoring，`authoring-service` 对 bindings 仍 source_unavailable；内部组合仍需要真实 effect authority，ContextPort 不能证明全产品 Node/Plan-prompt/Output/Evaluation 已接通。活跃工作树的新 ToolPort/恢复/引用根改动未混入本任务提交，也不冒充已发布证据。
+
+提交前最后 fetch 又确认 V3=`4e0ce4bad896b45e6fd384554c13effd05790308`：`072a4e1ef` 已提交原 Tool 协议/凭证/A2A ownership，`4e0ce4bad` 已提交 Source/unknown budget 维护保留；补核相关差分/端点注册与 authoring bindings 后，production HTTP 仍仅 Plan Authoring，plan-prompt/Node Program 组合未因此变为已验收。本任务没有复跑或借用这些并发 Tool/SQL/恢复测试。
+
+### 当前交付与停止位置
+
+本任务可独立后端接口及相关本地验证交付；**整体 E0 仍 NOT_CLOSED**。保留语义分支而不向 stable main 混入未完成的跨任务组合，也不清理其他活跃分支。具体提交/测试只记同一 Record。前端由用户转交 Claude Code；后续需协调原 V3 接线及真实质量来源，不在浏览器创建假的运行/评测/发布权威。此处停止不表示 D2–D8 的模型质量、完整 V3 或全产品前端已全部完成。

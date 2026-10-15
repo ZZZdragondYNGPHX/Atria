@@ -1,5 +1,7 @@
 # Atria 全产品前端功能与交互审计 · 研究与外部设计输入
 
+> **2026-10-16 增量**：外部 [HTML](design-proposal/atria-visual-direction.html)、[全功能界面表现](design-proposal/atria-function-presentation.md)、[前端指导](design-proposal/atria-frontend-guidelines.md) 已提供，189 个审计功能组各映射一次。用户授权正式开始并指定 Claude Code 负责前端。后端真实增量见原 [E0 §8](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate)，[交接提示词](claude-code-frontend-prompt.md) 是对接输入，不是新的状态或审美权威。以下源码盘点保留原固定 SHA，不能把它当最新运行验收。
+
 > 2026-10-15；**研究资料，不是新的产品合同、最终视觉企划或实施授权**。任务进度仍只记入 [Prompt 深化唯一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)，E0 仍只归 [原审计台账](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md)。D1–D8 功能语义保持冻结，D9/E0 **NOT_CLOSED**。
 
 本资料面向整个 Atria：玩家安装作品、运行故事与存读档，作者编辑和构建项目，以及 Agents、Memory、World/Knowledge、Prompt、Runtime、扩展、媒体、账户、存储和诊断。它说明当前源码如何连接功能、哪些能力仍须保留、哪些旧入口应清退，以及设计 AI 必须覆盖什么；不规定配色、字体、主题、造型或美术风格。

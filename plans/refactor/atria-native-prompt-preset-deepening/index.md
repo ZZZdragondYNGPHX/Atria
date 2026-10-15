@@ -1,6 +1,8 @@
 # Atria Native Prompt Preset / Behavior 深化企划（唯一入口）
 
-> Task ID: `refactor/atria-native-prompt-preset-deepening`。Primary Workspace: `main`（未来实现）；当前仅在独立 `docs` 长期分支讨论与记录，尚未授权产品实现。仓库治理见 [README](../../../README.md)。本企划是 **一个 Plan Bundle**，全过程更新同一组文件与同一份 [Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
+> **2026-10-16 当前更新**：用户已授权正式开始，明确包含 D2–D8 全后端实施，前端交给 Claude Code。[backend-implementation.md](backend-implementation.md) 确定工程接口和职责。下文尚未授权描述是前轮事实；当前授权以本条为准。E0 实施验收尚未通过；视觉与外部文档 §8.4 未定提案不因后端开工自动冻结。
+
+> Task ID: `refactor/atria-native-prompt-preset-deepening`。Primary Workspace: `main`；当前产品实现使用同名 `refactor/atria-native-prompt-preset-deepening` 语义分支，文档仍在独立 `docs` 长期分支。仓库治理见 [README](../../../README.md)。全程更新同一个 Plan Bundle 与同一份 [Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
 
 - 讨论日期：2026-10-15。
 - **D1 已冻结**：方案 **B**（深化原生 Behavior / Expression / Prompt 体系），优先方向 **RP 文笔与 Agent 行为并重**；不另造既有基础设施。
@@ -13,8 +15,8 @@
 - **D7 已冻结（2026-10-15）**：**Q2 文学/角色/Agent 多维 QualityProfile 与不可抵消硬约束 + F2 原 Experience 来源/根因归属 + O2 合法成熟虚构 RP 过度拒答正反控制 + P2 条件反思候选/独立评价/Review/PlanRevision/PlanBinding CAS 发布**。这是设计取舍，实际来源及 V3 `plan-prompt` 闭环待实施；见 [quality-evolution.md](quality-evolution.md)。
 - **D8 已冻结（2026-10-15）**：W2 原生 Library/Studio/Play 三域协作 + R2 单 Draft 结构化/完整原文无损双编辑 + P2 Authored/Effective/Provider Wire 真实预览与精确 Diff + I2 来源驱动质量/故障 Inspector + M2 Windows/CachyOS Linux/Android Termux 全功能交互等价；详见 [preset-studio-experience.md](preset-studio-experience.md)。**仅冻结功能/交互语义；视觉审美完全留待用户后续外部设计参考与多轮讨论，不由本助手决定。**
 - **D9/E0 本地续审（NOT_CLOSED）**：已从远端有界首审推进为本地全产品静态索引与核心消费者追踪；物理接口、动态来源消费者和开发前 Gate 仍见唯一 [e0-audit.md](e0-audit.md)，未写为全量通过。
-- 当前固定源码基线：main@695acf3bcad1d42e331459189532a76056278bec、V3@31bef95723885c1547a9c3686200cbaf122799a8；docs 起点0a758827e，过程中保留并发ab5461eb1/5e2117393/d2a3d21d9等原任务提交。V3已merge main@735 Storage Center，最新main@695另含Storage UI；V3@31bef新增transition/显式loop，均已补审；本任务使用固定Git对象只读核查，不改其工作树。完整版本变化与证据局限见E0和同一Record。
-- **全产品前端研究已整理**：[Atria 前端功能与交互审计](../../architecture/atria-frontend-audit/index.md) 独立提供页面/控件/状态、端到端操作、组件问题、三端矩阵、处置及外部AI委托；它不是新的状态/设计权威，也不是最终视觉企划。外部HTML与两份设计文档尚待用户后续提供和多轮确认。
+- 前轮前端静态盘点基线：main@695acf3bcad1d42e331459189532a76056278bec、V3@31bef95723885c1547a9c3686200cbaf122799a8；保留其固定索引证据。2026-10-16 后端从同一 main 建语义分支，V3 已并发推进到4e0ce4bad；当前实现与增量只见 E0 §8 / 同一 Record，不把旧静态索引或另一任务工作树混入本任务提交。
+- **全产品前端研究已整理**：[Atria 前端功能与交互审计](../../architecture/atria-frontend-audit/index.md) 独立提供页面/控件/状态、端到端操作、组件问题、三端矩阵与处置。外部 [三份设计输入](../../architecture/atria-frontend-audit/design-proposal/atria-function-presentation.md) 已收到，189 个功能组映射无缺漏/重复；它们仍不是第二个功能权威。后端接口见 [实施落点](backend-implementation.md)，交 Claude Code 的实施提示词见 [前端交接](../../architecture/atria-frontend-audit/claude-code-frontend-prompt.md)。
 
 ## 核心目标与实施边界
 
@@ -67,4 +69,4 @@
 
 ## 当前事实
 
-D1–D8 的功能与交互语义已冻结，**视觉审美未冻结**。D9/E0 本地续审后仍 NOT_CLOSED；未改产品代码或创建实现分支。实际运行的是文档证据生成和静态检查，没有运行产品测试/构建/CI/Provider/Browser/三端实测。D4 Node/Route fallback、D5 ContextSlot trust、D6 长会话/来源失效、D7 source_unready/旧 Workspace 清退/plan-prompt 发布链、D8 未发布 Prompt Draft Preview 与真实三层 Diff 仍是阻塞。已有history降权、Source/currentness guard、V3 Attempt/Effect/Join和Studio作品前端Draft Preview按真实源码记为已有局部能力，不能反过来冒充新合同全链已通过。全产品盘点是外部设计输入；HTML样例遗漏不能减少源码审计和正式产品合同中的完整功能。
+D1–D8 功能/交互语义保持，视觉未由本后端任务冻结。用户已授权正式实施；后端 `760327891` 已提交到同名语义分支，未合 main。受信 Host Program/fallback、Typed trust/lowering、无损 literal/表达范围、来源消费前复验、未发布 Draft 三层预览/Diff、浏览器私密诊断边界和质量元数据/协议拒答分类已有针对性本地证据，详见 [E0 §8](e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate) 与同一 Record。**整体 E0 仍 NOT_CLOSED**：V3 实际 Node/Plan-prompt/发布组合、旧消费者同切、真实受审独立质量来源、长会话质量与前端/三端仍未完成。外部三文件是实施参考，HTML 漏项不能减少完整功能。
