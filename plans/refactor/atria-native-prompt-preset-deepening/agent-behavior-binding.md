@@ -1,6 +1,6 @@
-# D4 讨论草案：V3 Agent Node 的 Behavior Program、Prompt 绑定、继承与 Host 编译
+# D4 已冻结：V3 Agent Node 精确 Program/Route、原生继承与 Host 编译
 
-> **D4 OPEN，2026-10-15。** D1=B、D2=J2+F2+R3、D3=E2+A2+K2+G1 均已冻结。本文件只为第四轮提出架构候选与可核实接口，**不批准修改 main、V3 现有合同或增加第二套 Agent Runtime/Prompt Compiler/Store**。唯一 Host 权威沿 [V3 Interface Contracts](../atria-native-orchestration-v3/interface-contracts.md)；E2 的创作表达语义归 [D3](narrative-behavior.md)。
+> **D4 正式冻结：B2 + I2 + C2（2026-10-15）**。本文件是 Node 的 Behavior/Prompt Program 绑定、精确继承、Host Attempt 编译语义的唯一详细方案。D1=B、D2=J2+F2+R3、D3=E2+A2+K2+G1 继续有效。**此处只有设计冻结，未接通主执行路径、未修改 main 或 V3 分支，也未运行产品测试。** 单一 Host / Provider 权威沿 [V3 Interface Contracts](../atria-native-orchestration-v3/interface-contracts.md)，E2 文学表达沿 [D3](narrative-behavior.md)。
 
 ## 1. 2026-10-15 真实代码与接口缺口（STATIC ≠ 已实现）
 
@@ -43,7 +43,7 @@ Original NarrativeOutputPort / Experience/Eval / plan-prompt candidate
 | 选项 | 设计 | 利弊 |
 | --- | --- | --- |
 | **B1 Route 随附 Program** | Node 只 pin 一个受信 RuntimeRoute，隐含使用 Route 当前 Program；不同 Agent 意味不同 Route | 侵入小，但模型职责与创作行为耦合；Route 更新可能与 V3 exact pins 冲突 |
-| **B2 V3 Node 选择精确 Program + 受信 Route（推荐讨论）** | 将 Behavior 视为**现有 `core.prompt-program` 的受限语义用途**，经 V3 `dependencyPins` 精确钉 Program/Module，与具合法角色及能力的 Route 关联；Host 在准入时解析两者 | 最符合 J2/E2/Agent Node，但需要 V3 Schema/Host Model Port 对“Node 选 Program 与 Route 自带 Program 不同”作确定性仲裁，不得假装现有 Execute 支持覆盖 |
+| **B2 V3 Node 选择精确 Program + 受信 Route（已选）** | 将 Behavior 视为**现有 `core.prompt-program` 的受限语义用途**，经 V3 `dependencyPins` 精确钉 Program/Module，与具合法角色及能力的 Route 关联；Host 在准入时解析两者 | 最符合 J2/E2/Agent Node，但需要 V3 Schema/Host Model Port 对“Node 选 Program 与 Route 自带 Program 不同”作确定性仲裁，不得假装现有 Execute 支持覆盖 |
 | **B3 Node 内联 Instructions / Script** | 每个节点直接保存大段自由文本、局部独立编译 | 容易绕过 immutable revisions/来源追踪、破坏 F2 单资源和 Candidate 发布，较差 |
 
 **B2 的前置实现门槛**：可选择 (a) 在原 V3 的受信 Node/DependencyPin/HostPort 上增加 exact Program Selection，内部受限调用原 RouteResolver + PromptCompiler（不开放任意客户端覆盖）；或 (b) Host 选出正式拥有该 Program 的适格 Route 再执行。必须证明同一个有效 Node purpose/role、模型能力与 Program 版本，并使 V3 `plan-prompt` Candidate/PIN 生命周期仍真实有效。**以上是备选物理出口而不是已批准的隐式适配**。
@@ -53,7 +53,7 @@ Original NarrativeOutputPort / Experience/Eval / plan-prompt candidate
 | 选项 | 设计 | 风险与价值 |
 | --- | --- | --- |
 | **I1 复制所有文本模块** | 每 Node 独立复制整套 Foundation/Expression/Style | 简单但冗余，内容漂移，难以追溯用户改动 |
-| **I2 Native 精确继承 + E2 类型化 Overlay（推荐讨论）** | 复用原 `PromptProgram.parentRef / derive(add|disable|replace|configure)`、Stage/module conditions 与 exact refs；作者创作默认 → Scene/Genre overlay → Narrator/Character/Agent 目标化选择 | 不建第二 DSL/Store，能验证版本、冲突和模块贡献；要证明 overlays 是编译语义而非新增持久真相 |
+| **I2 Native 精确继承 + E2 类型化 Overlay（已选）** | 复用原 `PromptProgram.parentRef / derive(add|disable|replace|configure)`、Stage/module conditions 与 exact refs；作者创作默认 → Scene/Genre overlay → Narrator/Character/Agent 目标化选择 | 不建第二 DSL/Store，能验证版本、冲突和模块贡献；要证明 overlays 是编译语义而非新增持久真相 |
 | **I3 运行时追随“最新版”** | Node/Program/角色风格总是解析 Library latest | 破坏发布、运行回放与离线 Package 的固定依赖，不推荐 |
 
 I2 不意味着数值上“角色 voice priority > World Truth”。表达优先级仅在艺术约束域内有效；Source/World/Actor/Player 权限始终在上级原 Authority。继承不因 Clone/Context 缩写而丢失 module provenance。
@@ -63,7 +63,7 @@ I2 不意味着数值上“角色 voice priority > World Truth”。表达优先
 | 选项 | 设计 | 后果 |
 | --- | --- | --- |
 | **C1 RuntimeRoute 常规编译** | 节点调用现有 Route → Resolver/Compiler；不要求独立 Program/Node compiled binding | 最少改动，但 Node 的 Behavior 语义和准确版本可能无法反映在发送端 |
-| **C2 Host NodeAttempt 精确冻结 + 原 Compiler 编译（推荐讨论）** | 每次需要模型发送时由 V3 Host 以获准 PlanRevision/Node/Route/Program refs + SourceBinding/audience/context/预算准备一次真实有效的 immutable 请求快照；调用**同一个**原 PromptCompiler/GenerationService | 能支持审计、失败恢复、模型 fallback 重编译；需要扩展受信 Host 内部 prepare/send Port，不应再造 Prompt Compiler |
+| **C2 Host NodeAttempt 精确冻结 + 原 Compiler 编译（已选）** | 每次需要模型发送时由 V3 Host 以获准 PlanRevision/Node/Route/Program refs + SourceBinding/audience/context/预算准备一次真实有效的 immutable 请求快照；调用**同一个**原 PromptCompiler/GenerationService | 能支持审计、失败恢复、模型 fallback 重编译；需要扩展受信 Host 内部 prepare/send Port，不应再造 Prompt Compiler |
 | **C3 Browser 先拼接全部 Prompt** | UI 在运行前构造最终文本并上送模型/Host | 来源和权限难验证，版本漂移与注入风险高，不推荐 |
 
 **C2 必须定义的退出门槛**：
@@ -74,10 +74,42 @@ I2 不意味着数值上“角色 voice priority > World Truth”。表达优先
 5. 所有可能的自动优化通过原 `EvolutionTargets: plan-prompt` 生成新 PromptModule → 新 PlanRevision → 原 PlanBinding CAS；不能覆盖正在运行的 Plan 或绕审直接替换节点指令。
 6. 正常 RP 的 G1 单 Narrator 不能因 B2/I2/C2 默认产生任何额外模型调用；优先复用已有确定性编译/Context 计算。
 
-## 6. 组合推荐、边界与后续讨论
+## 6. B2 + I2 + C2 已冻结的实现边界
 
-**建议组合 B2 + I2 + C2**：Node 精确资源选择 + 现有 Prompt Program 继承 + Host 单次确定性编译/审计，避免重复 Agent/Memory/Compiler。但 B2 当前未打通的 Node/Route/Program 精确绑定**是真实实施工作，不能仅靠更换 UI 文案宣布完成**。
+### 6.1 B2 — 独立行为引用与原 Route 的真实冲突
 
-本轮不决定 TypeScript/JS 具体 Schema、路由 RPC 字段、缓存 key、降级顺序、具体 Provider lowering、编辑 UI；这些须在 D4 用户确定方向后转 D5/后续实施 E0 与 V3 协调。不得破坏 D3 的 E2/A2/K2/G1、D2 J2/F2/R3 和正式重构不兼容旧 ST 的硬决定。
+- 原 `core.prompt-program` 承担 Behavior 的 Prompt 层，`core.prompt-module` 管独立 stage/target/typed 文本；V3 Plan/Node 通过受控 exact dependency pins 选择 Program 与 Runtime Route，**Route 仍由原 Model/Profile/Connection/Provider Authority 负责**。
+- **当前 V3 实现缺口必须按原样留账**：`public/shared/native-orchestration-contracts.js` 的 `node.policy.agentPinId` 与 `dependencyPinIds` 仅能验证已知 pin；它没有被静态证据证明可为模型发送绑定独立 `promptProgramRef`。`src/native/model-prompt-runtime/route-resolver.js` 从 Route 精确解析 Program，普通 `/execute` 的 PreviewRefs 不允许成为可提交的任意覆盖。
+- 未来最小物理解法尚需设计审计择一：(a) 在**可信 V3 内部 ModelPort/Resolver**接线受权 Node Program Selection，先验证 Route role、Model capabilities、Program exact closure，再调用**原 Compiler/Provider**；或 (b) Host 选择已精确拥有该 Program 的受权 Route 且同样核对模型/任务兼容。**不能**直接绕过原 Route 绑定核验，也不能把只改下拉框宣传成生产可运行。
+- 原 `GenerationService` 当前会在 fallback 的候选 Route 上比较首个 Route `promptProgramRef` hash，改变即报 `generation_semantic_authority_changed`。今后的解耦必须显式重新验证 Node 的有效 Program 身份/role/Output/Tool 和每个 fallback 的 token/count/render；无法保持时阻断，不能 silent fallback 到不同创作规则。
 
-**尚待用户选择：B1/B2/B3、I1/I2/I3、C1/C2/C3**。随后按约定：先更新提交同一 Plan Bundle 与唯一 Record，再进入 D5。现在不创建产品实现分支，不改 main。
+### 6.2 I2 — 继承仅在 Prompt/Expression 层发生
+
+- 使用原 `parentRef` 和 `derive(add/disable/replace/configure)`，以 exact immutable refs、typed parameters、稳定顺序与 stage conditions 产生有效 Program；限定继承作用域、重复/循环/冲突与来源证据，不能出现无来源 latest 模块。
+- E2 的作者默认 → Scene/Genre Overlay → Narrator/Character/Agent 不是新增 World 或 Persona 存储权威，而是编译前/中的**语义组合**。角色台词不能因作品整体文风变化而被自动同质化；文学表达优先级不能覆盖 Actor Cognition、World Truth、玩家自主权或受限 Disclosure。
+- F2 的结构面板与完全自由作者原文须准确回到同一 versioned resource，已发布 revision 与运行时冻结的 Program 均不能被 UI 草稿或异步候选悄悄覆盖。
+
+### 6.3 C2 — Host NodeAttempt 的确定性准备与恢复证据
+
+- Native Host 先确认 authenticated owner/PlanRevision/NodeAttempt、source/branch/epoch、Audience/Grant、Role/Route/Model、Program/Module closure、Tools/OutputContract 与原 Run/Compute 额度，才调用原 ContextPort、RouteResolver、PromptCompiler、GenerationService。
+- 每次实际请求冻结可信的有效 Program/Route/Model 与 Compiler version、PromptIR/Context dependency/参数决策和 provider rendered fingerprint；RunLedger 保留必要受限 refs/哈希/收据关系，不存 Secret、Agent 内隐推理或原隐私 Cognition 全文。指纹是诊断身份，**不是权限 grant 或 Provider cache hit**。
+- 发布的 Plan 是 static exact pins；运行时 Context/source grant 有自身 currentness。并发编辑不改变既有 NodeAttempt，Context/Branch/Grant 若在发送前或复用时失效，则走原 Domain Port 重验/blocked，不能凭旧 Snapshot 继续发。
+- G1 的单 Narrator 不得被编译层变成每轮固定 Planner/Judge；失败局部重做使用新 attempt/effect identity，原业务已提交副作用不盲重发。
+- 原 V3 §11 `plan-prompt` Evolution target 不被替换：用户授权候选 → 原 PromptCandidateStore 新 exact Module → 新 PlanRevision → PlanBinding CAS，Source/Route/Grant 更改需要重验，不更新活动 Run。
+
+## 7. D4 接口阻塞矩阵（设计冻结 ≠ 功能完成）
+
+| 目标 | 当前证据 | 实施期必须证明 |
+| --- | --- | --- |
+| Node 精确 Program 选择 | 当前 Node policy 只有 `agentPinId`；`dependencyPins` 可承载通用 resourceRef，但尚无受信 Program 消费主链 | Validator + Plan pin/closure + Host ModelPort 把被批准的 Program **确实送到最终 Provider**；不接受 Browser 未审越权覆盖 |
+| Node Program 与 Route Program 不同 | 当前 RouteResolver 只读取 `route.promptProgramRef`，execute 无普通受信覆盖 | 可信内部分辨有效 Program 与 Route，正确校验 role/requirements/token/Provider；不借另一套 Model Router |
+| Fallback 不丢失行为 | `generation_semantic_authority_changed` 保护 Route Program hash | 正常/重试/fallback 都以 Node 有效 Program 身份验证、重编译和预算；不支持即 fail-closed |
+| 精确继承/表达 Overlay | `PromptCompiler.flattenPromptProgram` 支持 parent/derive；E2 分层尚是方案 | Program 引用闭包、Module 决定、原文 round trip、Actor Voice/Scene 独立、实际有效来源 |
+| NodeAttempt 快照/恢复 | 原 `compiledRequestBinding` 已有指纹；V3 RunLedger 仍在开发 | Send/Resume/Context currentness、Attempt/Receipt、异步更新、权限撤销、模型 Provider 切换的端到端证据 |
+| 质量与成本 | 原 `plan-prompt` target / Experience/Eval、Context/Budget | 新 Candidate/Plan CAS，不重复 Model 费用与副作用；G1 单模型路径无强制额外调用 |
+
+所有产品代码工作留后续正式 E0/实施。**D4 已选择的是 B2 + I2 + C2 的语义合同与验证要求；上述物理路线没有通过产品测试，也没有获得单独修改 V3 分支的授权**。
+
+## 8. 下一阶段
+
+D5 在 [semantic-ir-lowering.md](semantic-ir-lowering.md) 讨论 Provider-neutral IR、各 Adapter lowering、硬/软冲突诊断、稳定/动态缓存、Context 与真实 Provider 计数预算。D5 未作用户决策；后续仍遵循先更新同一 Plan/Record、提交 docs，再讨论 D6。正式重构零 ST/旧 Workspace/API 兼容；V3 T2 唯一 Host 权威不变。

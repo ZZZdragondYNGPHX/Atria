@@ -3,7 +3,7 @@
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
 - Primary Workspace：`main`（未来实现，当前未授权修改）。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1、D2、D3 已冻结；D4 讨论草案已建立但尚未选择；同一份 Record 持续追加所有后续轮次。
+- 当前阶段：D1–D4 已冻结；D5 已进入讨论但未选择；同一份 Record 持续追加所有后续轮次。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -56,3 +56,22 @@
 - D4 B/I/C 全部为 OPEN；当前 V3 `node.policy.agentPinId` + `dependencyPinIds` 未证明可作为独立 Program 选择，Native `route.promptProgramRef` 的实际执行边界仍需未来 E0/实现解决。
 - 未执行 Node/CI/Provider API/浏览器/PC/Windows/CachyOS/Termux 真机测试，未产生真实质量/Token/误拒测量。上述静态核对不等于执行验收。
 - 下一步：第四轮讨论 Node exact Prompt/Route 绑定（B）、Native derive+E2 Overlay（I）、Host NodeAttempt 真实编译/回放（C）。推荐 B2+I2+C2，仅建议未冻结；待用户选择后再次先更新同一 Plan/Record 并提交 docs，再进入 D5。
+
+## 2026-10-15 — D4 设计冻结 B2 + I2 + C2；D5 讨论先建文档（仅 docs）
+
+**用户已授权的本轮内容**
+- 冻结 B2：V3 Node 独立 exact Behavior/Prompt Program 与受信 Runtime Route 绑定；I2：使用原 PromptProgram.parentRef/derive 精确继承和 E2 表达 Overlay；C2：Native Host NodeAttempt 冻结可信 Program/Route/Source/Context 编译证据，并只调用原 PromptCompiler/GenerationService。继续 D1–D3、成年人合法虚构 RP 作者自由、K2/A2/G1、V3 T2 单 Host、零 ST/旧 Workspace/Orchestrator 接口/数据兼容。
+- 用户特别要求不把当前 V3 Node 的 `agentPinId/dependencyPins` 等价为已接通的独立 Program，也不绕过 Native Route 的 `promptProgramRef`；原 V3 `plan-prompt` Evolution target/PromptCandidateStore/New PlanRevision/PlanBinding CAS 合同不得重复定义或破坏。
+- 本轮只在 docs 更新并提交同一 Plan/Record，再进入第五轮讨论，不创建实现分支，不修改 main。
+
+**核查与实际工作**
+- 写入前远端核对 `docs@5a85c83dac2fe30caf02d3c5cdd1f3fafc50446a`、`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`、V3 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。
+- 按需复读本 Plan index/decisions/D4、本 Record、docs Governance §1–15、V3 contracts §11、`public/shared/native-orchestration-contracts.js`、RouteResolver/PromptCompiler/GenerationService/PromptIR/PromptRenderers/provider adapters/ContextCompiler 相关静态代码；没有全量文件或最新 V3 功能实测。
+- 特别核实 `GenerationService` fallback 会比较 `route.promptProgramRef`，不一致报 `generation_semantic_authority_changed`；当前 Node policy `agentPinId` 和 `dependencyPins` 没有可证明的独立 Program→Provider 运行接线。保留为 D4 真实工程阻塞而非宣称完成。
+- 同一 Plan 更新 `index.md`、`decisions.md`、`agent-behavior-binding.md`，新增第五轮 `semantic-ir-lowering.md` 作为 OPEN 草案，并在**本唯一 Record** 追加 D4 决定与相关静态核查。
+- 参考 2026-10-15 公开官方 Prompt Caching/Tool-Caching/Gemini Context Cache/Reasoning 文档设计下一轮候选；文献不等于当前 Adapter 所支持的真实能力。
+
+**验证与未完成**
+- 仅远端 Git 树提交/文件可读取核对；本轮未做 Node/构建/CI/真实模型 API/Provider 内容/浏览器/Windows/CachyOS Linux/Android Termux 实测；没有产品代码提交，也没有授权 V3 Schema/ModelPort 改造。
+- D5 五组 S/L/D/K/T 候选全为 **OPEN**；推荐 S2+L2+D2+K2+T2 尚未冻结，不自动采纳。D4 具体 Host-only Program Selection、Context role 漂移、fallback、Evidence 与 E0 消费者闭包属于未来真实实施与验收。
+- 下一步：进入 D5 讨论原 Native PromptIR 语义化、Capability-aware Provider Lowering、分级可解释冲突、缓存与真实 Token/Compute 预算；获用户选择后先提交同一 Plan/Record 再讨论 D6。

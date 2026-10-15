@@ -1,6 +1,6 @@
 # 跨模块冻结决定与待选项
 
-说明：仅保存已由用户明确选择的跨模块决定。D1–D3 已冻结；D4 仍为待讨论候选，不构成产品开发授权。
+说明：仅保存已由用户明确选择的跨模块决定。D1–D4 已冻结，D5 仍待选；设计冻结不等于允许修改产品代码。
 
 ## D1 冻结，2026-10-15
 
@@ -35,9 +35,24 @@
 
 **本轮冻结产品语义，不代表 E2/A2/K2/G1 的新代码、Model 行为、授权接口、成文审读或跨端验证已完成。** 本域唯一详细合同见 [narrative-behavior.md](narrative-behavior.md)。
 
-## D4 待选（见 [agent-behavior-binding.md](agent-behavior-binding.md)）
+## D4 已冻结 — B2 + I2 + C2（2026-10-15）
 
-- **B1/B2/B3**：Agent Node 的 Program 绑定是仅随 Route、Plan 内 exact ProgramPin 独立可选，还是内联文本。重点审查 V3 当前 `agentPinId/dependencyPinIds` 与 Native Route 所持 `promptProgramRef` 的真实接口差距。
-- **I1/I2/I3**：模块复制、原生 `parentRef/derive` 精确继承 + E2 语义 overlay、或完全自动动态继承。
-- **C1/C2/C3**：Route 直接编译、Host NodeAttempt 冻结有效 Prompt 编译证据、或客户端预编译。
-- 本轮不预先冻结 D4 选项；D4 选择后必须先更新提交同一 Plan 与 Record 再讨论 D5，不能先行开发产品分支。
+1. **B2 — V3 Agent Node 精确绑定 Program 与受信 Route**：Behavior Program 是原生 `core.prompt-program` 的语义用途，而不是新物理执行引擎；Node 的受信依赖应精确钉 `PromptProgramRef` 和有效 `RuntimeRouteRef`、相关模块/依赖闭包与角色/任务用途。V3 的 `PlanRevision/dependencyPins`、原 Library/Project/Package 资源 Authority 和 V3 Effect/Run 唯一 Host 保持有效，不另建 PresetBinding/模型路由。
+2. **关键真实缺口不可被当作已实现**：V3 分支当前的 `node.policy.agentPinId`、`dependencyPinIds` 与 `dependencyPins` 仅建立 Agent/资源 pin 验证机制，**未证明可直接为 Node 选择并在真实 Provider 发送端强制执行独立 Program**；`main:RouteResolver` 当前从 `RuntimeRoute.promptProgramRef` 读取 Program，`/execute` 无普通客户端可信 Program override。实施前需与 V3 的 Node validator、PlanRepository、ModelPort、原 RouteResolver/GenerationService 协同确定最小的 Host-only 物理接线与策略，禁止向 Browser/外部请求开放任意越权覆盖。
+3. **I2 — 原生精确继承 + E2 文学表达叠加**：复用 `PromptProgram.parentRef`、`derive(add/disable/replace/configure)`、exact immutable Module revisions、stage/conditions/typed parameters；在合法 Scope/Audience 下确定性选择作者/场景/Narrator/Character/Agent 表达组合。继承结构、冲突来源、模块决策与完整自由文本原文均须可追踪；不得隐式追随 Library latest，不因“文笔优先级”篡改 World/Memory/Actor/玩家权限。
+4. **C2 — Host NodeAttempt 精确快照 + 唯一原生 Compiler**：V3 Host 在每次合法模型请求前确认已钉 Plan/Node/Program/Route、SourceBinding/Audience/Grant、Output/Tool 合同及预算，使用现有 `ContextPort/RouteResolver/PromptCompiler/GenerationService` 编译并取得 PromptIR/请求版本/输出证据。静态定义精确引用与动态 Context 当前性不同；不能把发布时 Context 永久视为有效。Browser 无权成为 Compiler/Run/Effect writer。
+5. **Fallback 不可静默切换行为**：当前 `GenerationService` 会比较候选 Route 的 `promptProgramRef` 与首个 Route，相异即 `generation_semantic_authority_changed`；B2 所需的 Node/Route 解耦不得绕过该保护。内部实施必须明确有效 Program 身份在 fallback、Provider 能力协商、token 重计数、输出 schema、审核及恢复后的稳定性；不支持时 fail-closed 或原有的可信手动选择路径。
+6. **Plan-Prompt 演化合同不变**：原 V3 §11 `plan-prompt` target、`PromptCandidateStore` → 新 `PromptModule` exact ref → 新 immutable `PlanRevision` → 原 `PlanBinding` CAS/回滚/复核，不能让演化直接覆盖活动 Run/Prompt Program 或改变 Model/Tool/World 权限。
+7. **不增加无谓模型调用**：I2 的组合与 C2 编译是确定性处理，不把 G1 单 Narrator 常规回合变为固定多 Agent。真实模型/工具费用与预算仍交原 Native Compute/RunControl；Session、Studio、普通 RP 的域隔离与 D2/D3 创作自由/自主权/反全知继续有效。
+8. **正式重构零旧兼容**：不使用 ST Prompt depth/order/attach、旧 Orchestrator Workspace/Director/mode、Browser 预编译器、旧数据迁移、shim 或双写；必须保持原 Native 新资源的 exact refs、版本/验收与安全。
+
+以上只是**架构和必需的实施前验收门槛**；V3 真实生产消费、Host-only Program 选择、Route/fallback 改造、跨端产品验收均未执行/未核实通过。详细单一合同见 [agent-behavior-binding.md](agent-behavior-binding.md)。
+
+## D5 待选（见 [semantic-ir-lowering.md](semantic-ir-lowering.md)）
+
+- **S1/S2/S3**：沿用纯字符串 PromptIR、在现有 PromptIR 引入 Provider-neutral typed SemanticBlocks，或另造执行 DSL。
+- **L1/L2/L3**：统一 wire 格式、现有 ProviderPort 按真实能力做确定性 Lowering，或每模型隐形重写指令。
+- **D1/D2/D3**：仅结构错误、硬错误/语义警告分级且可解释、或固定 LLM Judge 全量纠错。
+- **K1/K2/K3**：不分动态前缀、版本/Scope 分区的 Stable/Dynamic 缓存布局、或跨 Agent 语义缓存猜测复用。
+- **T1/T2/T3**：粗略 token 估算、原 Context + Provider 最终 wire 计数双阶段预算、或未经证明的成本预测自动超分配。
+- 这五组全部 **OPEN**。D5 选择后下一轮先更新本 Bundle/Record 并提交 `docs`，然后讨论 D6。不得为实施便利提前改 `main`。
