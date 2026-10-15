@@ -62,7 +62,7 @@ export class BudgetPort {
     }
 
     /** Admission-time authority for one source operation. A source without an original bank is refused. */
-    async authorityFor(handle, source) {
+    async authorityFor(handle, source, { tx } = {}) {
         if (source?.domain === 'native_session') {
             if (!this.sessionCore) fail('native_orchestration_budget_unavailable');
             const snapshot = await this.sessionCore.observe(handle, source.sessionId);
@@ -71,7 +71,8 @@ export class BudgetPort {
         }
         if (source?.domain === 'project') {
             if (!this.projectAgent) fail('native_orchestration_budget_unavailable');
-            const { task } = await this.projectAgent.observeContext(handle, source.projectId, source.taskId);
+            const { task, project } = await this.projectAgent[tx ? 'observeComputeSource' : 'observeContext'](handle, source.projectId, source.taskId);
+            if (project.revision.revision !== task.baseRevision) throw new ConflictError('native_generation_revision_conflict');
             return { authority: 'project_task', projectId: source.projectId, taskId: source.taskId, operationId: this.#projectOperation(source, task) };
         }
         if (source?.domain === 'rp_chat') {
@@ -98,8 +99,8 @@ export class BudgetPort {
     }
 
     async #project(handle, ref) {
-        const { task } = await this.projectAgent.observeContext(handle, ref.projectId, ref.taskId);
-        if (this.#projectOperation(ref, task) !== ref.operationId) throw new ConflictError('native_generation_revision_conflict');
+        const { task, project } = await this.projectAgent.observeContext(handle, ref.projectId, ref.taskId);
+        if (project.revision.revision !== task.baseRevision || this.#projectOperation(ref, task) !== ref.operationId) throw new ConflictError('native_generation_revision_conflict');
         return task;
     }
 
@@ -199,6 +200,20 @@ export class BudgetPort {
         if (authority.domain === 'session') return (await readRunControl(tx, handle, authority.sessionId))?.operations[authority.operationId]?.compute;
         if (authority.authority === 'project_task') return (await this.projectRepository.get(handle, authority.projectId, authority.taskId))?.compute;
         return (await this.rpControl.status(handle, authority.controlId))?.operations[authority.operationId]?.compute;
+    }
+
+    /** Pure original-bank proof for a child whose metadata is already durable. */
+    async verifyReservation({ handle, tx, root, parent }) {
+        const authorityRef = assertBudgetAuthorityRef(root.budgetAuthorityRef);
+        if (!root.parentRef || root.parentRef.parentRunId !== parent.runId
+            || hashNativeDocument(authorityRef) !== hashNativeDocument(parent.budgetAuthorityRef)) fail('native_orchestration_child_authority_invalid');
+        const ledger = await this.#ledger(handle, tx, authorityRef);
+        const reservation = ledger?.reservations?.find(row => row.reservationId === root.runId);
+        const parentReservationId = parent.parentRef ? parent.runId : null;
+        if (!reservation || reservation.status !== 'held' || reservation.consumerId !== root.runId || reservation.parentReservationId !== parentReservationId)
+            fail('native_orchestration_child_budget_unavailable');
+        if (hashNativeDocument(reservation.limits) !== hashNativeDocument(root.parentRef.budgetCeiling)) fail('native_orchestration_budget_reservation_mismatch');
+        return { status: 'held', reservationId: root.runId, authorityRef: structuredClone(authorityRef), parentReservationId };
     }
 
     /**

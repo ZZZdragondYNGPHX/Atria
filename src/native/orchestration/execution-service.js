@@ -2,7 +2,8 @@ import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { BudgetPort } from './budget-port.js';
 import { SourcePort } from './source-port.js';
-import { RunRepository } from './run-repository.js';
+import { RunRepository, assertChildRunCurrent, assertRunTreeConcurrency } from './run-repository.js';
+import { DelegateController } from './delegate-controller.js';
 import { EffectController } from './effect-controller.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { runGuard } from './controller-common.js';
@@ -18,20 +19,28 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
     const sourcePort = new SourcePort({ budgetPort, sessionCore, projectAgent, rpControl });
     const runs = new RunRepository({ engine, assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
         authorize: async ({ handle }) => { if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner is required'); },
-        admit: ({ handle, sourceRequest }) => sourcePort.capture(handle, sourceRequest) });
+        admit: ({ handle, tx, sourceRequest }) => sourcePort.capture(handle, sourceRequest, { tx }) });
     const effects = new EffectController({ runs,
-        authorizeEffect: async args => { await sourcePort.revalidate(args.handle, args.root.sourceBinding); return effectAuthority.authorize(args); },
+        authorizeEffect: async args => { await sourcePort.revalidate(args.handle, args.root.sourceBinding, { tx: args.tx }); return effectAuthority.authorize(args); },
         verifyBudgetAttempt: args => budgetPort.verifyBudgetAttempt(args),
         verifyObservation: args => effectAuthority.verifyObservation(args), verifyApproval: args => effectAuthority.verifyApproval(args) });
+    const delegates = new DelegateController({ runs,
+        authorizeDelegation: async args => {
+            await sourcePort.revalidate(args.handle, args.parent.sourceBinding, { tx: args.tx });
+            if (typeof effectAuthority.authorizeDelegation !== 'function') fail('native_orchestration_delegation_unavailable');
+            return effectAuthority.authorizeDelegation(args);
+        }, verifyReservation: args => budgetPort.verifyReservation(args) });
 
     async function assertDispatch({ handle, runId, effectId, dispatchToken }) {
         return engine.withTransaction(handle, async tx => {
             const fence = await lifecycle.assertWriter(handle, tx), root = await runs.get(handle, runId);
+            await assertChildRunCurrent(tx, handle, root);
+            await assertRunTreeConcurrency(tx, handle, root);
             const { doc: intent } = await readEffect(tx, handle, root, effectId);
             if (!dispatchToken || root.cancelRequested || root.status !== 'running' || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
                 || intent.status !== 'dispatching' || intent.dispatchToken !== dispatchToken || intent.epoch !== root.epoch
                 || intent.hostBootId !== root.hostBootId || intent.hostGeneration !== root.hostGeneration) fail('native_orchestration_dispatch_stale');
-            await sourcePort.revalidate(handle, root.sourceBinding);
+            await sourcePort.revalidate(handle, root.sourceBinding, { tx });
             const decision = await effectAuthority.authorize({ handle, tx, root, intent, phase: 'dispatch' });
             if (hashNativeDocument(decision) !== hashNativeDocument(effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
             return { root, intent };
@@ -49,6 +58,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
         if (root.parentRef ? reservationId !== root.runId : reservationId !== null && reservationId !== root.runId) fail('native_orchestration_budget_reservation_mismatch');
         await sourcePort.revalidate(handle, root.sourceBinding);
         await engine.withTransaction(handle, async tx => {
+            await assertChildRunCurrent(tx, handle, root);
             const { doc: intent } = await readEffect(tx, handle, root, effectId);
             if (intent.status !== 'prepared') fail('native_orchestration_effect_not_prepared');
             if (context && (context.compiled.request.sourceBinding.bindingDigest !== root.sourceBinding.bindingDigest
@@ -82,8 +92,9 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
             || child.parentRef?.parentRunId !== parent.runId || child.rootRunId !== parent.rootRunId
             || hashNativeDocument(child.budgetAuthorityRef) !== hashNativeDocument(parent.budgetAuthorityRef)
             || child.sourceBinding.bindingDigest !== parent.sourceBinding.bindingDigest) fail('native_orchestration_child_authority_invalid');
+        if (hashNativeDocument(ceiling) !== hashNativeDocument(child.parentRef.budgetCeiling)) fail('native_orchestration_budget_reservation_mismatch');
         await sourcePort.revalidate(handle, parent.sourceBinding);
         return budgetPort.reserveChild(handle, { authorityRef: parent.budgetAuthorityRef, parentReservationId: parent.parentRef ? parent.runId : null, childRunId, ceiling, limits });
     }
-    return { runs, effects, budgetPort, sourcePort, generationSend, assertDispatch, reserveChild };
+    return { runs, effects, delegates, budgetPort, sourcePort, generationSend, assertDispatch, reserveChild };
 }

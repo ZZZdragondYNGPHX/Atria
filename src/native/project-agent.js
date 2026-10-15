@@ -464,6 +464,14 @@ export class ProjectAgentService {
         return this._observe(handle, projectId, id, () => this._getContext(handle, projectId, id));
     }
 
+    /** Host transaction reader: no Project/Task writer locks, recovery or cache publication. */
+    async observeComputeSource(handle, projectId, id) {
+        const task = await this._repository.get(handle, projectId, id);
+        if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+        const revision = await this._studio.observeRevision(handle, projectId);
+        return { task: this._snapshot(task), project: { revision } };
+    }
+
     async _observe(handle, projectId, id, operation) {
         return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
             await this._studio.getProject(handle, projectId);

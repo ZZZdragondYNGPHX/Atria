@@ -7,6 +7,7 @@ import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 import { assertFanoutAdmission } from './fanout-controller.js';
+import { assertRunTreeConcurrency } from './run-repository.js';
 
 export class AttemptController {
     constructor({ runs, authorizeAttempt, verifySettlement, authorizeReservation }) {
@@ -52,6 +53,7 @@ export class AttemptController {
     async activate(handle, input) {
         assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'attemptId'], 'activate');
         const { attemptId, ...guard } = input;
+        const observed = await this.runs.get(handle, input.runId);
         return this.runs.control(handle, controlCommandId('attempt.activate', attemptId), { ...guard, operation: 'attempt.activate', detail: { attemptId } }, async ({ tx, root, now }) => {
             const record = await readAttempt(tx, handle, root, attemptId), attempt = record.doc;
             if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || root.nodeControl[attempt.nodeId].disposition !== 'eligible'
@@ -63,12 +65,13 @@ export class AttemptController {
             }
             if (holdsConcurrencySlot(root, { ...attempt, status: 'running' }) && activeCount >= root.limits.maxConcurrency
                 || root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
+            await assertRunTreeConcurrency(tx, handle, root, { additionalSlots: holdsConcurrencySlot(root, { ...attempt, status: 'running' }) ? 1 : 0 });
             await assertFanoutAdmission({ tx, handle, root, attempt });
             await this.authorizeAttempt({ handle, tx, root, attempt });
             await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), { ...attempt, status: 'running', startedAt: now }, { expectedIntegrity: record.integrity });
             root.status = 'running'; root.progress.steps++;
             return { root, eventType: 'attempt_activated', reasonCode: null, outcome: { attemptId, status: 'running' } };
-        });
+        }, { resourceIds: [observed.rootRunId] });
     }
 
     async settle(handle, input) {

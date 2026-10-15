@@ -190,8 +190,9 @@ describe('A8 Project Agent authority', () => {
             else if (kind === 'tokens_exhausted') await expect(run).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
             else if (['rejected_body', 'secret_echo', 'incomplete_native_stream'].includes(kind)) await expect(run).rejects.toHaveProperty('code');
             else expect((await run).response.observation).toMatchObject({ reportedModel: 'reported-alias', upstreamIdentity: 'unknown', cachedInputTokens: kind === 'negative_cache' ? null : 7, hiddenAttempts: 'unknown' });
-            const current = await agent.getTask(h.handle, input.projectId, task.taskId);
-            if (kind === 'tokens_exhausted') { expect(current.compute.attempts).toHaveLength(0); expect(seen).toBe(0); return; }
+            // A fresh original service must observe no partially admitted bank.
+            const current = await makeServices(h).agent.getTask(h.handle, input.projectId, task.taskId);
+            if (kind === 'tokens_exhausted') { expect(current.compute).toBeUndefined(); expect(seen).toBe(0); return; }
             expect(current.compute.attempts).toHaveLength(1); expect(seen).toBe(1);
             if (kind === 'cancelled') { expect(current.compute.attempts[0]).toMatchObject({ status: 'unknown', usage: null }); return; }
             expect(current.compute.attempts[0]).toMatchObject({ status: ['partial', 'incomplete_native_stream'].includes(kind) ? 'unknown' : 'settled',

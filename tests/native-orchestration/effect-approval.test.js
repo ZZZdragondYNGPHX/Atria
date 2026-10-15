@@ -131,7 +131,7 @@ describe.each(CONTRACT_HARNESSES)('$name S2 durable Effect/Approval core with co
         const durable = await read('effect', effectId);
         expect(durable).toMatchObject({ status: 'dispatching', dispatchToken: claims.find(claim => claim.claimed).dispatchToken });
         let testPortSends = 0;
-        for (const claim of claims) if (claim.claimed) { expect(durable.dispatchToken).toBe(claim.dispatchToken); testPortSends++; }
+        for (const claim of claims.filter(item => item.claimed)) { expect(durable.dispatchToken).toBe(claim.dispatchToken); testPortSends++; }
         expect(testPortSends).toBe(1);
     });
 
@@ -222,10 +222,14 @@ describe.each(CONTRACT_HARNESSES)('$name S2 durable Effect/Approval core with co
         let drop = true;
         h.engine.withTransaction = async (...args) => {
             const outcome = await transaction(...args);
-            if (drop) { drop = false; throw Object.assign(new Error('Locally withheld committed ACK'), { code: 'storage_commit_unknown' }); }
+            if (drop && outcome?.outcome?.effectId === effectId && outcome.outcome.status === 'dispatching') {
+                drop = false; throw Object.assign(new Error('Locally withheld committed ACK'), { code: 'storage_commit_unknown' });
+            }
             return outcome;
         };
-        await expect(effects.claim(h.handle, input)).rejects.toMatchObject({ code: 'storage_commit_unknown' });
+        try { await expect(effects.claim(h.handle, input)).rejects.toMatchObject({ code: 'storage_commit_unknown' }); }
+        finally { h.engine.withTransaction = transaction; }
+        expect(drop).toBe(false);
         expect((await read('effect', effectId)).status).toBe('dispatching');
         expect((await read('approval', approvalId)).status).toBe('consumed');
         expect(await effects.claim(h.handle, { ...runGuard(await current()), effectId })).toMatchObject({ replayed: true, claimed: false, dispatchToken: null, outcome: { dispatchToken: null } });

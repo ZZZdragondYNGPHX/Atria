@@ -280,6 +280,18 @@ export class StudioService {
         return this._queue(projectId, () => this._revisionUnlocked(handle, projectId));
     }
 
+    /** Pure existing-HEAD observation for an enclosing Native transaction.
+     * Never waits on the Studio writer queue or initializes/repairs history.
+     * The actual send must still revalidate through the original queued source
+     * authority outside that transaction, after any in-flight writer finishes. */
+    async observeRevision(handle, projectId) {
+        const directory = this._projects.getProjectDirectory(handle, projectId);
+        const history = await this._git.log(directory, 2);
+        if (!history.length) throw Object.assign(new Error('Existing Project history is required'), { code: 'native_project_source_unavailable' });
+        return assertProjectRevision({ projectId, revision: history[0].fullHash, parentRevision: history[1]?.fullHash ?? null,
+            ...(revisionTime(history[0]) === undefined ? {} : { createdAt: revisionTime(history[0]) }) });
+    }
+
     // Internal local publication: keep the existing Project queue through the
     // final synchronous index replacement, without adding an authoring writer.
     withLocalIndexPublication(handle, projectId, revision, publish) {

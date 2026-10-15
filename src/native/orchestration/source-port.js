@@ -1,6 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { fields } from '../../../public/shared/native-values.js';
+import { assertRunAccess } from '../run-control.js';
 
 const conflict = () => { throw new ConflictError('native_orchestration_source_stale'); };
 
@@ -10,19 +11,20 @@ export class SourcePort {
         Object.assign(this, { budgetPort, sessionCore, projectAgent, rpControl });
     }
 
-    async capture(handle, sourceRequest) {
+    async capture(handle, sourceRequest, { tx } = {}) {
         let budgetSource, sourceRef;
         if (sourceRequest?.domain === 'native_session') {
             fields(sourceRequest, ['domain', 'sessionId', 'branchId', 'revisionId'], 'Session SourceRequest');
             const snapshot = await this.sessionCore.observe(handle, sourceRequest.sessionId);
             if (snapshot.revision.branchId !== sourceRequest.branchId || snapshot.revision.revisionId !== sourceRequest.revisionId) conflict();
-            await this.sessionCore.runs.assert(handle, sourceRequest.sessionId, 'generate');
+            if (tx) await assertRunAccess(tx, handle, sourceRequest.sessionId, 'generate');
+            else await this.sessionCore.runs.assert(handle, sourceRequest.sessionId, 'generate');
             budgetSource = { domain: 'native_session', sessionId: sourceRequest.sessionId };
             sourceRef = { sessionId: sourceRequest.sessionId, branchId: sourceRequest.branchId, revisionId: sourceRequest.revisionId };
         } else if (sourceRequest?.domain === 'project') {
             fields(sourceRequest, ['domain', 'projectId', 'taskId', 'revision', 'executionFingerprint'], 'Project SourceRequest');
-            const { task } = await this.projectAgent.observeContext(handle, sourceRequest.projectId, sourceRequest.taskId);
-            if (task.baseRevision !== sourceRequest.revision || task.executionFingerprint !== sourceRequest.executionFingerprint
+            const { task, project } = await this.projectAgent[tx ? 'observeComputeSource' : 'observeContext'](handle, sourceRequest.projectId, sourceRequest.taskId);
+            if (project.revision.revision !== task.baseRevision || task.baseRevision !== sourceRequest.revision || task.executionFingerprint !== sourceRequest.executionFingerprint
                 || ['review', 'blocked', 'conflict', 'taken_over', 'completed', 'cancelled'].includes(task.status)) conflict();
             budgetSource = { domain: 'project', projectId: sourceRequest.projectId, taskId: sourceRequest.taskId };
             sourceRef = { projectId: sourceRequest.projectId, taskId: sourceRequest.taskId, revision: sourceRequest.revision, executionFingerprint: sourceRequest.executionFingerprint };
@@ -32,13 +34,13 @@ export class SourcePort {
             sourceRef = { controlId: sourceRequest.controlId, prefixDigest: context.prefixDigest };
             budgetSource = sourceRequest;
         } else throw Object.assign(new TypeError('Unsupported original source'), { code: 'native_orchestration_source_unavailable' });
-        const budgetAuthorityRef = await this.budgetPort.authorityFor(handle, budgetSource);
+        const budgetAuthorityRef = await this.budgetPort.authorityFor(handle, budgetSource, { tx });
         const binding = { sourceAuthority: sourceRequest.domain, sourceRef, sourceRequest: structuredClone(sourceRequest), budgetAuthorityRef };
         return { sourceBinding: { ...binding, bindingDigest: hashNativeDocument(binding) }, budgetAuthorityRef };
     }
 
-    async revalidate(handle, binding) {
-        const current = await this.capture(handle, binding.sourceRequest);
+    async revalidate(handle, binding, options) {
+        const current = await this.capture(handle, binding.sourceRequest, options);
         if (hashNativeDocument(current.sourceBinding) !== hashNativeDocument(binding)) conflict();
         return current;
     }

@@ -18,7 +18,7 @@ import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage
 const limits = { maxRequests: 4, maxTokens: 32000, localWork: { maxJobs: 32, maxItems: 100, maxInputBytes: 16777216 } };
 const id = kind => createNativeId('orchestration' + kind);
 
-async function setup(make) {
+async function setup(make, { prepareEffect = true } = {}) {
     const h = await make(), seen = [];
     await prepareControllerOwnerRoot(h.dirs.root);
     const lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
@@ -51,12 +51,20 @@ async function setup(make) {
         },
         verifyObservation: async () => { throw new Error('No durable Provider receipt in this fixture'); },
         verifyApproval: async () => { throw new Error('No trusted Review Origin in this fixture'); },
+        authorizeDelegation: async ({ parent, parentAttempt, effectiveGrantDigest, budgetCeiling }) => ({ allowed: true, effectiveGrantDigest,
+            budgetCeilingDigest: hashNativeDocument(budgetCeiling), parentGrantDigest: parentAttempt.effectiveGrantDigest, sourceBindingDigest: parent.sourceBinding.bindingDigest }),
     };
     const service = createOrchestrationExecutionService({ engine: h.engine, sessionCore: f.core, effectAuthority: authority });
     const plans = new PlanRepository({ engine: h.engine, authorize: async () => {}, assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
         validateDependencies: async () => ({ status: 'valid', issues: [], dependencyDigest: hashNativeDocument([]) }) });
-    const fixture = planFixture(), nodeId = fixture.definition.nodes[0].nodeId;
-    fixture.definition.nodes[0].capabilities = ['generation.send']; fixture.definition.capabilityCeiling = ['generation.send'];
+    const fixture = planFixture(), output = fixture.definition.nodes[0], nodeId = id('Node');
+    fixture.definition.nodes = [{ nodeId, kind: 'agent', label: 'Original model task', inputs: [], outputs: [{ name: 'body', type: 'text.body', required: false }],
+        dependencyPinIds: ['route'], capabilities: ['generation.send', 'agent.delegate'], policy: { agentPinId: 'route' } },
+    { ...output, inputs: [{ name: 'body', type: 'text.body', required: true }] }];
+    fixture.definition.edges = [{ edgeId: id('Edge'), from: { nodeId, port: 'body' }, to: { nodeId: output.nodeId, port: 'body' }, condition: 'always', maxVisits: 1, loopBack: false }];
+    fixture.definition.entryNodeIds = [nodeId]; fixture.definition.capabilityCeiling = ['generation.send', 'agent.delegate'];
+    fixture.dependencyPins = [{ pinId: 'route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId },
+        integrity: hashNativeDocument(await seeded.persistence.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId)) }];
     fixture.definition.limits.maxSteps = 50;
     const plan = await plans.create(h.handle, id('Command'), fixture), expected = { planId: plan.planId, expectedDraftVersion: plan.draftVersion, expectedDefinitionHash: plan.definitionHash };
     const report = await plans.validate(h.handle, expected), { planRef } = await plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) });
@@ -66,14 +74,43 @@ async function setup(make) {
     await new AttemptController({ runs: service.runs, authorizeAttempt: async ({ root }) => service.sourcePort.revalidate(h.handle, root.sourceBinding) })
         .activate(h.handle, { ...runGuard(await service.runs.get(h.handle, root.runId)), attemptId });
     const effectId = id('Effect');
-    await service.effects.prepare(h.handle, { ...runGuard(await service.runs.get(h.handle, root.runId)), effectId, nodeAttemptId: attemptId, proposal });
+    if (prepareEffect) await service.effects.prepare(h.handle, { ...runGuard(await service.runs.get(h.handle, root.runId)), effectId, nodeAttemptId: attemptId, proposal });
     const host = new NativeGenerationHost({ ...seeded, sessionCore: f.core, providers: { 'provider.openai-compatible': createHttpGenerationProvider() }, secretPort: { resolveSecret: async () => 'synthetic-secret' } });
     const ref = { authorityRef: root.budgetAuthorityRef, effectId, providerSendOrdinal: 0, attemptId: sendAttemptId(effectId, 0), reservationId: null };
-    return { ...h, ...service, root, effectId, ref, request, host, seen, core: f.core, revoke: () => { revoked = true; },
+    return { ...h, ...service, root, effectId, ref, request, host, seen, nodeId, attemptId, proposal, authority, core: f.core, revoke: () => { revoked = true; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.engine.close?.(); await h.cleanup(); } };
 }
 
 describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('%s original bank → Effect ready/claim → GenerationHost', (_name, make) => {
+    test('a funded child cannot send after its parent is cancelled after fresh claim', async () => {
+        const f = await setup(make, { prepareEffect: false });
+        try {
+            const delegated = await f.delegates.delegate(f.handle, { ...runGuard(await f.runs.get(f.handle, f.root.runId)), parentAttemptId: f.attemptId,
+                delegationId: 'model-child', childPlanRef: f.root.planRef, inputRefs: [], inputDigest: hashNativeDocument([]),
+                effectiveGrantDigest: (await f.authority.authorize()).grantDigest, returnContract: f.root.graph.outputContract, budgetCeiling: limits });
+            const childRunId = delegated.outcome.childRunId;
+            await expect(f.reserveChild(f.handle, { parentRunId: f.root.runId, childRunId, ceiling: { ...limits, maxRequests: 3 }, limits }))
+                .rejects.toMatchObject({ code: 'native_orchestration_budget_reservation_mismatch' });
+            await f.reserveChild(f.handle, { parentRunId: f.root.runId, childRunId, ceiling: limits, limits });
+            await f.delegates.confirmBudget(f.handle, runGuard(await f.runs.get(f.handle, childRunId)));
+            const child = await f.runs.get(f.handle, childRunId);
+            const { attemptId } = await f.runs.beginAttempt(f.handle, id('Command'), { ...runGuard(child), nodeId: f.nodeId,
+                inputRefs: [], inputDigest: hashNativeDocument([]), effectiveGrantDigest: child.parentRef.effectiveGrantDigest, budgetRef: child.budgetAuthorityRef });
+            await new AttemptController({ runs: f.runs, authorizeAttempt: async () => {} }).activate(f.handle, { ...runGuard(await f.runs.get(f.handle, childRunId)), attemptId });
+            await f.effects.prepare(f.handle, { ...runGuard(await f.runs.get(f.handle, childRunId)), effectId: f.effectId, nodeAttemptId: attemptId, proposal: f.proposal });
+            await expect(f.generationSend(f.handle, { runId: childRunId, effectId: f.effectId, limits, reservationId: null })).rejects.toMatchObject({ code: 'native_orchestration_budget_reservation_mismatch' });
+            const options = await f.generationSend(f.handle, { runId: childRunId, effectId: f.effectId, limits, reservationId: childRunId });
+            const beforeSend = options.beforeSend;
+            options.beforeSend = async args => {
+                await beforeSend(args);
+                await f.runs.cancel(f.handle, id('Command'), { ...runGuard(await f.runs.get(f.handle, f.root.runId)), reasonCode: 'cancel_parent' });
+            };
+            await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: options })).rejects.toThrow();
+            expect(f.seen).toHaveLength(0);
+            expect(await f.budgetPort.observeAttempt(f.handle, { ...f.ref, reservationId: childRunId })).toMatchObject({ status: 'unknown', reservationId: childRunId });
+        } finally { await f.cleanup(); }
+    });
+
     test('only fresh claims send and cancellation/foreign tokens cannot authorize dispatch', async () => {
         const f = await setup(make);
         try {

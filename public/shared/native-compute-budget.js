@@ -196,6 +196,9 @@ function allocationLimits(value) {
         ...(value.localWork === undefined ? {} : { localWork: assertLocalWorkBudget(value.localWork) }) };
 }
 
+// One validator for both the original bank and Host authorization descriptors.
+export const assertComputeAllocation = allocationLimits;
+
 function assertComputeReservations(ledger) {
     const reservations = ledger.reservations === undefined ? [] : ledger.reservations;
     if (!Array.isArray(reservations) || reservations.length > 32) fail('native_generation_budget_invalid');
