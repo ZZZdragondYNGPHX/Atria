@@ -1,6 +1,6 @@
 # 跨模块冻结决定与待选项
 
-说明：仅保存已由用户明确选择的跨模块决定。D1、D2 已冻结；D3 候选尚未选择，不构成产品开发授权。
+说明：仅保存已由用户明确选择的跨模块决定。D1–D3 已冻结；D4 仍为待讨论候选，不构成产品开发授权。
 
 ## D1 冻结，2026-10-15
 
@@ -24,10 +24,20 @@
 
 **冻结范围**：上述是产品语义与架构取舍，不代表代码、Provider 能力、训练集、质量、API 或端侧验收已完成。唯一详细定义见 [creative-injection.md](creative-injection.md)。
 
-## D3 待选（见 [narrative-behavior.md](narrative-behavior.md)）
+## D3 已冻结 — E2 + A2 + K2 + G1（2026-10-15）
 
-- **E1/E2/E3**：Narrator、Scene/Genre 与 Character Expression 的覆盖/继承粒度。
-- **A1/A2/A3**：玩家选择权与明示可委托的文学性代叙述（真实权限仍需原 Host 批准）。
-- **K1/K2/K3**：反全知是仅 Prompt 自律、源先行加语义审读，还是所有作品强制限知。
-- **G1/G2/G3**：普通 RP 是否单 Writer 优先，按需 Judge，还是固定多 Agent。
-- 这些候选**尚未选择**。用户作出 D3 决定后，下一轮须先更新并提交同一 Plan Bundle/Record，再讨论 D4；本轮不修改 main。
+1. **E2 分层表达**：作者通用指令/作品风格 → 场景/体裁 overlay → Narrator Style / Actor Voice 按来源、作用域与有效精确版本确定性组合；完整自定义原文继续可编辑。Narrator 文笔、Character Expression 与 Actor Identity/Cognition、Agent Behavior 严格解耦。优先复用原 Native Prompt Program/Module 与 Actor 表达资源，不另建 Style 存储权威。
+2. **A2 玩家自主权默认严格、有限明示委托**：未获玩家明确输入/正式授权，不得代玩家决定重大选择、同意、承诺、核心情绪或提交新 World/Session 行动。作品允许在**原 Host/Source/Grant 可证明**的权限内进行有限非关键过渡叙述；如该授权接口尚不存在，应将该能力记为待实现/阻塞，不能靠 Prompt 自述完成授予。授权须有范围、来源、撤销与有效期的原领域语义，不预先另定物理 schema。
+3. **K2 来源先行 + 成文审读**：依原 V3 C2/HCM 的 Actor/Source/Branch/Time/Display 先筛选 Context，未经许可的信息不能进入对应 Agent/NPC 的输入；Narrator 文学视角与 NPC 可知范围、玩家可披露范围分离。文学成文的暗示泄漏/错误事实由原质量回路做有证据的概率性审读，不声称天然绝对防泄密。保留合法宽视角、第三人称与多视角创作。
+4. **G1 稀疏按需**：默认普通 RP 是单 Narrator 生成，不强制固定 Writer+Critic 或每角色一模型。显著信息矛盾、重要剧情/隐私风险、作者要求精修或可证明的质量缺口，再经原 V3 Plan/Run/Compute 触发 Planner/Judge/局部重做；不能重复正式副作用、跳过预算或将 Model Judge 误判说成确定性证明。
+5. **自由写作与权限严格区分**：成熟虚构 RP 的文学强度与作者表达控制不改变角色人格、正式心智来源或玩家真实权限，不单因成年情感题材在 Atria 自动插入道德说教；外部 Provider 的真实限制、既有法律/安全与原 Host/Domain Authority 保持有效。
+6. **权威与零兼容**：Actor Identity/Cognition/Information/World、Memory/Context/Disclosure、V3 Graph/Effect/Receipt、原 Experience/Eval 的合同不因本 Plan 再定义或加第二 writer。正式硬切不迁移 ST/旧 Workspace/Orchestrator 模式及接口。
+
+**本轮冻结产品语义，不代表 E2/A2/K2/G1 的新代码、Model 行为、授权接口、成文审读或跨端验证已完成。** 本域唯一详细合同见 [narrative-behavior.md](narrative-behavior.md)。
+
+## D4 待选（见 [agent-behavior-binding.md](agent-behavior-binding.md)）
+
+- **B1/B2/B3**：Agent Node 的 Program 绑定是仅随 Route、Plan 内 exact ProgramPin 独立可选，还是内联文本。重点审查 V3 当前 `agentPinId/dependencyPinIds` 与 Native Route 所持 `promptProgramRef` 的真实接口差距。
+- **I1/I2/I3**：模块复制、原生 `parentRef/derive` 精确继承 + E2 语义 overlay、或完全自动动态继承。
+- **C1/C2/C3**：Route 直接编译、Host NodeAttempt 冻结有效 Prompt 编译证据、或客户端预编译。
+- 本轮不预先冻结 D4 选项；D4 选择后必须先更新提交同一 Plan 与 Record 再讨论 D5，不能先行开发产品分支。

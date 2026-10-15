@@ -3,7 +3,7 @@
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
 - Primary Workspace：`main`（未来实现，当前未授权修改）。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1、D2 已冻结；D3 已进入讨论但尚未选择；同一份 Record 持续追加所有后续轮次。
+- 当前阶段：D1、D2、D3 已冻结；D4 讨论草案已建立但尚未选择；同一份 Record 持续追加所有后续轮次。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -41,3 +41,18 @@
 **未执行与下一步**
 - 仅文档变更；没有 Node、集成测试、CI、真实 Provider API/拒答测评、Windows/Linux/Termux 实机、浏览器/UI 验证，没有产品代码变更。
 - D3 讨论 E1/E2/E3（Expression）、A1/A2/A3（玩家控制）、K1/K2/K3（反全知）、G1/G2/G3（稀疏 Agent）。推荐 E2+A2+K2+G1 尚未冻结；用户明确选择后先更新提交同一 Plan 和 Record，再进入 D4。
+
+## 2026-10-15 — D3 设计冻结 E2 + A2 + K2 + G1；D4 讨论入口（docs-only）
+
+**用户已冻结**：E2 作者/场景/Narrator/角色表达分层，A2 玩家严格默认 + 仅真实获准的有限非关键叙述委托，K2 原 HCM/C2 Source/Audience/Disclosure 先行 + 独立文学成文审读，G1 普通 RP 单 Narrator 优先、按真实证据/预算启用其他 Agent。并维持 D1=B、D2=J2+F2+R3、成熟合法虚构 RP 创作自由、V3 单 Native Host、无 ST/Workspace/Orchestrator 旧数据或 API 兼容。
+
+**真实工作**：
+- 核对远端起点 `docs@6384cff476975ccb73ef9ef1ea17d539f0eae9be`、`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`、`refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`；没有在本轮移动产品分支。
+- 阅读同一 Plan index/decisions/narrative、V3 §11 Model/Context Port 与 Node/Plan 来源、`public/shared/native-orchestration-contracts.js` 当前严格 Node policy/`dependencyPins`、Native `RouteResolver`、`PromptCompiler` 的 exact Program/derive 入口，辨认 Node 与 Route 所选 Prompt Program 的实际差距。
+- 仅更新同一 Plan 的 `index.md`/`decisions.md`/`narrative-behavior.md`，新增 D4 专项 `agent-behavior-binding.md`；在本唯一 Record 追加此轮。先提交 docs，再进入 D4；不创建实现分支、无代码变更。
+
+**待验证和未完成**：
+- D3 为设计冻结而非功能完成；A2 真实玩家有限委托授权接口、K2 成文泄漏审读、G1 稀疏 Agent 与 E2 Expression overlay 实现均未做实际验证。
+- D4 B/I/C 全部为 OPEN；当前 V3 `node.policy.agentPinId` + `dependencyPinIds` 未证明可作为独立 Program 选择，Native `route.promptProgramRef` 的实际执行边界仍需未来 E0/实现解决。
+- 未执行 Node/CI/Provider API/浏览器/PC/Windows/CachyOS/Termux 真机测试，未产生真实质量/Token/误拒测量。上述静态核对不等于执行验收。
+- 下一步：第四轮讨论 Node exact Prompt/Route 绑定（B）、Native derive+E2 Overlay（I）、Host NodeAttempt 真实编译/回放（C）。推荐 B2+I2+C2，仅建议未冻结；待用户选择后再次先更新同一 Plan/Record 并提交 docs，再进入 D5。
