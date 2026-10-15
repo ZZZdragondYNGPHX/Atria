@@ -355,3 +355,11 @@
 - R3、需要批准的动作及任意HostJS/插件执行明确拒绝，未把Boolean、Tool自述或同源页面当可信Review。无原持久Effect关联receipt时execute/observe保留unknown且不自动重发。MCP仅原进程Map，A2A有原task identity但尚无完整Effect关联receipt；这些是P3/P7待收口产品能力，不能用queued/工具文本标confirmed。Project/RP外发无原受控consumer时拒绝。
 - 实测四Engine ToolPort40/40：真实隔离HTTP MCP/A2A、原Skill versioned repository、Secret target、子local额度、逐请求撤权、cold reopen绑定、route/grant收紧。关联原MCP/A2A/Skill/Credential四suite50/50通过。临时移除逐请求重验、精确grant绑定、持久binding、immutable guard、route cap均被反例捕获并finally恢复；R3分类mutant亦捕获，但另有风险门槛仍挡外发，只当拒绝分类证据。首轮Pg两个Host并发冲突，串行最终40全通过，未改Owner。七文件targeted ESLint/diff check通过。
 - 同文件预置原RunControl.restoreState校验及review_required准入guard，避免后续恢复清零费用或重启发送；原恢复路径/保留根在下一组记录，不将本组Tool用例当恢复证明。原可信Review Origin/完整业务receipt、真实账单/三端/质量未通过，P3仍IN_PROGRESS，main未集成。
+
+## 2026-10-16 — W02/W04/P3第九组：保留根、原预算恢复与危险覆盖拒绝
+
+- Source `072a4e1ef` → `4e0ce4bad`已提交推送。Run/Effect/Receipt引用加入原Session删除/GC保留根及maintenance generation；新历史使旧quarantine失效，历史unknown及终态默认不自动释放。只增加保留，不使未提交/孤立revision变成可读事实；缺失/损坏metadata owner明确拒绝清理，不猜测来源。
+- 旧账户备份恢复先保留当前原Session/RP controls，原pauseRecoveredRecord保留更高实际/unknown账本与held child，再置review_required；新write/generate拒绝，原status/inspect、实际迟到settle与release仍可。没有新的bank或自动清review接口。存在V3 Run/Record保留历史时，Native overwrite/full/merge全部在snapshot/clear前抛retention_review_required，HTTP原端点映射409；这是安全拒绝，不是完整批准恢复/混合source闭包支持。审查确认原native merge也会put覆盖同key，已覆盖merge反例，未依赖不存在的immutable CAS保证。
+- 真实四Engine恢复8/8；连同原Session reservation/reopen、save/RP/retirement五suite40/40通过。四Engine保留根8/8与原maintenance28/28合36/36；此前真实SQL三域bank6/6保持记录。六个关键guard mutant逐一被FS/SQLite反例捕获（原source引用/完整性、restore准入/controls保留、危险覆盖/merge），全部finally恢复，最终相关复测通过。
+- SQL复测发现真实原GC fallback缺陷：listResources取一页后错误done=true；沿原maintenance补稳定key cursor，余页不会被跳过。原SQL重开fixture补原url/topology；endpoint harness新增可选部署声明，默认unknown不变，仅隔离测试明确direct_single_primary。首轮无声明拒绝是Owner正确行为，声明后四Engine复测通过。不把整list fallback的正确分页当大规模性能/分页IO上限已通过。
+- 新增/变更模块定向ESLint无新error；endpoint-harness保留1条与HEAD相同warning。users-private完整lint仍有已对HEAD stdin复现的2处原atria/no-raw-fs-in-endpoint错误（1987/2082），不能声称全文件lint clean；本组端点只新增恢复错误409映射。diff check通过。可信restore review、保留历史正式释放和跨完整源闭包恢复仍未开放，三端/真实费用/最终质量未过，main未集成。

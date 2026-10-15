@@ -517,3 +517,9 @@ GenerationHost在真实sub-send前完成原budget admission，再通过可信`be
 `ToolPort.execute(handle,{runId,effectId,dispatchToken})`由Host读取持久action/target/input，不能接受Browser提供的新动作或批准。原Skill/McpService/A2aService/SessionPublicWork接内部可信work adapter，逐真实请求重验dispatch、原scope/grant、egress、CredentialTarget并在原子额度内记localWork。权限/原route预算只能取交集。`observe`只查原operation；`requestCancel`仅原本地scheduler，远端取消是另一Effect。
 
 原`RunControl.externalTask`的可选typed `orchestrationBinding={schemaVersion,runId,effectId,sourceBindingDigest,grantDigest}`不可移除或换绑。重启后原A2A独立reconnect/cancel不得靠旧Session policy续用此授权，当前明确拒绝并要求新Effect。它不是新的task registry或预算kind。原MCP没有持久Effect关联receipt，A2A只有原task identity而无完整Effect receipt闭包，因此ToolPort当前返回unknown，不能自动重发或把工具文本升格为confirmed。R3/需要批准的动作在可信Review与原动作authority接通前保持unavailable；Project/RP没有原消费者时保持拒绝。
+
+### 17.18 P3原恢复/GC对费用与来源的保护
+
+原Session删除与maintenance GC读取同Host的Run/Record保留引用，纳入generation/quarantine proof；没有正式释放authority时终态与历史unknown也保留。不以保留根提升孤立revision的读取权限。SQL fallback现按稳定key cursor遍历余页；这不构成大数据集IO/性能实证。
+
+原Session/RP账户恢复先保留本地原bank，再暂停为review_required；旧备份不退回当前实际/unknown成本和held allocation，新generate/write等待原可信review，status/真实迟到settle仍可用。原Native merge与replace一样可能覆盖同key：存在V3 Run/Record保留历史时三种mode全部在破坏目标数据前返回`native_orchestration_retention_review_required`（HTTP409）。该拒绝不是自动合并闭包、批准恢复或review解除实现；恢复/保留释放的完整产品支持仍需后续原authority工作，不能把安全拒绝记作完整V09通过。
