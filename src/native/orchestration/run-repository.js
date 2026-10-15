@@ -5,6 +5,7 @@ import { createNativeId, assertNativeId } from '../identity.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
 import { assertCounter, assertDigest, assertObject, assertPlanRef, assertPlanDefinition, assertToken } from '../../../public/shared/native-orchestration-contracts.js';
 import { checkedRecord, planDefinitionHash } from './plan-repository.js';
+import { readApproval } from './effect-contracts.js';
 
 export const RUN_STATUSES = Object.freeze(['admitted', 'running', 'waiting_approval', 'reconciling', 'blocked', 'completed', 'partial', 'failed', 'cancelled', 'stale']);
 const TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled', 'stale']);
@@ -128,7 +129,7 @@ export class RunRepository {
             this.#guard(root, input, fence);
             if (TERMINAL.has(root.status)) return root;
             const next = { ...root, cancelRequested: true, epoch: root.epoch + 1,
-                status: root.pendingEffectRefs.length ? 'reconciling' : 'cancelled' };
+                pendingApprovalRefs: await this.#invalidateApprovals(tx, handle, root), status: root.pendingEffectRefs.length ? 'reconciling' : 'cancelled' };
             return this.#commit(tx, handle, record, next, 'cancel_requested', input.reasonCode, timestamp);
         });
     }
@@ -140,11 +141,12 @@ export class RunRepository {
         return this.#command(handle, commandId, 'runs.recover', body, async (tx, input, fence) => {
             const record = await this.#root(tx, handle, input.runId), root = record.doc;
             this.#guard(root, input, fence, { previousBoot: true });
-            if ((root.hostBootId === fence.hostBootId && root.hostGeneration === fence.generation) || TERMINAL.has(root.status)) return root;
+            if (root.hostBootId === fence.hostBootId && root.hostGeneration === fence.generation) return root;
             // Recovered/backup data never automatically dispatches. Prior
             // approvals are unusable because both boot and epoch change.
             const next = { ...root, hostBootId: fence.hostBootId, hostGeneration: fence.generation, epoch: root.epoch + 1,
-                status: root.pendingEffectRefs.length ? 'reconciling' : 'blocked' };
+                pendingApprovalRefs: await this.#invalidateApprovals(tx, handle, root),
+                status: TERMINAL.has(root.status) ? root.status : root.pendingEffectRefs.length ? 'reconciling' : 'blocked' };
             return this.#commit(tx, handle, record, next, 'host_recovered', 'source_and_receipts_require_revalidation', timestamp);
         });
     }
@@ -197,7 +199,10 @@ export class RunRepository {
             for (const field of ['runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'limits', 'retentionPolicyRef', 'createdAt']) {
                 if (hashNativeDocument(next[field]) !== hashNativeDocument(root[field])) throw new TypeError('Controller cannot rewrite Run identity/authority: ' + field);
             }
-            if (next.cancelRequested !== root.cancelRequested || TERMINAL.has(root.status)) throw new ConflictError('native_orchestration_run_not_mutable');
+            if (next.cancelRequested !== root.cancelRequested || (TERMINAL.has(root.status) && input.operation !== 'effect.observe')) throw new ConflictError('native_orchestration_run_not_mutable');
+            if (TERMINAL.has(root.status) && (!['reconciling', 'blocked', root.status].includes(next.status)
+                || hashNativeDocument(next.outputClaims) !== hashNativeDocument(root.outputClaims)
+                || hashNativeDocument(next.resultRefs) !== hashNativeDocument(root.resultRefs))) throw new TypeError('Late observations cannot replace published output/results');
             for (const field of PROGRESS) if (next.progress[field] < root.progress[field]) throw new TypeError('Controller cannot reset progress');
             if (next.progress.deadlineAt > root.progress.deadlineAt) throw new TypeError('Controller cannot extend the original deadline');
             for (const [edgeId, count] of Object.entries(root.progress.edgeVisitCounts)) if ((next.progress.edgeVisitCounts[edgeId] ?? 0) < count) throw new TypeError('Controller cannot reset edge visits');
@@ -228,6 +233,16 @@ export class RunRepository {
             || hashNativeDocument(record.doc.graph.limits) !== hashNativeDocument(record.doc.limits)) throw new TypeError('RunRoot limits cannot exceed the immutable Plan');
         record.planRevision = revision.doc;
         return record;
+    }
+
+    async #invalidateApprovals(tx, handle, root) {
+        for (const approvalId of root.pendingApprovalRefs) {
+            const record = await readApproval(tx, handle, root, approvalId);
+            if (['pending', 'approved'].includes(record.doc.status)) {
+                await putMutable(tx, recordKey(handle, root.runId, 'approval', approvalId), { ...record.doc, status: 'invalidated' }, { expectedIntegrity: record.integrity });
+            }
+        }
+        return [];
     }
 
     #assertGuard(input) {
