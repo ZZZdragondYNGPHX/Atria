@@ -3,7 +3,7 @@
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
 - Primary Workspace：`main`（未来实现，当前未授权修改）。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1–D5 已冻结；D6 讨论草案已准备但尚未选择；同一份 Record 持续追加所有后续轮次。
+- 当前阶段：D1–D6 已冻结；D7 讨论草案已创建且 Q/F/O/P 四组尚未选择；同一份 Record 持续追加所有后续轮次。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -92,3 +92,25 @@
 - 仅 docs Git 对象/commit 和远端文件读回验证；本轮未执行 Node、构建、CI、Provider API、真实内容/缓存/预算测试、Windows/CachyOS Linux/Android Termux 真机或浏览器/UI。D5 的实际 SemanticIR/Lowering/诊断/缓存/双阶段预算仍未交付。
 - D6 `U/E/H/V` 四组候选 OPEN，推荐 `U2 + E2 + H2 + V2` 只是讨论提议，不得提前写为冻结；HCM-01–08、V3 C2/N2 等权威不重新决议。
 - 后续 D6 用户选择后，仍先更新并提交同一 Plan Bundle 与本 Record，再进入 D7 Experience/Eval、文学质量、合法误拒与 Prompt Candidate 演化讨论。未授权创建产品实现分支或改 main。
+
+## 2026-10-15 — D6 U2 + E2 + H2 + V2 正式冻结；D7 文档先行（docs-only）
+
+**用户已冻结及适用边界**
+- D6 **U2**：每个受信 NodeAttempt/Actor/Narrator/Judge/Tool 依原 Source/Audience/Grant/Branch/Time 取得自己的合法 ContextPlan，跨 Delegate/Join 的 SourceRef/ResultRef 消费前重新授权。延续 V3 C2/HCM-02 的旁白与 NPC 认知分离，显示与可读权限分开。
+- D6 **E2**：Source-backed World/Observation/Belief/Hearsay/Promise/Hypothesis/Disputed/Unknown 等逻辑认识状态保真；“检索到/角色误以为/历史许诺”不能变成已提交 World Truth、当前 NPC 意愿或玩家授权。
+- D6 **H2**：原 Context lanes/required/atomicGroup 与 D5 T2 预算之内采用 Source-preserving 历史/角色/情节/承诺/Memory/Spine 分层；摘要带来源/覆盖/遗漏/版本，不写新 Memory/World 或把压缩等同 Actor 遗忘，避免长 RP 只剩贫乏提要。
+- D6 **V2**：按 Source/Actor/DisplayGrant/Branch/Variant/Time/ScopeEpoch/Plan/Route/Prompt 的实际依赖定向失效，在候选读取前、编译/发送前、Join/披露消费前复验；依赖不明保守拒绝，不把 hash/TTL/Provider continuation 当成授权。
+- 保留 D1–D5 全部冻结方向，V3 单 Native Host、原 Context/Memory/Cognition/World/Source/Display/Compute/Experience/Eval 权威；正式重构对旧 ST/Workspace/Orchestrator 数据、接口/mode **零兼容**。当前用户明确不授权创建实现分支或修改 main。
+
+**本轮实际阅读/文档工作**
+- 读取前核对远端 `docs@d313901de1221a9639cae009f6de73f432700d5e`、`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`、V3 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。
+- 按需读取原同一 Plan 的 index/decisions/context-memory-consumption、同一 Record、`docs:README.md` Governance、V3 §11 `plan-prompt` 与 Narrative Quality、Agent Intelligence `m1-feedback-evaluation.md`，以及 `main:src/native/agent-intelligence/{evolution-targets.js,evaluation/quality.js}`、`src/native/model-prompt-runtime/prompt-candidates.js`；仅定向静态核查，未全仓再审。
+- 参考 [ICML 2025 OR-Bench](https://proceedings.mlr.press/v267/cui25a.html)、[AAAI DMT-RoleBench](https://ojs.aaai.org/index.php/AAAI/article/view/34768)、[DSPy GEPA](https://dspy.ai/3.3.0/api/optimizers/GEPA/overview/) 的评价/反思方法，不将公开论文成功率视为 Atria 运行效果。
+- 更新**同一份 Plan Bundle** 的 `index.md`、`decisions.md`、`context-memory-consumption.md`，新增第七轮 **OPEN** 模块 `quality-evolution.md`，在本**唯一 Record** 追加历史；不创建 HANDOFF、不修改既有 V3/C2/HCM 专项方案或其 Record。
+- 第七轮 Q/F/O/P 四组设计均为待用户选择，推荐 Q2+F2+O2+P2 不等于正式冻结。
+
+**真实阻塞/证据等级**
+- **既有接口仍未实现或未核实通过**：`context.fact` 经 `contextSlots` 渲染成 `system` 的来源信任风险未实测修复；V3 `agentPinId/dependencyPins` 与独立 Node Program/原 Route Program 的最终模型调用和 `generation_semantic_authority_changed` fallback 未打通。D6 U2/E2/H2/V2 仅定义新 Prompt 消费/压缩/失效的设计目标，没有产品质量/性能实证。
+- **D7 真实消费者缺口**：现有 RP `rp.m1.information` 只覆盖 player_agency、promise_application、knowledge_boundary、continuity、actor_voice、narrative_response 等维度；还需受审文学/长期/过度拒答质量来源。当前 `requirePilotSources()` 仍直接返回 `source_unready`；`EvolutionTargets` 仍有旧 Workspace/Director targets；`PromptCandidateStore` 的现有 Route/Library 流程不等于 V3 `plan-prompt` target/PlanRevision/PlanBinding CAS 的产品链已运行。
+- 本轮仅远端 Git 文档提交与提交后文件读回验证；**NOT_RUN**：Node/Jest/build、CI、外部模型/Provider API、合法误拒真实实验、浏览器自动化、Windows/CachyOS Linux/Android Termux 真机、V3 运行恢复及 Snapshot 评价。
+- 下一 checkpoint：开始第七轮 Q（质量向量）、F（原 Experience provenance）、O（合法误拒）、P（Prompt 候选/Review/Publish）深入讨论。用户决策 D7 后先更新并提交同一 Plan/Record，再进入 D8；未完成 E0 前不得宣布实现已可开工或已通过验收。

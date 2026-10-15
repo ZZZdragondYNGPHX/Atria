@@ -1,6 +1,6 @@
 # 跨模块冻结决定与待选项
 
-说明：仅保存用户明确冻结的跨模块决定。D1–D5 已冻结，D6 候选仍 OPEN；不构成修改产品代码的授权。
+说明：仅记录用户已明确选择的产品设计。D1–D6 已冻结，D7 尚未决议；文档提交不构成产品实现许可。
 
 ## D1 冻结，2026-10-15
 
@@ -61,10 +61,21 @@
 
 详细设计唯一归 [semantic-ir-lowering.md](semantic-ir-lowering.md)。
 
-## D6 OPEN — Context/Memory/Cognition 的合法消费（见 [context-memory-consumption.md](context-memory-consumption.md)）
+## D6 已冻结 — U2 + E2 + H2 + V2（2026-10-15）
 
-- **U1/U2/U3**：在 V3 C2 原有受权 Audience 域之内，Prompt 对 Narrator/Actor/Agent 采用怎样的 Context 请求与投影。
-- **E1/E2/E3**：证据区分 World、Actor Belief、历史承诺、Hearsay、Hypothesis、Disputed、Unknown 等信息地位；不能靠 Prompt 制造 World Truth。
-- **H1/H2/H3**：长 RP recent raw/Narrative Spine/commitment/Memory/Knowledge 在原 Context lanes、required/atomicGroup 下怎样选择与压缩。
-- **V1/V2/V3**：Source/Branch/Variant/WorldTick/Actor/Grant/ScopeEpoch 失效、异步消费重验与 Summary/Result/Cache 作废。
-- **注意**：V3 C2、HCM-01–08 和 D3 K2 的强制 Source/Disclosure/Scope 已经冻结，本轮不允许把它们重新选择为较弱模式。D6 四组仍未决定。
+1. **U2 每消费者独立受权 Context**：V3 NodeAttempt 由原 Host/Source Authority 计算 `sourceBinding/audience/actorId/taskPurpose/branch/revision/worldTick/grantDigest`，向已有 ContextPort 请求恰好获准的 Narrator、Actor、Judge、Tool 视图；Delegate/Join 接收方独立复验 SourceRef/ResultRef。HCM-02 B 旁白/NPC 分离默认和可选受权 A/C 叙事策略不变；Narrator 可读、NPC 已知、玩家可显示是三项不同权限，不能用 Prompt 声称授权。
+2. **E2 类型化认识地位**：消费原 World/Session/Information/Cognition/Memory 的 World Truth、Committed Event、Observation、Belief、Hearsay、Promise、Hypothesis、Disputed、Unknown 等**逻辑证据属性**，带来源、Actor/Time/Branch/currentness；不额外建立一个事实本体、存储或 Memory Writer。历史承诺不自动证明当前履行/记得/仍愿意，角色 ToM 不变成别人的私有心智事实，检索分数不提升事实权威。
+3. **H2 源完整的长会话分层**：在现有 SessionContextCompiler lanes、required/atomicGroup、coverage、T2 Context/Provider 预算基础上，优先保留当下正式 World/事件/角色 Identity/承诺及新输入，再依合法需求选择 Recent Raw 完整 TurnGroups、Narrative Spine、Memory/Knowledge 与 Scene/Voice 表达参考；压缩保留 `sourceRefs/hash/覆盖范围/遗漏/unknown/producerRevision`，不得替代原 Timeline/Memory/World 或假装角色真实遗忘。证据组放不下应明确 insufficient/blocked/review，不能裸截断前提。
+4. **V2 Source-aware 定向失效 + 使用时复验**：Source/Actor Exposure/Grant/Display/Branch/Variant/Revision/WorldTick/ScopeEpoch/Route/PromptRevision 的相关变更，按照原 Authority 的依赖关系让相应 Context、Hybrid 候选、派生摘要、ResultRef、受限缓存和 Provider continuation 失效；检索前、编译/发送前及 Join/披露/消费前复验。可证明依赖完整时 targeted invalidation；缺证明时保守 miss/blocked，不能仅凭 TTL 或相同文本复用。
+5. **强制保留原架构与文学目标**：V3 C2、HCM-01–08、HCM-02 Narrator/NPC 拆分、HCM-04 World Tick、HCM-05 角色遗忘、G1 普通 RP 零额外认知 LLM 目标、D3 角色表达/玩家自主权和 D5 S2/K2/T2 都不变。正常合法成人虚构文学不应因压缩丢失角色声音/伏笔/情绪而沦为故事梗概，但质量需按真实对照评价，不允许通过对低信任内容提权来追求美文。
+6. **仍是设计而非产品实现**：未新建 Memory/Context/Source/Actor/Cognition/缓存授权或收费服务；现有 `context.fact`→`contextSlots`→`system` 的信任边界、Node/Route Prompt Program 与 `generation_semantic_authority_changed`、多 Agent 来源复验/缓存失效，以及长会话质量收益都保留为未实现或 NOT_RUN。正式重构不考虑旧 ST/Workspace/Orchestrator 数据、API/mode 兼容。
+
+详细且唯一的 D6 合同见 [context-memory-consumption.md](context-memory-consumption.md)。原 Memory 检索策略、Actor 状态、World 事实、Permission/Display Authority 与 V3 C2 的详细物理定义不在本 Plan 复制或重开。
+
+## D7 待选（见 [quality-evolution.md](quality-evolution.md)）
+
+- **Q1/Q2/Q3**：文学、人物一致性、长会话剧情、任务完成与不可抵消的硬约束如何形成受审 RP QualityProfile/独立报告，不以文笔均分掩盖玩家代写/信息串知。
+- **F1/F2/F3**：用户显式偏好、实际观察、Host 检查、模型 Judge 与未知来源如何归因，什么缺陷才允许定位为 Prompt 而非 Context/Model/Runtime。
+- **O1/O2/O3**：合法成年人虚构 RP 的过度拒答怎样独立衡量，区别 Provider 显式阻断与模型主动回避，避免优化成攻击成功率或一律“通过”。
+- **P1/P2/P3**：原 EvolutionTargets/PromptCandidateStore 仅对获准的精确目标进行候选变更、评审与 PlanBinding CAS 发布，什么情况下使用反思/Pareto 选择，何时需人工 Review。
+- 四组方案全部 **OPEN**。后续决策必须保持 V3 `plan-prompt` target 与原 Experience/Eval/质量和发布权威，不重复建 Judge、候选 Store、Plan/Runtime；D7 选择后仍按约定先提交同一 Plan/Record，再讨论 D8。
