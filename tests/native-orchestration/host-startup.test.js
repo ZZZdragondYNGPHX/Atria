@@ -4,6 +4,8 @@ import path from 'node:path';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createNativeId } from '../../src/native/identity.js';
+import { planFixture } from './fixtures.js';
 
 const sourceRoot = fileURLToPath(new URL('../../', import.meta.url));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -42,6 +44,21 @@ test('installed server obtains Storage ownership before boot and rejects a secon
         }
         if (!ready) throw new Error('First server was not ready: ' + first.output);
         expect(fs.existsSync(path.join(dataRoot, 'native-host.identity'))).toBe(true);
+        const endpoint = `http://127.0.0.1:${firstPort}/api/native/orchestration`;
+        const denied = await fetch(endpoint + '/plans/list', { method: 'POST', headers: { 'Content-Type': 'application/json', Connection: 'close' }, body: JSON.stringify({ schemaVersion: 1, body: { cursor: null, limit: 10 } }) });
+        expect(denied.status).toBe(403);
+        await denied.body?.cancel();
+        const csrf = await fetch(`http://127.0.0.1:${firstPort}/csrf-token`, { headers: { Connection: 'close' } });
+        const cookie = csrf.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+        const { token } = await csrf.json();
+        const headers = { 'Content-Type': 'application/json', 'X-CSRF-Token': token, Cookie: cookie, Connection: 'close' };
+        const listed = await fetch(endpoint + '/plans/list', { method: 'POST', headers, body: JSON.stringify({ schemaVersion: 1, body: { cursor: null, limit: 10 } }) });
+        expect(listed.status).toBe(200);
+        const { hostBootId, outcome } = await listed.json();
+        expect(outcome.items).toEqual([]);
+        const authored = await fetch(endpoint + '/plans/create', { method: 'POST', headers: { ...headers, 'X-Atria-Host-Boot-Id': hostBootId }, body: JSON.stringify({ schemaVersion: 1, commandId: createNativeId('orchestrationCommand'), expectedHostBootId: hostBootId, body: planFixture() }) });
+        expect(authored.status).toBe(200);
+        expect((await authored.json()).outcome.ownerRef.handle).toBe('default-user');
         const second = launch(await port());
         let timeout;
         try { await Promise.race([second.done, new Promise(resolve => { timeout = setTimeout(resolve, 10000); })]); } finally { clearTimeout(timeout); }

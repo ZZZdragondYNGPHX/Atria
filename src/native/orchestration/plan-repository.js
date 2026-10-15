@@ -1,5 +1,6 @@
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
+import { withRuntimeWrite } from '../model-prompt-runtime/runtime-write.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
@@ -39,7 +40,7 @@ export class PlanRepository {
         const request = cloneNativeDocument({ operation, body });
         const payloadHash = hashNativeDocument(request);
         const commandKey = key(K.orchestrationCommand, handle, { commandId });
-        return withNativeResourceWrites(handle, [commandId, ...resourceIds], () => this.engine.withTransaction(handle, async tx => {
+        return withRuntimeWrite(handle, () => withNativeResourceWrites(handle, [commandId, ...resourceIds], () => this.engine.withTransaction(handle, async tx => {
             assertWritable();
             await this.assertWriter(handle, tx);
             await this.authorize({ handle, operation, body: request.body, tx });
@@ -52,7 +53,7 @@ export class PlanRepository {
             assertWritable();
             await putImmutable(tx, commandKey, { schemaVersion: 1, commandId, payloadHash, operation, target: resourceIds, outcome });
             return outcome;
-        }));
+        })));
     }
 
     async create(handle, commandId, body) {
@@ -128,6 +129,46 @@ export class PlanRepository {
         return this.engine.withTransaction(handle, async tx => {
             await this.authorize({ handle, operation: 'plans.get', body: { planId }, tx });
             return cloneNativeDocument((await this.#root(tx, key(K.orchestrationPlan, handle, { planId }))).doc);
+        });
+    }
+
+    async list(handle, { cursor = null, limit = 50 } = {}) {
+        return this.#page(handle, K.orchestrationPlan, null, cursor, limit);
+    }
+
+    async listRevisions(handle, planId, { cursor = null, limit = 50 } = {}) {
+        assertNativeId(planId, 'orchestrationPlan');
+        return this.#page(handle, K.orchestrationRevision, planId, cursor, limit);
+    }
+
+    async #page(handle, kind, planId, cursor, limit) {
+        assertCounter(limit, 'limit', 1);
+        if (limit > 100) throw new TypeError('limit must be <= 100');
+        let after = '';
+        if (cursor !== null) {
+            try {
+                if (typeof cursor !== 'string' || cursor.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(cursor)) throw new TypeError();
+                const value = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+                assertObject(value, ['handle', 'kind', 'planId', 'after'], 'cursor');
+                if (value.handle !== handle || value.kind !== kind || value.planId !== planId) throw new TypeError();
+                assertNativeId(value.after, kind === K.orchestrationPlan ? 'orchestrationPlan' : 'orchestrationRevision');
+                after = value.after;
+            } catch { throw new TypeError('Invalid authoring page cursor'); }
+        }
+        return this.engine.withTransaction(handle, async tx => {
+            await this.authorize({ handle, operation: planId ? 'plans.revisions' : 'plans.list', body: { planId }, tx });
+            if (planId) await this.#root(tx, key(K.orchestrationPlan, handle, { planId }));
+            const idField = planId ? 'planRevisionId' : 'planId';
+            const records = await tx.listResources({ kind, handle, ...(planId ? { planId } : {}) });
+            records.sort((left, right) => left.key[idField].localeCompare(right.key[idField]));
+            const remaining = records.filter(record => record.key[idField] > after), selected = remaining.slice(0, limit);
+            const items = [];
+            for (const record of selected) {
+                const doc = planId ? await this.#revision(tx, handle, { planId, planRevisionId: record.key.planRevisionId, definitionHash: record.doc.definitionHash })
+                    : (await this.#root(tx, record.key)).doc;
+                items.push(cloneNativeDocument(doc));
+            }
+            return { items, cursor: remaining.length > limit ? Buffer.from(JSON.stringify({ handle, kind, planId, after: selected.at(-1).key[idField] })).toString('base64url') : null };
         });
     }
 
