@@ -407,6 +407,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             },
             cleanupWarning,
         };
+        await currentEngine.nativeHostLifecycle?.afterRestore(handle);
         return {
             restoredCount: extractResult.restoredCount,
             failedCount: extractResult.failedCount,

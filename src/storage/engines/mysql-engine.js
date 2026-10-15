@@ -183,7 +183,7 @@ export class MysqlEngine {
     }
 
     async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
-        if (retryMode !== 'known_rollback_only') throw new TypeError('Unsupported storage retryMode');
+        if (!['known_rollback_only', 'never'].includes(retryMode)) throw new TypeError('Unsupported storage retryMode');
         await this._ensureSchema();
         const retryableFailures = new WeakSet();
         try {
@@ -202,13 +202,14 @@ export class MysqlEngine {
                     } catch (err) {
                         let rolledBack = false;
                         try { await conn.rollback(); rolledBack = true; } catch { /* unknown COMMIT stays unknown */ }
+                        if (rolledBack && err.code !== 'storage_commit_unknown') err.storageRollbackConfirmed = true;
                         if (isKnownRollbackError(err) && (rolledBack || err.code === 'ER_LOCK_DEADLOCK')) retryableFailures.add(err);
                         throw err;
                     }
                 } finally {
                     conn.release();
                 }
-            }, { retries: this._retries.transient, isRetryable: err => retryableFailures.has(err) });
+            }, { retries: this._retries.transient, isRetryable: err => retryMode === 'known_rollback_only' && retryableFailures.has(err) });
         } catch (err) {
             logEngineError(this.kind, 'tx', handle, err);
             throw err;
@@ -227,35 +228,18 @@ export class MysqlEngine {
      * is the user-data tables from migrations/mysql/0001-initial.sql.
      * @param {string} handle
      */
+    async _withUserAdministration(handle, fn, options) {
+        const lifecycle = this.nativeHostLifecycle;
+        return lifecycle ? lifecycle.withAdministrativeTransaction(handle, fn, options) : this.withTransaction(handle, fn, options);
+    }
+
     async deleteUser(handle) {
-        await this._ensureSchema();
-        try {
-            await withRetry(async () => {
-                const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
-                try {
-                    await conn.beginTransaction();
-                    try {
-                        for (const table of [
-                            'chat_states', 'preset_states',
-                            'chats', 'presets', 'worlds',
-                            'named_docs', 'groups_table', 'native_resources',
-                            'settings', 'stats',
-                        ]) {
-                            await conn.query(`DELETE FROM ${table} WHERE handle = ?`, [handle]);
-                        }
-                        await conn.commit();
-                    } catch (err) {
-                        try { await conn.rollback(); } catch { /* best-effort */ }
-                        throw err;
-                    }
-                } finally {
-                    conn.release();
-                }
-            }, { retries: this._retries.transient });
-        } catch (err) {
-            logEngineError(this.kind, 'delete-user', handle, err);
-            throw err;
-        }
+        return this._withUserAdministration(handle, async tx => {
+            for (const table of ['chat_states', 'preset_states', 'chats', 'presets', 'worlds', 'named_docs', 'groups_table', 'native_resources', 'settings', 'stats']) {
+                const predicate = table === 'native_resources' ? ' AND kind <> ?' : '';
+                await tx._conn.query(`DELETE FROM ${table} WHERE handle = ?${predicate}`, table === 'native_resources' ? [handle, 'atri_host_fence'] : [handle]);
+            }
+        });
     }
 
     async close() {
@@ -313,74 +297,35 @@ export class MysqlEngine {
         return Readable.from(generate());
     }
 
-    /**
-     * mysql restore wipes the handle (idempotent — calls
-     * `deleteUser` which is itself retry-wrapped) then replays the incoming
-     * `{sql, params}` lines inside ONE transaction. A failed line rolls back
-     * the whole restore so the user's slot is either fully restored or
-     * unchanged — never half-applied.
-     *
-     * The wipe runs in its own transaction BEFORE the restore transaction
-     * begins; if the restore later fails, the user is left wiped (not
-     * mid-restored). The restore is idempotent: re-
-     * issuing the same restore from a good dump converges.
-     *
-     * Stream parsing buffers across chunk boundaries — `for await` chunks
-     * arrive at arbitrary byte boundaries so a record split across two
-     * chunks would JSON.parse-fail without the buffer. Critically, the
-     * chunk boundary may also fall MID multi-byte UTF-8 sequence (CJK
-     * chars are 3 bytes, emoji 4), and `chunk.toString('utf8')` on a
-     * partial sequence emits U+FFFD replacement chars in both this chunk
-     * and the next — silent mojibake in restored chat content. We use
-     * `StringDecoder` to buffer incomplete sequences internally so the
-     * decoded text round-trips byte-for-byte regardless of where yauzl
-     * splits the dump. The retry wrapper is for transient pool/connection
-     * failures during the COMMIT itself; a malformed dump line throws
-     * synchronously inside the retry body and surfaces immediately.
-     * @param {string} handle
-     * @param {import('node:stream').Readable} stream
-     */
+    /** Restore the original dump in one non-replayed transaction, retaining the destination Host fence. */
     async restoreUser(handle, stream) {
-        await this._ensureSchema();
-        await this.deleteUser(handle);
-
-        try {
-            await withRetry(async () => {
-                const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
-                try {
-                    await conn.beginTransaction();
-                    try {
-                        const decoder = new StringDecoder('utf8');
-                        let buf = '';
-                        for await (const chunk of stream) {
-                            buf += decoder.write(chunk);
-                            let nl;
-                            while ((nl = buf.indexOf('\n')) >= 0) {
-                                const line = buf.slice(0, nl).trim();
-                                buf = buf.slice(nl + 1);
-                                if (!line) continue;
-                                const { sql, params } = JSON.parse(line);
-                                await conn.query(sql, params);
-                            }
-                        }
-                        buf += decoder.end();
-                        const tail = buf.trim();
-                        if (tail) {
-                            const { sql, params } = JSON.parse(tail);
-                            await conn.query(sql, params);
-                        }
-                        await conn.commit();
-                    } catch (err) {
-                        try { await conn.rollback(); } catch { /* best-effort */ }
-                        throw err;
-                    }
-                } finally {
-                    conn.release();
+        // One transaction preserves prior data on malformed/failed input. A
+        // consumed stream is never replayed, even after a confirmed rollback.
+        return this._withUserAdministration(handle, async tx => {
+            for (const table of ['chat_states', 'preset_states', 'chats', 'presets', 'worlds', 'named_docs', 'groups_table', 'native_resources', 'settings', 'stats']) {
+                const predicate = table === 'native_resources' ? ' AND kind <> ?' : '';
+                await tx._conn.query(`DELETE FROM ${table} WHERE handle = ?${predicate}`, table === 'native_resources' ? [handle, 'atri_host_fence'] : [handle]);
+            }
+            const apply = async line => {
+                const { sql, params } = JSON.parse(line);
+                // Original dump column order is handle, kind, resource_key...
+                // A source Host fence can never replace the destination Owner.
+                if (/^INSERT INTO native_resources\s/i.test(sql) && params?.[1] === 'atri_host_fence') return;
+                await tx._conn.query(sql, params);
+            };
+            const decoder = new StringDecoder('utf8');
+            let buffer = '';
+            for await (const chunk of stream) {
+                buffer += decoder.write(chunk);
+                let newline;
+                while ((newline = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, newline).trim();
+                    buffer = buffer.slice(newline + 1);
+                    if (line) await apply(line);
                 }
-            }, { retries: this._retries.transient });
-        } catch (err) {
-            logEngineError(this.kind, 'restore-user', handle, err);
-            throw err;
-        }
+            }
+            buffer += decoder.end();
+            if (buffer.trim()) await apply(buffer.trim());
+        }, { retryMode: 'never' });
     }
 }

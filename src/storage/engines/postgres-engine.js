@@ -138,7 +138,7 @@ export class PgEngine {
     }
 
     async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
-        if (retryMode !== 'known_rollback_only') throw new TypeError('Unsupported storage retryMode');
+        if (!['known_rollback_only', 'never'].includes(retryMode)) throw new TypeError('Unsupported storage retryMode');
         await this._ensureSchema();
         const retryableFailures = new WeakSet();
         try {
@@ -155,14 +155,14 @@ export class PgEngine {
                         }
                         return result;
                     } catch (err) {
-                        try { await client.query('ROLLBACK'); } catch { /* engine may already have rolled back */ }
+                        try { await client.query('ROLLBACK'); if (err.code !== 'storage_commit_unknown') err.storageRollbackConfirmed = true; } catch { /* outcome remains unproven */ }
                         if (isKnownRollbackError(err)) retryableFailures.add(err);
                         throw err;
                     }
                 } finally {
                     client.release();
                 }
-            }, { retries: this._retries.transient, isRetryable: err => retryableFailures.has(err) });
+            }, { retries: this._retries.transient, isRetryable: err => retryMode === 'known_rollback_only' && retryableFailures.has(err) });
         } catch (err) {
             logEngineError(this.kind, 'tx', handle, err);
             throw err;
@@ -176,35 +176,18 @@ export class PgEngine {
      * table is schema-version data, NOT user data, and is left untouched.
      * @param {string} handle
      */
+    async _withUserAdministration(handle, fn, options) {
+        const lifecycle = this.nativeHostLifecycle;
+        return lifecycle ? lifecycle.withAdministrativeTransaction(handle, fn, options) : this.withTransaction(handle, fn, options);
+    }
+
     async deleteUser(handle) {
-        await this._ensureSchema();
-        try {
-            await withRetry(async () => {
-                const client = await this._pool.connect();
-                try {
-                    await client.query('BEGIN');
-                    try {
-                        for (const table of [
-                            'chat_states', 'preset_states',
-                            'chats', 'presets', 'worlds',
-                            'named_docs', 'groups_table', 'native_resources',
-                            'settings', 'stats',
-                        ]) {
-                            await client.query(`DELETE FROM ${table} WHERE handle = $1`, [handle]);
-                        }
-                        await client.query('COMMIT');
-                    } catch (err) {
-                        try { await client.query('ROLLBACK'); } catch { /* best-effort */ }
-                        throw err;
-                    }
-                } finally {
-                    client.release();
-                }
-            }, { retries: this._retries.transient });
-        } catch (err) {
-            logEngineError(this.kind, 'delete-user', handle, err);
-            throw err;
-        }
+        return this._withUserAdministration(handle, async tx => {
+            for (const table of ['chat_states', 'preset_states', 'chats', 'presets', 'worlds', 'named_docs', 'groups_table', 'native_resources', 'settings', 'stats']) {
+                const predicate = table === 'native_resources' ? ' AND kind <> $2' : '';
+                await tx._client.query(`DELETE FROM ${table} WHERE handle = $1${predicate}`, table === 'native_resources' ? [handle, 'atri_host_fence'] : [handle]);
+            }
+        });
     }
 
     async close() {
@@ -262,74 +245,35 @@ export class PgEngine {
         return Readable.from(generate());
     }
 
-    /**
-     * postgres restore wipes the handle (idempotent — calls
-     * `deleteUser` which is itself retry-wrapped) then replays the incoming
-     * `{sql, params}` lines inside ONE transaction. A failed line rolls back
-     * the whole restore so the user's slot is either fully restored or
-     * unchanged — never half-applied.
-     *
-     * The wipe runs in its own transaction BEFORE the restore transaction
-     * begins; if the restore later fails, the user is left wiped (not
-     * mid-restored). The restore is idempotent: re-
-     * issuing the same restore from a good dump converges.
-     *
-     * Stream parsing buffers across chunk boundaries — `for await` chunks
-     * arrive at arbitrary byte boundaries so a record split across two
-     * chunks would JSON.parse-fail without the buffer. Critically, the
-     * chunk boundary may also fall MID multi-byte UTF-8 sequence (CJK
-     * chars are 3 bytes, emoji 4), and `chunk.toString('utf8')` on a
-     * partial sequence emits U+FFFD replacement chars in both this chunk
-     * and the next — silent mojibake in restored chat content. We use
-     * `StringDecoder` to buffer incomplete sequences internally so the
-     * decoded text round-trips byte-for-byte regardless of where yauzl
-     * splits the dump. The retry wrapper is for transient pool/connection
-     * failures during the COMMIT itself; a malformed dump line throws
-     * synchronously inside the retry body and surfaces immediately.
-     * @param {string} handle
-     * @param {import('node:stream').Readable} stream
-     */
+    /** Restore the original dump in one non-replayed transaction, retaining the destination Host fence. */
     async restoreUser(handle, stream) {
-        await this._ensureSchema();
-        await this.deleteUser(handle);
-
-        try {
-            await withRetry(async () => {
-                const client = await this._pool.connect();
-                try {
-                    await client.query('BEGIN');
-                    try {
-                        const decoder = new StringDecoder('utf8');
-                        let buf = '';
-                        for await (const chunk of stream) {
-                            buf += decoder.write(chunk);
-                            let nl;
-                            while ((nl = buf.indexOf('\n')) >= 0) {
-                                const line = buf.slice(0, nl).trim();
-                                buf = buf.slice(nl + 1);
-                                if (!line) continue;
-                                const { sql, params } = JSON.parse(line);
-                                await client.query(sql, params);
-                            }
-                        }
-                        buf += decoder.end();
-                        const tail = buf.trim();
-                        if (tail) {
-                            const { sql, params } = JSON.parse(tail);
-                            await client.query(sql, params);
-                        }
-                        await client.query('COMMIT');
-                    } catch (err) {
-                        try { await client.query('ROLLBACK'); } catch { /* best-effort */ }
-                        throw err;
-                    }
-                } finally {
-                    client.release();
+        // One transaction preserves prior data on malformed/failed input. A
+        // consumed stream is never replayed, even after a confirmed rollback.
+        return this._withUserAdministration(handle, async tx => {
+            for (const table of ['chat_states', 'preset_states', 'chats', 'presets', 'worlds', 'named_docs', 'groups_table', 'native_resources', 'settings', 'stats']) {
+                const predicate = table === 'native_resources' ? ' AND kind <> $2' : '';
+                await tx._client.query(`DELETE FROM ${table} WHERE handle = $1${predicate}`, table === 'native_resources' ? [handle, 'atri_host_fence'] : [handle]);
+            }
+            const apply = async line => {
+                const { sql, params } = JSON.parse(line);
+                // Original dump column order is handle, kind, resource_key...
+                // A source Host fence can never replace the destination Owner.
+                if (/^INSERT INTO native_resources\s/i.test(sql) && params?.[1] === 'atri_host_fence') return;
+                await tx._client.query(sql, params);
+            };
+            const decoder = new StringDecoder('utf8');
+            let buffer = '';
+            for await (const chunk of stream) {
+                buffer += decoder.write(chunk);
+                let newline;
+                while ((newline = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, newline).trim();
+                    buffer = buffer.slice(newline + 1);
+                    if (line) await apply(line);
                 }
-            }, { retries: this._retries.transient });
-        } catch (err) {
-            logEngineError(this.kind, 'restore-user', handle, err);
-            throw err;
-        }
+            }
+            buffer += decoder.end();
+            if (buffer.trim()) await apply(buffer.trim());
+        }, { retryMode: 'never' });
     }
 }

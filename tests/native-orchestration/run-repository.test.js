@@ -101,6 +101,17 @@ describe.each(CONTRACT_HARNESSES)('$name durable Host RunLedger', ({ make, name 
         } finally { setReadOnly(false); }
     });
 
+    test('restoring within the same Host invalidates the old storage generation and requires blocked recovery', async () => {
+        const root = await repository.start(h.handle, command(), startBody());
+        await lifecycle.afterRestore(h.handle);
+        await expect(repository.cancel(h.handle, command(), { ...guard(root), reasonCode: 'stale_restore' })).rejects.toMatchObject({ code: 'native_orchestration_run_conflict' });
+        const recovered = await repository.recover(h.handle, command(), guard(root));
+        expect(recovered.hostBootId).toBe(root.hostBootId);
+        expect(recovered.hostGeneration).toBe(root.hostGeneration + 1);
+        expect(recovered.epoch).toBe(root.epoch + 1);
+        expect(recovered.status).toBe('blocked');
+    });
+
     const faultTest = name === 'FsEngine' ? test : test.skip;
     faultTest.each(['prepare', 'publish', 'install', 'ack'])('original Native FS Journal %s failure cannot split root/event/command or create a second admitted Run', async window => {
         const id = command(), body = startBody();

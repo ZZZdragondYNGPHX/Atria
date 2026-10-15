@@ -93,6 +93,18 @@ describe('Storage lifetime owner on the current OS', () => {
         expect(fs.readFileSync(path.join(root, 'native-host.identity'), 'utf8')).toBe('{');
     });
 
+    test('changing a live root identity invalidates the old owner rather than switching guard ports', async () => {
+        const owner = make();
+        await owner.acquireLocal(root);
+        fs.writeFileSync(path.join(root, 'native-host.identity'), '{}');
+        await expect(owner.acquireLocal(root)).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        expect(() => owner.assertActive()).toThrow();
+    });
+
+    (process.platform === 'win32' ? test : test.skip)('UNC root is refused before any remote filesystem access', async () => {
+        await expect(make().acquireLocal('\\\\invalid-native-host-test\\share\\data')).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+    });
+
     test('a real second process is excluded and OS releases its guard after forced termination', async () => {
         const moduleUrl = new URL('../../src/storage/native-host-owner.js', import.meta.url).href;
         const script = `import { NativeHostOwner } from ${JSON.stringify(moduleUrl)}; const owner = new NativeHostOwner(); await owner.acquireLocal(process.argv[1]); process.stdout.write('READY\\n');`;

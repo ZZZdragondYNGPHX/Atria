@@ -4,6 +4,7 @@ import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
 import { hashNativeDocument, putMutable } from '../native/repositories/common.js';
 
 const active = new AsyncLocalStorage();
+const administrative = new AsyncLocalStorage();
 const error = () => Object.assign(new Error('Native Host fence is no longer current'), { code: 'native_orchestration_writer_unavailable' });
 
 /** Attach once to the original Engine, before any repository, recovery or schema write. */
@@ -14,9 +15,9 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
     const ready = new Map(), fences = new Map(), minimumGenerations = new Map(), operations = new Set(), blocked = new Set();
     let accepting = true, databaseReady, closing;
 
-    function assertActive(handle) {
+    function assertActive(handle, bypassBlock = false) {
         owner.assertActive();
-        if (!accepting || blocked.has(handle)) throw error();
+        if (!accepting || (!bypassBlock && blocked.has(handle))) throw error();
     }
 
     async function ensureDatabase() {
@@ -28,8 +29,9 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
         }
     }
 
-    async function ensure(handle) {
-        assertActive(handle);
+    async function ensure(handle, bypassBlock = false) {
+        assertActive(handle, bypassBlock);
+        await owner.acquireLocal(directoriesByHandle(handle).root);
         if (!ready.has(handle)) {
             const pending = (async () => {
                 // Local roots (including SQL installations) share the same
@@ -56,7 +58,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
             // Failure is sticky for this boot. Never reconnect under old authority.
         }
         await ready.get(handle);
-        assertActive(handle);
+        assertActive(handle, bypassBlock);
     }
 
     async function checkFence(handle, tx) {
@@ -78,6 +80,30 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
         return entry.promise.finally(() => operations.delete(entry));
     }
 
+    async function manageHandle(handle, operation) {
+        assertActive(handle);
+        if (active.getStore()?.open) throw error();
+        blocked.add(handle);
+        const previous = [...operations].filter(entry => entry.handle === handle);
+        const entry = { handle, promise: (async () => {
+            try {
+                await ensure(handle, true);
+                await Promise.allSettled(previous.map(entry => entry.promise));
+                owner.assertActive();
+                const scope = { lifecycle, handle, open: true };
+                let result;
+                try { result = await administrative.run(scope, operation); } finally { scope.open = false; }
+                ready.delete(handle); fences.delete(handle);
+                return result;
+            } catch (failure) {
+                if (!failure.storageRollbackConfirmed) owner.invalidate();
+                throw failure;
+            } finally { blocked.delete(handle); }
+        })() };
+        operations.add(entry);
+        return entry.promise.finally(() => operations.delete(entry));
+    }
+
     const lifecycle = {
         hostBootId: owner.hostBootId,
         async assertWriter(handle, tx) {
@@ -88,6 +114,19 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
         assertActive: () => { owner.assertActive(); if (!accepting) throw error(); },
         // Correlated workers consult this permit; they never receive Engine ownership.
         invalidate: () => owner.invalidate(),
+        // The existing backup/restore authority invokes this after installing
+        // data. New admission then publishes a higher storage generation.
+        afterRestore: handle => manageHandle(handle, async () => {}),
+        async withAdministrativeTransaction(handle, fn, options = {}) {
+            const scope = administrative.getStore();
+            if (!scope?.open || scope.lifecycle !== lifecycle || scope.handle !== handle) throw error();
+            return transaction(handle, async tx => {
+                await checkFence(handle, tx);
+                const result = await fn(tx);
+                await checkFence(handle, tx);
+                return result;
+            }, options);
+        },
     };
     Object.defineProperty(engine, 'nativeHostLifecycle', { value: Object.freeze(lifecycle) });
 
@@ -132,27 +171,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
 
     for (const method of ['deleteUser', 'restoreUser']) {
         const original = engine[method].bind(engine);
-        engine[method] = async (handle, ...args) => {
-            assertActive(handle);
-            if (active.getStore()?.open) throw error();
-            // Block new operations first; await existing transactions before
-            // replacing/deleting the database. The lifetime guard stays held.
-            blocked.add(handle);
-            const previous = [...operations].filter(entry => entry.handle === handle);
-            const entry = { handle, promise: (async () => {
-                try {
-                    await Promise.allSettled(previous.map(entry => entry.promise));
-                    owner.assertActive();
-                    await ensureDatabase();
-                    await owner.acquireLocal(directoriesByHandle(handle).root);
-                    const result = await original(handle, ...args);
-                    ready.delete(handle); fences.delete(handle);
-                    return result;
-                } catch (failure) { owner.invalidate(); throw failure; } finally { blocked.delete(handle); }
-            })() };
-            operations.add(entry);
-            return entry.promise.finally(() => operations.delete(entry));
-        };
+        engine[method] = (handle, ...args) => manageHandle(handle, () => original(handle, ...args));
     }
 
     engine.close = () => {

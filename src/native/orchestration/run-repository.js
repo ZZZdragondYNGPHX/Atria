@@ -13,11 +13,12 @@ const runKey = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 const recordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
 
 export function assertRunRoot(root, handle) {
-    assertObject(root, ['schemaVersion', 'runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'status', 'graph', 'attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims', 'progress', 'limits', 'retentionPolicyRef', 'cancelRequested', 'createdAt', 'updatedAt'], 'RunRoot');
+    assertObject(root, ['schemaVersion', 'runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'status', 'graph', 'attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims', 'progress', 'limits', 'retentionPolicyRef', 'cancelRequested', 'createdAt', 'updatedAt'], 'RunRoot');
     if (root.schemaVersion !== 1 || root.ownerRef?.handle !== handle || !RUN_STATUSES.includes(root.status) || typeof root.cancelRequested !== 'boolean') throw new TypeError('Invalid RunRoot identity/status');
     assertObject(root.ownerRef, ['handle'], 'ownerRef');
     assertNativeId(root.runId, 'orchestrationRun'); assertNativeId(root.rootRunId, 'orchestrationRun'); assertPlanRef(root.planRef);
     for (const field of ['epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'createdAt', 'updatedAt']) assertCounter(root[field], field);
+    assertCounter(root.hostGeneration, 'hostGeneration', 1);
     if (typeof root.hostBootId !== 'string' || !root.hostBootId) throw new TypeError('RunRoot hostBootId is missing');
     if (!root.sourceBinding || !root.budgetAuthorityRef || !root.retentionPolicyRef) throw new TypeError('RunRoot original authority references are missing');
     assertDigest(root.sourceBinding.bindingDigest, 'sourceBinding.bindingDigest');
@@ -73,7 +74,7 @@ export class RunRepository {
             const admission = cloneNativeDocument(await this.admit({ handle, tx, plan, sourceRequest: input.sourceRequest, retentionPolicyRef: input.retentionPolicyRef }));
             assertObject(admission, ['sourceBinding', 'budgetAuthorityRef'], 'admission');
             const root = { schemaVersion: 1, runId, ownerRef: { handle }, planRef: input.planRef, sourceBinding: admission.sourceBinding,
-                parentRef: null, rootRunId: runId, budgetAuthorityRef: admission.budgetAuthorityRef, hostBootId: fence.hostBootId, epoch: fence.generation,
+                parentRef: null, rootRunId: runId, budgetAuthorityRef: admission.budgetAuthorityRef, hostBootId: fence.hostBootId, hostGeneration: fence.generation, epoch: 0,
                 stateVersion: 0, graphRevision: 0, eventSeq: 0, status: 'admitted', graph: plan.definition,
                 attemptRefs: [], pendingEffectRefs: [], pendingApprovalRefs: [], resultRefs: [], outputClaims: [],
                 progress: { ...Object.fromEntries(PROGRESS.map(field => [field, 0])), deadlineAt: timestamp + plan.definition.limits.deadlineMs },
@@ -114,10 +115,10 @@ export class RunRepository {
         return this.#command(handle, commandId, 'runs.recover', body, async (tx, input, fence) => {
             const record = await this.#root(tx, handle, input.runId), root = record.doc;
             this.#guard(root, input, fence, { previousBoot: true });
-            if (root.hostBootId === fence.hostBootId || TERMINAL.has(root.status)) return root;
+            if ((root.hostBootId === fence.hostBootId && root.hostGeneration === fence.generation) || TERMINAL.has(root.status)) return root;
             // Recovered/backup data never automatically dispatches. Prior
             // approvals are unusable because both boot and epoch change.
-            const next = { ...root, hostBootId: fence.hostBootId, epoch: Math.max(root.epoch + 1, fence.generation),
+            const next = { ...root, hostBootId: fence.hostBootId, hostGeneration: fence.generation, epoch: root.epoch + 1,
                 status: root.pendingEffectRefs.length ? 'reconciling' : 'blocked' };
             return this.#commit(tx, handle, record, next, 'host_recovered', 'source_and_receipts_require_revalidation', timestamp);
         });
@@ -176,7 +177,7 @@ export class RunRepository {
 
     #guard(root, input, fence, { previousBoot = false } = {}) {
         if (root.epoch !== input.expectedEpoch || root.stateVersion !== input.expectedStateVersion || root.graphRevision !== input.expectedGraphRevision
-            || (!previousBoot && root.hostBootId !== fence.hostBootId)) throw new ConflictError('native_orchestration_run_conflict');
+            || (!previousBoot && (root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation))) throw new ConflictError('native_orchestration_run_conflict');
     }
 
     async #commit(tx, handle, record, next, type, reasonCode, timestamp) {

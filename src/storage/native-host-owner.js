@@ -2,8 +2,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import { createHash, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
 import { durableMkdir, syncDirectory } from './durable-file.js';
+
+const localVolumes = new Map();
+const LOCAL_LINUX_FILESYSTEMS = new Set([0xef53, 0x58465342, 0x9123683e, 0x01021994, 0xf2f52010, 0x2fc12fc1]);
+
+function assertLocalRoot(root) {
+    if (process.platform === 'win32') {
+        const volume = path.parse(root).root;
+        if (!/^[A-Za-z]:\\$/.test(volume)) throw unavailable(new Error('Native Host requires a local drive root'));
+        if (!localVolumes.has(volume.toLowerCase())) {
+            // DriveInfo consults the OS drive type, including mapped SMB
+            // drives. Only the validated drive letter enters this command.
+            const type = Number(execFileSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', `[Console]::Write(([System.IO.DriveInfo]::new('${volume}')).DriveType.value__)`], { windowsHide: true, encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] }).trim());
+            if (![2, 3, 6].includes(type)) throw unavailable(new Error('Native Host requires local storage'));
+            localVolumes.set(volume.toLowerCase(), true);
+        }
+    } else if (['linux', 'android'].includes(process.platform)) {
+        if (!LOCAL_LINUX_FILESYSTEMS.has(Number(fs.statfsSync(root).type))) throw unavailable(new Error('Native Host filesystem has not demonstrated local ownership/durability'));
+    } else {
+        throw unavailable(new Error('Native Host ownership adapter is unavailable on this platform'));
+    }
+}
 
 function unavailable(cause) {
     const error = new Error('Native storage writer ownership is unavailable', { cause });
@@ -40,11 +62,21 @@ export class NativeHostOwner {
 
     async acquireLocal(root) {
         this.assertActive();
+        if (process.platform === 'win32' && path.resolve(root).startsWith('\\\\')) throw unavailable(new Error('Shared/network data roots are unsupported'));
         durableMkdir(root);
         const canonical = fs.realpathSync.native(root);
+        assertLocalRoot(canonical);
         // Case aliases resolve to the same identity even on case-insensitive FS.
         const key = process.platform === 'win32' ? canonical.toLowerCase() : canonical;
-        if (this.#guards.has(key)) return this.#guards.get(key).identity;
+        if (this.#guards.has(key)) {
+            const expected = this.#guards.get(key).identity;
+            try {
+                const actual = JSON.parse(fs.readFileSync(path.join(canonical, 'native-host.identity'), 'utf8'));
+                if (!actual || Object.keys(actual).length !== 3 || actual.schemaVersion !== expected.schemaVersion
+                    || actual.instanceId !== expected.instanceId || actual.guardAlgorithm !== expected.guardAlgorithm) throw new Error('Native Host identity changed while owned');
+            } catch (cause) { this.invalidate(); throw unavailable(cause); }
+            return expected;
+        }
         if (this.#pending.has(key)) return this.#pending.get(key);
         const pending = this.#acquire(canonical, key);
         this.#pending.set(key, pending);
