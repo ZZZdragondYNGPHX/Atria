@@ -38,6 +38,7 @@ test('real server world moves to the recycle bin and returns to its business pag
     await expect(panel.locator('.storage-center-result')).toContainText('Succeeded', { timeout: 15000 });
     await panel.locator('.storage-center-nav').getByRole('button', { name: 'Backups & recycle bin', exact: true }).click();
     await expect(panel.locator('.storage-center-recovery')).toContainText('Recoverable browser world');
+    await panel.getByRole('button', { name: 'View & restore', exact: true }).click();
     await panel.getByRole('button', { name: 'Restore original identity', exact: true }).click();
     await panel.getByRole('button', { name: 'Restore original identity', exact: true }).click();
     await expect(panel.locator('.storage-center-result')).toContainText('Succeeded', { timeout: 15000 });
@@ -68,12 +69,19 @@ test('browser records are fully enumerated, primary-key edits and duplicate crea
     });
     expect(checked).toEqual({ count: 250, changedKey: true, duplicate: true, original: 'original' });
     const panel = await open(page);
-    await panel.getByRole('combobox', { name: 'Storage scope', exact: true }).selectOption('browser');
+    await panel.getByRole('button', { name: 'Current browser', exact: true }).click();
     await panel.getByRole('button', { name: 'Device preferences', exact: true }).click();
     await panel.getByRole('checkbox', { name: 'Select atri_learning_v1', exact: true }).check();
     await panel.getByRole('button', { name: 'Preview permanent deletion', exact: true }).click();
     await expect(panel).toContainText('This action cannot be undone.');
     await panel.getByRole('button', { name: 'Permanently delete', exact: true }).click();
+    const confirmation = page.locator('dialog.popup[open]').filter({ has: page.locator('.storage-center-permanent-confirm') });
+    await expect(confirmation.locator('.popup-button-ok')).toHaveAttribute('aria-disabled', 'true');
+    await confirmation.getByRole('button', { name: 'Back to preview', exact: true }).click();
+    expect(await page.evaluate(() => localStorage.getItem('atri_learning_v1'))).not.toBeNull();
+    await panel.getByRole('button', { name: 'Permanently delete', exact: true }).click();
+    await confirmation.getByRole('checkbox').check();
+    await confirmation.locator('.popup-button-ok').click();
     await expect(panel.locator('.storage-center-result')).toContainText('Succeeded');
     expect(await page.evaluate(() => localStorage.getItem('atri_learning_v1'))).toBeNull();
 });
@@ -154,9 +162,9 @@ test('large real resource lists paginate and keep all filtered selections fixed 
         const response = await fetch('/api/users/storage/center/tasks', { method: 'POST', headers: getRequestHeaders(), body: '{}' });
         return (await response.json())[0]?.status;
     }), { timeout: 20000 }).toBe('stopped');
-    await expect(panel.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
+    await expect(panel.getByRole('heading', { name: 'Resources & cleanup', exact: true })).toBeVisible();
     await panel.getByRole('button', { name: 'Operation history', exact: true }).click();
-    await panel.getByRole('button', { name: /Move to recycle bin · Stopped/ }).click();
+    await panel.locator('.storage-center-task-card').filter({ hasText: 'Stopped' }).getByRole('button', { name: 'View operation', exact: true }).first().click();
     await expect(panel).toContainText('Not started');
     await panel.getByRole('button', { name: 'Review remaining items again', exact: true }).click();
     await expect(panel.getByRole('heading', { name: 'Review fixed operation' })).toBeVisible({ timeout: 20000 });
@@ -198,4 +206,111 @@ test('Chinese settings entry and mobile panel preserve focus and fit the viewpor
     expect(await panel.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     await page.screenshot({ path: info.outputPath('mobile-chinese-overview.png') });
     await page.keyboard.press('Escape'); await expect(panel).toHaveCount(0);
+});
+
+test('approved detail drawer preserves list context, focus, reduced motion and mobile interruption', async ({ page }, info) => {
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(async () => (await import('/scripts/native/product-client.js')).nativeProductClient.createWorld('Drawer continuity world'));
+    const panel = await open(page);
+    await panel.getByRole('button', { name: 'Worlds & knowledge', exact: true }).click();
+    await panel.getByRole('searchbox', { name: 'Search resources' }).fill('Drawer continuity world');
+    const trigger = panel.getByRole('button', { name: 'Drawer continuity world', exact: true });
+    await trigger.focus(); await trigger.press('Enter');
+    const drawer = panel.locator('.storage-center-drawer');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole('button', { name: 'Preview recycle bin move' })).toBeEnabled();
+    expect(await drawer.evaluate(element => element.getAnimations().filter(animation => animation.playState === 'running').length)).toBe(0);
+    await page.keyboard.press('Shift+Tab');
+    expect(await drawer.evaluate(element => element.contains(document.activeElement))).toBe(true);
+    await page.route('**/api/users/storage/center/preview', route => route.fulfill({ status: 503, json: { error: 'storage_usage_unavailable' } }), { times: 1 });
+    await drawer.getByRole('button', { name: 'Preview recycle bin move' }).click();
+    await expect(drawer.locator('[data-preview-error]')).toContainText('Usage could not be measured');
+    await expect(drawer.getByRole('button', { name: 'Preview recycle bin move' })).toBeEnabled();
+    await page.keyboard.press('Escape'); await expect(drawer).toBeHidden(); await expect(trigger).toBeFocused();
+    await expect(panel.getByRole('searchbox', { name: 'Search resources' })).toHaveValue('Drawer continuity world');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await trigger.click(); await expect(drawer).toBeVisible();
+    expect(await drawer.evaluate(element => element.getAnimations().length)).toBe(0);
+    await page.keyboard.press('Escape'); await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.setViewportSize({ width: 390, height: 844 }); await trigger.click();
+    await expect(drawer).toBeVisible(); await expect(drawer.getByRole('button', { name: 'Preview recycle bin move' })).toBeEnabled();
+    await page.screenshot({ path: info.outputPath('mobile-drawer.png') });
+    const handle = drawer.locator('.storage-center-drawer-header');
+    const box = await handle.boundingBox();
+    await page.mouse.move(box.x + 90, box.y + 18); await page.mouse.down();
+    await page.mouse.move(box.x + 90, box.y + 118, { steps: 12 });
+    // Resting the pointer invalidates the earlier drag velocity before release.
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- Model an intentionally resting finger before release.
+    await page.waitForTimeout(100); await page.mouse.up();
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- Interrupt the spring at a specified physical time, before it settles.
+    await page.waitForTimeout(100);
+    const interrupted = await handle.boundingBox();
+    await page.mouse.move(interrupted.x + 95, interrupted.y + 18); await page.mouse.down();
+    await page.mouse.move(interrupted.x + 95, interrupted.y + 24, { steps: 2 }); await page.mouse.up();
+    await expect.poll(() => drawer.evaluate(element => getComputedStyle(element).transform)).toBe('none');
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press('Escape'); await expect(drawer).toBeHidden();
+    expect(await panel.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+});
+
+test('late measurement keeps the active search node and selection while scope changes reject old results', async ({ page }) => {
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(async () => (await import('/scripts/native/product-client.js')).nativeProductClient.createWorld('Concurrent refresh world'));
+    const panel = await open(page);
+    await panel.getByRole('button', { name: 'Worlds & knowledge', exact: true }).click();
+    await panel.getByRole('checkbox', { name: 'Select Concurrent refresh world', exact: true }).check();
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/users/storage/center/snapshot', async route => {
+        const response = await route.fetch(); await held; await route.fulfill({ response });
+    }, { times: 1 });
+    await panel.getByRole('button', { name: 'Refresh', exact: true }).click();
+    const input = panel.getByRole('searchbox', { name: 'Search resources' });
+    await input.evaluate(element => { element.dataset.identityCheck = 'retained'; });
+    await input.fill('Concurrent refresh'); release();
+    await expect(panel.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
+    await expect(input).toHaveValue('Concurrent refresh'); await expect(input).toBeFocused();
+    await expect(input).toHaveAttribute('data-identity-check', 'retained');
+    await expect(panel.getByRole('checkbox', { name: 'Select Concurrent refresh world', exact: true })).toBeChecked();
+    let releaseOld;
+    const old = new Promise(resolve => { releaseOld = resolve; });
+    await page.route('**/api/users/storage/center/snapshot', async route => {
+        const response = await route.fetch(); await old; await route.fulfill({ response });
+    }, { times: 1 });
+    await panel.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await panel.getByRole('button', { name: 'Current browser', exact: true }).click();
+    await expect(panel.locator('.storage-center-category')).toHaveCount(3); releaseOld();
+    await expect(panel.getByRole('button', { name: 'Current browser', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(panel.locator('.storage-center-category')).toHaveCount(3);
+});
+
+test('partial accounting, quota limits and responsive summaries keep measurement semantics visible', async ({ page }, info) => {
+    await awaitMainUI(page, server.baseURL);
+    const panel = await open(page);
+    await page.route('**/api/users/storage/center/snapshot', async route => {
+        const response = await route.fetch(), data = await response.json();
+        await route.fulfill({ json: { ...data, completeness: 'partial', totalBytes: null, unknownBytes: null, recoveryUnavailable: true, recovery: [], errors: [{ source: 'media', reason: 'read unavailable' }] } });
+    }, { times: 1 });
+    await panel.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await expect(panel.locator('.storage-center-notice')).toContainText('known subtotal');
+    await expect(panel.locator('.storage-center-usage-bar')).toHaveCount(0);
+    await expect(panel.locator('.storage-center-summary-aside')).toContainText('Unavailable in recycle bin');
+    await page.route('**/api/users/storage/center/snapshot', async route => {
+        const response = await route.fetch(), data = await response.json();
+        await route.fulfill({ json: { ...data, quotaBytes: 0 } });
+    }, { times: 1 });
+    await panel.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await expect(panel.locator('.storage-center-notice')).toContainText('Account quota exceeded');
+    await panel.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await expect(panel.locator('.storage-center-notice')).toHaveCount(0);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.screenshot({ path: info.outputPath('approved-desktop-overview.png') });
+    for (const width of [320, 390, 768]) {
+        await page.setViewportSize({ width, height: 844 });
+        expect(await panel.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+        const metrics = await panel.locator('.storage-center-summary-action').evaluateAll(elements => elements.map(element => ({ height: element.clientHeight, content: element.scrollHeight })));
+        expect(metrics.every(item => item.content <= item.height + 1)).toBe(true);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: info.outputPath('approved-mobile-overview.png') });
 });

@@ -90,7 +90,7 @@ export async function openBrowserStorageInspector(page) {
     });
     const management = page.locator('.storage-center-dialog').last();
     await management.waitFor({ state: 'visible', timeout: 10_000 });
-    await management.getByRole('combobox', { name: 'Storage scope', exact: true }).selectOption('browser');
+    await management.getByRole('button', { name: 'Current browser', exact: true }).click();
     await management.getByRole('button', { name: 'Advanced tools', exact: true }).click();
     const inspector = management.locator('.storageInspectorContainer');
     await inspector.waitFor({ state: 'visible', timeout: 10_000 });
@@ -101,6 +101,9 @@ export async function openBrowserStorageInspector(page) {
 export async function confirmBrowserDeletion(page, path = []) {
     const panel = page.locator('.storage-center-dialog');
     await panel.getByRole('button', { name: 'Permanently delete', exact: true }).click();
+    const confirmation = page.locator('dialog.popup[open]').filter({ has: page.locator('.storage-center-permanent-confirm') });
+    await confirmation.getByRole('checkbox').check();
+    await confirmation.locator('.popup-button-ok').click();
     await panel.getByRole('heading', { name: 'Operation result', exact: true }).waitFor();
     await panel.getByRole('button', { name: 'Refresh resources', exact: true }).waitFor();
     await panel.getByRole('button', { name: 'Advanced tools', exact: true }).click();
