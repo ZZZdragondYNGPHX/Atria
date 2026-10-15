@@ -182,3 +182,11 @@
 - 纯依赖检查复用原VersionedJsonResourceHandler/NativeModelPromptPersistence读取exact Prompt/Route；不调用Provider/Tool/Secret。未接的capability/source/tool authority返回unknown/拒绝publish，不将临时未接线当最终功能完成。原Runtime write authority提取为同一可重入锁供Plan发布和原删除共用；原Prompt/Route/candidate删除读取派生的Plan pins，保留引用，不新建GC服务。原ResourceGraph删除诊断接同一refs adapter。
 - 实测：authoring HTTP四Engine16/16；原Prompt presets5/5、candidates20/20；真实Windows installed Host的原CSRF拒绝无token、合法会话获取boot并创建Native Plan、第二Host拒绝复测1/1。定向ESLint/git diff --check通过。主origin未注册approve/effect/graph/runstart路由是当前P1接线范围，不代表P3–P5应支持的能力已完成。
 - P1仍IN_PROGRESS：还需批量delete/restore等原Engine管理路径在SQL Owner丢失时完整fence、网络/共享root排除、软件kill与恢复/未知Effect/GC保留根更完整覆盖；P2 graph/effect、P3实际预算/Ports、P4消费者、P5UI、P6硬切及P7三端均未通过。当前只有Windows真实Host+HTTP证据，没有真实Browser Graph、CachyOS/Termux或外部模型/批准证明。
+
+## 2026-10-15 — P1第五组：原批量存储、恢复隔离与实际终止故障
+
+- Source `a1a6e4da7` → `0d4e062d7`，已提交推送。原SQL deleteUser/restoreUser接原Engine同fence管理事务，恢复清空与流导入原子，never重试已消耗stream；目标HostFence保留。失败回滚得到确认时保留仍有效Owner，COMMIT未知继续fail-closed。原cross-mode restore之后退休旧handle generation。
+- 修复同boot恢复隐患：RunRoot.hostGeneration与epoch分开保存/比较，恢复同Host也须blocked recovery；原root identity在持有时改变即失效，不换port绕过。Windows DriveInfo/UNC拒绝、Linux/Android本地FS分支已编码，后两端尚未实测，不宣称通过。
+- 新实证：MySQL/Pg分别只终止本测试DB持advisory lock的Owner session，旧Host拒写、新Owner读到原已提交记录，2/2；Windows真实进程kill的FS prepare/publish/install/ack与SQLite commit前后，6/6，Root/Event/command完整或全无，恢复不调用admit/send且blocked。不是硬件断电或COMMIT网络ACK丢失证明。
+- 本组测试：SQL原批量事务6/6；最新Run/SQL commit double合计38/38（另12项非FS的FS专属case N/A skip）；相关四Engine lifetime/metadata、Native backup、MySQL/Pg各方向roundtrip五文件78/78；定向ESLint/diff check通过。测试只用隔离临时数据，没有付费Provider。
+- P1保留完整Gate未过项；预算/发送/审批/Domain收据留P2–P4实现，三端/安全/质量最终证据留P7。已验证Host/Ledger允许继续P2纯控制流子工作，不提前记作完整P1/P2通过；原生产入口硬切仍等P6统一执行。

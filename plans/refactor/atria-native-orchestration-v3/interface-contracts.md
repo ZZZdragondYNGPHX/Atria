@@ -373,3 +373,9 @@ Plan create/save/publish、PlanBinding和command outcome沿原Engine同事务CAS
 Draft持久保存允许结构完整但图语义尚未完成（如未连边、无Output owner）的作者草稿；Validate返回绑定版本的invalid issue，Publish始终重验完整Graph和依赖，不把save当Publish准入。未知schema字段/可执行policy仍拒绝。RunRoot补充显式`cancelRequested:boolean`（与Effect knowledge state分开）；事件从seq0的admitted开始，与Root和command outcome同事务。原Host启动先取得data-root guard再初始化用户存储/迁移，之后各handle在原Engine恢复前取得root Owner并发布fence。
 
 P1 RunRepository start仅接受受信原authority admission回传SourceBinding和budgetAuthorityRef；V3只持引用，无余额/收费。beginAttempt写pending身份/输入digest/原grant与budget refs，不是dispatch。restart/recovery递增epoch并进入blocked/reconciling，保留原费用引用/progress/deadline，须P2/P3原source/receipt复核后才能执行。当前没有挂接runs/start的产品HTTP路径，不能把测试admission double当真实Domain Ports完成。
+
+### 17.2 恢复generation与原批量事务
+
+RunRoot新增`hostGeneration`，精确保存原Storage HostFence.generation，与单Run的epoch分开；同Host内恢复也必须使旧generation失效。原cross-mode restore完成后经原Storage lifecycle停止该handle准入/drain并退休cached fence；下一Native事务发布更高generation，旧Run只能经recover进入blocked/reconciling。原SQL delete/restore共享同一fence行锁；restore的清空+流式导入为一事务，采用`retryMode:never`，不重放已消费流。已ACK的rollback可保留当前Owner；COMMIT未知仍不可猜测。目标HostFence不删除、不从来源dump覆盖。
+
+原Storage root adapter在Windows用DriveInfo拒绝UNC/映射网络盘，Linux/Android采用明确本地FS类型集合；未知/shared/网络或无法证明namespace独占的root不开放。当前真实OS证据只有Windows，Linux/Android filesystem分支未实测，仍须P7真实验证。枚举依据：[Microsoft DriveType](https://learn.microsoft.com/en-us/dotnet/api/system.io.drivetype)、[Linux原始magic.h](https://raw.githubusercontent.com/torvalds/linux/master/include/uapi/linux/magic.h)，不是设备通过证明。
