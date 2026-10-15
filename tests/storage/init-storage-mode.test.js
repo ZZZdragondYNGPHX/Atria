@@ -88,8 +88,10 @@ const describeMysql = skipMysql ? describe.skip : describe;
 describeMysql('initStorage mode: "mysql" against live container', () => {
     let dbName;
     let url;
+    let root;
 
     beforeEach(async () => {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-init-mysql-'));
         dbName = `atria_test_init_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
         const rootConn = await mysql.createConnection(MYSQL_ROOT_URL);
         try {
@@ -108,13 +110,14 @@ describeMysql('initStorage mode: "mysql" against live container', () => {
         const c = await mysql.createConnection(MYSQL_ROOT_URL);
         try { await c.query(`DROP DATABASE IF EXISTS \`${dbName}\``); }
         finally { await c.end(); }
+        fs.rmSync(root, { recursive: true, force: true });
     });
 
     test('mode: "mysql" with storage.mysql.url picks MysqlEngine and pings', async () => {
         initStorage({
             mode: 'mysql',
-            directoriesByHandle: () => ({ root: '/tmp' }),
-            mysql: { url },
+            directoriesByHandle: () => ({ root }),
+            mysql: { url, nativeHostTopology: 'direct_single_primary' },
         });
         const engine = getStorageEngine();
         try {
@@ -130,8 +133,10 @@ const describePostgres = skipPostgres ? describe.skip : describe;
 describePostgres('initStorage mode: "postgres" against live container', () => {
     let schemaName;
     let url;
+    let root;
 
     beforeEach(async () => {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-init-pg-'));
         schemaName = `atria_test_init_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
         const rootClient = new pg.Client({ connectionString: PG_ROOT_URL });
         await rootClient.connect();
@@ -148,13 +153,14 @@ describePostgres('initStorage mode: "postgres" against live container', () => {
         await c.connect();
         try { await c.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`); }
         finally { await c.end(); }
+        fs.rmSync(root, { recursive: true, force: true });
     });
 
     test('mode: "postgres" with storage.postgres.url picks PgEngine and pings', async () => {
         initStorage({
             mode: 'postgres',
-            directoriesByHandle: () => ({ root: '/tmp' }),
-            postgres: { url },
+            directoriesByHandle: () => ({ root }),
+            postgres: { url, nativeHostTopology: 'direct_single_primary' },
         });
         const engine = getStorageEngine();
         try {

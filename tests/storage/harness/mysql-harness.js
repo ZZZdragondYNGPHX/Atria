@@ -45,7 +45,7 @@ export async function makeTempMysqlEngineHarness() {
         await rootConn.end();
     }
     const url = `${ROOT_URL}/${dbName}`;
-    const engine = new MysqlEngine({ url });
+    const engine = new MysqlEngine({ url, nativeHostTopology: 'direct_single_primary' });
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-contract-mysql-'));
     const dirs = buildStubDirs(stubRoot);
     const backupRoot = path.join(stubRoot, '_storage-migrations');

@@ -278,7 +278,7 @@ async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, eng
         // A scratch handle is not an account. Give the original converter a
         // private Engine/root under the same database Owner, without calling
         // live account quota or inventing a getUserDirectories fallback.
-        engine = new liveEngine.constructor({ url: liveEngine._nativeOwnerUrl, poolSize: 1 });
+        engine = new liveEngine.constructor({ url: liveEngine._nativeOwnerUrl, poolSize: 1, nativeHostTopology: liveEngine.nativeHostTopology });
         scratchTransaction = engine.withTransaction.bind(engine);
         liveEngine.nativeHostLifecycle.attachStorageEngine(engine, { directoriesByHandle: handle => {
             if (handle !== scratchHandle) throw new TypeError('Transient source owner mismatch');

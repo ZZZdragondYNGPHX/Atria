@@ -63,6 +63,7 @@ export function initStorage({
         _engine = new MysqlEngine({
             url: mysql.url,
             poolSize: mysql.poolSize,
+            nativeHostTopology: mysql.nativeHostTopology,
             acquireTimeoutMs,
             retries,
         });
@@ -73,6 +74,7 @@ export function initStorage({
         _engine = new PgEngine({
             url: postgres.url,
             poolSize: postgres.poolSize,
+            nativeHostTopology: postgres.nativeHostTopology,
             acquireTimeoutMs,
             retries,
         });

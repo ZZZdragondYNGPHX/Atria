@@ -9,6 +9,7 @@ import { withRetry, isKnownRollbackError } from '../retry.js';
 import { StorageCommitUnknownError } from '../errors.js';
 import { logEngineError } from '../engine-logger.js';
 import { TransactionScope } from './transaction-scope.js';
+import { assertNativeSqlTopology, inspectMysqlNativeTopology, readMysqlNativeSession, assertNativeSqlSession } from '../native-sql-topology.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -108,11 +109,13 @@ export class MysqlEngine {
         poolSize = 10,
         acquireTimeoutMs = DEFAULT_ACQUIRE_TIMEOUT_MS,
         retries = DEFAULT_RETRIES,
+        nativeHostTopology = 'unknown',
     } = {}) {
         if (typeof url !== 'string' || !url) {
             throw new TypeError('MysqlEngine requires { url: "mysql://user:pass@host:port/db" }');
         }
         this.kind = 'mysql';
+        Object.defineProperty(this, 'nativeHostTopology', { value: nativeHostTopology });
         this._nativeOwnerUrl = url;
         Object.defineProperty(this, 'nativeHostOwnershipKey', { value: 'mysql:' + createHash('sha256').update(url).digest('hex') });
         this._transactionScope = new TransactionScope();
@@ -171,18 +174,20 @@ export class MysqlEngine {
         }
     }
 
+    assertNativeHostTopology() { assertNativeSqlTopology(this.nativeHostTopology); }
+
     async acquireNativeHostOwnership(onLost) {
+        this.assertNativeHostTopology();
         // Never take the lifetime lock from the business pool (including max=1).
         const conn = await mysql.createConnection(this._nativeOwnerUrl);
         conn.on('error', onLost);
         conn.on('end', onLost);
         try {
-            const [databaseRows] = await conn.query('SELECT DATABASE() AS databaseName');
-            const database = databaseRows[0]?.databaseName;
-            if (!database) throw new Error('Native Owner requires an actual database');
+            const session = await inspectMysqlNativeTopology(conn), database = session.databaseName;
             const lockName = 'atria.native-host.' + createHash('sha256').update(database).digest('hex').slice(0, 40);
             const [rows] = await conn.execute('SELECT GET_LOCK(?, 0) AS acquired', [lockName]);
             if (rows[0]?.acquired !== 1) throw new Error('Native database already has a Host owner');
+            assertNativeSqlSession(session, await readMysqlNativeSession(conn));
             return async () => { await conn.end(); };
         } catch (error) { await conn.end().catch(() => {}); throw error; }
     }

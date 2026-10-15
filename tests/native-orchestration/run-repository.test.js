@@ -75,7 +75,7 @@ describe.each(CONTRACT_HARNESSES)('$name durable Host RunLedger', ({ make, name 
     test('new Host cannot mutate old-boot Run before explicit recovery; recovery stays blocked and preserves counters', async () => {
         const root = await repository.start(h.handle, command(), startBody());
         await h.engine.close();
-        h.engine = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, directoriesByHandle: () => h.dirs });
+        h.engine = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, directoriesByHandle: () => h.dirs });
         lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         repository = makeRepository();
         await expect(repository.cancel(h.handle, command(), { ...guard(root), reasonCode: 'old_boot' })).rejects.toMatchObject({ code: 'native_orchestration_run_conflict' });

@@ -54,7 +54,7 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
         for (const alternate of ['same', ...(['mysql', 'postgres'].includes(h.engine.kind) ? ['different'] : [])]) {
             const root = alternate === 'same' ? h.dirs.root : path.join(h.dataRoot, 'other-root');
             fs.mkdirSync(root, { recursive: true });
-            const other = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => ({ ...h.dirs, root }) });
+            const other = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => ({ ...h.dirs, root }) });
             extras.push(other);
             attachNativeHostLifecycle(other, { directoriesByHandle: () => ({ ...h.dirs, root }) });
             await expect(other.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
@@ -80,7 +80,7 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
     test('reopen advances the fence and SQL lifetime ownership leaves a pool of one free for business', async () => {
         const before = await h.engine.withTransaction(h.handle, tx => lifecycle.assertWriter(h.handle, tx));
         await h.engine.close();
-        const reopened = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        const reopened = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => h.dirs });
         extras.push(reopened);
         const next = attachNativeHostLifecycle(reopened, { directoriesByHandle: () => h.dirs });
         const after = await reopened.withTransaction(h.handle, tx => next.assertWriter(h.handle, tx));
@@ -91,7 +91,7 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
 
     test('storage handover shares Host and SQL lifetime ownership until every participating Engine has drained', async () => {
         const before = await h.engine.withTransaction(h.handle, tx => lifecycle.assertWriter(h.handle, tx));
-        const sibling = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        const sibling = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => h.dirs });
         extras.push(sibling);
         const second = lifecycle.attachStorageEngine(sibling);
         const after = await sibling.withTransaction(h.handle, tx => second.assertWriter(h.handle, tx));
@@ -100,13 +100,13 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
         await expect(h.engine.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
         await h.engine.close();
         await expect(sibling.withTransaction(h.handle, async () => 'still-owned')).resolves.toBe('still-owned');
-        const independent = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        const independent = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => h.dirs });
         extras.push(independent);
         attachNativeHostLifecycle(independent, { directoriesByHandle: () => h.dirs });
         await expect(independent.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
         await independent.close();
         await sibling.close();
-        const reopened = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        const reopened = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => h.dirs });
         extras.push(reopened);
         attachNativeHostLifecycle(reopened, { directoriesByHandle: () => h.dirs });
         await expect(reopened.withTransaction(h.handle, async () => 'new-owner')).resolves.toBe('new-owner');
@@ -136,7 +136,7 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
         await expect(h.engine.withTransaction(h.handle, async () => 'not-retired')).resolves.toBe('not-retired');
         await lifecycle.withMaintenance(async () => true, { retireWhen: result => result });
         await expect(h.engine.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
-        const replacement = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        const replacement = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => h.dirs });
         extras.push(replacement);
         lifecycle.attachStorageEngine(replacement);
         await h.engine.close();
@@ -146,7 +146,7 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
     test('closing private scratch releases its local guard while retaining the original live Host', async () => {
         await h.engine.withTransaction(h.handle, async () => {});
         const root = path.join(h.dataRoot, 'owned-private-scratch'), dirs = { ...h.dirs, root };
-        const scratch = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => dirs });
+        const scratch = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => dirs });
         extras.push(scratch);
         lifecycle.attachStorageEngine(scratch, { directoriesByHandle: () => dirs });
         // A separate handle avoids touching the live handle's physical fence.

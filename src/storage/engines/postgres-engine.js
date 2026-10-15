@@ -9,6 +9,7 @@ import { StorageCommitUnknownError } from '../errors.js';
 import { createHash } from 'node:crypto';
 import { logEngineError } from '../engine-logger.js';
 import { TransactionScope } from './transaction-scope.js';
+import { assertNativeSqlTopology, inspectPgNativeTopology, assertNativeSqlSession } from '../native-sql-topology.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -67,11 +68,13 @@ export class PgEngine {
         poolSize = 10,
         acquireTimeoutMs = DEFAULT_ACQUIRE_TIMEOUT_MS,
         retries = DEFAULT_RETRIES,
+        nativeHostTopology = 'unknown',
     } = {}) {
         if (typeof url !== 'string' || !url) {
             throw new TypeError('PgEngine requires { url: "postgresql://user:pass@host:port/db" }');
         }
         this.kind = 'postgres';
+        Object.defineProperty(this, 'nativeHostTopology', { value: nativeHostTopology });
         this._nativeOwnerUrl = url;
         Object.defineProperty(this, 'nativeHostOwnershipKey', { value: 'postgres:' + createHash('sha256').update(url).digest('hex') });
         this._transactionScope = new TransactionScope();
@@ -129,15 +132,20 @@ export class PgEngine {
         }
     }
 
+    assertNativeHostTopology() { assertNativeSqlTopology(this.nativeHostTopology); }
+
     async acquireNativeHostOwnership(onLost) {
+        this.assertNativeHostTopology();
         const client = new pg.Client({ connectionString: this._nativeOwnerUrl });
         client.on('error', onLost);
         client.on('end', onLost);
         try {
             await client.connect();
+            const session = await inspectPgNativeTopology(client);
             const digest = createHash('sha256').update('atria.native-host-owner.v1').digest();
             const { rows } = await client.query('SELECT pg_try_advisory_lock($1, $2) AS acquired', [digest.readInt32BE(0), digest.readInt32BE(4)]);
             if (rows[0]?.acquired !== true) throw new Error('Native database already has a Host owner');
+            assertNativeSqlSession(session, await inspectPgNativeTopology(client));
             return async () => { await client.end(); };
         } catch (error) { await client.end().catch(() => {}); throw error; }
     }

@@ -106,11 +106,11 @@ async function buildLiveEngineAndRepos({ getUserDirectories, getConfigValue, dat
     else if (mode === 'mysql') {
         const cfg = getConfigValue('storage.mysql', null);
         if (!cfg?.url) throw new Error('storage.mode=mysql but storage.mysql.url is unset');
-        engine = new MysqlEngine({ url: cfg.url, poolSize: cfg.poolSize });
+        engine = new MysqlEngine({ url: cfg.url, poolSize: cfg.poolSize, nativeHostTopology: cfg.nativeHostTopology });
     } else if (mode === 'postgres') {
         const cfg = getConfigValue('storage.postgres', null);
         if (!cfg?.url) throw new Error('storage.mode=postgres but storage.postgres.url is unset');
-        engine = new PgEngine({ url: cfg.url, poolSize: cfg.poolSize });
+        engine = new PgEngine({ url: cfg.url, poolSize: cfg.poolSize, nativeHostTopology: cfg.nativeHostTopology });
     } else {
         throw new Error(`unknown storage mode: ${mode}`);
     }

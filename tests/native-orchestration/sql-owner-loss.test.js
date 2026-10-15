@@ -48,7 +48,7 @@ describe.each(CONTRACT_HARNESSES.filter(item => ['MysqlEngine', 'PgEngine'].incl
             await expect(h.engine.withTransaction(h.handle, tx => tx.putResource(key, nativeRecord({ marker: 'old-writer' })))).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
             const root = path.join(h.dataRoot, 'new-owner');
             fs.mkdirSync(root, { recursive: true });
-            next = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1 });
+            next = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1 });
             attachNativeHostLifecycle(next, { directoriesByHandle: () => ({ ...h.dirs, root }) });
             expect((await next.withTransaction(h.handle, tx => tx.getResource(key))).doc.marker).toBe('committed-before-loss');
         } finally { await next?.close(); await h.engine.close(); await h.cleanup(); }

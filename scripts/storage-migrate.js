@@ -80,6 +80,8 @@ Options:
   --mysql-pool-size <n>  MySQL pool size (default: storage.mysql.poolSize or 10)
   --postgres-url <url>   PostgreSQL connection string (same rule as --mysql-url)
   --postgres-pool-size <n> PostgreSQL pool size (default: storage.postgres.poolSize or 10)
+  SQL Native Host requires storage.<mode>.nativeHostTopology=direct_single_primary
+  for the exact verified URL in config.yaml; changing the URL requires re-verification.
   --from-zip <path>      Cross-mode restore: ingest a backup ZIP into the live storage
                          engine (declared in config.yaml). Source engine is read from
                          the ZIP's _engine_meta.json. When the source is mysql/postgres,
@@ -268,18 +270,10 @@ async function main() {
     }
 
     // Resolve mysql/postgres credentials: CLI flag wins, fall back to config.yaml.
+    const { resolveStorageDbConfig } = await import('../src/storage/config-persistence.js');
     function resolveDbConfig(mode, urlFlag, poolSizeFlag) {
-        if (urlFlag) {
-            return { url: urlFlag, poolSize: poolSizeFlag ?? undefined };
-        }
-        const fromConfig = getConfigValue(`storage.${mode}`, null);
-        if (fromConfig && typeof fromConfig.url === 'string' && fromConfig.url) {
-            return {
-                url: fromConfig.url,
-                poolSize: poolSizeFlag ?? (Number.isFinite(fromConfig.poolSize) ? fromConfig.poolSize : undefined),
-            };
-        }
-        return null;
+        return resolveStorageDbConfig({ fromConfig: getConfigValue(`storage.${mode}`, null),
+            inline: { ...(urlFlag ? { url: urlFlag } : {}), ...(poolSizeFlag !== null ? { poolSize: poolSizeFlag } : {}) } })?.engine ?? null;
     }
 
     const dbConfigs = { mysql: null, postgres: null };

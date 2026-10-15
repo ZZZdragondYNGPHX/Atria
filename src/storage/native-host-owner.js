@@ -90,6 +90,10 @@ export class NativeHostOwner {
     async acquireDatabase(engine) {
         this.assertActive();
         const key = engine.nativeHostOwnershipKey;
+        try {
+            if (typeof engine.assertNativeHostTopology !== 'function') throw new TypeError('Native SQL topology adapter is unavailable');
+            engine.assertNativeHostTopology();
+        } catch (error) { throw unavailable(error); }
         if (typeof engine.acquireNativeHostOwnership !== 'function' || !/^(mysql|postgres):[a-f0-9]{64}$/.test(key)) throw unavailable();
         if (!this.#databases.has(key)) {
             const pending = (async () => {
