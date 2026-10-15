@@ -1,6 +1,6 @@
-# D9 E1 — 全域验收矩阵、证据分层与三端收口（冻结目标，未测试）
+# D9 E1 — 全域验收矩阵、证据分层与三端收口（冻结目标，实施证据分账）
 
-> 2026-10-15 D9/E1 选择后，本文件是 **V3 阶段验收条款与实际证据门槛的唯一详细入口**。实施阶段与依赖见 [implementation-plan.md](implementation-plan.md)；E0 静态审计/当前阻塞见 [e0-audit.md](e0-audit.md)，业务/安全边界继续由 D1–D8 原模块与正式领域 Authority 持有。本文件制定**必须证明什么**，不是“本轮通过”。当前没有执行新 V3 的 Node/CI/Browser/付费外部调用或 Windows/Linux/Termux 实机验收。
+> 2026-10-15 D9/E1 选择后，本文件是 **V3 阶段验收条款与实际证据门槛的唯一详细入口**。实施阶段与依赖见 [implementation-plan.md](implementation-plan.md)；E0 静态审计/当前阻塞见 [e0-audit.md](e0-audit.md)，业务/安全边界继续由 D1–D8 原模块与正式领域 Authority 持有。本文件制定**必须证明什么**，不是“本轮通过”。此处定义验收要求；实施后的真实证据以§8.2、§9.1及同一Record为准，不把设计文字当PASS。
 
 ## 1. 验证级别与不得等同的证据
 
@@ -75,7 +75,7 @@
 | **P7 → P8** | L1/L2 本地相关验证、经授权的 L4 真实外部/质量测试、Windows/Linux/Termux L3 和高风险安全矩阵全覆盖且 PASS | 缺设备/账号/安全证据保持 BLOCKED，不进入最终集成 |
 | **P8 → Main** | 实际测试 Head、无残留旧代码/重要缺陷、完整 Record、Governance 集成门槛及真实远端 | 不合并或清理未完成的工作 |
 
-**本轮未执行产品测试；实际静态文档检查见同一 Record**；以上 “PASS” 是将来应当填入真实 Record 的状态，并非 D9 已通过的宣告。严重安全错误一律 fail-closed，Unknown 保留证据；质量问题按真实来源迭代，不通过降低硬约束/伪造评委/删除不利日志达成表面绿灯。
+**以上是阶段准入要求，局部实测不自动通过整阶段；当前证据见§8.2、§9.1及同一Record**。严重安全错误一律 fail-closed，Unknown 保留证据；质量问题按真实来源迭代，不通过降低硬约束/伪造评委/删除不利日志达成表面绿灯。
 
 ## 7. 三端真实客户端可执行方案与当前环境
 
@@ -83,10 +83,10 @@
 
 | 平台/Store 组合 | 执行前真实准备 | 不能接受的替代证据 | 当前状态 |
 | --- | --- | --- | --- |
-| Windows / FS 与 SQLite 分别 | 独立测试 account/data root、精确产品 build、真实 installed Node+浏览器、原 Credential/Source grants；路径含空格/中文，确认文件锁和 writer 拒绝 | 当前 shell 存在、仅静态测试、桌面截图或 API fixture | V3 artifact/Host 不存在：NOT_RUN；运行证据 BLOCKED |
+| Windows / FS 与 SQLite 分别 | 独立测试 account/data root、精确产品 build、真实 installed Node+浏览器、原 Credential/Source grants；路径含空格/中文，确认文件锁和 writer 拒绝 | 当前 shell 存在、仅静态测试、桌面截图或 API fixture | 已有隔离Node Host工程实证；完整Browser产品流程NOT_RUN，不能以fixture代替 |
 | CachyOS KDE / FS 与 SQLite 分别 | 真实 CachyOS 机器版本、kernel/Node/browser/FS 类型、测试账户与目录权限；使用原产品启动方式 | WSL/容器/其他 Linux 发行版、Windows 跑出的相同测试 | 未获得目标机器连接/版本证据：BLOCKED |
 | Android Termux / FS 与 SQLite 分别 | 真实 Android 设备、OS/Termux 来源版本、Node/native addon 架构、移动浏览器、app-private 可写目录与 localhost 连接；原安装流程能加载 SQLite addon | Playwright mobile viewport、桌面 Chrome device emulation、Android 只有截图而无本地 Host | 未取得设备/连接与 V3 artifact：BLOCKED |
-| MySQL / Postgres adapters | 可用测试服务/账号，原 Engine migrations 与 new kinds、CAS/tx/backup/ref 行为；不接用户生产库 | generic API 名称相同或 SQLite 测试通过 | 未提供服务证据，NOT_RUN/BLOCKED；不能默默退回 FS |
+| MySQL / Postgres adapters | 可用测试服务/账号，原 Engine migrations 与 new kinds、CAS/tx/backup/ref 行为；不接用户生产库 | generic API 名称相同或 SQLite 测试通过 | Docker隔离MySQL/Pg已取得指定用例实证；未执行的故障/客户端用例仍NOT_RUN，详见同一Record |
 
 每个平台在可用后执行同一组 C01–C12，保留 OS 特有附加结果。CachyOS/Termux 的连接只在真实目标可用时建立，不猜 SSH host、不下载替代发行版、不触碰生产数据。
 
@@ -109,7 +109,7 @@
 
 ## 8. 用例与已有测试的精确衔接
 
-已有测试文件只表示可复用 harness/断言，本轮**未运行**。未来验证命令依据当时 package scripts/测试 runner 配置执行并记录；不在 docs 编造目前不存在的新测试命令或 CI job。
+以下测试入口是复用资产映射；哪些实际已运行及其范围只以同一Record为准，不由表格中出现文件名推断PASS。
 
 | v1 case group | 现有可复用证据/测试入口 | 必须新增或重接的关键断言 | 阶段 |
 | --- | --- | --- | --- |
@@ -134,7 +134,7 @@
 
 每条 evidence 至少：`caseId, productCommit, planCommit, platform, osVersion, nodeVersion, browserVersion, engine, testAccountScope, sourceFixtureId, action, expected, observed, status, failureCode, evidenceDigest, testedAt`。跨端同 case 分开记录，NOT_RUN 不填虚构 observed。公共 Record 只存脱敏摘要/hash/测试名/限制；请求响应、用户文本、nonce/token、原始截图等临时测试资料遵守 Governance §13.1 的清理要求，不为复核已删材料重复付费跑历史测试。
 
-当前：L0 tracked scanner/AST，以及P1/P2和P3原Session bank的部分L1/L2工程证据已取得，具体commit/测试数/故障范围归[同一Record](../../../records/refactor/atria-native-orchestration-v3.md)。包括四Engine authoring/Ledger/Owner、Windows真实Host/进程kill、受控Port的GraphPatch/Effect/Approval/Join/Fanout、原共用预算子额度/Session CAS；这些子证据不构成V01–V10或完整P阶段PASS。P3真实V3 Ports/三域/费用、P4–P8、CL01–CL12完整客户端、真实模型/Tool/A2A/MCP/可信Review Origin/人工质量仍NOT_RUN，对缺设备/服务/批准者项明确BLOCKED。未集成main，不能把文档检查或受控Port当完整领域验收。
+当前：L0 tracked scanner/AST，以及P1/P2/P3的部分L1与真实隔离存储/Host工程证据已取得，精确commit/测试数/故障范围归[同一Record](../../../records/refactor/atria-native-orchestration-v3.md)。包括四Engine authoring/Ledger/Owner、Windows测试Host进程kill、受控Graph/Effect/Join、三域原银行、实际GenerationHost本地HTTP发送、原Audience编译、原Tool协议、恢复保留与父子共享预算/逻辑计数。它们不构成完整V01–V10或任一完整P阶段PASS，更不代表L2所需完整installed Host+Browser流程。P4–P8、CL01–CL12完整客户端、真实外部Provider/Tool部署/费用、可信Review Origin及人工质量仍NOT_RUN；缺设备/账号/可信准入者BLOCKED。P3具体分账见§9.1，未集成main。
 
 ## 9. R项设计收口后的新增实施反例
 
@@ -153,3 +153,19 @@
 | V09-native-domains | P1/P3/P7 W01/W02/W04 | 六个Orchestration kinds + 原Storage `atri_host_fence` + 原RunControl `atri_rp_run_control`分别注册四Engine、backup/restore/delete/GC/ref；恢复暂停、unknown/已花额度保留，不把原领域扩展误称影子账本 |
 
 Review Origin语义遵守D8完整可审查交互；主app仍显示Timeline/脱敏待办/launch ref，真实决定在受控页面回执后更新。不同origin只是同Host可信输入边界，不是第二Host/账号体系。对于原支持的正式Studio/Native安全操作，不能仅以默认拒绝占位完成产品；其可信通道必须在P5/P7真正通过。
+
+### 9.1 P3后端子工作后的Gate复核
+
+2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第十组的测试详细列表和失败/变异证据唯一保留于同一Record；此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
+
+| 维度 | 已有实际子证据 | 未完成与准入状态 |
+| --- | --- | --- |
+| V04银行/发送 | 原三域CAS、稳定Effect+ordinal、local typed ref、retry/fallback、重放拒绝、unknown/late settle；真实隔离MySQL/Pg指定case | Session role/background受信lane组合未实现，当前拒绝；真实费用NOT_RUN。P3/V04未整体PASS。 |
+| 父子Run/逻辑界限 | 持久Delegate身份→原reservation→observe/confirm；祖先取消/精确额度/实际活动Attempt/共享逻辑counter、原子回滚与重放反例 | 原Scheduler完整permits、Handoff/child Result消费、实际Plan授权adapter仍IMPLEMENTATION_PENDING，不能宣称完整P2/P3通过。 |
+| S2/S4 Context | 原Session Audience plan成为实际HTTP输入，send/consume撤权拒绝 | Project/RP原Audience adapter、Hybrid真实检索/跨Agent Result与Disclosure仍IMPLEMENTATION_PENDING；自由文本泄漏质量NOT_RUN。 |
+| W05 Tool/Review | 原Skill/MCP/A2A/CredentialTarget、逐请求复核、持久A2A ownership和R3拒绝 | 缺完整原Effect receipt时unknown；真实Review Origin/再认证/批准尚未实现。真实外部协议部署/高危动作NOT_RUN且安全准入BLOCKED。 |
+| V09恢复/GC | 原bank不退费、review_required、Run引用保留、危险overwrite/full/merge提前拒绝；四Engine指定case | 完整可信restore/release/source闭包仍IMPLEMENTATION_PENDING；当前拒绝不是完整恢复PASS。 |
+| 产品API/消费者 | Plan authoring HTTP真实挂载；执行服务为内部组合 | Binding/Run/Projection/Approval产品API与P4原业务消费者尚未交付，IMPLEMENTATION_PENDING；不能交给Browser代行。 |
+| 旧链与最终验收 | 旧链审计附件和替代计划存在 | P6硬切未执行；P7/P8未开始。完整Windows浏览器NOT_RUN，CachyOS/Termux实机连接/版本未取得为BLOCKED；L4真实费用/质量NOT_RUN。 |
+
+IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现的工作，不是假称外部阻塞或再请求开发授权。后端与前端并行整合按[接口交接入口](backend-integration.md)推进，缺失API须先由Host实现；P7通过前不集成main。

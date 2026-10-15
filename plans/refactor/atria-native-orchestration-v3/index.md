@@ -12,7 +12,7 @@
 - 第六轮状态：**D6 已冻结：S2 Native Effect Authorization Gate；按实际动作/后果授权、分级审批、Secret/Egress 保护、Prompt Injection 隔离及持久 EffectIntent/Receipt 安全恢复**。
 - 第七轮状态：**D7 已冻结：N2 分层叙事与条件质量回路，区分 Actor Cognition、Narrative Intent、Character Expression 与唯一 Narrator；反全知、玩家自主权、Project Review/Commit 和质量分层**。
 - 第八轮状态：**D8 已冻结：U2 Graph Canvas + Inspector 双向编辑、原生 Plan Draft/Validate/Publish、运行 Timeline 默认/Graph 切换、Host RunProjection/Diagnostics、可信审批及 PC/移动等价编辑能力**。
-- 第九轮状态：**D9=E1，E0_DESIGN_READY。用户已于2026-10-15明确授权正式开发；同一实现分支已从最新main建立，P1 IN_PROGRESS。P1–P8产品证据逐组取得，未测项仍NOT_RUN/BLOCKED。**
+- 第九轮状态：**D9=E1，E0_DESIGN_READY。用户已于2026-10-15明确授权正式开发；同一实现分支已从当时最新main建立，P1/P2/P3均有局部实证，完整Gate未通过。P1–P8产品证据逐组取得，未测项仍NOT_RUN/BLOCKED。**
 - 文档性质：冻结设计与实施路由；开发已获授权。实际代码/测试/提交状态只归同一Record；最终验收通过后才集成main。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -47,6 +47,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [e0-audit.md](e0-audit.md) | **E0_DESIGN_READY**：§11是当前R01–R08设计/实施证据分账及核销；§1–10保留早期审计事实 | D9 E0 与实施方案讨论 |
 | [e0-consumer-inventory.md](e0-consumer-inventory.md) / [e0-import-graph.md](e0-import-graph.md) | 最新 main 全仓逐文件/行号、151 文件清退 manifest、AST 直接/间接依赖及动态表达式证据附件；处置仍归 e0-audit | E0 / P6 引用闭包复核 |
 | [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：6个编排metadata kinds及原Storage/RunControl域扩展；§12–16收束HostOwner/RP预算/Chat输出/ReviewOrigin/SQL未知；实证未通过 | E0 物理接口核查与实施 P1–P4 |
+| [backend-integration.md](backend-integration.md) | 实际已挂载API、内部Host接口、前端并行任务整合边界与真实未交付项 | 跨任务整合/前端接入前 |
 | [implementation-plan.md](implementation-plan.md) | **D9 E1 正式路线**：E0 建分支前置、P1–P8 依赖/验收门槛、全域消费者硬切及工作包 | E0 审核、正式交接与实施期间 |
 | [acceptance-matrix.md](acceptance-matrix.md) | **D9 冻结验收目标**：L0–L4、Graph/Effect/预算/安全/RP/Studio/UI 与三端真实客户端 Gate | 每阶段/最终收口与 Record 证据 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
@@ -76,4 +77,4 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 必读本 `index.md` → [decisions.md](decisions.md) D9 → [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账) 当前设计核销 → [interface-contracts](interface-contracts.md) 物理合同 → [implementation-plan §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 独立Gate → [acceptance-matrix](acceptance-matrix.md) 实施后验证。开发前重核main delta及相关authority；真实consumer trace、故障/预算/审批和三端验证在各P阶段取得。未执行项目不写PASS；**当前已在任务分支开发，P7通过前不集成main**。
 
-当前生效状态：**E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED（2026-10-15当前用户明确指令）；P1=IN_PROGRESS；P2纯控制流子工作=IN_PROGRESS；P3共用预算/原Session bank子工作=IN_PROGRESS；P4–P8=NOT_STARTED；最终产品验收NOT_READY**。P2依赖的Host/持久Ledger已有局部实证，P3局部原银行验证仍不等于V3真实Port/发送接通，完整阶段Gate未提前标PASS；不接真实付费或外部mutation。Gate定义唯一来源为 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离)，阶段证据见同一Record。
+当前生效状态：**E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED；P1/P2/P3=IN_PROGRESS；P4–P8=NOT_STARTED；P3阶段Gate及最终产品验收NOT_READY**。同一Record W04/P3第五至第十组记录了三域原预算、GenerationHost稳定send、Source/Effect/Context/Tool及父子Run的实际子证据；Docker已恢复，指定MySQL/Pg正向测试已有真实证据，早期服务不可用记录保留。局部通过不等于完整领域授权/产品消费者/可信Review/三端已完成。实际接口及并行前端整合入口见 [backend-integration](backend-integration.md)，Gate当前分账见 [acceptance §9.1](acceptance-matrix.md#91-p3后端子工作后的gate复核)。不接真实付费或未授权外部mutation，未集成main。
