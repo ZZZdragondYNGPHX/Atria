@@ -4,6 +4,7 @@ import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../m
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { createBindingSourceAuthority } from './binding-source-authority.js';
+import { validateModelCapability } from './model-capability-authority.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
 export function createOrchestrationAuthoringService(engine, sources = {}) {
@@ -25,6 +26,11 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
         validateDependencies: async ({ handle, tx, dependencyPins, definition }) => {
             const evidence = [], issues = [];
             for (const capability of definition.capabilityCeiling) {
+                if (capability === 'generation.send') {
+                    const result = await validateModelCapability({ handle, definition, dependencyPins, resolver: sources.modelResolver });
+                    evidence.push(...result.evidence); issues.push(...result.issues);
+                    continue;
+                }
                 issues.push({ code: 'native_orchestration_capability_authority_unavailable', severity: 'unknown', fieldPath: 'capabilityCeiling.' + capability });
                 evidence.push({ capability, status: 'unknown' });
             }

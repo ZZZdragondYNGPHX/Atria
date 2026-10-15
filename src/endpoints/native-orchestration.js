@@ -5,10 +5,14 @@ import { assertObject } from '../../public/shared/native-orchestration-contracts
 import { getNativeSessionServices } from './native-session.js';
 import { getNativeStudioServices } from './native-studio.js';
 import { RpRunControl } from '../native/rp-run-control.js';
+import { getNativeGenerationHost } from './native-generation.js';
+import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 
 const services = () => {
     const engine = getStorageEngine(), { core } = getNativeSessionServices(), { studio, agent } = getNativeStudioServices();
-    return createOrchestrationAuthoringService(engine, { sessionCore: core, studio, projectAgent: agent, rpControl: new RpRunControl({ engine }) });
+    const host = getNativeGenerationHost();
+    const modelResolver = new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers });
+    return createOrchestrationAuthoringService(engine, { sessionCore: core, studio, projectAgent: agent, rpControl: new RpRunControl({ engine }), modelResolver });
 };
 
 /** Original app auth + CSRF middleware precedes this Native namespace. */
