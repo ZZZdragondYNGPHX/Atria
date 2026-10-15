@@ -123,6 +123,50 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 ## Stage 2 — 统计与配额
 
 - Status: In progress；基础契约测试通过不表示后续生命周期与界面已交付。
+- 契约产品提交：`ad8941577`。其后实现仍在本任务分支持续开发，未集成 main。
+- 增加 SQL 账户内容只读枚举，覆盖全部 Native 行、未知 kind 与 legacy 表；FS 覆盖 Native、完整项目 Git、Blob、备份及未知文件。数据库/WAL 独立计物理量；失败范围保持 partial/null。
+- Engine 写入准入和统计复用 canonical UTF-8 内容量；账户串行提交、替换净增量、失败回滚及超额后减少占用已取得针对性证据。素材与项目文件已接入文件增量门禁；所有写入口及完整流程仍在补齐，不能据此宣布 A06/A07 全部完成。
+- 实际验证：accounting 测试在 FS/SQLite/Postgres 上 9 条通过；覆盖全部 44 kinds、项目 Git、共享本体单计、备份/unknown 对账、并发配额竞争、等量替换、失败后原值与读取失败表达。
+- Docker daemon 初始不可用，启动本地 Docker Desktop 后已建立本任务独立 Postgres 容器；Postgres 真实测试已执行。MySQL 镜像仍在拉取，尚无本轮 MySQL 通过证据。
+- 修复先前备份样本的真实 key 类型（hash/token/ID），继续定位实际产品缺口：FS transient source 只重绑定顶层 Native 文件，漏掉 session 子目录；migration verify 使用跨 VM prototype 比较而非持久 JSON 内容。已修复为递归身份检查/重绑定和 canonical 内容比较。
+- 实际验证：`native-backup-roundtrip.test.js` 8 条全部通过，覆盖 FS→FS、FS→SQLite、SQLite→FS、SQLite→SQLite、缺失 Blob 保留原对象、assets-only 保护 Native 闭包。与 accounting 同进程实际合计 17 条通过。
+
+## Stage 3 — 生命周期与执行基础
+
+- Status: In progress；尚未完成全部种类、运行保护、失败注入与批量验收。
+- 原生恢复记录复用 maintenance kind / Engine 事务；Native closure 转换复用 FsNativeJournal/SQL 提交。新增 GC 持久保留根、恢复依赖保护和被回收身份的写入门禁。
+- 项目文件采用 preparing/retained/restoring/purging 持久状态及目录移动；完整 Git 和文件哈希随闭包验证。未完成文件状态支持协调修复，保留 Blob 责任不会由 UI 内存决定。
+- 实际验证：recovery 测试在 FS/SQLite/Postgres 上 9 条通过；真实 SessionCore 会话及手动存档原 ID 往返、作品依赖保留、重复恢复回执、配额拒绝保留原件、损坏恢复源拒绝、完整项目源码/Git 往返、独立 Agent evidence 不随项目删除、旧文件写入拒绝。
+- 高级工具修复正在同步实施；现有 service 测试 6 条通过。主设置路径白名单、真实角色身份保护、链接边界与旧文件恢复冲突保护已有实现，额外攻击/失败路径仍须补验。
+
+### 实施 checkpoint — `dfd8cea85`
+
+- 持久化当前统计、回收协议、批量任务及面板实现；这不是整体完成或 main 集成标记。
+- 四后端已有真实本地验证。后续 accounting 增加高精度内容用例，共 16 条通过；recovery 已扩展至 24 条通过；center 批量状态 12 条通过；catalog 4 条通过。结果按各实际执行时点保存，不将之后所有代码变动自动标为已覆盖。
+- recovery 新证据包括恢复记录提交失败时原件不丢、Blob 保留根防止既有 GC 误回收、备份文件移动后中断可从 preparing 修复；项目用例已换为真实 Git 两个提交，并在四后端验证配额拒绝不改变 HEAD、足额后提交及回收恢复完整历史。
+- 项目 Git 配额实现经过两项实际修复：异步返回前 finally 提前清理 staging；Windows 对只读句柄 fsync 返回 EPERM。已分别改为等待提交完成后清理，以及复用 durable-file 写入刷新 staged 文件。受影响四后端项目用例复测通过。
+- 新增本地启动/周期管理协调；查看统计保持只读。导入的历史任务与未完成文件操作标为 paused-review，不能自动重放旧执行意图。
+- 原生业务默认会话、作品、世界知识、Persona 与项目删除入口正在接入同一回收权威；补充账户范围跨标签失效广播及原生 Session 投影丢弃入口，避免通过关闭动作回写旧状态。
+
+### 扩展验证发现与修复
+
+- 扩展 Native 基线验证首次结果：45 条中 42 通过、3 失败。保留该失败事实，不将其视为阶段结束。
+- MySQL GC 间歇失败追溯到 MySQL binary JSON 的高精度 double 输出改变。隔离探针 10,000 个时间数字样本中 912 个变化（例如 `1792037000000.0015` → `1792037000000.0017`），足以破坏 canonical 完整性与时间戳匹配。
+- 增加 MySQL schema v3 迁移，将资源 JSON 内容列保存为 LONGTEXT；既有 JSON 函数和 chat generated integrity 继续工作。修复不声称能够重建旧数据库中已经丢失的数字精度。
+- 相关复测：Native foundation 四后端 4 条通过；MySQL schema bootstrap/幂等/generated integrity 6 条通过；高精度 accounting 四后端通过。后续仍需覆盖 schema 升级和备份迁移的相关路径。
+- Persona 两项失败属于失效的故障注入：直接给 FsNativeJournal 的 Proxy 赋方法不会拦截其原生提交方法。改为调用边界 Proxy 注入后，真正触发预期失败；Persona storage 4 条通过，没有删除失败断言或放松恢复要求。
+- scoped ESLint 使用任务工作树中的本地 Atria plugin。共享 node_modules junction 中的 plugin 原本将 allowlist 解析至另一工作树，出现两项虚假路径告警；改用 ESLint plugins 注入当前本地规则后按原规则通过。未扩充 allowlist。
+
+## Stage 4 — 面板与业务同步
+
+- Status: In progress；五区独立宽面板、服务器九类与浏览器设备范围、分类搜索/排序/分页、固定预览/任务/恢复已接入真实接口。继续完善全种类及失败路径验收。
+- 浏览器修复完整 IndexedDB 遍历、inline key 变更拒绝、同名新增拒绝、读取失败表达、缓存请求完整身份和事务提交检查；origin estimate 不与分项相加。
+- 实际 Playwright：`tests/e2e/storage-center/center.e2e.js` 3 条通过，隔离临时账户数据、真实服务器与 Chromium。世界资源移入回收站并恢复同 ID 到业务读取接口、250 条 IndexedDB 与主键/新增保护、浏览器固定删除、390px 移动导航/键盘/错误反馈均实际执行。
+- 已实际查看桌面总览与移动截图；发现并修复移动关闭按钮文本截断，统一二进制单位为 B/KiB/MiB/GiB。后续界面改动仍需相关复测；截图是临时验证产物，不提交。
+
+## Stage 5 — 功能闭环与交付
+
+- Status: In progress；尚未宣布 A01–A30 全部完成，未合并 main、未推送或清理工作分支。
 
 ## Final state
 
