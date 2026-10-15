@@ -654,7 +654,7 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
     // 409 return) and stopped in the matching `finally` below.
     const heartbeat = startHeartbeat({ dataRoot, holderId: lockHolderId });
 
-    let destEngine;
+    let destEngine, maintenanceReadOnly = false;
     try {
         const handles = await getAllUserHandles();
         if (decision.kind === 'fresh') {
@@ -685,6 +685,7 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
         } else {
             destEngine = new PgEngine(postgresConfig);
         }
+        sourceEngine.nativeHostLifecycle.attachStorageEngine(destEngine);
 
         const runner = new MigrationRunner({
             sourceRepos: buildRepos(sourceEngine),
@@ -702,7 +703,8 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
         const toRun = pendingHandles(_migrationState);
 
         setReadOnly(true);
-        try {
+        maintenanceReadOnly = true;
+        await sourceEngine.nativeHostLifecycle.withMaintenance(async () => {
             for (const handle of toRun) {
                 markStart(_migrationState, handle, new Date().toISOString());
                 try {
@@ -732,9 +734,7 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
                     console.error(`Storage migration error for ${handle}:`, err);
                 }
             }
-        } finally {
-            setReadOnly(false);
-        }
+        }, { retireWhen: () => isAllDone(_migrationState) });
 
         if (!isAllDone(_migrationState)) {
             if (destEngine?.close) {
@@ -753,6 +753,7 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
         const oldEngine = sourceEngine;
         initStorage({
             mode: targetMode,
+            hostLifecycle: oldEngine.nativeHostLifecycle,
             directoriesByHandle: getUserDirectories,
             mysql: mysqlConfig,
             postgres: postgresConfig,
@@ -760,6 +761,7 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
         if (oldEngine?.close) {
             try { await oldEngine.close(); } catch { /* best-effort */ }
         }
+        await destEngine.close();
         _lastMigrationAt = new Date().toISOString();
         const finalPerUser = _migrationState.perUser;
         _migrationState = null;
@@ -795,6 +797,7 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
             message: err?.message || String(err),
         });
     } finally {
+        if (maintenanceReadOnly) setReadOnly(false);
         // Always release the lock, whether the migration ran to completion,
         // returned a 500 partial-failure, threw, or short-circuited via an
         // early `return response.status(...)` from inside the try. Release

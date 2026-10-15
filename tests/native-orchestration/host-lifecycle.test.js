@@ -87,4 +87,58 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
         expect(after.ownerInstanceId).toBe(before.ownerInstanceId);
         expect(after.hostBootId).not.toBe(before.hostBootId);
     });
+
+    test('storage handover shares Host and SQL lifetime ownership until every participating Engine has drained', async () => {
+        const before = await h.engine.withTransaction(h.handle, tx => lifecycle.assertWriter(h.handle, tx));
+        const sibling = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        extras.push(sibling);
+        const second = lifecycle.attachStorageEngine(sibling);
+        const after = await sibling.withTransaction(h.handle, tx => second.assertWriter(h.handle, tx));
+        expect(after.hostBootId).toBe(before.hostBootId);
+        expect(after.generation).toBe(before.generation + 1);
+        await expect(h.engine.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        await h.engine.close();
+        await expect(sibling.withTransaction(h.handle, async () => 'still-owned')).resolves.toBe('still-owned');
+        const independent = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        extras.push(independent);
+        attachNativeHostLifecycle(independent, { directoriesByHandle: () => h.dirs });
+        await expect(independent.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        await independent.close();
+        await sibling.close();
+        const reopened = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        extras.push(reopened);
+        attachNativeHostLifecycle(reopened, { directoriesByHandle: () => h.dirs });
+        await expect(reopened.withTransaction(h.handle, async () => 'new-owner')).resolves.toBe('new-owner');
+    });
+
+    test('maintenance drains admitted writes, blocks external transactions, and only retires after successful copy', async () => {
+        let releaseWrite, enteredWrite;
+        const entered = new Promise(resolve => { enteredWrite = resolve; });
+        const gate = new Promise(resolve => { releaseWrite = resolve; });
+        const write = h.engine.withTransaction(h.handle, async () => { enteredWrite(); await gate; });
+        await entered;
+        let enteredMaintenance = false, releaseMaintenance, maintenanceEntered;
+        const holding = new Promise(resolve => { releaseMaintenance = resolve; });
+        const started = new Promise(resolve => { maintenanceEntered = resolve; });
+        const copying = lifecycle.withMaintenance(async () => {
+            enteredMaintenance = true; maintenanceEntered();
+            await holding;
+            return h.engine.withTransaction(h.handle, async () => 'copied');
+        });
+        expect(enteredMaintenance).toBe(false);
+        await expect(h.engine.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        releaseWrite(); await write; await started;
+        await expect(h.engine.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        releaseMaintenance(); expect(await copying).toBe('copied');
+        await expect(h.engine.withTransaction(h.handle, async () => 'resumed')).resolves.toBe('resumed');
+        await expect(lifecycle.withMaintenance(async () => { throw new Error('controlled copy failure'); }, { retireWhen: () => true })).rejects.toThrow('copy failure');
+        await expect(h.engine.withTransaction(h.handle, async () => 'not-retired')).resolves.toBe('not-retired');
+        await lifecycle.withMaintenance(async () => true, { retireWhen: result => result });
+        await expect(h.engine.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        const replacement = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => h.dirs });
+        extras.push(replacement);
+        lifecycle.attachStorageEngine(replacement);
+        await h.engine.close();
+        await expect(replacement.withTransaction(h.handle, async () => 'replacement')).resolves.toBe('replacement');
+    });
 });

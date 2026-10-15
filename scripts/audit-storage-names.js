@@ -9,9 +9,9 @@
 // carry a `.json` / `.jsonl` suffix as if they were filenames, or names
 // longer than the 128-char column limit used by MySQL / Postgres.
 //
-// Use this before tightening name validation at the engine layer, or before
-// switching to MySQL / Postgres — both will start rejecting names that the
-// FS engine has been silently rewriting. The script never mutates anything.
+// Use this before tightening name validation or changing storage backends.
+// Resource names are never rewritten. Original Engine bootstrap/recovery
+// requires offline Host ownership, even for a read-only resource audit.
 
 import process from 'node:process';
 import sanitizeFilename from 'sanitize-filename';
@@ -57,8 +57,8 @@ and chats that:
   - exceeds ${MAX_NAME_LEN} bytes (MySQL/Postgres VARCHAR(128) limit)
   - is not NFC-normalized
 
-Exits 0 with the report; nothing is mutated. Reads the live storage backend
-declared in config.yaml — run this before tightening name validation at the
+Exits 0 with the report; resource names are not rewritten. Stop the server
+before auditing the storage backend declared in config.yaml. Run this before tightening name validation at the
 engine layer or before switching to MySQL / Postgres so you know in advance
 which records will start being rejected.
 
@@ -85,12 +85,15 @@ async function bootstrap() {
     initConfig('./config.yaml');
     const dataRoot = getConfigValue('dataRoot', './data');
     globalThis.DATA_ROOT = dataRoot;
+    const { NativeHostOwner } = await import('../src/storage/native-host-owner.js');
+    const hostOwner = new NativeHostOwner();
+    await hostOwner.acquireLocal(dataRoot);
     const { initUserStorage, getAllUserHandles, getUserDirectories } = await import('../src/users.js');
     await initUserStorage(dataRoot);
-    return { getAllUserHandles, getUserDirectories, getConfigValue };
+    return { dataRoot, hostOwner, getAllUserHandles, getUserDirectories, getConfigValue };
 }
 
-async function buildLiveEngineAndRepos({ getUserDirectories, getConfigValue }) {
+async function buildLiveEngineAndRepos({ getUserDirectories, getConfigValue, dataRoot, hostOwner }) {
     const mode = getConfigValue('storage.mode', 'fs');
     const { FsEngine } = await import('../src/storage/engines/fs-engine.js');
     const { SqliteEngine } = await import('../src/storage/engines/sqlite-engine.js');
@@ -112,6 +115,8 @@ async function buildLiveEngineAndRepos({ getUserDirectories, getConfigValue }) {
         throw new Error(`unknown storage mode: ${mode}`);
     }
 
+    const { attachNativeHostLifecycle } = await import('../src/storage/native-host-lifecycle.js');
+    attachNativeHostLifecycle(engine, { directoriesByHandle: getUserDirectories, dataRoot, hostOwner });
     const { ChatRepo } = await import('../src/storage/repositories/chat-repo.js');
     const { PresetRepo, PRESET_FOLDER_BY_API_ID } = await import('../src/storage/repositories/preset-repo.js');
     const { WorldInfoRepo } = await import('../src/storage/repositories/world-info-repo.js');
@@ -244,8 +249,9 @@ async function main() {
         process.exit(0);
     }
 
-    const { getAllUserHandles, getUserDirectories, getConfigValue } = await bootstrap();
-    const ctx = await buildLiveEngineAndRepos({ getUserDirectories, getConfigValue });
+    const bootstrapContext = await bootstrap();
+    const { getAllUserHandles } = bootstrapContext;
+    const ctx = await buildLiveEngineAndRepos(bootstrapContext);
 
     const allHandles = await getAllUserHandles();
     if (args.handle && !allHandles.includes(args.handle)) {
@@ -268,6 +274,7 @@ async function main() {
         printHandleReport(handle, findings);
     }
     console.log(`\nDone. ${totalIssues} unique name issue(s) across ${handles.length} handle(s).`);
+    await ctx.engine.close();
     process.exit(0);
 }
 

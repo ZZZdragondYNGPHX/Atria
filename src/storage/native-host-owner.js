@@ -40,6 +40,9 @@ export class NativeHostOwner {
     #valid = true;
     #closing = false;
     #releases = [];
+    #databases = new Map();
+    #engines = new Set();
+    #closePromise;
 
     constructor() {
         this.hostBootId = randomUUID();
@@ -51,12 +54,32 @@ export class NativeHostOwner {
 
     invalidate() { this.#valid = false; }
 
+    retainStorageEngine() {
+        this.assertActive();
+        const participant = {};
+        this.#engines.add(participant);
+        let released = false;
+        return async () => {
+            if (released) return;
+            released = true;
+            this.#engines.delete(participant);
+            if (!this.#engines.size) await this.close();
+        };
+    }
+
     async acquireDatabase(engine) {
         this.assertActive();
-        if (typeof engine.acquireNativeHostOwnership !== 'function') throw unavailable();
-        let release;
-        try { release = await engine.acquireNativeHostOwnership(() => this.invalidate()); } catch (error) { throw unavailable(error); }
-        this.#releases.push(release);
+        const key = engine.nativeHostOwnershipKey;
+        if (typeof engine.acquireNativeHostOwnership !== 'function' || !/^(mysql|postgres):[a-f0-9]{64}$/.test(key)) throw unavailable();
+        if (!this.#databases.has(key)) {
+            const pending = (async () => {
+                let release;
+                try { release = await engine.acquireNativeHostOwnership(() => this.invalidate()); } catch (error) { throw unavailable(error); }
+                this.#releases.push(release);
+            })();
+            this.#databases.set(key, pending);
+        }
+        await this.#databases.get(key);
         this.assertActive();
     }
 
@@ -129,12 +152,15 @@ export class NativeHostOwner {
     }
 
     /** Call only after admission is stopped and all Engine writes are drained. */
-    async close() {
-        this.#closing = true;
-        await Promise.allSettled([...this.#pending.values()]);
-        await Promise.allSettled(this.#releases.splice(0).map(release => release()));
-        await Promise.all([...this.#guards.values()].map(({ server }) => new Promise(resolve => server.close(resolve))));
-        this.#guards.clear();
-        this.#valid = false;
+    close() {
+        this.#closePromise ??= (async () => {
+            this.#closing = true;
+            await Promise.allSettled([...this.#pending.values(), ...this.#databases.values()]);
+            await Promise.allSettled(this.#releases.splice(0).map(release => release()));
+            await Promise.all([...this.#guards.values()].map(({ server }) => new Promise(resolve => server.close(resolve))));
+            this.#guards.clear();
+            this.#valid = false;
+        })();
+        return this.#closePromise;
     }
 }

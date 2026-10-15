@@ -5,19 +5,22 @@ import { hashNativeDocument, putMutable } from '../native/repositories/common.js
 
 const active = new AsyncLocalStorage();
 const administrative = new AsyncLocalStorage();
+const maintenance = new AsyncLocalStorage();
 const error = () => Object.assign(new Error('Native Host fence is no longer current'), { code: 'native_orchestration_writer_unavailable' });
 
 /** Attach once to the original Engine, before any repository, recovery or schema write. */
 export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoot = null, hostOwner = null }) {
     if (engine.nativeHostLifecycle) throw new TypeError('Native Host lifecycle is already attached');
     const owner = hostOwner ?? new NativeHostOwner();
+    const releaseOwner = owner.retainStorageEngine();
     const transaction = engine.withTransaction.bind(engine), closeEngine = engine.close.bind(engine);
     const ready = new Map(), fences = new Map(), minimumGenerations = new Map(), operations = new Set(), blocked = new Set();
-    let accepting = true, databaseReady, closing;
+    let accepting = true, databaseReady, closing, paused = false, maintenanceDone = null;
 
     function assertActive(handle, bypassBlock = false) {
         owner.assertActive();
-        if (!accepting || (!bypassBlock && blocked.has(handle))) throw error();
+        const permit = maintenance.getStore();
+        if (!accepting || (paused && !(permit?.open && permit.lifecycle === lifecycle)) || (!bypassBlock && blocked.has(handle))) throw error();
     }
 
     async function ensureDatabase() {
@@ -106,6 +109,29 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
 
     const lifecycle = {
         hostBootId: owner.hostBootId,
+        attachStorageEngine(other, options = {}) {
+            owner.assertActive();
+            if (closing) throw error();
+            return attachNativeHostLifecycle(other, { directoriesByHandle, dataRoot, ...options, hostOwner: owner });
+        },
+        async withMaintenance(operation, { retireWhen = () => false } = {}) {
+            assertActive();
+            if (maintenanceDone || typeof operation !== 'function' || typeof retireWhen !== 'function' || active.getStore()?.open) throw error();
+            paused = true;
+            const previous = [...operations].map(entry => entry.promise);
+            let finished;
+            const scope = { lifecycle, open: true };
+            maintenanceDone = new Promise(resolve => { finished = resolve; });
+            try {
+                await Promise.allSettled(previous);
+                owner.assertActive();
+                const result = await maintenance.run(scope, operation);
+                // Successful handover retires source admission before its
+                // replacement is exposed. Failure can keep the source live.
+                if (retireWhen(result)) accepting = false;
+                return result;
+            } finally { scope.open = false; paused = false; maintenanceDone = null; finished(); }
+        },
         async assertWriter(handle, tx) {
             const scope = active.getStore();
             if (!scope?.open || scope.lifecycle !== lifecycle || scope.handle !== handle || scope.tx !== tx) throw error();
@@ -175,13 +201,15 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
     }
 
     engine.close = () => {
+        if (maintenance.getStore()?.open && maintenance.getStore().lifecycle === lifecycle) return Promise.reject(error());
         closing ??= (async () => {
             accepting = false;
+            await maintenanceDone;
             await Promise.allSettled([...operations].map(entry => entry.promise));
             // If Engine close fails keep ownership until process exit. A new
             // Host must never enter while the old Engine may still write.
             await closeEngine();
-            await owner.close();
+            await releaseOwner();
         })();
         return closing;
     };

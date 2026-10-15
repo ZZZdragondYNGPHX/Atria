@@ -172,13 +172,17 @@ async function bootstrap() {
     const dataRoot = getConfigValue('dataRoot', './data');
     globalThis.DATA_ROOT = dataRoot;
 
+    const { NativeHostOwner } = await import('../src/storage/native-host-owner.js');
+    const hostOwner = new NativeHostOwner();
+    await hostOwner.acquireLocal(dataRoot);
+
     const { initUserStorage, getAllUserHandles, getUserDirectories } = await import('../src/users.js');
     await initUserStorage(dataRoot);
 
-    return { dataRoot, getAllUserHandles, getUserDirectories, getConfigValue };
+    return { dataRoot, hostOwner, getAllUserHandles, getUserDirectories, getConfigValue };
 }
 
-async function buildEnginesAndRepos({ fromMode, toMode, getUserDirectories, dbConfigs }) {
+async function buildEnginesAndRepos({ fromMode, toMode, getUserDirectories, dbConfigs, dataRoot, hostOwner }) {
     const { FsEngine } = await import('../src/storage/engines/fs-engine.js');
     const { SqliteEngine } = await import('../src/storage/engines/sqlite-engine.js');
     const { MysqlEngine } = await import('../src/storage/engines/mysql-engine.js');
@@ -213,6 +217,9 @@ async function buildEnginesAndRepos({ fromMode, toMode, getUserDirectories, dbCo
 
     const sourceEngine = buildEngine(fromMode);
     const destEngine = buildEngine(toMode);
+    const { attachNativeHostLifecycle } = await import('../src/storage/native-host-lifecycle.js');
+    attachNativeHostLifecycle(sourceEngine, { directoriesByHandle: getUserDirectories, dataRoot, hostOwner });
+    attachNativeHostLifecycle(destEngine, { directoriesByHandle: getUserDirectories, dataRoot, hostOwner });
     return {
         sourceEngine,
         destEngine,
@@ -249,14 +256,14 @@ async function main() {
     }
 
     // From here on we need a real config + data root + node-persist.
-    const { dataRoot, getAllUserHandles, getUserDirectories, getConfigValue } = await bootstrap();
+    const { dataRoot, hostOwner, getAllUserHandles, getUserDirectories, getConfigValue } = await bootstrap();
 
     // Branch: --from-zip uses the cross-mode-restore orchestrator instead of
     // the live-engine MigrationRunner path. The destination engine is the
     // live one (from config.yaml's storage.mode); the source engine kind is
     // read from the ZIP's _engine_meta.json.
     if (args.fromZip) {
-        await runFromZip({ args, dataRoot, getAllUserHandles, getUserDirectories });
+        await runFromZip({ args, dataRoot, hostOwner, getAllUserHandles, getUserDirectories });
         return;
     }
 
@@ -309,6 +316,7 @@ async function main() {
         toMode: args.to,
         getUserDirectories,
         dbConfigs,
+        dataRoot, hostOwner,
     });
 
     const { MigrationRunner } = await import('../src/storage/migration/runner.js');
@@ -526,7 +534,10 @@ export async function runMigration({ runner, handles, logger = console }) {
  * @param {() => Promise<string[]>} ctx.getAllUserHandles
  * @param {(handle: string) => object} ctx.getUserDirectories
  */
-export async function runFromZip({ args, dataRoot, getAllUserHandles, getUserDirectories }) {
+export async function runFromZip({ args, dataRoot, hostOwner, getAllUserHandles, getUserDirectories }) {
+    const { NativeHostOwner } = await import('../src/storage/native-host-owner.js');
+    const maintenanceOwner = hostOwner ?? new NativeHostOwner();
+    await maintenanceOwner.acquireLocal(dataRoot);
     const fs = await import('node:fs');
     const path = await import('node:path');
     const yauzl = (await import('yauzl')).default;
@@ -548,13 +559,14 @@ export async function runFromZip({ args, dataRoot, getAllUserHandles, getUserDir
         console.error('--from-zip: backup ZIP has no _engine_meta.json. Legacy fs-only backups cannot be ingested via --from-zip; restore from the web UI on an fs-mode server instead.');
         process.exit(2);
     }
-    console.log(`Cross-mode restore from ZIP:`);
+    console.log('Cross-mode restore from ZIP:');
     console.log(`  source engine: ${engineMeta.engineKind} (handle=${engineMeta.handle || '(unknown)'})`);
 
     // Initialize the LIVE engine from config.yaml.
     await initUserStorage(dataRoot);
     initStorage({
         mode: getConfigValue('storage.mode', 'fs'),
+        dataRoot, hostOwner: maintenanceOwner,
         directoriesByHandle: getUserDirectories,
         mysql: getConfigValue('storage.mysql', null),
         postgres: getConfigValue('storage.postgres', null),
@@ -636,15 +648,15 @@ export async function runFromZip({ args, dataRoot, getAllUserHandles, getUserDir
         console.log(`Done. Restored ${result.restoredCount} fs-tree files; cross-mode duration ${result.crossMode.durationMs}ms.`);
         const c = result.crossMode.converted;
         console.log(`  settings=${c.settings} presets=${c.presets} (states=${c.preset_states}) worlds=${c.worlds} chats=${c.chats} (states=${c.chat_states}) named_docs=${c.named_docs} groups=${c.groups} stats=${c.stats}`);
-        if (currentEngine.close) try { await currentEngine.close(); } catch {}
+        if (currentEngine.close) try { await currentEngine.close(); } catch { /* best-effort teardown */ }
         process.exit(0);
     } catch (err) {
         console.error(`Cross-mode restore failed: ${err?.message || err}`);
         if (err?.snapshotPath) {
             console.error(`Snapshot preserved at: ${err.snapshotPath}`);
-            console.error(`Run restoreFromSnapshot manually if rollback was incomplete.`);
+            console.error('Run restoreFromSnapshot manually if rollback was incomplete.');
         }
-        if (currentEngine.close) try { await currentEngine.close(); } catch {}
+        if (currentEngine.close) try { await currentEngine.close(); } catch { /* best-effort teardown */ }
         process.exit(1);
     }
 }
@@ -662,14 +674,14 @@ function readEngineMetaFromZipCli(zipPath, yauzl, ENGINE_META_ENTRY) {
                 }
                 zipfile.openReadStream(entry, (streamErr, readStream) => {
                     if (settled) return;
-                    if (streamErr) { settled = true; try { zipfile.close(); } catch {} return reject(streamErr); }
+                    if (streamErr) { settled = true; try { zipfile.close(); } catch { /* best-effort teardown */ } return reject(streamErr); }
                     const chunks = [];
                     readStream.on('data', (c) => chunks.push(c));
-                    readStream.on('error', (e) => { if (!settled) { settled = true; try { zipfile.close(); } catch {} reject(e); } });
+                    readStream.on('error', (e) => { if (!settled) { settled = true; try { zipfile.close(); } catch { /* best-effort teardown */ } reject(e); } });
                     readStream.on('end', () => {
                         if (settled) return;
                         settled = true;
-                        try { zipfile.close(); } catch {}
+                        try { zipfile.close(); } catch { /* best-effort teardown */ }
                         try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (e) { reject(e); }
                     });
                 });

@@ -71,6 +71,7 @@ export class PgEngine {
         }
         this.kind = 'postgres';
         this._nativeOwnerUrl = url;
+        Object.defineProperty(this, 'nativeHostOwnershipKey', { value: 'postgres:' + createHash('sha256').update(url).digest('hex') });
         this._retries = retries;
         // pg.Pool keyed on connection-string + max. Max caps concurrent
         // leases so withTransaction queues past the limit instead of opening

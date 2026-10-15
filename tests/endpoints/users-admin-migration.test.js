@@ -18,7 +18,7 @@ const mockState = {
 };
 
 jest.unstable_mockModule('../../src/storage/index.js', () => ({
-    getStorageEngine: () => ({ kind: 'fs', close: async () => {} }),
+    getStorageEngine: () => ({ kind: 'fs', close: async () => {}, nativeHostLifecycle: { attachStorageEngine: () => {}, withMaintenance: async operation => operation() } }),
     initStorage: () => { mockState.initStorageCalled = true; },
     isReadOnly: () => false,
     setReadOnly: () => {},
@@ -29,6 +29,16 @@ jest.unstable_mockModule('../../src/storage/index.js', () => ({
     getPresetRepo: () => ({}),
     getNamedDocRepo: () => ({}),
     getSettingsRepo: () => ({}),
+    getAssetStore: () => ({}),
+    getPackageRepo: () => ({}),
+    getWorldRepo: () => ({}),
+    getKnowledgeRepo: () => ({}),
+    getSessionRepo: () => ({}),
+    getSavePointRepo: () => ({}),
+    getPersonaRepo: () => ({}),
+    getChatRepo: () => ({}),
+    getGroupRepo: () => ({}),
+    getStatsRepo: () => ({}),
 }));
 
 jest.unstable_mockModule('../../src/users.js', () => ({

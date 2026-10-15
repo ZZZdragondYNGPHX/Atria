@@ -112,6 +112,7 @@ export class MysqlEngine {
         }
         this.kind = 'mysql';
         this._nativeOwnerUrl = url;
+        Object.defineProperty(this, 'nativeHostOwnershipKey', { value: 'mysql:' + createHash('sha256').update(url).digest('hex') });
         this._acquireTimeoutMs = acquireTimeoutMs;
         this._retries = retries;
         // mysql2/promise pool. charset=utf8mb4 keeps inserts consistent with

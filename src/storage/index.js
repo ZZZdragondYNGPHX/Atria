@@ -42,6 +42,7 @@ export function initStorage({
     mode = 'fs',
     dataRoot = null,
     hostOwner = null,
+    hostLifecycle = null,
     directoriesByHandle,
     mysql,
     postgres,
@@ -75,7 +76,8 @@ export function initStorage({
     } else {
         throw new Error(`initStorage: unknown storage mode "${mode}" (expected 'fs', 'sqlite', 'mysql', or 'postgres')`);
     }
-    attachNativeHostLifecycle(_engine, { directoriesByHandle, dataRoot, hostOwner });
+    if (hostLifecycle) hostLifecycle.attachStorageEngine(_engine, { directoriesByHandle, ...(dataRoot !== null ? { dataRoot } : {}) });
+    else attachNativeHostLifecycle(_engine, { directoriesByHandle, dataRoot, hostOwner });
     _chatRepo = new ChatRepo({ engine: _engine });
     _settingsRepo = new SettingsRepo({ engine: _engine });
     _presetRepo = new PresetRepo({ engine: _engine });
