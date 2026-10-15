@@ -8,7 +8,7 @@
 .atri-library-meta { font-size: var(--atri-text-footnote); color: var(--atri-text-secondary); margin: 4px 0; overflow-wrap: anywhere; }
 .atri-library-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .atria-app-shell .atri-library-button { border: 0; border-radius: var(--atri-radius-md); background: var(--atri-fill); color: var(--atri-text-primary); min-height: 36px; padding: 8px 14px; font: inherit; font-size: var(--atri-text-callout); cursor: pointer; transition: background var(--atri-duration-fast), transform var(--atri-duration-fast); }
-.atria-app-shell .atri-library-button--primary { background: var(--atri-ink); color: var(--atri-text-on-accent); }
+.atria-app-shell .atri-library-button--primary { background: var(--atri-ink); color: var(--atri-text-on-ink); }
 .atria-app-shell .atri-library-button--danger { color: var(--atri-danger); }
 .atri-library-button:disabled { opacity: .5; cursor: default; }
 .atri-library-button[aria-busy="true"] { cursor: progress; }
@@ -180,7 +180,7 @@
 .atri-skill-editor-title { font-family: var(--atri-font-sans); font-size: var(--atri-text-title-2); color: var(--atri-text-primary); overflow-wrap: anywhere; text-align: left; margin: 0 0 16px; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_editor { min-height: min(64dvh, 680px); gap: 20px; }
 .atria-app-shell [data-atri-library-editor="true"] label { margin-block: 0; }
-.atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary { background: var(--atri-ink); color: var(--atri-text-on-accent); border-color: transparent; }
+.atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary { background: var(--atri-ink); color: var(--atri-text-on-ink); border-color: transparent; }
 .atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary:not(:disabled):active { background: var(--atri-ink-pressed); }
 @media (hover: hover) { .atria-app-shell [data-atri-library-editor="true"] > .atri-library-button--primary:not(:disabled):hover:not(:active) { background: var(--atri-ink-hover); } }
 @media (max-width: 719px) { [data-atria-domain-workspace="library"] [data-atri-library-editor="true"] { padding: 22px 18px; } }

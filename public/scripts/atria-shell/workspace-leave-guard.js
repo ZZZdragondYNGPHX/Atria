@@ -1,6 +1,7 @@
 import { translateShellText as tl } from './localization.js';
 
 export function confirmAtriaDraftLeave(doc, root) {
+    if (root.dataset.atriaSavePending === 'true' || root.querySelector('[data-atria-save-pending="true"]')) return false;
     const query = { root, dirty: root.dataset.atriaDraftDirty === 'true' || Boolean(root.querySelector('[data-atria-draft-dirty="true"]')) };
     doc.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-query', { detail: query }));
     if (!query.dirty) return true;

@@ -1,4 +1,27 @@
 import { Fuse, Handlebars } from '../lib.js';
+import { createAtriaThemeService } from './atria-shell/theme-service.js';
+import { getPreferenceSaveState, resetPreferenceSaveStates, savePreferenceWithReceipt } from './atria-shell/preference-save-state.js';
+
+export { getPreferenceSaveState };
+export let atriaThemes = null;
+
+export async function initializeAtriaThemes(settings) {
+    atriaThemes?.dispose();
+    resetPreferenceSaveStates();
+    const request = async (endpoint, body = {}) => {
+        const result = await fetch(`/api/themes/${endpoint}`, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(body), cache: 'no-store' });
+        if (!result.ok) throw new Error(`Theme ${endpoint} failed (${result.status}). Check the server connection and retry.`);
+        return endpoint === 'list' ? result.json() : true;
+    };
+    let state;
+    try { state = await request('list'); } catch { state = { themes, originals: [] }; }
+    atriaThemes = createAtriaThemeService({ prefs: power_user, settings, documents: state.themes, originals: state.originals,
+        createId: uuidv4, saveSettings: () => saveSettings(), writeAsset: theme => request('save', theme), deleteAsset: (name, id) => request('delete', { name, id }), readState: () => request('list'),
+        notify: () => document.dispatchEvent(new CustomEvent('atria-theme-changed')),
+    });
+    try { await atriaThemes.initialize(); } catch (error) { console.warn('Theme upgrade is pending:', error); }
+    document.dispatchEvent(new CustomEvent('atria-theme-changed'));
+}
 
 import {
     saveSettingsDebounced,
@@ -60,7 +83,7 @@ import { initTokenizerSelects, isSelectableTokenizer, tokenizers } from './token
 import { BIAS_CACHE } from './logit-bias.js';
 import { renderTemplateAsync } from './templates.js';
 
-import { countOccurrences, debounce, delay, download, getFileText, getSanitizedFilename, getStringHash, isOdd, isTrueBoolean, onlyUnique, resetScrollHeight, shuffle, sortMoments, stringToRange, timestampToMoment } from './utils.js';
+import { countOccurrences, debounce, delay, download, getFileText, getSanitizedFilename, getStringHash, isOdd, isTrueBoolean, onlyUnique, resetScrollHeight, shuffle, sortMoments, stringToRange, timestampToMoment, uuidv4 } from './utils.js';
 import { FILTER_TYPES } from './filters.js';
 import { PARSER_FLAG, SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
@@ -1127,8 +1150,8 @@ export function updateAtriaPreference(key, value) {
     if (key === 'font_scale') applyFontScale('forced');
     if (key === 'reduced_motion') switchReducedMotion();
     if (key === 'fast_ui_mode') switchUiMode();
-    saveSettingsDebounced();
     document.dispatchEvent(new CustomEvent('atria-preference-changed', { detail: { key } }));
+    return savePreferenceWithReceipt(key, () => saveSettings());
 }
 
 function switchCompactInputArea() {
@@ -1773,7 +1796,8 @@ function applyCustomCSS() {
         style.setAttribute('id', styleId);
         document.head.appendChild(style);
     }
-    style.innerHTML = power_user.custom_css;
+    // The theme projection is the sole CSS injector while Native Shell is mounted.
+    style.textContent = atriaThemes && document.body.dataset.atriaShellMounted === 'true' ? '' : power_user.custom_css;
 }
 
 function applyBlurStrength() {

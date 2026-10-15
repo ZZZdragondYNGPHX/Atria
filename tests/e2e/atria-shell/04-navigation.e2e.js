@@ -155,8 +155,8 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
         await page.keyboard.press('Escape');
         await expect(root.locator('.atria-toolbar__menu')).toBeFocused();
 
-        for (const [tint, appearance] of [['rgb(255,255,255)', 'light'], ['rgb(20,20,20)', 'dark']]) {
-            await page.evaluate(value => document.documentElement.style.setProperty('--SmartThemeBlurTintColor', value), tint);
+        for (const appearance of ['light', 'dark']) {
+            await page.evaluate(value => Atria.getContext().atriaThemes.previewMode(value), appearance);
             await expect(page.locator('html')).toHaveAttribute('data-atria-appearance', appearance);
             await expect.poll(() => page.evaluate(() => ({
                 documentWidth: document.documentElement.scrollWidth,
@@ -164,6 +164,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
                 shellLeft: document.getElementById('atria-app-shell').getBoundingClientRect().left,
             }))).toEqual({ documentWidth: 320, offset: 0, shellLeft: 0 });
         }
+        await page.evaluate(() => Atria.getContext().atriaThemes.cancel());
     });
 
     test('Expanded Rail, Command navigation and browser Back/Forward share one authority', async ({ page }) => {

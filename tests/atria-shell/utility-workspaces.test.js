@@ -75,7 +75,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         controller.dispose();
     });
 
-    test('Settings uses native controls and preserves advanced theme adapters without exposing generation authority', async () => {
+    test('Settings uses native categories without moving legacy theme or generation controls', async () => {
         const slot = document.getElementById('slot');
         const settingsRoot = document.getElementById('user-settings-block');
         const language = document.getElementById('ui_language_select');
@@ -93,18 +93,12 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         expect(settingsRoot.dataset.atriaWorkspaceEmbedded).toBeUndefined();
         expect(settingsRoot.classList.contains('closedDrawer')).toBe(true);
         expect(accountControls.hidden).toBe(false);
-        expect(slot.querySelector('#UI-presets-block #themes')).not.toBeNull();
-        expect(slot.querySelector('#ui-preset-save-button')).not.toBeNull();
-        expect(slot.querySelector('#ui_preset_import_file')).not.toBeNull();
-        expect(slot.querySelector('#customCSS').getAttribute('aria-label')).toBe('Custom CSS');
-        expect(slot.textContent).toContain('Appearance');
-        expect(slot.textContent).toContain('Accessibility');
-
-        const compatibility = slot.querySelector('[data-atria-settings-compatibility="preferences-only"]');
-        expect(compatibility.open).toBe(false);
-        compatibility.querySelector('summary').click();
-        await Promise.resolve();
-        expect(compatibility.open).toBe(true);
+        expect(slot.querySelector('#UI-presets-block, #customCSS, #themes')).toBeNull();
+        expect(settingsRoot.querySelector('#UI-presets-block #themes')).not.toBeNull();
+        expect(slot.querySelectorAll('[data-settings-category]')).toHaveLength(6);
+        expect(slot.textContent).toContain('Appearance & themes');
+        expect(slot.textContent).toContain('Accessibility & performance');
+        expect(slot.querySelector('[data-atria-settings-compatibility]')).toBeNull();
         expect(document.getElementById('ui_language_select')).toBe(language);
 
         controller.dispose();

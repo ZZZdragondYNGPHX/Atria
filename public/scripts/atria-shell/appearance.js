@@ -1,9 +1,7 @@
 /**
  * Atria appearance resolver.
  *
- * Serene Canvas renders in light appearance. Stored SmartTheme values remain
- * owned by the existing theme controller and are restored in recovery mode.
- * No separate appearance preference is persisted.
+ * Projects the theme authority into existing semantic tokens and browser chrome.
  */
 
 export const ATRIA_APPEARANCES = Object.freeze({
@@ -50,7 +48,7 @@ export function parseAtriaColor(value) {
         .replace(/\//g, ' ')
         .split(/[\s,]+/)
         .filter(Boolean);
-    if (parts.length < 3) return null;
+    if (parts.length < 3 || parts.length > 4 || parts.some(part => !/^[+-]?(?:\d*\.)?\d+%?$/.test(part))) return null;
     const read = (part, scale) => {
         if (part.endsWith('%')) return Number.parseFloat(part) / 100 * scale;
         return Number.parseFloat(part);
@@ -94,6 +92,7 @@ export function resolveAtriaAppearance({ tint, text } = {}) {
 export function installAtriaAppearance({
     document: documentRef = globalThis.document,
     window: windowRef = globalThis.window,
+    authority = () => globalThis.Atria?.getContext?.()?.atriaThemes,
 } = {}) {
     const root = documentRef?.documentElement;
     if (!root) {
@@ -110,17 +109,34 @@ export function installAtriaAppearance({
     const previousThemeColor = themeMeta?.getAttribute('content') ?? null;
     const listeners = new Set();
     let current = null;
-    let scheduled = false;
     let disposed = false;
+    const query = windowRef.matchMedia?.('(prefers-color-scheme: dark)');
+    const paletteStyle = documentRef.createElement('style'); paletteStyle.id = 'atria-theme-tokens';
+    const cssStyle = documentRef.createElement('style'); cssStyle.id = 'atria-theme-css';
+    documentRef.head.append(paletteStyle, cssStyle);
+    const legacyStyle = documentRef.getElementById('custom-style');
+    const legacyCss = legacyStyle?.textContent;
+    let safeCss = new URLSearchParams(windowRef.location?.search || '').get('atriaNoThemeCss') === '1';
 
     function apply() {
-        scheduled = false;
         if (disposed) return current;
-        const next = ATRIA_APPEARANCES.LIGHT;
-        if (next === current) return current;
+        const service = authority();
+        const resolved = service?.effective(Boolean(query?.matches));
+        const next = resolved?.appearance || ATRIA_APPEARANCES.LIGHT;
         current = next;
         root.setAttribute('data-atria-appearance', next);
-        themeMeta?.setAttribute('content', ATRIA_CHROME_COLORS[next] || ATRIA_CHROME_COLORS.dark);
+        const colors = resolved?.colors || {};
+        paletteStyle.textContent = resolved ? `:root:root { ${Object.entries(colors).map(([role, value]) => `--atri-${role}: ${value};`).join('\n')}\n--atri-highlight: inset 0 0 0 .5px ${next === 'dark' ? '#ffffff18' : '#ffffffdd'};\n--atri-shadow-1: 0 20px 40px -10px #000000${next === 'dark' ? '45' : '0d'};\n--atri-shadow-2: 0 12px 32px #000000${next === 'dark' ? '66' : '14'};\n--atri-shadow-3: 0 28px 72px #000000${next === 'dark' ? '80' : '1f'}; }` : '';
+        if (service) {
+            const legacy = documentRef.getElementById('custom-style');
+            if (legacy) legacy.textContent = '';
+            cssStyle.textContent = !safeCss && resolved.theme.css.enabled ? resolved.theme.css.text : '';
+            root.dataset.atriaTheme = resolved.theme.id;
+            root.dataset.atriaThemeCssSuppressed = String(safeCss);
+        }
+        const chrome = windowRef.getComputedStyle?.(root).getPropertyValue('--atri-canvas').trim() || colors.canvas || ATRIA_CHROME_COLORS[next];
+        themeMeta?.setAttribute('content', chrome);
+        try { windowRef.AtriaAndroid?.setSystemBarsColor?.(chrome, chrome); } catch { /* Browser theme stays usable without a platform bridge. */ }
         for (const listener of listeners) {
             try {
                 listener(next);
@@ -131,17 +147,17 @@ export function installAtriaAppearance({
         return current;
     }
 
-    function schedule() {
-        if (scheduled || disposed) return;
-        scheduled = true;
-        queueMicrotask(apply);
+    function recover(event) {
+        if (event.isComposing || !event.ctrlKey || !event.altKey || !event.shiftKey || event.code !== 'KeyR') return;
+        safeCss = true; apply();
+        documentRef.dispatchEvent(new windowRef.CustomEvent('atria-theme-css-recovered'));
     }
 
     apply();
 
-    const ObserverType = windowRef?.MutationObserver || globalThis.MutationObserver;
-    const observer = typeof ObserverType === 'function' ? new ObserverType(schedule) : null;
-    observer?.observe(root, { attributes: true, attributeFilter: ['style', 'class'] });
+    query?.addEventListener?.('change', apply);
+    documentRef.addEventListener('atria-theme-changed', apply);
+    documentRef.addEventListener('keydown', recover, true);
 
     return Object.freeze({
         get: () => current,
@@ -154,7 +170,13 @@ export function installAtriaAppearance({
         dispose() {
             if (disposed) return;
             disposed = true;
-            observer?.disconnect();
+            query?.removeEventListener?.('change', apply);
+            documentRef.removeEventListener('atria-theme-changed', apply);
+            documentRef.removeEventListener('keydown', recover, true);
+            paletteStyle.remove(); cssStyle.remove();
+            delete root.dataset.atriaTheme;
+            delete root.dataset.atriaThemeCssSuppressed;
+            if (legacyStyle && legacyCss !== undefined) legacyStyle.textContent = legacyCss;
             listeners.clear();
             if (previous === null) root.removeAttribute('data-atria-appearance');
             else root.setAttribute('data-atria-appearance', previous);

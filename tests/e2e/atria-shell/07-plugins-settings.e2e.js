@@ -83,8 +83,11 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         await root.locator('[data-atria-utility="settings"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.settings/);
         await expect(root.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
-        await expect(root.locator('#ui_language_select')).toBeVisible();
-        await expect(root.locator('#themes')).toBeVisible();
+        await expect(root.locator('.atria-theme-gallery')).toBeVisible();
+        await root.locator('[data-settings-category="general"]').click();
+        await expect(root.locator('[data-atria-preference="language"]')).toBeVisible();
+        await root.locator('[data-settings-category="appearance"]').click();
+        await expect(root.locator('#themes, #customCSS')).toHaveCount(0);
         await expect(root.locator('#user-settings-block[data-atria-workspace-embedded="true"]')).toHaveCount(0);
         expect(await page.evaluate(() => ({
             sameRoot: window.__r7gSettingsRoot === document.getElementById('user-settings-block'),

@@ -70,7 +70,7 @@
     cursor: pointer; text-shadow: none; transition: background var(--atri-duration-fast), transform var(--atri-duration-fast);
 }
 .atria-native-play-actions > .atria-native-play-actions__button { background: transparent; }
-.atria-native-play-actions__button.atria-play-primary { background: var(--atri-ink); color: var(--atri-text-on-accent); min-height: 44px; }
+.atria-native-play-actions__button.atria-play-primary { background: var(--atri-ink); color: var(--atri-text-on-ink); min-height: 44px; }
 .atria-native-play-actions__button:disabled { opacity: .45; cursor: default; }
 .atria-native-play-actions__status { flex-basis: 100%; font-size: var(--atri-text-caption); color: var(--atri-text-secondary); overflow-wrap: anywhere; }
 .atria-native-play-actions__status:empty { display: none; }
