@@ -9,7 +9,7 @@
 - **收敛方向**：统一原生执行内核。D1 曾提及“旧模式变为模板”，该部分已被 D2 直接否决：不保留旧模式、模板及兼容路径。
 - **边界：无新增 World/Memory/Session/Project/模型调用收费权威**。Agent 的提案与正式事实严格分离；相应原有计划中的领域契约继续有效。
 - **流程：讨论期间先更新并提交 `docs` 的同一份 Bundle，再进入后续轮次；本轮不修改 `main` 产品代码**。
-- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2、D7=N2、D8=U2 均已冻结；D9 E0/清退/实施及真实客户端验收尚待审计和冻结，V3 产品代码未实施。
+- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2、D7=N2、D8=U2、**D9=E1** 已冻结；**E0 全量接口/引用审计仍 BLOCKED，尚未达到开发分支前置条件，V3 产品仍未实施**。
 
 ## D2 — 已冻结：T2 Native Host + 旧编排零兼容硬切（2026-10-15）
 
@@ -107,9 +107,28 @@ D3 各操作的详细方向、不变量与需要测试的失败窗口只由 [gra
 10. **大图/长 Run 性能**：图节点分层/局部布局/虚拟化/搜索聚焦、长 Timeline 增量和按需 Trace 读取；视觉上没渲染的节点仍参加完整 Graph/执行校验，不能静默丢失语义。长 Stream、审批/取消控制和响应动画分层，不以本轮冻结未实测的毫秒/千节点性能数字。
 11. **范围与独立验证**：按同一 Host Contract 覆盖 Windows、CachyOS Linux、Android Termux；网页断联不意味取消、Host 停机恢复需原 Receipt/Source 复核。零旧 Single/Spec/Agenda/Loop/Director 模式、旧 adapter/配置/预设/Run Panel 兼容。D8 详细设计、反例与目标验收只归 [graph-editor-experience.md](graph-editor-experience.md)，没有修改 `main` 或执行新 Graph/审批/CI/端侧测试。
 
-## D9 — 第九轮 E0 待审计与待冻结
+## D9 — 已冻结：E1 内核先行、分阶段验证、最终统一硬切（2026-10-15）
 
-E0 需锁定真实 main HEAD，对 Plan/Run/Effect/Receipt/Output/Projection 接口和 Native 消费者逐项审计；建立旧 Orchestrator 五模式、Browser 引擎/Checkpoint/Graph/UI/消息注入/Generator 的完整引用及删除矩阵，确定原 Session/Studio/Memory/MCP/Serene Canvas 不可误删的共享能力；讨论分阶段实现、故障/安全/质量/成本/移动交互验收、Windows/Linux/Termux 真实客户端收口与正式开发交接。**D9 讨论前不声明审计已经完整，亦不授权当前修改 main。**
+1. **冻结 E1 路线，不冒充 E0 完成**：采用先 Host Plan/RunLedger/Effect/Receipt 基础合同、后 G2 图与 Native Domain Ports、再 RP/Studio/Evolution 消费端和 U2 UI、**最后一次切换产品主路径并彻底清退旧代码**的同一产品任务分阶段模式。内部阶段是研发组织，不允许生产旧、新双执行器、永久兼容层或旧模式变 V3 模板。
+2. **E0 Exit 是建分支硬前置**：当前只有 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a` 的远端定向静态审计与原文档定位，未穷尽全仓 import/dynamic imports、Settings/Host/Browser/Runtime、真实 FS/SQLite、崩溃、外部 Effect 与所有 consumers。须对**当时最新 main HEAD** 完成可复核引用闭包、原生权限/存储/接口物理位置与失败恢复证据，明确 BLOCKED 风险和安全退出；未通过不创建实现分支/不动 main。本轮用户授权仅是 D9 文档冻结与开发交接审查，**不是当前开工许可**。
+3. **Plan 接口方向**：PlanDefinition/Host PlanDraft/ValidationReport/不可变 PlanRevision，强类型 Node/Port/Edge、Source/Actor/Tool/Model/Output/预算、Draft hash/baseRevision/CAS，`Validate` 纯检查，`Publish` 固化版本，`Run` 重新做 Native admission。精确 Schema/Store/RPC 仍需 E0 实证冻结。
+4. **Run 接口方向**：Host RunIdentity/RunLedger/Checkpoint/TaskGraphRevision/NodeAttempt、parent-child、Source/Session/Project real anchors、version/CAS/epoch/fencing、G2 GraphPatch/Join、取消/恢复/过期结果的可信状态。Scheduler 进程队列与旧 Browser IndexedDB 不等于持久 Host Ledger，Browser/Graph Editor 不得持第二运行权威。
+5. **Effect/Receipt/Approval 方向**：外部/付费动作写前持久 EffectIntent，原 Host Tool/Model/MCP/A2A/业务 Port 操作，精确 capability/approval/budget/secret/egress 绑定，EffectReceipt 引用真实外部 ID/原 DomainCommitReceipt 与 actual/unknown usage。可能已发但结果未知时先 reconcile，不能盲重发、假称取消已撤回/退款或跨第三方 exactly-once。
+6. **Result/Projection 方向**：带 Producer/Attempt/Source/Audience/Currentness 的 typed ResultEnvelope 和 OutputContract，Narrator 最终正文与 Studio Task/Review/正式 Commit 严格区别；Host RunProjection 只向有权客户端提供 snapshot+epoch/sequence delta、Timeline/Graph/Node/审批/Diagnostics 的脱敏视图，不能恢复或驱动 Run。
+7. **旧编排零兼容清退的全部消费者**：`agents/orchestrator`、`engine-v2`、旧 `agent-runtime` Browser execution/IndexedDB、`orchestration-engine` 旧 mode 分支、`agent-workspace` preset/Graph/Panel、Generator/capsule/takeover 旧编排用途与旧设置/测试必须消失；**优先替换** `capability-host.js`、`native/play-generation.js`、`native/experience/llm/*`、`atria-shell/workspace-host.js`、`settings-repo.js` 与 `src/native/agent-intelligence/evolution-targets.js` 等已发现活引用。保留非编排通用的 World/Session/Studio/Memory/Message Takeover/Skills/MCP/Compute/Serene Canvas 原生消费者，不能全目录盲删。
+8. **正式阶段与工作包**：E0 完整审计后才可在用户新开工授权下建同一任务分支；P1 Host Contracts/持久化 → P2 Graph/Effect/Approval → P3 Native Context/Model/Tool/Budget Ports → P4 RP/Native Game/Studio/Evolution Consumers → P5 U2 Graph/Timeline/Approval UI → P6 Atomic Legacy Hard Cut → P7 全域真实验证 → P8 集成收尾。每阶段的出口/可局部穿插范围与 W01–W09 工作流权威见 [implementation-plan.md](implementation-plan.md)，不能跳过硬 Gate。
+9. **安全/故障/预算/质量 Gate**：采用 [acceptance-matrix.md](acceptance-matrix.md) 的 L0 静态、L1 纯合同、L2 installed Native Host/Browser、L3 真目标设备、L4 受控外部/质量证据分层。必须覆盖 Graph/Effect 崩溃窗口、真实来源/Actor/Tool grants、父子预算并发/unknown/gateway fallback、Project Commit、反全知/玩家自主权、Judge/Review 与部分失败，不能用 literary 平均分掩盖正式安全错误。
+10. **三端最终验收原则**：Windows、CachyOS KDE Linux、Android Termux 各自使用真实 Node Host + 浏览器测试同一 Plan→Run→Approval→Result/Recovery，PC Graph+Inspector 与移动 Node/Edge List/Sheet 完整编辑等价，真实 OS FS/IME/Back/生命周期/后台/审批/隐私验证分别留证。无设备/可信账号/可核对成本则 BLOCKED/NOT_RUN，**禁止声称三端已通过或系统自动唤醒**。
+11. **范围与最终状态**：D1–D8、HCM-01–08、T2 单 Host、D4 Actor/Source 分域、F2 Sparse 预算与三层 Cache、S2 Tool 授权、N2 原生质量、U2 Serene Canvas 视觉/Timeline 默认均为既有权威，D9 不另建第二套规则/服务。本轮只提交 `docs` 企划及同一 Record，**没有创建实现分支、没有修改 main、没有执行 V3 产品/CI/模型/审批/真机验收**。E0 的实际完成需后续追加有证据的 Record/接口结果，不能由冻结决定代替。
+
+D9 接口方向详见 [interface-contracts.md](interface-contracts.md)，E0 已查/阻塞详见 [e0-audit.md](e0-audit.md)，正式阶段/工作包/开发许可见 [implementation-plan.md](implementation-plan.md)，全域真实验收见 [acceptance-matrix.md](acceptance-matrix.md)；它们各司其职，不相互复制完整详细约束。
+
+## 尚未闭合的 E0/开发前置（不是另一轮设计选择）
+
+- 现有 Native Storage/FS/SQLite/RunControl 的具体持久 CAS 与外部 Effect 写前意图一致性、所有 RPC/JSON Schema/错误码/Provider 预算原子预约，需要真实代码/故障证据。
+- `src/native/agent-intelligence/evolution-targets.js`、`settings-repo.js`、Native Game、Shell、Message Takeover 等**全部活消费者**的 import/动态运行/数据迁移边界仍须逐项确认并记录删除/保留/抽离映射。
+- 所需 Windows/Linux/Termux 真实平台、人工批准、外部 MCP/A2A/Provider 测试账号及成本上限、RP/Project 质量基线与无障碍/大图性能测量尚未完成。
+- 本轮不授予开始改 main 的权限，也不把 E1 选择认定为 E0 完成；后续需完整交接审查并取得新的明确开工授权。
 
 ## 后续未定（不要提前冻结）
 
@@ -118,7 +137,7 @@ E0 需锁定真实 main HEAD，对 Plan/Run/Effect/Receipt/Output/Projection 接
 - D5 Adaptive/Model Routing/并行预算/三层 Cache 已冻结，接口与反例见 [adaptive-compute.md](adaptive-compute.md)；物理字段、阈值/实际收益后续验证。
 - D6 Tool/Skill/MCP/A2A 授权、审批与危险 Effect 方向已冻结，详细边界见 [effect-authorization.md](effect-authorization.md)；工具覆盖、具体审批 UI 与真实客户端兼容后续验收。
 - D7 RP Narrator/Actor/玩家自主权/Project Agent/Quality/创作语义已冻结，细节见 [narrative-project-quality.md](narrative-project-quality.md)；物理字段、真实质量收益/用户评价及 D8 UI 尚需独立验收。
-- D8 UI/Graph Editor/Timeline/Inspector/审批/跨端体验设计已冻结，唯一详细方案见 [graph-editor-experience.md](graph-editor-experience.md)；D9 接口/清退/分期与实际端侧、视觉、性能验收仍开放。
+- D8 UI/Graph Editor/Timeline/Inspector/审批/跨端设计已冻结，详细仍归 [graph-editor-experience.md](graph-editor-experience.md)。D9 E1 已定实施路线，**但** E0 源码/数据接口与真正三端验证尚未闭合，按 [implementation-plan.md](implementation-plan.md) 审核开发许可。
 
 ## 明确不等价
 
@@ -126,4 +145,4 @@ E0 需锁定真实 main HEAD，对 Plan/Run/Effect/Receipt/Output/Projection 接
 - 「浏览器 IndexedDB Checkpoint」不等于「Native 持久 Session/Task Ledger」。
 - 「模型调用完成」不等于「正式游戏事件已提交」。
 - 「外部 Agent/MCP/A2A 返回成功」不等于「Atria 权威状态已更新」。
-- D1–D8 冻结的是**设计**，不是授权本轮修改 `main`、重启旧 Orchestrator 或宣称新 V3 图编辑/人工审批/模型质量/CI/Windows/Linux/Termux 真机已经验收通过。
+- D1–D9 目前冻结的均为**设计/交接 Gate**，未修改 main、未创建实现分支；不能宣称 E0 全部通过、V3 功能已实现、旧代码已实际删除或 Windows/Linux/Termux/付费模型/人工审批已验证。

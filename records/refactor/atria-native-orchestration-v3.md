@@ -62,3 +62,11 @@
 - 同一 Plan 新增 [e0-audit](../../plans/refactor/atria-native-orchestration-v3/e0-audit.md) 记录代码/依赖边界、接口阻塞、完整删除旧编排的候选步骤、原生消费者、P1–P8 候选及故障/安全/质量/三端真实验收；该文件明确标为**非冻结审计草案**，D9 选择尚未发生。
 - 本检查点执行的是 GitHub 文件/代码搜索与 docs 文档提交/差异核验。未做所有动态 import 的穷尽验证、API/FS/SQLite/运行时故障复测，未运行 Node/E2E/CI/收费模型/真实人工批准/Windows/Linux/Termux 实机；不宣称 E0 已通过或产品分支实现已开始。
 - 阻塞：RunLedger/Effect/Approval/Projection 的真实物理合同、Evolution 与 Session 等消费链迁移、新旧代码全部引用闭包、跨 Store 一致性/预算/外部未知 Effect、Serene Canvas/手机端实体验收都需后续用户 D9 设计决定与实施验证；`main` 完全未修改。
+
+## 2026-10-15 — D9 E1 阶段路线与开发前置设计冻结
+
+- Start docs HEAD：`6d0fa4109d045e7ac683b8a4b7de5b868d2106ff`；产品源审计基线此前为 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`。此阶段用户明确选择 **E1：Native Host 内核先行、同一产品任务分阶段验证、最终统一旧编排零兼容硬切**；E0 实际审计/运行验证仍未闭合，本次不创建实现分支、不修改 main。
+- 文档范围：同一 [Plan index](../../plans/refactor/atria-native-orchestration-v3/index.md)、[decisions](../../plans/refactor/atria-native-orchestration-v3/decisions.md) 冻结 D9/E1。原 [e0-audit](../../plans/refactor/atria-native-orchestration-v3/e0-audit.md) 保留静态代码/跨域消费者证据并标 E0 未通过；新增 [interface-contracts](../../plans/refactor/atria-native-orchestration-v3/interface-contracts.md) 记录 Plan/Run/Effect/Receipt/Result/Projection 逻辑合同及物理阻塞；新增 [implementation-plan](../../plans/refactor/atria-native-orchestration-v3/implementation-plan.md) 为 E0/P1–P8/W01–W09/开发前置唯一权威，新增 [acceptance-matrix](../../plans/refactor/atria-native-orchestration-v3/acceptance-matrix.md) 为 L0–L4 与三端验证唯一目标。
+- 需特别保护的跨域依赖：`capability-host.js`、`native/play-generation.js`、`native/experience/llm`、`atria-shell/workspace-host.js`、`settings-repo.js`、`src/native/agent-intelligence/evolution-targets.js`；保留/替换/删除必须基于可核对消费者、真实 Native 权威及合同，而非仅按文件名或测试目录推断。
+- D9 的设计出口 **PASS 仅指书面方案已由用户选择**；E0 完整源码引用/物理 Store/预算/审批/未知远端写入/数据清理/Windows+Linux+Termux 真实环境的实施前置当前保持 **BLOCKED/NOT_RUN**。未运行任何本轮新 V3 Node/CI/E2E、真实模型、人工审批、故障注入、第三方工具或实机测试，不伪称它们通过。
+- 下一阶段为**正式开发交接审查**：再次读取远端 refs 与各关键源码/已有 Plan，填补依赖缺口和更细的 Source→Sink/Host Store/Schema/权限清单。只有 E0 完成、相关阻塞解除、开发合同可实现并取得用户新的明确开工要求，才可创建实现分支；当前无此许可。

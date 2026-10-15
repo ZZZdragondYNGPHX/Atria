@@ -1,6 +1,6 @@
-# D9 E0 — Native Orchestration V3 接口与清退初步审计（讨论草案，未冻结）
+# D9 E0 — Native Orchestration V3 旧消费者与审计阻塞的静态证据（E0 未通过）
 
-> 2026-10-15，在 D8 U2 设计冻结后开展 E0 **远端静态定向审计**。读到的源码基线为 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`；D8 文档基线 `docs@6c371ff24a9309ca76a3e5e740543993c53b38ff`。当前仅列已定位真实文件/引用、风险、候选阶段和未决接口，**不是全仓逐文件审计、不宣称 E0 已闭合或 D9 已冻结**，更没有执行测试。原 D1–D8、HCM-01–08 和编排旧模式零兼容硬切持续有效。
+> 2026-10-15 基于 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a` 的**远端定向静态审计**。**D9 已选 E1 并冻结路线，但本模块的 E0 全量依赖闭包、物理存储/权限/崩溃与三端真实验证仍 BLOCKED**。本文件只持有代码证据/未闭合项目，不再承担实施分期或验收合同：接口详见 [interface-contracts](interface-contracts.md)，阶段详见 [implementation-plan](implementation-plan.md)，验证详见 [acceptance-matrix](acceptance-matrix.md)。无产品代码修改或测试。
 
 ## 1. 必须保护的执行权威与明确缺口
 
@@ -48,39 +48,15 @@
 
 **未定项**：Host Store 物理布局、API/Schema exact fields、退役消费者全部清单、数据目录清理范围、跨 Store 原子性策略、目标性能/失效恢复阈值。D1–D8 设计不能充当这些细节已验收/已实现的证据。
 
-## 4. 实施分期候选（不是批准的开发阶段）
+## 4. 首轮分期草案的来源与最终路线
 
-| 候选阶段 | 目标与依赖 | 阶段出口（待定义证据） |
-| --- | --- | --- |
-| **E0 审计** | 精确 source→sink imports、动态入口、保留/删除映射、权威与 Schema/测试矩阵；确认 Serene/MCP/Memory/Evolution 依赖 | 发现 E0 阻塞项、正式 D9 方案冻结；尚不能开工删产品 |
-| **P1 Host Contracts** | Native PlanAuthoring/Version/CAS、RunLedger/NodeAttempt/GraphRevision 与操作身份；新 API 与受权 Projection | 持久重启、非法图、并发冲突、无 Browser 执行权威的合同验证 |
-| **P2 Graph/Effect Core** | G2 动态派发/Delegate/Handoff/Join/Judge/Review、D6 Effect/Approval/Receipt/unknown 恢复，与 Native Scheduler permits 对接 | Crash windows 与写入幂等/不确定停止、CAS/fencing/预算 proof |
-| **P3 Domain Ports** | D4 Context/Hybrid、D5 Model/Compute/Reuse、Tool/Skill/MCP/A2A、原 Studio/Session/World/Experience Target 适配 | 没有第二费用/Memory/World Authority，Actor/Tool/Egress/Preview 负例 |
-| **P4 Product Consumers** | 原生 RP Narrator/Player Authority、Native Package Game、Studio Project Task/Review/Commit、Evolution/Quality Target 全部改用 V3 | 成功路径只走新消费者，原业务正式提交/用户审阅与完整 Evidence |
-| **P5 U2 Frontend** | Serene Canvas Agents Authoring Graph+Inspector、Timeline/Graph/Diagnostics/Approval，移动等价 Node/Edge List | UI/交互、保存冲突、Secret/Context/Cost 脱敏、真实 Tool Approval |
-| **P6 Atomic Hard Cut** | 在同一个产品实现分支移除所有旧五模式、Browser 执行/IndexedDB、Preset/Host Profile/旧 UI/旧事件用途与旧数据接口；替代/删除关联测试 | 无 runtime dual path、无兼容 shim、无旧模式/预设/配置读写或死 import；共享服务/全站启动仍工作 |
-| **P7 Integrated Acceptance** | 端到端恢复、安全、预算、RP/Project 质量、视觉/无障碍/长图性能和真实客户端 Windows/CachyOS Linux/Termux | 每行真正执行并记录 PASS/FAIL/UNAVAILABLE，阻塞不宣称完成 |
-| **P8 Integration/Close** | 全部门槛达成后按 Governance 集成回 main、docs 同一 Record 更新真实 End HEAD/测试与清理 | 真实 Git main commit、CI/受控实机证据、无遗留旧模式 |
+早期 E0 静态调研提出过 P1–P8 候选，用于讨论而不是已经批准的实现阶段。**第九轮用户已正式选择 E1**，正式 E0 前置、P1–P8 阶段顺序、W01–W09 工作包与逐阶段出口现由 [implementation-plan.md](implementation-plan.md) **唯一**管理。本静态审计不能重新冻结另一份分期方案；其发现仍供后续 E0 消费者核对。
 
-以上 P1–P8 顺序为**提案**，允许在 D9 用户选择和 E0 全消费图审核时合并/细分；不要在 main 上分批留下长期两套生产执行器。实施宜在同一 `refactor/atria-native-orchestration-v3`（仅建议命名）临时分支开发，最终**一次零兼容产品切换**；内部开发期间暂存旧代码不是允许发布兼容 shim。
+## 5. E0 静态证据等级与实际验证现状
 
-## 5. 验收维度与当前证据等级
+本轮仅通过 GitHub 已查目录、关键源码与定向 code search 定位消费者；没有实际 Node/FS/SQLite/Browser/Windows/Linux/Termux 运行、故障注入、真实模型/Tool/Eval 与人工批准记录。故各验收矩阵项**在本轮均为 NOT_RUN/BLOCKED**，不能因为某旧测试文件存在就写 PASS。完整 L0–L4 定义、Graph/Effect/预算/Actor/质量/跨端矩阵及 P1–P8 Gate 统一见 [acceptance-matrix.md](acceptance-matrix.md)。E0 仍需根据当时最新产品 HEAD 补全引用闭包并核查真实 store/source/unknown 结果。
 
-| 验收域 | 关键必测反例 | 当前证据 |
-| --- | --- | --- |
-| Graph/持久化 | DAG/有界循环、GraphPatch CAS、多次 NodeAttempt/复用/Join，断电恢复与不同版本 stale | **静态目标，未执行 V3** |
-| 外部 Effect/审批 | Tool/MCP/A2A 高风险执行、可信批准/replay、远端已执行但响应丢失，unknown 不重发/取消不撤销 | **静态目标，未执行 V3** |
-| 费用/模型 | 并行子预算保留/真实 charge/unknown、Gateway hidden retry、Fallback 质量/权限，缓存三层隔离 | **静态目标，未执行 V3** |
-| Source/Actor | A 知秘/B 不知、Narrator 宽视图与独立 Player Disclosure、Memory 源撤销、Branch fork/restore | **静态目标，未执行 V3** |
-| Narrator/玩家 | 唯一 final body、已提交 World Facts、自由文本反全知与代写玩家行为、按需模型无固定 Agent 浪费 | **静态目标，未执行 V3** |
-| Studio/Evolution | Project Task/Review/Commit、冲突回退、M1 Experience/Evolution 换目标后无误写/Promotion 旁路 | **静态目标，未执行 V3** |
-| UI / Diagnostics | Canvas-Inspector/List 同步、Timeline 默认、Host Projection、真实审批、隐私、恢复/Trace | **静态目标，未执行 V3** |
-| 客户端平台 | Linux/CachyOS KDE、Windows、Android Termux 各自 Native Node Host、真实 Browser 及触控/键盘/软键盘/Back | **三端都未做本轮测试** |
-| 长会话/性能 | Source 可验证压缩、长 Run Timeline、Graph 大图无语义丢失、用户操作/取消不被渲染堵塞 | **待定量基线，无 V3 实测** |
-
-**验收纪律**：每条需要区分纯函数单测、Native Host/SQL/FS/进程崩溃、实际 Browser UI、可信人工审批、真实 Provider/Tool，以及实体 Windows/Linux/Termux。不以一个测试层替代其他层；不因已有历史模块测试通过就声称整个 V3 通过。缺真实账号/外部服务/设备时明确 blocked/untested，不购买、绕授权或伪造通过。
-
-## 6. 当前 E0 阻塞清单与第九轮讨论选项
+## 6. 当前 E0 阻塞清单（用户已选 E1，未解除阻塞）
 
 - **B1（高优先）**：Native 持久 RunLedger/PlanAuthoring/Effect/Approval/Projection 的物理接口、CAS/恢复和原 Send 预算与 Subrun 限额交叉约束尚需精确源码/Schema/失败窗审查。
 - **B2（高优先）**：旧 Orchestrator 除顶层目录外还有 Native Game Play、EvolutionTargets、SettingsRepo、AppShell 等**跨域活引用**；必须替换后再删除，不能用全目录 rm 构成“硬切完成”。
@@ -89,4 +65,4 @@
 - **B5（待真实设备）**：Windows、CachyOS Linux、Termux 真实客户端权限/生命周期/键盘/触控/审批的矩阵与 CI 分层证据尚未收集。
 - **B6（未定实现）**：Graph 渲染/编辑库、性能硬指标、具体 resource/Effect/Result physical schema、原旧预设不迁移时的精确数据清理规则。
 
-第九轮需要正式选择“同一临时产品分支按阶段实现、通过门槛后**一次完全切主路径**”与更大范围一次性重写之间的工程推进形式；但**不能**选择保留旧模式/兼容旧数据/让 Browser 和 Host 长期双执行业务的方向，这些已经被 D2 否决。D9 用户选择及进一步 E0 证据前，此文不声明冻结接口、通过全域审计或允许修改 main。
+第九轮已选择 **E1：Host 内核先行、单任务分阶段、最终统一硬切**；不允许恢复任何旧模式/数据/兼容层，也不能因为该选择就创建实现分支。E0 仍须补全上述 B1–B6 证据、跨域调用者/原生 Schema/权限/预算/崩溃与端侧检查，并在同一 Record 记录 Gate。具体开发分期与建分支条件统一由 [implementation-plan.md](implementation-plan.md) 冻结。
