@@ -412,3 +412,12 @@
 - 补最终消费收紧前，新completion四Engine72+原Effect44=116/116通过（242.743s），实际MySQL/Pg串行运行。收紧后四Engine受影响Skill/新矛盾案例24/24，其余52为name-filter skip；原ToolPort FS/SQLite20/20。未重新全跑最终76矩阵，不宣称final76全通过。原关联MCP/Skill/A2A/Tool六suite109/109；原HTTP node:test25PASS/1 SDK gated SKIP，不计SDK互操作通过。Pg既有nested client.query deprecation warning未改。
 - 七个真实guard mutants分别捕获4/6/2/2/4/4/2个预期fail，finally原文恢复：consume终检、isError类型、MCP/Skill proof binding、Skill真实local预算、cold intent一致性及最终confirmed/receipt消费guard。SQL初始启动脚本默认用户名被配置占位串替换，已终止仅本轮自有Jest进程、修正后重跑，错误命令未计通过，未改DB/Owner。
 - 六变更文件最终targeted ESLint/staged diff check通过，仅显式提交本组文件。接口§17.24、同一整合入口/验收现状更新；P3仍IN_PROGRESS/Gate NOT_READY。完整真实领域scope/grant、可信Session quota producer、Runtime产品API/消费者等继续实施，外部部署/三端/批准/实际费用/质量仍按真实未执行项NOT_RUN/BLOCKED；未集成main。
+
+## 2026-10-16 — W04/P3第十五组：实际最终render与原银行发送指纹
+
+- Source 3a0a93c7c → b7c8a7eba 已提交推送。原GenerationService.beforeSend私有closure捕获最终含compiledBinding的snapshot，实际send wrapper在Secret检查后用原compiledRequestBinding重算对应本次render；retry重render额外Secret检查、fallback重取当次capture。原compiledSendIdentity为Host/Execution唯一共同hash入口；返回最后成功实际snapshot，修正retry成功后仍显示首render诊断的问题。
+- 原bank只保存实际request/target/input摘要，无完整body/snapshot持久化。EffectIntent.inputHash继续表示logical action引用，不与实际bank指纹混同。ExecutionService强制传final snapshot/compiledBinding/budgetAttemptRef给必需verifySend，并在原tx用BudgetPort.expectedSend核原费用行精确三字段。真实账本错input/target→零HTTP，已准入费用保留真实状态，不假装退款。原Provider私有wire lease保持实际字节/单次send权威。
+- GenerationSend+Execution完整2suite48/48后追加2个Context prepared错框案例与requestId非空检查；最终mutants恢复后新增定向20/20、另30为name-filter SKIP（完整50未再全跑），不累计重复子集。相关原generation-budget-p2/generation-local-work/responses-provider-g04/execution-evidence-g01/context-send五suite135/135。原Responses私有lease两项真实HTTP bytes hash、Session retry/fallback、retry末次snapshot、Secret与Context错框均取得对应证据；本组新增矩阵SQL NOT_RUN。
+- BudgetPort三域FS/SQLite7/7，新增实际requestId/target/input三类错绑和local_work冒充provider反例。新增local fixture先因错误字段/类别不符原schema导致6fail，修正为原context_build及真实usage结构后通过，未为fixture放宽产品validator。删除expectedSend守卫实际捕获6fail，finally恢复后7/7；两个文件lint通过。
+- Host/Execution另五个mutants捕获4/2/2/2/4个预期fail：prepared旧hash、缺compiled比较、retry Secret漏查、返回旧snapshot、遗漏expectedSend调用。均协调窗口后finally原文恢复；七变更文件最终targeted ESLint、staged diff check通过。无关CLAUDE.md删除与其他组未混入。
+- 同一接口§17.25补足逻辑输入/实际请求双层绑定，未造request writer或把hash当grant。P3仍IN_PROGRESS/Gate NOT_READY，真实Native Turn principal/原quota组合及完整领域/产品消费者继续实施；未集成main。
