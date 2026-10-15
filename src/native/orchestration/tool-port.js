@@ -186,7 +186,7 @@ export class ToolPort {
                         await this.credentialAuthority.assertConnection(handle, captured.connection);
                     }
                 } else await skill.revalidate();
-                if (phase === 'consume' && budget) await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef);
+                if (phase === 'consume' && budget) await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef, { tx });
                 checkCancellation(signal);
                 return grant;
             };

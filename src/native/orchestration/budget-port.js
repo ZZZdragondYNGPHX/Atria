@@ -117,8 +117,10 @@ export class BudgetPort {
         return { snapshot, anchor };
     }
 
-    async #project(handle, ref) {
-        const { task, project } = await this.projectAgent.observeContext(handle, ref.projectId, ref.taskId);
+    async #project(handle, ref, { tx } = {}) {
+        // Final consumption already owns the original Task/Studio queues. The
+        // original transaction reader avoids queuing behind our own boundary.
+        const { task, project } = await this.projectAgent[tx ? 'observeComputeSource' : 'observeContext'](handle, ref.projectId, ref.taskId);
         if (project.revision.revision !== task.baseRevision || this.#projectOperation(ref, task) !== ref.operationId) throw new ConflictError('native_generation_revision_conflict');
         return task;
     }
@@ -219,10 +221,10 @@ export class BudgetPort {
         return this.rpControl.settleLocalWork(handle, authorityRef.controlId, authorityRef.operationId, attemptId, usage);
     }
 
-    async assertCurrent(handle, authorityRef) {
+    async assertCurrent(handle, authorityRef, { tx } = {}) {
         assertBudgetAuthorityRef(authorityRef);
         if (authorityRef.domain === 'session') await this.#session(handle, authorityRef);
-        else if (authorityRef.authority === 'project_task') await this.#project(handle, authorityRef);
+        else if (authorityRef.authority === 'project_task') await this.#project(handle, authorityRef, { tx });
         else await this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
     }
 

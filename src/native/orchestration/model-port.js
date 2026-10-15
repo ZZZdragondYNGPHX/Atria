@@ -154,7 +154,7 @@ export class ModelPort {
                 if (!saved || hash(saved.observation) !== hash(pending.observation)) fail('native_orchestration_model_consume_denied');
                 checkCancellation(signal);
                 await revalidateConsume({ tx });
-                await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef);
+                await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef, { tx });
                 try { await revalidateConsume({ tx }); } catch (error) {
                     if (CONSUME_DENIALS.has(error.code)) return deny();
                     throw error;

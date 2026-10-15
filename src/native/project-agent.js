@@ -309,6 +309,12 @@ export class ProjectAgentService {
         return JSON.stringify([handle, projectId, id]);
     }
 
+    // The original Task writer lock also fences read-only Host consumption.
+    // It must precede the original Studio queue and any Engine transaction.
+    withTaskLock(handle, projectId, id, operation) {
+        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, operation);
+    }
+
     _task(handle, projectId, id) {
         const task = this._tasks.get(this._key(handle, projectId, id));
         if (!task) throw new NotFoundError('native project agent task', { taskId: id });
@@ -400,7 +406,7 @@ export class ProjectAgentService {
         let collectOutcome = false;
         const outcomeHash = task => hashNativeDocument({ status: task.status, validation: task.validation, review: task.review, changeSets: task.changeSets });
         try {
-            return await withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+            return await this.withTaskLock(handle, projectId, id, async () => {
                 if (write) assertWritable();
                 await this._studio.getProject(handle, projectId);
                 const task = await this._repository.get(handle, projectId, id);
@@ -473,7 +479,7 @@ export class ProjectAgentService {
     }
 
     async _observe(handle, projectId, id, operation) {
-        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+        return this.withTaskLock(handle, projectId, id, async () => {
             await this._studio.getProject(handle, projectId);
             const task = await this._repository.get(handle, projectId, id);
             if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
@@ -714,7 +720,7 @@ export class ProjectAgentService {
     // Settle the admitted job and stop this original Task through its own CAS.
     failComparisonRecovery(handle, projectId, id, executionFingerprint, attemptId, usage, originalSourceIdentity) {
         assertOriginalProjectSourceIdentity(originalSourceIdentity);
-        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+        return this.withTaskLock(handle, projectId, id, async () => {
             assertWritable();
             const task = await this._repository.get(handle, projectId, id);
             if (!task || this._snapshot(task).executionFingerprint !== executionFingerprint) throw new ConflictError('native_generation_task_stopped');
@@ -783,7 +789,7 @@ export class ProjectAgentService {
     }
 
     deleteTask(handle, projectId, id, expectedIntegrity = undefined) {
-        return withNativeResourceWrite(handle, 'project-agent:' + projectId + ':' + id, async () => {
+        return this.withTaskLock(handle, projectId, id, async () => {
             const result = await this._repository.delete(handle, projectId, id, expectedIntegrity);
             this._tasks.delete(this._key(handle, projectId, id)); this._integrities.delete(this._key(handle, projectId, id));
             return result;
