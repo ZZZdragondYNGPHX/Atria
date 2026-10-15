@@ -323,3 +323,11 @@
 4. **ToolPort/Egress/Credential**（W05）：Skill/MCP/A2A action descriptor/grant/egress/SecretRef与原receipt，R3无可信审批拒绝；V05-review-origin的P3负例。
 5. P3 Gate复核：原Session角色/后台配额与V3父子Run授权、原save/导入活动额度失效与保留根、V03-commit-unknown（预算ACK未知先observe）。
 - 已知既有失败：task-runtime-p3 FS/SQLite 4项（forkBranch/revision_conflict，HEAD前即失败）；Windows保留端口段可致guard端口EACCES（重跑通过）；MySQL/Pg全部BLOCKED（无Docker）。测试命令：`cd source/tests && node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.json <paths>`。不要提交工作区无关的`CLAUDE.md`删除。P1/P2仍IN_PROGRESS，P3未完成，main未集成。
+
+## 2026-10-16 — W04/P3第五组：GenerationHost可信发送与普通RP来源
+
+- Source `618a04ae1` → `a7953bd82`已提交推送。GenerationHost.execute的内部options新增orchestrationSend.bank，公共input同名字段拒绝；scheduler递归保留原bank，RP以controlId分区并从RpRunControl/原ChatRepo读取冻结输入之前的messages。普通RP禁调用者messages/prompt/tools，V3路径禁自动narrative Skill loop，后续显式ToolPort负责工具授权。
+- 实际lowering/localWork、模型发送和settle只转发BudgetPort及三个原bank。每次send/retry/fallback按Effect+ordinal产生稳定attempt，prepared snapshot去createdAt后与routeId共同绑定输入；原route更低预算交原reducer收紧，不新增余额/价格表。发送前再次核对原source。Session generationBudget lane与本入口组合明确拒绝，防止绕过原角色/后台限制；组合支持仍是P3 Gate缺口，不冒称已接通。
+- 新generation-send FS/SQLite16/16通过，使用真实本地HTTP合成Provider验证三域retry→fallback三次独立收费、restart replay不发第二次、source revoke后不外发、unknown保留/迟到结算、RP原聊天输入与伪造选项拒绝、generationBudget组合拒绝。分别移除最后发送前source guard及sendBank replay guard，各6项失败；恢复后完整16/16通过。关联BudgetPort、RP bank、generation-local-work、optional-budget及原generation-budget-p2同轮112项通过，28项MySQL/Pg因当时ECONNREFUSED为BLOCKED/NOT_RUN（不是产品断言通过）。生产/测试定向ESLint、diff check通过。
+- 首轮暴露两个接线错误已修：原RequestContextPlan尚未注册rp_chat；原GenerationService清洗掉send_replayed码。增加明确RP source schema及安全错误码转换后通过。usage为合成测试数值，不是实际账单。用户随后通知Docker已启动，下一组重核服务并取得新SQL证据，旧失败保留。
+- EffectController与实际bank的生产saga、Context/Tool Ports、父子Run/角色后台/restore证据继续；P3未完成，P1/P2仍IN_PROGRESS，三端/真实批准/费用/质量未通过。只改后端，UI留Claude Code；没有集成main，无关CLAUDE.md删除未纳入。

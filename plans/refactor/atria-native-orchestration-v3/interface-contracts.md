@@ -129,7 +129,7 @@ Run status：`admitted/running/waiting_approval/reconciling/blocked/completed/pa
 
 ### 8.1 唯一 authority 与必要扩展
 
-E0审计时：`RunControl.charge/chargeCompute/settleCompute` 持原 Session bank；Project 由原 `ProjectAgentService` / ProjectTaskRepository 持有 compute；`native-compute-budget.js` 的 `reserve` 仅是mandatory allowance headroom。当前原共用bank已新增子额度树与Session持久方法，工程字段/实证边界归§17.15；真实GenerationHost send path仍以`randomUUID()`产生compute attempt，尚须接稳定Effect/ordinal，V3不得再造另一套charge。
+E0审计时：`RunControl.charge/chargeCompute/settleCompute` 持原 Session bank；Project 由原 `ProjectAgentService` / ProjectTaskRepository 持有 compute；`native-compute-budget.js` 的 `reserve` 仅是mandatory allowance headroom。当前三个原bank已接BudgetPort；GenerationHost的可信`execute(...,{orchestrationSend:{bank}})`用Effect/ordinal稳定身份发送及结算，普通RP上下文来自原ChatRepo，公共input不能注入bank。现存Session generationBudget lane与此入口组合明确拒绝，不能绕过角色/后台限制。工程实证边界归§17.15及同一Record，V3不得再造另一套charge。
 
 冻结扩展位置为**原** RunControl/Project Agent + 共用 native-compute-budget validator，V3 仅使用 `BudgetPort` typed interface：
 
@@ -502,4 +502,4 @@ Model attempt增加可选`inputFingerprint`；新`admitComputeAttempt`要求该h
 
 原Session RunControl增加内部`reserveComputeChild/admitCompute/releaseComputeChild/observeCompute`，沿原Session锁、Engine/Owner/fence、RunControl record和validator；原chargeLocalWork转交reservationId。新准入严格绑定当前branch/revision，换Source不能以重放名义再准入；审计observe与迟到settle仍可按原operation身份保留费用真相。未关闭reservation使原operation留存，不能被换HEAD的压缩抹去；关闭后原retiredCompute只累计一次实际费用/本地工作，未复制银行或费率。
 
-当前仅原Session持久接口和共用算法有FS/SQLite隔离实证。Project/RP相同原bank接线、原Session角色/后台配额、V3父子Run/Source/Audience授权、BudgetPort与GenerationHost稳定send、原save/导入的活动额度失效与关联保留根仍须后续验证。没有新增Browser/插件预算dispatcher，也未向真实Provider收费。§13的权限/恢复/三域验收要求继续生效，不能以本组宣称V04或完整P3通过。
+当前三个原bank、BudgetPort与GenerationHost稳定send已有FS/SQLite隔离实证，详见同一Record W04/P3第二至第五组。原Session角色/后台配额组合、V3父子Run/Source/Audience授权、Effect生产saga、原save/导入的活动额度失效与关联保留根仍须后续验证。没有新增Browser/插件预算dispatcher，也未向真实Provider收费。§13的权限/恢复/三域验收要求继续生效；合成HTTP/隔离存储不能替代实际账单或完整P3 Gate。
