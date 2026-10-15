@@ -4,7 +4,7 @@ import { pauseRecoveredRecord } from '../../native/recovery-effects.js';
 
 /** Imported intent is evidence, never permission to replay historical work. */
 export function importedManagementRecord(record, handle) {
-    if (record.doc?.protocol !== STORAGE_CENTER_PROTOCOL) return pauseRecoveredRecord(record);
+    if (record.doc?.protocol !== STORAGE_CENTER_PROTOCOL) return pauseRecoveredRecord(record, null, handle);
     const doc = structuredClone(record.doc);
     if (doc.type === 'file-publication') doc.status = 'paused-review';
     if (doc.type === 'task') {

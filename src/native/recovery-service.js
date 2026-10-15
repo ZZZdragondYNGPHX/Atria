@@ -11,7 +11,7 @@ import { AgentExperienceRepository } from './agent-intelligence/experience-repos
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler, withRuntimeWrite } from './model-prompt-runtime/persistence.js';
 import { VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from './model-prompt-runtime/resources.js';
 import { ExtensionsStore } from './extensions-store.js';
-import { RuntimeCheckpointStore } from './model-prompt-runtime/runtime-checkpoint-store.js';
+import { RuntimeCheckpointStore, runtimeCheckpointOwner } from './model-prompt-runtime/runtime-checkpoint-store.js';
 import { visualSessionOwner } from './visual-store.js';
 import { pauseRecoveredRecord } from './recovery-effects.js';
 import { assertWritable } from '../storage/read-only-mode.js';
@@ -71,8 +71,8 @@ export class NativeRecoveryService {
         return withNativeResourceWrite(handle, lockId, operation);
     }
 
-    async capture(tx, handle, target) {
-        const { native, errors } = await readAccountContent(tx, handle);
+    async capture(tx, handle, target, observation = null) {
+        const { native, errors } = observation?.content || await readAccountContent(tx, handle);
         if (errors.length) throw new Error('Native closure enumeration incomplete');
         let records, root, files = [];
         if (target.type === 'backup') {
@@ -88,7 +88,8 @@ export class NativeRecoveryService {
             root = { doc: source.project };
             const ownedScopes = new Set(await new AgentExperienceRepository({ engine: this.engine }).projectOwnedScopes(handle, target.id));
             records = native.filter(row => row.key.kind === K.projectAgentTask && row.key.projectId === target.id
-                || [K.agentExperience, K.agentEvolution].includes(row.key.kind) && ownedScopes.has(row.key.scopeId));
+                || [K.agentExperience, K.agentEvolution].includes(row.key.kind) && ownedScopes.has(row.key.scopeId)
+                || runtimeCheckpointOwner(row)?.type === 'project' && runtimeCheckpointOwner(row).id === target.id);
             const listing = await listAccountFiles(this.projects.getProjectDirectory(handle, target.id));
             if (listing.errors.length) throw new Error('Project closure contains unreadable or linked files');
             for (const file of listing.files) {
@@ -114,6 +115,7 @@ export class NativeRecoveryService {
             records = native.filter(row => {
                 if (target.type === 'session') return sessionKinds.has(row.key.kind) && row.key.sessionId === target.id
                     || row.key.kind === K.maintenance && row.key.scope === 'session:' + target.id
+                    || runtimeCheckpointOwner(row)?.type === 'session' && runtimeCheckpointOwner(row).id === target.id
                     || visualSessionOwner(row, native) === target.id;
                 if (target.type === 'package') return packageKinds.has(row.key.kind) && row.key.packageId === target.id;
                 if (target.type === 'world') return [K.world, K.worldRevision].includes(row.key.kind) && row.key.worldId === target.id;
@@ -155,10 +157,17 @@ export class NativeRecoveryService {
             bytes: records.reduce((sum, row) => sum + resourceContentBytes(row.doc), 0) + files.reduce((sum, file) => sum + file.size, 0) };
     }
 
-    async inspect(handle, target) {
+    async inspectionObservation(handle) {
+        // This is a preview observation, never publication authority. Each
+        // destructive operation captures and validates current state again.
+        const content = await this.engine.withTransaction(handle, tx => readAccountContent(tx, handle));
+        return { content, graph: this.graph ? await this.graph.refresh(handle) : null };
+    }
+
+    async inspect(handle, target, observation = null) {
         return this.lock(handle, target, () => this.engine.withTransaction(handle, async tx => {
-            const closure = await this.capture(tx, handle, target);
-            try { await this.checkDelete(tx, handle, closure); return { ...this.summary(closure), allowed: true, reason: null }; } catch (error) { if (!(error instanceof ConflictError)) throw error; return { ...this.summary(closure), allowed: false, reason: error.code }; }
+            const closure = await this.capture(tx, handle, target, observation);
+            try { await this.checkDelete(tx, handle, closure, observation); return { ...this.summary(closure), allowed: true, reason: null }; } catch (error) { if (!(error instanceof ConflictError)) throw error; return { ...this.summary(closure), allowed: false, reason: error.code }; }
         }));
     }
 
@@ -172,7 +181,7 @@ export class NativeRecoveryService {
             consequences: closure.records.some(row => row.key.kind === K.runControl && row.doc.mode === 'ironman') ? ['ironman-remains-terminal'] : [] };
     }
 
-    async checkDelete(tx, handle, closure) {
+    async checkDelete(tx, handle, closure, observation = null) {
         const { target, records } = closure;
         if (target.type === 'session' && nativeTaskScheduler.hasSessionWork(handle, target.id)) conflict('native_resource_running');
         if (target.type === 'session' && records.some(row => row.key.resourceType === 'atri.visual.job'
@@ -192,11 +201,11 @@ export class NativeRecoveryService {
             const types = { package: 'core.package', world: 'core.world', knowledge: 'core.knowledge', binding: 'core.knowledge-binding', asset: 'core.asset' };
             const resourceType = target.type === 'versioned' ? target.resourceType : types[target.type];
             if (resourceType) {
-                const references = await this.graph.references(handle, { scope: 'library', resourceType, resourceId: target.id }, { reverse: true });
+                const references = await this.graph.references(handle, { scope: 'library', resourceType, resourceId: target.id }, { reverse: true, snapshot: observation?.graph });
                 if (references.some(item => item.node?.resourceType !== resourceType || item.node?.resourceId !== target.id)) conflict('native_resource_referenced');
             }
         }
-        const all = (await readAccountContent(tx, handle)).native;
+        const all = (observation?.content || await readAccountContent(tx, handle)).native;
         const owned = new Set(records.map(recordId));
         // Includes independent Agent material and Runtime/library references not
         // represented by ResourceGraph. Scope labels alone are not a cascade.
@@ -391,7 +400,7 @@ export class NativeRecoveryService {
                         await tx.putResource(record.key, nativeRecord(record.doc, { existing: record, updatedAt: Math.max(Date.now(), (current?.updatedAt || record.updatedAt) + 1) }));
                     } else if (record.key.kind === K.versionedJsonResource && record.key.resourceType.startsWith('atri.extensions.')) {
                         await this.extensions.restoreResource(handle, record.key.resourceType, record.key.resourceId, record.doc);
-                    } else await tx.putResource(record.key, record);
+                    } else await tx.putResource(record.key, pauseRecoveredRecord(record));
                 }
                 this.graph?.invalidate(handle);
                 return this.receipt(tx, handle, operationId, { restored: true, target: doc.target, effectPolicy: 'no-background-model' });
@@ -540,7 +549,7 @@ export class NativeRecoveryService {
                 if (record.key.kind === K.agentEvolution) {
                     await tx.putResource(record.key, pauseRecoveredRecord(record));
                 } else if (record.key.kind === K.projectAgentTask) await tx.putResource(record.key, this.pausedProjectTask(record));
-                else await tx.putResource(record.key, record);
+                else await tx.putResource(record.key, pauseRecoveredRecord(record));
             }
             this.graph?.invalidate(handle);
             return this.receipt(tx, handle, doc.restoreOperationId, { restored: true, target: doc.target, effectPolicy: 'no-background-model' });

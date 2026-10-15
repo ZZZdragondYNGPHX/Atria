@@ -3,6 +3,7 @@ import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { ConflictError } from '../storage/errors.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { visualSessionOwner } from './visual-store.js';
+import { runtimeCheckpointOwner } from './model-prompt-runtime/runtime-checkpoint-store.js';
 
 export const RECOVERY_PROTOCOL = 'atria.storage-center.v1';
 const publication = new AsyncLocalStorage();
@@ -61,11 +62,14 @@ export async function assertRecoveryWrite(tx, key, proposed = null, loadRoots = 
         if (current?.doc?.status === 'terminal' && current.integrity === hashNativeDocument(proposed.doc)) return;
     }
     const visualOwner = visualSessionOwner({ key, doc: proposed?.doc });
+    const checkpointOwner = runtimeCheckpointOwner({ key, ...proposed });
     for (const row of await loadRoots()) {
         if ((row.doc.records ?? []).some(record => {
             const original = record.key;
             return sameKey(original, key)
                 || visualOwner && visualOwner === original.sessionId
+                || checkpointOwner?.type === 'session' && checkpointOwner.id === original.sessionId
+                || checkpointOwner?.type === 'project' && checkpointOwner.id === original.projectId
                 || key.sessionId && key.sessionId === original.sessionId
                 || key.projectId && key.projectId === original.projectId
                 || key.packageId && [K.package, K.packageVersion, K.packageState].includes(key.kind) && original.kind === K.package && original.packageId === key.packageId

@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { assertRecoveryWrite, assertRecoveryDelete, recoveryRecords } from '../native/recovery-roots.js';
 import { measureAccount } from './resource-accounting.js';
-import { resourceContentBytes } from './resource-catalog.js';
+import { resourceContentBytes, REDUCTION_JOURNAL_BYTES } from './resource-catalog.js';
 import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
 
 const context = new AsyncLocalStorage();
@@ -76,8 +76,15 @@ export function installAccountQuota(engine, { directoriesByHandle, limit, makeDe
                     // Native records have identical canonical representation in every engine.
                     // Legacy file handlers are measured again by the enclosing request gate.
                     const delta = contentBytes(next) - contentBytes(before);
-                    const managementReduction = next?.doc?.protocol === 'atria.storage-center.v1'
-                        && next.doc.type === 'task' && ['clean', 'purge'].includes(next.doc.action);
+                    const reductionTask = row => row?.doc?.protocol === 'atria.storage-center.v1' && row.doc.type === 'task'
+                        && row.doc.scope === 'server' && row.doc.handle === handle && ['clean', 'purge'].includes(row.doc.action)
+                        && Array.isArray(row.doc.items) && row.doc.items.some(item => ['pending', 'processing', 'succeeded'].includes(item.status));
+                    let managementReduction = key.kind === NATIVE_RESOURCE_KINDS.maintenance && key.scope === 'storage-center:task:' + next?.doc?.id
+                        && (reductionTask(next) || reductionTask(before));
+                    if (managementReduction && !reductionTask(before) && delta > 0) {
+                        const rows = await target.listResources({ kind: NATIVE_RESOURCE_KINDS.maintenance, handle });
+                        managementReduction = rows.filter(reductionTask).reduce((sum, row) => sum + contentBytes(row), 0) + contentBytes(next) <= REDUCTION_JOURNAL_BYTES;
+                    }
                     const native = Object.values(NATIVE_RESOURCE_KINDS).includes(key.kind);
                     if (!managementReduction && !native) assertQuotaGrowth(scope, delta);
                     const result = await value.call(target, key, ...args);

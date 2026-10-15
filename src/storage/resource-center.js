@@ -3,7 +3,8 @@ import { NATIVE_RESOURCE_KINDS as K } from '../native/contracts.js';
 import { NativeRecoveryService, RECOVERABLE_DESCRIPTORS } from '../native/recovery-service.js';
 import { nativeRecord } from '../native/repositories/common.js';
 import { measureAccount, readAccountContent } from './resource-accounting.js';
-import { classifyNativeRecord, resourceFingerprint, STORAGE_CENTER_PROTOCOL } from './resource-catalog.js';
+import { classifyNativeRecord, resourceFingerprint, resourceContentBytes, STORAGE_CENTER_PROTOCOL, REDUCTION_JOURNAL_BYTES } from './resource-catalog.js';
+import { accountQuotaLimit } from './account-quota.js';
 import { ConflictError, NotFoundError } from './errors.js';
 import { RuntimeCheckpointStore } from '../native/model-prompt-runtime/runtime-checkpoint-store.js';
 
@@ -114,19 +115,37 @@ export class ResourceCenterService {
         return row.doc;
     }
     async saveTask(handle, doc) {
-        await this.engine.withTransaction(handle, tx => tx.putResource(taskKey(handle, doc.id), nativeRecord(doc)));
+        await this.engine.withTransaction(handle, async tx => {
+            const current = await tx.getResource(taskKey(handle, doc.id));
+            doc.stopRequested ||= current?.doc?.stopRequested === true;
+            if (doc.status === 'preview' && ['clean', 'purge'].includes(doc.action) && !current) {
+                const limit = await accountQuotaLimit(this.engine, handle);
+                if (Number.isFinite(limit) && limit >= 0 && (await measureAccount({ engine: this.engine, tx, handle, directories: this.directoriesByHandle(handle) })).totalBytes > limit) {
+                    const rows = (await tx.listResources({ kind: K.maintenance, handle })).filter(row => row.doc?.protocol === STORAGE_CENTER_PROTOCOL && row.doc.type === 'task' && ['clean', 'purge'].includes(row.doc.action));
+                    let bytes = resourceContentBytes(doc) + rows.reduce((sum, row) => sum + resourceContentBytes(row.doc), 0);
+                    // Only terminal display history is expendable. Active and
+                    // interrupted intents, recovery sources and receipts remain.
+                    for (const row of rows.filter(row => ['completed', 'partial', 'stopped', 'failed'].includes(row.doc.status)).sort((a, b) => a.doc.updatedAt - b.doc.updatedAt)) {
+                        if (bytes <= REDUCTION_JOURNAL_BYTES) break;
+                        await tx.deleteResource(row.key); bytes -= resourceContentBytes(row.doc);
+                    }
+                }
+            }
+            await tx.putResource(taskKey(handle, doc.id), nativeRecord(doc));
+        });
         return doc;
     }
     async preview(handle, action, targets) {
         if (!['trash', 'restore', 'purge', 'clean', 'repair', 'history'].includes(action) || !Array.isArray(targets) || !targets.length) throw new TypeError('Invalid storage preview');
         const unique = new Map(targets.map(target => [targetId(target), target]));
+        const observation = action === 'trash' && unique.size > 1 ? await this.recovery.inspectionObservation(handle) : null;
         const items = [];
         for (const target of unique.values()) {
             try {
                 const checked = action === 'history' ? await this.recovery.projects.inspectHistory(handle, target.id)
                     : action === 'clean' && target.type === 'expired-checkpoint' ? await new RuntimeCheckpointStore({ engine: this.engine, handle }).inspectExpired(target.id)
                         : action === 'clean' && target.type === 'garbage-blob' ? await this.recovery.assets.inspectGarbageBlob(handle, target.id)
-                            : action === 'trash' ? await this.recovery.inspect(handle, target) : action === 'repair' ? await this.recovery.preflightRepair(handle, target.id) : await this.recovery.preflightRestore(handle, target.id);
+                            : action === 'trash' ? await this.recovery.inspect(handle, target, observation) : action === 'repair' ? await this.recovery.preflightRepair(handle, target.id) : await this.recovery.preflightRestore(handle, target.id);
                 const allowed = action === 'clean' ? ['garbage-blob', 'expired-checkpoint'].includes(target.type) : action === 'purge' ? checked.state === 'retained' : checked.allowed;
                 items.push({ target, version: checked.version, name: checked.name || target.id, bytes: checked.bytes,
                     status: allowed ? 'pending' : 'blocked', reason: allowed ? null : checked.reason || 'native_recovery_not_ready',
@@ -157,9 +176,13 @@ export class ResourceCenterService {
         return this.task(handle, id);
     }
     async stop(handle, id) {
-        const doc = await this.task(handle, id);
-        doc.stopRequested = true; doc.updatedAt = Date.now();
-        return this.saveTask(handle, doc);
+        return this.engine.withTransaction(handle, async tx => {
+            const row = await tx.getResource(taskKey(handle, id));
+            if (!row || row.doc?.protocol !== STORAGE_CENTER_PROTOCOL) throw new NotFoundError('Storage task');
+            const doc = { ...row.doc, stopRequested: true, updatedAt: Date.now(), status: row.doc.status === 'preview' ? 'stopped' : row.doc.status };
+            await tx.putResource(taskKey(handle, id), nativeRecord(doc));
+            return doc;
+        });
     }
     async run(handle, id) {
         let task = await this.task(handle, id);

@@ -4,6 +4,7 @@ import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
 import { nativeResourceFileId } from './engines/native-resource-key.js';
 import { projectExperienceOwner } from '../native/agent-intelligence/experience-repository.js';
 import { visualSessionOwner } from '../native/visual-store.js';
+import { runtimeCheckpointOwner } from '../native/model-prompt-runtime/runtime-checkpoint-store.js';
 import { SNAPSHOT_META_ENTRY } from './migration/backup.js';
 import { ENGINE_META_ENTRY } from './engine-backup-entries.js';
 import {
@@ -119,8 +120,8 @@ export async function measureAccount({ engine, handle, directories, tx = null })
         try {
             const projectOwner = [NATIVE_RESOURCE_KINDS.agentExperience, NATIVE_RESOURCE_KINDS.agentEvolution].includes(record.key.kind) && projectScopes.get(record.key.scopeId);
             const sessionOwner = visualSessionOwner(record, content.native);
-            const owner = projectOwner ? { type: 'project', id: projectOwner } : sessionOwner ? { type: 'session', id: sessionOwner } : null;
-            const category = projectOwner ? 'projects' : sessionOwner ? 'sessions' : classifyNativeRecord(record);
+            const owner = projectOwner ? { type: 'project', id: projectOwner } : sessionOwner ? { type: 'session', id: sessionOwner } : runtimeCheckpointOwner(record);
+            const category = owner?.type === 'project' ? 'projects' : owner?.type === 'session' ? 'sessions' : classifyNativeRecord(record);
             add({ id: nativeResourceIdentity(record.key), source: 'native', category,
                 bytes: resourceContentBytes(record.doc), version: resourceFingerprint(record.doc),
                 key: record.key, owner: owner || undefined, updatedAt: record.updatedAt, capabilities: resourceCapabilities({ view: true }),

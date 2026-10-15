@@ -8,6 +8,7 @@ import { AgentExperienceRepository } from '../../src/native/agent-intelligence/e
 import { installAccountQuota } from '../../src/storage/account-quota.js';
 import { ResourceCenterService } from '../../src/storage/resource-center.js';
 import { importedManagementRecord } from '../../src/storage/migration/management-state.js';
+import { REDUCTION_JOURNAL_BYTES } from '../../src/storage/resource-catalog.js';
 
 describe.each(CONTRACT_HARNESSES)('persistent resource operations — $name', ({ make }) => {
     let h, center;
@@ -19,7 +20,7 @@ describe.each(CONTRACT_HARNESSES)('persistent resource operations — $name', ({
             worlds: new WorldRepo({ engine: h.engine }), personas: new PersonaRepo({ engine: h.engine, assetStore: svc.assetStore }),
             projects: new ProjectStore({ directoriesByHandle: () => h.dirs }), graph: null });
     });
-    afterEach(async () => h.cleanup());
+    afterEach(async () => h?.cleanup());
     async function world(name) {
         const id = createNativeId('world'), key = { kind: K.world, handle: h.handle, worldId: id };
         await h.engine.withTransaction(h.handle, tx => tx.putResource(key, nativeRecord({ worldId: id, displayName: name, currentRevisionId: null })));
@@ -39,6 +40,10 @@ describe.each(CONTRACT_HARNESSES)('persistent resource operations — $name', ({
         expect(live.valid(record)).toBe(true);
         await h.engine.withTransaction(h.handle, tx => tx.putResource(live.key(record.doc.checkpointId), record));
         const snapshot = await center.snapshot(h.handle); expect(snapshot.suggestions).toHaveLength(1);
+        installAccountQuota(h.engine, { directoriesByHandle: () => h.dirs, limit: async () => 0, makeDefault: true });
+        const tooLarge = { protocol: 'atria.storage-center.v1', type: 'task', scope: 'server', handle: h.handle, id: 'oversized-preview',
+            action: 'clean', status: 'preview', items: [{ status: 'pending', reason: 'x'.repeat(REDUCTION_JOURNAL_BYTES) }] };
+        await expect(center.saveTask(h.handle, tooLarge)).rejects.toMatchObject({ code: 'storage_quota_exceeded' });
         const preview = await center.preview(h.handle, 'clean', snapshot.suggestions.map(item => item.target));
         expect(preview.items[0].status).toBe('pending');
         const result = await center.run(h.handle, preview.id); expect(result.items[0].status).toBe('succeeded');
@@ -88,5 +93,16 @@ describe.each(CONTRACT_HARNESSES)('persistent resource operations — $name', ({
         const imported = importedManagementRecord({ doc: { ...result, status: 'running' } }, h.handle);
         expect(imported.doc.status).toBe('paused-review'); await center.saveTask(h.handle, imported.doc);
         await expect(center.execute(h.handle, task.id)).rejects.toMatchObject({ code: 'storage_task_requires_new_preview' });
+    });
+    test('a stop arriving between progress read and commit is sticky and cannot overwrite completed items', async () => {
+        const task = await center.preview(h.handle, 'trash', [await world('One'), await world('Two')]);
+        const save = center.saveTask.bind(center); let injected = false;
+        center.saveTask = async (handle, doc) => {
+            if (!injected && doc.status === 'running' && doc.items[0].status === 'succeeded') { injected = true; await center.stop(handle, doc.id); }
+            return save(handle, doc);
+        };
+        const result = await center.run(h.handle, task.id);
+        expect(result.status).toBe('stopped'); expect(result.stopRequested).toBe(true);
+        expect(result.items.map(item => item.status)).toEqual(['succeeded', 'pending']);
     });
 });

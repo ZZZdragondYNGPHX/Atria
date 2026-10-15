@@ -11,6 +11,9 @@ import { writeAccountFile } from '../../src/storage/account-file-write.js';
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { services, sessionFixture } from '../native/helpers/session-fixture.js';
 import { buildAtriaPackageContainer } from '../../src/native/package-container.js';
+import { importRisuSprites } from '../../src/endpoints/sprites.js';
+import { persistCharXAssets } from '../../src/charx.js';
+import { writeMetadataIndex } from '../../src/endpoints/image-metadata.js';
 
 const hash = 'a'.repeat(64);
 const fields = { scopeId: hash, evidenceId: hash, sourceDigest: hash, taskId: 'task-1', goalId: 'goal-1', commitId: 'commit-1', checkpointId: hash, scope: 'probe', namespace: 'atri_probe', head: 'head-1', resourceType: 'core.prompt-module', resourceId: 'probe-resource', revision: 'v1' };
@@ -25,6 +28,20 @@ describe.each(CONTRACT_HARNESSES)('resource accounting — $name', ({ make, name
     beforeEach(async () => { h = await make(); });
     afterEach(async () => { await h.cleanup(); });
     const measure = () => measureAccount({ engine: h.engine, handle: h.handle, directories: h.dirs });
+    test('legacy auxiliary media imports and generated metadata cannot bypass quota or erase an existing replacement', async () => {
+        let limit = 0;
+        installAccountQuota(h.engine, { directoriesByHandle: () => h.dirs, limit: async () => limit, makeDefault: true });
+        const risu = { data: { name: 'Quota sprites', extensions: { risuai: { emotions: [['happy', Buffer.from('Sprite bytes').toString('base64')]] } } } };
+        await expect(importRisuSprites(h.dirs, risu, h.handle)).rejects.toMatchObject({ code: 'storage_quota_exceeded' });
+        const file = path.join(h.dirs.characters, 'Quota sprites', 'happy.png'); expect(fs.existsSync(file)).toBe(false);
+        limit = -1; await importRisuSprites(h.dirs, risu, h.handle);
+        limit = (await measure()).totalBytes;
+        const asset = { zipPath: 'assets/happy.png', name: 'happy', baseName: 'happy', ext: 'png', storageCategory: 'sprite' };
+        await expect(persistCharXAssets([asset], new Map([[asset.zipPath, Buffer.alloc(200)]]), h.dirs, 'Quota sprites', h.handle)).rejects.toMatchObject({ code: 'storage_quota_exceeded' });
+        expect(fs.readFileSync(file, 'utf8')).toBe('Sprite bytes');
+        await expect(writeMetadataIndex(h.dirs.root, { version: 1, images: {}, folders: [] })).rejects.toMatchObject({ code: 'storage_quota_exceeded' });
+        expect((await measure()).totalBytes).toBe(limit);
+    });
     test('package and media quota failures roll back newly introduced blobs and all metadata', async () => {
         const svc = services(h), fixture = sessionFixture();
         const { archive } = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles: new Map(), assetPayloads: new Map() });

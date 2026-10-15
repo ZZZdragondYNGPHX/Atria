@@ -4,7 +4,8 @@ import path from 'node:path';
 import express from 'express';
 import mime from 'mime-types';
 import sanitize from 'sanitize-filename';
-import { sync as writeFileAtomicSync } from 'write-file-atomic';
+import { writeAccountFile } from '../storage/account-file-write.js';
+import { accountEngineForDirectory } from '../storage/account-quota.js';
 
 import { getImageBuffers } from '../util.js';
 
@@ -43,9 +44,10 @@ function getSpritesPath(directories, name, isSubfolder) {
  * The additionalAssets and emotions are removed from the data.
  * @param {import('../users.js').UserDirectoryList} directories User directories
  * @param {object} data RisuAI character data
- * @returns {void}
+ * @param {string} handle Account owner
+ * @returns {Promise<void>}
  */
-export function importRisuSprites(directories, data) {
+export async function importRisuSprites(directories, data, handle) {
     try {
         const name = data?.data?.name;
         const risuData = data?.data?.extensions?.risuai;
@@ -102,13 +104,14 @@ export function importRisuSprites(directories, data) {
 
             const filename = label + '.png';
             const pathToFile = path.join(spritesPath, sanitize(filename));
-            writeFileAtomicSync(pathToFile, fileBase64, { encoding: 'base64' });
+            await writeAccountFile(handle, pathToFile, Buffer.from(fileBase64, 'base64'), accountEngineForDirectory(handle, directories.root) || undefined);
         }
 
         // Remove additionalAssets and emotions from data (they are now in the sprites folder)
         delete data.data.extensions.risuai.additionalAssets;
         delete data.data.extensions.risuai.emotions;
     } catch (error) {
+        if (error.code?.startsWith('storage_')) throw error;
         console.error(error);
     }
 }
@@ -218,13 +221,10 @@ router.post('/upload-zip', async (request, response) => {
             // Remove existing sprite with the same label
             const existingFile = files.find(file => path.parse(file).name === path.parse(filename).name);
 
-            if (existingFile) {
-                fs.unlinkSync(path.join(spritesPath, existingFile));
-            }
-
             // Write sprite buffer to disk
             const pathToSprite = path.join(spritesPath, sanitize(filename));
-            writeFileAtomicSync(pathToSprite, buffer);
+            await writeAccountFile(request.user.profile.handle, pathToSprite, buffer);
+            if (existingFile && existingFile !== path.basename(pathToSprite)) fs.unlinkSync(path.join(spritesPath, existingFile));
         }
 
         // Remove uploaded ZIP file
@@ -267,18 +267,12 @@ router.post('/upload', async (request, response) => {
 
         const files = fs.readdirSync(spritesPath);
 
-        // Remove existing sprite with the same label
-        for (const file of files) {
-            if (path.parse(file).name === spriteName) {
-                fs.unlinkSync(path.join(spritesPath, file));
-            }
-        }
-
         const filename = spriteName + path.parse(file.originalname).ext;
         const spritePath = path.join(file.destination, file.filename);
         const pathToFile = path.join(spritesPath, sanitize(filename));
         // Copy uploaded file to sprites folder
-        fs.cpSync(spritePath, pathToFile);
+        await writeAccountFile(request.user.profile.handle, pathToFile, fs.readFileSync(spritePath));
+        for (const existing of files) if (path.parse(existing).name === spriteName && existing !== path.basename(pathToFile)) fs.unlinkSync(path.join(spritesPath, existing));
         // Remove uploaded file
         fs.unlinkSync(spritePath);
         return response.send({ ok: true });

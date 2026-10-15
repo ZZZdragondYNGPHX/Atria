@@ -13,6 +13,19 @@ const sameScope = (a, b) => hashNativeDocument(a.executionScope) === hashNativeD
 const authentic = (doc, state) => state?.schemaVersion === 1 && state.bindingFingerprint === doc.bindingFingerprint
     && state.text === doc.text && hashNativeDocument(state.calls) === hashNativeDocument(doc.calls);
 
+/** Ownership comes from the Runtime envelope's authenticated execution source,
+ * independently of whether its continuation has expired. */
+export function runtimeCheckpointOwner(record) {
+    const { key, doc } = record || {};
+    if (key?.kind !== NATIVE_RESOURCE_KINDS.runtimeCheckpoint || !doc?.binding
+        || doc.binding.ownerFingerprint !== hashNativeDocument(key.handle)
+        || doc.bindingFingerprint !== hashNativeDocument(doc.binding) || record.integrity !== hashNativeDocument(doc)) return null;
+    const scope = doc.binding.executionScope;
+    if (scope?.kind === 'task' && typeof scope.projectId === 'string') return { type: 'project', id: scope.projectId };
+    if (['request', 'session_task'].includes(scope?.kind) && scope.source?.kind === 'session' && typeof scope.source.sessionId === 'string') return { type: 'session', id: scope.source.sessionId };
+    return null;
+}
+
 // Private Runtime storage. Only the server adapter obtains this port; no domain
 // resource, public endpoint or caller JSON can supply its engine/owner binding.
 export class RuntimeCheckpointStore {

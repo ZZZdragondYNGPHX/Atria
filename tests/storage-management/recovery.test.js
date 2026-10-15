@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { createGitClient } from '../../src/git/client.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
-import { installFixture, services } from '../native/helpers/session-fixture.js';
+import { installFixture, services, knowledgeSnapshot, publishKnowledge } from '../native/helpers/session-fixture.js';
 import { WorldRepo, PersonaRepo, ProjectStore, createNativeId } from '../../src/native/index.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { NativeRecoveryService } from '../../src/native/recovery-service.js';
@@ -20,6 +20,9 @@ import { AgentExperienceRepository } from '../../src/native/agent-intelligence/e
 import { installNativeLifecycle } from '../../src/storage/native-lifecycle.js';
 import { VisualStore, visualKey } from '../../src/native/visual-store.js';
 import { newImageJob } from '../../src/native/image-worker.js';
+import { RuntimeCheckpointStore } from '../../src/native/model-prompt-runtime/runtime-checkpoint-store.js';
+import { hashNativeDocument } from '../../src/native/repositories/common.js';
+import { EMPTY_PERSONA_FINGERPRINT } from '../../src/native/persona-contract.js';
 
 describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => {
     let h, svc, recovery, limit;
@@ -34,6 +37,25 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
     });
     afterEach(async () => { await h.cleanup(); });
     const measure = () => measureAccount({ engine: h.engine, handle: h.handle, directories: h.dirs });
+    test('real Persona, standalone knowledge entries and complete installed Package versions reopen through their original authorities', async () => {
+        const persona = await recovery.personas.create(h.handle, { expectedFingerprint: EMPTY_PERSONA_FINGERPRINT,
+            content: { name: 'Recovered identity', avatar: null, description: 'Original identity content', managementNotes: '' } });
+        const knowledge = knowledgeSnapshot('Original knowledge entry');
+        await publishKnowledge(h, svc.knowledgeRepo, knowledge);
+        const installed = await installFixture(h, undefined, svc);
+        const originalPackage = await svc.packageInstaller.open(h.handle, installed.manifest.packageId, installed.manifest.packageVersionId);
+        const targets = [{ type: 'persona', id: persona.root.personaId, expectedFingerprint: persona.expectedFingerprint },
+            { type: 'knowledge', id: knowledge.knowledgeBase.knowledgeBaseId }, { type: 'package', id: installed.manifest.packageId }];
+        for (const target of targets) {
+            const checked = await recovery.inspect(h.handle, target); expect(checked.allowed).toBe(true);
+            const retained = await recovery.trash(h.handle, target, checked.version, 'authority-' + target.type);
+            const review = await recovery.preflightRestore(h.handle, retained.id); expect(review.allowed).toBe(true);
+            await recovery.restore(h.handle, retained.id, review.version);
+        }
+        expect((await recovery.personas.get(h.handle, { personaId: persona.root.personaId })).ref).toEqual(persona.ref);
+        expect(await svc.knowledgeRepo.listEntries(h.handle, knowledge.knowledgeBase.knowledgeBaseId, knowledge.revision.knowledgeRevisionId)).toEqual(knowledge.entries.map(entry => expect.objectContaining(entry)));
+        expect((await svc.packageInstaller.open(h.handle, installed.manifest.packageId, installed.manifest.packageVersionId)).manifest).toEqual(originalPackage.manifest);
+    });
     test('default repository lifecycle adapter retains the original closure for non-HTTP consumers', async () => {
         installNativeLifecycle(h.engine, { sessions: recovery.sessions, packages: recovery.packages, worlds: recovery.worlds,
             knowledge: recovery.knowledge, personas: recovery.personas }, async (handle, target) => {
@@ -60,15 +82,25 @@ describe.each(CONTRACT_HARNESSES)('Native recycle bin — $name', ({ make }) => 
         await store.reserve(h.handle, job);
         expect((await recovery.inspect(h.handle, target)).reason).toBe('native_resource_running');
         await store.updateJob(h.handle, job.jobId, doc => ({ ...doc, status: 'cancelled', reservation: { ...doc.reservation, released: true } }));
+        const checkpoints = new RuntimeCheckpointStore({ engine: h.engine, handle: h.handle });
+        const binding = { schemaVersion: 1, ownerFingerprint: hashNativeDocument(h.handle), executionScope: { kind: 'request', requestId: 'owned-request', source: { kind: 'session', sessionId: target.id } } };
+        const state = { schemaVersion: 1, checkpointId: 'c'.repeat(64), bindingFingerprint: hashNativeDocument(binding), text: '', calls: [] };
+        await checkpoints.save(state, { binding, bindingFingerprint: state.bindingFingerprint, sequence: [], content: [], text: '', calls: [] });
         const scan = { revisionId: opened.revision.revisionId, branchId: opened.revision.branchId, sessionId: target.id };
         await store.write(h.handle, 'director-scan', 'scan', scan, null);
         const checked = await recovery.inspect(h.handle, target), item = await recovery.trash(h.handle, target, checked.version, 'visual-session');
         expect((await store.read(h.handle, 'job', job.jobId)).value).toBeNull();
         expect((await store.read(h.handle, 'director-scan', 'scan')).value).toBeNull();
+        expect(await h.engine.withTransaction(h.handle, tx => tx.getResource(checkpoints.key(state.checkpointId)))).toBeNull();
         await expect(store.write(h.handle, 'scene', 'late-scene', { source: { sessionId: target.id } }, null)).rejects.toMatchObject({ code: 'native_resource_in_recycle_bin' });
         const review = await recovery.preflightRestore(h.handle, item.id);
         await recovery.restore(h.handle, item.id, review.version);
         expect((await store.read(h.handle, 'job', job.jobId)).value.status).toBe('cancelled');
+        const restoredCheckpoint = await h.engine.withTransaction(h.handle, tx => tx.getResource(checkpoints.key(state.checkpointId)));
+        expect(restoredCheckpoint.doc.binding).toEqual(binding); expect(checkpoints.expired(restoredCheckpoint)).toBe(true);
+        const importedCheckpoint = importedManagementRecord(restoredCheckpoint, 'new-owner');
+        expect(importedCheckpoint.doc.binding.ownerFingerprint).toBe(hashNativeDocument('new-owner'));
+        expect(new RuntimeCheckpointStore({ engine: h.engine, handle: 'new-owner' }).expired(importedCheckpoint)).toBe(true);
         expect((await h.engine.withTransaction(h.handle, tx => tx.getResource(visualKey(h.handle, 'director-scan', 'scan')))).doc).toEqual(scan);
     });
     test('imported incomplete file recovery remains paused until a fresh review; reviewed restore and purge are idempotent', async () => {

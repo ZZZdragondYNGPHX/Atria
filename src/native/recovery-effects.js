@@ -1,9 +1,18 @@
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { nativeRecord, hashNativeDocument } from './repositories/common.js';
+import { runtimeCheckpointLimits } from './model-prompt-runtime/runtime-checkpoint-store.js';
 
 /** Restore persisted facts without replaying historical work. Shared by the
  * Native recycle bin and the existing account backup/migration path. */
-export function pauseRecoveredRecord(record, current = null) {
+export function pauseRecoveredRecord(record, current = null, handle = record?.key?.handle) {
+    if (record?.key?.kind === K.runtimeCheckpoint && record.doc?.schemaVersion === 2 && record.doc.binding) {
+        const expiresAt = Date.now(), binding = { ...record.doc.binding, ownerFingerprint: hashNativeDocument(handle) };
+        // Opaque provider continuation is historical evidence after restore,
+        // never permission to replay the original request or automatic work.
+        const doc = { ...record.doc, binding, bindingFingerprint: hashNativeDocument(binding),
+            createdAt: expiresAt - runtimeCheckpointLimits.ttlMs, expiresAt };
+        return { ...record, ...nativeRecord(doc, { existing: record, createdAt: record.createdAt, updatedAt: record.updatedAt }) };
+    }
     const extension = record?.key?.kind === K.versionedJsonResource && ['atri.extensions.plugin', 'atri.extensions.official'].includes(record.key.resourceType) && typeof record.doc?.enabled === 'boolean';
     if (!record?.doc || record.doc.schemaVersion !== 1 && record.key.kind !== K.agentEvolution && !extension) return record;
     const doc = structuredClone(record.doc), kind = record.key.kind;

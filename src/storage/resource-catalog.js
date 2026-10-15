@@ -10,6 +10,9 @@ export const RESOURCE_CATEGORIES = Object.freeze([
 ]);
 export const STORAGE_CENTER_PROTOCOL = 'atria.storage-center.v1';
 export const RECOVERY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+// A bounded journal lets an over-quota account reduce data without allowing
+// repeated cleanup previews to become unlimited quota-free storage.
+export const REDUCTION_JOURNAL_BYTES = 1024 * 1024;
 
 const families = {
     sessions: ['session', 'runControl', 'branch', 'timelineEntry', 'timelineVariant', 'sessionState', 'sessionRevision', 'savePoint', 'commitReceipt', 'sharedAccess', 'sharedAccessRevision', 'realm', 'realmRevision', 'playerContinuity', 'playerContinuityRevision'],

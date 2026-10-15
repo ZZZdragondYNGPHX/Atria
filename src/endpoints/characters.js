@@ -5,7 +5,6 @@ import { Buffer } from 'node:buffer';
 
 import express from 'express';
 import sanitize from 'sanitize-filename';
-import { sync as writeFileAtomicSync } from 'write-file-atomic';
 import { writeAccountFile } from '../storage/account-file-write.js';
 import yaml from 'yaml';
 import _ from 'lodash';
@@ -1173,11 +1172,12 @@ async function importFromCharX(uploadPath, { request }, preservedFileName) {
 
     if (auxiliaryAssets.length > 0) {
         try {
-            const summary = persistCharXAssets(auxiliaryAssets, extractedBuffers, request.user.directories, characterFolder);
+            const summary = await persistCharXAssets(auxiliaryAssets, extractedBuffers, request.user.directories, characterFolder, request.user.profile.handle);
             if (summary.sprites || summary.backgrounds || summary.misc) {
                 console.log(`CharX: Imported ${summary.sprites} sprite(s), ${summary.backgrounds} background(s), ${summary.misc} misc asset(s) for ${characterFolder}`);
             }
         } catch (error) {
+            if (error.code?.startsWith('storage_')) throw error;
             console.warn(`CharX: Failed to persist auxiliary assets for ${characterFolder}`, error);
         }
     }
@@ -1227,7 +1227,7 @@ async function importFromByaf(uploadPath, { request }, preservedFileName) {
             const file = getUniqueName(baseName, (name) => fs.existsSync(path.join(filePath, `${name}${extension}`)));
             if (Buffer.isBuffer(bg.data)) {
                 const newFile = `${file}${extension}`;
-                writeFileAtomicSync(path.join(filePath, newFile), bg.data);
+                await writeAccountFile(request.user.profile.handle, path.join(filePath, newFile), bg.data);
                 bg.name = clientRelativePath(request.user.directories.root, path.join(filePath, newFile)); // Update background name to the new file
                 console.log(`Created ${newFile} background from BYAF import`);
             }
@@ -1256,7 +1256,7 @@ async function importFromByaf(uploadPath, { request }, preservedFileName) {
             const extension = path.extname(icon.filename) || '.png';
             const file = getUniqueName(`${sanitize(icon.label, { replacement: sanitizeSafeCharacterReplacements }) || 'alt'}`, (name) => fs.existsSync(path.join(altImagesFolder, `${name}${extension}`)));
             if (Buffer.isBuffer(icon.image)) {
-                writeFileAtomicSync(path.join(altImagesFolder, `${file}${extension}`), icon.image);
+                await writeAccountFile(request.user.profile.handle, path.join(altImagesFolder, `${file}${extension}`), icon.image);
                 console.log(`Created ${file}${extension} alternate icon from BYAF import`);
             }
         }
@@ -1282,7 +1282,7 @@ async function importFromJson(uploadPath, { request }, preservedFileName) {
 
     if (jsonData.spec !== undefined) {
         console.info(`Importing from ${jsonData.spec} json`);
-        importRisuSprites(request.user.directories, jsonData);
+        await importRisuSprites(request.user.directories, jsonData, request.user.profile.handle);
         unsetPrivateFields(jsonData);
         jsonData = getStoredCharaCardV2(jsonData, request.user.directories);
         jsonData.create_date = new Date().toISOString();
@@ -1369,7 +1369,7 @@ async function importFromPng(uploadPath, { request }, preservedFileName) {
 
     if (jsonData.spec !== undefined) {
         console.info(`Found a ${jsonData.spec} character file.`);
-        importRisuSprites(request.user.directories, jsonData);
+        await importRisuSprites(request.user.directories, jsonData, request.user.profile.handle);
         unsetPrivateFields(jsonData);
         jsonData = getStoredCharaCardV2(jsonData, request.user.directories);
         jsonData.create_date = new Date().toISOString();

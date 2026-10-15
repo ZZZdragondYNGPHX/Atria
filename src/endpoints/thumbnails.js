@@ -4,6 +4,8 @@ import path from 'node:path';
 import express from 'express';
 import { Jimp, JimpMime } from '../jimp.js';
 import { sync as writeFileAtomicSync } from 'write-file-atomic';
+import { accountEngineForDirectory } from '../storage/account-quota.js';
+import { writeAccountFile } from '../storage/account-file-write.js';
 import { imageSize as sizeOf } from 'image-size';
 
 import { getConfigValue, invalidateFirefoxCache, resolvePathWithinParent } from '../util.js';
@@ -174,7 +176,7 @@ export async function generateThumbnail(directories, type, file, forceGenerate =
         }
 
         // Process the image to generate thumbnail
-        const result = await processSingleImage(file, originalFolder, thumbnailFolder, type);
+        const result = await processSingleImage(file, originalFolder, thumbnailFolder, type, directories);
         if (result.success) {
             return { path: pathToCachedFile, aspectRatio: result.aspectRatio ?? null, resolution: result.resolution ?? null };
         } else {
@@ -193,9 +195,10 @@ export async function generateThumbnail(directories, type, file, forceGenerate =
  * @param {string} originalFolder - Path to the original image folder.
  * @param {string} thumbnailFolder - Path to the thumbnail output folder.
  * @param {ThumbnailType} type - The type of thumbnail to generate.
+ * @param {import('../users.js').UserDirectoryList} directories Account directories
  * @returns {Promise<{success: boolean, filename?: string, error?: string, aspectRatio?: number, resolution?: number}>} Result of the processing.
  */
-async function processSingleImage(file, originalFolder, thumbnailFolder, type) {
+async function processSingleImage(file, originalFolder, thumbnailFolder, type, directories) {
     const pathToOriginalFile = path.join(originalFolder, file);
     const pathToCachedFile = path.join(thumbnailFolder, file);
 
@@ -233,7 +236,9 @@ async function processSingleImage(file, originalFolder, thumbnailFolder, type) {
             : await thumbImage.getBuffer(JimpMime.jpeg, { quality: quality, jpegColorSpace: 'ycbcr' });
 
         fs.mkdirSync(path.dirname(pathToCachedFile), { recursive: true });
-        writeFileAtomicSync(pathToCachedFile, buffer);
+        const handle = path.basename(directories.root), engine = accountEngineForDirectory(handle, directories.root);
+        if (engine) await writeAccountFile(handle, pathToCachedFile, buffer, engine);
+        else writeFileAtomicSync(pathToCachedFile, buffer);
 
         return { success: true, aspectRatio, resolution: thumbnailResolution };
     } catch (error) {
