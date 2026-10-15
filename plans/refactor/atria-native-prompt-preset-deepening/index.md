@@ -5,8 +5,8 @@
 - 讨论日期：2026-10-15。
 - **D1 已冻结**：方案 **B**（深化原生 Behavior / Expression / Prompt 体系），优先方向 **RP 文笔与 Agent 行为并重**；不另造既有基础设施。
 - **额外需求已纳入 D1**：用户高度重视成年人合法虚构 RP 的表达自由，要求保留和加强创作者可控的高强度指令注入、丰富题材及免于不必要说教/误拒的写作体验。第二轮专门研究学术 Jailbreak / Prompt Injection、社区注入法和它们能否安全、可靠地转译为 Native 架构。
-- **D2 未定**：原生指令注入具体物理语义、自由度产品控制与 Provider 模型适配优先级，要经过本轮讨论后选择，不先验冻结。
-- 代码静态基线：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；并行开发 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。未来实施前以实时 refs 重审，当前不是动态全量引用闭包。
+- **D2 已冻结（2026-10-15）**：**J2 编译型 Authorial Control + F2 结构化编辑与完整自由文本 + R3 拒答诊断/合法候选/用户控制 Route**。原生创作指令、成年人合法虚构 RP、真实 Provider 限制及先进研究的适用边界已决；物理 Schema/实现尚未批准。**D3 进入讨论，不提前冻结。**
+- 代码静态基线：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；本轮 docs 起点 `073d03f0f16d2826cf7cb8e5ff2015c168229a70`；并行开发 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以实际 HEAD 为准，E0 仍需重新完成动态消费者审计。
 
 ## 核心目标与实施边界
 
@@ -32,16 +32,17 @@
 | [decisions.md](decisions.md) | 用户明确冻结的选择 + 未决点 | **每轮** |
 | [baseline.md](baseline.md) | 源码证据、旧注入与新 Native 能力、实证待查 | 第二轮/E0 |
 | [research.md](research.md) | 外部 2024–2026 来源与“破限方法”机制/适用性矩阵 | 第二轮/证据更新 |
-| [creative-injection.md](creative-injection.md) | **第二轮** Native 创作指令与成熟虚构 RP 设计方案 | 第二轮 |
+| [creative-injection.md](creative-injection.md) | **D2 唯一冻结模块**：J2/F2/R3、正式作者指令、成年人虚构 RP、Provider/拒答边界与验收 | D2 及后续相关实现 |
+| [narrative-behavior.md](narrative-behavior.md) | **D3 讨论草案**：Narrator 文笔、Character Expression、Agent Behavior、反全知与玩家自主权 | 第三轮 |
 | [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |
 
-## 后续轮次（只 D1 冻结，后续议题可调整）
+## 后续轮次（D1–D2 冻结，D3 仍为候选）
 
 | 轮次 | 核心议题 |
 | --- | --- |
 | D1 完成 | 方案 B，RP 文笔与 Agent 行为并重；重构无旧兼容 |
-| **D2 正在讨论** | 学术/社区破限研究、作者授权高级注入、成熟虚构创作自由、Provider 边界 |
-| D3 | RP Expression（角色语言 vs Narrator 文笔）、叙事节奏、玩家自主权与防全知 |
+| **D2 已冻结** | **J2 + F2 + R3**；创作控制、Provider 与过度拒答研究边界已定 |
+| **D3 正在讨论** | Narrator/Scene/Character Expression、Agent Behavior、叙事节奏、玩家自主权与反全知 |
 | D4 | V3 Agent Node 的 Behavior Program 与编译绑定，避免二次编排 |
 | D5 | 语义 IR、跨模型 lowering、Role/Stage 冲突检测、缓存及 Token 预算 |
 | D6 | Context/Memory/Cognition 按 audience/branch/source/time 的信息消费 |
@@ -51,4 +52,4 @@
 
 ## 当前事实
 
-已完成远端静态代码审查与公开文献调研，但没有产品改动、Node 测试、Provider API 测试、CI、Windows/Linux/Termux 真机或 UI 验证。不得以文献中的成功率充当 Atria 自身效果。
+已完成 D1–D2 设计冻结、远端静态源码阅读与公开文献研究；D3 未决定。没有产品改动、Node 测试、Provider API 测试、CI、Windows/Linux/Termux 真机或 UI 验证。不得以文献中的成功率充当 Atria 自身效果。
