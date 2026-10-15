@@ -292,3 +292,10 @@
 - 统一 Claude 提示词新增原 turn/turn-start 消费 Binding 的有限固定 Narrator 路径、entryPoint 优先且不存在才默认、无效/过期不降级、最终正文受控返回而非 provisional 流、响应 confirmed 与 Run/业务完成分开。仅无 authority/stage/Task/interpreter 等支持 profile，其余真实 unavailable；无 Binding 原 Native 继续不是旧编排兼容。
 - 原 quota/compute 同 CAS 及字段顺序无关的 usage 重放底层已提交；实际 Package 依赖 authorityRuntime，candidate Context/真实 quota producer、预编译实际计费与 Scheduler active 身份仍归原 V3 后续实现。HTTP仍原 Plan+Binding及原生成入口，没有 Run/Projection/Approval 新接口，P3仍NOT_READY。
 - 原 ModelPort 四 Engine48、Binding工厂FS/SQLite32、producer按组/定向测试以及各自 SQL NOT_RUN/真实费用质量边界仅引用原 Record，不计为本轮测试。更新同一 E0/交接材料，不拆未完后端给 Claude，不合源码/main，保留并发改动；本轮只执行相关文档检查与提交。
+
+## 2026-10-16 — V3 第二十组 authority candidate 与真实计费同步
+
+- 实际 Git source `f0fa952a2`、docs `e9cbc667c`，只读同一接口 §17.30、原 Record 第二十组与整合入口。统一提示词/当前 E0 不再将已提交的固定 Narrator candidate、真实 quota、Context 编译计费和 Scheduler active 身份写作未接通。
+- 明确仅原 authorityRuntime 显式 typed transaction 的 candidate/receipt 用作 Context，Source/bank/quota 保持 committed base，正式状态由唯一原 Native finalize 写入。失败/取消实际工作费用保留，不能以 UI 候选视图冒充已提交 World或自动退款。原 HTTP 无新增 Run/Projection/Approval。
+- 成功重试多 row 确认、独立 cancel/矛盾 Effect 与 consume 的线性化仍 NOT_RUN；resolver/outbox/Task/其余 Graph 及 P4 OutputClaim/取消/Result 等仍归原 V3 后续实施，P3 NOT_READY。未向 Claude 转交这些未完后端。
+- 原四 Engine Model52+helper21、指定 SQL8 和其余子集证据仅归原 Record；SQL 测试 timeout60s 是据实测调整 harness，不是产品 timeout/SLO。没有借记本轮 PASS、没有合并源码或改 main；本轮只执行相关文档检查与提交，保留无关改动。
