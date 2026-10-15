@@ -127,6 +127,18 @@ export class RpRunControl {
         return this._engine.withTransaction(handle, async tx => structuredClone(assertControl(await tx.getResource(controlKey(handle, controlId)), handle, controlId)));
     }
 
+    /** Read the original chat under the same source proof used by admission. No caller-supplied dialogue. */
+    async context(handle, controlId, source) {
+        assertNativeId(controlId, 'rpControl');
+        return this._engine.withTransaction(handle, async tx => {
+            const { control } = await this._source(tx, handle, controlId, source);
+            const chat = await tx.getResource(chatKey(handle, control.locator));
+            return { messages: chat.body.slice(0, source.input.floor + 1).map(message => ({
+                role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant', content: String(message.mes ?? ''),
+            })) };
+        });
+    }
+
     // Host-only source proof: the control's own locator, the header claim and the
     // exact input message/variant/content must all be current in one read.
     async _source(tx, handle, controlId, source) {

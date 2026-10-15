@@ -192,11 +192,16 @@ export class BudgetPort {
             assertCurrent: async () => {
                 if (authorityRef.domain === 'session') await this.#session(handle, authorityRef);
                 else if (authorityRef.authority === 'project_task') await this.#project(handle, authorityRef);
+                else await this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
                 await assertCurrent?.();
             },
-            admit: async ({ requestId, targetFingerprint, inputFingerprint, upperBound, reserve }) => {
+            rpContext: () => {
+                if (authorityRef.domain !== 'rp_chat') fail('native_orchestration_budget_unavailable');
+                return this.rpControl.context(handle, authorityRef.controlId, authorityRef.source);
+            },
+            admit: async ({ requestId, targetFingerprint, inputFingerprint, upperBound, reserve, limits: routeLimits }) => {
                 const providerSendOrdinal = ordinal++;
-                const result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits, reserve });
+                const result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: routeLimits ?? limits, reserve });
                 // A replay returns the original fact; it is never a second send permit.
                 if (result.replayed) throw new ConflictError('native_orchestration_send_replayed');
                 admitted.set(result.budgetAttemptRef.attemptId, result.budgetAttemptRef);

@@ -21,7 +21,7 @@ export function containsSecret(value, secret) {
 }
 
 const ERROR_CODES = new Set([...COMPUTE_ADMISSION_CODES, 'native_generation_budget_unavailable',
-    'native_generation_review_stale',
+    'native_generation_review_stale', 'native_orchestration_send_replayed',
     'native_credential_target_approval_required', 'native_credential_connection_stale', 'native_credential_network_denied',
     'native_credential_target_invalid', 'native_credential_insecure_target', 'native_credential_permit_integrity',
     'generation_continuation_reset_required',
