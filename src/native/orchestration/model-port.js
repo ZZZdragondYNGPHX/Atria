@@ -12,6 +12,7 @@ import { RunRepository, assertChildRunCurrent } from './run-repository.js';
 import { resolveNativeNarratorScope } from './native-turn-orchestration.js';
 import { assertNativeTurnPermit } from './native-turn-permit.js';
 import { SourcePort } from './source-port.js';
+import { inspectNativeProjectGenerationIdentity } from './native-project-generation-authority.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = intent => hash({ runId: intent.runId, effectId: intent.effectId, epoch: intent.epoch,
@@ -20,10 +21,11 @@ const digest = intent => hash({ runId: intent.runId, effectId: intent.effectId, 
 const key = (handle, intent) => hash({ handle, runId: intent.runId, effectId: intent.effectId });
 const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_binding_changed',
     'native_orchestration_turn_selection_stale', 'native_orchestration_turn_grant_denied', 'native_orchestration_turn_route_mismatch',
+    'native_orchestration_project_selection_stale', 'native_orchestration_project_grant_denied', 'native_orchestration_project_route_mismatch',
     'native_orchestration_context_source_stale', 'native_orchestration_context_denied', 'native_orchestration_context_audience_denied',
     'native_run_restore_review_required', 'native_run_terminal', 'native_run_dead', 'native_story_not_started', 'native_run_rewind_denied']);
 
-/** Original sealed Turn model consumer; hashes are facts, never another send grant. */
+/** Original sealed model consumer; hashes are facts, never another send grant. */
 export class ModelPort {
     #active = new Map();
     #responses = new WeakMap();
@@ -86,16 +88,27 @@ export class ModelPort {
 
     async generate(handle, scope, { signal } = {}) {
         // No raw prompt, audience, callback response or approval Boolean can
-        // substitute for the capability minted at an original Turn model point.
+        // substitute for the capability minted at an original domain model point.
         const principal = await resolveNativeNarratorScope(scope, this.host, handle);
-        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit } = principal;
-        if (!['narrator', 'intent_resolver'].includes(logicalInputRef.role) || request.role !== logicalInputRef.role
+        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit, nativeProjectCapture } = principal;
+        const project = logicalInputRef.kind === 'native_project_intent';
+        if (project ? logicalInputRef.role !== 'studio' || request.role !== 'studio' || request.requestId !== logicalInputRef.requestId
+            || request.projectAttemptId !== logicalInputRef.projectAttemptId || nativeTurnPermit !== undefined
+            : !['narrator', 'intent_resolver'].includes(logicalInputRef.role) || request.role !== logicalInputRef.role
             || typeof logicalInputRef.invocationId !== 'string' || !logicalInputRef.invocationId
             || request.requestId !== (logicalInputRef.role === 'narrator' ? logicalInputRef.invocationId : logicalInputRef.invocationId + ':intent'))
             fail('native_orchestration_model_scope_invalid');
         const permitExpected = { host: this.host, handle, sessionId: request.sessionId,
             invocationId: logicalInputRef.invocationId, requestHash: logicalInputRef.requestHash };
-        const fixedSignal = assertNativeTurnPermit(nativeTurnPermit, permitExpected).signal;
+        const assertPermit = project ? () => {
+            const identity = inspectNativeProjectGenerationIdentity(nativeProjectCapture, { host: this.host, handle });
+            if (identity.projectId !== request.projectId || identity.taskId !== request.taskId || identity.revision !== request.revision
+                || identity.requestId !== request.requestId || identity.projectAttemptId !== request.projectAttemptId
+                || identity.operationId !== logicalInputRef.operationId || hash(identity.request.routeRef) !== hash(request.routeRef))
+                fail('native_orchestration_model_scope_invalid');
+            return identity;
+        } : () => assertNativeTurnPermit(nativeTurnPermit, permitExpected);
+        const fixedSignal = assertPermit().signal;
         if (signal !== undefined && signal !== fixedSignal) fail('native_orchestration_model_signal_denied');
         signal = fixedSignal;
         if (typeof revalidateConsume !== 'function' || !options?.orchestrationSend?.context
@@ -104,7 +117,6 @@ export class ModelPort {
         const root = await this.runs.get(handle, runId);
         const withAuthority = SourcePort.prototype.consumptionBoundary.call(this.sourcePort, handle, root.sourceBinding, { engine: this.runs.engine });
         permitExpected.anchor = { branchId: root.sourceBinding.sourceRef.branchId, revisionId: root.sourceBinding.sourceRef.revisionId };
-        const assertPermit = () => assertNativeTurnPermit(nativeTurnPermit, permitExpected);
         assertPermit();
         const intent = await this.runs.engine.withTransaction(handle, async tx => (await readEffect(tx, handle, root, effectId)).doc);
         if (root.ownerRef.handle !== handle || intent.status !== 'prepared' || root.cancelRequested

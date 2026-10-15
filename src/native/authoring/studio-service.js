@@ -292,6 +292,15 @@ export class StudioService {
             ...(revisionTime(history[0]) === undefined ? {} : { createdAt: revisionTime(history[0]) }) });
     }
 
+    // Same Project inputs as getProject, for an enclosing original authority
+    // boundary/transaction. No writer queue, history recovery or initialization.
+    async observeProject(handle, projectId) {
+        const [source, files, revision] = await Promise.all([
+            this._project(handle, projectId), this._projects.listFiles(handle, projectId), this.observeRevision(handle, projectId),
+        ]);
+        return Object.freeze({ source, files, revision });
+    }
+
     // Internal local publication: keep the existing Project queue through the
     // final synchronous index replacement, without adding an authoring writer.
     withLocalIndexPublication(handle, projectId, revision, publish) {

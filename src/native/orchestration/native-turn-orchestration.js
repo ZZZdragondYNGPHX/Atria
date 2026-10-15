@@ -21,6 +21,7 @@ import { authorityTurnProof } from '../authority-turn.js';
 import { assertRunAccess, readRunControl } from '../run-control.js';
 import { compileNativeContextMetered } from './generation-local-work.js';
 import { nativeSessionContextOptions, nativeContextCompilationOptions } from '../adapters/native-session-context.js';
+import { NativeProjectOrchestrationAuthority } from './native-project-orchestration.js';
 
 const selections = new WeakMap();
 const modelScopes = new WeakMap();
@@ -29,7 +30,7 @@ const equal = (a, b) => hash(a) === hash(b);
 const sourceOf = base => ({ domain: 'native_session', sessionId: base.session.sessionId, branchId: base.revision.branchId, revisionId: base.revision.revisionId });
 const anchorOf = base => ({ branchId: base.revision.branchId, revisionId: base.revision.revisionId });
 
-/** Only this module's original fixed Turn producer can issue a model scope.
+/** Only this module's original fixed domain producers can issue a model scope.
  * The body remains in original Source/Prompt services, never the RunLedger. */
 export function resolveNativeNarratorScope(scope, host, handle) {
     const value = modelScopes.get(scope);
@@ -43,17 +44,21 @@ export class NativeNarratorOrchestrationAuthority {
     #execution;
     #ports = new Map();
     #runs = new Map();
+    #project;
 
-    constructor({ engine, sessionCore, plans = null, modelResolver = null, contextOptions = {} }) {
+    constructor({ engine, sessionCore, projectAgent = null, projectRepository = null, plans = null, modelResolver = null, contextOptions = {} }) {
         if (!engine || !sessionCore) throw new TypeError('Original Native Session/Engine required');
-        Object.assign(this, { engine, sessionCore, plans, modelResolver, contextOptions });
+        Object.assign(this, { engine, sessionCore, projectAgent, projectRepository, plans, modelResolver, contextOptions });
     }
 
     get execution() {
         this.#execution ??= createOrchestrationExecutionService({ engine: this.engine, sessionCore: this.sessionCore,
+            projectAgent: this.projectAgent, projectRepository: this.projectRepository,
             effectAuthority: {
-                authorize: args => this.#authorize(args), verifySend: args => this.#verifySend(args),
+                authorize: args => args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().authorize(args) : this.#authorize(args),
+                verifySend: args => args.root.sourceBinding.sourceAuthority === 'project' ? this.#projectAuthority().verifySend(args) : this.#verifySend(args),
                 verifyObservation: args => {
+                    if (args.root.sourceBinding.sourceAuthority === 'project') return this.#projectAuthority().verifyObservation(args);
                     const state = this.#runs.get(args.root.runId);
                     if (!state) fail('native_orchestration_model_completion_proof_required');
                     return this.#port(state.host).verifyObservation(args);
@@ -62,6 +67,19 @@ export class NativeNarratorOrchestrationAuthority {
             } });
         return this.#execution;
     }
+
+    #projectAuthority() {
+        this.#project ??= new NativeProjectOrchestrationAuthority({ owner: this, projectAgent: this.projectAgent, projectRepository: this.projectRepository,
+            execution: () => this.execution, port: host => this.#port(host), releasePort: host => this.#ports.delete(host), issueScope: (host, handle, principal) => {
+                const scope = Object.freeze({}); modelScopes.set(scope, { host, handle, consumed: false, principal }); return scope;
+            } });
+        return this.#project;
+    }
+
+    preflightProjectBinding(args) { return this.#projectAuthority().preflight(args); }
+    projectSelectionDescriptor(selection) { return this.#projectAuthority().descriptor(selection); }
+    prepareProjectRound(args) { return this.#projectAuthority().prepare(args); }
+    executeProjectRound(args) { return this.#projectAuthority().execute(args); }
 
     setModelPort(port) {
         if (!(port instanceof ModelPort) || port.runs !== this.execution.runs) throw new TypeError('Original ModelPort required');
@@ -117,7 +135,8 @@ export class NativeNarratorOrchestrationAuthority {
         // original Session -> Engine order against a concurrent publication.
         await this.engine.withTransaction(handle, tx => assertRunAccess(tx, handle, base.session.sessionId, 'generate'));
         if (!(this.modelResolver instanceof RouteResolver) || host.turnOrchestration !== this || host.sessionCore !== this.sessionCore || host.persistence._engine !== this.engine) fail('native_orchestration_model_authority_unavailable');
-        this.plans ??= createOrchestrationAuthoringService(this.engine, { sessionCore: this.sessionCore, modelResolver: this.modelResolver }).plans;
+        this.plans ??= createOrchestrationAuthoringService(this.engine, { sessionCore: this.sessionCore,
+            projectAgent: this.projectAgent, studio: this.projectAgent?._studio, modelResolver: this.modelResolver }).plans;
         // getBinding uses the original domain authorization, independently of
         // validating the raw subject/key above and its exact/default priority.
         if (!equal(await this.plans.getBinding(handle, binding.sourceSelector), binding)) fail('native_orchestration_binding_changed');

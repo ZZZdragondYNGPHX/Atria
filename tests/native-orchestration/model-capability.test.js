@@ -13,7 +13,7 @@ import { validateModelCapability } from '../../src/native/orchestration/model-ca
 const id = kind => createNativeId('orchestration' + kind);
 
 const mechanisms = [['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]]
-    .flatMap(([name, make]) => ['narrator', 'intent_resolver'].map(role => [name, role, make]));
+    .flatMap(([name, make]) => ['narrator', 'intent_resolver', 'studio'].map(role => [name, role, make]));
 describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, make) => {
     let h, seeded, service, sends, route, modelResolver;
     beforeEach(async () => {
@@ -50,7 +50,8 @@ describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, m
         const plan = input(), mechanism = await validateModelCapability({ handle: h.handle, ...plan, resolver: modelResolver });
         expect(mechanism.issues).toEqual([]);
         expect(mechanism.evidence).toEqual([expect.objectContaining({ capability: 'generation.send',
-            runtimePrincipal: role === 'intent_resolver' ? 'original_native_intent_resolver_required' : 'original_native_narrator_required' })]);
+            runtimePrincipal: { narrator: 'original_native_narrator_required', intent_resolver: 'original_native_intent_resolver_required',
+                studio: 'original_native_project_executor_required' }[role] })]);
         await expect(service.plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) })).resolves.toHaveProperty('planRef');
         expect(sends).toBe(0);
         // No executable endpoint, budget admission, Source or Actor proof is
@@ -110,7 +111,7 @@ describe.each(mechanisms)('%s original %s mechanism validation', (_name, role, m
         expect(mechanism.issues).toEqual([expect.objectContaining({ severity: 'unknown' })]);
         expect(sends).toBe(0);
     });
-    if (role === 'intent_resolver') test.each(['unknown', 'unsupported'])('original resolver tools %s evidence cannot publish', async state => {
+    if (['intent_resolver', 'studio'].includes(role)) test.each(['unknown', 'unsupported'])(`original ${role === 'intent_resolver' ? 'resolver' : role} tools %s evidence cannot publish`, async state => {
         if (state === 'unknown') {
             await seeded.persistence.saveConnectionProfile(h.handle, { ...seeded.connection, providerAdapter: 'provider.raw-text' });
             modelResolver = new RouteResolver({ persistence: seeded.persistence, library: seeded.library,

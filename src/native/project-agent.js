@@ -478,6 +478,15 @@ export class ProjectAgentService {
         return { task: this._snapshot(task), project: { revision } };
     }
 
+    // Exact inputs consumed by the original Project prompt builder. No Task
+    // recovery, cache publication, ResourceGraph scan or domain write occurs.
+    async observeModelContext(handle, projectId, id) {
+        const task = await this._repository.get(handle, projectId, id);
+        if (!task) throw new NotFoundError('native project agent task', { projectId, taskId: id });
+        const project = await this._studio.observeProject(handle, projectId), registry = this._studio.getResourceRegistry();
+        return Object.freeze({ task: this._snapshot(task), project, registry, tools: buildProjectAgentTools(registry) });
+    }
+
     async _observe(handle, projectId, id, operation) {
         return this.withTaskLock(handle, projectId, id, async () => {
             await this._studio.getProject(handle, projectId);

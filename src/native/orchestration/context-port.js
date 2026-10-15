@@ -8,6 +8,9 @@ import { authorityTurnProof, authorityCatalog, resolverRequest } from '../author
 import { buildAuthorityObservation } from '../authority-transaction.js';
 import { authorityContextPlan, emptyNativeContextPlan } from '../adapters/native-authority-context.js';
 import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
+import { inspectNativeProjectGeneration, inspectNativeProjectGenerationIdentity, readNativeProjectSkillInventory } from './native-project-generation-authority.js';
+import { buildNativeProjectModelRound, projectAgentPromptInputs } from '../../../public/shared/project-agent-prompt.js';
+import { ProjectAgentService } from '../project-agent.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -19,10 +22,10 @@ const packageDigestOf = installed => hashNativeDocument(JSON.parse(JSON.stringif
 export class ContextPort {
     #contexts = new WeakMap();
 
-    constructor({ sessionCore, authorizeContext, contextOptions = {}, readMemoryEvidence, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
+    constructor({ sessionCore, projectAgent, projectCapture = null, authorizeContext, contextOptions = {}, readMemoryEvidence, authorityTurn = null, resolverCapture = null, compilationInputs = null } = {}) {
         if (typeof authorizeContext !== 'function') fail('native_orchestration_context_authority_required');
-        if (authorityTurn && resolverCapture) fail('native_orchestration_context_authority_conflict');
-        Object.assign(this, { sessionCore, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, authorityTurn, resolverCapture, compilationInputs });
+        if ([authorityTurn, resolverCapture, projectCapture].filter(Boolean).length > 1) fail('native_orchestration_context_authority_conflict');
+        Object.assign(this, { sessionCore, projectAgent, projectCapture, authorizeContext, contextOptions: { ...contextOptions }, readMemoryEvidence, authorityTurn, resolverCapture, compilationInputs });
     }
 
     #request(handle, input) {
@@ -34,8 +37,8 @@ export class ContextPort {
             || hashNativeDocument(Object.fromEntries(Object.entries(binding).filter(([key]) => key !== 'bindingDigest'))) !== binding.bindingDigest) fail('native_orchestration_context_source_invalid');
         fields(audience, ['kind', 'id'], 'Context audience');
         const resolver = this.resolverCapture !== null;
-        if (!(resolver ? audience.kind === 'authority_intent' : ['narrator', 'actor'].includes(audience.kind))
-            || (audience.kind === 'actor' ? typeof audience.id !== 'string' || !audience.id : audience.id !== undefined)) fail('native_orchestration_context_audience_invalid');
+        if (!(this.projectCapture ? audience.kind === 'project_task' : resolver ? audience.kind === 'authority_intent' : ['narrator', 'actor'].includes(audience.kind))
+            || (['actor', 'project_task'].includes(audience.kind) ? typeof audience.id !== 'string' || !audience.id : audience.id !== undefined)) fail('native_orchestration_context_audience_invalid');
         if (resolver) inspectNativeAuthorityResolver(this.resolverCapture, { sessionCore: this.sessionCore, handle, sourceBinding: binding });
         if (!digest(input.grantDigest) || typeof input.taskPurpose !== 'string' || !input.taskPurpose.trim() || !Array.isArray(input.inputRefs)) fail('native_orchestration_context_request_invalid');
         fields(tokenBudget, ['modelContextLimit', 'responseReserve'], 'Context token budget');
@@ -50,6 +53,23 @@ export class ContextPort {
         const permission = await this.authorizeContext({ handle, request, phase });
         if (permission?.allowed !== true || permission.grantDigest !== request.grantDigest) fail('native_orchestration_context_denied');
         const binding = request.sourceBinding;
+        if (this.projectCapture) {
+            const projectIdentity = await inspectNativeProjectGeneration(this.projectCapture, { projectAgent: this.projectAgent, handle });
+            if (['compiled', 'send', 'consume'].includes(phase))
+                await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
+            if (binding.sourceAuthority !== 'project' || request.audience.id !== projectIdentity.taskId
+                || hashNativeDocument(binding.sourceRequest) !== hashNativeDocument(projectIdentity.sourceRequest)) fail('native_orchestration_context_source_mismatch');
+            const modelContext = await ProjectAgentService.prototype.observeModelContext.call(this.projectAgent, handle, projectIdentity.projectId, projectIdentity.taskId);
+            const { task, project, registry, tools } = modelContext;
+            const attempt = task.attempts.find(item => item.attemptId === projectIdentity.projectAttemptId && item.kind === 'generation');
+            if (task.executionFingerprint !== projectIdentity.sourceFingerprint || hashNativeDocument(task.conversation) !== projectIdentity.conversationDigest
+                || task.baseRevision !== projectIdentity.revision || project.revision.revision !== projectIdentity.revision
+                || attempt?.status !== 'started' || attempt.requestId !== projectIdentity.requestId) fail('native_orchestration_context_source_stale');
+            const projectDigest = hashNativeDocument({ sourceFingerprint: task.executionFingerprint, conversation: task.conversation,
+                attempt: { attemptId: attempt.attemptId, kind: attempt.kind, status: attempt.status, requestId: attempt.requestId, calls: attempt.calls },
+                project, registry, tools, skillWorkRecords: projectIdentity.skillWorkRecords });
+            return { modelContext, projectIdentity, authorityDigest: projectDigest, information: null };
+        }
         if (binding.sourceAuthority !== 'native_session' || !this.sessionCore) fail('native_orchestration_context_domain_unavailable');
         const committed = await this.sessionCore.observe(handle, binding.sourceRef.sessionId);
         const { session, revision } = committed, expected = binding.sourceRef;
@@ -83,7 +103,8 @@ export class ContextPort {
     // inside the admitted work; this pure read establishes its input bound.
     async compilationDescriptor(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, authorityContext, resolver } = await this.#current(handle, request, 'compile_descriptor', false);
+        const { snapshot, authorityContext, resolver, modelContext, projectIdentity } = await this.#current(handle, request, 'compile_descriptor', false);
+        if (projectIdentity) return { request, modelContext: projectAgentPromptInputs(modelContext), skillWorkRecords: projectIdentity.skillWorkRecords };
         if (resolver) {
             const installed = await this.#resolverPackage(handle, snapshot);
             return { request, snapshot, logicalDescriptor: resolver.logicalDescriptor, ...packageInputs(installed), contextOptions: this.contextOptions };
@@ -103,7 +124,23 @@ export class ContextPort {
 
     async compile(handle, input) {
         const request = this.#request(handle, input);
-        const { snapshot, information, authorityDigest, resolver } = await this.#current(handle, request, 'compile');
+        const { snapshot, information, authorityDigest, resolver, modelContext, projectIdentity } = await this.#current(handle, request, 'compile');
+        if (projectIdentity) {
+            const skillEntries = await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
+            const round = buildNativeProjectModelRound({ context: modelContext, skillEntries });
+            const fixedRequest = immutable({ ...projectIdentity.request, tools: round.tools });
+            const source = { kind: 'task', projectId: projectIdentity.projectId, taskId: projectIdentity.taskId, revision: projectIdentity.revision };
+            const selected = emptyNativeContextPlan(fixedRequest, { model: { limits: { contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);
+            const plan = { ...selected, items: round.messages.map((message, index) => ({ kind: 'context.history', id: 'task-message-' + index,
+                content: message, provenance: [{ source: 'host.task' }] })) };
+            const after = await this.#current(handle, request, 'compiled');
+            if (after.authorityDigest !== authorityDigest) fail('native_orchestration_context_source_stale');
+            const proof = { sourceBindingDigest: request.sourceBinding.bindingDigest, grantDigest: request.grantDigest,
+                audienceDigest: hashNativeDocument(request.audience), projectionDigest: authorityDigest, authorityDigest };
+            const context = immutable({ schemaVersion: 1, contextId: hashNativeDocument({ request, plan, proof }), request, plan, evidenceRefs: [], currentnessProof: proof });
+            this.#contexts.set(context, { handle, request, proof, project: { request: fixedRequest, round: immutable(round), runtime: modelContext.project.source.package.runtime ?? null } });
+            return context;
+        }
         if (resolver) {
             const installed = await this.#resolverPackage(handle, snapshot);
             const original = resolverRequest(await authorityCatalog(snapshot, installed), buildAuthorityObservation(snapshot), snapshot.timeline.at(-1).content);
@@ -138,6 +175,10 @@ export class ContextPort {
         if (!captured || captured.handle !== handle || !['send', 'consume'].includes(phase)) fail('native_orchestration_context_proof_invalid');
         if (hashNativeDocument(audience) !== captured.proof.audienceDigest) fail('native_orchestration_context_audience_mismatch');
         const { information, authorityDigest, snapshot } = await this.#current(handle, captured.request, phase);
+        if (captured.project) {
+            if (authorityDigest !== captured.proof.authorityDigest) fail('native_orchestration_context_source_stale');
+            return context.plan;
+        }
         if (captured.resolver) {
             if (authorityDigest !== captured.proof.authorityDigest
                 || packageDigestOf(await this.#resolverPackage(handle, snapshot)) !== captured.proof.packageDigest) fail('native_orchestration_context_source_stale');
@@ -149,8 +190,43 @@ export class ContextPort {
 
     assertSource(handle, { context, source } = {}) {
         const captured = this.#contexts.get(context), ref = captured?.request.sourceBinding.sourceRef;
+        if (captured?.project) {
+            if (captured.handle !== handle || source?.kind !== 'task' || source.projectId !== ref.projectId || source.taskId !== ref.taskId || source.revision !== ref.revision)
+                fail('native_orchestration_context_source_mismatch');
+            return;
+        }
         if (!captured || captured.handle !== handle || source?.kind !== 'session' || source.sessionId !== ref.sessionId
             || source.branchId !== ref.branchId || source.revisionId !== ref.revisionId) fail('native_orchestration_context_source_mismatch');
+    }
+
+    projectRequest(handle, { context } = {}) {
+        const captured = this.#contexts.get(context);
+        if (!captured?.project || captured.handle !== handle) fail('native_orchestration_context_proof_invalid');
+        inspectNativeProjectGenerationIdentity(this.projectCapture, { projectAgent: this.projectAgent, handle });
+        return captured.project.request;
+    }
+
+    projectRound(handle, { context } = {}) {
+        this.projectRequest(handle, { context });
+        // The original runner appends observed assistant/tool messages after
+        // generation. Its working transcript must not mutate the frozen plan.
+        return structuredClone(this.#contexts.get(context).project.round);
+    }
+
+    assertProjectRequest(handle, { context, request } = {}) {
+        const fixed = this.projectRequest(handle, { context });
+        if (!request || hashNativeDocument(request) !== hashNativeDocument(fixed)) fail('native_orchestration_project_request_mismatch');
+        return fixed;
+    }
+
+    #assertProjectExecution(handle, context, request, resolved) {
+        const fixed = this.projectRequest(handle, { context }), { runtime } = this.#contexts.get(context).project;
+        const requirements = [...new Set([...(runtime?.modelPrompt?.roles.find(item => item.role === 'role.studio')?.requiredCapabilities ?? []),
+            ...(fixed.tools.length ? ['generation.tools'] : [])])];
+        const expected = { requestId: fixed.requestId, role: 'role.studio', routeRef: { scope: 'player', runtimeRouteId: resolved.route.runtimeRouteId },
+            requirements, tools: fixed.tools, outputContract: null, fallbackMode: 'disabled', unknownCapabilityOverrides: [],
+            prompt: { host: { role: 'role.studio', sourceKind: 'task', sessionId: '', branchId: '', revisionId: '', projectId: fixed.projectId, projectRevision: fixed.revision } } };
+        if (hashNativeDocument(request) !== hashNativeDocument(expected)) fail('native_orchestration_project_request_mismatch');
     }
 
     resolverRequest(handle, { context } = {}) {
@@ -189,6 +265,13 @@ export class ContextPort {
     // Use this provider as the actual generation input. Checking this plan and
     // then compiling another (broader) audience would not protect the send.
     provider(handle, { context, source } = {}) {
+        if (this.#contexts.get(context)?.project) return { buildRequestContextPlan: async (request, resolved) => {
+            if (request?.role === 'role.studio') this.#assertProjectExecution(handle, context, request, resolved);
+            else this.assertProjectRequest(handle, { context, request });
+            if (source !== undefined) this.assertSource(handle, { context, source });
+            const plan = await this.revalidate(handle, { context, phase: 'send' });
+            return immutable({ ...plan, budget: emptyNativeContextPlan(request, resolved, plan.source).budget });
+        } };
         if (this.#contexts.get(context)?.resolver) return { buildRequestContextPlan: async (request, resolved) => {
             if (request?.role === 'role.intent_resolver') this.#assertResolverExecution(handle, context, request, resolved);
             else this.assertResolverRequest(handle, { context, request });

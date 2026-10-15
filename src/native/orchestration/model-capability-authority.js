@@ -3,6 +3,12 @@ import { GenerationError } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 
+const RUNTIME_PRINCIPALS = Object.freeze({
+    'role.narrator': 'original_native_narrator_required',
+    'role.intent_resolver': 'original_native_intent_resolver_required',
+    'role.studio': 'original_native_project_executor_required',
+});
+
 /** Pure mechanism evidence. Publication is never a Session/Actor send grant. */
 export async function validateModelCapability({ handle, definition, dependencyPins, resolver }) {
     const evidence = [], issues = [], fieldPath = 'capabilityCeiling.generation.send';
@@ -17,9 +23,9 @@ export async function validateModelCapability({ handle, definition, dependencyPi
         if (node.kind !== 'agent' || pin?.port !== 'model' || pin.resourceRef.scope !== 'player') { unavailable(); continue; }
         try {
             const route = await resolver.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
-            if (!['role.narrator', 'role.intent_resolver'].includes(route?.role)) { unavailable(); continue; }
+            if (!Object.hasOwn(RUNTIME_PRINCIPALS, route?.role)) { unavailable(); continue; }
             const resolved = await resolver.resolve({ handle, routeRef: pin.resourceRef, role: route.role,
-                requirements: route.role === 'role.intent_resolver' ? ['generation.tools'] : [] });
+                requirements: ['role.intent_resolver', 'role.studio'].includes(route.role) ? ['generation.tools'] : [] });
             if (hashNativeDocument(resolved.route) !== pin.integrity) {
                 issues.push({ code: 'native_orchestration_dependency_stale', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
                 continue;
@@ -31,8 +37,7 @@ export async function validateModelCapability({ handle, definition, dependencyPi
             evidence.push({ capability: 'generation.send', nodeId: node.nodeId, pinId: pin.pinId,
                 authority: 'native_route_resolver', routeIntegrity: pin.integrity, pathFingerprint: resolved.pathFingerprint,
                 resourceDigest: hashNativeDocument(resolved.resources), capabilityDigest: hashNativeDocument(resolved.capabilities),
-                runtimePrincipal: resolved.route.role === 'role.intent_resolver'
-                    ? 'original_native_intent_resolver_required' : 'original_native_narrator_required' });
+                runtimePrincipal: RUNTIME_PRINCIPALS[resolved.route.role] });
         } catch (error) {
             if (!(error instanceof GenerationError) && !(error instanceof TypeError) && error.name !== 'NotFoundError') throw error;
             const unknown = ['generation_provider_unavailable', 'generation_capability_unknown'].includes(error.code);

@@ -102,14 +102,14 @@ describe('A8 Project Agent HTTP boundary', () => {
             .send({});
         expect(commit.status).toBe(200);
         expect(commit.body.status).toBe('completed');
-        expect(agent.commit).toHaveBeenCalledWith('u', 'project_test', 'agenttask_test');
+        expect(agent.commit).toHaveBeenCalledWith('u', 'project_test', 'agenttask_test', {});
 
         const takeover = await request(app)
             .post('/projects/project_test/agent/tasks/agenttask_test/takeover')
             .send({});
         expect(takeover.status).toBe(200);
         expect(takeover.body.status).toBe('taken_over');
-        expect(agent.takeOver).toHaveBeenCalledWith('u', 'project_test', 'agenttask_test');
+        expect(agent.takeOver).toHaveBeenCalledWith('u', 'project_test', 'agenttask_test', {});
     });
 
     test('surfaces revision conflicts as 409 without replacing the Task baseRevision', async () => {

@@ -42,6 +42,7 @@ import { AgentEvidenceService } from '../agent-intelligence/evidence-service.js'
 import { beginHostCapture } from '../agent-intelligence/host-capture.js';
 import { appraisalEventCurrent, prepareAppraisalDelivery } from '../appraisal-authority.js';
 import { assertPredictionCapture, assertPredictionCaptureCurrent } from '../prediction-service.js';
+import { projectRuntimeRoute } from './project-runtime-route.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const predictionLanes = new WeakSet();
@@ -966,7 +967,10 @@ export class NativeGenerationHost {
         if (quotaProof !== undefined) assertNativeTurnQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
             sessionId: value.sessionId, requestId: value.requestId, role: value.role });
         if (scopedContext && (value.messages?.length || value.prompt)) fail('native_generation_context_denied');
-        if (scopedContext && value.tools?.length) scopedContext.port.assertResolverRequest(handle, { context: scopedContext.compiled, request: value });
+        if (scopedContext && value.tools?.length) {
+            if (scopedContext.compiled.request.audience.kind === 'project_task') scopedContext.port.assertProjectRequest(handle, { context: scopedContext.compiled, request: value });
+            else scopedContext.port.assertResolverRequest(handle, { context: scopedContext.compiled, request: value });
+        }
         if (sendBank) {
             effectPolicy = 'no-background-model';
             await sendBank.assertCurrent();
@@ -1101,12 +1105,8 @@ export class NativeGenerationHost {
             persistence.getModelProfile = async (_owner, id) => lanePlan.models[id] ?? null;
         }
         if (project && !taskPlan) {
-            const resolveProject = original => {
-                const binding = original?.projectPromptBindings?.find(b => b.projectId === input.projectId);
-                return binding ? { ...original, promptProgramRef: binding.promptProgramRef } : original;
-            };
-            route = resolveProject(route);
-            persistence.getRuntimeRoute = async (owner, id) => resolveProject(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id));
+            route = projectRuntimeRoute(route, input.projectId);
+            persistence.getRuntimeRoute = async (owner, id) => projectRuntimeRoute(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id), input.projectId);
         }
         if (taskPlan) {
             const compose = lane => ({ ...lane, role, promptParameters: {},

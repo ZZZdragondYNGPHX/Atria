@@ -96,6 +96,7 @@ function services() {
         } }),
     });
     host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: persistence._engine, sessionCore: core,
+        projectAgent: agent, projectRepository: agent._repository,
         modelResolver: new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers }) });
     return host;
 }
