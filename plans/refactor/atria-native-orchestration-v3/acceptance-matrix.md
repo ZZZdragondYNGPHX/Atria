@@ -65,7 +65,7 @@
 
 | Stage Gate | 必须成立 | 不成立时 |
 | --- | --- | --- |
-| **E0 → 建开发分支** | 实际最新源/消费者闭包、物理 Owner/Schema/RPC/Store/Budget/安全/硬切顺序、跨域复用与真实验收计划具备可核对证据；用户明确允许正式实施 | 记录 BLOCKED，继续 docs 审计/澄清，不建分支 |
+| **E0_DESIGN → 开发授权 → P1** | 按 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 完成设计核销；用户另行明确授权才可建实现分支。V3运行/故障/三端证据属于P阶段，不倒挂到E0 | 设计未决则补设计；仅授权缺失则保持NOT_AUTHORIZED；实施证据继续NOT_RUN/BLOCKED，不伪造PASS |
 | **P1 → P2** | Host durable Plan/Run/Crash/Source/Version/Checkpoint 合同 L1/L2 可复核 | 修复/复测，不以 UI mock 代替 |
 | **P2 → P3** | G2 调度与 S2 Effect/Approval/unknown/crash negative gates L1/L2 | 不接入可变更外部 Tool/真实 Provider |
 | **P3 → P4** | 原 Memory/Model/Compute/Port budget、权限/源失效、原领域 Receipt L1/L2 | 不开放 RP/Project 自动原生消费者 |

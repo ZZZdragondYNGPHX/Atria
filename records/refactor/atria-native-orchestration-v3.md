@@ -113,3 +113,10 @@
 - 最终就绪审查位于同一 e0-audit §10：D1–D9/HCM约束逐项核对，R01–R08逐项列出剩余证据、拒绝/恢复出口和负责阶段；交接结论 **NOT READY / E0 BLOCKED / implementation NOT_STARTED and NOT_AUTHORIZED**。不新建HANDOFF，不把未完成运行验证包装为已交付产品。
 - 尚缺：真实consumer trace；V3 Store/Host排他/恢复/原预算稳定attempt；普通RP/NativeGame/Project/Evolution的真实DomainReceipt；可信审批/Secret/egress/未知远端；图backend/性能；CachyOS/Termux及Windows真实V3客户端；MySQL/Pg服务。无法在docs-only授权下制造这些实证，全部按NOT_RUN/BLOCKED保留。即使日后E0全部解除，仍等待用户新的明确正式开发授权。
 - 最终实际文档检查：18份文档、171个相对链接均可解析；6个物理kind唯一且与当前合同一致；git diff --check通过。151文件manifest此前已核对与未变化的main完全一致，本轮未重复执行产品测试。另一个任务新出现的Settings/Themes未跟踪Record与原Evolution草稿均保留，不纳入本任务提交。
+
+## 2026-10-15 — R01–R08 续审第一组：消除E0/授权循环依赖
+
+- Start docs：`0f9d345e8c0ea841504fdbc4fbdb25fb09339f86`；fetch核对main/origin/main仍`60aca695726893e298b7d485f300c6efef3b79fd`。保护已有Storage Record未提交修改、Evolution未跟踪目录及Settings/Themes未跟踪Record；本任务不纳入这些路径。
+- 当前用户明确要求将开发前设计与实施后证据分开。本组修正生效的D9/implementation §2、index/acceptance路由：E0_DESIGN只审实现合同与安全出口；DEVELOPMENT_AUTHORIZATION单独NOT_AUTHORIZED；V3代码/运行trace/crash/真实三端/服务证据留P1–P8，不再要求它们先于实现分支产生。
+- 同一e0-audit新增§11逐项分账。R01/R06设计已具备责任/边界/验收路线；R08不是技术阻塞。R02/R03/R04/R05/R07仍有具体设计缺口，本轮继续核实，不靠把标签后移就冒称通过。
+- 未执行任何产品模块/测试、网络付费或真机操作；仅源码/文档读取和文档编辑。当前不建实现分支、不修改main、不删除/迁移数据，E0设计就绪也不会自动授权开发。

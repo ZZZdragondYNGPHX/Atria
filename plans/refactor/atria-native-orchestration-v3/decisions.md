@@ -112,7 +112,7 @@ D3 各操作的详细方向、不变量与需要测试的失败窗口只由 [gra
 ## D9 — 已冻结：E1 内核先行、分阶段验证、最终统一硬切（2026-10-15）
 
 1. **冻结 E1 路线，不冒充 E0 完成**：采用先 Host Plan/RunLedger/Effect/Receipt 基础合同、后 G2 图与 Native Domain Ports、再 RP/Studio/Evolution 消费端和 U2 UI、**最后一次切换产品主路径并彻底清退旧代码**的同一产品任务分阶段模式。内部阶段是研发组织，不允许生产旧、新双执行器、永久兼容层或旧模式变 V3 模板。
-2. **E0 Exit 是建分支硬前置**：当前只有 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a` 的远端定向静态审计与原文档定位，未穷尽全仓 import/dynamic imports、Settings/Host/Browser/Runtime、真实 FS/SQLite、崩溃、外部 Effect 与所有 consumers。须对**当时最新 main HEAD** 完成可复核引用闭包、原生权限/存储/接口物理位置与失败恢复证据，明确 BLOCKED 风险和安全退出；未通过不创建实现分支/不动 main。本轮用户授权仅是 D9 文档冻结与开发交接审查，**不是当前开工许可**。
+2. **E0设计是建分支技术前置，授权独立**：按当前用户要求消除循环依赖，E0只要求最新main静态消费者范围、可实施物理合同、原authority/安全/恢复出口、阶段责任与验收计划闭合；V3代码/运行trace/故障/三端实证归实施后Gate，不要求先有实现才能通过E0。详细Gate只归 [implementation-plan §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离)。E0设计就绪不授予现在建分支/改main权限，仍须用户新的明确正式开发授权。
 3. **Plan 接口方向**：PlanDefinition/Host PlanDraft/ValidationReport/不可变 PlanRevision，强类型 Node/Port/Edge、Source/Actor/Tool/Model/Output/预算、Draft hash/baseRevision/CAS，`Validate` 纯检查，`Publish` 固化版本，`Run` 重新做 Native admission。精确 Schema/Store/RPC 仍需 E0 实证冻结。
 4. **Run 接口方向**：Host RunIdentity/RunLedger/Checkpoint/TaskGraphRevision/NodeAttempt、parent-child、Source/Session/Project real anchors、version/CAS/epoch/fencing、G2 GraphPatch/Join、取消/恢复/过期结果的可信状态。Scheduler 进程队列与旧 Browser IndexedDB 不等于持久 Host Ledger，Browser/Graph Editor 不得持第二运行权威。
 5. **Effect/Receipt/Approval 方向**：外部/付费动作写前持久 EffectIntent，原 Host Tool/Model/MCP/A2A/业务 Port 操作，精确 capability/approval/budget/secret/egress 绑定，EffectReceipt 引用真实外部 ID/原 DomainCommitReceipt 与 actual/unknown usage。可能已发但结果未知时先 reconcile，不能盲重发、假称取消已撤回/退款或跨第三方 exactly-once。

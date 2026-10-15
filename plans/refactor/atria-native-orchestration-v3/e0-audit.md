@@ -1,6 +1,6 @@
-# D9 E0 — Native Orchestration V3 工程审计（E0 BLOCKED）
+# D9 E0 — Native Orchestration V3 工程审计与设计就绪
 
-> **当前结论（2026-10-15）**：最新只读基线 `main@60aca695726893e298b7d485f300c6efef3b79fd`。§1–7 为早期定向审计历史；本轮全仓证据及处置以 §8 起为准。静态取证范围已扩大，运行闭包、V3 持久化/安全和三端证据仍未通过，不得把审计文档完成改称 E0 PASS。
+> **此前审计结论（2026-10-15，当前分类以§11为准）**：最新只读基线 `main@60aca695726893e298b7d485f300c6efef3b79fd`。§1–7 为早期定向审计历史；本轮全仓证据及处置以 §8 起为准。静态取证范围已扩大，运行闭包、V3 持久化/安全和三端证据仍未通过，不得把审计文档完成改称 E0 PASS。
 
 > 2026-10-15 基于 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a` 的**远端定向静态审计**。**D9 已选 E1 并冻结路线，但本模块的 E0 全量依赖闭包、物理存储/权限/崩溃与三端真实验证仍 BLOCKED**。本文件只持有代码证据/未闭合项目，不再承担实施分期或验收合同：接口详见 [interface-contracts](interface-contracts.md)，阶段详见 [implementation-plan](implementation-plan.md)，验证详见 [acceptance-matrix](acceptance-matrix.md)。无产品代码修改或测试。
 
@@ -215,3 +215,26 @@ R02–R06 中针对“尚不存在的V3”的运行证据，无法在本次 docs
 ### 10.4 本轮实际完成边界
 
 完成的是：最新 main 静态依赖取证与可复核附件、旧编排零兼容矩阵/数据边界、v1物理合同/原authority接入、E1依赖和三端验收方案、最终阻塞与开发就绪审查。产品实现、真实consumer trace、V3测试/故障注入、真实模型/Tool/审批/人工质量、Windows/CachyOS/Termux客户端均未执行。文档校验与Git同步事实由同一 [Record](../../../records/refactor/atria-native-orchestration-v3.md) 保存。
+
+## 11. R01–R08 设计与实施证据分账
+
+**本节是当前E0状态权威**；§1–10保留此前审计过程和当时结论，§10.3中“所有缺实证均为E0阻塞”的分类由本节取代，不再作为建分支门槛。2026-10-15用户明确授权在docs内消除循环依赖；Gate定义唯一引用 [implementation-plan §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离)。D1–D9/HCM产品语义、原生authority、零兼容硬切和最终质量要求保持不变。
+
+### 11.1 分账方法
+
+- **设计阻塞**：无法指出原authority/合法source或预算、无法给出可实施物理合同、关键竞态/未知结果没有确定出口、必须重新选择产品方向才能实现。必须在E0关闭，不能以“届时测试”代替设计。
+- **实施后证据**：合同已确定，但代码/测试、真实Port/客户端/外部服务尚未产生。按具体P阶段的case保持NOT_RUN，真实环境缺失记BLOCKED；不反向阻断已经具备实现合同的E0。
+- **开发授权**：R08是单独的人类授权条件，不是待修复技术缺陷。始终NOT_AUTHORIZED，直到用户另行明确授权；本次不创建实现分支。
+
+| 原R项 | E0必须解决的设计问题 | 本轮设计状态/核销位置 | 实施后证据与最早Gate | 当前证据状态 |
+| --- | --- | --- | --- | --- |
+| R01 消费者闭包 | 静态盘点边界、计算动态导入/外部安装的拒绝政策、每类替代责任和清退顺序可复核 | **DESIGN_CLOSED**：§8 C01–C18、两个附件与§8.1数据边界；不能静态求值的加载器有范围/拒绝出口，不以“全运行穷尽”作为设计事实 | W06/W07 consumer trace P4；W08 Shell P5；W09零旧生产入口/旧客户端拒绝 P6；CL12 | NOT_RUN；外部安装内容未检查不伪称已兼容 |
+| R02 Host/持久性 | 确定跨重启排他/fencing、恢复保证级别和跨Store失败策略，而非只有进程内Map | **DESIGN_OPEN**：需本轮补充具体Owner获取/失效/重启协议 | W02 P1 V01/V03/V09；真实掉电声明另需对应硬件证据 | NOT_RUN；没有V3实现不等于设计本身不可关闭 |
+| R03 父子预算/普通RP | 明确rp_chat原authority扩展落点、稳定attempt到provider send的唯一计费与父子分配算法 | **DESIGN_OPEN**：需确定普通RP key/source/原RunControl扩展及费用恢复 | W04 P3 V04；真实usage L4 | NOT_RUN；服务缺失只阻相应用量验收 |
+| R04 输出/Evolution | 原ChatRepo怎样原子认领同output slot/消息、跨FS-Native事务如何恢复；Evolution原发布journal的接线 | **DESIGN_OPEN**：§11接口方向已定，需补原ChatRepo的物理receipt/写入协议 | W06/W07 P4 V06/V07，P6 C02/C06/C07 | NOT_RUN |
+| R05 可信批准/安全 | 批准来自哪个真实信任边界；同源代码如何隔离/何时拒绝；未知外部effect默认路径明确 | **DESIGN_OPEN**：需冻结可实施批准通道，不能用nonce/CSRF虚构隔离 | W05 P3负例、P5可信UI、V05/CL04，必要L4 P7 | NOT_RUN；无批准/沙箱路径仍拒绝执行 |
+| R06 UI/性能/三端 | 一套Draft/Projection、完整Graph+Inspector与移动List语义、backend选择和实测阈值在哪阶段冻结 | **DESIGN_CLOSED**：D8/interface §9、implementation P5/W08及acceptance §7/§8.1已规定PoC/性能出口；具体布局/backend实验是P5工程工作 | P5真实U2功能与PoC；P7三端CL01–12/性能 | NOT_RUN；CachyOS/Termux实机证据BLOCKED，不作为E0前置 |
+| R07 MySQL/Pg | 确定连接Owner、Native CAS/事务重试/commit结果未知、六kinds及原域扩展的四Engine一致合同 | **DESIGN_OPEN**：需补SQL Owner/commit unknown协议，不只写服务不可用 | W01/W02 P1合同；P3真实Port，P7四Engine完整验收 | NOT_RUN；服务账号/连接未取得的验收BLOCKED |
+| R08 开发许可 | 明确谁可以授权、授权前允许范围 | **非技术项：NOT_AUTHORIZED**；仅用户新的明确正式开发授权可改变 | E0_DESIGN_READY之后，未来P1前独立检查 | 当前仍docs-only；不请求本轮开工 |
+
+第一组结果：Gate循环依赖已从生效入口拆开；R02/R03/R04/R05/R07仍有具体设计问题，本轮继续在接口权威模块补齐。此时不宣称E0设计已通过，更不宣称任何产品case PASS。

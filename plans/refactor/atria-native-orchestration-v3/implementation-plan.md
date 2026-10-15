@@ -1,6 +1,6 @@
 # D9 E1 — Native Orchestration V3 实施工作包、依赖与交接门槛（已冻结路线）
 
-> 2026-10-15 第九轮选择 **E1：内核先行、同一产品任务分支分阶段验证、最终统一零兼容硬切**。本模块独占正式实施阶段/工作包/每阶段退出门槛/创建开发分支的前置条件。接口方向见 [interface-contracts.md](interface-contracts.md)，旧消费者/阻塞静态证据见 [e0-audit.md](e0-audit.md)，验证矩阵唯一来源为 [acceptance-matrix.md](acceptance-matrix.md)。**本轮是 docs 阶段规划定案；E0 实证审计未完成，不得建立 refactor/feat 实现分支或修改 main**。所有 Stage Gate 是未来真实工程完成条件，不宣称 PASS。
+> 2026-10-15 第九轮选择 **E1：内核先行、同一产品任务分支分阶段验证、最终统一零兼容硬切**。本模块独占正式实施阶段/工作包/每阶段退出门槛/创建开发分支的前置条件。接口方向见 [interface-contracts.md](interface-contracts.md)，旧消费者/阻塞静态证据见 [e0-audit.md](e0-audit.md)，验证矩阵唯一来源为 [acceptance-matrix.md](acceptance-matrix.md)。**本轮是 docs 阶段规划定案；E0 当前设计进度见 e0-audit §11；正式开发仍 NOT_AUTHORIZED，不得建立实现分支或修改 main**。所有 Stage Gate 是未来真实工程完成条件，不宣称 PASS。
 
 ## 1. E1 与零兼容的准确含义
 
@@ -11,24 +11,34 @@
 - **前端复用 Serene Canvas**：Timeline 默认/Graph 切换、U2 Graph + Inspector 桌面编辑、移动 Node/Edge List + Sheet 语义等价，沿现有 DOM/ESM/Tokens/Primitives/Patterns。Graph 渲染库经局部 PoC 再决定，不能强制整站 React/新主题迁移。
 - **不承诺原地不停机迁移旧运行**：老 Run/旧模式不兼容，无数据双轨。具体停机、旧持久状态可删除的范围和未结束旧任务如何明确宣告 unsupported/terminated，要在 E0 的数据和副作用审计中明确；不能借“硬切”丢弃仍可能处于 unknown 的外部操作/正式业务收据。
 
-## 2. 先决 E0 — 全域审计收口而非仅静态发现
+## 2. E0 设计门槛、开发授权与实施验收三者分离
 
-**E0 Exit Required Before Branch Creation：**
+本节是各 Gate 的唯一前置规则。2026-10-15 用户明确要求消除 E0 与开发授权的循环依赖；这项当前指令修正早期把 V3 实测/三端设备列作建分支前置的条款，D1–D9 的产品语义、E1顺序、零兼容及最终验收要求均不变。
 
-1. **冻结源头**：锁定当时真实 main HEAD、应用依赖和 Node/FS/SQLite/Browser/Termux 环境；同步当前 docs Plan/Record，差异若改变既有 D1–D9 权威则先处理冲突，不自行猜测同名分支等价。
-2. **完整消费图**：以 import/dynamic import/boot loader、workspace navigation、HTTP routes/host ports、settings/bootstrap/read/write、code search 与关键运行时 trace/测试反例，列出旧 `agents/orchestrator`、`engine-v2`、`agent-runtime`、`orchestration-engine`、`agent-workspace`、旧 Generator/Takeover/Graph UI 的**每个活消费者**，标明删/保留/抽离/新合同替换/依赖项目/受影响测试。仅 GitHub 搜索命中不是所有动态消费者的证明。
-3. **特殊跨域阻塞**：彻底审计 `src/native/agent-intelligence/evolution-targets.js` 的旧 Director/Workspace Preset/PromptStrategy 目标消费者；`src/storage/repositories/settings-repo.js` 的旧 `agentWorkspace` CAS；`public/scripts/native/play-generation.js` 与 Game LLM、`capability-host.js`、`atria-shell/workspace-host.js`、Search/UI 路由、`message-takeover.js` 的共享用途。任何未查清的共享 consumer 不得作为“可直接删除”。
-4. **真实源接口**：审查 Host StorageEngine/SQLite/FS transaction、scope/owner/SourceRevision/CAS、RunControl 模型收费预约/attempt、TaskScheduler permits、Project Task/Review/Commit、MCP/A2A/Skill/独立 plugin 安全、Memory/Actor/HCM 与 UI Session/Context 状态；对 [interface-contracts.md](interface-contracts.md) 每个接口族列出最小物理实现位置、RPC/错误码/恢复与 ref 身份，未决记录为阻塞，不造虚假完成。
-5. **运行安全/数据权威**：分类断电、重启、Source revoke、Branch switch、媒体/付费/外部 write unknown、Legacy Run 结束边界；确定旧编排私有数据的确切删除范围及保留正式业务 DomainReceipts 的规则。
-6. **证据与开发许可**：静态闭包清单、针对性验证结果、已冻结物理契约/接口所有者、失败模式、阶段依赖、可在可用机器执行的真实平台验收计划、风险处置均进同一 Record。**未证明的 E0 项目保持 BLOCKED，不能把“讨论第九轮结束”直接等同 E0 完成。** 完成 E0 后还须有用户明确允许开始产品代码实施；本次选择 E1 只冻结路线，不授予现在建分支权限。
+| Gate | 通过所需事实 | 明确不作为该 Gate 的前置 | 当前权限/结果 |
+| --- | --- | --- | --- |
+| **E0_DESIGN** | 最新 main 的静态消费者范围和未解析动态边界已列明；每项新合同都有原 authority/物理落点/状态机/失败出口/验收责任；没有会迫使实现重开产品方向或复制原服务的未决设计 | 尚不存在的 V3 代码/测试、真实运行trace、crash injection、图backend PoC、三端或MySQL/Pg服务实测 | 逐项设计审查见 e0-audit §11；只有设计项全闭合才 DESIGN_READY |
+| **DEVELOPMENT_AUTHORIZATION** | 用户另行明确授权正式产品开发 | 不是测试、环境能力或 E0 设计状态；不能由 Agent 自动推导/设为通过 | **NOT_AUTHORIZED**；本轮仍只改docs、不建实现分支 |
+| **P1–P6 stage evidence** | 当阶段实现和对应 L1/L2/必要 L4 真实证据；问题诊断修复复测 | 后续阶段尚未产生的最终产品/三端证据不能倒挂为启动该阶段的要求 | 尚未实施：NOT_RUN；获授权后按依赖持续推进 |
+| **P7/P8 release evidence** | 全部适用可靠性/安全/域行为、三端L3、四Engine及必要L4证据；当时tested SHA和治理集成条件 | 不以E0 DESIGN_READY、授权、文档提交或fixture替代真实产品验收 | 产品 NOT_VERIFIED / NOT_READY；未测项和真实环境阻塞继续保留 |
 
-E0 允许在 docs 记录审计事实/更新最小物理合同和验收计划，不允许在此阶段修改 main、创建实现分支、执行有破坏性清理。
+**未来创建实现分支的必要且充分前置：E0_DESIGN=DESIGN_READY + 用户新的明确开发授权 + 当时 main delta 未引入新的未决设计。** 不要求先有该分支才能生成的V3实现或验证结果。若main变化只影响工程接线/测试，则更新对应责任项；若改变authority/安全/合同则先补相关设计，不能把所有已通过设计无条件重开。
+
+E0的设计证据清单：
+
+1. main SHA、静态扫描范围/方法、C01–C18与151文件manifest、未解析动态加载和外部安装边界明确；每类consumer都有删/留/抽离/替代及P4/P6实测责任。
+2. Plan/Binding/Run/GraphPatch/Effect/Receipt/Approval/Result/Projection具备严格身份、原生key/存储/CAS/恢复/RPC和错误合同；原服务扩展位置明确，无第二World/Context/收费/Secret writer。
+3. Host排他、普通RP预算、Output原consumer幂等、Evolution发布、可信批准、SQL commit unknown、UI三端这些**工程设计本身**已有确定的实现策略或范围内默认拒绝策略，不能只写“以后决定”。
+4. 每个设计项映射到真实实施阶段、验收case、失败恢复/不开放条件；测试没有运行就保持NOT_RUN，设备/账号实际不可用则对应验收BLOCKED。
+5. 本轮允许设计审查/文档更新，不授予实现或破坏性清理权限。当前授权边界与E0结果分开记录，不再把R08当技术设计缺陷。
+
+唯一详细接口仍归 [interface-contracts](interface-contracts.md)，R01–R08拆分、设计核销与最终结论归 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)。
 
 ## 3. 正式实现工作包（E1 阶段顺序）
 
 | Stage | 主工作包与需复用的权威 | 可验收出口（不通过不得标 PASS） | 前置依赖 |
 | --- | --- | --- | --- |
-| **P1 — Host Foundations** | Native PlanDefinition/Draft/Publish/CAS、RunLedger/Checkpoint/TaskGraphRevision/RunIdentity/NodeAttempt、Storage/GC/可授权 Host RPC；保持纯 JS 逻辑与 Node Server 分离 | 真实 Native FS/SQLite 启动、并发/崩溃/重开、不可变 Plan、CAS/fencing/新旧来源；无 Browser 可执行权威 | **E0 全部硬阻塞闭合 + 用户正式开工授权** |
+| **P1 — Host Foundations** | Native PlanDefinition/Draft/Publish/CAS、RunLedger/Checkpoint/TaskGraphRevision/RunIdentity/NodeAttempt、Storage/GC/可授权 Host RPC；保持纯 JS 逻辑与 Node Server 分离 | 真实 Native FS/SQLite 启动、并发/崩溃/重开、不可变 Plan、CAS/fencing/新旧来源；无 Browser 可执行权威 | **E0_DESIGN_READY + 用户另行正式开发授权（§2）** |
 | **P2 — Graph & Effect Core** | G2 GraphPatch/Delegate/Handoff/Fanout/Join/Planner/Judge/Review、S2 EffectIntent/Approval/EffectReceipt/unknown/reconcile、D3 重试/循环、Host Scheduler permits | 动态/并行/晚到/CAS 重放、写前 WAL 或等价保证、非幂等外部未知不重复发送、取消与费用真相分开 | P1 Host identity/ledger |
 | **P3 — Native Ports & Budgets** | D4 唯一 Hybrid/Context/Actor、D5 Model Routing/Compute 原预算/Provider fallback/Reuse、Tool/Skill/MCP/A2A Secret/Egress 权限、原业务 DomainReceipt refs | Owner/Actor/Source 隔离、预算原子预约和重启、实际 Provider/Tool attempt 与 Unknown、没有影子收费或第二 Memory/Secret/Business writer | P1/P2 |
 | **P4 — Product Consumers** | Native Game/Ordinary RP Narrator/Player autonomy、Session World/Command/Timeline、Studio Project Agent Task/Review/Apply、Experience/Evolution targets 与原 M1 Eval | 单次合法正文、无玩家代写/全知硬写越界；Studio 只审阅后获准正式提交；`evolution-targets.js` 等旧模式引用已替换且原记录可信 | P2/P3 |
@@ -55,25 +65,20 @@ E0 允许在 docs 记录审计事实/更新最小物理合同和验收计划，�
 
 早期 E0 仅部分静态确认 W01/W03/W06/W07/W08；本轮静态盘点与物理合同增补见 §6–8，真实运行闭包/E2E 仍需补证，[e0-audit.md](e0-audit.md) 记录 evidence，不将设计目标当已完成代码改动。
 
-## 5. 工作分支与正式交接门槛
+## 5. 分支与正式开发门槛
 
-**当前：禁止创建开发分支或触碰 main 产品代码。** 正式开发交接审查要同时满足：
+Gate只由 §2 管理；此处不重复另一套前置。当前用户**未授权正式开发**，因此即使E0设计达到DESIGN_READY也不能创建实现分支/修改main。未来获授权后按原Governance在同一任务工作树推进P1–P8，阶段只组织验证，不逐阶段重新索权。
 
-- D1–D9 的已冻结架构与原 HCM/Agent Intelligence/Game Runtime/MCP/Serene Canvas 权威边界一致；未定物理接口在 E0 内给出真实证据/明确所属/测试路线。
-- E0 有当前 main HEAD 的**可复核全消费者引用闭包**、旧代码删除/保留/抽离矩阵与跨域 W06/W07/Settings/Shell 引用审查，未查项目无条件记录 BLOCKED。
-- RunLedger/EfffectIntent/Approval/Result/Projection 的 Host Store/RPC/原预算/Source/事务与 API 身份已可以在代码中实施而不创建第二业务 writer；关键 unknown/crash 的 fail-closed 路线有可执行测试。
-- 原 Play/Native Game/RP 旁白、Studio/Project Review、Experience/Evolution target、Serene Canvas UI 与手机全功能没有失去业务消费者/权限/视觉权威；外部 MCP Plugin 不被合并到 V3 Host。
-- 有真实 Windows、Linux、Termux 测试环境、可复核客户端 L2/L3 验证手段与不可测试项的保守处理。用户此前选择 E1 **不是实施授权**；当前要求明确在收口前不得建立分支，故待 E0 完整、正式交接审核与**用户新的明确开工要求**后才建立同一 `refactor/*` 任务分支。
-
-最后依据 [acceptance-matrix](acceptance-matrix.md) 与 Governance 保持真实 git/测试/CI/端侧记录，阶段闭合后继续；不以“已分阶段”免去高风险操作的用户授权、原权限检查、质量/Eval 独立标记。
+缺三端设备/外部账号/MySQL或Pg服务，影响对应实施验收的可执行性和交付，**不使已冻结设计倒退为E0 BLOCKED**；缺真正authority/无法定义失败出口才属于E0设计阻塞。若真实测试失败暴露合同缺陷，应在受影响阶段修设计/实现并复测，不伪称E0已验证该功能。
 
 ## 6. E0 收口后的依赖图与阶段增补
 
-本节把 §3–4 已冻结的 E1 路线落到物理接口 v1，不改变 P1–P8 顺序。当前 **E0 仍 BLOCKED、实施未获授权**。未来开发前先重读实际 main delta、同一 Record、[consumer inventory](e0-consumer-inventory.md) 与 [AST graph](e0-import-graph.md)，不能直接删除 151 文件。
+本节把 §3–4 已冻结的 E1 路线落到物理接口 v1，不改变 P1–P8 顺序。当前 E0 设计状态见 e0-audit §11，**实施未获授权**。未来开发前先重读实际 main delta、同一 Record、[consumer inventory](e0-consumer-inventory.md) 与 [AST graph](e0-import-graph.md)，不能直接删除 151 文件。
 
 ```mermaid
 flowchart LR
-  E0["E0 审计证据 + 用户另行开工授权"] --> P1["P1 Plan / Ledger / Store / Owner"]
+  E0["E0_DESIGN_READY"] --> AUTH["用户另行正式开发授权"]
+  AUTH --> P1["P1 Plan / Ledger / Store / Owner"]
   P1 --> P2["P2 Graph / Effect / Approval 状态机"]
   P2 --> P3["P3 原 Domain Ports / 预算 / Send"]
   P3 --> P4["P4 RP / Game / Project / Evolution"]
@@ -118,4 +123,4 @@ P2 不需要提前实作一套影子预算；P3 的预算接口合同在 P1/P2 �
 - [Settings/Themes](../atria-settings-and-themes/index.md) 与 Serene Canvas 管通用设置保存、主题和 Shell 视觉；它的通用兼容不恢复 D2 已废止的 Orchestrator subtree/mode/scope。V3 只清旧编排字段，新 Authoring 不重复实现 Settings 服务；当前主题更新不要求 V3 强制固定浅色。
 - 既有独立 MCP、Model/Memory、Game Runtime/Project、Experience/Eval 方案仍各持权威。未来 main 上同期改动先做精确 diff，不读取其它任务未提交草稿或把历史源基线当当前实现。
 
-本轮最终审查结论与剩余阻塞见 [e0-audit §10](e0-audit.md#10-最终开发就绪审查与交接结论)。即使日后 E0 实证闭合，**仍须用户另行明确授权正式开发**；本次授权不包括创建实现分支或修改 main。这里的交接结论是企划收口产物，不创建/刷新独立 HANDOFF，不将未完成验证转交为已完成。
+本轮最终审查结论与剩余阻塞见 [e0-audit §10](e0-audit.md#10-最终开发就绪审查与交接结论)。即使 E0 设计闭合，**仍须用户另行明确授权正式开发**；本次授权不包括创建实现分支或修改 main。这里的交接结论是企划收口产物，不创建/刷新独立 HANDOFF，不将未完成验证转交为已完成。
