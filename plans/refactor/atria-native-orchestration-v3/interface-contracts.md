@@ -516,7 +516,7 @@ GenerationHost在真实sub-send前完成原budget admission，再通过可信`be
 
 `ToolPort.execute(handle,{runId,effectId,dispatchToken})`由Host读取持久action/target/input，不能接受Browser提供的新动作或批准。原Skill/McpService/A2aService/SessionPublicWork接内部可信work adapter，逐真实请求重验dispatch、原scope/grant、egress、CredentialTarget并在原子额度内记localWork。权限/原route预算只能取交集。`observe`只查原operation；`requestCancel`仅原本地scheduler，远端取消是另一Effect。
 
-原`RunControl.externalTask`的可选typed `orchestrationBinding={schemaVersion,runId,effectId,sourceBindingDigest,grantDigest}`不可移除或换绑。重启后原A2A独立reconnect/cancel不得靠旧Session policy续用此授权，当前明确拒绝并要求新Effect。它不是新的task registry或预算kind。原MCP没有持久Effect关联receipt，A2A只有原task identity而无完整Effect receipt闭包，因此ToolPort当前返回unknown，不能自动重发或把工具文本升格为confirmed。R3/需要批准的动作在可信Review与原动作authority接通前保持unavailable；Project/RP没有原消费者时保持拒绝。
+原`RunControl.externalTask`的可选typed `orchestrationBinding={schemaVersion,runId,effectId,sourceBindingDigest,grantDigest}`不可移除或换绑。重启后原A2A独立reconnect/cancel不得靠旧Session policy续用此授权，当前明确拒绝并要求新Effect。它不是新的task registry或预算kind。原MCP没有持久Effect关联receipt，Skill也尚无完整原持久receipt，因此对应ToolPort结果保持unknown；A2A受理事实的精确持久闭包现见§17.21，不能把受理升格成远端任务完成，任何未知都不能自动重发。R3/需要批准的动作在可信Review与原动作authority接通前保持unavailable；Project/RP没有原消费者时保持拒绝。
 
 ### 17.18 P3原恢复/GC对费用与来源的保护
 
@@ -545,3 +545,20 @@ SourcePort在Host事务内不得等待原Session RunLock或Project/Studio writer
 携带`agent.delegate` capability的可执行node，其policy必须显式含`allowedPlanPinIds:[]`；每项须是该node.dependencyPinIds中port=plan的精确pin，无重复。空集合禁止委派，缺字段的旧形态直接invalid，不以缺省allow-any兼容。Delegate在原scope callback之前精确命中冻结父Plan允许集合、重新读取同owner的原revision并核对完整pin integrity；confirmBudget同样复核。Planner不能凭请求childPlanRef或callback allowed扩大该集合，原scope/能力交集继续必需。
 
 原authoring dependency validation能够纯读上述Plan pin；这不使capability ceiling变成grant，尚未接原authority的capability继续unknown。exact pin的发布依赖是已存在的不可变revision；测试按leaf→grandchild→child→parent发布有限链，不制造definitionHash自指环或空集合通配。字段属于D3既有委派边界的物理收口，Context/audience等独立缺口没有借此假称完成。
+### 17.21 A2A原持久受理事实与Effect观察
+
+原RunControl.externalTasks的可选acceptedReceipt由原A2aService.finalize在真实SendMessage响应通过原协议validator、原source/fresh及实际local work完成后，与原externalTask记录同一次CAS保存；类型为a2a_send_accepted。binding精确关联run/effect/epoch/source/grant/input/endpoint/budgetEnvelope/typed budgetAttemptRef，并保存原request/response fingerprints、task或message响应种类及实际local attempt IDs。只有hash与原refs，不把第三方正文或Secret复制进账本；acceptedReceipt写入后不可移除/换绑。它仍是原服务的记录，没有新metadata kind或第二writer。
+
+`A2aService.acceptedObservation(handle,{operationId,sessionId,anchor},{tx})`是历史事实纯读，不发网络、不要求fresh send claim。`ToolPort`以原runs实例构造后，`observe(handle,operationRef,{runId,effectId})`从真实持久Run/Effect核对上述binding、source/authority、每条原local row的稳定provenance、settled/completed与reservation，再返回可交原EffectController.observe的DTO。`verifyObservation(args)`在同一原Host事务重读原receipt/Effect并精确比较DTO；没有runs/effect/proof则unknown，不相信caller提供的accepted布尔值。
+
+confirmation仅意味着精确a2a.send已得到并验证原SendMessage回执；reasonCode=a2a_send_accepted，resultRefs=[]、domainReceiptRef=null。task响应为WORKING也可证明已受理，绝不表示远端Task完成、正文可消费、World/Memory写入、再次发送或远端取消/回滚获准。source移走/权限过期后可以保留历史事实，旧独立reconnect/cancel继续拒绝。invalid/lost/cancel或未持久receipt仍unknown；本地ACK丢失仅经原持久查询有证据后解除。MCP/Skill的完整原持久观察闭包仍未完成。
+
+带V3 ownership的原externalTask不再按TTL删除，所属原operation不因Source推进而被压缩；原非V3 TTL继续。正式释放authority尚未实现，原32 row/128 operation容量照旧fail-closed，不以过期产生新的发送许可。产品HTTP和完整领域grant装配仍未由此开放。
+
+### 17.22 原预算的精确来源明细保留与稳定local work
+
+原model/local费用行增加可选`orchestration:{kind:'provider_send'|'local_work',effectId,ordinal}`；唯一原shared helper由该元组生成既有稳定attemptId，不更改冻结ID命名空间。BudgetPort内部生成标记，不接受caller在attempt上填写自报来源；原validator将标记、行类型和ID绑定，admit重放不能移除/换绑标记。typed observe/verify要求原行精确匹配，普通行即便碰巧同stable ID也不能充当V3证明。
+
+GenerationHost的真实local work由原sendBank.nextLocalWorkAttemptId生成Effect+local ordinal，原charge与settle使用同一个ID；provider send保持独立ordinal。local准入COMMIT ACK未知与模型一样只observe同identity再报reconcile_required，不能重复执行local operation或派发Provider；重启bank从ordinal0重放明确拒绝。
+
+Session/RP原operation在存在这些来源明细时保留，原retireComputeLedger拒绝提前聚合它们；即使root没有child reservation、费用状态已unknown或settled，Source前进后也不丢attemptId，允许迟到实际结算。没有新账本/价格表。原非V3 unknown汇总规则不变；RP达到128 operation时跳过这些保留项并只退休其他原closed work，仍无可回收项则原容量门槛拒绝。正式释放明细的authority尚未交付，不自动清历史或退款。
