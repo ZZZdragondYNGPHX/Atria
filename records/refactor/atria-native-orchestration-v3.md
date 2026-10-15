@@ -86,3 +86,12 @@
 - 实际执行：全仓 tracked 文本扫描（3,949 文件，3,556 选中文本）；本地 Acorn AST 纯解析（2,886 JS/MJS/CJS，0 parse error，11,053 字面本地边，452 根外直达边含测试，1,152 反向闭包文件）；旧四根 manifest 151 文件。扫描索引、原样动态点与路径行号保存在同一 Bundle 两个 evidence 附件，未 import/执行产品模块。
 - 新发现：Evaluation adapter/worker/evaluator fingerprint 真正依赖 Director/Run Store/Skill Resolver；Memory Schema Iteration 真正静态导入旧 envelope helper；generate-task 复用 prepared-context；Skills 的 orch-preset 贯穿 Browser/Host/shared scope、优先级、导入导出、rename/cascade。对应 C01–C18 清退/保留/抽离/替代矩阵与数据边界已写入同一 e0-audit。
 - 验证状态：L0 scanner/parser 执行完成（不等同运行 closure PASS）；主路径真实启动、第三方动态安装、V3 FS/SQLite/预算/审批/故障、三端和真实外部服务均 `NOT_RUN/BLOCKED`。没有收费调用或产品测试。下一组继续物理合同与存储/预算/领域 authority，不自动进入开发。
+
+## 2026-10-15 — E0 第二组：物理合同 v1 与可靠性审查
+
+- Start docs：`06bd73b7c`；产品只读基线仍 `main@60aca695726893e298b7d485f300c6efef3b79fd`。未执行产品代码或创建实现分支。
+- 已冻结工程细节：5 个专用 Native metadata kinds/有序 key、原 canonical hash、Plan/Run/Attempt/Patch/Join/Effect/Receipt/Approval/Result/Output 字段、状态转换、原 Engine 同事务 CAS、command 幂等、精确 source output slot、Host RPC/long-poll projection、审批 binding 与 GC/备份恢复边界。唯一详细来源为 interface-contracts §6–10，不新增业务服务。
+- 新事实：三个 SQL Native handlers 已有 insert-if-absent/UPDATE WHERE integrity 的真正单行 CAS，generic fallback 的非原子推断不能套在其上；FS 同 root queue/ALS 与 Native redo journal 仅有进程内串行证据；Windows directory sync 明确 no-op；migration lock 不是 Host lifetime lock。上述区分均有真实源文件定位，未声称实际故障测试通过。
+- 预算缺口明确：当前 reserve 是 required headroom，GenerationHost 内部随机 compute attempt 与 V3 stable effect 尚不能贯通；冻结扩展原 RunControl/Project bank 的 reservation tree、admit/observe/settle，而非第二预算账本。普通 rp_chat 的持久 budget 接入仍 BLOCKED。prepared→原 bank→ready→dispatching→原 receipt 的每个崩溃窗口均有保守出口。
+- Approval/安全：原 CredentialTargetAuthority/credentialFetch 有可复用 target pin/DNS/redirect 防线，非 V3 action 批准。明确同源任意代码无法靠 CSRF/isTrusted 隔离，缺可信通道/沙箱的高危效果不准入；MCP/A2A unknown 无状态不重发。
+- 已执行的文档校验曾发现首组末行 CRLF 被 git diff --check 视为 trailing whitespace；首组推送发生在诊断后，本组统一本任务文档 LF 并重检修正。没有将该失败记录为 PASS。实际运行/崩溃/可信审批/三端/外部服务仍 NOT_RUN/BLOCKED。

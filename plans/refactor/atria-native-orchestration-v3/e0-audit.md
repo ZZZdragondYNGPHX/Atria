@@ -141,3 +141,35 @@
 ### 8.2 第一组结论
 
 `L0 parser/scanner 执行：完成`；`零兼容处置设计：已落表`；`真实消费者运行闭包：BLOCKED`。发现 C07/C08/C09/C11 后，原“删除旧目录”方案的隐性缺口已有明确替代责任和验收位置；它们仍是未来代码工作，不冒称已经解决运行依赖。
+
+## 9. 存储、预算、权限证据与未闭合项
+
+下列是源码定位所得事实和工程结论，接口细节仅由 [interface-contracts §6–10](interface-contracts.md#6-物理落点与存储合同-v1) 持有。设计已经收束不等于实现/故障证据通过。
+
+| 证据 ID | 最新 main 源码证据 | 本轮解决的缺口 / 尚缺实证 |
+| --- | --- | --- |
+| E01 Native kind/布局 | `contracts.js:1066+` 封闭 key；`native-resource-key.js` hash/key；`fs-engine-transaction.js:761+` 通用 Native handler；SQL migration `0002-native-resources.sql` | 选择专用 5 kinds、复用原 Engine，不建 V3 数据库；不用 Model/Prompt 白名单 store。新注册/备份/恢复/GC 尚未实现 |
+| E02 FS 事务 | `fs-engine.js:24–47` 同 root tail、ALS/recover；journal 的 prepare/dependencies/publish/install/ack fault hooks | 精确冻结 root+records+event 同事务；Host 对外 ACK 必在 journal commit 返回后；不再误称 FS 天生无 Native 跨资源事务。V3 fault hooks/kill/restart NOT_RUN |
+| E03 FS 排他与 Windows durability | `repositories/common.js` resourceWrites、FS tails 都是 process-local；`durable-file.js:9,46` Windows directory fsync no-op；搜索 startup/storage/native 只发现 migration lock，不是 Host 全寿命独占证明 | 将 single-writer lease/fencing 与 Windows 软件崩溃/真实掉电保证分开。不能拿 README single-process 假设当强制排他。第二 Host/旧进程仍发送时的安全证据 BLOCKED |
+| E04 SQL CAS **纠正泛化推断** | SQLite Native handler `putIfMatch:971`、MySQL `:1064`、Postgres `:1025`：insert-if-absent/conditional UPDATE integrity；generic fallback 才 read/compare/write。SQLite BEGIN IMMEDIATE/WAL/FULL；MySQL/Pg engine withRetry transaction | 单行 Native CAS 已有可复用实现；新根 CAS+所有 records 一笔原 tx，SQL retry body 仅做纯存储，绝不把网络 send 放入自动重试。不能说现有 SQL Native CAS 都不原子。真实并发/断连 commit outcome NOT_RUN/BLOCKED |
+| E05 Provider Checkpoint/原 Versioned Store | runtime-checkpoint-store 为私有 continuation；resources.js 只接受 Model/Prompt resource types；persistence.commit 已示范 exact ref/immutable/current pointer | 新 Plan/Run 不滥用两者；仅复用 primitives。PlanRevision/publish CAS、Provider continuation 与 V3 Run epoch 分离 |
+| E06 Budget 语义 | `native-compute-budget.js:113` 的 reserve 是 required headroom；attempt ID 重复报 conflict；`RunControl` 原 Session bank；ProjectTaskRepository.assertProjectTask 中 compute；GenerationHost `:1333` 内部随机 attempt | 缺稳定 caller-correlated attempt、observe/ensure 幂等准入、reservation tree。冻结扩展原 authority 的 BudgetPort；V3 不扣第二次。不能把当前 reserve 当子预算已实现。普通 rp_chat 的持久预算权威接入仍 BLOCKED |
+| E07 Budget 恢复/GC | RunControl.retireOperations 会把非活跃 compute 汇入 retired totals；Session maintenance 按 root generation/reachability 清理 | V3 references 必须 pin 未结算/unknown attempt 与域收据，不能只有 aggregate totals 却丢失 reconciliation 身份。原账本引用扩展、恢复不返还额度尚未实现 |
+| E08 Source/Output 权威 | RpEvidenceSourceAdapter 从 Host chat repo/current Session 读取，拒绝 ambiguous message、Native message 伪装 chat；SessionCore/RunControl、ProjectTaskRepository 存原 revision/commitIntent/review | SourceBinding 采用 tagged original refs，非伪造统一 revision。OutputClaim 绑定 source turn/variant/slot，不能只 runId 去重。两个 Run 争同正文、原业务 commit 后回执丢失仍 NOT_RUN |
+| E09 Model Secret/Egress | `credential-targets.js` 以 exact connection/target fingerprint 保存原 permit；credential-fetch 在 socket DNS 检查公网/loopback、redirect:error、原 TLS；native-generation services 注入原 secretPort/provider | 必须复用原 credential authority 与 transport，不能新增 V3 Secret 解析器。Tool/Protocol 的 payload audience/egress 仍另验；相同 endpoint 不等于私密 Context 允许外发 |
+| E10 Approval/同源代码 | server-main boot ID header/CSRF；native-generation router 取 request.user handle；Host plugin import 在当前进程，Browser extension import(url) 执行同 origin code | 没有现成统一 V3 action approval。合同已绑定 nonce/operation/hash/boot/epoch/expiry，但不能把 CSRF/isTrusted 当恶意同源扩展隔离。可信 UI/重认证与 R3 原保护的实证 BLOCKED，无证据拒绝高风险 |
+| E11 MCP/A2A | MCP state WeakMap/operations 是瞬态，SessionPublicWork 检查公开 display/source/原预算；A2A 有原外部 task refs 与状态查询 | durable intent 不等于远端幂等。保持受限 consumer，不能升级 arbitrary tool write。taskId 丢失/远程未知结果保留 unknown，真实协议/外部断线结果 BLOCKED |
+| E12 原 Domain/并行任务 | NativeTaskScheduler 只管当前 operations/permits；ProjectAgentExecutor 到 human-review-before-formal-commit；World/Command、Actor/Information/Hybrid 为原 authority | 新 controller 使用原 permits，审批等待不占长锁；不复制 World/Context/Project/收费。正式 Review/Commit、HCM-01–08 当前性/Disclosure/World Tick 必须分层验收 |
+
+### 9.1 阻塞核销与状态
+
+| 原阻塞 | 已完成的工程审计/设计收束 | 剩余阻塞、解除证据与阶段 |
+| --- | --- | --- |
+| B1 物理接口/存储/预算 | v1 kinds/key/fields/hash/CAS/tx/RPC/errors、预算原 authority 扩展与 saga 已冻结 | 新 kinds/Host 排他/父子 bank/普通 RP budget authority 尚无实现与 L1/L2 故障证据；E0 execution evidence BLOCKED，P1–P3 负责实现验证 |
+| B2 全域消费者 | tracked 全集+AST+API/scope/设置索引、C01–C18、全生命周期替代和清退数据边界齐备 | API 注册、Shell、Game、Evaluation、Skills 的实际 trace 尚未执行，外部安装代码不可枚举；运行闭包 BLOCKED，P4–P6 补证 |
+| B3 原领域/真实客户端 | SourceBinding/DomainReceipt/OutputClaim/Project Review/Memory guard 与原文件责任明确 | 三类 Source consumer 的真实越权/正式提交/唯一正文、可信客户端审批未验证，L2/L3/L4 NOT_RUN/BLOCKED |
+| B4 Effect/Unknown/安全 | prepared→budget→ready→dispatching→receipt 每窗 fail-closed，stable domain attempt、同源代码信任缺口已明确 | 实际 crash/远端查询/Secret/egress/approval 测试缺失；无幂等写默认拒绝，不能宣布安全已通过 |
+| B5 三端 | 真 Node Host+真实浏览器、环境/动作/故障/证据表在 acceptance §7 | Windows 只有本地 shell/源码证据；CachyOS/Termux 设备与 V3 artifact 均无实测。L3 BLOCKED |
+| B6 UI/性能/清理 | 同一 Draft、原 DOM/ESM 与独立列表 fallback；清理精确作用域、不迁移；保留 roots/GC 合同已定 | 图编辑库 PoC、键盘/IME/Back/触控/大图控制延迟基线未测，不捏造 SLO；P5/P7 NOT_RUN |
+
+**E0 文档审计与开发许可的区分**：可在本轮完成的静态盘点、物理设计、失败出口和实施/验收路线已写入同一 Plan；不存在可以在未实现 V3 时冒称通过的 V3 crash/真实客户端证据。D9 建分支 Gate 不因本轮写完文档自动解除，E0 总状态保留 BLOCKED。当前 docs-only 授权下不能用实验代码或产品修改“补出”这些证据；不将它伪装成下一次用户必须选择的新产品方向。
