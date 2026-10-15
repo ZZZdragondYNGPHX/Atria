@@ -649,4 +649,14 @@ bindContext({port,compiled,compileProof})只在prepared Effect内单次绑定，
 
 同ALS重入的合法控制写可在消费await期间改变权限；此时`deny()`私有sentinel或最终Run变更形成拒绝envelope，Engine先正常提交这些事实，再在事务外抛`native_orchestration_consumption_stale`，正文不返回。不能在该边界直接抛错回滚已经成功的取消/unknown事实，也不能捕获任意存储错误后假称已提交。缺少真实同实例RunRepository/EffectController的Skill在执行、读取输入和收费前拒绝；不保留unknown且返回Skill正文的旁路。MCP/A2A操作metadata不冒充正文或远端完成。
 
-这里只线性化Port对原Run/Effect控制写的正文消费，不宣称原Source/Binding同样原子。第二十一组另以真实FS原Core.appendTimeline和saveBinding末await探针复现来源/Binding改变后仍可返回正文，下一组须复用原领域锁与最终来源/绑定/pin复核修复；这两项不是已PASS。原Native finalize前的OutputClaim/Result/取消围栏仍由P4闭包实施，模型响应confirmed不表示Run completed。真实独立任务顺序、同ALS写入/冷读/原费用保留、503→200成功retry与守卫变异的精确结果归同一Record第二十一组；合成HTTP和本地隔离数据库不替代实际账单、三端客户端或文本质量证据。
+本节第二十一组只线性化Port对原Run/Effect控制写的正文消费，不宣称原Source/Binding同样原子。该组真实FS原Core.appendTimeline和saveBinding末await探针另复现来源/Binding改变后仍可返回正文；第二十二组修复及范围见§17.32，不将旧反例抹成一直通过。原Native finalize前的OutputClaim/Result/取消围栏仍由P4闭包实施，模型响应confirmed不表示Run completed。真实独立任务顺序、同ALS写入/冷读/原费用保留、503→200成功retry与守卫变异的精确结果归同一Record第二十一组；合成HTTP和本地隔离数据库不替代实际账单、三端客户端或文本质量证据。
+
+### 17.32 原Session/Binding域消费围栏
+
+§17.31已实证的原Source/Binding末await缺口由原领域锁组合修复。内部`SourcePort.consumptionBoundary(handle,binding,{engine})`只构造边界，不读取Session payload、发送、收费或写入；校验同原SessionRepo/Engine/Core/BudgetPort、精确Session来源与binding digest后，执行时调用原`withRuntimeWrite`和原`SessionRepo.prototype.withRunLock`。Model/Skill必须注入同一执行服务的原SourcePort，不接受no-op锁替代品。当前只接Native Session正文消费；Project/RP缺原正文消费adapter时明确unavailable，不能借Session锁或caller callback声明获得其他领域权力。
+
+`RunRepository.withConsumption(...,{withAuthority})`在原Run全部祖先锁内调用该原领域边界，再开始消费Engine事务，固定顺序为Run→Runtime→Session→Engine。`withAuthority`本身不是grant，内部primitive的默认值也不提供领域保证；真实正文Port强制传原SourcePort边界。域锁只覆盖最终消费，不持有到Provider HTTP等待期间；原事实observe/费用结算仍由原服务执行。原Factory在Host事务内直接通过原`assertRunAccess(tx,...)`纯读权限，避免反向等待Session写队列，不重写原RunControl权限规则。
+
+Model在最后bank await后再次复核原Source/Binding/Context/grant，Skill先完成最终原grant/Skill回调，再以原SourcePort复核来源，之后核末Effect/Receipt。明确的Native stale/权限拒绝转private deny，使同ALS合法Session发布/Binding CAS先提交而正文被拒；存储ACK未知、完整性/资源身份错误和任意TypeError保持原错误，不以宽catch伪称成功或确定未提交。原Source先检查而后又await授权回调仍有缺口，已以真实原Session写反例修正顺序，不将独立域锁通过代替该反例实证。
+
+此围栏限定Port消费决定；决定之后原领域仍可发布，正式Native finalize的HEAD CAS继续有效，P4 OutputClaim/Result/取消闭包尚不能由此替代。Source/Binding、原锁顺序、HTTP期间锁可用、冷读/费用保留、错误分类和守卫变异的实际范围归同一Record第二十二组；不将原角色/其他领域/可信Review/三端或真实费用未测项目称为通过。
