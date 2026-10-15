@@ -88,25 +88,29 @@ export class SessionPublicWork {
     async fresh(handle, input, captured) {
         try { return (await this.capture(handle, input)).fingerprint === captured.fingerprint; } catch { return false; }
     }
-    async work(handle, input, captured, signal, operation, kind = this.protocol + '_protocol') {
+    async work(handle, input, captured, signal, operation, kind = this.protocol + '_protocol', trustedWork) {
         checkCancellation(signal);
-        const attempt = { attemptId: randomUUID(), requestId: this.protocol + ':' + captured.fingerprint, kind,
+        await trustedWork?.assertCurrent();
+        const attempt = { attemptId: trustedWork ? trustedWork.nextAttemptId() : randomUUID(), requestId: this.protocol + ':' + captured.fingerprint, kind,
             estimatedItems: captured.items, estimatedInputBytes: captured.bytes, targetFingerprint: captured.fingerprint };
-        const receipt = await this.host.sessionCore.runs.chargeLocalWork(handle, captured.base,
-            { branchId: captured.base.revision.branchId, revisionId: input.revisionId }, captured.route.executionPolicy.computeBudget, attempt);
+        const receipt = trustedWork ? await trustedWork.chargeLocalWork(captured.route.executionPolicy.computeBudget, attempt)
+            : await this.host.sessionCore.runs.chargeLocalWork(handle, captured.base,
+                { branchId: captured.base.revision.branchId, revisionId: input.revisionId }, captured.route.executionPolicy.computeBudget, attempt);
         if (!receipt) fail('native_' + this.protocol + '_budget_unavailable');
         const start = performance.now(), cpu = process.cpuUsage(); let outcome = 'failed';
         try {
             checkCancellation(signal);
             if (!await this.fresh(handle, input, captured)) fail('native_' + this.protocol + '_source_stale');
+            await trustedWork?.assertCurrent();
             const result = await operation();
             checkCancellation(signal);
             if (!await this.fresh(handle, input, captured)) fail('native_' + this.protocol + '_source_stale');
             outcome = 'completed'; return result;
         } finally {
             const used = process.cpuUsage(cpu);
-            await this.host.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId,
-                { wallMs: performance.now() - start, cpuUserMicros: used.user, cpuSystemMicros: used.system, cpuScope: 'process', outcome: signal?.aborted ? 'cancelled' : outcome });
+            const usage = { wallMs: performance.now() - start, cpuUserMicros: used.user, cpuSystemMicros: used.system, cpuScope: 'process', outcome: signal?.aborted ? 'cancelled' : outcome };
+            if (trustedWork) await trustedWork.settleLocalWork(attempt.attemptId, usage);
+            else await this.host.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId, usage);
         }
     }
 }

@@ -58,6 +58,7 @@ export async function readRunControl(tx, handle, sessionId) {
     let control = record?.doc ? structuredClone(record.doc) : null;
     if (control) {
         if (hashNativeDocument(control) !== record.integrity || control.schemaVersion !== 1) throw runFailure('native_run_control_integrity');
+        if (control.restoreState !== undefined && !['ready', 'review_required'].includes(control.restoreState)) throw runFailure('native_run_control_invalid');
         assertRunContinuation({ operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
             ...(control.retiredCompute === undefined ? {} : { retiredCompute: control.retiredCompute }) });
         if (control.mode && (!['pending', 'ordinary', 'ironman'].includes(control.mode)
@@ -108,6 +109,7 @@ export async function readRunControl(tx, handle, sessionId) {
 export async function assertRunAccess(tx, handle, sessionId, action, revisionId = undefined) {
     const control = await readRunControl(tx, handle, sessionId);
     if (!control) return null;
+    if (control.restoreState === 'review_required' && !['status', 'inspect', 'save', 'export', 'import', 'cleanup'].includes(action)) throw runFailure('native_run_restore_review_required');
     if (control.status === 'terminal' && (!control.deathRevisionId || !['inspect', 'export'].includes(action)) && !['status', 'cleanup'].includes(action)) throw runFailure('native_run_terminal');
     if (control.status === 'dead' && !['status', 'inspect', 'rewind', 'save', 'export', 'import'].includes(action)) throw runFailure('native_run_dead');
     if (control.status === 'pending' && !['status', 'inspect', 'ready', 'start', 'persona'].includes(action)) throw runFailure('native_story_not_started');
@@ -117,6 +119,7 @@ export async function assertRunAccess(tx, handle, sessionId, action, revisionId 
 export async function writeRunControl(tx, handle, sessionId, control) {
     // Capacity/schema refusal belongs before admission is published and before
     // any provider send, rather than leaving an unreadable durable record.
+    if (control.restoreState !== undefined && !['ready', 'review_required'].includes(control.restoreState)) throw runFailure('native_run_control_invalid');
     assertRunContinuation({ operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
         ...(control.retiredCompute === undefined ? {} : { retiredCompute: control.retiredCompute }) });
     const expectedIntegrity = controlVersions.has(control) ? controlVersions.get(control) : (await tx.getResource(key(handle, sessionId)))?.integrity ?? null;
@@ -184,6 +187,8 @@ export class RunControl {
             op.externalTasks ??= {};
             for (const [id, row] of Object.entries(op.externalTasks)) if (row.expiresAt <= Date.now()) delete op.externalTasks[id];
             if (!op.externalTasks[operationId] && Object.keys(op.externalTasks).length >= 32) throw runFailure('native_a2a_retention_limit');
+            if (op.externalTasks[operationId] && hashNativeDocument(op.externalTasks[operationId].orchestrationBinding ?? null)
+                !== hashNativeDocument(record.orchestrationBinding ?? null)) throw new ConflictError('native_a2a_orchestration_binding_conflict');
             op.externalTasks[operationId] = structuredClone(record);
             return structuredClone(record);
         }, 'generate');

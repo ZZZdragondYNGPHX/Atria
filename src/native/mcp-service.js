@@ -22,14 +22,14 @@ export class McpService {
     }
     _capture(handle, input) { return this.publicWork.capture(handle, input); }
     _fresh(handle, input, captured) { return this.publicWork.fresh(handle, input, captured); }
-    _work(handle, input, captured, signal, operation, kind) { return this.publicWork.work(handle, input, captured, signal, operation, kind); }
+    _work(handle, input, captured, signal, operation, kind, trustedWork) { return this.publicWork.work(handle, input, captured, signal, operation, kind, trustedWork); }
     _prune() {
         for (const [id, record] of this.state.records) {
             const operation = record.scheduler.operations.get(id);
             if ((!operation || terminal.has(operation.view.status) && !record.scheduler.running.has(operation)) && record.expiresAt <= this.now()) this.state.records.delete(id);
         }
     }
-    async start(handle, raw, signal) {
+    async start(handle, raw, signal, trustedWork) {
         const input = assertJsonDeclaration(raw, 'MCP request', 4096);
         fields(input, ['sessionId', 'revisionId', 'viewId', 'itemId', 'toolName', 'resourceUri', 'routeRef'], 'MCP request');
         if (![input.viewId, input.itemId].every(value => typeof value === 'string' && value.length > 0 && value.length <= 256)
@@ -45,7 +45,7 @@ export class McpService {
         if (captured.fallback) return captured.fallback;
         if (!captured.route.executionPolicy.computeBudget?.localWork) return { status: 'fallback', reason: 'native_mcp_budget_unavailable' };
         if (this.state.records.size >= 128) fail('native_mcp_retention_limit');
-        await this._work(handle, input, captured, signal, async () => {}, 'context_build');
+        await this._work(handle, input, captured, signal, async () => {}, 'context_build', trustedWork);
         const record = { owner: handle, scheduler: this.scheduler, input, captured, expiresAt: this.now() + 600000, artifact: null, failure: null, dispatched: false };
         const operation = this.scheduler.submit({ owner: handle, kind: 'auxiliary_task', executionClass: 'interactive', retry: false, signal,
             key: this.state.id + ':mcp:' + randomUUID(), fingerprint: captured.fingerprint,
@@ -54,6 +54,7 @@ export class McpService {
             fresh: () => this._fresh(handle, input, captured),
             run: async ({ signal: taskSignal }) => {
                 try {
+                    await trustedWork?.assertCurrent();
                     let headers = {}, secret;
                     if (captured.policy.auth === 'secret') {
                         secret = await this.host.secretPort.resolveSecret(captured.connection.secretRef, { handle, signal: taskSignal, connection: captured.connection });
@@ -72,7 +73,7 @@ export class McpService {
                                 if (error.dispatched) record.dispatched = true;
                                 throw error;
                             }
-                        }) };
+                        }, undefined, trustedWork) };
                     const evidence = [(await client.initialize(options)).evidence];
                     let output;
                     if (input.toolName) {

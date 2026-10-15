@@ -4,6 +4,13 @@ import { assertComputeLedger, assertRetiredCompute } from './native-compute-budg
 import { assertSessionTaskHistory, sessionTaskHistoryLimits } from './native-session-task-history.js';
 
 export const RUN_NAMESPACE = 'atri_run';
+export function assertExternalTaskOrchestrationBinding(value) {
+    fields(value, ['schemaVersion', 'runId', 'effectId', 'sourceBindingDigest', 'grantDigest'], 'External task orchestration binding');
+    if (value.schemaVersion !== 1 || !/^orun_[a-f0-9]{32}$/.test(value.runId) || !/^oeffect_[a-f0-9]{32}$/.test(value.effectId)
+        || ![value.sourceBindingDigest, value.grantDigest].every(item => typeof item === 'string' && /^[a-f0-9]{64}$/.test(item)))
+        throw new TypeError('Invalid external task orchestration binding');
+    return value;
+}
 const integer = (value, min, max) => {
     if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError('Run policy integer outside bounds');
     return value;
@@ -88,7 +95,8 @@ export function assertRunContinuation(value) {
             if (Object.keys(op.externalTasks).length > 32) throw new TypeError('External task capacity');
             for (const [operationId, record] of Object.entries(op.externalTasks)) {
                 if (typeof operationId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(operationId)) throw new TypeError('External operation identity');
-                fields(record, ['protocol', 'input', 'fingerprint', 'identity', 'status', 'expiresAt'], 'External task');
+                fields(record, ['protocol', 'input', 'fingerprint', 'identity', 'status', 'expiresAt', 'orchestrationBinding'], 'External task');
+                if (record.orchestrationBinding !== undefined) assertExternalTaskOrchestrationBinding(record.orchestrationBinding);
                 if (record.protocol !== 'a2a' || !/^[a-f0-9]{64}$/.test(record.fingerprint)
                     || !['queued', 'dispatched', 'completed', 'unknown', 'failed'].includes(record.status)) throw new TypeError('External task evidence');
                 integer(record.expiresAt, 0, Number.MAX_SAFE_INTEGER);
