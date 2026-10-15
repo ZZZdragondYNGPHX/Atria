@@ -238,3 +238,18 @@ R02–R06 中针对“尚不存在的V3”的运行证据，无法在本次 docs
 | R08 开发许可 | 明确谁可以授权、授权前允许范围 | **非技术项：NOT_AUTHORIZED**；仅用户新的明确正式开发授权可改变 | E0_DESIGN_READY之后，未来P1前独立检查 | 当前仍docs-only；不请求本轮开工 |
 
 第一组结果：Gate循环依赖已从生效入口拆开；R02/R03/R04/R05/R07仍有具体设计问题，本轮继续在接口权威模块补齐。此时不宣称E0设计已通过，更不宣称任何产品case PASS。
+
+### 11.2 设计项核销依据（第二组，待最终一致性复核）
+
+| R项 | 已收束的实施策略 | 唯一详细合同 / 原源码证据 | E0设计结果 |
+| --- | --- | --- | --- |
+| R01 | tracked静态范围+计算加载器/外部代码明确拒绝边界；P4/P6真实trace负责，无旧API/shim | §8 C01–C18；interface §16；AST/consumer附件 | DESIGN_CLOSED；不谎称运行闭包PASS |
+| R02 | 原Storage root identity+固定回环独占guard、原host fence、恢复先于admission；进程死释放OS资源，禁TTL抢占/端口fallback | interface §12；server-startup已有net listener、FS Journal/durable-file与Native CAS；Node官方原语文档 | DESIGN_CLOSED；目标OS竞态/崩溃证据在P1 |
+| R03 | 原RunControl扩展rp_chat控制kind与原ChatRepo稳定controlId；单原bank reservation tree、provider sub-send稳定identity、同attempt幂等admit/settle | interface §13；现有run-control key只session、GenerationHost source只Session/Project、native-compute-budget required reserve | DESIGN_CLOSED；不靠永久屏蔽普通RP回避产品功能 |
+| R04 | RPControl prepared→writing单permit，原ChatRepo单chat CAS中正文与marker同写，独立domain receipt补齐；unknown不重写；无嵌套跨authority事务 | interface §14/§11；ChatRepo.append gen_id去重、FS chat writer不受Native Journal原子覆盖 | DESIGN_CLOSED；唯一正文/ACK-loss与Evolution实测归P4/P6 |
+| R05 | 同一Host独立Review Origin、原账户再认证、隔离nonce/CSP/COOP、主origin不可approve；无原域保护的R3不注册 | interface §15；原users密码校验、server认证与CredentialTargetAuthority；HTML origin标准 | DESIGN_CLOSED；真实隔离/认证/三端批准仍P5/P7必测 |
+| R06 | 原ESM/DOM单Draft；SVG交互层为P5首选工程路径，性能不合格时在同View adapter试现有Cytoscape；Graph与移动完整编辑目标不变 | interface §16；D8、acceptance §7/§8.1 | DESIGN_CLOSED；backend/阈值实测不倒挂为E0 |
+| R07 | 原MySQL/Pg专用session owner/advisory锁+所有原writer fence；tx仅known-rollback retry、commit-unknown按原command查询；四Engine范围一致 | interface §12.2/§12.3；当前SQL Native conditional CAS与外层withRetry；SQL官方session锁文档 | DESIGN_CLOSED；标准单primary四Engine真服务验收不取消 |
+| R08 | 技术设计不代替用户授权，不设自动开始或阶段审批；任何产品开发另行明确授权 | implementation §2；当前用户docs-only指令 | NOT_AUTHORIZED（独立条件，非设计缺陷） |
+
+本组已找到R02/R03/R04/R05/R07的确定方案和失败出口，没有只靠标签转移缺口。§11.1中的DESIGN_OPEN是第一组时点记录，当前以本表为准；最终E0_DESIGN结论待下一组做全Bundle Gate/接口/验收一致性检查后记录。产品与外部实证状态仍NOT_RUN/BLOCKED。

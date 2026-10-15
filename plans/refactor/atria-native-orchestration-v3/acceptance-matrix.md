@@ -135,3 +135,21 @@
 每条 evidence 至少：`caseId, productCommit, planCommit, platform, osVersion, nodeVersion, browserVersion, engine, testAccountScope, sourceFixtureId, action, expected, observed, status, failureCode, evidenceDigest, testedAt`。跨端同 case 分开记录，NOT_RUN 不填虚构 observed。公共 Record 只存脱敏摘要/hash/测试名/限制；请求响应、用户文本、nonce/token、原始截图等临时测试资料遵守 Governance §13.1 的清理要求，不为复核已删材料重复付费跑历史测试。
 
 当前：仅 L0 tracked scanner/AST 和本地环境只读核对已执行；V01–V10、CL01–CL12 的 V3 L1–L4 全部 NOT_RUN，对缺V3实现/设备/原服务/可信批准者明确 BLOCKED。没有产品测试、Actions、真实模型/Tool/A2A/MCP/人工质量或实机通过记录。文档校验结果另归同一 Record，不能记成 V01–V10 PASS。
+
+## 9. R项设计收口后的新增实施反例
+
+以下是interface §12–16确定协议的必测场景，**均未执行**；增加这些case不会把其完成条件倒挂到E0。真实代码或测试出现前保持NOT_RUN；设备/服务/可信认证实际缺失时对应case BLOCKED。原G1–G6/S1–S7/V01–V10/CL01–CL12要求保持。
+
+| case细分 | 阶段/原包 | 必须证明的实际行为 |
+| --- | --- | --- |
+| V01-owner | P1 W02，三端P7 | 两Host同root/路径别名/不同HTTP端口只能一个Native writer；固定guard端口碰撞拒绝而非换端口；进程退出重开、identity半写、guard失效阻断；无任意PID/TTL抢占 |
+| V01-sql-owner | P1/P7 W02/W09 | 同SQL DB不同root仍单Owner；专用session不归还pool、不用transaction lock冒充；连接lost/newOwner/fence竞争、旧tx完成次序、同源旧callback不可写新root |
+| V03-commit-unknown | P1–P3 W02/W04 | COMMIT ACK丢失不重跑closure；按command/attempt/operationRef查询，read replica/连接不可用不冒充not_committed；无重复charge/send/业务提交 |
+| V04-rp-bank | P3 W04 | RPControl初始化与header controlId匹配才send；rename不清bank；duplicate/import/fork/restore暂停；同input根下siblings/reservation再委派不多扣、不超额；usage超上界如实记overrun而非截断 |
+| V04-send-identity | P3 W04 | GenerationHost每个真实provider sub-send使用稳定effectId+ordinal；幂等admit不双扣；fallback新ordinal、旧未知仍保留占用；Session/Project/RP三域分别覆盖 |
+| V06-rp-output | P4/P6 W06 | 两Run抢同outputKey、相同operation不同payload、writing permit唯一；正文+marker同chat原子写；任一间隙崩溃只读marker补receipt，marker缺失unknown不盲重写；Browser不能双提交/伪marker |
+| V05-review-origin | P3负例、P5/P7 W05/W08 | 主app脚本/Runtime SDK不能approve或读nonce；cookie不按port隔离的反例、Origin/CSRF/COOP/frame/opener/CSP、再认证accountVersion变更、nonce复用与boot变更；原用户身份/精确动作合法且三端可完成批准 |
+| V05-review-unavailable | P5/P7 W05/W08 | 无受控review origin/无原再认证能力/远端不可信HTTP时精确动作unavailable；R0/既有窄预授权继续；不以强行开放R3或把整个批准功能永久禁用算验收 |
+| V09-native-domains | P1/P3/P7 W01/W02/W04 | 六个Orchestration kinds + 原Storage `atri_host_fence` + 原RunControl `atri_rp_run_control`分别注册四Engine、backup/restore/delete/GC/ref；恢复暂停、unknown/已花额度保留，不把原领域扩展误称影子账本 |
+
+Review Origin语义遵守D8完整可审查交互；主app仍显示Timeline/脱敏待办/launch ref，真实决定在受控页面回执后更新。不同origin只是同Host可信输入边界，不是第二Host/账号体系。对于原支持的正式Studio/Native安全操作，不能仅以默认拒绝占位完成产品；其可信通道必须在P5/P7真正通过。

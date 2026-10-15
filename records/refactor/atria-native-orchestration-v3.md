@@ -120,3 +120,14 @@
 - 当前用户明确要求将开发前设计与实施后证据分开。本组修正生效的D9/implementation §2、index/acceptance路由：E0_DESIGN只审实现合同与安全出口；DEVELOPMENT_AUTHORIZATION单独NOT_AUTHORIZED；V3代码/运行trace/crash/真实三端/服务证据留P1–P8，不再要求它们先于实现分支产生。
 - 同一e0-audit新增§11逐项分账。R01/R06设计已具备责任/边界/验收路线；R08不是技术阻塞。R02/R03/R04/R05/R07仍有具体设计缺口，本轮继续核实，不靠把标签后移就冒称通过。
 - 未执行任何产品模块/测试、网络付费或真机操作；仅源码/文档读取和文档编辑。当前不建实现分支、不修改main、不删除/迁移数据，E0设计就绪也不会自动授权开发。
+
+## 2026-10-15 — R项续审第二组：关闭真正的设计缺口
+
+- Start docs：`e694b9a5a`；只读main基线仍`60aca6957`。本组继续只更新同一Plan与Record，没有产品代码/实现分支。
+- R02/R07：冻结原Storage实际root identity +固定loopback独占guard（冲突拒绝、禁止换port绕过）、原HostFence/SQL session Owner与所有原writer fencing；SQL事务仅known-rollback重试，COMMIT未知按稳定command/attempt/domain receipt查询，不重跑有不确定结果的closure。三端/SQL真实行为留P1/P7。
+- R03：普通RP预算不再只写“缺bank拒绝”，明确扩展原RunControl的`atri_rp_run_control`及原ChatRepo分配controlId，沿原shared compute、GenerationHost/Route/Secret/Context链；reservation子树不二次计费，真实provider sub-send稳定attempt、原bank幂等admit/observe/settle与unknown占用。
+- R04：现有ChatRepo `gen_id`去重不足以证明same-ID same-payload，FS chat不在Native redo kind。确定RPControl writing单permit→原ChatRepo正文/marker同资源CAS→原domain receipt补齐的顺序，禁止跨authority事务/队列嵌套；marker缺失且可能写出时unknown不盲重写。Evolution继续原publication/rollback journal/CAS。
+- R05：冻结同一Host的独立Review Origin、复用原用户再认证、独立nonce/安全页面/Origin检查；主origin只summary/launch/reject而不可approve，旧拟`/approvals/decide`不实施。明确cookies不按port隔离；无再认证/可信origin时该批准不可用，不能伪造安全。任意代码/R3仍遵守原policy与默认拒绝，不以拒绝占位替代应实现的Studio批准。
+- 当前是六个Orchestration metadata kinds；另两个是原Storage/RunControl authority自己的新增控制kind，不另建服务或资金银行。R01动态边界与R06 UI工程出口在interface §16明确，不靠实际V3 trace/PoC先于开发取得。
+- 实际补证仅源码只读：ChatRepo.append/rename、FS chat完整写与Native Journal区别、RunControl Session key、GenerationHost source/attempt、users原密码校验、MySQL/Pg withRetry。外部只读查阅Node v24.18.0、MySQL 8.4、Postgres 17及HTML标准，链接已贴在interface对应协议；首次latest-v24 URL不可用，固定v24.18.0 URL成功，未将外部文档当三端或SQL实测证据。
+- e0-audit §11.2逐项记录R01–R07设计核销，R08维持NOT_AUTHORIZED。新增实施负例归acceptance §9；产品case全部NOT_RUN，实际环境缺失仍BLOCKED。最终Gate一致性复核继续下一组。
