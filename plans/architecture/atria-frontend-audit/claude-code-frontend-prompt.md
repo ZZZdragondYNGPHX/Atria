@@ -2,7 +2,7 @@
 
 > 这是用户请求的实施交接输入，不是新 Record、功能权威或最终审美 Plan。后端真实状态只归 [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) 和 [E0 §8](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate)。下面整段可直接转交。
 
-> **V3 中间范围同步（2026-10-16，更新至第二十一组）**：已纳入 V3 D8/W08；V3 source 当前 `2cddfae70`、对应 docs `698731e99`，P3 Gate 仍 NOT_READY。原任务继续完成其后端，尚未给出最终完成交接；本文件不替代那次实际 SHA/API/Gate 更新，也不表示两后端已合并、全量前端已具备运行条件。
+> **V3 中间范围同步（2026-10-16，更新至第二十二组）**：已纳入 V3 D8/W08；V3 source 当前 `325e11a92`、对应 docs `3730b7081`，P3 Gate 仍 NOT_READY。原任务继续完成其后端，尚未给出最终完成交接；本文件不替代那次实际 SHA/API/Gate 更新，也不表示两后端已合并、全量前端已具备运行条件。
 
 ---
 
@@ -13,7 +13,7 @@
 1. 先看 Git status、fetch 后的 main/docs/V3 与任务语义分支 HEAD，保护所有无关改动。完整治理为 `docs:README.md`，先读适用 AGENTS。不要重置/清理其他人的工作树或未提交资料。
 2. 后端实现分支为 `refactor/atria-native-prompt-preset-deepening`，基于 main@695acf3bc。**它不是 V3 分支，也尚未集成 main**。具体已提交 SHA/实测事实见唯一 `docs:records/refactor/atria-native-prompt-preset-deepening.md`。建立你自己的前端语义分支前先核对依赖；不要将整个活跃 V3 或 docs 分支 merge 到源码。
 3. 先读 `docs:plans/refactor/atria-native-prompt-preset-deepening/index.md` → `preset-studio-experience.md`、`backend-implementation.md`、`e0-audit.md` §8。V3 的 Graph/Plan/Run/Approval 合同读原 V3 index 路由，不复制另一套运行时。
-4. V3 追加必读：[后端整合入口](../../refactor/atria-native-orchestration-v3/backend-integration.md)、[D8 领域交互](../../refactor/atria-native-orchestration-v3/graph-editor-experience.md)、[验收矩阵](../../refactor/atria-native-orchestration-v3/acceptance-matrix.md) §9.1、[接口合同](../../refactor/atria-native-orchestration-v3/interface-contracts.md) §17.15–17.31 及原 V3 Record 第五至二十一组。最终前端交接前再次读取原任务的新 SHA/接口变化，不能把本次中间同步当全部后端完成。
+4. V3 追加必读：[后端整合入口](../../refactor/atria-native-orchestration-v3/backend-integration.md)、[D8 领域交互](../../refactor/atria-native-orchestration-v3/graph-editor-experience.md)、[验收矩阵](../../refactor/atria-native-orchestration-v3/acceptance-matrix.md) §9.1、[接口合同](../../refactor/atria-native-orchestration-v3/interface-contracts.md) §17.15–17.32 及原 V3 Record 第五至二十二组。最终前端交接前再次读取原任务的新 SHA/接口变化，不能把本次中间同步当全部后端完成。
 
 ## 设计输入与完整范围
 
@@ -52,7 +52,7 @@ Binding get 的 body 为 `{sourceSelector}`，save 为 `{sourceSelector,planRef,
 
 第二十组已在合法 authority Package 接通固定 Narrator 的真实 quota/compute 同 CAS、同 bank 实际 Context 编译计费一次和原 Scheduler active operation/attempt/resources/signal 身份。candidate/receipt 仅为受权 Context，Source/bank/quota 仍锚定 committed base；界面不得把候选视图当已提交 World，正式状态仍由原 Native finalize 写入。已发生失败/取消工作保留实际费用，不退款或丢迟到结算。第二十一组已对 Model/Skill 复用原 Run 全祖先锁及末 Effect/Receipt 检查；控制写导致失效时 `native_orchestration_consumption_stale` 拒正文，同时保留真实取消/unknown、响应回执及费用事实，不能将正文未返回显示成已退款/远端回滚。真实 503→200 的两个原 attempt 可分别为 unknown/settled，成功响应不把之前 unknown 清零。缺同实例原 Run/Effect 权威的 Skill 在执行前拒绝；不由 UI 添加绕过入口。
 
-**仍未修复的后端阻塞（第二十一组实证）**：最终 await 期间原 Source 或 Binding 改变仍可返回正文；原 Run 树锁不覆盖这些领域变更。原 V3 正开展第二十二组领域围栏与末来源/绑定/pin 复核，不能宣称所有 stale 场景已安全或用前端缓存/二次请求替代修复。P4 正式提交前 OutputClaim/取消/Result、resolver/outbox 等后端继续归原 V3，不转交 Browser 补计数、绕 schema 或假造取消成功。Run/Projection/Approval 产品 API 仍 unavailable；精确范围见原 §17.27–17.31。
+**第二十二组已关闭的 Session/Binding 缺口与剩余范围**：第二十一组真实复现的末 await Source/Binding 正文漏口已用原 Run→Runtime→Session→Engine 锁序及最终领域复核修复；Model 最后 bank 后重核来源/绑定/Context/grant，Skill 最终授权后复核来源，真实控制写和费用保留。锁只覆盖消费决定，不跨 Provider HTTP，也不替代正式 finalize 的 HEAD CAS。失效拒正文时保留用户输入和原操作状态，刷新实际 Source/Binding/结果，不能自动重发、缓存旧正文或假报已退款。该围栏只覆盖原 Native Session；Project/RP 缺正文 adapter 仍 unavailable，不能外推为全域安全。P4 正式提交前 OutputClaim/取消/Result、resolver/outbox 等后端继续归原 V3，不转交 Browser 补计数、绕 schema 或假造取消成功。Run/Projection/Approval 产品 API 仍 unavailable；精确范围见原 §17.27–17.32。
 
 第十一、十二组新增合同对前端的要求（详细校验仍归原接口 §17.20–17.22）：
 
@@ -71,7 +71,7 @@ Binding get 的 body 为 `{sourceSelector}`，save 为 `{sourceSelector,planRef,
 
 原 V3 继续负责缺失领域 adapter、角色/后台 quota、完整 Scheduler/Handoff/Result/Disclosure、P4 正文/Project/Evolution、Tool 其余真实消费者闭包、可信 Review/restore/release 及 P6 硬切。前端负责统一呈现与真实接口接入，不能以永久禁用占位替代最终 P5/P7 的完整产品验收。P7 未通过不得集成 main。
 
-V3 任务报告对历史 `4a62ba5cc` 与 Prompt `760327891` 的 merge-tree 预演存在 `generation-host.js`、`execution-utils.js` 内容冲突，`contracts.js` / `prompt-candidates.js` 双方也有修改。该预演不是当前 `2cddfae70` 的完整冲突清单。**尚未实际合并或解决**；整合须按实际 HEAD 重核，并同时保留 `orchestrationSend` 原银行/稳定 model 与 local 身份/ACK 未知只观察/最终实际请求绑定/Source/Context/Effect 与本任务 `programSelection`/Typed lowering/currentness/Draft/Browser projection/明确拒答语义，防止重复准入/计费，自动合并也须定向验证。不得将冲突留给一边覆盖另一边的方式“修绿”。
+V3 任务报告对历史 `4a62ba5cc` 与 Prompt `760327891` 的 merge-tree 预演存在 `generation-host.js`、`execution-utils.js` 内容冲突，`contracts.js` / `prompt-candidates.js` 双方也有修改。该预演不是当前 `325e11a92` 的完整冲突清单。**尚未实际合并或解决**；整合须按实际 HEAD 重核，并同时保留 `orchestrationSend` 原银行/稳定 model 与 local 身份/ACK 未知只观察/最终实际请求绑定/Source/Context/Effect 与本任务 `programSelection`/Typed lowering/currentness/Draft/Browser projection/明确拒答语义，防止重复准入/计费，自动合并也须定向验证。不得将冲突留给一边覆盖另一边的方式“修绿”。
 
 ## 必须保留的架构和原生功能
 

@@ -306,3 +306,10 @@
 - 同一 Claude 提示词补充 Model/Skill 原 Run 全祖先锁、末 Effect/Receipt、consumption_stale 拒正文并保留真实取消/unknown/费用；缺原同实例权威的 Skill 在执行前拒绝。成功 503→200 的 unknown/settled 两账项保留，不能随成功清零或误报退款/回滚。
 - 原 Source/Binding 末 await 变化仍可返回正文已由原任务真实复现，明确写为未修复后端阻塞；不能把 Run 消费线性化宣称全域安全，前端不补假授权/缓存检查替代领域围栏。第二十二组及其他 P3/P4 后端继续归原 V3；接口仍无 Run/Projection/Approval，P3 NOT_READY。
 - 原四 Engine 同scope24与独立顺序40由多命令取得，初轮失败及两个守卫 SURVIVED 归原 Record，不写成全部单轮绿/全部变异Killed；本次不复跑或借记其测试。只同步文档，未合源码/main，未实施前端，相关检查与提交据实际输出。
+
+## 2026-10-16 — V3 第二十二组 Session/Binding 修复范围同步
+
+- 实际 V3 source `325e11a92`、docs `3730b7081`；核对原接口 §17.32、整合入口与 Record 第二十二组，源码工作树只有无关 CLAUDE.md 删除。统一提示词与当前 E0 将第二十一组真实复现的 Session/Binding 缺口更新为已修复有限范围，不抹去前组失败历史。
+- 已接原 Run→Runtime→Session→Engine 消费边界、Model 最后 bank 后领域复核、Skill 最终授权后 Source 复核，合法同scope写与真实费用保留；不跨 Provider HTTP持锁。仅原 Native Session Port 决定，不外推 Project/RP adapter、任意 ambient transaction 或 P4 OutputClaim/Result/正式取消围栏完成。
+- 界面保留失效拒正文的刷新/输入恢复路径，不自动重发、用缓存正文绕过或假报退款。Run/Projection/Approval API 与 resolver/background/Project/RP/P4 后端仍由原 V3 继续实施，P3 NOT_READY；非最终完成交付。
+- 原三suite86、独立域四Engine28和同scope/Boundary四Engine24等分命令证据、失败/变异/过滤范围仅归原 Record，本次不复跑或借记。只更新原交接/E0/唯一 Record，不合源码、不改 main、不实施前端；文档检查与提交据实际输出。
