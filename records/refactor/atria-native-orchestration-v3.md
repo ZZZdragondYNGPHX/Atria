@@ -403,3 +403,12 @@
 - FS/SQLite四suite61/61，其中新增Binding24、原authoring-http/plan-repository/plan-pins37：实际原CSRF、登录/owner、HostBoot/CAS、只读fence、精确来源与不存在/错关联反例、撤权重放、不可变Plan引用均通过。空RP chat在真实Host事务中2秒内完成；原SQLite事务上下文本就可重入，不据推测改造原RP服务。新Binding SQL矩阵未执行，NOT_RUN，不冒称四Engine。
 - 三项临时mutant（省略原source授权、精确entryPoint、RP header关联）捕获10/2/2个预期失败，finally全部还原。四变更文件targeted ESLint、staged diff check通过。仅显式提交四文件，其他子工作与无关CLAUDE.md删除未混入。
 - 同一Plan新增接口§17.23，实际HTTP/验收分账同步。P3仍IN_PROGRESS/Gate NOT_READY；完整领域grant、受信角色/后台配额、真实消费者/Runtime API和完整Review等后端实现继续归本任务，非E0重新授权阻塞。用户最新协调为发给现有前端/提示词任务统一整合并由其最终出Claude Code提示词，尚未以阶段结束宣称全部后端交接完成；未集成main。
+
+## 2026-10-16 — W04/P3第十四组：MCP/Skill原完成证明与持久观察
+
+- Source ce4a58de2 → 3a0a93c7c 已提交推送。原McpService/executeProjectSkillWork真实完成callback内mint私有WeakMap proof，ToolPort短命64槽关联后验证原input/endpoint/source/grant/epoch与每条稳定typed local账本，再交同一既有EffectController.observe保存immutable EffectReceipt。不新增connector journal、metadata kind、Secret/Memory/业务writer；历史receipt只能读，不能反过来产生新的授权proof。
+- MCP确认严格是mcp_response_validated；isError=true为远端已报告错误，failed不是rollback，原HTTP parser新增boolean类型guard。Skill只确认read/files；不伪造remote/domain receipt，全部resultRefs=[]，无正文/Secret复制，R3/真实Review门槛保持。冷Engine精确receipt与当前intent不一致或矛盾unknown仍unknown；save前crash不重发，save后ACK未知只查询相同receipt。
+- root/agent额外审查两个消费竞态：完成回调持久化期间source/grant可撤销，或第二真实观测使Effect变unknown。最终Skill返回正文前在原事务核current confirmed+同receipt、grant/Skill/child/epoch/cancel并以原bank currentness收尾；无后续await打开间隙。真实测试分别保存回执后撤权/插入contradiction，验证正文拒绝且历史事实不被伪造回滚。
+- 补最终消费收紧前，新completion四Engine72+原Effect44=116/116通过（242.743s），实际MySQL/Pg串行运行。收紧后四Engine受影响Skill/新矛盾案例24/24，其余52为name-filter skip；原ToolPort FS/SQLite20/20。未重新全跑最终76矩阵，不宣称final76全通过。原关联MCP/Skill/A2A/Tool六suite109/109；原HTTP node:test25PASS/1 SDK gated SKIP，不计SDK互操作通过。Pg既有nested client.query deprecation warning未改。
+- 七个真实guard mutants分别捕获4/6/2/2/4/4/2个预期fail，finally原文恢复：consume终检、isError类型、MCP/Skill proof binding、Skill真实local预算、cold intent一致性及最终confirmed/receipt消费guard。SQL初始启动脚本默认用户名被配置占位串替换，已终止仅本轮自有Jest进程、修正后重跑，错误命令未计通过，未改DB/Owner。
+- 六变更文件最终targeted ESLint/staged diff check通过，仅显式提交本组文件。接口§17.24、同一整合入口/验收现状更新；P3仍IN_PROGRESS/Gate NOT_READY。完整真实领域scope/grant、可信Session quota producer、Runtime产品API/消费者等继续实施，外部部署/三端/批准/实际费用/质量仍按真实未执行项NOT_RUN/BLOCKED；未集成main。

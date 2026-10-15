@@ -36,7 +36,7 @@ Binding 只保存用户选择，精确 sourceSelector 使用原共享合同的 n
 
 `src/native/orchestration/execution-service.js` 提供 `createOrchestrationExecutionService`，组合原 `SourcePort/BudgetPort/RunRepository/EffectController/DelegateController`。真实 GenerationHost 只接受 Host 内部可信 `execute` options 的 `orchestrationSend`；公共 input 同名字段拒绝。Browser 不持有 bank、dispatch token、授权或审批 proof，不承担 runner/恢复/发费 authority。
 
-三域 Source 为 Native Session、Project Task、普通 RP 的原控制记录；bank、稳定 Effect+ordinal attempt、unknown observe/settle 均复用原服务。Delegate 先持久化子 Run 身份，再在原银行预约，观察并确认后才能执行；跨树逻辑计数及整树活动 Attempt 容量防止新子 Run 重置父上限。带 agent.delegate 的节点必须显式填写 allowedPlanPinIds（空集合禁止委派），指向本节点 port=plan 的精确原 PlanRevision pin；前端需按共享 validator 编辑，不得用请求参数绕过父允许集合，详见接口§17.20。Context 目前只有 Native Session 原 Audience compiler；Project/RP 缺原 adapter 时拒绝。Tool 只走原 Skill/MCP/A2A 与 CredentialTarget，MCP/Skill 缺完整原持久 Effect receipt 的结果保留 unknown；A2A 已可通过原持久回执确认精确 SendMessage 受理事实，不能宣称远端任务完成或消费正文。R3/需批准动作在可信通道接通前拒绝。
+三域 Source 为 Native Session、Project Task、普通 RP 的原控制记录；bank、稳定 Effect+ordinal attempt、unknown observe/settle 均复用原服务。Delegate 先持久化子 Run 身份，再在原银行预约，观察并确认后才能执行；跨树逻辑计数及整树活动 Attempt 容量防止新子 Run 重置父上限。带 agent.delegate 的节点必须显式填写 allowedPlanPinIds（空集合禁止委派），指向本节点 port=plan 的精确原 PlanRevision pin；前端需按共享 validator 编辑，不得用请求参数绕过父允许集合，详见接口§17.20。Context 目前只有 Native Session 原 Audience compiler；Project/RP 缺原 adapter 时拒绝。Tool 只走原 Skill/MCP/A2A 与 CredentialTarget，MCP/Skill 的原实际完成证明可保存既有 EffectReceipt（接口§17.24），缺 proof/receipt 的结果保留 unknown；A2A 已可通过原持久回执确认精确 SendMessage 受理事实，不能宣称远端任务完成或消费正文。R3/需批准动作在可信通道接通前拒绝。
 
 Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate 的 `authorizeDelegation`、Context 的 `authorizeContext` 是必需原领域接线，测试中的受控 callback 不是实际产品 grant。后续原消费者须证明精确 Plan/Node/Source/Scope/childPlanRef，再由这些内部入口使用；不能把它们暴露成 Browser 可填写的“允许”对象。
 
@@ -56,7 +56,7 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 | Session role/background quota | 与 V3 orchestrationSend 组合仍明确拒绝。需捕获原 foreground lane 或原后台 lifecycle outbox 的受信身份，不接受调用者 role 自述，不增加第二计数器。 |
 | Scheduler/Handoff/Result/Disclosure | 当前子身份、共享计数和实际活动槽检查不等于完整原 Scheduler permits、Handoff、子结果消费或跨 Agent 分享已完成。 |
 | RP/Game、Project/Evolution | P4 原唯一正文 slot、World/Command/Project Review/Commit 与 Eval/target 仍需正式 consumer；Run completed 不代表业务已提交。 |
-| Tool/可信 Review | MCP/Skill 缺完整原持久 receipt；A2A 的 a2a_send_accepted 仅证明受理。真正 Review Origin/再认证仍缺，需批准动作 unavailable；不得删 guard“打通”。 |
+| Tool/可信 Review | MCP/Skill已保存精确协议/本地read完成事实，冷读不成为新授权，正文消费仍独立复核；A2A 的 a2a_send_accepted 仅证明受理。真正 Review Origin/再认证仍缺，需批准动作 unavailable；不得删 guard“打通”。 |
 | Restore/GC | 当前保留原费用与引用，危险覆盖/merge 提前拒绝；完整可信 restore review、source 闭包恢复和历史释放尚未开放。 |
 | P6–P8 | 旧生产执行路径尚未清退，完整集成验收和 main 合并未完成。 |
 | 平台与外部 | 四存储后端的隔离测试和本地 HTTP 合成 Provider/Tool 证明其明确不变量；Windows 完整 Browser 流程、CachyOS/Termux 实机、真正批准/收费/开放文本质量仍 NOT_RUN，缺目标环境者 BLOCKED。 |
@@ -65,6 +65,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第十三组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第十四组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。

@@ -516,7 +516,7 @@ GenerationHost在真实sub-send前完成原budget admission，再通过可信`be
 
 `ToolPort.execute(handle,{runId,effectId,dispatchToken})`由Host读取持久action/target/input，不能接受Browser提供的新动作或批准。原Skill/McpService/A2aService/SessionPublicWork接内部可信work adapter，逐真实请求重验dispatch、原scope/grant、egress、CredentialTarget并在原子额度内记localWork。权限/原route预算只能取交集。`observe`只查原operation；`requestCancel`仅原本地scheduler，远端取消是另一Effect。
 
-原`RunControl.externalTask`的可选typed `orchestrationBinding={schemaVersion,runId,effectId,sourceBindingDigest,grantDigest}`不可移除或换绑。重启后原A2A独立reconnect/cancel不得靠旧Session policy续用此授权，当前明确拒绝并要求新Effect。它不是新的task registry或预算kind。原MCP没有持久Effect关联receipt，Skill也尚无完整原持久receipt，因此对应ToolPort结果保持unknown；A2A受理事实的精确持久闭包现见§17.21，不能把受理升格成远端任务完成，任何未知都不能自动重发。R3/需要批准的动作在可信Review与原动作authority接通前保持unavailable；Project/RP没有原消费者时保持拒绝。
+原`RunControl.externalTask`的可选typed `orchestrationBinding={schemaVersion,runId,effectId,sourceBindingDigest,grantDigest}`不可移除或换绑。重启后原A2A独立reconnect/cancel不得靠旧Session policy续用此授权，当前明确拒绝并要求新Effect。它不是新的task registry或预算kind。原MCP/Skill现有完成证明与持久Effect观察闭包见§17.24，缺原proof/receipt仍unknown；A2A受理事实的精确持久闭包见§17.21，不能把受理升格成远端任务完成，任何未知都不能自动重发。R3/需要批准的动作在可信Review与原动作authority接通前保持unavailable；Project/RP没有原消费者时保持拒绝。
 
 ### 17.18 P3原恢复/GC对费用与来源的保护
 
@@ -551,7 +551,7 @@ SourcePort在Host事务内不得等待原Session RunLock或Project/Studio writer
 
 `A2aService.acceptedObservation(handle,{operationId,sessionId,anchor},{tx})`是历史事实纯读，不发网络、不要求fresh send claim。`ToolPort`以原runs实例构造后，`observe(handle,operationRef,{runId,effectId})`从真实持久Run/Effect核对上述binding、source/authority、每条原local row的稳定provenance、settled/completed与reservation，再返回可交原EffectController.observe的DTO。`verifyObservation(args)`在同一原Host事务重读原receipt/Effect并精确比较DTO；没有runs/effect/proof则unknown，不相信caller提供的accepted布尔值。
 
-confirmation仅意味着精确a2a.send已得到并验证原SendMessage回执；reasonCode=a2a_send_accepted，resultRefs=[]、domainReceiptRef=null。task响应为WORKING也可证明已受理，绝不表示远端Task完成、正文可消费、World/Memory写入、再次发送或远端取消/回滚获准。source移走/权限过期后可以保留历史事实，旧独立reconnect/cancel继续拒绝。invalid/lost/cancel或未持久receipt仍unknown；本地ACK丢失仅经原持久查询有证据后解除。MCP/Skill的完整原持久观察闭包仍未完成。
+confirmation仅意味着精确a2a.send已得到并验证原SendMessage回执；reasonCode=a2a_send_accepted，resultRefs=[]、domainReceiptRef=null。task响应为WORKING也可证明已受理，绝不表示远端Task完成、正文可消费、World/Memory写入、再次发送或远端取消/回滚获准。source移走/权限过期后可以保留历史事实，旧独立reconnect/cancel继续拒绝。invalid/lost/cancel或未持久receipt仍unknown；本地ACK丢失仅经原持久查询有证据后解除。MCP/Skill现有完成证明范围见§17.24，不能据此授权消费正文或确认正式业务提交。
 
 带V3 ownership的原externalTask不再按TTL删除，所属原operation不因Source推进而被压缩；原非V3 TTL继续。正式释放authority尚未实现，原32 row/128 operation容量照旧fail-closed，不以过期产生新的发送许可。产品HTTP和完整领域grant装配仍未由此开放。
 
@@ -570,3 +570,13 @@ Session/RP原operation在存在这些来源明细时保留，原retireComputeLed
 生产authoring factory复用原SessionCore.observe、Studio.observeRevision、ProjectAgent.observeComputeSource、RpRunControl.status及同tx的原Chat header读。Session精确sessionId和非null entryPointId；Project按nullable taskId区分Project/Task选择，核对真实原project/task关联；RP必须是注册controlId且实际locator header仍声明同ID。原get服务按认证handle读取，不相信Browser owner；缺原服务fail-closed，不自动创建/绑定/repair来源。
 
 Binding仅是用户的Plan选择metadata，不授予Actor/Model/Tool/Delegate运行能力，也不自动启动Run。nullable entryPointId/taskId沿原selector合同，不成为通配执行许可。原Source/currentness、Audience、grant、预算和Effect最后发送复核仍独立必需；Run/Projection/Approval产品路由尚未开放。本组FS/SQLite真实原服务/CSRF/CAS/读写fence测试与三项守卫变异见同一Record第十三组；该新矩阵SQL为NOT_RUN。
+
+### 17.24 原MCP/Skill完成证明与唯一EffectReceipt
+
+原McpService及executeProjectSkillWork在真实validated response或Skill read/files、原local工作结算与freshness完成后，生成只在await completion callback生命周期有效的私有WeakMap对象proof；JSON副本、普通对象、过期proof或历史receipt不能验证。ToolPort的内部effects必须指向同一ExecutionService.effects；64槽短命private Map只关联本次proof，不是持久journal或新authority。
+
+原proof验证真实protocol/operation/input/endpoint及completionBindingDigest；后者绑定冻结Run/Effect/epoch/boot/source/grant/egress/input/budget decision和typed admission。原BudgetPort重读每条稳定local ordinal/provenance/reservation及settled/completed状态；只有这些实际原证据通过，现EffectController.observe才写同一既有immutable EffectReceipt/RunLedger。confirmed允许经必需verifyObservation核实的original_port_observation非null引用，不为本地Skill伪造remoteOperationRef或DomainReceipt。
+
+确认仅为mcp_response_validated、skill_read_completed或skill_files_completed；MCP isError=true是已验证远端错误，outcome=failed/reason=mcp_remote_reported_error，不是业务回滚。原HTTP client拒绝非boolean isError。全部resultRefs=[]、domainReceiptRef=null，receipt仅hash/原refs/方法，不复制协议正文/Secret，不授予后续正文、Memory或World消费权。list/pin/catalog不因本组升级为可确认副作用；R2/R3和可信Review门槛不变。
+
+save前退出/无proof/未结算明细保持unknown且不重发；save后ACK未知只查相同确定receipt，不重复写或Tool调用。cold observe只读已有receipt且必须匹配当前confirmed/failed intent；较旧confirmed与当前矛盾unknown不能升格。Skill真实正文返回前在同一原Engine事务重读confirmed与同receipt，重验grant/source/child/epoch/cancel/Skill并以原bank currentness收尾；撤权或矛盾均拒正文，历史事实与当前可消费权限分开。未取得真实部署/完整产品scope证据不算P3/P4 Gate通过。
