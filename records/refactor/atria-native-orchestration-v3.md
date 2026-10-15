@@ -285,3 +285,11 @@
 - fetch实际核对`origin/main@695acf3bcad1d42e331459189532a76056278bec`，相比已组合的73557f809仅六个文件：原Storage Center drawer/management/CSS/中文文案及两份浏览器测试。`414902e90` + 最新main → 任务分支merge `7ab0abeecc79455727194a095068173f028a76ea`，无冲突，已推送；没有V3→main集成。
 - 两份产品JS执行node --check通过；对该增量产品JS/CSS的orchestration/agent-runtime/agent-workspace/director文本依赖检查无命中，diff check及Git状态干净。不把此局部增量核对替代P6 AST/真实consumer全闭包，也未重跑上游UI浏览器用例或将其计作V3前端通过。
 - Git HTTPS握手曾临时失败，普通重试后源码及前一docs组均推送成功；未关闭证书验证或修改全局网络配置。P1/P2与NOT_RUN/BLOCKED清单不变，继续同一任务实现。
+
+## 2026-10-16 — W04/P3第一组：原Native银行子额度与Session CAS
+
+- Source `7ab0abeec` → `74a2ac24a`已提交推送。原native-compute-budget增加有界reservation树，剩余容量在父子之间转拨，model/local真实attempt只在原总账一行；根/所有祖先核对，子树未知上界保留，实际overrun完整记录并停止新准入。稳定admit绑定input fingerprint，重放返回事实不当发送permit；释放不能丢掉charged/unknown、实际用量或未关闭子额。未创建Orchestration银行/价格表/新metadata kind。
+- 原RunControl内部Session方法沿原锁/Owner/fence/Native record提供reserve/admit/observe/release与local reservation转交；新准入严格current branch/revision。HEAD变化/关闭重开后仍可观察同一次未知费用，迟到实际结算后再释放并退休，累计一次；不靠恢复清零。原其它Native无local budget路径继续原语义，但携带子reservation时缺budget明确拒绝，不能免计工作。
+- 最新新文件15/15：13个原共用reducer反例/正例，2个真实FS/SQLite原Session/RunControl案例（兄弟CAS、输入重放、model+local未知保留、旧Source拒绝、Engine重开、实际观测及retired totals）。原retirement5/5此前相关版本通过。原G05检索/Embedding/rerank/Narrator130/130全文件复查通过，local reservation接线后相关8/8定向再测通过，其余122为name-filter skip，不计N/A。生产定向ESLint/diff check通过。Provider响应/usage均为隔离synthetic HTTP或明确测试数值，不声称真实收费、端到端V3 Send或SQL通过。
+- 首轮两个失败已收口：released child追加前应拒绝为attempt_conflict，已前置校验并验证不落半行；原检索测试调用当前不存在的forkBranch并在synthetic HTTP回调未捕获异常导致timeout，改用真实restoreSavePoint产生derived Branch、检查branch变化/回调无错，fixture错误显式500后重跑完整130通过。未恢复旧API兼容层。其它尚未运行的原测试若仍引用该旧Native API，须在对应消费/验收阶段核对，不以本文件修正声称全仓测试已清理。
+- P1/P2仍IN_PROGRESS；P3仅共用银行/原Session局部子工作IN_PROGRESS，Project/RP、角色/后台配额、Source/Audience/父子Run授权、实际BudgetPort/GenerationHost Effect+ordinal、活动额度导入失效/保留根未完成；P4–P8未开始。新SQL案例因Docker不可用BLOCKED/NOT_RUN，三端/真实批准/费用/质量未通过，main未集成。工作区无关CLAUDE.md删除未纳入本组。

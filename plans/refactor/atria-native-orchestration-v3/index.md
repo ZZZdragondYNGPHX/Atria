@@ -76,4 +76,4 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 必读本 `index.md` → [decisions.md](decisions.md) D9 → [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账) 当前设计核销 → [interface-contracts](interface-contracts.md) 物理合同 → [implementation-plan §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 独立Gate → [acceptance-matrix](acceptance-matrix.md) 实施后验证。开发前重核main delta及相关authority；真实consumer trace、故障/预算/审批和三端验证在各P阶段取得。未执行项目不写PASS；**当前已在任务分支开发，P7通过前不集成main**。
 
-当前生效状态：**E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED（2026-10-15当前用户明确指令）；P1=IN_PROGRESS；P2纯控制流子工作=IN_PROGRESS；P3–P8=NOT_STARTED；最终产品验收NOT_READY**。P2依赖的Host/持久Ledger已有局部实证，完整阶段Gate未提前标PASS；仍只用受控Port、不接真实付费或外部mutation。Gate定义唯一来源为 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离)，阶段证据见同一Record。
+当前生效状态：**E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=AUTHORIZED（2026-10-15当前用户明确指令）；P1=IN_PROGRESS；P2纯控制流子工作=IN_PROGRESS；P3共用预算/原Session bank子工作=IN_PROGRESS；P4–P8=NOT_STARTED；最终产品验收NOT_READY**。P2依赖的Host/持久Ledger已有局部实证，P3局部原银行验证仍不等于V3真实Port/发送接通，完整阶段Gate未提前标PASS；不接真实付费或外部mutation。Gate定义唯一来源为 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离)，阶段证据见同一Record。

@@ -129,7 +129,7 @@ Run status：`admitted/running/waiting_approval/reconciling/blocked/completed/pa
 
 ### 8.1 唯一 authority 与必要扩展
 
-当前事实：`RunControl.charge/chargeCompute/settleCompute` 持原 Session bank；Project 由原 `ProjectAgentService` / ProjectTaskRepository 持有 compute；`native-compute-budget.js` 的 `reserve` 是 mandatory allowance headroom，**不是**完整子 Run reservation tree。当前 GenerationHost send path 内 `randomUUID()` 产生 compute attempt，若 V3 再造一套 charge 将双计。
+E0审计时：`RunControl.charge/chargeCompute/settleCompute` 持原 Session bank；Project 由原 `ProjectAgentService` / ProjectTaskRepository 持有 compute；`native-compute-budget.js` 的 `reserve` 仅是mandatory allowance headroom。当前原共用bank已新增子额度树与Session持久方法，工程字段/实证边界归§17.15；真实GenerationHost send path仍以`randomUUID()`产生compute attempt，尚须接稳定Effect/ordinal，V3不得再造另一套charge。
 
 冻结扩展位置为**原** RunControl/Project Agent + 共用 native-compute-budget validator，V3 仅使用 `BudgetPort` typed interface：
 
@@ -489,3 +489,17 @@ activate在同Run CAS核对所属组的执行中成员数；effect prepare/claim
 FS.deleteUser保留文件树，SQLite.deleteUser关闭DB，均不是对象已删除的证据；残留Native资源必须阻止上述退休。该内部退休只服务已声明私有namespace，不改变真实账户fence永久保留规则。SQL cleanup确认成功并close后才删本次私有root；Owner/提交/close未知保留本地现场，不把失败cleanup当业务退款或远端撤销。原scratch GC仍有自己的既有文件保留窗口，SQL orphan不会在启动时被擅自全库清除，需原诊断/运营处理；不另建回收站或清理服务。
 
 本节现有证据为Windows FS/SQLite原生命周期/备份/恢复与无DB的SQL拒绝反例；实际SQL导入/正常清理/故障窗口仍BLOCKED/NOT_RUN。不能以本接线宣称全部raw Engine消费者、V3未知Effect保留根或P1/P7已通过。
+
+### 17.15 原Native Compute子额度树与Session持久接口
+
+全部实现放在原`native-compute-budget.js` / `run-control.js`，不在Orchestration复制银行、价格或存储服务。原compute ledger增加可选`reservations:[{reservationId,parentReservationId,consumerId,limits,status:'held'|'released'}]`；现有其它Native业务不需迁移，旧Orchestrator数据不进入该合同。v1结构上限为32个reservation，沿现有compute记录的有界存储尺度；不得把它说成Provider价费或用户设备能力硬上限。父引用必须指向本记录先前reservation，无环/无孤儿；身份与consumer/limits绑定，重放不重新持有已released额度。
+
+`reserveComputeChild`在原bank CAS里转拨剩余容量；`releaseComputeChild`只在直接子额度均released、子树全部model/local实际attempt已settled时释放未用容量。charged/unknown均拒绝释放，费用行和实际用量不删除。limits包含requests/tokens及可选local jobs/items/inputBytes；纯local子额度可为0 model requests/0 tokens，不伪造模型调用。每个真实attempt只在原attempts/localWork数组一行，以可选reservationId归属叶或父自身；祖先按子树聚合核对，不再追加charge。
+
+任一scope满足`已用/未知上界 + 尚未花费子额度 + 自身可用 = ceiling`（发生overrun时明确超出并阻止新准入）；未知tokens沿原estimated上界占用，可信total实际低于上界才释放差额，实际高于上界完整保存/传播overrun，不截断观测。Root与所有祖先都核对收紧后的原ceiling；自己的工作不能抢已held的子额度。原required narration reserve仍在同一可用量内核对。拒绝操作使用候选副本，不向持久holder留下半个reservation/attempt；这只是原bank事务的纯reducer，不是另一个真相副本。
+
+Model attempt增加可选`inputFingerprint`；新`admitComputeAttempt`要求该hash，并钉attemptId/requestId/targetFingerprint/estimatedTokens/reservationId。同身份同输入返回`replayed:true`和原charged/unknown/settled事实，不再收费；不同输入冲突。此回执不是发送permit，不证明Host已按§13.2从EffectId/ordinal派生ID；后者仍须真实GenerationHost接线。既有strict charge保留冲突语义，所有新旧原bank charge都保护已held子额度；有reservationId而缺local budget明确unavailable，不能借原其它Native无预算路径变成V3免计工作。
+
+原Session RunControl增加内部`reserveComputeChild/admitCompute/releaseComputeChild/observeCompute`，沿原Session锁、Engine/Owner/fence、RunControl record和validator；原chargeLocalWork转交reservationId。新准入严格绑定当前branch/revision，换Source不能以重放名义再准入；审计observe与迟到settle仍可按原operation身份保留费用真相。未关闭reservation使原operation留存，不能被换HEAD的压缩抹去；关闭后原retiredCompute只累计一次实际费用/本地工作，未复制银行或费率。
+
+当前仅原Session持久接口和共用算法有FS/SQLite隔离实证。Project/RP相同原bank接线、原Session角色/后台配额、V3父子Run/Source/Audience授权、BudgetPort与GenerationHost稳定send、原save/导入的活动额度失效与关联保留根仍须后续验证。没有新增Browser/插件预算dispatcher，也未向真实Provider收费。§13的权限/恢复/三域验收要求继续生效，不能以本组宣称V04或完整P3通过。

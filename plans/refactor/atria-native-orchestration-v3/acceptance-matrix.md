@@ -134,7 +134,7 @@
 
 每条 evidence 至少：`caseId, productCommit, planCommit, platform, osVersion, nodeVersion, browserVersion, engine, testAccountScope, sourceFixtureId, action, expected, observed, status, failureCode, evidenceDigest, testedAt`。跨端同 case 分开记录，NOT_RUN 不填虚构 observed。公共 Record 只存脱敏摘要/hash/测试名/限制；请求响应、用户文本、nonce/token、原始截图等临时测试资料遵守 Governance §13.1 的清理要求，不为复核已删材料重复付费跑历史测试。
 
-当前：L0 tracked scanner/AST，以及P1/P2部分L1/L2工程证据已取得，具体commit/测试数/故障范围归[同一Record](../../../records/refactor/atria-native-orchestration-v3.md)。包括四Engine authoring/Ledger/Owner、Windows真实Host/进程kill、受控Port的GraphPatch/Effect/Approval/Join；这些子证据不构成V01–V10或完整P阶段PASS。P3–P8、CL01–CL12完整客户端、真实模型/Tool/A2A/MCP/可信Review Origin/人工质量仍NOT_RUN，对缺设备/服务/批准者项明确BLOCKED。未集成main，不能把文档检查或受控Port当真实领域验收。
+当前：L0 tracked scanner/AST，以及P1/P2和P3原Session bank的部分L1/L2工程证据已取得，具体commit/测试数/故障范围归[同一Record](../../../records/refactor/atria-native-orchestration-v3.md)。包括四Engine authoring/Ledger/Owner、Windows真实Host/进程kill、受控Port的GraphPatch/Effect/Approval/Join/Fanout、原共用预算子额度/Session CAS；这些子证据不构成V01–V10或完整P阶段PASS。P3真实V3 Ports/三域/费用、P4–P8、CL01–CL12完整客户端、真实模型/Tool/A2A/MCP/可信Review Origin/人工质量仍NOT_RUN，对缺设备/服务/批准者项明确BLOCKED。未集成main，不能把文档检查或受控Port当完整领域验收。
 
 ## 9. R项设计收口后的新增实施反例
 
