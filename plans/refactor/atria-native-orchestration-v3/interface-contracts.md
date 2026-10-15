@@ -596,3 +596,13 @@ authoring仅为generation.send增加有限原机制验证：实际agent节点的
 验证摘要纳入原path/resource/capability fingerprints，原Connection路径变化会使旧validationDigest不可发布；所有纯校验仍由publish再次执行。生产router用原getNativeGenerationHost提供的原persistence/library/providers构造原RouteResolver，只读复用原服务，无新模型实现或价格表。
 
 这一证据仅表明可解释、精确且有原预算策略的原Narrator机制，不提供Session/Actor/Task/Source/Tool/Delegate权限。真实固定Native Turn producer、每次send/consume Scope、原bank及Effect授权仍必需；当前它们未完成的部分继续IMPLEMENTATION_PENDING，不把可publish误显示为“运行已获准”。后续增加域或fallback须以其原producer/pin/grant实证扩展，不能将此有限reader改成所有capability默认supported。
+
+### 17.27 原RunControl稳定准入与原角色/后台配额同CAS
+
+原RunControl.charge的role/turn/background/window/period计数提取为唯一chargeGenerationQuota helper；原charge继续调用它。内部admitCompute(handle,snapshot,anchor,limits,attempt,options={},quota=null)的quota封闭为{request:{role,background,anchor},policy}，复用原assertGenerationBudget，并与原Package policy精确相等。foreground只接受原branch/revision anchor与narrator/intent_resolver；background保持原invocationId counter operation，compute仍在同root turn bank。没有第二账本或两次先扣后准入。
+
+在同一次原update/CAS内先验证原stable compute admission，再仅fresh时消耗原quota；quota或compute拒绝都在唯一原control发布之前回滚。后台原window/period及highWater不变；真实pending outbox对原counter保留规则不变。quotaOperation是实际原计数归属引用，不是grant。
+
+原provider compute行新增可选generationQuotaRef={operationId,role,background,policyDigest,anchorDigest}，仅RunControl从上述内部quota生成，拒attempt自带此字段。原shared validator/charge clone/replay比较使用同一封闭结构；同stable identity不能换role、后台anchor、policy或移除/新增quota后重放，返回quotaOperation来自已持久原行。明细是原bank原计数的关联metadata，不保存余额/价格或第二套quota事实。
+
+本组仅为真实producer下一步提供原子底层；没有向HTTP开放quota，没有用caller role冒充固定Turn/Task principal。Host私有opaque身份与BudgetPort实际接线尚在后续组；当前产品Session generationBudget与V3的未接路径仍拒绝。精确反例、冷重开及原quota回归实证见同一Record第十七组，新矩阵SQL为NOT_RUN。

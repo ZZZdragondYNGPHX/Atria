@@ -53,7 +53,7 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 | 项目 | 当前事实和下一归属 |
 | --- | --- |
 | 领域 grant 与正式 runtime API | P3/P4 尚需将实际 Plan/Source/Context/Effect/Delegate 权限组合及原消费者装配，之后才开放受控 API。内部工厂已存在不等于产品 endpoint 已存在。 |
-| Session role/background quota | 与 V3 orchestrationSend 组合仍明确拒绝。需捕获原 foreground lane 或原后台 lifecycle outbox 的受信身份，不接受调用者 role 自述，不增加第二计数器。 |
+| Session role/background quota | 原RunControl稳定准入与原quota同CAS底层及精确原行绑定已实现（§17.27）；Host与 V3 orchestrationSend 的未接路径仍明确拒绝。需捕获原 foreground lane 或原后台 lifecycle outbox 的受信身份，不接受调用者 role 自述，不增加第二计数器。 |
 | Scheduler/Handoff/Result/Disclosure | 当前子身份、共享计数和实际活动槽检查不等于完整原 Scheduler permits、Handoff、子结果消费或跨 Agent 分享已完成。 |
 | RP/Game、Project/Evolution | P4 原唯一正文 slot、World/Command/Project Review/Commit 与 Eval/target 仍需正式 consumer；Run completed 不代表业务已提交。 |
 | Tool/可信 Review | MCP/Skill已保存精确协议/本地read完成事实，冷读不成为新授权，正文消费仍独立复核；A2A 的 a2a_send_accepted 仅证明受理。真正 Review Origin/再认证仍缺，需批准动作 unavailable；不得删 guard“打通”。 |
@@ -65,6 +65,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第十六组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第十七组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。

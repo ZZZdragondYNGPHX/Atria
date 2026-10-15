@@ -429,3 +429,12 @@
 - 新FS/SQLite模型机制矩阵最终24/24（5.424s），原factory/missing resolver/unknown cap/planner/空ceiling/精确role/stale/fallback/provider/resource/缺预算/path变化、无网络无Run均实测。此前与原Binding/authoring-http/plan-pins四suite合跑68PASS/8name-filter SKIP，其中含早期新22重复子集，不累加总数；最后补缺预算2例及role pin修正后新24复验，未冒称旧suite新增SQL证据。该新机制矩阵SQL NOT_RUN。
 - 五个真实mutant：去node kind、错用route自报role、忽略fallback、漏path fingerprint、缺预算伪supported，均各捕获FS/SQLite2fail并finally原文恢复；最终四文件targeted ESLint/staged diff check通过。原route/prompt validator不放宽；原source/费用记录不改变。
 - 同一Plan接口§17.26、backend整合及验收状态同步。P3仍IN_PROGRESS/Gate NOT_READY。原quota底层审查另发现stable admission若换quota role/后台anchor重放可能返回未真实计数的归属，已要求在原attempt绑定修正，未把该未提交底层标PASS或转交前端；正在继续真实固定Native Turn/ModelPort/消费闭包，未集成main。
+
+## 2026-10-16 — W04/P3第十七组：原quota与stable admission原子组合
+
+- Source e6b4e552f → f7b8eb83a 已提交推送。原RunControl.charge与admitCompute共用唯一原quota helper，stable准入的第7内部参数校验原Package generationBudget/schema/anchor；只fresh行扣原role/turn或后台window/period计数。compute和quota同一次原control CAS写，任一拒绝不留半笔费用/计数；后台counter仍原invocation operation、compute仍root turn唯一bank。
+- root审查先抓同ID换quota归属漏洞，新增真实FS/SQLite narrator→resolver重放各1FAIL确证，再修后2PASS。原compute行增加generationQuotaRef绑定原operation/role/background/policyDigest/anchorDigest，原shared validator/clone/replay逐字段核等，null quota不能重放bound行或反向新增；返回quotaOperation取持久原行，不相信本次caller自述。内部RunControl拒attempt自带ref，无HTTP字段、无新ledger/价格。
+- 新quota最终21case=FS/SQLite各10+pure字段schema/clone1；与原compute-reservations13、run-compute-retirement5、compute-reservations-storage FS/SQLite2四suite合跑41/41，无name-filter，明确未跑SQL。此前抽helper后旧generation-budget28/run-policy43/retirement5/storage2共78/78；该78发生在新增row marker前，与41有7例重叠，不相加为唯一总数、不冒称marker后再次全跑78。
+- 新矩阵真实原clock automation经过原foreground transaction产生pending outbox，验证后台window/period而非伪造控制行；另验证role总额/共享turn总额、兄弟预约竞争、compute/quota双向拒绝回滚、原Source改变拒绝、真实Engine提交后模拟丢ACK、unknown/冷重开/迟到实际settle。真实producer grant和Provider发送不在本组PASS范围。
+- 首轮四mutants（replay重计、跳过quota、放宽原policy、拆两次update漏账）各捕获FS/SQLite2fail并finally恢复；新增row绑定两个mutants（忽略exact ref、未clone）捕获3/1fail并原文hash恢复。最后恢复后定向pure/new3PASS/18name-filter SKIP；三文件最终targeted ESLint/staged diff check通过。
+- 同一接口§17.27、整合入口/验收现状更新。Host固定Narrator私有principal、Bank opaque proof及真实ModelPort仍在下一组实现，不因底层PASS宣称Session quota产品接线或P3全Gate通过；后台Task/outbox真实producer仍待接线。P3 IN_PROGRESS/Gate NOT_READY，main未集成。
