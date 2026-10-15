@@ -3,8 +3,9 @@ import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
 import { recordsEqual } from './equality.js';
-import { isDeepStrictEqual } from 'node:util';
+import { serializeNativeDocument } from '../../native/repositories/common.js';
 import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
+import { importedManagementRecord } from './management-state.js';
 
 // Canonical category shape — every section the runner can copy. Callers
 // supplying `categories` opt in/out of sections via this set of keys; unknown
@@ -332,13 +333,14 @@ export class MigrationRunner {
             for (const kind of NATIVE_STORAGE_KINDS) {
                 if (this._skipNativeKinds.has(kind)) continue;
                 const records = await this._srcEngine.withTransaction(srcHandle, tx => tx.listResources({ kind, handle: srcHandle }));
-                for (const record of records) {
+                for (const sourceRecord of records) {
+                    const record = importedManagementRecord(sourceRecord, dstHandle);
                     const key = { ...record.key, handle: dstHandle };
                     if (!this._dryRun) {
                         await this._dstEngine.withTransaction(dstHandle, async tx => {
                             await tx.putResource(key, record);
                             const restored = await tx.getResource(key);
-                            if (!isDeepStrictEqual(restored?.doc, record.doc)
+                            if (!restored || serializeNativeDocument(restored.doc) !== serializeNativeDocument(record.doc)
                                 || restored?.integrity !== record.integrity
                                 || restored?.createdAt !== record.createdAt
                                 || restored?.updatedAt !== record.updatedAt) {

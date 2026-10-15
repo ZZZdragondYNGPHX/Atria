@@ -21,6 +21,7 @@ let studioService = null;
 let projectAgentService = null;
 
 function services() {
+    if (studioService && studioService.storageEngine !== getStorageEngine()) { studioService = null; projectAgentService = null; }
     if (!studioService) {
         studioService = new StudioService({
             simulationRunner: runStudioScenario,
@@ -38,6 +39,7 @@ function services() {
                 const { wakeCollectedExperience } = await import('./native-generation.js');
                 await wakeCollectedExperience(handle, result);
             } });
+        studioService.storageCenterLifecycle = async (...args) => (await import('../storage/center-instance.js')).recycleNativeResource(...args);
     }
     return { studio: studioService, agent: projectAgentService };
 }

@@ -171,4 +171,7 @@ export class AgentExperienceRepository {
             if (doc.scope.domain === 'project' && doc.scope.projectId === projectId) await this.deleteScope(handle, doc.scope, doc.subject, doc.sequence);
         }
     }
+    async projectOwnedScopes(handle, projectId) {
+        return (await this.list(handle)).filter(doc => doc.scope.domain === 'project' && doc.scope.projectId === projectId).map(doc => doc.scopeId);
+    }
 }

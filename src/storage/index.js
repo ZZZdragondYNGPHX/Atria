@@ -1,4 +1,5 @@
 import { PersonaRepo } from '../native/repositories/persona-repo.js';
+import { installAccountQuota } from './account-quota.js';
 import { FsEngine } from './engines/fs-engine.js';
 import { SqliteEngine } from './engines/sqlite-engine.js';
 import { MysqlEngine } from './engines/mysql-engine.js';
@@ -44,6 +45,7 @@ export function initStorage({
     postgres,
     acquireTimeoutMs,
     retries,
+    quotaLimit = async handle => (await import('../users.js')).getAccountQuotaBytes(handle),
 } = {}) {
     if (mode === 'fs') {
         _engine = new FsEngine({ directoriesByHandle });
@@ -72,6 +74,7 @@ export function initStorage({
     } else {
         throw new Error(`initStorage: unknown storage mode "${mode}" (expected 'fs', 'sqlite', 'mysql', or 'postgres')`);
     }
+    installAccountQuota(_engine, { directoriesByHandle, limit: quotaLimit, makeDefault: true });
     _chatRepo = new ChatRepo({ engine: _engine });
     _settingsRepo = new SettingsRepo({ engine: _engine });
     _presetRepo = new PresetRepo({ engine: _engine });

@@ -44,6 +44,7 @@ export class NativeProductService {
         saveSystem,
         sessionCore,
         projectStore,
+        lifecycle = null,
     }) {
         for (const [name, value] of Object.entries({
             packageRepo,
@@ -67,6 +68,7 @@ export class NativeProductService {
         this._saveSystem = saveSystem;
         this._core = sessionCore;
         this._projects = projectStore;
+        this._lifecycle = lifecycle;
     }
 
     async _openCurrentPackage(handle, record) {
@@ -333,6 +335,7 @@ export class NativeProductService {
     }
 
     async deleteWork(handle, packageId, options = {}) {
+        if (this._lifecycle) return this._lifecycle(handle, { type: 'package', id: packageId }, options);
         return withNativeResourceWrite(handle, 'package:' + packageId, () => this._packages.delete(handle, packageId, options));
     }
 
@@ -503,6 +506,7 @@ export class NativeProductService {
     }
 
     async deleteWorld(handle, worldId) {
+        if (this._lifecycle) return this._lifecycle(handle, { type: 'world', id: worldId });
         const refs = [];
         for (const source of await this._projectSources(handle)) {
             const exact = source.dependencies.worlds.filter(item => item.worldId === worldId);
@@ -618,6 +622,7 @@ export class NativeProductService {
         if (typeof input?.expectedIntegrity !== 'string' || !/^[a-f0-9]{64}$/.test(input.expectedIntegrity)) throw invalidField('expectedIntegrity');
         const detail = await this.getKnowledgeBinding(handle, knowledgeBindingId);
         if (detail.references.length) throw new ConflictError('native_knowledge_binding_referenced', { knowledgeBindingId, references: detail.references });
+        if (this._lifecycle) return this._lifecycle(handle, { type: 'binding', id: knowledgeBindingId }, input);
         return this._knowledge.deleteBinding(handle, knowledgeBindingId, { expectedIntegrity: input.expectedIntegrity });
     }
 
@@ -654,6 +659,7 @@ export class NativeProductService {
     }
 
     async deleteKnowledgeBase(handle, knowledgeBaseId) {
+        if (this._lifecycle) return this._lifecycle(handle, { type: 'knowledge', id: knowledgeBaseId });
         const refs = [];
         for (const source of await this._projectSources(handle)) {
             const exact = source.dependencies.knowledge.filter(item => item.knowledgeBaseId === knowledgeBaseId);
@@ -814,6 +820,7 @@ export class NativeProductService {
     }
 
     async deleteSession(handle, sessionId, options = {}) {
+        if (this._lifecycle) return this._lifecycle(handle, { type: 'session', id: sessionId }, options);
         return this._sessions.delete(handle, sessionId, options);
     }
 
@@ -877,6 +884,7 @@ export class NativeProductService {
     }
 
     async deleteProject(handle, projectId) {
+        if (this._lifecycle) return this._lifecycle(handle, { type: 'project', id: projectId });
         return this._projects.delete(handle, projectId);
     }
 }

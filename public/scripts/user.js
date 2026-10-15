@@ -1,4 +1,5 @@
 import { formatAtriaDate } from './atria-shell/components.js';
+import { installStorageChangeListener } from './native/storage-change-events.js';
 import { translateShellText as tl } from './atria-shell/localization.js';
 import { getRequestHeaders } from '../script.js';
 import { installFrontendLogging } from './logging/bootstrap.js';
@@ -32,6 +33,7 @@ function loadStorageManagementModule() {
  * @returns {Promise<void>}
  */
 export async function setUserControls(isEnabled) {
+    installStorageChangeListener(getCurrentUserHandle);
     accountsEnabled = isEnabled;
     installFrontendLogging();
 

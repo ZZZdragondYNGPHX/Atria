@@ -17,7 +17,10 @@ test.each(['blob', 'ref'])('migration %s failure retains IDs and avatar closure 
         const original = h.engine.withTransaction.bind(h.engine);
         const spy = point === 'blob' ? jest.spyOn(assets, 'putBlob').mockRejectedValue(new Error('interrupt blob')) : jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, tx => {
             const put = tx.putResourceIfMatch.bind(tx);
-            tx.putResourceIfMatch = (key, ...args) => { if (key.kind === K.assetRef) throw new Error('interrupt ref'); return put(key, ...args); }; return operation(tx);
+            return operation(new Proxy(tx, { get(target, name) {
+                if (name === 'putResourceIfMatch') return (key, ...args) => { if (key.kind === K.assetRef) throw new Error('interrupt ref'); return put(key, ...args); };
+                const value = target[name]; return typeof value === 'function' ? value.bind(target) : value;
+            } }));
         }));
         const failed = await repo.migrationApply(h.handle, { ...source, planDigest: plan.planDigest, expectedFingerprint: plan.expectedFingerprint });
         spy.mockRestore();
@@ -56,7 +59,10 @@ test('interrupted default adoption replays its prepared receipt without repeatin
         let writes = 0;
         const spy = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, tx => {
             const cas = tx.putResourceIfMatch.bind(tx);
-            tx.putResourceIfMatch = (key, ...args) => { if (key.kind === K.personaMigration && ++writes === 2) throw new Error('after default'); return cas(key, ...args); }; return operation(tx);
+            return operation(new Proxy(tx, { get(target, name) {
+                if (name === 'putResourceIfMatch') return (key, ...args) => { if (key.kind === K.personaMigration && ++writes === 2) throw new Error('after default'); return cas(key, ...args); };
+                const value = target[name]; return typeof value === 'function' ? value.bind(target) : value;
+            } }));
         }));
         await expect(repo.migrationAdoptDefault(h.handle, { sourceDigest: plan.sourceDigest, expectedFingerprint: result.expectedFingerprint, expectedDefaultFingerprint: baseline.expectedFingerprint })).rejects.toThrow('after default');
         spy.mockRestore();

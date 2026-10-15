@@ -156,7 +156,8 @@ class StorageInspector {
     /**
      * @param {{provider: StorageProvider, mutator: StorageMutator, container: HTMLElement}} opts
      */
-    constructor({ provider, mutator, container }) {
+    constructor({ provider, mutator, container, onDeletePreview = null }) {
+        this.onDeletePreview = onDeletePreview;
         this.provider = provider;
         this.mutator = mutator;
         this.container = container;
@@ -232,9 +233,9 @@ class StorageInspector {
     _renderQuota(quota) {
         const used = this.container.querySelector('.storageInspectorQuotaUsed');
         const total = this.container.querySelector('.storageInspectorQuotaTotal');
-        used.textContent = humanFileSize(quota?.usedBytes ?? 0);
+        used.textContent = quota?.usedBytes == null ? t`Unavailable` : humanFileSize(quota.usedBytes);
         if (quota?.quotaBytes === null || quota?.quotaBytes === undefined) {
-            total.textContent = t`Unlimited`;
+            total.textContent = this.provider?.id === 'browser' ? t`Unavailable` : t`Unlimited`;
         } else {
             total.textContent = humanFileSize(quota.quotaBytes);
         }
@@ -244,7 +245,7 @@ class StorageInspector {
     _renderStackedBar(resp) {
         const bar = this.container.querySelector('.storageInspectorStackedBar');
         bar.innerHTML = '';
-        const showSummary = resp.entries.some(e => e.canDrill);
+        const showSummary = resp.target?.type !== 'browser' && resp.entries.every(e => e.sizeBytes != null) && resp.entries.some(e => e.canDrill);
         bar.classList.toggle('displayNone', !showSummary);
         if (!showSummary) return;
 
@@ -266,7 +267,7 @@ class StorageInspector {
     _renderLegend(resp) {
         const legend = this.container.querySelector('.storageInspectorLegend');
         legend.innerHTML = '';
-        const showSummary = resp.entries.some(e => e.canDrill);
+        const showSummary = resp.target?.type !== 'browser' && resp.entries.every(e => e.sizeBytes != null) && resp.entries.some(e => e.canDrill);
         legend.classList.toggle('displayNone', !showSummary);
         if (!showSummary) return;
 
@@ -534,14 +535,17 @@ class StorageInspector {
             wide: true,
         });
         if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
-        await this.mutator.createAtPath(this.pathStack, key, textarea.value);
-        await this.refresh();
+        try {
+            await this.mutator.createAtPath(this.pathStack, key, textarea.value);
+            await this.refresh();
+        } catch (error) { toastr.error(error.message); }
     }
 
     /**
      * Confirm a destructive resource removal and refresh the current view.
      */
     async _confirmAndDelete(entry) {
+        if (this.onDeletePreview) return this.onDeletePreview([...this.pathStack, entry.key], entry);
         const label = entryLabel(entry) + (entry.labelSuffix ?? '');
         const body = translate('Delete %s? A recovery point will be created when the provider supports it.').replace('%s', label);
         const confirmed = await callGenericPopup(body, POPUP_TYPE.CONFIRM, '', {

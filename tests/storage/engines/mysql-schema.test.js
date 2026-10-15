@@ -14,8 +14,8 @@ describeMysql('MysqlEngine schema bootstrap', () => {
         if (harness) await harness.cleanup();
     });
 
-    test('CURRENT_SCHEMA_VERSION is 2', () => {
-        expect(CURRENT_SCHEMA_VERSION).toBe(2);
+    test('CURRENT_SCHEMA_VERSION includes lossless JSON content', () => {
+        expect(CURRENT_SCHEMA_VERSION).toBe(3);
     });
 
     test('all expected tables exist (10 storage + _storage_meta)', async () => {
@@ -68,22 +68,22 @@ describeMysql('MysqlEngine schema bootstrap', () => {
         expect(rows[0].integrity).toBe('abc-123');
     });
 
-    test('_storage_meta.schema_version reads "2" after initSchema', async () => {
+    test('_storage_meta.schema_version matches the engine after initSchema', async () => {
         const [rows] = await harness.engine._pool.query(
             'SELECT value FROM _storage_meta WHERE `key` = \'schema_version\'',
         );
         expect(rows.length).toBe(1);
-        expect(rows[0].value).toBe('2');
+        expect(rows[0].value).toBe(String(CURRENT_SCHEMA_VERSION));
     });
 
     test('initSchema is idempotent — second call is a no-op', async () => {
         // First call already ran via ping. Second direct call must not throw.
         await expect(initSchema(harness.engine._pool)).resolves.toBeUndefined();
-        // And the version row stays at 2 (not duplicated, not bumped).
+        // The version remains current, without duplicate metadata.
         const [rows] = await harness.engine._pool.query(
             'SELECT value FROM _storage_meta WHERE `key` = \'schema_version\'',
         );
         expect(rows.length).toBe(1);
-        expect(rows[0].value).toBe('2');
+        expect(rows[0].value).toBe(String(CURRENT_SCHEMA_VERSION));
     });
 });

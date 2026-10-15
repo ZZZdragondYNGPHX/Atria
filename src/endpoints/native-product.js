@@ -59,7 +59,9 @@ function services() {
         knowledgeRepo,
     });
     const projectStore = new ProjectStore({ directoriesByHandle: getUserDirectories });
+    const lifecycle = async (...args) => (await import('../storage/center-instance.js')).recycleNativeResource(...args);
     return {
+        lifecycle,
         product: new NativeProductService({
             packageRepo,
             worldRepo,
@@ -70,6 +72,7 @@ function services() {
             saveSystem,
             sessionCore,
             projectStore,
+            lifecycle,
         }),
     };
 }
@@ -122,6 +125,11 @@ export function createNativeProductRouter(getServices = services, artifacts = na
         'migration/preflight': 'migrationPreflight', 'migration/apply': 'migrationApply', 'migration/receipt': 'migrationReceipt', 'migration/adopt-default': 'migrationAdoptDefault',
         'default/read': 'readDefault', 'default/set': 'setDefault', 'used-by': 'usedBy', delete: 'delete', avatar: 'avatar' };
     for (const [command, method] of Object.entries(personaMethods)) router.post('/personas/' + command, route(async (req, res, service, handle) => {
+        if (command === 'delete' && service.lifecycle) {
+            personaFields(req.body, ['personaId', 'expectedFingerprint']);
+            if (!/^[a-f0-9]{64}$/.test(req.body.expectedFingerprint)) throw new TypeError('Persona fingerprint required');
+            return res.json({ deleted: await service.lifecycle(handle, { type: 'persona', id: req.body.personaId }, req.body) });
+        }
         res.json(await (service.personas ?? getPersonaRepo())[method](handle, req.body));
     }));
     router.get('/works', route(async (_req, res, { product }, handle) => {

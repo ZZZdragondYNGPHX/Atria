@@ -2141,6 +2141,31 @@ router.post('/announcements/me/mark-read', async (request, response) => {
  * Response 401: 未登录
  * Response 500: { error: { code: 'E_INTERNAL', message } }
  */
+router.post('/storage/center/:operation', async (request, response) => {
+    const handle = request.user?.profile?.handle;
+    if (!handle) return response.status(401).json({ error: 'unauthorized' });
+    try {
+        const { getResourceCenter } = await import('../storage/center-instance.js');
+        const center = getResourceCenter();
+        const body = request.body ?? {};
+        const operations = {
+            snapshot: () => center.snapshot(handle),
+            detail: () => center.detail(handle, body.target),
+            preview: () => center.preview(handle, body.action, body.targets),
+            execute: () => center.execute(handle, body.id),
+            task: () => center.task(handle, body.id),
+            tasks: () => center.tasks(handle),
+            stop: () => center.stop(handle, body.id),
+        };
+        if (!Object.hasOwn(operations, request.params.operation)) return response.sendStatus(404);
+        return response.json(await operations[request.params.operation]());
+    } catch (error) {
+        const status = error.code === 'storage_quota_exceeded' ? 413 : error.name === 'ConflictError' ? 409
+            : error.name === 'NotFoundError' ? 404 : error instanceof TypeError ? 400 : 503;
+        return response.status(status).json({ error: error.code || (status === 503 ? 'storage_unavailable' : error.message) });
+    }
+});
+
 router.post('/storage/inspect', async (request, response) => {
     try {
         const user = request.user?.profile;

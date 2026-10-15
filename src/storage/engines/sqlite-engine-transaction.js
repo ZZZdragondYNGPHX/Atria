@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { listSqlAccountContent } from './account-content.js';
 import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
@@ -13,6 +14,10 @@ import {
 } from './native-resource-key.js';
 
 export class SqliteTransaction {
+    async listAccountContent(handle) {
+        if (handle !== this._handle) throw new TypeError('Transaction account mismatch');
+        return listSqlAccountContent(handle, (table, owner) => this._db.prepare(`SELECT * FROM ${table} WHERE handle=?`).all(owner));
+    }
     constructor({ db, handle, directoriesByHandle }) {
         this._db = db;
         this._handle = handle;

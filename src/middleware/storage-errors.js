@@ -26,6 +26,9 @@ import { StorageReadOnlyError, ConflictError, NotFoundError } from '../storage/e
  */
 export function storageErrorHandler(err, _req, res, next) {
     if (res.headersSent) return next(err);
+    if (['storage_quota_exceeded', 'storage_usage_unavailable'].includes(err.code)) {
+        return res.status(err.code === 'storage_quota_exceeded' ? 413 : 503).send({ error: err.code, details: err.details });
+    }
     if (err instanceof StorageReadOnlyError) {
         return res.status(503).send({ error: 'storage_read_only', message: err.message });
     }

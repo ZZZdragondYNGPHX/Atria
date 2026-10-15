@@ -20,11 +20,11 @@ import { USER_DIRECTORY_TEMPLATE, resolveUserDirectory, DEFAULT_USER, PUBLIC_DIR
 import { selectionToDumpTables } from './storage/migration/selection-mapping.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './storage/migration/lock.js';
 import { isReadOnly, setReadOnly } from './storage/read-only-mode.js';
-import { getConfigValue, color, delay, generateTimestamp, invalidateFirefoxCache, Cache, formatBytes, resolvePathWithinParent, isPathUnderParent, setPermissionsSync } from './util.js';
+import { getConfigValue, color, delay, generateTimestamp, invalidateFirefoxCache, formatBytes, resolvePathWithinParent, isPathUnderParent, setPermissionsSync } from './util.js';
 import { readSecret, writeSecret, SECRETS_FILE } from './endpoints/secrets.js';
 import { getContentOfType } from './endpoints/content-manager.js';
 import { serverDirectory } from './server-directory.js';
-import { getAdminSettings, getEffectiveUserQuotaBytes, getDirectorySizeBytes } from './admin-settings.js';
+import { getAdminSettings, getEffectiveUserQuotaBytes } from './admin-settings.js';
 import { filterValidIpPatterns, getIpFromRequest } from './express-common.js';
 import { getStorageEngine } from './storage/index.js';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from './storage/engine-backup-entries.js';
@@ -36,7 +36,6 @@ const AUTHELIA_AUTH = getConfigValue('sso.autheliaAuth', false, 'boolean');
 const AUTHENTIK_AUTH = getConfigValue('sso.authentikAuth', false, 'boolean');
 const PER_USER_BASIC_AUTH = getConfigValue('perUserBasicAuth', false, 'boolean');
 const ANON_CSRF_SECRET = crypto.randomBytes(64).toString('base64');
-const STORAGE_USAGE_CACHE = new Cache(5000);
 const QUOTA_ENFORCED_PATH_PREFIXES = [
     '/api/chats/save',
     '/api/chats/append',
@@ -1171,16 +1170,11 @@ export async function enforceUserQuotaMiddleware(request, response, next) {
         }
 
         const handle = request.user.profile.handle;
-        let usageBytes = STORAGE_USAGE_CACHE.get(handle);
-        if (!Number.isFinite(usageBytes)) {
-            usageBytes = await getDirectorySizeBytes(request.user.directories.root);
-            STORAGE_USAGE_CACHE.set(handle, usageBytes);
-        }
-
-        const requestLength = Number(request.headers['content-length'] || 0);
-        const projectedUsage = usageBytes + (Number.isFinite(requestLength) && requestLength > 0 ? requestLength : 0);
-
-        if (projectedUsage > quotaBytes) {
+        const { measureAccount } = await import('./storage/resource-accounting.js');
+        const usage = await measureAccount({ engine: getStorageEngine(), handle, directories: request.user.directories });
+        if (usage.totalBytes == null) return response.status(503).json({ error: 'storage_usage_unavailable' });
+        const usageBytes = usage.totalBytes;
+        if (usageBytes > quotaBytes) {
             const message = 'Storage quota exceeded. Used ' + formatBytes(usageBytes) + ' of ' + formatBytes(quotaBytes) + '.';
             return response.status(413).json({ error: message, usedBytes: usageBytes, quotaBytes: quotaBytes });
         }
@@ -1190,6 +1184,14 @@ export async function enforceUserQuotaMiddleware(request, response, next) {
         console.error('Failed to enforce storage quota:', error);
         return response.sendStatus(500);
     }
+}
+
+/** Background and interactive Native writes resolve the same account policy. */
+export async function getAccountQuotaBytes(handle) {
+    if (!ENABLE_ACCOUNTS || handle.startsWith('_')) return -1;
+    const profile = await storage.getItem(toKey(handle));
+    if (!profile) throw new Error('Storage quota account unavailable');
+    return profile.admin ? -1 : getEffectiveUserQuotaBytes(profile, await getAdminSettings());
 }
 
 export function requireLoginMiddleware(request, response, next) {

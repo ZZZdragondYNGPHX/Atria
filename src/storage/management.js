@@ -68,6 +68,15 @@ function ensureInsideRoot(root, candidate) {
     return path.resolve(candidate);
 }
 
+function assertNoLinkedPath(root, candidate) {
+    const relative = path.relative(path.resolve(root), path.resolve(candidate));
+    let current = path.resolve(root);
+    for (const part of relative.split(path.sep).filter(Boolean)) {
+        current = path.join(current, part);
+        if (fs.existsSync(current) && fs.lstatSync(current).isSymbolicLink()) throw error('E_INVALID_PATH', 'Linked storage paths require their domain manager.');
+    }
+}
+
 function matchesSettingsBackup(name) {
     return /^settings_.+\.json$/i.test(name);
 }
@@ -85,6 +94,7 @@ function isProtectedRelativePath(relPath) {
     const normalized = relPath.split(path.sep).join('/');
     const base = path.basename(normalized);
     return normalized === 'secrets.json'
+        || ['atria-native', 'projects', 'assets', 'groups', 'characters'].includes(normalized.split('/')[0])
         || isStorageDatabaseName(base)
         || base === '_engine_dump.bin'
         || base === '_engine_meta.json';
@@ -146,6 +156,7 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
         absolutePath = path.join(userRoot, SIMPLE_DIRS[category], rest[0]);
     } else if (category === 'presets' && rest[0] === 'main-settings') {
         if (rest.length !== 2) throw error('E_INVALID_PATH', 'Main settings resource path depth is invalid.');
+        if (rest[1] !== 'settings.json') throw error('E_INVALID_PATH', 'Unknown main settings resource.');
         absolutePath = path.join(userRoot, rest[1]);
     } else if (Object.hasOwn(GROUPED_DIRS, category)) {
         if (rest.length !== 2) throw error('E_INVALID_PATH', `${category} resource path depth is invalid.`);
@@ -165,6 +176,7 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
     }
 
     absolutePath = ensureInsideRoot(userRoot, absolutePath);
+    assertNoLinkedPath(userRoot, absolutePath);
     const relativePath = path.relative(path.resolve(userRoot), absolutePath);
     const protectedResource = isProtectedRelativePath(relativePath);
     const stat = fs.existsSync(absolutePath) ? fs.statSync(absolutePath) : null;
@@ -181,7 +193,7 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
 
     // High-level identity resources are deliberately not deletable through
     // the generic manager. Their domain workflows own cascades/references.
-    const identityProtected = ['character-card', 'character-group'].includes(kind)
+    const identityProtected = relativePath.split(path.sep)[0] === 'characters'
         || relativePath === 'settings.json';
     const canDelete = Boolean(stat && !protectedResource && !identityProtected
         && kind !== 'chat-metadata' && kind !== 'chat-messages');
@@ -341,8 +353,10 @@ export async function restoreStorageRecoveryPoint({ recoveryRoot, handle, userRo
     const manifest = JSON.parse(await fs.promises.readFile(path.join(root, 'manifest.json'), 'utf8'));
     if (manifest.handle !== handle) throw error('E_RECOVERY_INVALID', 'Recovery point handle mismatch.');
     const target = ensureInsideRoot(userRoot, path.join(userRoot, manifest.relativePath));
+    assertNoLinkedPath(userRoot, target);
+    if (isProtectedRelativePath(manifest.relativePath) || manifest.relativePath === 'settings.json') throw error('E_READ_ONLY', 'This path requires its domain recovery service.');
     const payload = path.join(root, 'payload');
-    await fs.promises.rm(target, { recursive: true, force: true }).catch(() => {});
+    if (fs.existsSync(target)) throw error('E_CONFLICT', 'Recovery never overwrites an existing resource.');
     await fs.promises.mkdir(path.dirname(target), { recursive: true });
     if (manifest.isDirectory) {
         await fs.promises.cp(payload, target, { recursive: true });
