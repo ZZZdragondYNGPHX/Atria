@@ -13,7 +13,7 @@ const runKey = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 const recordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
 
 export function assertRunRoot(root, handle) {
-    assertObject(root, ['schemaVersion', 'runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'status', 'graph', 'attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims', 'progress', 'limits', 'retentionPolicyRef', 'cancelRequested', 'createdAt', 'updatedAt'], 'RunRoot');
+    assertObject(root, ['schemaVersion', 'runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'stateVersion', 'graphRevision', 'eventSeq', 'status', 'graph', 'nodeControl', 'attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims', 'progress', 'limits', 'retentionPolicyRef', 'cancelRequested', 'createdAt', 'updatedAt'], 'RunRoot');
     if (root.schemaVersion !== 1 || root.ownerRef?.handle !== handle || !RUN_STATUSES.includes(root.status) || typeof root.cancelRequested !== 'boolean') throw new TypeError('Invalid RunRoot identity/status');
     assertObject(root.ownerRef, ['handle'], 'ownerRef');
     assertNativeId(root.runId, 'orchestrationRun'); assertNativeId(root.rootRunId, 'orchestrationRun'); assertPlanRef(root.planRef);
@@ -25,8 +25,28 @@ export function assertRunRoot(root, handle) {
     const binding = Object.fromEntries(Object.entries(root.sourceBinding).filter(([field]) => field !== 'bindingDigest'));
     if (hashNativeDocument(binding) !== root.sourceBinding.bindingDigest) throw new TypeError('SourceBinding digest mismatch');
     for (const field of ['attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims']) if (!Array.isArray(root[field])) throw new TypeError('RunRoot.' + field + ' must be an array');
-    assertObject(root.progress, [...PROGRESS, 'deadlineAt'], 'progress');
+    assertObject(root.progress, [...PROGRESS, 'deadlineAt', 'edgeVisitCounts'], 'progress');
     for (const field of [...PROGRESS, 'deadlineAt']) assertCounter(root.progress[field], 'progress.' + field);
+    assertObject(root.nodeControl, root.graph.nodes.map(node => node.nodeId), 'nodeControl');
+    for (const [nodeId, control] of Object.entries(root.nodeControl)) {
+        assertObject(control, ['disposition', 'priority', 'reasonCode'], 'nodeControl.' + nodeId);
+        if (!['eligible', 'blocked', 'cancelled'].includes(control.disposition)) throw new TypeError('Invalid node disposition');
+        assertCounter(control.priority, 'node priority');
+        if (control.reasonCode !== null) assertToken(control.reasonCode, 'node reasonCode');
+    }
+    if (!root.progress.edgeVisitCounts || Object.prototype.toString.call(root.progress.edgeVisitCounts) !== '[object Object]') throw new TypeError('Invalid edge visit counts');
+    let visits = 0;
+    for (const [edgeId, count] of Object.entries(root.progress.edgeVisitCounts)) {
+        const edge = root.graph.edges.find(item => item.edgeId === edgeId);
+        assertCounter(count, 'edge visits');
+        if (!edge || count > edge.maxVisits) throw new TypeError('Invalid/exhausted edge visit counter');
+        visits += count;
+    }
+    if (visits !== root.progress.edgeVisits || visits > root.limits.maxEdgeVisits) throw new TypeError('Invalid total edge visits');
+    for (const field of PROGRESS) {
+        const limit = root.limits['max' + field[0].toUpperCase() + field.slice(1)];
+        if (!Number.isSafeInteger(limit) || root.progress[field] > limit) throw new TypeError('Run progress exceeds ' + field + ' limit');
+    }
     if (['completed', 'partial'].includes(root.status) && (root.pendingEffectRefs.length || root.pendingApprovalRefs.length || !root.outputClaims.length)) throw new TypeError('Run cannot finish with pending effects/approvals or without an output claim');
     return root;
 }
@@ -38,10 +58,13 @@ export class RunRepository {
         Object.assign(this, { engine, authorize, admit, assertWriter, now });
     }
 
-    async #command(handle, commandId, operation, body, apply) {
+    async #command(handle, commandId, operation, body, apply, { replayFlag = false } = {}) {
         assertWritable();
         assertNativeId(commandId, 'orchestrationCommand');
-        const input = cloneNativeDocument(body), payloadHash = hashNativeDocument({ operation, body: input });
+        const input = cloneNativeDocument(body);
+        // Internal commands have stable logical identities. CAS read versions
+        // are guards, not a new action; exact semantic payload stays bound.
+        const payloadHash = hashNativeDocument({ operation, body: replayFlag ? { runId: input.runId, operation: input.operation, detail: input.detail } : input });
         const commandKey = { kind: K.orchestrationCommand, handle, commandId };
         return withNativeResourceWrites(handle, [commandId, ...(input.runId ? [input.runId] : [])], () => this.engine.withTransaction(handle, async tx => {
             assertWritable();
@@ -50,12 +73,13 @@ export class RunRepository {
             const previous = await checkedRecord(tx, commandKey);
             if (previous) {
                 if (previous.doc.payloadHash !== payloadHash) throw new ConflictError('native_orchestration_command_conflict');
-                return cloneNativeDocument(previous.doc.outcome);
+                const outcome = cloneNativeDocument(previous.doc.outcome);
+                return replayFlag ? { outcome, replayed: true } : outcome;
             }
             const outcome = await apply(tx, input, fence);
             assertWritable();
             await putImmutable(tx, commandKey, { schemaVersion: 1, commandId, operation, target: input.runId ?? outcome.runId, payloadHash, outcome });
-            return outcome;
+            return replayFlag ? { outcome, replayed: false } : outcome;
         }, { retryMode: 'known_rollback_only' }));
     }
 
@@ -76,8 +100,9 @@ export class RunRepository {
             const root = { schemaVersion: 1, runId, ownerRef: { handle }, planRef: input.planRef, sourceBinding: admission.sourceBinding,
                 parentRef: null, rootRunId: runId, budgetAuthorityRef: admission.budgetAuthorityRef, hostBootId: fence.hostBootId, hostGeneration: fence.generation, epoch: 0,
                 stateVersion: 0, graphRevision: 0, eventSeq: 0, status: 'admitted', graph: plan.definition,
+                nodeControl: Object.fromEntries(plan.definition.nodes.map(node => [node.nodeId, { disposition: 'eligible', priority: 0, reasonCode: null }])),
                 attemptRefs: [], pendingEffectRefs: [], pendingApprovalRefs: [], resultRefs: [], outputClaims: [],
-                progress: { ...Object.fromEntries(PROGRESS.map(field => [field, 0])), deadlineAt: timestamp + plan.definition.limits.deadlineMs },
+                progress: { ...Object.fromEntries(PROGRESS.map(field => [field, 0])), edgeVisitCounts: {}, deadlineAt: timestamp + plan.definition.limits.deadlineMs },
                 limits: plan.definition.limits, retentionPolicyRef: input.retentionPolicyRef, cancelRequested: false, createdAt: timestamp, updatedAt: timestamp };
             assertRunRoot(root, handle);
             await putMutable(tx, runKey(handle, runId), root, { expectedIntegrity: null });
@@ -133,7 +158,7 @@ export class RunRepository {
         return this.#command(handle, commandId, 'runs.beginAttempt', body, async (tx, input, fence) => {
             const record = await this.#root(tx, handle, input.runId), root = record.doc;
             this.#guard(root, input, fence);
-            if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || !root.graph.nodes.some(node => node.nodeId === input.nodeId)) throw new ConflictError('native_orchestration_attempt_not_admitted');
+            if (root.cancelRequested || !['admitted', 'running'].includes(root.status) || root.nodeControl[input.nodeId]?.disposition !== 'eligible') throw new ConflictError('native_orchestration_attempt_not_admitted');
             if (root.progress.attempts >= root.limits.maxAttempts || timestamp >= root.progress.deadlineAt) throw new ConflictError('native_orchestration_limit_exhausted');
             // Attempt refs preserve every prior identity; retry/redo cannot
             // overwrite receipts, input snapshots or actual spending.
@@ -156,6 +181,40 @@ export class RunRepository {
         });
     }
 
+    /** Internal Host controller transaction, never an HTTP/plugin method dispatcher. */
+    async control(handle, commandId, body, reduce) {
+        assertObject(body, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'operation', 'detail'], 'control');
+        this.#assertGuard(body);
+        if (!['graph.patch', 'attempt.activate', 'attempt.settle', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.settle', 'loop.advance', 'run.resume'].includes(body.operation)
+            || typeof reduce !== 'function') throw new TypeError('Unsupported Host controller operation');
+        const timestamp = this.now();
+        return this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {
+            const record = await this.#root(tx, handle, input.runId), root = record.doc;
+            this.#guard(root, input, fence);
+            const result = await reduce({ tx, root: cloneNativeDocument(root), plan: cloneNativeDocument(record.planRevision), fence, now: timestamp });
+            assertObject(result, ['root', 'eventType', 'reasonCode', 'outcome'], 'controller result');
+            const next = cloneNativeDocument(result.root);
+            for (const field of ['runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'limits', 'retentionPolicyRef', 'createdAt']) {
+                if (hashNativeDocument(next[field]) !== hashNativeDocument(root[field])) throw new TypeError('Controller cannot rewrite Run identity/authority: ' + field);
+            }
+            if (next.cancelRequested !== root.cancelRequested || TERMINAL.has(root.status)) throw new ConflictError('native_orchestration_run_not_mutable');
+            for (const field of PROGRESS) if (next.progress[field] < root.progress[field]) throw new TypeError('Controller cannot reset progress');
+            if (next.progress.deadlineAt > root.progress.deadlineAt) throw new TypeError('Controller cannot extend the original deadline');
+            for (const [edgeId, count] of Object.entries(root.progress.edgeVisitCounts)) if ((next.progress.edgeVisitCounts[edgeId] ?? 0) < count) throw new TypeError('Controller cannot reset edge visits');
+            assertPlanDefinition(next.graph, record.planRevision.dependencyPins);
+            for (const field of ['capabilityCeiling', 'graphChangePolicy', 'outputContract', 'limits', 'entryNodeIds']) {
+                if (hashNativeDocument(next.graph[field]) !== hashNativeDocument(record.planRevision.definition[field])) throw new TypeError('Controller cannot raise/change Plan graph authority: ' + field);
+            }
+            if (input.operation === 'graph.patch') {
+                if (![root.graphRevision, root.graphRevision + 1].includes(next.graphRevision)) throw new TypeError('Graph revision must advance once per accepted patch');
+            } else if (next.graphRevision !== root.graphRevision || hashNativeDocument(next.graph) !== hashNativeDocument(root.graph)) throw new TypeError('Only GraphPatch can change the task graph');
+            assertToken(result.eventType, 'eventType');
+            if (result.reasonCode !== null) assertToken(result.reasonCode, 'reasonCode');
+            const updated = await this.#commit(tx, handle, record, next, result.eventType, result.reasonCode, timestamp);
+            return { runId: root.runId, ...cloneNativeDocument(result.outcome), versions: { epoch: updated.epoch, stateVersion: updated.stateVersion, graphRevision: updated.graphRevision } };
+        }, { replayFlag: true });
+    }
+
     async #root(tx, handle, runId) {
         const record = await checkedRecord(tx, runKey(handle, runId));
         if (!record) throw new NotFoundError('orchestration_run');
@@ -167,6 +226,7 @@ export class RunRepository {
         assertPlanDefinition(record.doc.graph, revision.doc.dependencyPins);
         if (hashNativeDocument(record.doc.limits) !== hashNativeDocument(revision.doc.definition.limits)
             || hashNativeDocument(record.doc.graph.limits) !== hashNativeDocument(record.doc.limits)) throw new TypeError('RunRoot limits cannot exceed the immutable Plan');
+        record.planRevision = revision.doc;
         return record;
     }
 

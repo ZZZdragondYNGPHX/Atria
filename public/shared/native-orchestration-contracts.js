@@ -146,6 +146,7 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
         const from = byId.get(edge.from.nodeId)?.outputs.find(port => port.name === edge.from.port);
         const to = byId.get(edge.to.nodeId)?.inputs.find(port => port.name === edge.to.port);
         if (!draft && (!from || !to || from.type !== to.type)) throw Object.assign(new TypeError('edge has missing or incompatible typed ports'), { edgeId: edge.edgeId, fieldPath: 'edges' });
+        if (!draft && incoming.has(edge.to.nodeId + ':' + edge.to.port) && byId.get(edge.to.nodeId)?.kind !== 'join') throw Object.assign(new TypeError('multiple producers require an explicit Join'), { edgeId: edge.edgeId, fieldPath: 'edges' });
         if (byId.has(edge.from.nodeId) && byId.has(edge.to.nodeId)) adjacency.get(edge.from.nodeId).push(edge.to.nodeId);
         incoming.add(edge.to.nodeId + ':' + edge.to.port);
     }
@@ -175,6 +176,17 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
         for (const edge of edges) if (exits.has(edge.to.nodeId) && !exits.has(edge.from.nodeId)) { exits.add(edge.from.nodeId); changed = true; }
     }
     if (!draft && exits.size !== nodes.length) throw new TypeError('graph contains nodes without an output path');
+    if (!draft && value.limits.maxLoopIterations === 0) {
+        const degrees = new Map(nodes.map(node => [node.nodeId, 0]));
+        for (const edge of edges) degrees.set(edge.to.nodeId, degrees.get(edge.to.nodeId) + 1);
+        const pending = [...degrees].filter(([, degree]) => degree === 0).map(([id]) => id);
+        let visited = 0;
+        while (pending.length) {
+            const id = pending.pop(); visited++;
+            for (const next of adjacency.get(id)) { degrees.set(next, degrees.get(next) - 1); if (!degrees.get(next)) pending.push(next); }
+        }
+        if (visited !== nodes.length) throw new TypeError('cyclic graph requires an explicit loop iteration limit');
+    }
     return value;
 }
 
