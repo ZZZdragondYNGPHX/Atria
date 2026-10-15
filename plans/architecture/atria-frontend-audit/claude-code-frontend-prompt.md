@@ -2,6 +2,8 @@
 
 > 这是用户请求的实施交接输入，不是新 Record、功能权威或最终审美 Plan。后端真实状态只归 [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) 和 [E0 §8](../../refactor/atria-native-prompt-preset-deepening/e0-audit.md#8-2026-10-16-后端实施增量与真实剩余-gate)。下面整段可直接转交。
 
+> **V3 中间范围同步（2026-10-16）**：已纳入 V3 D8/W08；V3 source 当前 `4a62ba5cc`、对应 docs `8f7458358`，P3 Gate 仍 NOT_READY。原任务继续完成其后端，尚未给出最终完成交接；本文件不替代那次实际 SHA/API/Gate 更新，也不表示两后端已合并、全量前端已具备运行条件。
+
 ---
 
 请接手 Atria **全产品前端实现**。我已授权正式开始；Codex 负责 Prompt/Behavior 后端，本任务由你负责前端。常规非破坏性工程操作自主推进，不逐阶段索要确认；保护并发分支与未提交内容。不要伪造未接通能力，也不要替我把未定提案写成已批准的最终产品合同。
@@ -11,6 +13,7 @@
 1. 先看 Git status、fetch 后的 main/docs/V3 与任务语义分支 HEAD，保护所有无关改动。完整治理为 `docs:README.md`，先读适用 AGENTS。不要重置/清理其他人的工作树或未提交资料。
 2. 后端实现分支为 `refactor/atria-native-prompt-preset-deepening`，基于 main@695acf3bc。**它不是 V3 分支，也尚未集成 main**。具体已提交 SHA/实测事实见唯一 `docs:records/refactor/atria-native-prompt-preset-deepening.md`。建立你自己的前端语义分支前先核对依赖；不要将整个活跃 V3 或 docs 分支 merge 到源码。
 3. 先读 `docs:plans/refactor/atria-native-prompt-preset-deepening/index.md` → `preset-studio-experience.md`、`backend-implementation.md`、`e0-audit.md` §8。V3 的 Graph/Plan/Run/Approval 合同读原 V3 index 路由，不复制另一套运行时。
+4. V3 追加必读：[后端整合入口](../../refactor/atria-native-orchestration-v3/backend-integration.md)、[D8 领域交互](../../refactor/atria-native-orchestration-v3/graph-editor-experience.md)、[验收矩阵](../../refactor/atria-native-orchestration-v3/acceptance-matrix.md) §9.1、[接口合同](../../refactor/atria-native-orchestration-v3/interface-contracts.md) §17.15–17.19 及原 V3 Record 第五至十组。最终前端交接前再次读取原任务的新 SHA/接口变化，不能把本次中间同步当全部后端完成。
 
 ## 设计输入与完整范围
 
@@ -25,6 +28,26 @@
 覆盖 Library、Play、Studio 全 20 资源视图与 Project Agent、Agents/Memory/Goals/Experience/Eval、World/Knowledge、Prompt、Runtime/Model/Connection、Settings/Account、Skills/Plugins/Search/Regex、Visual Director/Media/Speech、共享会话、存读档/备份同步、Storage 与 Diagnostics。沿真实 route→mount/dynamic import→handler→client→service 检查，不依文件名猜能力。
 
 三参考文件仍包含未冻结的 §8.4 提案。不要把新的通知/声音、独立 Secret 管理页等提案伪装成已有后端。**P-03 的“旧编排折叠过渡区”与用户零旧兼容要求冲突，不能采纳**。其它常规表现参考样例；实质新增能力、权限或数据语义保持原合同，另列差异，不偷加权威或冻结新的审美企划。
+
+## 并入同一产品前端的 V3 D8 / W08 范围
+
+189 个功能组是原源码盘点基线，**不是新 V3 功能的数量上限**。下列原正式合同作为同一 Agents/Library/Studio/Play/Shell 产品的补充范围；不另造 V3 主题、工作台 Shell 或重复视觉体系。V3 的领域交互语义保留，历史 Serene Canvas 美术用语不替代用户这次提供的三份参考或新增另一份审美权威。
+
+| 工作面 | 必须覆盖的功能/交互 | 数据与当前依赖 |
+| --- | --- | --- |
+| Plan Library | 原生 Plan 列表/详情/版本，创建、单 Draft 保存、Validate、Publish、Draft/Published Diff、CAS/Host 重启/未知提交恢复 | 原 Plan Authoring HTTP 已挂载；精确 envelope/字段归 backend-integration，Publish 仍服从真实 capability/dependency validation，不能用 UI Boolean 放行 |
+| Graph + Inspector | Node/Edge/输入输出 Ports/Agent/Route/Source/Output/预算/审批字段、强类型连线与 Problems、增删复制、同一 Draft Undo/Redo、dirty/leave、版本冲突 | Canvas/List/Inspector 修改同一 PlanDraft；几何/缩放不改变执行顺序，作者图不能直接改活动 TaskGraph |
+| 手机完整创作 | Node/Edge List + 精确 Sheet、列表/表单替代拖拽、全部 Validate/Publish/冲突恢复；Graph 可定位但不是唯一操作入口 | Windows/CachyOS/Termux 用同合同；软键盘、IME、Back、焦点/读屏等价，不能手机只读 |
+| Run Timeline / Graph | 默认 Timeline、同 selection 的 Graph 切换，Attempt/GraphPatch/Join/Effect/Approval/Result，排队、等待、取消请求、partial、stale、reconciling、unknown | 只读原 Host RunProjection；Run/Projection 产品 API 当前未交付，不能由 Browser 拼持久运行或伪造 completed |
+| Inspector / Diagnostics | Source/Audience/Actor、原引用/版本/Scope、Route、真实/估算/未知费用、失败根因、可见 Receipt、失效 Result 与合法下一动作 | Context 读权不等于展示权；不泄露私密 Cognition/Secret/Tool 内容/opaque reasoning；不将未知费用画成零或把 Run completed 当正式业务提交 |
+| 可信 Review / Recovery | 待办入口、精确动作/参数与 Diff、外发目标/数据/费用/不可逆后果、状态/取消可达、回执后更新 | 主 app 仅呈现脱敏待办/launch ref；决定须独立可信 Review Origin、原身份再认证与一次精确授权。缺通道时真实 unavailable，不提供同源假批准 |
+| Shell 与业务连接 | Search/deep link/history/Back、回到原 Draft/selection，连接 Studio Review/Commit、Runtime 修复和 Play 唯一正文入口 | 同一 Shell；页面关闭/切后台不等于取消 Host，Unknown/断线重取原快照、去重旧 epoch/delta，不自动重发 Effect |
+
+**当前 API 边界**：只有 `POST /api/native/orchestration/plans/{list,get,revisions,validate,create,save,publish}`。read/mutation envelope、HostBootId/同值 header、commandId/CAS/unknown 的精确处理只引用原后端整合入口。当前没有 Binding、Run start/get/cancel/resume、GraphPatch/Effect dispatch、RunProjection/long-poll 或 Approval approve 产品 HTTP。不得猜路径、创建 browser dispatcher/grant/approval proof，或把演示连线写为实际运行。
+
+原 V3 继续负责缺失领域 adapter、角色/后台 quota、完整 Scheduler/Handoff/Result/Disclosure、P4 正文/Project/Evolution、Tool 持久 receipt、可信 Review/restore/release 及 P6 硬切。前端负责统一呈现与真实接口接入，不能以永久禁用占位替代最终 P5/P7 的完整产品验收。P7 未通过不得集成 main。
+
+V3 任务报告对 `4a62ba5cc` 与 Prompt `760327891` 的 merge-tree 预演存在 `generation-host.js`、`execution-utils.js` 内容冲突，`contracts.js` / `prompt-candidates.js` 双方也有修改。**尚未实际合并或解决**；整合必须保留 `orchestrationSend` 原银行/Source/Context/Effect 与本任务 `programSelection`/Typed lowering/currentness/Draft/Browser projection/明确拒答语义，防止重复准入/计费，自动合并也须定向验证。不得将冲突留给一边覆盖另一边的方式“修绿”。
 
 ## 必须保留的架构和原生功能
 

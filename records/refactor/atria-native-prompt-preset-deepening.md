@@ -255,3 +255,12 @@
 最终远端/本地 readback：实现 HEAD 与 origin/refactor/atria-native-prompt-preset-deepening 同为 `760327891149216dffdc1e3fa0c846496007a013`，源码工作树干净；main 仍 `695acf3bcad1d42e331459189532a76056278bec`；docs 提交基底已含并发 `6e8e6d48feacc6c4e037b5c11649afbb4c2837b4`。V3 最后观测 `4e0ce4bad896b45e6fd384554c13effd05790308`，新增 Tool/A2A/维护保留已提交，authoring bindings 与 production 路由边界补核后原 plan-prompt/Node 组合 Gate 仍未完成；不把另一任务的 SQL/Tool 测试写成本任务 PASS。docs 最终提交号从 Git 历史追溯，不预写自身 hash。
 
 设计三文件首次纳入 Git 后暴露 HTML CRLF 与文末空行检查问题；随后只统一文本换行/文末空行，`git diff --ignore-space-at-eol --ignore-blank-lines` 无内容差异，复验 `git diff --check`、8 文档/81 本地链接、189 ID 一一映射均通过。没有改视觉值、样例功能或脚本逻辑，也没有为此重跑或冒称浏览器验收。
+
+## 2026-10-16 — V3 中间前端范围并入统一交接
+
+- 收到原 V3 任务的范围同步（不是最终后端完成交接）；按原已授权的全产品前端/Claude 交接范围补充同一提示词，没有开始开发前端或替原 V3 完成未交付后端。
+- 实际 Git：本 Prompt source 仍 `760327891`、干净；main 仍 `695acf3bc`；docs 当前包含并发 `8f7458358ea8724acfd694c4ca84f3bdc31ad2f4`；V3 source 当前 `4a62ba5cc`。无关 CLAUDE.md 删除和设计构建/截图/其它企划继续保持。
+- 读取原 V3 Plan index → backend-integration、D8 graph-editor-experience、acceptance §9.1、interface §17.15–17.19 及同一 Record 第五至十组当前证据。统一前端新增 Plan Library、Graph/Inspector、移动 List/Sheet、Timeline/Graph、Source/Audience/Cost/Unknown/Diagnostics、可信 Review Origin 与 Shell/业务连接矩阵；不新建第二视觉、状态或审批权威。189 基线不是 V3 新功能上限。
+- 原 Plan Authoring 七个 POST 子路径是当前实有 API；Run/Binding/Projection/Approval 等仍未挂载，实际领域授权、角色/后台 quota、P4、P6 和三端/质量等尚未完成，P3 Gate NOT_READY。中间内部 callback/已存在控制器不等于产品可运行；未借用另一任务测试作本任务 PASS。
+- 原任务报告 merge-tree 对 V3 `4a62ba5cc` 与 Prompt `760327891` 的 generation-host/execution-utils 内容冲突；contracts/prompt-candidates 双方修改自动合并仍需语义复验。此处只记录其预演报告，**本轮没有实际 merge、解决冲突或执行组合测试**；两边预算/Source/Typed Prompt/Browser 隔离均须保留，P7 未过不合 main。
+- 本次只同步范围/接口依赖；最终统一 Claude Code 交接仍需原 V3 后续实际完成通知、新 SHA/API/Gate 差异，不能把本次提示词更新宣称 V3 全部后端完工或可发布。
