@@ -263,3 +263,10 @@
 - Fanout policy必填failurePolicy=continue/fail_fast，随Plan冻结；Fanout/Join禁止Effect capabilities，其被动控制不占执行资源槽，单父槽与嵌套不会因等待自身死锁。Activate核对组逻辑并发；Effect prepare/claim复查持久失败，失败后已ready兄弟Effect不再领取发送claim，原budget ref保留，不冒称退款或远端取消。
 - 定向FS/SQLite证据：新Fanout28case全通过，随后新增受支持单父槽case定向2/2通过（其余28是name-filter skip，不是N/A）。三文件Fanout/Graph/Plan59/59；关联Join38、Transition28、reservation17（另1 SQLite上的FS窗口N/A）已通过；最终Effect/Approval22/22。生产定向ESLint/diff check通过。Effect首轮一项又因OS保留port49826在业务前EACCES，纯控制器fixture预置后22/22；生产固定Owner未改。新增单槽测试首稿误用schema禁止的0并发，在authoring就拒绝；改为冻结合同支持的1槽验证后通过，无放宽生产schema。
 - 当前仅受控Port控制实证。原Group完整性/Source/Audience/真实入口编译、隐式入口组、原NativeTaskScheduler permits和Compute bank、实际发送/批准未接通；完整P1/P2仍IN_PROGRESS，Delegate/Handoff/Review/recovery及P3–P8继续。MySQL/Pg新case因Docker不可用BLOCKED/NOT_RUN；三端真实客户端与最终质量未通过，main未集成。
+
+## 2026-10-16 — P1第八组：未知SQL拓扑拒绝与会话检查
+
+- Source `d69222198` → `b3fa05f66`已提交推送。原MySQL/Pg Engine增加默认unknown的部署声明，只支持明确核实的直连固定session/单可写primary；在专用Owner连接前拒绝未知/代理/multi-primary。服务端只读/NDB/Group Replication/备库信号及取锁前后session身份进一步核对，缓存复用前也检查每个Engine声明，不能从URL或ping猜测安全。
+- 沿原Storage/config resolver/persistence/CLI/名称审计传递字段，更换URL会失去旧声明；同数据库私有scratch复制live配置，未从备份自动授予。SQL smoke fixture改为各自新建私有local root，避免共享/tmp。独立SQL scratch/跨Engine导入的Owner闭包列入下一组继续核查，不以本组宣称全P1完成。
+- 实际执行：SQL topology37/37为原Engine方法+传输double/纯拒绝检查，没有真实SQL连接；原config persistence22/22、SQL commit double10/10通过。四文件47/47：FS/SQLite Host生命周期16、Run18、原init7、transient FS/SQLite6；另4个非FS的FS窗口N/A、6个显式停用的真实SQLcase为BLOCKED/NOT_RUN。原CLI两文件13/13（含真实隔离SQLite ZIP→FS）通过。生产定向ESLint/diff check通过；首轮lint两处SQL字串引号已修复并复检。
+- Docker不可用未改变；本次服务端query、声明与专用session锁的真实MySQL/Pg正向复测仍BLOCKED，声明/测试double都不当拓扑实证。P1/P2仍IN_PROGRESS，P3–P8及三端/真实批准/费用/质量未通过，main未集成。

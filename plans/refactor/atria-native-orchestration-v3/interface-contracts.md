@@ -428,6 +428,8 @@ Darwin分支使用内置`osascript`执行固定Foundation代码，canonical path
 
 同步后的局部实证归同一Record；新增原服务不使未知SQL topology/跨namespace或P3–P8自动通过，也不以现有Storage回收闭包替代V3原Source/Result/unknown引用根的后续审计。
 
+当前SQL未知拓扑拒绝实现见§17.13；该适配器证据不代替标准直连SQL的真实正向验收。
+
 ### 17.9 有界依赖转移与显式回边
 
 未发布v1工程schema的每条edge补充required `loopBack:boolean`；删除所有显式回边后必须为DAG，且每个回边须闭合一条正向路径并有非零maxLoopIterations。不能仅填上限就隐式允许未标记环；Definition hash包含此语义字段，不为旧编排或中间实验数据提供转换/默认兼容。deadline Join若Plan不允许partial则在完整Validate/Publish阶段拒绝。
@@ -465,3 +467,13 @@ Fanout Node policy封闭为`{maxConcurrency,failurePolicy:'continue'|'fail_fast'
 成员关系也是原record/receipt中的不可变`fanout_membership`，字段为`schemaVersion,receiptKind,receiptId,runId,frameId,nodeAttemptId,epoch,sourceBindingDigest,decisionSeq,createdAt`；ID由Run+Frame+具体Attempt推导。初始entry/最终成员在freeze绑定，后续Transition从producer继承仍包含target的冻结scope，嵌套freeze也继承外层组；按真实Attempt票据计数，避免同名节点的后续尝试误占旧组。成员关系不含货币余额、Scheduler lease或Context正文。
 
 activate在同Run CAS核对所属组的执行中成员数；effect prepare/claim重查fail_fast，已ready兄弟Effect也不能在失败后领取发送claim。fail_fast以持久且完整性有效的非completed成员结算收据为证据，阻止后续准入；不声称远端已取消/费用已退。已发Effect的迟到真实收据继续append，unknown仍需原Port reconcile。continue保留失败但不阻断其它分支。原资源许可/收费/实际pre-send校验和停止派发、取消请求的Host调度器接线归P3，当前受控Port测试不等于这些实证。
+
+### 17.13 SQL部署边界的明确拒绝与会话核对
+
+原SQL Engine增加不可变构造配置`nativeHostTopology`，默认`unknown`。原config路径为`storage.mysql.nativeHostTopology` / `storage.postgres.nativeHostTopology`；只有运营者核实的`direct_single_primary`可进入Owner适配器：直连同一个可写primary、固定session、Host存活期间不经路由/自动failover，不含transaction/session pooling代理、多primary/NDB或未验证HA集群。声明是部署前提，不是程序发现拓扑的证明；不能因为URL是localhost、ping或advisory lock成功而自动填写。当前原适配器保守拒绝已配置Group Replication的部署，不能把未验集群声称为标准直连通过。
+
+原Engine在打开专用Owner连接前验证声明；同Host按URL hash复用数据库Owner时也必须先检查每个参与Engine的声明，缓存不能给未知配置放行。MySQL在取锁前检查原server只读/NDB/Group Replication变量，使用实际database/server UUID/connection id，取锁后重查session；Pg检查实际database/backend pid、`pg_is_in_recovery()`和`transaction_read_only`，取锁后重查。未知字段、备库/只读、unsupported部署或会话漂移全部拒绝；既有专用session存活期锁、业务fence、COMMIT unknown仍按§12，未创建第二DB服务。
+
+技术依据：[MySQL 8.4 Group Replication变量](https://dev.mysql.com/doc/refman/8.4/en/group-replication-system-variables.html)说明single-primary/multi-primary开关；[PostgreSQL 17管理函数](https://www.postgresql.org/docs/17/functions-admin.html)及[session advisory lock](https://www.postgresql.org/docs/17/explicit-locking.html#ADVISORY-LOCKS)支持角色/会话检查。查询及声明仅能拒绝已知不支持情况，无法证明任意隐藏代理或错误运营声明安全，不能冒充真实部署审计。
+
+原Storage初始化、迁移配置解析/保存、名称审计和CLI沿同一字段传递；更换URL不继承旧声明，配置持久化也将其退回unknown，必须对新endpoint重新核实。原同数据库scratch Engine仅复制live Engine的已知声明；不从备份数据导入声明。独立SQL scratch/跨Engine导入路径的全Host闭包仍须后续核查，未因此宣布P1完成。标准MySQL/Pg真实启动/Owner loss/并发/备份及全部新版控制器必须在服务恢复后复测；目前新增真实SQL证据BLOCKED/NOT_RUN。
