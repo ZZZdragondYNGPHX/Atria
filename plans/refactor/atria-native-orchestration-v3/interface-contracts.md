@@ -476,4 +476,16 @@ activate在同Run CAS核对所属组的执行中成员数；effect prepare/claim
 
 技术依据：[MySQL 8.4 Group Replication变量](https://dev.mysql.com/doc/refman/8.4/en/group-replication-system-variables.html)说明single-primary/multi-primary开关；[PostgreSQL 17管理函数](https://www.postgresql.org/docs/17/functions-admin.html)及[session advisory lock](https://www.postgresql.org/docs/17/explicit-locking.html#ADVISORY-LOCKS)支持角色/会话检查。查询及声明仅能拒绝已知不支持情况，无法证明任意隐藏代理或错误运营声明安全，不能冒充真实部署审计。
 
-原Storage初始化、迁移配置解析/保存、名称审计和CLI沿同一字段传递；更换URL不继承旧声明，配置持久化也将其退回unknown，必须对新endpoint重新核实。原同数据库scratch Engine仅复制live Engine的已知声明；不从备份数据导入声明。独立SQL scratch/跨Engine导入路径的全Host闭包仍须后续核查，未因此宣布P1完成。标准MySQL/Pg真实启动/Owner loss/并发/备份及全部新版控制器必须在服务恢复后复测；目前新增真实SQL证据BLOCKED/NOT_RUN。
+原Storage初始化、迁移配置解析/保存、名称审计和CLI沿同一字段传递；更换URL不继承旧声明，配置持久化也将其退回unknown，必须对新endpoint重新核实。原同数据库scratch Engine仅复制live Engine的已知声明；不从备份数据导入声明。独立SQL scratch/跨Engine导入接线与私有清理细化见§17.14，未因此宣布P1完成。标准MySQL/Pg真实启动/Owner loss/并发/备份及全部新版控制器必须在服务恢复后复测；目前新增真实SQL证据BLOCKED/NOT_RUN。
+
+### 17.14 SQL导入的原Host与私有命名空间退休
+
+原`materializeTransientSource`的SQL路径必须得到原`hostLifecycle`；缺失时在ZIP解包/schema访问前拒绝，不能退回raw Engine。原CrossModeRestore和Persona backup preview传递当前Engine的生命周期；相同SQL类型和独立scratch DB都创建原Engine实现的私有converter，附接同一Host Owner之后才ping/schema/restore。只允许本次随机`_xrestore_<hex>`handle，dirs严格指向其私有root，不调用真实账户目录fallback或quota。原URL声明按§17.13传递，不从导入内容授权。
+
+独立scratch配置补充`mysqlNativeHostTopology`/`postgresNativeHostTopology`；原HTTP parser接`scratchMysqlNativeHostTopology`/`scratchPostgresNativeHostTopology`，或只对完全相同的原config URL复用已核实声明；CLI同规则。不同endpoint未重新核实则unknown。原认证/CSRF/账户/restore权限继续生效，部署声明不替代这些权限或可信Effect批准。
+
+原生命周期附接选项增加`privateHandle`，仅接受隔离restore身份，所有准入handle须精确匹配；普通账户Engine无权退休HostFence。私有converter清理先沿原Engine.deleteUser，再调用`retirePrivateHandle()`：暂停外部准入/drain，重验未被后续事务作废的删除证据，确认Native metadata除自身fence外为空，在原基础事务内检查/锁定当前fence并删除，Owner检查后提交，立即永久退休该Engine准入；最后原Engine close才释放root参与引用。删除fence的事务采用never-retry，结果未知保守失效Owner，不能释放guard后继续写。
+
+FS.deleteUser保留文件树，SQLite.deleteUser关闭DB，均不是对象已删除的证据；残留Native资源必须阻止上述退休。该内部退休只服务已声明私有namespace，不改变真实账户fence永久保留规则。SQL cleanup确认成功并close后才删本次私有root；Owner/提交/close未知保留本地现场，不把失败cleanup当业务退款或远端撤销。原scratch GC仍有自己的既有文件保留窗口，SQL orphan不会在启动时被擅自全库清除，需原诊断/运营处理；不另建回收站或清理服务。
+
+本节现有证据为Windows FS/SQLite原生命周期/备份/恢复与无DB的SQL拒绝反例；实际SQL导入/正常清理/故障窗口仍BLOCKED/NOT_RUN。不能以本接线宣称全部raw Engine消费者、V3未知Effect保留根或P1/P7已通过。

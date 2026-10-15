@@ -270,3 +270,12 @@
 - 沿原Storage/config resolver/persistence/CLI/名称审计传递字段，更换URL会失去旧声明；同数据库私有scratch复制live配置，未从备份自动授予。SQL smoke fixture改为各自新建私有local root，避免共享/tmp。独立SQL scratch/跨Engine导入的Owner闭包列入下一组继续核查，不以本组宣称全P1完成。
 - 实际执行：SQL topology37/37为原Engine方法+传输double/纯拒绝检查，没有真实SQL连接；原config persistence22/22、SQL commit double10/10通过。四文件47/47：FS/SQLite Host生命周期16、Run18、原init7、transient FS/SQLite6；另4个非FS的FS窗口N/A、6个显式停用的真实SQLcase为BLOCKED/NOT_RUN。原CLI两文件13/13（含真实隔离SQLite ZIP→FS）通过。生产定向ESLint/diff check通过；首轮lint两处SQL字串引号已修复并复检。
 - Docker不可用未改变；本次服务端query、声明与专用session锁的真实MySQL/Pg正向复测仍BLOCKED，声明/测试double都不当拓扑实证。P1/P2仍IN_PROGRESS，P3–P8及三端/真实批准/费用/质量未通过，main未集成。
+
+## 2026-10-16 — P1第九组：SQL scratch接原Host与受控私有退休
+
+- Source `b3fa05f66` → `414902e90`已提交推送。独立SQL scratch和同类型converter均在schema/restore前附接原Host，缺原生命周期明确拒绝；CrossModeRestore/Persona preview/原HTTP与CLI传递部署声明，未知endpoint不借旧配置放行。清理改用原生命周期的私有handle retirement，移除旧raw事务删fence路径。
+- 新退休合同只对显式隔离_xrestore handle生效；暂停/drain后核对原删除证明和Native空集，同事务锁定/删除当前fence并退休准入，最后close再释放guard。普通账户拒绝；后续事务作废旧删除证明；COMMIT未知不重试并失效Owner，失败cleanup保留现场。首轮新case揭示原FS.deleteUser留树/SQLite只关DB，不能当删除证明，已增加原Native空集检查并实测保留资源时拒绝。
+- 实测：三文件40/40（当时Host18、Native备份12、transient10），4个真实SQLcase因服务不可用BLOCKED/NOT_RUN；后来新增drain复核后完整Host20/20。SQL拒绝适配后定向4/4通过（其余10为name-filter skip，不计N/A）。CLI ZIP5、Persona账户备份4已通过；最终修正后的cross-mode恢复11/11及HTTP错误映射3/3通过。未取得真实SQL正向、强杀/断电或三端客户端新证据。
+- 原cross-mode测试先出现RangeError但Jest仍PASS，不能计作可靠故障证据：原fixture直接改复用tx.putResource导致递归，改用不污染原tx的Proxy，并断言指定chat/settings注入实际触发后，两文件14/14无递归异常通过。不可达SQL URL反例现显式提供测试部署声明，确实走原driver连接拒绝，不用unknown配置拒绝冒充网络实证。
+- 生产新增/变更模块定向ESLint/diff check通过；users-private完整lint仍报2处既有atria/no-raw-fs-in-endpoint错误，已对HEAD原文stdin复核同两处（原1977/2072，现1987/2082），本组未新增或关闭该rule。其余rules定向通过；不声称该文件完整lint通过。后续最终门槛仍须处理/核对这些既有项。
+- P1/P2仍IN_PROGRESS，全部raw消费者/V3引用保留根与后续P2–P8继续；SQL真实服务/三端/批准/费用/质量未通过，main未集成。
