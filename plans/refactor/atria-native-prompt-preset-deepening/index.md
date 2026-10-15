@@ -8,8 +8,9 @@
 - **D2 已冻结**：**J2 编译型 Authorial Control + F2 结构化控制与完整自由文本 + R3 拒答诊断/合法优化/用户控制 Route**；具体物理 Schema 和实现仍待后续阶段。
 - **D3 已冻结（2026-10-15）**：**E2 分层表达 + A2 默认严格且明示有限叙述委托 + K2 来源先行/文学审读 + G1 单 Narrator 优先、条件质量回路**。五种逻辑职责不是五个默认模型；详细合同见 [narrative-behavior.md](narrative-behavior.md)。
 - **D4 已冻结（2026-10-15）**：**B2 V3 Node 独立精确 Program/Route 绑定 + I2 原生 parentRef/derive 与 E2 类型化 Overlay + C2 Host NodeAttempt 原 Compiler 编译/证据**。当前 Node/Route/Program 接口未打通，仍为未来真实工程阻塞，详见 [agent-behavior-binding.md](agent-behavior-binding.md)。
-- **D5 正在讨论（OPEN）**：语义 PromptIR、Provider lowering、冲突诊断、缓存布局与 Token/Compute 预算；参考 [semantic-ir-lowering.md](semantic-ir-lowering.md)，方案和物理 Schema **尚未冻结**。
-- 静态审查基线：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；本轮 docs 起点 `5a85c83dac2fe30caf02d3c5cdd1f3fafc50446a`；并行 V3 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。正式 E0 必须以实时 refs 核查各分支、动态依赖、实际运行和三端证据，不能以本次静态审查替代。
+- **D5 已冻结（2026-10-15）**：**S2 Typed SemanticBlocks + L2 Capability-aware Provider Lowering + D2 分级可解释诊断 + K2 Stable/Dynamic Scoped Cache + T2 Context/Provider 双阶段 Token/Compute 预算**；详见 [semantic-ir-lowering.md](semantic-ir-lowering.md)。设计冻结不表示物理接口或质量已验收。
+- **D6 讨论中（OPEN）**：Audience/Actor/Source/Branch/Time 的 Context 消费、Memory 证据地位、长会话分层/压缩/失效；复用原 HCM-01–08 与 V3 C2，详见 [context-memory-consumption.md](context-memory-consumption.md)。
+- 静态审查基线：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；本轮 docs 起点 `fe14771d300e3efc541ce4fc4d79f478a5ee498e`；并行 V3 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。E0 仍需核对实时 refs、动态消费者、真实权限/失败/费用与跨端证据。
 
 ## 核心目标与实施边界
 
@@ -38,10 +39,11 @@
 | [creative-injection.md](creative-injection.md) | **D2 唯一冻结模块**：J2/F2/R3、正式作者指令、成年人虚构 RP、Provider/拒答边界与验收 | D2 及后续相关实现 |
 | [narrative-behavior.md](narrative-behavior.md) | **D3 已冻结**：E2/A2/K2/G1，Narrator/Character/Agent、反全知、玩家自主权与按需质量回路 | D3 及后续表达与质量实现 |
 | [agent-behavior-binding.md](agent-behavior-binding.md) | **D4 已冻结**：B2/I2/C2 Node Exact Program/Route、原生继承及受信 Host 编译；明确接口缺口 | D4 / D5 / 最终 E0 |
-| [semantic-ir-lowering.md](semantic-ir-lowering.md) | **D5 待选**：Provider-neutral IR、Lowering、冲突诊断、缓存和双阶段预算 | 第五轮 |
+| [semantic-ir-lowering.md](semantic-ir-lowering.md) | **D5 已冻结**：S2/L2/D2/K2/T2、Role/Context 信任边界、Fallback、缓存与预算 | D5 / E0 |
+| [context-memory-consumption.md](context-memory-consumption.md) | **D6 待选草案**：Audience/Actor/Source/Branch/Time、长会话 Context 消费与失效 | 第六轮 |
 | [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |
 
-## 后续轮次（D1–D4 已冻结，D5 仍待选）
+## 后续轮次（D1–D5 已冻结，D6 尚待选择）
 
 | 轮次 | 核心议题 |
 | --- | --- |
@@ -49,12 +51,12 @@
 | **D2 已冻结** | **J2 + F2 + R3**；创作控制、Provider 与过度拒答研究边界已定 |
 | **D3 已冻结** | **E2 + A2 + K2 + G1**；分层表达、有限委托、来源先行、稀疏质量回路 |
 | **D4 已冻结** | **B2 + I2 + C2**；V3 精确绑定/原 Native 继承/Host Attempt 编译及接口缺口 |
-| **D5 正在讨论** | 语义 IR、跨模型 Lowering、分级冲突诊断、缓存布局及 Token/Compute 预算 |
-| D6 | Context/Memory/Cognition 按 audience/branch/source/time 的信息消费 |
+| **D5 已冻结** | **S2 + L2 + D2 + K2 + T2**：语义 IR、Lowering、诊断、缓存及双阶段预算 |
+| **D6 正在讨论** | Audience/Actor/Source/Branch/Time 信息消费与长会话策略 |
 | D7 | 基于 Experience、OR-Bench 风格误拒评价、文学质量与候选演化 |
 | D8 | Native Preset Studio/Play UI、预览、Diff、表达控制与跨端易用性 |
 | D9/E0 | 消费者闭包与 V3 最新实现审计、接口/实施 Gate、端侧最小验证 |
 
 ## 当前事实
 
-已完成 D1–D4 设计冻结，建立 D5 讨论模块；仅静态核查远端代码与官方公开资料。未改产品代码、未执行 Node/Provider API 测试、CI、Windows/CachyOS Linux/Termux 真机或 UI 验证。现有 V3 Node 尚无已验证的独立 Prompt Program 生产执行路径，本文件不会将设计冻结写成已实现。
+已完成 D1–D5 的设计冻结并建立 D6 讨论模块。仅远端静态审查，尚无产品改动、Node/CI/Provider API/Windows/CachyOS Linux/Termux 真机/UI 验证。V3 Node 独立 Program→Provider、`contextSlots` Role 信任边界、Fallback 和真实缓存/Token 精度均仍为未实现或未测，不能将已冻结的设计写成通过。

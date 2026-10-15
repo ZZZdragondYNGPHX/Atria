@@ -3,7 +3,7 @@
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
 - Primary Workspace：`main`（未来实现，当前未授权修改）。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1–D4 已冻结；D5 已进入讨论但未选择；同一份 Record 持续追加所有后续轮次。
+- 当前阶段：D1–D5 已冻结；D6 讨论草案已准备但尚未选择；同一份 Record 持续追加所有后续轮次。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -75,3 +75,20 @@
 - 仅远端 Git 树提交/文件可读取核对；本轮未做 Node/构建/CI/真实模型 API/Provider 内容/浏览器/Windows/CachyOS Linux/Android Termux 实测；没有产品代码提交，也没有授权 V3 Schema/ModelPort 改造。
 - D5 五组 S/L/D/K/T 候选全为 **OPEN**；推荐 S2+L2+D2+K2+T2 尚未冻结，不自动采纳。D4 具体 Host-only Program Selection、Context role 漂移、fallback、Evidence 与 E0 消费者闭包属于未来真实实施与验收。
 - 下一步：进入 D5 讨论原 Native PromptIR 语义化、Capability-aware Provider Lowering、分级可解释冲突、缓存与真实 Token/Compute 预算；获用户选择后先提交同一 Plan/Record 再讨论 D6。
+
+## 2026-10-15 — D5 冻结 S2 + L2 + D2 + K2 + T2，D6 讨论准备（仅 docs）
+
+**用户冻结与边界**
+- D5 选择原 Compiler 内 Type SemanticBlocks（S2）、Provider Capability-aware Lowering（L2）、硬错误/需作者选择/软文学警告三级诊断（D2）、Source/Audience/Version/Model 隔离的 Stable/Dynamic Cache（K2）、原 Context 候选选择与 Provider 最终 wire 计数/Compute 实际准入（T2）。
+- 维持 D1–D4、成年合法虚构 RP 的作者指令自由、V3 单 Native Host、原 World/Memory/Cognition/Context/Model/Experience/Eval/RunControl/TaskScheduler 权威；正式重构不兼容 ST 旧数据、旧 API、旧 Orchestrator Workspace/mode，不建双读、第二 Compiler/Context 或预算账本。
+- 用户明确要求保留 `contextSlots` Role 来源隔离与 V3 Node Program/Route Fallback 的真实工程阻塞，不得把静态设计文档写成已实现或已测试。
+
+**本轮静态核查与文档工作**
+- 写入前核对 `docs@fe14771d300e3efc541ce4fc4d79f478a5ee498e`、`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`、V3 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`。完整读取 `docs:README.md` Governance，重读本 Plan index/decisions/D5 与同一 Record、V3 C2 Context/HCM-01–08/Hybrid Memory/Behavior Context，以及相关 Native Context Compiler/Provider 静态代码；未重扫全仓。
+- 同一 Plan 更新 `index.md`、`decisions.md`、`semantic-ir-lowering.md`，新增 D6 `context-memory-consumption.md`，本唯一 Record 只追加当前事件和状态。远端提交 SHA 以随后 Git HEAD 核对为准，不在文档预先伪造。
+- 源码事实：`context.fact` 可能经 `contextSlots` 渲染为 `system`，属于必须审查的 Source/Role 信任边界，尚非漏洞复现或修复证据；V3 Node `agentPinId/dependencyPins` 未证明独立 Program 已接通 Model；原 `GenerationService` 不同 Route Program Fallback 抛 `generation_semantic_authority_changed`，不允许隐形绕过。
+
+**验证、阻塞及下一阶段**
+- 仅 docs Git 对象/commit 和远端文件读回验证；本轮未执行 Node、构建、CI、Provider API、真实内容/缓存/预算测试、Windows/CachyOS Linux/Android Termux 真机或浏览器/UI。D5 的实际 SemanticIR/Lowering/诊断/缓存/双阶段预算仍未交付。
+- D6 `U/E/H/V` 四组候选 OPEN，推荐 `U2 + E2 + H2 + V2` 只是讨论提议，不得提前写为冻结；HCM-01–08、V3 C2/N2 等权威不重新决议。
+- 后续 D6 用户选择后，仍先更新并提交同一 Plan Bundle 与本 Record，再进入 D7 Experience/Eval、文学质量、合法误拒与 Prompt Candidate 演化讨论。未授权创建产品实现分支或改 main。

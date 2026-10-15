@@ -1,6 +1,6 @@
 # 跨模块冻结决定与待选项
 
-说明：仅保存已由用户明确选择的跨模块决定。D1–D4 已冻结，D5 仍待选；设计冻结不等于允许修改产品代码。
+说明：仅保存用户明确冻结的跨模块决定。D1–D5 已冻结，D6 候选仍 OPEN；不构成修改产品代码的授权。
 
 ## D1 冻结，2026-10-15
 
@@ -48,11 +48,23 @@
 
 以上只是**架构和必需的实施前验收门槛**；V3 真实生产消费、Host-only Program 选择、Route/fallback 改造、跨端产品验收均未执行/未核实通过。详细单一合同见 [agent-behavior-binding.md](agent-behavior-binding.md)。
 
-## D5 待选（见 [semantic-ir-lowering.md](semantic-ir-lowering.md)）
+## D5 已冻结 — S2 + L2 + D2 + K2 + T2（2026-10-15）
 
-- **S1/S2/S3**：沿用纯字符串 PromptIR、在现有 PromptIR 引入 Provider-neutral typed SemanticBlocks，或另造执行 DSL。
-- **L1/L2/L3**：统一 wire 格式、现有 ProviderPort 按真实能力做确定性 Lowering，或每模型隐形重写指令。
-- **D1/D2/D3**：仅结构错误、硬错误/语义警告分级且可解释、或固定 LLM Judge 全量纠错。
-- **K1/K2/K3**：不分动态前缀、版本/Scope 分区的 Stable/Dynamic 缓存布局、或跨 Agent 语义缓存猜测复用。
-- **T1/T2/T3**：粗略 token 估算、原 Context + Provider 最终 wire 计数双阶段预算、或未经证明的成本预测自动超分配。
-- 这五组全部 **OPEN**。D5 选择后下一轮先更新本 Bundle/Record 并提交 `docs`，然后讨论 D6。不得为实施便利提前改 `main`。
+1. **S2 类型化语义 IR**：原 Native PromptCompiler 内区分正式 Authorial Instruction、V3 Agent Task、World/Memory/Tool Evidence、用户输入与 Host-only Policy；记录 SourceRef、Actor/Audience/Trust、Scope/Time/Branch、Stage/Target、精确版本与必需性。不建立第二 Compiler、持久 IR 或独立 Prompt OS。现行 PromptIR v1 尚未具备完整强类型字段；物理 Schema/迁移与消费者留后续 E0 审核。
+2. **L2 Provider-aware lowering**：现有 ProviderPort 根据 Model/Connection/Route 的真实 Capability 与来源证明，把相同受权语义降为各 Provider 可支持的 role/system、tools、output schema、prefill、reasoning/cache 等 wire。缺少必需能力时明确拒绝/由用户决定，不能偷偷把低信任文本升级成 system/developer 指令或暗改作者自由文本。Provider 内容拒绝不触发静默跨供应商重发。
+3. **D2 分级诊断**：hard-invalid（Source/Actor/Display/Tool/Output/Program/Context/Token 权限及一致性）、needs-author-choice（影响行为的模型能力/配置选择）、soft-style-warning（E2 创作文风冲突）。记录精确来源/有效修订；文学偏好不等同确定性规则或安全违规，Judge/Eval 仍按 G1 有证据时运行，避免成年虚构题材的泛化说教与误拒。
+4. **K2 稳定/动态与权限域分区**：精确作者/Program/Tool schema 固定部分与 Scene/Memory/Actor/Branch/Turn 动态证据分别布局，只有相同有效 Owner/Model/Route/Program/Source/Audience/Grant/Scope/TTL 才能合法复用。现有 prefixFingerprint 等是诊断，不是访问授权或 Provider 命中证明；真实缓存收益从实际 Provider Usage 观察，禁止跨 NPC 私有知识复用。
+5. **T2 双阶段预算**：原 Context Compiler/Hybrid Memory/Information 先按 required/atomic groups/lane minima/caps、Source 证明与输出 reserve 选合法证据；每个 Provider 最终 wire（含工具、输出合同等）再执行本 Adapter 的计数与 Capability/Context Budget 准入，必要 fallback 重新编译计数并保持有效 Node Program 与 Output/Tools。成本与真实费用沿原 RunControl/Compute/TaskScheduler，不借预测缓存或压缩进行超配；字节保守上界不是所有模型的精确 tokenizer。
+6. **可信 Role 边界未修复**：当前 `context-providers.js` 可将非 history 数据投成 `context.fact`，经 `prompt-compiler.js` Slots 后，`prompt-renderers.js` 把 `contextSlots` 放入 `role:'system'`。须后续对 Context/World/Tool 来源到 Provider wire 的权限隔离做实测；这里只定位需要验证的静态边界，既不声称存在可利用漏洞，也不声称已修复。
+7. **B2 Node/Route Fallback 未接通**：V3 `agentPinId/dependencyPins` 不能冒充独立 Program 已发送；原 `RouteResolver` 从 `route.promptProgramRef` 取 Program；`GenerationService` fallback 对不同 Route Program 报 `generation_semantic_authority_changed`。受信 Host-only Program 绑定、重编译与 fallback 权威仍要实施/验证，D5 SemanticIR 不自动解决。
+8. **不重复基础设施/零兼容**：V3 T2 单 Native Host、D1–D4、原 Context/Model/Experience/Eval/RunControl/Memory/World/Actor 权威保持；正式重构不为旧 ST Prompt/Workspace/Orchestrator 数据、旧 API、mode、fallback 建迁移/适配/双轨。以上仅冻结设计及未来验收，不表示任何实现、模型性能或跨端已通过。
+
+详细设计唯一归 [semantic-ir-lowering.md](semantic-ir-lowering.md)。
+
+## D6 OPEN — Context/Memory/Cognition 的合法消费（见 [context-memory-consumption.md](context-memory-consumption.md)）
+
+- **U1/U2/U3**：在 V3 C2 原有受权 Audience 域之内，Prompt 对 Narrator/Actor/Agent 采用怎样的 Context 请求与投影。
+- **E1/E2/E3**：证据区分 World、Actor Belief、历史承诺、Hearsay、Hypothesis、Disputed、Unknown 等信息地位；不能靠 Prompt 制造 World Truth。
+- **H1/H2/H3**：长 RP recent raw/Narrative Spine/commitment/Memory/Knowledge 在原 Context lanes、required/atomicGroup 下怎样选择与压缩。
+- **V1/V2/V3**：Source/Branch/Variant/WorldTick/Actor/Grant/ScopeEpoch 失效、异步消费重验与 Summary/Result/Cache 作废。
+- **注意**：V3 C2、HCM-01–08 和 D3 K2 的强制 Source/Disclosure/Scope 已经冻结，本轮不允许把它们重新选择为较弱模式。D6 四组仍未决定。
