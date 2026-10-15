@@ -2,9 +2,9 @@
 
 - Task ID: `atria-storage-center`
 - Primary Workspace: `main` 产品源码；本次文档保存在 `docs`。
-- Status: Active；方案已冻结，产品实施未开始。
+- Status: Active；已开始隔离实施，尚未完成产品验收或集成。
 - Plan: [唯一入口](../../plans/refactor/atria-storage-center/index.md)。
-- 当前阶段: Stage 0 — 代码审计与方案交付。
+- 当前阶段: Stage 2 — 统计与配额（Stage 1 基础契约已建立）。
 
 ## Summary
 
@@ -97,6 +97,32 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 ### 下一 checkpoint
 
 新对话正式实施从 Plan Stage 1 开始：先核对真实 Git、占用中的任务分支及当前源码，再按入口路由读取相关模块，建立合适的语义工作分支，继续在本 Record 保存实际实施证据。
+
+## Stage 1 — 基础契约与完整盘点
+
+- Date: 2026-10-15。
+- Start HEAD: `60aca695726893e298b7d485f300c6efef3b79fd`，实际干净 `main`；未回退审计后合入的边缘导航等变更。
+- 工作分支：`refactor/atria-storage-center`；隔离任务工作树。既有任务工作树与 docs 中其他任务未跟踪资料保留。
+- 新增 `src/storage/resource-catalog.js`：九类、未知数据兜底、全部 44 Native kinds 映射、versioned resourceType 分类、统一规范 UTF-8 JSON 内容字节、稳定身份/指纹、30 天保留期和默认拒绝的能力契约。
+- 计量选择：结构化内容使用既有 Native canonical serializer；不计 Engine envelope、数据库页、索引、WAL。真实文件按文件字节计量，独立备份副本仍计量。
+- 实际检查：`tests/storage-management/catalog.test.js`，1 suite / 4 tests 通过；核对当前完整 kind 注册表、Unicode 和键顺序计量、未知类型及归属兜底、scope 不冒充所有权。
+- 当前源码确认 FS Engine 已有账户串行事务及 `FsNativeJournal`，将复用其提交/恢复权威；管理持久状态拟复用既有 maintenance 资源和 Engine 事务，不增加业务内容库。
+
+### 实际接入盘点与后续验证范围
+
+| 写入/读取来源 | 现有权威 | 实施接入与检查方向 |
+| --- | --- | --- |
+| 全部 Native/版本化内容、消息、状态、后台结果 | Engine transaction + repositories/common | 同一规范内容计量；提交时净增量与并发配额检查 |
+| 项目源码、清单、隐藏文件及 Git | ProjectStore、Studio service | 全目录计量及闭包；普通 listFiles 跳过 Git，不能用于完整恢复 |
+| 素材本体、引用与 GC | AssetStore | 哈希唯一计量、写入净增量、持久回收保留根与租约 |
+| SQL legacy、文件 legacy/unknown | Engine legacy handlers、用户目录 | 避免 FS/SQL 双计，数据库物理文件单列；已测未知仍参与对账 |
+| 删除与恢复 | Session/Persona/Library/Project 业务服务、ResourceGraph | 使用真实身份、版本、运行与引用检查；补齐完整原 ID 恢复 |
+| 备份、迁移、导入 | users、storage/migration | 管理状态及保留闭包随既有引擎/用户目录迁移；历史操作暂停核对 |
+| 浏览器记录 | browser-storage-inspector provider/mutator | 完整遍历、估算维度分离、inline key/新增冲突及读取失败 |
+
+## Stage 2 — 统计与配额
+
+- Status: In progress；基础契约测试通过不表示后续生命周期与界面已交付。
 
 ## Final state
 
