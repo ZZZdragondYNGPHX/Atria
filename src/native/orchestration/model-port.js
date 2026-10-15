@@ -26,7 +26,7 @@ export class ModelPort {
 
     constructor({ host, runs, effects, budgetPort }) {
         if (!(host instanceof NativeGenerationHost) || !(runs instanceof RunRepository) || !(effects instanceof EffectController) || !(budgetPort instanceof BudgetPort)
-            || host.persistence._engine !== runs.engine) throw new TypeError('ModelPort requires the original Host and execution authorities');
+            || effects.runs !== runs || host.persistence._engine !== runs.engine) throw new TypeError('ModelPort requires the original Host and execution authorities');
         this.#executeNative = NativeGenerationHost.prototype.execute;
         Object.assign(this, { host, runs, effects, budgetPort });
     }
@@ -132,10 +132,9 @@ export class ModelPort {
                 const saved = await this.observe(handle, { runId, effectId });
                 if (!saved.observation || hash(saved.observation) !== hash(current.observation)) throw error;
             }
-            return await this.runs.engine.withTransaction(handle, async tx => {
+            return await this.runs.withConsumption(handle, runId, async ({ tx, root, fence, deny }) => {
                 assertPermit();
-                const root = await this.runs.get(handle, runId), intent = (await readEffect(tx, handle, root, effectId)).doc;
-                const fence = await this.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+                const intent = (await readEffect(tx, handle, root, effectId)).doc;
                 if (root.cancelRequested || root.epoch !== intent.epoch || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
                     || pending.binding !== digest(intent)) fail('native_orchestration_model_consume_denied');
                 await assertChildRunCurrent(tx, handle, root);
@@ -144,6 +143,9 @@ export class ModelPort {
                 checkCancellation(signal);
                 await revalidateConsume();
                 await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef);
+                const finalIntent = (await readEffect(tx, handle, root, effectId)).doc;
+                const finalSaved = await this.#saved(handle, tx, root, finalIntent);
+                if (pending.binding !== digest(finalIntent) || !finalSaved || hash(finalSaved.observation) !== hash(pending.observation)) return deny();
                 assertPermit();
                 checkCancellation(signal);
                 return { generated, receiptRef: saved.receiptRef };

@@ -21,13 +21,13 @@ const limits = { maxRequests: 4, maxTokens: 32000, localWork: { maxJobs: 32, max
 
 // Native Host, narrator producer, Binding/Plan, Provider HTTP/private lease,
 // original bank and Effect writer are real. The remote response is synthetic.
-export async function modelPortFixture(make, { usage = true, failure = false, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route, createSource = null, generationWithoutMaxTokens = false } = {}) {
+export async function modelPortFixture(make, { usage = true, failure = false, responseStatus = null, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route, createSource = null, generationWithoutMaxTokens = false } = {}) {
     const h = await make(), requests = [], chunks = []; let coldEngine, core, host, authority, port, effectRef;
     let afterSend = async () => {}, captureScope = null, transformRender = rendered => rendered;
     const server = http.createServer(async (req, res) => {
         const parts = []; for await (const part of req) parts.push(part);
         requests.push(JSON.parse(Buffer.concat(parts).toString())); await afterSend();
-        res.writeHead(failure ? 503 : 200, { 'content-type': 'application/json' });
+        res.writeHead(responseStatus ? responseStatus(requests.length) : failure ? 503 : 200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ id: 'native-response', status: 'completed', output: [{ id: 'native-message', type: 'message', status: 'completed', role: 'assistant',
             content: [{ type: 'output_text', text: 'Synthetic native narrator response.', annotations: [] }] }],
         ...(usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }));

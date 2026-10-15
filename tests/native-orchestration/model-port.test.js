@@ -43,6 +43,25 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
         } finally { await f.cleanup(); }
     });
 
+    test('real 503 then 200 retry confirms both original provider rows without settling the unknown first bill', async () => {
+        const f = await fixture(make, { responseStatus: count => count === 1 ? 503 : 200,
+            changeRoute: route => ({ ...route, policy: { ...route.policy, maxRetries: 1 } }) });
+        try {
+            const result = await f.start(); expect(result.timeline.at(-1).content).toBe('Synthetic native narrator response.');
+            expect(f.requests).toHaveLength(2);
+            const saved = await f.observe(), attempts = saved.observation.budgetObservationRef.attempts;
+            expect(saved.outcome).toBe('confirmed'); expect(attempts.map(row => row.status)).toEqual(['unknown', 'settled']);
+            expect(attempts.map(row => row.budgetAttemptRef.providerSendOrdinal)).toEqual([0, 1]);
+            expect(new Set(attempts.map(row => row.budgetAttemptRef.attemptId)).size).toBe(2);
+            const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
+            const compute = (await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[root.budgetAuthorityRef.operationId].compute;
+            expect(compute.attempts.map(row => row.status)).toEqual(['unknown', 'settled']);
+            expect(compute.localWork.filter(row => row.kind === 'context_build')).toHaveLength(1);
+            expect(compute.localWork.filter(row => row.kind === 'generation_render')).toHaveLength(2);
+            await f.cold(); expect(await f.observe()).toEqual(saved); expect(f.requests).toHaveLength(2);
+        } finally { await f.cleanup(); }
+    });
+
     test('plain or JSON-copied scope and caller callback results cannot mint a response proof', async () => {
         const f = await fixture(make);
         try {
@@ -150,7 +169,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
                 });
                 return ack;
             };
-            await expect(f.start()).rejects.toThrow(/consume_denied/); expect(before.outcome).toBe('confirmed');
+            await expect(f.start()).rejects.toThrow(/consume_denied|consumption_stale/); expect(before.outcome).toBe('confirmed');
             expect((await f.observe()).outcome).toBe('unknown');
             await f.cold(); expect((await f.observe()).outcome).toBe('unknown'); expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }

@@ -183,7 +183,7 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_TOO
         } finally { await f.cleanup(); }
     });
 
-    test('Skill uses original versioned repository and child local work without executing its instructions', async () => {
+    test('Skill refuses an adapter without the original durable Run and Effect consumer before reading or charging work', async () => {
         const f = await fixture(make, 'mcp');
         try {
             const repository = createSkillRepository(f.h.dirs.root), scope = { kind: 'global' };
@@ -192,21 +192,22 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_TOO
             const entry = await repository.get('guide', scope);
             const pinned = await repository.pin({ scope, name: 'guide', expectedHash: entry.installedHash });
             const input = { scope, name: 'guide', version: pinned.version, path: 'SKILL.md', offset: 1, limit: 10 };
+            let reads = 0;
+            const readFile = repository.readFile.bind(repository);
+            repository.readFile = (...args) => { reads++; return readFile(...args); };
             f.intent.actionRef = { protocol: 'skill', operation: 'read' }; f.intent.risk = 'R0'; f.intent.inputHash = hash(input);
             f.port.readInput = async () => input;
             f.port.skillAuthority = async () => ({ repository, settings: {}, projectId: null, revalidate: async () => {
                 const current = await repository.get('guide', scope);
                 if (current.installedHash !== entry.installedHash) throw new Error('skill-source-stale');
             } });
-            const result = await f.port.execute(f.h.handle, f.request);
-            expect(result).toMatchObject({ outcome: 'unknown', receiptRef: null });
-            expect(result.result.content).toContain('Text, never Host code.');
+            const outcome = await f.port.execute(f.h.handle, f.request).then(value => ({ value }), error => ({ error }));
+            expect(reads).toBe(0);
             expect(f.calls).toEqual([]);
             const bank = await f.f.core.runs.status(f.h.handle, f.input.sessionId);
             const work = Object.values(bank.operations).flatMap(op => op.compute?.localWork ?? []);
-            expect(work).toHaveLength(1);
-            expect(work[0]).toMatchObject({ kind: 'skill_read', reservationId: f.root.runId, status: 'settled', usage: { outcome: 'completed' } });
-            await expect(f.port.execute(f.h.handle, f.request)).rejects.toThrow(/attempt|work|budget/i);
+            expect(work).toHaveLength(0);
+            expect(outcome.error).toMatchObject({ code: 'native_orchestration_tool_consume_denied' }); expect(outcome.value).toBeUndefined();
         } finally { await f.cleanup(); }
     });
 

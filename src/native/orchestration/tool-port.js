@@ -10,7 +10,8 @@ import { readEffect, effectDecision } from './effect-contracts.js';
 import { readRunControl } from '../run-control.js';
 import { checkedRecord } from './plan-repository.js';
 import { controlRecordKey, runGuard } from './controller-common.js';
-import { assertChildRunCurrent } from './run-repository.js';
+import { RunRepository, assertChildRunCurrent } from './run-repository.js';
+import { EffectController } from './effect-controller.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const supported = { mcp: ['tool', 'resource'], a2a: ['send'], skill: ['list', 'pin', 'read', 'files', 'catalog'] };
@@ -126,6 +127,8 @@ export class ToolPort {
         if (!['R0', 'R1'].includes(intent.risk) || intent.requiresApproval || intent.approvalRef !== null)
             fail('native_orchestration_tool_approval_unavailable');
         if (action.protocol !== 'skill' && intent.risk !== 'R1') fail('native_orchestration_tool_risk_invalid');
+        if (action.protocol === 'skill' && (!(this.runs instanceof RunRepository) || typeof this.runs.withConsumption !== 'function'
+            || !(this.effects instanceof EffectController) || this.effects.runs !== this.runs)) fail('native_orchestration_tool_consume_denied');
         const input = await this.readInput({ handle, inputRef: intent.inputRef });
         if (hash(input) !== intent.inputHash) fail('native_orchestration_tool_input_stale');
         const service = action.protocol === 'mcp' ? this.mcpService : this.a2aService;
@@ -239,9 +242,18 @@ export class ToolPort {
             settings: skill.settings, projectId: skill.projectId, signal,
             ...(work.onCompleted ? { onCompleted: work.onCompleted, completionBindingDigest: work.completionBindingDigest } : {}) });
         const saved = work.onCompleted ? await this.observe(handle, { protocol: 'skill' }, { runId: intent.runId, effectId: intent.effectId }) : null;
-        await authorize('consume', saved);
-        if (saved) return { ...saved, operationRef: null, result };
-        return { outcome: 'unknown', operationRef: null, receiptRef: null, result };
+        return this.runs.withConsumption(handle, intent.runId, async ({ tx, root: currentRoot, deny }) => {
+            await authorize('consume', saved);
+            if (requiresSkillCompletion) {
+                const currentIntent = (await readEffect(tx, handle, currentRoot, intent.effectId)).doc;
+                const currentSaved = await this.#savedCompletion(handle, tx, currentRoot, currentIntent);
+                if (currentIntent.status !== 'confirmed' || this.#completionDigest(currentIntent) !== this.#completionDigest(intent)
+                    || !currentSaved || hash(currentSaved) !== hash(saved)) return deny();
+                return { ...currentSaved, operationRef: null, result };
+            }
+            // Non-body metadata actions do not claim a completion receipt.
+            return { outcome: 'unknown', operationRef: null, receiptRef: null, result };
+        });
     }
 
     async #acceptedObservation({ handle, tx, root, intent, operationRef }) {

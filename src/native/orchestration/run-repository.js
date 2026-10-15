@@ -160,18 +160,7 @@ export class RunRepository {
         // are guards, not a new action; exact semantic payload stays bound.
         const payloadHash = hashNativeDocument({ operation, body: replayFlag ? { runId: input.runId, operation: input.operation, detail: input.detail } : input });
         const commandKey = { kind: K.orchestrationCommand, handle, commandId };
-        const lineageIds = input.runId ? await this.engine.withTransaction(handle, async tx => {
-            const ids = [], seen = new Set();
-            let runId = input.runId;
-            while (runId) {
-                if (seen.has(runId)) throw new TypeError('Cyclic Run ancestry');
-                seen.add(runId); ids.push(runId);
-                const record = await checkedRecord(tx, runKey(handle, runId));
-                if (!record) throw new NotFoundError('orchestration_run');
-                assertRunRoot(record.doc, handle); runId = record.doc.parentRef?.parentRunId;
-            }
-            return ids;
-        }) : [];
+        const lineageIds = input.runId ? await this.#lineageIds(handle, input.runId) : [];
         return withNativeResourceWrites(handle, [commandId, ...resourceIds, ...lineageIds], () => this.engine.withTransaction(handle, async tx => {
             assertWritable();
             const fence = await this.assertWriter(handle, tx);
@@ -187,6 +176,54 @@ export class RunRepository {
             await putImmutable(tx, commandKey, { schemaVersion: 1, commandId, operation, target: input.runId ?? outcome.runId, payloadHash, outcome });
             return replayFlag ? { outcome, replayed: false } : outcome;
         }, { retryMode: 'known_rollback_only' }));
+    }
+
+    async #lineageIds(handle, runId) {
+        assertNativeId(runId, 'orchestrationRun');
+        return this.engine.withTransaction(handle, async tx => {
+            const ids = [], seen = new Set();
+            let currentId = runId;
+            while (currentId) {
+                if (seen.has(currentId)) throw new TypeError('Cyclic Run ancestry');
+                seen.add(currentId); ids.push(currentId);
+                const record = await checkedRecord(tx, runKey(handle, currentId));
+                if (!record) throw new NotFoundError('orchestration_run');
+                assertRunRoot(record.doc, handle); currentId = record.doc.parentRef?.parentRunId;
+            }
+            return ids;
+        });
+    }
+
+    /** Serialize ephemeral body consumption with the original Run command tree. */
+    async withConsumption(handle, runId, consume) {
+        if (typeof consume !== 'function') throw new TypeError('Run consumption requires a consumer');
+        const lineageIds = await this.#lineageIds(handle, runId);
+        return withNativeResourceWrites(handle, lineageIds, async () => {
+            // Open a fresh snapshot only after acquiring every original ancestor
+            // lock. A second read in an already-open SQL snapshot is insufficient.
+            const result = await this.engine.withTransaction(handle, async tx => {
+                const fence = await this.assertWriter(handle, tx);
+                await this.authorize({ handle, operation: 'runs.get', body: { runId }, tx });
+                const initial = [];
+                for (const id of lineageIds) initial.push(await this.#root(tx, handle, id));
+                const root = cloneNativeDocument(initial[0].doc);
+                if (root.cancelRequested || root.status !== 'running' || root.hostBootId !== fence.hostBootId
+                    || root.hostGeneration !== fence.generation) throw new ConflictError('native_orchestration_consumption_stale');
+                await assertChildRunCurrent(tx, handle, root);
+                const stamps = initial.map(record => record.integrity), denied = Symbol('consumption denied');
+                const value = await consume({ tx, root, fence, deny: () => denied });
+                const currentFence = await this.assertWriter(handle, tx);
+                const current = [];
+                for (const id of lineageIds) current.push(await this.#root(tx, handle, id));
+                const stale = current.some((record, index) => record.integrity !== stamps[index])
+                    || currentFence.hostBootId !== fence.hostBootId || currentFence.generation !== fence.generation;
+                // Reentrant, legitimate controller writes share this transaction.
+                // Commit their facts before refusing stale body consumption.
+                return { denied: stale || value === denied, value: stale || value === denied ? null : value };
+            });
+            if (result.denied) throw new ConflictError('native_orchestration_consumption_stale');
+            return result.value;
+        });
     }
 
     async start(handle, commandId, body) {
