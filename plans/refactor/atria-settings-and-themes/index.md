@@ -3,10 +3,10 @@
 - Task ID: `refactor/atria-settings-and-themes`
 - Primary Workspace: `main`；本 Bundle 属于独立 `docs` 工作空间。
 - Design status: **Approved**。
-- Implementation status: **Not started**；本轮仅完成代码审计、外部调研、设计讨论与方案归档。
+- Implementation status: **Completed (I1—I4)**；实现与实际验证见同一份 Record。
 - Design date: 2026-10-15。
 - Source baseline: `main@60aca695726893e298b7d485f300c6efef3b79fd`。最初审计与已执行产品检查的基线见 [audit-and-research.md](audit-and-research.md)，不能视为已在此提交重跑。
-- Implementation Record: 产品实施开始时建立并持续更新 `records/refactor/atria-settings-and-themes.md`；当前尚未创建，不能据此认定产品工作已开始。
+- Implementation Record: [atria-settings-and-themes.md](../../../records/refactor/atria-settings-and-themes.md)，记录真实实现 HEAD、阶段结果、失败修复与交付状态。
 
 ## 目标
 

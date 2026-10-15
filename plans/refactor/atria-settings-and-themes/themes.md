@@ -1,6 +1,6 @@
 # Atria 设置与主题 — 主题契约
 
-- 状态：方案已确定，尚未实施。
+- 状态：已实施；真实实现与验证见 [Record](../../../records/refactor/atria-settings-and-themes.md)。
 - 本文件定义主题、明暗模式、CSS 和临时预览的行为权威。
 - 设置页面构图与控件归属见 [settings-ui.md](settings-ui.md)。
 - 升级与导入规则见 [migration.md](migration.md)。
