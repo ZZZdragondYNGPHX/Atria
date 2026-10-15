@@ -1,12 +1,10 @@
 // Browser Storage Inspector · mobile viewport + confirm-cancel path.
 
 import { test, expect } from '@playwright/test';
-import { resolve } from 'node:path';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector } from './_helpers.js';
 
-const SCREENSHOT_DIR = resolve(import.meta.dirname, '../../../docs/public/images/browser-storage-inspector');
 
 let server;
 
@@ -33,7 +31,7 @@ test.describe('Browser Storage Inspector · mobile + cancel', () => {
         const dotsVisible = inspector.locator('.storageInspectorEntry .storageInspectorEntryDots').first();
         await expect(dotsVisible).toBeHidden();
 
-        await inspector.screenshot({ path: resolve(SCREENSHOT_DIR, '04-mobile.png') });
+        await inspector.screenshot({ path: test.info().outputPath('04-mobile.png') });
 
         await wipeBrowserFixture(page);
     });
@@ -50,8 +48,10 @@ test.describe('Browser Storage Inspector · mobile + cancel', () => {
         await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
 
         await inspector.locator('.storageInspectorEntry[data-key="atria-cancel-test"] .storageInspectorEntryDeleteButton').click();
-        const confirmDialog = page.locator('dialog.popup[open]').last();
-        await confirmDialog.locator('.popup-button-cancel').click();
+        const confirmDialog = page.locator('.storage-center-dialog');
+        await confirmDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+        await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
+        await inspector.locator('.storageInspectorEntry[data-key="localStorage"]').click();
 
         // Key still there in UI + in real storage
         await expect(inspector.locator('.storageInspectorEntry[data-key="atria-cancel-test"]')).toBeVisible();

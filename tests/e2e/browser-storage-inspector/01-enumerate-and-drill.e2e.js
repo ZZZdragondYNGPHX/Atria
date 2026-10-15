@@ -9,12 +9,10 @@
 // Captures 01-browser-l1.png and 02-indexeddb-l2.png doc screenshots.
 
 import { test, expect } from '@playwright/test';
-import { resolve } from 'node:path';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector } from './_helpers.js';
 
-const SCREENSHOT_DIR = resolve(import.meta.dirname, '../../../docs/public/images/browser-storage-inspector');
 
 let server;
 
@@ -59,7 +57,7 @@ test.describe('Browser Storage Inspector · enumerate and drill', () => {
             await expect(inspector.locator(`.storageInspectorEntry[data-key="${k}"]`)).toBeVisible();
         }
 
-        await inspector.screenshot({ path: resolve(SCREENSHOT_DIR, '01-browser-l1.png') });
+        await inspector.screenshot({ path: test.info().outputPath('01-browser-l1.png') });
 
         // Drill localStorage → L2 lists the 3 seeded keys
         await inspector.locator('.storageInspectorEntry[data-key="localStorage"]').click();
@@ -81,7 +79,7 @@ test.describe('Browser Storage Inspector · enumerate and drill', () => {
         await expect(inspector.locator('.storageInspectorEntry[data-key="bryn-headland-lore"]')).toBeVisible();
         await expect(inspector.locator('.storageInspectorEntry[data-key="aetherpost-index"]')).toBeVisible();
 
-        await inspector.screenshot({ path: resolve(SCREENSHOT_DIR, '02-indexeddb-l2.png') });
+        await inspector.screenshot({ path: test.info().outputPath('02-indexeddb-l2.png') });
 
         // Drill into bryn-headland-lore DB → L3 shows the 2 stores
         await inspector.locator('.storageInspectorEntry[data-key="bryn-headland-lore"]').click();

@@ -8,7 +8,7 @@
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector } from './_helpers.js';
+import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector, confirmBrowserDeletion } from './_helpers.js';
 
 let server;
 
@@ -44,7 +44,7 @@ test.describe('Browser Storage Inspector · delete IndexedDB', () => {
         // schema removal. Assert: post-refresh row still exists (schema OK)
         // AND objectStore count() returns 0.
         await inspector.locator('.storageInspectorEntry[data-key="characters"] .storageInspectorEntryDeleteButton').click();
-        await page.locator('dialog.popup[open]').last().locator('.popup-button-ok').click();
+        await confirmBrowserDeletion(page, ['indexeddb', 'bryn-headland-lore']);
         await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
 
         // Store schema still there (row still visible) because clear() doesn't drop schema
@@ -74,7 +74,7 @@ test.describe('Browser Storage Inspector · delete IndexedDB', () => {
 
         // At L2 · click delete on aetherpost-index row
         await inspector.locator('.storageInspectorEntry[data-key="aetherpost-index"] .storageInspectorEntryDeleteButton').click();
-        await page.locator('dialog.popup[open]').last().locator('.popup-button-ok').click();
+        await confirmBrowserDeletion(page, ['indexeddb']);
         await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
 
         // aetherpost-index gone from UI

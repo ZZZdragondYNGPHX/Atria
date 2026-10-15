@@ -88,14 +88,27 @@ export async function openBrowserStorageInspector(page) {
         const mod = await import('/scripts/storage-management.js');
         void mod.openStorageManagement();
     });
-    const management = page.locator('.storageManagementCenter').last();
+    const management = page.locator('.storage-center-dialog').last();
     await management.waitFor({ state: 'visible', timeout: 10_000 });
-    await management.locator('.storageManagementTab[data-tab="browser"]').click();
-    // The unified manager mounts both inspectors at once; after switching
-    // tabs, target the browser mount explicitly rather than the first
-    // storageInspectorContainer (which belongs to the hidden server tab).
-    const inspector = management.locator('.storageManagementBrowserMount .storageInspectorContainer');
+    await management.getByRole('combobox', { name: 'Storage scope', exact: true }).selectOption('browser');
+    await management.getByRole('button', { name: 'Advanced tools', exact: true }).click();
+    const inspector = management.locator('.storageInspectorContainer');
     await inspector.waitFor({ state: 'visible', timeout: 10_000 });
     await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached', timeout: 15_000 });
+    return inspector;
+}
+
+export async function confirmBrowserDeletion(page, path = []) {
+    const panel = page.locator('.storage-center-dialog');
+    await panel.getByRole('button', { name: 'Permanently delete', exact: true }).click();
+    await panel.getByRole('heading', { name: 'Operation result', exact: true }).waitFor();
+    await panel.getByRole('button', { name: 'Refresh resources', exact: true }).waitFor();
+    await panel.getByRole('button', { name: 'Advanced tools', exact: true }).click();
+    const inspector = panel.locator('.storageInspectorContainer');
+    await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
+    for (const part of path) {
+        await inspector.locator(`.storageInspectorEntry[data-key=${JSON.stringify(part)}]`).click();
+        await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
+    }
     return inspector;
 }

@@ -60,17 +60,20 @@ export class BrowserResourceCenter {
             }])) };
     }
     async expand(path) {
-        if (['localStorage', 'sessionStorage'].includes(path[0]) || path[0] === 'indexeddb' && path.length === 4
-            || path[0] === 'cachestorage' && path.length === 3) return [path];
+        if (path[0] === 'sessionStorage' && path[1] === TASK_KEY) throw new Error('Operation history is managed by the resource center.');
+        if (['localStorage', 'sessionStorage'].includes(path[0]) && path.length === 2 || path[0] === 'indexeddb' && path.length >= 2
+            || path[0] === 'cachestorage' && path.length >= 2) return [path];
         const response = await this.provider.fetch(path), result = [];
-        for (const entry of response.entries) result.push(...await this.expand([...path, entry.key]));
+        for (const entry of response.entries) if (!(path[0] === 'sessionStorage' && entry.key === TASK_KEY)) result.push(...await this.expand([...path, entry.key]));
         return result;
     }
     async preview(action, targets) {
         if (action !== 'purge') throw new Error('Browser data requires explicit permanent deletion.');
-        const paths = new Map();
-        for (const target of targets) for (const path of await this.expand(target.path)) paths.set(identity(path), path);
-        const items = [];
+        const paths = new Map(), items = [];
+        for (const target of targets) {
+            try { for (const path of await this.expand(target.path)) paths.set(identity(path), path); } catch (error) { items.push({ target, name: target.path.join(' / '), version: null, status: 'blocked', bytes: null, reason: error.message, consequences: [] }); }
+        }
+        for (const [key, path] of paths) if ([...paths.values()].some(parent => parent.length < path.length && parent.every((part, index) => path[index] === part))) paths.delete(key);
         for (const path of paths.values()) {
             try {
                 const version = await fingerprintBrowserResource(path);

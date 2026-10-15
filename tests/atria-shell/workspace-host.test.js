@@ -50,6 +50,25 @@ function makeAdapter(kind, records) {
 }
 
 describe('R7G WorkspaceHost', () => {
+    test('resource invalidation preserves dirty drafts and pending saves, and refreshes a clean owner', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+        const records = [], adapter = makeAdapter('library', records);
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { library: adapter } });
+        try {
+            host.openLibraryWorld('world'); await flushWorkspace();
+            const root = records[0].controller.root, draft = document.createElement('input');
+            draft.value = 'Unsaved world'; root.dataset.atriaDraftDirty = 'true'; root.append(draft);
+            host.refreshForResourceChange(); await flushWorkspace();
+            expect(draft.isConnected).toBe(true); expect(draft.value).toBe('Unsaved world');
+            expect(adapter).toHaveBeenCalledTimes(1);
+            expect(document.querySelector('[data-resource-change-notice]')).not.toBeNull();
+            delete root.dataset.atriaDraftDirty; root.dataset.atriaSavePending = 'true';
+            host.refreshForResourceChange(); await flushWorkspace(); expect(adapter).toHaveBeenCalledTimes(1);
+            delete root.dataset.atriaSavePending;
+            host.refreshForResourceChange(); await flushWorkspace(); expect(adapter).toHaveBeenCalledTimes(2);
+        } finally { host.dispose(); shell.destroy(); navigation.dispose(); }
+    });
     test('the active controller closes its transient before Escape or Back consumes a detail route', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });

@@ -15,7 +15,7 @@ import {
 } from './library-runtime-workspaces.js';
 import { formatShellText, translateShellText } from './localization.js';
 import { createProductSearchIndex } from './product-search.js';
-import { installAtriaWorkspaceLeaveGuard } from './workspace-leave-guard.js';
+import { installAtriaWorkspaceLeaveGuard, confirmAtriaDraftLeave } from './workspace-leave-guard.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
     return createAtriaStatePanel(documentRef, kind, {
@@ -676,6 +676,16 @@ export function createAtriaWorkspaceHost({
             .catch(error => console.warn('[atria-shell] Workspace refresh dispose failed', error))
             .finally(() => activate(navigation.getRoute(), 'workspace-refresh'));
     }
+    function refreshForResourceChange() {
+        const query = { root: slot, dirty: slot.dataset.atriaDraftDirty === 'true' || Boolean(slot.querySelector('[data-atria-draft-dirty="true"]')) };
+        documentRef.dispatchEvent(new windowRef.CustomEvent('atria-draft-query', { detail: query }));
+        if (!query.dirty && slot.dataset.atriaSavePending !== 'true' && !slot.querySelector('[data-atria-save-pending="true"]')) { refreshActive(); return; }
+        if (slot.querySelector('[data-resource-change-notice]')) return;
+        const notice = documentRef.createElement('p'); notice.className = 'atri-library-feedback'; notice.dataset.resourceChangeNotice = 'true'; notice.setAttribute('role', 'status');
+        notice.textContent = translateShellText('This resource changed in storage. Your draft is kept; reload before saving.');
+        const reload = documentRef.createElement('button'); reload.type = 'button'; reload.className = 'atri-library-button'; reload.textContent = translateShellText('Reload resource');
+        reload.addEventListener('click', () => { if (confirmAtriaDraftLeave(documentRef, slot)) refreshActive(); }); notice.append(reload); slot.prepend(notice);
+    }
 
     function onLegacyClick(event) {
         if (disposed || event.defaultPrevented) return;
@@ -729,6 +739,7 @@ export function createAtriaWorkspaceHost({
         openUtility,
         closeActive,
         refreshActive,
+        refreshForResourceChange,
         refreshSearch: () => productSearch?.refresh?.(),
         getActiveWorkspace: () => active?.descriptor || null,
         isActive: key => active?.descriptor?.key === String(key || ''),

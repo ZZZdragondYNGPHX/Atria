@@ -3,11 +3,11 @@
  * center. The provider exposes capability metadata; the shared inspector
  * decides which view/edit/delete/create controls are rendered.
  */
-import { callGenericPopup, POPUP_TYPE } from './popup.js';
-import { createStorageInspector } from './storage-inspector.js';
 import { t, translate } from './i18n.js';
 
 const MAX_CACHE_BODY_CHARS = 256 * 1024;
+const MANAGEMENT_KEY = 'atria_storage_center_tasks_v1';
+const assertUserKey = (category, key) => { if (category === 'sessionStorage' && key === MANAGEMENT_KEY) throw makeErr('E_READ_ONLY', t`Operation history is managed by the resource center.`); };
 
 const BROWSER_CATEGORIES = Object.freeze([
     { key: 'localStorage', label: 'localStorage' },
@@ -60,9 +60,15 @@ export async function fingerprintBrowserResource(pathArr) {
         if (value === null) throw makeErr('E_NOT_FOUND', 'Browser resource no longer exists.');
     } else if (category === 'indexeddb' && rest.length === 3) value = (await readIdbRecord(...rest)).value;
     else if (category === 'cachestorage' && rest.length === 2) {
+        if (!(await caches.keys()).includes(rest[0])) throw makeErr('E_NOT_FOUND', 'Browser resource no longer exists.');
         const response = await (await caches.open(rest[0])).match(decodeCacheRequest(rest[1]));
         if (!response || response.type === 'opaque') throw makeErr('E_UNAVAILABLE', 'This cache response cannot be verified.');
         value = { status: response.status, headers: [...response.headers.entries()].sort(), body: await response.arrayBuffer() };
+    } else if (category === 'indexeddb' && [1, 2].includes(rest.length) || category === 'cachestorage' && rest.length === 1) {
+        if (category === 'cachestorage' && !(await caches.keys()).includes(rest[0])) throw makeErr('E_NOT_FOUND', 'Browser resource no longer exists.');
+        const response = await new BrowserProvider().fetch(pathArr);
+        value = [];
+        for (const entry of [...response.entries].sort((a, b) => a.key.localeCompare(b.key))) value.push([entry.key, await fingerprintBrowserResource([...pathArr, entry.key])]);
     } else throw makeErr('E_INVALID_PATH', 'Select individual browser records for a fixed operation.');
     return digestBytes(new TextEncoder().encode(JSON.stringify(await digestValue(value))));
 }
@@ -471,6 +477,7 @@ export class BrowserProvider {
         const entries = [];
         for (let index = 0; index < storage.length; index++) {
             const key = storage.key(index);
+            const editable = !(kind === 'sessionStorage' && key === MANAGEMENT_KEY);
             const value = storage.getItem(key) ?? '';
             entries.push({
                 key,
@@ -480,9 +487,9 @@ export class BrowserProvider {
                 sizeBytes: estimateEntryBytes(key, value),
                 mtimeMs: null,
                 canDrill: false,
-                canDelete: true,
+                canDelete: editable,
                 note: value.length > 100 ? `${value.slice(0, 100)}…` : value,
-                capabilities: capabilities({ view: true, viewContent: true, edit: true, delete: true }),
+                capabilities: capabilities({ view: true, viewContent: true, edit: editable, delete: editable }),
             });
         }
         entries.sort((a, b) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0));
@@ -707,6 +714,7 @@ export class BrowserMutator {
             throw makeErr('E_INVALID_PATH', 'Create is supported only inside localStorage/sessionStorage.');
         }
         const [category] = pathArr;
+        assertUserKey(category, String(key));
         if (category !== 'localStorage' && category !== 'sessionStorage') {
             throw makeErr('E_INVALID_PATH', 'This browser storage category does not support create.');
         }
@@ -720,6 +728,7 @@ export class BrowserMutator {
             throw makeErr('E_INVALID_PATH', 'Storage write path is incomplete.');
         }
         const [category, ...rest] = pathArr;
+        assertUserKey(category, rest[0]);
         if (category === 'localStorage' || category === 'sessionStorage') {
             if (rest.length !== 1) throw makeErr('E_INVALID_PATH', `${category} path must be [category, key].`);
             window[category].setItem(rest[0], String(content));
@@ -766,6 +775,7 @@ export class BrowserMutator {
             throw makeErr('E_INVALID_PATH', `Path must have at least [category, key]: got ${JSON.stringify(pathArr)}`);
         }
         const [category, ...rest] = pathArr;
+        assertUserKey(category, rest[0]);
         switch (category) {
             case 'localStorage':
             case 'sessionStorage':
@@ -852,19 +862,5 @@ export class BrowserMutator {
 }
 
 export async function openBrowserStorageInspector() {
-    const container = document.createElement('div');
-    container.classList.add('storageInspectorContainerWrapper');
-    const inspector = createStorageInspector({
-        provider: new BrowserProvider(),
-        mutator: new BrowserMutator(),
-        container,
-    });
-    await inspector.init();
-    return callGenericPopup(container, POPUP_TYPE.DISPLAY, '', {
-        wide: true,
-        wider: true,
-        large: true,
-        allowVerticalScrolling: true,
-        okButton: t`Close`,
-    });
+    return (await import('./storage-management.js')).openStorageManagement({ initialScope: 'browser' });
 }
