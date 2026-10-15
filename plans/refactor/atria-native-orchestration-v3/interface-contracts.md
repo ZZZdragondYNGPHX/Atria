@@ -398,9 +398,9 @@ Receipt按稳定observationId追加，不覆盖unknown或矛盾历史。原Port�
 
 `NodeAttemptReceipt`沿原`atri_orchestration_record/receipt`保存，封闭字段为`schemaVersion,receiptKind:'node_attempt',receiptId,runId,nodeAttemptId,epoch,graphRevision,sourceBindingDigest,inputState,inputDigest,outcome,resultRefs,effectReceiptRefs,decisionSeq,reasonCode,createdAt`。receiptId由Run+Attempt稳定推导；Attempt终态、不可变收据、Root/event/command同事务，不能靠可变status伪造分支成功。普通settle拒绝Join/Output节点；已准备或未知Effect未结清时不能终结Attempt。原Source/Result/费用收据验证Port为必填，不在V3影子实现。
 
-新增`ojoin_*`身份，沿原`record/join`分别保存`barrier:<joinId>`和`joinId`：前者是不可变`JoinBarrier`，后者是不可变`JoinReceipt`，不是新metadata kind或独立存储。Barrier字段为`schemaVersion,joinId,runId,fanoutAttemptId,nodeAttemptId,epoch,graphRevision,memberAttemptIds,sourceBindingDigest,parentBudgetRef,policy,quorum,deadlineAt,frozenSeq,createdAt`；稳定joinId绑定Join Attempt。原Fanout分组/parent reservation Port验证完整成员；冻结事务只接受同epoch/source的pending分支，已启动成员与冻结竞态必有一方拒绝，不能补录进旧屏障。原Scheduler permits/真实父子预算仍归P3。
+新增`ojoin_*`身份，沿原`record/join`分别保存`barrier:<joinId>`和`joinId`：前者是不可变`JoinBarrier`，后者是不可变`JoinReceipt`，不是新metadata kind或独立存储。Barrier字段为`schemaVersion,joinId,runId,fanoutAttemptId,nodeAttemptId,epoch,graphRevision,memberAttemptIds,memberEdges,sourceBindingDigest,parentBudgetRef,policy,quorum,deadlineAt,frozenSeq,createdAt`；稳定joinId绑定Join Attempt。`memberEdges:[{nodeAttemptId,edgeIds}]`冻结每个最终成员到Join的直接输入边；多步分支冻结最终成员的reserved身份，不跳过中间任务。原Fanout分组/parent reservation Port验证完整成员；冻结事务只接受同epoch/source的pending或reserved分支，已启动成员与冻结竞态必有一方拒绝，不能补录进旧屏障。原Scheduler permits/真实父子预算仍归P3。
 
-JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,decisionSeq`；cutoffSeq是本次决策前已持久Root.eventSeq，decisionSeq=cutoffSeq+1。有效成功按成员不可变收据的decisionSeq/AttemptId稳定排序；any-success取首个，count-quorum取前quorum个。partial不计成功配额；all-success有失败不能complete，all-settled等待全部或显式deadline；不满足部分输出合同则failed。deadline只采纳不晚于冻结deadlineAt持久化的合法Result，截止后但结算前入库也排除。结果需原audience/source Port重新验证，缺证据拒绝/排除；收据列明未结算、失败、未采纳与迟到成员。
+JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,edgeAdmissionRefs,decisionSeq`；cutoffSeq是本次决策前已持久Root.eventSeq，decisionSeq=cutoffSeq+1。有效成功按成员不可变收据的decisionSeq/AttemptId稳定排序；any-success取首个，count-quorum取前quorum个。partial不计成功配额；all-success有失败不能complete，all-settled等待全部或显式deadline；不满足部分输出合同则failed。deadline只采纳不晚于冻结deadlineAt持久化的合法Result，截止后但结算前入库也排除。结果需原audience/source Port重新验证，缺证据拒绝/排除；收据列明未结算、失败、未采纳与迟到成员。
 
 重放、并发settle和已提交回执丢失只返回同一结算，晚到分支不能重开旧Join；取消/恢复epoch也不能消费旧屏障。未完成分支仍保留实际身份/收据，不借Join失败声称远端取消或退款。P2当前使用受控原Port证据，不代表ResultEnvelope/Context/Scheduler或Domain Consumer已完成。
 
@@ -444,4 +444,12 @@ Fanout冻结多步分支时，最终成员的实际上游Result可能尚不存�
 
 内部`AttemptController.reserve`以Run+producer Attempt+node稳定身份，在Root/record/command同CAS预留一槽，计入attempt/step高水位；原fanout scope Port必填，只校验许可，不代表原资金reservation。Join Barrier可冻结这些身份；后续prepare不能换成员ID。真实依赖receipt已存在后，Transition带reservedAttemptId、复核原Source/Result/Grant/预算和creator epoch，原子填入准备快照并计edge/loop/step；槽位已计不再重复加attempts。相同请求重放不能擦除已准备输入，改变绑定也不能覆盖prepared成员。
 
-只有尚未prepared的reserved输入可按合法GraphPatch补依赖，prepared/终结快照保持冻结。取消未准备成员追加inputState=reserved、inputDigest=null的取消收据，禁止伪造结果、费用或退款；Join按未完成/取消事实结算。NodeAttemptReceipt保留inputState；source/epoch不匹配拒绝准备。完整fanout dispatch、统一边计数、隐式入口组/嵌套组及原scheduler/budget tree仍在P2/P3继续，不以预留身份冒充这些能力完成。
+只有尚未prepared的reserved输入可按合法GraphPatch补依赖，prepared/终结快照保持冻结。取消未准备成员追加inputState=reserved、inputDigest=null的取消收据，禁止伪造结果、费用或退款；Join按未完成/取消事实结算。NodeAttemptReceipt保留inputState；source/epoch不匹配拒绝准备。完整fanout dispatch、隐式入口组/嵌套组及原scheduler/budget tree仍在P2/P3继续，不以预留身份冒充这些能力完成。当前Transition/Join共用边计数见§17.11，Fanout dispatch后续必须接同一入口。
+
+### 17.11 共享边准入与可复核的GraphPatch历史
+
+内部`admitGraphEdges`在Run同CAS接收`transfers:[{edgeId,producerAttemptId,nodeAttemptId}]`；核对同Run/epoch/source的实际Attempt及edge端点，不准调用方伪造新的计费身份。`receiptKind:'edge_admission'`沿原record/receipt不可变保存，字段为`schemaVersion,receiptKind,receiptId,runId,epoch,graphRevision,edgeId,producerAttemptId,nodeAttemptId,sourceBindingDigest,edgeVisit,loopIteration,decisionSeq,createdAt`。身份由Run+transfer稳定推导，已存在时校验完整性/累计高水位并复用，不重复计数；全部新边先检查单边/全局edge/显式回边上限，后与Root/command/决策原子写入。不是Compute银行或发送许可。
+
+Transition收据增加`edgeAdmissionRefs`。Join关闭屏障时统一准入所有冻结memberEdges，包含截止时未完成/取消的显式缺席；这是屏障依赖的控制成本，不声称实际调用已经发出，不把缺席结果当success。已有对应准入可复用；余额不足不落半份Join收据/Attempt终态/edge tickets。Fanout的出边及完整组调度尚须后续接入此入口，不据此宣布整个G2完成。
+
+GraphPatchReceipt增加`previousGraphRevision,producerInputDigest,sourceBindingDigest,reasonRefs,appliedOperations`。接受时保存经过完整校验的操作，供后续图修订复核；拒绝时appliedOperations显式空数组，只保留安全摘要，不存未知payload。读取既有patch历史先核对原record integrity、schema/Run/accepted/操作数组；损坏即`native_orchestration_graph_history_unavailable`，不能猜测no-progress或静默继续。单batch对同pending Attempt的状态操作合并为最终一次写入，不产生内部CAS自冲突。

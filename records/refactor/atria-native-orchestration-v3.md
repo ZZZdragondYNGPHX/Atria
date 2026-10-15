@@ -249,3 +249,10 @@
 - 最新FS/SQLite reservation17/17（1个SQLite的FS专用窗口N/A），包含未准备拒绝激活、成员冻结后填入同身份、满槽仍可完成既有准备、重放/取消/source revoke/epoch、reserved允许补依赖而prepared拒改、FS publish故障不拆Root/identity/command。相关Transition28、Join34、Effect/Approval22、Graph10、Run18已通过；新增generic输入篡改/缺预算负例随后定向2case通过。定向ESLint/diff check通过。
 - FS故障测试首版将测试hook置null，恢复时触发this.fault非函数；恢复为原接口要求的no-op函数后同窗口通过，不将fixture错误归为真实磁盘故障。该case为软件异常注入，不冒充进程kill或断电。
 - 原Docker启动故障仍在，本组MySQL/Pg与真实Port证据BLOCKED/NOT_RUN；没有重新启动/重置它。完整P2仍需Fanout/Join统一边计数、完整组调度、Delegate/Handoff/Review/recovery；P3原scheduler/上下文/权限/预算树及P4–P8继续，三端/真实批准/质量未过，main未集成。
+
+## 2026-10-15 — P2第六组：共享边准入与接受的图历史
+
+- Source `501b4d8b9` → `d90787f5f`已提交推送。Transition与Join复用同一不可变edge_admission账本：Run+edge+两端Attempt稳定去重，单边/全局edge/显式回边计数与Root/command/决策同事务。Join冻结最终成员的直接输入边，关闭时按完整屏障收取逻辑控制成本；缺席仍为缺席，不冒充实际发送或成功。余额不足整组回滚，已有票据不重复扣次数。
+- 接受的GraphPatch保存校验后的操作、前后graph revision和producer/source证据；拒绝提案不存未知原payload。损坏的历史拒绝后续提案，不猜测进度。一个batch对同pending Attempt的多次状态操作合并成最终一次写入。
+- 最新定向证据：Join38/38、Transition28/28通过；修正Graph纯控制器fixture后Graph16/16与reservation17/17通过，1个SQLite上的FS专用窗口N/A。定向生产ESLint/diff check通过。首轮Graph一项因Windows保留端口49572在业务前失败；沿既有新隔离根fixture预置后通过，生产Owner固定port/拒绝策略未改。首个组合命令另有一个拼错的测试文件名，已用真实attempt-reservation.test.js执行纠正，不记作通过。
+- Docker故障仍在，修改后的MySQL/Pg用例BLOCKED/NOT_RUN；受控Source/Result/Budget Ports也不当原服务实证。P1/P2仍IN_PROGRESS，完整Fanout组/出边调度、Delegate/Handoff/Review/recovery与P3–P8继续；真实三端/批准/费用/质量没有通过，main未集成。
