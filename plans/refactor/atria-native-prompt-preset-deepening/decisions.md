@@ -99,6 +99,8 @@
 
 ## D9/E0 启动静态审计（NOT_CLOSED；见 [e0-audit.md](e0-audit.md)）
 
+2026-10-15 本地续审已补全产品静态索引和核心挂载/handler/服务链，独立研究资料见 [全前端审计入口](../../architecture/atria-frontend-audit/index.md)。详细消费者、接口差距、并发HEAD与Gate仍只归E0；实际工作只归同一Record。本轮不重开D1–D8，不决定视觉，不创建实现分支或改main；外部AI之后的代表性HTML不承担全功能范围权威，完整功能仍以正式合同与源码审计为准。
+
 - 检索/读取 main 与 V3 的真实消费者、动态 import/注册、Source/Prompt/Provider/Memory/Experience/Evolution/Studio/Play/Settings/普通 RP/测试入口；必须区分已定位与尚未闭合的引用。
 - 对跨合同缺口、实现阶段依赖、真实阻塞/未知、Source/权限/质量/Provider 失败出口提供原代码落点和验收责任；完整消费者和设计依赖闭包完成前不得宣称 E0 通过。
 - **E0 未收口前不创建实现分支，不修改 main**；即使设计 Gate 最终收口，也仍须用户另行明确授权正式开发。UI 视觉实施还必须等待用户自己的 Codex→外部视觉 AI→HTML/双文档→多轮确认过程。

@@ -1,80 +1,109 @@
-# D9 / E0 收口审计：真实消费者、合同缺口与开发前 Gate
+# D9 / E0 审计：真实消费者、跨合同缺口与开发前 Gate
 
-> **E0_IN_PROGRESS / NOT_CLOSED（2026-10-15）**。D1–D8 的产品与交互合同已冻结，**视觉审美/最终前端视觉方案没有冻结**。本文件是该 Prompt Preset 深化 Plan 的唯一 E0 审计台账与下一步工作包索引；不是 V3 自己的 E0（V3 设计与部分实现有自己的 Plan/Record）。本次证据仅是 GitHub HEAD、default-branch 定向代码搜索、指定文件读取与设计交叉核对。无本地全仓 checkout、AST/反向依赖图、运行测试、CI、Provider API、E2E 或三端实机；**不能称完成全量消费者审计**。
+> **E0_IN_PROGRESS / NOT_CLOSED（2026-10-15，本轮本地续审）**。这是 Prompt Preset 深化的唯一 E0 台账；不是另一个 V3 E0，也不是前端视觉定稿。D1–D8 功能/交互语义不重开，视觉未冻结。实际历史继续记录在[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。本轮只写 docs，未建立本任务实现分支、未修改 main。
 
-## 1. 远端静态锚点、审计方法与局限
+## 1. 本轮精确基线、方法与证据边界
 
-- main 初次静态阅读：5eb3bc7652cd9837ca8c555cf74976fab078932c；提交前已变为 73557f8098d2353f23777a35e25042e94742bec9（Storage Center 合并，新增/修改 Source/Resource/Recovery/GC/backup/Settings 等多种消费者，需要刷新闭包）。
-- docs 起点：e4719ad9b3b165f2f68ec2ac3743fb0e8d2ca210；提交前 HEAD 变为 26667607066dd7ca27415f03fc63b01bc31ffdf2，4 笔其它存储/V3 记录提交，没有与本企划路径冲突，本轮基于新 HEAD 原子提交。
-- 独立 V3 实现分支初次阅读：c04f36925189d4064a63bdd6b9ca345ff2bcf805；提交前更新到 cff1d24530967e8eba8668530ac17ae0b66ec334，新增 join-controller/attempt-settlement 与若干 Run/Attempt 消费者。原静态 Matrix 没有覆盖这些新增真实消费者。
-- GitHub default-branch code search 针对 promptProgramRef、workspace-prompt、getPresetBinding、PromptCandidateStore、contextSlots、requirePilotSources、mountPromptPresets、orchestrationMode、mountPromptEditor；**部分结果数触及 topn=30，只是有界样本而非全匹配证明**。搜索只覆盖仓库默认分支，对独立 V3 分支采用已知精确源码路径直接读取。
-- 已交叉阅读 V3 单 Native Host、C2 Context、N2 Narrative Quality、Graph Editor 与接口/Implementation 合同。文档中 V3 标准不自动意味着 main 已接上这些端口。之后任何 E0 结论需要以开发前实时 HEAD 重新核对。
+| 对象 | 实际基线与并发核对 |
+| --- | --- |
+| main | `695acf3bcad1d42e331459189532a76056278bec`，与origin/main相同、源码工作树干净；相对735由其他任务合入Storage Center UI，已补审drawer/批量/确认/刷新/相关测试并重建索引；非本任务产品改动 |
+| docs | 起点 `0a758827eaed96713ab9efed25ef1a0fdf31674c`；过程中依次看到 `ab5461eb1`、`5e2117393`、`d2a3d21d9`、`d346f895b`、`ca43a0a8442036639c264bde14f9f2b9616fd554`；他人 V3/Storage 文档与预览保留；本次提交基于当时真实 HEAD |
+| V3 | 99da3eadb → da4c38e90 → 0d799fc28（合入main@735 Storage权威）→ 最新 `31bef95723885c1547a9c3686200cbaf122799a8`（有界dependency transition/显式loop）；固定Git archive读取，未改其工作树 |
+| 结构证据 | 本地 `git`/`rg`、JS AST、逐控件/事件/导入/服务调用/端点/CSS/测试索引；全产品研究入口见[前端审计](../../architecture/atria-frontend-audit/index.md) |
+| 静态规模 | 1,065 个前端/模板/CSS/原生包装层文本文件、355,257 行；2,390 个 JS control factory 候选、1,221 个 HTML 标签点、3,206 个事件注册候选；不是可见控件数或通过功能数 |
+| 全仓相关索引 | main 前端+服务器 5,960 import/resource edges；main/V3 1,630 目标符号/字符串位置，1,908 Router 注册表达式；1,527个main测试树JS（含helper/fixture）目录及15个V3控制流测试目录，全部 NOT_RUN；[相关测试解释](../../architecture/atria-frontend-audit/test-evidence-map.md) |
 
-## 2. 已定位消费者及待闭包范围（STATIC_ONLY）
+上一轮是远端有界搜索首审；本轮已获得本地源码并系统追踪真实挂载、动态 literal import、handler、client/endpoint/领域 authority，补充了具体物理缺口。**仍不是所有运行时表达式、外部插件、用户作品和 SourcePort 的完整动态闭包，更不是逐行人工审阅 355,257 行或产品验收 PASS。** 完整证据方法、索引局限和未知入口见[coverage](../../architecture/atria-frontend-audit/coverage-and-evidence.md)。
 
-| 区域/实际入口 | 静态发现的代码或合同 | 需要下一步证明；不能当完整闭包 |
+本轮未启动产品、未跑产品 Node/Jest/build/CI、未发 Provider/模型请求、未做 Browser E2E/权限攻击/故障恢复/三端实测。只运行了文档证据生成与相关静态验证。已有测试的断言仅证明测试设计，不能复用历史“通过”作为本任务新结果。
+
+## 2. 真实入口与消费者台账（静态已推进，G1 未闭合）
+
+源码链接和行号集中在[固定源码索引](../../architecture/atria-frontend-audit/source-map.md)，全位置附件见[control/event/import/service/E0 TSV](../../architecture/atria-frontend-audit/coverage-and-evidence.md)。
+
+| 域／真实链 | 本轮复核到的物理消费者 | 剩余闭包／处置 |
 | --- | --- | --- |
-| Library/Prompt Presets | main:public/scripts/native/prompt-presets.js、prompt-authoring.js、public/scripts/atria-shell/library-runtime-workspaces.js；新 Program/Module 和已有分类/原生 exact refs | 所有 create/edit/delete/archive/fork/used-by/export/import、Draft dirty/leave、原 Library/Package/Project 的反向引用与 Run/Play binding；无新旧双 UI |
-| Play/Runtime/Settings | main:public/scripts/native/runtime-workspace.js、prompt-runtime-controls.js、runtime-readiness.js；main:src/endpoints/native-generation.js | Route-owned Prompt Choices/parameters、Session/Studio/Project/Package 角色与 source scope、诊断、权限与预览入口的所有动态调用；旧 Settings 字段/导航真实消费者 |
-| Native Compiler/Model | main:src/native/model-prompt-runtime/{route-resolver,prompt-compiler,contracts,prompt-renderers,generation-service,compiled-binding,context-providers}.js、src/native/adapters/{http-generation-provider,native-messages-provider,responses-generation-provider}.js | 受信 Node Program 与 Route Program 选型、Fallback/Token/Provider role、Native Context source、实际 send/preview 同一 Compiler 与 capabilities、Source→Wire 的 trust 决议 |
-| Ordinary RP 与旧 Orchestration | main:public/scripts/agents/orchestrator/main.js；public/scripts/native/experience/{index,llm/runtime,llm/narrative}.js 含 orchestrationMode/director 选择；public/scripts/atria-shell/workspace-host.js 有 workspace-prompt-previews 导航 | 全部旧 mode/preset/Workspace/Director/Canvas/Generator 的 API、dynamic imports、Settings/Session/Chat/Save/Play 读取链；正式实现必须硬切移除并保留真正独立的 RP/World 业务数据 |
-| Experience/Eval/Evolution | main:src/native/agent-intelligence/{evolution-targets,evolution-service,evolution-evaluator,evolution-observer}.js、evaluation/quality.js、model-prompt-runtime/prompt-candidates.js | workspace-prompt/workspace-strategy/Director 与原 Evolution journal/promotion/rollback 的真实读写；V3 plan-prompt、新 Module → PlanRevision → Binding CAS、source_unready 的完整受审案例/评委证明 |
-| Native Studio/Project/Package | main:public/scripts/native/prompt-authoring.js 的 Studio 工具；src/native/{package-composition,dependency-closure}.js、src/native/authoring/resource-graph.js | Studio A1 ChangeSet/Review/Apply、Package 原件只读、Project/Scope exact references、Save/Export/Import/Archive/Delete/GC、Plugin/Skill/Media 的合法依赖图，不能随旧模式清退删除仍在使用的原 Native 数据 |
-| Context/Hybrid/Cognition | main:public/scripts/native/context-compiler.js、src/native/model-prompt-runtime/context-providers.js、src/native/information-authority.js；V3 C2 与 HCM-01–08 文档 | RP/Native Session/Package/Project 各受众 source refs、branch/variant/worldTick/grant/Disclosure、ContextSlot Role、长会话 source-complete packet 和缓存/currentness 实际消费；不能在 Prompt 层注册第二 Memory/Info Writer |
-| V3 已见实现与计划边界 | V3:public/shared/native-orchestration-contracts.js（Node kind/agentPinId/dependencyPins）、src/native/orchestration/{plan-repository,run-repository}.js、src/endpoints/native-orchestration.js（已知 Authoring API）；V3 D9 interfaces/implementation-plan | 当前读到的 V3 Endpoint 是 Plan Authoring 相关接口；尚未读取证明完整 Runtime Controller/ModelPort/Effect/Run/Output 主链。尝试精确读取 src/native/orchestration/controller.js 返回 NOT_FOUND，**不能因此推断运行时控制器绝对不存在，只能证明该路径未提供**。必须再查目录与 import graph |
-| UI Surface 与测试 | main:public/scripts/atria-shell/*、public/scripts/native/{prompt-presets,prompt-authoring,runtime-workspace}.js、tests/atria-shell/{prompt-preset-receipt,prompt-authoring-p6}.test.js、tests/native/*、tests/agent-intelligence/{evolution-consumers,evolution}.test.js、tests/game-runtime/{llm-orchestrator-narrative,r5-exit-matrix}.test.js；V3 D8 Graph/Inspector 合同 | 前端 Screen/Route/Button/Surface/State/Permission/Action 的真实反向引用、跨端完整操作与旧 mode 专属测试删除/新真实集成替代；不能仅看截图或搜索若干关键词当所有消费者已审计 |
+| Shell/路由/启动 | `public/script.js:306,2011` → atria-shell/index → workspace-host/library-runtime-workspaces；`capability-host.js:62–86` 明确加载 regex/game-runtime/search/orchestrator/memory；Studio/旧 Agents/Diagnostics dynamic imports | Literal 图不含任意 plugin URL、Work Source Graph 的完整 UI；Script/Worker/模板/注册器不能只看 ES import；保留原 Navigation/Host Bridge，清退旧兼容入口 |
+| Library/Prompt | prompt-presets、prompt-authoring、prompt-semantics、resource bundle/Used By、package original、native product/studio/runtime clients | 同 preset/Library/Project/package 的确切写入、revision、archive/delete/ref/closure 已定位；资源与依赖操作的全运行组合未测；不能造第二 Prompt Store |
+| Play/普通 RP | play-product → `generateNative` → play-generation → generation-client；Task Turn、game free text、普通 narrator 三出口；play-generation:79–96 仍读旧 mode并运行 Director/guidance | 旧 Workspace 的清退会影响真实默认 Native Play，不只是旧设置页；保留 Session/Turn/World/Memory 原业务；不要沿用旧资料“必经隐藏 textarea”的推断 |
+| Settings/Account/Storage | 新六类 Settings，Account 可见 Sign out；Storage Center server/browser scope、preview/task/recovery；storage-change-events 到 client/session/runtime/search | 新旧备份/高级 inspector 混合内容需按原生价值拆分；旧全文盘点中“缺 Logout/Secret 总是首步”等已纠正；当前 Stage 不能绕原资源删除/恢复权威 |
+| 原 Native Model/Prompt | RouteResolver 读 Route.promptProgramRef；PromptCompiler/ContextProvider/renderers；GenerationService fallback、compiledBinding、Provider adapters | 受信 Node 独立 Program 与 Route、fallback、Source/currentness、Typed Blocks 尚不能由现生产接口证明；详 E0-01/02/03 |
+| Context/Memory/Cognition | ContextProvider 按 lane映射 history/fact/directive；原 context compiler/selection/provenance/Persona、Memory snapshot/currentness、Session branch/revision guards | 已有 history 降权和精确来源检查，不能误称全部未实现；D6 Actor/Grant/Time/Branch/Disclosure/Join/缓存的全链定向失效仍无闭包 |
+| Experience/Eval/Evolution | agent-goals/evolution panel 在旧 Run 和 Project Task 挂载；quality.requirePilotSources、evolution-targets、evaluator、PromptCandidateStore | UI/类存在不等于质量来源 ready；旧 workspace-prompt/workspace-strategy/Director 与 V3 plan-prompt 串联仍阻塞 |
+| Studio/Project/Package | 20 个资源视图；Source/Asset/typed editors → inspectWorkspace/executeWorkspace；Project Agent → Review/Commit；frontend source graph/analyze/preview | 有实际作品前端 Draft Preview，**不能用它销账未发布 Prompt Draft Preview**；原 Project/Package/Skill/Media/World 是有效业务，不随旧 orchestration JSON 清退误删 |
+| Skills/Plugins/Search/Media | Skills file expectedSha256、scope/invocation；extensions import(url)；Regex 资源规则；Search Tools UI/main 的原生 lifecycle+旧注入；官方 illustration/Visual Director/Mask/Speech/Shared | 旧 scope/注入与有效原生工具需拆；Visual Director 非旧 Agent Director；外部插件和任意 Work UI 动态扩展 UNKNOWN，不能判无功能或全通过 |
+| V3 Plan Authoring | 最新 `native-orchestration.js:7–55` 只注册 plans/list/get/revisions/validate/create/save/publish；authoring-service:20 对 bindings 明确报 `native_orchestration_source_unavailable` | 已不再使用“controller.js NOT_FOUND”推断 runtime 不存在；准确事实是生产 HTTP/服务接线仍有限，不把测试注入 callback 当 production Port |
+| V3 控制流 | RunRepository、AttemptController、GraphController、EffectController、ApprovalController、JoinController、AttemptSettlement 已存在；Join freeze/member/epoch/source digest 与 verifyResults；Effect ready/claim复验 | 成员/结果/Source/授权依赖注入 hooks；原真实 Model/Context/Source/Effect consumer、Narrative output 和完整 Host RunProjection 生产主链未证实接通；新 Graph/Run UI 未交付 |
+| V3 Storage 并发合并 | `0d799fc28` 合入 main ResourceCenter/lifecycle/quota；Host owner参与 Engine handover，withAccountLock 纳入 ownership；ResourceGraph:700 接 `getOrchestrationReferences`，persistence route/resource删除有 pin/reference checks | 0d相对da4的Orchestration控制器/endpoint/schema无新diff；31bef的transition/schema增量另已核查；新增 lifecycle 分支和回收/GC/backup对 Plan pins 的保留仍须原完整权限/恢复组合验收；本轮不替他人实现出结论 |
 
-**当前引用闭包判断：PARTIAL/NOT_VERIFIED。** 搜索命中只能证明“存在这些路径与片段”，不能证明动态 import、注册链、Source adapters、入口条件、测试或第三方 Extension 的全部消费者均已覆盖。下一步需在开发前获得可信 local checkout、import graph/route & settings grep、精确 Owner/Run/Source 路径及单测反例证据；不要求仅凭本次远端存储报告伪造 E0 收口。
+**G1 = PARTIAL / NOT_CLOSED。** 现已从“已知路径、有界远端搜索”推进为全域语法索引和核心消费者人工闭链；但非 literal、注册器、外部插件/作品、原生端口的完整动态/source consumers仍不能称穷尽。缺口须列具体对象，不再以“没有 local checkout”作为理由。
 
-## 3. 跨合同差距与责任归属（均未宣称 PASS）
+## 3. 跨合同缺口和证据结论
 
-| ID | 实际差距/当前证据 | 必需的唯一责任落点 / 拟解决顺序 | 当前状态 |
+| ID | 本轮事实与修正 | 唯一责任／必须明确的物理出口 | 状态 |
 | --- | --- | --- | --- |
-| E0-01 | V3 Node policy.agentPinId / dependencyPinIds 与 Native RuntimeRoute.promptProgramRef 未证实独立有效 Behavior Program 进入 Provider；main GenerationService fallback 绑定 Route Prompt 并拒绝语义改变 | 先与 V3 Node/Plan/ModelPort owner 定义受信 exact Program Selection，保持 fallback 的 Effective Program/Route/Output/Cost 恒等与 Host 发送前验真 | BLOCKED / STATIC |
-| E0-02 | 原 context.fact 可经 contextSlots → system 渲染；现有 Provider lowering 按不同 role/system 要求处理，D5 S2/L2 只是设计 | 原 PromptCompiler/ContextPort/ProviderPort 定义 Authorial Instruction、Host-only Policy、低信任 Source Data 的 Typed SemanticBlocks 与可信 role lowering，审计从 Source 到 Wire 的所有 path | BLOCKED / STATIC RISK；无漏洞复现 |
-| E0-03 | D6 U2/E2/H2/V2 的真实 Audience/Source/Branch/Time 消费、长会话 atomics、压缩遗漏、Join/Disclosure/revoke 未通过 | 原 Information/HCM/Context 与 V3 C2/Run identity，先确保来源/currentness，再评价文学保真和缓存收益 | NOT_RUN |
-| E0-04 | Native /preview 已提交 exact ref，不是未发布 Draft 可正式执行 API；三视图 Authored/Effective/Provider Wire 的同源证据与 CAS/Source invalidation 未连通 | 原 Host 的可信 draft validate/preview 隔离端口（纯编译，不 Secret resolve/send/write）+ 单一 Compiler + 原 Provider adapter 的脱敏 Wire；不能 Browser 拼接/覆盖 execute | BLOCKED / STATIC |
-| E0-05 | requirePilotSources() 返回 source_unready；Q2/F2/O2 的新增文学/Agent/合法误拒 Profile 与实际审稿 calibration、独立 promotion 缺少本轮证明 | 原 Experience/Eval/QualityProfile 来源目录与 Worker；先收集真实授权、source-sealed 的 development/promotion 资料与有界 controls，再做新 Quality/候选 | BLOCKED / STATIC |
-| E0-06 | EvolutionTargets 仍引入 workspace-prompt/workspace-strategy/Director；现 PromptCandidateStore 面向旧 Preset/Route 路径，V3 plan-prompt 设计存在但未证实完成 | 原 EvolutionTargets/PromptCandidateStore + V3 PlanRepository/PlanBinding；按 V3 已冻结 target union 确认真实 Node/Module binding、Publication Journal/CAS/Rollback，正式零旧兼容清理 | BLOCKED / STATIC |
-| E0-07 | W2/R2/P2/I2/M2 的资源/权限/状态/三端功能尚只是设计；用户明确拒绝助手自拟视觉审美 | 原 Library/Studio/Play/V3 Shell/Graph/Run UI；本任务只冻结功能和必要交互。前端视觉重构另外等待用户的 Code Audit → 外部 AI HTML+两份文档 → 多轮确认，不预设风格 | UI SEMANTICS FROZEN; VISUAL OPEN |
-| E0-08 | JS/Provider/Run/Storage/GC/CI/Windows/CachyOS Linux/Android Termux 未运行本任务所需质量和权限验证 | 分阶段原 Native Host/Source/Eval/Client 的有针对性验收；设计 E0 与实现阶段测试 Gate 分开，后续不伪造 PASS | NOT_RUN |
+| **E0-01 Node/Route/fallback** | main RouteResolver:92 使用 Route Program；GenerationService:46–49 hash绑定首 Route.promptProgramRef，改变时报 `generation_semantic_authority_changed`；V3 Node 的 agentPinId/dependencyPinIds不等于 Behavior Program已发送 | 原 V3受信 NodeAttempt/ModelPort 与 RouteResolver/Compiler确定 Node Program Selection 的内部字段、purpose/role/版本/授权；同有效Program/输出/工具/网络/费用策略的 fallback 重编译和发送前复验。D4 的物理备选未在本轮擅自选定 | **BLOCKED（物理合同未闭）** |
+| **E0-02 ContextSlot trust** | `context-providers.js:5,38–44` 已把 recent_raw/memory/narrative_spine作为 user history，属于已有防护；其他 context.fact及模块 ContextSlot仍经 Compiler:234/242 和 renderer system路径，需保留来源/指令类别；不能写“全部 Memory 都被提成 system” | 原 PromptCompiler/ContextPort/ProviderPort 的 D5 Typed SemanticBlocks/lowering；明确 Host-only policy、author instructions、state/fact、低信任 quotation/tool/result边界，保存 raw且不可数据提权 | **BLOCKED / STATIC RISK；未复现漏洞、未修复** |
+| **E0-03 Source-aware/长会话** | compiledBinding 有 source/resource/target/content fingerprints；ContextProvider复验 revision/branch，Session/Memory/媒体有各自 current guards；V3 Join/Effect已按 epoch/source digest/hook检查 | 原 Information/HCM/C2/Context authority 明确Source/Actor/Grant/Branch/Variant/WorldTick/ScopeEpoch/Disclosure的失效传播、缓存读取前/compile/send/Join消费前复验；hash/TTL不发权限；长会话来源/遗漏/认识地位保真 | **PARTIAL / UNKNOWN；新D6质量与全链NOT_RUN** |
+| **E0-04 Draft Preview/Diff** | Runtime Diagnostics `/preview`为受权exact refs编译；Studio前端 Source Graph有自己的草稿表现preview；都不证明D8未发布Prompt draft可由可信Host无发送编译 | 原 Host 内确定合法 Draft handle/validation/source/capability/脱敏Wire 的隔离编译端口与同源 Diff identity；不resolve Secret/send/write、不放宽 execute，不造 Browser compiler | **BLOCKED（接口未定/未接）** |
+| **E0-05 source_unready/质量来源** | `quality.js:91–93` 的 requirePilotSources合法 profile后仍直接 throw `source_unready`；evolution-evaluator compare消费；相应 negative tests存在，本轮未执行 | 原 Experience/Eval固定来源目录、QualityProfile、Worker取得合法受审development/promotion来源与独立评价；不伪造样本，不把任意拒答计失败，不自设额外样本/第二模型审批 | **BLOCKED；新增文学/Agent/误拒/长篇实证NOT_RUN** |
+| **E0-06 旧清退/plan-prompt** | EvolutionTargets:18/41/64/101–102仍有workspace prompt/strategy与bounded Director；Play/Settings/Skills/Search/Studio仍消费旧合同；V3 PlanRepository已有Binding CAS内部能力，但authoring-service拒source binding，完整plan-prompt未接 | 原 EvolutionTargets/PromptCandidateStore + V3 PlanRevision/PlanBinding/publication journal/rollback；选已获准exact Module、更新immutable Plan、CAS与恢复；清退旧target和mode，保留Native Memory/Goal/World/Visual等 | **BLOCKED；内部CAS存在不等于产品链已运行** |
+| **E0-07 全前端输入与视觉** | 独立研究资料已按整个产品清点、操作链/组件/三端/处置分账；D8功能已冻结；新视觉完全开放 | 原 Library/Studio/Play/V3 Shell/Graph/Inspector复用；外部AI之后提供HTML+全功能表现+整体指导，再由用户多轮确认；不在本轮建新视觉权威 | **RESEARCH_DELIVERED；VISUAL_OPEN；运行NOT_RUN** |
+| **E0-08 实施验证** | 本轮只有文档/静态索引，不借用其它Record的历史测试作为本轮PASS；Storage并发合并的测试仍归其原Record | 后续原Host/Source/Provider/Eval/Storage/UI按实际改动做针对性验证；模型/费用、权限、恢复、三端端侧证据在获准实施时取得 | **NOT_RUN；不是设计E0永远不能完成的前提** |
 
-硬约束：D1–D8、V3 T2 单 Host、HCM-01–08 和旧 ST/Workspace/Director/API/mode **零兼容**；Prompt 概念不是 World/Source/Role/Tool/Approval/费用授权。无双读双写、无第二缓存授权、无第二会话/Prompt/Agent Writer。
+### 3.1 下一次合同讨论必须带出的物理项目
 
-## 4. 建议的实现依赖顺序（E0 前只是规划，不创建实现分支）
-
-1. **S0：真正闭合消费者与协议设计**：补足 main/V3 代码的目录/动态引用、Server Endpoint、Settings/Prompt/Package/Studio/Play、Run/Cognition/HCM、测试矩阵、撤销/失败与二进制/GC，完成设计 E0 引用图；同 V3 owner 审查依赖和缺失的内部 Port，绝不先用新层盖旧系统。
-2. **S1：先对齐 V3 与 Native Model/Prompt**：受信 Node Program vs Route Program/Effective Prompt identity/Output/Provider fallback/CAS/RunAttempt，以及 Role/source boundary；当前 V3 P1 进行中，后续实施以真实 V3 HEAD 为准。
-3. **S2：原 Compiler/Provider/Context 语义增强**：S2 SemanticBlocks、L2 lowering、D2 graded diagnostics、K2 Safe/Stable-Dynamic Cache、T2 Context/final Provider wire 预算；沿源级权限/模块 exact refs。
-4. **S3：D6 原 Context 消费与长会话校验**：同一个 Hybrid/C2 的 Actor/Source/Branch/WorldTick/Context audience、History/Memory/Promise/Belief、invalidation/continuation 与 G1 正常单 Narrator 热路径。
-5. **S4：D7 Experience/Eval/plan-prompt**：已获准来源/QualityProfile 与 Judge controls、合法创作误拒对照、原 EvolutionTargets → PromptCandidateStore → V3 PlanRevision/PlanBinding CAS/rollback，清退旧 Workspace/Director consumers；只改已获准 Module。
-6. **S5：D8 功能 UI/Inspector 与 Draft Preview**：Library/Studio/Play 同一资源编辑、无损 Raw/Structured、Host-only Preview/Effective/Wire/Diff、Quality Source Inspector、跨端语义完整；**视觉样式的具体重构必须等用户之后单独批准外部设计材料**，不借功能落地强行决定审美。
-7. **S6：最小相关产品/端侧可靠性验收**：逐修改点做有证据的 Node/Host/Provider/UI/负例/恢复/权限验证，最后按涉及的 Windows/CachyOS Linux/Android Termux 功能/真实存储要求检查；费用和 Provider 质量的未知如实保留，不自行规定“千样本才能过”的非用户硬门槛。
-
-实施顺序会随 V3 实际进度与授权调整：没有 Host 的真 ModelPort、Source/currentness、Eval target 时，后面的“完整 UI”不能提前宣称有效。所有 Stage 此刻都是 PLAN，非 DONE。
-
-## 5. 创建实现分支的前置 Gate（严格区分设计与工程验收）
-
-| Gate | 满足标准 | 现在的事实 |
+| 项目 | 已知可复用落点 | 还缺什么可审查决定／证据 |
 | --- | --- | --- |
-| **G0 Docs / decisions** | D1–D8 功能合同在同一 Plan/Record 冻结；视觉未冻结和用户指定的外部设计流程单独记录 | D8 语义可冻结；设计文档不是产品测试 |
-| **G1 全量消费者 E0** | 真实 main/V3 精确 HEAD 下完成静态+动态进口/调用方/配置/测试/读写/删除/归档/导出/运行端点闭包；列明原权威和每个替代删除点。未能取到 local code/import graph/动态证据，不可写 PASS | **BLOCKED/NOT_CLOSED** |
-| **G2 跨合同 E0** | E0-01..08 所需 Host/Compiler/Context/Provider/Evolution/Preview/Runtime 接口物理落点、版本、失败出口和测试责任可达成一致；不存在第二权威或已冻结合同的自相矛盾。可以有“实现后才可实测”的事项，但不能把接口未知冒充设计已闭合 | **BLOCKED/NOT_CLOSED** |
-| **G3 开发授权** | 用户另行明确同意正式产品重构，并允许创建当前任务的实现分支。D8 对话和视觉样例都不构成授权；尤其用户明确要求 E0 未收口前**禁止建分支/改 main** | **NOT_AUTHORIZED** |
-| **G4 前端视觉方案** | 用户在讨论完成后自行要求 Codex 全前端代码盘点，取得外部审美 AI 的**非全功能 HTML 风格参考 + 功能交互说明 + 整体视觉指导**，提交并与用户多轮评审后单独批准 | **NOT_PRODUCED；不在本轮决定美学** |
+| C1 Node Behavior Program | V3 Node/dependency pins/ModelPort；原 RouteResolver/Compiler/GenerationService | exact Program的内部选择和仲裁字段、允许来源、fallback恒等判定；不能只加Browser selector |
+| C2 Semantic trust/lowering | 原 context provider/compiler/renderers/adapter capability | Typed block来源/role/priority/provenance映射、冲突和unsupported失败出口；维持同一compiler |
+| C3 Source currentness | 原 HCM/Information/Context、compiledBinding、V3 hook | 失效触发者/consumer清单及read/compile/send/Join各检查点；失败要 unknown/stale而非静默复用 |
+| C4 Unpublished Prompt Preview | 原Host preview与原Draft/Plan validation | Draft handle、合法source、无发送/无写权限、脱敏wire、exact diff identity；本轮未新增API |
+| C5 plan-prompt Evolution | 原candidate store/quality sources、V3 immutable revision/binding CAS | target union、exact Module/Node pin、publication journal/回执reconcile与rollback；先来源ready |
+| C6 跨域删除/恢复 | ResourceGraph/getOrchestrationReferences、原Storage Center/lifecycle/pin roots | Plan/Revision/Run/Result/Source/版本/资产的引用保留、恢复closure与权限重验；合并不等于全部组合已验收 |
 
-**分支创建 Gate = G1/G2 完成设计闭包 + G3 明示授权 + 当时合法基线/工作树检查。** G4 主要是后续**视觉 UI 重构**的独立前置，不可被本助手私自当作已通过；仅实现已经冻结的非视觉后端合同与用户后续授权可独立排期。实际运行/端侧/模型实测需在实施阶段取得，不能因为它们现在尚未出现就把设计 E0 定义成逻辑上永远无法完成，也不能把 E0 文档完成冒充产品 PASS。
+这是跨合同的待核对接口清单，不是新增第二份 schema 或授权实施的方案。
 
-## 6. 本轮 E0 的真实结论和下一步
+## 4. 实施依赖顺序（仍为规划，未建立实现分支）
 
-- **D8 W2+R2+P2+I2+M2：用户明确要求冻结的是功能/交互语义，视觉由用户另行裁定；本文没有新增审美设计。**
-- **E0 静态初步台账已建立；全量消费者闭包尚未完成，G1/G2 BLOCKED，因此 E0_NOT_CLOSED。** 这不是拒绝研究，而是如实保持现有验证范围。尤其 V3 独立分支继续开发，后续动态 port/consumer 必须按最新版本审计。
-- 尚需核查：旧 Workspace/Director 所有真实调用、Run/Model/Source 与 PromptProgram Node 生效，ContextSlot 低信任角色路径，Eval source_unready/独立测试来源，Draft preview，UI exact resources，导入导出/备份/GC/权限/Provider/恢复，以及真正跨端功能。此时不写 PASS。
-- 下一轮讨论建议围绕 **E0 真正闭包的调用者清单、五项物理合同补口与独立视觉设计交接**，但不得以本助手的视觉偏好给出页面风格或任何美术成品。E0 设计收口并获得用户明确授权前，不创建实现分支、不修改 main，也不创建 HANDOFF（除非用户要求正式交接）。
+1. **S0 消费者与协议设计闭包**：原台账+本轮索引中有界/动态/UNKNOWN的具体对象，补调用与读写/删除/恢复责任；完成C1–C6设计，不用新层盖旧系统。
+2. **S1 V3与原Model/Prompt对齐**：受信Node Program/Route/fallback/Output/Attempt/费用身份，原Context trust/lowering；依赖V3实时HEAD和原Port。
+3. **S2 Compiler/Provider语义**：D5 S2/L2/D2/K2/T2，原token/compute权威；unsupported/unknown不得变成功。
+4. **S3 Context消费与长会话**：D6 U2/E2/H2/V2，原Source/Audience/Actor/Branch/Time/grant/Disclosure失效；普通RP默认单Narrator热路。
+5. **S4 Experience/Eval/plan-prompt**：来源ready→独立评价→candidate/review→PlanRevision/Binding CAS/journal/rollback；同一硬切中删除旧Workspace/Director consumers。
+6. **S5 D8功能UI与可信Draft Preview**：Library/Studio/Play原位资源、无损raw/structured、authored/effective/wire、diff/inspector；视觉重构仍等用户外部材料与批准。
+7. **S6 针对性工程与端侧验收**：按实际变化取最小相关Node/Host/权限/Provider/恢复/UI/三端证据；不伪造PASS，不把Agent自设数量当新用户Gate。
 
-## 7. 提交前并发变更与最新消费者差分（补充证据；不构成 E0 闭包）
+## 5. 开发前 Gate（设计、授权、视觉、实测分别记账）
 
-- 对 main 旧基线与新 HEAD 的 Git diff 发现 Storage Center 已合并：public/scripts/browser-resource-center.js、storage-management.js、storage-inspector.js；src/storage/resource-center.js、recovery-service.js、native-lifecycle.js、resource-catalog.js，以及 src/endpoints/native-generation.js、src/native/model-prompt-runtime/persistence.js、src/native/agent-intelligence/experience-repository.js、src/native/authoring/resource-graph.js 与多个 API/备份/GC/Settings/测试调用已改变。**在 E0-06 和 UI/Library 的消费者闭包中需要重新检查这些新 Source/GC/Recovery/Quota 依赖。** 这不是本任务修改 main。
-- 对 V3 c04f.. → cff1.. 的 Git diff 发现新的 src/native/orchestration/join-controller.js、attempt-settlement.js 及 attempt-controller、graph-controller、run-repository 与 Join tests 变更。**跨 Agent Result/Source currentness 和 Run 收据需要纳入 E0-01/03 的最新消费审计**。原先精确读取 controller.js 的 NOT_FOUND 不能代表更新后的全部运行控制器；应按真实新模块树检查。
-- docs e471.. → 266676.. 仅涉及另一个 Storage Center 与 V3 计划/Record 的文件，没有覆盖本 Plan/唯一 Record。采用新 docs 基础树并进行 expected_sha 的乐观更新，避免强推/覆盖他人提交。
-- 因消费者持续变化，**G1 全量引用闭包仍为 NOT_CLOSED**；此差分是补充，不是全量真实运行审查。未做产品编译、真实 Provider/CI 或三端验收。用户尚未授权创建本 Prompt 任务的实现分支或前端视觉方案。
+| Gate | 满足标准 | 本轮真实状态 |
+| --- | --- | --- |
+| **G0 既有设计** | D1–D8功能语义同一Plan/Record，单Host/原权威/零旧兼容/视觉开放边界清楚 | **功能冻结保持**，非产品验收 |
+| **G1 消费者E0** | main/V3固定HEAD的实际入口、动态/注册、配置、权限、读写/删除/恢复和测试consumer闭包；未穷尽者有具体未决责任 | **PARTIAL / NOT_CLOSED**；本地全域索引已取得，动态/Source/替代删除闭包仍未完成 |
+| **G2 跨合同E0** | C1–C6的原物理落点、输入identity、失败出口、复验与责任一致；实现后才可运行的测试单独列 | **BLOCKED / NOT_CLOSED**；不能把原Port未接通写成仅缺视觉 |
+| **G3 本Prompt任务开发授权** | 用户明确授权正式开发/创建实现分支并核当时基线 | **NOT_AUTHORIZED**；本轮只授权文档审计/提交；他人V3开发授权不转移 |
+| **G4 新前端视觉方案** | 源码功能审计输入→外部AI代表性HTML+全功能交互文档+整体指导→用户多轮讨论确认 | **审计输入已交付；外部三项成果待用户后续提供；视觉未冻结** |
+| **实施验收** | 真实Model/权限/故障/存储/UI/三端针对性证据 | **NOT_RUN**；不冒充G1/G2已通过，也不把未来实机验收当设计永远不能关闭的逻辑门槛 |
+
+**创建实现分支仍须 G1/G2 设计闭包 + G3 当前明确授权 + 当时实际Git检查。视觉UI重构还须G4用户批准。** 本轮完成研究文档，不关闭上述真实阻塞、不开发前端、不生成最终视觉稿。
+
+## 6. 当前结果与下一次需要的具体工作
+
+- 完成本轮全产品研究与外部设计输入；所有索引/状态都是审计材料，不是新Record或最终前端Plan。
+- E0仍NOT_CLOSED；保留Node/Route fallback、ContextSlot trust、Source-aware、source_unready、旧Workspace/Director、plan-prompt和未发布Draft Preview等真实阻塞。
+- 下一次E0讨论需围绕C1–C6的接口决定与消费者替代/删除证明；不能把“再泛读一遍”当Gate结论，也不应要求现在先开发验证尚未批准的接口。
+- 用户后续提供外部HTML与两份文档后，逐功能ID核覆盖、讨论布局/审美/新提案，用户确认后才可能冻结正式重构企划。
+
+## 7. 历史首审与本轮并发变更
+
+上一轮远端首审使用main `5eb3bc765…`，后发现Storage合入`73557f809…`；V3由`c04f36925…`到`cff1d2453…`新增Join/settlement。当时已保留G1/G2 NOT_CLOSED。原“controller.js路径未找到”只证明该路径，不能证明没有runtime controller；本轮已用真实目录/注册链纠正。
+
+本轮V3又由`99da3eadb…`到`da4c38e90…`（本地volume adapter/ownership），最终`0d799fc28…`合入最新main。已核对endpoint/Orchestration控制器/schema无新差分，补读Storage Host owner/lifecycle、quota、persistence和ResourceGraph接线；索引已按最终固定V3快照重建。docs并发提交只更新其它任务文档/预览，保留其原提交和资料；本任务不提交别人的未跟踪企划或实现。
+
+本台账所有静态结论都绑定上述版本；未来开发前仍核真实HEAD。文档提交/推送的最终SHA由Git与同一Record追溯，不预先伪造提交号。
+
+### 提交前最新增量复核
+
+- main由73557f809推进到695acf3bc：只有Storage Center UI/CSS/中文文案和相关E2E/helper变更。补读新的storage-center-drawer与storage-management完整控制链，增加C09/C10条目（drawer/Back/焦点/拖动/减动/IME刷新延期；不可逆清理二次确认）。未采用其视觉作为本任务新审美权威。
+- V3由0d799fc28推进到31bef9572：新增TransitionController，显式loopBack/forward DAG/maxVisits/maxLoopIterations及deadline Join部分输出许可；generic beginAttempt不再通过换commandId重复准入。只读authorizeTransition hook返回原Source/Result/Grant/Budget identity、durable producer receipts和transition CAS；控制器不reserve或send、没有新增生产HTTP dispatcher。已补O09和15份V3测试索引，Model/Context/Source/plan-prompt的既有阻塞不因此销账。
+- 本轮结构/行号/证据以最新固定main/V3重建；main新UI尚未合入该V3提交，两分支状态分别表述。source和docs并发变更均非本任务实现。

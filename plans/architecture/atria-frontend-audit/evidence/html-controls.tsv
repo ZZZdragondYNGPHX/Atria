@@ -1,0 +1,1222 @@
+file	line	tag	markup
+public/index.html	77	button	<button class="atri-startup-retry" type="button" hidden>
+public/index.html	82	button	<button id="character_context_menu_favorite" data-i18n="Favorite">
+public/index.html	83	button	<button id="character_context_menu_tag" data-i18n="Tag">
+public/index.html	84	button	<button id="character_context_menu_duplicate" data-i18n="Duplicate">
+public/index.html	85	button	<button id="character_context_menu_persona" data-i18n="Persona">
+public/index.html	86	button	<button id="character_context_menu_delete" data-i18n="Delete">
+public/index.html	89	button	<button id="immersiveExitButton" type="button" class="menu_button_icon menu_button" title="Exit immersive mode" aria-label="Exit immersive mode" data-i18n="[title]Exit immersive mode;[aria-label]Exit immersive mode">
+public/index.html	104	input	<input type="checkbox" id="lm_button_panel_pin">
+public/index.html	114	a	<a class="topRightInset" href="https://docs.sillytavern.app/usage/common-settings/" target="_blank" title="Documentation on sampling parameters." data-i18n="[title]Documentation on sampling parameters">
+public/index.html	139	select	<select id="settings_preset" data-preset-manager-for="kobold" class="flex1 text_pole">
+public/index.html	143	input	<input type="file" hidden data-preset-manager-file="kobold" accept=".json, .settings">
+public/index.html	163	a	<a href="https://docs.sillytavern.app/usage/api-connections/novelai/" class="notes-link" target="_blank">
+public/index.html	181	select	<select id="settings_preset_novel" class="flex1 text_pole" data-preset-manager-for="novel">
+public/index.html	185	input	<input type="file" hidden data-preset-manager-file="novel" accept=".json, .settings, .preset">
+public/index.html	222	input	<input id="openai_preset_import_file" type="file" accept=".json,.settings" hidden />
+public/index.html	223	select	<select id="settings_preset_openai" class="flex1 text_pole" data-preset-manager-for="openai">
+public/index.html	263	select	<select id="settings_preset_textgenerationwebui" class="flex1 text_pole" data-preset-manager-for="textgenerationwebui">
+public/index.html	266	input	<input type="file" hidden data-preset-manager-file="textgenerationwebui" accept=".json, .settings">
+public/index.html	287	input	<input class="neo-range-slider" type="range" id="amount_gen" name="volume" min="16" max="2048" step="1">
+public/index.html	289	input	<input class="neo-range-input" type="number" min="16" max="2048" step="1" data-for="amount_gen" id="amount_gen_counter">
+public/index.html	293	input	<input type="checkbox" id="streaming_textgenerationwebui" />
+public/index.html	301	input	<input type="checkbox" id="streaming_kobold" />
+public/index.html	309	input	<input type="checkbox" id="streaming_novel" />
+public/index.html	318	input	<input class="neo-range-slider" type="range" id="max_context" name="volume" min="512" max="8192" step="64">
+public/index.html	320	input	<input class="neo-range-input" type="number" min="512" max="8192" step="64" data-for="max_context" id="max_context_counter">
+public/index.html	324	input	<input id="max_context_unlocked" type="checkbox" />
+public/index.html	343	select	<select id="nai_prefix">
+public/index.html	365	input	<input type="range" id="temp_novel" name="volume" min="0.1" max="2.50" step="0.01">
+public/index.html	368	input	<input type="number" min="0.1" max="2.50" step="0.01" data-for="temp_novel" id="temp_counter_novel">
+public/index.html	378	input	<input type="range" id="rep_pen_novel" name="volume" min="1" max="8" step="0.025">
+public/index.html	381	input	<input type="number" min="1" max="8" step="0.025" data-for="rep_pen_novel" id="rep_pen_counter_novel">
+public/index.html	391	input	<input type="range" id="rep_pen_size_novel" name="volume" min="0" max="8192" step="1">
+public/index.html	394	input	<input type="number" min="0" max="8192" step="1" data-for="rep_pen_size_novel" id="rep_pen_size_counter_novel">
+public/index.html	404	input	<input type="range" id="rep_pen_slope_novel" name="volume" min="0" max="10" step="0.01">
+public/index.html	407	input	<input type="number" min="0" max="10" step="0.01" data-for="rep_pen_slope_novel" id="rep_pen_slope_counter_novel">
+public/index.html	417	input	<input type="range" id="rep_pen_freq_novel" name="volume" min="0" max="1" step="0.001">
+public/index.html	420	input	<input type="number" min="0" max="1" step="0.001" data-for="rep_pen_freq_novel" id="rep_pen_freq_counter_novel">
+public/index.html	430	input	<input type="range" id="rep_pen_presence_novel" name="volume" min="0" max="1" step="0.001">
+public/index.html	433	input	<input type="number" min="0" max="1" step="0.001" data-for="rep_pen_presence_novel" id="rep_pen_presence_counter_novel">
+public/index.html	443	input	<input type="range" id="min_p_novel" name="volume" min="0" max="1" step="0.001">
+public/index.html	446	input	<input type="number" min="0" max="1" step="0.001" data-for="min_p_novel" id="min_p_counter_novel">
+public/index.html	456	input	<input type="range" id="tail_free_sampling_novel" name="volume" min="0" max="1" step="0.001">
+public/index.html	459	input	<input type="number" min="0" max="1" step="0.001" data-for="tail_free_sampling_novel" id="tail_free_sampling_counter_novel">
+public/index.html	469	input	<input type="range" id="top_p_novel" name="volume" min="0" max="1" step="0.001">
+public/index.html	472	input	<input type="number" min="0" max="1" step="0.001" data-for="top_p_novel" id="top_p_counter_novel">
+public/index.html	482	input	<input type="range" id="top_a_novel" name="volume" min="0" max="1" step="0.001">
+public/index.html	485	input	<input type="number" min="0" max="1" step="0.001" data-for="top_a_novel" id="top_a_counter_novel">
+public/index.html	495	input	<input type="range" id="top_k_novel" name="volume" min="0" max="300" step="1">
+public/index.html	498	input	<input type="number" min="0" max="300" step="1" data-for="top_k_novel" id="top_k_counter_novel">
+public/index.html	508	input	<input type="range" id="mirostat_tau_novel" name="volume" min="0" max="6" step="0.01">
+public/index.html	511	input	<input type="number" min="0" max="6" step="0.01" data-for="mirostat_tau_novel" id="mirostat_tau_counter_novel">
+public/index.html	521	input	<input type="range" id="mirostat_lr_novel" name="volume" min="0" max="1" step="0.01">
+public/index.html	524	input	<input type="number" min="0" max="1" step="0.01" data-for="mirostat_lr_novel" id="mirostat_lr_counter_novel">
+public/index.html	534	input	<input type="range" id="typical_p_novel" name="volume" min="0" max="1" step="0.001">
+public/index.html	537	input	<input type="number" min="0" max="1" step="0.001" data-for="typical_p_novel" id="typical_p_counter_novel">
+public/index.html	547	input	<input type="range" id="math1_temp_novel" name="volume" min="0" max="1.5" step="0.01">
+public/index.html	550	input	<input type="number" min="0" max="1.5" step="0.01" data-for="math1_temp_novel" id="math1_temp_counter_novel">
+public/index.html	560	input	<input type="range" id="math1_quad_novel" name="volume" min="0" max="0.4" step="0.01">
+public/index.html	563	input	<input type="number" min="0" max="0.4" step="0.01" data-for="math1_quad_novel" id="math1_quad_counter_novel">
+public/index.html	573	input	<input type="range" id="math1_quad_entropy_scale_novel" name="volume" min="-0.4" max="0.4" step="0.01">
+public/index.html	576	input	<input type="number" min="-0.4" max="0.4" step="0.01" data-for="math1_quad_entropy_scale_novel" id="math1_quad_entropy_scale_counter_novel">
+public/index.html	586	input	<input type="range" id="min_length_novel" name="volume" min="1" max="150" step="1">
+public/index.html	589	input	<input type="number" min="1" max="150" step="1" data-for="min_length_novel" id="min_length_counter_novel">
+public/index.html	597	select	<select id="phrase_rep_pen_novel">
+public/index.html	617	textarea	<textarea id="nai_preamble_textarea" class="text_pole textarea_compact" name="nai_preamble" rows="2" placeholder="">
+public/index.html	628	textarea	<textarea id="nai_banned_tokens" class="text_pole textarea_compact" name="nai_banned_tokens" rows="3" placeholder="Example:&#10;some text&#10;[42, 69, 1337]">
+public/index.html	650	input	<input id="oai_max_context_unlocked" type="checkbox" />
+public/index.html	668	input	<input type="range" id="openai_max_context" name="volume" min="512" max="4095" step="1">
+public/index.html	671	input	<input type="number" min="512" max="4095" step="1" data-for="openai_max_context" id="openai_max_context_counter">
+public/index.html	680	input	<input type="number" id="openai_max_tokens" name="openai_max_tokens" class="text_pole" min="1" max="128000" step="1">
+public/index.html	688	input	<input type="number" id="n_openai" name="n_openai" class="text_pole" min="1" value="1">
+public/index.html	694	a	<a href="https://openrouter.ai/docs/transforms" target="_blank" rel="noreferrer noopener" class="note-link-span fa-solid fa-circle-question">
+public/index.html	697	select	<select id="openrouter_middleout" class="text_pole">
+public/index.html	722	input	<input id="stream_toggle" type="checkbox" />
+public/index.html	740	input	<input type="range" id="temp_openai" name="volume" min="0" max="2.0" step="0.01">
+public/index.html	743	input	<input type="number" min="0" max="2.0" step="0.01" data-for="temp_openai" id="temp_counter_openai">
+public/index.html	753	input	<input type="range" id="freq_pen_openai" name="volume" min="-2" max="2" step="0.01">
+public/index.html	756	input	<input type="number" min="-2" max="2" step="0.01" data-for="freq_pen_openai" id="freq_pen_counter_openai">
+public/index.html	766	input	<input type="range" id="pres_pen_openai" name="volume" min="-2" max="2" step="0.01">
+public/index.html	769	input	<input type="number" min="-2" max="2" step="0.01" data-for="pres_pen_openai" id="pres_pen_counter_openai">
+public/index.html	779	input	<input type="range" id="top_k_openai" name="volume" min="0" max="500" step="1">
+public/index.html	782	input	<input type="number" min="0" max="500" step="1" data-for="top_k_openai" id="top_k_counter_openai">
+public/index.html	792	input	<input type="range" id="top_p_openai" name="volume" min="0" max="1" step="0.01">
+public/index.html	795	input	<input type="number" min="0" max="1" step="0.01" data-for="top_p_openai" id="top_p_counter_openai">
+public/index.html	805	input	<input type="range" id="repetition_penalty_openai" name="volume" min="1" max="2" step="0.01">
+public/index.html	808	input	<input type="number" min="1" max="2" step="0.01" data-for="repetition_penalty_openai" id="repetition_penalty_counter_openai">
+public/index.html	818	input	<input type="range" id="min_p_openai" name="volume" min="0" max="1" step="0.001">
+public/index.html	821	input	<input type="number" min="0" max="1" step="0.001" data-for="min_p_openai" id="min_p_counter_openai">
+public/index.html	831	input	<input type="range" id="top_a_openai" name="volume" min="0" max="1" step="0.001">
+public/index.html	834	input	<input type="number" min="0" max="1" step="0.001" data-for="top_a_openai" id="top_a_counter_openai">
+public/index.html	850	textarea	<textarea id="main_prompt_quick_edit_textarea" class="text_pole textarea_compact autoSetHeight" rows="6" placeholder="&mdash;" data-pm-prompt="main">
+public/index.html	857	textarea	<textarea id="nsfw_prompt_quick_edit_textarea" class="text_pole textarea_compact autoSetHeight" rows="6" placeholder="&mdash;" data-pm-prompt="nsfw">
+public/index.html	864	textarea	<textarea id="jailbreak_prompt_quick_edit_textarea" class="text_pole textarea_compact autoSetHeight" rows="6" placeholder="&mdash;" data-pm-prompt="jailbreak">
+public/index.html	886	textarea	<textarea id="impersonation_prompt_textarea" class="text_pole textarea_compact autoSetHeight" name="impersonation_prompt" rows="3" placeholder="&mdash;">
+public/index.html	902	textarea	<textarea id="wi_format_textarea" class="text_pole textarea_compact autoSetHeight" rows="3" placeholder="&mdash;">
+public/index.html	916	textarea	<textarea id="scenario_format_textarea" class="text_pole textarea_compact autoSetHeight" rows="3" placeholder="&mdash;">
+public/index.html	930	textarea	<textarea id="personality_format_textarea" class="text_pole textarea_compact autoSetHeight" rows="3" placeholder="&mdash;">
+public/index.html	946	textarea	<textarea id="group_nudge_prompt_textarea" class="text_pole textarea_compact autoSetHeight" rows="3" placeholder="&mdash;">
+public/index.html	962	textarea	<textarea id="newchat_prompt_textarea" class="text_pole textarea_compact autoSetHeight" name="new_chat" rows="3" placeholder="&mdash;">
+public/index.html	978	textarea	<textarea id="newgroupchat_prompt_textarea" class="text_pole textarea_compact autoSetHeight" name="new_group_chat" rows="3" placeholder="&mdash;">
+public/index.html	994	textarea	<textarea id="newexamplechat_prompt_textarea" class="text_pole textarea_compact autoSetHeight" name="new_example_chat" rows="3" placeholder="&mdash;">
+public/index.html	1010	textarea	<textarea id="continue_nudge_prompt_textarea" class="text_pole textarea_compact autoSetHeight" name="continue_nudge" rows="3" placeholder="&mdash;">
+public/index.html	1023	textarea	<textarea id="send_if_empty_textarea" class="text_pole textarea_compact autoSetHeight" name="send_if_empty" rows="3" placeholder="&mdash;">
+public/index.html	1036	input	<input type="number" id="seed_openai" name="seed_openai" class="text_pole" min="-1" max="2147483647" value="-1">
+public/index.html	1049	input	<input class="neo-range-slider" type="range" id="temp" name="volume" min="0.0" max="4.0" step="0.01">
+public/index.html	1050	input	<input class="neo-range-input" type="number" min="0.0" max="4.0" step="0.01" data-for="temp" id="temp_counter">
+public/index.html	1057	input	<input class="neo-range-slider" type="range" id="top_k" name="volume" min="0" max="100" step="1">
+public/index.html	1058	input	<input class="neo-range-input" type="number" min="0" max="100" step="1" data-for="top_k" id="top_k_counter">
+public/index.html	1065	input	<input class="neo-range-slider" type="range" id="top_p" name="volume" min="0" max="1" step="0.01">
+public/index.html	1066	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.01" data-for="top_p" id="top_p_counter">
+public/index.html	1073	input	<input class="neo-range-slider" type="range" id="typical_p" name="volume" min="0" max="1" step="0.001">
+public/index.html	1074	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.001" data-for="typical_p" id="typical_p_counter">
+public/index.html	1081	input	<input class="neo-range-slider" type="range" id="min_p" name="volume" min="0" max="1" step="0.001">
+public/index.html	1082	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.001" data-for="min_p" id="min_p_counter">
+public/index.html	1089	input	<input class="neo-range-slider" type="range" id="top_a" name="volume" min="0" max="1" step="0.001">
+public/index.html	1090	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.001" data-for="top_a" id="top_a_counter">
+public/index.html	1097	input	<input class="neo-range-slider" type="range" id="tfs" name="volume" min="0" max="1" step="0.001">
+public/index.html	1098	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.001" data-for="tfs" id="tfs_counter">
+public/index.html	1104	input	<input class="neo-range-slider" type="range" id="rep_pen" name="volume" min="1" max="3" step="0.01">
+public/index.html	1105	input	<input class="neo-range-input" type="number" min="1" max="3" step="0.01" data-for="rep_pen" id="rep_pen_counter">
+public/index.html	1111	input	<input class="neo-range-slider" type="range" id="rep_pen_range" name="volume" min="0" max="4096" step="1">
+public/index.html	1112	input	<input class="neo-range-input" type="number" min="0" max="4096" step="1" data-for="rep_pen_range" id="rep_pen_range_counter">
+public/index.html	1118	input	<input class="neo-range-slider" type="range" id="rep_pen_slope" name="volume" min="0" max="10" step="0.01">
+public/index.html	1119	input	<input class="neo-range-input" type="number" min="0" max="10" step="0.01" data-for="rep_pen_slope" id="rep_pen_slope_counter">
+public/index.html	1129	input	<input class="neo-range-slider" type="range" id="mirostat_mode_kobold" name="volume" min="0" max="2" step="1" />
+public/index.html	1130	input	<input class="neo-range-input" type="number" min="0" max="2" step="1" data-for="mirostat_mode_kobold" id="mirostat_mode_counter_kobold">
+public/index.html	1137	input	<input class="neo-range-slider" type="range" id="mirostat_tau_kobold" name="volume" min="0" max="20" step="0.01" />
+public/index.html	1138	input	<input class="neo-range-input" type="number" min="0" max="20" step="0.01" data-for="mirostat_tau_kobold" id="mirostat_tau_counter_kobold">
+public/index.html	1145	input	<input class="neo-range-slider" type="range" id="mirostat_eta_kobold" name="volume" min="0" max="1" step="0.01" />
+public/index.html	1146	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.01" data-for="mirostat_eta_kobold" id="mirostat_eta_counter_kobold">
+public/index.html	1153	input	<input id="use_default_badwordsids" type="checkbox" />
+public/index.html	1164	input	<input type="number" id="seed_kobold" class="text_pole wideMax100px" min="-1" value="-1" max="18446744073709551615" />
+public/index.html	1169	a	<a href="https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md" target="_blank">
+public/index.html	1175	textarea	<textarea id="grammar" rows="4" class="text_pole textarea_compact monospace" data-i18n="[placeholder]Type in the desired custom grammar" placeholder="Type in the desired custom grammar">
+public/index.html	1294	input	<input type="number" id="n_textgenerationwebui" class="text_pole textAlignCenter" min="1" value="1" step="1" />
+public/index.html	1302	input	<input class="neo-range-slider" type="range" id="temp_textgenerationwebui" name="volume" min="0.0" max="5.0" step="0.01" x-setting-id="temp">
+public/index.html	1303	input	<input class="neo-range-input" type="number" min="0.0" max="5.0" step="0.01" data-for="temp_textgenerationwebui" id="temp_counter_textgenerationwebui">
+public/index.html	1311	input	<input class="neo-range-slider" type="range" id="top_k_textgenerationwebui" name="volume" min="-1" max="500" step="1">
+public/index.html	1312	input	<input class="neo-range-input" type="number" min="-1" max="500" step="1" data-for="top_k_textgenerationwebui" id="top_k_counter_textgenerationwebui">
+public/index.html	1319	input	<input class="neo-range-slider" type="range" id="top_p_textgenerationwebui" name="volume" min="0" max="1" step="0.01">
+public/index.html	1320	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.01" data-for="top_p_textgenerationwebui" id="top_p_counter_textgenerationwebui">
+public/index.html	1327	input	<input class="neo-range-slider" type="range" id="typical_p_textgenerationwebui" name="volume" min="0" max="1" step="0.01">
+public/index.html	1328	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.01" data-for="typical_p_textgenerationwebui" id="typical_p_counter_textgenerationwebui">
+public/index.html	1335	input	<input class="neo-range-slider" type="range" id="min_p_textgenerationwebui" name="volume" min="0" max="1" step="0.001">
+public/index.html	1336	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.001" data-for="min_p_textgenerationwebui" id="min_p_counter_textgenerationwebui">
+public/index.html	1343	input	<input class="neo-range-slider" type="range" id="top_a_textgenerationwebui" name="volume" min="0" max="1" step="0.01">
+public/index.html	1344	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.01" data-for="top_a_textgenerationwebui" id="top_a_counter_textgenerationwebui">
+public/index.html	1351	input	<input class="neo-range-slider" type="range" id="tfs_textgenerationwebui" name="volume" min="0" max="1" step="0.001">
+public/index.html	1352	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.001" data-for="tfs_textgenerationwebui" id="tfs_counter_textgenerationwebui">
+public/index.html	1359	input	<input class="neo-range-slider" type="range" id="epsilon_cutoff_textgenerationwebui" name="volume" min="0" max="9" step="0.01">
+public/index.html	1360	input	<input class="neo-range-input" type="number" min="0" max="9" step="0.01" data-for="epsilon_cutoff_textgenerationwebui" id="epsilon_cutoff_counter_textgenerationwebui">
+public/index.html	1367	input	<input class="neo-range-slider" type="range" id="nsigma_textgenerationwebui" name="volume" min="0" max="5" step="0.01">
+public/index.html	1368	input	<input class="neo-range-input" type="number" min="0" max="5" step="0.01" data-for="nsigma_textgenerationwebui" id="nsigma_counter_textgenerationwebui">
+public/index.html	1375	input	<input class="neo-range-slider" type="range" id="min_keep_textgenerationwebui" name="volume" min="0" max="50" step="1">
+public/index.html	1376	input	<input class="neo-range-input" type="number" min="0" max="50" step="1" data-for="min_keep_textgenerationwebui" id="min_keep_counter_textgenerationwebui">
+public/index.html	1383	input	<input class="neo-range-slider" type="range" id="eta_cutoff_textgenerationwebui" name="volume" min="0" max="20" step="0.01">
+public/index.html	1384	input	<input class="neo-range-input" type="number" min="0" max="20" step="0.01" data-for="eta_cutoff_textgenerationwebui" id="eta_cutoff_counter_textgenerationwebui">
+public/index.html	1388	input	<input class="neo-range-slider" type="range" id="rep_pen_textgenerationwebui" name="volume" min="1" max="3" step="0.01">
+public/index.html	1389	input	<input class="neo-range-input" type="number" min="1" max="3" step="0.01" data-for="rep_pen_textgenerationwebui" id="rep_pen_counter_textgenerationwebui">
+public/index.html	1393	input	<input class="neo-range-slider" type="range" id="rep_pen_range_textgenerationwebui" name="volume" min="-1" max="8192" step="1">
+public/index.html	1394	input	<input class="neo-range-input" type="number" min="-1" max="8192" step="1" data-for="rep_pen_range_textgenerationwebui" id="rep_pen_range_counter_textgenerationwebui">
+public/index.html	1398	input	<input class="neo-range-slider" type="range" id="rep_pen_slope_textgenerationwebui" name="volume" min="0" max="10" step="0.01">
+public/index.html	1399	input	<input class="neo-range-input" type="number" min="0" max="10" step="0.01" data-for="rep_pen_slope_textgenerationwebui" id="rep_pen_slope_counter_textgenerationwebui">
+public/index.html	1403	input	<input class="neo-range-slider" type="range" id="rep_pen_decay_textgenerationwebui" name="volume" min="-1" max="8192" step="1">
+public/index.html	1404	input	<input class="neo-range-input" type="number" min="-1" max="8192" step="1" data-for="rep_pen_decay_textgenerationwebui" id="rep_pen_decay_counter_textgenerationwebui">
+public/index.html	1408	input	<input class="neo-range-slider" type="range" id="encoder_rep_pen_textgenerationwebui" name="volume" min="0.8" max="1.5" step="0.01" />
+public/index.html	1409	input	<input class="neo-range-input" type="number" min="0.8" max="1.5" step="0.01" data-for="encoder_rep_pen_textgenerationwebui" id="encoder_rep_pen_counter_textgenerationwebui">
+public/index.html	1413	input	<input class="neo-range-slider" type="range" id="freq_pen_textgenerationwebui" name="volume" min="-2" max="2" step="0.01" />
+public/index.html	1414	input	<input class="neo-range-input" type="number" data-for="freq_pen_textgenerationwebui" min="-2" max="2" step="0.01" id="freq_pen_counter_textgenerationwebui">
+public/index.html	1418	input	<input class="neo-range-slider" type="range" id="presence_pen_textgenerationwebui" name="volume" min="-2" max="2" step="0.01" />
+public/index.html	1419	input	<input class="neo-range-input" type="number" min="-2" max="2" step="0.01" data-for="presence_pen_textgenerationwebui" id="presence_pen_counter_textgenerationwebui">
+public/index.html	1423	input	<input class="neo-range-slider" type="range" id="no_repeat_ngram_size_textgenerationwebui" name="volume" min="0" max="20" step="1">
+public/index.html	1424	input	<input class="neo-range-input" type="number" min="0" max="20" step="1" data-for="no_repeat_ngram_size_textgenerationwebui" id="no_repeat_ngram_size_counter_textgenerationwebui">
+public/index.html	1428	input	<input class="neo-range-slider" type="range" id="skew_textgenerationwebui" name="volume" min="-5" max="5" step="0.01" />
+public/index.html	1429	input	<input class="neo-range-input" type="number" min="-5" max="5" step="0.01" data-for="skew_textgenerationwebui" id="skew_counter_textgenerationwebui">
+public/index.html	1433	input	<input class="neo-range-slider" type="range" id="min_length_textgenerationwebui" name="volume" min="0" max="2000" step="1" />
+public/index.html	1434	input	<input class="neo-range-input" type="number" min="0" max="2000" step="1" data-for="min_length_textgenerationwebui" id="min_length_counter_textgenerationwebui">
+public/index.html	1438	input	<input class="neo-range-slider" type="range" id="max_tokens_second_textgenerationwebui" name="volume" min="0" max="20" step="1" />
+public/index.html	1439	input	<input class="neo-range-input" type="number" min="0" max="20" step="1" data-for="max_tokens_second_textgenerationwebui" id="max_tokens_second_counter_textgenerationwebui">
+public/index.html	1445	a	<a href="https://github.com/MrJackSpade/adaptive-p-docs" target="_blank">
+public/index.html	1452	input	<input class="neo-range-slider" type="range" id="adaptive_target_textgenerationwebui" min="-0.01" max="1" step="0.01" />
+public/index.html	1453	input	<input class="neo-range-input" type="number" min="-0.01" max="1" step="0.01" data-for="adaptive_target_textgenerationwebui" id="adaptive_target_counter_textgenerationwebui">
+public/index.html	1457	input	<input class="neo-range-slider" type="range" id="adaptive_decay_textgenerationwebui" min="0" max="0.99" step="0.01" />
+public/index.html	1458	input	<input class="neo-range-input" type="number" min="0" max="0.99" step="0.01" data-for="adaptive_decay_textgenerationwebui" id="adaptive_decay_counter_textgenerationwebui">
+public/index.html	1471	input	<input class="neo-range-slider" type="range" id="smoothing_factor_textgenerationwebui" name="volume" min="0" max="10" step="0.01" />
+public/index.html	1472	input	<input class="neo-range-input" type="number" min="0" max="10" step="0.01" data-for="smoothing_factor_textgenerationwebui" id="smoothing_factor_counter_textgenerationwebui">
+public/index.html	1476	input	<input class="neo-range-slider" type="range" id="smoothing_curve_textgenerationwebui" name="volume" min="1" max="10" step="0.01" />
+public/index.html	1477	input	<input class="neo-range-input" type="number" min="1" max="10" step="0.01" data-for="smoothing_curve_textgenerationwebui" id="smoothing_curve_counter_textgenerationwebui">
+public/index.html	1485	a	<a href="https://github.com/oobabooga/text-generation-webui/pull/6335" target="_blank">
+public/index.html	1492	input	<input class="neo-range-slider" type="range" id="xtc_threshold_textgenerationwebui" name="volume" min="0" max="0.5" step="0.01" />
+public/index.html	1493	input	<input class="neo-range-input" type="number" min="0" max="0.5" step="0.01" data-for="xtc_threshold_textgenerationwebui" id="xtc_threshold_counter_textgenerationwebui">
+public/index.html	1497	input	<input class="neo-range-slider" type="range" id="xtc_probability_textgenerationwebui" name="volume" min="0" max="1" step="0.01" />
+public/index.html	1498	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.01" data-for="xtc_probability_textgenerationwebui" id="xtc_probability_counter_textgenerationwebui">
+public/index.html	1506	a	<a href="https://github.com/oobabooga/text-generation-webui/pull/5677" target="_blank">
+public/index.html	1513	input	<input class="neo-range-slider" type="range" id="dry_multiplier_textgenerationwebui" min="0" max="5" step="0.01" />
+public/index.html	1514	input	<input class="neo-range-input" type="number" min="0" max="5" step="0.01" data-for="dry_multiplier_textgenerationwebui" id="dry_multiplier_counter_textgenerationwebui">
+public/index.html	1518	input	<input class="neo-range-slider" type="range" id="dry_base_textgenerationwebui" min="1" max="4" step="0.01" />
+public/index.html	1519	input	<input class="neo-range-input" type="number" min="1" max="4" step="0.01" data-for="dry_base_textgenerationwebui" id="dry_base_counter_textgenerationwebui">
+public/index.html	1523	input	<input class="neo-range-slider" type="range" id="dry_allowed_length_textgenerationwebui" min="1" max="20" step="1" />
+public/index.html	1524	input	<input class="neo-range-input" type="number" min="1" max="20" step="1" data-for="dry_allowed_length_textgenerationwebui" id="dry_allowed_length_counter_textgenerationwebui">
+public/index.html	1528	input	<input class="neo-range-slider" type="range" id="dry_penalty_last_n_textgenerationwebui" min="0" max="8192" step="1" />
+public/index.html	1529	input	<input class="neo-range-input" type="number" min="0" max="8192" step="1" data-for="dry_penalty_last_n_textgenerationwebui" id="dry_penalty_last_n_counter_textgenerationwebui">
+public/index.html	1536	textarea	<textarea id="dry_sequence_breakers_textgenerationwebui" class="text_pole textarea_compact" name="sequence_breakers" rows="3" data-i18n="[placeholder]JSON-serialized array of strings." placeholder="JSON-serialized array of strings.">
+public/index.html	1543	input	<input type="checkbox" id="dynatemp_textgenerationwebui" />
+public/index.html	1552	input	<input class="neo-range-slider" type="range" id="min_temp_textgenerationwebui" name="volume" min="0" max="5" step="0.01" />
+public/index.html	1553	input	<input class="neo-range-input" type="number" min="0" max="5" step="0.01" data-for="min_temp_textgenerationwebui" id="min_temp_counter_textgenerationwebui">
+public/index.html	1557	input	<input class="neo-range-slider" type="range" id="max_temp_textgenerationwebui" name="volume" min="0" max="5" step="0.01" />
+public/index.html	1558	input	<input class="neo-range-input" type="number" min="0" max="5" step="0.01" data-for="max_temp_textgenerationwebui" id="max_temp_counter_textgenerationwebui">
+public/index.html	1562	input	<input class="neo-range-slider" type="range" id="dynatemp_exponent_textgenerationwebui" name="volume" min="0.001" max="10" step="0.001" />
+public/index.html	1563	input	<input class="neo-range-input" type="number" min="0.001" max="10" step="0.001" data-for="dynatemp_exponent_textgenerationwebui" id="dynatemp_exponent_counter_textgenerationwebui">
+public/index.html	1575	input	<input class="neo-range-slider" type="range" id="mirostat_mode_textgenerationwebui" name="volume" min="0" max="2" step="1" />
+public/index.html	1576	input	<input class="neo-range-input" type="number" min="0" max="2" step="1" data-for="mirostat_mode_textgenerationwebui" id="mirostat_mode_counter_textgenerationwebui">
+public/index.html	1580	input	<input class="neo-range-slider" type="range" id="mirostat_tau_textgenerationwebui" name="volume" min="0" max="20" step="0.01" />
+public/index.html	1581	input	<input class="neo-range-input" type="number" min="0" max="20" step="0.01" data-for="mirostat_tau_textgenerationwebui" id="mirostat_tau_counter_textgenerationwebui">
+public/index.html	1585	input	<input class="neo-range-slider" type="range" id="mirostat_eta_textgenerationwebui" name="volume" min="0" max="1" step="0.01" />
+public/index.html	1586	input	<input class="neo-range-input" type="number" min="0" max="1" step="0.01" data-for="mirostat_eta_textgenerationwebui" id="mirostat_eta_counter_textgenerationwebui">
+public/index.html	1603	input	<input class="neo-range-slider" type="range" id="num_beams_textgenerationwebui" name="volume" min="1" max="20" step="1" />
+public/index.html	1604	input	<input class="neo-range-input" type="number" min="1" max="20" step="1" data-for="num_beams_textgenerationwebui" id="num_beams_counter_textgenerationwebui">
+public/index.html	1611	input	<input class="neo-range-slider" type="range" id="length_penalty_textgenerationwebui" name="volume" min="-5" max="5" step="0.1" />
+public/index.html	1612	input	<input class="neo-range-input" type="number" min="-5" max="5" step="0.1" data-for="length_penalty_textgenerationwebui" id="length_penalty_counter_textgenerationwebui">
+public/index.html	1616	input	<input type="checkbox" id="early_stopping_textgenerationwebui" />
+public/index.html	1633	input	<input class="neo-range-slider" type="range" id="penalty_alpha_textgenerationwebui" name="volume" min="0" max="5" step="0.05" />
+public/index.html	1634	input	<input class="neo-range-input" type="number" min="0" max="5" step="0.05" data-for="penalty_alpha_textgenerationwebui" id="penalty_alpha_counter_textgenerationwebui">
+public/index.html	1640	input	<input type="checkbox" id="do_sample_textgenerationwebui" />
+public/index.html	1644	input	<input type="checkbox" id="add_bos_token_textgenerationwebui" />
+public/index.html	1649	input	<input type="checkbox" id="ban_eos_token_textgenerationwebui" />
+public/index.html	1654	input	<input type="checkbox" id="ignore_eos_token_textgenerationwebui" />
+public/index.html	1659	input	<input type="checkbox" id="skip_special_tokens_textgenerationwebui" />
+public/index.html	1663	input	<input type="checkbox" id="include_reasoning_textgenerationwebui" />
+public/index.html	1667	input	<input type="checkbox" id="temperature_last_textgenerationwebui" />
+public/index.html	1672	input	<input type="checkbox" id="speculative_ngram_textgenerationwebui" />
+public/index.html	1677	input	<input type="checkbox" id="spaces_between_special_tokens_textgenerationwebui" />
+public/index.html	1687	input	<input type="number" id="seed_textgenerationwebui" class="text_pole textAlignCenter" min="-1" value="-1" />
+public/index.html	1697	input	<input id="send_banned_tokens_textgenerationwebui" type="checkbox" style="display:none;" />
+public/index.html	1706	textarea	<textarea id="global_banned_tokens_textgenerationwebui" class="text_pole textarea_compact" name="global_banned_tokens_textgenerationwebui" rows="3" data-i18n="[placeholder]Example: some text [42, 69, 1337]" placeholder='some text as tokens&#10;[420, 69, 1337]&#10;"Some verbatim string"'>
+public/index.html	1712	textarea	<textarea id="banned_tokens_textgenerationwebui" class="text_pole textarea_compact" name="banned_tokens_textgenerationwebui" rows="3" data-i18n="[placeholder]Example: some text [42, 69, 1337]" placeholder='some text as tokens&#10;[420, 69, 1337]&#10;"Some verbatim string"'>
+public/index.html	1741	input	<input class="neo-range-slider" type="range" id="guidance_scale_textgenerationwebui" name="volume" min="0.1" max="4" step="0.05">
+public/index.html	1742	input	<input class="neo-range-input" type="number" min="0.1" max="4" step="0.05" data-for="guidance_scale_textgenerationwebui" id="guidance_scale_counter_textgenerationwebui">
+public/index.html	1749	textarea	<textarea id="negative_prompt_textgenerationwebui" class="wide100p text_pole textarea_compact" name="negative_prompt" rows="3" data-i18n="[placeholder]Add text here that would make the AI generate things you don't want in your outputs." placeholder="Add text here that would make the AI generate things you don't want in your outputs.">
+public/index.html	1758	a	<a href="https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md" target="_blank">
+public/index.html	1763	textarea	<textarea id="grammar_string_textgenerationwebui" rows="4" class="text_pole textarea_compact monospace" data-i18n="[placeholder]Type in the desired custom grammar" placeholder="Type in the desired custom grammar">
+public/index.html	1768	a	<a href="https://json-schema.org/learn/getting-started-step-by-step" target="_blank">
+public/index.html	1774	textarea	<textarea id="tabby_json_schema" rows="4" class="text_pole textarea_compact monospace" data-i18n="[placeholder]Type in the desired JSON schema" placeholder="Type in the desired JSON schema">
+public/index.html	1776	input	<input type="checkbox" id="json_schema_allow_empty_textgenerationwebui" />
+public/index.html	1927	input	<input type="radio" id="character_names_none" name="character_names" value="-1">
+public/index.html	1934	input	<input type="radio" id="character_names_default" name="character_names" value="0">
+public/index.html	1941	input	<input type="radio" id="character_names_completion" name="character_names" value="1">
+public/index.html	1948	input	<input type="radio" id="character_names_content" name="character_names" value="2">
+public/index.html	1955	input	<input type="hidden" id="names_behavior" class="displayNone" />
+public/index.html	1969	input	<input type="radio" id="continue_postfix_none" name="continue_postfix" value="0">
+public/index.html	1973	input	<input type="radio" id="continue_postfix_space" name="continue_postfix" value="1">
+public/index.html	1977	input	<input type="radio" id="continue_postfix_newline" name="continue_postfix" value="2">
+public/index.html	1981	input	<input type="radio" id="continue_postfix_double_newline" name="continue_postfix" value="3">
+public/index.html	1985	input	<input type="hidden" id="continue_postfix" class="displayNone" />
+public/index.html	1990	input	<input id="continue_prefill" type="checkbox" />
+public/index.html	2001	input	<input id="squash_system_messages" type="checkbox" />
+public/index.html	2014	input	<input id="use_sysprompt" type="checkbox" />
+public/index.html	2027	input	<input id="openai_enable_web_search" type="checkbox" />
+public/index.html	2041	input	<input id="openai_function_calling" type="checkbox" />
+public/index.html	2049	a	<a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" data-i18n="enable_functions_desc_2">
+public/index.html	2060	input	<input type="range" id="tool_call_recurse_limit" name="tool_call_recurse_limit" min="1" max="50" step="1">
+public/index.html	2063	input	<input type="number" min="1" max="50" step="1" data-for="tool_call_recurse_limit" id="tool_call_recurse_limit_counter">
+public/index.html	2074	select	<select id="tool_reasoning_mode">
+public/index.html	2094	input	<input id="openai_media_inlining" type="checkbox" />
+public/index.html	2121	select	<select id="openai_inline_image_quality">
+public/index.html	2131	input	<input id="openai_request_images" type="checkbox" />
+public/index.html	2150	select	<select id="request_image_resolution" class="text_pole">
+public/index.html	2161	select	<select id="request_image_aspect_ratio" class="text_pole">
+public/index.html	2179	input	<input id="openai_show_thoughts" type="checkbox" />
+public/index.html	2195	a	<a href="https://docs.sillytavern.app/usage/prompts/reasoning/#reasoning-effort" target="_blank" class="opacity50p fa-solid fa-circle-question">
+public/index.html	2197	select	<select id="openai_reasoning_effort">
+public/index.html	2230	select	<select id="openai_verbosity">
+public/index.html	2250	textarea	<textarea id="claude_assistant_prefill" class="text_pole textarea_compact autoSetHeight" name="assistant_prefill" rows="2" data-i18n="[placeholder]Start Claude's answer with..." placeholder="Start Claude's answer with...">
+public/index.html	2255	textarea	<textarea id="claude_assistant_impersonation" class="text_pole textarea_compact autoSetHeight" name="assistant_impersonation" rows="2" data-i18n="[placeholder]Start Claude's answer with..." placeholder="Start Claude's answer with...">
+public/index.html	2265	input	<input id="kimi_partial_mode" type="checkbox" />
+public/index.html	2273	textarea	<textarea id="kimi_partial_content" class="text_pole textarea_compact autoSetHeight" name="kimi_partial_content" rows="2" data-i18n="[placeholder]Start Kimi's answer with..." placeholder="Start Kimi's answer with...">
+public/index.html	2275	select	<select id="kimi_partial_name_source" class="text_pole">
+public/index.html	2285	input	<input id="kimi_partial_name" type="text" class="text_pole wide100p" data-i18n="[placeholder]Prefill name that anchors the reply voice" placeholder="Prefill name that anchors the reply voice">
+public/index.html	2300	a	<a target="_blank" href="https://platform.openai.com/tokenizer/" data-i18n="Tokenizer">
+public/index.html	2303	select	<select id="openai_logit_bias_preset">
+public/index.html	2309	input	<input id="openai_logit_bias_import_file" type="file" accept=".json" hidden />
+public/index.html	2350	select	<select id="main_api">
+public/index.html	2359	form	<form action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	2363	a	<a target="_blank" href="https://aihorde.net/" data-i18n="AI Horde Website">
+public/index.html	2369	a	<a target="_blank" href="https://docs.sillytavern.app/usage/api-connections/horde/" data-i18n="Review the Privacy statement">
+public/index.html	2374	a	<a target="_blank" href="https://aihorde.net/register" data-i18n="Register a Horde account for faster queue times">
+public/index.html	2379	a	<a target="_blank" href="https://github.com/Haidra-Org/horde-worker-reGen?tab=readme-ov-file#ai-horde-worker-regen" data-i18n="Learn how to contribute your idle GPU cycles to the Horde">
+public/index.html	2385	input	<input id="horde_auto_adjust_context_length" type="checkbox" />
+public/index.html	2389	input	<input id="horde_auto_adjust_response_length" type="checkbox" />
+public/index.html	2393	input	<input id="horde_trusted_workers_only" type="checkbox" />
+public/index.html	2399	a	<a target="_blank" href="https://aihorde.net/register" data-i18n="Register">
+public/index.html	2399	a	<a id="horde_kudos" href="javascript:void(0);" data-i18n="View my Kudos">
+public/index.html	2403	input	<input id="horde_api_key" name="horde_api_key" class="text_pole flex1" type="text" placeholder="0000000000" autocomplete="off">
+public/index.html	2416	select	<select id="horde_model" multiple>
+public/index.html	2427	form	<form action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	2431	input	<input id="api_url_text" name="api_url" class="text_pole" placeholder="http://127.0.0.1:5000/api" value="" autocomplete="off" data-server-history="kobold">
+public/index.html	2447	form	<form action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	2452	a	<a href="https://docs.sillytavern.app/usage/api-connections/novelai/" class="notes-link" target="_blank">
+public/index.html	2459	input	<input id="api_key_novel" name="api_key_novel" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2467	a	<a href="https://docs.sillytavern.app/usage/api-connections/novelai/#models" class="notes-link" target="_blank">
+public/index.html	2471	select	<select id="model_novel_select">
+public/index.html	2487	form	<form action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	2490	select	<select id="textgen_type">
+public/index.html	2511	input	<input id="api_key_togetherai" name="api_key_togetherai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	2519	select	<select id="model_togetherai_select">
+public/index.html	2530	a	<a target="_blank" href="https://openrouter.ai/keys/">
+public/index.html	2532	a	<a href="https://openrouter.ai/settings/credits" target="_blank" class="openrouter_view_credits" data-i18n="View Remaining Credits">
+public/index.html	2536	input	<input id="api_key_openrouter-tg" name="api_key_openrouter" class="text_pole flex1 api_key_openrouter" value="" type="text" autocomplete="off">
+public/index.html	2544	select	<select id="openrouter_model">
+public/index.html	2555	select	<select id="openrouter_providers_text" class="openrouter_providers" multiple>
+public/index.html	2558	input	<input id="openrouter_allow_fallbacks_textgenerationwebui" type="checkbox" />
+public/index.html	2564	select	<select id="openrouter_quantizations_text" class="openrouter_quantizations" multiple>
+public/index.html	2580	input	<input id="api_key_infermaticai" name="api_key_infermaticai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	2588	select	<select id="model_infermaticai_select">
+public/index.html	2598	a	<a href="https://docs.sillytavern.app/usage/api-connections/dreamgen/" class="notes-link" target="_blank">
+public/index.html	2603	input	<input id="api_key_dreamgen" name="api_key_dreamgen" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	2611	select	<select id="model_dreamgen_select">
+public/index.html	2623	a	<a href="https://mancer.tech/" class="notes-link" target="_blank">
+public/index.html	2628	input	<input id="api_key_mancer" name="api_key_mancer" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2637	select	<select id="mancer_model">
+public/index.html	2647	input	<input id="api_key_generic" name="api_key_generic" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2657	input	<input id="generic_api_url_text" name="generic_api_url" class="text_pole wide100p" value="" autocomplete="off" data-server-history="generic">
+public/index.html	2661	input	<input list="generic_model_fill" id="generic_model_textgenerationwebui" class="text_pole wide100p" placeholder="Model ID (optional)" data-i18n="[placeholder]Model ID (optional)" type="text" autocomplete="off">
+public/index.html	2666	select	<select id="generic_model_select" class="text_pole wide100p">
+public/index.html	2675	a	<a href="https://github.com/oobabooga/text-generation-webui" target="_blank">
+public/index.html	2687	input	<input id="api_key_ooba" name="api_key_ooba" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2697	input	<input id="textgenerationwebui_api_url_text" name="textgenerationwebui_api_url" class="text_pole wide100p" value="" autocomplete="off" data-server-history="ooba_blocking">
+public/index.html	2699	input	<input id="custom_model_textgenerationwebui" class="text_pole wide100p" placeholder="Custom model (optional)" data-i18n="[placeholder]Custom model (optional)" type="text">
+public/index.html	2703	a	<a href="https://featherless.ai/models/" target="_blank" rel="noopener noreferrer">
+public/index.html	2709	input	<input id="api_key_featherless" name="api_key_featherless" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2721	input	<input id="featherless_model_search_bar" class="text_pole width100p flex1 margin0" type="search" data-i18n="[placeholder]Search..." placeholder="Search...">
+public/index.html	2722	select	<select id="featherless_model_sort_order" class="margin0 text_pole">
+public/index.html	2729	select	<select id="featherless_category_selection" class="text_pole">
+public/index.html	2736	select	<select id="featherless_class_selection" class="text_pole">
+public/index.html	2746	select	<select id="featherless_model" class="displayNone">
+public/index.html	2754	a	<a href="https://github.com/vllm-project/vllm" target="_blank" data-i18n="vllm-project/vllm">
+public/index.html	2760	input	<input id="api_key_vllm" name="api_key_vllm" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2770	input	<input id="vllm_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-server-history="vllm">
+public/index.html	2774	select	<select id="vllm_model">
+public/index.html	2784	input	<input id="api_key_huggingface" name="api_key_huggingface" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2794	input	<input id="huggingface_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-server-history="huggingface">
+public/index.html	2800	a	<a href="https://github.com/PygmalionAI/aphrodite-engine" target="_blank" data-i18n="PygmalionAI/aphrodite-engine">
+public/index.html	2806	input	<input id="api_key_aphrodite" name="api_key_aphrodite" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2816	input	<input id="aphrodite_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-server-history="aphrodite">
+public/index.html	2820	select	<select id="aphrodite_model">
+public/index.html	2829	a	<a href="https://github.com/ggml-org/llama.cpp/blob/master/README.md#llama-server" target="_blank" data-i18n="ggml-org/llama.cpp">
+public/index.html	2835	input	<input id="api_key_llamacpp" name="api_key_llamacpp" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2845	input	<input id="llamacpp_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-server-history="llamacpp">
+public/index.html	2851	select	<select id="llamacpp_model">
+public/index.html	2860	a	<a href="https://github.com/ollama/ollama" target="_blank">
+public/index.html	2867	input	<input id="ollama_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-server-history="ollama">
+public/index.html	2873	select	<select id="ollama_model">
+public/index.html	2886	a	<a href="https://github.com/theroyallab/tabbyAPI" target="_blank">
+public/index.html	2892	input	<input id="api_key_tabby" name="api_key_tabby" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2902	input	<input id="tabby_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-server-history="tabby">
+public/index.html	2908	select	<select id="tabby_model">
+public/index.html	2938	a	<a href="https://github.com/LostRuins/koboldcpp" target="_blank">
+public/index.html	2944	input	<input id="api_key_koboldcpp" name="api_key_koboldcpp" class="text_pole flex1 wide100p" type="text" autocomplete="off">
+public/index.html	2954	input	<input id="koboldcpp_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-server-history="koboldcpp">
+public/index.html	2959	input	<input type="checkbox" id="bypass_status_check_textgenerationwebui" />
+public/index.html	2963	input	<input type="checkbox" id="context_size_derived" />
+public/index.html	2982	select	<select id="chat_completion_source">
+public/index.html	3031	input	<input id="openai_base_url" type="text" class="text_pole" placeholder="https://api.openai.com/v1" />
+public/index.html	3055	select	<select id="openai_proxy_preset">
+public/index.html	3070	input	<input id="openai_reverse_proxy_name" type="text" class="text_pole" placeholder="..." />
+public/index.html	3082	input	<input id="openai_reverse_proxy" type="text" class="text_pole" placeholder="https://api.openai.com/v1" />
+public/index.html	3098	input	<input id="openai_proxy_access_key" type="text" class="text_pole flex1 masked-secret" placeholder="" autocomplete="off" />
+public/index.html	3121	form	<form id="openai_form" data-source="openai" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	3124	a	<a id="openai_api_usage" href="https://platform.openai.com/account/usage" target="_blank">
+public/index.html	3132	a	<a href="https://docs.sillytavern.app/usage/api-connections/openai/" class="notes-link" target="_blank">
+public/index.html	3141	input	<input id="api_key_openai" name="api_key_openai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3154	input	<input list="model_openai_select_fill" id="openai_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: gpt-4o" placeholder="Example: gpt-4o">
+public/index.html	3157	select	<select id="model_openai_select">
+public/index.html	3253	input	<input id="openai_bypass_status_check" type="checkbox" />
+public/index.html	3257	input	<input id="openai_show_external_models" type="checkbox" />
+public/index.html	3262	form	<form id="claude_form" data-source="claude" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	3265	a	<a target="_blank" href="https://console.anthropic.com/account/keys" data-i18n="Anthropic's developer console">
+public/index.html	3268	input	<input id="api_key_claude" name="api_key_claude" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3276	input	<input list="model_claude_select_fill" id="claude_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: claude-sonnet-4-6" placeholder="Example: claude-sonnet-4-6">
+public/index.html	3304	select	<select id="model_claude_select" class="text_pole">
+public/index.html	3307	form	<form id="openrouter_form" data-source="openrouter" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	3311	a	<a target="_blank" href="https://openrouter.ai/keys/">
+public/index.html	3313	a	<a href="https://openrouter.ai/settings/credits" target="_blank" class="openrouter_view_credits" data-i18n="View Remaining Credits">
+public/index.html	3317	input	<input id="api_key_openrouter" name="api_key_openrouter" class="text_pole flex1 api_key_openrouter" value="" type="text" autocomplete="off">
+public/index.html	3325	select	<select id="model_openrouter_select">
+public/index.html	3330	input	<input id="openrouter_use_fallback" type="checkbox" />
+public/index.html	3338	select	<select id="openrouter_providers_chat" class="openrouter_providers" multiple>
+public/index.html	3341	input	<input id="openrouter_allow_fallbacks" type="checkbox" />
+public/index.html	3351	select	<select id="openrouter_quantizations_chat" class="openrouter_quantizations" multiple>
+public/index.html	3364	form	<form id="ai21_form" data-source="ai21" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	3367	input	<input id="api_key_ai21" name="api_key_ai21" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3375	select	<select id="model_ai21_select">
+public/index.html	3398	form	<form id="makersuite_form" data-source="makersuite" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	3401	input	<input id="api_key_makersuite" name="api_key_makersuite" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3409	input	<input list="model_google_select_fill" id="google_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: gemini-2.5-pro" placeholder="Example: gemini-2.5-pro">
+public/index.html	3412	select	<select id="model_google_select">
+public/index.html	3470	select	<select id="vertexai_auth_mode" class="text_pole">
+public/index.html	3482	a	<a href="https://cloud.google.com/vertex-ai/generative-ai/docs/start/express-mode/overview" data-i18n="(Express mode)" target="_blank" rel="noopener noreferrer">
+public/index.html	3490	input	<input id="api_key_vertexai" name="api_key_vertexai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3503	input	<input id="vertexai_express_project_id" name="vertexai_express_project_id" class="text_pole flex1" value="" type="text" autocomplete="off" placeholder="Enter your Project ID">
+public/index.html	3520	a	<a href="https://cloud.google.com/vertex-ai/docs/authentication" target="_blank" rel="noopener noreferrer">
+public/index.html	3531	input	<input id="vertexai_service_account_json" name="vertexai_service_account_json" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3538	button	<button type="button" id="vertexai_validate_service_account" class="menu_button menu_button_icon" data-i18n="Validate JSON">
+public/index.html	3549	a	<a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations" target="_blank" rel="noopener noreferrer" title="View available regions and models" data-i18n="[title]View available regions and models" class="notes-link">
+public/index.html	3553	input	<input id="vertexai_region" name="vertexai_region" class="text_pole flex1" value="us-central1" type="text" autocomplete="off" placeholder="e.g., global, us-central1, europe-west1, asia-northeast1" list="vertexai_region_suggestions">
+public/index.html	3581	input	<input list="model_vertexai_select_fill" id="vertexai_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: gemini-2.5-pro" placeholder="Example: gemini-2.5-pro">
+public/index.html	3584	select	<select id="model_vertexai_select">
+public/index.html	3619	form	<form id="mistralai_form" data-source="mistralai" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	3622	input	<input id="api_key_mistralai" name="api_key_mistralai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3630	input	<input list="model_mistralai_select_fill" id="mistralai_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: mistral-large-latest" placeholder="Example: mistral-large-latest">
+public/index.html	3633	select	<select id="model_mistralai_select">
+public/index.html	3641	input	<input id="api_key_groq" name="api_key_groq" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3648	select	<select id="model_groq_select">
+public/index.html	3665	input	<input id="api_key_siliconflow" name="api_key_siliconflow" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3672	select	<select id="siliconflow_endpoint">
+public/index.html	3677	select	<select id="model_siliconflow_select">
+public/index.html	3684	input	<input id="api_key_minimax" name="api_key_minimax" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3691	select	<select id="minimax_endpoint">
+public/index.html	3696	select	<select id="model_minimax_select">
+public/index.html	3710	a	<a href="https://playground.electronhub.ai/console" target="_blank" data-i18n="View Remaining Credits">
+public/index.html	3713	input	<input id="api_key_electronhub" name="api_key_electronhub" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3721	select	<select id="model_electronhub_select">
+public/index.html	3729	a	<a href="https://chutes.ai/app/api/billing-balance" target="_blank" data-i18n="View Billing/Balance">
+public/index.html	3732	input	<input id="api_key_chutes" name="api_key_chutes" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3740	select	<select id="model_chutes_select">
+public/index.html	3747	a	<a href="https://nano-gpt.com/balance" target="_blank" rel="noopener noreferrer" class="nanogpt_view_credits" data-i18n="View Remaining Credits">
+public/index.html	3750	input	<input id="api_key_nanogpt" name="api_key_nanogpt" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3758	select	<select id="model_nanogpt_select">
+public/index.html	3767	select	<select id="nanogpt_provider">
+public/index.html	3771	input	<input id="nanogpt_payg_override" type="checkbox" />
+public/index.html	3777	a	<a href="https://dash.cloudflare.com/?to=/:account/ai/workers-ai/api-quick-start" target="_blank" rel="noopener noreferrer" data-i18n="Cloudflare Workers AI API Key">
+public/index.html	3779	input	<input id="api_key_workers_ai" name="api_key_workers_ai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3785	a	<a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages" target="_blank" rel="noopener noreferrer" data-i18n="Cloudflare Account ID">
+public/index.html	3787	input	<input id="workers_ai_account_id" class="text_pole flex1" value="" type="text" autocomplete="off" placeholder="e.g. 023e105f4ecef8ad9ca31a8372d0c353" data-i18n="[placeholder]e.g. 023e105f4ecef8ad9ca31a8372d0c353">
+public/index.html	3791	select	<select id="model_workers_ai_select">
+public/index.html	3799	input	<input id="api_key_deepseek" name="api_key_deepseek" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3807	input	<input list="model_deepseek_select_fill" id="deepseek_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: deepseek-chat" placeholder="Example: deepseek-chat">
+public/index.html	3810	select	<select id="model_deepseek_select">
+public/index.html	3818	input	<input id="api_key_fireworks" name="api_key_fireworks" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3826	select	<select id="model_fireworks_select">
+public/index.html	3832	a	<a href="https://api.cometapi.com/" target="_blank" rel="noopener noreferrer" data-i18n="CometAPI API Key">
+public/index.html	3834	input	<input id="api_key_cometapi" name="api_key_cometapi" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3843	select	<select id="model_cometapi_select" class="flex1">
+public/index.html	3852	input	<input id="api_key_perplexity" name="api_key_perplexity" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3859	select	<select id="model_perplexity_select">
+public/index.html	3881	form	<form id="cohere_form" data-source="cohere" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	3884	input	<input id="api_key_cohere" name="api_key_cohere" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3892	select	<select id="model_cohere_select">
+public/index.html	3917	form	<form id="custom_form" data-source="custom">
+public/index.html	3920	input	<input id="custom_api_url_text" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: http://localhost:1234/v1" placeholder="Example: http://localhost:1234/v1">
+public/index.html	3933	input	<input id="api_key_custom" name="api_key_custom" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3941	input	<input list="model_custom_select_fill" id="custom_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: gpt-4o" placeholder="Example: gpt-4o">
+public/index.html	3946	select	<select id="model_custom_select" class="text_pole model_custom_select">
+public/index.html	3949	form	<form id="responses_form" data-source="openai_responses">
+public/index.html	3952	input	<input id="responses_url_text" class="text_pole wide100p" value="" autocomplete="off" placeholder="https://api.openai.com/v1">
+public/index.html	3965	input	<input id="api_key_responses" name="api_key_responses" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3973	select	<select id="model_responses_select" class="text_pole">
+public/index.html	3978	a	<a data-i18n="xAI API Key" href="https://console.x.ai/" target="_blank" rel="noopener noreferrer">
+public/index.html	3983	input	<input id="api_key_xai" name="api_key_xai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	3991	input	<input list="model_xai_select_fill" id="xai_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: grok-4" placeholder="Example: grok-4">
+public/index.html	3994	select	<select id="model_xai_select">
+public/index.html	4004	input	<input id="api_key_aimlapi" name="api_key_aimlapi" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	4011	select	<select id="model_aimlapi_select">
+public/index.html	4016	select	<select id="pollinations_endpoint">
+public/index.html	4022	a	<a href="https://enter.pollinations.ai/" target="_blank" rel="noopener noreferrer" data-i18n="Pollinations API Key">
+public/index.html	4027	input	<input id="api_key_pollinations" name="api_key_pollinations" class="text_pole flex1" value="" type="text" placeholder="sk_..." autocomplete="off">
+public/index.html	4035	select	<select id="model_pollinations_select">
+public/index.html	4041	a	<a data-i18n="Moonshot AI API Key" href="https://platform.moonshot.ai/console/api-keys" target="_blank" rel="noopener noreferrer">
+public/index.html	4046	input	<input id="api_key_moonshot" name="api_key_moonshot" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	4053	input	<input list="model_moonshot_select_fill" id="moonshot_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: kimi-k2-0711-preview" placeholder="Example: kimi-k2-0711-preview">
+public/index.html	4056	select	<select id="model_moonshot_select">
+public/index.html	4071	a	<a data-i18n="Z.AI API Key" href="https://z.ai/manage-apikey/apikey-list" target="_blank" rel="noopener noreferrer">
+public/index.html	4076	input	<input id="api_key_zai" name="api_key_zai" class="text_pole flex1" value="" type="text" autocomplete="off">
+public/index.html	4083	select	<select id="zai_endpoint">
+public/index.html	4088	input	<input list="model_zai_select_fill" id="zai_model_id" class="text_pole wide100p" value="" autocomplete="off" data-i18n="[placeholder]Example: glm-4.6" placeholder="Example: glm-4.6">
+public/index.html	4091	select	<select id="model_zai_select">
+public/index.html	4118	input	<input id="azure_base_url" data-setting="azure_base_url" class="text_pole wide100p" type="text" placeholder="https://your-resource.openai.azure.com/">
+public/index.html	4124	input	<input id="azure_deployment_name" data-setting="azure_deployment_name" class="text_pole wide100p" type="text" placeholder="your-deployment-name" title="The name of your model deployment in Azure." data-i18n="[title]The name of your model deployment in Azure.">
+public/index.html	4130	select	<select id="azure_api_version" data-setting="azure_api_version" class="text_pole wide100p">
+public/index.html	4139	input	<input id="api_key_azure_openai" data-setting="api_key_azure_openai" class="text_pole flex1" type="text" autocomplete="off">
+public/index.html	4149	select	<select id="azure_openai_model" data-setting="azure_openai_model" class="text_pole wide100p">
+public/index.html	4166	select	<select id="cc_sort_models">
+public/index.html	4176	input	<input id="cc_group_models" type="checkbox" />
+public/index.html	4195	textarea	<textarea id="chat_completion_custom_models_text" class="text_pole autoSetHeight wide100p" rows="4" data-i18n="[placeholder]Example: my-model-id" placeholder="Example: my-model-id">
+public/index.html	4203	a	<a href="https://docs.sillytavern.app/usage/api-connections/openai/#prompt-post-processing" class="notes-link" target="_blank">
+public/index.html	4207	select	<select id="custom_prompt_post_processing" class="text_pole" title="Applies additional processing to the prompt before sending it to the API." data-i18n="[title]Applies additional processing to the prompt before sending it to the API.">
+public/index.html	4229	input	<input id="auto-connect-checkbox" type="checkbox" />
+public/index.html	4232	a	<a id="viewSecrets" href="javascript:void(0);" data-i18n="[missing_key_text]Missing key;[key_saved_text]Key saved" missing_key_text="❌ Missing key" key_saved_text="✔️ Key saved">
+public/index.html	4249	a	<a href="https://docs.sillytavern.app/usage/core-concepts/advancedformatting/" class="notes-link" target="_blank">
+public/index.html	4254	input	<input id="af_master_import_file" type="file" hidden accept=".json" class="displayNone">
+public/index.html	4280	input	<input id="context_derived" type="checkbox" style="display:none;" />
+public/index.html	4286	select	<select id="context_presets" data-preset-manager-for="context" class="flex1 text_pole">
+public/index.html	4288	input	<input type="file" hidden data-preset-manager-file="context" accept=".json, .settings">
+public/index.html	4304	textarea	<textarea id="context_story_string" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4311	select	<select id="context_story_string_position" class="text_pole">
+public/index.html	4321	input	<input type="number" id="context_story_string_depth" class="text_pole" min="0" max="">
+public/index.html	4327	select	<select id="context_story_string_role" class="text_pole">
+public/index.html	4341	textarea	<textarea id="context_example_separator" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4349	textarea	<textarea id="context_chat_start" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4361	input	<input id="always-force-name2-checkbox" type="checkbox" />
+public/index.html	4367	input	<input id="single_line" type="checkbox" />
+public/index.html	4373	input	<input id="collapse-newlines-checkbox" type="checkbox" />
+public/index.html	4379	input	<input id="trim_spaces" type="checkbox" />
+public/index.html	4384	input	<input id="trim_sentences_checkbox" type="checkbox" />
+public/index.html	4390	input	<input id="context_use_stop_strings" type="checkbox" />
+public/index.html	4394	input	<input id="context_names_as_stop_strings" type="checkbox" />
+public/index.html	4408	input	<input id="instruct_derived" type="checkbox" style="display:none;" />
+public/index.html	4412	input	<input id="instruct_bind_to_context" type="checkbox" style="display:none;" />
+public/index.html	4416	input	<input id="instruct_enabled" type="checkbox" style="display:none;" />
+public/index.html	4425	select	<select id="instruct_presets" data-preset-manager-for="instruct" class="flex1 text_pole">
+public/index.html	4427	input	<input type="file" hidden data-preset-manager-file="instruct" accept=".json, .settings">
+public/index.html	4444	input	<input type="text" id="instruct_activation_regex" class="text_pole textarea_compact" placeholder="e.g. /llama(-)?[3|3.1]/i">
+public/index.html	4448	input	<input id="instruct_wrap" type="checkbox" />
+public/index.html	4452	input	<input id="instruct_macro" type="checkbox" />
+public/index.html	4456	input	<input id="instruct_sequences_as_stop_strings" type="checkbox" />
+public/index.html	4460	input	<input id="instruct_skip_examples" type="checkbox" />
+public/index.html	4467	select	<select id="instruct_names_behavior">
+public/index.html	4485	summary	<summary>
+public/index.html	4495	textarea	<textarea id="instruct_story_string_prefix" class="text_pole textarea_compact autoSetHeight">
+public/index.html	4503	textarea	<textarea id="instruct_story_string_suffix" class="text_pole wide100p textarea_compact autoSetHeight">
+public/index.html	4509	summary	<summary data-i18n="User Message Sequences">
+public/index.html	4513	textarea	<textarea id="instruct_input_sequence" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4517	textarea	<textarea id="instruct_input_suffix" data-macros class="text_pole wide100p textarea_compact autoSetHeight">
+public/index.html	4522	summary	<summary data-i18n="Assistant Message Sequences">
+public/index.html	4526	textarea	<textarea id="instruct_output_sequence" data-macros class="text_pole wide100p textarea_compact autoSetHeight">
+public/index.html	4530	textarea	<textarea id="instruct_output_suffix" data-macros class="text_pole wide100p textarea_compact autoSetHeight">
+public/index.html	4535	summary	<summary data-i18n="System Message Sequences">
+public/index.html	4539	textarea	<textarea id="instruct_system_sequence" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4543	textarea	<textarea id="instruct_system_suffix" data-macros class="text_pole wide100p textarea_compact autoSetHeight">
+public/index.html	4548	input	<input id="instruct_system_same_as_user" type="checkbox" />
+public/index.html	4554	summary	<summary data-i18n="Misc. Sequences">
+public/index.html	4558	textarea	<textarea id="instruct_first_output_sequence" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4562	textarea	<textarea id="instruct_last_output_sequence" data-macros class="text_pole wide100p textarea_compact autoSetHeight">
+public/index.html	4568	textarea	<textarea id="instruct_first_input_sequence" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4572	textarea	<textarea id="instruct_last_input_sequence" data-macros class="text_pole wide100p textarea_compact autoSetHeight">
+public/index.html	4578	textarea	<textarea id="instruct_last_system_sequence" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4582	textarea	<textarea id="instruct_stop_sequence" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4588	textarea	<textarea id="instruct_user_alignment_message" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4601	input	<input id="sysprompt_enabled" type="checkbox" style="display:none;" />
+public/index.html	4608	select	<select id="sysprompt_select" data-preset-manager-for="sysprompt" class="flex1 text_pole">
+public/index.html	4610	input	<input type="file" hidden data-preset-manager-file="sysprompt" accept=".json, .settings">
+public/index.html	4626	textarea	<textarea id="sysprompt_content" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4634	textarea	<textarea id="sysprompt_post_history" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4643	a	<a href="https://docs.sillytavern.app/usage/core-concepts/advancedformatting/#custom-stopping-strings" class="notes-link" target="_blank">
+public/index.html	4654	textarea	<textarea id="custom_stopping_strings" class="text_pole textarea_compact monospace autoSetHeight">
+public/index.html	4657	input	<input id="custom_stopping_strings_macro" type="checkbox" checked>
+public/index.html	4667	a	<a href="https://docs.sillytavern.app/usage/prompts/tokenizer/" class="notes-link" target="_blank">
+public/index.html	4674	select	<select id="tokenizer">
+public/index.html	4698	select	<select id="encoding_tokenizer">
+public/index.html	4700	input	<input id="fast_token_preview" type="checkbox" />
+public/index.html	4710	input	<input id="token_padding" class="text_pole textarea_compact" type="number" min="-2048" max="2048" step="1" />
+public/index.html	4720	input	<input id="reasoning_auto_parse" type="checkbox" />
+public/index.html	4726	input	<input id="reasoning_auto_expand" type="checkbox" />
+public/index.html	4732	input	<input id="reasoning_show_hidden" type="checkbox" />
+public/index.html	4740	input	<input id="reasoning_add_to_prompts" type="checkbox" />
+public/index.html	4746	input	<input id="reasoning_max_additions" class="text_pole textarea_compact widthUnset" type="number" min="0" max="999" />
+public/index.html	4751	summary	<summary data-i18n="Reasoning Formatting">
+public/index.html	4755	select	<select id="reasoning_select" data-preset-manager-for="reasoning" class="flex1 text_pole">
+public/index.html	4757	input	<input type="file" hidden data-preset-manager-file="reasoning" accept=".json, .settings">
+public/index.html	4770	textarea	<textarea id="reasoning_prefix" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4774	textarea	<textarea id="reasoning_suffix" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4780	textarea	<textarea id="reasoning_separator" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4790	input	<input id="bind_model_templates" type="checkbox" />
+public/index.html	4802	input	<input id="markdown_escape_strings" data-macros class="text_pole textarea_compact" type="text" data-i18n="[placeholder]comma delimited,no spaces between" placeholder="comma delimited,no spaces between" />
+public/index.html	4814	textarea	<textarea id="start_reply_with" data-macros class="text_pole textarea_compact autoSetHeight">
+public/index.html	4817	input	<input id="chat-show-reply-prefix-checkbox" type="checkbox" />
+public/index.html	4837	input	<input type="checkbox" id="WI_panel_pin">
+public/index.html	4845	a	<a href="https://docs.sillytavern.app/usage/core-concepts/worldinfo/" class="notes-link" target="_blank">
+public/index.html	4861	select	<select id="world_info" multiple tabindex="-1">
+public/index.html	4877	input	<input type="search" id="world_info_manager_search" class="text_pole textarea_compact" data-i18n="[placeholder]Search lorebooks or tags..." placeholder="Search lorebooks or tags...">
+public/index.html	4878	button	<button type="button" id="world_info_manager_search_help" class="menu_button world_info_search_help_button" title="Search syntax help" data-i18n="[title]Search syntax help">
+public/index.html	4882	input	<input type="checkbox" id="world_info_manager_search_entries">
+public/index.html	4886	input	<input type="checkbox" id="world_info_manager_search_advanced">
+public/index.html	4925	select	<select id="world_info_manager_page_size" class="text_pole textarea_compact">
+public/index.html	4962	input	<input class="neo-range-slider" type="range" id="world_info_depth" name="world_info_depth" min="0" max="1000" step="1">
+public/index.html	4963	input	<input class="neo-range-input" type="number" min="0" max="1000" step="1" data-for="world_info_depth" id="world_info_depth_counter">
+public/index.html	4970	input	<input class="neo-range-slider" type="range" id="world_info_budget" name="world_info_budget" min="1" max="100" step="1">
+public/index.html	4971	input	<input class="neo-range-input" type="number" min="1" max="100" step="1" data-for="world_info_budget" id="world_info_budget_counter">
+public/index.html	4979	input	<input class="neo-range-slider" type="range" id="world_info_budget_cap" name="world_info_budget_cap" min="0" max="65536" step="1">
+public/index.html	4980	input	<input class="neo-range-input" type="number" min="0" max="65536" step="1" data-for="world_info_budget_cap" id="world_info_budget_cap_counter">
+public/index.html	4988	input	<input class="neo-range-slider" type="range" id="world_info_min_activations" name="world_info_min_activations" min="0" max="100" step="1">
+public/index.html	4989	input	<input class="neo-range-input" type="number" min="0" max="100" step="1" data-for="world_info_min_activations" id="world_info_min_activations_counter">
+public/index.html	4997	input	<input class="neo-range-slider" type="range" id="world_info_min_activations_depth_max" name="volume" min="0" max="100" step="1">
+public/index.html	4998	input	<input class="neo-range-input" type="number" min="0" max="100" step="1" data-for="world_info_min_activations_depth_max" id="world_info_min_activations_depth_max_counter">
+public/index.html	5005	input	<input class="neo-range-slider" type="range" id="world_info_max_recursion_steps" name="world_info_max_recursion_steps" min="0" max="10" step="1">
+public/index.html	5006	input	<input class="neo-range-input" type="number" min="0" max="10" step="1" data-for="world_info_max_recursion_steps" id="world_info_max_recursion_steps_counter">
+public/index.html	5013	select	<select id="world_info_character_strategy" class="flexGrow margin0">
+public/index.html	5022	input	<input id="world_info_include_names" type="checkbox" />
+public/index.html	5028	input	<input id="world_info_recursive" type="checkbox" />
+public/index.html	5034	input	<input id="world_info_case_sensitive" type="checkbox" />
+public/index.html	5040	input	<input id="world_info_match_whole_words" type="checkbox" />
+public/index.html	5046	input	<input id="world_info_use_group_scoring" type="checkbox" />
+public/index.html	5052	input	<input id="world_info_overflow_alert" type="checkbox" />
+public/index.html	5066	input	<input type="file" id="world_import_file" accept=".json,.lorebook,.png" name="avatar" hidden>
+public/index.html	5074	select	<select id="world_editor_select">
+public/index.html	5096	select	<select id="world_info_sort_order" class="text_pole textarea_compact">
+public/index.html	5118	input	<input type="search" class="text_pole textarea_compact" data-i18n="[placeholder]Search..." id="world_info_search" placeholder="Search...">
+public/index.html	5119	button	<button type="button" id="world_info_search_help" class="menu_button world_info_search_help_button" title="Search syntax help" data-i18n="[title]Search syntax help">
+public/index.html	5124	select	<select id="world_info_search_mode" class="text_pole textarea_compact" title="Search mode" data-i18n="[title]Search mode">
+public/index.html	5129	input	<input type="checkbox" id="world_info_search_advanced">
+public/index.html	5185	a	<a href="https://docs.sillytavern.app/usage/user-settings/" class="notes-link" target="_blank">
+public/index.html	5193	select	<select id="ui_language_select" class="flex1 margin0 text_pole">
+public/index.html	5218	button	<button id="immersive_mode_toggle" type="button" class="margin0 menu_button_icon menu_button" title="Enter immersive mode" aria-pressed="false" data-i18n="[title]Enter immersive mode">
+public/index.html	5223	textarea	<textarea id="settingsSearch" class="textarea_compact flex1" rows="1" placeholder="Search Settings" data-i18n="[placeholder]Search Settings">
+public/index.html	5232	button	<button type="button" id="ui_preset_import_button" class="menu_button menu_button_icon margin0" title="Import a theme file" data-i18n="[title]Import a theme file">
+public/index.html	5235	button	<button type="button" id="ui_preset_export_button" class="menu_button menu_button_icon margin0" title="Export a theme file" data-i18n="[title]Export a theme file">
+public/index.html	5238	button	<button type="button" id="ui-preset-delete-button" class="menu_button menu_button_icon margin0" title="Delete a theme" data-i18n="[title]Delete a theme">
+public/index.html	5242	input	<input type="file" id="ui_preset_import_file" accept=".json" hidden>
+public/index.html	5245	select	<select id="themes" class="margin0" aria-label="Theme" data-i18n="[aria-label]Theme">
+public/index.html	5247	button	<button type="button" id="ui-preset-update-button" title="Update a theme file" data-i18n="[title]Update a theme file" class="menu_button margin0">
+public/index.html	5250	button	<button type="button" id="ui-preset-save-button" title="Save as a new theme" data-i18n="[title]Save as a new theme" class="menu_button margin0">
+public/index.html	5260	select	<select id="avatar_style" class="widthNatural flex1 margin0 text_pole">
+public/index.html	5269	select	<select id="chat_display" class="widthNatural flex1 margin0 text_pole">
+public/index.html	5277	select	<select id="media_display" class="widthNatural flex1 margin0 text_pole">
+public/index.html	5284	select	<select id="toastr_position" class="widthNatural flex1 margin0 text_pole">
+public/index.html	5355	input	<input class="neo-range-slider" type="range" id="chat_width_slider" name="chat_width_slider" min="25" max="100" step="1">
+public/index.html	5356	input	<input class="neo-range-input" type="number" min="25" max="100" step="1" data-for="chat_width_slider" id="chat_width_slider_counter">
+public/index.html	5364	input	<input class="neo-range-slider" type="range" id="font_scale" name="font_scale" min="0.5" max="1.5" step="0.01">
+public/index.html	5365	input	<input class="neo-range-input" type="number" min="0.5" max="1.5" step="0.01" data-for="font_scale" id="font_scale_counter">
+public/index.html	5373	input	<input class="neo-range-slider" type="range" id="blur_strength" name="blur_strength" min="0" max="30" step="1">
+public/index.html	5374	input	<input class="neo-range-input" type="number" min="0" max="30" step="1" data-for="blur_strength" id="blur_strength_counter">
+public/index.html	5382	input	<input class="neo-range-slider" type="range" id="shadow_width" name="shadow_width" min="0" max="5" step="1">
+public/index.html	5383	input	<input class="neo-range-input" type="number" min="0" max="5" step="1" data-for="shadow_width" id="shadow_width_counter">
+public/index.html	5391	input	<input id="reduced_motion" type="checkbox" />
+public/index.html	5395	input	<input id="fast_ui_mode" type="checkbox" />
+public/index.html	5399	input	<input id="noShadowsmode" type="checkbox" />
+public/index.html	5403	input	<input id="waifuMode" type="checkbox" />
+public/index.html	5407	input	<input id="expandMessageActions" type="checkbox" />
+public/index.html	5411	input	<input id="enableZenSliders" type="checkbox" />
+public/index.html	5415	input	<input id="enableLabMode" type="checkbox" />
+public/index.html	5419	input	<input id="messageTimerEnabled" type="checkbox" />
+public/index.html	5423	input	<input id="messageTimestampsEnabled" type="checkbox" />
+public/index.html	5427	input	<input id="messageModelIconEnabled" type="checkbox" />
+public/index.html	5431	input	<input id="mesIDDisplayEnabled" type="checkbox" />
+public/index.html	5435	input	<input id="hideChatAvatarsEnabled" type="checkbox" />
+public/index.html	5439	input	<input id="messageTokensEnabled" type="checkbox" />
+public/index.html	5443	input	<input id="compact_input_area" type="checkbox" />
+public/index.html	5447	input	<input id="show_swipe_num_all_messages" type="checkbox" />
+public/index.html	5451	input	<input id="hotswapEnabled" type="checkbox" />
+public/index.html	5455	input	<input id="zoomed_avatar_magnification" type="checkbox" />
+public/index.html	5460	input	<input id="bogus_folders" type="checkbox" />
+public/index.html	5465	input	<input id="click_to_edit" type="checkbox" />
+public/index.html	5470	input	<input id="immersiveRememberState" type="checkbox" />
+public/index.html	5474	input	<input id="immersiveStoryFocus" type="checkbox" />
+public/index.html	5478	input	<input id="immersiveExtensionsEnabled" type="checkbox" />
+public/index.html	5483	select	<select id="immersiveVisualMode" class="text_pole widthNatural">
+public/index.html	5491	select	<select id="immersiveHudMode" class="text_pole widthNatural">
+public/index.html	5499	input	<input id="atria_mobile_keep_alive" type="checkbox" />
+public/index.html	5512	select	<select id="aux_field" class="widthNatural flex1 margin0">
+public/index.html	5519	select	<select id="tag_import_setting" class="widthNatural flex1 margin0">
+public/index.html	5527	input	<input id="fuzzy_search_checkbox" type="checkbox" />
+public/index.html	5531	input	<input id="prefer_character_prompt" type="checkbox" />
+public/index.html	5535	input	<input id="prefer_character_jailbreak" type="checkbox" />
+public/index.html	5539	input	<input id="never_resize_avatars" type="checkbox" />
+public/index.html	5543	input	<input id="background_thumbnails_animation" type="checkbox" />
+public/index.html	5547	input	<input id="show_card_avatar_urls" type="checkbox" />
+public/index.html	5551	input	<input id="spoiler_free_mode" type="checkbox" />
+public/index.html	5571	input	<input id="smooth_streaming" type="checkbox" />
+public/index.html	5579	input	<input id="smooth_streaming_no_think" type="checkbox" />
+public/index.html	5585	input	<input type="range" id="smooth_streaming_speed" name="smooth_streaming_speed" min="0" max="100" step="10" value="50">
+public/index.html	5593	input	<input id="stream_fade_in" type="checkbox" />
+public/index.html	5599	input	<input id="play_message_sound" type="checkbox" />
+public/index.html	5600	audio	<audio id="audio_message_sound" src="sounds/message.mp3" hidden>
+public/index.html	5606	input	<input id="play_sound_unfocused" type="checkbox" />
+public/index.html	5610	input	<input id="message_complete_notification" type="checkbox" />
+public/index.html	5615	select	<select id="message_complete_notification_detail_mode">
+public/index.html	5621	input	<input id="relaxed_api_urls" type="checkbox" />
+public/index.html	5625	input	<input id="world_import_dialog" type="checkbox" />
+public/index.html	5629	input	<input id="enable_auto_select_input" type="checkbox" />
+public/index.html	5633	input	<input id="enable_md_hotkeys" type="checkbox" />
+public/index.html	5640	input	<input id="restore_user_input" type="checkbox" />
+public/index.html	5645	input	<input id="movingUImode" type="checkbox" />
+public/index.html	5661	select	<select id="movingUIPresets" class="widthNatural flex1 margin0">
+public/index.html	5674	textarea	<textarea id="customCSS" class="text_pole margin0 margin-r5 textarea_compact monospace" rows="8">
+public/index.html	5691	input	<input class="neo-range-slider" type="range" id="chat_truncation" name="chat_truncation" min="0" max="1000" step="5">
+public/index.html	5692	input	<input class="neo-range-input" type="number" min="0" max="1000" step="5" data-for="chat_truncation" id="chat_truncation_counter">
+public/index.html	5701	input	<input class="neo-range-slider" type="range" id="streaming_fps" name="streaming_fps" min="5" max="100" step="5">
+public/index.html	5702	input	<input class="neo-range-input" type="number" min="5" max="100" step="5" data-for="streaming_fps" id="streaming_fps_counter">
+public/index.html	5711	select	<select id="example_messages_behavior">
+public/index.html	5723	select	<select id="image_overswipe">
+public/index.html	5732	select	<select id="send_on_enter" class="widthNatural flex1 margin0">
+public/index.html	5739	input	<input id="continue_on_send" type="checkbox" />
+public/index.html	5745	input	<input id="quick_continue" type="checkbox" />
+public/index.html	5751	input	<input id="quick_impersonate" type="checkbox" />
+public/index.html	5758	input	<input id="swipes-checkbox" type="checkbox" />
+public/index.html	5762	input	<input id="gestures-checkbox" type="checkbox" />
+public/index.html	5768	input	<input id="auto-load-chat-checkbox" type="checkbox" />
+public/index.html	5772	input	<input id="auto_scroll_chat_to_bottom" type="checkbox" />
+public/index.html	5776	input	<input id="auto_save_msg_edits" type="checkbox" />
+public/index.html	5780	input	<input id="confirm_message_delete" type="checkbox" />
+public/index.html	5787	select	<select id="before_unload_guard_mode" class="widthNatural flex1 margin0">
+public/index.html	5794	input	<input id="auto_fix_generated_markdown" type="checkbox" />
+public/index.html	5798	input	<input id="forbid_external_media" type="checkbox" />
+public/index.html	5802	input	<input id="message_media_lazy_load" type="checkbox" />
+public/index.html	5806	input	<input id="allow_name2_display" type="checkbox" />
+public/index.html	5810	input	<input id="allow_name1_display" type="checkbox" />
+public/index.html	5814	input	<input id="encode_tags" type="checkbox" />
+public/index.html	5818	input	<input id="experimental_macro_engine" type="checkbox" />
+public/index.html	5823	input	<input id="disable_group_trimming" type="checkbox" />
+public/index.html	5827	input	<input id="frontend_debug_logging" type="checkbox" />
+public/index.html	5831	input	<input id="android_debug_recording" type="checkbox" />
+public/index.html	5836	input	<input id="self_profiling_enabled" type="checkbox" />
+public/index.html	5841	button	<button id="download_self_profile_report" class="menu_button whitespacenowrap" type="button" data-i18n="Download Performance Profile">
+public/index.html	5844	input	<input id="console_log_prompts" type="checkbox" />
+public/index.html	5848	input	<input id="request_token_probabilities" type="checkbox" />
+public/index.html	5852	input	<input id="show_group_chat_queue" type="checkbox" />
+public/index.html	5856	input	<input id="pin_styles" type="checkbox" />
+public/index.html	5866	input	<input id="auto_swipe" type="checkbox" />
+public/index.html	5870	input	<input id="auto_swipe_minimum_length" name="auto_swipe_minimum_length" type="number" min="0" step="1" value="0" class="text_pole" title="If the generated message is shorter than these many characters, trigger an auto-swipe." data-i18n="[title]If the generated message is shorter than these many characters, trigger an auto-swipe">
+public/index.html	5873	textarea	<textarea id="auto_swipe_blacklist" name="auto_swipe_blacklist" data-i18n="[placeholder]words you dont want generated separated by comma ','" placeholder="words you don't want generated separated by comma ','" class="text_pole textarea_compact" value="" autocomplete="off" rows="3">
+public/index.html	5875	input	<input id="auto_swipe_blacklist_threshold" name="auto_swipe_blacklist_threshold" type="number" min="0" step="1" value="1" class="text_pole" title="Minimum number of blacklisted words detected to trigger an auto-swipe." data-i18n="[title]Minimum number of blacklisted words detected to trigger an auto-swipe">
+public/index.html	5887	input	<input id="auto_continue_enabled" type="checkbox" />
+public/index.html	5893	input	<input id="auto_continue_allow_chat_completions" type="checkbox" />
+public/index.html	5902	input	<input id="auto_continue_target_length" type="number" class="text_pole textarea_compact" min="0" max="1024" />
+public/index.html	5920	select	<select id="stscript_autocomplete_state">
+public/index.html	5927	input	<input id="stscript_autocomplete_autoHide" type="checkbox" />
+public/index.html	5933	input	<input id="stscript_autocomplete_showInAllMacroFields" type="checkbox" />
+public/index.html	5943	select	<select id="stscript_matching">
+public/index.html	5954	select	<select id="stscript_autocomplete_style">
+public/index.html	5967	select	<select id="stscript_autocomplete_select">
+public/index.html	5975	input	<input class="neo-range-slider" type="range" id="stscript_autocomplete_font_scale" min="0.5" max="2" step="0.01">
+public/index.html	5976	input	<input class="neo-range-input" type="number" min="0.5" max="2" step="0.01" data-for="stscript_autocomplete_font_scale" id="stscript_autocomplete_font_scale_counter">
+public/index.html	5984	input	<input type="range" id="stscript_autocomplete_width_left" min="0" max="2" step="1">
+public/index.html	5992	input	<input type="range" id="stscript_autocomplete_width_right" min="0" max="2" step="1">
+public/index.html	6008	input	<input id="stscript_parser_flag_strict_escaping" type="checkbox" />
+public/index.html	6012	a	<a href="https://docs.sillytavern.app/usage/st-script/#strict-escaping" target="_blank" class="notes-link">
+public/index.html	6017	input	<input id="stscript_parser_flag_replace_getvar" type="checkbox" />
+public/index.html	6021	a	<a href="https://docs.sillytavern.app/usage/st-script/#replace-variable-macros" target="_blank" class="notes-link">
+public/index.html	6043	select	<select id="background_fitting" class="text_pole" data-i18n="[title]Background Fitting" title="Background Fitting">
+public/index.html	6054	button	<button id="bg_add_folder_button" class="menu_button menu_button_icon" data-i18n="[title]New Folder" title="New Folder">
+public/index.html	6064	input	<input id="bg-filter" class="text_pole" type="search" data-i18n="[placeholder]Search..." placeholder="Search..." />
+public/index.html	6065	select	<select id="bg-sort" class="text_pole margin0" title="Sort backgrounds" data-i18n="[title]Sort backgrounds">
+public/index.html	6076	a	<a href="#bg_global_tab" data-i18n="Global">
+public/index.html	6079	a	<a href="#bg_chat_tab" data-i18n="Chat">
+public/index.html	6082	button	<button id="bg_group_add_to_folder_button" class="menu_button menu_button_icon" style="display:none;" data-i18n="[title]Add selected backgrounds to folder" title="Add selected backgrounds to folder">
+public/index.html	6086	button	<button id="bg_selection_mode_button" class="menu_button menu_button_icon" data-i18n="[title]Select backgrounds for bulk folder actions" title="Select backgrounds for bulk folder actions">
+public/index.html	6090	button	<button id="bg_thumb_zoom_out" class="menu_button menu_button_icon" title="Make thumbnails smaller" data-i18n="[title]Make thumbnails smaller">
+public/index.html	6093	button	<button id="bg_thumb_zoom_in" class="menu_button menu_button_icon" title="Make thumbnails larger" data-i18n="[title]Make thumbnails larger">
+public/index.html	6100	button	<button id="bg_back_to_folders" class="menu_button menu_button_icon">
+public/index.html	6106	button	<button id="bg_folder_remove_selected_button" class="menu_button menu_button_icon" style="display:none;" data-i18n="[title]Remove selected backgrounds from this folder" title="Remove selected backgrounds from this folder">
+public/index.html	6121	form	<form id="form_bg_upload" hidden>
+public/index.html	6122	input	<input type="file" id="add_bg_button" name="avatar" accept="image/*,video/*" multiple hidden>
+public/index.html	6124	button	<button id="bg-scroll-top" type="button" class="menu_button menu_button_icon" title="Scroll backgrounds to top" data-i18n="[title]Scroll backgrounds to top">
+public/index.html	6152	a	<a href="https://docs.sillytavern.app/usage/core-concepts/personas/" target="_blank">
+public/index.html	6170	input	<input id="personas_restore_input" type="file" accept=".json" hidden>
+public/index.html	6180	input	<input id="persona_search_bar" class="text_pole width100p flex1 margin0" type="search" data-i18n="[placeholder]Search..." placeholder="Search...">
+public/index.html	6181	select	<select id="persona_sort_order" class="margin0">
+public/index.html	6192	form	<form id="form_upload_avatar" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	6193	input	<input type="file" id="avatar_upload_file" accept="image/*" name="avatar">
+public/index.html	6194	input	<input type="hidden" id="avatar_upload_overwrite" name="overwrite_name" value="">
+public/index.html	6213	select	<select id="persona-management-dropdown" class="text_pole">
+public/index.html	6224	textarea	<textarea id="persona_description" name="persona_description" data-macros data-i18n="[placeholder]Example: [{{user}} is a 28-year-old Romanian cat girl.]" placeholder="Example:&#10;[{{user}} is a 28-year-old Romanian cat girl.]" class="text_pole textarea_compact" value="" autocomplete="off" rows="8">
+public/index.html	6234	select	<select id="persona_description_position">
+public/index.html	6244	input	<input id="persona_depth_value" class="text_pole" type="number" min="0" max="9999" step="1">
+public/index.html	6248	select	<select id="persona_depth_role" class="text_pole">
+public/index.html	6282	input	<input id="persona_show_notifications" type="checkbox" />
+public/index.html	6290	input	<input id="persona_allow_multi_connections" type="checkbox" />
+public/index.html	6298	input	<input id="persona_auto_lock" type="checkbox" />
+public/index.html	6321	input	<input type="checkbox" id="rm_button_panel_pin">
+public/index.html	6352	a	<a id="chartokenwarning" class="right_menu_button fa-solid fa-triangle-exclamation" href="https://docs.sillytavern.app/usage/core-concepts/characterdesign/#character-tokens" target="_blank" title="About Token 'Limits'" data-i18n="[title]About Token 'Limits'">
+public/index.html	6362	form	<form id="form_create" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	6365	input	<input id="character_name_pole" name="ch_name" class="text_pole" data-i18n="[placeholder]Name this character" placeholder="Name this character" value="" autocomplete="off">
+public/index.html	6374	input	<input hidden type="file" id="add_avatar_button" name="avatar" accept="image/*">
+public/index.html	6381	input	<input type="hidden" id="fav_checkbox" name="fav" />
+public/index.html	6391	input	<input type="submit" id="create_button" name="create_button">
+public/index.html	6396	select	<select id="char-management-dropdown" class="text_pole">
+public/index.html	6449	input	<input id="tagInput" class="text_pole textarea_compact tag_input wide100p margin0" data-i18n="[placeholder]Search / Create Tags" placeholder="Search / Create tags" />
+public/index.html	6480	a	<a href="https://docs.sillytavern.app/usage/core-concepts/characterdesign/#character-description" class="notes-link" target="_blank">
+public/index.html	6492	textarea	<textarea id="description_textarea" class="mdHotkeys" data-macros data-i18n="[placeholder]Describe your character's physical and mental traits here." placeholder="Describe your character's physical and mental traits here." name="description" placeholder="">
+public/index.html	6502	a	<a href="https://docs.sillytavern.app/usage/core-concepts/characterdesign/#first-message" class="notes-link" target="_blank">
+public/index.html	6512	textarea	<textarea id="firstmessage_textarea" class="mdHotkeys" data-macros data-i18n="[placeholder]This will be the first message from the character that starts every chat." placeholder="This will be the first message from the character that starts every chat." name="first_mes" placeholder="">
+public/index.html	6519	input	<input id="character_json_data" name="json_data" type="hidden">
+public/index.html	6520	input	<input id="avatar_url_pole" name="avatar_url" type="hidden">
+public/index.html	6521	input	<input id="selected_chat_pole" name="chat" type="hidden">
+public/index.html	6522	input	<input id="create_date_pole" name="create_date" type="hidden">
+public/index.html	6523	input	<input id="last_mes_pole" name="last_mes" type="hidden">
+public/index.html	6524	input	<input id="character_world" name="world" type="hidden">
+public/index.html	6534	a	<a href="https://docs.sillytavern.app/usage/core-concepts/groupchats/" class="notes-link" target="_blank">
+public/index.html	6543	input	<input id="rm_group_chat_name" class="text_pole flex1" type="text" name="chat_name" data-i18n="[placeholder]Chat Name (Optional)" placeholder="Chat Name (Optional)" />
+public/index.html	6547	select	<select id="group-chat-lorebook-dropdown" class="text_pole">
+public/index.html	6554	input	<input id="groupTagInput" class="text_pole textarea_compact tag_input flex1 margin0" data-i18n="[placeholder]Search / Create Tags" placeholder="Search / Create tags" />
+public/index.html	6567	input	<input hidden type="file" id="group_avatar_button" name="avatar" accept="image/png, image/jpeg, image/jpg, image/gif, image/bmp">
+public/index.html	6575	select	<select id="rm_group_activation_strategy">
+public/index.html	6586	select	<select id="rm_group_generation_mode">
+public/index.html	6598	textarea	<textarea id="rm_group_generation_mode_join_prefix" class="text_pole wide100p textarea_compact autoSetHeight" placeholder="&mdash;" rows="1">
+public/index.html	6606	textarea	<textarea id="rm_group_generation_mode_join_suffix" class="text_pole wide100p textarea_compact autoSetHeight" placeholder="&mdash;" rows="1">
+public/index.html	6613	input	<input id="rm_group_fav" type="hidden" />
+public/index.html	6623	input	<input id="rm_group_allow_self_responses" type="checkbox" />
+public/index.html	6627	input	<input id="rm_group_automode" type="checkbox" />
+public/index.html	6629	input	<input id="rm_group_automode_delay" class="text_pole textarea_compact widthUnset" type="number" min="1" max="999" step="1" value="5" title="Auto Mode delay" data-i18n="[title]Auto Mode delay" />
+public/index.html	6632	input	<input id="rm_group_hidemutedsprites" type="checkbox" />
+public/index.html	6649	input	<input id="rm_group_members_filter" class="text_pole margin0" type="search" data-i18n="[placeholder]Search..." placeholder="Search..." />
+public/index.html	6667	input	<input id="rm_group_filter" class="text_pole margin0" type="search" data-i18n="[placeholder]Search..." placeholder="Search..." />
+public/index.html	6679	form	<form id="form_import" action="javascript:void(null);" method="post" enctype="multipart/form-data">
+public/index.html	6680	input	<input multiple type="file" id="character_import_file" accept=".json, image/png, .yaml, .yml, .charx, .byaf" name="avatar">
+public/index.html	6681	input	<input id="character_import_file_type" name="file_type" class="text_pole" value="" autocomplete="off">
+public/index.html	6683	input	<input type="file" id="character_replace_file" accept=".json, image/png, .yaml, .yml, .charx, .byaf" name="replace_avatar" hidden>
+public/index.html	6695	select	<select id="character_sort_order" class="flex1 text_pole textarea_compact" title="Characters sorting order" data-i18n="[title]Characters sorting order">
+public/index.html	6712	input	<input id="character_search_bar" class="text_pole textarea_compact width100p" type="search" data-i18n="[placeholder]Search..." placeholder="Search..." />
+public/index.html	6788	dialog	<dialog class="popup">
+public/index.html	6796	textarea	<textarea class="popup-input text_pole result-control auto-select" rows="1" data-result="1" data-result-event="submit">
+public/index.html	6799	button	<button type="button" class="popup-button-ok menu_button result-control" data-result="1" data-i18n="Delete">
+public/index.html	6800	button	<button type="button" class="popup-button-cancel menu_button result-control" data-result="0" data-i18n="Cancel">
+public/index.html	6803	button	<button type="button" aria-label="Close popup" class="popup-button-close right_menu_button fa-solid fa-circle-xmark" data-result="0" title="Close popup" data-i18n="[title]Close popup;[aria-label]Close popup">
+public/index.html	6812	textarea	<textarea id="dialogue_popup_input" class="text_pole" rows="1">
+public/index.html	6842	textarea	<textarea id="system_prompt_textarea" name="system_prompt" data-macros data-i18n="[placeholder]Any contents here will replace the default Main Prompt used for this character. (v2 spec: system_prompt)" placeholder="Any contents here will replace the default Main Prompt used for this character.&#10;(v2 spec: system_prompt)" form="form_create" class="text_pole" autocomplete="off" rows="3">
+public/index.html	6852	textarea	<textarea id="post_history_instructions_textarea" name="post_history_instructions" data-macros data-i18n="[placeholder]Any contents here will replace the default Post-History Instructions used for this character. (v2 spec: post_history_instructions)" placeholder="Any contents here will replace the default Post-History Instructions used for this character.&#10;(v2 spec: post_history_instructions)" form="form_create" class="text_pole" autocomplete="off" rows="3">
+public/index.html	6873	textarea	<textarea id="creator_textarea" name="creator" data-i18n="[placeholder](Botmaker's name / Contact Info)" placeholder="(Botmaker's name / Contact info)" form="form_create" class="text_pole" autocomplete="off" rows="2">
+public/index.html	6877	textarea	<textarea id="character_version_textarea" name="character_version" data-i18n="[placeholder](If you want to track character versions)" placeholder="(If you want to track character versions)" form="form_create" class="text_pole" autocomplete="off" rows="2">
+public/index.html	6886	textarea	<textarea id="creator_notes_textarea" name="creator_notes" data-i18n="[placeholder](Describe the bot, give use tips, or list the chat models it has been tested on. This will be displayed in the character list.)" placeholder="(Describe the bot, give use tips, or list the chat models it has been tested on. This will be displayed in the character list.)" form="form_create" class="text_pole" autocomplete="off" rows="4">
+public/index.html	6893	textarea	<textarea id="tags_textarea" name="tags" data-i18n="[placeholder](Write a comma-separated list of tags)" placeholder="(Write a comma-separated list of tags)" form="form_create" class="text_pole" autocomplete="off" rows="4">
+public/index.html	6903	a	<a href="https://docs.sillytavern.app/usage/core-concepts/characterdesign/#personality-summary" class="notes-link" target="_blank">
+public/index.html	6905	textarea	<textarea id="personality_textarea" name="personality" data-macros data-i18n="[placeholder](A brief description of the personality)" placeholder="(A brief description of the personality)" form="form_create" class="text_pole" autocomplete="off" rows="4">
+public/index.html	6914	a	<a href="https://docs.sillytavern.app/usage/core-concepts/characterdesign/#scenario" class="notes-link" target="_blank">
+public/index.html	6918	textarea	<textarea id="scenario_pole" name="scenario" data-macros data-i18n="[placeholder](Circumstances and context of the interaction)" placeholder="(Circumstances and context of the interaction)" class="text_pole" value="" autocomplete="off" form="form_create" rows="4">
+public/index.html	6931	textarea	<textarea id="depth_prompt_prompt" name="depth_prompt_prompt" data-macros class="text_pole" rows="5" autocomplete="off" form="form_create" data-i18n="[placeholder](Text to be inserted in-chat @ designated depth and role)" placeholder="(Text to be inserted in-chat @ designated depth and role)">
+public/index.html	6939	input	<input id="depth_prompt_depth" name="depth_prompt_depth" class="text_pole textarea_compact m-t-0" type="number" min="0" max="9999" value="4" form="form_create" />
+public/index.html	6945	select	<select id="depth_prompt_role" name="depth_prompt_role" form="form_create" class="text_pole textarea_compact m-t-0">
+public/index.html	6960	input	<input id="talkativeness_slider" name="talkativeness" type="range" min="0" max="1" step="0.05" value="0.5" form="form_create">
+public/index.html	6976	a	<a href="https://docs.sillytavern.app/usage/core-concepts/characterdesign/#examples-of-dialogue" class="notes-link" target="_blank">
+public/index.html	6981	textarea	<textarea id="mes_example_textarea" class="flexGrow mdHotkeys" name="mes_example" data-macros data-i18n="[placeholder](Examples of chat dialog. Begin each example with START on a new line.)" placeholder="(Examples of chat dialog. Begin each example with &lt;START&gt; on a new line.)" form="form_create" rows="6">
+public/index.html	6996	input	<input type="checkbox" id="card_app_enabled">
+public/index.html	7003	input	<input id="card_app_entry" class="text_pole" placeholder="index.js" value="index.js" autocomplete="off">
+public/index.html	7015	form	<form id="form_import_chat" action="javascript:void(null);" method="post" enctype="multipart/form-data" style="display: none;">
+public/index.html	7016	input	<input type="file" id="chat_import_file" accept=".json, .jsonl" multiple name="avatar">
+public/index.html	7017	input	<input id="chat_import_file_type" name="file_type" class="text_pole" value="" autocomplete="off" style="display: none;">
+public/index.html	7018	input	<input id="chat_import_avatar_url" name="avatar_url" class="text_pole" value="" autocomplete="off" style="display: none;">
+public/index.html	7019	input	<input id="chat_import_character_name" name="character_name" class="text_pole" value="" autocomplete="off" style="display: none;">
+public/index.html	7024	a	<a href="https://docs.sillytavern.app/usage/core-concepts/chatfilemanagement/" class="notes-link" target="_blank">
+public/index.html	7038	input	<input type="search" id="select_chat_search" class="text_pole flex1" data-i18n="[placeholder]Search..." placeholder="Search..." autocomplete="off">
+public/index.html	7100	select	<select class="character_world_info_selector wide100p">
+public/index.html	7114	select	<select class="character_extra_world_info_selector wide100p" multiple>
+public/index.html	7171	select	<select class="keyprimaryselect keyselect" name="key" data-i18n="[placeholder]Keywords or Regexes" placeholder="Keywords or Regexes" multiple="multiple">
+public/index.html	7172	textarea	<textarea class="text_pole keyprimarytextpole mobile" name="key" rows="1" data-i18n="[placeholder]Comma separated list" placeholder="Comma separated list" style="display: none;">
+public/index.html	7173	button	<button type="button" class="switch_input_type_icon" tabindex="-1" title="Switch to plaintext mode" data-i18n="[title]Switch to plaintext mode" data-icon-on="✨" data-icon-off="⌨️" data-tooltip-on="Switch to fancy mode" data-tooltip-off="Switch to plaintext mode">
+public/index.html	7179	select	<select name="entryLogicType" class="text_pole widthFitContent margin0">
+public/index.html	7193	select	<select class="keysecondaryselect keyselect" name="keysecondary" data-i18n="[placeholder]Keywords or Regexes (ignored if empty)" placeholder="Keywords or Regexes (ignored if empty)" multiple="multiple">
+public/index.html	7194	textarea	<textarea class="text_pole keysecondarytextpole mobile" name="keysecondary" rows="1" data-i18n="[placeholder]Comma separated list (ignored if empty)" placeholder="Comma separated list (ignored if empty)" style="display: none;">
+public/index.html	7195	button	<button type="button" class="switch_input_type_icon" tabindex="-1" title="Switch to plaintext mode" data-i18n="[title]Switch to plaintext mode" data-icon-on="✨" data-icon-off="⌨️" data-tooltip-on="Switch to fancy mode" data-tooltip-off="Switch to plaintext mode">
+public/index.html	7218	input	<input type="checkbox" name="excludeRecursion" />
+public/index.html	7224	input	<input type="checkbox" name="preventRecursion" />
+public/index.html	7232	input	<input type="checkbox" name="delay_until_recursion" />
+public/index.html	7238	input	<input type="checkbox" name="ignoreBudget" />
+public/index.html	7253	textarea	<textarea class="text_pole mdHotkeys" name="content" rows="8" data-i18n="[placeholder]What this keyword should mean to the AI, sent verbatim" placeholder="What this keyword should mean to the AI, sent verbatim">
+public/index.html	7273	input	<input class="text_pole margin0" name="outletName" type="text" placeholder="Outlet Name" data-i18n="[placeholder]Outlet Name">
+public/index.html	7277	input	<input class="text_pole margin0" name="scanDepth" type="number" placeholder="Use global setting" data-i18n="[placeholder]Use global setting" max="1000">
+public/index.html	7281	select	<select name="caseSensitive" class="text_pole widthNatural margin0">
+public/index.html	7289	select	<select name="matchWholeWords" class="text_pole widthNatural margin0">
+public/index.html	7297	select	<select name="useGroupScoring" class="text_pole widthNatural margin0">
+public/index.html	7305	input	<input class="text_pole margin0" name="automationId" type="text" placeholder="( None )" data-i18n="[placeholder]( None )">
+public/index.html	7312	input	<input class="text_pole margin0" name="delayUntilRecursionLevel" type="text" placeholder="1">
+public/index.html	7321	a	<a href="https://docs.sillytavern.app/usage/core-concepts/worldinfo/#inclusion-group" class="notes-link" target="_blank" title="Inclusion Groups ensure only one entry from a group is activated at a time, if multiple are triggered.&#13;Supports multiple comma-separated groups.&#13;&#13;Documentation: World Info - Inclusion Group" data-i18n="[title]Inclusion Groups ensure only one entry from a group is activated at a time, if multiple are triggered.Documentation: World Info - Inclusion Group">
+public/index.html	7326	input	<input type="checkbox" name="groupOverride" />
+public/index.html	7336	input	<input type="text" class="text_pole margin0" name="group" rows="1" data-i18n="[placeholder]Only one entry with the same label will be activated" placeholder="Only one entry with the same label will be activated">
+public/index.html	7346	input	<input type="number" class="text_pole margin0" name="groupWeight" rows="1" placeholder="100" min="1" max="999999">
+public/index.html	7359	input	<input class="text_pole margin0" name="sticky" type="number" data-i18n="[placeholder]Non-sticky" placeholder="Non-sticky" min="0" max="999999">
+public/index.html	7372	input	<input class="text_pole margin0" name="cooldown" type="number" data-i18n="[placeholder]No cooldown" placeholder="No cooldown" min="0" max="999999">
+public/index.html	7385	input	<input class="text_pole margin0" name="delay" type="number" data-i18n="[placeholder]No delay" placeholder="No delay" min="0" max="999999">
+public/index.html	7397	input	<input type="checkbox" name="character_exclusion" />
+public/index.html	7407	select	<select name="characterFilter" multiple>
+public/index.html	7423	input	<input type="checkbox" name="__invisible">
+public/index.html	7428	select	<select name="triggers" multiple>
+public/index.html	7454	input	<input type="checkbox" name="stateActivation">
+public/index.html	7459	select	<select name="stateConditionLogic" class="text_pole widthFitContent margin0">
+public/index.html	7468	button	<button type="button" class="menu_button wi-state-condition-add">
+public/index.html	7472	button	<button type="button" class="menu_button wi-state-condition-save">
+public/index.html	7498	select	<select name="stateEventLogic" class="text_pole widthFitContent margin0">
+public/index.html	7506	button	<button type="button" class="menu_button wi-state-event-add">
+public/index.html	7510	button	<button type="button" class="menu_button wi-state-event-save">
+public/index.html	7536	textarea	<textarea name="requiredEntriesText" class="text_pole" rows="2" placeholder="12&#10;Other Book#4" data-i18n="[placeholder]WI Required Entries Placeholder">
+public/index.html	7541	textarea	<textarea name="relatedEntriesText" class="text_pole" rows="2" placeholder="18&#10;Other Book#9" data-i18n="[placeholder]WI Related Entries Placeholder">
+public/index.html	7546	input	<input name="mutualExclusionGroup" class="text_pole" type="text" autocomplete="off" placeholder="castle-version" data-i18n="[placeholder]WI Mutual Exclusion Placeholder">
+public/index.html	7550	select	<select name="budgetTier" class="text_pole">
+public/index.html	7560	textarea	<textarea name="compactContent" class="text_pole" rows="3" placeholder="Short fallback used only when the complete dependency bundle does not fit." data-i18n="[placeholder]WI Compact Content Placeholder">
+public/index.html	7564	button	<button type="button" class="menu_button wi-selection-strategy-save">
+public/index.html	7575	input	<input type="checkbox" name="selective" />
+public/index.html	7579	input	<input type="checkbox" name="useProbability" />
+public/index.html	7583	input	<input type="checkbox" name="addMemo">
+public/index.html	7598	input	<input type="checkbox" name="matchCharacterDescription" />
+public/index.html	7604	input	<input type="checkbox" name="matchCharacterPersonality" />
+public/index.html	7610	input	<input type="checkbox" name="matchScenario" />
+public/index.html	7618	input	<input type="checkbox" name="matchPersonaDescription" />
+public/index.html	7624	input	<input type="checkbox" name="matchCharacterDepthPrompt" />
+public/index.html	7630	input	<input type="checkbox" name="matchCreatorNotes" />
+public/index.html	7640	form	<form class="world_entry_form wi-card-entry">
+public/index.html	7648	input	<input type="checkbox" class="world_entry_select">
+public/index.html	7654	textarea	<textarea class="text_pole autoSetHeight" rows="1" name="comment" data-i18n="[placeholder]Entry Title/Memo" placeholder="Entry Title/Memo">
+public/index.html	7657	select	<select data-i18n="[title]WI Entry Status:🔵 Constant🟢 Normal🔗 Vectorized" title="WI Entry Status:&#13;🔵 Constant&#13;🟢 Normal&#13;🔗 Vectorized" name="entryStateSelector" class="text_pole widthNatural margin0">
+public/index.html	7666	select	<select name="position" class="text_pole widthNatural margin0" data-i18n="[title]T_Position" title="↑Char: Before Character Definitions&#13;↓Char: After Character Definitions&#13;↑EM: Before Example Messages&#13;↓EM: After Example Messages&#13;↑AN: Before Author's Note&#13;↓AN: After Author's Note&#13;@D ⚙️: at Depth (System)&#13;@D 👤: at Depth (User)&#13;@D 🤖: at Depth (Assistant)">
+public/index.html	7701	input	<input title="Depth" class="text_pole wideMax100px margin0" type="number" name="depth" data-i18n="[title]Depth" placeholder="" min="0" max="9999" />
+public/index.html	7705	input	<input title="Order" data-i18n="[title]Order" class="text_pole wideMax100px margin0" type="number" name="order" placeholder="" min="0" max="9999" />
+public/index.html	7709	input	<input title="Probability" data-i18n="[title]Probability" class="text_pole wideMax100px margin0" type="number" name="probability" placeholder="" min="0" max="100" />
+public/index.html	7741	input	<input class="ch_fav" value="" hidden />
+public/index.html	7756	input	<input class="openai_logit_bias_text text_pole" data-i18n="[placeholder]Text or token ids" placeholder="Text or [token ids]" />
+public/index.html	7757	input	<input class="openai_logit_bias_value text_pole" type="number" min="-100" value="0" max="100" />
+public/index.html	7764	input	<input class="logit_bias_text text_pole" data-i18n="[placeholder]Type here..." placeholder="type here..." />
+public/index.html	7765	input	<input class="logit_bias_value text_pole" type="number" min="-100" value="0" max="100" step="0.01" />
+public/index.html	7773	form	<form class="completion_prompt_manager_popup_entry_form">
+public/index.html	7779	a	<a id="completion_prompt_manager_popup_close_button" title="close" data-i18n="[title]close" class="fa-solid fa-close menu_button">
+public/index.html	7790	form	<form class="completion_prompt_manager_popup_entry_form">
+public/index.html	7796	textarea	<textarea id="completion_prompt_manager_popup_entry_form_name" class="text_pole autoSetHeight" name="name" rows="2">
+public/index.html	7803	select	<select id="completion_prompt_manager_popup_entry_form_role" class="text_pole" name="role">
+public/index.html	7814	select	<select id="completion_prompt_manager_popup_entry_form_injection_trigger" class="text_pole" name="injection_trigger" multiple>
+public/index.html	7832	select	<select id="completion_prompt_manager_popup_entry_form_injection_position" class="text_pole" name="injection_position">
+public/index.html	7843	input	<input id="completion_prompt_manager_popup_entry_form_injection_depth" class="text_pole" type="number" name="injection_depth" min="0" max="9999" value="4" />
+public/index.html	7851	input	<input id="completion_prompt_manager_popup_entry_form_injection_order" class="text_pole" type="number" name="injection_order" min="0" max="9999" value="100" />
+public/index.html	7860	select	<select id="completion_prompt_manager_popup_entry_form_attach_role" class="text_pole" name="attach_role">
+public/index.html	7871	input	<input id="completion_prompt_manager_popup_entry_form_attach_index" class="text_pole" type="number" name="attach_index" value="1" />
+public/index.html	7878	select	<select id="completion_prompt_manager_popup_entry_form_attach_side" class="text_pole" name="attach_side">
+public/index.html	7894	input	<input type="checkbox" id="completion_prompt_manager_popup_entry_form_forbid_overrides" name="forbid_overrides" />
+public/index.html	7900	input	<input type="checkbox" id="completion_prompt_manager_popup_entry_form_plugin_extra" name="plugin_extra" />
+public/index.html	7910	textarea	<textarea id="completion_prompt_manager_popup_entry_form_prompt" class="text_pole" name="prompt" data-macros data-macros-autocomplete="always" data-macros-autocomplete-style="expanded" placeholder="The prompt to be sent." data-i18n="[placeholder]The prompt to be sent.">
+public/index.html	7913	a	<a id="completion_prompt_manager_popup_entry_form_close" title="Close" data-i18n="[title]close" class="fa-solid fa-close menu_button">
+public/index.html	7914	a	<a id="completion_prompt_manager_popup_entry_form_reset" title="Reset" data-i18n="[title]reset" class="fa-solid fa-undo menu_button">
+public/index.html	7915	a	<a id="completion_prompt_manager_popup_entry_form_save" title="Save" data-i18n="[title]save" class="fa-solid fa-save menu_button" data-pm-prompt="">
+public/index.html	7923	input	<input type="checkbox" class="del_checkbox">
+public/index.html	7975	summary	<summary class="mes_reasoning_summary flex-container">
+public/index.html	8030	select	<select id="onboarding_ui_language_select">
+public/index.html	8032	summary	<summary data-i18n="New to Atria?">
+public/index.html	8047	input	<input class="ch_fav" value="" hidden />
+public/index.html	8075	input	<input class="ch_fav" value="" hidden />
+public/index.html	8140	summary	<summary>
+public/index.html	8159	textarea	<textarea data-macros name="alternate_greetings" data-i18n="[placeholder](This will be the first message from the character that starts every chat)" placeholder="(This will be the first message from the character that starts every chat)" class="text_pole textarea_compact alternate_greeting_text mdHotkeys" value="" autocomplete="off" rows="12">
+public/index.html	8193	video	<video class="mes_video" controls preload="none">
+public/index.html	8207	audio	<audio class="mes_audio" preload="auto" hidden>
+public/index.html	8213	button	<button class="audio-player-play-pause right_menu_button fa-fw fa-solid fa-play" title="Play" data-i18n="[title]Play">
+public/index.html	8223	button	<button class="audio-player-volume right_menu_button fa-fw fa-solid fa-volume-high" title="Mute" data-i18n="[title]Mute">
+public/index.html	8249	textarea	<textarea id="extension_floating_prompt" data-macros class="text_pole textarea_compact" rows="8">
+public/index.html	8254	input	<input id="extension_floating_allow_wi_scan" type="checkbox" />
+public/index.html	8259	input	<input type="radio" id="extension_floating_position_before" name="extension_floating_position" value="2" />
+public/index.html	8263	input	<input type="radio" id="extension_floating_position_after" name="extension_floating_position" value="0" />
+public/index.html	8267	input	<input type="radio" id="extension_floating_position_depth" name="extension_floating_position" value="1" />
+public/index.html	8269	input	<input id="extension_floating_depth" class="text_pole textarea_compact widthNatural" type="number" min="0" max="9999" />
+public/index.html	8271	select	<select id="extension_floating_role" class="text_pole widthNatural">
+public/index.html	8284	input	<input id="extension_floating_interval" class="text_pole widthUnset" type="number" min="0" max="9999" />
+public/index.html	8306	textarea	<textarea id="extension_floating_chara" data-macros class="text_pole textarea_compact" rows="8" placeholder="Example:&#10;[Scenario: wacky adventures; Genre: romantic comedy; Style: verbose, creative]">
+public/index.html	8311	input	<input id="extension_use_floating_chara" type="checkbox" />
+public/index.html	8316	input	<input type="radio" name="extension_floating_char_position" value="0" />
+public/index.html	8320	input	<input type="radio" name="extension_floating_char_position" value="1" />
+public/index.html	8324	input	<input type="radio" name="extension_floating_char_position" value="2" />
+public/index.html	8338	textarea	<textarea id="extension_floating_default" data-macros class="text_pole textarea_compact" rows="8" placeholder="Example:&#10;[Scenario: wacky adventures; Genre: romantic comedy; Style: verbose, creative]">
+public/index.html	8344	input	<input type="radio" id="extension_default_position_before" name="extension_default_position" value="2" />
+public/index.html	8348	input	<input type="radio" id="extension_default_position_after" name="extension_default_position" value="0" />
+public/index.html	8352	input	<input type="radio" id="extension_default_position_depth" name="extension_default_position" value="1" />
+public/index.html	8354	input	<input id="extension_default_depth" class="text_pole textarea_compact widthNatural" type="number" min="0" max="9999" />
+public/index.html	8356	select	<select id="extension_default_role" class="text_pole widthNatural">
+public/index.html	8368	input	<input id="extension_default_interval" class="text_pole widthUnset" type="number" min="0" max="9999" />
+public/index.html	8399	input	<input type="range" id="chat_cfg_guidance_scale" name="volume" min="0.10" max="4.00" step="0.05">
+public/index.html	8402	input	<input type="number" min="0.10" max="4.00" step="0.05" data-for="chat_cfg_guidance_scale" id="chat_cfg_guidance_scale_counter">
+public/index.html	8409	textarea	<textarea id="chat_cfg_negative_prompt" rows="2" class="text_pole textarea_compact" data-i18n="[placeholder]write short replies, write replies using past tense" placeholder="write short replies, write replies using past tense">
+public/index.html	8413	textarea	<textarea id="chat_cfg_positive_prompt" rows="2" class="text_pole textarea_compact" data-i18n="[placeholder]write short replies, write replies using past tense" placeholder="write short replies, write replies using past tense">
+public/index.html	8417	input	<input type="checkbox" id="groupchat_cfg_use_chara" />
+public/index.html	8440	input	<input type="range" id="chara_cfg_guidance_scale" name="volume" min="0.10" max="4.00" step="0.05">
+public/index.html	8443	input	<input type="number" min="0.10" max="4.00" step="0.05" data-for="chara_cfg_guidance_scale" id="chara_cfg_guidance_scale_counter">
+public/index.html	8450	textarea	<textarea id="chara_cfg_negative_prompt" rows="2" class="text_pole textarea_compact" data-i18n="[placeholder]write short replies, write replies using past tense" placeholder="write short replies, write replies using past tense">
+public/index.html	8454	textarea	<textarea id="chara_cfg_positive_prompt" rows="2" class="text_pole textarea_compact" data-i18n="[placeholder]write short replies, write replies using past tense" placeholder="write short replies, write replies using past tense">
+public/index.html	8475	input	<input type="range" id="global_cfg_guidance_scale" name="volume" min="0.10" max="4.00" step="0.05">
+public/index.html	8478	input	<input type="number" min="0.10" max="4.00" step="0.05" data-for="global_cfg_guidance_scale" id="global_cfg_guidance_scale_counter">
+public/index.html	8485	textarea	<textarea id="global_cfg_negative_prompt" rows="2" class="text_pole textarea_compact" data-i18n="[placeholder]write short replies, write replies using past tense" placeholder="write short replies, write replies using past tense">
+public/index.html	8489	textarea	<textarea id="global_cfg_positive_prompt" rows="2" class="text_pole textarea_compact" data-i18n="[placeholder]write short replies, write replies using past tense" placeholder="write short replies, write replies using past tense">
+public/index.html	8515	input	<input type="checkbox" name="cfg_prompt_combine" value="0" />
+public/index.html	8519	input	<input type="checkbox" name="cfg_prompt_combine" value="1" />
+public/index.html	8523	input	<input type="checkbox" name="cfg_prompt_combine" value="2" />
+public/index.html	8529	input	<input id="cfg_prompt_separator" class="text_pole textarea_compact widthUnset" placeholder="&quot;\n&quot;" type="text" />
+public/index.html	8532	input	<input id="cfg_prompt_insertion_depth" class="text_pole widthUnset" type="number" min="0" max="99" />
+public/index.html	8561	button	<button id="logprobsReroll" class="menu_button margin0" title="Reroll with the entire prefix" data-i18n="[title]Reroll with the entire prefix">
+public/index.html	8579	input	<input type="search" id="current_chat_tools_query" class="text_pole flex1" data-i18n="[placeholder]Search..." placeholder="Search..." autocomplete="off">
+public/index.html	8626	select	<select id="current_chat_tools_insert_role" class="text_pole">
+public/index.html	8631	input	<input type="text" id="current_chat_tools_insert_text" class="text_pole flex1" data-i18n="[placeholder]Message text..." placeholder="Message text..." autocomplete="off">
+public/index.html	8632	input	<input type="number" id="current_chat_tools_insert_at" class="text_pole" data-i18n="[placeholder]Insert at #" placeholder="Insert at #" min="0" step="1">
+public/index.html	8650	form	<form id="file_form" class="wide100p displayNone">
+public/index.html	8652	input	<input id="file_form_input" type="file" multiple hidden>
+public/index.html	8653	input	<input id="embed_file_input" type="file" multiple hidden>
+public/index.html	8657	button	<button id="file_form_reset" type="reset" class="menu_button" title="Remove the file" data-i18n="[title]Remove the file">
+public/index.html	8666	textarea	<textarea id="send_textarea" name="text" class="mdHotkeys" data-i18n="[no_connection_text]Not connected to API!;[connected_text]Type a message, or /? for help" placeholder="Not connected to API!" no_connection_text="Not connected to API!" connected_text="Type a message, or /? for help" autocomplete="off">
+public/index.html	8691	a	<a id="option_close_chat" class="displayNone">
+public/index.html	8695	a	<a id="option_settings" class="displayNone">
+public/index.html	8699	a	<a id="option_toggle_AN">
+public/index.html	8703	a	<a id="option_toggle_CFG">
+public/index.html	8707	a	<a id="option_toggle_logprobs">
+public/index.html	8711	a	<a id="option_back_to_main">
+public/index.html	8715	a	<a id="option_new_bookmark">
+public/index.html	8719	a	<a id="option_convert_to_group">
+public/index.html	8724	a	<a id="option_start_new_chat">
+public/index.html	8728	a	<a id="option_close_chat">
+public/index.html	8732	a	<a id="option_select_chat">
+public/index.html	8737	a	<a id="option_delete_mes">
+public/index.html	8741	a	<a id="option_search_chat">
+public/index.html	8745	a	<a id="option_regenerate">
+public/index.html	8749	a	<a id="option_impersonate" title="Ask AI to write your message for you" data-i18n="[title]Ask AI to write your message for you">
+public/index.html	8753	a	<a id="option_continue" title="Continue the last message" data-i18n="[title]Continue the last message">
+public/login.html	40	button	<button id="retryLogin" type="button" hidden data-entry-text="Try again">
+public/login.html	46	form	<form id="loginForm">
+public/login.html	47	input	<input name="userHandle" id="userHandle" spellcheck="false" type="text" autocomplete="username" aria-describedby="errorMessage" >
+public/login.html	49	input	<input name="userPassword" id="userPassword" type="password" autocomplete="current-password" aria-describedby="errorMessage" >
+public/login.html	50	button	<button id="loginButton" type="submit" class="atri-login-primary" data-entry-text="Sign in">
+public/login.html	51	button	<button id="recoverPassword" type="button" class="atri-login-link" data-entry-text="Forgot password?">
+public/login.html	56	a	<a id="oauthGithubButton" href="#" style="display:none">
+public/login.html	57	a	<a id="oauthDiscordButton" href="#" style="display:none">
+public/login.html	60	button	<button id="openRegisterLink" type="button" class="atri-login-link" data-entry-text="Create an account">
+public/login.html	61	form	<form id="registerBlock" style="display:none">
+public/login.html	62	input	<input name="registerName" id="registerName" type="text" autocomplete="name" aria-describedby="errorMessage" >
+public/login.html	62	input	<input name="registerHandle" id="registerHandle" type="text" autocomplete="username" aria-describedby="errorMessage" pattern="[a-z0-9-]+" aria-description="Lowercase letters, numbers and dashes" data-entry-description="Lowercase letters, numbers and dashes">
+public/login.html	62	input	<input name="registerPassword" id="registerPassword" type="password" autocomplete="new-password" aria-describedby="errorMessage" >
+public/login.html	62	input	<input name="registerConfirm" id="registerConfirm" type="password" autocomplete="new-password" aria-describedby="errorMessage" >
+public/login.html	63	button	<button id="cancelRegister" type="button" data-entry-text="Back">
+public/login.html	63	button	<button id="submitRegister" type="submit" class="atri-login-primary" data-entry-text="Create account">
+public/login.html	65	form	<form id="passwordRecoveryBlock" style="display:none">
+public/login.html	66	input	<input name="recoveryCode" id="recoveryCode" type="text" autocomplete="one-time-code" aria-describedby="errorMessage" >
+public/login.html	66	input	<input name="newPassword" id="newPassword" type="password" autocomplete="new-password" aria-describedby="errorMessage" >
+public/login.html	67	button	<button id="cancelRecovery" type="button" data-entry-text="Back">
+public/login.html	67	button	<button id="sendRecovery" type="submit" class="atri-login-primary" data-entry-text="Reset password">
+public/scripts/extensions/regex/debugger.html	11	button	<button id="regex_debugger_save_order" class="menu_button menu_button_icon interactable" data-i18n="[title]ext_regex_debugger_save_order_help" title="Save current rule order" tabindex="0" >
+public/scripts/extensions/regex/debugger.html	44	textarea	<textarea id="regex_debugger_raw_input" class="text_pole autoSetHeight" rows="4" >
+public/scripts/extensions/regex/debugger.html	54	button	<button id="regex_debugger_run_test" class="menu_button menu_button_icon interactable" data-i18n="[title]ext_regex_debugger_run_test_help" title="Run the test pipeline" tabindex="0" >
+public/scripts/extensions/regex/debugger.html	69	input	<input type="radio" name="display_mode" value="replace" checked />
+public/scripts/extensions/regex/debugger.html	80	input	<input type="radio" name="display_mode" value="highlight" />
+public/scripts/extensions/regex/debugger.html	91	select	<select id="regex_debugger_render_mode" >
+public/scripts/extensions/regex/debugger.html	158	input	<input type="checkbox" class="rule-enabled" checked />
+public/scripts/extensions/regex/dropdown.html	20	input	<input type="file" id="import_regex_file" hidden="" accept=".json,application/json" multiple="">
+public/scripts/extensions/regex/dropdown.html	22	input	<input id="regex_bulk_edit" type="checkbox" class="displayNone">
+public/scripts/extensions/regex/dropdown.html	67	select	<select id="regex_presets" class="text_pole flex1">
+public/scripts/extensions/regex/dropdown.html	96	button	<button type="button" id="open_preset_regex_editor" class="menu_button" data-atri-regex-text="New Regex rule">
+public/scripts/extensions/regex/dropdown.html	97	button	<button type="button" id="import_preset_regex" class="menu_button" data-atri-regex-text="Import Regex rules">
+public/scripts/extensions/regex/dropdown.html	98	input	<input type="file" id="import_preset_regex_file" hidden accept=".json,application/json" multiple>
+public/scripts/extensions/regex/dropdown.html	111	button	<button type="button" id="open_game_regex_editor" class="menu_button" data-atri-regex-text="New Regex rule">
+public/scripts/extensions/regex/dropdown.html	112	button	<button type="button" id="import_game_regex" class="menu_button" data-atri-regex-text="Import Regex rules">
+public/scripts/extensions/regex/dropdown.html	113	input	<input type="file" id="import_game_regex_file" hidden accept=".json,application/json" multiple>
+public/scripts/extensions/regex/editor.html	5	a	<a href="https://docs.sillytavern.app/extensions/regex/" class="notes-link" target="_blank" rel="noopener noreferrer">
+public/scripts/extensions/regex/editor.html	21	a	<a id="regex_info_block_flags_hint" href="https://docs.sillytavern.app/extensions/regex/#flags" target="_blank" rel="noopener noreferrer">
+public/scripts/extensions/regex/editor.html	31	textarea	<textarea id="regex_test_input" class="text_pole textarea_compact" rows="4" data-i18n="[placeholder]ext_regex_test_input_placeholder" placeholder="Type here...">
+public/scripts/extensions/regex/editor.html	37	textarea	<textarea id="regex_test_output" class="text_pole textarea_compact" rows="4" data-i18n="[placeholder]ext_regex_output_placeholder" placeholder="Empty" readonly>
+public/scripts/extensions/regex/editor.html	48	input	<input class="regex_script_name text_pole textarea_compact" type="text" />
+public/scripts/extensions/regex/editor.html	56	input	<input class="find_regex text_pole textarea_compact" type="text" />
+public/scripts/extensions/regex/editor.html	64	textarea	<textarea class="regex_replace_string text_pole wide100p textarea_compact" data-i18n="[placeholder]ext_regex_replace_string_placeholder" placeholder="Use {{match}} to include the matched text from the Find Regex, $1, $2, etc. for numbered capture groups, or $&lt;name&gt; for named capture groups." rows="3">
+public/scripts/extensions/regex/editor.html	72	textarea	<textarea class="regex_trim_strings text_pole wide100p textarea_compact" data-i18n="[placeholder]ext_regex_trim_placeholder" placeholder="Globally trims any unwanted parts from a regex match before replacement. Separate each element by an enter." rows="3">
+public/scripts/extensions/regex/editor.html	82	input	<input type="checkbox" name="replace_position" value="1">
+public/scripts/extensions/regex/editor.html	88	input	<input type="checkbox" name="replace_position" value="2">
+public/scripts/extensions/regex/editor.html	94	input	<input type="checkbox" name="replace_position" value="3">
+public/scripts/extensions/regex/editor.html	100	input	<input type="checkbox" name="replace_position" value="5">
+public/scripts/extensions/regex/editor.html	106	input	<input type="checkbox" name="replace_position" value="6">
+public/scripts/extensions/regex/editor.html	116	input	<input name="min_depth" class="text_pole textarea_compact" type="number" min="-1" max="9999" data-i18n="[placeholder]ext_regex_min_depth_placeholder" placeholder="Unlimited" />
+public/scripts/extensions/regex/editor.html	123	input	<input name="max_depth" class="text_pole textarea_compact" type="number" min="0" max="9999" data-i18n="[placeholder]ext_regex_min_depth_placeholder" placeholder="Unlimited" />
+public/scripts/extensions/regex/editor.html	130	input	<input type="checkbox" name="disabled" />
+public/scripts/extensions/regex/editor.html	134	input	<input type="checkbox" name="run_on_edit" />
+public/scripts/extensions/regex/editor.html	142	select	<select name="substitute_regex" class="text_pole textarea_compact margin0">
+public/scripts/extensions/regex/editor.html	153	input	<input type="checkbox" name="only_format_display" />
+public/scripts/extensions/regex/editor.html	157	input	<input type="checkbox" name="only_format_prompt" />
+public/scripts/extensions/regex/editor.html	161	input	<input type="checkbox" name="only_format_plugin" />
+public/scripts/extensions/regex/presetEmbeddedScripts.html	15	button	<button type="button" class="menu_button" data-regex-preview-select-all data-i18n="Select All">
+public/scripts/extensions/regex/presetEmbeddedScripts.html	16	button	<button type="button" class="menu_button" data-regex-preview-clear-selection data-i18n="Clear Selection">
+public/scripts/extensions/regex/presetEmbeddedScripts.html	25	summary	<summary class="regex-preset-embedded-preview__summary">
+public/scripts/extensions/regex/presetEmbeddedScripts.html	26	input	<input type="checkbox" class="regex-preset-embedded-preview__select" data-regex-preview-index="{{index}}"{{#if selected}} checked{{/if}}>
+public/scripts/extensions/regex/scriptTemplate.html	2	input	<input type="checkbox" class="regex_bulk_checkbox">
+public/scripts/extensions/regex/scriptTemplate.html	7	input	<input type="checkbox" name="regex_disable" class="disable_regex">
+public/scripts/extensions/regex/scriptTemplate.html	12	input	<input type="checkbox" name="regex_expand">
+public/scripts/templates/assistantNote.html	5	button	<button class="assistant_note_import menu_button menu_button_icon margin0" data-i18n="[title]Import from JSONL" title="Import from JSONL">
+public/scripts/templates/assistantNote.html	9	button	<button class="assistant_note_export menu_button menu_button_icon margin0" data-i18n="[title]Export as JSONL" title="Export as JSONL">
+public/scripts/templates/backupSyncCenter.html	8	button	<button type="button" class="menu_button backupSyncTab active" data-tab="automatic">
+public/scripts/templates/backupSyncCenter.html	11	button	<button type="button" class="menu_button backupSyncTab" data-tab="archive">
+public/scripts/templates/backupSyncCenter.html	14	button	<button type="button" class="menu_button backupSyncTab" data-tab="device">
+public/scripts/templates/backupSyncCenter.html	17	button	<button type="button" class="menu_button backupSyncTab" data-tab="cloud">
+public/scripts/templates/backupSyncCenter.html	27	input	<input type="checkbox" data-field="enabled">
+public/scripts/templates/backupSyncCenter.html	28	input	<input class="text_pole" type="number" min="-1" data-field="maxPerEntity">
+public/scripts/templates/backupSyncCenter.html	29	input	<input class="text_pole" type="number" min="-1" data-field="maxTotalBackups">
+public/scripts/templates/backupSyncCenter.html	30	input	<input class="text_pole" type="number" min="-1" step="1" data-field="maxTotalSizeMiB">
+public/scripts/templates/backupSyncCenter.html	35	input	<input type="checkbox" data-field="enabled">
+public/scripts/templates/backupSyncCenter.html	36	input	<input class="text_pole" type="number" min="-1" data-field="maxPerEntity">
+public/scripts/templates/backupSyncCenter.html	37	input	<input class="text_pole" type="number" min="-1" data-field="maxTotalBackups">
+public/scripts/templates/backupSyncCenter.html	38	input	<input class="text_pole" type="number" min="-1" step="1" data-field="maxTotalSizeMiB">
+public/scripts/templates/backupSyncCenter.html	39	button	<button type="button" class="menu_button backupOpenSettingsSnapshots">
+public/scripts/templates/backupSyncCenter.html	44	button	<button type="button" class="menu_button backupRetentionSave">
+public/scripts/templates/backupSyncCenter.html	45	button	<button type="button" class="menu_button backupRetentionCleanup">
+public/scripts/templates/backupSyncCenter.html	46	button	<button type="button" class="menu_button backupRetentionReset">
+public/scripts/templates/backupSyncCenter.html	47	button	<button type="button" class="menu_button backupManagedRefresh">
+public/scripts/templates/backupSyncCenter.html	51	input	<input class="text_pole backupManagedSearch marginBot10" placeholder="Search characters, groups or backup files" data-i18n="[placeholder]Search characters, groups or backup files;[aria-label]Search backups" aria-label="Search backups">
+public/scripts/templates/backupSyncCenter.html	58	input	<input type="checkbox" name="backupCategory" value="native" checked="">
+public/scripts/templates/backupSyncCenter.html	59	input	<input type="checkbox" name="backupCategory" value="settings" checked="">
+public/scripts/templates/backupSyncCenter.html	60	input	<input type="checkbox" name="backupCategory" value="secrets" checked="">
+public/scripts/templates/backupSyncCenter.html	61	input	<input type="checkbox" name="backupCategory" value="characters" checked="">
+public/scripts/templates/backupSyncCenter.html	62	input	<input type="checkbox" name="backupCategory" value="chats" checked="">
+public/scripts/templates/backupSyncCenter.html	63	input	<input type="checkbox" name="backupCategory" value="lorebooks" checked="">
+public/scripts/templates/backupSyncCenter.html	64	input	<input type="checkbox" name="backupCategory" value="presets" checked="">
+public/scripts/templates/backupSyncCenter.html	65	input	<input type="checkbox" name="backupCategory" value="assets" checked="">
+public/scripts/templates/backupSyncCenter.html	66	input	<input type="checkbox" name="backupCategory" value="vectors">
+public/scripts/templates/backupSyncCenter.html	70	button	<button type="button" class="menu_button backupSelectAll">
+public/scripts/templates/backupSyncCenter.html	71	button	<button type="button" class="menu_button backupSelectRecommended">
+public/scripts/templates/backupSyncCenter.html	72	button	<button type="button" class="menu_button backupSelectNone">
+public/scripts/templates/backupSyncCenter.html	73	button	<button type="button" class="menu_button backupArchiveDownload">
+public/scripts/templates/backupSyncCenter.html	80	button	<button type="button" class="menu_button backupArchiveChoose">
+public/scripts/templates/backupSyncCenter.html	84	input	<input type="radio" name="backupRestoreMode" value="merge" checked="">
+public/scripts/templates/backupSyncCenter.html	85	input	<input type="radio" name="backupRestoreMode" value="overwrite">
+public/scripts/templates/backupSyncCenter.html	86	input	<input type="radio" name="backupRestoreMode" value="full">
+public/scripts/templates/backupSyncCenter.html	90	button	<button type="button" class="menu_button backupRestoreStart disabled" disabled="" aria-disabled="true">
+public/scripts/templates/backupSyncCenter.html	91	button	<button type="button" class="menu_button warning backupRestoreCancel" disabled="" aria-disabled="true" title="Available only during a restore" data-i18n="[title]Available only during a restore">
+public/scripts/templates/backupSyncCenter.html	94	input	<input type="file" class="backupArchiveInput" accept=".zip,application/zip" hidden="">
+public/scripts/templates/backupSyncCenter.html	99	button	<button type="button" class="menu_button backupRecoveryRefresh">
+public/scripts/templates/backupSyncCenter.html	108	button	<button type="button" class="menu_button backupOpenLanSync">
+public/scripts/templates/changePassword.html	1	form	<form action="javascript:void(0);" class="flex-container flexFlowColumn">
+public/scripts/templates/changePassword.html	4	input	<input type="password" id="account-current-password" name="current" class="text_pole" placeholder="[ No password ]" data-i18n="[placeholder][ No password ]" autocomplete="current-password">
+public/scripts/templates/changePassword.html	8	input	<input type="password" id="account-new-password" name="password" class="text_pole" placeholder="[ No password ]" data-i18n="[placeholder][ No password ]" autocomplete="new-password">
+public/scripts/templates/changePassword.html	12	input	<input type="password" id="account-confirm-password" name="confirm" class="text_pole" placeholder="[ No password ]" data-i18n="[placeholder][ No password ]" autocomplete="new-password">
+public/scripts/templates/chatLorebook.html	17	select	<select class="chat_world_info_selector wide100p" multiple="multiple" size="10">
+public/scripts/templates/customEndpointAdditionalParameters.html	5	textarea	<textarea id="custom_include_body" class="flex1" placeholder="Parameters to be included in the Chat Completion request body (YAML object)&#10;&#10;Example:&#10;top_k: 20&#10;repetition_penalty: 1.1" data-i18n="[placeholder]custom_include_body_desc">
+public/scripts/templates/customEndpointAdditionalParameters.html	9	textarea	<textarea id="custom_exclude_body" class="flex1" placeholder="Parameters to be excluded from the Chat Completion request body (YAML array)&#10;&#10;Example:&#10;- frequency_penalty&#10;- presence_penalty" data-i18n="[placeholder]custom_exclude_body_desc">
+public/scripts/templates/customEndpointAdditionalParameters.html	13	textarea	<textarea id="custom_include_headers" class="flex1" placeholder="Additional headers for Chat Completion requests (YAML object)&#10;&#10;Example:&#10;CustomHeader: custom-value&#10;AnotherHeader: custom-value" data-i18n="[placeholder]custom_include_headers_desc">
+public/scripts/templates/dataMaidCategory.html	41	button	<button class="dataMaidItemView menu_button menu_button_icon margin0" title="View item content" data-i18n="[title]View item content">
+public/scripts/templates/dataMaidCategory.html	44	button	<button class="dataMaidItemDownload menu_button menu_button_icon margin0" title="Download item" data-i18n="[title]Download item">
+public/scripts/templates/dataMaidCategory.html	47	button	<button class="dataMaidItemDelete menu_button menu_button_icon margin0" title="Delete this item" data-i18n="[title]Delete this item">
+public/scripts/templates/dataMaidDialog.html	12	button	<button class="menu_button menu_button_icon dataMaidStartButton">
+public/scripts/templates/deleteConfirm.html	3	input	<input type="checkbox" id="del_char_checkbox" />
+public/scripts/templates/deleteTag.html	4	select	<select id="merge_tag_select">
+public/scripts/templates/deleteUser.html	10	input	<input id="deleteUserData" name="deleteUserData" type="checkbox">
+public/scripts/templates/deleteUser.html	24	input	<input id="deleteUserHandle" name="deleteUserHandle" type="text" class="text_pole" placeholder="[ Type here ]">
+public/scripts/templates/forbidMedia.html	9	input	<input type="radio" id="forbid_media_override_global" name="forbid_media_override" />
+public/scripts/templates/forbidMedia.html	17	input	<input type="radio" id="forbid_media_override_forbidden" name="forbid_media_override" />
+public/scripts/templates/forbidMedia.html	21	input	<input type="radio" id="forbid_media_override_allowed" name="forbid_media_override" />
+public/scripts/templates/formatting.html	9	a	<a href="#" data-i18n="help_format_19">
+public/scripts/templates/globalStylesPopup.html	18	textarea	<textarea class="text_pole textarea_compact monospace" rows="8" readonly>
+public/scripts/templates/globalStylesPreference.html	9	input	<input type="radio" id="global_styles_forbidden" name="global_styles_preference" />
+public/scripts/templates/globalStylesPreference.html	13	input	<input type="radio" id="global_styles_allowed" name="global_styles_preference" />
+public/scripts/templates/help.html	3	a	<a href="#" data-displayHelp="1" data-i18n="help_2">
+public/scripts/templates/help.html	4	a	<a href="#" data-displayHelp="2" data-i18n="help_3">
+public/scripts/templates/help.html	5	a	<a href="#" data-displayHelp="3" data-i18n="help_4">
+public/scripts/templates/help.html	6	a	<a href="#" data-displayHelp="4" data-i18n="help_5">
+public/scripts/templates/help.html	10	a	<a target="_blank" href="https://atria.cups.moe/" data-i18n="help_7">
+public/scripts/templates/masterExport.html	9	input	<input type="checkbox" value="{{key}}" checked />
+public/scripts/templates/masterExport.html	11	input	<input type="checkbox" value="{{key}}" />
+public/scripts/templates/masterImport.html	8	input	<input type="checkbox" value="{{key}}" checked>
+public/scripts/templates/migrateInstructPrompt.html	27	textarea	<textarea class="wide100p textarea_compact" rows="10">
+public/scripts/templates/newChatConfirm.html	2	input	<input type="checkbox" id="del_chat_checkbox" />
+public/scripts/templates/personaLorebook.html	14	select	<select class="persona_world_info_selector wide100p">
+public/scripts/templates/promptManagerFooter.html	2	select	<select id="{{prefix}}prompt_manager_footer_append_prompt" class="text_pole" name="append-prompt">
+public/scripts/templates/promptManagerFooter.html	5	a	<a class="menu_button fa-chain fa-solid fa-fw" title="Insert prompt" data-i18n="[title]Insert prompt">
+public/scripts/templates/promptManagerFooter.html	6	a	<a class="caution menu_button fa-x fa-solid fa-fw" title="Delete prompt" data-i18n="[title]Delete prompt">
+public/scripts/templates/promptManagerFooter.html	7	a	<a class="menu_button fa-file-import fa-solid fa-fw" id="prompt-manager-import" title="Import a prompt list" data-i18n="[title]Import a prompt list">
+public/scripts/templates/promptManagerFooter.html	8	a	<a class="menu_button fa-file-export fa-solid fa-fw" id="prompt-manager-export" title="Export this prompt list" data-i18n="[title]Export this prompt list">
+public/scripts/templates/promptManagerFooter.html	9	a	<a class="menu_button fa-undo fa-solid fa-fw" id="prompt-manager-reset-character" title="Reset current character" data-i18n="[title]Reset current character">
+public/scripts/templates/promptManagerFooter.html	10	a	<a class="menu_button fa-plus-square fa-solid fa-fw" title="New prompt" data-i18n="[title]New prompt">
+public/scripts/templates/promptManagerHeader.html	10	a	<a class="menu_button prompt-manager-group-header-btn" id="{{prefix}}prompt_manager_group_btn" title="Batch edit: toggle, mark extra, remove, or group prompts" data-i18n="[title]Batch edit: toggle, mark extra, remove, or group prompts">
+public/scripts/templates/promptManagerHeader.html	19	input	<input id="{{prefix}}prompt_manager_search" class="text_pole" type="search" placeholder="Search prompts or placeholders..." data-i18n="[placeholder]Search prompts or placeholders..." />
+public/scripts/templates/promptManagerHeader.html	20	button	<button type="button" id="{{prefix}}prompt_manager_search_help" class="menu_button prompt_manager_search_help_button" title="Search syntax help" data-i18n="[title]Search syntax help">
+public/scripts/templates/promptManagerHeader.html	24	input	<input id="{{prefix}}prompt_manager_search_advanced" type="checkbox" />
+public/scripts/templates/quotaError.html	3	a	<a href="https://platform.openai.com/account/usage" target="_blank" data-i18n="OpenAI account quora_error">
+public/scripts/templates/resetSettings.html	12	input	<input id="resetSettingsPassword" name="password" type="password" class="text_pole" placeholder="Password">
+public/scripts/templates/scenarioOverride.html	22	textarea	<textarea id="chat_scenario_override" class="chat_scenario text_pole" rows="6" data-i18n="[placeholder]Type Scenario here..." placeholder="Type Scenario here...">
+public/scripts/templates/scenarioOverride.html	29	textarea	<textarea id="chat_examples_override" class="chat_examples text_pole" rows="6" data-i18n="[placeholder]Type Example Messages here..." placeholder="Type Example Messages here...">
+public/scripts/templates/scenarioOverride.html	42	textarea	<textarea id="chat_system_prompt_override" class="chat_system_prompt text_pole" rows="6" data-i18n="[placeholder]Type System Prompt here..." placeholder="Type System Prompt here...">
+public/scripts/templates/secretKeyManager.html	15	button	<button class="menu_button menu_button_icon" data-action="add-secret">
+public/scripts/templates/secretKeyManagerListItem.html	14	button	<button class="menu_button menu_button_icon {{#if active}}disabled{{/if}}" data-action="rotate-secret" data-id="{{id}}" title="Select" data-i18n="[title]Select">
+public/scripts/templates/secretKeyManagerListItem.html	17	button	<button class="menu_button menu_button_icon" data-action="copy-secret" data-id="{{id}}" title="Copy" data-i18n="[title]Copy">
+public/scripts/templates/secretKeyManagerListItem.html	22	button	<button class="menu_button menu_button_icon" data-action="rename-secret" data-id="{{id}}" title="Rename" data-i18n="[title]Rename">
+public/scripts/templates/secretKeyManagerListItem.html	25	button	<button class="menu_button menu_button_icon" data-action="delete-secret" data-id="{{id}}" title="Delete" data-i18n="[title]Delete">
+public/scripts/templates/snapshotsView.html	4	button	<button type="button" class="makeSnapshotButton menu_button menu_button_icon" data-i18n="[title]Record a snapshot of your current settings." title="Record a snapshot of your current settings.">
+public/scripts/templates/snapshotsView.html	14	summary	<summary class="atria-snapshot-heading flex-container alignItemsCenter flexGap10">
+public/scripts/templates/snapshotsView.html	23	button	<button type="button" class="menu_button fa-solid fa-recycle snapshotRestoreButton" aria-label="Restore this snapshot" data-i18n="[title]Restore this snapshot;[aria-label]Restore this snapshot" title="Restore this snapshot">
+public/scripts/templates/snapshotsView.html	28	button	<button type="button" class="snapshotRetryButton menu_button" hidden data-i18n="Try again">
+public/scripts/templates/snapshotsView.html	29	textarea	<textarea class="text_pole textarea_compact fontsize80p snapshotContent" readonly aria-label="Snapshot contents" placeholder="Loading…" data-i18n="[placeholder]Loading…;[aria-label]Snapshot contents" rows="25">
+public/scripts/templates/storageInspector.html	5	button	<button type="button" class="storageInspectorCreateButton menu_button menu_button_icon displayNone" title="Add" aria-label="Add" data-i18n="[title]Add;[aria-label]Add">
+public/scripts/templates/storageInspector.html	8	button	<button type="button" class="storageInspectorRefreshButton menu_button menu_button_icon" title="Refresh" aria-label="Refresh" data-i18n="[title]Refresh;[aria-label]Refresh">
+public/scripts/templates/storageInspector.html	33	button	<button type="button" class="storageInspectorRetryButton menu_button">
+public/scripts/templates/storageManagement.html	5	button	<button type="button" class="menu_button storageManagementTab active" data-tab="server">
+public/scripts/templates/storageManagement.html	8	button	<button type="button" class="menu_button storageManagementTab" data-tab="browser">
+public/scripts/templates/storageManagement.html	15	button	<button type="button" class="menu_button storageRecoveryRefresh">
+public/scripts/templates/tabbyDownloader.html	4	a	<a href="https://github.com/theroyallab/async-hf-downloader" class="notes-link" target="_blank">
+public/scripts/templates/tabbyDownloader.html	20	input	<input name="hf_repo_id" class="text_pole" type="text" placeholder="Ex. turboderp/Llama-3-8B-exl2" />
+public/scripts/templates/tabbyDownloader.html	31	input	<input name="revision" class="text_pole" type="text" placeholder="Ex. 6.0bpw" />
+public/scripts/templates/tabbyDownloader.html	37	input	<input name="folder_name" class="text_pole" type="text" />
+public/scripts/templates/tabbyDownloader.html	43	input	<input name="hf_token" class="text_pole" type="text" placeholder="For gated models" />
+public/scripts/templates/tabbyDownloader.html	51	textarea	<textarea class="text_pole textarea_compact" name="tabby_download_include" placeholder="Ex. *.txt">
+public/scripts/templates/tabbyDownloader.html	58	textarea	<textarea class="text_pole textarea_compact" name="tabby_download_exclude" placeholder="Ex. *.txt">
+public/scripts/templates/tagManagement.html	20	input	<input type="file" id="tag_view_restore_input" hidden accept=".json">
+public/scripts/templates/tagManagement.html	26	select	<select id="tag_sort_mode_select" class="flex1 text_pole">
+public/scripts/templates/userLanSync.html	46	input	<input type="text" class="text_pole lanSyncPairLabel" maxlength="80" data-i18n="[placeholder]e.g. Phone, Laptop, Office desktop" placeholder="e.g. Phone, Laptop, Office desktop">
+public/scripts/templates/userLanSync.html	65	input	<input type="text" class="text_pole lanSyncGeneratedLink marginBot10" readonly data-i18n="[placeholder]Pairing link" placeholder="Pairing link">
+public/scripts/templates/userLanSync.html	93	input	<input type="text" class="text_pole lanSyncAcceptLink" data-i18n="[placeholder]Paste pairing link here" placeholder="Paste pairing link here">
+public/scripts/templates/userLanSync.html	99	input	<input type="text" class="text_pole lanSyncAcceptBaseUrl" placeholder="http://192.168.1.42:8000">
+public/scripts/templates/userLanSync.html	104	input	<input type="text" class="text_pole lanSyncAcceptPeerId" data-i18n="[placeholder]Peer ID" placeholder="Peer ID">
+public/scripts/templates/userLanSync.html	109	input	<input type="text" class="text_pole lanSyncAcceptLabel" maxlength="80" data-i18n="[placeholder]e.g. Phone" placeholder="e.g. Phone">
+public/scripts/templates/userLanSync.html	122	input	<input type="text" class="text_pole lanSyncAcceptUsername" autocomplete="off">
+public/scripts/templates/userLanSync.html	126	input	<input type="password" class="text_pole lanSyncAcceptPassword" autocomplete="new-password">
+public/scripts/templates/userProfile.html	7	button	<button type="button" class="userAvatarChange right_menu_button" title="Set your custom avatar" aria-label="Set your custom avatar" data-i18n="[title]Set your custom avatar;[aria-label]Set your custom avatar">
+public/scripts/templates/userProfile.html	8	button	<button type="button" class="userAvatarRemove right_menu_button" title="Remove your custom avatar" aria-label="Remove your custom avatar" data-i18n="[title]Remove your custom avatar;[aria-label]Remove your custom avatar">
+public/scripts/templates/userProfile.html	10	form	<form>
+public/scripts/templates/userProfile.html	10	input	<input type="file" class="avatarUpload" accept="image/*" hidden>
+public/scripts/templates/userProfile.html	16	button	<button type="button" data-require-accounts class="userChangeNameButton menu_button" data-i18n="Change display name">
+public/scripts/templates/userProfile.html	26	button	<button type="button" data-require-accounts class="userChangePasswordButton menu_button atria-account-row">
+public/scripts/templates/userProfile.html	27	button	<button type="button" data-require-accounts class="userLogoutButton menu_button atria-account-row">
+public/scripts/templates/userProfile.html	34	button	<button type="button" class="userSettingsSnapshotsButton menu_button atria-account-row">
+public/scripts/templates/userProfile.html	35	button	<button type="button" class="userBackupSyncButton menu_button atria-account-row">
+public/scripts/templates/userProfile.html	36	button	<button type="button" class="userStorageManagementButton menu_button atria-account-row">
+public/scripts/templates/userProfile.html	40	summary	<summary data-i18n="Danger Zone">
+public/scripts/templates/userProfile.html	43	button	<button type="button" class="userResetSettingsButton menu_button atria-account-row">
+public/scripts/templates/userProfile.html	44	button	<button type="button" class="userResetAllButton menu_button atria-account-row">
+public/scripts/templates/userReset.html	1	form	<form action="javascript:void(0);" class="flex-container flexFlowColumn">
+public/scripts/templates/userReset.html	13	input	<input type="password" name="password" class="text_pole" placeholder="[ No password ]" autocomplete="current-password">
+public/scripts/templates/userReset.html	17	input	<input type="text" name="code" class="text_pole" placeholder="XXXXXX">
+public/scripts/templates/welcome.html	4	a	<a href="https://docs.sillytavern.app/usage/update/" target="_blank" data-i18n="Want to update?">
+public/scripts/templates/welcome.html	11	button	<button class="menu_button menu_button_icon drawer-opener inline-flex" data-target="sys-settings-button">
+public/scripts/templates/welcome.html	16	a	<a href="https://docs.sillytavern.app/usage/api-connections/" target="_blank">
+public/scripts/templates/welcome.html	22	button	<button class="menu_button menu_button_icon drawer-opener inline-flex" data-target="rightNavHolder">
+public/scripts/templates/welcome.html	32	button	<button class="open_characters_library menu_button menu_button_icon inline-flex">
+public/scripts/templates/welcome.html	37	button	<button class="external_import_button menu_button menu_button_icon inline-flex">
+public/scripts/templates/welcome.html	49	button	<button class="menu_button menu_button_icon drawer-opener inline-flex" data-target="extensions-settings-button">
+public/scripts/templates/welcome.html	60	a	<a class="fa-solid fa-circle-question" target="_blank" href="https://docs.sillytavern.app/">
+public/scripts/templates/welcome.html	66	a	<a target="_blank" href="https://atria.cups.moe/" data-i18n="Atria Documentation Site">
+public/scripts/templates/welcome.html	75	a	<a target="_blank" href="https://discord.gg/sillytavern" data-i18n="Join the Atria Discord">
+public/scripts/templates/welcome.html	80	a	<a target="_blank" href="https://github.com/SillyTavern/SillyTavern/issues" data-i18n="Post a GitHub issue">
+public/scripts/templates/welcome.html	85	a	<a target="_blank" href="https://github.com/SillyTavern/SillyTavern#questions-or-suggestions" data-i18n="Contact the developers">
+public/scripts/templates/welcomePanel.html	20	a	<a class="menu_button menu_button_icon" target="_blank" href="https://atria.cups.moe/">
+public/scripts/templates/welcomePanel.html	24	a	<a class="menu_button menu_button_icon" target="_blank" href="https://github.com/ZZZdragondYNGPHX/Atria">
+public/scripts/templates/welcomePanel.html	28	a	<a class="menu_button menu_button_icon" target="_blank" href="https://discord.gg/sillytavern">
+public/scripts/templates/welcomePanel.html	33	button	<button class="openTemporaryChat menu_button menu_button_icon">
+public/scripts/templates/welcomePanel.html	37	button	<button class="menu_button menu_button_icon" id="announcement-bell-button" type="button" title="Announcements" data-i18n="[title]Announcements">
+public/scripts/templates/welcomePanel.html	72	button	<button class="menu_button menu_button_icon pinChat {{#if pinned}}active{{/if}}" title="Pin chat" data-i18n="[title]Pin chat">
+public/scripts/templates/welcomePanel.html	75	button	<button class="menu_button menu_button_icon renameChat" title="Rename chat" data-i18n="[title]Rename chat">
+public/scripts/templates/welcomePanel.html	78	button	<button class="menu_button menu_button_icon deleteChat" title="Delete chat" data-i18n="[title]Delete chat">
+public/scripts/templates/welcomePanel.html	100	button	<button class="menu_button menu_button_icon showMoreChats">
+public/scripts/templates/welcomePrompt.html	2	button	<button class="menu_button menu_button_icon drawer-opener inline-flex" data-target="sys-settings-button">
+public/scripts/templates/welcomePrompt.html	6	button	<button class="menu_button menu_button_icon drawer-opener inline-flex" data-target="rightNavHolder">
+public/scripts/templates/welcomePrompt.html	10	button	<button class="menu_button menu_button_icon drawer-opener inline-flex" data-target="extensions-settings-button">

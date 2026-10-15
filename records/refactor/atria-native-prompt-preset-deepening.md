@@ -3,7 +3,7 @@
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
 - Primary Workspace：`main`（未来实现，当前未授权修改）。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1–D8 的功能与交互语义已冻结；视觉审美未冻结，D9/E0 已启动静态审计且 NOT_CLOSED。本任务继续只使用同一份 Record。
+- 当前阶段：D1–D8 功能/交互语义已冻结；D9/E0 本地续审后仍 NOT_CLOSED。全产品前端研究与外部设计输入已整理，视觉未冻结、未开发；本任务继续只使用同一份 Record。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -160,3 +160,35 @@
 
 
 **提交前并发分支核查补充（本轮 E0 仍 NOT_CLOSED）**：准备 Git 对象期间，docs 从 e4719ad9b3b165f2f68ec2ac3743fb0e8d2ca210 更新到 26667607066dd7ca27415f03fc63b01bc31ffdf2；compare 确认新 4 笔 Storage/V3 文档提交不涉及本任务五条路径。main 另由外部 Storage Center 合并推进至 73557f8098d2353f23777a35e25042e94742bec9，V3 另由 Join/Attempt 结算推进至 cff1d24530967e8eba8668530ac17ae0b66ec334，均**非本任务写入**。新 Storage/Source/GC/恢复与 V3 Join/Result 消费者需要追加 E0 全量引用与差分审查；本轮静态首审在旧版本读到的内容不得冒充新 HEAD 已完成动态审计。提交将基于实际新 docs HEAD，无强制覆盖。产品/Node/Provider/Windows/CachyOS Linux/Android Termux 验证仍未运行。
+
+## 2026-10-15 — 第九轮 E0 本地续审与全产品前端研究（docs-only）
+
+**范围、基线与并发保护**
+- 用户授权本轮继续 E0 并全面盘点前端、提供外部设计 AI 输入，完成后提交/push docs；明确不开发新前端、不改 main、不创建本任务实现分支、不决定最终视觉。
+- 实际起点：main `73557f8098d2353f23777a35e25042e94742bec9`，docs `0a758827eaed96713ab9efed25ef1a0fdf31674c`，V3 `99da3eadb34f66a34ad5b9c8a1d6c3e92732d63d`。main工作树干净。
+- 过程中 docs 的 ab5461eb1/5e2117393/d2a3d21d9 等他人提交及其 Storage 预览保持；未纳入别人未跟踪的 agent-experience-evolution 企划。V3出现并发merge工作树后改用固定Git archive，只读核查，没有处理或覆盖其冲突。
+- 最终源码证据：main `695acf3bcad1d42e331459189532a76056278bec`（其他任务合入Storage Center UI，非本任务修改）；V3 `31bef95723885c1547a9c3686200cbaf122799a8`（包含main@735 Storage权威及新transition/显式loop，未合main@695 UI）。已核新增drawer/二次确认/刷新状态、transition/schema/Run准入和测试差分，更新C09/C10/O09并按最新固定对象重建索引。docs并发ca43a0a84等提交保留，最终本任务提交号由Git历史追溯。
+
+**实际研究和交付资料**
+- 读取原同一Plan入口、decisions、E0、D8和相关D4–D7合同、同一Record、docs Governance、V3入口/物理接口；没有创建第二Record或新最终视觉Plan。
+- 新增独立研究目录 [plans/architecture/atria-frontend-audit](../../plans/architecture/atria-frontend-audit/index.md)：四份分域功能清单、完整操作链/状态、组件和功能架构问题、跨端矩阵、外部设计AI委托、覆盖说明及固定源码索引。
+- 正文覆盖189个业务功能/控件组，按保留/整合/重组/确认废弃分账；范围含Library/Play/Studio/Agents/Memory/World/Knowledge/Prompt/Model/Runtime/Settings/Skills/Plugins/Search/Regex/Media/Speech/Shared/Diagnostics/账户/存档/备份/Storage等。功能组不是单独可见按钮数量。
+- 全tracked public JS/MJS/HTML/CSS（含init/lib facade/style.css与vendored库）、相关manifest、Android/Electron包装层做结构扫描：1,065文件、355,257行；883个JS/MJS的AST parse diagnostics=0。核心页面由真实route/mount/handler/client/service链人工复核；没有宣称逐行人工签完全部源码。
+- 12份TSV研究附件：189行功能矩阵；2,390个JS控件工厂候选、1,221个HTML标签点、3,206事件注册候选、5,960 import/resource edges、1,164 service调用候选、1,945 CSS交互规则、main/V3 1,908 Router注册表达式与1,630 E0符号位置、1,065源码hash/范围、1,527个main测试树JS（含helpers/fixtures）目录及15个V3控制流测试目录；另有代表性测试消费者说明。候选包含旧代码/helper/事件总线/第三方库，不将数量当已验收功能。
+- 使用web-design-guidelines的交互/无障碍检查方法；未制作美术方案、参考HTML或视觉token定稿。资料明确外部AI之后交付代表性HTML、全功能界面交互表现、整体设计指导；HTML遗漏不减正式功能。
+
+**更新后的源码事实和真实阻塞**
+- E0唯一台账改为本地续审结果；G1从“远端有界样本”推进为全域结构索引和核心链，但动态表达式/注册器/任意外部插件与Work UI、原SourcePort/替代删除消费者闭包仍PARTIAL/NOT_CLOSED。G2物理合同仍BLOCKED；没有伪称全量通过。
+- 原RouteResolver仍使用Route.promptProgramRef，GenerationService fallback仍对Program变化报generation_semantic_authority_changed；V3 Agent/Dependency pin不证明独立Behavior Program到Provider。
+- Context事实已细化：recent_raw/memory/narrative_spine已有user-history降权，不能沿用“全部Memory提为system”的泛化；其他context.fact/ContextSlot经system路径的typed trust/lowering仍需审查。已有compiledBinding/currentness/epoch/hooks不等于D6全Source/Actor/Grant/Branch/Time失效闭包通过。
+- V3已有PlanRepository/Binding CAS内部能力、Attempt/Graph/Effect/Approval/Join/Settlement控制流；HTTP当前仍仅Plan Authoring，authoring-service对source bindings明确unavailable，生产Model/Context/Source/Output/Projection链尚未证明接通。
+- quality.requirePilotSources仍固定source_unready；旧workspace-prompt/strategy/Agent Director target仍在；V3 plan-prompt候选→独立评价→Review→PlanRevision→PlanBinding CAS/journal/rollback闭环BLOCKED。
+- Studio作品前端Draft Preview已有真实入口，不等于D8未发布Prompt Draft可信无发送编译接口已提供；D8全文无损双编辑/三层Diff/来源Inspector仍为目标能力。
+- 修正旧盘点事实：当前Account已有可见Sign out与handler；Settings已为六类，新Storage Center已合main；Runtime readiness按adapter条件要求Secret。旧资料仅作线索，没有原样复制为当前结论。
+- 正式重构零ST/旧Workspace/mode兼容保持；有效Memory/Goals/Experience/World/Skills/Search/Visual Director/Media等Atria原生功能不能随旧容器、目录或关键词误删。
+
+**实际验证、限制与结束位置**
+- 实际运行：Git状态/fetch/HEAD/diff/固定对象核查；文档本地相对链接/锚点、固定提交源码路径、Markdown表格列、功能ID与TSV结构；1,065份源码SHA-256复验；883个JS/MJS语法解析；git diff --check。首轮检查器把F流程编号误作功能ID，已修正并重检；文档换行警告已规范化。
+- 这些是文档和证据完整性检查。**NOT_RUN**：产品测试/构建/CI、启动产品、Browser E2E、模型/Provider API、真实费用/质量/拒答评测、权限攻击/故障恢复、Windows产品端/CachyOS Linux/Android Termux/APK真机、读屏/性能。测试目录存在不算执行或通过。
+- 外部第三方插件源码、用户作品动态UI、真实服务和跨端行为保留UNKNOWN/NOT_RUN；没有声称完整动态消费者闭包。E0-01..08及C1–C6继续在同一E0台账维护。
+- 本轮交付止于研究/文档提交推送。G3本任务开发NOT_AUTHORIZED；G4仅完成设计输入，用户尚未提供外部三项成果并多轮确认；未冻结新视觉或正式开工。没有新建HANDOFF、实现分支或产品代码提交。

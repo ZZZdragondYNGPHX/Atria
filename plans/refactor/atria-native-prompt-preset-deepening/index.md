@@ -12,8 +12,9 @@
 - **D6 已冻结（2026-10-15）**：**U2 每消费者 Source-bound Context + E2 类型化认识地位 + H2 来源完整的长会话分层 + V2 Source-aware 定向失效及消费前复验**；仅消费现有 V3 C2 / HCM-01–08，不重建 Memory/Context/Actor/World 权威。详见 [context-memory-consumption.md](context-memory-consumption.md)。
 - **D7 已冻结（2026-10-15）**：**Q2 文学/角色/Agent 多维 QualityProfile 与不可抵消硬约束 + F2 原 Experience 来源/根因归属 + O2 合法成熟虚构 RP 过度拒答正反控制 + P2 条件反思候选/独立评价/Review/PlanRevision/PlanBinding CAS 发布**。这是设计取舍，实际来源及 V3 `plan-prompt` 闭环待实施；见 [quality-evolution.md](quality-evolution.md)。
 - **D8 已冻结（2026-10-15）**：W2 原生 Library/Studio/Play 三域协作 + R2 单 Draft 结构化/完整原文无损双编辑 + P2 Authored/Effective/Provider Wire 真实预览与精确 Diff + I2 来源驱动质量/故障 Inspector + M2 Windows/CachyOS Linux/Android Termux 全功能交互等价；详见 [preset-studio-experience.md](preset-studio-experience.md)。**仅冻结功能/交互语义；视觉审美完全留待用户后续外部设计参考与多轮讨论，不由本助手决定。**
-- **D9/E0 正在审计（NOT_CLOSED）**：开始真实消费者、跨合同与实施依赖审查；初步证据与开发分支 Gate 见 [e0-audit.md](e0-audit.md)。
-- 本轮静态核查最初读取 main@5eb3bc7652cd9837ca8c555cf74976fab078932c、docs@e4719ad9b3b165f2f68ec2ac3743fb0e8d2ca210、V3@c04f36925189d4064a63bdd6b9ca345ff2bcf805；**提交前重新核对** main@73557f8098d2353f23777a35e25042e94742bec9、docs@26667607066dd7ca27415f03fc63b01bc31ffdf2、V3@cff1d24530967e8eba8668530ac17ae0b66ec334。并发修改属于 Storage Center 合并与 V3 Join 实现，不由本企划执行；新增消费者仍待 E0 重新审计。
+- **D9/E0 本地续审（NOT_CLOSED）**：已从远端有界首审推进为本地全产品静态索引与核心消费者追踪；物理接口、动态来源消费者和开发前 Gate 仍见唯一 [e0-audit.md](e0-audit.md)，未写为全量通过。
+- 当前固定源码基线：main@695acf3bcad1d42e331459189532a76056278bec、V3@31bef95723885c1547a9c3686200cbaf122799a8；docs 起点0a758827e，过程中保留并发ab5461eb1/5e2117393/d2a3d21d9等原任务提交。V3已merge main@735 Storage Center，最新main@695另含Storage UI；V3@31bef新增transition/显式loop，均已补审；本任务使用固定Git对象只读核查，不改其工作树。完整版本变化与证据局限见E0和同一Record。
+- **全产品前端研究已整理**：[Atria 前端功能与交互审计](../../architecture/atria-frontend-audit/index.md) 独立提供页面/控件/状态、端到端操作、组件问题、三端矩阵、处置及外部AI委托；它不是新的状态/设计权威，也不是最终视觉企划。外部HTML与两份设计文档尚待用户后续提供和多轮确认。
 
 ## 核心目标与实施边界
 
@@ -47,6 +48,7 @@
 | [quality-evolution.md](quality-evolution.md) | **D7 已冻结**：Q2/F2/O2/P2；受审文学/Agent 质量、来源归因、合法误拒、精确候选与受控发布 | D7 / E0 / 质量实施 |
 | [preset-studio-experience.md](preset-studio-experience.md) | **D8 功能与交互已冻结**：W2/R2/P2/I2/M2；审美未定，等待用户提供外部设计参考 | 第八轮/未来实现 |
 | [e0-audit.md](e0-audit.md) | **D9/E0 未收口**：真实消费者静态台账、跨合同缺口、实施依赖与分支前置 Gate | 第九轮/开发交接 |
+| [全产品前端研究](../../architecture/atria-frontend-audit/index.md) | **独立研究输入，非最终设计**：页面/组件/交互/跨端/来源与外部设计AI委托；详细状态仍归E0/Record | 外部设计前；后续HTML与双文档覆盖核对 |
 | [同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md) | 真实文档提交、代码/测试/验证状态与未完成项 | 每轮更新 |
 
 ## 后续轮次（D1–D8 功能语义已冻结，D9/E0 未收口）
@@ -65,4 +67,4 @@
 
 ## 当前事实
 
-D1–D8 的功能与交互语义已冻结，**视觉审美未冻结**。D9/E0 已进入静态审计但仍 NOT_CLOSED；并未改产品代码、创建实现分支、运行 Node/CI/Provider/Browser/三端实测。D4 Node/Route fallback、D5 ContextSlot Role、D6 长会话/来源失效、D7 source_unready/旧 Workspace 清退/plan-prompt 发布链、D8 未发布 Draft Preview 与真实三层 Diff 均须保留真实阻塞。仅有 GitHub 搜索/定向静态阅读，不能冒充全量引用审计或任何产品验收。
+D1–D8 的功能与交互语义已冻结，**视觉审美未冻结**。D9/E0 本地续审后仍 NOT_CLOSED；未改产品代码或创建实现分支。实际运行的是文档证据生成和静态检查，没有运行产品测试/构建/CI/Provider/Browser/三端实测。D4 Node/Route fallback、D5 ContextSlot trust、D6 长会话/来源失效、D7 source_unready/旧 Workspace 清退/plan-prompt 发布链、D8 未发布 Prompt Draft Preview 与真实三层 Diff 仍是阻塞。已有history降权、Source/currentness guard、V3 Attempt/Effect/Join和Studio作品前端Draft Preview按真实源码记为已有局部能力，不能反过来冒充新合同全链已通过。全产品盘点是外部设计输入；HTML样例遗漏不能减少源码审计和正式产品合同中的完整功能。
