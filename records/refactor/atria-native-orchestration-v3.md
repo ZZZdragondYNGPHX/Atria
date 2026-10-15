@@ -197,3 +197,10 @@
 - 新增受信内部control事务、pending Attempt激活、G2整批提案校验/immutable receipt/稳定command去重。Root新增nodeControl及持久edgeVisitCounts；Host身份/authority/原Plan ceiling/output/limits不得改写。禁止向已有Attempt新增输入边，拒绝删除唯一Output路径/能力提升/无证据重复提案，取消pending分支保留原Attempt。
 - 最新四Engine GraphPatch20/20；受影响Run及真实FS/SQLite process-crash回归，共三个文件58/58，12项非FS的FS特有case明确N/A skip；定向ESLint/diff check通过。所有授权/模型/预算Port仍是受控test double，不称原Domain集成通过。
 - 下一子工作为EffectIntent/Approval/单次dispatch claim/append-only Receipt与unknown恢复，随后继续原Native Ports。完整P2、P3–P8及三端/真实批准/成本质量均未验收，main未集成。
+
+## 2026-10-15 — P2第二组：Effect/Approval持久核心
+
+- 基于`44e468d4f`继续同一分支。实现prepared→原bank引用校验→ready→单次claim、nonce hash/原身份Port决策、批准消费与dispatching同事务、append-only Receipt、unknown不重发、矛盾证据保留、取消与迟到观察、未消费批准失效。没有注册生产Effect/approve/Run执行入口。
+- 必填authorizeEffect/verifyBudgetAttempt/verifyObservation/verifyApproval和Review身份Port，未设默认允许；V3不实现资金账本、账号表、Secret服务或业务writer。Intent与Receipt只存原authority引用/指纹。相同Effect claim重放不返回token；已经提交但本地丢失ACK时不得再次发送。
+- 四Engine受控Port核心测试最新40/40通过；受影响Run回归32/32通过（另12个非FS的FS专用窗口N/A）。本地遮蔽已提交ACK的测试证明kernel回执重放语义，不冒充真实COMMIT网络断线。定向ESLint/diff check通过。原生预算、Provider/MCP/A2A、真实账户再认证/Review Origin/Browser隔离和实际三端均未由这些double验证。
+- P2仍IN_PROGRESS：还需Join/Delegate/Handoff/循环/局部重做、恢复/reconcile以及真实原Scheduler permits；P1仍需核对维护CLI/raw Engine入口和未知SQL proxy/multi-primary配置的拒绝边界，防止把标准直连DB实测推广到未支持拓扑。P3–P8未完成，最终验收NOT_READY，main未集成。
