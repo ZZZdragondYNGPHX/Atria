@@ -3,6 +3,7 @@ import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } fro
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { assertObject, assertCounter, assertDigest, assertPlanDefinition } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
+import { writeAttemptSettlement } from './attempt-settlement.js';
 
 const issue = (code, detail = {}) => Object.assign(new TypeError(code), { code, ...detail });
 export const graphPatchHash = patch => hashNativeDocument(Object.fromEntries(Object.entries(patch).filter(([field]) => field !== 'payloadHash')));
@@ -106,7 +107,10 @@ export class GraphController {
             next.progress.steps += stepCost;
             if (accepted) {
                 next.graphRevision++; next.progress.patches++;
-                for (const update of updates) await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', update.doc.attemptId), update.doc, { expectedIntegrity: update.record.integrity });
+                for (const update of updates) {
+                    if (update.doc.status === 'cancelled') await writeAttemptSettlement({ tx, handle, root, record: update.record, outcome: 'cancelled', resultRefs: [], effectReceiptRefs: [], reasonCode: update.doc.reasonCode, now });
+                    else await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', update.doc.attemptId), update.doc, { expectedIntegrity: update.record.integrity });
+                }
             }
             const receipt = { schemaVersion: 1, patchId: patch.patchId, runId: root.runId, payloadHash: patch.payloadHash, semanticHash, producerAttemptId: producer.attemptId,
                 accepted, newGraphRevision: next.graphRevision, issues, decisionSeq: root.eventSeq + 1, requests: accepted ? requests : { finalize: false, replan: false } };

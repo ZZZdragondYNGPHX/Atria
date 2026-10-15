@@ -1,12 +1,16 @@
 import { ConflictError } from '../../storage/errors.js';
-import { putMutable } from '../repositories/common.js';
+import { cloneNativeDocument, putMutable } from '../repositories/common.js';
+import { assertNativeId } from '../identity.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
+import { checkedRecord } from './plan-repository.js';
+import { readEffect } from './effect-contracts.js';
+import { assertResultRefs, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 
 export class AttemptController {
-    constructor({ runs, authorizeAttempt }) {
+    constructor({ runs, authorizeAttempt, verifySettlement }) {
         if (!runs || typeof authorizeAttempt !== 'function') throw new TypeError('AttemptController requires original admission checks');
-        Object.assign(this, { runs, authorizeAttempt });
+        Object.assign(this, { runs, authorizeAttempt, verifySettlement });
     }
 
     async activate(handle, input) {
@@ -26,6 +30,37 @@ export class AttemptController {
             await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), { ...attempt, status: 'running', startedAt: now }, { expectedIntegrity: record.integrity });
             root.status = 'running'; root.progress.steps++;
             return { root, eventType: 'attempt_activated', reasonCode: null, outcome: { attemptId, status: 'running' } };
+        });
+    }
+
+    async settle(handle, input) {
+        if (typeof this.verifySettlement !== 'function') throw new TypeError('Attempt settlement requires original source/result authority');
+        assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'attemptId', 'outcome', 'resultRefs', 'effectReceiptRefs', 'reasonCode'], 'settle');
+        const { attemptId, outcome, resultRefs, effectReceiptRefs, reasonCode, ...guard } = cloneNativeDocument(input);
+        assertResultRefs(resultRefs);
+        if (!Array.isArray(effectReceiptRefs) || !SETTLED_ATTEMPT_STATUSES.includes(outcome)) throw new TypeError('Invalid settlement');
+        return this.runs.control(handle, controlCommandId('attempt.settle', attemptId), { ...guard, operation: 'attempt.settle', detail: { attemptId, outcome, resultRefs, effectReceiptRefs, reasonCode } }, async ({ tx, root, now }) => {
+            const record = await readAttempt(tx, handle, root, attemptId), attempt = record.doc;
+            const node = root.graph.nodes.find(item => item.nodeId === attempt.nodeId);
+            if (root.cancelRequested || root.status !== 'running' || ['join', 'output'].includes(node.kind) || attempt.epoch !== root.epoch
+                || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest || attempt.status !== 'running') throw new ConflictError('native_orchestration_attempt_not_settleable');
+            if (root.progress.steps >= root.limits.maxSteps) throw new ConflictError('native_orchestration_limit_exhausted');
+            const receipts = [];
+            for (const receiptId of effectReceiptRefs) {
+                assertNativeId(receiptId, 'orchestrationReceipt');
+                const stored = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
+                if (!stored || stored.doc.receiptId !== receiptId || stored.doc.runId !== root.runId || !attempt.effectRefs.includes(stored.doc.effectId)) throw new TypeError('EffectReceipt does not belong to Attempt');
+                receipts.push(stored.doc);
+            }
+            for (const effectId of attempt.effectRefs) {
+                const { doc: effect } = await readEffect(tx, handle, root, effectId);
+                if (root.pendingEffectRefs.includes(effectId) || !['confirmed', 'failed', 'not_dispatched'].includes(effect.status)
+                    || !receipts.some(receipt => receipt.effectId === effectId && receipt.outcome === effect.status && (effect.budgetAttemptRef === null || receipt.budgetObservationRef !== null))) throw new ConflictError('native_orchestration_effect_unsettled');
+            }
+            await this.verifySettlement({ handle, tx, root, attempt, outcome, resultRefs, receipts, reasonCode });
+            const receipt = await writeAttemptSettlement({ tx, handle, root, record, outcome, resultRefs, effectReceiptRefs, reasonCode, now });
+            root.progress.steps++;
+            return { root, eventType: 'attempt_settled', reasonCode, outcome: { attemptReceipt: receipt } };
         });
     }
 }

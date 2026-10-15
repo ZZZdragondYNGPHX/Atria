@@ -84,6 +84,13 @@ describe.each(CONTRACT_HARNESSES)('$name S2 durable Effect/Approval core with co
     afterEach(async () => { await h?.engine.close(); await h?.cleanup(); });
     const current = () => runs.get(h.handle, runId);
     const read = async (type, recordId) => (await h.engine.withTransaction(h.handle, tx => tx.getResource(controlRecordKey(h.handle, runId, type, recordId))))?.doc;
+    test('an Attempt with an unresolved Effect cannot fabricate terminal success for a Join', async () => {
+        await prepare();
+        const controller = new AttemptController({ runs, authorizeAttempt: async () => {}, verifySettlement: async () => { throw new Error('must not reach the Result Port'); } });
+        const before = await current();
+        await expect(controller.settle(h.handle, { ...runGuard(before), attemptId, outcome: 'completed', resultRefs: [], effectReceiptRefs: [], reasonCode: null })).rejects.toMatchObject({ code: 'native_orchestration_attempt_not_settleable' });
+        expect(await current()).toEqual(before);
+    });
     async function prepare() {
         const effectId = id('Effect');
         await effects.prepare(h.handle, { ...runGuard(await current()), effectId, nodeAttemptId: attemptId, proposal: { actionRef: { actionId: 'test.effect', version: '1' }, targetRef: { authority: 'test-target' }, inputRef: { artifactId: 'test-input' }, inputHash: hashNativeDocument({ input: 'test-input' }) } });

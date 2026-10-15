@@ -8,6 +8,7 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     orchestrationAttempt: 'oattempt',
     orchestrationEdge: 'oedge',
     orchestrationPatch: 'opatch',
+    orchestrationJoin: 'ojoin',
     orchestrationEffect: 'oeffect',
     orchestrationReceipt: 'oreceipt',
     orchestrationApproval: 'oapproval',
