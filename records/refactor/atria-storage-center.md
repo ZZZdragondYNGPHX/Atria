@@ -168,6 +168,20 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 
 - Status: In progress；尚未宣布 A01–A30 全部完成，未合并 main、未推送或清理工作分支。
 
+### 配额与领域闭环 checkpoint — `49660e97b`
+
+- 已将当时实际 `main` 的主题/设置工作区提交 `5eb3bc765` 正常合入任务分支，保留全部同期变更。尚未反向集成 `main`。
+- 文件最终发布接入附件、图片、头像、背景、旧角色 PNG/sidecar、设置备份；账户配额继续以 canonical 内容与真实文件字节为依据，不用请求长度判断。
+- Native 配额改为 FsNativeJournal / SQL 提交前校验完整事务净增长；新增写入在前、删除在后的等量事务检查。MySQL/Postgres 账户锁跨 Engine 实例串行准入，租用同一连接，单连接池不死锁。
+- 实际 accounting 28 条报告通过，其中 FS/SQLite 的独立共享数据库场景为不适用提前返回；真实跨 Engine 并发证据为 MySQL/Postgres 两项。其余涵盖四后端完整盘点、净增长、并发、精度、文件发布与路径读取失败。
+- Runtime profile 删除复用 NativeModelPromptPersistence，版本化 Library 删除复用 VersionedJsonResourceHandler，扩展复用 ExtensionsStore。默认业务入口接入同一回收流程。恢复的扩展保持禁用；原有 Prompt preset 所属资源继续受领域保护。
+- 新测试发现 MySQL/Postgres Native reader 丢弃 null tombstone 的版本元数据，已修复为保留记录元数据；铁人状态只读查询的等值终结记录写回允许通过门禁，不能借此改回活动状态。
+- 针对 Runtime、扩展和铁人模式新增 12 项四后端测试通过；同 ID 占用与恢复提交失败四后端检查在先前执行中通过。铁人场景仅本地领域操作，未调用模型。
+- 真实回收站记录、独占保留 Blob、已回收备份文件与 running 管理任务已加入现有 Native backup 往返样本。FS→FS、FS→SQLite、SQLite→FS、SQLite→SQLite 与两组保护场景合计 8 项通过。修复备份转换遗漏 `native/recovery` 文件树，以及只校验活跃 Blob、漏校验回收保留 Blob 的缺口。导入任务实际为 paused-review。
+- 修复 SQL 测试夹具将所有文件目录置于账户根同级的问题，统一到真实 USER_DIRECTORY_TEMPLATE；路径保护不为适配夹具而放松。
+- 高级工具仍可查看主设置，但禁止泛型编辑/删除；相关 service 8 项通过。当前任务 68 个 JS 文件使用本地规则进行 scoped ESLint，0 errors；新代码后续仍需相关复测。
+- 当前尚有面板业务导航/导出、补充安全候选与恢复暂停验证、迁移升级和集成浏览器检查，不能据此宣布全部验收完成。
+
 ## Final state
 
 产品任务尚未完成。最终实现、适用验收、集成及同步状态由正式实施阶段依据实际结果填写。
