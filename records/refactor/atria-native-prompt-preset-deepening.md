@@ -320,3 +320,10 @@
 - 统一 Claude 资料将含原 generationBudget 的 free-text authority resolver→Narrator→output 精确三节点链更新为有限已接；其原角色/Context/permit、共享 Turn bank/逐维 Route 上限、原 Attempt/Transition 计边保留。selector不是通用 Tool grant，完成响应/选择/业务提交/Run终态分开。
 - selection reuse仅在原 V3 保留事实等条件满足时零额外 resolver 编译/HTTP/quota，不伪造 ModelReceipt/Result 或免费缓存保证。无quota/缺保留事实的来源仍真实 scope/retention unavailable；Task/background/Project/RP/Hybrid/Actor/可信Review/P4/产品API仍归原后端，P3 NOT_READY。
 - 指定 SQL8、FS实际正常/定向矩阵与初轮失败、变异范围仅归原 Record，本轮不复跑/借记。仅更新同一交接/E0/Record，不合源码/main、不实施前端；文档验证和提交据实际输出。
+
+## 2026-10-16 — V3 第二十四组 Project 前置边界与并发路径保护
+
+- 实际 V3 source `6a5e46a21`、docs `8b63b9827`；读取原接口 §17.34、整合入口与 Record 第二十四组。当前第二十五组已有未提交 Project runtime/Context/Executor/model 修改，尤其 `public/scripts/native/studio-agent.js` 和新 `public/shared/project-agent-prompt.js` 的原提示词/工具组装抽取；本次不触碰这些路径，不把其未提交接线视为已发布。
+- 统一 Claude/E0 更新原 Project Task→同实例Studio消费围栏、Budget tx纯读和真实 committing 领域拒绝；明确是后续生产组合前置，不授Model/Actor grant，不外推跨任意Studio实例或完整V3 Project正文。既有原Project功能和Review/Commit保留，原RP ChatRepo围栏仍未接。
+- Project Executor/计费后Context/active attempt-request-conversation与其余P3/P4后端继续原V3实施；无Run/Projection/Approval API，P3 NOT_READY。原测试最终44、相关58、指定SQL与未跑jointfake SQL、SURVIVED后补强probe等仅归其Record，本次不复跑或借记。
+- 仅更新同一前端交接/E0/唯一Record，不合源码/main、不改前端、不接手未完后端；相关文档检查与提交据实际输出，无关改动保留。
