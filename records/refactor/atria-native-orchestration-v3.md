@@ -95,3 +95,12 @@
 - 预算缺口明确：当前 reserve 是 required headroom，GenerationHost 内部随机 compute attempt 与 V3 stable effect 尚不能贯通；冻结扩展原 RunControl/Project bank 的 reservation tree、admit/observe/settle，而非第二预算账本。普通 rp_chat 的持久 budget 接入仍 BLOCKED。prepared→原 bank→ready→dispatching→原 receipt 的每个崩溃窗口均有保守出口。
 - Approval/安全：原 CredentialTargetAuthority/credentialFetch 有可复用 target pin/DNS/redirect 防线，非 V3 action 批准。明确同源任意代码无法靠 CSRF/isTrusted 隔离，缺可信通道/沙箱的高危效果不准入；MCP/A2A unknown 无状态不重发。
 - 已执行的文档校验曾发现首组末行 CRLF 被 git diff --check 视为 trailing whitespace；首组推送发生在诊断后，本组统一本任务文档 LF 并重检修正。没有将该失败记录为 PASS。实际运行/崩溃/可信审批/三端/外部服务仍 NOT_RUN/BLOCKED。
+
+## 2026-10-15 — E0 第三组：E1 工作包与真实客户端验收细化
+
+- Start docs：`050d892b8`；期间另一个任务在同一 docs 工作空间提交 `19b8e5df0` Settings/Theme Bundle（位于本轮第一/二组之间），已核对只涉及其 Plan/索引与 Serene Canvas 决策，无 V3 文件覆盖，完整保留。未触碰未跟踪 Evolution 企划。
+- E1 增补：P1–P8 依赖图/物理交付/Gate、W01–W09 authority+输入+产物+前置。P2 只用可控 Port，P3 才接原预算/发送；P4 先替换 Eval/Targets 全生命周期，P6 统一硬切且旧客户端失效，P7 后才可正式集成。沿 Governance 的本地相关验证，不新设等待远端 Actions 的要求。
+- 验收增补：CL01–CL12 三端操作步骤/失败判据、V01–V10 原测试 harness 对应与新断言、FS/SQLite 和 MySQL/Pg 状态、可信审批/同源代码边界、私密 projection cursor、性能测量和 evidence 字段。所有新 V3 case 当前 NOT_RUN/BLOCKED，没有将旧测试文件存在记 PASS。
+- 实际环境只读检查：Windows 11 Pro 10.0.26200 x64、Node v24.18.0；可定位 wsl.exe/ssh.exe，adb 不在 PATH。没有 CachyOS/Termux 连接/设备版本证据，没有实际 Browser/V3 Host 流程；工具存在不等于三端已准备或通过。
+- 同期 authority 对齐：Storage Center 的 kinds/ref/回收根/恢复暂停，Settings/Themes 的原设置保存与主题，不复制服务、不恢复旧编排 subtree/scope。D1–D9/HCM/原 Domain 权威保持。
+- 本组实际文档校验：18 份 Bundle/Record 文档、162 个相对链接，缺失 0；151 文件 manifest 与 main tracked 四根逐路径一致（missing/extra 均 0），SHA-256 与附件一致；git diff --check 通过。这些只是文档/路径结果。

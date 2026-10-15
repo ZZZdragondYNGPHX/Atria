@@ -34,8 +34,8 @@ E0 允许在 docs 记录审计事实/更新最小物理合同和验收计划，�
 | **P4 — Product Consumers** | Native Game/Ordinary RP Narrator/Player autonomy、Session World/Command/Timeline、Studio Project Agent Task/Review/Apply、Experience/Evolution targets 与原 M1 Eval | 单次合法正文、无玩家代写/全知硬写越界；Studio 只审阅后获准正式提交；`evolution-targets.js` 等旧模式引用已替换且原记录可信 | P2/P3 |
 | **P5 — U2 Frontend** | Serene Canvas Agents Plan Library/Graph+Inspector/typed Ports/Draft/Publish，Run Timeline 默认/Graph 切换、Host Projection/Diagnostics/Approval/Source/Cost 与移动端 List/Sheet | Canvas/List 双向、版本冲突/错误定位、无编排 Browser Runner、真实审批/Control 流，PC/Mobile 交互与权限隔离 | P1–P4 新权威 API 与可信 UI contract |
 | **P6 — Atomic Legacy Hard Cut** | 同任务分支一次性切换全部 RP/Native Game/Studio/Agent/Search/Shell/Evolution 的原生入口，删除旧五模式/编排代码/Browser checkpoint/旧 preset UI/旧 mode 事件注入/专用测试 | 静态 import/路由/设置/持久数据/用户入口全面无旧编排活引用；旧数据不迁移/无 fallback/shim；共享 Native/Message Takeover 非旧用途仍正常 | P1–P5 替代已准备与真实消费者闭包 |
-| **P7 — Integrated Acceptance** | [验收矩阵](acceptance-matrix.md) 中 Graph/权限/预算/质量/安全/崩溃与三端分层实测，CI/实体客户端证据和必要缺陷修复 | 各 Gate PASS 的测试名、Head、原始输出/账号权限、真实负例和误差记录；无法验证的高危矩阵项阻断产品完成 | P1–P6 |
-| **P8 — Integration & Close** | 检查干净分支与产品相邻任务最新变化、真正 main 集成/推送、docs 同一 Record 更新 End/Tested HEAD、清理安全旧分支 | 无未合并活工作、回归/CI/真实平台证据、最终源头/状态明确；不得未经测试/确认称完成 | P7 与 Governance |
+| **P7 — Integrated Acceptance** | [验收矩阵](acceptance-matrix.md) 中 Graph/权限/预算/质量/安全/崩溃与三端分层实测，本地相关检查/实体客户端证据和必要缺陷修复 | 各 Gate PASS 的测试名、Head、原始输出/账号权限、真实负例和误差记录；无法验证的高危矩阵项阻断产品完成 | P1–P6 |
+| **P8 — Integration & Close** | 检查干净分支与产品相邻任务最新变化、真正 main 集成/推送、docs 同一 Record 更新 End/Tested HEAD、清理安全旧分支 | 无未合并活工作、相关回归/真实平台证据、最终源头/状态明确；不得未经测试/确认称完成 | P7 与 Governance |
 
 **依赖允许安全细分/局部穿插**：如 P3 可先实现合法只读 Context Port 以支持 P2 测试，UI 合同可在 P1 用无副作用 Stub 测试，但不得把此类穿插解释为提前达到完整阶段 Gate。阶段结果与真实失败留同一 Record，常规工作可在**已授权实现后**按 Governance 持续推进。
 
@@ -53,7 +53,7 @@ E0 允许在 docs 记录审计事实/更新最小物理合同和验收计划，�
 | **W08 U2 UI & Shell** | `atria-shell/workspace-host.js`、Shell Search、Graph viewer、旧 Workspace Panel、Serene Canvas/手机输入与审批 | P5–P7 |
 | **W09 Hard Cut & Evidence** | 旧模式/适配/JS/CSS/测试/配置导入一一核对，关键信息迁移仅正式业务权威引用、真实数据不被误删；三端验收证据 | P6–P8 |
 
-在当前 E0 仅部分静态确认了 W01/W03/W06/W07/W08 的若干路径；其余完整消费者、真实 E2E 和物理接口仍需补充，[e0-audit.md](e0-audit.md) 记录 evidence，不将设计目标当已完成代码改动。
+早期 E0 仅部分静态确认 W01/W03/W06/W07/W08；本轮静态盘点与物理合同增补见 §6–8，真实运行闭包/E2E 仍需补证，[e0-audit.md](e0-audit.md) 记录 evidence，不将设计目标当已完成代码改动。
 
 ## 5. 工作分支与正式交接门槛
 
@@ -66,3 +66,56 @@ E0 允许在 docs 记录审计事实/更新最小物理合同和验收计划，�
 - 有真实 Windows、Linux、Termux 测试环境、可复核客户端 L2/L3 验证手段与不可测试项的保守处理。用户此前选择 E1 **不是实施授权**；当前要求明确在收口前不得建立分支，故待 E0 完整、正式交接审核与**用户新的明确开工要求**后才建立同一 `refactor/*` 任务分支。
 
 最后依据 [acceptance-matrix](acceptance-matrix.md) 与 Governance 保持真实 git/测试/CI/端侧记录，阶段闭合后继续；不以“已分阶段”免去高风险操作的用户授权、原权限检查、质量/Eval 独立标记。
+
+## 6. E0 收口后的依赖图与阶段增补
+
+本节把 §3–4 已冻结的 E1 路线落到物理接口 v1，不改变 P1–P8 顺序。当前 **E0 仍 BLOCKED、实施未获授权**。未来开发前先重读实际 main delta、同一 Record、[consumer inventory](e0-consumer-inventory.md) 与 [AST graph](e0-import-graph.md)，不能直接删除 151 文件。
+
+```mermaid
+flowchart LR
+  E0["E0 审计证据 + 用户另行开工授权"] --> P1["P1 Plan / Ledger / Store / Owner"]
+  P1 --> P2["P2 Graph / Effect / Approval 状态机"]
+  P2 --> P3["P3 原 Domain Ports / 预算 / Send"]
+  P3 --> P4["P4 RP / Game / Project / Evolution"]
+  P4 --> P5["P5 U2 / Projection / 可信审批"]
+  P5 --> P6["P6 全入口统一硬切"]
+  P6 --> P7["P7 故障 / 安全 / 三端验收"]
+  P7 --> P8["P8 main 集成与交付"]
+```
+
+| 阶段 | 必须拿到的具体输入/交付 | 最小 Gate 与禁止跨越的事实 |
+| --- | --- | --- |
+| P1 | interface §6/7：5 kinds/key validators、原 canonical hash、Plan Draft/publish、Run/records/command tx、SourceBinding、Host writer exclusivity、backup/GC ref registration；RPC auth/CSRF/boot/read-only | FS+SQLite 的新 kinds/insert/CAS/immutable、并发 publish、第二 Host 拒绝、损坏与 ACK-loss 的 L1/L2；MySQL/Pg 注册和 adapter 合同不得漏。没有 P1 V3 证据就不接外部 Effect |
+| P2 | 同一 Run CAS 下 GraphPatch/Join/Delegate/Handoff/Review/counter；prepared/ready/dispatching/unknown、Approval binding/consumption、取消与 late receipt | 仅受控 test Port 验状态机/崩溃窗口，**不接真实付费或外部 mutation**。BudgetPort 用合同 fake 不计为原预算通过；可信 UI 尚未存在时 approval mutation 不对生产开放 |
+| P3 | W04/W05 改接原 BudgetPort、稳定 provider attempt 与 fallback、Context/Hybrid audience、Tool/MCP/A2A/Skill/Egress/Credential Ports、原 DomainReceipt | sibling 竞争、跨 tx unknown、原 bank observe/settle、source revoke before send、zero duplicate charge、无可用 bank 的普通 RP 拒绝。有真实服务准入的 L4 才能称其外部费用/协议通过 |
+| P4 | C02/C03 新 consumer；W07 Target 全生命周期+Eval adapter/worker/fingerprint；普通 RP chat source 与 Session/Project 各自 output consumer；Skill 旧 scope 替代准备 | 一个 source turn/variant/slot 唯一 output；World/Project commit 与 Run completed 区分；新 evaluator 身份/旧报告不可发布。旧实现可尚在任务树供静态对照，但新主链不能调用旧 runner |
+| P5 | Host projection/long-poll、Plan Library、Canvas+Inspector/List 同 Draft、可信 Approval 详情、Source/Cost/Unknown/Diagnostics、Shell/Search 移动路由 | 新 UI 在真实 Host/Browser 验 L2；取消/status 不被模型/图布局/审批等待阻塞。图 backend PoC 须留键盘/触控/负例/测量；DOM/ESM/原 token 与当前主题 authority 保持一致 |
+| P6 | C01–C18 全面切入口、卸旧 subscriber/worker；清 151 文件中旧执行路径、旧 scope/config/UI/assets/checker/tests；修共用 helper imports；旧客户端发送协议失效 | AST+语义扫描零生产旧根/旧 API/mode/scope执行路径；非目标 sync/World/Studio/Memory/Skill 不误删；真实 boot/Game/Settings/Shell/Evaluation/Skills trace。旧 private data 无迁移/别名/双读，历史正式收据保护 |
+| P7 | acceptance 全部适用 G/S/UI/平台用例和失败复测；测试准确 product SHA/设备/存储后端；安全开放文本评价与工程证明分开 | L1/L2 + 三端 L3 + 必要且获准 L4；任何高危 BLOCKED 不能算全域完成。按 Governance 运行本地相关检查，不新增等待远端 Actions 的条件 |
+| P8 | 锁定 tested SHA、对照 main 增量、冲突修复相关复测、同一 Record End/Tested HEAD、最终 docs 与集成状态 | P7 通过且符合原 Governance 才集成；仅相同已验证内容不重复全量测试；活跃未完成分支/用户内容不清理 |
+
+P2 不需要提前实作一套影子预算；P3 的预算接口合同在 P1/P2 先固定，真实 authority 接入在 P3 验证。P5 的 UI 原型可以在 P1–P4 用无副作用数据并行推进，但不能提前把阶段 Gate 改成 PASS。P6 之前不发布含新旧可选择入口的产品版本；最终切换失败在同任务修复，不保留旧模式回退。
+
+## 7. W01–W09 物理交付与依赖清单
+
+| 包 | 源码 authority / 依赖输入 | 具体产物与完成证据 | 先后约束 |
+| --- | --- | --- | --- |
+| W01 Authoring/Data | Native contracts/identity/common + 原 Settings/Skills repo | 5 kinds 中 Plan+revision、Draft/publish API、严格 validator/hash；Settings old subtree、orch-preset 读写/restore 禁止重启旧协议；精确数据清单 | P1 authoring 先于 W08；硬切清理等 W06/W07/W08 替代齐备 |
+| W02 Ledger/Recovery | Engine/原 journal、SQL Native CAS、RunControl、ProjectTask、Storage refs | RunRoot/record/command tx、writer lease、host epoch、恢复扫描、GC pins、write-before-send saga；不是新 World/费用银行 | P1 基础；W04 预算身份规范须先对齐；P2 使用 fake Port，P3 才真实 send |
+| W03 Graph/Core | W01 immutable Plan + W02 CAS/epoch + D3 | typed graph/whole patch、JoinReceipt、delegation/return、bounded counters、Review invalidation；抽离 prepared-context/envelope 共用 helper | P2；C08/C09 抽离先于任何旧目录删除 |
+| W04 Source/Context/Compute | 原 Context/Hybrid/Information/Actor、GenerationHost/Model Route、RunControl/Project bank | SourceBinding/audience refs，原 authority reservation tree+stable attempt admit/observe/settle，fallback/unknown/parent high-water；ordinary rp_chat authority 缺失拒绝 | P3 真实接入；P4 output/currentness 前置；预算树不得由 W02 私有实现 |
+| W05 Tool/Security | 原 Tool/Skill/MCP/A2A/CredentialTargetAuthority/SecretPort + W02 intent | action descriptor/version/hash/grant/egress，审批 challenge/一次消耗、真实 Port reconcile、禁无保护 R3；删旧 registry tools/scope hook | P2 合同→P3 Ports→P5 可信 UI；SDK 不能拿批准 capability |
+| W06 RP/Game | W03–W05 + Session/World/Command/原 chat/variant consumer | capability boot/play-generation/experience runtime/narrative/rewrite 全部接新 contract；唯一 source output claim/原 DomainReceipt；旧 mode/guidance/takeover subscriber 下线 | P4 业务→W08 展示→P6 移除旧主链 |
+| W07 Project/Evolution | 原 Studio/ProjectTask/Experience/Eval、W01 exact Plan refs、W03–W05 | Target authorize/catalog/capture/prepare/check/current/write/discard/evaluationSettings、Eval adapter/worker/fingerprint、promotion/rollback 原权限；旧 report 不自动 eligible | P4 业务；先替 evaluator/指纹/Settings CAS 消费，再删旧 presets/Director |
+| W08 UI/Shell | W01 authoring + W02 projection + W05 trusted interaction + W06/W07 | Graph+Inspector/完整移动 List、Timeline 默认/Graph toggle、Source/Cost/Approval/Diagnostics、Search/deep-link/history/Back；旧 panel/CSS/labels 消除 | P5；原 Serene Canvas/Settings Theme 只引用不另建；真实功能等价后进 P6 |
+| W09 Hard Cut/Evidence | C01–C18、两个审计附件、所有工作包替代接口 | 逐路径处置核对、AST/语义零旧执行引用、测试适用性分类、三端/Store/服务 evidence manifest、main delta复核 | P6 清退→P7验证→P8集成；不得把 grep 无命中等同端到端通过 |
+
+已有测试复用入口见 acceptance §8；新 `tests/native-orchestration/` 只在未来获授权实现时建立。不能原样搬旧 mode/preset/recovery suite 后改名，必须验证新的 Host 权威和原 Domain receipt。
+
+## 8. 同期领域方案边界与最终开发就绪复核
+
+- [Storage Center](../atria-storage-center/index.md) 负责统计/完整对象闭包/回收站/原 ID 恢复。V3 注册 kinds/ref roots/active-run/unknown 效果保护，不能另造清理中心或用其“恢复”自动续跑、重发/返还费用。
+- [Settings/Themes](../atria-settings-and-themes/index.md) 与 Serene Canvas 管通用设置保存、主题和 Shell 视觉；它的通用兼容不恢复 D2 已废止的 Orchestrator subtree/mode/scope。V3 只清旧编排字段，新 Authoring 不重复实现 Settings 服务；当前主题更新不要求 V3 强制固定浅色。
+- 既有独立 MCP、Model/Memory、Game Runtime/Project、Experience/Eval 方案仍各持权威。未来 main 上同期改动先做精确 diff，不读取其它任务未提交草稿或把历史源基线当当前实现。
+
+本轮最终审查结论与剩余阻塞见 [e0-audit §10](e0-audit.md#10-最终开发就绪审查与交接结论)。即使日后 E0 实证闭合，**仍须用户另行明确授权正式开发**；本次授权不包括创建实现分支或修改 main。这里的交接结论是企划收口产物，不创建/刷新独立 HANDOFF，不将未完成验证转交为已完成。

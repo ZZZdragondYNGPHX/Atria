@@ -72,7 +72,66 @@
 | **P4 → P5** | Narrator/Studio/Evolution 业务来源/正式提交边界和无旧数据迁移主消费路径通过 | 保留未通过证据，不提前将旧代码作为正式兼容发布 |
 | **P5 → P6** | Authoring/Run/Approval/Diagnostics 真实 Desktop/Mobile 功能合同至少 L2 通过，清退的消费替代完整 | 不删除仍有活引用的共享模块 |
 | **P6 → P7** | 源码引用闭包/旧模式/旧前端/旧预设/Browser Runner 全清，原共享功能仍正常，产品只存在一条生产编排主路径 | 继续同分支修复，不能声称硬切 |
-| **P7 → P8** | L1/L2/CI、经授权的 L4 真实外部/质量测试、Windows/Linux/Termux L3 和高风险安全矩阵全覆盖且 PASS | 缺设备/账号/安全证据保持 BLOCKED，不进入最终集成 |
+| **P7 → P8** | L1/L2 本地相关验证、经授权的 L4 真实外部/质量测试、Windows/Linux/Termux L3 和高风险安全矩阵全覆盖且 PASS | 缺设备/账号/安全证据保持 BLOCKED，不进入最终集成 |
 | **P8 → Main** | 实际测试 Head、无残留旧代码/重要缺陷、完整 Record、Governance 集成门槛及真实远端 | 不合并或清理未完成的工作 |
 
-**不在本轮执行任何测试**；以上 “PASS” 是将来应当填入真实 Record 的状态，并非 D9 已通过的宣告。严重安全错误一律 fail-closed，Unknown 保留证据；质量问题按真实来源迭代，不通过降低硬约束/伪造评委/删除不利日志达成表面绿灯。
+**本轮未执行产品测试；实际静态文档检查见同一 Record**；以上 “PASS” 是将来应当填入真实 Record 的状态，并非 D9 已通过的宣告。严重安全错误一律 fail-closed，Unknown 保留证据；质量问题按真实来源迭代，不通过降低硬约束/伪造评委/删除不利日志达成表面绿灯。
+
+## 7. 三端真实客户端可执行方案与当前环境
+
+本节补足 §5 的实际执行顺序。平台版本必须实录；不为满足表格假设已有设备/凭据。2026-10-15 本轮只执行环境只读检查：本地 Windows 11 Pro `10.0.26200` x64、Node `v24.18.0`；`wsl.exe/ssh.exe` 可定位，`adb` 未在 PATH 找到。**这只证明工具/宿主信息，不证明已连接 CachyOS、Termux 或 V3 Browser。** 未启动 Host、未取得三端客户端版本、未执行新 V3 流程。
+
+| 平台/Store 组合 | 执行前真实准备 | 不能接受的替代证据 | 当前状态 |
+| --- | --- | --- | --- |
+| Windows / FS 与 SQLite 分别 | 独立测试 account/data root、精确产品 build、真实 installed Node+浏览器、原 Credential/Source grants；路径含空格/中文，确认文件锁和 writer 拒绝 | 当前 shell 存在、仅静态测试、桌面截图或 API fixture | V3 artifact/Host 不存在：NOT_RUN；运行证据 BLOCKED |
+| CachyOS KDE / FS 与 SQLite 分别 | 真实 CachyOS 机器版本、kernel/Node/browser/FS 类型、测试账户与目录权限；使用原产品启动方式 | WSL/容器/其他 Linux 发行版、Windows 跑出的相同测试 | 未获得目标机器连接/版本证据：BLOCKED |
+| Android Termux / FS 与 SQLite 分别 | 真实 Android 设备、OS/Termux 来源版本、Node/native addon 架构、移动浏览器、app-private 可写目录与 localhost 连接；原安装流程能加载 SQLite addon | Playwright mobile viewport、桌面 Chrome device emulation、Android 只有截图而无本地 Host | 未取得设备/连接与 V3 artifact：BLOCKED |
+| MySQL / Postgres adapters | 可用测试服务/账号，原 Engine migrations 与 new kinds、CAS/tx/backup/ref 行为；不接用户生产库 | generic API 名称相同或 SQLite 测试通过 | 未提供服务证据，NOT_RUN/BLOCKED；不能默默退回 FS |
+
+每个平台在可用后执行同一组 C01–C12，保留 OS 特有附加结果。CachyOS/Termux 的连接只在真实目标可用时建立，不猜 SSH host、不下载替代发行版、不触碰生产数据。
+
+| 客户端 case | 操作顺序 | 结果与失败判据 |
+| --- | --- | --- |
+| CL01 Authoring | 新建 Plan→建 Agent/Tool/Join/Output 节点→连 typed ports→Inspector 改字段→List 改边→撤销/重做→save/reload | 三视图同 Draft/version，布局改动不改 definitionHash；非法 port/无出口能定位，Validate 不网络发送 |
+| CL02 Publish/CAS | 两窗口同时编辑同 Draft；先后 publish→新 Run 钉旧/新 revision | 后者真实 409，不静默覆盖；Run 不随 draft 编辑改变；旧 preset import/API 明确拒绝 |
+| CL03 Observation | start→Timeline 默认→Graph 切换→刷新/离开/断网→重连→重放乱序/重复 delta | 只观察中断，Run 不随网页关闭取消；seq gap/epoch/visibility 变化重取 snapshot，无私密残留 |
+| CL04 Approval | 在真实本人会话看操作/目标/参数/egress/budget→批准/拒绝；随后重放 nonce、改参数/Source/Boot | 一次精确有效决定；伪造 boolean/LLM/SDK/跨用户请求拒绝；可信通道不可证明则该动作 blocked，不能以按钮点亮算通过 |
+| CL05 Cancel/Control | 模型等待/Tool pending/大图布局/Approval 打开时查询状态和 cancel | 控制可达、持久 cancel 请求阻止后续 dispatch；未知外部效果不显示已撤销/退款；不依赖长请求 close 才释放 |
+| CL06 Host restart | 在 prepared、budget 已确认未关联、ready、dispatching、domain commit/receipt 前后分别结束**测试 Host 子进程**，重开同测试 root | 每窗按接口 §8 恢复；无 repeat charge/非幂等 send/双正文。不得杀生产 Host/系统或用整机断电代替受控测试 |
+| CL07 Source/Actor | 并行读取后切 branch/variant/Project revision、撤回 source/grant；A知秘/B不知/Narrator宽/玩家拒绝 disclosure | 原输入与 Result/Join/投影重新 guard；过期结果不写新分支；自由文本间接串知作为 L4 质量单独记 |
+| CL08 Product | 普通 RP、Native Package Turn/Game logic、Game rewrite、Studio Task review/commit、Evolution candidate/evaluate/publish/rollback | 每类准确 source/receipt；Studio 自动链只到 Review；旧 target/report 无资格，新报告按原 Eval；无 Director/preset runner |
+| CL09 Mobile parity | Node/Edge List 完成 CL01/02/04/08 的所有语义；软键盘中文组合、Back、safe-area、滚动和 sheet 焦点 | 无拖拽/hover 必需操作；Back/键盘不丢 Draft、不误批准/提交；键盘和辅助技术可达所有字段/边 |
+| CL10 Lifecycle | 切后台/锁屏/浏览器关闭/Android 系统收掉 Termux 后重开 | Host 存活时持续/等待由原 policy 决定；被杀后必须显式重开才能恢复，绝不声称系统自动唤醒或离线设备运行 |
+| CL11 Storage/Restore | 新 kinds metadata backup→在独立测试账户恢复→source validity/GC refs 检查；未知效果存在时尝试清理预览 | 恢复停在 paused/reconciling，旧审批无效、原费用 high-water 不回退；引用/未知效果不被 GC；不拿旧数据迁移当测试 |
+| CL12 Hard cut / Shell | 干净与含旧配置的隔离测试 root 启动；搜索/commands/detail route/Settings/Skill scope/Evaluation 全部尝试新旧入口 | 新主链唯一，旧配置不读、不迁移、不 fallback；非目标共享能力仍可用；离线旧 browser 发旧协议被原 send/commit guard 拒绝 |
+
+不执行破坏性整机掉电、真实账户清空或真实第三方写入来凑验收。物理掉电安全若没有受控硬件证据维持 BLOCKED，软件进程退出测试只能声明其实际保证级别。L4 外部未知写入只对已明确授权的可控测试目标做；无授权/服务则 BLOCKED，不私自发送。
+
+## 8. 用例与已有测试的精确衔接
+
+已有测试文件只表示可复用 harness/断言，本轮**未运行**。未来验证命令依据当时 package scripts/测试 runner 配置执行并记录；不在 docs 编造目前不存在的新测试命令或 CI job。
+
+| v1 case group | 现有可复用证据/测试入口 | 必须新增或重接的关键断言 | 阶段 |
+| --- | --- | --- | --- |
+| V01 Plan/Store/Owner | `tests/storage/harness/contract-harness.js`，`tests/native/durable-commit.test.js`、`helpers/durable-commit-process.mjs` | 5 kinds、PlanRoot/revision/command 同 tx；same-ID different-payload 冲突；第二 Host拒绝；FS 5 fault stages；SQLite busy/commit；SQL 原 conditional CAS | P1 |
+| V02 Graph/control | 旧 agent-runtime/kernel/races/parallel/policy-controller 测试的仍有效不变量 | whole patch atomicity、active effect不可改、bounded循环累计、Review依赖闭包、父子持久身份、五种Join与late cutoff | P2 |
+| V03 Effect/recovery | durable-commit harness + 新 V3 受控 Port | prepared/charge关联/dispatching/receipt/ACK-loss；取消、stale worker、已有Domain commit，remote未知不能重复发送 | P2/P3 |
+| V04 Budget | `tests/native/run-compute-retirement.test.js`、原 compute/Project 测试；不得把旧 evaluation 开发配额当产品限制 | root/child/sibling原子reservation、stable admit/observe、真正每次Provider send/fallback唯一charge；unknown/restore/GC不返额度；普通RP无authority拒绝 | P3 |
+| V05 Credentials/Approval | `tests/native/credential-target-review-ui.test.js`、`mcp-credential-targets.test.js`；原 CredentialTargetAuthority/credential-fetch | endpoint/schema/source漂移、nonce/boot/epoch重放、同源恶意扩展边界、跨用户、redirect/DNS、日志/投影secret泄露；真UI独立L3 | P3/P5 |
+| V06 Domain/Game | `tests/game-runtime/llm-orchestrator-narrative.test.js` 的原 World/唯一正文断言，新 consumer 替换旧 producer adapter | Package Turn优先支路、free text、普通Native generation、rewrite；跨Run同output slot竞争；旧 client/send fencing | P4/P6 |
+| V07 Project/Evolution | `tests/native/project-agent*.test.js`、`tests/agent-intelligence/evolution*.test.js`、`project-recovery.test.js`；frontend/agent-evolution-ui 与 project-agent-recovery smoke | target全生命周期、评测worker无旧imports、新fingerprint、旧report不eligible、原审核和commit unknown；不能删报告出处/原收费后再称通过 | P4/P6 |
+| V08 Shared/Skill/Shell | Memory schema iteration、message-takeover、search/memory registry、Skills scopes、tests/atria-shell/workspace-host、原 frontend smoke | envelope/prepared-context抽离不退化；orch-preset全链终止；global/project/package/character Skill保留；Search/Back/导航/setting保存不丢 | P4–P6 |
+| V09 GC/Restore | `tests/native/durable-maintenance.test.js`、`session-maintenance.test.js`、原backup/storage-center harness | active/unknown/approval/budget/ref pins；metadata根同代际；恢复只读/暂停不send；Save不克隆Run/额度 | P1/P3/P7 |
+| V10 三端/质量 | CL01–CL12 + 原M1 Source/QualityProfile/独立评价 | 真Host/浏览器/OS动作；数据级安全与开放文本quality/真人偏好分开；不使用Model Judge冒充用户批准 | P7 |
+
+测试资产处置采用 C17 与 manifest 中逐文件路径；旧 mode 专项可删除，仍有效安全断言必须先在新 authority 上有替代。SQL服务不可用不得把对应分支 skip 后宣称“四Engine通过”；Android addon 未能加载就是环境缺陷/阻塞，需要先诊断与可用安装方案证据，不把桌面fixture称实机。
+
+### 8.1 性能与图 backend 的阶段出口
+
+不在 E0 无硬件测量时编造帧率/恢复毫秒/千节点 SLO。P5 必须以明示的 Plan size/最长Timeline/并行度/设备内存配置构造小型、常用、配置上限场景，记录输入/布局/Inspector/控制请求的 p50/p95、最长主线程任务和峰值内存。布局/backend 选择先测真实 U2连线、键盘和移动List/Sheet；结果进入同一 Record，冻结该版本适用阈值再宣称 P5/P7性能达标。未配置/未测量阈值状态 NOT_RUN/BLOCKED，不把“支持virtualization”作为性能验收。
+
+### 8.2 结果记录格式与当前真值
+
+每条 evidence 至少：`caseId, productCommit, planCommit, platform, osVersion, nodeVersion, browserVersion, engine, testAccountScope, sourceFixtureId, action, expected, observed, status, failureCode, evidenceDigest, testedAt`。跨端同 case 分开记录，NOT_RUN 不填虚构 observed。公共 Record 只存脱敏摘要/hash/测试名/限制；请求响应、用户文本、nonce/token、原始截图等临时测试资料遵守 Governance §13.1 的清理要求，不为复核已删材料重复付费跑历史测试。
+
+当前：仅 L0 tracked scanner/AST 和本地环境只读核对已执行；V01–V10、CL01–CL12 的 V3 L1–L4 全部 NOT_RUN，对缺V3实现/设备/原服务/可信批准者明确 BLOCKED。没有产品测试、Actions、真实模型/Tool/A2A/MCP/人工质量或实机通过记录。文档校验结果另归同一 Record，不能记成 V01–V10 PASS。

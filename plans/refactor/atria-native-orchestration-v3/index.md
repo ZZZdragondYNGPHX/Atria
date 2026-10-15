@@ -12,7 +12,7 @@
 - 第六轮状态：**D6 已冻结：S2 Native Effect Authorization Gate；按实际动作/后果授权、分级审批、Secret/Egress 保护、Prompt Injection 隔离及持久 EffectIntent/Receipt 安全恢复**。
 - 第七轮状态：**D7 已冻结：N2 分层叙事与条件质量回路，区分 Actor Cognition、Narrative Intent、Character Expression 与唯一 Narrator；反全知、玩家自主权、Project Review/Commit 和质量分层**。
 - 第八轮状态：**D8 已冻结：U2 Graph Canvas + Inspector 双向编辑、原生 Plan Draft/Validate/Publish、运行 Timeline 默认/Graph 切换、Host RunProjection/Diagnostics、可信审批及 PC/移动等价编辑能力**。
-- 第九轮状态：**D9 已冻结 E1 内核先行、同一任务分阶段验证、最终统一零兼容硬切；E0 仍处于定向静态审计，完整消费者/物理接口/真实安全验证均为阻塞，未获准建立实现分支**。
+- 第九轮状态：**D9/E1 不变；本轮已完成 tracked 全仓扫描、AST 依赖索引、C01–C18 零兼容矩阵和物理合同 v1、E1/三端验收细化。真实运行闭包、可靠性/安全/平台实证仍 BLOCKED/NOT_RUN，E0 总 Gate 未通过，正式开发未获授权**。
 - 文档性质：设计与架构冻结阶段；本轮仅提交 `docs`，不建立实现分支、不修改 `main`，不宣称任何新实现已验证。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -46,7 +46,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [graph-editor-experience.md](graph-editor-experience.md) | **D8 冻结**：U2 Graph+Inspector、强类型 Node/Edge、Plan Draft/Publish、Run Timeline/Projection、审批/Diagnostics、Serene Canvas/移动端与性能 | 前端 V3 Authoring 与 Run UX 设计权威 |
 | [e0-audit.md](e0-audit.md) | **D9 E0 静态证据（E0 未通过）**：跨域依赖、旧代码清退风险、接口待定项、待清退消费者和未闭合审计项 | D9 E0 与实施方案讨论 |
 | [e0-consumer-inventory.md](e0-consumer-inventory.md) / [e0-import-graph.md](e0-import-graph.md) | 最新 main 全仓逐文件/行号、151 文件清退 manifest、AST 直接/间接依赖及动态表达式证据附件；处置仍归 e0-audit | E0 / P6 引用闭包复核 |
-| [interface-contracts.md](interface-contracts.md) | **D9 冻结接口方向**：Plan/Run/Effect/Receipt/Result/Projection 身份、唯一权威及物理合同阻塞 | E0 物理接口核查与实施 P1–P4 |
+| [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：5 kinds/key、对象字段/状态、CAS/事务/恢复、原预算 Port、RPC/Projection/审批/保留根；实现实证未通过 | E0 物理接口核查与实施 P1–P4 |
 | [implementation-plan.md](implementation-plan.md) | **D9 E1 正式路线**：E0 建分支前置、P1–P8 依赖/验收门槛、全域消费者硬切及工作包 | E0 审核、正式交接与实施期间 |
 | [acceptance-matrix.md](acceptance-matrix.md) | **D9 冻结验收目标**：L0–L4、Graph/Effect/预算/安全/RP/Studio/UI 与三端真实客户端 Gate | 每阶段/最终收口与 Record 证据 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
@@ -72,6 +72,6 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 
 D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代码发现见 [e0-audit.md](e0-audit.md)，Plan/Run/Effect/Receipt/Projection 关键接口方向见 [interface-contracts.md](interface-contracts.md)，E1 实施阶段/前置审核唯一来源见 [implementation-plan.md](implementation-plan.md)，实际验收 Gate 唯一来源见 [acceptance-matrix.md](acceptance-matrix.md)**。其他 HCM、Agent Intelligence、Game Runtime、Serene Canvas、独立 MCP 的权威不复制。D9 设计冻结绝不等于 E0 引用闭包/用户实际开工授权。
 
-## E1 正式开发交接审查入口（E0 尚未闭合）
+## E1 正式开发交接审查入口（NOT READY，E0 尚未闭合）
 
 必读本 `index.md` → [decisions.md](decisions.md) D9 → [e0-audit.md](e0-audit.md) 的**真实静态证据与已知阻塞** → [interface-contracts.md](interface-contracts.md) 的物理接口待审 → [implementation-plan.md](implementation-plan.md) 的 E0→P1 前置条件和工作包 → [acceptance-matrix.md](acceptance-matrix.md) 的验收 Gate。按需回查 D2–D8 与 HCM/Agent Intelligence、Game Runtime/Studio、Serene Canvas、独立 MCP 的唯一权威。审查时先重新锁定当时实际 main/docs HEAD，再完成旧 Browser Runtime、mode adapters、Native Game、Settings/Evolution、Serene Canvas UI、Memory/Model/Tool 的**全部**消费者、持久化/权限/真实故障窗口核对；未完成项按 BLOCKED 记录。**当前不创建工作分支、不修改 main、不宣称 E0 或三端已通过**。
