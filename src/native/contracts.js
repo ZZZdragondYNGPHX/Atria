@@ -62,6 +62,14 @@ export const ATRIA_PACKAGE_PERMISSIONS = Object.freeze([
 
 export const NATIVE_STORE_SCHEMA_VERSION = 1;
 export const NATIVE_RESOURCE_KINDS = Object.freeze({
+    orchestrationPlan: 'atri_orchestration_plan',
+    orchestrationBinding: 'atri_orchestration_binding',
+    orchestrationRevision: 'atri_orchestration_plan_revision',
+    orchestrationRun: 'atri_orchestration_run',
+    orchestrationRecord: 'atri_orchestration_record',
+    orchestrationCommand: 'atri_orchestration_command',
+    hostFence: 'atri_host_fence',
+    rpRunControl: 'atri_rp_run_control',
     agentExperience: 'atri_agent_experience',
     agentEvolutionOwner: 'atri_agent_evolution_owner',
     agentEvolution: 'atri_agent_evolution',
@@ -1064,6 +1072,14 @@ export function validateAtriaSave(value) {
 }
 
 const RESOURCE_KEY_SPECS = Object.freeze({
+    [NATIVE_RESOURCE_KINDS.orchestrationPlan]: [['handle', 'handle'], ['planId', 'orchestrationPlan']],
+    [NATIVE_RESOURCE_KINDS.orchestrationBinding]: [['handle', 'handle'], ['bindingId', 'hash']],
+    [NATIVE_RESOURCE_KINDS.orchestrationRevision]: [['handle', 'handle'], ['planId', 'orchestrationPlan'], ['planRevisionId', 'orchestrationRevision']],
+    [NATIVE_RESOURCE_KINDS.orchestrationRun]: [['handle', 'handle'], ['runId', 'orchestrationRun']],
+    [NATIVE_RESOURCE_KINDS.orchestrationRecord]: [['handle', 'handle'], ['runId', 'orchestrationRun'], ['recordType', 'orchestrationRecordType'], ['recordId', 'token']],
+    [NATIVE_RESOURCE_KINDS.orchestrationCommand]: [['handle', 'handle'], ['commandId', 'orchestrationCommand']],
+    [NATIVE_RESOURCE_KINDS.hostFence]: [['handle', 'handle']],
+    [NATIVE_RESOURCE_KINDS.rpRunControl]: [['handle', 'handle'], ['controlId', 'rpControl']],
     [NATIVE_RESOURCE_KINDS.agentExperience]: [['handle', 'handle'], ['scopeId', 'hash']],
     [NATIVE_RESOURCE_KINDS.agentEvolutionOwner]: [['handle', 'handle']],
     [NATIVE_RESOURCE_KINDS.agentEvolution]: [['handle', 'handle'], ['scopeId', 'hash']],
@@ -1111,6 +1127,12 @@ const RESOURCE_KEY_SPECS = Object.freeze({
 });
 
 function assertResourceKeyField(value, type, field) {
+    if (type === 'orchestrationRecordType') {
+        if (!['attempt', 'patch', 'join', 'effect', 'receipt', 'approval', 'result', 'event', 'output'].includes(value)) {
+            throw new TypeError(field + ' must be a registered orchestration record type');
+        }
+        return value;
+    }
     if (type === 'hash') return sha256(value, field);
     if (type === 'handle') return text(value, field, { maxLength: 256 });
     if (type === 'namespace') return assertNamespace(value, field);
