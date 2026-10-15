@@ -10,7 +10,8 @@
 - 第四轮状态：**D4 已冻结：C2 Audience-scoped Context；统一 Hybrid Recall，按 Actor/Source/Time/Branch 授权，跨 Agent 通过有来源 Result 引用分享，Disclosure 与长会话压缩独立校验**。
 - 第五轮状态：**D5 已冻结：F2 Evidence-driven Adaptive Compute；按实际证据与任务质量选择性准入、原 Native Route/Compute 预算和三层缓存/执行复用**。
 - 第六轮状态：**D6 已冻结：S2 Native Effect Authorization Gate；按实际动作/后果授权、分级审批、Secret/Egress 保护、Prompt Injection 隔离及持久 EffectIntent/Receipt 安全恢复**。
-- 第七轮状态：**待讨论 RP Narrator、多角色认知、反全知与玩家自主权、Project Agent、Judge/Review 质量评价与原生创作体验；D7 尚未冻结**。
+- 第七轮状态：**D7 已冻结：N2 分层叙事与条件质量回路，区分 Actor Cognition、Narrative Intent、Character Expression 与唯一 Narrator；反全知、玩家自主权、Project Review/Commit 和质量分层**。
+- 第八轮状态：**讨论全新 Graph Editor、Agent/Node/Edge 配置、Run Inspector/Diagnostics、可信审批、PC/移动端体验；D8 尚未冻结**。
 - 文档性质：设计与架构冻结阶段；本轮仅提交 `docs`，不建立实现分支、不修改 `main`，不宣称任何新实现已验证。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -40,6 +41,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [context-sharing.md](context-sharing.md) | **D4 冻结**：C2 按 Audience 编译、唯一 Hybrid Memory、Actor/Source/Time/Branch、Result/Disclosure、压缩/失效与验收 | 第四轮及后续 Context/Memory 接入 |
 | [adaptive-compute.md](adaptive-compute.md) | **D5 冻结**：F2 稀疏/自适应调用、模型路由、并行父子额度/实际计费、三层缓存、Fallback/Continuation、质量成本评价 | 第五轮及后续 Compute/Model 接入 |
 | [effect-authorization.md](effect-authorization.md) | **D6 冻结**：Tool/Skill/MCP/A2A 发现与能力授权、R0–R3 风险、可信审批、Secret/Egress、Prompt Injection、持久 Effect/未知恢复 | D6 与后续 Effect 安全接入 |
+| [narrative-project-quality.md](narrative-project-quality.md) | **D7 冻结**：N2 原生 RP/Project 双出口、Actor/Intent/Narrator、反全知/玩家自主权、Judge/Review 与作者语义 | 第七轮及后续质量/创作消费者 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
 
 已存在的其他方案只是依赖，不复制详细契约：
@@ -57,12 +59,12 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | **4 已完成** | Context/Hybrid Memory/Actor/Source 权限隔离与分级多 Agent 上下文共享 | **D4 = C2 Audience-scoped Context** |
 | **5 已完成** | Sparse/Adaptive Invocation、Model Routing、并行预算、缓存与执行复用 | **D5 = F2 Evidence-driven Adaptive Compute** |
 | **6 已完成** | Tool/Skill/MCP/A2A 能力授予、审批、危险副作用与跨协议恢复 | **D6 = S2 Native Effect Authorization Gate** |
-| **7 当前** | RP Narrator、Actor Cognition/防全知/玩家自主权、Project Agent、Judge/Review 与原生创作体验 | D7 待讨论、未冻结 |
-| 8 | 图形化编辑、预设、可解释 Run/Diagnostics、跨平台交互 | UX/Observability |
+| **7 已完成** | RP Narrator、Actor Cognition/防全知/玩家自主权、Project Agent、Judge/Review 与原生创作体验 | **D7 = N2 分层叙事与条件质量回路** |
+| **8 当前** | Graph Editor、Agent/Node/Edge/Route/Permissions、Run Inspector/Diagnostics、审批与 PC/移动交互 | D8 待讨论，尚未冻结 |
 | 9 | 代码清退、分阶段切换、验证矩阵/用户验收 | 实施清单与验收入口 |
 
-每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再讨论后续轮次。D2 Host 权威见 [architecture.md](architecture.md)，D3 Graph/Agent 见 [graph-control.md](graph-control.md)，D4 Context/Memory 见 [context-sharing.md](context-sharing.md)，D5 计算/路由/预算见 [adaptive-compute.md](adaptive-compute.md)，**D6 Tool/Skill/MCP/A2A 安全执行只由 [effect-authorization.md](effect-authorization.md) 详细管理**；独立 MCP 权威仍归 [MCP 补强企划](../../plugin/atria-mcp-strengthening/index.md)，不在 V3 复制 MCP ActionRegistry/Journal。D7 方案未经用户选择不可标记冻结。
+每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再讨论后续轮次。D2 Host 权威见 [architecture.md](architecture.md)，D3 Graph/Agent 见 [graph-control.md](graph-control.md)，D4 Context/Memory 见 [context-sharing.md](context-sharing.md)，D5 Compute/Model 见 [adaptive-compute.md](adaptive-compute.md)，D6 Effect 授权见 [effect-authorization.md](effect-authorization.md)，**D7 叙事/Project/质量及作者产品语义只由 [narrative-project-quality.md](narrative-project-quality.md) 详细管理**。其它 World/Actor/Eval/Studio 领域规则仍引用原权威。第八轮用户选择前不得把具体编辑器/交互布局标记冻结。
 
-## 第七轮阅读与切入
+## 第八轮阅读与切入
 
-先读本 `index.md`、[decisions.md](decisions.md) 的 D1–D6；按实际问题阅读 [architecture.md](architecture.md) 的 Authority/Output、[graph-control.md](graph-control.md) 的 Planner/Judge/Review、[context-sharing.md](context-sharing.md) 的 Actor/Disclosure、[adaptive-compute.md](adaptive-compute.md) 的稀疏调用以及 [effect-authorization.md](effect-authorization.md) 的授权。随后仅按需阅读 [Agent Intelligence Runtime](../../architecture/agent-intelligence-runtime/index.md) 中 Actor/Cognition/Behavior/Experience/Project Agent 与 [Game Runtime](../game-runtime-architecture/index.md) 的正式世界/玩家行为合同。第七轮讨论 RP、Project、Agent 协作质量与用户创作体验，**D7 尚未冻结，不复刻旧编排模式、不修改 `main`**。
+先读本 `index.md`、[decisions.md](decisions.md) D1–D7；按需查看 [architecture.md](architecture.md) 的 Host/Plan/RunProjection、[graph-control.md](graph-control.md) 的动态图/Node/Join、[context-sharing.md](context-sharing.md) 的 Actor/Source 可见性、[adaptive-compute.md](adaptive-compute.md) 的预算与费用投影、[effect-authorization.md](effect-authorization.md) 的可信审批和 [narrative-project-quality.md](narrative-project-quality.md) 的创作语义。第八轮深入讨论全新 Graph Editor、Agent/Node/Edge 配置、Draft/Publish、Run Inspector/Timeline/Diagnostics、可信审批与 Windows/Linux/Termux PC/移动体验，**不得复刻旧模式/UI 或修改 `main`**。D8 具体组件、交互和技术路线仍待用户选择。

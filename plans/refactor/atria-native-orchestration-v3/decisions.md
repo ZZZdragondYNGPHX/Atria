@@ -9,7 +9,7 @@
 - **收敛方向**：统一原生执行内核。D1 曾提及“旧模式变为模板”，该部分已被 D2 直接否决：不保留旧模式、模板及兼容路径。
 - **边界：无新增 World/Memory/Session/Project/模型调用收费权威**。Agent 的提案与正式事实严格分离；相应原有计划中的领域契约继续有效。
 - **流程：讨论期间先更新并提交 `docs` 的同一份 Bundle，再进入后续轮次；本轮不修改 `main` 产品代码**。
-- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2 已冻结；D7 叙事与 Project Agent 质量、物理 Schema、产品实现及验收尚未冻结。
+- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2、D7=N2 均已冻结；D8 前端/交互架构、物理 Schema、产品实现及真正验收尚未冻结。
 
 ## D2 — 已冻结：T2 Native Host + 旧编排零兼容硬切（2026-10-15）
 
@@ -79,9 +79,23 @@ D3 各操作的详细方向、不变量与需要测试的失败窗口只由 [gra
 9. **内置与独立 MCP 明确区分**：`main:src/native/mcp-service.js` 是受限外部数据消费端，工具名白名单不能证明 Tool 只读且当前记录偏进程内；`main:src/native/a2a-service.js` 有部分原 RunControl 持久任务身份/查询恢复；独立 [MCP 补强企划](../../plugin/atria-mcp-strengthening/index.md) 位于长期 `plugin`，对外 Codex/Claude Code 等的 Registry、审批、Journal 是另一层，不取代 V3 或 Native authority，不因为同时叫 MCP 便统一升级权限。
 10. **范围/验收**：D6 具体设计、不变量、反例仅由 [effect-authorization.md](effect-authorization.md) 管理。继承 D1–D5、HCM-01–08、T2 Native Host、旧 Single/Spec/Agenda/Loop/Director/旧 UI 零兼容硬切；本轮只更新 `docs` Plan+同一 Record，物理 API、审批 UI 和三端 Tool 安全/恢复均未实施/未验收。
 
-## D7 — 第七轮待冻结
+## D7 — 已冻结：N2 分层叙事与条件质量回路（2026-10-15）
 
-RP Narrator 和角色表达/行为控制、旁白与 NPC 认知分离/反全知、玩家自主权、持续剧情与多角色协作、Project Agent 任务/Review/Commit、Judge/Review 的质量评估与局部重做、全新 Native Graph 产品入口与创作体验。应引用已有 Actor/HCM/Behavior、Studio Project 和 World 正式权威，不将 D7 未选的叙事模式或质量评价阈值提前写成冻结产品合同。
+1. **同一编排内核、两个原生出口**：普通 RP/Native Game 的 Task 以正式 World/Command/Actor Evidence 与唯一 Narrator Final Body 为输出；Studio Project Agent 的 Task 以受控候选、ChangeSet/Validation/Review 及原授权 Commit 为输出。共享 D2 Host、D3 Graph 和 D4–D6 安全/计算能力，不共享业务写入权限，不恢复旧五模式/模式模板或旧 Director takeover。
+2. **职责分离**：Actor Identity 归原作者/Package；Actor Cognition 的 Belief/Exposure/Emotion/Intention/ToM/Memory/遗忘归原 Information/Cognition/Memory/事件与 World Tick；Narrative Intent 是有 Source/任务/版本/失效证明的**非权威当前剧情候选**，不创建第二个 World/Goal/Actor writer；Character Expression 独立管理角色口吻与行为表达；Narrator 依据正式事实/独立 Disclosure 提供当前回合唯一正文，不把规划/评审/意图当另一个正文 producer。
+3. **反全知/信息隔离**：沿 HCM-02 默认 B Narrator/NPC 分离（作品可经原许可选严格 A/合法 C）、HCM-06 约束优先、D4 C2 audience 分别编译与 SourceRef/ResultRef 重新授权。旁白可知不等于玩家可见，NPC 不自动继承 Narrator 广视图；A 对 B 的 ToM 推测不是 B 真实心理。源级隔离可以证明未授权原文不进入请求，但宽 Context 的自由文本仍可能暗示/重述秘密，Prompt/模型 Judge 不能保证绝对无泄漏。
+4. **玩家自主权**：玩家选择、受控角色的未授权行动/承诺/内心、正式玩家动作由实际用户请求与原 Domain Command 权威约束；Agent 不得代替玩家选择、无依据地制造行为或擅自写入游戏结果。合法已选择操作及权威已结算后果可以叙述。确定性写入防线与自由文本中“替玩家行动/决定情绪”的受审质量维度分层处理，后者不伪装成绝对形式化保证。
+5. **条件多角色协作**：复杂事实冲突、重要多角色认知、必要剧情规划等可由 D3 Delegate/Join 选择性调用分角色 Agent；每个节点用真实 Actor/Task Audience，Join 不将私密认知洗白。普通 RP 以 F2 证据驱动的一次主要 Narrator 调用为目标，不强制 Planner/Judge/常驻多 Agent；世界事件与认知更新继续服从正式时间、来源、权限和实际预算。
+6. **唯一叙事事实出口**：已提交 World Observation/Command Results/Events 的原事实优先于 Memory、Intent/Planner/Judge；中间建议不能提交状态、伪造 Receipt 或绕过 OutputContract/Display。V3 替换旧 Director/Spec/Agenda/Loop 的事件/正文注入机制，不提供迁移/双轨；实施仍需核查共享依赖并保证一次回合 exactly one authorized final body。
+7. **Project Task/Review/Commit 分权**：保持 `src/native/project-agent-executor.js` 既有 human-review-before-formal-commit 边界；Agent 可以拆解 Task、获准使用 Tool、准备 Workspace/ChangeSet、Validate/Preview 和提交 Review 候选，但没有直接正式 Commit/Apply 许可。只有原 Studio/Project Authority 在可信用户授权及 Revision/CAS/ChangeSet/Receipt 验证后提交，Review/Model Judge/Run completed 不等于正式项目版本已变更。
+8. **质量不可被平均分抵消**：World/Source/Actor/Disclosure/玩家自主权、Project Validation/Commit/Effect 是非可抵消的正确性底线；角色连续性、文笔/节奏、剧情因果、声音、新鲜度、作者偏好则以真实 Evidence/QualityProfile/人类反馈或标明来源的 Model Judge 审查。复用原 M1 Experience/Evaluation 的受审维度、case provenance、独立评测/校准/报告/费用，不能以模型评分代替 Host proof、正式业务结果或真人偏好。
+9. **Judge/Review 与局部重做**：先做原 Host/Domain 确定性检查；若存在有依据质量缺口/作者显式深审或高影响任务，再按 D5 预算决定 Judge、Review。Judge 给可追溯候选意见，Review 指向具体受影响的 NodeAttempt/Artifact；Host 按 D3 依赖失效闭包重算最小安全子图、保留旧 Receipt/费用，绝不因为修文笔而重复正式 World/Studio/外部不可逆 Effect，迭代有上限。
+10. **原生作者/玩家体验**：创作者面向原生 Graph/Agent/Actor/Intent/Expression/Narrator/Output/Source/Quality/Review 编辑，Preview 与实际收费/写入不同权限面；玩家默认自然 Narrative Card/游戏决策，不必理解 Graph/Join。高级诊断只展示获准脱敏 Host Projection。Graph Editor 具体布局、组件/触控、审批与桌面/移动界面留 D8 冻结，**不复刻旧模式入口/旧 Run Panel**。
+11. **边界和实际完成状态**：D7 详细义务与未来反例由 [narrative-project-quality.md](narrative-project-quality.md) 唯一管理。所有 HCM-01–08、D1–D6、单 Host、旧编排零兼容仍生效；本轮仅文档冻结，未修改 `main`、未运行新 V3 质量/模型/CI/人工/三端验收，具体物理字段、阈值、UI 保持待定。
+
+## D8 — 第八轮待冻结
+
+全新 Native Graph Editor/Agent/Node/Edge/Tool/Route/Capability 配置、Plan Draft/Publish/Version/Preview、Host Run Inspector/Graph/Timeline、可解释 Diagnostics、D6 可信审批/费用/Source Projection、Desktop 与 Mobile/Termux 触控/可访问性/性能/响应式交互。用户尚未选择 D8 的编辑器架构、交互与布局，不能把当前讨论选项提前写成已冻结或开始修改 main。
 
 ## 后续未定（不要提前冻结）
 
@@ -89,7 +103,7 @@ RP Narrator 和角色表达/行为控制、旁白与 NPC 认知分离/反全知�
 - D4 Context/Hybrid/Actor/Source 的已冻结设计仅以 [context-sharing.md](context-sharing.md) 为准；物理字段、落地代码和实测收益尚未冻结。
 - D5 Adaptive/Model Routing/并行预算/三层 Cache 已冻结，接口与反例见 [adaptive-compute.md](adaptive-compute.md)；物理字段、阈值/实际收益后续验证。
 - D6 Tool/Skill/MCP/A2A 授权、审批与危险 Effect 方向已冻结，详细边界见 [effect-authorization.md](effect-authorization.md)；工具覆盖、具体审批 UI 与真实客户端兼容后续验收。
-- RP 叙事质量、作者意图/防全知、自动编排粒度与 Eval。
+- D7 RP Narrator/Actor/玩家自主权/Project Agent/Quality/创作语义已冻结，细节见 [narrative-project-quality.md](narrative-project-quality.md)；物理字段、真实质量收益/用户评价及 D8 UI 尚需独立验收。
 - UX、跨平台客户端、可视化 Editor、诊断与正式验收/实施序列。
 
 ## 明确不等价
@@ -98,4 +112,4 @@ RP Narrator 和角色表达/行为控制、旁白与 NPC 认知分离/反全知�
 - 「浏览器 IndexedDB Checkpoint」不等于「Native 持久 Session/Task Ledger」。
 - 「模型调用完成」不等于「正式游戏事件已提交」。
 - 「外部 Agent/MCP/A2A 返回成功」不等于「Atria 权威状态已更新」。
-- D1–D6 已确认的**设计**不授权本轮修改 `main`、复活旧编排或冒称审批、真实客户端/CI/模型/实机已通过。
+- D1–D7 已确认的**设计**不授权本轮修改 `main`、恢复旧模式/旧 UI 或冒称 V3 已通过质量、人工、CI、模型、PC/Termux 验收。

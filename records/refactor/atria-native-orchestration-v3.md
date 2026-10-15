@@ -36,3 +36,12 @@
 - 更新同一 Plan [index](../../plans/refactor/atria-native-orchestration-v3/index.md) 的 D6 决定/第七轮路由、[decisions](../../plans/refactor/atria-native-orchestration-v3/decisions.md) 的 D6 与新 [effect-authorization](../../plans/refactor/atria-native-orchestration-v3/effect-authorization.md) 详细模块。其余领域合同继续引用原权威，无并行重复维护。
 - 实际验证仅 GitHub 静态读、文档结构/链接/差异/refs 核查和远端提交。未更改 `main` 产品代码，也未运行 Node tests/CI、真实付费 Provider 或 MCP/A2A 写调用、可信人工批准、Windows/Linux/Termux 实机/浏览器验收。不存在这些项目已通过的主张。
 - Remaining: 具体 schema/风险默认策略的细粒度参数、可信跨端 Approval UI、MCP 新旧协议端侧兼容、沙箱实证及远端 Effect reconciliation 都未实施/实测。下一轮讨论 D7 RP Narrator/Actor/Project Agent/Quality/Creator UX，用户选择前不得冻结。
+
+## 2026-10-15 — D7 N2 分层叙事与条件质量回路设计冻结
+
+- Start docs HEAD：`389730da9bbae4b85d16007007eed2059eddeef9`；本轮核对 main 产品基线为 `2686aa40a00c8bfccdc47c55d2b236b4878b022a`，并未修改任何产品源码。
+- 用户选择 N2：原生 RP Narrator/Actor Cognition/Narrative Intent/Character Expression 分层；复杂多角色才按需 Agent 协作；反全知和玩家自主权是优先约束，来源/Display 权限与自然语言质量保证等级分开。Project Agent 保留正式 Task/Workspace/Review/Commit 业务边界，Judge/Review 区分硬正确性与文学质量，并按 D3/F2 做有界局部重做。
+- Plan 更新：同一 [index](../../plans/refactor/atria-native-orchestration-v3/index.md) 路由 D8；同一 [decisions](../../plans/refactor/atria-native-orchestration-v3/decisions.md) 冻结 D7；新增 [narrative-project-quality](../../plans/refactor/atria-native-orchestration-v3/narrative-project-quality.md) 管本轮唯一详细设计。
+- 实际审计：只读核对当前 main 的 Narrative Contract/旧 Director 选择代码、原 Project Agent 的 human-review-before-formal-commit、docs 的 Behavior/Context、S16 Disclosure、S19 Theory of Mind、M1 Feedback/Evaluation 与 Game Runtime Authority。旧编排清退是未来开发要求，不是本轮已删除。
+- 验证范围：仅通过 GitHub 读写/文档静态校验及远端差异/HEAD 核验；没有 Node 测试、CI、真实模型调用、人工盲评、UI 交互或 Windows/Linux/Termux 实机测试，不宣称质量或性能收益。
+- 下一步：D8 Graph Editor、Agent/Node/Edge 配置、Run Inspector/Diagnostics、审批与 PC/移动触控/创作体验。D8 未选择前不冻结具体 UI 架构，也不修改 main。
