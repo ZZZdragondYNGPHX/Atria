@@ -11,7 +11,7 @@ import { services } from '../native/helpers/session-fixture.js';
 import { lifecycleFixture } from '../native/helpers/lifecycle-fixture.js';
 import { cancelSessionMaintenance } from '../../src/native/session-maintenance.js';
 import { prepareControllerOwnerRoot } from './fixtures.js';
-import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
+import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 
 // Direct internal inputs exercise real original Session/Engine writes, not a
 // trusted Turn producer, actual Provider send or a product permission grant.
@@ -47,7 +47,7 @@ test('original bank validates, clones and immutably compares every generation qu
     }
 });
 
-describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('%s original atomic generation quota', (_name, make) => {
+describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_QUOTA_SQL === '1' || ['FsEngine', 'SqliteEngine'].includes(name)))('$name original atomic generation quota', ({ make }) => {
     let h, f, base;
     beforeEach(async () => {
         h = await make(); await prepareControllerOwnerRoot(h.dirs.root);
@@ -217,7 +217,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         await f.core.runs.settleCompute(h.handle, base.session.sessionId, operation, row.attemptId, null);
         const before = await stored(), Engine = h.engine.constructor;
         cancelSessionMaintenance(f.sessionRepo, h.handle, base.session.sessionId);
-        await h.engine.close(); h.engine = new Engine({ directoriesByHandle: () => h.dirs });
+        await h.engine.close(); h.engine = new Engine({ url: h.url, nativeHostTopology: 'direct_single_primary', directoriesByHandle: () => h.dirs });
         attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
         const bank = new RunControl(new SessionRepo({ engine: h.engine }));
         expect(await bank.admitCompute(h.handle, base, anchorOf(base), limits, row, {}, quota(base))).toMatchObject({ replayed: true, compute: { status: 'unknown' } });
@@ -230,5 +230,26 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         cancelSessionMaintenance(reopened.sessionRepo, h.handle, base.session.sessionId);
         expect(current.revision.revisionId).not.toBe(base.revision.revisionId);
         await expect(bank.admitCompute(h.handle, base, anchorOf(base), limits, row, {}, quota(base))).rejects.toMatchObject({ code: 'native_generation_revision_conflict' });
+    });
+
+    test('original model and local usage settlement compares semantic fields across durable JSON ordering', async () => {
+        const row = attempt(), first = await admit(row), bank = f.core.runs, sessionId = base.session.sessionId;
+        await bank.settleCompute(h.handle, sessionId, first.operation, row.attemptId, { totalTokens: 60, inputTokens: 40, outputTokens: 20 });
+        await bank.settleCompute(h.handle, sessionId, first.operation, row.attemptId, { outputTokens: 20, totalTokens: 60, inputTokens: 40 });
+        const before = await stored();
+        await expect(bank.settleCompute(h.handle, sessionId, first.operation, row.attemptId, { totalTokens: 61, inputTokens: 40, outputTokens: 21 }))
+            .rejects.toMatchObject({ code: 'native_generation_attempt_conflict' });
+        expect(await stored()).toEqual(before);
+        const localId = 'd'.repeat(64), withLocal = { ...limits, localWork: { maxJobs: 1, maxItems: 1, maxInputBytes: 10 } };
+        await bank.chargeLocalWork(h.handle, base, anchorOf(base), withLocal,
+            { attemptId: localId, requestId: 'local-settle-order', targetFingerprint: 'e'.repeat(64), kind: 'context_build', estimatedItems: 1, estimatedInputBytes: 10 });
+        const usage = { wallMs: 1.5, cpuUserMicros: 2, cpuSystemMicros: 3, cpuScope: 'process', outcome: 'completed' };
+        await bank.settleLocalWork(h.handle, sessionId, first.operation, localId, usage);
+        await bank.settleLocalWork(h.handle, sessionId, first.operation, localId,
+            { outcome: 'completed', cpuScope: 'process', cpuSystemMicros: 3, cpuUserMicros: 2, wallMs: 1.5 });
+        const settled = await stored();
+        await expect(bank.settleLocalWork(h.handle, sessionId, first.operation, localId, { ...usage, outcome: 'failed' }))
+            .rejects.toMatchObject({ code: 'native_generation_attempt_conflict' });
+        expect(await stored()).toEqual(settled);
     });
 });

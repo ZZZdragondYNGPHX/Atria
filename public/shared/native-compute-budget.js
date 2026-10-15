@@ -190,7 +190,8 @@ export function chargeLocalWork(holder, limits, attempt, { reservationId } = {})
 export function settleLocalWork(holder, attemptId, usage) {
     const ledger = assertComputeLedger(holder.compute), entry = ledger.localWork?.find(row => row.attemptId === attemptId);
     if (!entry) fail('native_generation_attempt_conflict');
-    if (entry.status === 'settled' && JSON.stringify(entry.usage) !== JSON.stringify(usage)) fail('native_generation_attempt_conflict');
+    if (entry.status === 'settled' && ['wallMs', 'cpuUserMicros', 'cpuSystemMicros', 'cpuScope', 'outcome']
+        .some(field => entry.usage?.[field] !== usage?.[field])) fail('native_generation_attempt_conflict');
     entry.status = usage ? 'settled' : 'unknown'; entry.usage = usage;
     assertComputeLedger(ledger);
     return structuredClone(entry);
@@ -205,7 +206,8 @@ export function settleComputeAttempt(holder, attemptId, usage) {
     // Partial counters cannot establish a total bill. Do not infer zero or
     // add reasoning/cache subsets to reported output/input a second time.
     const status = observed?.totalTokens !== null && observed ? 'settled' : 'unknown';
-    if (entry.status === 'settled' && JSON.stringify(entry.usage) !== JSON.stringify(observed)) fail('native_generation_attempt_conflict');
+    if (entry.status === 'settled' && ['inputTokens', 'outputTokens', 'totalTokens']
+        .some(field => entry.usage?.[field] !== observed?.[field])) fail('native_generation_attempt_conflict');
     entry.status = status; entry.usage = observed;
     return structuredClone(entry);
 }
