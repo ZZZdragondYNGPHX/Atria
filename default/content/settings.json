@@ -85,6 +85,12 @@
         "trusted_workers_only": false
     },
     "power_user": {
+        "atria_theme": {
+            "version": 1,
+            "mode": "system",
+            "day": "builtin:serene",
+            "night": "builtin:dark-lite"
+        },
         "counting_tokenizer": 99,
         "encoding_tokenizer": 99,
         "token_padding": 64,

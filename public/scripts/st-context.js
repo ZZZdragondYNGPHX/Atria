@@ -136,7 +136,7 @@ import { loader } from './action-loader.js';
 import { MacrosParser } from './macros.js';
 import { getChatCompletionModel, oai_settings, openai_settings, openai_setting_names, sendOpenAIRequest, proxies, ZAI_ENDPOINT, stripOpenAIConnectionFieldsFromPreset, saveOpenAIPreset, hasUnsavedOpenAIPresetChanges, promptManager, applyPresetByName } from './openai.js';
 import { callGenericPopup, Popup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
-import { power_user, updateAtriaPreference, registerDebugFunction, performFuzzySearch } from './power-user.js';
+import { power_user, updateAtriaPreference, getPreferenceSaveState, atriaThemes, registerDebugFunction, performFuzzySearch } from './power-user.js';
 import { getPresetManager } from './preset-manager.js';
 import { persistPreset } from './preset-persistence.js';
 import * as characterPresets from './character/presets.js';
@@ -2661,6 +2661,8 @@ export function getContext() {
         getCurrentLocale,
         setUiLanguage,
         updateAtriaPreference,
+        getPreferenceSaveState,
+        atriaThemes,
         addLocaleData,
         tags,
         tagMap: tag_map,

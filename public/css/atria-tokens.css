@@ -187,7 +187,8 @@
     --atri-ease-standard: var(--atri-ease-out);
 }
 
-:root[data-atria-appearance] { color-scheme: light; }
+:root[data-atria-appearance="light"] { color-scheme: light; }
+:root[data-atria-appearance="dark"] { color-scheme: dark; }
 
 [data-atria-density="compact"] {
     --atri-density-control-height: var(--atri-control-sm);

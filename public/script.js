@@ -92,6 +92,7 @@ import {
 import {
     collapseNewlines,
     loadPowerUserSettings,
+    initializeAtriaThemes,
     playMessageSound,
     fixMarkdown,
     power_user,
@@ -15786,6 +15787,7 @@ export async function getSettings(options = {}) {
     await validateDisabledSamplers();
     rememberSettingsSnapshot(buildSettingsPayload());
     settingsReady = true;
+    await initializeAtriaThemes(settings || {});
     await eventSource.emit(event_types.SETTINGS_LOADED);
     if (!firstRun) globalThis.Atria?.shell?.getLearningCenter()?.restore();
 
@@ -15983,7 +15985,7 @@ export async function saveSettings(loopCounter = 0, options = null) {
                 const queuedOptions = settingsSaveQueuedOptions;
                 settingsSaveQueued = false;
                 settingsSaveQueuedOptions = null;
-                saved = await saveSettings(0, queuedOptions) && saved;
+                saved = await saveSettings(0, queuedOptions);
             }
         }
         return saved;

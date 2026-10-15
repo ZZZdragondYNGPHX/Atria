@@ -118,7 +118,9 @@ export function resolveThemeSelection(selection, themes, systemDark = false) {
 /** Originals stay in NamedDocRepo; the snapshot also preserves unsaved legacy values. */
 export function planThemeMigration(settings, documents, originals = []) {
     if (settings.power_user?.atria_theme?.version === 1) return null;
-    const prefs = settings.power_user || {}, fresh = settings.firstRun === true;
+    // New accounts receive an explicit theme contract in default settings.
+    // A historical firstRun flag only means onboarding is unfinished.
+    const prefs = settings.power_user || {}, fresh = false;
     const assets = [];
     let night = DEFAULT_NIGHT;
     const selected = documents.find(item => item.name === prefs.theme);
