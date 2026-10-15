@@ -4,6 +4,7 @@ import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { getNativeDocument, hashNativeDocument, putMutable, withNativeResourceWrite } from './repositories/common.js';
 import { encodeNativeResourceKey } from '../storage/engines/native-resource-key.js';
+import { orchestrationSessionRoots } from './orchestration/reference-roots.js';
 
 const leases = new Map();
 const proofs = new WeakMap();
@@ -27,9 +28,26 @@ async function generation(tx, handle, sessionId) {
     const root = await tx.getResource({ kind: K.session, handle, sessionId });
     if (!root) return null;
     const saves = await tx.listResources({ kind: K.savePoint, handle, sessionId });
-    return hashNativeDocument({ root: root.integrity, saves: saves.map(item => item.integrity).sort() });
+    const orchestration = await orchestrationSessionRoots(tx, handle, sessionId);
+    return hashNativeDocument({ root: root.integrity, saves: saves.map(item => item.integrity).sort(), orchestration: orchestration.fingerprint });
 }
 const kinds = [K.sessionRevision, K.sessionState, K.timelineEntry, K.timelineVariant, K.branch];
+
+// SQL Engines expose the original complete list rather than the FS/SQLite scan
+// adapter. Apply the same durable key cursor here; list(filter.limit) followed
+// by done:true silently skipped the rest of a SQL kind after its first page.
+async function listCandidatePage(engine, handle, filter) {
+    const all = await engine.withTransaction(handle, tx => tx.listResources({ kind: filter.kind, handle, sessionId: filter.sessionId }));
+    const pending = all.sort((left, right) => identity(left.key).localeCompare(identity(right.key)))
+        .filter(row => !filter.after || identity(row.key).localeCompare(filter.after) > 0);
+    const records = []; let bytes = 0;
+    for (const row of pending) {
+        const size = Buffer.byteLength(JSON.stringify(row));
+        if (records.length && (records.length >= filter.limit || bytes + size > filter.maxBytes)) break;
+        records.push(row); bytes += size;
+    }
+    return { records, cursor: records.length ? identity(records.at(-1).key) : filter.after, done: records.length === pending.length, scanned: records.length, bytes };
+}
 
 async function retainedProof(repo, handle, sessionId, current, retention, retainRevisionIds, shouldPause) {
     let cache = proofs.get(repo._engine);
@@ -85,7 +103,7 @@ async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scan
         if (pause()) return { phase: 'paused', deleted: [] };
         const filter = { kind: kinds[scan.kind], handle, sessionId, after: scan.after, limit: scanLimit, maxBytes: maxScanBytes };
         const page = engine.scanNativeCandidates ? await engine.scanNativeCandidates(handle, filter)
-            : { records: await engine.withTransaction(handle, tx => tx.listResources(filter)), cursor: '', done: true };
+            : await listCandidatePage(engine, handle, filter);
         for (const record of page.records) if (!retained.has(identity(record.key))) {
             const old = progress?.candidates.find(item => identity(item.key) === identity(record.key) && item.integrity === record.integrity);
             candidates.push({ key: record.key, integrity: record.integrity, quarantinedAt: old?.quarantinedAt ?? now });

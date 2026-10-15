@@ -1832,8 +1832,8 @@ router.post('/restore-backup', async (request, response) => {
                 crossModeScratchConnection: { kind: error.kind },
             });
         }
-        if (error?.code === 'MIGRATION_LOCKED') {
-            return response.status(409).json({ error: message });
+        if (['MIGRATION_LOCKED', 'native_orchestration_retention_review_required'].includes(error?.code)) {
+            return response.status(409).json({ error: message, code: error.code });
         }
         if (error instanceof CrossModeConversionFailedError) {
             return response.status(500).json({

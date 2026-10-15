@@ -46,6 +46,7 @@ import { AssetStore } from '../../native/repositories/asset-store.js';
 import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
 import { retainedBlobHashes, withRecoveryPublication } from '../../native/recovery-roots.js';
 import { nativeTaskScheduler } from '../../native/task-scheduler.js';
+import { pauseRecoveredRecord } from '../../native/recovery-effects.js';
 import { accountQuotaLimit, AccountQuotaError } from '../account-quota.js';
 import { measureAccount } from '../resource-accounting.js';
 import { assertAccountPath } from '../path-boundary.js';
@@ -249,10 +250,28 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
     let cleanupWarning = null;
     try {
+        if (selection.native) {
+            const retainedRuns = await currentEngine.withTransaction(handle, async tx => [
+                ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.orchestrationRun, handle }),
+                ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.orchestrationRecord, handle }),
+            ]);
+            // Native merge also overwrites colliding raw metadata keys; neither
+            // mode can combine older Run/Effect history with the retained bank.
+            // Until the original
+            // restore authority can review the whole immutable source closure,
+            // refuse before snapshot/extraction/clear. Terminal unknown/history
+            // has no implicit retention release either.
+            if (retainedRuns.length) throw Object.assign(new Error('Native orchestration history requires restore retention review'), { code: 'native_orchestration_retention_review_required' });
+        }
         const quotaBytes = await accountQuotaLimit(currentEngine, handle);
         const initialUsage = quotaBytes >= 0 ? await measureAccount({ engine: currentEngine, handle, directories: dirs }) : null;
         if (initialUsage?.totalBytes === null) throw new AccountQuotaError('storage_usage_unavailable');
-        const terminalControls = selection.native ? await currentEngine.withTransaction(handle, async tx => (await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runControl, handle })).filter(row => row.doc?.mode === 'ironman' && row.doc.status === 'terminal')) : [];
+        // Category replacement must not erase this store's newer original
+        // Session/RP spend before the incoming backup can be reviewed.
+        const retainedControls = selection.native ? await currentEngine.withTransaction(handle, async tx => [
+            ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runControl, handle }),
+            ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.rpRunControl, handle }),
+        ]) : [];
         // 1. Snapshot the full live destination before every restore. Merge
         //    can mutate both engine rows and filesystem categories, so it must
         //    have the same rollback guarantee as replace/full restores.
@@ -344,7 +363,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             );
         }
         await withReadOnlyBypass(() => currentEngine.withTransaction(handle, async tx => {
-            for (const row of terminalControls) await tx.putResource(row.key, row);
+            for (const row of retainedControls) await tx.putResource(row.key, pauseRecoveredRecord(row, row));
         }));
 
         // 3. MigrationRunner: scratch source → live destination.
@@ -447,6 +466,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             },
         };
     } catch (err) {
+        if (!snapshotPath && err?.code === 'native_orchestration_retention_review_required') throw err;
         if (isRestoreCancelledError(err) && !snapshotPath) {
             if (transient) {
                 try { await transient.cleanup(); } catch { /* best-effort */ }

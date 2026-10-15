@@ -27,7 +27,7 @@ describe.each(CONTRACT_HARNESSES)('safe maintenance — $name', ({ make }) => {
         expect((await maintainSession(f.sessionRepo, h.handle, sessionId, budget)).deleted).toEqual([]);
         const release = acquireSessionReadLease(h.handle, sessionId, view.revision.revisionId);
         await h.engine.close();
-        h.engine = new h.engine.constructor({ directoriesByHandle: () => h.dirs });
+        h.engine = new h.engine.constructor({ url: h.url, nativeHostTopology: h.engine.nativeHostTopology, directoriesByHandle: () => h.dirs });
         f = services(h);
         const resumed = f.sessionRepo;
         expect((await maintainSession(resumed, h.handle, sessionId, { ...budget, now: now + 60001 })).deleted).toEqual([]);

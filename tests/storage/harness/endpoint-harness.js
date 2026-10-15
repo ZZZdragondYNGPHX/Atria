@@ -183,7 +183,7 @@ function pgSchemaConnUrl(schema) {
  *        be the deletion target.
  * @returns {Promise<{app, dataRoot, handle, dirs, extraDirs, mode, engine, reopenEngine, cleanup}>}
  */
-export async function makeEndpointHarness({ mode, mount, profile, extraHandles }) {
+export async function makeEndpointHarness({ mode, mount, profile, extraHandles, nativeHostTopology }) {
     const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), `atria-ep-${mode}-`));
     const handle = 'u';
     const dbName = (mode === 'mysql' || mode === 'postgres')
@@ -204,8 +204,8 @@ export async function makeEndpointHarness({ mode, mount, profile, extraHandles }
     initStorage({
         mode,
         directoriesByHandle: factory.directoriesByHandle,
-        mysql: factory.mysqlUrl ? { url: factory.mysqlUrl } : null,
-        postgres: factory.pgUrl ? { url: factory.pgUrl } : null,
+        mysql: factory.mysqlUrl ? { url: factory.mysqlUrl, nativeHostTopology } : null,
+        postgres: factory.pgUrl ? { url: factory.pgUrl, nativeHostTopology } : null,
     });
     let engine = getStorageEngine();
     if (typeof engine.ping === 'function') {
@@ -236,8 +236,8 @@ export async function makeEndpointHarness({ mode, mount, profile, extraHandles }
         initStorage({
             mode,
             directoriesByHandle: factory.directoriesByHandle,
-            mysql: factory.mysqlUrl ? { url: factory.mysqlUrl } : null,
-            postgres: factory.pgUrl ? { url: factory.pgUrl } : null,
+            mysql: factory.mysqlUrl ? { url: factory.mysqlUrl, nativeHostTopology } : null,
+            postgres: factory.pgUrl ? { url: factory.pgUrl, nativeHostTopology } : null,
         });
         engine = getStorageEngine();
         if (typeof engine.ping === 'function') {
