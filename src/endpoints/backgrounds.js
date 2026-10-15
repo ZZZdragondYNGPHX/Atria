@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeAccountFile } from '../storage/account-file-write.js';
 
 import express from 'express';
 import sanitize from 'sanitize-filename';
@@ -114,8 +115,7 @@ router.post('/rename', async function (request, response) {
             return response.sendStatus(400);
         }
 
-        fs.copyFileSync(oldFileName, newFileName);
-        fs.unlinkSync(oldFileName);
+        fs.renameSync(oldFileName, newFileName);
         invalidateThumbnail(request.user.directories, 'bg', request.body.old_bg);
 
         // Update metadata for renamed image
@@ -138,7 +138,7 @@ router.post('/upload', async function (request, response) {
 
         const img_path = path.join(request.file.destination, request.file.filename);
         const filename = sanitize(request.file.originalname);
-        fs.copyFileSync(img_path, path.join(request.user.directories.backgrounds, filename));
+        await writeAccountFile(request.user.profile.handle, path.join(request.user.directories.backgrounds, filename), await fs.promises.readFile(img_path));
         fs.unlinkSync(img_path);
         invalidateThumbnail(request.user.directories, 'bg', filename);
 
@@ -150,6 +150,7 @@ router.post('/upload', async function (request, response) {
 
         response.send(filename);
     } catch (err) {
+        if (err.status === 413) return response.status(413).json({ error: err.code, details: err.details });
         console.error(err);
         response.sendStatus(500);
     }

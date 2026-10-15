@@ -38,9 +38,10 @@ function exactRef(identity, contentIdentity) {
 }
 
 export class VersionedJsonResourceHandler {
-    constructor({ engine }) {
+    constructor({ engine, lifecycle = null }) {
         if (!engine) throw new TypeError('VersionedJsonResourceHandler requires { engine }');
         this._engine = engine;
+        this.lifecycle = lifecycle;
     }
 
     _rootKey(handle, resourceType, resourceId) {
@@ -111,13 +112,18 @@ export class VersionedJsonResourceHandler {
     }
 
     async delete(handle, ref, references) {
-        if (ref.scope !== 'library' || !['core.prompt-program', 'core.prompt-module'].includes(ref.resourceType) || typeof references !== 'function') throw new TypeError('Writable Library Prompt resource required');
+        if (ref.scope !== 'library' || !VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(ref.resourceType) || typeof references !== 'function') throw new TypeError('Writable Library resource required');
         return withRuntimeWrite(handle, async () => {
             await this.getExact(handle, ref);
             const owned = await this._engine.withTransaction(handle, tx => getNativeDocument(tx, this._rootKey(handle, ref.resourceType, ref.resourceId)));
             if (owned?.presetOwner) throw new TypeError('Manage this resource through its Prompt preset');
             const blockers = await references({ scope: 'library', resourceType: ref.resourceType, resourceId: ref.resourceId });
             if (blockers.length) throw new ConflictError('native_resource_referenced', { references: blockers });
+            if (this.lifecycle) {
+                const revisions = await this.listRevisions(handle, ref.resourceType, ref.resourceId);
+                await this.lifecycle(handle, { type: 'versioned', id: ref.resourceId, resourceType: ref.resourceType });
+                return { deleted: true, revisions: revisions.length };
+            }
             return this._engine.withTransaction(handle, async tx => {
                 assertWritable();
                 const pinned = await orchestrationPinReferences(tx, handle, ref);
@@ -245,9 +251,10 @@ function playerKey(kind, handle, idField, id) {
 }
 
 export class NativeModelPromptPersistence {
-    constructor({ engine }) {
+    constructor({ engine, lifecycle = null }) {
         if (!engine) throw new TypeError('NativeModelPromptPersistence requires { engine }');
         this._engine = engine;
+        this.lifecycle = lifecycle;
     }
 
     async _get(handle, kind, idField, id) {
@@ -420,6 +427,7 @@ export class NativeModelPromptPersistence {
                     || (kind === 'routes' && route.fallbackRouteRefs.some(ref => ref.runtimeRouteId === id))) add('routes', route, 'runtimeRouteId');
             }
             if (usedBy.length) throw new ConflictError('native_runtime_referenced', { usedBy });
+            if (this.lifecycle) { await this.lifecycle(handle, { type: { connections: 'connection', models: 'model', routes: 'route' }[kind], id }); return { deleted: true }; }
             for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.runtimeCheckpoint, handle })) {
                 if (row.doc.binding?.runtimeResourceRefs?.[idField] === id) await tx.deleteResource(row.key);
             }

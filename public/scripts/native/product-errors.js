@@ -2,6 +2,8 @@ import { translateShellText as tl } from '../atria-shell/localization.js';
 import { sanitizeProductDetails } from './product-error-details.js';
 
 const messages = {
+    storage_quota_exceeded: 'There is not enough account quota for this operation. Export or permanently remove selected data first.',
+    storage_usage_unavailable: 'Usage could not be measured. Refresh after storage becomes available.',
     native_processing_failed: 'A declared Processor failed. Open Diagnostics to inspect its stage and fixed source. No candidate was adopted.',
     native_product_invalid_request: 'Check the required fields and file format, then try again.',
     native_product_not_found: 'This item is no longer available. Refresh the list and select an existing item.',

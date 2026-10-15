@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
+import { NativeHostOwner } from '../../src/storage/native-host-owner.js';
 import { nativeRecord } from '../../src/native/repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { createNativeId } from '../../src/native/identity.js';
@@ -140,5 +141,22 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
         lifecycle.attachStorageEngine(replacement);
         await h.engine.close();
         await expect(replacement.withTransaction(h.handle, async () => 'replacement')).resolves.toBe('replacement');
+    });
+
+    test('closing private scratch releases its local guard while retaining the original live Host', async () => {
+        await h.engine.withTransaction(h.handle, async () => {});
+        const root = path.join(h.dataRoot, 'owned-private-scratch'), dirs = { ...h.dirs, root };
+        const scratch = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, poolSize: 1, directoriesByHandle: () => dirs });
+        extras.push(scratch);
+        lifecycle.attachStorageEngine(scratch, { directoriesByHandle: () => dirs });
+        // A separate handle avoids touching the live handle's physical fence.
+        await scratch.withTransaction('private-scratch', async () => {});
+        await scratch.close();
+        const probe = new NativeHostOwner();
+        try {
+            await expect(probe.acquireLocal(root)).resolves.toMatchObject({ schemaVersion: 1 });
+            await expect(probe.acquireLocal(h.dirs.root)).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        } finally { await probe.close(); }
+        await expect(h.engine.withTransaction(h.handle, async () => 'live')).resolves.toBe('live');
     });
 });

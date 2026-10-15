@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 import http from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import request from 'supertest';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
@@ -19,7 +20,7 @@ import { writeFixedHost } from '../../src/native/frontend/host-services.js';
 const durable = base => ({ revision: base.revision, states: base.states, timeline: base.timeline });
 const execute = promisify(execFile);
 
-describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) => {
+describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make }) => {
     let h, f, server, seen, respond;
     beforeEach(async () => {
         h = await make(); seen = [];
@@ -87,15 +88,18 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
         // A separate Node process has no WeakMap pins or private proof objects.
         const code = `import { FsEngine } from './src/storage/engines/fs-engine.js';
             import { SqliteEngine } from './src/storage/engines/sqlite-engine.js';
+            import { MysqlEngine } from './src/storage/engines/mysql-engine.js';
+            import { PgEngine } from './src/storage/engines/postgres-engine.js';
             import { services } from './tests/native/helpers/session-fixture.js';
             import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from './src/native/model-prompt-runtime/persistence.js';
             import { NativeGenerationHost } from './src/native/adapters/generation-host.js';
             import { createHttpGenerationProvider } from './src/native/adapters/http-generation-provider.js';
-            const cfg = JSON.parse(process.argv[1]); const engine = new (cfg.sqlite ? SqliteEngine : FsEngine)({directoriesByHandle: () => cfg.dirs});
+            const cfg = JSON.parse(process.argv[1]); const Engine = { fs: FsEngine, sqlite: SqliteEngine, mysql: MysqlEngine, postgres: PgEngine }[cfg.kind];
+            const engine = new Engine({directoriesByHandle: () => cfg.dirs, url: cfg.url});
             const svc = services({...cfg, engine}); const host = new NativeGenerationHost({ sessionCore: svc.core, packageInstaller: svc.packageInstaller,
                 persistence: new NativeModelPromptPersistence({engine}), library: new VersionedJsonResourceHandler({engine}), providers: {'provider.openai-compatible': createHttpGenerationProvider()}, secretPort:{resolveSecret:async()=> 'synthetic-secret'}});
-            try { await host.executeTurn(cfg.handle,cfg.input); } catch(error) { process.stdout.write(JSON.stringify({code:error.code})); } finally { engine.close?.(); }`;
-        await execute(process.execPath, ['--input-type=module', '-e', code, JSON.stringify({ sqlite: name === 'SqliteEngine', handle: h.handle, dirs: h.dirs, input: request })], { cwd: new URL('../../', import.meta.url).pathname });
+            try { await host.executeTurn(cfg.handle,cfg.input); } catch(error) { process.stdout.write(JSON.stringify({code:error.code})); } finally { await engine.close?.(); }`;
+        await execute(process.execPath, ['--input-type=module', '-e', code, JSON.stringify({ kind: h.kind, url: h.url, handle: h.handle, dirs: h.dirs, input: request })], { cwd: fileURLToPath(new URL('../../', import.meta.url)) });
         expect(seen.filter(body => body.tools?.length)).toHaveLength(1); expect(seen[2]).toEqual(originalNarrator);
         const restarted = new NativeGenerationHost({ ...f.host, sessionCore: services(h).core });
         await expect(restarted.executeTurn(h.handle, { ...request, invocationId: 'new-key' })).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
@@ -122,9 +126,9 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
     test('ironman rollback denied through core, repository, HTTP and fixed Host', async () => {
         const base = await f.begin('ironman'); const save = await f.saveSystem.manualSave(h.handle, base.session.sessionId);
         const next = await turn(base); const id = base.session.sessionId;
-        expect(await f.savePointRepo.list(h.handle, id)).toEqual([]);
-        for (const call of [() => f.core.restoreSavePoint(h.handle, id, save.saveId), () => f.core.forkBranch(h.handle, id, {}),
-            () => f.core.retryReply(h.handle, id, {}), () => f.core.switchBranch(h.handle, id, base.revision.branchId),
+        expect(await f.savePointRepo.list(h.handle, id)).toEqual(expect.arrayContaining([expect.objectContaining({ saveId: save.saveId })]));
+        expect(f.core.forkBranch).toBeUndefined(); expect(f.core.retryReply).toBeUndefined();
+        for (const call of [() => f.core.restoreSavePoint(h.handle, id, save.saveId), () => f.core.switchBranch(h.handle, id, base.revision.branchId),
             () => f.core.load(h.handle, id, { revisionId: base.revision.revisionId }), () => f.core.createSavePoint(h.handle, id, { revisionId: base.revision.revisionId }),
             () => f.savePointRepo.create(h.handle, { ...save, saveId: createNativeId('savePoint') }),
             () => f.sessionRepo.commitSnapshot(h.handle, { session: next.session, revision: next.revision, states: {}, expectedRevisionId: next.revision.revisionId }),
@@ -159,23 +163,27 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
         await expect(f.saveSystem.importSave(h.handle, exported.archive)).rejects.toThrow('stale');
         expect((await f.core.load(h.handle, progressed.session.sessionId)).revision).toEqual(progressed.revision);
     });
-    test('ironman death tombstones only its run and cleans saves; old resume cannot revive it', async () => {
+    test('ironman death archives only its run and preserves history; old resume cannot revive it', async () => {
         const other = await f.core.create(h.handle, { packageId: f.base.session.packageId, packageVersionId: f.base.session.packageVersionId, entryPointId: f.base.session.entryPointId });
         const base = await f.begin('ironman'); const saved = await f.saveSystem.manualSave(h.handle, base.session.sessionId); const exported = await f.saveSystem.exportSession(h.handle, base.session.sessionId);
         f.selection.input.amount = 8; const dead = await turn(base);
         expect(dead.states.atri_run.status).toBe('dead'); expect(seen).toHaveLength(1);
-        expect(await f.core.runStatus(h.handle, base.session.sessionId)).toMatchObject({ mode: 'ironman', status: 'terminal', cleanup: 'complete' });
-        expect(await f.sessionRepo.get(h.handle, base.session.sessionId)).toBeNull(); expect(await f.savePointRepo.get(h.handle, base.session.sessionId, saved.saveId)).toBeNull();
+        expect(await f.core.runStatus(h.handle, base.session.sessionId)).toMatchObject({ mode: 'ironman', status: 'terminal', cleanup: 'archived' });
+        expect(await f.sessionRepo.get(h.handle, base.session.sessionId)).not.toBeNull(); expect(await f.savePointRepo.get(h.handle, base.session.sessionId, saved.saveId)).not.toBeNull();
         await expect(f.saveSystem.importSave(h.handle, exported.archive)).rejects.toThrow('terminal');
-        await expect(f.core.load(h.handle, base.session.sessionId)).rejects.toThrow('terminal');
+        expect((await f.core.load(h.handle, base.session.sessionId)).states.atri_run.status).toBe('dead');
+        await expect(f.core.appendTimeline(h.handle, base.session.sessionId, { role: 'user', content: 'Cannot revive' })).rejects.toThrow('terminal');
         expect(durable(await f.core.load(h.handle, other.session.sessionId))).toEqual(durable(other));
         expect((await request(app()).post('/run').send({ sessionId: base.session.sessionId })).body.status).toBe('terminal');
     });
-    test('committed death remains blocked across cleanup failure and restart; run status resumes cleanup', async () => {
+    test('committed death remains archived across explicit deletion failure and restart', async () => {
         const base = await f.begin('ironman'); f.selection.input.amount = 8;
         const cleanup = jest.spyOn(f.sessionRepo, 'delete').mockRejectedValueOnce(new Error('interrupted cleanup'));
-        const dead = await turn(base); expect(dead.states.atri_run.status).toBe('dead'); expect(cleanup).toHaveBeenCalledTimes(1);
-        await expect(services(h).core.load(h.handle, base.session.sessionId)).rejects.toThrow('terminal');
+        const dead = await turn(base); expect(dead.states.atri_run.status).toBe('dead'); expect(cleanup).not.toHaveBeenCalled();
+        await expect(f.sessionRepo.delete(h.handle, base.session.sessionId)).rejects.toThrow('interrupted cleanup');
+        expect((await services(h).core.load(h.handle, base.session.sessionId)).states.atri_run.status).toBe('dead');
+        expect(await services(h).core.runStatus(h.handle, base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'archived' });
+        await f.sessionRepo.delete(h.handle, base.session.sessionId);
         expect(await services(h).core.runStatus(h.handle, base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'complete' });
     });
     test('HTTP begin and fixed Host begin share the same durable invocation', async () => {
@@ -211,41 +219,41 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
     });
     test('CAS rejection leaves start pending and can be retried without half-character publication', async () => {
         const original = h.engine.withTransaction.bind(h.engine); let interrupted = false;
-        const fault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, async tx => {
-            const publish = tx.putResourceIfMatch.bind(tx);
-            tx.putResourceIfMatch = async (key, integrity, record) => {
+        const fault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, tx => operation(new Proxy(tx, { get(target, method) {
+            if (method === 'putResourceIfMatch') return async (key, integrity, record) => {
                 if (key.kind === K.session && record.doc.headRevisionId !== f.base.revision.revisionId && !interrupted) { interrupted = true; throw new Error('before HEAD CAS'); }
-                return publish(key, integrity, record);
+                return target.putResourceIfMatch(key, integrity, record);
             };
-            return operation(tx);
-        }));
+            const value = target[method]; return typeof value === 'function' ? value.bind(target) : value;
+        } }))));
         await expect(f.begin()).rejects.toThrow('before HEAD CAS'); fault.mockRestore();
         expect(durable(await f.core.load(h.handle, f.base.session.sessionId))).toEqual(durable(f.base));
         expect((await f.begin()).timeline.at(-1).content).toBe('The harbor wakes.'); expect(seen).toEqual([]);
     });
     test('partial deletion and final-marker interruption recover without reviving a run', async () => {
         const base = await f.begin('ironman'); const saved = await f.saveSystem.manualSave(h.handle, base.session.sessionId); f.selection.input.amount = 8;
+        const dead = await turn(base); expect(dead.states.atri_run.status).toBe('dead');
         const original = h.engine.withTransaction.bind(h.engine); let interrupted = false;
-        const fault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, async tx => {
-            const remove = tx.deleteResource.bind(tx);
-            tx.deleteResource = async key => {
+        const fault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, tx => operation(new Proxy(tx, { get(target, method) {
+            if (method === 'deleteResource') return async key => {
                 if (key.kind === K.sessionState && !interrupted) { interrupted = true; throw new Error('during state deletion'); }
-                return remove(key);
+                return target.deleteResource(key);
             };
-            return operation(tx);
-        }));
-        const dead = await turn(base); expect(dead.states.atri_run.status).toBe('dead'); fault.mockRestore();
-        await expect(services(h).core.load(h.handle, base.session.sessionId)).rejects.toThrow('terminal');
+            const value = target[method]; return typeof value === 'function' ? value.bind(target) : value;
+        } }))));
+        await expect(f.sessionRepo.delete(h.handle, base.session.sessionId)).rejects.toThrow('during state deletion'); fault.mockRestore();
+        expect((await services(h).core.load(h.handle, base.session.sessionId)).states.atri_run.status).toBe('dead');
         let finalInterrupted = false;
-        const finalFault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, async tx => {
-            const put = tx.putResource.bind(tx);
-            tx.putResource = async (key, record) => {
+        const finalFault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, tx => operation(new Proxy(tx, { get(target, method) {
+            if (method === 'putResourceIfMatch') return async (key, integrity, record) => {
                 if (key.kind === K.runControl && record.doc.cleanup === 'complete' && !finalInterrupted) { finalInterrupted = true; throw new Error('after root deletion'); }
-                return put(key, record);
+                return target.putResourceIfMatch(key, integrity, record);
             };
-            return operation(tx);
-        }));
-        expect((await f.core.runStatus(h.handle, base.session.sessionId)).status).toBe('terminal'); finalFault.mockRestore();
+            const value = target[method]; return typeof value === 'function' ? value.bind(target) : value;
+        } }))));
+        await expect(f.sessionRepo.delete(h.handle, base.session.sessionId)).rejects.toThrow('after root deletion'); finalFault.mockRestore();
+        expect((await f.core.load(h.handle, base.session.sessionId)).states.atri_run.status).toBe('dead');
+        await f.sessionRepo.delete(h.handle, base.session.sessionId);
         expect(await services(h).core.runStatus(h.handle, base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'complete' });
         expect(await f.savePointRepo.get(h.handle, base.session.sessionId, saved.saveId)).toBeNull();
         const leftovers = await h.engine.withTransaction(h.handle, async tx => Promise.all([K.session, K.sessionRevision, K.sessionState, K.branch, K.timelineEntry, K.timelineVariant, K.savePoint].map(kind => tx.listResources({ kind, handle: h.handle, sessionId: base.session.sessionId }))));
@@ -263,14 +271,15 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
             envelope: { schemaVersion: 1, narrative: 'Death', outcomes: [], diagnostics: [] } }, { expectedRevisionId: boundary.revision.revisionId })).rejects.toThrow('conflict');
         expect((await f.core.runStatus(h.handle, alive.session.sessionId)).status).toBe('active'); expect(durable(await f.core.load(h.handle, newer.session.sessionId))).toEqual(durable(newer));
     });
-    test('death, save and export serialize; no managed recovery data remains after terminal commit', async () => {
+    test('death, save and export serialize; retained history cannot authorize a terminal resume', async () => {
         const base = await f.begin('ironman'); f.selection.input.amount = 8;
         const results = await Promise.allSettled([turn(base), f.saveSystem.quickSave(h.handle, base.session.sessionId), f.saveSystem.exportSession(h.handle, base.session.sessionId)]);
         expect(results[0].status).toBe('fulfilled');
         expect((await f.core.runStatus(h.handle, base.session.sessionId)).status).toBe('terminal');
         const exports = results.slice(1).filter(result => result.status === 'fulfilled' && result.value.archive).map(result => result.value.archive);
         for (const archive of exports) await expect(f.saveSystem.importSave(h.handle, archive)).rejects.toThrow('terminal');
-        expect(await f.savePointRepo.list(h.handle, base.session.sessionId)).toEqual([]);
+        expect((await f.core.load(h.handle, base.session.sessionId)).states.atri_run.status).toBe('dead');
+        await expect(f.core.appendTimeline(h.handle, base.session.sessionId, { role: 'user', content: 'Cannot continue' })).rejects.toThrow('terminal');
     });
 
     test('compiled Native bridge begins without generation, denies restore and returns the committed death receipt', async () => {
@@ -307,12 +316,12 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
             expect(death.error).toBeNull();
             expect(death).toMatchObject({ ok: true }); expect(death.revision).not.toBe(started.revision); expect(seen).toHaveLength(1);
             expect((await call('read.snapshot', 'run', death.revision, {})).ok).toBe(false);
-            expect(await f.core.runStatus(h.handle, f.base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'complete' });
+            expect(await f.core.runStatus(h.handle, f.base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'archived' });
             const reopened = await bridge.open({ core: services(h).core }, h.handle, f.base.session.sessionId);
             const terminalCall = (method, bindingId, extra = {}) => bridge.request({ core: services(h).core }, h.handle,
                 { epoch: reopened.epoch, componentId: 'Main', bindingId, method, revision: reopened.revision, input: {}, ...extra });
             expect(reopened.revision).toBe(death.revision);
-            expect((await terminalCall('read.snapshot', 'run')).data).toMatchObject({ mode: 'ironman', status: 'terminal', cleanup: 'complete' });
+            expect((await terminalCall('read.snapshot', 'run')).data).toMatchObject({ mode: 'ironman', status: 'terminal', cleanup: 'archived' });
             expect((await terminalCall('status')).ok).toBe(true);
             for (const [method, bindingId, extra] of [['read.snapshot', 'run', { componentId: 'Other' }],
                 ['read.snapshot', 'run', { revision: started.revision }], ['read.snapshot', 'run', { input: { forged: true } }],
@@ -321,7 +330,7 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
                 expect((await terminalCall(method, bindingId, extra)).ok).toBe(false);
             }
             expect((await bridge.request(svc, 'another-owner', { epoch: reopened.epoch, method: 'status' })).ok).toBe(false);
-            expect(await f.sessionRepo.get(h.handle, f.base.session.sessionId)).toBeNull();
+            expect((await f.sessionRepo.get(h.handle, f.base.session.sessionId)).headRevisionId).toBe(death.revision);
         } finally { bridge.dispose(); }
     });
 
@@ -363,7 +372,7 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
 
 });
 
-test('FS HEAD commit before tombstone write is recovered from the committed death state', async () => {
+test('FS failed terminal publication rolls back HEAD and can retry the whole death commit', async () => {
     const { makeTempFsEngineHarness } = await import('../storage/harness/contract-harness.js');
     const h = await makeTempFsEngineHarness();
     try {
@@ -373,17 +382,20 @@ test('FS HEAD commit before tombstone write is recovered from the committed deat
         const selection = { ...f.selection, input: { ...f.selection.input, amount: 8 } };
         const proof = await f.core.prepareAuthorityTurn(h.handle, base, selection);
         const original = h.engine.withTransaction.bind(h.engine); let interrupted = false;
-        const fault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, async tx => {
-            const put = tx.putResource.bind(tx);
-            tx.putResource = async (key, record) => {
+        const fault = jest.spyOn(h.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, tx => operation(new Proxy(tx, { get(target, method) {
+            if (method === 'putResourceIfMatch') return async (key, integrity, record) => {
                 if (key.kind === K.runControl && record.doc.status === 'terminal' && !interrupted) { interrupted = true; throw new Error('after death HEAD CAS'); }
-                return put(key, record);
+                return target.putResourceIfMatch(key, integrity, record);
             };
-            return operation(tx);
-        }));
+            const value = target[method]; return typeof value === 'function' ? value.bind(target) : value;
+        } }))));
         await expect(f.core.finalizeTurn(h.handle, base.session.sessionId, { invocationId: 'fatal', authorityProof: proof.proof,
             envelope: { schemaVersion: 1, narrative: 'An authored fatal consequence.', outcomes: [], diagnostics: [] } }, { expectedRevisionId: base.revision.revisionId })).rejects.toThrow('after death HEAD CAS');
-        fault.mockRestore(); await expect(services(h).core.load(h.handle, base.session.sessionId)).rejects.toThrow('terminal');
-        expect(await services(h).core.runStatus(h.handle, base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'complete' });
+        fault.mockRestore(); expect(durable(await services(h).core.load(h.handle, base.session.sessionId))).toEqual(durable(base));
+        const retry = await f.core.prepareAuthorityTurn(h.handle, base, selection);
+        await f.core.finalizeTurn(h.handle, base.session.sessionId, { invocationId: 'fatal', authorityProof: retry.proof,
+            envelope: { schemaVersion: 1, narrative: 'An authored fatal consequence.', outcomes: [], diagnostics: [] } }, { expectedRevisionId: base.revision.revisionId });
+        expect(await services(h).core.runStatus(h.handle, base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'archived' });
+        await expect(f.core.appendTimeline(h.handle, base.session.sessionId, { role: 'user', content: 'Cannot continue' })).rejects.toThrow('terminal');
     } finally { jest.restoreAllMocks(); await h.cleanup(); }
 });

@@ -70,12 +70,21 @@ export class NativeHostOwner {
         const participant = {};
         this.#engines.add(participant);
         let released = false;
-        return async () => {
+        const release = async () => {
             if (released) return;
             released = true;
             this.#engines.delete(participant);
+            for (const [key, guard] of this.#guards) {
+                guard.participants.delete(participant);
+                if (!guard.persistent && !guard.participants.size) {
+                    guard.retiring = true;
+                    await new Promise(resolve => guard.server.close(resolve));
+                    this.#guards.delete(key);
+                }
+            }
             if (!this.#engines.size) await this.close();
         };
+        return { acquireLocal: root => this.acquireLocal(root, participant), release };
     }
 
     async acquireDatabase(engine) {
@@ -94,8 +103,9 @@ export class NativeHostOwner {
         this.assertActive();
     }
 
-    async acquireLocal(root) {
+    async acquireLocal(root, participant = null) {
         this.assertActive();
+        if (participant !== null && !this.#engines.has(participant)) throw unavailable();
         if (process.platform === 'win32' && path.resolve(root).startsWith('\\\\')) throw unavailable(new Error('Shared/network data roots are unsupported'));
         let canonical;
         try { durableMkdir(root); canonical = fs.realpathSync.native(root); } catch (cause) { throw unavailable(cause); }
@@ -108,12 +118,24 @@ export class NativeHostOwner {
                 if (!actual || Object.keys(actual).length !== 3 || actual.schemaVersion !== expected.schemaVersion
                     || actual.instanceId !== expected.instanceId || actual.guardAlgorithm !== expected.guardAlgorithm) throw new Error('Native Host identity changed while owned');
             } catch (cause) { this.invalidate(); throw unavailable(cause); }
+            this.#claimLocal(key, participant);
             return expected;
         }
-        if (this.#pending.has(key)) return this.#pending.get(key);
+        if (this.#pending.has(key)) {
+            const result = await this.#pending.get(key);
+            this.#claimLocal(key, participant);
+            return result;
+        }
         const pending = this.#acquire(canonical, key);
         this.#pending.set(key, pending);
-        try { return await pending; } finally { this.#pending.delete(key); }
+        try { const result = await pending; this.#claimLocal(key, participant); return result; } finally { this.#pending.delete(key); }
+    }
+
+    #claimLocal(key, participant) {
+        const guard = this.#guards.get(key);
+        if (!guard || guard.retiring || participant !== null && !this.#engines.has(participant)) throw unavailable();
+        if (participant === null) guard.persistent = true;
+        else guard.participants.add(participant);
     }
 
     async #acquire(root, key) {
@@ -151,10 +173,11 @@ export class NativeHostOwner {
             throw unavailable(error);
         }
         // A guard is an OS lifetime resource, never a stale PID/TTL lease.
-        server.on('error', () => { this.#valid = false; });
-        server.on('close', () => { if (!this.#closing) this.#valid = false; });
         const result = Object.freeze({ ...identity });
-        this.#guards.set(key, { server, identity: result });
+        const guard = { server, identity: result, participants: new Set(), persistent: false, retiring: false };
+        server.on('error', () => { this.#valid = false; });
+        server.on('close', () => { if (!this.#closing && !guard.retiring) this.#valid = false; });
+        this.#guards.set(key, guard);
         if (this.#closing || !this.#valid) {
             await new Promise(resolve => server.close(resolve));
             throw unavailable();

@@ -669,8 +669,8 @@ export class ResourceGraph {
         )));
     }
 
-    async references(handle, value, { reverse = false } = {}) {
-        const graph = await this.refresh(handle);
+    async references(handle, value, { reverse = false, snapshot = null } = {}) {
+        const graph = snapshot || await this.refresh(handle);
         const scope = value.scope === 'project' ? 'project/' + value.projectId
             : value.scope === 'package' ? 'package/' + value.packageId + '/' + value.packageVersionId : value.scope;
         const keys = new Set(graph.nodes

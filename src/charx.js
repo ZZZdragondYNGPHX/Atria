@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import _ from 'lodash';
 import sanitize from 'sanitize-filename';
-import { sync as writeFileAtomicSync } from 'write-file-atomic';
+import { writeAccountFile } from './storage/account-file-write.js';
+import { accountEngineForDirectory } from './storage/account-quota.js';
 import { extractFileFromZipBuffer, extractFilesFromZipBuffer, normalizeZipEntryPath, ensureDirectory } from './util.js';
 import { DEFAULT_AVATAR_PATH } from './constants.js';
 
@@ -284,11 +285,11 @@ export class CharXParser {
  * @param {string} dirPath - Directory path
  * @param {string} baseName - Base filename without extension
  */
-function deleteExistingByBaseName(dirPath, baseName) {
+function deleteExistingByBaseName(dirPath, baseName, keepName) {
     try {
         const files = fs.readdirSync(dirPath, { withFileTypes: true }).filter(f => f.isFile()).map(f => f.name);
         for (const file of files) {
-            if (path.parse(file).name === baseName) {
+            if (path.parse(file).name === baseName && file !== keepName) {
                 fs.unlinkSync(path.join(dirPath, file));
             }
         }
@@ -299,14 +300,15 @@ function deleteExistingByBaseName(dirPath, baseName) {
 
 /**
  * Persist extracted CharX assets to appropriate ST directories.
- * Note: Uses sync writes consistent with ST's existing file handling.
  * @param {Array} assets - Mapped assets from CharXParser
  * @param {Map<string, Buffer>} bufferMap - Extracted file buffers
  * @param {Object} directories - User directories object
  * @param {string} characterFolder - Character folder name (sanitized)
- * @returns {{sprites: number, backgrounds: number, misc: number}}
+ * @param {string} handle Account owner
+ * @returns {Promise<{sprites: number, backgrounds: number, misc: number}>}
  */
-export function persistCharXAssets(assets, bufferMap, directories, characterFolder) {
+export async function persistCharXAssets(assets, bufferMap, directories, characterFolder, handle) {
+    const engine = accountEngineForDirectory(handle, directories.root) || undefined;
     /** @type {{sprites: number, backgrounds: number, misc: number}} */
     const summary = { sprites: 0, backgrounds: 0, misc: 0 };
     if (!Array.isArray(assets) || assets.length === 0) {
@@ -358,9 +360,9 @@ export function persistCharXAssets(assets, bufferMap, directories, characterFold
                     continue;
                 }
                 // Delete existing sprite with same base name (any extension) - matches sprites.js behavior
-                deleteExistingByBaseName(targetDir, asset.baseName);
                 const filePath = path.join(targetDir, `${asset.baseName}.${asset.ext || 'png'}`);
-                writeFileAtomicSync(filePath, buffer);
+                await writeAccountFile(handle, filePath, buffer, engine);
+                deleteExistingByBaseName(targetDir, asset.baseName, path.basename(filePath));
                 summary.sprites += 1;
                 continue;
             }
@@ -372,10 +374,10 @@ export function persistCharXAssets(assets, bufferMap, directories, characterFold
                     continue;
                 }
                 // Delete existing background with same base name
-                deleteExistingByBaseName(backgroundDir, asset.baseName);
                 const fileName = `${asset.baseName}.${asset.ext || 'png'}`;
                 const filePath = path.join(backgroundDir, fileName);
-                writeFileAtomicSync(filePath, buffer);
+                await writeAccountFile(handle, filePath, buffer, engine);
+                deleteExistingByBaseName(backgroundDir, asset.baseName, fileName);
                 summary.backgrounds += 1;
                 continue;
             }
@@ -387,10 +389,11 @@ export function persistCharXAssets(assets, bufferMap, directories, characterFold
                 }
                 // Overwrite existing misc asset with same name
                 const filePath = path.join(miscDir, `${asset.baseName}.${asset.ext || 'png'}`);
-                writeFileAtomicSync(filePath, buffer);
+                await writeAccountFile(handle, filePath, buffer, engine);
                 summary.misc += 1;
             }
         } catch (error) {
+            if (error.code?.startsWith('storage_')) throw error;
             console.warn(`CharX: Failed to save asset "${asset.name}": ${error.message}`);
         }
     }

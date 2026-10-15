@@ -1,4 +1,6 @@
 import { PersonaRepo } from '../native/repositories/persona-repo.js';
+import { installAccountQuota } from './account-quota.js';
+import { installNativeLifecycle } from './native-lifecycle.js';
 import { FsEngine } from './engines/fs-engine.js';
 import { attachNativeHostLifecycle } from './native-host-lifecycle.js';
 import { SqliteEngine } from './engines/sqlite-engine.js';
@@ -48,6 +50,7 @@ export function initStorage({
     postgres,
     acquireTimeoutMs,
     retries,
+    quotaLimit = async handle => (await import('../users.js')).getAccountQuotaBytes(handle),
 } = {}) {
     if (mode === 'fs') {
         _engine = new FsEngine({ directoriesByHandle });
@@ -76,8 +79,9 @@ export function initStorage({
     } else {
         throw new Error(`initStorage: unknown storage mode "${mode}" (expected 'fs', 'sqlite', 'mysql', or 'postgres')`);
     }
-    if (hostLifecycle) hostLifecycle.attachStorageEngine(_engine, { directoriesByHandle, ...(dataRoot !== null ? { dataRoot } : {}) });
-    else attachNativeHostLifecycle(_engine, { directoriesByHandle, dataRoot, hostOwner });
+    const installTransactionPolicy = target => installAccountQuota(target, { directoriesByHandle, limit: quotaLimit, makeDefault: true });
+    if (hostLifecycle) hostLifecycle.attachStorageEngine(_engine, { directoriesByHandle, installTransactionPolicy, ...(dataRoot !== null ? { dataRoot } : {}) });
+    else attachNativeHostLifecycle(_engine, { directoriesByHandle, dataRoot, hostOwner, installTransactionPolicy });
     _chatRepo = new ChatRepo({ engine: _engine });
     _settingsRepo = new SettingsRepo({ engine: _engine });
     _presetRepo = new PresetRepo({ engine: _engine });
@@ -92,6 +96,7 @@ export function initStorage({
     _savePointRepo = new SavePointRepo({ engine: _engine });
     _assetStore = new AssetStore({ engine: _engine, directoriesByHandle });
     _personaRepo = new PersonaRepo({ engine: _engine, assetStore: _assetStore, handles: async () => (await import('../users.js')).getAllUserHandles() });
+    installNativeLifecycle(_engine, { sessions: _sessionRepo, packages: _packageRepo, worlds: _worldRepo, knowledge: _knowledgeRepo, personas: _personaRepo });
 }
 
 export function getChatRepo() {

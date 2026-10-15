@@ -10,6 +10,7 @@ import {
     openBrowserStorageInspector,
     seedBrowserFixture,
     wipeBrowserFixture,
+    confirmBrowserDeletion,
 } from './_helpers.js';
 
 let server;
@@ -27,7 +28,7 @@ function topActivePopup(page) {
 }
 
 function topContentTextareaPopup(page) {
-    return page.locator('dialog.popup[open]:not([closing])').filter({
+    return page.locator('dialog.popup[open]:not([closing]):not(.atri-onboarding-dialog)').filter({
         has: page.locator('.popup-content textarea'),
     }).last();
 }
@@ -58,7 +59,7 @@ test.describe('Browser Storage Management · CRUD', () => {
         await namePopup.locator('.popup-input').fill('atria-new-key');
         await namePopup.locator('.popup-button-ok').click();
 
-        const valuePopup = topContentTextareaPopup(page);
+        const valuePopup = page.locator('dialog.popup[open]').filter({ has: page.getByRole('button', { name: 'Create', exact: true }) }).last();
         await valuePopup.locator('.popup-content textarea').first().fill('created-value');
         await valuePopup.locator('.popup-button-ok').click();
 
@@ -140,9 +141,7 @@ test.describe('Browser Storage Management · CRUD', () => {
         await viewPopup.waitFor({ state: 'hidden', timeout: 5_000 });
 
         await row.locator('.storageInspectorEntryDeleteButton').click();
-        const deletePopup = page.locator('dialog.popup[open]:not([closing])').filter({ hasText: '/one.txt' }).last();
-        await deletePopup.waitFor({ state: 'visible', timeout: 5_000 });
-        await deletePopup.locator('.popup-button-ok').click();
+        await confirmBrowserDeletion(page, ['cachestorage', 'atria-cache']);
 
         await expect.poll(() => page.evaluate(async () => {
             const cache = await caches.open('atria-cache');

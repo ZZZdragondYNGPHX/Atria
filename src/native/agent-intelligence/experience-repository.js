@@ -91,6 +91,14 @@ export function assertExperience(value) {
     }
     return doc;
 }
+
+export function projectExperienceOwner(record) {
+    if (record?.key?.kind !== K.agentExperience || record.doc?.scope?.domain !== 'project') return null;
+    if (record.integrity !== hashNativeDocument(record.doc)) throw new TypeError('Experience integrity mismatch');
+    const doc = assertExperience(record.doc);
+    if (doc.scopeId !== record.key.scopeId) throw new TypeError('Experience key mismatch');
+    return doc.scope.projectId;
+}
 export function removeFeedback(doc, ids) {
     doc.feedback = doc.feedback.filter(item => !ids.has(item.id));
     doc.diagnoses = doc.diagnoses.filter(item => !item.feedbackRefs.some(ref => ids.has(ref.id)));
@@ -170,5 +178,9 @@ export class AgentExperienceRepository {
         for (const doc of await this.list(handle)) {
             if (doc.scope.domain === 'project' && doc.scope.projectId === projectId) await this.deleteScope(handle, doc.scope, doc.subject, doc.sequence);
         }
+    }
+    async projectOwnedScopes(handle, projectId) {
+        const records = await this.engine.withTransaction(handle, tx => tx.listResources({ kind: K.agentExperience, handle }));
+        return records.filter(record => projectExperienceOwner(record) === projectId).map(record => record.key.scopeId);
     }
 }

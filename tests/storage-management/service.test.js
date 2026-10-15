@@ -27,6 +27,24 @@ describe('storage management service', () => {
         root = makeRoot();
         recoveryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-storage-recovery-'));
     });
+    test('actual paths protect identities even when kind is omitted or forged', () => {
+        fs.mkdirSync(path.join(root, 'characters'), { recursive: true });
+        fs.writeFileSync(path.join(root, 'characters', 'one.png'), 'card');
+        for (const kind of ['', 'file', 'attachment']) expect(resolveStorageResource(root, ['characters', 'one', 'one.png'], kind).capabilities.delete).toBe(false);
+        expect(() => resolveStorageResource(root, ['presets', 'main-settings', 'projects'])).toThrow();
+    });
+    test('linked paths and restore collisions cannot overwrite another target', async () => {
+        const linked = path.join(root, 'user', 'files', 'linked');
+        fs.symlinkSync(recoveryRoot, linked, 'junction');
+        expect(() => resolveStorageResource(root, ['attachments', 'files', 'linked'])).toThrow();
+        fs.unlinkSync(linked);
+        const file = path.join(root, 'worlds', 'collision.json'); fs.writeFileSync(file, '{"old":1}');
+        const resource = resolveStorageResource(root, ['worlds', 'collision.json']);
+        const result = await deleteStorageResource({ resource, recoveryRoot, handle: 'u' });
+        fs.writeFileSync(file, '{"new":2}');
+        await expect(restoreStorageRecoveryPoint({ recoveryRoot, userRoot: root, handle: 'u', id: result.recovery.id })).rejects.toMatchObject({ code: 'E_CONFLICT' });
+        expect(fs.readFileSync(file, 'utf8')).toBe('{"new":2}');
+    });
 
     afterEach(() => {
         fs.rmSync(root, { recursive: true, force: true });
@@ -108,11 +126,11 @@ describe('storage management service', () => {
         expect(fs.readFileSync(file, 'utf8')).toBe('before');
     });
 
-    test('settings.json remains viewable but cannot be deleted generically', () => {
+    test('settings.json remains viewable but cannot be edited or deleted generically', () => {
         fs.writeFileSync(path.join(root, 'settings.json'), '{}');
         const resource = resolveStorageResource(root, ['presets', 'main-settings', 'settings.json'], 'file');
         expect(resource.capabilities.viewContent).toBe(true);
-        expect(resource.capabilities.edit).toBe(true);
+        expect(resource.capabilities.edit).toBe(false);
         expect(resource.capabilities.delete).toBe(false);
     });
 });

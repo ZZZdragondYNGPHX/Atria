@@ -9,11 +9,15 @@ const maintenance = new AsyncLocalStorage();
 const error = () => Object.assign(new Error('Native Host fence is no longer current'), { code: 'native_orchestration_writer_unavailable' });
 
 /** Attach once to the original Engine, before any repository, recovery or schema write. */
-export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoot = null, hostOwner = null }) {
+export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoot = null, hostOwner = null, installTransactionPolicy = null }) {
     if (engine.nativeHostLifecycle) throw new TypeError('Native Host lifecycle is already attached');
     const owner = hostOwner ?? new NativeHostOwner();
-    const releaseOwner = owner.retainStorageEngine();
-    const transaction = engine.withTransaction.bind(engine), closeEngine = engine.close.bind(engine);
+    const ownerLease = owner.retainStorageEngine();
+    // Bounded Storage fence metadata precedes business quota/recovery policy.
+    // Original policy still wraps every business transaction, inside ownership.
+    const infrastructureTransaction = engine.withTransaction.bind(engine), closeEngine = engine.close.bind(engine);
+    if (installTransactionPolicy !== null) installTransactionPolicy(engine);
+    const transaction = engine.withTransaction.bind(engine);
     const ready = new Map(), fences = new Map(), minimumGenerations = new Map(), operations = new Set(), blocked = new Set();
     let accepting = true, databaseReady, closing, paused = false, maintenanceDone = null;
 
@@ -25,7 +29,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
 
     async function ensureDatabase() {
         owner.assertActive();
-        if (dataRoot !== null) await owner.acquireLocal(dataRoot);
+        if (dataRoot !== null) await ownerLease.acquireLocal(dataRoot);
         if (['mysql', 'postgres'].includes(engine.kind)) {
             databaseReady ??= owner.acquireDatabase(engine);
             await databaseReady;
@@ -34,15 +38,15 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
 
     async function ensure(handle, bypassBlock = false) {
         assertActive(handle, bypassBlock);
-        await owner.acquireLocal(directoriesByHandle(handle).root);
+        await ownerLease.acquireLocal(directoriesByHandle(handle).root);
         if (!ready.has(handle)) {
             const pending = (async () => {
                 // Local roots (including SQL installations) share the same
                 // identity/guard protocol. Obtain ownership before recovery.
-                const identity = await owner.acquireLocal(directoriesByHandle(handle).root);
+                const identity = await ownerLease.acquireLocal(directoriesByHandle(handle).root);
                 await ensureDatabase();
                 const fenceKey = { kind: NATIVE_RESOURCE_KINDS.hostFence, handle };
-                const fence = await transaction(handle, async tx => {
+                const fence = await infrastructureTransaction(handle, async tx => {
                     owner.assertActive();
                     const previous = await tx.getResource(fenceKey);
                     if (previous && (hashNativeDocument(previous.doc) !== previous.integrity || previous.doc.schemaVersion !== 1
@@ -195,6 +199,19 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
         });
     }
 
+    // File publications also enter the existing quota admission path. File
+    // Engines need this ownership boundary even without a SQL account mutex.
+    const accountLock = typeof engine.withAccountLock === 'function' ? engine.withAccountLock.bind(engine) : async (_handle, operation) => operation();
+    engine.withAccountLock = async (handle, operation) => track(handle, async () => {
+        await ensure(handle);
+        return accountLock(handle, async () => {
+            owner.assertActive();
+            const result = await operation();
+            owner.assertActive();
+            return result;
+        });
+    });
+
     for (const method of ['deleteUser', 'restoreUser']) {
         const original = engine[method].bind(engine);
         engine[method] = (handle, ...args) => manageHandle(handle, () => original(handle, ...args));
@@ -209,7 +226,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
             // If Engine close fails keep ownership until process exit. A new
             // Host must never enter while the old Engine may still write.
             await closeEngine();
-            await releaseOwner();
+            await ownerLease.release();
         })();
         return closing;
     };

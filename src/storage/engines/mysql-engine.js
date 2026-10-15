@@ -1,12 +1,14 @@
 import { Readable } from 'node:stream';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash } from 'node:crypto';
 import { StringDecoder } from 'node:string_decoder';
 import mysql from 'mysql2/promise';
 import { MysqlTransaction } from './mysql-engine-transaction.js';
 import { initSchema } from './mysql-schema.js';
 import { withRetry, isKnownRollbackError } from '../retry.js';
 import { StorageCommitUnknownError } from '../errors.js';
-import { createHash } from 'node:crypto';
 import { logEngineError } from '../engine-logger.js';
+import { TransactionScope } from './transaction-scope.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -113,6 +115,8 @@ export class MysqlEngine {
         this.kind = 'mysql';
         this._nativeOwnerUrl = url;
         Object.defineProperty(this, 'nativeHostOwnershipKey', { value: 'mysql:' + createHash('sha256').update(url).digest('hex') });
+        this._transactionScope = new TransactionScope();
+        this._accountLease = new AsyncLocalStorage();
         this._acquireTimeoutMs = acquireTimeoutMs;
         this._retries = retries;
         // mysql2/promise pool. charset=utf8mb4 keeps inserts consistent with
@@ -183,18 +187,41 @@ export class MysqlEngine {
         } catch (error) { await conn.end().catch(() => {}); throw error; }
     }
 
+    async withAccountLock(handle, operation) {
+        await this._ensureSchema();
+        if (this._accountLease.getStore()?.open && this._accountLease.getStore().handle === handle) return operation();
+        const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
+        const [[{ db }]] = await conn.query('SELECT DATABASE() AS db');
+        const name = createHash('sha256').update('atria:account:' + db + ':' + handle).digest('hex');
+        let broken = false;
+        try {
+            const [[{ acquired }]] = await conn.query('SELECT GET_LOCK(?, 30) AS acquired', [name]);
+            if (acquired !== 1) throw new Error('Account storage admission lock unavailable');
+            const lease = { handle, conn, open: true };
+            let failure, result;
+            try { result = await this._accountLease.run(lease, operation); } catch (error) { failure = error; }
+            lease.open = false;
+            try { await conn.query('SELECT RELEASE_LOCK(?)', [name]); } catch (error) { broken = true; failure ??= error; }
+            if (failure) throw failure;
+            return result;
+        } finally { if (broken) conn.destroy(); else conn.release(); }
+    }
+
     async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
         if (!['known_rollback_only', 'never'].includes(retryMode)) throw new TypeError('Unsupported storage retryMode');
+        const active = this._transactionScope.get(handle);
+        if (active) return fn(active);
         await this._ensureSchema();
         const retryableFailures = new WeakSet();
         try {
             return await withRetry(async () => {
-                const conn = await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
+                const scope = this._accountLease.getStore(), leased = scope?.open ? scope : null;
+                const conn = leased?.handle === handle ? leased.conn : await acquireWithTimeout(this._pool, this._acquireTimeoutMs);
                 try {
                     await conn.beginTransaction();
                     const tx = new MysqlTransaction({ conn, handle });
                     try {
-                        const result = await fn(tx);
+                        const result = await this._transactionScope.run(handle, tx, () => fn(tx));
                         try { await conn.commit(); } catch (error) {
                             if (isKnownRollbackError(error)) throw error;
                             throw new StorageCommitUnknownError(error);
@@ -208,7 +235,7 @@ export class MysqlEngine {
                         throw err;
                     }
                 } finally {
-                    conn.release();
+                    if (conn !== leased?.conn) conn.release();
                 }
             }, { retries: this._retries.transient, isRetryable: err => retryMode === 'known_rollback_only' && retryableFailures.has(err) });
         } catch (err) {
@@ -286,6 +313,7 @@ export class MysqlEngine {
                         [handle],
                     );
                     for (const row of rows) {
+                        if (t.name === 'native_resources' && row.kind === 'atri_host_fence') continue;
                         const params = t.cols.map((c) => normalizeDumpValue(row[c]));
                         yield JSON.stringify({ sql: sqlText, params }) + '\n';
                     }

@@ -8,12 +8,10 @@
 // Captures 03-delete-confirm.png with confirm popup open.
 
 import { test, expect } from '@playwright/test';
-import { resolve } from 'node:path';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector } from './_helpers.js';
+import { seedBrowserFixture, wipeBrowserFixture, openBrowserStorageInspector, confirmBrowserDeletion } from './_helpers.js';
 
-const SCREENSHOT_DIR = resolve(import.meta.dirname, '../../../docs/public/images/browser-storage-inspector');
 
 let server;
 
@@ -45,13 +43,13 @@ test.describe('Browser Storage Inspector · delete localStorage key', () => {
         await targetRow.locator('.storageInspectorEntryDeleteButton').click();
 
         // Confirm popup mounts as a NEW dialog on top of Inspector
-        const confirmDialog = page.locator('dialog.popup[open]').last();
+        const confirmDialog = page.locator('.storage-center-dialog');
         await expect(confirmDialog).toContainText('atria-draft-x729');  // label interpolation
 
-        await inspector.screenshot({ path: resolve(SCREENSHOT_DIR, '03-delete-confirm.png') });
+        await confirmDialog.screenshot({ path: test.info().outputPath('03-delete-confirm.png') });
 
         // Click the OK / Delete button
-        await confirmDialog.locator('.popup-button-ok').click();
+        await confirmBrowserDeletion(page, ['localStorage']);
 
         // Inspector refreshes — count drops to 2 and target row disappears
         await expect(inspector.locator('.storageInspectorEntry')).toHaveCount(2);

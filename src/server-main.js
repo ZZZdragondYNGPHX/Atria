@@ -1085,6 +1085,10 @@ storageHostOwner.acquireLocal(globalThis.DATA_ROOT)
         'bootstrap.storage-fail-fast',
         () => maybeFailFast(getStorageEngine(), getConfigValue('storage.failFast', false)),
     ))
+    .then(timedStartupStep('bootstrap.storage-management-recovery', async () => {
+        const { startStorageManagementMaintenance } = await import('./storage/management-maintenance.js');
+        await startStorageManagementMaintenance();
+    }))
     // Cross-mode restore scratch sweep — best-effort, runs in the background
     // so a slow disk doesn't block server start.
     .then(() => {

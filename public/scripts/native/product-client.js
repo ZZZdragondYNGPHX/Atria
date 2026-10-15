@@ -1,4 +1,5 @@
 import { createNativeProductError } from './product-errors.js';
+import { notifyCurrentStorageChange } from './storage-change-events.js';
 
 function requestHeaders() {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
@@ -22,6 +23,19 @@ async function request(path, { method = 'GET', body = undefined } = {}) {
     }
     if (!response.ok) {
         throw createNativeProductError(payload?.error, response.status, payload?.details);
+    }
+    const deleted = method === 'DELETE' && /^(works|worlds|knowledge|knowledge-bindings|sessions|projects)\/([^/?]+)$/.exec(path);
+    const type = deleted && ({ works: 'package', worlds: 'world', knowledge: 'knowledge', 'knowledge-bindings': 'binding', sessions: 'session', projects: 'project' })[deleted[1]];
+    if (type || path === 'personas/delete') await notifyCurrentStorageChange([{ type: type || 'persona', id: deleted ? decodeURIComponent(deleted[2]) : body.personaId }]);
+    else if (method !== 'GET' && !/\/(export|preflight|used-by|list|get|receipt)(?:\/|$)|^personas\/(revisions|default\/read)$/.test(path)) {
+        const root = /^(works|worlds|knowledge|knowledge-bindings|sessions|projects)\/([^/?]+)/.exec(path);
+        const existingType = root && ({ works: 'package', worlds: 'world', knowledge: 'knowledge', 'knowledge-bindings': 'binding', sessions: 'session', projects: 'project' })[root[1]];
+        const targets = existingType ? [{ type: existingType, id: decodeURIComponent(root[2]) }] : [];
+        for (const [field, resourceType] of [['worldId', 'world'], ['knowledgeBaseId', 'knowledge'], ['packageId', 'package'], ['sessionId', 'session'], ['projectId', 'project'], ['personaId', 'persona']]) {
+            const id = payload?.[field] || payload?.world?.[field] || payload?.knowledgeBase?.[field] || payload?.package?.[field] || payload?.session?.[field] || payload?.project?.[field] || payload?.ref?.[field];
+            if (id) targets.push({ type: resourceType, id });
+        }
+        if (targets.length) await notifyCurrentStorageChange(targets, { destructive: false });
     }
     return payload;
 }

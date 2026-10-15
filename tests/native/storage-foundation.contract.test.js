@@ -262,6 +262,11 @@ describe.each(CONTRACT_HARNESSES)('N1 Native Storage Foundation — $name', ({ m
         let removed = [];
         // Mark may traverse live hash directories before finding the orphan.
         for (let i = 0; i < 20 && !removed.length; i++) removed = await assetStore.gcBlobs(handle, { now: gcNow + i * 60001 });
+        if (!removed.length) {
+            const progress = await h.engine.withTransaction(handle, tx => tx.getResource({ kind: 'atri_maintenance', handle, scope: 'blobs' }));
+            const { stat } = await import('node:fs/promises');
+            throw new Error(JSON.stringify({ progress: progress.doc, actualMtime: (await stat(assetStore._blobPath(handle, contentHash))).mtimeMs }));
+        }
         expect(removed).toEqual([contentHash]);
     });
 });

@@ -37,6 +37,11 @@ import {
 //     whitespace, so the integer differs from the original JSON.stringify
 //     length) applies equally here.
 export class PgTransaction {
+    async listAccountContent(handle) {
+        if (handle !== this._handle) throw new TypeError('Transaction account mismatch');
+        const { listSqlAccountContent } = await import('./account-content.js');
+        return listSqlAccountContent(handle, async (table, owner) => (await this._client.query(`SELECT * FROM ${table} WHERE handle=$1`, [owner])).rows);
+    }
     constructor({ client, handle }) {
         this._client = client;
         this._handle = handle;
@@ -981,8 +986,7 @@ export function registerNativeResourceHandlers(tx) {
     };
     const parseRow = (kind, handle, resourceKey, row) => {
         if (!row) return null;
-        const doc = coerceJson(row.doc);
-        if (doc === null) return null;
+        const doc = typeof row.doc === 'string' ? JSON.parse(row.doc) : row.doc;
         return {
             key: decodeNativeResourceKey(kind, handle, resourceKey),
             doc,

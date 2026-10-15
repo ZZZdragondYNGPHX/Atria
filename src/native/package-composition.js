@@ -202,7 +202,8 @@ export class PackageInstaller {
     }
 
     async install(handle, archive, { grantedPermissions = [], setCurrent = true } = {}) {
-        return this._assetStore.withBlobLease(handle, digest(archive), () => this._installPinned(handle, archive, { grantedPermissions, setCurrent }));
+        const inspected = inspectAtriaPackageContainer(archive);
+        return this._assetStore.withBlobPublication(handle, [archive, ...inspected.assets.values()], () => this._installPinned(handle, archive, { grantedPermissions, setCurrent }));
     }
 
     async _installPinned(handle, archive, { grantedPermissions, setCurrent }) {

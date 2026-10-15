@@ -19,6 +19,7 @@ describe.each(CONTRACT_HARNESSES.filter(item => ['MysqlEngine', 'PgEngine'].incl
         const original = await h.engine.withTransaction(h.handle, tx => lifecycle.assertWriter(h.handle, tx));
         const chunks = [];
         for await (const chunk of await h.engine.dumpUser(h.handle)) chunks.push(Buffer.from(chunk));
+        expect(Buffer.concat(chunks).toString('utf8')).not.toContain('atri_host_fence');
         await h.engine.withTransaction(h.handle, tx => tx.putResource(key, nativeRecord({ marker: 'changed' })));
         await h.engine.restoreUser(h.handle, Readable.from([Buffer.concat(chunks)]));
         const after = await h.engine.withTransaction(h.handle, tx => lifecycle.assertWriter(h.handle, tx));

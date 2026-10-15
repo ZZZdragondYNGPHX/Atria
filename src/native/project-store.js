@@ -1,4 +1,10 @@
 import fs from 'node:fs';
+import { withAccountFileGrowth, accountEngineForDirectory } from '../storage/account-quota.js';
+import { withNativeResourceWrite } from './repositories/common.js';
+import { recoveryRecords } from './recovery-roots.js';
+import { ConflictError } from '../storage/errors.js';
+import { commitProjectHistory, recoverProjectHistory, inspectProjectHistory, resumeProjectHistory } from './project-history-publication.js';
+import { assertAccountPath } from '../storage/path-boundary.js';
 import path from 'node:path';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { resolveUserDirectory } from '../constants.js';
@@ -59,6 +65,18 @@ function isExcludedFromBuild(relativePath) {
 }
 
 export class ProjectStore {
+    quotaEngine(handle) { return accountEngineForDirectory(handle, this._directoriesByHandle(handle).root); }
+    withLifecycle(handle, projectId, operation) { return withNativeResourceWrite(handle, 'project:' + projectId, operation); }
+    commitHistory(handle, projectId, operation) { return commitProjectHistory(this, handle, projectId, operation); }
+    recoverHistory(handle, projectId) { return recoverProjectHistory(this, handle, projectId); }
+    inspectHistory(handle, projectId) { return inspectProjectHistory(this, handle, projectId); }
+    resumeHistory(handle, projectId, version, operationId) { return resumeProjectHistory(this, handle, projectId, version, operationId); }
+    async assertActive(handle, projectId) {
+        const engine = this.quotaEngine(handle);
+        if (!engine) return;
+        const retained = await engine.withTransaction(handle, tx => recoveryRecords(tx, handle));
+        if (retained.some(row => row.doc.target?.type === 'project' && row.doc.target.id === projectId)) throw new ConflictError('native_resource_in_recycle_bin');
+    }
     constructor({ directoriesByHandle }) {
         if (typeof directoriesByHandle !== 'function') {
             throw new TypeError('ProjectStore requires { directoriesByHandle }');
@@ -72,7 +90,7 @@ export class ProjectStore {
 
     _projectDir(handle, projectId) {
         const id = assertNativeId(projectId, 'project', 'ProjectStore.projectId');
-        return path.join(this._root(handle), id);
+        return assertAccountPath(this._directoriesByHandle(handle).root, path.join(this._root(handle), id));
     }
 
     _manifestPath(handle, projectId) {
@@ -86,23 +104,29 @@ export class ProjectStore {
         if (fs.existsSync(projectDir)) {
             throw new Error('Studio Project already exists: ' + source.project.projectId);
         }
-        fs.mkdirSync(projectDir, { recursive: true });
-        try {
-            writeFileAtomic(
-                this._manifestPath(handle, source.project.projectId),
-                JSON.stringify(source, null, 2) + '\n',
-            );
-            for (const [relativePath, bytes] of files instanceof Map ? files : new Map()) {
-                await this.writeFile(handle, source.project.projectId, relativePath, bytes);
+        const manifestBytes = Buffer.from(JSON.stringify(source, null, 2) + '\n');
+        const fileBytes = [...(files instanceof Map ? files : new Map()).values()].reduce((sum, bytes) => sum + toBuffer(bytes).length, 0);
+        return withAccountFileGrowth(handle, manifestBytes.length + fileBytes, async () => {
+            if (fs.existsSync(projectDir)) throw new Error('Studio Project already exists: ' + source.project.projectId);
+            fs.mkdirSync(projectDir, { recursive: true });
+            try {
+                writeFileAtomic(
+                    this._manifestPath(handle, source.project.projectId),
+                    JSON.stringify(source, null, 2) + '\n',
+                );
+                for (const [relativePath, bytes] of files instanceof Map ? files : new Map()) {
+                    await this.writeFile(handle, source.project.projectId, relativePath, bytes);
+                }
+                return source;
+            } catch (error) {
+                fs.rmSync(projectDir, { recursive: true, force: true });
+                throw error;
             }
-            return source;
-        } catch (error) {
-            fs.rmSync(projectDir, { recursive: true, force: true });
-            throw error;
-        }
+        }, this.quotaEngine(handle));
     }
 
     async get(handle, projectId) {
+        try { await this.assertActive(handle, projectId); } catch (error) { if (error.code === 'native_resource_in_recycle_bin') return null; throw error; }
         const manifestPath = this._manifestPath(handle, projectId);
         if (!fs.existsSync(manifestPath)) return null;
         let value;
@@ -147,17 +171,15 @@ export class ProjectStore {
         if (existing.project.packageId !== source.project.packageId) {
             throw new Error('Studio Project packageId is immutable');
         }
-        writeFileAtomic(
-            this._manifestPath(handle, source.project.projectId),
-            JSON.stringify(source, null, 2) + '\n',
-        );
+        const file = this._manifestPath(handle, source.project.projectId), bytes = Buffer.from(JSON.stringify(source, null, 2) + '\n');
+        await withAccountFileGrowth(handle, () => bytes.length - fs.statSync(file).size, () => writeFileAtomic(file, bytes), this.quotaEngine(handle));
         return source;
     }
 
     async readFile(handle, projectId, relativePath) {
         const safePath = normalizeRelativePath(relativePath);
         const projectDir = this._projectDir(handle, projectId);
-        const filePath = path.join(projectDir, ...safePath.split('/'));
+        const filePath = assertAccountPath(projectDir, path.join(projectDir, ...safePath.split('/')));
         if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return null;
         return fs.readFileSync(filePath);
     }
@@ -169,9 +191,12 @@ export class ProjectStore {
         if (!fs.existsSync(this._manifestPath(handle, projectId))) {
             throw new Error('Studio Project does not exist: ' + projectId);
         }
-        const filePath = path.join(projectDir, ...safePath.split('/'));
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
-        writeFileAtomic(filePath, toBuffer(value));
+        const filePath = assertAccountPath(projectDir, path.join(projectDir, ...safePath.split('/')));
+        const bytes = toBuffer(value);
+        await withAccountFileGrowth(handle, () => bytes.length - (fs.existsSync(filePath) ? fs.statSync(filePath).size : 0), () => {
+            fs.mkdirSync(path.dirname(filePath), { recursive: true });
+            writeFileAtomic(filePath, bytes);
+        }, this.quotaEngine(handle));
         return safePath;
     }
 
@@ -186,8 +211,8 @@ export class ProjectStore {
             throw new Error('Studio Project does not exist: ' + projectId);
         }
 
-        const sourcePath = path.join(projectDir, ...fromPath.split('/'));
-        const destinationPath = path.join(projectDir, ...toPath.split('/'));
+        const sourcePath = assertAccountPath(projectDir, path.join(projectDir, ...fromPath.split('/')));
+        const destinationPath = assertAccountPath(projectDir, path.join(projectDir, ...toPath.split('/')));
         if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
             throw new Error('Project source does not exist: ' + fromPath);
         }
@@ -203,7 +228,8 @@ export class ProjectStore {
     async deleteFile(handle, projectId, relativePath) {
         assertWritable();
         const safePath = normalizeRelativePath(relativePath);
-        const filePath = path.join(this._projectDir(handle, projectId), ...safePath.split('/'));
+        const directory = this._projectDir(handle, projectId);
+        const filePath = assertAccountPath(directory, path.join(directory, ...safePath.split('/')));
         if (!fs.existsSync(filePath)) return false;
         fs.rmSync(filePath, { force: true });
         return true;
@@ -256,4 +282,17 @@ export class ProjectStore {
         fs.rmSync(projectDir, { recursive: true, force: true });
         return true;
     }
+}
+
+// All ProjectStore writers share the same domain lock, including non-Studio
+// callers. Source writes cannot recreate a project retained by the recycle bin.
+for (const method of ['create', 'save', 'writeFile', 'moveFile', 'deleteFile', 'delete']) {
+    const original = ProjectStore.prototype[method];
+    ProjectStore.prototype[method] = function (handle, ...args) {
+        const projectId = ['create', 'save'].includes(method) ? args[0].project.projectId : args[0];
+        return this.withLifecycle(handle, projectId, async () => {
+            await this.assertActive(handle, projectId);
+            return original.call(this, handle, ...args);
+        });
+    };
 }

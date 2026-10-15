@@ -5,6 +5,9 @@ import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
 import { recordsEqual } from './equality.js';
 import { serializeNativeDocument } from '../../native/repositories/common.js';
 import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
+import { importedManagementRecord } from './management-state.js';
+import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
+import { pauseRecoveredRecord } from '../../native/recovery-effects.js';
 
 // Canonical category shape — every section the runner can copy. Callers
 // supplying `categories` opt in/out of sections via this set of keys; unknown
@@ -335,10 +338,15 @@ export class MigrationRunner {
                 if (kind === 'atri_host_fence') continue;
                 if (this._skipNativeKinds.has(kind)) continue;
                 const records = await this._srcEngine.withTransaction(srcHandle, tx => tx.listResources({ kind, handle: srcHandle }));
-                for (const record of records) {
+                for (const sourceRecord of records) {
+                    let record = importedManagementRecord(sourceRecord, dstHandle);
                     const key = { ...record.key, handle: dstHandle };
                     if (!this._dryRun) {
                         await this._dstEngine.withTransaction(dstHandle, async tx => {
+                            if ([NATIVE_RESOURCE_KINDS.runControl, NATIVE_RESOURCE_KINDS.connectionProfile, NATIVE_RESOURCE_KINDS.modelProfile, NATIVE_RESOURCE_KINDS.runtimeRoute].includes(key.kind)) {
+                                const current = await tx.getResource(key);
+                                record = pauseRecoveredRecord({ ...record, key }, current);
+                            }
                             await tx.putResource(key, record);
                             const restored = await tx.getResource(key);
                             if (!restored || serializeNativeDocument(restored.doc) !== serializeNativeDocument(record.doc)

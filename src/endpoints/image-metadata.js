@@ -8,6 +8,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { imageSize } from 'image-size';
 import writeFileAtomic from 'write-file-atomic';
+import { accountEngineForDirectory } from '../storage/account-quota.js';
+import { writeAccountFile } from '../storage/account-file-write.js';
 import express from 'express';
 import { Jimp } from '../jimp.js';
 import { getConfigValue, getImages, isPathUnderParent, uuidv4 } from '../util.js';
@@ -179,7 +181,9 @@ export async function readMetadataIndex(userDataRoot) {
 export async function writeMetadataIndex(userDataRoot, metadata) {
     const indexPath = path.join(userDataRoot, METADATA_FILE);
     const jsonString = JSON.stringify(metadata, null, 4);
-    await writeFileAtomic(indexPath, jsonString, 'utf8');
+    const handle = path.basename(userDataRoot), engine = accountEngineForDirectory(handle, userDataRoot);
+    if (engine) await writeAccountFile(handle, indexPath, Buffer.from(jsonString), engine);
+    else await writeFileAtomic(indexPath, jsonString, 'utf8');
 }
 
 /**

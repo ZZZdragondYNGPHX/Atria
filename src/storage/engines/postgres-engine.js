@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { StringDecoder } from 'node:string_decoder';
 import pg from 'pg';
 import { PgTransaction } from './postgres-engine-transaction.js';
@@ -7,6 +8,7 @@ import { withRetry, isKnownRollbackError } from '../retry.js';
 import { StorageCommitUnknownError } from '../errors.js';
 import { createHash } from 'node:crypto';
 import { logEngineError } from '../engine-logger.js';
+import { TransactionScope } from './transaction-scope.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
@@ -72,6 +74,8 @@ export class PgEngine {
         this.kind = 'postgres';
         this._nativeOwnerUrl = url;
         Object.defineProperty(this, 'nativeHostOwnershipKey', { value: 'postgres:' + createHash('sha256').update(url).digest('hex') });
+        this._transactionScope = new TransactionScope();
+        this._accountLease = new AsyncLocalStorage();
         this._retries = retries;
         // pg.Pool keyed on connection-string + max. Max caps concurrent
         // leases so withTransaction queues past the limit instead of opening
@@ -138,18 +142,39 @@ export class PgEngine {
         } catch (error) { await client.end().catch(() => {}); throw error; }
     }
 
+    async withAccountLock(handle, operation) {
+        await this._ensureSchema();
+        if (this._accountLease.getStore()?.open && this._accountLease.getStore().handle === handle) return operation();
+        const client = await this._pool.connect();
+        const name = 'atria:account:' + handle;
+        let broken = false;
+        try {
+            await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [name]);
+            const lease = { handle, client, open: true };
+            let failure, result;
+            try { result = await this._accountLease.run(lease, operation); } catch (error) { failure = error; }
+            lease.open = false;
+            try { await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [name]); } catch (error) { broken = true; failure ??= error; }
+            if (failure) throw failure;
+            return result;
+        } finally { client.release(broken); }
+    }
+
     async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
         if (!['known_rollback_only', 'never'].includes(retryMode)) throw new TypeError('Unsupported storage retryMode');
+        const active = this._transactionScope.get(handle);
+        if (active) return fn(active);
         await this._ensureSchema();
         const retryableFailures = new WeakSet();
         try {
             return await withRetry(async () => {
-                const client = await this._pool.connect();
+                const scope = this._accountLease.getStore(), leased = scope?.open ? scope : null;
+                const client = leased?.handle === handle ? leased.client : await this._pool.connect();
                 try {
                     await client.query('BEGIN');
                     const tx = new PgTransaction({ client, handle });
                     try {
-                        const result = await fn(tx);
+                        const result = await this._transactionScope.run(handle, tx, () => fn(tx));
                         try { await client.query('COMMIT'); } catch (error) {
                             if (isKnownRollbackError(error)) throw error;
                             throw new StorageCommitUnknownError(error);
@@ -161,7 +186,7 @@ export class PgEngine {
                         throw err;
                     }
                 } finally {
-                    client.release();
+                    if (client !== leased?.client) client.release();
                 }
             }, { retries: this._retries.transient, isRetryable: err => retryMode === 'known_rollback_only' && retryableFailures.has(err) });
         } catch (err) {
@@ -234,6 +259,7 @@ export class PgEngine {
                         [handle],
                     );
                     for (const row of rows) {
+                        if (t.name === 'native_resources' && row.kind === 'atri_host_fence') continue;
                         const params = t.cols.map((c) => normalizeDumpValue(row[c]));
                         yield JSON.stringify({ sql: sqlText, params }) + '\n';
                     }

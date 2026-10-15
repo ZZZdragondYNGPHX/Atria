@@ -39,10 +39,11 @@ import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../
 import { USER_DIRECTORY_TEMPLATE } from '../../constants.js';
 import { CrossModeScratchConnectionError } from './cross-mode-errors.js';
 import { NATIVE_STORAGE_KINDS, normalizeNativeResourceKey, nativeResourceFileId } from '../engines/native-resource-key.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
 
 /**
  * @typedef {object} TransientSource
- * @property {object} engine            Live engine instance matching engineMeta.engineKind.
+ * @property {object} engine            Original Engine implementation scoped to private imported data.
  * @property {string} scratchHandle     Handle the engine's per-user storage lives under.
  * @property {{ root: string }} scratchDirs  Directory map (only `.root` is guaranteed).
  * @property {() => Promise<void>} cleanup   Idempotent teardown.
@@ -65,8 +66,8 @@ export async function materializeTransientSource(engineMeta, zipPath, opts) {
         throw new Error('materializeTransientSource: engineMeta.engineKind is required');
     }
     const { dataRoot, scratchHandle, scratchCreds, reuseEngine = null } = opts;
-    if (!scratchHandle || !scratchHandle.startsWith(SCRATCH_HANDLE_PREFIX)) {
-        throw new Error(`materializeTransientSource: scratchHandle must start with ${SCRATCH_HANDLE_PREFIX}`);
+    if (typeof scratchHandle !== 'string' || !new RegExp('^' + SCRATCH_HANDLE_PREFIX + '[a-f0-9]{16,64}$').test(scratchHandle)) {
+        throw new Error(`materializeTransientSource: scratchHandle must start with ${SCRATCH_HANDLE_PREFIX} and contain an isolated hex identity`);
     }
     if (!dataRoot) {
         throw new Error('materializeTransientSource: dataRoot is required');
@@ -253,7 +254,7 @@ function rewriteSqliteHandleInPlace(sqlitePath, scratchHandle) {
 }
 
 // --------------------------------------------------------------------------
-// Same-engine shared DB source: reuse the live engine's connection pool, but
+// Same-engine shared DB source: reuse the live Host's database ownership, but
 // rewrite every imported row to an isolated scratch handle. This avoids
 // asking the operator for a second MySQL/PostgreSQL URL when source and
 // destination engine kinds already match.
@@ -271,10 +272,35 @@ async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, eng
     }
 
     const rewritten = rewriteHandleInDumpStream(dumpStream, scratchHandle);
+    const liveEngine = engine;
+    let scratchTransaction = null;
+    if (liveEngine.nativeHostLifecycle) {
+        // A scratch handle is not an account. Give the original converter a
+        // private Engine/root under the same database Owner, without calling
+        // live account quota or inventing a getUserDirectories fallback.
+        engine = new liveEngine.constructor({ url: liveEngine._nativeOwnerUrl, poolSize: 1 });
+        scratchTransaction = engine.withTransaction.bind(engine);
+        liveEngine.nativeHostLifecycle.attachStorageEngine(engine, { directoriesByHandle: handle => {
+            if (handle !== scratchHandle) throw new TypeError('Transient source owner mismatch');
+            return scratchDirs;
+        } });
+    }
+    async function clearScratch() {
+        try { await engine.deleteUser(scratchHandle); } finally {
+            if (scratchTransaction) {
+                try {
+                    engine.nativeHostLifecycle.assertActive();
+                    // No work remains in this private namespace. Its control
+                    // fence is not a real account fence to retain forever.
+                    await scratchTransaction(scratchHandle, tx => tx.deleteResource({ kind: K.hostFence, handle: scratchHandle }), { retryMode: 'never' });
+                } finally { await engine.close(); }
+            }
+        }
+    }
     try {
         await engine.restoreUser(scratchHandle, rewritten);
     } catch (err) {
-        try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
+        try { await clearScratch(); } catch { /* original Owner loss remains authoritative */ }
         await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
         throw err;
     }
@@ -287,8 +313,7 @@ async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, eng
         async cleanup() {
             if (cleanedUp) return;
             cleanedUp = true;
-            try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
-            // The engine belongs to the live server. Never close it here.
+            try { await clearScratch(); } catch { /* scratch sweep can retry; never replace live data */ }
             await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
         },
     };

@@ -30,7 +30,9 @@ async function openInspector(page) {
         const mod = await import('/scripts/storage-management.js');
         void mod.openStorageManagement();
     });
-    const inspector = page.locator('dialog.popup[open]').last().locator('.storageManagementServerMount .storageInspectorContainer');
+    const panel = page.locator('.storage-center-dialog');
+    await panel.getByRole('button', { name: 'Advanced tools', exact: true }).click();
+    const inspector = panel.locator('.storageInspectorContainer');
     await inspector.waitFor({ state: 'visible', timeout: 10_000 });
     await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached', timeout: 15_000 });
     return inspector;

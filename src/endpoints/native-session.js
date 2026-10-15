@@ -44,7 +44,7 @@ export function createNativeSessionRouter(getServices = services) {
             await operation(request, response, getServices(), request.user.profile.handle);
         } catch (error) {
             if (response.headersSent) { response.destroy(); return; }
-            const status = ['native_persona_scope_denied', 'native_cognition_inspection_denied'].includes(error?.code) ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error.name === 'ConflictError' || error.code?.includes('conflict') ? 409
+            const status = error?.code === 'storage_quota_exceeded' ? 413 : error?.code === 'storage_usage_unavailable' ? 503 : ['native_persona_scope_denied', 'native_cognition_inspection_denied'].includes(error?.code) ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error.name === 'ConflictError' || error.code?.includes('conflict') ? 409
                 : error instanceof TypeError ? 400 : error.name === 'NotFoundError' ? 404 : 500;
             response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
