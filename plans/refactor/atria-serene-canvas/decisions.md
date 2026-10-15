@@ -10,11 +10,12 @@
 - **Reason:** 各域需要具有辨识度且一致的审美，专业密度与沉浸阅读共同成立。
 - **Affected modules:** `visual.md`, `coverage.md`, `validation.md`。
 
-### 2. 本轮只设计浅色主题
+### 2. 首轮只设计浅色主题
 
 - **Decision:** 当前重构范围仅含浅色系统界面，不增加暗色主题设计。旧用户配置和数据兼容问题按 `migration.md` 研究，不据此自动扩展主题范围。
 - **Reason:** 使当前视觉与验证目标明确。
 - **Affected modules:** `visual.md`, `coverage.md`, `migration.md`, `validation.md`。
+- **后续范围:** 设置与明暗主题扩展由 [Atria 设置界面与原生主题重构](../atria-settings-and-themes/index.md) 接续；其详细设计归该 Bundle，本节保留 Serene Canvas 首轮范围的历史。
 
 ### 3. 不加入选文重生成
 
