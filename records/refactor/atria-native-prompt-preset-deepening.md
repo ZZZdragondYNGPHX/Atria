@@ -253,3 +253,5 @@
 - 本次停止于已提交的可独立后端和前端交接资料；未向 main 合入跨任务未闭合组合。保留当前分支，不以未完成的全任务名义删除它或其他活跃分支。当前不足是具体生产依赖/真实评价材料，不是另设模型数、样本数或审批。
 
 最终远端/本地 readback：实现 HEAD 与 origin/refactor/atria-native-prompt-preset-deepening 同为 `760327891149216dffdc1e3fa0c846496007a013`，源码工作树干净；main 仍 `695acf3bcad1d42e331459189532a76056278bec`；docs 提交基底已含并发 `6e8e6d48feacc6c4e037b5c11649afbb4c2837b4`。V3 最后观测 `4e0ce4bad896b45e6fd384554c13effd05790308`，新增 Tool/A2A/维护保留已提交，authoring bindings 与 production 路由边界补核后原 plan-prompt/Node 组合 Gate 仍未完成；不把另一任务的 SQL/Tool 测试写成本任务 PASS。docs 最终提交号从 Git 历史追溯，不预写自身 hash。
+
+设计三文件首次纳入 Git 后暴露 HTML CRLF 与文末空行检查问题；随后只统一文本换行/文末空行，`git diff --ignore-space-at-eol --ignore-blank-lines` 无内容差异，复验 `git diff --check`、8 文档/81 本地链接、189 ID 一一映射均通过。没有改视觉值、样例功能或脚本逻辑，也没有为此重跑或冒称浏览器验收。
