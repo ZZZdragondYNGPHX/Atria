@@ -77,7 +77,7 @@ Host Run authority 无论 Delegate/Handoff 都不移交。Handoff 必须是受�
 
 V3 原生 Graph Editor 配置允许的动态变化和 Review/Join/Output 合同；Run Inspector 只投影 `TaskGraphRevision、active NodeAttempt、各子 Run 的 status、Join/EffectReceipt refs、GraphPatch 拒绝原因、等待审批、实测用量及来源失效状态`。**不使用旧模式名称或旧 Run Panel 状态格式**。
 
-D4 将在不修改 D3 权威/控制语义的前提下冻结 Context/Hybrid Memory/Actor/Source 的多 Agent 合法候选域、共享策略、检索与跨分支隔离；本模块只要求 Agent Context **先授权、后编译，跨边界默认最小化**。
+D4 已选择 C2 并冻结 Audience-scoped Context 与通过受控 Result/SourceRef 传播；合法候选域、Narrator/Actor/Task 分离、Disclosure 和跨 Branch 失效详细规则见 [context-sharing.md](context-sharing.md)。本模块只持有 D3 控制流边界，跨 Agent **先授权、后编译、默认最小化** 不变。
 
 ## 9. 未来最小相关验收矩阵（尚未执行）
 

@@ -7,7 +7,8 @@
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。
 - 代码审计基线：`main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`，基于远端相关源码与现有测试的静态审计；**没有运行代码、单测、CI、真机或 UI 测试**。
 - 第三轮状态：**D3 已冻结：G2 不可变 Plan + Host 受控动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复与有界循环**。
-- 第四轮状态：**正在讨论 Context / Hybrid Memory / Actor / Source 可见性与多 Agent 上下文共享，D4 尚未冻结**。
+- 第四轮状态：**D4 已冻结：C2 Audience-scoped Context；统一 Hybrid Recall，按 Actor/Source/Time/Branch 授权，跨 Agent 通过有来源 Result 引用分享，Disclosure 与长会话压缩独立校验**。
+- 第五轮状态：**准备讨论 Sparse/Adaptive Invocation、Model Routing、并行预算、缓存与 Execution Reuse；D5 尚未冻结**。
 - 文档性质：设计与架构冻结阶段；本轮仅提交 `docs`，不建立实现分支、不修改 `main`，不宣称任何新实现已验证。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -34,6 +35,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [research.md](research.md) | 官方 Agent 框架/模式来源、适用性与不适用性 | 技术取舍变化时 |
 | [architecture.md](architecture.md) | **D2 正式边界**：Host 运行权威、Plan/Run/Effect/Receipt、Native 复用、硬切与前端重构 | 所有后续轮次 |
 | [graph-control.md](graph-control.md) | **D3 冻结**：动态图 Patch / GraphRevision、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复、循环控制 | 第三轮及后续图控制流 |
+| [context-sharing.md](context-sharing.md) | **D4 冻结**：C2 按 Audience 编译、唯一 Hybrid Memory、Actor/Source/Time/Branch、Result/Disclosure、压缩/失效与验收 | 第四轮及后续 Context/Memory 接入 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
 
 已存在的其他方案只是依赖，不复制详细契约：
@@ -48,15 +50,15 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | **1 已完成** | 代码基线、网络调研、A/B/C 方向 | D1 = B |
 | **2 已完成** | 统一执行主权、职责边界、跨端原则及无兼容重构 | D2 = T2 + 硬切 |
 | **3 已完成** | 动态图、Delegate/Handoff、并行 Join、Planner/Judge/Review、重试/失败/有界循环 | **D3 = G2 有界动态图** |
-| **4 当前** | Context/Hybrid Memory/Actor/Source 权限隔离与分级多 Agent 上下文共享 | D4 讨论中、尚未冻结 |
-| 5 | Sparse/Adaptive 调用、模型路由、缓存/复用、并行/预算 | 计算调度契约 |
+| **4 已完成** | Context/Hybrid Memory/Actor/Source 权限隔离与分级多 Agent 上下文共享 | **D4 = C2 Audience-scoped Context** |
+| **5 当前** | Sparse/Adaptive Invocation、Model Routing、并行预算、缓存与执行复用 | D5 待讨论、尚未冻结 |
 | 6 | Tool/Skill/MCP/A2A、审批、安全、未知副作用与跨协议恢复 | Effect/权限契约 |
 | 7 | RP 叙事/反全知/多角色、Narrator 与批评回路、Project Agent | 产品使用模式与质量保障 |
 | 8 | 图形化编辑、预设、可解释 Run/Diagnostics、跨平台交互 | UX/Observability |
 | 9 | 代码清退、分阶段切换、验证矩阵/用户验收 | 实施清单与验收入口 |
 
-每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再进行当轮新问题的讨论。D3 已冻结的控制流由 [graph-control.md](graph-control.md) 唯一详细管理；后续只在用户明确改变设计时改写它。第四轮的上下文共享方案在用户作出 D4 选择前不得标记为冻结。
+每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再进行当轮新问题的讨论。D2 Host 权威见 [architecture.md](architecture.md)，D3 Graph 见 [graph-control.md](graph-control.md)，**D4 的跨 Agent Context/Memory 合同只由 [context-sharing.md](context-sharing.md) 详细维护**。第五轮讨论的计算策略须引用原 Agent Intelligence Runtime Compute/Model/Reuse 权威，选择前不作 D5 冻结。
 
-## 第四轮阅读与切入
+## 第五轮阅读与切入
 
-先读本 `index.md` → [decisions.md](decisions.md) → [architecture.md](architecture.md) 与 [graph-control.md](graph-control.md) 的 D2/D3 交界；再按需读取 [Agent Intelligence Runtime](../../architecture/agent-intelligence-runtime/index.md) 中的 Context/Hybrid Memory/Actor/Source 对应模块。第四轮重点讨论 Source/Actor/Branch/Time 的合法信息域、只读证据、Context 编译/裁剪与多 Agent 的共享/隔离；不提前冻结 D4，不迁移旧编排，不修改 `main`。
+先读本 `index.md` → [decisions.md](decisions.md)（D1–D4）→ [architecture.md](architecture.md)（D2）→ 按需 [graph-control.md](graph-control.md)（D3）与 [context-sharing.md](context-sharing.md)（D4）。随后仅针对第五轮阅读 [Agent Intelligence Runtime](../../architecture/agent-intelligence-runtime/index.md) 已有 [compute-policy](../../architecture/agent-intelligence-runtime/compute-policy.md)、[model-routing](../../architecture/agent-intelligence-runtime/model-routing.md)、[execution-reuse](../../architecture/agent-intelligence-runtime/execution-reuse.md) 与 [behavior-context](../../architecture/agent-intelligence-runtime/behavior-context.md) 的相关段落。第五轮分析稀疏调用、模型路由、并行预算和缓存复用，不提前冻结 D5、不复活旧编排模式、不改 `main`。

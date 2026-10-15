@@ -1,6 +1,6 @@
 # 第二轮 D2：Native Orchestration V3 内核与执行边界（已冻结）
 
-> 详细跨模块决定见 [decisions.md](decisions.md)。本文件管理 D2 Host/Plan/Effect/Receipt 结构；**D3 的动态图执行控制细则见 [graph-control.md](graph-control.md)**，不在此复制。物理 Schema/代码位置仍未定，未做产品验证。
+> 详细跨模块决定见 [decisions.md](decisions.md)。本文件只管理 D2 Host/Plan/Effect/Receipt，D3 Graph 控制见 [graph-control.md](graph-control.md)，D4 的 Context/Memory 多 Agent 信息传播见 [context-sharing.md](context-sharing.md)。物理 Schema 与实现位置仍未定，未做产品验证。
 
 ## 1. Native Host 是唯一 Run Authority
 
@@ -40,4 +40,4 @@ Planner 的 GraphPatch 仅修改 Run 内任务图版本，不回写原 PlanRevis
 
 ## 5. D3 控制流冻结引用
 
-第三轮 G2 有界动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、恢复及循环控制由 [graph-control.md](graph-control.md) 唯一维护。第四轮围绕 Context/Hybrid Memory/Actor/Source 权限与跨 Agent 信息共享讨论，不改变此处的 D2 单 Host/零兼容权威。
+第三轮 G2 有界动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、恢复及循环控制由 [graph-control.md](graph-control.md) 唯一维护。**第四轮 C2 Audience-scoped Context、Hybrid/Actor/Source 权限、Result/Disclosure 与长会话失效规则已冻结，详见 [context-sharing.md](context-sharing.md)**。第五轮稀疏调用、路由与复用讨论须保留这些边界，不改变 D2 单 Host/零兼容权威。
