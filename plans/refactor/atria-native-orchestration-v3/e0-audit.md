@@ -1,4 +1,6 @@
-# D9 E0 — Native Orchestration V3 旧消费者与审计阻塞的静态证据（E0 未通过）
+# D9 E0 — Native Orchestration V3 工程审计（E0 BLOCKED）
+
+> **当前结论（2026-10-15）**：最新只读基线 `main@60aca695726893e298b7d485f300c6efef3b79fd`。§1–7 为早期定向审计历史；本轮全仓证据及处置以 §8 起为准。静态取证范围已扩大，运行闭包、V3 持久化/安全和三端证据仍未通过，不得把审计文档完成改称 E0 PASS。
 
 > 2026-10-15 基于 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a` 的**远端定向静态审计**。**D9 已选 E1 并冻结路线，但本模块的 E0 全量依赖闭包、物理存储/权限/崩溃与三端真实验证仍 BLOCKED**。本文件只持有代码证据/未闭合项目，不再承担实施分期或验收合同：接口详见 [interface-contracts](interface-contracts.md)，阶段详见 [implementation-plan](implementation-plan.md)，验证详见 [acceptance-matrix](acceptance-matrix.md)。无产品代码修改或测试。
 
@@ -93,3 +95,49 @@
 - **工作分支创建**：NOT_AUTHORIZED — 当前用户明确禁止收口前创建，故不得因为 E1 已定就开始实现。
 
 **下一可执行工作仍是 E0 docs 审计补证**：按 [implementation-plan.md](implementation-plan.md) 的 W01/W02/W07 优先、再 W03–W09 核对原生接口和完整消费者；所有门槛成立且获得用户明确正式开工授权后，才可建立产品任务分支。`docs:HANDOFF.md` 不因本次普通开发就绪审查而创建。
+
+## 8. 最新 main 全仓审计与零兼容处置矩阵
+
+本轮先核对 clean `main`、fetch `origin/main`，两者同为 `60aca695726893e298b7d485f300c6efef3b79fd`；不 checkout、修改或执行产品模块。用 Git tracked 全集扫描 3,949 文件、3,556 选中文本；Acorn 解析 2,886 JS/MJS/CJS，0 解析失败，11,053 本地字面路径边，452 条根外直达旧四根的边（含测试），反向传递闭包 1,152 文件。数字是解析器的覆盖统计，不是 1,152 个生产消费者，也不是运行证明。
+
+- [逐文件/行号/四根 151 文件 manifest](e0-consumer-inventory.md)：包含源码、API、设置、脚本、测试、产品开发文档和资产命中。
+- [AST 直接边/间接消费者/计算动态加载点](e0-import-graph.md)：补足多行静态导入、export、dynamic import、require、Worker/URL。240 个非字面表达式中也包括普通网络 URL 和 Worker(new URL(...)) 包装，不全是未解析模块；实际模块边需按下表区分。
+- 不能静态证明的第三方安装代码、计算属性 API、运行时插件注册不在已证明闭包内。P6 必须补真实 boot、导航、设置、评测和注册 trace；当前为 `BLOCKED`，绝不声称“穷尽运行消费者”。
+
+| ID / 源→真实 sink | 证据与处置（未来实施，本轮未删除） | 工作包 / 替代验证 |
+| --- | --- | --- |
+| C01 Boot/API | `capability-host.js:18,30,84` → `orchestrator/index.js` → `main.js:147`。删除旧 capability 名及 retained settings；新 Host client 独立注册 V3，不保留旧名重导出。旧 API 包含 delegated run、memory recall、Game mode/guidance/director、checkpoint list/cancel、run observation、tool bridge、preset bindings、prompt/strategy candidates、skill export，全部终止旧协议。 | W01/W06；boot 只注册新 API，调用旧名失败，无静默 fallback |
+| C02 Native Play | `public/script.js:7478` → generation-controller host options → `play-generation.js:75–91` → 旧 Game APIs。替换整个普通 Native generation 分流；保留用户输入提交、persist、quiet/impersonate、唯一 assistant commit 的原语义。Package Turn 优先分支和 free-text Game 分支不能被误删。 | W06；分别测普通 RP、Native Session、Package Turn、Game logic、continue/regenerate/abort |
+| C03 Native Game LLM | `experience/index.js` 创建/重写 bridge → `llm/runtime.js` mode → `narrative.js` producer → `orchestrator-bridge.js`。删除桥与 Director/Guidance 分流；同步清理 `roles.js`、`turn-context.js` 的旧 guidance 字段和 `turn-controller.js` 旧阶段用途。保留 World/Journal 前后 hash/正式 Command/唯一 Narrator/已提交后果防线。 | W06；正常回合与 rewrite 都不能多发正文或修改世界 |
+| C04 Shell/Search | `workspace-host.js:195` 动态载 Panel，旧 `orchestration:<presetId>` detail、commands；`product-search.js:27` 直接读 settings。用 V3 Plan list/detail 与 Host Projection 替换；更新 app-shell、navigation-authority、localization 和 CSS 中旧入口。Shell/Memory 页保留，不保留旧 preset ID 路由别名。 | W08；搜索、deep link、history/back、hub、移动导航真实观察 |
+| C05 Settings/API | `public/script.js:15934` → `src/endpoints/settings.js:327` → SettingsRepo guard/patch/updateWorkspace。删除 `expectedWorkspaceRevision`、agentWorkspace CAS 和旧配置专属逻辑；通用 settings save/patch/read-only/conflict 继续存在。新 Plan 由独立原生资源存储，禁止塞回旧设置字段。 | W01；旧 payload 不能重新写入旧配置，其他设置不丢失 |
+| C06 Evolution Target 生命周期 | `evolution-service.js` → EvolutionTargets 的 authorize/library/rpPreset/catalog/capture/prepare/check/publicationCurrent/write/discard/evaluationSettings。删 `workspace-prompt/workspace-strategy`、Director/boundedDirector 和 preset binding 目标；改为 exact Native Plan/Agent revision 的受控候选，原 Skill/Project Prompt/Project Strategy 目标保留原权限。旧目标未完成 job 不得自动映射新目标或继续 publish/rollback。 | W07；目录/捕获/候选/评估/发布/回滚/丢弃/冲突逐方法覆盖 |
+| C07 **新发现：Evaluation 执行及指纹** | `evaluation/adapters.js:6,8` 直接导入 Director + run-state；`worker.js:20` 动态 import Skill Resolver；`evolution-evaluator.js:22,28` 把旧文件内容纳入 evaluator revision。必须替换 RP adapter、隔离 worker 前置加载、指纹输入及 `evaluationSettings.rpProfile`。保留原 evaluator/报告/provenance/付费发送/Promotion 权威，旧报告只作为历史证据，不因代码更新重新授予 publish。 | W07；新 evaluator fingerprint、旧 report ineligible、parent Host 唯一 send、无旧代码载入 |
+| C08 **新发现：Memory 共用 helper** | AST 确认 `memory/schema-iteration/studio.js:73` 导入旧 `iter-studio/edit-tool-result-envelope.js`，并非仅注释。`memory/orchestrator-tools.js:2` 导入 host-ports。先将仍必要的纯 envelope helper 放入既有 iteration-library；旧 tool registration 删除，Memory/Hybrid/Information 正式服务保留。禁止把 Browser Memory write tool 原样赋给 Host Agent。 | W03/W04；Memory 编辑和 schema iteration 仍工作，Actor/Source guard 不退化 |
+| C09 Prepared Context 共用 | `generate-task.js:1` → `agent-runtime/prepared-context.js`；旧运行器目录不能盲删。审查其 contracts 依赖后抽到现有 Context 共用层，更新消费者和 source-currentness 测试；不保留整个旧 Browser Runtime 作为 helper 容器。 | W03/W04；普通生成、exact token/context 合同与 prepared proof |
+| C10 Search/Memory Tool 注册 | `extensions/search-tools/main.js` 和 `agents/memory/main.js` 调用各自 `register*OrchestrationTools()`，通过字符串 capability 获取旧 registry。删除旧注册调用与旧 adapters，Search/Memory 各自功能和 API 保留；新 Host Tool descriptor/Port 使用原 Native 搜索/Hybrid 能力。 | W04/W05；boot 不访问旧 registry，原搜索/Memory 正反例 |
+| C11 **新发现：Skill scope/携带链** | `skills/{api,scope-picker,skill-manager-panel,skill-editor,embed-export-hook,embed-lifecycle,embed-import-dialog}.js`、`public/shared/skill-invocation.js`、`src/skills/{scope,repository}.js` 有 `orch-preset` 与 mode 目录/优先级/rename/import/export/cascade-delete。删除旧 scope 分支和旧事件 hook、旧 preset embed/export；不迁移为 Plan scope，不误删 global/project/package/character 合法 Skill。 | W01/W05；旧 scope 请求拒绝，其他 scope pin/read/version/rollback 完整 |
+| C12 旧四根 | manifest 151 文件是逐路径清退全集；旧 runner/mode adapters/graph controller/UI/presets/trace/checkpoint/样式退出。纯算法复用必须重新归属 Native 内核或现有共用库并删旧依赖，禁止旧路径 forwarding/shim。 | W03/W09；AST 零旧根生产边，旧根路径不再提供执行模块 |
+| C13 资产/国际化/检查脚本 | `default/skills/global/director-dispatch-protocol-zh`、旧 skill chips/优化用例、locale/Runtime UI 中 Director mode 标签、logging ownership、`check-native-product-localization.mjs`、`check-p4-native-generation.mjs`、`check-atria-workspace-ui.sh`、`check-plugin-imports.js` 中旧路径。删旧专属资产/字段，更新工具目标，避免检查脚本依赖已删文件。 | W08/W09；无旧产品入口/资源；locale/checker 仍覆盖新界面 |
+| C14 原生 `role.orchestrator` 并不自动等于旧模式 | `src/native/contracts.js`、generation-host.executionPreflight、Runtime Route roles、context-derived producers、Project package `orchestration` JSON 元数据须按具体用途审查。原生模型路由角色可供新 Planner 使用，不能仅按单词删除；旧 mode/guidance 数据不得再执行。Package recommendations 元数据不能擅自升级为活执行入口。 | W04/W06/W07；精确 route/ref/来源/预算与 Package schema 负例 |
+| C15 Message Takeover/Iteration 共用 | `public/script.js:9079` emit、events、message-takeover 与 tests/message-takeover 有原消息生命周期；旧 Director subscriber 删除。通用消息 handle/编辑/Iteration 与其他 native Studio 工具保留；产品开发文档三语旧 Orchestrator 示例更新，不能保留失效 API 教程。 | W03/W09；消息提交/取消/variant 所有权与共享 Iteration 回归 |
+| C16 同名非目标 | `src/sync/orchestrator.js`、sync/migration/cross-mode-restore、tokenizer vocabulary 中 orchestration，以及一般注释不是旧 Agent 执行器。保留同步/跨存储恢复权威，禁止全仓替词或全名删除。 | W09；排除清单可复核，不把无关修改混入 |
+| C17 测试真实消费面 | AST/semantic annex 已按文件列出 tests/orchestrator、agent-runtime、agent-intelligence、game-runtime、atria-shell、frontend、e2e/orchestrator、skills-ui、skills、memory/search registration、character-presets、sync primitives 等。模式/旧配置专项删除；保留并改接 Source/权限/Variant/预算/崩溃/World/Studio/Skill 的仍有效断言。 | W09；不以删测试取得通过，新断言和 consumer 同阶段就绪 |
+| C18 计算动态加载与生态边界 | 已读 capability 固定 loader、Shell 固定 import；`evolution-evaluator` 的固定数组文件读需同步替换；`extension-runtime.js import(url)`、`host-plugin-loader.js import(specifier)`、`plugin-loader.js import(fileUrl)` 为通用已安装代码执行。V3 不提供旧 API，依赖旧 API 的外部代码应显式 unsupported，不能新建适配层。未读取用户安装内容，不承诺外部插件兼容或绝对安全。 | W05/W09；真实启动/插件能力拒绝 trace `BLOCKED`，无沙箱 Host code 默认不授予 V3 R3 |
+
+### 8.1 数据边界与停机切换
+
+此处只冻结**未来清退设计**，本轮不删除数据。P6 不允许旧运行跨版本续跑：关闭旧入口和发送准入，停止并核实所有旧 Host/Browser worker，再启用新产品单路径。不能只升级后端而让旧标签页继续持有发送/提交许可；需在原 send/commit 边界以版本/boot/source fencing 拒绝旧协议。
+
+| 数据位置 | 最小清退边界 | 必须保护/无法证明时 |
+| --- | --- | --- |
+| Settings `atri_capabilities.orchestrator`（含 agentWorkspaceRevision、presetLibraries 等） | 在原 Settings writer 中仅剔除旧子树；save/patch/import/restore 不能重新激活旧配置，无双读 | 不删 settings 文件和其他 capability；备份中旧内容可保留历史但导入后不得变为执行配置 |
+| Browser `Atria_AgentRuntime_${encodeURIComponent(scope)}` | 不读取/迁移 checkpoint；仅当前已知 origin、已核对 scope 的旧专用 DB 可用用户明确的清退操作删除 | 无法枚举的浏览器 profile/离线设备保留不可执行残留，不能宣称已物理清空所有客户端 |
+| FloorState namespace `atri_orchestrator_anchors` | 仅旧命名空间，无到新 Run 映射 | Chat/Message/Variant/其他 FloorState 均保留 |
+| Skill `orch-preset/<mode>/<name>` | 旧 scope 不再解析、列出、导入或执行；仅按原 repo path containment 可清旧 scope | global/project/package/character 与正式 Skill version/history 不删；不自动复制到新 scope |
+| Evolution old target candidate/job | 不继续旧目标 publication/rollback；保留原报告、收费和业务 receipt 的历史事实，标 unsupported target | 不批量删除 Experience/Eval/Promotion 仓库；有已发送未知效果先 reconcile，不能把无结果写成 cancelled |
+| Native Session/World/Studio/Model/RunControl/MCP/A2A 证据 | **不迁移、不清除其正式数据**；新 Run 只引用原合法 source/receipt | 已发送 unknown 或非幂等操作无可信远端状态时保留 blocked，不能靠换 EffectId 重做 |
+
+### 8.2 第一组结论
+
+`L0 parser/scanner 执行：完成`；`零兼容处置设计：已落表`；`真实消费者运行闭包：BLOCKED`。发现 C07/C08/C09/C11 后，原“删除旧目录”方案的隐性缺口已有明确替代责任和验收位置；它们仍是未来代码工作，不冒称已经解决运行依赖。

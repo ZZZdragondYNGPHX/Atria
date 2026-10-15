@@ -79,3 +79,10 @@
 - **清退风险新增证据**：`EvolutionTargets` 的 Workspace Prompt/Strategy/Director 引用贯穿 catalog/capture/prepare/check/write/discard/evaluationSettings 与原发布/回滚机制，替换要沿原 Experience/Eval 权威保护合法来源，不能删除目录导致未定义 import。旧 Native Game/Shell 等仍有引用；测试需要分域迁移。
 - [e0-audit](../../plans/refactor/atria-native-orchestration-v3/e0-audit.md) `7 补充以上现状、证据等级及阻塞，未改 D9 决策/已冻结实施路线。
 - **交接结论**：E0 仍 BLOCKED，未建立产品工作分支、未修改 main、未运行新 Node/CI/FS/SQLite crash 注入、真实 Tool/Provider/审批/UI 或 Windows/Linux/Termux 端侧验证。正式建分支须完成源→sink 审计、冻结可实施的物理接口与硬切依赖/原收费，具备真实 L1–L4 计划并取得明确新开工授权。
+
+## 2026-10-15 — E0 全面审计第一组：最新 main 消费者与硬切矩阵
+
+- Start docs：`0d37918c662ad7a979686dcbb13279325e4d43d8`（已有无关 Storage 提交领先 origin/docs 1）；未跟踪 `plans/feat/agent-experience-evolution/` 未纳入本任务。fetch 后 main/origin/main 同为 `60aca695726893e298b7d485f300c6efef3b79fd`，产品工作树 clean，未创建分支。
+- 实际执行：全仓 tracked 文本扫描（3,949 文件，3,556 选中文本）；本地 Acorn AST 纯解析（2,886 JS/MJS/CJS，0 parse error，11,053 字面本地边，452 根外直达边含测试，1,152 反向闭包文件）；旧四根 manifest 151 文件。扫描索引、原样动态点与路径行号保存在同一 Bundle 两个 evidence 附件，未 import/执行产品模块。
+- 新发现：Evaluation adapter/worker/evaluator fingerprint 真正依赖 Director/Run Store/Skill Resolver；Memory Schema Iteration 真正静态导入旧 envelope helper；generate-task 复用 prepared-context；Skills 的 orch-preset 贯穿 Browser/Host/shared scope、优先级、导入导出、rename/cascade。对应 C01–C18 清退/保留/抽离/替代矩阵与数据边界已写入同一 e0-audit。
+- 验证状态：L0 scanner/parser 执行完成（不等同运行 closure PASS）；主路径真实启动、第三方动态安装、V3 FS/SQLite/预算/审批/故障、三端和真实外部服务均 `NOT_RUN/BLOCKED`。没有收费调用或产品测试。下一组继续物理合同与存储/预算/领域 authority，不自动进入开发。
