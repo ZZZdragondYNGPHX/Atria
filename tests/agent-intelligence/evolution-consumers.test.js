@@ -41,14 +41,14 @@ test.each(['rp-skill', 'project-prompt'])('production isolated worker uses origi
     const { job, candidate } = await runEvolution(f);
     if (candidate.report.origin === 'unavailable') throw new Error(JSON.stringify(candidate.report));
     expect(job.status).toBe('awaiting_review'); expect(candidate.report).toMatchObject({ origin: 'host_evaluator' });
-    expect(candidate.report.pairs).toHaveLength(9); expect(candidate.report.charges).toHaveLength(27);
+    expect(candidate.report.pairs).toHaveLength(3); expect(candidate.report.charges).toHaveLength(9);
     for (const pair of candidate.report.pairs) for (const arm of ['baseline', 'candidate']) {
         expect(pair[arm].error).toBeNull(); expect(pair[arm].checks.target_consumed).toBe(true);
         expect(Object.values(pair[arm].checks).every(Boolean)).toBe(true);
     }
     const publicOutputs = kind === 'project-prompt' ? candidate.report.pairs.flatMap(p => [p.baseline, p.candidate]).map(t => JSON.parse(t.output)) : [];
     expect(publicOutputs.every(o => o.plan.summary === 'Synthetic rename' && o.tools.some(t => t.name === 'atri_agent_prepare_review') && Array.isArray(o.conversation))).toBe(true);
-    expect((await f.repository.owner(f.h.handle)).attempts).toHaveLength(28); expect(sends).toHaveLength(28);
+    expect((await f.repository.owner(f.h.handle)).attempts).toHaveLength(10); expect(sends).toHaveLength(10);
     expect(candidate.decision.eligible).toBe(false); expect(candidate.decision.reasons).toContain('preference_missing_or_disagreement');
     expect((await f.repository.get(f.h.handle, f.scope, f.subject)).publications).toEqual([]);
     expect(JSON.stringify(candidate.report)).not.toContain('fixture-secret-never-in-report');

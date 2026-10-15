@@ -6,6 +6,10 @@ import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, disca
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
+// Explicit protocol enums only. OTHER/UNSPECIFIED and natural-language prose
+// cannot establish a Provider content block.
+const geminiPromptBlocks = new Set(['SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'IMAGE_SAFETY']);
+const geminiCandidateBlocks = new Set(['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII', 'IMAGE_SAFETY', 'IMAGE_PROHIBITED_CONTENT']);
 
 // Provider wire formats are adapters over PromptIR, never another prompt/config authority.
 export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkpointStore } = {}) {
@@ -195,7 +199,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
         async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {
             if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence, continuityDecision };
             const blocks = []; let pending = ''; let text = ''; let size = 0; let usage; const decoder = new TextDecoder();
-            let started = false; let completed = false; let stopReason; let reportedModel;
+            let started = false; let completed = false; let stopReason; let reportedModel; let promptFeedback;
             const open = new Set();
             const consume = line => {
                 if (!line.startsWith('data:')) return;
@@ -234,14 +238,15 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
                     }
                     if (value.type === 'message_delta' && value.delta?.stop_reason) stopReason = value.delta.stop_reason;
                     if (value.type === 'message_stop') {
-                        if (!started || open.size || !['end_turn', 'tool_use', 'stop_sequence'].includes(stopReason)) throw new GenerationError('generation_response_invalid');
+                        if (!started || open.size || !['end_turn', 'tool_use', 'stop_sequence', 'refusal'].includes(stopReason)) throw new GenerationError('generation_response_invalid');
                         completed = true;
                     }
                 } else {
                     if (value.usageMetadata) usage = value.usageMetadata;
                     if (value.usageMetadata) onUsage?.(observedGenerationUsage(usage, { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' }));
                     if (value.modelVersion) reportedModel = value.modelVersion;
-                    if (value.candidates?.[0]?.finishReason) { stopReason = value.candidates[0].finishReason; completed = stopReason === 'STOP'; }
+                    if (value.promptFeedback) { promptFeedback = value.promptFeedback; if (geminiPromptBlocks.has(promptFeedback.blockReason)) completed = true; }
+                    if (value.candidates?.[0]?.finishReason) { stopReason = value.candidates[0].finishReason; completed = stopReason === 'STOP' || geminiCandidateBlocks.has(stopReason); }
                     const parts = value.candidates?.[0]?.content?.parts || [];
                     blocks.push(...parts); delta = parts.filter(part => !part.thought && typeof part.text === 'string').map(part => part.text).join('');
                 }
@@ -254,7 +259,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             consume(pending + decoder.decode());
             if (!completed || blocks.filter(Boolean).length !== blocks.length) throw new GenerationError('generation_response_invalid');
             return { value: anthropic ? { content: blocks, stop_reason: stopReason, ...(reportedModel ? { model: reportedModel } : {}), ...(usage ? { usage } : {}) }
-                : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding, sequence, continuityDecision };
+                : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(promptFeedback ? { promptFeedback } : {}), ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding, sequence, continuityDecision };
         },
         readUsage({ value }) {
             return observedGenerationUsage(anthropic ? value?.usage : value?.usageMetadata, anthropic
@@ -262,6 +267,10 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
                 : { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' });
         },
         normalizeResponse({ value, binding, sequence, continuityDecision }) {
+            if (anthropic ? value?.stop_reason === 'refusal'
+                : geminiPromptBlocks.has(value?.promptFeedback?.blockReason) || geminiCandidateBlocks.has(value?.candidates?.[0]?.finishReason)) {
+                throw new GenerationError('generation_provider_content_blocked');
+            }
             const content = anthropic ? value?.content : value?.candidates?.[0]?.content?.parts;
             if (!Array.isArray(content) || value.error || (!anthropic && value.promptFeedback?.blockReason)) throw new GenerationError('generation_response_invalid');
             if (anthropic ? !['end_turn', 'tool_use', 'stop_sequence'].includes(value.stop_reason) : value.candidates[0].finishReason !== 'STOP') throw new GenerationError('generation_response_invalid');

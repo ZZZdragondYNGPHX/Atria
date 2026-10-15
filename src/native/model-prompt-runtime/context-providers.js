@@ -42,6 +42,11 @@ export function createNativeSessionContextProvider(readSelectedContext) {
                 // Memory and narrative summaries are source data: do not promote quotations to
                 // system instructions. Current state continues through its own lane.
                 content: sourceDataLanes.has(item.lane) ? { role: 'user', content: item.content } : item.content,
+                evidence: { lane: item.lane, sourceRefs: item.sourceRefs ?? [], required: item.required === true,
+                    ...(item.atomicGroup === undefined ? {} : { atomicGroup: item.atomicGroup }),
+                    ...(item.metadata?.epistemicStatus === undefined ? {} : { epistemicStatus: item.metadata.epistemicStatus }),
+                    ...(item.metadata?.coverage === undefined ? {} : { coverage: item.metadata.coverage }),
+                    ...(item.metadata?.omissions === undefined ? {} : { omissions: item.metadata.omissions }) },
                 provenance: [
                     { source: 'native.context', ref: item.contextItemId },
                     ...(item.sourceRefs || []).map(ref => ({ source: 'native.context-source', ref: JSON.stringify(ref) })),

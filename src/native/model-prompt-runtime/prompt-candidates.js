@@ -28,7 +28,7 @@ function validateBodyBindings(preset, moduleId) {
     const flat = flattenPromptProgram(envelope(preset), { validateBindings: false });
     const host = Object.fromEntries(['role', 'sourceKind', 'sessionId', 'branchId', 'revisionId', 'projectId', 'projectRevision'].map(k => [k, {}]));
     for (const stage of flat.stages) for (const entry of stage.modules) {
-        if (entry.disabled || entry.ref.resourceId !== moduleId) continue;
+        if (entry.disabled || entry.ref.resourceId !== moduleId || entry.module.textMode === 'literal') continue;
         const declarations = { host, param: flat.parameters, local: flat.locals, module: entry.module.parameters,
             artifact: Object.fromEntries(stage.consumes.map(k => [k, flat.artifacts[k]])) };
         // Reuse the compiler's interpolation/parser. Values remain request-bound;

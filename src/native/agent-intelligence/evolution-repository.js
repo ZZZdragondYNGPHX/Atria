@@ -5,8 +5,8 @@ import { ConflictError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { assertLearningOptimizerPin } from './learning-optimizer.js';
 
-export const EVOLUTION_RULE = Object.freeze({ revision: 'atri-evolution-1', cases: 3, repetitions: 3,
-    candidateWins: 6, maxTokenRatio: 1, maxCostRatio: 1, intervalMs: 86400000, candidates: 2 });
+export const EVOLUTION_RULE = Object.freeze({ revision: 'atri-evolution-2', sampling: 'explicit_relevant_cases',
+    improvement: 'observed_without_dimension_regression', resources: 'reported_within_authorized_budget', intervalMs: 86400000, candidates: 2 });
 export const evolutionHash = hashNativeDocument;
 const MAX_RESERVATIONS = 2048;
 const invalidationHandlers = new WeakMap();

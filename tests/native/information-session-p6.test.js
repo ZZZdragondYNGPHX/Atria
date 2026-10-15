@@ -86,7 +86,8 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
     });
     test('fork restores source records but cannot reuse foreign-Branch rollup', async () => {
         const scene = await apply(base, rollup(base));
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId, { revisionId: scene.revision.revisionId, expectedRevisionId: scene.revision.revisionId });
+        const save = await f.core.createSavePoint(h.handle, base.session.sessionId, { revisionId: scene.revision.revisionId, expectedRevisionId: scene.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, save.saveId, { expectedRevisionId: scene.revision.revisionId });
         expect(fork.revision.branchId).not.toBe(scene.revision.branchId);
         expect(projectInformation(fork, 'pov').items.some(item => item.id === 'beliefs:rumor')).toBe(true);
         expect(projectInformation(fork, 'pov').items.some(item => item.semantic === 'rollup')).toBe(false);
@@ -100,17 +101,21 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
     });
     async function hostFixture() {
         const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/unused' });
+        const provider = createHttpGenerationProvider(), modelInputs = [];
         const host = new NativeGenerationHost({ ...seeded, sessionCore: f.core, packageInstaller: f.packageInstaller,
             secretPort: { resolveSecret: async () => { throw new Error('Preview must not resolve secrets'); } },
-            providers: { 'provider.openai-compatible': { ...createHttpGenerationProvider(), send: () => { throw new Error('No provider send in preview'); } } } });
+            providers: { 'provider.openai-compatible': { ...provider, renderRequest: input => {
+                modelInputs.push(input.snapshot.contextPlan); return provider.renderRequest(input);
+            }, send: () => { throw new Error('No provider send in preview'); } } } });
         const request = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, role: 'narrator',
             requestId: 'p6-preview', routeRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } };
-        return { host, request };
+        return { host, request, modelInputs };
     }
-    test('real GenerationHost preview consumes scoped Context exactly once without provider send', async () => {
-        const { host, request } = await hostFixture();
-        const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true });
-        const items = preview.snapshot.contextPlan.items;
+    test('real GenerationHost prepares model Context but denies Browser preview without independent display', async () => {
+        const { host, request, modelInputs } = await hostFixture();
+        await expect(host.execute(h.handle, request, undefined, undefined, { preview: true }))
+            .rejects.toMatchObject({ code: 'native_generation_preview_disclosure_denied' });
+        const items = modelInputs.at(-1).items;
         expect(items.some(item => String(item.content).includes('The actor believes a rumor'))).toBe(true);
         expect(items.every(item => item.id.startsWith('projection:') || item.id === 'identity:actor:' + f.manifest.actors[0].actorId)).toBe(true);
         expect(JSON.stringify(items)).not.toContain('Opening');
@@ -121,27 +126,32 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
         await expect(host.execute(h.handle, { ...request, revisionId: inactive.revision.revisionId }, undefined, undefined, { preview: true })).rejects.toThrow(/Actor is unavailable/);
     });
     test('narrative Skill context cannot implicitly expose private P6 facts or enter unrelated Tasks', async () => {
-        const { host, request } = await hostFixture();
+        const { host, request, modelInputs } = await hostFixture();
         const skill = { name: 'procedural', scope: { kind: 'global' }, installedHash: '1'.repeat(64), metadata: { 'atria-paths': 'narrative' } };
-        host.skillRepository = () => ({ list: async () => [skill], pin: async ({ expectedHash }) => ({ version: expectedHash }) });
+        host.skillRepository = () => ({ list: async () => [skill], get: async () => skill,
+            pin: async ({ expectedHash }) => ({ version: expectedHash }), readFile: async () => ({ content: 'Procedural guidance', totalLines: 1 }) });
         host.extensions = { settings: async () => ({ value: { skills: {} } }) };
-        const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true });
-        const originalItems = preview.snapshot.contextPlan.items.filter(item => item.id !== 'atri.skills');
+        await expect(host.execute(h.handle, request, undefined, undefined, { preview: true }))
+            .rejects.toMatchObject({ code: 'native_generation_preview_disclosure_denied' });
+        const preview = modelInputs.at(-1);
+        const originalItems = preview.items.filter(item => item.id !== 'atri.skills');
         expect(originalItems.every(item => item.id.startsWith('projection:') || item.id === 'identity:actor:' + f.manifest.actors[0].actorId)).toBe(true);
-        expect(preview.snapshot.contextPlan.items.find(item => item.id === 'atri.skills').content).toContain('procedural');
-        expect(JSON.stringify(preview.snapshot.contextPlan.items)).not.toContain('Opening');
+        expect(preview.items.find(item => item.id === 'atri.skills').content).toContain('procedural');
+        expect(JSON.stringify(preview.items)).not.toContain('Opening');
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
-        const taskPreview = await host.execute(h.handle, request, undefined, undefined, { preview: true,
-            taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } });
-        expect(taskPreview.snapshot.contextPlan.items.some(item => item.id === 'atri.skills')).toBe(false);
+        await expect(host.execute(h.handle, request, undefined, undefined, { preview: true,
+            taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } }))
+            .rejects.toMatchObject({ code: 'native_generation_preview_disclosure_denied' });
+        expect(modelInputs.at(-1).items.some(item => item.id === 'atri.skills')).toBe(false);
     });
-    test('exact Package Task preview has its own projection grant and explicit input', async () => {
-        const { host, request } = await hostFixture();
+    test('exact Package Task model Context keeps its projection/input without granting Browser preview', async () => {
+        const { host, request, modelInputs } = await hostFixture();
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
-        const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true,
-            taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } });
-        expect(preview.snapshot.contextPlan.items.some(item => item.id.startsWith('projection:compression:'))).toBe(true);
-        expect(preview.snapshot.contextPlan.items.some(item => item.id === 'task-input')).toBe(true);
-        expect(preview.snapshot.contextPlan.items.some(item => item.id.startsWith('projection:pov:'))).toBe(false);
+        await expect(host.execute(h.handle, request, undefined, undefined, { preview: true,
+            taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } }))
+            .rejects.toMatchObject({ code: 'native_generation_preview_disclosure_denied' });
+        expect(modelInputs.at(-1).items.some(item => item.id.startsWith('projection:compression:'))).toBe(true);
+        expect(modelInputs.at(-1).items.some(item => item.id === 'task-input')).toBe(true);
+        expect(modelInputs.at(-1).items.some(item => item.id.startsWith('projection:pov:'))).toBe(false);
     });
 });

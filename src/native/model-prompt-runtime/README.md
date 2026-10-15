@@ -1,5 +1,151 @@
 # Native Model / Prompt / Runtime — integrated contract (P8)
 
+## Prompt / Behavior backend extension
+
+The following contracts extend the original pipeline. They do not establish a
+second compiler, resource store, evaluation source registry or orchestration Host.
+
+### Authored text and semantic trust
+
+Prompt Modules may declare `textMode: "literal" | "template"`. Omission keeps
+the existing Native template syntax. Literal mode preserves the complete body,
+including CRLF, Unicode and literal `{{...}}`; it never expands variables. Template
+values are not recursively interpolated. Candidate validation and Package freezing
+preserve this distinction. Authoring must retain the original resource body even
+when the effective request includes substitutions or scope labels.
+
+An optional Module `expression` is `{ layer: "global" | "scene" | "narrator" |
+"actor", actorId? }`; only `actor` requires/accepts `actorId`. Within the same
+stage/target, global expression precedes scene, then narrator/actor expression,
+followed by the original priority/ID ordering. The Provider receives an explicit
+style scope label. These fields grant no Actor, Cognition, Source, Tool or World
+permissions. Identity and knowledge remain owned by their original authorities.
+
+The original compiler now emits `semanticBlocks` alongside its inspector fields.
+Both projections must agree. Blocks identify Host policy, author instructions,
+evidence, dialogue, Tool results, input and prefill, preserving original provenance,
+source and available epistemic/coverage metadata. Facts and Persona slots lower to
+user data; authored context-position modules retain their declared instruction
+semantics. Direct system/developer history is rejected. The authenticated Host
+treats caller-labelled system/developer task envelopes as evidence, preserving the
+raw text without granting a system role. Narrator requests include the strict
+player-agency and expression policy; this is guidance, not proof that a model
+cannot leak information or invent a player action.
+
+### Trusted Program selection and currentness
+
+Internal callers may use `host.execute(owner, input, signal, onChunk,
+{ programSelection: { promptProgramRef, assertCurrent } })`. The reference must
+be exact and the callback must be an executable trusted Host authority. It receives
+the authenticated owner, original source, candidate Route, selected ref and phase;
+compile/send/preview phases also provide the actual `contextPlan` so the original
+Host can check the consumer's Audience/Grant against what will really be used.
+Request JSON cannot supply this authority. Task variant, illustration, prediction
+and browser Draft overrides cannot silently replace their frozen Program through
+this option. The scheduler preserves the selection, and includes its exact ref in
+request identity. Preview does not save the selected Program onto a Route.
+
+Every fallback resolves its own Model/Connection/Generation, recompiles and counts
+again while keeping the selected Program closure, author behavior, parameters,
+stages, Tools, Output, network policy and accepted compute policy. Context/Memory
+may be selected again within the original source/permissions. A mismatch fails
+with `generation_semantic_authority_changed`; it never silently adopts a different
+Route Program. Diagnostics distinguish the declared Route ref from the effective
+Program ref. V3 must construct this internal selection from its own immutable
+Plan/Node pins and original admission, and retain the compiled evidence in its
+Attempt/Receipt; this extension does not itself publish or run a V3 Plan.
+
+The Context Provider's optional `assertCurrent` port runs before compilation,
+after Secret resolution immediately before sending, and before a preview returns.
+The Host rereads original Session/Project/Task state and checks revision, branch,
+applicable authority state and Task fingerprint. Its actual HTTP send/retry boundary
+checks again. A provisional Authority Turn is compared against its original
+committed source, preserving legitimate pending World projections. Full V3
+Audience/Disclosure/Join invalidation and long-form quality still require their
+original production consumers and evidence.
+
+### Unpublished Draft Preview / Diff
+
+Authenticated `POST /api/native/generation/preview/draft` accepts:
+
+```json
+{
+  "request": { "requestId": "preview-1", "role": "narrator", "projectId": "<current project>", "revision": "<exact revision>" },
+  "drafts": [{ "ref": "<exact resource ref object>", "expectedFingerprint": "<canonical base SHA-256>", "resource": "<complete resource object>" }],
+  "baselineDrafts": []
+}
+```
+
+The strings standing for objects above are documentation placeholders. Supply the
+actual exact ref/resource objects. An empty `drafts` array obtains the baseline.
+Use `GET /resources` entry `fingerprint` or the baseline's
+`authored.resources[].baseFingerprint` as `expectedFingerprint`; it hashes the
+original validator-normalized resource, not an arbitrary raw JSON representation.
+
+Supported replacements are existing Library/current Project Prompt Programs,
+Modules and Generation Profiles with unchanged type/ID/revision. Package originals
+must first be forked through their existing authoring flow. The original reader
+checks owner/origin/exact base before the ephemeral replacement. New dependencies
+must still resolve through the same original readers. Unreferenced replacements,
+duplicate refs, stale bases and changed identities fail closed. Limits are 32
+replacements, 512 KiB replacement JSON and 1 MiB total request JSON.
+
+Response: `preview:true`, `publication:"unpublished"`, `sent:false`,
+`baseline`/`candidate` with `identity`, `authored`, `effective` and `wire`, plus
+`diff` with `sameSource`, `identityFingerprint` and JSON Pointer changes in each
+layer. Authored resources retain full bodies; effective contains the actual IR,
+count/budget, compilation and binding; wire is the adapter's public request body
+without credentials or opaque reasoning/continuation state. `baseFingerprint` and
+`resourceFingerprint` distinguish the committed base from a replacement. Diff
+compiles baseline, candidate and a final baseline verification; it never accepts
+a browser-authored result as evidence. No Secret resolution, Provider send,
+resource write, publication or new persistence occurs.
+
+Handle `native_generation_draft_conflict` / `...draft_source_conflict` by retaining
+the draft and refreshing the exact base/source. `...draft_unreferenced`,
+`...draft_identity`, `...draft_owner` and `...draft_fingerprint_required` require
+repairing input. A successful preview is neither publication nor execution.
+Production execute/task/turn/start routes reject browser Draft/Program authority
+fields rather than ignoring them and accidentally sending a request.
+
+### Browser disclosure and truthful blocked states
+
+Model context access does not grant browser Inspector access. Session previews
+with Information Runtime require a separately proven complete player-display
+projection. Context-only/private fields, Actor/Task audiences, incomplete grants,
+extra Knowledge/Memory/derivation/processing/expression channels without a complete
+display proof return `native_generation_preview_disclosure_denied`. Public-only
+Information projections and ordinary authorized Project/Session previews remain
+supported. The guard does not replace private content and label a different body
+as the actual wire.
+
+For execute JSON/SSE results and retained operation result reads, an unprovable
+private/stale Session snapshot yields a successful response with
+`projection:"restricted"`, `reason:"native_generation_preview_disclosure_denied"`
+and `snapshotSummary` (refs and input count), without `snapshot`, private IR or
+raw diagnostic hashes. This must not be rendered as a failed generation or an
+empty complete Inspector. Legitimate model execution is unchanged. Model prose
+and provisional streaming are still subject to the original output/disclosure
+contracts; this change does not claim deterministic natural-language leak detection.
+
+`GET /api/native/generation/quality-profiles` is authenticated, read-only and
+`private, no-store`. It returns original non-legacy profiles, exact revisions,
+dimensions, critical dimensions, source requirements, provenance levels and true
+readiness. New profiles are `rp.narrative`, `project.agent` and
+`rp.creative_refusal`. Registration is not quality acceptance: unavailable reviewed
+independent sources remain `BLOCKED / source_unready`. Model opinions remain
+unverified hypotheses, never Host verification or Provider protocol evidence.
+
+`generation_provider_content_blocked` reports a supported adapter's explicit
+protocol refusal/filter signal, including supported SSE signals. It preserves
+observed usage and is not retry/fallback eligible. Apologetic prose, unknown reasons
+and generic truncation are not automatically classified as explicit refusal.
+
+Plan-prompt evolution still requires original V3 immutable PlanRevision,
+PlanBinding CAS, Review, publication journal/reconcile/rollback and real evaluation
+sources. An unavailable original consumer must remain blocked; do not implement
+a browser publisher or translate retired Workspace/Director settings into V3.
+
 This is the current API/composition reference. Phase-by-phase implementation and
 validation history lives on `docs:planning/atria-model-prompt-settings/`. The
 first-party product uses this pipeline now; it is not a future P2/P3 proposal.

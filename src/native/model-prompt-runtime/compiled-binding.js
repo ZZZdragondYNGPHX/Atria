@@ -8,6 +8,7 @@ export function compiledRequestBinding({ resolved, contextPlan, promptIr, render
         directives: promptIr.directives, contextSlots: promptIr.contextSlots,
         history: promptIr.history, input: promptIr.input, responseDirectives: promptIr.responseDirectives,
         tools: promptIr.tools, outputContract: promptIr.outputContract,
+        ...(promptIr.semanticBlocks ? { semanticBlocks: promptIr.semanticBlocks } : {}),
         ...(promptIr.prefill === undefined ? {} : { prefill: promptIr.prefill }),
     };
     const binding = {

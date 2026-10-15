@@ -37,27 +37,37 @@ test.each(['separate', 'limited', 'custom'])('S16 installed %s narrator, Actor a
         expect(JSON.stringify(other.included)).toContain('有人跟踪自己');
         expect(JSON.stringify(other.included)).not.toContain('林舟');
         const seeded = await seedGenerationProfiles({ ...h, endpoint: 'http://127.0.0.1:1/not-sent' });
+        const modelInputs = [];
+        const provider = createHttpGenerationProvider({ fetchImpl: () => { throw new Error('Preview must not send'); } });
         const host = new NativeGenerationHost({ ...seeded, sessionCore: f.core, packageInstaller: f.packageInstaller, secretPort: { resolveSecret: async () => 'fixture' },
-            providers: { 'provider.openai-compatible': createHttpGenerationProvider({ fetchImpl: () => { throw new Error('Preview must not send'); } }) } });
+            providers: { 'provider.openai-compatible': { ...provider, renderRequest: input => {
+                // Server-side Provider fixture observes its authorized model input;
+                // the Browser preview still fails its independent display gate.
+                modelInputs.push(input.snapshot.contextPlan); return provider.renderRequest(input);
+            } } } });
         const request = { role: 'narrator', sessionId: base.session.sessionId, revisionId: base.revision.revisionId, requestId: 's16-preview' };
-        const narrator = await host.execute(h.handle, request, undefined, undefined, { preview: true });
-        const policy = narrator.snapshot.contextPlan.items.find(item => item.id === 'projection:policy:cognition');
+        await expect(host.execute(h.handle, request, undefined, undefined, { preview: true }))
+            .rejects.toMatchObject({ code: 'native_generation_preview_disclosure_denied' });
+        const narrator = modelInputs.at(-1);
+        const policy = narrator.items.find(item => item.id === 'projection:policy:cognition');
         expect(policy.content).toContain('independently granted display projection');
         expect(policy.content).toContain('not World Truth');
         expect(policy.content).toContain('current possession, presence, memory or willingness');
         expect(policy.content).toContain('Missing evidence leaves both occurrence and non-occurrence unknown');
         expect(policy.content).toContain('including past events, Exposure');
         expect(policy.content).toContain('quoted, paraphrased, implied');
-        const exposure = narrator.snapshot.contextPlan.items.find(item => item.id.endsWith(':memories:exposure'));
+        const exposure = narrator.items.find(item => item.id.endsWith(':memories:exposure'));
         expect(exposure.content).toEqual(expect.objectContaining({ content: expect.stringContaining('"displayGrant":{"viewId":"player","item":null}') }));
         expect(policy.content).toContain('"hp":8');
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
-        const result = await host.execute(h.handle, { ...request, routeRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } }, undefined, undefined,
-            { preview: true, taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } });
-        const taskText = JSON.stringify(result.snapshot.contextPlan.items);
+        await expect(host.execute(h.handle, { ...request, routeRef: { scope: 'player', runtimeRouteId: seeded.routes[0].runtimeRouteId } }, undefined, undefined,
+            { preview: true, taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } }))
+            .rejects.toMatchObject({ code: 'native_generation_preview_disclosure_denied' });
+        const result = modelInputs.at(-1);
+        const taskText = JSON.stringify(result.items);
         expect(taskText).toContain('林舟');
         for (const hidden of ['真实身份是沈墨', '有人跟踪自己', 'disclosureRule', 'displayGrant']) expect(taskText).not.toContain(hidden);
-        expect(result.snapshot.contextPlan.items.some(item => item.id.startsWith('projection:cognition-task:'))).toBe(true);
+        expect(result.items.some(item => item.id.startsWith('projection:cognition-task:'))).toBe(true);
         expect((await f.core.load(h.handle, base.session.sessionId)).states).toEqual(before);
         const policyOnly = structuredClone(base); policyOnly.manifest.runtime.experienceContract.informationRuntime.views.find(view => view.id === 'pov').sources = [];
         await expect(compileNativeContextPlan(policyOnly, { ...budget, laneCaps: { current_state_event: 1 } })).rejects.toMatchObject({ code: 'native_context_hard_reserve_overflow' });

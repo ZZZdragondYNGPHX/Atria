@@ -2,6 +2,7 @@ import { validatePromptParameters } from '../../../public/shared/prompt-paramete
 import { assertNativeId } from '../identity.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../../public/shared/native-connection-auth.js';
+import { assertSemanticBlocks } from './semantic-blocks.js';
 
 export const ATRIA_MODEL_PROMPT_SCHEMA_VERSION = 1;
 export const ATRIA_CAPABILITY_STATES = Object.freeze(['supported', 'unsupported', 'unknown']);
@@ -559,11 +560,14 @@ export function assertPromptModule(value) {
         'condition',
         'parameters',
         'body',
+        'textMode',
         'provenance',
+        'expression',
     ], 'PromptModule');
     const base = assertRevisionedResourceBase(value, 'PromptModule', 'promptModule', 'promptModuleId');
     const stages = uniqueStrings(value.stages || [], 'PromptModule.stages', { namespacedValues: true });
     if (stages.length === 0) throw new TypeError('PromptModule.stages must contain at least one stage');
+    if (value.textMode !== undefined && !['literal', 'template'].includes(value.textMode)) throw new TypeError('PromptModule.textMode must be literal or template');
     return Object.freeze({
         ...base,
         target: namespaced(value.target, 'PromptModule.target'),
@@ -572,8 +576,20 @@ export function assertPromptModule(value) {
         condition: assertCondition(value.condition, 'PromptModule.condition'),
         parameters: assertParameterDefinitions(value.parameters, 'PromptModule.parameters'),
         body: text(value.body, 'PromptModule.body', 1024 * 1024, { allowEmpty: true }),
+        ...(value.textMode === undefined ? {} : { textMode: value.textMode }),
+        ...(value.expression === undefined ? {} : { expression: assertExpressionScope(value.expression) }),
         provenance: value.provenance === undefined ? [] : freezeArray(clone(value.provenance, 'PromptModule.provenance')),
     });
+}
+
+// Expression selects the scope of authored prose, never an Actor/Source grant.
+function assertExpressionScope(value) {
+    object(value, 'PromptModule.expression');
+    only(value, ['layer', 'actorId'], 'PromptModule.expression');
+    if (!['global', 'scene', 'narrator', 'actor'].includes(value.layer)
+        || value.layer !== 'actor' && value.actorId !== undefined) throw new TypeError('Invalid expression layer');
+    return Object.freeze({ layer: value.layer,
+        ...(value.layer === 'actor' ? { actorId: token(value.actorId, 'PromptModule.expression.actorId') } : {}) });
 }
 
 function assertArtifactDefinitions(value) {
@@ -836,12 +852,13 @@ export function assertRequestContextPlan(value) {
     const items = value.items.map((item, index) => {
         const field = 'RequestContextPlan.items[' + index + ']';
         object(item, field);
-        only(item, ['kind', 'id', 'content', 'provenance'], field);
+        only(item, ['kind', 'id', 'content', 'provenance', 'evidence'], field);
         return Object.freeze({
             kind: namespaced(item.kind, field + '.kind'),
             ...(item.id === undefined ? {} : { id: token(item.id, field + '.id') }),
             content: clone(item.content, field + '.content'),
             provenance: assertProvenance(item.provenance || [], field + '.provenance'),
+            ...(item.evidence === undefined ? {} : { evidence: clone(object(item.evidence, field + '.evidence'), field + '.evidence') }),
         });
     });
     return Object.freeze({
@@ -878,6 +895,7 @@ export function assertPromptIR(value) {
         'prefill',
         'compilation',
         'provenance',
+        'semanticBlocks',
     ], 'PromptIR');
     if (value.schemaVersion !== 1) throw new TypeError('PromptIR.schemaVersion must be 1');
     const directives = Array.isArray(value.directives)
@@ -918,6 +936,7 @@ export function assertPromptIR(value) {
             : { prefill: text(value.prefill, 'PromptIR.prefill', 1024 * 1024, { allowEmpty: true }) }),
         provenance: assertProvenance(value.provenance || [], 'PromptIR.provenance'),
         ...(value.compilation === undefined ? {} : { compilation: clone(object(value.compilation, 'PromptIR.compilation'), 'PromptIR.compilation') }),
+        ...(value.semanticBlocks === undefined ? {} : { semanticBlocks: assertSemanticBlocks(value.semanticBlocks, value) }),
     });
 }
 

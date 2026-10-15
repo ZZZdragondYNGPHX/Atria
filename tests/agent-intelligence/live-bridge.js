@@ -12,7 +12,7 @@ import { observedGenerationUsage } from '../../src/native/adapters/generation-us
 function publicDirectorMessages(messages) {
     // Director presentation metadata is not part of a provider transcript.
     // Preserve public tool call/result relationships; never forward reasoning.
-    return messages.map(message => ({ role: message.role, content: message.content,
+    return messages.map(message => ({ role: message.role === 'system' ? 'user' : message.role, content: message.content,
         ...(message.tool_call_id ? { tool_call_id: message.tool_call_id } : {}),
         ...(message.name ? { name: message.name } : {}),
         ...(message.tool_calls ? { tool_calls: message.tool_calls.map(call => ({ id: call.id, type: call.type,

@@ -143,7 +143,10 @@ describe.each(CONTRACT_HARNESSES)('P2 actual background send budget - $name', ({
         await command({ kind: 'app.command', domainId: 'notes', commandId: 'save', recordId: 'main', args: { text: 'changed' } });
         const cancelled = await host.executeLifecycle(h.handle, input()); base = cancelled.snapshot;
         expect(cancelled.results).toEqual([]); expect(seen).toEqual([]);
-        await host.execute(h.handle, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, role: 'narrator', requestId: 'preview' }, undefined, undefined, { preview: true });
+        // This fixture has private Task/Information context. A browser preview
+        // cannot inherit the model's grant; rejection must still spend no quota.
+        await expect(host.execute(h.handle, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, role: 'narrator', requestId: 'preview' }, undefined, undefined, { preview: true }))
+            .rejects.toMatchObject({ code: 'native_generation_preview_disclosure_denied' });
         await expect(host.execute(h.handle, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, role: 'narrator', requestId: 'unbound-send' })).rejects.toMatchObject({ code: 'native_generation_budget_lane_denied' });
         await host.prepareLifecycle(h.handle, input()); expect(seen).toEqual([]);
         expect(Object.values((await svc.core.runs.status(h.handle, base.session.sessionId))?.operations ?? {}).reduce((sum, op) => sum + op.total, 0)).toBe(0);

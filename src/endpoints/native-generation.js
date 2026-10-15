@@ -12,8 +12,9 @@ import { SpeechService } from '../native/speech-service.js';
 import { McpService } from '../native/mcp-service.js';
 import { A2aService } from '../native/a2a-service.js';
 import { ExtensionsStore } from '../native/extensions-store.js';
-import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
+import { assertVersionedModelPromptResource, getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
+import { projectGenerationResultForBrowser } from '../native/model-prompt-runtime/preview-disclosure.js';
 import { readPromptControls, validatePromptOverrides } from '../native/model-prompt-runtime/prompt-controls.js';
 import { PromptPresetStore } from '../native/model-prompt-runtime/presets.js';
 import { PromptCandidateStore } from '../native/model-prompt-runtime/prompt-candidates.js';
@@ -50,6 +51,7 @@ import { AgentExperienceService } from '../native/agent-intelligence/experience-
 import { getChatRepo } from '../storage/index.js';
 import { observeEvolutionRp } from '../native/agent-intelligence/evolution-observer.js';
 import { AgentEvolutionService } from '../native/agent-intelligence/evolution-service.js';
+import { QUALITY_PROFILES, QUALITY_REVISION, requirePilotSources, REFUSAL_CLASSIFICATIONS, DIAGNOSIS_SUPPORT_LEVELS } from '../native/agent-intelligence/evaluation/quality.js';
 import { CredentialTargetAuthority, createCredentialSecretPort } from '../native/model-prompt-runtime/credential-targets.js';
 import { credentialFetch } from '../native/model-prompt-runtime/credential-fetch.js';
 import { mountMcpMediaAssets } from '../native/mcp-media-assets.js';
@@ -93,6 +95,30 @@ export async function wakeCollectedExperience(handle, result) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    router.get('/quality-profiles', (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        const profiles = Object.values(QUALITY_PROFILES).filter(profile => !profile.profileId.startsWith('legacy.')).map(profile => {
+            let readiness;
+            try { requirePilotSources(profile.profileId); readiness = { status: 'ready' }; } catch (error) {
+                if (error.message !== 'source_unready') throw error;
+                readiness = { status: 'BLOCKED', code: 'source_unready' };
+            }
+            return { ...profile, readiness };
+        });
+        return res.json({ schemaVersion: 1, registryRevision: QUALITY_REVISION, profiles,
+            refusalClassifications: REFUSAL_CLASSIFICATIONS, supportLevels: DIAGNOSIS_SUPPORT_LEVELS,
+            modelAssessment: { strongestSignal: 'suspected_failure', strongestSupport: 'unverified', providerBlockAuthority: 'original_provider_outcome', ruleVerification: 'host_checker_only' } });
+    });
+    // Browser JSON must never be silently interpreted as a trusted executable
+    // port, nor ignored while a supposedly preview-only request actually sends.
+    router.use((request, response, next) => {
+        if (request.method === 'POST' && ['/execute', '/preview', '/task', '/turn', '/task/start', '/turn/start'].includes(request.path)
+            && ['drafts', 'baselineDrafts', 'draftOverrides', 'resourceOverrides', 'programSelection'].some(key => Object.hasOwn(request.body ?? {}, key))) {
+            return response.status(400).json({ error: 'native_generation_preview_only' });
+        }
+        next();
+    });
     mountMcpMediaAssets(router, { getHost });
     router.post('/protocols/describe', async (request, response) => {
         const handle = request.user?.profile?.handle;
@@ -509,10 +535,13 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(nativeTaskScheduler.project(req.user.profile.handle, req.params.id)); } catch { res.sendStatus(404); }
     });
-    router.get('/operations/:id/result', (req, res) => {
+    router.get('/operations/:id/result', async (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
-        try { res.json(nativeTaskScheduler.result(req.user.profile.handle, req.params.id)); } catch (error) { res.status(error.code === 'operation_not_found' ? 404 : 409).json({ error: error.code }); }
+        try {
+            res.json(await projectGenerationResultForBrowser(getHost(), req.user.profile.handle,
+                nativeTaskScheduler.result(req.user.profile.handle, req.params.id)));
+        } catch (error) { res.status(error.code === 'operation_not_found' ? 404 : 409).json({ error: error.code }); }
     });
     router.post('/execute/start', async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
@@ -861,7 +890,9 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const entries = [];
             const append = (resourceType, resource, scope, archived = false, presetOwner = null) => {
                 const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
-                entries.push({ ref: { resourceType, resourceId: identity.resourceId, revision: identity.revision, ...scope }, resource, ...(archived ? { archived: true } : {}), ...(presetOwner ? { presetOwner } : {}) });
+                entries.push({ ref: { resourceType, resourceId: identity.resourceId, revision: identity.revision, ...scope }, resource,
+                    fingerprint: hashNativeDocument(assertVersionedModelPromptResource(resourceType, resource)),
+                    ...(archived ? { archived: true } : {}), ...(presetOwner ? { presetOwner } : {}) });
             };
             for (const item of await host.library.listWithRevisions(handle)) {
                 for (const revision of item.revisions) {
@@ -937,6 +968,21 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             return response.sendStatus(404);
         } catch (error) { response.status(error.code === 'native_generation_configuration_conflict' ? 409 : 400).json({ error: ['native_runtime_fallback_role', 'native_generation_configuration_conflict'].includes(error.code) ? error.code : 'native_generation_configuration_invalid' }); }
     });
+    router.post('/preview/draft', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        response.set('Cache-Control', 'private, no-store');
+        const controller = new AbortController();
+        const abort = () => { if (!response.writableEnded) controller.abort(); };
+        response.on('close', abort);
+        try {
+            const result = await getHost().previewDraft(handle, request.body, controller.signal);
+            if (!controller.signal.aborted) response.json(result);
+        } catch (error) {
+            const code = /^(native_generation_|generation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_generation_draft_invalid';
+            if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
+        } finally { response.off('close', abort); }
+    });
     router.post(['/execute', '/preview', '/task', '/turn'], async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -951,7 +997,8 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         try {
             const host = getHost();
             const method = request.path === '/task' ? 'executeTask' : request.path === '/turn' ? 'executeTurn' : 'execute';
-            const result = await host[method](handle, request.body, controller.signal, streaming ? chunk => emit({ chunk }) : undefined, { preview: request.path === '/preview' });
+            const generated = await host[method](handle, request.body, controller.signal, streaming ? chunk => emit({ chunk }) : undefined, { preview: request.path === '/preview' });
+            const result = request.path === '/execute' ? await projectGenerationResultForBrowser(host, handle, generated) : generated;
             if (!controller.signal.aborted) {
                 if (streaming) { emit({ result }); response.end(); } else response.json(result);
             }

@@ -57,7 +57,10 @@ export async function createFrozenEvaluationBridge(config, send) {
                 const contextProvider = { buildRequestContextPlan: async () => ({ schemaVersion: 1, requestId,
                     source: { kind: 'task', projectId: createNativeId('project', () => '00000000000000000000000000000000'), revision: fixtureHash, taskId: trialId },
                     items: messages.map((m, i) => ({ kind: 'context.history', id: 'evaluation-' + i,
-                        content: { role: m.role, content: m.content, ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}), ...(m.name ? { name: m.name } : {}), ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}) },
+                        // Historical adapter envelopes combine fixture data and
+                        // old system strings. They are evidence, never a trusted
+                        // policy source for the native compiler.
+                        content: { role: m.role === 'system' ? 'user' : m.role, content: m.content, ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}), ...(m.name ? { name: m.name } : {}), ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}) },
                         provenance: [{ source: 'evaluation.fixture' }] })), provenance: [],
                     budget: { maxTokens: config.model.limits.contextTokens - config.generation.output.maxTokens, reservedOutputTokens: config.generation.output.maxTokens } }) };
                 const service = new GenerationService({ resolver, contextProvider, preparePrompt: compiler.preparePrompt, secretPort, providerFor: () => provider });
