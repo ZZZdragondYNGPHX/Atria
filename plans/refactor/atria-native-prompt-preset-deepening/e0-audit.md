@@ -131,6 +131,6 @@
 
 ### 当前交付与停止位置
 
-V3 后续中间范围同步已收到并核对 `docs@8f7458358` / source `4a62ba5cc` 的原 [整合入口](../atria-native-orchestration-v3/backend-integration.md)、接口 §17.15–17.19、验收 §9.1 和原 Record：D8/W08 全范围已并入统一前端提示词，P3 仍 IN_PROGRESS / NOT_READY，P4–P8 未交付。缺失 runtime API/领域消费者是原 V3 后续已授权实施，不当成仅需外部条件的 BLOCKED，也不转移给前端造假端口。此次是中间范围同步；最终后端完成 SHA/新接口尚待原任务交付，未合两源码、未运行组合回归、未改 main。
+V3 后续中间范围同步已更新并核对 `docs@b16075585` / source `be95ab792` 的原 [整合入口](../atria-native-orchestration-v3/backend-integration.md)、接口 §17.15–17.22、验收 §9.1 和原 Record 第五至十二组：D8/W08 全范围、委派 exact Plan pin 允许集合、A2A 受理与完成的区别、费用明细与稳定 local identity 已并入统一前端提示词，没有新增 runtime 产品 HTTP。P3 仍 IN_PROGRESS / NOT_READY，P4–P8 未交付。缺失 runtime API/领域消费者是原 V3 后续已授权实施，不当成仅需外部条件的 BLOCKED，也不转移给前端造假端口。此次仍是中间范围同步；最终后端完成 SHA/新接口尚待原任务交付，未合两源码、未运行组合回归、未改 main。
 
 本任务可独立后端接口及相关本地验证交付；**整体 E0 仍 NOT_CLOSED**。保留语义分支而不向 stable main 混入未完成的跨任务组合，也不清理其他活跃分支。具体提交/测试只记同一 Record。前端由用户转交 Claude Code；后续需协调原 V3 接线及真实质量来源，不在浏览器创建假的运行/评测/发布权威。此处停止不表示 D2–D8 的模型质量、完整 V3 或全产品前端已全部完成。

@@ -264,3 +264,10 @@
 - 原 Plan Authoring 七个 POST 子路径是当前实有 API；Run/Binding/Projection/Approval 等仍未挂载，实际领域授权、角色/后台 quota、P4、P6 和三端/质量等尚未完成，P3 Gate NOT_READY。中间内部 callback/已存在控制器不等于产品可运行；未借用另一任务测试作本任务 PASS。
 - 原任务报告 merge-tree 对 V3 `4a62ba5cc` 与 Prompt `760327891` 的 generation-host/execution-utils 内容冲突；contracts/prompt-candidates 双方修改自动合并仍需语义复验。此处只记录其预演报告，**本轮没有实际 merge、解决冲突或执行组合测试**；两边预算/Source/Typed Prompt/Browser 隔离均须保留，P7 未过不合 main。
 - 本次只同步范围/接口依赖；最终统一 Claude Code 交接仍需原 V3 后续实际完成通知、新 SHA/API/Gate 差异，不能把本次提示词更新宣称 V3 全部后端完工或可发布。
+
+## 2026-10-16 — V3 第十一、十二组接口增量同步
+
+- 实际读取 docs `b16075585`、V3 source `be95ab792`；核对原整合入口、接口 §17.20–17.22 和原 Record 第十一、十二组。此前 `4a62ba5cc`/`8f7458358` 保留为历史同步记录，统一提示词的当前引用更新为最新观察值；旧 merge-tree 报告不再表述为最新 HEAD 的完整冲突清单。
+- 同一 Claude 提示词加入显式 `allowedPlanPinIds`、本 Node dependency 的 exact plan pin / 完整 revision integrity、空集合禁止与缺字段 invalid；不扩大委派授权、不兼容旧缺字段形态。A2A `a2a_send_accepted` 只表示原持久受理事实，不是远端完成、正文消费或重新发送/取消许可；原费用与 local ordinal 的未知只观察语义同样列入界面要求。
+- 产品 HTTP 仍只有原 Plan Authoring 七个 POST，未凭内部 observe API 造产品端点。原任务的 FS/SQLite、指定 SQL 和四 Engine 子集证据仍归其 Record；本次仅文档核对，没有重跑或冒称本任务通过这些测试。P3 Gate 仍 NOT_READY，后续真实 scope/Session quota/持久 Port 与其余缺口仍由原 V3 继续实施。
+- 未修改或合并任何源码分支、未改 main、未开始前端；保留 docs/V3 工作树已有无关改动。本轮文档验证和提交从实际 Git/检查输出追溯。
