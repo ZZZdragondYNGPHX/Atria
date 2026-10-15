@@ -1,6 +1,6 @@
 # 跨模块冻结决定与待选项
 
-说明：仅记录用户已明确选择的产品设计。D1–D6 已冻结，D7 尚未决议；文档提交不构成产品实现许可。
+说明：仅记录用户已明确选择的产品设计。D1–D7 已冻结；D8 所有备选 OPEN。文档冻结不表示代码实现、验收通过或可开始修改 main。
 
 ## D1 冻结，2026-10-15
 
@@ -72,10 +72,23 @@
 
 详细且唯一的 D6 合同见 [context-memory-consumption.md](context-memory-consumption.md)。原 Memory 检索策略、Actor 状态、World 事实、Permission/Display Authority 与 V3 C2 的详细物理定义不在本 Plan 复制或重开。
 
-## D7 待选（见 [quality-evolution.md](quality-evolution.md)）
+## D7 已冻结 — Q2 + F2 + O2 + P2（2026-10-15）
 
-- **Q1/Q2/Q3**：文学、人物一致性、长会话剧情、任务完成与不可抵消的硬约束如何形成受审 RP QualityProfile/独立报告，不以文笔均分掩盖玩家代写/信息串知。
-- **F1/F2/F3**：用户显式偏好、实际观察、Host 检查、模型 Judge 与未知来源如何归因，什么缺陷才允许定位为 Prompt 而非 Context/Model/Runtime。
-- **O1/O2/O3**：合法成年人虚构 RP 的过度拒答怎样独立衡量，区别 Provider 显式阻断与模型主动回避，避免优化成攻击成功率或一律“通过”。
-- **P1/P2/P3**：原 EvolutionTargets/PromptCandidateStore 仅对获准的精确目标进行候选变更、评审与 PlanBinding CAS 发布，什么情况下使用反思/Pareto 选择，何时需人工 Review。
-- 四组方案全部 **OPEN**。后续决策必须保持 V3 `plan-prompt` target 与原 Experience/Eval/质量和发布权威，不重复建 Judge、候选 Store、Plan/Runtime；D7 选择后仍按约定先提交同一 Plan/Record，再讨论 D8。
+1. **Q2 多维受审质量向量 + 硬门槛不可抵消**：复用原 `Experience/Eval/QualityProfile`，保留 `player_agency/promise_application/knowledge_boundary/continuity/actor_voice/narrative_response`，在**受审的具体来源和适用案例**上拓展文学文笔/节奏/声音差异/场景推进/长篇连续/作者风格遵循/合法无端拒答与 Agent 任务证据、完成度。单场景只评价适用维度；unknown/N.A. 与相关来源版本明确标注。玩家代写、越权披露、World/Tool/Output/正式提交硬错误不得被文笔均分或审稿者偏好抵消。
+2. **F2 反馈 provenance 与根因分离**：沿原 Experience 区分 authenticated 用户显式偏好、客户端接受/重生/编辑观察、Host 有据 checker/Receipt、模型审稿假设和 unknown；诊断 `prompt/context/state/runtime/evaluator/model/unknown` 真实支持程度。只有有来源并定位为可修改 Prompt 的缺陷才进入局部候选；Source 失效、Context 漏选、模型能力/Provider 明确拒答、Runtime 或 Evaluator 问题按原归属处理。模型自评不得自称 `verified_failure`，不能将生成完成或点击继续冒充用户审美满意。
+3. **O2 合法成年虚构 RP 过度拒答专项**：为受支持的合法创作场景建立正/反控制、语言/文体/场景/模型适用性标注；分开 Provider 明确拒绝、模型疑似无端回避、答了却无端淡化、一般文学质量欠佳和原因未知。Atria 自身不因成熟浪漫/欲望/强情绪题材就插入泛化说教，不以攻击成功率或“任何拒答都算失败”训练；不能伪称外部 Provider 固定限制可由提示词解除或自动跨 Provider 规避。
+4. **P2 条件反思 + 多目标评价 + Review/Publish**：复用原 `EvolutionTargets`、`PromptCandidateStore`、Evaluator/Experience 和 V3 §11 `plan-prompt` 的 exact `{bindingId,expectedBindingVersion,planRef,nodeId,promptModuleRef}`。只在已声明的局部 PromptModule 上根据合法、可信 Development 证据生成可审查候选，可借鉴 GEPA 类反思/受审 Pareto 探索，但**不新增优化执行器、Candidate/PlanStore/Judge/预算权威**；独立 Promotion 证据通过后，用户/可信 Review 发布新 exact Module → immutable PlanRevision → PlanBinding CAS，并按原 Publication Journal reconcile/rollback。活动 Run 不变，CAS 冲突不覆盖他人变更，Prompt 不得改变 Tool/Grant/World/Output 权限。
+5. **真实评价证据资格**：Development 和独立 Promotion 依现有 split/provenance/Group/Source/Revision 防泄漏；被改名/复用的同源场景不能冒充独立样本；模型 Judge/用户偏好/Host 确定性校验各有证据等级，保留不利维度、未知、费用、失败、未达标与回滚事实。G1 常规 RP 不固定每轮启用 Judge/反思/重写，只有获准审稿或有证据缺口及合法预算时运行。
+6. **本轮明确阻塞（STATIC/NOT_RUN）**：`main:quality.js` 的 `requirePilotSources()` 仍返回 `source_unready`，没有新文学/误拒受审来源或校准完成的证据；`main:EvolutionTargets` 仍有旧 Workspace/Director consumers，尚未证明 V3 `plan-prompt` 的 target/catalog/prepare/apply/Publication 与真实 Node 消费已接通；当前 `PromptCandidateStore` 面向原 Preset/Route，不等于新 V3 发表链通过。旧模式应在**正式实施**零兼容清退，不能把设计文档表述成已经删除。
+7. **其它未验收项和原权威**：D4 Node 独立 Program 与 Route `promptProgramRef` / `generation_semantic_authority_changed` fallback，D5 `context.fact → contextSlots → system` 来源信任边界，D6 U2/E2/H2/V2 的长会话质量/Actor/Branch/Source-aware 失效均仍需真实测试。V3 单 Native Host、HCM-01–08、原 World/Memory/Context/Experience/Eval/Compute/Output/Reviewer 权威不变；正式重构无旧 ST/Workspace/API/mode 迁移或兼容。
+
+**冻结的是产品语义与未来验收要求，不是实施通过、模型表现已提升或 UI 已完成。** 领域细则归唯一 [D7 模块](quality-evolution.md)。
+
+## D8 讨论开放（见 [preset-studio-experience.md](preset-studio-experience.md)）
+
+- **W1/W2/W3**：原 Native Library、Studio、Play、V3 Graph/Run Inspector 间如何组织预设/创作控制与来源导航；不能新建第二套 Profile/Run/Prompt Authority。
+- **R1/R2/R3**：F2 已冻结的「结构化面板 + 完整自由作者文本」如何实现同步、无损、冲突提示、撤销和正式修订。
+- **P1/P2/P3**：静态 PromptIR/最终 Provider wire/Version Diff 预览的真实能力，如何区分本地预览与付费真实生成及运行中 Plan。
+- **I1/I2/I3**：文学/合法误拒/Agent 故障/权限/模型能力来源证据怎样分级展示而不泄漏私有 Context/Secret。
+- **M1/M2/M3**：Windows/CachyOS Linux/Android Termux 同一 Shell/Host 契约下的桌面和移动编辑、Inspector、可访问性与性能体验。
+- 五组全部 **OPEN**，不因列出推荐而提前定案；D8 冻结后先提交同一 Plan/Record，再进行 D9/E0 设计与实施准备审计。仅修改 `docs`，不创建实现分支、不修改 `main`。

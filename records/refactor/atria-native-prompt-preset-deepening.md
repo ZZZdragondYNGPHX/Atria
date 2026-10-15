@@ -3,7 +3,7 @@
 - Task ID：`refactor/atria-native-prompt-preset-deepening`。
 - Primary Workspace：`main`（未来实现，当前未授权修改）。
 - Docs Plan：[index](../../plans/refactor/atria-native-prompt-preset-deepening/index.md)。
-- 当前阶段：D1–D6 已冻结；D7 讨论草案已创建且 Q/F/O/P 四组尚未选择；同一份 Record 持续追加所有后续轮次。
+- 当前阶段：D1–D7 已冻结；D8 讨论草案已建，W/R/P/I/M 方案待用户选择；同一份 Record 持续追加后续轮次。
 - 起点：`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`；`docs@6254dd1e73a44564824ca5b0a8c6d24ee0ace030`；V3 branch `c04f36925189d4064a63bdd6b9ca345ff2bcf805`。以上仅核对时刻，不替代后续实际检查。
 
 ## 2026-10-15 — D1 方向冻结与 D2 文档先行
@@ -114,3 +114,24 @@
 - **D7 真实消费者缺口**：现有 RP `rp.m1.information` 只覆盖 player_agency、promise_application、knowledge_boundary、continuity、actor_voice、narrative_response 等维度；还需受审文学/长期/过度拒答质量来源。当前 `requirePilotSources()` 仍直接返回 `source_unready`；`EvolutionTargets` 仍有旧 Workspace/Director targets；`PromptCandidateStore` 的现有 Route/Library 流程不等于 V3 `plan-prompt` target/PlanRevision/PlanBinding CAS 的产品链已运行。
 - 本轮仅远端 Git 文档提交与提交后文件读回验证；**NOT_RUN**：Node/Jest/build、CI、外部模型/Provider API、合法误拒真实实验、浏览器自动化、Windows/CachyOS Linux/Android Termux 真机、V3 运行恢复及 Snapshot 评价。
 - 下一 checkpoint：开始第七轮 Q（质量向量）、F（原 Experience provenance）、O（合法误拒）、P（Prompt 候选/Review/Publish）深入讨论。用户决策 D7 后先更新并提交同一 Plan/Record，再进入 D8；未完成 E0 前不得宣布实现已可开工或已通过验收。
+
+## 2026-10-15 — D7 正式冻结 Q2 + F2 + O2 + P2；D8 讨论草案（docs-only）
+
+**用户冻结的产品设计**
+- **Q2**：原 RP/Agent 质量报告保留重要 Hard Constraints 与有来源的文学文笔/节奏/角色 voice/长篇连续/Agent 任务效果的多维 QualityProfile，硬 World/Source/Display/玩家授权/正式副作用错误不可被文学高分抵消；长篇评价必须有相应有效样本/跨度。
+- **F2**：复用原 Experience/Feedback/Diagnosis，对用户 explicit preference、客户端 observation、Host checker/Receipt、Model Judge 仅推测、unknown 保留来源和证据级别；仅诊断为真正 Prompt/局部文本目标的问题进入 PromptCandidate，Context/State/Runtime/Model/Evaluator 缺陷另行归因，不做二次 Feedback DB。
+- **O2**：合法成年虚构 RP 的无端说教、回避、淡化与明确 Provider content block 分别评价，维护 benign/negative controls，不把“任何拒答都算失败”或越狱成功率作为优化目标；Atria 不以成熟文学题材泛化降级用户创作指令，遵循实际 Provider 功能、权限与适用规则。
+- **P2**：确有来源与获准的 Development Feedback/Diagnosis 才生成局部反思候选，按原 Eval/QualityProfile/独立 Promotion 保留多目标差异（可参考 GEPA/Pareto，但不新建 Optimizer）；`PromptCandidateStore` exact Module、原 V3 `plan-prompt` target、Review → immutable PlanRevision → PlanBinding CAS / publication journal reconcile 是唯一发布/撤回路径。旧活动 Run/World/权限不得被候选篡改。
+- 保持 D1–D6、V3 单 Native Host、原 Context/Model/Experience/RunControl/Memory/World 与 Creator 自由文本、Player Agency、Source/Display/Compute 权威；正式重构无 ST/Workspace/Director/旧 API/mode 兼容或双轨。
+
+**本轮真实远端核查 / 文件工作**
+- 读取时核实 `docs@a1afa889780f67fc5fc930dd4ac8d17904f7bdfe`、`main@5eb3bc7652cd9837ca8c555cf74976fab078932c`、V3 `refactor/atria-native-orchestration-v3@c04f36925189d4064a63bdd6b9ca345ff2bcf805`；读取完整 `docs:README.md` 和本 Plan index/decisions/D7/Record 的相关模块。
+- 复查已有 Library/Studio/Play 提示词 UI：`main:public/scripts/native/prompt-authoring.js`、`prompt-presets.js` 与 `src/native/model-prompt-runtime/README.md` 的 committed exact preview 和 Route-owned choices；比对 V3 的 Graph Editor、Run Timeline/Inspector、移动 List/Sheet 和单 Host Projection 设计，避免新建第二组 Graph/Run UI 或 Prompt 资源写入者。
+- 按本轮决定，仅修改 `docs:plans/refactor/atria-native-prompt-preset-deepening/index.md`、`decisions.md`、`quality-evolution.md`；新增 D8 OPEN `preset-studio-experience.md`；将本段**追加至同一份 Record**，保留 D1–D6 历史。D8 W/R/P/I/M 五组全部待选，不提前冻结。
+
+**实施/质量阻塞与真实验证状态**
+- `main:quality.js` 的 `requirePilotSources()` 仍为 `source_unready`；实际新增文学/合法误拒受审来源/校准和长篇独立 Promotion **NOT_RUN**。旧 `EvolutionTargets` 的 Workspace/Director consumers 未实际清退，V3 `plan-prompt` 与 PromptCandidate/PlanRevision/PlanBinding CAS 真实生产链未核实跑通。
+- D4 V3 Node 独立 Program/Route 实际接线与 `generation_semantic_authority_changed` fallback；D5 `context.fact → contextSlots → system` 来源/Provider Role；D6 Source/Audience/Branch/WorldTick/Grant 复验与长会话压缩质量仍为未实现或未测证据，不能因 D7 冻结而删除阻塞。
+- D8 尚未实现结构化/原文无损双编辑器、未发布 Draft 真实有效 Preview、Provider wire/semantic diff、Quality Inspector 和三端等价。现有 `/preview` 的受权 committed refs 不是通用未发布/可执行 Draft 端口；无权限不得暴露私有 Source、Secret 或隐含思维内容。
+- 本轮仅远端 Git 文档提交、更新后读取文档和 ref 的核验；**未运行** Node/test/build、CI、模型/Provider API、浏览器 E2E、Windows/CachyOS Linux/Android Termux 真机或真实调用/成本/质量测试；不做产品分支、更不触碰 main。
+- 下一 checkpoint：第八轮 W（Library/Studio/Play 信息架构）、R（F2 raw+structured 编辑）、P（有效 IR/Provider Preview/Diff）、I（质量与错误证据 Inspector）、M（PC/移动全功能对等）。建议 W2+R2+P2+I2+M2 **OPEN**；用户选后继续「先更新并提交同一 Plan/Record，然后 D9/E0 审计」原则，未收口不创建实现分支。
