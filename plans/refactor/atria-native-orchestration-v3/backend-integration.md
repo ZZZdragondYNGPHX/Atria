@@ -48,6 +48,8 @@ Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate �
 
 第二十三组复用同一ModelPort增加原intent_resolver固定producer与内部authority_intent Context；原catalog/Observation只在原bank准入后编译，两个既有request形态分别严格核工具和控制字段，私有tools不成为通用Tool grant。原Attempt settlement→Transition计边连接Narrator；selection reuse是原事实引用，无模型收据/费用。具体支持边界及本地实际证据归接口§17.33和同一Record，不提升Run终态或P3 Gate。
 
+第二十四组补原Project Task→同实例Studio队列的消费边界及预算tx纯读（接口§17.34），复用原Repository与可提交状态权威，不新增业务writer。它是后续Project Model/Context生产组合的前置；当前尚不能将Project展示为可执行的完整V3 consumer，RP也不能借RPControl锁宣称ChatRepo已受保护。
+
 ## 4. 并入统一前端的范围
 
 前端任务纳入 W08/P5 的 Plan Library、Graph Canvas+Inspector、同语义 Node/Edge List 与移动 Sheet、Draft/Validate/Publish 冲突处理；Run 默认 Timeline/Graph 切换、Source/Audience/成本/未知/错误和受控诊断；可信 Approval 展示与 Cancel/Status 可达；Shell Search/deep-link/history/Back 和移动键盘/IME/无障碍。
@@ -60,7 +62,7 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 | 项目 | 当前事实和下一归属 |
 | --- | --- |
-| 领域 grant 与正式 runtime API | P3/P4 尚需将实际 Plan/Source/Context/Effect/Delegate 权限组合及原消费者装配，之后才开放受控 API。第二十一组复现的Source/Binding末await缺口由第二十二组原Run→Runtime→Session锁及末域复核修复（§17.32），Project/RP正文消费adapter仍未接。内部工厂已存在不等于产品 endpoint 已存在。 |
+| 领域 grant 与正式 runtime API | P3/P4 尚需将实际 Plan/Source/Context/Effect/Delegate 权限组合及原消费者装配，之后才开放受控 API。第二十二组原Session消费围栏见§17.32；第二十四组原Project Source围栏/预算tx读见§17.34，Project完整Model/Context正文及RP adapter仍未接。内部工厂已存在不等于产品 endpoint 已存在。 |
 | Session role/background quota | 固定Narrator及含原generationBudget的free-text authority resolver已接原quota/compute同CAS（§17.30、§17.33）；后台lifecycle outbox等producer、无quota/缺V3保留事实的free-text来源仍待接，不接受caller role，不增加第二计数器。 |
 | Scheduler/Handoff/Result/Disclosure | 原固定Turn的active operation/attempt/资源/signal已绑定；Model/Skill与原Run树控制写的消费顺序见§17.31，P4正式提交围栏仍待接。完整Delegate/Task permits、Handoff、子结果消费、跨Agent分享仍待接。 |
 | RP/Game、Project/Evolution | P4 原唯一正文 slot、World/Command/Project Review/Commit 与 Eval/target 仍需正式 consumer；Run completed 不代表业务已提交。 |
@@ -73,6 +75,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十三组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十四组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。
