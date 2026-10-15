@@ -3,7 +3,9 @@ import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../publ
 import { getNativeDocument, putMutable, hashNativeDocument } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
-import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger } from '../../public/shared/native-compute-budget.js';
+import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger, hasOpenComputeReservations,
+    reserveComputeChild, releaseComputeChild, admitComputeAttempt } from '../../public/shared/native-compute-budget.js';
+import { fields } from '../../public/shared/native-values.js';
 import { assertSessionTaskHistory, sessionTaskHistoryLimits, completeSessionTaskHistory, sessionTaskPublicSummary } from '../../public/shared/native-session-task-history.js';
 
 export const runFailure = code => Object.assign(new TypeError(code), { code });
@@ -22,10 +24,27 @@ function selectSessionTaskHistory(control, snapshot, operation, id, identity) {
 }
 function retireOperations(control, keep) {
     control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => {
-        if (keep(op) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) return true;
+        if (keep(op) || hasOpenComputeReservations(op.compute) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) return true;
         if (op.compute) control.retiredCompute = retireComputeLedger(control.retiredCompute, op.compute);
         return false;
     }));
+}
+
+function computeOperation(control, snapshot, anchor, limits, { required = false } = {}) {
+    if (control.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+    if (required) {
+        fields(anchor, ['branchId', 'revisionId'], 'Compute source anchor');
+        if (anchor.branchId !== snapshot.revision.branchId || anchor.revisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+    }
+    const id = hashNativeDocument({ lane: 'turn', anchor });
+    let op = control.operations[id];
+    limits ??= op?.compute?.limits;
+    if (!limits) { if (required) throw runFailure('native_generation_budget_unavailable'); return null; }
+    if (!op) {
+        if (Object.keys(control.operations).length >= 128) throw runFailure('native_run_continuation_limit');
+        op = control.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
+    }
+    return { id, op, limits };
 }
 export function retireRunOperations(control) { retireOperations(control, () => false); return control; }
 export function runPublicationProof() { const proof = {}; proofs.add(proof); return proof; }
@@ -270,36 +289,66 @@ export class RunControl {
 
     async chargeCompute(handle, snapshot, anchor, limits, attempt, options = {}) {
         return this.update(handle, snapshot.session.sessionId, value => {
-            if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
-            const id = hashNativeDocument({ lane: 'turn', anchor });
-            let op = value.operations[id];
-            limits ??= op?.compute?.limits;
-            if (!limits) return null;
-            if (!op) {
-                if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
-                op = value.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
-            }
-            const compute = chargeComputeAttempt(op, limits, attempt, options);
+            const selected = computeOperation(value, snapshot, anchor, limits);
+            if (!selected) return null;
+            const { id, op } = selected;
+            const compute = chargeComputeAttempt(op, selected.limits, attempt, options);
             return { operation: id, compute, limits: structuredClone(op.compute.limits) };
         });
     }
 
-    async chargeLocalWork(handle, snapshot, anchor, limits, attempt, { background = false } = {}) {
+    async reserveComputeChild(handle, snapshot, anchor, limits, input) {
+        return this.update(handle, snapshot.session.sessionId, control => {
+            const selected = computeOperation(control, snapshot, anchor, limits, { required: true });
+            return { operation: selected.id, ...reserveComputeChild(selected.op, selected.limits, input), limits: structuredClone(selected.op.compute.limits) };
+        });
+    }
+
+    async admitCompute(handle, snapshot, anchor, limits, attempt, options = {}) {
+        return this.update(handle, snapshot.session.sessionId, control => {
+            const selected = computeOperation(control, snapshot, anchor, limits, { required: true });
+            const admission = admitComputeAttempt(selected.op, selected.limits, attempt, options);
+            return { operation: selected.id, compute: admission.attempt, replayed: admission.replayed, limits: structuredClone(selected.op.compute.limits) };
+        });
+    }
+
+    async releaseComputeChild(handle, sessionId, operation, reservationId) {
+        return this.update(handle, sessionId, control => {
+            const op = control.operations[operation];
+            if (!op?.compute) throw runFailure('native_generation_attempt_conflict');
+            return { operation, ...releaseComputeChild(op, reservationId) };
+        }, 'status');
+    }
+
+    async observeCompute(handle, sessionId, operation, attemptId) {
+        return this.repo.withRunLock(handle, sessionId, () => this.repo._engine.withTransaction(handle, async tx => {
+            const control = await assertRunAccess(tx, handle, sessionId, 'status');
+            const ledger = control?.operations[operation]?.compute, compute = ledger?.attempts.find(row => row.attemptId === attemptId);
+            if (!compute) throw runFailure('native_generation_attempt_conflict');
+            return structuredClone({ operation, compute, limits: ledger.limits });
+        }));
+    }
+
+    async chargeLocalWork(handle, snapshot, anchor, limits, attempt, { background = false, reservationId } = {}) {
         const id = hashNativeDocument({ lane: background ? 'background' : 'turn', anchor });
         return this.update(handle, snapshot.session.sessionId, value => {
             if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
             let op = value.operations[id];
             limits ??= op?.compute?.limits;
-            if (!limits?.localWork && !op?.compute?.limits.localWork) return null;
+            if (!limits?.localWork && !op?.compute?.limits.localWork) { if (reservationId != null) throw runFailure('native_generation_budget_unavailable'); return null; }
+            if (reservationId != null) {
+                fields(anchor, ['branchId', 'revisionId'], 'Compute source anchor');
+                if (anchor.branchId !== snapshot.revision.branchId || anchor.revisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            }
             if (!op) {
                 if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
                 op = value.operations[id] = { lane: background ? 'background' : 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
             }
-            const localWork = chargeLocalWork(op, limits, attempt);
+            const localWork = chargeLocalWork(op, limits, attempt, { reservationId });
             return { operation: id, localWork };
         }, 'write', value => {
             if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
-            return Boolean(limits?.localWork || value.operations[id]?.compute?.limits.localWork);
+            return reservationId != null || Boolean(limits?.localWork || value.operations[id]?.compute?.limits.localWork);
         });
     }
     async settleLocalWork(handle, sessionId, operation, attemptId, usage) {

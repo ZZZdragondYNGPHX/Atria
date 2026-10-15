@@ -34,15 +34,20 @@ import { createNativeGenerationRouter } from '../../src/endpoints/native-generat
 import { createSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
 
 async function fixture(make, maxRequests = 2, localWork) {
-    const h = await make(), seen = [];
+    const h = await make(), seen = [], providerErrors = [];
     let respond = () => ({ results: [{ index: 0, relevance_score: .9 }] });
     let respondEmbedding = body => ({ data: body.input.map((_, index) => ({ index, embedding: [1, 0] })), usage: { prompt_tokens: 3, total_tokens: 3 } });
     const server = createServer(async (req, res) => {
+        try {
         let raw = ''; for await (const chunk of req) raw += chunk;
         seen.push({ path: req.url, body: JSON.parse(raw) });
         const body = req.url.endsWith('/rerank') ? await respond() : req.url.endsWith('/embeddings') ? await respondEmbedding(JSON.parse(raw))
             : { choices: [{ message: { role: 'assistant', content: 'Fresh answer.' } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
         res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body));
+        } catch (error) {
+            providerErrors.push(error);
+            res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Synthetic provider callback failed' }));
+        }
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const endpoint = `http://127.0.0.1:${server.address().port}/v1`;
@@ -59,7 +64,7 @@ async function fixture(make, maxRequests = 2, localWork) {
     app.use(createRetrievalMiddleware(() => store, () => 'synthetic-key', async () => computeServices)); app.use(vectors);
     const computeContext = { kind: 'session', sessionId: base.session.sessionId, revisionId: base.revision.revisionId };
     const body = { nativeRetrievalRef: retrievalRef(profile), query: 'Why Alice?', documents: [{ text: 'Because of the storm', index: 0 }], computeContext };
-    return { ...h, ...seeded, ...computeServices, base, profile, body, seen, store, request: supertest(app), respond: fn => { respond = fn; }, respondEmbedding: fn => { respondEmbedding = fn; },
+    return { ...h, ...seeded, ...computeServices, base, profile, body, seen, providerErrors, store, request: supertest(app), respond: fn => { respond = fn; }, respondEmbedding: fn => { respondEmbedding = fn; },
         async cleanup() { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await h.cleanup(); } };
 }
 
@@ -574,14 +579,17 @@ test.each(['fork', 'restore'])('G05 retired work actual Session %s during provid
             body.computeContext = { ...body.computeContext, revisionId: current.revision.revisionId };
         }
         f.respondEmbedding(async () => {
-            if (action === 'fork') await f.core.forkBranch(f.handle, f.base.session.sessionId, { revisionId: f.base.revision.revisionId, expectedRevisionId: f.base.revision.revisionId });
-            else await f.core.restoreSavePoint(f.handle, f.base.session.sessionId, saved.saveId, { expectedRevisionId: body.computeContext.revisionId });
+            // The current Native API creates a new derived Branch by restoring
+            // an exact SavePoint, including a SavePoint at the current HEAD.
+            const branched = await f.core.restoreSavePoint(f.handle, f.base.session.sessionId, saved.saveId, { expectedRevisionId: body.computeContext.revisionId });
+            expect(branched.revision.branchId).not.toBe(f.base.revision.branchId);
             return { data: [{ index: 0, embedding: [1, 0] }], usage: { total_tokens: 5 } };
         });
         await f.request.post('/insert').send(body).expect(500);
         await expect(fs.access(indexFile(f, body))).rejects.toMatchObject({ code: 'ENOENT' });
         expect((await f.core.runs.status(f.handle, f.base.session.sessionId)).retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 5, localJobs: 1, localFailedJobs: 1 });
         expect(f.seen).toHaveLength(1);
+        expect(f.providerErrors).toEqual([]);
     } finally { await f.cleanup(); }
 });
 for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTempSqliteEngineHarness]]) {
