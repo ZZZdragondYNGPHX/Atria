@@ -54,7 +54,7 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
      * A fresh Effect claim covers its bounded provider retries/fallbacks, each
      * of which still gets its own original bank admission and currentness check.
      */
-    async function generationSend(handle, { runId, effectId, reservationId = null, limits, context }) {
+    async function generationSend(handle, { runId, effectId, reservationId = null, limits, context, quotaProof }) {
         const root = await runs.get(handle, runId);
         if (root.parentRef ? reservationId !== root.runId : reservationId !== null && reservationId !== root.runId) fail('native_orchestration_budget_reservation_mismatch');
         await sourcePort.revalidate(handle, root.sourceBinding);
@@ -66,12 +66,12 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
                 || context.compiled.request.grantDigest !== intent.grantDigest)) fail('native_orchestration_context_denied');
         });
         let token = null;
-        const bank = budgetPort.sendBank(handle, { authorityRef: root.budgetAuthorityRef, reservationId, limits, effectId, firstOrdinal: 0,
+        const bank = budgetPort.sendBank(handle, { authorityRef: root.budgetAuthorityRef, reservationId, limits, effectId, firstOrdinal: 0, quotaProof,
             assertCurrent: async () => {
                 await sourcePort.revalidate(handle, root.sourceBinding);
                 if (token) await assertDispatch({ handle, runId, effectId, dispatchToken: token });
             } });
-        return { bank, ...(context ? { context } : {}), beforeSend: async ({ receipt, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef }) => {
+        return { bank, ...(context ? { context } : {}), ...(quotaProof ? { quotaProof } : {}), beforeSend: async ({ receipt, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef }) => {
             const expectedSend = compiledSendIdentity({ snapshot, resolved });
             if (hashNativeDocument(compiledBinding) !== hashNativeDocument(snapshot.diagnostics.compiledBinding)
                 || hashNativeDocument(budgetAttemptRef) !== hashNativeDocument(receipt.budgetAttemptRef)) fail('native_orchestration_budget_attempt_invalid');

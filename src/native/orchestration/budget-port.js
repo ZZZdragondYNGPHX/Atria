@@ -3,6 +3,7 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
+import { assertNativeNarratorQuota } from './native-turn-quota.js';
 import { orchestrationComputeAttemptId } from '../../../public/shared/native-compute-budget.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
@@ -127,7 +128,7 @@ export class BudgetPort {
         return { reservationId: result.reservation.reservationId, status: result.reservation.status, ceiling: result.reservation.limits, replayed: result.replayed };
     }
 
-    async admitAttempt(handle, { authorityRef, reservationId = null, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits, reserve }) {
+    async admitAttempt(handle, { authorityRef, reservationId = null, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits, reserve, quotaProof }) {
         assertBudgetAuthorityRef(authorityRef);
         const attempt = { attemptId: sendAttemptId(effectId, providerSendOrdinal), requestId, targetFingerprint, estimatedTokens: upperBound, inputFingerprint,
             orchestration: { kind: 'provider_send', effectId, ordinal: providerSendOrdinal } };
@@ -135,11 +136,18 @@ export class BudgetPort {
         let result;
         if (authorityRef.domain === 'session') {
             const { snapshot, anchor } = await this.#session(handle, authorityRef);
-            result = await this.sessionCore.runs.admitCompute(handle, snapshot, anchor, limits, attempt, options);
+            const policy = snapshot.manifest.runtime?.experienceContract?.generationBudget ?? null;
+            const quota = policy !== null || quotaProof !== undefined ? assertNativeNarratorQuota(quotaProof,
+                { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId, requestId, role: 'narrator', anchor, policy }).quota : null;
+            result = await this.sessionCore.runs.admitCompute(handle, snapshot, anchor, limits, attempt, options, quota);
         } else if (authorityRef.authority === 'project_task') {
+            if (quotaProof !== undefined) fail('native_generation_budget_lane_denied');
             const task = await this.#project(handle, authorityRef);
             result = await this.projectAgent.admitGeneration(handle, authorityRef.projectId, authorityRef.taskId, task.baseRevision, limits, attempt, task.executionFingerprint, options);
-        } else result = await this.rpControl.admitCompute(handle, authorityRef.controlId, authorityRef.source, limits, attempt, options);
+        } else {
+            if (quotaProof !== undefined) fail('native_generation_budget_lane_denied');
+            result = await this.rpControl.admitCompute(handle, authorityRef.controlId, authorityRef.source, limits, attempt, options);
+        }
         return { budgetAttemptRef: { authorityRef: structuredClone(authorityRef), effectId, providerSendOrdinal, attemptId: attempt.attemptId, reservationId },
             compute: result.compute, replayed: result.replayed, limits: result.limits };
     }
@@ -256,7 +264,7 @@ export class BudgetPort {
     }
 
     /** Send-bound adapter for the trusted GenerationHost path. The ordinal advances on every real send, retry or fallback. */
-    sendBank(handle, { authorityRef, reservationId = null, limits, effectId, firstOrdinal, assertCurrent }) {
+    sendBank(handle, { authorityRef, reservationId = null, limits, effectId, firstOrdinal, assertCurrent, quotaProof }) {
         assertBudgetAuthorityRef(authorityRef);
         let ordinal = firstOrdinal;
         let localOrdinal = 0;
@@ -281,7 +289,7 @@ export class BudgetPort {
                 const providerSendOrdinal = ordinal++;
                 let result;
                 try {
-                    result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: routeLimits ?? limits, reserve });
+                    result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: routeLimits ?? limits, reserve, quotaProof });
                 } catch (error) {
                     if (error.code !== 'storage_commit_unknown') throw error;
                     const budgetAttemptRef = { authorityRef: structuredClone(authorityRef), effectId, providerSendOrdinal,

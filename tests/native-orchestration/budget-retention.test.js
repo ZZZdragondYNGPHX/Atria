@@ -19,7 +19,10 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         try {
             await prepareControllerOwnerRoot(h.dirs.root);
             attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
-            const f = await runFixture(h, 'http://127.0.0.1:1/unused'), base = await f.begin();
+            const f = await runFixture(h, 'http://127.0.0.1:1/unused', fixture => {
+                    fixture.contract.capabilities = fixture.contract.capabilities.filter(item => item.id !== 'generation-budget');
+                    delete fixture.contract.generationBudget;
+                }), base = await f.begin();
             let port = new BudgetPort({ sessionCore: f.core });
             const authorityRef = await port.authorityFor(h.handle, { domain: 'native_session', sessionId: base.session.sessionId });
             const effectId = createNativeId('orchestrationEffect');
@@ -96,7 +99,10 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         try {
             await prepareControllerOwnerRoot(h.dirs.root);
             attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
-            const f = await runFixture(h, 'http://127.0.0.1:1/unused'), base = await f.begin(), port = new BudgetPort({ sessionCore: f.core });
+            const f = await runFixture(h, 'http://127.0.0.1:1/unused', fixture => {
+                    fixture.contract.capabilities = fixture.contract.capabilities.filter(item => item.id !== 'generation-budget');
+                    delete fixture.contract.generationBudget;
+                }), base = await f.begin(), port = new BudgetPort({ sessionCore: f.core });
             const authorityRef = await port.authorityFor(h.handle, { domain: 'native_session', sessionId: base.session.sessionId });
             const effectId = createNativeId('orchestrationEffect'), anchor = { branchId: base.revision.branchId, revisionId: base.revision.revisionId };
             const attemptId = kind === 'provider_send' ? sendAttemptId(effectId, 0) : localWorkAttemptId(effectId, 0);

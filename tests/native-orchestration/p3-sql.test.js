@@ -17,7 +17,10 @@ async function domain(kind, h) {
     await prepareControllerOwnerRoot(h.dirs.root);
     attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
     if (kind === 'session') {
-        const f = await runFixture(h, 'http://127.0.0.1:1/unused'), base = await f.begin();
+        const f = await runFixture(h, 'http://127.0.0.1:1/unused', fixture => {
+                fixture.contract.capabilities = fixture.contract.capabilities.filter(item => item.id !== 'generation-budget');
+                delete fixture.contract.generationBudget;
+            }), base = await f.begin();
         return { port: new BudgetPort({ sessionCore: f.core }), source: { domain: 'native_session', sessionId: base.session.sessionId },
             move: () => f.core.appendTimeline(h.handle, base.session.sessionId, { role: 'user', content: 'New SQL source' }) };
     }

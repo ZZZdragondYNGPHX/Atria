@@ -31,6 +31,7 @@ import { getNativeSessionServices } from './native-session.js';
 import { getNativeStudioServices } from './native-studio.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
 import { NativeGenerationHost, selectNativeRuntimeRoute } from '../native/adapters/generation-host.js';
+import { NativeNarratorOrchestrationAuthority } from '../native/orchestration/native-turn-orchestration.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
 import { createResponsesGenerationProvider } from '../native/adapters/responses-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
@@ -57,12 +58,21 @@ import { hashNativeDocument } from '../native/repositories/common.js';
 import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
 import { recycleNativeResource } from '../storage/center-instance.js';
 
+function generationFailure(error, fallback = 'native_generation_failed') {
+    const code = error.code === 'native_processing_failed' || ['storage_commit_unknown', 'storage_read_only'].includes(error.code)
+        || /^(native_generation_|native_credential_|native_orchestration_|generation_)[a-z_]{1,100}$/.test(error.code || '') ? error.code : fallback;
+    const orchestration = code.startsWith('native_orchestration_');
+    const status = code === 'storage_read_only' || (orchestration && code.endsWith('_unavailable')) ? 503
+        : code === 'storage_commit_unknown' || code.includes('conflict') || (orchestration && (error.name === 'ConflictError' || code.endsWith('_stale'))) ? 409 : 400;
+    return { code, status };
+}
+
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
     const { studio, agent } = getNativeStudioServices();
     const persistence = new NativeModelPromptPersistence({ engine: getStorageEngine(), lifecycle: recycleNativeResource });
     const credentials = new CredentialTargetAuthority({ persistence });
-    return new NativeGenerationHost({
+    const host = new NativeGenerationHost({
         persistence,
         library: new VersionedJsonResourceHandler({ engine: getStorageEngine(), lifecycle: recycleNativeResource }),
         sessionCore: core, packageInstaller, studio, agent,
@@ -85,6 +95,9 @@ function services() {
             return '';
         } }),
     });
+    host.turnOrchestration = new NativeNarratorOrchestrationAuthority({ engine: persistence._engine, sessionCore: core,
+        modelResolver: new RouteResolver({ persistence: host.persistence, library: host.library, providers: host.providers }) });
+    return host;
 }
 
 export async function wakeCollectedExperience(handle, result) {
@@ -593,8 +606,9 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 if (!res.headersSent && chunk.operationId) res.status(202).json({ operationId: chunk.operationId });
             });
             if (!res.headersSent) res.json(result);
-        } catch {
-            if (!res.headersSent) res.status(400).json({ error: 'native_task_start_failed' });
+        } catch (error) {
+            const failure = generationFailure(error, 'native_task_start_failed');
+            if (!res.headersSent) res.status(failure.status).json({ error: failure.code });
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
@@ -956,10 +970,10 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 if (streaming) { emit({ result }); response.end(); } else response.json(result);
             }
         } catch (error) {
-            const code = error.code === 'native_processing_failed' || /^(native_generation_|native_credential_|generation_)[a-z_]+$/.test(error.code || '') ? error.code : 'native_generation_failed';
+            const { code, status } = generationFailure(error);
             const details = code === 'native_processing_failed' ? { resourceId: error.processorId, field: error.stage } : undefined;
             if (!controller.signal.aborted) {
-                if (response.headersSent) { emit({ error: code, ...(details ? { details } : {}) }); response.end(); } else response.status(code.includes('conflict') ? 409 : 400).json({ error: code, ...(details ? { details } : {}) });
+                if (response.headersSent) { emit({ error: code, ...(details ? { details } : {}) }); response.end(); } else response.status(status).json({ error: code, ...(details ? { details } : {}) });
             }
         } finally { response.off('close', abort); }
     });

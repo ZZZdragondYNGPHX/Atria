@@ -19,6 +19,7 @@ import { prepareNarrativeSkills, runNarrativeSkillLoop, completeNarrativeSkillTo
 import { publicSessionTaskMessages, sessionTaskRoundCount, completeSessionTaskHistory } from '../../../public/shared/native-session-task-history.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { compiledRequestBinding, compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
+import { mintNativeNarratorQuota, assertNativeNarratorQuota } from '../orchestration/native-turn-quota.js';
 import { assertExecutionEvidenceCurrent } from '../model-prompt-runtime/execution-evidence.js';
 import { RuntimeCheckpointStore } from '../model-prompt-runtime/runtime-checkpoint-store.js';
 import { nativeExecutionScope } from '../model-prompt-runtime/native-execution-envelope.js';
@@ -42,6 +43,7 @@ import { assertPredictionCapture, assertPredictionCaptureCurrent } from '../pred
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const predictionLanes = new WeakSet();
+const turnProducerLanes = new WeakMap();
 
 function ordinaryBackgroundIntent(snapshot, intent, task, variant, payload) {
     const lifecycle = snapshot.states.atri_lifecycle;
@@ -144,8 +146,8 @@ function startupTaskVariants(contract) {
 
 // A host composition over existing P1 storage and Native Session/Studio authorities.
 export class NativeGenerationHost {
-    constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions }) {
-        Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions });
+    constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration }) {
+        Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions, turnOrchestration });
         if (extensions && persistence?._engine && sessionCore) registerVisualWake(persistence._engine, async (handle, sessionId) => {
             const settings = await extensions.illustrationSettings(handle);
             if (settings.value.director?.mode !== 'manual') await new VisualDirector({ host: this }).scan(handle, sessionId);
@@ -383,9 +385,12 @@ export class NativeGenerationHost {
         if (transaction && !authority) fail('native_authority_capability_required');
         if (authority && runtime.turn.policy !== 'authority-first') fail('native_authority_turn_policy_required');
         if (controlledReview) await this._assertControlledTurn(handle, base, controlledReview);
+        const orchestrationSelection = this.turnOrchestration ? await this.turnOrchestration.preflightBinding({ host: this, handle, base, input, transaction }) : null;
         const lanes = await this._turnLanes(handle, base, input, transaction);
         const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction, evidenceCapture,
             ...(controlledReview ? { effectPolicy: 'no-background-model', controlledTurn: { check: async () => this._assertControlledTurn(handle, await this.sessionCore.observe(handle, input.sessionId), controlledReview) } } : {}) };
+        turnProducerLanes.set(lanePlan, { host: this, handle, sessionId: base.session.sessionId, invocationId: input.invocationId, requestHash,
+            anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, selection: orchestrationSelection });
         const resources = (await Promise.all(lanes.map(lane => this.executionResources(handle, lane, input.sessionId, lanePlan)))).flat();
         let expectedRevisionId = input.revisionId;
         const operation = nativeTaskScheduler.submit({ owner: handle, kind: 'turn',
@@ -548,9 +553,21 @@ export class NativeGenerationHost {
             if (draft.outcomes.length) fail('native_narrator_outcome_denied');
             try { onChunk?.({ text: draft.narrative, delta: draft.narrative, provisional: true }); } catch { /* Observer only. */ }
         } else {
-            const narration = await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
-                requestId: input.invocationId, role: 'narrator', routeRef: input.routeRef,
-                messages: stages.length ? [{ role: 'user', content: JSON.stringify({ provisionalTurnContext: authorityTurn ? authorityValue(stages) : stages }) }] : [] }, signal, onChunk, { scheduled: true, lanePlan });
+            const request = { sessionId: input.sessionId, revisionId: input.revisionId,
+                requestId: input.invocationId, role: 'narrator', ...(input.routeRef === undefined ? {} : { routeRef: input.routeRef }),
+                messages: stages.length ? [{ role: 'user', content: JSON.stringify({ provisionalTurnContext: authorityTurn ? authorityValue(stages) : stages }) }] : [] };
+            const producer = turnProducerLanes.get(lanePlan);
+            let narration;
+            if (producer?.selection) {
+                if (producer.host !== this || producer.handle !== handle || producer.sessionId !== input.sessionId
+                    || producer.invocationId !== input.invocationId || hasAuthorityTransactions(base) || runtime.turn.stages.length
+                    || runtime.turn.interpreterTaskId || runtime.turn.narratorTaskId || lanePlan.controlledTurn
+                    || (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) fail('native_orchestration_turn_producer_unavailable');
+                const quotaProof = mintNativeNarratorQuota({ host: this, handle, request, snapshot: base, ...producer });
+                narration = await this.turnOrchestration.executeNarrator({ host: this, handle, base, input, lanePlan, request, quotaProof,
+                    selection: producer.selection, signal, onChunk });
+                if (!narration) fail('native_orchestration_turn_producer_unavailable');
+            } else narration = await this.execute(handle, request, signal, onChunk, { scheduled: true, lanePlan });
             provenance.push({ taskId: 'narrator', requestSnapshotHash: hashNativeDocument(narration.snapshot),
                 deliveryReceipt: { kind: 'model_delivery', invocationId: input.invocationId, delivered: true } });
             knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, base, narration.snapshot.contextPlan?.nativeSelection);
@@ -916,8 +933,11 @@ export class NativeGenerationHost {
     async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null, effectPolicy = null, retainResult = false, approvedReview = null, orchestrationSend = null } = {}) {
         const sendBank = orchestrationSend?.bank;
         const scopedContext = orchestrationSend?.context;
+        const quotaProof = orchestrationSend?.quotaProof;
         if (value.orchestrationSend !== undefined) fail('native_generation_host_readonly');
-        if (orchestrationSend && (!sendBank || preview || preflight || taskPlan || illustrationPlan || lanePlan?.budgetContext)) fail('native_generation_budget_lane_denied');
+        if (orchestrationSend && (!sendBank || preview || preflight || taskPlan || illustrationPlan || (lanePlan?.budgetContext && !quotaProof))) fail('native_generation_budget_lane_denied');
+        if (quotaProof !== undefined) assertNativeNarratorQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
+            sessionId: value.sessionId, requestId: value.requestId, role: value.role });
         if (scopedContext && (value.messages?.length || value.prompt || value.tools?.length)) fail('native_generation_context_denied');
         if (sendBank) {
             effectPolicy = 'no-background-model';
@@ -975,10 +995,13 @@ export class NativeGenerationHost {
             runtime = preflightPackage.manifest.runtime;
         } else fail('native_generation_context_required');
         const budget = illustrationPlan ? null : runtime?.experienceContract?.generationBudget;
+        if (quotaProof !== undefined) assertNativeNarratorQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
+            sessionId: input.sessionId, requestId: input.requestId, role: input.role,
+            anchor: { branchId: snapshot?.revision.branchId, revisionId: snapshot?.revision.revisionId }, policy: budget ?? null });
         if (scopedContext) scopedContext.port.assertSource(handle, { context: scopedContext.compiled, source });
         if (sendBank) {
             const authority = sendBank.authorityRef;
-            if (budget || (input.sessionId ? authority.domain !== 'session' || authority.sessionId !== input.sessionId
+            if ((budget && quotaProof === undefined) || (input.sessionId ? authority.domain !== 'session' || authority.sessionId !== input.sessionId
                 : input.projectId ? authority.authority !== 'project_task' || authority.projectId !== input.projectId || authority.taskId !== input.taskId
                     : authority.domain !== 'rp_chat')) fail('native_generation_budget_lane_denied');
         }
