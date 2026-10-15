@@ -156,16 +156,16 @@ Review Origin语义遵守D8完整可审查交互；主app仍显示Timeline/脱�
 
 ### 9.1 P3后端子工作后的Gate复核
 
-2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第十八组的测试详细列表和失败/变异证据唯一保留于同一Record；此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
+2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第十九组的测试详细列表和失败/变异证据唯一保留于同一Record；此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
 
 | 维度 | 已有实际子证据 | 未完成与准入状态 |
 | --- | --- | --- |
-| V04银行/发送 | 原三域CAS、稳定Effect+ordinal、local typed ref、retry/fallback、重放拒绝、unknown/late settle；真实隔离MySQL/Pg指定case，原quota/usage幂等四Engine新矩阵见§17.28 | 原role/background quota同CAS底层与immutable quota ref已实现（§17.27）；受信lane产品组合仍未完成，未接路径拒绝；真实费用NOT_RUN。P3/V04未整体PASS。 |
+| V04银行/发送 | 原三域CAS、稳定Effect+ordinal、local typed ref、retry/fallback、重放拒绝、unknown/late settle；原quota/usage幂等四Engine见接口§17.28，ModelPort四Engine真实隔离HTTP见接口§17.29 | 固定Narrator opaque身份/Bank已接，但实际quota Package依赖authority candidate未接，真实quota producer未通过；Context实际compile计费待补，真实费用NOT_RUN。P3/V04未整体PASS。 |
 | 父子Run/逻辑界限 | 持久Delegate身份→原reservation→observe/confirm；祖先取消/精确额度/实际活动Attempt/共享逻辑counter、原子回滚与重放反例 | 原Scheduler完整permits、Handoff/child Result消费、实际Plan授权adapter仍IMPLEMENTATION_PENDING，不能宣称完整P2/P3通过。 |
 | S2/S4 Context | 原Session Audience plan成为实际HTTP输入，send/consume撤权拒绝 | Project/RP原Audience adapter、Hybrid真实检索/跨Agent Result与Disclosure仍IMPLEMENTATION_PENDING；自由文本泄漏质量NOT_RUN。 |
 | W05 Tool/Review | 原Skill/MCP/A2A/CredentialTarget、逐请求复核、持久A2A ownership和R3拒绝 | A2A精确受理回执已接原Effect观察（§17.21），不代表远端task完成；MCP/Skill原私有completion proof→既有EffectReceipt与cold观察已实现（§17.24），缺proof/receipt仍unknown；Skill消费撤权/矛盾拒正文。真实Review Origin/再认证/批准尚未实现。真实外部协议部署/高危动作NOT_RUN且安全准入BLOCKED。 |
 | V09恢复/GC | 原bank不退费、review_required、Run引用保留、危险overwrite/full/merge提前拒绝；四Engine指定case | 完整可信restore/release/source闭包仍IMPLEMENTATION_PENDING；当前拒绝不是完整恢复PASS。 |
-| 产品API/消费者 | Plan authoring及三域Binding HTTP真实挂载；保存选择不授予执行权限；有限原Narrator机制可验证发布（§17.26），运行grant仍独立；执行服务为内部组合 | Run/Projection/Approval产品API与P4原业务消费者尚未交付，IMPLEMENTATION_PENDING；不能交给Browser代行。 |
+| 产品API/消费者 | Plan authoring及三域Binding HTTP真实挂载；有限原Native Turn已装配真实Binding/grant/ModelPort并回原finalize（接口§17.29）；仅精确无authority普通Narrator profile | authority candidate、Scheduler完整permit、Run/Projection/Approval产品API与P4 OutputClaim/Result原业务闭包尚未交付，IMPLEMENTATION_PENDING；响应confirmed不当Run completed。 |
 | 旧链与最终验收 | 旧链审计附件和替代计划存在 | P6硬切未执行；P7/P8未开始。完整Windows浏览器NOT_RUN，CachyOS/Termux实机连接/版本未取得为BLOCKED；L4真实费用/质量NOT_RUN。 |
 
 IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现的工作，不是假称外部阻塞或再请求开发授权。后端与前端并行整合按[接口交接入口](backend-integration.md)推进，缺失API须先由Host实现；P7通过前不集成main。
