@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f9f8f6"><title>Atria 草稿 · 设计与审查</title>
+<style>
+:root{color-scheme:light;font:14px/1.8 "Microsoft YaHei",system-ui,sans-serif;color:#1c1c1e;background:#f9f8f6}*{box-sizing:border-box}body{max-width:1100px;padding:44px 28px 72px;margin:auto}h1{font-size:30px;letter-spacing:-1px;line-height:1.4}h2{font-size:20px;margin-top:42px}h3{font-size:16px;margin-top:28px}p{max-width:900px;color:#67676d}a{color:#b93619;text-underline-offset:4px}a:focus-visible{outline:3px solid #3273f6;outline-offset:4px}table{border-collapse:collapse;width:100%;background:white;font-size:12px}th,td{text-align:left;vertical-align:top;padding:13px 15px;border-bottom:1px solid #e7e5e2}th{background:#efeeeb;font-weight:600}td:first-child{min-width:110px}code{font:11px/1.7 Consolas,monospace;background:#efeeeb;border-radius:4px;padding:2px 5px;overflow-wrap:anywhere}.table-scroll{overflow-x:auto}.lead{border-left:3px solid #ff5a36;padding:6px 0 6px 18px;margin:28px 0}.swatches{display:flex;gap:16px;flex-wrap:wrap}.swatches span{display:flex;align-items:center;gap:7px;font-size:12px}.swatches i{width:20px;height:20px;border:1px solid #ddd;display:inline-block;border-radius:5px}.badge{color:#2659ad;background:#edf3ff;padding:4px 8px;border-radius:5px;font-size:12px}.limit{padding:16px 20px;background:#efeeeb;border-radius:8px}li{margin:6px 0}footer{border-top:1px solid #ddd;margin-top:44px;padding-top:20px;font-size:12px;color:#67676d}@media(max-width:600px){body{padding:24px 18px 48px}h1{font-size:25px}th,td{padding:10px;min-width:130px}table{font-size:11px}}
+</style></head>
+<body>
+<a href="index.html">← 打开交互草稿</a>
+<h1>资源与清理：设计与审查说明</h1>
+<p>2026-10-15 · 第一版交互草稿 · 待用户确认视觉方向后，才进入正式前端实施。</p>
+<div class="lead"><strong>让用户先看清空间，再决定怎么处理。</strong><p>合并用量摘要，压缩分类列表，把依赖、恢复和危险操作的解释放在需要它的步骤。保留五区导航、九类资源、服务器与当前浏览器的独立范围。</p></div>
+<h2>视觉方向与 tokens</h2>
+<p>使用 Atria 现有纸白底、墨色文字、橙色强调和字体。标题负责定位，数字负责比较，细分隔线负责分组；不使用装饰性计数动画。中文使用系统中文无衬线字体，数字使用内嵌 Plus Jakarta Sans，品牌字标使用 Playfair Display。两种内嵌字体附有原 SIL OFL 许可证。</p>
+<div class="swatches"><span><i style="background:#f9f8f6"></i>Canvas #f9f8f6</span><span><i style="background:#fff"></i>Surface #fff</span><span><i style="background:#1c1c1e"></i>Ink #1c1c1e</span><span><i style="background:#ff5a36"></i>Accent #ff5a36</span><span><i style="background:#3273f6"></i>Focus #3273f6</span></div>
+<p>沿用 4px 间距体系、7/10px 控件与容器圆角；标题 28px、主数字 40px、常用文字 12–14px。手机主数字 37px，底部五区导航配安全区域。现有 160/220ms 时长和 <code>cubic-bezier(.23,1,.32,1)</code>、<code>cubic-bezier(.22,1,.36,1)</code> 曲线继续使用。</p>
+<div class="table-scroll"><table><thead><tr><th>Before</th><th>After</th><th>Why</th></tr></thead><tbody>
+<tr><td>用量、说明和清理入口分散，分类行高偏大</td><td>用量与清理摘要集中，九类紧凑列表对齐数值</td><td>先扫读总体，再按资源深入，减少找入口和滚动</td></tr>
+<tr><td>每级操作都增加页面信息密度</td><td>详情用抽屉；固定批量预览用整页</td><td>保留当前列表上下文，让复杂风险核对有足够空间</td></tr>
+<tr><td>服务器和浏览器容易被理解成同一批数据</td><td>顶部持续显示范围，浏览器提供独立小计及删除警告</td><td>减少模式误判，保留冻结的核算和恢复边界</td></tr>
+</tbody></table></div>
+<h2>逐页动效筛选 · find-animation-opportunities</h2>
+<p>先按目的与频率筛选，再用 animate / apple-design 落实。所有导航、搜索、排序和数字变化即时完成。</p>
+<div class="table-scroll"><table><thead><tr><th># / Location</th><th>Today</th><th>Purpose</th><th>Frequency</th><th>Suggested motion</th></tr></thead><tbody>
+<tr><td>1 · 各页操作按钮</td><td>需要按下确认</td><td>即时触觉式反馈</td><td>高；极短</td><td>仅指针按下 scale(.97)，80ms；松开 160ms，现有 ease-out。键盘不缩放</td></tr>
+<tr><td>2 · 资源列表选择栏</td><td>首次选中后新增操作区</td><td>说明选择与批量操作的空间关系</td><td>中</td><td>仅首次从无到有，translateY(8px) + opacity，160ms；后续增减即刻更新</td></tr>
+<tr><td>3 · 分类详情 / 回收记录</td><td>需要保持原列表上下文</td><td>建立层级与返回路径</td><td>中</td><td>右侧抽屉／手机底部抽屉，进入 220ms、退出 160ms，transform + opacity；键盘即时</td></tr>
+<tr><td>4 · 手机抽屉手势</td><td>可以直接拖动</td><td>直接操纵并可中断</td><td>偶尔</td><td>8px 阈值、单指捕获、1:1 跟手；按位置和速度投影关闭；临界阻尼回弹 response .3s，最长 500ms 物理收敛窗口</td></tr>
+<tr><td>5 · 刷新与操作结果</td><td>等待和完成需要反馈</td><td>状态提示</td><td>中</td><td>仅请求等待时旋转；完成 toast translateY(12px) + opacity 160ms；错误保留在页内，不依赖 toast</td></tr>
+</tbody></table></div>
+<p>拒绝增加：总览占比条和数字的扫入／计数动画（影响数值读取）；导航与搜索结果的入场动画（高频与键盘路径）；批量结果逐行 stagger（拖慢查看）；无限闪烁骨架屏（不增加信息）；资源行滑动删除（风险操作不应只依赖手势）。</p>
+<p>筛选结论：只保留操作反馈、层级连续性和直接操纵。滚动继续使用浏览器原生惯性，不实现自定义滚动。</p>
+<h2>控件状态 · microinteractions</h2>
+<p>触发来自明确按钮、链接或复选框；规则显示于固定预览；反馈按严重程度分层；服务器与浏览器范围始终可见。进度是本页模拟对象的实际处理计数，不代表真实服务。</p>
+<div class="table-scroll"><table><thead><tr><th>诊断项</th><th>草稿结果</th><th>证据 / 后续</th></tr></thead><tbody>
+<tr><td>可发现触发器</td><td>通过</td><td>文字操作、复选框、关闭按钮；手势有点击与 Escape 替代</td></tr>
+<tr><td>当前状态可见</td><td>通过</td><td>选中、禁用、忙碌、处理中、停止中、完成、停止、受保护</td></tr>
+<tr><td>规则可预测</td><td>通过</td><td>整页固定清单、保护项跳过、停止保留完成项、重新核对剩余项</td></tr>
+<tr><td>即时反馈</td><td>通过</td><td>按压、勾选、禁用和停止请求同步更新；异步统计保留旧快照</td></tr>
+<tr><td>反馈与影响相称</td><td>通过</td><td>一般完成用轻提示；永久删除需明确确认；错误页内持续显示</td></tr>
+<tr><td>长期使用后的简化</td><td>尚未验证</td><td>本版仅本页内存演示。正式实施时使用既有偏好权威记录非必要提示的收起状态，不能跳过风险确认</td></tr>
+<tr><td>模式明确</td><td>通过</td><td>顶部范围、预览范围、独立记录列表；浏览器没有服务器回收站</td></tr>
+<tr><td>首次理解</td><td>启发式通过</td><td>文字入口和当前步骤清楚；尚未开展真实用户可用性研究</td></tr>
+</tbody></table></div>
+<p>启发式诊断 7/8，折算约 9/10；不是用户研究评分。未通过项为长期简化，具体接入方式在用户确认方向后的正式实现中处理。</p>
+<h2>动效完成审查 · review-animations</h2>
+<div class="table-scroll"><table><thead><tr><th>Before</th><th>After</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>index.html:12</code> 按钮同时过渡背景色</td><td>仅过渡 transform；颜色状态即时切换</td><td>符合本轮 transform / opacity 动效预算</td></tr>
+<tr><td><code>index.html:248</code> 原生弹窗 Shift+Tab 首控件边界可进入浏览器界面</td><td>对活动 dialog 补充首尾 Tab 循环，Escape 返回触发器</td><td>保持键盘操作与焦点连续性</td></tr>
+<tr><td><code>index.html:23</code> 手机沿用稳定滚动条槽留下侧边空白</td><td>手机移除固定槽；保留抽屉内部原生滚动</td><td>全宽布局与手势方向一致</td></tr>
+<tr><td><code>index.html:305</code> 拖动后停住再松手仍沿用旧速度</td><td>超过 80ms 无移动将释放速度归零；重新拖动接管当前呈现值</td><td>防止意外关闭；回弹中断补验通过</td></tr>
+<tr><td><code>index.html:296</code> 迟到的刷新重建正在输入的列表</td><td>保留输入、筛选结果与焦点；切换范围使旧请求结果失效</td><td>避免异步状态打断高频编辑路径</td></tr>
+</tbody></table></div>
+<p><strong>中断与时序：</strong>抽屉从当前呈现值接管；手势释放携带速度，重新拖动可打断。500ms 只用于手势的物理收敛，普通 UI 进入和退出均低于 300ms。未加入弹性装饰或内容 stagger。</p>
+<p><strong>可访问性：</strong>键盘开启抽屉立即显示；减少动态效果取消位移与弹簧；偏好在运行中改变时取消当前位移动画。hover 仅对支持 hover 的精细指针启用。按钮按压为非对称时序。</p>
+<p><strong>性能：</strong>无布局属性动画、逐帧继承变量或预设 will-change。桌面 Chromium 的这次交互检查未观察到明确卡顿，未触发 animation-performance 的性能修复流程；没有 GPU、低端设备帧率或完整性能 trace 的达标结论。</p>
+<p><span class="badge">Approve · 仅限本版草稿动效审查</span> 不代表用户已经批准视觉方向，也不代表正式前端完成。</p>
+<h2>浏览器与 Web Interface Guidelines</h2>
+<p>已读取本轮最新指南，按实际 HTML 审查语义链接、控件名称、可见焦点、原生 dialog、live region、表单标签、IME、减少动态效果、移动端安全区与滚动。发现的问题已在草稿修正并做相关复测。没有运行 axe 或声称完整 WCAG 认证。</p>
+<ul>
+<li>本地 Chromium：服务器九类、选择与整页预览、受保护项、停止与重新核对、跨页状态一致、原 ID 恢复、浏览器永久删除确认和取消。</li>
+<li>加载、部分读取、刷新失败、空建议、超配额；搜索空结果、清空、分页；键盘即时抽屉、Tab 循环、Escape 焦点恢复、减少动态效果。</li>
+<li>1440px 桌面；390px 手机抽屉与指针手势；320/768px 布局溢出检查。手机是模拟视口，不是手机实机。</li>
+<li>抽屉回弹中断、二次拖动、切换范围后的迟到刷新、运行时减少动态效果、键盘焦点避开底部导航：补充检查结果见同一 Record。</li>
+<li>范围、查询、排序与分页写入 URL；浏览器范围的筛选深链接及刷新保留实际检查通过。</li>
+</ul>
+<div class="limit"><strong>草稿边界</strong><p>所有操作只改变当前页面内存；刷新页面重置。总览是视觉示例快照，并不向真实后端读取或重新汇总。账户导出、原业务跳转和高级检查仅展示入口及保护文案，不实际执行。没有修改正式前端，删除、恢复和配额权威没有变化。</p></div>
+<h2>Skill 与 API 依据</h2>
+<p>已读取 frontend-design、emil-design-eng、microinteractions、find-animation-opportunities、animate、apple-design、motion、animation-performance、review-animations、web-design-guidelines 的 SKILL.md，以及适用的状态、反馈、动效配方、Motion CSS/JS 选择与审查标准参考。</p>
+<p>实现采用现有 tokens、原生 dialog、CSS 和 WAAPI，无新增依赖。当前 API 核对：<a href="https://motion.dev/docs/animate">Motion animate</a>、<a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/animate">Element.animate</a>、<a href="https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md">Web Interface Guidelines</a>。Motion MCP 当前未连接；本草稿未依赖它，也没有生成 MotionScore。可选工具说明：<a href="https://motion.dev/docs/ai-kit">Motion AI Kit</a>。</p>
+<footer><a href="index.html">打开交互草稿</a> · <a href="desktop.png">桌面截图</a> · <a href="mobile.png">手机截图</a> · <a href="mobile-detail.png">抽屉截图</a></footer>
+</body></html>

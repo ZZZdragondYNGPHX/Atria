@@ -240,3 +240,18 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 - 系统临时目录下的本任务浏览器夹具清理被自动审批审查拒绝（返回仅为 `blocked by policy`），该命令未执行；不绕过审查，保留这些临时目录。Docker 临时容器的环境限制见上节。
 - docs 的远端并行提交通过正常合并保留；本任务仅更新同一 Record 和 Plan 状态。未合并 docs 到 main，未改写历史，未创建交接文档。
 - 功能实现、适用本地验证及本地集成交付已完成；未将最终四后端整轮复测或受阻的环境清理写成已完成。
+
+### UI 方向复审与独立 HTML 草稿 — 2026-10-15
+
+- 用户对现有布局和前端不满意，明确要求先交付 HTML 草稿，满意后再改正式前端。本轮只制作设计预览；原产品交付状态保留，未对正式前端做后续修改，也没有将草稿视为已获视觉批准。
+- 恢复时核对真实 Git、工作树及 AGENTS；产品 `main` 为 `73557f809`，原隔离任务工作树已移除。docs 在并行任务推进后当前基线为 `ab5461eb1`；保留无关未跟踪 `plans/feat/agent-experience-evolution/`、`plans/architecture/atria-frontend-audit/`，只写本任务预览和本 Record。
+- 独立设计预览：[HTML 草稿](../../previews/atria-storage-center/index.html)、[设计与审查说明](../../previews/atria-storage-center/review.html)。内嵌原字体及 OFL 许可，无新增前端依赖；所有示例操作只改变当前页面内存，没有服务连接或真实资源写入。总览为视觉示例快照，不宣称在模拟操作后重新汇总真实数据；业务打开、账户导出及高级检查入口未连接真实产品服务。
+- 按用户指定读取 frontend-design、emil-design-eng、microinteractions、find-animation-opportunities、animate、apple-design、motion、animation-performance、review-animations、web-design-guidelines 的 SKILL.md，以及适用参考。Motion MCP 当前未连接；核对官方 animate / Element.animate 文档，使用 CSS、WAAPI 和原生 dialog。未触发性能修复流程或声称 MotionScore。
+- 视觉调整为紧凑五区导航、集中用量和安全清理摘要、九类对齐列表、资源详情抽屉、整页固定清单预览；手机为底部五区导航及底部抽屉。保留服务器与当前浏览器独立范围、未知不作零、30 天回收保留、原 ID 恢复、保护项跳过、停止保留完成项、重新预览剩余项等冻结语义。
+- 最小本地验证：HTML 内脚本语法解析通过；本地 Chromium 完成 13 组流程检查，包括九类及语义导航、选择与固定预览、受保护项、停止与剩余项重核、跨页面示例状态一致、原 ID 恢复、搜索/空结果/分页、浏览器永久删除确认与取消、加载/部分读取/刷新错误/空建议/超额、键盘焦点及 Escape、减少动态效果、390px 指针拖动、320/768px 溢出和未捕获错误检查。
+- 追加 6 组检查：回弹中断再拖动、运行中改变减少动态效果、迟到刷新保留正在输入的搜索与焦点、切换范围使旧请求失效、手机分类焦点避开固定底栏、干净截图及手机预览无横向溢出。另有 1 组 URL 深链接检查通过：浏览器范围、查询、排序在重新加载后保留。上述为流程检查组，未伪称产品后端测试数量。
+- 补验初始回收示例恢复：通过本地 HTTP 打开草稿，恢复 `sessions-archived-3`，返回会话列表可见同一名称，详情仍显示该原 ID；通过。预览本地链接及 Record 的预览引用存在性、`git diff --check` 通过。产品 main 最后核对仍为 `73557f809` 且干净。
+- 诊断修复：首个浏览器运行发现 DOM 选择器错误，修正后检查继续；原生 dialog 的 Shift+Tab 首控件边界补充显式焦点循环；手机取消桌面滚动条槽；刷新改为局部忙碌反馈，避免重建当前输入；拖动停住超过 80ms 后清除过期速度，避免松手误关闭，补验通过。自动化中一次 locator 命中隐藏 dialog 的提示，已限缩到 main；未将该定位失败归为产品错误。
+- 完成后明确调用 review-animations 和 web-design-guidelines 审查，读取本轮最新 Web Interface Guidelines；问题、Before/After/Why、逐页动效机会及拒绝项、microinteractions 诊断与长期使用限制进入审查附页。动效审查结论 Approve 只针对草稿，不替代用户视觉批准。
+- 实际检查桌面及手机截图，图片保存在同一预览目录。320/390/768px 均为桌面 Chromium 模拟视口，指针拖动不等于手机实机触控；没有真实服务验收、可用性研究、axe/完整 WCAG 认证或低端设备帧率结论。长期提示简化尚未验证，后续复用既有偏好权威，不能跳过危险确认。
+- 当前交付组完成：向用户提供可交互 HTML 草稿，等待其明确确认视觉方向后才实施正式前端。无需交接文件，不回退已合入同期变更。
