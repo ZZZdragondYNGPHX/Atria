@@ -5,6 +5,7 @@ import { nativeTaskScheduler } from './task-scheduler.js';
 import { immutable, checkCancellation, containsSecret } from './model-prompt-runtime/execution-utils.js';
 import { SessionPublicWork } from './session-public-work.js';
 import { createMcpHttpClient } from './mcp-http-client.js';
+import { canonicalCredentialTarget } from './model-prompt-runtime/credential-targets.js';
 
 const states = new WeakMap(), terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -12,6 +13,7 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 // Explicit READ consumer of one existing player display item; external data is
 // transient provenance, never a World/Memory/Task/Goal publication.
 export class McpService {
+    #completionProofs = new WeakMap();
     constructor({ host, scheduler = nativeTaskScheduler, clientFactory = createMcpHttpClient, now = Date.now }) {
         Object.assign(this, { host, scheduler, clientFactory, now });
         const engine = host.persistence?._engine ?? host.sessionCore._sessions._engine;
@@ -103,6 +105,16 @@ export class McpService {
             },
             finalize: async artifact => {
                 if (!await this._fresh(handle, input, captured)) fail('native_mcp_source_stale');
+                if (trustedWork?.onCompleted) {
+                    const evidence = artifact.provenance.evidence.at(-1);
+                    const proof = Object.freeze({});
+                    this.#completionProofs.set(proof, { handle, bindingDigest: trustedWork.completionBindingDigest,
+                        evidence: immutable({ protocol: 'mcp', operation: input.toolName ? 'tool' : 'resource', operationId: operation.operationId,
+                            inputHash: hash(input), endpointBindingDigest: hash(canonicalCredentialTarget(captured.connection)),
+                            sourceFingerprint: captured.fingerprint, method: evidence.method, requestFingerprint: evidence.requestFingerprint,
+                            responseFingerprint: evidence.responseFingerprint, remoteReportedError: artifact.result.isError === true }) });
+                    try { await trustedWork.onCompleted(proof); } finally { this.#completionProofs.delete(proof); }
+                }
                 record.artifact = artifact; return artifact;
             },
         });
@@ -115,6 +127,15 @@ export class McpService {
         if (!record || record.owner !== handle || record.scheduler !== this.scheduler) fail('native_mcp_operation_missing');
         const operation = this.scheduler.project(handle, raw.operationId), current = await this._fresh(handle, record.input, record.captured);
         return immutable({ ...operation, current, artifact: current && operation.status === 'completed' ? record.artifact : null, failure: record.failure });
+    }
+    // A plain object, serialized proof or old scheduler status is never an
+    // original completion capability. Valid only inside the awaited callback.
+    verifyCompletion(handle, proof, expected) {
+        const record = this.#completionProofs.get(proof);
+        if (!record || record.handle !== handle || record.bindingDigest !== expected.bindingDigest
+            || record.evidence.inputHash !== expected.inputHash || record.evidence.endpointBindingDigest !== expected.endpointBindingDigest
+            || record.evidence.operation !== expected.operation) fail('native_mcp_completion_proof_invalid');
+        return record.evidence;
     }
     cancel(handle, raw) {
         fields(raw, ['operationId'], 'MCP cancellation');

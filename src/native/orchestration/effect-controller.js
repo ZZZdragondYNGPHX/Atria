@@ -132,7 +132,8 @@ export class EffectController {
             // This Port verifies original status/receipt/usage. A model or a
             // Browser Boolean cannot turn an unknown remote write into proof.
             await this.verifyObservation({ handle, tx, root, intent, observation });
-            if (!observation.dispatchEvidence || (observation.outcome === 'confirmed' && !observation.domainReceiptRef && !observation.remoteOperationRef)
+            if (!observation.dispatchEvidence || (observation.outcome === 'confirmed' && !observation.domainReceiptRef && !observation.remoteOperationRef
+                && !(observation.dispatchEvidence.kind === 'original_port_observation' && observation.dispatchEvidence.reference !== null))
                 || (observation.outcome === 'not_dispatched' && observation.dispatchEvidence.kind !== 'proven_not_dispatched')) throw new TypeError('Effect observation lacks dispatch/commit evidence');
             const contradictory = TERMINAL_EFFECT.has(intent.status) && TERMINAL_EFFECT.has(observation.outcome) && intent.status !== observation.outcome;
             const status = contradictory ? 'unknown' : TERMINAL_EFFECT.has(intent.status) && observation.outcome === 'unknown' ? intent.status : observation.outcome;

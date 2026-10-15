@@ -147,6 +147,7 @@ export function createMcpHttpClient({ url, toolNames = [], resourceUris = [], he
             if (!tools.has(name) || !object(args)) throw failure('mcp_tool_denied', 'MCP tool is outside its exact allowlist.');
             const response = await post('tools/call', { name, arguments: args }, options);
             validateText(response.result.content);
+            if (response.result.isError !== undefined && typeof response.result.isError !== 'boolean') throw failure('mcp_content_unsupported', 'MCP isError must be boolean.', true);
             if (response.result.structuredContent !== undefined && !object(response.result.structuredContent)) throw failure('mcp_content_unsupported', 'Structured MCP content must be JSON object.', true);
             return { ...response, result: { content: response.result.content.map(item => ({ type: 'text', text: item.text, ...(item.mimeType ? { mimeType: item.mimeType } : {}) })), ...(response.result.structuredContent !== undefined ? { structuredContent: response.result.structuredContent } : {}), ...(response.result.isError !== undefined ? { isError: response.result.isError === true } : {}) } };
         },

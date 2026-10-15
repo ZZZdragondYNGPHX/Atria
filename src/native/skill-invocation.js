@@ -2,10 +2,20 @@ import { resolveSkillInvocation, pinSkillEntries, skillReadPin, loadAlwaysSkills
 import { checkCancellation } from './model-prompt-runtime/execution-utils.js';
 import { fields } from '../../public/shared/native-values.js';
 import { performance } from 'node:perf_hooks';
+import { hashNativeDocument as hash } from './repositories/common.js';
+
+const completionProofs = new WeakMap();
+export function verifyProjectSkillCompletion(proof, { repository, bindingDigest, inputHash, operation }) {
+    const record = completionProofs.get(proof);
+    if (!record || record.repository !== repository || record.bindingDigest !== bindingDigest
+        || record.evidence.inputHash !== inputHash || record.evidence.operation !== operation)
+        throw Object.assign(new TypeError('Invalid original Skill completion proof'), { code: 'native_skill_completion_proof_invalid' });
+    return record.evidence;
+}
 
 // The existing Studio Task owns this work. A catalog consumes cached client
 // inventory; repository reads are measured only in this server process.
-export async function executeProjectSkillWork({ operation, input, compute, repository, settings, projectId, signal }) {
+export async function executeProjectSkillWork({ operation, input, compute, repository, settings, projectId, signal, onCompleted, completionBindingDigest }) {
     if (!['list', 'pin', 'read', 'files', 'catalog'].includes(operation)) throw Object.assign(new TypeError('Invalid Skill operation'), { code: 'native_skill_execution_invalid' });
     const allowed = { list: ['context'], pin: ['scope', 'name', 'expectedHash'], read: ['scope', 'name', 'version', 'path', 'offset', 'limit', 'full'],
         files: ['scope', 'name', 'version'], catalog: ['names'] };
@@ -39,6 +49,12 @@ export async function executeProjectSkillWork({ operation, input, compute, repos
         await compute.settleLocalWork(ticket, { wallMs: performance.now() - started, cpuUserMicros: used.user, cpuSystemMicros: used.system, cpuScope: 'process', outcome });
     }
     checkCancellation(signal); await compute.assertCurrent();
+    if (onCompleted && ['read', 'files'].includes(operation)) {
+        const proof = Object.freeze({});
+        completionProofs.set(proof, { repository, bindingDigest: completionBindingDigest,
+            evidence: Object.freeze({ protocol: 'skill', operation, inputHash: hash(input), resultHash: hash(result), version: input.version ?? null }) });
+        try { await onCompleted(proof); } finally { completionProofs.delete(proof); }
+    }
     return result;
 }
 
