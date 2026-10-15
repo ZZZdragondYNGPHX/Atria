@@ -2,7 +2,7 @@
 
 规则：此处**只保存跨模块用户选择的决策**。未经讨论的架构草案、源码推断与候选 API 均不得自动提升为冻结决定；所有产品实施另经后续正式收口。创建：2026-10-15。
 
-> **当前工程状态补记**：D1–D9 下的各轮“物理字段未定/定向审计”是当时事实，产品决定不变。本轮依据用户“核实并冻结物理接口”的授权，工程合同 v1 已收束于 [interface-contracts §6–11](interface-contracts.md#6-物理落点与存储合同-v1)，最新 `main@60aca6957` 取证/剩余阻塞和 NOT READY 结论归 [e0-audit §8–10](e0-audit.md#8-最新-main-全仓审计与零兼容处置矩阵)。真实运行闭包/故障/安全/三端证据尚未通过，不得把本文历史状态或工程定稿当成开工许可。
+> **当前工程状态补记**：D1–D9各轮的历史基线/未定项不构成当前门槛。本轮按用户要求将E0设计、开发授权和实施证据分离；物理合同见 [interface §6–16](interface-contracts.md#6-物理落点与存储合同-v1)，最新`main@60aca6957`的当前核销见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)：R01–R07设计闭合、E0_DESIGN_READY；R08仍NOT_AUTHORIZED。V3运行/故障/安全/三端仍NOT_RUN/BLOCKED，不因设计就绪伪称产品已验证。
 
 ## D1 — 已冻结：选择方案 B（2026-10-15）
 
@@ -11,7 +11,7 @@
 - **收敛方向**：统一原生执行内核。D1 曾提及“旧模式变为模板”，该部分已被 D2 直接否决：不保留旧模式、模板及兼容路径。
 - **边界：无新增 World/Memory/Session/Project/模型调用收费权威**。Agent 的提案与正式事实严格分离；相应原有计划中的领域契约继续有效。
 - **流程：讨论期间先更新并提交 `docs` 的同一份 Bundle，再进入后续轮次；本轮不修改 `main` 产品代码**。
-- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2、D7=N2、D8=U2、**D9=E1** 已冻结；**E0 全量接口/引用审计仍 BLOCKED，尚未达到开发分支前置条件，V3 产品仍未实施**。
+- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2、D7=N2、D8=U2、**D9=E1** 已冻结；**E0_DESIGN_READY；产品未实施/未验证；正式开发仍NOT_AUTHORIZED**。
 
 ## D2 — 已冻结：T2 Native Host + 旧编排零兼容硬切（2026-10-15）
 
@@ -125,21 +125,11 @@ D3 各操作的详细方向、不变量与需要测试的失败窗口只由 [gra
 
 D9 接口方向详见 [interface-contracts.md](interface-contracts.md)，E0 已查/阻塞详见 [e0-audit.md](e0-audit.md)，正式阶段/工作包/开发许可见 [implementation-plan.md](implementation-plan.md)，全域真实验收见 [acceptance-matrix.md](acceptance-matrix.md)；它们各司其职，不相互复制完整详细约束。
 
-## 尚未闭合的 E0/开发前置（不是另一轮设计选择）
+## 当前就绪与实施待证
 
-- 物理合同 v1、CAS/写前意图/RPC/错误码/原预算扩展设计已收束，但尚无 V3 实现与故障证据；单 Host 排他、普通 RP 预算、可信审批和高风险安全仍 BLOCKED。
-- 最新 main 的全仓 tracked/AST、API/设置/scope、Evolution/Evaluation、Native Game/Shell 共用依赖已有逐路径附件与 C01–C18 处置映射；真实动态注册/启动/业务消费与外部安装内容仍未证明，保持 BLOCKED，不称运行闭包穷尽。
-- 所需 Windows/Linux/Termux 真实平台、人工批准、外部 MCP/A2A/Provider 测试账号及成本上限、RP/Project 质量基线与无障碍/大图性能测量尚未完成。
-- 本轮不授予开始改 main 的权限，也不把 E1 选择认定为 E0 完成；后续需完整交接审查并取得新的明确开工授权。
+E0设计核销、R项状态与未取得证据仅由 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账) 管理；Gate前置仅由 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 管理。当前无已知开发前设计阻塞；正式开发仍需用户另行明确授权。P1–P8实际代码/可靠性/预算/信息安全/质量/可信UI/三端/四Engine证据均不得因E0设计通过而改写为PASS。
 
-## 后续未定（不要提前冻结）
-
-- D3 已冻结的动态 Graph/Join/Review 方向见 [graph-control.md](graph-control.md)；物理字段、模型质量/真实成本收益和工程验收仍未确定。
-- D4 Context/Hybrid/Actor/Source 的已冻结设计仅以 [context-sharing.md](context-sharing.md) 为准；物理字段、落地代码和实测收益尚未冻结。
-- D5 Adaptive/Model Routing/并行预算/三层 Cache 已冻结，接口与反例见 [adaptive-compute.md](adaptive-compute.md)；物理字段、阈值/实际收益后续验证。
-- D6 Tool/Skill/MCP/A2A 授权、审批与危险 Effect 方向已冻结，详细边界见 [effect-authorization.md](effect-authorization.md)；工具覆盖、具体审批 UI 与真实客户端兼容后续验收。
-- D7 RP Narrator/Actor/玩家自主权/Project Agent/Quality/创作语义已冻结，细节见 [narrative-project-quality.md](narrative-project-quality.md)；物理字段、真实质量收益/用户评价及 D8 UI 尚需独立验收。
-- D8 UI/Graph Editor/Timeline/Inspector/审批/跨端设计已冻结，详细仍归 [graph-editor-experience.md](graph-editor-experience.md)。D9 E1 已定实施路线，**但** E0 源码/数据接口与真正三端验证尚未闭合，按 [implementation-plan.md](implementation-plan.md) 审核开发许可。
+D3–D8的产品细则仍各归原模块，物理接口增补归interface-contracts；图backend、性能阈值、Provider/Tool实际能力与质量收益在对应实施阶段实测，不再作为E0前置或新的产品方向选择。
 
 ## 明确不等价
 
@@ -147,4 +137,4 @@ D9 接口方向详见 [interface-contracts.md](interface-contracts.md)，E0 已�
 - 「浏览器 IndexedDB Checkpoint」不等于「Native 持久 Session/Task Ledger」。
 - 「模型调用完成」不等于「正式游戏事件已提交」。
 - 「外部 Agent/MCP/A2A 返回成功」不等于「Atria 权威状态已更新」。
-- D1–D9 目前冻结的均为**设计/交接 Gate**，未修改 main、未创建实现分支；不能宣称 E0 全部通过、V3 功能已实现、旧代码已实际删除或 Windows/Linux/Termux/付费模型/人工审批已验证。
+- D1–D9 目前冻结的均为**设计/交接 Gate**，未修改 main、未创建实现分支；E0设计通过不等于产品验收通过；不能宣称V3 功能已实现、旧代码已实际删除或 Windows/Linux/Termux/付费模型/人工审批已验证。

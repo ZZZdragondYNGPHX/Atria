@@ -131,3 +131,13 @@
 - 当前是六个Orchestration metadata kinds；另两个是原Storage/RunControl authority自己的新增控制kind，不另建服务或资金银行。R01动态边界与R06 UI工程出口在interface §16明确，不靠实际V3 trace/PoC先于开发取得。
 - 实际补证仅源码只读：ChatRepo.append/rename、FS chat完整写与Native Journal区别、RunControl Session key、GenerationHost source/attempt、users原密码校验、MySQL/Pg withRetry。外部只读查阅Node v24.18.0、MySQL 8.4、Postgres 17及HTML标准，链接已贴在interface对应协议；首次latest-v24 URL不可用，固定v24.18.0 URL成功，未将外部文档当三端或SQL实测证据。
 - e0-audit §11.2逐项记录R01–R07设计核销，R08维持NOT_AUTHORIZED。新增实施负例归acceptance §9；产品case全部NOT_RUN，实际环境缺失仍BLOCKED。最终Gate一致性复核继续下一组。
+
+## 2026-10-15 — R项续审第三组：E0设计正式就绪，授权保持独立
+
+- Start docs：`9b553faea15e9da6ec03bb2e60a72161e898aa74`；最终fetch核对main/origin/main仍`60aca695726893e298b7d485f300c6efef3b79fd`，main工作树clean，原151文件静态manifest的源码基线未变，无需无故重跑同一扫描。
+- 完成DG01–DG07设计核对，e0-audit §11.2是当前R项权威，§11.3/§11.4给最终状态/未取得证据。R01–R07已知开发前设计阻塞为0：每项都有原authority、可实施合同/失败出口及负责P阶段，**E0_DESIGN=DESIGN_READY**。§1–10及前轮NOT READY/BLOCKED保留为历史时点，不能再作为当前建分支规则。
+- Gate定义仅归implementation §2：E0设计READY + 用户新的明确开发授权 + 当时main相关delta设计核对，才可正式开工。D9、index、工作包、acceptance已同步，不再要求新V3实测/真实consumer trace/三端或SQL服务证据先于开发产生。R08 **NOT_AUTHORIZED**，本轮不请求或推定授权。
+- 物理一致性复核补齐：六个编排metadata kinds与两个原Storage/RunControl域控制kind分清；RP selector/controlId、SourceBinding/预算/输出使用同一原身份；主origin不再实现approve；SQL Owner连接独立于业务pool，pool容量1不得死锁；原Chat事务与RPControl事务不嵌套；首次P6切换仍须核实不支持新fence的旧Host已停，guard端口空闲不能代替旧writer清退证据。
+- 产品实现/验收仍 **NOT_STARTED / NOT_RUN / NOT_READY**；真实环境证据未取得的CachyOS/Termux、SQL服务、外部Provider/Tool及可信批准配置等对应case保持BLOCKED。P1–P8的可靠性/权限/预算/质量/三端与四Engine最终要求没有降低，也没有把默认拒绝当应支持产品能力的永久占位。
+- 本轮只改同一docs Plan/Record，无产品模块执行/测试/付费服务/真机操作，无实现分支、main修改、破坏性操作或独立HANDOFF。已有Storage Record修改、未跟踪Evolution和Settings/Themes材料保留。
+- 最终实际文档校验：18份Bundle/Record、168个相对链接无缺失，Bundle内部fragment无失效；E1 Gate图9条边无环且明确E0→AUTH→P1，R01–R08当前表8项齐全（前7项DESIGN_CLOSED、R08 NOT_AUTHORIZED），六个编排kind唯一；git diff --check通过。这些是文档一致性检查，不是产品测试或安全/三端通过证据。

@@ -1,6 +1,6 @@
 # D9 E1 — Native Orchestration V3 实施工作包、依赖与交接门槛（已冻结路线）
 
-> 2026-10-15 第九轮选择 **E1：内核先行、同一产品任务分支分阶段验证、最终统一零兼容硬切**。本模块独占正式实施阶段/工作包/每阶段退出门槛/创建开发分支的前置条件。接口方向见 [interface-contracts.md](interface-contracts.md)，旧消费者/阻塞静态证据见 [e0-audit.md](e0-audit.md)，验证矩阵唯一来源为 [acceptance-matrix.md](acceptance-matrix.md)。**本轮是 docs 阶段规划定案；E0 当前设计进度见 e0-audit §11；正式开发仍 NOT_AUTHORIZED，不得建立实现分支或修改 main**。所有 Stage Gate 是未来真实工程完成条件，不宣称 PASS。
+> 2026-10-15 第九轮选择 **E1：内核先行、同一产品任务分支分阶段验证、最终统一零兼容硬切**。本模块独占正式实施阶段/工作包/每阶段退出门槛/创建开发分支的前置条件。接口方向见 [interface-contracts.md](interface-contracts.md)，旧消费者/阻塞静态证据见 [e0-audit.md](e0-audit.md)，验证矩阵唯一来源为 [acceptance-matrix.md](acceptance-matrix.md)。**本轮是 docs 阶段规划定案；E0_DESIGN_READY，当前设计核销见 e0-audit §11；正式开发仍 NOT_AUTHORIZED，不得建立实现分支或修改 main**。所有 Stage Gate 是未来真实工程完成条件，不宣称 PASS。
 
 ## 1. E1 与零兼容的准确含义
 
@@ -17,7 +17,7 @@
 
 | Gate | 通过所需事实 | 明确不作为该 Gate 的前置 | 当前权限/结果 |
 | --- | --- | --- | --- |
-| **E0_DESIGN** | 最新 main 的静态消费者范围和未解析动态边界已列明；每项新合同都有原 authority/物理落点/状态机/失败出口/验收责任；没有会迫使实现重开产品方向或复制原服务的未决设计 | 尚不存在的 V3 代码/测试、真实运行trace、crash injection、图backend PoC、三端或MySQL/Pg服务实测 | 逐项设计审查见 e0-audit §11；只有设计项全闭合才 DESIGN_READY |
+| **E0_DESIGN** | 最新 main 的静态消费者范围和未解析动态边界已列明；每项新合同都有原 authority/物理落点/状态机/失败出口/验收责任；没有会迫使实现重开产品方向或复制原服务的未决设计 | 尚不存在的 V3 代码/测试、真实运行trace、crash injection、图backend PoC、三端或MySQL/Pg服务实测 | R01–R07设计已闭合，当前DESIGN_READY，证据见e0-audit §11 |
 | **DEVELOPMENT_AUTHORIZATION** | 用户另行明确授权正式产品开发 | 不是测试、环境能力或 E0 设计状态；不能由 Agent 自动推导/设为通过 | **NOT_AUTHORIZED**；本轮仍只改docs、不建实现分支 |
 | **P1–P6 stage evidence** | 当阶段实现和对应 L1/L2/必要 L4 真实证据；问题诊断修复复测 | 后续阶段尚未产生的最终产品/三端证据不能倒挂为启动该阶段的要求 | 尚未实施：NOT_RUN；获授权后按依赖持续推进 |
 | **P7/P8 release evidence** | 全部适用可靠性/安全/域行为、三端L3、四Engine及必要L4证据；当时tested SHA和治理集成条件 | 不以E0 DESIGN_READY、授权、文档提交或fixture替代真实产品验收 | 产品 NOT_VERIFIED / NOT_READY；未测项和真实环境阻塞继续保留 |
@@ -90,9 +90,9 @@ flowchart LR
 
 | 阶段 | 必须拿到的具体输入/交付 | 最小 Gate 与禁止跨越的事实 |
 | --- | --- | --- |
-| P1 | interface §6/7：6 kinds/key validators、原 canonical hash、Plan Draft/publish、Run/records/command tx、SourceBinding、Host writer exclusivity、backup/GC ref registration；RPC auth/CSRF/boot/read-only | FS+SQLite 的新 kinds/insert/CAS/immutable、并发 publish、第二 Host 拒绝、损坏与 ACK-loss 的 L1/L2；MySQL/Pg 注册和 adapter 合同不得漏。没有 P1 V3 证据就不接外部 Effect |
+| P1 | interface §6/7：6个编排kinds + 原HostFence/RPControl的key validators、原 canonical hash、Plan Draft/publish、Run/records/command tx、SourceBinding、Host writer exclusivity、backup/GC ref registration；RPC auth/CSRF/boot/read-only | FS+SQLite 的新 kinds/insert/CAS/immutable、并发 publish、第二 Host 拒绝、损坏与 ACK-loss 的 L1/L2；MySQL/Pg注册/adapter L1合同不得漏；真实SQL连接Owner/故障证据在启用该backend发送前取得，最终P7四Engine验收必须齐备。没有相应backend的P1 V3证据就不在该backend接外部Effect |
 | P2 | 同一 Run CAS 下 GraphPatch/Join/Delegate/Handoff/Review/counter；prepared/ready/dispatching/unknown、Approval binding/consumption、取消与 late receipt | 仅受控 test Port 验状态机/崩溃窗口，**不接真实付费或外部 mutation**。BudgetPort 用合同 fake 不计为原预算通过；可信 UI 尚未存在时 approval mutation 不对生产开放 |
-| P3 | W04/W05 改接原 BudgetPort、稳定 provider attempt 与 fallback、Context/Hybrid audience、Tool/MCP/A2A/Skill/Egress/Credential Ports、原 DomainReceipt | sibling 竞争、跨 tx unknown、原 bank observe/settle、source revoke before send、zero duplicate charge、无可用 bank 的普通 RP 拒绝。有真实服务准入的 L4 才能称其外部费用/协议通过 |
+| P3 | W04/W05 改接原 BudgetPort、稳定 provider attempt 与 fallback、Context/Hybrid audience、Tool/MCP/A2A/Skill/Egress/Credential Ports、原 DomainReceipt | sibling 竞争、跨 tx unknown、原bank三域Session/Project/RP的observe/settle、source revoke before send、zero duplicate charge、无可用 bank 的普通 RP 拒绝。有真实服务准入的 L4 才能称其外部费用/协议通过 |
 | P4 | C02/C03 新 consumer；W07 Target 全生命周期+Eval adapter/worker/fingerprint；普通 RP chat source 与 Session/Project 各自 output consumer；Skill 旧 scope 替代准备 | 一个 source turn/variant/slot 唯一 output；World/Project commit 与 Run completed 区分；新 evaluator 身份/旧报告不可发布。旧实现可尚在任务树供静态对照，但新主链不能调用旧 runner |
 | P5 | Host projection/long-poll、Plan Library、Canvas+Inspector/List 同 Draft、可信 Approval 详情、Source/Cost/Unknown/Diagnostics、Shell/Search 移动路由 | 新 UI 在真实 Host/Browser 验 L2；取消/status 不被模型/图布局/审批等待阻塞。图 backend PoC 须留键盘/触控/负例/测量；DOM/ESM/原 token 与当前主题 authority 保持一致 |
 | P6 | C01–C18 全面切入口、卸旧 subscriber/worker；清 151 文件中旧执行路径、旧 scope/config/UI/assets/checker/tests；修共用 helper imports；旧客户端发送协议失效 | AST+语义扫描零生产旧根/旧 API/mode/scope执行路径；非目标 sync/World/Studio/Memory/Skill 不误删；真实 boot/Game/Settings/Shell/Evaluation/Skills trace。旧 private data 无迁移/别名/双读，历史正式收据保护 |
@@ -105,12 +105,12 @@ P2 不需要提前实作一套影子预算；P3 的预算接口合同在 P1/P2 �
 
 | 包 | 源码 authority / 依赖输入 | 具体产物与完成证据 | 先后约束 |
 | --- | --- | --- | --- |
-| W01 Authoring/Data | Native contracts/identity/common + 原 Settings/Skills repo | 6 kinds 中 Plan+revision、Draft/publish API、严格 validator/hash；Settings old subtree、orch-preset 读写/restore 禁止重启旧协议；精确数据清单 | P1 authoring 先于 W08；硬切清理等 W06/W07/W08 替代齐备 |
-| W02 Ledger/Recovery | Engine/原 journal、SQL Native CAS、RunControl、ProjectTask、Storage refs | RunRoot/record/command tx、writer lease、host epoch、恢复扫描、GC pins、write-before-send saga；不是新 World/费用银行 | P1 基础；W04 预算身份规范须先对齐；P2 使用 fake Port，P3 才真实 send |
+| W01 Authoring/Data | Native contracts/identity/common + 原 Settings/Skills repo | 6个编排kinds中的Plan/Binding/revision及原Storage/RunControl域新key注册、Draft/publish API、严格 validator/hash；Settings old subtree、orch-preset 读写/restore 禁止重启旧协议；精确数据清单 | P1 authoring 先于 W08；硬切清理等 W06/W07/W08 替代齐备 |
+| W02 Ledger/Recovery | Engine/原 journal、SQL Native CAS、RunControl、ProjectTask、Storage refs | RunRoot/record/command tx、§12 root guard/SQL session Owner与HostFence、host epoch、恢复扫描、GC pins、write-before-send saga；不是新 World/费用银行 | P1 基础；W04 预算身份规范须先对齐；P2 使用 fake Port，P3 才真实 send |
 | W03 Graph/Core | W01 immutable Plan + W02 CAS/epoch + D3 | typed graph/whole patch、JoinReceipt、delegation/return、bounded counters、Review invalidation；抽离 prepared-context/envelope 共用 helper | P2；C08/C09 抽离先于任何旧目录删除 |
-| W04 Source/Context/Compute | 原 Context/Hybrid/Information/Actor、GenerationHost/Model Route、RunControl/Project bank | SourceBinding/audience refs，原 authority reservation tree+stable attempt admit/observe/settle，fallback/unknown/parent high-water；ordinary rp_chat authority 缺失拒绝 | P3 真实接入；P4 output/currentness 前置；预算树不得由 W02 私有实现 |
-| W05 Tool/Security | 原 Tool/Skill/MCP/A2A/CredentialTargetAuthority/SecretPort + W02 intent | action descriptor/version/hash/grant/egress，审批 challenge/一次消耗、真实 Port reconcile、禁无保护 R3；删旧 registry tools/scope hook | P2 合同→P3 Ports→P5 可信 UI；SDK 不能拿批准 capability |
-| W06 RP/Game | W03–W05 + Session/World/Command/原 chat/variant consumer | capability boot/play-generation/experience runtime/narrative/rewrite 全部接新 contract；唯一 source output claim/原 DomainReceipt；旧 mode/guidance/takeover subscriber 下线 | P4 业务→W08 展示→P6 移除旧主链 |
+| W04 Source/Context/Compute | 原 Context/Hybrid/Information/Actor、GenerationHost/Model Route、RunControl/Project bank | SourceBinding/audience refs，原 authority reservation tree+stable attempt admit/observe/settle，fallback/unknown/parent high-water；§13原RunControl RPControl/controlId与稳定send identity，不再只以缺authority拒绝占位 | P3 真实接入；P4 output/currentness 前置；预算树不得由 W02 私有实现 |
+| W05 Tool/Security | 原 Tool/Skill/MCP/A2A/CredentialTargetAuthority/SecretPort + W02 intent | action descriptor/version/hash/grant/egress，审批 challenge/一次消耗、真实Port reconcile、§15同Host独立Review Origin/原用户再认证、禁无保护R3；删旧 registry tools/scope hook | P2 合同→P3 Ports→P5 可信 UI；SDK 不能拿批准 capability |
+| W06 RP/Game | W03–W05 + Session/World/Command/原ChatRepo/RPControl单输出consumer | capability boot/play-generation/experience runtime/narrative/rewrite 全部接新 contract；§14 writing单permit/单chat正文+marker/原DomainReceipt；旧 mode/guidance/takeover subscriber 下线 | P4 业务→W08 展示→P6 移除旧主链 |
 | W07 Project/Evolution | 原 Studio/ProjectTask/Experience/Eval、W01 exact Plan refs、W03–W05 | Target authorize/catalog/capture/prepare/check/current/write/discard/evaluationSettings、Eval adapter/worker/fingerprint、promotion/rollback 原权限；旧 report 不自动 eligible | P4 业务；先替 evaluator/指纹/Settings CAS 消费，再删旧 presets/Director |
 | W08 UI/Shell | W01 authoring + W02 projection + W05 trusted interaction + W06/W07 | Graph+Inspector/完整移动 List、Timeline 默认/Graph toggle、Source/Cost/Approval/Diagnostics、Search/deep-link/history/Back；旧 panel/CSS/labels 消除 | P5；原 Serene Canvas/Settings Theme 只引用不另建；真实功能等价后进 P6 |
 | W09 Hard Cut/Evidence | C01–C18、两个审计附件、所有工作包替代接口 | 逐路径处置核对、AST/语义零旧执行引用、测试适用性分类、三端/Store/服务 evidence manifest、main delta复核 | P6 清退→P7验证→P8集成；不得把 grep 无命中等同端到端通过 |
@@ -123,4 +123,4 @@ P2 不需要提前实作一套影子预算；P3 的预算接口合同在 P1/P2 �
 - [Settings/Themes](../atria-settings-and-themes/index.md) 与 Serene Canvas 管通用设置保存、主题和 Shell 视觉；它的通用兼容不恢复 D2 已废止的 Orchestrator subtree/mode/scope。V3 只清旧编排字段，新 Authoring 不重复实现 Settings 服务；当前主题更新不要求 V3 强制固定浅色。
 - 既有独立 MCP、Model/Memory、Game Runtime/Project、Experience/Eval 方案仍各持权威。未来 main 上同期改动先做精确 diff，不读取其它任务未提交草稿或把历史源基线当当前实现。
 
-本轮最终审查结论与剩余阻塞见 [e0-audit §10](e0-audit.md#10-最终开发就绪审查与交接结论)。即使 E0 设计闭合，**仍须用户另行明确授权正式开发**；本次授权不包括创建实现分支或修改 main。这里的交接结论是企划收口产物，不创建/刷新独立 HANDOFF，不将未完成验证转交为已完成。
+本轮当前核销/设计就绪与实施证据分账见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)；§10保留先前尚未分账时的历史结论。即使 E0 设计闭合，**仍须用户另行明确授权正式开发**；本次授权不包括创建实现分支或修改 main。这里的交接结论是企划收口产物，不创建/刷新独立 HANDOFF，不将未完成验证转交为已完成。

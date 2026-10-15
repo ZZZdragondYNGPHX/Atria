@@ -53,7 +53,7 @@
 
 §12–16是本次R项收口的物理增补，HostOwner、普通RP、Chat输出、ReviewOrigin与SQL失败细节以对应增补为准；§6–11的对象/域边界不另立第二份authority。
 
-本节起为 2026-10-15 在 `main@60aca695726893e298b7d485f300c6efef3b79fd` 上审查后冻结的**可实施工程合同**；不更改 D1–D9，不表示表/模块/API 已存在。前五节保留 D9 语义方向，其中“尚待确定”的物理项由本节对应项收束；实证未完成仍见 [e0-audit §9](e0-audit.md#9-存储预算权限证据与未闭合项)。禁止用下面的新名称注册第二 World/Memory/Model/预算服务。
+本节起为 2026-10-15 在 `main@60aca695726893e298b7d485f300c6efef3b79fd` 上审查后冻结的**可实施工程合同**；不更改 D1–D9，不表示表/模块/API 已存在。前五节保留 D9 语义方向，其中“尚待确定”的物理项由本节对应项收束；实证未完成仍见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)。禁止用下面的新名称注册第二 World/Memory/Model/预算服务。
 
 ### 6.1 代码归属与 key
 
@@ -80,7 +80,7 @@ ID 在原 `identity.js` 扩展 UUID family：`oplan/oprev/orun/onode/oattempt/oe
 - Plan `definitionHash` 只 hash `{schemaVersion,definition,dependencyPins}`；几何/缩放/选择放独立 `viewState`，不得改变语义 hash。PlanRevision doc integrity 按完整 doc 重算。`dependencyPins` 精确钉住原 Prompt/Route/Tool schema/Skill refs，动态 grant/currentness 运行时重验，不复制 Secret。
 - Plan publish：同一 `engine.withTransaction(handle,tx)` 检查 DraftVersion + definitionHash + 当前权限/依赖，`putImmutable(revision)` + CAS PlanRoot pointer + command outcome；事务成功返回才 ACK。Validate 报告不是跨变更的许可证。
 - Run mutation：`withNativeResourceWrites` 对资源 ID 排序锁，再同一 Engine tx 读 root，比较 expected integrity/stateVersion/epoch/graphRevision；更新 root、相关 records、event 与 command outcome **同一事务**。V3 不使用“先事件后状态”的双写。RunRoot/records 为恢复真相，event 为同事务审计与投影 cursor；snapshot 不得比 event cursor 更新。
-- CAS 409 不透明重跑旧 patch/approval；重读后让 controller 重新 guard。当前三个 SQL Native handler 均实现专用 `putIfMatch`：insert-if-absent 与 `UPDATE ... WHERE integrity = expected`，这是单行原子 CAS；通用 fallback 才是 read/compare/write。V3 必须走 Native handler，并以同事务 root CAS 保护所有关联 records。单行 CAS 不自动提供整个 Host 生命周期/跨 store/网络事务排他。
+- CAS 409 不透明重跑旧 patch/approval；重读后让 controller 重新 guard。当前三个 SQL Native handler 均实现专用 `putIfMatch`：insert-if-absent 与 `UPDATE ... WHERE integrity = expected`，这是单行原子 CAS；通用 fallback 才是 read/compare/write。业务pool容量为1也不能因Owner占用而死锁；持有Owner的专用连接不用来执行长业务事务。V3 必须走 Native handler，并以同事务 root CAS 保护所有关联 records。单行 CAS 不自动提供整个 Host 生命周期/跨 store/网络事务排他。
 - 单 Native Host 是产品权威，**不等于进程内 Map 能排斥第二进程**。同一 canonical data root 的可写 Host 必须有存活期独占 lease/fencing。复用现有服务启动/存储独占机制若能证明；否则在原 Storage 生命周期扩展，不能在 V3 私有层声称获得全站锁。自动 stale takeover 需证明旧进程退出/原发送失效，不能只凭墙钟 TTL。无法排斥时 `native_orchestration_writer_unavailable`，拒绝启动可写编排。实现策略已由§12固定；实证归P1，当前NOT_RUN。
 
 ### 6.3 Store 支持与崩溃保证的实际边界
@@ -191,7 +191,7 @@ GraphPatch/Effect/DomainPort 不作为 Browser 任意调用 API 暴露；Host �
 
 Projection：`{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersion,visibilityDigest,seq,cursor,kind,payload}`。snapshot 自包含授权 Run 摘要/当前 graph refs；delta batch 带 `fromSeq,toSeq,baseProjectionVersion`，重复 seq 丢弃、缺口/旧 projectionId/epoch/visibilityDigest 变化则清旧视图后重新请求 snapshot，禁止拼接不同授权域。后端每次观察重新检查 owner/Source/Actor/disclosure；projectionVersion 是该 view 合同版本，seq 是该授权 projection stream 的连续序号，**不是内部持久 eventSeq**。cursor 为不暴露内部位置的 opaque token，Host 以有界非权威订阅 Map 关联内部 eventSeq；断线/重启或 cursor 失效只重取 snapshot，不由此恢复 Run。隐藏事件不递增该客户端可见 seq；对无权限用户不暴露内部计数、私密节点数量或错误详情。payload 禁 Secret、nonce、opaque reasoning、未获准 NPC/Result 原文；审批实际参数通过本人受控详情另取。
 
-审批真实性边界（Review Origin接线唯一见§15；主origin不接收approve）：认证 owner 会话 + CSRF + allowlisted Origin + expected boot + 一次 challenge nonce + 精确 binding + 原领域批准是最低条件，不能只收 `confirm:true`。模型、Tool、插件 Runtime SDK 不获得 `/approvals/decide` capability/nonce；请求展示和决策通道须独立受控，R3 要使用原领域能提供的更强身份/交互保护。**同 origin 已获任意 JS 执行权的恶意扩展无法仅凭 CSRF/isTrusted 被彻底隔离**：没有受信 UI/重认证隔离证明，相应 mutation/R3 保持 blocked，不能在本审计虚构平台原生批准通道已存在。完整 approval binding hash 覆盖 effect+action/target/input/source/endpoint/grant/egress/budget envelope/boot/epoch/expiry；消耗与 dispatch claim 原子化。
+审批真实性边界（Review Origin接线唯一见§15；主origin不接收approve）：认证 owner 会话 + CSRF + allowlisted Origin + expected boot + 一次 challenge nonce + 精确 binding + 原领域批准是最低条件，不能只收 `confirm:true`。模型、Tool、插件Runtime SDK不获得Review Origin的`/review/decide` capability/nonce；请求展示和决策通道须独立受控，R3 要使用原领域能提供的更强身份/交互保护。**同 origin 已获任意 JS 执行权的恶意扩展无法仅凭 CSRF/isTrusted 被彻底隔离**：没有受信 UI/重认证隔离证明，相应 mutation/R3 保持 blocked，不能在本审计虚构平台原生批准通道已存在。完整 approval binding hash 覆盖 effect+action/target/input/source/endpoint/grant/egress/budget envelope/boot/epoch/expiry；消耗与 dispatch claim 原子化。
 
 错误码统一 `native_orchestration_*`：`invalid_schema/invalid_graph/validation_unknown/plan_conflict/run_conflict/graph_conflict/command_conflict/stale_source/stale_epoch/permission_denied/approval_required/approval_stale/approval_channel_untrusted/budget_unavailable/budget_exhausted/effect_unknown/reconcile_required/writer_unavailable/storage_unavailable/projection_resync_required/legacy_unsupported`。映射 400/401/403/404/409/422/503，错误不含私密值；原领域失败保留其 `domainCode` 和 safe refs，不转换成假成功。
 
@@ -242,6 +242,7 @@ Projection：`{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersi
 - 原Storage启动在root建立一次性的 `native-host.identity`：`{schemaVersion:1,instanceId:<random UUID>,guardAlgorithm:1}`。首次通过exclusive-create写入并sync；其他进程只读取同一文件，部分写/格式损坏即启动失败，不生成备用identity。经realpath的别名、Windows大小写路径仍必须读取同一个root内identity；正常boot/配置端口变化不更换它。它是原Storage控制元数据，不含用户内容/Secret，不是RunLedger。
 - `guardPort = 30000 + uint32be(SHA256(instanceId)[0..3]) % 20000`。同一Node Host在任何Native恢复/写入/发送前，以IPv4 `127.0.0.1` 绑定这个固定端口，`exclusive:true`，禁用port reuse/cluster共享；**端口冲突就writer_unavailable，禁止换端口试到成功**。监听器不提供HTTP/API或批准能力，只接受后立即关闭意外连接。端口hash碰撞会导致保守拒绝，不会变成两个Owner。
 - 这是同一Native Host进程持有的OS资源，进程退出由OS释放，不靠可过期PID文件抢占。正常关闭顺序为停止admission→fence/取消尚未dispatch工作→保存可恢复状态→关闭原服务/连接→最后释放guard。guard异常关闭立即使Host writer permit失效；不能先释放guard再完成业务写入。原应用HTTP listener不是替代，因为两个进程可能配置不同HTTP端口。
+- 首次切换产品真实root前，P6必须按e0-audit §8.1核实旧Host/Browser worker已停；不支持本guard/HostFence的旧版本不能由新协议自动约束，首次bootstrap不能凭端口空闲就声称旧writer已清退。P1–P5只在隔离测试root证明新机制，旧writer无法确认退出则P6禁止切换。
 - 从备份恢复的identity可能与本机其他独立副本冲突，拒绝启动并显示原Storage诊断；不得在活动状态自动换identity绕过。不同root对同一SQL数据库还必须通过§12.2的数据库Owner排斥。单Host保证针对遵守原Storage协议的Atria进程，不把拥有OS写权限的任意恶意程序纳入可隔离范围。
 
 原理依据：[Node v24.18.0 net.listen](https://nodejs.org/download/release/v24.18.0/docs/api/net.html#serverlistenoptions-callback) 定义独占句柄/端口复用行为；上述identity/hash/启动顺序是本方案的工程设计，不能由Node文档推断三端实现已通过。P1需在真实OS验证同时启动、路径别名、端口冲突、退出重开及guard关闭；若目标OS行为不同，该adapter fail-closed并修复，不能假称Owner成立。
@@ -252,8 +253,8 @@ Projection：`{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersi
 | --- | --- | --- |
 | FS | root guard +现有root事务tail/Native Journal | guard获准后先recover journal再读/写；不把Map当跨进程锁 |
 | SQLite | root guard +现有per-handle `BEGIN IMMEDIATE` / Native conditional CAS | 所有同root的SQLite文件沿原storage layout；不另开绕过Engine的连接执行V3写入 |
-| MySQL | 原Engine保留专用非池归还连接，`GET_LOCK('atria.native-host.' + SHA256(actualDatabase).slice(0,40),0)`；只接受返回1 | 锁名称按数据库实际名称产生，不按URL别名/连接配置名；连接异常后不自动取新连接继续原owner |
-| Postgres | 原Engine保留专用session连接，对固定`atria.native-host-owner.v1`字符串的SHA-256前两个有符号int32be值调用`pg_try_advisory_lock`；实际database内所有Atria表writer共用同一key | 必须是session lock，不能用事务结束即释放的lock；禁止transaction-pooling代理丢失session身份后仍声称持锁 |
+| MySQL | 原Engine创建独立于业务连接池、不可归还业务池的专用连接，`GET_LOCK('atria.native-host.' + SHA256(actualDatabase).slice(0,40),0)`；只接受返回1 | 锁名称按数据库实际名称产生，不按URL别名/连接配置名；连接异常后不自动取新连接继续原owner |
+| Postgres | 原Engine创建独立于业务连接池、不可归还业务池的专用session连接，对固定`atria.native-host-owner.v1`字符串的SHA-256前两个有符号int32be值调用`pg_try_advisory_lock`；实际database内所有Atria表writer共用同一key | 必须是session lock，不能用事务结束即释放的lock；禁止transaction-pooling代理丢失session身份后仍声称持锁 |
 
 MySQL会话级命名锁可跨commit保留且会话结束释放；Postgres也提供会话级advisory lock。依据 [MySQL 8.4 locking functions](https://dev.mysql.com/doc/refman/8.4/en/locking-functions.html) 和 [Postgres 17 advisory locks](https://www.postgresql.org/docs/17/explicit-locking.html#ADVISORY-LOCKS)。这些锁是协作机制，不替代持久CAS或原领域权限。MySQL多primary/NDB、未知代理拓扑或无法证明session固定的部署先明确拒绝可写编排；原四Engine标准单primary/直连模式必须在P7取得真实验收，不能以永久拒绝代替完成该适用范围。
 

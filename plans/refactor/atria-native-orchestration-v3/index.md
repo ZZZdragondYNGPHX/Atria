@@ -12,7 +12,7 @@
 - 第六轮状态：**D6 已冻结：S2 Native Effect Authorization Gate；按实际动作/后果授权、分级审批、Secret/Egress 保护、Prompt Injection 隔离及持久 EffectIntent/Receipt 安全恢复**。
 - 第七轮状态：**D7 已冻结：N2 分层叙事与条件质量回路，区分 Actor Cognition、Narrative Intent、Character Expression 与唯一 Narrator；反全知、玩家自主权、Project Review/Commit 和质量分层**。
 - 第八轮状态：**D8 已冻结：U2 Graph Canvas + Inspector 双向编辑、原生 Plan Draft/Validate/Publish、运行 Timeline 默认/Graph 切换、Host RunProjection/Diagnostics、可信审批及 PC/移动等价编辑能力**。
-- 第九轮状态：**D9/E1 不变；本轮已完成 tracked 全仓扫描、AST 依赖索引、C01–C18 零兼容矩阵和物理合同 v1、E1/三端验收细化。本轮按用户要求拆分E0设计、开发授权与P阶段验收，当前设计核销见e0-audit §11；真实运行/可靠性/安全/平台实证仍NOT_RUN/BLOCKED，正式开发未获授权**。
+- 第九轮状态：**D9/E1 不变；本轮已完成 tracked 全仓扫描、AST 依赖索引、C01–C18 零兼容矩阵和物理合同 v1、E1/三端验收细化。本轮按用户要求拆分E0设计、开发授权与P阶段验收，**E0_DESIGN=DESIGN_READY，R01–R07设计已闭合**；当前核销见e0-audit §11；真实运行/可靠性/安全/平台实证仍NOT_RUN/BLOCKED，正式开发未获授权**。
 - 文档性质：设计与架构冻结阶段；本轮仅提交 `docs`，不建立实现分支、不修改 `main`，不宣称任何新实现已验证。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -44,9 +44,9 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [effect-authorization.md](effect-authorization.md) | **D6 冻结**：Tool/Skill/MCP/A2A 发现与能力授权、R0–R3 风险、可信审批、Secret/Egress、Prompt Injection、持久 Effect/未知恢复 | D6 与后续 Effect 安全接入 |
 | [narrative-project-quality.md](narrative-project-quality.md) | **D7 冻结**：N2 原生 RP/Project 双出口、Actor/Intent/Narrator、反全知/玩家自主权、Judge/Review 与作者语义 | 第七轮及后续质量/创作消费者 |
 | [graph-editor-experience.md](graph-editor-experience.md) | **D8 冻结**：U2 Graph+Inspector、强类型 Node/Edge、Plan Draft/Publish、Run Timeline/Projection、审批/Diagnostics、Serene Canvas/移动端与性能 | 前端 V3 Authoring 与 Run UX 设计权威 |
-| [e0-audit.md](e0-audit.md) | **D9 E0 静态证据（E0 未通过）**：跨域依赖、旧代码清退风险、接口待定项、待清退消费者和未闭合审计项 | D9 E0 与实施方案讨论 |
+| [e0-audit.md](e0-audit.md) | **E0_DESIGN_READY**：§11是当前R01–R08设计/实施证据分账及核销；§1–10保留早期审计事实 | D9 E0 与实施方案讨论 |
 | [e0-consumer-inventory.md](e0-consumer-inventory.md) / [e0-import-graph.md](e0-import-graph.md) | 最新 main 全仓逐文件/行号、151 文件清退 manifest、AST 直接/间接依赖及动态表达式证据附件；处置仍归 e0-audit | E0 / P6 引用闭包复核 |
-| [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：6 kinds/key、对象字段/状态、CAS/事务/恢复、原预算 Port、RPC/Projection/审批/保留根；实现实证未通过 | E0 物理接口核查与实施 P1–P4 |
+| [interface-contracts.md](interface-contracts.md) | **物理合同 v1（设计冻结）**：6个编排metadata kinds及原Storage/RunControl域扩展；§12–16收束HostOwner/RP预算/Chat输出/ReviewOrigin/SQL未知；实证未通过 | E0 物理接口核查与实施 P1–P4 |
 | [implementation-plan.md](implementation-plan.md) | **D9 E1 正式路线**：E0 建分支前置、P1–P8 依赖/验收门槛、全域消费者硬切及工作包 | E0 审核、正式交接与实施期间 |
 | [acceptance-matrix.md](acceptance-matrix.md) | **D9 冻结验收目标**：L0–L4、Graph/Effect/预算/安全/RP/Studio/UI 与三端真实客户端 Gate | 每阶段/最终收口与 Record 证据 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
@@ -68,7 +68,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | **6 已完成** | Tool/Skill/MCP/A2A 能力授予、审批、危险副作用与跨协议恢复 | **D6 = S2 Native Effect Authorization Gate** |
 | **7 已完成** | RP Narrator、Actor Cognition/防全知/玩家自主权、Project Agent、Judge/Review 与原生创作体验 | **D7 = N2 分层叙事与条件质量回路** |
 | **8 已完成** | Graph+Inspector 双向编辑、原生 Plan 发布、Timeline/Diagnostics、可信审批与全端体验 | **D8 = U2** |
-| **9 方案已冻结 / E0 阻塞** | E0 真实消费者与物理接口审查、分阶段硬切、故障/安全/质量和三端验收 | **D9 = E1；E0 未通过、未建分支** |
+| **9 方案已冻结 / E0设计就绪** | R01–R07设计关闭，运行/故障/三端验收按P阶段取得 | **D9=E1；E0_DESIGN_READY，开发NOT_AUTHORIZED，未建实现分支** |
 
 D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代码发现见 [e0-audit.md](e0-audit.md)，Plan/Run/Effect/Receipt/Projection 关键接口方向见 [interface-contracts.md](interface-contracts.md)，E1 实施阶段/前置审核唯一来源见 [implementation-plan.md](implementation-plan.md)，实际验收 Gate 唯一来源见 [acceptance-matrix.md](acceptance-matrix.md)**。其他 HCM、Agent Intelligence、Game Runtime、Serene Canvas、独立 MCP 的权威不复制。D9 设计冻结绝不等于 E0 引用闭包/用户实际开工授权。
 
@@ -76,4 +76,4 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 
 必读本 `index.md` → [decisions.md](decisions.md) D9 → [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账) 当前设计核销 → [interface-contracts](interface-contracts.md) 物理合同 → [implementation-plan §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 独立Gate → [acceptance-matrix](acceptance-matrix.md) 实施后验证。开发前重核main delta及相关authority；真实consumer trace、故障/预算/审批和三端验证在各P阶段取得。未执行项目不写PASS；**当前不创建工作分支、不修改main**。
 
-当前生效状态见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)；早期“缺V3实测即E0 BLOCKED”的判定已由当前用户要求修正。Gate定义唯一来源是 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离)。当前仍只改docs，未获授权正式开发。
+当前生效状态：**E0_DESIGN=DESIGN_READY；DEVELOPMENT_AUTHORIZATION=NOT_AUTHORIZED；产品验收NOT_RUN/BLOCKED**。详见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)；早期“缺V3实测即E0 BLOCKED”的判定已由当前用户要求修正。Gate定义唯一来源是 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离)。当前仍只改docs，未获授权正式开发。
