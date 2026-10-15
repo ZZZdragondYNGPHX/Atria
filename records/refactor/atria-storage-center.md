@@ -182,6 +182,20 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 - 高级工具仍可查看主设置，但禁止泛型编辑/删除；相关 service 8 项通过。当前任务 68 个 JS 文件使用本地规则进行 scoped ESLint，0 errors；新代码后续仍需相关复测。
 - 当前尚有面板业务导航/导出、补充安全候选与恢复暂停验证、迁移升级和集成浏览器检查，不能据此宣布全部验收完成。
 
+### 全写入口与恢复闭包 checkpoint — `aa1bcc976`
+
+- 补齐 Engine 内嵌事务组合、素材及 Package 元数据/Blob 原子准入、legacy chat 与结构化文件的规范内容净增量；素材失败只清除本次新引入且无提交引用的 Blob。
+- 默认 Repository 的非 HTTP 删除消费者也接入同一回收权威；领域原删除仅在受控恢复发布内部调用。Persona 保留原参数和指纹校验，Runtime 与扩展保留原返回契约。
+- 视觉数据按真实 `source.sessionId` 归属会话；运行中 Job 阻止删除，已完成记录纳入闭包。项目直接拥有的 Experience 复用既有所有权校验，来源引用的独立 Evidence 保留。
+- 恢复校验精确依赖版本和内容完整性；旧账户快照不能覆盖当前铁人终结权威。共用效果暂停转换保留 resource key，恢复插件保持禁用，历史外部任务不重发。
+- Git 发布中断保留持久净增长预留；导入的暂停发布仅经新预览核对本地文件并恢复，不运行模型、远端 Git 或其他历史请求。项目验证使用真实三个 Git 提交及提交确认故障注入。
+- 本轮合并执行 `storage-management`、`native/run-policy-p2`、`native-backup-roundtrip`、`mysql-schema`：8 suites / 228 passed / 2 skipped。两个跳过项仅为 FS/SQLite 不适用的共享数据库 advisory lock；MySQL/Postgres 实际通过单连接池、跨 Engine 并发准入。
+- 上述结果包括 accounting 34、recovery 52、center 20、service 8、catalog 4、run policy 85、backup 18、MySQL schema 7。未调用外部模型；run policy 仅使用本地合成 HTTP fixture。
+- 追加精确依赖缺失/篡改和持久 30 天到期边界检查：四后端 8 项通过，恢复源及到期时间保持，`expiresAt - 1` 不可自动清理、到期点可清理。
+- 曾发现 run policy 旧断言与当前 main 的无损死亡归档实现不符；对照 main 复现后，测试更新为保留归档和终结不可复活，替换失效 Proxy 注入、已移除 API 与错误冷启动后端选择，85 项实际完整通过，未回退现有产品规则。
+- WorkspaceHost 草稿/保存中保护及既有设置工作区检查 16 项通过。当前 92 个相关 JS 的本地 Atria 规则检查 0 errors；保留既有 force-click 和明确不适用 test.skip 的 3 个 warning。
+- 浏览器最终扩展验证仍在执行；本 checkpoint 不代表 main 已集成或全部验收完成。
+
 ## Final state
 
 产品任务尚未完成。最终实现、适用验收、集成及同步状态由正式实施阶段依据实际结果填写。
