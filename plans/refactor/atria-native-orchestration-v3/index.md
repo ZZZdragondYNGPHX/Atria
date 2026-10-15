@@ -8,7 +8,8 @@
 - 代码审计基线：`main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`，基于远端相关源码与现有测试的静态审计；**没有运行代码、单测、CI、真机或 UI 测试**。
 - 第三轮状态：**D3 已冻结：G2 不可变 Plan + Host 受控动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复与有界循环**。
 - 第四轮状态：**D4 已冻结：C2 Audience-scoped Context；统一 Hybrid Recall，按 Actor/Source/Time/Branch 授权，跨 Agent 通过有来源 Result 引用分享，Disclosure 与长会话压缩独立校验**。
-- 第五轮状态：**准备讨论 Sparse/Adaptive Invocation、Model Routing、并行预算、缓存与 Execution Reuse；D5 尚未冻结**。
+- 第五轮状态：**D5 已冻结：F2 Evidence-driven Adaptive Compute；按实际证据与任务质量选择性准入、原 Native Route/Compute 预算和三层缓存/执行复用**。
+- 第六轮状态：**正在讨论 Tool/Skill/MCP/A2A 能力授予、审批、危险副作用、安全隔离与恢复；D6 尚未冻结**。
 - 文档性质：设计与架构冻结阶段；本轮仅提交 `docs`，不建立实现分支、不修改 `main`，不宣称任何新实现已验证。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
@@ -36,6 +37,7 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | [architecture.md](architecture.md) | **D2 正式边界**：Host 运行权威、Plan/Run/Effect/Receipt、Native 复用、硬切与前端重构 | 所有后续轮次 |
 | [graph-control.md](graph-control.md) | **D3 冻结**：动态图 Patch / GraphRevision、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、失败恢复、循环控制 | 第三轮及后续图控制流 |
 | [context-sharing.md](context-sharing.md) | **D4 冻结**：C2 按 Audience 编译、唯一 Hybrid Memory、Actor/Source/Time/Branch、Result/Disclosure、压缩/失效与验收 | 第四轮及后续 Context/Memory 接入 |
+| [adaptive-compute.md](adaptive-compute.md) | **D5 冻结**：F2 稀疏/自适应调用、模型路由、并行父子额度/实际计费、三层缓存、Fallback/Continuation、质量成本评价 | 第五轮及后续 Compute/Model 接入 |
 | [decisions.md](decisions.md) | 仅跨模块的用户冻结决定、明确未定项 | 每轮先读、选择后更新 |
 
 已存在的其他方案只是依赖，不复制详细契约：
@@ -51,14 +53,14 @@ Atria 已具有 `public/scripts/lib/agent-runtime`（效果/状态机/Checkpoint
 | **2 已完成** | 统一执行主权、职责边界、跨端原则及无兼容重构 | D2 = T2 + 硬切 |
 | **3 已完成** | 动态图、Delegate/Handoff、并行 Join、Planner/Judge/Review、重试/失败/有界循环 | **D3 = G2 有界动态图** |
 | **4 已完成** | Context/Hybrid Memory/Actor/Source 权限隔离与分级多 Agent 上下文共享 | **D4 = C2 Audience-scoped Context** |
-| **5 当前** | Sparse/Adaptive Invocation、Model Routing、并行预算、缓存与执行复用 | D5 待讨论、尚未冻结 |
-| 6 | Tool/Skill/MCP/A2A、审批、安全、未知副作用与跨协议恢复 | Effect/权限契约 |
+| **5 已完成** | Sparse/Adaptive Invocation、Model Routing、并行预算、缓存与执行复用 | **D5 = F2 Evidence-driven Adaptive Compute** |
+| **6 当前** | Tool/Skill/MCP/A2A 能力授予、审批、危险副作用与跨协议恢复 | D6 尚待讨论 |
 | 7 | RP 叙事/反全知/多角色、Narrator 与批评回路、Project Agent | 产品使用模式与质量保障 |
 | 8 | 图形化编辑、预设、可解释 Run/Diagnostics、跨平台交互 | UX/Observability |
 | 9 | 代码清退、分阶段切换、验证矩阵/用户验收 | 实施清单与验收入口 |
 
-每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再进行当轮新问题的讨论。D2 Host 权威见 [architecture.md](architecture.md)，D3 Graph 见 [graph-control.md](graph-control.md)，**D4 的跨 Agent Context/Memory 合同只由 [context-sharing.md](context-sharing.md) 详细维护**。第五轮讨论的计算策略须引用原 Agent Intelligence Runtime Compute/Model/Reuse 权威，选择前不作 D5 冻结。
+每轮先更新本 Bundle 中**对应模块**并提交 `docs`，再进行当轮新问题的讨论。D2 Host 权威见 [architecture.md](architecture.md)，D3 Graph 见 [graph-control.md](graph-control.md)，D4 Context/Memory 见 [context-sharing.md](context-sharing.md)，**D5 计算/路由/预算/复用的编排衔接只由 [adaptive-compute.md](adaptive-compute.md) 详细管理**；原 Compute/Model/Reuse 领域契约仍以 Agent Intelligence Runtime 为唯一权威。第六轮不提前冻结 D6。
 
-## 第五轮阅读与切入
+## 第六轮阅读与切入
 
-先读本 `index.md` → [decisions.md](decisions.md)（D1–D4）→ [architecture.md](architecture.md)（D2）→ 按需 [graph-control.md](graph-control.md)（D3）与 [context-sharing.md](context-sharing.md)（D4）。随后仅针对第五轮阅读 [Agent Intelligence Runtime](../../architecture/agent-intelligence-runtime/index.md) 已有 [compute-policy](../../architecture/agent-intelligence-runtime/compute-policy.md)、[model-routing](../../architecture/agent-intelligence-runtime/model-routing.md)、[execution-reuse](../../architecture/agent-intelligence-runtime/execution-reuse.md) 与 [behavior-context](../../architecture/agent-intelligence-runtime/behavior-context.md) 的相关段落。第五轮分析稀疏调用、模型路由、并行预算和缓存复用，不提前冻结 D5、不复活旧编排模式、不改 `main`。
+先读本 `index.md`、[decisions.md](decisions.md) 的 D1–D5、[architecture.md](architecture.md) 的 Effect/Receipt 边界；再按问题阅读 [graph-control.md](graph-control.md) 的委派/恢复、[context-sharing.md](context-sharing.md) 的传播权限、[adaptive-compute.md](adaptive-compute.md) 的预算/模型准入。检查既有 Native Tool/Skill/MCP/A2A 消费者及 MCP 补强计划，再讨论 capability grant、审批、Secret/Prompt Injection、外部未知副作用、恢复及三端交互。**D6 只讨论，未选择前不冻结，也不修改 `main`**。

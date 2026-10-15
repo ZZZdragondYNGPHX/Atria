@@ -19,3 +19,11 @@
 - 文档变化：[index](../../plans/refactor/atria-native-orchestration-v3/index.md) 路由第五轮，[decisions](../../plans/refactor/atria-native-orchestration-v3/decisions.md) 冻结 D4，[context-sharing](../../plans/refactor/atria-native-orchestration-v3/context-sharing.md) 为 D4 唯一详细模块；D2/D3 文档仅加引用，不重复维护权威细则。
 - 同轮代码/验证：未修改 `main` 产品代码，未运行单测、CI、真实模型、UI、真机；仅 GitHub 文档读/更新、变更路径与远端 HEAD 校验。Doc 提交由当前 Git 历史确认为准，不将未执行验证标 PASS。
 - 下一阶段：D5 Sparse/Adaptive Invocation、Model Routing、父子并行预算/收费、cache locality 与经有效性证明的 Execution Reuse；仍需讨论选择，暂不冻结。
+
+## 2026-10-15 — D5 F2 自适应计算设计冻结
+
+- 起点：`docs@63dce292937db60e6ea44be8d56d12186f62429e`；本阶段只更新 V3 Plan 与同一永久 Record，未改 `main` 源码。
+- 用户冻结 F2：按证据与任务质量选择 Sparse/Adaptive 调用；Native Model Routing 硬约束及合法 Fallback；原 RunControl/Project Compute authority 的父子并行 reservation/charge/settle/unknown 和真实 Attempt 身份；Application Reuse、Provider Prompt Cache、本地推理 KV/Prefix Cache 分离；proof、Reasoning Continuity、质量/延迟/实际成本独立评价。
+- 文档变化：`index.md` 新增 D5 模块路由/第六轮入口，`decisions.md` 冻结 D5；新增 `adaptive-compute.md`（D5 的 V3 唯一细则），保留原 Native Compute/Model/Reuse 各自详细权威。
+- 本阶段实际检查：阅读 GitHub docs/main 相关源；审查文档路径与引用、创建文档提交并核验远端 Ref 和文件差异。未执行产品 Node 单测、CI、Provider API、用户浏览器、Linux/Windows/Termux 运行。设计达成不构成质量/费用/缓存收益已通过。
+- 仍需实施证明：端到端父子并行原子预约、网关未知上游费用边界、Provider/Local Cache 能力、准确 SLO、重启收费恢复等。D6 Tool/Skill/MCP/A2A 权限、审批和危险副作用将在下一轮选择。

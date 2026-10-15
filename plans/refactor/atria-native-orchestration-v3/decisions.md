@@ -9,7 +9,7 @@
 - **收敛方向**：统一原生执行内核。D1 曾提及“旧模式变为模板”，该部分已被 D2 直接否决：不保留旧模式、模板及兼容路径。
 - **边界：无新增 World/Memory/Session/Project/模型调用收费权威**。Agent 的提案与正式事实严格分离；相应原有计划中的领域契约继续有效。
 - **流程：讨论期间先更新并提交 `docs` 的同一份 Bundle，再进入后续轮次；本轮不修改 `main` 产品代码**。
-- **当前状态**：D1=B、D2=T2+零兼容硬切、D3=G2 有界动态图、D4=C2 Audience-scoped Context 均已冻结；D5 计算调度、物理 Schema、实施与验收尚未冻结。
+- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2 均已冻结；D6 工具安全权威、物理 Schema、实现和实际验收待议。
 
 ## D2 — 已冻结：T2 Native Host + 旧编排零兼容硬切（2026-10-15）
 
@@ -53,15 +53,28 @@ D3 各操作的详细方向、不变量与需要测试的失败窗口只由 [gra
 10. **计算与既有权威**：Context/Hybrid 的可选 embedding/rerank/LLM/compaction 必须通过原 Native Compute/Task/Model send 许可，不因 C2 添加每 Agent 固定调用。HCM-03/04/05/08 的事件驱动认知、正式 World Tick、角色遗忘与稀疏调用保持不变；D4 不覆盖原 Memory/Behavior-Context/Information 详细契约。
 11. **实现边界**：D4 是设计冻结，不是新 API/物理 Schema 或已经通过的功能；仍遵守 D1 原生 B、D2 T2 单 Native Host/零兼容硬切、D3 G2 动态图。详细接口/失效窗口/验收建议由 [context-sharing.md](context-sharing.md) 唯一管理。
 
-## D5 — 第五轮待讨论
+## D5 — 已冻结：F2 Evidence-driven Adaptive Compute（2026-10-15）
 
-本轮将比较统一编排中的 Sparse/Adaptive Invocation 准入梯度、Model Routing 与 fallback/continuation、父子并行 reservation/charge、公平性、cache locality 与已完成 Task/Tool/Plan 的 validity-proof Reuse，明确 ordinary RP 的低成本路径与复杂任务的质量/成本/延迟权衡。此处**不冻结 D5 算法、阈值、价格或 SLO**。
+1. **稀疏调用**：先确定性状态/Source/有效产物复用，再根据真正证据缺口选择获准 Tool/Hybrid 检索/Model/Planner/Delegate/Judge/Review；普通 RP 以必要 Context 后一次主要 Narrator 为目标，不固定附加模型 Agent，也不引入每轮自我判断是否调用的 Meta-Agent。复杂任务可直接选择质量足够的目标，不强制 cheap→fail→strong。
+2. **工作建议与资源权威分离**：Planner 提出 D3 GraphPatch/更多工作但不授权预算。Host 按 D4 Audience/source、任务质量/OutputContract、时限、任务能力、有效复用与原预算进行确定性 admission；模型不能改变权限、提升额度、直接调用未授权工具或把 cache miss 当作事实缺失的许可证。
+3. **模型选择与 Fallback**：复用原 Native Model Routing/RouteResolver/GenerationService 的 Target/Connection/Model 及真实 capability/economics/health evidence。先排除不满足 Source 隐私/数据驻留、工具/schema/context、quality floor、deadline/预算的路径，再考虑费用/延迟/缓存局部性。FailurePolicy 与正常 Routing 区分；每次 retry/fallback 重验硬要求、source/currentness/continuation 并记录新 attempt/原收费。虚拟 gateway/alias 无法证明 canonical upstream 或全链路内部 retries。
+4. **父子并行预算**：唯一费用真相归原 RunControl/Project Task/Host send Compute 账本。兄弟分支执行前在同一父授权 scope 下经 CAS/锁原子 reservation，真实发送按稳定身份 charge/settle/unknown/reconcile；多层预算引用一次实际计费，不双计。Run、Branch/Save 恢复、GraphPatch、取消、Retry 不恢复已花额度；跨 FS/SQL/业务 authority 不宣称无证据的全域原子事务。
+5. **未知成本保守**：已发送但 usage 缺失、网关内部重试不可见的效果保留 unknown 与可执行上界占用，不视为零或自动退款；所有新发送（Judge/Review/Embedding/Rerank/Fallback/预热）仍准入。Token/request 限制不等于金额硬封顶；没有可信价格/网关 cap 则费用标 estimated，本地 CPU/GPU/电量仅计可观察成本。Governance 开发 API 测试 2000/day、20 RPM 不是产品默认额度。
+6. **三层 Cache 分离**：Application Reuse（Task/Tool/Plan/Source 经原 validity proof）、Provider Prompt Cache（精确 Adapter/Target/Gateway/prefix/billing/usage）、Local Inference Cache（真实 local backend KV/prefix）。不合并为一个 cache hit；内容 hash/相似度或 TTL 不授予权限或正式效果复用；跨 Actor/Branch/Narrator-NPC 隔离满足 D4 才能复用安全公共证据。已提交 World/Studio/外部不可逆写入不通过普通结果 cache 跳过或重放。
+7. **Proof 与正文新鲜度**：先找候选再由原 authority/SourceAdapter 验 source/owner/Actor/时间/Branch/variant/producer/依赖/permission/Tool schema/target/output；撤回、Restore、权限变化时失效。RP 可复用获准 Context/事实/结构化 Task Intent，最终 Narrator 仍 fresh-generate；旧 Orchestrator 模式或旧模板不因结构复用恢复。
+8. **Reasoning Continuity**：Provider opaque reasoning state、RunCheckpoint、Application Result Reuse 和 Prompt Cache 有不同身份/生命周期。只由原 Model Routing `7 与真实 Adapter evidence 判断保留/reset/discard；不能跨 Agent/Role/Audience、Provider、Model、Branch 或不匹配 Context/Tool/Output blind reuse，不将 chain-of-thought 纳入公共 Memory/Trace。
+9. **可观测评价**：发送前记录触发/跳过理由、quality floor、source proof/ReuseDecision、route、实际 reservation 与估算；响应后记录真实 EffectReceipt/usage、unknown、cache read/write/observed、TTFT/E2E/费用、队列尾延迟与正式业务结果。正确性/Actor/Disclosure/玩家自主权与 Project 产物优先，之后比较调用、Token、实际费用、延迟、错误复用；estimated savings 与实际 charge 不混淆。无实测不宣称 SLO/模型收益或精确成本封顶。
+10. **权威范围**：F2 的 V3 连接细则以 [adaptive-compute.md](adaptive-compute.md) 为唯一详细模块，原 Native [Compute Policy](../../architecture/agent-intelligence-runtime/compute-policy.md)、[Model Routing](../../architecture/agent-intelligence-runtime/model-routing.md)、[Execution Reuse](../../architecture/agent-intelligence-runtime/execution-reuse.md) 为各自领域详细权威。遵守 D1–D4、HCM-01–08、Native Host 唯一执行、旧编排零兼容硬切；此轮仅更新 `docs`，不改 `main`。
+
+## D6 — 第六轮待冻结
+
+Tool/Skill/MCP/A2A 的 capability discovery/授予、Token/Secret/Context 边界、用户/作者/Project 权限主体、操作风险分级与耐久审批、外部不可逆副作用的 EffectIntent/Receipt/reconcile/unknown、Prompt Injection/工具描述投毒和 Windows/Linux/Termux 恢复交互待深入讨论。**具体安全拓扑、默认审批、API/Schema 未选择，不冻结**。
 
 ## 后续未定（不要提前冻结）
 
 - D3 已冻结的动态 Graph/Join/Review 方向见 [graph-control.md](graph-control.md)；物理字段、模型质量/真实成本收益和工程验收仍未确定。
 - D4 Context/Hybrid/Actor/Source 的已冻结设计仅以 [context-sharing.md](context-sharing.md) 为准；物理字段、落地代码和实测收益尚未冻结。
-- Adaptive Invocation/缓存/模型路由与并发预算 reservation。
+- D5 Adaptive/Model Routing/并行预算/三层 Cache 已冻结，接口与反例见 [adaptive-compute.md](adaptive-compute.md)；物理字段、阈值/实际收益后续验证。
 - MCP/A2A/Skill/Web/Code 的权限、外部副作用幂等性和审批。
 - RP 叙事质量、作者意图/防全知、自动编排粒度与 Eval。
 - UX、跨平台客户端、可视化 Editor、诊断与正式验收/实施序列。
