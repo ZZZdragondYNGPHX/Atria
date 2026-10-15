@@ -299,3 +299,10 @@
 - 明确仅原 authorityRuntime 显式 typed transaction 的 candidate/receipt 用作 Context，Source/bank/quota 保持 committed base，正式状态由唯一原 Native finalize 写入。失败/取消实际工作费用保留，不能以 UI 候选视图冒充已提交 World或自动退款。原 HTTP 无新增 Run/Projection/Approval。
 - 成功重试多 row 确认、独立 cancel/矛盾 Effect 与 consume 的线性化仍 NOT_RUN；resolver/outbox/Task/其余 Graph 及 P4 OutputClaim/取消/Result 等仍归原 V3 后续实施，P3 NOT_READY。未向 Claude 转交这些未完后端。
 - 原四 Engine Model52+helper21、指定 SQL8 和其余子集证据仅归原 Record；SQL 测试 timeout60s 是据实测调整 harness，不是产品 timeout/SLO。没有借记本轮 PASS、没有合并源码或改 main；本轮只执行相关文档检查与提交，保留无关改动。
+
+## 2026-10-16 — V3 第二十一组消费状态与领域竞态同步
+
+- 实际 V3 source `2cddfae70`、docs `698731e99`，核对原接口 §17.31、整合入口与同一 Record 第二十一组。原工作树已有第二十二组 Source/Run/NativeTurn 与领域消费测试未提交内容，本次不触碰、不写为已交付。
+- 同一 Claude 提示词补充 Model/Skill 原 Run 全祖先锁、末 Effect/Receipt、consumption_stale 拒正文并保留真实取消/unknown/费用；缺原同实例权威的 Skill 在执行前拒绝。成功 503→200 的 unknown/settled 两账项保留，不能随成功清零或误报退款/回滚。
+- 原 Source/Binding 末 await 变化仍可返回正文已由原任务真实复现，明确写为未修复后端阻塞；不能把 Run 消费线性化宣称全域安全，前端不补假授权/缓存检查替代领域围栏。第二十二组及其他 P3/P4 后端继续归原 V3；接口仍无 Run/Projection/Approval，P3 NOT_READY。
+- 原四 Engine 同scope24与独立顺序40由多命令取得，初轮失败及两个守卫 SURVIVED 归原 Record，不写成全部单轮绿/全部变异Killed；本次不复跑或借记其测试。只同步文档，未合源码/main，未实施前端，相关检查与提交据实际输出。
