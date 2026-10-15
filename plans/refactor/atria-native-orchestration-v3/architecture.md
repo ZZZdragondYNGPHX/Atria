@@ -1,6 +1,6 @@
 # 第二轮 D2：Native Orchestration V3 内核与执行边界（已冻结）
 
-> 详细跨模块决定见 [decisions.md](decisions.md)。本文件只是逻辑职责与硬切原则，不指定物理数据库 Schema/路由代码位置，不声称测试通过。第三轮控制流算法仍未定。
+> 详细跨模块决定见 [decisions.md](decisions.md)。本文件管理 D2 Host/Plan/Effect/Receipt 结构；**D3 的动态图执行控制细则见 [graph-control.md](graph-control.md)**，不在此复制。物理 Schema/代码位置仍未定，未做产品验证。
 
 ## 1. Native Host 是唯一 Run Authority
 
@@ -22,7 +22,7 @@
 
 `ResultEnvelope` 是可消费结果及可信 producer/provenance/currentness，不等同 Receipt；`OutputContract` 要求 final owner、consumer（如 Narration、Guidance、Studio Review、Task Artifact）在提交前重验 Run/Source/权限；`RunProjection` 只是受限显示快照，不是恢复 checkpoint，也不携带 Secret、私有 Actor 信息或 provider 的 opaque reasoning。
 
-Planner 的 GraphPatch 仅修改 Run 内任务图版本，不回写原 PlanRevision；Patch 规则在 D3 才冻结。不同 Session/Studio/普通 RP 修订域保持各自真实 anchor，不能合成一个无来源的“全局版本”。
+Planner 的 GraphPatch 仅修改 Run 内任务图版本，不回写原 PlanRevision；D3 已冻结其结构化提案/Host 整补丁校验/CAS 与有界生命周期，详细规则见 [graph-control.md](graph-control.md)。不同 Session/Studio/普通 RP 修订域保持各自真实 anchor，不能合成一个无来源的“全局版本”。
 
 ## 3. Native 权威复用，不复制业务真相
 
@@ -38,6 +38,6 @@ Planner 的 GraphPatch 仅修改 Run 内任务图版本，不回写原 PlanRevis
 - 新前端不复刻历史 UI：Graph Authoring、Node/Edge/Agent/Capability/Output 编辑器及 Run Graph/Trace/Approval/Diagnostics 视图重新设计。UI/UX 具体流程随后冻结。
 - Windows、CachyOS Linux 和 Android Termux 使用同一 Node Native Host 协议及本地数据权威，界面样式可响应式不同。网页断开不等于取消；Host 进程重启后可核验恢复，不假定系统常驻、关闭设备期间自动执行或跨设备 Run 同步。实际测试与三端验收仍待工程阶段。
 
-## 5. 第三轮仍开放
+## 5. D3 控制流冻结引用
 
-动态 GraphPatch/DAG/bounded loops；Delegate vs Handoff 的控制与返回；并行 Join 屏障、失败与晚到结果；Planner/Judge/Review 以及异议与局部重做；Effect unknown/reconciliation、retry/replan、恢复和循环预算。这些不是 D2 自动冻结的具体算法。
+第三轮 G2 有界动态图、Delegate/Handoff、Join、Planner/Judge/Review、局部重做、恢复及循环控制由 [graph-control.md](graph-control.md) 唯一维护。第四轮围绕 Context/Hybrid Memory/Actor/Source 权限与跨 Agent 信息共享讨论，不改变此处的 D2 单 Host/零兼容权威。
