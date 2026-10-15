@@ -6,10 +6,15 @@ import { execFileSync } from 'node:child_process';
 
 import { durableMkdir, syncDirectory } from './durable-file.js';
 
-const localVolumes = new Map();
 const LOCAL_LINUX_FILESYSTEMS = new Set([0xef53, 0x58465342, 0x9123683e, 0x01021994, 0xf2f52010, 0x2fc12fc1]);
+const DARWIN_LOCAL_VOLUME_PROBE = `ObjC.import('Foundation');
+function run(argv) {
+    const url = $.NSURL.fileURLWithPath(argv[0]);
+    const values = url.resourceValuesForKeysError($([$.NSURLVolumeIsLocalKey]), Ref());
+    return Number(ObjC.unwrap(values.objectForKey($.NSURLVolumeIsLocalKey))) === 1 ? 'local' : 'remote';
+}`;
 
-function assertLocalRoot(root) {
+function assertLocalRoot(root, localVolumes) {
     if (process.platform === 'win32') {
         const volume = path.parse(root).root;
         if (!/^[A-Za-z]:\\$/.test(volume)) throw unavailable(new Error('Native Host requires a local drive root'));
@@ -22,6 +27,11 @@ function assertLocalRoot(root) {
         }
     } else if (['linux', 'android'].includes(process.platform)) {
         if (!LOCAL_LINUX_FILESYSTEMS.has(Number(fs.statfsSync(root).type))) throw unavailable(new Error('Native Host filesystem has not demonstrated local ownership/durability'));
+    } else if (process.platform === 'darwin') {
+        // Fixed Foundation code, with the canonical path passed as argv.
+        // Never interpolate a data-root string into an AppleScript or shell.
+        const result = execFileSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', DARWIN_LOCAL_VOLUME_PROBE, root], { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+        if (result !== 'local') throw unavailable(new Error('Native Host requires a local volume'));
     } else {
         throw unavailable(new Error('Native Host ownership adapter is unavailable on this platform'));
     }
@@ -36,6 +46,7 @@ function unavailable(cause) {
 /** Storage lifetime ownership, shared by every Native domain in this Host. */
 export class NativeHostOwner {
     #guards = new Map();
+    #localVolumes = new Map();
     #pending = new Map();
     #valid = true;
     #closing = false;
@@ -86,9 +97,8 @@ export class NativeHostOwner {
     async acquireLocal(root) {
         this.assertActive();
         if (process.platform === 'win32' && path.resolve(root).startsWith('\\\\')) throw unavailable(new Error('Shared/network data roots are unsupported'));
-        durableMkdir(root);
-        const canonical = fs.realpathSync.native(root);
-        assertLocalRoot(canonical);
+        let canonical;
+        try { durableMkdir(root); canonical = fs.realpathSync.native(root); } catch (cause) { throw unavailable(cause); }
         // Case aliases resolve to the same identity even on case-insensitive FS.
         const key = process.platform === 'win32' ? canonical.toLowerCase() : canonical;
         if (this.#guards.has(key)) {
@@ -107,6 +117,7 @@ export class NativeHostOwner {
     }
 
     async #acquire(root, key) {
+        try { assertLocalRoot(root, this.#localVolumes); } catch (cause) { throw unavailable(cause); }
         const file = path.join(root, 'native-host.identity');
         try {
             const fd = fs.openSync(file, 'wx', 0o600);

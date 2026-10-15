@@ -105,6 +105,13 @@ describe('Storage lifetime owner on the current OS', () => {
         await expect(make().acquireLocal('\\\\invalid-native-host-test\\share\\data')).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
     });
 
+    test('an unavailable data-root fails with the same writer-unavailable boundary and preserves the existing file', async () => {
+        const file = path.join(root, 'not-a-directory');
+        fs.writeFileSync(file, 'existing unrelated file');
+        await expect(make().acquireLocal(path.join(file, 'data'))).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        expect(fs.readFileSync(file, 'utf8')).toBe('existing unrelated file');
+    });
+
     test('a real second process is excluded and OS releases its guard after forced termination', async () => {
         const moduleUrl = new URL('../../src/storage/native-host-owner.js', import.meta.url).href;
         const script = `import { NativeHostOwner } from ${JSON.stringify(moduleUrl)}; const owner = new NativeHostOwner(); await owner.acquireLocal(process.argv[1]); process.stdout.write('READY\\n');`;
