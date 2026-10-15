@@ -8,6 +8,9 @@ import { EffectController } from './effect-controller.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { runGuard } from './controller-common.js';
 import { compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
+import { ContextPort } from './context-port.js';
+import { fields } from '../../../public/shared/native-values.js';
+import { assertContextCompilation } from './generation-local-work.js';
 
 const fail = code => { throw new ConflictError(code); };
 
@@ -58,33 +61,72 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
         const root = await runs.get(handle, runId);
         if (root.parentRef ? reservationId !== root.runId : reservationId !== null && reservationId !== root.runId) fail('native_orchestration_budget_reservation_mismatch');
         await sourcePort.revalidate(handle, root.sourceBinding);
-        await engine.withTransaction(handle, async tx => {
-            await assertChildRunCurrent(tx, handle, root);
-            const { doc: intent } = await readEffect(tx, handle, root, effectId);
-            if (intent.status !== 'prepared') fail('native_orchestration_effect_not_prepared');
-            if (context && (context.compiled.request.sourceBinding.bindingDigest !== root.sourceBinding.bindingDigest
-                || context.compiled.request.grantDigest !== intent.grantDigest)) fail('native_orchestration_context_denied');
+        const assertContext = async (candidate, current, intent) => {
+            if (!(candidate?.port instanceof ContextPort) || candidate.compiled?.request?.sourceBinding.bindingDigest !== current.sourceBinding.bindingDigest
+                || candidate.compiled.request.grantDigest !== intent.grantDigest) fail('native_orchestration_context_denied');
+            await candidate.port.revalidate(handle, { context: candidate.compiled, phase: 'send' });
+        };
+        const preparedEffect = () => engine.withTransaction(handle, async tx => {
+            const fence = await lifecycle.assertWriter(handle, tx), current = await runs.get(handle, runId);
+            await assertChildRunCurrent(tx, handle, current);
+            const { doc: intent } = await readEffect(tx, handle, current, effectId);
+            if (token || current.cancelRequested || current.status !== 'running' || intent.status !== 'prepared' || intent.epoch !== current.epoch
+                || current.hostBootId !== fence.hostBootId || current.hostGeneration !== fence.generation
+                || intent.hostBootId !== current.hostBootId || intent.hostGeneration !== current.hostGeneration
+                || intent.sourceBindingDigest !== current.sourceBinding.bindingDigest) fail('native_orchestration_effect_not_prepared');
+            await sourcePort.revalidate(handle, current.sourceBinding, { tx });
+            const decision = await effectAuthority.authorize({ handle, tx, root: current, intent, phase: 'prepare_context' });
+            if (hashNativeDocument(decision) !== hashNativeDocument(effectDecision(intent))) fail('native_orchestration_effect_authority_changed');
+            return { current, intent };
         });
         let token = null;
+        let actualContext = null, bindingContext = false;
+        const initial = await preparedEffect();
+        if (context !== undefined) {
+            fields(context, ['port', 'compiled'], 'Generation Context');
+            await assertContext(context, initial.current, initial.intent);
+            actualContext = Object.freeze({ port: context.port, compiled: context.compiled });
+        }
         const bank = budgetPort.sendBank(handle, { authorityRef: root.budgetAuthorityRef, reservationId, limits, effectId, firstOrdinal: 0, quotaProof,
             assertCurrent: async () => {
                 await sourcePort.revalidate(handle, root.sourceBinding);
                 if (token) await assertDispatch({ handle, runId, effectId, dispatchToken: token });
+                else await preparedEffect();
             } });
-        return { bank, ...(context ? { context } : {}), ...(quotaProof ? { quotaProof } : {}), beforeSend: async ({ receipt, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef }) => {
-            const expectedSend = compiledSendIdentity({ snapshot, resolved });
-            if (hashNativeDocument(compiledBinding) !== hashNativeDocument(snapshot.diagnostics.compiledBinding)
+        return { bank, get context() { return actualContext ?? undefined; }, ...(quotaProof ? { quotaProof } : {}),
+            bindContext: async candidate => {
+                fields(candidate, ['port', 'compiled', 'compileProof'], 'Metered Generation Context');
+                if (actualContext || bindingContext) fail('native_orchestration_context_already_bound');
+                bindingContext = true;
+                try {
+                    const { current, intent } = await preparedEffect();
+                    await assertContext(candidate, current, intent);
+                    // Only the original metered compile proof can authorize
+                    // reusing Context work on this same original send bank.
+                    await assertContextCompilation({ proof: candidate.compileProof, handle, bank, port: candidate.port, compiled: candidate.compiled, root: current, intent });
+                    await preparedEffect();
+                    actualContext = Object.freeze({ port: candidate.port, compiled: candidate.compiled, compileProof: candidate.compileProof });
+                } finally { bindingContext = false; }
+            }, beforeSend: async ({ receipt, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef }) => {
+                const expectedSend = compiledSendIdentity({ snapshot, resolved });
+                if (hashNativeDocument(compiledBinding) !== hashNativeDocument(snapshot.diagnostics.compiledBinding)
                 || hashNativeDocument(budgetAttemptRef) !== hashNativeDocument(receipt.budgetAttemptRef)) fail('native_orchestration_budget_attempt_invalid');
-            if (!token) {
-                await effects.ready(handle, { ...runGuard(await runs.get(handle, runId)), effectId, budgetAttemptRef: receipt.budgetAttemptRef });
-                const claim = await effects.claim(handle, { ...runGuard(await runs.get(handle, runId)), effectId });
-                if (!claim.claimed || !claim.dispatchToken) fail('native_orchestration_dispatch_stale');
-                token = claim.dispatchToken;
-            }
-            const current = await assertDispatch({ handle, runId, effectId, dispatchToken: token });
-            await effectAuthority.verifySend({ handle, ...current, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef });
-            await engine.withTransaction(handle, tx => budgetPort.verifyBudgetAttempt({ handle, tx, ...current, budgetAttemptRef, expectedSend }));
-        } };
+                if (!token) {
+                    const { current, intent } = await preparedEffect();
+                    if (actualContext) await assertContext(actualContext, current, intent);
+                    await effects.ready(handle, { ...runGuard(await runs.get(handle, runId)), effectId, budgetAttemptRef: receipt.budgetAttemptRef });
+                    const claim = await effects.claim(handle, { ...runGuard(await runs.get(handle, runId)), effectId });
+                    if (!claim.claimed || !claim.dispatchToken) fail('native_orchestration_dispatch_stale');
+                    token = claim.dispatchToken;
+                }
+                const current = await assertDispatch({ handle, runId, effectId, dispatchToken: token });
+                if (actualContext) {
+                    await assertContext(actualContext, current.root, current.intent);
+                    if (actualContext.compileProof) await assertContextCompilation({ proof: actualContext.compileProof, handle, bank, port: actualContext.port, compiled: actualContext.compiled, ...current });
+                }
+                await effectAuthority.verifySend({ handle, ...current, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef });
+                await engine.withTransaction(handle, tx => budgetPort.verifyBudgetAttempt({ handle, tx, ...current, budgetAttemptRef, expectedSend }));
+            } };
     }
 
     async function reserveChild(handle, { parentRunId, childRunId, ceiling, limits }) {

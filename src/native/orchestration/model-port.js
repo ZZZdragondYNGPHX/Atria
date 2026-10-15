@@ -10,6 +10,7 @@ import { checkedRecord } from './plan-repository.js';
 import { controlRecordKey, runGuard } from './controller-common.js';
 import { RunRepository, assertChildRunCurrent } from './run-repository.js';
 import { resolveNativeNarratorScope } from './native-turn-orchestration.js';
+import { assertNativeTurnPermit } from './native-turn-permit.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = intent => hash({ runId: intent.runId, effectId: intent.effectId, epoch: intent.epoch,
@@ -80,11 +81,19 @@ export class ModelPort {
         // No raw prompt, audience, callback response or approval Boolean can
         // substitute for the capability minted at the original narrator point.
         const principal = await resolveNativeNarratorScope(scope, this.host, handle);
-        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash } = principal;
+        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit } = principal;
+        const permitExpected = { host: this.host, handle, sessionId: request.sessionId,
+            invocationId: request.requestId, requestHash: logicalInputRef.requestHash };
+        const fixedSignal = assertNativeTurnPermit(nativeTurnPermit, permitExpected).signal;
+        if (signal !== undefined && signal !== fixedSignal) fail('native_orchestration_model_signal_denied');
+        signal = fixedSignal;
         if (typeof revalidateConsume !== 'function' || !options?.orchestrationSend?.context
             || typeof options.orchestrationSend.beforeSend !== 'function' || !options.scheduled)
             fail('native_orchestration_model_scope_invalid');
         const root = await this.runs.get(handle, runId);
+        permitExpected.anchor = { branchId: root.sourceBinding.sourceRef.branchId, revisionId: root.sourceBinding.sourceRef.revisionId };
+        const assertPermit = () => assertNativeTurnPermit(nativeTurnPermit, permitExpected);
+        assertPermit();
         const intent = await this.runs.engine.withTransaction(handle, async tx => (await readEffect(tx, handle, root, effectId)).doc);
         if (root.ownerRef.handle !== handle || intent.status !== 'prepared' || root.cancelRequested
             || intent.epoch !== root.epoch || intent.capability !== 'generation.send'
@@ -98,12 +107,15 @@ export class ModelPort {
         try {
             const originalSend = options.orchestrationSend;
             const orchestrationSend = { ...originalSend, beforeSend: async evidence => {
+                assertPermit();
                 await originalSend.beforeSend(evidence);
+                assertPermit();
                 // Capture only after original scope, Context, claim and exact
                 // original bank admission have all permitted this actual send.
                 compiledSendIdentity(evidence);
                 pending.sends.push(evidence);
             } };
+            assertPermit();
             checkCancellation(signal);
             // Provisional stream text is withheld. Only the original sealed
             // consumer receives the completed, finally revalidated response.
@@ -121,6 +133,7 @@ export class ModelPort {
                 if (!saved.observation || hash(saved.observation) !== hash(current.observation)) throw error;
             }
             return await this.runs.engine.withTransaction(handle, async tx => {
+                assertPermit();
                 const root = await this.runs.get(handle, runId), intent = (await readEffect(tx, handle, root, effectId)).doc;
                 const fence = await this.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
                 if (root.cancelRequested || root.epoch !== intent.epoch || root.hostBootId !== fence.hostBootId || root.hostGeneration !== fence.generation
@@ -131,6 +144,7 @@ export class ModelPort {
                 checkCancellation(signal);
                 await revalidateConsume();
                 await this.budgetPort.assertCurrent(handle, root.budgetAuthorityRef);
+                assertPermit();
                 checkCancellation(signal);
                 return { generated, receiptRef: saved.receiptRef };
             });

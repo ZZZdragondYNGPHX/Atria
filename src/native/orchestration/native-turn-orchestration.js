@@ -12,8 +12,11 @@ import { validateModelCapability } from './model-capability-authority.js';
 import { assertNativeNarratorQuota } from './native-turn-quota.js';
 import { ModelPort } from './model-port.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
-import { immutable, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { selectNativeRuntimeRoute } from '../adapters/generation-host.js';
+import { authorityTurnProof } from '../authority-turn.js';
+import { compileNativeContextMetered } from './generation-local-work.js';
+import { nativeSessionContextOptions, nativeContextCompilationOptions } from '../adapters/native-session-context.js';
 
 const selections = new WeakMap();
 const modelScopes = new WeakMap();
@@ -90,12 +93,13 @@ export class NativeNarratorOrchestrationAuthority {
     #supported(base, input, transaction) {
         const contract = base.manifest.runtime?.experienceContract, turn = contract?.taskRuntime?.turn;
         const logic = base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic;
-        if (transaction || contract?.authorityRuntime || logic || !turn || turn.policy !== 'authority-first' || turn.stages.length
+        const authority = Boolean(contract?.authorityRuntime);
+        if ((authority ? !transaction : transaction || logic) || !turn || turn.policy !== 'authority-first' || turn.stages.length
             || turn.narratorTaskId || turn.interpreterTaskId || contract.processingRuntime?.processors.some(item => item.stage === 'output')
             || (input.hostMemoryEvidence?.length ?? Object.keys(input.hostMemoryEvidence ?? {}).length)
             || Object.keys(input.stageInputs ?? {}).length || Object.keys(input.slotBindings ?? {}).length || Object.keys(input.variants ?? {}).length)
             fail('native_orchestration_turn_scope_unavailable');
-        if (input.userInput !== undefined && (base.timeline.at(-1)?.role !== 'user' || input.userInput !== base.timeline.at(-1).content)) fail('native_orchestration_turn_input_stale');
+        if (!authority && input.userInput !== undefined && (base.timeline.at(-1)?.role !== 'user' || input.userInput !== base.timeline.at(-1).content)) fail('native_orchestration_turn_input_stale');
     }
 
     async #describe(host, handle, base, input, transaction) {
@@ -131,6 +135,7 @@ export class NativeNarratorOrchestrationAuthority {
         const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', input.routeRef);
         if (route.runtimeRouteId !== pin.resourceRef.runtimeRouteId || hash(route) !== pin.integrity) fail('native_orchestration_turn_route_mismatch');
         const resolved = await this.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role: 'role.narrator' });
+        if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
         const configDigest = hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
         return { binding, plan, node, pin, resolved, configDigest };
     }
@@ -175,17 +180,24 @@ export class NativeNarratorOrchestrationAuthority {
         if (!equal(expected, snapshot.contextPlan)) fail('native_orchestration_turn_context_mismatch');
     }
 
-    async prepareNarrator({ host, handle, base, input, lanePlan, request, quotaProof, selection, signal }) {
+    async prepareNarrator({ host, handle, base, input, lanePlan, request, quotaProof, selection, signal, authorityTurn = null }) {
         if (selection === null) return null;
         checkCancellation(signal);
         const selected = await this.#current(selection);
         const { requestId: _requestId, ...turnRequest } = input;
         assertObject(request, ['sessionId', 'revisionId', 'requestId', 'role', 'messages', ...(Object.hasOwn(request, 'routeRef') ? ['routeRef'] : [])], 'Original narrator request');
         const normalizedRequest = Object.fromEntries(Object.entries(request).filter(([, value]) => value !== undefined));
-        const requestHash = hash(turnRequest), proofExpected = { host, sessionCore: this.sessionCore, handle, sessionId: base.session.sessionId,
+        const requestHash = hash(selected.transaction ? { ...turnRequest, transaction: selected.transaction } : turnRequest), proofExpected = { host, sessionCore: this.sessionCore, handle, sessionId: base.session.sessionId,
             requestId: input.invocationId, invocationId: input.invocationId, requestHash, selection, role: 'narrator', anchor: anchorOf(base),
             policy: base.manifest.runtime.experienceContract.generationBudget ?? null };
-        assertNativeNarratorQuota(quotaProof, proofExpected);
+        const producerIdentity = assertNativeNarratorQuota(quotaProof, proofExpected);
+        const originalAuthority = authorityTurn ? authorityTurnProof(this.sessionCore, handle, base, authorityTurn.proof) : null;
+        if (Boolean(originalAuthority) !== Boolean(base.manifest.runtime.experienceContract.authorityRuntime)
+            || (originalAuthority && (!equal(originalAuthority.selection, selected.transaction) || !equal(authorityTurn.base, base)
+                || !equal(lanePlan.authorityContext?.snapshot, originalAuthority.prepared.candidate)
+                || !equal(lanePlan.authorityContext?.receipt, originalAuthority.prepared.receipt)))) fail('native_orchestration_turn_authority_invalid');
+        const authorityRef = originalAuthority ? { kind: 'native_authority_candidate', identity: originalAuthority.prepared.identity,
+            candidateDigest: hash(originalAuthority.prepared.candidate), receiptDigest: hash(originalAuthority.prepared.receipt) } : null;
         if (selected.host !== host || selected.handle !== handle || !equal(sourceOf(base), sourceOf(selected.base)) || !equal(input, selected.input)
             || !equal(normalizedRequest, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, requestId: input.invocationId,
                 role: 'narrator', ...(input.routeRef === undefined ? {} : { routeRef: input.routeRef }), messages: [] })) fail('native_orchestration_turn_input_stale');
@@ -193,11 +205,11 @@ export class NativeNarratorOrchestrationAuthority {
         const service = this.execution, captured = await service.sourcePort.capture(handle, sourceOf(base));
         const bindingRef = { bindingId: selected.binding.bindingId, version: selected.binding.version };
         const grantDigest = hash({ owner: handle, sourceBindingDigest: captured.sourceBinding.bindingDigest, bindingRef, planRef: selected.binding.planRef,
-            nodeId: selected.node.nodeId, principal: 'original_native_narrator', invocationId: input.invocationId, requestHash, configDigest: selected.configDigest, audience: { kind: 'narrator' } });
+            nodeId: selected.node.nodeId, principal: 'original_native_narrator', invocationId: input.invocationId, requestHash, configDigest: selected.configDigest, audience: { kind: 'narrator' }, authorityRef });
         const logicalInputRef = { kind: 'native_turn_intent', sourceRef: { ...captured.sourceBinding.sourceRef, packageId: base.session.packageId, packageVersionId: base.session.packageVersionId },
             planRef: selected.binding.planRef, nodeId: selected.node.nodeId, bindingRef, invocationId: input.invocationId, requestHash, role: 'narrator',
             routeRef: selected.pin.resourceRef, routeIntegrity: selected.pin.integrity, promptProgramRef: selected.resolved.route.promptProgramRef,
-            generationProfileRef: selected.resolved.route.generationProfileRef, resourceDigest: hash(selected.resolved.resources), audience: { kind: 'narrator' }, grantDigest };
+            generationProfileRef: selected.resolved.route.generationProfileRef, resourceDigest: hash(selected.resolved.resources), audience: { kind: 'narrator' }, authorityRef, grantDigest };
         const decision = { actionRef: { kind: 'native_model_send', runtimeRouteId: selected.resolved.route.runtimeRouteId },
             targetRef: { connectionProfileId: selected.resolved.connection.connectionProfileId, modelProfileId: selected.resolved.model.modelProfileId, pathFingerprint: selected.resolved.pathFingerprint },
             inputRef: logicalInputRef, inputHash: hash(logicalInputRef), capability: 'generation.send', grantDigest,
@@ -217,19 +229,37 @@ export class NativeNarratorOrchestrationAuthority {
             const effectId = 'oeffect_' + hash({ runId: root.runId, attemptId, purpose: 'native_narrator' }).slice(0, 32);
             await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: attemptId,
                 proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(field => [field, decision[field]])) });
-            state.contextPort = new ContextPort({ sessionCore: this.sessionCore, contextOptions: this.contextOptions, authorizeContext: async ({ request: contextRequest }) => {
-                await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
-                if (contextRequest.taskPurpose !== 'original_native_narrator' || !equal(contextRequest.audience, { kind: 'narrator' }) || contextRequest.grantDigest !== grantDigest
+            const contextSnapshot = originalAuthority?.prepared.candidate ?? base;
+            const contextPackage = contextSnapshot.manifest.runtime.experienceContract.contextRuntime || contextSnapshot.manifest.runtime.experienceContract.processingRuntime
+                ? await host.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId) : null;
+            const nativeOptions = nativeSessionContextOptions({ handle, snapshot: contextSnapshot, resolver: this.modelResolver, contextPackage,
+                role: 'role.narrator', lanePlan, authorityContext: lanePlan.authorityContext });
+            const contextOptions = nativeContextCompilationOptions(state.request, selected.resolved, { ...this.contextOptions, ...nativeOptions });
+            state.contextPort = new ContextPort({ sessionCore: this.sessionCore, contextOptions, authorityTurn,
+                compilationInputs: contextPackage ? { manifest: contextPackage.manifest, sourceFiles: [...contextPackage.sourceFiles] } : null,
+                authorizeContext: async ({ request: contextRequest }) => {
+                    await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
+                    if (contextRequest.taskPurpose !== 'original_native_narrator' || !equal(contextRequest.audience, { kind: 'narrator' }) || contextRequest.grantDigest !== grantDigest
                 || !equal(contextRequest.sourceBinding, captured.sourceBinding) || !equal(contextRequest.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
-                return { allowed: true, grantDigest };
-            } });
-            state.context = await state.contextPort.compile(handle, { ownerRef: { handle }, sourceBinding: captured.sourceBinding, audience: { kind: 'narrator' },
+                    return { allowed: true, grantDigest };
+                } });
+            const contextRequest = { ownerRef: { handle }, sourceBinding: captured.sourceBinding, audience: { kind: 'narrator' },
                 taskPurpose: 'original_native_narrator', grantDigest, inputRefs: [logicalInputRef], tokenBudget: {
-                    modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: selected.resolved.generation.output.maxTokens } });
+                    modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(selected.resolved) } };
             const orchestrationSend = await service.generationSend(handle, { runId: root.runId, effectId, limits: selected.resolved.route.executionPolicy.computeBudget,
-                context: { port: state.contextPort, compiled: state.context }, quotaProof });
+                quotaProof });
+            const metered = await compileNativeContextMetered({ handle, port: state.contextPort, request: contextRequest, bank: orchestrationSend.bank,
+                budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId), effectId, limits: selected.resolved.route.executionPolicy.computeBudget,
+                workDescriptor: { requestId: state.request.requestId, pathFingerprint: selected.resolved.pathFingerprint },
+                assertCurrent: async () => {
+                    await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
+                    await service.sourcePort.revalidate(handle, captured.sourceBinding);
+                }, signal });
+            state.context = metered.compiled;
+            await orchestrationSend.bindContext({ port: state.contextPort, compiled: state.context, compileProof: metered.proof });
             const scope = Object.freeze({});
             modelScopes.set(scope, { host, handle, consumed: false, principal: { runId: root.runId, effectId, request: state.request, logicalInputRef: immutable(logicalInputRef), logicalInputHash: decision.inputHash,
+                nativeTurnPermit: producerIdentity.permit,
                 options: { scheduled: true, lanePlan, orchestrationSend }, revalidateConsume: async () => {
                     await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
                     await service.sourcePort.revalidate(handle, captured.sourceBinding);

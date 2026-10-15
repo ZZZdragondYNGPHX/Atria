@@ -92,6 +92,20 @@ async function setup(make, { prepareEffect = true } = {}) {
 }
 
 describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('%s original bank → Effect ready/claim → GenerationHost', (_name, make) => {
+    test.each(['cancel', 'grant'])('%s before a dispatch claim rejects local work without spending the original bank', async reason => {
+        const f = await setup(make);
+        try {
+            const options = await f.generationSend(f.handle, { runId: f.root.runId, effectId: f.effectId, limits });
+            const before = await f.core.runs.status(f.handle, f.request.sessionId);
+            if (reason === 'grant') f.revoke();
+            else await f.runs.cancel(f.handle, id('Command'), { ...runGuard(await f.runs.get(f.handle, f.root.runId)), reasonCode: 'cancel_before_local_work' });
+            await expect(options.bank.assertCurrent()).rejects.toThrow();
+            await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: options })).rejects.toThrow();
+            expect(f.seen).toHaveLength(0);
+            expect(await f.core.runs.status(f.handle, f.request.sessionId)).toEqual(before);
+        } finally { await f.cleanup(); }
+    });
+
     test.each(['inputFingerprint', 'targetFingerprint'])('%s stored by the original bank must match this actual send or HTTP stays zero', async field => {
         const f = await setup(make);
         try {

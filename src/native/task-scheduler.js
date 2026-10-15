@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { NATIVE_GENERATION_DEFAULTS } from '../../public/shared/native-generation-defaults.js';
 import { immutable } from './model-prompt-runtime/execution-utils.js';
+import { hashNativeDocument } from './repositories/common.js';
 
 const terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
 const failure = code => Object.assign(new Error(code), { code });
+const boundaries = new WeakMap();
+const resourceSet = resources => [...new Set(resources)].sort();
 
 // Host-only transient projection. Session records are published by SessionCore.
 // Workers that ignore abort retain their permits until they actually settle.
@@ -22,6 +25,23 @@ export class NativeTaskScheduler {
     hasForegroundWork(owner) {
         return [...this.running, ...this.queue].some(item => (owner === undefined || item.owner === owner)
             && ['turn_blocking', 'interactive'].includes(item.view.executionClass));
+    }
+    assertActiveBoundary(boundary, expected) {
+        const captured = boundaries.get(boundary), operation = captured?.operation;
+        const fields = ['owner', 'anchor', 'kind', 'executionClass', 'key', 'fingerprint', 'resources'];
+        if (!captured || captured.scheduler !== this || !expected || Object.keys(expected).some(key => !fields.includes(key))
+            || fields.some(key => !Object.hasOwn(expected, key)) || !Array.isArray(expected.resources)
+            || expected.resources.some(value => typeof value !== 'string')
+            || this.operations.get(operation.view.operationId) !== operation || !this.running.has(operation)
+            || !['running', 'streaming'].includes(operation.view.status) || operation.view.attempt !== captured.attempt
+            || !operation.controller || operation.controller.signal !== boundary.signal || boundary.signal.aborted
+            || operation.owner !== expected.owner || operation.view.kind !== expected.kind
+            || operation.view.executionClass !== expected.executionClass || operation.key !== expected.key
+            || operation.fingerprint !== expected.fingerprint || hashNativeDocument(operation.view.anchor) !== hashNativeDocument(expected.anchor)
+            || hashNativeDocument(resourceSet(operation.resources)) !== hashNativeDocument(resourceSet(expected.resources))) throw failure('operation_boundary_denied');
+        return Object.freeze({ ...immutable({ operationId: operation.view.operationId, owner: operation.owner,
+            anchor: operation.view.anchor, kind: operation.view.kind, executionClass: operation.view.executionClass,
+            key: operation.key, fingerprint: operation.fingerprint, resources: resourceSet(operation.resources), attempt: captured.attempt }), signal: boundary.signal });
     }
     releaseOperation(operation) {
         for (const field of ['run', 'finalize', 'fresh', 'onChunk', 'resolve', 'reject', 'handle', 'controller', 'cleanup', 'timer', 'signal']) delete operation[field];
@@ -108,12 +128,14 @@ export class NativeTaskScheduler {
             for (let attempt = 0; ; attempt++) {
                 await check(); view.status = 'running'; view.attempt = attempt;
                 try {
-                    output = await operation.run({ signal: controller.signal, operationId: view.operationId, onChunk: chunk => {
+                    const boundary = Object.freeze({ signal: controller.signal, operationId: view.operationId, onChunk: chunk => {
                         if (controller.signal.aborted || terminal.has(view.status)) return;
                         if (typeof chunk.text !== 'string' || chunk.text.length > 65536 || !chunk.text.startsWith(view.provisionalPresentation)) throw failure('operation_stream_invalid');
                         view.status = 'streaming'; view.provisionalPresentation = chunk.text;
                         try { operation.onChunk?.(immutable({ ...chunk, operationId: view.operationId, provisional: true, attempt })); } catch { /* Observer only. */ }
                     } });
+                    boundaries.set(boundary, { scheduler: this, operation, attempt });
+                    output = await operation.run(boundary);
                     break;
                 } catch (error) {
                     if (!operation.retry || controller.signal.aborted || attempt >= this.retries || error.code !== 'generation_provider_failed') throw error;

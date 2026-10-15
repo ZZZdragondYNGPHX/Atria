@@ -6,13 +6,11 @@ import { optionalComputeOptions, COMPUTE_ADMISSION_CODES } from '../../../public
 import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intelligence/evolution-observer.js';
 import { createPreviewSkillRepository } from '../model-prompt-runtime/preview-skills.js';
 import { CredentialTargetAuthority } from '../model-prompt-runtime/credential-targets.js';
-import { createPackageContextDerivation } from '../context-computation.js';
 import { randomUUID } from 'node:crypto';
-import { performance } from 'node:perf_hooks';
 import { processPackageText } from '../processing-runtime.js';
 import { prepareKnowledgeAdoption } from '../knowledge-authority.js';
 import { captureTaskProduction } from '../task-artifact-authority.js';
-import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache } from '../authority-turn.js';
+import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache, authorityTurnProof } from '../authority-turn.js';
 import { buildAuthorityObservation } from '../authority-transaction.js';
 import { createNativeId, isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, completeNarrativeSkillTools, isNarrativeSkillInvocation } from '../skill-invocation.js';
@@ -20,12 +18,15 @@ import { publicSessionTaskMessages, sessionTaskRoundCount, completeSessionTaskHi
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { compiledRequestBinding, compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
 import { mintNativeNarratorQuota, assertNativeNarratorQuota } from '../orchestration/native-turn-quota.js';
+import { captureNativeTurnPermit } from '../orchestration/native-turn-permit.js';
+import { runGenerationLocalWork, assertContextCompilation } from '../orchestration/generation-local-work.js';
+import { authorityContextItems, appendAuthorityContext, narrowNativeContextSelection } from './native-authority-context.js';
 import { assertExecutionEvidenceCurrent } from '../model-prompt-runtime/execution-evidence.js';
 import { RuntimeCheckpointStore } from '../model-prompt-runtime/runtime-checkpoint-store.js';
 import { nativeExecutionScope } from '../model-prompt-runtime/native-execution-envelope.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
-import { createNativeSessionContextAdapter } from './native-session-context.js';
+import { createNativeSessionContextAdapter, nativeSessionContextOptions } from './native-session-context.js';
 import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
@@ -402,7 +403,11 @@ export class NativeGenerationHost {
                 if (controlledReview) await lanePlan.controlledTurn.check();
                 return (await this.sessionCore[controlledReview ? 'observe' : 'load'](handle, input.sessionId)).revision.revisionId === expectedRevisionId;
             },
-            run: boundary => this.prepareTurn(handle, input, boundary.signal, boundary.onChunk, revisionId => { expectedRevisionId = revisionId; }, lanePlan),
+            run: boundary => {
+                const producer = turnProducerLanes.get(lanePlan);
+                if (producer.selection) producer.permit = captureNativeTurnPermit({ ...producer, boundary, resources });
+                return this.prepareTurn(handle, input, boundary.signal, boundary.onChunk, revisionId => { expectedRevisionId = revisionId; }, lanePlan);
+            },
             finalize: prepared => this.sessionCore.finalizeTurn(handle, input.sessionId, { ...prepared, requestHash }, { expectedRevisionId,
                 ...(controlledReview ? { effectPolicy: 'no-background-model' } : {}) }),
         });
@@ -500,14 +505,18 @@ export class NativeGenerationHost {
 
     async prepareTurn(handle, input, signal, onChunk, onAnchor, lanePlan) {
         let base = await this.sessionCore[lanePlan?.controlledTurn ? 'observe' : 'load'](handle, input.sessionId);
+        const committedBase = base;
         await lanePlan?.controlledTurn?.check();
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         const runtime = base.manifest.runtime.experienceContract.taskRuntime;
         let authorityTurn = null;
         if (hasAuthorityTransactions(base)) {
             authorityTurn = await this.prepareAuthoritySelection(handle, base, input, lanePlan, signal);
+            authorityTurnProof(this.sessionCore, handle, committedBase, authorityTurn.proof);
             base = authorityTurn.prepared.candidate;
+            const producer = turnProducerLanes.get(lanePlan);
             lanePlan = { ...lanePlan, authorityContext: { snapshot: base, receipt: authorityTurn.prepared.receipt, mode: 'narrator' } };
+            if (producer) turnProducerLanes.set(lanePlan, producer);
         } else if (runtime.turn.policy === 'authority-first' && input.userInput?.trim() && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) {
             const installed = await this.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId);
             const { world, candidate } = await createTaskWorld(base, { ...installed, entryPoint: base.entryPoint }, async (patch, revisionId) => {
@@ -560,11 +569,12 @@ export class NativeGenerationHost {
             let narration;
             if (producer?.selection) {
                 if (producer.host !== this || producer.handle !== handle || producer.sessionId !== input.sessionId
-                    || producer.invocationId !== input.invocationId || hasAuthorityTransactions(base) || runtime.turn.stages.length
+                    || producer.invocationId !== input.invocationId || runtime.turn.stages.length
                     || runtime.turn.interpreterTaskId || runtime.turn.narratorTaskId || lanePlan.controlledTurn
-                    || (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) fail('native_orchestration_turn_producer_unavailable');
-                const quotaProof = mintNativeNarratorQuota({ host: this, handle, request, snapshot: base, ...producer });
-                narration = await this.turnOrchestration.executeNarrator({ host: this, handle, base, input, lanePlan, request, quotaProof,
+                    || (!authorityTurn && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic))) fail('native_orchestration_turn_producer_unavailable');
+                const quotaProof = mintNativeNarratorQuota({ host: this, handle, request, snapshot: committedBase, ...producer });
+                narration = await this.turnOrchestration.executeNarrator({ host: this, handle, base: committedBase, input, lanePlan, request, quotaProof,
+                    authorityTurn: authorityTurn ? { base: committedBase, proof: authorityTurn.proof } : null,
                     selection: producer.selection, signal, onChunk });
                 if (!narration) fail('native_orchestration_turn_producer_unavailable');
             } else narration = await this.execute(handle, request, signal, onChunk, { scheduled: true, lanePlan });
@@ -1096,17 +1106,7 @@ export class NativeGenerationHost {
         const contextPackage = !prediction && snapshot && (snapshot.manifest.runtime?.experienceContract?.contextRuntime || snapshot.manifest.runtime?.experienceContract?.processingRuntime)
             ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
         const nativeContext = !prediction && snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
-            options: {
-                tokenScope: JSON.stringify([handle, snapshot.session.sessionId, snapshot.revision.branchId]),
-                tokenizerFor: resolved => resolver.provider(resolved.connection.providerAdapter).contextTokenizer?.(resolved),
-                deriveContext: contextPackage ? createPackageContextDerivation(snapshot, contextPackage) : undefined,
-                processContext: contextPackage ? (text, sourceId) => processPackageText(contextPackage, snapshot.manifest.runtime.experienceContract.processingRuntime, 'context', text, sourceId) : undefined,
-                personaBlockedReason: snapshot.manifest.runtime?.experienceContract?.sharedRuntime ? 'shared_scope_unsupported' : undefined,
-                personaAllowed: !snapshot.manifest.runtime?.experienceContract?.sharedRuntime && (taskPlan
-                    ? taskPlan.task.context.includes('player_persona') && !['background', 'maintenance'].includes(taskPlan.task.executionClass)
-                    : role === 'role.narrator'),
-                informationTaskId: authorityContext ? undefined : taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityTurn: Boolean(authorityContext),
-            } }) : null;
+            options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan, authorityContext }) }) : null;
         const localWorkAttempts = [];
         const assertLocalCurrent = async () => {
             checkCancellation(signal);
@@ -1121,48 +1121,26 @@ export class NativeGenerationHost {
         };
         const localWork = async (kind, request, operation, publicInput, discardResult) => {
             if (preview) return operation();
-            checkCancellation(signal);
             const limits = request.resolved.effectiveExecutionPolicy?.computeBudget;
             const attempt = { attemptId: sendBank ? sendBank.nextLocalWorkAttemptId() : randomUUID(), requestId: input.requestId, kind, estimatedItems: 1,
                 estimatedInputBytes: Buffer.byteLength(JSON.stringify(publicInput ?? { contextPlan: request.contextPlan ?? request.snapshot.contextPlan,
                     promptIr: request.promptIr ?? request.snapshot.promptIr }), 'utf8'),
                 targetFingerprint: hashNativeDocument({ path: request.resolved.pathFingerprint, kind }) };
-            let receipt;
-            try {
-                if (sendBank) receipt = await sendBank.chargeLocalWork(limits, attempt);
-                else if (input.sessionId) {
-                    const context = lanePlan?.budgetContext;
-                    receipt = await this.sessionCore.runs.chargeLocalWork(handle, context?.snapshot ?? snapshot,
-                        context?.anchor ?? { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, attempt,
-                        { background: context?.background === true });
-                } else if (projectTaskEvidence) receipt = await this.agent.chargeLocalWork(handle, input.projectId, input.taskId, input.revision, limits, attempt, projectTaskEvidence.ref.slice(-64));
-                else if (limits?.localWork) throw new GenerationError('native_generation_budget_lane_denied');
-            } catch (error) { throw new GenerationError(error.code ?? 'generation_execution_failed'); }
-            if (!receipt) return operation();
-            const entry = { ...(receipt.localWork ?? receipt) }; localWorkAttempts.push(entry);
-            const started = performance.now(), cpu = process.cpuUsage();
-            let outcome = 'failed', result;
-            try {
-                try {
-                    await assertLocalCurrent(); result = await operation(); await assertLocalCurrent(); outcome = 'completed';
-                } catch (error) {
-                    if (signal?.aborted) outcome = 'cancelled';
-                    throw error;
-                } finally {
-                    const used = process.cpuUsage(cpu), usage = { wallMs: performance.now() - started, cpuUserMicros: used.user,
-                        cpuSystemMicros: used.system, cpuScope: 'process', outcome };
-                    const settled = sendBank ? await sendBank.settleLocalWork(attempt.attemptId, usage) : input.sessionId ? await this.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId, usage)
-                        : await this.agent.settleLocalWork(handle, input.projectId, input.taskId, attempt.attemptId, usage);
-                    Object.assign(entry, settled);
-                }
-                await assertLocalCurrent(); return result;
-            } catch (error) {
-                // A rendered request may already own a private lease.
-                // Refused admission never reaches here and preserves a
-                // valid old checkpoint; admitted stale work cleans up.
-                if (result && discardResult) await discardResult(result);
-                throw new GenerationError(error.code ?? 'generation_execution_failed');
-            }
+            return runGenerationLocalWork({ signal, attempt, assertCurrent: assertLocalCurrent, discardResult,
+                onAdmitted: entry => localWorkAttempts.push(entry), admit: async () => {
+                    let receipt;
+                    if (sendBank) receipt = await sendBank.chargeLocalWork(limits, attempt);
+                    else if (input.sessionId) {
+                        const context = lanePlan?.budgetContext;
+                        receipt = await this.sessionCore.runs.chargeLocalWork(handle, context?.snapshot ?? snapshot,
+                            context?.anchor ?? { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId }, limits, attempt,
+                            { background: context?.background === true });
+                    } else if (projectTaskEvidence) receipt = await this.agent.chargeLocalWork(handle, input.projectId, input.taskId, input.revision, limits, attempt, projectTaskEvidence.ref.slice(-64));
+                    else if (limits?.localWork) throw new GenerationError('native_generation_budget_lane_denied');
+                    return receipt;
+                }, settle: ({ receipt, usage }) => sendBank ? sendBank.settleLocalWork(attempt.attemptId, usage)
+                    : input.sessionId ? this.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId, usage)
+                        : this.agent.settleLocalWork(handle, input.projectId, input.taskId, attempt.attemptId, usage) }, operation);
         };
         const skills = !sendBank && !prediction && !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
             ? await prepareNarrativeSkills({ repository: preview ? createPreviewSkillRepository(this.skillRepository(handle)) : this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
@@ -1225,8 +1203,7 @@ export class NativeGenerationHost {
             };
             // A task/tool transcript follows the selected turn input. Do not
             // append the original user turn again after a tool result.
-            const safeItems = authorityContext ? selected.items.filter(item => item.id.startsWith('projection:') || item.kind === 'context.player-persona' || item.kind === 'context.history' || item.kind === 'context.input'
-                || (informationDefinition(snapshot) && (item.id.startsWith('knowledge:') || item.id.startsWith('memory:')))) : selected.items;
+            const safeItems = authorityContextItems(selected, snapshot, authorityContext);
             const exposed = taskPlan ? safeItems.filter(item => {
                 const context = taskPlan.task.context;
                 if (item.kind === 'context.player-persona') return context.includes('player_persona');
@@ -1246,26 +1223,25 @@ export class NativeGenerationHost {
                 content: { role: 'user', content: taskHistory.compaction.summary }, provenance: [{ source: 'host.task.public-summary', ref: taskHistory.compaction.sourcePrefixFingerprint }] });
             if (taskPlan?.task.context.includes('input')) items.push({ kind: skillTranscript.length ? 'context.history' : 'context.input', id: 'task-input',
                 content: skillTranscript.length ? { role: 'user', content: JSON.stringify(taskPlan.payload) } : JSON.stringify(taskPlan.payload), provenance: [{ source: 'host.task' }] });
-            if (authorityContext) {
-                const payload = authorityContext.mode === 'resolver' ? authorityContext.payload
-                    : { instruction: 'Narrate only the frozen authority result. You have no mechanical write authority.', receipt: authorityContext.receipt };
-                items.push({ kind: 'context.input', id: 'authority-turn', content: JSON.stringify(authorityValue(payload)), provenance: [{ source: 'host.authority' }] });
-                authorityValue(items);
-            }
+            appendAuthorityContext(items, authorityContext);
             items.push(...(skills?.items ?? []));
             for (const [index, message] of skillTranscript.entries()) items.push({ kind: 'context.history', id: 'skill-message-' + index,
                 content: message, provenance: [{ source: 'host.skills' }] });
-            const nativeSelection = selected.nativeSelection && { ...selected.nativeSelection,
-                pendingState: { schemaVersion: 1, effects: Object.fromEntries(Object.entries(selected.nativeSelection.pendingState.effects)
-                    .filter(([identity]) => items.some(item => item.id === 'knowledge:' + identity) || Object.hasOwn(snapshot.states.atri_knowledge_runtime?.targets?.[selected.nativeSelection.targetKey]?.effects ?? {}, identity))) },
-                selectedKnowledgeIdentities: selected.nativeSelection.selectedKnowledgeIdentities.filter(identity => items.some(item => item.id === 'knowledge:' + identity)),
-            };
+            const nativeSelection = narrowNativeContextSelection(selected, snapshot, items);
             const taskEvidence = projectTaskEvidence ?? sessionTaskEvidence;
             return { ...selected, items, ...(taskEvidence ? { provenance: [...selected.provenance,
                 ...(sessionTaskEvidence ? taskProvenance() : [taskEvidence])] } : {}), ...(nativeSelection ? { nativeSelection } : {}) };
         };
-        const contextProvider = { buildRequestContextPlan: (request, resolved) => contextBuildWork(request, resolved,
-            () => buildContext(request, resolved)) };
+        let meteredContextIncluded = false;
+        const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
+            if (scopedContext?.compileProof) {
+                const verified = await assertContextCompilation({ proof: scopedContext.compileProof, handle, port: scopedContext.port,
+                    compiled: scopedContext.compiled, bank: sendBank, source });
+                if (!meteredContextIncluded) { localWorkAttempts.unshift(verified.localWork); meteredContextIncluded = true; }
+                return buildContext(request, resolved);
+            }
+            return contextBuildWork(request, resolved, () => buildContext(request, resolved));
+        } };
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
         const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
             revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '' };

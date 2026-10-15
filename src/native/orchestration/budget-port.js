@@ -12,6 +12,15 @@ import { orchestrationComputeAttemptId } from '../../../public/shared/native-com
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const ADMITTED = new Set(['charged', 'unknown', 'settled']);
+const sendBanks = new WeakMap();
+
+/** Original adapter provenance only; this is neither a balance nor a grant. */
+export function assertOriginalSendBank(bank, { budgetPort, handle, authorityRef, effectId }) {
+    const original = sendBanks.get(bank);
+    if (!original || original.budgetPort !== budgetPort || original.handle !== handle || original.effectId !== effectId
+        || original.authorityDigest !== hashNativeDocument(authorityRef)
+        || original.authorityDigest !== hashNativeDocument(bank.authorityRef)) fail('native_orchestration_budget_bank_invalid');
+}
 
 /** Stable provider sub-send identity (§13.2): never random, one per Effect ordinal. */
 export function sendAttemptId(effectId, providerSendOrdinal) {
@@ -270,7 +279,7 @@ export class BudgetPort {
         let localOrdinal = 0;
         let rpPrefixDigest = null;
         const admitted = new Map(), localIdentities = new Map();
-        return {
+        const bank = {
             authorityRef,
             assertCurrent: async () => {
                 await this.assertCurrent(handle, authorityRef);
@@ -331,5 +340,7 @@ export class BudgetPort {
             settleLocalWork: (attemptId, usage) => this.settleLocalWork(handle, authorityRef, attemptId, usage),
             nextOrdinal: () => ordinal,
         };
+        sendBanks.set(bank, { budgetPort: this, handle, effectId, authorityDigest: hashNativeDocument(authorityRef) });
+        return bank;
     }
 }

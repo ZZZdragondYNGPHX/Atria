@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { modelPortFixture as fixture } from './helpers/model-port-fixture.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { runGuard, controlRecordKey } from '../../src/native/orchestration/controller-common.js';
@@ -8,9 +9,14 @@ import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 
+// Real SQL setup, original currentness checks and cold reopen exceed the
+// unit-test 15s default. This changes only this integration test's harness.
+if (process.env.ATRIA_TEST_MODEL_SQL === '1') jest.setTimeout(60_000);
+
 describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MODEL_SQL === '1' || ['FsEngine', 'SqliteEngine'].includes(name)))('$name original ModelPort', ({ make }) => {
     test.each([true, false])('real native narrator response usage=%s is factual without a second result writer', async usage => {
-        const f = await fixture(make, { usage });
+        const f = await fixture(make, { usage, changeRoute: route => ({ ...route, executionPolicy: { ...route.executionPolicy,
+            computeBudget: { ...route.executionPolicy.computeBudget, localWork: { ...route.executionPolicy.computeBudget.localWork, maxJobs: 5 } } } }) });
         try {
             const originalObserve = f.authority.execution.effects.observe.bind(f.authority.execution.effects);
             f.authority.execution.effects.observe = async (handle, input) => {
@@ -24,6 +30,10 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
             expect(saved).toMatchObject({ outcome: 'confirmed', observation: { reasonCode: 'generation_response_validated', remoteOperationRef: null, domainReceiptRef: null, resultRefs: [] } });
             expect(saved.observation.budgetObservationRef.attempts).toHaveLength(1);
             expect(saved.observation.budgetObservationRef.attempts[0].status).toBe(usage ? 'settled' : 'unknown');
+            const root = await f.authority.execution.runs.get(f.h.handle, f.effectRef.runId);
+            const local = (await f.core.runs.status(f.h.handle, f.base.session.sessionId)).operations[root.budgetAuthorityRef.operationId].compute.localWork;
+            expect(local).toHaveLength(5); expect(local.filter(row => row.kind === 'context_build')).toHaveLength(1);
+            expect(local.every(row => row.orchestration.effectId === f.effectRef.effectId && row.status === 'settled')).toBe(true);
             expect(JSON.stringify(saved)).not.toMatch(/Synthetic native narrator response|synthetic-model-secret/);
             expect(f.chunks.some(chunk => 'text' in chunk)).toBe(false);
             const replay = structuredClone(saved.observation); replay.observationId = 'copied-model-response';
@@ -40,6 +50,17 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => process.env.ATRIA_TEST_MOD
             await f.start();
             await expect(f.port.generate(f.h.handle, JSON.parse(JSON.stringify(f.scope)))).rejects.toThrow();
             await expect(f.port.generate(f.h.handle, f.scope)).rejects.toThrow(); expect(f.requests).toHaveLength(1);
+        } finally { await f.cleanup(); }
+    });
+
+    test('a caller cannot replace the original active Turn signal with another un-aborted controller', async () => {
+        const f = await fixture(make), replacement = new AbortController();
+        try {
+            const generate = f.port.generate.bind(f.port);
+            f.port.generate = (handle, scope, options) => generate(handle, scope, { ...options, signal: replacement.signal });
+            await expect(f.start()).rejects.toMatchObject({ code: 'native_orchestration_model_signal_denied' });
+            expect(replacement.signal.aborted).toBe(false); expect(f.requests).toHaveLength(0);
+            expect((await f.observe()).outcome).toBe('unknown');
         } finally { await f.cleanup(); }
     });
 

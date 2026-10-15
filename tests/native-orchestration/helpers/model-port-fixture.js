@@ -21,7 +21,7 @@ const limits = { maxRequests: 4, maxTokens: 32000, localWork: { maxJobs: 32, max
 
 // Native Host, narrator producer, Binding/Plan, Provider HTTP/private lease,
 // original bank and Effect writer are real. The remote response is synthetic.
-export async function modelPortFixture(make, { usage = true, failure = false, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route } = {}) {
+export async function modelPortFixture(make, { usage = true, failure = false, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route, createSource = null, generationWithoutMaxTokens = false } = {}) {
     const h = await make(), requests = [], chunks = []; let coldEngine, core, host, authority, port, effectRef;
     let afterSend = async () => {}, captureScope = null, transformRender = rendered => rendered;
     const server = http.createServer(async (req, res) => {
@@ -35,7 +35,7 @@ export async function modelPortFixture(make, { usage = true, failure = false, ch
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     try {
         await prepareControllerOwnerRoot(h.dirs.root); attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
-        const f = await installCognitionFixture(h, 'limited', null, ({ contract }) => {
+        const f = createSource ? await createSource(h) : await installCognitionFixture(h, 'limited', null, ({ contract }) => {
             contract.taskRuntime.turn = { policy: 'authority-first', stages: [] };
             changeContract(contract);
         });
@@ -43,13 +43,18 @@ export async function modelPortFixture(make, { usage = true, failure = false, ch
         await beforeBase({ fixture: f, core, handle: h.handle });
         const base = await core.observe(h.handle, f.snapshot.session.sessionId);
         const seeded = await seedGenerationProfiles({ ...h, format: 'openai-responses', endpoint: `http://127.0.0.1:${server.address().port}/v1/responses` });
+        if (generationWithoutMaxTokens) {
+            const generation = { ...seeded.generation, revision: 'no-output-override', output: {} };
+            await seeded.library.commit(h.handle, 'core.generation-profile', generation);
+            seeded.routes[0].generationProfileRef = { ...seeded.routes[0].generationProfileRef, revision: generation.revision };
+        }
         await seeded.persistence.saveRuntimeRoute(h.handle, changeRoute({ ...seeded.routes[0], executionPolicy: { schemaVersion: 1,
             allowedModelProfileIds: [seeded.model.modelProfileId], computeBudget: limits } }));
         const originalProvider = createResponsesGenerationProvider();
         const providers = { 'provider.openai-responses': { ...originalProvider,
             renderRequest: async args => transformRender(await originalProvider.renderRequest(args)) } };
         const rebuild = (engine, persistence, library) => {
-            host = new NativeGenerationHost({ persistence, library, sessionCore: core, providers, secretPort: { resolveSecret: async () => 'synthetic-model-secret' } });
+            host = new NativeGenerationHost({ persistence, library, sessionCore: core, packageInstaller: core._packages, providers, secretPort: { resolveSecret: async () => 'synthetic-model-secret' } });
             const modelResolver = new RouteResolver({ persistence, library, providers });
             const { plans } = createOrchestrationAuthoringService(engine, { sessionCore: core, modelResolver });
             authority = new NativeNarratorOrchestrationAuthority({ engine, sessionCore: core, plans, modelResolver });
@@ -74,14 +79,15 @@ export async function modelPortFixture(make, { usage = true, failure = false, ch
         const report = await plans.validate(h.handle, expected), { planRef } = await plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) });
         const sourceSelector = { domain: 'native_session', sessionId: base.session.sessionId, entryPointId: null };
         await plans.saveBinding(h.handle, id('Command'), { sourceSelector, planRef, expectedVersion: null });
-        const input = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, invocationId: 'sealed-narrator' };
-        return { h, requests, chunks, input, base, seeded, plans, sourceSelector, planRef, route, plan, write: f.write,
+        const input = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, invocationId: 'sealed-narrator',
+            ...(f.transaction ? { routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId } } : {}) };
+        return { h, requests, chunks, input, base, seeded, plans, sourceSelector, planRef, route, plan, write: f.write, transaction: f.transaction,
             get core() { return core; }, get host() { return host; }, get authority() { return authority; }, get port() { return port; },
             get effectRef() { return effectRef; }, get scope() { return captureScope; },
             captureEffect: input => { effectRef = { runId: input.runId, effectId: input.effectId }; },
             render: callback => { transformRender = callback; },
             onResponse: callback => { afterSend = callback; },
-            start: () => host.executeTurn(h.handle, input, undefined, chunk => chunks.push(chunk)),
+            start: () => host.executeTurn(h.handle, input, undefined, chunk => chunks.push(chunk), f.transaction ? { transaction: f.transaction } : {}),
             observe: () => port.observe(h.handle, effectRef),
             cold: async () => {
                 cancelSessionMaintenance(f.sessionRepo, h.handle, base.session.sessionId);
