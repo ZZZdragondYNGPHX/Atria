@@ -393,3 +393,13 @@ EffectIntent补充hostBootId/hostGeneration、capability、requiresApproval、bu
 ApprovalRequest/Decision也钉住hostGeneration。nonce原值仅属于可信Review Port；kernel只持hash，决策必须原身份Port复核并保存最小principal/authenticationContext refs；主origin没有approve路由。取消/Host或restore恢复在同Root事务使未消费批准invalidated。真实Review Origin/再认证实现与隔离验收仍归P5，P2受控Port测试不等于其通过。
 
 Receipt按稳定observationId追加，不覆盖unknown或矛盾历史。原Port验证真实原收据/状态/预算观察；模型或Browser成功Boolean不构成证明。矛盾已知观察进入unknown/reconciling；缺原budget观察保持待核对；取消后的真实迟到事实可关联追加，但不能改已发布Output/Result或生成退款。终态Run换Host只更新控制fence/审计，不重新启动。新Effect发送的实际前置复核及原预算/收费接线仍须P3完成。
+
+### 17.5 Attempt结算与确定性Join的P2实现细化
+
+`NodeAttemptReceipt`沿原`atri_orchestration_record/receipt`保存，封闭字段为`schemaVersion,receiptKind:'node_attempt',receiptId,runId,nodeAttemptId,epoch,graphRevision,sourceBindingDigest,inputDigest,outcome,resultRefs,effectReceiptRefs,decisionSeq,reasonCode,createdAt`。receiptId由Run+Attempt稳定推导；Attempt终态、不可变收据、Root/event/command同事务，不能靠可变status伪造分支成功。普通settle拒绝Join/Output节点；已准备或未知Effect未结清时不能终结Attempt。原Source/Result/费用收据验证Port为必填，不在V3影子实现。
+
+新增`ojoin_*`身份，沿原`record/join`分别保存`barrier:<joinId>`和`joinId`：前者是不可变`JoinBarrier`，后者是不可变`JoinReceipt`，不是新metadata kind或独立存储。Barrier字段为`schemaVersion,joinId,runId,fanoutAttemptId,nodeAttemptId,epoch,graphRevision,memberAttemptIds,sourceBindingDigest,parentBudgetRef,policy,quorum,deadlineAt,frozenSeq,createdAt`；稳定joinId绑定Join Attempt。原Fanout分组/parent reservation Port验证完整成员；冻结事务只接受同epoch/source的pending分支，已启动成员与冻结竞态必有一方拒绝，不能补录进旧屏障。原Scheduler permits/真实父子预算仍归P3。
+
+JoinReceipt在§7字段上增加`epoch,barrierDigest,memberReceiptRefs,decisionSeq`；cutoffSeq是本次决策前已持久Root.eventSeq，decisionSeq=cutoffSeq+1。有效成功按成员不可变收据的decisionSeq/AttemptId稳定排序；any-success取首个，count-quorum取前quorum个。partial不计成功配额；all-success有失败不能complete，all-settled等待全部或显式deadline；不满足部分输出合同则failed。deadline只采纳不晚于冻结deadlineAt持久化的合法Result，截止后但结算前入库也排除。结果需原audience/source Port重新验证，缺证据拒绝/排除；收据列明未结算、失败、未采纳与迟到成员。
+
+重放、并发settle和已提交回执丢失只返回同一结算，晚到分支不能重开旧Join；取消/恢复epoch也不能消费旧屏障。未完成分支仍保留实际身份/收据，不借Join失败声称远端取消或退款。P2当前使用受控原Port证据，不代表ResultEnvelope/Context/Scheduler或Domain Consumer已完成。

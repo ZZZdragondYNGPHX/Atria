@@ -134,11 +134,11 @@
 
 每条 evidence 至少：`caseId, productCommit, planCommit, platform, osVersion, nodeVersion, browserVersion, engine, testAccountScope, sourceFixtureId, action, expected, observed, status, failureCode, evidenceDigest, testedAt`。跨端同 case 分开记录，NOT_RUN 不填虚构 observed。公共 Record 只存脱敏摘要/hash/测试名/限制；请求响应、用户文本、nonce/token、原始截图等临时测试资料遵守 Governance §13.1 的清理要求，不为复核已删材料重复付费跑历史测试。
 
-当前：仅 L0 tracked scanner/AST 和本地环境只读核对已执行；V01–V10、CL01–CL12 的 V3 L1–L4 全部 NOT_RUN，对缺V3实现/设备/原服务/可信批准者明确 BLOCKED。没有产品测试、Actions、真实模型/Tool/A2A/MCP/人工质量或实机通过记录。文档校验结果另归同一 Record，不能记成 V01–V10 PASS。
+当前：L0 tracked scanner/AST，以及P1/P2部分L1/L2工程证据已取得，具体commit/测试数/故障范围归[同一Record](../../../records/refactor/atria-native-orchestration-v3.md)。包括四Engine authoring/Ledger/Owner、Windows真实Host/进程kill、受控Port的GraphPatch/Effect/Approval/Join；这些子证据不构成V01–V10或完整P阶段PASS。P3–P8、CL01–CL12完整客户端、真实模型/Tool/A2A/MCP/可信Review Origin/人工质量仍NOT_RUN，对缺设备/服务/批准者项明确BLOCKED。未集成main，不能把文档检查或受控Port当真实领域验收。
 
 ## 9. R项设计收口后的新增实施反例
 
-以下是interface §12–16确定协议的必测场景，**均未执行**；增加这些case不会把其完成条件倒挂到E0。真实代码或测试出现前保持NOT_RUN；设备/服务/可信认证实际缺失时对应case BLOCKED。原G1–G6/S1–S7/V01–V10/CL01–CL12要求保持。
+以下是interface §12–16确定协议的必测场景；当前子证据按§8.2和同一Record分账，尚未完整验收，不因部分Owner/SQL故障实测就标整行PASS。增加这些case不会把其完成条件倒挂到E0。未执行部分保持NOT_RUN；设备/服务/可信认证实际缺失时对应case BLOCKED。原G1–G6/S1–S7/V01–V10/CL01–CL12要求保持。
 
 | case细分 | 阶段/原包 | 必须证明的实际行为 |
 | --- | --- | --- |

@@ -204,3 +204,11 @@
 - 必填authorizeEffect/verifyBudgetAttempt/verifyObservation/verifyApproval和Review身份Port，未设默认允许；V3不实现资金账本、账号表、Secret服务或业务writer。Intent与Receipt只存原authority引用/指纹。相同Effect claim重放不返回token；已经提交但本地丢失ACK时不得再次发送。
 - 四Engine受控Port核心测试最新40/40通过；受影响Run回归32/32通过（另12个非FS的FS专用窗口N/A）。本地遮蔽已提交ACK的测试证明kernel回执重放语义，不冒充真实COMMIT网络断线。定向ESLint/diff check通过。原生预算、Provider/MCP/A2A、真实账户再认证/Review Origin/Browser隔离和实际三端均未由这些double验证。
 - P2仍IN_PROGRESS：还需Join/Delegate/Handoff/循环/局部重做、恢复/reconcile以及真实原Scheduler permits；P1仍需核对维护CLI/raw Engine入口和未知SQL proxy/multi-primary配置的拒绝边界，防止把标准直连DB实测推广到未支持拓扑。P3–P8未完成，最终验收NOT_READY，main未集成。
+
+## 2026-10-15 — P2第三组：冻结Join与不可变Attempt结算
+
+- Source `c04f36925` → `cff1d2453`，同一实现分支已提交推送。普通Attempt终态与不可变NodeAttemptReceipt同Root CAS；未结清Effect不得伪造成分支成功，普通settle不能替Join/正式Output结算。GraphPatch取消pending分支也保留不可变结算证据，不擦除旧Attempt。
+- 五种Join策略使用不可变Barrier/成员Attempt及其持久receipt，固定cutoffSeq/decisionSeq。成员必须在派发前冻结；原分组/parent reservation/source/audience Port必填。any/quorum取稳定持久顺序，partial不冒充success；deadline后入库即使早于settle也排除。失败/迟到/未采纳分支保留，结算不推断远端取消或退款。
+- 最新四Engine定向三文件132/132：Join68/68、Graph20/20、Effect/Approval44/44。包含五策略/配额、真实事务内一致性、fresh并发settle一新一重放、本地遮蔽已提交ACK后重放、missing receipt拒绝、source revoke、同Host restore generation/epoch、迟到固定收据和未决Effect拒绝终态。定向生产ESLint及git diff --check通过。
+- 首轮SQL连接失败为Docker daemon未运行，不能算实现PASS；启动本机已有Docker和原两个隔离测试容器后四Engine复测通过。未创建/重置真实数据，没有模型/收费调用；ACK遮蔽不是真实网络COMMIT丢包。受控Result/预算/分组Port不等同原ResultEnvelope/Context/Scheduler准入完成。
+- P1/P2仍IN_PROGRESS。已定位维护脚本`storage-migrate.js`直接构造source/destination Engine而未持Host生命周期的缺口，继续修复；未知SQL拓扑拒绝边界、Delegate/Handoff/循环/Review/reconcile及P3–P8继续，三端真实客户端仍NOT_RUN/BLOCKED，main未集成。
