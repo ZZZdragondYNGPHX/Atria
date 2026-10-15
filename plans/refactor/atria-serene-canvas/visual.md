@@ -68,4 +68,4 @@ v0.6 已展开 Studio Actors、EntryPoints、UI/Assets 的代表编辑。资源�
 
 ## v0.8 Dock supplement
 
-[v0.8](references/discussion-preview-v0.8.html) 在既有温纸、白纸、衬线与胶囊材质中加入边缘隐藏 Dock；规则只见 [dock.md](dock.md)。v0.7 原样保留，v0.1 仍是已接受视觉基线。这次只改 HTML 和方案，未改产品，不把当前动效参数视为已获接受。
+[v0.8](references/discussion-preview-v0.8.html) 在既有温纸、白纸、衬线与胶囊材质中加入边缘隐藏 Dock；规则只见 [dock.md](dock.md)。v0.7 原样保留，v0.1 仍是已接受视觉基线。v0.8 随后获明确接受并授权实装，冻结本项交互的 [accepted-dock-v0.8.html](references/accepted-dock-v0.8.html) 与讨论稿一致。产品实施结果只归 Record。

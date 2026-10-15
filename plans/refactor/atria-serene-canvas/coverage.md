@@ -162,4 +162,4 @@ Runtime readiness 已在产品中按共享 adapter 认证规则修正；上述 �
 
 ## 11. v0.8 Dock 交互讨论
 
-新增 [v0.8](references/discussion-preview-v0.8.html) 代表边缘隐藏、唤出、触屏把手和长按换边；详细规则归 [dock.md](dock.md)。当前仅 HTML，等待手感反馈，尚未进入产品接入。§10 的已实施 Shell 证据不覆盖这项新 Dock 交互。
+新增 [v0.8](references/discussion-preview-v0.8.html) 代表边缘隐藏、唤出、触屏把手和长按换边；详细规则归 [dock.md](dock.md)。v0.8 已接受，产品 `main@60aca6957` 完成本项接入。§10 的旧 Shell 证据不覆盖这项新交互，相关真实浏览器与单元验证只归同一 Record。

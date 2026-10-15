@@ -67,7 +67,7 @@
 ### 11. Dock 边缘吸附与隐藏
 
 - **Decision:** 采用左、右、底边可换位的 Dock；桌面完全隐藏、鼠标靠近边缘唤出；手机保留淡色把手，明确展开、选完收起，不用滚动唤出，长按后可拖动换边。
-- **Scope:** 当前只授权可浏览 HTML，手感反馈后再决定产品接入。具体交互、暂定参数与未决项只归 [dock.md](dock.md)。
+- **Scope:** v0.8 交互已接受并明确授权接入产品。具体交互、当前参数与产品边界只归 [dock.md](dock.md)。
 - **Affected modules:** `dock.md`, `visual.md`, `coverage.md`。
 
 ## Scope state

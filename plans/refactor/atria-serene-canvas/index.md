@@ -3,8 +3,8 @@
 - Task ID: `refactor/atria-serene-canvas`
 - Primary Workspace: `main`（产品任务；方案与视觉输入归 `docs`）
 - Status: Implemented — 已授权的视觉重构和已确定流程完成本地实施及相关验证；原型接受与产品验证仍分别记录。
-- Current stage: D2 Dock 交互讨论 — 当前仅授权 HTML；产品接入等待预览反馈。I4 completed — 五域、入口、全局工具、条件媒体与作品宿主已完成代表流程验收，已集成并同步产品 `main@ec51db9a9`。外部服务及真实设备限制见 Record。
-- Current iteration: v0.8 增补边缘隐藏 Dock，交互规则与本轮边界见 [dock.md](dock.md)。v0.6 的完整代表交互持续作为依据；v0.7 补充欠覆盖页面，尚未获得新视觉基线接受。原型内存状态不作为产品服务实现。
+- Current stage: I5 completed — 已接受的 v0.8 Dock 接入产品，经相关验证后集成并同步 `main@60aca6957`。I4 completed — 五域、入口、全局工具、条件媒体与作品宿主已完成代表流程验收，已集成并同步产品 `main@ec51db9a9`。外部服务及真实设备限制见 Record。
+- Current iteration: v0.8 Dock 已接受，快照见 [accepted-dock-v0.8.html](references/accepted-dock-v0.8.html)；交互规则与本轮边界见 [dock.md](dock.md)。v0.6 的完整代表交互持续作为依据；v0.7 补充欠覆盖页面，尚未获得新视觉基线接受。原型内存状态不作为产品服务实现。
 - Latest discussion HTML: [discussion-preview-v0.8.html](references/discussion-preview-v0.8.html) 为 Dock 交互试玩，继承 [v0.7](references/discussion-preview-v0.7.html) 的补充页面；完整前版见 [v0.6](references/discussion-preview-v0.6.html)。
 - Implementation authorization: 2026-10-15 收到明确“开始重构”；重大新能力或视觉改向仍须讨论。
 - Source audit baseline: `main@cc5e90eac`，实施分支 `refactor/atria-serene-canvas`。历史盘点入口仍需逐项复核。
@@ -25,7 +25,7 @@
 | Module | Authority | Depends on |
 | --- | --- | --- |
 | [decisions.md](decisions.md) | 已确定的跨模块范围与产品取舍 | — |
-| [dock.md](dock.md) | 边缘吸附、隐藏与唤出的讨论规则；当前仅 HTML | `decisions.md`, `visual.md` |
+| [dock.md](dock.md) | 边缘吸附、隐藏与唤出的已接受规则及产品边界 | `decisions.md`, `visual.md` |
 | [visual.md](visual.md) | 视觉基线、HTML 迭代与实施对照方法 | `decisions.md` |
 | [coverage.md](coverage.md) | 当前能力、初稿覆盖和待补界面矩阵 | `decisions.md`, `visual.md` |
 | [migration.md](migration.md) | 原生设施替代路径与兼容语义 | `decisions.md`, `coverage.md` |
@@ -75,3 +75,5 @@
 - 2026-10-15：先更新本轮范围，再保存 Studio 非 Prompt 编辑与冲突恢复 v0.6 讨论稿；仍处于 D2，未开始产品重构。
 
 - 2026-10-15：按当前交互选择新增 v0.8 Dock HTML；仅设计讨论，不启动产品修改，详见 `dock.md`。
+
+- 2026-10-15：明确接受 v0.8 并授权实装；Dock 接入从实际 `main@2686aa40a` 开始，产品分支 `feat/edge-dock`，原型与产品验证继续分别记录。

@@ -1,6 +1,7 @@
-# Dock 边缘交互讨论
+# Dock 边缘交互
 
-- Status: HTML prototype ready for feedback；当前没有产品实施授权。
+- Status: Implemented — v0.8 已明确接受，产品 `main@60aca6957` 已完成本项接入与相关验证。
+- Accepted snapshot: [accepted-dock-v0.8.html](references/accepted-dock-v0.8.html)，与讨论稿字节一致，仅冻结本项 Dock 交互；v0.1 仍决定整体视觉方向。
 - Preview: [discussion-preview-v0.8.html](references/discussion-preview-v0.8.html)。继承 v0.7，保留旧稿与 v0.1 视觉基线。
 - Decision boundary: [decisions.md §11](decisions.md#11-dock-边缘吸附与隐藏)。本页是交互细则的唯一详细来源。
 
@@ -18,9 +19,9 @@ Dock 可停靠左、右或底边。闲置时整块移出视口，不留下把手
 
 手机一级 Dock 保留 Play、Library、Studio 与账户；账户菜单可达 Agents、Runtime、Settings 和原有工具。三边位置均考虑安全区；浏览器/系统边缘手势是否竞争仍需真机确认。
 
-## 原型暂定参数
+## 当前交互参数
 
-以下用于体验和讨论，尚未作为产品最终参数冻结：
+产品沿本轮已接受手感采用以下参数；实现方法可在保持交互一致的前提下调整：
 
 | 项目 | v0.8 |
 | --- | --- |
@@ -31,12 +32,12 @@ Dock 可停靠左、右或底边。闲置时整块移出视口，不留下把手
 | 手势归位 | 临界阻尼弹簧，response 0.3s；保留当前速度 |
 | 布局转向 / 菜单入场 | 220ms / 180ms，既有 strong ease-out |
 
-拖动为一比一跟手；松手按有界速度投影选边，随后归位。逐帧只写 transform/opacity，尺寸与安全区在配置、换边和 resize 时读取。转向用子元素 FLIP 表现；不逐帧改 width/height。常用编辑、文字与页面正文不加入入场动画。
+拖动为一比一跟手；松手按有界速度投影选边，随后归位。位移与透明度仅使用 transform/opacity，尺寸与安全区在配置、换边和 resize 时读取。产品将弹簧采样交给 WAAPI 执行，避免主线程繁忙时阻塞唤出和归位；中断时读取当前呈现并续接速度。转向用子元素 FLIP 表现；不逐帧改 width/height。常用编辑、文字与页面正文不加入入场动画。
 
 系统 reduced-motion 下取消吸附位移、菜单位移和转向过渡；手指正在拖动的直接跟手仍保留。键盘唤出、换边与 Esc 走即时路径。隐藏 Dock inert 且 aria-hidden，菜单支持方向键、Home/End 和 Esc；IME 组合期间不截获 Esc。新增控件只提供英文和自然简中。
 
 ## 预览设施与产品边界
 
-顶部体验方式、停靠位置、唤出按钮和说明是原型审阅设施。桌面可用顶部按钮走键盘替代路径；最终产品的键盘入口、位置是否跨设备/跨会话保存、软键盘弹出时的处理尚未定稿。本稿不写偏好、不调用产品 API，也不将阅读样例或 v0.7/v0.6 内存状态转为业务权威。刷新复原，鼠标和触屏的位置在本次预览中分别记忆。
+顶部体验方式、停靠位置、唤出按钮和说明是原型审阅设施。桌面可用顶部按钮走键盘替代路径；产品使用同一搜索里的“展开导航”和仅聚焦时显示的同名入口，抓手方向键与菜单三边选择作为拖动替代。产品按同次 Shell 使用分别记住鼠标/触屏位置，不新增跨会话或跨设备持久化。软键盘沿既有 visual viewport 与输入焦点判断，弹出时收起并隐藏把手，恢复后把手可达。本稿不写偏好、不调用产品 API，也不将阅读样例或 v0.7/v0.6 内存状态转为业务权威。刷新复原，鼠标和触屏的位置在本次预览中分别记忆。
 
-本轮验证及审查只归 [references/README.md](references/README.md#v08-dock-actual-prototype-checks)，实际交付归同一 [Record](../../../records/refactor/atria-serene-canvas.md)。确认手感后才进入产品接入讨论；既有生成、草稿、版本冲突和已发出提交的语义均未改变。
+原型验证及审查只归 [references/README.md](references/README.md#v08-dock-actual-prototype-checks)，实际交付归同一 [Record](../../../records/refactor/atria-serene-canvas.md)。本项产品实施与验收仍归同一 Record；既有生成、草稿、版本冲突和已发出提交的语义均未改变。

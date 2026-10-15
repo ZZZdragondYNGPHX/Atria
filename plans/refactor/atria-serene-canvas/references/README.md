@@ -13,7 +13,8 @@
 | [discussion-preview-v0.5.html](discussion-preview-v0.5.html) | Library Prompt/Persona 与浅色 Settings 的交互初稿 | 历史讨论版本；未替换已接受基线 |
 | [discussion-preview-v0.6.html](discussion-preview-v0.6.html) | Studio Actors、EntryPoints、UI/Assets 编辑与 ChangeSet 冲突/失败恢复 | 完整前版；未替换已接受基线 |
 | [discussion-preview-v0.7.html](discussion-preview-v0.7.html) | 入口、Project Agent、Source 文件列表及全局工具代表布局 | 页面补充稿；未替换已接受基线，全局工具仍需完整操作展开 |
-| [discussion-preview-v0.8.html](discussion-preview-v0.8.html) | 边缘隐藏 Dock、桌面唤出、触屏把手与长按换边；继承 v0.7 页面 | 最新 Dock 讨论稿；仅 HTML，等待手感反馈 |
+| [discussion-preview-v0.8.html](discussion-preview-v0.8.html) | 边缘隐藏 Dock、桌面唤出、触屏把手与长按换边；继承 v0.7 页面 | 已接受的 Dock 讨论稿；产品证据单独归 Record |
+| [accepted-dock-v0.8.html](accepted-dock-v0.8.html) | 与 v0.8 字节一致的已接受 Dock 交互快照 | 本项 Dock 实施依据；不覆盖整体 v0.1 视觉方向 |
 | [desktop-reference.html](desktop-reference.html) | 用户提供的 `atria-serene-canvas.html` | 桌面视觉气质、布局与精致程度参考 |
 | [mobile-reference.html](mobile-reference.html) | 用户提供的 `atria-mobile-serene.html` | 手机布局与材质参考 |
 | [frontend-guidelines.md](frontend-guidelines.md) | 用户提供的视觉规范 | 设计输入；冲突以当前决策解决 |
@@ -171,3 +172,7 @@ microinteractions：已验证触发状态、明确规则、立即反馈、克制
 未取得：iOS/Android真实边缘返回/Home手势、软键盘/安全区硬件、混合输入设备、跨会话位置持久化、产品集成或业务验收。v0.8沿用的其他页面不是本轮重新验收范围；顶部选择器与唤出按钮只是审阅设施。等待用户查看手感，尚未接受为新视觉基线。
 
 最后嵌入页复查：v0.6外部字体等待会延后load，改为内容就绪即绑定、load作补充；真实浏览器复测桌面移入嵌入内容后自动隐藏通过。触屏唤出时把手保留到同次兼容点击被消费，避免点击穿到iframe导致焦点转移/误收起；嵌入页内点内容收起及减动快速重复复测通过。新增HTML继承的混合换行已规范化，最终暂存空白检查通过。
+
+### v0.8 acceptance and product implementation
+
+本项 Dock v0.8 获明确接受并授权实装，冻结快照 SHA-256：`b7935e9d4c48f68d72fa327b2a8946fb4f740661f3ec14403deba3a34e889b42`，与讨论稿字节一致。先前“等待反馈”的文字保留为原型验证时的历史事实。产品沿既有 tokens 和真实导航实施；产品浏览器、单元、性能及审查证据只归 [Record I5](../../../../records/refactor/atria-serene-canvas.md#i5--已接受-dock-的产品接入2026-10-15)，不能将前述内存演示作为产品验收。
