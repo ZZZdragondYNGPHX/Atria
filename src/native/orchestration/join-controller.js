@@ -3,24 +3,12 @@ import { assertNativeId } from '../identity.js';
 import { assertObject, assertCounter } from '../../../public/shared/native-orchestration-contracts.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable } from '../repositories/common.js';
 import { checkedRecord } from './plan-repository.js';
-import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, readAttempt } from './controller-common.js';
 import { readAttemptSettlement, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 
 export const joinIdForAttempt = attemptId => 'ojoin_' + hashNativeDocument({ nodeAttemptId: attemptId }).slice(0, 32);
 const barrierKey = (handle, runId, joinId) => controlRecordKey(handle, runId, 'join', 'barrier:' + joinId);
 const compare = (a, b) => a.receipt.decisionSeq - b.receipt.decisionSeq || a.attempt.attemptId.localeCompare(b.attempt.attemptId);
-
-function reachable(graph, from, to) {
-    const seen = new Set(), pending = [from];
-    while (pending.length) {
-        const id = pending.pop();
-        if (id === to) return true;
-        if (seen.has(id)) continue;
-        seen.add(id);
-        pending.push(...graph.edges.filter(edge => edge.from.nodeId === id).map(edge => edge.to.nodeId));
-    }
-    return false;
-}
 
 function assertLive(root) {
     if (root.cancelRequested || !['admitted', 'running', 'waiting_approval'].includes(root.status)) throw new ConflictError('native_orchestration_join_not_admitted');
@@ -57,10 +45,11 @@ export class JoinController {
             const nodeIds = new Set();
             for (const attemptId of memberAttemptIds) {
                 const { doc: member } = await readAttempt(tx, handle, root, attemptId);
-                if (attemptId === fanoutAttemptId || attemptId === nodeAttemptId || nodeIds.has(member.nodeId) || member.status !== 'pending' || member.effectRefs.length
+                if (attemptId === fanoutAttemptId || attemptId === nodeAttemptId || nodeIds.has(member.nodeId) || !['pending', 'reserved'].includes(member.status) || member.effectRefs.length
                     || member.epoch !== root.epoch || member.graphRevision !== root.graphRevision || member.sourceBindingDigest !== root.sourceBinding.bindingDigest
                     || root.nodeControl[member.nodeId].disposition !== 'eligible'
-                    || !reachable(root.graph, fanout.nodeId, member.nodeId) || !reachable(root.graph, member.nodeId, join.nodeId)) throw new ConflictError('native_orchestration_join_invalid_membership');
+                    || member.inputState === 'reserved' && member.reservationRef.producerAttemptId !== fanoutAttemptId
+                    || !graphReachable(root.graph, fanout.nodeId, member.nodeId) || !graphReachable(root.graph, member.nodeId, join.nodeId)) throw new ConflictError('native_orchestration_join_invalid_membership');
                 nodeIds.add(member.nodeId); members.push(member);
             }
             // The original scheduler/bank Port verifies this invocation's

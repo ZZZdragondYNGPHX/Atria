@@ -155,7 +155,8 @@ export class RunRepository {
         assertObject(body, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'nodeId', 'inputRefs', 'inputDigest', 'effectiveGrantDigest', 'budgetRef'], 'beginAttempt');
         this.#assertGuard(body); assertNativeId(body.nodeId, 'orchestrationNode');
         assertDigest(body.inputDigest, 'inputDigest'); assertDigest(body.effectiveGrantDigest, 'effectiveGrantDigest');
-        if (!Array.isArray(body.inputRefs)) throw new TypeError('inputRefs must be an array');
+        if (!Array.isArray(body.inputRefs) || hashNativeDocument(body.inputRefs) !== body.inputDigest) throw new TypeError('inputDigest must bind the actual inputRefs');
+        if (!body.budgetRef || Object.prototype.toString.call(body.budgetRef) !== '[object Object]') throw new TypeError('Original budget reference is required');
         const attemptId = createNativeId('orchestrationAttempt'), timestamp = this.now();
         return this.#command(handle, commandId, 'runs.beginAttempt', body, async (tx, input, fence) => {
             const record = await this.#root(tx, handle, input.runId), root = record.doc;
@@ -175,6 +176,7 @@ export class RunRepository {
                 }
             }
             const attempt = { schemaVersion: 1, runId: root.runId, nodeId: input.nodeId, attemptId, attemptNumber: 1, epoch: root.epoch, graphRevision: root.graphRevision,
+                inputState: 'prepared', reservationRef: null,
                 inputRefs: input.inputRefs, inputDigest: input.inputDigest, sourceBindingDigest: root.sourceBinding.bindingDigest, effectiveGrantDigest: input.effectiveGrantDigest,
                 budgetRef: input.budgetRef, status: 'pending', effectRefs: [], resultRefs: [], startedAt: null, endedAt: null, reasonCode: null };
             await putImmutable(tx, recordKey(handle, root.runId, 'attempt', attemptId), attempt);
@@ -188,7 +190,7 @@ export class RunRepository {
     async control(handle, commandId, body, reduce) {
         assertObject(body, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'operation', 'detail'], 'control');
         this.#assertGuard(body);
-        if (!['graph.patch', 'attempt.activate', 'attempt.settle', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume'].includes(body.operation)
+        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume'].includes(body.operation)
             || typeof reduce !== 'function') throw new TypeError('Unsupported Host controller operation');
         const timestamp = this.now();
         return this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {

@@ -1,16 +1,51 @@
 import { ConflictError } from '../../storage/errors.js';
-import { cloneNativeDocument, putMutable } from '../repositories/common.js';
+import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
+import { controlCommandId, controlRecordKey, graphReachable, readAttempt } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { assertResultRefs, writeAttemptSettlement, SETTLED_ATTEMPT_STATUSES } from './attempt-settlement.js';
 
 export class AttemptController {
-    constructor({ runs, authorizeAttempt, verifySettlement }) {
+    constructor({ runs, authorizeAttempt, verifySettlement, authorizeReservation }) {
         if (!runs || typeof authorizeAttempt !== 'function') throw new TypeError('AttemptController requires original admission checks');
-        Object.assign(this, { runs, authorizeAttempt, verifySettlement });
+        Object.assign(this, { runs, authorizeAttempt, verifySettlement, authorizeReservation });
+    }
+
+    async reserve(handle, input) {
+        if (typeof this.authorizeReservation !== 'function') throw new TypeError('Attempt reservation requires original fanout/scope authority');
+        assertObject(input, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'producerAttemptId', 'nodeId'], 'reserveAttempt');
+        const { producerAttemptId, nodeId, ...guard } = cloneNativeDocument(input);
+        assertNativeId(producerAttemptId, 'orchestrationAttempt'); assertNativeId(nodeId, 'orchestrationNode');
+        const identity = hashNativeDocument({ kind: 'fanout_reservation', runId: guard.runId, producerAttemptId, nodeId });
+        const attemptId = 'oattempt_' + identity.slice(0, 32), receiptId = 'oreceipt_' + identity.slice(0, 32);
+        return this.runs.control(handle, controlCommandId('attempt.reserve', identity), { ...guard, operation: 'attempt.reserve', detail: { producerAttemptId, nodeId } }, async ({ tx, root, now }) => {
+            const { doc: producer } = await readAttempt(tx, handle, root, producerAttemptId);
+            const sourceNode = root.graph.nodes.find(node => node.nodeId === producer.nodeId), target = root.graph.nodes.find(node => node.nodeId === nodeId);
+            if (root.cancelRequested || root.status !== 'running' || sourceNode.kind !== 'fanout' || producer.status !== 'running' || producer.epoch !== root.epoch
+                || producer.sourceBindingDigest !== root.sourceBinding.bindingDigest
+                || producer.effectRefs.length || !target || nodeId === producer.nodeId || root.nodeControl[nodeId].disposition !== 'eligible'
+                || !graphReachable(root.graph, producer.nodeId, nodeId)) throw new ConflictError('native_orchestration_reservation_not_admitted');
+            if (now >= root.progress.deadlineAt || root.progress.steps >= root.limits.maxSteps || root.progress.attempts >= root.limits.maxAttempts) throw new ConflictError('native_orchestration_limit_exhausted');
+            let number = 1;
+            for (const ref of root.attemptRefs) {
+                const { doc } = await readAttempt(tx, handle, root, ref);
+                if (doc.nodeId !== nodeId) continue;
+                if (!SETTLED_ATTEMPT_STATUSES.includes(doc.status)) throw new ConflictError('native_orchestration_attempt_already_active');
+                number++;
+            }
+            await this.authorizeReservation({ handle, tx, root, producer, target, attemptId });
+            const attempt = { schemaVersion: 1, runId: root.runId, nodeId, attemptId, attemptNumber: number, epoch: root.epoch, graphRevision: root.graphRevision,
+                inputState: 'reserved', reservationRef: { producerAttemptId }, inputRefs: null, inputDigest: null, sourceBindingDigest: root.sourceBinding.bindingDigest,
+                effectiveGrantDigest: null, budgetRef: null, status: 'reserved', effectRefs: [], resultRefs: [], startedAt: null, endedAt: null, reasonCode: null };
+            const receipt = { schemaVersion: 1, receiptKind: 'attempt_reservation', receiptId, runId: root.runId, producerAttemptId, nodeAttemptId: attemptId,
+                epoch: root.epoch, graphRevision: root.graphRevision, decisionSeq: root.eventSeq + 1, createdAt: now };
+            await putImmutable(tx, controlRecordKey(handle, root.runId, 'attempt', attemptId), attempt);
+            await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), receipt);
+            root.attemptRefs.push(attemptId); root.progress.attempts++; root.progress.steps++;
+            return { root, eventType: 'attempt_identity_reserved', reasonCode: null, outcome: { attemptId, reservationReceipt: receipt } };
+        });
     }
 
     async activate(handle, input) {

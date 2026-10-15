@@ -52,7 +52,7 @@ describe.each(CONTRACT_HARNESSES)('$name durable bounded graph transitions', ({ 
     const originalResults = new Map();
     const current = () => runs.get(h.handle, runId);
     const binding = (edge, producerAttemptId) => ({ edgeId: edge.edgeId, producerAttemptId });
-    const advance = async bindings => transitions.advance(h.handle, { ...runGuard(await current()), bindings });
+    const advance = async bindings => transitions.advance(h.handle, { ...runGuard(await current()), bindings, reservedAttemptId: null });
     beforeEach(async () => { h = await make(); clock = Date.now(); revoked = false; malformed = false; originalResults.clear(); });
     afterEach(async () => { await h?.engine.close(); await h?.cleanup(); });
 
@@ -94,7 +94,7 @@ describe.each(CONTRACT_HARNESSES)('$name durable bounded graph transitions', ({ 
 
     test('one dependency decision atomically creates a pending Attempt/receipt and persists visits only once', async () => {
         await setup(); await complete(initial);
-        const input = { ...runGuard(await current()), bindings: [binding(graph.forward, initial)] }, before = await current();
+        const input = { ...runGuard(await current()), bindings: [binding(graph.forward, initial)], reservedAttemptId: null }, before = await current();
         const result = await transitions.advance(h.handle, input), receipt = result.outcome.traversalReceipt;
         expect(result).toMatchObject({ replayed: false, outcome: { attemptId: receipt.nodeAttemptId } });
         const after = await current();
@@ -179,7 +179,7 @@ describe.each(CONTRACT_HARNESSES)('$name durable bounded graph transitions', ({ 
         await expect(advance([binding(graph.forward, initial)])).rejects.toMatchObject({ code: 'native_orchestration_transition_producer_invalid' });
         await complete(initial);
         await expect(advance([binding(graph.back, initial)])).rejects.toMatchObject({ code: 'native_orchestration_transition_producer_invalid' });
-        await expect(transitions.advance(h.handle, { ...runGuard(before), bindings: [binding(graph.forward, initial)], transitionId: id('Receipt') })).rejects.toThrow();
+        await expect(transitions.advance(h.handle, { ...runGuard(before), bindings: [binding(graph.forward, initial)], reservedAttemptId: null, transitionId: id('Receipt') })).rejects.toThrow();
     });
 
     test('Attempt limits and expired deadlines stop new dependency admission without resetting counters', async () => {
@@ -193,7 +193,7 @@ describe.each(CONTRACT_HARNESSES)('$name durable bounded graph transitions', ({ 
 
     test('concurrent proposals and a hidden committed ACK preserve one pending Attempt and one visit', async () => {
         await setup(); await complete(initial);
-        const input = { ...runGuard(await current()), bindings: [binding(graph.forward, initial)] };
+        const input = { ...runGuard(await current()), bindings: [binding(graph.forward, initial)], reservedAttemptId: null };
         const execute = h.engine.withTransaction.bind(h.engine); let hide = true;
         h.engine.withTransaction = async (...args) => {
             const result = await execute(...args);

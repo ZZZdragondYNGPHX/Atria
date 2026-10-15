@@ -65,7 +65,7 @@ export class GraphController {
                         if (candidate.graph.edges.some(item => item.edgeId === edge.edgeId)) throw issue('native_orchestration_patch_duplicate_edge', { edgeId: edge.edgeId });
                         for (const attemptId of root.attemptRefs) {
                             const { doc } = await readAttempt(tx, handle, root, attemptId);
-                            if (doc.nodeId === edge.to?.nodeId) throw issue('native_orchestration_patch_frozen_input', { nodeId: doc.nodeId });
+                            if (doc.nodeId === edge.to?.nodeId && (doc.inputState !== 'reserved' || !['reserved', 'blocked'].includes(doc.status))) throw issue('native_orchestration_patch_frozen_input', { nodeId: doc.nodeId });
                         }
                         candidate.graph.edges.push(edge);
                     } else if (['setPendingPriority', 'cancelPending', 'markBlocked'].includes(operation.op)) {
@@ -76,7 +76,7 @@ export class GraphController {
                         for (const attemptId of root.attemptRefs) {
                             const record = await readAttempt(tx, handle, root, attemptId), attempt = record.doc;
                             if (attempt.nodeId !== operation.nodeId) continue;
-                            if (attempt.status !== 'pending' || attempt.effectRefs.length) throw issue('native_orchestration_patch_not_pending', { nodeId: operation.nodeId });
+                            if (!['pending', 'reserved'].includes(attempt.status) || attempt.effectRefs.length) throw issue('native_orchestration_patch_not_pending', { nodeId: operation.nodeId });
                             if (operation.op !== 'setPendingPriority') updates.push({ record, doc: { ...attempt, status: operation.op === 'cancelPending' ? 'cancelled' : 'blocked', endedAt: operation.op === 'cancelPending' ? now : null, reasonCode: 'graph_' + operation.op } });
                         }
                         if (operation.op === 'setPendingPriority') { assertCounter(operation.priority, 'priority'); target.priority = operation.priority; } else { target.disposition = operation.op === 'cancelPending' ? 'cancelled' : 'blocked'; target.reasonCode = 'graph_' + operation.op; }

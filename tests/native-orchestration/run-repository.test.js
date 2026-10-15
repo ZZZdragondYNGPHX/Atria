@@ -59,6 +59,9 @@ describe.each(CONTRACT_HARNESSES)('$name durable Host RunLedger', ({ make, name 
     test('pending attempt identity/input/source remain durable; duplicate active attempts are rejected', async () => {
         const root = await repository.start(h.handle, command(), startBody());
         const body = { ...guard(root), nodeId: plan.nodes[0].nodeId, inputRefs: [], inputDigest: hashNativeDocument([]), effectiveGrantDigest: hashNativeDocument({ grants: [] }), budgetRef: root.budgetAuthorityRef };
+        await expect(repository.beginAttempt(h.handle, command(), { ...body, inputDigest: hashNativeDocument({ forged: 'inputs' }) })).rejects.toThrow('actual inputRefs');
+        await expect(repository.beginAttempt(h.handle, command(), { ...body, budgetRef: null })).rejects.toThrow('budget reference');
+        expect(await repository.get(h.handle, root.runId)).toEqual(root);
         const id = command(), outcome = await repository.beginAttempt(h.handle, id, body);
         expect(await repository.beginAttempt(h.handle, id, body)).toEqual(outcome);
         const current = await repository.get(h.handle, root.runId);

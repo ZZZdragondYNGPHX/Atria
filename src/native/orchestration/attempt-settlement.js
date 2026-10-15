@@ -22,13 +22,14 @@ export function assertResultRefs(refs) {
 /** Called only after the Host controller has checked original authority/effects. */
 export async function writeAttemptSettlement({ tx, handle, root, record, outcome, resultRefs, effectReceiptRefs, reasonCode, now }) {
     if (!SETTLED_ATTEMPT_STATUSES.includes(outcome) || SETTLED_ATTEMPT_STATUSES.includes(record.doc.status)) throw new TypeError('Invalid Attempt settlement transition');
+    if (record.doc.inputState === 'reserved' && (!['cancelled', 'stale'].includes(outcome) || resultRefs.length || effectReceiptRefs.length)) throw new TypeError('Unprepared reservation cannot produce a result');
     assertResultRefs(resultRefs);
     for (const ref of effectReceiptRefs) assertNativeId(ref, 'orchestrationReceipt');
     if (new Set(effectReceiptRefs).size !== effectReceiptRefs.length) throw new TypeError('Duplicate EffectReceipt');
     if (reasonCode !== null) assertToken(reasonCode, 'reasonCode');
     const attempt = record.doc, receiptId = attemptReceiptId(root.runId, attempt.attemptId);
     const receipt = { schemaVersion: 1, receiptKind: 'node_attempt', receiptId, runId: root.runId, nodeAttemptId: attempt.attemptId,
-        epoch: attempt.epoch, graphRevision: attempt.graphRevision, sourceBindingDigest: attempt.sourceBindingDigest, inputDigest: attempt.inputDigest,
+        epoch: attempt.epoch, graphRevision: attempt.graphRevision, sourceBindingDigest: attempt.sourceBindingDigest, inputState: attempt.inputState, inputDigest: attempt.inputDigest,
         outcome, resultRefs, effectReceiptRefs, decisionSeq: root.eventSeq + 1, reasonCode, createdAt: now };
     await putImmutable(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId), receipt);
     await putMutable(tx, controlRecordKey(handle, root.runId, 'attempt', attempt.attemptId), { ...attempt, status: outcome, resultRefs, endedAt: now, reasonCode }, { expectedIntegrity: record.integrity });
@@ -40,10 +41,10 @@ export async function readAttemptSettlement(tx, handle, root, attempt) {
     const record = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
     if (!record) throw new TypeError('Settled Attempt lacks an immutable receipt');
     const receipt = record.doc;
-    assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'nodeAttemptId', 'epoch', 'graphRevision', 'sourceBindingDigest', 'inputDigest', 'outcome', 'resultRefs', 'effectReceiptRefs', 'decisionSeq', 'reasonCode', 'createdAt'], 'NodeAttemptReceipt');
+    assertObject(receipt, ['schemaVersion', 'receiptKind', 'receiptId', 'runId', 'nodeAttemptId', 'epoch', 'graphRevision', 'sourceBindingDigest', 'inputState', 'inputDigest', 'outcome', 'resultRefs', 'effectReceiptRefs', 'decisionSeq', 'reasonCode', 'createdAt'], 'NodeAttemptReceipt');
     if (receipt.schemaVersion !== 1 || receipt.receiptKind !== 'node_attempt' || receipt.receiptId !== receiptId || receipt.runId !== root.runId
         || receipt.nodeAttemptId !== attempt.attemptId || receipt.epoch !== attempt.epoch || receipt.graphRevision !== attempt.graphRevision
-        || receipt.sourceBindingDigest !== attempt.sourceBindingDigest || receipt.inputDigest !== attempt.inputDigest
+        || receipt.sourceBindingDigest !== attempt.sourceBindingDigest || receipt.inputState !== attempt.inputState || receipt.inputDigest !== attempt.inputDigest
         || !SETTLED_ATTEMPT_STATUSES.includes(receipt.outcome) || receipt.outcome !== attempt.status
         || hashNativeDocument(receipt.resultRefs) !== hashNativeDocument(attempt.resultRefs) || receipt.createdAt !== attempt.endedAt
         || receipt.reasonCode !== attempt.reasonCode) throw new TypeError('Attempt receipt identity/state mismatch');
