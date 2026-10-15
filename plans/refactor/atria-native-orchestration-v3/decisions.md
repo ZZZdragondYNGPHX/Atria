@@ -2,7 +2,7 @@
 
 规则：此处**只保存跨模块用户选择的决策**。未经讨论的架构草案、源码推断与候选 API 均不得自动提升为冻结决定；所有产品实施另经后续正式收口。创建：2026-10-15。
 
-> **当前工程状态补记**：D1–D9各轮的历史基线/未定项不构成当前门槛。本轮按用户要求将E0设计、开发授权和实施证据分离；物理合同见 [interface §6–16](interface-contracts.md#6-物理落点与存储合同-v1)，最新`main@60aca6957`的当前核销见 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账)：R01–R07设计闭合、E0_DESIGN_READY；R08仍NOT_AUTHORIZED。V3运行/故障/安全/三端仍NOT_RUN/BLOCKED，不因设计就绪伪称产品已验证。
+> **当前工程状态补记**：D1–D9/HCM不变；E0_DESIGN_READY。2026-10-15用户已另行明确授权正式开发，R08=AUTHORIZED；实现基线main@5eb3bc765，同一任务分支P1 IN_PROGRESS。物理接口归 [interface](interface-contracts.md)，实际提交/验证归同一Record；未取得的产品证据仍NOT_RUN/BLOCKED，最终验收前不集成main。
 
 ## D1 — 已冻结：选择方案 B（2026-10-15）
 
@@ -11,7 +11,7 @@
 - **收敛方向**：统一原生执行内核。D1 曾提及“旧模式变为模板”，该部分已被 D2 直接否决：不保留旧模式、模板及兼容路径。
 - **边界：无新增 World/Memory/Session/Project/模型调用收费权威**。Agent 的提案与正式事实严格分离；相应原有计划中的领域契约继续有效。
 - **流程：讨论期间先更新并提交 `docs` 的同一份 Bundle，再进入后续轮次；本轮不修改 `main` 产品代码**。
-- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2、D7=N2、D8=U2、**D9=E1** 已冻结；**E0_DESIGN_READY；产品未实施/未验证；正式开发仍NOT_AUTHORIZED**。
+- **当前状态**：D1=B、D2=T2/零兼容硬切、D3=G2、D4=C2、D5=F2、D6=S2、D7=N2、D8=U2、**D9=E1** 已冻结；**E0_DESIGN_READY；开发AUTHORIZED；P1 IN_PROGRESS，最终产品未验收**。
 
 ## D2 — 已冻结：T2 Native Host + 旧编排零兼容硬切（2026-10-15）
 
@@ -127,7 +127,7 @@ D9 接口方向详见 [interface-contracts.md](interface-contracts.md)，E0 已�
 
 ## 当前就绪与实施待证
 
-E0设计核销、R项状态与未取得证据仅由 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账) 管理；Gate前置仅由 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 管理。当前无已知开发前设计阻塞；正式开发仍需用户另行明确授权。P1–P8实际代码/可靠性/预算/信息安全/质量/可信UI/三端/四Engine证据均不得因E0设计通过而改写为PASS。
+E0设计核销、R项状态与未取得证据仅由 [e0-audit §11](e0-audit.md#11-r01r08-设计与实施证据分账) 管理；Gate前置仅由 [implementation §2](implementation-plan.md#2-e0-设计门槛开发授权与实施验收三者分离) 管理。当前无已知开发前设计阻塞；用户本轮已明确授权正式开发，P1进行中。P1–P8实际代码/可靠性/预算/信息安全/质量/可信UI/三端/四Engine证据均不得因E0设计通过而改写为PASS。
 
 D3–D8的产品细则仍各归原模块，物理接口增补归interface-contracts；图backend、性能阈值、Provider/Tool实际能力与质量收益在对应实施阶段实测，不再作为E0前置或新的产品方向选择。
 

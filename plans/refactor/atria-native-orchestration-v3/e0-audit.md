@@ -1,6 +1,6 @@
 # D9 E0 — Native Orchestration V3 工程审计与设计就绪
 
-> **当前状态（2026-10-15）**：`E0_DESIGN=DESIGN_READY`；R01–R07开发前设计核销见§11.2/§11.3。`DEVELOPMENT_AUTHORIZATION=NOT_AUTHORIZED`；V3产品/故障/安全/三端实证仍NOT_RUN，实际环境缺失项BLOCKED。§1–10是此前审计快照，不再把缺实施证据倒挂为E0门槛。
+> **当前状态（2026-10-15）**：E0_DESIGN_READY，R01–R07设计闭合；用户已明确授权正式开发，R08=AUTHORIZED，P1 IN_PROGRESS。当前基线/授权见§12，实际代码/分组验证见同一Record；§1–10及§11.1的先前未授权结论保留历史。最终产品尚未验收。
 
 > **此前审计结论（2026-10-15，当前分类以§11为准）**：最新只读基线 `main@60aca695726893e298b7d485f300c6efef3b79fd`。§1–7 为早期定向审计历史；本轮全仓证据及处置以 §8 起为准。静态取证范围已扩大，运行闭包、V3 持久化/安全和三端证据仍未通过，不得把审计文档完成改称 E0 PASS。
 
@@ -252,7 +252,7 @@ R02–R06 中针对“尚不存在的V3”的运行证据，无法在本次 docs
 | R05 | 同一Host独立Review Origin、原账户再认证、隔离nonce/CSP/COOP、主origin不可approve；无原域保护的R3不注册 | interface §15；原users密码校验、server认证与CredentialTargetAuthority；HTML origin标准 | DESIGN_CLOSED；真实隔离/认证/三端批准仍P5/P7必测 |
 | R06 | 原ESM/DOM单Draft；SVG交互层为P5首选工程路径，性能不合格时在同View adapter试现有Cytoscape；Graph与移动完整编辑目标不变 | interface §16；D8、acceptance §7/§8.1 | DESIGN_CLOSED；backend/阈值实测不倒挂为E0 |
 | R07 | 原MySQL/Pg专用session owner/advisory锁+所有原writer fence；tx仅known-rollback retry、commit-unknown按原command查询；四Engine范围一致 | interface §12.2/§12.3；当前SQL Native conditional CAS与外层withRetry；SQL官方session锁文档 | DESIGN_CLOSED；标准单primary四Engine真服务验收不取消 |
-| R08 | 技术设计不代替用户授权，不设自动开始或阶段审批；任何产品开发另行明确授权 | implementation §2；当前用户docs-only指令 | NOT_AUTHORIZED（独立条件，非设计缺陷） |
+| R08 | 用户已另行明确授权同任务P1–P8连续开发，最终验收后才集成main | implementation §2；2026-10-15当前明确开发指令；§12 | AUTHORIZED（人类授权已满足，非产品验收） |
 
 R02/R03/R04/R05/R07均有确定方案和失败出口，没有只靠标签转移缺口。§11.1中的DESIGN_OPEN是第一组时点记录，当前以本表和§11.3最终核销为准；产品与外部实证状态仍NOT_RUN/BLOCKED。
 
@@ -268,19 +268,19 @@ R02/R03/R04/R05/R07均有确定方案和失败出口，没有只靠标签转移�
 | DG04 正文/Project/Evolution | interface §11/§14：原ChatRepo单chat提交/marker/receipt核对、writing唯一permit；原Studio Review/Commit、原Evolution target/journal/fingerprint | DESIGN_READY；对应R04 |
 | DG05 授权/可信批准/外部效果 | interface §9/§15：主origin不批准、同Host Review Origin、原身份再认证、nonce/参数/source/epoch绑定、原policy ceiling；无保护R3不注册、unknown不盲重放 | DESIGN_READY；对应R05 |
 | DG06 U2/三端/原服务复用 | D8与interface §16、implementation W01–W09：单Draft与Projection、SVG首选的P5实验边界、三端/四Engine完整产品目标不缩减 | DESIGN_READY；对应R06 |
-| DG07 证据与授权不循环 | implementation §2唯一Gate；acceptance §6–9记录P阶段责任；开发许可独立，未执行的产品case保留NOT_RUN/真实环境BLOCKED | DESIGN_READY；R08仍NOT_AUTHORIZED |
+| DG07 证据与授权不循环 | implementation §2唯一Gate；acceptance §6–9记录P阶段责任；开发许可独立，未执行的产品case保留NOT_RUN/真实环境BLOCKED | DESIGN_READY；R08已由当前明确指令更新AUTHORIZED |
 
 **当前状态：**
 
 - `E0_DESIGN = DESIGN_READY`；R01–R07的**已知开发前设计阻塞为0**，有具体实施落点/协议/失败出口/负责阶段，非仅将未知问题改标“后测”。
-- `DEVELOPMENT_AUTHORIZATION = NOT_AUTHORIZED`；用户本轮仅授权docs。当前不得创建实现分支、修改main或正式开发，E0设计通过不触发任何自动开工动作。
-- `IMPLEMENTATION = NOT_STARTED`；`PRODUCT_ACCEPTANCE = NOT_RUN / NOT_READY`。真实环境/服务尚未取得的case另标BLOCKED，不以设计READY替换它们。
+- `DEVELOPMENT_AUTHORIZATION = AUTHORIZED`；2026-10-15当前用户明确授权正式开发；同一任务分支已建立，最终验收前不集成main。
+- `IMPLEMENTATION = P1_IN_PROGRESS`；`PRODUCT_ACCEPTANCE = NOT_READY`。分组真实证据归同一Record，未测case仍NOT_RUN，真实外部缺口BLOCKED。
 
 ### 11.4 实施后证据留账与最终交接结论
 
 | 尚需取得的证据 | 开放/验收门槛 | 当前真实状态 |
 | --- | --- | --- |
-| 新Host root/SQL Owner、HostFence、Plan/Run/command/CAS、软件crash/ACK-loss/GC/restore | W01/W02 P1，V01/V03/V09；相应backend未证前不能接真实Effect | NOT_RUN；MySQL/Pg服务证据未取得，实际环境case BLOCKED |
+| 新Host root/SQL Owner、HostFence、Plan/Run/command/CAS、软件crash/ACK-loss/GC/restore | W01/W02 P1，V01/V03/V09；相应backend未证前不能接真实Effect | P1局部已实测四Engine/Windows Host；整体Gate未通过，仍缺批量管理fencing/完整恢复/平台故障等；证据归Record |
 | 原Session/Project/RP预算树、真实provider attempt/usage、unknown/overrun/source撤回 | W04/W05 P3，V04/V05；未证不开放相应收费/外发路径 | NOT_RUN；真实Provider/Tool证据未取得 |
 | 普通RP/NativeGame/Project唯一output与原receipt、Evolution新target/worker/指纹/发布回滚 | W06/W07 P4、P6，V06/V07/CL08/CL12 | NOT_RUN，不声称已运行新消费者或已删除旧代码 |
 | 可信Review Origin/原身份/nonce/隔离负例、桌面Graph与完整移动List/Shell | W05/W08 P5，V05/V08；未证不开放需批准的产品mutation | NOT_RUN；原再认证/可信origin的实际配置尚未验证 |

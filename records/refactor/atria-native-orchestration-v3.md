@@ -174,3 +174,11 @@
 - 修正Draft工程细节：save允许未完成图，纯Validate报告invalid，Publish不能绕过；严格未知field/policy仍拒绝。PlanRoot/Revision新增严格持久对象校验，Plan/Run命令服从原read-only mode。
 - 实测：最新Plan/Run两文件四Engine合计57/57通过；其中FS Native Journal四窗口prepare/publish/install/ack注入验证Root/Event/command不会分裂且重放只创建一个Run（软件异常注入，不冒充真实kill/断电）。12个非FS的FS特有case明确skip/N/A，不是SQL故障通过；SQL真实断网仍NOT_RUN。定向ESLint、git diff --check通过。
 - P1仍IN_PROGRESS：HTTP/auth/boot/分页、原依赖解析与引用/GC、真实source admission在对应阶段继续；P2–P8尚未完成，未删除旧生产路径、未发布新旧双执行入口、未集成main。
+
+## 2026-10-15 — P1第四组：Authoring RPC与原依赖删除保护
+
+- Source：第三组结果`0dfa7bfc8`已推送；本组`a1a6e4da7`已提交推送，同一分支/main仍未集成。
+- 接入原认证+CSRF后的/api/native/orchestration，只提供真实Plan create/save/get/list/revisions/validate/publish；严格envelope/command/boot header、owner从认证读取、no-store、read-only、无任意方法dispatch或主origin approve。Run/Effect发送未挂生产入口。分页cursor作用域绑定owner/kind/plan，单次limit有界。
+- 纯依赖检查复用原VersionedJsonResourceHandler/NativeModelPromptPersistence读取exact Prompt/Route；不调用Provider/Tool/Secret。未接的capability/source/tool authority返回unknown/拒绝publish，不将临时未接线当最终功能完成。原Runtime write authority提取为同一可重入锁供Plan发布和原删除共用；原Prompt/Route/candidate删除读取派生的Plan pins，保留引用，不新建GC服务。原ResourceGraph删除诊断接同一refs adapter。
+- 实测：authoring HTTP四Engine16/16；原Prompt presets5/5、candidates20/20；真实Windows installed Host的原CSRF拒绝无token、合法会话获取boot并创建Native Plan、第二Host拒绝复测1/1。定向ESLint/git diff --check通过。主origin未注册approve/effect/graph/runstart路由是当前P1接线范围，不代表P3–P5应支持的能力已完成。
+- P1仍IN_PROGRESS：还需批量delete/restore等原Engine管理路径在SQL Owner丢失时完整fence、网络/共享root排除、软件kill与恢复/未知Effect/GC保留根更完整覆盖；P2 graph/effect、P3实际预算/Ports、P4消费者、P5UI、P6硬切及P7三端均未通过。当前只有Windows真实Host+HTTP证据，没有真实Browser Graph、CachyOS/Termux或外部模型/批准证明。
