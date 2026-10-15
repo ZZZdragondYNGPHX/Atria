@@ -234,3 +234,11 @@
 - 合并期间六个V3定向文件181/181：authoring16、Run32、Graph20、Effect/Approval44、Join68、Windows installed Host1；另12个非FS的FS journal case明确N/A skip。随后临时guard引用细化后的四文件77/77：生命周期32、registration15、quota/Host组合12、Native备份18。原quota accounting40/40（2个文件Engine的SQL专属项N/A）、SQL commit传输double10/10、SQL admin6/6、transient source10/10也已在对应修复后通过。定向ESLint/diff check通过；未执行全量产品测试或新UI浏览器验收。
 - 失败诊断：全kinds fixture原ID字段推断不支持V3，补明确映射；SQL同类恢复原live Engine拒绝私有handle引发失败/rollback unavailable，改为同Owner私有converter后十对备份/恢复及安全case18/18通过。首次accounting Pg仍缺测试env，按已有容器进程环境修正后通过。Pg8仍有queued client.query deprecation warning；当前受测路径通过，不称零warning或Pg9通过。
 - 当前main delta没有改变D1–D9/HCM/单Host/零旧编排兼容方向，属于原authority新增后的接线修复；E0旧附件SHA不改写成新消费闭包。P1/P2仍IN_PROGRESS；未知SQL proxy/multi-primary拒绝配置、完整V3保留根、Delegate/Handoff/循环/Review/reconcile、P3 Ports与后续阶段继续。Windows仅有部分Host/API/存储实证，CachyOS/Termux/Darwin与真实外部/批准/质量仍NOT_RUN/BLOCKED。
+
+## 2026-10-15 — P2第四组：显式回边与耐久依赖转移
+
+- Source `0d799fc28` → `31bef9572`已提交推送。edge.loopBack为required boolean；移除回边后DAG、每回边闭合正向路径、显式迭代限额。Host以稳定producer bindings准入下一pending Attempt，和收据/Root/command/edge visits/marked回边累计同CAS；同组依赖换顺序或命令重试不再造工作。generic beginAttempt对已有node历史拒绝，不能绕过循环/重做控制器。deadline Join不允许partial的合同错误提前到Publish拒绝。
+- 最新FS/SQLite transition28/28（含2个纯静态schema反例）；相关Run18、Graph10、Effect/Approval22、Join34均通过，4个非FS的FS特有故障case N/A。检查包括多依赖原子性、失败/partial条件、单edge/全局loop/attempt/deadline上限、source revoke、输入digest、并发/本地ACK遮蔽、restore保留高水位。定向ESLint/diff check通过；均受控原Port，无原费用或发送证明。
+- 首轮SQLite一项在任何业务操作前因固定guard port49555的EACCES失败，已用Windows netsh确认其属于当时OS保留区间49523–49622。生产按冻结协议保留writer-unavailable，不换port/identity；纯控制器fixture在第一次写identity前预先选择可绑定端口，只对新隔离测试root生效。真实Owner创建/冲突证据仍归原storage-foundation，不将fixture预置当首次Owner初始化验收。
+- 本轮后半Docker daemon停止，按原安装尝试启动仍因Inference manager本地listener不可访问退出；没有reset factory、删缓存、重装或改全局配置。新增及本组修改后的MySQL/Pg controller case为BLOCKED/NOT_RUN，不能沿用上一组四Engine通过结论。继续FS/SQLite与不依赖该服务的工程工作。
+- 完整P2仍IN_PROGRESS：Fanout/Join统一边计数、Delegate/Handoff/Review、恢复/reconcile及原Scheduler；P3原Context/Grant/预算树尚未接线，P4–P8未完成。三端完整客户端/真实批准/质量证据不变，main未集成。

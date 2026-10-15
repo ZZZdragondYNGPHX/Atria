@@ -427,3 +427,13 @@ Darwin分支使用内置`osascript`执行固定Foundation代码，canonical path
 同类SQL备份复用数据库Owner，但私有scratch handle不是原用户账户：converter用同Host附接的原Engine实现和严格scratch目录，不扩大getUserDirectories/原账户quota语义。结束后清自身scratch rows/fence、关闭私有Engine并释放临时root，live Owner继续持有；SQL dump不输出HostFence，restore不覆盖目标fence。真实用户原领域收据/数据仍沿原备份恢复协议，不能借此恢复旧Orchestrator执行权。
 
 同步后的局部实证归同一Record；新增原服务不使未知SQL topology/跨namespace或P3–P8自动通过，也不以现有Storage回收闭包替代V3原Source/Result/unknown引用根的后续审计。
+
+### 17.9 有界依赖转移与显式回边
+
+未发布v1工程schema的每条edge补充required `loopBack:boolean`；删除所有显式回边后必须为DAG，且每个回边须闭合一条正向路径并有非零maxLoopIterations。不能仅填上限就隐式允许未标记环；Definition hash包含此语义字段，不为旧编排或中间实验数据提供转换/默认兼容。deadline Join若Plan不允许partial则在完整Validate/Publish阶段拒绝。
+
+内部`TransitionController.advance`输入为Run CAS guards与`bindings:[{edgeId,producerAttemptId}]`，不接受调用方自造transitionId。成员排序后的Run+bindings稳定推导command/Attempt/receipt身份。每个producer必须有同epoch/source的不可变NodeAttemptReceipt，edge须指向同一合法target，required input connections齐备且success/failure条件匹配；partial不当success。Join由自身屏障控制器结算，已发布Output不成为普通转移producer。
+
+必填原Port以`{handle,tx,root,target,attemptId,producers}`只读复核typed Result/Source/currentness/grant及原reservation，返回`{inputRefs,inputDigest,effectiveGrantDigest,budgetRef}`；inputDigest绑定实际引用。新pending Attempt、`receiptKind:'graph_transition'`不可变收据、Root/event/command同CAS；收据钉producer receipt refs、各edge累计、loopIterations及decisionSeq。step/attempt/edge/deadline与显式回边计数先限额再准入。maxLoopIterations的物理累计含每次marked back-edge crossing，从环中间入口开始也计数；恢复不清零。
+
+generic beginAttempt仅创建该node第一次准备身份；已有历史必须走受控transition/后续Review或recovery controller，不能换commandId绕开重做/循环计数。普通prepare不等于合法activation；Fanout/Join统一边计数、父子Run/预算和原Scheduler准入仍须对应P2/P3子工作，不以本控制器替代。没有生产HTTP dispatcher或真实发送。
