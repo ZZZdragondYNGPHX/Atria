@@ -17,6 +17,12 @@ export function pauseRecoveredRecord(record, current = null, handle = record?.ke
     if (!record?.doc || record.doc.schemaVersion !== 1 && record.key.kind !== K.agentEvolution && !extension) return record;
     const doc = structuredClone(record.doc), kind = record.key.kind;
     if ([K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(kind)) return { ...record, ...nativeRecord(doc, { existing: record, createdAt: record.createdAt, updatedAt: Math.max(Date.now(), record.updatedAt + 1, (current?.updatedAt || 0) + 1) }) };
+    if (kind === K.rpRunControl) {
+        // A restored ledger never re-enables sending or lowers the current spend record.
+        const kept = current?.doc?.controlId === doc.controlId ? structuredClone(current.doc) : doc;
+        kept.restoreState = 'review_required';
+        return { ...record, ...nativeRecord(kept, { existing: record, createdAt: record.createdAt, updatedAt: Math.max(Date.now(), record.updatedAt + 1, (current?.updatedAt || 0) + 1) }) };
+    }
     if (kind === K.runControl) {
         if (current?.doc?.mode === 'ironman' && current.doc.status === 'terminal') return current;
         doc.background = {};

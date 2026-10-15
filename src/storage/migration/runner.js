@@ -343,7 +343,7 @@ export class MigrationRunner {
                     const key = { ...record.key, handle: dstHandle };
                     if (!this._dryRun) {
                         await this._dstEngine.withTransaction(dstHandle, async tx => {
-                            if ([NATIVE_RESOURCE_KINDS.runControl, NATIVE_RESOURCE_KINDS.connectionProfile, NATIVE_RESOURCE_KINDS.modelProfile, NATIVE_RESOURCE_KINDS.runtimeRoute].includes(key.kind)) {
+                            if ([NATIVE_RESOURCE_KINDS.runControl, NATIVE_RESOURCE_KINDS.rpRunControl, NATIVE_RESOURCE_KINDS.connectionProfile, NATIVE_RESOURCE_KINDS.modelProfile, NATIVE_RESOURCE_KINDS.runtimeRoute].includes(key.kind)) {
                                 const current = await tx.getResource(key);
                                 record = pauseRecoveredRecord({ ...record, key }, current);
                             }

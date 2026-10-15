@@ -388,7 +388,7 @@ export class NativeRecoveryService {
                 // so quota admission measures the actual conversion, not a copy.
                 await tx.deleteResource(recoveryKey(handle, id));
                 for (const record of doc.records) {
-                    if (record.key.kind === K.runControl) {
+                    if ([K.runControl, K.rpRunControl].includes(record.key.kind)) {
                         const current = await tx.getResource(record.key);
                         await tx.putResource(record.key, pauseRecoveredRecord(record, current));
                     } else if ([K.agentGoal, K.agentEvolution].includes(record.key.kind)) {
