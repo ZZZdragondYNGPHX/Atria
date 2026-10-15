@@ -313,3 +313,10 @@
 - 已接原 Run→Runtime→Session→Engine 消费边界、Model 最后 bank 后领域复核、Skill 最终授权后 Source 复核，合法同scope写与真实费用保留；不跨 Provider HTTP持锁。仅原 Native Session Port 决定，不外推 Project/RP adapter、任意 ambient transaction 或 P4 OutputClaim/Result/正式取消围栏完成。
 - 界面保留失效拒正文的刷新/输入恢复路径，不自动重发、用缓存正文绕过或假报退款。Run/Projection/Approval API 与 resolver/background/Project/RP/P4 后端仍由原 V3 继续实施，P3 NOT_READY；非最终完成交付。
 - 原三suite86、独立域四Engine28和同scope/Boundary四Engine24等分命令证据、失败/变异/过滤范围仅归原 Record，本次不复跑或借记。只更新原交接/E0/唯一 Record，不合源码、不改 main、不实施前端；文档检查与提交据实际输出。
+
+## 2026-10-16 — V3 第二十三组固定 resolver 链同步
+
+- 实际 V3 source `76230fe0b`、docs `35e01e677`；只读接口 §17.33、整合入口及 Record 第二十三组。原工作树新增 Project 围栏测试是原任务未提交子工作，本次不触碰或算作可用能力。
+- 统一 Claude 资料将含原 generationBudget 的 free-text authority resolver→Narrator→output 精确三节点链更新为有限已接；其原角色/Context/permit、共享 Turn bank/逐维 Route 上限、原 Attempt/Transition 计边保留。selector不是通用 Tool grant，完成响应/选择/业务提交/Run终态分开。
+- selection reuse仅在原 V3 保留事实等条件满足时零额外 resolver 编译/HTTP/quota，不伪造 ModelReceipt/Result 或免费缓存保证。无quota/缺保留事实的来源仍真实 scope/retention unavailable；Task/background/Project/RP/Hybrid/Actor/可信Review/P4/产品API仍归原后端，P3 NOT_READY。
+- 指定 SQL8、FS实际正常/定向矩阵与初轮失败、变异范围仅归原 Record，本轮不复跑/借记。仅更新同一交接/E0/Record，不合源码/main、不实施前端；文档验证和提交据实际输出。
