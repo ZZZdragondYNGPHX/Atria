@@ -562,3 +562,11 @@ confirmation仅意味着精确a2a.send已得到并验证原SendMessage回执；r
 GenerationHost的真实local work由原sendBank.nextLocalWorkAttemptId生成Effect+local ordinal，原charge与settle使用同一个ID；provider send保持独立ordinal。local准入COMMIT ACK未知与模型一样只observe同identity再报reconcile_required，不能重复执行local operation或派发Provider；重启bank从ordinal0重放明确拒绝。
 
 Session/RP原operation在存在这些来源明细时保留，原retireComputeLedger拒绝提前聚合它们；即使root没有child reservation、费用状态已unknown或settled，Source前进后也不丢attemptId，允许迟到实际结算。没有新账本/价格表。原非V3 unknown汇总规则不变；RP达到128 operation时跳过这些保留项并只退休其他原closed work，仍无可回收项则原容量门槛拒绝。正式释放明细的authority尚未交付，不自动清历史或退款。
+
+### 17.23 原三域Plan Binding产品接口
+
+实际POST路由为 /api/native/orchestration/bindings/get 与 /bindings/save；read/mutation envelope及HostBoot沿用原Plan authoring，精确字段见[后端整合入口](backend-integration.md#2-实际已挂载的-http)。原PlanRepository保持command幂等、Binding version CAS、owner/Host writer、只读模式与精确已发布PlanRevision验证；不保存Draft引用。Source检查先于历史command重放，撤销来源不能借旧命令恢复选择。
+
+生产authoring factory复用原SessionCore.observe、Studio.observeRevision、ProjectAgent.observeComputeSource、RpRunControl.status及同tx的原Chat header读。Session精确sessionId和非null entryPointId；Project按nullable taskId区分Project/Task选择，核对真实原project/task关联；RP必须是注册controlId且实际locator header仍声明同ID。原get服务按认证handle读取，不相信Browser owner；缺原服务fail-closed，不自动创建/绑定/repair来源。
+
+Binding仅是用户的Plan选择metadata，不授予Actor/Model/Tool/Delegate运行能力，也不自动启动Run。nullable entryPointId/taskId沿原selector合同，不成为通配执行许可。原Source/currentness、Audience、grant、预算和Effect最后发送复核仍独立必需；Run/Projection/Approval产品路由尚未开放。本组FS/SQLite真实原服务/CSRF/CAS/读写fence测试与三项守卫变异见同一Record第十三组；该新矩阵SQL为NOT_RUN。

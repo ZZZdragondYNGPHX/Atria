@@ -395,3 +395,11 @@
 - 预算部分先4fail确证，再修后6suite92/92（原generation-local-work、原run-compute-retirement、纯compute-reservations、BudgetPort、新budget-retention、GenerationSend）。新增RP128与普通stable-ID伪proof反例后，new retention11+原retirement5+原RP8=24/24最终通过；mutation还原后的GenerationSend localACK/RP定向6/6，其余16为name-filter skip。这些有重复子集不累加成唯一总数；本组新增预算保留矩阵只跑FS/SQLite，未冒称该新矩阵SQL通过。
 - 预算三个真实mutants捕获5/1/2 fail（明细保留、标记身份、local ACK观察），全部finally恢复；Plan组与预算变异窗口已协调串行，已还原后相关复测。最终11个变更文件（含两新tests）targeted ESLint、staged diff check通过；原Tool测试额外lint也通过。source仅剩无关CLAUDE.md删除，未提交。docs同一Plan接口§17.20–17.22、整合入口、验收现状及Record同步，局部链接/空白检查实际执行。
 - P3仍IN_PROGRESS/Gate NOT_READY：实际领域scope/grant、Session foreground/background可信lane组合、完整Scheduler/Handoff/Result与P4/P5后端产品API/消费者尚未交付，MCP/Skill原持久观察闭包仍unknown。缺失实现为IMPLEMENTATION_PENDING，已获授权不倒挂E0；真实三端/批准/外部费用/质量未执行者继续NOT_RUN/BLOCKED。用户要求的并行前端范围已同步到现有任务，后端未完成项仍归本任务，不以UI接手冒充完成，未集成main。
+
+## 2026-10-16 — W04/P3第十三组：原三域Plan Binding authoring
+
+- Source be95ab792 → ce4a58de2 已提交推送。原native-orchestration路由新增bindings/get、bindings/save，原PlanRepository的read/mutation envelope、command、HostBoot、writer/read-only、version CAS和精确PlanRevision验证继续使用。生产factory只组合原Session/Studio/ProjectAgent/RpRunControl服务，无新来源writer、自动启动或运行授权。
+- Binding source authority在原事务内验证认证handle真实可读的Session/entryPoint、Project/Task关联，普通RP注册control与真实chat header一致；nullable selector沿原合同。get/save先检查来源再返回command历史，来源撤销后重放拒绝；原来源状态的前后fingerprint相等。选择Plan不等于Actor/模型/Tool grant，Run/Projection/Approval HTTP仍未开放。
+- FS/SQLite四suite61/61，其中新增Binding24、原authoring-http/plan-repository/plan-pins37：实际原CSRF、登录/owner、HostBoot/CAS、只读fence、精确来源与不存在/错关联反例、撤权重放、不可变Plan引用均通过。空RP chat在真实Host事务中2秒内完成；原SQLite事务上下文本就可重入，不据推测改造原RP服务。新Binding SQL矩阵未执行，NOT_RUN，不冒称四Engine。
+- 三项临时mutant（省略原source授权、精确entryPoint、RP header关联）捕获10/2/2个预期失败，finally全部还原。四变更文件targeted ESLint、staged diff check通过。仅显式提交四文件，其他子工作与无关CLAUDE.md删除未混入。
+- 同一Plan新增接口§17.23，实际HTTP/验收分账同步。P3仍IN_PROGRESS/Gate NOT_READY；完整领域grant、受信角色/后台配额、真实消费者/Runtime API和完整Review等后端实现继续归本任务，非E0重新授权阻塞。用户最新协调为发给现有前端/提示词任务统一整合并由其最终出Claude Code提示词，尚未以阶段结束宣称全部后端交接完成；未集成main。
