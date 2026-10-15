@@ -234,7 +234,7 @@ export class BudgetPort {
      * original bank in the same Engine transaction without taking domain locks
      * and never charges: a missing or foreign record is not an admission.
      */
-    async verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef }) {
+    async verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef, expectedSend }) {
         const ref = assertBudgetAttemptRef(budgetAttemptRef), authority = ref.authorityRef;
         if (hashNativeDocument(authority) !== hashNativeDocument(root.budgetAuthorityRef)) fail('native_orchestration_budget_authority_mismatch');
         if (ref.effectId !== intent.effectId) fail('native_orchestration_budget_attempt_invalid');
@@ -243,6 +243,15 @@ export class BudgetPort {
         const row = (ref.kind === 'local_work' ? ledger?.localWork : ledger?.attempts)?.find(item => item.attemptId === ref.attemptId);
         if (!row || !ADMITTED.has(row.status) || (row.reservationId ?? null) !== ref.reservationId) fail('native_orchestration_budget_attempt_missing');
         assertAttemptProvenance(ref, row);
+        // The immutable Effect describes the logical action. A real send also
+        // proves the exact final compiled request admitted by the original bank.
+        if (expectedSend !== undefined) {
+            fields(expectedSend, ['requestId', 'targetFingerprint', 'inputFingerprint'], 'Expected provider send');
+            if (ref.kind === 'local_work' || typeof expectedSend.requestId !== 'string' || !expectedSend.requestId
+                || !digest(expectedSend.targetFingerprint) || !digest(expectedSend.inputFingerprint)
+                || row.requestId !== expectedSend.requestId || row.targetFingerprint !== expectedSend.targetFingerprint
+                || row.inputFingerprint !== expectedSend.inputFingerprint) fail('native_orchestration_budget_send_mismatch');
+        }
         return { status: row.status };
     }
 

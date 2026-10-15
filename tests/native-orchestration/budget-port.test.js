@@ -1,4 +1,4 @@
-import { BudgetPort, sendAttemptId } from '../../src/native/orchestration/budget-port.js';
+import { BudgetPort, sendAttemptId, localWorkAttemptId } from '../../src/native/orchestration/budget-port.js';
 import { RpRunControl, rpOperationInput } from '../../src/native/rp-run-control.js';
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
@@ -54,12 +54,28 @@ describe.each([['FsEngine', makeTempFsEngineHarness], ['SqliteEngine', makeTempS
             expect(fallback.budgetAttemptRef.attemptId).toBe(sendAttemptId(effectId, 1));
 
             const root = { budgetAuthorityRef: authorityRef }, intent = { effectId };
+            const expectedSend = { requestId: send.requestId, targetFingerprint: send.targetFingerprint, inputFingerprint: send.inputFingerprint };
             await h.engine.withTransaction(h.handle, async tx => {
                 await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root, intent, budgetAttemptRef: first.budgetAttemptRef })).resolves.toEqual({ status: 'charged' });
+                await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root, intent, budgetAttemptRef: first.budgetAttemptRef, expectedSend })).resolves.toEqual({ status: 'charged' });
+                for (const field of ['requestId', 'targetFingerprint', 'inputFingerprint']) {
+                    const changed = { ...expectedSend, [field]: field === 'requestId' ? 'another-request' : 'c'.repeat(64) };
+                    await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root, intent, budgetAttemptRef: first.budgetAttemptRef, expectedSend: changed })).rejects.toMatchObject({ code: 'native_orchestration_budget_send_mismatch' });
+                }
                 await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root, intent: { effectId: createNativeId('orchestrationEffect') }, budgetAttemptRef: first.budgetAttemptRef })).rejects.toMatchObject({ code: 'native_orchestration_budget_attempt_invalid' });
                 await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root, intent, budgetAttemptRef: { ...first.budgetAttemptRef, providerSendOrdinal: 7, attemptId: sendAttemptId(effectId, 7) } })).rejects.toMatchObject({ code: 'native_orchestration_budget_attempt_missing' });
                 await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root: { budgetAuthorityRef: { ...authorityRef, operationId: 'f'.repeat(64) } }, intent, budgetAttemptRef: first.budgetAttemptRef })).rejects.toMatchObject({ code: 'native_orchestration_budget_authority_mismatch' });
             });
+
+            const localId = localWorkAttemptId(effectId, 0);
+            await port.chargeLocalWork(h.handle, { authorityRef, reservationId: childRunId, limits, effectId, localWorkOrdinal: 0,
+                attempt: { attemptId: localId, requestId: 'local-1', targetFingerprint: 'd'.repeat(64), kind: 'context_build', estimatedItems: 1, estimatedInputBytes: 10 } });
+            const localRef = { kind: 'local_work', authorityRef, effectId, localWorkOrdinal: 0, attemptId: localId, reservationId: childRunId };
+            await h.engine.withTransaction(h.handle, async tx => {
+                await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root, intent, budgetAttemptRef: localRef })).resolves.toEqual({ status: 'charged' });
+                await expect(port.verifyBudgetAttempt({ handle: h.handle, tx, root, intent, budgetAttemptRef: localRef, expectedSend })).rejects.toMatchObject({ code: 'native_orchestration_budget_send_mismatch' });
+            });
+            await port.settleAttempt(h.handle, localRef, { wallMs: 0, cpuUserMicros: 0, cpuSystemMicros: 0, cpuScope: 'process', outcome: 'completed' });
 
             await bank.settle(first.budgetAttemptRef.attemptId, null);
             await move();

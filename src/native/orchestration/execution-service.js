@@ -7,6 +7,7 @@ import { DelegateController } from './delegate-controller.js';
 import { EffectController } from './effect-controller.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { runGuard } from './controller-common.js';
+import { compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
 
 const fail = code => { throw new ConflictError(code); };
 
@@ -70,7 +71,10 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
                 await sourcePort.revalidate(handle, root.sourceBinding);
                 if (token) await assertDispatch({ handle, runId, effectId, dispatchToken: token });
             } });
-        return { bank, ...(context ? { context } : {}), beforeSend: async ({ receipt, prepared, resolved }) => {
+        return { bank, ...(context ? { context } : {}), beforeSend: async ({ receipt, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef }) => {
+            const expectedSend = compiledSendIdentity({ snapshot, resolved });
+            if (hashNativeDocument(compiledBinding) !== hashNativeDocument(snapshot.diagnostics.compiledBinding)
+                || hashNativeDocument(budgetAttemptRef) !== hashNativeDocument(receipt.budgetAttemptRef)) fail('native_orchestration_budget_attempt_invalid');
             if (!token) {
                 await effects.ready(handle, { ...runGuard(await runs.get(handle, runId)), effectId, budgetAttemptRef: receipt.budgetAttemptRef });
                 const claim = await effects.claim(handle, { ...runGuard(await runs.get(handle, runId)), effectId });
@@ -78,8 +82,8 @@ export function createOrchestrationExecutionService({ engine, sessionCore, proje
                 token = claim.dispatchToken;
             }
             const current = await assertDispatch({ handle, runId, effectId, dispatchToken: token });
-            await effectAuthority.verifySend({ handle, ...current, prepared, resolved });
-            await engine.withTransaction(handle, tx => budgetPort.verifyBudgetAttempt({ handle, tx, ...current, budgetAttemptRef: receipt.budgetAttemptRef }));
+            await effectAuthority.verifySend({ handle, ...current, prepared, resolved, snapshot, compiledBinding, budgetAttemptRef });
+            await engine.withTransaction(handle, tx => budgetPort.verifyBudgetAttempt({ handle, tx, ...current, budgetAttemptRef, expectedSend }));
         } };
     }
 

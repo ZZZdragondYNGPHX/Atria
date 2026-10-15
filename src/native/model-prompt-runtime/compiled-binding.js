@@ -1,5 +1,5 @@
 import { hashNativeDocument } from '../repositories/common.js';
-import { immutable } from './execution-utils.js';
+import { immutable, GenerationError } from './execution-utils.js';
 
 // Fingerprints are diagnostics for validity consumers, never a permission grant
 // or evidence of a Provider cache hit. Keep semantic array order and raw text.
@@ -32,4 +32,17 @@ export function compiledRequestBinding({ resolved, contextPlan, promptIr, render
         renderedFingerprint: rendered.wireFingerprint ?? hashNativeDocument(rendered),
     };
     return immutable({ ...binding, fingerprint: hashNativeDocument(binding) });
+}
+
+/** Identity of one final render; a digest never substitutes for a grant. */
+export function compiledSendIdentity({ snapshot, resolved }) {
+    const compiled = snapshot?.diagnostics?.compiledBinding;
+    if (!compiled || !resolved?.pathFingerprint || typeof snapshot.requestId !== 'string' || !snapshot.requestId || snapshot.requestId !== snapshot.contextPlan?.requestId
+        || snapshot.requestId !== snapshot.promptIr?.requestId || snapshot.runtimeRouteId !== resolved.route.runtimeRouteId
+        || compiled.targetFingerprint !== resolved.pathFingerprint) throw new GenerationError('generation_request_identity_mismatch');
+    const { fingerprint, ...binding } = compiled;
+    if (hashNativeDocument(binding) !== fingerprint) throw new GenerationError('generation_request_identity_mismatch');
+    const { createdAt: _time, ...stableSnapshot } = snapshot;
+    return immutable({ requestId: snapshot.requestId, targetFingerprint: resolved.pathFingerprint,
+        inputFingerprint: hashNativeDocument({ snapshot: stableSnapshot, routeId: resolved.route.runtimeRouteId }) });
 }

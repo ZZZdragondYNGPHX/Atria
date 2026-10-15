@@ -18,6 +18,7 @@ import { createNativeId, isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, completeNarrativeSkillTools, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { publicSessionTaskMessages, sessionTaskRoundCount, completeSessionTaskHistory } from '../../../public/shared/native-session-task-history.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
+import { compiledRequestBinding, compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
 import { assertExecutionEvidenceCurrent } from '../model-prompt-runtime/execution-evidence.js';
 import { RuntimeCheckpointStore } from '../model-prompt-runtime/runtime-checkpoint-store.js';
 import { nativeExecutionScope } from '../model-prompt-runtime/native-execution-envelope.js';
@@ -25,7 +26,7 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
 import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../public/shared/native-information-runtime.js';
-import { immutable, ProviderFailure, GenerationError, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
@@ -1251,10 +1252,13 @@ export class NativeGenerationHost {
         let computeLimits = null;
         let readSkill;
         let discardSessionTaskExecution;
+        let capturedSend;
+        let completedSendSnapshot;
         const budgetedResolver = { resolve: request => localWork('route_resolve', { resolved: { effectiveExecutionPolicy: route.executionPolicy,
             pathFingerprint: hashNativeDocument(route) } }, () => resolver.resolve(request), { route, request }), provider: id => resolver.provider(id) };
         const service = new GenerationService({ resolver: budgetedResolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
-            beforeSend: approvedReview || lanePlan?.controlledTurn ? async ({ snapshot }) => {
+            beforeSend: sendBank || approvedReview || lanePlan?.controlledTurn ? async ({ snapshot, resolved }) => {
+                if (sendBank) capturedSend = { snapshot, resolved };
                 await lanePlan?.controlledTurn?.check();
                 if (!approvedReview) return;
                 const { createdAt: _time, ...stableSnapshot } = snapshot;
@@ -1331,14 +1335,32 @@ export class NativeGenerationHost {
                         }
                         return rendered;
                     }, send: async (rendered, boundary) => {
-                    // Role-host retries stay inside this route's send/timeout boundary.
-                    // Only after they are exhausted may Core resolve a complete fallback.
+                        const acceptedSend = capturedSend;
+                        if (sendBank && (!acceptedSend || acceptedSend.resolved !== prepared.resolved
+                            || acceptedSend.snapshot.requestId !== input.requestId
+                            || hashNativeDocument({ contextPlan: acceptedSend.snapshot.contextPlan, promptIr: acceptedSend.snapshot.promptIr })
+                                !== hashNativeDocument({ contextPlan: prepared.snapshot.contextPlan, promptIr: prepared.snapshot.promptIr }))) throw new GenerationError('generation_request_identity_mismatch');
+                        // Role-host retries stay inside this route's send/timeout boundary.
+                        // Only after they are exhausted may Core resolve a complete fallback.
                         for (let retry = 0; ; retry++) {
                             checkCancellation(boundary.signal);
                             assertExecutionEvidenceCurrent(resolved, Date.now(), prepared.snapshot.diagnostics.executionPlan.policy);
                             // Private native request leases are single-send. A retry lowers
                             // the same frozen snapshot again and rechecks its current envelope.
                             if (retry) rendered = await localWork('generation_render', prepared, () => provider.renderRequest(prepared), undefined, result => provider.discardExecution?.(result));
+                            let actualSnapshot, expectedSend;
+                            if (sendBank) {
+                                // The first snapshot comes from GenerationService after
+                                // lowering. Retries lower again and bind that exact wire.
+                                const compiledBinding = compiledRequestBinding({ resolved: prepared.resolved,
+                                    contextPlan: prepared.snapshot.contextPlan, promptIr: prepared.snapshot.promptIr, rendered });
+                                if (!retry && hashNativeDocument(compiledBinding) !== hashNativeDocument(acceptedSend.snapshot.diagnostics.compiledBinding ?? null)) {
+                                    throw new GenerationError('generation_request_identity_mismatch');
+                                }
+                                actualSnapshot = immutable({ ...acceptedSend.snapshot, diagnostics: { ...acceptedSend.snapshot.diagnostics, compiledBinding } });
+                                if (containsSecret(actualSnapshot, boundary.secret) || containsSecret(rendered, boundary.secret)) throw new GenerationError('generation_config_contains_secret');
+                                expectedSend = compiledSendIdentity({ snapshot: actualSnapshot, resolved: prepared.resolved });
+                            }
                             const attempt = { runtimeRouteId: resolved.route.runtimeRouteId, retry, status: 'pending' };
                             attempts.push(attempt);
                             const capture = lanePlan?.evidenceCapture;
@@ -1359,11 +1381,9 @@ export class NativeGenerationHost {
                                     targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
                                 let receipt;
                                 if (sendBank) {
-                                    const { createdAt: _time, ...stableSnapshot } = prepared.snapshot;
                                     try {
-                                        receipt = await sendBank.admit({ requestId: input.requestId, targetFingerprint: resolved.pathFingerprint,
-                                            inputFingerprint: hashNativeDocument({ snapshot: stableSnapshot, routeId: resolved.route.runtimeRouteId }),
-                                            upperBound: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens, limits,
+                                        receipt = await sendBank.admit({ ...expectedSend,
+                                            upperBound: actualSnapshot.diagnostics.inputTokens + actualSnapshot.contextPlan.budget.reservedOutputTokens, limits,
                                             ...computeOptions });
                                     } catch (error) { throw new GenerationError(error.code ?? 'generation_execution_failed'); }
                                 } else if (budget) {
@@ -1392,10 +1412,12 @@ export class NativeGenerationHost {
                                 if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
                                 if (input.role === 'illustration_prompt' && this.persistence._engine) await new VisualStore({ engine: this.persistence._engine }).reservePlanner(handle,
                                     { reservationId: attemptId + ':' + retry, tokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens });
-                                await orchestrationSend?.beforeSend?.({ receipt, prepared, resolved });
+                                await orchestrationSend?.beforeSend?.({ receipt, prepared, resolved: prepared.resolved,
+                                    snapshot: actualSnapshot, compiledBinding: actualSnapshot?.diagnostics.compiledBinding, budgetAttemptRef: receipt?.budgetAttemptRef });
                                 if (sendBank) await sendBank.assertCurrent();
                                 if (scopedContext) await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'send' });
                                 const response = await provider.send(rendered, boundary);
+                                if (sendBank) completedSendSnapshot = actualSnapshot;
                                 attempt.status = 'success';
                                 capture?.append({ type: 'request.attempt.sent', eventId: attemptId + '/sent', requestId: input.requestId, attemptId });
                                 return response;
@@ -1442,6 +1464,7 @@ export class NativeGenerationHost {
             if (!['native_generation_budget_exhausted', 'generation_context_budget_exceeded'].includes(error.code)) await discardSessionTaskExecution?.();
             throw error;
         }
+        if (sendBank) result = immutable({ ...result, snapshot: completedSendSnapshot });
         if (authorityContext?.mode === 'narrator' && (result.response.toolCalls?.length || result.response.tool_calls?.length)) fail('native_narrator_outcome_denied');
         if (scopedContext) await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'consume' });
         if (prediction) {

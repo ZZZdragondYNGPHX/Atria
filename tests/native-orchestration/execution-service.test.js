@@ -46,8 +46,11 @@ async function setup(make, { prepareEffect = true } = {}) {
                 budgetEnvelopeDigest: hashNativeDocument(limits), risk: 'R1', requiresApproval: false,
                 dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
         },
-        verifySend: async ({ prepared, resolved }) => {
-            if (prepared.snapshot.requestId !== request.requestId || resolved.route.runtimeRouteId !== proposal.actionRef.runtimeRouteId) throw new Error('Changed actual send');
+        verifySend: async ({ prepared, resolved, snapshot, compiledBinding, budgetAttemptRef }) => {
+            if (prepared.snapshot.requestId !== request.requestId || snapshot.requestId !== request.requestId
+                || resolved.route.runtimeRouteId !== proposal.actionRef.runtimeRouteId
+                || compiledBinding.fingerprint !== snapshot.diagnostics.compiledBinding.fingerprint
+                || budgetAttemptRef.effectId !== effectId) throw new Error('Changed actual send');
         },
         verifyObservation: async () => { throw new Error('No durable Provider receipt in this fixture'); },
         verifyApproval: async () => { throw new Error('No trusted Review Origin in this fixture'); },
@@ -89,6 +92,18 @@ async function setup(make, { prepareEffect = true } = {}) {
 }
 
 describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineHarness]])('%s original bank → Effect ready/claim → GenerationHost', (_name, make) => {
+    test.each(['inputFingerprint', 'targetFingerprint'])('%s stored by the original bank must match this actual send or HTTP stays zero', async field => {
+        const f = await setup(make);
+        try {
+            const options = await f.generationSend(f.handle, { runId: f.root.runId, effectId: f.effectId, limits }), admit = options.bank.admit;
+            options.bank.admit = args => admit({ ...args, [field]: '0'.repeat(64) });
+            await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: options }))
+                .rejects.toMatchObject({ code: 'generation_execution_failed' });
+            expect(f.seen).toHaveLength(0);
+            expect(await f.budgetPort.observeAttempt(f.handle, f.ref)).toMatchObject({ status: 'unknown', [field]: '0'.repeat(64) });
+        } finally { await f.cleanup(); }
+    });
+
     test('a funded child cannot send after its parent is cancelled after fresh claim', async () => {
         const f = await setup(make, { prepareEffect: false });
         try {
