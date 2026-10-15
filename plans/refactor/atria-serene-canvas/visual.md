@@ -65,3 +65,7 @@ v0.4 已展开 Play 与 Library 的日常代表任务，默认入口按 `decisio
 v0.5 已展开 Library Prompt/Persona 编辑与浅色 Settings。资源列表继续沿用画廊域，编辑使用共享工作纸/Sheet，专业字段采用分组与逐步展开；长设置页为从账户菜单进入的工具工作纸，不增加一级 Dock 域。所有新页复用现有色彩、文字、控件和动效体系，只模拟已经存在的任务。主题管理与 Custom CSS 保留说明入口，完整兼容流程仍待设计。
 
 v0.6 已展开 Studio Actors、EntryPoints、UI/Assets 的代表编辑。资源纸、编辑纸和 Agent 纸沿已接受构图，UI 与 Assets 各有入口；关键差异先可读，完整原文折入证据，冲突时默认展开三方对照。冲突/失败/保存回执沿同一审查纸，阶段变化归顶，键盘和错误反馈定位状态标题。高频资源/模式切换与文字输入即时响应；复用共享 Sheet，不给 diff 各行加动画。Agent 提议和旧 Prompt 仍是前版示意，不与新的非 Prompt 人工工作区混成权威提交。仍只修改企划与独立 HTML。
+
+## v0.8 Dock supplement
+
+[v0.8](references/discussion-preview-v0.8.html) 在既有温纸、白纸、衬线与胶囊材质中加入边缘隐藏 Dock；规则只见 [dock.md](dock.md)。v0.7 原样保留，v0.1 仍是已接受视觉基线。这次只改 HTML 和方案，未改产品，不把当前动效参数视为已获接受。

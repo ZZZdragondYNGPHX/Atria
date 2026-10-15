@@ -12,7 +12,8 @@
 | [discussion-preview-v0.4.html](discussion-preview-v0.4.html) | Play 会话/历史/存档与 Library 详情/资源编辑的交互初稿 | 历史讨论版本；未替换已接受基线 |
 | [discussion-preview-v0.5.html](discussion-preview-v0.5.html) | Library Prompt/Persona 与浅色 Settings 的交互初稿 | 历史讨论版本；未替换已接受基线 |
 | [discussion-preview-v0.6.html](discussion-preview-v0.6.html) | Studio Actors、EntryPoints、UI/Assets 编辑与 ChangeSet 冲突/失败恢复 | 完整前版；未替换已接受基线 |
-| [discussion-preview-v0.7.html](discussion-preview-v0.7.html) | 入口、Project Agent、Source 文件列表及全局工具代表布局 | 最新补充稿；未替换已接受基线，全局工具仍需完整操作展开 |
+| [discussion-preview-v0.7.html](discussion-preview-v0.7.html) | 入口、Project Agent、Source 文件列表及全局工具代表布局 | 页面补充稿；未替换已接受基线，全局工具仍需完整操作展开 |
+| [discussion-preview-v0.8.html](discussion-preview-v0.8.html) | 边缘隐藏 Dock、桌面唤出、触屏把手与长按换边；继承 v0.7 页面 | 最新 Dock 讨论稿；仅 HTML，等待手感反馈 |
 | [desktop-reference.html](desktop-reference.html) | 用户提供的 `atria-serene-canvas.html` | 桌面视觉气质、布局与精致程度参考 |
 | [mobile-reference.html](mobile-reference.html) | 用户提供的 `atria-mobile-serene.html` | 手机布局与材质参考 |
 | [frontend-guidelines.md](frontend-guidelines.md) | 用户提供的视觉规范 | 设计输入；冲突以当前决策解决 |
@@ -142,3 +143,29 @@ v0.6补充读取[Motion Primitives Dialog源码](https://github.com/ibelick/moti
 - 后续备份补充：英文1440、简中900/320px各四分组，共12个布局检查通过，无页面溢出或 pageerror；范围/恢复模式在预检后保留，运行锁定、取消、完成回执、失败禁止恢复四类内存流程通过。实际查看截图发现 checkbox 被通用输入宽度拉开，修复为44px命中行与墨色原生 checkbox 后相关12布局与流程复测通过。此处不读取、上传或恢复任何文件；产品真实 ZIP 验证单独记在 Record。
 - 后续媒体补充：1440英文、900/320简中三种布局通过遮罩示例→局部保存反馈→批准信息→返回流程，无溢出或 pageerror。保存反馈仅存在于当前 DOM，不证明重开草稿持久化；批准纸不提供未展开的提交成功演示。Agent 草稿/计划阶段不再提前展示尚不存在的提议差异，状态选择器不开放没有对应演示的状态。
 - 产品图库已另行验证真实 FS 遮罩草稿、批准取消，以及通过仅本地图片供应端的批准→单次提交→原版/模型结果/合成版→刷新持久化。此证据归 Record，不能与上述内存演示混用；真实第三方图片质量和费用不由夹具证明。
+
+### v0.8 Dock actual prototype checks
+
+v0.8 SHA-256：`8995500e8971ca9c54fb8c1280bad1b8692dc92fc9b3ca9d818a46432a1a9b20`。交互规则与原型暂定参数只归 [dock.md](../dock.md)。
+
+- 真实 Chromium 1440px：左/右/底三边完全隐藏、边缘停留唤出、进入保持、离开延迟收起、正文位置不变；改动收起时序后相关三边复测通过。
+- 键盘 Enter 唤出、方向键换边、菜单保持、两次 Esc 分别关菜单/收起；鼠标拖动、Esc 回原位、再次拖到底边，输入保留。修复兼容点击后鼠标移动/取消复测通过。
+- Chromium 触屏模式390/320px，CDP真实触摸事件序列：把手点开、选择扩展收起、长按移到右边、轻点收起、向内拉开、拖动取消回原位；滚动不唤出，文字仍在，无页面横向溢出。减动下快速收起/再次点开，没有穿透导航或运行中的 Dock 动画。
+- 900px 项目助手构图、320px 英文/简中底部 Dock，无页面横向溢出；人工查看桌面、中宽和手机截图及 Codex 内置浏览器。手机高级域菜单可进入真实 v0.6 原型 Runtime，嵌入页的旧 Dock 已隐藏，只留一套导航。这里的“真实”仅指实际浏览页面，不是产品服务。
+- 快速离开/返回边缘可反向；菜单三边选择和键盘退出、IME Escape忽略均通过。此前发现并修复：释放后使用旧指针坐标造成误收起；归位未完成就开始隐藏；减动状态同次兼容点击穿透到新导航。
+- v0.8 内联模块 `node --check`、Git diff空白检查通过。上述浏览器流程 pageerror=0、产品 `/api/` 请求=0。4倍CPU限制下对一次唤出采样100个 rAF 间隔，p95 16.8ms、>34ms为0；这是本机原型采样，不是完整性能trace或实机GPU结论。
+
+本轮明确调用 `review-animations` 与 `web-design-guidelines`，后者按[当前规范](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md)复核新增范围。
+
+| Before | After | Why |
+| --- | --- | --- |
+| v0.8初稿在归位时可能直接收起 | 收起时核对动画与释放坐标（HTML:305/360） | 不抢断吸附，不使用旧指针位置 |
+| 减动时同次点击落到刚出现的导航 | 按指针及坐标拦截本次兼容点击（HTML:419–420） | 唤出动作只负责唤出，下一次操作可立即进行 |
+| 固定位置转向 / 逐帧尺寸读取的早期实现 | 当前姿态和速度续接、子元素FLIP、事件时缓存尺寸（HTML:275–322） | 一比一跟手；逐帧只动transform/opacity |
+| 手机隐藏的高级域缺入口 | 菜单可达、三边单选语义、跳到正文入口（HTML:387–414） | 触屏与键盘都有可达替代路径 |
+
+**Approve（v0.8新增原型范围）**：动效均有唤出、直接操纵或归位目的；强ease-out/临界阻尼、反向与取消、键盘即时、系统减动、fine-pointer hover已覆盖。归位的尾部可能超过300ms，用于连续物理停靠；不让高频编辑、正文或行项目等待入场。人工浏览未发现明显卡顿，没有扩大为全部页面/真机性能通过。
+
+microinteractions：已验证触发状态、明确规则、立即反馈、克制反馈、模式和首次说明6项；桌面无可见入口是本轮确定取舍，借助预览说明可发现但不计完整通过，长期提示收敛也无使用证据。`round(6/8×10)=8/10`，仅限 Dock 原型。
+
+未取得：iOS/Android真实边缘返回/Home手势、软键盘/安全区硬件、混合输入设备、跨会话位置持久化、产品集成或业务验收。v0.8沿用的其他页面不是本轮重新验收范围；顶部选择器与唤出按钮只是审阅设施。等待用户查看手感，尚未接受为新视觉基线。

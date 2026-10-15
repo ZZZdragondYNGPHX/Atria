@@ -64,6 +64,12 @@
 - **Reason:** 持续阅读应保持位置和上下文，最近会话与新作品探索仍需可达。
 - **Affected modules:** `coverage.md`, `visual.md`, `validation.md`。
 
+### 11. Dock 边缘吸附与隐藏
+
+- **Decision:** 采用左、右、底边可换位的 Dock；桌面完全隐藏、鼠标靠近边缘唤出；手机保留淡色把手，明确展开、选完收起，不用滚动唤出，长按后可拖动换边。
+- **Scope:** 当前只授权可浏览 HTML，手感反馈后再决定产品接入。具体交互、暂定参数与未决项只归 [dock.md](dock.md)。
+- **Affected modules:** `dock.md`, `visual.md`, `coverage.md`。
+
 ## Scope state
 
 2026-10-15 已收到明确“开始重构”。已确定部分直接实施；欠覆盖页面继续补代表 HTML，重大取舍按 §4 / §7 讨论。实施事实归同一 Record。

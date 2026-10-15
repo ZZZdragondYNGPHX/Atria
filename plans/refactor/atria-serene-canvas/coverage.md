@@ -159,3 +159,7 @@ Runtime readiness 已在产品中按共享 adapter 认证规则修正；上述 �
 | 作品专属 UI | 真实构建安装的 Native@3 full Work：Host Save/Persona/Reload/Exit、IME与窄屏；component Preview与Scenario；不把作品自己的内容翻译成应用文案 |
 
 上述浏览器流程覆盖1440、900与320/390px代表尺寸，部分还验证跨档、大字、安全区与键盘视口；不是每个页面、每个数据量和每台手机的全组合证明。外部请求使用本地夹具，未证明真实模型规划质量、第三方费用/图像质量或实机GPU。SQLite原生绑定缺失、MySQL/PostgreSQL本地端口不可用的原有环境限制，以及具体通过/失败记录保留在 Record。v0.7尚未获得新视觉基线接受，不改变v0.1/v0.6的既定方向。
+
+## 11. v0.8 Dock 交互讨论
+
+新增 [v0.8](references/discussion-preview-v0.8.html) 代表边缘隐藏、唤出、触屏把手和长按换边；详细规则归 [dock.md](dock.md)。当前仅 HTML，等待手感反馈，尚未进入产品接入。§10 的已实施 Shell 证据不覆盖这项新 Dock 交互。

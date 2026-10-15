@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Atria · Serene Canvas v0.8</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
+:root{--canvas:#f9f8f6;--paper:#fff;--ink:#1c1c1e;--muted:#6c6c73;--line:rgba(28,28,30,.07);--fill:#f7f6f4;--accent:#ff5a36;--blue:#3273f6;--serif:'Playfair Display','Songti SC','STSong','SimSun',serif;--sans:'Plus Jakarta Sans','PingFang SC','Microsoft YaHei',sans-serif;--mono:'Cascadia Code',monospace;--ease:cubic-bezier(.23,1,.32,1);--shadow:0 20px 40px -10px rgba(0,0,0,.045),0 1px 3px rgba(0,0,0,.02)}
+*{box-sizing:border-box}html{color-scheme:light}body{margin:0;background:radial-gradient(ellipse at 50% 0,#fff,transparent 60%),var(--canvas);color:var(--ink);font:14px/1.65 var(--sans)}button,input,textarea,select{font:inherit;color:inherit;touch-action:manipulation}button{border:0;cursor:pointer;background:var(--fill);border-radius:10px;min-height:40px;padding:9px 14px;transition:background-color 160ms,transform 160ms var(--ease)}button:disabled{opacity:.45;cursor:default}button.primary{background:var(--ink);color:white}button.quiet{background:transparent}button.danger{color:#b53b25}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--blue);outline-offset:3px}a{color:inherit}input,textarea,select{width:100%;min-width:0;border:1px solid transparent;border-radius:10px;background:var(--fill);padding:11px 13px}input:focus-visible,textarea:focus-visible,select:focus-visible{border-color:#b5b5bb}textarea{resize:vertical;line-height:1.7}label{display:grid;gap:7px;margin-block:18px}label>span,.muted,small{color:var(--muted)}h1,h2,h3{font-family:var(--serif);font-weight:400;line-height:1.3;margin:0}h1{font-size:42px;letter-spacing:-.025em}h2{font-size:27px}h3{font-size:21px}p{margin:8px 0 18px;max-width:72ch}pre,code{font-family:var(--mono);font-size:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--fill);padding:16px;border-radius:12px;max-height:320px;overflow:auto}details{border-top:1px solid var(--line);padding-block:12px}summary{cursor:pointer;min-height:36px;line-height:36px}header.tools{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:10px;padding:10px 24px;background:var(--canvas);border-bottom:1px solid var(--line);flex-wrap:wrap}header.tools strong{font-size:12px;font-weight:500}header.tools select{width:auto;font-size:12px;padding:5px 8px;min-height:36px}header.tools a{font-size:12px;margin-left:auto}.preview-note{font-size:11px;color:var(--muted);padding:6px 24px;border-bottom:1px solid var(--line)}.dock{position:fixed;z-index:3;left:28px;top:50%;transform:translateY(-45%);display:grid;gap:10px;padding:20px 12px;background:#fff;border:1px solid rgba(255,255,255,.9);border-radius:999px;box-shadow:0 12px 32px rgba(0,0,0,.06)}.dock button{width:42px;height:42px;padding:0;background:transparent;font-size:21px;border-radius:50%}.dock .brand{font-size:31px;font-weight:600;margin-bottom:16px}.dock button[aria-pressed=true]{background:var(--ink);color:#fff}.frame{margin-left:126px;padding:34px 32px 70px;min-width:0}.location{display:flex;gap:12px;align-items:center;min-height:36px;margin-bottom:24px;font-size:13px}.heading{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:28px}.heading p{margin:10px 0 0}.paper{background:var(--paper);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:28px;min-width:0}.reading{max-width:1040px;margin:auto}.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.project-list{margin-top:26px}.project-row{display:flex;align-items:center;gap:24px;padding:26px 0;border-bottom:1px solid var(--line)}.project-row:last-child{border:0}.project-row>div{flex:1;min-width:0}.project-row h3{overflow-wrap:anywhere}.project-row p{margin:8px 0 0;font-size:12px}.project-row details{border:0;padding:0}.project-row details summary{font-size:12px}.inline-create{padding-block:20px;border-bottom:1px solid var(--line)}.empty{padding:40px 0;text-align:center}.empty p{margin:12px auto}.studio{display:grid;grid-template-columns:230px minmax(0,1fr) 300px;gap:20px;align-items:start}.studio .paper{min-height:560px}.tree{display:grid;gap:5px}.tree button{text-align:left;background:transparent}.tree button[aria-current=page]{background:#fff3ef;color:#a13c23}.tree small{padding:4px 14px}.step-list{padding-left:20px;color:var(--muted)}.step-list li{padding:6px 0}.agent-intent{border-left:2px solid #e9e5df;padding-left:14px;color:var(--muted);margin-block:24px}.status{font-size:12px;color:var(--muted)}.status strong{color:#266947;font-weight:500}.notice{padding:14px 16px;border-radius:12px;background:var(--fill);font-size:13px;line-height:1.7}.notice.error{background:#fff3ef;color:#a13c23}.rule{height:1px;background:var(--line);margin-block:24px}.source{font:12px/1.8 var(--mono);min-height:350px}.file-list{display:grid;gap:6px;margin-top:18px}.file-list button{text-align:left;background:transparent;overflow-wrap:anywhere}.file-list button[aria-pressed=true]{background:var(--fill)}.technical{font:12px/1.8 var(--mono);overflow-wrap:anywhere}.login{max-width:420px;margin:36px auto;padding:40px}.login .brand-mark{font:600 42px var(--sans);margin-bottom:22px}.login h1{font-size:34px}.login .account{display:flex;align-items:center;gap:14px;border:1px solid var(--line);padding:16px;margin:26px 0;border-radius:14px}.avatar{width:42px;height:42px;border-radius:50%;background:#eeeae4;display:grid;place-items:center;font:20px var(--serif);flex:none}.login .primary{width:100%}.login label{font-size:13px}.two-papers{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.two-papers h3{margin-bottom:16px}.fact-row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}.fact-row span:first-child{color:var(--muted)}.switch-row{display:flex;align-items:center;gap:12px;margin:16px 0}.switch-row input{width:20px;height:20px;accent-color:var(--ink)}.switch-row span{flex:1}.plugin{padding:24px 0;border-bottom:1px solid var(--line)}.plugin:first-child{padding-top:0}.plugin:last-child{border:0}.plugin h3{margin-bottom:12px}.candidates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0}.candidate{margin:0}.art{aspect-ratio:4/3;border-radius:16px;background:#e9e3d9;display:grid;place-items:center;overflow:hidden}.art svg{height:82%;width:auto;stroke:#77715f;stroke-width:1.1;fill:none}.candidate:nth-child(2) .art{background:#ece6df}.candidate figcaption{margin-top:10px;font-size:12px;color:var(--muted)}.candidate button{margin-top:10px}.cover-note{font-size:12px}.reading-prose{max-width:740px;margin:36px auto;font:20px/1.95 var(--serif)}.host-tools{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:20px}.mobile-panels{display:none}.previous{width:100%;height:calc(100dvh - 150px);border:0;border-radius:20px;background:var(--canvas)}dialog{position:fixed;inset:0;max-width:min(720px,calc(100% - 48px));max-height:calc(100dvh - 48px);border:0;border-radius:24px;padding:0;color:var(--ink);background:white;box-shadow:var(--shadow)}dialog::backdrop{background:rgba(28,28,30,.2)}.dialog-paper{padding:32px;overflow:auto;max-height:calc(100dvh - 48px)}.dialog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px}.diff{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-block:20px}.diff>div{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0;overflow-wrap:anywhere}.diff>div:last-child{background:#f6f8f5}.toast{position:fixed;z-index:8;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:white;max-width:calc(100% - 40px);padding:14px 20px;border-radius:18px;font-size:13px;box-shadow:var(--shadow)}[hidden]{display:none!important}
+@media(hover:hover) and (pointer:fine){button:not(:disabled):hover{background:#eeece9}button.primary:not(:disabled):hover{background:#333}button:not(:disabled):active:not(:focus-visible){transform:scale(.97)}}
+@media(max-width:1100px){.dock{left:16px}.frame{margin-left:100px;padding-inline:24px}.studio{grid-template-columns:210px minmax(0,1fr)}.studio .agent-paper{grid-column:2}.two-papers{gap:20px}.heading h1{font-size:36px}}
+@media(max-width:719px){header.tools{padding:8px 12px;gap:6px}header.tools strong{width:100%}header.tools a{margin:0}.preview-note{padding:6px 12px;line-height:1.7}.dock{top:auto;bottom:calc(16px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:8px;padding:8px 12px;width:max-content;max-width:calc(100% - 32px)}.dock .brand,.dock [data-scene=agents],.dock [data-scene=runtime]{display:none}.dock button{width:40px;height:40px;font-size:18px}.frame{margin:0;padding:20px 20px 110px}.location{margin-bottom:20px}.heading{align-items:start;gap:14px;flex-direction:column}.heading h1{font-size:31px}.paper{padding:22px 18px}.project-row{gap:14px;align-items:start;flex-wrap:wrap}.project-row>div{flex-basis:100%}.project-row h3{font-size:23px}.project-row button{min-height:44px}.two-papers,.studio{display:block}.two-papers>.paper+.paper{margin-top:20px}.studio>.paper{min-height:0;margin-bottom:20px}.studio .tree-paper,.studio .agent-paper{display:none}.studio[data-panel=project] .tree-paper{display:block}.studio[data-panel=project] .editor-paper,.studio[data-panel=ai] .editor-paper{display:none}.studio[data-panel=ai] .agent-paper{display:block}.mobile-panels{display:flex;background:white;border-radius:999px;padding:6px;gap:4px;margin-bottom:20px;border:1px solid var(--line)}.mobile-panels button{flex:1;font-size:12px;padding-inline:3px;min-height:44px;background:none}.mobile-panels button[aria-pressed=true]{background:var(--fill)}input,textarea,select{font-size:16px}.login{margin:10px auto;padding:28px 22px}.login h1{font-size:31px}.diff{grid-template-columns:1fr}.reading-prose{font-size:17px;line-height:1.9}dialog{inset:auto 0 0;max-width:none;width:100%;margin:0;max-height:calc(100dvh - 24px);border-radius:24px 24px 0 0}.dialog-paper{padding:28px 24px calc(28px + env(safe-area-inset-bottom));max-height:calc(100dvh - 24px)}.toast{bottom:calc(96px + env(safe-area-inset-bottom))}.candidate .art{aspect-ratio:3/4}.previous{height:calc(100dvh - 220px)}}
+@media(prefers-reduced-motion:reduce){button{transition:none}button:active{transform:none!important}}
+body[data-view=login] .dock{display:none}body[data-view=login] .frame{margin-left:0}
+.file-list button{font:12px/1.8 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.switch-line{display:flex;align-items:center;gap:12px;min-height:44px;margin:0;font-size:13px}.switch-line input{width:18px;height:18px;padding:0;flex:none;accent-color:var(--ink)}.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}.tabs button[aria-pressed=true]{background:var(--ink);color:white}
+@media(min-width:720px) and (max-width:1100px){.studio .agent-paper{min-height:0}}
+@media(max-width:719px){html{scroll-padding-bottom:110px}.frame :is(button,input,textarea,select,summary){scroll-margin-bottom:110px}}
+/* v0.8 design-only Dock. The canvas never reflows when it opens or changes edge. */
+.frame{margin-left:0;padding-inline:clamp(20px,5vw,76px)}
+.dock-preview-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 24px;border-bottom:1px solid var(--line);font-size:12px}
+.dock-preview-controls label{display:flex;gap:7px;align-items:center;margin:0}.dock-preview-controls select{width:auto;min-height:36px;padding:5px 8px;font-size:12px}
+.dock-preview-controls button{min-height:36px;font-size:12px}.dock-preview-controls #dock-live{margin:0 0 0 auto;font-size:12px;color:var(--muted)}
+.dock-reading{max-width:740px;margin:22px auto 80px}.dock-reading .eyebrow{font-size:11px;letter-spacing:.14em;color:var(--muted)}
+.dock-reading h1{margin:16px 0 30px;font-size:clamp(34px,4vw,54px);line-height:1.35}.dock-reading .prose{font:20px/2 var(--serif)}
+.dock-reading .prose p{margin:0 0 26px}.dock-reading .prose p:first-child{font-size:23px}.dock-reading .dock-howto{margin-top:44px;font-size:13px;line-height:1.9}
+.dock-howto ol{padding-left:24px}.dock-howto li{margin:10px 0}.dock-reading textarea{font-size:16px;min-height:100px}
+#dock-viewport{position:fixed;inset:0;overflow:clip;pointer-events:none;z-index:6;isolation:isolate}
+#floating-dock.dock{position:absolute;left:0;top:0;bottom:auto;right:auto;margin:0;width:max-content;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 10px;background:transparent;border:0;border-radius:36px;box-shadow:none;pointer-events:auto;will-change:transform;visibility:hidden}
+@media(max-height:470px) and (min-width:720px){#floating-dock[data-edge=left],#floating-dock[data-edge=right]{overflow-y:auto;scrollbar-width:none;background:white;box-shadow:0 12px 32px rgba(0,0,0,.08)}}
+#floating-dock[data-edge=bottom]{flex-direction:row;padding:10px 12px;gap:6px}
+#floating-dock[data-state=hidden]{pointer-events:none}
+#floating-dock .dock-skin{position:absolute;inset:0;background:rgba(255,255,255,.96);border:1px solid rgba(28,28,30,.055);border-radius:36px;box-shadow:0 14px 38px -8px rgba(35,29,20,.13),0 1px 4px rgba(35,29,20,.03);z-index:-1;pointer-events:none}
+#floating-dock button{position:relative;flex:none;display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;font-size:21px;background:transparent;transition:background-color 140ms,color 140ms}
+#floating-dock button:active{transform:none}#floating-dock button[aria-pressed=true]{background:var(--ink);color:white}
+#floating-dock .brand{display:grid;place-items:center;margin:0;width:44px;height:44px;flex:none;font:600 31px var(--sans)}
+#floating-dock .dock-grip{color:#a7a39b;font-size:16px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#floating-dock .dock-grip:active{cursor:grabbing;background:var(--fill);color:var(--ink)}
+#floating-dock[data-state=dragging] .dock-skin{box-shadow:0 20px 50px -10px rgba(35,29,20,.2),0 1px 4px rgba(35,29,20,.06)}
+#floating-dock .dock-tip{position:absolute;left:calc(100% + 18px);top:50%;transform:translateY(-50%);padding:5px 10px;border-radius:8px;background:var(--ink);color:white;font:11px/1.5 var(--sans);white-space:nowrap;pointer-events:none;opacity:0}
+#floating-dock[data-edge=right] .dock-tip{left:auto;right:calc(100% + 18px)}
+#floating-dock[data-edge=bottom] .dock-tip{left:50%;right:auto;top:auto;bottom:calc(100% + 18px);transform:translateX(-50%)}
+.dock-edge-handle{position:absolute;display:grid;place-items:center;width:44px;height:88px;min-height:44px;padding:0;background:transparent;border:0;border-radius:18px;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.dock-edge-handle:before{content:'';width:4px;height:34px;background:#a5a096;border-radius:999px;opacity:.48;box-shadow:0 0 0 1px rgba(255,255,255,.8)}
+.dock-edge-handle[data-edge=left]{left:max(0px,env(safe-area-inset-left));top:calc(50% - 44px)}
+.dock-edge-handle[data-edge=right]{right:max(0px,env(safe-area-inset-right));top:calc(50% - 44px)}
+.dock-edge-handle[data-edge=bottom]{height:44px;width:88px;left:calc(50% - 44px);bottom:max(8px,env(safe-area-inset-bottom))}
+.dock-edge-handle[data-edge=bottom]:before{width:34px;height:4px}
+.dock-edge-handle:active{background:transparent!important;transform:none!important}.dock-edge-handle:active:before{opacity:.8}
+.dock-edge-handle[data-captured=true]{opacity:0}
+.dock-snap-guide{position:absolute;pointer-events:none;border:1px dashed #b5aa97;background:rgba(235,229,218,.35);border-radius:30px;opacity:0;transition:opacity 120ms var(--ease)}
+.dock-snap-guide[data-selected=true]{opacity:1}
+.dock-snap-guide[data-edge=left]{left:10px;top:calc(50% - 100px);width:56px;height:200px}
+.dock-snap-guide[data-edge=right]{right:10px;top:calc(50% - 100px);width:56px;height:200px}
+.dock-snap-guide[data-edge=bottom]{bottom:max(12px,env(safe-area-inset-bottom));left:calc(50% - 110px);width:220px;height:56px}
+.dock-drag-hint{position:absolute;top:30%;left:50%;transform:translateX(-50%);max-width:calc(100% - 48px);padding:8px 16px;border-radius:999px;background:white;box-shadow:var(--shadow);color:var(--muted);font-size:12px;pointer-events:none;text-align:center}
+.dock-menu{position:absolute;width:min(272px,calc(100vw - 32px));max-height:min(460px,70dvh);overflow:auto;overscroll-behavior:contain;padding:10px;background:white;border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 50px -10px rgba(35,29,20,.15);pointer-events:auto}
+.dock-menu button{display:block;background:transparent;width:100%;text-align:left;min-height:44px;border-radius:12px}
+.dock-menu .menu-caption{font-size:11px;letter-spacing:.04em;padding:10px 12px 4px;color:var(--muted)}
+.dock-menu .edge-choices{display:flex;gap:4px;padding:4px}.dock-menu .edge-choices button{width:auto;flex:1;text-align:center;font-size:12px;padding:8px 4px}
+.dock-menu [aria-checked=true]{background:var(--fill)}
+.dock-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-view=login] #dock-viewport{display:none}
+@media(hover:hover) and (pointer:fine){#floating-dock button:hover{background:var(--fill)}#floating-dock button[aria-pressed=true]:hover{background:#333}#floating-dock button:hover .dock-tip{opacity:1}}
+@media(max-width:719px){.dock-preview-controls{padding:8px 12px;gap:6px}.dock-preview-controls label{font-size:11px}.dock-preview-controls select{font-size:12px;max-width:116px}.dock-preview-controls #dock-live{width:100%;margin:0}.frame{padding:24px 24px 80px}.dock-reading{margin-top:12px}.dock-reading .prose{font-size:17px;line-height:1.95}.dock-reading .prose p:first-child{font-size:19px}.dock-reading h1{font-size:34px}.dock-reading .dock-howto{margin-top:30px}}
+body[data-dock-input=touch] #floating-dock :is(.brand,[data-scene=agents],[data-scene=runtime]){display:none}
+body[data-dock-input=touch] #floating-dock{gap:4px;padding:10px 8px}
+body[data-dock-input=touch] #floating-dock[data-edge=bottom]{padding:8px 10px}
+@media(prefers-reduced-motion:reduce){#floating-dock button,.dock-snap-guide{transition:none}}
+
+#dock-skip{position:fixed;left:16px;top:8px;z-index:20;padding:8px 14px;background:white;border-radius:10px;transform:translateY(-200%)}#dock-skip:focus-visible{transform:none}.dock-reading h1{text-wrap:balance}
+
+</style>
+</head>
+<body><a id="dock-skip" href="#main"></a>
+<header class="tools" aria-label="Design preview controls"><strong>Serene Canvas · v0.8</strong><select id="view" aria-label="Preview page"></select><select id="language" aria-label="Language"><option value="zh-cn">简体中文</option><option value="en">English</option></select><select id="sample" aria-label="Example state"></select><a href="discussion-preview-v0.6.html" id="previous-link"></a></header>
+<div class="preview-note" id="preview-note"></div>
+<nav class="dock" aria-label="Primary navigation"><span class="brand" aria-hidden="true">O</span><button data-scene="play" aria-label="Play">▷</button><button data-scene="library" aria-label="Library">▥</button><button data-view="home" aria-label="Studio">☆</button><button data-scene="agents" aria-label="Agents">✧</button><button data-scene="runtime" aria-label="Runtime">⚙</button><button data-view="account" aria-label="Account">◎</button></nav>
+<main class="frame" id="main" tabindex="-1"></main>
+<dialog id="review" aria-labelledby="review-title"><div class="dialog-paper"><header class="dialog-header"><h2 id="review-title"></h2><button id="close-review"></button></header><div id="review-body"></div></div></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="module">
+// Design-only state. No product service requests, credentials or durable writes.
+const main=document.querySelector('#main'), review=document.querySelector('#review');
+let locale='zh-cn', view='dock', sample='default', returnFocus=null, inputMode='pointer', toastTimer, dialogAnimation, dialogSequence=0;
+let agentPhase='draft', agentIntent='Give the harbour keeper a quieter introduction.', fileDraft='<template>\n  <main node-id="root">\n    <p node-id="welcome">The harbour is quiet.</p>\n  </main>\n</template>', loginPhase='account';
+const t=(en,zh)=>locale==='en'?en:zh;
+const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const pages=()=>[['dock',t('Dock interaction','Dock 交互试玩')],['home',t('Studio projects','创作项目')],['agent',t('Project Agent','项目助手')],['files',t('Source files','源码文件')],['login',t('Sign in','登录')],['account',t('Account & backup','账户与备份')],['backup',t('Backup & sync','备份与同步')],['extensions',t('Extensions','扩展')],['media',t('Illustration review','插图审查')],['host',t('Work interface & host','作品界面与恢复')],['previous',t('Complete v0.6 discussion','v0.6 完整讨论稿')]];
+const button=(label,action,kind='',disabled=false)=>`<button type="button" class="${kind}" data-action="${action}"${disabled?' disabled':''}>${label}</button>`;
+const field=(label,control)=>`<label><span>${label}</span>${control}</label>`;
+const heading=(title,description,action='')=>`<div class="heading"><div><h1>${title}</h1><p class="muted">${description}</p></div>${action}</div>`;
+const details=(label,body)=>`<details><summary>${label}</summary>${body}</details>`;
+const info=(en,zh,error=false)=>`<p class="notice${error?' error':''}">${t(en,zh)}</p>`;
+const technical=(data)=>`<pre translate="no">${esc(JSON.stringify(data,null,2))}</pre>`;
+function toast(en,zh){const el=document.querySelector('#toast');clearTimeout(toastTimer);el.textContent=t(en,zh);el.hidden=false;toastTimer=setTimeout(()=>{el.hidden=true;},3600);}
+function openReview(title,body){
+  const paper=review.querySelector('.dialog-paper'), alreadyOpen=review.open;
+  const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const from=alreadyOpen?{opacity:getComputedStyle(paper).opacity,transform:getComputedStyle(paper).transform}:{opacity:0,transform:reduced?'none':'translateY(12px)'};
+  const sequence=++dialogSequence;dialogAnimation?.cancel();if(!alreadyOpen)returnFocus=document.activeElement;
+  document.querySelector('#review-title').textContent=title;document.querySelector('#review-body').innerHTML=body;document.querySelector('#close-review').textContent=t('Close','关闭');
+  if(!alreadyOpen)review.showModal();
+  if(inputMode!=='keyboard'){
+    dialogAnimation=paper.animate([from,{opacity:1,transform:'none'}],{duration:reduced?100:240,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'});
+    dialogAnimation.finished.then(()=>{if(sequence===dialogSequence)dialogAnimation?.cancel();}).catch(()=>{});
+  }
+  document.querySelector('#close-review').focus();
+}
+async function closeReview(){
+  const paper=review.querySelector('.dialog-paper'),sequence=++dialogSequence;
+  const from={opacity:getComputedStyle(paper).opacity,transform:getComputedStyle(paper).transform};dialogAnimation?.cancel();
+  if(inputMode!=='keyboard'){
+    const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
+    dialogAnimation=paper.animate([from,{opacity:0,transform:reduced?'none':'translateY(12px)'}],{duration:reduced?100:180,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'});
+    try{await dialogAnimation.finished;}catch{return;}
+  }
+  if(sequence!==dialogSequence)return;review.close();dialogAnimation?.cancel();
+  const target=returnFocus?.isConnected?returnFocus:main.querySelector('h1');if(target){if(target.tagName==='H1')target.tabIndex=-1;target.focus({preventScroll:true});}
+}
+function projectHome(){
+  const rows=[['Harbour Letters','2026-10-15'],['The Observatory','2026-10-14']].filter(([name])=>!sample.includes('empty'));
+  return `<div class="reading">${heading(t('Studio projects','创作项目'),t('A place for the works you are making.','从这里继续你的创作。'))}<section class="paper"><details class="inline-create"><summary>${t('New project','新建项目')}</summary>${field(t('Project name','项目名称'),`<input id="project-name" name="project-name" autocomplete="off" maxlength="160" placeholder="${t('e.g. Harbour Letters','例如：港湾书简')}">`)}${button(t('Create project','创建项目'),'create-project','primary')}<p class="status" id="create-feedback" role="status"></p></details>${field(t('Search projects','搜索项目'),`<input id="project-search" name="project-search" type="search" autocomplete="off" placeholder="${t('Search by name…','输入项目名称…')}">`)}<div class="project-list" id="project-list">${sample==='loading'?info('Loading projects…','正在加载项目…'):sample==='error'?info('Projects could not be loaded. Your saved work is unchanged. Try again.','项目加载失败，已保存的内容仍在。请重试。',true)+button(t('Try again','重试'),'retry'):rows.length?rows.map(([name,date])=>`<article class="project-row" data-project-name="${name}"><div><h3>${name}</h3><p>${t('Updated','更新于')} <time datetime="${date}">${date}</time></p></div>${button(t('Open project','打开项目'),'open-project','primary')}${details(t('Manage','管理'),button(t('Delete project','删除项目'),'delete-project','quiet danger'))}</article>`).join(''):`<div class="empty"><h2>${t('Your first project starts here','开始你的第一个项目')}</h2><p class="muted">${t('Choose New project to begin. Edits enter review before they are saved.','展开“新建项目”即可开始。编辑内容会先进入审查，再保存。')}</p></div>`}</div></section></div>`;
+}
+function studioTree(){return `<aside class="paper tree-paper"><h3>${t('Project resources','项目资源')}</h3>${field(t('Filter resources','筛选资源'),`<input type="search" name="resources" autocomplete="off" placeholder="${t('Filter resources…','筛选资源…')}">`)}<div class="tree">${['Overview','Actors','EntryPoints','UI','Assets','Source'].map(name=>button(t(name,{'Overview':'概览','Actors':'角色','EntryPoints':'起点','UI':'UI','Assets':'素材','Source':'源码'}[name]),name==='Source'?'go-files':'go-agent','quiet')).join('')}<small>Harbour Keeper</small></div></aside>`;}
+function mobilePanels(){return `<nav class="mobile-panels" aria-label="${t('Studio panels','创作面板')}">${[['project',t('Project','项目')],['editor',t('Editor','编辑')],['preview',t('Preview','预览')],['ai','AI'],['more',t('More','更多')]].map(([id,label])=>`<button type="button" data-panel="${id}" aria-pressed="${id==='editor'}">${label}</button>`).join('')}</nav>`;}
+function agent(){
+  const phase=sample==='conflict'?'conflict':sample==='error'?'repair':agentPhase;
+  const status={draft:t('New task','新任务'),planned:t('Plan ready','计划已准备'),review:t('Ready for review','等待审查'),completed:t('Saved','已保存'),conflict:t('Project version changed','项目版本已更新'),repair:t('Needs correction','需要修改'),taken_over:t('Human takeover','已转为手动处理')}[phase];
+  const changes=phase==='review'||phase==='completed';
+  const editor=`<section class="paper editor-paper"><h2>${t('Harbour Keeper','港湾守门人')}</h2><p class="muted">${t('Review the proposed change in its project context.','结合项目内容查看这项修改。')}</p><p class="agent-intent">${esc(agentIntent)}</p><div class="diff"><div><small>${t('Before','原内容')}</small><p>A patient keeper of harbour records.</p></div><div><small>${t('Proposed','建议内容')}</small><p>A quiet keeper who speaks only after listening.</p></div></div>${details(t('Operations & exact target','操作与指定目标'),technical({origin:'agent',baseRevision:'a73c2e8',operation:'project.save',target:'core.project',actorId:'actor_8fe4d1fdd4124e25a7ae63bb92b53e9b'}))}${phase==='conflict'?info('This project changed after the task began. Start a new task from the current version. The old proposal remains available for inspection.','任务开始后项目已有更新。请基于当前版本创建新任务，旧提议仍可查看。',true):phase==='repair'?info('Validation found an unresolved Actor reference. Continue to correct the proposal. Nothing has been committed.','校验发现角色引用缺失。继续任务可修改提议，目前尚未提交。',true):info('Example evidence only. Actual validation, Preview and Simulation come from the saved Task and Studio services.','此处仅展示示例证据。正式校验、预览和模拟以已保存任务与 Studio 服务为准。')}<div class="actions">${button(t('Inspect changes','查看更改'),'agent-inspect','',!changes)}${button(t('Review & Commit','审查并提交'),'agent-commit','primary',phase!=='review')}</div><p class="status" role="status">${phase==='completed'?t('Example saved version: b91e6c4. This is a receipt, not another commit action.','示例保存版本：b91e6c4。这是提交回执，不会再次提交。'):t('The human chooses when to commit. AI proposals do not change the project on their own.','由你决定何时提交，AI 提议不会自行修改项目。')}</p></section>`;
+  const ai=`<aside class="paper agent-paper"><h3>${t('Project Agent','项目助手')}</h3><p class="status">${status}</p>${field(t('Task intent','任务目标'),`<textarea id="agent-intent" name="agent-intent" rows="3"${phase!=='draft'?' readonly':''}>${esc(agentIntent)}</textarea>`)}<h3>${t('Plan','计划')}</h3><ol class="step-list"><li>${t('Read the current Actor and EntryPoint references.','读取当前角色和起点引用。')}</li><li>${t('Propose the profile change in a Workspace.','在工作区中提出角色资料修改。')}</li><li>${t('Validate, preview, simulate, then stop for review.','校验、预览、模拟，完成后等待审查。')}</li></ol><div class="actions">${phase==='draft'?button(t('Create task','创建任务'),'agent-create','primary'):''}${button(t('Continue','继续'),'agent-continue','',!['planned','repair'].includes(phase))}${button(t('Human takeover','手动接管'),'agent-takeover','',phase==='completed')}${button(t('New task','新任务'),'agent-new','quiet')}</div>${details(t('Task evidence','任务证据'),technical({taskId:'task_example',status:phase,baseRevision:'a73c2e8',operations:changes?1:0,validation:changes?{status:'passed',source:'example'}:null,preview:changes?{status:'example'}:null,recovery:phase==='conflict'?{status:'conflict'}:null}))}</aside>`;
+  return `${heading('Harbour Letters',t('Project version a73c2e8 · Project Agent representative flow','项目版本 a73c2e8 · 项目助手代表流程'))}${mobilePanels()}<div class="studio" data-panel="editor">${studioTree()}${editor}${ai}</div>`;
+}
+function files(){
+  const operations=details(t('File operations','文件操作'),`<p class="muted">${t('Assets owns import, replace, move and delete. Source preserves UTF-8 text; binary files remain read-only.','导入、替换、移动和删除从素材页操作。源码编辑保留 UTF-8 文本，二进制文件保持只读。')}</p>${button(t('Open Assets','打开素材'),'file-assets')}`);
+  return `${heading('Harbour Letters',t('Source files · edits enter the same Workspace review','源码文件 · 修改进入同一工作区审查'))}${mobilePanels()}<div class="studio" data-panel="editor"><aside class="paper tree-paper"><h3>${t('Project files','项目文件')}</h3><div class="file-list">${['frontend.json','Main.aui','assets/harbour.svg'].map((name,i)=>`<button type="button" aria-pressed="${i===1}">${name}</button>`).join('')}</div>${operations}</aside><section class="paper editor-paper"><h2>Main.aui</h2><p class="technical">Native AUI · UTF-8 · a73c2e8</p>${field(t('File source','文件源码'),`<textarea class="source" id="file-source" name="file-source" spellcheck="false">${esc(fileDraft)}</textarea>`)}<div class="actions">${button(t('Review changes','审查更改'),'file-review','primary')}${button(t('Reload saved source','重新加载已保存源码'),'file-reload')}</div><p class="status" role="status">${t('Closing review keeps the exact draft. A saved receipt reloads only; it does not repeat Apply.','关闭审查会保留草稿原文。保存后的回执只重新读取，不会重复提交。')}</p></section><aside class="paper agent-paper"><h3>${t('File context','文件信息')}</h3><p>${t('This file belongs to the Native UI source graph.','此文件属于原生 UI 源码图。')}</p>${details(t('References','引用'),technical({sourceIndex:'frontend.json',component:'Main',node:'welcome',operation:'source.write',baseRevision:'a73c2e8'}))}${info('Moving or deleting a referenced file requires reviewing its source index and Asset references together.','移动或删除被引用文件时，需要一并审查源码索引和素材引用。')}</aside></div>`;
+}
+function login(){const register=loginPhase==='register',recovery=loginPhase==='recovery';return `<section class="paper login"><div class="brand-mark" aria-hidden="true">O</div><h1>${t('Welcome to Atria','欢迎来到 Atria')}</h1><p class="muted">${t('Your stories, ready when you are.','你的故事，就在这里。')}</p>${sample==='loading'?info('Connecting to Atria…','正在连接 Atria…'):sample==='error'?info('Cannot reach Atria. Check your connection and try again.','暂时无法连接 Atria，请检查连接后重试。',true)+button(t('Try again','重试'),'retry'):sample==='empty'?info('No accounts are available. Ask your administrator for access, or use an available sign-in option.','暂无可用账户。请联系管理员，或使用此服务已开启的其他登录方式。'):''}<h3>${register?t('Create an account','创建账户'):recovery?t('Reset your password','重置密码'):t('Choose your account','选择账户')}</h3>${!register&&!recovery?`<div class="account"><span class="avatar" aria-hidden="true">H</span><div><strong>Harbour Reader</strong><br><small>harbour-reader</small></div></div>`:''}${register?field(t('Display name','显示名称'),'<input name="display-name" autocomplete="name">')+field(t('User handle','账户名'),'<input name="handle" autocomplete="username" spellcheck="false" pattern="[a-z0-9-]+">'):''}${recovery?info('Ask the server administrator for the recovery code from the server console.','请向管理员索取服务器控制台中的恢复码。')+field(t('Recovery code','恢复码'),'<input name="recovery-code" autocomplete="one-time-code">'):''}${field(recovery?t('New password','新密码'):t('Password','密码'),`<input type="password" name="password" autocomplete="${register||recovery?'new-password':'current-password'}">`)}${register?field(t('Confirm password','再次输入密码'),'<input type="password" name="password-confirm" autocomplete="new-password">'):''}${button(register?t('Create account','创建账户'):recovery?t('Reset password','重置密码'):t('Sign in','登录'),'login-submit','primary',sample==='loading')}<div class="actions" style="margin-top:18px">${button(register||recovery?t('Back','返回'):t('Forgot password?','忘记密码？'),register||recovery?'login-back':'login-recovery','quiet')}${!register&&!recovery?button(t('Create an account','创建账户'),'login-register','quiet'):''}</div>${!register&&!recovery?details(t('Other sign-in options','其他登录方式'),`<div class="actions">${button('GitHub','oauth','quiet')}${button('Discord','oauth','quiet')}</div><p class="muted">${t('Providers and registration appear only when enabled by this deployment.','只有此服务已开启的登录方式和注册入口才会显示。')}</p>`):''}</section>`;}
+function account(){return `<div class="reading">${heading(t('Account & backup','账户与备份'),t('Your profile, saved data and recovery options.','管理个人资料、已保存数据和恢复选项。'))}<div class="two-papers"><section class="paper"><h2>Harbour Reader</h2><p class="technical">harbour-reader</p>${field(t('Display name','显示名称'),'<input name="name" value="Harbour Reader" autocomplete="name">')}<div class="actions">${button(t('Save profile','保存资料'),'account-save','primary')}${button(t('Change password','修改密码'),'account-password')}</div>${details(t('Session','登录状态'),`<p class="muted">${t('Account switching and sign-out use the existing account authority.','账户切换和退出沿用原有账户服务。')}</p>${button(t('Sign out','退出登录'),'account-signout','quiet')}`)}</section><section class="paper"><h2>${t('Backup & recovery','备份与恢复')}</h2><p class="muted">${t('Review the saved data and destination before moving it.','导出或恢复前，先确认数据范围和目标。')}</p><div class="fact-row"><span>${t('Storage','存储')}</span><span>FS</span></div><div class="fact-row"><span>${t('Sync destination','同步目标')}</span><span>${t('Not configured','尚未配置')}</span></div><div class="actions" style="margin-top:22px">${button(t('Export backup','导出备份'),'backup-export','primary')}${button(t('Restore backup','恢复备份'),'backup-restore')}</div>${details(t('Sync settings','同步设置'),info('Use the existing Backup & Sync center. This preview does not connect a new destination or upload files.','正式流程使用已有备份与同步中心。此稿不连接新目标，也不上传文件。'))}${info('A restore previews its scope before the final action. Validation failure keeps the existing data.','恢复前会先预览影响范围。校验失败时，原有数据保持不变。')}</section></div></div>`;}
+let backupPanel='archive',backupStep='empty',backupMode='merge'; const backupScope=new Set(['native','settings','secrets','characters','chats','lorebooks','presets','assets']);
+function backup(){
+ const scope=[['native','Atria data & projects','Atria 数据与项目'],['settings','Settings','设置'],['secrets','API keys / secrets','API 密钥'],['characters','Characters / avatars','角色与头像'],['chats','Chats / groups','聊天与群聊'],['lorebooks','World info','世界书'],['presets','Presets / interface layouts','预设与界面布局'],['assets','Assets / files','素材与文件'],['vectors','Vector indexes','向量索引']];
+ const nav='<div class="tabs">'+[['automatic','Automatic backups','自动备份'],['archive','Archives & restore','备份与恢复'],['device','Device sync','设备同步'],['cloud','Cloud sync','云同步']].map(([id,en,zh])=>'<button type="button" data-backup-panel="'+id+'" aria-pressed="'+(id===backupPanel)+'">'+t(en,zh)+'</button>').join('')+'</div>';
+ let content='';
+ if(backupPanel==='archive')content='<h2>'+t('Data scope','数据范围')+'</h2><div class="two-papers">'+scope.map(([id,en,zh])=>'<label class="switch-line"><input type="checkbox" data-backup-scope="'+id+'" '+(backupScope.has(id)?'checked':'')+'>'+t(en,zh)+'</label>').join('')+'</div>'+info('Atria data includes works, stories, library resources, Runtime and project files. API keys are selected separately.','Atria 数据包含作品、故事、资源库、Runtime 和项目文件。API 密钥需单独选择。')+'<div class="actions">'+button(t('Create & download backup','创建并下载备份'),'backup-demo-export')+'</div><hr><h2>'+t('Restore from a ZIP archive','从 ZIP 备份恢复')+'</h2>'+field(t('Restore mode','恢复方式'),'<select id="restore-mode"><option value="merge" '+(backupMode==='merge'?'selected':'')+'>'+t('Merge','合并')+'</option><option value="overwrite" '+(backupMode==='overwrite'?'selected':'')+'>'+t('Replace selected categories','替换所选类别')+'</option><option value="full" '+(backupMode==='full'?'selected':'')+'>'+t('Full restore','完整恢复')+'</option></select>')+'<div class="actions">'+button(t('Use example archive','使用示例备份'),'backup-demo-file')+'</div>'+ (backupStep==='empty'?info('Choose an archive to run preflight. No data is written during this check.','选择备份后会先检查，这一步不会写入数据。'):backupStep==='error'?info('Example preflight failed. Existing data is kept; restore is disabled.','示例检查未通过，现有数据保留，无法开始恢复。',true):backupStep==='ready'?info('Example preflight passed: 3 restorable items. A recovery point is required before writing.','示例检查通过：可恢复 3 项，写入前会先保存恢复点。'):backupStep==='running'?info('Example restore is running. Repeated starts and data changes are disabled.','示例正在恢复，暂时不能重复开始或更改数据范围。'):backupStep==='cancelled'?info('Example restore cancelled. The previous state has been restored.','示例已取消，并恢复到开始前的数据。'):info('Example receipt: 3 items restored, 0 failed. Recovery point: example-before-restore.','示例回执：恢复 3 项，失败 0 项。恢复点：example-before-restore。'))+'<div class="actions">'+button(t('Start restore','开始恢复'),'backup-demo-start','primary',backupStep!=='ready')+button(t('Cancel and roll back','取消并恢复原状'),'backup-demo-cancel','danger',backupStep!=='running')+(backupStep==='running'?button(t('Show completion receipt','查看完成回执'),'backup-demo-finish'):'')+'</div>'+details(t('Recovery points','恢复点'),info('A recovery point is saved before every archive restore and before applying an older point. Up to 5 points are retained per account.','恢复备份或应用旧恢复点前，会先保存当前数据。每个账户最多保留 5 个恢复点。')+technical({example:true,sourceEngine:'fs',destinationEngine:'fs',restoreMode:backupMode,recoveryPoint:'required',verification:'required'}));
+ if(backupPanel==='automatic')content='<div class="two-papers">'+[['Chat backups','聊天备份'],['Settings snapshots','设置快照']].map(([en,zh])=>'<section><h2>'+t(en,zh)+'</h2><label class="switch-line"><input type="checkbox" checked>'+t('Clean up old backups automatically','自动清理旧备份')+'</label>'+field(t('Keep per owner','每项保留数量'),'<input type="number" min="-1" value="50">')+field(t('Total backup limit','备份总数上限'),'<input type="number" min="-1" value="-1">')+field(t('Storage limit (MiB)','空间上限（MiB）'),'<input type="number" min="-1" value="-1">')+'</section>').join('')+'</div>'+info('Use -1 for unlimited. Chat and settings retention are saved separately by the existing service.','填写 -1 表示不限。聊天和设置备份分别保存各自的保留规则。')+button(t('Save retention rules','保存保留规则'),'backup-demo-policy','primary');
+ if(backupPanel==='device')content='<h2>'+t('Local network sync','局域网设备同步')+'</h2>'+info('Review data categories, conflicts and recovery options in the existing LAN Sync controller.','在已有局域网同步中查看数据类别、冲突和恢复选项。')+button(t('Open LAN Sync','打开局域网同步'),'backup-demo-lan');
+ if(backupPanel==='cloud')content='<h2>'+t('Cloud services','云服务')+'</h2>'+info('Cloud services are not available yet. No account is connected and no data is uploaded.','云服务尚未开放，目前未连接云账户，也不会上传数据。')+['Google Drive','Microsoft OneDrive','GitHub'].map(name=>'<div class="fact-row"><span>'+name+'</span><span>'+t('Not available yet','尚未开放')+'</span></div>').join('');
+ return '<div class="reading">'+heading(t('Backup & sync','备份与同步'),t('Prototype examples. No actual files are read, uploaded or restored.','以下为原型示例，不会读取、上传或恢复实际文件。'))+'<section class="paper">'+nav+content+'</section></div>';
+}
+function extensions(){
+  const plugins=[['Regex',t('Transform text with local rules.','使用本地规则处理文本。')],['Search',t('Use configured providers to find external sources.','通过已配置的服务检索外部来源。')]].map(([name,copy])=>{
+    const settings=details(t('Settings','设置'),`<p class="muted">${t('The current plugin owns these settings and their saved scope.','这些设置及其保存范围仍由当前插件管理。')}</p>${button(t('Open settings','打开设置'),'plugin-settings')}`);
+    return `<article class="plugin"><label class="switch-row"><span><h3>${name}</h3>${copy}</span><input type="checkbox" checked data-plugin="${name}" aria-label="${name}"></label>${settings}</article>`;
+  }).join('');
+  return `<div class="reading">${heading(t('Extensions','扩展'),t('Tools that belong to your account and to each installed work.','分别管理账户工具和作品自带能力。'))}<div class="two-papers"><section class="paper"><h2>${t('Global tools','账户工具')}</h2>${plugins}</section><section class="paper"><h2>${t('Work plugins','作品插件')}</h2><p>Harbour Letters · 1.0.0</p>${info('These plugins belong to an exact installed work version. Manage permissions and dependencies with that work.','这些插件属于指定的已安装作品版本。权限和依赖从该作品管理。')}<div class="plugin"><h3>Harbour Almanac</h3><p class="muted">${t('Example package plugin · read-only original','作品插件示例 · 原件只读')}</p>${button(t('Open work','打开作品'),'plugin-work')}</div>${details(t('Unavailable contribution','扩展暂不可用'),info('The settings could not be mounted. Your work and global navigation remain available. Try again.','设置暂时无法显示，作品和全局导航仍可使用。请重试。',true)+button(t('Try again','重试'),'retry'))}</section></div></div>`;
+}
+function art(){return '<svg viewBox="0 0 140 160" aria-hidden="true"><path d="M18 146V68a52 52 0 0 1 104 0v78M32 146V68a38 38 0 0 1 76 0v78M47 146V72a23 23 0 0 1 46 0v74M12 146h116M61 146v-32h18v32M37 94h65M70 20v62"/></svg>';}
+function media(){return `<div class="reading">${heading(t('Illustration review','插图审查'),t('Choose a candidate, then decide whether to use it.','先查看候选图片，再决定是否使用。'))}<section class="paper"><h2>${t('At the harbour gate','港湾门前')}</h2><p class="muted">${t('Scene and prompt are tied to the current task. Editing the prompt does not silently change the saved scene.','场景和提示词属于当前任务。编辑提示词不会悄悄修改已保存场景。')}</p><div class="candidates">${[1,2].map(i=>`<figure class="candidate"><div class="art">${art()}</div><figcaption>${t('Candidate','候选')} ${i} · ${t('Design illustration','设计示意')}</figcaption>${button(t('Inspect candidate','查看候选'),'media-inspect')}${button(t('Use this version','使用此版本'),'media-use','primary')}</figure>`).join('')}</div>${details(t('Edit image & mask','编辑图片与遮罩'),`<p class="muted">${t('The existing image editor supports Img2Img, Inpaint and Upscale. Review budget and approval before the request.','已有图片编辑器支持图生图、局部重绘和放大。发出请求前需确认预算和批准信息。')}</p>${button(t('Open editor','打开编辑器'),'media-edit')}`)}${details(t('Request evidence','请求信息'),technical({task:'illustration',revision:'session-example',candidate:'image-example',currencyStatus:'unavailable',source:'design-preview'}))}</section></div>`;}
+function host(){return `<div class="reading">${heading('Harbour Letters',t('A representative work-owned interface, with reachable Host recovery','作品自有界面示例，保留可达的宿主恢复入口'))}<section class="paper"><h2>${t('The keeper’s ledger','守门人的账簿')}</h2><div class="reading-prose"><p>${t('The keeper rests a hand on the closed ledger. Beyond the gate, a bell marks the changing tide.','守门人把手搭在合上的账簿上。门外，钟声报出了潮水更替的时刻。')}</p><p>${t('You may follow the water, or ask him what the last visitor left behind.','你可以沿着水边走，也可以问他，上一位访客留下了什么。')}</p></div><div class="actions">${button(t('Read the ledger','翻开账簿'),'host-action')}${button(t('Ask the keeper','询问守门人'),'host-action')}</div>${details(t('Host controls','宿主控制'),`<div class="host-tools">${['Stop','Save','Persona','Diagnostics','Reload','Exit'].map(name=>button(t(name,{Stop:'停止',Save:'存档',Persona:'玩家身份',Diagnostics:'诊断',Reload:'重新加载',Exit:'返回阅读'}[name]),'host-'+name.toLowerCase(),'',name==='Stop')).join('')}</div>`)}${details(t('Speech & shared-session conditions','朗读与共享会话的条件'),`<p class="muted">${t('Speech appears only on messages declaring a narration expression. Shared-session controls appear only when the work declares its existing sharing rules.','只有声明朗读表达的消息才显示朗读控件。只有作品声明了共享规则，才显示已有共享会话控制。')}</p>${button(t('Inspect declared controls','查看已声明控件'),'host-conditions')}`)}</section></div>`;}
+function mediaEditor(){
+ return `<h2>${t('Media Studio','图片编辑')}</h2>${info('Layout example only. Opening, drawing and previewing do not submit an image request.','仅为布局示例。打开、绘制和预览都不会提交图片请求。')}<div class="art" style="position:relative;aspect-ratio:4/3">${art()}<div id="example-mask" hidden style="position:absolute;inset:30% 25%;background:rgba(92,155,255,.4);border:1px solid #3273f6;border-radius:18px"></div></div><div class="actions" style="margin-top:18px">${button(t('Add example mask','添加示例遮罩'),'mask-example')}${button(t('Undo mask','撤销遮罩'),'mask-undo')}${button(t('Save draft','保存草稿'),'mask-save')}</div>${field(t('Edit operation','编辑方式'),`<select><option>${t('Inpaint','局部重绘')}</option><option>${t('Image to image','图生图')}</option><option>${t('Upscale','放大')}</option></select>`)}${field(t('Edit prompt','编辑提示词'),`<textarea rows="3">${t('Warm light on the harbour gate.','让暖光落在港湾门前。')}</textarea>`)}<label class="switch-line"><input type="checkbox" checked>${t('Preserve pixels outside the mask','保留遮罩外的原始像素')}</label><p class="status" id="mask-feedback" role="status"></p>${button(t('Preview edit task','预览编辑任务'),'mask-preview','primary')}`;
+}
+function render(){
+  document.body.dataset.view=view;
+  const supported={home:['default','empty','loading','error'],agent:['default','error','conflict'],files:['default','conflict'],login:['default','error'],backup:['default','error']}[view]||['default'];
+  if(!supported.includes(sample))sample='default';
+  document.documentElement.lang=locale==='en'?'en':'zh-CN';document.querySelector('#preview-note').textContent=t('Design preview · example data only · does not modify Atria · existing services remain authoritative','设计预览 · 仅使用示例数据 · 不修改 Atria · 正式实现仍以现有服务为准');
+  document.querySelector('#previous-link').textContent=t('Open complete v0.6','打开 v0.6 完整稿');
+  document.querySelector('#view').innerHTML=pages().map(([id,label])=>`<option value="${id}"${view===id?' selected':''}>${label}</option>`).join('');
+  document.querySelector('#sample').innerHTML=[['default',t('Default example','默认示例')],['empty',t('Empty example','空数据示例')],['loading',t('Loading example','加载示例')],['error',t('Failure example','失败示例')],['conflict',t('Conflict example','冲突示例')]].map(([id,label])=>`<option value="${id}"${sample===id?' selected':''}>${label}</option>`).join('');
+  for(const control of document.querySelectorAll('.dock button[data-scene],.dock button[data-view]'))control.setAttribute('aria-pressed',String(control.dataset.scene==='play'&&view==='dock'||control.dataset.view==='home'&&['home','agent','files'].includes(view)||control.dataset.view===view));
+  for(const option of document.querySelectorAll('#sample option'))option.disabled=!supported.includes(option.value);
+  document.querySelector('#view').setAttribute('aria-label',t('Preview page','预览页面'));document.querySelector('#sample').setAttribute('aria-label',t('Example state','示例状态'));document.querySelector('#language').setAttribute('aria-label',t('Language','语言'));
+  document.querySelector('header.tools').setAttribute('aria-label',t('Design preview controls','设计预览控件'));document.querySelector('.dock').setAttribute('aria-label',t('Primary navigation','主导航'));
+  const dockLabels={play:t('Play','阅读'),library:t('Library','资源库'),home:t('Studio','创作'),agents:t('Agents','智能体'),runtime:t('Runtime','运行配置'),account:t('Account','账户')};for(const control of document.querySelectorAll('.dock button[data-scene],.dock button[data-view]'))control.setAttribute('aria-label',dockLabels[control.dataset.scene||control.dataset.view]);
+  main.innerHTML=`<div class="location"><span>Atria</span><span> / </span><span>${pages().find(([id])=>id===view)?.[1]}</span></div>`+(view==='previous'?'<iframe class="previous" title="Serene Canvas v0.6" src="discussion-preview-v0.6.html"></iframe>':({dock:dockReading,home:projectHome,agent,files,login,account,backup,extensions,media,host}[view]||projectHome)());
+  dockPreview.syncLabels();
+  if(view==='previous')dockPreview.bindFrame(main.querySelector('iframe'));
+  if(view==='backup'){const select=main.querySelector('#restore-mode');if(select)select.value=backupMode;if(backupStep==='running')for(const node of main.querySelectorAll('[data-backup-scope],#restore-mode,[data-action=backup-demo-file],[data-action=backup-demo-export]'))node.disabled=true;}
+  if(view==='agent'&&!['error','conflict'].includes(sample)&&['draft','planned'].includes(agentPhase)){
+    main.querySelector('.diff')?.setAttribute('hidden','');main.querySelector('.editor-paper details')?.setAttribute('hidden','');
+    if(agentPhase==='draft')main.querySelector('.agent-paper .step-list')?.setAttribute('hidden','');
+  }
+}
+function draftReview(kind){const isFile=kind==='file',draft=isFile?fileDraft:agentIntent;openReview(t('Review changes','审查更改'),`<p>${t('Check the exact proposed contents before applying.','保存前，请先检查建议内容。')}</p><p class="technical">baseRevision a73c2e8 · ${isFile?'source.write':'project.save'}</p><pre>${esc(draft)}</pre>${sample==='conflict'?info('Current version differs from the proposal’s base. This preview offers no forced overwrite or automatic merge.','当前版本与提议基线不同，此稿不提供强制覆盖或自动合并。',true):''}${info('Design preview. A real request already sent cannot be undone by closing this paper.','设计预览。正式请求一旦发出，关闭这张纸不会撤销提交。')}<div class="actions">${button(t('Keep editing','继续编辑'),'review-cancel')}${button(t('Apply example','应用示例'),isFile?'file-apply':'agent-apply','primary',sample==='conflict')}</div>`);}
+document.addEventListener('keydown',()=>{inputMode='keyboard';},true);document.addEventListener('pointerdown',()=>{inputMode='pointer';},true);
+document.querySelector('#language').addEventListener('change',event=>{locale=event.target.value;render();});document.querySelector('#view').addEventListener('change',event=>{view=event.target.value;sample='default';render();});document.querySelector('#sample').addEventListener('change',event=>{sample=event.target.value;render();});
+document.querySelector('#close-review').addEventListener('click',closeReview);review.addEventListener('cancel',event=>{event.preventDefault();closeReview();});
+document.addEventListener('input',event=>{if(event.target.id==='file-source')fileDraft=event.target.value;if(event.target.id==='agent-intent')agentIntent=event.target.value;if(event.target.id==='project-search')for(const row of main.querySelectorAll('[data-project-name]'))row.hidden=!row.dataset.projectName.toLowerCase().includes(event.target.value.trim().toLowerCase());});
+document.addEventListener('change',event=>{if(event.target.id==='restore-mode'){backupMode=event.target.value;}if(event.target.dataset.backupScope){const id=event.target.dataset.backupScope;if(event.target.checked)backupScope.add(id);else backupScope.delete(id);if(backupStep!=='empty'){backupStep=backupScope.size?'ready':'error';render();}}if(event.target.dataset.plugin)toast('Example setting saved. Reload would apply the existing plugin change.','示例设置已保存。正式插件修改会在刷新后生效。');});
+document.addEventListener('click',event=>{
+  const target=event.target.closest('button');if(!target||target.disabled)return;
+  if(target.dataset.scene==='play'){view='dock';render();return;}
+  if(target.dataset.scene){view='previous';render();main.querySelector('iframe').src='discussion-preview-v0.6.html#'+target.dataset.scene;return;}
+  if(target.dataset.view){view=target.dataset.view;sample='default';render();return;}
+  if(target.dataset.panel){const pane=target.dataset.panel;for(const button of main.querySelectorAll('[data-panel] button'))button.setAttribute('aria-pressed',String(button.dataset.panel===pane));main.querySelector('.studio').dataset.panel=pane==='more'?'ai':pane==='preview'?'editor':pane;return;}
+  if(target.dataset.backupPanel){backupPanel=target.dataset.backupPanel;render();return;}
+  const action=target.dataset.action;
+  if(action==='backup-export'||action==='backup-restore'){view='backup';backupPanel='archive';render();return;}
+  if(action==='backup-demo-file'){backupStep=sample==='error'||!backupScope.size?'error':'ready';render();return;}
+  if(action==='backup-demo-start'){openReview(t('Confirm restore','确认恢复'),info('A recovery point is created first. Merge uses the archive version for conflicting paths; replacement and full restore replace their selected scope.','开始前会先保存恢复点。合并时同名文件使用备份版本；替换和完整恢复会替换所选范围。')+button(t('Keep existing data','保留现有数据'),'review-cancel')+button(t('Start example restore','开始示例恢复'),'backup-demo-confirm','primary'));return;}
+  if(action==='backup-demo-confirm'){backupStep='running';closeReview();render();return;}
+  if(action==='backup-demo-cancel'){backupStep='cancelled';render();return;}
+  if(action==='backup-demo-finish'){backupStep='complete';render();return;}
+  if(action?.startsWith('backup-demo-')){toast('Prototype feedback only. Existing product services own these actions.','仅为原型反馈，正式操作仍使用已有服务。');return;}
+  if(action==='retry'){sample='default';render();}
+  if(action==='open-project'||action==='go-agent'){view='agent';render();}
+  if(action==='go-files'){view='files';render();}
+  if(action==='create-project'){const name=main.querySelector('#project-name');if(!name.value.trim()){name.setAttribute('aria-invalid','true');name.focus();document.querySelector('#create-feedback').textContent=t('Enter a project name.','请填写项目名称。');}else toast('Example project created. Product creation uses the real Studio service.','示例项目已创建，正式创建使用真实 Studio 服务。');}
+  if(action==='delete-project')openReview(t('Delete project','删除项目'),info('Project source and edit history would be permanently deleted. Installed works, sessions and saves remain.','此操作会永久删除项目源码和编辑历史。已安装作品、会话和存档仍会保留。')+button(t('Cancel','取消'),'review-cancel')+button(t('Deletion disabled in preview','预览中不执行删除'),'none','danger',true));
+  if(action==='agent-create'){agentPhase='planned';render();}
+  if(action==='agent-continue'){agentPhase='review';render();toast('Example review is ready; the project is not committed.','示例提议已进入审查，项目尚未提交。');}
+  if(action==='agent-inspect'||action==='agent-commit')draftReview('agent');
+  if(action==='agent-takeover'){agentPhase='taken_over';render();}
+  if(action==='agent-new'){agentPhase='draft';sample='default';render();}
+  if(action==='file-review')draftReview('file');
+  if(action==='file-reload')openReview(t('Reload source','重新加载源码'),info('Reload discards the current draft only after you confirm. Cancel keeps its exact contents.','确认后才会舍弃当前草稿并重新加载。取消会保留原文。')+button(t('Keep draft','保留草稿'),'review-cancel')+button(t('Confirm reload example','确认重新加载示例'),'file-confirm-reload','primary'));
+  if(action==='file-confirm-reload'){fileDraft='<template><main node-id="root"><p node-id="welcome">The harbour is quiet.</p></main></template>';closeReview();render();}
+  if(action==='file-assets')toast('Assets file operations share a Workspace with manifest and reference updates.','素材文件操作会和清单、引用更新一同进入工作区。');
+  if(action==='review-cancel')closeReview();
+  if(action==='agent-apply'||action==='file-apply'){target.disabled=true;agentPhase='completed';closeReview();render();toast('Example saved receipt: b91e6c4. No actual project was modified.','示例保存回执：b91e6c4。实际项目未被修改。');}
+  if(action==='login-register'){loginPhase='register';render();}if(action==='login-recovery'){loginPhase='recovery';render();}if(action==='login-back'){loginPhase='account';render();}
+  if(action==='login-submit')toast('Design preview only. Real sign-in uses the existing account service.','仅为设计预览，正式登录使用已有账户服务。');
+  if(action==='oauth')toast('This provider must be enabled by the server administrator.','此登录方式需要管理员在服务器中开启。');
+  if(action==='account-save')toast('Example profile feedback; no account data changed.','示例资料反馈，未修改账户数据。');
+  if(action==='account-password'||action==='account-signout'||action?.startsWith('backup-'))openReview(t('Review account action','确认账户操作'),info('This represents the existing account or Backup & Sync controller. No password, account, backup destination or file is changed here.','此处代表已有账户或备份与同步流程，不会修改密码、账户、备份目标或文件。')+button(t('Return','返回'),'review-cancel'));
+  if(action?.startsWith('plugin-'))toast('Settings and scope are owned by the existing plugin controller.','设置和使用范围仍由已有插件控制器管理。');
+  if(action==='media-edit'){openReview(t('Edit image & mask','编辑图片与遮罩'),mediaEditor());return;}
+  if(action==='mask-example'||action==='mask-undo'){document.querySelector('#example-mask').hidden=action==='mask-undo';return;}
+  if(action==='mask-save'){document.querySelector('#mask-feedback').textContent=t('Example draft saved in this preview only.','示例草稿仅保存在当前预览中。');return;}
+  if(action==='mask-preview'){openReview(t('Confirm image task','确认图片任务'),info('Example target: Harbour image. Cost unknown. The exact image, mask, destination and request version must be reviewed before any real submission.','示例目标：港湾图片。费用未知。正式提交前，需要确认图片、遮罩、目标服务和请求版本。')+field(t('Cost limit for this task','此次任务的金额上限'),'<input type="number" min="0" value="0">')+'<label class="switch-line"><input type="checkbox">'+t('I accept unknown costs for this example','我已了解此示例的费用未知')+'</label>'+button(t('Return without submitting','返回，不提交'),'review-cancel'));return;}
+  if(action?.startsWith('media-'))openReview(action==='media-use'?t('Use this version','使用此版本'):t('Candidate details','候选详情'),info('The actual approval binds the selected candidate and task version. Request cost remains unknown unless the service reports it.','正式批准会绑定所选候选和任务版本。服务未报告时，请求费用保持未知。')+technical({candidate:'example-1',task:'illustration-example',action,source:'design-preview'})+button(t('Return to candidates','返回候选列表'),'review-cancel'));
+  if(action?.startsWith('host-'))toast('Host controls remain available through the existing work interface contract.','宿主控制继续沿用已有作品界面合同。');
+});
+
+function dockReading(){return '<section class="dock-reading"><div class="eyebrow">'+t('HARBOUR LETTERS · DOCK STUDY','港湾来信 · DOCK 交互稿')+'</div><h1>'+t('A little more room<br>for the story.','给故事，<br>多留一点空间。')+'</h1><div class="prose"><p>'+t('The last ferry had left. Only the keeper’s lamp was still lit at the end of the quay.','最后一班渡船已经离开，码头尽头只剩守灯人的一盏灯。')+'</p><p>'+t('You stop beneath the eaves and fold the letter along its old crease. The address has blurred in the rain; the name is still legible. Across the water, someone opens a window.','你在屋檐下站住，沿着旧折痕收好信。雨水洇开了地址，名字却还看得清。水的另一边，有人推开了一扇窗。')+'</p><p>'+t('There is no need to hurry. For a moment, the whole harbour seems to be waiting with you.','不必急着往前走。此刻，整座港湾似乎都在陪你等。')+'</p></div><label><span>'+t('A thought to keep while you try the Dock','试用 Dock 时，可以在这里留一句话')+'</span><textarea id="dock-reading-note" name="dock-reading-note" autocomplete="off" placeholder="'+t('Your words stay here while the Dock moves.','Dock 换位置时，这里的文字会保留。')+'"></textarea></label><details class="dock-howto" open><summary>'+t('Try the interaction','试试这几个动作')+'</summary><ol><li>'+t('Mouse: pause near the chosen screen edge to reveal. Leave for a moment to hide.','鼠标：靠近当前停靠的屏幕边缘，稍停即可唤出；离开一会儿自动收起。')+'</li><li>'+t('Touch: tap the faint handle, or pull it inward. Choose a page or tap the canvas to hide. Scrolling never reveals the Dock.','触屏：轻点淡色把手，或向内拉开；选完页面或点内容区收起。上下滚动不会唤出 Dock。')+'</li><li>'+t('Move: drag the dotted grip with a mouse. On touch, hold either handle before dragging. The outline previews the landing edge.','换边：鼠标拖动圆点把手；触屏先长按把手再拖。虚线轮廓会提示松手后的停靠位置。')+'</li><li>'+t('Escape cancels a move. Keyboard users can reveal above, then use Left, Right or Down on the dotted grip.','Esc 可取消移动。键盘可用上方按钮唤出，再聚焦圆点把手，按左、右或下方向键换边。')+'</li></ol><p class="muted">'+t('This draft keeps positions only until reload. No product preferences or services are changed.','位置仅在本次预览中保留，刷新后复原；不修改产品偏好或调用产品服务。')+'</p></details></section>';}
+
+// Prototype interaction only. No product API, storage, preferences or business state.
+function mountDockPreview() {
+  const dock=document.querySelector('.dock'), skin=document.createElement('span');
+  dock.id='floating-dock'; skin.className='dock-skin'; skin.setAttribute('aria-hidden','true'); dock.prepend(skin);
+  const viewport=document.createElement('div'); viewport.id='dock-viewport'; dock.before(viewport); viewport.append(dock);
+  const grip=document.createElement('button'); grip.type='button'; grip.id='dock-grip'; grip.className='dock-grip'; grip.innerHTML='<span aria-hidden="true">⠿</span>'; dock.insertBefore(grip,dock.querySelector('.brand'));
+  const account=dock.querySelector('[data-view=account]'); delete account.dataset.view; account.id='dock-account'; account.setAttribute('aria-haspopup','menu'); account.setAttribute('aria-expanded','false');
+  const handle=document.createElement('button'); handle.type='button'; handle.className='dock-edge-handle'; handle.id='dock-edge-handle'; handle.setAttribute('aria-controls',dock.id); viewport.append(handle);
+  const menu=document.createElement('div'); menu.id='dock-menu'; menu.className='dock-menu'; menu.setAttribute('role','menu'); menu.hidden=true; viewport.append(menu); account.setAttribute('aria-controls',menu.id);
+  const hint=document.createElement('div'); hint.className='dock-drag-hint'; hint.hidden=true; viewport.append(hint);
+  const guides=['left','right','bottom'].map(edge=>{const el=document.createElement('div'); el.className='dock-snap-guide'; el.dataset.edge=edge; el.setAttribute('aria-hidden','true'); viewport.prepend(el); return el;});
+  const controls=document.createElement('div'); controls.className='dock-preview-controls';
+  controls.innerHTML='<label><span id="dock-mode-label"></span><select id="dock-input"><option value="auto"></option><option value="desktop"></option><option value="touch"></option></select></label><label><span id="dock-edge-label"></span><select id="dock-placement"><option value="left"></option><option value="right"></option><option value="bottom"></option></select></label><button id="dock-reveal" type="button" aria-controls="floating-dock"></button><p id="dock-live" role="status" aria-live="polite"></p>';
+  document.querySelector('#preview-note').after(controls);
+  const input=controls.querySelector('#dock-input'), placement=controls.querySelector('#dock-placement'), reveal=controls.querySelector('#dock-reveal'), live=controls.querySelector('#dock-live');
+  const mq=matchMedia('(max-width:719px)'), coarse=matchMedia('(pointer:coarse)'), reduced=matchMedia('(prefers-reduced-motion:reduce)');
+  const params=new URLSearchParams(location.search); input.value=['desktop','touch'].includes(params.get('input'))?params.get('input'):'auto';
+  let mode='', edge='left', visible=false, menuOpen=false, gesture=null, pendingReveal=0, pendingHide=0, frame=0, lastTime=0, suppressedClick=null;
+  let edges={desktop:'left',touch:'bottom'}, pose={x:0,y:0,vx:0,vy:0}, destination={x:0,y:0}, lastPointer={x:-1,y:-1};
+  let layoutAnimations=[];
+  let measured={w:0,h:0},safe={bottom:0,left:0,right:0};
+  const safeProbe=document.createElement('div');safeProbe.style.cssText='position:absolute;visibility:hidden;pointer-events:none;padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';viewport.append(safeProbe);
+  const edgeName=value=>({left:t('left edge','左侧'),right:t('right edge','右侧'),bottom:t('bottom edge','底部')})[value];
+  const touch=()=>mode==='touch';
+  const note=text=>{live.textContent=text;};
+  const cancelTimers=()=>{clearTimeout(pendingReveal);clearTimeout(pendingHide);pendingReveal=pendingHide=0;};
+  const focusWithin=()=>inputMode==='keyboard'&&(dock.contains(document.activeElement)||menu.contains(document.activeElement));
+  const blocked=()=>Boolean(gesture||menuOpen||focusWithin()||review.open);
+  const box=()=>measured;
+  function targets(open=visible) {
+    const {w,h}=box(), gap=touch()?16:20, bottom=Math.max(16,safe.bottom+8);
+    const off=touch()?12:64;
+    if(edge==='bottom')return {x:innerWidth/2,y:open?innerHeight-bottom-h/2:innerHeight+h/2+off};
+    return {x:open?(edge==='left'?gap+safe.left+w/2:innerWidth-gap-safe.right-w/2):(edge==='left'?-w/2-off:innerWidth+w/2+off),y:Math.max(h/2+12,Math.min(innerHeight-h/2-12,innerHeight*.53))};
+  }
+  function state() {
+    document.body.dataset.dockInput=mode; dock.dataset.edge=edge; handle.dataset.edge=edge; placement.value=edge;
+    dock.inert=!visible||gesture?.kind==='reveal'; dock.setAttribute('aria-hidden',String(!visible));
+    handle.hidden=!touch()||(visible&&!gesture); handle.dataset.captured=String(Boolean(gesture)); handle.setAttribute('aria-expanded',String(visible));
+    reveal.setAttribute('aria-expanded',String(visible)); account.setAttribute('aria-expanded',String(menuOpen));
+    measured={w:dock.offsetWidth,h:dock.offsetHeight};
+  }
+  function paint() {
+    dock.style.visibility='visible'; dock.style.transform=`translate3d(${pose.x}px,${pose.y}px,0) translate(-50%,-50%)`;
+    const a=targets(true),b=targets(false),progress=edge==='bottom'?(b.y-pose.y)/(b.y-a.y):(pose.x-b.x)/(a.x-b.x);
+    dock.style.opacity=touch()&&gesture?.kind!=='move'?String(Math.max(0,Math.min(1,progress*3))):'1';
+  }
+  // Analytic critically damped spring, response 0.3s. Retargets preserve velocity.
+  function tick(time) {
+    const dt=Math.min(.032,Math.max(.001,(time-lastTime)/1000||.016)), omega=2*Math.PI/.3; lastTime=time;
+    for(const [p,v] of [['x','vx'],['y','vy']]){const d=pose[p]-destination[p], c=pose[v]+omega*d, decay=Math.exp(-omega*dt);pose[p]=destination[p]+(d+c*dt)*decay;pose[v]=(pose[v]-omega*c*dt)*decay;}
+    paint();
+    if(Math.hypot(pose.x-destination.x,pose.y-destination.y)<.3&&Math.hypot(pose.vx,pose.vy)<3){pose={...pose,...destination,vx:0,vy:0};paint();frame=0;dock.dataset.state=visible?'visible':'hidden';}
+    else frame=requestAnimationFrame(tick);
+  }
+  function stopSpring(){cancelAnimationFrame(frame);frame=0;lastTime=0;}
+  function moveTo(target,instant=false){destination=target;if(instant||reduced.matches){stopSpring();pose={...pose,...target,vx:0,vy:0};paint();dock.dataset.state=visible?'visible':'hidden';}else if(!frame){lastTime=performance.now();frame=requestAnimationFrame(tick);}}
+  function show(open,{instant=false,force=false}={}) {
+    if(!open&&!force&&blocked())return;
+    cancelTimers();if(!open&&dock.contains(document.activeElement))document.activeElement.blur();visible=open;state();dock.dataset.state=open?'revealing':'hiding';moveTo(targets(),instant);
+  }
+  function inDock(point){const r=dock.getBoundingClientRect();return point.x>=r.left-12&&point.x<=r.right+12&&point.y>=r.top-12&&point.y<=r.bottom+12;}
+  function nearEdge(point){if(point.x<0||point.y<0||point.x>innerWidth||point.y>innerHeight)return false;return edge==='left'?point.x<=8:edge==='right'?point.x>=innerWidth-8:point.y>=innerHeight-8;}
+  function scheduleHide(){if(touch()||blocked())return;clearTimeout(pendingHide);pendingHide=setTimeout(()=>{pendingHide=0;if(!blocked()&&!inDock(lastPointer)&&!nearEdge(lastPointer)){if(frame)scheduleHide();else show(false);}},600);}
+  function pointerMoved(event){
+    if(event.pointerType==='touch'||touch()||gesture)return;
+    lastPointer={x:event.clientX,y:event.clientY};
+    if(nearEdge(lastPointer)){
+      clearTimeout(pendingHide);pendingHide=0;
+      if(!visible&&!pendingReveal)pendingReveal=setTimeout(()=>{pendingReveal=0;if(nearEdge(lastPointer))show(true);},150);
+    }else{clearTimeout(pendingReveal);pendingReveal=0;if(visible){if(inDock(lastPointer)){clearTimeout(pendingHide);pendingHide=0;}else if(!pendingHide)scheduleHide();}}
+  }
+  function morph(next,{instant=false}={}) {
+    const nodes=[...dock.children], before=new Map(nodes.map(el=>[el,el.getBoundingClientRect()]));
+    for(const animation of layoutAnimations)animation.cancel();layoutAnimations=[];
+    edge=next; edges[mode]=next; state(); paint();
+    if(!instant&&!reduced.matches){for(const el of nodes){const a=before.get(el),b=el.getBoundingClientRect();if(!a.width||!b.width)continue;const from=el===skin?`translate(${a.x-b.x}px,${a.y-b.y}px) scale(${a.width/b.width},${a.height/b.height})`:`translate(${a.x-b.x}px,${a.y-b.y}px)`;el.style.transformOrigin='top left';layoutAnimations.push(el.animate([{transform:from},{transform:'none'}],{duration:220,easing:'cubic-bezier(.23,1,.32,1)'}));}}
+  }
+  function chooseEdge(next,{instant=false}={}){cancelGesture();closeMenu();show(true,{instant});morph(next,{instant});moveTo(targets(true),instant);syncLabels();note(t('Dock moved to the ','Dock 已停靠到')+edgeName(next));if(!touch())scheduleHide();}
+  function nearest(x,y,vx=0,vy=0){
+    // Project bounded momentum using the 0.99 deceleration variant.
+    const px=Math.max(0,Math.min(innerWidth,x+(vx/1000)*.99/(1-.99))),py=Math.max(0,Math.min(innerHeight,y+(vy/1000)*.99/(1-.99)));
+    return [['left',px],['right',innerWidth-px],['bottom',innerHeight-py]].sort((a,b)=>a[1]-b[1])[0][0];
+  }
+  function guide(candidate){for(const el of guides)el.dataset.selected=String(el.dataset.edge===candidate);hint.hidden=!candidate;if(candidate)hint.textContent=t('Release to dock at the ','松手停靠到')+edgeName(candidate)+t(' · Esc cancels',' · Esc 取消');}
+  function beginDrag(){
+    if(!gesture)return;
+    closeMenu();if(!visible)show(true,{instant:true});stopSpring();gesture.kind='move';gesture.originPose={x:pose.x,y:pose.y};gesture.originPointer={x:gesture.x,y:gesture.y};gesture.samples=[{x:gesture.x,y:gesture.y,t:performance.now()}];
+    dock.dataset.state='dragging';state();guide(edge);note(t('Move the Dock. Release near an edge; Escape cancels.','移动 Dock，靠近边缘后松手；Esc 可取消。'));
+  }
+  function pointerDown(event){
+    if(!event.isPrimary||event.button!==0){cancelGesture();return;}
+    if(gesture)return;
+    event.preventDefault();cancelTimers();stopSpring();
+    gesture={id:event.pointerId,node:event.currentTarget,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,kind:'pending',beforeEdge:edge,beforeVisible:visible,samples:[]};
+    event.currentTarget.setPointerCapture(event.pointerId); state();
+    if(touch())gesture.hold=setTimeout(beginDrag,450);
+  }
+  function pointerMove(event){
+    const g=gesture;if(!g||g.id!==event.pointerId)return;
+    g.x=event.clientX;g.y=event.clientY;const dx=g.x-g.startX,dy=g.y-g.startY;
+    if(g.kind==='pending'&&Math.hypot(dx,dy)>9){
+      clearTimeout(g.hold);
+      if(!touch()){beginDrag();g.originPointer={x:g.startX,y:g.startY};}
+      else {const inward=edge==='left'?dx:edge==='right'?-dx:-dy,tangent=edge==='bottom'?Math.abs(dx):Math.abs(dy);if(Math.abs(inward)<tangent){g.kind='cancelled';return;}g.kind='reveal';g.shown=targets(true);g.hidden=targets(false);dock.dataset.state='tracking';}
+    }
+    if(g.kind==='move'){
+      pose.x=g.originPose.x+g.x-g.originPointer.x;pose.y=g.originPose.y+g.y-g.originPointer.y;paint();
+      const time=performance.now();g.samples.push({x:g.x,y:g.y,t:time});g.samples=g.samples.filter(s=>time-s.t<90);
+      const first=g.samples[0],dt=Math.max(16,time-first.t)/1000;pose.vx=(g.x-first.x)/dt;pose.vy=(g.y-first.y)/dt;
+      g.candidate=nearest(pose.x,pose.y,pose.vx,pose.vy);guide(g.candidate);
+    }else if(g.kind==='reveal'){
+      const inward=edge==='left'?dx:edge==='right'?-dx:-dy,travel=Math.hypot(g.shown.x-g.hidden.x,g.shown.y-g.hidden.y);
+      g.progress=Math.max(0,Math.min(1,(g.beforeVisible?1:0)+inward/Math.max(44,travel)));
+      pose.x=g.hidden.x+(g.shown.x-g.hidden.x)*g.progress;pose.y=g.hidden.y+(g.shown.y-g.hidden.y)*g.progress;pose.vx=pose.vy=0;paint();
+    }
+  }
+  function release(g){clearTimeout(g.hold);gesture=null;guide(null);if(g.node.hasPointerCapture(g.id))g.node.releasePointerCapture(g.id);suppressedClick={id:g.id,x:g.x,y:g.y,until:performance.now()+600};state();}
+  function pointerUp(event){
+    const g=gesture;if(!g||g.id!==event.pointerId)return;
+    lastPointer={x:event.clientX,y:event.clientY};
+    release(g);
+    if(g.kind==='move'){morph(g.candidate||nearest(pose.x,pose.y),{});visible=true;state();dock.dataset.state='revealing';moveTo(targets(true));syncLabels();note(t('Dock moved to the ','Dock 已停靠到')+edgeName(edge));if(!touch())scheduleHide();}
+    else if(g.kind==='reveal')show(g.progress>=(g.beforeVisible?.65:.35),{force:true});
+    else if(g.kind==='pending'&&touch())show(!g.beforeVisible,{force:true});
+    else show(g.beforeVisible,{force:true});
+  }
+  function cancelGesture({instant=false}={}){const g=gesture;if(!g)return;release(g);if(edge!==g.beforeEdge)morph(g.beforeEdge,{instant});visible=g.beforeVisible;state();moveTo(targets(),instant);note(t('Move cancelled. The Dock returned to its previous position.','已取消移动，Dock 回到原位。'));}
+  function menuPosition(){
+    if(!menuOpen)return;const r=dock.getBoundingClientRect(),w=menu.offsetWidth,h=menu.offsetHeight;
+    const x=edge==='left'?r.right+12:edge==='right'?r.left-w-12:r.right-w;
+    const y=edge==='bottom'?r.top-h-12:r.bottom-h;
+    menu.style.left=Math.max(16,Math.min(innerWidth-w-16,x))+'px';menu.style.top=Math.max(12,Math.min(innerHeight-h-12,y))+'px';
+  }
+  function closeMenu({focus=false}={}){if(!menuOpen)return;menuOpen=false;menu.hidden=true;account.setAttribute('aria-expanded','false');if(focus)account.focus({preventScroll:true});}
+  function toggleMenu(){
+    if(menuOpen){closeMenu({focus:true});return;}cancelTimers();show(true,{instant:inputMode==='keyboard'});menuOpen=true;menu.hidden=false;account.setAttribute('aria-expanded','true');menuPosition();
+    if(!reduced.matches&&inputMode!=='keyboard'){const direction=edge==='bottom'?'translateY(6px)':edge==='left'?'translateX(-6px)':'translateX(6px)';menu.animate([{opacity:0,transform:direction},{opacity:1,transform:'none'}],{duration:180,easing:'cubic-bezier(.23,1,.32,1)'});}
+    menu.querySelector('[role=menuitem]')?.focus({preventScroll:true});
+  }
+  function outside(event){if(!visible||gesture||dock.contains(event.target)||menu.contains(event.target)||event.target===handle||controls.contains(event.target))return;closeMenu();if(touch())show(false,{force:true});else scheduleHide();}
+  function keydown(event){
+    if(event.defaultPrevented||event.isComposing||event.keyCode===229||review.open)return;
+    if(event.key==='Escape'){if(gesture){event.preventDefault();cancelGesture({instant:true});}else if(menuOpen){event.preventDefault();closeMenu({focus:true});}else if(visible){event.preventDefault();show(false,{instant:true,force:true});reveal.focus({preventScroll:true});}}
+  }
+  function syncLabels(){
+    document.querySelector('#dock-skip').textContent=t('Skip to content','跳到正文');
+    controls.querySelector('#dock-mode-label').textContent=t('Try with','体验方式');
+    for(const [value,label] of [['auto',t('Follow window','跟随窗口')],['desktop',t('Mouse','鼠标')],['touch',t('Touch','触屏')]])input.querySelector(`[value=${value}]`).textContent=label;
+    controls.querySelector('#dock-edge-label').textContent=t('Dock edge','停靠位置');placement.setAttribute('aria-label',t('Dock edge','停靠位置'));input.setAttribute('aria-label',t('Input preview','体验方式'));
+    for(const e of ['left','right','bottom'])placement.querySelector(`[value=${e}]`).textContent=edgeName(e);
+    reveal.textContent=t('Reveal Dock','唤出 Dock');handle.setAttribute('aria-label',t('Reveal Dock; hold to move','展开 Dock；长按可移动'));
+    grip.setAttribute('aria-label',touch()?t('Hide Dock; hold to move','收起 Dock；长按可移动'):t('Drag Dock to another edge','拖动 Dock 换边'));
+    grip.title=t('Drag to an edge. Keyboard: Left, Right or Down.','拖到边缘换位置；键盘可按左、右或下方向键。');
+    account.setAttribute('aria-label',t('Account and tools','账户与工具'));menu.setAttribute('aria-label',t('Account and tools','账户与工具'));
+    menu.innerHTML=`<div class="menu-caption">${t('WORKSPACES','工作区')}</div><button role="menuitem" type="button" data-scene="agents">${t('Agents','智能体')}</button><button role="menuitem" type="button" data-scene="runtime">${t('Runtime','运行配置')}</button><button role="menuitem" type="button" data-scene="settings">${t('Settings','设置')}</button><div class="menu-caption">${t('TOOLS','工具')}</div><button role="menuitem" type="button" data-view="account">${t('Account','账户')}</button><button role="menuitem" type="button" data-view="backup">${t('Backup & sync','备份与同步')}</button><button role="menuitem" type="button" data-view="extensions">${t('Extensions','扩展')}</button><div class="menu-caption">${t('DOCK POSITION','停靠位置')}</div><div class="edge-choices">${['left','right','bottom'].map(e=>`<button type="button" data-dock-edge="${e}" role="menuitemradio" aria-checked="${edge===e}">${edgeName(e)}</button>`).join('')}</div>`;
+    for(const el of dock.querySelectorAll('button[data-scene],button[data-view]')){let tip=el.querySelector('.dock-tip');if(!tip){tip=document.createElement('span');tip.className='dock-tip';tip.setAttribute('aria-hidden','true');el.append(tip);}tip.textContent=el.getAttribute('aria-label');}
+    if(!gesture)note(touch()?t('Tap the handle · hold to move','轻点把手展开 · 长按换边'):t('Move the pointer to the '+edge+' edge','鼠标靠近'+edgeName(edge)+'边缘唤出'));
+    if(view==='login'){cancelGesture({instant:true});closeMenu();show(false,{instant:true,force:true});}
+    else if(!visible&&!gesture)moveTo(targets(),true);
+  }
+  function configure(){
+    cancelGesture({instant:true});closeMenu();const next=input.value==='auto'?(mq.matches||coarse.matches?'touch':'desktop'):input.value;
+    const s=getComputedStyle(safeProbe);safe={bottom:parseFloat(s.paddingBottom)||0,left:parseFloat(s.paddingLeft)||0,right:parseFloat(s.paddingRight)||0};
+    mode=next;edge=edges[mode];state();syncLabels();show(false,{instant:true,force:true});
+  }
+  for(const el of [handle,grip]){
+    el.addEventListener('pointerdown',pointerDown);el.addEventListener('pointermove',pointerMove);el.addEventListener('pointerup',pointerUp);el.addEventListener('pointercancel',()=>cancelGesture());el.addEventListener('lostpointercapture',()=>cancelGesture());el.addEventListener('contextmenu',event=>event.preventDefault());
+    el.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();if(event.detail===0)show(!visible,{instant:true,force:true});});
+    el.addEventListener('keydown',event=>{if(event.isComposing||event.keyCode===229)return;const e={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'bottom'}[event.key];if(e){event.preventDefault();chooseEdge(e,{instant:true});grip.focus({preventScroll:true});}});
+  }
+  account.addEventListener('click',event=>{event.stopPropagation();toggleMenu();});
+  menu.addEventListener('click',event=>{const chosen=event.target.closest('[data-dock-edge]');if(chosen){chooseEdge(chosen.dataset.dockEdge,{instant:event.detail===0});return;}if(event.target.closest('[data-view],[data-scene]')){queueMicrotask(()=>{closeMenu();if(touch())show(false,{force:true});else scheduleHide();});}});
+  menu.addEventListener('keydown',event=>{if(event.isComposing||event.keyCode===229)return;const items=[...menu.querySelectorAll('button')],index=items.indexOf(document.activeElement);if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowDown'?1:-1)+items.length)%items.length;items[next].focus();}});
+  dock.addEventListener('click',event=>{if(event.target.closest('[data-scene],[data-view]'))queueMicrotask(()=>{if(touch())show(false,{force:true});else scheduleHide();});});
+  dock.addEventListener('pointerleave',scheduleHide);dock.addEventListener('focusin',()=>{cancelTimers();if(!visible)show(true,{instant:true});});
+  for(const el of [dock,menu])el.addEventListener('focusout',()=>queueMicrotask(()=>{if(inputMode==='keyboard'&&!focusWithin())scheduleHide();}));
+  document.addEventListener('pointerdown',()=>{suppressedClick=null;},true);
+  document.addEventListener('click',event=>{const old=suppressedClick;suppressedClick=null;if(old&&performance.now()<old.until&&event.pointerId===old.id&&Math.hypot(event.clientX-old.x,event.clientY-old.y)<12){event.preventDefault();event.stopImmediatePropagation();}},true);
+  document.addEventListener('pointermove',pointerMoved,{passive:true});document.addEventListener('pointerdown',outside);document.addEventListener('keydown',keydown);
+  document.addEventListener('pointerdown',event=>{if(gesture&&event.pointerId!==gesture.id)cancelGesture();});
+  document.addEventListener('pointerleave',()=>{lastPointer={x:-100,y:-100};scheduleHide();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelGesture({instant:true});closeMenu();show(false,{instant:true,force:true});}});
+  window.addEventListener('blur',()=>{cancelGesture({instant:true});closeMenu();show(false,{instant:true,force:true});});
+  window.addEventListener('resize',()=>{cancelGesture({instant:true});if(input.value==='auto'&&mode!==(mq.matches||coarse.matches?'touch':'desktop'))configure();else{state();const s=getComputedStyle(safeProbe);safe={bottom:parseFloat(s.paddingBottom)||0,left:parseFloat(s.paddingLeft)||0,right:parseFloat(s.paddingRight)||0};moveTo(targets(),true);menuPosition();}});
+  reduced.addEventListener('change',()=>{for(const a of layoutAnimations)a.cancel();moveTo(targets(),true);});
+  input.addEventListener('change',configure);placement.addEventListener('change',()=>chooseEdge(placement.value,{instant:true}));
+  reveal.addEventListener('click',event=>{show(true,{instant:event.detail===0});dock.querySelector('button[data-scene]')?.focus({preventScroll:true});});
+  configure(); if(['left','right','bottom'].includes(params.get('edge'))){edge=params.get('edge');edges[mode]=edge;state();moveTo(targets(),true);syncLabels();}
+  return {syncLabels,bindFrame(frame){frame.addEventListener('load',()=>{try{const doc=frame.contentDocument,style=doc.createElement('style');style.textContent='.spatial-dock{display:none!important}#canvas{margin-left:0!important}';doc.head.append(style);doc.addEventListener('pointerdown',()=>{closeMenu();if(touch())show(false,{force:true});});doc.addEventListener('keydown',keydown);}catch{/* Same-origin preview only. */}});}};
+}
+
+const dockPreview=mountDockPreview();
+render();
+</script>
+</body>
+</html>

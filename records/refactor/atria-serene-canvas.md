@@ -179,3 +179,13 @@ Regex启动独立于打开设置，打开会话及开始生成等待对应作用
 所有实施阶段继续推进至本次已授权范围完成，没有阶段停工或HANDOFF。重新核对实际Git后，保留并合入另一任务的`main@493ed814b`，自动合并重叠文件后检查实际组合并执行上述相关复测；产品实现`9eebc6c19`加最后Run测试后，最终`main@ec51db9a9`包含两项任务内容，已核对远端同提交。产品与docs保持独立，不合入package/plugin/skills工作空间；其他任务的未跟踪企划保留。main已在另一独立产品工作树签出，本任务产品目录保留相同提交的detached签出，清理自己的临时语义分支，不移动或移除其他工作树。
 
 v0.7仅补充代表布局与内存演示，未获得新视觉基线接受；v0.1视觉与已纳入方案的v0.6继续决定方向。真实手机软键盘/触屏硬件、真实第三方模型规划/图片质量/费用、未提供的数据库环境没有通过证据；这些不由原型、测试夹具或浏览器尺寸模拟冒充。没有新增选文重生成、框架迁移、自动合并、强制覆盖或撤销已发出提交。
+
+## D2 — Dock 边缘交互 HTML（2026-10-15）
+
+本轮仅授权补充 HTML，让用户先体验后讨论。开始时重新核对实际Git：产品工作区为干净的 detached `ec51db9a9`；文档为 `docs@88eb5c1c4`，另一任务未跟踪的 `plans/feat/agent-experience-evolution/` 保留。全部修改位于docs语义分支，没有修改产品代码或主分支。
+
+新增独立 [v0.8 HTML](../../plans/refactor/atria-serene-canvas/references/discussion-preview-v0.8.html)，保留v0.7原样；[dock.md](../../plans/refactor/atria-serene-canvas/dock.md)作为本项详细交互权威，更新Plan路由与已确定取舍。桌面完全隐藏后边缘唤出、触屏把手和明确收起、不以滚动唤出、长按换边均可实际试玩；其余说明与参数只见该模块。
+
+实际执行：内联模块语法、Git diff检查；1440px三边唤出/收起、鼠标/键盘/菜单/取消/输入保持；390/320px触摸长按/短滑/取消/选择后收起/滚动不唤出/减动快速重复；900px构图与320px双语；高级域原型入口、快速反向、IME。失败均定位并修复后复测，具体原型证据与动效审查表只归 [references/README.md](../../plans/refactor/atria-serene-canvas/references/README.md#v08-dock-actual-prototype-checks)。本次没有产品API调用，pageerror为0；本机4倍CPU采样100帧间隔的p95为16.8ms，不能代替真机/完整trace。
+
+明确调用review-animations，结论Approve仅限v0.8新增范围；web-design-guidelines修复高级域入口、菜单单选语义与跳到正文路径。当前仅设计稿交付，等待交互反馈；产品接入、位置持久化、最终键盘入口和真实手机系统手势尚未验收。此前I4已完成产品结果保持，不把新原型当作产品新增功能验收。
