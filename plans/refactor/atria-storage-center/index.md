@@ -1,7 +1,7 @@
 # Atria 资源占用与安全清理中心 — Plan Index
 
 - Task ID: `atria-storage-center`
-- Status: Completed；已实施、完成适用本地验证并集成 main；实际证据与环境边界见 Record。
+- Status: Completed；核心重构及已确认 HTML 草稿的 UI 实装均完成、完成适用本地验证并集成 main；实际证据与环境边界见 Record。
 - Primary Workspace: `main` 产品源码；正式实施使用该任务的语义工作分支。
 - 文档工作空间: `docs`。
 - 方案日期: 2026-10-15。
