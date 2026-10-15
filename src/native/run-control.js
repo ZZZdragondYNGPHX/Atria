@@ -3,7 +3,7 @@ import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../publ
 import { getNativeDocument, putMutable, hashNativeDocument } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
-import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger, hasOpenComputeReservations,
+import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger, hasOpenComputeReservations, hasRetainedOrchestrationCompute,
     reserveComputeChild, releaseComputeChild, admitComputeAttempt } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
 import { assertSessionTaskHistory, sessionTaskHistoryLimits, completeSessionTaskHistory, sessionTaskPublicSummary } from '../../public/shared/native-session-task-history.js';
@@ -24,7 +24,8 @@ function selectSessionTaskHistory(control, snapshot, operation, id, identity) {
 }
 function retireOperations(control, keep) {
     control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => {
-        if (keep(op) || hasOpenComputeReservations(op.compute) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) return true;
+        if (keep(op) || hasRetainedOrchestrationCompute(op.compute) || Object.values(op.externalTasks ?? {}).some(row => row.orchestrationBinding)
+            || hasOpenComputeReservations(op.compute) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) return true;
         if (op.compute) control.retiredCompute = retireComputeLedger(control.retiredCompute, op.compute);
         return false;
     }));
@@ -185,10 +186,12 @@ export class RunControl {
             // Admission must already have charged the same original bank.
             if (!op?.compute) throw runFailure('native_a2a_budget_unavailable');
             op.externalTasks ??= {};
-            for (const [id, row] of Object.entries(op.externalTasks)) if (row.expiresAt <= Date.now()) delete op.externalTasks[id];
+            for (const [id, row] of Object.entries(op.externalTasks)) if (row.expiresAt <= Date.now() && !row.orchestrationBinding) delete op.externalTasks[id];
             if (!op.externalTasks[operationId] && Object.keys(op.externalTasks).length >= 32) throw runFailure('native_a2a_retention_limit');
             if (op.externalTasks[operationId] && hashNativeDocument(op.externalTasks[operationId].orchestrationBinding ?? null)
                 !== hashNativeDocument(record.orchestrationBinding ?? null)) throw new ConflictError('native_a2a_orchestration_binding_conflict');
+            if (op.externalTasks[operationId]?.acceptedReceipt && hashNativeDocument(op.externalTasks[operationId].acceptedReceipt)
+                !== hashNativeDocument(record.acceptedReceipt ?? null)) throw new ConflictError('native_a2a_accepted_receipt_conflict');
             op.externalTasks[operationId] = structuredClone(record);
             return structuredClone(record);
         }, 'generate');

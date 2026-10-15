@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
-import { BudgetPort, sendAttemptId } from '../../src/native/orchestration/budget-port.js';
+import { BudgetPort, sendAttemptId, localWorkAttemptId } from '../../src/native/orchestration/budget-port.js';
+import { StorageCommitUnknownError } from '../../src/storage/errors.js';
 import { RpRunControl, rpOperationInput } from '../../src/native/rp-run-control.js';
 import { ChatRepo } from '../../src/storage/repositories/chat-repo.js';
 import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecycle.js';
@@ -106,6 +107,10 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             expect(result.routing.compute.attempts.map(row => row.attemptId)).toEqual([0, 1, 2].map(n => sendAttemptId(f.effectId, n)));
             expect(result.routing.compute.attempts.map(row => row.status)).toEqual(['unknown', 'unknown', 'settled']);
             expect(result.routing.compute.localWork.every(row => row.status === 'settled')).toBe(true);
+            for (const row of result.routing.compute.localWork) {
+                expect(row.orchestration).toMatchObject({ kind: 'local_work', effectId: f.effectId });
+                expect(row.attemptId).toBe(localWorkAttemptId(f.effectId, row.orchestration.ordinal));
+            }
             expect(domain === 'rp_chat' ? JSON.stringify(f.seen[0]) : 'Host-owned RP input').toContain('Host-owned RP input');
             await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: { bank: f.bank() } })).rejects.toMatchObject({ code: 'native_orchestration_send_replayed' });
             expect(f.seen).toHaveLength(3);
@@ -136,6 +141,26 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
                 { orchestrationSend: { bank: f.bank() } })).rejects.toMatchObject({ code: 'native_generation_context_denied' });
             await expect(f.host.execute(f.handle, { ...f.request, orchestrationSend: {} })).rejects.toMatchObject({ code: 'native_generation_host_readonly' });
             expect(f.seen).toHaveLength(1);
+        } finally { await f.cleanup(); }
+    });
+
+    test('unknown local admission ACK observes its exact stable row and neither runs work again nor sends HTTP', async () => {
+        const f = await fixture(make, 'session');
+        try {
+            const charge = f.port.chargeLocalWork.bind(f.port), observe = f.port.observeAttempt.bind(f.port);
+            let charged = 0, observed = 0;
+            f.port.chargeLocalWork = async (...args) => { charged++; await charge(...args); throw new StorageCommitUnknownError(new Error('Synthetic local admission ACK loss')); };
+            f.port.observeAttempt = async (...args) => { observed++; return observe(...args); };
+            const bank = f.bank();
+            await expect(bank.chargeLocalWork(limits, { attemptId: 'unminted' })).rejects.toMatchObject({ code: 'native_orchestration_budget_attempt_invalid' });
+            await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: { bank } })).rejects.toMatchObject({ code: 'native_orchestration_budget_reconcile_required' });
+            expect(charged).toBe(1); expect(observed).toBe(1); expect(bank.nextOrdinal()).toBe(0); expect(f.seen).toHaveLength(0);
+            const ref = { kind: 'local_work', authorityRef: f.authorityRef, effectId: f.effectId, localWorkOrdinal: 0,
+                attemptId: localWorkAttemptId(f.effectId, 0), reservationId: f.childRunId };
+            expect(await observe(f.handle, ref)).toMatchObject({ status: 'charged', orchestration: { kind: 'local_work', effectId: f.effectId, ordinal: 0 } });
+            f.port.chargeLocalWork = charge;
+            await expect(f.host.execute(f.handle, f.request, undefined, undefined, { orchestrationSend: { bank: f.bank() } })).rejects.toMatchObject({ code: 'native_orchestration_send_replayed' });
+            expect(f.seen).toHaveLength(0);
         } finally { await f.cleanup(); }
     });
 

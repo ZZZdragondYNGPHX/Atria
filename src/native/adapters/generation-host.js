@@ -1099,7 +1099,7 @@ export class NativeGenerationHost {
             if (preview) return operation();
             checkCancellation(signal);
             const limits = request.resolved.effectiveExecutionPolicy?.computeBudget;
-            const attempt = { attemptId: randomUUID(), requestId: input.requestId, kind, estimatedItems: 1,
+            const attempt = { attemptId: sendBank ? sendBank.nextLocalWorkAttemptId() : randomUUID(), requestId: input.requestId, kind, estimatedItems: 1,
                 estimatedInputBytes: Buffer.byteLength(JSON.stringify(publicInput ?? { contextPlan: request.contextPlan ?? request.snapshot.contextPlan,
                     promptIr: request.promptIr ?? request.snapshot.promptIr }), 'utf8'),
                 targetFingerprint: hashNativeDocument({ path: request.resolved.pathFingerprint, kind }) };

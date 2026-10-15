@@ -5,6 +5,9 @@ import { executeProjectSkillWork } from '../skill-invocation.js';
 import { checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { localWorkAttemptId } from './budget-port.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
+import { assertA2aAcceptanceBinding } from '../../../public/shared/native-run-contract.js';
+import { readEffect } from './effect-contracts.js';
+import { readRunControl } from '../run-control.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 const supported = { mcp: ['tool', 'resource'], a2a: ['send'], skill: ['list', 'pin', 'read', 'files', 'catalog'] };
@@ -20,10 +23,15 @@ function workLimits(granted, route) {
 // Internal Host adapter only. Descriptors, inputs and grants come from original
 // authorities, never from remote metadata or a browser's approval Boolean.
 export class ToolPort {
-    constructor({ mcpService, a2aService, skillAuthority, budgetPort, verifyDispatch, readInput, authorizeTool, credentialAuthority }) {
+    constructor({ mcpService, a2aService, skillAuthority, budgetPort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs }) {
         if (![verifyDispatch, readInput, authorizeTool].every(fn => typeof fn === 'function') || !budgetPort)
             throw new TypeError('ToolPort requires original dispatch, input, grant and budget authorities');
-        Object.assign(this, { mcpService, a2aService, skillAuthority, budgetPort, verifyDispatch, readInput, authorizeTool, credentialAuthority });
+        Object.assign(this, { mcpService, a2aService, skillAuthority, budgetPort, verifyDispatch, readInput, authorizeTool, credentialAuthority, runs });
+    }
+
+    #acceptanceBinding(intent) {
+        return assertA2aAcceptanceBinding(Object.fromEntries(['schemaVersion', 'runId', 'effectId', 'epoch', 'sourceBindingDigest', 'grantDigest',
+            'inputHash', 'endpointBindingDigest', 'budgetEnvelopeDigest', 'budgetAttemptRef'].map(key => [key, intent[key]])));
     }
 
     async execute(handle, request, { signal } = {}) {
@@ -84,13 +92,26 @@ export class ToolPort {
         if (hash(intent.budgetAttemptRef?.authorityRef ?? null) !== hash(root.budgetAuthorityRef))
             fail('native_orchestration_tool_budget_unavailable');
         let ordinal = intent.budgetAttemptRef.kind === 'local_work' ? intent.budgetAttemptRef.localWorkOrdinal + 1 : 0;
+        const localWorkAttemptIds = [];
+        const localOrdinals = new Map();
         const work = {
             orchestrationBinding: { schemaVersion: 1, runId: root.runId, effectId: intent.effectId,
                 sourceBindingDigest: intent.sourceBindingDigest, grantDigest: intent.grantDigest },
+            ...(action.protocol === 'a2a' && this.runs ? { acceptanceBinding: this.#acceptanceBinding(intent) } : {}),
+            localWorkAttemptIds: () => [...localWorkAttemptIds],
             assertCurrent: authorize,
-            nextAttemptId: () => localWorkAttemptId(intent.effectId, ordinal++),
-            chargeLocalWork: (routeLimits, attempt) => this.budgetPort.chargeLocalWork(handle,
-                { authorityRef: root.budgetAuthorityRef, reservationId, limits: workLimits(grant.limits, routeLimits), attempt }),
+            nextAttemptId: () => {
+                const next = ordinal++, attemptId = localWorkAttemptId(intent.effectId, next);
+                localOrdinals.set(attemptId, next); return attemptId;
+            },
+            chargeLocalWork: async (routeLimits, attempt) => {
+                if (!localOrdinals.has(attempt.attemptId)) fail('native_orchestration_tool_budget_unavailable');
+                const row = await this.budgetPort.chargeLocalWork(handle,
+                    { authorityRef: root.budgetAuthorityRef, reservationId, limits: workLimits(grant.limits, routeLimits), attempt,
+                        effectId: intent.effectId, localWorkOrdinal: localOrdinals.get(attempt.attemptId) });
+                if (row) localWorkAttemptIds.push(attempt.attemptId);
+                return row;
+            },
             settleLocalWork: (attemptId, usage) => this.budgetPort.settleLocalWork(handle, root.budgetAuthorityRef, attemptId, usage),
         };
         if (captured) {
@@ -117,8 +138,54 @@ export class ToolPort {
         return { outcome: 'unknown', operationRef: null, receiptRef: null, result };
     }
 
-    async observe(handle, operationRef) {
+    async #acceptedObservation({ handle, tx, root, intent, operationRef }) {
+        fields(operationRef, ['protocol', 'operationId', 'sessionId'], 'A2A accepted operation reference');
+        if (intent.actionRef.protocol !== 'a2a' || intent.actionRef.operation !== 'send' || root.ownerRef.handle !== handle
+            || root.sourceBinding.sourceAuthority !== 'native_session' || operationRef.protocol !== 'a2a'
+            || operationRef.sessionId !== root.sourceBinding.sourceRef.sessionId) return null;
+        const anchor = { branchId: root.sourceBinding.sourceRef.branchId, revisionId: root.sourceBinding.sourceRef.revisionId };
+        const receipt = await this.a2aService?.acceptedObservation(handle, { ...operationRef, anchor }, { tx });
+        if (!receipt || hash(receipt.binding) !== hash(this.#acceptanceBinding(intent))
+            || hash(receipt.binding.budgetAttemptRef.authorityRef) !== hash(root.budgetAuthorityRef)) return null;
+        const ref = receipt.binding.budgetAttemptRef, firstOrdinal = ref.localWorkOrdinal + 1;
+        if (receipt.localWorkAttemptIds.some((id, i) => id !== localWorkAttemptId(intent.effectId, firstOrdinal + i))) return null;
+        const bank = (await readRunControl(tx, handle, operationRef.sessionId))?.operations[root.budgetAuthorityRef.operationId]?.compute;
+        const attemptIds = [ref.attemptId, ...receipt.localWorkAttemptIds];
+        if (attemptIds.some((id, i) => {
+            const row = bank?.localWork?.find(item => item.attemptId === id);
+            return !row || row.status !== 'settled' || row.usage?.outcome !== 'completed' || (row.reservationId ?? null) !== ref.reservationId
+                || hash(row.orchestration ?? null) !== hash({ kind: 'local_work', effectId: intent.effectId, ordinal: ref.localWorkOrdinal + i });
+        })) return null;
+        await this.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: ref });
+        const receiptRef = { ...operationRef, receiptDigest: hash(receipt) };
+        return { observationId: 'a2a.accepted:' + operationRef.operationId, observedEpoch: intent.epoch, outcome: 'confirmed',
+            dispatchEvidence: { kind: 'original_port_observation', reference: receiptRef }, remoteOperationRef: operationRef, domainReceiptRef: null,
+            budgetObservationRef: { authorityRef: root.budgetAuthorityRef, attemptIds, receiptDigest: hash(receipt) }, resultRefs: [],
+            sourceRefs: [root.sourceBinding.sourceRef], reasonCode: 'a2a_send_accepted' };
+    }
+
+    // EffectController invokes this inside its transaction. Historical accepted
+    // facts are checked against the frozen Effect, never a fresh send claim.
+    async verifyObservation({ handle, tx, root, intent, observation }) {
+        const persisted = (await readEffect(tx, handle, root, intent.effectId)).doc;
+        if (hash(persisted) !== hash(intent)) fail('native_orchestration_tool_observation_invalid');
+        const expected = await this.#acceptedObservation({ handle, tx, root, intent, operationRef: observation.remoteOperationRef ?? {} });
+        if (!expected || hash(expected) !== hash(observation)) fail('native_orchestration_tool_observation_invalid');
+        return expected;
+    }
+
+    async observe(handle, operationRef, effectRef) {
         fields(operationRef, ['protocol', 'operationId', 'sessionId'], 'Tool operation reference');
+        if (operationRef.protocol === 'a2a' && effectRef && this.runs) {
+            fields(effectRef, ['runId', 'effectId'], 'Tool Effect reference');
+            const observation = await this.runs.engine.withTransaction(handle, async tx => {
+                const root = await this.runs.get(handle, effectRef.runId);
+                const intent = (await readEffect(tx, handle, root, effectRef.effectId)).doc;
+                return this.#acceptedObservation({ handle, tx, root, intent, operationRef });
+            });
+            if (observation) return { outcome: 'confirmed', operationRef, receiptRef: observation.dispatchEvidence.reference, observation };
+            return { outcome: 'unknown', operationRef, receiptRef: null, reason: 'native_a2a_accepted_receipt_unavailable' };
+        }
         const service = operationRef.protocol === 'mcp' ? this.mcpService : operationRef.protocol === 'a2a' ? this.a2aService : null;
         if (!service) fail('native_orchestration_tool_action_unavailable');
         const { protocol: _protocol, ...ref } = operationRef;

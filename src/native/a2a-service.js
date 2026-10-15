@@ -5,7 +5,9 @@ import { SessionPublicWork } from './session-public-work.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
 import { immutable, checkCancellation, containsSecret } from './model-prompt-runtime/execution-utils.js';
 import { createA2aHttpClient } from './a2a-http-client.js';
-import { assertExternalTaskOrchestrationBinding } from '../../public/shared/native-run-contract.js';
+import { assertExternalTaskOrchestrationBinding, assertA2aAcceptanceBinding, assertA2aAcceptedReceipt } from '../../public/shared/native-run-contract.js';
+import { canonicalCredentialTarget } from './model-prompt-runtime/credential-targets.js';
+import { readRunControl } from './run-control.js';
 
 const states = new WeakMap(), terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
@@ -50,7 +52,8 @@ export class A2aService {
     async _persist(record, status) {
         const retained = { protocol: 'a2a', input: record.input, fingerprint: record.captured.fingerprint,
             identity: record.identity, status, expiresAt: record.expiresAt,
-            ...(record.orchestrationBinding ? { orchestrationBinding: record.orchestrationBinding } : {}) };
+            ...(record.orchestrationBinding ? { orchestrationBinding: record.orchestrationBinding } : {}),
+            ...(record.acceptedReceipt ? { acceptedReceipt: record.acceptedReceipt } : {}) };
         for (const operationId of record.aliases) await this.host.sessionCore.runs.externalTask(record.owner, record.input.sessionId,
             { branchId: record.captured.base.revision.branchId, revisionId: record.input.revisionId }, operationId, retained);
         record.durableStatus = status;
@@ -67,11 +70,18 @@ export class A2aService {
         checkCancellation(signal); this._prune();
         const captured = await this.publicWork.capture(handle, input);
         if (captured.fallback) return captured.fallback;
+        const acceptanceBinding = trustedWork?.acceptanceBinding ? structuredClone(assertA2aAcceptanceBinding(trustedWork.acceptanceBinding)) : null;
+        if (acceptanceBinding && (hash(input) !== acceptanceBinding.inputHash
+            || hash(canonicalCredentialTarget(captured.connection)) !== acceptanceBinding.endpointBindingDigest
+            || acceptanceBinding.budgetAttemptRef.authorityRef.sessionId !== input.sessionId
+            || acceptanceBinding.budgetAttemptRef.authorityRef.operationId !== hash({ lane: 'turn', anchor: { branchId: captured.base.revision.branchId, revisionId: input.revisionId } })
+            || ['runId', 'effectId', 'sourceBindingDigest', 'grantDigest'].some(key => acceptanceBinding[key] !== orchestrationBinding[key])))
+            fail('native_a2a_acceptance_binding_invalid');
         if (!captured.route.executionPolicy.computeBudget?.localWork) return { status: 'fallback', reason: 'native_a2a_budget_unavailable' };
         if (this.state.records.size >= 128) fail('native_a2a_retention_limit');
         await this.publicWork.work(handle, input, captured, signal, async () => {}, 'context_build', trustedWork);
         const record = { owner: handle, scheduler: this.scheduler, input, captured, identity: null, artifact: null, failure: null,
-            expiresAt: this.now() + this.retentionMs, latestOperationId: null, dispatched: false, aliases: new Set(), trustedWork, orchestrationBinding };
+            expiresAt: this.now() + this.retentionMs, latestOperationId: null, dispatched: false, aliases: new Set(), trustedWork, orchestrationBinding, acceptanceBinding };
         return this._submit(record, 'send', signal);
     }
     async _submit(record, action, signal) {
@@ -132,6 +142,14 @@ export class A2aService {
             },
             finalize: async artifact => {
                 if (!await this.publicWork.fresh(handle, input, captured)) fail('native_a2a_source_stale');
+                if (action === 'send' && record.acceptanceBinding) {
+                    const sendEvidence = artifact.provenance.evidence.find(item => item.method === 'SendMessage');
+                    if (!sendEvidence) fail('native_a2a_acceptance_evidence_missing');
+                    record.acceptedReceipt = assertA2aAcceptedReceipt({ schemaVersion: 1, kind: 'a2a_send_accepted', operationId: record.latestOperationId,
+                        binding: record.acceptanceBinding, sourceFingerprint: captured.fingerprint, requestFingerprint: sendEvidence.requestFingerprint,
+                        responseFingerprint: sendEvidence.responseFingerprint, responseKind: artifact.result.task ? 'task' : 'message',
+                        localWorkAttemptIds: record.trustedWork.localWorkAttemptIds() });
+                }
                 await this._persist(record, 'completed'); record.artifact = artifact; return artifact;
             },
         });
@@ -149,6 +167,19 @@ export class A2aService {
         checkCancellation(signal);
         if (!await this.publicWork.fresh(handle, record.input, record.captured)) fail('native_a2a_source_stale');
         return this._submit(record, 'get', signal);
+    }
+    // Historical factual read only: no capture/fresh, HTTP request or send claim.
+    async acceptedObservation(handle, { operationId, sessionId, anchor }, { tx } = {}) {
+        const control = tx ? await readRunControl(tx, handle, sessionId) : null;
+        const row = tx ? control?.operations[hash({ lane: 'turn', anchor })]?.externalTasks?.[operationId]
+            : await this.host.sessionCore.runs.externalTask(handle, sessionId, anchor, operationId);
+        if (!row?.acceptedReceipt) return null;
+        const receipt = assertA2aAcceptedReceipt(row.acceptedReceipt);
+        if (receipt.operationId !== operationId || row.protocol !== 'a2a' || row.status !== 'completed' || receipt.sourceFingerprint !== row.fingerprint
+            || hash(row.input) !== receipt.binding.inputHash || row.input.sessionId !== sessionId || row.input.revisionId !== anchor.revisionId
+            || ['runId', 'effectId', 'sourceBindingDigest', 'grantDigest'].some(key => receipt.binding[key] !== row.orchestrationBinding?.[key]))
+            fail('native_a2a_acceptance_receipt_invalid');
+        return immutable(receipt);
     }
     async status(handle, raw) {
         const record = await this._record(handle, raw), current = await this.publicWork.fresh(handle, record.input, record.captured);

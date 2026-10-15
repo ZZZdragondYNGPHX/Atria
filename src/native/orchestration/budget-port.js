@@ -3,6 +3,7 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
+import { orchestrationComputeAttemptId } from '../../../public/shared/native-compute-budget.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
 // banks. It owns no ledger, price or limit; every decision is the original
@@ -15,13 +16,13 @@ const ADMITTED = new Set(['charged', 'unknown', 'settled']);
 export function sendAttemptId(effectId, providerSendOrdinal) {
     assertNativeId(effectId, 'orchestrationEffect');
     if (!Number.isSafeInteger(providerSendOrdinal) || providerSendOrdinal < 0 || providerSendOrdinal > 1023) fail('native_orchestration_send_ordinal_invalid');
-    return hashNativeDocument({ effectId, providerSendOrdinal });
+    return orchestrationComputeAttemptId({ kind: 'provider_send', effectId, ordinal: providerSendOrdinal });
 }
 
 export function localWorkAttemptId(effectId, localWorkOrdinal) {
     assertNativeId(effectId, 'orchestrationEffect');
     if (!Number.isSafeInteger(localWorkOrdinal) || localWorkOrdinal < 0 || localWorkOrdinal > 1023) fail('native_orchestration_send_ordinal_invalid');
-    return hashNativeDocument({ effectId, localWorkOrdinal });
+    return orchestrationComputeAttemptId({ kind: 'local_work', effectId, ordinal: localWorkOrdinal });
 }
 
 export function assertBudgetAuthorityRef(ref) {
@@ -54,6 +55,14 @@ export function assertBudgetAttemptRef(ref) {
     if (ref.attemptId !== sendAttemptId(ref.effectId, ref.providerSendOrdinal)) fail('native_orchestration_budget_attempt_invalid');
     if (ref.reservationId !== null && (typeof ref.reservationId !== 'string' || !ref.reservationId)) fail('native_orchestration_budget_attempt_invalid');
     return ref;
+}
+
+function assertAttemptProvenance(ref, row) {
+    if (!row || (row.reservationId ?? null) !== ref.reservationId) fail('native_orchestration_budget_attempt_missing');
+    const provenance = { kind: ref.kind === 'local_work' ? 'local_work' : 'provider_send', effectId: ref.effectId,
+        ordinal: ref.kind === 'local_work' ? ref.localWorkOrdinal : ref.providerSendOrdinal };
+    if (hashNativeDocument(row.orchestration ?? null) !== hashNativeDocument(provenance)) fail('native_orchestration_budget_attempt_invalid');
+    return row;
 }
 
 export class BudgetPort {
@@ -120,7 +129,8 @@ export class BudgetPort {
 
     async admitAttempt(handle, { authorityRef, reservationId = null, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits, reserve }) {
         assertBudgetAuthorityRef(authorityRef);
-        const attempt = { attemptId: sendAttemptId(effectId, providerSendOrdinal), requestId, targetFingerprint, estimatedTokens: upperBound, inputFingerprint };
+        const attempt = { attemptId: sendAttemptId(effectId, providerSendOrdinal), requestId, targetFingerprint, estimatedTokens: upperBound, inputFingerprint,
+            orchestration: { kind: 'provider_send', effectId, ordinal: providerSendOrdinal } };
         const options = { ...(reservationId === null ? {} : { reservationId }), ...(reserve ? { reserve } : {}) };
         let result;
         if (authorityRef.domain === 'session') {
@@ -142,14 +152,13 @@ export class BudgetPort {
             return engine.withTransaction(handle, async tx => {
                 const ledger = await this.#ledger(handle, tx, ref);
                 const row = ledger?.localWork?.find(item => item.attemptId === attemptId);
-                if (!row || (row.reservationId ?? null) !== budgetAttemptRef.reservationId) fail('native_generation_attempt_conflict');
-                return structuredClone(row);
+                return structuredClone(assertAttemptProvenance(budgetAttemptRef, row));
             });
         }
         const row = ref.domain === 'session' ? (await this.sessionCore.runs.observeCompute(handle, ref.sessionId, ref.operationId, attemptId)).compute
             : ref.authority === 'project_task' ? (await this.projectAgent.observeCompute(handle, ref.projectId, ref.taskId, attemptId)).compute
                 : (await this.rpControl.observeCompute(handle, ref.controlId, ref.operationId, attemptId)).compute;
-        return structuredClone(row);
+        return structuredClone(assertAttemptProvenance(budgetAttemptRef, row));
     }
 
     async settleAttempt(handle, budgetAttemptRef, usage) {
@@ -168,8 +177,12 @@ export class BudgetPort {
         return { reservationId, status: result.reservation.status, replayed: result.replayed };
     }
 
-    async chargeLocalWork(handle, { authorityRef, reservationId = null, limits, attempt }) {
+    async chargeLocalWork(handle, { authorityRef, reservationId = null, limits, attempt, effectId, localWorkOrdinal }) {
         assertBudgetAuthorityRef(authorityRef);
+        if (attempt.orchestration !== undefined) fail('native_orchestration_budget_attempt_invalid');
+        const orchestration = { kind: 'local_work', effectId, ordinal: localWorkOrdinal };
+        if (orchestrationComputeAttemptId(orchestration) !== attempt.attemptId) fail('native_orchestration_budget_attempt_invalid');
+        attempt = { ...attempt, orchestration };
         const options = reservationId === null ? {} : { reservationId };
         if (authorityRef.domain === 'session') {
             const { snapshot, anchor } = await this.#session(handle, authorityRef);
@@ -229,6 +242,7 @@ export class BudgetPort {
         const ledger = await this.#ledger(handle, tx, authority);
         const row = (ref.kind === 'local_work' ? ledger?.localWork : ledger?.attempts)?.find(item => item.attemptId === ref.attemptId);
         if (!row || !ADMITTED.has(row.status) || (row.reservationId ?? null) !== ref.reservationId) fail('native_orchestration_budget_attempt_missing');
+        assertAttemptProvenance(ref, row);
         return { status: row.status };
     }
 
@@ -236,8 +250,9 @@ export class BudgetPort {
     sendBank(handle, { authorityRef, reservationId = null, limits, effectId, firstOrdinal, assertCurrent }) {
         assertBudgetAuthorityRef(authorityRef);
         let ordinal = firstOrdinal;
+        let localOrdinal = 0;
         let rpPrefixDigest = null;
-        const admitted = new Map();
+        const admitted = new Map(), localIdentities = new Map();
         return {
             authorityRef,
             assertCurrent: async () => {
@@ -278,7 +293,24 @@ export class BudgetPort {
                 if (!ref) fail('native_generation_attempt_conflict');
                 return this.settleAttempt(handle, ref, usage);
             },
-            chargeLocalWork: (localLimits, attempt) => this.chargeLocalWork(handle, { authorityRef, reservationId, limits: localLimits ?? limits, attempt }),
+            nextLocalWorkAttemptId: () => {
+                const current = localOrdinal++, attemptId = localWorkAttemptId(effectId, current);
+                localIdentities.set(attemptId, current); return attemptId;
+            },
+            chargeLocalWork: async (localLimits, attempt) => {
+                if (!localIdentities.has(attempt.attemptId)) fail('native_orchestration_budget_attempt_invalid');
+                const localWorkOrdinal = localIdentities.get(attempt.attemptId);
+                try {
+                    return await this.chargeLocalWork(handle, { authorityRef, reservationId, limits: localLimits ?? limits, attempt, effectId, localWorkOrdinal });
+                } catch (error) {
+                    if (error.code === 'native_generation_attempt_conflict') throw new ConflictError('native_orchestration_send_replayed');
+                    if (error.code !== 'storage_commit_unknown') throw error;
+                    const budgetAttemptRef = { kind: 'local_work', authorityRef: structuredClone(authorityRef), effectId, localWorkOrdinal, attemptId: attempt.attemptId, reservationId };
+                    let budgetObservation = null;
+                    try { budgetObservation = await this.observeAttempt(handle, budgetAttemptRef); } catch { /* Missing facts remain unresolved; no local retry. */ }
+                    throw Object.assign(new ConflictError('native_orchestration_budget_reconcile_required'), { budgetAttemptRef, budgetObservation });
+                }
+            },
             settleLocalWork: (attemptId, usage) => this.settleLocalWork(handle, authorityRef, attemptId, usage),
             nextOrdinal: () => ordinal,
         };

@@ -4,7 +4,7 @@ import { createNativeId, assertNativeId } from './identity.js';
 import { hashNativeDocument, putMutable, withNativeResourceWrite } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
 import { assertWritable } from '../storage/read-only-mode.js';
-import { admitComputeAttempt, assertComputeLedger, assertRetiredCompute, chargeLocalWork, hasOpenComputeReservations, releaseComputeChild, reserveComputeChild,
+import { admitComputeAttempt, assertComputeLedger, assertRetiredCompute, chargeLocalWork, hasOpenComputeReservations, hasRetainedOrchestrationCompute, releaseComputeChild, reserveComputeChild,
     retireComputeLedger, settleComputeAttempt, settleLocalWork } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
 import { sourceContent, sourceMessageId } from '../../public/scripts/agents/memory/source-provenance.js';
@@ -171,7 +171,7 @@ export class RpRunControl {
 
     _retireClosed(control) {
         for (const [id, op] of Object.entries(control.operations)) {
-            if (hasOpenComputeReservations(op.compute) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) continue;
+            if (hasRetainedOrchestrationCompute(op.compute) || hasOpenComputeReservations(op.compute) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) continue;
             if (op.compute) control.retiredCompute = retireComputeLedger(control.retiredCompute, op.compute);
             delete control.operations[id];
         }
