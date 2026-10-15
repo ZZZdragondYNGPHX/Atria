@@ -45,3 +45,12 @@
 - 实际审计：只读核对当前 main 的 Narrative Contract/旧 Director 选择代码、原 Project Agent 的 human-review-before-formal-commit、docs 的 Behavior/Context、S16 Disclosure、S19 Theory of Mind、M1 Feedback/Evaluation 与 Game Runtime Authority。旧编排清退是未来开发要求，不是本轮已删除。
 - 验证范围：仅通过 GitHub 读写/文档静态校验及远端差异/HEAD 核验；没有 Node 测试、CI、真实模型调用、人工盲评、UI 交互或 Windows/Linux/Termux 实机测试，不宣称质量或性能收益。
 - 下一步：D8 Graph Editor、Agent/Node/Edge 配置、Run Inspector/Diagnostics、审批与 PC/移动触控/创作体验。D8 未选择前不冻结具体 UI 架构，也不修改 main。
+
+## 2026-10-15 — D8 U2 原生 Graph/Inspector 编辑与 Run UX 设计冻结
+
+- Start docs HEAD：`11592ea33ce8c8e20b29051c679aa39c01b776c2`。本轮只读核对 `main@2686aa40a00c8bfccdc47c55d2b236b4878b022a`；未修改产品代码/没有建立实现分支。
+- 用户选择 U2：桌面 Graph Canvas + Inspector 双向编辑同一 PlanDraft，手机 Node/Edge List + Sheet 完整语义等价；强类型 Port/Edge、Draft→Validate→Publish→Run；Host RunProjection、Timeline 默认/Graph 切换、精准 Diagnostics/审批、Serene Canvas 一致性、无障碍与大图/长 Run 性能方向。零旧五模式/兼容路径、T2 单 Host 与 D1–D7/HCM 不变。
+- 更新同一 [Plan index](../../plans/refactor/atria-native-orchestration-v3/index.md)、[decisions](../../plans/refactor/atria-native-orchestration-v3/decisions.md)，新增 [graph-editor-experience](../../plans/refactor/atria-native-orchestration-v3/graph-editor-experience.md) 作为 D8 唯一详细设计，并在同一永久 Record 续记。
+- 当前代码及既有视觉参考：`main:public/scripts/agents/orchestrator/workspace/orchestration/page.js` 仍耦合历史模式/preset；`public/scripts/lib/agent-workspace/graph-view.js` 为有界 SVG 预览；既有 Atria ESM/DOM/Shell/Primitives/Patterns 与 Cytoscape 依赖并非图编辑 PoC 通过证据。`docs:plans/refactor/atria-serene-canvas/decisions.md` 已冻结温纸工作台、Agents Run Timeline 默认/Graph 切换与手机 Sheet，视觉详细权威仍归原 Serene Canvas。
+- 实际验证限 GitHub read、设计/路径/条目核对与远端 docs commit/HEAD/diff；未运行 Node 测试、CI、付费 Provider、真实审批/Browser UI、视觉回归、真实 Windows/Linux/Termux 设备，也未建立正式性能 SLO。
+- 后续 D9：E0 接口/消费者审计、彻底清理旧代码、实施分期、故障/权限/质量/性能与三端真实客户端最终收口。D9 尚未冻结、没有执行 main 改动。
