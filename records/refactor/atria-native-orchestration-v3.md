@@ -157,3 +157,13 @@
 - 实测：V3两文件按精确`--runTestsByPath`运行，FS/SQLite/真实本地MySQL/Postgres合计37/37通过；相关旧N1 foundation四Engine 4/4与FS↔SQLite roundtrip 1/1通过；定向ESLint与git diff --check通过。SQL负例日志是预期ConflictError，不是真实外部Effect证明。
 - 失败及修复：原Pg harness默认账号认证失败、第二次缺默认user也失败；只读本机测试容器配置并采用Postgres默认user/db后通过，无凭证写入或输出。一次短Jest筛选误匹配本任务工作树绝对路径导致范围扩大，已终止；改精确文件路径后重测，未将中断测试算PASS。后续只用精确路径。
 - P1仍IN_PROGRESS：RunLedger/恢复、全站Owner/fence/SQL commit unknown、RPC/授权/GC等未齐；审批/预算/消费者/UI/旧硬切/三端仍NOT_RUN，未开放新旧可选择产品入口。继续同一分支推进，不等待阶段许可。
+
+## 2026-10-15 — P1第二组：原Storage生命周期、SQL未知与真实Host
+
+- Start/Tested source：`a4d7b42e1` → `1d0e9e220`，同一实现分支已提交推送，main未集成。
+- 原Storage启动于user-storage/migration前持data-root guard，再持实际用户root guard；四Engine事务共用持久HostFence，嵌套事务沿同一scope，已结束tx引用不可再写。原SQL Engine用独立session连接持GET_LOCK/pg advisory lock，不占业务pool；关闭先停止准入、drain原事务、关闭Engine后释放Owner。owner失效不可原地换连接继续旧权限。
+- SQL原withTransaction改为known-rollback-only；COMMIT ACK丢失返回storage_commit_unknown，不因网络错误重跑closure。原迁移/恢复不复制或清除目标HostFence；新V3元数据沿原备份。
+- 实测：Host lifecycle四Engine 20/20（原写事务、scope、丢失Owner回滚、第二Host、不同root同DB、重开generation、poolSize1）；SQL传输故障double 6/6（不冒充真实服务器断网）；installed Windows Host全新临时dataRoot启动/第二HTTP端口拒绝1/1。启动测试原计时器退出警告已修复复测消失。
+- 相关回归：Settings endpoint四Engine 68/68，retry14/14，initStorage9/9，Native backup8/8；本组定向ESLint及git diff --check通过。具体case均精确--runTestsByPath执行，没有全量测试或收费Provider。
+- 失败诊断：初版wrapper改成同步throw破坏原async拒绝合同，已恢复async并复测；backup fixture推测ID family不支持新key，且原Session子目录未递归rebind/FS暂存跨realm严格比较误报，修复后四条FS/SQLite互转与损坏blob/原闭包保护通过。目标fence不作为用户导入数据。
+- 尚未取得：真实SQL连接突然丢失/COMMIT网断的完整故障窗口、Linux/Termux Owner、本地共享/网络文件系统排除、V3 RunLedger/恢复/RPC/GC。P1 IN_PROGRESS；产品审批/预算/Domain消费者/新UI/零兼容硬切仍未完成。继续RunLedger，不以本组通过冒称P1或最终产品通过。
