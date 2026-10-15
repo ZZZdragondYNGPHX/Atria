@@ -167,3 +167,10 @@
 - 相关回归：Settings endpoint四Engine 68/68，retry14/14，initStorage9/9，Native backup8/8；本组定向ESLint及git diff --check通过。具体case均精确--runTestsByPath执行，没有全量测试或收费Provider。
 - 失败诊断：初版wrapper改成同步throw破坏原async拒绝合同，已恢复async并复测；backup fixture推测ID family不支持新key，且原Session子目录未递归rebind/FS暂存跨realm严格比较误报，修复后四条FS/SQLite互转与损坏blob/原闭包保护通过。目标fence不作为用户导入数据。
 - 尚未取得：真实SQL连接突然丢失/COMMIT网断的完整故障窗口、Linux/Termux Owner、本地共享/网络文件系统排除、V3 RunLedger/恢复/RPC/GC。P1 IN_PROGRESS；产品审批/预算/Domain消费者/新UI/零兼容硬切仍未完成。继续RunLedger，不以本组通过冒称P1或最终产品通过。
+
+## 2026-10-15 — P1第三组：RunLedger、Attempt与保守恢复
+
+- Start source：`1d0e9e220`。完成RunRoot/事件/command同事务、稳定命令重放/冲突、source digest/不可变Plan引用校验、pending NodeAttempt身份保留与上限、取消CAS/epoch、重开Host后旧boot拒绝与blocked/reconciling恢复。只保存原budget authority引用，无V3资金账本/退款推断；原domain admission仍测试double，未接真实发送。
+- 修正Draft工程细节：save允许未完成图，纯Validate报告invalid，Publish不能绕过；严格未知field/policy仍拒绝。PlanRoot/Revision新增严格持久对象校验，Plan/Run命令服从原read-only mode。
+- 实测：最新Plan/Run两文件四Engine合计57/57通过；其中FS Native Journal四窗口prepare/publish/install/ack注入验证Root/Event/command不会分裂且重放只创建一个Run（软件异常注入，不冒充真实kill/断电）。12个非FS的FS特有case明确skip/N/A，不是SQL故障通过；SQL真实断网仍NOT_RUN。定向ESLint、git diff --check通过。
+- P1仍IN_PROGRESS：HTTP/auth/boot/分页、原依赖解析与引用/GC、真实source admission在对应阶段继续；P2–P8尚未完成，未删除旧生产路径、未发布新旧双执行入口、未集成main。

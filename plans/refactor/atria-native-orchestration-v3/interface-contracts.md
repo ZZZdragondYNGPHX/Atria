@@ -367,3 +367,9 @@ R06技术基线冻结为现有ESM/DOM与单Draft reducer；手机List/Inspector�
 实现`a4d7b42e1`新增纯共享`native-orchestration-contracts.js`及Host PlanRepository。Definition使用封闭nodes/typed ports/edges/entryNodeIds/capabilityCeiling/graphChangePolicy/limits/outputContract；每edge显式maxVisits，每node kind独立policy白名单，所有node须从入口可达且有唯一Output路径。精确dependency pin包含pinId/原Domain port/resourceRef/integrity；原Domain adapter必须验证resourceRef的领域union/权限/当前性，单凭pin schema不授予权限。几何viewState与语义hash分离；validationDigest不含checkedAt，以免纯重验时间变化造成假冲突，仍绑定draftVersion/definitionHash/dependencyDigest/issues。
 
 Plan create/save/publish、PlanBinding和command outcome沿原Engine同事务CAS；发布重新取得当前原权威验证，unknown/变化拒绝。Repository构造强制要求authorize/validateDependencies/assertWriter，没有默认允许；本组测试显式fake原authority，仅证明仓库合同，未接生产HTTP或外部Effect。六个编排kinds与原HostFence/RPControl已自动进入四Engine通用Native handlers；SQL Owner、全站writer fencing和GC引用仍须后续P1接线。
+
+### 17.1 Draft与RunLedger的P1工程约束
+
+Draft持久保存允许结构完整但图语义尚未完成（如未连边、无Output owner）的作者草稿；Validate返回绑定版本的invalid issue，Publish始终重验完整Graph和依赖，不把save当Publish准入。未知schema字段/可执行policy仍拒绝。RunRoot补充显式`cancelRequested:boolean`（与Effect knowledge state分开）；事件从seq0的admitted开始，与Root和command outcome同事务。原Host启动先取得data-root guard再初始化用户存储/迁移，之后各handle在原Engine恢复前取得root Owner并发布fence。
+
+P1 RunRepository start仅接受受信原authority admission回传SourceBinding和budgetAuthorityRef；V3只持引用，无余额/收费。beginAttempt写pending身份/输入digest/原grant与budget refs，不是dispatch。restart/recovery递增epoch并进入blocked/reconciling，保留原费用引用/progress/deadline，须P2/P3原source/receipt复核后才能执行。当前没有挂接runs/start的产品HTTP路径，不能把测试admission double当真实Domain Ports完成。
