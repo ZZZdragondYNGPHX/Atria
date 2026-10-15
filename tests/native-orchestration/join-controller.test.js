@@ -13,7 +13,7 @@ import { planFixture } from './fixtures.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 const port = name => ({ name, type: 'task.result', required: false });
-const edge = (from, to) => ({ edgeId: id('Edge'), from: { nodeId: from, port: 'next' }, to: { nodeId: to, port: 'in' }, condition: 'always', maxVisits: 10 });
+const edge = (from, to) => ({ edgeId: id('Edge'), from: { nodeId: from, port: 'next' }, to: { nodeId: to, port: 'in' }, condition: 'always', maxVisits: 10, loopBack: false });
 
 // Controlled original Ports deliberately supply no provider, budget bank,
 // persisted ResultEnvelope, scheduler permits or real Audience compilation.

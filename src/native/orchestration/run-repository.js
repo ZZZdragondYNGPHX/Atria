@@ -164,16 +164,17 @@ export class RunRepository {
             if (root.progress.attempts >= root.limits.maxAttempts || timestamp >= root.progress.deadlineAt) throw new ConflictError('native_orchestration_limit_exhausted');
             // Attempt refs preserve every prior identity; retry/redo cannot
             // overwrite receipts, input snapshots or actual spending.
-            let number = 1;
             for (const ref of root.attemptRefs) {
                 const attempt = await checkedRecord(tx, recordKey(handle, root.runId, 'attempt', ref));
                 if (!attempt) throw new TypeError('RunRoot references a missing attempt');
                 if (attempt.doc.nodeId === input.nodeId) {
                     if (!['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(attempt.doc.status)) throw new ConflictError('native_orchestration_attempt_already_active');
-                    number++;
+                    // Retry/redo/loop must use its guarded controller. A new
+                    // generic command ID cannot bypass visits/review counters.
+                    throw new ConflictError('native_orchestration_retry_requires_controller');
                 }
             }
-            const attempt = { schemaVersion: 1, runId: root.runId, nodeId: input.nodeId, attemptId, attemptNumber: number, epoch: root.epoch, graphRevision: root.graphRevision,
+            const attempt = { schemaVersion: 1, runId: root.runId, nodeId: input.nodeId, attemptId, attemptNumber: 1, epoch: root.epoch, graphRevision: root.graphRevision,
                 inputRefs: input.inputRefs, inputDigest: input.inputDigest, sourceBindingDigest: root.sourceBinding.bindingDigest, effectiveGrantDigest: input.effectiveGrantDigest,
                 budgetRef: input.budgetRef, status: 'pending', effectRefs: [], resultRefs: [], startedAt: null, endedAt: null, reasonCode: null };
             await putImmutable(tx, recordKey(handle, root.runId, 'attempt', attemptId), attempt);

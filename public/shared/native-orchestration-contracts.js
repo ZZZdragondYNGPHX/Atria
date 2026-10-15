@@ -131,11 +131,13 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
     }
     const edgeIds = new Set(), incoming = new Set(), adjacency = new Map(nodes.map(node => [node.nodeId, []]));
     for (const edge of edges) {
-        assertObject(edge, ['edgeId', 'from', 'to', 'condition', 'maxVisits'], 'edge');
+        assertObject(edge, ['edgeId', 'from', 'to', 'condition', 'maxVisits', 'loopBack'], 'edge');
         assertOrchestrationId(edge.edgeId, 'oedge', 'edge.edgeId');
         if (edgeIds.has(edge.edgeId)) throw new TypeError('duplicate edge ID');
         edgeIds.add(edge.edgeId);
         member(edge.condition, ['always', 'success', 'failure'], 'edge.condition');
+        boolean(edge.loopBack, 'edge.loopBack');
+        if (!draft && edge.loopBack && !value.limits.maxLoopIterations) throw new TypeError('loop-back edge requires an explicit loop iteration limit');
         assertCounter(edge.maxVisits, 'edge.maxVisits', 1);
         if (!draft && edge.maxVisits > value.limits.maxEdgeVisits) throw new TypeError('edge exceeds visit limit');
         for (const end of ['from', 'to']) {
@@ -176,16 +178,26 @@ export function assertPlanDefinition(value, pins, { draft = false } = {}) {
         for (const edge of edges) if (exits.has(edge.to.nodeId) && !exits.has(edge.from.nodeId)) { exits.add(edge.from.nodeId); changed = true; }
     }
     if (!draft && exits.size !== nodes.length) throw new TypeError('graph contains nodes without an output path');
-    if (!draft && value.limits.maxLoopIterations === 0) {
+    if (!draft) {
+        if (!value.outputContract.allowPartial && nodes.some(node => node.kind === 'join' && node.policy.strategy === 'deadline')) throw new TypeError('deadline Join requires partial output permission');
+        // Removing explicitly bounded loop-back edges must leave a DAG.
+        // A nonzero limit alone cannot silently authorize every cycle edge.
+        const forward = edges.filter(edge => !edge.loopBack);
+        const nextIds = id => forward.filter(edge => edge.from.nodeId === id).map(edge => edge.to.nodeId);
         const degrees = new Map(nodes.map(node => [node.nodeId, 0]));
-        for (const edge of edges) degrees.set(edge.to.nodeId, degrees.get(edge.to.nodeId) + 1);
+        for (const edge of forward) degrees.set(edge.to.nodeId, degrees.get(edge.to.nodeId) + 1);
         const pending = [...degrees].filter(([, degree]) => degree === 0).map(([id]) => id);
         let visited = 0;
         while (pending.length) {
             const id = pending.pop(); visited++;
-            for (const next of adjacency.get(id)) { degrees.set(next, degrees.get(next) - 1); if (!degrees.get(next)) pending.push(next); }
+            for (const next of nextIds(id)) { degrees.set(next, degrees.get(next) - 1); if (!degrees.get(next)) pending.push(next); }
         }
-        if (visited !== nodes.length) throw new TypeError('cyclic graph requires an explicit loop iteration limit');
+        if (visited !== nodes.length) throw new TypeError('cyclic graph requires explicit loop-back edges');
+        for (const edge of edges.filter(edge => edge.loopBack)) {
+            const seen = new Set(), pending = [edge.to.nodeId];
+            while (pending.length) { const id = pending.pop(); if (seen.has(id)) continue; seen.add(id); pending.push(...nextIds(id)); }
+            if (!seen.has(edge.from.nodeId)) throw new TypeError('loop-back edge must close a forward path');
+        }
     }
     return value;
 }

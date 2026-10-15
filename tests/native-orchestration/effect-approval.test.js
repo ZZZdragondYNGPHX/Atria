@@ -33,7 +33,7 @@ describe.each(CONTRACT_HARNESSES)('$name S2 durable Effect/Approval core with co
             { nodeId: agentId, kind: 'agent', label: 'Controlled test agent', inputs: [], outputs: [{ name: 'body', type: 'text.body', required: false }], dependencyPinIds: ['test.route'], capabilities: ['test.effect'], policy: { agentPinId: 'test.route' } },
             { ...output, inputs: [{ name: 'body', type: 'text.body', required: true }] },
         ];
-        fixture.definition.edges = [{ edgeId: id('Edge'), from: { nodeId: agentId, port: 'body' }, to: { nodeId: output.nodeId, port: 'body' }, condition: 'always', maxVisits: 10 }];
+        fixture.definition.edges = [{ edgeId: id('Edge'), from: { nodeId: agentId, port: 'body' }, to: { nodeId: output.nodeId, port: 'body' }, condition: 'always', maxVisits: 10, loopBack: false }];
         fixture.definition.entryNodeIds = [agentId]; fixture.definition.capabilityCeiling = ['test.effect']; fixture.definition.limits.maxSteps = 50;
         fixture.dependencyPins = [{ pinId: 'test.route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: createNativeId('runtimeRoute') }, integrity: 'a'.repeat(64) }];
         const plan = await plans.create(h.handle, id('Command'), fixture);

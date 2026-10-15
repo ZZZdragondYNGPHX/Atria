@@ -11,7 +11,7 @@ import { planFixture } from './fixtures.js';
 
 const id = kind => createNativeId('orchestration' + kind);
 const port = (name, required = false) => ({ name, type: 'task.result', required });
-const edge = (from, fromPort, to, toPort) => ({ edgeId: id('Edge'), from: { nodeId: from, port: fromPort }, to: { nodeId: to, port: toPort }, condition: 'always', maxVisits: 10 });
+const edge = (from, fromPort, to, toPort) => ({ edgeId: id('Edge'), from: { nodeId: from, port: fromPort }, to: { nodeId: to, port: toPort }, condition: 'always', maxVisits: 10, loopBack: false });
 
 describe.each(CONTRACT_HARNESSES)('$name G2 Host whole-patch control', ({ make }) => {
     let h, runs, graph, producerId, plannerId, joinId, rootId;
