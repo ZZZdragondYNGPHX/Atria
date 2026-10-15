@@ -16,7 +16,7 @@ export async function initializeAtriaThemes(settings) {
     let state;
     try { state = await request('list'); } catch { state = { themes, originals: [] }; }
     atriaThemes = createAtriaThemeService({ prefs: power_user, settings, documents: state.themes, originals: state.originals,
-        createId: uuidv4, saveSettings: () => saveSettings(), writeAsset: theme => request('save', theme), deleteAsset: name => request('delete', { name }), readState: () => request('list'),
+        createId: uuidv4, saveSettings: () => saveSettings(), writeAsset: theme => request('save', theme), deleteAsset: (name, id) => request('delete', { name, id }), readState: () => request('list'),
         notify: () => document.dispatchEvent(new CustomEvent('atria-theme-changed')),
     });
     try { await atriaThemes.initialize(); } catch (error) { console.warn('Theme upgrade is pending:', error); }

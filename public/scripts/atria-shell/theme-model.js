@@ -5,6 +5,10 @@ export const THEME_VERSION = 1;
 export const DEFAULT_DAY = 'builtin:serene';
 export const DEFAULT_NIGHT = 'builtin:dark-lite';
 const clone = value => JSON.parse(JSON.stringify(value));
+export const sameThemeDocument = (a, b) => {
+    const stable = value => JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item) ? Object.fromEntries(Object.entries(item).sort(([x], [y]) => x.localeCompare(y))) : item);
+    return stable(a) === stable(b);
+};
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const hex = color => '#' + ['r', 'g', 'b'].map(key => Math.round(color[key]).toString(16).padStart(2, '0')).join('');
 export const mixColor = (a, b, amount) => {
@@ -20,14 +24,20 @@ export function contrastRatio(a, b) {
 export function createPalette({ appearance, canvas, surface, text, secondary, accent }) {
     const dark = appearance === 'dark';
     const onAccent = contrastRatio(accent, '#ffffff') >= contrastRatio(accent, '#151515') ? '#ffffff' : '#151515';
+    const accentSoftStrong = mixColor(surface, accent, .22);
     let accentText = accent;
-    for (let i = 0; i < 12 && contrastRatio(accentText, surface) < 4.5; i++) accentText = mixColor(accentText, text, .18);
+    for (let i = 0; i < 20 && Math.min(contrastRatio(accentText, surface), contrastRatio(accentText, accentSoftStrong)) < 4.5; i++) accentText = mixColor(accentText, text, .18);
+    const accentState = amount => {
+        let result = mixColor(accent, text, amount);
+        for (let i = 0; i < 12 && contrastRatio(result, onAccent) < 4.5; i++) { amount *= .75; result = mixColor(accent, text, amount); }
+        return result;
+    };
     return {
         canvas, 'surface-1': surface, 'surface-2': mixColor(canvas, surface, .45), 'surface-3': mixColor(surface, text, .09), elevated: surface,
         'material-sidebar': surface, 'material-bar': surface, 'material-solid-sidebar': surface, 'material-solid-bar': canvas,
         'text-primary': text, 'text-secondary': secondary, 'text-tertiary': secondary, 'text-quaternary': mixColor(surface, text, .45),
-        'text-on-accent': onAccent, 'text-on-ink': canvas, accent, 'accent-hover': mixColor(accent, text, .12), 'accent-pressed': mixColor(accent, text, .24),
-        'accent-text': accentText, 'accent-soft': mixColor(surface, accent, .12), 'accent-soft-strong': mixColor(surface, accent, .22),
+        'text-on-accent': onAccent, 'text-on-ink': canvas, accent, 'accent-hover': accentState(.12), 'accent-pressed': accentState(.24),
+        'accent-text': accentText, 'accent-soft': mixColor(surface, accent, .12), 'accent-soft-strong': accentSoftStrong,
         separator: mixColor(surface, text, .12), 'separator-strong': mixColor(surface, text, .5),
         fill: mixColor(surface, text, .04), 'fill-hover': mixColor(surface, text, .08), 'fill-pressed': mixColor(surface, text, .14), 'fill-strong': mixColor(surface, text, .2),
         'focus-ring': accentText,
@@ -126,7 +136,7 @@ export function planThemeMigration(settings, documents, originals = []) {
     const selected = documents.find(item => item.name === prefs.theme);
     if (selected) {
         const shipped = originals.find(item => item.name === selected.name);
-        const equal = shipped && JSON.stringify(Object.entries(shipped).sort()) === JSON.stringify(Object.entries(selected).sort());
+        const equal = shipped && sameThemeDocument(shipped, selected);
         const built = BUILTIN_THEMES.find(item => item.name === selected.name && item.appearance === 'dark');
         if (equal && built) night = built.id;
         else {

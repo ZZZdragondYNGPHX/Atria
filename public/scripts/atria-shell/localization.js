@@ -1,4 +1,12 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    "Editing a built-in theme creates a custom copy. Custom theme names can change while their selected slots stay the same.": "atria.settingsThemes.207",
+    "The saved theme could not be read back. Retry to verify it.": "atria.settingsThemes.206",
+    "The theme save result is still unknown. Reconnect and retry to check the saved asset.": "atria.settingsThemes.205",
+    "Could not change the language. Check browser storage and retry.": "atria.settingsThemes.204",
+    "A migration copy conflicts with the retained original. Export both from Original files and upgrade data before retrying.": "atria.settingsThemes.203",
+    "Theme CSS is temporarily disabled for recovery. Its text and saved state are retained.": "atria.settingsThemes.202",
+    "The theme asset is already saved. Only the temporary preview was cancelled.": "atria.settingsThemes.201",
+    "Back to search results": "atria.settingsThemes.200",
     "Appearance & themes": "atria.settingsThemes.0",
     "Reading & input": "atria.settingsThemes.1",
     "General & language": "atria.settingsThemes.2",

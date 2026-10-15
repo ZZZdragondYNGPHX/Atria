@@ -4,7 +4,7 @@ import { createAtriaThemeService } from '../../public/scripts/atria-shell/theme-
 function fixture({ selection = { version: 1, mode: 'system', day: 'builtin:serene', night: 'builtin:dark-lite' }, prefs = {}, settings } = {}) {
     const power = { ...prefs, ...(selection ? { atria_theme: selection } : {}) }, stored = { selection: selection && structuredClone(selection), themes: [] };
     const save = jest.fn(async () => { stored.selection = structuredClone(power.atria_theme); return true; });
-    const write = jest.fn(async theme => { stored.themes = [...stored.themes.filter(item => item.name !== theme.name), structuredClone(theme)]; });
+    const write = jest.fn(async theme => { stored.themes = [...stored.themes.filter(item => item.id !== theme.id && item.name !== theme.name), structuredClone(theme)]; });
     const service = createAtriaThemeService({ prefs: power, settings: settings || { power_user: structuredClone(power) }, saveSettings: save, writeAsset: write, deleteAsset: jest.fn(), readState: async () => stored });
     return { service, power, stored, save, write };
 }
@@ -70,4 +70,28 @@ test('while saving, confirm cannot duplicate requests and cancellation cannot re
     await expect(service.confirm()).rejects.toThrow('in progress');
     finish(true); await pending;
     expect(service.getState().preview).toBeNull();
+});
+
+test('an import with an unknown response reads the prior result before retrying its stable identity', async () => {
+    const prefs = { atria_theme: { version: 1, mode: 'light', day: 'builtin:serene', night: 'builtin:dark-lite' } };
+    const stored = [], write = jest.fn(async theme => { stored.push(structuredClone(theme)); throw new Error('lost response'); });
+    const read = jest.fn().mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('still offline')).mockImplementation(async () => ({ themes: stored }));
+    const service = createAtriaThemeService({ prefs, saveSettings: async () => true, writeAsset: write, readState: read });
+    const input = { name: 'Imported', main_text_color: '#ddd', blur_tint_color: '#111', custom_css: 'body {}' };
+    await expect(service.importTheme(input)).rejects.toThrow('unknown');
+    await expect(service.importTheme(input)).rejects.toThrow('unknown');
+    expect(write).toHaveBeenCalledTimes(1);
+    const result = await service.importTheme(input);
+    expect(write).toHaveBeenCalledTimes(1); expect(stored).toHaveLength(1); expect(stored[0].id).toBe(result.id);
+});
+
+test('editing the effective system-night theme uses its explicit identity and renames without creating another asset', async () => {
+    const { service, power, stored } = fixture(); await service.initialize();
+    service.editTheme({ name: 'Night copy' }, 'builtin:azure'); await service.confirm();
+    const night = power.atria_theme.night;
+    service.editTheme({ name: 'Renamed night' }, night); await service.confirm();
+    expect(power.atria_theme).toMatchObject({ mode: 'system', day: 'builtin:serene', night });
+    expect(service.getState().themes.filter(theme => theme.id === night)).toHaveLength(1);
+    expect(service.effective(true).theme.name).toBe('Renamed night');
+    expect(stored.themes.find(theme => theme.name === 'Renamed night').id).toBe(night);
 });

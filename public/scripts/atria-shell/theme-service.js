@@ -1,7 +1,6 @@
-import { BUILTIN_THEMES, DEFAULT_DAY, DEFAULT_NIGHT, parseThemeImport, planThemeMigration, resolveThemeSelection, uniqueThemeName, validateNativeTheme } from './theme-model.js';
+import { BUILTIN_THEMES, DEFAULT_DAY, DEFAULT_NIGHT, parseThemeImport, planThemeMigration, resolveThemeSelection, sameThemeDocument as same, uniqueThemeName, validateNativeTheme } from './theme-model.js';
 
 const copy = value => JSON.parse(JSON.stringify(value));
-const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const fallback = () => ({ version: 1, mode: 'light', day: DEFAULT_DAY, night: DEFAULT_NIGHT });
 
 /** Coordinates the existing settings authority and NamedDocRepo theme API.
@@ -10,6 +9,8 @@ const fallback = () => ({ version: 1, mode: 'light', day: DEFAULT_DAY, night: DE
 export function createAtriaThemeService({ prefs, documents = [], originals = [], settings = {}, saveSettings, writeAsset, deleteAsset, readState, notify = () => {}, createId = () => globalThis.crypto.randomUUID() }) {
     let docs = copy(documents), saved = copy(prefs.atria_theme || fallback());
     let preview = null, busy = false, error = '', migration = null, notice = '';
+    let pendingImport = null;
+    const unverifiedWrites = new Map();
     const listeners = new Set();
     const themes = () => [...BUILTIN_THEMES, ...docs.flatMap(doc => {
         try { const theme = validateNativeTheme(doc); return theme.id.startsWith('builtin:') ? [] : [theme]; } catch { return []; }
@@ -20,11 +21,25 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
         return copy(value);
     }
     async function verifyWrite(theme) {
-        try { await writeAsset(theme); } catch (failure) {
-            // A lost response may still have committed. Read before retrying.
+        const pending = unverifiedWrites.get(theme.id);
+        if (pending) {
+            // Do not send a retry while the preceding result is still unknown.
             const state = await readState().catch(() => null);
-            if (!state?.themes?.some(item => same(item, theme))) throw failure;
+            if (!state) throw new Error('The theme save result is still unknown. Reconnect and retry to check the saved asset.');
+            unverifiedWrites.delete(theme.id);
+            if (state.themes.some(item => same(item, theme))) { adopt(theme); return; }
         }
+        unverifiedWrites.set(theme.id, copy(theme));
+        let failure;
+        try { await writeAsset(theme); } catch (error) { failure = error; }
+        const state = await readState().catch(() => null);
+        if (!state) throw new Error('The theme save result is still unknown. Reconnect and retry to check the saved asset.');
+        unverifiedWrites.delete(theme.id);
+        if (!state.themes.some(item => same(item, theme))) throw failure || new Error('The saved theme could not be read back. Retry to verify it.');
+        adopt(theme);
+    }
+    function adopt(theme) {
+        docs = docs.filter(item => item.id !== theme.id || item.name === theme.name);
         const index = docs.findIndex(item => item.name === theme.name);
         if (index < 0) docs.push(copy(theme)); else docs[index] = copy(theme);
     }
@@ -74,6 +89,7 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
                 for (const asset of migration.assets) {
                     const existing = docs.find(doc => doc.id === asset.id);
                     if (!existing) await verifyWrite(asset);
+                    else if (!same(validateNativeTheme(existing), asset)) throw new Error('A migration copy conflicts with the retained original. Export both from Original files and upgrade data before retrying.');
                 }
                 // Settings marker is last. No legacy fields or originals are deleted.
                 await persistSelection(migration.selection);
@@ -101,11 +117,11 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
             preview ||= { selection: copy(saved), slot: null, theme: null, dirty: false, assetSaved: false };
             preview.slot = slot; emit();
         },
-        editTheme(patch) {
+        editTheme(patch, themeId) {
             if (busy || migration) throw new Error('Finish the pending save or migration first.');
-            if (!preview?.theme) api.previewTheme(api.effective().theme.id);
+            if (!preview?.theme) api.previewTheme(themeId || api.effective().theme.id);
             const theme = preview.theme;
-            if (theme.id.startsWith('builtin:') || (patch.name !== undefined && patch.name !== theme.name && docs.some(doc => doc.id === theme.id))) {
+            if (theme.id.startsWith('builtin:')) {
                 theme.id = `custom:${createId()}`;
                 theme.name = uniqueThemeName(`${theme.name} copy`, docs);
             }
@@ -132,13 +148,21 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
                 preview = null; notice = 'Appearance saved.';
             });
         },
-        cancel() { if (busy) return false; preview = null; error = ''; emit(); return true; },
+        cancel() {
+            if (busy) return false;
+            if (preview?.assetSaved) notice = 'The theme asset is already saved. Only the temporary preview was cancelled.';
+            preview = null; error = ''; emit(); return true;
+        },
         importTheme(value) {
             return run(async () => {
-                const theme = parseThemeImport(value, { id: `custom:${createId()}` });
-                theme.id = `custom:${createId()}`;
-                theme.name = uniqueThemeName(theme.name, docs);
-                await verifyWrite(theme); notice = 'Theme imported. Select it to preview; your appearance has not changed.';
+                if (!pendingImport || !same(value, pendingImport.input)) {
+                    const theme = parseThemeImport(value, { id: `custom:${createId()}` });
+                    theme.id = `custom:${createId()}`;
+                    theme.name = uniqueThemeName(theme.name, docs);
+                    pendingImport = { input: copy(value), theme };
+                }
+                const theme = pendingImport.theme;
+                await verifyWrite(theme); pendingImport = null; notice = 'Theme imported. Select it to preview; your appearance has not changed.';
                 return theme;
             });
         },
@@ -148,7 +172,10 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
                 if (!theme || id.startsWith('builtin:')) throw new Error('Built-in themes are read-only.');
                 // Persist valid references first; a failed delete only leaves an unused asset.
                 if (saved.day === id || saved.night === id) await persistSelection({ ...saved, day: saved.day === id ? DEFAULT_DAY : saved.day, night: saved.night === id ? DEFAULT_NIGHT : saved.night });
-                await deleteAsset(theme.name);
+                try { await deleteAsset(theme.name, theme.id); } catch (failure) {
+                    const state = await readState().catch(() => null);
+                    if (!state || state.themes.some(item => item.id === id)) throw failure;
+                }
                 docs = docs.filter(item => item.id !== id); preview = null; notice = 'Theme deleted.';
             });
         },

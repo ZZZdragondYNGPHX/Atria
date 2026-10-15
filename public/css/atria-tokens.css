@@ -1,8 +1,8 @@
 /*
  * Atria Design System — tokens.
  *
- * Serene Canvas uses one light palette. The legacy bridge projects the
- * palette into compatibility surfaces only while the Shell is mounted.
+ * Serene Canvas is the initial paper palette. The theme authority projects
+ * complete light/dark palettes; the legacy bridge follows the mounted Shell.
  * Atria components consume the --atri-* API and never bind to SmartTheme.
  */
 
@@ -21,7 +21,7 @@
 }
 
 :root {
-    /* Serene Canvas — paper and ink. Stored themes are unchanged. */
+    /* Serene Canvas — paper and ink, before authenticated theme restoration. */
 
     --atri-canvas: #f9f8f6;
     --atri-surface-1: #ffffff;

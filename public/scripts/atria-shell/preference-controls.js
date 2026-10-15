@@ -69,8 +69,7 @@ export function mountAtriaPreferenceControls({ document: doc, group, section, au
                 row.dataset.saveState = 'saved'; status.textContent = tl('Saved.');
             } catch (error) {
                 if (disposed || row._revision !== revision) return;
-                row.dataset.saveState = 'error'; status.textContent = tl('Could not save this setting. Your change is still applied; retry to save it.'); retry.hidden = false;
-                if (key === 'language') input.value = authority.getCurrentLocale();
+                row.dataset.saveState = 'error'; status.textContent = tl(key === 'language' ? 'Could not change the language. Check browser storage and retry.' : 'Could not save this setting. Your change is still applied; retry to save it.'); retry.hidden = false;
             } finally {
                 if (!disposed && row._revision === revision) {
                     input.removeAttribute('aria-busy');

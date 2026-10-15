@@ -21,6 +21,8 @@ export function mountThemeControls({ document: doc, root, service }) {
     let disposed = false, candidate = null, cardIds = '';
     const editorInputs = new Map(), cardNodes = new Map();
     const system = doc.defaultView.matchMedia?.('(prefers-color-scheme: dark)');
+    const currentTheme = () => service.getState().preview?.theme || service.effective(Boolean(system?.matches)).theme;
+    const editCurrent = patch => service.editTheme(patch, currentTheme().id);
     const bar = el(doc, 'div', 'atria-theme-preview-bar', undefined, root); bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', tl('Appearance preview'));
     const previewTitle = el(doc, 'strong', '', '', bar);
     const use = action(doc, bar, 'Use theme', () => service.confirm(), { primary: true });
@@ -44,6 +46,8 @@ export function mountThemeControls({ document: doc, root, service }) {
     el(doc, 'h4', '', tl('Theme gallery'), root);
     const gallery = el(doc, 'div', 'atria-theme-gallery', undefined, root);
     gallery.setAttribute('aria-label', tl('Theme gallery'));
+    const accentRow = el(doc, 'div', 'atria-theme-color-fields atria-theme-accent', undefined, root);
+    accentRow.dataset.settingId = 'theme-accent';
     const preview = el(doc, 'section', 'atria-theme-sample', undefined, root);
     el(doc, 'h4', '', tl('Current preview'), preview);
     el(doc, 'p', 'atria-theme-reading', tl('Morning light falls across the stone steps. Somewhere beyond the doorway, a page turns.'), preview);
@@ -56,22 +60,22 @@ export function mountThemeControls({ document: doc, root, service }) {
     const editor = disclosure(doc, root, 'Edit colors and theme details'); editor.dataset.settingId = 'theme-colors';
     const identity = el(doc, 'p', 'atria-setting-description', '', editor);
     const themeName = field(doc, editor, 'Theme name');
-    themeName.addEventListener('change', () => service.editTheme({ name: themeName.value }));
-    el(doc, 'p', 'atria-setting-description', tl('Editing a built-in theme creates a custom copy. Renaming an existing theme saves a separate copy.'), editor);
+    themeName.addEventListener('input', () => editCurrent({ name: themeName.value }));
+    el(doc, 'p', 'atria-setting-description', tl('Editing a built-in theme creates a custom copy. Custom theme names can change while their selected slots stay the same.'), editor);
     const colors = el(doc, 'div', 'atria-theme-color-fields', undefined, editor);
     for (const [role, label] of [['canvas', 'Canvas'], ['surface-1', 'Surface'], ['text-primary', 'Primary text'], ['text-secondary', 'Secondary text'], ['accent', 'Accent color']]) {
-        const input = field(doc, colors, label, '', 'color'); input.dataset.themeRole = role; editorInputs.set(role, input);
+        const input = field(doc, role === 'accent' ? accentRow : colors, label, '', 'color'); input.dataset.themeRole = role; editorInputs.set(role, input);
         input.addEventListener('input', () => {
             const current = service.getState().preview?.theme || service.effective(Boolean(system?.matches)).theme;
             const values = { ...resolveThemeColors(current), [role]: input.value };
-            service.editTheme({ colors: createPalette({ appearance: current.appearance, canvas: values.canvas, surface: values['surface-1'], text: values['text-primary'], secondary: values['text-secondary'], accent: values.accent }) });
+            editCurrent({ colors: createPalette({ appearance: current.appearance, canvas: values.canvas, surface: values['surface-1'], text: values['text-primary'], secondary: values['text-secondary'], accent: values.accent }) });
         });
     }
     const contrast = el(doc, 'p', 'atria-theme-contrast', '', editor); contrast.setAttribute('role', 'status');
     action(doc, editor, 'Restore suggested colors', () => {
         const current = service.getState().preview?.theme || service.effective(Boolean(system?.matches)).theme;
         const base = BUILTIN_THEMES.find(item => item.name === current.name && item.appearance === current.appearance) || BUILTIN_THEMES.find(item => item.appearance === current.appearance);
-        service.editTheme({ colors: clone(base.colors) });
+        editCurrent({ colors: clone(base.colors) });
     });
 
     const css = disclosure(doc, root, 'Advanced theme CSS'); css.dataset.settingId = 'theme-css';
@@ -79,8 +83,10 @@ export function mountThemeControls({ document: doc, root, service }) {
     const cssLabel = el(doc, 'label', 'atria-theme-css-toggle', undefined, css);
     const cssEnabled = el(doc, 'input', '', undefined, cssLabel); cssEnabled.type = 'checkbox'; cssEnabled.setAttribute('role', 'switch');
     el(doc, 'span', '', tl('Enable theme CSS'), cssLabel);
-    const cssText = el(doc, 'textarea', 'atria-theme-css-editor', undefined, css); cssText.spellcheck = false; cssText.setAttribute('aria-label', tl('Custom CSS')); cssText.placeholder = ':root:root {\n  --atri-accent: #ff5a36;\n}';
-    const editCss = () => service.editTheme({ css: { enabled: cssEnabled.checked, text: cssText.value } });
+    const cssText = el(doc, 'textarea', 'atria-theme-css-editor', undefined, css); cssText.spellcheck = false; cssText.setAttribute('aria-label', tl('Custom CSS'));
+    // The example is code, shared with the compatibility documentation rather than UI prose.
+    cssText.placeholder = [':root:root {', '  --atri-accent: #ff5a36;', '}'].join('\n');
+    const editCss = () => editCurrent({ css: { enabled: cssEnabled.checked, text: cssText.value } });
     cssText.addEventListener('input', editCss); cssEnabled.addEventListener('change', editCss);
     el(doc, 'p', 'atria-setting-description', tl('If CSS hides the interface, press Ctrl+Alt+Shift+R or reload with atriaNoThemeCss=1 in the URL. This temporarily disables CSS without deleting it.'), css);
     const assets = el(doc, 'div', 'atria-theme-asset-actions', undefined, root);
@@ -136,6 +142,7 @@ export function mountThemeControls({ document: doc, root, service }) {
         savedSummary.textContent = `${tl('Saved:')} ${tl({ light: 'Light', dark: 'Dark', system: 'Follow system' }[state.selection.mode])} · ${tl('Day:')} ${byId(state.selection.day)} · ${tl('Night:')} ${byId(state.selection.night)} · ${tl('Now using:')} ${effective.theme.name}`;
         status.textContent = state.busy ? tl('Saving…') : state.error ? tl(state.error) : effective.missing ? tl('The selected theme is unavailable. A default is shown; choose a replacement to repair the saved slot.') : tl(state.notice);
         status.setAttribute('role', state.error ? 'alert' : 'status');
+        if (doc.documentElement.dataset.atriaThemeCssSuppressed === 'true') status.textContent += ` ${tl('Theme CSS is temporarily disabled for recovery. Its text and saved state are retained.')}`;
         retryMigration.hidden = !state.migrationPending; retryMigration.disabled = state.busy;
         const visibleThemes = state.themes.filter(theme => theme.appearance === target);
         const nextIds = visibleThemes.map(theme => theme.id).join('|');
@@ -159,11 +166,12 @@ export function mountThemeControls({ document: doc, root, service }) {
         contrast.textContent = low.length ? tl('Some colors have low contrast. Restore suggested colors or keep your custom choice.') : tl('Text and control contrast checked.');
         cssEnabled.checked = current.css.enabled; if (doc.activeElement !== cssText) cssText.value = current.css.text;
         cssEnabled.disabled = cssText.disabled = state.busy || state.migrationPending;
-        deleteTheme.disabled = state.busy || current.id.startsWith('builtin:'); exportTheme.disabled = state.busy;
+        deleteTheme.disabled = state.busy || current.id.startsWith('builtin:') || !state.themes.some(theme => theme.id === current.id); exportTheme.disabled = state.busy;
         const options = state.documents.map(item => item.name).join('|');
         if (originalFile.dataset.options !== options) { originalFile.dataset.options = options; originalFile.replaceChildren(); for (const item of state.documents) { const option = el(doc, 'option', '', item.name, originalFile); option.value = item.name; } }
     }
     const unsubscribe = service.subscribe(sync);
+    doc.addEventListener('atria-theme-css-recovered', sync);
     system?.addEventListener?.('change', sync); sync();
-    return { sync, dispose() { disposed = true; unsubscribe(); system?.removeEventListener?.('change', sync); service.cancel(); } };
+    return { sync, dispose() { disposed = true; unsubscribe(); doc.removeEventListener('atria-theme-css-recovered', sync); system?.removeEventListener?.('change', sync); service.cancel(); } };
 }

@@ -150,6 +150,7 @@ export function installAtriaAppearance({
     function recover(event) {
         if (event.isComposing || !event.ctrlKey || !event.altKey || !event.shiftKey || event.code !== 'KeyR') return;
         safeCss = true; apply();
+        documentRef.dispatchEvent(new windowRef.CustomEvent('atria-theme-css-recovered'));
     }
 
     apply();

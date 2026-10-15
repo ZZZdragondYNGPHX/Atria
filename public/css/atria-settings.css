@@ -61,7 +61,7 @@
 .atria-theme-import { padding: 16px; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md); }
 .atria-theme-import button { margin: 4px; }
 .atria-settings-panel :is(input, textarea, select) { border: 1px solid var(--atri-separator-strong); background: var(--atri-surface-1); color: var(--atri-text-primary); border-radius: var(--atri-radius-sm); padding: 8px; font: inherit; }
-.atria-settings-panel input[type="checkbox"] { accent-color: var(--atri-accent-text); width: 24px; height: 24px; }
+.atria-settings-panel input[type="checkbox"] { width: 36px; height: 22px; padding: 0; border: 0; border-radius: 20px; }
 .atria-settings-panel input[type="range"] { accent-color: var(--atri-accent-text); padding: 0; }
 .atria-settings-panel button { min-height: 36px; }
 .atria-settings-paper [hidden] { display: none !important; }

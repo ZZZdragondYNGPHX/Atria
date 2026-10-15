@@ -9,6 +9,9 @@ test('all six builtins resolve complete roles and readable text, controls and st
         expect(Object.keys(validateNativeTheme(theme).colors)).toEqual(THEME_COLOR_ROLES);
         for (const text of ['text-primary', 'text-secondary', 'accent-text', 'success', 'warning', 'danger']) expect(contrastRatio(theme.colors[text], theme.colors['surface-1'])).toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(theme.colors['text-on-accent'], theme.colors.accent)).toBeGreaterThanOrEqual(4.5);
+        for (const role of ['accent-hover', 'accent-pressed']) expect(contrastRatio(theme.colors['text-on-accent'], theme.colors[role])).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(theme.colors['accent-text'], theme.colors['accent-soft-strong'])).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(theme.colors['text-on-ink'], theme.colors.ink)).toBeGreaterThanOrEqual(4.5);
         expect(contrastRatio(theme.colors['separator-strong'], theme.colors['surface-1'])).toBeGreaterThanOrEqual(3);
     }
 });
