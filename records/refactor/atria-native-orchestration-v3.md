@@ -190,3 +190,10 @@
 - 新实证：MySQL/Pg分别只终止本测试DB持advisory lock的Owner session，旧Host拒写、新Owner读到原已提交记录，2/2；Windows真实进程kill的FS prepare/publish/install/ack与SQLite commit前后，6/6，Root/Event/command完整或全无，恢复不调用admit/send且blocked。不是硬件断电或COMMIT网络ACK丢失证明。
 - 本组测试：SQL原批量事务6/6；最新Run/SQL commit double合计38/38（另12项非FS的FS专属case N/A skip）；相关四Engine lifetime/metadata、Native backup、MySQL/Pg各方向roundtrip五文件78/78；定向ESLint/diff check通过。测试只用隔离临时数据，没有付费Provider。
 - P1保留完整Gate未过项；预算/发送/审批/Domain收据留P2–P4实现，三端/安全/质量最终证据留P7。已验证Host/Ledger允许继续P2纯控制流子工作，不提前记作完整P1/P2通过；原生产入口硬切仍等P6统一执行。
+
+## 2026-10-15 — P2第一组：Host原子GraphPatch子工作
+
+- 基于`0d4e062d7`继续同一实现分支；P1完整Gate仍未标PASS，仅依赖已验证Host/持久Ledger开展P2安全子工作。没有真实Provider/Tool发送或生产Run入口。
+- 新增受信内部control事务、pending Attempt激活、G2整批提案校验/immutable receipt/稳定command去重。Root新增nodeControl及持久edgeVisitCounts；Host身份/authority/原Plan ceiling/output/limits不得改写。禁止向已有Attempt新增输入边，拒绝删除唯一Output路径/能力提升/无证据重复提案，取消pending分支保留原Attempt。
+- 最新四Engine GraphPatch20/20；受影响Run及真实FS/SQLite process-crash回归，共三个文件58/58，12项非FS的FS特有case明确N/A skip；定向ESLint/diff check通过。所有授权/模型/预算Port仍是受控test double，不称原Domain集成通过。
+- 下一子工作为EffectIntent/Approval/单次dispatch claim/append-only Receipt与unknown恢复，随后继续原Native Ports。完整P2、P3–P8及三端/真实批准/成本质量均未验收，main未集成。

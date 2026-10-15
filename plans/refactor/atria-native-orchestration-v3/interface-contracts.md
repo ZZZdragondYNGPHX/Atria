@@ -379,3 +379,9 @@ P1 RunRepository start仅接受受信原authority admission回传SourceBinding�
 RunRoot新增`hostGeneration`，精确保存原Storage HostFence.generation，与单Run的epoch分开；同Host内恢复也必须使旧generation失效。原cross-mode restore完成后经原Storage lifecycle停止该handle准入/drain并退休cached fence；下一Native事务发布更高generation，旧Run只能经recover进入blocked/reconciling。原SQL delete/restore共享同一fence行锁；restore的清空+流式导入为一事务，采用`retryMode:never`，不重放已消费流。已ACK的rollback可保留当前Owner；COMMIT未知仍不可猜测。目标HostFence不删除、不从来源dump覆盖。
 
 原Storage root adapter在Windows用DriveInfo拒绝UNC/映射网络盘，Linux/Android采用明确本地FS类型集合；未知/shared/网络或无法证明namespace独占的root不开放。当前真实OS证据只有Windows，Linux/Android filesystem分支未实测，仍须P7真实验证。枚举依据：[Microsoft DriveType](https://learn.microsoft.com/en-us/dotnet/api/system.io.drivetype)、[Linux原始magic.h](https://raw.githubusercontent.com/torvalds/linux/master/include/uapi/linux/magic.h)，不是设备通过证明。
+
+### 17.3 G2控制事务与Patch实现细化
+
+RunRoot.nodeControl保存每node的`disposition:eligible/blocked/cancelled,priority,reasonCode`，不复制NodeAttempt执行状态；progress新增edgeVisitCounts，每edge累计与总edgeVisits相等且不能恢复清零。内部RunRepository.control只给受信Host controller使用，禁止挂任意HTTP/SDK dispatcher；同事务CAS更新Root/typed record/event/command，身份、原authority、Plan capability/output/limits不可改。
+
+内部稳定command identity由operation+原控制对象ID推导，逻辑payload去重不把临时CAS读取版本当新动作；返回replayed信息只作为本次事务是否新提交的回执，不能从旧command回执再次取得发送许可。GraphPatch整批校验、冻结已准备Attempt的输入、保护唯一Output路径/能力上限，保留cancelled Attempt。Rejected proposal也受原step/deadline限制；相同producer/input/evidence的无进展提案不能换PatchId重置工作。
