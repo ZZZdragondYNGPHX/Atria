@@ -6,12 +6,14 @@ import { nativeRecord } from '../../src/native/repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
+import { prepareControllerOwnerRoot } from './fixtures.js';
 
 describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make }) => {
     let h, lifecycle, inspect;
     const extras = [];
     beforeEach(async () => {
         h = await make();
+        await prepareControllerOwnerRoot(h.dirs.root);
         inspect = h.engine.withTransaction.bind(h.engine);
         lifecycle = attachNativeHostLifecycle(h.engine, { directoriesByHandle: () => h.dirs });
     });
@@ -158,5 +160,59 @@ describe.each(CONTRACT_HARNESSES)('$name shared Native Host ownership', ({ make 
             await expect(probe.acquireLocal(h.dirs.root)).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
         } finally { await probe.close(); }
         await expect(h.engine.withTransaction(h.handle, async () => 'live')).resolves.toBe('live');
+    });
+
+    test('only a drained, deleted private restore namespace can retire its fence; the account Host stays owned', async () => {
+        await expect(lifecycle.retirePrivateHandle()).rejects.toThrow('Account Engine');
+        const root = path.join(h.dataRoot, 'retiring-private-scratch'), dirs = { ...h.dirs, root }, handle = '_xrestore_' + 'a'.repeat(32);
+        await prepareControllerOwnerRoot(root);
+        const scratch = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => dirs });
+        extras.push(scratch);
+        const raw = scratch.withTransaction.bind(scratch);
+        const control = lifecycle.attachStorageEngine(scratch, { directoriesByHandle: () => dirs, privateHandle: handle });
+        const key = { kind: K.orchestrationCommand, handle, commandId: createNativeId('orchestrationCommand') };
+        await scratch.withTransaction(handle, tx => tx.putResource(key, nativeRecord({ marker: 'private' })));
+        await expect(control.retirePrivateHandle()).rejects.toThrow('delete its isolated namespace');
+        await expect(scratch.withTransaction(h.handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        await scratch.deleteUser(handle);
+        if (await raw(handle, tx => tx.getResource(key))) {
+            // FS deleteUser preserves the tree and SQLite closes its file.
+            // Neither is evidence that private Native objects were removed.
+            await expect(control.retirePrivateHandle()).rejects.toThrow('still contains Native resources');
+            await scratch.withTransaction(handle, tx => tx.deleteResource(key));
+            await scratch.deleteUser(handle);
+        }
+        // A new admitted transaction invalidates the deletion proof, even if
+        // its callback only reads; repeat delete before retiring the namespace.
+        await scratch.withTransaction(handle, async () => {});
+        await expect(control.retirePrivateHandle()).rejects.toThrow('delete its isolated namespace');
+        await scratch.deleteUser(handle); await control.retirePrivateHandle();
+        expect(await raw(handle, tx => tx.getResource({ kind: K.hostFence, handle }))).toBeNull();
+        await expect(scratch.withTransaction(handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        await scratch.close();
+        const probe = new NativeHostOwner();
+        try { await expect(probe.acquireLocal(root)).resolves.toMatchObject({ schemaVersion: 1 }); }
+        finally { await probe.close(); }
+        await expect(h.engine.withTransaction(h.handle, async () => 'live')).resolves.toBe('live');
+    });
+
+    test('private retirement drains admitted work and rechecks deletion proof before deleting a fence', async () => {
+        const root = path.join(h.dataRoot, 'draining-private-scratch'), dirs = { ...h.dirs, root }, handle = '_xrestore_' + 'b'.repeat(32);
+        await prepareControllerOwnerRoot(root);
+        const scratch = new h.engine.constructor({ url: h.engine._nativeOwnerUrl, nativeHostTopology: h.engine.nativeHostTopology, poolSize: 1, directoriesByHandle: () => dirs });
+        extras.push(scratch);
+        const raw = scratch.withTransaction.bind(scratch);
+        const control = lifecycle.attachStorageEngine(scratch, { directoriesByHandle: () => dirs, privateHandle: handle });
+        await scratch.deleteUser(handle);
+        let entered, release;
+        const started = new Promise(resolve => { entered = resolve; }), gate = new Promise(resolve => { release = resolve; });
+        const running = scratch.withTransaction(handle, async () => { entered(); await gate; }); await started;
+        const retirement = control.retirePrivateHandle().then(() => null, error => error);
+        await expect(scratch.withTransaction(handle, async () => {})).rejects.toMatchObject({ code: 'native_orchestration_writer_unavailable' });
+        release(); await running;
+        expect((await retirement)?.message).toContain('delete its isolated namespace');
+        expect(await raw(handle, tx => tx.getResource({ kind: K.hostFence, handle }))).not.toBeNull();
+        await scratch.deleteUser(handle); await control.retirePrivateHandle();
+        expect(await raw(handle, tx => tx.getResource({ kind: K.hostFence, handle }))).toBeNull();
     });
 });

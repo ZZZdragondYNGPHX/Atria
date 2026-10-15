@@ -590,20 +590,23 @@ export async function runFromZip({ args, dataRoot, hostOwner, getAllUserHandles,
     console.log(`  target handle: ${targetHandle}`);
 
     // Resolve scratch creds if needed.
+    const { resolveStorageDbConfig } = await import('../src/storage/config-persistence.js');
     let scratchCreds = null;
     if (engineMeta.engineKind === 'mysql') {
         if (!args.mysqlUrl) {
             console.error('--from-zip: source engine is mysql; pass --mysql-url for the scratch DB.');
             process.exit(2);
         }
-        scratchCreds = { mysqlUrl: args.mysqlUrl, mysqlPoolSize: args.mysqlPoolSize ?? undefined };
+        const resolved = resolveStorageDbConfig({ inline: { url: args.mysqlUrl }, fromConfig: getConfigValue('storage.mysql', null) }).engine;
+        scratchCreds = { mysqlUrl: args.mysqlUrl, mysqlPoolSize: args.mysqlPoolSize ?? undefined, mysqlNativeHostTopology: resolved.nativeHostTopology };
     }
     if (engineMeta.engineKind === 'postgres') {
         if (!args.postgresUrl) {
             console.error('--from-zip: source engine is postgres; pass --postgres-url for the scratch DB.');
             process.exit(2);
         }
-        scratchCreds = { postgresUrl: args.postgresUrl, postgresPoolSize: args.postgresPoolSize ?? undefined };
+        const resolved = resolveStorageDbConfig({ inline: { url: args.postgresUrl }, fromConfig: getConfigValue('storage.postgres', null) }).engine;
+        scratchCreds = { postgresUrl: args.postgresUrl, postgresPoolSize: args.postgresPoolSize ?? undefined, postgresNativeHostTopology: resolved.nativeHostTopology };
     }
 
     const mode = args.mode === 'merge' ? 'merge' : 'overwrite';

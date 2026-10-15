@@ -72,7 +72,7 @@ const CONVERT_STAGES = [
  * @property {object} currentEngine
  * @property {Function} [getUserDirectories]   — directoriesByHandle factory for the live engine.
  * @property {(event: object) => void} [onProgress]
- * @property {{ mysqlUrl?: string, postgresUrl?: string, mysqlPoolSize?: number, postgresPoolSize?: number }} [scratchCreds]
+ * @property {{ mysqlUrl?: string, postgresUrl?: string, mysqlPoolSize?: number, postgresPoolSize?: number, mysqlNativeHostTopology?: string, postgresNativeHostTopology?: string }} [scratchCreds]
  */
 
 
@@ -301,6 +301,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             scratchHandle,
             scratchCreds,
             reuseEngine: sameEngineKind ? currentEngine : null,
+            hostLifecycle: currentEngine.nativeHostLifecycle,
         });
         let personaReview = null;
         const retainedAvatars = [];

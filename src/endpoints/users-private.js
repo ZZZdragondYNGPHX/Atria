@@ -21,6 +21,7 @@ import { SETTINGS_FILE, PUBLIC_DIRECTORIES, UPLOADS_DIRECTORY } from '../constan
 import { checkForNewContent, CONTENT_TYPES } from './content-manager.js';
 import { invalidateRecentChatIndex } from './chats.js';
 import { color, Cache, getConfigValue, ensureDirectory, isValidUrl, normalizeZipEntryPath, trimTrailingSlash } from '../util.js';
+import { resolveStorageDbConfig } from '../storage/config-persistence.js';
 import { createLanMigrationOffer, LAN_MIGRATION_PATH_PREFIX } from '../lan-migration.js';
 import { listForUser, mergeReadIds } from '../announcements.js';
 import { getStorageEngine, setReadOnly } from '../storage/index.js';
@@ -157,8 +158,17 @@ function parseScratchCreds(body) {
         ? Number(body.scratchPostgresPoolSize) : undefined;
     if (!mysqlUrl && !postgresUrl) return null;
     const out = {};
-    if (mysqlUrl) { out.mysqlUrl = mysqlUrl; if (mysqlPoolSize !== undefined) out.mysqlPoolSize = mysqlPoolSize; }
-    if (postgresUrl) { out.postgresUrl = postgresUrl; if (postgresPoolSize !== undefined) out.postgresPoolSize = postgresPoolSize; }
+    for (const [mode, url, poolSize, prefix, field] of [
+        ['mysql', mysqlUrl, mysqlPoolSize, 'mysql', 'scratchMysqlNativeHostTopology'],
+        ['postgres', postgresUrl, postgresPoolSize, 'postgres', 'scratchPostgresNativeHostTopology'],
+    ]) {
+        if (!url) continue;
+        const inline = { url, ...(poolSize !== undefined ? { poolSize } : {}), ...(Object.hasOwn(body, field) ? { nativeHostTopology: body[field] } : {}) };
+        const resolved = resolveStorageDbConfig({ inline, fromConfig: getConfigValue('storage.' + mode, null) }).engine;
+        out[prefix + 'Url'] = resolved.url;
+        if (resolved.poolSize !== undefined) out[prefix + 'PoolSize'] = resolved.poolSize;
+        if (resolved.nativeHostTopology !== undefined) out[prefix + 'NativeHostTopology'] = resolved.nativeHostTopology;
+    }
     return out;
 }
 

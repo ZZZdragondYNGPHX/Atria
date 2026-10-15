@@ -9,8 +9,9 @@ const maintenance = new AsyncLocalStorage();
 const error = () => Object.assign(new Error('Native Host fence is no longer current'), { code: 'native_orchestration_writer_unavailable' });
 
 /** Attach once to the original Engine, before any repository, recovery or schema write. */
-export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoot = null, hostOwner = null, installTransactionPolicy = null }) {
+export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoot = null, hostOwner = null, installTransactionPolicy = null, privateHandle = null }) {
     if (engine.nativeHostLifecycle) throw new TypeError('Native Host lifecycle is already attached');
+    if (privateHandle !== null && !/^_xrestore_[a-f0-9]{16,64}$/.test(privateHandle)) throw new TypeError('Private Engine requires an isolated restore handle');
     const owner = hostOwner ?? new NativeHostOwner();
     const ownerLease = owner.retainStorageEngine();
     // Bounded Storage fence metadata precedes business quota/recovery policy.
@@ -19,10 +20,11 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
     if (installTransactionPolicy !== null) installTransactionPolicy(engine);
     const transaction = engine.withTransaction.bind(engine);
     const ready = new Map(), fences = new Map(), minimumGenerations = new Map(), operations = new Set(), blocked = new Set();
-    let accepting = true, databaseReady, closing, paused = false, maintenanceDone = null;
+    let accepting = true, databaseReady, closing, paused = false, maintenanceDone = null, privateCleared = false;
 
     function assertActive(handle, bypassBlock = false) {
         owner.assertActive();
+        if (privateHandle !== null && handle !== undefined && handle !== privateHandle) throw error();
         const permit = maintenance.getStore();
         if (!accepting || (paused && !(permit?.open && permit.lifecycle === lifecycle)) || (!bypassBlock && blocked.has(handle))) throw error();
     }
@@ -147,6 +149,28 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
         // The existing backup/restore authority invokes this after installing
         // data. New admission then publishes a higher storage generation.
         afterRestore: handle => manageHandle(handle, async () => {}),
+        async retirePrivateHandle() {
+            if (privateHandle === null) throw new TypeError('Account Engine cannot retire its durable Host fence');
+            let fenceDeleteStarted = false;
+            try {
+                return await lifecycle.withMaintenance(async () => {
+                    if (!privateCleared) throw new TypeError('Private Engine must delete its isolated namespace before retirement');
+                    await ensure(privateHandle);
+                    await infrastructureTransaction(privateHandle, async tx => {
+                        await checkFence(privateHandle, tx);
+                        for (const kind of Object.values(NATIVE_RESOURCE_KINDS)) {
+                            if (kind !== NATIVE_RESOURCE_KINDS.hostFence && (await tx.listResources({ kind, handle: privateHandle })).length) throw new TypeError('Private namespace still contains Native resources');
+                        }
+                        fenceDeleteStarted = true;
+                        await tx.deleteResource({ kind: NATIVE_RESOURCE_KINDS.hostFence, handle: privateHandle });
+                        owner.assertActive();
+                    }, { retryMode: 'never' });
+                }, { retireWhen: () => true });
+            } catch (failure) {
+                if (fenceDeleteStarted && !failure.storageRollbackConfirmed) owner.invalidate();
+                throw failure;
+            }
+        },
         async withAdministrativeTransaction(handle, fn, options = {}) {
             const scope = administrative.getStore();
             if (!scope?.open || scope.lifecycle !== lifecycle || scope.handle !== handle) throw error();
@@ -161,6 +185,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
     Object.defineProperty(engine, 'nativeHostLifecycle', { value: Object.freeze(lifecycle) });
 
     engine.withTransaction = async (handle, fn, options = {}) => {
+        if (privateHandle !== null) privateCleared = false;
         const scope = active.getStore();
         if (scope?.open && scope.lifecycle === lifecycle && scope.handle === handle) {
             owner.assertActive();
@@ -203,6 +228,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
     // Engines need this ownership boundary even without a SQL account mutex.
     const accountLock = typeof engine.withAccountLock === 'function' ? engine.withAccountLock.bind(engine) : async (_handle, operation) => operation();
     engine.withAccountLock = async (handle, operation) => track(handle, async () => {
+        if (privateHandle !== null) privateCleared = false;
         await ensure(handle);
         return accountLock(handle, async () => {
             owner.assertActive();
@@ -214,7 +240,13 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
 
     for (const method of ['deleteUser', 'restoreUser']) {
         const original = engine[method].bind(engine);
-        engine[method] = (handle, ...args) => manageHandle(handle, () => original(handle, ...args));
+        engine[method] = (handle, ...args) => {
+            if (privateHandle !== null) privateCleared = false;
+            return manageHandle(handle, () => original(handle, ...args)).then(result => {
+                if (privateHandle !== null && method === 'deleteUser') privateCleared = true;
+                return result;
+            });
+        };
     }
 
     engine.close = () => {
