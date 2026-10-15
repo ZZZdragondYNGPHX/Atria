@@ -3,21 +3,24 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../model-prompt-runtime/persistence.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
+import { createBindingSourceAuthority } from './binding-source-authority.js';
 
 /** Authoring uses existing Native resource readers; validation never sends. */
-export function createOrchestrationAuthoringService(engine) {
+export function createOrchestrationAuthoringService(engine, sources = {}) {
     const lifecycle = engine.nativeHostLifecycle;
     if (!lifecycle) throw new TypeError('Orchestration requires original Storage Host ownership');
     const library = new VersionedJsonResourceHandler({ engine });
     const runtime = new NativeModelPromptPersistence({ engine });
+    const authorizeBinding = createBindingSourceAuthority(sources);
     const plans = new PlanRepository({
         engine,
         assertWriter: (handle, tx) => lifecycle.assertWriter(handle, tx),
-        authorize: async ({ handle, operation }) => {
+        authorize: async args => {
+            const { handle, operation } = args;
             // Owner is supplied only by the authenticated HTTP adapter. Source
             // bindings are enabled by the P3 original domain authority adapter.
             if (typeof handle !== 'string' || !handle) throw new TypeError('Authenticated owner required');
-            if (operation.startsWith('bindings.')) throw Object.assign(new Error('Original source authority is not connected'), { code: 'native_orchestration_source_unavailable' });
+            if (operation.startsWith('bindings.')) await authorizeBinding(args);
         },
         validateDependencies: async ({ handle, tx, dependencyPins, definition }) => {
             const evidence = [], issues = [];

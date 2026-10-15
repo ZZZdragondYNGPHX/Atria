@@ -2,8 +2,14 @@ import express from 'express';
 import { getStorageEngine } from '../storage/index.js';
 import { createOrchestrationAuthoringService } from '../native/orchestration/authoring-service.js';
 import { assertObject } from '../../public/shared/native-orchestration-contracts.js';
+import { getNativeSessionServices } from './native-session.js';
+import { getNativeStudioServices } from './native-studio.js';
+import { RpRunControl } from '../native/rp-run-control.js';
 
-const services = () => createOrchestrationAuthoringService(getStorageEngine());
+const services = () => {
+    const engine = getStorageEngine(), { core } = getNativeSessionServices(), { studio, agent } = getNativeStudioServices();
+    return createOrchestrationAuthoringService(engine, { sessionCore: core, studio, projectAgent: agent, rpControl: new RpRunControl({ engine }) });
+};
 
 /** Original app auth + CSRF middleware precedes this Native namespace. */
 export function createNativeOrchestrationRouter(getServices = services) {
@@ -47,6 +53,11 @@ export function createNativeOrchestrationRouter(getServices = services) {
         return plans.validate(handle, input.body);
     }));
     for (const method of ['create', 'save', 'publish']) router.post('/plans/' + method, route(true, (plans, handle, input) => plans[method](handle, input.commandId, input.body)));
+    router.post('/bindings/get', route(false, (plans, handle, input) => {
+        assertObject(input.body, ['sourceSelector'], 'getBinding');
+        return plans.getBinding(handle, input.body.sourceSelector);
+    }));
+    router.post('/bindings/save', route(true, (plans, handle, input) => plans.saveBinding(handle, input.commandId, input.body)));
     // No generic method dispatch, direct GraphPatch/Effect endpoint or approve
     // route. Run admission awaits original P3 domain and budget authorities.
     return router;
