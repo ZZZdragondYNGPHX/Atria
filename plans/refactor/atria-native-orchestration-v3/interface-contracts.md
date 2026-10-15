@@ -538,3 +538,10 @@ RunRoot新增required `treeProgress`，保存本Run及后代累计steps/attempts
 SourcePort在Host事务内不得等待原Session RunLock或Project/Studio writer queue，以免领域writer等待Engine而死锁。Session用原assertRunAccess(tx)纯读；Project用原ProjectAgent.observeComputeSource和Studio.observeRevision读取既有Git HEAD，不repair/init/history写入。实际发送在事务外仍通过原排队source authority完整复核，并比较真实Studio revision与Task base，不能只相信未变的Task fingerprint。Host事务内纯读不是绕过最终原来源检查的缓存。
 
 这些内部接口尚未对应Run/Binding/Projection产品HTTP；批准通道、正式领域grant与P4 consumer仍按原阶段继续。当前精确证据和未完成项分别见同一Record第十组与[验收§9.1](acceptance-matrix.md#91-p3后端子工作后的gate复核)，前端只按[backend-integration](backend-integration.md)列明的实际API接入。
+### 17.20 D3委派允许集合的精确Plan pin
+
+依赖pin新增`port:'plan'`，`resourceRef`只接受原`{planId,planRevisionId,definitionHash}`；integrity为完整原immutable PlanRevision文档hash，不是只有definitionHash。原PlanRepository导出唯一严格reader `readPlanRevision(tx,handle,planRef)`，原publication/Delegate共同复用，核对资源integrity、owner author、revision身份、definition+pins hash及原schema；没有新Plan存储或授权服务。
+
+携带`agent.delegate` capability的可执行node，其policy必须显式含`allowedPlanPinIds:[]`；每项须是该node.dependencyPinIds中port=plan的精确pin，无重复。空集合禁止委派，缺字段的旧形态直接invalid，不以缺省allow-any兼容。Delegate在原scope callback之前精确命中冻结父Plan允许集合、重新读取同owner的原revision并核对完整pin integrity；confirmBudget同样复核。Planner不能凭请求childPlanRef或callback allowed扩大该集合，原scope/能力交集继续必需。
+
+原authoring dependency validation能够纯读上述Plan pin；这不使capability ceiling变成grant，尚未接原authority的capability继续unknown。exact pin的发布依赖是已存在的不可变revision；测试按leaf→grandchild→child→parent发布有限链，不制造definitionHash自指环或空集合通配。字段属于D3既有委派边界的物理收口，Context/audience等独立缺口没有借此假称完成。
