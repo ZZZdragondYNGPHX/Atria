@@ -3,7 +3,7 @@ import { hashNativeDocument } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
-import { assertNativeNarratorQuota } from './native-turn-quota.js';
+import { assertNativeTurnQuota } from './native-turn-quota.js';
 import { orchestrationComputeAttemptId } from '../../../public/shared/native-compute-budget.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
@@ -146,8 +146,8 @@ export class BudgetPort {
         if (authorityRef.domain === 'session') {
             const { snapshot, anchor } = await this.#session(handle, authorityRef);
             const policy = snapshot.manifest.runtime?.experienceContract?.generationBudget ?? null;
-            const quota = policy !== null || quotaProof !== undefined ? assertNativeNarratorQuota(quotaProof,
-                { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId, requestId, role: 'narrator', anchor, policy }).quota : null;
+            const quota = policy !== null || quotaProof !== undefined ? assertNativeTurnQuota(quotaProof,
+                { sessionCore: this.sessionCore, handle, sessionId: snapshot.session.sessionId, requestId, anchor, policy }).quota : null;
             result = await this.sessionCore.runs.admitCompute(handle, snapshot, anchor, limits, attempt, options, quota);
         } else if (authorityRef.authority === 'project_task') {
             if (quotaProof !== undefined) fail('native_generation_budget_lane_denied');

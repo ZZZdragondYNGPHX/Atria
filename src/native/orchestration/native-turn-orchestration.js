@@ -2,20 +2,23 @@ import { ConflictError } from '../../storage/errors.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { hashNativeDocument as hash, cloneNativeDocument } from '../repositories/common.js';
 import { assertObject, assertCounter, assertPlanRef, assertSourceSelector } from '../../../public/shared/native-orchestration-contracts.js';
+import { hasRetainedOrchestrationCompute } from '../../../public/shared/native-compute-budget.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { checkedRecord } from './plan-repository.js';
 import { createOrchestrationExecutionService } from './execution-service.js';
 import { AttemptController } from './attempt-controller.js';
 import { ContextPort } from './context-port.js';
-import { controlCommandId, runGuard } from './controller-common.js';
+import { controlCommandId, runGuard, readAttempt } from './controller-common.js';
+import { TransitionController } from './transition-controller.js';
 import { validateModelCapability } from './model-capability-authority.js';
-import { assertNativeNarratorQuota } from './native-turn-quota.js';
+import { assertNativeTurnQuota } from './native-turn-quota.js';
+import { inspectNativeAuthorityResolver } from './authority-resolver-context.js';
 import { ModelPort } from './model-port.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { selectNativeRuntimeRoute } from '../adapters/generation-host.js';
 import { authorityTurnProof } from '../authority-turn.js';
-import { assertRunAccess } from '../run-control.js';
+import { assertRunAccess, readRunControl } from '../run-control.js';
 import { compileNativeContextMetered } from './generation-local-work.js';
 import { nativeSessionContextOptions, nativeContextCompilationOptions } from '../adapters/native-session-context.js';
 
@@ -35,7 +38,7 @@ export function resolveNativeNarratorScope(scope, host, handle) {
     return value.principal;
 }
 
-/** One original narrator composition, not a Graph runner or business writer. */
+/** Original fixed Session Turn composition, not a Graph runner or business writer. */
 export class NativeNarratorOrchestrationAuthority {
     #execution;
     #ports = new Map();
@@ -95,7 +98,7 @@ export class NativeNarratorOrchestrationAuthority {
         const contract = base.manifest.runtime?.experienceContract, turn = contract?.taskRuntime?.turn;
         const logic = base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic;
         const authority = Boolean(contract?.authorityRuntime);
-        if ((authority ? !transaction : transaction || logic) || !turn || turn.policy !== 'authority-first' || turn.stages.length
+        if ((!authority && (transaction || logic)) || !turn || turn.policy !== 'authority-first' || turn.stages.length
             || turn.narratorTaskId || turn.interpreterTaskId || contract.processingRuntime?.processors.some(item => item.stage === 'output')
             || (input.hostMemoryEvidence?.length ?? Object.keys(input.hostMemoryEvidence ?? {}).length)
             || Object.keys(input.stageInputs ?? {}).length || Object.keys(input.slotBindings ?? {}).length || Object.keys(input.variants ?? {}).length)
@@ -120,28 +123,46 @@ export class NativeNarratorOrchestrationAuthority {
         if (!equal(await this.plans.getBinding(handle, binding.sourceSelector), binding)) fail('native_orchestration_binding_changed');
         const plan = await this.plans.getRevision(handle, binding.planRef), graph = plan.definition;
         const agents = graph.nodes.filter(node => node.kind === 'agent'), outputs = graph.nodes.filter(node => node.kind === 'output');
-        if (agents.length !== 1 || outputs.length !== 1 || graph.nodes.length !== 2 || graph.edges.length !== 1
-            || !equal(graph.entryNodeIds, [agents[0].nodeId]) || !equal(graph.capabilityCeiling, ['generation.send'])
-            || !equal(agents[0].capabilities, ['generation.send']) || outputs[0].capabilities.length
-            || agents[0].inputs.length || agents[0].outputs.length !== 1 || outputs[0].inputs.length !== 1 || outputs[0].outputs.length
-            || plan.dependencyPins.length !== 1 || agents[0].dependencyPinIds.length !== 1 || outputs[0].dependencyPinIds.length
+        const needsResolver = Boolean(base.manifest.runtime.experienceContract.authorityRuntime && !transaction && !base.timeline.at(-1)?.metadata?.atri_authority_retry);
+        if (needsResolver && !base.manifest.runtime.experienceContract.generationBudget) fail('native_orchestration_turn_scope_unavailable');
+        const count = needsResolver ? 2 : 1;
+        if (agents.length !== count || outputs.length !== 1 || graph.nodes.length !== count + 1 || graph.edges.length !== count
+            || !equal(graph.capabilityCeiling, ['generation.send'])
+            || agents.some(node => !equal(node.capabilities, ['generation.send']) || node.outputs.length !== 1 || node.dependencyPinIds.length !== 1)
+            || outputs[0].capabilities.length || outputs[0].inputs.length !== 1 || outputs[0].outputs.length
+            || plan.dependencyPins.length !== count || outputs[0].dependencyPinIds.length
             || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
-            || graph.edges[0].from.nodeId !== agents[0].nodeId || graph.edges[0].to.nodeId !== outputs[0].nodeId
-            || graph.edges[0].condition !== 'always' || graph.edges[0].loopBack || graph.edges[0].maxVisits !== 1
+            || graph.edges.some(edge => edge.condition !== 'always' || edge.loopBack || edge.maxVisits !== 1)
             || graph.graphChangePolicy.allowedOperations.length) fail('native_orchestration_turn_plan_unavailable');
-        const node = agents[0], pin = plan.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
         const validation = await validateModelCapability({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.modelResolver });
-        if (validation.issues.length || pin?.port !== 'model' || pin.resourceRef.scope !== 'player') fail('native_orchestration_model_authority_unavailable');
-        if (input.routeRef !== undefined) {
-            assertObject(input.routeRef, ['scope', 'runtimeRouteId'], 'Original narrator route');
-            if (input.routeRef.scope !== 'player' || input.routeRef.runtimeRouteId !== pin.resourceRef.runtimeRouteId) fail('native_orchestration_turn_route_mismatch');
+        if (validation.issues.length) fail('native_orchestration_model_authority_unavailable');
+        const profiles = {}, routes = await host.persistence.listRuntimeRoutes(handle);
+        for (const node of agents) {
+            const pin = plan.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
+            if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') fail('native_orchestration_model_authority_unavailable');
+            const pinned = routes.find(route => route.runtimeRouteId === pin.resourceRef.runtimeRouteId), role = pinned?.role;
+            if (!['role.narrator', ...(needsResolver ? ['role.intent_resolver'] : [])].includes(role) || profiles[role]) fail('native_orchestration_turn_route_mismatch');
+            const explicit = role === 'role.narrator' ? input.routeRef : undefined;
+            if (explicit !== undefined) {
+                assertObject(explicit, ['scope', 'runtimeRouteId'], 'Original narrator route');
+                if (explicit.scope !== 'player' || explicit.runtimeRouteId !== pin.resourceRef.runtimeRouteId) fail('native_orchestration_turn_route_mismatch');
+            }
+            const route = selectNativeRuntimeRoute(routes, role, explicit);
+            if (route.runtimeRouteId !== pin.resourceRef.runtimeRouteId || hash(route) !== pin.integrity) fail('native_orchestration_turn_route_mismatch');
+            const resolved = await this.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role,
+                ...(role === 'role.intent_resolver' ? { requirements: ['generation.tools'] } : {}) });
+            if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
+            const configDigest = hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
+            profiles[role] = { node, pin, resolved, configDigest };
         }
-        const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', input.routeRef);
-        if (route.runtimeRouteId !== pin.resourceRef.runtimeRouteId || hash(route) !== pin.integrity) fail('native_orchestration_turn_route_mismatch');
-        const resolved = await this.modelResolver.resolve({ handle, routeRef: pin.resourceRef, role: 'role.narrator' });
-        if (!resolved.route.executionPolicy?.computeBudget?.localWork) fail('native_orchestration_context_budget_unavailable');
-        const configDigest = hash({ route: resolved.route, model: resolved.model, connection: resolved.connection, generation: resolved.generation, resources: resolved.resources });
-        return { binding, plan, node, pin, resolved, configDigest };
+        const narrator = profiles['role.narrator'], resolver = profiles['role.intent_resolver'];
+        if (!narrator || Boolean(resolver) !== needsResolver || !equal(graph.entryNodeIds, [(resolver ?? narrator).node.nodeId])
+            || (resolver ?? narrator).node.inputs.length || narrator.node.inputs.length !== (resolver ? 1 : 0)
+            || narrator.node.outputs[0].type !== 'text' || outputs[0].inputs[0].type !== 'text'
+            || (resolver && (resolver.node.outputs[0].type !== 'json' || narrator.node.inputs[0].type !== 'json' || !narrator.node.inputs[0].required))
+            || !graph.edges.some(edge => edge.from.nodeId === narrator.node.nodeId && edge.to.nodeId === outputs[0].nodeId)
+            || (resolver && !graph.edges.some(edge => edge.from.nodeId === resolver.node.nodeId && edge.to.nodeId === narrator.node.nodeId))) fail('native_orchestration_turn_plan_unavailable');
+        return { binding, plan, ...narrator, resolver, topologyDigest: hash(Object.entries(profiles).map(([role, value]) => ({ role, configDigest: value.configDigest }))) };
     }
 
     async preflightBinding({ host, handle, base, input, transaction = null }) {
@@ -156,7 +177,7 @@ export class NativeNarratorOrchestrationAuthority {
         const state = selections.get(selection);
         if (!state || state.authority !== this) fail('native_orchestration_turn_selection_invalid');
         const current = await this.#describe(state.host, state.handle, state.base, state.input, state.transaction);
-        if (!current || !equal(current.binding, state.binding) || current.configDigest !== state.configDigest || current.plan.definitionHash !== state.plan.definitionHash)
+        if (!current || !equal(current.binding, state.binding) || current.topologyDigest !== state.topologyDigest || current.plan.definitionHash !== state.plan.definitionHash)
             fail('native_orchestration_turn_selection_stale');
         return state;
     }
@@ -166,7 +187,7 @@ export class NativeNarratorOrchestrationAuthority {
         if (!state || state.handle !== handle || !equal(root.planRef, state.selectionState.binding.planRef)
             || root.sourceBinding.bindingDigest !== state.sourceBinding.bindingDigest) fail('native_orchestration_turn_grant_denied');
         await this.#current(state.selection);
-        assertNativeNarratorQuota(state.quotaProof, state.proofExpected);
+        assertNativeTurnQuota(state.quotaProof, state.proofExpected);
         if (attempt && (attempt.nodeId !== state.selectionState.node.nodeId || attempt.effectiveGrantDigest !== state.decision.grantDigest)) fail('native_orchestration_turn_grant_denied');
         if (proposal && !equal(proposal, Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(field => [field, state.decision[field]])))) fail('native_orchestration_turn_input_stale');
         if (intent && (intent.nodeAttemptId !== state.attemptId || intent.inputHash !== state.decision.inputHash)) fail('native_orchestration_turn_grant_denied');
@@ -184,71 +205,107 @@ export class NativeNarratorOrchestrationAuthority {
         if (!equal(expected, snapshot.contextPlan)) fail('native_orchestration_turn_context_mismatch');
     }
 
-    async prepareNarrator({ host, handle, base, input, lanePlan, request, quotaProof, selection, signal, authorityTurn = null }) {
+    async prepareNarrator(args) { return this.#prepareRole(args, 'narrator'); }
+
+    async prepareResolver(args) { return this.#prepareRole(args, 'intent_resolver'); }
+
+    async #prepareRole({ host, handle, base, input, lanePlan, request, quotaProof, selection, signal, authorityTurn = null, resolverCapture = null }, role) {
         if (selection === null) return null;
         checkCancellation(signal);
-        const selected = await this.#current(selection);
+        const selectionState = await this.#current(selection), resolverRole = role === 'intent_resolver';
+        if (resolverRole && !selectionState.resolver) fail('native_orchestration_turn_scope_unavailable');
+        const selected = resolverRole ? { ...selectionState, ...selectionState.resolver } : selectionState;
+        const resolverIdentity = resolverRole ? inspectNativeAuthorityResolver(resolverCapture, { host, sessionCore: this.sessionCore, handle }) : null;
         const { requestId: _requestId, ...turnRequest } = input;
-        assertObject(request, ['sessionId', 'revisionId', 'requestId', 'role', 'messages', ...(Object.hasOwn(request, 'routeRef') ? ['routeRef'] : [])], 'Original narrator request');
+        assertObject(request, ['sessionId', 'revisionId', 'requestId', 'role', ...(!resolverRole ? ['messages'] : []), ...(Object.hasOwn(request, 'routeRef') ? ['routeRef'] : [])], 'Original Turn request');
         const normalizedRequest = Object.fromEntries(Object.entries(request).filter(([, value]) => value !== undefined));
         const requestHash = hash(selected.transaction ? { ...turnRequest, transaction: selected.transaction } : turnRequest), proofExpected = { host, sessionCore: this.sessionCore, handle, sessionId: base.session.sessionId,
-            requestId: input.invocationId, invocationId: input.invocationId, requestHash, selection, role: 'narrator', anchor: anchorOf(base),
+            requestId: input.invocationId + (resolverRole ? ':intent' : ''), invocationId: input.invocationId, requestHash, selection, role, anchor: anchorOf(base),
             policy: base.manifest.runtime.experienceContract.generationBudget ?? null };
-        const producerIdentity = assertNativeNarratorQuota(quotaProof, proofExpected);
+        const producerIdentity = assertNativeTurnQuota(quotaProof, proofExpected);
+        if (resolverIdentity && (!equal(resolverIdentity.base, base) || resolverIdentity.producer.selection !== selection
+            || resolverIdentity.producer.requestHash !== requestHash || authorityTurn)) fail('native_orchestration_turn_authority_invalid');
         const originalAuthority = authorityTurn ? authorityTurnProof(this.sessionCore, handle, base, authorityTurn.proof) : null;
-        if (Boolean(originalAuthority) !== Boolean(base.manifest.runtime.experienceContract.authorityRuntime)
-            || (originalAuthority && (!equal(originalAuthority.selection, selected.transaction) || !equal(authorityTurn.base, base)
+        if ((!resolverRole && Boolean(originalAuthority) !== Boolean(base.manifest.runtime.experienceContract.authorityRuntime))
+            || (originalAuthority && ((selected.transaction && !equal(originalAuthority.selection, selected.transaction)) || !equal(authorityTurn.base, base)
                 || !equal(lanePlan.authorityContext?.snapshot, originalAuthority.prepared.candidate)
                 || !equal(lanePlan.authorityContext?.receipt, originalAuthority.prepared.receipt)))) fail('native_orchestration_turn_authority_invalid');
         const authorityRef = originalAuthority ? { kind: 'native_authority_candidate', identity: originalAuthority.prepared.identity,
             candidateDigest: hash(originalAuthority.prepared.candidate), receiptDigest: hash(originalAuthority.prepared.receipt) } : null;
         if (selected.host !== host || selected.handle !== handle || !equal(sourceOf(base), sourceOf(selected.base)) || !equal(input, selected.input)
-            || !equal(normalizedRequest, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, requestId: input.invocationId,
-                role: 'narrator', ...(input.routeRef === undefined ? {} : { routeRef: input.routeRef }), messages: [] })) fail('native_orchestration_turn_input_stale');
+            || !equal(normalizedRequest, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId, requestId: proofExpected.requestId,
+                role, ...(!resolverRole && input.routeRef !== undefined ? { routeRef: input.routeRef } : {}), ...(!resolverRole ? { messages: [] } : {}) })) fail('native_orchestration_turn_input_stale');
+        if (originalAuthority && selected.resolver) await this.#originalSelection(handle, base, originalAuthority.selection);
         if (this.#runs.size >= 64) fail('native_orchestration_model_busy');
         const service = this.execution, captured = await service.sourcePort.capture(handle, sourceOf(base));
         const bindingRef = { bindingId: selected.binding.bindingId, version: selected.binding.version };
+        const audience = { kind: resolverRole ? 'authority_intent' : 'narrator' }, taskPurpose = 'original_native_' + role;
         const grantDigest = hash({ owner: handle, sourceBindingDigest: captured.sourceBinding.bindingDigest, bindingRef, planRef: selected.binding.planRef,
-            nodeId: selected.node.nodeId, principal: 'original_native_narrator', invocationId: input.invocationId, requestHash, configDigest: selected.configDigest, audience: { kind: 'narrator' }, authorityRef });
+            nodeId: selected.node.nodeId, principal: taskPurpose, invocationId: input.invocationId, requestHash, configDigest: selected.configDigest, audience, authorityRef });
         const logicalInputRef = { kind: 'native_turn_intent', sourceRef: { ...captured.sourceBinding.sourceRef, packageId: base.session.packageId, packageVersionId: base.session.packageVersionId },
-            planRef: selected.binding.planRef, nodeId: selected.node.nodeId, bindingRef, invocationId: input.invocationId, requestHash, role: 'narrator',
+            planRef: selected.binding.planRef, nodeId: selected.node.nodeId, bindingRef, invocationId: input.invocationId, requestHash, role,
             routeRef: selected.pin.resourceRef, routeIntegrity: selected.pin.integrity, promptProgramRef: selected.resolved.route.promptProgramRef,
-            generationProfileRef: selected.resolved.route.generationProfileRef, resourceDigest: hash(selected.resolved.resources), audience: { kind: 'narrator' }, authorityRef, grantDigest };
+            generationProfileRef: selected.resolved.route.generationProfileRef, resourceDigest: hash(selected.resolved.resources), audience, authorityRef,
+            ...(resolverRole ? { resolverInput: resolverIdentity.logicalDescriptor } : {}), grantDigest };
         const decision = { actionRef: { kind: 'native_model_send', runtimeRouteId: selected.resolved.route.runtimeRouteId },
             targetRef: { connectionProfileId: selected.resolved.connection.connectionProfileId, modelProfileId: selected.resolved.model.modelProfileId, pathFingerprint: selected.resolved.pathFingerprint },
             inputRef: logicalInputRef, inputHash: hash(logicalInputRef), capability: 'generation.send', grantDigest,
             endpointBindingDigest: hash({ pathFingerprint: selected.resolved.pathFingerprint, configDigest: selected.configDigest }), risk: 'R1', requiresApproval: false,
-            egressDigest: hash({ pathFingerprint: selected.resolved.pathFingerprint, sourceBindingDigest: captured.sourceBinding.bindingDigest, grantDigest, audience: 'narrator' }),
+            egressDigest: hash({ pathFingerprint: selected.resolved.pathFingerprint, sourceBindingDigest: captured.sourceBinding.bindingDigest, grantDigest, audience }),
             budgetEnvelopeDigest: hash(selected.resolved.route.executionPolicy.computeBudget), dispatchPolicy: { idempotency: 'none', operationKey: null, reconcile: 'manual' } };
         const commandIdentity = { sessionId: base.session.sessionId, branchId: base.revision.branchId, revisionId: base.revision.revisionId, invocationId: input.invocationId };
-        const root = await service.runs.start(handle, controlCommandId('native.turn.start', commandIdentity), { planRef: selected.binding.planRef,
+        const started = await service.runs.start(handle, controlCommandId('native.turn.start', commandIdentity), { planRef: selected.binding.planRef,
             sourceRequest: sourceOf(base), retentionPolicyRef: { policyId: 'retain_native_turn_until_explicit_release' } });
+        const root = await service.runs.get(handle, started.runId);
         const state = { host, handle, selection, selectionState: selected, sourceBinding: captured.sourceBinding, decision, quotaProof, proofExpected, request: immutable(normalizedRequest) };
         this.#runs.set(root.runId, state);
         try {
-            const { attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.turn.attempt', commandIdentity), { ...runGuard(root), nodeId: selected.node.nodeId,
-                inputRefs: [logicalInputRef], inputDigest: hash([logicalInputRef]), effectiveGrantDigest: grantDigest, budgetRef: root.budgetAuthorityRef });
+            const admission = { inputRefs: [logicalInputRef], inputDigest: hash([logicalInputRef]), effectiveGrantDigest: grantDigest, budgetRef: root.budgetAuthorityRef };
+            let attemptId;
+            if (!resolverRole && selected.resolver) {
+                let producerAttemptId = await this.engine.withTransaction(handle, async tx => {
+                    const matches = [];
+                    for (const ref of root.attemptRefs) {
+                        const { doc } = await readAttempt(tx, handle, root, ref);
+                        if (doc.nodeId === selected.resolver.node.nodeId && doc.status === 'completed') matches.push(doc.attemptId);
+                    }
+                    if (!matches.length && root.status === 'admitted' && !root.attemptRefs.length && !root.pendingEffectRefs.length) return null;
+                    if (matches.length !== 1) fail('native_orchestration_resolver_completion_required');
+                    return matches[0];
+                });
+                if (producerAttemptId === null) producerAttemptId = await this.#reuseSelection({ host, handle, base, root, selected, selection,
+                    quotaProof, proofExpected, authorityTurn, commandIdentity });
+                const transitionRoot = await service.runs.get(handle, root.runId);
+                const edge = selected.plan.definition.edges.find(edge => edge.from.nodeId === selected.resolver.node.nodeId && edge.to.nodeId === selected.node.nodeId);
+                ({ outcome: { attemptId } } = await new TransitionController({ runs: service.runs, authorizeTransition: async ({ handle: owner, root: current, producers }) => {
+                    if (owner !== handle || current.runId !== root.runId || producers.length !== 1 || producers[0].attempt.attemptId !== producerAttemptId) fail('native_orchestration_turn_grant_denied');
+                    await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);
+                    await this.#originalSelection(handle, base, originalAuthority.selection);
+                    return admission;
+                } }).advance(handle, { ...runGuard(transitionRoot), bindings: [{ edgeId: edge.edgeId, producerAttemptId }], reservedAttemptId: null }));
+            } else ({ attemptId } = await service.runs.beginAttempt(handle, controlCommandId('native.turn.attempt', { ...commandIdentity, role }), { ...runGuard(root), nodeId: selected.node.nodeId, ...admission }));
             state.attemptId = attemptId;
             await new AttemptController({ runs: service.runs, authorizeAttempt: args => this.#authorize(args) }).activate(handle, { ...runGuard(await service.runs.get(handle, root.runId)), attemptId });
-            const effectId = 'oeffect_' + hash({ runId: root.runId, attemptId, purpose: 'native_narrator' }).slice(0, 32);
+            const effectId = 'oeffect_' + hash({ runId: root.runId, attemptId, purpose: 'native_' + role }).slice(0, 32);
+            state.effectId = effectId;
             await service.effects.prepare(handle, { ...runGuard(await service.runs.get(handle, root.runId)), effectId, nodeAttemptId: attemptId,
                 proposal: Object.fromEntries(['actionRef', 'targetRef', 'inputRef', 'inputHash'].map(field => [field, decision[field]])) });
             const contextSnapshot = originalAuthority?.prepared.candidate ?? base;
-            const contextPackage = contextSnapshot.manifest.runtime.experienceContract.contextRuntime || contextSnapshot.manifest.runtime.experienceContract.processingRuntime
+            const contextPackage = !resolverRole && (contextSnapshot.manifest.runtime.experienceContract.contextRuntime || contextSnapshot.manifest.runtime.experienceContract.processingRuntime)
                 ? await host.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId) : null;
             const nativeOptions = nativeSessionContextOptions({ handle, snapshot: contextSnapshot, resolver: this.modelResolver, contextPackage,
-                role: 'role.narrator', lanePlan, authorityContext: lanePlan.authorityContext });
+                role: 'role.' + role, lanePlan, authorityContext: lanePlan.authorityContext });
             const contextOptions = nativeContextCompilationOptions(state.request, selected.resolved, { ...this.contextOptions, ...nativeOptions });
-            state.contextPort = new ContextPort({ sessionCore: this.sessionCore, contextOptions, authorityTurn,
+            state.contextPort = new ContextPort({ sessionCore: this.sessionCore, contextOptions, authorityTurn, resolverCapture,
                 compilationInputs: contextPackage ? { manifest: contextPackage.manifest, sourceFiles: [...contextPackage.sourceFiles] } : null,
                 authorizeContext: async ({ request: contextRequest }) => {
-                    await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
-                    if (contextRequest.taskPurpose !== 'original_native_narrator' || !equal(contextRequest.audience, { kind: 'narrator' }) || contextRequest.grantDigest !== grantDigest
+                    await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);
+                    if (contextRequest.taskPurpose !== taskPurpose || !equal(contextRequest.audience, audience) || contextRequest.grantDigest !== grantDigest
                 || !equal(contextRequest.sourceBinding, captured.sourceBinding) || !equal(contextRequest.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
                     return { allowed: true, grantDigest };
                 } });
-            const contextRequest = { ownerRef: { handle }, sourceBinding: captured.sourceBinding, audience: { kind: 'narrator' },
-                taskPurpose: 'original_native_narrator', grantDigest, inputRefs: [logicalInputRef], tokenBudget: {
+            const contextRequest = { ownerRef: { handle }, sourceBinding: captured.sourceBinding, audience,
+                taskPurpose, grantDigest, inputRefs: [logicalInputRef], tokenBudget: {
                     modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(selected.resolved) } };
             const orchestrationSend = await service.generationSend(handle, { runId: root.runId, effectId, limits: selected.resolved.route.executionPolicy.computeBudget,
                 quotaProof });
@@ -256,21 +313,87 @@ export class NativeNarratorOrchestrationAuthority {
                 budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId), effectId, limits: selected.resolved.route.executionPolicy.computeBudget,
                 workDescriptor: { requestId: state.request.requestId, pathFingerprint: selected.resolved.pathFingerprint },
                 assertCurrent: async () => {
-                    await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
+                    await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);
                     await service.sourcePort.revalidate(handle, captured.sourceBinding);
                 }, signal });
             state.context = metered.compiled;
+            if (resolverRole) state.request = immutable(state.contextPort.resolverRequest(handle, { context: state.context }));
             await orchestrationSend.bindContext({ port: state.contextPort, compiled: state.context, compileProof: metered.proof });
             const scope = Object.freeze({});
             modelScopes.set(scope, { host, handle, consumed: false, principal: { runId: root.runId, effectId, request: state.request, logicalInputRef: immutable(logicalInputRef), logicalInputHash: decision.inputHash,
                 nativeTurnPermit: producerIdentity.permit,
                 options: { scheduled: true, lanePlan, orchestrationSend }, revalidateConsume: async ({ tx } = {}) => {
-                    await this.#current(selection); assertNativeNarratorQuota(quotaProof, proofExpected);
+                    await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);
                     await service.sourcePort.revalidate(handle, captured.sourceBinding, tx ? { tx } : undefined);
                     await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                 } } });
             return scope;
         } catch (error) { this.#runs.delete(root.runId); throw error; }
+    }
+
+    async #originalSelection(handle, base, expected) {
+        return this.engine.withTransaction(handle, async tx => {
+            const control = await readRunControl(tx, handle, base.session.sessionId);
+            const operation = control.operations[hash({ lane: 'turn', anchor: anchorOf(base) })];
+            const user = base.timeline.at(-1);
+            if (!operation || operation.fingerprint !== hash({ player: user?.messageId, typed: null, userInput: user?.content })
+                || !operation.selection || !equal(operation.selection, expected)) fail('native_orchestration_turn_authority_invalid');
+            return { operationId: hash({ lane: 'turn', anchor: anchorOf(base) }), fingerprint: operation.fingerprint,
+                selectionDigest: hash(operation.selection), retainedCompute: hasRetainedOrchestrationCompute(operation.compute) };
+        });
+    }
+
+    async #reuseSelection({ host, handle, base, root, selected, selection, quotaProof, proofExpected, authorityTurn, commandIdentity }) {
+        // A fresh Run may reuse the original durable selection. It cannot
+        // replace any already attempted/unknown model work in this same Run.
+        if (root.status !== 'admitted' || root.attemptRefs.length || root.pendingEffectRefs.length) fail('native_orchestration_resolver_completion_required');
+        const original = authorityTurnProof(this.sessionCore, handle, base, authorityTurn.proof);
+        const reference = await this.#originalSelection(handle, base, original.selection), profile = selected.resolver;
+        if (!reference.retainedCompute) fail('native_orchestration_resolver_retention_unavailable');
+        const inputRefs = [{ kind: 'native_authority_selection_reuse', ownerRef: { handle }, sourceBindingDigest: root.sourceBinding.bindingDigest,
+            operationRef: reference, planRef: root.planRef, nodeId: profile.node.nodeId, routePin: profile.pin, configDigest: profile.configDigest }];
+        const inputDigest = hash(inputRefs), effectiveGrantDigest = hash({ principal: 'original_native_authority_selection_reuse', inputDigest,
+            invocationId: proofExpected.invocationId, requestHash: proofExpected.requestHash });
+        const verify = async ({ handle: owner, tx, root: current, attempt }) => {
+            if (owner !== handle || host !== selected.host || current.runId !== root.runId || attempt.nodeId !== profile.node.nodeId
+                || attempt.effectiveGrantDigest !== effectiveGrantDigest || !equal(attempt.inputRefs, inputRefs)
+                || !equal(attempt.budgetRef, root.budgetAuthorityRef) || attempt.effectRefs.length) fail('native_orchestration_turn_grant_denied');
+            await this.#current(selection); assertNativeTurnQuota(quotaProof, proofExpected);
+            await this.execution.sourcePort.revalidate(handle, root.sourceBinding, { tx });
+            if (!equal(await this.#originalSelection(handle, base, original.selection), reference)) fail('native_orchestration_turn_authority_invalid');
+        };
+        const { attemptId } = await this.execution.runs.beginAttempt(handle, controlCommandId('native.turn.reuseSelection', commandIdentity), {
+            ...runGuard(root), nodeId: profile.node.nodeId, inputRefs, inputDigest, effectiveGrantDigest, budgetRef: root.budgetAuthorityRef });
+        const controller = new AttemptController({ runs: this.execution.runs, authorizeAttempt: verify, verifySettlement: async args => {
+            await verify(args);
+            if (args.outcome !== 'completed' || args.resultRefs.length || args.receipts.length || args.reasonCode !== 'original_selection_reused') fail('native_orchestration_resolver_completion_required');
+        } });
+        await controller.activate(handle, { ...runGuard(await this.execution.runs.get(handle, root.runId)), attemptId });
+        await controller.settle(handle, { ...runGuard(await this.execution.runs.get(handle, root.runId)), attemptId,
+            outcome: 'completed', resultRefs: [], effectReceiptRefs: [], reasonCode: 'original_selection_reused' });
+        return attemptId;
+    }
+
+    async executeResolver(args) {
+        const scope = await this.prepareResolver(args);
+        if (scope === null) return null;
+        const { runId } = modelScopes.get(scope).principal, state = this.#runs.get(runId);
+        try {
+            const { generated, receiptRef } = await this.#port(args.host).generate(args.handle, scope, { signal: args.signal });
+            // This is the original exposed-transaction selector. It grants no
+            // remote Tool or World write, and its body never enters RunLedger.
+            const selected = await state.contextPort.selectResolver(args.handle, { context: state.context, response: generated.response });
+            await new AttemptController({ runs: this.execution.runs, authorizeAttempt: input => this.#authorize(input),
+                verifySettlement: async ({ handle, root, attempt, outcome, resultRefs, receipts }) => {
+                    await this.#authorize({ handle, root, attempt });
+                    if (attempt.attemptId !== state.attemptId || outcome !== 'completed' || resultRefs.length || receipts.length !== 1
+                        || receipts[0].receiptId !== receiptRef.receiptId || receipts[0].outcome !== 'confirmed') fail('native_orchestration_resolver_completion_required');
+                    const current = await state.contextPort.selectResolver(handle, { context: state.context, response: generated.response });
+                    if (!equal(current, selected)) fail('native_orchestration_turn_input_stale');
+                } }).settle(args.handle, { ...runGuard(await this.execution.runs.get(args.handle, runId)), attemptId: state.attemptId,
+                outcome: 'completed', resultRefs: [], effectReceiptRefs: [receiptRef.receiptId], reasonCode: null });
+            return selected;
+        } finally { this.#runs.delete(runId); modelScopes.delete(scope); }
     }
 
     async executeNarrator(args) {

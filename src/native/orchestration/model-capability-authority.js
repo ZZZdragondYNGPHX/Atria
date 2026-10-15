@@ -11,12 +11,15 @@ export async function validateModelCapability({ handle, definition, dependencyPi
     const nodes = definition.nodes.filter(node => node.capabilities.includes('generation.send'));
     if (!nodes.length) { unavailable(); return { evidence, issues }; }
     for (const node of nodes) {
-        // This finite mechanism is only the original narrator route. Other
-        // principals require their own original producer and remain unknown.
+        // The original pinned route supplies this finite mechanism's role.
+        // Publication never supplies the corresponding fixed runtime producer.
         const pin = dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
         if (node.kind !== 'agent' || pin?.port !== 'model' || pin.resourceRef.scope !== 'player') { unavailable(); continue; }
         try {
-            const resolved = await resolver.resolve({ handle, routeRef: pin.resourceRef, role: 'role.narrator' });
+            const route = await resolver.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
+            if (!['role.narrator', 'role.intent_resolver'].includes(route?.role)) { unavailable(); continue; }
+            const resolved = await resolver.resolve({ handle, routeRef: pin.resourceRef, role: route.role,
+                requirements: route.role === 'role.intent_resolver' ? ['generation.tools'] : [] });
             if (hashNativeDocument(resolved.route) !== pin.integrity) {
                 issues.push({ code: 'native_orchestration_dependency_stale', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
                 continue;
@@ -28,7 +31,8 @@ export async function validateModelCapability({ handle, definition, dependencyPi
             evidence.push({ capability: 'generation.send', nodeId: node.nodeId, pinId: pin.pinId,
                 authority: 'native_route_resolver', routeIntegrity: pin.integrity, pathFingerprint: resolved.pathFingerprint,
                 resourceDigest: hashNativeDocument(resolved.resources), capabilityDigest: hashNativeDocument(resolved.capabilities),
-                runtimePrincipal: 'original_native_narrator_required' });
+                runtimePrincipal: resolved.route.role === 'role.intent_resolver'
+                    ? 'original_native_intent_resolver_required' : 'original_native_narrator_required' });
         } catch (error) {
             if (!(error instanceof GenerationError) && !(error instanceof TypeError) && error.name !== 'NotFoundError') throw error;
             const unknown = ['generation_provider_unavailable', 'generation_capability_unknown'].includes(error.code);

@@ -1,6 +1,11 @@
 import { authorityValue } from '../authority-turn.js';
 import { informationDefinition } from '../../../public/shared/native-information-runtime.js';
 
+export function emptyNativeContextPlan(request, resolved, source) {
+    return { schemaVersion: 1, requestId: request.requestId, source, items: [], provenance: [],
+        budget: { maxTokens: resolved.model.limits.contextTokens - resolved.model.limits.outputTokens, reservedOutputTokens: resolved.model.limits.outputTokens } };
+}
+
 // Shared original Authority narration boundary. Candidate projections are
 // observations; only the original finalizer can adopt their mechanical result.
 export function authorityContextItems(selected, snapshot, authorityContext) {

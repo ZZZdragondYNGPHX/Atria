@@ -17,10 +17,11 @@ import { prepareNarrativeSkills, runNarrativeSkillLoop, completeNarrativeSkillTo
 import { publicSessionTaskMessages, sessionTaskRoundCount, completeSessionTaskHistory } from '../../../public/shared/native-session-task-history.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { compiledRequestBinding, compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
-import { mintNativeNarratorQuota, assertNativeNarratorQuota } from '../orchestration/native-turn-quota.js';
+import { mintNativeNarratorQuota, mintNativeResolverQuota, assertNativeTurnQuota } from '../orchestration/native-turn-quota.js';
+import { captureNativeAuthorityResolver } from '../orchestration/authority-resolver-context.js';
 import { captureNativeTurnPermit } from '../orchestration/native-turn-permit.js';
 import { runGenerationLocalWork, assertContextCompilation } from '../orchestration/generation-local-work.js';
-import { authorityContextItems, appendAuthorityContext, narrowNativeContextSelection } from './native-authority-context.js';
+import { authorityContextItems, appendAuthorityContext, narrowNativeContextSelection, emptyNativeContextPlan } from './native-authority-context.js';
 import { assertExecutionEvidenceCurrent } from '../model-prompt-runtime/execution-evidence.js';
 import { RuntimeCheckpointStore } from '../model-prompt-runtime/runtime-checkpoint-store.js';
 import { nativeExecutionScope } from '../model-prompt-runtime/native-execution-envelope.js';
@@ -436,10 +437,14 @@ export class NativeGenerationHost {
     async prepareAuthoritySelection(handle, base, input, lanePlan, signal) {
         if (base.manifest.runtime.experienceContract.lifecycleRuntime && !base.states.atri_lifecycle?.ready) fail('native_authority_ready_required');
         const installed = await this.sessionCore._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
-        const catalog = await authorityCatalog(base, installed);
+        // For the bound resolver the original catalog and Observation belong
+        // inside the admitted ContextPort compile, not in this preflight.
+        let catalog;
+        const originalCatalog = async () => catalog ??= await authorityCatalog(base, installed);
         const typed = lanePlan.transaction;
         let player = null;
         if (typed) {
+            await originalCatalog();
             const selection = authoritySelection(catalog, typed);
             const content = JSON.stringify({ verb: catalog.find(item => item.id === selection.transactionId).verb, input: selection.input });
             player = structuredClone(this.sessionCore._newEntry(base, { role: 'user', content,
@@ -465,8 +470,8 @@ export class NativeGenerationHost {
             // Never evict an unresolved pin to allow a silent re-resolution.
             if (this.authoritySelections.size >= 128) fail('native_authority_retry_retention_limit');
             const selecting = async () => {
-                if (retained) return authoritySelection(catalog, retained);
-                if (typed) return authoritySelection(catalog, typed);
+                if (retained) return authoritySelection(await originalCatalog(), retained);
+                if (typed) return authoritySelection(await originalCatalog(), typed);
                 // Branch Retry of a typed action retains its fixed authored input.
                 const replay = base.timeline.at(-1).metadata?.atri_authority_retry;
                 if (replay) {
@@ -474,8 +479,20 @@ export class NativeGenerationHost {
                     const receipt = origin.states.atri_action_receipts?.receipts.find(item => item.source === 'frontend' && item.playerMessageId === replay.playerMessageId);
                     const player = origin.timeline.find(item => item.messageId === replay.playerMessageId);
                     if (!receipt || !player?.metadata?.atri_authority_input) fail('native_authority_retry_invalid');
-                    return authoritySelection(catalog, player.metadata.atri_authority_input);
+                    return authoritySelection(await originalCatalog(), player.metadata.atri_authority_input);
                 }
+                const producer = turnProducerLanes.get(lanePlan);
+                if (producer?.selection) {
+                    if (producer.host !== this || producer.handle !== handle || producer.sessionId !== input.sessionId
+                        || producer.invocationId !== input.invocationId || lanePlan.controlledTurn) fail('native_orchestration_turn_producer_unavailable');
+                    const request = { sessionId: base.session.sessionId, revisionId: base.revision.revisionId,
+                        role: 'intent_resolver', requestId: input.invocationId + ':intent' };
+                    const resolverCapture = captureNativeAuthorityResolver({ host: this, handle, base, producer });
+                    const quotaProof = mintNativeResolverQuota({ host: this, handle, request, snapshot: base, ...producer });
+                    return this.turnOrchestration.executeResolver({ host: this, handle, base, input, lanePlan, request, quotaProof,
+                        selection: producer.selection, signal, resolverCapture });
+                }
+                await originalCatalog();
                 const request = resolverRequest(catalog, buildAuthorityObservation(base), base.timeline.at(-1).content);
                 const result = await this.execute(handle, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId,
                     role: 'intent_resolver', requestId: input.invocationId + ':intent', tools: request.tools }, signal, undefined,
@@ -946,9 +963,10 @@ export class NativeGenerationHost {
         const quotaProof = orchestrationSend?.quotaProof;
         if (value.orchestrationSend !== undefined) fail('native_generation_host_readonly');
         if (orchestrationSend && (!sendBank || preview || preflight || taskPlan || illustrationPlan || (lanePlan?.budgetContext && !quotaProof))) fail('native_generation_budget_lane_denied');
-        if (quotaProof !== undefined) assertNativeNarratorQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
+        if (quotaProof !== undefined) assertNativeTurnQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
             sessionId: value.sessionId, requestId: value.requestId, role: value.role });
-        if (scopedContext && (value.messages?.length || value.prompt || value.tools?.length)) fail('native_generation_context_denied');
+        if (scopedContext && (value.messages?.length || value.prompt)) fail('native_generation_context_denied');
+        if (scopedContext && value.tools?.length) scopedContext.port.assertResolverRequest(handle, { context: scopedContext.compiled, request: value });
         if (sendBank) {
             effectPolicy = 'no-background-model';
             await sendBank.assertCurrent();
@@ -1005,7 +1023,7 @@ export class NativeGenerationHost {
             runtime = preflightPackage.manifest.runtime;
         } else fail('native_generation_context_required');
         const budget = illustrationPlan ? null : runtime?.experienceContract?.generationBudget;
-        if (quotaProof !== undefined) assertNativeNarratorQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
+        if (quotaProof !== undefined) assertNativeTurnQuota(quotaProof, { host: this, sessionCore: this.sessionCore, handle,
             sessionId: input.sessionId, requestId: input.requestId, role: input.role,
             anchor: { branchId: snapshot?.revision.branchId, revisionId: snapshot?.revision.revisionId }, policy: budget ?? null });
         if (scopedContext) scopedContext.port.assertSource(handle, { context: scopedContext.compiled, source });
@@ -1197,10 +1215,7 @@ export class NativeGenerationHost {
                 if (sessionTaskRoundCount(taskHistory, skillTranscript) >= 6) throw new GenerationError('generation_continuation_unavailable');
             }
             if (illustrationPlan) return illustrationPlan.buildContext(request, resolved, resolver.provider(resolved.connection.providerAdapter), compiler);
-            const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : {
-                schemaVersion: 1, requestId: request.requestId, source, items: [], provenance: [],
-                budget: { maxTokens: resolved.model.limits.contextTokens - resolved.model.limits.outputTokens, reservedOutputTokens: resolved.model.limits.outputTokens },
-            };
+            const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : emptyNativeContextPlan(request, resolved, source);
             // A task/tool transcript follows the selected turn input. Do not
             // append the original user turn again after a tool result.
             const safeItems = authorityContextItems(selected, snapshot, authorityContext);

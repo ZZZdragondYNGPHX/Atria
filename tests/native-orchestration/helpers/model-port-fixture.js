@@ -21,14 +21,14 @@ const limits = { maxRequests: 4, maxTokens: 32000, localWork: { maxJobs: 32, max
 
 // Native Host, narrator producer, Binding/Plan, Provider HTTP/private lease,
 // original bank and Effect writer are real. The remote response is synthetic.
-export async function modelPortFixture(make, { usage = true, failure = false, responseStatus = null, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route, createSource = null, generationWithoutMaxTokens = false } = {}) {
+export async function modelPortFixture(make, { usage = true, failure = false, responseStatus = null, responseBody = null, configurePlan = async () => {}, changeContract = () => {}, beforeBase = async () => {}, changeRoute = route => route, createSource = null, generationWithoutMaxTokens = false } = {}) {
     const h = await make(), requests = [], chunks = []; let coldEngine, core, host, authority, port, effectRef;
     let afterSend = async () => {}, captureScope = null, transformRender = rendered => rendered;
     const server = http.createServer(async (req, res) => {
         const parts = []; for await (const part of req) parts.push(part);
-        requests.push(JSON.parse(Buffer.concat(parts).toString())); await afterSend();
+        const body = JSON.parse(Buffer.concat(parts).toString()); requests.push(body); await afterSend();
         res.writeHead(responseStatus ? responseStatus(requests.length) : failure ? 503 : 200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ id: 'native-response', status: 'completed', output: [{ id: 'native-message', type: 'message', status: 'completed', role: 'assistant',
+        res.end(JSON.stringify(responseBody ? await responseBody({ requests, body, index: requests.length - 1 }) : { id: 'native-response', status: 'completed', output: [{ id: 'native-message', type: 'message', status: 'completed', role: 'assistant',
             content: [{ type: 'output_text', text: 'Synthetic native narrator response.', annotations: [] }] }],
         ...(usage ? { usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } } : {}) }));
     });
@@ -75,6 +75,7 @@ export async function modelPortFixture(make, { usage = true, failure = false, re
         const route = await seeded.persistence.getRuntimeRoute(h.handle, seeded.routes[0].runtimeRouteId);
         plan.dependencyPins = [{ pinId: 'narrator.route', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, integrity: hash(route) }];
         plan.definition.limits.maxSteps = 50;
+        await configurePlan({ plan, seeded, h, core, base, route, narratorNodeId: nodeId });
         const draft = await plans.create(h.handle, id('Command'), plan), expected = { planId: draft.planId, expectedDraftVersion: draft.draftVersion, expectedDefinitionHash: draft.definitionHash };
         const report = await plans.validate(h.handle, expected), { planRef } = await plans.publish(h.handle, id('Command'), { ...expected, validationDigest: validationDigest(report) });
         const sourceSelector = { domain: 'native_session', sessionId: base.session.sessionId, entryPointId: null };
