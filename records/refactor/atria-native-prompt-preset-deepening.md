@@ -278,3 +278,10 @@
 - 统一 Claude 提示词新增原三域 Plan 选择/Binding 功能行、真实 POST `/api/native/orchestration/bindings/get` 与 `/bindings/save`、read/mutation envelope、首次 null/后续 version CAS、来源撤销重放拒绝及只接受不可变已发布 Plan 的要求。明确只保存选择，不授 Actor/Model/Tool/Delegate 权、不自动启动 Run；Run/Projection/Approval API 仍未开放。
 - E0 原静态基线保留，并明确链接 §8 后续增量；不再将历史 Binding unavailable 当当前事实，也不因 Binding 开放而宣称完整 plan-prompt 评价/Review/发布/rollback 链完成。P3 Gate 仍 NOT_READY，缺失后端仍归原 V3，整体 E0 NOT_CLOSED。
 - 原 V3 的 FS/SQLite 61 项及新 Binding SQL NOT_RUN 归其唯一 Record；本次没有复跑或借记为本任务 PASS。仅更新同一交接材料与台账，不合源码、不改 main、不实施前端，相关文档检查从实际输出追溯。
+
+## 2026-10-16 — V3 第十四至十六组能力状态同步
+
+- 实际 Git/docs 核对为 source `e6b4e552f`、docs `129990563`；读取同一接口 §17.24–17.26、后端整合入口与原 Record 第十四至十六组。原工作树中的 quota/GenerationHost/Budget/Execution/RunControl 未提交子工作不算本轮交付，未触碰。
+- 同一 Claude 交接材料不再将 MCP/Skill 完成证明统称 unknown：仅原真实 proof 和账本验证可保存既有 EffectReceipt；MCP远端错误为 failed，不代表 rollback；Skill撤权/当前 intent 矛盾拒正文，cold receipt 不成为新授权。A2A 仍只证明受理，三类 receipt 均不自动授予正文/Memory/World 消费权。
+- 前端诊断新增最后实际 send snapshot、逻辑输入与最终银行三字段绑定的区分；不复制完整请求 writer。有限 generation.send publication 仅支持原 exact player narrator Route、显式预算且无 fallback 的机制证据；可发布/已选择/运行获准分开，其余能力保持真实 unknown。产品 HTTP 仍仅 Plan+Binding，无 Run/Projection/Approval。
+- E0 §8 当前事实更新，P3仍NOT_READY、完整 E0 未闭合；原 V3 继续其真实固定 Turn scope/quota/ModelPort 与其他后端。该任务测试的具体 Engine、最终定向重跑/未全跑与 SQL NOT_RUN 仍归其 Record，本轮不借记为本任务 PASS。未实际合并、未改 main、未实施前端；仅文档验证与提交。
