@@ -438,3 +438,12 @@
 - 新矩阵真实原clock automation经过原foreground transaction产生pending outbox，验证后台window/period而非伪造控制行；另验证role总额/共享turn总额、兄弟预约竞争、compute/quota双向拒绝回滚、原Source改变拒绝、真实Engine提交后模拟丢ACK、unknown/冷重开/迟到实际settle。真实producer grant和Provider发送不在本组PASS范围。
 - 首轮四mutants（replay重计、跳过quota、放宽原policy、拆两次update漏账）各捕获FS/SQLite2fail并finally恢复；新增row绑定两个mutants（忽略exact ref、未clone）捕获3/1fail并原文hash恢复。最后恢复后定向pure/new3PASS/18name-filter SKIP；三文件最终targeted ESLint/staged diff check通过。
 - 同一接口§17.27、整合入口/验收现状更新。Host固定Narrator私有principal、Bank opaque proof及真实ModelPort仍在下一组实现，不因底层PASS宣称Session quota产品接线或P3全Gate通过；后台Task/outbox真实producer仍待接线。P3 IN_PROGRESS/Gate NOT_READY，main未集成。
+
+## 2026-10-16 — W04/P3第十八组：真实SQL quota与JSON usage幂等修复
+
+- Source f7b8eb83a → 660daea28 已提交推送。本组为既有quota矩阵增加显式四Engine开关ATRIA_TEST_QUOTA_SQL=1，cold Engine保留原harness.url/原单primary拓扑，实际串行运行Docker内现有MySQL/Pg。未更换Owner锁/DB配置，Pg口令仅当前shell从原container环境读取、不输出/持久化/提交。
+- 首轮四Engine41case实际40PASS/1PgFAIL：原settleComputeAttempt用JSON.stringify比较usage，而Pg JSONB重排键顺序，导致同usage第二次settle错误attempt_conflict。新增本地model/local字段顺序反例后FS/SQLite2FAIL确证local也受相同问题影响；未把产品失败归咎环境或以skip凑通过。
+- 复用原shared reducer，已settled model/local usage改按原封闭合同字段语义比较。相同用量不同对象字段顺序可重放，真正total/counter/outcome差异仍拒，前后原存储完全不变；schema/unknown/迟到实际/不可退款语义不放宽，没有另造金额、模型价格或新writer。
+- 修后四Engine完整45/45（53.736s），含真实quota父子/角色/窗口周期、同ID换quota拒绝、ACK未知/cold reopen、原source旧读拒绝，以及新model/local幂等和错误usage不写反例。Pg现有nested client.query deprecation warning保留，不宣称无告警。该新SQL结果补足第十七组未跑的对应矩阵，不倒改历史记录为当时已测。
+- 两个原settle守卫实际mutants各捕获FS/SQLite2FAIL，finally原文恢复；恢复后语义顺序定向2PASS/21name-filter SKIP。相关原compute-reservations/run-compute-retirement/compute-reservations-rp三suite26/26。两个变更文件targeted ESLint/staged diff check通过；未混入真实Narrator组的未提交文件。
+- 同一接口§17.28更新。真实原Package合同进一步证明generationBudget必需authorityRuntime；当前最窄普通Narrator profile拒候选World，所以无法合法用它安装quota Package。没有删原schema或伪造state取PASS：实际quota producer为下一原authorityTurnProof/candidate Context适配的IMPLEMENTATION_PENDING，非外部不可控BLOCKED。P3仍IN_PROGRESS/Gate NOT_READY，无前端实现或main集成。

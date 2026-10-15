@@ -569,7 +569,7 @@ Session/RP原operation在存在这些来源明细时保留，原retireComputeLed
 
 生产authoring factory复用原SessionCore.observe、Studio.observeRevision、ProjectAgent.observeComputeSource、RpRunControl.status及同tx的原Chat header读。Session精确sessionId和非null entryPointId；Project按nullable taskId区分Project/Task选择，核对真实原project/task关联；RP必须是注册controlId且实际locator header仍声明同ID。原get服务按认证handle读取，不相信Browser owner；缺原服务fail-closed，不自动创建/绑定/repair来源。
 
-Binding仅是用户的Plan选择metadata，不授予Actor/Model/Tool/Delegate运行能力，也不自动启动Run。nullable entryPointId/taskId沿原selector合同，不成为通配执行许可。原Source/currentness、Audience、grant、预算和Effect最后发送复核仍独立必需；Run/Projection/Approval产品路由尚未开放。本组FS/SQLite真实原服务/CSRF/CAS/读写fence测试与三项守卫变异见同一Record第十三组；该新矩阵SQL为NOT_RUN。
+Binding仅是用户的Plan选择metadata，不授予Actor/Model/Tool/Delegate运行能力，也不自动启动Run。nullable entryPointId/taskId沿原selector合同，不成为通配执行许可。原Source/currentness、Audience、grant、预算和Effect最后发送复核仍独立必需；Run/Projection/Approval产品路由尚未开放。本组FS/SQLite真实原服务/CSRF/CAS/读写fence测试与三项守卫变异见同一Record第十三组；该当组新矩阵SQL未运行，后续实际四Engine证据见§17.28。
 
 ### 17.24 原MCP/Skill完成证明与唯一EffectReceipt
 
@@ -605,4 +605,10 @@ authoring仅为generation.send增加有限原机制验证：实际agent节点的
 
 原provider compute行新增可选generationQuotaRef={operationId,role,background,policyDigest,anchorDigest}，仅RunControl从上述内部quota生成，拒attempt自带此字段。原shared validator/charge clone/replay比较使用同一封闭结构；同stable identity不能换role、后台anchor、policy或移除/新增quota后重放，返回quotaOperation来自已持久原行。明细是原bank原计数的关联metadata，不保存余额/价格或第二套quota事实。
 
-本组仅为真实producer下一步提供原子底层；没有向HTTP开放quota，没有用caller role冒充固定Turn/Task principal。Host私有opaque身份与BudgetPort实际接线尚在后续组；当前产品Session generationBudget与V3的未接路径仍拒绝。精确反例、冷重开及原quota回归实证见同一Record第十七组，新矩阵SQL为NOT_RUN。
+本组仅为真实producer下一步提供原子底层；没有向HTTP开放quota，没有用caller role冒充固定Turn/Task principal。Host私有opaque身份与BudgetPort实际接线尚在后续组；当前产品Session generationBudget与V3的未接路径仍拒绝。精确反例、冷重开及原quota回归实证见同一Record第十七组，当组新矩阵SQL未运行，后续实际四Engine证据见§17.28。
+
+### 17.28 原usage结算的跨JSON存储幂等
+
+原shared settleComputeAttempt/settleLocalWork对已settled usage按封闭合同字段逐项比较，不用JSON字符串字段顺序判定费用是否相同。model核inputTokens/outputTokens/totalTokens，local核wallMs/cpuUserMicros/cpuSystemMicros/cpuScope/outcome；原ledger/usage schema继续严格校验，不接受金额变化、取消退款或以missing counter推算零费用。
+
+该修正由真实Pg JSONB重排行键导致同usage第二次settle冲突发现，并由FS/SQLite本地usage入参换字段顺序复现。原quota/冷重开/ACK未知/拒绝回滚及settle矩阵现已在真实FS/SQLite/MySQL/Pg共45case通过；对应原26case回归与guard变异范围归同一Record第十八组。这是本地隔离数据库的软件行为证据，不是外部真实账单或四OS客户端验收。
