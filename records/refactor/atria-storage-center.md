@@ -122,7 +122,7 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 
 ## Stage 2 — 统计与配额
 
-- Status: In progress；基础契约测试通过不表示后续生命周期与界面已交付。
+- Status: Completed；以下保存实施时点，最终证据与交付状态见 Final state。
 - 契约产品提交：`ad8941577`。其后实现仍在本任务分支持续开发，未集成 main。
 - 增加 SQL 账户内容只读枚举，覆盖全部 Native 行、未知 kind 与 legacy 表；FS 覆盖 Native、完整项目 Git、Blob、备份及未知文件。数据库/WAL 独立计物理量；失败范围保持 partial/null。
 - Engine 写入准入和统计复用 canonical UTF-8 内容量；账户串行提交、替换净增量、失败回滚及超额后减少占用已取得针对性证据。素材与项目文件已接入文件增量门禁；所有写入口及完整流程仍在补齐，不能据此宣布 A06/A07 全部完成。
@@ -133,7 +133,7 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 
 ## Stage 3 — 生命周期与执行基础
 
-- Status: In progress；尚未完成全部种类、运行保护、失败注入与批量验收。
+- Status: Completed；以下保存实施时点，最终证据与交付状态见 Final state。
 - 原生恢复记录复用 maintenance kind / Engine 事务；Native closure 转换复用 FsNativeJournal/SQL 提交。新增 GC 持久保留根、恢复依赖保护和被回收身份的写入门禁。
 - 项目文件采用 preparing/retained/restoring/purging 持久状态及目录移动；完整 Git 和文件哈希随闭包验证。未完成文件状态支持协调修复，保留 Blob 责任不会由 UI 内存决定。
 - 实际验证：recovery 测试在 FS/SQLite/Postgres 上 9 条通过；真实 SessionCore 会话及手动存档原 ID 往返、作品依赖保留、重复恢复回执、配额拒绝保留原件、损坏恢复源拒绝、完整项目源码/Git 往返、独立 Agent evidence 不随项目删除、旧文件写入拒绝。
@@ -159,14 +159,14 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 
 ## Stage 4 — 面板与业务同步
 
-- Status: In progress；五区独立宽面板、服务器九类与浏览器设备范围、分类搜索/排序/分页、固定预览/任务/恢复已接入真实接口。继续完善全种类及失败路径验收。
+- Status: Completed；五区独立宽面板、服务器九类与浏览器设备范围、分类搜索/排序/分页、固定预览/任务/恢复已接入真实接口；最终证据见 Final state。
 - 浏览器修复完整 IndexedDB 遍历、inline key 变更拒绝、同名新增拒绝、读取失败表达、缓存请求完整身份和事务提交检查；origin estimate 不与分项相加。
 - 实际 Playwright：`tests/e2e/storage-center/center.e2e.js` 3 条通过，隔离临时账户数据、真实服务器与 Chromium。世界资源移入回收站并恢复同 ID 到业务读取接口、250 条 IndexedDB 与主键/新增保护、浏览器固定删除、390px 移动导航/键盘/错误反馈均实际执行。
 - 已实际查看桌面总览与移动截图；发现并修复移动关闭按钮文本截断，统一二进制单位为 B/KiB/MiB/GiB。后续界面改动仍需相关复测；截图是临时验证产物，不提交。
 
 ## Stage 5 — 功能闭环与交付
 
-- Status: In progress；尚未宣布 A01–A30 全部完成，未合并 main、未推送或清理工作分支。
+- Status: Completed；最终适用验收及集成交付状态见 Final state。
 
 ### 配额与领域闭环 checkpoint — `49660e97b`
 
@@ -232,4 +232,11 @@ FS/SQLite 相关上述检查实际运行；MySQL/Postgres 在这次审计测试�
 - 中断后 Docker Desktop daemon 不可用；启动日志为遗留 `dockerInference` IPC 端点访问失败，MySQL/Postgres 复测连接被拒绝，不能计为产品测试通过。曾尝试正常启动、只读诊断及该空 IPC 端点的安全重命名，均未恢复；没有取得管理员权限、修改 ACL、重置 Docker 或删除它的用户资产。该环境问题不改变已取得的四后端证据，也不新增强制全矩阵验收条件。
 - 两个本任务临时数据库容器通过现有 daemon 暂不能核查/清理；不为清除测试容器而删除全局 Docker 数据。没有外部模型调用、生产用户数据变更或真实用户资源删除。
 
-功能实现及适用本地验证已完成；待记录最终 main 集成、远端存储与任务分支清理结果。
+### 集成与交付
+
+- 产品交付 HEAD：`73557f8098d2353f23777a35e25042e94742bec9`，在干净的真实 `main` 上正常合并 `refactor/atria-storage-center`；合并前 main 为 `5eb3bc765`，未回退主题/设置等同期内容。
+- `git diff refactor/atria-storage-center HEAD` 无差异，合并内容与已验证任务提交完全相同，无冲突处理，不重复执行无新变化的测试。`main` 已正常推送，`HEAD == origin/main`，工作树干净。
+- 任务分支及隔离源码工作树已移除；先验证并仅移除两处依赖 junction，再清理任务工作树中的测试输出，保留共享 `D:/Dev/Atria` 的两处依赖目录。其余活跃工作树及 docs 的无关未跟踪资料保留。
+- 系统临时目录下的本任务浏览器夹具清理被自动审批审查拒绝（返回仅为 `blocked by policy`），该命令未执行；不绕过审查，保留这些临时目录。Docker 临时容器的环境限制见上节。
+- docs 的远端并行提交通过正常合并保留；本任务仅更新同一 Record 和 Plan 状态。未合并 docs 到 main，未改写历史，未创建交接文档。
+- 功能实现、适用本地验证及本地集成交付已完成；未将最终四后端整轮复测或受阻的环境清理写成已完成。
