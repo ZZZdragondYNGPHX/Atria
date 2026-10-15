@@ -271,3 +271,10 @@
 - 同一 Claude 提示词加入显式 `allowedPlanPinIds`、本 Node dependency 的 exact plan pin / 完整 revision integrity、空集合禁止与缺字段 invalid；不扩大委派授权、不兼容旧缺字段形态。A2A `a2a_send_accepted` 只表示原持久受理事实，不是远端完成、正文消费或重新发送/取消许可；原费用与 local ordinal 的未知只观察语义同样列入界面要求。
 - 产品 HTTP 仍只有原 Plan Authoring 七个 POST，未凭内部 observe API 造产品端点。原任务的 FS/SQLite、指定 SQL 和四 Engine 子集证据仍归其 Record；本次仅文档核对，没有重跑或冒称本任务通过这些测试。P3 Gate 仍 NOT_READY，后续真实 scope/Session quota/持久 Port 与其余缺口仍由原 V3 继续实施。
 - 未修改或合并任何源码分支、未改 main、未开始前端；保留 docs/V3 工作树已有无关改动。本轮文档验证和提交从实际 Git/检查输出追溯。
+
+## 2026-10-16 — V3 第十三组 Binding 产品接口同步
+
+- 实际 Git/docs 核对为 source `ce4a58de2`、docs `05c0b3570`；只读 HEAD 的原路由注册和同一 V3 Plan 整合入口、接口 §17.23、Record 第十三组。V3 活跃工作树另有 Tool/Effect/MCP/Skill 未提交子工作，保持原状，没有纳入本任务或当作已发布能力。
+- 统一 Claude 提示词新增原三域 Plan 选择/Binding 功能行、真实 POST `/api/native/orchestration/bindings/get` 与 `/bindings/save`、read/mutation envelope、首次 null/后续 version CAS、来源撤销重放拒绝及只接受不可变已发布 Plan 的要求。明确只保存选择，不授 Actor/Model/Tool/Delegate 权、不自动启动 Run；Run/Projection/Approval API 仍未开放。
+- E0 原静态基线保留，并明确链接 §8 后续增量；不再将历史 Binding unavailable 当当前事实，也不因 Binding 开放而宣称完整 plan-prompt 评价/Review/发布/rollback 链完成。P3 Gate 仍 NOT_READY，缺失后端仍归原 V3，整体 E0 NOT_CLOSED。
+- 原 V3 的 FS/SQLite 61 项及新 Binding SQL NOT_RUN 归其唯一 Record；本次没有复跑或借记为本任务 PASS。仅更新同一交接材料与台账，不合源码、不改 main、不实施前端，相关文档检查从实际输出追溯。

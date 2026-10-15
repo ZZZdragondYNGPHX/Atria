@@ -2,6 +2,8 @@
 
 > **2026-10-16 开工更新**：G3=AUTHORIZED，用户包含 D2–D8 全后端实施，前端交 Claude Code。C1–C6 工程落点见 [后端实施](backend-implementation.md)。此前只文档/不建分支是前轮限制；当前已授权实施。E0 整体仍 NOT_CLOSED，不把授权冒充生产 Port/质量来源/端侧验收。
 
+> §1–§7 保留原静态审计基线；后续后端变化与当前剩余 Gate 见 §8。例如原 bindings 拒绝是历史事实，V3 `ce4a58de2` 已挂载真实 Binding get/save，但尚未交付完整运行/发布消费者链。
+
 > **E0_IN_PROGRESS / NOT_CLOSED（2026-10-15，本轮本地续审）**。这是 Prompt Preset 深化的唯一 E0 台账；不是另一个 V3 E0，也不是前端视觉定稿。D1–D8 功能/交互语义不重开，视觉未冻结。实际历史继续记录在[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。本轮只写 docs，未建立本任务实现分支、未修改 main。
 
 ## 1. 本轮精确基线、方法与证据边界
@@ -131,6 +133,6 @@
 
 ### 当前交付与停止位置
 
-V3 后续中间范围同步已更新并核对 `docs@b16075585` / source `be95ab792` 的原 [整合入口](../atria-native-orchestration-v3/backend-integration.md)、接口 §17.15–17.22、验收 §9.1 和原 Record 第五至十二组：D8/W08 全范围、委派 exact Plan pin 允许集合、A2A 受理与完成的区别、费用明细与稳定 local identity 已并入统一前端提示词，没有新增 runtime 产品 HTTP。P3 仍 IN_PROGRESS / NOT_READY，P4–P8 未交付。缺失 runtime API/领域消费者是原 V3 后续已授权实施，不当成仅需外部条件的 BLOCKED，也不转移给前端造假端口。此次仍是中间范围同步；最终后端完成 SHA/新接口尚待原任务交付，未合两源码、未运行组合回归、未改 main。
+V3 后续中间范围同步已更新并核对 `docs@05c0b3570` / source `ce4a58de2` 的原 [整合入口](../atria-native-orchestration-v3/backend-integration.md)、接口 §17.15–17.23、验收 §9.1 和原 Record 第五至十三组：D8/W08 全范围、委派 exact Plan pin 允许集合、A2A 受理与完成的区别、费用明细与稳定 local identity 已并入统一前端提示词。现有真实 `POST /api/native/orchestration/bindings/get` 与 `/bindings/save`；它们验证原三域来源/owner/关联，保存 exact 已发布 Plan 选择及 CAS，不授予 Actor/模型/Tool 权限、不自动启动 Run，也不证明完整 plan-prompt 发布链已接通。Run/Projection/Approval 产品 HTTP 仍未开放。P3 仍 IN_PROGRESS / NOT_READY，P4–P8 未交付。缺失 runtime API/领域消费者是原 V3 后续已授权实施，不当成仅需外部条件的 BLOCKED，也不转移给前端造假端口。此次仍是中间范围同步；最终后端完成 SHA/新接口尚待原任务交付，未合两源码、未运行组合回归、未改 main。
 
 本任务可独立后端接口及相关本地验证交付；**整体 E0 仍 NOT_CLOSED**。保留语义分支而不向 stable main 混入未完成的跨任务组合，也不清理其他活跃分支。具体提交/测试只记同一 Record。前端由用户转交 Claude Code；后续需协调原 V3 接线及真实质量来源，不在浏览器创建假的运行/评测/发布权威。此处停止不表示 D2–D8 的模型质量、完整 V3 或全产品前端已全部完成。
