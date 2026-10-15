@@ -331,3 +331,11 @@
 - 新generation-send FS/SQLite16/16通过，使用真实本地HTTP合成Provider验证三域retry→fallback三次独立收费、restart replay不发第二次、source revoke后不外发、unknown保留/迟到结算、RP原聊天输入与伪造选项拒绝、generationBudget组合拒绝。分别移除最后发送前source guard及sendBank replay guard，各6项失败；恢复后完整16/16通过。关联BudgetPort、RP bank、generation-local-work、optional-budget及原generation-budget-p2同轮112项通过，28项MySQL/Pg因当时ECONNREFUSED为BLOCKED/NOT_RUN（不是产品断言通过）。生产/测试定向ESLint、diff check通过。
 - 首轮暴露两个接线错误已修：原RequestContextPlan尚未注册rp_chat；原GenerationService清洗掉send_replayed码。增加明确RP source schema及安全错误码转换后通过。usage为合成测试数值，不是实际账单。用户随后通知Docker已启动，下一组重核服务并取得新SQL证据，旧失败保留。
 - EffectController与实际bank的生产saga、Context/Tool Ports、父子Run/角色后台/restore证据继续；P3未完成，P1/P2仍IN_PROGRESS，三端/真实批准/费用/质量未通过。只改后端，UI留Claude Code；没有集成main，无关CLAUDE.md删除未纳入。
+## 2026-10-16 — W04/P3第六组：原Source/Effect组合与预算未知ACK
+
+- Source `a7953bd82` → `06b6ea432`已提交推送。新增内部SourcePort及ExecutionService，Run admission把原三域authorityFor写入root；EffectController生产组合固定用BudgetPort.verifyBudgetAttempt，ready/claim后才进入真实send。每次sub-send重验Host fence、原来源、当前授权、精确token和实际请求authority；fresh claim不可重放。没有开放Browser万能dispatcher；有效领域grant/receipt/send binding仍须mandatory原authority adapter，缺失不构造默认批准。
+- BudgetPort增加typed local_work proof，核对原local ledger，不伪造model token；child引用必须指向child自身reservation。reserveChild wrapper只在既有childRoot精确parent/source/root authority一致后转原银行，不创造child授权，P2 Delegate控制器继续补。预算COMMIT ACK未知只查询同attempt，抛reconcile_required，不返回发送permit。Project来源观察改readonly，避免在Host事务内触发背景模型。
+- 修复审查发现的RP前缀缺口：冻结实际发送的完整聊天prefix digest，旧消息编辑/variant改变即拒绝外发，不能只核对末条input。SourceBinding同时持该proof。GenerationHost也预留可信Context provider的实际输入、send/consume hook，下一组交付原ContextPort，不能拿旁路proof保护默认宽上下文。
+- 本组FS/SQLite ExecutionService6/6、GenerationSend18/18通过；typed local观察新断言随后定向2/2通过。连同BudgetPort/RP原bank四文件39/39通过。临时移除生产budget verifier使2项foreign Effect反例错误ready，移除RP prefix guard使2项旧历史撤销反例错误send，均被捕获、finally还原。相关原Effect/Approval四Engine44/44、Context两文件45/45串行合计89/89通过；Context具体证据下一组归档。生产/测试定向ESLint及diff check通过。
+- 用户启动Docker后，启动原有隔离MySQL/Pg容器：原Session storage四Engine4/4、V3三域MySQL/Pg预算新6/6及原Project/RP12/12通过。Pg首轮认证失败由命令进程内读取原测试容器实际env纠正，未改数据库密码/持久配置，未输出Secret。Pg隔离schema共用database级Host锁，跨agent同时测试产生7项writer_unavailable；改为串行后相关44项全部通过，未放宽Owner。此前ECONNREFUSED保留为历史失败，不用新结果改写旧记录。
+- 并行后端子工作获用户明确授权；后续前端交给现有提示词预设/前端重构任务统合，再由其生成Claude Code提示词。P3与最终产品Gate仍NOT_READY，原Session角色/后台组合、完整父子授权、恢复/GC围栏及Tool/可信审批继续；不集成main。
