@@ -62,6 +62,7 @@ export class ReviewOrigin {
                 prune();
                 if (Object.keys(req.query).length !== 1 || typeof req.query.launchRef !== 'string' || !/^[\w-]{43}$/.test(req.query.launchRef)) return res.sendStatus(400);
                 try { await this.authority.validateLaunch(req.query.launchRef); } catch { return res.sendStatus(404); }
+                for (const [key, session] of this.#sessions) if (session.launchRef === req.query.launchRef) this.#sessions.delete(key);
                 if (this.#sessions.size >= 256) return res.sendStatus(503);
                 const sessionId = token(), csrfToken = token();
                 this.#sessions.set(sessionId, { launchRef: req.query.launchRef, csrfToken, expiresAt: this.now() + 300000, identity: null, busy: false });

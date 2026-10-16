@@ -135,6 +135,15 @@ describe.each(harnesses)('$name isolated Review listener with original user pass
         expect(expired.headers).not.toHaveProperty('set-cookie');
     });
 
+    test('reopening one launch replaces its earlier cookie and CSRF pair', async () => {
+        const first = await browser();
+        const second = await browser();
+        const stale = await first.post('reauthenticate', { password: 'review-test-password' }).expect(403);
+        const current = await second.post('reauthenticate', { password: 'review-test-password' }).expect(200);
+        expect(stale.headers).not.toHaveProperty('set-cookie');
+        expect(current.body.outcome.authenticated).toBe(true);
+    });
+
     test('wrong password is bounded, blank/OAuth-only and disabled accounts cannot authenticate', async () => {
         const client = await browser();
         await client.post('reauthenticate', { password: 'wrong' }).expect(403);
