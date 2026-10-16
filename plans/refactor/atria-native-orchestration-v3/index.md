@@ -15,7 +15,7 @@
 - 第九轮状态：**D9=E1，E0_DESIGN_READY。用户已于2026-10-15明确授权正式开发；同一实现分支已从当时最新main建立，P1/P2/P3均有局部实证，完整Gate未通过。P1–P8产品证据逐组取得，未测项仍NOT_RUN/BLOCKED。**
 - 文档性质：冻结设计与实施路由；开发已获授权。实际代码/测试/提交状态只归同一Record；最终验收通过后才集成main。
 - 最新实现与前端分工（2026-10-16）：`refactor/atria-native-orchestration-v3@a7cb649d0`（含 `main@c57fada6e`）。第六十九组 `e82fde3a8` 补原生 Plan Prompt 的原存储候选/发布/回滚；第七十组补有限 RP / Project 原生隔离评测与原 Evolution 费用。用户已纠正提前交接：Codex 先完成全部后端，再推送并给 Claude Code 提示词，由 Claude 实施前端、组装及结束开发分支。当前仍在后端阶段，P1–P4/最终 Gate 仍 NOT_READY；已有接口或局部链路不构成后端完成。实际范围见 [backend-integration](backend-integration.md)，未集成 main。
-- 当前换机状态（2026-10-16）：用户要求暂停并在另一设备继续 Codex 后端开发；恢复入口为 [docs:HANDOFF](../../../HANDOFF.md)。这不是 P5/Claude 前端交接，后端阶段与未完成门槛保持。
+- 当前续接状态（2026-10-16）：已 fetch 并安全快进源码 `a7cb649d0`、docs `81650b3b1`，保护本机无关未提交内容后恢复后端；换机 HANDOFF 已消费。第七十一组继续隔离 Review Origin 后端，见 [接口 §17.80](interface-contracts.md#1780-隔离-review-origin-后端与原用户再认证)。没有进入 Claude 前端阶段或集成 main，完整后端与最终 Gate 继续。
 - 外部技术参照核对日期：2026-10-15；只对比模式和契约，不宣称框架直接兼容 Atria。
 
 ## 目标与现状

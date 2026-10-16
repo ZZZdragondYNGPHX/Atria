@@ -942,3 +942,12 @@
 - 真实核对：源码 `a7cb649d0cd12cdaf7d7e91e96e654ba6261fea9`、docs 快照前 `61b851b4e967e8602afe2f6f8bad5652a86bca15` 均 clean，并与远端同名分支一致；fetch/ls-remote 再核 `origin/main=c57fada6e`，未反向合 main。
 - 新建唯一 live `HANDOFF.md`，保存准确实现、测试限制、剩余后端、下一行动和跨设备 Codex 提示词；不沿用已撤销的第六十八组前端交接。后端先完成、Claude 后做页面/组装/结束分支的分工保持。
 - 本次仅文档快照与上传核对，无产品变更，不重跑无变化测试；保留活跃源码分支/工作树。HANDOFF/Record 与路由更新单独提交到 docs，再核远端 refs。
+
+## 2026-10-16 — 第七十一组：恢复后补隔离 Review Origin 后端
+
+- 已先核本机 Git/AGENTS 并 fetch，源码由 b4c06075a 安全快进至交接 a7cb649d0，docs 由 8b6adb8b0 快进至 81650b3b1；保护本机原 CLAUDE.md 删除、前端设计稿修改和未跟踪目录。按 README/HANDOFF/index/当前合同和同一 Record 恢复；已消费的 live HANDOFF 删除，没有新建暂停快照。
+- Source a7cb649d0 → **81a3a5fba**，本地提交，按当前用户要求尚不推送。实现[接口 §17.80](../../plans/refactor/atria-native-orchestration-v3/interface-contracts.md#1780-隔离-review-origin-后端与原用户再认证)：同 Host 独立回环 listener、精确 Origin/Host、独立 HttpOnly session/CSRF、原账户密码和版本/权限复验、私有身份 proof、同原 Approval/Effect 的一次决定/消耗。主 origin 只有受保护 launch；页面仍未开发，GET 为 JSON bootstrap，原领域缺 descriptor/安全 authority 不开放批准。没有放宽只读 ToolPort 或 R3 ceiling。
+- 首轮新 suite 12FAIL（4.353s）：新测试 fixture 的 output 输入端口未同步；修后阳性 2FAIL（1.839s）显示 fixture SourceBinding 哈希错误。均按原合同修测试，未改产品 validator；阳性 2PASS/10filterSKIP（2.184s），随后新 suite **12/12 PASS（5.361s）**。
+- 补决策/dispatch 的 await 取消与合法事实先提交、未知 ACK 用例。新增定向 **8PASS/12filterSKIP（4.483s）**；新 Review + 原 Approval/Run HTTP/Authoring HTTP 四 suites **62/62 PASS（20.742s）**。随后仅 Projection 活 challenge 提示接线，原 Run metadata/普通 RP preflight 与原 Project Review Root 精选 **12PASS/20filterSKIP（94.903s）**，不声称全仓或 SQL 通过。Controller pre-write denial 不生成成功命令；写后错误仍沿原事务回滚，正文消费仍仅 running。
+- 十个改动 JS 文件定向原 ESLint、staged diff check 通过；先前新文件两处格式和测试一处 quote 已修。全部是本机 FS/SQLite、真实回环 HTTP 和合成领域 Effect；用户记录使用临时测试目录，密码/nonce未持久到 V3。没有外部付费、真实浏览器隔离/三端、SQL、独立审查或前端交付声明。
+- P1–P4 与最终 Gate 保持 IN_PROGRESS/NOT_READY。继续原领域批准消费者、Native Eval/自动晋升、其余 producer/恢复/释放/GC 等后端队列；不以本组接口或测试通过结束任务，不合 main、不清理活跃分支。所有后端完成并验证后才按当前用户要求推送和提供 Claude Code 前端/组装/最终集成提示词。

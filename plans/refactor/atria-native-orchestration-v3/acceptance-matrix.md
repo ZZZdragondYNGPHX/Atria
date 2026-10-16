@@ -1,5 +1,9 @@
 # D9 E1 — 实施状态
 
+## 2026-10-16 第七十一组恢复后端
+
+`81a3a5fba` 补隔离 Review listener 和原账户密码再认证后端，主 origin 只有 launch，隔离页面和实际需要批准的领域动作仍待实施。新 Review/原审批/Run HTTP/Authoring HTTP 62 项通过；Projection 接线后原 RP/Project/Run 精选 12 项通过，分次和初期 fixture 失败见同一 Record。FS/SQLite 与回环 HTTP 不构成真实 Browser 隔离或三端证据，P1–P4/最终 Gate 仍 NOT_READY；Codex 继续后端，不提前交前端。
+
 ## 2026-10-16 第六十九至七十组后端续作
 
 原生 Plan Prompt 已有有限原存储发布/回滚；原生 RP / Project 已有有限隔离评测，实际范围见 [backend-integration](backend-integration.md)。新 Prompt suite 12 项、有限 Native evaluation 的 RP/Project 各 2 项已分别取得 FS/SQLite 实证；精确分次、失败、修复与相关回归只归同一 Record。没有完整 Gate、SQL/真实付费/三端或自动晋升通过声明。Codex 继续全部后端，当前不生成前端交接。

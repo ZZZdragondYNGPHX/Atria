@@ -1079,3 +1079,15 @@ rollback 只认当前自己的 desired Binding 或精确已保存 rollback comma
 当前执行范围：无 child 的有限普通 RP `rp_narration`，真实 Chat 单输出/Root completed，或原 Scheduler 取消后注入晚到 completion，再运行新请求并核对旧 Run 无 claim；这个控制挑战不发送父 Provider、不虚计真实费用。Project 为有限 `project_review` 图，精确原工具、同 Root 有界多轮及原 Review 出口；私有 fixture reviewer 可以在模型结束后调用原正式 commit 来验证单 ChangeSet，但模型流程无该权限。原 conflict/repair 试验分支依实际原 Task/source 准备；不支持的图或 M1 Project pilot 仍明确拒绝，未测项不核销。
 
 评测指纹增加实际 Native adapters、Controller/Context/Source/预算和 RP/Project 正式输出依赖，旧实现报告不能延用。Native 自动配置/晋升仍未开放，缺独立资料、完整场景、真实质量/价格等证据不能用合成正例或手工批准冒充 eligible。此组不是完整 W07 或后端完成。
+
+## 17.80 隔离 Review Origin 后端与原用户再认证
+
+第七十一组实现同 Host 内按需启动的 `127.0.0.1` 独立端口 listener。主 origin 仅新增 `POST /api/native/orchestration/approvals/launch`，使用原 mutation envelope、登录/CSRF/boot 与本机连接检查，返回定位 URL 和期限；没有 approve 路由或 nonce。隔离 origin 的 `GET /review?launchRef=...` 当前只返回页面所需 JSON bootstrap；实际页面仍属后续前端工作。
+
+Review listener 不使用主 app middleware/cookie。它检查实际 Host、精确 Origin，拒绝 forwarded origin，不开 CORS；独立随机命名 HttpOnly/SameSite cookie、五分钟会话和 CSRF。只有三个 POST：`/review/reauthenticate` 收 `{password}`；`/review/details` 收 `{}`；`/review/decide` 收 `{bindingHash,nonce,decision:'approve'|'reject'}`。CSRF 通过 `X-Atria-Review-CSRF` 传入。CSP/COOP/frame/referrer 响应策略沿 §15；详情为 JSON 纯文本数据，后续页面必须安全编码。密码验证复用原 `node-persist` 用户记录和 `src/users.js` 的 hash/salt/accountVersion，无密码副本或新用户表；空密码/OAuth-only、禁用、账户版本或权限变化均拒绝。失败登录限流独立于模型 API 测试限额。
+
+原 ExecutionService 提供 `approvals`，仍写同一 ApprovalController/EffectController/RunRepository。原领域必须提供真实 `describeReview` 与既有 Effect authority；缺失就不能请求审批。详情和决定重验精确 Effect decision、原 source/grant、Run/祖先、boot/epoch/binding，签给 Controller 的身份 proof 只在 Host 私有 WeakMap 有效。批准不是 dispatch；原 Effect claim 中再验原账户，和 Approval 一次消耗同事务。主 Projection 仅按活 challenge 提供 `reviewAvailable` 提示，launch 仍做完整复验。
+
+只读 Review 的等待态允许 `waiting_approval`，没有放宽 Model/Result 正文消费的 `running` 要求。Controller 的 pre-write denial 只提交原 authority 在 await 中发生的合法取消/撤权事实，不生成成功命令或审批记录；写后错误仍回滚。未知决定 ACK 返回 `storage_commit_unknown`，只读原 Approval 观察，不再提交另一决定或派发。重启没有旧私有 challenge/session，旧 nonce 不能恢复身份或授权。
+
+本组是审批后端和账户接线，不是任意 R2/R3 能力注册、原领域正式批准消费或浏览器隔离实证。现有只读 ToolPort 的风险 ceiling 未扩大；没有安全原领域动作的 R3 继续拒绝。远程代理的独立可信 Review Origin、真实页面与三端流程尚未交付，非本机 launch unavailable。其余消费者、Eval 与完整 restore/release/GC 继续后端队列。
