@@ -13,3 +13,13 @@ test('live Project diagnostics expose only closed statuses, counts and equality,
     expect(projectProbeSummary(trial)).toMatchObject({ taskStatus: 'other', validationStatus: 'unavailable' });
     expect(projectProbeSummary({ evidence: [] })).toEqual({ available: false });
 });
+
+test('failed trial diagnostics remain available before a worker abort without exposing arbitrary projection fields', () => {
+    const privateText = 'private-worker-value';
+    const trial = { evidence: [{ name: 'native_project_execution_failure', observed: { status: 'available', task: { status: 'planning', validationStatus: privateText },
+        projection: { status: 'reconciling', source: privateText, privateText, capacity: { status: 'available', used: { requests: 5, jobs: 32, tokens: privateText },
+            remaining: { jobs: 0, requests: 1, inputBytes: -1, privateText } } } } }] };
+    expect(projectProbeSummary(trial)).toMatchObject({ available: true, failed: true, runStatus: 'reconciling', taskStatus: 'planning', validationStatus: 'unavailable',
+        capacity: { status: 'available', used: { requests: 5, jobs: 32, tokens: null }, remaining: { jobs: 0, requests: 1, inputBytes: null } } });
+    expect(JSON.stringify(projectProbeSummary(trial))).not.toContain(privateText);
+});

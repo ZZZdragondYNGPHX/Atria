@@ -7,6 +7,7 @@ import { createSkillRepository } from '../../../skills/repository.js';
 import { projectFixtureSource, seedProjectPilot } from './fixture-source.js';
 import { NativeGenerationHost } from '../../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from '../../orchestration/native-turn-orchestration.js';
+import { RunObservationService } from '../../orchestration/run-observation-service.js';
 import { createOrchestrationAuthoringService } from '../../orchestration/authoring-service.js';
 import { readPlanRevision } from '../../orchestration/plan-repository.js';
 import { ChatRepo } from '../../../storage/repositories/chat-repo.js';
@@ -243,6 +244,24 @@ export async function runProject(entry, fixture, capture, evaluation) {
         capture.artifact = { output: canonical({ status: reviewed.status, plan: reviewed.plan, operations: reviewed.operations, review: reviewed.review,
             validation: reviewed.validation, conversation: result.task.conversation }),
         targetConsumed: hash(root.planRef) === hash(frozen.planRef) && capture.prompts.length > 0 && root.status === 'completed' };
+    } catch (error) {
+        // Preserve the original failure and fees. A bounded owner projection
+        // explains the failure without provider input, output or Task bodies.
+        let observed = { status: 'unavailable' };
+        if (effects.length) {
+            try {
+                const runId = effects[0].runId;
+                const view = await new RunObservationService({ engine, projectAgent: agent, studio, pollMs: 0 })
+                    .observe(handle, { runId, cursor: null, limit: 20 });
+                const current = await agent.observeTask(handle, projectId, task.taskId);
+                observed = { status: 'available', projection: view.payload, task: { status: current.status,
+                    validationStatus: current.validation?.status ?? null, diagnosticCount: current.validation?.diagnostics?.length ?? 0 } };
+                if (!capture.refs.runIds.includes(runId)) capture.refs.runIds.push(runId);
+            } catch { /* A revoked inspection is unavailable, never a bypass. */ }
+        }
+        capture.observe('native_execution', false, true);
+        capture.evidence.push({ name: 'native_project_execution_failure', observed, expected: { completed: true } });
+        throw error;
     } finally {
         if (operation) nativeTaskScheduler.cancel(handle, operation.operationId);
         if (operation) await Promise.allSettled([nativeTaskScheduler.operations.get(operation.operationId)?.handle?.result]);

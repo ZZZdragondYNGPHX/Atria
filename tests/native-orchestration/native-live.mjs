@@ -117,7 +117,10 @@ try {
     const evaluator = new EvolutionEvaluator({ host: f.host, repository }), frozen = await evaluator.sourceProbeConfiguration(handle, route.runtimeRouteId);
     const report = await evaluator.probe(handle, { id: 'native-live:' + randomUUID(), scopeId: 'private-test', domain,
         policyFingerprint: 'engineering-observation', targetPin: hash(settings), price: null }, frozen, settings, new AbortController().signal,
-    async () => {}, async () => {}, async () => {}, { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related',
+    async () => {}, async () => {}, async ({ caseId, trial }) => {
+        (summary.trials ??= []).push({ caseId, failed: trial.error !== null, checks: trial.checks,
+            ...(domain === 'project' ? { diagnostic: projectProbeSummary(trial) } : {}) });
+    }, { profileId: domain === 'rp' ? 'rp.m1.information' : 'project.m1.related',
         caseSetRevision: PILOT_CASE_SET_REVISION, split: 'development', repetitions: 1, mode: 'source_probe' });
     summary.cases = report.pairs.map(pair => ({ caseId: pair.case.caseId, checks: pair.baseline.checks, charges: pair.baseline.charges.length,
         ...(domain === 'project' ? { diagnostic: projectProbeSummary(pair.baseline) } : {}) }));
