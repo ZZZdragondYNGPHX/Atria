@@ -974,3 +974,13 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 ## 17.65 Project结构化Model完成证明
 
 第五十五组仅为实际Project principal扩展Model completion的json payload为{text,toolCalls:[{id,name,args}]}，保留真实wrapper私有身份及完整response/snapshot/Provider rows/receipt hash约束；其它principal的工具响应不能成为text Result。最多32个调用与原Task attempt上限一致。该证明只证明原Provider响应，不授工具执行权；原Project consumer仍拒工具，需后续原Task Effect/收据与同操作Source推进接入。
+
+## 17.66 原Project只读工具Effect与原Task收据
+
+第五十六组为有限单轮Project profile接显式project.read能力和逐工具原descriptor pin。发布验证只读原Task/Studio工具schema；运行必须持实际Scheduler generation capture、原Model wrapper与其精确调用id/name/args、同Root/Attempt/Source及声明的pin。generation.send单独不能执行工具；未接的Skill/提案/Review仍拒绝。
+
+每次调用先准备独立S2 Effect、原Task bank project_tool费用，再ready/claim；私有一次permit在原Task writer锁内复验原Scheduler/Source/Root/HostFence/实际dispatch及费用。原executeTool同一次原Task CAS把nativeReceipt附在原attempt.calls，绑定Run/Effect/Attempt/原Source digest/真实operation/call/args/from-to fingerprint及sequence/result hash，不加第二writer或ledger。只读收据不允许executionFingerprint推进。
+
+原实际返回body在私有permit保留，Task ACK未知只读原已保存精确receipt；无receipt拒绝且不重复writer。Host Effect ACK未知同样只观察精确原Host receipt，无收据保留pending。Context专用只读复验只归一化同活generation已接受的精确原read receipts，继续复验Task/Project/registry/tools/Skill/settings；普通Context/Source/Model不放宽。末消费用withConsumption提交合法同事务撤权后拒正文，原调用和费用保留。ambient Engine事务、clone/foreign/过期permit/凭证JSON/重复调用和同fingerprint无关调用均拒绝。
+
+验证与原Task writer物理事务分开；不能把原writer包进Studio queue，否则原getProject会等待同一queue。该能力不完成Project OutputClaim、多轮Graph、提案/Review/正式Commit或P4全域Gate。

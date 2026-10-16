@@ -825,3 +825,11 @@
 - Source fff849695→32421e8a2，已推送。只有实际原Project principal的Model响应可产生json完成证明，规范payload绑定text和最多32个{id,name,args}；同原wrapper/response/snapshot/Provider rows/receipt均复核。其它领域继续只接受无toolCalls的text证明。原Project consumer暂仍明确拒工具响应，证明本身不授Task工具。
 - 新Project suite四项FS/SQLite正向及结构化响应均通过（10.572s）；包含clone/foreign wrapper、snapshot及toolCalls篡改拒绝、原Model20tokens结算、无Task工具及无正式Project提交。最初四项失败是测试修改冻结generated.snapshot，修为替换外层wrapper.generated并恢复原对象；产品未为测试放宽。原Model相关六项PASS/十四项filter SKIP（26.481s），两文件定向原插件ESLint与diff check通过。中断前一次测试输出未取得，本记录引用恢复后实际复跑结果。
 - 继续原Task工具Effect/领域收据、owned Source推进和多轮Graph，不把此次提交当停止条件。P1–P4 IN_PROGRESS、P5–P8未完成、最终Gate NOT_READY，未合main。
+
+## 2026-10-16 — W07/P4第五十六组：原Project只读工具、独立Effect与原Task耐久收据
+
+- Source 32421e8a2→365bf3f73。有限单轮Project profile为逐工具原schema pin开放显式project.read，实际原Model wrapper精确call与活Scheduler generation捕获才可准备私有一次permit。独立Effect/原bank project_tool准入和claim先于唯一原executeTool；原Task CAS把nativeReceipt与原attempt.calls同组保存，绑定真实operation/Run/Effect/Source/call/args/sequence/from-to fp/result hash，不增加writer/ledger或放宽原Source。普通generation.send仍无工具权，提案/Review/Skill尚拒绝。
+- 原Task保存ACK未知从私有原实际结果+原已保存receipt观察，不重复writer；无receipt拒绝。Host Effect ACK saved/missing亦只观察。Context专用只读消费只归一化同活generation已接受的精确原read receipts，其余Task/Project/registry/tools/Skill/settings仍复验；普通Context/Model路径保持原严格性。withConsumption合法同事务Binding/取消等变化提交后拒body，原调用/费用不回滚。原Project后来推进也拒正文；ambient事务、clone/fake/过期/改参数/无关同fp调用拒绝。
+- 新suite最初阳性2PASS/2filterSKIP（7.192s），扩展18/18 PASS（44.864s）；增加原Context及末消费撤权后精选8PASS/16filterSKIP（21.868s）。尝试把原writer包进Studio queue导致六项全部超时（91.615s），已移除该外层锁并保留验证事务先关闭、原Task→Studio队列顺序；该六项复跑6PASS/24filterSKIP（17.287s）。进程已自然结束，随后尝试按精确PID终止时返回不存在，无遗留进程。
+- 追加同fp无关调用、伪receipt permit及原Project推进测试，组合原Project Model/旧Task Review本地精选，9PASS/2FAIL/76filterSKIP（27.151s）；两失败为测试挂在被prototype精确调用绕过的Budget实例方法，改挂实际原Task settleLocalWork后仅两Engine场景2PASS/32filterSKIP（6.534s）。新增ambient guard和阳性精选4PASS/32filterSKIP（11.326s）。最终36个不同case均有通过证据，未声称最终完整36项一轮全绿；原Model/Task相关五项也通过。十一文件定向原插件ESLint、diff check通过，无全仓/远端Actions/独立审查/SQL/真实外部付费或三端新证据。
+- 原Root仍running，无Project OutputClaim、多轮Graph或提案/Review交付；下一步持续推进这些既有授权范围及其它消费者、P5–P8，不在本提交停下，不创建HANDOFF，不合main。

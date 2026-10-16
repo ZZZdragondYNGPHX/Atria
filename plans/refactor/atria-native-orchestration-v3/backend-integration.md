@@ -136,3 +136,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第五十三组显式有限Session rp_narration profile在原finalizer内经过有来源Result→真实Graph output owner→原S2 Effect/银行→唯一Session writer→原DomainReceipt确认（接口§17.63）。没有新增客户端API。该domain输出与RP分派严格区分；Run最终OutputClaim/费用闭包仍在实施，不提前发最终后端交付。
 
 第五十四组有限Session正式出口可经精确原费用/Domain/Result/Graph proof写OutputClaim并令Root completed（接口§17.64），Run历史reader按领域分派严格验证；尚无新HTTP/Browser RunProjection API。domain提交与Run终结仍分开：未知费用或Host receipt可有assistant但无claim，客户端不得据此重发。完整消费者/API与后续阶段继续实施，尚未发最终后端交付。
+
+第五十六组有限Project profile可执行显式project.read和原descriptor pin交集内的只读工具，经过实际Model completion→独立Effect/原bank→唯一原Task writer/耐久receipt→Context/Source消费复验（接口§17.66）。无新HTTP/Browser权限；原返回Task仍不代表V3 Root completed。提案、Review、多轮与Project OutputClaim继续在同任务实现，后端尚未最终交付。
