@@ -118,3 +118,7 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第四十七组完成有限RP正式output claim及父Root终结（接口§17.57），复用原bank精确Effect闭包；未知费用/receipt保持pending_output，历史证明不恢复scope。继续Session/Project/Evolution等完整消费者及P5–P8；P3/P4及最终Gate仍NOT_READY，未合main。
 
 第四十八组为Native Session出口补原Scheduler finalization专用scope及原Turn一次交换（接口§17.58），运行态Model permit仍拒finalizing。只有底层原机制，Session Result/正式Effect/receipt/claim接线继续，P4/最终Gate未通过。
+
+第四十九组补原Narrator输出quota与同原operation finalizer的身份绑定（接口§17.59），实际原银行证明输出凭据不能新发送或加扣计数，已发生费用保留。继续Context输出复读与Session完整出口；Gate未通过。
+
+第五十组补原Native Session Context专用finalization复读（接口§17.60）：同原Narrator quota与实际finalizer绑定，继续拒运行态发送；原Memory/Binding/Source撤销保留合法事实和费用。产品Session完整出口仍待接入。本次按用户“到合适的时机停下，我要新建对话了”暂停于第五十组，更新HANDOFF，不启动第五十一组；恢复后继续既有授权，P1/P2/P3/P4 IN_PROGRESS，P5–P8 NOT_STARTED，最终Gate NOT_READY，未合main。

@@ -773,3 +773,17 @@
 - 新suite7+原permit9+handoff13 **29/29 PASS（0.726s）**，覆盖finalizer期间原资源持有/取消语义、原generation仍拒、不同operation/owner/resources/phase/Map身份、failure物理过期无重试、retained结果不恢复scope、一次Native交换及fresh stale不进入finalization。
 - 原Native Narrator真实localhost Model→既有finalize精选FS/SQLite各1，共2PASS/26filterSKIP（9.805s），没有重复无关收费/Source全套。harness关闭后原maintenance输出writer_unavailable警告，进程自然退出。三文件targeted原ESLint0输出、staged diff check通过；无外部费用请求。机制无持久存储变更，不据此声称SQL/三端或新Session output通过。
 - 接口§17.58与同Plan/Record同步；继续原Native Session完整Result/Context finalization复读、原finalize DomainReceipt/Effect/claim，再持续Project/Evolution与P5–P8。原授权持续，不在本检查点停工、不刷新HANDOFF、未合main。
+
+## 2026-10-16 — W06/P4第四十九组：同原Turn finalizer的Narrator输出quota
+
+- Source d589db5f0→322bcae32。原quota metadata判据提取共用，原generation与resolver/后台行为不放宽；新增Narrator只读输出验证要求同原permit对象对应的真实finalizer，除原owner/Host/Core/source/selection/request/policy外核operation来源身份。finalization permit可选原permit身份绑定供受信quota verifier使用，不新增持久余额/权限。
+- 新suite5（含FS/SQLite实际原Session bank各1）+原resolver quota6+原finalization7 **18/18 PASS（3.257s）**。证明输出phase可复验原Narrator身份，旧generation verifier仍拒；新scope/返回metadata/旧quota都不能在finalizing准入第二Model，原bank rows与quota计数不变，已准入费用可观测并在结束后按原authority晚到结算。另有同owner/Host/source/request/selection的新operation不能借前一次quota、resolver/clone/foreign/额外allow/过期负例。
+- 三文件targeted原ESLint0输出、staged diff check通过。无HTTP或Provider请求，无SQL/三端新证据。尚未接Context输出复读、Session Result/Effect/原finalize receipt/OutputClaim；这些是接下来工作，不将helper机制称为Session消费者完成。接口§17.59及同Plan/Record同步，持续推进所有后续阶段，不停工、不刷新HANDOFF、未合main。
+
+## 2026-10-16 — W06/P4第五十组：原Native Session输出Context复读与换对话交接
+
+- Source 322bcae32→41cb8760f。原Narrator ContextPort构造时保留私有同原quota/expected身份，拒跨领域capture；同实际Scheduler finalizer以原Context对象一次交换原finalization permit，再专用revalidateNativeOutput复用原Binding/Source/Information/Memory判据。普通send/consume入口仍拒phase=output和finalizing发送，不引入新银行/Writer/HTTP。
+- 新suite通过真实localhost Provider、原GenerationHost/Model/Context/Scheduler/SessionCore，在原finalizer测试钩子中验证新机制；正向原Session writer继续落既有assistant，scope在callback后失效。fake/clone/foreign/额外audience/重复交换拒绝。Model consumption后原Memory关闭、Binding更新、Source推进均在writer前拒新output复验，合法变更留下，无新assistant，原Model20tokens费用仍settled。
+- 新suite首轮8PASS/2FAIL（46.211s）；两失败精确为测试用了不存在的SettingsRepo.load，改为原get后仅相关memory两Engine2PASS/8filterSKIP（10.980s）。没有产品修补或放宽断言；最终十个不同case均有通过证据，未宣称修正后完整再跑十项。原ContextPort13/13 PASS（2.870s），四文件targeted本工作树原ESLint0输出、staged diff check通过。仅本地最小相关验证，SQL/外部真实费用质量/三端NOT_RUN，无变异残留。
+- 产品只新增原Narrator Context输出能力捕获，GenerationHost.finalize尚未调用新入口；Session正式Result/Effect/DomainReceipt/OutputClaim仍未实现。不要将测试钩子当产品完整consumer。后续需同原prepared对象活scope→实际finalizer复读→原费用闭包/Effect→唯一SessionCore.finalizeTurn领域收据→严格Result/claim，不能从metadata冷开恢复权限或放宽原发送阶段。
+- 用户最新明确要求“到合适的时机停下，我要新建对话了”。本组最小验证、source提交推送与同Plan/Record、HANDOFF更新后停下，不启动第五十一组。此要求覆盖此前持续推进全部阶段的节奏，但不撤销恢复后的既有开发授权。P1/P2/P3/P4 IN_PROGRESS、P5–P8 NOT_STARTED、Gate NOT_READY，未合main、没有对前端冒发最终交付。

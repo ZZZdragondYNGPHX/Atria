@@ -926,3 +926,17 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 原Native Turn permit可在同一真实finalizer内一次换取原NativeTurnFinalizationPermit，绑定原Host/selection/source/invocation/request/resources，拒JSON/clone/foreign/过期/运行态/重试边界；不产生银行准入或正文grant。资源与不可打断CAS语义归原Scheduler，不新建调度器/持久authority，旧finalizer忽略额外参数即可保持行为。
 
 当前仅机制与真实原Scheduler验证，尚未接Session正式Result/Effect/原finalize receipt/OutputClaim，不能核销Session出口或P4 Gate。下一步沿原GenerationHost.prepareTurn→Scheduler.finalize与原SessionCore.finalizeTurn接活Narrator完成scope和原领域收据，不把finalization凭据当Model grant。
+
+## 17.59 原Narrator输出阶段的精确quota身份
+
+第四十九组新增只读assertNativeTurnOutputQuota，将原Narrator quota proof与同原始Turn permit的一次finalization scope关联；owner/Host/Core/selection/source/request/policy/role仍按原metadata验证，并核原permit对象身份。相同owner/source/request元数据的后续新operation不能借旧quota；resolver/后台、clone、额外allow字段或已结束scope拒绝。
+
+原assertNativeTurnQuota与BudgetPort Model准入仍只认运行态permit，输出验证既不准入新Model/local工作，也不更改余额或quota计数。原已准入费用的观察和晚到结算保持可用。本组尚未将该helper接入Context输出复读或Session正式输出writer/claim，下一步继续；不能把phase witness当Source/Disclosure/Commit授权。
+
+## 17.60 原Native Session Context在同finalizer内复验
+
+第五十组将原Narrator quota proof私有绑定到该次原ContextPort；构造时核原Host/Core/owner/source/request/selection，拒resolver/后台及其它领域capture混用。同实际Scheduler finalizer只能对该实例产出的原Context一次换取原output finalization permit；clone、裸metadata、foreign owner、额外audience、假scope与过期scope均拒绝。普通revalidate仍只允许send/consume，不开放通用phase=output入口。
+
+专用revalidateNativeOutput先核同原quota/permit，再复用原Binding/Source/Information/Memory proof复读逻辑。输出阶段不恢复运行态发送许可，不新增Model或local收费准入。Model结束后至原Session writer前的合法Memory撤销、Binding变化与Source推进可拒该输出，同时保留这些合法事实和已发生的原Model费用。
+
+本组只将输出能力绑定到原Narrator Context构造；产品GenerationHost.finalize尚未调用新入口。实测通过实际原Scheduler finalizer测试钩子验证机制，不将测试接线称为产品Session正式Result/Effect/DomainReceipt/OutputClaim完成。用户要求换新对话，暂停于本组，下一组继续产品活scope与原finalize收据接线。
