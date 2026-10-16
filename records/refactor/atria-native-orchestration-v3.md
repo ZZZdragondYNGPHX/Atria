@@ -1005,3 +1005,10 @@
 - Source 1101bd454 → 826d2ba43，本地提交未推送。实现接口 §17.87，原 Task receipt reader 与原费用事实复用；共享 RP/Session 的 ACK 处理，不重跑原工具或 Workspace evaluate，不自动提交 Project 或恢复执行。原 Authority/Repo/Engine 指针仍严格核对。
 - 新 Project suite 首轮 read 2PASS/8filterSKIP（9.920s），其余 unknown/Review 8PASS/2filterSKIP（80.345s），10 个不同 case 分次通过。随后合法 Project 编辑及原工具/Review/ACK 精选三 suites 10PASS/44filterSKIP（74.480s）；共享 helper 的 RP/Session 精选 16PASS/16filterSKIP（61.123s）；evaluator 指纹 18/18 PASS（1.782s）。最后新增 Authority 指针与 projection controls 断言后，三域精选 10PASS/32filterSKIP（45.107s）。上一进程输出在上下文切换时丢失，未计其结果，以本次重跑为准。
 - Review 每场景原 Workspace evaluate 始终一次；缺 Task receipt 或成本继续 unknown。13 文件原 ESLint、staged diff check 通过。模型均 localhost 合成；Project 冷核对用同 Engine 新 generation/新 Authority，未声称真 Engine 重开、独立质量或全部后端完成。后台 Task 闭包、受权恢复/结果读取、其余消费者及 release/GC 等继续，完整 Gate NOT_READY。
+
+## 2026-10-17 — 第八十一组：原后台 Task 采纳与正式输出闭包
+
+- Source 826d2ba43 → 69cb70b27，本地提交未推送。实现接口 §17.88：原 Scheduler finalization proof、原 Task 采纳和 V3 Result/Graph/OutputClaim/Root 共用原 Engine 事务；原费用 unknown 则只保留原 Task/有界 Result。历史 adopted revision 经原 reference roots 保留。没有复制 Task 正文、授通用 Result 权或重发旧 outbox。
+- 初版正向 2FAIL/14filterSKIP（11.806s）：原 readSessionSnapshot 不附带 manifest，不能误用需要完整 Package 的 validator；改为复核发送前冻结的 Task definition/class/sink、原 Task record/Model/intent/银行事实后正向 2PASS/14filterSKIP（13.654s）。随后旧后台 suite 16/16 PASS（127.214s）；共享 graph verifier 的 Project输出/Result/Run 三 suites 85PASS/4SKIP（310.974s）。
+- 新 Task suite 首批 2FAIL/2PASS/14filterSKIP（30.657s），失败是测试错用不存在的 orchestrationClaim ID family；修复后历史/真 Engine reopen 两参数项 2PASS/16filterSKIP（15.021s），ACK/撤权/取消/scope/回滚等 14PASS/4filterSKIP（85.816s），unknown usage 两项也有首轮通过。追加 normalized result hash 防篡改、projection 和原规范化函数复用后，最终新旧 Task 两 suites 36/36 PASS（250.361s）。再收紧 no_save ACK 继续原 storage_commit_unknown，其四参数项 4PASS/16filterSKIP（31.566s）。
+- 原 generationBudget 与 evaluator revision 两 suites 51/51 PASS（32.771s），其中 evaluator 指纹23项。16 文件原 ESLint 与 staged diff check 通过；中间三条测试 conditional-expect 和 try/catch brace lint 已修复。所有 Provider 为 localhost 合成；没有声称 SQL、真实 OS kill、独立质量/价格或全后端完成。用户要求持续实施，接着完成其余后端，未推送、未提前前端/main 或新建交接。

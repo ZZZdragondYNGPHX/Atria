@@ -1135,3 +1135,13 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 核对复用原 readProjectToolReceipt，逐项验证原 Task/call/nativeReceipt、Model 收据、Plan pin、冻结输入/授权/端点/egress 和原银行。只有原 local work 已 settled 且 completed 才能确认；成本或 Task 原收据缺失继续 unknown。使用原稳定 project.tool observation identity，正常消费 reader 保持同一收据协议，不另建领域权威。合法后续 Project 编辑不抹除历史结果，也不恢复执行资格。
 
 RP/Session/Project 共用仅处理原 Effect observe ACK 的 helper，保存未知时只读并严格匹配同稳定 receipt。所有路径继续 resumed:false，不调用 Model/Tool/Workspace evaluator/领域 writer，不创建 OutputClaim 或完成 Root；取消保持有效。新实现纳入 evaluator 指纹。
+
+## 17.88 原后台 Task 采纳与正式 V3 输出闭包
+
+源码 69cb70b27 将已有有限原 pending-outbox 后台 producer 接到正式 Result/Graph/OutputClaim。仍限原 active scope、非 simulation/appraisal/resultBinding 的单 Agent → Output JSON 图；现在要求显式 JSON resultPolicy。任务定义、原输入/intent、配置、Route pin 和实际 Scheduler operation identity 在发送前冻结，沿原 generationBudget/窗口/周期、Context 和原银行，retry:false 不变。
+
+原 NativeTaskScheduler 提供真正 finalization boundary。Host 在原 Session/source/Run 边界内，重验 live Model 完成品牌与来源后调用已有 Task finalize/recordTaskResult；原采纳和 Result publication、真实 Transition/Attempt、OutputClaim、Root.completed 使用同一个原 Engine 事务。原 Task schema 规范化函数由 GenerationHost 和 ModelPort 共用，Model receipt 固定 normalized Task result hash；改写 payload 不能借原 raw response hash。
+
+Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 session/branch/revision、invocation/task/variant、source/grant 和唯一用途。payload 只有原 adopted revision/Task record hash 的引用，不复制模型正文，不产生通用读取权。只读 reader 复核原不可变 revision/Task/outbox、冻结 intent/Plan/Route、Model/费用行、原命令与图遍历。Project 与后台 Task 复用同一个图遍历收据校验，领域批准与发布仍各自持有。
+
+已知 Task 采纳可保留 bounded Result，但原费用未关闭时不创建 OutputClaim 或完成 Root。原采纳的历史 receipt 总是保留 exact adopted revision，之后 await 中发生撤权/取消仍提交该事实和撤权，拒绝完成与正文返回；不恢复 source/scope。其它失败回滚同事务的原采纳和 V3 输出元数据，先前真实模型费用保持。未知事务 ACK 只读原 Task/Result/Output 事实；不能证明保存时继续 storage_commit_unknown，不重复 finalize/Task writer/Model。产品观察增加两个安全事件，无正文；新实现/共用规范化函数纳入 evaluator 指纹。
