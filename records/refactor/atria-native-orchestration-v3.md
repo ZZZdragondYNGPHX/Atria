@@ -1052,3 +1052,9 @@
 - 新修复测试最初6轮4FAIL（135.811s），定向诊断1FAIL（38.099s）证实第6轮前已用32 local jobs，5次模型/384950 input bytes；maxJobs64 被原 validator 拒绝（4FAIL、2.465s），已撤回该测试配置，不修改产品预算上限。改为创建 Run 前保存原提案后，真正执行 prepare_review→repair→reset→save→prepare_review 四轮，覆盖修复成功与第二次失败 blocked。中途原 snapshot 不含 commitIntent/原 Source 规范化字段断言已纠正；停止实现曾误用要求 running 的 Model proof，已改为精确 settled 复核，未放宽发送 authority。
 - 最终新修复/原 bounded-loop/原正式 Review positive 三 suites 10PASS/30filterSKIP（165.314s）；新停止 suite 10/10 PASS（38.899s），包括正文停止、round cap、saved/no_save ACK、最后银行 await 中取消保留。evaluator 指纹25/25 PASS（2.016s），六文件原 ESLint/staged diff check 通过。均 localhost合成；没有声称真实质量通过。
 - 为诊断又跑一次真 Provider source_probe，5次200、34219 reported tokens、unknown=0，模型完成 get_project+closure/reset/plan/project_save 后正文停止；worker 报 evaluation_runtime_failed，未取得可确证失败原因，未将其推断为预算或后端通过。停止修复后尚未真 Provider复测。独立资料缺失与其余后端队列保持，继续实施，不交前端/main。
+
+
+## 2026-10-17 — 第八十八组：真实限额与原容量诊断
+
+- Source 7b28b24ce → 4973e00ba，本地提交未推送，接口 §17.94。新增封闭 execution 计数/原 Plan limits 与原 BudgetPort 同事务容量观察，复用 inspectComputeReservation，显式区分原共享银行/child allocation 和 held/released。unknown 估算仍占用，原 exact Effect costs 不与共享银行容量混为同一费用。
+- 首批三域原银行参数6PASS/7filterSKIP（4.395s），HTTP deadline/no-store/集合6PASS/22filterSKIP（3.369s）。补 allocationStatus/未知和撤权后历史观察后，原 BudgetPort/Run HTTP/evaluator 指纹三个完整 suites 66/66 PASS（18.519s）；Project 原执行/停止投影精选4PASS/6filterSKIP（18.616s），五文件原 ESLint/staged diff check 通过。deadline 仅生成新投影 delta，Root hash 保持；cancelled 历史不补虚假超时。没有模型真实发送、独立质量/价格结论或新执行权限，继续其余后端。

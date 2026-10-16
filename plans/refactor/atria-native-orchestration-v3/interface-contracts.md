@@ -1174,3 +1174,10 @@ Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 s
 显式 project_review 图在原 Model/Tool 轮次与全部原费用已闭合、没有待核对 Effect/Approval、没有 Result/Output 时，若模型主动正文停止、达到本 operation 的有限 rounds 或原 Task 已 blocked/conflict，Host 写唯一 project_stop receipt/command/event 并将 Root 标为 blocked。仍未 Review、未 Commit、未授 resume，不重发或重建预算；普通内部 result profile 保持原行为。
 
 判定只来自当前 Scheduler operation 内不可复制的原轮次 completion。已 settled 的 Attempt 使用原 Task/Model/Tool durable round 与 settlement 复核，不把要求 Attempt.running 的 Model completion 放宽为可重用。原对象 payload、Task generation attempt、conversation/fingerprint、原 Source/Binding/Host、原银行都在最终 await 后复读；合法取消/来源撤权先提交再拒本次元数据。Root 的原 limits/费用/进度不回退。ACK未知只观察同一 exact receipt，不重跑 Model/工具/Workspace。Projection 只增加 project_generation_stopped 安全事件，不输出正文或自由 reason。
+
+
+## 17.94 Run 限额与原银行容量观察
+
+Run snapshot 新增 execution，包含 immutable Plan limits、原 progress 与 treeProgress 的封闭数值字段（不返回内部 edgeVisitCounts）；capacity 沿 BudgetPort 的同一原 Engine 事务读取原三域银行 inspectComputeReservation。顶层明确 original_bank、子 Run 明确 child_reservation，allocationStatus 区分 bank/held/released。ceiling/used/delegated/remaining/overrun 直接来自原 reducer，不另算费用或重置预约。未知 Model 仍扣原 estimatedTokens，释放仅反映原 released 事实；原 costs 继续只归本 Run 的 exact Effect 闭包。
+
+只有仍未终结的 Run 才列 deadline、steps/attempts 或 requests/tokens/local jobs/items/inputBytes 无剩余容量诊断；这些是只读解释，不自动失败/取消/退款/准入或 resume。时间过 deadline 可以更新投影 delta，但不改耐久 Root/状态/历史。没有开始的银行显示 not_started，缺 authority 显示 unavailable，既有 Source/owner/历史可见性/分页与 no-store 不变。

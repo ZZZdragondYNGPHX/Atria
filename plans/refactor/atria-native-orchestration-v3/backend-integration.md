@@ -2,7 +2,7 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至八十七组）
+## 当前后端续作（第七十一至八十八组）
 
 `826d2ba43` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出和原 Project 工具的收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 工具核对见[接口 §17.87](interface-contracts.md#1787-原-project-工具冷收据核对)；其余核对与受权 resume 继续后端。
 
@@ -72,6 +72,8 @@ projection envelope 为 `{schemaVersion,runId,projectionId,hostBootId,epoch,proj
 cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility/storage generation 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。resume/approve 仍 false；recover 与受限 RP reconcile 按接口 §17.83–§17.85 的实际能力显示。仍 pending 的核对请求可从 `reconciliationRequest` 取回同 commandId。Approval 的 reviewAvailable 只在同 Host 有效挑战存在时显示 true，最终批准仍由隔离 listener 与原领域复核。
 
 costs 来自原银行同事务事实：knownTotalTokens 与 unknownAttempts/reservedUpperTokens 分开，localJobs/localUnknownJobs/localWallMs 独立，不虚构货币费用或“已退款”。`settled/pending/unavailable/not_started` 不等于正式领域输出成功；以实际 Run/领域收据为准。
+
+snapshot 另含 execution（Plan limits/原本地与子树计数）与 capacity（明确原银行或 child 额度、held/released、原 used/delegated/remaining），详见[接口 §17.94](interface-contracts.md#1794-run-限额与原银行容量观察)。诊断 deadline/容量不改 Root、不授新执行或退款；costs 仍只统计该 Run exact Effects。
 
 ### 普通 RP 与 Project
 
