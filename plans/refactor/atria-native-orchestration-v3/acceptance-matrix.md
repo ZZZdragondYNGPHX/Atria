@@ -185,3 +185,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第三十七组补原Model wrapper完成事实、fresh bank provenance、末await对象/Root复验与原Run→Source控制边界（接口§17.47）；FS/SQLite及精选MySQL/Pg证据、锁逆序/同事务取消反例和守卫变异精确范围归同一Record。证明不授予收件人权限，不持久正文，不替代正式Result/OutputClaim/child producer/return；这些验收继续IMPLEMENTATION_PENDING，外部费用/质量/三端全流程NOT_RUN，P3 Gate仍NOT_READY。
 
 第三十八组原银行精确child闭包观察（接口§17.48）取得三域FS/SQLite31项及精选MySQL/Pg8项、原预算回归31项和七类守卫变异证据；分次/过滤数归同一Record。该reader不释放银行或写metadata，不核销Result/Output/return；released超限明确closed=false，真实外部费用/质量/设备验收继续NOT_RUN，P3 Gate不变。
+
+第三十九组真实RP child/Context/根银行叶reservation接线（接口§17.49）取得最终普通33PASS、跨原Session/Project/后台/Resolver精选12PASS、MySQL/Pg精选8PASS及八类语义守卫证据，精确失败/诊断/分次与跳过范围归同一Record。只有pending refs，正式Result/output/return继续IMPLEMENTATION_PENDING；本地合成HTTP不核销真实外部费用/质量/三端全流程，P3 Gate不变。

@@ -104,3 +104,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第三十七组原Model实际wrapper可在有效scope内取得私有完成事实，原Run→Source支持合法元数据控制（接口§17.47）；复制或冷收据不恢复正文证明。无新增HTTP/前端API、正式Result writer或durable return，不能由客户端拼Result、把proof当批准或把Model confirmed当Run completed。正式领域producer/Audience与后续消费者仍在实施，尚未发送最终后端交付通知。
 
 第三十八组增加内部原银行child闭包只读观察（接口§17.48），无新客户端路由。held/unknown或released但overrun都不能投影为成功完成；closed费用事实也不授予正文读取/输出或控制权返回。正式Result/Output/return仍待后端完成后统一交付。
+
+第三十九组内部startRp可执行有限真实child Model/Context，返回pending_result及原父/子/effect/receipt refs（接口§17.49），没有正文Result或新HTTP。前端不能把Scheduler completed、pending refs或已结清费用当Run completed/父已返回；原父Attempt仍waiting_child。正式Result/输出/可信消费与控制权归还继续实施，最终后端交付尚未发出。

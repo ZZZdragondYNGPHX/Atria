@@ -98,3 +98,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第三十七组补原Model实际wrapper的私有完成证明及原Run→Source元数据控制边界，见[接口§17.47](interface-contracts.md#1747-原model完成事实与同source元数据控制边界)。修复相同command锁逆序和末预算await期间同事务取消的过期证明；完成事实不替代Result/Audience授权。最新源码/实测范围归同一Record，继续实际RP child producer及正式Result/return，P3 Gate仍NOT_READY。
 
 第三十八组2f22e9b63补三域原银行精确child费用闭包只读观察，见[接口§17.48](interface-contracts.md#1748-原银行精确child闭包观察)。原unknown/local/后代/释放ACK/真实overrun保持，兄弟工作不改变该子树摘要；观察不是完成授权。实际RP child/Context并行接线尚待下一组验证提交，P3 Gate仍NOT_READY。
+
+第三十九组664749309接真实RP独立child capture/受限Context/Model/原bank，并修根银行与叶reservation的额度接线，见[接口§17.49](interface-contracts.md#1749-真实rp独立child-model与根银行叶额度边界)。内部明确pending_result无正文，不把物理permit返回当durable return；正式Result/Output/Audience/return继续实施，P3 Gate仍NOT_READY。
