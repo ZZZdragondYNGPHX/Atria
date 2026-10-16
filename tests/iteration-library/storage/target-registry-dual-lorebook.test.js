@@ -40,8 +40,7 @@ describe('lorebook target registration: orch vs CEA', () => {
         const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
         const h1 = { read: () => {}, write: () => {}, describe: () => 'a' };
         const h2 = { read: () => {}, write: () => {}, describe: () => 'b' };
-        // Two adapters registering the SAME name still surfaces a warning
-        // — defensive backstop in case a future caller forgets to namespace.
+        // Duplicate registration warns and replaces the previous handler.
         registerTarget('lorebook', h1);
         registerTarget('lorebook', h2);
         expect(warn).toHaveBeenCalled();

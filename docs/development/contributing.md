@@ -84,7 +84,7 @@ docs(extension-api): add examples for registerExtensionApi
 3. Commit locally and write/update the task Record in the independent `docs` branch.
 4. Integrate completed product work into local `main`; verify the integration without repeating unaffected checks.
 5. Push committed results for storage and clean up completed local/remote task branches.
-6. For a multi-stage task, update its Record/HANDOFF and stop at the approved stage boundary.
+6. For a multi-stage task, update the same Record and continue under Governance §8; write a HANDOFF only when the user requests interruption.
 
 A pull request may be used when explicit review is needed; it is not the default merge gate. Do not wait for disabled remote CI.
 
@@ -147,11 +147,7 @@ Atria/
 
 ## Testing
 
-- Select the smallest sufficient checks for the changed behavior and risk; do not default to full lint/test/build.
-- Prefer unit/integration tests, browser automation and simulators.
-- Request manual device evidence only for a specific essential gap automation cannot cover.
-- Repeat passed checks only after a relevant new change or unresolved failure.
-- Report the checks actually executed and preserve missing evidence.
+Follow `docs:README.md` §12 / §12.1 for risk-based validation and test additions. Reuse relevant checks; report what ran and any essential missing evidence.
 
 ## Documentation Contributions
 
