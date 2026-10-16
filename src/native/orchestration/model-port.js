@@ -21,6 +21,8 @@ const digest = intent => hash({ runId: intent.runId, effectId: intent.effectId, 
     hostBootId: intent.hostBootId, hostGeneration: intent.hostGeneration,
     sourceBindingDigest: intent.sourceBindingDigest, decision: effectDecision(intent) });
 const key = (handle, intent) => hash({ handle, runId: intent.runId, effectId: intent.effectId });
+const resultPayload = (response, outputType) => outputType === 'text' ? response.text : { text: response.text,
+    toolCalls: (response.toolCalls ?? []).map(({ id, name, args }) => ({ id, name, args })) };
 const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_binding_changed',
     'native_orchestration_parent_stale',
     'native_orchestration_turn_selection_stale', 'native_orchestration_turn_grant_denied', 'native_orchestration_turn_route_mismatch',
@@ -220,12 +222,13 @@ export class ModelPort {
                 assertPermit();
                 checkCancellation(signal);
                 if (typeof generated.response.text === 'string' && (generated.response.toolCalls === undefined
-                    || Array.isArray(generated.response.toolCalls) && generated.response.toolCalls.length === 0)) {
+                    || Array.isArray(generated.response.toolCalls) && (project ? generated.response.toolCalls.length <= 32 : generated.response.toolCalls.length === 0))) {
+                    const outputType = project ? 'json' : 'text';
                     completion = immutable({ handle, hostBootId: root.hostBootId, hostGeneration: root.hostGeneration,
                         binding: pending.binding, observationHash: hash(pending.observation),
                         responseHash: hash(generated.response), snapshotHash: hash(generated.snapshot), providerRowsHash: hash(generated.routing.compute.attempts),
                         descriptor: { runId, effectId, producerAttemptId: finalIntent.nodeAttemptId, epoch: root.epoch,
-                            sourceBinding: root.sourceBinding, receiptRef: finalSaved.receiptRef, payloadHash: hash(generated.response.text), outputType: 'text' } });
+                            sourceBinding: root.sourceBinding, receiptRef: finalSaved.receiptRef, payloadHash: hash(resultPayload(generated.response, outputType)), outputType } });
                 }
                 return { generated, receiptRef: saved.receiptRef };
             }, { withAuthority });
@@ -241,7 +244,7 @@ export class ModelPort {
 
     #assertResultPayload(completion, result) {
         const descriptor = completion.descriptor, generated = result.generated;
-        if (!generated || typeof generated.response?.text !== 'string' || hash(generated.response.text) !== descriptor.payloadHash
+        if (!generated || typeof generated.response?.text !== 'string' || hash(resultPayload(generated.response, descriptor.outputType)) !== descriptor.payloadHash
             || hash(generated.response) !== completion.responseHash || hash(generated.snapshot) !== completion.snapshotHash
             || hash(generated.routing?.compute?.attempts) !== completion.providerRowsHash || hash(result.receiptRef) !== hash(descriptor.receiptRef))
             fail('native_orchestration_model_result_payload_changed');
