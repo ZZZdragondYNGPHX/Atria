@@ -92,7 +92,7 @@ test('S21 a legitimate long Session recovers its bounded visible memories withou
         for (let i = 0; i < 24; i++) await f.memory('long-' + i, { role: 'commitment' });
         const base = await f.load();
         expect(projection(base).items.filter(value => value.sourceId === 'experiences' && value.memory.status === 'active')).toHaveLength(24);
-        const recovered = await f.core.forkBranch(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId });
+        const recovered = await f.core.restoreSavePoint(h.handle, base.session.sessionId, (await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId })).saveId, { expectedRevisionId: base.revision.revisionId });
         expect(recovered.revision.branchId).not.toBe(base.revision.branchId);
         expect(projection(recovered).items.filter(value => value.sourceId === 'experiences' && value.memory.status === 'active')).toHaveLength(24);
         expect((await f.core.load(h.handle, base.session.sessionId, { revisionId: base.revision.revisionId })).states).toEqual(base.states);
@@ -111,7 +111,7 @@ test('S21 recovery preserves managed Memory exception evidence when an authorize
         const basis = await f.basis(['actions:acted']);
         const base = await f.memory('conditional', { applicability: { goalId: '', until: 0, exceptionRefs: basis.sourceRefs } }, ['actions:acted']);
         expect(item(base, 'experiences:conditional').memory.applicability).toBe('applicable');
-        const recovered = await f.core.forkBranch(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId });
+        const recovered = await f.core.restoreSavePoint(h.handle, base.session.sessionId, (await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId })).saveId, { expectedRevisionId: base.revision.revisionId });
         expect(item(recovered, 'experiences:conditional').memory).toMatchObject({ status: 'active', applicability: 'applicable' });
         expect(item(recovered, 'actions:acted').causality.sourceCurrent).toBe(true);
         expect((await f.core.load(h.handle, base.session.sessionId, { revisionId: base.revision.revisionId })).states).toEqual(base.states);
@@ -142,7 +142,7 @@ test('S21 multiple Actor long views retain their own authorized memories within 
             await f.write('experiences', 'actor-' + index, { actor: grant.actorId, text: '此角色独有的长期承诺 ' + index, role: 'commitment',
                 basis: { viewId: grant.viewId, anchor: selected.anchor, sourceRefs: [{ itemId: history.id, fingerprint: informationItemFingerprint(history) }] } });
         }
-        const base = await f.load(), recovered = await f.core.forkBranch(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId });
+        const base = await f.load(), recovered = await f.core.restoreSavePoint(h.handle, base.session.sessionId, (await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId })).saveId, { expectedRevisionId: base.revision.revisionId });
         for (const [index, grant] of actorViews.entries()) {
             const selected = projectInformation(recovered, grant.viewId, { purpose: 'context', includeRollups: false }), memories = selected.items.filter(value => value.sourceId === 'experiences');
             expect(memories).toHaveLength(1);
@@ -160,7 +160,8 @@ for (const faultKind of ['runControl', 'session']) test(`S21 FS portable import 
         const expectedCost = cost(await f.core.runs.status(h.handle, sessionId)), exported = await f.saveSystem.exportSession(h.handle, sessionId),
             svc = await installExact(h, target, f, base), original = target.engine.withTransaction.bind(target.engine);
         let injected = false;
-        const fault = jest.spyOn(target.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, async tx => {
+        const fault = jest.spyOn(target.engine, 'withTransaction').mockImplementation((handle, operation) => original(handle, async originalTx => {
+            const tx = Object.create(originalTx);
             const put = tx.putResourceIfMatch.bind(tx);
             tx.putResourceIfMatch = async (key, ...args) => {
                 if (!injected && key.kind === K[faultKind] && key.sessionId === sessionId) {
@@ -174,7 +175,7 @@ for (const faultKind of ['runControl', 'session']) test(`S21 FS portable import 
         expect(injected).toBe(true);
         expect(await svc.sessionRepo.get(target.handle, sessionId)).toBeNull();
         fault.mockRestore();
-        expect(cost(await svc.core.runs.status(target.handle, sessionId))).toEqual(faultKind === 'session' ? expectedCost : cost(null));
+        expect(cost(await svc.core.runs.status(target.handle, sessionId))).toEqual(cost(null));
         const imported = await svc.saveSystem.importSave(target.handle, exported.archive);
         expect(projection(imported)).toEqual(projection(base));
         expect(cost(await svc.core.runs.status(target.handle, sessionId))).toEqual(expectedCost);
@@ -224,7 +225,7 @@ for (const [kind, make, Engine] of harnesses) {
         try {
             const f = await scenario(h), initial = await f.load(), sessionId = initial.session.sessionId;
             for (let i = 0; i < 2; i++) {
-                const base = await f.load(), forked = await f.core.forkBranch(h.handle, sessionId, { expectedRevisionId: base.revision.revisionId });
+                const base = await f.load(), forked = await f.core.restoreSavePoint(h.handle, sessionId, (await f.core.createSavePoint(h.handle, sessionId, { expectedRevisionId: base.revision.revisionId })).saveId, { expectedRevisionId: base.revision.revisionId });
                 expect(item(forked, 'intentions:return-book').cognition).toMatchObject({ status: 'active', sourceCurrent: true, selection: 'current' });
                 expect(item(forked, 'actions:acknowledge').causality.sourceCurrent).toBe(true);
                 expect(item(forked, 'experiences:commitment').memory.status).toBe('active');

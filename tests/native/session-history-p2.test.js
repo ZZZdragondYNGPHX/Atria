@@ -31,10 +31,11 @@ describe('P2 lightweight branch / reply facade', () => {
         try {
             const f = await installFixture(h), start = await f.core.create(h.handle, f.start), id = start.session.sessionId;
             const user = await f.core.appendTimeline(h.handle, id, { role: 'user', content: 'Choose' });
+            const checkpointSave = await f.core.createSavePoint(h.handle, id);
             const first = await f.core.appendTimeline(h.handle, id, { role: 'assistant', content: '<b>' + '\u{1f642}'.repeat(400) });
             const birth = first.timeline.at(-1), originalBranch = first.session.activeBranchId;
             await f.core.updateState(h.handle, id, { atri_test: { value: 1 } });
-            await f.core.retryReply(h.handle, id, { messageId: birth.messageId });
+            await f.core.restoreSavePoint(h.handle, id, checkpointSave.saveId);
             const second = await f.core.appendTimeline(h.handle, id, { role: 'assistant', content: 'Alternative' });
             await f.core.updateState(h.handle, id, { atri_test: { value: 2 } });
             const scan = jest.spyOn(f.sessionRepo, 'listTimeline'), snapshots = jest.spyOn(f.core, 'load');
@@ -52,7 +53,7 @@ describe('P2 lightweight branch / reply facade', () => {
             expect(deriveReplyVariants(switchedModel, { messageId: birth.messageId }).count).toBe(2);
             expect(deriveReplyVariants(switchedModel, { messageId: birth.messageId }).selected.isCurrent).toBe(true);
             // A user edit at the same predecessor is not a Reply Variant.
-            await f.core.forkBranch(h.handle, id, { revisionId: user.revision.revisionId });
+            await f.core.restoreSavePoint(h.handle, id, checkpointSave.saveId);
             await f.core.appendTimeline(h.handle, id, { role: 'user', content: 'Different question' });
             const withUserBranch = buildBranchGraphModel(await service(f).getSessionHistory(h.handle, id));
             expect(deriveReplyVariants(withUserBranch, { messageId: birth.messageId }).count).toBe(2);
@@ -117,9 +118,9 @@ describe('P2 lightweight branch / reply facade', () => {
     });
 
     test('facade deduplicates metadata requests, navigates without I/O and delegates exact commands', async () => {
-        const source = metadata(), loadHistory = jest.fn(async () => source), onInspect = jest.fn(), onSwitchBranch = jest.fn(), onRetry = jest.fn(), onFork = jest.fn();
+        const source = metadata(), loadHistory = jest.fn(async () => source), onInspect = jest.fn(), onSwitchBranch = jest.fn();
         const context = { sessionId: source.sessionId, revisionId: 'r6', branchId: 'b2', tailMessageId: 'two', canWrite: true };
-        const facade = createReplyVariantFacade({ sessionId: source.sessionId, loadHistory, getContext: () => context, onInspect, onSwitchBranch, onRetry, onFork });
+        const facade = createReplyVariantFacade({ sessionId: source.sessionId, loadHistory, getContext: () => context, onInspect, onSwitchBranch });
         await Promise.all([facade.load(), facade.load()]);
         const replies = facade.replies({ messageId: 'two' });
         expect(facade.preview(replies.previous).message.preview).toBe('First');
@@ -128,25 +129,6 @@ describe('P2 lightweight branch / reply facade', () => {
         expect(onInspect).toHaveBeenCalledWith({ sessionId: source.sessionId, revisionId: 'r2', branchId: 'b1', messageId: 'one' });
         expect(onSwitchBranch).not.toHaveBeenCalled();
         await facade.switchBranch(replies.previous); expect(onSwitchBranch).toHaveBeenCalledWith('b1', expect.objectContaining({ revisionId: 'r2' }));
-        await facade.load(); await facade.retry({ revisionId: 'r6' });
-        expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ messageId: 'two', revisionId: 'r6' }));
-        await facade.load(); context.isHistory = true;
-        await expect(facade.retry({ revisionId: 'r6' })).rejects.toThrow('unavailable');
-        context.canFork = true; await facade.fork({ revisionId: 'r2' });
-        expect(onFork).toHaveBeenCalledWith(expect.objectContaining({ revisionId: 'r2', branchId: 'b1' }));
-    });
-
-    test('concurrent commands, stale/foreign contexts, failures and dispose are fenced', async () => {
-        let finish; const context = { revisionId: 'r6', branchId: 'b2', tailMessageId: 'two', canWrite: true };
-        const facade = createReplyVariantFacade({ sessionId: 'session_test', loadHistory: async () => metadata(), getContext: () => context,
-            onRetry: () => new Promise(resolve => { finish = resolve; }), onFork: jest.fn() });
-        await facade.load(); const pending = facade.retry({ revisionId: 'r6' });
-        await expect(facade.fork({ revisionId: 'r2' })).rejects.toThrow('unavailable'); finish(); await pending;
-        await facade.load(); context.revisionId = 'r7';
-        expect(facade.capabilities({ revisionId: 'r6' }).retry).toBe(false);
-        context.sessionId = 'foreign'; expect(facade.capabilities({ revisionId: 'r2' }).fork).toBe(false);
-        await expect(facade.load()).rejects.toThrow('unavailable');
-        facade.dispose(); await expect(facade.load()).rejects.toThrow('closed');
     });
 
     test('timeouts are retryable and late responses cannot replace a refreshed model', async () => {

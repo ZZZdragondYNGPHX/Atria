@@ -1,10 +1,11 @@
+import '../util/orchestrator-context.js';
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import {
     registerMemoryGraphOrchestrationTools,
     unregisterMemoryGraphOrchestrationTools,
     MEMORY_TOOL_NAMES,
 } from '../../public/scripts/agents/memory/orchestrator-tools.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
+import { getExtensionRegistry } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 describe('memory-graph orchestrator tools', () => {
     test('shared recall reads guarded context and never consumes private scratch', async () => {
@@ -14,7 +15,7 @@ describe('memory-graph orchestrator tools', () => {
         const assertCurrent = jest.fn();
         const recallMemory = jest.fn(async () => ({ text: 'Shared evidence', selected: ['state:location'], tokenCount: 20, budget: 100, assertCurrent }));
         __setSessionForTest(ctx, { recallMemory });
-        const tool = __getExtensionRegistryForTest().get('memory_recall');
+        const tool = getExtensionRegistry().get('memory_recall');
         expect((await tool.exec({ query: 'Where?' }, ctx)).context).toBe('Shared evidence');
         expect(recallMemory.mock.calls[0][0]).toBe('Where?');
         expect(JSON.stringify(recallMemory.mock.calls)).not.toContain('Private hypothesis');
@@ -27,7 +28,7 @@ describe('memory-graph orchestrator tools', () => {
         expect(recallMemory).toHaveBeenCalledTimes(before);
     });
     beforeEach(async () => {
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
         // The register implementation is async (it dynamically imports
         // the orchestrator API). Tests await register/unregister.
         await unregisterMemoryGraphOrchestrationTools();
@@ -57,7 +58,7 @@ describe('memory-graph orchestrator tools', () => {
 
     test('register populates the orchestrator extension registry', async () => {
         await registerMemoryGraphOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         for (const name of MEMORY_TOOL_NAMES) {
             expect(reg.has(name)).toBe(true);
         }
@@ -65,7 +66,7 @@ describe('memory-graph orchestrator tools', () => {
 
     test('each registered entry has correct mode', async () => {
         await registerMemoryGraphOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const readTools = [
             'memory_list_candidates', 'memory_edge_summary', 'memory_node_brief',
             'memory_expand_seeds', 'memory_schema', 'memory_keyword_search',
@@ -81,7 +82,7 @@ describe('memory-graph orchestrator tools', () => {
 
     test('write tools carry a simulate hook', async () => {
         await registerMemoryGraphOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const writeTools = [
             'memory_node_create', 'memory_node_edit', 'memory_node_delete',
             'memory_link_upsert', 'memory_link_delete', 'memory_compact_nodes',
@@ -94,7 +95,7 @@ describe('memory-graph orchestrator tools', () => {
     test('unregister removes all 15', async () => {
         await registerMemoryGraphOrchestrationTools();
         await unregisterMemoryGraphOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         for (const name of MEMORY_TOOL_NAMES) {
             expect(reg.has(name)).toBe(false);
         }
@@ -102,7 +103,7 @@ describe('memory-graph orchestrator tools', () => {
 
     test('read exec runs without throwing when session is attached', async () => {
         await registerMemoryGraphOrchestrationTools();
-        const reg = __getExtensionRegistryForTest();
+        const reg = getExtensionRegistry();
         const entry = reg.get('memory_list_candidates');
         expect(typeof entry?.exec).toBe('function');
         // Stub the session pre-cache via the WeakMap helper exported for tests.

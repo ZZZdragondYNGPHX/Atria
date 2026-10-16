@@ -12,10 +12,10 @@ import { PgEngine } from '../../src/storage/engines/postgres-engine.js';
 
 // Live-container settings mirror tests/storage/harness/{mysql,pg}-harness.js so
 // the smoke tests fail in the same conditions as the contract suite.
-const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
-const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
-const skipMysql = !!process.env.ATRIA_DISABLE_MYSQL_TESTS;
-const skipPostgres = !!process.env.ATRIA_DISABLE_POSTGRES_TESTS;
+const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL;
+const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL;
+const skipMysql = !Boolean(process.env.ATRIA_TEST_MYSQL_ROOT_URL);
+const skipPostgres = !Boolean(process.env.ATRIA_TEST_POSTGRES_URL);
 
 describe('initStorage mode switch', () => {
     let tmpDir;

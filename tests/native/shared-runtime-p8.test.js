@@ -66,12 +66,13 @@ describe.each(CONTRACT_HARNESSES)('P8 Shared Session / Realm - $name', ({ make }
         expect((await read()).revision.revisionId).toBe(base.revision.revisionId);
         await expect(shared.snapshot(h.handle, room(), 'intruder')).rejects.toThrow(/denied/);
     });
-    test('ACL cannot be forged, escalated or resurrected by Branch restore', async () => {
+    test('ACL cannot be forged, escalated or resurrected by Save restore', async () => {
+        const checkpointSave = await f.core.createSavePoint(h.handle, room());
         await join();
         await expect(shared.membership(h.handle, room(), 'guest', { expectedAccessRevisionId: view.accessRevisionId, handle: 'guest', role: 'host', seatId: 'seat1' })).rejects.toThrow(/denied/);
         const current = await shared.snapshot(h.handle, room(), h.handle);
         await shared.membership(h.handle, room(), h.handle, { expectedAccessRevisionId: current.accessRevisionId, handle: 'guest', role: 'revoked' });
-        const s = await read(); await f.core.forkBranch(h.handle, room(), { revisionId: base.revision.revisionId, expectedRevisionId: s.revision.revisionId });
+        const s = await read(); await f.core.restoreSavePoint(h.handle, room(), checkpointSave.saveId, { expectedRevisionId: s.revision.revisionId });
         await expect(new SharedAuthority(services(h).core).snapshot(h.handle, room(), 'guest')).rejects.toThrow(/denied/);
     });
     test('shared inputs settle atomically in stable seat order and restart/replay once', async () => {
@@ -121,11 +122,12 @@ describe.each(CONTRACT_HARNESSES)('P8 Shared Session / Realm - $name', ({ make }
     });
     test('Realm uses independent revisions and Saga reservations; old saves cannot duplicate', async () => {
         await app('realm_inventory', 'relic', 'Realm relic'); const before = await read();
+        const checkpointSave = await f.core.createSavePoint(h.handle, room());
         const next = await realm(deposit(), 'deposit', before);
         expect(next.realmReceipt.status).toBe('committed'); expect(next.continuityRevisionId).toBeNull();
         expect(next.realmViews.vault.records).toHaveLength(1);
         expect((await realm(deposit(), 'deposit', before)).realmRevisionId).toBe(next.realmRevisionId);
-        const restored = await f.core.forkBranch(h.handle, room(), { revisionId: before.revision.revisionId, expectedRevisionId: next.revision.revisionId });
+        const restored = await f.core.restoreSavePoint(h.handle, room(), checkpointSave.saveId, { expectedRevisionId: next.revision.revisionId });
         expect(restored.states.atri_lifecycle.domains.realm_inventory.records).toEqual([]); expect(restored.realmViews.vault.records).toHaveLength(1);
         expect((await services(h).core.load(h.handle, room())).realmRevisionId).toBe(next.realmRevisionId);
     });
@@ -191,13 +193,14 @@ describe.each(CONTRACT_HARNESSES)('P8 Shared Session / Realm - $name', ({ make }
     });
     test('Player and Realm transfers coexist without crossing ownership ledgers', async () => {
         await app('inventory', 'player-item', 'Player'); await app('realm_inventory', 'relic', 'Realm'); const before = await read();
+        const checkpointSave = await f.core.createSavePoint(h.handle, room());
         const player = await f.core.applyContinuityCommand(h.handle, room(), { type: 'continuity', invocationId: 'player-deposit', action: {
             kind: 'transfer', transferId: 'vault', direction: 'deposit', recordId: 'player-item', scopeEpoch: 0, expectedContinuityRevisionId: null,
         } }, { expectedRevisionId: before.revision.revisionId });
         const next = await realm(deposit());
         expect(next.continuityRevisionId).toBe(player.continuityRevisionId); expect(next.continuityViews.vault.records[0].value.text).toBe('Player');
         expect(next.realmViews.vault.records[0].value.text).toBe('Realm');
-        const restored = await f.core.forkBranch(h.handle, room(), { revisionId: before.revision.revisionId, expectedRevisionId: next.revision.revisionId });
+        const restored = await f.core.restoreSavePoint(h.handle, room(), checkpointSave.saveId, { expectedRevisionId: next.revision.revisionId });
         expect(restored.states.atri_lifecycle.domains.inventory.records).toEqual([]); expect(restored.states.atri_lifecycle.domains.realm_inventory.records).toEqual([]);
     });
     test('a prepared Realm Saga cannot deadlock a second Player Saga on the same Session', async () => {

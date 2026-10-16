@@ -281,7 +281,7 @@ describe('SQL transient Host admission without a database', () => {
 // mysql / pg tests: skip without local test DB. Both follow the same shape:
 // seed a real engine with data, build a ZIP from its dumpUser, then
 // materialize and assert the scratch handle on the engine reads through it.
-const skipMysql = !!process.env.ATRIA_DISABLE_MYSQL_TESTS;
+const skipMysql = !Boolean(process.env.ATRIA_TEST_MYSQL_ROOT_URL);
 const describeMysql = skipMysql ? describe.skip : describe;
 describeMysql('materializeTransientSource — mysql', () => {
     let makeTempMysqlEngineHarness;
@@ -324,7 +324,7 @@ describeMysql('materializeTransientSource — mysql', () => {
                     // selected for the main MySQL harness.
                     scratchCreds: {
                         mysqlNativeHostTopology: 'direct_single_primary',
-                        mysqlUrl: `${process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306'}/${srcHarness.dbName}`,
+                        mysqlUrl: `${process.env.ATRIA_TEST_MYSQL_ROOT_URL}/${srcHarness.dbName}`,
                     },
                 },
             );
@@ -376,7 +376,7 @@ describeMysql('materializeTransientSource — mysql', () => {
     });
 });
 
-const skipPg = !!process.env.ATRIA_DISABLE_POSTGRES_TESTS;
+const skipPg = !Boolean(process.env.ATRIA_TEST_POSTGRES_URL);
 const describePg = skipPg ? describe.skip : describe;
 describePg('materializeTransientSource — postgres', () => {
     let makeTempPgEngineHarness;
@@ -404,12 +404,12 @@ describePg('materializeTransientSource — postgres', () => {
 
             const scratchHandle = makeScratchHandle();
             // We need the same connection URL the harness used; reuse the harness's engine config.
-            const scratchUrl = srcHarness.engine._pool?.options?.connectionString
-                || `postgresql://atria:postgres@127.0.0.1:55432/atria_test?options=-csearch_path%3D${encodeURIComponent(srcHarness.schemaName)}`;
+            const scratchUrl = new URL(process.env.ATRIA_TEST_POSTGRES_URL);
+            scratchUrl.searchParams.set('options', '-csearch_path=' + srcHarness.schemaName);
             const transient = await materializeTransientSource(
                 { engineKind: 'postgres', handle: srcHarness.handle },
                 zipPath,
-                { dataRoot, scratchHandle, hostLifecycle, scratchCreds: { postgresUrl: scratchUrl, postgresNativeHostTopology: 'direct_single_primary' } },
+                { dataRoot, scratchHandle, hostLifecycle, scratchCreds: { postgresUrl: scratchUrl.href, postgresNativeHostTopology: 'direct_single_primary' } },
             );
             try {
                 const got = await new SettingsRepo({ engine: transient.engine }).get(scratchHandle);

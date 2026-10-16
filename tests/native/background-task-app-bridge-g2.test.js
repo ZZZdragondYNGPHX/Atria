@@ -140,21 +140,25 @@ describe.each(CONTRACT_HARNESSES)('G2 background App bridge - $name', ({ make })
     });
 
     test.each(['stale', 'branch', 'scope', 'cancel', 'abort'])('%s while generation is in flight cannot commit', async change => {
-        await open(); await command({ kind: 'experience.ready' }); const anchor = base;
+        await open(); await command({ kind: 'experience.ready' });
+        const checkpointSave = await f.core.createSavePoint(h.handle, base.session.sessionId);
         let entered, release;
         const started = new Promise(resolve => { entered = resolve; }); const gate = new Promise(resolve => { release = resolve; });
         const runtime = host(); const execute = runtime.execute;
         runtime.execute = jest.fn(async (...args) => { entered(); await gate; return execute(...args); });
         const controller = new AbortController();
         const pending = runtime.executeLifecycle(h.handle, input(), controller.signal);
-        const settled = pending.catch(error => error); await started;
-        if (change === 'branch') base = await f.core.forkBranch(h.handle, base.session.sessionId,
-            { revisionId: anchor.revision.revisionId, expectedRevisionId: base.revision.revisionId });
+        const settled = pending.catch(error => error);
+        await Promise.race([started, settled.then(result => { throw result instanceof Error ? result : new Error('Lifecycle ended before model dispatch'); })]);
+        try {
+        if (change === 'branch') base = await f.core.restoreSavePoint(h.handle, base.session.sessionId, checkpointSave.saveId,
+            { expectedRevisionId: base.revision.revisionId });
         else if (change === 'scope') await command({ kind: 'scope.transition', scopeId: 'session', status: 'suspended' });
         else if (change === 'cancel') await command({ kind: 'scheduled.cancel', invocationId: base.states.atri_lifecycle.outbox[0].invocationId });
         else if (change === 'stale') await command({ kind: 'clock.advance', commandId: 'advance', ticks: 1 });
         else controller.abort();
-        release(); await expect(settled).resolves.toBeInstanceOf(Error);
+        } finally { release(); }
+        await expect(settled).resolves.toBeInstanceOf(Error);
         const current = await read(); expect(current.revision).toEqual(base.revision);
         expect(records(current)).toEqual([]); expect(current.states.atri_task_results).toBeUndefined();
         if (change === 'stale') await run(host(services(h).core));

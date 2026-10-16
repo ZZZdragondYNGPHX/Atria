@@ -98,7 +98,7 @@ async function seed(h) {
 }
 
 const backupPairs = [['fs', 'fs'], ['fs', 'sqlite'], ['sqlite', 'fs'], ['sqlite', 'sqlite'], ['fs', 'mysql'], ['mysql', 'fs'], ['mysql', 'mysql'], ['sqlite', 'postgres'], ['postgres', 'sqlite'], ['postgres', 'postgres']]
-    .filter(pair => !(process.env.ATRIA_DISABLE_MYSQL_TESTS && pair.includes('mysql') || process.env.ATRIA_DISABLE_POSTGRES_TESTS && pair.includes('postgres')));
+    .filter(pair => !(!process.env.ATRIA_TEST_MYSQL_ROOT_URL && pair.includes('mysql') || !process.env.ATRIA_TEST_POSTGRES_URL && pair.includes('postgres')));
 describe.each(backupPairs)('Native backup %s → %s', (sourceMode, targetMode) => {
     let current, scratch;
     const originalRoot = globalThis.DATA_ROOT;

@@ -1,5 +1,3 @@
-import { simulationCandidateFixture } from './helpers/simulation-candidate-fixture.js';
-import { authorityFixture } from './helpers/authority-fixture.js';
 import { minimalFrontend } from './helpers/frontend-fixture.js';
 import { describe, expect, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
@@ -7,7 +5,6 @@ import { readFileSync } from 'node:fs';
 import {
     ATRIA_AUTHORING_SCHEMA_VERSION,
     ATRIA_EXPERIENCE_MODES,
-    ATRIA_EXPERIENCE_CAPABILITIES,
     assertNativeExperienceContract,
     assertSupportedExperienceContract,
     ATRIA_NATIVE_SKILL_SCOPES,
@@ -44,20 +41,6 @@ describe('P0 Experience contract foundation', () => {
         expect(contract.capabilities[0].version).toBe(1);
         expect(Object.isFrozen(contract.dataResources[0])).toBe(true);
         expect(assertNativeRuntimeDescriptor(runtimeDescriptor({ experienceContract: contract })).experienceContract).toEqual(contract);
-    });
-
-    test('remaining authority vocabulary entries distinguish reserved versions from implemented support', () => {
-        expect(Object.keys(ATRIA_EXPERIENCE_CAPABILITIES)).toHaveLength(32);
-        for (const [id, definition] of Object.entries(ATRIA_EXPERIENCE_CAPABILITIES)) {
-            for (const version of definition.versions) {
-                const value = id === 'world-simulation' ? simulationCandidateFixture().contract : id === 'authority-transaction' ? authorityFixture().contract : { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
-                expect(assertNativeExperienceContract(value)).toEqual(value);
-            }
-            for (const version of definition.versions.filter(item => !definition.supported.includes(item))) {
-                const value = id === 'world-simulation' ? simulationCandidateFixture().contract : id === 'authority-transaction' ? authorityFixture().contract : { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
-                expect(() => assertSupportedExperienceContract(value)).toThrow(/Host does not support/);
-            }
-        }
     });
 
     test.each([

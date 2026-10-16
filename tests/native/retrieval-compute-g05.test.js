@@ -570,11 +570,11 @@ for (const [kind, make] of [['fs', makeTempFsEngineHarness], ['sqlite', makeTemp
         } finally { await f.cleanup(); }
     });
 }
-test.each(['fork', 'restore'])('G05 retired work actual Session %s during provider HTTP retains usage without publishing', async action => {
+test('G05 retired work actual Session restore during provider HTTP retains usage without publishing', async () => {
     const f = await fixture(makeTempFsEngine, 2, localLimits);
     try {
         const body = await embeddingBody(f), saved = await f.core.createSavePoint(f.handle, f.base.session.sessionId);
-        if (action === 'restore') {
+        {
             const current = await f.core.appendTimeline(f.handle, f.base.session.sessionId, { role: 'user', content: 'Work after saved history' });
             body.computeContext = { ...body.computeContext, revisionId: current.revision.revisionId };
         }

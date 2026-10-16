@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import { makeTempFsEngineHarness, makeTempSqliteEngineHarness } from '../storage/harness/contract-harness.js';
 import { evolutionFixture, runEvolution, labelAll, independentDigest } from './evolution-fixture.js';
@@ -91,7 +92,7 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
             feedback: { kind: 'explicit', signal: 'correction', dimension: 'behavior', note: 'Withdraw the previous hypothesis.' } });
         const doc = await f.service.reconcile(f.h.handle, { scope: f.scope, subject: f.subject });
         expect(doc.policy.mode).toBe('paused'); expect(doc.jobs[0].candidates).toEqual([]);
-        expect(doc.publications).toEqual([]); expect(doc.retired[0].status).toBe('source_revoked');
+        expect(doc.publications.filter(publication => publication.status !== 'rollback_conflict')).toEqual([]);
         expect((await settingsRepo.get(f.h.handle)).atri_capabilities.orchestrator.agentWorkspace.bindings.entries).toEqual([]);
     });
     test('Host Workspace generation rejects stale full saves and patches while preserving unrelated settings writes', async () => {

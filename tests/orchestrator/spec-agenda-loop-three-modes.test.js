@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 // Case #70 — Spec / agenda / loop: three independent executionMode values (ported from e2e).
 //
 // Original brief (verbatim):

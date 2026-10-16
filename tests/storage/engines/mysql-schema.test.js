@@ -6,7 +6,7 @@ import { createNativeId } from '../../../src/native/identity.js';
 import { nativeRecord } from '../../../src/native/repositories/common.js';
 import { Readable } from 'node:stream';
 
-const describeMysql = process.env.ATRIA_DISABLE_MYSQL_TESTS ? describe.skip : describe;
+const describeMysql = !process.env.ATRIA_TEST_MYSQL_ROOT_URL ? describe.skip : describe;
 
 describeMysql('MysqlEngine schema bootstrap', () => {
     let harness;
