@@ -4,6 +4,8 @@
 
 最新后端实证：第九十四组 `1e1281224` 支持同一原 Session 内 Task/variant 专属 Binding 与 Narrator 的独立 Plan，范围见[接口 §17.98](interface-contracts.md#1798-原-session-内的-task-专属-plan-binding)和同一 Record。完整后端继续实施；此项不核销通用 Graph/Simulation/可信高风险消费者、恢复释放与最终 Gate。
 
+第九十五组 `56cd1eee0` 接原 World Simulation pending appraisal 与 immutable Source/outbox历史闭包，见[接口 §17.99](interface-contracts.md#1799-原-world-simulation-appraisal-的来源闭包)。原job currentness、Actor采纳、费用未知、防重发/冷读取得有限FS/SQLite实证；其它Simulation profile、通用Graph、恢复/释放及可信高风险consumer继续实施，未宣称完整Gate通过。
+
 - 创建/调研日期：2026-10-15。
 - 第一轮状态：**D1 已定案：方案 B（原生 Orchestration V3）**。
 - 第二轮状态：**D2 已冻结：T2 Native Host 唯一运行权威、Plan/Run/Effect/Receipt 边界和旧编排零兼容硬切**。

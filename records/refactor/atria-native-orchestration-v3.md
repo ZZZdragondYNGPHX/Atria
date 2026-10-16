@@ -1098,3 +1098,9 @@
 - Source e6b1da4fc → 1e1281224，本地提交，未推送；接口 §17.98。复用原 Binding/Source inspector，native_session 可加 exact Task/variant；未知或扩权字段拒绝。修正后台入口回退曾生成 sessionId:null 的无效 selector，所有层级均限定当前 Session。Task sourceRequest 与 Context capture 同值，原 sourceRef/银行/运行权威不变。
 - 新 suite 首轮4FAIL（5.24s），原 assertObject 的字段表会同时强制字段存在；已改为显式可选 taskRef，未改变旧 selector 的 canonical identity。修正后4/4 PASS（43.210s）。补 Task 入口/Session default 与 generic 入口优先级后，与原 Binding HTTP、Source锁顺序、Run HTTP、evaluator 指纹五个完整 suites88/88 PASS（100.734s，其中新 suite6项、指纹26项）。真实原 appraisal 与 typed Narrator 在同一 Session 各完成不同 Root/Plan，generic 列表含两者，Task selector只含自身。
 - 来源字段改动后的普通后台采纳、saved/no_save ACK、HTTP中 Binding/scope撤权、同事务撤权和Actor撤权三个 suites精选18PASS/42filterSKIP（139.937s）。七文件原 ESLint及最后新增参数化测试lint、staged diff check通过。均localhost合成，未新增真实Provider调用或独立质量/价格结论；继续 Simulation及其余后端，不交前端/main。
+
+## 2026-10-17 — 第九十五组：原 Simulation appraisal 正式闭包
+
+- Source 1e1281224 → 56cd1eee0，本地提交，未推送；接口 §17.99。复用原 simulationTaskCurrent/Authority budget 与原 Session Task writer，支持原声明 clock.advance 产生的 appraisal，不由读、pump或墙钟发明工作。完整历史 reader新增原不可变 Source revision 的 pending outbox/scope证明；原 Simulation/Authority/Appraisal/SessionCore纳入 evaluator 指纹。其它 Simulation Task/profile仍未开放。
+- 新正向 FS/SQLite 两参数2PASS/12filterSKIP（35.651s），百万tick推进后只发一次模型、采纳两Actor更新、费用/Root闭合；原World/timeline/clock保持，原Source状态被诚实重hash篡改时拒读取，冷重启仍只读原收据。其余零时钟/零deliberations/无job、late clock/disabled、unknown usage共12PASS/2filterSKIP（92.077s）。补直接Task入口绕过lifecycle预检查的 clock/disabled四参数4PASS/14filterSKIP（6.904s），均发送前拒绝、原pending source保持；新suite合计18项分批全通过。
+- 原普通后台冷读/saved-no_save ACK、appraisal正向/取消/领域回滚与 evaluator 指纹三个 suites42PASS/32filterSKIP（127.225s，指纹30项）。六文件原ESLint/最新四参数testlint和staged diff check通过；中间一次lint命令误写 import.metaUrl 解析失败，随后正确命令实际通过，不计失败命令为检查通过。Provider均localhost合成，无新增真实调用/独立质量/价格/自动晋升结论。后端继续，不交前端/main。

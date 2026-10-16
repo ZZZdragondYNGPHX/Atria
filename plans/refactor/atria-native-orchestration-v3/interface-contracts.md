@@ -1210,3 +1210,9 @@ Run snapshot 新增 execution，包含 immutable Plan limits、原 progress 与 
 native_session SourceSelector 可显式增加 taskRef:{taskId,variantId}，只允许原 manifest 中存在的 Task/variant；未知、null 或多字段拒绝。sessionId 始终指向同一个已拥有 Session，entryPointId 只能为 null 或该 Session 原入口。未携带 taskRef 的原 selector 和 bindingId 保持原值。保存、读取、CAS、发布与 Source 授权沿原 PlanRepository，不建立第二 registry 或运行权限。
 
 后台选择顺序为 Task+entryPoint、Task+Session default、generic+entryPoint、generic+Session default；所有候选都限定当前 Session。Narrator 只使用无 taskRef 的原两级 Binding。Task Root 的 sourceRequest 带相同 taskRef，与原 Context capture 一致；sourceRef、原银行、Task/Actor 当前性、Model/egress 和真实 finalizer 权限不变。Run 元数据可按 exact Task/variant 筛选；generic Session 列表包含该 Session 的所有 Root，投影不增加模型正文或 Actor 私域。
+
+## 17.99 原 World Simulation appraisal 的来源闭包
+
+有限 background JSON 消费者现接受原 Simulation 产生的 cognition.appraise pending Task。原 clock.advance 和作者 simulationRuntime 是唯一排队来源；Host lifecycle预检查、V3选择与每次消费检查均复用 simulationTaskCurrent 和原有界 Authority publication budget，仍核原 job/action/Task/variant/scope/clock/relevance/due/input。直接调用原 Task 执行入口不能跳过该判定。非 appraisal 的 Simulation profile 仍未开放。
+
+采纳沿原 SessionCore.recordTaskResult、原 appraisal authority 和零时间 Simulation reaction，不推进时钟、不新排另一模型任务。费用/两阶段 Result 与 OutputClaim 继续 §17.97。历史 Task reader 同时读取 Root 的原不可变 Source revision，核原 pending outbox 的完整 digest/active scope/epoch，并与已采纳 revision 的 completed intent对齐；不能只拿终态记录自证曾排队。原 Simulation/Authority/Appraisal/SessionCore 源码纳入 evaluator 指纹，旧报告不能借这些权威变更保持可晋升。
