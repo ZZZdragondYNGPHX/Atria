@@ -98,6 +98,11 @@ export class EvolutionTargets {
                     planRef: binding.planRef, nodeId: revision.definition.outputContract.ownerNodeId, fieldPath: 'limits.' + field };
                 choices.push({ label: 'Native Plan · ' + field, target, baseHash: hash(await plans.captureEvolution(handle, target)) });
             }
+            for (const node of revision.definition.nodes.filter(node => node.kind === 'review' && node.policy.maxRounds > 1)) {
+                const target = { kind: 'plan-strategy', bindingId: binding.bindingId, expectedBindingVersion: binding.version,
+                    planRef: binding.planRef, nodeId: node.nodeId, fieldPath: 'reviewPolicy.maxRounds' };
+                choices.push({ label: 'Native Plan · ' + node.label + ' · maxRounds', target, baseHash: hash(await plans.captureEvolution(handle, target)) });
+            }
         }
         return choices;
     }

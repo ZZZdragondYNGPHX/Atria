@@ -7,7 +7,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
 import { assertPlanDefinition, assertSourceSelector, assertPlanRef, assertDigest, assertCounter, assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { assertPlanEvolutionTarget, assertPlanEvolutionMetadata, planBindingIdentity, planStrategyField, planDeclarationKey, planEvolutionCommandId } from './plan-evolution-contracts.js';
+import { assertPlanEvolutionTarget, assertPlanEvolutionMetadata, planBindingIdentity, planStrategyMinimum, readPlanStrategyValue, applyPlanStrategyValue, planDeclarationKey, planEvolutionCommandId } from './plan-evolution-contracts.js';
 
 const key = (kind, handle, fields) => ({ kind, handle, ...fields });
 export const planDefinitionHash = (definition, dependencyPins) => hashNativeDocument({ schemaVersion: 1, definition, dependencyPins });
@@ -282,7 +282,7 @@ export class PlanRepository {
             if (report.status !== 'valid') throw new ConflictError('native_orchestration_evolution_dependency_stale');
             const prompt = target.kind === 'plan-prompt' ? await this.#promptSource(handle, target, plan) : null;
             return { target: cloneNativeDocument(target), base: planBindingIdentity(binding), declaration,
-                body: prompt ? prompt.body : plan.definition.limits[planStrategyField(target)], field: prompt ? 'body' : target.fieldPath,
+                body: prompt ? prompt.body : readPlanStrategyValue(plan.definition, target), field: prompt ? 'body' : target.fieldPath,
                 mechanismDigest: report.dependencyDigest, ...(prompt ? { prompt: { presetId: prompt.preset.presetId,
                     presetFingerprint: hashNativeDocument(prompt.preset), declaration: prompt.metadata.declaration, route: prompt.route } } : {}) };
         });
@@ -311,10 +311,10 @@ export class PlanRepository {
     }
 
     async prepareEvolution(handle, target, value) {
-        const capture = await this.captureEvolution(handle, target), prompt = target.kind === 'plan-prompt', field = prompt ? 'body' : planStrategyField(target);
+        const capture = await this.captureEvolution(handle, target), prompt = target.kind === 'plan-prompt';
         if (prompt) {
             if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > 65536 || value === capture.body) throw new TypeError('Invalid native Plan prompt body');
-        } else assertCounter(value, 'candidate limit', ['maxSteps', 'maxAttempts', 'deadlineMs'].includes(field) ? 1 : 0);
+        } else assertCounter(value, 'candidate limit', planStrategyMinimum(target));
         if (!prompt && value >= capture.body || hashNativeDocument(capture.declaration) !== hashNativeDocument({ target, binding: capture.base }))
             throw new ConflictError('native_orchestration_evolution_declaration_required');
         // Exact Prompt resources are prepared by their original authority before
@@ -333,7 +333,7 @@ export class PlanRepository {
             const pins = cloneNativeDocument(base.dependencyPins);
             const original = prompt ? await this.#promptSource(handle, target, base, seed.promptCandidateRef) : null;
             if (prompt) pins.find(pin => pin.pinId === original.pin.pinId).integrity = hashNativeDocument(original.checked.desiredRoute);
-            else definition.limits[field] = value;
+            else applyPlanStrategyValue(definition, target, value);
             const definitionHash = planDefinitionHash(definition, pins), planRevisionId = 'oprev_' + candidateId.slice(0, 32);
             const report = await this.#validate(handle, tx, { ...record.doc, definition, dependencyPins: pins, definitionHash }, original?.checked.desiredRoute);
             if (report.status !== 'valid') throw new ConflictError('native_orchestration_validation_stale');
@@ -361,13 +361,13 @@ export class PlanRepository {
             const original = prompt ? await this.#promptSource(handle, target, plan, candidate.promptCandidateRef, { rollback }) : null;
             const pins = cloneNativeDocument(plan.dependencyPins);
             if (prompt) pins.find(pin => pin.pinId === original.pin.pinId).integrity = hashNativeDocument(original.checked.desiredRoute);
-            else expected.limits[planStrategyField(target)] = candidate.diff.after;
+            else applyPlanStrategyValue(expected, target, candidate.diff.after);
             const revision = await this.#revision(tx, handle, candidate.planRef);
             if (!rollback) {
                 const report = await this.#validate(handle, tx, { ...record.doc, definition: revision.definition, dependencyPins: revision.dependencyPins, definitionHash: revision.definitionHash }, original?.checked.desiredRoute);
                 if (report.status !== 'valid') throw new ConflictError('native_orchestration_evolution_dependency_stale');
             }
-            if (candidate.diff.before !== (prompt ? original.body : plan.definition.limits[planStrategyField(target)])
+            if (candidate.diff.before !== (prompt ? original.body : readPlanStrategyValue(plan.definition, target))
                 || hashNativeDocument(expected) !== hashNativeDocument(revision.definition)
                 || hashNativeDocument(pins) !== hashNativeDocument(revision.dependencyPins)
                 || prompt && (hashNativeDocument(revision.evolutionSource?.promptCandidateRef) !== hashNativeDocument(candidate.promptCandidateRef)
