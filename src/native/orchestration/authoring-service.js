@@ -3,7 +3,8 @@ import { PlanRepository, readPlanRevision } from './plan-repository.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../model-prompt-runtime/persistence.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
-import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertObject, assertDependencyPins } from '../../../public/shared/native-orchestration-contracts.js';
+import { NotFoundError } from '../../storage/errors.js';
 import { createBindingSourceAuthority } from './binding-source-authority.js';
 import { validateModelCapability } from './model-capability-authority.js';
 import { validateDelegationCapability } from './delegation-capability-authority.js';
@@ -16,6 +17,20 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
     const library = new VersionedJsonResourceHandler({ engine });
     const runtime = new NativeModelPromptPersistence({ engine });
     const authorizeBinding = createBindingSourceAuthority(sources);
+    const readDependency = async ({ handle, tx, port, resourceRef: ref }) => {
+        if (port === 'plan') return readPlanRevision(tx, handle, ref);
+        if (['context', 'model', 'narrative', 'evaluation'].includes(port) && ref.scope === 'library') {
+            const normalized = assertExactResourceRef(ref);
+            if (hashNativeDocument(normalized) !== hashNativeDocument(ref)) throw new TypeError('Unexpected fields in original resource reference');
+            return (await library.getExact(handle, normalized)).snapshot;
+        }
+        if (port === 'model' && ref.scope === 'player') {
+            assertObject(ref, ['scope', 'runtimeRouteId'], 'routeRef');
+            return runtime.getRuntimeRoute(handle, ref.runtimeRouteId);
+        }
+        if (port === 'tool' && ref.kind === 'project_agent_tool') return readProjectToolDescriptor(handle, ref, sources.projectAgent);
+        throw Object.assign(new TypeError('Original dependency authority required'), { code: 'native_orchestration_dependency_authority_unavailable' });
+    };
     const validateDependencies = async ({ handle, tx, dependencyPins, definition }, ancestry = [], completedReports = new Map()) => {
         const evidence = [], issues = [];
         for (const capability of definition.capabilityCeiling) {
@@ -47,21 +62,10 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
             evidence.push({ capability, status: 'unknown' });
         }
         for (const pin of dependencyPins) {
-            const ref = pin.resourceRef;
             try {
                 let value;
-                if (pin.port === 'plan') {
-                    value = await readPlanRevision(tx, handle, ref);
-                } else if (['context', 'model', 'narrative', 'evaluation'].includes(pin.port) && ref.scope === 'library') {
-                    const normalized = assertExactResourceRef(ref);
-                    if (hashNativeDocument(normalized) !== hashNativeDocument(ref)) throw new TypeError('Unexpected fields in original resource reference');
-                    value = (await library.getExact(handle, normalized)).snapshot;
-                } else if (pin.port === 'model' && ref.scope === 'player') {
-                    assertObject(ref, ['scope', 'runtimeRouteId'], 'routeRef');
-                    value = await runtime.getRuntimeRoute(handle, ref.runtimeRouteId);
-                } else if (pin.port === 'tool' && ref.kind === 'project_agent_tool') {
-                    value = await readProjectToolDescriptor(handle, ref, sources.projectAgent);
-                } else {
+                try { value = await readDependency({ handle, tx, ...pin }); } catch (error) {
+                    if (error.code !== 'native_orchestration_dependency_authority_unavailable') throw error;
                     issues.push({ code: 'native_orchestration_dependency_authority_unavailable', severity: 'unknown', fieldPath: 'dependencyPins.' + pin.pinId });
                     evidence.push({ pinId: pin.pinId, status: 'unknown' });
                     continue;
@@ -93,5 +97,16 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
         // Only recursive calls below explicitly share completed reports.
         validateDependencies: args => validateDependencies(args),
     });
-    return { plans, hostBootId: lifecycle.hostBootId };
+    const dependencies = { inspect: async (handle, input) => {
+        assertObject(input, ['pinId', 'port', 'resourceRef'], 'dependency inspection');
+        assertDependencyPins([{ ...input, integrity: '0'.repeat(64) }]);
+        return engine.withTransaction(handle, async tx => {
+            const value = await readDependency({ handle, tx, ...input });
+            if (!value) throw new NotFoundError('orchestration_dependency');
+            // A pin hashes original data. It never grants execution or exposes
+            // the original Model/Tool/Context document through this endpoint.
+            return { ...input, integrity: hashNativeDocument(value) };
+        });
+    } };
+    return { plans, dependencies, hostBootId: lifecycle.hostBootId };
 }

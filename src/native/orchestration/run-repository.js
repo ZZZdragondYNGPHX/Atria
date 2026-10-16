@@ -1,5 +1,6 @@
 import { readRpOutput } from './rp-output-contracts.js';
 import { readSessionOutput } from './session-output-contracts.js';
+import { readProjectReviewOutput } from './project-review-output-contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
@@ -22,10 +23,11 @@ const limitField = field => 'max' + field[0].toUpperCase() + field.slice(1);
 export const initialTreeProgress = (depth, deadlineAt) => ({ ...Object.fromEntries(TREE_LOGICAL_COUNTERS.map(field => [field, 0])), depth, deadlineAt });
 const runKey = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 const recordKey = (handle, runId, recordType, recordId) => ({ kind: K.orchestrationRecord, handle, runId, recordType, recordId });
-const readRunOutput = (tx, handle, root) => root.graph.outputContract.kind === 'rp_narration'
+const readRunOutput = (tx, handle, root, options) => root.graph.outputContract.kind === 'rp_narration'
     ? root.sourceBinding.sourceAuthority === 'native_session' ? readSessionOutput(tx, handle, root)
         : root.sourceBinding.sourceAuthority === 'rp_chat' ? readRpOutput(tx, handle, root) : null
-    : readTaskLocalOutput(tx, handle, root);
+    : root.graph.outputContract.kind === 'project_review' ? readProjectReviewOutput(tx, handle, root, options)
+        : readTaskLocalOutput(tx, handle, root);
 export const childBudgetReceiptId = runId => 'oreceipt_' + hashNativeDocument({ kind: 'child_budget_ready', runId }).slice(0, 32);
 
 /** Admission bound from original durable Attempts, never a second scheduler. */
@@ -468,7 +470,7 @@ export class RunRepository {
         check(root);
         assertRunRoot(root, handle);
         if ((root.outputClaims.length || ['completed', 'partial'].includes(root.status))
-            && !await readRunOutput(tx, handle, root)) throw new TypeError('Run completion requires verified output facts');
+            && !await readRunOutput(tx, handle, root, { pendingCommand: true })) throw new TypeError('Run completion requires verified output facts');
         const ancestors = [], seen = new Set([root.runId]);
         let parentId = root.parentRef?.parentRunId;
         while (parentId) {

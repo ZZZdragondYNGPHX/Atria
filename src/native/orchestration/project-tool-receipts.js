@@ -1,6 +1,6 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { ProjectAgentService } from '../project-agent.js';
-import { ProjectTaskRepository } from '../agent-intelligence/project-task-repository.js';
+import { ProjectTaskRepository, assertProjectTask } from '../agent-intelligence/project-task-repository.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { assertProjectToolReceipt, projectToolCapability, projectToolAction, projectToolReason, projectReviewSource } from './project-tool-contracts.js';
@@ -13,17 +13,28 @@ import { assertBudgetAttemptRef, localWorkAttemptId, sendAttemptId } from './bud
 const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw Object.assign(new TypeError('native_orchestration_project_tool_receipt_invalid'), { code: 'native_orchestration_project_tool_receipt_invalid' }); };
 
+/** Original domain document, read in the caller's transaction; no recovery or write. */
+export async function readOriginalProjectTask(tx, handle, source, projectAgent) {
+    if (projectAgent !== undefined) {
+        if (!(projectAgent instanceof ProjectAgentService) || !(projectAgent._repository instanceof ProjectTaskRepository)) invalid();
+        await projectAgent._repository.engine.withTransaction(handle, active => { if (active !== tx) invalid(); });
+    }
+    const row = await checkedRecord(tx, { kind: K.projectAgentTask, handle, projectId: source.projectId, taskId: source.taskId });
+    if (!row) return null;
+    const task = assertProjectTask(row.doc);
+    if (task.projectId !== source.projectId || task.taskId !== source.taskId) invalid();
+    return task;
+}
+
 /** Original durable facts only. No live permit, body, Source advancement or tool grant is returned. */
 export async function readProjectToolReceipt(tx, handle, root, effectId, { projectAgent, requireHostReceipt = false } = {}) {
-    if (!(projectAgent instanceof ProjectAgentService) || !(projectAgent._repository instanceof ProjectTaskRepository)
-        || root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
-    await projectAgent._repository.engine.withTransaction(handle, active => { if (active !== tx) invalid(); });
+    if (root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
     const saved = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
     if (!saved || !equal(saved.sourceBinding, root.sourceBinding) || !equal(saved.planRef, root.planRef) || !equal(saved.graph, root.graph)) invalid();
     const tool = (await readEffect(tx, handle, root, effectId)).doc;
     if (!['native_project_read', 'native_project_proposal'].includes(tool.actionRef.kind)) return null;
     const source = root.sourceBinding.sourceRef, bank = root.budgetAuthorityRef;
-    const task = await ProjectTaskRepository.prototype.get.call(projectAgent._repository, handle, source.projectId, source.taskId);
+    const task = await readOriginalProjectTask(tx, handle, source, projectAgent);
     if (!task || task.baseRevision !== source.revision || bank.authority !== 'project_task' || bank.projectId !== source.projectId
         || bank.taskId !== source.taskId || !equal(root.sourceBinding.budgetAuthorityRef, bank)
         || bank.operationId !== hash({ projectId: source.projectId, taskId: source.taskId, revision: source.revision, executionFingerprint: source.executionFingerprint })) invalid();

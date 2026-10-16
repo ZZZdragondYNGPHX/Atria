@@ -277,18 +277,7 @@ export class BudgetPort {
             const ledger = await this.#ledger(handle, tx, authorityRef);
             if (!ledger) fail('native_orchestration_budget_unavailable');
             const facts = inspectComputeEffectClosure({ compute: ledger }, effectIds);
-            const rows = [...facts.modelAttempts, ...facts.localWork].toSorted((a, b) => a.attemptId.localeCompare(b.attemptId));
-            const budgetAttemptRefs = rows.map(row => {
-                const marker = row.orchestration;
-                if (!marker || row.attemptId !== orchestrationComputeAttemptId(marker)) fail('native_orchestration_budget_attempt_invalid');
-                return assertBudgetAttemptRef({ ...(marker.kind === 'local_work' ? { kind: 'local_work', localWorkOrdinal: marker.ordinal } : { providerSendOrdinal: marker.ordinal }),
-                    authorityRef: structuredClone(authorityRef), effectId: marker.effectId, attemptId: row.attemptId, reservationId: row.reservationId ?? null });
-            });
-            return { authorityRef: structuredClone(authorityRef), effectIds: facts.effectIds, budgetAttemptRefs,
-                closed: !facts.overrun && facts.effectIds.every(id => rows.some(row => row.orchestration.effectId === id)) && rows.every(row => row.status === 'settled'),
-                snapshotDigest: hashNativeDocument({ authorityRef, effectIds: facts.effectIds,
-                    modelAttempts: facts.modelAttempts.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)),
-                    localWork: facts.localWork.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)), overrun: facts.overrun }) };
+            return effectBudgetClosure(authorityRef, facts);
         });
     }
 
@@ -454,4 +443,20 @@ export class BudgetPort {
         sendBanks.set(bank, { budgetPort: this, handle, effectId, authorityDigest: hashNativeDocument(authorityRef) });
         return bank;
     }
+}
+
+/** The same original-bank snapshot is used by live observation and cold readers. */
+export function effectBudgetClosure(authorityRef, facts) {
+    const rows = [...facts.modelAttempts, ...facts.localWork].toSorted((a, b) => a.attemptId.localeCompare(b.attemptId));
+    const budgetAttemptRefs = rows.map(row => {
+        const marker = row.orchestration;
+        if (!marker || row.attemptId !== orchestrationComputeAttemptId(marker)) fail('native_orchestration_budget_attempt_invalid');
+        return assertBudgetAttemptRef({ ...(marker.kind === 'local_work' ? { kind: 'local_work', localWorkOrdinal: marker.ordinal } : { providerSendOrdinal: marker.ordinal }),
+            authorityRef: structuredClone(authorityRef), effectId: marker.effectId, attemptId: row.attemptId, reservationId: row.reservationId ?? null });
+    });
+    return { authorityRef: structuredClone(authorityRef), effectIds: facts.effectIds, budgetAttemptRefs,
+        closed: !facts.overrun && facts.effectIds.every(id => rows.some(row => row.orchestration.effectId === id)) && rows.every(row => row.status === 'settled'),
+        snapshotDigest: hashNativeDocument({ authorityRef, effectIds: facts.effectIds,
+            modelAttempts: facts.modelAttempts.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)),
+            localWork: facts.localWork.toSorted((a, b) => a.attemptId.localeCompare(b.attemptId)), overrun: facts.overrun }) };
 }

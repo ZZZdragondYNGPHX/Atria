@@ -49,10 +49,10 @@ describe('explicit Result policy and plain JSON validation', () => {
         }
         for (const maxBytes of [0, -1, 1.1, Infinity, Number.MAX_SAFE_INTEGER + 1])
             expect(() => assertResultPolicy({ kind: 'result', resultPolicy: { outputType: 'text', maxBytes } })).toThrow();
-        for (const kind of ['project_review']) {
-            const plan = planFixture(); plan.definition.outputContract = { ...plan.definition.outputContract, kind, resultPolicy: { outputType: 'text', maxBytes: 1 } };
-            expect(() => assertPlanDefinition(plan.definition, plan.dependencyPins)).toThrow('native_orchestration_result_policy_unavailable');
-        }
+        const review = planFixture(); review.definition.outputContract = { ...review.definition.outputContract, kind: 'project_review', resultPolicy: { outputType: 'json', maxBytes: 1024 } };
+        expect(assertPlanDefinition(review.definition, review.dependencyPins)).toBe(review.definition);
+        review.definition.outputContract.resultPolicy.outputType = 'text';
+        expect(() => assertPlanDefinition(review.definition, review.dependencyPins)).toThrow('resultPolicy.outputType');
         expect(assertResultPolicy({ kind: 'rp_narration', resultPolicy: { outputType: 'text', maxBytes: 20 } })).toEqual({ outputType: 'text', maxBytes: 20 });
         expect(() => assertResultPolicy({ kind: 'rp_narration', resultPolicy: { outputType: 'json', maxBytes: 20 } })).toThrow();
         expect(() => assertResultPolicy({ kind: 'result', resultPolicy: { outputType: 'xml', maxBytes: 20 } })).toThrow();

@@ -337,7 +337,7 @@ export async function finishNativeProjectGeneration(capture, { port, result, eff
     const attempt = task.attempts.find(item => item.attemptId === generation.projectAttemptId), completion = Object.freeze({});
     if (attempt?.status !== 'completed' || task.executionFingerprint !== generation.currentSourceFingerprint || hash(task.conversation) !== hash(conversation)
         || hash(attempt.calls) !== generation.callsDigest) fail('native_orchestration_project_round_finish_denied');
-    roundCompletions.set(completion, { generation, port, result, proof, task,
+    roundCompletions.set(completion, { generation, port, result, resultHash: hash(result), proof, task,
         descriptor: immutable({ runId, nodeAttemptId: proof.producerAttemptId, effectId, modelReceiptRef: proof.receiptRef, modelPayloadHash: proof.payloadHash,
             projectId: state.projectId, taskId: state.taskId, projectAttemptId: generation.projectAttemptId, requestId: generation.requestId,
             operationId: identity.operationId, round: generation.round, sourceBindingDigest: root.sourceBinding.bindingDigest,
@@ -374,5 +374,25 @@ export async function confirmNativeProjectRoundSettlement(completion) {
         const costs = await port.budgetPort.observeEffectClosure(state.handle, { authorityRef: root.budgetAuthorityRef, effectIds: attempt.effectRefs }, { tx });
         if (settlement.reasonCode !== 'project_round_ready' || !costs.closed || root.cancelRequested || root.status !== 'running') fail('native_orchestration_project_round_not_ready');
     });
-    generation.continueAllowed = descriptor.toolReceiptRefs.length > 0 && generation.round + 1 < state.preflight.maxModelRounds;
+    generation.continueAllowed = !stopped(value.task) && descriptor.toolReceiptRefs.length > 0 && generation.round + 1 < state.preflight.maxModelRounds;
+}
+
+/** Final Review is an original Task fact in this live operation, never a caller-supplied result. */
+export async function inspectNativeProjectReviewCompletion(completion, { host, handle }) {
+    const value = roundCompletions.get(completion), state = value?.generation.state;
+    if (!value || state.host !== host || state.handle !== handle || hash(value.result) !== value.resultHash)
+        fail('native_orchestration_project_review_completion_required');
+    const current = await currentOperation(state, { host, handle }), { descriptor } = value;
+    const task = current.task, attempt = task.attempts.find(item => item.attemptId === descriptor.projectAttemptId);
+    if (task.status !== 'review' || task.validation?.status !== 'passed' || task.review?.required !== true || !task.workspace
+        || !projectReviewSource(task, value.generation.toolReceipts.at(-1)) || task.executionFingerprint !== descriptor.toFingerprint
+        || hash(attempt) !== descriptor.attemptDigest || hash(task.conversation) !== descriptor.conversationDigest
+        || hash((await host.extensions.settings(handle)).value) !== state.settingsDigest) fail('native_orchestration_project_review_stale');
+    for (const record of state.skillWorkRecords.filter(item => item.operation === 'pin')) {
+        if ((await state.repository.get(record.input.name, record.input.scope))?.installedHash !== record.result.version)
+            fail('native_orchestration_project_review_stale');
+    }
+    await currentOperation(state, { host, handle });
+    if (hash(value.result) !== value.resultHash) fail('native_orchestration_project_review_stale');
+    return { descriptor, task, port: value.port };
 }

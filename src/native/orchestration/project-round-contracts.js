@@ -1,13 +1,11 @@
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
-import { ProjectAgentService } from '../project-agent.js';
-import { ProjectTaskRepository } from '../agent-intelligence/project-task-repository.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertObject, assertCounter, assertDigest } from '../../../public/shared/native-orchestration-contracts.js';
 import { controlCommandId, controlRecordKey, readAttempt } from './controller-common.js';
 import { checkedRecord } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
-import { readProjectToolReceipt } from './project-tool-receipts.js';
+import { readProjectToolReceipt, readOriginalProjectTask } from './project-tool-receipts.js';
 import { assertBudgetAuthorityRef, assertBudgetAttemptRef, sendAttemptId } from './budget-port.js';
 import { readAttemptSettlement } from './attempt-settlement.js';
 
@@ -18,9 +16,7 @@ export const projectRoundCommandId = (runId, nodeAttemptId) => controlCommandId(
 
 /** Historical original Task/Model/tool completion facts, never a replay or next-round grant. */
 export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, { projectAgent } = {}) {
-    if (!(projectAgent instanceof ProjectAgentService) || !(projectAgent._repository instanceof ProjectTaskRepository)
-        || root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
-    await projectAgent._repository.engine.withTransaction(handle, active => { if (active !== tx) invalid(); });
+    if (root.ownerRef.handle !== handle || root.sourceBinding.sourceAuthority !== 'project') invalid();
     const stored = (await checkedRecord(tx, { kind: K.orchestrationRun, handle, runId: root.runId }))?.doc;
     if (!stored || !equal(stored.sourceBinding, root.sourceBinding) || !equal(stored.planRef, root.planRef) || !equal(stored.graph, root.graph)) invalid();
     const receiptId = projectRoundReceiptId(root.runId, nodeAttemptId), row = await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId));
@@ -40,7 +36,7 @@ export async function readProjectRoundReceipt(tx, handle, root, nodeAttemptId, {
         || command.outcome?.receiptIntegrity !== row.integrity || !equal(command.outcome.receiptRef, { runId: root.runId, receiptId })) invalid();
     const source = root.sourceBinding.sourceRef;
     if (receipt.projectId !== source.projectId || receipt.taskId !== source.taskId || receipt.round === 0 && receipt.fromFingerprint !== source.executionFingerprint) invalid();
-    const task = await ProjectTaskRepository.prototype.get.call(projectAgent._repository, handle, source.projectId, source.taskId);
+    const task = await readOriginalProjectTask(tx, handle, source, projectAgent);
     const attempt = task?.attempts.find(item => item.attemptId === receipt.projectAttemptId && item.kind === 'generation');
     if (!task || task.baseRevision !== source.revision || task.sequence < receipt.taskSequence || attempt?.status !== 'completed'
         || attempt.requestId !== receipt.requestId || hash(attempt) !== receipt.attemptDigest || task.conversation.length < receipt.conversationLength

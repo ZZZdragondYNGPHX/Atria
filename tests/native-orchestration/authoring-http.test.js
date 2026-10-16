@@ -42,7 +42,9 @@ describe.each(CONTRACT_HARNESSES)('$name authenticated Native authoring HTTP', (
         const expected = { planId: root.planId, expectedDraftVersion: root.draftVersion, expectedDefinitionHash: root.definitionHash };
         const validated = await read('plans/validate', expected).expect(200);
         expect(validated.body.outcome.status).toBe('valid');
+        expect(validated.headers['x-atria-validation-digest']).toBe(validationDigest(validated.body.outcome));
         const published = await mutation('plans/publish', { ...expected, validationDigest: validationDigest(validated.body.outcome) }).expect(200);
+        expect((await read('plans/revision', { planRef: published.body.outcome.planRef }).expect(200)).body.outcome.definition).toEqual(input.definition);
         const revisions = await read('plans/revisions', { planId: root.planId, cursor: null, limit: 10 }).expect(200);
         expect(revisions.body.outcome.items.map(item => item.planRevisionId)).toEqual([published.body.outcome.planRef.planRevisionId]);
     });
@@ -78,6 +80,9 @@ describe.each(CONTRACT_HARNESSES)('$name authenticated Native authoring HTTP', (
         const snapshot = (await library.getExact(h.handle, ref)).snapshot;
         const input = planFixture();
         input.dependencyPins = [{ pinId: 'prompt.foundation', port: 'context', resourceRef: ref, integrity: hashNativeDocument(snapshot) }];
+        const pin = await read('dependencies/inspect', { pinId: 'prompt.foundation', port: 'context', resourceRef: ref }).expect(200);
+        expect(pin.body.outcome).toEqual(input.dependencyPins[0]); expect(JSON.stringify(pin.body)).not.toContain('An original Native module');
+        await read('dependencies/inspect', { pinId: 'prompt.foundation', port: 'context', resourceRef: ref, handle: 'victim' }).expect(400);
         const created = (await mutation('plans/create', input).expect(200)).body.outcome;
         const expected = { planId: created.planId, expectedDraftVersion: created.draftVersion, expectedDefinitionHash: created.definitionHash };
         expect((await read('plans/validate', expected).expect(200)).body.outcome.status).toBe('valid');

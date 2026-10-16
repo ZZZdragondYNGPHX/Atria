@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { performance } from 'node:perf_hooks';
 import { hashNativeDocument as hash, cloneNativeDocument, putImmutable } from '../repositories/common.js';
-import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { createOrchestrationAuthoringService } from './authoring-service.js';
 import { validateModelCapability } from './model-capability-authority.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
@@ -9,7 +9,9 @@ import { projectRuntimeRoute } from '../adapters/project-runtime-route.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNativeProjectTaskTool,
-    finishNativeProjectGeneration, inspectNativeProjectRoundCompletion, confirmNativeProjectRoundSettlement } from './native-project-generation-authority.js';
+    finishNativeProjectGeneration, inspectNativeProjectRoundCompletion, confirmNativeProjectRoundSettlement,
+    inspectNativeProjectReviewCompletion } from './native-project-generation-authority.js';
+import { ProjectReviewOutputController } from './project-review-output-controller.js';
 import { readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolReason, projectToolResultPayload } from './project-tool-contracts.js';
 import { readProjectToolReceipt } from './project-tool-receipts.js';
 import { readProjectRoundReceipt, projectRoundReceiptId, projectRoundCommandId } from './project-round-contracts.js';
@@ -78,7 +80,7 @@ export class NativeProjectOrchestrationAuthority {
             || !equal(node.capabilities, capabilities) || node.inputs.length !== (loop ? 1 : 0) || node.outputs.length !== 1 || node.outputs[0].type !== 'json'
             || node.dependencyPinIds.length !== 1 + toolPins.length || output.capabilities.length || output.inputs.length !== 1
             || output.inputs[0].type !== 'json' || !output.inputs[0].required || output.outputs.length || output.dependencyPinIds.length
-            || plan.dependencyPins.length !== 1 + toolPins.length || graph.outputContract.kind !== 'result' || graph.outputContract.allowPartial
+            || plan.dependencyPins.length !== 1 + toolPins.length || !['result', 'project_review'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
             || graph.graphChangePolicy.allowedOperations.length || !forward || forward.condition !== 'always' || forward.maxVisits !== 1
             || forward.from.nodeId !== node.nodeId || forward.to.nodeId !== output.nodeId
             || !loop && maxModelRounds !== 1
@@ -86,6 +88,10 @@ export class NativeProjectOrchestrationAuthority {
                 || loop.from.port !== node.outputs[0].name || loop.to.port !== node.inputs[0].name || node.inputs[0].required || node.inputs[0].type !== 'json'
                 || maxModelRounds - 1 > loop.maxVisits || maxModelRounds - 1 > graph.limits.maxLoopIterations))
             fail('native_orchestration_project_plan_unavailable');
+        if (graph.outputContract.kind === 'project_review') {
+            assertResultPolicy(graph.outputContract);
+            if (!toolPins.some(tool => tool.resourceRef.name === 'atri_agent_prepare_review')) fail('native_orchestration_project_plan_unavailable');
+        }
         const pin = plan.dependencyPins.find(item => item.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(item.pinId));
         if (pin?.port !== 'model' || !equal(pin.resourceRef, routeRef)) fail('native_orchestration_project_route_mismatch');
         const names = new Set();
@@ -402,6 +408,17 @@ export class NativeProjectOrchestrationAuthority {
         }
         consumer.roundReceiptRef = { runId, receiptId };
         if (state.operation) state.operation.previous = consumer;
+        if (closure.closed && finished.task.status === 'review' && (await runs.get(handle, runId)).graph.outputContract.kind === 'project_review') {
+            const { sourcePort, budgetPort } = this.#execution();
+            await new ProjectReviewOutputController({ runs, sourcePort, budgetPort, authorize: async ({ tx, root }) => {
+                await this.#current(state.selection);
+                const current = await inspectNativeProjectReviewCompletion(finished.completion, { host, handle });
+                const fact = await readProjectRoundReceipt(tx, handle, root, descriptor.nodeAttemptId, { projectAgent: host.agent });
+                if (!fact || root.runId !== runId || Object.entries(current.descriptor).some(([key, value]) => !equal(fact.receipt[key], value)))
+                    fail('native_orchestration_project_review_stale');
+                return fact.receipt;
+            } }).complete(handle, await runs.get(handle, runId));
+        }
         return finished.task;
     }
 
