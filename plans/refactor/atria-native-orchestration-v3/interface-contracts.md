@@ -726,3 +726,11 @@ Project Source capture改用原ProjectAgentService._ensureDraftMutable的实际�
 原Storage Management的edit/delete/recovery在检查实际文件、CAS与写入前进入同一边界，保留原quota、恢复点、原子rename、路径保护和权限。原reset-settings的raw delete与seed同scope；管理员删除从原账户身份撤销、Engine.deleteUser到可选purge同scope。原账户reset-step2在同scope复用原Host maintenance，先原Engine.deleteUser关闭SQLite/清SQL行，再清目录并重置原内容；保留原`native-host.identity`，避免旧打开连接和身份文件丢失使Host失效。账户删除purge则维持既有删除身份语义：旧Host拒绝重新读删除身份，冷重开才可检查空数据，不放松Owner协议。
 
 本组实际本地证据为CachyOS/Node24上的FS/SQLite并发与真实HTTP、原FS/SQLite同步及迁移回归。新管理入口SQL/Windows/Termux/真实Provider与质量仍NOT_RUN，完整P3 Gate未通过；RP模型或正文consumer仍不可由这些写围栏推定可用。精确提交、测试、失败和fixture清理修复归同一Record第二十七组。
+
+### 17.38 原RP受信Model producer与prefix Context
+
+内部`NativeGenerationHost.startRp(handle,{controlId,floor,requestId,routeRef})`仅接受原聊天最后一个用户输入；不接受正文/messages、grant、费用或Context自述。原Scheduler实际callback签发模块私有WeakMap capture，绑定同Host/Engine/RpRunControl、实际boundary、资源、anchor、interactive/model_task与retry=false。JSON复制、调用方伪boundary不能获得ModelPort权限。原聊天必须已有合法sourceMessageId；缺失时明确拒绝，没有自造Session或绕过原source生命周期。
+
+实际Binding与已发布Plan只支持明确的Narrator text→Output有限图，原Route pin/config与generation.send能力校验先于发送。原SourcePort、Run/Attempt/Effect与原RP银行组合；ContextPort从原聊天读取prefix，在原localWork准入后编译，历史system消息作为用户历史资料，不提升为system指令。实际原Host outer request及GenerationService request分别严格验证，发送/消费复验capture、来源、完整prefix、最后输入、Binding和配置。原费用按真实provider ordinal结算，编辑/新增输入/Binding变化拒绝响应但不退回已发生费用。稳定命令重放在新Context与发送之前拒绝，不再收费。
+
+这是P3内部producer；没有新增Browser HTTP dispatcher，不开放调用方raw prompt。生成结果尚未成为正式聊天正文，也未使Run completed。P4仍须原ChatRepo单输出slot/marker saga、OutputClaim/Result与取消闭包，P5再接统一envelope及投影API。FS/SQLite本地localhost合成Provider证据不代表外部费用、文本质量或SQL/三端验收。

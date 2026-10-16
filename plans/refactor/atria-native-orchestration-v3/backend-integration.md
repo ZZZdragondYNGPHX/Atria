@@ -54,7 +54,7 @@ Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate �
 
 第二十六组完成原ChatRepo/GroupRepo、RPControl及已识别在线入口的共同聊天写围栏和事务纯读（接口§17.36），源码`6865d0a08`已推送。来源消费测试仍是明示受控只读callback；sync/restore管理旁路、RP Context/model scope及P4唯一输出仍待接，前端不得据此增加RP V3运行或正式提交入口。用户要求本组完成后暂停以换设备；详细恢复入口与剩余队列在同一Record最后“交接”段，后端未完成，不将本次暂停冒称最终前端交付。
 
-第二十七组在同一分支以`5df345aee`关闭已审计RP管理入口的同步/恢复/存储管理/重置/删除/迁移写入空隙（接口§17.37）。`publishShadowToUserData`只在Host内组合原文件与SQL发布，不增加Browser runner或Run API。账户restore/recovery apply在仍保留V3历史时沿原错误码返回409，包括chat-only选择的全root回滚风险；界面不能据此自动清历史或重发。原RP Context/model scope、正式正文输出和其余P3/P4队列仍未完成；当前已恢复开发，第二十六组暂停只留历史。
+第二十七组在同一分支以`5df345aee`关闭已审计RP管理入口的同步/恢复/存储管理/重置/删除/迁移写入空隙（接口§17.37）。`publishShadowToUserData`只在Host内组合原文件与SQL发布，不增加Browser runner或Run API。账户restore/recovery apply在仍保留V3历史时沿原错误码返回409，包括chat-only选择的全root回滚风险；界面不能据此自动清历史或重发。原RP Context/model scope已在第二十八组`2cf8c97d4`接入内部Host producer（接口§17.38），没有新增Browser API；正式正文输出和其余P3/P4队列仍未完成；当前已恢复开发，第二十六组暂停只留历史。
 
 ## 4. 并入统一前端的范围
 
@@ -81,6 +81,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十七组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十八组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。
