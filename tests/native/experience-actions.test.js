@@ -46,6 +46,7 @@ test('Action persists receipt, World and Journal atomically and replay survives 
 test('server receipt replay is idempotent, protected against direct patches and restores with the branch', async () => {
     const request = action(); const sessionId = runtime.snapshot.session.sessionId;
     const before = runtime.snapshot;
+    const checkpointSave = await f.core.createSavePoint(h.handle, sessionId);
     const receipt = await world.dispatchAction(request);
     const head = runtime.snapshot.revision.revisionId;
     const replay = await f.core.applyRuntimeCommit(h.handle, sessionId, { actionRequest: request, statePatch: {} }, { expectedRevisionId: request.expectedRevisionId });
@@ -55,7 +56,7 @@ test('server receipt replay is idempotent, protected against direct patches and 
     expect(original.states.atri_action_receipts).toBeUndefined();
     const loaded = await f.core.load(h.handle, sessionId);
     expect(loaded.states.atri_action_receipts.receipts[0]).toEqual(receipt);
-    runtime.snapshot = await f.core.forkBranch(h.handle, sessionId, { revisionId: before.revision.revisionId, expectedRevisionId: head });
+    runtime.snapshot = await f.core.restoreSavePoint(h.handle, sessionId, checkpointSave.saveId, { expectedRevisionId: head });
     expect(runtime.snapshot.states.atri_action_receipts).toBeUndefined();
     expect(world.getState().hp).toBe(8);
 });

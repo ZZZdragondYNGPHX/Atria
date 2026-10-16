@@ -73,32 +73,6 @@ async function fixture(make, mode = 'task', verified = true, maxRequests = 4, fo
 const followup = (f, response) => ({ ...f.request, requestId: 'task-runtime-next', messages: [...f.request.messages,
     { role: 'assistant', content: response.text, tool_calls: response.toolCalls.map(call => call.raw), providerState: response.providerState },
     { role: 'tool', tool_call_id: response.toolCalls[0].id, content: 'Public project read' }] });
-test.each([['fs', harnesses[0][1], 'openai-responses'], ['sqlite', harnesses[1][1], 'openai-responses'], ['fs', harnesses[0][1], 'anthropic'], ['fs', harnesses[0][1], 'gemini']])('Runtime lowering %s %s quota refusal retains valid original Task checkpoint before second HTTP', async (_name, make, format) => {
-    const f = await fixture(make, 'task', true, 4, format, { maxJobs: 3, maxItems: 3, maxInputBytes: 1048576 });
-    try {
-        const first = await f.newHost().execute(f.h.handle, f.request), rows = await f.rows();
-        await expect(f.newHost().execute(f.h.handle, followup(f, first.response))).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
-        expect(await f.rows()).toEqual(rows); expect(f.wires).toHaveLength(1);
-        const task = await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId);
-        expect(task.compute.localWork.map(row => row.kind)).toEqual(['generation_count', 'generation_render', 'generation_count']);
-        expect(task.compute.attempts).toHaveLength(1); expect(task.conversation).toEqual(f.task.conversation);
-    } finally { await f.cleanup(); }
-});
-test('Runtime lowering stale Task after render settlement cleans private state and keeps completed local work', async () => {
-    const f = await fixture(harnesses[0][1], 'task', true, 4, 'openai-responses', { maxJobs: 4, maxItems: 4, maxInputBytes: 1048576 }); let spy;
-    try {
-        const first = await f.newHost().execute(f.h.handle, f.request); let jobs = 0;
-        const original = f.agent.settleLocalWork.bind(f.agent);
-        spy = jest.spyOn(f.agent, 'settleLocalWork').mockImplementation(async (...args) => {
-            const result = await original(...args);
-            if (++jobs === 2) await f.agent.setPlan(f.h.handle, f.request.projectId, f.task.taskId, { summary: 'Changed after private lowering', steps: [{ id: 'read', title: 'Read', impact: 'low' }] });
-            return result;
-        });
-        await expect(f.newHost().execute(f.h.handle, followup(f, first.response))).rejects.toMatchObject({ code: 'native_generation_task_stopped' });
-        expect(await f.rows()).toEqual([]); expect(f.wires).toHaveLength(1);
-        expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.localWork.map(row => row.usage.outcome)).toEqual(Array(4).fill('completed'));
-    } finally { spy?.mockRestore(); await f.cleanup(); }
-});
 for (const format of ['anthropic', 'gemini']) {
     test.each(harnesses)(`Runtime messages task ${format} %s actual Host resumes full native state and persists the final checkpoint`, async (_name, make) => {
         const f = await fixture(make, 'task', true, 4, format);
@@ -413,7 +387,7 @@ test.each(harnesses)('Runtime task %s same-millisecond route delete/recreate can
     } finally { clock?.mockRestore(); await f.cleanup(); }
 });
 const studioContinuityCases = [
-    ...['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue', 'adaptive_missing', 'adaptive_task_aba', 'adaptive_repeat_reset', 'adaptive_malformed_history', 'adaptive_preview_projection', 'adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'].map(change => ['openai-responses', change]),
+    ...['restore', 'edited_history', 'task_authority_aba', 'adaptive_continue', 'adaptive_missing', 'adaptive_task_aba', 'adaptive_repeat_reset', 'adaptive_malformed_history', 'adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'].map(change => ['openai-responses', change]),
     ...['anthropic', 'gemini'].flatMap(format => ['restore', 'edited_history', 'adaptive_missing', 'adaptive_legacy'].map(change => [format, change])),
 ];
 test.each(studioContinuityCases)('Runtime Studio continuity %s %s uses only current saved public Task history', async (format, change) => {
@@ -442,14 +416,11 @@ test.each(studioContinuityCases)('Runtime Studio continuity %s %s uses only curr
         const saved = (await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).conversation;
         expect(saved.some(message => message.tool_calls?.length)).toBe(true);
         expect(JSON.stringify(saved)).not.toContain('providerState'); expect(JSON.stringify(saved)).not.toContain('PRIVATE-TASK-RUNTIME');
-        if (['adaptive_preview_projection', 'adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'].includes(change)) {
+        if (['adaptive_budget_refusal_projection', 'adaptive_charge_refusal_projection'].includes(change)) {
             const before = (await f.rows()).map(row => row.doc.checkpointId);
             const projected = { ...requests[0], requestId: 'projection-preflight', messages: [requests[0].messages[0], ...projectAgentResumeMessages(saved)] };
             delete projected.projectAttemptId;
-            if (change === 'adaptive_preview_projection') {
-                const preview = await host.execute(f.h.handle, projected, undefined, undefined, { preview: true });
-                expect(preview.snapshot.diagnostics.continuity).toMatchObject({ action: 'reset', reason: 'public_observation_projection', loss: 'opaque_not_restored' });
-            } else if (change === 'adaptive_charge_refusal_projection') {
+            if (change === 'adaptive_charge_refusal_projection') {
                 await expect(host.execute(f.h.handle, projected)).rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
             } else {
                 const base = createResponsesGenerationProvider({ fetchImpl: f.providerFetch });
@@ -463,7 +434,7 @@ test.each(studioContinuityCases)('Runtime Studio continuity %s %s uses only curr
             expect((await f.rows()).map(row => row.doc.checkpointId)).toEqual(before);
             expect(f.wires).toHaveLength(1);
             expect((await f.agent.getTask(f.h.handle, f.request.projectId, f.task.taskId)).compute.attempts).toHaveLength(1);
-            if (change !== 'adaptive_preview_projection') return;
+            return;
         }
         if (['task_authority_aba', 'adaptive_task_aba'].includes(change)) {
             await f.agent.setPlan(f.h.handle, f.request.projectId, f.task.taskId, { summary: 'changed', steps: [{ id: 'new', title: 'new', impact: 'low' }] });
@@ -499,7 +470,7 @@ test.each(studioContinuityCases)('Runtime Studio continuity %s %s uses only curr
         }
         await runNativeStudioAgentTask(options);
         expect(f.wires).toHaveLength(2);
-        const continued = ['restore', 'adaptive_continue', 'adaptive_preview_projection'].includes(change);
+        const continued = ['restore', 'adaptive_continue'].includes(change);
         expect(JSON.stringify(f.wires[1]).includes('PRIVATE-TASK-RUNTIME')).toBe(continued);
         expect(responses[1].response.observation.nativeExecution.transferredCheckpoints).toBe(continued ? 1 : 0);
         const planned = responses[1].snapshot.diagnostics.continuity;

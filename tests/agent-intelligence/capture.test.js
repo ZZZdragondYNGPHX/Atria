@@ -211,17 +211,19 @@ describe.each(['openai-compatible', 'anthropic', 'gemini'])('%s observed usage',
         ] : format === 'anthropic' ? [
             { type: 'message_start', message: { usage: { input_tokens: 10 } } },
             { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'text' } },
-            { type: 'message_delta', usage: { output_tokens: 4 } },
+            { type: 'content_block_stop', index: 0 },
+            { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 4 } },
+            { type: 'message_stop' },
         ] : [
-            { candidates: [{ content: { parts: [{ text: 'text' }] } }] },
+            { candidates: [{ content: { parts: [{ text: 'text' }] }, finishReason: 'STOP' }] },
             { usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 4, totalTokenCount: 17, thoughtsTokenCount: 3 } },
         ];
         const raw = format === 'openai-compatible' ? { choices: [{ message: { content: 'text' } }], usage: values[1].usage }
-            : format === 'anthropic' ? { content: [{ type: 'text', text: 'text' }], usage: { input_tokens: 10, output_tokens: 4 } }
+            : format === 'anthropic' ? { content: [{ type: 'text', text: 'text' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 4 } }
                 : { candidates: values[0].candidates, usageMetadata: values[1].usageMetadata };
         const response = new Response(streaming ? values.map(value => 'data: ' + JSON.stringify(value) + '\n\n').join('') : JSON.stringify(raw),
             { headers: { 'Content-Type': streaming ? 'text/event-stream' : 'application/json' } });
-        const parsed = await provider.parseStream(format === 'openai-compatible' ? response : { response, binding: {} });
+        const parsed = await provider.parseStream(format === 'openai-compatible' ? response : { response, binding: { protocol: 'native.' + format + '.v1', executionScope: { kind: 'request' } }, sequence: [] });
         const result = provider.normalizeResponse(parsed);
         expect(result.text).toBe('text'); expect(result.usage).toMatchObject({ inputTokens: 10, outputTokens: 4 });
         if (format === 'anthropic') expect(result.usage.totalTokens).toBeUndefined();

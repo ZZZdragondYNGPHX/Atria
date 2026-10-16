@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { test, expect } from '@jest/globals';
 import { createWorkspaceFactoryPreset, workspaceHostProfile, getWorkspaceLibrary, resolveWorkspaceProfile } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
 import { compilePreset } from '../../public/scripts/agents/orchestrator/engine-v2/preset-compiler.js';

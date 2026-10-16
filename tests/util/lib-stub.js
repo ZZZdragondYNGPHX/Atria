@@ -34,25 +34,12 @@ import droll from 'droll';
 import chalk from 'chalk';
 import yaml from 'yaml';
 import * as chevrotain from 'chevrotain';
-import { gzipSync, gzip } from 'fflate';
+import { gzipSync, gzip } from 'fflate/node';
 import { sha256 } from 'js-sha256';
 
-// In browsers `import DOMPurify from 'dompurify'` returns a pre-bound
-// sanitizer (window is already there). In node it returns a factory the
-// caller is meant to bind to a window. Tests don't have one, so wrap with
-// an identity sanitize() — good enough for tests that just want the
-// markdown-rendered HTML through unchanged; tests with real XSS payloads
-// should bring their own JSDOM via `@jest-environment jsdom`.
-const DOMPurify = typeof DOMPurifyFactory?.sanitize === 'function'
-    ? DOMPurifyFactory
-    : Object.assign(() => {}, {
-        sanitize: (html) => String(html ?? ''),
-        addHook: () => {},
-        removeHook: () => {},
-        removeAllHooks: () => {},
-        isSupported: false,
-        version: 'jest-stub',
-    });
+// Use the real sanitizer. DOM tests provide jsdom; Node consumers must not
+// receive an identity function that silently accepts unsafe HTML.
+const DOMPurify = DOMPurifyFactory;
 
 // SVGInject + slideToggle + morphdom touch the DOM at module-load. Provide
 // no-op stubs so tests that only import the symbol don't fail; nothing under

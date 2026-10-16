@@ -1,3 +1,4 @@
+import '../util/browser-context.js';
 import { expect, test } from '@jest/globals';
 import { CASES, CASE_SET_REVISION, PILOT_CASES, PILOT_CASE_SET_REVISION, PILOT_RUBRIC, canonical, hash, selectCases, loadFixture, validateCase } from '../../src/native/agent-intelligence/evaluation/cases.js';
 import { DEVELOPMENT_SOURCES } from '../../src/native/agent-intelligence/evaluation/pilot-sources.js';

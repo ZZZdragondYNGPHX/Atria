@@ -22,19 +22,7 @@ module.exports = {
     overrides: [
         {
             extends: ['plugin:playwright/recommended'],
-            // Playwright-driven e2e specs run inside a real browser context
-            // and routinely call `page.evaluate(() => window.X)` — so they
-            // need the `browser` env globals to lint cleanly. Matches both
-            // the legacy `*.e2e.js` files, the skills-UI smoke `*.spec.js`
-            // files added in Plan 2 Unit 8, and the `_lib/*.js` Playwright
-            // helpers (page.js, sync.js) that wrap `page.evaluate(() =>
-            // document.X)` for spec callers.
-            files: [
-                '**/*.e2e.js',
-                '**/skills-ui/playwright/**/*.spec.js',
-                '**/skills-ui/playwright/helpers.js',
-                'e2e/_lib/*.js',
-            ],
+            files: ['**/*.e2e.js', 'e2e/_lib/*.js'],
             env: {
                 browser: true,
             },

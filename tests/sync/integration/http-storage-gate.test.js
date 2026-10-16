@@ -12,7 +12,7 @@
  *
  * Test architecture: rather than spinning up a real MySQL/Postgres
  * (`makeEndpointHarness` skips those modes when the corresponding
- * `ATRIA_DISABLE_*_TESTS` env is set, which is the default in CI), we
+ * test database URL is absent), we
  * stub `getStorageEngine` for this file alone via
  * `jest.unstable_mockModule` and stand up a minimal Express app whose
  * `req.user` is populated by a small inline middleware. The router under
@@ -28,6 +28,8 @@
 import { describe, test, expect, jest, beforeAll } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+
+jest.unstable_mockModule('../../../src/endpoints/content-manager.js', () => ({ checkForNewContent: async () => {}, getContentOfType: () => [], CONTENT_TYPES: {} }));
 
 let currentEngineKind = 'fs';
 

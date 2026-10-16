@@ -154,6 +154,7 @@ export function makeMultiHandleFsEngine({ root }) {
     return { engine, dirsForHandle, root };
 }
 
+// External engines join the matrix only with explicit test database URLs.
 // Parameterize Repo contract tests via `describe.each(CONTRACT_HARNESSES)`.
 // Each entry exposes `name` (engine label for the test description) and
 // `make` (async factory returning the harness object).
@@ -161,14 +162,10 @@ const harnesses = [
     { name: 'FsEngine', make: makeTempFsEngineHarness },
     { name: 'SqliteEngine', make: makeTempSqliteEngineHarness },
 ];
-// MysqlEngine: include unless explicitly disabled. The local dev container at
-// 127.0.0.1:53306 is the default; CI / non-DB envs set the disable flag.
-if (!process.env.ATRIA_DISABLE_MYSQL_TESTS) {
+if (Boolean(process.env.ATRIA_TEST_MYSQL_ROOT_URL)) {
     harnesses.push({ name: 'MysqlEngine', make: makeTempMysqlEngineHarness });
 }
-// PgEngine: include unless explicitly disabled. The local dev container at
-// 127.0.0.1:55432 is the default; CI / non-DB envs set the disable flag.
-if (!process.env.ATRIA_DISABLE_POSTGRES_TESTS) {
+if (Boolean(process.env.ATRIA_TEST_POSTGRES_URL)) {
     harnesses.push({ name: 'PgEngine', make: makeTempPgEngineHarness });
 }
 export const CONTRACT_HARNESSES = harnesses;

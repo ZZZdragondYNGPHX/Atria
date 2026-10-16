@@ -101,6 +101,10 @@ jest.unstable_mockModule('../../src/storage/config-persistence.js', () => ({
 // imported by users-admin.js (content-manager, plugin-loader, etc.) pull
 // named exports from util.js that the brief's minimal mock would not cover.
 
+jest.unstable_mockModule('../../src/endpoints/content-manager.js', () => ({
+    checkForNewContent: async () => {}, CONTENT_TYPES: {},
+}));
+
 // Now import the router under test.
 const { router } = await import('../../src/endpoints/users-admin.js');
 

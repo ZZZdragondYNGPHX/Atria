@@ -83,6 +83,7 @@ jest.unstable_mockModule('../../public/script.js', () => ({
     extension_prompt_roles: { SYSTEM: 0, USER: 1, ASSISTANT: 2 },
     extractMessageFromData: () => '',
     Generate: () => Promise.resolve(),
+    GenerateNative: () => Promise.resolve(),
     generateQuietPrompt: () => Promise.resolve(''),
     getCharacters: () => Promise.resolve(),
     getCurrentChatId: () => null,
@@ -259,6 +260,7 @@ jest.unstable_mockModule('../../public/scripts/group-chats.js', () => ({
     groups: [], openGroupChat: () => Promise.resolve(), selected_group: null, unshallowGroupMembers: () => Promise.resolve(),
 }));
 jest.unstable_mockModule('../../public/scripts/i18n.js', () => ({
+    setUiLanguage: async () => {},
     applyLocale: () => {},
     addLocaleData: () => {}, getCurrentLocale: () => 'en-US', t: (k) => k, translate: (k) => k,
 }));
@@ -275,6 +277,9 @@ jest.unstable_mockModule('../../public/scripts/popup.js', () => ({
     callGenericPopup: () => Promise.resolve(''), Popup: class {}, POPUP_RESULT: { CANCELLED: 0, AFFIRMATIVE: 1 }, POPUP_TYPE: { DISPLAY: 0 },
 }));
 jest.unstable_mockModule('../../public/scripts/power-user.js', () => ({
+    atriaThemes: {},
+    getPreferenceSaveState: () => ({}),
+    updateAtriaPreference: async () => {},
     power_user: {}, registerDebugFunction: () => {}, performFuzzySearch: () => [],
 }));
 jest.unstable_mockModule('../../public/scripts/RossAscends-mods.js', () => ({

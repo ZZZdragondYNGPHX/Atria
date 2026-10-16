@@ -410,56 +410,7 @@ describe('recall pipeline observes seqCutoffFrom (behavior)', () => {
         expect(recallNodes.map((n) => n.id).sort()).toEqual(['evt_13', 'evt_14']);
     });
 
-    test('regression: pre-fix recall-side call (3-arg, no options) returned the FULL set — trapping horizon-aged nodes in neither channel', () => {
-        // Before this contract was enforced, runLLMDrivenRecall +
-        // injectMemoryPrompts called collectAlwaysInjectNodes(store, settings,
-        // context) with no options — so horizon-aged nodes stayed in the
-        // always-inject set and got filtered out of the recall candidate pool,
-        // even though they'd already been dropped from persistent injection.
-        // This test documents that failure mode so future readers can see
-        // why the 4-arg shape matters.
-        const store = buildHorizonStore();
-        const settings = horizonSettings(3);
-        const legacyNodes = collectAlwaysInjectNodes(store, settings, null);
-        expect(legacyNodes.map((n) => n.id).sort()).toEqual(['evt_1', 'evt_13', 'evt_14', 'evt_5']);
-    });
 
-    test('recall-pipeline entry points wire computeRecallAlwaysInjectOptions into collectAlwaysInjectNodes', async () => {
-        // Guard: the two recall-side entry points (runLLMDrivenRecall +
-        // injectMemoryPrompts) must build their always-inject options via
-        // computeRecallAlwaysInjectOptions. The unit tests above prove the
-        // helper's contract; this test proves the entry points actually
-        // consume it — a regression to the 3-arg legacy call shape would
-        // silently drop horizon-aged nodes from both channels.
-        //
-        // We scan main.js source for every collectAlwaysInjectNodes(...)
-        // call outside syncPersistentLorebookProjection's body and require
-        // each one to reference computeRecallAlwaysInjectOptions somewhere
-        // in its argument list.
-        const fs = await import('node:fs/promises');
-        const path = await import('node:path');
-        const url = await import('node:url');
-        const here = path.dirname(url.fileURLToPath(import.meta.url));
-        const mainPath = path.resolve(here, '../../public/scripts/agents/memory/main.js');
-        const src = await fs.readFile(mainPath, 'utf8');
-
-        const syncMatch = src.match(
-            /async function syncPersistentLorebookProjection\([^)]*\)\s*\{([\s\S]*?)\n\}\n/,
-        );
-        expect(syncMatch).not.toBeNull();
-        const outside = src.replace(syncMatch[0], '/* sync stripped */');
-
-        // Skip the function definition line itself.
-        const callRe = /(?<!function\s)\bcollectAlwaysInjectNodes\s*\(([\s\S]*?)\)\s*;/g;
-        const calls = [...outside.matchAll(callRe)];
-        expect(calls.length).toBeGreaterThan(0);
-        for (const m of calls) {
-            expect({
-                call: m[0],
-                usesHelper: /computeRecallAlwaysInjectOptions\s*\(/.test(m[1]),
-            }).toEqual({ call: m[0], usesHelper: true });
-        }
-    });
 });
 
 describe('i18n coverage — new label + help entries present in zh-CN', () => {

@@ -158,4 +158,3 @@ export function getExtensionRegistry() {
 }
 
 /** @internal — alias retained for existing test files. */
-export const __getExtensionRegistryForTest = getExtensionRegistry;

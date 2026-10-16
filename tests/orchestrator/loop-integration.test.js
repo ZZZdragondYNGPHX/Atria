@@ -1,3 +1,4 @@
+import '../util/orchestrator-context.js';
 /**
  * End-to-end integration tests for orchestrator loop mode (Plan Task 15).
  *
@@ -32,7 +33,7 @@ import {
     unregisterMemoryGraphOrchestrationTools,
     __setSessionForTest,
 } from '../../public/scripts/agents/memory/orchestrator-tools.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
+import { getExtensionRegistry } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 function makeProfile(overrides = {}) {
     return {
@@ -159,12 +160,12 @@ describe('loop mode end-to-end: complete 6-round happy path (Task 15a)', () => {
         // memory_list_candidates / memory_node_brief; the wrapper exec
         // looks up the session through the WeakMap pre-populated by
         // __setSessionForTest in makeChatContext.
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
         await registerMemoryGraphOrchestrationTools();
     });
     afterEach(async () => {
         await unregisterMemoryGraphOrchestrationTools();
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
     });
 
     test('model -> note_open -> lorebook_search -> lorebook_get -> memory_list_candidates -> memory_node_brief -> finalize', async () => {

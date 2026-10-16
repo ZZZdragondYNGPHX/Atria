@@ -180,7 +180,7 @@ test('S19 author adoption rejects foreign/self/model provenance and mutable pers
     } finally { await h.cleanup(); }
 });
 
-test('S19 withdrawn nodes still occupy capacity; original Save restoration preserves raw values and marks old-branch support stale', async () => {
+test('S19 withdrawn nodes still occupy capacity; original Save restoration preserves authored values and rebases authorized source support', async () => {
     const h = await makeTempFsEngineHarness();
     try {
         const f = await installTomFixture(h, { maxNodes: 1 }); await f.ready(); const queued = await f.queue(), r = await runtime(h, f);
@@ -192,8 +192,9 @@ test('S19 withdrawn nodes still occupy capacity; original Save restoration prese
         expect(projectInformation(withdrawn, 'actor', { purpose: 'context' }).items.find(item => item.sourceId === 'hypotheses').cognition.status).toBe('withdrawn');
         await expect(write(h, f, 'hypotheses', 'next-node', authored(withdrawn, 'next-node'))).rejects.toThrow(/node capacity/);
         const restored = await f.core.restoreSavePoint(h.handle, base.session.sessionId, save.saveId, { expectedRevisionId: withdrawn.revision.revisionId });
-        expect(restored.states.atri_lifecycle.domains.hypotheses.records[0]).toEqual(raw);
-        expect(projectInformation(restored, 'actor', { purpose: 'context' }).items.find(item => item.sourceId === 'hypotheses').cognition.status).toBe('stale');
+        expect(restored.states.atri_lifecycle.domains.hypotheses.records[0]).toEqual({ ...raw, value: { ...raw.value,
+            basis: { ...raw.value.basis, anchor: { ...raw.value.basis.anchor, branchId: restored.revision.branchId, revisionId: restored.revision.revisionId } } } });
+        expect(projectInformation(restored, 'actor', { purpose: 'context' }).items.find(item => item.sourceId === 'hypotheses').cognition.status).toBe('active');
         expect((await services(h).core.runs.status(h.handle, base.session.sessionId)).retiredCompute).toMatchObject({ modelAttempts: 1, knownTotalTokens: 150 });
         expect((await r.host.executeLifecycle(h.handle, r.input(restored))).results).toEqual([]); expect(r.fetchImpl).toHaveBeenCalledTimes(1);
     } finally { await h.cleanup(); }

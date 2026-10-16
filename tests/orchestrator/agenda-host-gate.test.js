@@ -25,7 +25,7 @@ async function run({ enabled = true, stop = false, outcome = 'completed', error 
         loadOrchestratorChatState: async () => {}, buildActivatedEntryKeysFromPayload: () => new Set(),
         currentExecutionConfig: () => 'config', digestExecutionConfig: async () => 'hash', buildLastUserAnchor: () => 'anchor',
         canReuseLatestOrchestrationSnapshot: () => reuse, getActiveSnapshot: () => ({ capsuleText: 'cached guidance' }),
-        refreshActiveSnapshotFromCache() {}, clearCapsulePrompt() {}, updateUiStatus() {}, clearRunInfoToast() {}, ensureUi() {},
+        refreshHostWorkspace() {}, refreshActiveSnapshotFromCache() {}, clearCapsulePrompt() {}, updateUiStatus() {}, clearRunInfoToast() {}, ensureUi() {},
         showRunInfoToast() {}, emitOrchestratorResultEvent: async (_ctx, _payload, status) => statuses.push(status),
         runOrchestration: async (_ctx, request) => {
             if (stop) { request.__atriaResolveStopRequest(); throwIfAborted(request.signal); }

@@ -30,9 +30,6 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         runtime.request = async (path, body) => {
             if (path === 'load') return f.core.load(h.handle, body.sessionId, { revisionId: body.revisionId });
             const { command, expectedRevisionId } = body;
-            if (command.type === 'fork') {
-                return f.core.forkBranch(h.handle, body.sessionId, { ...command, expectedRevisionId });
-            }
             if (command.type === 'retry') {
                 return f.core.retryReply(h.handle, body.sessionId, {
                     messageId: command.messageId,

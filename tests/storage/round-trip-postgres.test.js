@@ -10,7 +10,7 @@
 //   - Postgres → FS
 //
 // We host this in a separate file so the whole suite silently no-ops when the
-// local Postgres container is unavailable (set ATRIA_DISABLE_POSTGRES_TESTS=1).
+// local Postgres container is unavailable (set no ATRIA_TEST_POSTGRES_URL).
 // The original round-trip.test.js stays stable and engine-agnostic; future
 // engines add their own paired file rather than ballooning that one.
 //
@@ -37,7 +37,7 @@ const makeFs = makeTempFsEngineHarness;
 const makeSqlite = makeTempSqliteEngineHarness;
 const makePg = makeTempPgEngineHarness;
 
-const skipPostgres = !!process.env.ATRIA_DISABLE_POSTGRES_TESTS;
+const skipPostgres = !Boolean(process.env.ATRIA_TEST_POSTGRES_URL);
 const describePostgres = skipPostgres ? describe.skip : describe;
 
 // ---- Settings ---------------------------------------------------------------
