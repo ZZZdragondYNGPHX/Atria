@@ -1157,3 +1157,9 @@ Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 s
 源码 8d33bfb3d 修复原 Context round 向模型展示完整 Project/Skill 工具、执行却只允许 Plan pins 的不一致。原 Context 授权回调提供 exact 已复核 Project tool pins；Context 从原 ModelContext 核对同 Project/Task 的实际 descriptor/hash，目录只包含这些 pins，并将该范围加入 currentness digest。缺失/重复/外来 descriptor 拒绝。
 
 共享原 Prompt/round builder 接收显式 tools 时不再自动追加 Skill 工具，并省略不可用的具名操作指引；原始无 scope Native 服务的完整目录保持原行为。实际请求、编译 descriptor、费用 fingerprint 和消费重验使用同一目录，不给模型或 Browser 新授权。模型仍编造目录外工具时，原 GenerationService 已在响应规范化阶段拒绝，后面的原 Tool/Effect 围栏继续存在。新共享 Prompt 实现纳入 evaluator 指纹。
+
+## 17.91 显式开发探测的原 Route 输出上限
+
+源码 57accfd1b 的原 source_probe 可由 Host 内部 sourceProbeConfiguration 从原 Route/Resolver 取得明确的有界非流式输出配置；上限必须在原 Model output/context 范围内。配置不可变，身份仅在该 Evaluator 私有 WeakSet，只有固定开发 probe 的活动 job 对象可用，且只准 baseline。复制配置、外来/结束 job、candidate/judge/extraction 和非 source_probe 比较均不能取得该能力；实际 rendered cap 须与本次预留输出一致，并继续同一原 Evolution ledger/Provider/Secret 边界。
+
+正常 configuration/compare/send 的1024上限、独立资料与价格/晋升 Gate 不变；开发 report 仍非 eligibility 证据。native-live 开发脚本不再把私有明确 output cap 截到1024，实际额度仍归共享 M1 quota/lock 和原 Source/Run/Model bank。没有 Browser 配置开关或自动扩额。

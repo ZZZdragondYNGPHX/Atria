@@ -1024,3 +1024,10 @@
 - Source 0342ffd76 → 8d33bfb3d，本地提交未推送。实现接口 §17.90，修复真实 Provider 曾按完整目录调用未授权工具的问题；不放宽执行围栏，不默认授 Skill 能力。实际有零/单/多 pins 的 round 使用同一授权范围。
 - 首批原 Project Model/Context 精选 4PASS/42filterSKIP（16.147s）。Context/原 shared round/指纹三个 suites 44/44 PASS（34.451s），其中 fingerprint 25 项。新目录外工具测试首轮 4FAIL/3PASS/40filterSKIP（23.566s），预期错误码仍写旧 scope guard，实际原 GenerationService 因目录已收窄而更早 generation_response_invalid；修正后四参数项 4PASS/36filterSKIP（14.279s），真实费用20仍保留、原 Task calls 为空。原 Tool Effect全suite与实际多轮Review Root精选 42PASS/12filterSKIP（179.059s）。九文件原 ESLint/staged diff check 通过。
 - 使用同一私有第三配置与原 M1 quota/lock 跑真实 Project source_probe：6次200，24656 reported tokens，unknown=0；三个案例每条先调用获准 get_project，下一轮 finish_reason:length，无目录外调用。因测试 runner/evaluator 的1024输出cap导致未进入Review/proposal，status=invariants_failed，不能算工程通过。私有配置明确 maxOutputTokens=8192，后续只修开发探测受限配置，不解除正式比较/质量/晋升条件。此次没有独立评分或价格，私有正文/密钥未输出/提交，继续后端。
+
+## 2026-10-17 — 第八十四组：原 Route 上限下的显式开发探测
+
+- 实现接口 §17.91，Source 8d33bfb3d → 57accfd1b，本地提交未推送。只给固定 baseline source_probe 私有不可复制配置能力，活动 job/准确 rendered cap/原银行仍逐项检查。正常评测/晋升上限没有放宽。
+- 新 suite 首轮因 fixture 缺 Atria bootstrap 未加载，0 test执行；补原 browser-context 入口后 3/3 PASS（3.873s）。原 funded worker source-probe case 1PASS/28filterSKIP（3.602s）。尝试运行旧 m1-grader 时其文件也缺 bootstrap；只覆盖 CLI setup 又漏掉原 jest.setup config，未有产品发送。保留原 setup并定位其 reasoning-low case：明确 generation_capability_unknown，原 fixture 未提供路径绑定 reasoning 能力，不能把增大 output 当能力许可。补该文件原 bootstrap，并把缺证据场景改为明确零发送/零收费的负例；其它 extended grader 场景仍检查原真实 ledger。没有放宽 Resolver 或伪造 reasoning 能力。
+- 最终新配置/原 grader/evaluator 指纹三 suites 34/34 PASS（10.459s）；四文件原 ESLint、staged diff check 通过。新配置测试的 worker 使用既有合成 RP 评测 fixture，只作为配置/收费隔离证据，不冒称 V3 产品质量。
+- 真实 Native Project source_probe 用明确8192 cap复测：2次200，11313 reported tokens，unknown=0；已不截断，但模型把获准 reset_operations/set_plan 放在同一响应，被原 one-proposal-last batch guard 拒绝（native_orchestration_project_tool_batch_unavailable）。保留guard，下一步让实际 Prompt说明这个原批次合同，不用扩大权限解决。当前仍失败，非后端完成或质量通过；未推送/交前端/main。
