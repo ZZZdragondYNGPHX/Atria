@@ -9,6 +9,12 @@ export const PROJECT_PROPOSAL_TOOLS = Object.freeze(['atri_agent_set_plan', 'atr
     'atri_agent_source_write', 'atri_agent_source_move', 'atri_agent_source_delete', 'atri_agent_frontend_patch', 'atri_agent_prepare_review']);
 export const projectToolCapability = name => PROJECT_READ_TOOLS.includes(name) ? 'project.read'
     : PROJECT_PROPOSAL_TOOLS.includes(name) ? 'project.propose' : null;
+export const PROJECT_TOOL_BATCH_POLICY = Object.freeze({ maxProposalCalls: 1, proposalOrder: 'last' });
+export function projectToolBatchAllowed(calls) {
+    const proposals = calls.filter(call => projectToolCapability(call.name) === 'project.propose');
+    return proposals.length <= PROJECT_TOOL_BATCH_POLICY.maxProposalCalls
+        && (!proposals.length || PROJECT_TOOL_BATCH_POLICY.proposalOrder === 'last' && calls.at(-1) === proposals[0]);
+}
 export const projectToolAction = name => projectToolCapability(name) === 'project.read' ? 'native_project_read' : 'native_project_proposal';
 export const projectToolReason = name => projectToolCapability(name) === 'project.read' ? 'project_read_completed' : 'project_proposal_completed';
 

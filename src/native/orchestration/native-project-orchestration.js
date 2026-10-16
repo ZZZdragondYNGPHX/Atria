@@ -12,7 +12,7 @@ import { inspectNativeProjectGeneration, prepareNativeProjectTaskTool, executeNa
     finishNativeProjectGeneration, inspectNativeProjectRoundCompletion, confirmNativeProjectRoundSettlement,
     inspectNativeProjectReviewCompletion } from './native-project-generation-authority.js';
 import { ProjectReviewOutputController } from './project-review-output-controller.js';
-import { readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolReason, projectToolResultPayload } from './project-tool-contracts.js';
+import { readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolReason, projectToolResultPayload, projectToolBatchAllowed } from './project-tool-contracts.js';
 import { readProjectToolReceipt } from './project-tool-receipts.js';
 import { reconcileProjectToolEffect, verifyProjectToolReconciliation } from './project-tool-reconciliation.js';
 import { readProjectRoundReceipt, projectRoundReceiptId, projectRoundCommandId } from './project-round-contracts.js';
@@ -309,9 +309,7 @@ export class NativeProjectOrchestrationAuthority {
             if (generated.response.toolCalls?.length) {
                 if (generated.response.toolCalls.some(call => !state.selected.toolPins.some(pin => pin.resourceRef.name === call.name)))
                     fail('native_orchestration_project_tool_scope_unavailable');
-                const proposals = generated.response.toolCalls.filter(call => projectToolCapability(call.name) === 'project.propose');
-                if (proposals.length > 1 || proposals.length === 1 && generated.response.toolCalls.at(-1) !== proposals[0])
-                    fail('native_orchestration_project_tool_batch_unavailable');
+                if (!projectToolBatchAllowed(generated.response.toolCalls)) fail('native_orchestration_project_tool_batch_unavailable');
             }
             state.modelResult = result; state.modelResultHash = hash(result); state.tools = new Map();
             this.#consumers.set(roundToken, { state, identity, runId });

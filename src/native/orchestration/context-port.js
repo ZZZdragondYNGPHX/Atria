@@ -18,6 +18,7 @@ import { RpRunControl } from '../rp-run-control.js';
 import { NativeMemoryAuthority } from '../memory-authority.js';
 import { SettingsRepo } from '../../storage/repositories/settings-repo.js';
 import { inspectNativeBackgroundGeneration } from './native-background-generation.js';
+import { PROJECT_TOOL_BATCH_POLICY, projectToolCapability } from './project-tool-contracts.js';
 import { selectNativeTaskContext } from '../adapters/task-context-items.js';
 import { inspectSessionTurnOutput } from '../session-turn-output.js';
 
@@ -145,7 +146,7 @@ export class ContextPort {
             const calls = attempt.calls.filter(call => !accepted.some(receipt => hashNativeDocument(call.nativeReceipt ?? null) === hashNativeDocument(receipt)));
             const projectDigest = hashNativeDocument({ sourceFingerprint: projectRead ? projectIdentity.sourceFingerprint : task.executionFingerprint, conversation: task.conversation,
                 attempt: { attemptId: attempt.attemptId, kind: attempt.kind, status: attempt.status, requestId: attempt.requestId, calls },
-                project, registry, tools, toolPins: permission.projectToolPins, skillWorkRecords: projectIdentity.skillWorkRecords });
+                project, registry, tools, toolPins: permission.projectToolPins, toolBatchPolicy: PROJECT_TOOL_BATCH_POLICY, skillWorkRecords: projectIdentity.skillWorkRecords });
             return { modelContext, projectIdentity, authorityDigest: projectDigest, information: null };
         }
         if (binding.sourceAuthority !== 'native_session' || !this.sessionCore) fail('native_orchestration_context_domain_unavailable');
@@ -260,7 +261,9 @@ export class ContextPort {
         }
         if (projectIdentity) {
             const skillEntries = await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
-            const round = buildNativeProjectModelRound({ context: modelContext, skillEntries, tools: modelContext.tools });
+            const toolBatchPolicy = { ...PROJECT_TOOL_BATCH_POLICY,
+                proposalToolNames: modelContext.tools.map(tool => tool.function.name).filter(name => projectToolCapability(name) === 'project.propose') };
+            const round = buildNativeProjectModelRound({ context: modelContext, skillEntries, tools: modelContext.tools, toolBatchPolicy });
             const fixedRequest = immutable({ ...projectIdentity.request, tools: round.tools });
             const source = { kind: 'task', projectId: projectIdentity.projectId, taskId: projectIdentity.taskId, revision: projectIdentity.revision };
             const selected = emptyNativeContextPlan(fixedRequest, { model: { limits: { contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);

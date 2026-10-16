@@ -54,7 +54,7 @@ export function projectAgentPromptInputs(context) {
     return { task, project: context.project, registry: context.registry, tools: context.tools };
 }
 
-export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], toolNames = null) {
+export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], toolNames = null, toolBatchPolicy = null) {
     const { task, project } = projectAgentPromptInputs(context);
     const skills = summarizeProjectAgentSkills(skillEntries);
     const plugins = pluginResourceDescriptors(context);
@@ -79,6 +79,10 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], 
         'High-impact edits still stop at the same human Review gate.',
         toolNames === null ? null : 'Only these tools are authorized for this exact request: ' + JSON.stringify(toolNames)
             + '. If a required action is unavailable, report the blocker and stop. Do not invent or call unlisted tools, including Skill and plugin tools.',
+        toolBatchPolicy === null ? null : 'The per-response proposal limit is ' + toolBatchPolicy.maxProposalCalls
+            + '. Proposal tools in this request: ' + JSON.stringify(toolBatchPolicy.proposalToolNames)
+            + '. Any proposal call must be ' + toolBatchPolicy.proposalOrder
+            + ', after all reads. Wait for its tool result before proposing the next action; reset, planning and edits each require their own response.',
         '',
         'Task intent:',
         String(task.intent || ''),
@@ -111,9 +115,9 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = [], 
 
 // Original message assembly, shared by the Native runner and its admitted
 // Context compilation. This function reads no service and grants no authority.
-export function buildNativeProjectModelRound({ context, skillEntries = [], modelTranscript, previousSystem, tools: scopedTools }) {
+export function buildNativeProjectModelRound({ context, skillEntries = [], modelTranscript, previousSystem, tools: scopedTools, toolBatchPolicy = null }) {
     const tools = scopedTools === undefined ? [...(context.tools || []), ...projectAgentSkillTools()] : scopedTools;
-    const system = buildNativeProjectAgentSystemPrompt(context, skillEntries, scopedTools === undefined ? null : tools.map(tool => tool.function.name));
+    const system = buildNativeProjectAgentSystemPrompt(context, skillEntries, scopedTools === undefined ? null : tools.map(tool => tool.function.name), toolBatchPolicy);
     const initial = context.task.conversation?.length ? context.task.conversation : [{ role: 'user', content: context.task.intent }];
     const transcript = modelTranscript ?? projectAgentResumeMessages(initial);
     const systemChanged = previousSystem !== undefined && system !== previousSystem && transcript.some(message => message.providerState);
