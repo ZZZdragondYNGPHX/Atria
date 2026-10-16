@@ -55,6 +55,7 @@ export async function readProjectToolReceipt(tx, handle, root, effectId, { proje
     if (!modelFact || model.nodeAttemptId !== tool.nodeAttemptId || model.grantDigest !== tool.grantDigest
         || model.inputRef.kind !== 'native_project_intent' || model.inputRef.operationId !== receipt.operationId
         || model.inputRef.projectAttemptId !== attempt.attemptId || model.inputRef.requestId !== attempt.requestId
+        || receipt.fromFingerprint !== (model.inputRef.currentSourceFingerprint ?? model.inputRef.sourceRef.executionFingerprint)
         || !equal(model.inputRef.sourceRef, source) || !nodeAttempt.effectRefs.includes(model.effectId)
         || model.sourceBindingDigest !== receipt.sourceBindingDigest || model.epoch !== tool.epoch
         || model.hostBootId !== tool.hostBootId || model.hostGeneration !== tool.hostGeneration) invalid();

@@ -13,6 +13,8 @@ import { ModelPort } from './model-port.js';
 import { readEffect } from './effect-contracts.js';
 import { readAttempt } from './controller-common.js';
 import { projectAgentRoundConversation } from '../../../public/shared/project-agent-conversation.js';
+import { readProjectRoundReceipt } from './project-round-contracts.js';
+import { readAttemptSettlement } from './attempt-settlement.js';
 import { assertProjectToolReceipt, readProjectToolDescriptor, projectToolCapability, projectToolAction, projectToolResultPayload } from './project-tool-contracts.js';
 
 const operations = new WeakMap(), starts = new WeakMap(), generations = new WeakMap();
@@ -38,7 +40,8 @@ function assertFrame(state, expected = {}) {
         || expected.handle !== handle) fail();
     const original = NativeProjectAgentExecutor.prototype.assertOriginalPreflight.call(executor, preflight);
     NativeProjectAgentExecutor.prototype.assertOriginalOperation.call(executor, { host, handle, boundary, preflight, startInput });
-    if (!original.selection || preflight.maxModelRounds !== 1 || startInput.maxModelRounds !== 1
+    if (!original.selection || !Number.isSafeInteger(preflight.maxModelRounds) || preflight.maxModelRounds < 1 || preflight.maxModelRounds > 12
+        || startInput.maxModelRounds !== preflight.maxModelRounds
         || preflight.projectId !== state.projectId || preflight.taskId !== state.taskId
         || preflight.runtimeRouteId !== startInput.runtimeRouteId || hash(preflight) !== startInput.expectedPreflightFingerprint) fail();
     const active = NativeTaskScheduler.prototype.assertActiveBoundary.call(executor.scheduler, boundary, {
@@ -99,6 +102,7 @@ export async function beginNativeProjectGeneration(capture, { expectedSequence }
     const state = operations.get(capture); if (!state) fail();
     await currentOperation(state, { host: state.host, handle: state.handle });
     if (state.nextRound >= state.preflight.maxModelRounds) fail();
+    if (state.nextRound > 0 && !state.lastGeneration?.continueAllowed) fail('native_orchestration_project_round_not_ready');
     const started = await ProjectAgentService.prototype.beginGeneration.call(state.host.agent, state.handle, state.projectId, state.taskId, { expectedSequence });
     const attempt = started.attempts.at(-1);
     if (attempt?.kind !== 'generation' || attempt.status !== 'started' || attempt.requestId !== null) fail();
@@ -120,9 +124,10 @@ export async function captureNativeProjectGeneration(capture, { started, round }
     const requestId = 'project:' + hash({ requestId: state.startInput.requestId, round });
     await ProjectAgentService.prototype.recordGenerationRequest.call(state.host.agent, state.handle, state.projectId, state.taskId, original.attemptId, requestId);
     const projectCapture = Object.freeze({});
-    generations.set(projectCapture, { state, projectAttemptId: original.attemptId, requestId, round,
+    const generation = { state, projectAttemptId: original.attemptId, requestId, round,
         sourceFingerprint: original.sourceFingerprint, currentSourceFingerprint: original.sourceFingerprint,
-        conversationDigest: original.conversationDigest, callsDigest: original.callsDigest, toolReceipts: [], toolResults: [], finished: false });
+        conversationDigest: original.conversationDigest, callsDigest: original.callsDigest, toolReceipts: [], toolResults: [], finished: false, continueAllowed: false };
+    generations.set(projectCapture, generation); state.lastGeneration = generation;
     state.nextRound++;
     await inspectNativeProjectGeneration(projectCapture, { host: state.host, handle: state.handle });
     return projectCapture;
@@ -130,12 +135,13 @@ export async function captureNativeProjectGeneration(capture, { started, round }
 
 export function inspectNativeProjectGenerationIdentity(capture, expected) {
     const generation = generations.get(capture); if (!generation) fail();
-    const { state, toolReceipts: _reads, toolResults: _results, finished: _finished, ...metadata } = generation, active = assertFrame(state, expected);
+    const { state, toolReceipts: _reads, toolResults: _results, finished: _finished, continueAllowed: _continue, ...metadata } = generation, active = assertFrame(state, expected);
     const request = immutable({ projectId: state.projectId, taskId: state.taskId, revision: state.preflight.baseRevision,
         projectAttemptId: generation.projectAttemptId, requestId: generation.requestId, role: 'studio',
         routeRef: { scope: 'player', runtimeRouteId: state.startInput.runtimeRouteId } });
     return Object.freeze({ ...metadata, ...request, request,
-        sourceRequest: immutable({ domain: 'project', projectId: state.projectId, taskId: state.taskId, revision: state.preflight.baseRevision, executionFingerprint: generation.sourceFingerprint }),
+        sourceRequest: immutable({ domain: 'project', projectId: state.projectId, taskId: state.taskId, revision: state.preflight.baseRevision, executionFingerprint: state.initialSourceFingerprint }),
+        operationRequestId: state.startInput.requestId,
         host: state.host, projectAgent: state.host.agent, studio: state.host.studio, handle: state.handle,
         signal: active.signal, operationId: active.operationId,
         selection: NativeProjectAgentExecutor.prototype.assertOriginalPreflight.call(state.executor, state.preflight).selection });
@@ -195,7 +201,7 @@ export async function prepareNativeProjectTaskTool(capture, { port, result, mode
     const calls = result.generated.response.toolCalls ?? [], matches = calls.filter(call => (call.raw?.id || call.id) === input.callId);
     if (proof.outputType !== 'json' || proof.sourceBinding.sourceAuthority !== 'project' || input.attemptId !== identity.projectAttemptId
         || matches.length !== 1 || matches[0].name !== input.name || hash(matches[0].args) !== hash(input.args)
-        || root.sourceBinding.sourceRef.executionFingerprint !== identity.sourceFingerprint) fail();
+        || root.sourceBinding.sourceRef.executionFingerprint !== identity.sourceRequest.executionFingerprint) fail();
     const attempt = await port.runs.engine.withTransaction(state.handle, async tx => (await readAttempt(tx, state.handle, root, proof.producerAttemptId)).doc);
     const node = root.graph.nodes.find(item => item.nodeId === attempt.nodeId);
     const pins = (await state.host.turnOrchestration.plans.getRevision(state.handle, root.planRef)).dependencyPins;
@@ -352,4 +358,20 @@ export async function inspectNativeProjectRoundCompletion(completion, { host, ha
     const proof = await ModelPort.prototype.inspectResultCompletion.call(value.port, handle, { result: value.result, runId, effectId: value.descriptor.effectId });
     if (hash(proof) !== hash(value.proof)) fail('native_orchestration_project_round_completion_stale');
     return value.descriptor;
+}
+
+/** Original durable settlement plus closed original costs, never a caller's continue flag. */
+export async function confirmNativeProjectRoundSettlement(completion) {
+    const value = roundCompletions.get(completion); if (!value) fail('native_orchestration_project_round_completion_required');
+    const { generation, port, descriptor } = value, { state } = generation;
+    await currentOperation(state, { host: state.host, handle: state.handle });
+    await port.runs.engine.withTransaction(state.handle, async tx => {
+        const root = await port.runs.get(state.handle, descriptor.runId), { doc: attempt } = await readAttempt(tx, state.handle, root, descriptor.nodeAttemptId);
+        const round = await readProjectRoundReceipt(tx, state.handle, root, descriptor.nodeAttemptId, { projectAgent: state.host.agent });
+        if (!round || round.receipt.modelPayloadHash !== descriptor.modelPayloadHash || attempt.status !== 'completed') fail('native_orchestration_project_round_not_ready');
+        const settlement = await readAttemptSettlement(tx, state.handle, root, attempt);
+        const costs = await port.budgetPort.observeEffectClosure(state.handle, { authorityRef: root.budgetAuthorityRef, effectIds: attempt.effectRefs }, { tx });
+        if (settlement.reasonCode !== 'project_round_ready' || !costs.closed || root.cancelRequested || root.status !== 'running') fail('native_orchestration_project_round_not_ready');
+    });
+    generation.continueAllowed = descriptor.toolReceiptRefs.length > 0 && generation.round + 1 < state.preflight.maxModelRounds;
 }

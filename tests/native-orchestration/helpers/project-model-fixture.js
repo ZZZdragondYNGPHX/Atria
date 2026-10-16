@@ -22,7 +22,7 @@ const limits = { maxRequests: 4, maxTokens: 100000, localWork: { maxJobs: 32, ma
 
 // The actual original interactive Executor, scheduler, source, Context, bank,
 // model Port and localhost Provider are used. Only remote content/usage is synthetic.
-export async function projectModelFixture(make, { responseBody = null, responseStatus = 200, configurePlan = async () => {}, changeRoute = route => route } = {}) {
+export async function projectModelFixture(make, { responseBody = null, responseStatus = 200, configurePlan = async () => {}, changeRoute = route => route, maxModelRounds = 1 } = {}) {
     const h = await make(), requests = [], effects = [], operations = new Map();
     let afterSend = async () => {}, afterRound = async () => {}, round = null, roundArgs = null;
     const server = http.createServer(async (request, response) => {
@@ -79,7 +79,7 @@ export async function projectModelFixture(make, { responseBody = null, responseS
         authority.execution.effects.prepare = async (handle, input) => { const value = await prepareEffect(handle, input); effects.push({ runId: input.runId, effectId: input.effectId }); return value; };
         scheduler = new NativeTaskScheduler({ retries: 0 });
         let executor = new NativeProjectAgentExecutor({ host, scheduler });
-        const input = { runtimeRouteId: route.runtimeRouteId, maxModelRounds: 1 };
+        const input = { runtimeRouteId: route.runtimeRouteId, maxModelRounds };
         const preflight = () => executor.preflight(h.handle, projectId, task.taskId, input);
         const start = async (view, requestId = 'original-project-model') => {
             const operation = await executor.start(h.handle, projectId, task.taskId, { ...input, requestId, expectedPreflightFingerprint: hash(view ?? await preflight()) });

@@ -15,7 +15,7 @@ export function projectAgentAssistantToolMessage(text, calls, providerState) {
 
 export function projectAgentToolResultMessage(call, result) {
     if (result?.taskId) {
-        const { conversation: _conversation, attempts: _attempts, timeline: _timeline, ...task } = result;
+        const { conversation: _conversation, attempts: _attempts, timeline: _timeline, compute: _compute, ...task } = result;
         result = task;
     }
     return { role: 'tool', tool_call_id: call.id, name: call.name, content: JSON.stringify(result) };
