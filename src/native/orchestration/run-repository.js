@@ -356,7 +356,7 @@ export class RunRepository {
     async control(handle, commandId, body, reduce, { resourceIds = [] } = {}) {
         assertObject(body, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'operation', 'detail'], 'control');
         this.#assertGuard(body);
-        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.childBudget'].includes(body.operation)
+        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'result.publish', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.childBudget'].includes(body.operation)
             || typeof reduce !== 'function') throw new TypeError('Unsupported Host controller operation');
         const timestamp = this.now();
         return this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {

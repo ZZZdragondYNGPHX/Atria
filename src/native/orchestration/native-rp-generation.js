@@ -18,7 +18,7 @@ import { checkedRecord } from './plan-repository.js';
 import { readHandoff } from './handoff-contracts.js';
 import { BudgetPort } from './budget-port.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
-import { ModelPort } from './model-port.js';
+import { ResultController } from './result-controller.js';
 
 const captures = new WeakMap();
 const delegationCaptures = new WeakMap();
@@ -400,10 +400,9 @@ export class NativeRpOrchestrationAuthority {
                     await state.contextPort.revalidate(handle, { context: state.context, phase: 'consume' });
                 } });
             const port = this.#port(host), result = await port.generate(handle, scope, { signal: boundary.signal });
-            // Future Result publication belongs here, while this original child
-            // authority and actual Model wrapper still exist. No body is retained.
-            await ModelPort.prototype.inspectResultCompletion.call(port, handle, { result, runId: childRunId, effectId });
-            return { status: 'pending_result', parentRunId, parentAttemptId: parentState.attemptId, childRunId, effectId, receiptRef: result.receiptRef };
+            const published = await new ResultController({ host, modelPort: port }).publishModelResult(handle, { capture, result, effectId });
+            return { status: 'pending_output', parentRunId, parentAttemptId: parentState.attemptId, childRunId, effectId,
+                receiptRef: result.receiptRef, resultRef: published.resultRef, publicationReceiptRef: published.publicationReceiptRef };
         } finally { this.#runs.delete(childRunId); delegationCaptures.delete(capture); delete parentState.activeChildCapture; }
     }
 

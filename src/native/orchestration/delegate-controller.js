@@ -14,6 +14,14 @@ const terminal = new Set(['completed', 'partial', 'failed', 'cancelled', 'stale'
 const key = (handle, runId) => ({ kind: K.orchestrationRun, handle, runId });
 export const delegatedRunId = (parentRunId, parentAttemptId, delegationId) => 'orun_' + hashNativeDocument({ parentRunId, parentAttemptId, delegationId }).slice(0, 32);
 
+/** Validate the original authority decision; hashes alone never supply a grant. */
+export function assertDelegationDecision(decision, args, grantDigest) {
+    if (decision?.allowed !== true || decision.effectiveGrantDigest !== grantDigest
+        || decision.parentGrantDigest !== args.parentAttempt.effectiveGrantDigest
+        || decision.budgetCeilingDigest !== hashNativeDocument(args.budgetCeiling)
+        || decision.sourceBindingDigest !== args.parent.sourceBinding.bindingDigest) fail('native_orchestration_delegation_denied');
+}
+
 /** Durable child identity first, original bank reservation/observation afterward. */
 export class DelegateController {
     constructor({ runs, authorizeDelegation, verifyReservation }) {
@@ -23,10 +31,7 @@ export class DelegateController {
 
     async #scope(args, grantDigest) {
         const decision = await this.authorizeDelegation(args);
-        if (decision?.allowed !== true || decision.effectiveGrantDigest !== grantDigest
-            || decision.parentGrantDigest !== args.parentAttempt.effectiveGrantDigest
-            || decision.budgetCeilingDigest !== hashNativeDocument(args.budgetCeiling)
-            || decision.sourceBindingDigest !== args.parent.sourceBinding.bindingDigest) fail('native_orchestration_delegation_denied');
+        assertDelegationDecision(decision, args, grantDigest);
     }
 
     async #allowedPlan(handle, tx, parent, node, childPlanRef, parentPlan) {

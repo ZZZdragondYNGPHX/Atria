@@ -70,8 +70,10 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
                 if (error.code === 'operation_child_failed' && error.cause) throw error.cause;
                 throw error;
             });
-            expect(result).toEqual({ status: 'pending_result', parentRunId: identity.parentRunId, parentAttemptId: identity.parentAttemptId,
-                childRunId: identity.childRunId, effectId: f.effects[0].effectId, receiptRef: { runId: identity.childRunId, receiptId: expect.any(String) } });
+            expect(result).toEqual({ status: 'pending_output', parentRunId: identity.parentRunId, parentAttemptId: identity.parentAttemptId,
+                childRunId: identity.childRunId, effectId: f.effects[0].effectId, receiptRef: { runId: identity.childRunId, receiptId: expect.any(String) },
+                resultRef: { runId: identity.childRunId, resultId: expect.any(String) },
+                publicationReceiptRef: { runId: identity.childRunId, receiptId: expect.any(String) } });
             expect(JSON.stringify(result)).not.toContain(RP_MODEL_TEXT);
             expect(f.requests).toHaveLength(1);
             expect(JSON.stringify(f.requests[0])).toContain('Original RP input');
@@ -80,7 +82,7 @@ describe.each(harnesses)('$name original RP delegated Model', ({ make }) => {
             const parent = await f.authority.execution.runs.get(f.h.handle, identity.parentRunId);
             const child = await f.authority.execution.runs.get(f.h.handle, identity.childRunId);
             expect(parent.status).toBe('running'); expect(child.status).toBe('running');
-            expect(parent.resultRefs).toEqual([]); expect(child.resultRefs).toEqual([]); expect(parent.outputClaims).toEqual([]);
+            expect(parent.resultRefs).toEqual([]); expect(child.resultRefs).toEqual([result.resultRef]); expect(parent.outputClaims).toEqual([]);
             await f.h.engine.withTransaction(f.h.handle, async tx => {
                 expect((await readAttempt(tx, f.h.handle, parent, identity.parentAttemptId)).doc.status).toBe('waiting_child');
                 expect((await checkedRecord(tx, controlRecordKey(f.h.handle, child.runId, 'effect', result.effectId))).doc.status).toBe('confirmed');

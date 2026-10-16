@@ -30,6 +30,21 @@ const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_or
     'native_orchestration_background_source_stale', 'native_orchestration_background_grant_denied',
     'native_run_restore_review_required', 'native_run_terminal', 'native_run_dead', 'native_story_not_started', 'native_run_rewind_denied']);
 
+/** Original immutable Model completion facts; this historical read grants no send or consumption. */
+export async function readModelCompletionReceipt(handle, tx, root, intent) {
+    if (root.ownerRef.handle !== handle || intent.status !== 'confirmed' || intent.capability !== 'generation.send') return null;
+    const observationId = 'model.completed:' + intent.effectId;
+    const receiptId = 'oreceipt_' + hash({ effectId: intent.effectId, observationId }).slice(0, 32);
+    const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
+    if (!receipt || receipt.schemaVersion !== 1 || receipt.receiptId !== receiptId || receipt.runId !== root.runId || receipt.effectId !== intent.effectId
+        || receipt.observationId !== observationId || receipt.observedEpoch !== intent.epoch || receipt.outcome !== intent.status
+        || receipt.reasonCode !== 'generation_response_validated' || receipt.dispatchEvidence?.kind !== 'original_port_observation'
+        || receipt.dispatchEvidence.reference?.protocol !== 'generation'
+        || receipt.dispatchEvidence.reference.completionBindingDigest !== digest(intent)) return null;
+    const { schemaVersion: _schema, runId: _run, effectId: _effect, receiptId: _receipt, observedAt: _time, ...observation } = receipt;
+    return { outcome: receipt.outcome, receiptRef: { runId: root.runId, receiptId }, observation };
+}
+
 /** Original sealed model consumer; hashes are facts, never another send grant. */
 export class ModelPort {
     #active = new Map();
@@ -79,17 +94,7 @@ export class ModelPort {
     }
 
     async #saved(handle, tx, root, intent) {
-        if (root.ownerRef.handle !== handle || intent.status !== 'confirmed' || intent.capability !== 'generation.send') return null;
-        const observationId = 'model.completed:' + intent.effectId;
-        const receiptId = 'oreceipt_' + hash({ effectId: intent.effectId, observationId }).slice(0, 32);
-        const receipt = (await checkedRecord(tx, controlRecordKey(handle, root.runId, 'receipt', receiptId)))?.doc;
-        if (!receipt || receipt.schemaVersion !== 1 || receipt.runId !== root.runId || receipt.effectId !== intent.effectId
-            || receipt.observationId !== observationId || receipt.observedEpoch !== intent.epoch || receipt.outcome !== intent.status
-            || receipt.reasonCode !== 'generation_response_validated' || receipt.dispatchEvidence?.kind !== 'original_port_observation'
-            || receipt.dispatchEvidence.reference?.protocol !== 'generation'
-            || receipt.dispatchEvidence.reference.completionBindingDigest !== digest(intent)) return null;
-        const { schemaVersion: _schema, runId: _run, effectId: _effect, receiptId: _receipt, observedAt: _time, ...observation } = receipt;
-        return { outcome: receipt.outcome, receiptRef: { runId: root.runId, receiptId }, observation };
+        return readModelCompletionReceipt(handle, tx, root, intent);
     }
 
     async generate(handle, scope, { signal } = {}) {
