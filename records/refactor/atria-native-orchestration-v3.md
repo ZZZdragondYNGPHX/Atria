@@ -574,3 +574,12 @@
 
 - 用户随后明确要求在合适时机停下、另开对话。暂停在第二十八组完整提交/本地验证后：source `2cf8c97d44fbe2f98584e0981186378dbcbd679d`、docs证据`aac6e54c6`均已推送，source工作树干净，无运行中测试/server。没有启动Memory源码修改，不把只读定位当已实施。
 - 按治理§7创建唯一`docs:HANDOFF.md`，保存实际HEAD、阶段、已测范围、Linux限制与下一行动。该暂停只服务本次新对话；恢复仍按已授权全阶段任务持续推进，P3/P4–P8未完成、未合main。
+
+## 2026-10-16 — W04/P3第二十九组：原Session唯一Hybrid与Context工作
+
+- 用户要求读取HANDOFF并持续推进；真实source `2cf8c97d4`、docs `7b9918e86`均干净，从同一工作树恢复。Source `2cf8c97d4` → `0414b623e`，11个产品/测试文件，未集成main、没有新增HANDOFF或Browser API。
+- 原Memory facade只读原Session/Settings与source lifecycle，Information先限定Actor合法候选域，再唯一retrieveMemory/原compiler。真实Memory设置bytes进入原Context descriptor；实际检索和编译只计同一原context_build，无新writer/bank。临时Episode projection不持久化provenance/access；原Memory配置在compiled/send/consume复验，初始空recall也保留设置proof。原Source消费持Runtime→settings→Session→Engine，HTTP期间不持这些锁。
+- 发现实际Package validator拒原reader已支持的camel-case sourceMessageIds等字段，修为明确保留原application来源引用字段，不放宽所有camel-case字段。原全文匹配、Actor availability、Branch/Revision、atomic group仍要求原Information授权。Host第三参数使用自己的snapshot读依赖，不接受recall options中的readSnapshot作为权限，Browser默认路径不变。
+- 最终新Context **10/10 PASS，8.718s**（FS/SQLite、detectOpenHandles自然退出），覆盖真正声明/持久Lifecycle→Actor合法域、原状态零写、设置撤销/初始空recall、descriptor设置变化、异步tokenizer撤销与外部配置默认拒绝。实际原Host/合成HTTP/model bank **4/4 PASS，18.543s**；原Context13、Information纯契约55、原Memory writer14与这4同轮合 **86/86 PASS，23.090s**，自然退出，无外部API。原maintenance发出两条writer_unavailable清理warning，未伪称没有warning；无残留server/Jest。
+- 失败保留：初fixture以timeline actorField过滤，被原合同拒绝10/10（1.027s）；改用application精确source refs后揭示原Package声明拒camel字段，10/10失败（1.028s）。修validator后2FAIL/8PASS（3.022s），原fixture未把新字段加入command.assign；补真实assign后的组合仍2Context FAIL，因为summary不等于原全文，按原规则改精确原source text而未放宽guard。初model断言错误期待wire wrapper memoryId且忽略合法queued status；改为实际historical_source内容及无text chunk。detectOpenHandles组合12PASS/2FS timeout（48.226s），测试runner15s不足，进程自然退出非永久死锁；仅两个新fixture测试timeout=60s，无产品预算/timeout修改，最终4完整通过。
+- 11文件定向ESLint与diff check通过。Linux FS/SQLite与合成Provider只证工程链；SQL/真实外部费用/质量/Windows/Termux NOT_RUN。精确embedding/rerank路线当前明确memory_retrieval_scope_unavailable，不调用Browser transport或静默fallback；RP原ChatRepo Memory、后台scope、Delegate/Handoff和P4–P8仍待接，P3 IN_PROGRESS / Gate NOT_READY。下一组继续RP原状态/合法source读取，不把本组当完整后端交付。
