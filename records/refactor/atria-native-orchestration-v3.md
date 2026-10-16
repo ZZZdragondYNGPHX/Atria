@@ -623,3 +623,13 @@
 
 - 用户在本组工作中明确要求“完成本阶段后及时停下，我要换设备继续任务了”。按本组实现与最小本地验证完成处暂停，不启动下一组Delegate/Handoff或P4。source `c7dce9660`已推送、工作树干净；docs随后独立提交并推送本Record、相关合同与唯一HANDOFF。新设备以实际Git/同一Record优先，不恢复更早第二十八组快照。
 - HANDOFF保存源码完整HEAD、本组分次验证、有限profile限制、Linux当前环境/依赖与下一队列。恢复后仍沿同一任务分支推进已授权剩余阶段，不重新申请开工、不把暂停或设备缺证当完整任务完成；没有向前端并行任务发送最终后端交付通知。
+
+## 2026-10-16 — W03/P2–P3第三十四组：耐久Handoff起始与原单槽调度组合
+
+- 按当前指令先核Git/fetch/fast-forward、读取docs/HANDOFF/治理/Plan/合同与Record，source从6865d0a08更新至c7dce9660，docs从f505243c5至e95f34420，不重复第二十七至三十三组。保留无关CLAUDE.md删除及其它任务产物。本组源码c7dce9660→6bbc4c01f已提交推送，5文件，无UI/API或main集成。
+- 原delegate保留父运行，maxConcurrency=1拒子准入；原Scheduler可让物理资源并不证明Run已让逻辑槽。新增同Controller.handoff，同CAS写稳定child/收据/父waiting_child，累计原handoffs/delegates/steps。精确HandoffReceipt冻结父子身份、Host/epoch/source、Plan、输入/grants/预算/返回合同/entry与父return node；child逐级复验。原预算仍事务外reserve、confirm只读，无第二银行或调度器。首版父Effect/Result refs必须为空，防旧Effect观察重置等待态。Scheduler返回不解除耐久waiting_child，不冒称正式Result/return或领域授权。
+- 新handoff定向FS/SQLite 34/34 PASS（18.073s、53filterSKIP）；整理祖先live遍历后同文件完整87/87 PASS（47.068s、0skip），含既有delegate/原银行/树界限及新单并发、嵌套累计、八类收据缺失/错绑、ACK未知、取消、竞争CAS/重放、原Scheduler global/resource=1实际组合。调度测试返回明示controlledSchedulingObservation，parent.run/child各一次且父仍waiting_child，不是Model/Result/业务完成证据。
+- 原scheduler-handoff与run-repository两suite31PASS/4SKIP（4.201s）；同次误列不存在attempt-controller.test.js导致该suite ENOENT，定位命令路径问题、不计PASS。正确原attempt-reservation与graph-controller两suite33PASS/1SKIP（9.870s）。skip/filter不计通过，没有全仓重跑或宣称旧task-runtime四失败已修。
+- 新测试首32为2PASS/30FAIL（16.840s），test helper持最初admitted Root、无attemptRefs，误触membership；改为同tx读当前Root。child取消后原epoch递增使旧budget receipt首先失效，按实际child_budget_unconfirmed拒码修expect；未改产品绕guard。随后34及87真正通过。
+- 四个关键语义mutants独占Killed、finally逐字/SHA恢复：跳过waiting_child匹配收据16FAIL/71filterSKIP（8.793s）；取消父Effect/Result空集守卫4FAIL/83SKIP（2.427s）；不持久waiting_child2FAIL/85SKIP（2.046s）；容量不扣让出父槽2FAIL/85SKIP（2.088s）。恢复后最小正向2PASS/85SKIP（2.259s）。RunRepository恢复SHA b61b8ad3072c155cbaf156a800288652a421bfca01ba21751c944e4db5a8f409，DelegateController恢复SHA 948dbe48d2861ad46a8edf6f6e4b1e5e256f21b3e9011f53d211c6872c33dfd2。最终5文件targeted ESLint用本工作树原插件0error，staged diff check通过。
+- 当前Windows Node v24.18.0、原依赖Junction可用；docker ps实际报dockerDesktopLinuxEngine管道不存在，本组SQL NOT_RUN/服务前提BLOCKED，不搬用之前Linux/四Engine证据。无外部Provider调用/费用、开放文本质量或设备全流程。接口§17.44/index/验收/整合入口同步；P3 IN_PROGRESS / NOT_READY。继续有限agent.delegate发布校验和真实producer，再接child Result/Audience/return；未刷新历史HANDOFF或发送最终后端交付。

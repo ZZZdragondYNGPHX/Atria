@@ -88,3 +88,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第三十二组`cde07ac66`修复Memory新增consumer在最终bank await同事务合法撤销被回滚的问题，见接口§17.42；原Settings/sidecar事实提交后拒正文，真实费用保留。当前最新实现/验证归同一Record，继续后台scope/原bank producer、Delegate正式授权与P4–P8；P3 IN_PROGRESS / Gate NOT_READY未变。
 
 第三十三组接入原pending outbox有限后台Model/Task Context/原bank与窗口、周期额度，见[接口§17.43](interface-contracts.md#1743-原pending-outbox后台model-producer与窗口周期额度)。原产物adoption与费用保留，不开放通用Graph/Run API或P4 OutputClaim/Result。用户要求本组完成后暂停换设备；最新已测/已推HEAD和下一工作以同一Record及HANDOFF为准，P3 Gate仍NOT_READY，未集成main。
+
+2026-10-16已按当前指令fetch/fast-forward源码与docs并读HANDOFF恢复；历史暂停不再限制执行。第三十四组6bbc4c01f补原DelegateController耐久Handoff起始、单并发父逻辑槽让出和精确祖先收据验证，见[接口§17.44](interface-contracts.md#1744-耐久handoff起始与父逻辑槽让出)。继续有限Plan发布校验、真实领域producer与child Result/Audience/return闭包；没有将调度回调当正式完成。P3 IN_PROGRESS / Gate NOT_READY，未集成main。
