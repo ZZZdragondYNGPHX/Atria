@@ -1018,3 +1018,9 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 原领域完成后，私有真实返回/原reader结果证明交叉核原Task已完成attempt/对话/Source和原Model完成事实，再经原Run CAS保存project_round receipt及精确command payload/outcome integrity，计入原steps。历史reader核原Task generation/append-only conversation prefix、Model payload/snapshot/原费用、全部Tool receipts及同原Host command，返回事实不授下一轮；当前仍明确round=0。
 
 原Task完成ACK或Host CAS ACK未知均只观察；缺精确收据不重复writer/Model，原runner的failed收尾亦不能第二次改写同已消费原finish。原Task可已completed而Host receipt缺失，仍无V3 Root claim。没有同Root多轮或正式Project提交宣称；Graph循环与各出口继续实现。
+
+## 17.72 原Project同Root有界Graph轮次
+
+第六十二组支持显式agent→output及至多一条agent self-loop，原Plan maxVisits/maxLoopIterations与实际preflight maxModelRounds共同约束1–12轮。原Scheduler operation及外层requestId只创建一个Root；每轮消费原Task/Model/tool/project_round事实、原Attempt settlement与同Task银行closed后，才通过原TransitionController、EdgeAdmission和计数准入下一轮。初始Source/budget ref冻结，下一轮逻辑input显式绑定当时自己的Source指纹；previousSystem只能取同操作实际上轮值。
+
+私有继续许可由真实上轮工具数、实际耐久settlement和原费用闭合产生，序列化收据不授执行。历史reader逐轮核原Graph traversal/edge/command及前轮receipt，独立编辑/Binding改变/取消/改system拒下轮且保留费用。未知费用保留原Task已完成但producer未settled，不发下一次Model。共享tool transcript只省略Task形返回中既有conversation/attempts/timeline及compute，实际费用仍完整绑定原receipt/ledger。Root最终出口尚待实现。

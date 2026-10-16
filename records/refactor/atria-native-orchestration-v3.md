@@ -866,3 +866,9 @@
 - 原Task ACK saved/missing与Host receipt ACK saved/missing只观察，无第二次writer/HTTP；failed收尾不能覆盖同已消费finish，缺Host事实时Task可completed而Run未完成。raw JSON、复制/过期scope、改transcript和重新hash相关metadata/Task/费用/Model记录拒绝。scope清理后可重建原服务读取事实，未称进程/Engine冷开。当前仍限round=0，未做Graph循环或Root终结。
 - 最初原阳性精选6FAIL（18.871s），原Host controller尚未登记新project.round.finish操作；明确登记后同六项6PASS/46filterSKIP（19.927s）。新receipt阳性六项6PASS/10filterSKIP（17.481s）。完整新suite首跑16PASS/2FAIL（45.519s），两失败只是测试误以为初始Task对话为空，原createTask实际已有user intent；改断言保留f.task.conversation后，仅该两项与原浏览器工具loop/continuation精选合并4PASS/24filterSKIP（6.438s）。最终18个不同case均有通过证据，未声称完整18重跑；十文件定向原插件ESLint最终0输出，先前一处indent已修，diff通过。
 - 无全仓/远端/独立审查、SQL/真实外部费用质量/三端新证据。继续同Root有界Graph循环及其它提案/Review/消费者和P5–P8，不停在本提交、不创建HANDOFF、不合main。
+
+## 2026-10-16 — W07/P4第六十二组：原Project同Root有界Graph循环
+
+- Source 84bcdc1d7→248b75ad5。实际原Scheduler operation只建一个Root，1–12轮按发布self-loop与原steps/attempts/edge/loop上限经真实Transition/EdgeAdmission/settlement；Source和bank初始引用不变。私有继续许可要求原轮次receipt、工具事实及原费用closed。原Task编辑/Binding/取消/previousSystem篡改拒下轮，未知费用保留Task完成但不准下一轮。
+- 首次两轮阳性2FAIL（12.167s）：原fixture 16k模型容量不足，实际context预算正确拒绝；改测试使用原持久ModelProfile 65536容量，并让共享Task工具transcript省略compute噪声，未放宽预算。两轮2PASS（15.4s）。新suite其余精选10PASS/12filterSKIP（60.65s），再补12PASS/10filterSKIP（47.516s），最终22个不同case均通过，非完整22一轮复跑。原plain轮次2PASS；组合回归时误写不存在的native/studio-agent.test.js导致该suite ENOENT，改正确atria-shell/studio-agent-a8.test.js后原tool loop/authoritative continuation两项2PASS（0.643s）。七文件定向原ESLint与diff通过。
+- 用户更新停止边界：完成后端开发后停止、推送并提供交Claude Code的前端提示词；此后不实施P5前端。当前仍需Project提案/Review/最终输出、后端API及其它原消费者闭包，不把本提交当后端完成，不提前写HANDOFF。全产品/外部收费质量/三端/本轮SQL尚未验证，未合main。
