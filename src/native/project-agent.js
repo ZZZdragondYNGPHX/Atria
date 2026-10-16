@@ -565,11 +565,9 @@ export class ProjectAgentService {
     }
 
     executeTool(handle, projectId, id, input = {}) {
-        return this._operate(handle, projectId, id, async task => {
+        const operate = nativeReceipt => this._operate(handle, projectId, id, async task => {
             fields(input, ['name', 'args', 'attemptId', 'callId', 'expectedSequence', 'effectPolicy', 'nativeEffectPermit'], 'Project Agent tool request');
-            const originalInput = Object.fromEntries(['name', 'args', 'attemptId', 'callId'].map(field => [field, input[field]]));
-            const nativeReceipt = input.nativeEffectPermit === undefined ? null : await consumeNativeProjectToolPermit(input.nativeEffectPermit,
-                { agent: this, handle, projectId, taskId: id, task: this._snapshot(task), input: originalInput });
+            if (nativeReceipt && this._snapshot(task).executionFingerprint !== nativeReceipt.fromFingerprint) throw new ConflictError('native_orchestration_source_stale');
             let attempt;
             if (input.attemptId !== undefined || input.callId !== undefined) {
                 attempt = task.attempts.find(item => item.attemptId === input.attemptId && item.kind === 'generation' && item.status === 'started');
@@ -587,6 +585,17 @@ export class ProjectAgentService {
             if (nativeReceipt) completeNativeProjectToolPermit(input.nativeEffectPermit, { result, receipt: attempt.calls.at(-1).nativeReceipt });
             return result;
         }, { expectedSequence: input.expectedSequence, effectPolicy: input.effectPolicy });
+        if (input.nativeEffectPermit === undefined) return operate(null);
+        // Validate before loading the mutable writer object. A legitimate
+        // nested revocation may replace the original cached Task during an
+        // await; the rejected operation must never persist its older copy.
+        return this.withTaskLock(handle, projectId, id, async () => {
+            const { task } = await ProjectAgentService.prototype.observeComputeSource.call(this, handle, projectId, id);
+            const originalInput = Object.fromEntries(['name', 'args', 'attemptId', 'callId'].map(field => [field, input[field]]));
+            const receipt = await consumeNativeProjectToolPermit(input.nativeEffectPermit,
+                { agent: this, handle, projectId, taskId: id, task, input: originalInput });
+            return operate(receipt);
+        });
     }
 
     resumeTask(handle, projectId, id, options = {}) {

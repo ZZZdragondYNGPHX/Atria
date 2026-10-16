@@ -214,12 +214,13 @@ export async function consumeNativeProjectToolPermit(permit, { agent, handle, pr
     if (!value || value.used || state.host.agent !== agent || state.handle !== handle || state.projectId !== projectId || state.taskId !== taskId
         || hash(value.input) !== hash(input) || hash(value.result) !== value.resultHash) fail();
     await inspectNativeProjectGeneration(value.capture, { host: state.host, handle });
-    await value.port.runs.engine.withTransaction(handle, async tx => {
-        const root = await value.port.runs.get(handle, value.root.runId);
-        const fence = await value.port.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
-        const intent = (await readEffect(tx, handle, root, value.toolEffectId)).doc;
-        const model = (await readEffect(tx, handle, root, value.modelEffectId)).doc;
-        if (root.cancelRequested || root.status !== 'running' || root.epoch !== value.root.epoch || root.hostBootId !== fence.hostBootId
+    const rejected = await value.port.runs.engine.withTransaction(handle, async tx => {
+        try {
+            const root = await value.port.runs.get(handle, value.root.runId);
+            const fence = await value.port.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+            const intent = (await readEffect(tx, handle, root, value.toolEffectId)).doc;
+            const model = (await readEffect(tx, handle, root, value.modelEffectId)).doc;
+            if (root.cancelRequested || root.status !== 'running' || root.epoch !== value.root.epoch || root.hostBootId !== fence.hostBootId
             || root.hostGeneration !== fence.generation || intent.status !== 'dispatching' || !intent.dispatchToken || intent.nodeAttemptId !== value.nodeAttemptId
             || intent.actionRef.kind !== projectToolAction(input.name) || intent.capability !== projectToolCapability(input.name)
             || intent.inputRef.kind !== projectToolAction(input.name) || model.status !== 'confirmed' || model.capability !== 'generation.send'
@@ -230,10 +231,21 @@ export async function consumeNativeProjectToolPermit(permit, { agent, handle, pr
             || intent.sourceBindingDigest !== root.sourceBinding.bindingDigest
             || hash(intent.budgetAttemptRef?.authorityRef) !== hash(root.budgetAuthorityRef)
             || root.sourceBinding.bindingDigest !== value.root.sourceBinding.bindingDigest) fail();
-        await value.port.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
-        await inspectNativeProjectGeneration(value.capture, { host: state.host, handle });
-        if (hash(value.result) !== value.resultHash) fail();
+            await value.port.budgetPort.verifyBudgetAttempt({ handle, tx, root, intent, budgetAttemptRef: intent.budgetAttemptRef });
+            await inspectNativeProjectGeneration(value.capture, { host: state.host, handle });
+            if (hash(value.result) !== value.resultHash) fail();
+            const currentFence = await value.port.runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
+            const current = await value.port.runs.get(handle, root.runId);
+            if (current.cancelRequested || current.status !== 'running' || hash(current) !== hash(root)
+            || currentFence.hostBootId !== fence.hostBootId || currentFence.generation !== fence.generation)
+                fail('native_orchestration_project_tool_denied');
+            return null;
+        } catch (error) {
+            if (!['native_orchestration_source_stale', 'native_orchestration_project_tool_denied', 'native_orchestration_project_producer_denied'].includes(error.code)) throw error;
+            return error;
+        }
     });
+    if (rejected) throw rejected;
     value.used = true;
     return immutable({ schemaVersion: 1, runId: value.root.runId, effectId: value.toolEffectId, nodeAttemptId: value.nodeAttemptId,
         sourceBindingDigest: value.root.sourceBinding.bindingDigest, operationId: value.operationId,

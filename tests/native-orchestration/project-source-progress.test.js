@@ -3,7 +3,7 @@ import { projectReadFixture, projectReadResponse, configureProjectToolPlan } fro
 import { createNativeId } from '../../src/native/identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
 import { hashNativeDocument as hash } from '../../src/native/repositories/common.js';
-import { controlRecordKey } from '../../src/native/orchestration/controller-common.js';
+import { controlRecordKey, runGuard } from '../../src/native/orchestration/controller-common.js';
 import { readProjectOwnedSource } from '../../src/native/orchestration/project-tool-receipts.js';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
@@ -74,6 +74,29 @@ describe.each(harnesses)('$name Root-owned Project Source facts', ({ make }) => 
                 }
                 expect(await readProjectOwnedSource(tx, f.h.handle, root, { projectAgent: f.agent })).toEqual(fact);
             });
+        } finally { await f.cleanup(); }
+    });
+
+    test.each(['task-edit', 'cancel'])('a same-transaction %s at the final writer permit await persists and refuses the new tool writer', async change => {
+        const f = await fixture(make), service = f.authority.execution, verify = service.budgetPort.verifyBudgetAttempt.bind(service.budgetPort);
+        let changed = false;
+        service.budgetPort.verifyBudgetAttempt = async args => {
+            const value = await verify(args);
+            if (!changed && args.intent.status === 'dispatching' && args.intent.actionRef.kind === 'native_project_proposal') {
+                changed = true;
+                if (change === 'task-edit') await f.agent.setPlan(f.h.handle, f.projectId, f.task.taskId, { ...plan, summary: 'Independent edit during permit validation' });
+                else await service.runs.cancel(f.h.handle, createNativeId('orchestrationCommand'), {
+                    ...runGuard(await service.runs.get(f.h.handle, args.root.runId)), reasonCode: 'cancel_at_project_tool_permit' });
+            }
+            return value;
+        };
+        try {
+            await expect(f.run()).rejects.toThrow(); expect(changed).toBe(true);
+            const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId), root = await service.runs.get(f.h.handle, f.effects[0].runId);
+            expect(task.plan?.summary ?? null).toBe(change === 'task-edit' ? 'Independent edit during permit validation' : null);
+            expect(task.attempts[0].calls).toEqual([]); expect(root.cancelRequested).toBe(change === 'cancel');
+            expect(task.compute.localWork.find(row => row.kind === 'project_tool')).toMatchObject({ status: 'settled', usage: { outcome: 'failed' } });
+            expect(task.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } }); expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }
     });
 });
