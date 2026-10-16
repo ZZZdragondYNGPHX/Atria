@@ -1,6 +1,6 @@
 ---
 name: atria-frontend
-description: 为 Atria 主程序、宿主 Plugin、Package 游戏界面及普通组件任务确定归属，编排设计 Skills、浏览器验证和文档查询。用户或正式 Plan 明确要求本 Skill 时使用；不用于纯后端工作或无关项目。
+description: 为 Atria 主程序、宿主 Plugin、Package 游戏界面及普通组件任务确定归属，编排设计 Skills和文档查询。用户或正式 Plan 明确要求本 Skill 时使用；不用于纯后端工作或无关项目。
 metadata:
   author: Atria
   version: "1.0.0"
@@ -58,17 +58,7 @@ metadata:
 工具缺失时说明局限并使用现有替代能力，不自动安装新生态 Skills / Plugin / MCP。
 浏览器使用隔离测试数据；文档查询不携带存档、凭据或隐藏游戏数据。
 
-## 4. 执行与验证
-
-- 分析任务输出方案；实现任务只改已定位的呈现层及必要契约，不顺带改 gameplay 或建立平行 Runtime authority。
-- 产品 / Plugin 从实际构建和测试入口选择相关检查，不预设 npm script。
-- Package 从目标 README 选择内容、frontend model 或 Native frontend 检查，确认独立 Core checkout 与版本匹配。
-- 浏览器覆盖变更相关的导航、focus、窄屏、状态反馈和错误恢复；涉及操作语义时检查草稿、确认和提交边界。
-- Package 验收经过安装 / Ready / renderer 链路；HTML mock、DOM 快照和截图不能证明 Native authority、幂等性或 Save/Restore。
-- 小型 UI 改动不默认运行长周期 soak；无法访问真实实例时记录未验证项。
-- 关闭本次浏览器 session，保护无关工作树改动；只报告实际执行的检查、环境和证据。
-
 ## 交付
 
-说明任务归属、采用的 Skills / 工具、改动或方案、验证结果和未验证项。
+说明任务归属、采用的 Skills / 工具、改动或方案。
 审查遵守所用 Skill 的输出格式；Git 与发布动作遵循当前授权和项目治理。
