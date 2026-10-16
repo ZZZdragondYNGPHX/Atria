@@ -1,0 +1,22 @@
+{
+  "baseline_head": "695acf3bcad1d42e331459189532a76056278bec",
+  "files": 1616,
+  "test_tree_files": 1552,
+  "test_tree_lines": 277859,
+  "actions": {
+    "保留": 1306,
+    "删除": 289,
+    "重写": 17,
+    "合并": 4
+  },
+  "lines": {
+    "保留": 222704,
+    "删除": 51148,
+    "重写": 9711,
+    "合并": 1518
+  },
+  "repeated_distinct_8_line_blocks": 3354,
+  "files_with_repeated_blocks": 456,
+  "mock_module_calls": 439,
+  "workflow_files": []
+}
