@@ -29,4 +29,3 @@ main:default/skills/** 是 Atria Runtime 产品资产，不迁入 repository-age
 - 全局通用设计能力、atria-frontend 路由和目标游戏 DESIGN 叠加使用，不维护互相覆盖的同名规则。
 - Codex 不自动加载另一个工作树的 AGENTS.md；解析目标工作树后读取其规则。
 - 根目录启动不会向下发现所有游戏级 Skills；需要时在对应目录启动或明确读取已获准的目标 Skill。
-- 需要版本锁定时记录所用 Skill / Core / Package 版本，不把历史验收当成本次测试。
