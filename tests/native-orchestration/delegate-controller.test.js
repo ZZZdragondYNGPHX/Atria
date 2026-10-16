@@ -6,7 +6,8 @@ import { GraphController, graphPatchHash } from '../../src/native/orchestration/
 import { admitGraphEdges } from '../../src/native/orchestration/graph-costs.js';
 import { BudgetPort } from '../../src/native/orchestration/budget-port.js';
 import { SourcePort } from '../../src/native/orchestration/source-port.js';
-import { runGuard } from '../../src/native/orchestration/controller-common.js';
+import { runGuard, controlRecordKey, readAttempt, holdsConcurrencySlot } from '../../src/native/orchestration/controller-common.js';
+import { handoffReceiptId } from '../../src/native/orchestration/handoff-contracts.js';
 import { readRunControl } from '../../src/native/run-control.js';
 import { createNativeId } from '../../src/native/identity.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../src/native/contracts.js';
@@ -15,6 +16,7 @@ import { attachNativeHostLifecycle } from '../../src/storage/native-host-lifecyc
 import { installFixture } from '../native/helpers/session-fixture.js';
 import { planFixture, prepareControllerOwnerRoot } from './fixtures.js';
 import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
+import { NativeTaskScheduler } from '../../src/native/task-scheduler.js';
 
 const command = () => createNativeId('orchestrationCommand'), grant = 'a'.repeat(64);
 const limits = { maxRequests: 8, maxTokens: 8000, localWork: { maxJobs: 8, maxItems: 8, maxInputBytes: 8000 } };
@@ -106,6 +108,167 @@ describe.each(harnesses)('$name guarded child Run and original bank', ({ make })
         return { runId: childId, attemptId };
     }
     const activate = async ref => attempts.activate(h.handle, { ...runGuard(await runs.get(h.handle, ref.runId)), attemptId: ref.attemptId });
+
+    const parentAttempt = () => h.engine.withTransaction(h.handle, async tx => (await readAttempt(tx, h.handle, await current(), parentAttemptId)).doc);
+
+    // Core persistence and original-bank tests only. The allowing fixture
+    // callback is not a production Plan/Actor grant or a Result-return proof.
+    test('handoff yields a durable parent slot and funds the exact child at concurrency one while delegate still refuses', async () => {
+        await setup({ maxConcurrency: 1 });
+        await expect(delegates.delegate(h.handle, await body())).rejects.toMatchObject({ code: 'native_orchestration_delegation_limit_exhausted' });
+        const before = await current(), input = await body(), result = await delegates.handoff(h.handle, input), childId = result.outcome.childRunId;
+        const parent = await current(), suspended = await parentAttempt(), child = await runs.get(h.handle, childId);
+        expect(parent.status).toBe('running'); expect(suspended.status).toBe('waiting_child'); expect(holdsConcurrencySlot(parent, suspended)).toBe(false);
+        expect(parent.progress.handoffs).toBe(before.progress.handoffs + 1);
+        expect(parent.progress.steps).toBe(before.progress.steps + 1);
+        expect(parent.progress.delegates).toBe(before.progress.delegates + 1);
+        expect(child.budgetAuthorityRef).toEqual(parent.budgetAuthorityRef); expect(child.rootRunId).toBe(parent.runId);
+        expect(result.outcome.handoffReceipt).toMatchObject({ receiptId: handoffReceiptId(childId), receiptKind: 'handoff',
+            runId: parent.runId, parentAttemptId, childRunId: childId, parentEpoch: parent.epoch, returnNodeId: suspended.nodeId,
+            inputDigest: child.parentRef.inputDigest, sourceBindingDigest: parent.sourceBinding.bindingDigest });
+        expect((await delegates.handoff(h.handle, input)).replayed).toBe(true);
+        expect(await current()).toEqual(parent);
+        await expect(begin(child, child.graph.entryNodeIds[0])).rejects.toMatchObject({ code: 'native_orchestration_child_budget_unconfirmed' });
+        await fund(childId);
+        const childRef = await pending(childId); await activate(childRef);
+        expect((await parentAttempt()).status).toBe('waiting_child');
+        expect((await runs.get(h.handle, childId)).status).toBe('running');
+    });
+
+    test('handoff observes an unknown original reservation ACK without another allocation or permission', async () => {
+        await setup({ maxConcurrency: 1 });
+        const { outcome } = await delegates.handoff(h.handle, await body()), childId = outcome.childRunId;
+        await expect((async () => {
+            await budget.reserveChild(h.handle, { authorityRef: root.budgetAuthorityRef, parentReservationId: null, childRunId: childId, ceiling: childCeiling, limits });
+            throw Object.assign(new Error('lost handoff bank ACK'), { code: 'storage_commit_unknown' });
+        })()).rejects.toMatchObject({ code: 'storage_commit_unknown' });
+        await expect(pending(childId)).rejects.toMatchObject({ code: 'native_orchestration_child_budget_unconfirmed' });
+        const confirmed = await delegates.confirmBudget(h.handle, runGuard(await runs.get(h.handle, childId)));
+        expect(confirmed.outcome.budgetReceipt.reservationId).toBe(childId);
+        expect((await delegates.confirmBudget(h.handle, runGuard(await runs.get(h.handle, childId)))).replayed).toBe(true);
+        const control = await h.engine.withTransaction(h.handle, tx => readRunControl(tx, h.handle, base.session.sessionId));
+        expect(control.operations[root.budgetAuthorityRef.operationId].compute.reservations).toHaveLength(1);
+        const childRef = await pending(childId); await activate(childRef);
+        expect((await parentAttempt()).status).toBe('waiting_child');
+    });
+
+    test('handoff composes the original one-slot Scheduler without replaying the parent or implicitly returning durable control', async () => {
+        await setup({ maxConcurrency: 1 });
+        const scheduler = new NativeTaskScheduler({ concurrency: 1, perResource: 1, timeoutMs: 5000 });
+        const expected = { owner: h.handle, anchor: { sessionId: base.session.sessionId, revisionId: base.revision.revisionId },
+            kind: 'model_task', executionClass: 'interactive', resources: ['session:' + base.session.sessionId],
+            key: 'controlled-parent:' + root.runId, fingerprint: hashNativeDocument(root.sourceBinding) };
+        let parentRuns = 0, childRuns = 0;
+        const scheduled = scheduler.submit({ ...expected, retry: false, fresh: async () => { await source.revalidate(h.handle, root.sourceBinding); return true; },
+            run: async boundary => {
+                parentRuns++;
+                const { outcome } = await delegates.handoff(h.handle, await body()); await fund(outcome.childRunId);
+                const observed = await scheduler.withResourceHandoff(boundary, expected, { kind: 'model_task', executionClass: expected.executionClass,
+                    resources: expected.resources, key: 'controlled-child:' + outcome.childRunId, fingerprint: hashNativeDocument(outcome.handoffReceipt),
+                    fresh: async () => { await source.revalidate(h.handle, root.sourceBinding); return true; },
+                    run: async () => {
+                        childRuns++;
+                        const childRef = await pending(outcome.childRunId); await activate(childRef);
+                        expect(scheduler.running.size).toBe(1); expect(scheduler.suspended.size).toBe(1);
+                        expect((await parentAttempt()).status).toBe('waiting_child');
+                        // Metadata from a controlled test callback, explicitly
+                        // not a ResultEnvelope, domain grant or return receipt.
+                        return { controlledSchedulingObservation: outcome.childRunId };
+                    }, finalize: async observation => observation });
+                scheduler.assertActiveBoundary(boundary, expected);
+                return observed;
+            }, finalize: async observation => observation });
+        await expect(scheduled.result).resolves.toEqual({ controlledSchedulingObservation: expect.stringMatching(/^orun_/) });
+        expect(parentRuns).toBe(1); expect(childRuns).toBe(1);
+        expect(scheduler.running.size).toBe(0); expect(scheduler.suspended.size).toBe(0);
+        expect((await parentAttempt()).status).toBe('waiting_child');
+        expect((await current()).progress.handoffs).toBe(1);
+    });
+
+    test.each(['missing', 'forged-kind', 'sibling', 'grant', 'input', 'source', 'plan', 'control-token'])('handoff child refuses a %s durable receipt', async mutation => {
+        await setup({ maxConcurrency: 1 });
+        const { outcome } = await delegates.handoff(h.handle, await body()); await fund(outcome.childRunId);
+        // Explicit corruption/fault injection into a real stored Native row;
+        // this is not an authorized receipt-writing or model consumer API.
+        await h.engine.withTransaction(h.handle, async tx => {
+            const key = controlRecordKey(h.handle, root.runId, 'receipt', handoffReceiptId(outcome.childRunId)), row = await tx.getResource(key);
+            if (mutation === 'missing') { await tx.deleteResource(key); return; }
+            const doc = structuredClone(row.doc);
+            if (mutation === 'forged-kind') doc.receiptKind = 'delegation';
+            if (mutation === 'sibling') doc.childRunId = createNativeId('orchestrationRun');
+            if (mutation === 'grant') doc.childGrantDigest = '0'.repeat(64);
+            if (mutation === 'input') doc.inputDigest = '0'.repeat(64);
+            if (mutation === 'source') doc.sourceBindingDigest = '0'.repeat(64);
+            if (mutation === 'plan') doc.childPlanRef = { ...doc.childPlanRef, planRevisionId: createNativeId('orchestrationRevision') };
+            if (mutation === 'control-token') doc.controlToken = '0'.repeat(64);
+            await putMutable(tx, key, doc, { expectedIntegrity: row.integrity });
+        });
+        const childBefore = await runs.get(h.handle, outcome.childRunId);
+        await expect(pending(outcome.childRunId)).rejects.toMatchObject({ code: 'native_orchestration_handoff_unconfirmed' });
+        expect(await runs.get(h.handle, outcome.childRunId)).toEqual(childBefore);
+        expect((await parentAttempt()).status).toBe('waiting_child');
+    });
+
+    test.each(['parent', 'child'])('handoff %s cancellation preserves the bank and refuses child activation', async target => {
+        await setup({ maxConcurrency: 1 });
+        const { outcome } = await delegates.handoff(h.handle, await body()); await fund(outcome.childRunId);
+        const childRef = await pending(outcome.childRunId), before = await h.engine.withTransaction(h.handle, tx => readRunControl(tx, h.handle, base.session.sessionId));
+        const selected = target === 'parent' ? await current() : await runs.get(h.handle, outcome.childRunId);
+        await runs.cancel(h.handle, command(), { ...runGuard(selected), reasonCode: 'stop_handoff' });
+        await expect(activate(childRef)).rejects.toMatchObject({ code: target === 'parent' ? 'native_orchestration_parent_stale' : 'native_orchestration_child_budget_unconfirmed' });
+        expect(await h.engine.withTransaction(h.handle, tx => readRunControl(tx, h.handle, base.session.sessionId))).toEqual(before);
+        expect((await parentAttempt()).status).toBe('waiting_child');
+    });
+
+    test('handoff same identity replays once while a competing child loses the parent CAS', async () => {
+        await setup({ maxConcurrency: 1 });
+        const input = await body(), results = await Promise.all([delegates.handoff(h.handle, input), delegates.handoff(h.handle, input)]);
+        expect(results.filter(result => result.replayed)).toHaveLength(1);
+        expect(results[0].outcome.childRunId).toBe(results[1].outcome.childRunId);
+        const stable = await current(); expect(stable.progress.handoffs).toBe(1);
+        await expect(delegates.handoff(h.handle, { ...input, inputRefs: ['changed'], inputDigest: hashNativeDocument(['changed']) }))
+            .rejects.toMatchObject({ code: 'native_orchestration_command_conflict' });
+        await setup({ maxConcurrency: 1 });
+        const first = await body(), second = { ...first, delegationId: 'competing-handoff' };
+        const settled = await Promise.allSettled([delegates.handoff(h.handle, first), delegates.handoff(h.handle, second)]);
+        expect(settled.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+        expect(settled.filter(result => result.status === 'rejected').map(result => result.reason.code)).toEqual(['native_orchestration_run_conflict']);
+        expect((await current()).progress.handoffs).toBe(1);
+        const winner = settled.find(result => result.status === 'fulfilled').value.outcome.childRunId;
+        const loser = [delegatedRunId(root.runId, parentAttemptId, first.delegationId), delegatedRunId(root.runId, parentAttemptId, second.delegationId)].find(id => id !== winner);
+        await expect(runs.get(h.handle, loser)).rejects.toThrow();
+    });
+
+    test.each(['effectRefs', 'resultRefs'])('handoff refuses a parent with previous %s before changing control', async field => {
+        const before = await current();
+        await h.engine.withTransaction(h.handle, async tx => {
+            const key = controlRecordKey(h.handle, root.runId, 'attempt', parentAttemptId), row = await tx.getResource(key);
+            const refs = field === 'effectRefs' ? [createNativeId('orchestrationEffect')]
+                : [{ runId: root.runId, resultId: createNativeId('orchestrationResult') }];
+            await putMutable(tx, key, { ...row.doc, [field]: refs }, { expectedIntegrity: row.integrity });
+        });
+        await expect(delegates.handoff(h.handle, await body())).rejects.toMatchObject({ code: 'native_orchestration_handoff_not_admitted' });
+        expect(await current()).toEqual(before); expect((await parentAttempt()).status).toBe('running');
+        expect(scopeCalls).toBe(0);
+    });
+
+    test('nested handoffs at concurrency one share root limits and never reset the cumulative handoff allowance', async () => {
+        await setup({ maxConcurrency: 1, maxHandoffs: 2 });
+        const first = await delegates.handoff(h.handle, await body()); await fund(first.outcome.childRunId);
+        const childRef = await pending(first.outcome.childRunId); await activate(childRef);
+        const second = await delegates.handoff(h.handle, { ...await body(), ...runGuard(await runs.get(h.handle, childRef.runId)),
+            parentAttemptId: childRef.attemptId, delegationId: 'nested-handoff', childPlanRef: await nextPlan(childRef.runId) });
+        await fund(second.outcome.childRunId, childRef.runId);
+        const grandchildRef = await pending(second.outcome.childRunId); await activate(grandchildRef);
+        const before = await current(); expect(before.treeProgress.handoffs).toBe(2); expect(before.progress.handoffs).toBe(1);
+        const grandchild = await runs.get(h.handle, grandchildRef.runId);
+        expect(grandchild.parentRef.logicalCeiling.handoffs).toBe(0);
+        await expect(delegates.handoff(h.handle, { ...await body(), ...runGuard(grandchild), parentAttemptId: grandchildRef.attemptId,
+            delegationId: 'beyond-handoff-limit', childPlanRef: await nextPlan(grandchild.runId) }))
+            .rejects.toMatchObject({ code: 'native_orchestration_delegation_limit_exhausted' });
+        expect(await current()).toEqual(before);
+        expect((await parentAttempt()).status).toBe('waiting_child');
+    });
 
     test('child identity, parent receipt and counters commit once; no Attempt without original held bank', async () => {
         const input = await body(), first = await delegates.delegate(h.handle, input);

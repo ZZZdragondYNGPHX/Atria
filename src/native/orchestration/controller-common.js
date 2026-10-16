@@ -34,7 +34,7 @@ export async function readAttempt(tx, handle, root, attemptId) {
     if (attempt.schemaVersion !== 1 || attempt.runId !== root.runId || attempt.attemptId !== attemptId || !root.graph.nodes.some(node => node.nodeId === attempt.nodeId)) throw new TypeError('NodeAttempt identity mismatch');
     assertCounter(attempt.attemptNumber, 'attemptNumber', 1); assertCounter(attempt.epoch, 'attempt.epoch'); assertCounter(attempt.graphRevision, 'attempt.graphRevision');
     assertDigest(attempt.sourceBindingDigest, 'sourceBindingDigest');
-    if (!['reserved', 'pending', 'running', 'waiting_effect', 'waiting_approval', 'blocked', 'completed', 'partial', 'failed', 'cancelled', 'stale'].includes(attempt.status)
+    if (!['reserved', 'pending', 'running', 'waiting_effect', 'waiting_approval', 'waiting_child', 'blocked', 'completed', 'partial', 'failed', 'cancelled', 'stale'].includes(attempt.status)
         || !Array.isArray(attempt.effectRefs) || !Array.isArray(attempt.resultRefs)) throw new TypeError('Invalid NodeAttempt state');
     if (attempt.reservationRef !== null) {
         assertObject(attempt.reservationRef, ['producerAttemptId'], 'reservationRef');

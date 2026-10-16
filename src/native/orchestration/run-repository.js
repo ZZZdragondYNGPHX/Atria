@@ -8,6 +8,7 @@ import { assertComputeAllocation } from '../../../public/shared/native-compute-b
 import { checkedRecord, planDefinitionHash } from './plan-repository.js';
 import { readApproval } from './effect-contracts.js';
 import { holdsConcurrencySlot, readAttempt } from './controller-common.js';
+import { readHandoff } from './handoff-contracts.js';
 
 export const RUN_STATUSES = Object.freeze(['admitted', 'running', 'waiting_approval', 'reconciling', 'blocked', 'completed', 'partial', 'failed', 'cancelled', 'stale']);
 const TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled', 'stale']);
@@ -66,10 +67,11 @@ export async function assertChildRunCurrent(tx, handle, root, { requireBudget = 
         if (parent.cancelRequested || parent.status !== 'running' || parent.epoch !== ref.parentEpoch || attempt.epoch !== parent.epoch
             || attempt.sourceBindingDigest !== root.sourceBinding.bindingDigest
             || (parent.parentRef?.depth ?? 0) + 1 !== ref.depth
-            || !['running', 'waiting_effect', 'waiting_approval'].includes(attempt.status)
+            || !['running', 'waiting_effect', 'waiting_approval', 'waiting_child'].includes(attempt.status)
             || parent.rootRunId !== root.rootRunId || parent.sourceBinding.bindingDigest !== root.sourceBinding.bindingDigest
             || hashNativeDocument(parent.budgetAuthorityRef) !== hashNativeDocument(root.budgetAuthorityRef)
             || parent.hostBootId !== root.hostBootId || parent.hostGeneration !== root.hostGeneration) throw new ConflictError('native_orchestration_parent_stale');
+        if (attempt.status === 'waiting_child') await readHandoff(tx, handle, parent, attempt, child);
         child = parent;
     }
     if (child.runId !== root.rootRunId) throw new ConflictError('native_orchestration_parent_stale');
@@ -337,7 +339,7 @@ export class RunRepository {
     async control(handle, commandId, body, reduce, { resourceIds = [] } = {}) {
         assertObject(body, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'operation', 'detail'], 'control');
         this.#assertGuard(body);
-        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.childBudget'].includes(body.operation)
+        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.childBudget'].includes(body.operation)
             || typeof reduce !== 'function') throw new TypeError('Unsupported Host controller operation');
         const timestamp = this.now();
         return this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {
