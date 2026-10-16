@@ -19,6 +19,8 @@ import { assertResultPolicy } from '../../../public/shared/native-orchestration-
 import { BackgroundTaskOutputController } from './background-task-output-controller.js';
 import { backgroundOutputId, backgroundTaskWorkTarget, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
 import { appraisalEventCurrent } from '../appraisal-authority.js';
+import { simulationTaskCurrent } from '../simulation-authority.js';
+import { createAuthorityPublicationBudget } from '../authority-transaction.js';
 import { performance } from 'node:perf_hooks';
 
 const captures = new WeakMap();
@@ -27,17 +29,22 @@ const equal = (a, b) => hash(a) === hash(b);
 const configuration = resolved => hash({ route: resolved.route, model: resolved.model, connection: resolved.connection,
     generation: resolved.generation, resources: resolved.resources });
 
-function pendingTask(snapshot, input) {
+async function pendingTask(snapshot, input, host, handle) {
     const contract = snapshot.manifest.runtime.experienceContract, task = contract.taskRuntime.tasks.find(item => item.id === input.taskId);
     const variant = task?.variants.find(item => item.id === input.variantId), intent = snapshot.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
     const scope = snapshot.states.atri_lifecycle?.scopes[intent?.scopeId];
     const appraisal = variant?.resultBinding?.kind === 'cognition.appraise';
     if (!task || !variant || !snapshot.states.atri_lifecycle.ready || !intent || intent.status !== 'pending' || intent.kind !== 'task'
-        || intent.simulation || Boolean(intent.appraisalEvent) !== appraisal || task.executionClass !== 'background' || variant.resultBinding && !appraisal
+        || intent.simulation && !appraisal || Boolean(intent.appraisalEvent) !== appraisal || task.executionClass !== 'background' || variant.resultBinding && !appraisal
         || intent.taskId !== task.id || intent.variantId !== variant.id || scope?.status !== 'active' || scope.epoch !== intent.scopeEpoch
         || !equal(intent.input, input.input) || snapshot.revision.revisionId !== input.revisionId)
         fail('native_orchestration_background_source_stale');
     if (appraisal && appraisalEventCurrent(snapshot, intent, task, variant).status !== 'current') fail('native_orchestration_background_source_stale');
+    if (intent.simulation) {
+        const installed = await host.sessionCore._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
+        const budget = await createAuthorityPublicationBudget(snapshot, installed);
+        if (!simulationTaskCurrent(snapshot, intent, budget)) fail('native_orchestration_background_source_stale');
+    }
     assertTaskValue(input.input, task.inputSchema);
     return { task, variant, intent, appraisal, slot: contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId), payload: intent.input };
 }
@@ -57,7 +64,7 @@ export function inspectNativeBackgroundGenerationIdentity(capture, { host, handl
 export async function inspectNativeBackgroundGeneration(capture, expected) {
     const value = inspectNativeBackgroundGenerationIdentity(capture, expected);
     const snapshot = await value.host.sessionCore.observe(value.handle, value.input.sessionId);
-    pendingTask(snapshot, value.input);
+    await pendingTask(snapshot, value.input, value.host, value.handle);
     if (hash(snapshot) !== value.snapshotDigest) fail('native_orchestration_background_source_stale');
     return { ...value, snapshot };
 }
@@ -86,7 +93,7 @@ export class NativeBackgroundOrchestrationAuthority {
             if (binding) break;
         }
         if (!binding) return null;
-        const taskPlan = pendingTask(snapshot, input);
+        const taskPlan = await pendingTask(snapshot, input, host, handle);
         if (input.fallbackMode !== undefined && input.fallbackMode !== 'disabled') fail('native_orchestration_background_route_mismatch');
         const plan = await this.owner.plans.getRevision(handle, binding.planRef), graph = plan.definition;
         if (assertResultPolicy(graph.outputContract).outputType !== 'json') fail('native_orchestration_background_plan_unavailable');

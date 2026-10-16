@@ -62,7 +62,7 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
         || record.deliveryReceipt?.kind !== 'model_delivery' || record.deliveryReceipt.delivered !== true
         || record.deliveryReceipt.operationId !== input.schedulerOperationId
         || !queued || queued.status !== 'completed' || queued.taskId !== input.taskId || queued.variantId !== input.variantId
-        || queued.simulation || Boolean(queued.appraisalEvent) !== (input.taskResultBinding?.kind === 'cognition.appraise')
+        || queued.simulation && input.taskResultBinding?.kind !== 'cognition.appraise' || Boolean(queued.appraisalEvent) !== (input.taskResultBinding?.kind === 'cognition.appraise')
         || hash(queued.input) !== input.inputDigest || hash(record) !== domainRef.recordHash) invalid();
     if (input.taskResultBinding) {
         const binding = input.taskResultBinding, appraisal = record.appraisalEvidence;
@@ -76,6 +76,13 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
     }
     // The queued intent was frozen before sending; only its terminal status changes.
     if (hash({ ...queued, status: 'pending' }) !== input.intentDigest) invalid();
+    const sourceRevision = (await checkedRecord(tx, { kind: K.sessionRevision, handle, sessionId: source.sessionId, revisionId: source.revisionId }))?.doc;
+    if (!sourceRevision) invalid();
+    const original = await readSessionSnapshot(tx, handle, session, sourceRevision);
+    const pending = original.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
+    if (!pending || pending.status !== 'pending' || hash(pending) !== input.intentDigest
+        || original.revision.branchId !== source.branchId || original.states.atri_lifecycle.scopes[pending.scopeId]?.status !== 'active'
+        || original.states.atri_lifecycle.scopes[pending.scopeId].epoch !== pending.scopeEpoch) invalid();
     const bank = root.budgetAuthorityRef, control = await readRunControl(tx, handle, source.sessionId);
     const compute = control?.operations[bank.operationId]?.compute;
     if (bank.domain !== 'session' || bank.sessionId !== source.sessionId || !compute || !evidence.attempts.length) invalid();

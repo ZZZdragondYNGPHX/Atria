@@ -11,6 +11,15 @@ const { evolutionEvaluatorRevision, promotionDecision } = await import('../../sr
 const { EVOLUTION_RULE } = await import('../../src/native/agent-intelligence/evolution-repository.js');
 const { CASE_SET_REVISION } = await import('../../src/native/agent-intelligence/evaluation/cases.js');
 
+test.each(['simulation-authority', 'authority-transaction', 'appraisal-authority', 'session-core'])('evaluator includes original %s authority bytes', dependency => {
+    const revision = evolutionEvaluatorRevision();
+    try {
+        changedSource = fileURLToPath(new URL('../../src/native/' + dependency + '.js', import.meta.url));
+        expect(evolutionEvaluatorRevision()).not.toBe(revision);
+    } finally { changedSource = null; }
+    expect(evolutionEvaluatorRevision()).toBe(revision);
+});
+
 test.each(['../../src/native/agent-intelligence/evaluation/project-preservation.js', '../../public/shared/project-agent-prompt.js', '../../src/native/orchestration/plan-evolution-contracts.js', '../../public/shared/native-task-contract.js', '../../src/native/orchestration/native-background-generation.js', '../../src/native/orchestration/background-task-output-controller.js', '../../src/native/orchestration/background-task-output-contracts.js', '../../src/native/orchestration/output-transition-contracts.js', '../../src/native/orchestration/effect-reconciliation.js', '../../src/native/orchestration/project-tool-reconciliation.js', '../../src/native/orchestration/session-output-reconciliation.js', '../../src/native/orchestration/session-output-contracts.js', '../../src/native/agent-intelligence/evaluation/fixture-source.js', '../../src/native/agent-intelligence/evaluation/native-adapters.js', '../../src/native/orchestration/rp-output-reconciliation.js', '../../src/native/orchestration/native-rp-generation.js', '../../src/native/orchestration/native-project-orchestration.js', '../../src/native/orchestration/effect-controller.js', '../../public/scripts/agents/memory/ranking-index.js', '../../public/scripts/native/exact-token-count.js', '../../public/shared/native-independent-preparation.js', '../../src/native/skill-invocation.js', '../../src/native/retrieval-compute.js', '../../src/native/run-control.js', '../../public/shared/native-compute-budget.js', '../../src/native/model-prompt-runtime/execution-utils.js'])('evaluator rejects an earlier report after %s source bytes change', dependency => {
     const revision = evolutionEvaluatorRevision();
     const report = { origin: 'host_evaluator', schemaVersion: 1, evaluatorRevision: revision, caseSetRevision: CASE_SET_REVISION,
