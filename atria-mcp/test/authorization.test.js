@@ -62,9 +62,11 @@ test('provenance review is double checked independently of target revision and r
     assert.equal(receipt.created[0].mcpInstanceId, f.receipts.instanceId); assert.equal(receipt.created[0].creatingReceiptId, receipt.receiptId);
 });
 test('receipt failure is indeterminate, grants do not expand, concurrent executions cannot double spend', async () => {
-    const f = fixture(); let release; f.onApprove = () => new Promise(resolve => { release = resolve; });
-    const pending = f.executor.execute('MUTATE', f.args); await new Promise(resolve => setImmediate(resolve));
-    await assert.rejects(f.executor.execute('MUTATE', f.args), /busy/); release(); await pending;
+    const f = fixture(); f.decision = { action: 'accept', content: { authorize: true, uses: 2 } };
+    const granted = await f.executor.execute('MUTATE', f.args);
+    const results = await Promise.allSettled([f.executor.execute('MUTATE', { ...f.args, leaseId: granted.lease.leaseId }), f.executor.execute('MUTATE', { ...f.args, leaseId: granted.lease.leaseId })]);
+    assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+    assert.equal(f.executed, 2, 'One remaining lease use cannot be double spent under concurrent admission');
     const original = f.registry.get('fixture.write');
     const { inputSchema: _, outputSchema: __, ...descriptor } = original.detail;
     f.registry.register({ ...descriptor, id: 'fixture.later' }, original.inputSchema, original.outputSchema, () => { throw Error('connection lost after write'); }, original.guard);
@@ -97,6 +99,13 @@ test('Build evaluation receipt binds exact normalized operations, base, Preview 
     await assert.rejects(executor.execute('MUTATE', changed), /drift/); assert.equal(reviewCount, 1);
     revision = 'r2'; await assert.rejects(executor.execute('MUTATE', apply), /conflict/); revision = 'r1';
     assert.equal((await executor.execute('MUTATE', apply)).receipt.status, 'succeeded'); assert.equal(writes, 2);
+    const deletion = structuredClone(workspace); deletion.operations[0].operationType = 'source.delete'; deletion.operations[0].input = {};
+    const deletionReview = await executor.execute('INTERACT', { action: 'build.change.evaluate', input: { workspace: deletion } });
+    const deletionInput = { workspace: deletion, evaluationReceiptId: deletionReview.receipt.receiptId };
+    await assert.rejects(executor.execute('MUTATE', { action: 'build.change.apply', input: deletionInput }), /DESTRUCTIVE/);
+    await assert.rejects(executor.execute('MUTATE', { action: 'build.change.apply.destructive', input: deletionInput }), /risk mismatch/);
+    const deleted = await executor.execute('DESTRUCTIVE', { action: 'build.change.apply.destructive', input: deletionInput });
+    assert.equal(deleted.receipt.status, 'succeeded'); assert.equal(deleted.lease.remaining, 0); assert.equal(writes, 4);
     assert.equal(fingerprint({ a: 1, b: 2 }), fingerprint({ b: 2, a: 1 }));
 });
 
@@ -106,12 +115,12 @@ test('Session invalid message/branch is rejected by pure guards before approval 
     const response = data => ({ ok: () => true, status: () => 200, headers: () => ({ 'content-type': 'application/json', 'x-atria-server-boot-id': serverBootId }), body: async () => Buffer.from(JSON.stringify(data)), dispose: async () => {} });
     const browser = { config: { url: 'http://localhost', timeout: 1000, maxResponseBytes: 1048576 }, start: async () => {}, runtimeIdentity: async () => ({ serverBootId, mutationGuards: 1 }),
         context: { request: { get: async () => response({ token: 'csrf-private' }), fetch: async (url, options) => {
-            if (url.endsWith('/load')) return response({ session: { sessionId: 'session_x' }, revision: { revisionId: options.data.revisionId ?? 'r1', branchId: 'b1' }, timeline: [] });
-            if (url.endsWith('/sessions/session_x')) return response({ branches: [] });
+            if (url.endsWith('/observe')) return response({ session: { sessionId: 'session_x' }, revision: { revisionId: options.data.revisionId ?? 'r1', branchId: 'b1' }, timeline: [] });
+            if (url.endsWith('/sessions/session_x/history')) return response({ branches: [] });
             mutations++; throw Error('must not write');
         } } } };
     const registry = registerMutationActions(new ActionRegistry(), browser), executor = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()), { approve: async () => { approvals++; } });
-    await assert.rejects(executor.execute('MUTATE', { action: 'chat.branch.fork', input: { sessionId: 'session_x', expectedRevisionId: 'r1', revisionId: 'history', messageId: 'missing' } }), /Message/);
+    assert.throws(() => registry.get('chat.branch.fork'), /Unknown/);
     await assert.rejects(executor.execute('MUTATE', { action: 'chat.branch.switch', input: { sessionId: 'session_x', expectedRevisionId: 'r1', branchId: 'missing' } }), /Branch/);
     assert.equal(approvals, 0); assert.equal(mutations, 0);
 });

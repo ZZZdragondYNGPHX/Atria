@@ -40,17 +40,18 @@ export function registerMutationActions(registry, browser) {
         return { target: { projectId: i.projectId }, serverBootId: response.serverBootId, revision: response.data.revision };
     };
     const sessionGuard = async i => {
-        const response = await read('POST', session + '/load', { sessionId: i.sessionId });
+        const response = await read('POST', session + '/observe', { sessionId: i.sessionId });
         if (response.data.revision.revisionId !== i.expectedRevisionId) throw new Error('Session revision conflict.');
         let targetSnapshot = response.data;
         if (i.revisionId && i.revisionId !== i.expectedRevisionId) {
-            const historical = await read('POST', session + '/load', { sessionId: i.sessionId, revisionId: i.revisionId });
+            const historical = await read('POST', session + '/observe', { sessionId: i.sessionId, revisionId: i.revisionId });
             if (historical.serverBootId !== response.serverBootId) throw new Error('Server changed during Session guard.');
             targetSnapshot = historical.data;
         }
         if (i.messageId && !targetSnapshot.timeline.some(message => message.messageId === i.messageId)) throw new Error('Message is not in the reviewed Session revision.');
         if (i.branchId) {
-            const detail = await read('GET', `${product}/sessions/${i.sessionId}`);
+            const detail = await read('GET', `${product}/sessions/${i.sessionId}/history`);
+            if (detail.serverBootId !== response.serverBootId || detail.data.headRevisionId !== i.expectedRevisionId) throw new Error('Session changed during Branch guard.');
             if (!detail.data.branches.some(branch => branch.branchId === i.branchId)) throw new Error('Branch is not in the target Session.');
         }
         return { target: { sessionId: i.sessionId }, serverBootId: response.serverBootId, identity: snapshotIdentity(response.data) };
@@ -76,67 +77,88 @@ export function registerMutationActions(registry, browser) {
         recovery: 'Committed Timeline remains immutable; prior branches/revisions remain in Session history.' });
 
     add('session.rename', 'MUTATE', 'Native Product Session metadata', { sessionId: id, displayTitle: z.string().min(1).max(200), expectedDisplayTitle: z.string().max(200).nullable() },
-        async i => { const r = await read('GET', `${product}/sessions/${i.sessionId}`); equal(r.data.session.displayTitle ?? null, i.expectedDisplayTitle, 'Session title conflict.');
+        async i => { const r = await read('POST', session + '/observe', { sessionId: i.sessionId }); equal(r.data.session.displayTitle ?? null, i.expectedDisplayTitle, 'Session title conflict.');
             return { target: { sessionId: i.sessionId }, serverBootId: r.serverBootId, displayTitle: i.expectedDisplayTitle }; },
         (i, { before }) => write('PATCH', `${product}/sessions/${i.sessionId}`, { displayTitle: i.displayTitle, expectedDisplayTitle: i.expectedDisplayTitle }, before, data => ({ after: { displayTitle: data.displayTitle ?? i.displayTitle } })));
     add('session.save', 'MUTATE', 'Native Save System', { ...sessionInput, displayName: z.string().max(200).optional() }, sessionGuard,
         (i, { before }) => write('POST', `${product}/sessions/${i.sessionId}/save`, { kind: 'manual', expectedRevisionId: i.expectedRevisionId, displayName: i.displayName }, before,
             data => ({ after: data, created: [{ kind: 'save', id: data.saveId, sessionId: i.sessionId }] })));
+    add('session.save.quick', 'MUTATE', 'Native Save System committed HEAD quick SavePoint', { ...sessionInput, displayName: z.string().max(200).optional() }, sessionGuard,
+        (i, { before }) => write('POST', `${product}/sessions/${i.sessionId}/save`, { kind: 'quick', expectedRevisionId: i.expectedRevisionId, displayName: i.displayName }, before,
+            data => ({ after: data, created: [{ kind: 'save', id: data.saveId, sessionId: i.sessionId }] })));
     add('session.restore', 'MUTATE', 'Native Save System / Session', { ...sessionInput, saveId: id }, async i => {
-        const guard = await sessionGuard(i); const r = await read('GET', `${product}/sessions/${i.sessionId}`);
+        const guard = await sessionGuard(i); const r = await read('GET', `${product}/sessions/${i.sessionId}/observe`);
+        if (r.serverBootId !== guard.serverBootId || r.data.session.headRevisionId !== i.expectedRevisionId) throw new Error('Session changed during SavePoint guard.');
         if (!r.data.saves?.some(s => s.saveId === i.saveId)) throw new Error('Save not in target Session.'); return guard;
     }, (i, { before }) => write('POST', `${product}/sessions/${i.sessionId}/load`, { saveId: i.saveId, expectedRevisionId: i.expectedRevisionId }, before, sessionEvidence));
-    add('chat.branch.fork', 'MUTATE', 'Native Session immutable branch history', { ...sessionInput, revisionId: id, messageId: id.optional(), displayName: z.string().max(200).optional() }, sessionGuard,
-        (i, { before }) => write('POST', session + '/command', { sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId,
-            command: { type: 'fork', revisionId: i.revisionId, messageId: i.messageId, displayName: i.displayName } }, before, sessionEvidence));
     add('chat.branch.switch', 'MUTATE', 'Native Session immutable branch history', { ...sessionInput, branchId: id }, sessionGuard,
         (i, { before }) => write('POST', session + '/command', { sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId, command: { type: 'switch', branchId: i.branchId } }, before, sessionEvidence));
-    for (const action of ['chat.restart.from', 'chat.remove.from.active']) add(action, 'MUTATE', 'Native Session coherent revision fork (history retained)',
-        { ...sessionInput, revisionId: id }, sessionGuard, (i, { before }) => write('POST', session + '/command', {
-            sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId, command: { type: 'fork', revisionId: i.revisionId } }, before, sessionEvidence));
-    add('chat.retry.prepare', 'MUTATE', 'Native Session retry boundary (does not generate)', { ...sessionInput, messageId: id }, sessionGuard,
-        (i, { before }) => write('POST', session + '/command', { sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId, command: { type: 'retry', messageId: i.messageId } }, before, sessionEvidence));
+    const metadataGuard = async i => {
+        const guard = await sessionGuard(i);
+        const r = await read('GET', `${product}/sessions/${i.sessionId}/observe`);
+        if (r.serverBootId !== guard.serverBootId || r.data.session.headRevisionId !== i.expectedRevisionId) throw new Error('Session changed during metadata guard.');
+        return { ...guard, expectedMetadataFingerprint: fingerprint({ autoSavePolicy: r.data.session.autoSavePolicy ?? null, branchMetadata: r.data.session.branchMetadata ?? {} }) };
+    };
+    const metadataWrite = (i, { before }) => write('POST', session + '/experience-metadata', { ...i, expectedMetadataFingerprint: before.expectedMetadataFingerprint }, before,
+        data => ({ after: { sessionId: data.sessionId, headRevisionId: data.headRevisionId, autoSavePolicy: data.autoSavePolicy ?? null, branchMetadata: data.branchMetadata ?? {} },
+            changed: [{ kind: 'session-metadata', id: i.sessionId }] }));
+    add('session.save.policy.update', 'MUTATE', 'Native Session automatic SavePoint policy', { ...sessionInput,
+        autoSavePolicy: z.strictObject({ enabled: z.boolean(), intervalMs: z.number().int().min(1000).max(Number.MAX_SAFE_INTEGER), retain: z.number().int().min(1).max(1000) }) }, metadataGuard, metadataWrite);
+    add('chat.branch.rename', 'MUTATE', 'Native Session branch metadata', { ...sessionInput, branchId: id, displayName: z.string().min(1).max(256).refine(value => value.trim().length > 0) }, metadataGuard, metadataWrite);
+    add('chat.branch.archive', 'MUTATE', 'Native Session branch visibility metadata (history retained)', { ...sessionInput, branchId: id, archived: z.boolean() }, metadataGuard, metadataWrite);
     const routeRef = z.strictObject({ scope: z.literal('player'), runtimeRouteId: id });
-    add('chat.send', 'MUTATE', 'Native Generation turn / immutable Session commit', { ...sessionInput, invocationId: id, userInput: text.min(1),
-        routeRef: routeRef.optional(), slotBindings: z.record(id, routeRef).optional() }, sessionGuard,
+    const turnGuard = async i => {
+        const guard = await sessionGuard(i), response = await read('POST', generation + '/turn/controlled/preflight', i), view = response.data;
+        if (response.serverBootId !== guard.serverBootId || view.source?.sessionId !== i.sessionId || view.source.revisionId !== i.expectedRevisionId
+            || view.source.branchId !== guard.identity.branchId) throw new Error('Controlled Turn source changed.');
+        if (!view.configuration?.credentialTargets?.length || view.configuration.credentialTargets.some(target => !target.authorized)) throw new Error('Independent Native credential destination approval required.');
+        return { ...guard, turnReview: { turnInputFingerprint: view.turnInputFingerprint, configurationFingerprint: view.configurationFingerprint, requestFingerprint: view.requestFingerprint },
+            generation: { selectedRouteIds: view.configuration.selectedRouteIds, routes: Object.values(view.configuration.routes), models: Object.values(view.configuration.models),
+                providerTargets: view.configuration.credentialTargets.map(target => ({ connectionProfileId: target.connectionProfileId, target: target.target,
+                    permitFingerprint: target.permitFingerprint })), generationBudget: view.configuration.generationBudget,
+                turnContractFingerprint: fingerprint(view.configuration.taskRuntime), turn: view.configuration.taskRuntime.turn,
+                automaticResend: view.automaticResend, backgroundModel: view.backgroundModel, backgroundSimulation: view.backgroundSimulation } };
+    };
+    add('chat.send', 'MUTATE', 'Native Generation turn / immutable Session commit', { ...sessionInput, commitId: id, invocationId: id, userInput: text.min(1),
+        routeRef: routeRef.optional(), slotBindings: z.record(id, routeRef).optional() }, turnGuard,
     async (i, { before }) => {
-        const appended = await request('POST', session + '/command', { sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId,
-            command: { type: 'timeline', commands: [{ type: 'append', draft: { role: 'user', content: i.userInput } }] } }, before);
-        if (!appended.ok) return output(appended);
-        const committed = snapshotIdentity(appended.data);
-        const message = appended.data.timeline.at(-1);
-        const evidence = { after: { input: committed }, created: [{ kind: 'message', id: message.messageId, sessionId: i.sessionId }],
-            recovery: 'User input is committed. Read Session and generation.status before recovery; never automatically resubmit chat.send.' };
-        if (appended.serverBootId !== before.serverBootId) return { ...output(appended, evidence), ok: false, partial: true };
+        const draft = { role: 'user', content: i.userInput };
+        const requestFingerprint = fingerprint({ draft, expectedRevisionId: i.expectedRevisionId });
+        const inputIdentity = { commitId: i.commitId, requestFingerprint, sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId };
+        let appended = null;
+        try {
+            appended = await request('POST', session + '/timeline/append', { sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId, commitId: i.commitId, draft }, before);
+        } catch { /* A lost response may follow a durable commit; query its authority once. */ }
+        if (appended && !appended.ok) return output(appended, { after: { input: { ...inputIdentity, status: 'rejected' }, generation: { status: 'not_started' } } });
+        let receiptResponse = null;
+        try { receiptResponse = await request('POST', session + '/commit-receipt', { sessionId: i.sessionId, commitId: i.commitId }, before); } catch { /* Preserve unknown; never append again. */ }
+        const receipt = receiptResponse?.data;
+        const confirmed = receiptResponse?.ok && receiptResponse.serverBootId === before.serverBootId && receipt?.status === 'committed'
+            && receipt.commitId === i.commitId && receipt.sessionId === i.sessionId && receipt.expectedRevisionId === i.expectedRevisionId
+            && receipt.fingerprint === requestFingerprint && typeof receipt.revisionId === 'string' && typeof receipt.branchId === 'string';
+        const evidence = { after: { input: { ...inputIdentity, status: confirmed ? 'committed' : 'unknown', ...(confirmed ? { revisionId: receipt.revisionId, branchId: receipt.branchId } : {}) },
+            generation: { status: 'not_started' } }, created: [],
+            recovery: 'Read the exact Native commit receipt and generation.status before recovery; never automatically resubmit chat.send.' };
+        if (appended?.ok) {
+            const committed = snapshotIdentity(appended.data), message = appended.data.timeline.at(-1);
+            if (message?.messageId) evidence.created.push({ kind: 'message', id: message.messageId, sessionId: i.sessionId });
+            evidence.after.input = { ...committed, ...evidence.after.input };
+        }
+        if (!confirmed || !appended || appended.serverBootId !== before.serverBootId || appended.data.revision?.revisionId !== receipt.revisionId) {
+            return { ...output({ ok: false, status: receiptResponse?.status ?? null, serverBootId: receiptResponse?.serverBootId ?? null,
+                data: { error: confirmed ? 'Input commit reconciled after lost response; generation was not started.' : 'Input commit unconfirmed; inspect the exact Native commit receipt.' } }, evidence), partial: true };
+        }
+        const committed = evidence.after.input;
         let response;
         try {
-            response = await request('POST', generation + '/turn/start', { sessionId: i.sessionId, revisionId: committed.revisionId, invocationId: i.invocationId,
-                userInput: i.userInput, routeRef: i.routeRef, slotBindings: i.slotBindings }, before);
+            response = await request('POST', generation + '/turn/controlled/start', { input: i, committedRevisionId: committed.revisionId, approvedReview: before.turnReview }, before);
         } catch {
+            evidence.after.generation = { status: 'unknown', invocationId: i.invocationId };
             return { ...output({ ok: false, status: null, serverBootId: null, data: { error: 'Generation response unconfirmed; inspect owning authority.' } }, evidence), partial: true };
         }
         const uncertain = !response.ok || response.serverBootId !== before.serverBootId;
-        return { ...output(response, { ...evidence, after: { input: committed, generation: response.data } }), ok: !uncertain, partial: uncertain };
+        return { ...output(response, { ...evidence, after: { input: committed, generation: { status: uncertain ? 'unconfirmed' : 'admitted', invocationId: i.invocationId, result: response.data } } }), ok: !uncertain, partial: uncertain };
     }, ['generation', 'provider-network', 'mayIncurCost']);
-    for (const action of ['chat.regenerate', 'chat.reenter']) add(action, 'MUTATE', 'Native Session coherent boundary + Native Generation turn',
-        { ...sessionInput, messageId: id, invocationId: id, userInput: action === 'chat.reenter' ? text.min(1) : z.literal('').default(''), routeRef: routeRef.optional(), slotBindings: z.record(id, routeRef).optional() },
-        async i => {
-            const guard = await sessionGuard(i); const r = await read('POST', session + '/load', { sessionId: i.sessionId });
-            if (r.data.revision.revisionId !== i.expectedRevisionId) throw new Error('Session revision conflict.');
-            const index = r.data.timeline.findIndex(m => m.messageId === i.messageId);
-            if (index < 1 || (action === 'chat.reenter' ? r.data.timeline[index].role !== 'user' : r.data.timeline[index].role !== 'assistant' || index !== r.data.timeline.length - 1)) throw new Error('Invalid coherent turn boundary.');
-            return { ...guard, boundary: action === 'chat.reenter' ? r.data.timeline[index - 1].messageId : i.messageId };
-        }, async (i, { before }) => {
-            const command = action === 'chat.regenerate' ? { type: 'retry', messageId: i.messageId }
-                : { type: 'fork', revisionId: i.expectedRevisionId, messageId: before.boundary };
-            const fork = await request('POST', session + '/command', { sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId, command }, before);
-            if (!fork.ok) return output(fork);
-            const response = await request('POST', generation + '/turn/start', { sessionId: i.sessionId, revisionId: fork.data.revision.revisionId,
-                invocationId: i.invocationId, userInput: i.userInput, routeRef: i.routeRef, slotBindings: i.slotBindings }, before);
-            return { ...output(response, { ...sessionEvidence(fork.data), after: { branch: snapshotIdentity(fork.data), generation: response.data },
-                changed: [{ kind: 'session-branch', id: fork.data.revision.branchId }], recovery: 'Branch was derived; original history retained even if generation fails. Poll generation.status; never auto retry.'
-                }), partial: !response.ok };
-        }, ['generation', 'provider-network', 'mayIncurCost']);
     add('generation.stop', 'INTERACT', 'Native task scheduler cancellation', { operationId: id }, async i => {
         const r = await read('GET', generation + '/operations/' + i.operationId);
         return { target: { operationId: i.operationId }, serverBootId: r.serverBootId, operation: r.data };
@@ -170,7 +192,7 @@ export function registerMutationActions(registry, browser) {
             equal(receipt.evaluation.binding, binding, 'Workspace/evaluation drift; re-evaluate.');
             if (receipt.evaluation.preview) {
                 const p = receipt.evaluation.preview;
-                const current = await read('GET', studio + '/previews/' + p.previewId + '/ui');
+                const current = await read('GET', studio + '/previews/' + p.previewId + '/identity');
                 if (current.data.packageVersionId !== p.packageVersionId) throw new Error('Evaluated Preview changed or closed.');
             }
         }
@@ -191,8 +213,11 @@ export function registerMutationActions(registry, browser) {
                     descriptorDigest: fingerprint(d.preview.descriptor) } : null }, after: { baseRevision: i.workspace.baseRevision, restoredBy: 'Native Studio evaluateWorkspace finally' } } : {};
             const result = output(r, evidence); if (d?.validation?.status !== 'passed') result.ok = false; return result;
         });
-    add('build.change.apply', 'MUTATE', 'Native Studio executeWorkspace / ChangeSet', { workspace, evaluationReceiptId: z.string().uuid() },
-        (i, c) => workspaceGuard(i, c, true), async (i, { before }) => {
+    for (const destructive of [false, true]) add(destructive ? 'build.change.apply.destructive' : 'build.change.apply', destructive ? 'DESTRUCTIVE' : 'MUTATE', 'Native Studio executeWorkspace / ChangeSet', { workspace, evaluationReceiptId: z.string().uuid() },
+        (i, c) => {
+            if (i.workspace.operations.some(op => op.operationType === 'source.delete') !== destructive) throw new Error('Source deletion requires the exact DESTRUCTIVE Apply action');
+            return workspaceGuard(i, c, true);
+        }, async (i, { before }) => {
             const r = await request('POST', projectPath(i.workspace) + '/workspaces/execute', i.workspace, before);
             const result = output(r, { after: r.data?.changeSet ?? null, changed: [{ kind: 'project', id: i.workspace.projectId }], recovery: 'Use Native Studio revision history; no physical history overwrite.' });
             if (!r.data?.changeSet?.resultingRevision || r.data?.changeSet?.validation?.status !== 'passed') result.ok = false; return result;
@@ -201,7 +226,7 @@ export function registerMutationActions(registry, browser) {
         (i, { before }) => write('POST', projectPath(i) + '/preview', { baseRevision: i.baseRevision, entryPointId: i.entryPointId }, before,
             data => ({ after: { previewId: data.preview.previewId, packageVersionId: data.preview.packageVersionId, entryPointId: data.preview.entryPointId }, recovery: 'build.preview.close' })));
     add('build.preview.close', 'INTERACT', 'Native Studio ephemeral Preview', { previewId: id, packageVersionId: id }, async i => {
-        const r = await read('GET', `${studio}/previews/${i.previewId}/ui`); equal(r.data.packageVersionId, i.packageVersionId, 'Preview identity conflict.');
+        const r = await read('GET', `${studio}/previews/${i.previewId}/identity`); equal(r.data.packageVersionId, i.packageVersionId, 'Preview identity conflict.');
         return { target: { previewId: i.previewId }, serverBootId: r.serverBootId, packageVersionId: i.packageVersionId };
     }, (i, { before }) => write('DELETE', `${studio}/previews/${i.previewId}`, {}, before));
     add('build.simulate', 'INTERACT', 'Native Studio isolated recorded/mock scenario', { ...projectInput, scenario: json }, projectGuard,

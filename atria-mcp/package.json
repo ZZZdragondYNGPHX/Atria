@@ -1,6 +1,6 @@
 {
   "name": "@atria-dev/mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local MCP bridge for Atria contracts, source-aware API discovery and real browser previews",
   "type": "module",
   "private": true,
@@ -13,13 +13,15 @@
   },
   "scripts": {
     "start": "node src/cli.js",
-    "check": "node --check src/cli.js && node --check src/server.js && node --check src/catalog.js && node --check src/browser.js && node --check src/policy.js && node --check src/config.js && node --check src/kernel.js && node --check src/repository.js && node --check src/provenance.js && node --check src/capability-bridge.js && node --check src/read-authority.js && node --check src/mutations.js && node --check src/memory-mutations.js && node --check src/high-risk.js && node --check src/agent-delegation.js",
+    "check": "node scripts/check.js",
     "test": "node --test test/*.test.js",
     "test:integration": "node --test test/integration.test.js",
     "test:atria": "node scripts/verify-atria.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.30.1",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@modelcontextprotocol/core": "2.3.1",
+    "@modelcontextprotocol/server": "2.3.1",
     "acorn": "8.15.0",
     "acorn-walk": "8.3.4",
     "playwright": "1.63.0",

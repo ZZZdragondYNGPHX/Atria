@@ -1,6 +1,8 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { redact } from './policy.js';
+import { LaneScheduler } from './scheduler.js';
+import { Operations } from './operations.js';
 export const RISKS = Object.freeze(['READ', 'INTERACT', 'MUTATE', 'DESTRUCTIVE']);
 export const PUBLIC_TOOLS = Object.freeze(['atri_status', 'atri_capabilities', 'atri_reference', 'atri_repo', 'atri_git', 'atri_artifact', 'atri_api', 'atri_diagnose_snapshot', 'atri_browser_open', 'atri_browser_observe', 'atri_browser_screenshot', 'atri_browser_interact', 'atri_browser_diagnostics', 'atri_browser_close', 'atri_read', 'atri_interact', 'atri_mutate', 'atri_destructive']);
 const descriptorSchema = z.strictObject({
@@ -12,12 +14,13 @@ const descriptorSchema = z.strictObject({
 });
 export class ActionRegistry {
     #actions = new Map();
-    register(descriptor, inputSchema, outputSchema, handler, guard = null) {
+    register(descriptor, inputSchema, outputSchema, handler, guard = null, reviewInput = null) {
         const parsed = descriptorSchema.parse(descriptor);
         if (this.#actions.has(parsed.id)) throw new Error('Duplicate action ID.');
         if (parsed.risk !== 'READ' && parsed.approval === 'none') throw new Error('Side effects require approval metadata.');
+        if (reviewInput !== null && typeof reviewInput !== 'function') throw new Error('Invalid trusted review projection.');
         const detail = { ...parsed, inputSchema: z.toJSONSchema(inputSchema), outputSchema: z.toJSONSchema(outputSchema) };
-        this.#actions.set(parsed.id, { detail: structuredClone(detail), inputSchema, outputSchema, handler, guard });
+        this.#actions.set(parsed.id, { detail: structuredClone(detail), inputSchema, outputSchema, handler, guard, reviewInput });
         return this;
     }
     get(id) { const item = this.#actions.get(id); if (!item) throw new Error('Unknown semantic action.'); return { ...item, detail: structuredClone(item.detail) }; }
@@ -62,15 +65,39 @@ export class ReceiptStore {
 }
 export class RiskExecutor {
     #leases = new Map();
-    #running = false;
-    constructor(registry, ceiling, { receipts = new ReceiptStore(), approve = null, now = Date.now, provenance = async () => null } = {}) {
-        this.registry = registry; this.ceiling = ceiling; this.receipts = receipts; this.approve = approve; this.now = now; this.provenance = provenance;
+
+    constructor(registry, ceiling, { receipts = new ReceiptStore(), approve = null, now = Date.now, provenance = async () => null, scheduler = new LaneScheduler(), operations = new Operations() } = {}) {
+        this.registry = registry; this.ceiling = ceiling; this.receipts = receipts; this.approve = approve; this.now = now; this.provenance = provenance; this.scheduler = scheduler; this.operations = operations;
     }
     clear() { this.#leases.clear(); }
     async execute(risk, args, context = {}) {
-        if (this.#running) throw new Error('Executor busy.');
-        this.#running = true;
-        try { return await this.#execute(risk, args, context); } finally { this.#running = false; }
+        if (risk === 'READ') return this.#execute(risk, args, context);
+        const item = this.registry.get(args.action);
+        if (item.detail.risk !== risk || !this.ceiling.allows(args.action) || !item.detail.availability.available) return this.#execute(risk, args, context);
+        const parsed = item.inputSchema.parse(args.input ?? {});
+        const op = await this.operations.create(args.action, risk, fingerprint(parsed), context.signal);
+        let admitted;
+        const ready = new Promise(resolve => { admitted = resolve; });
+        const execution = (async () => {
+            try {
+                const result = await this.#execute(risk, args, { ...context, signal: op.signal, operationId: op.operationId,
+                    onReady: () => admitted({ operationId: op.operationId, state: 'ready' }) });
+                const nativeId = result.result?.data?.operationId ?? result.result?.receiptEvidence?.after?.generation?.operationId;
+                const productOperationId = typeof nativeId === 'string' && /^[A-Za-z0-9_.:-]{1,256}$/.test(nativeId) ? nativeId : null;
+                const state = result.receipt?.status === 'succeeded' ? (productOperationId ? 'reconciling' : 'completed') : result.receipt?.status === 'indeterminate' ? 'unknown' : 'failed';
+                await this.operations.update(op.operationId, { state, receiptId: result.receipt?.receiptId, ...(productOperationId ? { productOperationId } : {}), reconciliation: state === 'unknown' ? 'owning-authority-required' : 'native-response-observed' });
+                return { ...result, operationId: op.operationId };
+            } catch (error) {
+                const record = this.operations.get(op.operationId);
+                await this.operations.update(op.operationId, { state: record.dispatched ? 'unknown' : op.signal.aborted ? 'cancelled' : 'failed',
+                    reconciliation: record.dispatched ? 'owning-authority-required' : 'not-dispatched' });
+                throw error;
+            } finally { this.operations.release(op.operationId); }
+        })();
+        if (!context.background) return execution;
+        // Approval is still part of this MCP request. Only an admitted operation can detach.
+        execution.catch(() => {});
+        return Promise.race([execution, ready]);
     }
     async #execute(risk, { action, input = {}, leaseId }, context) {
         const item = this.registry.get(action), d = item.detail;
@@ -80,7 +107,10 @@ export class RiskExecutor {
         const parsed = item.inputSchema.parse(input);
         if (risk === 'READ') {
             if (d.guards.length || d.approval !== 'none' || leaseId) throw new Error('Invalid READ authorization.');
-            return redact(item.outputSchema.parse(await item.handler(parsed)));
+            const lane = d.adapter === 'fixed-browser' ? 'browser' : d.adapter === 'local-control' || action.startsWith('diagnostics.') || action === 'generation.status' ? 'control' : 'read';
+            return this.scheduler.run(lane, d.adapter === 'fixed-browser' ? ['browser:page'] : [],
+                async () => redact(item.outputSchema.parse(await item.handler(parsed, context))), context);
+
         }
         if (!item.guard || !d.guards.length) throw new Error('Missing authority guards.');
         const startedAt = new Date(this.now()).toISOString();
@@ -92,6 +122,8 @@ export class RiskExecutor {
         }
         const before = await item.guard(parsed, { receipts: this.receipts });
         const provenance = await this.provenance();
+        if (context.operationId) await this.operations.update(context.operationId, { targetHash: fingerprint(before.target),
+            ...(before.serverBootId ? { serverBootId: before.serverBootId } : {}), state: 'awaiting_approval' });
         if (JSON.stringify(redact({ before, provenance })).length > 12000) throw new Error('Guard evidence exceeds receipt bound; narrow target.');
         const binding = fingerprint({ action, risk, input: parsed, target: before.target, serverBootId: before.serverBootId });
         let lease = leaseId && this.#leases.get(leaseId);
@@ -100,8 +132,11 @@ export class RiskExecutor {
         if (leaseId && !valid(lease)) throw new Error('Invalid, expired, exhausted or mismatched Capability Lease.');
         if (!lease) {
             if (!this.approve && !context.delegated) throw new Error('Trusted client approval unavailable; no operation executed.');
+            const reviewInput = item.reviewInput ? { projection: z.json().parse(item.reviewInput(parsed)), inputFingerprint: fingerprint(parsed),
+                note: 'Registered bounded input summary; authorization still binds the complete normalized input. Inspect domain source pages before independent formal approval.' } : parsed;
+            if (item.reviewInput && JSON.stringify(reviewInput).length > 12000) throw new Error('Registered review summary exceeds bound.');
             const decision = context.delegated ? { action: 'accept', content: { authorize: true, uses: 1 } } : await this.approve(redact({ action, risk, authority: d.authority, externalEffects: d.externalEffects,
-                input: parsed, before, provenance, binding, scope: 'Exact action, normalized input, target and server boot only' }), context);
+                input: reviewInput, before, provenance, binding, scope: 'Exact action, normalized input, target and server boot only' }), context);
             if (decision?.action !== 'accept' || decision.content?.authorize !== true) throw new Error('User approval declined or cancelled.');
             const uses = decision.content?.uses ?? 1;
             if (!Number.isInteger(uses) || uses < 1 || uses > (risk === 'DESTRUCTIVE' ? 1 : 20)) throw new Error('Invalid trusted approval scope.');
@@ -112,12 +147,21 @@ export class RiskExecutor {
             this.#leases.set(lease.leaseId, lease);
         }
         context.signal?.throwIfAborted();
+        if (context.operationId) await this.operations.update(context.operationId, { state: 'ready' });
+        context.onReady?.();
+        const target = before.target ?? {};
+        const scope = ['sessionId', 'projectId', 'packageId', 'previewId', 'operationId'].filter(key => target[key] !== undefined);
+        const keys = scope.length ? scope.map(key => key + ':' + fingerprint(target[key])) : ['authority:' + d.authority];
+        if (d.adapter === 'fixed-browser') keys.push('browser:page');
+        const lane = d.adapter === 'local-control' ? 'control' : d.adapter === 'fixed-browser' ? 'browser' : 'mutation';
+        return this.scheduler.run(lane, keys, async heldKeys => {
         const checked = await item.guard(parsed, { receipts: this.receipts });
         if (fingerprint(before) !== fingerprint(checked)) throw new Error('Authority changed after approval; review again.');
         if (fingerprint(provenance) !== fingerprint(await this.provenance())) throw new Error('Provenance changed after approval; review again.');
         if (!valid(lease)) throw new Error('Capability Lease expired before execution.');
         context.signal?.throwIfAborted();
         lease.remaining--;
+        if (context.operationId) await this.operations.update(context.operationId, { state: 'running', dispatched: true });
         let result = null, error = null, status = 'succeeded';
         const childReceiptIds = [];
         let childRunning = false;
@@ -131,12 +175,12 @@ export class RiskExecutor {
                 childRunning = true;
                 try {
                     const childResult = await this.#execute(this.registry.get(op.action).detail.risk, { action: op.action, input: op.input },
-                        { signal: context.signal, delegated: { ...attribution, parentReceiptId: executionReceiptId } });
+                        { signal: context.signal, heldKeys, delegated: { ...attribution, parentReceiptId: executionReceiptId } });
                     if (childResult.receipt) childReceiptIds.push(childResult.receipt.receiptId);
                     return childResult;
                 } finally { childRunning = false; }
             };
-            result = redact(item.outputSchema.parse(await item.handler(parsed, { before: checked, receipts: this.receipts, signal: context.signal, executeChild, executionReceiptId })));
+            result = redact(item.outputSchema.parse(await item.handler(parsed, { before: checked, receipts: this.receipts, signal: context.signal, executeChild, executionReceiptId, operationId: context.operationId })));
             if (result?.ok === false) status = result?.partial === true ? 'indeterminate' : 'rejected';
         } catch (cause) { status = 'indeterminate'; error = redact(cause.message); }
         // Never automatically retry an uncertain operation. Output/schema/transport failures can follow a committed write.
@@ -150,6 +194,7 @@ export class RiskExecutor {
             parentReceiptId: context.delegated?.parentReceiptId ?? evidence.parentReceiptId ?? parsed.evaluationReceiptId ?? parsed.reviewReceiptId ?? null,
             provenance: { serverBootId: before.serverBootId, review: provenance, attribution: context.delegated ?? null, ...(evidence.provenance ?? {}) }, error }, executionReceiptId);
         return { result, receipt, lease: { leaseId: lease.leaseId, remaining: lease.remaining, expiresAt: lease.expiresAt }, ...(error ? { error } : {}) };
+        }, context);
     }
 }
 

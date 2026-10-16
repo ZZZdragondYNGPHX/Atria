@@ -8,13 +8,12 @@ import { dirname, basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import assert from 'node:assert/strict';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { Client } from '@modelcontextprotocol/client';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { redact } from '../src/policy.js';
 import { SourceCatalog } from '../src/catalog.js';
 import { readSourceIdentity, compareSource } from '../src/provenance.js';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { fingerprint } from '../src/kernel.js';
 import { request as playwrightRequest } from 'playwright';
 import { verifyNativeUi } from './verify-native-ui.js';
@@ -34,7 +33,7 @@ await new Promise(resolve => reserve.close(resolve));
 const origin = `http://127.0.0.1:${port}`;
 const config = join(scratch, 'config.yaml');
 const policyPath = join(scratch, 'mcp-policy.json');
-const mutationActions = ['build.package.create', 'package.install.review', 'package.install', 'build.project.create', 'build.project.delete.owned', 'session.delete', 'session.delete.owned', 'work.delete', 'library.revision.delete', 'build.frontend.evaluate', 'build.change.apply', 'build.preview.close', 'build.simulate', 'session.rename', 'session.save', 'session.restore', 'chat.branch.fork', 'chat.branch.switch', 'work.start', 'settings.patch', 'connection.update', 'library.world.revision.create'];
+const mutationActions = ['build.package.create', 'package.install.review', 'package.install', 'build.project.create', 'build.project.delete.owned', 'session.delete', 'session.delete.owned', 'work.delete', 'library.revision.delete', 'build.frontend.evaluate', 'build.change.apply', 'build.preview.close', 'build.simulate', 'session.rename', 'session.save', 'session.save.quick', 'session.save.policy.update', 'session.restore', 'chat.branch.switch', 'chat.branch.rename', 'chat.branch.archive', 'work.start', 'settings.patch', 'connection.update', 'library.world.revision.create'];
 await writeFile(policyPath, JSON.stringify({ version: 1, actionIds: mutationActions }));
 await writeFile(config, await readFile(join(catalog.root, 'default', 'config.yaml')));
 let server;
@@ -71,11 +70,11 @@ try {
     await bundle.body?.cancel();
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('ATRIA_')));
     const transport = new StdioClientTransport({ command: process.execPath,
-        args: [join(toolRoot, 'src', 'cli.js'), '--repo', catalog.root, '--url', origin, '--policy', policyPath, ...(process.env.ATRIA_TEST_BROWSER_CHANNEL ? ['--browser-channel', process.env.ATRIA_TEST_BROWSER_CHANNEL] : [])], env, stderr: 'pipe' });
+        args: [join(toolRoot, 'src', 'cli.js'), '--repo', catalog.root, '--url', origin, '--policy', policyPath, '--state-dir', join(scratch, 'mcp-journals'), ...(process.env.ATRIA_TEST_BROWSER_CHANNEL ? ['--browser-channel', process.env.ATRIA_TEST_BROWSER_CHANNEL] : [])], env, stderr: 'pipe' });
     transport.stderr.on('data', bytes => { stderr += bytes; });
     client = new Client({ name: 'atria-real-product-smoke', version: '1.0.0' }, { capabilities: { elicitation: { form: {} } } });
     const approvalRequests = [];
-    client.setRequestHandler(ElicitRequestSchema, async request => {
+    client.setRequestHandler('elicitation/create', async request => {
         const review = JSON.parse(request.params.message.slice(request.params.message.indexOf('\n') + 1));
         assert.ok(mutationActions.includes(review.action), 'Only explicitly configured disposable-fixture operations');
         assert.equal(request.params.mode, 'form'); approvalRequests.push({ action: review.action, binding: review.binding });
@@ -84,7 +83,7 @@ try {
     });
     await client.connect(transport);
     const call = async (name, args = {}) => {
-        const result = await client.callTool({ name, arguments: args }, undefined, { timeout: 90000 });
+        const result = await client.callTool({ name, arguments: args }, { timeout: 90000 });
         if (result.isError) {
             for (const diagnosticTool of ['atri_browser_observe', 'atri_browser_diagnostics', 'atri_browser_screenshot']) {
                 try {
@@ -137,10 +136,14 @@ try {
             package: { name: 'MCP Read Fixture', version: '1.0.0', actors: [], capabilities: ['narrative', 'game-runtime'], permissions: [],
                 runtime: { experience: { mode: 'full', frontend: { kind: 'native', version: 3, source: 'frontend/index.json' } } },
                 entryPoints: [{ entryPointId, displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
-            worlds: [], knowledge: [], knowledgeBindings: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [] }, assetFiles: [] };
+            worlds: [], knowledge: [], knowledgeBindings: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [] },
+            assetFiles: [{ assetId: uid('asset'), path: 'assets/mcp-capacity.bin', mediaType: 'application/octet-stream', logicalName: 'Disposable capacity fixture' }] };
         const files = [{ path: 'frontend/index.json', content: JSON.stringify({ format: 'atria-frontend-source', version: 3, primaryView: 'main', views: [{ id: 'main', root: 'Main', surface: 'app.root' }], components: [{ id: 'Main', source: 'Main.aui' }] }) },
-            { path: 'frontend/Main.aui', content: '<template><main node-id="root"><p node-id="message">MCP READ Fixture</p></main></template>' }];
-        await post('/api/native/studio/projects', { source, files });
+            { path: 'frontend/Main.aui', content: '<template><main node-id="root"><p node-id="message">MCP READ Fixture</p><button node-id="increment" on:click="increment">Local count</button><output node-id="count" bind:text="ui.count" /></main></template><contract>' + JSON.stringify({
+                state: { ui: { schema: { type: 'object', properties: { count: { type: 'integer' } }, required: ['count'], additionalProperties: false }, initial: { count: 0 } } },
+                interactions: { increment: [{ kind: 'set', target: 'ui.count', value: { op: 'add', args: [{ get: 'ui.count' }, 1] } }] },
+            }) + '</contract>' }];
+        await post('/api/native/studio/projects', { source, files: [...files, { path: 'assets/mcp-capacity.bin', encoding: 'base64', content: randomBytes(2 * 1024 * 1024).toString('base64') }] });
         const revision = await read('build.project.revision', { projectId });
         const baseRevision = revision.revision;
         semantic.frontend = await read('build.frontend.inspect', { projectId, baseRevision });
@@ -188,7 +191,8 @@ try {
             evaluation: evaluated.receipt.evaluation,
             fork: async () => {
                 const current = await read('session.snapshot', { sessionId });
-                await mutate('mutate', 'chat.branch.fork', { sessionId, expectedRevisionId: current.revision.revisionId, revisionId: current.revision.revisionId });
+                const checkpoint = await mutate('mutate', 'session.save.quick', { sessionId, expectedRevisionId: current.revision.revisionId });
+                await mutate('mutate', 'session.restore', { sessionId, expectedRevisionId: current.revision.revisionId, saveId: checkpoint.result.data.saveId });
             } });
         const applied = await mutate('mutate', 'build.change.apply', { workspace, evaluationReceiptId: evaluated.receipt.receiptId });
         assert.match((await read('build.source.read', { projectId, path: 'frontend/Main.aui' })).content, /MCP REVIEWED Fixture/);
@@ -201,9 +205,12 @@ try {
         await mutate('mutate', 'session.rename', { sessionId, expectedDisplayTitle: semantic.session.session.displayTitle ?? null, displayTitle: 'MCP Authorized Session' });
         let snapshot = await read('session.snapshot', { sessionId });
         const saved = await mutate('mutate', 'session.save', { sessionId, expectedRevisionId: snapshot.revision.revisionId, displayName: 'MCP save' });
-        const fork = await mutate('mutate', 'chat.branch.fork', { sessionId, expectedRevisionId: snapshot.revision.revisionId, revisionId: snapshot.revision.revisionId });
+        const restored = await mutate('mutate', 'session.restore', { sessionId, expectedRevisionId: snapshot.revision.revisionId, saveId: saved.result.data.saveId });
         snapshot = await read('session.snapshot', { sessionId });
-        await mutate('mutate', 'session.restore', { sessionId, expectedRevisionId: snapshot.revision.revisionId, saveId: saved.result.data.saveId });
+        await mutate('mutate', 'chat.branch.rename', { sessionId, expectedRevisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId, displayName: 'MCP restored route' });
+        await mutate('mutate', 'chat.branch.archive', { sessionId, expectedRevisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId, archived: false });
+        await mutate('mutate', 'session.save.policy.update', { sessionId, expectedRevisionId: snapshot.revision.revisionId, autoSavePolicy: { enabled: false, intervalMs: 300000, retain: 12 } });
+        await mutate('mutate', 'chat.branch.switch', { sessionId, expectedRevisionId: snapshot.revision.revisionId, branchId: saved.result.data.branchId });
         const ownedSession = await mutate('mutate', 'work.start', { packageId, packageVersionId, entryPointId, displayTitle: 'MCP Work start' });
         await post('/api/settings/patch', { operations: [{ op: 'add', path: '/font_scale', value: 1 }] });
         await mutate('mutate', 'settings.patch', { path: 'font_scale', expected: 1, value: 1.2 });
@@ -216,7 +223,7 @@ try {
             transport: 'transport.http-json', endpoint: 'https://example.invalid/v1', networkPolicy: {}, secretRef: { secretId: 'mcp-unused', scope: 'player' }, options: {} };
         const createdConnection = await mutate('mutate', 'connection.update', { resourceId: connectionProfileId, expectedFingerprint: fingerprint(null), value: connection });
         await mutate('mutate', 'connection.update', { resourceId: connectionProfileId, expectedFingerprint: createdConnection.result.receiptEvidence.after.fingerprint, value: { ...connection, displayName: 'MCP Reviewed Connection' } });
-        assert.ok(fork.receipt.after.branchId);
+        assert.ok(restored.receipt.after.branchId);
         semantic.approvalProtocol = { mechanism: 'MCP form elicitation; deterministic test-client acceptance, not human UX proof', requests: approvalRequests };
         const csrfForBoot = await setup.get(origin + '/csrf-token'); const bootCsrf = (await csrfForBoot.json()).token; await csrfForBoot.dispose();
         const rejectedBoot = await setup.post(origin + `/api/native/product/sessions/${sessionId}/save`, { data: {}, headers: { 'x-csrf-token': bootCsrf, 'x-atria-expected-server-boot-id': randomUUID() } });
@@ -224,6 +231,8 @@ try {
         const blockedWork = await client.callTool({ name: 'atri_destructive', arguments: { action: 'work.delete', input: { packageId, baseVersionId: packageVersionId } } });
         assert.equal(blockedWork.isError, true);
         const builtHandle = await mutate('interact', 'build.package.create', { projectId, baseRevision: afterRevision });
+        assert.ok(builtHandle.result.artifact.size > 2 * 1024 * 1024, 'Actual Studio archive crosses the normal JSON response bound through fixed Native chunks');
+        semantic.largePackageTransfer = { size: builtHandle.result.artifact.size, contentHash: builtHandle.result.artifact.contentHash, transport: 'native-metadata-and-bounded-binary-chunks' };
         const artifactId = builtHandle.result.artifact.artifactId;
         const preflightInstall = json(await call('atri_read', { action: 'package.install.preflight', input: { artifactId } }));
         const reviewed = await mutate('interact', 'package.install.review', { artifactId, preflightHash: preflightInstall.preflightHash, grantedPermissions: [] });
@@ -236,7 +245,7 @@ try {
         const finalSnapshot = await read('session.snapshot', { sessionId });
         await mutate('destructive', 'session.delete', { sessionId, expectedRevisionId: finalSnapshot.revision.revisionId });
         await mutate('destructive', 'work.delete', { packageId, baseVersionId: preflightInstall.target.packageVersionId });
-        const tempSource = structuredClone(source); tempSource.project.projectId = uid('project'); tempSource.project.packageId = uid('pkg');
+        const tempSource = structuredClone(source); tempSource.project.projectId = uid('project'); tempSource.project.packageId = uid('pkg'); tempSource.assetFiles = [];
         const ownedProject = await mutate('mutate', 'build.project.create', { source: tempSource, files });
         await mutate('destructive', 'build.project.delete.owned', { projectId: tempSource.project.projectId,
             baseRevision: ownedProject.result.data.revision.revision, creatingReceiptId: ownedProject.receipt.receiptId });
@@ -304,7 +313,7 @@ try {
         mobileViewport: mobile.viewport, runtimeSourceMatch: status.runtimeSourceMatch,
         provenanceChecks: { changedSource, differentRevision, restart: restarted.provenance.browserFreshness, reload: reloaded.provenance.browserFreshness },
         runtime: status.provenance.server, restartedRuntime: reloaded.provenance.server,
-        scope: 'Phase 6 disposable security, Native Frontend v3 renderer/editor/Epoch and client protocol verification; deterministic approvals are not human UX evidence', clientCompatibility, semantic, diagnostics, artifacts };
+        scope: 'E7 disposable Native workflows, production renderer/semantic UI/ScreenshotProof, large-package transfer and real client compatibility; deterministic approvals are not human UX evidence', clientCompatibility, semantic, diagnostics, artifacts };
     await writeFile(join(artifacts, 'summary.json'), JSON.stringify(summary, null, 2));
     console.log(JSON.stringify({ source: summary.source, routes: summary.routes, runtimeSourceMatch: summary.runtimeSourceMatch,
         provenanceChecks: summary.provenanceChecks, readIntegration: 'passed', browserCapabilities: Object.fromEntries(Object.entries(semantic.browserCapabilities).map(([key, value]) => [key, value.available])), artifacts }, null, 2));

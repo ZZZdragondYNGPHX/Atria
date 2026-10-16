@@ -1,25 +1,41 @@
 #!/usr/bin/env node
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { loadConfig, HELP } from './config.js';
 import { createServer } from './server.js';
 
 let runtime;
+let transport;
 let stopping = false;
+const closing = new WeakMap();
+function closeInstance(instance) {
+    if (!instance) return;
+    if (!closing.has(instance)) closing.set(instance, Promise.resolve().then(() => instance.close()));
+    return closing.get(instance);
+}
 async function stop() {
     if (stopping) return;
     stopping = true;
-    await runtime?.close();
+    await transport?.close();
+    await closeInstance(runtime);
 }
 try {
     const config = loadConfig();
     if (config.help) process.stdout.write(HELP);
-    else if (config.version) process.stdout.write('0.2.0\n');
+    else if (config.version) process.stdout.write('0.3.0\n');
     else {
-        runtime = await createServer(config);
         process.once('SIGINT', () => { void stop().finally(() => process.exit(0)); });
         process.once('SIGTERM', () => { void stop().finally(() => process.exit(0)); });
         process.stdin.once('end', () => { void stop(); });
-        await runtime.server.connect(new StdioServerTransport());
+        transport = serveStdio(async () => {
+            const instance = await createServer(config);
+            runtime = instance;
+            const onclose = instance.server.server.onclose;
+            instance.server.server.onclose = () => {
+                onclose?.();
+                void closeInstance(instance).catch(error => process.stderr.write(`atria-mcp: ${error.message}\n`));
+            };
+            return instance.server;
+        }, { onerror: error => process.stderr.write(`atria-mcp: ${error.message}\n`) });
     }
 } catch (error) {
     process.stderr.write(`atria-mcp: ${error.message}\n`);

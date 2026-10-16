@@ -1,4 +1,4 @@
-# Atria MCP 0.2.0 — Phase 5
+# Atria MCP 0.3.0
 
 独立 stdio 开发工具，位于 `plugin:atria-mcp/`。提供广泛观察与显式批准的产品操作。默认 READ；写入由精确 Policy Ceiling、可信客户端审批、短期 Lease、双重 guards 和 Receipt 共同约束。
 
@@ -21,6 +21,7 @@ node /absolute/path/to/plugin-worktree/atria-mcp/src/cli.js --repo /absolute/pat
 | `--allow-remote` | `ATRIA_ALLOW_REMOTE=1` | 显式允许远端 HTTPS origin |
 | `--storage-state` | `ATRIA_STORAGE_STATE` | 显式测试登录态；工具不导出凭据 |
 | `--data-root` | — | 额外排除的运行时数据目录，绝对路径 |
+| `--state-dir` | `ATRIA_MCP_STATE_DIR` | MCP 私有操作元数据，必须在源码和产品数据目录之外 |
 | `--policy` | — | 启动时读取精确 action ID JSON；只定义资格，不代表用户批准 |
 
 默认排除 `data/` 等用户状态目录，读取根 `config.yaml` / `config.yml` 中的YAML `dataRoot` 标量（解析异常则拒绝观察）仅用于增加排除项，绝不输出配置正文。每次观察重新读取并保留此前排除项；historical show/diff/blame 也考虑相关 revision 的配置。若 runtime 使用自定义配置位置/CLI dataRoot，操作者必须用 `--data-root` 显式指定。MCP 无法仅凭任意目录名推断全部外部运行时存储位置。
@@ -58,18 +59,22 @@ Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、
 {"version":1,"actionIds":["build.frontend.evaluate","build.change.apply","build.preview.close"]}
 ```
 
-客户端必须支持 MCP **form elicitation**，并将服务器审批表单作为可信用户交互；工具参数中的布尔值不算审批。不支持该通道时保持写入关闭，不依据客户端名称推断审批能力。表单展示准确输入、目标、authority、风险、成本/网络效果、guards 与独立 provenance。仅客户端返回 `accept` 且用户勾选授权才 mint Lease。
+客户端必须实际协商可信审批：2025-06-18 / 2025-11-25 使用 **form elicitation**，2026-07-28 使用 **MRTR**；请求经过官方 SDK 适配，并绑定单次 HMAC continuation。工具参数中的布尔值不算审批。不支持该通道时保持写入关闭，不依据客户端名称推断审批能力。表单展示准确输入、目标、authority、风险、成本/网络效果、guards 与独立 provenance。仅客户端返回 `accept` 且用户勾选授权才 mint Lease。实际 Codex 0.162.1 的 app-server 连接协商为 2025-06-18；自动连接与工具调用证据不代表真人审批 UI 已验收。
 
 Lease 绑定当前 MCP instance、精确 action、规范化输入、目标和 `serverBootId`，用户可选择 1–20 次，五分钟失效；默认为一次。调用方只可回传 opaque `leaseId`，不能写 grants、scope 或 expiry。没有跨 action/domain 的宽泛授权；重启清空 Lease/Receipt。产品需报告 `mutationGuards: 1`；不支持最终请求 boot guard 的旧产品只能观察。
 
 - Build：`build.change.prepare/inspect` 为 READ。提交固定 Workspace（origin=`plugin/atria-mcp`），经批准调用 `build.frontend.evaluate` 或 `build.change.evaluate`，临时应用、验证、生成正式 Preview，再恢复源。`build.change.apply` 必须携带同实例有效 evaluation receipt；重新核对 baseRevision、规范化 operations、change fingerprints 与 Preview exact version。支持正式 `frontend.patch`、受限 source fallback 与 resource attach/fork/update。`build.preview.create/close` 和 `build.simulate` 使用现有 Studio authority；simulation 为隔离 recorded/mock runner。
-- Session：rename、save/restore、branch fork/switch、restart/remove-from-active 均保留历史。后两者要求明确选择将保留内容的 coherent `revisionId`。`chat.retry.prepare` 只派生 retry boundary；`chat.regenerate/reenter` 派生 branch 后启动生成，失败时 branch 仍可能已改变。`chat.send` 先在审核的精确修订号上提交用户消息，再以该提交修订号启动 Native turn scheduler；两步共享审批和 boot guard。返回 operationId 后通过 `generation.status/stop` 查询/停止，启动成功不代表生成完成。第二步失败或响应丢失时保留消息身份、提交修订号和 indeterminate 回执，先观察产品，不自动重发。GenerationProjection 不是 committed Timeline。
+- Session：`session.rename`、`session.save/quick`、`session.restore` 与 `chat.branch.switch/rename/archive` 复用原生存档和分支权威。Restore 从精确 SavePoint 创建新 Branch，原历史完整保留；分支元数据及 `session.save.policy.update` 同时钉住 HEAD 与原生 metadata fingerprint，防止同一 HEAD 上的并发覆盖。无副作用 guard 使用 Native `/observe`。六个原 Native Router 不支持的 fork/retry、restart/remove-from-active、regenerate/reenter 动作已退役，不提供旧楼层物理改写旁路。
+- `chat.send` 要求调用方预先生成稳定 `commitId` 和 `invocationId`。先以审核的精确修订号提交用户消息，再查询原生 CommitReceipt 并核对 Session、旧/新 Revision、Branch 和请求指纹，最后才启动 Native turn scheduler。输入响应丢失时只核对 receipt，不重发 append，也不自动启动模型；无法确认的输入保持 `unknown`。Generation 响应丢失保留已提交输入和 `generation.unknown`。返回 operationId 后通过 `generation.status/stop` 查询/停止；admitted 不代表生成完成，Stop 不回滚已提交消息，不自动重发收费请求。GenerationProjection 不属于 committed Timeline。
+- 长会话：`session.chronicle.query/metrics` 与 `session.revision.get` 读取原生固定 Revision，`session.commit.receipt` 核对真实提交；`runtime.context.preview` 复用原生 Context Compiler。`session.maintenance.collect` 独立一次性 DESTRUCTIVE 审批，锁内核对 HEAD，保留原生可达性、读租约及 60 秒隔离期，不允许传入自定义删除范围或缩短隔离期。
+- Archive：`session.archive.export/capture` → `inspect/preflight` → 独立批准 `import`，使用专用 `session-archive` Binary Asset purpose 和 `.atriasave` 原格式。读取开发文件仍受 RepositoryAccessPolicy 限制；完整 SHA、owner/client/boot/source、Package 依赖和目标 Session CAS 均由原权威核对。普通工具结果只含元数据；Archive 不可当作 Package 安装。加密归档可做依赖预检，但 MCP 没有可信密码解锁 Port，必须使用原生 UI，不接受模型可见明文密码。
+- Project Agent：`agent.project.generation.preflight/start/status/cancel` 复用 Goal Continuation 的同一 Studio runner 与 Native Generation Host；启动要求显式接受模型费用、精确 route/Provider 目标/预算审批及 preflight hash。Task 原预算记录实际 usage，取消不代表退款；固定 route 必须禁用自动 retry/fallback。模型只产生提案并停在 Review，正式 Commit 仍需独立审批。
 - Settings：仅明确列出的普通 UI scalar settings，现有值 test + replace，不开放根替换或 Agent/Memory/credentials 配置路径。
 - Runtime：`runtime.parameters.update` 复用正式参数 guards；`connection/model/route.update` 使用 Native 配置 authority 与锁内 SHA-256 canonical JSON expected fingerprint，新增对象使用 `SHA256("null")`。仅 opaque Secret refs，无凭据值。
 - Library：World/Knowledge 新 immutable revision；旧版本保留，产品核对 baseRevisionId。Work start 要求 exact PackageVersion/EntryPoint。
 - Memory：先 `memory.mutation.inspect` 获得 loaded graph fingerprint/target，再批准 create/edit/relation upsert/compact。固定 bridge 调用现有 source-guarded write session，克隆草稿、队列内检查图状态。无任意方法/JS/batch dispatch；缺少 loaded scope 拒绝执行。该证据属于 Memory source/branch，不证明 Frontend Epoch exactness。
 
-每次执行在审批前后检查 authority。源/runtime 不一致可被明确审阅，Receipt 保留独立身份而不冒充匹配。结果包含 ephemeral Receipt：`succeeded`、`rejected` 或 `indeterminate`。最后一种表示超时、输出或传输错误可能发生在写入之后，必须先观察产品，不能自动重试。大响应只返回 hash/metadata，详情通过 READ 获取。Phase 5 开放 one-shot DESTRUCTIVE、Package review/install 和受限 Agent delegation。通用浏览器 click/fill/press/select 仍拒绝，避免绕过语义风险。
+每次执行在审批前后检查 authority。源/runtime 不一致可被明确审阅，Receipt 保留独立身份而不冒充匹配。结果包含 ephemeral Receipt：`succeeded`、`rejected` 或 `indeterminate`。最后一种表示超时、输出或传输错误可能发生在写入之后，必须先观察产品，不能自动重试。大响应只返回 hash/metadata，详情通过 READ 获取。支持 one-shot DESTRUCTIVE、独立 Package review/install、Project Agent Review/Commit 和受限 Agent delegation。通用浏览器 click/fill/press/select 仍拒绝，避免绕过语义风险。
 
 例如 `atri_read(action="build.frontend.inspect", input={projectId,baseRevision})` 复用正式 Source Graph；`chat.read` 读取不可变 Timeline；`build.preview.get` 读取已有 Preview，绝不创建 Preview。`atri_diagnose_snapshot` 合并独立诊断读取，逐项保留 unavailable/HTTP permission status 和各自 boot/time；不是原子快照。
 
@@ -77,7 +82,28 @@ Lease 绑定当前 MCP instance、精确 action、规范化输入、目标和 `s
 
 HTTP 输出先脱敏再分页；`outputOffset`/`outputLimit` 与 contentHash 可用于检查分次响应是否变化，JSON 片段明确标记，不冒充完整结构。响应最大 1 MiB，过大应缩小范围。Studio source base64 先解码为 UTF-8 再过滤；二进制只给 metadata。Bundle inspection/preflight 只返回引用/依赖/冲突，不转储 archive 内容。
 
-Memory vector search/recall 与 connection probe 是 READ，但描述符明确标出 provider network/`mayIncurCost`。probe 只能选择现有 ConnectionProfile ID，不接受凭据或任意 endpoint。这些调用不会由诊断快照自动触发。
+Memory vector search/recall 与 `runtime.connection.probe` 可能联网或收费，归 INTERACT，必须精确 Policy Ceiling 与可信审批。probe 只选择现有 ConnectionProfile ID，并在原生 Secret 解析与发送前核对独立 credential-target permit；更换 Endpoint 不能继承旧许可。这些调用不会由诊断快照自动触发。
+
+
+## 原生域工作流与可靠性
+
+使用 `atri_capabilities` 查询当前精确 schema，不根据示例猜字段。新增域沿同一原生权威执行：
+
+- Project Agent：外部 AI 可提交 typed plan/proposal 到原生 Task；显式内置模型 generation 使用已审 Route/预算、Native Scheduler 和 Compute 记录，至 Review 停止。正式 Commit 独立审批，绑定 Task sequence、Review Hash、Preview 与 Project revision；删除提案的正式提交保持 DESTRUCTIVE。
+- Runtime / Cognition：纯 Prompt Preview 与持久快照观察独立于 reconcile；Connection/Model/Route、Prompt Candidate、Goals/Evidence/Experience/Evolution 的精确写入分别审批。反馈不能自动当作发布许可，原生受控入口抑制未授权后台费用；自动策略配置与正式发布单独授权。
+- Memory：无头 Native Graph 操作保留原 source ticket、branch/HEAD、graph fingerprint 与事务；不需要为写入制造浏览器会话。旧 browser bridge 仅在真正加载的作用域内使用。
+- Media：Image/Director/Gallery/Mask/Speech 保留各自原生 preparation、job、预算、CAS、GC 与取消语义。图像、音频与 Mask raster 经固定用途 BinaryAssets 句柄，业务发送/Checkpoint 另审；观察不会自动恢复 Worker 或清理持久状态。
+- Skills / Extensions：Skill 是不可信文本资料，版本与完整 supporting files Hash 受 Native 队列 CAS 保护；URL 下载和安装分别审批。Extension Git/local source 先准备 inert 内容并审查，安装默认为 disabled，enable 另审；不开放任意 Host import/eval/shell。
+- Resource / Archive：Resource Bundle 完整映射按页审查，独立 Review/Import；已审 Token 的不确定导入只能显式续接同一意图。已安装 Package 可导出原字节；Session Archive 复用 Native SaveSystem，支持专用密码 SecretRef 加密导入/导出，预检不解析密码。密码在现有产品 Secret UI 中保存到独立用途，MCP 不接收密码明文，也不能把该用途的 Secret 作为 Provider 凭据。
+- Browser：`browser.ui.surfaces/interact` 只允许当前 compiled manifest 中无脚本/Bridge/持久副作用的本地 set/toggle。截图可指定注册 Surface target；ScreenshotProof 对原生身份、源码、文档和可见区域作前后核对，只证明采集窗口内的画面来源，不代表编译、Commit 或真人同意。MCP 证据页面阻止用户 Extension 代码与跨 Origin 子资源，避免第三方页面脚本伪造受控 Surface；产品的 Extension 启用状态仍由独立原生审批管理。
+
+Control、Read、Mutation、Browser 分 lane，有界队列与按目标隔离；同一页面的导航、截图和交互串行。审批等待不持有写锁，执行前在锁内再次核对授权和 Native CAS。`operation.list/get/scheduler/cancel/reconcile` 提供实例内控制与拥有方查询；取消不等于远端撤销或回滚。含 source.delete 的直接 Workspace 正式提交必须使用 `build.change.apply.destructive` 并取得一次性 DESTRUCTIVE 审批。
+
+超长 JSON 元数据按字符分页时，fragment 使用 `encoding: "hex-utf16le"` 与 `encodedText`；先按 hex 解码成 UTF-16LE，再按游标拼接并核对完整 Hash。这样保留任意 Unicode 边界，避免外层重复脱敏改坏半截 JSON。正常结构化页仍直接返回；资产字节继续走独立 Binary Lane。Skills 大 payload 使用 `skill.payload.capture` 读取允许的开发 JSON 产物，再分别 preflight/install，支持原生 16 MiB 解码容量；本地 Extension 源码支持 4 MiB UTF-8 分块传输，准备阶段不执行代码。
+
+私有 Journal 只存 ID/Hash/状态/回执关联，原子写入并采用 Windows ACL 或 Unix 私有权限。已知结束记录保留七天后可回收；unknown 不自动删除或重放。每 owner 最多 1,000 条记录、128 个实例目录，超限 fail-closed；真实业务状态始终由 Native authority 核对。Lease、审批 continuation 和图片原字节不写 Journal，重启不恢复授权。
+
+SDK 依赖精确固定 2.3.1，支持两代 stdio 协议。可选 Tasks 扩展未宣告，使用上述 semantic operations；能力不足时写入关闭，不以客户端名称推断支持。Windows 本地自动化、真实客户端 CLI、真人审批界面和 CachyOS/Termux 是不同验收层，不能互相代替。
 
 ## 仓库与产物边界
 
@@ -137,19 +163,20 @@ Experience 与 Preview 通过固定 Native Frontend/Studio 响应的被动观察
 
 Build 仍是语义命名空间，Native Studio 是 owning authority；复用 Native Frontend v3 Source Graph、diagnostics、`frontend.patch`、evaluation、Preview、Experience Epoch。Frontend Host Bridge 不等同于 MCP Browser Capability Bridge。Committed Conversation/Timeline 不可变，GenerationProjection 是 ephemeral presentation。
 
-## Phase 5 高风险操作
+## 高风险操作
 
 - `session.delete` / `build.project.delete` 要求精确 revision；`work.delete` 先展示并检查依赖 Sessions，产品事务仍会拒绝引用或版本冲突。`library.revision.delete` 使用正式 delete-safety，不能删除当前/被引用的 revision。无 force 或单独 PackageVersion 物理删除接口。
 - `memory.node.delete` / `memory.relation.delete` 通过现有 guarded Memory session；必须匹配已加载作用域与 graph hash。
 - 所有 DESTRUCTIVE 审批严格一次使用。`.owned` Session/Project cleanup 还要求同一 MCP 实例、同一 serverBootId、成功创建回执、精确对象 ID 和原始创建 revision。修改过的对象必须重新使用普通 one-shot 删除流程，不按名称推断所有权。旧 Phase 4 缺少创建 revision 的回执不能用于此窄范围清理。
-- Package 流程：`package.artifact.capture` 从已有安全 artifact roots 获取 `.atria`，或 `build.package.create` 经 Studio 生成 → `package.artifact.inspect` → `package.install.preflight` → `package.install.review` → `package.install`。review 与 install 都走可信审批，绑定同一 archive hash、版本、权限、preflight 和当前 baseVersion；漂移必须重新 review。archive bytes 仅保留在内部，最多 4 个/每个 16 MiB，15 分钟过期；Studio build 响应仍受普通 transport 1 MiB 限制。
+- Package 流程：`package.artifact.capture` 从已有安全 artifact roots 获取 `.atria`，或 `build.package.create` 经 Studio 生成 → `package.artifact.inspect` → `package.install.preflight` → `package.install.review` → `package.install`。review 与 install 都走可信审批，绑定同一 archive hash、版本、权限、preflight 和当前 baseVersion；漂移必须重新 review。archive bytes 仅在内部有界保存，最多 4 个/每个 128 MiB，15 分钟过期；Native Build 返回元数据，采用固定分块和整包 SHA 校验，不把大段 base64 放进普通工具 JSON。
 - `agent.delegation.inspect` 读取选定 preset/node；`agent.run.start` 仅在用户明确要求内部 Agent 工作流时使用。当前模式 `delegated-node` 运行一个显式选定节点，复用 AgentRuntime 和既有 durable checkpoint store，不隐式执行完整 preset 图。最多 8 个精确 Memory create/edit/relation-upsert/compact 操作，每个一次，preset 工具与产品 capability、MCP ceiling 和用户批准 envelope 取交集。拒绝 deletion、web、任意工具、参数替换及嵌套 Agent。
+- MCP 委托还需显式 Native Route、`expectedGenerationFingerprint` 与 `acceptModelCharges: true`；预检显示原生预算和已批准的凭据目标。每轮模型请求复核最初的配置指纹，经原 Native reviewed execute 发送，使用原 RunControl 费用记录；未知发送不 retry/fallback。普通 UI 工作流保持原调用方式。取消只请求本次委托的 Native Operation，失败与未知结果保留原 request/operation ID 供核对。
 - Agent 有 1–8 steps、256–16000 context budget、1–60 秒 deadline，MCP request cancellation 会停止 Runtime；没有金额预算承诺。model/tool/Memory evidence、每次 provider usage、可用时的 cost，以及 parent/child receipt + run/step/effect attribution 一并返回。未知 token/cost 明确为 null，不估作零；无自动 Memory recall。费用仍以 provider 实际计费为准。
 - Lease、回执、artifact handles 随 MCP 实例结束失效；Agent durable checkpoint 归原 Orchestrator 所有。无法确认的中间效果保留 indeterminate 回执且不自动重试。
 
 deterministic provider/浏览器 fixture 不是付费模型或实际客户端人工审批 UX 证据。真实产品与 fixture 验证范围以同一任务 Record 为准。
 
-## Phase 6 验收
+## 产品与客户端验收
 
 `test:atria` 额外运行真实 Native Frontend v3 验证：同一进程的 Experience Epoch 撤销、evaluation receipt 对应精确 Preview 的 production renderer、实际 Source Graph editor 的临时 evaluation/Preview，以及桌面/窄屏截图。真实加载的 Native Memory 覆盖节点读写、keyword/name 查找、relation、compaction、过期 fingerprint 拒绝和清理后 reload。测试挂载现有产品组件；不代表完整 shell 导航或所有 Script/Media 场景。测试 harness 的固定 JS 只用于准备和验证一次性环境，未开放为 MCP capability。
 
@@ -157,4 +184,4 @@ Memory 写前保持 exact revision/graph guards；写后允许 owning transactio
 
 可选设置 `ATRIA_VERIFY_CODEX_EXE`、`ATRIA_VERIFY_CLAUDE_EXE` 为已安装客户端的 executable 绝对路径。Codex 在一次性配置和 ephemeral protocol session 中验证 18 tools、schema、status、discovery、READ 与 JPEG image content；不发送 model turn，provider 指向本地不可用地址。Claude Code 使用一次性配置执行真实 `mcp get` 连接检查；该命令不证明工具执行或人工审批。两者都不修改个人客户端配置。
 
-证据分别写入 `clients.json`、`native-ui.json`、`summary.json` 和截图；测试结束清理自有运行时、数据、浏览器及临时客户端配置。人工 elicitation、真实 provider、Agent 与 Memory 的最终端到端覆盖必须按 Record 的具体证据判断，不能由启动成功、测试 provider 或空状态读取推断。Phase 6 字段表示当前验证阶段，不是任务已完成声明。
+证据分别写入 `clients.json`、`native-ui.json`、`summary.json` 和截图；测试结束清理自有运行时、数据、浏览器及临时客户端配置。人工 elicitation、真实 provider、Agent 与 Memory 的最终端到端覆盖必须按 Record 的具体证据判断，不能由启动成功、测试 provider 或空状态读取推断。是否验收通过以本次任务 Record 的具体 HEAD 与实际测试证据为准。

@@ -16,6 +16,11 @@ export class AtriaBrowser {
     }
 
     async start() {
+        if (!this.starting) this.starting = this._start().catch(error => { this.starting = null; throw error; });
+        return this.starting;
+    }
+
+    async _start() {
         if (this.context) return;
         this.browser = await chromium.launch({ headless: !this.config.headed, channel: this.config.channel });
         try {
@@ -26,12 +31,24 @@ export class AtriaBrowser {
             this.context.setDefaultTimeout(this.config.timeout);
             await this.context.route('**/*', async route => {
                 const request = route.request();
-                // Block cross-origin documents, including redirects, popups and network frames.
-                // Subresources still follow Atria's own behavior; this is not an egress sandbox.
-                if (request.isNavigationRequest() && new URL(request.url()).origin !== this.config.url) {
-                    this.record({ type: 'blocked-navigation', url: diagnosticUrl(request.url()) });
+                const url = new URL(request.url());
+                // User-installed same-origin JavaScript could forge renderer manifests.
+                // It stays inert in this evidence context; product enable state is unchanged.
+                if (/^\/api\/native\/extensions\/files\//.test(url.pathname) || /^\/scripts\/extensions\/third-party\//.test(url.pathname)) {
+                    this.record({ type: 'blocked-third-party-code', url: diagnosticUrl(request.url()) });
+                    await route.abort('blockedbyclient'); return;
+                }
+                // Browser evidence stays on the configured origin, including subresources.
+                // Native Provider networking remains a separate owning authority.
+                if (url.origin !== this.config.url) {
+                    this.record({ type: request.isNavigationRequest() ? 'blocked-navigation' : 'blocked-subresource', url: diagnosticUrl(request.url()) });
                     await route.abort('blockedbyclient');
                 } else await route.continue();
+            });
+            await this.context.routeWebSocket('**/*', socket => {
+                const url = new URL(socket.url()); url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
+                if (url.origin !== this.config.url) { this.record({ type: 'blocked-websocket', url: diagnosticUrl(socket.url()) }); socket.close(); }
+                else socket.connectToServer();
             });
             this.page = await this.context.newPage();
             this.page.on('request', request => {
@@ -61,7 +78,7 @@ export class AtriaBrowser {
 
     async close() {
         try { await this.browser?.close(); }
-        finally { this.context = null; this.browser = null; this.page = null; this.loadedIdentity = null; this.scopedEvidence = {}; this.documentGeneration++; }
+        finally { this.starting = null; this.context = null; this.browser = null; this.page = null; this.loadedIdentity = null; this.scopedEvidence = {}; this.documentGeneration++; }
     }
 
     async readyPage() {
@@ -73,6 +90,7 @@ export class AtriaBrowser {
 
     async open({ path = '/', reload = false, width, height, waitFor } = {}) {
         const url = safeUrl(path, this.config.url);
+        if (!['/', '/index.html', '/login', '/login.html'].includes(url.pathname) || url.search || url.hash) throw new Error('Browser navigation is restricted to the Atria shell and manual login surfaces without route parameters; use semantic Native actions for data.');
         await this.start();
         if (width || height) await this.page.setViewportSize({ width: width ?? this.page.viewportSize().width, height: height ?? this.page.viewportSize().height });
         this.loadedIdentity = null; this.scopedEvidence = {};
@@ -155,13 +173,21 @@ export class AtriaBrowser {
         return this.snapshot();
     }
 
-    async wait({ selector, state = 'visible', timeout = 30000, frame = 0 }) {
+    async wait({ selector, state = 'visible', timeout = 30000, frame = 0, signal }) {
         await this.readyPage();
-        await this.frame(frame).locator(selector).waitFor({ state, timeout });
+        const generation = this.documentGeneration, deadline = Date.now() + timeout;
+        while (true) {
+            signal?.throwIfAborted();
+            if (generation !== this.documentGeneration) throw Error('Browser document changed during wait');
+            try { await this.frame(frame).locator(selector).waitFor({ state, timeout: Math.max(1, Math.min(200, deadline - Date.now())) }); break; }
+            catch (error) { if (error.name !== 'TimeoutError' || Date.now() >= deadline) throw error; }
+        }
+        signal?.throwIfAborted();
+        if (generation !== this.documentGeneration) throw Error('Browser document changed during wait');
         return this.snapshot({ frame });
     }
 
-    async screenshot({ frame = 0, selector, fullPage = false } = {}) {
+    async screenshot({ frame = 0, selector, fullPage = false, clip } = {}) {
         await this.readyPage();
         if (fullPage) {
             const height = await this.page.evaluate(() => Math.max(document.body?.scrollHeight ?? 0, document.documentElement.scrollHeight));
@@ -171,7 +197,7 @@ export class AtriaBrowser {
         if (selector) bytes = await this.frame(frame).locator(selector).screenshot({ type: 'jpeg', quality: 75, timeout: this.config.timeout });
         else {
             if (frame !== 0) throw new Error('Frame screenshots require a selector (for example body).');
-            bytes = await this.page.screenshot({ type: 'jpeg', quality: 75, fullPage, timeout: this.config.timeout });
+            bytes = await this.page.screenshot({ type: 'jpeg', quality: 75, fullPage, ...(clip ? { clip } : {}), timeout: this.config.timeout });
         }
         if (bytes.length > 3 * 1024 * 1024) throw new Error('Screenshot exceeds 3 MiB. Use a smaller viewport or selector.');
         return { bytes, mimeType: 'image/jpeg', url: diagnosticUrl(this.page.url()) };

@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { Client, ProtocolError } from '@modelcontextprotocol/client';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { productFixture, httpFixture } from './helpers.js';
 import { PUBLIC_TOOLS } from '../src/kernel.js';
 const cli = fileURLToPath(new URL('../src/cli.js', import.meta.url));
@@ -49,7 +49,8 @@ test('stdio exact 18-tool/schema contract, legacy rejection and Phase 1 fail-clo
     await fixture.write('new.ts', 'safe new development file');
     assert.match(unpack(await call('atri_repo', { operation: 'read', path: 'new.ts' })).content, /safe new/);
     assert.ok(unpack(await call('atri_git', { operation: 'status' })).entries.some(e => e.path === 'new.ts'));
-    for (const name of ['atri_source_read', 'atri_source_search', 'atri_api_request', 'atri_api_list', 'atri_browser_snapshot']) assert.equal((await call(name)).isError, true);
+    for (const name of ['atri_source_read', 'atri_source_search', 'atri_api_request', 'atri_api_list', 'atri_browser_snapshot'])
+        await assert.rejects(call(name), error => error instanceof ProtocolError && error.code === -32602 && /not found/.test(error.message));
     for (const path of ['/api/native/generation/secrets', '/api/native/studio/not-discovered']) assert.equal((await call('atri_api', { operation: 'read', path })).isError, true);
     const unauthorized = await call('atri_api', { operation: 'read', path: '/api/native/studio/projects' });
     assert.equal(unauthorized.isError, true); assert.equal(unpack(unauthorized).status, 401); assert.equal(http.stats().writes, 0);

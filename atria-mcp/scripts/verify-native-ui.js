@@ -3,7 +3,8 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { AtriaBrowser } from '../src/browser.js';
 import { Provenance } from '../src/provenance.js';
-import { ActionRegistry, PolicyCeiling, RiskExecutor } from '../src/kernel.js';
+import { ActionRegistry, PolicyCeiling, RiskExecutor, fingerprint } from '../src/kernel.js';
+import { registerSemanticUi, observeSemanticUi, screenshotWithProof } from '../src/semantic-ui.js';
 import { registerMemoryMutations } from '../src/memory-mutations.js';
 import { invokeBrowserAdapter } from '../src/capability-bridge.js';
 
@@ -89,6 +90,11 @@ export async function verifyNativeUi({ origin, repo, artifacts, projectId, baseR
         });
         const cleanedMemory = await invokeBrowserAdapter(browser, 'memory.nodes.list', { activeOnly: false });
         assert.ok(cleanedMemory.value.every(node => ![nodeId, secondId, compacted.receipt.created[0].id].includes(node.id)), 'Owned nodes stay deleted after reload');
+        await page.waitForFunction(async sessionId => (await import('/scripts/native/frontend/mcp-surface.js')).observeMcpSurfaces().some(row => row.identity.source?.sessionId === sessionId && row.region), sessionId);
+        const sessionSurface = (await observeSemanticUi(browser)).find(row => row.identity.source?.sessionId === sessionId);
+        const sessionCapture = await screenshotWithProof(browser, provenance, { target: { surfaceId: sessionSurface.surfaceId, expectedIdentityHash: fingerprint(sessionSurface.identity) } });
+        assert.equal(sessionCapture.proof.state, 'EXACT_CURRENT', JSON.stringify(sessionCapture.proof));
+        await writeFile(join(artifacts, 'session-proof.jpg'), sessionCapture.image.bytes);
 
         // Render the exact Preview returned in the MCP evaluation receipt.
         const exact = await page.evaluate(async ({ previewId }) => {
@@ -99,20 +105,37 @@ export async function verifyNativeUi({ origin, repo, artifacts, projectId, baseR
             document.body.replaceChildren(root);
             await mountStudioPreviewUi(document, root, result.model, result.experience.mode,
                 item => { root.dataset.diagnostic = String(item.reasonCode || item.message); },
-                { entry: result.experience.frontend.entry, files: result.compiledFiles, bridgeProjections: result.bridgeProjections });
+                { entry: result.experience.frontend.entry, files: result.compiledFiles, bridgeProjections: result.bridgeProjections, identity: {
+                    kind: 'preview', projectId: result.projectId, previewId: result.previewId, packageVersionId: result.packageVersionId,
+                    packageContentHash: result.packageContentHash, baseRevision: result.baseRevision, workspaceId: result.workspaceId, operationsFingerprint: result.operationsFingerprint } });
             return { previewId: result.previewId, packageVersionId: result.packageVersionId, format: result.model.format };
         }, { previewId: evaluation.preview.previewId });
         assert.equal(exact.previewId, evaluation.preview.previewId);
         assert.equal(exact.packageVersionId, evaluation.preview.packageVersionId);
         assert.equal(exact.format, 'atria-frontend-index');
         await page.getByText('MCP REVIEWED Fixture', { exact: true }).waitFor();
+        const semanticSurface = (await observeSemanticUi(browser)).find(row => row.identity.source?.previewId === evaluation.preview.previewId);
+        const control = semanticSurface.controls.find(item => item.controlId === 'increment'); assert.ok(control);
+        const uiRegistry = registerSemanticUi(new ActionRegistry(), browser);
+        const uiExecutor = new RiskExecutor(uiRegistry, new PolicyCeiling(uiRegistry, uiRegistry.ids()), { approve: async () => ({ action: 'accept', content: { authorize: true, uses: 1 } }) });
+        const uiInteraction = await uiExecutor.execute('INTERACT', { action: 'browser.ui.interact', input: {
+            surfaceId: semanticSurface.surfaceId, expectedIdentityHash: fingerprint(semanticSurface.identity), ...control,
+        } });
+        assert.equal(uiInteraction.receipt.status, 'succeeded', JSON.stringify(uiInteraction));
+        await page.getByText('1', { exact: true }).waitFor();
+        assert.equal((await post('/api/native/session/observe', { sessionId })).revision.revisionId, sessionCapture.proof.native.revisionId, 'Local Preview interaction cannot commit Session progress');
         const captures = [];
         for (const [name, width, height] of [['preview-desktop', 1440, 1000], ['preview-narrow', 390, 844]]) {
             await browser.resize({ width, height });
             const snapshot = await browser.snapshot();
             assert.match(snapshot.accessibility, /MCP REVIEWED Fixture/);
-            await writeFile(join(artifacts, name + '.jpg'), (await browser.screenshot()).bytes);
-            captures.push({ name, snapshot, provenance: await settle() });
+            const surface = (await observeSemanticUi(browser)).find(item => item.identity.source?.previewId === evaluation.preview.previewId);
+            assert.ok(surface, 'Real compiled Preview must register its semantic surface');
+            const captured = await screenshotWithProof(browser, provenance, { target: { surfaceId: surface.surfaceId, expectedIdentityHash: fingerprint(surface.identity) } });
+            assert.equal(captured.proof.state, 'EXACT_CURRENT', JSON.stringify(captured.proof));
+            assert.equal(captured.proof.native.workspaceId, workspace.workspaceId);
+            await writeFile(join(artifacts, name + '.jpg'), captured.image.bytes);
+            captures.push({ name, snapshot, screenshotProof: captured.proof, provenance: await settle() });
         }
         // Exercise the actual Source Graph editor and its own formal evaluation.
         await page.evaluate(async ({ projectId, baseRevision }) => {
@@ -134,7 +157,8 @@ export async function verifyNativeUi({ origin, repo, artifacts, projectId, baseR
         await writeFile(join(artifacts, 'source-editor-preview.jpg'), (await browser.screenshot()).bytes);
         await page.evaluate(() => globalThis.__verificationEditor.dispose());
         const evidence = { scope: 'Real Atria editor/renderer in a disposable test-mounted surface; not full shell navigation or human approval UX',
-            epoch: { before, stale, reopened }, memory: { originalMemory, populatedMemory, reads: memoryReads, cleanedMemory, receipts: memoryReceipts, approval: 'deterministic trusted harness; not client human UX' }, reviewedPreview: { workspace, evaluation, exact, captures }, editor,
+            epoch: { before, stale, reopened }, memory: { originalMemory, populatedMemory, reads: memoryReads, cleanedMemory, receipts: memoryReceipts, approval: 'deterministic trusted harness; not client human UX' },
+            sessionScreenshotProof: sessionCapture.proof, semanticUi: { interaction: uiInteraction, approval: 'deterministic trusted harness; not client human UX' }, reviewedPreview: { workspace, evaluation, exact, captures }, editor,
             diagnostics: browser.events };
         await writeFile(join(artifacts, 'native-ui.json'), JSON.stringify(evidence, null, 2));
         return evidence;

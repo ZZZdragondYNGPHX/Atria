@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jsonTextFragment } from './json-fragment.js';
 import { redact, safeUrl } from './policy.js';
 import { runtimeSchema } from './provenance.js';
 import { BROWSER_ADAPTERS, browserAdapterSchema, invokeBrowserAdapter } from './capability-bridge.js';
@@ -23,16 +24,16 @@ const noParams = () => ({});
 const pick = (...keys) => data => Object.fromEntries(keys.filter(k => data?.[k] !== undefined).map(k => [k, data[k]]));
 
 add('session.list', 'Native Product / Session', { packageId: id.optional() }, 'GET', `${product}/sessions`);
-add('session.get', 'Native Product / Session', session, 'GET', s, { query: noParams });
-add('session.saves', 'Native Product / Save', session, 'GET', s, { query: noParams, project: pick('session', 'saves') });
-add('chat.branches', 'Native Product / immutable Timeline', session, 'GET', s, { query: noParams, project: pick('session', 'branches', 'revisions') });
+add('session.get', 'Native Product / Session', session, 'GET', i => s(i) + '/observe', { query: noParams });
+add('session.saves', 'Native Product / Save', session, 'GET', i => s(i) + '/observe', { query: noParams, project: pick('session', 'saves') });
+add('chat.branches', 'Native Product / immutable Timeline', session, 'GET', i => s(i) + '/observe', { query: noParams, project: pick('session', 'branches', 'revisions') });
 add('chat.history', 'Native Product / immutable Timeline', session, 'GET', i => s(i) + '/history', { query: noParams });
 add('chat.read', 'Native Session / immutable committed Timeline', { ...session, revisionId: id.optional(), fromSequence: z.number().int().min(0).default(0), toSequence: z.number().int().min(0).optional(), limit, messageIds: z.array(id).max(100).optional() }, 'POST', `${nativeSession}/timeline`);
-add('session.snapshot', 'Native Session', { ...session, revisionId: id.optional() }, 'POST', `${nativeSession}/load`);
-add('session.health', 'Native Experience health', session, 'POST', `${nativeSession}/health`);
-add('session.runtime', 'Native Runtime descriptor', session, 'POST', `${nativeSession}/runtime/resolve`);
-add('session.continuity.graph', 'Native Continuity', { ...session, limit }, 'POST', `${nativeSession}/continuity/graph`);
-add('session.continuity.projection', 'Native Continuity', { ...session, viewId: id, revisionId: id.optional() }, 'POST', `${nativeSession}/continuity/projection`);
+add('session.snapshot', 'Native Session', { ...session, revisionId: id.optional() }, 'POST', `${nativeSession}/observe`);
+add('session.health', 'Native Experience health', session, 'POST', `${nativeSession}/health/observe`);
+add('session.runtime', 'Native Runtime descriptor', session, 'POST', `${nativeSession}/runtime/observe`);
+add('session.continuity.graph', 'Native Continuity', { ...session, limit }, 'POST', `${nativeSession}/continuity/graph-observe`);
+add('session.continuity.projection', 'Native Continuity', { ...session, viewId: id, revisionId: id.optional() }, 'POST', `${nativeSession}/continuity/projection-observe`);
 add('generation.status', 'Native generation scheduler', { operationId: id }, 'GET', i => `${generation}/operations/${i.operationId}`, { query: noParams });
 
 add('build.project.list', 'Native Studio', { summary: z.boolean().default(true) }, 'GET', `${studio}/projects`);
@@ -62,16 +63,13 @@ add('library.registry', 'Native Resource registry', {}, 'GET', `${studio}/resour
 for (const [action, suffix, reverse] of [['references', 'references', false], ['usedby', 'references', true], ['delete.safety', 'delete-safety', undefined]]) {
     add('library.' + action, 'Native Resource Graph', { ref }, 'POST', `${studio}/resources/${suffix}`, { body: i => ({ ...i.ref, ...(reverse === undefined ? {} : { reverse }) }) });
 }
-add('library.bundle.inspect', 'Native Resource bundle closure', { ref }, 'POST', `${studio}/resources/bundle/export`, { project: bundle => ({ format: bundle.format, root: bundle.root, resources: bundle.resources?.map(item => ({ ref: item.ref, dependencies: item.dependencies })) }) });
-add('library.fork.preflight', 'Native Resource bundle preflight', { ref }, 'POST', `${studio}/resources/bundle/preflight`, { bundlePreflight: true,
-    project: result => ({ root: result.root, canImport: result.canImport, conflicts: result.conflicts, existingOrigins: result.existingOrigins, resources: result.resources?.map(item => ({ source: item.source, ref: item.ref, status: item.status })) }) });
 add('library.package.original', 'Native immutable Package resource', { ref: ref.refine(r => r.scope === 'package', 'Package scope required') }, 'POST', `${studio}/resources/package-original`);
 add('work.list', 'Native Product Work', {}, 'GET', `${product}/works`);
 add('work.get', 'Native Product Work', work, 'GET', w, { query: noParams });
 for (const [action, fields] of [['versions', ['package', 'versions']], ['sessions', ['package', 'sessions']], ['status', ['package', 'status', 'preflight', 'error']]]) {
     add('work.' + action, 'Native Product Work', work, 'GET', w, { query: noParams, project: pick(...fields) });
 }
-add('work.resources', 'Native Product resource setup', { ...work, sessionId: id.optional(), entryPointId: id.optional() }, 'GET', i => w(i) + '/resource-setup', { query: ({ packageId: _, ...q }) => q });
+add('work.resources', 'Native Product resource setup', { ...work, sessionId: id.optional(), entryPointId: id.optional() }, 'GET', i => w(i) + '/resource-setup/observe', { query: ({ packageId: _, ...q }) => q });
 add('package.version.get', 'Native immutable PackageVersion', version, 'GET', i => w(i) + `/versions/${i.packageVersionId}`, { query: noParams });
 add('package.manifest', 'Native immutable PackageVersion manifest / permissions / contributions', version, 'GET', i => w(i) + `/versions/${i.packageVersionId}`, { query: noParams });
 for (const [action, fields] of [['connection.list', ['connections']], ['model.list', ['models']], ['route.list', ['routes']], ['generation.profiles', ['profiles', 'resources']]]) {
@@ -83,7 +81,7 @@ add('generation.presets', 'Native Generation presets', {}, 'GET', `${generation}
 add('generation.preset.get', 'Native Generation presets', { presetId: id }, 'GET', i => `${generation}/presets/${i.presetId}`, { query: noParams });
 add('generation.retrieval', 'Native Retrieval configuration', {}, 'GET', `${generation}/retrieval`);
 add('connection.secrets', 'Native opaque Secret reference inventory (never values)', {}, 'GET', `${generation}/secrets`, { project: rows => rows.map(({ secretId, label }) => ({ secretId, label })) });
-add('connection.probe', 'Native Generation provider discovery', { connectionId: id }, 'POST', `${generation}/connections/probe`, { externalEffects: ['provider-network', 'mayIncurCost'], resolveConnection: true });
+// Credential-bearing discovery is registered as trusted INTERACT in runtime-actions.
 for (const operation of ['catalog', 'get', 'search']) add('settings.' + operation, 'SettingsRepo scoped observation', { path: operation === 'get' ? text.min(1) : text.default(''), query: text.default(''), offset: z.number().int().min(0).max(100000).default(0), limit }, 'POST', '/api/settings/observe', { body: i => ({ ...i, operation }) });
 add('agents.presets.persisted', 'SettingsRepo persisted Orchestrator preset library (browser defaults may differ)', {}, 'POST', '/api/settings/observe', { body: () => ({ operation: 'get', path: 'atri_capabilities/orchestrator/agentWorkspace/presets' }) });
 add('agents.bindings.persisted', 'SettingsRepo persisted Orchestrator bindings', {}, 'POST', '/api/settings/observe', { body: () => ({ operation: 'get', path: 'atri_capabilities/orchestrator/agentWorkspace/bindings' }) });
@@ -95,8 +93,8 @@ add('diagnostics.incident.export', 'Atria Diagnostics user/admin incident export
 add('diagnostics.startup.list', 'Atria Startup diagnostics', { limit: z.number().int().min(1).max(20).default(5) }, 'POST', '/api/diagnostics/startup/list');
 add('diagnostics.startup.get', 'Atria Startup diagnostics', { sessionId: id }, 'GET', i => `/api/diagnostics/startup/${i.sessionId}`, { query: noParams });
 add('diagnostics.startup.compare', 'Atria Startup diagnostics', { currentId: id, previousId: id }, 'POST', '/api/diagnostics/startup/compare');
-add('agents.project.tasks', 'Native Studio ProjectAgent', project, 'GET', i => p(i) + '/agent/tasks', { query: noParams });
-for (const [action, suffix] of [['get', ''], ['context', '/context']]) add('agents.project.task.' + action, 'Native Studio ProjectAgent', { ...project, taskId: id }, 'GET', i => p(i) + `/agent/tasks/${i.taskId}${suffix}`, { query: noParams });
+add('agents.project.tasks', 'Native Studio ProjectAgent', project, 'GET', i => p(i) + '/agent/observations', { query: noParams });
+for (const [action, suffix] of [['get', '/observation'], ['context', '/context-observation']]) add('agents.project.task.' + action, 'Native Studio ProjectAgent', { ...project, taskId: id }, 'GET', i => p(i) + `/agent/tasks/${i.taskId}${suffix}`, { query: noParams });
 
 const outputSchema = z.strictObject({ action: z.string(), authority: z.string(), status: z.number().int(), ok: z.boolean(),
     serverBootId: z.string().nullable(), observedAt: z.string(), data: z.json(),
@@ -108,7 +106,7 @@ function boundedOutput(action, authority, response, input) {
     const clean = redact(response.data ?? null), serialized = JSON.stringify(clean);
     const { outputOffset: offset, outputLimit: size } = input;
     return { action, authority, status: response.status, ok: response.ok, serverBootId: response.serverBootId ?? null, observedAt: response.observedAt,
-        data: offset === 0 && serialized.length <= size ? clean : { format: 'json-text-fragment', text: serialized.slice(offset, offset + size) },
+        data: offset === 0 && serialized.length <= size ? clean : jsonTextFragment(serialized, offset, size),
         page: { offset, totalChars: serialized.length, nextOffset: offset + size < serialized.length ? offset + size : null, contentHash: createHash('sha256').update(serialized).digest('hex') },
         evidence: 'single authority response; pagination across calls is not an atomic snapshot' };
 }
@@ -160,19 +158,26 @@ export function registerReadActions(registry, browser) {
                 payload = config.data.connections.find(c => c.connectionProfileId === args.connectionId);
                 if (!payload) throw new Error('Connection profile unavailable.');
             }
-            if (d.bundlePreflight) {
-                const bundle = await requestAuthority(browser, 'POST', `${studio}/resources/bundle/export`, { ref: args.ref });
-                if (!bundle.ok) return boundedOutput(d.action, d.authority, bundle, input);
-                payload = { bundle: bundle.data };
-            }
             const response = await requestAuthority(browser, d.method, typeof d.path === 'function' ? d.path(args) : d.path, payload);
             if (response.ok && d.project) response.data = d.project(response.data, args);
             return boundedOutput(d.action, d.authority, response, input);
         });
     }
     for (const d of BROWSER_ADAPTERS) registry.register({ version: 1, id: d.id, domain: d.id.split('.')[0], title: d.id,
-        risk: 'READ', authority: d.authority, adapter: 'fixed-browser', externalEffects: d.externalEffects, guards: [], approval: 'none',
-        availability: { available: true, reason: d.availability } }, browserAdapterSchema(d.id), z.json(), input => invokeBrowserAdapter(browser, d.id, input));
+        risk: d.risk, authority: d.authority, adapter: 'fixed-browser', externalEffects: d.externalEffects, guards: d.risk === 'READ' ? [] : ['current-loaded-source', 'exact-retrieval-configuration', 'current-server-boot'], approval: d.approval,
+        availability: { available: true, reason: d.availability } }, browserAdapterSchema(d.id), z.json(), input => invokeBrowserAdapter(browser, d.id, input), d.risk === 'READ' ? null : async () => {
+            const runtime = await browser.runtimeIdentity();
+            if (!runtime?.serverBootId || runtime.mutationGuards !== 1 || browser.loadedIdentity?.serverBootId !== runtime.serverBootId) throw Error('Current cost-bearing Memory authority unavailable');
+            const [retrieval, configuration, source] = await Promise.all([
+                requestAuthority(browser, 'GET', generation + '/retrieval'), requestAuthority(browser, 'GET', generation + '/configuration'),
+                invokeBrowserAdapter(browser, 'memory.status', {}),
+            ]);
+            if (!retrieval.ok || !configuration.ok || [retrieval, configuration].some(row => row.serverBootId !== runtime.serverBootId)) throw Error('Memory retrieval configuration unavailable');
+            return { target: { documentGeneration: browser.documentGeneration }, serverBootId: runtime.serverBootId,
+                sourceHash: createHash('sha256').update(JSON.stringify(source)).digest('hex'),
+                retrievalHash: createHash('sha256').update(JSON.stringify(retrieval.data)).digest('hex'),
+                configurationHash: createHash('sha256').update(JSON.stringify(configuration.data)).digest('hex') };
+        });
     return registry;
 }
 

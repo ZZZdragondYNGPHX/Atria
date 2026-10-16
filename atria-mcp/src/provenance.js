@@ -75,6 +75,13 @@ export function compareBrowser(loaded, runtime) {
     return loaded.serverBootId === runtime.serverBootId ? 'CURRENT' : 'STALE';
 }
 
+// Re-observing an identical scope is evidence renewal, not an identity change.
+export function scopeIdentity(value) {
+    if (!value) return null;
+    const { observedAt: _, ...identity } = value;
+    return identity;
+}
+
 // Scope identities stay independent. Absent authority fields remain unknown;
 // neither a boot ID nor a source match fills missing Experience/Preview evidence.
 export const experienceSchema = z.strictObject({ sessionId: id, experienceEpoch: id, revisionId: id,

@@ -22,7 +22,7 @@ function fixture() {
 test('full READ catalog covers required domains, exact risks, fixed paths and scoped schemas', async () => {
     const f = fixture();
     for (const domain of ['session', 'chat', 'build', 'library', 'work', 'package', 'memory', 'agents', 'settings', 'connection', 'model', 'route', 'diagnostics', 'game']) assert.ok(f.registry.discover({ domain }).total > 0, domain);
-    for (const id of f.registry.ids()) { const d = f.registry.get(id).detail; assert.equal(d.risk, 'READ'); assert.equal(d.approval, 'none'); assert.equal(d.inputSchema.additionalProperties, false); }
+    for (const id of f.registry.ids()) { const d = f.registry.get(id).detail; assert.equal(d.risk, d.externalEffects.includes('mayIncurCost') ? 'INTERACT' : 'READ'); assert.equal(d.approval, d.risk === 'READ' ? 'none' : 'trusted-approval-required'); assert.equal(d.inputSchema.additionalProperties, false); }
     assert.ok(f.registry.get('memory.search.vector').detail.externalEffects.includes('mayIncurCost'));
     for (const action of ['build.frontend.evaluate', 'chat.send', 'frontend.request', 'settings.patch']) await assert.rejects(f.executor.execute('READ', { action }));
     await assert.rejects(f.executor.execute('MUTATE', { action: 'chat.read', input: { sessionId: 's' } }), /risk mismatch/);
@@ -54,13 +54,13 @@ test('output is redacted before pagination and opaque secrets discard unknown fi
     const source = await f.executor.execute('READ', { action: 'build.source.read', input: { projectId: 'p', path: 'source.txt' } });
     assert.equal(source.data.encoding, 'utf8'); assert.doesNotMatch(JSON.stringify(source), /hidden|aGlkZGVu/);
 });
-test('connection probe resolves existing profile only and declares provider effects', async () => {
+test('credential-bearing provider discovery is absent from pure READ registry', async () => {
     const f = fixture();
-    f.data(url => url.endsWith('/configuration') ? { connections: [{ connectionProfileId: 'conn_x', secretRef: 'opaque', provider: 'openai' }] } : { models: [] });
-    await f.executor.execute('READ', { action: 'connection.probe', input: { connectionId: 'conn_x' } });
-    assert.equal(f.calls.at(-1).data.secretRef, 'opaque');
-    await assert.rejects(f.executor.execute('READ', { action: 'connection.probe', input: { connectionId: 'conn_x', endpoint: 'https://evil' } }));
+    assert.throws(() => f.registry.get('connection.probe'), /Unknown/);
+    await assert.rejects(f.executor.execute('READ', { action: 'connection.probe', input: { connectionId: 'conn_x' } }), /Unknown/);
+    assert.equal(f.calls.length, 0);
 });
+
 test('diagnostic snapshot retains partial failures and labels independent last-observed scopes', async () => {
     const f = fixture();
     const snapshot = await diagnosticSnapshot(f.executor, async () => ({ phase: 3 }), f.browser);
@@ -80,6 +80,15 @@ test('actual browser fixed Memory reads avoid write-session API, filter secrets 
     assert.doesNotMatch(JSON.stringify(result), /hidden/);
     assert.equal((await invokeBrowserAdapter(browser, 'agents.run.get')).value.runId, 'r');
     assert.deepEqual((await invokeBrowserAdapter(browser, 'memory.injection')).value.visibleIds, ['n1']);
+    browser.scopedEvidence.experience = { identity: { sessionId: 'scope-one', revisionId: 'revision-one' }, state: 'OBSERVED', observedAt: 'first' };
+    const evaluate = browser.page.evaluate.bind(browser.page);
+    browser.page.evaluate = async (...args) => { const value = await evaluate(...args); browser.scopedEvidence.experience = { ...browser.scopedEvidence.experience, observedAt: 'renewed' }; return value; };
+    assert.equal((await invokeBrowserAdapter(browser, 'agents.run.get')).value.runId, 'r', 'Passive heartbeat metadata does not invalidate unchanged owning identity');
+    browser.page.evaluate = async (...args) => { const value = await evaluate(...args); browser.scopedEvidence.experience = { ...browser.scopedEvidence.experience, identity: { sessionId: 'scope-other', revisionId: 'revision-one' } }; return value; };
+    await assert.rejects(invokeBrowserAdapter(browser, 'agents.run.get'), /Experience scope changed/);
+    browser.page.evaluate = async (...args) => { const value = await evaluate(...args); browser.scopedEvidence.experience = { identity: { sessionId: 'delayed-frontend', revisionId: 'last-observed' }, state: 'OBSERVED' }; return value; };
+    assert.deepEqual((await invokeBrowserAdapter(browser, 'memory.schema')).value.types, [], 'Memory is guarded by its loaded source, independently of delayed Frontend Epoch observations');
+    browser.page.evaluate = evaluate;
     await assert.rejects(invokeBrowserAdapter(browser, 'memory.search.keyword', { query: 'x' }), /scope changed/);
     await assert.rejects(invokeBrowserAdapter(browser, 'memory.schema', { method: 'deleteNode' }));
 });

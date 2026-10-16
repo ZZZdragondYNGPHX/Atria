@@ -21,12 +21,34 @@ export function denyMutation() {
 
 export function redactText(value) {
     if (/(?:api[_-]?key|password|passwd|token|secret|credential|authorization|cookie)["']?\s*:\s*(?:[>|]|\r?\n[ \t]+)/i.test(value)) return '[REDACTED SENSITIVE MULTILINE CONTENT]';
-    return value
+    return redactAssignments(value
         .replace(/-----BEGIN [^-]*(?:PRIVATE KEY|OPENSSH)[^-]*-----[\s\S]*?(?:-----END [^-]+-----|$)/g, '[REDACTED PRIVATE KEY]')
-        .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
-        .replace(/((?:[\w-]*(?:api[_-]?key|password|passwd|token|secret|credential|authorization|cookie)[\w-]*)["']?\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;\r\n}]+)/gi, '$1[REDACTED]')
+        .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]'))
         .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16})\b/g, '[REDACTED]')
-        .replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[REDACTED]@');
+        .replace(/[a-z][a-z0-9+.-]{0,63}:\/\/[^\s/"']+/gi, authority => {
+            const at = authority.lastIndexOf('@');
+            return at < 0 ? authority : authority.slice(0, authority.indexOf('://') + 3) + '[REDACTED]@' + authority.slice(at + 1);
+        });
+}
+
+// Consume each key token once. A leading greedy word matcher before a secret
+// keyword retries every suffix of long untrusted words and can block Control.
+function redactAssignments(value) {
+    const words = /[\w-]+/g, separator = /["']?\s*[:=]\s*/y;
+    const assigned = /"(?:[^"\\\r\n]|\\[^\r\n])*"|'(?:[^'\\\r\n]|\\[^\r\n])*'|[^\s,;\r\n}]+/y;
+    const sensitive = /api[_-]?key|password|passwd|token|secret|credential|authorization|cookie/i;
+    const output = []; let cursor = 0, match;
+    while ((match = words.exec(value))) {
+        if (!sensitive.test(match[0])) continue;
+        separator.lastIndex = words.lastIndex;
+        if (!separator.exec(value)) continue;
+        assigned.lastIndex = separator.lastIndex;
+        const assignment = assigned.exec(value); if (!assignment) continue;
+        const quote = assignment[0][0], quoted = (quote === '"' || quote === "'") && assignment[0].at(-1) === quote;
+        output.push(value.slice(cursor, separator.lastIndex), quoted ? quote + '[REDACTED]' + quote : '[REDACTED]');
+        cursor = words.lastIndex = assigned.lastIndex;
+    }
+    output.push(value.slice(cursor)); return output.join('');
 }
 
 export function apiUrl(config, path, query = {}) {
@@ -35,6 +57,14 @@ export function apiUrl(config, path, query = {}) {
     }
     const url = safeUrl(path, config.url);
     if (/(?:^|\/)(?:secrets?|credentials)(?:\/|$)/i.test(url.pathname)) throw new Error('Secret and credential endpoints are not exposed.');
+    // Discovered GET is not automatically a pure observation authority.
+    if (/^\/api\/native\/product\/sessions\/[^/]+$/.test(path)
+        || /^\/api\/native\/product\/works\/[^/]+\/resource-setup$/.test(path)
+        || /^\/api\/native\/session\/asset\//.test(path)
+        || /^\/api\/native\/generation\/visual\/(?:mask\/raster|gallery\/thumbnail)(?:\/|$)/.test(path)
+        || /^\/api\/native\/studio\/projects\/[^/]+\/agent\/tasks(?:\/[^/]+(?:\/context)?)?$/.test(path)
+        || /^\/api\/native\/generation\/illustration-images(?:\/[^/]+)?$/.test(path))
+        throw new Error('Endpoint performs reconciliation; use the pure semantic observation action.');
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, String(value));
     return url;
 }
