@@ -1,0 +1,40 @@
+<main node-id="stage" bind:class="component.fontClass">
+ <img node-id="scene" class="scene" bind:media="component.scene" alt="灯岬岛当前场景" />
+ <div node-id="veil" class="scene-veil" />
+ <section node-id="title-screen" class="title-screen" if="component.title">
+  <p node-id="title-place" class="title-place">灯岬岛的一场风雨</p><h1 node-id="game-title">雾灯旅舍</h1>
+  <p node-id="title-description">代管三天旅舍，给眼前的人一个去处。</p>
+  <p node-id="title-instruction">三天、四位客人。阅读与移动免费，重要安排先看代价再确认。插画与环境音随作品提供，静音也能完整游玩。</p>
+  <div node-id="title-actions" class="title-actions"><button node-id="new" bind:disabled="component.loading">开始新的三天</button><button node-id="continue" if="component.continued">继续这段旅程</button><button node-id="title-settings">体验设置</button><button node-id="title-exit">退出作品</button></div>
+ </section>
+ <section node-id="creation" class="letter" if="component.creation">
+  <h2 node-id="creation-title">叶姨留给你的一页便笺</h2><p node-id="creation-story">“我去内陆陪家里人看病。这三天先托给你。你熟悉旅舍的日常，设备上的事照安全清单，不用逞强。”</p>
+  <label node-id="name-label" for="fog-name">大家怎样称呼你</label><input node-id="name" id="fog-name" bind:value="component.name" autocomplete="nickname" />
+  <p node-id="persona-note">可沿用 Atria 的 Persona；称呼与待人方式不授予特殊身份或能力。</p>
+  <p node-id="preference-label">你习惯怎样表达</p><div node-id="preference-buttons" class="row"><button node-id="preference-calm">平和</button><button node-id="preference-direct">简洁直接</button><span node-id="preference-current" bind:text="component.preference" /></div>
+  <div node-id="creation-actions" class="row"><button node-id="persona">选择 Persona</button><button node-id="enable-sound">启用声音</button><button node-id="begin">静音开始代管</button><button node-id="creation-back">返回标题</button></div>
+ </section>
+ <section node-id="play" class="play" if="component.playing">
+  <header node-id="hud" class="hud" bind:hidden="component.hidden">
+   <div node-id="situation" class="situation"><strong node-id="time" bind:text="component.time" /><span node-id="place" bind:text="component.place" /><span node-id="weather" bind:text="component.weather" /></div>
+   <nav node-id="navigation" aria-label="旅舍信息"><button node-id="observe">看看这里</button><button node-id="map">简图</button><button node-id="people">人物</button><button node-id="resources" bind:text="component.resources" /><button node-id="notes">记事</button><button node-id="messages">消息</button><button node-id="menu">菜单</button></nav>
+  </header>
+  <img node-id="portrait" class="portrait" bind:media="component.portrait" if="component.hasPortrait" alt="当前在场人物的动漫立绘" />
+  <div node-id="reading-wrap" class="reading-wrap" bind:hidden="component.hidden">
+   <div node-id="present-events" class="present-list"><div node-id="present" class="present" each="component.people" item-key="id"><button node-id="select-person" bind:data-value="item.id" bind:text="item.label" /></div></div>
+   <p node-id="goal" class="goal" bind:text="component.goal" />
+   <div node-id="actions-events" class="actions-list"><div node-id="actions" class="actions" each="component.actions" item-key="id"><button node-id="action" bind:data-value="item.id" bind:disabled="item.disabled" bind:text="item.label" /></div></div>
+   <section node-id="adv" class="adv" aria-label="当前阅读">
+    <div node-id="name-tag" class="name-tag"><strong node-id="speaker" bind:text="component.speaker" /></div>
+    <p node-id="receipt" class="receipt" bind:text="component.receipt" /><div node-id="body" class="body" bind:text="component.body" tabindex="0" />
+    <p node-id="narrative" class="narrative" bind:text="component.narrative" />
+    <div node-id="epilogues" class="epilogues" each="component.epilogues" item-key="id"><h3 node-id="epilogue-name" bind:text="item.label" /><p node-id="epilogue-text" bind:text="item.text" /></div>
+    <div node-id="reading-controls" class="reading-controls"><button node-id="previous-paragraph" if="component.hasPrevious">上一段</button><span node-id="read-progress" bind:text="component.readProgress" /><button node-id="next-paragraph" if="component.hasNext">继续阅读</button><button node-id="log">LOG · 回看</button><button node-id="auto">AUTO · 已有段落</button><button node-id="hide">HIDE · 看场景</button><button node-id="final" if="component.final">查看最后安排</button><button node-id="ending-menu" if="component.ended">保存与后续</button></div>
+   </section>
+   <form node-id="input-form" class="input-form"><label node-id="draft-label" for="fog-draft">写下打算</label><textarea node-id="draft" id="fog-draft" rows="2" bind:value="component.draft" placeholder="例如：去无线电室看看，再考虑修接点。Ctrl+Enter 发送；Enter 换行。" /><button node-id="send" type="button" bind:disabled="component.busy">理解这份打算</button></form>
+   <div node-id="candidate-events" class="candidate-list"><div node-id="candidates" class="candidates" if="component.hasCandidates" each="component.candidates" item-key="id"><button node-id="candidate" bind:data-value="item.id" bind:text="item.label" /></div></div>
+  </div>
+  <button node-id="show" class="show-interface" if="component.hidden">显示界面</button>
+ </section>
+ <aside node-id="status" class="status" aria-live="polite"><span node-id="notice" bind:text="component.notice" /><span node-id="sound-status" bind:text="component.sound" /><strong node-id="error" class="error" bind:text="component.error" /><button node-id="refresh">核对当前结果</button><button node-id="stop" if="component.busy">停止请求</button></aside>
+</main>
