@@ -119,8 +119,16 @@ export class ContextPort {
                 await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
             if (binding.sourceAuthority !== 'project' || request.audience.id !== projectIdentity.taskId
                 || hashNativeDocument(binding.sourceRequest) !== hashNativeDocument(projectIdentity.sourceRequest)) fail('native_orchestration_context_source_mismatch');
-            const modelContext = await ProjectAgentService.prototype.observeModelContext.call(this.projectAgent, handle, projectIdentity.projectId, projectIdentity.taskId);
-            const { task, project, registry, tools } = modelContext;
+            const original = await ProjectAgentService.prototype.observeModelContext.call(this.projectAgent, handle, projectIdentity.projectId, projectIdentity.taskId);
+            if (!Array.isArray(permission.projectToolPins)) fail('native_orchestration_context_denied');
+            const names = new Set();
+            const tools = permission.projectToolPins.map(pin => {
+                const ref = pin.resourceRef, tool = original.tools.find(tool => tool.function.name === ref?.name);
+                if (pin.port !== 'tool' || ref?.kind !== 'project_agent_tool' || ref.projectId !== projectIdentity.projectId || ref.taskId !== projectIdentity.taskId
+                    || !tool || names.has(ref.name) || hashNativeDocument(tool) !== pin.integrity) fail('native_orchestration_context_denied');
+                names.add(ref.name); return tool;
+            });
+            const modelContext = { ...original, tools }, { task, project, registry } = modelContext;
             const attempt = task.attempts.find(item => item.attemptId === projectIdentity.projectAttemptId && item.kind === 'generation');
             if (task.executionFingerprint !== (projectRead ? projectIdentity.currentSourceFingerprint : projectIdentity.sourceFingerprint)
                 || hashNativeDocument(task.conversation) !== projectIdentity.conversationDigest
@@ -137,7 +145,7 @@ export class ContextPort {
             const calls = attempt.calls.filter(call => !accepted.some(receipt => hashNativeDocument(call.nativeReceipt ?? null) === hashNativeDocument(receipt)));
             const projectDigest = hashNativeDocument({ sourceFingerprint: projectRead ? projectIdentity.sourceFingerprint : task.executionFingerprint, conversation: task.conversation,
                 attempt: { attemptId: attempt.attemptId, kind: attempt.kind, status: attempt.status, requestId: attempt.requestId, calls },
-                project, registry, tools, skillWorkRecords: projectIdentity.skillWorkRecords });
+                project, registry, tools, toolPins: permission.projectToolPins, skillWorkRecords: projectIdentity.skillWorkRecords });
             return { modelContext, projectIdentity, authorityDigest: projectDigest, information: null };
         }
         if (binding.sourceAuthority !== 'native_session' || !this.sessionCore) fail('native_orchestration_context_domain_unavailable');
@@ -252,7 +260,7 @@ export class ContextPort {
         }
         if (projectIdentity) {
             const skillEntries = await readNativeProjectSkillInventory(this.projectCapture, { projectAgent: this.projectAgent, handle });
-            const round = buildNativeProjectModelRound({ context: modelContext, skillEntries });
+            const round = buildNativeProjectModelRound({ context: modelContext, skillEntries, tools: modelContext.tools });
             const fixedRequest = immutable({ ...projectIdentity.request, tools: round.tools });
             const source = { kind: 'task', projectId: projectIdentity.projectId, taskId: projectIdentity.taskId, revision: projectIdentity.revision };
             const selected = emptyNativeContextPlan(fixedRequest, { model: { limits: { contextTokens: request.tokenBudget.modelContextLimit, outputTokens: request.tokenBudget.responseReserve } } }, source);

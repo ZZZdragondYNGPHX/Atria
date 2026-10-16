@@ -265,7 +265,7 @@ export class NativeProjectOrchestrationAuthority {
                 await this.#current(selection); await inspectNativeProjectGeneration(projectCapture, { host, handle });
                 if (request.taskPurpose !== taskPurpose || !equal(request.audience, audience) || request.grantDigest !== grantDigest
                     || !equal(request.sourceBinding, captured.sourceBinding) || !equal(request.inputRefs, [logicalInputRef])) fail('native_orchestration_context_denied');
-                return { allowed: true, grantDigest };
+                return { allowed: true, grantDigest, projectToolPins: selected.toolPins };
             } });
             const request = { ownerRef: { handle }, sourceBinding: captured.sourceBinding, audience, taskPurpose, grantDigest, inputRefs: [logicalInputRef],
                 tokenBudget: { modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(selected.resolved) } };

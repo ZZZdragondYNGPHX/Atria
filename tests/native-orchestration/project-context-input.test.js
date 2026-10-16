@@ -66,6 +66,17 @@ function runnerFixture() {
     return { events, task, context, client, work: async () => [], request: async () => ({ routes: [] }) };
 }
 
+test('an explicit Native tool scope suppresses implicit Skill and unrelated tool instructions while preserving original assembly without a scope', () => {
+    const { context } = runnerFixture();
+    const tool = { type: 'function', function: { name: 'atri_agent_get_project', description: 'Original read', parameters: { type: 'object' } } };
+    const round = buildNativeProjectModelRound({ context, tools: [tool] });
+    expect(round.tools).toEqual([tool]); expect(round.system).toContain('Only these tools are authorized');
+    for (const name of ['atri_agent_api_catalog', 'atri_agent_frontend_patch', 'atri_agent_skill_files', 'atri_agent_read_skill', 'atri_agent_set_plan', 'atri_agent_prepare_review'])
+        expect(round.system).not.toContain(name);
+    expect(buildNativeProjectModelRound({ context, tools: [] }).tools).toEqual([]);
+    expect(buildNativeProjectModelRound({ context }).tools.map(tool => tool.function.name)).toEqual(['atri_agent_skill_files', 'atri_agent_list_skills', 'atri_agent_read_skill']);
+});
+
 test('original runner invokes admitted prepare hook after begin and uses its exact messages and closed tools', async () => {
     const f = runnerFixture();
     const result = await runNativeStudioAgentTask({ projectId: 'project', taskId: 'task', client: f.client, work: f.work, request: f.request,

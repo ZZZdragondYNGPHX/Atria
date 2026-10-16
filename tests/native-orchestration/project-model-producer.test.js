@@ -20,6 +20,7 @@ describe.each(harnesses)('$name original bound Project model producer', ({ make 
             const operation = await f.start(view), result = await f.finish(operation), task = await observedTask(f);
             expect(result.task.taskId).toBe(f.task.taskId); expect(hasAssistant(task)).toBe(true);
             expect(f.requests).toHaveLength(1); expect(f.effects).toHaveLength(1);
+            expect(f.requests[0].tools ?? []).toEqual([]);
             expect(task.compute.attempts).toHaveLength(1);
             expect(task.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 }, orchestration: { kind: 'provider_send', effectId: f.effects[0].effectId, ordinal: 0 } });
             expect(task.attempts.filter(item => item.kind === 'generation')).toEqual([expect.objectContaining({ status: 'completed' })]);

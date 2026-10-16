@@ -27,6 +27,8 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine
         try { await captureContext(f, async current => {
             f.onRound(async () => {
                 const { port, context } = current(), fixed = port.projectRequest(f.h.handle, { context });
+                expect(fixed.tools).toEqual([]);
+                const forgedTools = [{ type: 'function', function: { name: 'not_declared', parameters: { type: 'object' } } }];
                 const descriptor = await port.compilationDescriptor(f.h.handle, context.request);
                 expect(descriptor.modelContext.task.intent).toBe(f.task.intent);
                 for (const field of ['compute', 'sequence', 'attempts', 'observation']) expect(descriptor.modelContext.task).not.toHaveProperty(field);
@@ -36,18 +38,18 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine
                 expect(context.plan.items).toHaveLength(compiledLength);
                 expect(JSON.stringify(context.plan)).not.toContain('Untrusted working transcript sentinel');
                 expect(port.projectRound(f.h.handle, { context }).modelTranscript).not.toEqual(round.modelTranscript);
-                for (const change of [{ role: 'narrator' }, { tools: [] }, { messages: [] }, { projectAttemptId: 'other' }, { taskId: 'other' },
+                for (const change of [{ role: 'narrator' }, { tools: forgedTools }, { messages: [] }, { projectAttemptId: 'other' }, { taskId: 'other' },
                     { routeRef: { scope: 'player', runtimeRouteId: 'other' } }, { requestId: 'other' }])
                     expect(() => port.assertProjectRequest(f.h.handle, { context, request: { ...fixed, ...change } })).toThrow('native_orchestration_project_request_mismatch');
                 expect(() => port.projectRequest(f.h.handle, { context: structuredClone(context) })).toThrow('native_orchestration_context_proof_invalid');
                 const resolved = { route: f.route, model: f.seeded.model };
                 const expected = await port.provider(f.h.handle, { context }).buildRequestContextPlan(fixed, resolved);
-                const service = { requestId: fixed.requestId, role: 'role.studio', routeRef: fixed.routeRef, requirements: ['generation.tools'], tools: fixed.tools,
+                const service = { requestId: fixed.requestId, role: 'role.studio', routeRef: fixed.routeRef, requirements: [], tools: fixed.tools,
                     outputContract: null, fallbackMode: 'disabled', unknownCapabilityOverrides: [],
                     prompt: { host: { role: 'role.studio', sourceKind: 'task', sessionId: '', branchId: '', revisionId: '', projectId: f.projectId, projectRevision: fixed.revision } } };
                 expect(await port.provider(f.h.handle, { context }).buildRequestContextPlan(service, resolved)).toEqual(expected);
-                for (const change of [{ tools: [] }, { outputContract: {} }, { fallbackMode: 'automatic' }, { unknownCapabilityOverrides: ['generation.tools'] },
-                    { prompt: { ...service.prompt, messages: [] } }, { requirements: [] }, { requestId: 'other' }])
+                for (const change of [{ tools: forgedTools }, { outputContract: {} }, { fallbackMode: 'automatic' }, { unknownCapabilityOverrides: ['generation.tools'] },
+                    { prompt: { ...service.prompt, messages: [] } }, { requirements: ['not_declared'] }, { requestId: 'other' }])
                     await expect(port.provider(f.h.handle, { context }).buildRequestContextPlan({ ...service, ...change }, resolved)).rejects.toMatchObject({ code: 'native_orchestration_project_request_mismatch' });
                 const fake = new ContextPort({ projectAgent: port.projectAgent, projectCapture: structuredClone(port.projectCapture),
                     authorizeContext: async () => ({ allowed: true, grantDigest: context.request.grantDigest }) });

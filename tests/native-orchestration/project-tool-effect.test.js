@@ -14,6 +14,9 @@ describe.each(harnesses)('$name original Project tool Effect', ({ make }) => {
         const f = await projectModelFixture(make, { configurePlan, responseBody });
         try {
             await f.run();
+            expect(f.requests[0].tools.map(tool => (tool.function ?? tool).name)).toEqual(['atri_agent_get_project']);
+            expect(JSON.stringify(f.requests[0])).not.toContain('atri_agent_read_skill');
+            expect(JSON.stringify(f.requests[0])).not.toContain('atri_agent_api_catalog');
             const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId), call = task.attempts.find(item => item.kind === 'generation').calls[0];
             expect(call).toMatchObject({ name: 'atri_agent_get_project', argsHash: hash({}) });
             expect(assertProjectToolReceipt(call.nativeReceipt)).toMatchObject({ runId: f.effects[0].runId, effectId: f.effects[1].effectId,
@@ -31,6 +34,21 @@ describe.each(harnesses)('$name original Project tool Effect', ({ make }) => {
             await expect(f.agent.executeTool(f.h.handle, f.projectId, f.task.taskId, { name: 'atri_agent_get_project', args: {},
                 attemptId: call.nativeReceipt.projectAttemptId, callId: 'forged-permit', nativeEffectPermit: structuredClone(call.nativeReceipt) }))
                 .rejects.toThrow('native_orchestration_project_producer_denied');
+        } finally { await f.cleanup(); }
+    });
+
+    test.each(['atri_agent_get_task', 'atri_agent_read_skill'])('unlisted %s remains refused even when the Model invents it', async name => {
+        const unlisted = () => {
+            const response = responseBody(); response.output[0].name = name; return response;
+        };
+        const f = await projectModelFixture(make, { configurePlan, responseBody: unlisted });
+        try {
+            await expect(f.run()).rejects.toThrow('generation_response_invalid');
+            expect(f.requests[0].tools.map(tool => (tool.function ?? tool).name)).toEqual(['atri_agent_get_project']);
+            const task = await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId);
+            expect(task.attempts.find(item => item.kind === 'generation').calls).toEqual([]);
+            expect(task.compute.attempts[0]).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
+            expect(f.requests).toHaveLength(1);
         } finally { await f.cleanup(); }
     });
 
