@@ -853,3 +853,9 @@
 - 原BudgetPort仅在匹配银行引用且running、未取消的精确原receipt链上继续观察/准入同Task.compute，仍须实际发送者的原活scope，绝非收费引用授Model权。原Effect/GenerationSend/Model completion及Project调用点传实际Root复验；不改冻结Source、operationId或已收费用。第五十八组“旧ref不能新准入”的构建限制由本组精确连续性取代，不恢复过期scope或开始多轮。
 - 新Source suite8/8 PASS（26.669s），覆盖精确本Root/同Source sibling/过期实际round token、独立Task/Project编辑、缺Host确认和原费用，原账无新增行或重发HTTP。最初原计划阳性精选2PASS/16filterSKIP（8.356s）；接实际Model/Effect调用点后，组合新Source全八项、原计划、Session Graph输出和RP严格终结精选，4 suites共14PASS/52filterSKIP（45.902s）。八文件定向原插件ESLint、diff check通过，无新增失败。无全仓/远端/独立审查、SQL/真实外部费用质量/三端新证据。
 - 仍限原有限Project producer，Root未终结，下一步同Root有界多轮及原Task round完成收据、其余提案/Review/消费者和P5–P8持续实现。原授权持续，不在本组停止、不写HANDOFF、不合main。
+
+## 2026-10-16 — W07/P4第六十组：原Task writer前末await撤权事实保留
+
+- Source b743c2d5c→5e5e41f53。新增同事务最后budget await的真实原Task编辑/Run取消测试，两Engine四项最初全FAIL（11.679s）：编辑被验证事务回滚，取消后仍进入set_plan。修为私有验证事务返回拒绝Error、提交合法变化后再抛出，并在末await后复读原Root/fence。原Task锁仍覆盖全过程，改在验证事务关闭后才加载writer的可变Task对象，避免旧对象按已被其它原操作更新的cache integrity覆盖新Task。
+- 故障四项定向复跑4PASS/8filterSKIP（11.56s）；再组合原计划阳性/实际writer ACK、只读工具、原Task完整Review，4 suites共13PASS/72filterSKIP（36.368s）。原编辑/取消持久保留、工具调用数组仍空、原Model20tokens费用settled、本次local work失败结算，无重复HTTP。三文件定向原插件ESLint和diff check通过。仅本地相关验证，无全仓/Actions/独立审查或SQL/外部真实质量费用/三端证据。
+- 此组是既有writer前竞态修复，不宣称新多轮/Root终结。已claim未执行Effect保守pending，无成功或回滚虚构；精确not-dispatched/reconcile尚需真实证据，不能凭error text重发。继续真实round完成收据、同Root循环及其余全阶段，不在本组停下、不写HANDOFF、不合main。

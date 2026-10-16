@@ -1004,3 +1004,9 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 第五十九组新增精确原Root的owned Source只读证明：从冻结初始指纹，按原Task sequence串接本Root全部原工具receipt，每项要求原Model/Effect/pin/费用及Host确认，并核当前原Task指纹和实际Project revision恰为链尾。缺Host确认、缺费用、独立用户编辑/Project推进或另一Root均不能借用。SourcePort只有显式同Root才可复验该事实并返回原冻结binding；不带Root继续拒旧Source。
 
 原BudgetPort在实际Task Source变化后，仅对具有上述精确原Run/银行引用且仍running、未取消的原receipt链继续使用同一原Task.compute，不换operationId、不建新账、不清已收费用。它只证明同一银行的连续性；同初始Source的另一Root仍过不了自己的Source证明，过期原Model scope仍拒。原Model/Effect/GenerationSend调用点传实际Root进行复验，原Scheduler/Context/Model真实活scope要求继续执行。多轮Graph与下一轮capture尚未交付。
+
+## 17.70 原Task工具writer前最后复验的撤权提交
+
+第六十组修复最后budget await的真实竞态。私有permit验证事务内的合法Task编辑或Run取消先提交，其拒绝Error在事务外抛出；末await后复读原Root及Host fence，不仅复读原Scheduler。实际原Task锁覆盖验证和writer，但在验证通过、事务关闭后才由原writer加载可变Task对象，避免旧对象覆盖同原权威在验证期间写下的新Task。进入writer后仍核原from fingerprint。
+
+不回滚用户编辑/取消、不进入新工具正文writer，原Model费用和失败本地work保留；没有新权限、账本或Domain writer。已claim但未执行的Effect目前保守保留原pending事实，后续精确reconcile不能靠错误文字推断成功或重发。
