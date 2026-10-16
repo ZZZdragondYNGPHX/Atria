@@ -81,8 +81,10 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十九组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第三十组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。
 
 第二十九组`0414b623e`接原Session Information→唯一Hybrid→原Context编译与原bank工作（接口§17.39）；没有新增API。原Memory设置在send/consume前复核，撤销后拒响应并保留费用。精确embedding/rerank配置当前缺受信producer明确拒绝；RP Memory、后台与Delegate/Handoff、正式输出仍未交付，不据此编写新HTTP调用或宣称完整后端已完成。
+
+第三十组`58ff31eeb`将原RP Memory sidecar与prefix接入内部startRp（接口§17.40），外部API列表不变。Memory设置或sidecar变动拒绝迟到响应，已发生费用保留；无合法历史source ID时明确原native_rp_source_unavailable。尚无正式聊天slot/marker/OutputClaim/Result，不能将内部generated结果直接append成正文。
