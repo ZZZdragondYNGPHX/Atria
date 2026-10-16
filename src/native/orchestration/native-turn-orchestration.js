@@ -108,6 +108,8 @@ export class NativeNarratorOrchestrationAuthority {
     closeProjectRound(args) { return this.#projectAuthority().closeRound(args); }
     finishProjectRound(args) { return this.#projectAuthority().finishRound(args); }
 
+    reconcileRpOutput(handle, request) { return this.#rpAuthority().reconcileOutput(handle, request); }
+
     #rpAuthority() {
         this.#rp ??= new NativeRpOrchestrationAuthority({ owner: this, execution: () => this.execution,
             port: host => this.#port(host), issueScope: (host, handle, principal) => {

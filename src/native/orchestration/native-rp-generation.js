@@ -3,6 +3,7 @@ import { writeAttemptSettlement, readAttemptSettlement } from './attempt-settlem
 import { TransitionController } from './transition-controller.js';
 import { ModelPort, readModelCompletionReceipt } from './model-port.js';
 import { RpOutputController } from './rp-output-controller.js';
+import { reconcileRpOutputEffect, verifyRpOutputReconciliation } from './rp-output-reconciliation.js';
 import { readEffect, effectDecision } from './effect-contracts.js';
 import { rpNativeOutputKey, rpNativeOutputOperationId, rpNarrationPayload } from '../rp-output-protocol.js';
 import { ConflictError } from '../../storage/errors.js';
@@ -597,9 +598,13 @@ export class NativeRpOrchestrationAuthority {
     }
 
     verifyObservation(args) {
+        if (args.observation.reasonCode === 'rp_output_reconciled')
+            return verifyRpOutputReconciliation(this.#execution(), this.owner.rpControl, args);
         const state = this.#runs.get(args.root.runId); if (!state) fail();
         return args.intent.effectId === state.outputEffectId ? state.outputPort.verifyObservation(args) : this.#port(state.host).verifyObservation(args);
     }
+
+    reconcileOutput(handle, request) { return reconcileRpOutputEffect(this.#execution(), this.owner.rpControl, handle, request); }
 
     #input(value) {
         fields(value, ['controlId', 'floor', 'requestId', 'routeRef'], 'RP generation');
