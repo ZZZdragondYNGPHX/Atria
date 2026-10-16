@@ -466,6 +466,7 @@ describe.each(CONTRACT_HARNESSES)('P4 Session lifecycle - $name', ({ make }) => 
         await open(value => { isolated(value); value.lifecycleRuntime.retention.maxTaskResults = 2; });
         const firstRecord = taskRecord('first');
         const first = await finalize(base, firstRecord);
+        const checkpointSave = await f.core.createSavePoint(h.handle, base.session.sessionId);
         const second = await finalize(first, taskRecord('second'));
         let head = await finalize(second, taskRecord('third'));
         expect(head.states.atri_task_results.records.map(record => record.invocationId)).toEqual(['second', 'third']);
@@ -476,8 +477,8 @@ describe.each(CONTRACT_HARNESSES)('P4 Session lifecycle - $name', ({ make }) => 
         await expect(finalize(head, firstRecord)).rejects.toThrow(/compacted/i);
         await expect(finalize(head, { ...firstRecord, payload: { text: 'different replay' } })).rejects.toThrow(/compacted/i);
         await expect(read()).resolves.toMatchObject(durable(head));
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId,
-            { revisionId: first.revision.revisionId, expectedRevisionId: head.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, checkpointSave.saveId,
+            { expectedRevisionId: head.revision.revisionId });
         expect(fork.states.atri_task_results).toEqual(first.states.atri_task_results);
         expect(lifecycle(fork).taskTombstones).toEqual([]);
         const original = await f.core.load(h.handle, base.session.sessionId, { revisionId: head.revision.revisionId });
@@ -606,15 +607,16 @@ describe.each(CONTRACT_HARNESSES)('P4 Session lifecycle - $name', ({ make }) => 
         await expect(read()).resolves.toMatchObject(durable(head));
     });
 
-    test('fork from an earlier revision restores domains, scopes, clocks, Workflow, receipts and task authority together', async () => {
+    test('historical Save restores domains, scopes, clocks, Workflow, receipts and task authority together', async () => {
         await open();
+        const checkpointSave = await f.core.createSavePoint(h.handle, base.session.sessionId);
         let head = await apply(base, { kind: 'experience.ready' });
         head = await apply(head, transition('begin'));
         head = await apply(head, advance(3));
         head = await finalize(head, taskRecord('branch-task'));
         head = await apply(head, { kind: 'scope.transition', scopeId: 'session', status: 'suspended' });
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId,
-            { revisionId: base.revision.revisionId, expectedRevisionId: head.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, checkpointSave.saveId,
+            { expectedRevisionId: head.revision.revisionId });
         expect(fork.revision.branchId).not.toBe(head.revision.branchId);
         for (const key of ['domains', 'scopes', 'clocks', 'workflows', 'automations', 'outbox', 'interactions', 'receipts', 'taskTombstones']) {
             expect(lifecycle(fork)[key]).toEqual(lifecycle(base)[key]);

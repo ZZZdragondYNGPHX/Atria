@@ -17,8 +17,8 @@
 // Engines covered (matches CONTRACT_HARNESSES used by Repo-layer tests):
 //   - FsEngine            (always on)
 //   - SqliteEngine        (always on)
-//   - MysqlEngine         (skip with ATRIA_DISABLE_MYSQL_TESTS=1)
-//   - PgEngine            (skip with ATRIA_DISABLE_POSTGRES_TESTS=1)
+//   - MysqlEngine         (enable with ATRIA_TEST_MYSQL_ROOT_URL)
+//   - PgEngine            (enable with ATRIA_TEST_POSTGRES_URL)
 //
 // To restart the engine mid-test (read-after-restart parity check), call
 // harness.reopenEngine(). FsEngine has nothing to close; the SQL engines tear
@@ -104,8 +104,8 @@ function precreateCommonDirs(dirs) {
 }
 
 // Local dev container defaults — keep in sync with mysql-harness.js / pg-harness.js.
-const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
-const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
+const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL;
+const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL;
 
 function makeEngineFactory({ mode, dataRoot, handle, extraHandles, dbName, pgSchemaUrl }) {
     const userDir = path.join(dataRoot, handle);
@@ -287,12 +287,12 @@ export async function makeEndpointHarness({ mode, mount, profile, extraHandles }
 const allEntries = [
     { name: 'fs',       mode: 'fs' },
     { name: 'sqlite',   mode: 'sqlite' },
-    { name: 'mysql',    mode: 'mysql',    disableEnv: 'ATRIA_DISABLE_MYSQL_TESTS' },
-    { name: 'postgres', mode: 'postgres', disableEnv: 'ATRIA_DISABLE_POSTGRES_TESTS' },
+    { name: 'mysql',    mode: 'mysql',    urlEnv: 'ATRIA_TEST_MYSQL_ROOT_URL' },
+    { name: 'postgres', mode: 'postgres', urlEnv: 'ATRIA_TEST_POSTGRES_URL' },
 ];
 
 export const ENDPOINT_HARNESSES = allEntries.filter(
-    (e) => !e.disableEnv || !process.env[e.disableEnv],
+    (e) => !e.urlEnv || Boolean(process.env[e.urlEnv]),
 );
 
 export const DB_ONLY_HARNESSES = ENDPOINT_HARNESSES.filter((e) => e.mode !== 'fs');

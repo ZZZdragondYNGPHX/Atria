@@ -4,14 +4,14 @@ import {
     registerOrchestrationTool,
     unregisterOrchestrationTool,
     listExtensionTools,
-    __getExtensionRegistryForTest,
+    getExtensionRegistry,
 } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 import { executeLoopTool, beginSimulation, endSimulation } from '../../public/scripts/agents/orchestrator/loop-tools.js';
 import { getEnabledToolSchemas } from '../../public/scripts/agents/orchestrator/loop-tools.js';
 
 describe('registerOrchestrationTool basic registry', () => {
     beforeEach(() => {
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
     });
 
     test('registers a read tool with full spec', () => {
@@ -23,7 +23,7 @@ describe('registerOrchestrationTool basic registry', () => {
             exec,
             mode: 'read',
         });
-        const entry = __getExtensionRegistryForTest().get('demo_read');
+        const entry = getExtensionRegistry().get('demo_read');
         expect(entry).toBeTruthy();
         expect(entry.mode).toBe('read');
         expect(entry.exec).toBe(exec);
@@ -43,7 +43,7 @@ describe('registerOrchestrationTool basic registry', () => {
             mode: 'write',
             simulate,
         });
-        const entry = __getExtensionRegistryForTest().get('demo_write');
+        const entry = getExtensionRegistry().get('demo_write');
         expect(entry.mode).toBe('write');
         expect(entry.simulate).toBe(simulate);
     });
@@ -53,7 +53,7 @@ describe('registerOrchestrationTool basic registry', () => {
             name: 'demo_x', description: 'd', parameters: {}, exec: async () => ({}), mode: 'read',
         });
         unregisterOrchestrationTool('demo_x');
-        expect(__getExtensionRegistryForTest().get('demo_x')).toBeUndefined();
+        expect(getExtensionRegistry().get('demo_x')).toBeUndefined();
     });
 
     test('listExtensionTools returns shallow copies', () => {
@@ -76,7 +76,7 @@ describe('registerOrchestrationTool basic registry', () => {
 });
 
 describe('executeLoopTool Layer-2 dispatch', () => {
-    beforeEach(() => { __getExtensionRegistryForTest().clear(); });
+    beforeEach(() => { getExtensionRegistry().clear(); });
     afterEach(() => { endSimulation(); });
 
     test('dispatches an extension read tool', async () => {
@@ -114,7 +114,7 @@ describe('executeLoopTool Layer-2 dispatch', () => {
 });
 
 describe('getEnabledToolSchemas Layer-2 merge', () => {
-    beforeEach(() => { __getExtensionRegistryForTest().clear(); });
+    beforeEach(() => { getExtensionRegistry().clear(); });
 
     test('includes extension tools when flag is missing (default-on)', () => {
         registerOrchestrationTool({

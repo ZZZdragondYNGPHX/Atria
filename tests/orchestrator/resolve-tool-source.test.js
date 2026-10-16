@@ -10,12 +10,12 @@ import { describe, test, expect, beforeEach } from '@jest/globals';
 import { resolveToolSource } from '../../public/scripts/agents/orchestrator/loop-tools.js';
 import {
     registerOrchestrationTool,
-    __getExtensionRegistryForTest,
+    getExtensionRegistry,
 } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 describe('resolveToolSource', () => {
     beforeEach(() => {
-        __getExtensionRegistryForTest().clear();
+        getExtensionRegistry().clear();
     });
 
     test('returns \'builtin\' for a Layer-1 builtin name (no ctx)', () => {
@@ -48,7 +48,7 @@ describe('resolveToolSource', () => {
         // Inject a synthetic bridged entry without going through bridgeSillyTavernTool
         // (which would lazy-import ToolManager). The registry shape is the
         // contract; source resolution checks `entry.source === 'st-bridge'`.
-        __getExtensionRegistryForTest().set('st_read_world_info', {
+        getExtensionRegistry().set('st_read_world_info', {
             exec: async () => ({}),
             simulate: null,
             mode: 'read',
@@ -79,7 +79,7 @@ describe('resolveToolSource', () => {
         // Forcefully insert a colliding extension entry under a builtin
         // name to assert the lookup order (registerOrchestrationTool would
         // reject this at runtime — we're directly probing precedence).
-        __getExtensionRegistryForTest().set('chat_read_range', {
+        getExtensionRegistry().set('chat_read_range', {
             exec: async () => ({}),
             simulate: null,
             mode: 'read',

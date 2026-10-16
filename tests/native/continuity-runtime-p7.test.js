@@ -71,7 +71,7 @@ describe.each(CONTRACT_HARNESSES)('P7 Continuity and Transfer Saga - $name', ({ 
     test('fork, save restore and branch switch cannot re-create externalized lineage', async () => {
         const save = await f.core.createSavePoint(h.handle, base.session.sessionId);
         const next = await apply(base, deposit());
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId, { revisionId: base.revision.revisionId, expectedRevisionId: next.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, save.saveId, { expectedRevisionId: next.revision.revisionId });
         expect(inventory(fork)).toEqual([]);
         const switched = await f.core.switchBranch(h.handle, base.session.sessionId, base.revision.branchId, { expectedRevisionId: fork.revision.revisionId });
         expect(inventory(switched)).toEqual([]);
@@ -83,15 +83,17 @@ describe.each(CONTRACT_HARNESSES)('P7 Continuity and Transfer Saga - $name', ({ 
         await expect(apply(recreated, deposit(next))).rejects.toThrow(/unavailable/);
     });
     test('withdraw into a second Session and re-deposit preserves one lineage across restores', async () => {
+        const baseSave = await f.core.createSavePoint(h.handle, base.session.sessionId);
         const next = await apply(base, deposit()); const id = next.continuityReceipt.lineageId;
         const other = await f.core.create(h.handle, f.start);
         const withdrawn = await apply(other, { ...deposit(next), direction: 'withdraw', recordId: 'inherited', lineageId: id });
         expect(inventory(withdrawn)[0].value.text).toBe('Unique sword'); expect((await vault()).records).toEqual([]);
+        const withdrawnSave = await f.core.createSavePoint(h.handle, other.session.sessionId);
         const deposited = await apply(withdrawn, { ...deposit(withdrawn), recordId: 'inherited' });
         expect(deposited.continuityReceipt.lineageId).toBe(id);
-        const fork = await f.core.forkBranch(h.handle, other.session.sessionId, { revisionId: withdrawn.revision.revisionId, expectedRevisionId: deposited.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, other.session.sessionId, withdrawnSave.saveId, { expectedRevisionId: deposited.revision.revisionId });
         expect(inventory(fork)).toEqual([]); expect((await vault()).records).toHaveLength(1);
-        const old = await f.core.forkBranch(h.handle, base.session.sessionId, { revisionId: base.revision.revisionId, expectedRevisionId: next.revision.revisionId });
+        const old = await f.core.restoreSavePoint(h.handle, base.session.sessionId, baseSave.saveId, { expectedRevisionId: next.revision.revisionId });
         expect(inventory(old)).toEqual([]);
     });
     test('concurrent source claims have one winner', async () => {
@@ -111,7 +113,7 @@ describe.each(CONTRACT_HARNESSES)('P7 Continuity and Transfer Saga - $name', ({ 
         await expect(f.sessionRepo.delete(h.handle, base.session.sessionId)).rejects.toThrow(/pending/);
         const host = new NativeGenerationHost({ sessionCore: f.core });
         await expect(host.execute(h.handle, { role: 'narrator', sessionId: base.session.sessionId, revisionId: pending.revision.revisionId }, null, null, { preview: true })).rejects.toThrow(/native_transfer_pending/);
-        await expect(f.core.forkBranch(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId })).rejects.toThrow(/pending/);
+        await expect(f.core.restoreSavePoint(h.handle, base.session.sessionId, (await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: base.revision.revisionId })).saveId, { expectedRevisionId: base.revision.revisionId })).rejects.toThrow(/pending/);
         f.core = services(h).core;
         const recovered = await apply(base, action, 'recover'); expect(recovered.continuityReceipt.status).toBe('committed'); expect((await vault()).records).toHaveLength(1);
     });

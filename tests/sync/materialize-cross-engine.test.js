@@ -22,8 +22,8 @@
 // do at the file-system level. SQL engines route through the real
 // materialize/dematerialize calls.
 //
-// MySQL/Postgres harnesses are gated on ATRIA_DISABLE_MYSQL_TESTS /
-// ATRIA_DISABLE_POSTGRES_TESTS the same way CONTRACT_HARNESSES gates
+// MySQL/Postgres harnesses are gated on ATRIA_TEST_MYSQL_ROOT_URL /
+// ATRIA_TEST_POSTGRES_URL the same way CONTRACT_HARNESSES gates
 // them — when the local dev container isn't running, the gated rows of
 // the matrix are absent rather than failing. The full matrix is exercised
 // in any environment with both DBs available (developer machine, CI).

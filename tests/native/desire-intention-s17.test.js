@@ -143,7 +143,7 @@ test('S17 competing plans preserve ties, Actor separation and source revocation;
     } finally { await h.cleanup(); }
 });
 
-test('S17 expiry, original Save restoration and fork keep state and invalidate old-branch support', async () => {
+test('S17 expiry, original Save restoration and repeated Save restore preserve authored state and rebase support', async () => {
     const h = await makeTempFsEngineHarness();
     try {
         const f = await installIntentionFixture(h); await f.plan('return', { expiresAt: f.current().states.atri_lifecycle.logicalTime + 3 });
@@ -152,13 +152,13 @@ test('S17 expiry, original Save restoration and fork keep state and invalidate o
         await f.write('intentions', 'return', { ...value, status: 'paused' });
         expect(item(f, 'return').cognition.status).toBe('paused');
         const resumed = await f.core.restoreSavePoint(h.handle, base.session.sessionId, save.saveId, { expectedRevisionId: f.current().revision.revisionId });
-        expect(resumed.states.atri_lifecycle.domains.intentions.records[0].value).toEqual(value);
-        expect(projectInformation(resumed, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'intention').cognition.status).toBe('stale');
-        const forked = await f.core.forkBranch(h.handle, base.session.sessionId, { expectedRevisionId: resumed.revision.revisionId });
+        expect(resumed.states.atri_lifecycle.domains.intentions.records[0].value).toEqual({ ...value, basis: { ...value.basis, anchor: { ...value.basis.anchor, branchId: resumed.revision.branchId, revisionId: resumed.revision.revisionId } } });
+        expect(projectInformation(resumed, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'intention').cognition.status).toBe('active');
+        const forked = await f.core.restoreSavePoint(h.handle, base.session.sessionId, (await f.core.createSavePoint(h.handle, base.session.sessionId, { expectedRevisionId: resumed.revision.revisionId })).saveId, { expectedRevisionId: resumed.revision.revisionId });
         const projected = projectInformation(forked, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'intention');
         expect(projected.cognition.status).toBe('expired');
-        expect(projected.cognition.sourceCurrent).toBe(false);
-        expect(forked.states.atri_lifecycle.domains.intentions.records[0].value).toEqual(value);
+        expect(projected.cognition.sourceCurrent).toBe(true);
+        expect(forked.states.atri_lifecycle.domains.intentions.records[0].value).toEqual({ ...value, basis: { ...value.basis, anchor: { ...value.basis.anchor, branchId: forked.revision.branchId, revisionId: forked.revision.revisionId } } });
     } finally { await h.cleanup(); }
 });
 
@@ -179,8 +179,8 @@ test('S17 read-time availability and Goal race cannot revive support or expose a
         });
         await expect(service.associations(h.handle, { goalId: goal.goalId, viewId: 'player' })).rejects.toThrow('actor_goal_association_stale');
         f.core.load = originalLoad;
-        const forked = await f.core.forkBranch(h.handle, f.current().session.sessionId, { expectedRevisionId: f.current().revision.revisionId });
-        expect(projectInformation(forked, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'intention').cognition.status).toBe('stale');
+        const forked = await f.core.restoreSavePoint(h.handle, f.current().session.sessionId, (await f.core.createSavePoint(h.handle, f.current().session.sessionId, { expectedRevisionId: f.current().revision.revisionId })).saveId, { expectedRevisionId: f.current().revision.revisionId });
+        expect(projectInformation(forked, 'actor', { purpose: 'context' }).items.find(item => item.semantic === 'intention').cognition.status).toBe('active');
         expect((await service.associations(h.handle, { goalId: goal.goalId, viewId: 'player' })).links).toEqual([]);
         expect((await service.repository.get(h.handle, goal.goalId)).status).toBe('active');
     } finally { await h.cleanup(); }

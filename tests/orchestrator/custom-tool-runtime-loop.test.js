@@ -2,7 +2,7 @@ import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/agen
 // tests/orchestrator/custom-tool-runtime-loop.test.js
 import { describe, test, expect, beforeEach } from '@jest/globals';
 import { runLoopOrchestration } from '../../public/scripts/agents/orchestrator/loop-runtime.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
+import { getExtensionRegistry } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 function makeProfile(customTools) {
     return {
@@ -19,7 +19,7 @@ function makeProfile(customTools) {
 }
 
 describe('loop runtime Layer-3 dispatch', () => {
-    beforeEach(() => { __getExtensionRegistryForTest().clear(); });
+    beforeEach(() => { getExtensionRegistry().clear(); });
 
     test('Layer-3 profile tool surfaces in the LLM tool list', async () => {
         const sentTools = [];

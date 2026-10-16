@@ -44,6 +44,7 @@ describe.each(CONTRACT_HARNESSES)('G1 atomic Turn App outcome - $name', ({ make 
         { envelope: raw, invocationId }, { expectedRevisionId: anchor });
     test.each([false, true])('Narrative + App (+ World=%s) publish one Revision with Variant and retry receipt', async world => {
         await open(logic => { if (!world) { delete logic.interpretations[0].command; delete logic.interpretations[0].args; } });
+        const checkpointSave = await f.core.createSavePoint(h.handle, base.session.sessionId);
         const next = await finalize();
         expect(next.core.parentRevisionId).toBe(base.revision.revisionId);
         expect(next.timeline).toHaveLength(base.timeline.length + 1);
@@ -56,7 +57,7 @@ describe.each(CONTRACT_HARNESSES)('G1 atomic Turn App outcome - $name', ({ make 
         expect(durable(await finalize())).toEqual(durable(next));
         const changed = envelope(); changed.narrative = 'Different';
         await expect(finalize(changed)).rejects.toThrow('conflict');
-        const fork = await f.core.forkBranch(h.handle, base.session.sessionId, { revisionId: base.revision.revisionId, expectedRevisionId: next.revision.revisionId });
+        const fork = await f.core.restoreSavePoint(h.handle, base.session.sessionId, checkpointSave.saveId, { expectedRevisionId: next.revision.revisionId });
         expect(fork.states.atri_lifecycle.domains.notes.records).toEqual([]);
         expect(fork.states.atri_world_state.worlds[f.worldId].state.hp).toBe(8);
     });
@@ -109,6 +110,7 @@ describe.each(CONTRACT_HARNESSES)('G1 atomic Turn App outcome - $name', ({ make 
     });
     test('record identity uses bounded mapping; terminal records cannot be advanced', async () => {
         await open(logic => { logic.interpretations[0].appCommand.recordId = { formula: 'args.eventType' }; });
+        const checkpointSave = await f.core.createSavePoint(h.handle, base.session.sessionId);
         const next = await finalize();
         expect(next.states.atri_lifecycle.domains.notes.records[0].id).toBe('healed');
         base = await f.core.applyLifecycleCommand(h.handle, base.session.sessionId, { type: 'lifecycle', invocationId: 'finish',

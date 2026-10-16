@@ -9,7 +9,7 @@ import { describe, test, expect, beforeEach } from '@jest/globals';
 import { runLoopOrchestration } from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 import {
     registerOrchestrationTool,
-    __getExtensionRegistryForTest,
+    getExtensionRegistry,
 } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 import { exportLoopPayload } from '../../public/scripts/agents/orchestrator/simulation-payload-adapter.js';
 
@@ -35,7 +35,7 @@ function makeProfile(customTools = [], overrides = {}) {
 }
 
 describe('loop-runtime tags tool_call trace entries with source', () => {
-    beforeEach(() => { __getExtensionRegistryForTest().clear(); });
+    beforeEach(() => { getExtensionRegistry().clear(); });
 
     test('builtin tool produces source=builtin on the tool_call event AND on the messages tool_calls entry', async () => {
         const sendLlm = async (opts) => {
@@ -124,7 +124,7 @@ describe('loop-runtime tags tool_call trace entries with source', () => {
     test('Layer-2 ST-bridged tool produces source=st-bridge', async () => {
         // Inject a synthetic bridged entry directly (bypassing the lazy
         // ToolManager import in bridgeSillyTavernTool).
-        __getExtensionRegistryForTest().set('st_demo_st_tool', {
+        getExtensionRegistry().set('st_demo_st_tool', {
             exec: async () => ({ ok: true }),
             simulate: null,
             mode: 'read',
@@ -152,7 +152,7 @@ describe('loop-runtime tags tool_call trace entries with source', () => {
 });
 
 describe('simulation-payload-adapter forwards source to renderers', () => {
-    beforeEach(() => { __getExtensionRegistryForTest().clear(); });
+    beforeEach(() => { getExtensionRegistry().clear(); });
 
     test('exportLoopPayload preserves source on each tool call', async () => {
         const sendLlm = async (opts) => {
