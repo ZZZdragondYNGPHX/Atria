@@ -114,3 +114,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第四十五组接正式RP输出的原Host Effect/dispatch token与原bank rp_output计费（接口§17.55）；只有明确派发后才执行原单Chat提交，ACK未知只观察。domain committed与父Run completed继续分离，下一步Graph output owner/claim/严格完成证明；P4 IN_PROGRESS，最终Gate NOT_READY。
 
 第四十六组补正式Narrator Result与原Graph output owner（接口§17.56）：producer完成→ResultRef→真实edge/traversal→output Attempt→正式Chat Effect，chat.output不再由agent持有。父Root仍待严格claim与原bank闭包，继续全部已授权阶段；Gate NOT_READY。
+
+第四十七组完成有限RP正式output claim及父Root终结（接口§17.57），复用原bank精确Effect闭包；未知费用/receipt保持pending_output，历史证明不恢复scope。继续Session/Project/Evolution等完整消费者及P5–P8；P3/P4及最终Gate仍NOT_READY，未合main。

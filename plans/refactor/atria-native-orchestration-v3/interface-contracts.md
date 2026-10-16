@@ -908,3 +908,13 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 原Transition.advance沿真实agent→output边消费该ResultRef，写traversal/edge admission、原计数并创建output Attempt，原AttemptController激活后才prepare/claim正式Chat Effect。新Effect属于output Attempt；producer只保留原Model Effect和结果引用。正文scope依旧仅来自活Narrator wrapper，Result历史事实不能恢复执行权。Result/settlement写后故障全组rollback；后续traversal故障保留先前已提交Result和真实费用，不写Chat。
 
 当前domain提交/Host Effect确认已贯通，但output Attempt尚未终结、Root.outputClaims为空，父Root仍running。严格RP OutputClaim/原bank闭包与Root.completed下一组继续；Result/Graph局部通过不核销完整P4或最终Gate。
+
+## 17.57 RP原bank闭包、严格OutputClaim与父Run终结
+
+第四十七组在独立Chat/原RPControl/原Host Effect提交与费用结算后，由同活opaque Narrator scope调用RpOutputCompletionController。先核当前原Root/epoch/fence/Binding/Plan、原Result/Audience、唯一output Attempt与已确认Effect、原domain receipt/完整marker/实际payload/current input，要求当前Chat恰原input+一次assistant回复；新输入、改文、删Chat、迁移、Binding撤销或取消不回滚其合法事实，也不倒写Chat。
+
+原shared bank增加只读inspectComputeEffectClosure，BudgetPort.observeEffectClosure仅复读该Run精确Model/output Effects的原rows/typed refs/settled与原overrun判据，原余额/额度/reducer不变，无第二价格/余额。child闭包仍沿既有HandoffReturn/task-local receipts。unknown/charged/overrun不签terminal claim；原authority在同scope结束前记录晚到费用后可据真实闭包完成，不二次send。
+
+最终独立Native output.publish CAS同组写RP OutputClaim、原cost closure receipt、output receipt、output Attempt completed settlement与Root.completed/原计数。正式outputKey仍跨Run稳定，claim ref按own-run固定；claim绑定原Result/consumer/operation/DomainReceipt。原Run自身在首次success提交与冷读时按OutputContract分派严格RP/task-local proof reader；RP proof关联完整Result/Model/child return/Graph traversal+edge/producer+output settlement/原Chat receipt/Host Effect/typed costs，不因存在孤立completed字样或claimId就通过。Root冷读另核不可变graph contract等于原published Plan。
+
+内部startRp对该显式有限profile返回output.status=committed且output.runStatus=completed、outputClaimRef/outputReceiptRef；domain已提交而费用或Host receipt仍未知时runStatus=pending_output，无terminal claim。ACK未知只观察，写后故障回滚整个Native终结组而保留既有Chat/费用；历史完整proof在合法编辑/delete/cold后仍可审计，不恢复正文或执行scope。此为有限RP子链实证，不核销其余Session/Project/Evolution/通用Graph/UI/四Engine/三端或完整P3/P4 Gate。
