@@ -65,10 +65,6 @@ LIVE=1 ANTHROPIC_API_KEY=... OPENAI_API_KEY=... PW_WORKERS=1 \
     npx playwright test e2e/server/44-live-three-backends.e2e.js
 ```
 
-## Authoring conventions
-
-See [AGENT_BRIEF.md](AGENT_BRIEF.md) for test scope, fixtures, provider simulation, persistence assertions and cleanup.
-
 ## Bugs locked
 
 None at present. When a regression lands that you cannot fix in the
