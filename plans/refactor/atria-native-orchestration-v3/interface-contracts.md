@@ -882,3 +882,13 @@ HandoffReturnReceipt闭集为{schemaVersion,receiptKind:'handoff_return',receipt
 原ContextPort每descriptor/compile/send/consume重验该consumer，将Result作为带provenance的user建议数据加入原父Context，bytes纳入唯一原context_build计费。原父rpCapture/request/Route与native_rp_intent保留，新Effect绑定acceptedResultRef/returnReceiptRef/parentInputDigest；复用原父Attempt/input/grant，不另开父Run或预算。真实父Model请求发生在Scheduler permit归还及durable return之后。
 
 成功返回原父Model wrapper/runId/effectId，delegation字段只含child已return的metadata。尚无正式Chat写或父Root.completed；P4唯一slot/marker saga继续实施。模型消费最后bank await期间合法撤权按固定明确deny提交，TypeError/完整性/存储错误不宽吞。
+
+## 17.54 原RPControl输出WAL与单Chat marker协议
+
+第四十四组扩展原RpRunControl.outputReceipts，strict prepared/writing/committed收据绑定exact input/variant/purpose/assistant slot，outputKey排除Run/Attempt，operationId由原authority固定。rp_narration显式text/maxBytes policy；只有真实原Narrator Model wrapper和活parent callback签发的opaque output capture可prepare/begin。原Run lineage→Source→Chat→Engine排序保留，ambient事务拒绝。
+
+独立Native prepared→writing CAS只有明确成功返回者获得一次性进程内permit；ACK未知不补permit。原ChatRepo.commitNativeOutput只收permit，末次核原completion、源/完整prefix/预期integrity/HostFence，在同单Chat资源原CAS写正文+extra.gen_id/atri_output。FS完整Chat原writer改用既有durableWrite文件fsync→rename→目录barrier，不宣称硬件断电或跨Native/Chat原子。
+
+独立reconcile只观察完整marker和真实payload/source；writing无marker为unknown，不重写。committed保留历史DomainReceipt/currentness分离，用户合法编辑或删除不撤销历史费用/receipt。原save/append/patch/whole-message patch保护marker，保留合法内容编辑；原saveRaw仍仅受信migration用途，无Browser调用。
+
+本组产品startRp对显式rp_narration仅prepare WAL；物理begin/Chat/reconcile经真实scope在专项测试调用。Host输出Effect/原local费用/Graph traversal/OutputClaim与父Root终结尚未接通，下一组继续，不能把prepared展示为正式成功。

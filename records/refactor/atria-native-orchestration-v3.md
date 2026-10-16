@@ -731,3 +731,12 @@
 - 新suite首基本2/2（11.808s），扩展16/16 PASS（81.299s）：FS/SQLite各8，含正向双HTTP/原输入grant与费用保持、fake/foreign/额外grant与失效capture、两种HTTP期间撤权及四种最终bank await合法原修改。合法取消/编辑/删除/迁移提交后拒响应，实际两次费用保留；ModelPort只纳入固定RP明确deny，任意完整性/存储错误不吞。
 - 原5suite精选18case首14PASS/4FAIL/92filterSKIP（67.903s），4失败均为旧成功断言仍期待一次Effect或reasonCode=null；定向未修时再4FAIL/36filterSKIP（23.448s），随后修正为实际父第二Effect及generation_response_validated，4PASS/36filterSKIP（23.600s）。原非delegated RP阳性/Binding撤权与Model原同tx取消/银行损坏8PASS/24filterSKIP（21.632s），并非重跑全套。原maintenance在关闭harness时打印writer_unavailable警告，测试自然退出。
 - 新test hook提取断言函数以满足原jest lint，最小recipient case复验2PASS/14filterSKIP（11.944s）；12个改动文件targeted原ESLint已0输出，diff check通过。SQL/外部账单/完整客户端本组NOT_RUN。接口§17.53及同Plan入口同步，P3/最终Gate仍NOT_READY，继续P4正式RP输出及全部后续已授权工作，不刷新HANDOFF、不合main。
+
+## 2026-10-16 — W06/P4第四十四组：原RP输出WAL、单Chat marker与未知观察
+
+- Source 1347639d7→1eb5b4639；P4开始。原RpRunControl.outputReceipts增加严格prepared/writing/committed合同，稳定slot key/operationId排除Run/Attempt；显式rp_narration text/maxBytes只给真实Narrator原Model完成scope。原Graph主体/银行不替换；产品目前只prepare WAL，正式Host输出Effect/Graph终结下一组接，不提前开放自动Chat写。
+- 原prepare/begin独立Native tx，明确成功的prepared→writing CAS签一次性opaque permit；lost ACK/cold不会重建permit。物理writer沿原Run lineage→Source→Chat→Engine边界，最终复核原completion/source/prefix/integrity/HostFence，原ChatRepo单资源写正文与marker。独立reconcile按真实marker/payload/source补原committed DomainReceipt；writing无marker unknown不重写，committed历史与currentness分开，合法编辑/delete保留历史receipt/费用。
+- 原save/append/JSON patch/whole-message patch保护Native marker，保留合法内容修改/删除；saveRaw原受信迁移用途不改为Browser入口。FS原完整Chat put改用已有durableWrite的file fsync→rename→directory barrier，不把Chat与Native journal合称原子，Windows目录barrier遵原工具OS语义未实测。
+- 新suite首4/4 PASS（4.358s），扩展16/16 PASS（14.694s）。补物理writer Run/Source锁排序及reconcile writer fence后，新16和原Chat patch20/append10/FS patch journal7组合 **53/53 PASS（16.608s）**。覆盖两Run同source slot、单permit/clone/过期拒、writing saved/no-save ACK及冷开、Chat ACK后只观察补收据、marker不可伪造/清除及合法编辑、最终Model bank await合法编辑提交后拒正文。
+- 新增FS真实directory fsync故障：rename后目录barrier抛EIO，原Chat仍为完整正文+marker、原writing可观察补收据，不自动重发。首1PASS/17SKIP（2.085s）；将条件test注册改独立FS describe满足原jest lint后1PASS/16filterSKIP（2.062s）。17个不同新case分次验证，不称最终17整轮。最终9文件targeted原ESLint0输出，diff check通过；无新增远端验证/外部Provider，SQL和三端本组NOT_RUN。
+- 接口§17.54/Plan/验收/并行入口同步，P4 IN_PROGRESS；P3/最终Gate仍NOT_READY。继续Host正式输出Effect/原local费用/OutputClaim/Graph与父Root终结，以及Project/Session/Evolution、可信UI/硬切和实证；不在分组检查点停下，不刷新HANDOFF、不合main。

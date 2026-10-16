@@ -114,3 +114,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第四十二组原父permit重新取得后写耐久Handoff return（接口§17.52），内部成功状态变为pending_continuation，增加returnReceiptRef；父Attempt恢复running但原input/grant不改，父Root未完成。正文仍未展开，原Narrator continuation/父Context与正式Chat输出未交付；无新HTTP/UI，不允许前端用ResultRef/returnReceipt自行组正文或生成执行grant，后端最终通知仍未发送。
 
 第四十三组内部startRp已可在durable return后消费精确child Result并执行原父Narrator第二次Model请求（接口§17.53）；顶层wrapper/runId/effectId属于父，delegation保留child returned metadata。仍无正式Chat提交或新HTTP/通用Result API；客户端不得自行append正文。继续P4输出与后续阶段，完整后端未交付。
+
+第四十四组新增内部原RP输出方法与显式rp_narration text policy（接口§17.54），没有新增HTTP。startRp仅prepared metadata，客户端不得直接提交Chat或显示父Run完成。物理writer单独经真实opaque scope验证，Host Effect/OutputClaim接线继续，后端未最终交付。

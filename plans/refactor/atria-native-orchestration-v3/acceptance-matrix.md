@@ -195,3 +195,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第四十二组接实际父Scheduler permit重新准入与单次durable return（接口§17.52）；FS/SQLite证明父原input/grant保留、精确父子Plan/Handoff/Result/Audience/closed bank、撤权先提交、写后rollback与ACK/cold边界，精确分次与相关回归归同一Record。本组只恢复父控制状态，不展开Result或发送父Narrator；ResultPort/Context/continuation与P4正式输出继续IMPLEMENTATION_PENDING。SQL/真实账单/质量/三端全流程NOT_RUN，P3 Gate保持NOT_READY。
 
 第四十三组局部证据：FS/SQLite真实父Result消费/第二次Model/原输入与银行保持、伪造及过期capture拒绝、HTTP中与末bank await撤权16个不同case通过；原受影响路径精选验证见Record。正式Chat唯一slot、父Root完成、SQL/三端及完整P3–P8 Gate尚未通过；用户要求持续实施至全阶段完成，分组验证不是停止条件。
+
+第四十四组局部P4：FS/SQLite输出协议各8个case通过，原Chat patch/append与FS patch journal最小相关回归37项通过。产品自动正文尚未开放，Host Effect/Graph output与完整消费者/SQL/三端Gate未通过；P4 IN_PROGRESS，其余状态依原Record。
