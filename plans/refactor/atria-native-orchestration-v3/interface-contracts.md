@@ -918,3 +918,11 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 最终独立Native output.publish CAS同组写RP OutputClaim、原cost closure receipt、output receipt、output Attempt completed settlement与Root.completed/原计数。正式outputKey仍跨Run稳定，claim ref按own-run固定；claim绑定原Result/consumer/operation/DomainReceipt。原Run自身在首次success提交与冷读时按OutputContract分派严格RP/task-local proof reader；RP proof关联完整Result/Model/child return/Graph traversal+edge/producer+output settlement/原Chat receipt/Host Effect/typed costs，不因存在孤立completed字样或claimId就通过。Root冷读另核不可变graph contract等于原published Plan。
 
 内部startRp对该显式有限profile返回output.status=committed且output.runStatus=completed、outputClaimRef/outputReceiptRef；domain已提交而费用或Host receipt仍未知时runStatus=pending_output，无terminal claim。ACK未知只观察，写后故障回滚整个Native终结组而保留既有Chat/费用；历史完整proof在合法编辑/delete/cold后仍可审计，不恢复正文或执行scope。此为有限RP子链实证，不核销其余Session/Project/Evolution/通用Graph/UI/四Engine/三端或完整P3/P4 Gate。
+
+## 17.58 原Scheduler finalization与运行态发送许可分离
+
+第四十八组为后续Native Session消费者补原Scheduler实际finalizer scope。原Scheduler完成既有fresh检查并进入finalizing后，向原finalize callback第三参数传一次opaque finalizationBoundary；该callback finally退出即删除，仅同Scheduler/operation/实际execution boundary/attempt/owner/source/resources在真实running membership且status=finalizing时有效。原assertActiveBoundary仍只认running/streaming，finalizing永远不能继续Model发送。
+
+原Native Turn permit可在同一真实finalizer内一次换取原NativeTurnFinalizationPermit，绑定原Host/selection/source/invocation/request/resources，拒JSON/clone/foreign/过期/运行态/重试边界；不产生银行准入或正文grant。资源与不可打断CAS语义归原Scheduler，不新建调度器/持久authority，旧finalizer忽略额外参数即可保持行为。
+
+当前仅机制与真实原Scheduler验证，尚未接Session正式Result/Effect/原finalize receipt/OutputClaim，不能核销Session出口或P4 Gate。下一步沿原GenerationHost.prepareTurn→Scheduler.finalize与原SessionCore.finalizeTurn接活Narrator完成scope和原领域收据，不把finalization凭据当Model grant。

@@ -122,3 +122,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第四十六组正式RP Result仅授权同Run唯一output owner，原Graph traversal/Attempt先于Chat Effect（接口§17.56）。没有新增Result正文API/通用consumer grant；domain committed仍不等于Root completed，终结claim继续实施。
 
 第四十七组显式有限RP profile在完整原费用/Result/Graph/Domain/Effect proof闭合时返回output.runStatus=completed与outputClaimRef/outputReceiptRef（接口§17.57）；output.status=committed仅为domain状态，pending_output可能已有Chat，客户端不得重写/重发。无新增HTTP，完整后端尚未交付。
+
+第四十八组只有内部Scheduler finalization scope（接口§17.58），无HTTP/Browser API或新增Model权限。Native Session正式Result/输出claim还未交付；原已有finalize行为保持，下一步在同实际finalizer消费原Narrator与原Domain receipt。

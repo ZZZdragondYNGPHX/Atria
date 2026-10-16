@@ -765,3 +765,11 @@
 - 实际阳性普通/真实delegated parent4PASS/28filterSKIP（14.928s）。新终结30+原Host/Graph32组合 **62/62 PASS（66.336s）**，包括unknown Model费用保留已提交Chat但不claim、原CAS拒伪完成、completion saved/no-save ACK及冷开、cancel/Binding/input与output edit/Chat delete/header迁移/新输入七类末bank await合法变动、写后Native整组rollback、诚实hash坏claim/closure/traversal/domain proof与fake/foreign/expired scope/false allowed拒绝。只有本地合成HTTP，无真实外部账单/开放文本质量或SQL/三端证据。
 - 随后加强原Root冷读将outputContract/capabilityCeiling/graphChangePolicy/entryNodeIds关联原published Plan，防诚实hash改不可变slot后继续读取已完成Run。补此反例与原bank晚到usage先真实settle再完成、不重发Model/Chat。定向4PASS/50filterSKIP（5.745s；误filter的Run suite全跳过，不计通过）；随后准确执行原Run/Graph两suite **34PASS/4SKIP（2.483s）**，动态合法Graph patch仍可用。新32个不同case分次验证，不冒称最终32或64整轮复跑。最终11文件targeted原ESLint0输出、staged diff check通过；进程自然退出。
 - output.status=committed是原domain事实；完整链另返回runStatus=completed及claim/output receipt refs。已提交Chat但unknown原费用或Host receipt缺失仍pending_output，Root不伪完成。无需新Browser路由或客户端写Chat。接口§17.57及同Plan/验收/并行入口同步；P3/P4 Gate仍NOT_READY，继续Session/Project/Evolution、可信交互与UI、旧模式全入口硬切和真实验收；不停在检查点、不更新旧HANDOFF、不合main。
+
+## 2026-10-16 — W06/P4第四十八组：原Scheduler专用finalization scope
+
+- Source c7243168b→d589db5f0；继续Native Session出口。确认原Scheduler实际finalizer运行时status=finalizing，原Turn Model permit只能running/streaming，故不能把旧发送permit放宽来借提交权。复用原Scheduler/资源/取消与fresh检查，实际finalizer第三参数签opaque scope，try/finally物理过期；原active frame共享等价核验但状态要求不变。
+- 原NativeTurnPermit可在同实际finalizer内一次交换NativeTurnFinalizationPermit，绑定同Host/selection/owner/source/invocation/request/resources及原execution boundary/attempt，拒fake/clone/foreign/过期/运行态与重试scope。不授Model、银行或正文权限，不新增调度/持久权限表。尚未在产品GenerationHost接新Session consumer，原finalizer忽略额外参数，不能称Session Result/OutputClaim已交付。
+- 新suite7+原permit9+handoff13 **29/29 PASS（0.726s）**，覆盖finalizer期间原资源持有/取消语义、原generation仍拒、不同operation/owner/resources/phase/Map身份、failure物理过期无重试、retained结果不恢复scope、一次Native交换及fresh stale不进入finalization。
+- 原Native Narrator真实localhost Model→既有finalize精选FS/SQLite各1，共2PASS/26filterSKIP（9.805s），没有重复无关收费/Source全套。harness关闭后原maintenance输出writer_unavailable警告，进程自然退出。三文件targeted原ESLint0输出、staged diff check通过；无外部费用请求。机制无持久存储变更，不据此声称SQL/三端或新Session output通过。
+- 接口§17.58与同Plan/Record同步；继续原Native Session完整Result/Context finalization复读、原finalize DomainReceipt/Effect/claim，再持续Project/Evolution与P5–P8。原授权持续，不在本检查点停工、不刷新HANDOFF、未合main。
