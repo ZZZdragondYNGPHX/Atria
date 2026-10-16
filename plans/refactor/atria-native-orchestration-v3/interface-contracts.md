@@ -892,3 +892,11 @@ HandoffReturnReceipt闭集为{schemaVersion,receiptKind:'handoff_return',receipt
 独立reconcile只观察完整marker和真实payload/source；writing无marker为unknown，不重写。committed保留历史DomainReceipt/currentness分离，用户合法编辑或删除不撤销历史费用/receipt。原save/append/patch/whole-message patch保护marker，保留合法内容编辑；原saveRaw仍仅受信migration用途，无Browser调用。
 
 本组产品startRp对显式rp_narration仅prepare WAL；物理begin/Chat/reconcile经真实scope在专项测试调用。Host输出Effect/原local费用/Graph traversal/OutputClaim与父Root终结尚未接通，下一组继续，不能把prepared展示为正式成功。
+
+## 17.55 原RP正式提交的Host Effect与唯一原local费用
+
+第四十五组接内部RpOutputController，显式chat.output发布机制只认原RpControl/ChatRepo与rp_narration/assistant/text policy，不赋予运行grant。原Model完成私有wrapper首次校验后，在同live output scope保存不可替换的完成摘要；Host输出Effect加入后复读原Model收据/原input与grants、原Root/fence、当前Plan/Binding/source和原bank，不把新waiting_effect当Model未完成，也不从历史metadata造scope。
+
+独立原Effect.prepare→原bank rp_output local admission→Effect.ready/claim→原RP writing CAS→原单Chat writer→原RP reconcile→原local实际usage settlement→原Effect.observe。目标/source/原Model receipt/payloadHash/稳定operation均绑定。普通原Narrator请求精确授权这一次assistant append（R2、原domain policy无需额外审批）；不扩至Project/World/其他slot。实际写前必须持有同活scope注册的真实dispatch token及原bank admission，fake/clone/cold/ACK未知不补permit。
+
+Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未知只观察各自稳定事实，不重复Chat。合法Run取消或source改动在最终原bank await提交后拒正文。当前成功output.status=committed只表示原domain提交，Effect receipt可能仍pending；原父Root保持running，无OutputClaim。Graph output traversal/唯一owner Attempt/严格终结继续下一组，不能将该中间状态发布为Run completed。

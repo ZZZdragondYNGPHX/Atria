@@ -110,3 +110,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 第四十三组接原ResultPort精确父recipient、带来源建议Context与真实父Narrator continuation（接口§17.53）。父原Attempt/input/grant与根银行保留，内部成功返回父Model结果及delegation metadata；正式Chat输出/父Run终结尚待P4。用户明确要求持续至全阶段完成，继续所有已授权实现，不在分组检查点停工；最终Gate尚未通过，不合main。
 
 第四十四组开始P4，接原RPControl输出WAL、单Chat正文+marker、一次性permit/只观察reconcile与原写路径marker保护（接口§17.54）。产品当前只prepare，真实Host Effect/Graph完成接线继续；P4=IN_PROGRESS，P3与最终Gate仍NOT_READY。
+
+第四十五组接正式RP输出的原Host Effect/dispatch token与原bank rp_output计费（接口§17.55）；只有明确派发后才执行原单Chat提交，ACK未知只观察。domain committed与父Run completed继续分离，下一步Graph output owner/claim/严格完成证明；P4 IN_PROGRESS，最终Gate NOT_READY。

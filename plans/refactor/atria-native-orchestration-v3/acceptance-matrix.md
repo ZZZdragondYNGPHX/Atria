@@ -197,3 +197,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第四十三组局部证据：FS/SQLite真实父Result消费/第二次Model/原输入与银行保持、伪造及过期capture拒绝、HTTP中与末bank await撤权16个不同case通过；原受影响路径精选验证见Record。正式Chat唯一slot、父Root完成、SQL/三端及完整P3–P8 Gate尚未通过；用户要求持续实施至全阶段完成，分组验证不是停止条件。
 
 第四十四组局部P4：FS/SQLite输出协议各8个case通过，原Chat patch/append与FS patch journal最小相关回归37项通过。产品自动正文尚未开放，Host Effect/Graph output与完整消费者/SQL/三端Gate未通过；P4 IN_PROGRESS，其余状态依原Record。
+
+第四十五组两Engine各10个Host输出case通过，追加fake/foreign/过期scope及Plan拒绝各3通过；另原协议17与相关原RP精选4通过，准确分轮见Record。正式Graph owner/OutputClaim/父Root完成与SQL/完整消费者/三端仍未通过，不核销P4 Gate。

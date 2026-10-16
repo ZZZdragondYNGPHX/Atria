@@ -740,3 +740,12 @@
 - 新suite首4/4 PASS（4.358s），扩展16/16 PASS（14.694s）。补物理writer Run/Source锁排序及reconcile writer fence后，新16和原Chat patch20/append10/FS patch journal7组合 **53/53 PASS（16.608s）**。覆盖两Run同source slot、单permit/clone/过期拒、writing saved/no-save ACK及冷开、Chat ACK后只观察补收据、marker不可伪造/清除及合法编辑、最终Model bank await合法编辑提交后拒正文。
 - 新增FS真实directory fsync故障：rename后目录barrier抛EIO，原Chat仍为完整正文+marker、原writing可观察补收据，不自动重发。首1PASS/17SKIP（2.085s）；将条件test注册改独立FS describe满足原jest lint后1PASS/16filterSKIP（2.062s）。17个不同新case分次验证，不称最终17整轮。最终9文件targeted原ESLint0输出，diff check通过；无新增远端验证/外部Provider，SQL和三端本组NOT_RUN。
 - 接口§17.54/Plan/验收/并行入口同步，P4 IN_PROGRESS；P3/最终Gate仍NOT_READY。继续Host正式输出Effect/原local费用/OutputClaim/Graph与父Root终结，以及Project/Session/Evolution、可信UI/硬切和实证；不在分组检查点停下，不刷新HANDOFF、不合main。
+
+## 2026-10-16 — W06/P4第四十五组：实际原Host Effect授权的RP提交与原local费用
+
+- Source 1eb5b4639→b7b8821a8；新增RpOutputController与chat.output纯发布机制，接原Effect/RunControl银行/Chat writer，不新建费用或正文writer。原opaque output scope的首次Model完成校验缓存不可替换wrapper/收据摘要，后续原Effect使Attempt waiting_effect时仍核原receipt/source/当前Root/Plan/grant/原bank。原输出Effect精确绑定本次Narrator request、assistant slot、源/目标/Model receipt/payloadHash/稳定operation；R2按原domain精确user narration授权，无外部/Project/World扩大。
+- 原bank增加rp_output本地工作种类，实际payload+输入metadata bytes准入，同原limits/attempt provenance计费与实际CPU/wall usage结算。原Host ready/claim后注册真实token；原RP begin与Chat consume必须当前dispatching/token/budget一致。原物理writer最后fence await后再核Root stamp与Chat integrity，合法取消/源编辑提交后拒写。
+- 原domain与Host receipts ACK未知只观察，无第二permit或Chat调用；未知reconcile不把真实Chat已有正文当Run成功。原Graph/OutputClaim/父Root终结尚待后续；当前正式domain成功Root仍running。原协议suite改为在真实Host Effect已准入后显式测prepare/单Chat原语，测试stub不进入产品。
+- 首lint/加载失败为编辑时漏原authorize分支闭括号，修复后实际两case先失败于缺chat.output发布authority；补纯机制校验后原协议17+真实Host阳性2共19/19 PASS（19.720s）。这些前置失败不计产品通过。扩展Host suite20/20 PASS（28.100s），含真实物理writer看到durable intent/writing/charged后才写、实际child return→父正式回复、claim ACK未知不写、Chat ACK不重写、domain与Host receipt saved/no-save ACK及末bank合法Run取消。
+- 追加live fake/clone/foreign owner/Host/额外payload/过期scope拒，以及原Plan missing policy/foreign slot拒，6PASS；同时原普通RP阳性与Delegate实际producer4PASS，三suite合计10PASS/40filterSKIP（16.913s）。26个不同新case分次通过，不冒称完整26重跑；原协议17已在前轮通过。最终11个变更文件targeted原ESLint0输出，diff check通过。只有localhost合成Provider，无SQL/真实外部费用/完整三端证据。
+- 接口§17.55与同Plan/Record同步；继续Graph output owner Attempt/edge/traversal/严格claim/Root终结，再持续其它领域及P5–P8，不在检查点停工、不刷新HANDOFF、未合main。
