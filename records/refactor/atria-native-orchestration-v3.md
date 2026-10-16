@@ -787,3 +787,11 @@
 - 新suite首轮8PASS/2FAIL（46.211s）；两失败精确为测试用了不存在的SettingsRepo.load，改为原get后仅相关memory两Engine2PASS/8filterSKIP（10.980s）。没有产品修补或放宽断言；最终十个不同case均有通过证据，未宣称修正后完整再跑十项。原ContextPort13/13 PASS（2.870s），四文件targeted本工作树原ESLint0输出、staged diff check通过。仅本地最小相关验证，SQL/外部真实费用质量/三端NOT_RUN，无变异残留。
 - 产品只新增原Narrator Context输出能力捕获，GenerationHost.finalize尚未调用新入口；Session正式Result/Effect/DomainReceipt/OutputClaim仍未实现。不要将测试钩子当产品完整consumer。后续需同原prepared对象活scope→实际finalizer复读→原费用闭包/Effect→唯一SessionCore.finalizeTurn领域收据→严格Result/claim，不能从metadata冷开恢复权限或放宽原发送阶段。
 - 用户最新明确要求“到合适的时机停下，我要新建对话了”。本组最小验证、source提交推送与同Plan/Record、HANDOFF更新后停下，不启动第五十一组。此要求覆盖此前持续推进全部阶段的节奏，但不撤销恢复后的既有开发授权。P1/P2/P3/P4 IN_PROGRESS、P5–P8 NOT_STARTED、Gate NOT_READY，未合main、没有对前端冒发最终交付。
+
+## 2026-10-16 — W06/P4第五十一组：产品Session finalizer消费原Narrator活scope
+
+- 恢复时source为5a95c7461（第五十组41cb8760f之后两条说明提交）、docs为ff1ce8f57，两个工作树干净，fetch与ff-only均已同步；main干净，未集成。按HANDOFF/治理/同Plan继续既有授权，历史暂停不恢复为限制。本组source提交并推送0dcb97267。
+- 原ModelPort wrapper/Context→原prepared对象WeakMap一次绑定；仍在executeNarrator finally清理强runs/modelScopes，不保留可冷恢复scope。实际GenerationHost.finalize消费原第三参数，在原Run→Runtime→Settings→Session边界内经原withConsumption复读Context/Model receipt/银行，再复读末await后Context。合法同事务撤权提交后拒输出；关闭验证事务后才调用唯一SessionCore.finalizeTurn。
+- 本地输出Context suite从机制测试改为观察真实产品调用，首轮10/10 PASS，56.712s。新增prepared复制/改文/foreign/重放与末completion银行await Memory/Binding/Run撤权后，仅新增范围8PASS/10filterSKIP，52.753s；十八个不同case均有证据，未完整再跑十八项。原typed authority/resolver实际HTTP链精选4PASS/44filterSKIP，29.002s，确认原World/assistant仍单次由原finalizer提交、原quota/计费/幂等保持。
+- 最初定向ESLint仅新增测试三处conditional-expect错误；整理为先求观察值后统一expect，三文件最终原插件ESLint0输出、diff check通过。测试有既有maintenance在fixture关闭时writer_unavailable告警；各runner正常退出。没有全仓/远端Actions、SQL/真实外部费用质量/三端验收或独立审查。
+- 本组只有正式writer前的活scope/来源披露复验，未声称Session Result/Effect/领域receipt/OutputClaim完成。继续精确原领域耐久收据及本操作owned Source推进，再接完整出口和其它工作包；P1–P4 IN_PROGRESS、P5–P8 NOT_STARTED、最终Gate NOT_READY，未合main、不刷新HANDOFF、不发前端最终交付通知。

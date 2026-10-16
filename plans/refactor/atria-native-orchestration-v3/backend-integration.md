@@ -128,3 +128,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第四十九组只有内部Narrator output quota verifier（接口§17.59），没有HTTP/前端权限更新。输出phase witness不授Model/local准入，也不等于完整Source/Disclosure或Session output提交；新正式Session consumer仍待后端接入。
 
 第五十组提供内部ContextPort原Narrator输出finalization复读（接口§17.60），产品GenerationHost.finalize尚未消费；没有新HTTP/Browser权限或正式Session Result/claim交付。用户明确要求换对话，当前暂停并刷新HANDOFF；续接先完成Session原活scope/Effect/领域收据链，不能因测试钩子通过宣称完整后端已交付。
+
+第五十一组产品GenerationHost.finalize已消费原Narrator prepared/Context专用复验（接口§17.61）。无新HTTP/Browser API；Model后撤权会阻止正式Session assistant，费用保留。正式Result/Effect/DomainReceipt/OutputClaim仍在实施，不将现有Session返回当V3 Run completed或最终后端交付。
