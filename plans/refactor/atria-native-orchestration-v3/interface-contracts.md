@@ -792,3 +792,13 @@ HandoffReceipt钉父/子Run、父Attempt/epoch、Host boot/generation、source�
 同次validate/publish调用使用临时completedReports Map，以exact child PlanRef与完整revision integrity为key，只复用已完成的child自身依赖报告；原revision读取、完整性、逐父权限/limits/output与active-path cycle检查在memo前。Map不跨调用/owner/tx，不缓存runtime grant。菱形共享leaf避免按路径重复验证，下一次validation原资源变更仍失效。原maxDepth仍为实际运行深度，不被擅自解释为文档引用深度上限。
 
 该发布证据不签发领域capture、delegation grant、child Context或Result/Audience，不代表已接实际producer。FS/SQLite真实发布/拒绝、独立child Route漂移、DAG与变异范围归同一Record第三十五组；P3 Gate仍NOT_READY。
+
+### 17.46 有界task-local Result物理合同
+
+实际保存Result正文前必须从不可变Plan的outputContract.resultPolicy读取显式{outputType:'text'|'json',maxBytes:正安全整数}，只允许kind=result。没有policy的既有V3有限profile仍不能生产Result正文，assertResultPolicy明确result_policy_unavailable；不按tokens、local-work inputBytes或默认常数猜正文额度。partial还须原allowPartial=true。
+
+沿已注册orchestrationRecord/result存严格{schemaVersion,runId,resultId,envelope,payload}，不加metadata kind或业务writer。Envelope沿§7，payloadRef={kind:'orchestration_result_payload',runId,resultId,integrity}指同受保护record的payload；outputSchemaRef={kind:'native_builtin',schema:'text'|'json'}。text按UTF-8、json按原canonical serializer实际字节核maxBytes；payload和整个metadata严格plain JSON，拒undefined/nonfinite/cycle/sparse/accessor/hidden/class/custom prototype，不执行getter。unknown/unavailable只许null正文；qualityRefs首版为空，不虚构质量证据。
+
+首版来源只接精确两ref：run_source{runId,epoch,sourceBindingDigest,sourceAuthority:'rp_chat',sourceRef:{controlId,prefixDigest}}与effect_receipt{runId,effectId,receiptId,observedEpoch}；二者同producer Run/epoch。audienceConstraint={kind:'parent_attempt',parentRunId,parentAttemptId,parentEpoch,sourceBindingDigest,grantDigest,taskPurpose}，disclosureConstraint={kind:'same_source_parent_only'}，限定同source精确父Attempt、不转发。dependencyDigest绑定除自身字段外的完整Envelope，payload hash另外校验。expected精确producer/source/receipt/recipient参数只能做一致性核对，不是授权。
+
+本组只有严格物理validators与原FS/SQLite/MySQL/Pg明确存储fixture，没有生产Result writer、Model completion proof、领域授权、child Context或returnHandoff。不能把形状或哈希合法当可读/可写grant，也不能从cold Effect observation恢复丢失正文或授权重发。实际验证与SQL精选范围归同一Record第三十六组，P3 Gate仍NOT_READY。

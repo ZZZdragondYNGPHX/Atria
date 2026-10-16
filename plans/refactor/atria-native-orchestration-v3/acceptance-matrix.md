@@ -179,3 +179,5 @@ IMPLEMENTATION_PENDING表示已有设计和授权、仍需本任务后续实现�
 第三十四组已恢复并补耐久Handoff起始（接口§17.44）：原CAS父waiting_child/精确收据、原预算确认与真实单槽Scheduler组合取得Windows FS/SQLite子证据，普通delegate容量不放宽。Scheduler返回不恢复耐久父Attempt；正式领域授权/child输入编译、Result/Audience/控制权归还仍IMPLEMENTATION_PENDING。本设备Docker服务不可连接，本组SQL NOT_RUN，不将历史Linux或四Engine局部证据混称本轮通过；P3 Gate保持NOT_READY。
 
 第三十五组有限Delegate发布校验/单次闭包memo见接口§17.45；FS/SQLite明确子Plan能力/全limits/精确完整性、递归原Route漂移、DAG复用仍核逐父边及跨调用失效。该机制与运行grant分离，未实现producer/Result/return，相关Gate不核销，SQL/外部收费NOT_RUN。
+
+第三十六组补Result显式正文policy及最窄物理validators（接口§17.46）。用户启动Docker后启动现有两SQL容器，精选原handoff/银行/单槽调度/收据/取消/嵌套、Delegate发布闭包与Result roundtrip/改写哈希共22项真实MySQL/Pg通过，304filterSKIP；只更新这些场景证据，先前当时服务不可用记录保留。完整SQL矩阵、实际Result生产者/受权消费与return仍未完成，P3 Gate不变。

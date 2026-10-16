@@ -92,3 +92,5 @@ D1–D8 的各模块继续拥有原语义与已冻结决策；**D9 的静态代�
 2026-10-16已按当前指令fetch/fast-forward源码与docs并读HANDOFF恢复；历史暂停不再限制执行。第三十四组6bbc4c01f补原DelegateController耐久Handoff起始、单并发父逻辑槽让出和精确祖先收据验证，见[接口§17.44](interface-contracts.md#1744-耐久handoff起始与父逻辑槽让出)。继续有限Plan发布校验、真实领域producer与child Result/Audience/return闭包；没有将调度回调当正式完成。P3 IN_PROGRESS / Gate NOT_READY，未集成main。
 
 第三十五组185cb7799补有限agent.delegate原Plan发布机制及单次闭包memo，见[接口§17.45](interface-contracts.md#1745-有限delegate发布机制与单次依赖闭包)。真实执行仍需原领域capture/grant、child输入编译和Result/Audience/return，不将发布成功当执行授权。继续已授权后端工作，P3 Gate NOT_READY。
+
+第三十六组1afab4875/1543e859c补显式Result字节policy、严格record/envelope与最窄RP→父Attempt范围，见[接口§17.46](interface-contracts.md#1746-有界task-local-result物理合同)。用户启动Docker后本机相关SQL22项取得实际证据；完整矩阵和正式producer/Result写入与消费未通过，继续后端，未合main。
