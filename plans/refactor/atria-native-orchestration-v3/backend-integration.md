@@ -52,6 +52,8 @@ Effect 的 `authorize/verifySend/verifyObservation/verifyApproval`、Delegate �
 
 第二十五组接原Project交互Executor/Scheduler的单轮Model/Context生产组合（接口§17.35），复用原Task bank、原提示词builder和ModelPort。仅精确studio agent→json output、maxModelRounds=1、无continuity/reuse/retry/fallback；Scope来自实际原operation和started generation，JSON/preflight复制无权运行。当前generation.send-only图遇模型工具调用明确拒绝，不执行Task提案/Skill。完整多轮、Task Tool、Review/Commit、正式OutputClaim/Result及API仍未完成。原runner的提示词组装抽为`public/shared/project-agent-prompt.js`并新增内部hook，是原Native后端共用runtime接线，无页面布局重做；并行前端任务整合这两个路径时应保留实际付费后构建与私有请求校验。
 
+第二十六组完成原ChatRepo/GroupRepo、RPControl及已识别在线入口的共同聊天写围栏和事务纯读（接口§17.36），源码`6865d0a08`已推送。来源消费测试仍是明示受控只读callback；sync/restore管理旁路、RP Context/model scope及P4唯一输出仍待接，前端不得据此增加RP V3运行或正式提交入口。用户要求本组完成后暂停以换设备；详细恢复入口与剩余队列在同一Record最后“交接”段，后端未完成，不将本次暂停冒称最终前端交付。
+
 ## 4. 并入统一前端的范围
 
 前端任务纳入 W08/P5 的 Plan Library、Graph Canvas+Inspector、同语义 Node/Edge List 与移动 Sheet、Draft/Validate/Publish 冲突处理；Run 默认 Timeline/Graph 切换、Source/Audience/成本/未知/错误和受控诊断；可信 Approval 展示与 Cancel/Status 可达；Shell Search/deep-link/history/Back 和移动键盘/IME/无障碍。
@@ -77,6 +79,6 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 
 ## 6. 两个任务的源码整合核对
 
-提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十五组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
+提示词后端已交付`760327891`，V3本轮后端最新提交及docs版本见同一Record第二十六组。只读`git merge-tree --write-tree --name-only 4a62ba5cc origin/refactor/atria-native-prompt-preset-deepening`曾报告generation-host.js与execution-utils.js内容冲突；model-prompt-runtime/contracts.js、prompt-candidates.js双方也有改动。该预演未移动任何branch/main，后续Head新增改动必须重新核对，不能把旧预演当最终冲突清单或已合并证据。
 
 实际组合必须同时保留原Prompt behavior/可信preview与V3稳定模型+local身份、budget ACK未知只观察、Source/Audience最后复核和安全错误码。使用原领域服务，不在前端补bank/grant/runner/审批authority。复测相关Prompt与V3实际发送/拒绝/重放套件后，再按原Gate处理集成；用户要求两个后端组合不等于允许未通过P7的main合并。V3尚未完成的后端继续归本任务，不以交前端实现为由转移。

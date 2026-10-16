@@ -702,3 +702,15 @@ Project Source capture改用原ProjectAgentService._ensureDraftMutable的实际�
 内部audience为精确`project_task/taskId`。外层Host请求严格固定project/task/revision/attempt/request/role/Route/tools，GenerationService请求另外严格核原host view、requirements、空outputContract、disabled fallback和空overrides；两种原合同分别检查。实际round的source/role/messages/tools须与私有编译结果一致。原Context计费证明增加精确task source分支，最终消费沿§17.34原锁序、fresh EngineTx与最后Source/Binding/Context/原bank复核。存储未知和完整性异常不宽吞；已发生收费/confirmed事实保留，原业务服务决定Task结果。
 
 本profile只授model generation。模型返回任何toolCalls时，在交回原runner执行工具之前明确`native_orchestration_project_tool_scope_unavailable`；不能凭generation.send取得Task proposal/Skill/正式Project写入权限。实际Model Effect可以confirmed且费用已settled，同时Task提案/正文仍被拒绝。P4仍需原Task Tool grant、多轮source advance、正式Review/Commit、OutputClaim/Result与取消提交闭包。本组不是通用Graph runner、Project完整自动consumer或Run completed，也未增加Run/Projection/Approval HTTP。精确测试、失败、SQL范围和变异留同一Record第二十五组；真实外部费用/文本质量/三端客户端不由本地合成HTTP替代。
+
+### 17.36 原RP canonical写围栏与事务纯读
+
+原ChatRepo增加`withWriteLock(handle,operation)`，唯一委托`withChatWrite`，复用原`withRuntimeWrite`和原`withNativeResourceWrite(handle,'rp-chat-domain',...)`。顺序为Runtime→owner范围chat-domain→原RPControl resource key（需要时）→Engine；没有新锁表、银行或业务writer。该owner边界覆盖重命名、角色目录整批移动/删除与群聊枚举/cascade全过程，不依赖可变locator或将group文档ID误当chatId。原ChatRepo全部12类mutation和GroupRepo save/delete共用它；读、原CAS/去重/sidecar/计数/返回语义仍归原服务。
+
+`RpRunControl`保留同Engine的原ChatRepo引用；`_locked`最外进入同一聊天边界，再取原control锁。`status/context/observeCompute`增加可选末参数`{tx}`：有tx直接原纯读取，无tx仍走原Engine事务，不排队获取写锁。原prefix仍由原`sourceContent/sourceMessageId`计算，覆盖原文字、sender、角色、variant；原bank费用/sequence变化不使source误失效。迟到结算按既有control/operation身份，不要求当前chat仍存在。SourcePort与BudgetPort在当前事务使用这些原prototype reader，instance同名no-op不能替代来源或费用事实。
+
+`SourcePort.consumptionBoundary`增加RP分支，构造纯校原RpRunControl/ChatRepo/BudgetPort及同Engine、source/control/operation/prefix/digest，实际执行才调用原ChatRepo prototype写边界。与原RunRepository组合为Run ancestry→Runtime→chat-domain→fresh EngineTx；不持锁跨Provider等待。这是来源消费围栏，不是模型/Actor/工具授权。当前测试的实际consumer是明示受控只读callback，未提供P4单正文slot/marker提交器或RP model scope。
+
+在线活旁路同步处理：`/api/chats/state/patch`的原raw tx同样取外层聊天边界，保留FS无parent sidecar允许、SQLite原parent检查拒绝的差异；普通generation job自动保存使用原已认证`job.handle`，不能从没有handle的requestMeta落入FS直写；角色rename/delete的原Repo操作及随后原文件清理尾部持有同一边界，避免尾部删除后来新建聊天。不重写这些业务操作或迁移任何旧编排数据。
+
+**尚未封闭的管理旁路**：原sync shadow live publication、SQL dematerialize、cross-mode restore原raw clear、同FS extract/backup/recovery rollback仍有绕canonical Repo的写入。本组仅完成上述canonical和在线入口，不能声称所有原RP写入已原子，也不开放RP Model/正式输出consumer。下一组须在实际目标publication之前取得同Runtime/chat域围栏、避免跨网络等待和Engine→Runtime反序，再接原RP Context。准确路径与设备接续队列归同一Record第二十六组。可信Review、Hybrid、后台producer、Delegate/Handoff和正式业务闭包仍按既有阶段分账；本地隔离测试不替代外部费用/质量/真实客户端。

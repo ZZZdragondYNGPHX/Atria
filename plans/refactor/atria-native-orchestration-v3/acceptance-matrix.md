@@ -156,11 +156,11 @@ Review Origin语义遵守D8完整可审查交互；主app仍显示Timeline/脱�
 
 ### 9.1 P3后端子工作后的Gate复核
 
-2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第二十五组的测试详细列表和失败/变异证据唯一保留于同一Record；此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
+2026-10-16复核：**P3=IN_PROGRESS / Gate=NOT_READY**。第五至第二十六组的测试详细列表和失败/变异证据唯一保留于同一Record；用户要求第二十六组完成后暂停换设备，非阶段PASS。此表只给出剩余准入关系。设计与开发授权均已满足，不用尚未取得的产品证据倒挂E0。
 
 | 维度 | 已有实际子证据 | 未完成与准入状态 |
 | --- | --- | --- |
-| V04银行/发送 | 原三域CAS、稳定Effect+ordinal、unknown/late settle；原quota/usage幂等四Engine见接口§17.28；固定Narrator实际candidate/quota、同bank编译计费及ModelPort四Engine见接口§17.30；成功503→200与原树消费见§17.31，Source/Binding原领域围栏及最终授权回调后来源复核见§17.32；含原quota的free-text authority resolver同Turn bank/角色额度/原选择复用见§17.33；原Project消费锁/预算tx纯读见§17.34，原交互Executor单轮Model/Context组合见§17.35 | background等producer、无quota/缺V3保留事实的free-text来源、Project多轮/Task Tool与RP adapter待接。P4正式提交围栏不由Port消费顺序代替。受控send的retry/fallback子证据不当完整产品fallback grant。真实费用NOT_RUN，P3/V04未整体PASS。 |
+| V04银行/发送 | 原三域CAS、稳定Effect+ordinal、unknown/late settle；原quota/usage幂等四Engine见接口§17.28；固定Narrator实际candidate/quota、同bank编译计费及ModelPort四Engine见接口§17.30；成功503→200与原树消费见§17.31，Source/Binding原领域围栏及最终授权回调后来源复核见§17.32；含原quota的free-text authority resolver同Turn bank/角色额度/原选择复用见§17.33；原Project消费锁/预算tx纯读见§17.34，原交互Executor单轮Model/Context见§17.35；原RP canonical/在线写围栏与bank tx纯读见§17.36 | RP sync/restore管理旁路与Context/model scope仍待接，不能把受控只读callback当RP消费者。background等producer、无quota/缺V3保留事实的free-text来源、Project多轮/Task Tool仍待接。P4正式提交围栏不由Port消费顺序代替。真实费用NOT_RUN，P3/V04未整体PASS。 |
 | 父子Run/逻辑界限 | 持久Delegate身份→原reservation→observe/confirm；祖先取消/精确额度/实际活动Attempt/共享逻辑counter、原子回滚与重放反例；原固定Turn active permit已接 | Delegate/Task完整Scheduler资源交接、Handoff/child Result消费、实际Plan授权adapter仍IMPLEMENTATION_PENDING，不能宣称完整P2/P3通过。 |
 | S2/S4 Context | 原Session Audience plan成为实际HTTP输入；原authority candidate/receipt、tokenizer/persona/Package Context共享原服务，实际compile计费一次；原resolver intentObservation只在同bank准入后compile，Package实际bytes/send与consume身份复核；有限Session消费见§17.31–§17.33。Project单轮精确project_task audience、原Task/conversation/Skill版本与真实输入bytes计费见§17.35 | RP原Audience adapter、Hybrid真实检索/跨Agent Result与Disclosure仍IMPLEMENTATION_PENDING；Project多轮source advance及其他领域/跨Agent并发消费仍待实施/实测，自由文本泄漏质量NOT_RUN。 |
 | W05 Tool/Review | 原Skill/MCP/A2A/CredentialTarget、逐请求复核、持久A2A ownership和R3拒绝 | A2A精确受理回执已接原Effect观察（§17.21），不代表远端task完成；MCP/Skill原私有completion proof→既有EffectReceipt与cold观察已实现（§17.24），缺proof/receipt仍unknown；Skill消费撤权/矛盾拒正文。真实Review Origin/再认证/批准尚未实现。真实外部协议部署/高危动作NOT_RUN且安全准入BLOCKED。 |
