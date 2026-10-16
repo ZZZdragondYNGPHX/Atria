@@ -286,7 +286,10 @@ export class NativeProjectOrchestrationAuthority {
             const roundToken = Object.freeze({});
             this.#rounds.set(roundToken, { state, runId: root.runId, logicalInputRef, identity, send, round: actualRound });
             return { ...structuredClone(actualRound), roundToken };
-        } catch (error) { this.#runs.delete(root.runId); this.#operations.delete(operationKey); throw error; }
+        } catch (error) {
+            await this.#captureFailure(state, error);
+            this.#runs.delete(root.runId); this.#operations.delete(operationKey); throw error;
+        }
     }
 
     async execute({ host, handle, roundToken, source, role, messages, tools }) {
@@ -315,6 +318,8 @@ export class NativeProjectOrchestrationAuthority {
             state.modelResult = result; state.modelResultHash = hash(result); state.tools = new Map();
             this.#consumers.set(roundToken, { state, identity, runId });
             return generated;
+        } catch (error) {
+            await this.#captureFailure(state, error); throw error;
         } finally {
             if (!this.#consumers.has(roundToken)) { this.#runs.delete(runId); this.#operations.delete(state.operationKey); this.#releasePort(host); }
         }
@@ -348,6 +353,64 @@ export class NativeProjectOrchestrationAuthority {
     }
 
     async finishRound({ host, handle, roundToken, input }) {
+        try { return await this.#finishRound({ host, handle, roundToken, input }); } catch (error) {
+            const consumer = this.#consumers.get(roundToken);
+            if (consumer?.state.host === host && consumer.state.handle === handle) await this.#captureFailure(consumer.state, error);
+            throw error;
+        }
+    }
+
+    async #captureFailure(state, error) {
+        // An unknown metadata ACK keeps its original recovery boundary. It is
+        // never replaced by a second command claiming a different outcome.
+        if (error.code === 'storage_commit_unknown') return;
+        try { await this.#recordFailure(state, error); } catch (captureError) { error.captureError ??= captureError; }
+    }
+
+    async #recordFailure(state, error) {
+        const { handle, operation: { runId } } = state, { runs, budgetPort } = this.#execution();
+        if (state.selected.plan.definition.outputContract.kind !== 'project_review' || this.#runs.get(runId) !== state) return;
+        const reasons = { native_generation_budget_exhausted: 'project_budget_exhausted',
+            native_generation_required_budget_reserved: 'project_budget_reserved', native_generation_required_budget_unknown: 'project_budget_unknown',
+            native_orchestration_limit_exhausted: 'project_graph_limit', native_orchestration_tree_limit_exhausted: 'project_graph_limit',
+            generation_context_budget_exceeded: 'project_context_limit', generation_response_invalid: 'project_response_invalid',
+            generation_cancelled: 'project_operation_cancelled' };
+        const reasonCode = reasons[error.code] ?? 'project_execution_failed';
+        const receiptId = 'oreceipt_' + hash({ kind: 'project_failure', runId }).slice(0, 32), key = controlRecordKey(handle, runId, 'receipt', receiptId);
+        const commandId = controlCommandId('project.execution.fail', runId);
+        let expected;
+        try {
+            const observed = await runs.get(handle, runId);
+            if (observed.cancelRequested || !['admitted', 'running', 'waiting_approval', 'reconciling'].includes(observed.status)) return;
+            await runs.control(handle, commandId, { ...runGuard(observed), operation: 'project.execution.fail', detail: { reasonCode } }, async ({ tx, root, now, deny }) => {
+                if (!equal(root.planRef, state.selected.binding.planRef) || !equal(root.sourceBinding, state.sourceBinding)
+                    || root.sourceBinding.sourceAuthority !== 'project' || root.parentRef || root.outputClaims.length)
+                    fail('native_orchestration_project_producer_denied');
+                const effectIds = [];
+                for (const attemptId of root.attemptRefs) effectIds.push(...(await readAttempt(tx, handle, root, attemptId)).doc.effectRefs);
+                let costs = null;
+                if (effectIds.length) {
+                    try { costs = await budgetPort.observeEffectClosure(handle, { authorityRef: root.budgetAuthorityRef, effectIds }, { tx }); } catch (error) {
+                        if (error.code !== 'native_orchestration_budget_unavailable') throw error;
+                    }
+                }
+                // Classification is conservative. Never discharge a pending
+                // Effect, settle a bill, release a permit or create a Result.
+                if (!equal(root, await runs.get(handle, runId))) return deny(new ConflictError('native_orchestration_project_round_completion_stale'));
+                const status = root.pendingEffectRefs.length || effectIds.length && !costs?.closed ? 'reconciling' : 'blocked';
+                expected = { schemaVersion: 1, receiptKind: 'project_failure', receiptId, runId, epoch: root.epoch, reasonCode,
+                    status, effectIds, costs, decisionSeq: root.eventSeq + 1, createdAt: now };
+                await putImmutable(tx, key, expected); root.status = status;
+                return { root, eventType: 'project_execution_failed', reasonCode, outcome: { receiptRef: { runId, receiptId }, status, reasonCode } };
+            });
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown' || !expected) throw error;
+            const saved = await runs.engine.withTransaction(handle, tx => checkedRecord(tx, key));
+            if (!saved || !equal(saved.doc, expected)) throw error;
+        }
+    }
+
+    async #finishRound({ host, handle, roundToken, input }) {
         assertObject(input, ['attemptId', 'status', 'conversation'], 'Original Project round finish');
         const consumer = this.#consumers.get(roundToken);
         if (!consumer || consumer.state.host !== host || consumer.state.handle !== handle || consumer.finished)

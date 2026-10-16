@@ -114,7 +114,7 @@ describe.each(harnesses)('$name original Project Review output', ({ make }) => {
         try {
             await expect(f.run()).rejects.toThrow('After original Review terminal writes');
             const root = await runs.get(f.h.handle, f.effects[0].runId);
-            expect(root.status).toBe('running'); expect(root.outputClaims).toEqual([]);
+            expect(root.status).toBe('blocked'); expect(root.outputClaims).toEqual([]);
             expect(await f.h.engine.withTransaction(f.h.handle, tx => tx.getResource(controlRecordKey(f.h.handle, root.runId, 'output', projectReviewId('claim', root.runId))))).toBeNull();
             expect((await f.agent.observeTask(f.h.handle, f.projectId, f.task.taskId)).status).toBe('review');
             expect(f.requests).toHaveLength(3);

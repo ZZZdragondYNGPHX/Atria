@@ -55,7 +55,7 @@ const timelineTypes = new Set(['admitted', 'attempt_prepared', 'attempt_identity
     'graph_transition_admitted', 'graph_patch_accepted', 'graph_patch_rejected', 'fanout_group_frozen', 'join_membership_frozen', 'join_settled',
     'child_delegated', 'child_budget_confirmed', 'control_handed_off', 'handoff_returned', 'result_published', 'task_local_output_committed',
     'rp_narration_ready', 'rp_output_completed', 'session_narration_ready', 'session_output_completed', 'project_round_finished',
-    'project_review_published', 'project_review_completed', 'project_generation_stopped', 'background_task_published', 'background_task_completed',
+    'project_review_published', 'project_review_completed', 'project_generation_stopped', 'project_execution_failed', 'background_task_published', 'background_task_completed',
     'cancel_requested', 'host_recovered', 'reconciliation_requested']);
 
 /** Owner/source metadata projection. No Result bodies, provider inputs, grants or dispatch tokens. */
