@@ -14,7 +14,7 @@ import { ExtensionsStore } from '../extensions-store.js';
 import { ConflictError } from '../../storage/errors.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { createOrchestrationAuthoringService } from '../orchestration/authoring-service.js';
-import { assertPlanStrategyTarget, EVOLVABLE_PLAN_LIMITS } from '../orchestration/plan-evolution-contracts.js';
+import { assertPlanEvolutionTarget, EVOLVABLE_PLAN_LIMITS } from '../orchestration/plan-evolution-contracts.js';
 
 const conflict = () => { throw new ConflictError('agent_evolution_target_conflict'); };
 const candidateFields = kind => kind === 'workspace-prompt' ? 'promptVersions' : 'strategyVersions';
@@ -41,8 +41,8 @@ export class EvolutionTargets {
     }
     async planSource(handle, scope, subject, target, candidateId = null, options = {}) {
         this.authorize(scope, subject, target);
-        const plans = this.nativePlans(), captured = options.authorityOnly ? { base: await plans.strategyBinding(handle, target) }
-            : candidateId ? await plans.checkStrategy(handle, target, candidateId, options) : await plans.captureStrategy(handle, target);
+        const plans = this.nativePlans(), captured = options.authorityOnly ? { base: await plans.evolutionBinding(handle, target) }
+            : candidateId ? await plans.checkEvolution(handle, target, candidateId, options) : await plans.captureEvolution(handle, target);
         const source = captured.base.sourceSelector;
         if (scope.domain === 'project') {
             if (source.domain !== 'project' || source.projectId !== scope.projectId || subject !== scope.projectId) conflict();
@@ -78,18 +78,32 @@ export class EvolutionTargets {
         const plans = this.nativePlans(), choices = [];
         for (const binding of bindings) {
             const revision = await plans.getRevision(handle, binding.planRef);
+            for (const node of revision.definition.nodes.filter(node => node.kind === 'agent' && node.capabilities.includes('generation.send'))) {
+                const pin = revision.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId);
+                if (pin?.resourceRef.scope !== 'player') continue;
+                const route = await this.host.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
+                const list = await this.prompts.presets.list(handle);
+                if (!list.some(item => item.presetId === route.promptProgramRef.resourceId)) continue;
+                const preset = await this.prompts.presets.get(handle, route.promptProgramRef.resourceId);
+                for (const ref of preset.refs.filter(ref => ref.resourceType === 'core.prompt-module'
+                    && preset.entries.some(entry => entry.resource.promptModuleId === ref.resourceId && entry.resource.target === 'system.style'))) {
+                    const target = { kind: 'plan-prompt', bindingId: binding.bindingId, expectedBindingVersion: binding.version, planRef: binding.planRef,
+                        nodeId: node.nodeId, promptModuleRef: ref };
+                    choices.push({ label: 'Native Plan · ' + node.label + ' · style', target, baseHash: hash(await plans.captureEvolution(handle, target)) });
+                }
+            }
             for (const field of EVOLVABLE_PLAN_LIMITS) {
                 if (revision.definition.limits[field] <= (['maxSteps', 'maxAttempts', 'deadlineMs'].includes(field) ? 1 : 0)) continue;
                 const target = { kind: 'plan-strategy', bindingId: binding.bindingId, expectedBindingVersion: binding.version,
                     planRef: binding.planRef, nodeId: revision.definition.outputContract.ownerNodeId, fieldPath: 'limits.' + field };
-                choices.push({ label: 'Native Plan · ' + field, target, baseHash: hash(await plans.captureStrategy(handle, target)) });
+                choices.push({ label: 'Native Plan · ' + field, target, baseHash: hash(await plans.captureEvolution(handle, target)) });
             }
         }
         return choices;
     }
     authorize(scope, subject, target) {
-        if (target?.kind === 'plan-strategy') {
-            assertEvidenceScope(scope); text(subject); assertPlanStrategyTarget(target);
+        if (['plan-strategy', 'plan-prompt'].includes(target?.kind)) {
+            assertEvidenceScope(scope); text(subject); assertPlanEvolutionTarget(target);
             if (scope.domain === 'project' && subject === scope.projectId || localCharacter(scope, subject)) return;
             throw new TypeError('Native Plan target is outside this exact subject');
         }
@@ -172,8 +186,8 @@ export class EvolutionTargets {
         this.authorize(scope, subject, target);
         const choice = (await this.catalog(handle, scope, subject)).find(c => same(c.target, target));
         if (!choice || choice.baseHash !== expectedBaseHash) conflict();
-        if (target.kind === 'plan-strategy') {
-            await this.planSource(handle, scope, subject, target); return this.nativePlans().declareStrategy(handle, target);
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) {
+            await this.planSource(handle, scope, subject, target); return this.nativePlans().declareEvolution(handle, target);
         }
         if (target.kind === 'skill') return this.capture(handle, scope, subject, target);
         if (target.kind.startsWith('workspace-')) {
@@ -190,7 +204,7 @@ export class EvolutionTargets {
     }
     async capture(handle, scope, subject, target) {
         this.authorize(scope, subject, target);
-        if (target.kind === 'plan-strategy') return this.planSource(handle, scope, subject, target);
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) return this.planSource(handle, scope, subject, target);
         if ((await this.nativeBindings(handle, scope, subject)).length) throw new TypeError('native_orchestration_evolution_target_unavailable');
         if (scope.domain === 'project') await this.host.studio.getProject(handle, scope.projectId);
         if (target.kind === 'skill') {
@@ -227,7 +241,7 @@ export class EvolutionTargets {
     async prepare(handle, scope, subject, target, expected, value) {
         const actual = await this.capture(handle, scope, subject, target);
         if (!same(expected, actual)) conflict();
-        if (target.kind === 'plan-strategy') return this.nativePlans().prepareStrategy(handle, target, value);
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) return this.nativePlans().prepareEvolution(handle, target, value);
         if (target.kind === 'skill') return this.host.skillRepository(handle).prepareCandidate({ scope: target.scope, name: target.name, baseVersion: actual.base, content: value });
         if (target.kind.startsWith('workspace-')) {
             const library = await this.library(handle), before = new Set(library[candidateFields(target.kind)].candidates.map(c => c.candidateId));
@@ -247,7 +261,7 @@ export class EvolutionTargets {
     }
     async check(handle, scope, subject, target, candidateId, { rollback = false, publication = null } = {}) {
         this.authorize(scope, subject, target);
-        if (target.kind === 'plan-strategy') return this.planSource(handle, scope, subject, target, candidateId, { rollback });
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) return this.planSource(handle, scope, subject, target, candidateId, { rollback });
         if (target.kind === 'skill') {
             const c = await this.host.skillRepository(handle).checkCandidate({ scope: target.scope, name: target.name, candidateId });
             if (![c.baseVersion, c.version].includes(c.currentVersion)) conflict();
@@ -287,9 +301,9 @@ export class EvolutionTargets {
     }
     async write(handle, scope, subject, target, candidateId, rollback = false, publication = null, beforeCommit = async () => {}) {
         this.authorize(scope, subject, target);
-        if (target.kind === 'plan-strategy') {
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) {
             await this.planSource(handle, scope, subject, target, candidateId, { rollback });
-            return this.nativePlans().writeStrategy(handle, target, candidateId, { rollback, beforeCommit });
+            return this.nativePlans().writeEvolution(handle, target, candidateId, { rollback, beforeCommit });
         }
         if (!rollback && (await this.nativeBindings(handle, scope, subject)).length) throw new TypeError('native_orchestration_evolution_target_unavailable');
         if (target.kind === 'skill') {
@@ -315,8 +329,8 @@ export class EvolutionTargets {
     }
     async discard(handle, scope, subject, target, candidateId) {
         this.authorize(scope, subject, target);
-        if (target.kind === 'plan-strategy') {
-            await this.planSource(handle, scope, subject, target, null, { authorityOnly: true }); return this.nativePlans().discardStrategy(handle, target, candidateId);
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) {
+            await this.planSource(handle, scope, subject, target, null, { authorityOnly: true }); return this.nativePlans().discardEvolution(handle, target, candidateId);
         }
         if (target.kind === 'skill') return this.host.skillRepository(handle).discardCandidate({ scope: target.scope, name: target.name, candidateId });
         if (target.kind.startsWith('workspace-')) {
@@ -333,7 +347,7 @@ export class EvolutionTargets {
     async publicationCurrent(handle, scope, subject, publication) {
         const p = publication, target = p.target;
         this.authorize(scope, subject, target);
-        if (target.kind === 'plan-strategy') return same((await this.planSource(handle, scope, subject, target, p.candidateId, { rollback: true })).actual, p.desired);
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) return same((await this.planSource(handle, scope, subject, target, p.candidateId, { rollback: true })).actual, p.desired);
         if ((await this.nativeBindings(handle, scope, subject)).length) return false;
         if (target.kind === 'skill') return (await this.host.skillRepository(handle).get(target.name, target.scope)).installedHash === p.desired;
         if (target.kind === 'project-strategy') {
@@ -357,7 +371,7 @@ export class EvolutionTargets {
         }
     }
     async evaluationSettings(handle, scope, subject, target, candidateId = null) {
-        if (target.kind === 'plan-strategy') {
+        if (['plan-strategy', 'plan-prompt'].includes(target.kind)) {
             const captured = await this.planSource(handle, scope, subject, target, candidateId);
             return { nativePlan: { planRef: candidateId ? captured.desired.planRef : captured.base.planRef,
                 sourceSelector: captured.base.sourceSelector }, version: candidateId ?? hash(captured.base) };

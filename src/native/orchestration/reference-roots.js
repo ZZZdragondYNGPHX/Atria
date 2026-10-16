@@ -64,7 +64,7 @@ export async function orchestrationPinReferences(tx, handle, reference) {
     for (const kind of [K.orchestrationPlan, K.orchestrationRevision]) {
         for (const record of await tx.listResources({ kind, handle })) {
             if (hashNativeDocument(record.doc) !== record.integrity || !Array.isArray(record.doc.dependencyPins)) throw new TypeError('Corrupt orchestration dependency root');
-            for (const pin of record.doc.dependencyPins) {
+            for (const pin of [...record.doc.dependencyPins, ...(record.doc.evolutionSource?.resourceRefs ?? []).map((resourceRef, i) => ({ pinId: 'evolution.' + i, resourceRef }))]) {
                 const ref = pin.resourceRef;
                 const matches = reference.runtimeRouteId ? ref?.scope === 'player' && ref.runtimeRouteId === reference.runtimeRouteId
                     : ref?.resourceType === reference.resourceType && ref?.resourceId === reference.resourceId

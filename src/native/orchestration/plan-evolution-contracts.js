@@ -1,4 +1,5 @@
 import { assertObject, assertCounter, assertDigest, assertPlanRef, assertSourceSelector } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { assertNativeId } from '../identity.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 
@@ -14,8 +15,18 @@ export function assertPlanStrategyTarget(target) {
     assertDigest(target.bindingId, 'bindingId'); assertCounter(target.expectedBindingVersion, 'expectedBindingVersion');
     assertPlanRef(target.planRef); assertNativeId(target.nodeId, 'orchestrationNode'); return target;
 }
+export function assertPlanPromptTarget(target) {
+    assertObject(target, ['kind', 'bindingId', 'expectedBindingVersion', 'planRef', 'nodeId', 'promptModuleRef'], 'Plan prompt target');
+    if (target.kind !== 'plan-prompt') throw new TypeError('Invalid native Plan prompt target');
+    assertDigest(target.bindingId, 'bindingId'); assertCounter(target.expectedBindingVersion, 'expectedBindingVersion');
+    assertPlanRef(target.planRef); assertNativeId(target.nodeId, 'orchestrationNode');
+    const ref = assertExactResourceRef(target.promptModuleRef, 'core.prompt-module');
+    if (ref.scope !== 'library' || hash(ref) !== hash(target.promptModuleRef)) throw new TypeError('Exact Library Prompt module required');
+    return target;
+}
+export const assertPlanEvolutionTarget = target => target?.kind === 'plan-prompt' ? assertPlanPromptTarget(target) : assertPlanStrategyTarget(target);
 export const planStrategyField = target => assertPlanStrategyTarget(target).fieldPath.slice('limits.'.length);
-export const planDeclarationKey = target => hash({ bindingId: target.bindingId, nodeId: target.nodeId, fieldPath: target.fieldPath });
+export const planDeclarationKey = target => hash({ bindingId: target.bindingId, nodeId: target.nodeId, kind: target.kind, ...(target.kind === 'plan-prompt' ? { promptModuleRef: target.promptModuleRef } : { fieldPath: target.fieldPath }) });
 function assertBaseBinding(binding, target) {
     assertObject(binding, ['bindingId', 'sourceSelector', 'planRef', 'version'], 'Plan candidate Binding');
     assertSourceSelector(binding.sourceSelector); assertPlanRef(binding.planRef); assertCounter(binding.version, 'Binding version');
@@ -28,20 +39,27 @@ export function assertPlanEvolutionMetadata(value) {
         throw new TypeError('Plan evolution capacity exceeded');
     const declarations = new Set(), candidates = new Set();
     for (const declaration of value.declarations) {
-        assertObject(declaration, ['target', 'binding'], 'Plan declaration'); assertPlanStrategyTarget(declaration.target);
+        assertObject(declaration, ['target', 'binding'], 'Plan declaration'); assertPlanEvolutionTarget(declaration.target);
         assertBaseBinding(declaration.binding, declaration.target);
         const key = planDeclarationKey(declaration.target);
         if (declarations.has(key)) throw new TypeError('Duplicate Plan declaration'); declarations.add(key);
     }
     for (const candidate of value.candidates) {
-        assertObject(candidate, ['schemaVersion', 'candidateId', 'target', 'baseBinding', 'planRef', 'diff', 'declarationDigest'], 'Plan candidate');
+        assertObject(candidate, ['schemaVersion', 'candidateId', 'target', 'baseBinding', 'planRef', 'diff', 'declarationDigest', ...(candidate.target?.kind === 'plan-prompt' ? ['promptCandidateRef'] : [])], 'Plan candidate');
         const { candidateId, planRef, ...seed } = candidate;
-        assertPlanStrategyTarget(candidate.target); assertPlanRef(planRef); assertDigest(candidate.declarationDigest, 'declarationDigest');
+        assertPlanEvolutionTarget(candidate.target); assertPlanRef(planRef); assertDigest(candidate.declarationDigest, 'declarationDigest');
         assertBaseBinding(candidate.baseBinding, candidate.target);
         assertObject(candidate.diff, ['field', 'before', 'after'], 'Plan strategy diff');
-        assertCounter(candidate.diff.before, 'before'); assertCounter(candidate.diff.after, 'after');
+        const prompt = candidate.target.kind === 'plan-prompt';
+        if (prompt) {
+            assertObject(candidate.promptCandidateRef, ['presetId', 'candidateId'], 'Original Prompt candidate ref');
+            assertNativeId(candidate.promptCandidateRef.presetId, 'promptProgram'); assertDigest(candidate.promptCandidateRef.candidateId, 'candidateId');
+            for (const body of [candidate.diff.before, candidate.diff.after])
+                if (typeof body !== 'string' || Buffer.byteLength(body, 'utf8') > 65536) throw new TypeError('Invalid Plan prompt body');
+        } else { assertCounter(candidate.diff.before, 'before'); assertCounter(candidate.diff.after, 'after'); }
         if (candidate.schemaVersion !== 1 || candidateId !== hash(seed) || candidates.has(candidateId)
-            || candidate.diff.field !== candidate.target.fieldPath || candidate.diff.after >= candidate.diff.before
+            || candidate.diff.field !== (prompt ? 'body' : candidate.target.fieldPath)
+            || (prompt ? candidate.diff.after === candidate.diff.before : candidate.diff.after >= candidate.diff.before)
             || planRef.planId !== candidate.target.planRef.planId || planRef.planRevisionId !== 'oprev_' + candidateId.slice(0, 32))
             throw new TypeError('Invalid native Plan candidate');
         candidates.add(candidateId);

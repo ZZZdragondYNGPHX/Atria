@@ -1,3 +1,4 @@
+import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { validateOutputCapability } from './output-capability-authority.js';
 import { PlanRepository, readPlanRevision } from './plan-repository.js';
 import { hashNativeDocument } from '../repositories/common.js';
@@ -17,7 +18,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
     const library = new VersionedJsonResourceHandler({ engine });
     const runtime = new NativeModelPromptPersistence({ engine });
     const authorizeBinding = createBindingSourceAuthority(sources);
-    const readDependency = async ({ handle, tx, port, resourceRef: ref }) => {
+    const readDependency = async ({ handle, tx, port, resourceRef: ref, runtimeRoute }) => {
         if (port === 'plan') return readPlanRevision(tx, handle, ref);
         if (['context', 'model', 'narrative', 'evaluation'].includes(port) && ref.scope === 'library') {
             const normalized = assertExactResourceRef(ref);
@@ -26,16 +27,22 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
         }
         if (port === 'model' && ref.scope === 'player') {
             assertObject(ref, ['scope', 'runtimeRouteId'], 'routeRef');
-            return runtime.getRuntimeRoute(handle, ref.runtimeRouteId);
+            return runtimeRoute?.runtimeRouteId === ref.runtimeRouteId ? runtimeRoute : runtime.getRuntimeRoute(handle, ref.runtimeRouteId);
         }
         if (port === 'tool' && ref.kind === 'project_agent_tool') return readProjectToolDescriptor(handle, ref, sources.projectAgent);
         throw Object.assign(new TypeError('Original dependency authority required'), { code: 'native_orchestration_dependency_authority_unavailable' });
     };
-    const validateDependencies = async ({ handle, tx, dependencyPins, definition }, ancestry = [], completedReports = new Map()) => {
+    const validateDependencies = async ({ handle, tx, dependencyPins, definition, runtimeRoute }, ancestry = [], completedReports = new Map()) => {
         const evidence = [], issues = [];
+        const resolver = runtimeRoute && sources.modelResolver instanceof RouteResolver ? (() => {
+            const original = sources.modelResolver, persistence = Object.create(original.persistence);
+            persistence.getRuntimeRoute = (owner, id) => owner === handle && id === runtimeRoute.runtimeRouteId ? runtimeRoute : original.persistence.getRuntimeRoute(owner, id);
+            return new RouteResolver({ persistence, library: original.library, providers: Object.fromEntries(original.providers),
+                getScopedResource: original.getScopedResource, getSessionRoute: original.getSessionRoute, now: original.now });
+        })() : sources.modelResolver;
         for (const capability of definition.capabilityCeiling) {
             if (capability === 'generation.send') {
-                const result = await validateModelCapability({ handle, definition, dependencyPins, resolver: sources.modelResolver });
+                const result = await validateModelCapability({ handle, definition, dependencyPins, resolver });
                 evidence.push(...result.evidence); issues.push(...result.issues);
                 continue;
             }
@@ -64,7 +71,7 @@ export function createOrchestrationAuthoringService(engine, sources = {}) {
         for (const pin of dependencyPins) {
             try {
                 let value;
-                try { value = await readDependency({ handle, tx, ...pin }); } catch (error) {
+                try { value = await readDependency({ handle, tx, ...pin, runtimeRoute }); } catch (error) {
                     if (error.code !== 'native_orchestration_dependency_authority_unavailable') throw error;
                     issues.push({ code: 'native_orchestration_dependency_authority_unavailable', severity: 'unknown', fieldPath: 'dependencyPins.' + pin.pinId });
                     evidence.push({ pinId: pin.pinId, status: 'unknown' });
