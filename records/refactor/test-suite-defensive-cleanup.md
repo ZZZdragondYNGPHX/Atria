@@ -37,3 +37,13 @@
 ### Next checkpoint
 
 按清单删除失效集，完成当前 Native/存储/安全入口引用核对，再推进共享实现与环境简化。
+
+## Stage 1 implementation — 旧 UI 与阶段门禁退役
+
+- Start HEAD: `695acf3bc`
+- End/Tested HEAD: `refactor(tests): retire obsolete UI suites and phase guards` 提交（本阶段同树）
+- Status: Complete
+- 实际差异：297 文件，+53 / -51,382 行；删除清单的 289 个文件。移除个人 seed 的 integration 项目、旧标题 sample、历史源码正则 scripts，更新实际验证入口与过期 CI 文档；测试包改名 Atria，删除独立 lodash 固定旧版本声明与 `--forceExit`。
+- Local validation: `git diff --check` 通过；Jest `--listTests --runInBand` 成功；Playwright `--list` 成功发现 102 文件、300 测试。这只是发现验证，不声称测试通过。
+- 发现并修复：Playwright Native fixture 在测试发现期导入 server 模块，未设置 config 时真实退出 1。配置现显式使用 committed default config，成功重新发现；未复制开发者 config 掩盖问题。
+- Next checkpoint: 简化真实生产读取/消息更新实现、孤立 iter-studio 模块、Jest 与 E2E 环境，运行直接相关行为验证。
