@@ -569,3 +569,8 @@
 - 最终FS/SQLite新producer **12/12 PASS，17.078s，0skip，detectOpenHandles自然退出**，覆盖原prefix/实际HTTP/原费用与本地工作、伪JSON/rawmessages零发送、Binding变化、编辑、新输入与重复命令。原Project Context完整 **12/12 PASS，78.529s，自然退出**；这次明确等待完整结果，较长执行并非死锁。此前一次组合run约100秒被终止，无完成结果，不当通过证据。之后多余的Source publication定位run另2PASS/10filterSKIP（8.926s），与完整12重叠不累计。前序Session精确Binding/Project正例4PASS、sameALS消费2PASS为定向证据，不冒称全旧suite通过。
 - 初轮10case因fixture用持久化前raw Route做pin而全部dependency stale；修为读取原normalize后的Route，再实际2正例与10完整通过。增加最后输入守卫与new_input两case后才有最终12。9文件targeted ESLint及diff check通过。只有当前Linux环境可用（用户已明确回复），Windows/Termux真实验收缺证继续保留；不伪造、不因此停止其它阶段。SQL/真实外部费用/文本质量NOT_RUN。
 - 用户明确要求连续推进全阶段，撤销此前checkpoint停工。当前继续Memory/eligibility/唯一Hybrid及原bank工作计费，然后后台scope与Delegate；P3 Gate仍NOT_READY，P4–P8尚未完成，没有main集成。
+
+### 第二十八组后按用户要求暂停新对话续接
+
+- 用户随后明确要求在合适时机停下、另开对话。暂停在第二十八组完整提交/本地验证后：source `2cf8c97d44fbe2f98584e0981186378dbcbd679d`、docs证据`aac6e54c6`均已推送，source工作树干净，无运行中测试/server。没有启动Memory源码修改，不把只读定位当已实施。
+- 按治理§7创建唯一`docs:HANDOFF.md`，保存实际HEAD、阶段、已测范围、Linux限制与下一行动。该暂停只服务本次新对话；恢复仍按已授权全阶段任务持续推进，P3/P4–P8未完成、未合main。
