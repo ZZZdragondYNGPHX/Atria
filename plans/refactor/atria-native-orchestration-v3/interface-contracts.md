@@ -1121,3 +1121,9 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 在查询原域之前，同原 Run CAS 写 `reconciliation_requested` 和原 orchestrationRecord 中的耐久请求；同一 Run epoch/Effect 只允许一个请求。unknown request ACK 不继续原域查询，调用者显式重放同 commandId。仍 pending 时，snapshot 的 `reconciliationRequest:{commandId,effectId}` 让重开页面沿同请求和当前 CAS guards 重试；新 commandId 返回 reconcile_request_exists，不增加事件或新请求。原域核对只观察稳定操作，已提交的历史事实与原费用按 §17.84 保留。
 
 响应为 `{runId,status,resumed:false,observation,versions}`，observation 只有结果状态/安全 receiptRef/budgetSettled；不返回输出正文或 dispatch token。`controls.reconcile` 只表示同 Host 已接安全原 RP 收据能力且有唯一可核对 pending 输出；它不表示 unknown 可以重发或 Run 可以续跑。请求与 receipt ACK 的 saved/no_save 窗口均不重复模型/聊天操作，原取消继续有效。
+
+## 17.86 有限 Native Session 输出冷核对
+
+`1101bd454` 将 §17.85 的同一命令机制扩为 RP 与有限正式 Native Session 输出的封闭协议选择。Session 的 request kind 为 `session_output_reconciliation_request`，不改变原 RP request identity。Host 从 Run 自身选 `native_session_output`，不接受 Browser 选择任意协议。
+
+`readSessionOutputDescriptor` 复用原已发布 Narrator Result/Model receipt 重建精确 Turn descriptor；正式完成 reader 与冷核对使用同一描述。冷核对只经原 `readSessionTurnOutput` 验证 exact commit/revision、Task turn record、Variant、Narrator/authority provenance，另验冻结 intent、原 output Attempt、grant/endpoint/egress/预算和原银行 local work。已知提交可追加 `session_output_reconciled` 旧 epoch 的历史 EffectReceipt；缺 commit 继续 unknown，缺成本继续 reconciling。没有调用 Session writer、恢复 Model/output scope 或创建 OutputClaim，响应仍 `resumed:false`。原取消与后续合法输入保留，原货币价格不推测。新实现和共享 descriptor 纳入 evaluator 指纹。

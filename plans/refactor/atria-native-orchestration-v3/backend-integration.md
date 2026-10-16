@@ -2,9 +2,9 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至七十八组）
+## 当前后端续作（第七十一至七十九组）
 
-`317c75d4f` 增加显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP 输出的原收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.85](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Session/Project 等其余核对与受权 resume 继续后端。
+`1101bd454` 已有显式 Host 元数据 recover、存储 generation 投影围栏，以及唯一顶层 RP/有限 Native Session 输出的原收据核对命令；详细入口和不恢复执行的边界见[接口 §17.83–§17.86](interface-contracts.md#1783-显式-run-host-元数据恢复入口)。Project 等其余核对与受权 resume 继续后端。
 
 `d4a6f00a6` 收紧隔离 Review 引导：只有仍有效的原 Approval 可获得会话；同一引导重开替换旧 cookie/CSRF；再认证 context ID 满足原审批 token 合同。真实 Provider 的有限 RP source_probe 三条开发案例已通过，Project 因模型调用未声明工具由原权限围栏拒绝；这不是独立质量或正式自动晋升证据，详见同一 Record 第七十三至七十四组。
 
@@ -51,7 +51,7 @@
 | `/runs/diagnostics` | `{runId}`；只返回状态推导的脱敏 code/controls |
 | `/runs/cancel` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision,reasonCode}`；沿原 Run CAS，未知费用/外部效果不退款、不假称撤销 |
 | `/runs/recover` | mutation envelope；body `{runId,expectedEpoch,expectedStateVersion,expectedGraphRevision}`；仅重绑 Host 控制元数据、失效旧批准，返回 `resumed:false`；后续执行和未知结果核对仍须原领域 authority，详见接口 §17.83 |
-| `/runs/reconcile` | 同 recover body；目前只核对唯一正式顶层 RP 输出的原 marker/DomainReceipt/银行事实；沿同耐久请求重放，返回 `resumed:false`，详见接口 §17.85 |
+| `/runs/reconcile` | 同 recover body；核对唯一正式顶层 RP 或有限 Native Session 输出的原 marker/DomainReceipt/银行事实；沿同耐久请求重放，返回 `resumed:false`，详见接口 §17.85–§17.86 |
 
 projection envelope 为 `{schemaVersion,runId,projectionId,hostBootId,epoch,projectionVersion,visibilityDigest,seq,cursor,kind,payload}`。snapshot payload 含 Source selector、planRef、CAS versions、Graph 元数据、Attempt/Effect/Approval 状态、events、原银行 costs、diagnostics、controls 和 hasMore。没有 Result/Context/模型正文、Secret、审批 nonce、dispatch token 或原输入。Timeline 只投影封闭事件类型与 opaque eventId，不返回内部 eventSeq/reasonCode。
 

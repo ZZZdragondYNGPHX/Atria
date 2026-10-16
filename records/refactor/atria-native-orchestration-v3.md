@@ -993,3 +993,9 @@
 - Source `2c5155a4e` → `317c75d4f`，本地提交未推送。实现接口 §17.85：原 source inspection/Host boot/Run CAS 下选取唯一原 RP 输出，在查询原域前持久记录请求；原控制命令精确重放，pending snapshot 暴露安全 request commandId 以便页面重开后续查，同 epoch 不新增第二请求。没有 Browser observation 输入或通用 Effect dispatcher，响应仍 `resumed:false`。
 - 首版 HTTP 两参数项 2FAIL（4.373s）：内部 `run.reconcile` 尚未注册到原封闭 control allowlist；补具体操作后 2PASS/12filterSKIP（4.639s）。request ACK saved/no_save 精选 4PASS/14filterSKIP（7.641s）。加入取消、unknown marker/usage HTTP 场景后，RP reconciliation/Run HTTP/RunRepository 三 suites 66PASS/4SKIP（47.438s）；随后增加同 epoch 请求去重及公开重用 pointer，受影响 HTTP 两 suites 36PASS/12filterSKIP（25.846s）。五文件原 ESLint、staged diff check 通过。
 - ACK未知时原域查询次数为零，显式相同命令重放后才核对；已取消请求只归拢历史结果，不恢复运行。仍 unknown 或成本 charged 的接口保持 reconciling/pending，可重用同请求而不扩日志。所有模型发送为 localhost 合成，每条仍一次模型/最多一次 Chat append；未声称 Session/Project/通用 resume、SQL/三端或独立质量完成。其余后端继续，完整 Gate NOT_READY。
+
+## 2026-10-16 — 第七十九组：有限 Native Session 输出冷核对
+
+- Source `317c75d4f` → `1101bd454`，本地提交未推送。实现接口 §17.86，原正式完成 reader/冷核对共用 Turn descriptor，复用原 exact commit/revision/Variant/Task provenance 读取；通过同一产品核对命令机制，不调用 Session writer，不恢复 scope 或 OutputClaim。RP 请求 identity 保留，Session 使用自己的明确 request kind。
+- 新 suite 首批三类窗口 FS/SQLite 6/6 PASS（38.743s），实际关闭旧 Engine 并以新 Host/Engine 重开：原 Host receipt 未保存、claim ACK丢失、local usage未结算。后续 Session核对 ACK saved/no_save 与原 Session 正式输出/历史 proof 精选三 suites 8PASS/38filterSKIP（51.968s）；最终新 suite 10 个不同 case 分次均通过，未称完整10重跑。评测指纹扩充为 16/16 PASS（1.563s），含新核对实现和共享合同变更的旧报告拒绝。
+- 扩展原域协议后，原 RP/通用 Run HTTP 精选 36PASS/12filterSKIP（25.818s），八文件原 ESLint、staged diff check 通过。合法后续 user input 不改变已提交原 revision 的事实；cancel 后仅核对历史；重 hash 外来 endpoint 拒绝，原费用/unknown保持，每条仍一次 localhost合成 Model send。用户确认目前没有独立质量资料，相关质量/晋升验收继续未通过；Project/其余恢复/受权续跑/GC 等后端继续，未推送、未进入前端或 main 集成。
