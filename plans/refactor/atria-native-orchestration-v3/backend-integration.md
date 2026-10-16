@@ -2,7 +2,9 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一至七十二组）
+## 当前后端续作（第七十一至七十四组）
+
+`d4a6f00a6` 收紧隔离 Review 引导：只有仍有效的原 Approval 可获得会话；同一引导重开替换旧 cookie/CSRF；再认证 context ID 满足原审批 token 合同。真实 Provider 的有限 RP source_probe 三条开发案例已通过，Project 因模型调用未声明工具由原权限围栏拒绝；这不是独立质量或正式自动晋升证据，详见同一 Record 第七十三至七十四组。
 
 `04197573b` 增加原生 Project M1 三条开发来源的真实 World/Knowledge/Task/冲突/修复/Review/Root 执行，见[接口 §17.81](interface-contracts.md#1781-原生-project-m1-开发来源执行)。通过原 source_probe 作工程观察，独立资料/质量、价格及自动晋升资格没有伪造或开放。
 
@@ -51,7 +53,7 @@ projection envelope 为 `{schemaVersion,runId,projectionId,hostBootId,epoch,proj
 
 每个 collection 在 snapshot 内最多 limit 项，hasMore 为真时由 `/runs/details` 获取其余；分页绑定同一 Run stateVersion/epoch/visibility。deltaBatch payload 是 `{fromSeq,toSeq,baseProjectionVersion,changes:[{seq,snapshot}]}`，snapshot 同样带 hasMore，空批次不增加 seq。前端原子替换该有限窗口，并对仍需显示的 collection 重读同版本完整分页，不能拼不同版本的页。
 
-cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。controls 中 resume/reconcile/approve 仍 false；Approval 的 reviewAvailable 仍 false。
+cursor 是 Host 内有界、约 5 分钟有效的 opaque token；观察 cursor 单次推进且固定 limit，重复/并发消费、改 limit、跨用户/Run/类型、重启或 epoch/visibility 变化返回 409 `native_orchestration_projection_resync_required`。重新以 null 取 snapshot；旧 projection/页立即丢弃。关闭观察请求不取消 Run。controls 中 resume/reconcile/approve 仍 false；第七十一组后 Approval 的 reviewAvailable 只在同 Host 有效挑战存在时显示 true，最终批准仍由隔离 listener 与原领域复核。
 
 costs 来自原银行同事务事实：knownTotalTokens 与 unknownAttempts/reservedUpperTokens 分开，localJobs/localUnknownJobs/localWallMs 独立，不虚构货币费用或“已退款”。`settled/pending/unavailable/not_started` 不等于正式领域输出成功；以实际 Run/领域收据为准。
 

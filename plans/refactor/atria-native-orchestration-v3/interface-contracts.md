@@ -1097,3 +1097,7 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 第七十二组的 `evaluation/native-adapters.js` 支持固定 `project.m1.related` 开发资料。私有 worker 通过原 WorldRepo/KnowledgeRepo 创建真实 World revision/binding，并经原 Studio 验证依赖；已有 Task 在原人类 revision 后发生真实 commit 冲突，另建 exact 新 Task，不 rebase 旧任务。新 Task 先通过原 prepareReview 留下真实 missing-binding 诊断，再由原 Native Project Executor/Plan/Ports/Graph/银行执行 read/reset/proposal/review，并完成原 Root。验证原 proposal 的依赖、primary 选择、其它字段保持、修复次数及正式 Project 未提交；没有用 V3 metadata 替代领域结果。
 
 `fixture-source.js` 纳入原 evaluator 指纹，原报告随 fixture authority 实现变化失效。这个路径通过已有 `source_probe` 验证开发资料，不移除 `requirePilotSources` 的独立质量资料条件，不把合成 Provider 的工程结果作为行为质量、真实价格或自动晋升资格。主 Host 仍是唯一真实发送/Secret/费用 authority；私有 fixture、生产 Source/Binding 和收费状态边界保持。
+
+## 17.82 存储 generation 与 Run 观察恢复边界
+
+`61b68d009` 将原 HostFence 的 `generation` 纳入 Run 观察判断及 Host 私有 cursor 状态。相同 boot 内 restore 后，旧 Run 仍须 recovery；不能仅因 bootId 相同就显示可取消。projection/list/details 的旧 generation cursor 返回 resync_required，重新读取 snapshot，不拼接恢复前后的分页或 stream。generation 不成为 Browser 可指定的执行授权；观察仍不 rebind Run、不恢复 scope、不写预算或派发 Effect。

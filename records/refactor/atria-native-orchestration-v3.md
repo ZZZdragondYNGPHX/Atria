@@ -970,3 +970,8 @@
 - Source `ae865c1f3` → `d682423df`，本地提交，尚未推送。`GET /review` 先验证 launchRef 对应仍有效的原 Approval 和账户，再分配隔离会话；伪造/过期引用 404 且不下发 cookie。再认证 `contextId` 改为 256-bit 随机十六进制并加合法前缀，满足原 `assertToken`；原 base64url 偶发 `_` 或非字母起始会令合法决定 400，未更改审批合同或放宽验证。
 - 初次完整 Review suite 20PASS/2FAIL（8.343s）；定向再现偶发 400，脱敏定位 `contextId must be a token`；修复后完整 Review 22/22 PASS（8.374s），与原 Effect Approval 组合 44/44 PASS（14.596s）。三个修改文件定向原 ESLint 和 staged diff check 通过。没有 Browser 三端、真实 R2/R3 领域动作或独立质量通过声明；后端整体继续。
 - 后续 Source `d682423df` → `d4a6f00a6`：同一有效 launchRef 重开时替换旧隔离 cookie/CSRF 会话，避免一条 challenge 重复占满 256 容量；旧会话无法继续再认证。Review 完整 24/24 PASS（9.026s）；最终只改新增测试断言，其定向 FS/SQLite 2PASS/22filterSKIP（2.122s），两文件原 ESLint 与 staged diff check 通过。后端其他 Gate 不变。
+
+## 2026-10-16 — 第七十五组：同 Host restore 的观察 generation 围栏
+
+- Source `d4a6f00a6` → `61b68d009`，本地提交未推送。修正 RunProjection 只比较 bootId 的缺口：原 HostFence generation 变化也显示 recovery_required，关闭过期 cancel 控件；projection/list/details cursor 绑定当前存储 generation，恢复后旧 cursor 全部要求 resnapshot。没有新增恢复执行许可或修改历史 Run/费用。
+- 首版 Run HTTP 14/14 PASS（5.781s）；随后补三种 cursor 的 restore 反例，最终 16/16 PASS（7.097s），覆盖 FS/SQLite。两文件原 ESLint、staged diff check 通过；没有 SQL/三端或完整 resume/reconcile 通过声明。生产的重启恢复与其余后端闭包继续实现，完整 Gate 仍 NOT_READY。
