@@ -2,7 +2,23 @@ path	lines	mock_modules	shared_8_line_blocks	action	reason
 .github/copilot-instructions.md	9	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 .github/pull_request_template.md	7	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 scripts/check-native-product-localization.mjs	137	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/.eslintrc.cjs	66	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/README.md	36	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/agent-intelligence/README.md	426	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/capture.test.js	232	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/evolution.test.js	204	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/f2-sources.test.js	450	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/feedback-contracts.test.js	241	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/m1-f3.test.js	530	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/project-recovery.test.js	331	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-intelligence/sources.test.js	275	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-runtime/atri-agenda-defaults.test.js	83	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-runtime/native-orchestration-prompts.test.js	86	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-runtime/workspace-agent-editing.test.js	90	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-runtime/workspace-host.test.js	63	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-runtime/workspace-prompt-versions.test.js	132	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-runtime/workspace-state.test.js	122	1	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/agent-runtime/workspace-strategy-versions.test.js	187	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/atria-shell/app-shell.test.js	272	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/atria-shell/appearance.test.js	33	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/atria-shell/library-runtime-workspaces.test.js	182	0	1	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
@@ -21,7 +37,14 @@ tests/atria-shell/studio-agent-a8.test.js	408	0	0	保留	保留真实业务契�
 tests/atria-shell/utility-workspaces.test.js	193	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/atria-shell/workspace-host.test.js	681	0	3	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/character-presets/ctx-dispatch.test.js	628	46	306	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/character-presets/ctx-selected-live-state.test.js	546	47	306	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/README.md	23	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/_lib/README.md	12	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/_lib/fixtures.js	143	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/_lib/page.js	378	0	1	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/_lib/ports.js	13	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/_lib/server.js	106	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/_lib/ui-character.js	99	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/atria-shell/01-foundation.e2e.js	380	0	4	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/atria-shell/02-native-actions.e2e.js	122	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/atria-shell/04-navigation.e2e.js	458	0	3	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
@@ -36,6 +59,7 @@ tests/e2e/browser-storage-inspector/06-crud-records.e2e.js	162	0	0	保留	保留
 tests/e2e/browser-storage-inspector/_helpers.js	101	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/entry/01-entry-surfaces.e2e.js	263	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/entry/02-settings-profile.e2e.js	77	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/e2e/native-session/02-product-ui.e2e.js	161	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/native-session/03-native-generation-p4.e2e.js	112	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/native-session/07-play-redesign.e2e.js	397	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/native-session/08-library-redesign.e2e.js	266	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
@@ -53,38 +77,111 @@ tests/e2e/native-session/31-studio-knowledge.e2e.js	115	0	14	保留	保留真实
 tests/e2e/storage-inspector/01-self-drilldown.e2e.js	141	0	1	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/storage-inspector/02-sensitive-and-refresh.e2e.js	105	0	4	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/e2e/storage-inspector/03-mobile-viewport.e2e.js	67	0	3	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/endpoints/users-admin-migration.test.js	406	16	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/game-runtime/ui-full-host.test.js	151	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/iteration-library/edit-tool-results.test.js	38	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/iteration-library/proposal-bus/bus-turn-scope-primitives.test.js	119	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/iteration-library/read-fields-helper.test.js	20	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/iteration-library/render.test.js	44	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/iteration-library/storage/target-registry-dual-lorebook.test.js	50	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/jest.config.json	25	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/jest.setup.js	9	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/logging/backend-consolidation.test.js	36	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/logging/source-identity.test.js	63	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/memory-graph/_mocks/main-module-stack.js	142	14	28	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/memory-graph/hybrid-packing.test.js	155	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/memory-graph/orchestrator-tools-register.test.js	120	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/memory-graph/persistent-injection-recency-horizon.test.js	436	0	18	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/memory-graph/session-commit-anchor.test.js	59	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/mg-schema-iteration/apply-pending-edits.test.js	378	3	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/native/activity-runtime-p5.test.js	115	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/actor-identity-s15.test.js	106	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/agent-goals-s11.test.js	173	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/agent-goals-s12.test.js	178	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/agent-goals-s13.test.js	209	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/agent-goals-s14.test.js	102	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/authoring-contracts.test.js	400	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/authority-integration-c4.test.js	187	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/authority-turn-c3.test.js	132	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/background-task-app-bridge-g2.test.js	273	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/capability-retirement.test.js	29	6	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/cognition-recovery-s21.test.js	316	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/continuity-runtime-p7.test.js	208	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/contracts.test.js	530	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/desire-intention-s17.test.js	235	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/event-appraisal-s18.test.js	252	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/experience-actions.test.js	97	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/extensions-foundation.test.js	128	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/frontend-bridge.test.js	180	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/frontend-hard-cut.test.js	23	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/frontend-presentation.test.js	198	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/helpers/visual-fixture.js	39	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/illustration-core.test.js	217	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/illustration-plugin.test.js	262	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/information-session-p6.test.js	147	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/lifecycle-runtime-p4.test.js	632	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/message-projection-contract.test.js	349	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/model-prompt-runtime-contracts.test.js	384	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/model-prompt-runtime-persistence.test.js	246	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/native-provider-matrix.test.js	266	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/persona-storage.test.js	68	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/product-http.test.js	226	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/project-agent.test.js	429	0	17	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/prompt-candidates.test.js	248	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/retrieval-compute-g05.test.js	1434	4	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/run-policy-p2.test.js	389	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/runtime-checkpoint-consumer.test.js	488	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/save-system.test.js	471	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/session-durability.test.js	137	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/session-history-p2.test.js	153	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/session-projection.test.js	684	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/session-skill-continuation.test.js	234	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/session-task-continuation.test.js	565	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/shared-runtime-p8.test.js	249	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/storage-foundation.contract.test.js	267	0	4	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/studio-service.test.js	397	0	23	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/task-binding-ui.test.js	84	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/task-runtime-p3.test.js	333	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/theory-of-mind-s19.test.js	273	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/native/turn-app-outcome-g1.test.js	146	0	0	重写	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/visual-media.test.js	117	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
 tests/native/visual-p1-adapters.test.js	152	0	0	保留	Native 编排权限/并发/CAS/未知结果/预算/输出提交或当前视觉生成契约；有真实消费者，保留
+tests/orchestrator/agenda-host-gate.test.js	76	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/custom-tool-bridge-st.test.js	130	1	2	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/custom-tool-register.test.js	144	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/custom-tool-runtime-loop.test.js	81	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/factory-preset-shape.test.js	64	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/loop-integration.test.js	653	0	12	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/loop-tools-simulation.test.js	277	0	2	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/resolve-tool-source.test.js	106	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/spec-agenda-loop-three-modes.test.js	260	1	6	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/orchestrator/tool-call-source-tagging.test.js	180	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/package-lock.json	6916	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/package.json	26	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/playwright.config.js	19	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/search-tools/orchestrator-tools-register.test.js	243	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/skills/bundled.test.js	116	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/skills/integration-smoke.test.js	118	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/skills/url-import.test.js	111	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/startup-milestone-telemetry.test.js	47	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/storage-management/service.test.js	118	0	0	保留	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/endpoints/cross-mode-restore.parity.test.js	366	0	12	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/storage/endpoints/native-backup-roundtrip.test.js	139	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/storage/engines/mysql-schema.test.js	89	0	3	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/engines/mysql-transaction.smoke.test.js	455	0	1	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/engines/pool-timeout.test.js	150	0	1	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/engines/postgres-schema.test.js	93	0	2	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/harness/contract-harness.js	171	0	34	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/harness/endpoint-harness.js	298	0	40	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/storage/harness/mysql-harness.js	69	0	6	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
 tests/storage/harness/pg-harness.js	82	0	6	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/init-storage-mode.test.js	167	0	1	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/migration/transient-source.test.js	405	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/round-trip-mysql.test.js	650	0	60	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/storage/round-trip-postgres.test.js	651	0	60	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/sync/integration/http-storage-gate.test.js	118	2	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/sync/materialize-cross-engine.test.js	411	0	39	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/util/browser-context.js	22	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/util/config.js	4	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/util/lib-stub.js	71	1	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现
+tests/util/orchestrator-context.js	5	0	0	重写	保留真实业务契约；共享环境和历史入口使用本轮精简实现

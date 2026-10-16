@@ -1,10 +1,10 @@
 {
-  "head": "82c8b78cdf60030b1f685787af6d9ed6ce73d640",
+  "head": "ae587be0c64487ba922528bdd0146444bcf5e92e",
   "files": 1264,
   "test_tree_files": 1230,
-  "test_tree_lines": 216424,
+  "test_tree_lines": 216417,
   "test_spec_files": 949,
-  "test_spec_lines": 169414,
+  "test_spec_lines": 169407,
   "mock_module_calls": 420,
   "repeated_distinct_8_line_blocks": 2031,
   "files_with_repeated_blocks": 259,

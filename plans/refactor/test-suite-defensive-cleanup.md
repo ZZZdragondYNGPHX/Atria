@@ -2,7 +2,7 @@
 
 - Task ID: test-suite-defensive-cleanup
 - Primary Workspace: `refactor/test-suite-defensive-cleanup` 产品源码工作树
-- Status: Approved（用户已授权形成清单后直接实施）
+- Status: Implemented（实际结果与交付见同一 Record）
 
 ## Goal and boundaries
 

@@ -2,7 +2,7 @@
 
 - Task ID: test-suite-defensive-cleanup
 - Primary Workspace: `refactor/test-suite-defensive-cleanup`
-- Status: Active
+- Status: Complete
 - Plan: [清理方案](../../plans/refactor/test-suite-defensive-cleanup.md)
 
 ## Stage 1 — 远端基线与清理清单
@@ -105,14 +105,39 @@ Native/storage 扩展组发现多处陈旧接口和 gate 泄漏，曾终止两�
 
 ## Stage 3 — 开发分支同步与最终集成
 
-- Status: Active
+- Status: Complete
 - 用户随后明确归档并删除 skill-routing，不再同步该分支。原工作树无未提交/未跟踪/忽略内容，原 HEAD `b0005b68dc113e068501047f478e54c0b3a13bf7` 已保存并推送 tag `archive/atria-project-skill-routing-2026-10-16`，删除本地/远端 `feat/atria-project-skill-routing` 和原工作树；清理未交付的本任务 sync-skills 工作树/分支。
 - 另两个开发分支先在隔离的 refactor 同步工作树应用本次语义提交，不合并 main。保留其新增测试与实现；新增分支测试/工具的逐文件静态清单见 [编排](test-suite-defensive-cleanup/development-orchestration.tsv)、[视觉](test-suite-defensive-cleanup/development-visual.tsv)。这些覆盖实际预算/权限/并发/CAS/未知提交/当前模型生产者，不因故障路径多而删除。
 - 编排起点 `0dcb97267a267ac05242bbb8a8bcbc7aad4ee104`：保留 turn producer proof 与 lane provenance、SQL host topology/lifecycle，采用显式数据库 URL。7 suites / 253 passed、5 skipped（未配置外部 DB），包含真实 Authority turn producer、generation send、turn finalization、Project producer、retrieval 和 migration。
-- 视觉起点 `00edac0a3ed93c70b676d6691ad042126eee6c5e`：首次有效组 4 passed / 2 failed；失败暴露资源类型未注册、Preview 过期保护缺失与 FS migration 原型比较问题。修复真实注册、提交前和副作用边界上的 Preview 复验、canonical JSON 对比；不弱化有效回归。复测继续记录。
+- 视觉起点 `00edac0a3ed93c70b676d6691ad042126eee6c5e`：首次有效组 4 passed / 2 failed；失败暴露资源类型未注册、Preview 过期保护缺失与 FS migration 原型比较问题。修复真实注册、提交前和副作用边界上的 Preview 复验、canonical JSON 对比；不弱化有效回归。最终 Project recovery 33 用例通过；backup/transient source 2 suites / 14 passed、4 skipped（未配置外部 DB）。另修复 FS transient 仅扫描顶层而漏掉 Session 子目录，完整备份资源仍逐条比对，不排除丢失资源以让测试通过。视觉实际 generation/authority/durability 与共享消息契约先前 4 suites / 47 passed；最后 bus 2 suites / 11 passed。
 - 同步冲突自动处理脚本曾误截断文件，第一次执行语法错误未运行相关套件；恢复完整原始文件后重新解决冲突、逐文件语法检查并重新执行。错误修正于未推送的同步提交，不把失败计为通过。
 - [最终逐文件处理清单](test-suite-defensive-cleanup/final.tsv)、[最终汇总](test-suite-defensive-cleanup/final-summary.json)、[失效导入核对](test-suite-defensive-cleanup/reference-audit.json)。新增失效静态相对导入 0；基线原有缺失未作为新缺陷伪报。没有 workflows，CI 运行时间未测量。
 
-### Next checkpoint
+### Final size and references
 
-完成两个开发分支差异验证与同步，保存最终计数和各目标 HEAD，本地主线集成、远端存储并清理本任务临时分支/工作树。并行开发产生的提交及 dirty changes 保留。
+| 指标 | 基线 `695acf3bc` | 最终主清理 |
+| --- | ---: | ---: |
+| tests 全树文件 | 1,552 | 1,280 |
+| tests 全树物理行（含锁文件等） | 277,859 | 222,497 |
+| `.test/.spec.{js,mjs,ts}` 文件 | 1,072 | 992 |
+| 同类测试文件物理行 | 189,750 | 174,065 |
+| module Mock 调用 | 439 | 424 |
+| 跨文件相同连续 8 行 distinct blocks | 3,354 | 2,031 |
+| 含上述重复块的文件 | 456 | 257 |
+| Actions workflows | 0 | 0 |
+
+- tests 净减 272 文件、55,362 物理行（约 19.9%）；重复块降低约 39.4%，属于文本指标，不表示删掉了同等比例业务行为。
+- 最终分类（原始清单并集新增）：保留 1,205、重写 104、删除 303、合并 4、新增 5；生产代码删除另计。保留 1,280 个 tests 树资源、992 个 test/spec 文件以及 300 个可发现 E2E，不以全部移除为目标。
+- 与当前主线集成前 `5618cd8fa` 相比，本次实际集成 430 文件，+701 / -59,898，净减 59,197 行；删除 314、新增 6。与最初远端基线的差异另外包含并行治理任务的删除，不能全部算成本任务贡献。
+- 删除 30 个历史阶段脚本；当前 localization/plugin 等真实工具保留。没有实际 workflow 可缩减，不宣称 CI 耗时已测量。
+- 本地主线集成 `c57fada6e`，tree 与已测主清理分支 `9d224819f` 完全一致，`git diff --check` 通过；已推送 origin/main。视觉目标 HEAD `ae587be0c64487ba922528bdd0146444bcf5e92e`，已在原分支 fast-forward 并推送远端。
+
+### Delivery
+
+- Main / Tested tree: `c57fada6edeea255b29d857ba2585c1dbc9c098b` 集成提交（源码树与 `9d224819f56fdcb041d1e1551161cde9bb989d7b` 相同）；具体完整 main HEAD 见 final-summary。
+- 编排同步 / Tested HEAD: `57544ae9ddb14121237dd2c308bf63c5bab7cbe0`。期间新提交 `bf7127f43` 在隔离同步工作树合入；其新增 Session output context/receipt 和最后 bus 契约实际 4 suites / 37 tests passed。原开发分支 fast-forward 前确认 incoming 文件与 dirty 集合没有交集，之后逐文件 SHA-256 核对 8 个未提交/新增/删除路径保持原内容。并行工作继续保留，不把这些 dirty changes 计为已提交或已验证。
+- 视觉同步 / Tested HEAD: `ae587be0c64487ba922528bdd0146444bcf5e92e`。共享 cleanup、视觉真实 generation/authority/durability、Project recovery、备份/迁移和 bus 必要范围均有上述执行证据。
+- main 与两个开发分支均已推送远端。删除本任务 3 个完成的 refactor 分支/工作树及远端旧 primary 存储分支；删除临时 sync-skills 分支/工作树。保留两个活跃开发工作树和它们的修改，不改变其它 workspace/HANDOFF。
+- 用户指定的 skill-routing 已归档 tag `archive/atria-project-skill-routing-2026-10-16` 后删除本地/远端分支及工作树。归档保留未并入主线的原始提交，不丢失实现历史。
+- 单一 Plan/Record 已更新；临时日志、fixture/截图产物、审计脚本、任务清单缓存和本任务目录已清理。永久保留逐文件审计与汇总，未发布测试 raw 请求/响应或个人配置。
+- 没有执行独立审查/审查子代理，也未把额外审查设为交付条件。当前实际验证限制见 Stage 2；不声称完整套件、外部数据库或客户端矩阵通过。

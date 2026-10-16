@@ -1,5 +1,5 @@
 {
-  "head": "7eb7565e3912cf11b45ec685e17f0a1d0f4c0ca7",
+  "head": "9d224819f56fdcb041d1e1551161cde9bb989d7b",
   "files": 1314,
   "test_tree_files": 1280,
   "test_tree_lines": 222497,
@@ -17,8 +17,24 @@
     "合并": 4
   },
   "cleanup_commits": [
-    "f436302a5",
-    "7eb7565e3"
+    "f436302a52dda291a21d1a1c93c97e444de0bbab",
+    "7eb7565e3912cf11b45ec685e17f0a1d0f4c0ca7",
+    "9d224819f56fdcb041d1e1551161cde9bb989d7b"
   ],
-  "metric_notes": "物理行数包含注释、JSON、锁文件；连续8非空非注释行完全相同的块为文本指标，不代表等价测试比例。"
+  "metric_notes": "物理行数包含注释、JSON、锁文件；连续8非空非注释行完全相同的块为文本指标，不代表等价测试比例。",
+  "main_integration_head": "c57fada6edeea255b29d857ba2585c1dbc9c098b",
+  "main_pre_integration_head": "5618cd8fa",
+  "main_integration_diff": {
+    "changed_files": 430,
+    "deleted_files": 314,
+    "added_files": 6,
+    "insertions": 701,
+    "deletions": 59898,
+    "net_removed_lines": 59197
+  },
+  "development_integrations": {
+    "refactor/atria-native-orchestration-v3": "57544ae9ddb14121237dd2c308bf63c5bab7cbe0",
+    "feat/native-visual-generation-deepening": "ae587be0c64487ba922528bdd0146444bcf5e92e"
+  },
+  "archived_branch_tag": "archive/atria-project-skill-routing-2026-10-16"
 }
