@@ -9,6 +9,7 @@ import { checkedRecord, planDefinitionHash } from './plan-repository.js';
 import { readApproval } from './effect-contracts.js';
 import { holdsConcurrencySlot, readAttempt } from './controller-common.js';
 import { readHandoff } from './handoff-contracts.js';
+import { readTaskLocalOutput } from './task-local-output-contracts.js';
 
 export const RUN_STATUSES = Object.freeze(['admitted', 'running', 'waiting_approval', 'reconciling', 'blocked', 'completed', 'partial', 'failed', 'cancelled', 'stale']);
 const TERMINAL = new Set(['completed', 'partial', 'failed', 'cancelled', 'stale']);
@@ -113,6 +114,13 @@ export function assertRunRoot(root, handle) {
     const binding = Object.fromEntries(Object.entries(root.sourceBinding).filter(([field]) => field !== 'bindingDigest'));
     if (hashNativeDocument(binding) !== root.sourceBinding.bindingDigest) throw new TypeError('SourceBinding digest mismatch');
     for (const field of ['attemptRefs', 'pendingEffectRefs', 'pendingApprovalRefs', 'resultRefs', 'outputClaims']) if (!Array.isArray(root[field])) throw new TypeError('RunRoot.' + field + ' must be an array');
+    const claimIds = new Set();
+    for (const claim of root.outputClaims) {
+        assertObject(claim, ['runId', 'claimId'], 'OutputClaimRef');
+        if (claim.runId !== root.runId || typeof claim.claimId !== 'string' || !/^oclaim_[a-f0-9]{32}$/.test(claim.claimId)
+            || claimIds.has(claim.claimId)) throw new TypeError('Invalid own-Run OutputClaimRef');
+        claimIds.add(claim.claimId);
+    }
     assertObject(root.progress, [...PROGRESS, 'deadlineAt', 'edgeVisitCounts'], 'progress');
     for (const field of [...PROGRESS, 'deadlineAt']) assertCounter(root.progress[field], 'progress.' + field);
     assertObject(root.nodeControl, root.graph.nodes.map(node => node.nodeId), 'nodeControl');
@@ -356,7 +364,7 @@ export class RunRepository {
     async control(handle, commandId, body, reduce, { resourceIds = [] } = {}) {
         assertObject(body, ['runId', 'expectedEpoch', 'expectedStateVersion', 'expectedGraphRevision', 'operation', 'detail'], 'control');
         this.#assertGuard(body);
-        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'result.publish', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.childBudget'].includes(body.operation)
+        if (!['graph.patch', 'attempt.reserve', 'attempt.activate', 'attempt.settle', 'result.publish', 'output.publish', 'fanout.freeze', 'effect.prepare', 'effect.ready', 'effect.claim', 'effect.observe', 'approval.request', 'approval.decide', 'join.freeze', 'join.settle', 'loop.advance', 'run.resume', 'run.delegate', 'run.handoff', 'run.childBudget'].includes(body.operation)
             || typeof reduce !== 'function') throw new TypeError('Unsupported Host controller operation');
         const timestamp = this.now();
         return this.#command(handle, commandId, 'runs.control.' + body.operation, body, async (tx, input, fence) => {
@@ -366,6 +374,8 @@ export class RunRepository {
             const result = await reduce({ tx, root: cloneNativeDocument(root), plan: cloneNativeDocument(record.planRevision), fence, now: timestamp });
             assertObject(result, ['root', 'eventType', 'reasonCode', 'outcome'], 'controller result');
             const next = cloneNativeDocument(result.root);
+            if (hashNativeDocument(next.outputClaims) !== hashNativeDocument(root.outputClaims) && input.operation !== 'output.publish')
+                throw new TypeError('Only output publication may claim output');
             if (hashNativeDocument(next.treeProgress) !== hashNativeDocument(root.treeProgress)) throw new TypeError('Only RunRepository may accumulate treeProgress');
             for (const field of ['runId', 'ownerRef', 'planRef', 'sourceBinding', 'parentRef', 'rootRunId', 'budgetAuthorityRef', 'hostBootId', 'hostGeneration', 'epoch', 'limits', 'retentionPolicyRef', 'createdAt']) {
                 if (hashNativeDocument(next[field]) !== hashNativeDocument(root[field])) throw new TypeError('Controller cannot rewrite Run identity/authority: ' + field);
@@ -403,6 +413,7 @@ export class RunRepository {
         if (hashNativeDocument(record.doc.limits) !== hashNativeDocument(revision.doc.definition.limits)
             || hashNativeDocument(record.doc.graph.limits) !== hashNativeDocument(record.doc.limits)) throw new TypeError('RunRoot limits cannot exceed the immutable Plan');
         record.planRevision = revision.doc;
+        if (record.doc.outputClaims.length && !await readTaskLocalOutput(tx, handle, record.doc)) throw new TypeError('Run output lacks complete facts');
         return record;
     }
 
@@ -441,6 +452,8 @@ export class RunRepository {
         };
         check(root);
         assertRunRoot(root, handle);
+        if ((root.outputClaims.length || ['completed', 'partial'].includes(root.status))
+            && !await readTaskLocalOutput(tx, handle, root)) throw new TypeError('Run completion requires verified output facts');
         const ancestors = [], seen = new Set([root.runId]);
         let parentId = root.parentRef?.parentRunId;
         while (parentId) {

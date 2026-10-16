@@ -19,6 +19,8 @@ import { readHandoff } from './handoff-contracts.js';
 import { BudgetPort } from './budget-port.js';
 import { assertObject, assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { ResultController } from './result-controller.js';
+import { readResultPublication } from './result-publication-contracts.js';
+import { TaskLocalOutputController } from './task-local-output-controller.js';
 
 const captures = new WeakMap();
 const delegationCaptures = new WeakMap();
@@ -87,6 +89,15 @@ export function inspectNativeRpDelegationIdentity(capture, { host, handle, rpCon
 }
 
 export async function inspectNativeRpDelegation(capture, expected = {}) {
+    return inspectDelegation(capture, expected, false);
+}
+
+/** Output closure has a separate bank predicate; sending still requires held. */
+export async function inspectNativeRpDelegationOutput(capture, expected = {}) {
+    return inspectDelegation(capture, expected, true);
+}
+
+async function inspectDelegation(capture, expected, output) {
     const identity = inspectNativeRpDelegationIdentity(capture, expected), state = delegationCaptures.get(capture);
     const read = async tx => {
         await state.assertSelection();
@@ -113,7 +124,13 @@ export async function inspectNativeRpDelegation(capture, expected = {}) {
             || !equal(delegation.budgetCeiling, root.parentRef.budgetCeiling) || delegation.sourceBindingDigest !== root.sourceBinding.bindingDigest
             || !equal(delegation.authorityRef, root.budgetAuthorityRef) || delegation.decisionSeq !== handoff.decisionSeq
             || delegation.createdAt !== handoff.createdAt) fail('native_orchestration_handoff_unconfirmed');
-        await BudgetPort.prototype.verifyReservation.call(state.service.budgetPort, { handle: expected.handle, tx, root, parent: parentRoot });
+        let closure;
+        if (output) {
+            closure = await BudgetPort.prototype.observeChildClosure.call(state.service.budgetPort, expected.handle, {
+                authorityRef: root.budgetAuthorityRef, reservationId: root.runId,
+                expectedParentReservationId: parentRoot.parentRef ? parentRoot.runId : null, expectedCeiling: root.parentRef.budgetCeiling }, { tx });
+            if (!closure.closed) fail('native_orchestration_child_budget_unclosed');
+        } else await BudgetPort.prototype.verifyReservation.call(state.service.budgetPort, { handle: expected.handle, tx, root, parent: parentRoot });
         const readyId = childBudgetReceiptId(root.runId);
         const current = await RpRunControl.prototype.status.call(identity.rpControl, expected.handle, identity.sourceRequest.controlId, { tx });
         const chat = await tx.getResource({ kind: 'chat', handle: expected.handle, ...current.locator });
@@ -122,13 +139,16 @@ export async function inspectNativeRpDelegation(capture, expected = {}) {
         const original = await RpRunControl.prototype.context.call(identity.rpControl, expected.handle,
             identity.sourceRequest.controlId, identity.sourceRequest.source, { tx });
         if (original.prefixDigest !== identity.prefixDigest) fail('native_orchestration_source_stale');
+        // Resolve original source withdrawal before the Binding authorizer's
+        // generic missing-resource error, so lawful writes can commit as deny.
+        await state.assertSelection();
         inspectNativeRpDelegationIdentity(capture, expected);
         return { ...identity, root, parentRoot, parentAttempt, parentGrantDigest: parentAttempt.effectiveGrantDigest,
             parentTaskPurpose: 'original_rp_delegation',
             handoffReceiptRef: { runId: parentRoot.runId, receiptId: handoff.receiptId },
             delegationReceiptRef: { runId: parentRoot.runId, receiptId: delegationId },
             budgetReadyReceiptRef: { runId: root.runId, receiptId: readyId },
-            context: { messages: [{ role: 'user', content: last.mes }] } };
+            ...(output ? { closure } : { context: { messages: [{ role: 'user', content: last.mes }] } }) };
     };
     return state.control._engine.withTransaction(expected.handle, tx => {
         if (expected.tx !== undefined && expected.tx !== tx) fail('native_orchestration_rp_producer_denied');
@@ -250,6 +270,38 @@ export class NativeRpOrchestrationAuthority {
             || compiledBinding.fingerprint !== snapshot.diagnostics.compiledBinding.fingerprint) fail();
         const expected = await state.contextPort.provider(handle, { context: state.context }).buildRequestContextPlan(state.request, resolved);
         if (!equal(expected, snapshot.contextPlan)) fail('native_orchestration_rp_context_mismatch');
+    }
+
+    async authorizeTaskLocalOutput({ handle, tx, capture, phase, identity, publication }) {
+        if (!['prepare', 'publish'].includes(phase)) fail();
+        const current = await (phase === 'prepare' ? inspectNativeRpDelegation : inspectNativeRpDelegationOutput)(capture,
+            { host: this.#ownerHost(capture), handle, rpControl: this.owner.rpControl, tx });
+        const state = this.#runs.get(current.parentRunId);
+        if (!state?.parentDelegation || state.activeChildCapture !== capture || state.handle !== handle
+            || state.attemptId !== current.parentAttemptId || state.parentEpoch !== current.parentEpoch
+            || state.childGrantDigest !== current.grantDigest || state.parentGrantDigest !== current.parentGrantDigest
+            || !equal(identity, { childRunId: current.childRunId, parentRunId: current.parentRunId,
+                parentAttemptId: current.parentAttemptId, childEpoch: current.childEpoch, parentEpoch: current.parentEpoch })) fail();
+        const selected = await this.#selection(state.host, handle, state.input);
+        if (!equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
+            || selected.child?.configDigest !== state.selected.child?.configDigest) fail('native_orchestration_source_stale');
+        const saved = await readResultPublication(tx, handle, current.root, publication.resultRef.resultId);
+        if (!saved || !equal(publication, { status: 'published', resultRef: saved.receipt.resultRef,
+            publicationReceiptRef: { runId: current.childRunId, receiptId: saved.receipt.receiptId } })
+            || saved.receipt.epoch !== current.childEpoch || saved.receipt.producerGrantDigest !== current.grantDigest
+            || saved.record.envelope.audienceConstraint.grantDigest !== state.parentGrantDigest) fail();
+        // Re-read original source and lineage after the last bank/Plan awaits.
+        const final = await (phase === 'prepare' ? inspectNativeRpDelegation : inspectNativeRpDelegationOutput)(capture,
+            { host: state.host, handle, rpControl: this.owner.rpControl, tx });
+        if (!equal(final.root, current.root) || !equal(final.parentRoot, current.parentRoot)) fail('native_orchestration_parent_stale');
+        const inputRefs = [saved.receipt.resultRef];
+        return { inputRefs, inputDigest: hash(inputRefs), effectiveGrantDigest: state.childGrantDigest, budgetRef: current.root.budgetAuthorityRef };
+    }
+
+    #ownerHost(capture) {
+        const state = delegationCaptures.get(capture);
+        if (!state || state.owner !== this.owner) fail();
+        return state.host;
     }
 
     verifyObservation(args) {
@@ -401,7 +453,9 @@ export class NativeRpOrchestrationAuthority {
                 } });
             const port = this.#port(host), result = await port.generate(handle, scope, { signal: boundary.signal });
             const published = await new ResultController({ host, modelPort: port }).publishModelResult(handle, { capture, result, effectId });
-            return { status: 'pending_output', parentRunId, parentAttemptId: parentState.attemptId, childRunId, effectId,
+            const output = await new TaskLocalOutputController({ host }).complete(handle, { capture, publication: published });
+            return { ...output, status: output.status === 'completed' ? 'pending_return' : output.status,
+                parentRunId, parentAttemptId: parentState.attemptId, childRunId, effectId,
                 receiptRef: result.receiptRef, resultRef: published.resultRef, publicationReceiptRef: published.publicationReceiptRef };
         } finally { this.#runs.delete(childRunId); delegationCaptures.delete(capture); delete parentState.activeChildCapture; }
     }

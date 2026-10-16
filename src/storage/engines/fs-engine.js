@@ -21,6 +21,10 @@ export class FsEngine {
     // extract `handle` from key.handle / filter.handle themselves. SqliteEngine
     // *does* need it to pick the per-user DB before the transaction begins, so
     // the engine contract takes (handle, fn) uniformly.
+    hasActiveTransaction(handle) {
+        return Boolean(active.getStore()?.open && active.getStore()?.root === this._directoriesByHandle(handle).root);
+    }
+
     async withTransaction(handle, fn) {
         const root = this._directoriesByHandle(handle).root;
         if (active.getStore()?.open && active.getStore()?.root === root) return fn(active.getStore().tx);

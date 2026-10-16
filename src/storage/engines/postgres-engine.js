@@ -168,6 +168,8 @@ export class PgEngine {
         } finally { client.release(broken); }
     }
 
+    hasActiveTransaction(handle) { return this._transactionScope.get(handle) !== null; }
+
     async withTransaction(handle, fn, { retryMode = 'known_rollback_only' } = {}) {
         if (!['known_rollback_only', 'never'].includes(retryMode)) throw new TypeError('Unsupported storage retryMode');
         const active = this._transactionScope.get(handle);
