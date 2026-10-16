@@ -1091,3 +1091,9 @@ Review listener 不使用主 app middleware/cookie。它检查实际 Host、精�
 只读 Review 的等待态允许 `waiting_approval`，没有放宽 Model/Result 正文消费的 `running` 要求。Controller 的 pre-write denial 只提交原 authority 在 await 中发生的合法取消/撤权事实，不生成成功命令或审批记录；写后错误仍回滚。未知决定 ACK 返回 `storage_commit_unknown`，只读原 Approval 观察，不再提交另一决定或派发。重启没有旧私有 challenge/session，旧 nonce 不能恢复身份或授权。
 
 本组是审批后端和账户接线，不是任意 R2/R3 能力注册、原领域正式批准消费或浏览器隔离实证。现有只读 ToolPort 的风险 ceiling 未扩大；没有安全原领域动作的 R3 继续拒绝。远程代理的独立可信 Review Origin、真实页面与三端流程尚未交付，非本机 launch unavailable。其余消费者、Eval 与完整 restore/release/GC 继续后端队列。
+
+## 17.81 原生 Project M1 开发来源执行
+
+第七十二组的 `evaluation/native-adapters.js` 支持固定 `project.m1.related` 开发资料。私有 worker 通过原 WorldRepo/KnowledgeRepo 创建真实 World revision/binding，并经原 Studio 验证依赖；已有 Task 在原人类 revision 后发生真实 commit 冲突，另建 exact 新 Task，不 rebase 旧任务。新 Task 先通过原 prepareReview 留下真实 missing-binding 诊断，再由原 Native Project Executor/Plan/Ports/Graph/银行执行 read/reset/proposal/review，并完成原 Root。验证原 proposal 的依赖、primary 选择、其它字段保持、修复次数及正式 Project 未提交；没有用 V3 metadata 替代领域结果。
+
+`fixture-source.js` 纳入原 evaluator 指纹，原报告随 fixture authority 实现变化失效。这个路径通过已有 `source_probe` 验证开发资料，不移除 `requirePilotSources` 的独立质量资料条件，不把合成 Provider 的工程结果作为行为质量、真实价格或自动晋升资格。主 Host 仍是唯一真实发送/Secret/费用 authority；私有 fixture、生产 Source/Binding 和收费状态边界保持。

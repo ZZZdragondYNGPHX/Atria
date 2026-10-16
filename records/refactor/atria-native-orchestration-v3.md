@@ -951,3 +951,10 @@
 - 补决策/dispatch 的 await 取消与合法事实先提交、未知 ACK 用例。新增定向 **8PASS/12filterSKIP（4.483s）**；新 Review + 原 Approval/Run HTTP/Authoring HTTP 四 suites **62/62 PASS（20.742s）**。随后仅 Projection 活 challenge 提示接线，原 Run metadata/普通 RP preflight 与原 Project Review Root 精选 **12PASS/20filterSKIP（94.903s）**，不声称全仓或 SQL 通过。Controller pre-write denial 不生成成功命令；写后错误仍沿原事务回滚，正文消费仍仅 running。
 - 十个改动 JS 文件定向原 ESLint、staged diff check 通过；先前新文件两处格式和测试一处 quote 已修。全部是本机 FS/SQLite、真实回环 HTTP 和合成领域 Effect；用户记录使用临时测试目录，密码/nonce未持久到 V3。没有外部付费、真实浏览器隔离/三端、SQL、独立审查或前端交付声明。
 - P1–P4 与最终 Gate 保持 IN_PROGRESS/NOT_READY。继续原领域批准消费者、Native Eval/自动晋升、其余 producer/恢复/释放/GC 等后端队列；不以本组接口或测试通过结束任务，不合 main、不清理活跃分支。所有后端完成并验证后才按当前用户要求推送和提供 Claude Code 前端/组装/最终集成提示词。
+
+## 2026-10-16 — 第七十二组：原生 Project M1 开发来源执行
+
+- Source 81a3a5fba → **04197573b**，已本地提交，未推送。实现[接口 §17.81](../../plans/refactor/atria-native-orchestration-v3/interface-contracts.md#1781-原生-project-m1-开发来源执行)：私有原 World/Knowledge 依赖、原 Task 人类修订冲突、missing-binding 诊断和新 Task 的真实 Native Plan read/reset/proposal/review/Root，全程原权威与原费用。修正既有未覆盖的 Native repair 观察值为原 validation.failed/Task.repair，不改原 validator。
+- 最初经普通 compare 跑 M1 的两个 Engine 均被原 `requirePilotSources` 以 source_unready 拒绝（2FAIL，2.861s）；未移除独立来源条件，改用已有 source_probe 工程观察接口。FS/SQLite 各执行三条 M1 开发案例，参数测试 **2PASS/4filterSKIP（152.587s）**，共六条真实私有试验 Source、每 Engine 九次 localhost 合成 Provider 发送/原父 ledger，无 judge 或独立质量通过声明。
+- 随后将 fixture-source.js 纳入原 evaluator 指纹并追加旧报告拒绝用例；普通 Project 精选与指纹两 suites **15PASS/4filterSKIP（86.287s）**。新 M1 最终仅测试 conditional-expect 写法调整，未重新执行不受影响的模型场景；五文件原 ESLint 和 staged diff check 通过。没有 SQL、外部真实账单/独立质量、三端、前端或独立审查声明。
+- Native 自动配置/晋升、其余来源/producer/restore/release 等仍继续实现。P1–P4/最终 Gate NOT_READY；用户提供私有测试资料目录供后续核对，路径/凭据/私有材料不提交到仓库。后端整体尚未完成，不合 main、不结束分支。

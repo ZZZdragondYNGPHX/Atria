@@ -2,7 +2,9 @@
 
 > 2026-10-16。本文件属于同一 Plan Bundle，用于用户已授权的提示词预设/前端并行任务整合。详细合同仍归 [interface-contracts](interface-contracts.md)，阶段门槛仍归 [acceptance-matrix](acceptance-matrix.md)，精确源码提交/实测与失败只归[同一 Record](../../../records/refactor/atria-native-orchestration-v3.md)。本文不将 P3 子工作冒称完整 V3 后端完成。
 
-## 当前后端续作（第七十一组）
+## 当前后端续作（第七十一至七十二组）
+
+`04197573b` 增加原生 Project M1 三条开发来源的真实 World/Knowledge/Task/冲突/修复/Review/Root 执行，见[接口 §17.81](interface-contracts.md#1781-原生-project-m1-开发来源执行)。通过原 source_probe 作工程观察，独立资料/质量、价格及自动晋升资格没有伪造或开放。
 
 源码 `81a3a5fba` 本地提交，隔离 Review Origin 的 listener、原账户密码再认证、独立 cookie/CSRF/nonce、原 Approval 决定和 dispatch 再验已实现，见[接口 §17.80](interface-contracts.md#1780-隔离-review-origin-后端与原用户再认证)。主 origin 仅 `/approvals/launch`，隔离页面尚未实施，GET 当前只返回 bootstrap JSON；没有提前开发前端。原领域 `describeReview` 与安全能力缺失仍不可批准，现有只读 ToolPort ceiling 不扩大。完整领域消费者、Eval、恢复/释放和最终 Gate 继续后端，尚未交 Claude。
 
