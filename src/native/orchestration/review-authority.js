@@ -8,6 +8,7 @@ import { assertObject } from '../../../public/shared/native-orchestration-contra
 
 const deny = () => { throw new ConflictError('native_orchestration_review_unavailable'); };
 const token = () => randomBytes(32).toString('base64url');
+const contextToken = () => 'review:' + randomBytes(32).toString('hex');
 
 /** Host-private bridge to the existing Approval records and original Effect authority. */
 export class ReviewAuthority {
@@ -121,11 +122,16 @@ export class ReviewAuthority {
         return { launchRef: entry.launchRef, expiresAt: entry.expiresAt };
     }
 
+    async validateLaunch(launchRef) {
+        const entry = this.#entry(launchRef);
+        await this.#current(entry, async () => { await this.accounts.inspect(entry.handle); });
+    }
+
     async authenticate(launchRef, password) {
         const entry = this.#entry(launchRef);
         const account = await this.accounts.authenticate(entry.handle, password);
         await this.#current(entry, async () => {});
-        return { handle: entry.handle, accountVersion: account.accountVersion, contextId: token(), expiresAt: Math.min(entry.expiresAt, this.now() + 300000) };
+        return { handle: entry.handle, accountVersion: account.accountVersion, contextId: contextToken(), expiresAt: Math.min(entry.expiresAt, this.now() + 300000) };
     }
 
     async #identity(entry, identity) {

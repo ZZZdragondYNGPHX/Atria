@@ -127,6 +127,14 @@ describe.each(harnesses)('$name isolated Review listener with original user pass
         expect(JSON.stringify(result.body)).not.toContain('nonce');
     });
 
+    test('unknown or stale launch refs allocate no Review session', async () => {
+        const unknown = await request(review.origin).get('/review?launchRef=' + 'x'.repeat(43)).expect(404);
+        expect(unknown.headers).not.toHaveProperty('set-cookie');
+        now += 10001;
+        const expired = await request(review.origin).get(new URL(launch.url).pathname + new URL(launch.url).search).expect(404);
+        expect(expired.headers).not.toHaveProperty('set-cookie');
+    });
+
     test('wrong password is bounded, blank/OAuth-only and disabled accounts cannot authenticate', async () => {
         const client = await browser();
         await client.post('reauthenticate', { password: 'wrong' }).expect(403);

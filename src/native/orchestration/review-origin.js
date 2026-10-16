@@ -58,9 +58,10 @@ export class ReviewOrigin {
             };
             // Frontend will render the built-in Review document at this path.
             // Until then this is the page's JSON bootstrap, with no approval nonce.
-            app.get('/review', (req, res) => {
+            app.get('/review', async (req, res) => {
                 prune();
                 if (Object.keys(req.query).length !== 1 || typeof req.query.launchRef !== 'string' || !/^[\w-]{43}$/.test(req.query.launchRef)) return res.sendStatus(400);
+                try { await this.authority.validateLaunch(req.query.launchRef); } catch { return res.sendStatus(404); }
                 if (this.#sessions.size >= 256) return res.sendStatus(503);
                 const sessionId = token(), csrfToken = token();
                 this.#sessions.set(sessionId, { launchRef: req.query.launchRef, csrfToken, expiresAt: this.now() + 300000, identity: null, busy: false });
