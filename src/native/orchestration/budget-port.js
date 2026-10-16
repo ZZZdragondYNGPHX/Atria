@@ -4,7 +4,7 @@ import { assertNativeId } from '../identity.js';
 import { readRunControl } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeTurnQuota } from './native-turn-quota.js';
-import { orchestrationComputeAttemptId, inspectComputeChildClosure } from '../../../public/shared/native-compute-budget.js';
+import { orchestrationComputeAttemptId, inspectComputeChildClosure, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { RpRunControl } from '../rp-run-control.js';
 
 // V3 BudgetPort (interface §8.1/§13): a typed dispatcher onto the three original
@@ -330,6 +330,11 @@ export class BudgetPort {
     /** Send-bound adapter for the trusted GenerationHost path. The ordinal advances on every real send, retry or fallback. */
     sendBank(handle, { authorityRef, reservationId = null, limits, effectId, firstOrdinal, assertCurrent, quotaProof }) {
         assertBudgetAuthorityRef(authorityRef);
+        // A reservation already carries the leaf Route ceiling. Passing that
+        // ceiling to bindComputeBudget would tighten the entire original bank
+        // and consume the parent's later allowance. Keep the trusted root
+        // operation limits distinct; the original reservation enforces its leaf.
+        const rootLimits = reservationId === null ? null : assertComputeBudget(structuredClone(limits));
         let ordinal = firstOrdinal;
         let localOrdinal = 0;
         let rpPrefixDigest = null;
@@ -353,7 +358,7 @@ export class BudgetPort {
                 const providerSendOrdinal = ordinal++;
                 let result;
                 try {
-                    result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: routeLimits ?? limits, reserve, quotaProof });
+                    result = await this.admitAttempt(handle, { authorityRef, reservationId, effectId, providerSendOrdinal, requestId, targetFingerprint, inputFingerprint, upperBound, limits: rootLimits ?? routeLimits ?? limits, reserve, quotaProof });
                 } catch (error) {
                     if (error.code !== 'storage_commit_unknown') throw error;
                     const budgetAttemptRef = { authorityRef: structuredClone(authorityRef), effectId, providerSendOrdinal,
@@ -382,7 +387,7 @@ export class BudgetPort {
                 if (!localIdentities.has(attempt.attemptId)) fail('native_orchestration_budget_attempt_invalid');
                 const localWorkOrdinal = localIdentities.get(attempt.attemptId);
                 try {
-                    return await this.chargeLocalWork(handle, { authorityRef, reservationId, limits: localLimits ?? limits, attempt, effectId, localWorkOrdinal });
+                    return await this.chargeLocalWork(handle, { authorityRef, reservationId, limits: rootLimits ?? localLimits ?? limits, attempt, effectId, localWorkOrdinal });
                 } catch (error) {
                     if (error.code === 'native_generation_attempt_conflict') throw new ConflictError('native_orchestration_send_replayed');
                     if (error.code !== 'storage_commit_unknown') throw error;

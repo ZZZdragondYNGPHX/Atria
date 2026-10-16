@@ -38,6 +38,48 @@ async function domain(kind, h) {
 }
 
 describe.each([['FsEngine', makeTempFsEngineHarness], ['SqliteEngine', makeTempSqliteEngineHarness]])('%s V3 BudgetPort over original banks', (_name, make) => {
+    test.each(['session', 'project', 'rp_chat'])('%s: a leaf Route cannot tighten its parent bank or borrow the parent allowance', async kind => {
+        const h = await make();
+        try {
+            const { port, source } = await domain(kind, h), authorityRef = await port.authorityFor(h.handle, source);
+            const rootLimits = { maxRequests: 4, maxTokens: 400, localWork: { maxJobs: 4, maxItems: 8, maxInputBytes: 400 } };
+            const leafLimits = { maxRequests: 1, maxTokens: 100, localWork }, childRunId = createNativeId('orchestrationRun');
+            const effectId = createNativeId('orchestrationEffect');
+            await port.reserveChild(h.handle, { authorityRef, parentReservationId: null, childRunId, ceiling: leafLimits, limits: rootLimits });
+            expect(() => port.sendBank(h.handle, { authorityRef, reservationId: childRunId, effectId, firstOrdinal: 0 })).toThrow();
+            const configured = structuredClone(rootLimits);
+            const bank = port.sendBank(h.handle, { authorityRef, reservationId: childRunId, limits: configured, effectId, firstOrdinal: 0 });
+            // Later caller mutation cannot change the captured root envelope.
+            configured.maxRequests = 1; configured.localWork.maxJobs = 1;
+            const attemptId = bank.nextLocalWorkAttemptId();
+            await bank.chargeLocalWork(leafLimits, { attemptId, requestId: 'child-context', targetFingerprint: 'c'.repeat(64),
+                kind: 'context_build', estimatedItems: 1, estimatedInputBytes: 10 });
+            await bank.settleLocalWork(attemptId, { wallMs: 0, cpuUserMicros: 0, cpuSystemMicros: 0, cpuScope: 'process', outcome: 'completed' });
+            await expect(bank.chargeLocalWork(rootLimits, { attemptId: bank.nextLocalWorkAttemptId(), requestId: 'extra-child-context',
+                targetFingerprint: 'd'.repeat(64), kind: 'context_build', estimatedItems: 1, estimatedInputBytes: 10 }))
+                .rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            const send = { requestId: 'child-send', targetFingerprint: 'a'.repeat(64), inputFingerprint: 'b'.repeat(64), upperBound: 40 };
+            const child = await bank.admit({ ...send, limits: leafLimits });
+            expect(child.limits).toEqual(rootLimits);
+            await bank.settle(child.budgetAttemptRef.attemptId, { totalTokens: 20 });
+            await expect(bank.admit({ ...send, requestId: 'extra-child-send', limits: rootLimits }))
+                .rejects.toMatchObject({ code: 'native_generation_budget_exhausted' });
+            await port.releaseUnused(h.handle, { authorityRef, reservationId: childRunId });
+            const parent = port.sendBank(h.handle, { authorityRef, limits: rootLimits, effectId: createNativeId('orchestrationEffect'), firstOrdinal: 0 });
+            const parentLocal = parent.nextLocalWorkAttemptId();
+            await parent.chargeLocalWork(rootLimits, { attemptId: parentLocal, requestId: 'parent-context', targetFingerprint: 'e'.repeat(64),
+                kind: 'context_build', estimatedItems: 1, estimatedInputBytes: 10 });
+            await parent.settleLocalWork(parentLocal, { wallMs: 0, cpuUserMicros: 0, cpuSystemMicros: 0, cpuScope: 'process', outcome: 'completed' });
+            const continued = await parent.admit({ ...send, requestId: 'parent-send', limits: rootLimits });
+            expect(continued.limits).toEqual(rootLimits);
+            await parent.settle(continued.budgetAttemptRef.attemptId, { totalTokens: 20 });
+            expect(await port.observeAttempt(h.handle, child.budgetAttemptRef)).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
+            const parentRow = await port.observeAttempt(h.handle, continued.budgetAttemptRef);
+            expect(parentRow).toMatchObject({ status: 'settled', usage: { totalTokens: 20 } });
+            expect(parentRow.reservationId ?? null).toBeNull();
+        } finally { await h.engine.close?.(); await h.cleanup(); }
+    });
+
     test.each(['session', 'project', 'rp_chat'])('%s: child reservation, stable send identity, replay refusal, in-tx verification and settlement', async kind => {
         const h = await make();
         try {

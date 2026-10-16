@@ -75,6 +75,8 @@ export class NativeNarratorOrchestrationAuthority {
                     return this.#port(state.host).verifyObservation(args);
                 },
                 verifyApproval: () => fail('native_orchestration_approval_unavailable'),
+                authorizeDelegation: args => args.parent.sourceBinding.sourceAuthority === 'rp_chat'
+                    ? this.#rpAuthority().authorizeDelegation(args) : fail('native_orchestration_delegation_unavailable'),
             } });
         return this.#execution;
     }

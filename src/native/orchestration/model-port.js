@@ -1,5 +1,5 @@
 import { fields } from '../../../public/shared/native-values.js';
-import { inspectNativeRpGenerationIdentity } from './native-rp-generation.js';
+import { inspectNativeRpGenerationIdentity, inspectNativeRpDelegationIdentity } from './native-rp-generation.js';
 import { inspectNativeBackgroundGenerationIdentity } from './native-background-generation.js';
 import { NativeGenerationHost } from '../adapters/generation-host.js';
 import { immutable, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
@@ -22,6 +22,7 @@ const digest = intent => hash({ runId: intent.runId, effectId: intent.effectId, 
     sourceBindingDigest: intent.sourceBindingDigest, decision: effectDecision(intent) });
 const key = (handle, intent) => hash({ handle, runId: intent.runId, effectId: intent.effectId });
 const CONSUME_DENIALS = new Set(['native_orchestration_source_stale', 'native_orchestration_binding_changed',
+    'native_orchestration_parent_stale',
     'native_orchestration_turn_selection_stale', 'native_orchestration_turn_grant_denied', 'native_orchestration_turn_route_mismatch',
     'native_orchestration_project_selection_stale', 'native_orchestration_project_grant_denied', 'native_orchestration_project_route_mismatch',
     'native_orchestration_context_source_stale', 'native_orchestration_context_denied', 'native_orchestration_context_audience_denied',
@@ -95,23 +96,33 @@ export class ModelPort {
         // No raw prompt, audience, callback response or approval Boolean can
         // substitute for the capability minted at an original domain model point.
         const principal = await resolveNativeNarratorScope(scope, this.host, handle);
-        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit, nativeProjectCapture, nativeRpCapture, nativeBackgroundCapture } = principal;
+        const { runId, effectId, request, options, revalidateConsume, logicalInputRef, logicalInputHash, nativeTurnPermit, nativeProjectCapture, nativeRpCapture, nativeRpDelegationCapture, nativeBackgroundCapture } = principal;
         const project = logicalInputRef.kind === 'native_project_intent';
         const rp = logicalInputRef.kind === 'native_rp_intent';
+        const delegated = logicalInputRef.kind === 'native_rp_delegated_intent';
         const background = logicalInputRef.kind === 'native_background_intent';
-        if (background ? request.role !== logicalInputRef.role || request.requestId !== logicalInputRef.invocationId
+        if (delegated ? logicalInputRef.role !== 'narrator' || request.role !== 'narrator' || request.requestId !== logicalInputRef.requestId
+            || logicalInputRef.childRunId !== runId || nativeTurnPermit !== undefined || nativeProjectCapture !== undefined
+            || nativeRpCapture !== undefined || nativeBackgroundCapture !== undefined
+            : nativeRpDelegationCapture !== undefined || (background ? request.role !== logicalInputRef.role || request.requestId !== logicalInputRef.invocationId
             || nativeTurnPermit !== undefined || nativeProjectCapture !== undefined || nativeRpCapture !== undefined
-            : rp ? logicalInputRef.role !== 'narrator' || request.role !== 'narrator' || request.requestId !== logicalInputRef.requestId
+                : rp ? logicalInputRef.role !== 'narrator' || request.role !== 'narrator' || request.requestId !== logicalInputRef.requestId
             || nativeTurnPermit !== undefined || nativeProjectCapture !== undefined
-                : project ? logicalInputRef.role !== 'studio' || request.role !== 'studio' || request.requestId !== logicalInputRef.requestId
+                    : project ? logicalInputRef.role !== 'studio' || request.role !== 'studio' || request.requestId !== logicalInputRef.requestId
             || request.projectAttemptId !== logicalInputRef.projectAttemptId || nativeTurnPermit !== undefined
-                    : !['narrator', 'intent_resolver'].includes(logicalInputRef.role) || request.role !== logicalInputRef.role
+                        : !['narrator', 'intent_resolver'].includes(logicalInputRef.role) || request.role !== logicalInputRef.role
             || typeof logicalInputRef.invocationId !== 'string' || !logicalInputRef.invocationId
-            || request.requestId !== (logicalInputRef.role === 'narrator' ? logicalInputRef.invocationId : logicalInputRef.invocationId + ':intent'))
+            || request.requestId !== (logicalInputRef.role === 'narrator' ? logicalInputRef.invocationId : logicalInputRef.invocationId + ':intent')))
             fail('native_orchestration_model_scope_invalid');
         const permitExpected = { host: this.host, handle, sessionId: request.sessionId,
             invocationId: logicalInputRef.invocationId, requestHash: logicalInputRef.requestHash };
-        const assertPermit = background ? () => {
+        const assertPermit = delegated ? () => {
+            const identity = inspectNativeRpDelegationIdentity(nativeRpDelegationCapture, { host: this.host, handle });
+            if (identity.childRunId !== runId || identity.parentRunId !== logicalInputRef.parentRunId
+                || identity.parentAttemptId !== logicalInputRef.parentAttemptId || hash(identity.request) !== hash(request)
+                || hash(identity.sourceBinding.sourceRef) !== hash(logicalInputRef.sourceRef)) fail('native_orchestration_model_scope_invalid');
+            return identity;
+        } : background ? () => {
             const identity = inspectNativeBackgroundGenerationIdentity(nativeBackgroundCapture, { host: this.host, handle });
             if (hash(identity.request) !== hash(request) || identity.input.invocationId !== logicalInputRef.invocationId
                 || identity.input.taskId !== logicalInputRef.taskId) fail('native_orchestration_model_scope_invalid');
