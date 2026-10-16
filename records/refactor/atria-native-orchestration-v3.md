@@ -859,3 +859,10 @@
 - Source b743c2d5c→5e5e41f53。新增同事务最后budget await的真实原Task编辑/Run取消测试，两Engine四项最初全FAIL（11.679s）：编辑被验证事务回滚，取消后仍进入set_plan。修为私有验证事务返回拒绝Error、提交合法变化后再抛出，并在末await后复读原Root/fence。原Task锁仍覆盖全过程，改在验证事务关闭后才加载writer的可变Task对象，避免旧对象按已被其它原操作更新的cache integrity覆盖新Task。
 - 故障四项定向复跑4PASS/8filterSKIP（11.56s）；再组合原计划阳性/实际writer ACK、只读工具、原Task完整Review，4 suites共13PASS/72filterSKIP（36.368s）。原编辑/取消持久保留、工具调用数组仍空、原Model20tokens费用settled、本次local work失败结算，无重复HTTP。三文件定向原插件ESLint和diff check通过。仅本地相关验证，无全仓/Actions/独立审查或SQL/外部真实质量费用/三端证据。
 - 此组是既有writer前竞态修复，不宣称新多轮/Root终结。已claim未执行Effect保守pending，无成功或回滚虚构；精确not-dispatched/reconcile尚需真实证据，不能凭error text重发。继续真实round完成收据、同Root循环及其余全阶段，不在本组停下、不写HANDOFF、不合main。
+
+## 2026-10-16 — W07/P4第六十一组：原Task轮次完成、精确transcript与Host receipt
+
+- Source 5e5e41f53→84bcdc1d7。原Studio runner和Native consumer共用纯对话helper；实际Model响应及私有实际工具返回值确定唯一预期public transcript，随后原Task.finishGeneration只写一次。私有实际返回/reader完成证明核原Task attempt/Source/对话和Model事实，原Run CAS保存project_round及command payload/outcome integrity。原Project Model receipt补json payload hash，其它领域不变；历史reader交叉核原Task conversation prefix、Model/费用、原工具receipts及Host command，不授新执行scope。
+- 原Task ACK saved/missing与Host receipt ACK saved/missing只观察，无第二次writer/HTTP；failed收尾不能覆盖同已消费finish，缺Host事实时Task可completed而Run未完成。raw JSON、复制/过期scope、改transcript和重新hash相关metadata/Task/费用/Model记录拒绝。scope清理后可重建原服务读取事实，未称进程/Engine冷开。当前仍限round=0，未做Graph循环或Root终结。
+- 最初原阳性精选6FAIL（18.871s），原Host controller尚未登记新project.round.finish操作；明确登记后同六项6PASS/46filterSKIP（19.927s）。新receipt阳性六项6PASS/10filterSKIP（17.481s）。完整新suite首跑16PASS/2FAIL（45.519s），两失败只是测试误以为初始Task对话为空，原createTask实际已有user intent；改断言保留f.task.conversation后，仅该两项与原浏览器工具loop/continuation精选合并4PASS/24filterSKIP（6.438s）。最终18个不同case均有通过证据，未声称完整18重跑；十文件定向原插件ESLint最终0输出，先前一处indent已修，diff通过。
+- 无全仓/远端/独立审查、SQL/真实外部费用质量/三端新证据。继续同Root有界Graph循环及其它提案/Review/消费者和P5–P8，不停在本提交、不创建HANDOFF、不合main。

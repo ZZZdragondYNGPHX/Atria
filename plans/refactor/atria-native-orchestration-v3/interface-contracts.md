@@ -1010,3 +1010,11 @@ Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未�
 第六十组修复最后budget await的真实竞态。私有permit验证事务内的合法Task编辑或Run取消先提交，其拒绝Error在事务外抛出；末await后复读原Root及Host fence，不仅复读原Scheduler。实际原Task锁覆盖验证和writer，但在验证通过、事务关闭后才由原writer加载可变Task对象，避免旧对象覆盖同原权威在验证期间写下的新Task。进入writer后仍核原from fingerprint。
 
 不回滚用户编辑/取消、不进入新工具正文writer，原Model费用和失败本地work保留；没有新权限、账本或Domain writer。已claim但未执行的Effect目前保守保留原pending事实，后续精确reconcile不能靠错误文字推断成功或重发。
+
+## 17.71 原Project轮次完成与实际对话证明
+
+第六十一组原Studio runner与Native consumer共用纯对话拼装helper；原Model响应和私有保留的实际原工具返回值生成唯一预期public transcript。原Native finalizer要求同实际generation/Model wrapper/receipt及精确transcript，再只调用一次原Task.finishGeneration；改文、复制/过期scope不能保存为真实完成。原Project Model Host receipt补绑定json resultPayloadHash，未改变其它领域text协议。
+
+原领域完成后，私有真实返回/原reader结果证明交叉核原Task已完成attempt/对话/Source和原Model完成事实，再经原Run CAS保存project_round receipt及精确command payload/outcome integrity，计入原steps。历史reader核原Task generation/append-only conversation prefix、Model payload/snapshot/原费用、全部Tool receipts及同原Host command，返回事实不授下一轮；当前仍明确round=0。
+
+原Task完成ACK或Host CAS ACK未知均只观察；缺精确收据不重复writer/Model，原runner的failed收尾亦不能第二次改写同已消费原finish。原Task可已completed而Host receipt缺失，仍无V3 Root claim。没有同Root多轮或正式Project提交宣称；Graph循环与各出口继续实现。
