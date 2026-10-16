@@ -1044,3 +1044,11 @@
 - Source a90f48f6e → f7767fc21，本地提交未推送。仅新建的 native-live 开发 Plan 按明确单次 timeout × 有限 Model rounds 设置 deadline；当前 Project 为6轮、1800000ms，原运行中 Root/产品限额不变。精确 pins 增加原 atri_agent_resource_closure，读取当前 Source 已引用 World/规则的名称与版本，不放开无关资源库。fixture 只在创建 Project/Task 前设置 Source 依赖，不重写旧 baseRevision。
 - 最初 query_resources 场景未建 Source 依赖，原 projectId 过滤合法返回空，2FAIL；改用原精确依赖闭包与正确原 Source 建模后 FS/SQLite 2/2 PASS（9.951s）。脱敏 summary 仅输出封闭状态、诊断数量与固定区段是否相等，隐私负例1/1 PASS（0.510s）；五文件原 ESLint、staged diff check 通过。
 - 真 Native Project source_probe：11次200，74256 reported tokens、unknown=0。deadline/未授权工具/批次异常消失，但工程检查仍 invariants_failed：一例 get_project+closure 后正文停止，一例经过 set_plan/reset/project_save/prepare_review 仍未有效 Review，另一例 reset/plan 后正文停止。未将失败改成成功或继续无限重试；下一步以脱敏原 Task 状态及多轮修复实证诊断。没有独立质量、价格或自动晋升结论，全部后端仍在实施，未推送/交前端/main。
+
+
+## 2026-10-17 — 第八十七组：原 Project 修复回路与停止事实
+
+- 实现接口 §17.93，Source f7767fc21 → 7b28b24ce，本地提交未推送。修复有限 Project 已停止仍长期显示 running 的问题：只有实际私有 completion 与原已结算费用闭包可写 blocked，不假完成/重发/提交 Project。重复验证已 settled 轮次沿原 durable round/Task/Model/Tool事实，不放宽 ModelPort 的 running 完成证明。
+- 新修复测试最初6轮4FAIL（135.811s），定向诊断1FAIL（38.099s）证实第6轮前已用32 local jobs，5次模型/384950 input bytes；maxJobs64 被原 validator 拒绝（4FAIL、2.465s），已撤回该测试配置，不修改产品预算上限。改为创建 Run 前保存原提案后，真正执行 prepare_review→repair→reset→save→prepare_review 四轮，覆盖修复成功与第二次失败 blocked。中途原 snapshot 不含 commitIntent/原 Source 规范化字段断言已纠正；停止实现曾误用要求 running 的 Model proof，已改为精确 settled 复核，未放宽发送 authority。
+- 最终新修复/原 bounded-loop/原正式 Review positive 三 suites 10PASS/30filterSKIP（165.314s）；新停止 suite 10/10 PASS（38.899s），包括正文停止、round cap、saved/no_save ACK、最后银行 await 中取消保留。evaluator 指纹25/25 PASS（2.016s），六文件原 ESLint/staged diff check 通过。均 localhost合成；没有声称真实质量通过。
+- 为诊断又跑一次真 Provider source_probe，5次200、34219 reported tokens、unknown=0，模型完成 get_project+closure/reset/plan/project_save 后正文停止；worker 报 evaluation_runtime_failed，未取得可确证失败原因，未将其推断为预算或后端通过。停止修复后尚未真 Provider复测。独立资料缺失与其余后端队列保持，继续实施，不交前端/main。

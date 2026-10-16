@@ -1167,3 +1167,10 @@ Result 新增精确 session_task audience，绑定 Run/output node/epoch、原 s
 ## 17.92 Project 原批次合同的模型指引
 
 源码 a90f48f6e 的原 project-tool-contracts 定义唯一 PROJECT_TOOL_BATCH_POLICY：每个响应至多一个 proposal，且只能在所有 read 之后。原执行检查使用同一权威；Context currentness digest 与实际模型 Prompt 读取同一 policy，并只列当前 pins 中的 proposal 名称。模型须等上一个提案的原工具返回后再生成下一提案，不能同响应批量 reset/plan/write。原批次拒绝语义与 Tool/Task/Effect 权限没有扩展。
+
+
+## 17.93 原 Project 已结算轮次的持久阻塞
+
+显式 project_review 图在原 Model/Tool 轮次与全部原费用已闭合、没有待核对 Effect/Approval、没有 Result/Output 时，若模型主动正文停止、达到本 operation 的有限 rounds 或原 Task 已 blocked/conflict，Host 写唯一 project_stop receipt/command/event 并将 Root 标为 blocked。仍未 Review、未 Commit、未授 resume，不重发或重建预算；普通内部 result profile 保持原行为。
+
+判定只来自当前 Scheduler operation 内不可复制的原轮次 completion。已 settled 的 Attempt 使用原 Task/Model/Tool durable round 与 settlement 复核，不把要求 Attempt.running 的 Model completion 放宽为可重用。原对象 payload、Task generation attempt、conversation/fingerprint、原 Source/Binding/Host、原银行都在最终 await 后复读；合法取消/来源撤权先提交再拒本次元数据。Root 的原 limits/费用/进度不回退。ACK未知只观察同一 exact receipt，不重跑 Model/工具/Workspace。Projection 只增加 project_generation_stopped 安全事件，不输出正文或自由 reason。
