@@ -5,6 +5,7 @@ import { ProjectTaskRepository } from '../project-task-repository.js';
 import { NativeProjectAgentExecutor } from '../../project-agent-executor.js';
 import { createSkillRepository } from '../../../skills/repository.js';
 import { projectFixtureSource, seedProjectPilot } from './fixture-source.js';
+import { projectPreservationEvidence } from './project-preservation.js';
 import { NativeGenerationHost } from '../../adapters/generation-host.js';
 import { NativeNarratorOrchestrationAuthority } from '../../orchestration/native-turn-orchestration.js';
 import { RunObservationService } from '../../orchestration/run-observation-service.js';
@@ -218,13 +219,8 @@ export async function runProject(entry, fixture, capture, evaluation) {
             }
             const validated = reviewed.operations.find(item => item.operation.operationType === 'project.save')?.operation.input.source;
             capture.observe('related_proposal', hash(validated ?? null), hash(proposed));
-            const preserved = structuredClone(validated ?? {});
-            if (preserved.package?.entryPoints) for (const edit of fixture.projectEdits) {
-                const target = preserved.package.entryPoints[edit.index], original = currentSource.package.entryPoints[edit.index];
-                if (edit.worldIndex !== undefined) { target.worldIds = structuredClone(original.worldIds); target.primaryWorldId = original.primaryWorldId; }
-                if (edit.bindingIndices) target.knowledgeBindingIds = structuredClone(original.knowledgeBindingIds);
-            }
-            capture.observe('preservation', hash(preserved), hash(currentSource));
+            const preservation = projectPreservationEvidence(currentSource, validated, fixture.projectEdits);
+            capture.observe('preservation', preservation.observed, preservation.expected);
             const previous = await agent.getTask(handle, projectId, prior.taskId);
             capture.observe('no_silent_rebase', { status: previous.status, base: previous.baseRevision, commits: previous.changeSets.length, freshBase: reviewed.baseRevision },
                 { status: 'conflict', base: conflictTask.baseRevision, commits: 0, freshBase: baseRevision });

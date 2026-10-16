@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { projectPreservationEvidence } from './project-preservation.js';
 import { createSkillRepository } from '../../../skills/repository.js';
 import { createGitClient } from '../../../git/client.js';
 import { AssetStore, KnowledgeRepo, ProjectAgentService, ProjectStore, StudioPreviewHost, StudioService, WorldRepo, createNativeId } from '../../../native/index.js';
@@ -368,14 +369,8 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
             capture.observe('no_silent_rebase', { status: previous.status, base: previous.baseRevision, oldWrites: previous.changeSets.length, freshBase: task.baseRevision, writes: modelChangesets },
                 { status: 'conflict', base: priorConflictTask.baseRevision, oldWrites: 0, freshBase: conflictRevision, writes: 0 });
             capture.observe('related_proposal', hash(validatedProposal ?? null), hash(proposed));
-            const preserved = structuredClone(validatedProposal || {});
-            if (preserved.package?.entryPoints) for (const edit of fixture.projectEdits) {
-                const target = preserved.package.entryPoints[edit.index];
-                const original = source.package.entryPoints[edit.index];
-                if (edit.worldIndex !== undefined) { target.worldIds = structuredClone(original.worldIds); target.primaryWorldId = original.primaryWorldId; }
-                if (edit.bindingIndices !== undefined) target.knowledgeBindingIds = structuredClone(original.knowledgeBindingIds);
-            }
-            capture.observe('preservation', hash(preserved), hash(source));
+            const preservation = projectPreservationEvidence(source, validatedProposal, fixture.projectEdits);
+            capture.observe('preservation', preservation.observed, preservation.expected);
             capture.reviewStatus = validations.some(v => v.validation === 'passed') ? 'passed' : 'unavailable';
         } else if (conflict) {
             capture.observe('human_revision', { revision: beforeReviewRevision, name: (await studio.getProject(h.handle, source.project.projectId)).source.project.displayName }, { revision: conflictRevision ?? null, name: 'Fixture human revision' });
