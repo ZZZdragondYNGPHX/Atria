@@ -17,7 +17,9 @@ import { mintNativeBackgroundQuota } from './native-turn-quota.js';
 import { RunControl } from '../run-control.js';
 import { assertResultPolicy } from '../../../public/shared/native-orchestration-contracts.js';
 import { BackgroundTaskOutputController } from './background-task-output-controller.js';
-import { backgroundOutputId, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
+import { backgroundOutputId, backgroundTaskWorkTarget, readBackgroundTaskDelivery, readBackgroundTaskResult, readBackgroundTaskOutput } from './background-task-output-contracts.js';
+import { appraisalEventCurrent } from '../appraisal-authority.js';
+import { performance } from 'node:perf_hooks';
 
 const captures = new WeakMap();
 const fail = code => { throw new ConflictError(code); };
@@ -29,13 +31,15 @@ function pendingTask(snapshot, input) {
     const contract = snapshot.manifest.runtime.experienceContract, task = contract.taskRuntime.tasks.find(item => item.id === input.taskId);
     const variant = task?.variants.find(item => item.id === input.variantId), intent = snapshot.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
     const scope = snapshot.states.atri_lifecycle?.scopes[intent?.scopeId];
+    const appraisal = variant?.resultBinding?.kind === 'cognition.appraise';
     if (!task || !variant || !snapshot.states.atri_lifecycle.ready || !intent || intent.status !== 'pending' || intent.kind !== 'task'
-        || intent.simulation || intent.appraisalEvent || task.executionClass !== 'background' || variant.resultBinding
+        || intent.simulation || Boolean(intent.appraisalEvent) !== appraisal || task.executionClass !== 'background' || variant.resultBinding && !appraisal
         || intent.taskId !== task.id || intent.variantId !== variant.id || scope?.status !== 'active' || scope.epoch !== intent.scopeEpoch
         || !equal(intent.input, input.input) || snapshot.revision.revisionId !== input.revisionId)
         fail('native_orchestration_background_source_stale');
+    if (appraisal && appraisalEventCurrent(snapshot, intent, task, variant).status !== 'current') fail('native_orchestration_background_source_stale');
     assertTaskValue(input.input, task.inputSchema);
-    return { task, variant, intent, slot: contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId), payload: intent.input };
+    return { task, variant, intent, appraisal, slot: contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId), payload: intent.input };
 }
 
 export function inspectNativeBackgroundGenerationIdentity(capture, { host, handle, sessionCore, finalizationBoundary } = {}) {
@@ -62,6 +66,7 @@ export async function inspectNativeBackgroundGeneration(capture, expected) {
 export class NativeBackgroundOrchestrationAuthority {
     #runs = new Map();
     #finalizations = new WeakMap();
+    #taskLanes = new WeakMap();
     constructor({ owner, execution, port, issueScope }) { Object.assign(this, { owner, execution, port, issueScope }); }
     hasRun(runId) { return this.#runs.has(runId); }
     async #select(host, handle, snapshot, input) {
@@ -172,6 +177,7 @@ export class NativeBackgroundOrchestrationAuthority {
             const runId = captures.get(capture)?.runId;
             if (runId) this.#runs.delete(runId);
             if (capture) captures.delete(capture);
+            if (this.#taskLanes.get(captured)?.capture === capture) this.#taskLanes.delete(captured);
         };
         operation.result.then(release, release);
         return operation;
@@ -186,7 +192,7 @@ export class NativeBackgroundOrchestrationAuthority {
         const logicalInputRef = immutable({ kind: 'native_background_intent', sourceBindingDigest: captured.sourceBinding.bindingDigest,
             invocationId: input.invocationId, requestId: request.requestId, role: request.role, taskId: input.taskId, variantId: input.variantId,
             taskDefinitionHash: hash(selected.taskPlan.task), taskResultClass: selected.taskPlan.task.resultPolicy.resultClass,
-            taskResultSink: selected.taskPlan.task.resultPolicy.sink,
+            taskResultSink: selected.taskPlan.task.resultPolicy.sink, taskResultBinding: selected.taskPlan.variant.resultBinding ?? null,
             schedulerOperationId: captures.get(capture).boundary.operationId,
             inputDigest: hash(input.input), intentDigest: hash(selected.taskPlan.intent), configDigest: selected.configDigest,
             planRef: selected.binding.planRef, nodeId: selected.node.nodeId, routePin: selected.pin });
@@ -203,7 +209,7 @@ export class NativeBackgroundOrchestrationAuthority {
             planRef: selected.binding.planRef, sourceRequest: captures.get(capture).sourceRequest,
             retentionPolicyRef: { policyId: 'retain_native_background_until_explicit_release' } })).runId);
         if (root.status !== 'admitted' || root.attemptRefs.length || root.pendingEffectRefs.length) fail('native_orchestration_background_request_replayed');
-        const state = { host, handle, input, selected, capture, request, sourceBinding: captured.sourceBinding, decision };
+        const state = { host, handle, input, selected, capture, request, lanePlan, sourceBinding: captured.sourceBinding, decision };
         captures.get(capture).runId = root.runId;
         this.#runs.set(root.runId, state);
         try {
@@ -232,6 +238,8 @@ export class NativeBackgroundOrchestrationAuthority {
                 taskPurpose: 'original-background-task', grantDigest, inputRefs: [logicalInputRef], tokenBudget: {
                     modelContextLimit: selected.resolved.model.limits.contextTokens, responseReserve: effectiveOutputReserve(selected.resolved) } };
             const limits = selected.resolved.route.executionPolicy.computeBudget, send = await service.generationSend(handle, { runId: root.runId, effectId, limits, quotaProof });
+            state.bank = send.bank; state.limits = limits;
+            if (selected.taskPlan.appraisal) { state.taskWorkPhase = 0; this.#taskLanes.set(lanePlan, state); }
             const compiled = await compileNativeContextMetered({ handle, port, request: contextRequest, bank: send.bank, budgetPort: service.budgetPort, root: await service.runs.get(handle, root.runId),
                 effectId, limits, workDescriptor: { requestId: request.requestId, pathFingerprint: selected.resolved.pathFingerprint }, assertCurrent: () => this.#current(state), signal: captures.get(capture).boundary.signal });
             state.contextPort = port; state.context = compiled.compiled;
@@ -247,7 +255,108 @@ export class NativeBackgroundOrchestrationAuthority {
         } catch (error) { this.#runs.delete(root.runId); throw error; }
     }
 
+    /** Original appraisal parse/adoption work in the real Scheduler finalizer.
+     * The lane object is a private identity; JSON cannot register this bridge. */
+    async runTaskWork({ host, handle, lanePlan, kind, value, operation }) {
+        const state = lanePlan && this.#taskLanes.get(lanePlan);
+        if (!state) return { handled: false };
+        if (state.host !== host || state.handle !== handle || !state.finalizationBoundary
+            || ['appraisal_parse', 'appraisal_adopt'][state.taskWorkPhase] !== kind || typeof operation !== 'function') fail('native_orchestration_background_producer_denied');
+        await this.#current(state, state.finalizationBoundary);
+        const job = state.taskWorkJobs?.[state.taskWorkPhase++];
+        if (!job?.admitted || Buffer.byteLength(JSON.stringify(value)) > job.estimatedInputBytes) fail('native_orchestration_background_producer_denied');
+        const started = performance.now(), cpu = process.cpuUsage(); let outcome = 'failed';
+        try {
+            await this.#current(state, state.finalizationBoundary);
+            const result = await operation(); outcome = 'completed'; return { handled: true, value: result };
+        } finally {
+            const used = process.cpuUsage(cpu);
+            job.usage = { wallMs: performance.now() - started, cpuUserMicros: used.user, cpuSystemMicros: used.system, cpuScope: 'process', outcome };
+        }
+    }
+
     async #finalize(handle, result, receipt, boundary, finalize) {
+        const completion = this.#finalizations.get(result);
+        if (!completion || completion.state.handle !== handle) fail('native_orchestration_background_completion_required');
+        const { state } = completion;
+        state.finalizationBoundary = boundary;
+        let delivered, error;
+        try {
+            try {
+                if (state.selected.taskPlan.appraisal) await this.#prepareTaskWork(completion, result, receipt);
+                delivered = await this.#deliver(handle, result, receipt, boundary, finalize);
+            } catch (cause) { error = cause; }
+            for (const job of state.taskWorkJobs ?? []) if (job.admitted) {
+                const usage = job.usage ?? { wallMs: 0, cpuUserMicros: 0, cpuSystemMicros: 0, cpuScope: 'process', outcome: 'failed' };
+                try { await state.bank.settleLocalWork(job.attemptId, usage); } catch (cause) {
+                    let observed = false;
+                    if (cause.code === 'storage_commit_unknown') {
+                        try {
+                            const { runs, budgetPort } = this.execution();
+                            observed = await runs.engine.withTransaction(handle, async tx => {
+                                const costs = await budgetPort.observeEffectClosure(handle,
+                                    { authorityRef: completion.root.budgetAuthorityRef, effectIds: [state.effectId] }, { tx });
+                                const ref = costs.budgetAttemptRefs.find(ref => ref.kind === 'local_work' && ref.attemptId === job.attemptId);
+                                const row = ref ? await budgetPort.observeAttempt(handle, ref) : null;
+                                return row?.status === 'settled' && equal(row.usage, usage);
+                            });
+                        } catch { /* Missing original settlement stays unknown. */ }
+                    }
+                    if (!observed) { if (error) error.captureError ??= cause; else error = cause; }
+                }
+            }
+            if (error) throw error;
+            if (state.selected.taskPlan.appraisal) await this.#finishTaskMetadata(completion, delivered);
+            return delivered.value;
+        } finally { state.finalizationBoundary = null; this.#finalizations.delete(result); }
+    }
+
+    async #prepareTaskWork({ state, snapshot, root }, result, receipt) {
+        if (this.owner.engine.hasActiveTransaction(state.handle)) fail('native_orchestration_background_producer_denied');
+        const parseBytes = Buffer.byteLength(JSON.stringify(result.generated.response));
+        const adoptBound = Buffer.byteLength(JSON.stringify({ snapshot, generated: result.generated, receipt })) + assertResultPolicy(root.graph.outputContract).maxBytes;
+        state.taskWorkJobs = [];
+        for (const [kind, estimatedInputBytes] of [['appraisal_parse', parseBytes], ['appraisal_adopt', adoptBound]]) {
+            await this.#current(state, state.finalizationBoundary);
+            const job = { kind, estimatedInputBytes, attemptId: state.bank.nextLocalWorkAttemptId(), admitted: false };
+            state.taskWorkJobs.push(job);
+            try {
+                await state.bank.chargeLocalWork(state.limits, { attemptId: job.attemptId, requestId: state.input.invocationId, kind, estimatedItems: 1,
+                    estimatedInputBytes, targetFingerprint: backgroundTaskWorkTarget(state.decision.inputRef, kind) });
+                job.admitted = true;
+            } catch (error) {
+                if (error.code === 'native_orchestration_budget_reconcile_required' && error.budgetObservation?.status === 'charged') job.admitted = true;
+                throw error;
+            }
+        }
+    }
+
+    async #finishTaskMetadata({ state, root: admitted }, delivered) {
+        const { handle } = state, { runId } = admitted, service = this.execution(), { runs } = service;
+        try {
+            const result = await runs.withSourceControl(handle, runId, () => runs.engine.withTransaction(handle, async () => {
+                try {
+                    await new BackgroundTaskOutputController({ ...service, authorize: delivered.authorize }).complete(handle, runId,
+                        { effectId: state.effectId, domainRef: delivered.domainRef });
+                    return {};
+                } catch (error) {
+                    if (error.code === 'native_orchestration_background_completion_stale') return { error };
+                    throw error;
+                }
+            }), { withAuthority: service.sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
+            if (result.error) throw result.error;
+        } catch (error) {
+            if (error.code !== 'storage_commit_unknown') throw error;
+            const saved = await runs.engine.withTransaction(handle, async tx => {
+                const root = await runs.get(handle, runId);
+                await delivered.authorize({ tx, root });
+                return readBackgroundTaskOutput(tx, handle, root);
+            });
+            if (!saved || !equal(saved.claim.domainReceiptRef, delivered.domainRef)) throw error;
+        }
+    }
+
+    async #deliver(handle, result, receipt, boundary, finalize) {
         const completion = this.#finalizations.get(result);
         if (!completion || completion.state.handle !== handle) fail('native_orchestration_background_completion_required');
         const { state, snapshot, root: admitted } = completion, service = this.execution(), { runs } = service;
@@ -256,7 +365,12 @@ export class NativeBackgroundOrchestrationAuthority {
         const authorize = async ({ tx, root }) => {
             inspectNativeBackgroundGenerationIdentity(state.capture, { host: state.host, handle, finalizationBoundary: boundary });
             const fence = await runs.engine.nativeHostLifecycle.assertWriter(handle, tx);
-            const selected = await this.#select(state.host, handle, snapshot, state.input);
+            let selected;
+            try { selected = await this.#select(state.host, handle, snapshot, state.input); } catch (error) {
+                if (['native_orchestration_background_plan_unavailable', 'native_orchestration_background_route_mismatch',
+                    'native_orchestration_background_budget_unavailable'].includes(error.code)) fail('native_orchestration_background_completion_stale');
+                throw error;
+            }
             await this.owner.sessionCore.runs.assert(handle, state.input.sessionId, 'generate');
             const current = await this.owner.sessionCore.observe(handle, state.input.sessionId);
             if (!selected || !equal(selected.binding, state.selected.binding) || selected.configDigest !== state.selected.configDigest
@@ -299,7 +413,7 @@ export class NativeBackgroundOrchestrationAuthority {
                 return { value: finalized };
             }), { withAuthority: service.sourcePort.consumptionBoundary(handle, state.sourceBinding, { engine: runs.engine }) });
             if (outcome.error) throw outcome.error;
-            return outcome.value;
+            return { value: outcome.value, domainRef, authorize };
         } catch (error) {
             if (error.code !== 'storage_commit_unknown' || !domainRef) throw error;
             // Observe the exact original adoption/closure after an unknown ACK.
@@ -316,7 +430,7 @@ export class NativeBackgroundOrchestrationAuthority {
                 });
             } catch { throw error; }
             if (!saved) throw error;
-            return finalized;
-        } finally { this.#finalizations.delete(result); }
+            return { value: finalized, domainRef, authorize };
+        }
     }
 }

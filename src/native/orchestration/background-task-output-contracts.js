@@ -5,7 +5,7 @@ import { assertResultRecord, resultDependencyDigest } from './result-contracts.j
 import { readSessionSnapshot } from '../session-snapshot.js';
 import { readRunControl } from '../run-control.js';
 import { inspectComputeEffectClosure } from '../../../public/shared/native-compute-budget.js';
-import { effectBudgetClosure, sendAttemptId } from './budget-port.js';
+import { effectBudgetClosure, sendAttemptId, localWorkAttemptId } from './budget-port.js';
 import { checkedRecord, readPlanRevision } from './plan-repository.js';
 import { readEffect } from './effect-contracts.js';
 import { readModelCompletionReceipt } from './model-port.js';
@@ -17,6 +17,8 @@ const equal = (a, b) => hash(a) === hash(b);
 const invalid = () => { throw new TypeError('Invalid original background Task output facts'); };
 export const backgroundOutputId = (kind, runId) => (kind === 'result' ? 'oresult_' : kind === 'claim' ? 'oclaim_' : 'oreceipt_')
     + hash({ kind: 'native_background_' + kind, runId }).slice(0, 32);
+export const backgroundTaskWorkTarget = (input, kind) => hash({ taskDefinitionHash: input.taskDefinitionHash, variantId: input.variantId,
+    sourceBindingDigest: input.sourceBindingDigest, kind });
 
 /** Exact original immutable revision/Task record; references grant no execution. */
 export async function readBackgroundTaskDelivery(tx, handle, root, effectId, domainRef) {
@@ -60,12 +62,31 @@ export async function readBackgroundTaskDelivery(tx, handle, root, effectId, dom
         || record.deliveryReceipt?.kind !== 'model_delivery' || record.deliveryReceipt.delivered !== true
         || record.deliveryReceipt.operationId !== input.schedulerOperationId
         || !queued || queued.status !== 'completed' || queued.taskId !== input.taskId || queued.variantId !== input.variantId
-        || queued.simulation || queued.appraisalEvent || hash(queued.input) !== input.inputDigest || hash(record) !== domainRef.recordHash) invalid();
+        || queued.simulation || Boolean(queued.appraisalEvent) !== (input.taskResultBinding?.kind === 'cognition.appraise')
+        || hash(queued.input) !== input.inputDigest || hash(record) !== domainRef.recordHash) invalid();
+    if (input.taskResultBinding) {
+        const binding = input.taskResultBinding, appraisal = record.appraisalEvidence;
+        if (binding.kind !== 'cognition.appraise' || record.authorityReceipt?.decision !== 'cognition.appraise'
+            || !appraisal || appraisal.origin !== 'model' || appraisal.invocationId !== input.invocationId || appraisal.taskId !== input.taskId
+            || appraisal.variantId !== input.variantId || appraisal.profileId !== binding.profile?.id || appraisal.profileRevision !== binding.profile?.revision
+            || appraisal.requestSnapshotHash !== record.requestSnapshotHash || appraisal.modelProfileId !== intent.targetRef.modelProfileId
+            || appraisal.promptId !== record.promptProgramRef?.resourceId || appraisal.promptRevision !== record.promptProgramRef?.revision
+            || appraisal.generationId !== record.generationProfileRef?.resourceId || appraisal.generationRevision !== record.generationProfileRef?.revision
+            || !queued.appraisalEvent.eligible || queued.appraisalEvent.viewId !== binding.viewId || !queued.appraisalEvent.actor) invalid();
+    }
     // The queued intent was frozen before sending; only its terminal status changes.
     if (hash({ ...queued, status: 'pending' }) !== input.intentDigest) invalid();
     const bank = root.budgetAuthorityRef, control = await readRunControl(tx, handle, source.sessionId);
     const compute = control?.operations[bank.operationId]?.compute;
     if (bank.domain !== 'session' || bank.sessionId !== source.sessionId || !compute || !evidence.attempts.length) invalid();
+    if (input.taskResultBinding?.kind === 'cognition.appraise') for (const kind of ['appraisal_parse', 'appraisal_adopt']) {
+        const jobs = compute.localWork?.filter(row => row.orchestration?.effectId === effectId && row.kind === kind) ?? [];
+        const job = jobs[0];
+        if (jobs.length !== 1 || job.requestId !== input.invocationId || job.orchestration.kind !== 'local_work'
+            || job.attemptId !== localWorkAttemptId(effectId, job.orchestration.ordinal) || job.targetFingerprint !== backgroundTaskWorkTarget(input, kind)
+            || job.estimatedInputBytes < Buffer.byteLength(JSON.stringify(record.payload))
+            || job.status === 'settled' && job.usage?.outcome !== 'completed') invalid();
+    }
     for (const [ordinal, send] of evidence.attempts.entries()) {
         const ref = send.budgetAttemptRef, row = compute.attempts.find(item => item.attemptId === ref.attemptId);
         if (!row || ref.effectId !== effectId || ref.providerSendOrdinal !== ordinal || ref.attemptId !== sendAttemptId(effectId, ordinal)

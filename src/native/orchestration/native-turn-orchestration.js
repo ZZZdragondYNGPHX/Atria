@@ -147,6 +147,7 @@ export class NativeNarratorOrchestrationAuthority {
         return this.#background;
     }
     startBackgroundTask(host, handle, input) { return this.#backgroundAuthority().start(host, handle, input); }
+    runBackgroundTaskWork(input) { return this.#backgroundAuthority().runTaskWork(input); }
 
     setModelPort(port) {
         if (!(port instanceof ModelPort) || port.runs !== this.execution.runs) throw new TypeError('Original ModelPort required');

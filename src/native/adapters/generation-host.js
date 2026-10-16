@@ -865,7 +865,7 @@ export class NativeGenerationHost {
             if ((!intent?.simulation && !(appraisal && intent?.appraisalEvent) && !ordinary) || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
                 || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_generation_budget_lane_denied');
             captured.budgetContext = { snapshot, background: true, anchor: { invocationId: intent.invocationId } };
-            if (ordinary) {
+            if (ordinary || appraisal && this.turnOrchestration) {
                 const control = await this.sessionCore.runs.status(handle, input.sessionId);
                 const operation = control?.operations[hashNativeDocument({ lane: 'background', anchor: { invocationId: intent.invocationId } })];
                 // Pending outbox alone is not permission to replay a send after
@@ -876,6 +876,8 @@ export class NativeGenerationHost {
             }
         }
         const appraisalWork = async (kind, value, operation) => {
+            const scoped = await this.turnOrchestration?.runBackgroundTaskWork?.({ host: this, handle, lanePlan: captured, kind, value, operation });
+            if (scoped?.handled) return scoped.value;
             const context = captured.budgetContext;
             const attempt = { attemptId: randomUUID(), requestId: input.invocationId, kind, estimatedItems: 1,
                 estimatedInputBytes: Buffer.byteLength(JSON.stringify(value)), targetFingerprint: hashNativeDocument({ task, variant, anchor, kind }) };
@@ -912,7 +914,7 @@ export class NativeGenerationHost {
         const resources = lanePlan ? [] : await this.executionResources(handle, route, input.sessionId, captured);
         let taskWorker;
         const work = { owner: handle, anchor, kind: ['background', 'maintenance'].includes(task.executionClass) ? 'auxiliary_task' : 'model_task', executionClass: task.executionClass,
-            retry: !ordinaryLifecycle,
+            retry: !(ordinaryLifecycle || appraisal && this.turnOrchestration),
             timeoutMs: executionTimeout(captured, captured.budgetContext?.background ? snapshot.manifest.runtime.experienceContract.generationBudget.backgroundAttempts : undefined),
             resources,
             key: input.sessionId + ':' + (task.queuePolicy === 'latest' ? anchor.branchId + ':' + task.id + ':' + variant.id : input.invocationId),
@@ -947,7 +949,7 @@ export class NativeGenerationHost {
             checkCancellation(signal);
             return work.finalize(result, { kind: 'model_delivery', invocationId: input.invocationId, delivered: true });
         }
-        const original = ordinaryLifecycle && this.turnOrchestration
+        const original = (ordinaryLifecycle || appraisal) && this.turnOrchestration
             ? await this.turnOrchestration.startBackgroundTask(this, handle, { input, snapshot, taskPlan, captured, work }) : null;
         const operation = original ?? nativeTaskScheduler.submit(work);
         evidenceCapture?.append({ type: 'operation.queued', eventId: operation.operationId + '/queued', effectId: operation.operationId, status: 'queued' });
