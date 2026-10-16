@@ -9,7 +9,8 @@ import { projectRuntimeRoute } from '../adapters/project-runtime-route.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { immutable, checkCancellation, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 import { inspectNativeProjectGeneration, prepareNativeProjectReadTool, executeNativeProjectReadTool } from './native-project-generation-authority.js';
-import { readProjectToolDescriptor, assertProjectToolReceipt } from './project-tool-contracts.js';
+import { readProjectToolDescriptor } from './project-tool-contracts.js';
+import { readProjectToolReceipt } from './project-tool-receipts.js';
 import { BudgetPort, localWorkAttemptId } from './budget-port.js';
 import { readEffect } from './effect-contracts.js';
 import { checkedRecord } from './plan-repository.js';
@@ -169,13 +170,8 @@ export class NativeProjectOrchestrationAuthority {
         if (args.intent.actionRef.kind === 'native_project_read') {
             const tool = state.tools?.get(args.intent.effectId);
             if (!tool?.receipt || !equal(tool.observation, args.observation)) fail('native_orchestration_project_tool_proof_required');
-            const task = await state.host.agent._repository.get(args.handle, state.sourceBinding.sourceRef.projectId, state.sourceBinding.sourceRef.taskId);
-            const receipt = task?.attempts.find(item => item.attemptId === tool.input.attemptId)?.calls.find(item => item.callId === tool.input.callId)?.nativeReceipt;
-            assertProjectToolReceipt(receipt);
-            if (!equal(receipt, tool.receipt)) fail('native_orchestration_project_tool_receipt_changed');
-            const row = await BudgetPort.prototype.observeAttempt.call(this.#execution().budgetPort, args.handle, args.intent.budgetAttemptRef);
-            if (row.status !== 'settled' || row.usage?.outcome !== 'completed' || hash(row.usage) !== args.observation.budgetObservationRef.usageHash)
-                fail('native_orchestration_project_tool_budget_required');
+            const fact = await readProjectToolReceipt(args.tx, args.handle, args.root, args.intent.effectId, { projectAgent: state.host.agent });
+            if (!fact || !equal(fact.receipt, tool.receipt) || !equal(fact.observation, args.observation)) fail('native_orchestration_project_tool_receipt_changed');
             return args.observation;
         }
         return this.#port(state.host).verifyObservation(args);

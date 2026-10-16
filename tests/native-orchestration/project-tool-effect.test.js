@@ -5,18 +5,9 @@ import { hashNativeDocument as hash } from '../../src/native/repositories/common
 import { readEffect } from '../../src/native/orchestration/effect-contracts.js';
 import { assertProjectToolReceipt } from '../../src/native/orchestration/project-tool-contracts.js';
 import { runGuard } from '../../src/native/orchestration/controller-common.js';
+import { projectReadResponse as responseBody, configureProjectReadPlan as configurePlan } from './helpers/project-tool-fixture.js';
 
 const harnesses = CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine'].includes(name));
-const responseBody = () => ({ id: 'project-tool-response', status: 'completed',
-    output: [{ id: 'project-tool-item', type: 'function_call', status: 'completed', call_id: 'project-tool-call', name: 'atri_agent_get_project', arguments: '{}' }],
-    usage: { total_tokens: 20, input_tokens: 12, output_tokens: 8 } });
-const configurePlan = async ({ plan, host, task, h }) => {
-    const descriptor = (await host.agent.observeModelContext(h.handle, task.projectId, task.taskId)).tools.find(item => item.function.name === 'atri_agent_get_project');
-    const node = plan.definition.nodes[0]; node.capabilities.push('project.read'); node.dependencyPinIds.push('project.read');
-    plan.definition.capabilityCeiling.push('project.read');
-    plan.dependencyPins.push({ pinId: 'project.read', port: 'tool', resourceRef: { kind: 'project_agent_tool', projectId: task.projectId,
-        taskId: task.taskId, name: 'atri_agent_get_project' }, integrity: hash(descriptor) });
-};
 
 describe.each(harnesses)('$name original Project tool Effect', ({ make }) => {
     test('a pinned read executes once through its own Effect, original bank and durable original Task receipt', async () => {
