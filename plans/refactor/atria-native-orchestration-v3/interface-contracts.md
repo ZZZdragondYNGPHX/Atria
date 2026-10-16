@@ -900,3 +900,11 @@ HandoffReturnReceipt闭集为{schemaVersion,receiptKind:'handoff_return',receipt
 独立原Effect.prepare→原bank rp_output local admission→Effect.ready/claim→原RP writing CAS→原单Chat writer→原RP reconcile→原local实际usage settlement→原Effect.observe。目标/source/原Model receipt/payloadHash/稳定operation均绑定。普通原Narrator请求精确授权这一次assistant append（R2、原domain policy无需额外审批）；不扩至Project/World/其他slot。实际写前必须持有同活scope注册的真实dispatch token及原bank admission，fake/clone/cold/ACK未知不补permit。
 
 Chat ACK未知只reconcile；domain收据ACK未知与Host Effect receipt ACK未知只观察各自稳定事实，不重复Chat。合法Run取消或source改动在最终原bank await提交后拒正文。当前成功output.status=committed只表示原domain提交，Effect receipt可能仍pending；原父Root保持running，无OutputClaim。Graph output traversal/唯一owner Attempt/严格终结继续下一组，不能将该中间状态发布为Run completed。
+
+## 17.56 正式Narrator Result与原Graph output owner接线
+
+第四十六组把chat.output能力移到唯一output owner，agent只保留generation.send及可选delegate。原真实Model completion在同原Run CAS写有界Narrator Result、rp_narration_result publication、producer completed settlement与Root.resultRefs；Audience精确同Run/epoch/Source/control/outputKey/output node/grant，disclosure=same_source_rp_output_only，不能当parent Attempt Result或跨域grant。原parent delegation输入/grant不改，publication历史reader复核原Model与accepted child Result/return闭包。
+
+原Transition.advance沿真实agent→output边消费该ResultRef，写traversal/edge admission、原计数并创建output Attempt，原AttemptController激活后才prepare/claim正式Chat Effect。新Effect属于output Attempt；producer只保留原Model Effect和结果引用。正文scope依旧仅来自活Narrator wrapper，Result历史事实不能恢复执行权。Result/settlement写后故障全组rollback；后续traversal故障保留先前已提交Result和真实费用，不写Chat。
+
+当前domain提交/Host Effect确认已贯通，但output Attempt尚未终结、Root.outputClaims为空，父Root仍running。严格RP OutputClaim/原bank闭包与Root.completed下一组继续；Result/Graph局部通过不核销完整P4或最终Gate。

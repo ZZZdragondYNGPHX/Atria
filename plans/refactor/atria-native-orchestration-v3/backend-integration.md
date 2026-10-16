@@ -118,3 +118,5 @@ P6 只在新消费者闭包准备齐备后清退旧 Single/Spec/Loop/Agenda/Dire
 第四十四组新增内部原RP输出方法与显式rp_narration text policy（接口§17.54），没有新增HTTP。startRp仅prepared metadata，客户端不得直接提交Chat或显示父Run完成。物理writer单独经真实opaque scope验证，Host Effect/OutputClaim接线继续，后端未最终交付。
 
 第四十五组显式rp_narration + chat.output profile会通过原Host Effect和原银行提交正式assistant回复，返回output metadata（接口§17.55）；无需客户端append。committed是domain状态，Effect receipt缺失或父Root仍running不可展示全Run成功；没有新增HTTP，Graph output/Root终结仍在实施。
+
+第四十六组正式RP Result仅授权同Run唯一output owner，原Graph traversal/Attempt先于Chat Effect（接口§17.56）。没有新增Result正文API/通用consumer grant；domain committed仍不等于Root completed，终结claim继续实施。

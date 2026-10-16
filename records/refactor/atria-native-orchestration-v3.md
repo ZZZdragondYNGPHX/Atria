@@ -749,3 +749,11 @@
 - 首lint/加载失败为编辑时漏原authorize分支闭括号，修复后实际两case先失败于缺chat.output发布authority；补纯机制校验后原协议17+真实Host阳性2共19/19 PASS（19.720s）。这些前置失败不计产品通过。扩展Host suite20/20 PASS（28.100s），含真实物理writer看到durable intent/writing/charged后才写、实际child return→父正式回复、claim ACK未知不写、Chat ACK不重写、domain与Host receipt saved/no-save ACK及末bank合法Run取消。
 - 追加live fake/clone/foreign owner/Host/额外payload/过期scope拒，以及原Plan missing policy/foreign slot拒，6PASS；同时原普通RP阳性与Delegate实际producer4PASS，三suite合计10PASS/40filterSKIP（16.913s）。26个不同新case分次通过，不冒称完整26重跑；原协议17已在前轮通过。最终11个变更文件targeted原ESLint0输出，diff check通过。只有localhost合成Provider，无SQL/真实外部费用/完整三端证据。
 - 接口§17.55与同Plan/Record同步；继续Graph output owner Attempt/edge/traversal/严格claim/Root终结，再持续其它领域及P5–P8，不在检查点停工、不刷新HANDOFF、未合main。
+
+## 2026-10-16 — W06/P4第四十六组：正式Narrator Result与Graph output owner
+
+- Source b7b8821a8→8216ac7cf；chat.output移到唯一output owner，原agent只保留Model/delegate；实际prepare先将原Model完成发布为严格同source/Run/epoch/control/outputKey/output node/grant的RP Narrator Result，同原CAS原子写publication、producer settlement与Root.resultRefs。原Result合同增加封闭rp_output audience/disclosure变体，result型child仍只允许parent_attempt，Project未借此开放。
+- 原TransitionController消费真实ResultRef写edge/traversal、创建output Attempt并计原逻辑次数，原AttemptController激活后才派发正式Chat Effect。producer保留原输入/grant与唯一Model Effect，output Attempt拥有正式写Effect；opaque Narrator scope仍只存活同callback。历史reader核原publication/settlement/Model completion/typed source/Audience，原delegated parent另核原inputDigest与accepted child Result/HandoffReturn，不从冷metadata恢复正文scope或send。
+- Graph先接4个阳性PASS/22filterSKIP（14.270s），随后同CAS持久Result后4PASS/22filterSKIP（15.357s）。扩展原Graph/Result/RP组合 **101/101 PASS（50.600s）**：原协议17、Host Effect/Graph32、Result合同52。新增实际owner消费Result/两Attempt与单edge，publication后故障使Result+settlement整组rollback，traversal后故障只回滚该原CAS而保留先前Result/费用；均不写Chat、不二次HTTP。更新旧纯合同“只有result可带policy”断言，明确rp_narration只允许text有界policy，project_review仍拒；不是删除负例。
+- 随后强化历史reader核原Model logical input/Plan/source/narrator audience及原parent return，最终普通/真实delegated parent阳性4PASS/58filterSKIP（15.223s，其中另一suite filter未匹配全跳过）；另准确筛选原child publication usage有/无4PASS/26filterSKIP（16.643s），未把误筛选项计通过；targeted原ESLint0输出，diff check通过。localhost合成Provider；SQL/外部账单/三端本组NOT_RUN。没有新HTTP、用户可传正文grant、Project/World写入或第二银行。
+- 接口§17.56/同Plan/验收/并行入口同步。output Attempt仍running、Root.outputClaims为空；严格RP claim/原bank闭包/Root终结继续下一组，再持续其余P阶段，不停在检查点、不更新HANDOFF、未合main。
