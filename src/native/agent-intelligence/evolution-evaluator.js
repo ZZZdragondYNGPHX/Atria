@@ -17,6 +17,7 @@ export function evolutionEvaluatorRevision() {
     return hash(['evolution-evaluator.js', 'evaluation/worker.js', 'evaluation/sealed-sources.js', 'evaluation/json.js', 'evaluation/worker-bridge.js', 'evaluation/adapters.js', 'evaluation/cases.js', 'evaluation/store.js',
         'evaluation/libraries.js', 'evaluation/loader.js', 'evaluation/quality.js', 'evaluation/pilot-sources.js', 'evaluation/pilot-renewal-sources.js', 'evaluation/pilot-renewal-correction-sources.js', 'evaluation/pilot-continuation-sources.js', 'experience-repository.js', 'experience-service.js', 'evolution-service.js', 'evolution-targets.js', 'evolution-repository.js',
         '../adapters/generation-host.js', '../adapters/http-generation-provider.js', '../project-agent.js', '../skill-invocation.js', '../retrieval-compute.js', '../run-control.js', '../../../public/shared/native-compute-budget.js',
+        '../orchestration/plan-repository.js', '../orchestration/plan-evolution-contracts.js', '../orchestration/authoring-service.js', '../../../public/shared/native-orchestration-contracts.js',
         '../model-prompt-runtime/prompt-compiler.js', '../model-prompt-runtime/route-resolver.js', '../model-prompt-runtime/generation-service.js', '../model-prompt-runtime/execution-utils.js',
         '../model-prompt-runtime/contracts.js', '../model-prompt-runtime/resources.js', '../../skills/repository.js', '../../skills/versions.js',
         '../../../public/scripts/agents/orchestrator/director-runtime.js', '../../../public/scripts/agents/orchestrator/skill-resolution.js',
@@ -205,6 +206,7 @@ export class EvolutionEvaluator {
         return this._evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection);
     }
     async _evaluate(handle, job, configs, settings, signal, fresh, onPair, onTrial, selection) {
+        if (settings.baseline.nativePlan || settings.candidate?.nativePlan) throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' });
         const sourceProbe = selection.mode === 'source_probe', pairedProbe = selection.mode === 'sealed_pair_probe';
         if (!['development', 'promotion'].includes(selection.split) || (pairedProbe
             ? !Number.isSafeInteger(selection.repetitions) || selection.repetitions < 1

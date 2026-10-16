@@ -16,7 +16,8 @@ const direction = target => target.kind === 'skill' ? 'skill' : target.kind.ends
 const ref = item => ({ id: item.id, revision: item.revision, integrity: hash(item) });
 const candidateEntry = (doc, jobId, candidateId) => doc.jobs.find(j => j.id === jobId)?.candidates.find(c => c.candidateId === candidateId);
 const authorityKey = (scope, t) => hash(t.kind === 'skill' ? ['skill', t.scope, t.name] : t.kind.startsWith('workspace-') ? ['workspace', t.bindingSubject]
-    : t.kind === 'project-strategy' ? ['task', scope.projectId, t.taskId] : ['project-prompt', scope.projectId, t.runtimeRouteId]);
+    : t.kind === 'plan-strategy' ? ['native-plan', t.bindingId]
+        : t.kind === 'project-strategy' ? ['task', scope.projectId, t.taskId] : ['project-prompt', scope.projectId, t.runtimeRouteId]);
 
 export class AgentEvolutionService {
     constructor({ host, chatRepo, scheduler = nativeTaskScheduler, evaluator = null, targets = null, now = Date.now, observationOnly = false }) {
@@ -91,6 +92,7 @@ export class AgentEvolutionService {
         if (!experience?.feedback.some(f => f.applicability === 'current')) conflict('agent_evolution_source_required');
         if (input.target.kind === 'project-strategy' && experience.feedback.some(f => f.applicability === 'current' && f.source.id === input.target.taskId)) conflict('agent_evolution_separate_source_task_required');
         const targetPin = hash(await this.targets.capture(handle, input.scope, input.subject, input.target));
+        if (input.mode === 'auto' && input.target.kind === 'plan-strategy') conflict('native_orchestration_evaluation_unavailable');
         if (input.mode === 'auto') {
             const settings = await this.targets.evaluationSettings(handle, input.scope, input.subject, input.target);
             if (settings.rpProfile && settings.rpProfile.mainAgent.nativeRouteRef?.runtimeRouteId !== input.routeId) conflict('agent_evolution_model_route_mismatch');

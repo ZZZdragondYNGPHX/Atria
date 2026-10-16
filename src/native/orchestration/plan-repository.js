@@ -5,6 +5,7 @@ import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { createNativeId, assertNativeId } from '../identity.js';
 import { cloneNativeDocument, hashNativeDocument, putImmutable, putMutable, withNativeResourceWrites } from '../repositories/common.js';
 import { assertPlanDefinition, assertSourceSelector, assertPlanRef, assertDigest, assertCounter, assertObject } from '../../../public/shared/native-orchestration-contracts.js';
+import { assertPlanStrategyTarget, assertPlanEvolutionMetadata, planBindingIdentity, planStrategyField, planDeclarationKey, planEvolutionCommandId } from './plan-evolution-contracts.js';
 
 const key = (kind, handle, fields) => ({ kind, handle, ...fields });
 export const planDefinitionHash = (definition, dependencyPins) => hashNativeDocument({ schemaVersion: 1, definition, dependencyPins });
@@ -222,11 +223,144 @@ export class PlanRepository {
         });
     }
 
+    async #strategySource(tx, handle, target) {
+        assertPlanStrategyTarget(target);
+        const binding = (await checkedRecord(tx, key(K.orchestrationBinding, handle, { bindingId: target.bindingId })))?.doc;
+        if (!binding) throw new NotFoundError('orchestration_binding');
+        assertSourceSelector(binding.sourceSelector);
+        if (binding.bindingId !== target.bindingId || hashNativeDocument(binding.sourceSelector) !== target.bindingId || binding.changedBy?.handle !== handle)
+            throw new TypeError('Invalid native Plan binding identity');
+        await this.authorize({ handle, operation: 'bindings.get', body: { sourceSelector: binding.sourceSelector }, tx });
+        const plan = await this.#revision(tx, handle, target.planRef);
+        if (!plan.definition.nodes.some(node => node.nodeId === target.nodeId)) throw new TypeError('Plan target node is missing');
+        return { binding, plan };
+    }
+
+    async captureStrategy(handle, target) {
+        return this.engine.withTransaction(handle, async tx => {
+            const { binding, plan } = await this.#strategySource(tx, handle, target);
+            if (binding.version !== target.expectedBindingVersion || hashNativeDocument(binding.planRef) !== hashNativeDocument(target.planRef))
+                throw new ConflictError('native_orchestration_evolution_binding_stale');
+            const { doc } = await this.#root(tx, key(K.orchestrationPlan, handle, { planId: target.planRef.planId }));
+            const declaration = doc.evolution?.declarations.find(item => planDeclarationKey(item.target) === planDeclarationKey(target)) ?? null;
+            const report = await this.#validate(handle, tx, { ...doc, definition: plan.definition, dependencyPins: plan.dependencyPins, definitionHash: plan.definitionHash });
+            if (report.status !== 'valid') throw new ConflictError('native_orchestration_evolution_dependency_stale');
+            return { target: cloneNativeDocument(target), base: planBindingIdentity(binding), declaration,
+                body: plan.definition.limits[planStrategyField(target)], field: target.fieldPath, mechanismDigest: report.dependencyDigest };
+        });
+    }
+
+    async strategyBinding(handle, target) {
+        return this.engine.withTransaction(handle, async tx => planBindingIdentity((await this.#strategySource(tx, handle, target)).binding));
+    }
+
+    async declareStrategy(handle, target) {
+        const capture = await this.captureStrategy(handle, target), commandId = planEvolutionCommandId('declare', hashNativeDocument(target));
+        return this.#command(handle, commandId, 'plans.evolution.declare', { target }, [target.planRef.planId], async (tx, { target }) => {
+            const current = await this.captureStrategy(handle, target);
+            if (hashNativeDocument(current.base) !== hashNativeDocument(capture.base)) throw new ConflictError('native_orchestration_evolution_binding_stale');
+            const resourceKey = key(K.orchestrationPlan, handle, { planId: target.planRef.planId }), record = await this.#root(tx, resourceKey);
+            const declaration = { target, binding: current.base }, evolution = cloneNativeDocument(record.doc.evolution ?? { declarations: [], candidates: [] });
+            evolution.declarations = [...evolution.declarations.filter(item => planDeclarationKey(item.target) !== planDeclarationKey(target)), declaration];
+            assertPlanEvolutionMetadata(evolution);
+            await putMutable(tx, resourceKey, { ...record.doc, evolution }, { expectedIntegrity: record.integrity }); return declaration;
+        });
+    }
+
+    async prepareStrategy(handle, target, value) {
+        const capture = await this.captureStrategy(handle, target), field = planStrategyField(target);
+        assertCounter(value, 'candidate limit', ['maxSteps', 'maxAttempts', 'deadlineMs'].includes(field) ? 1 : 0);
+        if (value >= capture.body || hashNativeDocument(capture.declaration) !== hashNativeDocument({ target, binding: capture.base }))
+            throw new ConflictError('native_orchestration_evolution_declaration_required');
+        const seed = { schemaVersion: 1, target, baseBinding: capture.base,
+            diff: { field: target.fieldPath, before: capture.body, after: value }, declarationDigest: hashNativeDocument(capture.declaration) };
+        const candidateId = hashNativeDocument(seed), commandId = planEvolutionCommandId('prepare', candidateId);
+        return this.#command(handle, commandId, 'plans.evolution.prepare', { target, value }, [target.planRef.planId], async (tx) => {
+            const current = await this.captureStrategy(handle, target);
+            if (hashNativeDocument(current) !== hashNativeDocument(capture)) throw new ConflictError('native_orchestration_evolution_binding_stale');
+            const resourceKey = key(K.orchestrationPlan, handle, { planId: target.planRef.planId }), record = await this.#root(tx, resourceKey);
+            const base = await this.#revision(tx, handle, target.planRef), definition = cloneNativeDocument(base.definition);
+            definition.limits[field] = value;
+            const definitionHash = planDefinitionHash(definition, base.dependencyPins), planRevisionId = 'oprev_' + candidateId.slice(0, 32);
+            const report = await this.#validate(handle, tx, { ...record.doc, definition, dependencyPins: base.dependencyPins, definitionHash });
+            if (report.status !== 'valid') throw new ConflictError('native_orchestration_validation_stale');
+            const revision = { schemaVersion: 1, planId: base.planId, planRevisionId, definition, dependencyPins: base.dependencyPins,
+                definitionHash, authorRef: { handle }, validationDigest: validationDigest(report), publishedAt: this.now() };
+            const candidate = { ...seed, candidateId, planRef: { planId: base.planId, planRevisionId, definitionHash } };
+            const evolution = { ...record.doc.evolution, candidates: [...record.doc.evolution.candidates, candidate] };
+            assertPlanEvolutionMetadata(evolution);
+            await putImmutable(tx, key(K.orchestrationRevision, handle, { planId: base.planId, planRevisionId }), revision);
+            await putMutable(tx, resourceKey, { ...record.doc, evolution }, { expectedIntegrity: record.integrity }); return candidate;
+        });
+    }
+
+    async checkStrategy(handle, target, candidateId, { rollback = false } = {}) {
+        return this.engine.withTransaction(handle, async tx => {
+            const { binding, plan } = await this.#strategySource(tx, handle, target);
+            const record = await this.#root(tx, key(K.orchestrationPlan, handle, { planId: target.planRef.planId }));
+            const candidate = record.doc.evolution?.candidates.find(item => item.candidateId === candidateId);
+            if (!candidate || hashNativeDocument(candidate.target) !== hashNativeDocument(target)) throw new NotFoundError('orchestration_plan_candidate');
+            const declaration = record.doc.evolution.declarations.find(item => planDeclarationKey(item.target) === planDeclarationKey(target));
+            if (!rollback && hashNativeDocument(declaration ?? null) !== candidate.declarationDigest) throw new ConflictError('native_orchestration_evolution_declaration_required');
+            const expected = cloneNativeDocument(plan.definition); expected.limits[planStrategyField(target)] = candidate.diff.after;
+            const revision = await this.#revision(tx, handle, candidate.planRef);
+            if (!rollback) {
+                const report = await this.#validate(handle, tx, { ...record.doc, definition: revision.definition, dependencyPins: revision.dependencyPins, definitionHash: revision.definitionHash });
+                if (report.status !== 'valid') throw new ConflictError('native_orchestration_evolution_dependency_stale');
+            }
+            if (candidate.diff.before !== plan.definition.limits[planStrategyField(target)]
+                || hashNativeDocument(expected) !== hashNativeDocument(revision.definition)
+                || hashNativeDocument(plan.dependencyPins) !== hashNativeDocument(revision.dependencyPins)
+                || hashNativeDocument(candidate.baseBinding) !== hashNativeDocument({ ...planBindingIdentity(binding), planRef: target.planRef, version: target.expectedBindingVersion }))
+                throw new TypeError('Invalid native Plan candidate closure');
+            const base = candidate.baseBinding, desired = { ...base, planRef: candidate.planRef, version: base.version + 1 }, current = planBindingIdentity(binding);
+            const rolledBack = (await checkedRecord(tx, key(K.orchestrationCommand, handle, { commandId: planEvolutionCommandId('rollback', candidateId) })))?.doc;
+            const ownedRollback = rolledBack?.operation === 'bindings.save' && rolledBack.payloadHash === hashNativeDocument({ operation: 'bindings.save', body: {
+                sourceSelector: base.sourceSelector, planRef: base.planRef, expectedVersion: desired.version } })
+                && hashNativeDocument(planBindingIdentity(rolledBack.outcome)) === hashNativeDocument(current);
+            if (![hashNativeDocument(base), hashNativeDocument(desired)].includes(hashNativeDocument(current)) && !ownedRollback)
+                throw new ConflictError('native_orchestration_evolution_binding_stale');
+            return { candidate, base, desired, previous: base, actual: ownedRollback ? base : current, rolledBack: Boolean(ownedRollback) };
+        });
+    }
+
+    async writeStrategy(handle, target, candidateId, { rollback = false, beforeCommit = async () => {} } = {}) {
+        return withRuntimeWrite(handle, async () => {
+            const checked = await this.checkStrategy(handle, target, candidateId, { rollback });
+            if (checked.rolledBack && !rollback) throw new ConflictError('native_orchestration_evolution_candidate_consumed');
+            const expected = rollback ? checked.desired : checked.base, desired = rollback ? checked.base : checked.desired;
+            if (hashNativeDocument(checked.actual) === hashNativeDocument(desired)) return checked;
+            // The original Evolution journal accepts its publication gate
+            // before the bounded original Binding CAS; it is not a new grant.
+            await beforeCommit();
+            const current = await this.checkStrategy(handle, target, candidateId, { rollback });
+            if (hashNativeDocument(current.actual) !== hashNativeDocument(expected)) throw new ConflictError('native_orchestration_evolution_binding_stale');
+            return this.saveBinding(handle, planEvolutionCommandId(rollback ? 'rollback' : 'apply', candidateId), {
+                sourceSelector: expected.sourceSelector, planRef: desired.planRef, expectedVersion: expected.version });
+        });
+    }
+
+    async discardStrategy(handle, target, candidateId) {
+        await this.strategyBinding(handle, target);
+        // Published immutable revisions remain original history/GC roots.
+        // Discard only removes future eligibility, never deletes a Run's Plan.
+        return this.#command(handle, planEvolutionCommandId('discard', candidateId), 'plans.evolution.discard', { target, candidateId }, [target.planRef.planId], async tx => {
+            await this.#strategySource(tx, handle, target);
+            const current = await this.checkStrategy(handle, target, candidateId, { rollback: true });
+            if (hashNativeDocument(current.actual) === hashNativeDocument(current.desired)) throw new ConflictError('native_orchestration_evolution_candidate_active');
+            const resourceKey = key(K.orchestrationPlan, handle, { planId: target.planRef.planId }), record = await this.#root(tx, resourceKey);
+            const evolution = { ...record.doc.evolution, candidates: record.doc.evolution.candidates.filter(item => item.candidateId !== candidateId) };
+            await putMutable(tx, resourceKey, { ...record.doc, evolution }, { expectedIntegrity: record.integrity }); return { discarded: true };
+        });
+    }
+
     async #root(tx, resourceKey) {
         const record = await checkedRecord(tx, resourceKey);
         if (!record) throw new NotFoundError('orchestration_plan');
         const root = record.doc;
-        assertObject(root, ['schemaVersion', 'planId', 'ownerRef', 'draftVersion', 'basePlanRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'currentPlanRevisionId', 'viewState', 'archived', 'createdAt', 'updatedAt'], 'PlanRoot');
+        assertObject(root, ['schemaVersion', 'planId', 'ownerRef', 'draftVersion', 'basePlanRevisionId', 'definition', 'dependencyPins', 'definitionHash', 'currentPlanRevisionId', 'viewState', 'archived', 'createdAt', 'updatedAt',
+            ...Object.hasOwn(root, 'evolution') ? ['evolution'] : []], 'PlanRoot');
+        if (Object.hasOwn(root, 'evolution')) assertPlanEvolutionMetadata(root.evolution);
         assertObject(root.ownerRef, ['handle'], 'ownerRef');
         if (typeof root.archived !== 'boolean') throw new TypeError('PlanRoot.archived must be boolean');
         for (const field of ['createdAt', 'updatedAt']) assertCounter(root[field], field);
