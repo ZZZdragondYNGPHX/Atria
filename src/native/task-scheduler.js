@@ -6,7 +6,24 @@ import { hashNativeDocument } from './repositories/common.js';
 const terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
 const failure = code => Object.assign(new Error(code), { code });
 const boundaries = new WeakMap();
+const finalizationBoundaries = new WeakMap();
 const resourceSet = resources => [...new Set(resources)].sort();
+
+function assertOperationFrame(scheduler, boundary, captured, expected, statuses) {
+    const operation = captured?.operation, fields = ['owner', 'anchor', 'kind', 'executionClass', 'key', 'fingerprint', 'resources'];
+    if (!captured || captured.scheduler !== scheduler || !expected || Object.keys(expected).some(key => !fields.includes(key))
+        || fields.some(key => !Object.hasOwn(expected, key)) || !Array.isArray(expected.resources)
+        || expected.resources.some(value => typeof value !== 'string') || scheduler.operations.get(operation.view.operationId) !== operation
+        || !scheduler.running.has(operation) || !statuses.includes(operation.view.status) || operation.view.attempt !== captured.attempt
+        || !operation.controller || operation.controller.signal !== boundary.signal || boundary.signal.aborted
+        || operation.owner !== expected.owner || operation.view.kind !== expected.kind || operation.view.executionClass !== expected.executionClass
+        || operation.key !== expected.key || operation.fingerprint !== expected.fingerprint
+        || hashNativeDocument(operation.view.anchor) !== hashNativeDocument(expected.anchor)
+        || hashNativeDocument(resourceSet(operation.resources)) !== hashNativeDocument(resourceSet(expected.resources))) throw failure('operation_boundary_denied');
+    return Object.freeze({ ...immutable({ operationId: operation.view.operationId, owner: operation.owner,
+        anchor: operation.view.anchor, kind: operation.view.kind, executionClass: operation.view.executionClass,
+        key: operation.key, fingerprint: operation.fingerprint, resources: resourceSet(operation.resources), attempt: captured.attempt }), signal: boundary.signal });
+}
 
 // Host-only transient projection. Session records are published by SessionCore.
 // Workers that ignore abort retain their permits until they actually settle.
@@ -27,21 +44,16 @@ export class NativeTaskScheduler {
             && ['turn_blocking', 'interactive'].includes(item.view.executionClass));
     }
     assertActiveBoundary(boundary, expected) {
-        const captured = boundaries.get(boundary), operation = captured?.operation;
-        const fields = ['owner', 'anchor', 'kind', 'executionClass', 'key', 'fingerprint', 'resources'];
-        if (!captured || captured.scheduler !== this || !expected || Object.keys(expected).some(key => !fields.includes(key))
-            || fields.some(key => !Object.hasOwn(expected, key)) || !Array.isArray(expected.resources)
-            || expected.resources.some(value => typeof value !== 'string')
-            || this.operations.get(operation.view.operationId) !== operation || !this.running.has(operation)
-            || !['running', 'streaming'].includes(operation.view.status) || operation.view.attempt !== captured.attempt
-            || !operation.controller || operation.controller.signal !== boundary.signal || boundary.signal.aborted
-            || operation.owner !== expected.owner || operation.view.kind !== expected.kind
-            || operation.view.executionClass !== expected.executionClass || operation.key !== expected.key
-            || operation.fingerprint !== expected.fingerprint || hashNativeDocument(operation.view.anchor) !== hashNativeDocument(expected.anchor)
-            || hashNativeDocument(resourceSet(operation.resources)) !== hashNativeDocument(resourceSet(expected.resources))) throw failure('operation_boundary_denied');
-        return Object.freeze({ ...immutable({ operationId: operation.view.operationId, owner: operation.owner,
-            anchor: operation.view.anchor, kind: operation.view.kind, executionClass: operation.view.executionClass,
-            key: operation.key, fingerprint: operation.fingerprint, resources: resourceSet(operation.resources), attempt: captured.attempt }), signal: boundary.signal });
+        return assertOperationFrame(this, boundary, boundaries.get(boundary), expected, ['running', 'streaming']);
+    }
+
+    /** Output finalization only. It cannot validate a running-generation boundary. */
+    assertFinalizationBoundary(capture, executionBoundary, expected) {
+        const finalized = finalizationBoundaries.get(capture), execution = boundaries.get(executionBoundary);
+        if (!finalized || finalized.scheduler !== this || finalized.executionBoundary !== executionBoundary
+            || !execution || execution.scheduler !== this || finalized.operation !== execution.operation || finalized.attempt !== execution.attempt)
+            throw failure('operation_finalization_boundary_denied');
+        try { return assertOperationFrame(this, executionBoundary, execution, expected, ['finalizing']); } catch (error) { if (error.code === 'operation_boundary_denied') throw failure('operation_finalization_boundary_denied'); throw error; }
     }
     /** Scheduling only: the domain must authorize its durable child before calling. */
     async withResourceHandoff(boundary, expected, child) {
@@ -161,7 +173,7 @@ export class NativeTaskScheduler {
             if (controller.signal.aborted) throw failure('operation_cancelled');
         };
         try {
-            let output;
+            let output, executionBoundary;
             for (let attempt = 0; ; attempt++) {
                 await check(); view.status = 'running'; view.attempt = attempt;
                 try {
@@ -172,6 +184,7 @@ export class NativeTaskScheduler {
                         try { operation.onChunk?.(immutable({ ...chunk, operationId: view.operationId, provisional: true, attempt })); } catch { /* Observer only. */ }
                     } });
                     boundaries.set(boundary, { scheduler: this, operation, attempt });
+                    executionBoundary = boundary;
                     output = await operation.run(boundary);
                     break;
                 } catch (error) {
@@ -189,7 +202,10 @@ export class NativeTaskScheduler {
             view.deliveryReceipt = { kind: 'model_delivery', operationId: view.operationId, delivered: true };
             // Commit is an uninterruptible CAS boundary. Cancel never claims to undo it.
             view.status = 'finalizing'; clearTimeout(timer);
-            const result = await operation.finalize(output, view.deliveryReceipt);
+            const finalizationBoundary = Object.freeze({});
+            finalizationBoundaries.set(finalizationBoundary, { scheduler: this, operation, executionBoundary, attempt: view.attempt });
+            let result;
+            try { result = await operation.finalize(output, view.deliveryReceipt, finalizationBoundary); } finally { finalizationBoundaries.delete(finalizationBoundary); }
             // Optional owner-scoped observations share this operation's bounded
             // retention. No second journal, persistent result or implicit retry.
             if (operation.projectResult) try {
