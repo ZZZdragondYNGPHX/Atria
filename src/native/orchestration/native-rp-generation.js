@@ -601,13 +601,18 @@ export class NativeRpOrchestrationAuthority {
         return args.intent.effectId === state.outputEffectId ? state.outputPort.verifyObservation(args) : this.#port(state.host).verifyObservation(args);
     }
 
-    async start(host, handle, value, { signal } = {}) {
+    #input(value) {
         fields(value, ['controlId', 'floor', 'requestId', 'routeRef'], 'RP generation');
         assertNativeId(value.controlId, 'rpControl');
         fields(value.routeRef, ['scope', 'runtimeRouteId'], 'RP route');
         if (value.routeRef.scope !== 'player' || !Number.isSafeInteger(value.floor) || value.floor < 0
             || typeof value.requestId !== 'string' || !/^[a-zA-Z0-9_.:-]{1,128}$/.test(value.requestId)) fail();
-        const input = immutable(value), selected = await this.#selection(host, handle, input), control = this.owner.rpControl;
+        return immutable(value);
+    }
+
+    async #review(host, handle, input, { requireOutput = false } = {}) {
+        const selected = await this.#selection(host, handle, input), control = this.owner.rpControl;
+        if (requireOutput && selected.plan.definition.outputContract.kind !== 'rp_narration') fail('native_orchestration_rp_output_unavailable');
         const current = await RpRunControl.prototype.status.call(control, handle, input.controlId);
         const chat = await ChatRepo.prototype.get.call(control._chatRepo, handle, current.locator.charDir, current.locator.name, current.locator);
         const message = chat?.body[input.floor];
@@ -615,12 +620,40 @@ export class NativeRpOrchestrationAuthority {
         const sourceRequest = { domain: 'rp_chat', controlId: input.controlId, source: {
             input: rpOperationInput(message, input.floor), purpose: 'narration', outputSlot: 'assistant' } };
         const context = await RpRunControl.prototype.context.call(control, handle, input.controlId, sourceRequest.source);
+        const review = immutable({ schemaVersion: 1, hostBootId: this.owner.engine.nativeHostLifecycle.hostBootId,
+            input, sourceDigest: context.prefixDigest, bindingRef: { bindingId: selected.binding.bindingId, version: selected.binding.version },
+            planRef: selected.binding.planRef, configurationFingerprint: hash({ parent: selected.configDigest, child: selected.child?.configDigest ?? null }),
+            budget: selected.resolved.route.executionPolicy.computeBudget,
+            childBudget: selected.child?.resolved.route.executionPolicy.computeBudget ?? null,
+            effects: ['explicit_paid_model_generation', 'original_rp_assistant_output'], outputContract: selected.plan.definition.outputContract });
+        return { selected, control, sourceRequest, context, review };
+    }
+
+    async preflight(host, handle, value) {
+        return (await this.#review(host, handle, this.#input(value), { requireOutput: true })).review;
+    }
+
+    async start(host, handle, value, { signal, expectedPreflightFingerprint } = {}) {
+        const input = this.#input(value), key = 'rp:' + input.controlId + ':' + input.requestId;
+        if (expectedPreflightFingerprint !== undefined) {
+            if (typeof expectedPreflightFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(expectedPreflightFingerprint)) fail('native_orchestration_rp_review_required');
+            // A known original operation is observation-only, including after
+            // output has advanced the chat. It cannot mint another send scope.
+            for (const operation of this.scheduler.operations.values()) if (operation.owner === handle && operation.key === key) {
+                await this.#plans().getBinding(handle, { domain: 'rp_chat', controlId: input.controlId });
+                if (operation.fingerprint !== hash(input) || operation.rpReviewFingerprint !== expectedPreflightFingerprint) fail('native_orchestration_rp_request_conflict');
+                return operation.handle ?? Object.freeze({ operationId: operation.view.operationId });
+            }
+        }
+        const { selected, control, sourceRequest, context, review } = await this.#review(host, handle, input, { requireOutput: expectedPreflightFingerprint !== undefined });
+        if (expectedPreflightFingerprint !== undefined && expectedPreflightFingerprint !== hash(review)) fail('native_orchestration_rp_review_stale');
         const request = immutable({ requestId: input.requestId, role: 'narrator', routeRef: input.routeRef });
         const resources = [...new Set([...await host.executionResources(handle, selected.resolved.route),
             ...(selected.child ? await host.executionResources(handle, selected.child.resolved.route) : []), 'rp:' + handle + ':' + input.controlId])];
         const expected = immutable({ owner: handle, anchor: { controlId: input.controlId, prefixDigest: context.prefixDigest }, kind: 'model_task',
-            executionClass: 'interactive', resources, key: 'rp:' + input.controlId + ':' + input.requestId, fingerprint: hash(input) });
-        return this.scheduler.submit({ ...expected, retry: false, signal, retainResult: true,
+            executionClass: 'interactive', resources, key, fingerprint: hash(input) });
+        const submitted = this.scheduler.submit({ ...expected, retry: false, signal, retainResult: false,
+            projectResult: result => ({ runId: result.runId, effectId: result.effectId, output: result.output ?? null }),
             timeoutMs: selected.resolved.route.policy.timeoutMs, fresh: async () => {
                 const now = await RpRunControl.prototype.context.call(control, handle, input.controlId, sourceRequest.source);
                 return now.prefixDigest === context.prefixDigest;
@@ -633,6 +666,10 @@ export class NativeRpOrchestrationAuthority {
                         : await this.#generate({ host, handle, input, selected, capture });
                 } finally { captures.delete(capture); }
             }, finalize: result => result });
+        const operation = this.scheduler.operations.get(submitted.operationId), fingerprint = hash(review);
+        if (operation.rpReviewFingerprint !== undefined && operation.rpReviewFingerprint !== fingerprint) fail('native_orchestration_rp_request_conflict');
+        operation.rpReviewFingerprint = fingerprint;
+        return submitted;
     }
 
     async #delegate(state) {

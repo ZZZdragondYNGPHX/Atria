@@ -164,6 +164,11 @@ export class NativeGenerationHost {
         return this.turnOrchestration.startRp(this, handle, input, options);
     }
 
+    preflightRp(handle, input) {
+        if (!this.turnOrchestration) fail('native_orchestration_rp_authority_unavailable');
+        return this.turnOrchestration.preflightRp(this, handle, input);
+    }
+
     // The capture is minted by the server's prediction authority. Request JSON
     // cannot grant a context, and this path has no Session publication callback.
     async executePrediction(handle, input, capture, signal) {

@@ -58,6 +58,8 @@ import { mountMcpMediaAssets } from '../native/mcp-media-assets.js';
 import { hashNativeDocument } from '../native/repositories/common.js';
 import { RpEvidenceCaptureService } from '../native/agent-intelligence/rp-capture-service.js';
 import { recycleNativeResource } from '../storage/center-instance.js';
+import { assertObject } from '../../public/shared/native-orchestration-contracts.js';
+import { RpRunControl } from '../native/rp-run-control.js';
 
 function generationFailure(error, fallback = 'native_generation_failed') {
     const code = error.code === 'native_processing_failed' || ['storage_commit_unknown', 'storage_read_only'].includes(error.code)
@@ -524,6 +526,45 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
     router.get('/operations/:id', (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(nativeTaskScheduler.project(req.user.profile.handle, req.params.id)); } catch { res.sendStatus(404); }
+    });
+    router.post('/rp/preflight', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle || req.user.profile.enabled === false) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            const review = await getHost().preflightRp(handle, req.body);
+            res.set('X-Atria-Preflight-Fingerprint', hashNativeDocument(review)); res.json(review);
+        } catch (error) { const { status, code } = generationFailure(error); res.status(status).json({ error: code }); }
+    });
+    router.post('/rp/source', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle || req.user.profile.enabled === false) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            assertObject(req.body, ['locator', 'expectedHostBootId'], 'RP source identity');
+            const host = getHost(), hostBootId = host.persistence._engine.nativeHostLifecycle.hostBootId;
+            if (req.body.expectedHostBootId !== hostBootId || req.get('X-Atria-Host-Boot-Id') !== hostBootId)
+                return res.status(409).json({ error: 'native_orchestration_host_changed', hostBootId });
+            const control = host.turnOrchestration?.rpControl;
+            if (!(control instanceof RpRunControl) || control._engine !== host.persistence._engine)
+                throw Object.assign(new Error('Original RP source authority required'), { code: 'native_orchestration_rp_authority_unavailable' });
+            res.json({ ...await control.bind(handle, req.body.locator), hostBootId });
+        } catch (error) { const { status, code } = generationFailure(error); res.status(status).json({ error: code }); }
+    });
+    router.post('/rp/start', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle || req.user.profile.enabled === false) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try {
+            assertObject(req.body, ['input', 'expectedPreflightFingerprint', 'expectedHostBootId'], 'RP reviewed start');
+            const host = getHost(), hostBootId = host.persistence._engine.nativeHostLifecycle.hostBootId;
+            if (req.body.expectedHostBootId !== hostBootId || req.get('X-Atria-Host-Boot-Id') !== hostBootId)
+                return res.status(409).json({ error: 'native_orchestration_host_changed', hostBootId });
+            if (typeof req.body.expectedPreflightFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(req.body.expectedPreflightFingerprint))
+                throw new TypeError('Exact RP preflight required');
+            const operation = await host.startRp(handle, req.body.input, { expectedPreflightFingerprint: req.body.expectedPreflightFingerprint });
+            res.status(202).json({ operationId: operation.operationId, hostBootId });
+        } catch (error) { const { status, code } = generationFailure(error); res.status(status).json({ error: code }); }
     });
     router.get('/operations/:id/result', (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);

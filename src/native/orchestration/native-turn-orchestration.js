@@ -117,6 +117,7 @@ export class NativeNarratorOrchestrationAuthority {
     }
 
     startRp(host, handle, input, options) { return this.#rpAuthority().start(host, handle, input, options); }
+    preflightRp(host, handle, input) { return this.#rpAuthority().preflight(host, handle, input); }
     authorizeTaskLocalOutput(args) { return this.#rpAuthority().authorizeTaskLocalOutput(args); }
     authorizeRpReturn(args) { return this.#rpAuthority().authorizeRpReturn(args); }
     authorizeRpOutputCompletion(args) { return this.#rpAuthority().authorizeRpOutputCompletion(args); }
