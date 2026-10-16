@@ -1092,3 +1092,9 @@
 - 首批正向FS/SQLite 2/2 PASS（19.462s）；扩展首轮10PASS/2FAIL/2filterSKIP（106.147s），两FAIL是错误假定原receipt有rejected计数，按原decisions数组修正。复制lane/非finalizer/重复parse阶段加入后16/16 PASS（141.355s）。自检发现若在领域事务内收费会随rollback丢失实际本地工作，已改为事务外持久准入/实际结算，先Actor+Result、后费用闭包/OutputClaim；不改原32 job硬上限。
 - 事务外收费首批正向/Domain ACK/回滚8PASS/10filterSKIP（76.908s）；新settlement ACK四参数PASS，headroom两参数初版错误取7（实际五个Model/Context工作加两个finalizer刚好可执行），改6后2PASS/22filterSKIP（17.802s）。最终24/24 PASS（222.133s），含Actor撤权、uncited候选原域拒绝、usage unknown、取消后保留已采纳状态、saved/no_save领域与费用 ACK、publication回滚仍留CPU费用、有限准入拒绝不重发。
 - 原普通后台两个完整 suites36/36 PASS（213.867s）；事务外生命周期改动后再与指纹跑三个 suites62/62 PASS（220.256s，指纹26）。最新reader新增原 parse/adopt target/ID/usage 行证明及诚实重hash缺行/外来/失败记录拒绝后，相关 appraisal正向/ACK/回滚12PASS/12filterSKIP（111.145s）。六文件原ESLint、staged diff check通过。Provider都是localhost合成；没有真实Actor语义质量、价格或自动晋升结论，完整后端Gate仍NOT_READY，未交前端/main。
+
+## 2026-10-17 — 第九十四组：同 Session 的 Task 与 Narrator Plan 共存
+
+- Source e6b1da4fc → 1e1281224，本地提交，未推送；接口 §17.98。复用原 Binding/Source inspector，native_session 可加 exact Task/variant；未知或扩权字段拒绝。修正后台入口回退曾生成 sessionId:null 的无效 selector，所有层级均限定当前 Session。Task sourceRequest 与 Context capture 同值，原 sourceRef/银行/运行权威不变。
+- 新 suite 首轮4FAIL（5.24s），原 assertObject 的字段表会同时强制字段存在；已改为显式可选 taskRef，未改变旧 selector 的 canonical identity。修正后4/4 PASS（43.210s）。补 Task 入口/Session default 与 generic 入口优先级后，与原 Binding HTTP、Source锁顺序、Run HTTP、evaluator 指纹五个完整 suites88/88 PASS（100.734s，其中新 suite6项、指纹26项）。真实原 appraisal 与 typed Narrator 在同一 Session 各完成不同 Root/Plan，generic 列表含两者，Task selector只含自身。
+- 来源字段改动后的普通后台采纳、saved/no_save ACK、HTTP中 Binding/scope撤权、同事务撤权和Actor撤权三个 suites精选18PASS/42filterSKIP（139.937s）。七文件原 ESLint及最后新增参数化测试lint、staged diff check通过。均localhost合成，未新增真实Provider调用或独立质量/价格结论；继续 Simulation及其余后端，不交前端/main。

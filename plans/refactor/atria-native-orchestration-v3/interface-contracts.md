@@ -1204,3 +1204,9 @@ Run snapshot 新增 execution，包含 immutable Plan limits、原 progress 与 
 原 Native Host finalizer 的 appraisal_parse/adopt 使用私有 lane identity、真正 Scheduler finalization boundary 和一次性顺序；复制 lane、非 finalizer、重复/乱序阶段不能取得回调。两份稳定 local job 在领域事务外先持久准入，parse精确输入字节、adopt保守有界字节上界，执行前检查实际输入不越界。实际 CPU/wall observation 在领域事务结束后沿同一原银行结算；即使领域/Result事务回滚、ACK no_save，本次真实工作费用也保留。已准入而未执行的阶段记实际零执行/failed，不返还 job额度；单个 settlement ACK未知不阻止另一实际工作结算，仅观察同 exact usage，未知继续保留。
 
 原 SessionCore.recordTaskResult/prepareAppraisalDelivery/原 cognition commands 是唯一采纳权威。Actor状态、原 Task record、delivery marker和有界引用 Result 共用原 Engine事务；费用关闭后再通过同一原 Output controller 的稳定命令补闭 Graph/OutputClaim。unknown Model/local费用可保留已采纳 Actor状态与引用Result，不完成Root、不重发。取消/撤权保留已发生事实；历史 reader 严核原 appraisalEvidence/profile/config/Task/事件，以及 exact parse/adopt费用行、target指纹、稳定ID与合法 usage。Result只有原 Task引用，原 Information展示规则继续隔离 Actor私域、玩家投影和其它Actor。
+
+## 17.98 原 Session 内的 Task 专属 Plan Binding
+
+native_session SourceSelector 可显式增加 taskRef:{taskId,variantId}，只允许原 manifest 中存在的 Task/variant；未知、null 或多字段拒绝。sessionId 始终指向同一个已拥有 Session，entryPointId 只能为 null 或该 Session 原入口。未携带 taskRef 的原 selector 和 bindingId 保持原值。保存、读取、CAS、发布与 Source 授权沿原 PlanRepository，不建立第二 registry 或运行权限。
+
+后台选择顺序为 Task+entryPoint、Task+Session default、generic+entryPoint、generic+Session default；所有候选都限定当前 Session。Narrator 只使用无 taskRef 的原两级 Binding。Task Root 的 sourceRequest 带相同 taskRef，与原 Context capture 一致；sourceRef、原银行、Task/Actor 当前性、Model/egress 和真实 finalizer 权限不变。Run 元数据可按 exact Task/variant 筛选；generic Session 列表包含该 Session 的所有 Root，投影不增加模型正文或 Actor 私域。
