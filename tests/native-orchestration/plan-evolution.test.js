@@ -46,6 +46,9 @@ describe.each(harnesses)('$name original Plan strategy evolution', ({ make }) =>
     test('missing declarations, larger limits, arbitrary paths and foreign local subjects cannot prepare or publish a candidate', async () => {
         const f = await setup(make), { targets, scope, subject, target } = f, handle = f.h.handle;
         try {
+            expect((await targets.catalog(handle, scope, subject)).every(item => item.target.kind === 'plan-strategy')).toBe(true);
+            await expect(targets.capture(handle, scope, subject, { kind: 'project-strategy', taskId: f.task.taskId, field: 'maxRepairRounds' }))
+                .rejects.toThrow('native_orchestration_evolution_target_unavailable');
             const undeclared = await targets.capture(handle, scope, subject, target);
             await expect(targets.prepare(handle, scope, subject, target, undeclared, undeclared.body - 1)).rejects.toThrow('declaration_required');
             await targets.declare(handle, scope, subject, target, f.choice.baseHash);
